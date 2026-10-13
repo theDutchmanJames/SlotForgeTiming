@@ -1,0 +1,117 @@
+# Changelog
+
+Every version of SlotForge Timing, newest first. The README has a section **What to try (x.y.z)** for each version, with what changed, how to try it and what it does not do (yet).
+
+## Versions
+
+- **0.97.0**: the new icon, a PDF button that stands out, a quick builder, and folders in General and Import and Export
+- **0.96.0**: Heats, part 5: finals
+- **0.95.0**: Heats, part 4: a break between heats, and changing the plan by hand
+- **0.94.0**: Heats, part 3: how the heats add up
+- **0.93.0**: Heats, part 2: four ways to plan the heats, equal lanes, and seeding from a qualifying
+- **0.92.0**: Heats, part 1: clearer settings, and the Heat plan on Home
+- **0.91.1**: Delta Timers: an outlined look, and the arrow the other way round
+- **0.91.0**: Delta Timers, a new folder of widgets in the Layout Editor
+- **0.90.0**: a one-click builder and installer for the Mac
+- **0.89.0**: more spoken calls, part 3: "Only if" under a sentence, and "Not again within" for a call
+- **0.88.0**: more spoken calls, part 2: records, pits, penalties, safety, time tokens
+- **0.87.0**: more spoken calls, part 1: race progress, gaps and battles
+- **0.86.0**: a picture for every start light and every race state
+- **0.85.0**: a special look for the control pages, and a Help tab
+- **0.84.0**: minus buttons for the lane time, reviewing laps during a race, and a review at the end of a Time Token Session
+- **0.83.1**: fix for a race that would not start after a Time Token Session
+- **0.83.0**: Time Tokens, part 2 (add time from a phone or tablet)
+- **0.82.0**: Time Tokens, part 1 (selling track time per lane)
+- **0.81.0**: long sessions and the Live Race pages
+- **0.80.0**: folders on Results and Records and on Race Setups
+- **0.79.0**: a new look for Audio Settings
+- **0.78.0**: your club logo on the Home tab, and in the Logo widget
+- **0.77.0**: the round app icon
+- **0.76.0**: Fill the frame, for the Leaderboard widget
+- **0.75.0**: the group of an extra field, and a question before an editor closes
+- **0.74.0**: the Driver, Slot car, Fuel setup and Penalty system forms in groups
+- **0.73.0**: Undo and Redo in Audio Settings, Image Settings and the Widget Builder
+- **0.72.0**: the Track form in groups
+- **0.71.0**: a Pre-Race call before the start lights
+- **0.70.0**: the Race Setup form in groups
+- **0.69.0**: close up the blank space between the leaderboard columns
+- **0.68.0**: the Leaderboard widget follows its row design, with a size slider
+- **0.67.0**: undo and redo in the Layout Editor and the Leaderboard Editor
+- **0.66.0**: DS Electronics, a listening version
+- **0.65.0**: pictures on the tabs
+- **0.64.2**: the Live on Air sign without a background
+- **0.64.1**: the Live Race tab as a Live on Air sign (the dark fill was dropped again in 0.64.2)
+- **0.64.0**: a one-click builder and installer for Linux
+- **0.63.3**: the zip is called SlotForgeTiming-x.y.z
+- **0.63.2**: nothing to try, a test fix
+- **0.63.1**: Welcome Message in App Settings
+- **0.63.0**: Flag style for the Race Flag widget: Flags, LEDs, Text or Image set
+- **0.62.1**: coloured flag icons for the Race Flag widget (its choices were replaced by Flag style in 0.63.0)
+- **0.62.0**: eight Trackmate sensors with check lights
+- **0.61.0**: Lane length modifier (replaces Track shape of 0.60.0)
+- **0.60.0**: track shape, for a figure-eight
+- **0.59.0**: one transparency setting for all widgets
+- **0.58.0**: a background picture for the timing page
+- **0.57.0**: rounded corners
+- **0.56.0**: tidier widget settings, border colour and transparency
+- **0.55.0**: how to install more voices
+- **0.54.0**: the audio calls in folders
+- **0.53.0**: calls from a lane
+- **0.52.0**: choose which part of the Home header picture shows
+- **0.51.0**: Home header height, a new Home title, and the App Theme tab
+- **0.50.0**: a second full check of the code
+- **0.49.0**
+- **0.48.0**
+- **0.47.0**
+- **0.46.0**: programs you can share (no terminal for the people you share with)
+- **0.45.0**: a full check of the code
+- **0.44.0**: complete backup
+- **0.43.0**: penalty points for driving on an empty tank
+- **0.42.0**: a track length for each lane
+- **0.41.1**: the Race Flag widget always shows a flag
+- **0.41.0**: the start lights count down again after a red flag
+- **0.40.0**: start lights that follow the race flag
+- **0.39.1**: Start Lights follow the race, Timing Hardware sub-tabs
+- **0.39.0**: fuel pictures, custom Start Lights, audio variables
+- **0.38.2**
+- **0.38.1**
+- **0.38.0**: widget folders, new names, Logo widget
+- **0.37.1**: choose what an export takes along
+- **0.37.0**: export and import
+- **0.36.0**: custom image widgets
+- **0.35.1**
+- **0.35.0**: Widget Builder
+- **0.34.1**: all variables in the custom text widgets
+- **0.34.0**: custom text widgets
+- **0.33.0**: countdown clock
+- **0.32.1**: Trackcall button speed
+
+## Before the version numbers (newest first)
+
+- batch K1: small improvements
+- batch I2: special penalties, race review
+- batch I: penalty points and the Race Director
+- batch H2: tabs, app name, header picture
+- batch H: Live Race
+- batch G2: lap limits and scrolling
+- batch G: car pictures, track length, speed
+- batch F: small fixes
+- batch E: fuel and pit stops
+- batch D: picture framing and Race Setups views
+- batch C: start lights and records
+- batch B: new widgets
+- batch A: the layout editor
+- batch K2: fuel rules, v0.23.0
+- batch L1: leaderboard row designer, v0.24.0
+- v0.24.1
+- v0.25.0
+- v0.25.1
+- batch J: network access, v0.26.0
+- UI batch, v0.27.0
+- Audio batch, v0.28.0
+- Audio step 2, v0.29.0
+- small extras, v0.29.1
+- Trackmate step 1: connection monitor, v0.30.0
+- Trackmate step 2, v0.30.2
+- Trackmate connected to the race, v0.31.0
+- v0.32.0: Trackcall and power choices, start power, first lap

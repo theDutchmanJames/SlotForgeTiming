@@ -1,0 +1,305 @@
+// Works out WHAT to announce during a race. Pure: observe() is given the race now and returns the calls that just happened
+// (new leader, fastest lap, flags...), each with the values its sentences can use ({driver}, {time}...). Nothing here plays sound.
+(function (root) {
+  // The calls of the first audio version. vars: the placeholders a line of that call can use. lines: the default sentences.
+  const CALLS = [
+    { id: 'prerace', group: 'Start', label: 'Before the start: said when Start is pressed (the start lights wait until it is finished)', vars: ['heat', 'heats', 'final', 'track'], lines: ['Drivers, get ready. The race is about to start!'] },
+    { id: 'countdown5', group: 'Start', label: 'Light 1 comes on: 5', vars: [], lines: ['5'] },
+    { id: 'countdown4', group: 'Start', label: 'Light 2 comes on: 4', vars: [], lines: ['4'] },
+    { id: 'countdown3', group: 'Start', label: 'Light 3 comes on: 3', vars: [], lines: ['3'] },
+    { id: 'countdown2', group: 'Start', label: 'Light 4 comes on: 2', vars: [], lines: ['2'] },
+    { id: 'countdown1', group: 'Start', label: 'Light 5 comes on: 1', vars: [], lines: ['1'] },
+    { id: 'lightsout', group: 'Start', label: 'Lights out, the race starts', vars: ['heat', 'heats', 'final'], lines: ['Go go go!', 'Lights out and away we go', 'Green light, race!'] },
+    { id: 'newleader', group: 'Positions', label: 'A new leader', vars: ['driver', 'other'], lines: ['{driver} takes the lead', '{driver} is the new leader', 'New leader: {driver}'] },
+    { id: 'overtake', group: 'Positions', label: 'A driver moves up a place', vars: ['driver', 'other', 'position'], lines: ['{driver} passes {other} for position {position}', '{driver} overtakes {other}'] },
+    // Race progress: how far the race is, and the heats. Said by the race itself, not about one driver.
+    { id: 'lapstogo', group: 'Race progress', label: 'Laps to go in a race by laps (you choose how many)', vars: ['driver', 'left', 'laps'], lines: ['{left} to go, {driver} leads', '{left} to go'] },
+    { id: 'timetogo', group: 'Race progress', label: 'Minutes to go in a timed race or a qualifying (you choose how many)', vars: ['driver', 'left'], lines: ['{left} to go, {driver} leads', '{left} left'] },
+    { id: 'distance', group: 'Race progress', label: 'Race distance reached (you choose the distances)', vars: ['percent', 'driver', 'left', 'laps'], lines: ['{percent} percent of the race done, {driver} leads', '{percent} percent distance, {left} to go'] },
+    { id: 'lastlap', group: 'Race progress', label: 'The leader starts the last lap', vars: ['driver', 'laps'], lines: ['Last lap! {driver} leads', 'Final lap', 'Last lap, {driver} is in front'] },
+    { id: 'lastlapother', group: 'Race progress', defaultOn: false, label: 'Another driver starts the last lap (not the leader)', vars: ['driver', 'laps'], lines: ['{driver} starts the last lap', '{driver} is on the last lap'] },
+    { id: 'nextheat', group: 'Race progress', label: 'The next heat is ready (a heat-based race)', vars: ['heat', 'heats'], lines: ['Next up: heat {heat} of {heats}', 'Heat {heat} is ready'] },
+    { id: 'nextfinal', group: 'Race progress', label: 'The next final is ready (a heat-based race with finals)', vars: ['final'], lines: ['Next up: final {final}', 'Final {final} is ready'] },
+    { id: 'heatend', group: 'Race progress', label: 'A heat is finished (said instead of the finished call, except after the last heat)', vars: ['heat', 'heats'], lines: ['Heat {heat} of {heats} is finished', 'End of heat {heat}'] },
+    { id: 'finalend', group: 'Race progress', label: 'A final is finished (said instead of the finished call, except after the last final)', vars: ['final'], lines: ['Final {final} is finished', 'End of final {final}'] },
+    // Gaps and battles: worked out from the times of the laps, said when a lap is completed
+    { id: 'closing', group: 'Gaps and battles', defaultOn: false, label: 'A driver closes in on the car in front (you choose how close)', vars: ['driver', 'other', 'gap', 'position'], lines: ['{driver} is {gap} behind {other}', '{driver} is closing in on {other}'] },
+    { id: 'battle', group: 'Gaps and battles', defaultOn: false, label: 'A battle for a place: two drivers stay close for several laps', vars: ['driver', 'other', 'gap', 'position'], lines: ['A battle for {position} place between {driver} and {other}', '{driver} is right behind {other}, who will give way?'] },
+    { id: 'lapped', group: 'Gaps and battles', defaultOn: false, label: 'A driver is lapped by the leader', vars: ['driver', 'other', 'lapsdown'], lines: ['{driver} is lapped by {other}', '{driver} goes a lap down'] },
+    { id: 'fastestlap', group: 'Laps and records', label: 'Fastest lap of the race', vars: ['driver', 'time', 'lap', 'improved', 'record'], lines: ['Fastest lap of the race for {driver}, {time}', '{driver} sets the fastest lap, {time}'] },
+    { id: 'trackrecord', group: 'Laps and records', label: 'New track record', vars: ['driver', 'time', 'lap', 'improved', 'record'], lines: ['New track record! {driver}, {time}', 'Track record for {driver}, {time}'] },
+    { id: 'personalbest', group: 'Laps and records', label: 'Personal best', vars: ['driver', 'time', 'lap', 'improved', 'record'], lines: ['Personal best for {driver}, {time}', '{driver} improves their best lap, {time}'] },
+    { id: 'firstlap', group: 'Laps and records', defaultOn: false, label: 'A driver completes the first lap', vars: ['driver', 'time', 'lap'], lines: ['{driver} completes the first lap, {time}', 'First lap done for {driver}, {time}'] },
+    { id: 'nearrecord', group: 'Laps and records', defaultOn: false, label: 'A lap close to the track record (you choose how close)', vars: ['driver', 'time', 'lap', 'record', 'off'], lines: ['{driver} is {off} off the track record', 'Just {off} short of the record for {driver}'] },
+    { id: 'pitin', group: 'Pit and fuel', label: 'A car stops in the pits', vars: ['driver'], lines: ['{driver} is in the pits', '{driver} pits'] },
+    { id: 'pitout', group: 'Pit and fuel', label: 'A car leaves the pits', vars: ['driver', 'pit', 'fuel'], lines: ['{driver} is back on track', '{driver} leaves the pits'] },
+    { id: 'fuelhalf', group: 'Pit and fuel', defaultOn: false, label: 'A car has used half of its fuel', vars: ['driver', 'fuel'], lines: ['{driver} is at half tank', '{driver} has half a tank left'] },
+    { id: 'fuellow', group: 'Pit and fuel', label: 'A car is low on fuel', vars: ['driver', 'fuel'], lines: ['{driver} is low on fuel', '{driver}, fuel is getting low'] },
+    { id: 'outoffuel', group: 'Pit and fuel', label: 'A car is out of fuel', vars: ['driver'], lines: ['{driver} is out of fuel', '{driver} has run dry'] },
+    { id: 'refuelled', group: 'Pit and fuel', defaultOn: false, label: 'A car has refuelled (said when the pit stop is over)', vars: ['driver', 'refuelled', 'fuel', 'pit'], lines: ['{driver} has refuelled, {refuelled} litres', '{driver} takes on {refuelled} litres'] },
+    { id: 'penalty', group: 'Penalties', label: 'Penalty points given', vars: ['driver', 'points'], lines: ['Penalty for {driver}', '{driver} gets a penalty'] },
+    { id: 'specialpenalty', group: 'Penalties', label: 'A special penalty (drivethrough, stop and go...)', vars: ['driver', 'penalty'], lines: ['{driver}, {penalty}', '{penalty} for {driver}'] },
+    { id: 'penaltyserved', group: 'Penalties', defaultOn: false, label: 'A special penalty has been served', vars: ['driver', 'penalty'], lines: ['{driver} has served the {penalty}', '{penalty} served by {driver}'] },
+    { id: 'penaltyforgiven', group: 'Penalties', defaultOn: false, label: 'A special penalty is forgiven (by the Race Director, also in the review after the race)', vars: ['driver', 'penalty'], lines: ['The {penalty} for {driver} is forgiven', '{driver} is let off the {penalty}'] },
+    { id: 'penaltytime', group: 'Penalties', defaultOn: false, label: 'Time is added to a driver (by the Race Director, also in the review after the race)', vars: ['driver', 'added'], lines: ['{added} added to the time of {driver}', '{driver} gets a time penalty of {added}'] },
+    { id: 'disqualified', group: 'Penalties', label: 'A driver is disqualified', vars: ['driver'], lines: ['{driver} is disqualified', 'Disqualified: {driver}'] },
+    { id: 'yellowflag', group: 'Flags', label: 'Yellow flag', vars: [], lines: ['Yellow flag, take care', 'Yellow flag'] },
+    { id: 'redflag', group: 'Flags', label: 'Red flag', vars: [], lines: ['Red flag, the race is stopped', 'Red flag'] },
+    { id: 'greenflag', group: 'Flags', label: 'Green flag (the yellow or red flag is over)', vars: [], lines: ['Green flag, racing again', 'Back to green'] },
+    { id: 'lanecall', group: 'Safety', defaultOn: false, label: 'A lane calls for the marshal (the Call button)', vars: ['driver', 'lane'], lines: ['{driver} calls for the marshal', 'Marshal call from lane {lane}'] },
+    { id: 'nolap', group: 'Safety', defaultOn: false, label: 'A car has not completed a lap for a while (you choose how long)', vars: ['driver', 'lane', 'seconds'], lines: ['No lap from {driver} for {seconds} seconds', 'Is {driver} stuck? Lane {lane}'] },
+    { id: 'trackmatelost', group: 'Safety', defaultOn: false, label: 'The Trackmate connection is lost (during a race)', vars: [], lines: ['Trackmate connection lost', 'Lost contact with the Trackmate'] },
+    { id: 'trackmateback', group: 'Safety', defaultOn: false, label: 'The Trackmate is connected again (during a race)', vars: [], lines: ['Trackmate is back', 'Trackmate connected again'] },
+    { id: 'finished', group: 'Finish', label: 'The race is finished', vars: ['heat', 'heats', 'final'], lines: ['The race is finished', 'Chequered flag'] },
+    { id: 'podium', group: 'Finish', label: 'Second and third place', vars: ['driver', 'position', 'laps'], lines: ['{driver} finishes {position}', 'In {position} place, {driver}'] },
+    { id: 'winner', group: 'Finish', label: 'The winner', vars: ['driver', 'name', 'nickname', 'callsign', 'laps'], lines: ['{driver} wins the race!', 'Victory for {driver}'] },
+    { id: 'tokenwarning', group: 'Time tokens', label: 'A lane\'s paid time is almost up (a Time Token Session)', vars: ['driver', 'lane', 'seconds'], lines: ['Lane {lane}, your time is almost up', '{driver}, your time is almost up'] },
+    { id: 'tokenout', group: 'Time tokens', label: 'A lane\'s paid time is up (a Time Token Session)', vars: ['driver', 'lane'], lines: ['Time is up on lane {lane}', '{driver}, your time is up. Please stop driving'] },
+    { id: 'tokenadded', group: 'Time tokens', defaultOn: false, label: 'Time is added to a lane (a Time Token Session)', vars: ['driver', 'lane', 'added', 'seconds'], lines: ['{added} added to lane {lane}', 'Lane {lane} has {added} more'] },
+    { id: 'tokenfree', group: 'Time tokens', defaultOn: false, label: 'A lane is freed (a Time Token Session)', vars: ['driver', 'lane'], lines: ['Lane {lane} is free', 'Lane {lane} is free for the next driver'] }
+  ];
+  // the values a placeholder can have, in the order they are shown to the user
+  const VARS = { driver: 'The driver, as the set says (name, nickname or callsign)', name: 'The driver\'s name', nickname: 'The driver\'s nickname', callsign: 'The driver\'s callsign',
+    other: 'The other driver involved (the one who was passed, or the leader before)', time: 'The lap time, as spoken', position: 'The position, as a word', lap: 'The lap number the time was set in',
+    laps: 'The number of laps of the race (the laps driven so far when there is no lap limit)', percent: 'The race distance reached, in percent', left: 'What is left of the race: laps or minutes',
+    lane: 'The number of the lane', seconds: 'The seconds of paid time that are left (in the time-added call: the seconds that were added; in the no-lap call: how long)',
+    fuel: 'Litres of fuel left (empty when the race has no fuel)', points: 'The driver\'s penalty points (in the penalty call: the points just given)', penalty: 'The name of the special penalty',
+    gap: 'The gap to the car in front, as spoken (0.8 seconds)', lapsdown: 'How many laps a lapped driver is behind (1 lap)', heat: 'The number of the heat (empty when it is not a heat-based race, and in a final)', heats: 'The number of heats of the race (empty in a final)', final: 'The letter of the final, A or B (empty when it is not a final)',
+    car: 'The driver\'s slot car', best: 'The driver\'s best lap of this race, as spoken', track: 'The name of the track',
+    gapahead: 'The gap to the car in front right now, as spoken (empty for the leader)', record: 'The track record, as spoken (empty when the track has none; in the track record call: the old record)',
+    improved: 'How much better the lap was than the best before it (0.12 seconds)', off: 'How far a lap was from the track record (0.04 seconds)',
+    pit: 'How long the pit stop took, as spoken (7.4 seconds)', refuelled: 'Litres of fuel put in during the pit stop', added: 'The time that was added, as spoken (5 minutes, 30 seconds)' };
+  const SAMPLE = { driver: 'Alex', name: 'Alex', nickname: 'Speedy', callsign: 'ALX', other: 'Sam', time: '5.12', position: 'second', percent: '50', left: '5 laps', fuel: '12', lane: '2', seconds: '60', points: '2', penalty: 'drivethrough', lap: '4', laps: '10', gap: '0.8 seconds', lapsdown: '1 lap', heat: '2', heats: '3', final: 'A', car: 'Porsche 956', best: '5.10', track: 'Living room', gapahead: '0.8 seconds', record: '5.01', improved: '0.12 seconds', off: '0.04 seconds', pit: '7.4 seconds', refuelled: '8', added: '5 minutes' };
+  const ORD = ['zeroth', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth'];
+  const ordinal = n => ORD[n] || `${n}th`;
+  // a lap time as it is spoken: 5.12 (two decimals), or 1 minute 5.12
+  function speakTime(ms) {
+    if (!Number.isFinite(ms)) return '';
+    const s = ms / 1000; if (s < 60) return s.toFixed(2);
+    const m = Math.floor(s / 60);
+    return `${m} minute${m === 1 ? '' : 's'} ${(s - m * 60).toFixed(2)}`;
+  }
+  // a gap as it is spoken: 0.8 seconds, 1 second, 12 seconds
+  function speakGap(ms) {
+    if (!Number.isFinite(ms)) return '';
+    const s = ms / 1000; if (s >= 9.95) return `${Math.round(s)} seconds`;
+    const t = Math.round(s * 10) / 10; return t === 1 ? '1 second' : Number.isInteger(t) ? `${t} seconds` : `${t.toFixed(1)} seconds`;
+  }
+  // which conditions the sentences of a call can have: the driver the call is about, his position, the lap time (calls that say a time), the gap to the car in front
+  const conditionsOf = call => {
+    const v = (call && call.vars) || [], driver = v.includes('driver'), tokens = !!call && call.group === 'Time tokens'; // (a Time Token Session has no positions or gaps)
+    return { driver, top: driver && !tokens, time: v.includes('time'), gap: driver && !tokens };
+  };
+  const lapsText = n => `${n} lap${n === 1 ? '' : 's'}`;
+  // a small difference as it is spoken: 0.12 seconds, 1 second (two decimals, because lap times are)
+  function speakDiff(ms) {
+    if (!Number.isFinite(ms)) return '';
+    const s = Math.abs(ms) / 1000; if (s >= 60) return speakTime(Math.abs(ms));
+    const t = s.toFixed(2); return t === '1.00' ? '1 second' : `${t} seconds`;
+  }
+  // a stretch of time as it is spoken, in whole seconds: 30 seconds, 5 minutes, 1 minute 30 seconds
+  function speakSpan(ms) {
+    const t = Math.round(Number(ms) / 1000); if (!(t > 0)) return '';
+    const m = Math.floor(t / 60), sec = t % 60;
+    return [m ? `${m} minute${m === 1 ? '' : 's'}` : '', sec ? `${sec} second${sec === 1 ? '' : 's'}` : ''].filter(Boolean).join(' ');
+  }
+  // the variables that every call about a driver has, and the ones every call has (the table in the audio editor says so)
+  const EVERY_DRIVER = ['driver', 'name', 'nickname', 'callsign', 'car', 'best', 'lane', 'points', 'fuel', 'gapahead'], EVERY_CALL = ['track', 'record'];
+  // a line with its placeholders filled in; an unknown placeholder is left out
+  const fill = (text, vars) => String(text ?? '').replace(/\{(\w+)\}/g, (_, k) => (vars && vars[k] !== undefined && vars[k] !== null ? String(vars[k]) : '')).replace(/\s+/g, ' ').replace(/\s+([,.!?])/g, '$1').trim();
+
+  // o: { driverBy: 'name' | 'nickname' | 'callsign', lapLimit: laps of a race by laps (0 = none), base: { personal: Map(driverId -> ms), track: ms },
+  //      distances: [percent], lapsToGo: [laps left] (2 or more), minutesToGo: [minutes left], closeGap: seconds, battleLaps: laps, nearRecord: seconds (0 = no calls),
+  //      noLapSeconds: seconds (0 = no calls), trackName }
+  function create(o = {}) {
+    const whole = (v, lo) => (Array.isArray(v) ? v : []).map(Number).filter(n => Number.isInteger(n) && n >= lo).sort((a, b) => a - b);
+    const lapsToGo = whole(o.lapsToGo, 2), minutesToGo = whole(o.minutesToGo, 1), trackName = String(o.trackName || '');
+    const nearRecord = Number(o.nearRecord) > 0 ? Math.min(5, Number(o.nearRecord)) : 0, noLap = Number(o.noLapSeconds) > 0 ? Math.min(600, Number(o.noLapSeconds)) : 0;
+    const closeGap = Number(o.closeGap) > 0 ? Math.min(30, Number(o.closeGap)) : 0, battleLaps = Math.max(2, Math.min(20, Math.floor(Number(o.battleLaps)) || 3));
+    const dists = (Array.isArray(o.distances) ? o.distances : [50]).map(Number).filter(n => n > 0 && n < 100).sort((a, b) => a - b), by = ['name', 'nickname', 'callsign'].includes(o.driverBy) ? o.driverBy : 'name', lapLimit = Number(o.lapLimit) || 0;
+    const base = o.base || {}, best = { all: Infinity, by: new Map(), personal: new Map(base.personal || []), track: Number.isFinite(base.track) ? base.track : Infinity };
+    const S = { phase: null, flag: '', leader: null, laps: [], pos: [], lastLapDone: false, distDone: [], ev: -1, low: [], finished: false, ready: false, togoDone: [], minDone: [], lastOther: [], lastCar: -1, down: [], near: [], half: [], stuck: [], tm: undefined };
+    // the race that is looked at now (for the words every driver call has: the fuel and the gap to the car in front)
+    const cur = { eng: null, info: null, st: null };
+    const gapMs = c => { // the gap to the car in front right now, in ms (null: nobody in front, or not known)
+      const e = cur.eng, i = e ? e.cars.indexOf(c) : -1; if (i < 0 || typeof e.gapInfo !== 'function') return null;
+      if (!cur.info) cur.info = e.gapInfo() || [];
+      const g = cur.info[i]; return g && g.ahead !== null && g.ahead !== undefined ? g.ahead : null;
+    };
+    const gapAhead = c => { const m = gapMs(c); return m === null ? '' : speakGap(m); };
+    const placeOf = c => { // the position of a car in the race right now (1 = leader), null when not known
+      const e = cur.eng; if (!e || typeof e.standings !== 'function') return null;
+      if (!cur.st) cur.st = e.standings() || [];
+      const i = cur.st.findIndex(x => x.car === c); return i < 0 ? null : i + 1;
+    };
+    // what a sentence's conditions are checked against: the driver, his position, the lap time and the gap to the car in front (the words of the sentence do not carry them)
+    const factsOf = (c, time) => ({ driverId: c && c.driverId !== undefined && c.driverId !== null ? c.driverId : '', place: c ? placeOf(c) : null, time: Number.isFinite(time) ? time : null, gap: c ? gapMs(c) : null });
+    const who = c => { const name = c.driverName || '', nick = c.nickname || name, call = c.callsign || name; return { driver: by === 'nickname' ? nick : by === 'callsign' ? call : name, name, nickname: nick, callsign: call, car: c.carName || '', best: Number.isFinite(c.best) ? speakTime(c.best) : '',
+      lane: Number.isInteger(c.lane) ? c.lane + 1 : '', points: c.points || 0, fuel: cur.eng && cur.eng.fuel && cur.eng.fuel.on && Number.isFinite(c.fuel) ? Math.round(c.fuel) : '', gapahead: gapAhead(c), _c: c }; };
+
+    // eng: the race engine; ctx: { phase: 'ready' | 'countdown' | 'running' | 'paused' | 'review' | 'finished'..., lights }
+    function observe(eng, ctx = {}) {
+      // every call can say the track, and in a heat-based race the heat (the number of the heat that is racing, or is next while the race waits between two heats)
+      const hv = ctx.heat && ctx.heat.count > 0 ? (ctx.heat.final ? { heat: '', heats: '', final: ctx.heat.final } : { heat: ctx.heat.idx + 1, heats: ctx.heat.count, final: '' }) : { heat: '', heats: '', final: '' }; // (a final has no heat number)
+      cur.eng = eng; cur.info = null; cur.st = null;
+      const out = [], cars = eng.cars, ev = (call, vars) => {
+        const { _c, _time, ...words } = vars || {};
+        out.push({ call, vars: { track: trackName, record: Number.isFinite(best.track) ? speakTime(best.track) : '', ...hv, ...words }, facts: factsOf(_c, _time) });
+      };
+      const phase = ctx.phase;
+      if (phase !== S.phase) {
+        if (phase === 'running' && S.phase === 'countdown') ev('lightsout', {});
+        if (phase === 'between' && ctx.heat) ev(ctx.heat.final ? 'nextfinal' : 'nextheat', {});
+        S.phase = phase; S.lights = 0;
+      }
+      if (phase === 'countdown') { // each new light says its number: 5, 4, 3, 2, 1
+        const n = Number(ctx.lights) || 0;
+        if (n > S.lights && n >= 1 && n <= 5) ev('countdown' + (6 - n), {});
+        S.lights = n;
+      }
+      if (!S.laps.length) { S.laps = cars.map(c => c.laps.length); S.pos = cars.map((_, i) => i); }
+      // the Trackmate connection (the race screen tells us; only a drop or a return during a race is said, not the first connection before the start)
+      if (typeof ctx.trackmate === 'boolean') {
+        if (S.tm !== undefined && S.tm !== ctx.trackmate && (phase === 'countdown' || phase === 'running' || phase === 'paused')) ev(ctx.trackmate ? 'trackmateback' : 'trackmatelost', {});
+        S.tm = ctx.trackmate;
+      }
+      // flags
+      const flag = eng.flag || '';
+      if (flag !== S.flag) {
+        if (flag === 'yellow') ev('yellowflag', {}); else if (flag === 'red') ev('redflag', {}); else if (S.flag) ev('greenflag', {});
+        S.flag = flag;
+      }
+      // things the engine logged: pits, fuel, penalties (only while racing; later review changes are not announced)
+      if (S.ev < 0) S.ev = eng.events.length;
+      const live = phase === 'running' || phase === 'paused';
+      for (; S.ev < eng.events.length; S.ev++) {
+        const e = eng.events[S.ev], c = cars[e.car]; if (!c) continue;
+        // the Race Director's decisions are also said in the review after the race (they change the result); everything else only while racing
+        if (!live && !(phase === 'review' && (e.type === 'forgiven' || e.type === 'timeadded'))) continue;
+        const pen = String(e.name || 'penalty').toLowerCase();
+        if (e.type === 'pitstart') ev('pitin', who(c));
+        else if (e.type === 'pitend') {
+          if (e.refuelled > 0) ev('refuelled', { ...who(c), refuelled: Math.round(e.refuelled * 10) / 10, pit: speakGap(e.duration) });
+          ev('pitout', { ...who(c), pit: speakGap(e.duration) });
+        }
+        else if (e.type === 'call') ev('lanecall', who(c));
+        else if (e.type === 'served') ev('penaltyserved', { ...who(c), penalty: pen });
+        else if (e.type === 'forgiven') ev('penaltyforgiven', { ...who(c), penalty: pen });
+        else if (e.type === 'timeadded') ev('penaltytime', { ...who(c), added: speakSpan(e.ms) });
+        else if (e.type === 'outoffuel') ev('outoffuel', who(c));
+        else if (e.type === 'penalty' && e.delta > 0) ev('penalty', { ...who(c), points: e.delta });
+        else if (e.type === 'assigned') ev('specialpenalty', { ...who(c), penalty: pen });
+        else if (e.type === 'disqualified') ev('disqualified', who(c));
+      }
+      if (live && eng.fuel && eng.fuel.on && eng.fuel.tank > 0) cars.forEach((c, i) => { // low on fuel: once, until the tank is filled up again
+        if (c.done || c.outOfFuel) return;
+        if (S.half[i] === undefined) S.half[i] = c.fuel <= eng.fuel.tank * 0.5; // (a car that starts with half a tank or less is not told so)
+        else if (c.fuel > eng.fuel.tank * 0.5) S.half[i] = false;
+        else if (!S.half[i]) { S.half[i] = true; ev('fuelhalf', { ...who(c), fuel: Math.round(c.fuel) }); }
+        if (c.fuel > eng.fuel.tank * 0.5) S.low[i] = false;
+        else if (c.fuel <= eng.fuel.tank * 0.25 && !S.low[i]) { S.low[i] = true; ev('fuellow', { ...who(c), fuel: Math.round(c.fuel) }); }
+      });
+      // no lap for a while: said once for each stretch without a lap (a car in the pits, out of the race or without paid time is not asked about)
+      if (phase === 'running' && noLap > 0 && ctx.now !== undefined) cars.forEach((c, i) => {
+        if (c.done || c.retired || c.dq || c.outOfFuel || c.blockAt !== null || c.pit || (typeof ctx.idle === 'function' && ctx.idle(c, i))) return;
+        if (S.stuck[i] !== c.last && ctx.now - c.last >= noLap * 1000) { S.stuck[i] = c.last; ev('nolap', { ...who(c), seconds: noLap }); }
+      });
+      // laps completed since the last look
+      const done = [];
+      cars.forEach((c, i) => { for (let n = S.laps[i]; n < c.laps.length; n++) done.push([i, n]); S.laps[i] = c.laps.length; });
+      done.sort((a, b) => cars[a[0]].total - cars[b[0]].total);
+      done.forEach(([i, n]) => {
+        const c = cars[i], time = c.laps[n]; if (c.bad && c.bad[n]) return; // too slow laps never count
+        const id = c.driverId, prevAll = best.all, prevPers = Math.min(best.personal.get(id) ?? Infinity, best.by.get(id) ?? Infinity), prevTrack = best.track;
+        best.all = Math.min(best.all, time); best.by.set(id, Math.min(best.by.get(id) ?? Infinity, time));
+        const v = { ...who(c), time: speakTime(time), _time: time, lap: n + 1, laps: lapLimit || n + 1 };
+        if (Number.isFinite(prevTrack) && time < prevTrack) { best.track = time; ev('trackrecord', { ...v, improved: speakDiff(prevTrack - time), record: speakTime(prevTrack) }); }
+        else {
+          if (Number.isFinite(prevAll) && time < prevAll) ev('fastestlap', { ...v, improved: speakDiff(prevAll - time) });
+          else if (Number.isFinite(prevPers) && time < prevPers) ev('personalbest', { ...v, improved: speakDiff(prevPers - time) });
+          if (nearRecord > 0 && Number.isFinite(prevTrack) && time - prevTrack <= nearRecord * 1000) ev('nearrecord', { ...v, off: speakDiff(time - prevTrack) });
+        }
+        if (n === 0) ev('firstlap', v);
+      });
+      // the order after those laps: a new leader, or a driver who moved up
+      if (done.length && !S.finished) {
+        const st = eng.standings(), order = st.map(x => cars.indexOf(x.car)), lead = order[0];
+        if (st[0] && st[0].car.laps.length > 0) {
+          if (S.leader !== null && lead !== S.leader) ev('newleader', { ...who(cars[lead]), other: who(cars[S.leader]).driver, laps: lapLimit });
+          S.leader = lead;
+        }
+        let moves = 0;
+        order.forEach((ci, p) => {
+          const was = S.pos.indexOf(ci);
+          if (p >= 1 && was > p && cars[ci].laps.length > 0 && moves < 2) { // moved up (not into the lead: that is a new leader)
+            // the driver passed = the one who was directly in front before and is now behind. A car that went into the pits, retired or was disqualified is not "passed".
+            const o = S.pos[was - 1], oc = cars[o];
+            if (o !== undefined && order.indexOf(o) > p && oc.blockAt === null && !oc.dq && !oc.retired && !oc.done) { moves++; ev('overtake', { ...who(cars[ci]), other: who(oc).driver, position: ordinal(p + 1) }); }
+          }
+        });
+        S.pos = order;
+        // the leader starts the last lap of a race by laps
+        if (lapLimit && !S.lastLapDone && st[0].car.laps.length === lapLimit - 1 && st[0].car.laps.length > 0) { S.lastLapDone = true; S.lastCar = lead; ev('lastlap', { ...who(st[0].car), laps: lapLimit }); }
+        // another driver starts the last lap (the car the last lap call was about is not called again)
+        if (lapLimit >= 2) done.forEach(([i, n]) => { if (n + 1 === lapLimit - 1 && !S.lastOther[i] && i !== S.lastCar) { S.lastOther[i] = true; ev('lastlapother', { ...who(cars[i]), laps: lapLimit }); } });
+        // gaps and battles, worked out for every car that completed a lap, from the times of the laps (only while racing)
+        if (live) {
+          const info = typeof eng.gapInfo === 'function' ? eng.gapInfo() : [], leadName = who(st[0].car).driver, seen = new Set(), thr = closeGap * 1000; let said = 0;
+          done.forEach(([i]) => {
+            if (seen.has(i)) return; seen.add(i);
+            const c = cars[i], g = info[i];
+            if (!g) { S.near[i] = null; return; }
+            if (g.down > (S.down[i] || 0)) { S.down[i] = g.down; ev('lapped', { ...who(c), other: leadName, lapsdown: lapsText(g.down) }); }
+            const front = g.pos > 1 ? st[g.pos - 2].car : null, fi = front ? cars.indexOf(front) : -1;
+            if (!front || g.ahead === null || front.blockAt !== null || front.dq || front.retired || front.done || c.blockAt !== null || c.done) { S.near[i] = null; return; }
+            // close to the car in front: counted per car in front, said once per approach (it starts again when the gap has grown to one and a half times the limit)
+            const n = S.near[i] && S.near[i].other === fi ? S.near[i] : { other: fi, laps: 0, said: false, battle: false };
+            if (g.ahead > thr * 1.5) { n.laps = 0; n.said = false; n.battle = false; } else if (g.ahead < thr) n.laps++; else n.laps = 0;
+            S.near[i] = n;
+            if (thr > 0 && g.ahead < thr && said < 2) {
+              const v = { ...who(c), other: who(front).driver, gap: speakGap(g.ahead), position: ordinal(g.pos - 1) };
+              if (n.laps >= battleLaps && !n.battle) { n.battle = true; n.said = true; said++; ev('battle', v); }
+              else if (!n.said) { n.said = true; said++; ev('closing', v); }
+            }
+          });
+        }
+      }
+      // race distance: at each distance chosen in the set (percent of the laps, or of the time of a timed race). If several are passed at once only the last is called.
+      if (live && !S.finished && dists.length) {
+        const lead = eng.standings()[0], timed = eng.type === 'timed' && Number(eng.cfg.duration) > 0 && ctx.now !== undefined;
+        const total = timed ? Number(eng.cfg.duration) * 60000 : lapLimit, done = timed ? eng.elapsed(ctx.now) : lead ? lead.car.laps.length : 0;
+        if (total > 0 && lead) {
+          const hit = dists.filter(d => !S.distDone.includes(d) && done > 0 && done >= total * d / 100 - 1e-9);
+          if (hit.length) {
+            hit.forEach(d => S.distDone.push(d));
+            const left = timed ? Math.max(1, Math.round((total - done) / 60000)) : Math.max(0, total - done), pc = hit[hit.length - 1];
+            ev('distance', { ...who(lead.car), percent: pc, left: timed ? `${left} minute${left === 1 ? '' : 's'}` : `${left} lap${left === 1 ? '' : 's'}`, laps: timed ? '' : lapLimit });
+          }
+        }
+      }
+      // laps or minutes to go: at each number chosen in the set (if several are passed at once, the smallest is called)
+      if (live && !S.finished && (lapsToGo.length || minutesToGo.length)) {
+        const lead = eng.standings()[0], total = Number(eng.cfg.duration) * 60000;
+        if (lead && lapLimit && lapsToGo.length) {
+          const have = lead.car.laps.length, hit = lapsToGo.filter(k => k < lapLimit && !S.togoDone.includes(k) && have > 0 && have >= lapLimit - k);
+          if (hit.length) { hit.forEach(k => S.togoDone.push(k)); ev('lapstogo', { ...who(lead.car), left: lapsText(hit[0]), laps: lapLimit }); }
+        }
+        if (lead && minutesToGo.length && ctx.now !== undefined && (eng.type === 'timed' || eng.type === 'qualifying') && total > 0) {
+          const spent = eng.elapsed(ctx.now), hit = minutesToGo.filter(m => m * 60000 < total && !S.minDone.includes(m) && spent > 0 && total - spent > 0 && total - spent <= m * 60000);
+          if (hit.length) { hit.forEach(m => S.minDone.push(m)); ev('timetogo', { ...who(lead.car), left: `${hit[0]} minute${hit[0] === 1 ? '' : 's'}` }); }
+        }
+      }
+      // the end of the race (a heat that is not the last one says that the heat is finished instead)
+      if (eng.status === 'finished' && !S.finished && cars.some(c => c.laps.length)) {
+        S.finished = true; ev(ctx.heat && ctx.heat.idx + 1 < (ctx.heat.total || ctx.heat.count) ? (ctx.heat.final ? 'finalend' : 'heatend') : 'finished', {});
+        const st = eng.standings(), w = st[0]; if (w) ev('winner', { ...who(w.car), laps: w.car.laps.length });
+        st.slice(1, 3).forEach((x, k) => { if (x.car.laps.length) ev('podium', { ...who(x.car), position: ordinal(k + 2), laps: x.car.laps.length }); });
+      }
+      return out;
+    }
+    return { observe };
+  }
+  const api = { CALLS, VARS, SAMPLE, EVERY_DRIVER, EVERY_CALL, conditionsOf, ordinal, speakTime, speakGap, speakDiff, speakSpan, fill, create };
+  root.Announcer = api;
+  if (typeof module !== 'undefined') module.exports = api;
+})(typeof window !== 'undefined' ? window : globalThis);

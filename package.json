@@ -1,0 +1,72 @@
+{
+  "name": "slotforge-timing",
+  "version": "0.97.0",
+  "description": "Slot car lap timer and lap counter for Windows, macOS and Linux",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win",
+    "dist:linux": "electron-builder --linux",
+    "dist:mac": "electron-builder --mac",
+    "test": "node tests/speed.test.js && node tests/theme.test.js && node tests/banner.test.js && node tests/icons.test.js && node tests/undo.test.js && node tests/frame.test.js && node tests/backdrop.test.js && node tests/db.test.js && node tests/engine.test.js && node tests/heats.test.js && node tests/scoring.test.js && node tests/finals.test.js && node tests/tokens.test.js && node tests/audio.test.js && node tests/hardware.test.js && node tests/trackmate.test.js && node tests/transfer.test.js && node tests/backup.test.js && node tests/package.test.js && node tests/linux.test.js && node tests/mac.test.js && node tests/widgets.test.js && node tests/timing.test.js && node tests/delta.test.js && node tests/rows.test.js && node tests/richtext.test.js && node tests/report.test.js && node tests/screens.test.js && node tests/server.test.js && node tests/web.test.js && node tests/live.test.js && node tests/tokenrace.test.js && node tests/help.test.js"
+  },
+  "build": {
+    "appId": "com.example.slotforgetiming",
+    "productName": "SlotForge Timing",
+    "files": [
+      "*.js",
+      "vendor/**",
+      "renderer/**",
+      "node_modules/flag-icons/**"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "artifactName": "${productName}-${version}-Setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-Portable.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility",
+      "synopsis": "Slot car lap timer and lap counter",
+      "maintainer": "SlotForge Timing <noreply@slotforge.invalid>",
+      "artifactName": "SlotForgeTiming-${version}.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "category": "public.app-category.utilities",
+      "icon": "build/icon.png",
+      "artifactName": "SlotForgeTiming-${version}-mac.${ext}"
+    }
+  }
+}

@@ -1,2 +1,1272 @@
-# SlotForgeTiming
-a Slotcar Timing app with expansive functionality and customization
+# SlotForge Timing (Windows, macOS and Linux desktop app)
+
+A slot car timing app with expansive functionality and customization: lap timing, heat races, a customizable timing page, a database of tracks, drivers and slot cars, results and records, and voice announcements. It works with the Trackmate Interface.
+
+## Run it
+1. Install Node.js (LTS) from https://nodejs.org, then open a NEW terminal.
+2. In this folder run:
+   npm install --save-dev electron electron-builder
+   npm install flag-icons
+   npm start
+(flag-icons supplies the country flag images. Without it everything works, but flags don't show.)
+On Linux the same commands work. To make a program you can install or share, see **What to try (0.64.0)** at the end: `./build-linux.sh`.
+On a Mac the same commands work too. To make a program you can install or share, see **What to try (0.90.0)** at the end: `build-mac.command`.
+The zip's package.json does not list Electron or flag-icons: after unzipping a new version over an old one, run the two install commands again before `npm run dist`.
+
+## What to try (batch K1: small improvements)
+1. **Home**: the Drivers and Slot cars cards show the 5 used last (the rest fill in if fewer have been used), with a **Show all N in the database** button that opens the matching Database page.
+2. **Lap time widget** (and the current lap column of the leaderboard, and a pit stop in progress) now count with three decimals: 0.000 and up.
+3. **Race review**: after **Clear points** there is a **Restore** button.
+4. **Live Race window**: a **Full screen** button (Esc leaves full screen).
+5. **App Settings**: more colour themes (Midnight blue, Forest green, Sunset orange, Violet, Carbon and yellow, Ocean).
+6. New **Championship points** widget (Timing group): for heat and round robin races counted by points it shows the points from finished heats plus what the current positions are worth right now. Untick the option on the widget to count finished heats only. It is also on the Driver stats page.
+Coming next: fuel rules (their own tab next to Penalty systems, with a target lap and a limit of extra and saved fuel in percent), then the leaderboard row designer.
+
+## What to try (batch I2: special penalties, race review)
+1. **Race Setup > Penalty systems > Add**: there is now a **Special penalties** list (starting with Drivethrough, Stop-and-Go 5 s and 10 s). For each you set the **kind**, how long to **stand still** (Stop-and-Go), what it **costs in points**, what **leaving early adds** in points, and how many **seconds are added if it is never served**. Add or remove as many as you like.
+2. In a race with that system, the **Race Director** page has a button per special penalty on each driver (greyed out until the driver has enough points). Pressing it takes the points off and the driver has to serve it: **Drivethrough** is served when a pit stop starts (the race setup's pit hold time), **Stop-and-Go** when the car has stood on the sensor long enough. Leaving earlier adds the "leaving early" points and the penalty stays. The Pit buttons on the race screen (Shift + number) can be used to try it. The Penalty widget shows what is still to be served.
+3. **After every race (and every heat) there is a review** before anything is saved. It shows the final order, and for every driver you can: **Clear points**, **Disqualify / Reinstate**, and open **Laps** to mark a lap **invalid** or **Delete** it. For a penalty that was never served you can **Add time** (the seconds from the penalty system, which you can change), **Disqualify** or **Forgive**. The same review is on the Race Director page.
+4. **Delete a lap** asks how: *from the records only* (the lap is gone from the database, the race result stays as driven) or *from the race too* (one lap fewer and less time, which can change the order).
+5. **Finalize results** saves. Invalid and too slow laps are saved but shown struck through (in Results and Records and in the PDF) and are never used for personal bests and track records.
+Note: Trackcall is left for the Trackmate step. A special penalty can only be given in the Race Director page (the race screen has the plain +1 point buttons).
+
+## What to try (batch I: penalty points and the Race Director)
+1. **Race Setup > Penalty systems**: add one. *Points turn into time* is either **Every X points add Y seconds** (5 and 5: 5 points = 5 s, 10 = 10 s, 15 = 15 s) or a **Steps** table such as `5=5, 10=12, 15=30` (the highest step reached counts, it is not added up). Optionally **Disqualify at** a number of points.
+2. In **Race Setup > Race setups** pick the **Penalty system** for a setup (or "No penalties").
+3. Start a race with it. On the race screen there is a **Penalty n** button per lane (one point each). On the **Live Race** window the **Race Director** tile has Start, Pause/Resume, Yellow, Red and Stop race, and for every driver **Penalty point +1** and **-1** (to take back a mistake), with the points, the time penalty and a log.
+4. The **Penalty points** widget (Layout Editor, Timing group) shows points, the time penalty, or both. Driver stats shows it too.
+5. At the end the time penalty is added to the driver's time, which can change the order (in races by laps). Results and the PDF show the time with the penalty included and the points. Reaching the disqualify limit puts the driver out of the race ("DQ"); -1 brings them back as long as the race is not over.
+6. The **Live Race** window now uses the setup's *second screen* layout if you chose one.
+(Drivethrough and Stop-and-Go penalties, the end-of-race review, invalid laps and the Trackcall button came in later batches.) In timed races and practice the time penalty only counts for ties on laps. Penalty points start again at zero in every heat.
+
+## What to try (batch H2: tabs, app name, header picture)
+1. Tabs now run: Home, Database, Race Setup, Customization, App Settings, Racing Rules, Live Race.
+2. **Customization** holds the **Layout Editor** (the layouts that used to be in Race Setup) and **Audio Settings**. **Race Setup** is just the race setups.
+3. **App Settings** (was Settings): type your own **App name**. It shows at the top of the window and as the window title. Empty brings back "SlotForge Timing".
+4. **App Settings** also has the **Header picture**: it is shown as a wide banner at the top of the Home tab. Remove picture takes it away again.
+5. **Live Race** is not a page any more: clicking the tab opens the second-screen window (or brings it to the front), also while a race is running.
+
+## What to try (batch H: Live Race)
+1. New **Live Race** tab. It shows tiles: Race timing, Leaderboard, Driver stats, Database, Racing rules and Race Director (greyed out, it comes with the penalties step). The pages are read-only.
+2. Press **Open on a second screen**. A second window opens on your other monitor (or on the main one if you only have one: drag it where you want it, F11 or Alt > View > Toggle Full Screen for full screen). Closing the main window closes it too.
+3. Start a race (with Simulated cars if you like) in the main window. In the second window open **Race timing**: it is your timing page, live, without the control buttons. Pages that need a race say so when none is running.
+4. **Leaderboard**: big, with a *Customize* box that has the same columns as the leaderboard widget (name, nickname, callsign, flag, laps, best, last, current lap, gap, fuel). Your choices are saved for this page.
+5. **Driver stats**: pick a driver, see position, lap, lap time, best, average, median, gap, record, speed, fuel and pit time, plus all laps.
+6. **Database** (read only, no Add/Edit/Delete) and **Racing rules** work with or without a race.
+Note: while a race is running the main window stays on the race screen (as before), so the Live Race tab there is for between races; the second window is where you watch.
+
+## What to try (batch G2: lap limits and scrolling)
+1. Database > Tracks > Edit: new **Minimum lap time** and **Maximum lap time** (seconds, both optional). A crossing sooner than the minimum after the last one is ignored, as a faulty trigger, and the lap carries on. A lap slower than the maximum still counts as a lap (so the race count stays right), but it is left out of the best lap, the average and median, the personal best and the track record. It is saved with the session flagged as removed from the records.
+2. Layouts > editor: the widget list (left) and the options (right) now stay in view and scroll by themselves when the window is too small.
+3. Database and Race Setup forms are wider, in two columns, and scroll inside the window. Save and Cancel stay at the bottom. Pictures, notes and the track length calculator use the full width.
+
+## What to try (batch G: car pictures, track length, speed)
+1. Database > Slotcars > Add or Edit: the picture is now the **Main picture**, with **More pictures** under it (chassis, a screenshot of a parts list, ...; up to 12). Click a thumbnail to see it larger. **Make main** swaps it with the current main picture; the main picture is the one used on cards and in widgets.
+2. Database > Tracks > Add or Edit: **Track length (metres)** has a calculator: *Calculate from track pieces...*, then number of pieces x length of one piece in mm (add a row for every kind of piece), and *Use this length*. Older text lengths are read as metres where possible.
+3. Layouts: new **Speed** widget. Choose scaled speed (as a real car, 1:1) or real speed, km/h or mph, and whether it uses the last, best or average lap. It needs the track length; scaled speed also needs the scale (the car's own, or the track's). It is the average speed over the lap, not a top speed.
+
+## What to try (batch F: small fixes)
+1. Layouts > select a widget: new settings **Title in bold**, **Title takes its own space**, **Value in bold**, **Value in italic**. By default the title now sits in the corner and no longer pushes the value down (older layouts change accordingly; switch "Title takes its own space" on to get the old look).
+2. New **Car** widgets: *Slotcar picture* (with its own position and zoom) and *Slotcar name, make and model*. They show the car assigned to that lane.
+3. The **Avatar** now fills the whole widget instead of being round.
+4. The **Race clock** always reads 00:00.0 (minutes:seconds.tenths).
+5. **Gap to leader** is always a time. A lapped car is compared with the leader at the same lap count.
+6. **Last laps** shows lap numbers when more than one lap is shown (can be switched off).
+7. Layouts now have a **Note** (in the editor bar, shown in the layout list).
+
+## What to try (batch E: fuel and pit stops)
+1. Race Setup > edit a setup: set **Fuel** to On. Then set tank size, fuel per lap, refuelling speed and what happens when the fuel runs out: the car retires, laps stop counting until it has refuelled, or only a warning. (The penalty option comes later.) "Pit stop: the sensor must be blocked this long" (default 2 s) works with or without fuel.
+2. Layouts: add the **Fuel** widget (number, bar, bar and number, or your own pictures; choose how many pictures, e.g. 10, and add one for each step from full to empty; colour limits for low and critical fuel are in its settings) and the **Pitstop time** widget. The Leaderboard also has a "Fuel left" column.
+3. Race with "Simulated cars" ticked: the cars drive, use fuel and pit by themselves when low.
+4. By hand: Shift + a lane number (or the "Pit" button of that lane) puts the car on the sensor (counts as a crossing). After the hold time the stop starts and the tank fills up. Press again ("Leave pit") to drive off. The Pitstop time widget shows how long the sensor was blocked.
+5. A car that retires is ranked behind the others (gap shows "Out") and is marked in the saved results and the PDF.
+
+## What to try (batch D: picture framing and Race Setups views)
+1. Database > Tracks, Drivers or Slotcars > Add or Edit: under the picture there is now a frame. Drag the picture to move it, use the Zoom slider to zoom, Reset to start again. Switch to Grid to see the result on the card. (A new picture starts centred.)
+2. Layouts: add or select an **Avatar** widget. In its settings you can frame the driver pictures separately for that widget (the preview uses the first driver that has a picture).
+3. Race Setup > Race setups: there is now a List / Grid switch. The list is shorter (name, track, session type, laps or time). The grid shows the track's picture (with the framing you gave it), name, session type, track and laps or time.
+Pictures you add from now on are stored a bit larger (512 px) so zooming stays sharp; older pictures keep their size.
+
+## What to try (batch C: start lights and records)
+1. Race Setup > edit or add a setup: two new fields, "Start lights: shortest / longest wait before lights out (seconds)" (default 1 and 5).
+2. Start a race (Space). Five lights come on, one per second. When all five are lit, a random wait between your two values starts, then the lights go out and the race begins. Add the Start lights widget to your layout to see them.
+3. Database > Results and Records: each Track record and Personal best has a Remove button. It removes the record only; the lap stays in its session and the next fastest lap takes over. Highlights and the record widgets during a race follow this too.
+
+## What to try (batch B: new widgets)
+In Race Setup > Layouts, edit a layout and add the new widgets from the left list:
+1. **Callsign** (per lane): the driver's 3-letter callsign.
+2. **Last lap**: set "Laps per column" (e.g. 10) and "Columns" (1 to 3). The newest lap is top-left and the list fills column by column.
+3. **Race flag**: upload a picture for each state (Ready, Get ready, Racing, Paused, Heat finished, Finished, Yellow, Red). A state without a picture shows text. Transparent PNGs keep their transparency.
+4. **Race clock**: turns yellow or red with the flag (switch off in its settings).
+5. **Session record lap** and **Track record (ever set)**: time plus the name of who set it (the name can be hidden).
+6. **Leaderboard**: live standings. Choose the driver column (name, nickname or callsign) and extra columns. Rows use lane colours if you set them.
+Then start a race with that layout (tick "Simulated cars") and watch them work.
+
+## What to try (batch A: the layout editor)
+1. Race Setup > Layouts > open or create a layout. The snapping grid is finer (half the old step) and the corner handles are smaller.
+2. Titles: every widget now shows its name as a small title. Select a widget to rename the title, hide it, or change its size.
+3. Select several widgets: Shift-click, drag a rectangle over empty canvas, or Ctrl+A. Drag them together; the side panel changes all of them at once. Delete removes them.
+4. Duplicate (next lane): the copy goes to the next lane, just below. Move that copy where you want it and the next Duplicate repeats the same step.
+5. Guidelines: the button asks for lanes (2-8) and a direction (vertical, horizontal or both) and places evenly spaced lines that widgets stick to.
+   They only show in the editor; click the button again to remove them. They are saved with the layout.
+6. Lane colours: set a text and a background colour per lane (up to 8). All widgets of that lane use them unless the widget has its own colour.
+   Lanes now go up to 8 in the lane picker.
+
+Run `npm test` to check the race rules on their own.
+
+## Structure
+- renderer/database.js  The Database tab (lists, forms, extra fields).
+- renderer/canvas.js    Builds and paints a timing page from a layout (used by the race screen and the Live Race pages).
+- renderer/liveshare.js Packs the running race into plain data and rebuilds it in another window.
+- renderer/review.js    The end-of-race review (corrections before results are saved).
+- renderer/liveview.js  The Live Race tiles and read-only pages.
+- renderer/help.js      The App Settings > Help tab: the welcome and the folders (tested by tests/help.test.js, which also checks that every name in the text exists in the app).
+- renderer/speed.js     Track length from pieces, speed and scale sums (tested by tests/speed.test.js).
+- renderer/theme.js, themeui.js  The colour themes and your own Custom colours, and the App Settings > App Theme tab (tested by tests/theme.test.js). The colours of the ready-made themes are written down once, in styles.css.
+- renderer/banner.js  The Home header picture: its height, the part of the picture that shows, and dragging (tested by tests/banner.test.js).
+- renderer/frame.js  The frame of a widget: border shade, no border, transparency and rounded corners (tested by tests/frame.test.js).
+- renderer/backdrop.js  The background picture of a timing page and its filters: blur, brightness, colour (tested by tests/backdrop.test.js).
+- renderer/report.js    The printable session report (tested by tests/report.test.js).
+- renderer/timing.js    Works out what every widget shows (tested by tests/timing.test.js).
+- renderer/widgets.js   The widget list, snapping/resizing rules and the default layout (tested by tests/widgets.test.js).
+- renderer/editor.js    The Race Setup tab and the layout editor.
+- renderer/engine.js    The race rules (finish conditions, standings, gaps), tested by tests/engine.test.js.
+- renderer/race.js      The live timing page (tested end to end by tests/live.test.js).
+- renderer/widgets.js  also holds the colour check (cssVal) that keeps odd values from imported files out of the page.
+- renderer/widgetbuilder.js  Customization > Widget Builder (your own text and image widgets).
+- renderer/announcer.js, sound.js, audioedit.js  What the race says, how it is played, and the Audio Settings screen.
+- renderer/trackmate.js, hardware.js, hardwareui.js  The Trackmate Interface: the byte stream, the USB connection and its screen.
+- renderer/rows.js, richtext.js, landing.js, app.js, webapi.js  Leaderboard rows, the Racing Rules text, the Home tab, the tabs and App Settings, and the browser version of the api.
+- transfer.js, renderer/transferui.js  Export and import of single items; backup.js is the complete backup (tested by tests/transfer.test.js and tests/backup.test.js).
+- server.js, qr.js  The network access for tablets and phones, and its QR code.
+- migrate.js    On the first start after the rename, copies the data of the old Slot Lap Timer folder to the new one (tested by tests/package.test.js).
+- schema.js     One definition per kind of item (tracks, slot cars, drivers, race setups). Add a field here and it appears everywhere.
+- db.js         The database file (JSON, saved safely) behind a small add/update/remove interface.
+- main.js       Electron entry point.
+- preload.js    The only bridge between the window and the database.
+- renderer/     The screens.
+
+## Build a Windows installer
+   npm run dist
+
+## What to try (batch K2: fuel rules, v0.23.0)
+- **Race Setup > Fuel rules** (next to Penalty systems): make a rule with tank size, litres per lap, an optional **target lap time**, and the two limits (**most extra fuel a fast lap uses %**, default 25, and **most a slow lap saves %**, default 30). Fuel used = litres per lap x target / lap time, kept inside those limits. No target time = every lap uses the same.
+- In a **Race setup**, pick the rule under *Fuel rules* ("No fuel" = off).
+- Old race setups that had fuel switched on are converted into a fuel rule automatically.
+
+## What to try (batch L1: leaderboard row designer, v0.24.0)
+- **Customization > Leaderboard rows > New row design.** You design ONE row: it opens with position, flag, name, laps, best lap and gap. Add other driver widgets from the list on the left (nickname, callsign, avatar, car picture, car name, last/average lap, fuel, penalty points, championship points, speed...). Drag and resize them like in the Layout Editor, or type the exact place and size in the side panel.
+- Top bar: **Row height**, **Space between rows**, **Header row** (column titles come from each widget's "Header text"), and **Colours...** (row, every second row, header, and colours for leader, in the pits, penalty to serve, out of the race).
+- The preview under the row shows five sample rows: leader, normal, in the pits, penalty, out.
+- **Use it:** in the Layout Editor select a Leaderboard widget and pick the *Row design* (the classic column choices disappear while a design is chosen), or open **Live Race > Leaderboard** and pick it under Customize. Second screens get the designs automatically.
+
+## What to try (v0.24.1)
+- Review: **Restore** (was Undo clear) brings cleared penalty points back. **Delete all data** next to Finalize ends the race and saves nothing (in a heat race that includes the earlier heats).
+- Row designs: **Rounded corners** in the top bar (default 25% of the row height, 0 = square).
+
+## What to try (v0.25.0)
+- **Live Race > Leaderboard > Customize:** *Boards shown: Two*, arranged one under the other or side by side. Each board has its own row design (or classic table settings).
+- **Lane colour widget** (Driver group in the Layout Editor and the row designer): shows the colour you gave that lane under *Lane colours* in the layout. Use it as a coloured strip or block in a row.
+
+## What to try (v0.25.1)
+- **Lane colour widget:** select it and use *Background colour* (untick "Theme default") to give it its own colour. It then ignores the layout's lane colour, and the other widgets of that lane keep using the lane colour.
+
+## What to try (batch J: network access, v0.26.0)
+No new `npm install` is needed. The first time, Windows may ask whether the app may use the network: allow it on **private networks**.
+1. **App Settings > Network access:** tick *Share on my network* (port 8787 unless you change it) and type a **password** for the Race Director.
+2. The address and a **QR code** appear. Open it on a tablet or phone on the same wifi (scan the code with the camera).
+3. The browser opens the **Live Race pages**: race timing, leaderboard (your row designs, one or two boards), driver stats, database (read only) and racing rules. Start a race on the PC and watch it follow along.
+4. **Race Director** on the tablet asks for the password, then has the same buttons and penalty controls as on the PC. With no password set it stays closed to other devices.
+5. A browser can only watch: nothing can be changed in your database from it. Changing the password logs every device out.
+6. Choices made on a device (such as the leaderboard board settings) stay on that device. Audio will only play on the main PC.
+
+## What to try (UI batch, v0.27.0)
+- **Tabs renamed:** Race Setup > *Race Setups, Fuel Setups, Penalty Systems*. Customization > *Layout Editor, Leaderboard Editor, Audio Settings, Image Settings*. App Settings > *General, Network*.
+- **Customization > Image Settings:** make a **picture set** for the Fuel widget (full to empty, 2 to 20 pictures) or the Race flag widget (one picture per state). In the Layout Editor choose the set in the widget under *Picture set*; the same set works in every layout. A widget that already has its own pictures has a button *Save this widget's pictures as a set*.
+- **Racing Rules** is now a small text editor: bold, italic, underline, size, colour, heading, bulleted and numbered lists, clear formatting. Older plain rules still show. The Live Race rules page and tablets show the formatting too.
+- **Live Race tiles** have icons.
+
+## What to try (Audio batch, v0.28.0)
+
+1. **Customization > Audio Settings > New audio set.** Every call starts switched on with a few ready-made sentences. Pick a Windows voice, speed, pitch and volume, and choose whether drivers are called by name, nickname or callsign.
+2. **Calls**: start lights, lights out, new leader, a driver moving up, last lap, fastest lap, track record, personal best, yellow / red / green flag, race finished, winner. Switch a call off with its checkbox.
+3. **Several sentences per call**: press *Add a sentence*; one is picked at random each time. Use placeholders such as `{driver}`, `{other}`, `{time}`, `{position}`, `{laps}`. Press *Test* to hear one sentence with example values.
+4. **Sound files**: choose an audio file (up to 1.5 MB) for a sentence; the file plays instead of the spoken text.
+5. **Race Setup**: choose the set in the new *Audio set (announcements)* field. "No audio" keeps the race silent.
+6. Start a race (with the simulated cars) and listen. Sound plays on the computer that runs the race, not on phones or tablets.
+7. Pit, fuel, penalty and podium calls came in the next step.
+
+### Audio v0.28.1: start countdown
+Each of the five start lights now has its own call: 5, 4, 3, 2, 1 (under Start in an audio set). Each can have its own sentence or sound file. "Drivers, get ready" is now off in new sets so it does not talk over the 5; switch it on if you want both. Older sets get the countdown automatically.
+
+## What to try (Audio step 2, v0.29.0)
+
+New calls in every audio set (older sets get them automatically, with the ready-made sentences):
+- **Halfway** (half the laps of a race by laps with 4 or more laps, or half the time of a timed race).
+- **Pit and fuel**: a car stops in the pits, leaves the pits, is low on fuel (once, at 25% of the tank, again after a refill above 50%), is out of fuel.
+- **Penalties**: penalty points given (`{points}`), a special penalty (`{penalty}`, e.g. drivethrough), disqualified. Corrections made in the end-of-race review are not announced.
+- **Podium**: after the winner, second and third place are called (`{position}`).
+Try it with the simulated cars, a fuel setup and a penalty system, giving penalties with the buttons on the live page.
+
+## What to try (small extras, v0.29.1)
+
+1. **QR code on paper**: App Settings > Network, switch sharing on, press *Save QR code as PDF* under an address. Print the A4 page; spectators on the same wifi scan it from the print.
+2. **Clear qualifying result**: on Home, when a qualifying winner is shown, press *Clear qualifying result*. The winner note and lane choice disappear for that track. A newer qualifying brings the winner back.
+
+### v0.29.2
+`{other}` in the overtake call is now the driver who was directly in front and has really been passed (works with any number of lanes). A car that goes into the pits, retires or is disqualified is not announced as "passed". At most 2 position changes are called at once.
+
+### v0.29.3: race distance call
+The "Halfway" call is now **Race distance reached**. In the audio set, fill in the distances in percent, for example `25, 50, 75` (default 50, empty = never). A race by laps counts the leader's laps, a timed race the elapsed time. Each distance is called once. Placeholders: `{percent}`, `{driver}` (the leader), `{left}` (for example "5 laps" or "2 minutes") and `{laps}`. Sets that had sentences for the old Halfway call keep using them.
+
+## What to try (Trackmate step 1: connection monitor, v0.30.0)
+
+Nothing in a race changes yet. This step only lets us see what the Trackmate sends.
+1. Plug in the Trackmate USB interface (and the track power / sensors as normal).
+2. App Settings > **Timing hardware**. Press **Find a COM port device** (try this first). If the Trackmate is not listed, press **Find a USB (HID) device** instead. Pick it from the list.
+3. Press **Connect**. For a COM port keep the speed at 115200 first; if you see only rubbish, try the other speeds (a COM port needs the right baud rate).
+4. Drive a car (or wave a metal object/magnet) over each lane's sensor a few times. Lines appear in the log: time, size, hex bytes and text.
+5. **Copy log** (or **Save log**) and send it to me, together with: which lane you triggered in which order, what Windows Device Manager shows for the device (Ports (COM & LPT) or Human Interface Devices), and the speed you used.
+Use *Send* only if we decide to try sending something to the device.
+
+### v0.30.1: more to look at
+The monitor now also logs the port's status lines (CTS, DSR, DCD, RI) whenever one changes, can switch DTR and RTS on or off, and offers lower speeds (300 to 4800), data bits, parity and stop bits. Break conditions are logged as ERROR lines.
+
+## What to try (Trackmate step 2, v0.30.2)
+
+What is known so far (9600 baud, 8 data bits, no parity, 1 stop bit): the Trackmate sends `W` for the Trackcall button and `A`, `B`... for lane 1, 2... sensors, but only after it has been given setup commands.
+1. App Settings > Timing Hardware, find the COM port, speed **9600**, press **Connect**.
+2. Set *Lanes* to 2, *Sensors* normally closed (the usual for the Trackmate infrared sensors; try normally open if nothing happens), *Debounce* 1.
+3. Press **Send Trackmate setup**. The log shows the commands sent (`->`).
+4. Drive a car over each lane's sensor. The log shows `lane 1 sensor` / `lane 2 sensor` and other bytes. Press the Trackcall button too.
+5. Copy the log and send it. If lane hits do not show, repeat with *Sensors* on the other setting, and with debounce 0.
+*Track power on / off* switch the track power through the interface; be ready for the cars to move.
+
+### v0.30.3: readable Trackmate log
+After the setup commands the Trackmate sends a "200" message (digits, LF, CR) every 200 ms. The monitor now counts these steady ticks ("ticks received") instead of listing them; untick *Hide the steady 200 ms ticks* to see them all. A tick with a different number, a lane sensor (A, B...), the Trackcall button (W) and anything unknown are always listed. Test: connect at 9600, Send Trackmate setup, then drive a car over each sensor (and press Trackcall) and send the log.
+
+## What to try (Trackmate connected to the race, v0.31.0)
+
+1. **App Settings > Timing Hardware**: *Find the Trackmate (COM port)*, choose it, *Connect*. The setup (lanes, sensor type, debounce) is sent automatically. Leave *Remember this device and connect automatically* ticked: next time the app starts it connects by itself when the Trackmate is plugged in (nothing to click). Sensors: normally closed is the usual; switch to normally open if laps do not register.
+2. **Home**: start a race. The race screen shows "Trackmate connected" next to *Simulated cars* (leave that unticked). The setup is sent again with the track's number of lanes.
+3. Start the race and drive: each pass over a lane's sensor counts a lap for that lane (a car sitting on the sensor counts once). The times come from the Trackmate's own clock, so USB delays do not matter.
+4. **Race Setup > Trackmate Trackcall button**: one press = yellow flag, two presses within 2 seconds = red flag (the race stops; one press while stopped starts it again). You can also choose yellow only, red only, or nothing, and change the 2 seconds.
+5. Audio calls (yellow / red / green flag) play as usual. Unplugging the cable mid-race leaves the keyboard keys and Lap buttons working.
+6. If the connection fails at startup, nothing is shown; open the Timing hardware page and press Connect by hand.
+
+### v0.31.1: which lane each sensor counts for
+App Settings > Timing Hardware > *Which lane does each sensor count for?* Choose a lane for a sensor and the sensor that had that lane takes over the other one (swap). Use it when the sensor leads are plugged into the other lane. Takes effect at once, also in the next race. The number of sensors shown follows the *Lanes* field.
+
+### v0.31.2: track power relay
+- The *Track power on / off* buttons were reversed for your relay. A new setting *Power relay* (normally open / normally closed) decides which command means "on"; it starts as **normally open**, which is the other way round from before. Press *Track power on* to check; if it is still wrong, switch the setting.
+- New Trackcall choice in Race Setup: **Each press switches the track power off or on (the Trackmate relay)**. It works as soon as the race screen is open, in any phase, and does not flag the race. The race screen shows "track power on/off" next to the Trackmate status.
+
+## What to try (v0.32.0: Trackcall and power choices, start power, first lap)
+
+**Race Setup > Trackmate Trackcall button** now has these choices:
+- one press yellow, two quick presses red (no power change) · **one press yellow with power staying on, two quick presses red and power off**
+- each press yellow on/off · **yellow flag turns the power off** (and back on when the yellow flag ends)
+- each press red flag (stop/restart) · **red flag turns the power off** (and back on when the race restarts)
+- each press switches the power · nothing.
+The power also follows these flags when they are raised with the keyboard (Y / R) or by the Race Director. When the race ends, the power comes back on.
+
+**Race Setup > Track power when a race starts**: *On* (power during the light countdown) or *Off* (power comes on as the lights go out). With Off, the power is also switched off when the race screen opens.
+
+**Race Setup > First crossing of the start line**: *Only starts the timing* (new default; existing setups were switched to it): the first time a car crosses the sensor after the start does not count a lap, so there is no short lap from the grid. Lap 1 is then timed from that crossing. Choose *Counts as a lap* for the old behaviour.
+Both only work with the Trackmate connected (the power part); the first-crossing choice works with keys and simulated cars too.
+
+## What to try (0.32.1): Trackcall button speed
+The Trackmate box only reports the Trackcall button about once every 2 seconds, so presses in between never reach the app. The double-press window now defaults to 3 seconds (change it in Race Setup; existing setups keep their own value).
+1. **App Settings > Timing Hardware**, connect, and open **Monitor and advanced settings**. Every button press in the log now says how many seconds after the previous press it came.
+2. Set **Debounce** to 0, press **Send setup now**, and press the button quickly 5 times. Note the gaps. Repeat with debounce 9. If the gaps stay around 2 s, the lockout is in the box and cannot be changed.
+3. Copy the log and send it to me with the debounce values you tried.
+
+## What to try (0.33.0): countdown clock
+1. Race Setup > Layouts: select the **Race clock** widget. New setting **Count down the time left in a race with a time limit** (on by default).
+2. Start a timed race or qualifying session (or heats counted by time): the clock counts down from the duration to 00:00.0. A race counted in laps, or free practice, still counts up. Switch the setting off to count up in a timed race.
+
+## What to try (0.34.0): custom text widgets
+1. Race Setup > Layouts > edit a layout. The widget list has a new **Custom** group with **Custom text (per lane)** and **Custom text (race)**.
+2. Add one and select it. In the settings, type your own line in the **Text** box and put `{variables}` where a value should appear.
+   - Per lane: `{name} {nickname} {callsign} {car} {position} {lap} {laps} {last} {best} {avg} {gap}`, for example `{position}. {name}  {best} ({gap})`.
+   - Race: `{clock} {timeleft} {lapsleft} {leader} {flag} {heat}`, for example `{timeleft} left, {leader} leads`.
+3. The preview in the editor fills the line with sample values. A word in braces that is not in the list stays as typed, so a typo is easy to spot.
+4. Size, colours, bold/italic and the lane work like on every other widget; the title is hidden by default (tick **Show title** to get it).
+5. Start a race and check the line changes as the race goes on. It also shows on the live page and in row designs (per lane version).
+
+## What to try (0.34.1): all variables in the custom text widgets
+1. Layouts > add a **Custom text (per lane)** or **Custom text (race)** widget. Under the Text box a list shows every variable and what it means.
+2. Per lane now also has: `{lane} {laptime} {median} {record} {fuel} {fuelpct} {penpoints} {pentime} {champ} {pits} {pit} {speed} {speedreal}`.
+3. Race now also has: `{lapstotal} {track} {session} {type} {sessionrecord} {sessionrecordby} {trackrecord} {trackrecordby}`.
+4. A value that does not apply (no fuel in this race, no penalty system) shows a dash.
+
+## What to try (0.35.0): Widget Builder
+1. **Customization > Widget Builder > New widget.** Give it a name, choose **Per lane** (one for each car) or **Race** (one for the whole race), and type the text. Press a variable button to put it in the text at the cursor. The preview shows sample values. Set the width, height, text size, bold and italic, then **Save**.
+2. **Customization > Layout Editor**: edit a layout. Your saved widgets are in the list under **My widgets** (the Leaderboard Editor lists the per-lane ones). Pressing one adds a copy with its text, size and look, ready to move; colours and lane are set like on any widget.
+3. Change or delete the widget in the Widget Builder: layouts that already use it keep their copy, as you chose.
+4. **Duplicate** in the Widget Builder makes a variation of a widget quickly.
+
+## What to try (0.35.1)
+The two **Custom text** buttons are gone from the Layout Editor's widget list: make those in the Widget Builder instead. Layouts and saved widgets that already use them keep working.
+
+## What to try (0.36.0): custom image widgets
+1. **Customization > Widget Builder > New widget**, then choose the kind **Image, per lane** (one for each car) or **Image, race** (one for the whole race).
+2. Choose a **fixed picture** (shown when no rule matches) and whether it shows whole or fills the widget.
+3. **Add a rule**: pick a variable, a comparison and a value, and the picture to show. Examples: `{position}` is `1` shows a trophy; `{fuelpct}` is less than `30` shows a fuel warning; (race) `{flag}` is `Red flag` shows a red picture. The first rule that is true wins. Numbers are compared as numbers; words ignore capitals.
+4. Save, then add it from **My widgets** in the Layout Editor. Run a race and check the picture changes.
+
+## What to try (0.37.0): export and import
+1. **App Settings > Import and Export.** Under **Export**, open a group (Database, Look and sound, History) and tick items: a single layout, one driver, a whole race setup, sessions... **All ...** ticks a whole list.
+2. Leave **Also include what the ticked items use** on to take, for example, a race setup together with its track, layouts, picture sets and audio set. Turn it off to take only the ticked items (links to anything not in the file are emptied on import). Sessions always bring their laps, track, drivers and slotcars.
+3. **Export ... to a file** asks where to save a `.json` file.
+4. On the same or another computer: **Choose a file to import**. The app lists what the file holds; **Add to my data** adds it as copies. Nothing you have is changed or overwritten. Links between the items are kept (a race setup keeps its track and layout). A name you already have gets "(imported)" after it, and importing the same file twice makes two copies.
+5. Custom fields (Database > custom fields) travel along: a field with the same name and type is reused instead of made twice.
+
+## What to try (0.37.1): choose what an export takes along
+1. The tab is now called **Import and Export**. The groups you open (Database, Look and sound, History and the lists inside them) stay open while you tick boxes.
+2. The single "Also include..." tick box is gone. Once you tick items, a section **Also take what these items use** lists the actual things they use (a race setup's track, layout, picture sets, audio set, fuel rule...), each with its own tick box and an **all** box per kind. They start ticked; untick what you do not want, for example the track, and keep a picture set.
+3. Things a ticked session needs (its track, drivers, slotcars) are shown but cannot be unticked.
+4. Import is unchanged: links to anything left out of the file are emptied on import.
+
+## What to try (0.38.0): widget folders, new names, Logo widget
+1. **Layout Editor** (and Leaderboard Editor): the widget list is now a set of folders. Click a group's name to open or close it; the list remembers what you opened while the app runs. Groups: Driver, Slotcar, Timing, Timing Records, Race, Controls, and Custom (your Widget Builder widgets; only shown when you have some).
+2. Widgets have their new names (Position in Race, Lap of Lap, Laptime, Best Lap (this session), Gap to Leader, Fuel Level, Slotcar Speed, Slotcar Description, Race Clock...). Record Lap Time, Session record lap and Track Record are in the new **Timing Records** group.
+3. The titles that existing widgets show on the timing page are unchanged, so your layouts look the same.
+4. New **Logo** widget (Race group): choose your club logo in its settings and whether it is shown whole or fills the widget. It is shown on the timing page and on the live page.
+
+## What to try (0.38.1)
+The **Race** folder is now first in the widget list, above Driver. **Session record lap** is renamed **Session Record Lap** (its title on the timing page stays "Session record lap").
+
+## What to try (0.38.2)
+1. App Settings > General: the "come in later phases" line is gone.
+2. Layout Editor > select a **Race Flag** widget: the eight picture upload fields are gone. Choose a picture set (made under Customization > Image Settings), or choose None to show the flag's name as text. A flag widget that still had pictures of its own keeps showing them, and **Save this widget's pictures as a set** moves them into a set.
+3. **Start Lights** are now drawn as one picture that scales with the widget, so the lights stay round at any size or shape of widget. Resize the widget (wide, tall, tiny, huge) and run a start.
+
+## What to try (0.39.0): fuel pictures, custom Start Lights, audio variables
+1. **Fuel widget**: the picture upload fields are gone, like on the flag. Choose a fuel picture set in the widget; a fuel widget that still had pictures of its own keeps showing them, and **Save this widget's pictures as a set** moves them into a set.
+2. **Customization > Image Settings > New picture set**: the new type **Start lights (a lit and an unlit light)** has two slots, *Light off* and *Light on*. Save it, then select a **Start Lights** widget in the Layout Editor and choose the set. The same two pictures are used for all five lights; a light without a picture stays a plain round one.
+3. **Customization > Audio Settings > a set**: the note above the calls is now a folder, **How sentences work, and the variables you can use**, with a table of every variable: what it says, an example and which calls use it. Calls about a lap time (fastest lap, track record, personal best) now also list `{lap}`.
+
+## What to try (0.39.1): Start Lights follow the race, Timing Hardware sub-tabs
+1. **Layout Editor > Start Lights widget.** For every state of the race (Ready, Racing (green flag), Paused, Heat finished, Finished, Yellow flag, Red flag) choose **how many of the five lights are on** (None to All 5) and **their colour**. During the countdown the lights still come on one by one. By default nothing is lit outside the countdown, so existing layouts look the same. Try: Racing = All 5 lights green, Yellow flag = All 5 yellow, Red flag = All 5 red. (With a picture set the lit picture is used and the colour is ignored.)
+2. **App Settings > Timing Hardware** (capital H) now has two sub-tabs: **Trackmate Interface** (everything that was there) and **Other** (empty for now). The connection stays open when you switch tabs.
+
+## What to try (0.40.0): start lights that follow the race flag
+1. **Race Setup > a setup**: new choice **Start lights after the race has started**: *They go out* (as before) or *They follow the race flag*.
+2. With *follow*, a **Start Lights** widget shows all five lights green while racing, all five yellow after a yellow flag and all five red after a red flag (and goes dark again when the flag is lifted). During the countdown the lights still come on one by one; Paused, Heat finished and Finished stay dark unless you set them on the widget.
+3. The widget's own choices win: if you set "Red flag: lights on" to 2 lights on the widget, that widget shows 2 red lights even when the setup follows the flag. Leave a state on its default to follow the setup. The colours can be changed on the widget.
+
+## What to try (0.41.0): the start lights count down again after a red flag
+1. **Race Setup > a setup**: new choice **Restarting after a red flag**: *The start lights count down again, then the race goes on* (the default, also for setups you made before) or *The race goes on at once* (as it was).
+2. Start a race and press **R** (red flag): the race stops. Press **R** again: the lights come on one by one like at the start, the usual wait follows, and at lights out the red flag is cleared and the race goes on. The Start Lights widget and the Race Flag widget show the countdown ("Get ready"), the race clock stays where it was stopped, and the audio set says the countdown and "lights out" like at a start.
+3. During the restart cars crossing the line are not counted and a yellow flag is ignored. Press **R** again (or stop the race) to cancel the restart: the race stays under the red flag until you press **R** again.
+4. With Trackmate power following the red flag, the track stays off during the countdown and comes on at lights out. The Trackcall button lifts the red flag the same way.
+5. A plain **Pause** and **Resume** (Space) is unchanged: the race resumes at once.
+
+## What to try (0.41.1): the Race Flag widget always shows a flag
+1. The **Race Flag** widget no longer has a "Get ready" countdown state. Before the race and during its start countdown it shows **Ready**; during the countdown of a restart after a red flag it keeps showing the **red flag** until lights out; then **Racing**.
+2. A flag picture set has one picture less (seven states: Ready, Racing, Paused, Heat finished, Finished, Yellow flag, Red flag). A picture saved earlier for "Get ready" is simply not used.
+3. The lights themselves still count down in the **Start Lights** widget.
+
+## What to try (0.42.0): a track length for each lane
+1. **Database > Tracks**: the track length is now the length of the **outside lane**. Two new fields: **The track length is that of** (the last lane, the default, or the first lane) and **Distance between the lanes** (millimetres, default 100). Existing tracks use the last lane and 100 mm.
+2. Every lane further in is shorter by about 0.63 m at 100 mm (2 x pi x the distance), because the lanes run side by side and only the corners differ. A track with 4 lanes and an outside length of 20 m gives about 20.0, 19.4, 18.7 and 18.1 m.
+3. The **Speed** widget and the `{speed}` / `{speedreal}` variables use the length of the car's own lane. A track without a number of lanes keeps one length for all cars.
+
+## What to try (0.43.0): penalty points for driving on an empty tank
+1. **Database > Penalty systems**: new field **Penalty points for every lap driven on an empty tank** (empty or 0 = none, the default). Fill in, for example, 1 or 2.
+2. **Database > Fuel setups**: set *When the fuel runs out* to **The car carries on**. (The other two choices are unchanged: retiring, or laps not counting, cannot give points because no lap is driven.)
+3. In **Race Setup** choose that fuel setup and that penalty system, and start a race with a small tank. Every lap the car completes without enough fuel adds the points, shown by the usual penalty widgets and the penalty audio call. The points turn into time and disqualification through the penalty system as always.
+4. Refuel in the pits (stop on the sensor) and the points stop. A race with no penalty system chosen gives no points.
+
+## What to try (0.44.0): complete backup
+1. **App Settings > Import and Export**: a new section **Complete backup** at the top. **Save a complete backup...** writes one file with everything: the database, layouts, pictures, audio sets, custom widgets, settings, past races and laps. The file name has today's date.
+2. Change something (delete a driver, edit a layout), then choose **Restore from a backup...** and pick the file. The page shows when it was made and what it contains, with a warning. **Replace everything with this backup** asks once more, then the app reloads exactly as it was when the backup was made.
+3. Before a restore, your current data is copied to `slot-lap-timer.before-restore.json` in the same folder as the database (the folder is shown in General), so a mistaken restore can be undone by hand.
+4. A file made with **Export** is not accepted here (use Import for those), and a damaged file is refused before anything changes.
+
+## What to try (0.45.0): a full check of the code
+Nothing new to look at: this version is the result of reading all the code and testing it again. What was found and fixed:
+1. **Installer**: the Windows installer (`npm run dist`) did not contain the import, export and backup code, so an installed copy would have stopped at start. Fixed; `npm start` was never affected. A new test checks that every file the app loads is in the installer.
+2. **Fuel penalty**: a car disqualified by fuel points on its last lap was counted as having finished (and in "lead car finished" races that ended the race). It now has no finishing place and the race carries on.
+3. **Leaving the race screen** before the start left the race keys (Space, Y, R, S, number keys) and the Trackmate listener active on the other pages. They are switched off when you leave.
+4. **A damaged database file** is no longer overwritten by an empty one at the next start: it is kept as `slot-lap-timer.damaged-<number>.json` next to the database.
+5. **Imported files**: colours and numbers that come from an imported file or a restored backup can no longer add anything to the page (timing page, editor, results list and the PDF report).
+6. **The Layout Editor** leaves out widget types it does not know (from a file of another version) instead of stopping.
+7. Smaller things: unused code removed, texts that were out of date updated (Race screen hint, README), and the backup page now says the file holds the Race Director password.
+Try: save and restore a backup, open a layout, run a short race with fuel penalties, and press Space on the Database tab before a race has started (nothing should happen).
+
+## What to try (0.46.0): programs you can share (no terminal for the people you share with)
+For you, once (and again for each new version you want to share):
+1. Optional: put your app icon at `build\icon.png` (a square PNG, at least 256 x 256).
+2. Double-click **build-windows.bat**. It installs what it needs, runs the tests and makes the programs. The first time it takes a few minutes and needs internet. When it is ready the **dist** folder opens with two files:
+   - `SlotForge Timing-<version>-Setup.exe`: a normal installer (choose the folder, desktop shortcut and Start menu entry, can be removed in Windows Settings).
+   - `SlotForge Timing-<version>-Portable.exe`: nothing to install, double-click to run (also from a USB stick).
+For the people you share with: they only need one of those files. No Node.js, no terminal.
+Good to know:
+- Windows may show a blue "Windows protected your PC" screen the first time, because the program is not signed with a paid certificate. They choose **More info** and then **Run anyway**.
+- All versions keep their data in the same place (`%APPDATA%\slot-lap-timer`), so your own data is still there after installing, and a person who first tries the portable program and later installs keeps their data. Use the backup in App Settings > Import and Export to move data to another computer.
+- Only one copy of the app can run at a time (a second double-click brings the first one forward), so two copies can never damage the database.
+- Trackmate over USB and the second screen work the same as before. Windows may ask once whether the app may use the network (only needed for Network access).
+
+## What to try (0.47.0)
+
+- **App icon**: your picture is now the icon of the installer, the portable program, the desktop shortcut and the taskbar.
+- **Flag icons**: they are now listed explicitly in the installer files, so the flags show in the installed and portable app too.
+- Run `build-windows.bat` again, then install or start the new files from the `dist` folder. Check that the icon and the country flags look right.
+
+## What to try (0.48.0)
+
+The app is now called **SlotForge Timing**: window title, header, report footer, installer and portable file names, shortcuts, and the file names suggested when you save a backup or export.
+
+- **Your data moves along**: the data folder is now `%APPDATA%\slotforge-timing` (database file `slotforge-timing.json`). The first time the new version starts, everything from the old `%APPDATA%\slot-lap-timer` folder is copied over. The old folder is left untouched as a safety copy, and data already in the new folder is never overwritten. Check that your tracks, drivers, cars and results are all there.
+- **Old backups and exports still work**: files made under the old name (`slot-lap-timer-backup` / `-export`) restore and import normally. New ones carry the new name, so a new backup does not open in an old version.
+- If you typed your own App name in App Settings, it is kept. Only the default name changed.
+- Run `build-windows.bat` again: the files in `dist` are now called `SlotForge Timing-0.48.0-Setup.exe` and `...-Portable.exe`. Because the app ID changed, Windows treats the installed version as a new program, so an older Slot Lap Timer install can be removed in Windows Settings.
+
+## What to try (0.49.0)
+
+- **Racing Rules > Export to PDF**: the button under the text makes a neat A4 page with a title (your App name + "Racing Rules"), your rules with all their formatting (bold, colours, sizes, headings, lists) and the credit line at the bottom. You choose where to save it, ready to print and hand out. It uses what is typed so far, so you do not need to wait for "Saved."
+- **Credit message**: at the bottom right of the rules text: "This App has been made by Claude AI and theDutchmanJames. For all Slotcar Enthusiast and special greetings to the SlotForum community!" It sits outside the editable text, so it cannot be deleted by accident, and it is also printed at the bottom of the PDF.
+- Try a long rules text (more than one page) and check that headings and list items are not cut in half at the page break.
+
+## What to try (0.50.0): a second full check of the code
+Nothing new to look at: this version is the result of reading every file again, running the code with odd input and removing what is no longer needed. What was found and fixed:
+1. **Round robin on a track with one lane** made the app freeze (the planning of the heats never finished). It now gives every driver one heat. A track saved with 0, a negative or a fractional number of lanes also no longer breaks the heat plan, and the track form now only accepts a whole number of lanes from 1 up (the minimum, maximum and lane distance fields no longer accept negative numbers either).
+2. **Audio sets**: editing or duplicating a set put its "race distance" percentages back to 50. They are now kept.
+3. **An import that fails halfway** (a damaged export file) used to leave the first half of its items in your data. Import is now all or nothing, with a clear message. A **restore** of a damaged backup is also refused as a whole and leaves your data alone, and a backup with unreadable items or custom fields is refused up front.
+4. **Safer files**: the ids of items from a backup or an imported file are now always shown as plain text in the lists (a made-up file can no longer add anything to a page through them).
+5. **Live Race pages** now open (empty, filling in as soon as a race starts) when the race data cannot be fetched, instead of staying blank.
+6. **Smaller things**: a list of championship points with an empty piece (like `10, 8,, 6`) skips it instead of counting it as 0; the Test button in the audio editor, the per-lane widget list, the Race Director login check and the device chooser were tidied; old unused code was removed: a duplicate list of widgets, a duplicate way to reach the race engine in the tests, several exports nobody used, an unused tab option, an unused device parameter, and the old `reference/` prototype that the app never used.
+Try: make a track with 1 lane and a round robin race setup and start it; edit an audio set that has its own distances; export something, restore a backup and import a file as before (nothing should look different); open the Live Race window.
+
+## What to try (0.51.0): Home header height, a new Home title, and the App Theme tab
+1. **Home title**: the Home tab now says "Welcome to the SlotForge Slotcar Timing App!" (fixed text; it does not follow the App name, which stays at the top of the window).
+2. **Header height**: App Settings > General > Header picture now has a **Height** slider, from 5% to 60% of the window width, with the number shown next to it. The preview above it follows while you drag, and the setting is saved when you let go. Because it is a share of the width, the header looks the same in a small and in a large window; a picture that is taller than the chosen height is cropped (top and bottom). Tick **Automatic** to follow the shape of the picture again (never taller than 220 pixels). With no picture there is nothing to set.
+3. **App Theme**: App Settings has a new sub-tab, **App Theme**, between General and Network. The Theme choice moved there from General (your chosen theme is kept). It shows every theme as a small tile with its four main colours, so you can see them before you choose. The theme also reaches tablets and phones that follow the race.
+4. **Your own colours**: the last tile is **Custom (your own colours)**. Under the tiles there are six colour boxes: Background, Panels, Text, Quiet text, Lines and Accent, each with a note on where it is used. Click one to open the colour picker; the whole app changes while you choose, the Custom theme is switched on, and the choice is saved when you close the picker. The text on buttons in the Accent colour is made white or black automatically, whichever reads better. Choosing Custom for the first time starts from the theme you were using, so you only change what you want.
+5. **Start from**: pick one of the ready-made themes in the list and press "Copy its colours" to use its colours as the start of your own (it asks first if you already made your own colours). Your own colours are kept when you switch to another theme and back.
+6. **Warnings**: if your colours would be hard to read (text close to the background, quiet text almost invisible, an accent that blends into the background) a short red message appears under the colour boxes. It is only a warning; nothing is blocked.
+Try: choose a theme tile and check the whole app; make your own colours (try a very light background with dark text, then a bad mix on purpose to see the warning); close and start the app again; open a tablet or phone page and check it has the same colours; choose a header picture, drag the Height slider, go to Home, then tick Automatic.
+
+## What to try (0.52.0): choose which part of the Home header picture shows
+When the header picture does not fit its box (a set height crops it), you can now choose which part of the picture stays in view instead of always the middle.
+1. **App Settings > General > Header picture**: under the Height slider there are now **Left / right** and **Up / down** sliders and a **Center the picture** button. 0% shows the left (or top) of the picture, 100% the right (or bottom), 50% the middle.
+2. **Drag the picture**: you can also drag the preview itself with the mouse (or a finger) and let go to save. The picture follows the pointer, so dragging it left shows more of its right side. The cursor turns into a hand when it can be moved.
+3. A picture can only be cropped in one direction (sideways for a very wide picture, up and down for a tall one), so only that slider works; the other one is greyed out. A picture of exactly the shape of the box has nothing to move, so both are greyed out.
+4. The preview has the same shape as the header on Home when a height is set, so what you see there is what Home shows, whatever the window size. With **Automatic** the position also works, but the preview is a little smaller than the real header, so it can differ slightly.
+5. Choosing a **new picture** puts the position back in the middle. The position is saved with the other settings and is also in a backup.
+Try: choose a very wide picture, set the Height to about 25%, drag the preview left and right, use the sliders, press Center, go to Home and check it shows the same part; then try a tall picture (up and down) and the Automatic option.
+
+## What to try (0.53.0): calls from a lane
+A call from a lane raises the yellow flag and waits for the Race Director, who decides what it means.
+1. **Race screen**: next to the Pit buttons there is a **Call 1**, **Call 2**... button for every lane. The keyboard does the same with **Ctrl + the lane's number**. A call can be made while the race runs or is paused (not before the start or after the end).
+2. **What a call does**: the yellow flag goes up (and the yellow flag sound plays, as always). If the red flag is up it stays red. A call never switches a yellow flag off. A lane that calls again while its call still waits does not make a second call, but the yellow flag comes back if the Race Director had lifted it.
+3. **The Calls strip**: under the buttons in the race window a yellow-edged strip lists every call that waits: the lane, the driver, and two buttons: **Dismiss**, or **Penalty point** (one point for that driver, only with a penalty system and not for a disqualified driver). A decision does not lift the yellow flag: use Y or the Yellow flag button for that. When the race ends nothing waits any more.
+4. **Race Director page** (the Live Race window, or a tablet after the password): a new **Calls** panel with a **Call lane 1**, **Call lane 2**... button for every lane, and the waiting calls with **Dismiss** and **Penalty point +1**. The panel is only updated when a call comes or goes, so a button never moves under your finger.
+5. **The Trackmate**: the one Trackcall button (W) works exactly as before (the Race Setup choice: flags, power...). The Trackmate sends the same W whichever button is pressed, so it cannot tell the lanes apart. For call buttons per lane on the hardware I need to know what they send: App Settings > Timing Hardware, connect, press the call button of each lane one by one and send me the log (bytes the app does not know are always listed). The app side is ready: when a call comes in from lane N it does the same as the Call button.
+Try: start a race (Simulated cars is fine), press Ctrl+1 and watch the yellow flag and the strip; give a Penalty point from the strip and check the point on the Race Director page (or in a Penalty points widget); call lane 2 from the Race Director page on the second screen and Dismiss it from the race window; press Red flag and call again (the flag stays red); stop the race and check the strip is gone.
+
+## What to try (0.54.0): the audio calls in folders
+1. **Customization > Audio Settings > New audio set** (or Edit): the list of calls is now in folders, one per group: Start, Positions, Laps and records, Pit and fuel, Penalties, Flags and Finish. They are all closed when you open a set. Click a folder to open or close it. Each folder says how many of its calls are switched on, for example "6 of 7 calls on".
+2. **Open all folders** and **Close all folders** are above the list. A folder you opened stays open while you work (adding a sentence, switching a call on or off, removing a sound file); opening another set starts with all folders closed again.
+3. Nothing else changed: the sentences, the checkboxes and Test buttons are the same, inside their folder.
+
+## What to try (0.55.0): how to install more voices
+In **Customization > Audio Settings** (new or edit a set), hover the **Voice** choice, or the "ⓘ How do I get more voices?" text next to it. The tooltip says how to add voices and languages in Windows: Windows 11: Settings > Time & language > Speech > Manage voices > Add voices. Windows 10: Settings > Time & language > Language, add the language, and tick its Text-to-speech option. Then restart this app so the new voices show in the list.
+
+## What to try (0.56.0): tidier widget settings, border colour and transparency
+In **Customization > Layout Editor**, click a widget.
+1. **Grouped settings.** The settings on the right are now folders: **Title**, **Text**, **Background and border**, and the widget's own settings (for example "Race Clock settings"). Click a folder's name to close or open it. A folder stays the way you left it when you click the next widget. Lane, Duplicate and Remove stay where they were.
+2. **Border.** In *Background and border*, the **Border** choice has three options: *Theme default* (as before, nothing changes until you touch it), *Shade of the background* and *No border*.
+3. **Border shade.** With *Shade of the background*, the slider makes the border from the widget's own background colour: 0% is white, 50% is exactly the background colour, 100% is black. It starts at 37.5%, which is the background with a quarter white added. The border follows the background when that changes (for example a colour that changes with the flag).
+4. **Transparency.** The **Transparency** slider (0% solid, 100% invisible) fades the background and the border together. The title and the value stay fully visible. It works with a widget colour or the theme colour, and several widgets can be changed at once.
+
+## What to try (0.57.0): rounded corners
+1. **For the whole layout.** In **Customization > Layout Editor**, the top bar has a new **Rounded corners** field. 0 is square, 50 is fully round, and empty keeps the classic small corners (nothing changes until you fill it in). The number is a percent of each widget's shorter side, so a big and a small widget get the same look.
+2. **For one widget.** Click a widget and open *Background and border*: **Rounded corners** there overrides the layout's setting. Empty follows the layout, 0 makes this widget square, and 50 makes it fully round. On a square widget that is a circle, so make an Avatar widget square (same width and height) and set 50 for a round avatar. On a long widget, 50 gives rounded ends.
+3. The setting is saved with the layout and shows on the live timing page, the Race Director page and the tablets. Row designs in the Leaderboard Editor keep their own corner setting.
+
+## What to try (0.58.0): a background picture for the timing page
+1. In **Customization > Layout Editor**, the top bar has a new **Background** button. It opens *Page background*.
+2. **Picture:** choose a picture (it is shrunk to 1920 pixels wide, so the database stays small). **Remove** takes it away again; without a picture the theme colour is the background, as before. **Fit** is *Fill the page* (crops the edges), *Whole picture* (bars at the sides) or *Stretch*.
+3. **Filters:** **Blur** softens the picture so it does not compete with the numbers; **Brightness** makes it darker (or lighter); **Colour** goes from black and white (0%) to full colour (100%) and beyond. The filters only change the picture: widgets, text and their colours are never blurred or dimmed. **Reset filters** puts them back. The preview in the dialog has sample widgets so you can judge how readable the numbers are.
+4. The picture is saved with the layout, so each layout can have its own. It shows on the race screen, the second screen, the Race Director page and the tablets and phones. Exporting a layout takes its picture along.
+5. To see the picture through the widgets, give them some **Transparency** (Background and border, 0.56.0). The preview in the Layout Editor shows it too.
+
+## What to try (0.59.0): one transparency setting for all widgets
+1. In **Customization > Layout Editor**, click **Background**. At the bottom of *Page background*, under *Widgets*, is a new **Widget transparency** slider (0% solid, 100% invisible). It sets the look of every widget in the layout at once, also the widgets you add later. The sample widgets in the preview show it, and so does the Layout Editor behind the dialog.
+2. It fades the widget background and border, never the text. It works with a background picture or without one.
+3. **Per widget:** click a widget and look at *Background and border*. **Transparency** now has a tick **Same as the layout**, ticked for every widget that has no setting of its own (the slider is off and shows the layout's value). Untick it to give this widget its own value. It starts at what you see now, so nothing jumps. Tick it again to hand control back to the layout. A widget's own setting wins, also 0%, which keeps one widget solid in a see-through layout.
+4. Widgets that already had their own transparency (from 0.56.0) keep it as their own setting. Layouts made before this version stay solid.
+
+## What to try (0.60.0): track shape, for a figure-eight
+The speed of a car uses the length of its own lane. On a loop (an oval, or any circuit that does not cross itself) each lane further in is shorter by 2 x pi (about 6.3) times the lane spacing: 100 mm gives 0.63 m shorter per lane. That is not "6.3 times shorter", the hint in the track form said it badly and now says it clearly. On a figure-eight the left and right bends cancel out, so all lanes are the same length, which the old rule got wrong.
+1. In **Database > Tracks** (add or edit a track) there is a new **Track shape** choice, after the track length:
+   - **Loop** (the default, also for every track you already have, so nothing changes): each lane further in is 2 x pi x the spacing shorter.
+   - **Figure-eight**: all lanes have the length you entered. "The track length is that of" and "Distance between the lanes" are hidden, as they no longer matter.
+   - **Other**: a field appears for the full turns the track makes (left bends minus right bends). 1 is a loop, 0 is a figure-eight, 2 is for instance two loops the same way round that cross over each other with a bridge. Each lane further in is that many times the loop difference shorter.
+2. Try it on a track with 8 lanes and a length of 16 m with the Speed widget set to real speed: as a Loop the inner lanes get a lower speed for the same lap time (lane 1 is 4.4 m shorter than lane 8 at 100 mm), as a Figure-eight every lane uses 16 m.
+
+## What to try (0.61.0): Lane length modifier (replaces Track shape of 0.60.0)
+The lanes of a track are not equally long, and the speed uses the length of the car's own lane. In **Database > Tracks** (add or edit a track), set the track length, then choose a **Lane length modifier**:
+1. **None** (the default for a new track): every lane has the track length.
+2. **Calculated from the bends:** the track length is that of the outside lane, and each lane further in is shorter by 2 x pi x the lane spacing for every full turn of the track (100 mm gives 0.63 m per lane on a loop). It is the angle of the bends that counts, not how many there are: a circuit that does not cross itself makes 1 full turn whatever the mix of left and right bends (a lane 0.1 m further in came out exactly 0.628 m shorter on a test circuit with 10 changes between left and right). Use **Full turns the track makes**: 1 is a loop (the default), 0 is a figure-eight (all lanes equally long), 2 is for instance two loops the same way round that cross over each other with a bridge. "The track length is that of" (first or last lane) and "Distance between the lanes" show here.
+3. **Measured:** enter the length of every lane, lane 1 first, separated by commas with a dot for decimals, for example `15.4, 15.8, 16.2`. Use it when the lanes swap sides (a lane changer, a crossover that swaps the lanes), when the spacing is not the same everywhere, or when you measured the lanes yourself. The track length can then stay empty. Saving is refused unless there is exactly one length per lane. A lane without a length of its own uses the track length.
+4. **Tracks you already have** keep working as they did: they open as *Calculated from the bends* with 1 turn (a loop), so saving one again changes nothing. A track saved with 0.60.0's "figure-eight" shape opens as *None*.
+
+## What to try (0.62.0): eight Trackmate sensors with check lights
+In **App Settings > Timing Hardware > Trackmate Interface**:
+1. **Eight sensors, A to H.** The code already handled all eight (sensor A is lane 1 ... H is lane 8); the page only listed as many as the **Lanes** setting, which starts at 2. It now always lists all eight. Sensors beyond **Lanes** are dimmed and their lane choice is locked, because the Trackmate only reports as many sensors as the number of lanes it is set to. Set **Lanes** to the number of sensors you have connected.
+2. **Changing Lanes while connected** now sends the setup to the Trackmate straight away, so the new sensors start reporting without pressing *Send setup now*.
+3. **Check lights.** Each sensor has a light that turns green while a car (or your finger, or a piece of card) is over it, and goes out about a second after the last signal. Connect, then trigger each sensor in turn to test it and its cable without starting a race. A car that stays over a sensor keeps the light on. The Trackcall button and the time messages light nothing.
+4. The **lane choice** per sensor works as before (use it when the sensor leads are in the other lane). With **Lanes** at 8 each sensor can take any of the eight lanes.
+5. If a sensor you have not connected shows green all the time, tell me which sensor type you use (normally closed or open); a lane with nothing plugged in might look triggered with normally closed sensors. I could not test this without the hardware.
+
+## What to try (0.63.0): Flag style for the Race Flag widget: Flags, LEDs, Text or Image set
+Select a **Race Flag** widget (Customization > Layouts, group Race). Its settings now sit under **Flag style**, with a choice of four:
+1. **Flags:** a waving flag on a pole in the colour of the flag (blue ready, green racing, grey with pause bars paused, chequered at the end of a heat or race, yellow, red). Tick **Mirror the flag** for the pole on the right and the flag flying to the left, so you can make a left flag and a right flag.
+2. **LEDs:** the same states as a round LED lens with a glow, drawn in the same style: blue, green, grey with pause bars, a chequered lens at the end, yellow, red. Nothing to set.
+3. **Text:** the state as text (Racing, Paused, ...), and for yellow and red the background of the widget turns yellow or red. This is the look from before 0.62.1.
+4. **Image set:** the pictures of a picture set (Customization > Image Settings) per state. A state without a picture shows its name as text.
+5. Widgets you made earlier keep their look: one with a picture set shows **Image set**, one you had switched to text in 0.62.1 shows **Text**, the rest show **Flags**.
+6. In the Flags and LEDs styles the widget background is not coloured, the picture carries the colour. Pole, outline and base follow the widget's text colour.
+
+## What to try (0.62.1): coloured flag icons for the Race Flag widget (its choices were replaced by Flag style in 0.63.0)
+The **Race Flag** widget (Customization > Layouts, group Race) no longer shows plain text by default. It draws a flag on a pole, in the same line style as the Live Race tiles, with the cloth in the colour of the flag:
+1. **Blue** flag: ready, and while the lights count down. **Green**: racing. **Grey with pause bars**: paused. **Chequered**: heat finished and race finished. **Yellow** and **red**: the yellow and red flag. The red flag also shows during a restart countdown.
+2. The pole and outline use the widget's text colour, so they follow your theme or your own text colour setting. The widget background is not coloured any more in this mode, the flag carries the colour.
+3. Select the widget and look at **Show the flag as**: *A flag in its colour* (the default) or *Text (the background turns yellow or red)*, which is the old look.
+4. A **picture set** (Customization > Image Settings) still wins: a state with a picture shows that picture, a state without one shows the flag drawn by the app (or the text).
+5. The Yellow flag and Red flag **buttons** and the Race Director page are unchanged.
+
+## What to try (0.63.1): Welcome Message in App Settings
+1. **App Settings > General** now has a **Welcome Message** field under **App Name** (the label now has a capital N, like the new one). Whatever you type shows as the big title at the top of the Home tab. Leave it empty for the standard "Welcome to the SlotForge Slotcar Timing App!", which is also shown in the field as a grey hint.
+2. It is saved when you leave the field. The text is shown as plain text, so characters like < and & appear as typed. The App Name at the top of the window is separate and unchanged.
+
+## What to try (0.63.2): nothing to try, a test fix
+One of the built-in checks (the Race Director page, Calls panel) failed now and then when the computer was busy: it looked at the page after a fixed pause of 150 ms, while the race shares its state with the Live Race pages at most about ten times a second, so the page could still show a call that had just been settled. It now waits for the shared state to catch up first (and the check no longer reuses leftovers of an earlier page). I tried to make it fail again with twelve copies of the test running at once on a busy computer and it did not. The check for the Trackmate sensor lights (0.62.0) also used real time, so it now runs on a fake clock. The app itself did not change: I checked how the Live Race page and the Race Director page get their data and found no such gap there.
+
+## What to try (0.63.3): the zip is called SlotForgeTiming-x.y.z
+Nothing changes in the app. The zip is now called `SlotForgeTiming-<version>.zip` and unzips into a folder called `SlotForgeTiming` (it was `slot-lap-timer`). The data of the app is not affected: it lives in `%APPDATA%\slotforge-timing`, not in this folder. A new folder next to the old one has no `node_modules`: run `build-windows.bat` there (it installs what it needs), or move the old folder's `node_modules` into the new one.
+
+## What to try (0.64.0): a one-click builder and installer for Linux
+Linux version of `build-windows.bat`. On a Linux computer, in the SlotForgeTiming folder:
+1. Install Node.js (LTS, version 18 or newer) from https://nodejs.org or with your package manager.
+2. Run **`./build-linux.sh`** in a terminal, or double-click it in your file manager and choose *Run in Terminal* (if it will not start: right-click it, Properties, Permissions, allow executing, or run `bash build-linux.sh`). It installs what it needs, runs the tests and makes the programs. The first time it takes a few minutes and needs internet.
+3. It puts two files in the **dist** folder: `SlotForgeTiming-<version>.AppImage` (runs by itself on most systems, nothing to install) and `SlotForgeTiming-<version>.deb` (for Debian, Ubuntu, Mint: `sudo apt install ./SlotForgeTiming-<version>.deb`). If only the .deb fails to build, you still get the AppImage and the script says so.
+4. At the end it asks whether to **install the app for you**: the AppImage is copied to `~/.local/share/slotforge-timing`, and the app gets an entry in your applications menu and a shortcut on your desktop. No password, nothing outside your home folder. `./build-linux.sh --install` does it without asking, `--no-install` only makes the files, `./build-linux.sh --uninstall` removes it again (your races and settings in `~/.config/slotforge-timing` are kept). Add `--no-pause` to not wait for Enter at the end. Do not run it with sudo: it refuses.
+5. Two things the installer looks at for you. If your system has no **libfuse2** (Ubuntu 22.04 and later do not install it), the menu entry starts the AppImage by unpacking it first, a bit slower: installing libfuse2 avoids that. If your system does not allow programs to start their own sandbox (Ubuntu 24.04), the menu entry starts the app with `--no-sandbox`; when you start the AppImage from a terminal on such a system, add `--no-sandbox` yourself.
+6. **The Trackmate on Linux:** to use a serial port you must be in the right group: the script tells you the command when you are not (`sudo usermod -aG dialout $USER`, then log out and in). Choose the port with *Find the Trackmate (COM port)*: it shows up as something like `ttyUSB0`.
+7. The races and settings are in `~/.config/slotforge-timing` on Linux (on Windows `%APPDATA%\slotforge-timing`).
+8. **Not tried on a real Linux computer yet:** the script's logic is tested with stand-ins (the steps, the files it makes, both install situations, the failures), but the real build and the app itself have not been run on Linux. Spoken announcements need a speech voice on the system (`speech-dispatcher` with `espeak-ng`, for example): without one the voice list is empty and the announcements are silent, the rest works. Please tell me what happens.
+
+## What to try (0.64.1): the Live Race tab as a Live on Air sign (the dark fill was dropped again in 0.64.2)
+1. The **Live Race** tab at the top now looks like a Live on Air sign: a dark button with a red light in front of the name and red capital letters with a soft red glow. Clicking it still opens the Live Race on a second screen, as before.
+2. It always looks like this, in every theme, whether or not a race is running: it is only there to stand out from the other tabs. The light does not blink.
+3. Hover over it for a stronger glow. In a narrow window it moves to the next line with the other tabs.
+
+## What to try (0.64.2): the Live on Air sign without a background
+1. The **Live Race** tab is now an outline only: red letters and a red light inside a red border, no dark fill, so it works on light themes as well (it looks as before on dark ones). Clicking it still opens the Live Race on a second screen.
+2. The red adapts to the theme: it is mixed with the theme's text colour, a little lighter on a dark theme and a little darker on a light one, so it reads on every ready-made theme and on your own colours (Custom theme). The tests check that it keeps at least 4.4 to 1 contrast on the panel of every theme.
+3. It still always looks like this, whether or not a race is running, and the light does not blink.
+
+## What to try (0.65.0): pictures on the tabs
+1. The tabs along the top now have a small line picture to the left of the name: a house for **Home**, a book for **Database**, a race track with its start line for **Race Setup**, a paint palette for **Customization**, a cog for **App Settings** and a sheet of paper for **Racing Rules**. **Database** and **Racing Rules** use the same pictures as their tiles on the Live Race page; the other four are new and drawn in the same style (a thin rounded line).
+2. The pictures are in the **accent colour of the theme**, the colour of the Start race button. Change the theme in *App Settings > App Theme* (also a Custom theme) and they change with it. The tests check that the accent can be seen on the header (at least 3 to 1) in every ready-made theme.
+3. The **Live Race** tab has no picture: it keeps its own Live on Air look. The tabs inside a screen (General, Network, Race Setups, Layout Editor and so on) have no pictures either.
+4. In a narrow window the tabs move to the next line as before, now a little wider because of the pictures.
+5. Nothing else changes. The six tiles on the Live Race page look exactly as before; their pictures now come from one shared place (`renderer/icons.js`), where all ten pictures are kept.
+
+## What to try (0.66.0): DS Electronics, a listening version
+**What this is.** *App Settings > Timing Hardware* has a new sub-tab, **DS Electronics**, after Trackmate Interface. It is for the DS Electronics lap counters (DS-030, DS-200, DS-200b, DS-300, DS-300 RC, the models of Race Coordinator's DS setup screen). What these units send over their serial output is not known yet, so this version **only listens**: it writes down everything the unit sends so the data format can be worked out. **A race does not use the unit yet** (no laps are counted from it), and the app **sends nothing** to the unit. It has not been tried with a real DS unit.
+
+**Making a capture** (for someone who has a DS unit; about 5 minutes; the same steps are on the page):
+1. Switch the DS unit on, connect its serial cable to the computer (a USB-to-serial adapter is fine) and connect the lane sensors. Close other timing programs (Race Coordinator, for instance): only one program can use a COM port.
+2. Choose the **model**, press **Find the DS interface (COM port)**, choose the port, press **Connect**. The light turns green. The speed starts at 9600 (8 data bits, no parity, 1 stop bit, DTR and RTS on); change them *before* connecting if you know better.
+3. Type a **note** and press *Add note* (or Enter) before each thing you do, then do it: *lane 1: car over the sensor*, then lane 2 and so on; let a car pass several times; press the unit's own buttons one at a time. If the unit shows times on its display, add a note with what it shows (*display lane 1: 7.35*): that is the best way to find out how times are sent.
+4. If nothing appears when a sensor is triggered, or only strange characters or **ERROR** lines (a wrong speed gives framing errors), press *Disconnect*, choose another speed (1200, 2400, 4800, 9600, 19200, 38400) and try again. Several attempts can go in one log: every connection is marked in it with its settings.
+5. Press **Save log** (or *Copy log*) and send the file. It starts with a few lines that say the app version, the model and the port (with its USB numbers), then every line: seconds since connecting, `<-` for data from the unit, the number of bytes, the bytes in hex and as text. It also records when the control lines (CTS, DSR, DCD, RI) change, because some units signal with them.
+
+Good to know:
+1. The page shows the last 500 lines; the saved file has everything (up to 20 000 lines).
+2. The model can be changed at any time (it only labels the capture); the speed and the other serial settings are fixed while connected.
+3. The connection stays while you move around in the app. It is separate from the Trackmate connection, which is not touched.
+4. **If the log stays empty at every speed**, the unit probably only answers when the computer asks it something. Then this version cannot show it: tell me the model and what you saw.
+5. The next version will decode the laps once the data format is known. Until then the Trackmate is the only timing hardware a race can use (besides the keyboard and the lap buttons on screen).
+
+## What to try (0.67.0): undo and redo in the Layout Editor and the Leaderboard Editor
+**What this is.** If you press a wrong key in the editor (the Delete or Backspace key removes the selected widgets without asking), you can now take it back. The **Layout Editor** and the **Leaderboard Editor** (they are the same screen) have **Undo** and **Redo** buttons in the top bar, next to *Save*, and the usual keys: **Ctrl+Z** undoes, **Ctrl+Y** or **Ctrl+Shift+Z** redoes (Cmd instead of Ctrl on a Mac).
+
+1. **Customization > Layout Editor > New layout.** Add three widgets from the list on the left. *Undo* lights up. Click one widget and press **Delete**: it is gone. Press **Ctrl+Z**: it comes back, in the same place, and it is **selected** (blue frame), so you see what came back. **Ctrl+Y** deletes it again.
+2. **Everything you do in the editor can be undone**, one step at a time: adding a widget, deleting, duplicating, moving, resizing, every setting in the side panel (colours, text size, title, border, transparency, the widget's own options), the proportions, rounded corners, Guidelines, Lane colours, the Background (picture and filters), and in the Leaderboard Editor the row height, spacing, header and colours. After an undo of a move or a change, the widget that was changed back is selected.
+3. **What counts as one step:** a single action (adding, deleting, duplicating, ticking a box, choosing from a list, applying a dialog) is one step. A **drag** is one step, however long it takes and however many small moves it has. A **slider** or **typed numbers** in a settings field are one step: all the small changes in a row are undone together (a short pause ends a step). Try it: drag a widget around for a while, then press Ctrl+Z once.
+4. **Typing in a text box** (the name, the note, a title, a number) is undone by the browser itself, as in any other program, with Ctrl+Z while the cursor is in the box. Click outside the box and Ctrl+Z takes back the editor's own steps (what you typed in a box is cut into steps by short pauses). When a **tick box, a list or a slider has the focus** (you just changed it), Ctrl+Z works for the editor as well.
+5. **Undo asks nothing and stays after Save.** You can save, go on, and still undo to before the save. The history is kept until you leave the editor (*Back*): then it is gone, and a layout you open again starts with no steps. **It remembers the last 100 steps.** A big background picture or the pictures of a widget are kept once, not once per step, so many steps do not fill the memory.
+6. **Unsaved changes:** the editor knows what is on disk. If you undo back to exactly what you saved, nothing is unsaved any more, so *Back* does not ask "Discard your unsaved changes?". Redo (or any other change) makes it unsaved again.
+7. While a dialog is open (Guidelines, Lane colours, Background, Row colours) Ctrl+Z does nothing to the editor underneath; close the dialog first. The buttons are greyed out when there is nothing to undo or redo, and a short message says "Undone.", "Redone.", "Nothing to undo." or "Nothing to redo.".
+
+Good to know:
+1. **Not yet in this version:** the other editors (Audio Settings, Image Settings, Widget Builder), and the Delete buttons in the Database and in the Results (those ask first, and what they delete is deleted from the file). Tell me if you would like those next; the undo part (`renderer/undo.js`) is shared, so each one is a small step.
+2. Each undo or redo draws the editor again, so a list you had opened or a setting you were typing in loses its focus.
+3. The tests (`tests/undo.test.js`, and the editor part of `tests/screens.test.js`) check the steps, the keys, the buttons, the unsaved flag and the pictures. I also tried it in a real browser with a real mouse and keyboard (delete, undo, drag with a pause, a slider that has the focus); I have not run it in Electron itself.
+
+## What to try (0.68.0): the Leaderboard widget follows its row design, with a size slider
+**What this is.** A **Leaderboard** widget that uses one of your row designs (the *Row design* list in its settings) now looks like that design **in the Layout Editor too**: before, the editor kept showing the plain table, whatever you chose. And the rows now always fit inside the widget's frame: with many drivers the rows get smaller **as a whole, text included**, instead of running out of the frame. A new **Size of the rows** slider makes them smaller still if you want.
+
+1. **Customization > Layout Editor**, open a layout with a Leaderboard widget (or add one from the list on the left) and click it. In the side panel choose a design in **Row design**. The widget now shows that design with **8 made-up drivers** (a leader, a car in the pits, a penalty, a retired car and so on), in the colours of the design. The settings for the classic table (columns, "last lap" and so on) disappear, because a design brings its own cells; choose *Classic table* again and they come back.
+2. **Drag the frame of the widget** wide and short, then narrow and tall: the rows keep their proportions and are as large as the frame allows, centred. They never cross the edge of the frame. The more drivers a race has, the smaller each row gets (a header row of a design counts too); the text shrinks with its row, so nothing is cut off. In the editor you always see 8 drivers, in the race you see the real number.
+3. **Size of the rows** (only shown with a row design): 100% is as large as fits in the frame; drag it down to 20% to make the rows smaller (they stay centred at the top of the frame). It is one setting per widget, so you can use a big leaderboard and a small one on the same page, and with several Leaderboard widgets selected it is set on all of them. Undo (Ctrl+Z) takes a slider move back.
+4. **Text that does not fit its cell** (a long name, a title like *Position* in a narrow header column) is made smaller, just enough to fit, instead of being cut off. It is done for each cell on its own, so the other cells keep their size. This works in the Layout Editor, in the Leaderboard Editor's preview, on the Race Timing page and on the Live Race Leaderboard page.
+5. Go to **Race Timing** with your layout and start a race: the leaderboard widgets follow the same rules. Your layout with the tall narrow widgets: the rows are as wide as the frame, so their height is whatever the design's proportions give; the empty space under them is the frame that is not needed (see below).
+
+Good to know:
+1. **Narrow, tall frames** have rows as wide as the frame, so the rows are short and the text small, with empty space under them. That is the design: a row is a fixed shape (you set its proportions in the Leaderboard Editor). To fill a tall frame, use a design with a taller row (a larger *row height* in the Leaderboard Editor). I can add a "stretch the rows to fill the frame" option if you would like that.
+2. **The Live Race Leaderboard page** has no widget frame, so it has no size slider; it only gets the text fitting. Its look is otherwise as before.
+3. **A design with many cells** in a small frame gives small text: the cells keep their place in the row, and only the text of a cell that is too wide for it is made smaller (never below a fifth of its size).
+4. The tests (`tests/rows.test.js`, and the editor and Live Race parts of `tests/screens.test.js` and `tests/live.test.js`) check the sizes, the preview, the slider, undo and the text fitting. I also looked at it in a real browser (editor and race window) with frames of several shapes, with and without a header, 8 cars and 2 cars: the rows were always inside the frame and no text was cut off. I have not run it in Electron itself.
+
+## What to try (0.69.0): close up the blank space between the leaderboard columns
+**What this is.** The rows of a Leaderboard that uses a row design are drawn as wide as the widget. If your design has the position, flag and callsign at the left and the points far away at the right, about half of every row is blank, and in a tall, narrow widget the whole row, with its text, has to be drawn small. The Leaderboard widget has a new setting, **Space between the columns**, that closes up that blank space: the row gets narrower, so it is drawn larger and the text gets bigger.
+
+1. **Customization > Layout Editor**, open your layout, click the Leaderboard widget that uses the design with the far-away points and make it tall and narrow (or use the narrow ones you already have). In the side panel, under *Leaderboard settings*, below *Size of the rows*, is **Space between the columns**, at **100%** (the design as you made it). Drag it down: the columns move together and the text gets bigger. At **0%** the blank space is as small as it goes.
+2. **What the percentage means.** 100% keeps every column where the design puts it. 0% closes each blank stretch between two columns to a small gap (1% of the design's width) and trims the blank space at the left and right edge of the row to the same small size. 50% keeps half of the extra space. The columns themselves keep their width and their order, cells that are above each other in the design stay above each other, and the position of a cell in relation to its neighbours does not change.
+3. **Everything in the row follows:** the cells, the header row (its titles stay above their columns), the colours of the rows, the rounded corners and the space between the rows. Only the blank space is removed.
+4. **It is a setting of the widget, not of the design.** You can use the same design wide, at 100%, in one widget, and closed up in a narrow one. With several Leaderboard widgets selected it is set on all of them. Ctrl+Z takes a slider move back, in one step. It works together with *Size of the rows* (that one makes everything smaller; this one makes the row narrower, so the same frame can show it larger).
+5. **Race Timing:** start a race with your layout: the leaderboard widgets draw the same way as in the editor, with the real number of drivers.
+6. **A tip for the title:** in your screenshot the word "Leaderboard" lies over the header row. In the side panel, under *Title*, either untick **Show title** or tick **Title takes its own space**; then the rows start below the title.
+
+Good to know:
+1. **Wide, short widgets** gain nothing from this: there the height decides how large the rows are, so closing the columns only makes the rows narrower, in the middle of the widget. Leave it at 100% there. It is meant for tall, narrow widgets.
+2. **A tall, narrow widget can still have empty space under the last row.** The rows keep the shape of the design (their height is set by the *row height* in the Leaderboard Editor), so after closing the columns the rows are larger but not tall enough to fill the whole frame. A larger row height in the design fills more of it. I can add a "stretch the rows to fill the frame" setting if you want that.
+3. **Blank space inside a cell** is not closed up: a callsign that is centred in a wide cell keeps the space on both sides of it. Make that cell narrower in the Leaderboard Editor.
+4. **The Live Race Leaderboard page** does not have this setting (it has no widget frame); it is as before.
+5. In my check in a real browser, a design like yours in a narrow, tall widget went from text of about 7.6 px to about 16 px (more than twice as large) at 0%, with every row inside the frame and nothing cut off. I have not run it in Electron itself. The tests (`tests/rows.test.js` and the editor and Live Race parts of `tests/screens.test.js` and `tests/live.test.js`) check the layout numbers, the slider, undo, and that the setting reaches the Race Timing page.
+
+## What to try (0.70.0): the Race Setup form in groups
+**What this is.** The form for a race setup (Race Setup > *Add race setup*, and *Edit* on an existing one) was one long list of 25 settings. They are now in six sections with a coloured header bar. A section opens and closes when you click its header (the arrow shows which). Nothing about the settings themselves has changed: the same settings, the same choices and the same defaults, and setups you made before open as they were.
+
+1. **Race Setup > Add race setup.** You see six sections: **Session** (name, kind of session, track), **Length and result** (laps or duration, heats, how the race ends, points), **Start** (start lights, restart after a red flag, the first crossing of the start line), **Penalties, fuel and pits** (penalty system, fuel setup, how long the pit sensor must be blocked), **Screens and sound** (the Timing page layouts and the audio set) and **Trackmate** (track power at the start and the Trackcall button). Next to each title is a line saying what is inside.
+2. **Session and Length and result are open** (what you set for every race); the others are closed, with settings you set once and then leave. The cursor is in the *Name* field, as before.
+3. **Open all / Close all** (above the sections) opens or closes everything. The app remembers which sections you opened: the next time the form opens they are as you left them, until you close the app.
+4. **Only what applies is shown.** Change *Session type* to **Free practice**: the whole *Length and result* section disappears, because a practice has no laps or time. Choose **Race by laps**: it comes back with the number of laps and *The race ends*. **Timed race** shows the duration instead; **Heat-based race** shows the heat settings and, if you choose points, the points list.
+5. **Save and Cancel** stay at the bottom of the window, in view, however much you have opened. A setting inside a closed section is saved like the others.
+6. The header bars take the colour of your theme (the accent colour), so they stand out in every theme. Try App Settings > App Theme.
+
+Good to know:
+1. Only the Race Setup form is grouped. The other forms (drivers, slotcars, tracks, fuel setups and so on) are short and look as before. The grouping is data in `schema.js` (a `groups` list and a `group` on every setting), so other forms can get sections the same way later.
+2. If you add your own fields to a form that has groups, they go into a last section called *More*.
+3. The tests (`tests/screens.test.js`) check the order of the sections and which setting is in which, what is open to begin with, Open all / Close all, that the open sections are remembered, that a section with nothing to show hides, and that settings in closed sections are saved. I also looked at it in a real browser, in the dark and light themes; I have not run it in Electron itself.
+
+## What to try (0.71.0): a Pre-Race call before the start lights
+**What this is.** When you press **Start**, the app now says a call first, and the start lights (the countdown) do not begin until it has been said. When it is finished there is a short pause, and then the lights start and the race begins as before. The ready-made sentence is *"Drivers, get ready. The race is about to start!"*
+
+1. **Customization > Audio Settings**, open (or add) an audio set. The **Start** folder now begins with **Pre-race call**. It is on, with the sentence above. Change the sentence, add more sentences (one is picked each time, like the other calls), record a file for it, or turn it off. Under it is **Pause after it, before the first light (seconds)**: the wait between the end of the call and the first light. It is 1 second to begin with; you can set 0 to 10, in steps of half a second.
+2. **Race Setup**: choose that audio set (*Screens and sound* section), and open a race with it.
+3. **Press Start** (button, space bar, the Race Director page or a tablet). The call is said at once. While it is said:
+   - the start lights have not begun, and the race screen says so ("The pre-race call is being said. The start lights follow when it is finished."),
+   - the **Start** button is greyed out on the race screen, on the Race Director page and on the tablets, so a second press cannot start a second call or push the countdown forward. The space bar does nothing meanwhile either.
+4. **When the call has finished and the pause has gone by**, the countdown starts. The countdown numbers and "lights out" calls are as before.
+5. **It is said before every heat**, also the next heats of a race with several heats (press Start between heats, and the call is said again).
+
+Good to know:
+1. **No audio set, the call turned off, or an empty sentence:** nothing is said and nothing is waited for; Start goes straight to the lights, as before this version.
+2. **Existing audio sets** do not have this call yet. They get it automatically with the ready-made sentence (turned on). If you do not want it, turn it off in Audio Settings, in the Start folder.
+3. **The old call "Start lights begin"** is retired. It was said when the first light came on and was cut off by the "5" of the countdown almost at once, so it could not be heard in full. The Pre-race call takes its place, and the countdown no longer has to compete with it. If you had changed that sentence, it is not carried over.
+4. **A restart after a red flag** has no Pre-race call; it starts with the lights as before. The call is for the start of a heat, not for every restart.
+5. **Leaving the race screen** while the call is being said cancels the start (nothing starts afterwards), and the sound is stopped. The same when you open another race.
+6. **A call that never ends** (a sound file or a voice that hangs) does not block the race for ever: after one minute the countdown starts anyway.
+7. **There is no key to skip the call.** The call must be finished before the start; that is how you asked for it. If you want a "skip" button for testing, say so.
+8. The tests (`tests/audio.test.js`, `tests/live.test.js`, `tests/timing.test.js` and `tests/screens.test.js`) check the order (call, pause, lights), the pause setting and its limits, the buttons being greyed out here and on a viewer, cancelling by leaving, the one-minute limit, a broken sound, and old audio sets. I also made small breakages in the code on purpose to check that the tests notice each one.
+
+## What to try (0.72.0): the Track form in groups
+**What this is.** The Add track / Edit form (Database > Tracks) has the same look as the Race Setup form from 0.70.0: four sections with a coloured header bar that you can open and close, instead of one long list of 14 fields.
+
+1. **Database > Tracks > Add track.** The sections are **Basics** (name, number of lanes, scale, surface), **Length and lanes** (the track length with its calculator, and the Lane length modifier), **Lap time limits** (minimum and maximum lap time) and **Picture and notes**.
+2. **Basics and Length and lanes are open**; the lap time limits and the picture and notes are closed, as you set those once, if at all. The cursor is in the *Name* field.
+3. **Open all / Close all** above the sections, and the app remembers which sections you opened for the next time you open a track form (until you close the app). The Race Setup form has its own memory.
+4. **The lane fields still come and go.** In *Length and lanes*, choose **Calculated from the bends**: the outside lane, the distance between the lanes and the full turns appear in the section. Choose **Measured**: the list of lane lengths appears. With **None** they are hidden.
+5. **Save and Cancel** stay at the bottom of the window. A field in a closed section is saved like the others (try typing a note, closing the section and pressing Save).
+6. **The surface is now next to the scale**, in Basics. It used to be the last field but one, after the lap time limits.
+
+Good to know:
+1. **The track list** (the table in Database > Tracks) lists the columns in the order of the fields, so its *Track Surface* column now follows *Scale*. The grid cards are unchanged.
+2. **Only the Race Setup and Track forms are grouped.** Drivers, slot cars, fuel setups and so on are shorter and look as before. If you want one of them in sections too, say which. The grouping is data in `schema.js` (a `groups` list and a `group` on each field).
+3. **Your own extra fields** (the *Extra fields* button) go into a last section called *More*. It is closed to begin with, so open it to fill them in (it is saved like the rest, also when closed again).
+4. The tests (`tests/screens.test.js`) check the sections, which field is in which, what is open to begin with, the lane fields following the Lane length modifier, the memory of the open sections, and saving from closed sections. I also checked the real form in a browser (dark and light theme), and made small breakages in the schema on purpose to see that the tests notice each one.
+
+## What to try (0.73.0): Undo and Redo in Audio Settings, Image Settings and the Widget Builder
+**What this is.** The Layout Editor and the Leaderboard Editor have had Undo and Redo since 0.67.0. The other three editors in Customization have them now, with the same rules: every change is a step, until you leave the editor.
+
+1. **Customization > Audio Settings > New audio set** (or *Edit* on one). Next to *Save audio set* there are **Undo** and **Redo** buttons, both greyed out until there is something to undo. Change the speed, the voice, tick a call off, add a sentence, delete one: each is a step. Press **Undo** (or Ctrl+Z): the editor is drawn again as it was, with the sentence back in its place.
+2. **Image Settings > New picture set.** The number of pictures, a picture added or removed, and the kind of a new set are steps. **Widget Builder > New widget**: the kind, the size, bold and italic, the rules (added, changed, removed) and their pictures are steps.
+3. **Keys:** Ctrl+Z is Undo, Ctrl+Y or Ctrl+Shift+Z is Redo (Cmd instead of Ctrl on a Mac), in all three editors. The buttons show the keys in their tooltip.
+4. **Typing is one step.** What you type in a text box (the name, a sentence, the text of a widget, the value of a rule) becomes one step after a quiet moment of about half a second, not one step per letter. Two things typed in a row before that moment (a name and then a sentence) are one step together.
+5. **In a text box, Ctrl+Z belongs to the box**: it takes back your typing in that box (the browser's own undo). Click outside the box, or use the **Undo** button, for the editor's Undo. A tick box, a list or a slider does not count as a text box: the editor takes Ctrl+Z there.
+6. **Saved or not.** After *Save*, undoing a change takes you back to what is saved, and the editor knows that nothing is unsaved then (*Back* does not ask). Undoing past what you saved is "unsaved" again; Redo to the saved state is clean again. A new set that was never saved stays "unsaved", also when you undo everything.
+7. **Sound files and pictures** are kept once, however many steps hold them, so many steps with a big file do not fill the memory. A sound file you choose, and one you remove, are steps too.
+
+Good to know:
+1. **Leaving forgets the steps.** *Back* closes the editor and forgets them. In Image Settings and the Widget Builder, clicking another tab of Customization closes the editor too (that was already so: it does not ask about unsaved changes first, so they are lost, and the steps with them; tell me if it should ask). The audio set editor stays open when you look at another page, and keeps its steps.
+2. **100 steps** are kept for an editor (the oldest go first), and a new change after an Undo removes what you could have redone, as in the other editors.
+3. **Not a step:** opening or closing the folders in Audio Settings, the *Test* button, and the *Open all / Close all* buttons.
+4. **The keys work only while the editor is on the screen**, and not while a dialog is open.
+5. **A change made while a set is being saved** (a fraction of a second) is not saved: the editor shows it as unsaved afterwards.
+6. The tests (`tests/screens.test.js`) check all of this, and I checked the real editors in a browser (dark and light theme). I also made small breakages in the code on purpose, about 70 of them, to see that the tests notice each one; that found 14 weak spots in my tests, which I closed.
+
+## What to try (0.74.0): the Driver, Slot car, Fuel setup and Penalty system forms in groups
+**What this is.** The same coloured, collapsible sections as the Race Setup and Track forms (0.70.0 and 0.72.0), now for the four other forms you fill in: **Database > Drivers > Add driver**, **Database > Slotcars > Add slot car**, **Race Setup > Fuel Setups > Add fuel setup** and **Race Setup > Penalty Systems > Add penalty system**. *Edit* on an existing item opens the same sections.
+
+1. **Add driver:** **Basics** (name, nickname, callsign), **Personal details** (date of birth, country flag), **Avatar** (the picture with its framing). The first two are open, the Avatar section is closed.
+2. **Add slot car:** **Basics** (brand, manufacturer, model, scale), **Technical details** (motor, tyres, gearing, weight), **Pictures** (the main picture and the extra pictures), **Statistics** (the laps driven, counted by the app, so you cannot change it). The first two are open.
+3. **Add fuel setup:** **Basics** (name, tank size, fuel per lap, target lap time), **Empty tank and refuelling** (what happens when the fuel runs out, the refuelling speed), **Fast and slow laps** (the most extra fuel a fast lap can use, the most a slow lap can save). The last one is closed: it fine-tunes, and has sensible values already.
+4. **Add penalty system:** **Basics** (name and how penalty points turn into time: *Every X points add Y seconds* or *Steps I define*, which still show only what belongs to your choice), **Special penalties** (the list of Stop-and-Go and Drivethrough penalties, with the *Add a special penalty* button), **Disqualification and fuel** (the points at which a driver is disqualified, the points for an empty tank). The first two are open.
+5. **As in the other forms:** *Open all / Close all* above the sections, the app remembers which sections you opened (for each kind of form, until you close the app), the cursor is in the first field, *Save* and *Cancel* stay in view, and what is in a closed section is saved like the rest.
+
+Good to know:
+1. **What I opened.** I opened what you normally fill in and closed what you set once or rarely (the avatar, the pictures, the fast and slow laps, disqualification). In the fuel and penalty forms I put the more important sections before the fine-tuning ones, so the order of the fields in those two forms is a little different from before. If you would rather have another section open or closed, or other titles, say so: it is one line each in `schema.js`.
+2. **The tables are unchanged.** The list of drivers and the list of slot cars show their columns in the same order as before; the fuel and penalty lists have their own column choice, which did not change either.
+3. **Your own extra fields** (the *Extra fields* button on drivers and slot cars) go into a last section called *More*, closed to begin with.
+4. **Every form with fields is now grouped.** The grouping is data in `schema.js` (a `groups` list and a `group` on each field); a form without it would still be one flat list, and that is tested too.
+5. The tests (`tests/screens.test.js`) check, for each of the four forms, the order of the sections, which field is in which, the titles and notes, what is open to begin with, Open all / Close all, the memory of the open sections, the show-and-hide of the penalty fields, the picture and gallery fields in their sections, and saving from closed sections. I checked the real forms in a browser (dark and light theme), and made small breakages in the schema on purpose (21 of them) to see that the tests notice each one.
+
+## What to try (0.75.0): the group of an extra field, and a question before an editor closes
+**What this is.** Two things you asked for. **1. Extra fields (the *Extra fields…* button on Drivers, Slotcars and Tracks) can now be put in one of the sections of the form**, instead of all landing in *More*. **2. Image Settings and the Widget Builder ask before another Customization tab closes them** when they hold changes you did not save.
+
+**Extra fields in a section**
+1. **Database > Slotcars > Extra fields…** There is a new choice, **Group in the form**, under the field name and type. It lists the sections of that form in the order of the form (for Slotcars: Basics, Technical details, Pictures, Statistics) and then **More**. **More is chosen to begin with.** Add a field called *Chassis* in *Technical details*, close the dialog and open **Add slot car**: *Chassis* is in the Technical details section, after Motor, Tyres, Gearing and Weight.
+2. **Every extra field in the list has its own group choice** beside its name. Pick another group and it is saved at once (no extra button), and the next time you open the form the field is there. A half-typed new field name stays where it is while you do this.
+3. **Drivers and Tracks work the same way**, each with the sections of its own form (Drivers: Basics, Personal details, Avatar. Tracks: Basics, Length and lanes, Lap time limits, Picture and notes).
+4. **Fields you made before this version** have no group yet, so they stay in More until you pick one.
+5. **More only shows up when a field is in it.** If you move every extra field into a section, the form has no More section any more.
+6. **Export and import** keep the group: a field that comes in from a file is made in the same group. A field you already have (same name and type) keeps the group you gave it.
+
+**The question before an editor closes**
+7. **Image Settings > Edit a set** (or *New picture set*) or **Widget Builder > Edit a widget**: change something, then click another tab (Layout Editor, Leaderboard Editor, Audio Settings…). The question *Discard your unsaved changes to this picture set?* (or *…to this widget?*) appears. **No** keeps you in the editor with your changes and all your Undo steps; **Yes** closes it as before.
+8. **No question when nothing is unsaved**, for instance right after *Save*, or when you only looked at a set.
+9. **A new set that you never saved counts as unsaved**, also when you did not change anything yet; the *Back* button has always asked about it, and now the tabs do too.
+10. **The widget builder's *Back* button now asks the same question** as its tab (before it said *Leave without saving?*), so both ways out sound alike.
+
+Good to know:
+1. **Which groups are offered.** Only the sections of the form the field belongs to (a Slotcars field cannot go into a track section). I used the section titles as you see them in the form.
+2. **If the section is gone.** Should a field point at a section the form does not have (a file from a newer version, say), the field shows in More, and the dialog says More too.
+3. **Where in the section.** An extra field comes after the fixed fields of its section, in the order you made them. I did not add a way to put an extra field in the middle; tell me if you want that.
+4. **Not for every form.** The Race Setup, Fuel setup and Penalty system forms have no extra fields (as before), so nothing changes there.
+5. **Network view.** The browser view cannot add, delete or move extra fields (it is read-only, as before).
+6. **The audio set editor** is not asked about: it stays open when you look at another tab, with its changes and steps, so nothing is lost (that is the 0.73.0 behaviour).
+7. This replaces item 1 of "Good to know" in the 0.73.0 section: another tab no longer closes an editor with unsaved changes without asking.
+8. The tests check the group choices (order, default, per field), where the field lands in the form, saving the values from every section, the change of group and what happens when it cannot be saved, the database (also that a group is saved to the file and a wrong group becomes More), export and import, the missing and the wrong group, and every case of the question (picture sets, widgets, clean and unsaved, yes and no, the Back button). A new check also tests that every call a screen makes to the main program has a handler there, which would catch a missing connection for the group change (I cannot run Electron here). I checked the real dialog and the form in a browser (dark and light theme, a narrow window), and I made 48 small breakages on purpose to see that the tests notice them: two were missed, I closed those.
+
+## What to try (0.76.0): Fill the frame, for the Leaderboard widget
+**What this is.** In a tall, narrow Leaderboard widget the rows keep the shape of their design, so they are small and there is empty space under the last row. The Leaderboard widget has a new choice, **Fill the frame**, with three settings: **Off** (as before), **Taller rows** and **More space between the rows**. It works in the Layout Editor and on the Race Timing page, with the real number of drivers.
+
+1. **Customization > Layout Editor**, open a layout with a Leaderboard widget that uses a row design, make the widget tall and narrow and click it. In the side panel, below *Space between the columns*, is **Fill the frame**, at **Off**.
+2. **Taller rows:** the rows keep the width of the frame and grow taller until the whole board fills the frame, top to bottom. The text keeps its size (it follows the width of the row), so a taller row has more room around its text, which stays in the middle of the row. A header row of the design keeps its own height and stays at the top.
+3. **More space between the rows:** the rows keep their shape and size, and the empty space is divided equally between them, so the first row is at the top and the last row at the bottom. A header row stays right above the first row.
+4. **Size of the rows still works with it:** at 50% the board fills half of the frame (and stays in the top middle), with the rows taller or further apart inside that.
+5. **A frame that the rows already fill does not change**, for example a wide frame with many drivers: there the board is as tall as the frame anyway.
+6. **It is a setting of the widget, not of the design**: the same design can be used with it in one widget and without in another, and it stays when you choose another design. With several Leaderboard widgets selected it is set on all of them. Each choice is a step for Undo (Ctrl+Z).
+7. **Race Timing:** start a race with your layout: the leaderboard widgets draw the same way, with the real number of drivers (the editor always shows 8 made-up drivers).
+
+Good to know:
+1. **Few drivers give very tall rows with Taller rows.** With 3 cars in a tall frame each row is about a third of the frame, and with one car the row is as tall as the frame. The text does not grow with it. If that looks too empty, choose *More space between the rows*, make *Size of the rows* smaller, or close up the columns (*Space between the columns*) so the text is larger. If you would like the rows never to grow beyond a number of times their design height, I can add that.
+2. **More space between the rows needs two rows or more**: with one car there is no space between rows to enlarge, so nothing changes.
+3. **The Live Race Leaderboard page** has no widget frame, so it has no such choice (as before).
+4. **Two small changes in the Layout Editor that come with it.** A choice from a list in the side panel (this one, but also *Show fuel as* of the Fuel widget, for instance) is now always a step of its own for Undo (before, two quick choices could end up as one step). And a list choice can now show an explanation under it, as the sliders do; this one does.
+5. This replaces the offers of a "stretch the rows to fill the frame" option in the 0.68.0 and 0.69.0 sections.
+6. The tests (`tests/rows.test.js`, and the editor and Race Timing parts of `tests/screens.test.js` and `tests/live.test.js`) check the choice, what is drawn for each setting (the rows themselves are the same, with a header, a size choice and closed-up columns), the style sheet rules, the editor (preview, Undo, other designs, several widgets selected) and that the choice reaches the Race Timing page. I measured the real thing in a browser, in the Layout Editor and on a Race Timing page, with 1, 3 and 8 cars, wide and tall frames, with and without a header, at 100% and 50%: with Taller rows or More space the last row ended at the bottom edge of the frame, nothing was cut off, the text kept its size, and a frame that was already full did not change. I also made 25 small breakages on purpose to see that the tests notice them, and they all did. I have not run it in Electron itself.
+
+## What to try (0.77.0): the round app icon
+**What this is.** Your new icon (the red sports car on the road) is now the icon of the app, and it is **round**: a circle with see-through corners instead of a square picture. It is in the `build` folder as `icon.png` (512 x 512 pixels) and `icon.ico` (the Windows icon, with the sizes 16, 24, 32, 48, 64, 128 and 256).
+
+1. **Windows:** run `build-windows.bat`. The installer, the portable program, the desktop shortcut, the Start menu entry, the taskbar and the title bar show the round icon.
+2. **Linux / Raspberry Pi:** run `./build-linux.sh` (with `--install` for the menu entry). The AppImage, the .deb and the menu entry use the same round `icon.png`.
+3. Look at it small too: at 16 and 32 pixels (a taskbar, a list in a folder) the circle is still clean and the car can still be told from the road.
+
+Good to know:
+1. **I made the circle myself.** The picture you sent was 4167 x 4075 pixels, so about 2% wider than tall, and the edge of its round shape was not a perfect circle (a few dozen pixels off here and there). I cut it to a square, in the middle, and cut a perfect circle out of it with a smooth edge. What went is a thin strip along the edge (1.4% of the picture): mostly the light grey background, plus a sliver of the black road at the lower left and right edge. The car is untouched. The circle touches the four sides of the icon, with no empty margin around it. If you would like a little space around it (Windows icons often have some), tell me how much.
+2. **`npm start` still shows the standard Electron icon** in its window, as before: the icon goes into the built programs (the installer, the portable program, the AppImage). The window of `npm start` is not one of them.
+3. **Windows remembers icons.** If you still see the old square icon after installing the new version, that is the icon memory of Windows (the Explorer icon cache), not the file. Restarting Explorer or the PC, or renaming the shortcut, fixes it.
+4. **To change the icon later**, send me the picture and I will do the same again, or replace `build/icon.png` yourself with a square PNG of at least 512 x 512 pixels with see-through corners (and make `icon.ico` from it). The tests notice if the icon is a square again.
+5. The tests (`tests/package.test.js`) read the real icon files: the picture is square and at least 256 pixels, its four corners are see-through and every point well inside the circle is solid, there is a picture and not an empty circle, and the Windows icon holds the sizes 16, 32, 48 and 256 and more, and is round in every size. I looked at the result on a dark and a light background in 256, 128, 64, 32 and 16 pixels, and I changed the icon files on purpose in 12 ways (the old square icon, a rounded square, a circle that is too small, a hole in the middle, a missing size and so on) to see that the tests notice each one: they did. I have not built the installer here (that needs your computer).
+
+## What to try (0.78.0): your club logo on the Home tab, and in the Logo widget
+**What this is.** The app now has one **Club logo**, set once in **App Settings > General**. It can sit beside the header picture on the Home tab, and every **Logo widget** that has no picture of its own shows it, on the timing page, in the Layout Editor and on the Live Race pages.
+
+1. **App Settings > General > Club logo:** choose your logo picture. It is shrunk to 600 pixels and keeps its see-through parts (a PNG with a transparent background stays transparent). **Remove logo** takes it away again.
+2. **On the Home tab:** choose *Left of the header picture* or *Right of the header picture*. *Not shown* (the standard) leaves the Home tab as it was; the logo is then only used by Logo widgets.
+3. **Width:** the logo gets a share of the width of the header, from 10% to 50% (25% to start). The header picture gets the rest. Move the slider and the preview above it follows at once.
+4. **Height:** the logo and the picture always have the same height, the one of the **Height** slider of the header picture. The logo is always shown whole and as large as its space allows, and it is never cropped. Make the header higher for a larger logo.
+5. **Left / right and Up / down:** the whole logo is usually smaller than its space in one direction, and these sliders move it inside that space, like the ones for the header picture do (the Center the logo button puts it back in the middle). A slider is greyed out when the logo already fills its space that way. A round or square logo in a wide space moves left and right; a wide logo in a tall space moves up and down.
+6. **A header without a picture:** the logo can stand on its own. The Height slider is then offered too (18% of the width to start), and the rest of the header stays empty.
+7. **Logo widget:** open the Layout Editor, add a **Logo** widget (Race group) and leave its picture empty: it shows your club logo, and the settings say so. Choose a picture there and that widget shows its own picture instead (other Logo widgets are not affected). **Use the club logo** goes back to the club logo. Logo widgets that already have their own picture keep it.
+8. **Race Timing and the Live Race pages:** start a race with a layout that has a Logo widget: it shows the club logo there too, also on a tablet or phone that follows the race.
+
+Good to know:
+1. **The header keeps its height when a logo is added.** With *Automatic* the header is as high as it was without the logo (the shape of the picture, 220 pixels at most), so the picture is shown a little more cropped at the sides: it has less width for the same height. You can still choose which part of it shows with the picture sliders or by dragging it. If you want it less cropped, make the logo's share smaller.
+2. **A transparent space around the logo** shows what is behind it: the page. There is no colour behind the logo (that was your choice).
+3. **The position of the logo and the position of the picture are separate settings**, each with its own sliders.
+4. **Existing pictures and settings keep working:** with no logo and no side nothing changes on the Home tab. A Logo widget with its own picture is not touched.
+5. **The logo is saved in the settings in the database file** (as a picture of at most 600 pixels), and it is not part of Import and Export of the data, like the header picture.
+6. The tests (`tests/banner.test.js`, `tests/widgets.test.js`, `tests/timing.test.js`, `tests/live.test.js`, `tests/screens.test.js`) check the side, the share and the position (also damaged saved values), the two columns, the heights (set, automatic, no picture), which sliders are greyed, saving, the Home tab markup, the Logo widget fallback in the editor, on the timing page and for a viewer, and that nothing damaged reaches the page. I also looked at the Home tab and the settings in a real browser and measured: the widths, the heights (set, and automatic with a flat picture, a taller one, and one above the 220 pixel limit), left and right, logo alone, a narrow window, and dragging the picture with the logo on.
+
+## What to try (0.79.0): a new look for Audio Settings
+**What this is.** The Audio Settings editor (Customization > Audio Settings > New audio set, or Edit) has the look of the Add track and Race Setup forms now. Nothing works differently: it is only the look. Before, an open folder was a box with white boxes inside it, and the browser's own black triangle.
+
+1. **Open Audio Settings and make a new audio set.** The folders (Start, Flags, Finish...) have an **accent bar** on the left, a **tinted header** and an accent chevron that turns when the folder opens, like the groups of the Add track form. Each header still says how many of its calls are on.
+2. **Open a folder.** The calls inside are no longer in white boxes: each has its name in bold with its tick box, and a thin line between one call and the next.
+3. **Switch a call off.** Its name turns grey and its sentences are hidden, as before. It is easy to see which calls are off.
+4. **Look at a sentence.** The sound file choice has its own column, so the *Test* and *Delete* buttons line up in every row, also for a sentence that has a sound file (it shows *sound file* and *Remove file* in the same place). The *Choose File* button looks like the other buttons of the app.
+5. **Add a sentence** has the accent colour with a dashed edge, so it can be found at the end of each call.
+6. **Calls: Open all folders / Close all folders** are in the same bar as Open all / Close all in the forms.
+7. **The help at the top** (How sentences work, and the variables) is a folder of the same shape, in grey: grey is for reading, the accent colour is for the places where you change something. The names of the variables in its table (`{nickname}`, `{callsign}`...) no longer break in two.
+8. **Make the window narrow** (or use a small screen): the sentence rows wrap, so the text of a sentence keeps a readable width, with its buttons on the next line.
+9. **Try another colour theme** (App Settings > App Theme): the bar, the header and the tick boxes follow the accent colour of the theme.
+
+Good to know:
+1. **Only the Audio Settings editor changed.** The Add track and Race Setup forms look exactly as before: the folders use the same style rules as those groups now (the rules are shared, not copied), so a later change to the groups changes both.
+2. **The help folder is open when you start, as before.** It is long (the table of variables), so the calls start lower down the page. If you would rather have it closed to start, say so and I will change that.
+3. **The Choose File buttons in other screens are not changed** (for example the picture of a track or a driver). Only the ones in Audio Settings have the new look. I can do the same for the whole app if you like it.
+4. The tests (`tests/screens.test.js`) check that the folders share the rules of the form groups, the colours of the help folder, the lines between calls, the grey of a call that is off, the sound file column (also with a file), the wrapping on a narrow window, and the Open all bar. I looked at the editor in a real browser: dark and light themes, Midnight, Carbon and Sunset, a narrow window, a call that is off and a sentence with a sound file.
+
+## What to try (0.80.0): folders on Results and Records and on Race Setups
+**What this is.** The Results and Records page and the Race Setups page have the folder look of Audio Settings and of the Add track form now: an accent bar on the left, a tinted header and a chevron that turns when the folder opens. Nothing is lost or moved to another place: only the way the lists are grouped changed.
+
+1. **Database > Results and Records.** The three parts are folders now: **Track records**, **Personal bests** and **Sessions**. Each header says how many it holds (for example *2 personal bests*). They are open when you start.
+2. **Close one** (click its header, or press Enter or Space on it). Do something on the page, for example remove a record, or leave the tab and come back: the folder stays closed. The app remembers it while it runs.
+3. **Open all / Close all** are above the folders, in the same bar as in the forms.
+4. **The sessions** are rows with a thin line between them, inside the Sessions folder. A row still opens to show the standings, the lap times, *Export to PDF* and *Delete this session*.
+5. **Remove** on a track record or a personal best works as before: only the record is removed, the lap stays in its session.
+6. **Race Setup > Race Setups.** There is a folder for every session type that has race setups: *Free practice*, *Qualifying*, *Race by laps*, *Timed race*, *Heat-based race*, in that order. Each lists the race setups of that type, and says how many.
+7. **A session type without race setups has no folder.** Add a setup of that type and its folder appears.
+8. **The Session type column is gone from the list**, and from the cards in the grid: the folder says it. The other columns stay (Name, Track, Laps / time).
+9. **List / Grid** works as before, and the choice is still remembered for this page only. In the grid the cards sit in the same folders.
+10. **With setups of only one session type** there is one folder, and no Open all / Close all (there is nothing to open or close all of).
+11. **Try a narrow window:** a table that is too wide scrolls sideways inside its folder, so a date stays on one line.
+12. **Try another colour theme** (App Settings > App Theme): the bar, the header and the chevron follow the accent colour.
+
+Good to know:
+1. **The look is shared with the forms and Audio Settings** (the same style rules, not copies), so a later change to the groups changes these folders too.
+2. **A race setup whose session type is not in the list** (for example from an old import) goes in a folder called **Other**, so no setup can go missing from the page.
+3. **Open or closed is remembered while the app runs, not after you close it.** Every folder is open again at the next start. I can save it in the settings if you would rather have it stay closed.
+4. **The other lists** (Tracks, Drivers, Slotcars, Fuel Setups, Penalty Systems) have no folders, because they have nothing to group by. They look as before.
+5. **No results yet:** the Results and Records page still shows the sentence about running a race (no empty folders). A race setup page without setups shows the sentence that says so.
+6. The tests (`tests/screens.test.js`) check the folders and their counts, the open state kept when the page is drawn again, Open all and Close all on both pages, the Other folder, the folders that are left out, the missing column, the grid, and the style rules. I also broke the code on purpose in 29 ways to see that the tests notice.
+
+## What to try (0.81.0): long sessions and the Live Race pages
+**What this is.** The Live Race pages (the second-screen window, and phones and tablets on the wifi) get the race from the race window. Until now that was the whole race, about ten times a second, including the list of every lap time of every car. The longer a session ran, the bigger every message became (after 3 hours with 4 cars: 164 KB, ten times a second). Now only what changed is sent, and of the lap lists only the new laps. Nothing looks different: the pages show the same, and a session can run for hours.
+
+1. **Start a race, or a Free practice, with *Simulated cars*** and open the Live Race pages on a second screen and on a phone (App Settings > Network access). Laps, positions and flags appear at once, and the lap and race clocks run smoothly, as before.
+2. **Let it run.** Nothing slows down, and the amount of data stays the same however many laps there are.
+3. **Open the second-screen window, or the phone page, in the middle of a race:** it shows everything up to that moment (all the laps) at once and carries on from there.
+4. **Switch the phone's wifi off for a few seconds and on again:** the page notices that it missed something, fetches the whole race once, and carries on by itself.
+5. **Take a lap out of a driver's laps (Review) or mark one as invalid:** the Live Race pages show the same laps as the race window.
+6. **Start the next heat or race:** the Live Race pages follow it.
+
+What got smaller (a 3-hour Free practice, 4 cars, laps of 5.5 to 7 seconds; measured on a simulation of the race window, for each device that follows the race):
+
+| | Before (0.80.0) | Now (0.81.0) |
+|---|---|---|
+| Messages | 108,000 (ten a second) | 14,088 (1.3 a second) |
+| Biggest message | 164 KB | 1.9 KB |
+| Everything sent in 3 hours | 8.5 GB | 26 MB |
+| Sent in the last hour, per second | 1,368 KB | 2.5 KB |
+| Work in the race window to prepare it (3 hours) | 55 seconds | 4 seconds |
+| A window that opens late, once | 164 KB | 102 KB |
+
+The amount is the same in hour 1, 2 and 3 (8.6, 8.5 and 8.6 MB). The receiving side needs about 0.3 seconds of work in 3 hours.
+
+Good to know:
+1. **A message goes out when something changes** (a lap, a flag, a pit stop, a penalty, the start or the end), and a small one every second, so that the clocks of the other screens stay right. In between, the clocks run on the screen itself, as before. The refuelling level in the pit is worked out from the clock too, so it needs no messages either.
+2. **Lap times are sent with at most 3 decimals** (in milliseconds, so `6713.334` instead of `6713.334441091514`). The one exception: a number that would show differently when cut short is sent as it is, so every screen shows exactly the same digits for every lap time as the race window. Your saved laps, results and records are not touched: this is only about what is sent to the Live Race pages.
+3. **An average (or another value worked out on a Live Race page from the lap times) can in rare cases differ by 0.001 second from the race window.** I measured it: about 1 in 5,000 early in a session (3 laps), 1 in 66,000 after 100 laps, and not once in 20,000 tries after 1,000 laps.
+4. **Every message has a number.** A page that misses one does not guess: it fetches the whole race from the app and carries on. The app does the same with the race window: when something does not fit, it asks the race window to send everything again.
+5. **Pages that were open in a phone browser from an older version** need to be reloaded once, because they speak the old way.
+6. **The clock stays in minutes** (a 3-hour session shows 180:00.4), as you asked.
+7. The tests (`tests/live.test.js`, `tests/package.test.js`) check: only new laps are sent, however long the race; nothing is sent when nothing changes, and a message every second; a lap taken out of the middle; a lost message (also when the lists are as long as before); a window that opens late; a new heat; the 3 decimals (and that cutting short never changes what is shown, 200,000 times); and the handler in `main.js` itself, run against stand-ins. I also tried the Live Race page in a real browser (laps arriving, a lost message, a window that opens late), and I broke the code on purpose in 25 ways to see that the tests notice, and they do.
+
+## What to try (0.82.0): Time Tokens, part 1 (selling track time per lane)
+
+**What this is.** For a club that sells track time. There is no hardware: you add paid time to a lane with a button, the lane is "switched on" for that time, a Token Clock counts down, and when the time is up everything of that lane turns red. This is the first of three parts. In this part everything is done on the main computer (the race window). Part 2 will put a *Tokens* tile on the Live Race pages, protected by the Race Director password, so that time can be added from a phone or tablet.
+
+1. **Race Setup > Time Tokens** (a new subtab). Set the buttons (the default is `5, 10, 15, 30, 60` minutes, up to 8 buttons, decimals such as `7.5` work), the warning (seconds before the end, 60 by default, 0 for no warning), the warning colour (amber) and the time's-up colour (red). *Back to the standard settings* puts the defaults back.
+2. **Race Setup > Race Setups > Add:** choose the session type **Time Token Session**. The form asks only what a token session needs (name, track, layouts, audio set, Trackmate settings): no start lights, laps, fuel or penalties. It uses the settings of step 1.
+3. **Home tab:** choose that setup. Drivers and cars are optional here: a lane without a driver is a *Guest*. The button says **Open the session**.
+4. **The race screen.** The default token layout is used (*Customization > Layout Editor > Default token layout*, which you can copy and change): for each lane of the track the lane number, driver, Token Clock, last lap and best lap. Press **Space** (or Start): the session opens at once, there are no start lights. Every lane is neutral and dimmed, because nothing is bought yet.
+5. **Under the timing there is a panel with the lane controls.** For each lane: a driver choice (with *Guest*), the time left and its state, the time buttons, **Undo**, **End time now** and **Clear**, and *Pause all / Resume all* at the top.
+   - Press **+10 min**: the lane is on, the Token Clock counts down. The first time the car crosses the line the timing starts, the next crossing is a lap. A crossing on a lane that is not bought is ignored.
+   - Press **+5 min** on a lane that is running: the 5 minutes are added to what is left.
+   - In the last minute (or whatever you set) the Token Clock turns amber. **When the time is up, every widget of that lane turns red** (also the lane colours and the widget backgrounds you chose; the text changes to white or black, whatever can be read). The other lanes are not touched.
+   - **Undo** takes back the last time added (or an *End time now*). **End time now** ends the time of that lane at once. **Clear** switches the lane off again (neutral, not red) for the next driver.
+   - Buy time for a lane that is red: it starts again from now, for the same or another driver.
+   - **Another driver on a lane that is running:** choose them in the lane's list. The time that is left goes along; the earlier driver's laps are saved as their own result.
+   - **Pause all:** the clocks stand still (and crossings are ignored); Resume all lets them run again. Time can still be added while paused.
+6. **A lap driven after the time was up** is recorded and kept, with a mark (*Late lap*), but it never counts for the best lap, a personal best or a track record.
+7. **Results and Records now has two subtabs: Racing Records and Token Records.** Racing Records is what it was. Token Records works the same way (the same three folders, track records, personal bests), but is a separate pool: a token lap never mixes with the racing laps. A session there is called a **stint** (one driver, on one lane, for one paid time) and shows the time bought, the laps and the late laps. A Guest has no personal bests, but can hold a track record. A stint is saved as soon as it ends (lane cleared, driver changed, new time bought after it ran out, or the session ended).
+8. **End the session with Stop (the key S).** It asks once; every lane is switched off, and all stints with laps are saved. Nothing else to check.
+9. **Close the app in the middle of a session** (or let it crash) and open the same setup again: the app offers to carry on, with the time that was left on every lane and the laps driven. *Cancel* saves what was recorded and starts a clean session. The session is kept at every change of the time, and every few seconds for laps.
+10. **Spoken calls** (Customization > Audio Settings, the folder *Time tokens*): one when a lane's time is almost up (driver, lane and seconds can be said) and one when it is up. Each is said once per period of time.
+11. **The second screen and phones that follow the race** show the same Token Clocks and the same red lanes.
+
+Good to know:
+1. **Idle lane = neutral, only an expired lane is red.** A lane that has not been bought yet is dimmed, not red.
+2. **Red wins** over lane colours and widget backgrounds, with text that can be read. Widgets that are buttons (Start, Pause, flags) are not coloured red.
+3. **The Token Clock** is a new widget (group *Time Tokens*). It can be placed in any layout. The option *Turn amber when the time is almost up* can be switched off for a clock that must stay in its own colour.
+4. **The clock of a lane is the race clock,** so a pause (or a red flag) stops it. The time is counted in whole seconds, rounded up, so a clock never shows 00:00 while there is time left.
+5. **Time is bought in minutes.** In the buttons field a comma (or a space) separates the buttons, and a decimal uses a point: `7.5` is seven and a half minutes.
+6. **Not in this part yet:** the Tokens tile with the Race Director password on the Live Race pages (part 2). The panel is only on the race window.
+7. **A stint without any laps is not saved** (a lane that was bought but never driven leaves no result). Say if you want the sold time of such stints to be saved too.
+8. The tests (`tests/tokens.test.js`, `tests/tokenrace.test.js`, and new parts of `tests/screens.test.js`, `tests/transfer.test.js`) check: stacking, the warning edges, late laps, the driver change with carried time, undo and end now, keeping and restoring a session, a stint that could not be saved is offered again, the red and amber colours on the race window and on a following screen, the two pools, the settings page, the form for the session type, the Home tab for a token setup, and which lane buttons can be pressed when. I also broke the code on purpose in 45 ways in copies of the app to check that the tests notice each one.
+
+## What to try (0.83.0): Time Tokens, part 2 (add time from a phone or tablet)
+
+**What this is.** The lane controls of a Time Token Session are now also on the Live Race pages, so a person at the desk or at the track with a phone or tablet can sell time without going to the main computer. The password is the one you already set for the Race Director (App Settings > Network access): you enter it once on a device, and it covers both pages.
+
+1. **Open a Time Token Session** on the main computer (Home tab, a race setup of the type Time Token Session, *Open the session*).
+2. **On the main computer, or on the second-screen window:** open the **Live Race** tab. There is a new tile, **Tokens**. It opens the lane controls at once (there is no login on the main computer, as with the Race Director).
+3. **On a phone or tablet** (App Settings > Network access, open the address in the browser): the same tile, **Tokens**. It asks for the password first; after that, the Race Director page needs no password again.
+4. **The page shows the same controls as the race window:** the lanes of the track (a 4-lane track shows 4 lanes), the driver of each lane (with *Guest*), the time left and its state (No time, Running, Almost up, Time's up), your time buttons from Race Setup > Time Tokens, **Undo**, **End time now**, **Clear**, and **Pause all / Resume all**.
+5. **Press +10 min on the phone:** the lane is on at once on the main computer, and the clock runs on the phone, the main computer and the other screens. Buttons that make no sense at that moment (Undo with nothing to undo, End time now on a lane that is off) are dimmed.
+6. **While the session has not been opened yet,** the page has an **Open the session** button, which goes away once it has been opened.
+7. **Choose another driver** for a lane in its list: the lane keeps its time, the earlier driver's laps are saved as their own result, and every screen shows the new name (also the Race timing and Leaderboard pages, the second screen, and other phones).
+8. **Press a time button twice by accident:** a second press on the same lane within 0.6 seconds is ignored, so a slip of the finger does not sell the time twice. This is also so on the main computer. The other lanes are not held back, and a press a moment later counts.
+9. **Open the Tokens tile in a race that is not a Time Token Session:** the page says that no Time Token Session is running.
+
+Good to know:
+1. **No second password.** The Race Director password covers the Tokens tile. If no password is set, the Tokens tile (like the Race Director page) can only be used on the main computer, and the page says so.
+2. **Everything is checked twice.** The server only lets a command through with a whole lane number from 0 to 15, minutes above 0 and at most 1440 (one day), and a driver that is text; the race window checks again (a lane the track does not have, or a driver that is not in the database, does nothing; a driver that cannot be found never turns a lane into a Guest).
+3. **The race window does the work.** The page only sends the button that was pressed. What you see on the phone is what the race window sent back, so the phone and the main computer always agree. If the race window is closed, the page has nothing to show and nothing is queued.
+4. **The time buttons and drivers on the page are those of the running session,** so changing the buttons in Race Setup applies from the next session (as on the main computer).
+5. **Still the same limits as part 1:** laps after the time is up are marked late, a stint without laps is not saved, and the session is kept for a restart on the main computer.
+6. The tests (`tests/tokenrace.test.js`, `tests/web.test.js`, `tests/live.test.js`, `tests/icons.test.js`, `tests/tokens.test.js`) check: the tile and its picture; the login (a wrong password, the right one, both pages with one login, no password set); each button on the page reaching the race window and doing the right thing; the double tap guard (per lane); the commands that make no sense (a lane the track does not have, minutes of 0, a negative number, text, 99999, a missing or unknown driver) being refused by the server and by the race window; the driver change reaching other screens; the page building itself again when the race window sends its setup again; and the dimmed buttons. I also broke the code on purpose in 29 more ways in copies of the app to check that the tests notice each one.
+
+## What to try (0.83.1): fix for a race that would not start after a Time Token Session
+
+**What was wrong.** When a Guest (a lane with no driver) drove the fastest lap in the Token Records of a track, opening the next Time Token Session on that track failed. The failure also switched off every button on the Home page, so it looked as if no race of any type could be started, and it stayed that way after restarting the app, because the fastest Guest lap is saved in the database.
+
+1. **Open a Time Token Session** on a track where a Guest drove the fastest token lap. It opens now. The record shows the name *Guest*.
+2. **A record held by a driver that was deleted** since shows as *(deleted)*.
+3. **A Guest has no personal best:** the race window no longer compares a Guest lane with other Guest laps.
+4. **If a screen ever cannot be opened for another reason,** the app now says so ("This screen could not be opened", with the reason) and offers **Back to Home**, instead of leaving the old page with its buttons switched off. Nothing is lost when this happens.
+5. **Nothing in your saved results has to be repaired:** the laps and stints in the database were fine; only reading them back failed.
+
+The tests (`tests/tokenrace.test.js`) check: a Time Token Session opens from the Home tab when a Guest holds the record, when the record's driver was deleted and when a lap was taken out of the records; a race of another type opens too, and the token laps are not in its records; the error screen and the way back. Every test suite now also fails if the app reports a screen that could not be drawn.
+
+
+## What to try (0.84.0): minus buttons for the lane time, reviewing laps during a race, and a review at the end of a Time Token Session
+
+**What this is.** Four things you asked for: time can be taken off a lane in steps (with +1 and −1 as standard buttons); the Race Director can check laps while any race is going on, and delete or invalidate one straight away; and a Time Token Session now ends in a review, like a race does, before anything is saved.
+
+**1. Taking time off a lane**
+1. **Race Setup > Time Tokens** has a new field, *Time buttons that take off*. The standard is `1, 5, 10`; an empty field means no minus buttons at all. *Back to the standard settings* sets both lists.
+2. **In a Time Token Session** every lane has a second row of buttons: −1 min, −5 min, −10 min. They work on the main computer and on the Tokens page of the Live Race pages (phone, tablet).
+3. **Time is only taken off a lane that is on.** Never more than what is left: if you take off more, the time is up at once and the lane turns red. The time bought goes down by what was taken, so the result of that stint shows the time that was really sold. **Undo** gives it back, also when the lane went red.
+4. **Plus buttons now start at +1:** the standard list is `1, 5, 10, 15, 30, 60`. If you saved your own list earlier, it stays as you set it; press *Back to the standard settings* once to get +1 and the minus buttons.
+
+**2. Reviewing laps during a race (every session type)**
+1. **Start any session** (practice, race, heats, timed, qualifying, Time Token Session). While it runs or is paused, the bar under the picture has a **Review laps** button.
+2. **It opens a panel with every lane:** driver, laps, last lap and best lap. **Laps** unfolds the laps of a lane, the newest on top.
+3. **Mark invalid** keeps the lap in the race (it counts for the laps and the time) but it is no best lap, no record and no personal best. **Mark valid** brings it back.
+4. **Delete…** asks how: **From the records only** (the lap stays in the race but is not saved in the database), or **From the race too (recalculate)**: one lap fewer, less time, the car has to drive that lap again.
+5. **A car that has finished its race** (while others still drive) can only have a lap taken out of the records: taking it out of the race would un-finish it. That choice is not offered for such a car.
+6. **The Race Director page** (Live Race tab, also on a phone with the password) has the same thing: a *Review laps* box that you open when you need it.
+7. **The shown best laps follow:** the highlights (best lap, personal best, track record) and the record lap are worked out again from the laps that still count, also the bests of earlier heats.
+8. **In a Time Token Session** the same is done for the stint that is running on the lane. A lap driven after the time ran out stays invalid (it can't be made valid) but can be taken out of the records.
+9. **Laps only.** Penalty points, disqualifying, adding time, Finalize and Delete all data stay in the review after the race; that review is unchanged.
+
+**3. A review at the end of a Time Token Session**
+1. **Press Stop** (or S): every lane is switched off and the review opens. It lists every stint (lane, driver, time bought, laps, best lap, how it ended). **Laps** unfolds a stint, with the same Mark invalid / Delete… as above (*From the stint too* instead of *From the race too*).
+2. **Finalize results** saves every stint as a result of its own (Token Records). **Delete all data** saves nothing.
+3. **Nothing is saved before Finalize.** Until then the stints are held, also across a restart: if the app is closed during the review, opening the session again brings the review back.
+4. **A session in which no lap was driven** has nothing to check and ends at once.
+5. **A stint of which every lap was taken out** is not saved at all.
+6. **If saving fails** (disk full, say) the review stays open and says so; press Finalize again to try once more. Nothing is lost.
+7. **Back to Home** is off during the review (as with a race).
+8. **The Race Director page** shows a note for such a session: the stints are checked on the main computer, where Finalize is pressed.
+
+Good to know:
+1. **A change from 0.82/0.83:** stints used to be saved as they ended (each driver change, each Clear). Now they are held until Finalize, so the Token Records only change when you finalize. If you answer *Cancel* to "A Time Token Session of this race setup was not ended", what it recorded is saved straight away, without a review.
+2. **Time sold for a stint without any laps** is still not saved (nothing was driven).
+3. **Only laps can be corrected during a race.** A lap command from a phone for a car or lap that does not exist, or for something that is not a lap correction, does nothing.
+4. **The panel does not move under your finger:** it is only drawn again when something in it changed (a new lap, a correction, unfolding a lane).
+5. **Opening a new race or session starts with all lanes folded.**
+6. The tests (`tests/tokens.test.js`, `tests/tokenrace.test.js`, `tests/live.test.js`) check: the minus buttons and Undo (also after a restart); marking invalid, making valid, deleting from the records and from the race, on the race window and on the Race Director page, while running and paused, for a car that is still racing and one that has finished; that the corrections reach the stint of a Time Token Session and come back after a restart; that a lap after the time ran out stays invalid; that the shown best laps are worked out again (also with earlier heats and with held stints); that a wrong or foreign command does nothing; the token review (Stop, Finalize, Delete all data, a second press while saving, a failed save, nothing driven, every lap taken out, the review back after a restart, the note on the Race Director page); and what is saved afterwards.
+
+## What to try (0.85.0): a special look for the control pages, and a Help tab
+**What this is.** Two small things. The two Live Race pages that can change the race (Race Director and Tokens) now look a little different from the pages that only show it, and App Settings has a Help tab.
+
+1. **Live Race tab.** The **Race Director** and **Tokens** tiles have a tinted background, a stripe in the accent colour on the left and a small **Control** badge. The five other tiles are as they were. Open one of the two pages: its header bar is tinted in the same way, with the badge next to the title. The colours come from the theme, so it follows every theme (try a few under App Settings > App Theme, also a Custom one).
+2. **App Settings > Help** (the last sub-tab). It opens with your welcome text and the four quick steps. Below it are folders in the same style as the Database and Race Setups folders, all closed: *Setting things up* (The Home tab, Database, Results and Records, Race Setup, Session types), *Racing* (Starting a race, The race screen, Race Director flags and penalties, Fuel and pit stops, Time Token Sessions), *Making it yours* (Customization, Audio calls, Look and feel) and *Connecting and sharing* (Live Race, Phones and tablets, Timing hardware, Import export and backup). **Open all** and **Close all** are above the first group. A folder you opened stays open while the app runs.
+3. Try it on a phone width too (narrow the window): the text and the numbered steps wrap.
+
+Good to know:
+1. **I changed four small things in your welcome text, because the app says otherwise.** (a) The Home button is called **Start race**; only a Time Token Session says **Open the session**, so step 4 and the first paragraph name both. (b) Step 1 says a **name and the number of lanes** are needed (the track form asks for a name). (c) Step 3 also says to pick the **track**, because a race setup without a track cannot start (Home says so). (d) "TrackMate" is written **Trackmate**, as everywhere else in the app, with the place: App Settings > Timing Hardware. Everything else is your wording.
+2. **One line was added under the steps:** "No Trackmate yet?" with Simulated cars and the number keys, because Trackmate is the first thing the text asks for. Tell me if you want it removed.
+3. **The folders are my text, written from what the app does today.** Read them and tell me what to change. `tests/help.test.js` checks that every tab, tile, button, key, session type and form option the text names exists in the app, so a rename in the app that the Help does not follow is caught by the tests.
+4. The Help is plain text in `renderer/help.js` (one list called SECTIONS). A new folder is one more entry there.
+5. The tests are now 29 files (`tests/help.test.js` is new); `tests/live.test.js` and `tests/screens.test.js` have new checks for the tiles and the Help tab.
+6. The rows of sub-tabs now wrap onto a second line in a narrow window (below 700 pixels). App Settings has six sub-tabs now, and in a narrow window the last ones ran off the screen.
+
+## What to try (0.86.0): a picture for every start light and every race state
+**What this is.** A Start lights picture set was two pictures (lit and unlit) used for all five lights in every state. Now it is a grid: every light can have its own picture in every state of the race, such as the yellow flag.
+
+1. **Customization > Image Settings > New picture set**, and choose **For: Start lights**. You see a grid. The rows are **Light off**, **Light on** and one row per race state (Ready, Racing (green flag), Paused, Heat finished, Finished, Yellow flag, Red flag). The columns are **All lights** and **Light 1** to **Light 5**. Click a cell to choose a picture; the small x next to it removes it again.
+2. Try this: put a picture in *Light on / All lights* and one in *Light off / All lights*. Every empty cell now shows the picture it will use, dimmed. Then put a picture in *Yellow flag / All lights*, and another one in *Yellow flag / Light 3*. The cells and the **Preview** at the top follow (choose Yellow flag in the Preview list).
+3. **Layout Editor:** select a **Start Lights** widget, choose the set under *Picture set*, and for the Yellow flag choose *lights on: All 5 lights* (the lights options of the widget are as before). In a race press **Y**: the lights show your yellow pictures, with the one for light 3 where you put it. The same on the second screen and on a phone.
+4. **A set made before 0.86.0** (Light on and Light off only) opens in the grid with those two filled in and looks exactly as before.
+
+**Which picture a light uses.** A light that is on looks for: the picture of that light in that state, the picture of all lights in that state, the Light on picture of that light, and then Light on for all lights. The countdown always uses Light on. A light that is off uses Light off of that light, then Light off for all lights. A light without any picture is a plain round light (with the colour of the widget's settings), also when other lights have one.
+
+Good to know:
+1. **The grid is turned the other way round from my proposal** (the states are rows, the lights are columns): nine rows across the width would not fit on a smaller screen, and the flag picture sets already have a row per state.
+2. **A light that is off has no picture per state.** It uses Light off (of that light, or of all lights). Say so if an unlit light should look different in a state, for example during a red flag.
+3. **How many lights are on in a state, and their colour, are still the widget's settings** (and the race setup choice *Start lights after the race has started*). The grid only decides how a light looks.
+4. **A fix that came along:** the pictures of a start lights set were drawn at their own pixel size instead of fitting in the light. They now fit (a picture of any size is drawn at the size of the light), so a large picture no longer covers the other lights.
+5. **Removing a picture** takes the cell out of the set: nothing empty is stored. A set can hold 54 pictures, each shrunk to at most 512 pixels, so a full grid makes a large database file. Fill in what you need.
+6. **Export, Import and the complete backup** take the whole grid along; the tests check this.
+7. The tests (`tests/timing.test.js`, `tests/widgets.test.js`, `tests/screens.test.js`, `tests/transfer.test.js`) cover: the fallback order for lit and unlit lights, every state (including Paused, Ready, Heat finished and Finished), a flag-following race setup, an old two-picture set, a set without pictures, the editor (54 cells, dimming, preview, removing, saving, an old set opening), the export, and the picture size in the style sheet.
+
+
+## What to try (0.87.0): more spoken calls, part 1: race progress, gaps and battles
+**What this is.** The first third of the extra audio calls you asked for. Two new folders in **Customization > Audio Settings** (open or make an audio set): **Race progress** and **Gaps and battles**. Part 2 (laps and records, pits and fuel, penalties, time tokens, safety calls) and part 3 (conditions such as "only for driver X", and a "not again within N seconds" pause) follow in the next versions.
+
+1. **Race progress** (laps to go, minutes to go, race distance, the last lap, the next heat). Open the folder and look at the new calls:
+   - **Laps to go in a race by laps.** The box *When this many laps are left* takes numbers separated by commas, for example `5, 3`. Each one is said once, when the leader has that many laps left. Sentence: `{left} to go, {driver} leads`.
+   - **Minutes to go** in a timed race or a qualifying. *When this many minutes are left* takes whole minutes, for example `5, 1`. Said once each.
+   - **Another driver starts the last lap** (not the leader, who has the last lap call). Off until you switch it on.
+   - **The next heat is ready** (said while the race waits between two heats) and **A heat is finished** (said instead of "The race is finished" after every heat except the last one).
+2. **Gaps and battles** (all three are off until you switch them on, because they are talkative):
+   - **A driver closes in on the car in front.** *Closer than (seconds)* is the gap, from 0.1 to 30. Sentence for example `{driver} is {gap} behind {other}`.
+   - **A battle for a place.** Said when two drivers have been that close for *this many laps in a row* (2 to 20, default 3).
+   - **A driver is lapped by the leader**: `{driver} is lapped by {other}`.
+3. Try it: in a set, switch on *Gaps and battles > closes in*, give it a gap of 5 seconds, and run a race with two or more Simulated cars. Press **Test** on a call to hear the sample sentence. For laps to go, run a race of 6 laps and listen for "3 to go".
+4. **New words you can use in a sentence** (the list under each call and the table at the bottom show where they work): `{gap}` (for example "0.8 seconds", or "12 seconds" when it is 10 or more), `{lapsdown}`, `{heat}`, `{heats}`, `{car}`, `{best}` and `{track}`. `{heat}` and `{heats}` also work in the pre-race call, in Lights out and in The race is finished, so "Heat 2 of 3, at {track}" is possible.
+
+Good to know:
+1. **Sets you made before keep working.** A set without the new settings says *3 laps to go* and *1 minute left* (the defaults), the talkative calls (closing in, battle, lapped, another driver on the last lap) stay off, and the closing gap is 1 second. An empty list means "never".
+2. **The gap is measured at the line**, each time the chasing car completes a lap, from the lap times (including time penalties). It is not a live gap while the cars are on the track, so a call comes a little after the pass, not during it.
+3. **Said at most once per approach.** After a closing-in call the same two cars are not called again until the gap has been more than one and a half times the setting. At most two closing or battle calls are made after one lap, so a pack does not talk over itself. Nothing is said about a car that is in the pits, disqualified, retired or already finished, nor about the car in front being in the pits.
+4. **Lapped** is judged when the lapped car completes a lap, as soon as the leader has completed more laps than before.
+5. **The last lap call** is still the leader's. The new "another driver" call is said at most once per driver, and not for the driver the last lap call was about.
+6. **Practice and qualifying** compare best laps, so "closes in" there means "within the gap of the best lap in front of him".
+7. The tests (`tests/audio.test.js`, `tests/engine.test.js`, `tests/screens.test.js`, `tests/live.test.js`, `tests/help.test.js`) cover: every new call, its once-only rule, the old-set defaults, the limits of every field, saving, editing and duplicating a set, the engine's gap calculation (new function `gapInfo`), and complete simulated races (laps to go, closing in, a three-heat race with every spoken heat call in order). The Help tab text for Audio Settings mentions both folders.
+
+## What to try (0.88.0): more spoken calls, part 2: records, pits, penalties, safety, time tokens
+**What this is.** The second third of the extra audio calls: 13 new calls and a handful of new words for your sentences. They are in **Customization > Audio Settings** (open or make an audio set). There is one new folder, **Safety**, between *Flags* and *Finish*. Part 3 (conditions such as "only for driver X", and a "not again within N seconds" pause) is the next version.
+
+**All 13 new calls are off until you switch them on**, in a new set and in a set you made before. That keeps a set from before 0.88.0 exactly as quiet as it was.
+
+1. **Laps and records**
+   - *A driver completes the first lap*: `{driver} completes the first lap, {time}`. Said after a record call, if the lap was also a record.
+   - *A lap close to the track record (you choose how close)*: the box *Said when a lap is at most this close to the track record (seconds)* takes 0.01 to 5, default 0.1. Sentence: `{driver} is {off} off the track record`. Only on a track that has a record. A lap that beats the record has its own call, so it is not "close". A close lap that is also the fastest lap or a personal best says both calls, if both are on.
+   - The three record calls (fastest lap, track record, personal best) can now say `{improved}` (how much better the lap was than the best before it, for example "0.12 seconds") and `{record}`.
+2. **Pit and fuel**
+   - *A car has used half of its fuel*: once, until the tank is filled again. A car that starts with half a tank or less is not told.
+   - *A car has refuelled*: said when the pit stop is over, with `{refuelled}` (litres), `{fuel}` (litres in the tank now) and `{pit}` (how long the stop took). It comes before "leaves the pits". Only when fuel was put in.
+   - *A car leaves the pits* can now say `{pit}` and `{fuel}`.
+3. **Penalties**: *a special penalty has been served*, *is forgiven*, and *time is added to a driver*. **The last two are also said in the review after the race**, because they change the result: press Forgive or add time and you hear it. Points taken off or given back in the review are still not announced. Sentence for the time: `{added} added to the time of {driver}` ("5 seconds").
+4. **Safety** (new folder)
+   - *A lane calls for the marshal (the Call button)*: `{driver}`, `{lane}`. Said after the yellow flag call, which the Call button also raises.
+   - *A car has not completed a lap for a while*: the box *Said when a car has not completed a lap for (seconds)* takes 5 to 600, default 30. It counts from the car's last lap (or the start) and is said **once for each stretch without a lap**; after the car completes a lap, the next quiet stretch is announced again. Not for a car in the pits, finished, retired, disqualified or out of fuel, not for a lane without paid time in a Time Token Session, and not while the race is paused.
+   - *The Trackmate connection is lost* and *is connected again*: only **during a race** (countdown, running or paused). Connecting the Trackmate before the start says nothing, and the first look at the connection never says anything.
+5. **Time tokens**: *Time is added to a lane*: `{added}` ("5 minutes", "1 minute 30 seconds"), `{seconds}`, `{lane}`, `{driver}`. Said when time is bought for a lane that is running, idle or out; also while the session is paused. Taking time back (Undo, minus buttons) says nothing. *A lane is freed*: said when the operator clears a lane, not when a period simply runs out.
+6. **New words**, in the table at the top of the audio set (it says where each works). Every call about a driver now also has `{lane}`, `{points}` (his penalty points; in the penalty call it is still the points just given), `{fuel}` (empty in a race without fuel) and `{gapahead}` (the gap to the car in front right now, empty for the leader). Every call has `{record}` (the track record, empty if the track has none). New in single calls: `{improved}`, `{off}`, `{pit}`, `{refuelled}`, `{added}`.
+7. Try it: make an audio set, open *Safety*, switch on *A car has not completed a lap for a while*, set it to 10 seconds, and run a practice with Simulated cars off: after 10 seconds without pressing a lane key, you hear it. In a race with fuel, switch on *half of its fuel* and *has refuelled*. In a Time Token Session, switch on *Time is added to a lane*, press +5 on a lane and listen.
+
+Good to know:
+1. **Gap wording changed slightly:** a whole-second gap is now spoken "3 seconds", not "3.0 seconds" (also in the closing-in calls of 0.87.0).
+2. **A close lap needs a track record.** A track with no laps yet has none, so the close-to-record call stays quiet there. The record is the one the race starts with, and it moves when a lap beats it.
+3. **"No lap for a while" is measured on the race clock** and is checked at every look at the race (about 10 times a second), so it can be up to a moment late. After a pause the count continues where it was.
+4. **The words are empty when they do not apply** (for example `{gapahead}` before anyone has a lap), and a sentence leaves out an empty word.
+5. **Old sets** keep their sentences; the new settings (0.1 seconds, 30 seconds) are filled in when you edit and save the set.
+6. The tests (`tests/audio.test.js`, `tests/screens.test.js`, `tests/live.test.js`, `tests/tokenrace.test.js`, `tests/help.test.js`) cover every new call, its once-only and off-by-default rules, the limits of both settings, the review calls, the exclusions of the no-lap call, the Trackmate cases, the new words, saving, editing and duplicating, and complete runs of the race screen and the Time Token Session. The Help tab (Audio calls) names the new folders.
+
+## What to try (0.89.0): more spoken calls, part 3: "Only if" under a sentence, and "Not again within" for a call
+**What this is.** The last third of the extra audio calls. In **Customization > Audio Settings** (open or make an audio set) every sentence of a call has an **Only if…** box, and every call has a **Not again within (seconds)** row. A set from before 0.89.0 is unchanged: no sentence has conditions and no call has a wait.
+
+1. **Only if…** (under each sentence, closed to begin with; a short summary of what is set shows next to it, for example *Only if… (Sam, top 3)*). Inside:
+   - *the driver is* **anyone** or one of the drivers of your database. The driver is the one the call is about, the one `{driver}` says (in "A driver moves up a place" that is the driver who moves up).
+   - *the driver is in the top* N: his position in the race at that moment (1 = leader).
+   - *the lap time is under (seconds)*: only in the calls that say a lap time (fastest lap, track record, personal best, first lap, close to the record).
+   - *the gap to the car in front is under (seconds)*: the same gap `{gapahead}` says. The leader has no car in front, so this does not hold for him.
+   - Empty = no condition. Everything that is filled in must hold. "Under" means really under: with 5.2 a lap of 5.20 does not count.
+   - Calls that are not about a driver (flags, countdown, finish...) have no box. The Time Token calls only have the driver.
+2. **Which sentence is said.** A sentence whose conditions hold is said **instead of** the sentences without conditions (if several do, one of them at random). If none hold, one of the sentences without conditions is said. If every sentence of a call has conditions and none hold, nothing is said.
+   Example: *New leader* has `{driver} takes the lead` and a second sentence `The champion is back in front!` with *Only if the driver is* Alex. When Alex takes the lead you always hear the second one; for everybody else the first one.
+3. **Not again within (seconds)**, at the bottom of each call (not in the Start folder and not in the Finish folder, where a call is said once). Whole seconds, 1 to 3600; empty = no limit. In calls about a driver you also choose *counted* **for the whole call** (nobody hears it again for that long) or **for each driver** (the same driver does not hear it again, others do).
+   - The time is real time, counted from the last time the call **was said**. A call that was held back does not make the wait longer.
+   - A call that is off, or that has no sentence that fits the conditions, does not start a wait.
+   - Every audio set has its own waits, and every call its own. **A new race screen starts with no waits.** The waits carry on from one heat to the next heat of the same race.
+4. Try it: open *Positions > A driver moves up a place*, set *Not again within* 30 seconds; in a race with three or more cars you now hear at most one of those calls every 30 seconds. Or open the *Laps and records > Fastest lap* call, add a second sentence `Rocket lap, {driver}!` and under *Only if…* put *the lap time is under* 5 seconds: lap times below 5 seconds get the second sentence, slower fastest laps the first.
+5. The **Test** button of a sentence always speaks it: it ignores the conditions and the wait, because they are about a real race.
+
+Good to know:
+1. **Export, Import and Duplicate take it along.** A sentence "only for Kim" brings Kim with it when you export the audio set and after import it is for the imported Kim. If the driver is not in the export, or is deleted from the database, the sentence stays "for a driver that is gone" (shown that way in the box), so it is not said for everybody. Pick another driver or *anyone* to change it.
+2. **It is checked against what the race knows at that moment:** the position, the gap and the lap time are those of the moment of the call, which is when a lap is completed for most calls. A condition about something that is not known (a position before the start, a gap in a Time Token Session) does not hold.
+3. **What it cannot do (yet):** "anyone except driver X", "either of two drivers" and a condition on a car instead of a driver. Tell me if you want any of these.
+4. The tests (`tests/audio.test.js`, `tests/screens.test.js`, `tests/live.test.js`, `tests/tokenrace.test.js`, `tests/transfer.test.js`, `tests/help.test.js`) cover every condition on its own and together (including the exact edge of "under"), the choice between sentences, the wait (to the millisecond, for each driver, per call and per set, new race, nothing for calls that said nothing), the editor (boxes in the right calls, limits, empty = removed, saving, editing, duplicating, a driver that is gone, boxes that stay open), export and import of the driver link, and complete runs of a race and of a Time Token Session.
+
+## What to try (0.90.0): a one-click builder and installer for the Mac
+Mac version of `build-windows.bat` and `build-linux.sh`. On a Mac, in the SlotForgeTiming folder:
+1. Install Node.js (LTS, version 18 or newer) from https://nodejs.org.
+2. Double-click **`build-mac.command`**: Finder opens it in Terminal. It installs what it needs, runs the tests and makes the programs. The first time it takes a few minutes and needs internet. If macOS offers to install the *command line developer tools* along the way, choose Install and run the file again.
+   - Because the zip came from the internet, macOS may refuse to open the file ("Apple cannot check it for malicious software"). Right-click it, choose **Open**, and then **Open** again. Or open Terminal, type `cd ` (with a space), drag the SlotForgeTiming folder into the window, press Enter and run `bash build-mac.command`. If it says "permission denied": `chmod +x build-mac.command`.
+3. It puts two files in the **dist** folder: `SlotForgeTiming-<version>-mac.dmg` (open it and drag SlotForge Timing onto Applications) and `SlotForgeTiming-<version>-mac.zip` (the same app in a zip, nothing to install). It is **one app for both kinds of Mac**, Apple Silicon (M1 and newer) and Intel. If only the .dmg or the .zip fails, you still get the app and the script says so.
+4. At the end it asks whether to **install the app for you**: the app is copied to `/Applications` (or to the Applications folder in your home folder, if you may not write in `/Applications`). No password, nothing else is touched. It takes off the "downloaded from the internet" mark, and gives the copy a signature for this Mac if it has none (an Apple chip will not start an app without one). `./build-mac.command --install` does it without asking, `--no-install` only makes the files, `./build-mac.command --uninstall` removes it again (your races and settings are kept). Add `--no-pause` to not wait for Enter at the end. It refuses to run with sudo, it refuses to replace or remove the app while it is open (it asks you to quit it first), and it refuses on a computer that is not a Mac (and points to the other builders).
+5. **Sharing it with another Mac:** the app is *not* signed with a paid Apple Developer certificate, so on another Mac the first time you right-click the app and choose **Open**, then **Open** again (macOS 15 and later: System Settings > Privacy & Security > scroll down > **Open Anyway**). On the Mac that made the app, it just opens. If you have an Apple Developer account and want the app signed and notarized (no warning anywhere), tell me: that needs your certificate, and I have to build in the settings for it.
+6. **Mac things:** your races and settings are in `~/Library/Application Support/slotforge-timing`. The menu is in the Mac menu bar at the top of the screen (the "press Alt for the menu" of Windows and Linux does not apply). Closing the window quits the app, as on Windows. The first time, macOS asks whether the app may accept incoming network connections (for Network access and the phone page): choose Allow. The Trackmate shows up in *Find the Trackmate (COM port)* as something like `usbmodem...` or `usbserial...`.
+7. **Not tried on a real Mac yet.** The script is tested with stand-ins for npm and for the Mac tools (`tests/mac.test.js`, 48 checks: the steps and their order, the files, installing in both places, replacing an older copy, the app being open, uninstalling, every failure, a missing Node.js, a computer that is not a Mac). I changed the script and the settings on purpose in 33 ways to see that the tests notice each one; one slipped through at first (a path that is not a folder), and there is a check for it now. What I could not run here: the real build (`electron-builder` can only make a .dmg on a Mac), the merge of the two kinds of Mac into one app, and the app itself. The script is also written for the old bash 3.2 that macOS has: the test refuses newer features, but I have no Mac bash here to run it on. If `build-mac.command` stops somewhere, send me what Terminal shows.
+8. **The icon** is the same round `icon.png` as on Windows and Linux. A Mac icon is normally a rounded square with a little space around it, so this one looks a bit larger and rounder than the apps next to it in the Dock. If you want a Mac version with space around the circle, tell me how much.
+
+## What to try (0.91.0): Delta Timers, a new folder of widgets in the Layout Editor
+A **Delta Timer** is a time widget with a coloured badge on its right side that shows how far a lane is from another time. **Green with ▼ and a minus (▼ −0.045) = faster, red with ▲ and a plus (▲ +0.321) = slower.** A negative difference is a faster one, so it is green. The badge is a solid block with a bold number, so it can be read from across the room.
+1. Open **Customization > Layout Editor**. The widget list has a new folder, **Delta Timers**, with eight widgets: *Laptime Delta*, *Average Lap Delta*, *Median Lap Delta*, *Best Lap Delta*, *Personal Best Delta*, *Pitstop Time Delta*, *Session Record Delta* and *Track Record Delta*. They are the widgets that show one single time (the last-laps list is not one of them). Each is placed on a lane, like the ordinary widget.
+2. The left side of a Delta Timer is the ordinary widget (the *Personal Best Delta* shows the lane's personal best just as the *Personal Best* widget does; the *Laptime Delta* has the settings of the *Laptime* widget and the record deltas the *Show who set it* setting of the record widgets); the right side is the badge.
+3. **What is compared** (the first setting). You choose one of these for the widget (the whole sentence of the choice is also written under the box, because the settings panel is narrow); you can put several copies on the page with different choices:
+   - *This lane's value against theirs* (the static one): for example the personal best of this lane against the personal best of the other lane. It only changes when one of the two values changes.
+   - *This lane's last lap against their value* (the live one): the lap this lane has just driven against the other lane's personal best, best lap and so on. It changes with every lap. This is the "how am I doing against their record" tracker.
+   - *This lane's last lap against its own value* (against itself): for example your last lap against your own personal best. No other lane is needed.
+   Not every widget has all three: the *Average*, *Median*, *Best Lap* and *Personal Best* deltas have all three; the *Session Record* and *Track Record* deltas have the first two; the *Laptime Delta* has two: its last lap against theirs, and its last lap against its own best lap (a lap time only has the one, last lap, number, so there is no live one); the *Pitstop Time Delta* only compares pit stops (and says so in the settings).
+4. **Compare with**: *a chosen lane*, *the leader*, *the fastest in this race* (the lowest number of all the cars, for the pit stop widget the fastest pit stop), *the track record* or *the session record*. Under *a chosen lane* the **Which lane** setting appears. Left on the first choice, a widget compares with **the next lane** (and the last lane with lane 1), so two copies on lanes 1 and 2 compare with each other without any setting. A copy of a widget on another lane keeps the lane that was chosen in it: change it there if it should compare with another lane. The *Session Record Delta* and *Track Record Delta* always compare with their own record (the record is what they are for), so they have no *Compare with*.
+5. **The look**: *Decimals of the difference* (3, 2 or 1: -0.456, -0.46, -0.5), *Show an arrow in the badge* (on or off), and three colours: faster (green), slower (red) and equal (grey). The text on the badge turns black or white by itself, whichever reads better on the colour you chose. A difference that rounds to nothing with the decimals you chose is *equal* (grey, no sign). From a minute on it is written 1:02.345. Text size, text colour and background are the usual ones of every widget; the badge keeps its own colours.
+6. **When there is nothing to show**, the badge shows a grey dash. Point the mouse at it (or at any badge) to read why in words: *No time for this lane yet.* (no lap yet), *Nothing to compare with yet.*, *There is no car in the chosen lane.*, or *This is the lane it is compared with.* (a lane compared with itself, for example the leader compared with the leader).
+7. **Leaderboard Editor:** the delta widgets are also in the Leaderboard Editor (they are widgets of one lane), so a row of the Leaderboard can have a column with, for example, the gap to the leader (*Compare with* the leader), to the fastest car or to a record, in every row. Careful with *a chosen lane* and its default *next lane* there: that is the next lane of the track, not the car that is in front in the race.
+8. Try it: place a *Personal Best Delta* on lane 1 and one on lane 2. Start a race with the simulated cars: they compare with each other from the first moment, and the badges follow every lap. Then set one of them to *This lane's last lap against its own personal best* and watch it go green with each lap that beats the personal best. Or put a *Track Record Delta* on every lane, set to *last lap against the record*: each lap shows how far you are from the record.
+
+Good to know:
+1. **No running delta during the lap.** The badge changes when a car crosses the line: it compares completed laps (the last lap) and values that come from completed laps (best, average, median, personal best). It does not move while a lap is being driven; that would need a reference for every point of the track, and the timing only has the lap time. The one exception is the *Pitstop Time Delta*: it uses the pit stop that is running (so it follows the clock while a car stands in the pits) or else the last one.
+2. **The record widgets** compare the lane with a record of this track: the personal best of the lane against the track record (first setting) or its last lap against it (second setting), and the *Session Record Delta* the lane's best lap in this session against the best lap of the session.
+3. **The phone page** (the live page for the phones on your network) does not show the Delta Timers: it has its own fixed list of numbers. Tell me if you want a delta there.
+4. **Old layouts** are unchanged: Delta Timers are new widgets, so nothing existing changes.
+5. The tests (`tests/delta.test.js`, 77 checks; plus new checks in `tests/widgets.test.js`, `tests/screens.test.js`, `tests/live.test.js` and `tests/help.test.js`) cover the sign and the rounding of a difference (including "equal" and the minutes), every widget with every choice of what is compared and of compare with, the dash cases, the colours (only a plain #rrggbb ever reaches the page), the settings of the editor (shown only when they matter), the folder in the palette, a Leaderboard row design with delta columns and a simulated race on the live page where the badges appear, change colour with their sign and show dashes before the first lap. A deliberate-breakage run (changing the code on purpose, in places that matter) was killed by the tests every time. **Not tried in a real race on the hardware yet.**
+
+## What to try (0.91.1): Delta Timers: an outlined look, and the arrow the other way round
+Two changes to the badge of the Delta Timers (0.91.0). Open **Customization > Layout Editor**, place or select a Delta Timer and look at its settings:
+1. **Look of the badge** (new): *Filled (a solid block)* is the look of 0.91.0 and stays the standard. **Outlined** colours only the outline and the text: the inside of the badge is empty, so it looks like the *Live Race* button at the top. The text has the same colour as the outline. The colours are the three that were already there (see 3).
+2. **Arrow in the badge**: the arrow now points **up for a faster time** (green, ▲ −0.045) and **down for a slower time** (red, ▼ +0.321): "you are 0.045 up on the pace". This replaces the tick box. In 0.91.0 it was the other way round (the arrow followed the number: a smaller time = ▼). The choice box has *▲ faster, ▼ slower* (the standard), *▼ faster, ▲ slower* (the old way) and *No arrow*. A widget that you made with 0.91.0 and had the arrow switched off stays without an arrow; one with the arrow on gets the new standard direction. The minus sign for a faster time and the plus sign for a slower one are unchanged.
+3. **The colours** can be chosen per widget: *Colour when faster*, *Colour when slower* and *Colour when equal* (further down in the settings of the widget; the labels no longer say "badge", because with the outlined look they colour the outline and the text). With the filled look the text on the badge turns black or white by itself; with the outlined look the text is the colour you choose, so on a light layout pick a darker green (the standard green is made for dark backgrounds and is pale on white).
+4. Try it: select a Delta Timer, set *Look of the badge* to Outlined, pick a gold *Colour when faster* and see the number and the outline turn gold. Put one widget on *▼ faster, ▲ slower* next to one on the standard to compare the arrows.
+5. The tests (`tests/delta.test.js`, 81 checks, and the editor checks in `tests/screens.test.js`) cover both arrow directions, the old true/false of 0.91.0, the outlined markup and colours (only a plain #rrggbb reaches the page), the style rule and the settings in the side panel. A deliberate-breakage run (11 changes on purpose) was killed by the tests every time.
+
+## What to try (0.92.0): Heats, part 1: clearer settings, and the Heat plan on Home
+The first of four steps to make heat races and round robins easier to set up and fairer. This one makes the settings understandable and shows the plan before you start.
+1. **Race Setup > a Heat-based race.** The settings in *Length and result* now explain themselves: a grey line under each says what it does. *Number of heats* has been renamed **How the heats are planned** (it never chose a number, it chose a plan): *I choose the number of heats* or *Round robin: every driver meets every other driver*. The same for *Each heat is limited by*, *How many heats*, *Overall result counted by* and *Points per position*. Nothing about how heats are made or counted has changed.
+2. **Home > pick the heat race setup and add the participants.** Under the participants there is a new **Heat plan**:
+   - a line with the number of heats and how long they are ("5 heats, each 6 laps." or, for heats with a duration, "3 heats, each 4 minutes (12 minutes of racing in total).");
+   - **a table of the heats by lane**, so you see who races where;
+   - **a warning in red when the drivers do not race the same number of heats** (round robin often makes some drivers race one heat more than others, for example 2 to 3 heats for 7 drivers on 4 lanes). The overall result adds the heats up, so an extra heat is an advantage: that is why it says so. The next steps of this series add ways to even this out;
+   - a closed box **How often every driver races, and in which lane**: a table with the number of heats and the number of times in every lane for every driver;
+   - **Shuffle again**: makes another plan with the same settings.
+3. **The plan you see is the plan that is raced.** Before, the plan was made when the race started and could not be seen before. Now **Start race** takes the plan from Home. The plan is kept with the race setup, so it is the same plan when you come back later; it only changes when you press *Shuffle again*, or when you change the number of participants or the heat settings of the race setup (the plan has to fit them). Choosing another driver for a participant keeps the plan: the plan is about places (participant 1, 2, 3...), not about names.
+4. Try it: make a heat race setup (Round robin, 6 laps) on a track with 4 lanes, put 7 participants on Home and look at the plan; press Shuffle again a few times; then change the setup to *I choose the number of heats* and see the plan follow. Start the race and look at the *Heat schedule* on the race screen: it is the same plan.
+
+Good to know:
+1. **Lanes are only spread over the heats as well as the old way did** (in this plan a driver can be in lane 1 twice in a row). Even lane use ("every driver races every lane") is the next step.
+2. **You cannot edit the plan yet** (swap two drivers, or fix a heat). That comes in the last step; for now you can shuffle until it suits you.
+3. The tests (`tests/heats.test.js`, new, 25 checks; plus new checks in `tests/screens.test.js`, `tests/live.test.js` and `tests/help.test.js`) cover the shuffle that can be played again, the settings of a setup (and the defaults of an older one), the checks on a saved plan, the numbers (heats and lanes per driver, who meets whom, lane spread), the lines above the preview, the Home tab with a heat race (the plan, the warning, Shuffle again, the plan kept, Start race passing it on) and the race using the plan from Home (and its own plan when that one does not fit). A deliberate-breakage run (21 changes on purpose) was killed by the tests every time, apart from one that changes nothing in practice.
+
+## What to try (0.93.0): Heats, part 2: four ways to plan the heats, equal lanes, and seeding from a qualifying
+The second of four steps for heat races. Open **Race Setup**, make or open a *Heat-based race* and look at *Length and result*.
+1. **How the heats are planned** now has four choices:
+   - *I choose the number of heats* (as before): the drivers are spread over the heats you type. If that does not divide evenly, some drivers race one heat more; Home says so in red.
+   - **Every driver races the same number of heats** (new): you type *Heats for every driver*, and the number of heats follows from it. 7 drivers on 4 lanes with 3 heats each is 6 heats (21 places): some heats have 3 cars. Everybody races exactly 3.
+   - *Round robin*: every pair of drivers races in the same heat at least once. New next to it: **Same number of heats for everyone**. *No* (the standard) keeps the old behaviour (the fewest heats; some drivers may race one more). *Yes* adds a few extra heats until everybody has raced as many as the busiest driver. With 7 drivers on 4 lanes that is 7 heats of 4 places and everyone races 4 (in the plan without it some race 2 and some 3).
+   - **Lane rotation** (new): every driver races once in every lane. With at least as many drivers as lanes there are as many heats as drivers and everybody races as many heats as the track has lanes (7 drivers on 4 lanes: 7 heats, 4 each). With fewer drivers than lanes every heat has all drivers.
+2. **Equal lanes, for every plan.** The lanes are now handed out so that every driver uses every lane equally often, give or take one, and a driver who races as many heats as there are lanes (or fewer) never uses a lane twice. This is not left to luck: the lanes are worked out so it always comes out (the tests check 936 plans, from 2 to 14 drivers on 1 to 6 lanes, for all four plans; a wider run while building it covered 2,340 plans without one exception). Home says "The lanes are shared evenly." or, for lane rotation, "Every driver races once in every lane." If a plan from before (a saved one) is not even, Home says so.
+3. **Who races together** (new, for *I choose* and *same number of heats*): *Shuffled* (the standard), **By the latest qualifying** (the fastest drivers race together, the best heat is the last one, so the final heat is the strongest), or **Mixed by the latest qualifying** (every heat has fast and slow drivers, so the heats are about equally strong). It uses the latest qualifying session on the track of the setup. Home tells you what it did: *"Seeded by the latest qualifying on this track (2026-10-01)"*, *"There is no qualifying on this track yet, so the drivers are shuffled"*, *"None of these drivers took part in the latest qualifying, so they are shuffled"* or, when some did not take part, "drivers who did not take part are placed last". Round robin and lane rotation always shuffle: they choose the heats to make everybody meet, so there is no room for seeding.
+4. **Home > Heat plan** shows all of this: the line with the heats, the lines about equal heats and lanes, the table by lane, the box with the numbers per driver, and *Shuffle again*. The plan you see is the plan that is raced; with seeding, a shuffle changes who is in which heat inside the ranking you asked for, and the plan is made again when you change the participants.
+5. Try it: put 7 drivers on a 4-lane track on Home with the plan *I choose* and 3 heats: you see the red warning. Change the setup to *Every driver races the same number of heats*, 3: the warning is gone. Change it to *Lane rotation* and look at the numbers box: a 1 in every lane for every driver. Then drive a qualifying with the same drivers on that track, set *Who races together* to *By the latest qualifying* and see on Home that the line about the qualifying appears and that the best drivers are in the last heat.
+
+Good to know:
+1. **Limits of what is possible.** With few lanes not every pair can meet in lane rotation: on 2 lanes a driver meets at most two other drivers. The Home tab shows it in the table. Round robin is the plan to use when everybody must meet.
+2. **Seeding needs a qualifying on the same track** with standings (the finished qualifying sessions you already have). Standings that are only in a running session do not count.
+3. **You cannot edit the plan yet** (swap two drivers, fix a heat), and the scoring is unchanged: *Overall result counted by* works as before. Averages per heat, dropping the worst heat, a bonus for the fastest lap and a choice of tie-breaker are the next step; finals and a break timer come after that.
+4. A race setup from before has *I choose the number of heats* or *Round robin* and *Shuffled* and *No*: nothing changes for it, except that the lanes are now even.
+5. The tests (`tests/heats.test.js`, now 62 checks; plus new checks in `tests/screens.test.js` and `tests/help.test.js`) cover the settings and their defaults, the four plans (sizes, numbers of heats, who races how often), the lane evenness for 936 plans, the lane colouring, the seeding (fastest together, mixed, drivers without a qualifying, the latest qualifying of the right track), the lines above the preview and the Home tab for all of this. A deliberate-breakage run (43 changes on purpose) was killed by the tests every time except four that cannot change a result (a check that is already guaranteed by how the heats are made, a lane label order, a case where two ways of making the plan come out the same, and the safety net that is only used for impossible numbers). The run also found six places the tests did not guard yet; those have tests now. **Not tried in a real race on the hardware yet.**
+
+## What to try (0.94.0): Heats, part 3: how the heats add up
+The third of four steps for heat races. This one is about the overall result. Open **Race Setup**, make or open a *Heat-based race* and look at *Length and result*. There are five new settings under *Points per position*; every one starts at what you had before, so an existing setup counts exactly as it did.
+1. **How the heats are added up**: *All heats added up* (as before), **The average per heat**, or **Only the best heats of every driver count**. The average is fair when drivers race a different number of heats (a round robin on 7 drivers gives some drivers 2 heats and some 3). With *Only the best heats* a new setting **Heats that count** says how many (standard 2): the best 2 of every driver's heats are added up. A driver who raced fewer heats than that has all of them counted, which is less than the others, and Home warns you.
+2. **Drop the worst heat**: the worst heat of every driver who raced at least two heats does not count. "Worst" means the fewest laps (for a result by laps) or the fewest points (for a result by points); if two heats are equal, the one with less of the other measure (points, for a result by laps; laps, for a result by points) is the worse, then the one with the higher total time, then the later heat. It is applied first: *Drop the worst heat* with *Only the best 2 heats* means the best 2 of what is left. With the average it is the average of the heats that are left.
+3. **Bonus points for the fastest lap of a heat** (only for a result by points): the driver with the fastest lap of every heat gets these extra points in that heat (0 is no bonus; fractions like 0.5 work). If two cars have exactly the same fastest lap, the one who finished higher gets it. The bonus is part of the points of the heat: it is in the points of that row, it counts when you drop the worst heat or count only the best heats, and the heat summary in the results says "12 pts incl. 2 for the fastest lap".
+4. **A tie is decided by**: *The other measure (laps or points), then the fastest lap* (the standard, as before), *The fastest lap first*, *The most heat wins first* (the heats a driver won, among the heats that count) or *The lowest total time first* (the total time of the heats that count; a heat in which a driver set no lap makes the total unknown, so it is the worst; only fair for drivers who drove the same number of laps). Whatever you choose, the other things follow in the order of the standard if the two are still equal. Points or laps always decide before the tie-breaker.
+5. **Where you see it:**
+   - **Home > Heat plan** says how the result is counted in a last line ("Overall result: the average per heat; the worst heat of every driver is dropped; 1 bonus point for the fastest lap of every heat."). The red warning about unequal numbers of heats now tells you when it is not a problem: counted as an average, or when everybody counts the same number of heats (for example only the best 1, or the worst dropped when drivers race 1 or 2 heats), it says that this is fair. Otherwise it also names the average as a way out.
+   - **The race screen**: under *Overall result* the same line, and a **Result** column with the number that counts ("9 avg", "17 (2 of 3 heats)") whenever the counting is the average, the best heats or a dropped heat. *Laps* and *Points* still show everything that was driven. A bonus only (without those) gives the line but no extra column.
+   - **Results and Records and the PDF report**: the same Result column and line, kept with the saved race, so an old result is never re-counted in another way; the bonus is named in the heat summary.
+6. Try it: make a round robin heat race (points) for 7 drivers on 4 lanes with the plan you had, look at Home (red warning), set *How the heats are added up* to *The average per heat* and see that Home says it is fair; set *Bonus points for the fastest lap of a heat* to 1, tick *Drop the worst heat*, race the heats (the simulation will do) and look at the overall table, the saved result and its PDF.
+
+Good to know:
+1. **The Championship Points widget** (in the layouts) still shows the running total of points (with the bonus) plus the points of the current position; it does not know about dropping, the average or the best heats. The overall table, the saved result and the report do.
+2. **A tie-breaker never overrules the points or laps**, only the ties.
+3. **Dropping the worst heat and the best heats** are most fair when everybody races the same number of heats: use the plan *Every driver races the same number of heats* (0.93.0) or *Same number of heats for everyone* in a round robin.
+4. **The phone page** (the live page for the phones on your network) still shows the numbers it showed before.
+5. Not yet: finals (an A and a B final from the heat results), a break timer between heats, and editing the plan on Home. Those are the next step.
+6. The tests (`tests/scoring.test.js`, new, 54 checks; new checks in `tests/heats.test.js` (68), `tests/live.test.js`, `tests/screens.test.js`, `tests/report.test.js` and `tests/help.test.js`) cover the same order as before for the standard (300 random results, by laps and by points), the average, the best heats, dropping, the bonus (ties, no laps, results by laps), every tie-breaker, the column and the lines on Home, the race screen, Results and Records and the report, and the setup form. A deliberate-breakage run (52 changes on purpose) was killed by the tests every time, after 11 places that the first run showed were not yet covered got tests. **Not tried in a real race on the hardware yet.**
+
+## What to try (0.95.0): Heats, part 4: a break between heats, and changing the plan by hand
+The fourth step for heat races (the finals come after this one). Two things: a break timer, and changing the plan on the Home tab yourself.
+1. **A break between heats.** Race Setup > a *Heat-based race* > *Length and result* has two new settings:
+   - **Break between heats (seconds)**: 0 (the standard) is no break timer, the race waits for Start as before. With a number, the race counts down after every heat (not after the last one). You see it in the line under the race ("Heat 1 finished. Heat 2 starts when you press Space in 1:23 or after the break."), in the **Race Info** widget ("Heat 2 of 3 · next heat in 1:23") and on the **Live Race** page next to the title ("Heat finished · next heat in 1:23").
+   - **When the break is over**: *Wait: I press Start for the next heat* (the standard) or *The start lights begin by themselves*. The first changes the line to "The break is over. Press Space for heat 2." and waits. The second does exactly what pressing Start does (the pre-race call if the race has an audio set, then the lights with their random wait).
+   - **Start (or Space) always starts the next heat at once**, also during the break. **Stop** ends the race and saves the heats so far, and nothing starts by itself after it.
+2. **Change the plan by hand.** Home > *Heat plan*: every place in the table of heats is now a button. Click a place, then click another place: the two swap (the selected place has a coloured edge; click it again to let go). A place with a dash is empty, so a driver can move to it: to another lane in the same heat, or to a free place in another heat. A swap that would put a driver in the same heat twice, or leave a heat empty, is refused with a sentence in red. Everything on the page follows the changed plan at once (the lines, the red warnings, the table of how often every driver races in which lane), and **Start race** races the changed plan.
+   - The page says "You changed this plan by hand" and offers **Reset my changes** (the plan that was made comes back). **Shuffle again** also drops your changes.
+   - Your changes are saved with the plan they were made for and shown again later. They stay when you only change the length of a heat, the points, the way of counting or the break. They go away (the plan is made again) when the number of participants or the lanes change, when the heat settings of the plan change (the plan, how many heats, seeding...), when you shuffle, or when the qualifying that the plan was seeded by changes. Choosing another driver for a participant keeps them: the plan is about places.
+3. Try it: put 6 drivers on a 4-lane track on Home with 3 heats, click a place and another one and see the table, the lines and the numbers change; press Reset my changes. Then set a break of 20 seconds with *The start lights begin by themselves* and race the heats (the simulation will do): after every heat you see the countdown and the next heat starts by itself. Press Space during a break to see it start at once.
+
+Good to know:
+1. **Swapping keeps the number of heats and every driver's number of heats the same**, so you cannot add or remove a heat or give a driver an extra heat yet. Moving a driver into a free place changes how many cars the heats have, not how many heats a driver races.
+2. **A changed plan can break the equal lanes** (the lane evenness of 0.93.0 is for plans that were made, not for plans you change): Home then says "The lanes are not shared evenly".
+3. **The break counts real time.** The Race Director page on the phone starts the next heat as before (it ends the break). The phone page itself (the page for phones on your network) does not show the countdown yet; the Live Race page in the program does.
+4. Not yet: the finals (an A and a B final from the heat results). I have some questions about those before I build them.
+5. The tests (`tests/heats.test.js`; new checks in `tests/live.test.js`, `tests/screens.test.js` and `tests/help.test.js`) cover the break (setting and its defaults, the countdown in the line, the widget and the Live Race page, Space during the break, a break that is over, automatic start, Stop during the break with automatic start, no break after the last heat, and a whole race of three heats starting by itself), the swapping (every kind of swap, every refusal, the plan not changed in place, every possible swap in a lane rotation of 9 drivers keeping the plan valid), the key of a plan (what changes it and what does not) and the Home tab (the buttons, selecting, letting go, the swap saved and shown, the numbers following it, Start race racing it, the refusal message, Reset, Shuffle, the changes kept or dropped as above). A deliberate-breakage run (54 changes on purpose) was killed by the tests every time except four safety checks that are covered twice over (a check that a plan that is swapped still fits, and three places where the break is also stopped in another way). That run found a real mistake in my own markup too (an invalid `aria-pressed` on the places), which is fixed. **Not tried in a real race on the hardware yet.**
+
+## What to try (0.96.0): Heats, part 5: finals
+The last step for heat races: after the heats, a final A, or a final B and a final A. You asked for: a setting for no final / A / A and B, the best-placed driver chooses a lane first, both ways of counting (the finals decide the places, or the final is added to the heat result) as a setting, and a length of its own for a final.
+1. **The settings.** Race Setup > a *Heat-based race* > *Length and result* has four new settings:
+   - **Finals after the heats**: *No finals* (the standard, as before), *A final* or *A final and a B final*.
+   - **What the finals decide** (only with finals): *The finals decide the final places* (the standard) or *The result of the final is added to the heat result*.
+   - **Laps in a final** (a race by laps) or **Duration of a final in minutes** (a race by time): 0 is the same length as a heat (the standard).
+2. **Who races in the finals.** After the last heat, the heat result (counted the way you set it) decides. The **final A** has as many drivers as the track has lanes (or all drivers, if there are fewer): the best of the heat result. The **final B** is the next group, as many as the track has lanes, and only when at least two drivers are left over (one driver left over has nobody to race against, so there is no final B). There is never a final C. The final B races first, then the final A. With one lane there are no finals.
+3. **Choosing lanes.** After the heats (and after the final B) the race screen shows a panel *Final A: choose the lanes*: the best-placed driver of the heat result chooses first (a button for every free lane), then the next one, and so on. The driver who is last gets the last free lane without choosing (when only one lane is free). **Pick the rest at random** gives the drivers who did not choose yet the free lanes by lot, **Clear choices** starts again. The grid on the timing page, the widgets and the other screens follow every choice. **The final does not start before every lane is chosen**: Space says "Choose the lanes for Final A first, then press Space.", the Start widget is off, and a break with *The start lights begin by themselves* waits for the lanes too. If the break ran out while the drivers were still choosing, the final does not start by itself afterwards either: you press Start.
+4. **How the finals count.**
+   - *The finals decide the final places*: the drivers of the final A are places 1 and up in the order of that final, then the drivers of the final B in the order of theirs, then everybody else in the order of the heat result. The heat result only decided who raced in which final.
+   - *The result is added to the heat result*: what a driver scores in the final (laps, or points from the same list as a heat, with the fastest lap bonus if you set one) is added to the result of the heats. It is added after the average, the best heats and the dropped heat, so it is never averaged, dropped or left out. The final B scores like the final A. In both ways **the drivers of the final A stay above the drivers of the final B**, and these above everybody else; inside a final the order is the order of the final (first way) or of the sum (second way).
+   - The columns *Laps* and *Points* count everything that was driven, finals included. The table gets a **Final** column ("Final A: 1st", "Final B: 2nd"), and with the final added the **Result** column shows "18 + 10 final = 28".
+5. **Names.** A final is called "Final A" / "Final B" everywhere: the Race Info widget ("Final A · 3 laps left", "next final A in 1:23"), the Start widget ("Start final A"), the *Heat* text variable, the Live Race page, the saved results and the PDF report ("Heats and finals", with the laps of a final under their own heading). The title shared with other screens says "3 heats, each 10 laps, then finals B and A of 12 laps".
+6. **Sound.** Two new calls in the audio sets, in the folder *Race progress*: *The next final is ready* ("Next up: final A") and *A final is finished*. All calls can use a new word, **{final}** (the letter; empty when it is not a final). In a final {heat} and {heats} are empty. The calls for a heat are said as before.
+7. **Home tab.** The *Heat plan* lines tell about the finals ("Then a final A with the best 4 drivers of the heat result, after a final B with the next 2 drivers. In a final the best-placed driver chooses a lane first." and how they count). It cannot name the drivers: that is only known after the heats.
+8. Try it: make a heat race for 6 drivers on a 4-lane track with *A final and a B final*, *Laps in a final* 3, and tick *Simulated cars*. Race the heats, and then watch the panel: choose a lane for the best driver, press **Pick the rest at random**, start the final B, then the final A, and look at the table, the saved result and the PDF. Do it again with *The result of the final is added to the heat result*.
+
+Good to know:
+1. **Stopping a final** saves what was raced, as for a heat: the final counts as raced with the laps so far. Stopping between the heats and the finals saves the heats, and the table shows which final each driver was in ("Final A" without a place).
+2. **The lanes are chosen on the race screen.** The Race Director page on the phone can start the final, but it is refused until the lanes are chosen, and it cannot choose lanes yet.
+3. **The Championship Points widget** counts the points of the finals that are finished, like those of a heat.
+4. **A driver in the final B** can score more than the last driver of the final A when the finals are added, but never ranks above that driver: the groups keep their order. If you would rather have everybody ranked together after adding the finals, tell me.
+5. **Not yet:** a final C, and a different number of drivers per final than the number of lanes.
+6. The tests (`tests/finals.test.js`, new, 66 checks; new checks in `tests/live.test.js`, `tests/screens.test.js`, `tests/heats.test.js`, `tests/timing.test.js`, `tests/report.test.js`, `tests/audio.test.js` and `tests/help.test.js`) cover the sizes of the finals (lanes, drivers left over, one lane), the groups, the choosing (order, a taken lane, the last driver, random, clear), both ways of counting (also with the average, a dropped heat, the best heats, by laps and by points), a whole race with a final B and a final A (the choosing panel, no start before the lanes are chosen, the length of a final, what is saved), a break with automatic start that waits for the lanes, the words in the widgets, the announcer, the Results tab, the report and the Help.
+
+## What to try (0.97.0): the new icon, a PDF button that stands out, a quick builder, and folders in General and Import and Export
+This is the first part of your list of eleven. It has points 1, 7, 8 and 9. Point 6 (GitHub) could not be done yet, see the end. The rest follows in the next versions: the fullscreen widget view (11), the delta timers (5), the yellow flag target lap time (10), and last the extra columns, the PDF choices and the View settings of the Database (2 and 3).
+1. **The new icon.** The dark car on the light grey circle with the red lanes is now the icon of the app (`build/icon.png` and `build/icon.ico`). I did what I did last time:
+   - Your picture is 4167 x 4075 pixels, so about 2% wider than tall, and the edge of its round shape was not a perfect circle. I cut a square out of the middle, and a perfect circle out of that with a smooth edge. What went is a thin strip along the edge (1.4% of the picture): the light grey background and a sliver of the road at the lower left and right edge. The car is untouched. The circle touches the four sides, and the four corners are see-through.
+   - `icon.png` is 512 x 512 pixels. `icon.ico` (the Windows icon) holds 16, 24, 32, 48, 64, 128 and 256 pixels, each made from the same picture.
+   - To see it: run `build-windows.bat` (or `build-linux.sh`, `build-mac.command`): the installer, the portable program, the shortcuts and the title bar use it. If Windows still shows the old icon after installing, that is the icon memory of Windows (see 0.77.0).
+2. **Export to PDF stands out.** The button is filled with the accent colour of your theme, has a small page picture in front of the words, a soft ring around it and is a bit larger than the other buttons. It is on every session and stint in Results and Records, and on the Racing Rules page (I gave that one the same look, so the two are the same). Next to it, *Delete this session* keeps its quiet look so the two cannot be mixed up.
+3. **A quick builder.** `build-windows.bat` took a long time because it runs the check of the app (all the tests, about four minutes) every time, and downloads the building blocks again. There is now a quick way that skips both when they are not needed:
+   - **Windows:** double-click **`build-windows-quick.bat`** instead of `build-windows.bat`.
+   - **Linux:** `./build-linux-quick.sh`, or `./build-linux.sh --quick`. **Mac:** double-click `build-mac-quick.command`, or run `./build-mac.command --quick`. The other options (`--install`, `--no-install`, `--uninstall`, `--no-pause`) work with it.
+   - What it skips: the check of the app (step 2), always, and getting the building blocks (step 1: Electron, the builder and the flag icons) when all three are already in the `node_modules` folder. If one is missing, it gets them once. It says on the screen what it skipped.
+   - It is not possible to skip everything: the first time, the building blocks have to be downloaded (internet needed), because without them nothing can be built. After that, a quick build needs no internet at all.
+   - The check exists to catch a broken app before it is built. The zips I send you have been checked here, so the quick build is safe for them. If you change something in the files yourself, use the normal builder.
+4. **General and Import and Export look like Results and Records.** Both pages are now made of folders with a coloured title bar, a note beside the title and an arrow, with **Open all** and **Close all** above them. A folder you close stays closed while the app runs.
+   - **General:** *Name and welcome*, *Header picture*, *Club logo* and *Database file*. Everything in them works as before.
+   - **Import and Export:** *Complete backup*, *Export* and *Import*. The groups in the Export folder (Database, Look and sound, History) are now boxes of their own. The note of the Export folder shows how many items are ticked.
+   - Network, Timing Hardware and App Theme are unchanged. If you like the look, I can do the same for Network.
+5. **GitHub: not yet.** I tried to connect to https://github.com/theDutchmanJames/SlotForgeTiming in your name, and this session is not linked to a GitHub account, so I cannot see or change the repository. What is needed from you: in claude.ai, open Settings > Connectors, connect GitHub and allow it to use the repository SlotForgeTiming. Then tell me, and I will upload the app, and keep it up to date with a description of every version.
+
+Good to know:
+1. **The icon is the 512 pixel one.** For a Mac, 1024 would be sharper on a Retina screen. Tell me if you want the larger one.
+2. **The quick builder does not check the app, and does not check that the building blocks are the right version.** If a build fails strangely after you updated the files, run the normal builder once.
+3. The tests: `tests/package.test.js` (the colours of the icon, the quick Windows files, and the order of the steps in `build-windows.bat`, followed the way the command prompt does, for a normal and a quick build with and without the building blocks), `tests/linux.test.js` and `tests/mac.test.js` (the scripts are run with stand-ins for npm: which commands run in a normal and a quick build, with all three, one or none of the building blocks, a failing check and a failing build, the quick files, and the other options with them), `tests/icons.test.js` (the new picture of the button) and `tests/screens.test.js` (the button on every session, stint and Racing Rules; the folders of General and Import and Export, Open all and Close all). I looked at the pages in a real browser in a dark and a light theme. I have not built the installer here (that needs your computer).
