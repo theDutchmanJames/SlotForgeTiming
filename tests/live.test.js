@@ -7,8 +7,9 @@ process.on('unhandledRejection', e => { console.log('UNHANDLED:', e.stack || e.m
 const mk = () => new Proxy({ innerHTML: '', style: {}, dataset: {}, hidden: false, value: '', checked: false, disabled: false, classList: { add() {}, remove() {}, toggle() {} } },
   { get: (t, k) => (k in t ? t[k] : () => mk()), set: (t, k, v) => { t[k] = v; return true; } });
 const els = {};
+const fsCalls = []; let fsWas = false; // what the window was asked: full screen or back, and how it was before
 const keyListeners = new Set(); const document = { addEventListener(t, f) { if (t === 'keydown') keyListeners.add(f); }, removeEventListener(t, f) { if (t === 'keydown') keyListeners.delete(f); }, querySelector: () => mk(), querySelectorAll: () => [mk(), mk(), mk()],
-  getElementById: id => els[id] || (els[id] = mk()), documentElement: { dataset: {}, style: { setProperty() {} } }, body: { contains: () => true }, createElement: () => mk() };
+  getElementById: id => els[id] || (els[id] = mk()), documentElement: { dataset: {}, style: { setProperty() {} } }, body: { contains: () => true, appended: [], appendChild(e) { this.appended.push(e); const body = this; try { e.parentNode = { removeChild(c) { body.appended = body.appended.filter(x => x !== c); return c; } }; } catch (x) { /* not settable */ } return e; } }, createElement: () => mk() };
 const store = {
   tracks: [{ id: 't1', name: 'Living room', lanes: 2 }, { id: 't4', name: 'Big track', lanes: 4 }],
   drivers: [{ id: 'd1', name: 'Alex', nickname: 'Speedy', flag: 'NL' }, { id: 'd2', name: 'Sam' }, { id: 'd3', name: 'Kim' }, { id: 'd4', name: 'Lee' }],
@@ -20,7 +21,7 @@ const sent = { stat: null, dyn: null, n: 0, last: null, log: [], gaps: 0 }, cbs 
 const merge = (state, m) => vm.runInContext('LiveShare', ctx).applyDynamic(state, m);
 const plain = d => { const x = { ...d }; delete x.seq; return x; }; // a whole state without a message number (what an older race window sends): always accepted
 const api = { liveStatic: s => { sent.stat = JSON.parse(JSON.stringify(s)); sent.dyn = null; sent.last = null; }, livePush: d => { const m = JSON.parse(JSON.stringify(d)); sent.last = m; sent.log.push(m); sent.n++; const r = merge(sent.dyn, m); if (r.ok) { if (!r.stale) sent.dyn = r.state; } else { sent.dyn = null; sent.gaps++; } },
-  liveGet: async () => JSON.parse(JSON.stringify({ stat: sent.stat, dyn: sent.dyn })), onLive: f => { cbs.dyn.push(f); return () => {}; }, onLiveStatic: f => { cbs.stat.push(f); return () => {}; }, liveOpen: async () => ({ second: true }), liveCommand: c => { cmds.push(c); cbs.cmd.forEach(f => f(JSON.parse(JSON.stringify(c)))); }, onCommand: f => { cbs.cmd.push(f); return () => { cbs.cmd = cbs.cmd.filter(x => x !== f); }; },
+  liveGet: async () => JSON.parse(JSON.stringify({ stat: sent.stat, dyn: sent.dyn })), onLive: f => { cbs.dyn.push(f); return () => {}; }, onLiveStatic: f => { cbs.stat.push(f); return () => {}; }, liveOpen: async () => ({ second: true }), windowFullscreen: async on => { fsCalls.push(on); return { on: !!on, was: fsWas }; }, liveCommand: c => { cmds.push(c); cbs.cmd.forEach(f => f(JSON.parse(JSON.stringify(c)))); }, onCommand: f => { cbs.cmd.push(f); return () => { cbs.cmd = cbs.cmd.filter(x => x !== f); }; },
   schema: async () => schema, getSettings: async () => ({ theme: 'dark', rules: 'Be kind. No bumping.' }), setSettings: async p => ({ ...(ctx.__ready ? vm.runInContext('state.settings', ctx) : {}), ...p }), dbPath: async () => 'x',
   list: async e => JSON.parse(JSON.stringify(store[e] || [])), customFields: async () => [], linkedLaps: async () => 0,
   saveSession: async (s, l) => { saved.push([s, l]); }, add: async () => ({}), update: async () => ({}), remove: async () => {} };
@@ -535,6 +536,22 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   say('Live Race landing page: a tile for every page, including the Race Director', /Race timing/.test(body().innerHTML) && /Leaderboard/.test(body().innerHTML) && /Driver stats/.test(body().innerHTML) && /data-go="director"/.test(body().innerHTML) && !/data-go="director" disabled/.test(body().innerHTML));
   run('LiveView.go')('timing');
   say('Live Race timing page builds the layout read-only (no control buttons)', run('LiveView.nodes()').length > 0 && run('LiveView.nodes()').every(n => !n.w.type.match(/^(start|pause|stop|yellow|red)$/)));
+  // ---------- the Race timing page of Live Race: only the widgets, as large as the window allows ----------
+  { const cls = new Set(), hostC = { innerHTML: '', classList: { add: c => cls.add(c), remove: c => cls.delete(c), contains: c => cls.has(c) } };
+    await run('LiveView.mount')(hostC, {});
+    say('the landing page of Live Race keeps its bar and is not the clean page', !cls.has('lv-clean') && E('lv-body').innerHTML.includes('lv-tiles'));
+    run('LiveView.go')('timing');
+    say('the Race timing page of a running race is the clean page: the widgets in a full window view, no bar (it is a bar over the widgets that shows when the pointer moves)', cls.has('lv-clean') && !cls.has('lv-show') && E('lv-body').innerHTML.includes('class="fullview"') && E('lv-body').innerHTML.includes('id="lv-canvas"') && !E('lv-body').innerHTML.includes('rt-stage'));
+    say('...and it is as large as the window allows: no space kept free below the page (the width follows the whole height of the window)', /100vh - 0px/.test(E('lv-canvas').style.width));
+    say('...without any button: the control widgets are left out', run('LiveView.nodes()').length > 0 && run('LiveView.nodes()').every(n => !run('Widgets.def')(n.w.type).button));
+    hostC.onpointermove(); say('a movement of the pointer shows the bar', cls.has('lv-show'));
+    hostC.onpointerdown(); say('so does a touch (a phone has no pointer to move)', cls.has('lv-show'));
+    await wait(2700); say('...and it goes away again after a moment', !cls.has('lv-show') && cls.has('lv-clean'));
+    run('LiveView.go')('board'); say('the other pages have their bar as before', !cls.has('lv-clean') && !cls.has('lv-show'));
+    run('LiveView.go')('timing'); hostC.onpointermove(); say('back on the timing page it is clean again, and the bar can be shown again', cls.has('lv-clean') && cls.has('lv-show'));
+    run('LiveView.unmount')(); say('leaving the Live Race pages takes the clean look and the pointer handling away', !cls.has('lv-clean') && !cls.has('lv-show') && hostC.onpointermove === null && hostC.onpointerdown === null);
+    await run('LiveView.mount')(document.createElement('div'), {}); // (the page that follows uses its own host)
+  }
   run('LiveView.go')('board');
   say('Leaderboard page shows the drivers', E('lv-board').innerHTML.includes('Alex') && E('lv-board').innerHTML.includes('Sam'));
   say('...and the size slider is not offered there (the page has no widget frame to fit)', !body().innerHTML.includes('Size of the rows') && !body().innerHTML.includes('id="lb-scale'));
@@ -1171,11 +1188,40 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
 
   // ---------- leaving the race screen before the start: the race keys stop working on other pages ----------
   await openRace({ name: 'Leave', sessionType: 'practice', layout: 'C1' }, store.tracks[0], rows(1, 2));
-  say('on the race screen the race keys are active', keyListeners.size === 1 && phase() === 'ready');
+  say('on the race screen the race keys and the F key are active', keyListeners.size === 2 && phase() === 'ready');
   run("state.tab='home'"); await run('render()'); await wait(30);
   say('after leaving the race screen no key handler is left', keyListeners.size === 0 && run('live.offTm') === null && run('live.offCmd') === null);
   await openRace({ name: 'Back', sessionType: 'practice', layout: 'C1' }, store.tracks[0], rows(1, 2));
-  say('coming back works again: one key handler, race ready', keyListeners.size === 1 && phase() === 'ready'); key('s'); run("state.tab='home'"); await run('render()'); await wait(30);
+  say('coming back works again: the two key handlers, race ready', keyListeners.size === 2 && phase() === 'ready'); key('s'); run("state.tab='home'"); await run('render()'); await wait(30);
+
+  // ---------- the fullscreen widget view of the race screen ----------
+  await openRace({ name: 'Fullscreen', sessionType: 'practice', layout: '' }, store.tracks[0], rows(1, 2));
+  { const emit = (k, o = {}) => [...keyListeners].forEach(f => f({ key: k, target: { matches: () => false }, preventDefault() {}, ...o })), btn = () => E('fsbtn'), clickBtn = () => btn().onclick({ currentTarget: { blur() {} } });
+    const k0 = keyListeners.size; say('the race screen listens for two things: the race keys and F (and nothing else)', k0 === 2);
+    const opened = () => !!run('live.fsView');
+    say('the race screen has a Full screen widgets button in the bar under the page, and the hint says F opens the view and Esc closes it', E('view').innerHTML.includes('id="fsbtn"') && E('view').innerHTML.includes('>Full screen widgets</button>') && /F shows the widgets full screen \(Esc closes it\)/.test(E('view').innerHTML));
+    say('the view is closed at the start', !opened() && typeof btn().onclick === 'function');
+    clickBtn(); await wait(20);
+    say('the button opens the view: the widgets of the layout again, without any button', opened() && run('live.fsView.nodes.length') > 0 && run('live.fsView.nodes').every(n => !run('Widgets.def')(n.w.type).button));
+    say('...in a layer over the whole page, with a way out; it lives in the page (document.body)', document.body.appended.includes(run('live.fsView.root')) && run('live.fsView.root.className') === 'fullview');
+    say('...and the window goes full screen too', fsCalls.at(-1) === true);
+    await wait(250);
+    say('the widgets of the view are painted like those of the race screen (here: the names of the drivers)', run("live.fsView.nodes.find(n => n.w.type === 'name' && n.w.lane === 0)").val.innerHTML === 'Alex');
+    say('the race screen keeps its own widgets, and the view has its own copies', run('live.fsView.nodes[0].el') !== run('live.nodes[0].el'));
+    emit('Escape'); say('Esc closes the view, and the window goes back as it was', !opened() && fsCalls.at(-1) === false);
+    say('...the key listeners are the same as before (Esc stops being listened for)', keyListeners.size === k0);
+    emit('f'); say('F opens the view', opened()); await wait(10);
+    emit('F'); await wait(10); say('F again closes it (capital F too), and the window goes back as it was', !opened() && fsCalls.at(-1) === false);
+    clickBtn(); await wait(10); clickBtn(); say('the button also closes it', !opened());
+    fsWas = true; clickBtn(); await wait(20); emit('Escape'); await wait(10); say('a window that was full screen already stays full screen when the view closes', !opened() && fsCalls.at(-1) === true); fsWas = false;
+    const before = fsCalls.length; run('live.fsKey')({ key: 'f', target: { matches: () => true } }); say('F typed into a text field does nothing', !opened() && fsCalls.length === before);
+    emit('f', { ctrlKey: true }); emit('f', { altKey: true }); emit('f', { metaKey: true }); say('Ctrl+F, Alt+F and Cmd+F do nothing', !opened());
+    emit('Escape'); say('Esc without the view does nothing', !opened());
+    const phaseBefore = phase(); emit('f'); say('the race itself is not touched by opening the view (no flag, no pause, no stop)', opened() && phase() === phaseBefore); emit('Escape');
+    emit('f'); run("state.tab='home'"); await run('render()'); await wait(30);
+    say('leaving the race screen closes the view, and no key handler is left (F stops being listened for)', !opened() && keyListeners.size === 0);
+    emit('f'); say('...F does nothing any more', !run('live.fsView'));
+  }
 
   console.log(fails ? fails + ' LIVE PAGE TESTS FAILED' : 'ALL LIVE PAGE TESTS PASSED'); process.exit(fails ? 1 : 0);
 })();

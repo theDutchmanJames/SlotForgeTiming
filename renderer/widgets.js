@@ -320,6 +320,17 @@
   const sampleOf = (d, lane, widget) => (typeof d.sample === 'function' ? d.sample(lane || 0, widget) : d.sample || '');
   const uid = () => Math.random().toString(36).slice(2, 10);
   const heightOf = layout => Math.round(U * layout.ratioH / layout.ratioW);
+  // A layout as a page without buttons shows it (the Live Race pages, the fullscreen view): the control widgets (Start, Pause, Stop, the flags) are left out,
+  // and widgets of lanes the track does not have too. When the controls sat at the bottom, the empty strip they leave is cut off, with the same margin below the
+  // widgets as there is above them, so the widgets fill the page. { layout, cut }: the layout to build (the proportions changed when something was cut) and how many units were cut.
+  const withoutControls = (layout, lanes) => {
+    const H = heightOf(layout), has = w => { const d = def(w.type); return d && (!d.perLane || w.lane < lanes); };
+    const shown = layout.widgets.filter(w => has(w) && !def(w.type).button), gone = layout.widgets.some(w => has(w) && def(w.type).button);
+    if (!gone || !shown.length) return { layout, cut: 0 };
+    const top = Math.max(0, Math.min(...shown.map(w => w.y))), h = Math.min(H, Math.max(1, Math.round(Math.max(...shown.map(w => w.y + w.h)) + top)));
+    if (h >= H) return { layout, cut: 0 };
+    return { layout: { ...layout, ratioH: layout.ratioW * h / U }, cut: H - h };
+  };
 
   // ---- geometry ----
   // Snap a position (or a moving edge): pull to a nearby edge of another widget, otherwise to the grid.
@@ -421,7 +432,7 @@
     return L;
   }
 
-  const api = { tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, LANES, bbox, colorsOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, resolveOpt, heightOf, moveWidget, resizeWidget, newWidget, defaultLayout };
+  const api = { tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, LANES, bbox, colorsOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, resolveOpt, heightOf, withoutControls, moveWidget, resizeWidget, newWidget, defaultLayout };
   root.Widgets = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -37,6 +37,27 @@ const LiveCanvas = (() => {
       Object.assign(n.el.style, Frame.style(out.bg || n.base.bg, n.w, 'var(--line)', n.layout)); // background and border: the widget's own settings (frame.js)
     });
   }
-  return { build, paint };
+  // The fullscreen view: only the widgets of the layout, as large as the window allows, without the buttons (the race is run with the keys).
+  // A small bar with a way out appears when the pointer moves (or the screen is touched) and goes away again after a moment. Esc closes the view.
+  // o.onClose runs once, when the view is closed (by the button, Esc or close()). Returns { nodes, root, close }: paint the nodes like those of build().
+  function fullView(layout, lanes, o = {}) {
+    const root = document.createElement('div'), canvas = document.createElement('div'), bar = document.createElement('div'), exit = document.createElement('button');
+    root.className = 'fullview'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', 'Timing page, full screen');
+    canvas.className = 'canvas live'; bar.className = 'fv-bar'; exit.className = 'btn'; exit.type = 'button'; exit.textContent = 'Exit full screen';
+    bar.appendChild(exit); root.appendChild(canvas); root.appendChild(bar); document.body.appendChild(root);
+    const nodes = build(canvas, Widgets.withoutControls(layout, lanes).layout, lanes, { maxH: 0 });
+    let timer = null, closed = false;
+    const show = () => { root.classList.add('show'); clearTimeout(timer); timer = setTimeout(() => root.classList.remove('show'), 2500); };
+    const onKey = ev => { if (ev.key === 'Escape') close(); };
+    function close() {
+      if (closed) return; closed = true;
+      clearTimeout(timer); document.removeEventListener('keydown', onKey); if (root.parentNode) root.parentNode.removeChild(root);
+      if (o.onClose) o.onClose();
+    }
+    root.onpointermove = show; root.onpointerdown = show; exit.onclick = close;
+    document.addEventListener('keydown', onKey); show();
+    return { nodes, root, close };
+  }
+  return { build, paint, fullView };
 })();
 if (typeof module !== 'undefined') module.exports = LiveCanvas;

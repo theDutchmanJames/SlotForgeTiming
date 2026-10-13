@@ -103,6 +103,7 @@ const Help = (() => {
         <ul>
           <li>The race screen shows the timing page you chose in the race setup. A second layout can go on a second screen.</li>
           <li>Keys: <b>Space</b> starts, pauses and resumes. <b>Y</b> yellow flag, <b>R</b> red flag, <b>S</b> stop (it asks once). <b>1 to 8</b> count a lap for that lane without hardware, <b>Shift + 1 to 8</b> send that lane into the pit and <b>Ctrl + 1 to 8</b> make a call from that lane.</li>
+          <li>The <b>Full screen widgets</b> button in the bar under the page (or the <b>F</b> key) shows only the widgets of the layout, as large as the window allows, and puts the window on full screen too. <b>Esc</b>, <b>F</b> or the small <b>Exit full screen</b> button (move the mouse or touch the screen to see it) goes back. The race keeps running and is run with the keys as before.</li>
           <li>Tick <b>Simulated cars</b> to watch a race without any hardware.</li>
           <li>The <b>Review laps</b> button lets you mark a lap invalid or delete it while the race is still running.</li>
           <li>When a race (or a heat) ends, a <b>review</b> opens before anything is saved: check the order, clear penalty points, disqualify or reinstate a driver, correct laps. <b>Finalize results</b> saves them.</li>
@@ -165,6 +166,7 @@ const Help = (() => {
         <ul>
           <li>The Live Race tab has a tile per page: <b>Race timing</b>, <b>Leaderboard</b>, <b>Driver stats</b>, <b>Database</b> (read only), <b>Racing rules</b>, and the control pages <b>Race Director</b> and <b>Tokens</b>.</li>
           <li><b>Open on a second screen</b> puts these pages in their own window, for a TV or a projector. <b>Full screen</b> fills it.</li>
+          <li>The <b>Race timing</b> page shows only the widget layout, without race buttons. Move the mouse or touch the screen to bring back the bar with the page choice and the full screen button.</li>
           <li>The pages follow the race that is running. They fill in as soon as a race starts.</li>
           <li>The Race Director and Tokens pages are the only ones that change anything, so they have their own look.</li>
         </ul>` },

@@ -181,6 +181,8 @@ app.whenReady().then(() => {
   });
   ipcMain.on('live:command', (e, c) => relay('live:command', c, e.sender)); // Race Director buttons -> the race window
   ipcMain.handle('live:get', () => ({ stat: live.stat, dyn: live.dyn }));
+  // The window that asks (the main window with the race screen, for the fullscreen widget view) goes full screen or back; the answer is how it is now and how it was
+  ipcMain.handle('win:fullscreen', (e, on) => { const w = BrowserWindow.fromWebContents(e.sender); if (!w || w.isDestroyed()) return { on: false, was: false }; const was = w.isFullScreen(); w.setFullScreen(on === undefined ? !was : !!on); return { on: w.isFullScreen(), was }; });
   ipcMain.handle('live:fullscreen', (_e, on) => { if (!liveWin || liveWin.isDestroyed()) return false; liveWin.setFullScreen(on === undefined ? !liveWin.isFullScreen() : !!on); return liveWin.isFullScreen(); });
   ipcMain.handle('live:open', () => ({ second: openLiveWindow() }));
   ipcMain.handle('settings:set', async (_e, patch) => { const s = db.setSettings(patch); if (Object.keys(patch || {}).some(k => k.startsWith('net'))) await applyNet(); return s; });

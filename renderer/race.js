@@ -36,7 +36,7 @@ async function renderRace() {
   } else if (tokenSession) eng = mk(Array.from({ length: lanes }, (_, i) => ({ lane: i, ...(people[i] || { driverId: '', carId: '', driverName: 'Guest', carName: '', carPicture: '', carScale: '', nickname: '', callsign: '', flag: '', avatar: '' }) }))); // every lane of the track can be sold, with or without a driver
   else eng = mk(people.map((p, i) => ({ lane: i, ...p })));
 
-  if (live) { live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); if (live.offTm) live.offTm(); if (live.offTmStatus) live.offTmStatus(); if (live.offCmd) live.offCmd(); if (live.offResync) live.offResync(); clearTimeout(live.shareTimer); clearInterval(live.timers); clearInterval(live.breakTimer); (live.sim || []).forEach(clearTimeout); if (live.flushTokens) live.flushTokens(); document.removeEventListener('keydown', live.key); }
+  if (live) { if (live.fsView) live.fsView.close(); document.removeEventListener('keydown', live.fsKey); live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); if (live.offTm) live.offTm(); if (live.offTmStatus) live.offTmStatus(); if (live.offCmd) live.offCmd(); if (live.offResync) live.offResync(); clearTimeout(live.shareTimer); clearInterval(live.timers); clearInterval(live.breakTimer); (live.sim || []).forEach(clearTimeout); if (live.flushTokens) live.flushTokens(); document.removeEventListener('keydown', live.key); }
   // earlier laps on this track, for personal best / track record highlights and the record lap widget
   const base = { personal: new Map(), track: Infinity, trackName: '' };
   // laps removed from the records (but kept in their session) do not count here
@@ -68,13 +68,13 @@ async function renderRace() {
   view.innerHTML = `<p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.sessionType])} on ${esc(r.track.name)} · ${esc(limit)}</p>
     <div class="rt-stage"><div class="canvas live" id="canvas"></div></div>
     <div class="bar rt-tools"><label><input type="checkbox" id="sim"> Simulated cars</label><span id="tmstatus" class="muted" role="status"></span><span id="lapbtns"></span><span id="pitbtns"></span><span id="callbtns"></span><span id="penbtns"></span>
-      <button class="btn" id="lapsbtn" aria-expanded="false" hidden title="Check the laps while the race goes on: mark a lap invalid or take it out of the records">Review laps</button><span id="msg" class="muted" role="status"></span><button class="btn danger stopbtn" id="stopbtn">Stop race</button><button class="btn" id="back">Back to Home</button></div>
+      <button class="btn" id="fsbtn" type="button" title="Show only the widgets, as large as the window allows (F). Esc closes it.">Full screen widgets</button><button class="btn" id="lapsbtn" aria-expanded="false" hidden title="Check the laps while the race goes on: mark a lap invalid or take it out of the records">Review laps</button><span id="msg" class="muted" role="status"></span><button class="btn danger stopbtn" id="stopbtn">Stop race</button><button class="btn" id="back">Back to Home</button></div>
     <div id="tokenpanel" class="card tkpanel" hidden></div>
     <div id="finalpick" class="card" hidden></div>
     <div id="calls" class="card calls" hidden></div>
     <div id="lapreview" class="card rv" hidden></div>
     <div id="review" class="card rv" hidden></div>
-    <p class="muted">Space starts, pauses and resumes · Y yellow flag · R red flag · S stops the race · press a lane's number key (or its Lap button) each time a car crosses the line${tokenSession ? ' (a lane without paid time ignores it, and a lane whose time is up records the lap but does not count it)' : ''} · Shift + number (or the Pit button) puts that lane's car on the sensor, press again to drive off · Ctrl + number (or the Call button) is a call from that lane: the yellow flag goes up and the Race Director decides what happens.</p>
+    <p class="muted">Space starts, pauses and resumes · Y yellow flag · R red flag · S stops the race · F shows the widgets full screen (Esc closes it) · press a lane's number key (or its Lap button) each time a car crosses the line${tokenSession ? ' (a lane without paid time ignores it, and a lane whose time is up records the lap but does not count it)' : ''} · Shift + number (or the Pit button) puts that lane's car on the sensor, press again to drive off · Ctrl + number (or the Call button) is a call from that lane: the yellow flag goes up and the Race Director decides what happens.</p>
     ${planHtml}${heats ? '<h4>Overall result</h4>' + (scoreNote ? `<p class="hint2" id="overallnote">${esc(scoreNote)}</p>` : '') + `<div class="wrap"><table class="fields"><thead><tr><th>Pos</th><th>Driver</th><th>Heats</th><th>Laps</th><th>Points</th>${scoreCol ? '<th>Result</th>' : ''}${finalsOn ? '<th>Final</th>' : ''}<th>Best lap</th></tr></thead><tbody id="overall"></tbody></table></div>` : ''}`;
 
   const now = () => performance.now();
@@ -195,6 +195,7 @@ async function renderRace() {
     announce(); announceTokens(); if (live.powerFollow) live.powerFollow();
     const S = shared();
     LiveCanvas.paint(live.nodes, S);
+    if (live.fsView) LiveCanvas.paint(live.fsView.nodes, S);
     live.pitBtns.forEach(x => {
       const c = S.carByLane(x.lane), blocked = !!c && c.blockAt !== null;
       x.b.disabled = !(live.phase === 'running' && c && !c.done); x.b.hidden = !c; x.b.textContent = blocked ? `Leave pit ${x.lane + 1}` : `Pit ${x.lane + 1}`;
@@ -568,8 +569,23 @@ async function renderRace() {
     if (lane >= 0 && lane < lanes) crossLane(lane);
   };
   document.addEventListener('keydown', live.key);
+  // The fullscreen widget view: only the widgets of the layout, as large as the window allows (the window itself goes full screen too). F opens and closes it, Esc closes it.
+  // It has its own key listener, so it also works when the race is over and the race keys are off. The race keeps going and is run with the keys as before.
+  const toggleFull = () => {
+    if (live.fsView) { live.fsView.close(); return; }
+    let was = null;
+    live.fsView = LiveCanvas.fullView(layout, lanes, { onClose: () => { live.fsView = null; if (api.windowFullscreen && was !== null) api.windowFullscreen(was); } });
+    if (api.windowFullscreen) Promise.resolve(api.windowFullscreen(true)).then(r => { was = r && typeof r.was === 'boolean' ? r.was : false; if (!live.fsView) api.windowFullscreen(was); }).catch(() => { was = false; });
+    update();
+  };
+  live.fsKey = ev => {
+    if (ev.target && ev.target.matches && ev.target.matches('input,select,textarea')) return;
+    if (String(ev.key).toLowerCase() === 'f' && !ev.ctrlKey && !ev.altKey && !ev.metaKey) toggleFull();
+  };
+  document.addEventListener('keydown', live.fsKey);
+  ui('fsbtn').onclick = ev => { if (ev && ev.currentTarget && ev.currentTarget.blur) ev.currentTarget.blur(); toggleFull(); };
   // leaving the race screen (before the start, or after the end): the keys, the Trackmate and the Race Director buttons stop working on the other pages
-  live.leave = () => { if (live.calling) { live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); } document.removeEventListener('keydown', live.key); ['offTm', 'offTmStatus', 'offCmd', 'offResync'].forEach(k => { if (live[k]) { live[k](); live[k] = null; } }); clearTimeout(live.shareTimer); live.shareTimer = null; if (live.flushTokens) live.flushTokens(); clearTimeout(live.tkTimer); live.tkTimer = null; };
+  live.leave = () => { if (live.fsView) live.fsView.close(); document.removeEventListener('keydown', live.fsKey); if (live.calling) { live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); } document.removeEventListener('keydown', live.key); ['offTm', 'offTmStatus', 'offCmd', 'offResync'].forEach(k => { if (live[k]) { live[k](); live[k] = null; } }); clearTimeout(live.shareTimer); live.shareTimer = null; if (live.flushTokens) live.flushTokens(); clearTimeout(live.tkTimer); live.tkTimer = null; };
 
   // ---- Time Token Session: the lane controls, saving every stint, keeping the session across a restart ----
   const raceT = () => eng.elapsed(now()); // the race clock: the token clocks run on it, so a pause stops them

@@ -41,6 +41,7 @@ contextBridge.exposeInMainWorld('api', {
   onCommand: f => { listeners.command.add(f); return () => listeners.command.delete(f); },
   liveGet: () => call('live:get'),
   liveFullscreen: on => call('live:fullscreen', on),
+  windowFullscreen: on => call('win:fullscreen', on),
   liveOpen: () => call('live:open'),
   netStatus: () => call('net:status'),
   // choosing a USB device (the main process lists them, this window shows the list)

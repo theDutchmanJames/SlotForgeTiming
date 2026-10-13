@@ -45,6 +45,7 @@ const LiveView = (() => {
   // ---- the pages ----
   function draw(fresh) {
     const body = $('lv-body'); if (!body) return;
+    setClean(page === 'timing' && live());
     if (page === 'tiles') {
       body.innerHTML = `<div class="lv-tiles">${TILES.map(([id, name, d]) => `<button class="lv-tile${isControl(id) ? ' special' : ''}" data-go="${id}">${isControl(id) ? BADGE : ''}${icon(id)}<strong>${esc(name)}</strong><span class="muted">${esc(d)}</span></button>`).join('')}</div>`;
       body.onclick = e => { const b = e.target.closest('[data-go]'); if (b && !b.disabled) go(b.dataset.go); };
@@ -83,13 +84,18 @@ const LiveView = (() => {
     };
   }
 
+  // The timing page of a running race shows only the widgets of the layout, as large as the window allows: no bar on top, no buttons (the control widgets are left out).
+  // The bar (back, status, full screen) shows when the pointer moves or the screen is touched, and goes away again after a moment.
   function drawTiming(body, fresh) {
     if (!nodes || fresh) {
-      body.innerHTML = '<div class="rt-stage"><div class="canvas live" id="lv-canvas"></div></div>';
-      nodes = LiveCanvas.build($('lv-canvas'), V.stat().layout, V.stat().lanes, { maxH: 110 });
+      body.innerHTML = '<div class="fullview" id="lv-fv"><div class="canvas live" id="lv-canvas"></div></div>';
+      nodes = LiveCanvas.build($('lv-canvas'), Widgets.withoutControls(V.stat().layout, V.stat().lanes).layout, V.stat().lanes, { maxH: 0 });
     }
     LiveCanvas.paint(nodes, S());
   }
+  const setClean = on => { if (host && host.classList) { if (on) host.classList.add('lv-clean'); else { host.classList.remove('lv-clean'); host.classList.remove('lv-show'); } } };
+  let revealT = null;
+  const reveal = () => { if (!host || !host.classList) return; host.classList.add('lv-show'); clearTimeout(revealT); revealT = setTimeout(() => { if (host && host.classList) host.classList.remove('lv-show'); }, 2500); };
 
   // Leaderboard page: one or two boards (one under the other, or side by side). Each board is the Leaderboard widget with its own
   // row design (Customization > Leaderboard Editor) or the classic table. The choices are saved for this page.
@@ -253,8 +259,9 @@ const LiveView = (() => {
     }));
     ticker = setInterval(() => { if (live() && ['running', 'countdown'].includes(V.dyn().phase)) repaint(); }, 100); // clocks keep running between messages
     if (second && !keyOff) { keyOff = ev => { if (ev.key === 'Escape') { api.liveFullscreen(false); if ($('lv-full')) $('lv-full').textContent = 'Full screen'; } }; document.addEventListener('keydown', keyOff); }
+    host.onpointermove = reveal; host.onpointerdown = reveal;
     shell(); draw(true);
   }
-  function unmount() { if (keyOff) { document.removeEventListener('keydown', keyOff); keyOff = null; } offs.forEach(f => f()); offs = []; clearInterval(ticker); ticker = null; host = null; V = null; nodes = null; tkPanel = null; }
+  function unmount() { if (host) { host.onpointermove = null; host.onpointerdown = null; if (host.classList) { host.classList.remove('lv-clean'); host.classList.remove('lv-show'); } } clearTimeout(revealT); if (keyOff) { document.removeEventListener('keydown', keyOff); keyOff = null; } offs.forEach(f => f()); offs = []; clearInterval(ticker); ticker = null; host = null; V = null; nodes = null; tkPanel = null; }
   return { mount, unmount, go, nodes: () => nodes };
 })();

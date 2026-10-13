@@ -162,4 +162,29 @@ ok('...while a normal colour is still used', Wd.fuelHtml(5, 100, { critColor: '#
   ok('...and a picture that is not a safe text cannot break out of the page', (() => { const h = Wd.lightsHtml(1, { pick: () => '"><script>alert(1)</script>' }); return !h.includes('<script>'); })());
 }
 
+// the layout without its buttons (the Live Race pages, the fullscreen view): controls left out, the empty strip they leave at the bottom cut off
+{
+  const wd = (type, lane, o) => ({ id: type + lane + o.y, type, lane, x: 0, y: 0, w: 100, h: 60, ...o });
+  const L = (widgets, rw = 16, rh = 9) => ({ ratioW: rw, ratioH: rh, laneColors: [], widgets });
+  const hOf = l => Wd.heightOf(l);
+  const lay = L([wd('clock', null, { y: 20, w: 300 }), wd('name', 0, { y: 100 }), wd('name', 1, { y: 200 }), wd('start', null, { y: 450, w: 140 }), wd('stop', null, { y: 450, x: 200, w: 120 })]);
+  const r = Wd.withoutControls(lay, 2);
+  ok('buttons at the bottom: the strip below the widgets is cut off, keeping the margin the widgets have at the top (20 above, 20 below)', r.cut > 0 && hOf(r.layout) === 260 + 20 && r.cut === hOf(lay) - 280 && r.layout.ratioW === 16 && r.layout.widgets === lay.widgets);
+  ok('the layout that was passed in is not changed, and the new one has the same width and widgets (only the proportions differ)', lay.ratioH === 9 && hOf(lay) === Math.round(1000 * 9 / 16) && r.layout !== lay && r.layout.widgets.length === 5);
+  ok('the page still has the widgets inside it: nothing that is shown ends below the new bottom', r.layout.widgets.filter(w => !Wd.def(w.type).button).every(w => w.y + w.h <= hOf(r.layout)));
+  const none = L([wd('clock', null, { y: 20 }), wd('name', 0, { y: 100 })]);
+  ok('a layout without buttons is left as it is (the same object, nothing cut), even with empty space at the bottom', Wd.withoutControls(none, 2).layout === none && Wd.withoutControls(none, 2).cut === 0);
+  const top = L([wd('start', null, { y: 0 }), wd('clock', null, { y: 100 }), wd('name', 0, { y: 520, h: 42 })]);
+  ok('buttons at the top leave nothing to cut at the bottom: the layout stays', Wd.withoutControls(top, 2).layout === top && Wd.withoutControls(top, 2).cut === 0);
+  const onlyBtn = L([wd('start', null, { y: 0 }), wd('pause', null, { y: 100 })]);
+  ok('a layout that is only buttons is left as it is (there is nothing to show instead)', Wd.withoutControls(onlyBtn, 2).layout === onlyBtn);
+  const lanes = L([wd('clock', null, { y: 0 }), wd('name', 0, { y: 100 }), wd('name', 1, { y: 200 }), wd('name', 2, { y: 300 }), wd('name', 3, { y: 400 }), wd('start', null, { y: 500 })]);
+  ok('widgets of lanes the track does not have do not keep the strip: 2 lanes cut more than 4 lanes', hOf(Wd.withoutControls(lanes, 2).layout) === 260 && hOf(Wd.withoutControls(lanes, 4).layout) === 460 && Wd.withoutControls(lanes, 4).cut === hOf(lanes) - 460);
+  const flush = L([wd('clock', null, { y: 0 }), wd('name', 0, { y: 100 }), wd('start', null, { y: 500 })]);
+  ok('widgets that start at the very top get no margin below them', hOf(Wd.withoutControls(flush, 2).layout) === 160);
+  ok('a different shape (4:3) is cut the same way', (() => { const l = L([wd('clock', null, { y: 10 }), wd('name', 0, { y: 100, h: 50 }), wd('stop', null, { y: 700 })], 4, 3); const x = Wd.withoutControls(l, 2); return hOf(l) === 750 && hOf(x.layout) === 150 + 10 && x.cut === 750 - 160; })());
+  ok('the default layout (header, rows and controls at the bottom) gets shorter, and keeps all its widgets', (() => { const d = Wd.defaultLayout(), x = Wd.withoutControls(d, 6); return x.cut > 0 && hOf(x.layout) < hOf(d) && x.layout.widgets.length === d.widgets.length; })());
+  ok('buttons are what the Controls group says: Start, Pause / Resume, Stop, Yellow flag and Red flag', Wd.REGISTRY.filter(d => d.button).map(d => d.type).join() === 'start,pause,stop,yellow,red');
+}
+
 console.log(fails ? fails + ' WIDGET TESTS FAILED' : 'ALL WIDGET TESTS PASSED'); process.exit(fails ? 1 : 0);
