@@ -44,6 +44,8 @@
     { id: 'penaltytime', group: 'Penalties', defaultOn: false, label: 'Time is added to a driver (by the Race Director, also in the review after the race)', vars: ['driver', 'added'], lines: ['{added} added to the time of {driver}', '{driver} gets a time penalty of {added}'] },
     { id: 'disqualified', group: 'Penalties', label: 'A driver is disqualified', vars: ['driver'], lines: ['{driver} is disqualified', 'Disqualified: {driver}'] },
     { id: 'yellowflag', group: 'Flags', label: 'Yellow flag', vars: [], lines: ['Yellow flag, take care', 'Yellow flag'] },
+    { id: 'yellowtarget', group: 'Flags', label: 'The yellow flag target lap time (said after the yellow flag call, when the race has a target)', vars: ['target'], lines: ['Target lap time is {target}', 'Yellow flags, target lap time is {target}'] },
+    { id: 'yellowfast', group: 'Flags', label: 'A driver is faster than the yellow flag target (a full lap under yellow)', vars: ['driver', 'time', 'lap', 'target'], lines: ['{driver}, too fast under yellow', '{driver}, slow down, the yellow flag is up'] },
     { id: 'redflag', group: 'Flags', label: 'Red flag', vars: [], lines: ['Red flag, the race is stopped', 'Red flag'] },
     { id: 'greenflag', group: 'Flags', label: 'Green flag (the yellow or red flag is over)', vars: [], lines: ['Green flag, racing again', 'Back to green'] },
     { id: 'lanecall', group: 'Safety', defaultOn: false, label: 'A lane calls for the marshal (the Call button)', vars: ['driver', 'lane'], lines: ['{driver} calls for the marshal', 'Marshal call from lane {lane}'] },
@@ -66,10 +68,11 @@
     fuel: 'Litres of fuel left (empty when the race has no fuel)', points: 'The driver\'s penalty points (in the penalty call: the points just given)', penalty: 'The name of the special penalty',
     gap: 'The gap to the car in front, as spoken (0.8 seconds)', lapsdown: 'How many laps a lapped driver is behind (1 lap)', heat: 'The number of the heat (empty when it is not a heat-based race, and in a final)', heats: 'The number of heats of the race (empty in a final)', final: 'The letter of the final, A or B (empty when it is not a final)',
     car: 'The driver\'s slot car', best: 'The driver\'s best lap of this race, as spoken', track: 'The name of the track',
+    target: 'The yellow flag target lap time, as spoken (7.5 seconds)',
     gapahead: 'The gap to the car in front right now, as spoken (empty for the leader)', record: 'The track record, as spoken (empty when the track has none; in the track record call: the old record)',
     improved: 'How much better the lap was than the best before it (0.12 seconds)', off: 'How far a lap was from the track record (0.04 seconds)',
     pit: 'How long the pit stop took, as spoken (7.4 seconds)', refuelled: 'Litres of fuel put in during the pit stop', added: 'The time that was added, as spoken (5 minutes, 30 seconds)' };
-  const SAMPLE = { driver: 'Alex', name: 'Alex', nickname: 'Speedy', callsign: 'ALX', other: 'Sam', time: '5.12', position: 'second', percent: '50', left: '5 laps', fuel: '12', lane: '2', seconds: '60', points: '2', penalty: 'drivethrough', lap: '4', laps: '10', gap: '0.8 seconds', lapsdown: '1 lap', heat: '2', heats: '3', final: 'A', car: 'Porsche 956', best: '5.10', track: 'Living room', gapahead: '0.8 seconds', record: '5.01', improved: '0.12 seconds', off: '0.04 seconds', pit: '7.4 seconds', refuelled: '8', added: '5 minutes' };
+  const SAMPLE = { target: '15 seconds', driver: 'Alex', name: 'Alex', nickname: 'Speedy', callsign: 'ALX', other: 'Sam', time: '5.12', position: 'second', percent: '50', left: '5 laps', fuel: '12', lane: '2', seconds: '60', points: '2', penalty: 'drivethrough', lap: '4', laps: '10', gap: '0.8 seconds', lapsdown: '1 lap', heat: '2', heats: '3', final: 'A', car: 'Porsche 956', best: '5.10', track: 'Living room', gapahead: '0.8 seconds', record: '5.01', improved: '0.12 seconds', off: '0.04 seconds', pit: '7.4 seconds', refuelled: '8', added: '5 minutes' };
   const ORD = ['zeroth', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth'];
   const ordinal = n => ORD[n] || `${n}th`;
   // a lap time as it is spoken: 5.12 (two decimals), or 1 minute 5.12
@@ -102,6 +105,13 @@
     const t = Math.round(Number(ms) / 1000); if (!(t > 0)) return '';
     const m = Math.floor(t / 60), sec = t % 60;
     return [m ? `${m} minute${m === 1 ? '' : 's'}` : '', sec ? `${sec} second${sec === 1 ? '' : 's'}` : ''].filter(Boolean).join(' ');
+  }
+  // a target lap time as it is spoken, without useless zeros: 15 seconds, 7.5 seconds, 1 minute 30 seconds
+  function speakTarget(ms) {
+    if (!(Number(ms) > 0)) return '';
+    const s = ms / 1000; if (s >= 60 && Number.isInteger(s)) return speakSpan(ms);
+    const t = String(Number(s.toFixed(3)));
+    return `${t} second${t === '1' ? '' : 's'}`;
   }
   // the variables that every call about a driver has, and the ones every call has (the table in the audio editor says so)
   const EVERY_DRIVER = ['driver', 'name', 'nickname', 'callsign', 'car', 'best', 'lane', 'points', 'fuel', 'gapahead'], EVERY_CALL = ['track', 'record'];
@@ -166,7 +176,7 @@
       // flags
       const flag = eng.flag || '';
       if (flag !== S.flag) {
-        if (flag === 'yellow') ev('yellowflag', {}); else if (flag === 'red') ev('redflag', {}); else if (S.flag) ev('greenflag', {});
+        if (flag === 'yellow') { ev('yellowflag', {}); if (eng.yellow && eng.yellow.target > 0) ev('yellowtarget', { target: speakTarget(eng.yellow.target) }); } else if (flag === 'red') ev('redflag', {}); else if (S.flag) ev('greenflag', {});
         S.flag = flag;
       }
       // things the engine logged: pits, fuel, penalties (only while racing; later review changes are not announced)
@@ -182,6 +192,7 @@
           if (e.refuelled > 0) ev('refuelled', { ...who(c), refuelled: Math.round(e.refuelled * 10) / 10, pit: speakGap(e.duration) });
           ev('pitout', { ...who(c), pit: speakGap(e.duration) });
         }
+        else if (e.type === 'yellowfast') ev('yellowfast', { ...who(c), time: speakTime(e.ms), _time: e.ms, lap: e.lap, target: speakTarget(e.target) });
         else if (e.type === 'call') ev('lanecall', who(c));
         else if (e.type === 'served') ev('penaltyserved', { ...who(c), penalty: pen });
         else if (e.type === 'forgiven') ev('penaltyforgiven', { ...who(c), penalty: pen });
@@ -299,7 +310,7 @@
     }
     return { observe };
   }
-  const api = { CALLS, VARS, SAMPLE, EVERY_DRIVER, EVERY_CALL, conditionsOf, ordinal, speakTime, speakGap, speakDiff, speakSpan, fill, create };
+  const api = { CALLS, VARS, SAMPLE, EVERY_DRIVER, EVERY_CALL, conditionsOf, ordinal, speakTime, speakGap, speakDiff, speakSpan, speakTarget, fill, create };
   root.Announcer = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

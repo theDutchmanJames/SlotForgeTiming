@@ -25,7 +25,7 @@ async function renderRace() {
   const finalLen = () => ({ laps: Number(setup.finalLaps) > 0 ? Number(setup.finalLaps) : setup.laps, duration: Number(setup.finalDuration) > 0 ? Number(setup.finalDuration) : setup.duration });
   const lenNow = () => (heat && heat.isFinal() ? finalLen() : { laps: setup.laps, duration: setup.duration });
   const setupNow = () => (heat && heat.isFinal() ? { ...setup, ...finalLen() } : setup);
-  const mk = entries => RaceEngine.createRace({ penalty: penCfg, type: engineType, laps: lenNow().laps, duration: lenNow().duration, endRule: setup.endRule, minLap: Math.max(RaceEngine.MIN_LAP, (Number(r.track.minLap) || 0) * 1000) / speed, maxLap: (Number(r.track.maxLap) || 0) * 1000 / speed, fuel: fuelCfg, skipFirst: tokenSession || setup.firstLap === 'skip', entries });
+  const mk = entries => RaceEngine.createRace({ penalty: penCfg, type: engineType, laps: lenNow().laps, duration: lenNow().duration, endRule: setup.endRule, minLap: Math.max(RaceEngine.MIN_LAP, (Number(r.track.minLap) || 0) * 1000) / speed, maxLap: (Number(r.track.maxLap) || 0) * 1000 / speed, fuel: fuelCfg, yellow: RaceEngine.yellowConfig(setup), skipFirst: tokenSession || setup.firstLap === 'skip', entries });
   const pointList = String(setup.points || '').split(',').filter(t => t.trim() !== '').map(Number).filter(n => !isNaN(n)); // '10, 8, 6' -> [10, 8, 6]; blank pieces are skipped (Number('') would make them 0)
 
   let heat = null, eng;

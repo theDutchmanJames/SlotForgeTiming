@@ -22,6 +22,12 @@
     return { on, tank: num(setup.fuelTank, 120), perLap: num(setup.fuelPerLap, 1), rate: num(setup.fuelRate, 10), target: 0, extra: 0, saving: 0,
       empty: ['retire', 'stop', 'warn'].includes(setup.fuelEmpty) ? setup.fuelEmpty : 'retire', pitHold };
   }
+  // The yellow flag target lap time of a race setup: yellowTarget in seconds (0 or empty = none), yellowPoints = the penalty points for a full lap under yellow that is faster than the target
+  // (they need a penalty system; without one the lap is only marked and called out). Gives { target: ms, points: whole number }.
+  function yellowConfig(setup) {
+    const s = setup || {}, target = Math.round(num(s.yellowTarget, 0) * 1000);
+    return { target, points: target > 0 ? Math.floor(num(s.yellowPoints, 1)) : 0 };
+  }
   // litres used by a lap of this length: perLap at the target time, more when faster, less when slower, within the limits
   const fuelUse = (F, lapMs) => {
     if (!F.target || !(lapMs > 0)) return F.perLap;
@@ -56,11 +62,13 @@
     const P = { on: false, mode: 'every', every: 5, seconds: 5, steps: [], dq: 0, types: [], fuelPoints: 0, ...(cfg.penalty || {}) };
     const penOf = c => penaltyMs(P, c.points) + (c.extraMs || 0); // time penalty: from the points, plus any time the Race Director added
     const F = { on: false, tank: 0, perLap: 0, rate: 0, target: 0, extra: 0, saving: 0, empty: 'retire', pitHold: 2000, ...(cfg.fuel || {}) };
+    const Y = { target: 0, points: 0, ...(cfg.yellow || {}) }; // the yellow flag target lap time (ms; 0 = none) and the penalty points for a full lap under yellow that is faster
     const lapLimit = type === 'race' ? Number(cfg.laps) || 0 : 0;
     const timeLimit = (type === 'timed' || type === 'qualifying') ? (Number(cfg.duration) || 0) * 60000 : 0;
     const R = {
       cfg, fuel: F, penalty: P, type, status: 'ready', t0: 0, pausedAt: 0, endAt: 0, timeUp: false, finished: 0, endedBy: '',
-      cars: cfg.entries.map(e => ({ ...e, laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, invalid: [], removed: [], servedNow: false, last: 0, total: 0, best: null, done: false, place: 0, retired: false, fuel: F.on ? F.tank : 0, outOfFuel: false,
+      yellow: Y, yellowAt: null, // yellowAt: when the yellow flag that is up now went up (a lap that started before that is not a lap under yellow)
+      cars: cfg.entries.map(e => ({ ...e, laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, invalid: [], removed: [], yellowFast: [], servedNow: false, last: 0, total: 0, best: null, done: false, place: 0, retired: false, fuel: F.on ? F.tank : 0, outOfFuel: false,
         blockAt: null, pit: null, pits: [], lastPit: null, outlap: false, started: !skipFirst })),
       events: [], // what happened, in order: { type, car, t } (outoffuel, retired, pitstart, fuelfull, pitend, call, callend...)
       calls: [] // calls from a lane to the Race Director: { id, car, t, open, how }; how a call ended: 'penalty' or 'dismiss'
@@ -68,7 +76,7 @@
     let callId = 0;
     const log = (type, i, t, data) => R.events.push({ type, car: i, t, ...data });
 
-    const end = (t, why) => { R.cars.forEach((c, i) => { if (c.blockAt !== null) { pitCheck(i, t); serveCheck(i, t); closePit(i, t); } }); R.status = 'finished'; R.endAt = t; R.endedBy = why; R.flag = ''; R.calls.forEach(c => { c.open = false; }); };
+    const end = (t, why) => { R.cars.forEach((c, i) => { if (c.blockAt !== null) { pitCheck(i, t); serveCheck(i, t); closePit(i, t); } }); R.status = 'finished'; R.endAt = t; R.endedBy = why; R.flag = ''; R.yellowAt = null; R.calls.forEach(c => { c.open = false; }); };
     const checkEnd = t => {
       if (R.status !== 'running') return;
       if (type === 'race' && cfg.endRule === 'leader' && R.finished > 0) return end(t, 'The lead car finished');
@@ -82,7 +90,7 @@
     R.resume = t => {
       if (R.status !== 'paused') return;
       const d = t - R.pausedAt; // the paused time does not count
-      R.t0 += d; R.cars.forEach(c => { c.last += d; if (c.blockAt !== null) c.blockAt += d; if (c.pit) c.pit.start += d; }); R.status = 'running';
+      R.t0 += d; if (R.yellowAt !== null) R.yellowAt += d; R.cars.forEach(c => { c.last += d; if (c.blockAt !== null) c.blockAt += d; if (c.pit) c.pit.start += d; }); R.status = 'running';
       if (R.flag === 'red') R.flag = ''; // resuming also clears a red flag
     };
     // Yellow: only a caution, timing carries on. Red: pauses the race until it is cleared or the race is resumed.
@@ -91,14 +99,14 @@
     R.setFlag = (kind, t) => {
       if (R.status === 'finished' || R.status === 'ready') return;
       if (kind === 'red') {
-        if (R.flag === 'red') { R.flag = ''; R.resume(t); } else { R.flag = 'red'; R.pause(t); }
-      } else if (kind === 'yellow' && R.flag !== 'red') R.flag = R.flag === 'yellow' ? '' : 'yellow';
+        if (R.flag === 'red') { R.flag = ''; R.resume(t); } else { R.flag = 'red'; R.yellowAt = null; R.pause(t); }
+      } else if (kind === 'yellow' && R.flag !== 'red') { if (R.flag === 'yellow') { R.flag = ''; R.yellowAt = null; } else { R.flag = 'yellow'; R.yellowAt = t; } }
     };
     // A call from the lane of car i (a marshal call button): the yellow flag goes up, unless a flag is already up (a yellow is never switched off by a call), and the call waits for the
     // Race Director. A lane that calls again while its call is still waiting does not make a second call. Returns the call, or null when the race is not running.
     R.call = (i, t) => {
       if (!R.cars[i] || !['running', 'paused'].includes(R.status)) return null;
-      if (R.flag === '') R.flag = 'yellow';
+      if (R.flag === '') { R.flag = 'yellow'; R.yellowAt = t; }
       let c = R.calls.find(x => x.open && x.car === i);
       if (!c) { c = { id: ++callId, car: i, t, open: true, how: '' }; R.calls.push(c); log('call', i, t, { id: c.id }); }
       return c;
@@ -124,7 +132,7 @@
       const c = R.cars[i];
       if (!c || c.done) return false;
       if (!c.started) { c.started = true; c.last = t; return false; } // the car starts just behind the line: its first crossing only starts the timing
-      const dt = t - c.last;
+      const dt = t - c.last, lapStart = c.last;
       if (dt < minLap) return false;
       R.tick(t);
       const need = F.on ? fuelUse(F, dt) : 0; // litres this lap took
@@ -140,6 +148,12 @@
       if (fuelShort && F.empty === 'warn' && P.fuelPoints > 0) R.addPoints(R.cars.indexOf(c), P.fuelPoints, t); // a car that carries on with an empty tank gets the points of the penalty system for every such lap
       c.laps.push(dt); c.bad.push(slow); c.last = t; c.total = t - R.t0;
       if (!slow && (c.best === null || dt < c.best)) c.best = dt;
+      // the yellow flag target: a lap that began after the yellow flag went up, and ended with it still up, must not be faster than the target (a lap that was part green does not count)
+      if (Y.target > 0 && R.flag === 'yellow' && R.yellowAt !== null && lapStart >= R.yellowAt && dt < Y.target) {
+        const i = R.cars.indexOf(c), e = { type: 'yellowfast', car: i, t, lap: c.laps.length, ms: dt, target: Y.target, points: 0 }; // (logged before the penalty, so it is called out first)
+        c.yellowFast.push(c.laps.length - 1); R.events.push(e);
+        if (Y.points > 0 && R.addPoints(i, Y.points, t)) e.points = Y.points;
+      }
       if (!c.dq && ((lapLimit && c.laps.length >= lapLimit) || (timeLimit && R.timeUp))) { c.done = true; c.place = ++R.finished; } // a car disqualified on this lap (fuel points) has not finished
       checkEnd(t);
       return true;
@@ -149,7 +163,7 @@
     // The car object stays the same one, so everything that points to it keeps working.
     R.restartCar = (i, t, who) => {
       const c = R.cars[i]; if (!c) return false;
-      Object.assign(c, who || {}, { laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, invalid: [], removed: [], servedNow: false, last: t, total: 0, best: null, done: false, place: 0, retired: false,
+      Object.assign(c, who || {}, { laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, invalid: [], removed: [], yellowFast: [], servedNow: false, last: t, total: 0, best: null, done: false, place: 0, retired: false,
         fuel: F.on ? F.tank : 0, outOfFuel: false, blockAt: null, pit: null, pits: [], lastPit: null, outlap: false, started: false });
       return true;
     };
@@ -264,7 +278,7 @@
       if (!recalc) { if (!c.removed.includes(n)) c.removed = [...c.removed, n].sort((a, b) => a - b); return true; }
       c.laps.splice(n, 1); c.bad.splice(n, 1);
       const shift = list => list.filter(x => x !== n).map(x => (x > n ? x - 1 : x));
-      c.invalid = shift(c.invalid); c.removed = shift(c.removed);
+      c.invalid = shift(c.invalid); c.removed = shift(c.removed); c.yellowFast = shift(c.yellowFast || []);
       c.total = c.laps.reduce((a, b) => a + b, 0); rebest(c); return true;
     };
 
@@ -516,7 +530,7 @@
     return H;
   }
 
-  const api = { fuelUse, goodLaps, penaltyConfig, penaltyMs, fuelConfig, createRace, createHeatRace, scoringOf, finalsOf, finalSizes, buildSchedule, fmtTime, MIN_LAP };
+  const api = { fuelUse, goodLaps, penaltyConfig, penaltyMs, fuelConfig, yellowConfig, createRace, createHeatRace, scoringOf, finalsOf, finalSizes, buildSchedule, fmtTime, MIN_LAP };
   root.RaceEngine = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

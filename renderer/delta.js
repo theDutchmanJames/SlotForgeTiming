@@ -67,10 +67,10 @@
   };
   // what it is compared with: { time, who } or { why }
   function referenceOf(k, measure, opt, car, S, t) {
-    if (k.record) { const r = recordTime(k.record, S); return r === null ? { why: 'ref' } : { time: r, who: `the ${k.record} record` }; }
-    if (measure === 'self') { const r = STAT[k.own || k.stat](car, S, t); return r === null ? { why: 'ref' } : { time: r, who: k.ownWords }; }
+    if (k.record) { const r = recordTime(k.record, S); return r === null ? { why: 'ref' } : { time: r, who: `the ${k.record} record`, record: k.record }; }
+    if (measure === 'self') { const r = STAT[k.own || k.stat](car, S, t); return r === null ? { why: 'ref' } : { time: r, who: k.ownWords, own: true }; }
     const mode = compareOf(k, opt);
-    if (mode === 'track' || mode === 'session') { const r = recordTime(mode, S); return r === null ? { why: 'ref' } : { time: r, who: `the ${mode} record` }; }
+    if (mode === 'track' || mode === 'session') { const r = recordTime(mode, S); return r === null ? { why: 'ref' } : { time: r, who: `the ${mode} record`, record: mode }; }
     let other = null, who = '';
     if (mode === 'lane') {
       const lanes = S.eng.cars.map(c => c.lane).sort((a, b) => a - b);
@@ -88,18 +88,34 @@
     }
     if (other === car) return { why: 'self' };
     const r = STAT[k.stat](other, S, t);
-    return r === null ? { why: 'ref' } : { time: r, who: `${who} (${other.driverName || 'Guest'})` };
+    return r === null ? { why: 'ref' } : { time: r, who: `${who} (${other.driverName || 'Guest'})`, car: other };
   }
 
   // type: a delta widget; opt: its settings; car: the lane's car; S: the shared race state; t: the race time.
   // Gives { ms } (this lane's number minus the other: negative is faster) and who it was compared with, or { ms: null, why } when there is nothing to show.
   function compute(type, opt, car, S, t) {
     const k = KINDS[type]; if (!k || !car) return { ms: null, why: 'mine' };
-    const measure = measureOf(k, opt), mine = mineOf(k, measure, car, S, t);
-    if (mine === null) return { ms: null, why: 'mine' };
-    const ref = referenceOf(k, measure, opt, car, S, t);
-    if (ref.why) return { ms: null, why: ref.why };
-    return { ms: mine - ref.time, who: ref.who };
+    const measure = measureOf(k, opt), mine = mineOf(k, measure, car, S, t), ref = referenceOf(k, measure, opt, car, S, t);
+    if (mine === null) return { ms: null, why: 'mine', ref };
+    if (ref.why) return { ms: null, why: ref.why, ref };
+    return { ms: mine - ref.time, who: ref.who, ref };
+  }
+
+  // What the left side shows. "own" (the standard): this lane's own value, as the ordinary widget shows it. "ref": the value it is compared with: the other lane's (or the
+  // leader's, or the fastest's), a record, or for "its last lap against its own best" that own number. The badge says the same in both cases: how far this lane is from it.
+  const leftShowsOf = opt => (opt && opt.leftShows === 'ref' ? 'ref' : 'own');
+  // res: what compute gave. null: show the lane's own value as usual. { blank: true }: there is nothing to show yet.
+  // Otherwise { type, car, who, record }: draw the ordinary widget "type" for that car (a record widget needs no car); who is what the value belongs to.
+  function leftOf(type, opt, car, res) {
+    const k = KINDS[type];
+    if (!k || k.record || leftShowsOf(opt) === 'own' || !res || !res.ref) return null; // (the record widgets already show their record on the left)
+    const r = res.ref;
+    if (r.why === 'self') return null; // it is the compared lane itself: its own value is what there is
+    if (r.why) return { blank: true };
+    if (r.car) return { type: k.base, car: r.car, who: r.who };
+    if (r.own) return { type: k.own || k.stat, car, who: r.who };
+    if (r.record) return { type: r.record === 'session' ? 'sessionrecord' : 'trackrecord', car: null, who: r.who, record: true };
+    return null;
   }
 
   // ---- how it looks ----
@@ -126,7 +142,8 @@
     return `<span class="dlt-badge dlt-${f.dir}${outlined ? ' dlt-outlined' : ''}" style="${look}" title="${esc(title)}">${arrow}${SIGN[f.dir]}${f.text}</span>`;
   }
   // the widget: the ordinary widget's content on the left, the badge on the right
-  const wrap = (baseHtml, res, opt) => `<span class="dlt"><span class="dlt-val">${baseHtml}</span>${badge(res, opt)}</span>`;
+  // from: whose value the left side shows when it is not the lane's own (a tooltip)
+  const wrap = (baseHtml, res, opt, from) => `<span class="dlt"><span class="dlt-val"${from ? ` title="${esc('Shows ' + from)}"` : ''}>${baseHtml}</span>${badge(res, opt)}</span>`;
   // the palette and the editor: lane 1 is faster, lane 2 slower, and so on
   const SAMPLE_MS = [-45, 321, -12, 87, 0, -230, 1204, -8];
   const sample = (baseHtml, lane, opt) => wrap(baseHtml, { ms: SAMPLE_MS[(lane || 0) % SAMPLE_MS.length], who: 'what it is compared with' }, opt);
@@ -144,6 +161,9 @@
         choices: [['', 'The next lane (the last lane with lane 1)'], ...Array.from({ length: MAX_LANES }, (_, i) => [String(i + 1), 'Lane ' + (i + 1)])],
         hint: 'A copy of the widget on the next lane keeps this choice: change it there if it should compare with another lane.' });
     }
+    if (!k.record) out.push({ key: 'leftShows', label: 'Left value shows', type: 'select', default: 'own', choices: [['own', "This lane's own value"], ['ref', 'The value it is compared with']],
+      hintOf: v => (v === 'ref' ? 'The left side shows the lane (or the leader, the fastest, the record, its own best) it is compared with, for example lane 2\'s time. The badge still says how far this lane is from it.'
+        : "The left side shows this lane's own value. The badge says how far it is from what it is compared with.") });
     out.push({ key: 'decimals', label: 'Decimals of the difference', type: 'select', default: '3', choices: [['3', '3 (0.456)'], ['2', '2 (0.46)'], ['1', '1 (0.5)']] });
     out.push({ key: 'style', label: 'Look of the badge', type: 'select', default: 'filled', choices: [['filled', 'Filled (a solid block)'], ['outlined', 'Outlined (only the outline and the text)']],
       hintOf: v => (v === 'outlined' ? 'Only the outline and the text have the colour, the inside is empty.' : 'The whole block has the colour; the text turns black or white to be readable on it.') });
@@ -154,7 +174,7 @@
     return out;
   }
 
-  const api = { KINDS, TARGET_WORDS, DEFAULTS, STAT, WHY, isDelta, baseOf, compute, format, badge, wrap, sample, optionsFor, onColor, colorOf, decimalsOf, measureOf, compareOf, arrowOf, styleOf, ARROWS };
+  const api = { KINDS, TARGET_WORDS, DEFAULTS, STAT, WHY, isDelta, baseOf, compute, leftOf, leftShowsOf, format, badge, wrap, sample, optionsFor, onColor, colorOf, decimalsOf, measureOf, compareOf, arrowOf, styleOf, ARROWS };
   root.Delta = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

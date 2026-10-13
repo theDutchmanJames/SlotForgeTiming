@@ -47,7 +47,7 @@
     const rec = r => (r && Number.isFinite(r.time) ? E.fmtTime(r.time) : '–'), by = r => (r && Number.isFinite(r.time) && r.name ? esc(r.name) : '');
     return { clock: clockText(S.eng.elapsed(t)), timeleft: time ? mmss(Math.max(0, time - S.eng.elapsed(t))) : '–', lapsleft: laps ? Math.max(0, laps - most) : '–', lapstotal: laps || '–', leader: lead && lead.car ? esc(lead.car.driverName) : '–',
       flag: st === 'red' ? 'Red flag' : st === 'yellow' ? 'Yellow flag' : flagText[st] || '', heat: S.heat ? heatLabel(S.heat) : '',
-      track: esc((S.track && S.track.name) || ''), session: esc(S.setup.name || ''), type: esc(sessionLabel[S.setup.sessionType] || ''), sessionrecord: rec(sr), sessionrecordby: by(sr), trackrecord: rec(tr), trackrecordby: by(tr) };
+      track: esc((S.track && S.track.name) || ''), session: esc(S.setup.name || ''), type: esc(sessionLabel[S.setup.sessionType] || ''), sessionrecord: rec(sr), sessionrecordby: by(sr), trackrecord: rec(tr), trackrecordby: by(tr), yellowtarget: S.eng.yellow && S.eng.yellow.target > 0 ? E.fmtTime(S.eng.yellow.target) : '' };
   }
 
   const stateOf = S => (S.phase === 'countdown' ? 'countdown' : S.eng.flag === 'red' ? 'red' : S.eng.flag === 'yellow' ? 'yellow' : S.phase === 'review' ? 'finished' : S.phase); // the state of the race for the flag and lights widgets; a start (or restart) countdown comes first
@@ -78,8 +78,13 @@
         return { html };
       }
       case 'dlaptime': case 'davglap': case 'dmedlap': case 'dbestlap': case 'drecordlap': case 'dpitstop': case 'dsessionrecord': case 'dtrackrecord': { // a Delta Timer: the ordinary widget, with the difference beside it (delta.js)
+        const res = Dl.compute(type, opt, c, S, t), left = Dl.leftOf(type, opt, c, res);
+        if (left) { // the left side shows the value it is compared with (another lane's, a record...): only the value, never the colours of that lane's flash
+          const v = left.blank ? { html: '–' } : widgetContent({ ...w, type: left.type, lane: left.car ? left.car.lane : w.lane, opt: left.record ? { ...(w.opt || {}), showName: false } : w.opt }, S);
+          return { html: Dl.wrap(v.html, res, opt, left.blank ? '' : left.who) };
+        }
         const base = widgetContent({ ...w, type: Dl.baseOf(type) }, S);
-        return { ...base, html: Dl.wrap(base.html, Dl.compute(type, opt, c, S, t), opt) };
+        return { ...base, html: Dl.wrap(base.html, res, opt) };
       }
       case 'lanecolor': { const lc = S.laneColorsOf ? S.laneColorsOf(c.lane) : {}; return { html: '', ...(lc.bg && !w.bgColor ? { bg: lc.bg } : {}) }; } // the colour set for the lane in the layout (Lane colours); a colour set on the widget itself wins and never changes the lane's colour for other widgets
       case 'nickname': return { html: esc(c.nickname || c.driverName) };

@@ -114,6 +114,7 @@ const Help = (() => {
           <li><b>Penalty points</b> come in steps of +1 (and −1 to take one back). The penalty system turns the points into seconds that are added to the driver's time, and can disqualify at a limit.</li>
           <li><b>Special penalties</b> take points off and must be served: a Drivethrough when the next pit stop starts, a Stop-and-Go by standing still on the sensor.</li>
           <li>A <b>call from a lane</b> raises the yellow flag and waits for the Race Director, who dismisses it or gives a penalty point.</li>
+          <li><b>Yellow flag target lap time</b>: in the race setup (the Yellow flag group) you can set a target, for example 15.000 when a normal lap is 7.500. While the yellow flag is up the race says the target. A full lap under yellow that is faster than the target is called out, marked in the lap review and costs the penalty points you set (a penalty system is needed for the points). A lap that began before the yellow flag does not count.</li>
           <li>The Trackmate <b>Trackcall</b> button can raise the flags and switch the track power. You choose how in the race setup.</li>
         </ul>` },
       { id: 'fuel', title: 'Fuel and pit stops', note: 'Tanks, refuelling and pit time', body: `
@@ -138,12 +139,19 @@ const Help = (() => {
       { id: 'custom', title: 'Customization', note: 'Layouts, audio, pictures and your own widgets', body: `
         <ul>
           <li><b>Layout Editor</b>: design a timing page by placing widgets (lap times, the leaderboard, start lights, the race flag, fuel, speed and many more). Drag, resize, undo and redo. Make a different layout for the second screen.</li>
-          <li><b>Delta Timers</b> (a folder in the Layout Editor): a time widget with a badge on the right that shows how far a lane is from another time. Green with ▲ and a minus (▲ −0.045) is faster, red with ▼ and a plus (▼ +0.321) is slower. In the widget you choose what is compared (a lane's value against theirs, its last lap against theirs, or its last lap against its own value), what it is compared with (a chosen lane, the leader, the fastest in the race, the track record or the session record) and the look: a solid block or only an outline, the arrow and the three colours. The Session Record and Track Record deltas always compare with that record.</li>
           <li><b>Leaderboard Editor</b>: design the rows of the Leaderboard widget.</li>
           <li><b>Audio Settings</b>: what the race says (see Audio calls below).</li>
           <li><b>Image Settings</b>: picture sets for the start lights, the race flag and the fuel level. A start lights set is a grid: a picture for every light and every state of the race, such as the yellow flag. Choose a set in the widget in the Layout Editor.</li>
           <li><b>Widget Builder</b>: make your own text or image widgets with {variables} such as the driver's name or a lap time.</li>
           <li>You choose the layouts and the audio set per race setup.</li>
+        </ul>` },
+      { id: 'delta', title: 'Delta Timers', note: 'How far a lane is from another time', body: `
+        <ul>
+          <li>A folder of widgets in the Layout Editor: a time on the left and a badge on the right that shows how far a lane is from another time. Green with ▲ and a minus (▲ −0.045) is faster, red with ▼ and a plus (▼ +0.321) is slower.</li>
+          <li><b>What is compared</b>: a lane's value against theirs, its last lap against theirs, or its last lap against its own value. <b>Compare with</b>: a chosen lane, the leader, the fastest in the race, the track record or the session record.</li>
+          <li><b>Left value shows</b>: this lane's own value (the standard), or the value it is compared with, for example lane 2's time. The badge always says how far this lane is from it.</li>
+          <li>The look: a solid block or only an outline, the arrow, the number of decimals and the three colours.</li>
+          <li>The Session Record and Track Record deltas always compare with that record, and show it on the left.</li>
         </ul>` },
       { id: 'audio', title: 'Audio calls', note: 'A voice for the race', body: `
         <ul>

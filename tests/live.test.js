@@ -1223,5 +1223,38 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     emit('f'); say('...F does nothing any more', !run('live.fsView'));
   }
 
+  // ---------- 0.99.0: the yellow flag target lap time, on the race screen ----------
+  {
+    const mkSet = calls => ({ id: 'AUY', name: 'Yellow', rate: 1, pitch: 1, volume: 1, driverBy: 'name', calls: Object.fromEntries(Object.entries(calls).map(([id, t]) => [id, { on: true, lines: [{ text: t, file: '' }] }])) });
+    const marks = () => spoken.filter(t => t.startsWith('MARK')), keepSets = store.audiosets, keepPS = store.penaltysystems, E2 = () => run('live.engine()');
+    store.penaltysystems = [{ id: 'py', name: 'Y', timeRule: 'every', everyPoints: 5, everySeconds: 5, dqPoints: 12 }];
+    store.audiosets = [mkSet({ yellowflag: 'MARK flag', yellowtarget: 'MARK target {target}', yellowfast: 'MARK fast {driver} {time} {target}', penalty: 'MARK pen {driver} {points}' })];
+    ctx.Sound.stop(); run('state.rand = () => 0'); spoken.length = 0;
+    await openRace({ name: 'YT', sessionType: 'practice', layout: '', lightsMin: 0, lightsMax: 0, audioSet: 'AUY', penaltySystem: 'py', yellowTarget: 15, yellowPoints: 1 }, store.tracks[0], rows(1, 2));
+    key(' '); await until(() => phase() === 'running', 3000); await wait(60);
+    say('the race has the target of the setup: 15 seconds and 1 point, in milliseconds', E2().yellow.target === 15000 && E2().yellow.points === 1 && E2().cfg.yellow.target === 15000);
+    key('y'); await wait(150);
+    say('the yellow flag says the flag and then the target, as the audio set has them', marks().join() === 'MARK flag,MARK target 15 seconds', marks().join());
+    spoken.length = 0; key('1'); await wait(150);
+    say('a lap that began before the yellow flag is not called out', marks().length === 0 && E2().cars[0].points === 0, marks().join());
+    await wait(60); key('1'); await wait(200);
+    say('the next lap, a full lap under yellow and much faster than 15 seconds, is called out with the driver, the time and the target, and the penalty point after it', marks().length === 2 && /^MARK fast Alex \d+\.\d\d 15 seconds$/.test(marks()[0]) && marks()[1] === 'MARK pen Alex 1', marks().join(' | '));
+    say('...the driver has the point, and the lap is marked in the race', E2().cars[0].points === 1 && E2().cars[0].yellowFast.join() === '1' && E2().cars[1].points === 0);
+    E('lapsbtn').onclick({}); E('lapreview').onclick({ target: { closest: () => ({ dataset: { rv: 'laps', car: '0' } }) } });
+    say('the lap review shows the mark on that lap, and only on that lap', E('lapreview').innerHTML.split('class="rv-lap').filter(x => x.includes('faster than the yellow flag target')).length === 1);
+    key('s'); await wait(60); ctx.Sound.stop(); spoken.length = 0;
+    // a race without a target: only the yellow flag call
+    await openRace({ name: 'YT0', sessionType: 'practice', layout: '', lightsMin: 0, lightsMax: 0, audioSet: 'AUY', penaltySystem: 'py' }, store.tracks[0], rows(1, 2));
+    key(' '); await until(() => phase() === 'running', 3000); await wait(60); key('y'); await wait(60); key('1'); await wait(60); key('1'); await wait(200);
+    say('a race without a target: the yellow flag call only, and fast laps are not judged', marks().join() === 'MARK flag' && E2().cars[0].points === 0 && E2().yellow.target === 0, marks().join());
+    key('s'); await wait(60); ctx.Sound.stop(); spoken.length = 0;
+    // a target, but no penalty system: called out, no point
+    await openRace({ name: 'YT1', sessionType: 'practice', layout: '', lightsMin: 0, lightsMax: 0, audioSet: 'AUY', yellowTarget: 15 }, store.tracks[0], rows(1, 2));
+    key(' '); await until(() => phase() === 'running', 3000); await wait(60); key('y'); await wait(60); key('1'); await wait(60); key('1'); await wait(200);
+    say('a target without a penalty system: the lap is called out, and no point is given or called', marks().filter(t => t.startsWith('MARK fast')).length === 1 && marks().every(t => !t.startsWith('MARK pen')) && E2().cars[0].points === 0 && E2().cars[0].yellowFast.length === 1, marks().join(' | '));
+    key('s'); await wait(60); ctx.Sound.stop(); spoken.length = 0;
+    store.audiosets = keepSets; store.penaltysystems = keepPS; run('state.rand = null');
+  }
+
   console.log(fails ? fails + ' LIVE PAGE TESTS FAILED' : 'ALL LIVE PAGE TESTS PASSED'); process.exit(fails ? 1 : 0);
 })();

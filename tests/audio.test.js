@@ -445,7 +445,7 @@ const mk2 = (o = {}, ents = one) => createRace({ type: 'race', laps: 10, minLap:
   }
   // the lists of the calls
   { const n = A.CALLS.length, groups = [...new Set(A.CALLS.map(c => c.group))];
-    ok('52 calls in 11 folders, the Safety folder after the flags', n === 52 && groups.join() === 'Start,Positions,Race progress,Gaps and battles,Laps and records,Pit and fuel,Penalties,Flags,Safety,Finish,Time tokens');
+    ok('54 calls in 11 folders, the Safety folder after the flags', n === 54 && groups.join() === 'Start,Positions,Race progress,Gaps and battles,Laps and records,Pit and fuel,Penalties,Flags,Safety,Finish,Time tokens');
     const set = Sound.defaultSet('x'), fresh = ['firstlap', 'nearrecord', 'fuelhalf', 'refuelled', 'penaltyserved', 'penaltyforgiven', 'penaltytime', 'lanecall', 'nolap', 'trackmatelost', 'trackmateback', 'tokenadded', 'tokenfree'];
     ok('the 13 new calls exist, have sentences, and are off in a new audio set', fresh.every(id => A.CALLS.some(c => c.id === id) && set.calls[id].on === false && set.calls[id].lines.length > 0));
     const old = { calls: { winner: { on: true, lines: [{ text: 'x', file: '' }] } } };
@@ -534,6 +534,41 @@ const mk2 = (o = {}, ents = one) => createRace({ type: 'race', laps: 10, minLap:
     Sound.stop(); Sound.resetCool(); Sound.state.backend = null; Sound.state.now = () => Date.now();
   }
   ok('the real clock is the default', Math.abs(Sound.state.now() - Date.now()) < 1000);
+}
+
+// ---------- 0.99.0: the yellow flag target lap time ----------
+{
+  const run = (e, a, t, ctx = {}) => a.observe(e, { phase: 'running', now: t, ...ctx });
+  const of = (ev, id) => ev.filter(x => x.call === id);
+  const P = penaltyConfig({ timeRule: 'every', everyPoints: 5, everySeconds: 5, dqPoints: 9, types: [] });
+  const mky = (o = {}) => { const e = mk2({ laps: 50, penalty: P, yellow: { target: 15000, points: 1 }, ...o }, two), a = A.create({ lapLimit: 50 }); e.start(0); run(e, a, 0); return [e, a]; };
+  const call = id => A.CALLS.find(c => c.id === id);
+  ok('the two new calls are in the Flags folder, on in a new set, with sentences, and use the new word {target}', ['yellowtarget', 'yellowfast'].every(id => call(id) && call(id).group === 'Flags' && Sound.defaultSet('x').calls[id].on === true && call(id).lines.length >= 2) && call('yellowtarget').vars.join() === 'target' && A.VARS.target && A.SAMPLE.target === '15 seconds');
+  ok('{target} is spoken as a short span: 15 seconds, 7.5 seconds, 7.55 seconds, 1 second, 1 minute 30 seconds, and nothing without a target', A.speakTarget(15000) === '15 seconds' && A.speakTarget(7500) === '7.5 seconds' && A.speakTarget(7550) === '7.55 seconds' && A.speakTarget(1000) === '1 second' && A.speakTarget(90000) === '1 minute 30 seconds' && A.speakTarget(0) === '' && A.speakTarget(undefined) === '' && A.speakTarget(61500) === '61.5 seconds');
+  let [e, a] = mky(); e.setFlag('yellow', 1000); let ev = run(e, a, 1000);
+  ok('the yellow flag is called, and right after it the target', ev.map(x => x.call).join() === 'yellowflag,yellowtarget' && ev[1].vars.target === '15 seconds');
+  [e, a] = mky({ yellow: { target: 0, points: 1 } }); e.setFlag('yellow', 1000); ev = run(e, a, 1000);
+  ok('...without a target there is only the yellow flag call, as before', ev.map(x => x.call).join() === 'yellowflag');
+  [e, a] = mky(); e.call(1, 1000); ev = run(e, a, 1000);
+  ok('a yellow flag that a lane\'s call raises says the target too', ev.map(x => x.call).join() === 'yellowflag,yellowtarget,lanecall');
+  e.setFlag('yellow', 1500); ev = run(e, a, 1500); const green = ev.map(x => x.call).join(); e.setFlag('yellow', 2000); ev = run(e, a, 2000);
+  ok('...the green flag when it ends, and the target again with the next yellow flag', green === 'greenflag' && ev.map(x => x.call).join() === 'yellowflag,yellowtarget');
+  [e, a] = mky(); e.cross(0, 5000); run(e, a, 5000); e.setFlag('yellow', 6000); run(e, a, 6000); e.cross(0, 12000); ev = run(e, a, 12000);
+  ok('a lap that began before the yellow flag is not called out (it was partly green), even though it is under the target', of(ev, 'yellowfast').length === 0 && e.cars[0].points === 0);
+  e.cross(0, 20000); ev = run(e, a, 20000);
+  ok('the next lap (8.000, a full lap under yellow, faster than 15.000) is called out: the driver, the lap time, the lap number and the target', of(ev, 'yellowfast').length === 1 && of(ev, 'yellowfast')[0].vars.driver === 'Alex' && of(ev, 'yellowfast')[0].vars.time === '8.00' && of(ev, 'yellowfast')[0].vars.lap === 3 && of(ev, 'yellowfast')[0].vars.target === '15 seconds');
+  ok('...and the penalty point is called as well, after it (the point is in the penalty call)', ev.map(x => x.call).join() === 'yellowfast,penalty' && of(ev, 'penalty')[0].vars.points === 1 && e.cars[0].points === 1);
+  e.cross(0, 36000); ev = run(e, a, 36000);
+  ok('a lap of 16.000 under yellow is slower than the target: nothing is said, no point', ev.length === 0 && e.cars[0].points === 1);
+  e.cross(1, 30000); run(e, a, 30000); e.cross(1, 45000); ev = run(e, a, 45000);
+  ok('a lap of exactly the target (15.000) is allowed', of(ev, 'yellowfast').length === 0 && e.cars[1].points === 0);
+  [e, a] = mky({ penalty: undefined }); e.setFlag('yellow', 1000); run(e, a, 1000); e.cross(0, 2000); run(e, a, 2000); e.cross(0, 6000); ev = run(e, a, 6000);
+  ok('a race without a penalty system still calls the lap out, only no point is given and none is called', ev.map(x => x.call).join() === 'yellowfast' && e.cars[0].points === 0 && e.events.find(x => x.type === 'yellowfast').points === 0);
+  [e, a] = mky(); e.setFlag('yellow', 1000); run(e, a, 1000); e.cross(0, 2000); e.cross(0, 6000); e.stop(7000); ev = run(e, a, 7000, { phase: 'review' });
+  ok('what happened in the review after the race is not called out later (only while racing)', of(ev, 'yellowfast').length === 0);
+  // a set from before has neither call: the ready-made sentences are used (the race has a target, so the calls are meant)
+  ok('a set from before this version says the new calls with the ready-made sentences', Sound.choose({ calls: { winner: { on: true, lines: [{ text: 'x', file: '' }] } } }, 'yellowtarget', { target: '15 seconds' }, () => 0).text === 'Target lap time is 15 seconds' && /too fast under yellow/.test(Sound.choose({ calls: {} }, 'yellowfast', { driver: 'Sam' }, () => 0).text));
+  ok('the target call is not an urgent one: it waits for the yellow flag call to finish, and does not cut it off', (() => { const src = require('fs').readFileSync(require('path').join(__dirname, '../renderer/sound.js'), 'utf8'); return !/URGENT = \[[^\]]*yellowtarget/.test(src) && !/URGENT = \[[^\]]*yellowfast/.test(src) && /URGENT = \[[^\]]*'yellowflag'/.test(src); })());
 }
 
 console.log(fails ? `${fails} FAILED` : 'audio: all PASSED'); process.exit(fails ? 1 : 0);

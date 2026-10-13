@@ -12,7 +12,7 @@ const Review = (() => {
     const order = c.laps.map((_, n) => n); if (mid) order.reverse();
     return `<div class="rv-laps">${order.map(n => {
         const t = c.laps[n], after = !!late && late(n), inv = after || c.invalid.includes(n), rem = c.removed.includes(n), slow = c.bad[n];
-        const tags = [slow ? 'too slow' : '', after ? 'after the time ran out' : inv ? 'invalid' : '', rem ? 'not in the records' : ''].filter(Boolean);
+        const tags = [slow ? 'too slow' : '', after ? 'after the time ran out' : inv ? 'invalid' : '', rem ? 'not in the records' : '', (c.yellowFast || []).includes(n) ? 'faster than the yellow flag target' : ''].filter(Boolean);
         const del = ui.del === `${i}:${n}` ? `<span class="rv-del">Remove lap ${n + 1}:
             <button class="btn" data-rv="removelap" data-car="${i}" data-lap="${n}" data-recalc="0">From the records only</button>
             ${mid && c.done ? '' : `<button class="btn danger" data-rv="removelap" data-car="${i}" data-lap="${n}" data-recalc="1">From the race too (recalculate)</button>`}

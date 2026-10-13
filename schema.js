@@ -80,6 +80,7 @@ module.exports = {
       { id: 'length', title: 'Length and result', note: 'Laps or time, heats, how the race ends and is counted', open: true },
       { id: 'start', title: 'Start', note: 'Start lights, restarts and the first lap' },
       { id: 'rules', title: 'Penalties, fuel and pits', note: 'Penalty system, fuel setup and the pit stop sensor' },
+      { id: 'yellow', title: 'Yellow flag', note: 'A target lap time while the yellow flag is up' },
       { id: 'screens', title: 'Screens and sound', note: 'Timing page layouts and the audio set' },
       { id: 'trackmate', title: 'Trackmate', note: 'Track power at the start and the Trackcall button' }
     ],
@@ -154,6 +155,10 @@ module.exports = {
       { key: 'penaltySystem', group: 'rules', label: 'Penalty system', type: 'ref', ref: 'penaltysystems', blank: 'No penalties', showIf: RACING },
       { key: 'fuelRules', group: 'rules', label: 'Fuel setup', type: 'ref', ref: 'fuelrules', blank: 'No fuel', showIf: RACING },
       { key: 'pitHold', group: 'rules', label: 'Pit stop: the sensor must be blocked this long to start a stop (seconds)', type: 'number', default: 2, showIf: RACING },
+      { key: 'yellowTarget', group: 'yellow', label: 'Yellow flag: target lap time (seconds, 0 = none)', type: 'number', default: 0, min: 0, showIf: RACING,
+        hint: 'While the yellow flag is up, drivers must drive slower than this. Say your normal lap is 7.500 and you set 15.000: a full lap under yellow that is faster than 15.000 is a lap that was too fast, and it is called out. A lap that was partly before the yellow flag does not count. 0 means no target.' },
+      { key: 'yellowPoints', group: 'yellow', label: 'Yellow flag: penalty points for a lap that is too fast', type: 'number', default: 1, min: 0, showIf: RACING,
+        hint: 'Given to the driver for every full lap under yellow that is faster than the target. It needs a penalty system (under Penalties, fuel and pits); without one the lap is only called out and marked in the lap review. 0 gives no points. Not used without a target above.' },
       { key: 'layout', group: 'screens', label: 'Timing page layout (main screen)', type: 'ref', ref: 'layouts', blank: 'Default layout' },
       { key: 'layout2', group: 'screens', label: 'Timing page layout (second screen)', type: 'ref', ref: 'layouts', blank: 'Same as main screen' },
       { key: 'audioSet', group: 'screens', label: 'Audio set (announcements)', type: 'ref', ref: 'audiosets', blank: 'No audio' },

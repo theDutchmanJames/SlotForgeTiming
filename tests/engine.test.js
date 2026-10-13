@@ -274,6 +274,72 @@ ok('ending the race closes a pit stop in progress', R.cars[0].blockAt === null &
 ok('pit stops only happen while racing', (() => { const r = createRace({ type: 'race', laps: 5, fuel: fcfg(), entries: E(1) }); return r.block(0, 100) === false; })());
 R0 = createRace({ type: 'race', laps: 50, minLap: 100, entries: E(1) }); R0.start(0); R0.block(0, 1000); R0.tick(3500); R0.unblock(0, 4000);
 ok('pit stops are timed even with fuel off (for drive-through penalties later)', R0.cars[0].pits.length === 1 && R0.cars[0].pits[0].duration === 3000 && R0.cars[0].pits[0].refuelled === 0);
+// ---- the yellow flag target lap time (0.99.0) ----
+{
+  const { yellowConfig } = require('../renderer/engine.js');
+  ok('the setup gives the target in ms and the points: 15 seconds and the standard 1 point, nothing without a target', (c => c.target === 15000 && c.points === 1)(yellowConfig({ yellowTarget: 15 })) && (c => c.target === 0 && c.points === 0)(yellowConfig({})) && (c => c.target === 0 && c.points === 0)(yellowConfig({ yellowTarget: 0, yellowPoints: 3 })) && (c => c.target === 7500 && c.points === 2)(yellowConfig({ yellowTarget: '7.5', yellowPoints: '2' })));
+  ok('...a blank number of points is the standard 1, 0 is no points, a fraction is cut, a damaged value or no setup at all gives nothing', yellowConfig({ yellowTarget: 10, yellowPoints: '' }).points === 1 && yellowConfig({ yellowTarget: 10, yellowPoints: 0 }).points === 0 && yellowConfig({ yellowTarget: 10, yellowPoints: 2.9 }).points === 2 && yellowConfig({ yellowTarget: 'x' }).target === 0 && yellowConfig(undefined).target === 0 && yellowConfig({ yellowTarget: -5 }).target === 0);
+  const P = penaltyConfig({ dqPoints: 3 });
+  const mk = (o = {}) => { const r = createRace({ type: 'race', laps: 50, minLap: 100, penalty: P, yellow: { target: 15000, points: 1 }, entries: E(2), ...o }); r.start(0); return r; };
+  const fast = r => r.events.filter(e => e.type === 'yellowfast');
+  let r = mk(); lap(r, 0, [5000, 10000]); r.setFlag('yellow', 11000); lap(r, 0, [16000]);
+  ok('a lap that began before the yellow flag went up is not a lap under yellow (it was partly green): no mark, no point', fast(r).length === 0 && r.cars[0].points === 0 && r.cars[0].yellowFast.length === 0 && r.yellowAt === 11000);
+  lap(r, 0, [23000]);
+  ok('the next lap (7.000, a full lap under yellow, faster than 15.000) is too fast: it is marked, logged with the lap number, the time and the target, and gets the point', fast(r).length === 1 && fast(r)[0].lap === 4 && fast(r)[0].ms === 7000 && fast(r)[0].target === 15000 && fast(r)[0].points === 1 && fast(r)[0].car === 0 && r.cars[0].yellowFast.join() === '3' && r.cars[0].points === 1);
+  ok('...the event is logged before the penalty (the call comes first), and there is a penalty event with it', (i => i >= 0 && r.events[i + 1].type === 'penalty' && r.events[i + 1].delta === 1)(r.events.findIndex(e => e.type === 'yellowfast')));
+  lap(r, 0, [38000, 54000]);
+  ok('15.000 exactly is fast enough, and 16.000 is too: only laps that are faster than the target count', fast(r).length === 1 && r.cars[0].points === 1);
+  lap(r, 0, [60000]);
+  ok('every lap that is too fast is marked and penalised again (a lap of 6.000: the second one, lap 7)', fast(r).length === 2 && r.cars[0].points === 2 && r.cars[0].yellowFast.join() === '3,6');
+  lap(r, 1, [3000, 6000]);
+  ok('another car is judged on its own laps: its laps of 3.000 each began before the yellow flag (11.000) and are free', fast(r).length === 2 && r.cars[1].points === 0);
+  lap(r, 1, [20000]); lap(r, 1, [26000]);
+  ok('...its first full lap under yellow (6.000, from 20.000) is too fast, and it is another driver\'s point', fast(r).length === 3 && fast(r)[2].car === 1 && r.cars[1].points === 1 && r.cars[0].points === 2);
+  r.setFlag('yellow', 61000); lap(r, 0, [66000]);
+  ok('after the yellow flag is over (it is switched off) laps are free again', r.flag === '' && r.yellowAt === null && fast(r).length === 3);
+  r.setFlag('yellow', 70000); lap(r, 0, [76000]); lap(r, 0, [82000]);
+  ok('a second yellow flag starts a new period: the lap that began before it is free, the next one is not (6.000)', r.yellowAt === 70000 && fast(r).length === 4 && fast(r)[3].lap === r.cars[0].laps.length && fast(r)[3].car === 0);
+  // a yellow flag raised by a call from a lane
+  r = mk(); lap(r, 0, [5000]); r.call(1, 6000); lap(r, 0, [12000, 18000]);
+  ok('a yellow flag that a lane\'s call raises counts the same', r.flag === 'yellow' && r.yellowAt === 6000 && fast(r).length === 1 && fast(r)[0].lap === 3);
+  // a red flag takes the yellow away: nothing is judged under red
+  r = mk(); r.setFlag('yellow', 1000); r.setFlag('red', 2000);
+  ok('a red flag replaces the yellow flag: no yellow period is left over', r.flag === 'red' && r.yellowAt === null);
+  r.setFlag('red', 3000); lap(r, 0, [4000, 8000, 12000]);
+  ok('...and when the race goes on (green) laps are not judged', r.flag === '' && fast(r).length === 0 && r.cars[0].points === 0);
+  // pausing: the paused time does not count, also not for the moment the yellow flag went up
+  r = mk(); lap(r, 0, [5000]); r.setFlag('yellow', 6000); r.pause(7000); r.resume(10000); lap(r, 0, [14000]);
+  ok('a pause with the yellow flag up moves the moment it went up with the race (6.000 became 9.000): the lap that began before it is free', r.yellowAt === 9000 && fast(r).length === 0);
+  lap(r, 0, [20000]);
+  ok('...and the next lap is judged, 6.000', fast(r).length === 1 && fast(r)[0].ms === 6000);
+  // no target or no points
+  r = mk({ yellow: { target: 0, points: 1 } }); r.setFlag('yellow', 1000); lap(r, 0, [2000, 4000, 6000]);
+  ok('without a target nothing is judged, whatever the flag', fast(r).length === 0 && r.cars[0].points === 0);
+  r = mk({ yellow: undefined }); r.setFlag('yellow', 1000); lap(r, 0, [2000, 4000, 6000]);
+  ok('a race made without any yellow setting (an old one) judges nothing', fast(r).length === 0 && r.yellow.target === 0 && r.yellow.points === 0);
+  r = mk({ yellow: { target: 15000, points: 0 } }); r.setFlag('yellow', 1000); lap(r, 0, [2000, 4000, 6000]);
+  ok('with 0 points the lap is marked and logged, but no point is given', fast(r).length === 2 && fast(r).every(e => e.points === 0) && r.cars[0].points === 0 && r.cars[0].yellowFast.length === 2 && !r.events.some(e => e.type === 'penalty'));
+  r = mk({ penalty: undefined }); r.setFlag('yellow', 1000); lap(r, 0, [2000, 4000, 6000]);
+  ok('without a penalty system the lap is marked and logged, and the points cannot be given (the event says 0)', fast(r).length === 2 && fast(r).every(e => e.points === 0) && r.cars[0].points === 0);
+  // a lap that is too slow to count, and the disqualify limit
+  r = mk({ maxLap: 3000 }); r.setFlag('yellow', 1000); lap(r, 0, [2000, 12000]);
+  ok('a lap that is longer than the track\'s longest lap time (10.000 against 3.000: too slow for the records) is still faster than the target and is judged', r.cars[0].bad[1] === true && fast(r).length === 1 && fast(r)[0].ms === 10000);
+  r = mk({ penalty: penaltyConfig({ dqPoints: 2 }) }); r.setFlag('yellow', 1000); lap(r, 0, [2000, 4000, 6000]);
+  ok('enough points disqualify, as every penalty point does (2 points: disqualified, and no third judgement)', r.cars[0].dq === true && r.cars[0].points === 2 && fast(r).length === 2);
+  // removing a lap from the race moves the marks
+  r = mk(); r.setFlag('yellow', 1000); lap(r, 0, [2000, 4000, 6000, 8000]);
+  ok('the laps that are too fast are marked: laps 2, 3 and 4 (lap 1 began at the start, before the yellow flag at 1.000, so it is free)', r.cars[0].yellowFast.join() === '1,2,3');
+  r.removeLap(0, 1, true);
+  ok('taking a lap out of the race moves the marks (the mark of the lap that went is gone, the later ones move up)', r.cars[0].yellowFast.join() === '1,2' && r.cars[0].laps.length === 3);
+  // the new stint on a lane starts clean
+  r = mk(); r.setFlag('yellow', 1000); lap(r, 0, [2000, 4000]); r.restartCar(0, 5000);
+  ok('a new stint on a lane (time tokens) starts without marks', r.cars[0].yellowFast.length === 0);
+  // the race ends: the yellow period is over
+  r = mk(); r.setFlag('yellow', 1000); r.stop(2000);
+  ok('the end of the race clears the flag and the yellow period', r.flag === '' && r.yellowAt === null);
+  ok('the setup is in the race: its target and points are read from the config', mk().yellow.target === 15000 && mk().yellow.points === 1);
+}
+
 console.log(fails ? fails + ' FAILED' : 'ALL ENGINE TESTS PASSED');
 
 // gap numbers for the spoken calls (gapInfo): gap to the leader and to the car in front, and full laps behind

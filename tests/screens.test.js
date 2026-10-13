@@ -639,9 +639,9 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   E('setupbox').oninput({target:{dataset:{text:'newleader:3'},value:'Watch out, {driver} leads!'}});
   say('the Voice choice has a tooltip that tells how to install more voices in Windows 11 and Windows 10', (E('setupbox').innerHTML.match(/title="To add more voices[^"]*Manage voices &gt; Add voices[^"]*Text-to-speech option[^"]*"/g) || []).length === 3 && E('setupbox').innerHTML.includes('id="au-voicehelp"') && E('setupbox').innerHTML.includes('tabindex="0"'));
   { const html = () => E('setupbox').innerHTML, openCount = () => (html().match(/<details class="audgroup"[^>]* open/g) || []).length, all = () => (html().match(/<details class="audgroup"/g) || []).length;
-    say('the calls are in folders, one per group, all closed to start, each saying how many of its calls are on (the calls that talk a lot are off in the default set)', all() === 11 && openCount() === 0 && html().includes('<strong>Start</strong> <span class="muted">7 of 7 calls on</span>') && html().includes('<strong>Laps and records</strong>') && html().includes('<strong>Flags</strong> <span class="muted">3 of 3 calls on</span>') && html().includes('<strong>Time tokens</strong> <span class="muted">2 of 4 calls on</span>') && html().includes('<strong>Safety</strong> <span class="muted">0 of 4 calls on</span>') && html().includes('<strong>Laps and records</strong> <span class="muted">3 of 5 calls on</span>') && html().includes('<strong>Pit and fuel</strong> <span class="muted">4 of 6 calls on</span>') && html().includes('<strong>Penalties</strong> <span class="muted">3 of 6 calls on</span>'));
+    say('the calls are in folders, one per group, all closed to start, each saying how many of its calls are on (the calls that talk a lot are off in the default set)', all() === 11 && openCount() === 0 && html().includes('<strong>Start</strong> <span class="muted">7 of 7 calls on</span>') && html().includes('<strong>Laps and records</strong>') && html().includes('<strong>Flags</strong> <span class="muted">5 of 5 calls on</span>') && html().includes('<strong>Time tokens</strong> <span class="muted">2 of 4 calls on</span>') && html().includes('<strong>Safety</strong> <span class="muted">0 of 4 calls on</span>') && html().includes('<strong>Laps and records</strong> <span class="muted">3 of 5 calls on</span>') && html().includes('<strong>Pit and fuel</strong> <span class="muted">4 of 6 calls on</span>') && html().includes('<strong>Penalties</strong> <span class="muted">3 of 6 calls on</span>'));
     say('...and the folders of the talkative calls say how many are off in a new set (Race progress 8 of 9, Gaps and battles 0 of 3)', html().includes('<strong>Race progress</strong> <span class="muted">8 of 9 calls on</span>') && html().includes('<strong>Gaps and battles</strong> <span class="muted">0 of 3 calls on</span>') && html().includes('<strong>Positions</strong> <span class="muted">2 of 2 calls on</span>'));
-    say('every call sits inside its folder (the folder holds the fieldsets)', (html().match(/class="audcall"/g) || []).length === run('Announcer.CALLS.length') && run('Announcer.CALLS.length') === 52 && html().indexOf('<details class="audgroup"') < html().indexOf('class="audcall"'));
+    say('every call sits inside its folder (the folder holds the fieldsets)', (html().match(/class="audcall"/g) || []).length === run('Announcer.CALLS.length') && run('Announcer.CALLS.length') === 54 && html().indexOf('<details class="audgroup"') < html().indexOf('class="audcall"'));
     await E('setupbox').onclick({target:{closest:()=>({dataset:{openall:'1'}})}});
     say('Open all folders opens every folder', openCount() === 11);
     await E('setupbox').onclick({target:{closest:()=>({dataset:{addline:'newleader'}})}});
@@ -900,31 +900,31 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   {
     const sch=run('state.schema.racesetups'), parts=h=>h.split('<details class="fgroup"').slice(1), openForm_=()=>run("openForm('racesetups', null)");
     run('delete formOpen.racesetups'); openForm_(); const f=E('dlg').innerHTML, ps=parts(f);
-    say('the Race Setup form has its settings in groups, in this order: session, length, start, rules, screens, Trackmate', ps.map(x=>/data-fg="(\w+)"/.exec(x)[1]).join()==='session,length,start,rules,screens,trackmate' && sch.groups.length===6);
-    say('the settings are grouped as designed: Session (name, type, track), Length and result, Start, Penalties fuel and pits, Screens and sound, Trackmate', sch.fields.map(f=>f.group+':'+f.key).join()==='session:name,session:sessionType,session:track,length:heatBy,length:heatPlan,length:heats,length:heatsEach,length:heatEven,length:heatSeeding,length:laps,length:duration,length:endRule,length:resultBy,length:points,length:countBy,length:bestHeats,length:dropWorst,length:fastestBonus,length:tieBreak,length:finals,length:finalMode,length:finalLaps,length:finalDuration,length:breakSeconds,length:breakAuto,start:lightsMin,start:lightsMax,start:lightsAfter,start:restartAfterRed,start:firstLap,rules:penaltySystem,rules:fuelRules,rules:pitHold,screens:layout,screens:layout2,screens:audioSet,trackmate:startPower,trackmate:trackcall,trackmate:trackcallWindow');
-    say('every setting is in its own group, once, and nowhere else', sch.fields.length===39 && sch.fields.every(k=>ps.filter(x=>x.includes('data-key="'+k.key+'"')).length===1 && /data-fg="(\w+)"/.exec(ps.find(x=>x.includes('data-key="'+k.key+'"')))[1]===k.group && (f.match(new RegExp('id="f-'+k.key+'"','g'))||[]).length===1));
+    say('the Race Setup form has its settings in groups, in this order: session, length, start, rules, yellow flag, screens, Trackmate', ps.map(x=>/data-fg="(\w+)"/.exec(x)[1]).join()==='session,length,start,rules,yellow,screens,trackmate' && sch.groups.length===7);
+    say('the settings are grouped as designed: Session (name, type, track), Length and result, Start, Penalties fuel and pits, Yellow flag, Screens and sound, Trackmate', sch.fields.map(f=>f.group+':'+f.key).join()==='session:name,session:sessionType,session:track,length:heatBy,length:heatPlan,length:heats,length:heatsEach,length:heatEven,length:heatSeeding,length:laps,length:duration,length:endRule,length:resultBy,length:points,length:countBy,length:bestHeats,length:dropWorst,length:fastestBonus,length:tieBreak,length:finals,length:finalMode,length:finalLaps,length:finalDuration,length:breakSeconds,length:breakAuto,start:lightsMin,start:lightsMax,start:lightsAfter,start:restartAfterRed,start:firstLap,rules:penaltySystem,rules:fuelRules,rules:pitHold,yellow:yellowTarget,yellow:yellowPoints,screens:layout,screens:layout2,screens:audioSet,trackmate:startPower,trackmate:trackcall,trackmate:trackcallWindow');
+    say('every setting is in its own group, once, and nowhere else', sch.fields.length===41 && sch.fields.every(k=>ps.filter(x=>x.includes('data-key="'+k.key+'"')).length===1 && /data-fg="(\w+)"/.exec(ps.find(x=>x.includes('data-key="'+k.key+'"')))[1]===k.group && (f.match(new RegExp('id="f-'+k.key+'"','g'))||[]).length===1));
     say('each group has a header with its title and a line that says what is in it', sch.groups.every(g=>f.includes('<strong>'+g.title+'</strong>') && f.includes(g.note)) && f.includes('<summary><strong>Session</strong>'));
-    say('Session and Length and result are open, the others closed', ps.map(x=>/^ data-fg="\w+"( open)?>/.exec(x)[1]?1:0).join('')==='110000');
+    say('Session and Length and result are open, the others closed', ps.map(x=>/^ data-fg="\w+"( open)?>/.exec(x)[1]?1:0).join('')==='1100000');
     say('Open all and Close all are offered, first, above the groups', f.includes('data-fgall="1"') && f.includes('data-fgall="0"') && f.indexOf('data-fgall')<f.indexOf('<details class="fgroup"') && f.includes('class="formgrid grouped"') && f.includes('class="fgrid"'));
     say('the buttons of the form are outside the groups (Save and Cancel stay in view)', f.indexOf('type="submit"')>f.lastIndexOf('</details>') && f.includes('id="cancel"'));
     run("state.schema.zzz={label:'Thing',plural:'Things',title:['name'],extra:false,fields:[{key:'name',label:'Name',type:'text'},{key:'size',label:'Size',type:'number'}]}");
     say('a form without groups is as it was (one flat list)', (run("openForm('zzz', null)"), !E('dlg').innerHTML.includes('fgroup') && E('dlg').innerHTML.includes('<div class="formgrid">') && !E('dlg').innerHTML.includes('data-fgall') && E('dlg').innerHTML.includes('id="f-size"')));
     run('delete state.schema.zzz');
     run("state.schema.racesetups.fields.push({ key: 'zzz', label: 'Something extra', type: 'text' })"); openForm_(); { const ex=parts(E('dlg').innerHTML), last=ex[ex.length-1];
-      say('a setting that is in no group is not lost: it goes into a last group, More', ex.length===7 && /^ data-fg="_more"/.test(last) && last.includes('data-key="zzz"') && last.includes('<strong>More</strong>') && ex.slice(0,6).every(x=>!x.includes('data-key="zzz"'))); }
-    run('state.schema.racesetups.fields.pop()'); openForm_(); say('...and without such a setting there is no More group', parts(E('dlg').innerHTML).length===6);
+      say('a setting that is in no group is not lost: it goes into a last group, More', ex.length===8 && /^ data-fg="_more"/.test(last) && last.includes('data-key="zzz"') && last.includes('<strong>More</strong>') && ex.slice(0,7).every(x=>!x.includes('data-key="zzz"'))); }
+    run('state.schema.racesetups.fields.pop()'); openForm_(); say('...and without such a setting there is no More group', parts(E('dlg').innerHTML).length===7);
     // opening and closing is remembered for the next time the form is opened
-    const mine=['session','length','start','rules','screens','trackmate'].map(id=>({dataset:{fg:id},open:id==='session'||id==='length',hidden:false}));
+    const mine=['session','length','start','rules','yellow','screens','trackmate'].map(id=>({dataset:{fg:id},open:id==='session'||id==='length',hidden:false}));
     E('dlg').querySelectorAll=sel=>sel==='.fgroup'?mine:[];
     openForm_(); mine[2].open=true; mine[2].ontoggle(); mine[0].open=false; mine[0].ontoggle();
     openForm_(); const f2=parts(E('dlg').innerHTML).map(x=>/^ data-fg="\w+"( open)?>/.exec(x)[1]?1:0).join('');
-    say('a group you opened stays open the next time the form opens, and one you closed stays closed', f2==='011000');
+    say('a group you opened stays open the next time the form opens, and one you closed stays closed', f2==='0110000');
     E('dlg').onclick({target:{closest:()=>({dataset:{fgall:'1'}})}});
     say('Open all opens every group and the form remembers it', mine.every(g=>g.open===true) && parts((openForm_(),E('dlg').innerHTML)).every(x=>/^ data-fg="\w+"( open)?>/.exec(x)[1]) );
     E('dlg').onclick({target:{closest:()=>({dataset:{fgall:'0'}})}});
     say('Close all closes every group and the form remembers it', mine.every(g=>g.open===false) && parts((openForm_(),E('dlg').innerHTML)).every(x=>!/^ data-fg="\w+"( open)?>/.exec(x)[1]));
     run('delete formOpen.racesetups'); openForm_();
-    say('another kind of form does not share it (and the memory is per kind of item)', !('zzz' in run('formOpen')) && parts(E('dlg').innerHTML).map(x=>/^ data-fg="\w+"( open)?>/.exec(x)[1]?1:0).join('')==='110000');
+    say('another kind of form does not share it (and the memory is per kind of item)', !('zzz' in run('formOpen')) && parts(E('dlg').innerHTML).map(x=>/^ data-fg="\w+"( open)?>/.exec(x)[1]?1:0).join('')==='1100000');
     // a group with nothing to show is hidden: Length and result in a free practice
     const reg={}; E('dlg').querySelector=sel=>reg[sel]||(reg[sel]={hidden:false}); openForm_();
     const setv=(id,v)=>{ document.getElementById(id).value=v; };
@@ -935,14 +935,22 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     say('...a race by laps shows it again', reg['[data-fg="length"]'].hidden===false && reg['[data-key="laps"]'].hidden===false && reg['[data-key="duration"]'].hidden===true);
     setv('f-sessionType','timed'); E('dlg').onchange({target:{tagName:'SELECT',id:'f-sessionType',dataset:{},type:'select-one',value:'timed'}});
     say('...and so does a timed race, with the duration instead of the laps', reg['[data-fg="length"]'].hidden===false && reg['[data-key="duration"]'].hidden===false && reg['[data-key="laps"]'].hidden===true);
+    setv('f-sessionType','tokens'); E('dlg').onchange({target:{tagName:'SELECT',id:'f-sessionType',dataset:{},type:'select-one',value:'tokens'}});
+    say('a Time Token Session has no yellow flag target: the Yellow flag group is hidden there, and shown for a race', reg['[data-fg="yellow"]'].hidden===true && reg['[data-key="yellowTarget"]'].hidden===true);
+    setv('f-sessionType','race'); E('dlg').onchange({target:{tagName:'SELECT',id:'f-sessionType',dataset:{},type:'select-one',value:'race'}});
+    say('...a race shows both settings, in the group after the penalties, fuel and pits', reg['[data-fg="yellow"]'].hidden===false && reg['[data-key="yellowTarget"]'].hidden===false && reg['[data-key="yellowPoints"]'].hidden===false && sch.groups.findIndex(g=>g.id==='yellow')===sch.groups.findIndex(g=>g.id==='rules')+1);
+    { const t=sch.fields.find(k=>k.key==='yellowTarget'), pts=sch.fields.find(k=>k.key==='yellowPoints');
+      say('the target is in seconds, 0 (none) to start with; the points are 1 to start with; both say what they do', t.type==='number' && t.default===0 && t.min===0 && pts.type==='number' && pts.default===1 && pts.min===0 && /7\.500/.test(t.hint) && /15\.000/.test(t.hint) && /penalty system/.test(pts.hint) && /seconds/.test(t.label)); }
+    setv('f-sessionType','timed'); E('dlg').onchange({target:{tagName:'SELECT',id:'f-sessionType',dataset:{},type:'select-one',value:'timed'}});
     E('dlg').querySelector=()=>mk(); E('dlg').querySelectorAll=()=>[mk(),mk(),mk()];
     // the first field gets the cursor, not the Open all button
     ctx.__focus=[]; E('f-name').focus=()=>{ ctx.__focus.push('name'); }; openForm_();
     say('the first field gets the cursor when the form opens', ctx.__focus.join()==='name'); delete E('f-name').focus;
     // saving reads the settings in closed groups too
-    run('delete formOpen.racesetups'); openForm_(); setv('f-name','Grouped'); setv('f-sessionType','race'); setv('f-lightsMin','2'); setv('f-lightsMax','4'); setv('f-trackcall','yellow');
+    run('delete formOpen.racesetups'); openForm_(); setv('f-name','Grouped'); setv('f-sessionType','race'); setv('f-lightsMin','2'); setv('f-lightsMax','4'); setv('f-trackcall','yellow'); setv('f-yellowTarget','15'); setv('f-yellowPoints','2');
     const nb=calls.length; await E('frm').onsubmit({preventDefault(){}}); const saved=calls.slice(nb).find(c=>c[0]==='add'&&c[1]==='racesetups');
     say('settings in closed groups are saved with the rest', saved && saved[2].name==='Grouped' && saved[2].lightsMin===2 && saved[2].lightsMax===4 && saved[2].trackcall==='yellow');
+    say('...also the yellow flag target and its points (numbers)', saved && saved[2].yellowTarget===15 && saved[2].yellowPoints===2);
     run('delete formOpen.racesetups');
   }
   // ---- the Track form: the same groups ----
