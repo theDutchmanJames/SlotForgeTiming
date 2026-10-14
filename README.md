@@ -2,6 +2,11 @@
 
 A SlotCar timing app with expansive functionality and customization!
 
+<img width="1301" height="1315" alt="Hometabv2" src="https://github.com/user-attachments/assets/48509bdb-ad8a-4339-be40-6e05f013689d" />
+
+<img width="2560" height="1440" alt="Custom Timing Page" src="https://github.com/user-attachments/assets/0e82f1da-b4ca-4eba-bd21-cacd5f31f0f4" />
+
+
 ## Key Features of SlotForge Timing:  
 - Fully and extremely customizable Timing Page - Lots of widgets to choose from with lots of customization options on how it it presented on screen.  ​
 - Powerful Leaderboard Style Editor - linked to a widget but also a live leaderboard page. Saveable as a 'setup', make as many as you want for multiple boards.)  ​
