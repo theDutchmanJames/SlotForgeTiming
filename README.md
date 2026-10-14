@@ -2,24 +2,26 @@
 
 A SlotCar timing app with expansive functionality and customization!
 
-## Key Features of SlotForge Timing:
-Fully and extremely customizable Timing Page - Lots of widgets to choose from with lots of customization options on how it it presented on screen.​
-Powerful Leaderboard Style Editor - linked to a widget but also a live leaderboard page. Saveable as a 'setup', make as many as you want for multiple boards.)​
-Database for your Tracks, Drivers, Slotcars and Race Results - Extra fields can be added, Race Results can be reviewed and exported to PDF.​
-The info contained in the PDF can be chosen to your liking.​
-Race Results and Records Database - Are linked to Driver, Car, Track, and time. Can display more info.​
-Setting up races of different Session Types with its own rules - Indefinite Free Practice, Qualifying with carry-over results, Race, Round Robin, Heats​
-Customizable Audio settings - A big list of Audio calls with different {variables}, all Text-to-Speech which whatever you have installed on your computer. Can upload custom audio files. Can add custom Calls and build your own using the {variables}.​
-Customizable Image Settings - Set standard images for the Race Flags, Start Lights or Fuel States, can be applied per race.​
-Basic Fuel Settings - Tank size, Fuel consumption, variance of fuel usage linked to laptimes, Pitstop refuel speed. All customizable.​
-Basic Penalty System - Add Penalty Points, or Special Penalties like a Stop and Go penalty which 'forces' the driver to stop on the sensor for a set amount of time.​
-Basic Time Token System - Do you sell Track Time on your Racetrack? There's a simple manual system in place for that which all kinds of visual cues.​
-General App Settings - for a Club Logo or Header Image, custom colours for the whole app look and feel.​
-Live Race Page / Multiple Screens - Want to connect to the Timing Page, Leaderboard or Driver specific statistics? Connect through localhost or QR-code to land on a landing page with several viewing options. Clicking the Live Race tab opens a second window on your second screen (if present, otherwise on main).​
+## Key Features of SlotForge Timing:  
+- Fully and extremely customizable Timing Page - Lots of widgets to choose from with lots of customization options on how it it presented on screen.  ​
+- Powerful Leaderboard Style Editor - linked to a widget but also a live leaderboard page. Saveable as a 'setup', make as many as you want for multiple boards.)  ​
+- Database for your Tracks, Drivers, Slotcars and Race Results - Extra fields can be added, Race Results can be reviewed and exported to PDF.  ​
+- The info contained in the PDF can be chosen to your liking.​  
+- Race Results and Records Database - Are linked to Driver, Car, Track, and time. Can display more info.​  
+- Setting up races of different Session Types with its own rules - Indefinite Free Practice, Qualifying with carry-over results, Race, Round Robin, Heats, Timed Sessions.  ​
+- Customizable Audio settings - A big list of Audio calls with different {variables}, all Text-to-Speech which whatever you have installed on your computer. Can upload custom audio files. Can add custom Calls and build your own using the {variables}.​  
+- Customizable Image Settings - Set standard images for the Race Flags, Start Lights or Fuel States, can be applied per race.​  
+- Basic Fuel Settings - Tank size, Fuel consumption, variance of fuel usage linked to laptimes, Pitstop refuel speed. All customizable.  ​
+- Basic Penalty System - Add Penalty Points, or Special Penalties like a Stop and Go penalty which 'forces' the driver to stop on the sensor for a set amount of time.  ​
+- Basic Time Token System - Do you sell Track Time on your Racetrack? There's a simple manual system in place for that which all kinds of visual cues.  ​
+- General App Settings - for a Club Logo or Header Image, custom colours for the whole app look and feel.​  
+- Live Race Page / Multiple Screens - Want to connect to the Timing Page, Leaderboard or Driver specific statistics? Connect through localhost or QR-code to land on a landing page with several viewing options. Clicking the Live Race tab opens a second window on your second screen (if present, otherwise on main).​  
 .. and some more small tidbits​
 
 ## I got the .ZIP, now what?
-Unzip it. There is 'build-windows.bat' file. Run that for a minute or two, (this pulls and builds all the things it need to make this an app. It also does a ton of checks, no clue why, but checks are a good thing though right?), then run the Portable .exe so it doesn't have to install to any folders on your computer. If you do want it installed, go with the other one but portable is easy to just check the app out. It'll ask for local network access because there is an extra, second display which you can connect to through localhost IP (e.g: 192.1.68.85:8080) or QR (the QR code and IP can be printed on A4), if you choose to turn it on. (This is the Live Race tab)
+Unzip it. There is 'build-windows.bat' file. Run that for a minute or two, (this pulls and builds all the things it need to make this an app. It also does a ton of checks, no clue why, but checks are a good thing though right?), then run the Portable .exe so it doesn't have to install to any folders on your computer. If you do want it installed, go with the other one but portable is easy to just check the app out.  
+
+It'll ask for local network access because there is an extra, second screen which you can connect to through localhost IP (e.g: 192.1.68.85:8080) or QR (the QR code and IP can be printed on A4), if you choose to turn it on. (This is the Live Race tab)
 
 ## How do I get started?
 There are default settings for everything, so you could dive right in by clicking 'Open the Session' on the Home tab. Make sure to setup your TrackMate interface first, under the App Settings tab. Approach the App like you would a physical track. you start out with a track , so add one on Database tab under Tracks.
