@@ -24,7 +24,7 @@ A SlotCar timing app with expansive functionality and customization!
 .. and some more small tidbits​
 
 ## I got the .ZIP, now what?
-Unzip it. There is 'build-windows.bat' file. Run that for a minute or two, (this pulls and builds all the things it need to make this an app. It also does a ton of checks, no clue why, but checks are a good thing though right?), then run the Portable .exe so it doesn't have to install to any folders on your computer. If you do want it installed, go with the other one but portable is easy to just check the app out.  
+Unzip it. There is 'build-windows.bat' file (for windows, same for macOS and Linux). Run that for a minute or two, (this pulls and builds all the things it needs to make this an app. It also does a ton of checks, no clue why, but checks are a good thing though right?), then run the Portable .exe so it doesn't have to install to any folders on your computer. If you do want it installed, go with the other one but portable is easy to just check the app out.  
 
 It'll ask for local network access because there is an extra, second screen which you can connect to through localhost IP (e.g: 192.1.68.85:8080) or QR (the QR code and IP can be printed on A4), if you choose to turn it on. (This is the Live Race tab)
 
@@ -38,6 +38,7 @@ There are default settings for everything, so you could dive right in by clickin
 4. Go back to Home, Pick your race and hit Start Race/Open the Session.
 
 This sets up a basic race. There is a default one in place as well, but this would get you started on customization later on, when you are comfortable with that.
+
 
 ## CHANGES
 ## What to try (batch K1: small improvements)
