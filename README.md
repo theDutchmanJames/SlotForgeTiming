@@ -20,7 +20,8 @@ A SlotCar timing app with expansive functionality and customization!
 - Basic Penalty System - Add Penalty Points, or Special Penalties like a Stop and Go penalty which 'forces' the driver to stop on the sensor for a set amount of time.  ​
 - Basic Time Token System - Do you sell Track Time on your Racetrack? There's a simple manual system in place for that which all kinds of visual cues.  ​
 - General App Settings - for a Club Logo or Header Image, custom colours for the whole app look and feel.​  
-- Live Race Page / Multiple Screens - Want to connect to the Timing Page, Leaderboard or Driver specific statistics? Connect through localhost or QR-code to land on a landing page with several viewing options. Clicking the Live Race tab opens a second window on your second screen (if present, otherwise on main).​  
+- Live Race Page / Multiple Screens - Want to connect to the Timing Page, Leaderboard or Driver specific statistics? Connect through localhost or QR-code to land on a landing page with several viewing options. Clicking the Live Race tab opens a second window on your second screen (if present, otherwise on main).​
+- Import and Export of Race Layouts, Widgets, Audio Sets etc  
 .. and some more small tidbits​
 
 ## I got the .ZIP, now what?
