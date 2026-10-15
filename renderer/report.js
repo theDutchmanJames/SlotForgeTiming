@@ -36,7 +36,7 @@
     const cellOf = (key, x, i) => {
       switch (key) {
         case 'pos': return esc(x.pos) + (!hasDriver && ST.isWinner(session, x) ? ' ' + cup : '');
-        case 'driver': return (ST.isWinner(session, x) ? cup + ' ' : '') + esc(x.driverName) + (x.dq ? ' (disqualified)' : x.retired ? ' (retired, out of fuel)' : '') + (ST.adjustedText(x) ? ` (adjusted: ${esc(ST.adjustedText(x))})` : '');
+        case 'driver': return (ST.isWinner(session, x) ? cup + ' ' : '') + esc(x.driverName) + (x.dq ? ' (disqualified)' : x.retired ? ' (retired, out of fuel)' : '') + (ST.adjustedText(x) ? ` (adjusted: ${esc(ST.adjustedText(x))})` : '') + (ST.bopText(x) ? ` (${esc(ST.bopText(x))})` : '');
         case 'car': return esc(x.carName);
         case 'laps': return esc(x.laps);
         case 'points': return esc(x.points);
@@ -52,7 +52,7 @@
       (ST.notes(cols.map(c => c.key)).length ? `<p class="sub">${ST.notes(cols.map(c => c.key)).map(esc).join(' ')}</p>` : '') +
       (isHeats && session.scoring && HT.scoringText(session.scoring, pts) ? `<p class="sub">${esc(HT.scoringText(session.scoring, pts))}</p>` : '') + (fin ? `<p class="sub">${esc(HT.finalsSaid(session.finals))}</p>` : '');
     const heatSummary = !opt.heats || !session.heatResults ? '' : `<h2>${session.finals ? 'Heats and finals' : 'Heats'}</h2>` + session.heatResults.map(h =>
-      `<p><b>${esc(HT.raceName(h))}</b>: ${h.rows.map(r => `${esc(r.pos)}. ${ST.isHeatWinner(session, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${ST.adjustedText(r) ? ', adjusted: ' + esc(ST.adjustedText(r)) : ''})`).join(' &middot; ')}</p>`).join('');
+      `<p><b>${esc(HT.raceName(h))}</b>: ${h.rows.map(r => `${esc(r.pos)}. ${ST.isHeatWinner(session, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${ST.adjustedText(r) ? ', adjusted: ' + esc(ST.adjustedText(r)) : ''}${ST.bopText(r) ? ', ' + esc(ST.bopText(r)) : ''})`).join(' &middot; ')}</p>`).join('');
     const groups = lapGroups(session, laps);
     const lapPages = groups.map(g => {
       const most = Math.max(...g.cols.map(c => c.laps.length));

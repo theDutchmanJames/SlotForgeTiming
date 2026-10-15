@@ -104,6 +104,16 @@ ok('heats counted the standard way (a result of before): no Result column, no li
   const hh = sessionHtml({ session: hs, laps });
   ok('a heat of a heat race says what was adjusted, with the points', hh.includes('Alex (5 laps, 15 pts, adjusted: +5 pts)') && hh.includes('Sam (3 laps, 8 pts, adjusted: −1 lap, +2 s)'));
   ok('...a heat that was not adjusted is as before', sessionHtml({ session: { ...hs, heatResults: [{ heat: 1, rows: [{ pos: 1, driverName: 'Alex', laps: 5, points: 10 }] }] }, laps }).includes('Alex (5 laps, 10 pts)')); }
+// ---- 1.3.0: what Balance of Power did ----
+{ const note = 'hindered 20% (from the start to lap 12), helped 10% (from lap 14)', bop = { ...session, standings: [{ ...st[0], bopNote: note }, st[1]] };
+  const x = sessionHtml({ session: bop, laps }), plain = sessionHtml({ session, laps });
+  ok('a driver who had Balance of Power has it next to the name, in words', x.includes('Alex (Balance of Power: hindered 20% (from the start to lap 12), helped 10% (from lap 14))') && !x.includes('Sam &lt;b&gt; (Balance'));
+  ok('...a driver who had none, and a report from before, have nothing about it', !plain.includes('Balance of Power') && !sessionHtml({ session: { ...session, standings: [{ ...st[0], bopNote: '' }, st[1]] }, laps }).includes('Balance of Power'));
+  ok('...it is safe', !sessionHtml({ session: { ...session, standings: [{ ...st[0], bopNote: '<b>x</b>' }, st[1]] }, laps }).includes('<b>x</b>'));
+  ok('...with an adjustment too, both are there', sessionHtml({ session: { ...session, standings: [{ ...st[0], bopNote: 'helped 10% (from the start)', adjMs: 5000 }, st[1]] }, laps }).includes('Alex (adjusted: +5 s) (Balance of Power: helped 10% (from the start))'));
+  const hs = { ...session, sessionType: 'heats', resultBy: 'laps', heatResults: [{ heat: 1, rows: [{ pos: 1, driverName: 'Alex', laps: 5, points: 0, bopNote: 'hindered 20% (laps 3 to 5)' }, { pos: 2, driverName: 'Sam', laps: 3, points: 0 }] }] };
+  const hh = sessionHtml({ session: hs, laps });
+  ok('a heat says it too, in its row', hh.includes('Alex (5 laps, Balance of Power: hindered 20% (laps 3 to 5))') && hh.includes('Sam (3 laps)')); }
 // ---- 1.0.0: more figures in the results, and the choice of what goes in the PDF ----
 { const tracks = [{ id: 't1', length: 10, lanes: 2, laneModifier: 'none', scale: '1:32' }];
   const s2 = { ...session, trackId: 't1', standings: [{ ...st[0], pits: 1, pitTime: 4000, penaltyPoints: 2 }, st[1]] };

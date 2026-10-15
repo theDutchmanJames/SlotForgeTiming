@@ -49,8 +49,15 @@ const srv = createServer({ root: path.join(R, 'renderer'), appRoot: R, schema: {
     const T = require('../server.js').tokenCommand;
     ok('...the check itself: only the Tokens page commands are looked at, the others pass as before', T({ type: 'start' }) && T({ type: 'penalty', lane: 'x', n: 1 }) && T({ type: 'addtime', lane: 15, minutes: 1440 }) && T({ type: 'reducetime', lane: 3, minutes: 1 }) && !T({ type: 'reducetime', lane: 3, minutes: Infinity }) && T({ type: 'addtime', lane: 0, minutes: 0.5 }) && !T({ type: 'addtime', lane: 0, minutes: Infinity }) && !T({ type: 'addtime', lane: 0, minutes: NaN }));
   }
+  { // Balance of Power (the lane controls of the Race Director page) uses the same login and the same way to the race
+    const before = cmds.length, send = async c => { await api.liveCommand(c); await new Promise(r => setTimeout(r, 15)); };
+    for (const c of [{ type: 'bop', lane: 0, how: 'hinder' }, { type: 'bop', lane: 1, how: 'help' }, { type: 'bop', lane: 1, how: 'off' }, { type: 'bop', lane: 0, how: 'auto' }, { type: 'bop', lane: 15, how: 'accept' }]) await send(c);
+    ok('the Balance of Power commands (Hinder, Help, Off, Auto, Accept for a lane) reach the race after the login', cmds.slice(before).map(c => c.how).join() === 'hinder,help,off,auto,accept' && cmds.slice(before).every(c => c.type === 'bop') && cmds[before + 4].lane === 15);
+    const n = cmds.length;
+    for (const bad of [{ type: 'bop', lane: 1, how: 'dance' }, { type: 'bop', lane: 1 }, { type: 'bop', lane: 1, how: 5 }, { type: 'bop', lane: 1, how: null }, { type: 'bop', how: 'off' }, { type: 'bop', lane: -1, how: 'off' }, { type: 'bop', lane: 16, how: 'off' }, { type: 'bop', lane: 1.5, how: 'off' }, { type: 'bop', lane: '1', how: 'off' }, { type: 'bop', lane: null, how: 'off' }]) await send(bad);
+    ok('...a lane or a button that makes no sense is refused by the server and never reaches the race (10 tries)', cmds.length === n); }
   settings.netPassword = 'new'; await api.liveCommand({ type: 'stop' });
-  ok('after the password changes the login is gone', cmds.length === 2 + 8 && api.directorAuthed() === false);
+  ok('after the password changes the login is gone', cmds.length === 2 + 8 + 5 && api.directorAuthed() === false);
   await srv.close();
   console.log(fails ? fails + ' WEB TESTS FAILED' : 'ALL WEB TESTS PASSED'); process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('ERROR', e.stack); process.exit(1); });

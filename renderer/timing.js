@@ -2,6 +2,7 @@
 // so it can be tested without a screen. The widgets made in the Widget Builder are drawn here too.
 (function (root) {
   const E = typeof module !== 'undefined' ? require('./engine.js') : root.RaceEngine;
+  const Bp = typeof module !== 'undefined' ? require('./bop.js') : root.Bop; // Balance of Power (bop.js)
   const Sp = typeof module !== 'undefined' ? require('./speed.js') : root.Speed;
   const Wd = typeof module !== 'undefined' ? require('./widgets.js') : root.Widgets;
   const Tk = typeof module !== 'undefined' ? require('./tokens.js') : root.Tokens;
@@ -39,7 +40,7 @@
     return { name: esc(c.driverName), nickname: esc(c.nickname || c.driverName), callsign: esc(c.callsign || ''), car: esc(c.carName || ''), lane: c.lane + 1, position: row.pos, lap: c.done ? laps : laps + 1, laps,
       laptime: c.done ? '–' : E.fmtTime(E_.lapElapsed(i, S.now)), last: laps ? E.fmtTime(c.laps[laps - 1]) : '–', best: c.best === null ? '–' : E.fmtTime(c.best), avg: g.length ? E.fmtTime(mean(g)) : '–', median: g.length ? E.fmtTime(median(g)) : '–',
       record: Number.isFinite(best) ? E.fmtTime(best) : '–', gap: esc(row.gap),
-      fuel: F && F.on ? `${(Math.floor(E_.fuelOf(i, t) * 10 + 1e-9) / 10).toFixed(1).replace(/\.0$/, '')} L` : '–', fuelpct: F && F.on && F.tank ? Math.round(E_.fuelOf(i, t) / F.tank * 100) + '%' : '–',
+      fuel: F && F.on ? `${(Math.floor(E_.fuelOf(i, t) * 10 + 1e-9) / 10).toFixed(1).replace(/\.0$/, '')} L` : '–', fuelpct: F && F.on && F.tank ? Math.round(E_.fuelOf(i, t) / (E_.tankOf ? E_.tankOf(i) : F.tank) * 100) + '%' : '–', bop: c.bop ? Bp.signed(c.bop) : '–',
       penpoints: P && P.on ? (c.dq ? 'DQ' : c.points) : '–', pentime: P && P.on ? `+${Number.isInteger(sec) ? sec : sec.toFixed(1)} s` : '–', champ, pits: c.pits ? c.pits.length : 0, pit: pit ? E.fmtTime(pit.ms) : '–', speed: speedOf(true), speedreal: speedOf(false) };
   }
   function raceVars(S, t) {
@@ -150,7 +151,13 @@
         });
         return { html: Wd.leaderHtml(rows, opt) };
       }
-      case 'fuel': { const F = S.eng.fuel; return { html: F && F.on ? Wd.fuelHtml(S.eng.fuelOf(S.eng.cars.indexOf(c), t), F.tank, opt) : '–' }; }
+      case 'fuel': { const F = S.eng.fuel, i = S.eng.cars.indexOf(c); return { html: F && F.on ? Wd.fuelHtml(S.eng.fuelOf(i, t), S.eng.tankOf ? S.eng.tankOf(i) : F.tank, opt) : '–' }; }
+      case 'bop': { // Balance of Power: off, hindered (an arrow down) or helped (an arrow up), with the percentage
+        const pct = c.bop || 0;
+        if (!pct) return { html: opt.showOff === false ? '' : 'BoP off' };
+        const bg = pct < 0 ? (opt.hinderColor || '#ff8c00') : (opt.helpColor || '#3ddc84'), text = opt.showPercent === false ? `BoP ${pct < 0 ? '\u25BC' : '\u25B2'}` : Bp.shortText(pct);
+        return { html: esc(text), bg, color: contrast(bg) };
+      }
       case 'champpoints': { // points from the heats finished so far, plus (optionally) what the current heat's positions are worth right now
         const ch = S.champ; if (!ch || !ch.on) return { html: '–' };
         let pts = ch.done.get(c.driverId) || 0;

@@ -7,7 +7,7 @@ let fails = 0;
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const read = f => fs.readFileSync(R + f, 'utf8');
 const plain = h => h.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
-const src = ['renderer/app.js', 'renderer/editor.js', 'renderer/database.js', 'renderer/landing.js', 'renderer/race.js', 'renderer/liveview.js', 'renderer/hardwareui.js', 'renderer/dsui.js', 'renderer/transferui.js', 'renderer/themeui.js', 'renderer/audioedit.js', 'renderer/tokenui.js', 'renderer/review.js', 'renderer/widgets.js'].map(read).join('\n') + '\n' + read('schema.js');
+const src = ['renderer/app.js', 'renderer/editor.js', 'renderer/database.js', 'renderer/landing.js', 'renderer/race.js', 'renderer/liveview.js', 'renderer/hardwareui.js', 'renderer/dsui.js', 'renderer/transferui.js', 'renderer/themeui.js', 'renderer/audioedit.js', 'renderer/tokenui.js', 'renderer/bopui.js', 'renderer/review.js', 'renderer/widgets.js'].map(read).join('\n') + '\n' + read('schema.js');
 const folders = Help.folders();
 
 // ---- the welcome ----

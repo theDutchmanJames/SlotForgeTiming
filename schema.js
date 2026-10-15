@@ -154,6 +154,8 @@ module.exports = {
         options: [['skip', 'Only starts the timing: the short lap from the grid is not counted'], ['count', 'Counts as a lap']], showIf: RACING },
       { key: 'penaltySystem', group: 'rules', label: 'Penalty system', type: 'ref', ref: 'penaltysystems', blank: 'No penalties', showIf: RACING },
       { key: 'fuelRules', group: 'rules', label: 'Fuel setup', type: 'ref', ref: 'fuelrules', blank: 'No fuel', showIf: RACING },
+      { key: 'bop', group: 'rules', label: 'Balance of Power', type: 'select', default: 'off', options: [['off', 'Off'], ['on', 'On: hinder the fastest car and help the slowest (set it up under Race Setup > Balance of Power)']], showIf: [{ sessionType: ['race', 'timed', 'heats'] }],
+        hint: 'Works through the fuel rules, so it needs a Fuel setup above. Only for races (a number of laps or a duration), not for practice or qualifying.' },
       { key: 'pitHold', group: 'rules', label: 'Pit stop: the sensor must be blocked this long to start a stop (seconds)', type: 'number', default: 2, showIf: RACING },
       { key: 'yellowTarget', group: 'yellow', label: 'Yellow flag: target lap time (seconds, 0 = none)', type: 'number', default: 0, min: 0, showIf: RACING,
         hint: 'While the yellow flag is up, drivers must drive slower than this. Say your normal lap is 7.500 and you set 15.000: a full lap under yellow that is faster than 15.000 is a lap that was too fast, and it is called out. A lap that was partly before the yellow flag does not count. 0 means no target.' },

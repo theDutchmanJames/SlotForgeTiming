@@ -54,11 +54,12 @@ const Help = (() => {
           <li>An invalid lap, or one outside the lap limits of the track, is kept but shown struck through. It never counts for a personal best or a track record.</li>
           <li>A small <b>trophy</b> marks the winner of a race, a timed race or a heat (not in practice or qualifying). A result the Race Director adjusted says so next to the driver's name.</li>
         </ul>` },
-      { id: 'setups', title: 'Race Setup', note: 'Race setups, fuel, penalties and time tokens', body: `
+      { id: 'setups', title: 'Race Setup', note: 'Race setups, fuel, penalties, balance of power and time tokens', body: `
         <ul>
           <li><b>Race Setups</b> hold the rules of one kind of race: the session type, the track, the length, the start lights, penalties and fuel, the timing page and the audio set. Make as many as you like. Every option has a default and sits in a folder.</li>
           <li><b>Fuel Setups</b>: tank size, fuel per lap and what happens when the tank is empty.</li>
           <li><b>Penalty Systems</b>: how penalty points turn into seconds, when a driver is disqualified, and special penalties such as a Drivethrough or a Stop-and-Go.</li>
+          <li><b>Balance of Power</b>: how much a fast car is hindered and a slow car helped, by hand or by itself.</li>
           <li><b>Time Tokens</b>: the time buttons and the warning for a Time Token Session.</li>
           <li>Fuel setups and penalty systems do nothing until you choose them in a race setup.</li>
         </ul>` },
@@ -128,6 +129,14 @@ const Help = (() => {
           <li>A fast lap uses a little more fuel and a slow lap saves some, within the limits you set.</li>
           <li>A <b>pit stop</b> starts when a car stays on the sensor for the hold time of the race setup (2 seconds by default). The tank fills while it stands there. Fuel is optional: pit stops work without it.</li>
           <li>The <b>Fuel</b> and <b>Pitstop time</b> widgets show it on the timing page, and the leaderboard has a Fuel left column.</li>
+        </ul>` },
+      { id: 'bop', title: 'Balance of Power', note: 'Even out fast and slow cars', body: `
+        <ul>
+          <li><b>Balance of Power</b> (BoP) hinders a car that is too fast and helps a car that is too slow. It works through the fuel rules, so the race setup needs a <b>fuel setup</b> and Balance of Power set to On (races, timed races and heat races).</li>
+          <li>A car hindered by 20% uses 20% more fuel a lap and refuels 20% slower (and, if you choose, has a 20% smaller tank), so it pits sooner or has to drive slower. A helped car gets the opposite. It counts from the next lap and the next pit stop.</li>
+          <li>Set it up under Race Setup, <b>Balance of Power</b>: the percentage (a slider), only the fastest and slowest car or every car by its distance from the middle, and which of the three effects are on. It fine-tunes: a car that is seconds a lap faster will not be caught by fuel alone.</li>
+          <li><b>Manual</b>: the Race Director presses Hinder, Help or Off for a lane. <b>Suggest</b>: the app proposes and he presses Accept. <b>Automatic</b>: the app applies it at the lap time difference you set and removes it a little below that. A lane you press stays as you set it until you press Auto.</li>
+          <li>The race screen and the Race Director page have the lane buttons. The <b>Balance of Power</b> widget shows it per lane, and the audio set can say it comes on and goes off. The result says what it did, for example hindered 20% (from the start to lap 12).</li>
         </ul>` },
       { id: 'tokens', title: 'Time Token Sessions', note: 'Selling track time per lane', body: `
         <ul>

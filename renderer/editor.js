@@ -63,12 +63,14 @@ const undoButtons = p => `<button class="btn" id="${p}-undo" title="Undo the las
 // Race Setup tab: the race setups you can pick on the Home tab, and the penalty systems they can use
 async function renderSetup() {
   view.innerHTML = '<h2>Race Setup</h2><div class="sub" id="setuptabs" role="tablist" style="display:flex;gap:4px"></div><p class="muted" id="setupnote"></p><div id="setupmgr"></div>';
-  renderTabs(document.getElementById('setuptabs'), [['setups', 'Race Setups'], ['fuel', 'Fuel Setups'], ['penalties', 'Penalty Systems'], ['tokens', 'Time Tokens']], state.setupSub, id => { state.setupSub = id; renderSetup(); });
+  renderTabs(document.getElementById('setuptabs'), [['setups', 'Race Setups'], ['fuel', 'Fuel Setups'], ['penalties', 'Penalty Systems'], ['bop', 'Balance of Power'], ['tokens', 'Time Tokens']], state.setupSub, id => { state.setupSub = id; renderSetup(); });
   const sub = state.setupSub, entity = sub === 'penalties' ? 'penaltysystems' : sub === 'fuel' ? 'fuelrules' : 'racesetups';
   document.getElementById('setupnote').textContent = sub === 'penalties' ? 'A penalty system says how penalty points turn into time and when a driver is disqualified. Choose one in a race setup.'
     : sub === 'fuel' ? 'A fuel setup sets the tank, how much fuel a lap uses (more when faster, less when slower) and what happens when it runs out. Choose one in a race setup to race with fuel.'
+    : sub === 'bop' ? 'Balance of Power evens out a race: a car that is too fast is hindered and a car that is too slow is helped, through its fuel use, refuelling speed and tank. These settings are used by every race setup that has Balance of Power on.'
     : sub === 'tokens' ? 'The Time Token System sells track time: a lane is switched on with paid time and turns red when the time is up. These settings are used by every Time Token Session.'
     : 'Create the race setups you want to use. Pick one on the Home tab to start a race.';
+  if (sub === 'bop') { manager = null; return renderBopSettings(document.getElementById('setupmgr')); }
   if (sub === 'tokens') { manager = null; return renderTokenSettings(document.getElementById('setupmgr')); }
   await mountManager(document.getElementById('setupmgr'), entity);
 }

@@ -42,7 +42,7 @@
   // Custom text widgets: a line of text with {variables}. Unknown {words} stay as typed so a typo is easy to see.
   const TEXT_LANE_VARS = [['name', 'Driver name'], ['nickname', 'Nickname'], ['callsign', 'Callsign'], ['car', 'Slotcar'], ['lane', 'Lane number'], ['position', 'Position'], ['lap', 'Current lap'], ['laps', 'Laps completed'],
     ['laptime', 'Current lap time'], ['last', 'Last lap'], ['best', 'Best lap'], ['avg', 'Average lap'], ['median', 'Median lap'], ['record', 'Personal record lap'], ['gap', 'Gap to leader'],
-    ['fuel', 'Fuel left (litres)'], ['fuelpct', 'Fuel left (%)'], ['penpoints', 'Penalty points'], ['pentime', 'Penalty time'], ['champ', 'Championship points'], ['pits', 'Pit stops made'], ['pit', 'Last pit stop time'], ['speed', 'Speed (scaled km/h)'], ['speedreal', 'Speed (real km/h)']];
+    ['fuel', 'Fuel left (litres)'], ['fuelpct', 'Fuel left (%)'], ['bop', 'Balance of Power (\u221220% hindered, +10% helped, a dash when it is off)'], ['penpoints', 'Penalty points'], ['pentime', 'Penalty time'], ['champ', 'Championship points'], ['pits', 'Pit stops made'], ['pit', 'Last pit stop time'], ['speed', 'Speed (scaled km/h)'], ['speedreal', 'Speed (real km/h)']];
   const TEXT_RACE_VARS = [['clock', 'Race clock (counting up)'], ['timeleft', 'Time left'], ['lapsleft', 'Laps left'], ['lapstotal', 'Lap limit'], ['leader', 'Leader'], ['flag', 'Flag / race state'], ['heat', 'Heat'],
     ['track', 'Track name'], ['session', 'Race setup name'], ['type', 'Session type'], ['sessionrecord', 'Session record lap'], ['sessionrecordby', 'Session record driver'], ['trackrecord', 'Track record lap'], ['trackrecordby', 'Track record driver'], ['yellowtarget', 'Yellow flag target lap time (empty when there is none)']];
   const TEXT_LANE_DEFAULT = '{position}. {name}  {best}', TEXT_RACE_DEFAULT = '{timeleft} left';
@@ -282,6 +282,12 @@
     { key: 'lapCount', label: 'Count', type: 'select', default: 'up', rerender: true, choices: [['up', 'Up: the lap the leader is on (7/20)'], ['down', 'Down: the laps left (13)']] },
     { key: 'lapTotal', label: 'Show the number of laps of the race when counting up (7/20)', type: 'checkbox', default: true, show: o => !o || o.lapCount !== 'down' }];
   const lapCountOf = o => (o && o.lapCount === 'down' ? 'down' : 'up'), lapTotalOn = o => !(o && o.lapTotal === false);
+  // Balance of Power: shows whether the car is hindered or helped (Race Setup > Balance of Power)
+  const BOP_OPTIONS = [
+    { key: 'showPercent', label: 'Show the percentage', type: 'checkbox', default: true },
+    { key: 'showOff', label: 'Show "BoP off" when it is not applied (turn off to show nothing)', type: 'checkbox', default: true },
+    { key: 'hinderColor', label: 'Colour when the car is hindered', type: 'color', default: '#ff8c00' },
+    { key: 'helpColor', label: 'Colour when the car is helped', type: 'color', default: '#3ddc84' }];
   const TOKENCLOCK_OPTIONS = [{ key: 'warnColour', label: 'Turn amber when the time is almost up (the colour and the number of seconds are set in Race Setup > Time Tokens)', type: 'checkbox', default: true }];
 
   const REGISTRY = [
@@ -305,6 +311,7 @@
     T('sessionrecord', 'Session Record Lap', 'Timing Records', { title: 'Session record lap', w: 220, options: RECORD_OPTIONS, sample: (l, w) => `4.912${(!w || !w.opt || w.opt.showName !== false) ? '<small class="rn">Sam</small>' : ''}` }),
     T('trackrecord', 'Track Record', 'Timing Records', { title: 'Track record (ever set)', w: 220, options: RECORD_OPTIONS, sample: (l, w) => `4.587${(!w || !w.opt || w.opt.showName !== false) ? '<small class="rn">Alex</small>' : ''}` }),
     T('fuel', 'Fuel Level', 'Timing', { title: 'Fuel', perLane: true, w: 200, options: FUEL_OPTIONS, sample: (l, w) => fuelHtml(87.5 - l * 20, 120, (w && w.opt) || {}) }),
+    T('bop', 'Balance of Power', 'Timing', { title: 'Balance of Power', perLane: true, w: 170, options: BOP_OPTIONS, sample: l => ['BoP \u25BC \u221220%', 'BoP off', 'BoP \u25B2 +15%'][l % 3] }),
     T('speed', 'Slotcar Speed', 'Timing', { title: 'Speed', perLane: true, w: 190, options: SPEED_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, k = (o.unit === 'mph' ? 0.621371 : 1) * (o.mode === 'real' ? 1 : 32), v = (11.7 + l * 0.4) * k; return `${v.toFixed(o.mode === 'real' ? 1 : 0)}${o.showUnit === false ? '' : o.unit === 'mph' ? ' mph' : ' km/h'}`; } }),
     T('penalty', 'Penalty Points', 'Timing', { title: 'Penalty', perLane: true, w: 150, options: PENALTY_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, p = [0, 2, 5, 1, 0, 3][l], s = [0, 0, 5, 0, 0, 0][l]; return o.show === 'time' ? `+${s} s` : o.show === 'both' ? `${p} (+${s} s)` : String(p); } }),
     T('champpoints', 'Championship Points', 'Timing', { title: 'Points', perLane: true, w: 150, options: CHAMP_OPTIONS, sample: l => String([10, 8, 6, 5, 4, 3][l] + (l === 0 ? 8 : 0)) }),

@@ -4,6 +4,7 @@ Every version of SlotForge Timing, newest first. The README has a section **What
 
 ## Versions
 
+- **1.3.0**: Balance of Power, to even out fast and slow cars
 - **1.2.0**: the thanks under the Racing Rules, a bigger interface, Race Laps, Adjust in the review, cards to look at, and a trophy
 - **1.1.0**: mirrored flag pictures, a bigger Delta badge, aligned text, Avatars, a race that keeps running, sharper pictures and bigger sound files
 - **1.0.0**: more figures in Results and Records, a PDF dialog, and View settings

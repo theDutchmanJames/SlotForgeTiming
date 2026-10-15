@@ -323,4 +323,20 @@ ok('controls are marked as buttons', b('start', 'ready').button === true && C('c
   ok('...and not counting the current heat before the start', C('champpoints', 0, 16000, { champ, phase: 'between' }).html === '8');
   ok('a race without points shows a dash', C('champpoints', 0, 16000, { champ: { on: false, list: [], done: new Map() } }).html === '–' && C('champpoints', 0).html === '–');
 }
+// 1.3.0: Balance of Power
+{ const Wd = require('../renderer/widgets.js');
+  const fuel = { on: true, tank: 100, perLap: 2, rate: 10, target: 0, extra: 0, saving: 0, empty: 'retire', pitHold: 2000 };
+  const e2 = createRace({ type: 'race', laps: 9, endRule: 'all', entries: people, fuel, bop: { mode: 'manual', tank: true } }); e2.start(0); e2.bopSet(0, -20, 0); e2.bopSet(1, 10, 0); [5000, 10000].forEach(t => e2.cross(0, t)); [5000].forEach(t => e2.cross(1, t));
+  const S2 = over => ({ ...mkS(11000), eng: e2, carByLane: l => e2.cars.find(c => c.lane === l) || null, rowOf: c => e2.standings().find(r => r.car === c), ...over });
+  const B = (lane, opt, over) => T.content(w('bop', lane, opt), S2(over));
+  ok('the Balance of Power widget: hindered shows the arrow down and the percentage on the colour, helped the arrow up', B(0).html === 'BoP ▼ −20%' && B(0).bg === '#ff8c00' && B(0).color === '#000' && B(1).html === 'BoP ▲ +10%' && B(1).bg === '#3ddc84');
+  ok('...the colours are the ones of the options, with a text that can be read on them', (() => { const x = B(0, { hinderColor: '#7a0000', helpColor: '#ffffff' }), y = B(1, { hinderColor: '#7a0000', helpColor: '#ffffff' }); return x.bg === '#7a0000' && x.color === '#fff' && y.bg === '#ffffff' && y.color === '#000'; })());
+  ok('...without the percentage it shows only the arrow', B(0, { showPercent: false }).html === 'BoP ▼' && B(1, { showPercent: false }).html === 'BoP ▲');
+  ok('a car without it says "BoP off" (or nothing, when that is switched off), with no colour', (() => { const e3 = createRace({ type: 'race', laps: 9, endRule: 'all', entries: people, fuel, bop: { mode: 'manual' } }); e3.start(0); const o = { eng: e3, carByLane: l => e3.cars.find(c => c.lane === l) || null }; const a = T.content(w('bop', 0, {}), S2(o)), b = T.content(w('bop', 0, { showOff: false }), S2(o)); return a.html === 'BoP off' && !a.bg && b.html === ''; })());
+  ok('a race without Balance of Power (no fuel, or the race setup has it off) shows "BoP off", an empty lane nothing', C('bop', 0).html === 'BoP off' && C('bop', 7).html === '');
+  ok('the fuel % variable uses the size of the tank of the car (a hindered car has 80 litres, a helped one 110)', (() => { const pct = T.content(w('textlane', 0, { text: '{fuelpct}' }), S2()).html, other = T.content(w('textlane', 1, { text: '{fuelpct}' }), S2()).html; return e2.tankOf(0) === 80 && e2.tankOf(1) === 110 && pct === Math.round(e2.fuelOf(0, 11000) / 80 * 100) + '%' && other === Math.round(e2.fuelOf(1, 11000) / 110 * 100) + '%' && pct === '94%' && other === '89%'; })());
+  ok('...and the Fuel widget draws the fuel against that tank too', (() => { const Wd2 = require('../renderer/widgets.js'); return T.content(w('fuel', 0, {}), S2()).html === Wd2.fuelHtml(e2.fuelOf(0, 11000), 80, {}) && T.content(w('fuel', 1, {}), S2()).html === Wd2.fuelHtml(e2.fuelOf(1, 11000), 110, {}); })());
+  ok('{bop} in a text is the signed percentage (a dash when there is none), and it is one of the variables of the text widgets', T.content(w('textlane', 0, { text: '{bop}' }), S2()).html === '−20%' && T.content(w('textlane', 1, { text: '{bop}' }), S2()).html === '+10%' && C('textlane', 0, 16000, undefined, { text: '{bop}' }).html === '–' && Wd.TEXT_LANE_VARS.some(v => v[0] === 'bop'));
+  const d = Wd.def('bop');
+  ok('the widget is in the Timing group, is per lane, has its options and a sample for the editor', d && d.group === 'Timing' && d.perLane === true && d.options.map(o => o.key).join() === 'showPercent,showOff,hinderColor,helpColor' && d.sample(0) === 'BoP ▼ −20%' && d.sample(1) === 'BoP off' && d.sample(2) === 'BoP ▲ +15%'); }
 console.log(fails ? fails + ' TIMING TESTS FAILED' : 'ALL TIMING TESTS PASSED'); process.exit(fails ? 1 : 0);

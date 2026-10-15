@@ -25,12 +25,14 @@ async function renderRace() {
   const lanes = Math.max(1, Math.floor(Number(r.track.lanes)) || people.length);
   const engineType = tokenSession ? 'practice' : heats ? (setup.heatBy === 'time' ? 'timed' : 'race') : setup.sessionType;
   const fuelCfg = RaceEngine.fuelConfig(setup, find(fuelRules, setup.fuelRules)), pitMs = fuelCfg.pitHold; // fuel on/off, tank, use per lap, refuel speed; pit stop hold time
+  // Balance of Power: only for a race or a timed race with a Fuel Setup, when the race setup has it on (the settings are those of Race Setup > Balance of Power; the lane lengths are for the lane correction)
+  const bopCfg = setup.bop === 'on' && fuelCfg.on && (engineType === 'race' || engineType === 'timed') ? Bop.engineConfig(state.settings, Array.from({ length: lanes }, (_, l) => Speed.laneLength(r.track, l))) : null;
   const penCfg = RaceEngine.penaltyConfig(find(penSystems, setup.penaltySystem)); // penalty points and how they turn into time
   // a final has its own length (0 is the same as a heat). lenNow: the length of the race that is racing, or is next while the race waits between two races
   const finalLen = () => ({ laps: Number(setup.finalLaps) > 0 ? Number(setup.finalLaps) : setup.laps, duration: Number(setup.finalDuration) > 0 ? Number(setup.finalDuration) : setup.duration });
   const lenNow = () => (heat && heat.isFinal() ? finalLen() : { laps: setup.laps, duration: setup.duration });
   const setupNow = () => (heat && heat.isFinal() ? { ...setup, ...finalLen() } : setup);
-  const mk = entries => RaceEngine.createRace({ penalty: penCfg, type: engineType, laps: lenNow().laps, duration: lenNow().duration, endRule: setup.endRule, minLap: Math.max(RaceEngine.MIN_LAP, (Number(r.track.minLap) || 0) * 1000) / speed, maxLap: (Number(r.track.maxLap) || 0) * 1000 / speed, fuel: fuelCfg, yellow: RaceEngine.yellowConfig(setup), skipFirst: tokenSession || setup.firstLap === 'skip', entries });
+  const mk = entries => RaceEngine.createRace({ penalty: penCfg, type: engineType, laps: lenNow().laps, duration: lenNow().duration, endRule: setup.endRule, minLap: Math.max(RaceEngine.MIN_LAP, (Number(r.track.minLap) || 0) * 1000) / speed, maxLap: (Number(r.track.maxLap) || 0) * 1000 / speed, fuel: fuelCfg, bop: bopCfg, yellow: RaceEngine.yellowConfig(setup), skipFirst: tokenSession || setup.firstLap === 'skip', entries });
   const pointList = String(setup.points || '').split(',').filter(t => t.trim() !== '').map(Number).filter(n => !isNaN(n)); // '10, 8, 6' -> [10, 8, 6]; blank pieces are skipped (Number('') would make them 0)
 
   let heat = null, eng;
@@ -76,6 +78,7 @@ async function renderRace() {
     <div class="bar rt-tools"><label><input type="checkbox" id="sim"> Simulated cars</label><span id="tmstatus" class="muted" role="status"></span><span id="lapbtns"></span><span id="pitbtns"></span><span id="callbtns"></span><span id="penbtns"></span>
       <button class="btn" id="fsbtn" type="button" title="Show only the widgets, as large as the window allows (F). Esc closes it.">Full screen widgets</button><button class="btn" id="lapsbtn" aria-expanded="false" hidden title="Check the laps while the race goes on: mark a lap invalid or take it out of the records">Review laps</button><span id="msg" class="muted" role="status"></span><button class="btn danger stopbtn" id="stopbtn">Stop race</button><button class="btn" id="back">Back to Home</button></div>
     <div id="tokenpanel" class="card tkpanel" hidden></div>
+    <div id="boppanel" class="card boppanel" hidden></div>
     <div id="finalpick" class="card" hidden></div>
     <div id="calls" class="card calls" hidden></div>
     <div id="lapreview" class="card rv" hidden></div>
@@ -219,6 +222,7 @@ async function renderRace() {
     live.callBtns.forEach(x => { const c = S.carByLane(x.lane); x.b.disabled = !(['running', 'paused'].includes(live.phase) && c && !c.done); x.b.hidden = !c; });
     drawCalls();
     if (live.tkPanel) live.tkPanel.update();
+    if (live.bopPanel) live.bopPanel.update();
     if (tokens && live.phase === 'running' && now() - (live.tkAt || -1e9) > 10000) persistTokens(true); // (the clocks that run: kept every ten seconds)
     ui('back').disabled = raceActive();
     ui('stopbtn').disabled = !(live.phase === 'running' || live.phase === 'paused' || live.phase === 'between');
@@ -267,9 +271,10 @@ async function renderRace() {
       if (live.phase !== 'running' || eng.cars[i].done) return;
       live.sim[i] = setTimeout(() => {
         const c = eng.cars[i];
-        if (fuelCfg.on && c.fuel <= fuelCfg.perLap * 1.5 && c.blockAt === null) { // low on fuel: the simulated car pits, stays until the tank is full
+        const fx = eng.bop && c.bop ? Bop.factors(c.bop, eng.bop) : { use: 1, rate: 1 }; // (Balance of Power changes the use, the refuelling speed and the tank)
+        if (fuelCfg.on && c.fuel <= fuelCfg.perLap * fx.use * 1.5 && c.blockAt === null) { // low on fuel: the simulated car pits, stays until the tank is full
           blockCar(i);
-          const stay = pitMs + 100 + (((fuelCfg.tank - c.fuel) / (fuelCfg.rate || 1)) * 1000 + 300) / speed; // the hold time is real time; the rest follows the test speed
+          const stay = pitMs + 100 + (((eng.tankOf(i) - c.fuel) / ((fuelCfg.rate * fx.rate) || 1)) * 1000 + 300) / speed; // the hold time is real time; the rest follows the test speed
           live.sim[i] = setTimeout(() => { unblockCar(i); next(); }, stay);
         } else { crossCar(i); next(); }
       }, pace + (Math.random() - 0.5) * 700 / speed);
@@ -415,7 +420,7 @@ async function renderRace() {
         ...(finalsOn && fmode.finalMode === 'added' && o.finalPos !== null ? { heatScore: o.heatScore, finalPoints: o.finalPoints, finalLaps: o.finalLaps } : {}) }));
     } else {
       standings = eng.standings().map(x => ({ pos: x.pos, driverId: x.car.driverId, carId: x.car.carId, driverName: x.car.driverName, carName: x.car.carName, laps: eng.lapsOf(x.car), best: x.car.best, total: x.car.total, retired: (x.car.retired && !x.car.dq) || undefined,
-        ...(x.car.adjMs ? { adjMs: x.car.adjMs } : {}), ...(x.car.adjLaps ? { adjLaps: x.car.adjLaps } : {}),
+        ...(x.car.adjMs ? { adjMs: x.car.adjMs } : {}), ...(x.car.adjLaps ? { adjLaps: x.car.adjLaps } : {}), ...(eng.bopNoteOf(eng.cars.indexOf(x.car)) ? { bopNote: eng.bopNoteOf(eng.cars.indexOf(x.car)) } : {}), // (what Balance of Power did to the car, in words)
         ...(hasPits(x.car) ? pitFigures(x.car) : {}), ...(penCfg.on ? { penaltyPoints: x.car.points, penalty: eng.penMs(x.car), dq: x.car.dq || undefined } : {}) }));
       laps = [];
       eng.cars.forEach(c => laps.push(...lapRows(c, date, {})));
@@ -515,6 +520,11 @@ async function renderRace() {
       if (!['running', 'paused'].includes(live.phase) || !eng.resolveCall(id, how, now())) return;
       if (eng.status === 'finished') engineFinished(); else update();
     },
+    bop(lane, how) { // Balance of Power for the car on this lane (the buttons of the panel, or the Race Director page): hinder, help, off, auto or accept
+      if (!eng.bop || !['hinder', 'help', 'off', 'auto', 'accept'].includes(how) || live.phase === 'finished' || live.phase === 'review') return;
+      const i = eng.cars.findIndex(c => c.lane === lane);
+      if (i >= 0 && eng.bopPress(i, how, now())) update();
+    },
     yellow() { if (live.restarting) return; eng.setFlag('yellow', now()); syncPhase(); },
     red() {
       if (cancelRestart()) return;
@@ -567,6 +577,7 @@ async function renderRace() {
     else if (cmd.type === 'assign') actions.assign(Number(cmd.lane), Number(cmd.typeIndex));
     else if (cmd.type === 'call') actions.call(Number(cmd.lane));
     else if (cmd.type === 'callresolve') actions.callResolve(Number(cmd.id), cmd.how);
+    else if (cmd.type === 'bop') actions.bop(Number(cmd.lane), cmd.how);
     else if (cmd.type === 'review') reviewCommand(cmd);
     else if (tokens && TOKEN_CMD[cmd.type]) TOKEN_CMD[cmd.type](cmd);
   });
@@ -740,5 +751,6 @@ async function renderRace() {
     }
     if (!(kept && kept.data)) ui('msg').textContent = 'Press Start to open the session, then add time to a lane.';
   }
+  if (bopCfg) live.bopPanel = BopPanel.build(ui('boppanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, send: (lane, how) => actions.bop(lane, how) }); // the Balance of Power lane controls
   shareStatic(); update(); drawOverall();
 }

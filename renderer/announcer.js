@@ -37,6 +37,8 @@
     { id: 'fuellow', group: 'Pit and fuel', label: 'A car is low on fuel', vars: ['driver', 'fuel'], lines: ['{driver} is low on fuel', '{driver}, fuel is getting low'] },
     { id: 'outoffuel', group: 'Pit and fuel', label: 'A car is out of fuel', vars: ['driver'], lines: ['{driver} is out of fuel', '{driver} has run dry'] },
     { id: 'refuelled', group: 'Pit and fuel', defaultOn: false, label: 'A car has refuelled (said when the pit stop is over)', vars: ['driver', 'refuelled', 'fuel', 'pit'], lines: ['{driver} has refuelled, {refuelled} litres', '{driver} takes on {refuelled} litres'] },
+    { id: 'bopon', group: 'Balance of Power', label: 'Balance of Power is applied to a car (hindered or helped)', vars: ['driver', 'bop', 'effect'], lines: ['Balance of Power for {driver}', '{driver} has Balance of Power'] },
+    { id: 'bopoff', group: 'Balance of Power', label: 'Balance of Power is taken off a car', vars: ['driver'], lines: ['Balance of Power for {driver} removed!', '{driver}, Balance of Power removed'] },
     { id: 'penalty', group: 'Penalties', label: 'Penalty points given', vars: ['driver', 'points'], lines: ['Penalty for {driver}', '{driver} gets a penalty'] },
     { id: 'specialpenalty', group: 'Penalties', label: 'A special penalty (drivethrough, stop and go...)', vars: ['driver', 'penalty'], lines: ['{driver}, {penalty}', '{penalty} for {driver}'] },
     { id: 'penaltyserved', group: 'Penalties', defaultOn: false, label: 'A special penalty has been served', vars: ['driver', 'penalty'], lines: ['{driver} has served the {penalty}', '{penalty} served by {driver}'] },
@@ -71,8 +73,9 @@
     target: 'The yellow flag target lap time, as spoken (7.5 seconds)',
     gapahead: 'The gap to the car in front right now, as spoken (empty for the leader)', record: 'The track record, as spoken (empty when the track has none; in the track record call: the old record)',
     improved: 'How much better the lap was than the best before it (0.12 seconds)', off: 'How far a lap was from the track record (0.04 seconds)',
-    pit: 'How long the pit stop took, as spoken (7.4 seconds)', refuelled: 'Litres of fuel put in during the pit stop', added: 'The time that was added, as spoken (5 minutes, 30 seconds)' };
-  const SAMPLE = { target: '15 seconds', driver: 'Alex', name: 'Alex', nickname: 'Speedy', callsign: 'ALX', other: 'Sam', time: '5.12', position: 'second', percent: '50', left: '5 laps', fuel: '12', lane: '2', seconds: '60', points: '2', penalty: 'drivethrough', lap: '4', laps: '10', gap: '0.8 seconds', lapsdown: '1 lap', heat: '2', heats: '3', final: 'A', car: 'Porsche 956', best: '5.10', track: 'Living room', gapahead: '0.8 seconds', record: '5.01', improved: '0.12 seconds', off: '0.04 seconds', pit: '7.4 seconds', refuelled: '8', added: '5 minutes' };
+    pit: 'How long the pit stop took, as spoken (7.4 seconds)', refuelled: 'Litres of fuel put in during the pit stop', added: 'The time that was added, as spoken (5 minutes, 30 seconds)',
+    bop: 'The Balance of Power percentage the car got, as a number (20)', effect: 'What Balance of Power does to the car: hindered or helped' };
+  const SAMPLE = { target: '15 seconds', driver: 'Alex', name: 'Alex', nickname: 'Speedy', callsign: 'ALX', other: 'Sam', time: '5.12', position: 'second', percent: '50', left: '5 laps', fuel: '12', lane: '2', seconds: '60', points: '2', penalty: 'drivethrough', lap: '4', laps: '10', gap: '0.8 seconds', lapsdown: '1 lap', heat: '2', heats: '3', final: 'A', car: 'Porsche 956', best: '5.10', track: 'Living room', gapahead: '0.8 seconds', record: '5.01', improved: '0.12 seconds', off: '0.04 seconds', pit: '7.4 seconds', refuelled: '8', added: '5 minutes', bop: '20', effect: 'hindered' };
   const ORD = ['zeroth', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth'];
   const ordinal = n => ORD[n] || `${n}th`;
   // a lap time as it is spoken: 5.12 (two decimals), or 1 minute 5.12
@@ -198,17 +201,20 @@
         else if (e.type === 'forgiven') ev('penaltyforgiven', { ...who(c), penalty: pen });
         else if (e.type === 'timeadded') ev('penaltytime', { ...who(c), added: speakSpan(e.ms) });
         else if (e.type === 'outoffuel') ev('outoffuel', who(c));
+        else if (e.type === 'bopon' || (e.type === 'bopchange' && e.was * e.pct < 0)) ev('bopon', { ...who(c), bop: Math.abs(e.pct), effect: e.pct < 0 ? 'hindered' : 'helped' }); // (a car that goes from hindered to helped, or the other way, is told again; a change of the percentage alone is not said)
+        else if (e.type === 'bopoff') ev('bopoff', who(c));
         else if (e.type === 'penalty' && e.delta > 0) ev('penalty', { ...who(c), points: e.delta });
         else if (e.type === 'assigned') ev('specialpenalty', { ...who(c), penalty: pen });
         else if (e.type === 'disqualified') ev('disqualified', who(c));
       }
       if (live && eng.fuel && eng.fuel.on && eng.fuel.tank > 0) cars.forEach((c, i) => { // low on fuel: once, until the tank is filled up again
         if (c.done || c.outOfFuel) return;
-        if (S.half[i] === undefined) S.half[i] = c.fuel <= eng.fuel.tank * 0.5; // (a car that starts with half a tank or less is not told so)
-        else if (c.fuel > eng.fuel.tank * 0.5) S.half[i] = false;
+        const tank = eng.tankOf ? eng.tankOf(i) : eng.fuel.tank; // (the tank of this car: it can be smaller or bigger with Balance of Power)
+        if (S.half[i] === undefined) S.half[i] = c.fuel <= tank * 0.5; // (a car that starts with half a tank or less is not told so)
+        else if (c.fuel > tank * 0.5) S.half[i] = false;
         else if (!S.half[i]) { S.half[i] = true; ev('fuelhalf', { ...who(c), fuel: Math.round(c.fuel) }); }
-        if (c.fuel > eng.fuel.tank * 0.5) S.low[i] = false;
-        else if (c.fuel <= eng.fuel.tank * 0.25 && !S.low[i]) { S.low[i] = true; ev('fuellow', { ...who(c), fuel: Math.round(c.fuel) }); }
+        if (c.fuel > tank * 0.5) S.low[i] = false;
+        else if (c.fuel <= tank * 0.25 && !S.low[i]) { S.low[i] = true; ev('fuellow', { ...who(c), fuel: Math.round(c.fuel) }); }
       });
       // no lap for a while: said once for each stretch without a lap (a car in the pits, out of the race or without paid time is not asked about)
       if (phase === 'running' && noLap > 0 && ctx.now !== undefined) cars.forEach((c, i) => {

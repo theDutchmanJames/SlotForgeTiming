@@ -1,6 +1,7 @@
 // The race rules, kept free of any screen code so they can be tested on their own.
 // Times are in milliseconds; the caller passes the current time `t` into every call.
 (function (root) {
+  const B = typeof module !== 'undefined' ? require('./bop.js') : root.Bop; // Balance of Power: percentages and the way they change the fuel rules of a car
   const MIN_LAP = 800; // crossings closer together than this are treated as double triggers
 
   function fmtTime(ms) {
@@ -65,13 +66,17 @@
     const addOf = c => penOf(c) + (c.adjMs || 0); // everything that is added to the time of the car: the penalty and the adjustment
     const lapsOf = c => c.laps.length + (c.adjLaps || 0); // the laps that count: the laps driven, plus or minus the adjustment
     const F = { on: false, tank: 0, perLap: 0, rate: 0, target: 0, extra: 0, saving: 0, empty: 'retire', pitHold: 2000, ...(cfg.fuel || {}) };
+    // Balance of Power (cfg.bop, see bop.js): only in a race or a timed race that has fuel, because it works through the fuel rules. Every car has its own percentage (car.bop: negative = hindered, positive = helped).
+    const BP = cfg.bop && F.on && (type === 'race' || type === 'timed') ? B.clean(cfg.bop) : null, ONE = { use: 1, rate: 1, tank: 1 };
+    const fx = c => (BP && c.bop ? B.factors(c.bop, BP) : ONE); // what the car gets of the fuel rules now
+    const tankOf = c => (BP && c.bop ? Math.round(F.tank * fx(c).tank * 1e6) / 1e6 : F.tank); // (rounded: 100 x 1.1 is not 110.00000000000001 on a screen)
     const Y = { target: 0, points: 0, ...(cfg.yellow || {}) }; // the yellow flag target lap time (ms; 0 = none) and the penalty points for a full lap under yellow that is faster
     const lapLimit = type === 'race' ? Number(cfg.laps) || 0 : 0;
     const timeLimit = (type === 'timed' || type === 'qualifying') ? (Number(cfg.duration) || 0) * 60000 : 0;
     const R = {
       cfg, fuel: F, penalty: P, type, status: 'ready', t0: 0, pausedAt: 0, endAt: 0, timeUp: false, finished: 0, endedBy: '',
       yellow: Y, yellowAt: null, // yellowAt: when the yellow flag that is up now went up (a lap that started before that is not a lap under yellow)
-      cars: cfg.entries.map(e => ({ ...e, laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, adjMs: 0, adjLaps: 0, adjPoints: 0, invalid: [], removed: [], yellowFast: [], pitLaps: [], servedNow: false, last: 0, total: 0, best: null, done: false, place: 0, retired: false, fuel: F.on ? F.tank : 0, outOfFuel: false,
+      cars: cfg.entries.map(e => ({ ...e, laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, adjMs: 0, adjLaps: 0, adjPoints: 0, invalid: [], removed: [], yellowFast: [], pitLaps: [], servedNow: false, last: 0, total: 0, best: null, done: false, place: 0, retired: false, fuel: F.on ? F.tank : 0, outOfFuel: false, bop: 0, bopHold: false, bopTo: null,
         blockAt: null, pit: null, pits: [], lastPit: null, outlap: false, started: !skipFirst })),
       events: [], // what happened, in order: { type, car, t } (outoffuel, retired, pitstart, fuelfull, pitend, call, callend...)
       calls: [] // calls from a lane to the Race Director: { id, car, t, open, how }; how a call ended: 'penalty' or 'dismiss'
@@ -88,7 +93,7 @@
     };
 
     R.elapsed = t => R.status === 'running' ? t - R.t0 : R.status === 'paused' ? R.pausedAt - R.t0 : R.status === 'finished' ? R.endAt - R.t0 : 0;
-    R.start = t => { R.status = 'running'; R.t0 = t; R.cars.forEach(c => { c.last = t; }); };
+    R.start = t => { R.status = 'running'; R.t0 = t; R.cars.forEach(c => { c.last = t; if (BP && F.on) c.fuel = tankOf(c); }); }; // (a car that has Balance of Power before the start begins with a full tank of its own size)
     R.pause = t => { if (R.status === 'running') { R.status = 'paused'; R.pausedAt = t; } };
     R.resume = t => {
       if (R.status !== 'paused') return;
@@ -138,7 +143,7 @@
       const dt = t - c.last, lapStart = c.last;
       if (dt < minLap) return false;
       R.tick(t);
-      const need = F.on ? fuelUse(F, dt) : 0; // litres this lap took
+      const use = fx(c).use, need = F.on ? (use === 1 ? fuelUse(F, dt) : Math.round(fuelUse(F, dt) * use * 1e6) / 1e6) : 0; // litres this lap took (a car with Balance of Power uses more or less)
       const fuelShort = F.on && c.fuel < need - 1e-9; // the tank did not hold enough for this lap
       if (fuelShort) { // not enough fuel to have driven this lap
         if (!c.outOfFuel) { c.outOfFuel = true; log('outoffuel', R.cars.indexOf(c), t); }
@@ -159,6 +164,7 @@
         if (Y.points > 0 && R.addPoints(i, Y.points, t)) e.points = Y.points;
       }
       if (!c.dq && ((lapLimit && c.laps.length >= lapLimit) || (timeLimit && R.timeUp))) { c.done = true; c.place = ++R.finished; } // a car disqualified on this lap (fuel points) has not finished
+      bopEval(t);
       checkEnd(t);
       return true;
     };
@@ -178,7 +184,7 @@
     function pitCheck(i, t) {
       const c = R.cars[i];
       if (c.blockAt === null || c.pit || t - c.blockAt < F.pitHold) return;
-      c.pit = { start: c.blockAt + F.pitHold, fuel0: c.fuel, full: false };
+      c.pit = { start: c.blockAt + F.pitHold, fuel0: c.fuel, full: false, ...(BP && c.bop ? { rate: F.rate * fx(c).rate, tank: tankOf(c) } : {}) }; // (the refuelling speed and the tank of a car with Balance of Power are fixed for the whole stop)
       log('pitstart', i, c.pit.start);
     }
     function fuelAt(i, t) {
@@ -186,14 +192,14 @@
       if (!F.on) return null;
       if (!c.pit) return c.fuel;
       const te = R.status === 'paused' ? R.pausedAt : R.status === 'finished' ? R.endAt : t;
-      return Math.min(F.tank, c.pit.fuel0 + F.rate * Math.max(0, te - c.pit.start) / 1000);
+      return Math.min(c.pit.tank ?? F.tank, c.pit.fuel0 + (c.pit.rate ?? F.rate) * Math.max(0, te - c.pit.start) / 1000);
     }
     function closePit(i, t) {
       const c = R.cars[i];
       if (c.blockAt === null) return;
       if (c.pit) {
         const fuel = fuelAt(i, t), got = F.on ? fuel - c.pit.fuel0 : 0;
-        if (F.on) { c.fuel = fuel; if (c.fuel >= F.perLap * (1 - (F.saving || 0)) - 1e-9) c.outOfFuel = false; }
+        if (F.on) { c.fuel = fuel; if (c.fuel >= F.perLap * (1 - (F.saving || 0)) * fx(c).use - 1e-9) c.outOfFuel = false; }
         c.lastPit = { at: c.blockAt, duration: t - c.blockAt, refuelled: Math.round(got * 1000) / 1000 };
         c.pits.push(c.lastPit); c.outlap = true;
         log('pitend', i, t, { duration: c.lastPit.duration, refuelled: c.lastPit.refuelled });
@@ -201,6 +207,41 @@
       c.blockAt = null; c.pit = null;
     }
     R.fuelOf = fuelAt;
+    R.tankOf = i => (R.cars[i] ? tankOf(R.cars[i]) : F.tank); // the size of the tank of car i (smaller or bigger with Balance of Power)
+
+    // ---- Balance of Power ----
+    R.bop = BP; // the settings (or null: this race has no Balance of Power)
+    R.bopActive = false; R.bopSpread = 0; // at the last look: was the difference between the fastest and slowest car big enough, and how big (seconds)
+    // Give car i a percentage (negative: hindered, positive: helped, 0: none). It counts from the next lap and the next pit stop. Every change is in the race log.
+    R.bopSet = (i, pct, t, by) => {
+      const c = R.cars[i]; if (!BP || !c || R.status === 'finished') return false;
+      const n = Math.round(Math.max(-B.MAXP, Math.min(B.MAXP, Number(pct) || 0))), was = c.bop || 0;
+      if (n === was) return false;
+      c.bop = n === 0 ? 0 : n;
+      if (F.on && !c.pit) c.fuel = Math.min(c.fuel, tankOf(c)); // a tank that gets smaller keeps only what fits
+      log(!was ? 'bopon' : !n ? 'bopoff' : 'bopchange', i, t || 0, { pct: c.bop, lap: c.laps.length, by: by || 'director', ...(was && n ? { was } : {}) });
+      return true;
+    };
+    // What the Race Director presses for a lane: hinder, help, off (these stay until he says auto), auto (the system decides again), accept (take over the suggestion)
+    R.bopPress = (i, how, t) => {
+      const c = R.cars[i]; if (!BP || !c) return false;
+      if (how === 'hinder' || how === 'help' || how === 'off') { c.bopHold = true; return R.bopSet(i, how === 'off' ? 0 : how === 'hinder' ? -BP.percent : BP.percent, t, 'director'); }
+      if (how === 'auto') { c.bopHold = false; return BP.mode === 'auto' && typeof c.bopTo === 'number' ? R.bopSet(i, c.bopTo, t, 'auto') : false; }
+      if (how === 'accept') return typeof c.bopTo === 'number' && R.bopSet(i, c.bopTo, t, 'accepted');
+      return false;
+    };
+    // After every lap: the pace of every car still racing, who should get how much (suggested, or applied in automatic mode). Not under a flag, and not before two cars have enough laps.
+    function bopEval(t) {
+      if (!BP || BP.mode === 'manual' || R.status !== 'running' || R.flag) return;
+      const paces = R.cars.map(c => (c.done || c.retired || c.dq ? null : B.paceOf(c, BP, (BP.laneFactors || [])[c.lane]))), p = B.plan(paces, BP, R.bopActive);
+      R.bopActive = p.active; R.bopSpread = p.spread;
+      R.cars.forEach((c, i) => {
+        if (paces[i] === null) { c.bopTo = null; return; } // (a car that has no pace yet, or has finished, gets no suggestion)
+        c.bopTo = p.pct[i];
+        if (BP.mode === 'auto' && !c.bopHold) R.bopSet(i, p.pct[i], t, 'auto');
+      });
+    }
+    R.bopNoteOf = i => B.noteOf(B.periodsOf(R.events, i)); // what BoP did to car i in this race, in words (empty when nothing)
     // ---- penalty points ----
     R.penMs = penOf;
     // Adds (or with a negative n takes back) penalty points. Reaching the disqualify limit puts the car out of the race.
@@ -509,8 +550,9 @@
     H.record = race => {
       const rows = race.standings().map(r => { // (what the Race Director adjusted in the review is in the row: the laps and the time are the adjusted ones, the championship points come on top of the points of the place)
         const a = race.adjOf ? race.adjOf(r.car) : { ms: 0, laps: 0, points: 0 }; // (a race that is not an engine race, such as a stand-in of a test, has no adjustments)
+        const note = race.bopNoteOf && race.cars ? race.bopNoteOf(race.cars.indexOf(r.car)) : ''; // what Balance of Power did to the car, in words
         return { participant: r.car.participant, pos: r.pos, laps: race.lapsOf ? race.lapsOf(r.car) : r.car.laps.length, total: a.ms && Number.isFinite(r.car.total) ? r.car.total + a.ms : r.car.total, best: r.car.best, points: (points[r.pos - 1] || 0) + (byPoints ? a.points : 0),
-          ...(a.ms ? { adjMs: a.ms } : {}), ...(a.laps ? { adjLaps: a.laps } : {}), ...(byPoints && a.points ? { adjPoints: a.points } : {}) };
+          ...(a.ms ? { adjMs: a.ms } : {}), ...(a.laps ? { adjLaps: a.laps } : {}), ...(byPoints && a.points ? { adjPoints: a.points } : {}), ...(note ? { bopNote: note } : {}) };
       });
       if (byPoints && sc.fastestBonus > 0) { // the driver with the fastest lap of this heat gets the bonus (with the same lap time, the one who finished higher)
         let top = null; for (const r of rows) if (Number.isFinite(r.best) && (top === null || r.best < top.best)) top = r;

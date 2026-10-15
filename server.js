@@ -7,7 +7,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 // what other devices may read from the database: no settings (they hold the password), nothing is ever written
 const READABLE = ['drivers', 'slotcars', 'tracks', 'racesetups', 'layouts', 'rowdesigns', 'sessions', 'laps', 'penaltysystems', 'fuelrules'];
 // what the Race Director page may send to the race
-const COMMANDS = ['start', 'pause', 'stop', 'yellow', 'red', 'penalty', 'assign', 'review', 'call', 'callresolve', 'addtime', 'reducetime', 'undotime', 'endtime', 'cleartime', 'setdriver'];
+const COMMANDS = ['start', 'pause', 'stop', 'yellow', 'red', 'penalty', 'assign', 'review', 'call', 'callresolve', 'addtime', 'reducetime', 'undotime', 'endtime', 'cleartime', 'setdriver', 'bop'];
 // The commands of the Tokens page (Time Token Sessions) are checked here before they go to the race window: a lane is a whole number from 0 to 15,
 // the minutes to add are a number above 0 and at most 1440 (a day), a driver is the id of a driver (or '' for a Guest).
 const TOKEN_COMMANDS = ['addtime', 'reducetime', 'undotime', 'endtime', 'cleartime', 'setdriver'];
@@ -17,6 +17,13 @@ function tokenCommand(c) {
   if (c.type === 'addtime' || c.type === 'reducetime') return typeof c.minutes === 'number' && Number.isFinite(c.minutes) && c.minutes > 0 && c.minutes <= 1440;
   if (c.type === 'setdriver') return typeof c.driverId === 'string' && c.driverId.length <= 80;
   return true;
+}
+
+// The command of Balance of Power: a lane is a whole number from 0 to 15, and what is pressed one of the five buttons of the lane controls.
+const BOP_HOW = ['hinder', 'help', 'off', 'auto', 'accept'];
+function bopCommand(c) {
+  if (c.type !== 'bop') return true;
+  return Number.isInteger(c.lane) && c.lane >= 0 && c.lane <= 15 && typeof c.how === 'string' && BOP_HOW.includes(c.how);
 }
 
 // o: { root (the renderer folder), appRoot (holds node_modules), schema, getSettings(), list(entity), customFields(entity), getLive() -> {stat, dyn}, onCommand(cmd) }
@@ -65,7 +72,7 @@ function createServer(o) {
         const b = await body(req), pw = password();
         if (!pw || typeof b.token !== 'string' || tokens.get(b.token) !== pw) return send(res, 401, { error: 'login' });
         if (!b.cmd || !COMMANDS.includes(b.cmd.type)) return send(res, 400, { error: 'unknown command' });
-        if (!tokenCommand(b.cmd)) return send(res, 400, { error: 'bad command' });
+        if (!tokenCommand(b.cmd) || !bopCommand(b.cmd)) return send(res, 400, { error: 'bad command' });
         o.onCommand(b.cmd); return send(res, 200, { ok: true });
       }
       if (req.method === 'GET') { // the app's own pages
@@ -88,4 +95,4 @@ function createServer(o) {
     clientCount: () => clients.size
   };
 }
-module.exports = { createServer, tokenCommand };
+module.exports = { createServer, tokenCommand, bopCommand };
