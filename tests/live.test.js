@@ -167,6 +167,59 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     say('...and the saved result is as before (no scoring, no extra numbers on the standings)', saved.length === 1 && saved[0][0].scoring === undefined && saved[0][0].standings.every(x => x.score === undefined && x.counted === undefined) && saved[0][0].heatResults.every(h => h.rows.every(r => r.bonus === undefined)));
   }
 
+  // 1.7.0: the total race time as the result of the heats
+  { saved.length = 0;
+    await openRace({ name: 'Heats', sessionType: 'heats', heatBy: 'laps', laps: 2, endRule: 'all', heatPlan: 'roundrobin', resultBy: 'time', layout: '' }, store.tracks[0], rows(1, 2, 3));
+    const view = E('racehost').innerHTML;
+    say('the total race time: the note says so and the table has a Result column', view.includes('id="overallnote"') && view.includes('the lowest total race time wins') && view.includes('<th>Result</th>'));
+    E('sim').checked = true; let m = 0;
+    while (phase() !== 'finished' && m++ < 6) { key(' '); await until(() => ['between', 'finished'].includes(phase())); }
+    const sess = saved[0] && saved[0][0];
+    say('3 heats run and one session saved as a result by time', m === 3 && saved.length === 1 && sess.resultBy === 'time' && sess.scoring && sess.scoring.byTime === true);
+    say('every heat row has a finish time and the saved standings carry the time that counts', sess.heatResults.every(h => h.rows.every(r => r.fin === true || r.fin === false)) && sess.standings.length === 3 && sess.standings.every(x => Number.isFinite(x.score) && x.score > 0));
+    say('the standings are ordered by the lowest total time', sess.standings.every((x, i, a) => i === 0 || a[i - 1].score <= x.score));
+    say('the Result column on the race screen shows times', /\d:\d\d\.\d\d\d|\d+\.\d\d\d/.test(E('overall').innerHTML));
+  }
+
+  // 1.7.0: the heat list on the race screen, in the data for the other screens and as a widget
+  { saved.length = 0; const layoutsWere = store.layouts;
+    store.layouts = [...layoutsWere, { id: 'HL', name: 'Heat list', ratioW: 16, ratioH: 9, widgets: [{ ...W('heatlist', null, 0, 0), w: 600, h: 300 }, { ...W('heatlist', null, 0, 320), w: 600, h: 100, opt: { show: 'near', detail: 'all', lanes: false } }] }];
+    await openRace({ name: 'Heats', sessionType: 'heats', heatBy: 'laps', laps: 2, endRule: 'all', heatPlan: 'roundrobin', resultBy: 'points', points: '10, 8, 6', layout: 'HL' }, store.tracks[0], rows(1, 2, 3));
+    const dh = () => (sent.dyn && sent.dyn.heat) || null, card = E('racehost').innerHTML, rowsOf = () => (E('heatlist').innerHTML.match(/<tr class="hl-[a-z]+"/g) || []);
+    say('the race screen has a heat list card, open, with a print button and a message place', card.includes('id="heatlistcard"') && card.includes('<summary>Heat list (3 heats)</summary>') && card.includes(' open>') && card.includes('id="heatprint"') && card.includes('id="heatprintmsg"') && !card.includes('Heat schedule'));
+    let hl = E('heatlist').innerHTML;
+    say('before the start: a row per heat with the drivers by lane, the first heat is next, nobody has won yet', rowsOf().length === 3 && rowsOf()[0] === '<tr class="hl-next"' && rowsOf()[1] === '<tr class="hl-later"' && hl.includes('Lane 1: ') && hl.includes('>Next</span>') && !hl.includes('Racing now') && hl.includes('<th>Points</th>'));
+    await until(() => !!dh());
+    say('...every heat has its place in the data of the other screens too (3 heats, by points)', !!dh() && dh().list.length === 3 && dh().by === 'points' && dh().list[0].drivers.length > 0);
+    say('...and the Heat List widgets of the live page show them (the second one only the heat that is next and the two after it, without lane numbers)', node('heatlist').val.innerHTML.includes('class="hlw"') && (node('heatlist').val.innerHTML.match(/<tr /g) || []).length === 3 && run("live.nodes.filter(n=>n.w.type==='heatlist')[1].val.innerHTML").includes('hlw-next') && !/<td class="hlw-d">\d: /.test(run("live.nodes.filter(n=>n.w.type==='heatlist')[1].val.innerHTML")));
+    E('sim').checked = true; key(' '); await until(() => phase() === 'running');
+    say('while the heat races it is marked as racing now, in the list and in the widget', E('heatlist').innerHTML.includes('<tr class="hl-current"') && E('heatlist').innerHTML.includes('Racing now') && !E('heatlist').innerHTML.includes('hl-next') && node('heatlist').val.innerHTML.includes('hlw-current'));
+    await until(() => ['between', 'finished'].includes(phase()));
+    hl = E('heatlist').innerHTML;
+    say('after the heat: it is done, with its winner and the points of the places, and the next heat is next', rowsOf().join() === '<tr class="hl-done",<tr class="hl-next",<tr class="hl-later"' && hl.includes('>Done</span>') && /1\. [A-Za-z]+ 10 · 2\. [A-Za-z]+ 8</.test(hl));
+    say('...with a result by points the laps of every place are in a column of their own', hl.includes('<th>Laps</th>') && /<td>\d+ · \d+<\/td><\/tr>/.test(hl));
+    say('...the winner is the driver who came first, in the winner column', (m => m && hl.includes(`<td>${m[1]}</td><td>1. ${m[1]} 10`))(/<td>1\. ([A-Za-z]+) 10/.exec(hl)));
+    say('...the other screens get the result of that heat (two drivers on this track, the first with 10 points) and the widget shows a star for the winner', (await until(() => dh() && dh().list && dh().list[0].rows.length === 2), !!dh() && dh().list[0].rows.length === 2 && dh().list[0].rows[0].points === 10 && dh().list[1].rows.length === 0) && node('heatlist').val.innerHTML.includes('class="hlw-win">★ ') && node('heatlist').val.innerHTML.includes('hlw-done'));
+    say('...the dynamic message that is sent holds the list as well, so a phone or a second window can draw it', !!sent.dyn && !!sent.dyn.heat && sent.dyn.heat.list.length === 3 && sent.dyn.heat.list[0].rows.length === 2);
+    let m = 1;
+    while (phase() !== 'finished' && m++ < 6) { key(' '); await until(() => ['between', 'finished'].includes(phase())); }
+    say('after the last heat every heat is done and has a winner', rowsOf().every(x => x === '<tr class="hl-done"') && (E('heatlist').innerHTML.match(/>Done<\/span>/g) || []).length === 3);
+    // a race by laps and a race by time: the last column and its heading
+    await openRace({ name: 'Heats', sessionType: 'heats', heatBy: 'laps', laps: 2, endRule: 'all', heatPlan: 'roundrobin', resultBy: 'laps', layout: '' }, store.tracks[0], rows(1, 2, 3));
+    say('a result by laps: the last column of the heat list is the laps (and there is no second laps column)', E('heatlist').innerHTML.includes('<th>Laps</th>') && (E('heatlist').innerHTML.match(/<th>Laps<\/th>/g) || []).length === 1 && (await until(() => dh() && dh().by === 'laps'), dh().by === 'laps'));
+    await openRace({ name: 'Heats', sessionType: 'heats', heatBy: 'laps', laps: 2, endRule: 'all', heatPlan: 'roundrobin', resultBy: 'time', layout: '' }, store.tracks[0], rows(1, 2, 3));
+    say('a result by total race time: the last column is the times', E('heatlist').innerHTML.includes('<th>Times</th>') && (await until(() => dh() && dh().by === 'time'), dh().by === 'time'));
+    E('sim').checked = true; key(' '); await until(() => ['between', 'finished'].includes(phase()));
+    say('...and a finished heat shows the finish times', /1\. [A-Za-z]+ \d+(:\d\d)?\.\d\d\d/.test(E('heatlist').innerHTML));
+    // a race that is no heat race has no list
+    await openRace({ name: 'Sprint', sessionType: 'race', laps: 2, endRule: 'all', layout: '' }, store.tracks[0], rows(1, 2));
+    say('a race without heats has no heat list card', !E('racehost').innerHTML.includes('id="heatlistcard"') && (await until(() => !dh() || !dh().list), !dh() || dh().list === undefined));
+    // a final: its drivers are in the list once the heats are raced
+    await openRace({ name: 'Heats', sessionType: 'heats', heatBy: 'laps', laps: 2, endRule: 'all', heatPlan: 'roundrobin', resultBy: 'points', points: '10, 8, 6', finals: 'a', layout: '' }, store.tracks[0], rows(1, 2, 3));
+    say('with a final the card says so and the list ends with Final A, whose drivers are not known yet', E('racehost').innerHTML.includes('Heat list (3 heats and a final)') && rowsOf().length === 4 && E('heatlist').innerHTML.includes('Final A') && E('heatlist').innerHTML.includes('decided after the heats'));
+    store.layouts = layoutsWere;
+  }
+
   // 0.95.0: the break between two heats
   { saved.length = 0;
     const mkBreak = over => openRace({ name: 'Heats', sessionType: 'heats', heatBy: 'laps', laps: 2, endRule: 'all', heatPlan: 'roundrobin', resultBy: 'laps', layout: '', ...over }, store.tracks[0], rows(1, 2, 3));
@@ -1145,6 +1198,13 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     E('sim').checked = true; nh = 0;
     while (phase() !== 'finished' && nh++ < 8) { if (phase() === 'between') run('live.pickAction')('random'); key(' '); await until(() => !['between', 'ready'].includes(phase()), 5000); await until(() => ['between', 'finished'].includes(phase()), 30000); }
     say('with finals: heat 1 over, next 2, heat 2 over (the race goes on), next final B, final B over, next final A, and only the final A ends the race ("all over"); the pre-race call names the heat or the final', marks().join(' | ') === 'MARK go 1 | MARK heat 1 over | MARK next 2 | MARK go 2 | MARK heat 2 over | MARK next final B | MARK go B | MARK final B over | MARK next final A | MARK go A | MARK all over', marks().join(' | '));
+    // 1.7.0: the line-up of the next heat is read after the call that it is ready
+    ctx.Sound.stop(); spoken.length = 0;
+    store.audiosets = [mkSet({ nextheat: 'MARK next {heat}', lineup: 'MARK lineup {heat}: {lineup}', nextfinal: 'MARK next final {final}' })];
+    await openRace({ name: 'LU', sessionType: 'heats', heatBy: 'laps', laps: 2, endRule: 'all', heatPlan: 'roundrobin', resultBy: 'laps', layout: '', audioSet: 'AU3', lightsMin: 0, lightsMax: 0 }, store.tracks[0], rows(1, 2, 3));
+    E('sim').checked = true; nh = 0;
+    while (phase() !== 'finished' && nh++ < 6) { key(' '); await until(() => !['between', 'ready'].includes(phase()), 5000); await until(() => ['between', 'finished'].includes(phase()), 30000); }
+    say('between the heats the next heat is announced and its line-up is read with the lanes (and after the last heat nothing is read)', marks().length === 4 && /^MARK next 2$/.test(marks()[0]) && /^MARK lineup 2: \w+ in lane 1 and \w+ in lane 2$/.test(marks()[1]) && /^MARK next 3$/.test(marks()[2]) && /^MARK lineup 3: \w+ in lane 1 and \w+ in lane 2$/.test(marks()[3]), marks().join(' | '));
     ctx.Sound.stop(); spoken.length = 0; store.audiosets = keepSets; run('state.rand = null'); E('sim').checked = false; // (as before this block)
   }
 

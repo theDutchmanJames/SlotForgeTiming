@@ -141,6 +141,7 @@
         if (!r || !Number.isFinite(r.time)) return { html: '–' };
         return { html: E.fmtTime(r.time) + (opt.showName !== false && r.name ? `<small class="rn">${esc(r.name)}</small>` : '') };
       }
+      case 'heatlist': return { html: S.heat ? Wd.heatListHtml(S.heat, S.phase, opt) : '\u2013' }; // every heat of a heat-based race, with who won it
       case 'leaderboard': {
         const design = opt.design && (S.rowDesigns || []).find(x => x.id === opt.design); // a row design you made, instead of the classic table
         if (design) return { html: (typeof module !== 'undefined' ? require('./rows.js') : root.Rows).html(design, S, undefined, { scale: opt.scale, gaps: opt.gaps, fill: opt.fill }) };

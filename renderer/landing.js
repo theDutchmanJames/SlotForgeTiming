@@ -94,7 +94,7 @@ async function renderHome() {
       ${state.heatMsg ? `<p class="hint2 hpwarn" role="alert">${esc(state.heatMsg)}</p>` : ''}
       <details class="hplanes"><summary>How often every driver races, and in which lane</summary><div class="wrap"><table class="fields heatplan-table"><thead><tr><th>Driver</th><th>Heats</th>${Array.from({ length: lanes }, (_, l) => `<th>Lane ${l + 1}</th>`).join('')}</tr></thead><tbody>${st.per.map((x, i) =>
         `<tr><td>${nm(i)}</td><td class="num">${x.heats}</td>${x.lanes.map(n => `<td class="num">${n}</td>`).join('')}</tr>`).join('')}</tbody></table></div></details>
-      <div class="row">${heatPlan.rotation ? '' : '<button class="btn" id="reshuffle" title="Make another plan with the same settings">Shuffle again</button>'}${heatPlan.edited ? ' <button class="btn" id="resetplan" title="Go back to the plan that was made, without your changes">Reset my changes</button>' : ''}</div></div>`;
+      <div class="row">${heatPlan.rotation ? '' : '<button class="btn" id="reshuffle" title="Make another plan with the same settings">Shuffle again</button>'}${heatPlan.edited ? ' <button class="btn" id="resetplan" title="Go back to the plan that was made, without your changes">Reset my changes</button>' : ''} <button class="btn" id="heatsheet" title="Make a PDF of the heat list, to print or pin up">Print the heat list</button> <span id="heatsheetmsg" class="muted" role="status"></span></div></div>`;
   })();
 
   const typeLabel = setup ? (state.schema.racesetups.fields.find(f => f.key === 'sessionType').options.find(o => o[0] === setup.sessionType) || [, ''])[1] : '';
@@ -160,6 +160,14 @@ async function renderHome() {
       if (m.missing.length) said.push(`No driver is called ${m.missing.join(', ')}.`);
       if (m.ambiguous.length) said.push(`More than one driver is called ${m.ambiguous.join(', ')}.`);
       state.rotMsg = { setupId, text: said.join(' ') }; persist(); return;
+    }
+    if (b.id === 'heatsheet' && heatPlan) { // the heat list as a PDF (a sheet with the driver of every lane and a place for the winner)
+      const msg = document.getElementById('heatsheetmsg'), say = t => { if (msg) msg.textContent = t; };
+      say('Making the PDF...');
+      const list = Heats.planList(heatPlan.schedule, heatPlan.names, heatPlan.labels);
+      api.exportPdf(Report.heatSheetHtml({ title: `${setup.name}: heat list`, subtitle: `${track ? track.name + ' · ' : ''}${heatPlan.count} ${heatPlan.count === 1 ? 'participant' : 'participants'} · ${list.length} ${list.length === 1 ? 'heat' : 'heats'}`, list, lanes }), `${setup.name} heat list.pdf`.replace(/[\\/:*?"<>|]/g, '-'))
+        .then(res => say(res.saved ? 'Saved to ' + res.path : 'Export cancelled.'), x => say('Could not make the PDF: ' + x.message));
+      return;
     }
     if (b.id === 'reshuffle' && heatPlan) { state.heatSel = null; state.heatMsg = ''; const edits = { ...(saved.heatEdits || {}) }; delete edits[setupId]; api.setSettings({ heatSeeds: { ...(saved.heatSeeds || {}), [setupId]: Heats.newSeed() }, heatEdits: edits }).then(s => { state.settings = s; renderHome(); }); return; }
     if (b.id === 'resetplan' && heatPlan) { state.heatSel = null; state.heatMsg = ''; const edits = { ...(saved.heatEdits || {}) }; delete edits[setupId]; api.setSettings({ heatEdits: edits }).then(s => { state.settings = s; renderHome(); }); return; }

@@ -130,4 +130,10 @@ const folders = Help.folders();
   say('...Image Settings names the new kinds of sets, Weather Systems the temperatures and the wind, the audio the weather calls', /the tyres, the weather and the track conditions/.test(f('custom')) && /temperatures and the wind/.test(f('setups')) && /Weather<\/b>: weather, conditions, tyres|Weather: weather, conditions, tyres/.test(f('audio')));
   say('every folder is still short enough with the new lines', folders.every(x => plain(x.body).length < 1400)); }
 
+// ---- 1.7.0 ----
+{ const f = id => plain(folders.find(x => x.id === id).body);
+  say('the heat plan help names the Heat list on the Race tab, the Heat List widget, the printed sheet and the line-up call', ['Heat list', 'Heat List</b> widget'.replace('</b>', ''), 'Print the heat list', 'line-up', 'winner'].every(t => f('heatplan').includes(t)));
+  say('the heat results help tells about the total race time and what happens with a heat that is not finished', /Total race time/.test(f('heatresults')) && /lowest total wins/.test(f('heatresults')) && /not finished/.test(f('heatresults')) && /estimate/.test(f('heatresults')));
+  say('...and every folder is still short enough', folders.every(x => plain(x.body).length < 1400)); }
+
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

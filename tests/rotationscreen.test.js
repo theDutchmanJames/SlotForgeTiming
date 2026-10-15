@@ -41,7 +41,7 @@ const api = { liveStatic: s => { sent.stat = JSON.parse(JSON.stringify(s)); sent
 const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if (appConsole.expected) { appConsole.seen++; return; } console.log('FAIL the app reported an error: ' + a.map(x => (x && x.stack) || x).join(' ').slice(0, 300)); fails++; } };
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['bop.js', 'weather.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['bop.js', 'weather.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'report.js', 'canvas.js', 'liveshare.js', 'review.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -318,8 +318,22 @@ const Rot = require(R + 'renderer/rotation.js');
   const race = JSON.parse(run('JSON.stringify(state.race)')), exp = Rot.scheduleFor(rotRec(), [1]);
   say('Start with Sam away: the race gets 7 participants (without Sam), the heats as planned with the new numbers, and the labels', race.rows.length === 7 && race.rows.every(r => r.driverId !== 'd2') && same(race.schedule, exp.schedule) && same(race.labels, ['A', 'B', 'C']) && race.setup.rotation === 'r1' && run('state.tab') === 'race');
   await wait(60); const rh = E('racehost').innerHTML;
-  say('...and the race screen lists the heats with their labels and the drivers by lane', rh.includes('Heat schedule (3 heats)') && rh.includes('<span class="muted">A</span>') && rh.includes('Lane 1: Alex') && !rh.includes('Sam') && rh.includes('Lane 4: Lee'));
+  const hl = E('heatlist').innerHTML;
+  say('...and the race screen lists the heats with their labels and the drivers by lane (the heat list)', rh.includes('Heat list (3 heats)') && hl.includes('<span class="muted">A</span>') && hl.includes('Lane 1: Alex') && !hl.includes('Sam') && hl.includes('Lane 4: Lee') && hl.includes('hl-next') && (hl.match(/<tr class="hl-/g) || []).length === 3);
   run('state.race = null; live = null');
+
+  // 1.7.0: the heat list as a sheet to print (Home)
+  { const pdfs = []; api.exportPdf = async (html, name) => { pdfs.push([html, name]); return pdfs.length === 1 ? { saved: true, path: 'C:\\Sheets\\x.pdf' } : pdfs.length === 2 ? { saved: false } : Promise.reject(new Error('disk full')); };
+    h = await home();
+    say('the heat plan has a Print the heat list button and a place for its message', h.includes('id="heatsheet"') && h.includes('Print the heat list') && h.includes('id="heatsheetmsg"'));
+    await clickHome({ id: 'heatsheet' });
+    const [html, name] = pdfs[0] || ['', ''];
+    say('the button makes a PDF of the plan: the title with the name of the setup, a column for every lane, the drivers in their places', pdfs.length === 1 && html.includes('heat list</h1>') && html.includes('<th>Lane 4</th>') && html.includes('<td class="h">Heat 1<br>') && html.includes('<td>Alex</td>') && name.endsWith(' heat list.pdf'));
+    say('...with the names of the heats of the rotation, and the message says where it was saved', html.includes('>A</span>') && E('heatsheetmsg').textContent === 'Saved to C:\\Sheets\\x.pdf');
+    await clickHome({ id: 'heatsheet' }); say('...a cancelled export says so', E('heatsheetmsg').textContent === 'Export cancelled.');
+    await clickHome({ id: 'heatsheet' }); say('...and a PDF that could not be made says why', E('heatsheetmsg').textContent === 'Could not make the PDF: disk full');
+    say('a file name never has a character a file cannot have', !/[\\/:*?"<>|]/.test(name));
+  }
 
   // a plan changed by hand
   h = await home(); h = await clickHome({ dataset: { hp: '0:0' } }); h = await clickHome({ dataset: { hp: '1:0' } });

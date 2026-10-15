@@ -445,7 +445,7 @@ const mk2 = (o = {}, ents = one) => createRace({ type: 'race', laps: 10, minLap:
   }
   // the lists of the calls
   { const n = A.CALLS.length, groups = [...new Set(A.CALLS.map(c => c.group))];
-    ok('64 calls in 13 folders (1.3.0: Balance of Power after Pit and fuel; 1.4.0: Weather after Balance of Power; 1.5.0: the conditions call), the Safety folder after the flags', n === 64 && groups.join() === 'Start,Positions,Race progress,Gaps and battles,Laps and records,Pit and fuel,Balance of Power,Weather,Penalties,Flags,Safety,Finish,Time tokens');
+    ok('65 calls in 13 folders (1.3.0: Balance of Power after Pit and fuel; 1.4.0: Weather after Balance of Power; 1.5.0: the conditions call; 1.7.0: the line-up), the Safety folder after the flags', n === 65 && groups.join() === 'Start,Positions,Race progress,Gaps and battles,Laps and records,Pit and fuel,Balance of Power,Weather,Penalties,Flags,Safety,Finish,Time tokens');
     const set = Sound.defaultSet('x'), fresh = ['firstlap', 'nearrecord', 'fuelhalf', 'refuelled', 'penaltyserved', 'penaltyforgiven', 'penaltytime', 'lanecall', 'nolap', 'trackmatelost', 'trackmateback', 'tokenadded', 'tokenfree'];
     ok('the 13 new calls exist, have sentences, and are off in a new audio set', fresh.every(id => A.CALLS.some(c => c.id === id) && set.calls[id].on === false && set.calls[id].lines.length > 0));
     const old = { calls: { winner: { on: true, lines: [{ text: 'x', file: '' }] } } };

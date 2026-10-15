@@ -52,7 +52,7 @@
       (ST.notes(cols.map(c => c.key)).length ? `<p class="sub">${ST.notes(cols.map(c => c.key)).map(esc).join(' ')}</p>` : '') +
       (isHeats && session.scoring && HT.scoringText(session.scoring, pts) ? `<p class="sub">${esc(HT.scoringText(session.scoring, pts))}</p>` : '') + (fin ? `<p class="sub">${esc(HT.finalsSaid(session.finals))}</p>` : '') + (ST.weatherText(session) ? `<p class="sub">${esc(ST.weatherText(session))}</p>` : '');
     const heatSummary = !opt.heats || !session.heatResults ? '' : `<h2>${session.finals ? 'Heats and finals' : 'Heats'}</h2>` + session.heatResults.map(h =>
-      `<p><b>${esc(HT.raceName(h))}</b>${ST.weatherText(h) ? ` (${esc(ST.weatherText(h))})` : ''}: ${h.rows.map(r => `${esc(r.pos)}. ${ST.isHeatWinner(session, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${ST.adjustedText(r) ? ', adjusted: ' + esc(ST.adjustedText(r)) : ''}${ST.notesText(r) ? ', ' + esc(ST.notesText(r)) : ''})`).join(' &middot; ')}</p>`).join('');
+      `<p><b>${esc(HT.raceName(h))}</b>${ST.weatherText(h) ? ` (${esc(ST.weatherText(h))})` : ''}: ${h.rows.map(r => `${esc(r.pos)}. ${ST.isHeatWinner(session, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${esc(ST.heatTimeText(session, r))}${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${ST.adjustedText(r) ? ', adjusted: ' + esc(ST.adjustedText(r)) : ''}${ST.notesText(r) ? ', ' + esc(ST.notesText(r)) : ''})`).join(' &middot; ')}</p>`).join('');
     const groups = lapGroups(session, laps);
     const lapPages = groups.map(g => {
       const most = Math.max(...g.cols.map(c => c.laps.length));
@@ -115,8 +115,28 @@
     </style></head><body><h1 class="title">${esc(title)}</h1><div class="body">${RT.clean(html)}</div></body></html>`;
   }
 
+  // The heat list as a sheet to hand out or pin up: a row per heat with the driver of every lane, and a place to write the winner. list: Heats.listOf(...) entries;
+  // lanes: the lanes of the track; points: show what a finished heat gave (points, or the time of the result); a heat that is finished shows its winner.
+  function heatSheetHtml({ title, subtitle, list, lanes, points, time }) {
+    const n = Math.max(1, Math.floor(Number(lanes)) || Math.max(1, ...list.map(x => x.drivers.reduce((m, d) => Math.max(m, Number.isInteger(d.lane) ? d.lane + 1 : 0), 0))));
+    const drivers = x => Array.from({ length: n }, (_, l) => { const d = x.drivers.find(y => y.lane === l); return `<td>${d ? esc(d.name) : '&ndash;'}</td>`; }).join('');
+    const unplaced = x => x.drivers.filter(d => !(Number.isInteger(d.lane) && d.lane >= 0)); // (a final, before its lanes are chosen)
+    const result = x => x.rows.length ? x.rows.map(r => `${esc(r.pos)}. ${esc(r.name)}${HT.rowFigure(r, { points, time }) ? ' (' + esc(HT.rowFigure(r, { points, time })) + ')' : ''}`).join(', ') : '';
+    const anyResult = list.some(x => x.rows.length);
+    return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
+      @page { size: A4 landscape; margin: 14mm; }
+      body { font: 12pt/1.4 Arial, Helvetica, sans-serif; color: #111; margin: 0; }
+      h1 { font-size: 22pt; margin: 0 0 1mm; } p.sub { margin: 0 0 5mm; color: #555; }
+      table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid #888; padding: 2.4mm 3mm; text-align: left; vertical-align: top; } th { background: #eee; }
+      td.win { width: 28%; } tr { page-break-inside: avoid; } td.h { white-space: nowrap; font-weight: bold; }
+    </style></head><body><h1>${esc(title)}</h1><p class="sub">${esc(subtitle || '')}</p>
+      <table><thead><tr><th>Heat</th>${Array.from({ length: n }, (_, l) => `<th>Lane ${l + 1}</th>`).join('')}<th>${anyResult ? 'Result' : 'Winner'}</th></tr></thead><tbody>${list.map(x =>
+        `<tr><td class="h">${esc(x.name)}${x.label ? `<br><span style="font-weight:normal">${esc(x.label)}</span>` : ''}</td>${unplaced(x).length === x.drivers.length && x.drivers.length ? `<td colspan="${n}">${esc(HT.andList(x.drivers.map(d => d.name)))} (lanes are chosen before the final)</td>` : drivers(x)}<td class="win">${result(x)}</td></tr>`).join('')}</tbody></table>
+    </body></html>`;
+  }
+
   const fileName = session => `${session.setupName || 'Session'} ${(session.date || '').slice(0, 10)}.pdf`.replace(/[\\/:*?"<>|]/g, '-');
-  const api = { sessionHtml, fileName, lapGroups, qrHtml, rulesHtml, CREDIT };
+  const api = { sessionHtml, heatSheetHtml, fileName, lapGroups, qrHtml, rulesHtml, CREDIT };
   root.Report = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -618,3 +618,21 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .lw-val:has(.wxw),.lw-val:has(.cdw){min-height:0;min-width:0;overflow:hidden}
 .setslot .wxic{height:32px;width:32px;opacity:.45}
 .lw-val:has(.tyrechip){padding:0}
+
+/* the heat list: the heat that is racing (or is next) is marked, finished heats are quieter */
+.hl td,.hl th{vertical-align:top}
+.hl .hl-done{opacity:.85}
+.hl .hl-later{color:var(--muted)}
+.hl .hl-current td,.hl .hl-next td{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.hl .hl-current td:first-child,.hl .hl-next td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+.hl-tag{display:inline-block;font-size:.72em;font-weight:600;letter-spacing:.03em;text-transform:uppercase;border:1px solid var(--line);border-radius:999px;padding:0 .5em;margin-left:.3em;white-space:nowrap}
+.hl .hl-current .hl-tag{border-color:var(--accent);color:var(--accent)}
+/* the Heat List widget on the timing page and the phone page */
+.lw-val:has(.hlw){align-items:stretch;justify-content:flex-start;overflow:hidden}
+.hlw{border-collapse:collapse;width:100%;font-size:.8em;font-weight:500}
+.hlw td{padding:.12em .4em;vertical-align:top}
+.hlw .hlw-n{white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:700}
+.hlw .hlw-win{text-align:right;white-space:nowrap}
+.hlw tr.hlw-done{opacity:.8}
+.hlw tr.hlw-later{opacity:.65}
+.hlw tr.hlw-current,.hlw tr.hlw-next{background:rgba(255,255,255,.14);font-weight:700}

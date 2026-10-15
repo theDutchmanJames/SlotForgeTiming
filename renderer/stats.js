@@ -47,6 +47,15 @@
   // the first of a heat (or final) in the summary of the heats: those rows have no dq or retired
   const isHeatWinner = (session, row) => !!session && !!row && session.sessionType === 'heats' && Number(row.pos) === 1 && Number(row.laps) > 0;
 
+  // ---- the time of a heat (a result by total race time) ----
+  // The text for the line of a heat in the summary of the heats: ", 1:02.345" for a car that finished, ", 1:03.100 estimated, not finished" for a car that did not (when the setup estimates), ", not finished" otherwise.
+  // Only for a session that was counted by time (resultBy 'time'); a result row of a heat has fin (did it finish), tm (the time) and est (the time is an estimate).
+  const heatTimeText = (session, row) => {
+    if (!session || session.resultBy !== 'time' || !row || row.fin === undefined) return '';
+    if (row.fin) return row.tm === null || row.tm === undefined ? '' : ', ' + E.fmtTime(row.tm);
+    return row.est && row.tm !== null && row.tm !== undefined ? `, ${E.fmtTime(row.tm)} estimated, not finished` : ', not finished';
+  };
+
   // ---- what the Race Director adjusted ----
   // In the review of a race the Race Director can add or take off race time, laps and championship points of a driver. A result row (or a car of the engine) has them as adjMs, adjLaps and adjPoints.
   // The text for it: "−1 lap, +5 s, +3 pts" (laps, then time, then points; what is zero is left out; nothing adjusted gives '').
@@ -164,7 +173,7 @@
     return out;
   }
 
-  const api = { SESSION_COLUMNS, STINT_COLUMNS, RECORD_COLUMNS, FIGURE_KEYS, WINNER_TYPES, isWinner, isHeatWinner, adjustedText, bopText, tyreText, notesText, weatherText, figures, forSession, lapSpeed, lapLength, valueOf, text, hasAny, sessionColumns, notes, fmtSpeed, fmtScale, fmtDist, fmtSpread, fmtMs };
+  const api = { SESSION_COLUMNS, STINT_COLUMNS, RECORD_COLUMNS, FIGURE_KEYS, WINNER_TYPES, isWinner, isHeatWinner, heatTimeText, adjustedText, bopText, tyreText, notesText, weatherText, figures, forSession, lapSpeed, lapLength, valueOf, text, hasAny, sessionColumns, notes, fmtSpeed, fmtScale, fmtDist, fmtSpread, fmtMs };
   root.Stats = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

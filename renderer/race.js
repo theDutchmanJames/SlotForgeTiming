@@ -68,13 +68,12 @@ async function renderRace() {
   const finalsOn = heats && heat.total > heat.count, fmode = heats ? RaceEngine.finalsOf(setup) : null, byPts = setup.resultBy === 'points';
   const finalsSaid = !finalsOn ? '' : Heats.finalsSaid(fmode);
   const scoreNote = heats ? [Heats.scoringText(heat.scoring, byPts), finalsSaid].filter(Boolean).join(' ') : ''; // how the overall result is counted, when it is not the standard
-  const scoreCol = heats && (heat.scoring.countBy !== 'total' || heat.scoring.dropWorst || (finalsOn && fmode.finalMode === 'added')); // a column with the result that counts (average, best heats, worst heat dropped, a final that is added)
+  const scoreCol = heats && (heat.scoring.countBy !== 'total' || heat.scoring.dropWorst || heat.scoring.byTime || (finalsOn && fmode.finalMode === 'added')); // a column with the result that counts (average, best heats, worst heat dropped, a final that is added)
   const finalsNote = !finalsOn ? '' : `, then ${heat.total - heat.count === 2 ? 'finals B and A' : 'a final A'}${setup.heatBy === 'time' ? (Number(setup.finalDuration) > 0 ? ` of ${setup.finalDuration} minutes` : '') : (Number(setup.finalLaps) > 0 ? ` of ${setup.finalLaps} laps` : '')}`;
   const limit = tokenSession ? 'paid time per lane' : heats ? `${heat.count} heats, each ${setup.heatBy === 'time' ? setup.duration + ' minutes' : setup.laps + ' laps'}${finalsNote}`
     : setup.sessionType === 'race' ? `${setup.laps} laps` : (setup.sessionType === 'timed' || setup.sessionType === 'qualifying') ? `${setup.duration} minutes` : 'no limit';
-  const planHtml = !heats ? '' : `<details class="card" style="margin-top:12px"><summary>Heat schedule (${heat.count} heats)</summary>
-    <table class="fields"><tr><th>Heat</th><th>Drivers by lane</th></tr>${heat.schedule.map((h, i) =>
-      `<tr><td>${i + 1}${r.labels && r.labels[i] ? ` <span class="muted">${esc(r.labels[i])}</span>` : ''}</td><td>${[...h].sort((a, b) => a.lane - b.lane).map(e => `Lane ${e.lane + 1}: ${esc(people[e.p].driverName)}`).join(' · ')}</td></tr>`).join('')}</table></details>`;
+  const planHtml = !heats ? '' : `<details class="card" id="heatlistcard" style="margin-top:12px" open><summary>Heat list (${heat.count} ${heat.count === 1 ? 'heat' : 'heats'}${finalsOn ? (heat.total - heat.count === 2 ? ' and 2 finals' : ' and a final') : ''})</summary>
+    <div class="wrap" id="heatlist"></div><div class="row"><button class="btn" id="heatprint" type="button" title="Make a PDF of the heat list, to print or pin up">Print the heat list</button> <span id="heatprintmsg" class="muted" role="status"></span></div></details>`;
   const host = raceHost();
   host.innerHTML = `<p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.sessionType])} on ${esc(r.track.name)} · ${esc(limit)}</p>
     <div class="rt-stage"><div class="canvas live" id="canvas"></div></div>
@@ -137,11 +136,15 @@ async function renderRace() {
   // the race that is racing, or the next one while the race waits between two races. final: 'A' or 'B' when that race is a final (and also after the last final, when it is over);
   // total: the number of races with the finals; picking: the lanes of the final are not all chosen; breakLeft: the seconds of the break that are left
   const finalAt = () => { const i = Math.min(heat.idx, heat.total - 1); return i >= heat.count ? heat.raceName(i).slice(6) : ''; };
-  const heatInfo = () => (heats ? { idx: heat.idx, count: heat.count, ...(finalsOn ? { total: heat.total } : {}), ...(finalsOn && finalAt() ? { final: finalAt() } : {}),
+  // the heat list for the other screens, made again only when a heat is finished or the lanes of a final change
+  const heatListLite = () => { const k = heat.results.length + ':' + heat.idx + ':' + Object.values(heat.picks).reduce((n, x) => n + x.length, 0); if (live.hlKey !== k) { live.hlKey = k; live.hlLite = Heats.listLite(Heats.listOf(heat, people, { labels: r.labels })); } return live.hlLite; };
+  const heatInfo = () => (heats ? { idx: heat.idx, count: heat.count, by: byPts ? 'points' : heat.scoring.byTime ? 'time' : 'laps', list: heatListLite(), ...(finalsOn ? { total: heat.total } : {}), ...(finalsOn && finalAt() ? { final: finalAt() } : {}),
     ...(live.phase === 'between' && !heat.picksDone() ? { picking: true } : {}), ...(live.breakLeft > 0 ? { breakLeft: live.breakLeft } : {}) } : null);
+  // the drivers of the heat that is next, for the announcer to read out (with the lanes they race in)
+  const lineupNow = () => (heats && heat.hasNext() ? heat.entries().map(e => ({ lane: heat.isFinal() && !heat.picksDone() ? -1 : e.lane, name: e.driverName || '', nickname: e.nickname || '', callsign: e.callsign || '' })).sort((a, b) => a.lane - b.lane) : []);
   const announce = () => {
     if (!audioSet || !live.ann) return;
-    try { live.ann.observe(eng, { phase: live.phase, lights: live.lights, now: now(), heat: heatInfo(), trackmate: typeof Trackmate !== 'undefined' && Trackmate.link ? !!Trackmate.link.connected : undefined, idle: c => !!tokens && ['idle', 'out'].includes(tokens.stateOf(c.lane, raceT())) }).forEach(e => Sound.say(audioSet, e.call, e.vars, undefined, undefined, e.facts)); } catch (x) { /* a sound problem never stops the race */ }
+    try { live.ann.observe(eng, { phase: live.phase, lights: live.lights, now: now(), heat: heatInfo(), lineup: heats && live.phase === 'between' ? lineupNow() : undefined, trackmate: typeof Trackmate !== 'undefined' && Trackmate.link ? !!Trackmate.link.connected : undefined, idle: c => !!tokens && ['idle', 'out'].includes(tokens.stateOf(c.lane, raceT())) }).forEach(e => Sound.say(audioSet, e.call, e.vars, undefined, undefined, e.facts)); } catch (x) { /* a sound problem never stops the race */ }
   };
   live.ann = mkAnn(); live.announce = announce;
   // Time Token Session: the calls "time almost up" and "time is up", said once when a lane moves into that state (not for a lane that is restored, or has its time added),
@@ -208,7 +211,7 @@ async function renderRace() {
     update(); return true;
   };
   const update = () => {
-    announce(); announceTokens(); if (live.powerFollow) live.powerFollow();
+    drawHeatList(); announce(); announceTokens(); if (live.powerFollow) live.powerFollow();
     const S = shared();
     LiveCanvas.paint(live.nodes, S);
     if (live.fsView) LiveCanvas.paint(live.fsView.nodes, S);
@@ -244,8 +247,30 @@ async function renderRace() {
   ui('calls').onclick = ev => { const b = ev.target.closest && ev.target.closest('[data-call]'); if (b) actions.callResolve(Number(b.dataset.id), b.dataset.call); };
   const drawOverall = () => {
     if (!heats) return;
+    drawHeatList();
     ui('overall').innerHTML = heat.overall().map(o => `<tr><td>${o.pos}</td><td>${esc(o.driverName)}</td><td class="num">${o.heats}</td><td class="num">${o.laps}</td>
       <td class="num">${setup.resultBy === 'points' ? o.points : ''}</td>${scoreCol ? `<td class="num">${esc(Heats.scoreText(o, heat.scoring, { finalMode: fmode.finalMode, byPoints: byPts }))}</td>` : ''}${finalsOn ? `<td>${esc(Heats.finalCell(o))}</td>` : ''}<td class="num">${RaceEngine.fmtTime(o.best)}</td></tr>`).join('');
+  };
+
+  // the heat list: every heat with its drivers by lane, how it went and what it gave. The heat that is racing (or is next) is marked. Only drawn again when something in it changed.
+  const heatListOf = () => Heats.listOf(heat, people, { live: ['countdown', 'running', 'paused', 'review'].includes(live.phase), labels: r.labels });
+  const drawHeatList = () => {
+    if (!heats || !ui('heatlist')) return;
+    const list = heatListOf(), sig = JSON.stringify(list.map(x => [x.state, x.drivers.map(d => [d.p, d.lane]), x.rows.map(y => [y.participant, y.pos, y.points, y.tm, y.fin, y.laps])]));
+    if (sig === live.heatListSig) return;
+    live.heatListSig = sig;
+    const STATE = { done: 'Done', current: 'Racing now', next: 'Next', later: '' }, tmOn = !!heat.scoring.byTime;
+    ui('heatlist').innerHTML = `<table class="fields hl"><thead><tr><th>Heat</th><th>Drivers by lane</th><th>Winner</th><th>${byPts ? 'Points' : tmOn ? 'Times' : 'Laps'}</th>${byPts || tmOn ? '<th>Laps</th>' : ''}</tr></thead><tbody>${list.map(x => {
+      const lanes = x.drivers.map(d => `${Number.isInteger(d.lane) ? 'Lane ' + (d.lane + 1) + ': ' : ''}${esc(d.name)}`).join(' · ') || '<span class="muted">decided after the heats</span>';
+      const res = x.rows.map(y => `${esc(y.pos)}. ${esc(y.name)} ${esc(byPts ? (y.points || 0) : tmOn ? (Heats.rowFigure(y, { time: true }) || y.laps + ' laps') : y.laps + (y.laps === 1 ? ' lap' : ' laps'))}`).join(' · ');
+      return `<tr class="hl-${x.state}"${x.state === 'current' || x.state === 'next' ? ' aria-current="step"' : ''}><td>${esc(x.name)}${x.label ? ` <span class="muted">${esc(x.label)}</span>` : ''}${STATE[x.state] ? ` <span class="hl-tag">${STATE[x.state]}</span>` : ''}</td><td>${lanes}</td><td>${x.winner ? esc(x.winner.name) : ''}</td><td>${res}</td>${byPts || tmOn ? `<td>${x.rows.map(y => esc(y.laps)).join(' · ')}</td>` : ''}</tr>`;
+    }).join('')}</tbody></table>`;
+  };
+  if (heats && ui('heatprint')) ui('heatprint').onclick = () => {
+    const say = t => { ui('heatprintmsg').textContent = t; }, byTm = !!heat.scoring.byTime;
+    say('Making the PDF...');
+    api.exportPdf(Report.heatSheetHtml({ title: `${setup.name}: heat list`, subtitle: `${r.track.name} · ${heat.count} ${heat.count === 1 ? 'heat' : 'heats'}${finalsOn ? finalsNote : ''}`, list: heatListOf(), lanes, points: byPts, time: byTm }), `${setup.name} heat list.pdf`.replace(/[\\/:*?"<>|]/g, '-'))
+      .then(res => say(res.saved ? 'Saved to ' + res.path : 'Export cancelled.'), x => say('Could not make the PDF: ' + x.message));
   };
 
   // ---- crossings, simulated cars ----
@@ -421,8 +446,9 @@ async function renderRace() {
         ...(live.extraBy.has(o.participant) && live.extraBy.get(o.participant).has ? { pits: live.extraBy.get(o.participant).pits, pitTime: live.extraBy.get(o.participant).pitTime } : {}),
         ...(penCfg.on && live.extraBy.has(o.participant) ? { penaltyPoints: live.extraBy.get(o.participant).pen } : {}),
         ...(scoreCol ? { score: o.score, counted: o.counted, heats: o.heats, dropped: o.dropped.length ? o.dropped : undefined } : {}),
+        ...(heat.scoring.byTime ? { incomplete: o.incomplete, estimated: o.estimated } : {}),
         ...(finalsOn && o.finalName ? { finalName: o.finalName, ...(o.finalPos !== null ? { finalPos: o.finalPos } : {}) } : {}),
-        ...(finalsOn && fmode.finalMode === 'added' && o.finalPos !== null ? { heatScore: o.heatScore, finalPoints: o.finalPoints, finalLaps: o.finalLaps } : {}) }));
+        ...(finalsOn && fmode.finalMode === 'added' && o.finalPos !== null ? { heatScore: o.heatScore, finalPoints: o.finalPoints, finalLaps: o.finalLaps, ...(heat.scoring.byTime ? { finalTime: o.finalTime } : {}) } : {}) }));
     } else {
       standings = eng.standings().map(x => ({ pos: x.pos, driverId: x.car.driverId, carId: x.car.carId, driverName: x.car.driverName, carName: x.car.carName, laps: eng.lapsOf(x.car), best: x.car.best, total: x.car.total, retired: (x.car.retired && !x.car.dq) || undefined,
         ...(x.car.adjMs ? { adjMs: x.car.adjMs } : {}), ...(x.car.adjLaps ? { adjLaps: x.car.adjLaps } : {}), ...(eng.bopNoteOf(eng.cars.indexOf(x.car)) ? { bopNote: eng.bopNoteOf(eng.cars.indexOf(x.car)) } : {}), ...(eng.tyreNoteOf(eng.cars.indexOf(x.car)) ? { tyreNote: eng.tyreNoteOf(eng.cars.indexOf(x.car)) } : {}), // (what Balance of Power and the tyres did to the car, in words)
@@ -432,7 +458,7 @@ async function renderRace() {
     }
     if (!laps.length) { ui('msg').textContent = 'No laps were recorded, so nothing was saved.'; return; }
     const session = { setupName: setup.name, sessionType: setup.sessionType, trackId: r.track.id, trackName: r.track.name, date, endedBy: heats ? '' : eng.endedBy, standings, ...(!heats && eng.weatherNote() ? { weatherNote: eng.weatherNote() } : {}) };
-    if (heats) { session.resultBy = setup.resultBy;
+    if (heats) { session.resultBy = heat.scoring.byTime ? 'time' : setup.resultBy;
       const wn = heat.results.map(h => h.weatherNote || ''), wxAll = wn.length > 0 && wn[0] !== '' && wn.every(n => n === wn[0]); // the weather of the heats: said once when it was the same in every heat, otherwise with every heat
       if (wxAll) session.weatherNote = wn[0];
       session.heatResults = heat.results.map(h => ({ heat: h.heat, ...(h.final ? { final: h.final } : {}), ...(h.weatherNote && !wxAll ? { weatherNote: h.weatherNote } : {}), rows: h.rows })); if (scoreNote) session.scoring = heat.scoring; if (finalsOn) session.finals = { finals: fmode.finals, finalMode: fmode.finalMode }; }

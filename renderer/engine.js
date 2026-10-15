@@ -381,6 +381,19 @@
     };
     R.adjustReset = i => { const c = R.cars[i]; if (!c || !(c.adjMs || c.adjLaps || c.adjPoints)) return false; c.adjMs = 0; c.adjLaps = 0; c.adjPoints = 0; log('adjusted', i, R.endAt, { reset: true }); return true; };
     R.lapsOf = lapsOf; R.adjOf = c => ({ ms: c.adjMs || 0, laps: c.adjLaps || 0, points: c.adjPoints || 0 });
+    // The race time of a car: the time of its last crossing, plus time penalties and the adjustment of the review (what the standings call the effective time).
+    R.timeOf = c => c.total + addOf(c);
+    R.lapLimit = lapLimit;
+    // Did the car finish a race by laps? It drove all the laps, and was not retired or disqualified.
+    R.finishedLaps = c => lapLimit > 0 && c.done && !c.retired && !c.dq && c.laps.length >= lapLimit;
+    // The time the car would have needed for all the laps: what it has, plus the laps it still had to drive at its own average lap (the laps that count for averages).
+    // Null when it has no lap to average, or when it was retired or disqualified (such a car has no finish time to guess).
+    R.estimateOf = c => {
+      if (!(lapLimit > 0) || c.retired || c.dq) return null;
+      if (R.finishedLaps(c)) return R.timeOf(c);
+      const g = goodLaps(c); if (!g.length) return null;
+      return R.timeOf(c) + Math.max(0, lapLimit - c.laps.length) * (g.reduce((a, b) => a + b, 0) / g.length);
+    };
     R.addTime = (i, ms) => { const c = R.cars[i]; if (!c || !(ms > 0)) return false; c.extraMs = (c.extraMs || 0) + ms; log('timeadded', i, R.endAt, { ms }); return true; };
     R.setDq = (i, on) => {
       const c = R.cars[i]; if (!c || c.dq === !!on) return false;
@@ -536,7 +549,11 @@
       bestHeats: Number.isFinite(n) ? Math.max(1, Math.min(50, n)) : 2,
       dropWorst: s.dropWorst === 'yes' || s.dropWorst === true,
       fastestBonus: Math.max(0, Math.min(1000, Number(s.fastestBonus) || 0)),
-      tieBreak: TIEBREAKS.includes(s.tieBreak) ? s.tieBreak : 'default'
+      tieBreak: TIEBREAKS.includes(s.tieBreak) ? s.tieBreak : 'default',
+      // the result by total race time (the lowest time wins) needs heats that are limited by laps: with heats limited by time everybody drives the same time, so the laps count
+      byTime: s.byTime === true || (s.resultBy === 'time' && s.heatBy !== 'time'),
+      // a heat that was not finished: the driver ranks below the finishers ('below', by laps), or the finish time is estimated from the average lap of the driver ('estimate')
+      unfinished: s.unfinished === 'estimate' ? 'estimate' : 'below'
     };
   }
 
@@ -559,7 +576,7 @@
 
   // cfg: { participants: [{driverId, carId, driverName, carName}], schedule, resultBy: laps|points, points: [10, 8, ...], lanes, rnd, and the settings of scoringOf and finalsOf }
   function createHeatRace(cfg) {
-    const { participants, schedule } = cfg, points = cfg.points || [], sc = scoringOf(cfg), fin = finalsOf(cfg), byPoints = cfg.resultBy === 'points';
+    const { participants, schedule } = cfg, points = cfg.points || [], sc = scoringOf(cfg), fin = finalsOf(cfg), byTime = sc.byTime, byPoints = !byTime && cfg.resultBy === 'points';
     const lanes = Math.max(1, Math.floor(Number(cfg.lanes)) || schedule.reduce((m, h) => h.reduce((n, e) => Math.max(n, e.lane + 1), m), 1));
     const sizes = finalSizes(participants.length, lanes, fin.finals), names = sizes.length === 2 ? ['B', 'A'] : sizes.length === 1 ? ['A'] : [], rnd = cfg.rnd || Math.random;
     const H = { schedule, idx: 0, results: [], count: schedule.length, total: schedule.length + names.length, lanes, scoring: sc, finals: fin, finalPlan: null, picks: {} };
@@ -611,7 +628,11 @@
         const a = race.adjOf ? race.adjOf(r.car) : { ms: 0, laps: 0, points: 0 }; // (a race that is not an engine race, such as a stand-in of a test, has no adjustments)
         const note = race.bopNoteOf && race.cars ? race.bopNoteOf(race.cars.indexOf(r.car)) : ''; // what Balance of Power did to the car, in words
         const tyres = race.tyreNoteOf && race.cars ? race.tyreNoteOf(race.cars.indexOf(r.car)) : ''; // what the tyres did to the car (weather), in words
+        // result by total race time: did the car finish its laps, and the time of the heat (the finish time, or an estimate for a car that did not finish when the setup asks for one)
+        const fin = byTime && race.finishedLaps ? race.finishedLaps(r.car) : false, est = byTime && !fin && sc.unfinished === 'estimate' && race.estimateOf ? race.estimateOf(r.car) : null;
+        const tm = fin ? (race.timeOf ? race.timeOf(r.car) : r.car.total + a.ms) : est;
         return { participant: r.car.participant, pos: r.pos, laps: race.lapsOf ? race.lapsOf(r.car) : r.car.laps.length, total: a.ms && Number.isFinite(r.car.total) ? r.car.total + a.ms : r.car.total, best: r.car.best, points: (points[r.pos - 1] || 0) + (byPoints ? a.points : 0),
+          ...(byTime ? { fin, tm: Number.isFinite(tm) ? tm : null, ...(est !== null && Number.isFinite(est) ? { est: true } : {}) } : {}),
           ...(a.ms ? { adjMs: a.ms } : {}), ...(a.laps ? { adjLaps: a.laps } : {}), ...(byPoints && a.points ? { adjPoints: a.points } : {}), ...(note ? { bopNote: note } : {}), ...(tyres ? { tyreNote: tyres } : {}) };
       });
       if (byPoints && sc.fastestBonus > 0) { // the driver with the fastest lap of this heat gets the bonus (with the same lap time, the one who finished higher)
@@ -632,7 +653,10 @@
       }
       if (H.finalPlan) for (const g of H.finalPlan) for (const p of g.drivers) groupOf[p] = g.name;
       // the better heat first: more of what the result counts, then more of the other measure, then the lower total time, then the earlier heat (of two equal heats the later one is the worse)
-      const better = (a, b) => (byPoints ? b.points - a.points || b.laps - a.laps : b.laps - a.laps || b.points - a.points) || (a.total ?? Infinity) - (b.total ?? Infinity) || a.heat - b.heat;
+      // (by total race time the better heat is the faster one: a heat that was not finished ranks after the finished ones, by laps, or by its estimated time when the setup estimates)
+      const missing = h => h.tm === null || h.tm === undefined;
+      const betterTime = (a, b) => (sc.unfinished === 'estimate' ? (missing(a) - missing(b)) || (missing(a) ? 0 : a.tm - b.tm) : (!a.fin - !b.fin) || (a.fin ? a.tm - b.tm : 0)) || b.laps - a.laps || a.heat - b.heat;
+      const better = byTime ? betterTime : (a, b) => (byPoints ? b.points - a.points || b.laps - a.laps : b.laps - a.laps || b.points - a.points) || (a.total ?? Infinity) - (b.total ?? Infinity) || a.heat - b.heat;
       const acc = participants.map((p, i) => {
         const hs = heatsOf[i], ranked = hs.slice().sort(better), f = finalOf[i];
         let counted = ranked;
@@ -641,16 +665,23 @@
         const sum = (list, k) => list.reduce((t, h) => t + h[k], 0), div = sc.countBy === 'average' && counted.length ? counted.length : 1;
         const all = f ? hs.concat([f]) : hs, best = all.reduce((m, h) => (Number.isFinite(h.best) && (m === null || h.best < m) ? h.best : m), null);
         const heatLaps = sum(counted, 'laps') / div, heatPoints = sum(counted, 'points') / div; // (what the heats count; a final that is added comes on top of it, and is not averaged, dropped or limited to the best heats)
+        // by total race time: the time of the heats that count (a heat without a time counts as not finished), and the final when it is added
+        const timed = counted.filter(h => !missing(h)), notFin = counted.length - timed.length, heatTime = timed.length ? sum(timed, 'tm') / (sc.countBy === 'average' ? timed.length : 1) : null;
+        const finalMs = f && !missing(f) ? f.tm : null, addFinal = added && f, timeScore = heatTime === null && !(addFinal && finalMs !== null) ? null : (heatTime || 0) + (addFinal && finalMs !== null ? finalMs : 0);
         const adj = k => all.reduce((t, h) => t + (h[k] || 0), 0), am = adj('adjMs'), al = adj('adjLaps'), ap = Math.round(adj('adjPoints') * 100) / 100; // (what was adjusted in the reviews of its races, added up)
         return { participant: i, ...p, laps: sum(all, 'laps'), points: sum(all, 'points'), best, heats: hs.length, ...(am ? { adjMs: am } : {}), ...(al ? { adjLaps: al } : {}), ...(ap ? { adjPoints: ap } : {}),
           counted: counted.length, dropped: hs.filter(h => !counted.includes(h)).map(h => h.heat).sort((x, y) => x - y),
-          heatScore: byPoints ? heatPoints : heatLaps, scoreLaps: heatLaps + (added && f ? f.laps : 0), scorePoints: heatPoints + (added && f ? f.points : 0),
+          heatScore: byTime ? heatTime : byPoints ? heatPoints : heatLaps, scoreLaps: heatLaps + (added && f ? f.laps : 0), scorePoints: heatPoints + (added && f ? f.points : 0),
+          ...(byTime ? { timeScore, incomplete: notFin + (addFinal && finalMs === null ? 1 : 0), estimated: counted.filter(h => h.est).length + (addFinal && f.est ? 1 : 0), finalTime: f ? finalMs : null } : {}),
           finalName: groupOf[i], finalPos: f ? f.pos : null, finalLaps: f ? f.laps : null, finalPoints: f ? f.points : null,
           wins: counted.filter(h => h.pos === 1).length, time: counted.reduce((t, h) => t + (h.total ?? Infinity), 0) };
       });
       const desc = k => (a, b) => b[k] - a[k], bestAsc = (a, b) => (a.best ?? 1e12) - (b.best ?? 1e12), timeAsc = (a, b) => (a.time === b.time ? 0 : a.time - b.time);
       const main = byPoints ? 'scorePoints' : 'scoreLaps', other = desc(byPoints ? 'scoreLaps' : 'scorePoints');
-      const chain = [desc(main), ...({ default: [other, bestAsc], bestlap: [bestAsc, other], wins: [desc('wins'), other, bestAsc], time: [timeAsc, other, bestAsc] })[sc.tieBreak]];
+      // by total race time: those who finished all the heats that count rank by their time, the lowest first; those with a heat that was not finished come after them (by laps, then fewer heats not finished, then time)
+      const done = a => a.incomplete === 0 && a.timeScore !== null;
+      const byTimeScore = (a, b) => (done(a) && done(b) ? a.timeScore - b.timeScore : done(a) !== done(b) ? (done(a) ? -1 : 1) : (b.scoreLaps - a.scoreLaps) || (a.incomplete - b.incomplete) || (a.time - b.time)) || 0;
+      const chain = [byTime ? byTimeScore : desc(main), ...({ default: [other, bestAsc], bestlap: [bestAsc, other], wins: [desc('wins'), other, bestAsc], time: [timeAsc, other, bestAsc] })[sc.tieBreak]];
       // the A final drivers are placed above the B final drivers, and these above everybody else. In a final that is driven, 'places' puts its drivers in the order of that final.
       const tier = a => (a.finalName === 'A' ? 0 : a.finalName === 'B' ? 1 : 2);
       acc.sort((a, b) => {
@@ -659,7 +690,7 @@
         for (const f of chain) { const v = f(a, b); if (v) return v; }
         return a.participant - b.participant;
       });
-      return acc.map(({ time, ...a }, i) => ({ ...a, pos: i + 1, score: byPoints ? a.scorePoints : a.scoreLaps }));
+      return acc.map(({ time, ...a }, i) => ({ ...a, pos: i + 1, score: byTime ? a.timeScore : byPoints ? a.scorePoints : a.scoreLaps }));
     };
     return H;
   }

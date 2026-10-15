@@ -21,6 +21,7 @@
     { id: 'lastlapother', group: 'Race progress', defaultOn: false, label: 'Another driver starts the last lap (not the leader)', vars: ['driver', 'laps'], lines: ['{driver} starts the last lap', '{driver} is on the last lap'] },
     { id: 'nextheat', group: 'Race progress', label: 'The next heat is ready (a heat-based race)', vars: ['heat', 'heats'], lines: ['Next up: heat {heat} of {heats}', 'Heat {heat} is ready'] },
     { id: 'nextfinal', group: 'Race progress', label: 'The next final is ready (a heat-based race with finals)', vars: ['final'], lines: ['Next up: final {final}', 'Final {final} is ready'] },
+    { id: 'lineup', group: 'Race progress', defaultOn: false, label: 'The line-up of the next heat or final is read (said after the call that the next heat is ready)', vars: ['heat', 'heats', 'final', 'lineup'], lines: ['{lineup}', 'On the grid: {lineup}'] },
     { id: 'heatend', group: 'Race progress', label: 'A heat is finished (said instead of the finished call, except after the last heat)', vars: ['heat', 'heats'], lines: ['Heat {heat} of {heats} is finished', 'End of heat {heat}'] },
     { id: 'finalend', group: 'Race progress', label: 'A final is finished (said instead of the finished call, except after the last final)', vars: ['final'], lines: ['Final {final} is finished', 'End of final {final}'] },
     // Gaps and battles: worked out from the times of the laps, said when a lap is completed
@@ -77,7 +78,7 @@
     laps: 'The number of laps of the race (the laps driven so far when there is no lap limit)', percent: 'The race distance reached, in percent', left: 'What is left of the race: laps or minutes',
     lane: 'The number of the lane', seconds: 'The seconds of paid time that are left (in the time-added call: the seconds that were added; in the no-lap call: how long)',
     fuel: 'Litres of fuel left (empty when the race has no fuel)', points: 'The driver\'s penalty points (in the penalty call: the points just given)', penalty: 'The name of the special penalty',
-    gap: 'The gap to the car in front, as spoken (0.8 seconds)', lapsdown: 'How many laps a lapped driver is behind (1 lap)', heat: 'The number of the heat (empty when it is not a heat-based race, and in a final)', heats: 'The number of heats of the race (empty in a final)', final: 'The letter of the final, A or B (empty when it is not a final)',
+    gap: 'The gap to the car in front, as spoken (0.8 seconds)', lapsdown: 'How many laps a lapped driver is behind (1 lap)', heat: 'The number of the heat (empty when it is not a heat-based race, and in a final)', heats: 'The number of heats of the race (empty in a final)', final: 'The letter of the final, A or B (empty when it is not a final)', lineup: 'The drivers of the next heat or final with their lanes (Alex in lane 1, Sam in lane 2 and Kim in lane 3)',
     car: 'The driver\'s slot car', best: 'The driver\'s best lap of this race, as spoken', track: 'The name of the track',
     target: 'The yellow flag target lap time, as spoken (7.5 seconds)',
     gapahead: 'The gap to the car in front right now, as spoken (empty for the leader)', record: 'The track record, as spoken (empty when the track has none; in the track record call: the old record)',
@@ -86,7 +87,7 @@
     bop: 'The Balance of Power percentage the car got, as a number (20)', effect: 'What Balance of Power does to the car: hindered or helped',
     tyre: 'The tyres of the car, as a word (Wet, Soft, Intermediate...)', weather: 'The weather now: dry, cloudy, wet or clearing',
     tracktemp: 'The track temperature in the weather, as spoken (24 degrees)', airtemp: 'The air temperature, as spoken (20 degrees)', windspeed: 'The wind speed, as spoken (16 kilometres per hour)', winddir: 'Where the wind comes from, as spoken (south west)' };
-  const SAMPLE = { target: '15 seconds', driver: 'Alex', name: 'Alex', nickname: 'Speedy', callsign: 'ALX', other: 'Sam', time: '5.12', position: 'second', percent: '50', left: '5 laps', fuel: '12', lane: '2', seconds: '60', points: '2', penalty: 'drivethrough', lap: '4', laps: '10', gap: '0.8 seconds', lapsdown: '1 lap', heat: '2', heats: '3', final: 'A', car: 'Porsche 956', best: '5.10', track: 'Living room', gapahead: '0.8 seconds', record: '5.01', improved: '0.12 seconds', off: '0.04 seconds', pit: '7.4 seconds', refuelled: '8', added: '5 minutes', bop: '20', effect: 'hindered', tyre: 'Wet', weather: 'wet', tracktemp: '17 degrees', airtemp: '15 degrees', windspeed: '22 kilometres per hour', winddir: 'west' };
+  const SAMPLE = { target: '15 seconds', driver: 'Alex', name: 'Alex', nickname: 'Speedy', callsign: 'ALX', other: 'Sam', time: '5.12', position: 'second', percent: '50', left: '5 laps', fuel: '12', lane: '2', seconds: '60', points: '2', penalty: 'drivethrough', lap: '4', laps: '10', gap: '0.8 seconds', lapsdown: '1 lap', heat: '2', heats: '3', final: 'A', lineup: 'Alex in lane 1, Sam in lane 2 and Kim in lane 3', car: 'Porsche 956', best: '5.10', track: 'Living room', gapahead: '0.8 seconds', record: '5.01', improved: '0.12 seconds', off: '0.04 seconds', pit: '7.4 seconds', refuelled: '8', added: '5 minutes', bop: '20', effect: 'hindered', tyre: 'Wet', weather: 'wet', tracktemp: '17 degrees', airtemp: '15 degrees', windspeed: '22 kilometres per hour', winddir: 'west' };
   const condVars = (eng, state) => (eng.weather ? WxT.condSpeech(WxT.conditionsFor(eng.weather, state || 'dry', null, '')) : {}); // the conditions of a weather state of this race, as spoken
   const WEATHER_CALL = { cloudy: 'weathercloudy', wet: 'weatherwet', clearing: 'weatherclearing', dry: 'weatherdry' }; // the call for each state the weather becomes
   const ORD = ['zeroth', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth'];
@@ -175,7 +176,14 @@
       const phase = ctx.phase;
       if (phase !== S.phase) {
         if (phase === 'running' && S.phase === 'countdown') { ev('lightsout', {}); if (eng.weather && S.condFor !== eng) { S.condFor = eng; ev('weatherconditions', { weather: eng.wxState || 'dry', ...condVars(eng, eng.wxState) }); } } // (the conditions are said once in a race, not again after a restart)
-        if (phase === 'between' && ctx.heat) ev(ctx.heat.final ? 'nextfinal' : 'nextheat', {});
+        if (phase === 'between' && ctx.heat) {
+          ev(ctx.heat.final ? 'nextfinal' : 'nextheat', {});
+          const grid = Array.isArray(ctx.lineup) ? ctx.lineup : [];
+          if (grid.length) { // the drivers of the heat that is next, each with the lane (named as the audio set says: name, nickname or callsign)
+            const parts = grid.map(g => `${by === 'nickname' ? g.nickname || g.name : by === 'callsign' ? g.callsign || g.name : g.name}${Number.isInteger(g.lane) && g.lane >= 0 ? ' in lane ' + (g.lane + 1) : ''}`);
+            ev('lineup', { lineup: parts.length < 2 ? parts.join('') : parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1] });
+          }
+        }
         S.phase = phase; S.lights = 0;
       }
       if (phase === 'countdown') { // each new light says its number: 5, 4, 3, 2, 1

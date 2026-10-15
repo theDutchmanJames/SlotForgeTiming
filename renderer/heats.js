@@ -237,6 +237,7 @@
   const plural = (n, w) => (n === 1 ? `1 ${w}` : `${n} ${w}s`);
   function scoringText(sc, byPoints) {
     const parts = [];
+    if (sc.byTime) parts.push(sc.unfinished === 'estimate' ? 'the lowest total race time wins; the finish time of a driver who did not finish a heat is estimated from their own average lap' : 'the lowest total race time wins; a driver who did not finish a heat ranks below the drivers who did, by laps');
     if (sc.countBy === 'average') parts.push('the average per heat');
     else if (sc.countBy === 'best') parts.push(`only the best ${plural(sc.bestHeats, 'heat')} of every driver count${sc.bestHeats === 1 ? 's' : ''}`);
     if (sc.dropWorst) parts.push('the worst heat of every driver is dropped');
@@ -251,6 +252,11 @@
   // fin (optional): { finalMode, byPoints }. When the final is added to the heat result: "28 (2 of 3 heats) + 5 final = 25".
   const scoreText = (row, sc, fin) => {
     const added = !!fin && fin.finalMode === 'added' && row.finalPos !== null && row.finalPos !== undefined;
+    if (sc && sc.byTime) { // the result by total race time: the time that counts, and whether it is an estimate or a heat was not finished
+      const t = x => (x === null || x === undefined ? '–' : E.fmtTime(x));
+      return t(added ? row.heatScore : row.score) + (sc.countBy === 'average' ? ' avg' : '') + (row.estimated ? ' (estimated)' : '') + (row.incomplete ? ` (${row.incomplete} not finished)` : '') + (row.counted < row.heats ? ` (${row.counted} of ${row.heats} heats)` : '')
+        + (added ? ` + ${t(row.finalTime)} final = ${t(row.score)}` : '');
+    }
     return num(added ? row.heatScore : row.score) + (sc && sc.countBy === 'average' ? ' avg' : '') + (row.counted < row.heats ? ` (${row.counted} of ${row.heats} heats)` : '')
       + (added ? ` + ${num(fin.byPoints ? row.finalPoints : row.finalLaps)} final = ${num(row.score)}` : '');
   };
@@ -304,11 +310,55 @@
     if (sc.countBy === 'best' && !st.equal && st.minHeats < sc.bestHeats && countedHeats(st.minHeats, sc) !== countedHeats(st.maxHeats, sc)) lines.push(`Some drivers race fewer than ${plural(sc.bestHeats, 'heat')} (${st.minHeats}): all their heats count, so they have fewer than the others.`);
     const how = scoringText(sc, !!setup && setup.resultBy === 'points');
     if (how) lines.push(how);
+    if (setup && setup.resultBy === 'time' && !sc.byTime) lines.push('Total race time needs heats that are limited by laps. The heats here are limited by time, so the result is counted by laps.');
     lines.push(...finalsLines(st, setup, o));
     return lines.filter(Boolean);
   }
 
-  const api = { makeRng, newSeed, optionsOf, breakOf, clock, planKey, swap, scoringText, scoreText, finalsSaid, finalCell, ordinal, raceName, finalsLines, countedHeats, plan, fits, stats, summary, PLANS, assignLanes, colourEdges, evenOut, groupsByNeed, rotation };
+
+  // ---- the heat list: every heat (and final) with its drivers, who won it, and what it gave ----
+  // h: the heat race of the engine (schedule, results, idx, count, total, finalPlan, picks, raceName); people: the participants (driverName);
+  // opts: { live: a heat is racing now (otherwise the heat at idx is the next one), labels: the names of the heats of a rotation setup }.
+  // state: done | current (racing now) | next (waits for Start) | later
+  function listOf(h, people, opts = {}) {
+    const nameOf = p => { const x = people && people[p]; return (x && (x.driverName || x.name)) || ''; };
+    const total = h.total || h.count || (h.schedule || []).length, out = [];
+    for (let i = 0; i < total; i++) {
+      const isFinal = i >= h.count;
+      let drivers = [];
+      if (!isFinal) drivers = (h.schedule[i] || []).slice().sort((a, b) => a.lane - b.lane).map(e => ({ p: e.p, lane: e.lane, name: nameOf(e.p) }));
+      else if (h.finalPlan && h.finalPlan[i - h.count]) {
+        const f = h.finalPlan[i - h.count], picks = (h.picks && h.picks[f.name]) || [];
+        drivers = f.drivers.map(p => { const k = picks.find(x => x.p === p); return { p, lane: k ? k.lane : null, name: nameOf(p) }; });
+        if (picks.length) drivers.sort((a, b) => (a.lane === null) - (b.lane === null) || a.lane - b.lane);
+      }
+      const res = h.results[i] || null, rows = res ? res.rows.map(r => ({ ...r, name: nameOf(r.participant), lane: (drivers.find(d => d.p === r.participant) || {}).lane ?? null })).sort((a, b) => a.pos - b.pos) : [];
+      const top = rows.find(r => r.pos === 1) || null;
+      const state = i < h.idx ? 'done' : i === h.idx ? (opts.live ? 'current' : 'next') : 'later';
+      const label = !isFinal && opts.labels && opts.labels[i] ? String(opts.labels[i]) : '';
+      out.push({ n: i + 1, name: h.raceName ? h.raceName(i) : (isFinal ? 'Final' : 'Heat ' + (i + 1)), final: isFinal ? (h.raceName ? h.raceName(i).slice(6) : '') : '', label, state, drivers, rows, winner: top ? { p: top.participant, name: top.name } : null });
+    }
+    return out;
+  }
+  // the list of a plan that is not raced yet (the Home tab): names are the participants in the order of the plan
+  const planList = (schedule, names, labels) => listOf({ schedule, results: [], idx: 0, count: schedule.length, total: schedule.length }, (names || []).map(driverName => ({ driverName })), { labels });
+  // the heat list as it is sent to the other screens (the Heat List widget): short, and without what a screen does not show
+  const listLite = list => list.map(x => ({ name: x.name, ...(x.label ? { label: x.label } : {}),
+    drivers: x.drivers.map(d => ({ lane: Number.isInteger(d.lane) ? d.lane : -1, name: d.name })),
+    rows: x.rows.map(r => ({ pos: r.pos, name: r.name, points: r.points || 0, laps: r.laps, ...(r.tm !== undefined && r.tm !== null ? { tm: r.tm } : {}), ...(r.fin !== undefined ? { fin: r.fin ? 1 : 0 } : {}) })) }));
+  const andList = list => (list.length < 2 ? list.join('') : list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1]);
+  // "Alex in lane 1, Sam in lane 2 and Kim in lane 3" (a driver without a lane yet is named alone); say: how a driver is named (a function of the driver)
+  const lineupText = (entry, say) => andList(((entry && entry.drivers) || []).map(d => (say ? say(d) : d.name) + (Number.isInteger(d.lane) && d.lane >= 0 ? ` in lane ${d.lane + 1}` : '')));
+  // the figures of one finished heat for a driver: points and/or the heat time (what the result is counted by)
+  function rowFigure(row, o = {}) {
+    const bits = [];
+    if (o.points) bits.push(`${row.points} ${row.points === 1 ? 'point' : 'points'}`);
+    if (o.time && row.tm !== undefined && row.tm !== null) bits.push(E.fmtTime(row.tm) + (row.fin === false ? ' (estimated)' : ''));
+    else if (o.time && row.fin === false) bits.push('not finished');
+    return bits.join(', ');
+  }
+
+  const api = { listOf, listLite, planList, lineupText, rowFigure, andList, makeRng, newSeed, optionsOf, breakOf, clock, planKey, swap, scoringText, scoreText, finalsSaid, finalCell, ordinal, raceName, finalsLines, countedHeats, plan, fits, stats, summary, PLANS, assignLanes, colourEdges, evenOut, groupsByNeed, rotation };
   root.Heats = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

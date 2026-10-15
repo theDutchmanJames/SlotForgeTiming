@@ -83,6 +83,7 @@ const Help = (() => {
       { id: 'heatplan', title: 'Heat plan and break', note: 'See, change and time the heats', body: `
         <ul>
           <li>On the Home tab a <b>Heat plan</b> shows the heats by lane, how often every driver races and in which lane; <b>Shuffle again</b> makes another plan, and the plan you see is the plan that is raced. To change the plan yourself, click a place and then another place: the two swap (a place with a dash is empty, so a driver can move there). A driver can not race twice in a heat. <b>Reset my changes</b> brings back the plan that was made; changing the number of participants or the heat settings makes a new plan.</li>
+          <li>On the Race tab the <b>Heat list</b> shows every heat with its drivers by lane, the heat that is racing or next, and for a finished heat its winner and the points, laps or times. The <b>Heat List</b> widget shows it on the Live Race page. <b>Print the heat list</b> (also on Home) makes a PDF sheet. The audio call <b>line-up</b> reads the drivers of the next heat.</li>
           <li><b>Break between heats</b>: with a number of seconds, the race counts down after each heat (the Race Info widget and the Live Race page show "next heat in 1:30"). <b>When the break is over</b> either waits for Start or lets the start lights begin by themselves; Start (Space) always starts the next heat at once, and Stop ends the race.</li>
         </ul>` },
       { id: 'rotation', title: 'Rotation setups', note: 'Make your own heat schedule', body: `
@@ -95,6 +96,7 @@ const Help = (() => {
       { id: 'heatresults', title: 'Heat results', note: 'How the heats add up', body: `
         <ul>
           <li><b>How the heats are added up</b> can be all heats, the <b>average per heat</b> (fair when drivers race a different number of heats) or <b>only the best heats</b> of every driver. <b>Drop the worst heat</b> takes away each driver's worst heat. With points you can give <b>bonus points for the fastest lap</b> of a heat. <b>A tie is decided by</b> chooses between the other measure, the fastest lap, the most heat wins and the lowest total time.</li>
+          <li><b>Total race time</b> (for heats limited by laps) adds up each driver's finish times; the lowest total wins. A driver who did not finish a heat ranks below those who did, by laps, or, with <b>A heat that is not finished</b> on estimate, gets a finish time worked out from their own average lap.</li>
           <li>When something other than the standard is chosen, the race screen, the saved results and the PDF report say how the result was counted and show a <b>Result</b> column.</li>
         </ul>` },
       { id: 'heatfinals', title: 'Finals', note: 'A final A and a final B after the heats', body: `

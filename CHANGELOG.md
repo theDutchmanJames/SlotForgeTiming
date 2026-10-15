@@ -4,6 +4,7 @@ Every version of SlotForge Timing, newest first. The README has a section **What
 
 ## Versions
 
+- **1.7.0**: Rotation Setups, part 2: the result by total race time (a heat that is not finished ranks below, or is estimated), the Heat List on the Race tab and as a widget, a printed heat sheet, and the line-up read out between heats
 - **1.6.0**: Rotation Setups, part 1: your own heat schedules (an editor with groups, locking and shuffles), a Rotation setup in the race setup, and "Not here today" on Home
 - **1.5.0**: the weather widgets: Tyres, Weather Forecast and Track Conditions, with picture sets, and the conditions in the audio
 - **1.4.0**: the Weather System: rain, tyres in the pits, penalties and a forecast

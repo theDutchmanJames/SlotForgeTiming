@@ -200,6 +200,37 @@
     return `<table class="lb">${rows.map(r => `<tr${cssVal(r.bg) || cssVal(r.color) ? ` style="${cssVal(r.bg) ? 'background:' + cssVal(r.bg) + ';' : ''}${cssVal(r.color) ? 'color:' + cssVal(r.color) : ''}"` : ''}>${cols.map(c => `<td class="lb-${c[1]}">${cell(r, c[1])}</td>`).join('')}</tr>`).join('')}</table>`;
   }
 
+  // The Heat List: every heat of a heat-based race with its drivers, and who won it. heat: the heat info of the race (idx: the heat that is racing or is next, by: what the heats
+  // are counted by, list: [{ name, label, drivers: [{lane, name}], rows: [{pos, name, points, laps, tm, fin}] }]); phase: the state of the race.
+  const HEATLIST_OPTIONS = [
+    { key: 'show', label: 'Heats shown', type: 'select', default: 'all', choices: [['all', 'All heats'], ['upcoming', 'From the heat that is racing'], ['near', 'The heat that is racing and the two after it']], hint: 'The heat that is racing (or is next) is marked.' },
+    { key: 'detail', label: 'Result of a finished heat', type: 'select', default: 'winner', choices: [['winner', 'The winner'], ['all', 'Every place'], ['none', 'Nothing']] },
+    { key: 'lanes', label: 'Lane numbers in front of the drivers', type: 'checkbox', default: true },
+    { key: 'figures', label: 'Points, laps or time next to the names of the result', type: 'checkbox', default: true }
+  ];
+  const hlOn = (o, k) => { const d = HEATLIST_OPTIONS.find(x => x.key === k); return o && o[k] !== undefined ? o[k] : d.default; };
+  const timeText = ms => { const m = Math.floor(ms / 60000), x = (ms % 60000) / 1000; return m ? m + ':' + x.toFixed(3).padStart(6, '0') : x.toFixed(3); }; // (as RaceEngine.fmtTime)
+  const hlFigure = (r, by) => by === 'points' ? String(r.points || 0) : by === 'time' ? (r.tm !== undefined && r.tm !== null ? timeText(r.tm) + (r.fin === 0 ? '*' : '') : r.fin === 0 ? 'DNF' : '') : `${r.laps}`;
+  function heatListHtml(heat, phase, opt) {
+    const all = (heat && heat.list) || [];
+    if (!all.length) return '\u2013';
+    const racing = ['countdown', 'running', 'paused', 'review'].includes(phase), idx = Math.max(0, heat.idx || 0), by = heat.by || 'laps';
+    const items = all.map((x, i) => ({ ...x, state: i < idx ? 'done' : i === idx ? (racing ? 'current' : 'next') : 'later' }));
+    const show = hlOn(opt, 'show'), start = show === 'all' ? 0 : Math.max(0, Math.min(idx, items.length - (show === 'near' ? 3 : 1)));
+    const shown = show === 'all' ? items : show === 'near' ? items.slice(start, start + 3) : items.slice(start);
+    const detail = hlOn(opt, 'detail'), withNums = hlOn(opt, 'lanes') !== false, figs = hlOn(opt, 'figures') !== false;
+    const cellOf = x => {
+      if (detail === 'none' || !x.rows || !x.rows.length) return '';
+      const rows = detail === 'all' ? x.rows : x.rows.filter(r => r.pos === 1);
+      return rows.map(r => `${detail === 'all' ? esc(r.pos) + ' ' : '\u2605 '}${esc(r.name)}${figs && hlFigure(r, by) ? ' ' + esc(hlFigure(r, by)) : ''}`).join(' \u00b7 ');
+    };
+    return `<table class="hlw">${shown.map(x => `<tr class="hlw-${x.state}"><td class="hlw-n">${esc(x.name)}</td><td class="hlw-d">${(x.drivers || []).map(d => `${withNums && d.lane >= 0 ? (d.lane + 1) + ': ' : ''}${esc(d.name)}`).join(' \u00b7 ')}</td><td class="hlw-win">${cellOf(x)}</td></tr>`).join('')}</table>`;
+  }
+  const HEATLIST_SAMPLE = { idx: 1, by: 'points', list: [
+    { name: 'Heat 1', drivers: [{ lane: 0, name: 'Alex' }, { lane: 1, name: 'Sam' }, { lane: 2, name: 'Kim' }], rows: [{ pos: 1, name: 'Sam', points: 10, laps: 10 }, { pos: 2, name: 'Alex', points: 8, laps: 10 }, { pos: 3, name: 'Kim', points: 6, laps: 9 }] },
+    { name: 'Heat 2', drivers: [{ lane: 0, name: 'Kim' }, { lane: 1, name: 'Alex' }, { lane: 2, name: 'Sam' }], rows: [] },
+    { name: 'Heat 3', drivers: [{ lane: 0, name: 'Sam' }, { lane: 1, name: 'Kim' }, { lane: 2, name: 'Alex' }], rows: [] }] };
+
   // Picture framing: zoom (1 to 4) and where the picture sits. x and y run from -1 to 1 (0 = centred); the picture can
   // never be moved so far that the frame shows an empty edge.
   const frameOf = f => ({ zoom: Math.max(1, Math.min(4, Number(f && f.zoom) || 1)), x: Math.max(-1, Math.min(1, Number(f && f.x) || 0)), y: Math.max(-1, Math.min(1, Number(f && f.y) || 0)) });
@@ -341,6 +372,7 @@
     T('flag', 'Race Flag', 'Race', { title: 'Race flag', w: 180, optsLabel: 'Flag style', options: FLAG_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, st = flagStyleOf(o), i = o.img_running;
       return st === 'images' && i ? flagImgHtml(i, '', !!o.imageMirror) : st === 'flags' ? flagHtml('running', { mirror: !!o.flagMirror }) : st === 'leds' ? ledHtml('running') : 'Racing'; } }),
     T('leaderboard', 'Leaderboard', 'Race', { w: 420, h: 220, textSize: 18, options: LEADER_OPTIONS, sample: (l, w) => leaderHtml(NAMES.slice(0, 4).map((n, i) => ({ pos: i + 1, flag: FLAGS[i], name: n, nickname: NICKS[i], callsign: n.slice(0, 3).toUpperCase(), laps: String(5 - (i > 2 ? 1 : 0)), best: `5.${10 + i * 6}4`, last: `5.${30 + i}2`, current: `2.${i}40`, fuel: `${90 - i * 20} L`, gap: i ? `+${i}.${i * 3}20` : '' })), (w && w.opt) || {}) }),
+    T('heatlist', 'Heat List', 'Race', { title: 'Heat list', w: 460, h: 200, textSize: 18, options: HEATLIST_OPTIONS, sample: (l, w) => heatListHtml(HEATLIST_SAMPLE, 'running', (w && w.opt) || {}) }),
     T('logo', 'Logo', 'Race', { w: 200, h: 100, noTitle: true, options: [{ key: 'image', label: 'Logo picture', type: 'image', fallback: 'clubLogo' }, { key: 'fit', label: 'Fit', type: 'select', choices: [['contain', 'Show the whole logo'], ['cover', 'Fill the widget (may crop)']], default: 'contain' }], sample: imgSample }),
     T('start', 'Start', 'Controls', { w: 140, button: true, sample: 'Start' }),
     T('pause', 'Pause / Resume', 'Controls', { w: 170, button: true, sample: 'Pause' }),
@@ -470,7 +502,7 @@
     return L;
   }
 
-  const api = { tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, flagImgHtml, avatarHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, LANES, bbox, colorsOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, ALIGNS, titleAlignOf, valueAlignOf, alignClassOf, lapCountOf, lapTotalOn, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, resolveOpt, heightOf, withoutControls, moveWidget, resizeWidget, newWidget, defaultLayout };
+  const api = { heatListHtml, HEATLIST_OPTIONS, tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, flagImgHtml, avatarHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, LANES, bbox, colorsOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, ALIGNS, titleAlignOf, valueAlignOf, alignClassOf, lapCountOf, lapTotalOn, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, resolveOpt, heightOf, withoutControls, moveWidget, resizeWidget, newWidget, defaultLayout };
   root.Widgets = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -5,7 +5,7 @@ const W = Wd.U, H = 562;
 const box = (x, y, w, h) => ({ x, y, w, h });
 
 // registry
-ok('53 widgets in the register (1.3.0: Balance of Power; 1.5.0: Tyres, Weather Forecast, Track Conditions)', Wd.REGISTRY.length === 53 && new Set(Wd.REGISTRY.map(d => d.type)).size === 53);
+ok('54 widgets in the register (1.3.0: Balance of Power; 1.5.0: Tyres, Weather Forecast, Track Conditions; 1.7.0: Heat List)', Wd.REGISTRY.length === 54 && new Set(Wd.REGISTRY.map(d => d.type)).size === 54);
 ok('every widget has sample content', Wd.REGISTRY.every(d => d.type === 'gap' ? true : String(Wd.sampleOf(d, 0)).length > 0));
 ok('lane widgets are marked per lane', Wd.def('bestlap').perLane && !Wd.def('clock').perLane && !Wd.def('start').perLane);
 ok('lap time widget has hold time and highlight colours', Wd.def('laptime').options.map(o => o.key).join() === 'holdSeconds,pbColor,recordColor');
@@ -79,7 +79,7 @@ ok('resizing an edge sticks to a guideline too', r.x + r.w === 500);
 ok('widget names and groups as chosen', (() => { const g = {}; Wd.REGISTRY.filter(d => !d.hidden).forEach(d => (g[d.group] = g[d.group] || []).push(d.label)); return JSON.stringify(g) === JSON.stringify({
   Driver: ['Nickname', 'Name', 'Callsign', 'Lane Colour', 'Avatar', 'Driver Flag'], Slotcar: ['Slotcar Picture', 'Slotcar Description'],
   Timing: ['Position in Race', 'Lap of Lap', 'Laptime', 'Last lap', 'Average Lap', 'Median Lap', 'Best Lap (this session)', 'Gap to Leader', 'Fuel Level', 'Balance of Power', 'Slotcar Speed', 'Penalty Points', 'Championship Points', 'Pitstop Time'],
-  'Timing Records': ['Record Lap Time', 'Session Record Lap', 'Track Record'], 'Delta Timers': ['Laptime Delta', 'Average Lap Delta', 'Median Lap Delta', 'Best Lap Delta', 'Personal Best Delta', 'Pitstop Time Delta', 'Session Record Delta', 'Track Record Delta'], Race: ['Race Clock', 'Race Laps', 'Start Lights', 'Race Info', 'Race Flag', 'Leaderboard', 'Logo'], 'Time Tokens': ['Token Clock'], Weather: ['Tyres', 'Weather Forecast', 'Track Conditions'], Controls: ['Start', 'Pause / Resume', 'Stop', 'Yellow flag', 'Red flag'] }); })());
+  'Timing Records': ['Record Lap Time', 'Session Record Lap', 'Track Record'], 'Delta Timers': ['Laptime Delta', 'Average Lap Delta', 'Median Lap Delta', 'Best Lap Delta', 'Personal Best Delta', 'Pitstop Time Delta', 'Session Record Delta', 'Track Record Delta'], Race: ['Race Clock', 'Race Laps', 'Start Lights', 'Race Info', 'Race Flag', 'Leaderboard', 'Heat List', 'Logo'], 'Time Tokens': ['Token Clock'], Weather: ['Tyres', 'Weather Forecast', 'Track Conditions'], Controls: ['Start', 'Pause / Resume', 'Stop', 'Yellow flag', 'Red flag'] }); })());
 ok('renamed widgets keep the title they showed in existing layouts', Wd.titleOf({ type: 'bestlap', title: '' }) === 'Best lap' && Wd.titleOf({ type: 'fuel', title: '' }) === 'Fuel' && Wd.titleOf({ type: 'position', title: '' }) === 'Position' && Wd.titleOf({ type: 'sessionrecord', title: '' }) === 'Session record lap');
 // groups
 const grp = [box(100, 100, 50, 50), box(300, 200, 100, 80)];
