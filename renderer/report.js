@@ -4,6 +4,7 @@
   const E = typeof module !== 'undefined' ? require('./engine.js') : root.RaceEngine;
   const RT = typeof module !== 'undefined' ? require('./richtext.js') : root.RichText;
   const HT = typeof module !== 'undefined' ? require('./heats.js') : root.Heats;
+  const ST = typeof module !== 'undefined' ? require('./stats.js') : root.Stats;
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const LABEL = { practice: 'Free practice', qualifying: 'Qualifying', race: 'Race by laps', timed: 'Timed race', heats: 'Heat-based race', tokens: 'Time Token Session' };
   const dateText = iso => (iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'long', timeStyle: 'short' }) : '');
@@ -19,13 +20,36 @@
     }).filter(g => g.cols.length);
   }
 
-  function sessionHtml({ session, laps }) {
+  // What goes in the PDF. options (all optional, everything is in when it is left out): results (the table), heats (the summary of the heats and finals), laps (the page with every lap time),
+  // columns (the keys of the columns of the table, as Stats.SESSION_COLUMNS names them; the default is the ones that are on until turned off).
+  // tracks and cars (the lists from the database) give the length and scale for the speeds.
+  const DEFAULT_OPTIONS = { results: true, heats: true, laps: true };
+  function sessionHtml({ session, laps, tracks, cars, options }) {
+    const opt = { ...DEFAULT_OPTIONS, ...(options || {}) };
     const pts = session.resultBy === 'points', isHeats = session.sessionType === 'heats';
     const res = isHeats && !!session.scoring && session.standings.some(x => x.score !== undefined); // a heat race with a result that is not just all heats added up
     const fin = isHeats && !!session.finals, finArg = { finalMode: fin ? session.finals.finalMode : 'places', byPoints: pts };
-    const standings = `<table><thead><tr><th>Pos</th><th>Driver</th><th>Car</th><th>Laps</th>${pts ? '<th>Points</th>' : ''}${res ? '<th>Result</th>' : ''}${fin ? '<th>Final</th>' : ''}<th>Best lap</th>${isHeats ? '' : '<th>Total time</th>'}</tr></thead><tbody>` +
-      session.standings.map(x => `<tr><td>${esc(x.pos)}</td><td>${esc(x.driverName)}${x.dq ? ' (disqualified)' : x.retired ? ' (retired, out of fuel)' : ''}</td><td>${esc(x.carName)}</td><td>${esc(x.laps)}</td>${pts ? `<td>${esc(x.points)}</td>` : ''}${res ? `<td>${esc(HT.scoreText(x, session.scoring, finArg))}</td>` : ''}${fin ? `<td>${esc(HT.finalCell(x))}</td>` : ''}<td>${esc(E.fmtTime(x.best))}</td>${isHeats ? '' : `<td>${esc(E.fmtTime(x.total + (x.penalty || 0)))}${x.penalty ? ` (includes +${esc(E.fmtTime(x.penalty))} penalty, ${esc(x.penaltyPoints)} points)` : ''}</td>`}</tr>`).join('') + '</tbody></table>' + (isHeats && session.scoring && HT.scoringText(session.scoring, pts) ? `<p class="sub">${esc(HT.scoringText(session.scoring, pts))}</p>` : '') + (fin ? `<p class="sub">${esc(HT.finalsSaid(session.finals))}</p>` : '');
-    const heatSummary = !session.heatResults ? '' : `<h2>${session.finals ? 'Heats and finals' : 'Heats'}</h2>` + session.heatResults.map(h =>
+    const figs = ST.forSession(session, laps, tracks, cars), want = new Set(opt.columns || ST.SESSION_COLUMNS.filter(c => c.on).map(c => c.key));
+    const cols = ST.sessionColumns(session, figs).filter(c => want.has(c.key));
+    const cellOf = (key, x, i) => {
+      switch (key) {
+        case 'pos': return esc(x.pos);
+        case 'driver': return esc(x.driverName) + (x.dq ? ' (disqualified)' : x.retired ? ' (retired, out of fuel)' : '');
+        case 'car': return esc(x.carName);
+        case 'laps': return esc(x.laps);
+        case 'points': return esc(x.points);
+        case 'result': return esc(HT.scoreText(x, session.scoring, finArg));
+        case 'final': return esc(HT.finalCell(x));
+        case 'best': return esc(E.fmtTime(x.best));
+        case 'total': return esc(E.fmtTime(x.total + (x.penalty || 0))) + (x.penalty ? ` (includes +${esc(E.fmtTime(x.penalty))} penalty, ${esc(x.penaltyPoints)} points)` : '');
+        default: return esc(ST.text(key, figs[i]));
+      }
+    };
+    const standings = !opt.results || !cols.length ? '' : `<table${cols.length > 8 ? ' class="wide"' : ''}><thead><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr></thead><tbody>` +
+      session.standings.map((x, i) => `<tr>${cols.map(c => `<td>${cellOf(c.key, x, i)}</td>`).join('')}</tr>`).join('') + '</tbody></table>' +
+      (ST.notes(cols.map(c => c.key)).length ? `<p class="sub">${ST.notes(cols.map(c => c.key)).map(esc).join(' ')}</p>` : '') +
+      (isHeats && session.scoring && HT.scoringText(session.scoring, pts) ? `<p class="sub">${esc(HT.scoringText(session.scoring, pts))}</p>` : '') + (fin ? `<p class="sub">${esc(HT.finalsSaid(session.finals))}</p>` : '');
+    const heatSummary = !opt.heats || !session.heatResults ? '' : `<h2>${session.finals ? 'Heats and finals' : 'Heats'}</h2>` + session.heatResults.map(h =>
       `<p><b>${esc(HT.raceName(h))}</b>: ${h.rows.map(r => `${esc(r.pos)}. ${esc(r.driverName)} (${esc(r.laps)} laps${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''})`).join(' &middot; ')}</p>`).join('');
     const groups = lapGroups(session, laps);
     const lapPages = groups.map(g => {
@@ -34,7 +58,7 @@
         const l = c.laps[i]; if (!l) return '<td></td>';
         const bad = x => x.invalid || x.tooSlow, best = Math.min(...c.laps.filter(x => !bad(x)).map(x => x.time));
         const tm = esc(E.fmtTime(l.time));
-        return `<td>${bad(l) ? `<s title="${l.invalid ? 'invalid lap' : 'too slow'}">${tm}</s>` : l.time === best ? `<b>${tm}</b>` : tm}</td>`;
+        return `<td>${bad(l) ? `<s title="${l.invalid ? 'invalid lap' : 'too slow'}">${tm}</s>` : l.time === best ? `<b>${tm}</b>` : l.pit ? `<i title="pit stop">${tm}</i>` : tm}</td>`;
       }).join('')}</tr>`).join('');
       return `${isHeats ? `<h2>${esc(HT.raceName(g))}</h2>` : ''}<table class="laps"><thead><tr><th>Lap</th>${g.cols.map(c => `<th>${esc(c.s.driverName)}<br><span class="sub">${esc(c.s.carName)}</span></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
     }).join('');
@@ -45,14 +69,15 @@
       .meta { color: #444; margin: 0 0 14px; } .sub { color: #666; font-weight: normal; font-size: 9pt; }
       table { border-collapse: collapse; width: 100%; margin-bottom: 8px; } th, td { border-bottom: 1px solid #ccc; padding: 5px 8px; text-align: left; font-variant-numeric: tabular-nums; }
       th { background: #eee; } .laps td, .laps th { text-align: right; } .laps td:first-child, .laps th:first-child { text-align: left; }
+      .wide th, .wide td { font-size: 9pt; padding: 4px 5px; }
       thead { display: table-header-group; } tr { page-break-inside: avoid; }
       .page2 { page-break-before: always; } .foot { color: #777; font-size: 9pt; margin-top: 16px; }
     </style></head><body>
       <h1>${esc(session.setupName)}</h1>
       <p class="meta">${esc(LABEL[session.sessionType] || '')} &middot; ${esc(session.trackName || '')} &middot; ${esc(dateText(session.date))}${session.endedBy ? ' &middot; ' + esc(session.endedBy) : ''}</p>
-      <h2>Results</h2>${standings}${heatSummary}
-      <div class="page2"><h1>All lap times</h1><p class="meta">${esc(session.setupName)} &middot; ${esc(session.trackName || '')} &middot; ${esc(dateText(session.date))}. The fastest lap of each driver is in bold.</p>${lapPages || '<p>No laps were recorded.</p>'}
-      <p class="foot">Made with SlotForge Timing</p></div></body></html>`;
+      ${standings ? '<h2>Results</h2>' + standings : ''}${heatSummary}
+      ${opt.laps ? `<div class="page2"><h1>All lap times</h1><p class="meta">${esc(session.setupName)} &middot; ${esc(session.trackName || '')} &middot; ${esc(dateText(session.date))}. The fastest lap of each driver is in bold.${laps.some(l => l.pit) ? ' A lap with a pit stop is in italics.' : ''}</p>${lapPages || '<p>No laps were recorded.</p>'}
+      <p class="foot">Made with SlotForge Timing</p></div>` : '<p class="foot">Made with SlotForge Timing</p>'}</body></html>`;
   }
 
   // A page to print: the QR code of a network address, big enough to scan from a print on the wall

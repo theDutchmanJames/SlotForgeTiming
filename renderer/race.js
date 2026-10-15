@@ -45,7 +45,7 @@ async function renderRace() {
     if (!l.noPersonalBest && l.driverId) base.personal.set(l.driverId, Math.min(base.personal.get(l.driverId) ?? Infinity, l.time)); // (a Guest has no personal best)
   });
   live = { penBtns: [], phase: 'ready', calling: false, callRun: 0, callTimer: null, timers: null, sim: [], key: null, laps: [], stopping: false, flash: new Map(), lights: 0, nodes: [], lapBtns: [], pitBtns: [], callBtns: [], callsKey: null, // (null: the strip is drawn the first time)
-    bestBy: new Map(), bestAll: Infinity, bestAllName: '', priorBy: new Map(), priorAll: Infinity, priorAllName: '', lapsOpen: false, lapSig: null, rvHtml: '' }; // (prior: the bests of the heats that are finished)
+    extraBy: new Map(), bestBy: new Map(), bestAll: Infinity, bestAllName: '', priorBy: new Map(), priorAll: Infinity, priorAllName: '', lapsOpen: false, lapSig: null, rvHtml: '' }; // (prior: the bests of the heats that are finished)
   Review.reset();
   // a Time Token Session: the token clocks of the lanes (tokens.js). They run on the race clock, so a pause stops them.
   const tokenSet = Tokens.settingsOf(state.settings);
@@ -275,8 +275,12 @@ async function renderRace() {
     update();
   };
 
+  // pit stops and penalty points of a car, saved with the standings (a heat race adds up what every heat brought)
+  const pitFigures = c => ({ pits: c.pits.length, pitTime: c.pits.reduce((a, p) => a + p.duration, 0) });
+  const hasPits = c => fuelCfg.on || c.pits.length > 0;
   // the lap rows saved for the database: laps removed in the review are left out, invalid and too slow laps are kept but never count for records
-  const lapRows = (c, date, extra) => c.laps.map((time, n) => ({ time, n })).filter(x => !c.removed.includes(x.n)).map(x => ({ driverId: c.driverId, carId: c.carId, trackId: r.track.id, ...extra, lapNumber: x.n + 1, time: x.time, date,
+  const lapRows = (c, date, extra) => c.laps.map((time, n) => ({ time, n })).filter(x => !c.removed.includes(x.n)).map(x => ({ driverId: c.driverId, carId: c.carId, trackId: r.track.id, ...extra, lane: c.lane + 1, lapNumber: x.n + 1, time: x.time, date,
+    ...((c.pitLaps || []).includes(x.n) ? { pit: true } : {}),
     ...(c.bad[x.n] ? { noTrackRecord: true, noPersonalBest: true, tooSlow: true } : {}), ...(c.invalid.includes(x.n) ? { noTrackRecord: true, noPersonalBest: true, invalid: true } : {}) }));
 
   // a heat (or the single race) has ended: the Race Director reviews the result before it is saved
@@ -363,6 +367,7 @@ async function renderRace() {
     if (heats) {
       const raceNo = heat.idx + 1, date = new Date().toISOString(), fin = heat.isFinal() ? heat.raceName(heat.idx).slice(6) : '';
       const res = heat.record(eng);
+      eng.cars.forEach(c => { const a = live.extraBy.get(c.participant) || { pits: 0, pitTime: 0, has: false, pen: 0 }, p = pitFigures(c); live.extraBy.set(c.participant, { pits: a.pits + p.pits, pitTime: a.pitTime + p.pitTime, has: a.has || hasPits(c), pen: a.pen + (c.points || 0) }); });
       eng.cars.forEach(c => live.laps.push(...lapRows(c, date, { heat: raceNo, ...(fin ? { final: fin } : {}) })));
       live.priorBy = new Map(live.bestBy); live.priorAll = live.bestAll; live.priorAllName = live.bestAllName; // (the next race starts from what this one has set)
       res.rows.forEach(x => { x.driverName = people[x.participant].driverName; });
@@ -393,12 +398,14 @@ async function renderRace() {
     let standings, laps = live.laps;
     if (heats) {
       standings = heat.overall().map(o => ({ pos: o.pos, driverId: o.driverId, carId: o.carId, driverName: o.driverName, carName: o.carName, laps: o.laps, points: o.points, best: o.best, total: null,
+        ...(live.extraBy.has(o.participant) && live.extraBy.get(o.participant).has ? { pits: live.extraBy.get(o.participant).pits, pitTime: live.extraBy.get(o.participant).pitTime } : {}),
+        ...(penCfg.on && live.extraBy.has(o.participant) ? { penaltyPoints: live.extraBy.get(o.participant).pen } : {}),
         ...(scoreCol ? { score: o.score, counted: o.counted, heats: o.heats, dropped: o.dropped.length ? o.dropped : undefined } : {}),
         ...(finalsOn && o.finalName ? { finalName: o.finalName, ...(o.finalPos !== null ? { finalPos: o.finalPos } : {}) } : {}),
         ...(finalsOn && fmode.finalMode === 'added' && o.finalPos !== null ? { heatScore: o.heatScore, finalPoints: o.finalPoints, finalLaps: o.finalLaps } : {}) }));
     } else {
       standings = eng.standings().map(x => ({ pos: x.pos, driverId: x.car.driverId, carId: x.car.carId, driverName: x.car.driverName, carName: x.car.carName, laps: x.car.laps.length, best: x.car.best, total: x.car.total, retired: (x.car.retired && !x.car.dq) || undefined,
-        ...(penCfg.on ? { penaltyPoints: x.car.points, penalty: eng.penMs(x.car), dq: x.car.dq || undefined } : {}) }));
+        ...(hasPits(x.car) ? pitFigures(x.car) : {}), ...(penCfg.on ? { penaltyPoints: x.car.points, penalty: eng.penMs(x.car), dq: x.car.dq || undefined } : {}) }));
       laps = [];
       eng.cars.forEach(c => laps.push(...lapRows(c, date, {})));
     }

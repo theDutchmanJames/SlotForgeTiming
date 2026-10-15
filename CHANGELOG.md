@@ -4,6 +4,7 @@ Every version of SlotForge Timing, newest first. The README has a section **What
 
 ## Versions
 
+- **1.0.0**: more figures in Results and Records, a PDF dialog, and View settings
 - **0.99.0**: Delta Timers that show another lane's value, and a yellow flag target lap time
 - **0.98.0**: the Timing page without race controls, and a fullscreen widget view for the race screen
 - **0.97.0**: the new icon, a PDF button that stands out, a quick builder, and folders in General and Import and Export

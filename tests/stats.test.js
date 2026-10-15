@@ -1,0 +1,81 @@
+const S = require('../renderer/stats.js');
+let fails = 0;
+const ok = (name, cond) => { console.log((cond ? 'ok   ' : 'FAIL ') + name); if (!cond) fails++; };
+const near = (a, b, e = 1e-6) => Math.abs(a - b) < e;
+const lap = (time, extra) => ({ driverId: 'd1', carId: 'c1', trackId: 't1', time, ...extra });
+const track = { id: 't1', name: 'Living room', length: 10, lanes: 2, scale: '1:32', laneModifier: 'none' };
+
+// ---- the columns ----
+const keys = list => list.map(c => c.key);
+ok('every list of columns has unique keys and a label', [S.SESSION_COLUMNS, S.STINT_COLUMNS, S.RECORD_COLUMNS].every(l => new Set(keys(l)).size === l.length && l.every(c => c.label && typeof c.on === 'boolean')));
+ok('the worked-out columns are all in the session table', S.FIGURE_KEYS.every(k => keys(S.SESSION_COLUMNS).includes(k)));
+ok('the old columns come first, in their old order', keys(S.SESSION_COLUMNS).slice(0, 9).join() === 'pos,driver,car,laps,points,result,final,best,total');
+ok('the stint table keeps its old columns first', keys(S.STINT_COLUMNS).slice(0, 8).join() === 'driver,car,lane,bought,laps,late,best,total');
+ok('the record table keeps its old columns (track, driver, lap time, car) and the date', keys(S.RECORD_COLUMNS).slice(0, 4).join() === 'track,driver,time,car' && keys(S.RECORD_COLUMNS).includes('date'));
+
+// ---- the figures of the laps ----
+let f = S.figures([lap(5000), lap(5200), lap(5800)], track, '');
+ok('average, median and count of three laps', f.count === 3 && near(f.avg, 5333.3333333) && f.median === 5200);
+ok('median of an even number of laps is the middle of the two', S.figures([lap(4000), lap(6000), lap(5000), lap(9000)], track).median === 5500);
+ok('consistency is the standard deviation of the lap times (sample)', near(S.figures([lap(5000), lap(5200), lap(5800)], track).spread, Math.sqrt((333.33333 ** 2 + 133.33333 ** 2 + 466.66667 ** 2) / 2), 1e-3));
+ok('a driver who drove steadily has no spread', S.figures([lap(5000), lap(5000), lap(5000)], track).spread === 0);
+ok('one lap has no consistency, no laps have nothing at all', S.figures([lap(5000)], track).spread === null && S.figures([], track).avg === null && S.figures([], track).speed === null && S.figures(undefined, track).count === 0);
+f = S.figures([lap(5000), lap(5200, { invalid: true }), lap(9000, { tooSlow: true }), lap(7000, { late: true }), lap(6000, { pit: true }), lap(5400)], track);
+ok('invalid, too slow, late and pit laps are left out of the lap figures', f.count === 2 && f.avg === 5200 && f.median === 5200);
+ok('...the distance counts the pit lap too (the car drove it), but not an invalid, too slow or late lap', near(f.distance, 30));
+ok('speed is the distance of the valid laps over their time: 20 m in 10.4 s', near(f.speed, 20 / 10.4 * 3.6));
+ok('laps without a time are ignored', S.figures([lap(5000), lap(0), lap(null), lap('x')], track).count === 1);
+// lanes
+const bends = { id: 't1', length: 10, lanes: 2, laneModifier: 'bends', laneSpacing: 100, scale: '1:32' }; // lane 2 is the outside lane, lane 1 is shorter
+const inner = S.figures([lap(5000, { lane: 1 })], bends), outer = S.figures([lap(5000, { lane: 2 })], bends), unknown = S.figures([lap(5000)], bends);
+ok('a lap in a lane is measured on the length of that lane', near(inner.distance, 10 - 2 * Math.PI * 0.1) && near(outer.distance, 10));
+ok('a lap saved without its lane (older sessions) is measured on the track length', near(unknown.distance, 10));
+ok('so the inside lane is slower for the same lap time', inner.speed < outer.speed);
+ok('measured lane lengths are used', near(S.figures([lap(4000, { lane: 2 })], { ...track, laneModifier: 'measured', laneLengths: '9.5, 10.5' }).distance, 10.5));
+ok('no track length: no distance and no speed, the lap figures still work', (g => g.distance === null && g.speed === null && g.avg === 5000)(S.figures([lap(5000)], { id: 't1' })) && S.figures([lap(5000)], undefined).avg === 5000);
+// scale
+ok('scale speed: speed times the scale of the track', near(S.figures([lap(4000)], track).scalespeed, 10 / 4 * 3.6 * 32));
+ok('...the scale of the car comes first', near(S.figures([lap(4000)], track, '1:24').scalespeed, 10 / 4 * 3.6 * 24));
+ok('...no scale at all: no scale speed (the real speed stays)', (g => g.scalespeed === null && g.speed > 0)(S.figures([lap(4000)], { ...track, scale: '' }, '')));
+
+// ---- a session ----
+const session = { id: 's1', trackId: 't1', sessionType: 'race', standings: [
+  { pos: 1, driverId: 'd1', carId: 'c1', driverName: 'Alex', carName: 'A', laps: 3, best: 5000, total: 16000, pits: 1, pitTime: 4000, penaltyPoints: 2 },
+  { pos: 2, driverId: 'd2', carId: 'c2', driverName: 'Sam', carName: 'B', laps: 2, best: 5600, total: 12000 }] };
+const laps = [lap(5000, { sessionId: 's1' }), lap(5200, { sessionId: 's1' }), { driverId: 'd2', carId: 'c2', trackId: 't1', time: 5600, sessionId: 's1' }, lap(5000, { sessionId: 'other' })];
+const cars = [{ id: 'c1', scale: '1:24' }, { id: 'c2' }];
+const figs = S.forSession(session, laps, [track], cars);
+ok('one row of figures for every row of the standings', figs.length === 2);
+ok('...each from the laps of that driver in that session only', figs[0].count === 2 && figs[1].count === 1 && figs[0].avg === 5100);
+ok('...the pit stops, pit time and penalty points are the ones saved with the session', figs[0].pits === 1 && figs[0].pitTime === 4000 && figs[0].penalty === 2 && figs[1].pits === undefined && figs[1].penalty === undefined);
+ok('...the car decides the scale of the scale speed (car c1 is 1:24, c2 has none so the track\'s 1:32 counts)', near(figs[0].scalespeed / figs[0].speed, 24) && near(figs[1].scalespeed / figs[1].speed, 32));
+ok('a session whose track was deleted still has its lap figures', (g => g[0].avg === 5100 && g[0].speed === null)(S.forSession(session, laps, [], cars)));
+
+// ---- text ----
+ok('lap times as lap times', S.text('avg', { avg: 5333.333 }) === '5.333' && S.text('median', { median: 65432 }) === '1:05.432');
+ok('consistency as plus-minus seconds', S.text('spread', { spread: 141.4 }) === '±0.141 s');
+ok('speeds: one decimal for the real speed, whole numbers for the scale speed', S.text('speed', { speed: 34.567 }) === '34.6 km/h' && S.text('scalespeed', { scalespeed: 1106.2 }) === '1106 km/h');
+ok('distance in metres, and in kilometres from 1000 m', S.text('distance', { distance: 845.4 }) === '845 m' && S.text('distance', { distance: 1234 }) === '1.23 km');
+ok('pit stops, pit time and penalty points', S.text('pits', { pits: 2 }) === '2' && S.text('pittime', { pits: 2, pitTime: 8500 }) === '8.500' && S.text('penalty', { penalty: 3 }) === '3');
+ok('...no pit stop means no pit time to show, but 0 stops and 0 points are shown', S.text('pittime', { pits: 0, pitTime: 0 }) === '–' && S.text('pits', { pits: 0 }) === '0' && S.text('penalty', { penalty: 0 }) === '0');
+ok('nothing to show is a dash', ['avg', 'median', 'spread', 'speed', 'scalespeed', 'distance', 'pits', 'pittime', 'penalty'].every(k => S.text(k, {}) === '–' && S.text(k, null) === '–' && S.text(k, { [k]: null }) === '–'));
+ok('a column that has nothing in any row is "not there"; with one value it is', !S.hasAny('pits', figs.slice(1)) && S.hasAny('pits', figs) && !S.hasAny('speed', [{ speed: null }]) && S.hasAny('pittime', [{ pits: 0 }]));
+
+// ---- which columns a session has ----
+const names = (sess, fg) => keys(S.sessionColumns(sess, fg)).join();
+ok('a race has the old columns, and the figures that have something', names(session, figs) === 'pos,driver,car,laps,best,total,avg,median,spread,speed,scalespeed,distance,pits,pittime,penalty');
+ok('...a figure without anything in any row is left out (no pit stops saved, no penalty system)', names(session, S.forSession({ ...session, standings: [{ ...session.standings[1] }] }, laps, [track], cars)) === 'pos,driver,car,laps,best,total,avg,median,speed,scalespeed,distance'); // (one lap: no consistency either)
+ok('...in a race decided on points there is a Points column', names({ ...session, resultBy: 'points' }, figs).startsWith('pos,driver,car,laps,points,best'));
+ok('...a heat race has no Total time, and Result and Final only when it has them', names({ ...session, sessionType: 'heats', scoring: {}, finals: {}, standings: session.standings.map(x => ({ ...x, score: 1 })) }, figs).startsWith('pos,driver,car,laps,result,final,best,avg') && !names({ ...session, sessionType: 'heats' }, figs).includes('total') && !names({ ...session, sessionType: 'heats' }, figs).includes('result'));
+
+// ---- the notes under a table ----
+ok('notes explain the lap figures and consistency, only when they are in the table', S.notes(['avg']).length === 1 && S.notes(['spread']).length === 2 && S.notes(['pos', 'driver']).length === 0);
+ok('...and the speeds', S.notes(['speed']).some(n => n.includes('length of the lane')) && S.notes(['scalespeed']).some(n => n.includes('full size')) && !S.notes(['speed']).some(n => n.includes('full size')));
+
+// ---- one lap (a record) ----
+const cars2 = [{ id: 'c1', scale: '1:24' }];
+let sp = S.lapSpeed({ trackId: 't1', carId: 'c1', time: 4000, lane: 2 }, [bends], cars2);
+ok('the speed of a record lap: its lane length over its time, and at scale', near(sp.speed, 10 / 4 * 3.6) && near(sp.scalespeed, 10 / 4 * 3.6 * 24));
+sp = S.lapSpeed({ trackId: 'gone', carId: 'x', time: 4000 }, [track], []);
+ok('...a deleted track or car gives nothing instead of an error', sp.speed === null && sp.scalespeed === null);
+console.log(fails ? fails + ' STATS TESTS FAILED' : 'ALL STATS TESTS PASSED'); process.exit(fails ? 1 : 0);

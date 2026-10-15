@@ -78,4 +78,31 @@ ok('heats counted the standard way (a result of before): no Result column, no li
   ok('the rules page has the title, the formatting and the credit line', h.includes('<title>Club &lt;Rules&gt;</title>') && h.includes('<h2>Safety</h2>') && h.includes('<li><b>No</b> pushing</li>') && h.includes('size="5"') && h.includes('This App has been made by Claude AI and theDutchmanJames.<br>For all Slotcar Enthusiast and special greetings to the SlotForum community!'));
   ok('unsafe things in the rules never reach the printed page', !h.includes('<script'));
   ok('the credit text is exactly as asked', CREDIT.length === 2 && CREDIT[0] === 'This App has been made by Claude AI and theDutchmanJames.' && CREDIT[1] === 'For all Slotcar Enthusiast and special greetings to the SlotForum community!'); }
+// ---- 1.0.0: more figures in the results, and the choice of what goes in the PDF ----
+{ const tracks = [{ id: 't1', length: 10, lanes: 2, laneModifier: 'none', scale: '1:32' }];
+  const s2 = { ...session, trackId: 't1', standings: [{ ...st[0], pits: 1, pitTime: 4000, penaltyPoints: 2 }, st[1]] };
+  const l2 = laps.map(l => ({ ...l, trackId: 't1', lane: 1 })); l2[2] = { ...l2[2], pit: true }; // (the third lap of Alex, 5.800, is the one with the pit stop)
+  const th = h => (h.match(/<table[^>]*>.*?<\/tr>/s) || [''])[0].match(/<th>(.*?)<\/th>/g).map(x => x.replace(/<\/?th>/g, ''));
+  let h2 = sessionHtml({ session: s2, laps: l2, tracks, cars: [] });
+  ok('the table has the figures that are on until turned off: average lap, consistency, average speed, pit stops, pit time, penalty points', th(h2).join() === 'Pos,Driver,Car,Laps,Best lap,Total time,Average lap,Consistency,Average speed,Pit stops,Pit time,Penalty points');
+  ok('...with the numbers (the pit lap is left out of the average: 5.200 and 5.000 make 5.100; 20 m in 10.2 s is 7.1 km/h)', h2.includes('<td>5.100</td>') && h2.includes('7.1 km/h') && h2.includes('<td>4.000</td>') && h2.includes('<td>2</td>'));
+  ok('...a driver without pit stops or points has a dash', /<td>Sam &lt;b&gt;<\/td>.*?<td>–<\/td>/s.test(h2));
+  ok('...and a line under the table says how the figures are counted', h2.includes('Lap figures count the valid laps only') && h2.includes('standard deviation'));
+  ok('a lap with a pit stop is in italics on the lap page, and the page says so', h2.includes('<i title="pit stop">5.800</i>') && h2.includes('A lap with a pit stop is in italics.'));
+  ok('without the track there is no speed (and no empty column), the lap figures stay', !th(sessionHtml({ session: s2, laps: l2 })).includes('Average speed') && th(sessionHtml({ session: s2, laps: l2 })).includes('Average lap'));
+  ok('a session saved before 1.0.0 (no pit stops, no points) has no such columns', !th(sessionHtml({ session, laps, tracks })).includes('Pit stops') && !th(sessionHtml({ session, laps, tracks })).includes('Penalty points'));
+  h2 = sessionHtml({ session: s2, laps: l2, tracks, options: { columns: ['pos', 'driver', 'median', 'scalespeed', 'distance'] } });
+  ok('the columns that were picked are the columns of the table, in the order of the table (also the ones that are off until turned on)', th(h2).join() === 'Pos,Driver,Median lap,Average scale speed,Distance' && h2.includes('<td>5.100</td>') && h2.includes('<td>30 m</td>'));
+  ok('a column the session does not have is not added (Points in a race that is not decided on points), a column that does not exist is ignored', th(sessionHtml({ session: s2, laps: l2, options: { columns: ['pos', 'points', 'nonsense', 'driver'] } })).join() === 'Pos,Driver');
+  h2 = sessionHtml({ session: s2, laps: l2, tracks, options: { results: false } });
+  ok('without the results table there is no Results heading and no table of results, the lap times stay', !h2.includes('<h2>Results</h2>') && !h2.includes('<th>Pos</th>') && h2.includes('All lap times') && h2.includes('5.200'));
+  h2 = sessionHtml({ session: s2, laps: l2, tracks, options: { laps: false } });
+  ok('without the lap times there is no second page and no lap table', !h2.includes('All lap times') && !h2.includes('class="page2"') && !h2.includes('class="laps"') && h2.includes('<th>Pos</th>') && h2.includes('Made with SlotForge Timing'));
+  ok('...nothing but the lap times still makes a page', sessionHtml({ session: s2, laps: l2, options: { results: false, heats: false } }).includes('class="laps"'));
+  const hh = sessionHtml({ session: hs, laps: hl, options: { heats: false } });
+  ok('the heats and finals can be left out', sessionHtml({ session: hs, laps: hl }).includes('<h2>Heats</h2>') && !hh.includes('<h2>Heats</h2>') && hh.includes('<th>Pos</th>'));
+  ok('an old call without options is the same as everything on', sessionHtml({ session: s2, laps: l2, tracks }) === sessionHtml({ session: s2, laps: l2, tracks, options: { results: true, heats: true, laps: true } }));
+  ok('a wide table gets a smaller print size (more than 8 columns)', h2.length > 0 && sessionHtml({ session: s2, laps: l2, tracks }).includes('<table class="wide">') && !sessionHtml({ session: s2, laps: l2, options: { columns: ['pos', 'driver'] } }).includes('<table class="wide">'));
+  ok('figures cannot carry HTML into the page (a name or a number from an imported file)', !sessionHtml({ session: { ...s2, standings: [{ ...s2.standings[0], pits: '<b>x</b>', penaltyPoints: '<i>y</i>' }] }, laps: l2, tracks }).includes('<b>x</b>'));
+}
 console.log(fails ? fails + ' REPORT TESTS FAILED' : 'ALL REPORT TESTS PASSED'); process.exit(fails ? 1 : 0);

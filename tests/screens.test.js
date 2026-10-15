@@ -1,4 +1,4 @@
-let fails=0; process.on('unhandledRejection',e=>{console.log('UNHANDLED:',e.stack.split('\n').slice(0,6).join('\n'));process.exit(1)});
+let fails=0, reachedEnd=false; process.on('exit',code=>{ if(code===0&&!reachedEnd){ console.log('FAIL the test stopped before its end (something waited for ever)'); process.exitCode=1; } }); process.on('unhandledRejection',e=>{console.log('UNHANDLED:',e.stack.split('\n').slice(0,6).join('\n'));process.exit(1)});
 const vm=require('vm'),fs=require('fs');
 const R=require('path').join(__dirname,'..')+'/';
 const schema=require(R+'schema.js');
@@ -20,7 +20,7 @@ const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if
 const ctx=vm.createContext({document,api,console: appConsole,Intl,URL,Image:function(){},confirm:()=>true,alert(){},setTimeout,clearTimeout,setInterval,clearInterval,performance,});
 const listeners={}; ctx.window=ctx; ctx.addEventListener=(t,f)=>{(listeners[t]=listeners[t]||[]).push(f)}; ctx.removeEventListener=(t,f)=>{listeners[t]=(listeners[t]||[]).filter(x=>x!==f)};
 const errors=[];
-for(const f of ['engine.js','heats.js','tokens.js','speed.js','theme.js','banner.js','icons.js','delta.js','widgets.js','frame.js','backdrop.js','announcer.js','sound.js','timing.js','rows.js','richtext.js','canvas.js','liveshare.js','review.js','liveview.js','report.js','database.js','landing.js','race.js','undo.js','editor.js','tokenui.js','audioedit.js','widgetbuilder.js','transferui.js','themeui.js','help.js','hardware.js','trackmate.js','hardwareui.js','dsui.js','app.js']){
+for(const f of ['engine.js','heats.js','tokens.js','speed.js','stats.js','viewset.js','theme.js','banner.js','icons.js','delta.js','widgets.js','frame.js','backdrop.js','announcer.js','sound.js','timing.js','rows.js','richtext.js','canvas.js','liveshare.js','review.js','liveview.js','report.js','database.js','landing.js','race.js','undo.js','editor.js','tokenui.js','audioedit.js','widgetbuilder.js','transferui.js','themeui.js','help.js','hardware.js','trackmate.js','hardwareui.js','dsui.js','app.js']){
   try{vm.runInContext(fs.readFileSync(R+'renderer/'+f,'utf8'),ctx,{filename:f})}catch(e){errors.push(f+': '+e.message)}
 }
 const run=s=>vm.runInContext(s,ctx), E=id=>document.getElementById(id);
@@ -1181,7 +1181,10 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   run("state.tab='database'; state.sub='results'"); await run('render()');
   say('every session has an Export to PDF button', E('resbody').innerHTML.includes('Export to PDF') && E('resbody').innerHTML.includes('data-pdf="s1"'));
   say('...and it stands out: filled with the accent colour, with a page picture, and the Delete button next to it does not', /<button class="btn primary pdfbtn" type="button" data-pdf="s1"><svg[^>]*>.*?<\/svg><span>Export to PDF<\/span><\/button><button class="btn danger" data-delsession="s1">/.test(E('resbody').innerHTML) && (E('resbody').innerHTML.match(/class="btn primary pdfbtn"/g) || []).length === (E('resbody').innerHTML.match(/data-pdf="/g) || []).length);
-  const pdfClick=()=>E('resbody').onclick({target:{closest:sel=>sel.includes('data-pdf')?{dataset:{pdf:'s1'}}:null}});
+  // Export to PDF asks what to include first (1.0.0): the helper clicks the button, then Export in the dialog that opens
+  const pdfOpen=()=>E('resbody').onclick({target:{closest:sel=>sel.includes('data-pdf')?{dataset:{pdf:'s1'}}:null}});
+  const dlgClick=(id,data)=>E('dlg').onclick({target:{closest:()=>({id,dataset:data||{}})}});
+  const pdfClick=async()=>{ const done=pdfOpen(); await dlgClick('pdfgo'); await done; };
   await pdfClick();
   say('the report is sent to be saved as a PDF with a sensible file name', exported.length===1 && exported[0][1]==='Friday Sprint 2026-10-11.pdf' && exported[0][0].includes('All lap times') && exported[0][0].includes('5.500'));
   say('the user is told where it was saved', E('pdfmsg-s1').textContent==='Saved to C:/Reports/x.pdf');
@@ -1189,6 +1192,135 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   say('cancelling the save dialog is handled', E('pdfmsg-s1').textContent==='Export cancelled.');
   api.exportPdf=async()=>{throw new Error('disk full')}; await pdfClick();
   say('errors are shown instead of failing silently', E('pdfmsg-s1').textContent==='Could not make the PDF: disk full');
+  // ---- 1.0.0: the PDF dialog ----
+  { api.exportPdf=async(html,name)=>{exported.push([html,name]);return exportResult}; exportResult={saved:true,path:'C:/Reports/x.pdf'};
+    const keepSet=api.setSettings; api.setSettings=async p=>{calls.push(['settings',p]);return {...run('state.settings'),...p}};
+    run('state.settings.pdfPages=undefined; state.settings.viewSettings=undefined; viewBars.clear()');
+    let n=exported.length, done=pdfOpen(), d=E('dlg').innerHTML;
+    say('Export to PDF asks what to include: pages (results table, every lap time), the columns of the table, Export and Cancel', d.includes('<h3>Export to PDF</h3>') && ['results','laps'].every(k=>d.includes(`data-pdfpage="${k}" checked`)) && !d.includes('data-pdfpage="heats"') && d.includes('id="pdfgo"') && d.includes('id="pdfcancel"'));
+    say('...the columns are those of this session, checked as the View settings have them (average lap and consistency on, median off; speed is not offered: the track has no length)', ['pos','driver','car','laps','best','total','avg','spread'].every(k=>d.includes(`data-pdfcol="${k}" checked`)) && d.includes('data-pdfcol="median">') && !d.includes('data-pdfcol="speed"') && !d.includes('data-pdfcol="pits"'));
+    await dlgClick('pdfcancel'); await done;
+    say('Cancel makes no PDF', exported.length===n);
+    done=pdfOpen();
+    E('dlg').onchange({target:{dataset:{pdfpage:'laps'},checked:false}}); E('dlg').onchange({target:{dataset:{pdfcol:'avg'},checked:false}}); E('dlg').onchange({target:{dataset:{pdfcol:'median'},checked:true}});
+    await dlgClick('pdfgo'); await done;
+    let html=exported[exported.length-1][0];
+    say('the PDF holds what was picked: no page with lap times, the Median lap column instead of the Average lap column', exported.length===n+1 && !html.includes('All lap times') && html.includes('<th>Median lap</th>') && !html.includes('<th>Average lap</th>') && html.includes('<th>Consistency</th>') && html.includes('<th>Pos</th>'));
+    say('the choice of pages is kept in the settings', calls.some(c=>c[0]==='settings'&&c[1].pdfPages&&c[1].pdfPages.laps===false&&c[1].pdfPages.results===true));
+    done=pdfOpen(); d=E('dlg').innerHTML;
+    say('...and the dialog starts with the pages as they were left; the columns go back to the View settings', d.includes('data-pdfpage="results" checked') && d.includes('data-pdfpage="laps">') && d.includes('data-pdfcol="avg" checked') && d.includes('data-pdfcol="median">'));
+    E('dlg').onchange({target:{dataset:{pdfpage:'results'},checked:false}}); await dlgClick('pdfgo');
+    say('nothing to include gives a message and the dialog stays', E('pdferr').textContent==='Pick at least one thing to include.' && exported.length===n+1);
+    E('dlg').onchange({target:{dataset:{pdfpage:'results'},checked:true}}); await dlgClick('', {pdfall:'0'}); await dlgClick('pdfgo');
+    say('a results table without columns gives a message too', E('pdferr').textContent==='Pick at least one column, or leave the results table out.' && exported.length===n+1);
+    await dlgClick('', {pdfall:'1'}); await dlgClick('pdfgo'); await done;
+    html=exported[exported.length-1][0];
+    say('All columns picks every column that this session has', exported.length===n+2 && ['Pos','Driver','Car','Laps','Best lap','Total time','Average lap','Median lap','Consistency'].every(c=>html.includes(`<th>${c}</th>`)));
+    api.setSettings=keepSet; run('state.settings.pdfPages=undefined');
+  }
+  // ---- 1.0.0: View settings of Results and Records ----
+  { const keepSet=api.setSettings; api.setSettings=async p=>{calls.push(['settings',p]);return {...run('state.settings'),...p}};
+    const keep={tracks:store.tracks,sessions:store.sessions,laps:store.laps,drivers:store.drivers,slotcars:store.slotcars};
+    Object.assign(store,{tracks:[{id:'t1',name:'Living room',lanes:2,length:10,scale:'1:32',laneModifier:'none'}],drivers:[{id:'d1',name:'Alex'}],slotcars:[{id:'c1',brand:'NSR',scale:'1:24'}],
+      sessions:[{id:'s1',setupName:'Friday Sprint',sessionType:'race',trackId:'t1',trackName:'Living room',date:'2026-10-11T18:30:00Z',standings:[{pos:1,driverId:'d1',carId:'c1',driverName:'Alex',carName:'NSR',laps:3,best:5000,total:16000,pits:1,pitTime:4000,penaltyPoints:2}]}],
+      laps:[{id:'l1',sessionId:'s1',driverId:'d1',carId:'c1',trackId:'t1',lane:1,lapNumber:1,time:5200,date:'2026-10-11T18:31:00Z'},{id:'l2',sessionId:'s1',driverId:'d1',carId:'c1',trackId:'t1',lane:1,lapNumber:2,time:5000,date:'2026-10-11T18:32:00Z'},{id:'l3',sessionId:'s1',driverId:'d1',carId:'c1',trackId:'t1',lane:1,lapNumber:3,time:5800,pit:true,date:'2026-10-11T18:33:00Z'}]});
+    run('state.settings.viewSettings=undefined; viewBars.clear(); folderClosed.clear()');
+    const rb=mk(); await run('renderResultsPool')(rb,'racing'); let h=rb.innerHTML;
+    const heads=(h,from)=>((h.split(from)[1]||'').match(/<table[^>]*>.*?<\/tr>/s)||[''])[0].match(/<th>(.*?)<\/th>/g)?.map(x=>x.replace(/<\/?th>/g,''))||[];
+    say('the buttons above the folders end with View settings, after Open all and Close all', /data-folderall="1">Open all<\/button><button class="btn" type="button" data-folderall="0">Close all<\/button><button class="btn vsbtn" type="button" data-viewbar="results" aria-expanded="false"[^>]*>View settings<\/button>/.test(h));
+    say('...the bar is closed to start', !h.includes('class="viewbar"'));
+    say('the session table shows the old columns and the new figures that are on to start', heads(h,'data-folder="results:sessions"').join()==='Pos,Driver,Car,Laps,Best lap,Total time,Average lap,Consistency,Average speed,Pit stops,Pit time,Penalty points');
+    say('...with the figures worked out from the laps (the pit lap is left out: average 5.100, 20 m in 10.2 s is 7.1 km/h) and the pit stops and points that were saved', h.includes('<td>5.100</td>') && h.includes('7.1 km/h') && h.includes('<td>±0.141 s</td>') && h.includes('<td>4.000</td>'));
+    say('...and a line that tells how the figures are counted', h.includes('Lap figures count the valid laps only'));
+    say('the records show the average speed of the lap, the session and the date; lane, lap number and scale speed are off to start', heads(h,'data-folder="results:tracks"').join()==='Track,Driver,Lap time,Car,Average speed,Session,Set on,' && h.includes('<td>7.2 km/h</td>') && h.includes('<td>Friday Sprint</td>'));
+    say('...a pit lap is in italics in the list of lap times', h.includes('<em title="Lap with a pit stop">3: 5.800</em>'));
+    // the bar
+    await rb.onclick({target:{closest:sel=>sel==='[data-viewbar]'?{dataset:{viewbar:'results'}}:null}}); h=rb.innerHTML;
+    say('the View settings button opens a bar with a group for the records and one for the sessions, a check box for every column', h.includes('class="viewbar"') && h.includes('aria-expanded="true"') && h.includes('<legend>Track records and personal bests</legend>') && h.includes('<legend>Sessions</legend>') &&
+      ['track','driver','time','car','speed','scalespeed','session','lane','lapno','date'].every(k=>h.includes(`data-vs="results/records" data-key="${k}"`)) && ['pos','avg','median','spread','speed','scalespeed','distance','pits','pittime','penalty'].every(k=>h.includes(`data-vs="results/sessions" data-key="${k}"`)));
+    say('...checked as they are shown now', h.includes('data-vs="results/sessions" data-key="avg" checked') && h.includes('data-vs="results/sessions" data-key="median">') && h.includes('data-vs="results/records" data-key="lane">'));
+    const tick=(vs,key,on)=>rb.onchange({target:{dataset:{vs,key},checked:on}});
+    await tick('results/sessions','spread',false); h=rb.innerHTML;
+    say('turning a column off hides it right away, and the bar stays open', !heads(h,'data-folder="results:sessions"').includes('Consistency') && h.includes('class="viewbar"') && h.includes('data-vs="results/sessions" data-key="spread">'));
+    say('...and it is kept in the settings', JSON.stringify(run('state.settings.viewSettings'))==='{"results":{"sessions":{"spread":false}}}' && calls.some(c=>c[0]==='settings'&&c[1].viewSettings));
+    await tick('results/sessions','scalespeed',true); await tick('results/sessions','distance',true); await tick('results/records','lane',true); await tick('results/records','scalespeed',true); h=rb.innerHTML;
+    say('columns that are off to start can be turned on: scale speed (car 1:24: 7.1 km/h is 169 at scale), distance', heads(h,'data-folder="results:sessions"').slice(-6).join()==='Average speed,Average scale speed,Distance,Pit stops,Pit time,Penalty points' && h.includes('<td>169 km/h</td>') && h.includes('<td>30 m</td>'));
+    say('...in the records too: the lane and the scale speed of the lap', heads(h,'data-folder="results:tracks"').join()==='Track,Driver,Lap time,Car,Average speed,Average scale speed,Session,Lane,Set on,' && h.includes('<td>173 km/h</td>'));
+    // the last column cannot go
+    for (const k of ['track','driver','time','car','speed','scalespeed','session','lane','date']) await tick('results/records',k,false);
+    h=rb.innerHTML;
+    say('the last column of a table cannot be turned off: its check box is switched off', heads(h,'data-folder="results:tracks"').join()==='Set on,' && h.includes('data-vs="results/records" data-key="date" checked disabled') && (h.match(/data-vs="results\/records" data-key="\w+" checked/g)||[]).length===1);
+    await rb.onclick({target:{closest:sel=>sel==='[data-vsreset]'?{dataset:{vsreset:'results'}}:null}}); h=rb.innerHTML;
+    say('Back to the standard view puts both tables back', JSON.stringify(run('state.settings.viewSettings.results.records'))==='{}' && JSON.stringify(run('state.settings.viewSettings.results.sessions'))==='{}' && heads(h,'data-folder="results:tracks"').join()==='Track,Driver,Lap time,Car,Average speed,Session,Set on,' && heads(h,'data-folder="results:sessions"').includes('Consistency'));
+    const rb2=mk(); await run('renderResultsPool')(rb2,'racing');
+    say('the bar stays open when the page is drawn again (it is remembered while the app runs)', rb2.innerHTML.includes('class="viewbar"'));
+    await rb2.onclick({target:{closest:sel=>sel==='[data-viewbar]'?{dataset:{viewbar:'results'}}:null}});
+    say('...and the button closes it', !rb2.innerHTML.includes('class="viewbar"') && rb2.innerHTML.includes('aria-expanded="false"'));
+    // a session from before 1.0.0
+    Object.assign(store,{sessions:[{...store.sessions[0],standings:[{pos:1,driverId:'d1',carId:'c1',driverName:'Alex',carName:'NSR',laps:3,best:5000,total:16000}]}],laps:store.laps.map(l=>({id:l.id,sessionId:l.sessionId,driverId:l.driverId,carId:l.carId,trackId:l.trackId,lapNumber:l.lapNumber,time:l.time,date:l.date}))});
+    const rb3=mk(); await run('renderResultsPool')(rb3,'racing');
+    say('a session saved before 1.0.0 (no lane, no pit stops, no penalty system) still shows what can be worked out and leaves the rest out', heads(rb3.innerHTML,'data-folder="results:sessions"').join()==='Pos,Driver,Car,Laps,Best lap,Total time,Average lap,Consistency,Average speed');
+    // the Token Records pool has its own group
+    run('viewBars.add("results")');
+    // the bar: a note on the columns that are only there sometimes, and a check box it does not know changes nothing
+    { const rb4=mk(); await run('renderResultsPool')(rb4,'racing');
+      say('the check boxes of columns that only some sessions have say so when you hold the mouse over them (Points, Pit stops)', rb4.innerHTML.includes('title="Shown only in a race that is decided on points"') && rb4.innerHTML.includes('title="Shown only when the race had fuel or pit stops"'));
+      const before=JSON.stringify(run('state.settings.viewSettings')); await rb4.onchange({target:{dataset:{vs:'nothing/here',key:'x'},checked:false}}); await rb4.onchange({target:{dataset:{},checked:false}});
+      say('a check box that is not one of the tables changes nothing (and breaks nothing)', JSON.stringify(run('state.settings.viewSettings'))===before); }
+    Object.assign(store,{sessions:[{id:'k1',setupName:'Open evening',sessionType:'tokens',trackId:'t1',trackName:'Living room',date:'2026-10-11T19:00:00Z',token:{stint:'a',lane:2,bought:600000,carried:0,left:0},standings:[{pos:1,driverId:'d1',carId:'c1',driverName:'Alex',carName:'NSR',laps:2,lateLaps:0,best:5000,total:10200}]}],
+      laps:[{id:'k1l1',sessionId:'k1',token:true,stint:'a',lane:2,driverId:'d1',carId:'c1',trackId:'t1',lapNumber:1,time:5200,date:'2026-10-11T19:01:00Z'},{id:'k1l2',sessionId:'k1',token:true,stint:'a',lane:2,driverId:'d1',carId:'c1',trackId:'t1',lapNumber:2,time:5000,date:'2026-10-11T19:02:00Z'}]});
+    const tb=mk(); await run('renderResultsPool')(tb,'tokens'); h=tb.innerHTML;
+    say('a stint has the average lap and the average speed besides its old columns (the lane 2 of a track with equal lanes: 10 m)', heads(h,'data-folder="tresults:sessions"').join()==='Driver,Car,Lane,Time bought,Laps,Late laps,Best lap,Total time,Average lap,Average speed' && h.includes('<td>5.100</td>') && h.includes('<td>7.1 km/h</td>'));
+    say('...its bar has the group Stints, with its own columns', h.includes('<legend>Stints</legend>') && h.includes('data-vs="results/stints" data-key="distance"') && !h.includes('data-vs="results/sessions"'));
+    await tb.onchange({target:{dataset:{vs:'results/stints',key:'late'},checked:false}});
+    say('...turning one off changes the stints and not the sessions of the racing pool', !heads(tb.innerHTML,'data-folder="tresults:sessions"').includes('Late laps') && JSON.stringify(run('state.settings.viewSettings.results.stints'))==='{"late":false}' && JSON.stringify(run('state.settings.viewSettings.results.sessions'))==='{}');
+    // a stint on a track without a length has no speed and no distance (and the average lap stays)
+    store.tracks[0].length=''; const tb2=mk(); await run('renderResultsPool')(tb2,'tokens');
+    say('a track without a length: no speed and distance columns for a stint, the average lap stays', !heads(tb2.innerHTML,'data-folder="tresults:sessions"').some(c=>/speed|Distance/.test(c)) && heads(tb2.innerHTML,'data-folder="tresults:sessions"').includes('Average lap'));
+    run('state.settings.viewSettings=undefined; viewBars.clear()');
+    Object.assign(store,keep); api.setSettings=keepSet; }
+  // ---- 1.0.0: View settings of Tracks, Drivers and Slotcars ----
+  { const keepSet=api.setSettings; api.setSettings=async p=>{calls.push(['settings',p]);return {...run('state.settings'),...p}};
+    const keep={tracks:store.tracks,drivers:store.drivers,slotcars:store.slotcars};
+    Object.assign(store,{tracks:[{id:'t1',name:'Living room',lanes:2,scale:'1:32',surface:'Wood',length:12,notes:'Fast'}],drivers:[{id:'d1',name:'Alex',nickname:'Al',callsign:'ALX',flag:'NL',dateOfBirth:'1980-01-01'}],slotcars:[{id:'c1',brand:'NSR',manufacturer:'NSR',model:'GT40',scale:'1:32',motor:'King',tyres:'Urethane',gearing:'9/27',lapsDriven:3}]});
+    run("state.settings.viewSettings=undefined; viewBars.clear(); state.settings.dbView='list'; state.tab='database'; state.sub='tracks'"); await run('render()');
+    const sv=E('subview'), th=h=>(h.match(/<tr>.*?<\/tr>/s)||[''])[0].match(/<th>(.*?)<\/th>/g)?.map(x=>x.replace(/<\/?th>/g,''))||[];
+    let h=sv.innerHTML;
+    say('Tracks: View settings sits after Extra fields and before the List / Grid choice', /id="extra">Extra fields…<\/button><button class="btn vsbtn" type="button" data-viewbar="mgr:tracks"[^>]*>View settings<\/button><span class="seg"/.test(h));
+    say('...the list shows every field to start, as it always did', th(h).join()==='Name,Number of lanes,Scale,Track Surface,Track length (metres),Lane length modifier,The track length is that of,Distance between the lanes (millimetres, centre to centre),Full turns the track makes (left bends minus right bends),Length of every lane (metres), lane 1 first,Minimum lap time (seconds),Maximum lap time (seconds),Picture,Notes,');
+    const click=(el,attrs)=>el.onclick({target:{closest:sel=>sel==='button'?{dataset:attrs}:null}});
+    await click(sv,{viewbar:'mgr:tracks'}); h=sv.innerHTML;
+    say('the button opens a bar with a check box for every column of the list, all checked', h.includes('class="viewbar"') && h.includes('<legend>Columns in the track list</legend>') && h.includes('data-vs="tracks/list" data-key="surface" checked') && h.includes('data-vs="tracks/list" data-key="notes" checked') && h.includes('turn columns'.replace('turn','Turn')));
+    const tick=(vs,key,on)=>sv.onchange({target:{dataset:{vs,key},checked:on}});
+    await tick('tracks/list','laneModifier',false); await tick('tracks/list','picture',false); await tick('tracks/list','laneSpacing',false);
+    say('columns can be turned off: they leave the list and stay in the form', !th(sv.innerHTML).includes('Lane length modifier') && !th(sv.innerHTML).includes('Picture') && th(sv.innerHTML).includes('Notes') && th(sv.innerHTML).length===th(h).length-3);
+    say('...and the choice is kept for the List view of Tracks', JSON.stringify(run('state.settings.viewSettings'))==='{"tracks":{"list":{"laneModifier":false,"picture":false,"laneSpacing":false}}}');
+    // the grid has its own rows
+    await click(sv,{}); // (a click on nothing that is a button we know)
+    run("state.settings.dbView='grid'"); await run('render()'); h=sv.innerHTML;
+    say('the Grid view has View settings of its own: the rows of the cards are lanes, scale and surface to start', h.includes('class="cards"') && h.includes('<legend>Rows on the track cards</legend>') && h.includes('data-vs="tracks/grid" data-key="lanes" checked') && h.includes('data-vs="tracks/grid" data-key="surface" checked') && h.includes('data-vs="tracks/grid" data-key="length">') && !h.includes('data-key="name"') && !h.includes('data-key="picture"') &&
+      h.includes('Number of lanes') && h.includes('Wood') && !h.includes('<span class="muted">Track length'));
+    await tick('tracks/grid','length',true); await tick('tracks/grid','scale',false); h=sv.innerHTML;
+    say('...rows can be turned on and off', h.includes('<span class="muted">Track length (metres)</span> 12 m') && !h.includes('<span class="muted">Scale</span>') && h.includes('Wood') && JSON.stringify(run('state.settings.viewSettings.tracks.grid'))==='{"length":true,"scale":false}');
+    say('...and the List choices are not touched', JSON.stringify(run('state.settings.viewSettings.tracks.list'))==='{"laneModifier":false,"picture":false,"laneSpacing":false}');
+    await tick('tracks/grid','lanes',false); await tick('tracks/grid','surface',false); await tick('tracks/grid','length',false);
+    say('the last row of a card cannot be turned off', /data-vs="tracks\/grid" data-key="\w+" checked disabled/.test(sv.innerHTML) && (sv.innerHTML.match(/data-vs="tracks\/grid" data-key="\w+" checked/g)||[]).length===1);
+    await click(sv,{vsreset:'mgr:tracks'}); h=sv.innerHTML;
+    say('Back to the standard view resets the view that is on screen only (the Grid), not the List', JSON.stringify(run('state.settings.viewSettings.tracks.grid'))==='{}' && JSON.stringify(run('state.settings.viewSettings.tracks.list'))!=='{}' && h.includes('data-vs="tracks/grid" data-key="surface" checked'));
+    // drivers and slotcars
+    run("state.sub='drivers'"); await run('render()'); await click(sv,{viewbar:'mgr:drivers'}); h=sv.innerHTML;
+    say('Drivers has it too: the card has nickname, callsign and flag to start (Date of birth can be turned on)', h.includes('<legend>Rows on the driver cards</legend>') && h.includes('data-vs="drivers/grid" data-key="callsign" checked') && h.includes('data-vs="drivers/grid" data-key="dateOfBirth">') && h.includes('ALX') && !h.includes('1980'));
+    await tick('drivers/grid','dateOfBirth',true);
+    say('...and the date of birth then shows on the card', sv.innerHTML.includes('Date of birth</span> 1980-01-01'));
+    run("state.sub='slotcars'"); await run('render()'); await click(sv,{viewbar:'mgr:slotcars'}); h=sv.innerHTML;
+    say('Slotcars has it too: scale, motor, tyres and laps driven to start; gearing and weight can be turned on; the pictures and the name are not rows', h.includes('<legend>Rows on the slot car cards</legend>') && h.includes('data-vs="slotcars/grid" data-key="lapsDriven" checked') && h.includes('data-vs="slotcars/grid" data-key="gearing">') && !h.includes('data-vs="slotcars/grid" data-key="brand"') && !h.includes('data-key="extraPictures"') && !h.includes('data-key="picture"'));
+    run("state.settings.dbView='list'"); await run('render()'); h=sv.innerHTML;
+    say('...the list of Slotcars has every field to start, with the pictures', h.includes('<legend>Columns in the slot car list</legend>') && h.includes('data-vs="slotcars/list" data-key="extraPictures" checked') && h.includes('data-vs="slotcars/list" data-key="brand" checked'));
+    // the other lists have none
+    run("state.sub='tracks'"); run("state.tab='setup'"); await run('render()');
+    say('the Race Setup list has no View settings (only Tracks, Drivers and Slotcars were asked for)', !E('setupmgr').innerHTML.includes('View settings'));
+    run("state.tab='database'; state.sub='tracks'; state.settings.viewSettings=undefined; viewBars.clear()");
+    Object.assign(store,keep); api.setSettings=keepSet; }
   // ---- batch C: removing records only ----
   Object.assign(store, { sessions:[{id:'s1',setupName:'S',sessionType:'race',trackId:'t1',trackName:'Living room',date:'2026-01-01T10:00:00Z',standings:[{pos:1,driverId:'d1',driverName:'Alex',carName:'c',laps:2,best:5000,total:10000}]}],
     drivers:[{id:'d1',name:'Alex'}], slotcars:[{id:'c1',brand:'Car'}],
@@ -1217,7 +1349,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     say('Results and Records has three folders, Track records, Personal bests and Sessions, each telling how many it holds', tags.length === 3 && h.includes('<strong>Track records</strong> <span class="muted">1 record</span>') && h.includes('<strong>Personal bests</strong> <span class="muted">2 personal bests</span>') && h.includes('<strong>Sessions</strong> <span class="muted">2 sessions</span>'));
     say('...the folders are open to start, and each has its own key (page and folder)', opens() === 3 && ['results:tracks','results:pb','results:sessions'].every(k => h.includes(`data-folder="${k}"`)));
     say('...the records are in the first two folders (with their Remove buttons) and the sessions, still rows that open, in the third', h.indexOf('data-folder="results:tracks"') < h.indexOf('data-delrec="track"') && h.indexOf('data-delrec="track"') < h.indexOf('data-folder="results:pb"') && h.indexOf('data-delrec="pb"') < h.indexOf('data-folder="results:sessions"') && h.indexOf('data-folder="results:sessions"') < h.indexOf('<details class="card sess">') && (h.match(/<details class="card sess">/g) || []).length === 2 && h.includes('data-pdf="s1"') && h.includes('data-pdf="s2"') && h.endsWith('</div></details></details>'));
-    say('...Open all and Close all sit above them, in the bar of the forms', h.startsWith('<div class="fgtools"><button class="btn" type="button" data-folderall="1">Open all</button><button class="btn" type="button" data-folderall="0">Close all</button></div>'));
+    say('...Open all and Close all sit above them, in the bar of the forms', h.startsWith('<div class="fgtools"><button class="btn" type="button" data-folderall="1">Open all</button><button class="btn" type="button" data-folderall="0">Close all</button><button class="btn vsbtn"'));
     const all_ = v => rb.onclick({ target: { closest: sel => sel === '[data-folderall]' ? { dataset: { folderall: v } } : null } });
     await all_('0'); say('Close all closes the three folders', opens() === 0 && (rb.innerHTML.match(/<details class="dbfolder"/g) || []).length === 3);
     await all_('1'); say('...and Open all opens them again', opens() === 3);
@@ -2462,5 +2594,5 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
       else say('a driver moves into a free place of another heat (no heat was found for this)', true); }
     Object.assign(store, { racesetups: keep.racesetups, tracks: keep.tracks, drivers: keep.drivers, slotcars: keep.slotcars, sessions: keep.sessions }); run(`state.settings.lastSetupId = ${JSON.stringify(keep.last || '')}; state.settings.assignments = ${JSON.stringify(keep.asg || {})}; state.settings.heatSeeds = ${JSON.stringify(keep.seeds || {})}; state.settings.heatEdits = ${JSON.stringify(keep.edits || {})}`); run("state.race = null; state.tab = 'home'; state.heatSel = null; state.heatMsg = ''"); api.setSettings = keepSet;
   }
-console.log(fails?fails+' SCREEN TESTS FAILED':'ALL SCREEN TESTS PASSED'); process.exit(fails?1:0);
+reachedEnd=true; console.log(fails?fails+' SCREEN TESTS FAILED':'ALL SCREEN TESTS PASSED'); process.exit(fails?1:0);
 })();

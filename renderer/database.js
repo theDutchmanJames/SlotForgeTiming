@@ -89,6 +89,7 @@ const limitText = i => {
     default: return 'No limit';
   }
 };
+const VIEW_ENTITIES = ['tracks', 'drivers', 'slotcars']; // the pages with View settings
 const VIRTUAL = { limit: { label: 'Laps / time', get: limitText } };
 const columnOf = (s, k) => k[0] === '@' ? { key: k, label: VIRTUAL[k.slice(1)].label, virtual: VIRTUAL[k.slice(1)] } : s.fields.find(f => f.key === k);
 const columnCell = (f, i) => f.virtual ? esc(f.virtual.get(i)) : cell(f, i[f.key]);
@@ -98,7 +99,41 @@ const columnCell = (f, i) => f.virtual ? esc(f.virtual.get(i)) : cell(f, i[f.key
 const folderClosed = new Set();
 const folderKey = (page, id) => page + ':' + id;
 const folderHtml = (page, id, title, note, body) => `<details class="dbfolder" data-folder="${esc(folderKey(page, id))}"${folderClosed.has(folderKey(page, id)) ? '' : ' open'}><summary><strong>${esc(title)}</strong> <span class="muted">${esc(note)}</span></summary>${body}</details>`;
-const folderTools = `<div class="fgtools"><button class="btn" type="button" data-folderall="1">Open all</button><button class="btn" type="button" data-folderall="0">Close all</button></div>`;
+const folderToolsWith = extra => `<div class="fgtools"><button class="btn" type="button" data-folderall="1">Open all</button><button class="btn" type="button" data-folderall="0">Close all</button>${extra || ''}</div>`;
+const folderTools = folderToolsWith('');
+
+// ---- View settings: which columns of a table (or which rows of a grid) are shown. The choice is kept in the settings (viewSettings), for every table and view on its own. ----
+const viewBars = new Set(); // the bars that are open (kept while the app runs, also when the page is drawn again)
+const viewButton = id => `<button class="btn vsbtn${viewBars.has(id) ? ' on' : ''}" type="button" data-viewbar="${esc(id)}" aria-expanded="${viewBars.has(id)}" title="Choose which information is shown">View settings</button>`;
+const viewSaved = path => ViewSet.get(state.settings.viewSettings, path);
+// one group of check boxes: where the choice is kept (path) and the columns [{ key, label, on, note }]
+const viewGroup = (title, path, cols) => {
+  const shown = ViewSet.keys(cols, viewSaved(path));
+  return `<fieldset class="vsgroup"><legend>${esc(title)}</legend>${cols.map(c => {
+    const on = shown.includes(c.key), last = on && shown.length === 1;
+    return `<label class="vschip"${c.note ? ` title="${esc('Shown ' + c.note)}"` : ''}><input type="checkbox" data-vs="${esc(path.join('/'))}" data-key="${esc(c.key)}"${on ? ' checked' : ''}${last ? ' disabled title="At least one stays on"' : ''}> ${esc(c.label)}</label>`;
+  }).join('')}</fieldset>`;
+};
+const viewBar = (id, hint, groups) => `<div class="viewbar" role="group" aria-label="View settings"><p class="muted">${esc(hint)}</p>${groups.join('')}<div class="row"><button class="btn" type="button" data-vsreset="${esc(id)}">Back to the standard view</button></div></div>`;
+// A click on a check box of a bar: the column goes on or off. colsOf(path) gives the columns of that table. Returns true when it was one of ours.
+async function viewToggle(cb, colsOf) {
+  if (!cb || !cb.dataset || cb.dataset.vs === undefined) return false;
+  const path = cb.dataset.vs.split('/'), cols = colsOf(cb.dataset.vs); if (!cols) return false;
+  const next = ViewSet.set(viewSaved(path), cols, cb.dataset.key, !!cb.checked);
+  state.settings = await api.setSettings({ viewSettings: ViewSet.put(state.settings.viewSettings, path, next) });
+  return true;
+}
+async function viewReset(paths) {
+  let all = state.settings.viewSettings;
+  paths.forEach(p => { all = ViewSet.put(all, p, {}); });
+  state.settings = await api.setSettings({ viewSettings: all });
+}
+// after the page was drawn again: the check box that was used gets the focus back, so the keyboard keeps its place
+function viewFocus(box, cb) {
+  if (!cb || !cb.dataset || typeof box.querySelectorAll !== 'function') return;
+  const all = box.querySelectorAll('[data-vs]'), hit = Array.from(all || []).find(x => x.dataset && x.dataset.vs === cb.dataset.vs && x.dataset.key === cb.dataset.key);
+  if (hit && typeof hit.focus === 'function') hit.focus();
+}
 const folderWire = (box, after) => typeof box.querySelectorAll === 'function' && box.querySelectorAll('details.dbfolder').forEach(el => { el.ontoggle = () => { if (el.open) folderClosed.delete(el.dataset.folder); else folderClosed.add(el.dataset.folder); if (after) after(el); }; });
 const folderAll = (page, ids, open) => ids.forEach(id => { if (open) folderClosed.delete(folderKey(page, id)); else folderClosed.add(folderKey(page, id)); });
 // The Export to PDF button: it fills with the accent colour and has a picture of a page, so it is the first thing the eye finds (Results and Records, Racing Rules)
@@ -119,6 +154,21 @@ async function mountManager(box, e) {
     ];
   const viewKey = e === 'racesetups' ? 'setupView' : 'dbView'; // Race Setups remembers its own list / grid choice
   const mode = s.card ? (state.settings[viewKey] || 'list') : 'list';
+  // View settings (Tracks, Drivers, Slotcars): the columns of the list and the rows of the cards can be turned on and off. The list starts with every field, a card with the fields of the schema's card.
+  const viewable = VIEW_ENTITIES.includes(e) && !!s.card && !s.list, cardKeys = s.card || [];
+  const customCand = f => ({ key: 'custom:' + f.id, label: f.label, custom: f });
+  const listCands = !viewable ? null : [...s.fields.map(f => ({ key: f.key, label: f.label, on: true, field: f })), ...custom.map(f => ({ ...customCand(f), on: true }))];
+  const gridCands = !viewable ? null : [...cardKeys.map(k => s.fields.find(f => f.key === k)).filter(Boolean).map(f => ({ key: f.key, label: f.label, on: true, field: f })),
+    ...s.fields.filter(f => !['image', 'gallery'].includes(f.type) && !(s.title || []).includes(f.key) && !cardKeys.includes(f.key)).map(f => ({ key: f.key, label: f.label, on: false, field: f })),
+    ...custom.map(f => ({ ...customCand(f), on: false }))];
+  const modeCands = mode === 'grid' ? gridCands : listCands, shownKeys = viewable ? ViewSet.keys(modeCands, viewSaved([e, mode])) : [];
+  const candValue = (c, i) => (c.field ? i[c.field.key] : (i.custom || {})[c.custom.id]);
+  const candHtml = (c, v) => (c.field ? cell(c.field, v) : esc(v ?? ''));
+  const viewCols = !viewable || mode === 'grid' ? null : listCands.filter(c => shownKeys.includes(c.key)).map(c => ({ label: c.label, get: i => candHtml(c, candValue(c, i)) }));
+  const viewId = 'mgr:' + e;
+  const viewBtn = viewable ? viewButton(viewId) : '';
+  const bar = !viewable || !viewBars.has(viewId) ? '' : viewBar(viewId, mode === 'grid' ? 'Turn rows of information on or off for the cards. This is remembered for the Grid view of this page.' : 'Turn columns of information on or off for the list. This is remembered for the List view of this page.',
+    [viewGroup(mode === 'grid' ? `Rows on the ${s.label.toLowerCase()} cards` : `Columns in the ${s.label.toLowerCase()} list`, [e, mode], modeCands)]);
   const toggle = !s.card ? '' : `<span class="seg" role="group" aria-label="View"><button class="btn${mode === 'list' ? ' on' : ''}" id="vlist" aria-pressed="${mode === 'list'}">List</button><button class="btn${mode === 'grid' ? ' on' : ''}" id="vgrid" aria-pressed="${mode === 'grid'}">Grid</button></span>`;
   const hue = t => { let n = 0; for (const ch of t) n = (n * 31 + ch.charCodeAt(0)) % 360; return `hsl(${n} 45% 40%)`; };
   const gridHtml = (items, skip) => `<div class="cards">${items.map(i => {
@@ -129,10 +179,13 @@ async function mountManager(box, e) {
       img = tr && re.image && tr[re.image]; frame = tr && re.image && tr[re.image + 'Frame'];
     }
     const t = titleOf(e, i);
-    const details = s.card.filter(k => k !== skip).map(k => {
+    const details = (viewable ? gridCands.filter(c => shownKeys.includes(c.key)).map(c => {
+      const v = candValue(c, i);
+      return v === undefined || v === null || v === '' ? '' : `<div class="gd"><span class="muted">${esc(c.label)}</span> ${candHtml(c, v)}</div>`;
+    }) : s.card.filter(k => k !== skip).map(k => {
       const f = columnOf(s, k), v = f.virtual ? f.virtual.get(i) : i[k];
       return v === undefined || v === null || v === '' ? '' : `<div class="gd"><span class="muted">${esc(f.label)}</span> ${columnCell(f, i)}</div>`;
-    }).join('') + (s.gallery && Array.isArray(i[s.gallery]) && i[s.gallery].length ? `<div class="gd muted">+${i[s.gallery].length} more ${i[s.gallery].length === 1 ? 'picture' : 'pictures'}</div>` : '');
+    })).join('') + (s.gallery && Array.isArray(i[s.gallery]) && i[s.gallery].length ? `<div class="gd muted">+${i[s.gallery].length} more ${i[s.gallery].length === 1 ? 'picture' : 'pictures'}</div>` : '');
     return `<article class="gcard"><div class="gimg">${img ? `<img src="${esc(img)}" alt="" style="transform:${Widgets.frameTransform(frame)}">` : `<span class="ph" style="background:${hue(t)}">${esc((t.trim()[0] || '?').toUpperCase())}</span>`}</div>
       <h3>${esc(t)}</h3>${details}<div class="row"><button class="btn" data-edit="${esc(i.id)}">Edit</button><button class="btn danger" data-del="${esc(i.id)}">Delete</button></div></article>`;
   }).join('')}</div>`;
@@ -148,15 +201,21 @@ async function mountManager(box, e) {
   })();
   const folderCols = !folders ? null : (s.list || []).filter(k => k !== 'sessionType').map(k => columnOf(s, k)).map(f => ({ label: f.label, get: i => columnCell(f, i) }));
   box.innerHTML = `<div class="row"><button class="btn primary" id="add">Add ${esc(s.label.toLowerCase())}</button>
-      ${s.extra === false ? '' : '<button class="btn" id="extra">Extra fields…</button>'}${toggle}</div>` +
+      ${s.extra === false ? '' : '<button class="btn" id="extra">Extra fields…</button>'}${viewBtn}${toggle}</div>${bar}` +
     (folders ? (folders.length > 1 ? folderTools : '') + folders.map(t => folderHtml('setups', t.id, t.label, plural(t.list.length, 'race setup', 'race setups'), mode === 'grid' ? gridHtml(t.list, 'sessionType') : tableHtml(t.list, folderCols))).join('')
       : items.length && mode === 'grid' ? gridHtml(items)
-      : items.length ? tableHtml(items, cols)
+      : items.length ? tableHtml(items, viewCols || cols)
       : `<p class="muted">No ${esc(s.plural.toLowerCase())} yet. Use the button above to add one.</p>`);
   if (folders) folderWire(box);
+  box.onchange = !viewable ? null : async ev => { // a check box of the View settings bar
+    const cb = ev.target;
+    if (await viewToggle(cb, path => (path === e + '/' + mode ? modeCands : null))) { await mountManager(box, e); viewFocus(box, cb); }
+  };
   box.onclick = async ev => {
     const b = ev.target.closest('button'); if (!b) return;
     if (b.dataset.folderall) { folderAll('setups', folders.map(t => t.id), b.dataset.folderall === '1'); return mountManager(box, e); }
+    if (b.dataset.viewbar) { if (viewBars.has(b.dataset.viewbar)) viewBars.delete(b.dataset.viewbar); else viewBars.add(b.dataset.viewbar); return mountManager(box, e); }
+    if (b.dataset.vsreset) { await viewReset([[e, mode]]); return mountManager(box, e); }
     if (b.id === 'add') return openForm(e, null);
     if (b.id === 'extra') return openExtra(e);
     if (b.id === 'vgrid' || b.id === 'vlist') { state.settings = await api.setSettings({ [viewKey]: b.id === 'vgrid' ? 'grid' : 'list' }); return mountManager(box, e); }
@@ -435,8 +494,54 @@ async function renderResults(box) {
   renderTabs(byId('respool'), [['racing', 'Racing Records'], ['tokens', 'Token Records']], pool, id => { state.resultsSub = id; renderResults(box); });
   await renderResultsPool(byId('resbody'), pool);
 }
+// the lines that tell how the figures of a table are counted, as one small paragraph under it
+const statNote = keys => { const n = Stats.notes(keys); return n.length ? `<p class="muted statnote">${n.map(esc).join(' ')}</p>` : ''; };
 // time bought for a stint: "10 min", "1 min 30 s", "45 s"
 const boughtText = ms => { const sec = Math.round(Number(ms) / 1000); if (!Number.isFinite(sec)) return ''; const m = Math.floor(sec / 60), s = sec % 60; return !s ? `${m} min` : m ? `${m} min ${s} s` : `${s} s`; };
+
+// The dialog of Export to PDF: what goes in the PDF. Resolves with the options for Report.sessionHtml, or null when it was cancelled.
+// The columns start as the View settings have them; the pages (results table, heats, lap times) start as they were picked the last time.
+function pdfChoice(session, figs) {
+  const cols = Stats.sessionColumns(session, figs), screen = ViewSet.keys(Stats.SESSION_COLUMNS, viewSaved(['results', 'sessions']));
+  const pages = { results: true, heats: true, laps: true, ...(state.settings.pdfPages || {}) };
+  const picked = new Set(cols.filter(c => screen.includes(c.key)).map(c => c.key));
+  const items = [['results', 'Results table'], ...(session.heatResults ? [['heats', session.finals ? 'Heats and finals' : 'Heats']] : []), ['laps', 'Every lap time (page 2 onwards)']];
+  dlg.innerHTML = `<h3>Export to PDF</h3><p class="muted">Choose what goes in the PDF.</p>
+    <fieldset class="vsgroup"><legend>Include</legend>${items.map(([k, t]) => `<label class="vschip"><input type="checkbox" data-pdfpage="${k}"${pages[k] ? ' checked' : ''}> ${esc(t)}</label>`).join('')}</fieldset>
+    <fieldset class="vsgroup"><legend>Columns of the results table</legend>${cols.map(c => `<label class="vschip"><input type="checkbox" data-pdfcol="${esc(c.key)}"${picked.has(c.key) ? ' checked' : ''}> ${esc(c.label)}</label>`).join('')}</fieldset>
+    <div class="row"><button class="btn" type="button" data-pdfall="1">All columns</button><button class="btn" type="button" data-pdfall="0">No columns</button></div>
+    <p class="muted">The columns start as your View settings have them. The choice of pages is remembered for the next time.</p>
+    <p class="error" id="pdferr" role="alert"></p>
+    <div class="row"><button class="btn primary pdfbtn" type="button" id="pdfgo">${Icons.svg('pdf', { size: 18 })}<span>Export to PDF</span></button><button class="btn" type="button" id="pdfcancel">Cancel</button></div>`;
+  return new Promise(resolve => {
+    let done = false;
+    const finish = v => { if (done) return; done = true; if (dlg.open) dlg.close(); resolve(v); };
+    dlg.addEventListener('close', () => finish(null), { once: true }); // (Escape closes it too)
+    dlg.oninput = null;
+    dlg.onchange = ev => {
+      const t = ev.target || {}, d = t.dataset || {};
+      if (d.pdfpage) pages[d.pdfpage] = !!t.checked;
+      if (d.pdfcol) { if (t.checked) picked.add(d.pdfcol); else picked.delete(d.pdfcol); }
+    };
+    dlg.onclick = async ev => {
+      const b = ev.target && ev.target.closest ? ev.target.closest('button') : null; if (!b) return;
+      if (b.dataset && b.dataset.pdfall !== undefined) {
+        const on = b.dataset.pdfall === '1'; picked.clear(); if (on) cols.forEach(c => picked.add(c.key));
+        if (typeof dlg.querySelectorAll === 'function') Array.from(dlg.querySelectorAll('[data-pdfcol]') || []).forEach(x => { x.checked = on; });
+        return;
+      }
+      if (b.id === 'pdfcancel') return finish(null);
+      if (b.id !== 'pdfgo') return;
+      const err = byId('pdferr'), has = items.some(([k]) => pages[k]);
+      if (!has) { err.textContent = 'Pick at least one thing to include.'; return; }
+      if (pages.results && !picked.size) { err.textContent = 'Pick at least one column, or leave the results table out.'; return; }
+      const chosen = { results: !!pages.results, heats: !!pages.heats, laps: !!pages.laps };
+      try { state.settings = await api.setSettings({ pdfPages: chosen }); } catch { /* remembering the choice is not needed for the PDF */ }
+      finish({ ...chosen, columns: cols.filter(c => picked.has(c.key)).map(c => c.key) });
+    };
+    if (!dlg.open) dlg.showModal();
+  });
+}
 
 async function renderResultsPool(box, pool) {
   const tokenPool = pool === 'tokens';
@@ -454,10 +559,20 @@ async function renderResultsPool(box, pool) {
       if (l[skip] || (tokenPool && skip === 'noPersonalBest' && !l.driverId)) continue; const k = keyFn(l); if (!m.has(k) || l.time < m.get(k).time) m.set(k, l); }
     return [...m.values()];
   };
-  const recRow = kind => l => `<tr><td>${esc(name(tracks, l.trackId, 'tracks'))}</td><td>${esc(name(drivers, l.driverId, 'drivers'))}</td>
-    <td><strong>${esc(RaceEngine.fmtTime(l.time))}</strong></td><td>${esc(name(cars, l.carId, 'slotcars'))}</td><td>${esc(dateText(l.date))}</td>
+  // the columns of the record tables (View settings decides which are shown)
+  const sessionOf = new Map(sessions.map(x => [x.id, x]));
+  const speedOf = l => Stats.lapSpeed(l, tracks, cars);
+  const lapText = l => `${l.heat ? (l.final ? 'F' + l.final : 'H' + l.heat) + ' ' : ''}${l.lapNumber}`;
+  const RECCELL = {
+    track: l => esc(name(tracks, l.trackId, 'tracks')), driver: l => esc(name(drivers, l.driverId, 'drivers')), time: l => `<strong>${esc(RaceEngine.fmtTime(l.time))}</strong>`,
+    car: l => esc(name(cars, l.carId, 'slotcars')), speed: l => esc(Stats.fmtSpeed(speedOf(l).speed)), scalespeed: l => esc(Stats.fmtScale(speedOf(l).scalespeed)),
+    session: l => (sessionOf.get(l.sessionId) ? esc(sessionOf.get(l.sessionId).setupName) : '<span class="muted">–</span>'), lane: l => (l.lane ? esc(l.lane) : '<span class="muted">–</span>'),
+    lapno: l => esc(lapText(l)), date: l => esc(dateText(l.date))
+  };
+  const recKeys = Stats.RECORD_COLUMNS.filter(c => ViewSet.keys(Stats.RECORD_COLUMNS, viewSaved(['results', 'records'])).includes(c.key));
+  const recRow = kind => l => `<tr>${recKeys.map(c => `<td>${RECCELL[c.key](l)}</td>`).join('')}
     <td class="actions"><button class="btn danger" data-delrec="${kind}" data-lap="${esc(l.id)}">Remove</button></td></tr>`;
-  const head = '<tr><th>Track</th><th>Driver</th><th>Lap time</th><th>Car</th><th>Set on</th><th></th></tr>';
+  const head = `<tr>${recKeys.map(c => `<th>${esc(c.label)}</th>`).join('')}<th></th></tr>`;
   const byTrack = (a, b) => name(tracks, a.trackId, 'tracks').localeCompare(name(tracks, b.trackId, 'tracks')) || a.time - b.time;
   const trackRecords = best(l => l.trackId, 'noTrackRecord').sort(byTrack);
   const personal = best(l => l.trackId + '|' + l.driverId, 'noPersonalBest').sort(byTrack);
@@ -467,8 +582,11 @@ async function renderResultsPool(box, pool) {
     const win = s.standings[0];
     if (tokenPool) { // a stint: one driver, one lane, one paid time
       const x = win || {}, t = s.token || {}, mine = laps.filter(l => l.sessionId === s.id).sort((a, b) => a.lapNumber - b.lapNumber);
-      const body = `<table class="fields"><tr><th>Driver</th><th>Car</th><th>Lane</th><th>Time bought</th><th>Laps</th><th>Late laps</th><th>Best lap</th><th>Total time</th></tr>
-        <tr><td>${esc(x.driverName)}</td><td>${esc(x.carName)}</td><td>${esc(t.lane)}</td><td>${esc(boughtText(t.bought))}</td><td>${esc(x.laps)}</td><td>${esc(x.lateLaps || 0)}</td><td>${esc(RaceEngine.fmtTime(x.best))}</td><td>${esc(RaceEngine.fmtTime(x.total))}</td></tr></table>
+      const figs = Stats.forSession(s, mine, tracks, cars), stintKeys = ViewSet.keys(Stats.STINT_COLUMNS, viewSaved(['results', 'stints']));
+      const STCELL = { driver: esc(x.driverName), car: esc(x.carName), lane: esc(t.lane), bought: esc(boughtText(t.bought)), laps: esc(x.laps), late: esc(x.lateLaps || 0), best: esc(RaceEngine.fmtTime(x.best)), total: esc(RaceEngine.fmtTime(x.total)) };
+      const stCols = Stats.STINT_COLUMNS.filter(c => stintKeys.includes(c.key) && (c.key in STCELL || Stats.hasAny(c.key, figs)));
+      const body = `<table class="fields"><tr>${stCols.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr>
+        <tr>${stCols.map(c => `<td>${c.key in STCELL ? STCELL[c.key] : esc(Stats.text(c.key, figs[0]))}</td>`).join('')}</tr></table>${stCols.length ? '' : '<p class="muted">No columns are on. Turn some on in View settings.</p>'}${statNote(stCols.map(c => c.key))}
         <p class="muted">${esc(s.endedBy || '')}${t.carried ? ` · ${esc(boughtText(t.carried))} came over from the driver before` : ''}${t.left ? ` · ${esc(boughtText(t.left))} was not used` : ''}</p>
         <h4>All lap times</h4><p><span class="muted">${mine.map(l => { const tx = esc(`${l.lapNumber}: ${RaceEngine.fmtTime(l.time)}`); return l.late || l.invalid || l.tooSlow ? `<s class="lapbad" title="${l.late ? 'Late lap: driven after the time was up' : l.invalid ? 'Invalid lap' : 'Too slow: not counted for records'}">${tx}</s>` : tx; }).join(' · ') || 'no laps'}</span></p>
         <div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}<button class="btn danger" data-delsession="${esc(s.id)}">Delete this stint</button><span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
@@ -477,30 +595,57 @@ async function renderResultsPool(box, pool) {
     const pts = s.resultBy === 'points';
     const res = s.sessionType === 'heats' && !!s.scoring && s.standings.some(x => x.score !== undefined); // a result that is not just all heats added up
     const fin = s.sessionType === 'heats' && !!s.finals, finArg = { finalMode: fin ? s.finals.finalMode : 'places', byPoints: pts };
-    const body = `<table class="fields"><tr><th>Pos</th><th>Driver</th><th>Car</th><th>Laps</th>${pts ? '<th>Points</th>' : ''}${res ? '<th>Result</th>' : ''}${fin ? '<th>Final</th>' : ''}<th>Best lap</th>${s.sessionType === 'heats' ? '' : '<th>Total time</th>'}</tr>` +
-      s.standings.map(x => `<tr><td>${esc(x.pos)}</td><td>${esc(x.driverName)}${x.dq ? ' <span class="muted">(disqualified)</span>' : x.retired ? ' <span class="muted">(retired, out of fuel)</span>' : ''}</td><td>${esc(x.carName)}</td><td>${esc(x.laps)}</td>${pts ? `<td>${esc(x.points)}</td>` : ''}${res ? `<td>${esc(Heats.scoreText(x, s.scoring, finArg))}</td>` : ''}${fin ? `<td>${esc(Heats.finalCell(x))}</td>` : ''}<td>${esc(RaceEngine.fmtTime(x.best))}</td>${s.sessionType === 'heats' ? '' : `<td>${esc(RaceEngine.fmtTime(x.total + (x.penalty || 0)))}${x.penalty ? ` <span class="muted">(includes +${esc(RaceEngine.fmtTime(x.penalty))} penalty, ${esc(x.penaltyPoints)} points)</span>` : ''}</td>`}</tr>`).join('') + '</table>' +
+    const figs = Stats.forSession(s, laps.filter(l => l.sessionId === s.id), tracks, cars), shownKeys = ViewSet.keys(Stats.SESSION_COLUMNS, viewSaved(['results', 'sessions']));
+    const cols = Stats.sessionColumns(s, figs).filter(c => shownKeys.includes(c.key));
+    const cellOf = (key, x, i) => {
+      switch (key) {
+        case 'pos': return esc(x.pos);
+        case 'driver': return esc(x.driverName) + (x.dq ? ' <span class="muted">(disqualified)</span>' : x.retired ? ' <span class="muted">(retired, out of fuel)</span>' : '');
+        case 'car': return esc(x.carName);
+        case 'laps': return esc(x.laps);
+        case 'points': return esc(x.points);
+        case 'result': return esc(Heats.scoreText(x, s.scoring, finArg));
+        case 'final': return esc(Heats.finalCell(x));
+        case 'best': return esc(RaceEngine.fmtTime(x.best));
+        case 'total': return esc(RaceEngine.fmtTime(x.total + (x.penalty || 0))) + (x.penalty ? ` <span class="muted">(includes +${esc(RaceEngine.fmtTime(x.penalty))} penalty, ${esc(x.penaltyPoints)} points)</span>` : '');
+        default: return esc(Stats.text(key, figs[i]));
+      }
+    };
+    const body = `<table class="fields"><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr>` +
+      s.standings.map((x, i) => `<tr>${cols.map(c => `<td>${cellOf(c.key, x, i)}</td>`).join('')}</tr>`).join('') + '</table>' + (cols.length ? '' : '<p class="muted">No columns are on for this session. Turn some on in View settings.</p>') +
+      statNote(cols.map(c => c.key)) +
       (s.sessionType === 'heats' && s.scoring && Heats.scoringText(s.scoring, pts) ? `<p class="muted">${esc(Heats.scoringText(s.scoring, pts))}</p>` : '') + (fin ? `<p class="muted">${esc(Heats.finalsSaid(s.finals))}</p>` : '') +
       (s.heatResults ? `<h4>${s.finals ? 'Heats and finals' : 'Heats'}</h4>` + s.heatResults.map(h => `<p><strong>${esc(Heats.raceName(h))}</strong><br><span class="muted">${h.rows.map(r => `${esc(r.pos)}. ${esc(r.driverName)} (${esc(r.laps)} laps${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''})`).join(' · ')}</span></p>`).join('') : '') +
       '<h4>All lap times</h4>' + s.standings.map(x => {
         const mine = laps.filter(l => l.sessionId === s.id && l.driverId === x.driverId).sort((a, b) => (a.heat || 0) - (b.heat || 0) || a.lapNumber - b.lapNumber);
-        return `<p><strong>${esc(x.driverName)}</strong><br><span class="muted">${mine.map(l => { const t = esc(`${l.heat ? (l.final ? 'F' + l.final : 'H' + l.heat) + ' ' : ''}${l.lapNumber}: ${RaceEngine.fmtTime(l.time)}`); return l.invalid || l.tooSlow ? `<s class="lapbad" title="${l.invalid ? 'Invalid lap' : 'Too slow: not counted for records'}">${t}</s>` : t; }).join(' · ') || 'no laps'}</span></p>`;
+        return `<p><strong>${esc(x.driverName)}</strong><br><span class="muted">${mine.map(l => { const t = esc(`${l.heat ? (l.final ? 'F' + l.final : 'H' + l.heat) + ' ' : ''}${l.lapNumber}: ${RaceEngine.fmtTime(l.time)}`); return l.invalid || l.tooSlow ? `<s class="lapbad" title="${l.invalid ? 'Invalid lap' : 'Too slow: not counted for records'}">${t}</s>` : l.pit ? `<em title="Lap with a pit stop">${t}</em>` : t; }).join(' · ') || 'no laps'}</span></p>`;
       }).join('') + `<div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}<button class="btn danger" data-delsession="${esc(s.id)}">Delete this session</button><span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
     return `<details class="card sess"><summary>${esc(dateText(s.date))} · ${esc(s.setupName)} · ${esc(SESSION_LABEL[s.sessionType] || '')} · ${esc(s.trackName || '')}${win ? ' · Winner: ' + esc(win.driverName) : ''}</summary><div class="sessbody">${body}</div></details>`;
   }).join('');
   const RES_FOLDERS = ['tracks', 'pb', 'sessions'];
-  box.innerHTML = folderTools + folderHtml(folderPage, 'tracks', 'Track records', plural(trackRecords.length, 'record', 'records'), recTable(trackRecords, 'track'))
+  const sessCols = tokenPool ? Stats.STINT_COLUMNS : Stats.SESSION_COLUMNS, sessPath = ['results', tokenPool ? 'stints' : 'sessions'];
+  const colsOf = path => (path === 'results/records' ? Stats.RECORD_COLUMNS : path === sessPath.join('/') ? sessCols : null);
+  const bar = !viewBars.has('results') ? '' : viewBar('results', 'Turn columns on or off. This changes the tables on this page and is remembered. A column that has nothing to show for a session is left out of its table.',
+    [viewGroup('Track records and personal bests', ['results', 'records'], Stats.RECORD_COLUMNS), viewGroup(tokenPool ? 'Stints' : 'Sessions', sessPath, sessCols)]);
+  box.innerHTML = folderToolsWith(viewButton('results')) + bar + folderHtml(folderPage, 'tracks', 'Track records', plural(trackRecords.length, 'record', 'records'), recTable(trackRecords, 'track'))
     + folderHtml(folderPage, 'pb', 'Personal bests', plural(personal.length, 'personal best', 'personal bests'), recTable(personal, 'pb'))
     + folderHtml(folderPage, 'sessions', tokenPool ? 'Stints' : 'Sessions', tokenPool ? plural(sessions.length, 'stint', 'stints') : plural(sessions.length, 'session', 'sessions'), sessionCards);
   folderWire(box);
   box.onclick = async ev => {
     const fa = ev.target.closest('[data-folderall]');
     if (fa) { folderAll(folderPage, RES_FOLDERS, fa.dataset.folderall === '1'); return renderResultsPool(box, pool); }
+    const vb = ev.target.closest('[data-viewbar]');
+    if (vb) { if (viewBars.has(vb.dataset.viewbar)) viewBars.delete(vb.dataset.viewbar); else viewBars.add(vb.dataset.viewbar); return renderResultsPool(box, pool); }
+    const vr = ev.target.closest('[data-vsreset]');
+    if (vr) { await viewReset([['results', 'records'], sessPath]); return renderResultsPool(box, pool); }
     const p = ev.target.closest('[data-pdf]');
     if (p) {
-      const s = sessions.find(x => x.id === p.dataset.pdf), msg = byId('pdfmsg-' + s.id);
+      const s = sessions.find(x => x.id === p.dataset.pdf), mine = laps.filter(l => l.sessionId === s.id), msg = byId('pdfmsg-' + s.id);
+      const options = await pdfChoice(s, Stats.forSession(s, mine, tracks, cars));
+      if (!options) return;
       msg.textContent = 'Making the PDF...';
       try {
-        const res = await api.exportPdf(Report.sessionHtml({ session: s, laps: laps.filter(l => l.sessionId === s.id) }), Report.fileName(s));
+        const res = await api.exportPdf(Report.sessionHtml({ session: s, laps: mine, tracks, cars, options }), Report.fileName(s));
         msg.textContent = res.saved ? 'Saved to ' + res.path : 'Export cancelled.';
       } catch (x) { msg.textContent = 'Could not make the PDF: ' + x.message; }
       return;
@@ -515,5 +660,8 @@ async function renderResultsPool(box, pool) {
     }
     const b = ev.target.closest('[data-delsession]'); if (!b) return;
     if (confirm(tokenPool ? 'Delete this stint and all of its laps?\n\nThis can\'t be undone.' : 'Delete this session and all of its laps?\n\nThis can\'t be undone.')) { await api.removeSession(b.dataset.delsession); renderResultsPool(box, pool); }
+  };  box.onchange = async ev => { // a check box of the View settings bar
+    const cb = ev.target;
+    if (await viewToggle(cb, colsOf)) { await renderResultsPool(box, pool); viewFocus(box, cb); }
   };
 }

@@ -68,7 +68,7 @@
     const R = {
       cfg, fuel: F, penalty: P, type, status: 'ready', t0: 0, pausedAt: 0, endAt: 0, timeUp: false, finished: 0, endedBy: '',
       yellow: Y, yellowAt: null, // yellowAt: when the yellow flag that is up now went up (a lap that started before that is not a lap under yellow)
-      cars: cfg.entries.map(e => ({ ...e, laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, invalid: [], removed: [], yellowFast: [], servedNow: false, last: 0, total: 0, best: null, done: false, place: 0, retired: false, fuel: F.on ? F.tank : 0, outOfFuel: false,
+      cars: cfg.entries.map(e => ({ ...e, laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, invalid: [], removed: [], yellowFast: [], pitLaps: [], servedNow: false, last: 0, total: 0, best: null, done: false, place: 0, retired: false, fuel: F.on ? F.tank : 0, outOfFuel: false,
         blockAt: null, pit: null, pits: [], lastPit: null, outlap: false, started: !skipFirst })),
       events: [], // what happened, in order: { type, car, t } (outoffuel, retired, pitstart, fuelfull, pitend, call, callend...)
       calls: [] // calls from a lane to the Race Director: { id, car, t, open, how }; how a call ended: 'penalty' or 'dismiss'
@@ -143,9 +143,10 @@
         if (F.empty === 'stop') return false; // the lap does not count until the car has refuelled
       }
       if (F.on) c.fuel = Math.max(0, Math.round((c.fuel - need) * 1e6) / 1e6);
-      c.outlap = false;
+      const pitLap = c.outlap; c.outlap = false; // (the lap in which the car stood in the pits)
       const slow = maxLap > 0 && dt > maxLap; // too slow to be a real lap time: it counts as a lap, but is left out of best laps and averages
       if (fuelShort && F.empty === 'warn' && P.fuelPoints > 0) R.addPoints(R.cars.indexOf(c), P.fuelPoints, t); // a car that carries on with an empty tank gets the points of the penalty system for every such lap
+      if (pitLap) c.pitLaps.push(c.laps.length);
       c.laps.push(dt); c.bad.push(slow); c.last = t; c.total = t - R.t0;
       if (!slow && (c.best === null || dt < c.best)) c.best = dt;
       // the yellow flag target: a lap that began after the yellow flag went up, and ended with it still up, must not be faster than the target (a lap that was part green does not count)
@@ -163,7 +164,7 @@
     // The car object stays the same one, so everything that points to it keeps working.
     R.restartCar = (i, t, who) => {
       const c = R.cars[i]; if (!c) return false;
-      Object.assign(c, who || {}, { laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, invalid: [], removed: [], yellowFast: [], servedNow: false, last: t, total: 0, best: null, done: false, place: 0, retired: false,
+      Object.assign(c, who || {}, { laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, invalid: [], removed: [], yellowFast: [], pitLaps: [], servedNow: false, last: t, total: 0, best: null, done: false, place: 0, retired: false,
         fuel: F.on ? F.tank : 0, outOfFuel: false, blockAt: null, pit: null, pits: [], lastPit: null, outlap: false, started: false });
       return true;
     };
@@ -278,7 +279,7 @@
       if (!recalc) { if (!c.removed.includes(n)) c.removed = [...c.removed, n].sort((a, b) => a - b); return true; }
       c.laps.splice(n, 1); c.bad.splice(n, 1);
       const shift = list => list.filter(x => x !== n).map(x => (x > n ? x - 1 : x));
-      c.invalid = shift(c.invalid); c.removed = shift(c.removed); c.yellowFast = shift(c.yellowFast || []);
+      c.invalid = shift(c.invalid); c.removed = shift(c.removed); c.yellowFast = shift(c.yellowFast || []); c.pitLaps = shift(c.pitLaps || []);
       c.total = c.laps.reduce((a, b) => a + b, 0); rebest(c); return true;
     };
 

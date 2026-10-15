@@ -29,7 +29,7 @@ const api = { liveStatic: s => { sent.stat = JSON.parse(JSON.stringify(s)); sent
 const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if (appConsole.expected) { appConsole.seen++; return; } console.log('FAIL the app reported an error: ' + a.map(x => (x && x.stack) || x).join(' ').slice(0, 300)); fails++; } };
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['engine.js', 'heats.js', 'tokens.js', 'speed.js', 'theme.js','banner.js', 'icons.js', 'delta.js','widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js','audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['engine.js', 'heats.js', 'tokens.js', 'speed.js','stats.js','viewset.js', 'theme.js','banner.js', 'icons.js', 'delta.js','widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js','audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -482,6 +482,63 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   for (let k = 0; k < 6; k++) { await wait(60); key('1'); }
   say('"stop counting laps" keeps the car in the race but stops its laps', eng0().cars[0].laps.length === 3 && !eng0().cars[0].retired && phase() === 'running');
   key('s');
+
+  // ---------- 1.0.0: what a finished race saves for the figures of Results: the lane of every lap, the lap with a pit stop, the pit stops and their time ----------
+  { saved.length = 0; els.sim.checked = false;
+    await openRace(fuelSetup({ fuelTank: 8 }), store.tracks[0], rows(1, 2));
+    const shift1 = () => run('live').key({ key: '!', code: 'Digit1', shiftKey: true, target: { matches: () => false }, preventDefault() {} });
+    key(' '); await until(() => phase() === 'running');
+    await wait(60); key('1'); await wait(60); key('2'); await wait(60); key('1');
+    await wait(60); shift1(); await wait(200); shift1(); // lane 1 goes into the pits and leaves again
+    await wait(60); key('1'); await wait(60); key('1'); key('2');
+    key('s'); await until(() => phase() === 'finished', 3000); await wait(100);
+    const [sess, rowsL] = saved[0] || [{ standings: [] }, []], x1 = sess.standings.find(x => x.driverId === 'd1'), x2 = sess.standings.find(x => x.driverId === 'd2');
+    say('the race is saved once', saved.length === 1 && sess.standings.length === 2);
+    say('every lap row says which lane it was driven in (lane 1 is the first car, lane 2 the second)', rowsL.length > 0 && rowsL.filter(l => l.driverId === 'd1').every(l => l.lane === 1) && rowsL.filter(l => l.driverId === 'd2').every(l => l.lane === 2));
+    say('the standings have the pit stops and the time in the pits (the car that pitted: 1 stop of 150 ms or more; the other: 0)', x1.pits === 1 && x1.pitTime >= 150 && x2.pits === 0 && x2.pitTime === 0);
+    const pitRows = rowsL.filter(l => l.pit);
+    say('exactly one lap is marked as the lap with a pit stop: the one after the stop, of the car that pitted', pitRows.length === 1 && pitRows[0].driverId === 'd1' && pitRows[0].lapNumber === 4);
+    say('...the other laps are not marked', rowsL.filter(l => l.driverId === 'd2').every(l => !l.pit));
+  }
+  // a race without fuel and without pit stops has no pit figures, and a race with a penalty system has its points (and none for a heat race without a system)
+  { saved.length = 0; els.sim.checked = false;
+    await openRace({ name: 'P', sessionType: 'practice', layout: 'F1', lightsMin: 0, lightsMax: 0 }, store.tracks[0], rows(1, 2));
+    key(' '); await until(() => phase() === 'running'); await wait(60); key('1'); await wait(60); key('1'); key('s'); await until(() => phase() === 'finished', 3000); await wait(100);
+    say('without fuel and without a pit stop the standings have no pit figures (older sessions look the same)', saved.length === 1 && saved[0][0].standings.every(x => x.pits === undefined && x.pitTime === undefined && x.penaltyPoints === undefined) && saved[0][1].every(l => l.lane > 0 && !l.pit));
+    // ...but a pit stop in a race without fuel (a stop on the sensor, as for a drive-through penalty) is saved
+    saved.length = 0;
+    await openRace({ name: 'P2', sessionType: 'practice', layout: 'F1', lightsMin: 0, lightsMax: 0, pitHold: 0.05 }, store.tracks[0], rows(1, 2));
+    const shiftA = () => run('live').key({ key: '!', code: 'Digit1', shiftKey: true, target: { matches: () => false }, preventDefault() {} });
+    key(' '); await until(() => phase() === 'running'); await wait(60); key('1'); await wait(60); key('1');
+    shiftA(); await wait(200); shiftA(); await wait(60); key('1'); await wait(60); key('2'); key('s'); await until(() => phase() === 'finished', 3000); await wait(100);
+    const xs = saved[0][0].standings;
+    say('a stop in a race without fuel is saved too: the car that stopped has 1 pit stop and its time, the other has none', xs.find(x => x.driverId === 'd1').pits === 1 && xs.find(x => x.driverId === 'd1').pitTime >= 150 && xs.find(x => x.driverId === 'd2').pits === undefined && saved[0][1].filter(l => l.pit).length === 1);
+  }
+
+  // a heat race adds up what every heat brought: the pit stops (and, with a penalty system, the points) of a driver over all the heats
+  { saved.length = 0; store.laps = [];
+    await openRace(fuelSetup({ name: 'HeatsPit', sessionType: 'heats', heatBy: 'laps', laps: 4, endRule: 'all', heatPlan: 'roundrobin', resultBy: 'points', points: '10, 8, 6', layout: '' }), store.tracks[0], rows(1, 2, 3));
+    els.sim.checked = true; let hn = 0;
+    while (phase() !== 'finished' && hn++ < 6) { key(' '); await until(() => ['between', 'finished'].includes(phase()), 20000); }
+    els.sim.checked = false; await wait(100);
+    const st = (saved[0] || [{ standings: [] }])[0].standings;
+    say('3 heats with fuel: one session, three drivers, each of whom raced two heats', hn === 3 && saved.length === 1 && st.length === 3);
+    say('...every driver has the pit stops of both heats added up (a 3 L tank and 4 laps of 1 L: at least one stop in each heat) and their time', st.every(x => x.pits >= 2 && x.pitTime > 0));
+    say('...the lap rows know their lane, and some are marked as the lap with a pit stop', saved[0][1].every(l => l.lane >= 1 && l.lane <= 2) && saved[0][1].some(l => l.pit) && saved[0][1].filter(l => l.pit).length <= st.reduce((a, x) => a + x.pits, 0));
+  }
+
+  { saved.length = 0; store.laps = []; store.penaltysystems = [{ id: 'p1', name: 'Std', timeRule: 'every', everyPoints: 5, everySeconds: 5, dqPoints: 12 }];
+    await openRace({ name: 'HeatsPen', sessionType: 'heats', heatBy: 'laps', laps: 2, endRule: 'all', heatPlan: 'roundrobin', resultBy: 'points', points: '10, 8, 6', layout: '', penaltySystem: 'p1' }, store.tracks[0], rows(1, 2, 3));
+    els.sim.checked = true; let hn = 0, who = '';
+    while (phase() !== 'finished' && hn++ < 6) {
+      key(' '); await until(() => phase() === 'running'); if (hn === 1) { who = run('live.engine().cars[0].driverId'); run('live.engine().addPoints(0, 2, 5)'); }
+      await until(() => ['between', 'finished', 'review'].includes(phase()), 20000);
+      if (phase() === 'review') { run('live.reviewCommand')({ op: 'finalize' }); await until(() => ['between', 'finished'].includes(phase()), 5000); }
+    }
+    els.sim.checked = false; await wait(100);
+    const st = (saved[0] || [{ standings: [] }])[0].standings;
+    say('a heat race with a penalty system: the points a driver got in a heat are in the saved standings, added up over the heats', hn === 3 && saved.length === 1 && st.find(x => x.driverId === who).penaltyPoints === 2 && st.filter(x => x.driverId !== who).every(x => x.penaltyPoints === 0));
+  }
 
   // ---------- batch F on the live page ----------
   store.slotcars[0].picture = 'data:image/png;base64,CARPIC'; store.slotcars[0].brand = 'NSR'; store.slotcars[0].manufacturer = 'Ford'; store.slotcars[0].model = 'GT40';

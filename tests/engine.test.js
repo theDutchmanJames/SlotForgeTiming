@@ -274,6 +274,20 @@ ok('ending the race closes a pit stop in progress', R.cars[0].blockAt === null &
 ok('pit stops only happen while racing', (() => { const r = createRace({ type: 'race', laps: 5, fuel: fcfg(), entries: E(1) }); return r.block(0, 100) === false; })());
 R0 = createRace({ type: 'race', laps: 50, minLap: 100, entries: E(1) }); R0.start(0); R0.block(0, 1000); R0.tick(3500); R0.unblock(0, 4000);
 ok('pit stops are timed even with fuel off (for drive-through penalties later)', R0.cars[0].pits.length === 1 && R0.cars[0].pits[0].duration === 3000 && R0.cars[0].pits[0].refuelled === 0);
+// ---- the lap with a pit stop is marked (1.0.0): the figures of Results leave it out ----
+{ R = fr({ fuelEmpty: 'stop' }); lap(R, 0, [1000, 2000, 3000]);
+  ok('a car that never pitted has no pit laps', R.cars[0].pitLaps.length === 0 && R.cars[1].pitLaps.length === 0);
+  R.block(0, 5000); R.tick(7000); R.unblock(0, 9000);
+  ok('the lap in which the car stood in the pits is marked when the car crosses the line (the 4th lap, number 3 from 0)', R.cross(0, 10000) === true && R.cars[0].pitLaps.length === 1 && R.cars[0].pitLaps[0] === 3);
+  ok('...and the lap after it is a normal lap again', R.cross(0, 11000) === true && R.cars[0].pitLaps.length === 1 && R.cars[0].laps.length === 5);
+  R.removeLap(0, 1, true);
+  ok('removing an earlier lap from the race moves the mark with its lap', R.cars[0].pitLaps.length === 1 && R.cars[0].pitLaps[0] === 2);
+  R.removeLap(0, 2, true);
+  ok('removing the pit lap itself takes the mark away', R.cars[0].pitLaps.length === 0);
+  { const r = createRace({ type: 'race', laps: 50, minLap: 100, entries: E(1) }); r.start(0); r.block(0, 1000); r.tick(3500); r.unblock(0, 4000); r.cross(0, 5000);
+    const had = r.cars[0].pitLaps.length; r.restartCar(0, 6000);
+    ok('a new stint on the lane (time tokens) starts without marks (and the stop was marked before, even with fuel off)', had === 1 && r.cars[0].pitLaps.length === 0); }
+}
 // ---- the yellow flag target lap time (0.99.0) ----
 {
   const { yellowConfig } = require('../renderer/engine.js');

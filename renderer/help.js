@@ -42,12 +42,14 @@ const Help = (() => {
           <li><b>Slotcars</b>: a brand, manufacturer or model, then scale, motor, tyres, gearing, weight, a main picture and more pictures. The laps driven are counted for you.</li>
           <li><b>Extra fields…</b> on every list adds fields of your own (text, number, date or pick-list). They are for your information and never change timing.</li>
           <li>The forms are in folders, so you can keep the options you do not need closed.</li>
+          <li><b>View settings</b> (Tracks, Drivers and Slotcars) opens a small bar where you turn the columns of the list, or the rows of the cards in the Grid view, on and off. It is kept for each page and view.</li>
         </ul>` },
       { id: 'results', title: 'Results and Records', note: 'What has been driven', body: `
         <ul>
           <li>Find it in the Database, last sub-tab. <b>Racing Records</b> and <b>Token Records</b> are two separate pools, so a token lap never mixes with a racing lap.</li>
           <li>Three folders: <b>Track records</b> (the fastest lap on each track), <b>Personal bests</b> and <b>Sessions</b> (in Token Records they are called <b>Stints</b>).</li>
-          <li>Open a session to see the standings and every lap. <b>Export to PDF</b> makes a report you can print.</li>
+          <li>Open a session to see the standings and every lap. Besides the standard columns it shows the average and median lap, consistency, average speed, distance, pit stops and pit time, and penalty points (what the session has).</li>
+          <li><b>View settings</b> (after Open all and Close all) turns the columns of the record and session tables on and off. <b>Export to PDF</b> first asks what to include (results, heats, every lap time, and the columns) and then makes a report you can print.</li>
           <li>An invalid lap, or one outside the lap limits of the track, is kept but shown struck through. It never counts for a personal best or a track record.</li>
         </ul>` },
       { id: 'setups', title: 'Race Setup', note: 'Race setups, fuel, penalties and time tokens', body: `
