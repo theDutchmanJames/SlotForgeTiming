@@ -2,7 +2,7 @@
 // Calls wait in a queue so they do not talk over each other; start and flag calls go first and drop what is waiting.
 (function (root) {
   const A = typeof module !== 'undefined' ? require('./announcer.js') : root.Announcer;
-  const MAX_FILE = 1500000; // bytes of a sound file
+  const MAX_FILE = 10000000; // bytes of a sound file (10 MB: about ten minutes of MP3). Sound files are saved inside the database, so there has to be some limit (it was 1.5 MB before 1.1.0)
   const URGENT = ['prerace', 'countdown5', 'countdown4', 'countdown3', 'countdown2', 'countdown1', 'lightsout', 'yellowflag', 'redflag', 'greenflag', 'finished'];
   const num = (v, d, lo, hi) => { const n = Number(v); return Number.isFinite(n) && v !== '' && v !== null ? Math.max(lo, Math.min(hi, n)) : d; };
 

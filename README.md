@@ -1374,3 +1374,42 @@ Good to know:
 6. The tests: `tests/stats.test.js` (every figure, the lanes, the scales, the columns of a session), `tests/viewset.test.js` (what is shown, the last column, the saved choice), `tests/report.test.js` (the columns and pages of the PDF), `tests/engine.test.js` (the lap with a pit stop), `tests/live.test.js` (what a finished race saves, also for heat races), `tests/screens.test.js` (the bars, the PDF dialog, Tracks, Drivers and Slotcars). A screen test that stops early now counts as a failure.
 7. Files: `renderer/stats.js` (the figures and the columns), `renderer/viewset.js` (View settings), `renderer/report.js` (the PDF), `renderer/database.js` (the pages), `renderer/race.js` (what a race saves).
 
+
+## What to try (1.1.0): mirrored flag pictures, a bigger Delta badge, aligned text, Avatars, a race that keeps running, sharper pictures and bigger sound files
+This is the seven points of your list of Thursday 15 October, in the same order.
+1. **Mirror the pictures of the Standard Race Flags (point 1).** The *Race Flag* widget could already mirror its standard flag (the pole on the other side). In the layout editor, select a *Race Flag* widget and set *Show the race state as* to **Image set**: there is a new check box, **Mirror the pictures (flip them left to right)**. It works on the race screen, in the editor and in the Live Race window. It does not change the picture set itself, so two flag widgets can use the same set, one mirrored and one not.
+2. **The badge of the Delta Timer (point 2).** Select a Delta Timer widget. The badge now has four settings:
+   - **Badge size**, in percent of the whole badge (30 to 200, standard 100). It scales the text, the arrow and the shape together and keeps the badge centred in the widget.
+   - **Outline thickness** (0 to 40, hundredths of the text size). The *outlined* look starts at 14, the *filled* look at 0 (no line). Choose a thickness and the *filled* look gets a line in the colour of its text. 0 on the outlined look means no line at all.
+   - **Bold** (on, as it was) and **Italic** (off).
+   - A Delta Timer you made before looks exactly the same until you change one of these.
+3. **Align titles and text (point 3).** Every widget with a title has **Title alignment** (left, centre, right) in its *Title* group, and every widget with a value has **Text alignment** in its *Text* group. The **Leaderboard** only has the title alignment, as you suggested, because its layout comes from the leaderboard setup you make yourself. The standard stays as it was: the title on the left and the text in the centre, so nothing moves in your layouts until you choose.
+4. **Avatars (point 4).**
+   - **A new kind of picture set: Avatars.** In *Customization > Image Settings* make a **New picture set** and choose the kind **Avatars (a picture per lane)**. It has **8 slots**, one per lane (the maximum). A slot you leave empty shows the standard avatar of that lane, dimmed, so you see what a driver gets.
+   - **Which picture is shown.** The *Avatar* widget shows the **picture of the driver** if there is one. If not, it shows the **avatar of the lane**, from the picture set you choose in the widget (or the **standard avatars**, which are built in), so there is never an empty circle. A widget can also be set to **No avatars (the first letter of the name)**.
+   - **Mirror** the avatars: a new check box in the Avatar widget.
+   - **Transparency now stays.** PNG pictures (and other pictures that are not a JPEG) are saved as a PNG, with their transparent parts. Only a JPEG is saved with a white background, because a JPEG cannot be transparent. This also fixes start lights and flags with transparent parts.
+   - **The standard avatars are placeholders** (a head and shoulders on a colour per lane, with the lane number). When you send me your 8 avatars as PNG files I will build them in as the standard set; this is one small file (`renderer/avatars.js`).
+5. **Look at other tabs while the race runs (point 5).** A race is no longer stopped when you leave the race screen.
+   - **A green *Race* tab** appears, before *Live Race*, as long as a race is open. Click it to go back to the same race (nothing is built again). Hover over it to see what the race does ("running", "paused"...).
+   - **The race goes on** behind the other tabs: the clock, the Trackmate, the Race Director buttons in the Live Race window and the sharing with the Live Race pages all keep working.
+   - **The keys (Space, 1 to 8, S, F...) only work on the Race tab**, otherwise typing in another tab would pause your race.
+   - **Home** says *A race is running* with a button **Go to the race**, and *Start* is off, because there is **one race at a time**.
+   - A race that has **not started yet**, or one that is **over**, is not kept: when you leave the tab it is closed, as before.
+6. **Sharper pictures (point 6).** A new setting in *App Settings > General > Pictures* (a new folder), **Picture quality**:
+   - **Original (as uploaded)** is the standard now. A picture is kept exactly as it is; only a picture of more than 4000 pixels on a side, or a file of more than 12 MB, is made smaller.
+   - **High** keeps up to 2000 pixels. **Standard** is the small size the older versions used.
+   - It works for everything you upload: slotcars, drivers, tracks, the home picture, logos, backgrounds and the picture sets. A picture you uploaded before 1.1.0 stays as it is; upload it again to get the sharp one (and its transparency).
+7. **Sound files up to 10 MB (point 7).** The limit was 1.5 MB. It is **10 MB** now (roughly ten minutes of MP3). The reason for a limit at all: the sound files are saved inside the database, which is rewritten at every change, so a very big file would make every save slow.
+
+Try it: make an Avatars set in *Customization > Image Settings*, upload a PNG with transparent parts in lane 1, put an *Avatar* widget on a timing screen, and look at lane 1 (your picture) and lane 2 (the standard avatar). Start a race with *Simulated cars* on, click **Home** while it runs, then **Go to the race**. Set the Delta Timer badge to 150% with a thick outline and italic.
+
+Good to know:
+1. **Original pictures make the database bigger.** Pictures and sounds are saved inside the database file, and it is written in one go at every change. A few dozen photos from a phone is fine on a PC. On a **Raspberry Pi** I would use *High* or *Standard*. If it ever feels slow, the setting is the first thing to look at. (Keeping the pictures as separate files is the real fix; it is a bigger change, tell me if you want it.)
+2. **Old pictures keep their white background.** They were flattened when they were uploaded; the original is gone. Upload them again.
+3. **Keys only on the Race tab.** The Trackmate and the Race Director do not need it.
+4. **One race at a time.** The next race can be started when the one that runs is over and you left it.
+5. **The standard avatars are placeholders** until I have your pictures.
+6. **GitHub tags** (v0.97.0 to v1.1.0) are still not pushed; they are refused from here. The code itself is pushed to the main branch. We said we would look at it later.
+7. The tests: `tests/picture.test.js` (the plan of a picture and the reading of it), `tests/avatars.test.js` (the avatar of a lane), `tests/delta.test.js` (the badge), `tests/widgets.test.js` (the alignment), `tests/timing.test.js` (avatars and mirror), `tests/screens.test.js` (the editor, the picture sets, the picture quality, the audio limit) and `tests/live.test.js` (the race that keeps running: tab, keys, Trackmate, Race Director, Home, stopping).
+8. Files: `renderer/picture.js` and `renderer/avatars.js` are new; `renderer/race.js`, `renderer/app.js` and `renderer/landing.js` hold the race that keeps running; `renderer/index.html` has a second place for the race page.

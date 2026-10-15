@@ -106,6 +106,7 @@ const Help = (() => {
           <li>The race screen shows the timing page you chose in the race setup. A second layout can go on a second screen.</li>
           <li>Keys: <b>Space</b> starts, pauses and resumes. <b>Y</b> yellow flag, <b>R</b> red flag, <b>S</b> stop (it asks once). <b>1 to 8</b> count a lap for that lane without hardware, <b>Shift + 1 to 8</b> send that lane into the pit and <b>Ctrl + 1 to 8</b> make a call from that lane.</li>
           <li>The <b>Full screen widgets</b> button in the bar under the page (or the <b>F</b> key) shows only the widgets of the layout, as large as the window allows, and puts the window on full screen too. <b>Esc</b>, <b>F</b> or the small <b>Exit full screen</b> button (move the mouse or touch the screen to see it) goes back. The race keeps running and is run with the keys as before.</li>
+          <li>A race keeps running when you open another tab. A <b>Race</b> tab with a green dot takes you back to it. The Trackmate and the Race Director keep working, but the keys above only work on the Race tab. Only one race can run at a time.</li>
           <li>Tick <b>Simulated cars</b> to watch a race without any hardware.</li>
           <li>The <b>Review laps</b> button lets you mark a lap invalid or delete it while the race is still running.</li>
           <li>When a race (or a heat) ends, a <b>review</b> opens before anything is saved: check the order, clear penalty points, disqualify or reinstate a driver, correct laps. <b>Finalize results</b> saves them.</li>
@@ -143,7 +144,8 @@ const Help = (() => {
           <li><b>Layout Editor</b>: design a timing page by placing widgets (lap times, the leaderboard, start lights, the race flag, fuel, speed and many more). Drag, resize, undo and redo. Make a different layout for the second screen.</li>
           <li><b>Leaderboard Editor</b>: design the rows of the Leaderboard widget.</li>
           <li><b>Audio Settings</b>: what the race says (see Audio calls below).</li>
-          <li><b>Image Settings</b>: picture sets for the start lights, the race flag and the fuel level. A start lights set is a grid: a picture for every light and every state of the race, such as the yellow flag. Choose a set in the widget in the Layout Editor.</li>
+          <li><b>Image Settings</b>: picture sets for the start lights, the race flag, the fuel level and the avatars. A start lights set is a grid: a picture for every light and every state of the race, such as the yellow flag. An <b>Avatars</b> set has a picture for each of the 8 lanes: the Avatar widget shows the picture of the driver, and a driver without one gets the avatar of the lane he or she drives in (the built-in standard avatars, unless you choose a set). Choose a set in the widget in the Layout Editor. The Race Flag widget can mirror the pictures of a set, and the Avatar widget can mirror its pictures.</li>
+          <li>Every widget can align its <b>title</b> and its <b>text</b> to the left, the center or the right (the Leaderboard only its title).</li>
           <li><b>Widget Builder</b>: make your own text or image widgets with {variables} such as the driver's name or a lap time.</li>
           <li>You choose the layouts and the audio set per race setup.</li>
         </ul>` },
@@ -152,7 +154,7 @@ const Help = (() => {
           <li>A folder of widgets in the Layout Editor: a time on the left and a badge on the right that shows how far a lane is from another time. Green with ▲ and a minus (▲ −0.045) is faster, red with ▼ and a plus (▼ +0.321) is slower.</li>
           <li><b>What is compared</b>: a lane's value against theirs, its last lap against theirs, or its last lap against its own value. <b>Compare with</b>: a chosen lane, the leader, the fastest in the race, the track record or the session record.</li>
           <li><b>Left value shows</b>: this lane's own value (the standard), or the value it is compared with, for example lane 2's time. The badge always says how far this lane is from it.</li>
-          <li>The look: a solid block or only an outline, the arrow, the number of decimals and the three colours.</li>
+          <li>The look: a solid block or only an outline, the size of the whole badge, the thickness of the outline, bold and italic text, the arrow, the number of decimals and the three colours.</li>
           <li>The Session Record and Track Record deltas always compare with that record, and show it on the left.</li>
         </ul>` },
       { id: 'audio', title: 'Audio calls', note: 'A voice for the race', body: `
@@ -160,14 +162,14 @@ const Help = (() => {
           <li>An <b>audio set</b> (Customization, Audio Settings) says what the race announces. The calls are in folders, and you switch every call on or off. Most of the newer calls are off until you switch them on.</li>
           <li><b>Race progress</b>: laps or minutes to go, the last lap, the heats. <b>Gaps and battles</b>: closing in, a battle, a lapped car. <b>Laps and records</b>: records, the first lap, a lap close to the record. <b>Pit and fuel</b>: pits, half a tank, a refuel. <b>Penalties</b>: given, served, forgiven, time added. <b>Safety</b>: a lane calling for the marshal, no lap for a while, the Trackmate lost or back. <b>Time tokens</b>: time almost up, time up, time added, a lane freed.</li>
           <li>A call can have <b>several sentences</b>; one is picked at random each time. Use placeholders such as {driver}, {time}, {gap}, {gapahead}, {record} and {position}; the list is at the top of the audio set. Press Test to hear it.</li>
-          <li>A sentence can be spoken by a <b>voice of your computer</b>, or you can choose a <b>sound file</b> that plays instead. Drivers can be called by name, nickname or callsign.</li>
+          <li>A sentence can be spoken by a <b>voice of your computer</b>, or you can choose a <b>sound file</b> (up to 10 MB) that plays instead. Drivers can be called by name, nickname or callsign.</li>
           <li>Under a sentence, <b>Only if</b> limits it to one driver, the top places, a fast lap or a small gap; a sentence whose conditions hold is said instead of the others. <b>Not again within</b> holds a call back for some seconds.</li>
           <li>Pick the set in the race setup. <b>No audio</b> keeps the race silent. Sound plays on the computer that runs the race, not on phones.</li>
         </ul>` },
       { id: 'look', title: 'Look and feel', note: 'Themes, name, header picture and logo', body: `
         <ul>
           <li><b>App Theme</b>: choose a ready-made colour theme, or make your own colours.</li>
-          <li><b>General</b>: type your own app name and welcome message, add a header picture to the Home tab (and choose which part of it shows), and add your club logo.</li>
+          <li><b>General</b>: type your own app name and welcome message, add a header picture to the Home tab (and choose which part of it shows), and add your club logo. <b>Pictures</b> sets how sharp the pictures you upload stay: Original (as uploaded, with transparency), High or Standard (smaller, for a lighter database).</li>
           <li><b>Racing Rules</b> is a tab of its own. Write the rules of your club there. They show on the Racing rules tile of the Live Race tab, also on phones.</li>
         </ul>` }
     ]],

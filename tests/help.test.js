@@ -27,6 +27,10 @@ const folders = Help.folders();
 // ---- the folders ----
 { say('there are folders in four groups', Help.SECTIONS.length === 4 && folders.length >= 15);
   say('every folder has its own id, a title, a short note and a body with a list', new Set(folders.map(f => f.id)).size === folders.length && folders.every(f => /^[a-z]+$/.test(f.id) && f.title.length > 3 && f.note.length > 5 && /<li>/.test(f.body)));
+  { const f = id => plain(folders.find(x => x.id === id).body);
+    say('1.1.0: the help says a race keeps running on other tabs (with the Race tab, and the keys only on that tab), and that it is one race at a time', f('screen').includes('keeps running when you open another tab') && f('screen').includes('Race tab with a green dot') && f('screen').includes('keys above only work on the Race tab') && f('screen').includes('one race can run at a time'));
+    say('...the Avatars picture sets, the alignment, the badge settings, the picture quality and the 10 MB sound limit are explained', f('custom').includes('Avatars') && f('custom').includes('avatar of the lane') && f('custom').includes('align its title and its text') && f('delta').includes('thickness of the outline') && f('look').includes('Original (as uploaded') && f('audio').includes('up to 10 MB'));
+  }
   say('every folder is short enough to read at a glance (under 1,400 characters of text)', folders.every(f => plain(f.body).length < 1400));
   const h = Help.html();
   say('all folders are drawn in the folder style of the app, and they are closed until someone opens them', (h.match(/<details class="dbfolder helpfolder"/g) || []).length === folders.length && !/<details[^>]* open/.test(h));

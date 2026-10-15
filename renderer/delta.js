@@ -133,13 +133,31 @@
   const arrowOf = opt => { const a = opt && opt.arrow; return a === 'down' ? 'down' : (a === 'none' || a === false) ? 'none' : 'up'; }; // (a widget from 0.91.0 has true or false here)
   // the look: "filled" (the standard) is a solid block, "outlined" has only the outline and the text in the colour
   const styleOf = opt => (opt && opt.style === 'outlined' ? 'outlined' : 'filled');
+  // The size and the text of the badge (settings of the widget). Scale: the whole badge, in percent (100 is the standard). Outline: the thickness of the line around it,
+  // in hundredths of the text size; the standard is a line for the outlined look and none for the filled one. Bold is on until it is switched off; italic is off until it is switched on.
+  const scaleOf = opt => { const n = Number(opt && opt.badgeScale); return Number.isFinite(n) && opt.badgeScale !== '' ? Math.max(30, Math.min(200, Math.round(n))) : 100; };
+  const outlineDefault = opt => (styleOf(opt) === 'outlined' ? 14 : 0);
+  const outlineOf = opt => { const n = Number(opt && opt.badgeOutline); return opt && opt.badgeOutline !== undefined && opt.badgeOutline !== '' && Number.isFinite(n) ? Math.max(0, Math.min(40, n)) : outlineDefault(opt); };
+  const boldOf = opt => !(opt && opt.badgeBold === false);
+  const italicOf = opt => !!(opt && opt.badgeItalic);
+  // the style="" pieces for the size and the text; nothing for a standard badge, so a widget that has none of these settings looks exactly as before
+  function sizeStyle(opt) {
+    const k = scaleOf(opt) / 100, out = [];
+    if (k !== 1) out.push(`font-size:calc(.95em*${k})`, 'align-self:center', `height:min(100%,calc((100% - .32em)*${k}))`, 'margin:0'); // (the standard badge fills the height of the widget; a scaled one is a share of it)
+    if (!boldOf(opt)) out.push('font-weight:400');
+    if (italicOf(opt)) out.push('font-style:italic');
+    return out;
+  }
   function badge(res, opt) {
-    if (!res || res.ms === null || res.ms === undefined) return `<span class="dlt-badge dlt-none" title="${esc(WHY[res && res.why] || WHY.ref)}">–</span>`;
+    const size = sizeStyle(opt);
+    if (!res || res.ms === null || res.ms === undefined) return `<span class="dlt-badge dlt-none" title="${esc(WHY[res && res.why] || WHY.ref)}"${size.length ? ` style="${size.join(';')}"` : ''}>–</span>`;
     const f = format(res.ms, opt && opt.decimals), col = colorOf(opt, f.dir === 'fast' ? 'fasterColor' : f.dir === 'slow' ? 'slowerColor' : 'equalColor'), kind = arrowOf(opt), outlined = styleOf(opt) === 'outlined';
     const arrow = f.dir !== 'equal' && kind !== 'none' ? `<span class="dlt-arrow">${ARROWS[kind][f.dir]}</span>` : '';
     const title = f.dir === 'equal' ? `The same as ${res.who || 'the other'}` : `${f.text} s ${f.dir === 'fast' ? 'faster' : 'slower'} than ${res.who || 'the other'}`;
     const look = outlined ? `background:transparent;color:${col};border-color:${col}` : `background:${col};color:${onColor(col)}`;
-    return `<span class="dlt-badge dlt-${f.dir}${outlined ? ' dlt-outlined' : ''}" style="${look}" title="${esc(title)}">${arrow}${SIGN[f.dir]}${f.text}</span>`;
+    const line = outlineOf(opt), custom = opt && opt.badgeOutline !== undefined && opt.badgeOutline !== ''; // (the line of the outlined look is in the style sheet; a chosen thickness is put in the style)
+    const edge = custom || !outlined ? (line > 0 ? [`border:${line / 100}em solid ${outlined ? col : onColor(col)}`, 'box-sizing:border-box', ...(outlined ? [] : ['box-shadow:none'])] : outlined ? ['border:0', 'box-shadow:none'] : []) : [];
+    return `<span class="dlt-badge dlt-${f.dir}${outlined ? ' dlt-outlined' : ''}" style="${[look, ...edge, ...size].join(';')}" title="${esc(title)}">${arrow}${SIGN[f.dir]}${f.text}</span>`;
   }
   // the widget: the ordinary widget's content on the left, the badge on the right
   // from: whose value the left side shows when it is not the lane's own (a tooltip)
@@ -165,8 +183,12 @@
       hintOf: v => (v === 'ref' ? 'The left side shows the lane (or the leader, the fastest, the record, its own best) it is compared with, for example lane 2\'s time. The badge still says how far this lane is from it.'
         : "The left side shows this lane's own value. The badge says how far it is from what it is compared with.") });
     out.push({ key: 'decimals', label: 'Decimals of the difference', type: 'select', default: '3', choices: [['3', '3 (0.456)'], ['2', '2 (0.46)'], ['1', '1 (0.5)']] });
-    out.push({ key: 'style', label: 'Look of the badge', type: 'select', default: 'filled', choices: [['filled', 'Filled (a solid block)'], ['outlined', 'Outlined (only the outline and the text)']],
+    out.push({ key: 'style', label: 'Look of the badge', type: 'select', default: 'filled', rerender: true, choices: [['filled', 'Filled (a solid block)'], ['outlined', 'Outlined (only the outline and the text)']],
       hintOf: v => (v === 'outlined' ? 'Only the outline and the text have the colour, the inside is empty.' : 'The whole block has the colour; the text turns black or white to be readable on it.') });
+    out.push({ key: 'badgeScale', label: 'Size of the badge', type: 'range', default: 100, min: 30, max: 200, step: 5, unit: '%', hint: '100% is the standard: the badge fills the height of the widget. A smaller or larger badge scales its text, outline and padding with it.' });
+    out.push({ key: 'badgeOutline', label: 'Outline thickness', type: 'range', default: 0, defaultOf: outlineDefault, min: 0, max: 40, step: 1, unit: '%', hint: 'The line around the badge, as a share of its text size. The outlined look has a line as standard; on the filled look the line has the colour of the text.' });
+    out.push({ key: 'badgeBold', label: 'Badge text in bold', type: 'checkbox', default: true });
+    out.push({ key: 'badgeItalic', label: 'Badge text in italic', type: 'checkbox', default: false });
     out.push({ key: 'arrow', label: 'Arrow in the badge', type: 'select', default: 'up', choices: [['up', '▲ faster, ▼ slower'], ['down', '▼ faster, ▲ slower'], ['none', 'No arrow']] });
     out.push({ key: 'fasterColor', label: 'Colour when faster', type: 'color', default: DEFAULTS.fasterColor });
     out.push({ key: 'slowerColor', label: 'Colour when slower', type: 'color', default: DEFAULTS.slowerColor });
@@ -174,7 +196,7 @@
     return out;
   }
 
-  const api = { KINDS, TARGET_WORDS, DEFAULTS, STAT, WHY, isDelta, baseOf, compute, leftOf, leftShowsOf, format, badge, wrap, sample, optionsFor, onColor, colorOf, decimalsOf, measureOf, compareOf, arrowOf, styleOf, ARROWS };
+  const api = { KINDS, TARGET_WORDS, DEFAULTS, STAT, WHY, isDelta, baseOf, compute, leftOf, leftShowsOf, format, badge, wrap, sample, optionsFor, onColor, colorOf, decimalsOf, measureOf, compareOf, arrowOf, styleOf, scaleOf, outlineOf, boldOf, italicOf, sizeStyle, ARROWS };
   root.Delta = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

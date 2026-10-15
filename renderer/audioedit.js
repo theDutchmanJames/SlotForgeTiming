@@ -65,7 +65,7 @@ function renderAudioSetEditor(box) {
       <label>Volume <input type="number" id="au-vol" min="0" max="1" step="0.1" value="${esc(d.volume)}" style="width:5em"></label>
       <label>Say drivers by their <select id="au-by">${[['name', 'name'], ['nickname', 'nickname'], ['callsign', 'callsign']].map(([k, t]) => `<option value="${k}"${d.driverBy === k ? ' selected' : ''}>${t}</option>`).join('')}</select></label></div>
     <details class="audhelp" open><summary><strong>How sentences work, and the variables you can use</strong></summary>
-      <ul class="muted"><li>When a call has several sentences, one is picked at random each time.</li><li>A sentence with a sound file plays the file instead of speaking it (up to 1.5 MB).</li>
+      <ul class="muted"><li>When a call has several sentences, one is picked at random each time.</li><li>A sentence with a sound file plays the file instead of speaking it (up to ${Sound.MAX_FILE / 1e6} MB per file; the files are saved inside the database, so keep them short).</li>
         <li>Put a variable in curly brackets inside a sentence, for example <code>{driver} takes the lead</code>. Each call lists the variables it can use under its sentences; a variable the call does not have is left out when spoken.</li></ul>
       <div class="wrap"><table class="fields"><tr><th>Variable</th><th>What it says</th><th>Example</th><th>Used in</th></tr>${Object.entries(Announcer.VARS).map(([k, t]) => {
         const used = Announcer.CALLS.filter(c => c.vars.includes(k) || (Announcer.EVERY_DRIVER.includes(k) && c.vars.includes('driver'))).map(c => c.label);
@@ -127,7 +127,7 @@ function renderAudioSetEditor(box) {
     }
     if (t.dataset.coolfor) { const cc = d.calls[t.dataset.coolfor]; if (t.value === 'driver') cc.coolFor = 'driver'; else delete cc.coolFor; step(); return renderAudioSetEditor(box); }
     if (t.dataset.file && t.files && t.files[0]) {
-      const f = t.files[0]; if (f.size > Sound.MAX_FILE) return msg(`That file is too big (${(f.size / 1e6).toFixed(1)} MB). The limit is 1.5 MB.`);
+      const f = t.files[0]; if (f.size > Sound.MAX_FILE) return msg(`That file is too big (${(f.size / 1e6).toFixed(1)} MB). The limit is ${Sound.MAX_FILE / 1e6} MB.`);
       const rd = new FileReader(); rd.onload = () => { ref(t.dataset.file).file = String(rd.result); step(); renderAudioSetEditor(box); }; rd.onerror = () => msg('Could not read that file.'); rd.readAsDataURL(f);
     }
   };

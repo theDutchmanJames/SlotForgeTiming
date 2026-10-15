@@ -27,6 +27,10 @@ nav{display:flex;gap:4px;flex-wrap:wrap}
 .led.red{background:#ff3b3b;border-color:color-mix(in srgb,#ff3b3b 65%,var(--ink));box-shadow:0 0 8px 2px rgba(255,59,59,.85),inset 0 1px 1px rgba(255,255,255,.45)}
 .sub{margin-bottom:16px}
 main{width:100%;max-width:none;margin:0;padding:20px}
+/* The race screen has a place of its own, so a race can keep running while another tab is shown. Parked: out of sight and out of reach, but still laid out at full size (so what it measures stays right). */
+#racehost.parked{position:fixed;left:0;top:0;width:100vw;height:100vh;overflow:hidden;visibility:hidden;pointer-events:none;z-index:-1}
+.tab.racetab{display:inline-flex;align-items:center;gap:8px}
+.tab.racetab .led{width:10px;height:10px}
 h2{margin:0 0 12px;font-size:22px}
 h3{margin:0 0 8px;font-size:16px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
@@ -110,6 +114,11 @@ details .fields{margin:10px 0}
 .lw-title{position:absolute;left:6px;top:2px;z-index:1;font-size:1.2cqw;opacity:.7;margin:0;pointer-events:none;white-space:nowrap}
 .lw.tspace .lw-title{position:static;align-self:flex-start;margin:2px 6px 0} /* title takes its own row, the value moves down */
 .lw-lane{position:absolute;top:2px;right:5px;font-size:1cqw;opacity:.6;pointer-events:none}
+/* alignment of the title (ta-c centered, ta-r right; left is the standard) and of the text (va-l left, va-r right; centered is the standard), set per widget */
+.lw.ta-c .lw-title,.lw.ta-r .lw-title{left:6px;right:6px}
+.lw.ta-c .lw-title{text-align:center}.lw.ta-r .lw-title{text-align:right}
+.lw.tspace.ta-c .lw-title,.lw.tspace.ta-r .lw-title{left:auto;right:auto;align-self:stretch}
+.lw:has(.lw-lane).ta-r .lw-title{right:2.8em} /* (in the editor the lane tag sits in the top right corner) */
 .lw-val{font-weight:600;pointer-events:none;white-space:nowrap;font-variant-numeric:tabular-nums;flex:1;display:flex;align-items:center;justify-content:center;width:100%}
 .lw .h{position:absolute;width:8px;height:8px;background:#4c9aff;border-radius:2px}
 .h.nw{left:-4px;top:-4px;cursor:nwse-resize}.h.ne{right:-4px;top:-4px;cursor:nesw-resize}
@@ -122,6 +131,8 @@ details .fields{margin:10px 0}
 .lw.live{cursor:default;border-color:var(--line)}
 .lw.live .lw-val{display:flex;align-items:center;justify-content:center;gap:.3em}
 .lw.live .lw-val .fi{font-size:1.1em}
+.lw.va-l .lw-val,.lw.live.va-l .lw-val{justify-content:flex-start;text-align:left;padding-left:.5em;padding-right:.5em}
+.lw.va-r .lw-val,.lw.live.va-r .lw-val{justify-content:flex-end;text-align:right;padding-left:.5em;padding-right:.5em}
 .lw.btnw .lw-val{width:100%;height:100%;font:inherit;background:transparent;color:inherit;border:0;cursor:pointer}
 .lw.btnw .lw-val:disabled{opacity:.4;cursor:not-allowed}
 .avimg{width:100%;height:100%;object-fit:cover;border-radius:50%}

@@ -20,10 +20,11 @@ const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if
 const ctx=vm.createContext({document,api,console: appConsole,Intl,URL,Image:function(){},confirm:()=>true,alert(){},setTimeout,clearTimeout,setInterval,clearInterval,performance,});
 const listeners={}; ctx.window=ctx; ctx.addEventListener=(t,f)=>{(listeners[t]=listeners[t]||[]).push(f)}; ctx.removeEventListener=(t,f)=>{listeners[t]=(listeners[t]||[]).filter(x=>x!==f)};
 const errors=[];
-for(const f of ['engine.js','heats.js','tokens.js','speed.js','stats.js','viewset.js','theme.js','banner.js','icons.js','delta.js','widgets.js','frame.js','backdrop.js','announcer.js','sound.js','timing.js','rows.js','richtext.js','canvas.js','liveshare.js','review.js','liveview.js','report.js','database.js','landing.js','race.js','undo.js','editor.js','tokenui.js','audioedit.js','widgetbuilder.js','transferui.js','themeui.js','help.js','hardware.js','trackmate.js','hardwareui.js','dsui.js','app.js']){
+for(const f of ['engine.js','heats.js','tokens.js','speed.js','stats.js','viewset.js','picture.js','theme.js','banner.js','icons.js','delta.js','avatars.js','widgets.js','frame.js','backdrop.js','announcer.js','sound.js','timing.js','rows.js','richtext.js','canvas.js','liveshare.js','review.js','liveview.js','report.js','database.js','landing.js','race.js','undo.js','editor.js','tokenui.js','audioedit.js','widgetbuilder.js','transferui.js','themeui.js','help.js','hardware.js','trackmate.js','hardwareui.js','dsui.js','app.js']){
   try{vm.runInContext(fs.readFileSync(R+'renderer/'+f,'utf8'),ctx,{filename:f})}catch(e){errors.push(f+': '+e.message)}
 }
 const run=s=>vm.runInContext(s,ctx), E=id=>document.getElementById(id);
+const realResize=ctx.resizeImage; // (some tests below replace it; this one is the page's own)
 const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
 (async()=>{
   await new Promise(r=>setTimeout(r,50));
@@ -209,9 +210,12 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     say('race flag widget: its settings are a Flag style with Flags, LEDs, Text and Image set, and the flag can be mirrored', h().includes('Flag style') && !h().includes('Race Flag settings') && h().includes('data-opt="flagStyle"') && ['Flags','LEDs','Text (the background','Image set (made under'].every(t=>h().includes(t)) && /<option value="flags" selected>/.test(h()) && h().includes('data-opt="flagMirror"') && h().includes('Mirror the flag'));
     say('...the Flags style has no picture set choice and no picture uploads of its own', !h().includes('data-opt="imageSet"') && !h().includes('data-optimg='));
     run("state.editing.sel[0].opt = { flagStyle: 'images' }"); E('side').innerHTML=run('sideHtml()');
-    say('the Image set style offers the picture sets (and no mirror)', h().includes('data-opt="imageSet"') && h().includes('None (shows the flag name as text)') && !h().includes('data-opt="flagMirror"') && /<option value="images" selected>/.test(h()));
+    say('the Image set style offers the picture sets and a Mirror for the pictures (not the one of the flags)', h().includes('data-opt="imageSet"') && h().includes('None (shows the flag name as text)') && h().includes('data-opt="imageMirror"') && !h().includes('data-opt="flagMirror"') && /<option value="images" selected>/.test(h()));
+    E('side').oninput({ target: { id: 'o-imageMirror', type: 'checkbox', checked: true, dataset: { opt: 'imageMirror' } } });
+    say('...ticking it is stored in the widget, and unticking turns it off', sel().opt.imageMirror === true && (E('side').oninput({ target: { id: 'o-imageMirror', type: 'checkbox', checked: false, dataset: { opt: 'imageMirror' } } }), sel().opt.imageMirror === false));
+    run("state.editing.sel[0].opt = { flagStyle: 'images' }"); E('side').innerHTML=run('sideHtml()');
     run("state.editing.sel[0].opt = { flagStyle: 'leds' }"); E('side').innerHTML=run('sideHtml()');
-    say('LEDs and Text have no extra settings', !h().includes('data-opt="imageSet"') && !h().includes('data-opt="flagMirror"') && /<option value="leds" selected>/.test(h()));
+    say('LEDs and Text have no extra settings', !h().includes('data-opt="imageSet"') && !h().includes('data-opt="flagMirror"') && !h().includes('data-opt="imageMirror"') && /<option value="leds" selected>/.test(h()));
     run("state.editing.sel[0].opt = { imageSet: 'old' }"); E('side').innerHTML=run('sideHtml()');
     say('a flag widget that already used a picture set shows Image set', /<option value="images" selected>/.test(h()) && h().includes('data-opt="imageSet"'));
     await E('side').onchange({ target: { dataset: { opt: 'flagStyle' }, value: 'flags', type: 'select-one' } });
@@ -220,6 +224,36 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   say('start lights widget: a picture set choice and, per race state, how many lights are on and their colour', run("(k => k.includes('imageSet') && ['ready','running','paused','between','finished','yellow','red'].every(s => k.includes('lights_'+s) && k.includes('lightcol_'+s)) && !k.includes('lights_countdown') && !k.some(x => x.indexOf('img') === 0))(Widgets.def('lights').options.map(o => o.key))"));
   run("editorAdd('leaderboard')");
   say('leaderboard offers a driver-column choice and column switches', E('side').innerHTML.includes('data-opt="driverBy"') && E('side').innerHTML.includes('type="checkbox" data-opt="colBest"'));
+  say('alignment: the leaderboard can align its title, but has no text alignment (its columns come from the layout you make)', E('side').innerHTML.includes('id="s-talign"') && !E('side').innerHTML.includes('id="s-valign"'));
+  { const h = () => E('side').innerHTML, sel = () => run("state.editing.sel[0]"), pick = (id, v) => E('side').onchange({ target: { id, value: v, dataset: {} } }), n0 = run('state.editing.draft.widgets.length');
+    run("editorAdd('laptime')");
+    say('alignment: every widget has Title alignment (left) and Text alignment (center) as its standard', /id="s-talign">[\s\S]*?<option value="left" selected>/.test(h()) && /id="s-valign">[\s\S]*?<option value="center" selected>/.test(h()) && !/class="lw[^"]*\bta-/.test(E('canvas').innerHTML.split('data-i="' + run('state.editing.draft.widgets.indexOf(state.editing.sel[0])') + '"')[0].split('class="lw').pop() || ''));
+    pick('s-talign', 'right'); pick('s-valign', 'left');
+    say('...choosing is stored in the widget and the widget is drawn with it (title right, text left)', sel().titleAlign === 'right' && sel().valueAlign === 'left' && new RegExp('class="lw sel[^"]*ta-r va-l"').test(E('canvas').innerHTML));
+    pick('s-talign', 'center'); pick('s-valign', 'right');
+    say('...center for the title and right for the text', sel().titleAlign === 'center' && sel().valueAlign === 'right' && new RegExp('class="lw sel[^"]*ta-c va-r"').test(E('canvas').innerHTML));
+    pick('s-talign', 'sideways'); pick('s-valign', '');
+    say('...a wrong choice changes nothing', sel().titleAlign === 'center' && sel().valueAlign === 'right');
+    pick('s-talign', 'left'); pick('s-valign', 'center');
+    say('...left and center are the standard again: no extra classes', !/class="lw sel[^"]*\b(ta|va)-/.test(E('canvas').innerHTML));
+    run("editorAdd('start')");
+    say('alignment: a button widget has none', !h().includes('id="s-talign"') && !h().includes('id="s-valign"'));
+    run("editorAdd('avatar')");
+    say('avatar widget: a choice of avatars (standard, none or a set), a Mirror tick box and the position and zoom', h().includes('data-opt="imageSet"') && h().includes('Standard avatars (built in)') && h().includes('No avatars (the first letter of the name)') && h().includes('data-opt="avatarMirror"') && h().includes('data-frame="frame"') && !h().includes('No sets yet'));
+    run("state.editing.imageSets = [{ id: 'av1', name: 'Racers', kind: 'avatars', images: {} }, { id: 'fl1', name: 'Flags', kind: 'flag', images: {} }]"); E('side').innerHTML = run('sideHtml()');
+    say('...only the sets of the kind Avatars are offered', h().includes('>Racers</option>') && !h().includes('>Flags</option>'));
+    E('side').oninput({ target: { id: 'o-avatarMirror', type: 'checkbox', checked: true, dataset: { opt: 'avatarMirror' } } });
+    await E('side').onchange({ target: { dataset: { opt: 'imageSet' }, value: 'av1', type: 'select-one' } });
+    say('...the Mirror and the chosen set are stored in the widget', sel().opt.avatarMirror === true && sel().opt.imageSet === 'av1' && /<option value="av1" selected>/.test(h()));
+    run("state.editing.imageSets = []");
+    run("editorAdd('dbestlap')");
+    say('delta badge: size, outline, bold and italic of the badge', h().includes('data-opt="badgeScale"') && h().includes('data-opt="badgeOutline"') && /id="o-badgeBold" type="checkbox" data-opt="badgeBold" checked/.test(h()) && /id="o-badgeItalic" type="checkbox" data-opt="badgeItalic" >/.test(h()) && /id="o-badgeScale"[^>]*value="100"/.test(h()) && /id="o-badgeOutline"[^>]*value="0"/.test(h()));
+    await E('side').onchange({ target: { dataset: { opt: 'style' }, value: 'outlined', type: 'select-one' } });
+    say('...the outline thickness starts at the line of the outlined look (14) and at none for the filled look', /id="o-badgeOutline"[^>]*value="14"/.test(h()) && (await E('side').onchange({ target: { dataset: { opt: 'style' }, value: 'filled', type: 'select-one' } }), /id="o-badgeOutline"[^>]*value="0"/.test(h())));
+    E('side').oninput({ target: { id: 'o-badgeScale', type: 'range', value: '65', dataset: { opt: 'badgeScale', unit: '%' } } });
+    say('...the size is stored as a number and the badge in the canvas follows it', sel().opt.badgeScale === 65 && E('canvas').innerHTML.includes('font-size:calc(.95em*0.65)'));
+    run('state.editing.draft.widgets.length = ' + n0 + '; state.editing.sel = [state.editing.draft.widgets[' + (n0 - 1) + ']]'); E('side').innerHTML = run('sideHtml()'); // (the widgets of these checks are not part of the layout that is saved below; the leaderboard is selected again)
+  }
   E('side').oninput({target:{dataset:{opt:'colLast'},type:'checkbox',checked:true,value:'on'}});
   say('a checkbox option is stored as true', run('state.editing.sel[0].opt.colLast') === true);
   E('side').oninput({target:{dataset:{opt:'driverBy'},type:'select-one',value:'callsign'}});
@@ -534,6 +568,21 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     const home = async () => { run("state.tab='home'"); await run('render()'); };
     run(`state.settings={theme:'dark',homeHeader:'${PIC}',homeHeaderHeight:25}; delete state.settings.clubLogo`); await open();
     say('General has a Club logo setting to choose a picture, and nothing else of the logo until there is one', g().includes('id="logofile"') && !g().includes('id="logoside"') && !g().includes('id="logoclear"') && !g().includes('id="logow"'));
+    { const q = () => g().split('id="picq"')[1] || '';
+      say('General has a Pictures folder: Original is the standard quality, High and Standard are the other two', g().includes('data-folder="general:pictures"') && g().includes('Quality of the pictures you upload') && /<option value="original" selected>/.test(q()) && (q().split('</select>')[0].match(/<option /g) || []).length === 3 && g().includes('Raspberry Pi'));
+      const nq = calls.length; await E('picq').onchange({ target: { value: 'high' } }); await wait();
+      say('...choosing a quality is saved and the page shows it', run('state.settings.pictureQuality') === 'high' && calls.slice(nq).some(c => c[1].pictureQuality === 'high') && /<option value="high" selected>/.test(q()));
+      await E('picq').onchange({ target: { value: 'banana' } }); await wait();
+      say('...a value that does not exist becomes Original', run('state.settings.pictureQuality') === 'original' && /<option value="original" selected>/.test(q()));
+      { const was = { document: ctx.document, URL: ctx.URL, Image: ctx.Image }; // the real upload function, with a picture of 5000 x 2500 pixels and a canvas that tells its size
+        ctx.URL = { createObjectURL: () => 'blob:x', revokeObjectURL() {} };
+        ctx.Image = function () { const i = this; Object.defineProperty(i, 'src', { set() { i.naturalWidth = 5000; i.naturalHeight = 2500; setTimeout(() => i.onload(), 0); } }); };
+        ctx.document = { createElement: () => { const c = { getContext: () => ({ fillRect() {}, drawImage() {} }), toDataURL: (m, k) => `${m} ${c.width}x${c.height} ${k}`.trim() }; return c; } };
+        const up = async (quality, max) => { if (quality) run(`state.settings.pictureQuality='${quality}'`); else run('delete state.settings.pictureQuality'); return realResize({ type: 'image/png', size: 100 }, max); };
+        const r = [await up(undefined, 512), await up('original', 512), await up('high', 512), await up('standard', 512), await up('standard', 1024)];
+        Object.assign(ctx, was);
+        say('uploading a picture uses the chosen quality: Original keeps up to 4000 px, High 2000 px, Standard the size of the place it is for', r.join(' | ') === 'image/png 4000x2000 0.92 | image/png 4000x2000 0.92 | image/png 2000x1000 0.92 | image/png 512x256 0.85 | image/png 1024x512 0.85'); }
+      run('delete state.settings.pictureQuality'); await open(); }
     // choosing the picture
     let sizeArgs = null; ctx.resizeImage = async (f, max, png) => { sizeArgs = [max, png]; return LOGO; };
     await E('logofile').onchange({ target: { files: [{}] } }); await wait();
@@ -1755,11 +1804,11 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     say('Open all opens every folder', (E('settingsbox').innerHTML.match(/<details[^>]* open/g) || []).length === run('Help.folders().length'));
     E('settingsbox').onclick({ target: { closest: () => ({ dataset: { helpall: '0' } }) } });
     run("state.settingsSub='general'"); await run('render()');
-    say('General is made of folders (open at first), and has the name, header and logo settings in them', ['names', 'header', 'logo', 'data'].every(f => E('settingsbox').innerHTML.includes('data-folder="general:' + f + '"')) && E('settingsbox').innerHTML.includes('id="appname"') && (E('settingsbox').innerHTML.match(/<details class="dbfolder"[^>]* open/g) || []).length === 4);
+    say('General is made of folders (open at first), and has the name, header and logo settings in them', ['names', 'header', 'logo', 'pictures', 'data'].every(f => E('settingsbox').innerHTML.includes('data-folder="general:' + f + '"')) && E('settingsbox').innerHTML.includes('id="appname"') && (E('settingsbox').innerHTML.match(/<details class="dbfolder"[^>]* open/g) || []).length === 5);
     E('settingsbox').onclick({ target: { closest: () => ({ dataset: { folderall: '0' } }) } }); await new Promise(r => setTimeout(r, 40));
-    say('Close all closes every folder of General, and they stay closed when the page is drawn again', !/<details class="dbfolder"[^>]* open/.test(E('settingsbox').innerHTML) && (E('settingsbox').innerHTML.match(/<details class="dbfolder"/g) || []).length === 4 && E('settingsbox').innerHTML.includes('id="appname"'));
+    say('Close all closes every folder of General, and they stay closed when the page is drawn again', !/<details class="dbfolder"[^>]* open/.test(E('settingsbox').innerHTML) && (E('settingsbox').innerHTML.match(/<details class="dbfolder"/g) || []).length === 5 && E('settingsbox').innerHTML.includes('id="appname"'));
     E('settingsbox').onclick({ target: { closest: () => ({ dataset: { folderall: '1' } }) } }); await new Promise(r => setTimeout(r, 40));
-    say('Open all opens them again', (E('settingsbox').innerHTML.match(/<details class="dbfolder"[^>]* open/g) || []).length === 4);
+    say('Open all opens them again', (E('settingsbox').innerHTML.match(/<details class="dbfolder"[^>]* open/g) || []).length === 5);
     say('the folders have a note beside the title, the body has room around it, and the database file is in the last folder', /<summary><strong>Header picture<\/strong> <span class="muted">no picture<\/span>/.test(E('settingsbox').innerHTML) && /<div class="fbody">/.test(E('settingsbox').innerHTML) && E('settingsbox').innerHTML.indexOf('Saved in:') > E('settingsbox').innerHTML.indexOf('data-folder="general:data"'));
     run("state.settingsSub='help'"); await run('render()');
     say('going to General and back leaves the Help folders as they were (closed)', !/<details[^>]* open/.test(E('settingsbox').innerHTML));
@@ -2232,6 +2281,13 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     undoKey(); say('undoing past what was saved is unsaved again', run('imgEd.dirty')===true); redoKey(); say('...and clean after Redo', run('imgEd.dirty')===false);
     { const ge=document.getElementById; document.getElementById=id=>id==='is-undo'?null:ge(id); const before=run('imgEd.draft.name'), pd=undoKey(); document.getElementById=ge; say('the keys do nothing while the picture set editor is not on the screen', pd===0 && run('imgEd.draft.name')===before); }
     const hist2=run('imgEd.history'); E('is-back').onclick(); say('leaving the picture set editor forgets its steps', run('imgEd')===null && hist2.stats().undo===0 && run('draftKeyHandler')===null);
+    await open('images','newset'); E('is-kind').onchange({target:{value:'avatars'}});
+    say('Image Settings: a set of Avatars has eight slots, one for each lane, each showing the standard avatar of the lane until you add your own', (html().match(/data-slot=/g)||[]).length===8 && ['Lane 1','Lane 8'].every(t=>html().includes('<td>'+t+'</td>')) && (html().match(/class="optimg dim"/g)||[]).length===8 && html().includes('The Avatar widget shows the picture of the driver') && html().includes('keep their transparency') && html().includes('General > Pictures'));
+    await E('setupbox').onchange({target:{dataset:{slot:'3'},files:[{}]}});
+    say('...a picture added for lane 3 is kept under "3", and only that lane stops showing the standard avatar', run('imgEd.draft.images["3"]')==='data:pic' && (html().match(/class="optimg dim"/g)||[]).length===7 && (html().match(/data-clear=/g)||[]).length===1);
+    E('is-name').oninput({target:{value:'Club drivers'}}); const nAv=calls.length; await E('is-save').onclick();
+    say('...and it is saved as a set of the kind avatars with that picture', calls.slice(nAv).some(c=>c[0]==='add'&&c[1]==='imagesets'&&c[2].kind==='avatars'&&c[2].name==='Club drivers'&&c[2].images['3']==='data:pic'));
+    E('is-back').onclick();
     // switching to another tab of Customization closes the editor and forgets its steps
     await open('images','newset'); E('is-steps').onchange({target:{value:'5'}}); const hist3=run('imgEd.history'); ctx.__t={dataset:{id:'audio'}};
     await E('customtabs').onclick({target:{closest:()=>ctx.__t}});
@@ -2324,6 +2380,10 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     // a sound file: chosen (a step), removed (a step), the picture kept once
     await E('setupbox').onchange({target:{dataset:{file:'newleader:0'},files:[{size:100}]}}); await wait();
     say('a sound file chosen for a sentence is a step', run('audEd.draft.calls.newleader.lines[0].file')===BIG && hs('audEd').pictures===1 && !html().includes('data-file="newleader:0"'));
+    { const before = run('audEd.draft.calls.newleader.lines[0].file'); await E('setupbox').onchange({target:{dataset:{file:'newleader:0'},files:[{size:10000001}]}}); await wait();
+      say('a sound file over 10 MB is refused, with the limit in the message, and nothing changes', E('au-msg').textContent==='That file is too big (10.0 MB). The limit is 10 MB.' && run('audEd.draft.calls.newleader.lines[0].file')===before && run('Sound.MAX_FILE')===10000000);
+      await E('setupbox').onchange({target:{dataset:{file:'newleader:0'},files:[{size:9500000}]}}); await wait();
+      say('...a file of 9.5 MB is fine (it was refused above 1.5 MB before 1.1.0), and the help text names the limit', E('au-msg').textContent!=='That file is too big (9.5 MB). The limit is 10 MB.' && run('audEd.draft.calls.newleader.lines[0].file')===BIG && E('setupbox').innerHTML.includes('up to 10 MB per file')); }
     await E('setupbox').onclick({target:{closest:()=>({dataset:{nofile:'newleader:0'}})}}); await E('setupbox').onclick({target:{closest:()=>({dataset:{addline:'newleader'}})}});
     undoKey(); say('removing the file and adding a sentence are two steps: Undo takes the sentence away and the file stays removed', run('audEd.draft.calls.newleader.lines[0].file')==='' && run('audEd.draft.calls.newleader.lines.length')===n0);
     undoKey(); say('...and then Undo brings the sound file back', run('audEd.draft.calls.newleader.lines[0].file')===BIG && hs('audEd').pictures===1);

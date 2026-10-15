@@ -6,6 +6,7 @@
   const Wd = typeof module !== 'undefined' ? require('./widgets.js') : root.Widgets;
   const Tk = typeof module !== 'undefined' ? require('./tokens.js') : root.Tokens;
   const Dl = typeof module !== 'undefined' ? require('./delta.js') : root.Delta; // the Delta Timers (delta.js)
+  const Av = typeof module !== 'undefined' ? require('./avatars.js') : root.Avatars; // the standard avatars of the lanes (avatars.js)
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
   const median = a => { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
@@ -104,7 +105,10 @@
       case 'carname': return { html: esc(c.carName || '') };
       case 'callsign': return { html: esc(c.callsign || '') };
       case 'name': return { html: esc(c.driverName) };
-      case 'avatar': return { html: c.avatar ? `<span class="avframe"><img class="avimg" src="${esc(c.avatar)}" alt="" style="transform:${Wd.frameTransform(opt.frame)}"></span>` : `<span class="av">${esc((c.driverName || '?')[0])}</span>` };
+      case 'avatar': { // the driver's own picture; without one the avatar of the lane; with "no avatars" the first letter of the name
+        const pic = c.avatar || Av.forLane(opt, c.lane);
+        return { html: pic ? Wd.avatarHtml(pic, opt) : `<span class="av">${esc((c.driverName || '?')[0])}</span>` };
+      }
       case 'driverflag': return { html: c.flag ? `<span class="fi fi-${esc(String(c.flag).toLowerCase())}"></span>` : '' };
       case 'position': return { html: String(S.rowOf(c).pos) };
       case 'lap': {
@@ -188,7 +192,7 @@
         if (style === 'flags') return { html: Wd.flagHtml(st, { mirror: !!opt.flagMirror }) };
         if (style === 'leds') return { html: Wd.ledHtml(st) };
         const img = style === 'images' ? opt['img_' + st] : '';
-        if (img) return { html: `<img class="flagimg" src="${esc(img)}" alt="${esc(flagText[st] || st)}">` };
+        if (img) return { html: Wd.flagImgHtml(img, flagText[st] || st, !!opt.imageMirror) };
         if (st === 'red') return { html: 'RED FLAG', bg: '#d62828', color: '#fff' }; // text, also for a state a picture set has no picture for
         if (st === 'yellow') return { html: 'YELLOW FLAG', bg: '#ffd400', color: '#000' };
         return { html: flagText[st] || '' };

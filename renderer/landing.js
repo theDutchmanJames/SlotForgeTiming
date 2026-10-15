@@ -29,6 +29,7 @@ async function renderHome() {
   const winRow = qual ? rows.findIndex(r => r.driverId === qual.driverId) : -1;
 
   // what is still missing before the race can start
+  const raceOn = typeof raceActive === 'function' && raceActive(); // a race is running (on the Race tab): another one can not be started
   const issues = [];
   if (setup) {
     if (!track) issues.push('This race setup has no track. Choose one in Race Setup.');
@@ -106,8 +107,9 @@ async function renderHome() {
       ${heats && track ? '<button class="btn" id="addrow">Add participant</button>' : ''}
       ${heatPlanHtml}
       ${tokens ? '<p class="hint2">A Time Token Session starts with every lane switched off. You add paid time to a lane on the race screen, and can change the driver there too. Here you can already put a driver and a car on a lane.</p>' : ''}
+      ${raceOn ? '<p class="hint2" id="raceon">A race is running. <button class="btn" id="gorace">Go to the race</button></p>' : ''}
       ${issues.length ? `<ul class="issues">${issues.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
-      <div class="row"><button class="btn primary" id="start" ${issues.length ? 'disabled' : ''}>${tokens ? 'Open the session' : 'Start race'}</button></div>`
+      <div class="row"><button class="btn primary" id="start" ${issues.length || raceOn ? 'disabled' : ''}${raceOn ? ' title="A race is still running. Open the Race tab to finish or stop it first."' : ''}>${tokens ? 'Open the session' : 'Start race'}</button></div>`
       : '<p class="muted">Create a race setup in the Race Setup tab to get started.</p>') + `</section>
     <h4>Available</h4>
     <div class="grid">${card('Drivers', 'drivers', drivers, { key: 'drivers', sub: 'drivers' })}${card('Slot cars', 'slotcars', cars, { key: 'cars', sub: 'slotcars' })}${card('Tracks', 'tracks', tracks)}${card('Race setups', 'racesetups', setups)}</div>`;
@@ -140,7 +142,9 @@ async function renderHome() {
     }
     if (b.dataset.remove !== undefined) { rows.splice(Number(b.dataset.remove), 1); persist(); }
     if (b.dataset.more) { state.sub = b.dataset.more; state.tab = 'database'; render(); return; }
+    if (b.id === 'gorace') { state.tab = 'race'; render(); return; }
     if (b.id === 'start') {
+      if (typeof raceActive === 'function' && raceActive()) return; // (one race at a time: the one that is running is on the Race tab)
       const front = (old, ids) => [...ids.filter(Boolean), ...(old || []).filter(x => !ids.includes(x))].slice(0, 20); // remember what was used last
       api.setSettings({ recent: { drivers: front(recent.drivers, rows.map(r => r.driverId)), cars: front(recent.cars, rows.map(r => r.carId)) } }).then(s => { state.settings = s; });
       state.race = { setup, track, rows, ...(heatPlan ? { schedule: heatPlan.schedule } : {}) }; state.tab = 'race'; render(); // (a heat race is raced as planned above)

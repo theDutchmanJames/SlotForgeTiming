@@ -275,22 +275,17 @@ function fieldHtml(f, v, extra) {
 // A field with showIf is shown when any one of its conditions matches the current form values.
 const isShown = (f, get) => !f.showIf || f.showIf.some(c => Object.entries(c).every(([k, vs]) => vs.includes(get(k))));
 
-// Pictures are shrunk before saving so the database file stays small.
-function resizeImage(file, max = 256, png = false) {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file), img = new Image();
-    img.onload = () => {
-      const k = Math.min(1, max / Math.max(img.width, img.height));
-      const c = document.createElement('canvas');
-      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-      const g = c.getContext('2d');
-      if (!png) { g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); } // pictures with transparency stay transparent as PNG
-      g.drawImage(img, 0, 0, c.width, c.height);
-      URL.revokeObjectURL(url);
-      resolve(png ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.85));
-    };
-    img.onerror = () => reject(new Error('That file is not a picture.'));
-    img.src = url;
+// A picture file as the address to keep in the database. How much it is shrunk depends on the picture quality setting (picture.js, App Settings > General > Pictures):
+// by default it is kept as it was uploaded. `max` is the size the place was made for (used by the standard quality); `png` is not needed any more: a picture is kept in the kind it came in.
+const fileAsDataUrl = file => new Promise((resolve, reject) => {
+  const r = new FileReader();
+  r.onload = () => resolve(String(r.result)); r.onerror = () => reject(new Error('That file could not be read.'));
+  r.readAsDataURL(file);
+});
+function resizeImage(file, max = 256, png = false) { // eslint-disable-line no-unused-vars
+  return Picture.load(file, max, Picture.levelOf(state.settings && state.settings.pictureQuality), {
+    url: { create: f => URL.createObjectURL(f), revoke: u => URL.revokeObjectURL(u) }, newImage: () => new Image(), read: fileAsDataUrl,
+    newCanvas: (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
   });
 }
 

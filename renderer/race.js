@@ -3,9 +3,14 @@
 let live = null; // { phase, timers, sim, key, laps, stopping, flash, lights, nodes, ... }
 const raceActive = () => !!live && ['countdown', 'running', 'paused', 'between', 'review'].includes(live.phase);
 
+// The race screen has its own place on the page (#racehost), so a race can keep running while another tab is shown (app.js: showRace, raceKept).
+// Coming back to the Race tab shows the same race again: nothing is built a second time.
+const raceHost = () => document.getElementById('racehost') || view;
+
 async function renderRace() {
   const r = state.race;
   if (!r) { state.tab = 'home'; return render(); }
+  if (live && live.alive && live.raceRef === r) { if (live.shown) live.shown(); return; } // the same race, still there: show it again
   const [drivers, cars, layouts, allLaps, penSystems, fuelRules, rowDesigns, imageSets, audioSets] = await Promise.all(['drivers', 'slotcars', 'layouts', 'laps', 'penaltysystems', 'fuelrules', 'rowdesigns', 'imagesets', 'audiosets'].map(e => api.list(e)));
   const find = (list, id) => list.find(x => x.id === id);
   const speed = state.speed || 1; // only changed by automated tests
@@ -45,7 +50,7 @@ async function renderRace() {
     if (!l.noPersonalBest && l.driverId) base.personal.set(l.driverId, Math.min(base.personal.get(l.driverId) ?? Infinity, l.time)); // (a Guest has no personal best)
   });
   live = { penBtns: [], phase: 'ready', calling: false, callRun: 0, callTimer: null, timers: null, sim: [], key: null, laps: [], stopping: false, flash: new Map(), lights: 0, nodes: [], lapBtns: [], pitBtns: [], callBtns: [], callsKey: null, // (null: the strip is drawn the first time)
-    extraBy: new Map(), bestBy: new Map(), bestAll: Infinity, bestAllName: '', priorBy: new Map(), priorAll: Infinity, priorAllName: '', lapsOpen: false, lapSig: null, rvHtml: '' }; // (prior: the bests of the heats that are finished)
+    alive: true, raceRef: r, extraBy: new Map(), bestBy: new Map(), bestAll: Infinity, bestAllName: '', priorBy: new Map(), priorAll: Infinity, priorAllName: '', lapsOpen: false, lapSig: null, rvHtml: '' }; // (prior: the bests of the heats that are finished)
   Review.reset();
   // a Time Token Session: the token clocks of the lanes (tokens.js). They run on the race clock, so a pause stops them.
   const tokenSet = Tokens.settingsOf(state.settings);
@@ -65,7 +70,8 @@ async function renderRace() {
   const planHtml = !heats ? '' : `<details class="card" style="margin-top:12px"><summary>Heat schedule (${heat.count} heats)</summary>
     <table class="fields"><tr><th>Heat</th><th>Drivers by lane</th></tr>${heat.schedule.map((h, i) =>
       `<tr><td>${i + 1}</td><td>${[...h].sort((a, b) => a.lane - b.lane).map(e => `Lane ${e.lane + 1}: ${esc(people[e.p].driverName)}`).join(' · ')}</td></tr>`).join('')}</table></details>`;
-  view.innerHTML = `<p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.sessionType])} on ${esc(r.track.name)} · ${esc(limit)}</p>
+  const host = raceHost();
+  host.innerHTML = `<p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.sessionType])} on ${esc(r.track.name)} · ${esc(limit)}</p>
     <div class="rt-stage"><div class="canvas live" id="canvas"></div></div>
     <div class="bar rt-tools"><label><input type="checkbox" id="sim"> Simulated cars</label><span id="tmstatus" class="muted" role="status"></span><span id="lapbtns"></span><span id="pitbtns"></span><span id="callbtns"></span><span id="penbtns"></span>
       <button class="btn" id="fsbtn" type="button" title="Show only the widgets, as large as the window allows (F). Esc closes it.">Full screen widgets</button><button class="btn" id="lapsbtn" aria-expanded="false" hidden title="Check the laps while the race goes on: mark a lap invalid or take it out of the records">Review laps</button><span id="msg" class="muted" role="status"></span><button class="btn danger stopbtn" id="stopbtn">Stop race</button><button class="btn" id="back">Back to Home</button></div>
@@ -78,7 +84,10 @@ async function renderRace() {
     ${planHtml}${heats ? '<h4>Overall result</h4>' + (scoreNote ? `<p class="hint2" id="overallnote">${esc(scoreNote)}</p>` : '') + `<div class="wrap"><table class="fields"><thead><tr><th>Pos</th><th>Driver</th><th>Heats</th><th>Laps</th><th>Points</th>${scoreCol ? '<th>Result</th>' : ''}${finalsOn ? '<th>Final</th>' : ''}<th>Best lap</th></tr></thead><tbody id="overall"></tbody></table></div>` : ''}`;
 
   const now = () => performance.now();
-  const ui = id => document.getElementById(id);
+  const ui = id => { // (the race screen has a place of its own: its ids can not be mixed up with those of the screen that is shown)
+    const el = typeof HTMLElement !== 'undefined' && host instanceof HTMLElement ? host.querySelector(`[id="${id}"]`) : null;
+    return el || document.getElementById(id);
+  };
 
   // ---- build the page from the layout (once); widgets for lanes the track does not have are left out ----
   live.nodes = LiveCanvas.build(ui('canvas'), layout, lanes, { onButton: type => actions[type]() });
@@ -564,6 +573,7 @@ async function renderRace() {
   ui('sim').onchange = ev => { if (ev.target && ev.target.blur) ev.target.blur(); };
   ui('back').onclick = () => { if (!raceActive()) { state.tab = 'home'; render(); } };
   live.key = ev => {
+    if (state.tab !== 'race') return; // (the race goes on while another tab is shown, but the keys are for that tab then: Space and the letters would be typed into its fields)
     if (ev.target && ev.target.matches && ev.target.matches('input,select,textarea')) return;
     if (ev.key === ' ') { ev.preventDefault(); if (live.phase === 'ready' || live.phase === 'between') actions.start(); else actions.pause(); return; }
     const k = String(ev.key).toLowerCase();
@@ -586,11 +596,13 @@ async function renderRace() {
     update();
   };
   live.fsKey = ev => {
+    if (state.tab !== 'race') return;
     if (ev.target && ev.target.matches && ev.target.matches('input,select,textarea')) return;
     if (String(ev.key).toLowerCase() === 'f' && !ev.ctrlKey && !ev.altKey && !ev.metaKey) toggleFull();
   };
   document.addEventListener('keydown', live.fsKey);
   ui('fsbtn').onclick = ev => { if (ev && ev.currentTarget && ev.currentTarget.blur) ev.currentTarget.blur(); toggleFull(); };
+  live.shown = () => { live.nodes.forEach(n => { n.last = null; }); update(); }; // the Race tab is shown again: everything is drawn once more (a leaderboard fits its text to the size it has now)
   // leaving the race screen (before the start, or after the end): the keys, the Trackmate and the Race Director buttons stop working on the other pages
   live.leave = () => { if (live.fsView) live.fsView.close(); document.removeEventListener('keydown', live.fsKey); if (live.calling) { live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); } document.removeEventListener('keydown', live.key); ['offTm', 'offTmStatus', 'offCmd', 'offResync'].forEach(k => { if (live[k]) { live[k](); live[k] = null; } }); clearTimeout(live.shareTimer); live.shareTimer = null; if (live.flushTokens) live.flushTokens(); clearTimeout(live.tkTimer); live.tkTimer = null; };
 

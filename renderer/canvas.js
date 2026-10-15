@@ -12,7 +12,7 @@ const LiveCanvas = (() => {
     layout.widgets.filter(w => { const d = Widgets.def(w.type); return d && (!d.perLane || w.lane < lanes) && (!d.button || o.onButton); }).forEach(w => {
       const d = Widgets.def(w.type);
       const el = document.createElement('div'), val = document.createElement(d.button ? 'button' : 'span');
-      el.className = 'lw live' + (d.button ? ' btnw' : '') + (w.titleSpace ? ' tspace' : ''); val.className = 'lw-val';
+      el.className = 'lw live' + (d.button ? ' btnw' : '') + (w.titleSpace ? ' tspace' : '') + Widgets.alignClassOf(w); val.className = 'lw-val';
       if (!d.button) { val.style.fontWeight = w.valueBold === false ? '400' : '600'; val.style.fontStyle = w.valueItalic ? 'italic' : ''; }
       let tit = null;
       if (Widgets.showTitleOf(w)) { // the widget's title (its name, or the one you gave it)

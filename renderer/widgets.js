@@ -7,6 +7,7 @@
   const MAG = 8;    // how close (in units) another widget's edge pulls a moving widget
   const MIN = 40;   // smallest widget size
 
+  const Av = typeof module !== 'undefined' ? require('./avatars.js') : root.Avatars; // the standard avatars of the lanes
   const Dl = typeof module !== 'undefined' ? require('./delta.js') : root.Delta; // the Delta Timers (what is compared, and the badge)
   const NAMES = ['Alex', 'Sam', 'Kim', 'Lee', 'Max', 'Zoe'];
   const NICKS = ['Speedy', 'Sammy', 'Kimbo', 'Leeroy', 'Maxi', 'Zo'];
@@ -124,6 +125,8 @@
     switch (r.op) { case '!=': return !eq; case '<': return num && na < nb; case '>': return num && na > nb; case '<=': return num && na <= nb; case '>=': return num && na >= nb; default: return eq; }
   }
   const pickImage = (opt, vars) => { const hit = ((opt && opt.rules) || []).find(r => r.image && ruleHolds(r, vars)); return hit ? hit.image : (opt && opt.image) || ''; };
+  // a picture of the Race flag widget (a picture set): mirror flips it left to right
+  const flagImgHtml = (src, alt, mirror) => `<img class="flagimg" src="${esc(src)}" alt="${esc(alt || '')}"${mirror ? ' style="transform:scaleX(-1)"' : ''}>`;
   const imageHtml = (src, fit) => (src ? `<img class="flagimg" src="${esc(src)}" alt=""${fit === 'cover' ? ' style="width:100%;height:100%;object-fit:cover"' : ''}>` : '');
   const imgSample = (l, w) => { const o = (w && w.opt) || {}, src = o.image || ((o.rules || []).find(r => r.image) || {}).image; return src ? imageHtml(src, o.fit) : '<span class="muted">Image</span>'; };
 
@@ -134,7 +137,8 @@
   // Flag style: flags, LEDs, text or the pictures of a picture set (Customization > Image Settings). `when` says for which styles an option shows.
   const FLAG_OPTIONS = [{ key: 'flagStyle', label: 'Show the race state as', type: 'select', default: 'flags', choices: FLAG_STYLES },
     { key: 'flagMirror', label: 'Mirror the flag (the pole on the right, the flag flies to the left)', type: 'checkbox', default: false, when: ['flags'] },
-    { ...SET_OPTION('flag'), when: ['images'] }];
+    { ...SET_OPTION('flag'), when: ['images'] },
+    { key: 'imageMirror', label: 'Mirror the pictures (flip them left to right)', type: 'checkbox', default: false, when: ['images'] }];
   // Start lights follow the race state too: for each state (the countdown lights them one by one) how many of the five lights are on, and in what colour
   const LIGHT_STATES = FLAG_STATES;
   // The picture grid of a Start lights set. A picture is stored under a key: `row` for all five lights, or `row_n` for light n (1 to 5).
@@ -216,10 +220,16 @@
     const set = (sets || []).find(x => x.id === o.imageSet); if (!set) return o;
     if (w.type === 'fuel' && set.kind === 'fuel') return { ...o, mode: 'images', steps: set.steps, stepImages: set.images || [] };
     if (w.type === 'lights' && set.kind === 'lights') return { ...o, lightOn: (set.images || {}).on || '', lightOff: (set.images || {}).off || '', lightImages: set.images || {} };
+    if (w.type === 'avatar' && set.kind === 'avatars') return { ...o, laneAvatars: set.images || {} };
     if (w.type === 'flag' && set.kind === 'flag') { const r = { ...o }; FLAG_STATES.forEach(([k]) => { r['img_' + k] = (set.images || {})[k] || ''; }); return r; }
     return o;
   }
-  const AVATAR_OPTIONS = [{ key: 'frame', label: 'Picture position and zoom', type: 'frame', from: 'avatar' }];
+  // an avatar or a slotcar picture in its round (or square) frame, with the position and zoom of the widget; mirror flips the picture left to right inside the frame
+  const avatarHtml = (src, opt) => `<span class="avframe"><img class="avimg" src="${esc(src)}" alt="" style="transform:${frameTransform(opt && opt.frame)}${opt && opt.avatarMirror ? ' scaleX(-1)' : ''}"></span>`;
+  // The Avatar widget: the driver's picture, or when the driver has none the avatar of the lane (the standard ones, or a picture set of the kind Avatars)
+  const AVATAR_OPTIONS = [{ ...SET_OPTION('avatars'), label: 'Avatars for a driver without a picture (sets are made under Customization > Image Settings)' },
+    { key: 'avatarMirror', label: 'Mirror the pictures (flip them left to right)', type: 'checkbox', default: false },
+    { key: 'frame', label: 'Picture position and zoom', type: 'frame', from: 'avatar' }];
   const CARPIC_OPTIONS = [{ key: 'frame', label: 'Picture position and zoom', type: 'frame', from: 'car' }];
 
   // Fuel widget: a number, a bar, both, or one of your own pictures from full to empty.
@@ -274,7 +284,7 @@
     T('name', 'Name', 'Driver', { perLane: true, w: 200, sample: l => NAMES[l] }),
     T('callsign', 'Callsign', 'Driver', { perLane: true, w: 100, sample: l => ['ALX', 'SAM', 'KIM', 'LEE', 'MAX', 'ZOE', 'JAN', 'TIM'][l] }),
     T('lanecolor', 'Lane Colour', 'Driver', { title: 'Lane colour', perLane: true, w: 60, sample: l => `<span class="lcsample">${l + 1}</span>` }),
-    T('avatar', 'Avatar', 'Driver', { perLane: true, w: 80, h: 80, options: AVATAR_OPTIONS, sample: l => `<span class="av">${NAMES[l][0]}</span>` }),
+    T('avatar', 'Avatar', 'Driver', { perLane: true, w: 80, h: 80, options: AVATAR_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, pic = Av.forLane(o, l); return pic ? avatarHtml(pic, o) : `<span class="av">${NAMES[l % NAMES.length][0]}</span>`; } }),
     T('driverflag', 'Driver Flag', 'Driver', { title: 'Driver flag', perLane: true, w: 90, sample: l => `<span class="fi fi-${FLAGS[l]}"></span>` }),
     T('carpicture', 'Slotcar Picture', 'Slotcar', { title: 'Slotcar picture', perLane: true, w: 160, h: 100, options: CARPIC_OPTIONS, sample: l => '<span class="carph">Car picture</span>' }),
     T('carname', 'Slotcar Description', 'Slotcar', { title: 'Slotcar', perLane: true, w: 260, sample: l => ['NSR Ford GT40', 'Slot.it Porsche 962', 'Scalextric Audi R8', 'Fly Ferrari 512', 'Ninco Mazda 787', 'SCX BMW M3', 'Carrera Corvette', 'Avant Slot Lola'][l] }),
@@ -307,7 +317,7 @@
     T('lights', 'Start Lights', 'Race', { title: 'Start lights', w: 180, options: LIGHTS_OPTIONS, sample: lightsHtml(3) }),
     T('info', 'Race Info', 'Race', { title: 'Race info', w: 300, sample: 'Heat 2 of 3 · 4 laps left' }),
     T('flag', 'Race Flag', 'Race', { title: 'Race flag', w: 180, optsLabel: 'Flag style', options: FLAG_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, st = flagStyleOf(o), i = o.img_running;
-      return st === 'images' && i ? `<img class="flagimg" src="${esc(i)}" alt="">` : st === 'flags' ? flagHtml('running', { mirror: !!o.flagMirror }) : st === 'leds' ? ledHtml('running') : 'Racing'; } }),
+      return st === 'images' && i ? flagImgHtml(i, '', !!o.imageMirror) : st === 'flags' ? flagHtml('running', { mirror: !!o.flagMirror }) : st === 'leds' ? ledHtml('running') : 'Racing'; } }),
     T('leaderboard', 'Leaderboard', 'Race', { w: 420, h: 220, textSize: 18, options: LEADER_OPTIONS, sample: (l, w) => leaderHtml(NAMES.slice(0, 4).map((n, i) => ({ pos: i + 1, flag: FLAGS[i], name: n, nickname: NICKS[i], callsign: n.slice(0, 3).toUpperCase(), laps: String(5 - (i > 2 ? 1 : 0)), best: `5.${10 + i * 6}4`, last: `5.${30 + i}2`, current: `2.${i}40`, fuel: `${90 - i * 20} L`, gap: i ? `+${i}.${i * 3}20` : '' })), (w && w.opt) || {}) }),
     T('logo', 'Logo', 'Race', { w: 200, h: 100, noTitle: true, options: [{ key: 'image', label: 'Logo picture', type: 'image', fallback: 'clubLogo' }, { key: 'fit', label: 'Fit', type: 'select', choices: [['contain', 'Show the whole logo'], ['cover', 'Fill the widget (may crop)']], default: 'contain' }], sample: imgSample }),
     T('start', 'Start', 'Controls', { w: 140, button: true, sample: 'Start' }),
@@ -386,6 +396,12 @@
   // that the title no longer pushes the value down unless "title takes space" is on.
   const valueStyleOf = w => `font-weight:${w.valueBold === false ? 400 : 600};${w.valueItalic ? 'font-style:italic;' : ''}`;
   const titleStyleOf = w => `font-size:${(w.titleSize || 12) / 10}cqw;${w.titleBold ? 'font-weight:700;' : ''}`;
+  // Alignment of the title and of the text (the value) in a widget: left, center or right. The standard is what the widgets always did: title left, value centered.
+  // The Leaderboard has no text alignment (its columns come from the layout you make); a Leaderboard still has a title. A header cell of a row design follows its column.
+  const ALIGNS = [['left', 'Left'], ['center', 'Center'], ['right', 'Right']];
+  const alignOf = (v, standard) => (ALIGNS.some(a => a[0] === v) ? v : standard);
+  const titleAlignOf = w => alignOf(w && w.titleAlign, 'left'), valueAlignOf = w => (w && w.type === 'leaderboard' ? 'center' : alignOf(w && w.valueAlign, 'center'));
+  const alignClassOf = w => (titleAlignOf(w) === 'left' ? '' : titleAlignOf(w) === 'center' ? ' ta-c' : ' ta-r') + (valueAlignOf(w) === 'center' ? '' : valueAlignOf(w) === 'left' ? ' va-l' : ' va-r');
   const titleOf = w => ((w.title && w.title.trim()) || def(w.type).title || def(w.type).label);
   const showTitleOf = w => w.showTitle !== false && !def(w.type).button;
   // dir: 'vertical' | 'horizontal' | 'both'; count lanes give count - 1 evenly spaced lines
@@ -432,7 +448,7 @@
     return L;
   }
 
-  const api = { tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, LANES, bbox, colorsOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, resolveOpt, heightOf, withoutControls, moveWidget, resizeWidget, newWidget, defaultLayout };
+  const api = { tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, flagImgHtml, avatarHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, LANES, bbox, colorsOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, ALIGNS, titleAlignOf, valueAlignOf, alignClassOf, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, resolveOpt, heightOf, withoutControls, moveWidget, resizeWidget, newWidget, defaultLayout };
   root.Widgets = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

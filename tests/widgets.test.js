@@ -185,6 +185,10 @@ ok('...while a normal colour is still used', Wd.fuelHtml(5, 100, { critColor: '#
   ok('a different shape (4:3) is cut the same way', (() => { const l = L([wd('clock', null, { y: 10 }), wd('name', 0, { y: 100, h: 50 }), wd('stop', null, { y: 700 })], 4, 3); const x = Wd.withoutControls(l, 2); return hOf(l) === 750 && hOf(x.layout) === 150 + 10 && x.cut === 750 - 160; })());
   ok('the default layout (header, rows and controls at the bottom) gets shorter, and keeps all its widgets', (() => { const d = Wd.defaultLayout(), x = Wd.withoutControls(d, 6); return x.cut > 0 && hOf(x.layout) < hOf(d) && x.layout.widgets.length === d.widgets.length; })());
   ok('buttons are what the Controls group says: Start, Pause / Resume, Stop, Yellow flag and Red flag', Wd.REGISTRY.filter(d => d.button).map(d => d.type).join() === 'start,pause,stop,yellow,red');
+  // 1.1.0: aligning the title and the text
+  ok('alignment: nothing is added for the standard (title left, text centred), a wrong word is the standard', Wd.alignClassOf({ type: 'clock' }) === '' && Wd.alignClassOf({ type: 'clock', titleAlign: 'up', valueAlign: 5 }) === '' && Wd.titleAlignOf({ type: 'clock' }) === 'left' && Wd.valueAlignOf({ type: 'clock' }) === 'center');
+  ok('alignment: each title and text alignment gives its own class', Wd.alignClassOf({ type: 'clock', titleAlign: 'center' }) === ' ta-c' && Wd.alignClassOf({ type: 'clock', titleAlign: 'right' }) === ' ta-r' && Wd.alignClassOf({ type: 'clock', valueAlign: 'left' }) === ' va-l' && Wd.alignClassOf({ type: 'clock', valueAlign: 'right' }) === ' va-r' && Wd.alignClassOf({ type: 'clock', titleAlign: 'right', valueAlign: 'left' }) === ' ta-r va-l');
+  ok('alignment: the Leaderboard has only a title alignment (its text is laid out by the board itself), whatever is saved', Wd.valueAlignOf({ type: 'leaderboard', valueAlign: 'right' }) === 'center' && Wd.alignClassOf({ type: 'leaderboard', valueAlign: 'right' }) === '' && Wd.alignClassOf({ type: 'leaderboard', titleAlign: 'center', valueAlign: 'left' }) === ' ta-c');
 }
 
 console.log(fails ? fails + ' WIDGET TESTS FAILED' : 'ALL WIDGET TESTS PASSED'); process.exit(fails ? 1 : 0);

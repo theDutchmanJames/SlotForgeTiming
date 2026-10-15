@@ -112,7 +112,7 @@
     const hs = { ...s, rowH: s.headerH };
     return rowWrap(hs, 'rrow-head', s.headerText, s.headerBg, d.widgets.filter(w => Wd.def(w.type)).map(w => {
       const t = Wd.titleOf(w);
-      return `<div class="lw live rcell" style="left:${L.map(w.x) / L.W * 100}%;top:0;width:${w.w / L.W * 100}%;height:100%;font-size:${(w.titleSize || 12) * 1.4 / 10 * L.k}cqw"><span class="lw-val" style="font-weight:600">${esc(t)}</span></div>`;
+      return `<div class="lw live rcell${Wd.alignClassOf(w)}" style="left:${L.map(w.x) / L.W * 100}%;top:0;width:${w.w / L.W * 100}%;height:100%;font-size:${(w.titleSize || 12) * 1.4 / 10 * L.k}cqw"><span class="lw-val" style="font-weight:600">${esc(t)}</span></div>`;
     }).join(''), L);
   }
 
@@ -127,7 +127,7 @@
       const cells = d.widgets.filter(w => Wd.def(w.type) && Wd.def(w.type).perLane).map(w => {
         const out = T.content({ ...w, lane: car.lane }, S);
         const color = w.textColor || out.color || '', bg = w.bgColor || out.bg || '';
-        return `<div class="lw live rcell" style="${cellStyle(w, s, L)};${colourStyle(color, bg)}"><span class="lw-val"${Wd.valueStyleOf ? ` style="${Wd.valueStyleOf(w)}"` : ''}>${out.html}</span></div>`;
+        return `<div class="lw live rcell${Wd.alignClassOf(w)}" style="${cellStyle(w, s, L)};${colourStyle(color, bg)}"><span class="lw-val"${Wd.valueStyleOf ? ` style="${Wd.valueStyleOf(w)}"` : ''}>${out.html}</span></div>`;
       }).join('');
       return rowWrap(s, 'rrow-' + (st || 'plain'), base.color, base.bg, cells, L);
     }).join('');
@@ -140,7 +140,7 @@
     const rows = kinds.slice(0, n).map((k, i) => {
       const st = s.states ? k : '', base = st ? { color: s[st + 'Text'], bg: s[st + 'Bg'] } : { color: s.rowText, bg: i % 2 && s.altBg ? s.altBg : s.rowBg };
       const cells = d.widgets.filter(w => Wd.def(w.type) && Wd.def(w.type).perLane).map(w =>
-        `<div class="lw live rcell" style="${cellStyle(w, s, L)};${colourStyle(w.textColor, w.bgColor)}"><span class="lw-val"${Wd.valueStyleOf ? ` style="${Wd.valueStyleOf(w)}"` : ''}>${Wd.sampleOf(Wd.def(w.type), i % 6, { ...w, opt: Wd.resolveOpt(w, sets) })}</span></div>`).join('');
+        `<div class="lw live rcell${Wd.alignClassOf(w)}" style="${cellStyle(w, s, L)};${colourStyle(w.textColor, w.bgColor)}"><span class="lw-val"${Wd.valueStyleOf ? ` style="${Wd.valueStyleOf(w)}"` : ''}>${Wd.sampleOf(Wd.def(w.type), i % 6, { ...w, opt: Wd.resolveOpt(w, sets) })}</span></div>`).join('');
       return rowWrap(s, 'rrow-' + (st || 'plain'), base.color, base.bg, cells, L);
     }).join('');
     return `<div class="rrows"${fillAttr(o)} style="${fitStyle(d, n, o)}">${s.header ? headerHtml(d, s, L) : ''}${rows}</div>`;

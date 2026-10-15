@@ -29,7 +29,7 @@ const api = { liveStatic: s => { sent.stat = JSON.parse(JSON.stringify(s)); sent
 const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if (appConsole.expected) { appConsole.seen++; return; } console.log('FAIL the app reported an error: ' + a.map(x => (x && x.stack) || x).join(' ').slice(0, 300)); fails++; } };
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['engine.js', 'heats.js', 'tokens.js', 'speed.js','stats.js','viewset.js', 'theme.js','banner.js', 'icons.js', 'delta.js','widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js','audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['engine.js', 'heats.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js', 'theme.js','banner.js', 'icons.js', 'delta.js','avatars.js','widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js','audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -139,7 +139,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   // 0.94.0: how the heats add up (average, worst heat dropped, a bonus for the fastest lap, the tie-breaker): the table on the race screen, the saved result
   { saved.length = 0;
     await openRace({ name: 'Heats', sessionType: 'heats', heatBy: 'laps', laps: 2, endRule: 'all', heatPlan: 'roundrobin', resultBy: 'points', points: '10, 8, 6', countBy: 'average', dropWorst: 'yes', fastestBonus: 2, tieBreak: 'wins', layout: '' }, store.tracks[0], rows(1, 2, 3));
-    const view = E('view').innerHTML;
+    const view = E('racehost').innerHTML;
     say('the race screen says how the overall result is counted, and the table has a Result column', view.includes('id="overallnote"') && view.includes('the average per heat; the worst heat of every driver is dropped; 2 bonus points for the fastest lap of every heat; a tie is decided by the most heat wins first.') && view.includes('<th>Result</th>'));
     E('sim').checked = true; let m = 0;
     while (phase() !== 'finished' && m++ < 6) { key(' '); await until(() => ['between', 'finished'].includes(phase())); }
@@ -151,17 +151,17 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     say('the Result column on the race screen is filled in', E('overall').innerHTML.includes('(1 of 2 heats)') && E('overall').innerHTML.includes(' avg'));
     saved.length = 0;
     await openRace({ name: 'Heats', sessionType: 'heats', heatBy: 'laps', laps: 2, endRule: 'all', heatPlan: 'roundrobin', resultBy: 'points', points: '10, 8, 6', fastestBonus: 1, layout: '' }, store.tracks[0], rows(1, 2, 3));
-    say('with only a bonus there is a note but no Result column', E('view').innerHTML.includes('id="overallnote"') && !E('view').innerHTML.includes('<th>Result</th>'));
+    say('with only a bonus there is a note but no Result column', E('racehost').innerHTML.includes('id="overallnote"') && !E('racehost').innerHTML.includes('<th>Result</th>'));
     E('sim').checked = true; m = 0;
     while (phase() !== 'finished' && m++ < 6) { key(' '); await until(() => ['between', 'finished'].includes(phase())); }
     say('...and the saved standings have no Result numbers, but the way of counting is saved', saved.length === 1 && saved[0][0].standings.every(x => x.score === undefined) && saved[0][0].scoring.fastestBonus === 1);
     await openRace({ name: 'Heats', sessionType: 'heats', heatBy: 'laps', laps: 2, endRule: 'all', heatPlan: 'roundrobin', resultBy: 'laps', dropWorst: 'yes', layout: '' }, store.tracks[0], rows(1, 2, 3));
-    say('dropping the worst heat alone also gives the note and the Result column (the number that counts differs from the laps)', E('view').innerHTML.includes('Overall result: the worst heat of every driver is dropped.') && E('view').innerHTML.includes('<th>Result</th>'));
+    say('dropping the worst heat alone also gives the note and the Result column (the number that counts differs from the laps)', E('racehost').innerHTML.includes('Overall result: the worst heat of every driver is dropped.') && E('racehost').innerHTML.includes('<th>Result</th>'));
     await openRace({ name: 'Heats', sessionType: 'heats', heatBy: 'laps', laps: 2, endRule: 'all', heatPlan: 'roundrobin', resultBy: 'laps', countBy: 'best', bestHeats: 2, layout: '' }, store.tracks[0], rows(1, 2, 3));
-    say('the best heats alone: the note and the Result column too', E('view').innerHTML.includes('only the best 2 heats of every driver count.') && E('view').innerHTML.includes('<th>Result</th>'));
+    say('the best heats alone: the note and the Result column too', E('racehost').innerHTML.includes('only the best 2 heats of every driver count.') && E('racehost').innerHTML.includes('<th>Result</th>'));
     saved.length = 0;
     await openRace({ name: 'Heats', sessionType: 'heats', heatBy: 'laps', laps: 2, endRule: 'all', heatPlan: 'roundrobin', resultBy: 'points', points: '10, 8, 6', layout: '' }, store.tracks[0], rows(1, 2, 3));
-    say('with the standard there is nothing extra: no note, no Result column, nothing saved about the counting', !E('view').innerHTML.includes('overallnote') && !E('view').innerHTML.includes('<th>Result</th>'));
+    say('with the standard there is nothing extra: no note, no Result column, nothing saved about the counting', !E('racehost').innerHTML.includes('overallnote') && !E('racehost').innerHTML.includes('<th>Result</th>'));
     E('sim').checked = true; m = 0;
     while (phase() !== 'finished' && m++ < 6) { key(' '); await until(() => ['between', 'finished'].includes(phase())); }
     say('...and the saved result is as before (no scoring, no extra numbers on the standings)', saved.length === 1 && saved[0][0].scoring === undefined && saved[0][0].standings.every(x => x.score === undefined && x.counted === undefined) && saved[0][0].heatResults.every(h => h.rows.every(r => r.bonus === undefined)));
@@ -261,7 +261,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     say('...the laps of the finals are saved with the final (heat number 3 and 4)', laps.filter(l => l.final === 'B').length >= 3 && laps.filter(l => l.final === 'B').every(l => l.heat === 3) && laps.filter(l => l.final === 'A').every(l => l.heat === 4) && laps.filter(l => !l.final).every(l => l.heat <= 2));
     say('...a final has the laps of a final: no more than 3 laps for a driver in the finals (the heats had 2)', ['A', 'B'].every(f => Object.values(laps.filter(l => l.final === f).reduce((m, l) => { m[l.driverId] = (m[l.driverId] || 0) + 1; return m; }, {})).every(n => n >= 3 && n <= 4)));
     say('...at the end the widgets still name the last race: Final A', node('info').val.innerHTML.startsWith('Final A'));
-    say('...the overall table has the Final column in its header, and the note says how the finals count', E('view').innerHTML.includes('<th>Final</th>') && E('view').innerHTML.includes('The finals decide the final places.'));
+    say('...the overall table has the Final column in its header, and the note says how the finals count', E('racehost').innerHTML.includes('<th>Final</th>') && E('racehost').innerHTML.includes('The finals decide the final places.'));
     say('...the race screen overall table has a Final column', E('overall').innerHTML.includes('Final A: 1st') && E('overall').innerHTML.includes('Final B: 2nd'));
   }
   // a race by time: the final has its own duration (and 0 is the duration of a heat). The test clock does not speed up a timed race, so the heat is 3 seconds (0.05 minutes)
@@ -1256,7 +1256,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   { const emit = (k, o = {}) => [...keyListeners].forEach(f => f({ key: k, target: { matches: () => false }, preventDefault() {}, ...o })), btn = () => E('fsbtn'), clickBtn = () => btn().onclick({ currentTarget: { blur() {} } });
     const k0 = keyListeners.size; say('the race screen listens for two things: the race keys and F (and nothing else)', k0 === 2);
     const opened = () => !!run('live.fsView');
-    say('the race screen has a Full screen widgets button in the bar under the page, and the hint says F opens the view and Esc closes it', E('view').innerHTML.includes('id="fsbtn"') && E('view').innerHTML.includes('>Full screen widgets</button>') && /F shows the widgets full screen \(Esc closes it\)/.test(E('view').innerHTML));
+    say('the race screen has a Full screen widgets button in the bar under the page, and the hint says F opens the view and Esc closes it', E('racehost').innerHTML.includes('id="fsbtn"') && E('racehost').innerHTML.includes('>Full screen widgets</button>') && /F shows the widgets full screen \(Esc closes it\)/.test(E('racehost').innerHTML));
     say('the view is closed at the start', !opened() && typeof btn().onclick === 'function');
     clickBtn(); await wait(20);
     say('the button opens the view: the widgets of the layout again, without any button', opened() && run('live.fsView.nodes.length') > 0 && run('live.fsView.nodes').every(n => !run('Widgets.def')(n.w.type).button));
@@ -1311,6 +1311,60 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     say('a target without a penalty system: the lap is called out, and no point is given or called', marks().filter(t => t.startsWith('MARK fast')).length === 1 && marks().every(t => !t.startsWith('MARK pen')) && E2().cars[0].points === 0 && E2().cars[0].yellowFast.length === 1, marks().join(' | '));
     key('s'); await wait(60); ctx.Sound.stop(); spoken.length = 0;
     store.audiosets = keepSets; store.penaltysystems = keepPS; run('state.rand = null');
+  }
+
+  // ---------- 1.1.0: the race keeps running while another tab is shown ----------
+  { const parked = [], tabs = () => run("tabsNow().map(t => t[0]).join()"), shown = () => (parked.length ? parked[parked.length - 1][1] === false : null);
+    E('racehost').classList = { toggle: (c, on) => parked.push([c, on]), add() {}, remove() {} };
+    run('if (live && live.leave) live.leave()'); const k0 = keyListeners.size; // (the keys of the race that was left over from above are taken off first)
+    // a race that has not started: it has its tab while it is open, and leaving it closes it as it always did
+    await openRace({ name: 'Away0', sessionType: 'practice', layout: '', lightsMin: 0, lightsMax: 0 }, store.tracks[0], rows(1, 2));
+    say('the race screen is shown in its own place (the other screens are hidden), and the race has a Race tab, placed before Live Race', shown() === true && E('view').hidden === true && tabs() === 'home,database,setup,custom,settings,rules,race,live' && run('raceKept()') === true && run('raceTabTitle()').includes('not started yet'));
+    say('...its page is in the race place and the keys are on', E('racehost').innerHTML.includes('id="canvas"') && keyListeners.size === k0 + 2);
+    run("state.tab = 'home'"); await run('render()');
+    say('leaving a race that has not started closes it: no race screen, no Race tab, no keys', run('live.alive') === false && E('racehost').innerHTML === '' && tabs() === 'home,database,setup,custom,settings,rules,live' && keyListeners.size === k0 && shown() === false && E('view').hidden === false);
+    // a race that is on
+    await openRace({ name: 'Away', sessionType: 'practice', layout: '', lightsMin: 0, lightsMax: 0 }, store.tracks[0], rows(1, 2));
+    key(' '); await until(() => phase() === 'running', 3000); await wait(60);
+    const laps = lane => run(`live.engine().cars[${lane}].laps.length`), canvasHtml = E('racehost').innerHTML;
+    say('the Back button is off while the race runs', E('back').disabled === true);
+    run("state.tab = 'home'"); await run('render()');
+    say('another tab is shown while the race runs: the race goes on, its page is kept and parked, and the Race tab is there', phase() === 'running' && run('live.alive') === true && E('racehost').innerHTML === canvasHtml && shown() === false && E('view').hidden === false && tabs().includes('rules,race,live') && run('raceTabTitle()').includes('running'));
+    say('...the keys of the race are off on the other tab (Space does not pause, the lane key does not count a lap)', (key(' '), key('1'), phase() === 'running' && laps(0) === 0));
+    [...keyListeners].forEach(f => f({ key: 'f', target: { matches: () => false }, preventDefault() {} }));
+    say('...F (full screen view) does nothing on the other tab either', !run('live.fsView'));
+    say('...the keys are still listening, so they work again when the race tab is shown', keyListeners.size === k0 + 2);
+    await wait(60); run("Trackmate.link.emit({ type: 'hit', lane: 0, at: performance.now() })"); await wait(30);
+    say('...the Trackmate still counts laps while another tab is shown', laps(0) === 1 && laps(1) === 0);
+    api.liveCommand({ type: 'yellow' }); await wait(30);
+    say('...and the Race Director (Live Race window) still controls it', run('live.engine().flag') === 'yellow');
+    api.liveCommand({ type: 'yellow' });
+    const sentN = sent.n; await wait(1300);
+    say('...it keeps sharing the race with the Live Race pages', sent.n > sentN && sent.dyn && sent.dyn.phase === 'running');
+    { const was = run('live.raceRef'), keepSetups = store.racesetups; store.racesetups = [{ id: 'k-prac', name: 'Free', sessionType: 'practice', track: 't1', layout: '' }];
+      run("state.settings = { ...state.settings, lastSetupId: 'k-prac', assignments: { 'k-prac': [{ driverId: 'd1', carId: 'c1' }, { driverId: 'd2', carId: 'c2' }] } }; state.tab = 'home'"); await run('render()'); const home = E('view').innerHTML;
+      say('Home says a race is running and offers the way back, and Start is off while it runs', home.includes('id="raceon"') && home.includes('id="gorace"') && /id="start" disabled/.test(home) && home.includes('Open the Race tab to finish or stop it first'));
+      await E('view').onclick({ target: { closest: () => ({ id: 'start', dataset: {} }) } }); await wait(60);
+      say('...a click on Start does nothing: the race that runs stays the race (no second race is built)', run('state.tab') === 'home' && run('live.raceRef') === was && phase() === 'running' && run('live.alive') === true);
+      await E('view').onclick({ target: { closest: () => ({ id: 'gorace', dataset: {} }) } }); await wait(60);
+      say('...Go to the race brings you back to it', run('state.tab') === 'race' && E('racehost').innerHTML === canvasHtml && run('live.raceRef') === was);
+      run("state.tab = 'home'"); await run('render()'); store.racesetups = keepSetups; }
+    // coming back
+    run("live.nodes.find(n => n.w.type === 'lap' && n.w.lane === 0).val.innerHTML = 'STALE'"); // (a widget that shows something old, with nothing to say it changed)
+    run("state.tab = 'race'"); await run('render()');
+    say('the Race tab shows the same race again: nothing is built a second time, the race page is shown and the other screens are hidden', phase() === 'running' && run('live.alive') === true && E('racehost').innerHTML === canvasHtml && shown() === true && E('view').hidden === true && laps(0) === 1);
+    say('...every widget is drawn again as soon as the tab is shown (also one that had not changed)', !run("live.nodes.find(n => n.w.type === 'lap' && n.w.lane === 0).val.innerHTML").includes('STALE'));
+    say('...and the keys work again', (key('1'), laps(0) === 2 || laps(0) === 1) && (await wait(60), key('1'), laps(0) >= 2));
+    say('...everything is drawn again when it is shown (the widgets show the lap of the race as it is now)', run("live.nodes.find(n => n.w.type === 'lap' && n.w.lane === 0).val.innerHTML").startsWith(String(laps(0) + 1)));
+    // the end of the race, away from the screen
+    key('s'); await wait(100);
+    say('...and on again when the race is over', E('back').disabled === false);
+    run("state.tab = 'home'"); await run('render()');
+    say('stopping the race and then leaving it closes the race screen (the Race tab is gone)', phase() === 'finished' && run('live.alive') === false && E('racehost').innerHTML === '' && !tabs().includes('race,'));
+    key(' '); await wait(30);
+    say('...and nothing is listening to the keys any more', keyListeners.size === k0);
+    { const keepSetups = store.racesetups; store.racesetups = [{ id: 'k-prac', name: 'Free', sessionType: 'practice', track: 't1', layout: '' }]; run("state.tab = 'home'"); await run('render()'); const home = E('view').innerHTML;
+      say('with no race on, Home has no race notice and Start is on', /id="start"/.test(home) && !home.includes('id="raceon"') && !/id="start" disabled/.test(home)); store.racesetups = keepSetups; }
   }
 
   console.log(fails ? fails + ' LIVE PAGE TESTS FAILED' : 'ALL LIVE PAGE TESTS PASSED'); process.exit(fails ? 1 : 0);

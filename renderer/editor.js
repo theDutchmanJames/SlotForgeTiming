@@ -93,10 +93,11 @@ async function renderCustom() {
 
 // Image Settings: picture sets for the Fuel and Race flag widgets. A set is made once and chosen in any widget of any layout.
 let imgEd = null; // the set being edited: { id, draft, dirty }
-const SET_KINDS = [['fuel', 'Fuel (pictures from full to empty)'], ['flag', 'Race flag (one picture per state)'], ['lights', 'Start lights (a picture per light and per race state)']];
+const SET_KINDS = [['fuel', 'Fuel (pictures from full to empty)'], ['flag', 'Race flag (one picture per state)'], ['lights', 'Start lights (a picture per light and per race state)'], ['avatars', 'Avatars (a picture per lane)']];
 // the pictures of a Start lights set: a grid of rows (Light off, Light on, one per race state) by columns (all lights, light 1 to 5)
 const LIGHT_SLOTS = Widgets.LIGHT_ROWS.flatMap(([row, label]) => Widgets.LIGHT_COLS.map(([n, col]) => [Widgets.lightKey(row, n), `${label}, ${col.toLowerCase()}`]));
-const setSlots = d => (d.kind === 'fuel' ? Array.from({ length: Widgets.clampInt(d.steps, 2, 20, 10) }, (_, i) => [i, `${i + 1}${i === 0 ? ' (full)' : i === Widgets.clampInt(d.steps, 2, 20, 10) - 1 ? ' (empty)' : ''}`]) : d.kind === 'lights' ? LIGHT_SLOTS : Widgets.FLAG_STATES);
+const AVATAR_SLOTS = Array.from({ length: Avatars.LANES }, (_, i) => [String(i + 1), `Lane ${i + 1}`]);
+const setSlots = d => (d.kind === 'avatars' ? AVATAR_SLOTS : d.kind === 'fuel' ? Array.from({ length: Widgets.clampInt(d.steps, 2, 20, 10) }, (_, i) => [i, `${i + 1}${i === 0 ? ' (full)' : i === Widgets.clampInt(d.steps, 2, 20, 10) - 1 ? ' (empty)' : ''}`]) : d.kind === 'lights' ? LIGHT_SLOTS : Widgets.FLAG_STATES);
 const setCount = d => setSlots(d).filter(([k]) => (d.images || (d.kind === 'fuel' ? [] : {}))[k]).length;
 
 async function renderImageSets(box) {
@@ -141,9 +142,9 @@ function renderImageSetEditor(box) {
       <label>For <select id="is-kind" ${imgEd.id ? 'disabled' : ''}>${SET_KINDS.map(([k, t]) => `<option value="${k}"${k === d.kind ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></label>
       ${fuel ? `<label>Number of pictures (2 to 20) <input type="number" id="is-steps" min="2" max="20" value="${Widgets.clampInt(d.steps, 2, 20, 10)}" style="width:5em"></label>` : ''}
       ${undoButtons('is')}<button class="btn primary" id="is-save">Save picture set</button><button class="btn" id="is-back">Back</button><span id="is-msg" class="muted" role="status"></span></div>
-    <p class="muted">${fuel ? 'The first picture shows when the tank is full, the last when it is empty.' : d.kind === 'lights' ? 'Every light can have its own picture for every state of the race. A cell you leave empty uses the dimmed picture shown in it: the "All lights" picture of its row, then Light on (or Light off for a light that is off). A light with no picture at all is drawn as a plain round light. Light on is also what the countdown uses.' : 'A state without a picture shows its name as text.'} Pictures are shrunk to fit and keep their transparency.</p>
+    <p class="muted">${fuel ? 'The first picture shows when the tank is full, the last when it is empty.' : d.kind === 'lights' ? 'Every light can have its own picture for every state of the race. A cell you leave empty uses the dimmed picture shown in it: the "All lights" picture of its row, then Light on (or Light off for a light that is off). A light with no picture at all is drawn as a plain round light. Light on is also what the countdown uses.' : d.kind === 'avatars' ? 'One avatar for each lane (up to 8). The Avatar widget shows the picture of the driver; a driver without a picture gets the avatar of the lane he or she drives in. A lane you leave empty uses the standard avatar shown dimmed in it.' : 'A state without a picture shows its name as text.'} Pictures keep their transparency (a PNG stays a PNG).${Picture.NOTE}</p>
     ${d.kind === 'lights' ? lightsPreviewHtml(d) + lightsGridHtml(d) : `<div class="wrap"><table class="fields"><tr><th>${fuel ? 'Picture' : 'State'}</th><th>Preview</th><th></th></tr>${setSlots(d).map(([k, label]) => { const img = (d.images || {})[k];
-      return `<tr><td>${esc(label)}</td><td>${img ? `<img class="optimg" src="${esc(img)}" alt="">` : '<span class="muted">none</span>'}</td><td class="actions"><input type="file" accept="image/*" aria-label="Picture for ${esc(String(label))}" data-slot="${k}">${img ? ` <button class="btn" type="button" data-clear="${k}">Remove</button>` : ''}</td></tr>`; }).join('')}</table></div>`}`;
+      return `<tr><td>${esc(label)}</td><td>${img ? `<img class="optimg" src="${esc(img)}" alt="">` : d.kind === 'avatars' ? `<img class="optimg dim" src="${esc(Avatars.STANDARD[Number(k) - 1])}" alt=""> <span class="muted">the standard avatar</span>` : '<span class="muted">none</span>'}</td><td class="actions"><input type="file" accept="image/*" aria-label="Picture for ${esc(String(label))}" data-slot="${k}">${img ? ` <button class="btn" type="button" data-clear="${k}">Remove</button>` : ''}</td></tr>`; }).join('')}</table></div>`}`;
   // Undo and redo (a typed name is one step after a quiet moment; every other change is a step of its own)
   const U = draftUndo(imgEd, 'is', () => renderImageSetEditor(box)), mark = U.mark, step = U.step;
   const $ = id => document.getElementById(id);
@@ -235,14 +236,14 @@ function widgetHtml(w, sel, single, d) {
   const def = Widgets.def(w.type), H = Widgets.heightOf(d), U = Widgets.U, col = Widgets.colorsOf(w, d);
   const style = `left:${w.x / U * 100}%;top:${w.y / H * 100}%;width:${w.w / U * 100}%;height:${w.h / H * 100}%;font-size:${(w.textSize || def.textSize) / 10}cqw;` +
     `color:${Widgets.cssVal(col.color) || 'var(--ink)'};${Frame.css(col.bg, w, 'var(--muted)', d)}${d.kind !== 'row' && Frame.corner(w, d, U) ? ';border-radius:' + Frame.corner(w, d, U) : ''}`; // (a row design has its own corner setting, used by Rows)
-  return `<div class="lw${sel ? ' sel' : ''}${def.button ? ' btnw' : ''}${w.titleSpace ? ' tspace' : ''}" data-i="${d.widgets.indexOf(w)}" style="${style}">
+  return `<div class="lw${sel ? ' sel' : ''}${def.button ? ' btnw' : ''}${w.titleSpace ? ' tspace' : ''}${Widgets.alignClassOf(w)}" data-i="${d.widgets.indexOf(w)}" style="${style}">
     ${Widgets.showTitleOf(w) && d.kind !== 'row' ? `<span class="lw-title" style="${Widgets.titleStyleOf(w)}">${esc(Widgets.titleOf(w))}</span>` : ''}
     ${def.perLane && d.kind !== 'row' ? `<span class="lw-lane">L${w.lane + 1}</span>` : ''}<span class="lw-val"${def.button ? '' : ` style="${Widgets.valueStyleOf(w)}"`}>${previewOf(def, w)}</span>
     ${single ? '<i class="h nw" data-h="nw"></i><i class="h ne" data-h="ne"></i><i class="h sw" data-h="sw"></i><i class="h se" data-h="se"></i>' : ''}</div>`;
 }
 
 // is the picture set with this id one that exists (and fits the widget)? does the widget carry pictures of its own?
-const setIn = (id, def) => !!id && (state.editing.imageSets || []).some(r => r.id === id && ((def.type === 'fuel' && r.kind === 'fuel') || (def.type === 'flag' && r.kind === 'flag') || (def.type === 'lights' && r.kind === 'lights')));
+const setIn = (id, def) => !!id && (state.editing.imageSets || []).some(r => r.id === id && ((def.type === 'fuel' && r.kind === 'fuel') || (def.type === 'flag' && r.kind === 'flag') || (def.type === 'lights' && r.kind === 'lights') || (def.type === 'avatar' && r.kind === 'avatars')));
 const ownPictures = w => (w.type === 'fuel' ? ((w.opt || {}).stepImages || []).some(Boolean) : w.type === 'flag' ? Widgets.FLAG_STATES.some(([k]) => (w.opt || {})['img_' + k]) : false);
 
 function sideHtml() {
@@ -260,8 +261,8 @@ function sideHtml() {
   const sameType = sel.every(w => w.type === w0.type), d0 = defs[0];
   const flagStyle = w0.type === 'flag' ? Widgets.flagStyleOf(w0.opt) : '';
   const opts = !sameType ? '' : d0.options.filter(o => !(o.classic && (w0.opt || {}).design) && !(o.rowsOnly && !(w0.opt || {}).design) && !(o.own && setIn((w0.opt || {}).imageSet, d0)) && !(o.when && !o.when.includes(flagStyle)) && !(o.show && !o.show(w0.opt || {}))).map(o => { // (show: a setting that only appears when it is of use, for instance the lane to compare with)
-    const v = o.key === 'flagStyle' ? flagStyle : common(w => (w.opt || {})[o.key]) ?? o.default, id = `o-${o.key}`;
-    if (o.type === 'imageset') return `<div class="field"><label for="${id}">${esc(o.label)}</label><select id="${id}" data-opt="${o.key}"><option value="">${ownPictures(w0) ? 'None: pictures of this widget' : d0.type === 'flag' ? 'None (shows the flag name as text)' : d0.type === 'lights' ? 'None (plain round lights)' : 'None'}</option>${(state.editing.imageSets || []).filter(r => r.kind === o.kind).map(r => `<option value="${esc(r.id)}"${r.id === v ? ' selected' : ''}>${esc(r.name)}</option>`).join('')}</select>${(state.editing.imageSets || []).some(r => r.kind === o.kind) ? '' : '<p class="muted">No sets yet. Make one under Customization > Image Settings.</p>'}${!setIn(v, d0) && sameType && ownPictures(w0) ? '<button class="btn" type="button" data-saveset="1">Save this widget\'s pictures as a set</button>' : ''}</div>`;
+    const v = o.key === 'flagStyle' ? flagStyle : common(w => (w.opt || {})[o.key]) ?? (o.defaultOf ? o.defaultOf(w0.opt || {}) : o.default), id = `o-${o.key}`;
+    if (o.type === 'imageset') return `<div class="field"><label for="${id}">${esc(o.label)}</label><select id="${id}" data-opt="${o.key}"><option value="">${ownPictures(w0) ? 'None: pictures of this widget' : d0.type === 'flag' ? 'None (shows the flag name as text)' : d0.type === 'lights' ? 'None (plain round lights)' : d0.type === 'avatar' ? 'Standard avatars (built in)' : 'None'}</option>${d0.type === 'avatar' ? `<option value="none"${v === 'none' ? ' selected' : ''}>No avatars (the first letter of the name)</option>` : ''}${(state.editing.imageSets || []).filter(r => r.kind === o.kind).map(r => `<option value="${esc(r.id)}"${r.id === v ? ' selected' : ''}>${esc(r.name)}</option>`).join('')}</select>${d0.type === 'avatar' || (state.editing.imageSets || []).some(r => r.kind === o.kind) ? '' : '<p class="muted">No sets yet. Make one under Customization > Image Settings.</p>'}${!setIn(v, d0) && sameType && ownPictures(w0) ? '<button class="btn" type="button" data-saveset="1">Save this widget\'s pictures as a set</button>' : ''}</div>`;
     if (o.type === 'rowdesign') return `<div class="field"><label for="${id}">${esc(o.label)}</label><select id="${id}" data-opt="${o.key}"><option value="">Classic table (columns below)</option>${(state.editing.rowDesigns || []).map(r => `<option value="${esc(r.id)}"${r.id === v ? ' selected' : ''}>${esc(r.name)}</option>`).join('')}</select></div>`;
     if (o.type === 'checkbox') return `<div class="field"><label class="inline"><input id="${id}" type="checkbox" data-opt="${o.key}" ${v ? 'checked' : ''}> ${esc(o.label)}</label></div>`;
     if (o.type === 'range') return `<div class="field"><label for="${id}">${esc(o.label)} <output id="${id}-v">${esc(v)}${o.unit || ''}</output></label><input id="${id}" type="range" min="${o.min ?? 0}" max="${o.max ?? 100}" step="${o.step ?? 1}" data-opt="${o.key}" data-unit="${esc(o.unit || '')}" value="${esc(v)}">${o.hint ? `<span class="muted hint">${esc(o.hint)}</span>` : ''}</div>`;
@@ -293,14 +294,17 @@ function sideHtml() {
     <input id="${id}" type="range" min="${min}" max="${max}" step="${step}" value="${v}"${off ? ' disabled' : ''}>${hint ? `<span class="muted hint">${hint}</span>` : ''}</div>`;
   const rad = common(w => Frame.cornerPct(w.radius) ?? '');
   const bmode = common(w => Frame.mode(w)), bshade = common(w => Frame.shade(w)), trans = common(w => Frame.transparency(w, state.editing.draft)), followsLayout = common(w => Frame.ownTransparency(w) === null);
+  const alignSelect = (id, label, v) => `<div class="field"><label for="${id}">${label}</label><select id="${id}">${v === undefined ? '<option value="" selected>(different)</option>' : ''}${Widgets.ALIGNS.map(([k, t]) => `<option value="${k}"${k === v ? ' selected' : ''}>${t}</option>`).join('')}</select></div>`;
   const titleBox = defs.some(d => !d.button) ? [
     single ? `<div class="field"><label for="s-title">${row ? 'Header text' : 'Title'} (empty = ${esc(d0.title || d0.label)})</label><input id="s-title" type="text" maxlength="40" value="${esc(w0.title || '')}"></div>` : '',
     row ? '' : `<div class="field"><label class="inline"><input type="checkbox" id="s-showtitle" ${showT === false ? '' : 'checked'}> Show title</label></div>
       <div class="field"><label for="s-tsize">Title size (default 12)</label><input id="s-tsize" type="number" min="3" max="60" value="${esc(tsize || '')}" placeholder="${tsize === undefined ? 'different' : 12}"></div>
       <div class="field"><label class="inline"><input type="checkbox" id="s-tbold" ${common(w => !!w.titleBold) ? 'checked' : ''}> Title in bold</label></div>
-      <div class="field"><label class="inline"><input type="checkbox" id="s-tspace" ${common(w => !!w.titleSpace) ? 'checked' : ''}> Title takes its own space (the value moves down)</label></div>`].join('') : '';
+      <div class="field"><label class="inline"><input type="checkbox" id="s-tspace" ${common(w => !!w.titleSpace) ? 'checked' : ''}> Title takes its own space (the value moves down)</label></div>
+      ${alignSelect('s-talign', 'Title alignment', common(w => Widgets.titleAlignOf(w)))}`].join('') : '';
   const textBox = (defs.some(d => !d.button) ? `<div class="field"><label class="inline"><input type="checkbox" id="s-vbold" ${common(w => w.valueBold !== false) ? 'checked' : ''}> Value in bold</label>
       <label class="inline"><input type="checkbox" id="s-vital" ${common(w => !!w.valueItalic) ? 'checked' : ''}> Value in italic</label></div>` : '') +
+    (defs.some(d => !d.button && d.type !== 'leaderboard') ? alignSelect('s-valign', 'Text alignment', common(w => Widgets.valueAlignOf(w))) : '') + // (the Leaderboard has none: its columns come from the layout you make)
     `<div class="field"><label for="s-size">Text size${single ? ` (default ${d0.textSize})` : ''}</label><input id="s-size" type="number" min="5" max="200" value="${esc(size || '')}" placeholder="${size === undefined ? 'different' : (single ? d0.textSize : '')}"></div>` + color('textColor', 'Text colour');
   const frameBox = color('bgColor', 'Background colour') + (row ? '' :
     `<div class="field"><label for="s-bmode">Border</label><select id="s-bmode">${bmode === undefined ? '<option value="" selected>(different)</option>' : ''}${[['', 'Theme default'], ['shade', 'Shade of the background'], ['off', 'No border']].map(([k, t]) => `<option value="${k}"${k === bmode ? ' selected' : ''}>${t}</option>`).join('')}</select></div>` +
@@ -640,6 +644,8 @@ function renderEditor() {
     if (t.id === 's-lane' && t.value !== '') { sel.forEach(w => { w.lane = Number(t.value); }); step(); drawCanvas(); }
     if (t.id === 's-tbold') { sel.forEach(w => { w.titleBold = !!t.checked; }); step(); drawCanvas(); }
     if (t.id === 's-tspace') { sel.forEach(w => { w.titleSpace = !!t.checked; }); step(); drawCanvas(); }
+    if (t.id === 's-talign' && Widgets.ALIGNS.some(a => a[0] === t.value)) { sel.forEach(w => { w.titleAlign = t.value; }); step(); drawCanvas(); return; }
+    if (t.id === 's-valign' && Widgets.ALIGNS.some(a => a[0] === t.value)) { sel.forEach(w => { if (w.type !== 'leaderboard') w.valueAlign = t.value; }); step(); drawCanvas(); return; }
     if (t.id === 's-vbold') { sel.forEach(w => { w.valueBold = !!t.checked; }); step(); drawCanvas(); }
     if (t.id === 's-vital') { sel.forEach(w => { w.valueItalic = !!t.checked; }); step(); drawCanvas(); }
     if (t.id === 's-showtitle') { sel.forEach(w => { w.showTitle = !!t.checked; }); step(); drawCanvas(); }

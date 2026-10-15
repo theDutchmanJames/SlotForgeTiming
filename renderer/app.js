@@ -41,10 +41,25 @@ function homeHeaderHtml(s, preview = false) {
 // `icons` (only the main tabs pass it) says which line picture goes to the left of the text of a tab: { tab id: picture name from icons.js }
 function renderTabs(el, items, current, onPick, icons = {}) {
   el.innerHTML = items.map(([id, label, look]) =>
-    look === 'onair' ? `<button class="tab onair" role="tab" aria-selected="${id === current}" data-id="${id}" title="Opens the Live Race on a second screen"><span class="led red" aria-hidden="true"></span>${esc(label)}</button>`
+    look === 'racing' ? `<button class="tab racetab" role="tab" aria-selected="${id === current}" data-id="${id}" title="${esc(raceTabTitle())}"><span class="led on" aria-hidden="true"></span>${esc(label)}</button>`
+    : look === 'onair' ? `<button class="tab onair" role="tab" aria-selected="${id === current}" data-id="${id}" title="Opens the Live Race on a second screen"><span class="led red" aria-hidden="true"></span>${esc(label)}</button>`
       : Icons.has(icons[id]) ? `<button class="tab hasico" role="tab" aria-selected="${id === current}" data-id="${id}">${Icons.svg(icons[id], { size: 18, cls: 'tabico' })}${esc(label)}</button>`
         : `<button class="tab" role="tab" aria-selected="${id === current}" data-id="${id}">${esc(label)}</button>`).join('');
   el.onclick = e => { const b = e.target.closest('[data-id]'); if (b) onPick(b.dataset.id); };
+}
+
+// ---- the race that keeps running ----
+// The race screen lives in its own place on the page (#racehost, see race.js), so another tab can be shown while the race goes on: it keeps timing, counting laps and sharing
+// to the Live Race pages. While another tab is shown the race is "parked" (out of sight, but still laid out and drawn). A red Race tab takes you back to it.
+// A race that has not started yet (or is over and was left with the Back button) is not kept: leaving it closes it, as it always did.
+const raceKept = () => !!state.race && typeof live !== 'undefined' && !!live && !!live.alive;
+const RACE_WORDS = { ready: 'not started yet', countdown: 'starting', running: 'running', paused: 'paused', between: 'waiting for the next heat', review: 'waiting for you to check the laps', finished: 'finished' };
+const raceTabTitle = () => `The race is ${RACE_WORDS[typeof live !== 'undefined' && live ? live.phase : ''] || 'on'}. Click to go back to it.`;
+const tabsNow = () => (raceKept() ? [...TABS.slice(0, -1), ['race', 'Race', 'racing'], TABS[TABS.length - 1]] : TABS);
+function showRace(on) { // on: the Race tab is shown; otherwise the race (if there is one) is parked out of sight
+  const h = document.getElementById('racehost');
+  if (h) h.classList.toggle('parked', !on);
+  view.hidden = !!(h && on);
 }
 
 // App Settings: General and Network
@@ -68,10 +83,10 @@ function renderHardwareArea(box) {
   renderHardwareSettings(document.getElementById('hwbox'));
 }
 
-const GENERAL_FOLDERS = ['names', 'header', 'logo', 'data'];
+const GENERAL_FOLDERS = ['names', 'header', 'logo', 'pictures', 'data'];
 async function renderGeneralSettings(box) {
   const S = state.settings, path = await api.dbPath(), hh = Banner.height(S), pos = Banner.pos(S), lpos = Banner.logoPos(S);
-  const pic = !!S.homeHeader, logoOn = Banner.logoOn(S), hasLogo = !!S.clubLogo, side = Banner.logoSide(S), share = Banner.logoShare(S);
+  const pq = Picture.levelOf(S.pictureQuality), pic = !!S.homeHeader, logoOn = Banner.logoOn(S), hasLogo = !!S.clubLogo, side = Banner.logoSide(S), share = Banner.logoShare(S);
   // the page is made of folders, as the Results and Records page is: each opens and closes, the choice is remembered while the app runs
   const sf = (id, title, note, body) => folderHtml('general', id, title, note, `<div class="fbody">${body}</div>`);
   box.innerHTML = folderTools
@@ -97,10 +112,14 @@ async function renderGeneralSettings(box) {
       <div class="row"><label for="logoy" style="min-width:5.5em">Up / down</label><input id="logoy" type="range" min="0" max="100" step="1" value="${Math.round(lpos.y)}" aria-describedby="logoyv" style="flex:1"><output id="logoyv" for="logoy" style="min-width:5em">${Math.round(lpos.y)}%</output></div>
       <div class="row"><button class="btn" id="logocenter">Center the logo</button></div>
       <span class="muted hint">The logo is always shown whole, as large as its space allows, and takes its height from the header. Its width is a share of the header; the picture gets the rest. The sliders move the logo inside its space: a slider is greyed out when the logo already fills it that way.</span>` : ''}</div>`)
+    + sf('pictures', 'Pictures', (Picture.LEVELS.find(l => l[0] === pq) || [0, ''])[1], `<div class="field" style="max-width:480px"><label for="picq">Quality of the pictures you upload (drivers, slotcars, widgets, picture sets, logo, header)</label>
+      <select id="picq">${Picture.LEVELS.map(([k, t]) => `<option value="${k}"${k === pq ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>
+      <span class="muted hint">Original keeps a picture exactly as you uploaded it, with its transparency (only a picture over 4000 px or 12 MB is made smaller). Pictures are saved inside the database file, so many large originals make the database bigger and the app slower to open, especially on a small computer such as a Raspberry Pi: choose High or Standard then. This applies to pictures you upload from now on; pictures that are already saved stay as they are.</span></div>`)
     + sf('data', 'Database file', 'where everything is saved', `<div class="row"><span>Saved in:</span><code>${esc(path)}</code></div>`);
   folderWire(box);
   box.onclick = ev => { const fa = ev.target && ev.target.closest ? ev.target.closest('[data-folderall]') : null; if (fa) { folderAll('general', GENERAL_FOLDERS, fa.dataset.folderall === '1'); renderGeneralSettings(box); } };
   const $ = id => document.getElementById(id);
+  $('picq').onchange = async ev => { state.settings = await api.setSettings({ pictureQuality: Picture.levelOf(ev.target.value) }); renderSettings(); };
   $('appname').onchange = async ev => { state.settings = await api.setSettings({ appName: ev.target.value.trim() }); applyName(); };
   $('welcome').onchange = async ev => { state.settings = await api.setSettings({ welcome: ev.target.value.trim() }); };
   $('hdrfile').onchange = async ev => {
@@ -253,14 +272,18 @@ async function renderRules() {
 async function render() {
   view.onclick = null; view.onchange = null; // each screen sets up its own handlers
   LiveView.unmount();
-  if (typeof live !== 'undefined' && live && live.leave && state.tab !== 'race') live.leave(); // the race screen is gone: no more keys, Trackmate or Race Director buttons
-  renderTabs(tabsEl, TABS, state.tab, id => {
+  if (state.tab !== 'race' && typeof live !== 'undefined' && live && live.alive && !raceActive()) { // a race that is not on (not started, or over): the race screen is gone, no more keys, Trackmate or Race Director buttons
+    if (live.leave) live.leave();
+    live.alive = false; const h = document.getElementById('racehost'); if (h) h.innerHTML = '';
+  }
+  showRace(state.tab === 'race');
+  const pick = id => {
     if (id === 'live') { api.liveOpen(); return; } // Live Race is the second screen: it opens its own window, also during a race
-    if (typeof raceActive === 'function' && raceActive()) { alert('Stop the race before leaving this screen.'); return; }
     if (typeof editorDirty === 'function' && editorDirty() && !confirm('Discard your unsaved layout changes?')) return;
     if (typeof editorLeave === 'function') editorLeave();
     state.tab = id; render();
-  }, TAB_ICONS);
+  };
+  renderTabs(tabsEl, tabsNow(), state.tab, pick, TAB_ICONS);
   try {
     if (state.tab === 'home') await renderHome();
     else if (state.tab === 'race') await renderRace();
@@ -269,6 +292,7 @@ async function render() {
     else if (state.tab === 'rules') await renderRules();
     else if (state.tab === 'setup') await renderSetup();
     else if (state.tab === 'custom') await renderCustom();
+    if (state.tab === 'race') renderTabs(tabsEl, tabsNow(), state.tab, pick, TAB_ICONS); // (the race exists now: its tab is shown, and it is the one that is open)
   } catch (e) { screenFailed(e); }
 }
 
@@ -277,6 +301,7 @@ async function render() {
 function screenFailed(e) {
   console.error(e);
   if (state.tab === 'race') state.race = null; // (the race that could not be opened is not kept)
+  showRace(false); // (this page is shown in the place of the other screens)
   view.onchange = null;
   view.innerHTML = `<section class="card" id="screenerror" role="alert"><h3>This screen could not be opened</h3><p>${esc(e && e.message ? e.message : e)}</p>
     <p class="muted">Nothing was lost: what was saved is still in the database. Go back to Home to carry on.</p><div class="row"><button class="btn primary" id="errhome">Back to Home</button></div></section>`;
