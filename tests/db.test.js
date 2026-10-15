@@ -55,4 +55,10 @@ ok('penalty systems can be added and removed', db.list('penaltysystems').length 
   ok('weather systems can be added, and are kept in the file', w.list('weathersystems').length === 1 && new Database(f).list('weathersystems')[0].name === 'Showers');
   w.remove('weathersystems', sys.id);
   ok('deleting a weather system clears it from the setups (and leaves the others alone)', w.list('weathersystems').length === 0 && w.list('racesetups').find(r => r.id === setup.id).weather === '' && w.list('racesetups').find(r => r.id === other.id).weather === undefined); }
+{ const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'slt-')), 'db.json'), w = new Database(f); // 1.6.0: rotation setups
+  const rot = w.add('rotationsetups', { name: 'Club night', participants: 8, lanes: 4, heats: [] }), setup = w.add('racesetups', { name: 'Heats', sessionType: 'heats', rotation: rot.id }), other = w.add('racesetups', { name: 'Other', rotation: 'x' });
+  ok('rotation setups can be added, and are kept in the file', w.list('rotationsetups').length === 1 && new Database(f).list('rotationsetups')[0].name === 'Club night' && new Database(f).list('rotationsetups')[0].participants === 8);
+  w.update('rotationsetups', rot.id, { name: 'Friday' }); ok('...and changed', new Database(f).list('rotationsetups')[0].name === 'Friday');
+  w.remove('rotationsetups', rot.id);
+  ok('deleting a rotation setup clears it from the race setups that use it (and leaves the others alone)', w.list('rotationsetups').length === 0 && w.list('racesetups').find(r => r.id === setup.id).rotation === '' && w.list('racesetups').find(r => r.id === other.id).rotation === 'x'); }
 console.log(fails ? fails + ' DB TESTS FAILED' : 'ALL DB TESTS PASSED'); process.exit(fails ? 1 : 0);

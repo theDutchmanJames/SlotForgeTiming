@@ -70,6 +70,9 @@ input:disabled{opacity:.6}
 [hidden]{display:none !important}
 .lane{display:grid;grid-template-columns:110px 1fr 1fr auto;gap:10px;align-items:center;margin-bottom:8px}
 .lane select{width:100%}
+.lane.rot{grid-template-columns:150px 1fr 1fr auto auto}
+.lane.away strong,.lane.away select{opacity:.55}
+.lane-away{display:flex;align-items:center;gap:6px;font-size:14px;white-space:nowrap}
 .issues{margin:10px 0;padding-left:18px;color:var(--accent)}
 .hint2{margin:4px 0 12px;color:var(--muted)}
 h4{margin:22px 0 8px;font-size:15px;color:var(--muted);font-weight:600}
@@ -528,6 +531,20 @@ dialog:has(.formgrid) form{display:flex;flex-direction:column;max-height:calc(90
 .hpcell.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
 .hplanes{margin:8px 0}
 .hplanes>summary{cursor:pointer;color:var(--muted)}
+.ropool{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.rochip{font:inherit;color:inherit;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:3px 10px;cursor:pointer}
+.rochip small{color:var(--muted);margin-left:4px}
+.rochip:hover,.rochip:focus-visible{border-color:var(--accent)}
+.rochip.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.rochip.none{border-style:dashed}
+.rogrid td{vertical-align:middle}
+.rogrid .rolabel{width:9em}
+.rogrid .actions{white-space:nowrap}
+.rogrid tr.rolocked td{background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.rogroup{margin:8px 0 14px;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
+.ronames{display:flex;flex-wrap:wrap;gap:8px 14px}
+.ronames label{display:flex;align-items:center;gap:6px;font-size:14px}
+.ronames input{width:11em}
 /* App Settings > General and Import and Export: the pages are made of folders, like Results and Records. The body of a folder has some room around what is in it. */
 .fbody{padding:14px 16px 6px}
 .fbody>:first-child,.fbody>h4:first-child{margin-top:0}

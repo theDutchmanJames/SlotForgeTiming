@@ -57,6 +57,7 @@ const Help = (() => {
       { id: 'setups', title: 'Race Setup', note: 'Race setups, fuel, penalties, balance of power and time tokens', body: `
         <ul>
           <li><b>Race Setups</b> hold the rules of one kind of race: the session type, the track, the length, the start lights, penalties and fuel, the timing page and the audio set. Make as many as you like. Every option has a default and sits in a folder.</li>
+          <li><b>Rotation Setups</b>: a heat plan that you make yourself, for a heat-based race (see Rotation setups, below).</li>
           <li><b>Fuel Setups</b>: tank size, fuel per lap and what happens when the tank is empty.</li>
           <li><b>Penalty Systems</b>: how penalty points turn into seconds, when a driver is disqualified, and special penalties such as a Drivethrough or a Stop-and-Go.</li>
           <li><b>Weather Systems</b>: a spell of rain with a forecast, the tyres to change in the pits, what the wrong tyres cost, and the temperatures and the wind of every weather.</li>
@@ -76,12 +77,20 @@ const Help = (() => {
       { id: 'heatraces', title: 'Heat races', note: 'How the heats are planned', body: `
         <ul>
           <li><b>How the heats are planned</b> has four choices: you choose the number of heats; <b>every driver races the same number of heats</b> (you say how many); <b>round robin</b>, where every driver meets every other driver (with <i>Same number of heats for everyone</i> on Yes, a few heats are added so nobody races less than the busiest driver); or <b>lane rotation</b>, where every driver races once in every lane. In every plan the lanes are shared as evenly as possible.</li>
+          <li>To make the plan yourself, choose a <b>Rotation setup</b> in the race setup. Then the settings that plan the heats are not used.</li>
           <li><b>Who races together</b> can use the latest qualifying on the track: the fastest drivers together (the best heat last), or every heat with fast and slow drivers mixed.</li>
         </ul>` },
       { id: 'heatplan', title: 'Heat plan and break', note: 'See, change and time the heats', body: `
         <ul>
           <li>On the Home tab a <b>Heat plan</b> shows the heats by lane, how often every driver races and in which lane; <b>Shuffle again</b> makes another plan, and the plan you see is the plan that is raced. To change the plan yourself, click a place and then another place: the two swap (a place with a dash is empty, so a driver can move there). A driver can not race twice in a heat. <b>Reset my changes</b> brings back the plan that was made; changing the number of participants or the heat settings makes a new plan.</li>
           <li><b>Break between heats</b>: with a number of seconds, the race counts down after each heat (the Race Info widget and the Live Race page show "next heat in 1:30"). <b>When the break is over</b> either waits for Start or lets the start lights begin by themselves; Start (Space) always starts the next heat at once, and Stop ends the race.</li>
+        </ul>` },
+      { id: 'rotation', title: 'Rotation setups', note: 'Make your own heat schedule', body: `
+        <ul>
+          <li>Under <b>Race Setup</b>, on the <b>Rotation Setups</b> tab, you make a heat schedule by hand: say how many <b>participants</b> and <b>lanes</b> there are, then click a participant and a place (heat and lane) to put them there. Click two places to swap them. A participant can not race twice in a heat. With 20 racers on 4 lanes you could run 5 heats, or 10 so that everybody races twice.</li>
+          <li>The participants are numbers, with a name if you like. <b>Groups</b> put some participants in a heat at once. <b>Lock</b> keeps a heat where it is when you shuffle. <b>Shuffle the heat order</b>, <b>Shuffle the lanes</b> and <b>Even out the lanes</b> help, and <b>Start from a plan</b> fills the heats for you. Undo and Redo (Ctrl+Z, Ctrl+Y) take a change back.</li>
+          <li>Choose the rotation in a race setup (<b>Rotation setup</b>, in Length and result). On the Home tab the participants are the rows. Tick <b>Not here today</b> for anybody who does not come: the others stay in their places and a heat nobody comes to is left out. The track needs as many lanes as the rotation uses. <b>Pick the drivers by name</b> uses the names of the rotation.</li>
+          <li>Finals, the way the result is counted and the break work as in every heat race.</li>
         </ul>` },
       { id: 'heatresults', title: 'Heat results', note: 'How the heats add up', body: `
         <ul>

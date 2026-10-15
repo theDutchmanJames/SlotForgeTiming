@@ -118,4 +118,15 @@ const e = tmp(); T.apply(e, JSON.parse(JSON.stringify(b1))); const reread = new 
   const imp = y.data.weathersystems.find(q => q.name === 'Showers (imported)'), st = y.data.racesetups[0];
   ok('...an import keeps the link (to the imported copy, with a new id), and the clash of names is marked', y.data.weathersystems.length === 2 && imp && imp.startAt === 4 && st.weather === imp.id && imp.id !== w.id);
   ok('...a weather system can also be exported on its own', (T.collect(x.data, { weathersystems: [w.id] }, false).items.weathersystems || []).length === 1); }
+{ // 1.6.0: a rotation setup travels with the race setup that uses it
+  const x = tmp(), r = x.add('rotationsetups', { name: 'Club night', participants: 4, lanes: 2, names: ['Piet'], heats: [{ label: 'A', locked: false, places: [{ p: 0, lane: 0 }] }] }), s = x.add('racesetups', { name: 'Heats', sessionType: 'heats', rotation: r.id });
+  const out = T.collect(x.data, { racesetups: [s.id] }, true), dpx = T.dependencies(x.data, { racesetups: [s.id] });
+  ok('a race setup brings its rotation setup, and the dependencies list it', (out.items.rotationsetups || []).length === 1 && out.items.rotationsetups[0].names[0] === 'Piet' && dpx.rotationsetups && dpx.rotationsetups.length === 1 && dpx.rotationsetups[0].required === false);
+  ok('...without its dependencies the race setup comes alone', !(T.collect(x.data, { racesetups: [s.id] }, false).items.rotationsetups));
+  const y = tmp(); y.add('rotationsetups', { name: 'Club night' }); T.apply(y, JSON.parse(JSON.stringify(out)));
+  const imp = y.data.rotationsetups.find(q => q.name === 'Club night (imported)'), st = y.data.racesetups[0];
+  ok('...an import keeps the link (to the imported copy, with a new id), the heats come along and the clash of names is marked', y.data.rotationsetups.length === 2 && imp && imp.heats[0].label === 'A' && imp.lanes === 2 && st.rotation === imp.id && imp.id !== r.id);
+  const z = tmp(); T.apply(z, JSON.parse(JSON.stringify({ ...out, items: { racesetups: out.items.racesetups } })));
+  ok('...a race setup imported without its rotation has no rotation (the plan is made from its own settings)', z.data.racesetups[0].rotation === '');
+  ok('...a rotation setup can also be exported on its own, and is checked in the file', (T.collect(x.data, { rotationsetups: [r.id] }, false).items.rotationsetups || []).length === 1 && T.check(JSON.parse(JSON.stringify(T.collect(x.data, { rotationsetups: [r.id] }, false)))).ok === true && T.check(JSON.parse(JSON.stringify(T.collect(x.data, { rotationsetups: [r.id] }, false)))).summary.rotationsetups.count === 1); }
 if (fails) { console.log(fails + ' TRANSFER TESTS FAILED'); process.exit(1); } console.log('transfer: all PASSED');

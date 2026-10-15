@@ -284,7 +284,7 @@ function fieldHtml(f, v, extra) {
 }
 
 // A field with showIf is shown when any one of its conditions matches the current form values.
-const isShown = (f, get) => !f.showIf || f.showIf.some(c => Object.entries(c).every(([k, vs]) => vs.includes(get(k))));
+const isShown = (f, get) => !f.showIf || f.showIf.some(c => Object.entries(c).every(([k, vs]) => vs.includes(get(k) ?? ''))); // (a setting that has no value yet is empty: a race setup from before the setting existed)
 
 // A picture file as the address to keep in the database. How much it is shrunk depends on the picture quality setting (picture.js, App Settings > General > Pictures):
 // by default it is kept as it was uploaded. `max` is the size the place was made for (used by the standard quality); `png` is not needed any more: a picture is kept in the kind it came in.

@@ -63,14 +63,20 @@ const undoButtons = p => `<button class="btn" id="${p}-undo" title="Undo the las
 // Race Setup tab: the race setups you can pick on the Home tab, and the penalty systems they can use
 async function renderSetup() {
   view.innerHTML = '<h2>Race Setup</h2><div class="sub" id="setuptabs" role="tablist" style="display:flex;gap:4px"></div><p class="muted" id="setupnote"></p><div id="setupmgr"></div>';
-  renderTabs(document.getElementById('setuptabs'), [['setups', 'Race Setups'], ['fuel', 'Fuel Setups'], ['penalties', 'Penalty Systems'], ['weather', 'Weather Systems'], ['bop', 'Balance of Power'], ['tokens', 'Time Tokens']], state.setupSub, id => { state.setupSub = id; renderSetup(); });
+  renderTabs(document.getElementById('setuptabs'), [['setups', 'Race Setups'], ['rotation', 'Rotation Setups'], ['fuel', 'Fuel Setups'], ['penalties', 'Penalty Systems'], ['weather', 'Weather Systems'], ['bop', 'Balance of Power'], ['tokens', 'Time Tokens']], state.setupSub, id => {
+    // the rotation setup editor is closed by another tab: ask first when there are changes that are not saved
+    if (rotEd && id !== 'rotation') { if (rotEd.dirty && !confirm('Discard your unsaved changes to this rotation setup?')) return; draftUndoEnd(rotEd); rotEd = null; }
+    state.setupSub = id; renderSetup();
+  });
   const sub = state.setupSub, entity = sub === 'penalties' ? 'penaltysystems' : sub === 'fuel' ? 'fuelrules' : sub === 'weather' ? 'weathersystems' : 'racesetups';
   document.getElementById('setupnote').textContent = sub === 'penalties' ? 'A penalty system says how penalty points turn into time and when a driver is disqualified. Choose one in a race setup.'
     : sub === 'fuel' ? 'A fuel setup sets the tank, how much fuel a lap uses (more when faster, less when slower) and what happens when it runs out. Choose one in a race setup to race with fuel.'
     : sub === 'weather' ? 'A weather system is a spell of rain with a forecast: when it starts, how long it lasts, the clouds before and the drying after. Cars change tyres in the pits and can get penalty points or be hindered if they do not. Choose one in a race setup.'
+    : sub === 'rotation' ? 'A rotation setup is a heat plan that you make yourself: which participant races in which heat and in which lane, and the order of the heats. Choose one in a race setup for a Heat-based race (under Session). Without one, the heats are planned from the settings of the race setup, as before.'
     : sub === 'bop' ? 'Balance of Power evens out a race: a car that is too fast is hindered and a car that is too slow is helped, through its fuel use, refuelling speed and tank. These settings are used by every race setup that has Balance of Power on.'
     : sub === 'tokens' ? 'The Time Token System sells track time: a lane is switched on with paid time and turns red when the time is up. These settings are used by every Time Token Session.'
     : 'Create the race setups you want to use. Pick one on the Home tab to start a race.';
+  if (sub === 'rotation') { manager = null; return renderRotations(document.getElementById('setupmgr')); }
   if (sub === 'bop') { manager = null; return renderBopSettings(document.getElementById('setupmgr')); }
   if (sub === 'tokens') { manager = null; return renderTokenSettings(document.getElementById('setupmgr')); }
   await mountManager(document.getElementById('setupmgr'), entity);

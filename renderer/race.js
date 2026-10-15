@@ -74,7 +74,7 @@ async function renderRace() {
     : setup.sessionType === 'race' ? `${setup.laps} laps` : (setup.sessionType === 'timed' || setup.sessionType === 'qualifying') ? `${setup.duration} minutes` : 'no limit';
   const planHtml = !heats ? '' : `<details class="card" style="margin-top:12px"><summary>Heat schedule (${heat.count} heats)</summary>
     <table class="fields"><tr><th>Heat</th><th>Drivers by lane</th></tr>${heat.schedule.map((h, i) =>
-      `<tr><td>${i + 1}</td><td>${[...h].sort((a, b) => a.lane - b.lane).map(e => `Lane ${e.lane + 1}: ${esc(people[e.p].driverName)}`).join(' · ')}</td></tr>`).join('')}</table></details>`;
+      `<tr><td>${i + 1}${r.labels && r.labels[i] ? ` <span class="muted">${esc(r.labels[i])}</span>` : ''}</td><td>${[...h].sort((a, b) => a.lane - b.lane).map(e => `Lane ${e.lane + 1}: ${esc(people[e.p].driverName)}`).join(' · ')}</td></tr>`).join('')}</table></details>`;
   const host = raceHost();
   host.innerHTML = `<p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.sessionType])} on ${esc(r.track.name)} · ${esc(limit)}</p>
     <div class="rt-stage"><div class="canvas live" id="canvas"></div></div>

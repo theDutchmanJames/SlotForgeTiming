@@ -173,9 +173,9 @@
 
   // A key for a plan: the same key means the same plan. A plan that was changed by hand is only kept for the key it was changed under, so it goes away when the
   // number of participants or the lanes change, when the heat settings change, when the plan is shuffled again or when the qualifying that it was seeded by changes.
-  function planKey({ count, lanes, setup, seed, ranks }) {
+  function planKey({ count, lanes, setup, seed, ranks, extra }) {
     const o = optionsOf(setup);
-    return JSON.stringify([count, lanes, o.plan, o.heats, o.each, o.even, o.seeding, seed, ranks || null]);
+    return JSON.stringify([count, lanes, o.plan, o.heats, o.each, o.even, o.seeding, seed, ranks || null, ...(extra ? [extra] : [])]); // (extra: what else the plan is made from, such as a rotation setup)
   }
 
   // Swaps two places of a plan: a and b are { heat, lane } (both counted from 0). A place can be empty: then the driver of the other place moves there.
@@ -281,7 +281,7 @@
   }
 
   // The lines of text above the preview. names: the names of the participants. Plain strings (the screen escapes them).
-  function summary({ stats: st, setup, names }) {
+  function summary({ stats: st, setup, names, custom }) { // (custom: the heats come from a rotation setup, so there is no setting to advise about)
     const o = optionsOf(setup), sc = E.scoringOf(setup), lines = [];
     const heatWord = n => (n === 1 ? '1 heat' : n + ' heats');
     const each = o.by === 'time' ? `${o.minutes} minutes` : `${o.laps} laps`;
@@ -294,7 +294,7 @@
     else {
       const most = st.per.map((x, i) => [x.heats, i]).filter(([n]) => n === st.maxHeats).map(([, i]) => names[i]);
       const few = st.per.filter(x => x.heats === st.minHeats).length;
-      const fix = o.plan === 'manual' ? ' To avoid it, choose the plan "Every driver races the same number of heats".' : o.plan === 'roundrobin' ? ' To avoid it, set "Same number of heats for everyone" to Yes.' : '';
+      const fix = custom ? '' : o.plan === 'manual' ? ' To avoid it, choose the plan "Every driver races the same number of heats".' : o.plan === 'roundrobin' ? ' To avoid it, set "Same number of heats for everyone" to Yes.' : '';
       const fair = ' Or count the average per heat.';
       lines.push(`The drivers do not race the same number of heats: ${st.minHeats} to ${st.maxHeats} (${few} race${few === 1 ? 's' : ''} ${st.minHeats}, ${most.length} race${most.length === 1 ? 's' : ''} ${st.maxHeats}). The overall result adds the heats up, so a driver with an extra heat has an advantage.${fix}${fair}`);
     }
