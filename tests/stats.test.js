@@ -9,7 +9,7 @@ const track = { id: 't1', name: 'Living room', length: 10, lanes: 2, scale: '1:3
 const keys = list => list.map(c => c.key);
 ok('every list of columns has unique keys and a label', [S.SESSION_COLUMNS, S.STINT_COLUMNS, S.RECORD_COLUMNS].every(l => new Set(keys(l)).size === l.length && l.every(c => c.label && typeof c.on === 'boolean')));
 ok('the worked-out columns are all in the session table', S.FIGURE_KEYS.every(k => keys(S.SESSION_COLUMNS).includes(k)));
-ok('the old columns come first, in their old order', keys(S.SESSION_COLUMNS).slice(0, 9).join() === 'pos,driver,car,laps,points,result,final,best,total');
+ok('the old columns come first, in their old order (the Team column of 1.8.0 is next to the Driver)', keys(S.SESSION_COLUMNS).filter(k => k !== 'team').slice(0, 9).join() === 'pos,driver,car,laps,points,result,final,best,total' && keys(S.SESSION_COLUMNS)[2] === 'team');
 ok('the stint table keeps its old columns first', keys(S.STINT_COLUMNS).slice(0, 8).join() === 'driver,car,lane,bought,laps,late,best,total');
 ok('the record table keeps its old columns (track, driver, lap time, car) and the date', keys(S.RECORD_COLUMNS).slice(0, 4).join() === 'track,driver,time,car' && keys(S.RECORD_COLUMNS).includes('date'));
 

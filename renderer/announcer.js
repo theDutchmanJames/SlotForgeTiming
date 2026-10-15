@@ -73,7 +73,7 @@
     { id: 'tokenfree', group: 'Time tokens', defaultOn: false, label: 'A lane is freed (a Time Token Session)', vars: ['driver', 'lane'], lines: ['Lane {lane} is free', 'Lane {lane} is free for the next driver'] }
   ];
   // the values a placeholder can have, in the order they are shown to the user
-  const VARS = { driver: 'The driver, as the set says (name, nickname or callsign)', name: 'The driver\'s name', nickname: 'The driver\'s nickname', callsign: 'The driver\'s callsign',
+  const VARS = { driver: 'The driver, as the set says (name, nickname or callsign)', name: 'The driver\'s name', nickname: 'The driver\'s nickname', callsign: 'The driver\'s callsign', team: 'The name of the team of the car (empty when the car races without a team)',
     other: 'The other driver involved (the one who was passed, or the leader before)', time: 'The lap time, as spoken', position: 'The position, as a word', lap: 'The lap number the time was set in',
     laps: 'The number of laps of the race (the laps driven so far when there is no lap limit)', percent: 'The race distance reached, in percent', left: 'What is left of the race: laps or minutes',
     lane: 'The number of the lane', seconds: 'The seconds of paid time that are left (in the time-added call: the seconds that were added; in the no-lap call: how long)',
@@ -87,7 +87,7 @@
     bop: 'The Balance of Power percentage the car got, as a number (20)', effect: 'What Balance of Power does to the car: hindered or helped',
     tyre: 'The tyres of the car, as a word (Wet, Soft, Intermediate...)', weather: 'The weather now: dry, cloudy, wet or clearing',
     tracktemp: 'The track temperature in the weather, as spoken (24 degrees)', airtemp: 'The air temperature, as spoken (20 degrees)', windspeed: 'The wind speed, as spoken (16 kilometres per hour)', winddir: 'Where the wind comes from, as spoken (south west)' };
-  const SAMPLE = { target: '15 seconds', driver: 'Alex', name: 'Alex', nickname: 'Speedy', callsign: 'ALX', other: 'Sam', time: '5.12', position: 'second', percent: '50', left: '5 laps', fuel: '12', lane: '2', seconds: '60', points: '2', penalty: 'drivethrough', lap: '4', laps: '10', gap: '0.8 seconds', lapsdown: '1 lap', heat: '2', heats: '3', final: 'A', lineup: 'Alex in lane 1, Sam in lane 2 and Kim in lane 3', car: 'Porsche 956', best: '5.10', track: 'Living room', gapahead: '0.8 seconds', record: '5.01', improved: '0.12 seconds', off: '0.04 seconds', pit: '7.4 seconds', refuelled: '8', added: '5 minutes', bop: '20', effect: 'hindered', tyre: 'Wet', weather: 'wet', tracktemp: '17 degrees', airtemp: '15 degrees', windspeed: '22 kilometres per hour', winddir: 'west' };
+  const SAMPLE = { target: '15 seconds', team: 'Red Racers', driver: 'Alex', name: 'Alex', nickname: 'Speedy', callsign: 'ALX', other: 'Sam', time: '5.12', position: 'second', percent: '50', left: '5 laps', fuel: '12', lane: '2', seconds: '60', points: '2', penalty: 'drivethrough', lap: '4', laps: '10', gap: '0.8 seconds', lapsdown: '1 lap', heat: '2', heats: '3', final: 'A', lineup: 'Alex in lane 1, Sam in lane 2 and Kim in lane 3', car: 'Porsche 956', best: '5.10', track: 'Living room', gapahead: '0.8 seconds', record: '5.01', improved: '0.12 seconds', off: '0.04 seconds', pit: '7.4 seconds', refuelled: '8', added: '5 minutes', bop: '20', effect: 'hindered', tyre: 'Wet', weather: 'wet', tracktemp: '17 degrees', airtemp: '15 degrees', windspeed: '22 kilometres per hour', winddir: 'west' };
   const condVars = (eng, state) => (eng.weather ? WxT.condSpeech(WxT.conditionsFor(eng.weather, state || 'dry', null, '')) : {}); // the conditions of a weather state of this race, as spoken
   const WEATHER_CALL = { cloudy: 'weathercloudy', wet: 'weatherwet', clearing: 'weatherclearing', dry: 'weatherdry' }; // the call for each state the weather becomes
   const ORD = ['zeroth', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth'];
@@ -131,7 +131,7 @@
     return `${t} second${t === '1' ? '' : 's'}`;
   }
   // the variables that every call about a driver has, and the ones every call has (the table in the audio editor says so)
-  const EVERY_DRIVER = ['driver', 'name', 'nickname', 'callsign', 'car', 'best', 'lane', 'points', 'fuel', 'gapahead'], EVERY_CALL = ['track', 'record'];
+  const EVERY_DRIVER = ['driver', 'name', 'nickname', 'callsign', 'team', 'car', 'best', 'lane', 'points', 'fuel', 'gapahead'], EVERY_CALL = ['track', 'record'];
   // a line with its placeholders filled in; an unknown placeholder is left out
   const fill = (text, vars) => String(text ?? '').replace(/\{(\w+)\}/g, (_, k) => (vars && vars[k] !== undefined && vars[k] !== null ? String(vars[k]) : '')).replace(/\s+/g, ' ').replace(/\s+([,.!?])/g, '$1').trim();
 
@@ -161,7 +161,7 @@
     };
     // what a sentence's conditions are checked against: the driver, his position, the lap time and the gap to the car in front (the words of the sentence do not carry them)
     const factsOf = (c, time) => ({ driverId: c && c.driverId !== undefined && c.driverId !== null ? c.driverId : '', place: c ? placeOf(c) : null, time: Number.isFinite(time) ? time : null, gap: c ? gapMs(c) : null });
-    const who = c => { const name = c.driverName || '', nick = c.nickname || name, call = c.callsign || name; return { driver: by === 'nickname' ? nick : by === 'callsign' ? call : name, name, nickname: nick, callsign: call, car: c.carName || '', best: Number.isFinite(c.best) ? speakTime(c.best) : '',
+    const who = c => { const name = c.driverName || '', nick = c.nickname || name, call = c.callsign || name; return { driver: by === 'nickname' ? nick : by === 'callsign' ? call : name, name, nickname: nick, callsign: call, team: c.teamName || '', car: c.carName || '', best: Number.isFinite(c.best) ? speakTime(c.best) : '',
       lane: Number.isInteger(c.lane) ? c.lane + 1 : '', points: c.points || 0, fuel: cur.eng && cur.eng.fuel && cur.eng.fuel.on && Number.isFinite(c.fuel) ? Math.round(c.fuel) : '', gapahead: gapAhead(c), _c: c }; };
 
     // eng: the race engine; ctx: { phase: 'ready' | 'countdown' | 'running' | 'paused' | 'review' | 'finished'..., lights }

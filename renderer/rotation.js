@@ -35,14 +35,16 @@
       for (const p of (g && Array.isArray(g.members) ? g.members : [])) if (validP(p) && !seen.has(p)) { seen.add(p); members.push(p); }
       return { name: t(g && g.name, LIMITS.label, edit ? '' : 'Group ' + (i + 1)), members: members.sort((a, b) => a - b) };
     });
-    return { name: t(s.name, LIMITS.name, edit ? '' : 'Rotation'), note: t(s.note, LIMITS.note, ''), participants: n, lanes, names, groups, heats };
+    return { name: t(s.name, LIMITS.name, edit ? '' : 'Rotation'), note: t(s.note, LIMITS.note, ''), participants: n, lanes, names, groups, heats, ...(s.participantsAre === 'teams' ? { participantsAre: 'teams' } : {}) };
   }
   const done = r => ({ rec: clean(r, true) });
 
   // The text for a participant: the name when it has one, otherwise "Participant 3" (short: "P3").
+  // (1.8.0: the participants of a rotation are drivers, or teams: the numbers are the same, only the words change)
+  const isTeams = rec => !!rec && rec.participantsAre === 'teams';
   const own = (rec, p) => String((rec.names && rec.names[p]) || '').trim();
-  const nameOf = (rec, p) => own(rec, p) || 'Participant ' + (p + 1);
-  const shortOf = (rec, p) => own(rec, p) || 'P' + (p + 1);
+  const nameOf = (rec, p) => own(rec, p) || (isTeams(rec) ? 'Team ' : 'Participant ') + (p + 1);
+  const shortOf = (rec, p) => own(rec, p) || (isTeams(rec) ? 'T' : 'P') + (p + 1);
 
   // ---- making one ----
   // A new rotation: everybody races once, in heats that are as even as can be (9 participants on 4 lanes: 3 heats of 3).
@@ -180,6 +182,11 @@
   }
 
   // ---- names and groups ----
+  // The participants are drivers (chosen on Home) or teams (a team and a car are chosen on Home; the drivers of the team take turns in the heats).
+  function setParticipantsAre(rec, kind) {
+    if (kind !== 'drivers' && kind !== 'teams') return { error: 'The participants are drivers or teams.' };
+    const next = clone(rec); if (kind === 'teams') next.participantsAre = 'teams'; else delete next.participantsAre; return done(next);
+  }
   function setName(rec, p, name) {
     if (!(Number.isInteger(p) && p >= 0 && p < rec.participants)) return { error: 'That participant does not exist.' };
     const next = clone(rec); next.names[p] = String(name === undefined || name === null ? '' : name); return done(next);
@@ -280,10 +287,10 @@
     const sched = rec.heats.filter(h => h.places.length).map(h => h.places);
     return sched.length ? Heats.stats(sched, rec.participants, rec.lanes).per : Array.from({ length: rec.participants }, () => ({ heats: 0, lanes: Array(rec.lanes).fill(0), meets: 0 }));
   }
-  const describe = rec => `${rec.participants} participants, ${rec.lanes} ${rec.lanes === 1 ? 'lane' : 'lanes'}, ${rec.heats.filter(h => h.places.length).length} heats`;
+  const describe = rec => `${rec.participants} ${isTeams(rec) ? (rec.participants === 1 ? 'team' : 'teams') : 'participants'}, ${rec.lanes} ${rec.lanes === 1 ? 'lane' : 'lanes'}, ${rec.heats.filter(h => h.places.length).length} heats`;
 
   const api = { LIMITS, clean, nameOf, shortOf, blank, generate, resize, place, swap, assignGroup, addHeat, removeHeat, duplicateHeat, clearHeat, moveHeat, setLabel, setLocked,
-    shuffleOrder, reverseOrder, shuffleLanes, evenLanes, setName, addGroup, removeGroup, renameGroup, toggleMember, scheduleFor, lanesUsed, signature, problems, matchDrivers, check, perParticipant, describe };
+    shuffleOrder, reverseOrder, shuffleLanes, evenLanes, setParticipantsAre, isTeams, setName, addGroup, removeGroup, renameGroup, toggleMember, scheduleFor, lanesUsed, signature, problems, matchDrivers, check, perParticipant, describe };
   root.Rot = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

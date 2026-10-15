@@ -5,7 +5,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg',
   '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.json': 'application/json', '.ico': 'image/x-icon' };
 // what other devices may read from the database: no settings (they hold the password), nothing is ever written
-const READABLE = ['drivers', 'slotcars', 'tracks', 'racesetups', 'layouts', 'rowdesigns', 'sessions', 'laps', 'penaltysystems', 'fuelrules', 'weathersystems'];
+const READABLE = ['drivers', 'teams', 'slotcars', 'tracks', 'racesetups', 'layouts', 'rowdesigns', 'sessions', 'laps', 'penaltysystems', 'fuelrules', 'weathersystems'];
 // what the Race Director page may send to the race
 const COMMANDS = ['start', 'pause', 'stop', 'yellow', 'red', 'penalty', 'assign', 'review', 'call', 'callresolve', 'addtime', 'reducetime', 'undotime', 'endtime', 'cleartime', 'setdriver', 'bop', 'weather'];
 // The commands of the Tokens page (Time Token Sessions) are checked here before they go to the race window: a lane is a whole number from 0 to 15,

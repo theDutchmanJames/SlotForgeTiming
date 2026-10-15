@@ -131,6 +131,20 @@ const Rot = require(R + 'renderer/rotation.js');
   while (hist().undo > 0) E('ro-undo').onclick();
   say('...everything is undone step by step to the rotation as it was made', draft().participants === 8 && draft().lanes === 4 && places(draft(), 0) === '0 1 2 3'.split(' ').map((p, l) => p + '@' + l).join(' '));
 
+  // ---------- 1.8.0: the participants are drivers or teams ----------
+  say('the editor asks what the participants are: Drivers (chosen), or Teams', html().includes('id="ro-kind"') && html().includes('Participants are') && html().includes('<option value="drivers" selected>Drivers</option>') && html().includes('<option value="teams">Teams</option>') && !('participantsAre' in draft()));
+  E('ro-kind').onchange({ target: { value: 'teams' } }); await wait(20);
+  say('Teams changes the words (Team 1, 8 teams...), the names box and the pick-by-name help, and is one step to undo', draft().participantsAre === 'teams' && html().includes('<option value="teams" selected>Teams</option>') && html().includes('title="Team 1: races') && html().includes('placeholder="Team 1"') && html().includes('picks the teams that have these names') && !html().includes('picks the drivers who have these names') && hist().undo === 1);
+  say('...the places in the heats are not touched', places(draft(), 0) === '0@0 1@1 2@2 3@3' && cellsHtml() === 8);
+  E('ro-undo').onclick(); await wait(20);
+  say('Undo makes the participants drivers again', !('participantsAre' in draft()) && html().includes('<option value="drivers" selected>Drivers</option>') && html().includes('title="Participant 1: races') && html().includes('placeholder="Participant 1"'));
+  E('ro-kind').onchange({ target: { value: 'teams' } }); await wait(20); E('ro-save').onclick(); await wait(30);
+  say('Save keeps the choice in the rotation setup', writes.filter(w => w[1] === 'rotationsetups').pop()[2].participantsAre === 'teams');
+  E('ro-back').onclick(); await wait(30);
+  say('...and the list tells it in words (8 teams)', html().includes('8 teams, 4 lanes, 2 heats'));
+  await edit(store.rotationsetups[store.rotationsetups.length - 1].id);
+  while (hist().undo > 0) E('ro-undo').onclick(); await wait(20);
+
   // ---------- starting from a plan ----------
   ctx.confirm = () => true;
   E('ro-plan').onchange({ target: { value: 'perdriver' } });

@@ -636,3 +636,8 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .hlw tr.hlw-done{opacity:.8}
 .hlw tr.hlw-later{opacity:.65}
 .hlw tr.hlw-current,.hlw tr.hlw-next{background:rgba(255,255,255,.14);font-weight:700}
+
+/* the drivers of a team (Database > Teams) */
+.memlist{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:4px}
+.memlist li{display:flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--line);border-radius:8px}
+.memlist .memname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}

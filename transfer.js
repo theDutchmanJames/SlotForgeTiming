@@ -5,7 +5,7 @@ const schema = require('./schema');
 
 const FORMAT = 'slotforge-timing-export', OLD_FORMATS = ['slot-lap-timer-export'], FILE_VERSION = 1; // exports made before the rename are still accepted
 // the order rows are added in on import (what is used comes before what uses it)
-const ORDER = ['tracks', 'slotcars', 'drivers', 'fuelrules', 'penaltysystems', 'weathersystems', 'rotationsetups', 'imagesets', 'audiosets', 'customwidgets', 'rowdesigns', 'layouts', 'racesetups', 'sessions', 'laps'];
+const ORDER = ['tracks', 'slotcars', 'drivers', 'teams', 'fuelrules', 'penaltysystems', 'weathersystems', 'rotationsetups', 'imagesets', 'audiosets', 'customwidgets', 'rowdesigns', 'layouts', 'racesetups', 'sessions', 'laps'];
 const clone = x => JSON.parse(JSON.stringify(x));
 // the group of a form that an extra field is shown in: a group of that form in this version, otherwise '' (More)
 const groupOf = (e, g) => typeof g === 'string' && (schema[e].groups || []).some(x => x.id === g) ? g : '';
@@ -20,9 +20,10 @@ function refsOf(entity, row) {
   });
   if (entity === 'racesetups') { field('track', 'tracks'); field('layout', 'layouts'); field('layout2', 'layouts'); field('penaltySystem', 'penaltysystems'); field('fuelRules', 'fuelrules'); field('weather', 'weathersystems'); field('rotation', 'rotationsetups'); field('audioSet', 'audiosets'); }
   if (entity === 'audiosets') Object.values(row.calls || {}).forEach(c => ((c && c.lines) || []).forEach(l => { if (l && l.only && l.only.driver) out.push({ entity: 'drivers', get: () => l.only.driver, set: v => { l.only.driver = v || 'gone'; } }); })); // ("only for this driver" in a sentence; a driver that did not come along stays a name nobody has, so the sentence is not said for everybody)
+  if (entity === 'teams') (Array.isArray(row.drivers) ? row.drivers : []).forEach((id, i) => { if (id) out.push({ entity: 'drivers', get: () => row.drivers[i], set: v => { row.drivers[i] = v; } }); }); // (a driver that did not come along leaves the team)
   if (entity === 'layouts') widgets(row.widgets, true);
   if (entity === 'rowdesigns') widgets(row.widgets, false);
-  if (entity === 'sessions') { field('trackId', 'tracks'); (row.standings || []).forEach(s => { if (s.driverId) out.push({ entity: 'drivers', get: () => s.driverId, set: v => { s.driverId = v; } }); if (s.carId) out.push({ entity: 'slotcars', get: () => s.carId, set: v => { s.carId = v; } }); }); }
+  if (entity === 'sessions') { field('trackId', 'tracks'); (row.standings || []).forEach(s => { if (s.driverId) out.push({ entity: 'drivers', get: () => s.driverId, set: v => { s.driverId = v; } }); if (s.carId) out.push({ entity: 'slotcars', get: () => s.carId, set: v => { s.carId = v; } }); if (s.teamId) out.push({ entity: 'teams', get: () => s.teamId, set: v => { s.teamId = v; } }); }); }
   if (entity === 'laps') { field('sessionId', 'sessions'); field('trackId', 'tracks'); field('driverId', 'drivers'); field('carId', 'slotcars'); }
   return out;
 }
@@ -95,6 +96,7 @@ function apply(db, bundle) {
       for (const src of bundle.items[e] || []) {
         const row = clone(src); const oldId = row.id; row.id = crypto.randomUUID(); map[e][oldId] = row.id;
         refsOf(e, row).forEach(r => r.set(map[r.entity] && map[r.entity][r.get()] !== undefined ? map[r.entity][r.get()] : ''));
+        if (e === 'teams') row.drivers = (Array.isArray(row.drivers) ? row.drivers : []).filter(Boolean);
         if (row.custom) { const m = {}; Object.entries(row.custom).forEach(([k, v]) => { if (fieldMap[e] && fieldMap[e][k]) m[fieldMap[e][k]] = v; }); row.custom = m; } else row.custom = {};
         const key = e === 'sessions' || e === 'laps' ? null : (schema[e].title || [])[0];
         if (key && typeof row[key] === 'string' && d[e].some(x => x[key] === row[key])) row[key] += ' (imported)';

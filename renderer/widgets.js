@@ -41,7 +41,7 @@
   }
 
   // Custom text widgets: a line of text with {variables}. Unknown {words} stay as typed so a typo is easy to see.
-  const TEXT_LANE_VARS = [['name', 'Driver name'], ['nickname', 'Nickname'], ['callsign', 'Callsign'], ['car', 'Slotcar'], ['lane', 'Lane number'], ['position', 'Position'], ['lap', 'Current lap'], ['laps', 'Laps completed'],
+  const TEXT_LANE_VARS = [['name', 'Driver name'], ['nickname', 'Nickname'], ['callsign', 'Callsign'], ['team', 'Team name'], ['car', 'Slotcar'], ['lane', 'Lane number'], ['position', 'Position'], ['lap', 'Current lap'], ['laps', 'Laps completed'],
     ['laptime', 'Current lap time'], ['last', 'Last lap'], ['best', 'Best lap'], ['avg', 'Average lap'], ['median', 'Median lap'], ['record', 'Personal record lap'], ['gap', 'Gap to leader'],
     ['fuel', 'Fuel left (litres)'], ['fuelpct', 'Fuel left (%)'], ['bop', 'Balance of Power (\u221220% hindered, +10% helped, a dash when it is off)'], ['penpoints', 'Penalty points'], ['pentime', 'Penalty time'], ['champ', 'Championship points'], ['pits', 'Pit stops made'], ['tyre', 'Tyres of the car (Soft, Wet...)'], ['pit', 'Last pit stop time'], ['speed', 'Speed (scaled km/h)'], ['speedreal', 'Speed (real km/h)']];
   const TEXT_RACE_VARS = [['clock', 'Race clock (counting up)'], ['timeleft', 'Time left'], ['lapsleft', 'Laps left'], ['lapstotal', 'Lap limit'], ['leader', 'Leader'], ['flag', 'Flag / race state'], ['heat', 'Heat'],
@@ -263,6 +263,10 @@
   // an avatar or a slotcar picture in its round (or square) frame, with the position and zoom of the widget; mirror flips the picture left to right inside the frame
   const avatarHtml = (src, opt) => `<span class="avframe"><img class="avimg" src="${esc(src)}" alt="" style="transform:${frameTransform(opt && opt.frame)}${opt && opt.avatarMirror ? ' scaleX(-1)' : ''}"></span>`;
   // The Avatar widget: the driver's picture, or when the driver has none the avatar of the lane (the standard ones, or a picture set of the kind Avatars)
+  // Team Name and Team Picture (1.8.0): the team of the lane (a team chosen on Home), or one team from Database > Teams that the widget always shows
+  const TEAM_OPTION = { key: 'team', label: 'Team to show', type: 'team', default: '' };
+  const TEAMPIC_OPTIONS = [TEAM_OPTION, { key: 'frame', label: 'Picture position and zoom', type: 'frame', from: 'team' }];
+  const TEAM_SAMPLES = ['Red Racers', 'Blue Bandits', 'Green Giants', 'Gold Gang', 'Night Owls', 'Pit Crew'];
   const AVATAR_OPTIONS = [{ ...SET_OPTION('avatars'), label: 'Avatars for a driver without a picture (sets are made under Customization > Image Settings)' },
     { key: 'avatarMirror', label: 'Mirror the pictures (flip them left to right)', type: 'checkbox', default: false },
     { key: 'frame', label: 'Picture position and zoom', type: 'frame', from: 'avatar' }];
@@ -333,6 +337,8 @@
     T('lanecolor', 'Lane Colour', 'Driver', { title: 'Lane colour', perLane: true, w: 60, sample: l => `<span class="lcsample">${l + 1}</span>` }),
     T('avatar', 'Avatar', 'Driver', { perLane: true, w: 80, h: 80, options: AVATAR_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, pic = Av.forLane(o, l); return pic ? avatarHtml(pic, o) : `<span class="av">${NAMES[l % NAMES.length][0]}</span>`; } }),
     T('driverflag', 'Driver Flag', 'Driver', { title: 'Driver flag', perLane: true, w: 90, sample: l => `<span class="fi fi-${FLAGS[l]}"></span>` }),
+    T('teamname', 'Team Name', 'Team', { title: 'Team', perLane: true, w: 220, options: [TEAM_OPTION], sample: l => TEAM_SAMPLES[l % TEAM_SAMPLES.length] }),
+    T('teampicture', 'Team Picture', 'Team', { title: 'Team picture', perLane: true, w: 100, h: 100, options: TEAMPIC_OPTIONS, sample: l => `<span class="av">${TEAM_SAMPLES[l % TEAM_SAMPLES.length][0]}</span>` }),
     T('carpicture', 'Slotcar Picture', 'Slotcar', { title: 'Slotcar picture', perLane: true, w: 160, h: 100, options: CARPIC_OPTIONS, sample: l => '<span class="carph">Car picture</span>' }),
     T('carname', 'Slotcar Description', 'Slotcar', { title: 'Slotcar', perLane: true, w: 260, sample: l => ['NSR Ford GT40', 'Slot.it Porsche 962', 'Scalextric Audi R8', 'Fly Ferrari 512', 'Ninco Mazda 787', 'SCX BMW M3', 'Carrera Corvette', 'Avant Slot Lola'][l] }),
     T('position', 'Position in Race', 'Timing', { title: 'Position', perLane: true, w: 70, sample: l => String(l + 1) }),

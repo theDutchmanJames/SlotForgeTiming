@@ -11,16 +11,19 @@ async function renderRace() {
   const r = state.race;
   if (!r) { state.tab = 'home'; return render(); }
   if (live && live.alive && live.raceRef === r) { if (live.shown) live.shown(); return; } // the same race, still there: show it again
-  const [drivers, cars, layouts, allLaps, penSystems, fuelRules, weatherSystems, rowDesigns, imageSets, audioSets] = await Promise.all(['drivers', 'slotcars', 'layouts', 'laps', 'penaltysystems', 'fuelrules', 'weathersystems', 'rowdesigns', 'imagesets', 'audiosets'].map(e => api.list(e)));
+  const [drivers, cars, layouts, allLaps, penSystems, fuelRules, weatherSystems, rowDesigns, imageSets, audioSets, teams] = await Promise.all(['drivers', 'slotcars', 'layouts', 'laps', 'penaltysystems', 'fuelrules', 'weathersystems', 'rowdesigns', 'imagesets', 'audiosets', 'teams'].map(e => api.list(e)));
   const find = (list, id) => list.find(x => x.id === id);
   const speed = state.speed || 1; // only changed by automated tests
   const setup = r.setup, heats = setup.sessionType === 'heats', tokenSession = setup.sessionType === 'tokens'; // (a Time Token Session: lanes are switched on with paid time, see tokens.js)
   const nameOf = (entity, list, id) => { const it = find(list, id); return it ? titleOf(entity, it) : ''; };
   const personOf = driverId => { const d = find(drivers, driverId); return { driverId: d ? d.id : '', driverName: d ? titleOf('drivers', d) : 'Guest', nickname: d ? d.nickname || '' : '', callsign: d ? d.callsign || '' : '', flag: d ? d.flag || '' : '', avatar: d ? d.avatar || '' : '' }; };
-  const people = r.rows.map(x => {
-    const d = find(drivers, x.driverId) || {};
+  const byTeam = heats && r.byTeam === true; // (1.8.0: the participants are teams; the driver of a team is chosen for every heat, see assignDrivers)
+  const people = r.rows.map(x0 => {
+    const x = byTeam ? { ...x0, driverId: '' } : x0, d = find(drivers, x.driverId) || {}, tm = find(teams, x.teamId);
     return { driverId: x.driverId || '', carId: x.carId || '', driverName: nameOf('drivers', drivers, x.driverId) || (tokenSession ? 'Guest' : ''), carName: nameOf('slotcars', cars, x.carId), carPicture: (find(cars, x.carId) || {}).picture || '', carScale: (find(cars, x.carId) || {}).scale || '', tyre: (find(cars, x.carId) || {}).tyreCompound || '', // (the tyre the car races on when it is dry: the weather changes it in the pits)
-      nickname: d.nickname || '', callsign: d.callsign || '', flag: d.flag || '', avatar: d.avatar || '' };
+      nickname: d.nickname || '', callsign: d.callsign || '', flag: d.flag || '', avatar: d.avatar || '',
+      ...(tm ? { teamId: tm.id, teamName: titleOf('teams', tm), teamPicture: tm.picture || '' } : {}),
+      ...(byTeam ? { asTeam: true, teamDrivers: (Array.isArray(tm && tm.drivers) ? tm.drivers : []).filter(id => find(drivers, id)) } : {}) };
   });
   const lanes = Math.max(1, Math.floor(Number(r.track.lanes)) || people.length);
   const engineType = tokenSession ? 'practice' : heats ? (setup.heatBy === 'time' ? 'timed' : 'race') : setup.sessionType;
@@ -39,9 +42,22 @@ async function renderRace() {
   const pointList = String(setup.points || '').split(',').filter(t => t.trim() !== '').map(Number).filter(n => !isNaN(n)); // '10, 8, 6' -> [10, 8, 6]; blank pieces are skipped (Number('') would make them 0)
 
   let heat = null, eng;
+  // Teams as participants (1.8.0): the driver of a team in a heat comes from the roster of the team (Heats.driversForHeat). The drivers who have driven are remembered per participant.
+  const teamHist = people.map(() => []), teamChosen = {}; let teamNote = '';
+  const setDriver = (p, id) => { const d = find(drivers, id) || {}; Object.assign(people[p], { driverId: d.id || '', driverName: d.id ? titleOf('drivers', d) : '', nickname: d.nickname || '', callsign: d.callsign || '', flag: d.flag || '', avatar: d.avatar || '' }); };
+  const nextParticipants = () => { if (!heat || !heat.hasNext()) return []; if (heat.isFinal()) { const f = heat.finalNow(); return f ? f.drivers : []; } return (heat.schedule[heat.idx] || []).map(e => e.p); };
+  const assignDrivers = () => {
+    teamNote = ''; if (!byTeam || !heat.hasNext()) return;
+    const ps = nextParticipants(), rosters = {}; ps.forEach(p => { rosters[p] = people[p].teamDrivers; });
+    const res = Heats.driversForHeat({ rosters, heat: ps, rule: setup.teamDriver, history: teamHist, chosen: teamChosen, rnd: state.rand || Math.random });
+    ps.forEach(p => setDriver(p, res.picks[p]));
+    const nm = list => Heats.andList(list.map(p => people[p].teamName || 'Team ' + (p + 1)));
+    teamNote = [res.empty.length ? `${nm(res.empty)} ${res.empty.length === 1 ? 'has' : 'have'} no drivers.` : '', res.clash.length ? `${nm(res.clash)} ${res.clash.length === 1 ? 'has' : 'have'} no driver who is free: ${res.clash.length === 1 ? 'its' : 'their'} first driver drives anyway, although that driver is also driving for another team in this heat.` : ''].filter(Boolean).join(' ');
+  };
   if (heats) {
     const schedule = Heats.fits(r.schedule, people.length, lanes) ? r.schedule : Heats.plan({ count: people.length, lanes, setup, seed: Heats.newSeed() }); // (the plan from the Home tab, when there is one that fits)
     heat = RaceEngine.createHeatRace({ participants: people, schedule, lanes, resultBy: setup.resultBy, points: setup.resultBy === 'points' ? pointList : [], ...RaceEngine.scoringOf(setup), ...RaceEngine.finalsOf(setup) });
+    assignDrivers();
     eng = mk(heat.entries());
   } else if (tokenSession) eng = mk(Array.from({ length: lanes }, (_, i) => ({ lane: i, ...(people[i] || { driverId: '', carId: '', driverName: 'Guest', carName: '', carPicture: '', carScale: '', nickname: '', callsign: '', flag: '', avatar: '' }) }))); // every lane of the track can be sold, with or without a driver
   else eng = mk(people.map((p, i) => ({ lane: i, ...p })));
@@ -83,11 +99,12 @@ async function renderRace() {
     <div id="boppanel" class="card boppanel" hidden></div>
     <div id="wxpanel" class="card boppanel" hidden></div>
     <div id="finalpick" class="card" hidden></div>
+    <div id="teampick" class="card" hidden></div>
     <div id="calls" class="card calls" hidden></div>
     <div id="lapreview" class="card rv" hidden></div>
     <div id="review" class="card rv" hidden></div>
     <p class="muted">Space starts, pauses and resumes · Y yellow flag · R red flag · S stops the race · F shows the widgets full screen (Esc closes it) · press a lane's number key (or its Lap button) each time a car crosses the line${tokenSession ? ' (a lane without paid time ignores it, and a lane whose time is up records the lap but does not count it)' : ''} · Shift + number (or the Pit button) puts that lane's car on the sensor, press again to drive off · Ctrl + number (or the Call button) is a call from that lane: the yellow flag goes up and the Race Director decides what happens.</p>
-    ${planHtml}${heats ? '<h4>Overall result</h4>' + (scoreNote ? `<p class="hint2" id="overallnote">${esc(scoreNote)}</p>` : '') + `<div class="wrap"><table class="fields"><thead><tr><th>Pos</th><th>Driver</th><th>Heats</th><th>Laps</th><th>Points</th>${scoreCol ? '<th>Result</th>' : ''}${finalsOn ? '<th>Final</th>' : ''}<th>Best lap</th></tr></thead><tbody id="overall"></tbody></table></div>` : ''}`;
+    ${planHtml}${heats ? '<h4>Overall result</h4>' + (scoreNote ? `<p class="hint2" id="overallnote">${esc(scoreNote)}</p>` : '') + `<div class="wrap"><table class="fields"><thead><tr><th>Pos</th><th>${byTeam ? 'Team' : 'Driver'}</th><th>Heats</th><th>Laps</th><th>Points</th>${scoreCol ? '<th>Result</th>' : ''}${finalsOn ? '<th>Final</th>' : ''}<th>Best lap</th></tr></thead><tbody id="overall"></tbody></table></div>` : ''}`;
 
   const now = () => performance.now();
   const ui = id => { // (the race screen has a place of its own: its ids can not be mixed up with those of the screen that is shown)
@@ -108,8 +125,8 @@ async function renderRace() {
   }
 
   // championship points of the heats finished so far: { on, list: points per position, done: [[driverId, points]] }
-  const champOf = () => (heats && setup.resultBy === 'points' ? { on: true, list: pointList, done: heat.overall().map(o => [o.driverId, o.points]) } : { on: false, list: [], done: [] });
-  const shared = () => LiveShare.makeShared({ rowDesigns, imageSets, clubLogo: state.settings.clubLogo, champ: champOf(), eng, track: r.track, now: now(), phase: live.phase, calling: live.calling, lights: live.lights, setup: setupNow(), heat: heatInfo(),
+  const champOf = () => (heats && setup.resultBy === 'points' ? { on: true, list: pointList, done: heat.overall().map(o => [o.asTeam ? o.teamId : o.driverId, o.points]) } : { on: false, list: [], done: [] });
+  const shared = () => LiveShare.makeShared({ rowDesigns, imageSets, teams: teams.map(t => ({ id: t.id, name: t.name || '', picture: t.picture || '' })), clubLogo: state.settings.clubLogo, champ: champOf(), eng, track: r.track, now: now(), phase: live.phase, calling: live.calling, lights: live.lights, setup: setupNow(), heat: heatInfo(),
     flash: live.flash, layout, bestAll: live.bestAll, bestAllName: live.bestAllName, bestBy: live.bestBy, base, tokens: tokens ? tokens.snapshot() : null });
   // ---- share the race with the second-screen window (and later other devices) ----
   const shareTitle = `${setup.name} · ${SESSION_LABEL[setup.sessionType]} on ${r.track.name} · ${limit}`;
@@ -117,12 +134,12 @@ async function renderRace() {
   const shareStatic = () => { // everything heavy, once per heat
     live.raceId = String(Date.now()) + Math.random().toString(36).slice(2, 6);
     if (live.sender) live.sender.reset(); // a new heat: the first message after the static part holds everything
-    if (api.liveStatic) api.liveStatic(LiveShare.packStatic({ rowDesigns, imageSets, clubLogo: state.settings.clubLogo, tokenUi: tokenUi(), raceId: live.raceId, title: shareTitle, eng, setup: setupNow(), layout: find(layouts, setup.layout2) || layout, track: r.track, lanes, base }));
+    if (api.liveStatic) api.liveStatic(LiveShare.packStatic({ rowDesigns, imageSets, teams: LiveShare.teamsUsed(teams, find(layouts, setup.layout2) || layout, rowDesigns), clubLogo: state.settings.clubLogo, tokenUi: tokenUi(), raceId: live.raceId, title: shareTitle, eng, setup: setupNow(), layout: find(layouts, setup.layout2) || layout, track: r.track, lanes, base }));
   };
   const share = () => { // the light part: only when something changed (at most about ten times a second), and a small message every second so the clocks stay right
     if (!api.livePush) return;
     const t = now();
-    if (t - (live.lastShare || -1e9) < 80) { if (!live.shareTimer) live.shareTimer = setTimeout(() => { live.shareTimer = null; share(); }, 90); return; }
+    if (t - (live.lastShare || -1e9) < 80) { if (!live.shareTimer) { const L = live; L.shareTimer = setTimeout(() => { L.shareTimer = null; if (live === L) share(); }, 90); } return; }
     live.lastShare = t;
     if (!live.sender) live.sender = LiveShare.sender();
     const msg = live.sender.pack({ champ: champOf(), raceId: live.raceId, eng, phase: live.phase, calling: live.calling, lights: live.lights, heat: heatInfo(), flash: live.flash, bestAll: live.bestAll, bestAllName: live.bestAllName, bestBy: live.bestBy, tokens: tokens ? tokens.snapshot() : null, now: t }, t);
@@ -141,7 +158,7 @@ async function renderRace() {
   const heatInfo = () => (heats ? { idx: heat.idx, count: heat.count, by: byPts ? 'points' : heat.scoring.byTime ? 'time' : 'laps', list: heatListLite(), ...(finalsOn ? { total: heat.total } : {}), ...(finalsOn && finalAt() ? { final: finalAt() } : {}),
     ...(live.phase === 'between' && !heat.picksDone() ? { picking: true } : {}), ...(live.breakLeft > 0 ? { breakLeft: live.breakLeft } : {}) } : null);
   // the drivers of the heat that is next, for the announcer to read out (with the lanes they race in)
-  const lineupNow = () => (heats && heat.hasNext() ? heat.entries().map(e => ({ lane: heat.isFinal() && !heat.picksDone() ? -1 : e.lane, name: e.driverName || '', nickname: e.nickname || '', callsign: e.callsign || '' })).sort((a, b) => a.lane - b.lane) : []);
+  const lineupNow = () => (heats && heat.hasNext() ? heat.entries().map(e => ({ lane: heat.isFinal() && !heat.picksDone() ? -1 : e.lane, name: e.asTeam && e.teamName ? `${e.teamName}${e.driverName ? ' with ' + e.driverName : ''}` : e.driverName || '', nickname: e.nickname || '', callsign: e.callsign || '' })).sort((a, b) => a.lane - b.lane) : []);
   const announce = () => {
     if (!audioSet || !live.ann) return;
     try { live.ann.observe(eng, { phase: live.phase, lights: live.lights, now: now(), heat: heatInfo(), lineup: heats && live.phase === 'between' ? lineupNow() : undefined, trackmate: typeof Trackmate !== 'undefined' && Trackmate.link ? !!Trackmate.link.connected : undefined, idle: c => !!tokens && ['idle', 'out'].includes(tokens.stateOf(c.lane, raceT())) }).forEach(e => Sound.say(audioSet, e.call, e.vars, undefined, undefined, e.facts)); } catch (x) { /* a sound problem never stops the race */ }
@@ -223,7 +240,7 @@ async function renderRace() {
       ui('review').hidden = false; live.reviewShown = true;
       if (!live.tkBusy) { const h = tokens ? Review.stintsHtml(tokens.closedList().filter(x => x.laps.length), { failed: live.tkFailed }) : Review.html(eng, { champ: champOf() }); if (h !== live.rvHtml) { live.rvHtml = h; ui('review').innerHTML = h; } } // (only when it changed: a button never changes under your finger; not while the stints are being saved)
     } else if (live.reviewShown) { ui('review').innerHTML = ''; ui('review').hidden = true; live.reviewShown = false; live.rvHtml = ''; }
-    drawLapReview(); drawFinalPick();
+    drawLapReview(); drawFinalPick(); drawTeamPick();
     live.penBtns.forEach(x => { const c = S.carByLane(x.lane); x.b.disabled = !(['running', 'paused'].includes(live.phase) && c && !c.dq); x.b.hidden = !c; });
     live.lapBtns.forEach(x => { const c = S.carByLane(x.lane); x.b.disabled = !(live.phase === 'running' && c && !c.done); x.b.hidden = !c; });
     live.callBtns.forEach(x => { const c = S.carByLane(x.lane); x.b.disabled = !(['running', 'paused'].includes(live.phase) && c && !c.done); x.b.hidden = !c; });
@@ -248,7 +265,7 @@ async function renderRace() {
   const drawOverall = () => {
     if (!heats) return;
     drawHeatList();
-    ui('overall').innerHTML = heat.overall().map(o => `<tr><td>${o.pos}</td><td>${esc(o.driverName)}</td><td class="num">${o.heats}</td><td class="num">${o.laps}</td>
+    ui('overall').innerHTML = heat.overall().map(o => `<tr><td>${o.pos}</td><td>${esc(o.asTeam ? o.teamName : o.driverName)}</td><td class="num">${o.heats}</td><td class="num">${o.laps}</td>
       <td class="num">${setup.resultBy === 'points' ? o.points : ''}</td>${scoreCol ? `<td class="num">${esc(Heats.scoreText(o, heat.scoring, { finalMode: fmode.finalMode, byPoints: byPts }))}</td>` : ''}${finalsOn ? `<td>${esc(Heats.finalCell(o))}</td>` : ''}<td class="num">${RaceEngine.fmtTime(o.best)}</td></tr>`).join('');
   };
 
@@ -323,7 +340,7 @@ async function renderRace() {
   const pitFigures = c => ({ pits: c.pits.length, pitTime: c.pits.reduce((a, p) => a + p.duration, 0) });
   const hasPits = c => fuelCfg.on || c.pits.length > 0;
   // the lap rows saved for the database: laps removed in the review are left out, invalid and too slow laps are kept but never count for records
-  const lapRows = (c, date, extra) => c.laps.map((time, n) => ({ time, n })).filter(x => !c.removed.includes(x.n)).map(x => ({ driverId: c.driverId, carId: c.carId, trackId: r.track.id, ...extra, lane: c.lane + 1, lapNumber: x.n + 1, time: x.time, date,
+  const lapRows = (c, date, extra) => c.laps.map((time, n) => ({ time, n })).filter(x => !c.removed.includes(x.n)).map(x => ({ driverId: c.driverId, carId: c.carId, ...(c.teamId ? { teamId: c.teamId } : {}), trackId: r.track.id, ...extra, lane: c.lane + 1, lapNumber: x.n + 1, time: x.time, date,
     ...((c.pitLaps || []).includes(x.n) ? { pit: true } : {}),
     ...(c.bad[x.n] ? { noTrackRecord: true, noPersonalBest: true, tooSlow: true } : {}), ...(c.invalid.includes(x.n) ? { noTrackRecord: true, noPersonalBest: true, invalid: true } : {}) }));
 
@@ -376,9 +393,9 @@ async function renderRace() {
   // ---- before a final: the drivers choose their lanes, the best-placed driver first ----
   // The race is built again after every choice, so the grid, the widgets and the other screens always show the lanes as chosen so far.
   const regrid = () => {
-    eng = mk(heat.entries()); live.ann = mkAnn(); live.flash = new Map(); live.fpKey = null;
-    try { live.ann.observe(eng, { phase: 'between', now: now(), heat: heatInfo() }); } catch (x) { /* (the new announcer is told the race is waiting, and what it would say is thrown away: "next final A" was said already, once) */ }
-    shareStatic(); ui('msg').textContent = betweenMsg(); update();
+    eng = mk(heat.entries()); live.ann = mkAnn(); live.flash = new Map(); live.fpKey = null; live.tpKey = null;
+    try { live.ann.observe(eng, { phase: live.phase === 'between' ? 'between' : live.phase, now: now(), heat: heatInfo() }); } catch (x) { /* (the new announcer is told the race is waiting, and what it would say is thrown away: "next final A" was said already, once) */ }
+    shareStatic(); if (live.phase === 'between') ui('msg').textContent = betweenMsg(); update();
   };
   const pickAction = (what, lane) => {
     if (!heats || live.phase !== 'between' || !heat.isFinal()) return false;
@@ -405,6 +422,21 @@ async function renderRace() {
       <p><button class="btn" data-fp="random"${done ? ' disabled' : ''}>Pick the rest at random</button> <button class="btn" data-fp="clear"${f.picks.length ? '' : ' disabled'}>Clear choices</button></p>`;
   };
   ui('finalpick').onclick = ev => { const b = ev.target.closest && ev.target.closest('[data-fp]'); if (b && !b.disabled) pickAction(b.dataset.fp, b.dataset.lane); };
+  // ---- teams as participants: who drives the next heat (when the Race Director chooses), and a warning when a team has no free driver ----
+  const drawTeamPick = () => {
+    const box = ui('teampick'), ps = byTeam && (live.phase === 'between' || live.phase === 'ready') ? nextParticipants() : [];
+    if (!ps.length || !(setup.teamDriver === 'chosen' || teamNote)) { if (live.tpKey) { box.innerHTML = ''; live.tpKey = null; } box.hidden = true; return; }
+    const key = JSON.stringify([heat.idx, ps.map(p => people[p].driverId), teamNote, setup.teamDriver]);
+    box.hidden = false;
+    if (key === live.tpKey) return; // (only when something changed: a choice never changes under a finger)
+    live.tpKey = key;
+    const entries = heat.entries(), laneOf = p => { const e = entries.find(x => x.participant === p); return e && !heat.isFinal() ? 'Lane ' + (e.lane + 1) + ' · ' : ''; };
+    const taken = (id, p) => ps.some(q => q !== p && people[q].driverId === id);
+    box.innerHTML = `<strong>${esc(heat.raceName(heat.idx))}: who drives?</strong>
+      ${teamNote ? `<p class="hint2 hpwarn" role="alert">${esc(teamNote)}</p>` : ''}
+      ${setup.teamDriver === 'chosen' ? `<p class="hint2">Choose the driver of every team. The one whose turn it is, is suggested. A driver who is in two teams can drive for one of them in a heat.</p>` + ps.map(p => `<p><label>${esc(laneOf(p))}${esc(people[p].teamName || 'Team')} <select data-tp="${p}" aria-label="Driver for ${esc(people[p].teamName || 'team ' + (p + 1))}">${people[p].teamDrivers.map(id => { const d = find(drivers, id); return `<option value="${esc(id)}"${id === people[p].driverId ? ' selected' : ''}${taken(id, p) ? ' disabled' : ''}>${esc(d ? titleOf('drivers', d) : '?')}${taken(id, p) ? ' (drives for another team)' : ''}</option>`; }).join('')}</select></label></p>`).join('') : ''}`;
+  };
+  ui('teampick').onchange = ev => { const t = ev.target; if (!t || !t.dataset || t.dataset.tp === undefined || !byTeam || !['between', 'ready'].includes(live.phase)) return; const p = Number(t.dataset.tp); if (!people[p] || !(people[p].teamDrivers || []).includes(t.value)) return; teamChosen[p] = t.value; assignDrivers(); regrid(); }; // (only a driver of the team can be chosen)
   function finalize() {
     if (live.phase !== 'review') return;
     ui('review').innerHTML = ''; live.reviewShown = false;
@@ -414,9 +446,15 @@ async function renderRace() {
       eng.cars.forEach(c => { const a = live.extraBy.get(c.participant) || { pits: 0, pitTime: 0, has: false, pen: 0 }, p = pitFigures(c); live.extraBy.set(c.participant, { pits: a.pits + p.pits, pitTime: a.pitTime + p.pitTime, has: a.has || hasPits(c), pen: a.pen + (c.points || 0) }); });
       eng.cars.forEach(c => live.laps.push(...lapRows(c, date, { heat: raceNo, ...(fin ? { final: fin } : {}) })));
       live.priorBy = new Map(live.bestBy); live.priorAll = live.bestAll; live.priorAllName = live.bestAllName; // (the next race starts from what this one has set)
-      res.rows.forEach(x => { x.driverName = people[x.participant].driverName; });
+      res.rows.forEach(x => { // the name of a row: the driver; of a team that races as a team: "Team (driver)", and who drove
+        const pp = people[x.participant];
+        if (pp.asTeam) { teamHist[x.participant].push(pp.driverId); x.driverName = pp.driverName ? `${pp.teamName} (${pp.driverName})` : pp.teamName; x.by = pp.driverName; x.driverId = pp.driverId; x.teamId = pp.teamId || ''; }
+        else { x.driverName = pp.driverName; if (pp.teamId) { x.teamId = pp.teamId; x.teamName = pp.teamName; } }
+      });
+      Object.keys(teamChosen).forEach(k => { delete teamChosen[k]; }); // (what was chosen was for that heat)
       drawOverall();
       if (heat.hasNext() && !live.stopping) {
+        assignDrivers();
         live.phase = 'between'; eng = mk(heat.entries()); startBreak(); // (a final: the grid shows the lanes in the order of the heat result until the drivers have chosen)
         live.ann = mkAnn(); live.flash = new Map(); shareStatic(); update(); return;
       }
@@ -441,7 +479,12 @@ async function renderRace() {
     const date = new Date().toISOString();
     let standings, laps = live.laps;
     if (heats) {
+      const teamStanding = o => { // a team that raced as a team: the team is the row, with the drivers who drove for it
+        const mine = laps.filter(l => l.teamId === o.teamId), ids = []; mine.forEach(l => { if (l.driverId && !ids.includes(l.driverId)) ids.push(l.driverId); });
+        return { asTeam: true, driverId: '', driverName: o.teamName || '', teamId: o.teamId || '', teamName: o.teamName || '', drivers: ids.map(id => ({ driverId: id, driverName: nameOf('drivers', drivers, id), laps: mine.filter(l => l.driverId === id).length })) };
+      };
       standings = heat.overall().map(o => ({ pos: o.pos, driverId: o.driverId, carId: o.carId, driverName: o.driverName, carName: o.carName, laps: o.laps, points: o.points, best: o.best, total: null,
+        ...(o.asTeam ? teamStanding(o) : o.teamId ? { teamId: o.teamId, teamName: o.teamName } : {}),
         ...(o.adjMs ? { adjMs: o.adjMs } : {}), ...(o.adjLaps ? { adjLaps: o.adjLaps } : {}), ...(o.adjPoints ? { adjPoints: o.adjPoints } : {}),
         ...(live.extraBy.has(o.participant) && live.extraBy.get(o.participant).has ? { pits: live.extraBy.get(o.participant).pits, pitTime: live.extraBy.get(o.participant).pitTime } : {}),
         ...(penCfg.on && live.extraBy.has(o.participant) ? { penaltyPoints: live.extraBy.get(o.participant).pen } : {}),
@@ -450,7 +493,7 @@ async function renderRace() {
         ...(finalsOn && o.finalName ? { finalName: o.finalName, ...(o.finalPos !== null ? { finalPos: o.finalPos } : {}) } : {}),
         ...(finalsOn && fmode.finalMode === 'added' && o.finalPos !== null ? { heatScore: o.heatScore, finalPoints: o.finalPoints, finalLaps: o.finalLaps, ...(heat.scoring.byTime ? { finalTime: o.finalTime } : {}) } : {}) }));
     } else {
-      standings = eng.standings().map(x => ({ pos: x.pos, driverId: x.car.driverId, carId: x.car.carId, driverName: x.car.driverName, carName: x.car.carName, laps: eng.lapsOf(x.car), best: x.car.best, total: x.car.total, retired: (x.car.retired && !x.car.dq) || undefined,
+      standings = eng.standings().map(x => ({ pos: x.pos, driverId: x.car.driverId, carId: x.car.carId, ...(x.car.teamId ? { teamId: x.car.teamId, teamName: x.car.teamName } : {}), driverName: x.car.driverName, carName: x.car.carName, laps: eng.lapsOf(x.car), best: x.car.best, total: x.car.total, retired: (x.car.retired && !x.car.dq) || undefined,
         ...(x.car.adjMs ? { adjMs: x.car.adjMs } : {}), ...(x.car.adjLaps ? { adjLaps: x.car.adjLaps } : {}), ...(eng.bopNoteOf(eng.cars.indexOf(x.car)) ? { bopNote: eng.bopNoteOf(eng.cars.indexOf(x.car)) } : {}), ...(eng.tyreNoteOf(eng.cars.indexOf(x.car)) ? { tyreNote: eng.tyreNoteOf(eng.cars.indexOf(x.car)) } : {}), // (what Balance of Power and the tyres did to the car, in words)
         ...(hasPits(x.car) ? pitFigures(x.car) : {}), ...(penCfg.on ? { penaltyPoints: x.car.points, penalty: eng.penMs(x.car), dq: x.car.dq || undefined } : {}) }));
       laps = [];

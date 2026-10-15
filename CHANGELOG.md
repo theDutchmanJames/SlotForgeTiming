@@ -4,6 +4,7 @@ Every version of SlotForge Timing, newest first. The README has a section **What
 
 ## Versions
 
+- **1.8.0**: Teams: teams in the Database (name, picture, drivers in turn), a Team on Home, teams as the participants of heats (in the race setup or the Rotation editor), Team Name and Team Picture widgets and the `{team}` variable
 - **1.7.0**: Rotation Setups, part 2: the result by total race time (a heat that is not finished ranks below, or is estimated), the Heat List on the Race tab and as a widget, a printed heat sheet, and the line-up read out between heats
 - **1.6.0**: Rotation Setups, part 1: your own heat schedules (an editor with groups, locking and shuffles), a Rotation setup in the race setup, and "Not here today" on Home
 - **1.5.0**: the weather widgets: Tyres, Weather Forecast and Track Conditions, with picture sets, and the conditions in the audio

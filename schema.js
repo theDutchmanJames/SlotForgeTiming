@@ -82,6 +82,19 @@ module.exports = {
       { key: 'avatar', group: 'avatar', label: 'Avatar', type: 'image' }
     ]
   },
+  // Teams (1.8.0): a group of drivers with a name and a picture. A driver can be in more than one team. A team races in a lane, or in a heat, instead of a single driver.
+  teams: {
+    label: 'Team', plural: 'Teams', title: ['name'], image: 'picture', card: ['drivers'],
+    groups: [
+      { id: 'basics', title: 'Basics', note: 'The name and the drivers of the team', open: true },
+      { id: 'picture', title: 'Picture', note: 'The team picture on the timing screens' }
+    ],
+    fields: [
+      { key: 'name', group: 'basics', label: 'Team name', type: 'text' },
+      { key: 'drivers', group: 'basics', label: 'Drivers of the team', type: 'members', ref: 'drivers', hint: 'In the order they take their turn. A driver can be in more than one team.' },
+      { key: 'picture', group: 'picture', label: 'Team picture', type: 'image' }
+    ]
+  },
   racesetups: {
     label: 'Race setup', plural: 'Race setups', title: ['name'], extra: false, linked: false,
     // short list view, and grid cards that show the picture of the setup's track ('@limit' = laps or time, worked out by the screen)
@@ -108,6 +121,10 @@ module.exports = {
         hint: 'Number of laps: a heat ends when the cars have driven that many laps. Duration: every heat runs for the same time.' },
       { key: 'rotation', group: 'length', label: 'Rotation setup', type: 'ref', ref: 'rotationsetups', blank: 'None: plan the heats from the settings below', showIf: [{ sessionType: ['heats'] }],
         hint: 'A heat plan that you made yourself in Race Setup > Rotation Setups: which participant races in which heat and in which lane. With one chosen, the settings that plan the heats (up to "Who races together") are not used. Everything about how the result is counted still is.' },
+      { key: 'participants', group: 'length', label: 'The participants of the heats are', type: 'select', default: 'drivers', options: [['drivers', 'Drivers'], ['teams', 'Teams (made under Database > Teams)']], showIf: [{ sessionType: ['heats'], rotation: [''] }],
+        hint: 'Teams: on Home you choose a team and a car for every participant. The drivers of a team take turns, one driver in every heat. With a rotation setup the rotation says whether the participants are drivers or teams.' },
+      { key: 'teamDriver', group: 'length', label: 'Which driver of a team drives a heat', type: 'select', default: 'order', options: [['order', 'In turn: the order of the team in the database'], ['random', 'By lot: the driver who drove the fewest heats first'], ['chosen', 'I choose before every heat (the next one in turn is suggested)']], showIf: [{ sessionType: ['heats'] }],
+        hint: 'Only used when the participants are teams. A driver who is in two teams that race in the same heat drives for one of them only.' },
       { key: 'heatPlan', group: 'length', label: 'How the heats are planned', type: 'select', default: 'manual',
         options: [['manual', 'I choose the number of heats'], ['perdriver', 'Every driver races the same number of heats (I choose how many)'], ['roundrobin', 'Round robin: every driver meets every other driver'], ['rotation', 'Lane rotation: every driver races once in every lane']], showIf: [{ sessionType: ['heats'], rotation: [''] }],
         hint: 'I choose: the drivers are spread over the number of heats you type below. Same number of heats: you say how many heats every driver races, and the number of heats follows from that. Round robin: as many heats as it takes for every pair of drivers to race in the same heat at least once. Lane rotation: every driver races once in every lane, against as many different drivers as possible. The plan is shown on the Home tab before you start, and that is the plan that is raced.' },

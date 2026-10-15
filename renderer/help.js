@@ -39,10 +39,11 @@ const Help = (() => {
         <ul>
           <li><b>Tracks</b>: a name and the number of lanes are needed. The rest is optional: scale, surface, a picture and the <b>track length</b>. Type the length in, or let the calculator work it out from the pieces of your track. With a length, the Slotcar Speed widget can show speeds. A <b>lane length modifier</b>, or the length of every lane, gives each lane its own length. A <b>minimum and maximum lap time</b> lets the app ignore crossings that cannot be a real lap.</li>
           <li><b>Drivers</b>: a name, and if you like a nickname, a three-letter callsign, a date of birth, a country flag and an avatar.</li>
+          <li><b>Teams</b>: drivers who race together (see Teams, below).</li>
           <li><b>Slotcars</b>: a brand, manufacturer or model, then scale, motor, tyres, gearing, weight, a main picture and more pictures. The laps driven are counted for you.</li>
           <li><b>Extra fields…</b> on every list adds fields of your own (text, number, date or pick-list). They are for your information and never change timing.</li>
-          <li>The forms are in folders, so you can keep the options you do not need closed.</li>
-          <li><b>View settings</b> (Tracks, Drivers and Slotcars) opens a small bar where you turn the columns of the list, or the rows of the cards in the Grid view, on and off. It is kept for each page and view.</li>
+          <li>The forms are in folders you can keep closed.</li>
+          <li><b>View settings</b> (on every page) opens a small bar where you turn the columns of the list, or the rows of the cards, on and off. It is kept for each page and view.</li>
           <li>Click a <b>row or a card</b> of Slotcars, Tracks or Drivers to see all of it in a window, like a trading card: the main picture, the details and (slotcars) the other pictures, which you can click to see large. Nothing can be changed there; <b>Edit</b> opens the form.</li>
         </ul>` },
       { id: 'results', title: 'Results and Records', note: 'What has been driven', body: `
@@ -90,8 +91,15 @@ const Help = (() => {
         <ul>
           <li>Under <b>Race Setup</b>, on the <b>Rotation Setups</b> tab, you make a heat schedule by hand: say how many <b>participants</b> and <b>lanes</b> there are, then click a participant and a place (heat and lane) to put them there. Click two places to swap them. A participant can not race twice in a heat. With 20 racers on 4 lanes you could run 5 heats, or 10 so that everybody races twice.</li>
           <li>The participants are numbers, with a name if you like. <b>Groups</b> put some participants in a heat at once. <b>Lock</b> keeps a heat where it is when you shuffle. <b>Shuffle the heat order</b>, <b>Shuffle the lanes</b> and <b>Even out the lanes</b> help, and <b>Start from a plan</b> fills the heats for you. Undo and Redo (Ctrl+Z, Ctrl+Y) take a change back.</li>
-          <li>Choose the rotation in a race setup (<b>Rotation setup</b>, in Length and result). On the Home tab the participants are the rows. Tick <b>Not here today</b> for anybody who does not come: the others stay in their places and a heat nobody comes to is left out. The track needs as many lanes as the rotation uses. <b>Pick the drivers by name</b> uses the names of the rotation.</li>
+          <li>Choose the rotation in a race setup (<b>Rotation setup</b>, in Length and result). On the Home tab the participants are the rows (drivers, or teams when you set <b>Participants are</b> to Teams). Tick <b>Not here today</b> for anybody who does not come: the others stay in their places and a heat nobody comes to is left out. The track needs as many lanes as the rotation uses. <b>Pick the drivers by name</b> uses the names of the rotation.</li>
           <li>Finals, the way the result is counted and the break work as in every heat race.</li>
+        </ul>` },
+      { id: 'teams', title: 'Teams', note: 'Drivers who race together', body: `
+        <ul>
+          <li>On the <b>Teams</b> page of the Database you make a team: a name, a picture and its drivers, in the order they take their turn. A driver can be in more than one team. A driver who is deleted leaves his teams.</li>
+          <li>On the <b>Home tab</b> a lane can have a <b>Team</b>; the driver is then one of the team. The <b>Team Name</b> and <b>Team Picture</b> widgets show the team of the lane (or one team you choose), {team} works in custom texts and audio calls, and the results get a Team column.</li>
+          <li>The participants of a heat race can be <b>teams</b>: choose Teams in the race setup (<b>The participants of the heats are</b>) or in the rotation setup (<b>Participants are</b>, which wins). On Home you choose a team and a car for each. In every heat one driver of the team drives: <b>in turn</b>, <b>by lot</b>, or the one you choose before the heat.</li>
+          <li>A driver who is in two teams drives for one of them in a heat. The result has a row per team with the drivers who drove for it; every lap still counts for the driver who drove it.</li>
         </ul>` },
       { id: 'heatresults', title: 'Heat results', note: 'How the heats add up', body: `
         <ul>
@@ -198,7 +206,7 @@ const Help = (() => {
         <ul>
           <li>An <b>audio set</b> (Customization, Audio Settings) says what the race announces. The calls are in folders, and you switch every call on or off. Most of the newer calls are off until you switch them on.</li>
           <li><b>Race progress</b>: laps or minutes to go, the last lap, the heats. <b>Gaps and battles</b>: closing in, a battle, a lapped car. <b>Laps and records</b>: records, the first lap, a lap close to the record. <b>Pit and fuel</b>: pits, half a tank, a refuel. <b>Penalties</b>: given, served, forgiven, time added. <b>Safety</b>: a lane calling for the marshal, no lap for a while, the Trackmate lost or back. <b>Time tokens</b>: time almost up, time up, added, a lane freed. <b>Weather</b>: weather, conditions, tyres.</li>
-          <li>A call can have <b>several sentences</b>; one is picked at random each time. Use placeholders such as {driver}, {time}, {gap}, {gapahead}, {record} and {position}; the list is at the top of the audio set. Press Test to hear it.</li>
+          <li>A call can have <b>several sentences</b>; one is picked at random each time. Use placeholders such as {driver}, {team}, {time}, {gap}, {gapahead}, {record} and {position}; the list is at the top of the audio set. Press Test to hear it.</li>
           <li>A sentence can be spoken by a <b>voice of your computer</b>, or you can choose a <b>sound file</b> (up to 10 MB) that plays instead. Drivers can be called by name, nickname or callsign.</li>
           <li>Under a sentence, <b>Only if</b> limits it to one driver, the top places, a fast lap or a small gap; a sentence whose conditions hold is said instead of the others. <b>Not again within</b> holds a call back for some seconds.</li>
           <li>Pick the set in the race setup. <b>No audio</b> keeps the race silent. Sound plays on the computer that runs the race, not on phones.</li>

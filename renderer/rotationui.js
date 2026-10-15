@@ -56,7 +56,7 @@ function renderRotationEditor(box) {
   const groupsHtml = () => d.groups.map((g, k) => `<div class="rogroup"><div class="row"><input type="text" data-gname="${k}" value="${esc(g.name)}" maxlength="${Rot.LIMITS.label}" aria-label="Name of group ${k + 1}"> <button type="button" class="btn danger" data-gdel="${k}">Remove this group</button></div>
     <div class="ropool" role="group" aria-label="Participants in ${esc(g.name || 'group ' + (k + 1))}">${Array.from({ length: d.participants }, (_, p) => { const on = g.members.includes(p);
       return `<button type="button" class="rochip${on ? ' sel' : ''}" data-gm="${k}:${p}" aria-pressed="${on}" title="${esc(Rot.nameOf(d, p))}">${esc(Rot.shortOf(d, p))}</button>`; }).join('')}</div></div>`).join('') || '<p class="muted">No groups yet.</p>';
-  const namesHtml = () => `<div class="ronames">${Array.from({ length: d.participants }, (_, p) => `<label>P${p + 1} <input type="text" data-name="${p}" value="${esc(d.names[p])}" maxlength="${Rot.LIMITS.person}" placeholder="Participant ${p + 1}" aria-label="Name of participant ${p + 1}"></label>`).join('')}</div>`;
+  const namesHtml = () => `<div class="ronames">${Array.from({ length: d.participants }, (_, p) => `<label>P${p + 1} <input type="text" data-name="${p}" value="${esc(d.names[p])}" maxlength="${Rot.LIMITS.person}" placeholder="${Rot.isTeams(d) ? 'Team' : 'Participant'} ${p + 1}" aria-label="Name of ${Rot.isTeams(d) ? 'team' : 'participant'} ${p + 1}"></label>`).join('')}</div>`;
   const genOptsHtml = () => (gen.plan === 'manual' ? `<label>Heats <input type="number" id="ro-gheats" min="1" max="${Rot.LIMITS.maxHeats}" value="${esc(gen.heats)}"></label>`
     : gen.plan === 'perdriver' ? `<label>Heats for everybody <input type="number" id="ro-geach" min="1" max="50" value="${esc(gen.each)}"></label>`
     : gen.plan === 'roundrobin' ? `<label><input type="checkbox" id="ro-geven"${gen.even ? ' checked' : ''}> Everybody races the same number of heats</label>` : '');
@@ -64,6 +64,7 @@ function renderRotationEditor(box) {
   box.innerHTML = `<div class="ed-bar"><label>Name <input type="text" id="ro-name" value="${esc(d.name)}" maxlength="${Rot.LIMITS.name}"></label>
       <label>Participants <input type="number" id="ro-n" min="${Rot.LIMITS.minP}" max="${Rot.LIMITS.maxP}" value="${d.participants}"></label>
       <label>Lanes <input type="number" id="ro-lanes" min="1" max="${Rot.LIMITS.maxLanes}" value="${d.lanes}"></label>
+      <label>Participants are <select id="ro-kind" title="Drivers are chosen one by one on Home. Teams are chosen on Home too, and the drivers of a team take turns in the heats."><option value="drivers"${Rot.isTeams(d) ? '' : ' selected'}>Drivers</option><option value="teams"${Rot.isTeams(d) ? ' selected' : ''}>Teams</option></select></label>
       ${undoButtons('ro')}<button class="btn primary" id="ro-save">Save rotation setup</button><button class="btn" id="ro-back">Back</button><span id="ro-msg" class="muted" role="status"></span></div>
     <div class="field"><label for="ro-note">Note (optional)</label><input type="text" id="ro-note" value="${esc(d.note)}" maxlength="${Rot.LIMITS.note}"></div>
     <details class="hplanes" id="ro-genbox"${rotEd.genOpen || !d.heats.length ? ' open' : ''}><summary>Start from a plan</summary>
@@ -73,7 +74,7 @@ function renderRotationEditor(box) {
     <h4>Participants</h4><div id="ro-pool">${poolHtml()}</div><div id="ro-hold">${holdHtml()}</div>
     <h4>Heats</h4><div id="ro-grid">${gridHtml()}</div><div id="ro-remarks">${remarksHtml()}</div>
     <details class="hplanes" id="ro-namesbox"${d.names.some(Boolean) ? ' open' : ''}><summary>Names of the participants (optional)</summary>
-      <p class="hint2">A name only helps you here and on the Home tab, where one button picks the drivers who have these names. It does not have to be the name of a driver.</p><div id="ro-names">${namesHtml()}</div></details>
+      <p class="hint2">${Rot.isTeams(d) ? 'A name only helps you here and on the Home tab, where one button picks the teams that have these names. It does not have to be the name of a team.' : 'A name only helps you here and on the Home tab, where one button picks the drivers who have these names. It does not have to be the name of a driver.'}</p><div id="ro-names">${namesHtml()}</div></details>
     <details class="hplanes" id="ro-groupsbox"${d.groups.length ? ' open' : ''}><summary>Groups</summary>
       <p class="hint2">A group is some participants who belong together, such as the juniors. Put a group in a heat with the choice in the row of that heat: it takes the lanes in the order of the numbers.</p><div id="ro-groups">${groupsHtml()}</div><button type="button" class="btn" id="ro-addgrp">Add a group</button></details>
     <details class="hplanes"><summary>How often everybody races, and in which lane</summary><div class="wrap"><table class="fields heatplan-table"><thead><tr><th>Participant</th><th>Heats</th>${lanes.map(l => `<th>Lane ${l + 1}</th>`).join('')}</tr></thead><tbody id="ro-how">${howHtml(d)}</tbody></table></div></details>`;
@@ -108,6 +109,7 @@ function renderRotationEditor(box) {
     apply(res, true);
   };
   $('ro-n').onchange = resize; $('ro-lanes').onchange = resize;
+  $('ro-kind').onchange = e => apply(Rot.setParticipantsAre(d, e.target.value), true);
   $('ro-save').onclick = async () => {
     if (!String(d.name).trim()) { say('Please give the rotation setup a name.'); return; }
     U.hist.touch(); const token = U.hist.commit(); // (the state that is written is the one the steps call saved)

@@ -136,4 +136,11 @@ const folders = Help.folders();
   say('the heat results help tells about the total race time and what happens with a heat that is not finished', /Total race time/.test(f('heatresults')) && /lowest total wins/.test(f('heatresults')) && /not finished/.test(f('heatresults')) && /estimate/.test(f('heatresults')));
   say('...and every folder is still short enough', folders.every(x => plain(x.body).length < 1400)); }
 
+// ---- 1.8.0 ----
+{ const f = id => plain(folders.find(x => x.id === id).body), schemaText = JSON.stringify(schema.racesetups.fields);
+  say('the help has a Teams folder, right after the rotation setups, and tells: the Teams page and the order, a driver in more than one team, the lane on Home, the two widgets, {team}, teams as the participants, the three ways to choose a driver, and the result', folders.findIndex(x => x.id === 'teams') === folders.findIndex(x => x.id === 'rotation') + 1 && ['Teams page', 'in the order they take their turn', 'more than one team', 'a lane can have a Team', 'Team Name', 'Team Picture', '{team}', 'participants of a heat race can be teams', 'in turn', 'by lot', 'the one you choose before the heat', 'row per team'].every(t => f('teams').includes(t)));
+  say('...the settings it names are the real ones (the race setup form and the rotation editor)', f('teams').includes('The participants of the heats are') && schemaText.includes('The participants of the heats are') && f('teams').includes('Participants are') && src.includes('Participants are') && schemaText.includes('Which driver of a team drives a heat'));
+  say('...the Database help lists Teams, the rotation help says the participants can be teams, and the audio help names {team}', /Teams<\/b>: drivers who race together|Teams: drivers who race together/.test(f('database')) && /teams when you set Participants are to Teams/.test(f('rotation')) && /\{team\}/.test(f('audio')));
+  say('...and every folder is still short enough', folders.every(x => plain(x.body).length < 1400)); }
+
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

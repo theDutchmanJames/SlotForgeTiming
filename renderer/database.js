@@ -1,6 +1,6 @@
 // Lists, add, edit, delete and extra fields for any kind of item. Everything is driven by schema.js,
 // so the Database tab and the Race Setup tab share this code.
-const SUBS = [['tracks', 'Tracks'], ['drivers', 'Drivers'], ['slotcars', 'Slotcars'], ['results', 'Results and Records']];
+const SUBS = [['tracks', 'Tracks'], ['drivers', 'Drivers'], ['teams', 'Teams'], ['slotcars', 'Slotcars'], ['results', 'Results and Records']];
 const XTYPES = { text: 'Text', number: 'Number', date: 'Date', list: 'Pick-list' };
 const dlg = document.getElementById('dlg');
 const byId = id => document.getElementById(id);
@@ -50,6 +50,7 @@ function cell(f, v) {
   if (f.type === 'longtext') return esc(String(v).slice(0, 60));
   if (f.type === 'select') return esc((f.options.find(o => o[0] === v) || [, v])[1]);
   if (f.type === 'ref') { const r = (state.refs[f.ref] || []).find(x => x.id === v); return r ? esc(titleOf(f.ref, r)) : '<span class="muted">(deleted)</span>'; }
+  if (f.type === 'members') return Array.isArray(v) && v.length ? v.map(id => { const r = (state.refs[f.ref] || []).find(x => x.id === id); return r ? esc(titleOf(f.ref, r)) : '<span class="muted">(deleted)</span>'; }).join(', ') : '';
   return esc(v);
 }
 
@@ -90,7 +91,7 @@ const limitText = i => {
     default: return 'No limit';
   }
 };
-const VIEW_ENTITIES = ['tracks', 'drivers', 'slotcars']; // the pages with View settings (and with the view card: click a row or a card)
+const VIEW_ENTITIES = ['tracks', 'drivers', 'teams', 'slotcars']; // the pages with View settings (and with the view card: click a row or a card)
 const hue = t => { let n = 0; for (const ch of t) n = (n * 31 + ch.charCodeAt(0)) % 360; return `hsl(${n} 45% 40%)`; }; // (the colour of a picture's placeholder, from the name)
 const VIRTUAL = { limit: { label: 'Laps / time', get: limitText } };
 const columnOf = (s, k) => k[0] === '@' ? { key: k, label: VIRTUAL[k.slice(1)].label, virtual: VIRTUAL[k.slice(1)] } : s.fields.find(f => f.key === k);
@@ -147,7 +148,7 @@ async function mountManager(box, e) {
   const s = state.schema[e];
   const [items, custom] = await Promise.all([api.list(e), s.extra === false ? [] : api.customFields(e)]);
   state.custom[e] = custom;
-  for (const f of s.fields) if (f.type === 'ref') state.refs[f.ref] = await api.list(f.ref);
+  for (const f of s.fields) if (f.type === 'ref' || f.type === 'members') state.refs[f.ref] = await api.list(f.ref);
   const cols = s.list
     ? s.list.map(k => columnOf(s, k)).map(f => ({ label: f.label, get: i => columnCell(f, i) }))
     : [
@@ -258,6 +259,11 @@ const calcHtml = pieces => `<p class="muted">Number of pieces &times; length of 
   <div class="row"><button type="button" class="btn" data-calcadd="1">Add another piece type</button> <strong id="calc-total">${Speed.lengthFromPieces(pieces)} m</strong>
   <button type="button" class="btn primary" data-calcuse="1">Use this length</button></div>`;
 
+// the drivers of a team (field type 'members'): in the order they take their turn, with a list to add one more from
+const memRows = (ids, all) => `<ol class="memlist">${ids.length ? ids.map((id, i) => { const d = all.find(x => x.id === id);
+  return `<li><span class="memname">${esc(d ? titleOf('drivers', d) : '(deleted)')}</span> <button type="button" class="btn" data-memup="${i}" aria-label="Move up"${i ? '' : ' disabled'}>&uarr;</button><button type="button" class="btn" data-memdown="${i}" aria-label="Move down"${i < ids.length - 1 ? '' : ' disabled'}>&darr;</button><button type="button" class="btn danger" data-memdel="${i}">Remove</button></li>`; }).join('') : '<li class="muted">No drivers in this team yet.</li>'}</ol>
+  <div class="row"><select id="mem-pick" aria-label="Driver to add"><option value="">${all.some(d => !ids.includes(d.id)) ? 'Choose a driver…' : 'Every driver is in the team'}</option>${all.filter(d => !ids.includes(d.id)).map(d => `<option value="${esc(d.id)}">${esc(titleOf('drivers', d))}</option>`).join('')}</select> <button type="button" class="btn" data-memadd="1">Add to the team</button></div>`;
+
 function fieldHtml(f, v, extra) {
   const id = 'f-' + f.id;
   const lab = `<label for="${id}">${esc(f.label)}${f.optional ? ' <span class="muted">(optional)</span>' : ''}</label>`;
@@ -274,12 +280,13 @@ function fieldHtml(f, v, extra) {
     case 'tracklength': inp = `<div class="imgrow"><input id="${id}" type="number" min="0" step="any" value="${esc(Speed.parseLength(v))}"> <span>metres</span>
       <button type="button" class="btn" data-calcopen="1">Calculate from track pieces…</button></div><div id="calc" class="card" hidden>${calcHtml((extra && extra.pieces) || [])}</div>`; break;
     case 'penaltytypes': inp = `<p class="muted">Penalties the Race Director can give instead of leaving points to turn into time. One costs points, and must be served by stopping on the sensor in the pits. A Stop-and-Go needs the car to stand still for its seconds; a Drivethrough is served when the pit stop starts.</p><div id="pt-box">${ptRows((extra && extra.types) || [])}</div><button type="button" class="btn" data-ptadd="1">Add a special penalty</button>`; break;
+    case 'members': inp = `<div id="mem-box">${memRows((extra && extra.members) || [], state.refs[f.ref] || [])}</div>`; break;
     case 'gallery': inp = `<div id="gal-box" class="gallery"></div><input id="${id}" type="file" accept="image/*" multiple data-gallery="1"><p class="muted">Up to ${GALLERY_MAX} extra pictures. A screenshot of a parts list is fine.</p>`; break;
     case 'image': inp = `<div class="imgrow"><img id="${id}-img" class="thumb" ${v ? `src="${esc(v)}"` : 'hidden'} alt=""><input id="${id}" type="file" accept="image/*"><button type="button" class="btn" data-clear="${f.id}">Remove</button></div>`; break;
     default: inp = `<input id="${id}" type="text"${f.maxLength ? ` maxlength="${f.maxLength}"` : ''} value="${esc(v)}">`;
   }
   if (f.automatic) inp = `<input id="${id}" type="number" value="${esc(v ?? 0)}" disabled>`;
-  const wide = ['longtext', 'gallery', 'tracklength', 'image', 'penaltytypes'].includes(f.type) ? ' full' : '';
+  const wide = ['longtext', 'gallery', 'tracklength', 'image', 'penaltytypes', 'members'].includes(f.type) ? ' full' : '';
   return `<div class="field${wide}" data-key="${f.id}">${lab}${inp}${f.hint ? `<span class="muted hint">${esc(f.hint)}</span>` : ''}</div>`;
 }
 
@@ -351,10 +358,11 @@ function openForm(e, item) {
   if (!pieces.length) pieces = [{ count: '', mm: 200 }];
   let types = Array.isArray(item && item.types) ? item.types.map(t => ({ ...t })) : (item ? [] : PT_DEFAULTS.map(t => ({ ...t })));
   let gal = Array.isArray(item && item[s.gallery]) ? [...item[s.gallery]] : [], galSel = null;
+  const memF = fields.find(f => f.type === 'members'); let members = memF && item && Array.isArray(item[memF.key]) ? item[memF.key].filter(Boolean) : []; // (the drivers of a team, in order)
   fields.filter(f => f.type === 'image').forEach(f => { imgs[f.id] = val(f) || ''; if (!f.custom) frames[f.id] = Widgets.frameOf(item && item[f.key + 'Frame']); });
   const frameBlock = f => f.type === 'image' && !f.custom ? `<div class="field frame full" id="frame-${f.id}" data-frame="${f.id}">${frameInner(imgs[f.id], frames[f.id], '4 / 3', false)}</div>` : '';
   const redrawFrame = key => { byId('frame-' + key).innerHTML = frameInner(imgs[key], frames[key], '4 / 3', false); attachFrames(dlg, k => frames[k], (k, f) => { frames[k] = f; }); };
-  const one = f => fieldHtml(f, val(f), { pieces, types }) + frameBlock(f);
+  const one = f => fieldHtml(f, val(f), { pieces, types, members }) + frameBlock(f);
   // a schema with groups: the fields in collapsible sections with a coloured header, in the order of the groups (fields without a group of their own, such as your own fields, go last)
   const defs = Array.isArray(s.groups) && s.groups.length ? s.groups : null;
   const groups = defs ? [...defs.map(g => ({ ...g, fields: fields.filter(f => f.group === g.id) })), { id: '_more', title: 'More', note: '', fields: fields.filter(f => !defs.some(g => g.id === f.group)) }].filter(g => g.fields.length) : null;
@@ -387,6 +395,12 @@ function openForm(e, item) {
     if (d.fgall !== undefined && groups) { // open or close every group
       opened.clear(); if (d.fgall === '1') groups.forEach(g => opened.add(g.id));
       dlg.querySelectorAll('.fgroup').forEach(el => { el.open = d.fgall === '1'; }); return;
+    }
+    if (memF && (d.memadd || d.memup !== undefined || d.memdown !== undefined || d.memdel !== undefined)) { // the drivers of a team: add, move, remove
+      if (d.memadd) { const pick = byId('mem-pick').value; if (pick && !members.includes(pick)) members.push(pick); }
+      else if (d.memdel !== undefined) members.splice(Number(d.memdel), 1);
+      else { const i = Number(d.memup !== undefined ? d.memup : d.memdown), j = d.memup !== undefined ? i - 1 : i + 1; if (j >= 0 && j < members.length && i >= 0 && i < members.length) [members[i], members[j]] = [members[j], members[i]]; }
+      byId('mem-box').innerHTML = memRows(members, state.refs[memF.ref] || []); return;
     }
     if (d.ptadd) { types.push({ name: '', kind: 'stopgo', seconds: 5, cost: 5, extra: 1, unserved: 10 }); byId('pt-box').innerHTML = ptRows(types); return; }
     if (d.ptdel !== undefined) { types.splice(Number(d.ptdel), 1); byId('pt-box').innerHTML = ptRows(types); return; }
@@ -439,6 +453,7 @@ function openForm(e, item) {
     for (const f of fields) {
       if (f.automatic) { if (!item) built[f.key] = 0; continue; }
       if (f.type === 'gallery') { built[f.key] = [...gal]; continue; }
+      if (f.type === 'members') { built[f.key] = members.filter(id => (state.refs[f.ref] || []).some(x => x.id === id)); continue; }
       if (f.type === 'penaltytypes') { built[f.key] = types.filter(t => String(t.name || '').trim()).map(t => ({ name: String(t.name).trim(), kind: t.kind === 'drivethrough' ? 'drivethrough' : 'stopgo', seconds: Number(t.seconds) || 0, cost: Number(t.cost) || 0, extra: Number(t.extra) || 0, unserved: Number(t.unserved) || 0 })); continue; }
       const el = byId('f-' + f.id);
       let v;
@@ -643,7 +658,8 @@ async function renderResultsPool(box, pool) {
     const cellOf = (key, x, i) => {
       switch (key) {
         case 'pos': return esc(x.pos) + (!hasDriver && Stats.isWinner(s, x) ? ' ' + cup : '');
-        case 'driver': return (Stats.isWinner(s, x) ? cup + ' ' : '') + esc(x.driverName) + (x.dq ? ' <span class="muted">(disqualified)</span>' : x.retired ? ' <span class="muted">(retired, out of fuel)</span>' : '') + (Stats.adjustedText(x) ? ` <span class="muted">(adjusted: ${esc(Stats.adjustedText(x))})</span>` : '') + (Stats.notesText(x) ? ` <span class="muted">(${esc(Stats.notesText(x))})</span>` : '');
+        case 'driver': return (Stats.isWinner(s, x) ? cup + ' ' : '') + esc(x.driverName) + (x.dq ? ' <span class="muted">(disqualified)</span>' : x.retired ? ' <span class="muted">(retired, out of fuel)</span>' : '') + (Stats.adjustedText(x) ? ` <span class="muted">(adjusted: ${esc(Stats.adjustedText(x))})</span>` : '') + (Stats.notesText(x) ? ` <span class="muted">(${esc(Stats.notesText(x))})</span>` : '') + (Stats.driversText(x) ? ` <span class="muted">(drivers: ${esc(Stats.driversText(x))})</span>` : '');
+        case 'team': return esc(x.teamName || '');
         case 'car': return esc(x.carName);
         case 'laps': return esc(x.laps);
         case 'points': return esc(x.points);
@@ -660,7 +676,7 @@ async function renderResultsPool(box, pool) {
       (s.sessionType === 'heats' && s.scoring && Heats.scoringText(s.scoring, pts) ? `<p class="muted">${esc(Heats.scoringText(s.scoring, pts))}</p>` : '') + (fin ? `<p class="muted">${esc(Heats.finalsSaid(s.finals))}</p>` : '') + (Stats.weatherText(s) ? `<p class="muted">${esc(Stats.weatherText(s))}</p>` : '') +
       (s.heatResults ? `<h4>${s.finals ? 'Heats and finals' : 'Heats'}</h4>` + s.heatResults.map(h => `<p><strong>${esc(Heats.raceName(h))}</strong>${Stats.weatherText(h) ? ` <span class="muted">· ${esc(Stats.weatherText(h))}</span>` : ''}<br><span class="muted">${h.rows.map(r => `${esc(r.pos)}. ${Stats.isHeatWinner(s, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${esc(Stats.heatTimeText(s, r))}${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${Stats.adjustedText(r) ? ', adjusted: ' + esc(Stats.adjustedText(r)) : ''}${Stats.notesText(r) ? ', ' + esc(Stats.notesText(r)) : ''})`).join(' · ')}</span></p>`).join('') : '') +
       '<h4>All lap times</h4>' + s.standings.map(x => {
-        const mine = laps.filter(l => l.sessionId === s.id && l.driverId === x.driverId).sort((a, b) => (a.heat || 0) - (b.heat || 0) || a.lapNumber - b.lapNumber);
+        const mine = Stats.ownLaps(x, laps).filter(l => l.sessionId === s.id).sort((a, b) => (a.heat || 0) - (b.heat || 0) || a.lapNumber - b.lapNumber);
         return `<p><strong>${esc(x.driverName)}</strong><br><span class="muted">${mine.map(l => { const t = esc(`${l.heat ? (l.final ? 'F' + l.final : 'H' + l.heat) + ' ' : ''}${l.lapNumber}: ${RaceEngine.fmtTime(l.time)}`); return l.invalid || l.tooSlow ? `<s class="lapbad" title="${l.invalid ? 'Invalid lap' : 'Too slow: not counted for records'}">${t}</s>` : l.pit ? `<em title="Lap with a pit stop">${t}</em>` : t; }).join(' · ') || 'no laps'}</span></p>`;
       }).join('') + `<div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}<button class="btn danger" data-delsession="${esc(s.id)}">Delete this session</button><span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
     return `<details class="card sess"><summary>${esc(dateText(s.date))} · ${esc(s.setupName)} · ${esc(SESSION_LABEL[s.sessionType] || '')} · ${esc(s.trackName || '')}${win ? ' · Winner: ' + (Stats.isWinner(s, win) ? cup + ' ' : '') + esc(win.driverName) : ''}</summary><div class="sessbody">${body}</div></details>`;

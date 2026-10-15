@@ -37,8 +37,8 @@
     const E_ = S.eng, i = E_.cars.indexOf(c), row = S.rowOf(c), laps = c.laps.length, g = E.goodLaps(c), F = E_.fuel, P = E_.penalty, track = S.track || {}, ch = S.champ;
     const speedOf = scaled => { const ms = laps ? c.laps[laps - 1] : null, base = Sp.kmh(Sp.laneLength(track, c.lane), ms), f = scaled ? (Sp.scaleFactor(c.carScale) || Sp.scaleFactor(track.scale)) : 1; return base === null || !f ? '–' : (base * f).toFixed(scaled ? 0 : 1); };
     const pit = E_.pitTime(i, t), sec = P && P.on ? E_.penMs(c) / 1000 : 0, best = S.personalBest(c.driverId);
-    let champ = '–'; if (ch && ch.on) { champ = ch.done.get(c.driverId) || 0; if (['running', 'paused', 'review'].includes(S.phase) && E_.cars.some(x => x.laps.length)) champ += ch.list[row.pos - 1] || 0; }
-    return { name: esc(c.driverName), nickname: esc(c.nickname || c.driverName), callsign: esc(c.callsign || ''), car: esc(c.carName || ''), lane: c.lane + 1, position: row.pos, lap: c.done ? laps : laps + 1, laps,
+    let champ = '–'; if (ch && ch.on) { champ = ch.done.get(c.asTeam ? c.teamId : c.driverId) || 0; if (['running', 'paused', 'review'].includes(S.phase) && E_.cars.some(x => x.laps.length)) champ += ch.list[row.pos - 1] || 0; }
+    return { name: esc(c.driverName), team: esc(c.teamName || ''), nickname: esc(c.nickname || c.driverName), callsign: esc(c.callsign || ''), car: esc(c.carName || ''), lane: c.lane + 1, position: row.pos, lap: c.done ? laps : laps + 1, laps,
       laptime: c.done ? '–' : E.fmtTime(E_.lapElapsed(i, S.now)), last: laps ? E.fmtTime(c.laps[laps - 1]) : '–', best: c.best === null ? '–' : E.fmtTime(c.best), avg: g.length ? E.fmtTime(mean(g)) : '–', median: g.length ? E.fmtTime(median(g)) : '–',
       record: Number.isFinite(best) ? E.fmtTime(best) : '–', gap: esc(row.gap),
       fuel: F && F.on ? `${(Math.floor(E_.fuelOf(i, t) * 10 + 1e-9) / 10).toFixed(1).replace(/\.0$/, '')} L` : '–', fuelpct: F && F.on && F.tank ? Math.round(E_.fuelOf(i, t) / (E_.tankOf ? E_.tankOf(i) : F.tank) * 100) + '%' : '–', bop: c.bop ? Bp.signed(c.bop) : '–',
@@ -70,7 +70,7 @@
     const type = w.type, opt = Wd.resolveOpt(w, S.imageSets, S.clubLogo); // the widget's own settings, with a chosen picture set (or the club logo) filled in
     const perLane = !!(Wd.def(type) && Wd.def(type).perLane); // a widget that shows one lane's car
     const c = perLane ? S.carByLane(w.lane) : null;
-    if (perLane && !c) return { html: '' };
+    if (perLane && !c && !((type === 'teamname' || type === 'teampicture') && opt.team)) return { html: '' }; // (a widget that shows one chosen team needs no car)
     const t = S.eng.endAt && S.eng.status === 'finished' ? S.eng.endAt : S.now;
     switch (type) {
       case 'tokenclock': {
@@ -104,6 +104,11 @@
       case 'logo': return { html: Wd.imageHtml(opt.image, opt.fit) };
       case 'imagerace': return { html: Wd.imageHtml(Wd.pickImage(opt, raceVars(S, t)), opt.fit) };
       case 'textrace': return { html: Wd.fillText(opt.text ?? Wd.TEXT_RACE_DEFAULT, raceVars(S, t)) };
+      case 'teamname': case 'teampicture': { // the team of the lane, or the team that was chosen in the widget (Database > Teams)
+        const t = opt.team ? (S.teams || []).find(x => x.id === opt.team) : c && c.teamName ? { name: c.teamName, picture: c.teamPicture } : null;
+        if (!t) return { html: '' };
+        return type === 'teamname' ? { html: esc(t.name || '') } : { html: t.picture ? `<span class="avframe"><img class="avimg" src="${esc(t.picture)}" alt="" style="transform:${Wd.frameTransform(opt.frame)}"></span>` : '' };
+      }
       case 'carname': return { html: esc(c.carName || '') };
       case 'callsign': return { html: esc(c.callsign || '') };
       case 'name': return { html: esc(c.driverName) };
@@ -165,7 +170,7 @@
       }
       case 'champpoints': { // points from the heats finished so far, plus (optionally) what the current heat's positions are worth right now
         const ch = S.champ; if (!ch || !ch.on) return { html: '–' };
-        let pts = ch.done.get(c.driverId) || 0;
+        let pts = ch.done.get(c.asTeam ? c.teamId : c.driverId) || 0;
         const going = ['running', 'paused', 'review'].includes(S.phase) && S.eng.cars.some(x => x.laps.length);
         if (opt.live !== false && going) pts += ch.list[S.rowOf(c).pos - 1] || 0;
         return { html: String(pts) };

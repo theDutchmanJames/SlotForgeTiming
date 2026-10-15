@@ -17,7 +17,7 @@ const LiveShare = (() => {
     const { eng, layout, base } = ctx;
     const st = eng.standings(), tk = ctx.tokens ? Tk.view(ctx.tokens) : null;
     const champ = ctx.champ ? { on: !!ctx.champ.on, list: ctx.champ.list || [], done: new Map(ctx.champ.done || []) } : { on: false, list: [], done: new Map() };
-    return { champ, rowDesigns: ctx.rowDesigns || [], imageSets: ctx.imageSets || [], clubLogo: ctx.clubLogo || '', eng, track: ctx.track, now: ctx.now, phase: ctx.phase, calling: !!ctx.calling, lights: ctx.lights, setup: ctx.setup, heat: ctx.heat,
+    return { champ, rowDesigns: ctx.rowDesigns || [], imageSets: ctx.imageSets || [], teams: ctx.teams || [], clubLogo: ctx.clubLogo || '', eng, track: ctx.track, now: ctx.now, phase: ctx.phase, calling: !!ctx.calling, lights: ctx.lights, setup: ctx.setup, heat: ctx.heat,
       carByLane: l => eng.cars.find(c => c.lane === l) || null, rowOf: c => st.find(x => x.car === c),
       flashOf: c => ctx.flash.get(c), standings: () => st, tokens: tk,
       laneColorsOf: lane => { // (a lane whose time is up is the colour for that, whatever colour the lane has)
@@ -30,7 +30,7 @@ const LiveShare = (() => {
 
   // sent once per engine (a new heat has new cars): c = { raceId, title, eng, setup, layout, track, lanes, base }
   function packStatic(c) {
-    return { raceId: c.raceId, title: c.title, cfg: c.eng.cfg, setup: c.setup, layout: c.layout, track: c.track, lanes: c.lanes, rowDesigns: c.rowDesigns || [], imageSets: c.imageSets || [], clubLogo: c.clubLogo || '', tokenUi: c.tokenUi || null,
+    return { raceId: c.raceId, title: c.title, cfg: c.eng.cfg, setup: c.setup, layout: c.layout, track: c.track, lanes: c.lanes, rowDesigns: c.rowDesigns || [], imageSets: c.imageSets || [], teams: c.teams || [], clubLogo: c.clubLogo || '', tokenUi: c.tokenUi || null,
       base: { personal: [...c.base.personal], track: fin(c.base.track), trackName: c.base.trackName } };
   }
 
@@ -140,13 +140,15 @@ const LiveShare = (() => {
       shared(localNow) {
         const d = dyn, t = v.clock(localNow), flash = new Map();
         d.flash.forEach(([i, at, time, kind]) => { if (eng.cars[i]) flash.set(eng.cars[i], { at, time, kind }); });
-        return makeShared({ eng, track: stat.track, now: t, phase: d.phase, calling: !!d.calling, lights: d.lights, setup: stat.setup, heat: d.heat, flash, layout: stat.layout, rowDesigns: stat.rowDesigns, imageSets: stat.imageSets, clubLogo: stat.clubLogo,
+        return makeShared({ eng, track: stat.track, now: t, phase: d.phase, calling: !!d.calling, lights: d.lights, setup: stat.setup, heat: d.heat, flash, layout: stat.layout, rowDesigns: stat.rowDesigns, imageSets: stat.imageSets, teams: stat.teams, clubLogo: stat.clubLogo,
           champ: d.champ, tokens: d.tokens || null, bestAll: d.bestAll === null ? Infinity : d.bestAll, bestAllName: d.bestAllName, bestBy: new Map(d.bestBy),
           base: { personal, track: stat.base.track === null ? Infinity : stat.base.track, trackName: stat.base.trackName } });
       }
     };
     return v;
   }
-  return { makeShared, packStatic, packDynamic, sender, applyDynamic, cap, shown, viewer };
+  // the teams that a Team Name or Team Picture widget of the given layouts shows (a team chosen in the widget): a screen far away needs their names and pictures, and only those
+  const teamsUsed = (teams, ...docs) => { const text = JSON.stringify(docs); return (teams || []).filter(t => t && t.id && text.includes(t.id)).map(t => ({ id: t.id, name: t.name || '', picture: t.picture || '' })); };
+  return { teamsUsed, makeShared, packStatic, packDynamic, sender, applyDynamic, cap, shown, viewer };
 })();
 if (typeof module !== 'undefined') module.exports = LiveShare;

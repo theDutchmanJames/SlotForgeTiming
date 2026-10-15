@@ -321,7 +321,7 @@
   // opts: { live: a heat is racing now (otherwise the heat at idx is the next one), labels: the names of the heats of a rotation setup }.
   // state: done | current (racing now) | next (waits for Start) | later
   function listOf(h, people, opts = {}) {
-    const nameOf = p => { const x = people && people[p]; return (x && (x.driverName || x.name)) || ''; };
+    const nameOf = p => { const x = people && people[p]; return (x && ((x.asTeam && x.teamName) || x.driverName || x.name)) || ''; }; // (a team that races as a team is named by its team name)
     const total = h.total || h.count || (h.schedule || []).length, out = [];
     for (let i = 0; i < total; i++) {
       const isFinal = i >= h.count;
@@ -358,7 +358,44 @@
     return bits.join(', ');
   }
 
-  const api = { listOf, listLite, planList, lineupText, rowFigure, andList, makeRng, newSeed, optionsOf, breakOf, clock, planKey, swap, scoringText, scoreText, finalsSaid, finalCell, ordinal, raceName, finalsLines, countedHeats, plan, fits, stats, summary, PLANS, assignLanes, colourEdges, evenOut, groupsByNeed, rotation };
+  // ---- teams in a heat race (1.8.0): who of a team drives in a heat ----
+  // When the participants are teams, the driver is not chosen on Home: every heat has a driver from the roster of the team (the order the team has in the database).
+  //   rule 'order':  the drivers take turns in the order of the roster (the first heat of a team the first driver, then the one after the driver who drove last...)
+  //   rule 'random': a driver of the team by lot; the drivers who have driven the fewest heats first, and not the same one twice in a row when there is a choice
+  //   rule 'chosen': the Race Director chooses before the heat; what is not chosen follows the order
+  // A driver can be in more than one team, and can not drive for two teams in the same heat: a driver who is taken is skipped.
+  //   o: { rosters: { p: [driver ids] }, heat: [p, ...] (the participants in this heat, in lane order), rule, history: { p: [driver ids of the heats before] }, chosen: { p: driver id }, rnd }
+  // Gives { picks: { p: driver id }, clash: [p, ...] (participants that had no free driver: the first of the roster is used anyway), empty: [p, ...] (no drivers at all) }
+  function driversForHeat(o) {
+    const rosters = o.rosters || {}, hist = o.history || {}, chosen = o.chosen || {}, rnd = o.rnd || Math.random, rule = o.rule === 'random' || o.rule === 'chosen' ? o.rule : 'order';
+    const picks = {}, clash = [], empty = [], taken = new Set(), heat = o.heat || [];
+    const mine = p => Array.from(new Set((rosters[p] || []).filter(Boolean)));
+    for (const p of heat) { // (what the Race Director chose comes first, and only a driver of the team counts)
+      if (chosen[p] && mine(p).includes(chosen[p]) && !taken.has(chosen[p])) { picks[p] = chosen[p]; taken.add(chosen[p]); }
+    }
+    for (const p of heat) {
+      if (picks[p] !== undefined) continue;
+      const roster = mine(p), done = hist[p] || [];
+      if (!roster.length) { empty.push(p); picks[p] = ''; continue; }
+      const free = roster.filter(id => !taken.has(id));
+      let id;
+      if (!free.length) { clash.push(p); id = roster[done.length % roster.length]; }
+      else if (rule === 'random') {
+        const count = d => done.filter(x => x === d).length, fewest = Math.min(...free.map(count));
+        let pool = free.filter(d => count(d) === fewest);
+        const last = done[done.length - 1];
+        if (pool.length > 1 && pool.includes(last)) pool = pool.filter(d => d !== last);
+        id = pool[Math.min(pool.length - 1, Math.floor(rnd() * pool.length))];
+      } else { // (in turn: from the driver after the one who drove last, the first one who is free; a team that has not raced starts with its first driver)
+        const at = roster.indexOf(done[done.length - 1]), start = at >= 0 ? (at + 1) % roster.length : done.length % roster.length;
+        id = roster.map((_, k) => roster[(start + k) % roster.length]).find(d => !taken.has(d));
+      }
+      picks[p] = id; taken.add(id);
+    }
+    return { picks, clash, empty };
+  }
+
+  const api = { driversForHeat, listOf, listLite, planList, lineupText, rowFigure, andList, makeRng, newSeed, optionsOf, breakOf, clock, planKey, swap, scoringText, scoreText, finalsSaid, finalCell, ordinal, raceName, finalsLines, countedHeats, plan, fits, stats, summary, PLANS, assignLanes, colourEdges, evenOut, groupsByNeed, rotation };
   root.Heats = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

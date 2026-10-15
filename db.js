@@ -91,6 +91,7 @@ class Database {
     if (entity === 'penaltysystems') d.racesetups.forEach(r => { if (r.penaltySystem === id) r.penaltySystem = ''; });
     if (entity === 'layouts') d.racesetups.forEach(r => { if (r.layout === id) r.layout = ''; if (r.layout2 === id) r.layout2 = ''; });
     if (entity === 'drivers') {
+      d.teams.forEach(t => { if (Array.isArray(t.drivers)) t.drivers = t.drivers.filter(x => x !== id); });
       this.removeLapsWhere(l => l.driverId === id);
       d.sessions.forEach(s => { s.standings = s.standings.filter(x => x.driverId !== id); });
     }

@@ -15,7 +15,7 @@
   // ---- the columns ----
   // key, label, and whether it is shown until the person turns it off (on). Sessions: the table of a finished race, practice, qualifying or heat race.
   const SESSION_COLUMNS = [
-    { key: 'pos', label: 'Pos', on: true }, { key: 'driver', label: 'Driver', on: true }, { key: 'car', label: 'Car', on: true }, { key: 'laps', label: 'Laps', on: true },
+    { key: 'pos', label: 'Pos', on: true }, { key: 'driver', label: 'Driver', on: true }, { key: 'team', label: 'Team', on: true, note: 'only when the race had teams' }, { key: 'car', label: 'Car', on: true }, { key: 'laps', label: 'Laps', on: true },
     { key: 'points', label: 'Points', on: true, note: 'only in a race that is decided on points' }, { key: 'result', label: 'Result', on: true, note: 'only in a heat race with its own scoring' },
     { key: 'final', label: 'Final', on: true, note: 'only in a heat race with finals' },
     { key: 'best', label: 'Best lap', on: true }, { key: 'total', label: 'Total time', on: true, note: 'not in a heat race' },
@@ -108,11 +108,13 @@
   }
   // The figures of every row of the standings of a session: figures of the laps, plus the pit stops and penalty points that were saved with the session.
   // laps: the lap rows of that session; tracks / cars: the lists of tracks and slotcars (to find the length and the scale).
+  // the laps that belong to a row of the standings: a driver's own laps, or all the laps of a team that raced as a team (1.8.0: the laps of every driver who drove for it)
+  const ownLaps = (x, laps) => (laps || []).filter(l => (x.asTeam ? !!x.teamId && l.teamId === x.teamId : l.driverId === x.driverId));
   function forSession(session, laps, tracks, cars) {
     const track = (tracks || []).find(t => t.id === session.trackId) || {};
     return (session.standings || []).map(x => {
       const car = (cars || []).find(c => c.id === x.carId);
-      const mine = (laps || []).filter(l => l.driverId === x.driverId && (l.sessionId === undefined || l.sessionId === session.id));
+      const mine = ownLaps(x, laps).filter(l => l.sessionId === undefined || l.sessionId === session.id);
       return { ...figures(mine, track, car && car.scale), pits: x.pits, pitTime: x.pitTime, penalty: x.penaltyPoints };
     });
   }
@@ -160,9 +162,12 @@
   // The columns of the table of one session: the ones that apply to it (Points only in a race decided on points, Pit stops only when it was saved with them...)
   function sessionColumns(session, figs) {
     const heats = session.sessionType === 'heats', st = session.standings || [];
-    const applies = { points: session.resultBy === 'points', result: heats && !!session.scoring && st.some(x => x.score !== undefined), final: heats && !!session.finals, total: !heats };
+    const applies = { points: session.resultBy === 'points', result: heats && !!session.scoring && st.some(x => x.score !== undefined), final: heats && !!session.finals, total: !heats, team: st.some(x => x.teamName && !x.asTeam) };
     return SESSION_COLUMNS.filter(c => (c.key in applies ? applies[c.key] : FIGURE_KEYS.includes(c.key) ? hasAny(c.key, figs) : true));
   }
+
+  // the drivers who drove for a team that raced as a team: "Anna (7 laps), Ben (5 laps)" (nothing for a row that is a driver)
+  const driversText = x => (x && x.asTeam && Array.isArray(x.drivers) && x.drivers.length ? x.drivers.map(d => `${d.driverName || '?'} (${d.laps} ${d.laps === 1 ? 'lap' : 'laps'})`).join(', ') : '');
 
   // The sentences under a table that explain the figures in it (keys: the columns that are shown)
   function notes(keys) {
@@ -173,7 +178,7 @@
     return out;
   }
 
-  const api = { SESSION_COLUMNS, STINT_COLUMNS, RECORD_COLUMNS, FIGURE_KEYS, WINNER_TYPES, isWinner, isHeatWinner, heatTimeText, adjustedText, bopText, tyreText, notesText, weatherText, figures, forSession, lapSpeed, lapLength, valueOf, text, hasAny, sessionColumns, notes, fmtSpeed, fmtScale, fmtDist, fmtSpread, fmtMs };
+  const api = { driversText, ownLaps, SESSION_COLUMNS, STINT_COLUMNS, RECORD_COLUMNS, FIGURE_KEYS, WINNER_TYPES, isWinner, isHeatWinner, heatTimeText, adjustedText, bopText, tyreText, notesText, weatherText, figures, forSession, lapSpeed, lapLength, valueOf, text, hasAny, sessionColumns, notes, fmtSpeed, fmtScale, fmtDist, fmtSpread, fmtMs };
   root.Stats = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

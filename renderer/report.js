@@ -15,8 +15,8 @@
     const heatNumbers = [...new Set(laps.map(l => l.heat || 0))].sort((a, b) => a - b);
     return heatNumbers.map(h => {
       const mine = laps.filter(l => (l.heat || 0) === h);
-      const cols = session.standings.filter(s => mine.some(l => l.driverId === s.driverId))
-        .map(s => ({ s, laps: mine.filter(l => l.driverId === s.driverId).sort((a, b) => a.lapNumber - b.lapNumber) }));
+      const cols = session.standings.filter(s => ST.ownLaps(s, mine).length)
+        .map(s => ({ s, laps: ST.ownLaps(s, mine).sort((a, b) => a.lapNumber - b.lapNumber) }));
       return { heat: h, final: (mine.find(l => l.final) || {}).final || '', cols };
     }).filter(g => g.cols.length);
   }
@@ -36,7 +36,8 @@
     const cellOf = (key, x, i) => {
       switch (key) {
         case 'pos': return esc(x.pos) + (!hasDriver && ST.isWinner(session, x) ? ' ' + cup : '');
-        case 'driver': return (ST.isWinner(session, x) ? cup + ' ' : '') + esc(x.driverName) + (x.dq ? ' (disqualified)' : x.retired ? ' (retired, out of fuel)' : '') + (ST.adjustedText(x) ? ` (adjusted: ${esc(ST.adjustedText(x))})` : '') + (ST.notesText(x) ? ` (${esc(ST.notesText(x))})` : '');
+        case 'driver': return (ST.isWinner(session, x) ? cup + ' ' : '') + esc(x.driverName) + (x.dq ? ' (disqualified)' : x.retired ? ' (retired, out of fuel)' : '') + (ST.adjustedText(x) ? ` (adjusted: ${esc(ST.adjustedText(x))})` : '') + (ST.notesText(x) ? ` (${esc(ST.notesText(x))})` : '') + (ST.driversText(x) ? ` (drivers: ${esc(ST.driversText(x))})` : '');
+        case 'team': return esc(x.teamName || '');
         case 'car': return esc(x.carName);
         case 'laps': return esc(x.laps);
         case 'points': return esc(x.points);
