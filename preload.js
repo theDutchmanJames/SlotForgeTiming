@@ -1,6 +1,6 @@
 // The only bridge between the app window and the database.
 // It carries the database, the live race, the Trackmate permission list and the import, export and backup files.
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webFrame } = require('electron');
 const listeners = { static: new Set(), push: new Set(), command: new Set(), resync: new Set() };
 ipcRenderer.on('live:command', (_e, c) => listeners.command.forEach(f => f(c)));
 ipcRenderer.on('live:static', (_e, s) => listeners.static.forEach(f => f(s)));
@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('api', {
   addCustomField: (entity, field) => call('custom:add', entity, field),
   removeCustomField: (entity, id) => call('custom:remove', entity, id),
   setCustomFieldGroup: (entity, id, group) => call('custom:group', entity, id, group),
+  setZoom: factor => { const k = Number(factor); if (k >= 0.5 && k <= 3) webFrame.setZoomFactor(k); }, // the size of the interface of this window (App Settings > General > Display)
   getSettings: () => call('settings:get'),
   setSettings: patch => call('settings:set', patch),
   // the running race, shared with the Live Race window

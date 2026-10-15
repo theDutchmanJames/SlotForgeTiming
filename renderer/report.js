@@ -5,6 +5,7 @@
   const RT = typeof module !== 'undefined' ? require('./richtext.js') : root.RichText;
   const HT = typeof module !== 'undefined' ? require('./heats.js') : root.Heats;
   const ST = typeof module !== 'undefined' ? require('./stats.js') : root.Stats;
+  const IC = typeof module !== 'undefined' ? require('./icons.js') : root.Icons;
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const LABEL = { practice: 'Free practice', qualifying: 'Qualifying', race: 'Race by laps', timed: 'Timed race', heats: 'Heat-based race', tokens: 'Time Token Session' };
   const dateText = iso => (iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'long', timeStyle: 'short' }) : '');
@@ -31,17 +32,18 @@
     const fin = isHeats && !!session.finals, finArg = { finalMode: fin ? session.finals.finalMode : 'places', byPoints: pts };
     const figs = ST.forSession(session, laps, tracks, cars), want = new Set(opt.columns || ST.SESSION_COLUMNS.filter(c => c.on).map(c => c.key));
     const cols = ST.sessionColumns(session, figs).filter(c => want.has(c.key));
+    const cup = IC.trophy({ size: 14 }), hasDriver = cols.some(c => c.key === 'driver'); // (the winner's cup goes next to the name; without the Driver column next to the position)
     const cellOf = (key, x, i) => {
       switch (key) {
-        case 'pos': return esc(x.pos);
-        case 'driver': return esc(x.driverName) + (x.dq ? ' (disqualified)' : x.retired ? ' (retired, out of fuel)' : '');
+        case 'pos': return esc(x.pos) + (!hasDriver && ST.isWinner(session, x) ? ' ' + cup : '');
+        case 'driver': return (ST.isWinner(session, x) ? cup + ' ' : '') + esc(x.driverName) + (x.dq ? ' (disqualified)' : x.retired ? ' (retired, out of fuel)' : '') + (ST.adjustedText(x) ? ` (adjusted: ${esc(ST.adjustedText(x))})` : '');
         case 'car': return esc(x.carName);
         case 'laps': return esc(x.laps);
         case 'points': return esc(x.points);
         case 'result': return esc(HT.scoreText(x, session.scoring, finArg));
         case 'final': return esc(HT.finalCell(x));
         case 'best': return esc(E.fmtTime(x.best));
-        case 'total': return esc(E.fmtTime(x.total + (x.penalty || 0))) + (x.penalty ? ` (includes +${esc(E.fmtTime(x.penalty))} penalty, ${esc(x.penaltyPoints)} points)` : '');
+        case 'total': return esc(E.fmtTime(x.total + (x.penalty || 0) + (x.adjMs || 0))) + (x.penalty ? ` (includes +${esc(E.fmtTime(x.penalty))} penalty, ${esc(x.penaltyPoints)} points)` : '');
         default: return esc(ST.text(key, figs[i]));
       }
     };
@@ -50,7 +52,7 @@
       (ST.notes(cols.map(c => c.key)).length ? `<p class="sub">${ST.notes(cols.map(c => c.key)).map(esc).join(' ')}</p>` : '') +
       (isHeats && session.scoring && HT.scoringText(session.scoring, pts) ? `<p class="sub">${esc(HT.scoringText(session.scoring, pts))}</p>` : '') + (fin ? `<p class="sub">${esc(HT.finalsSaid(session.finals))}</p>` : '');
     const heatSummary = !opt.heats || !session.heatResults ? '' : `<h2>${session.finals ? 'Heats and finals' : 'Heats'}</h2>` + session.heatResults.map(h =>
-      `<p><b>${esc(HT.raceName(h))}</b>: ${h.rows.map(r => `${esc(r.pos)}. ${esc(r.driverName)} (${esc(r.laps)} laps${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''})`).join(' &middot; ')}</p>`).join('');
+      `<p><b>${esc(HT.raceName(h))}</b>: ${h.rows.map(r => `${esc(r.pos)}. ${ST.isHeatWinner(session, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${ST.adjustedText(r) ? ', adjusted: ' + esc(ST.adjustedText(r)) : ''})`).join(' &middot; ')}</p>`).join('');
     const groups = lapGroups(session, laps);
     const lapPages = groups.map(g => {
       const most = Math.max(...g.cols.map(c => c.laps.length));
@@ -92,17 +94,25 @@
       <div class="qr">${svg}</div><p class="url">${esc(url)}</p><p class="small">Your phone must be on the same wifi network as the timing computer.</p></body></html>`;
   }
 
-  // The racing rules as a page to hand out: the club's own formatting, a clear title, and the credit line at the bottom
-  const CREDIT = ['This App has been made by Claude AI and theDutchmanJames.', 'For all Slotcar Enthusiast and special greetings to the SlotForum community!'];
+  // The credit under the racing rules on the screen (Racing Rules tab). It is not on the printed page: that is the club's own page.
+  const CREDIT = [
+    'This App has been made by Claude and theDutchmanJames.',
+    'For all Slotcar Enthusiasts and special thanks to:',
+    'Bjorn F. - For being my best mate!',
+    'RaceCoordinator, for the ideas, inspiration and their work on RCAI.',
+    'Kevan @Slotracer, the first person to say something, even though it was just smileys..',
+    'Dopamine @Slotforum, for his ideas on Audio Customization.',
+    'LMP & Superslab @Slotforum, for their BoP System.',
+    'Johnno @Slotracer, for the first constructive feedback'
+  ];
+  // The racing rules as a page to hand out: the club's own formatting and a clear title (no credit on it)
   function rulesHtml({ title, html }) {
     return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
       @page { size: A4; margin: 18mm; }
       body { font: 12pt/1.5 Arial, Helvetica, sans-serif; color: #111; margin: 0; }
       h1.title { font-size: 26pt; margin: 0 0 2mm; padding-bottom: 3mm; border-bottom: 2px solid #111; }
       .body h1, .body h2, .body h3 { margin: 1em 0 .3em; page-break-after: avoid; } .body ul, .body ol { padding-left: 1.4em; } .body li, .body p { page-break-inside: avoid; }
-      .credit { margin-top: 12mm; padding-top: 3mm; border-top: 1px solid #bbb; text-align: right; font-size: 9pt; font-style: italic; color: #555; }
-    </style></head><body><h1 class="title">${esc(title)}</h1><div class="body">${RT.clean(html)}</div>
-      <p class="credit">${CREDIT.map(esc).join('<br>')}</p></body></html>`;
+    </style></head><body><h1 class="title">${esc(title)}</h1><div class="body">${RT.clean(html)}</div></body></html>`;
   }
 
   const fileName = session => `${session.setupName || 'Session'} ${(session.date || '').slice(0, 10)}.pdf`.replace(/[\\/:*?"<>|]/g, '-');

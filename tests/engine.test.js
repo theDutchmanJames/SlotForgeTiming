@@ -195,6 +195,29 @@ R.stop(12000); ok('practice only ends when stopped', R.status === 'finished' && 
 R = createRace({ type: 'qualifying', duration: 0.05, entries: E(1) }); R.start(0); R.cross(0, 2000); R.tick(3100); R.cross(0, 5000);
 ok('qualifying ends when all cars have crossed after time up', R.status === 'finished');
 
+// 1.2.0: the same best lap in practice or qualifying: the car that set it first ranks higher (not the lower lane)
+for (const type of ['qualifying', 'practice']) {
+  const q = () => createRace({ type, duration: 10, entries: E(3) }), order = Q => Q.standings().map(x => x.index).join();
+  let Q = q(); Q.start(0); lap(Q, 1, [5000]); lap(Q, 0, [6000, 11000]); // lane 2 drives 5.000 at 5.000 s, lane 1 drives 5.000 at 11.000 s
+  ok(type + ': the same best lap (5.000): the car that set it first is ahead, though it is the higher lane', order(Q) === '1,0,2' && Q.standings()[1].gap === '+0.000');
+  Q = q(); Q.start(0); lap(Q, 0, [5000]); lap(Q, 1, [6000, 11000]);
+  ok(type + ': ...and when the lower lane was first it stays ahead', order(Q) === '0,1,2');
+  Q = q(); Q.start(0); lap(Q, 0, [5000]); lap(Q, 1, [5000]);
+  ok(type + ': at the very same moment the lower lane stays ahead (as before)', order(Q) === '0,1,2');
+  Q = q(); Q.start(0); lap(Q, 0, [5200, 10200]); lap(Q, 1, [5100, 10100]); // both: 5.000 as their second lap; lane 2 set it at 10.100 s, lane 1 at 10.200 s
+  ok(type + ': the moment is the end of the lap that made the best time, not the start of the session or the first lap', order(Q) === '1,0,2');
+  Q = q(); Q.start(0); lap(Q, 0, [5000, 14000, 19000]); lap(Q, 1, [6000, 11000]); // lane 1 equals its best again at 19 s: that does not count, the first time does
+  ok(type + ': a car that equals its own best again later keeps the moment of the first time', order(Q) === '0,1,2');
+  Q = q(); Q.start(0); lap(Q, 0, [5000]); lap(Q, 1, [4900]);
+  ok(type + ': a faster lap is a faster lap (the order of setting only decides equal times)', order(Q) === '1,0,2' && Q.standings()[1].gap === '+0.100');
+  Q = q(); Q.start(0); lap(Q, 2, [5000]);
+  ok(type + ': cars without a lap stay behind the others, in lane order', order(Q) === '2,0,1');
+  Q = q(); Q.start(0); lap(Q, 1, [5000]); lap(Q, 0, [6000, 11000]); Q.setInvalid(0, 1, true);
+  ok(type + ': a lap that is marked invalid is no best lap and sets no moment: lane 1 has only its 6.000 left, the other car is ahead; valid again, lane 1 ties and is second', order(Q) === '1,0,2' && Q.standings()[1].gap === '+1.000' && (Q.setInvalid(0, 1, false), Q.standings()[1].gap === '+0.000' && order(Q) === '1,0,2'));
+  Q = q(); Q.start(0); lap(Q, 0, [5000, 11000, 16000]); lap(Q, 1, [5500, 10500]); Q.setInvalid(0, 0, true); // lane 1: 5.000 as its first lap (invalid) and as its third (valid, at 16 s); lane 2: 5.000 at 10.5 s
+  ok(type + ': an invalid lap with the same time sets no moment: the valid 5.000 of lane 1 (at 16 s) comes after the 5.000 of lane 2 (at 10.5 s)', order(Q) === '1,0,2' && Q.standings()[1].gap === '+0.000');
+}
+
 // flags
 R = createRace({ type: 'race', laps: 5, entries: E(1) }); R.start(0); R.cross(0, 5000);
 R.setFlag('yellow', 6000);

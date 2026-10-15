@@ -177,7 +177,7 @@ const LiveView = (() => {
     const lb = $('dir-lapsbox'), tv = d.tokens ? Tokens.view(d.tokens) : null; lb.hidden = !on;
     if (on) { const h = Review.lapsHtml(eng, { late: tv ? (i, n) => tv.lateAt(eng.cars[i].lane, n) : null }); if (h !== lapsHtml) { lapsHtml = h; $('dir-laps').innerHTML = h; } } else lapsHtml = '';
     const rv = $('dir-review'); // after the race: the review, with the same corrections as in the race window (a Time Token Session is checked on the main computer)
-    if (d.phase === 'review') { rv.hidden = false; rv.innerHTML = st.tokenUi ? '<h3>Session review</h3><p class="muted">The session is over. The stints are checked on the main computer, where Finalize is pressed.</p>' : Review.html(eng); } else if (!rv.hidden) { rv.hidden = true; rv.innerHTML = ''; }
+    if (d.phase === 'review') { rv.hidden = false; rv.innerHTML = st.tokenUi ? '<h3>Session review</h3><p class="muted">The session is over. The stints are checked on the main computer, where Finalize is pressed.</p>' : Review.html(eng, { champ: d.champ }); } else if (!rv.hidden) { rv.hidden = true; rv.innerHTML = ''; }
     if (!pen) return;
     st.cfg.entries.forEach(e => {
       const row = body.querySelector(`[data-row="${e.lane}"]`), c = eng.cars.find(x => x.lane === e.lane); if (!row || !c) return;

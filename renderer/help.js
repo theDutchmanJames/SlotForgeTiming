@@ -43,6 +43,7 @@ const Help = (() => {
           <li><b>Extra fields…</b> on every list adds fields of your own (text, number, date or pick-list). They are for your information and never change timing.</li>
           <li>The forms are in folders, so you can keep the options you do not need closed.</li>
           <li><b>View settings</b> (Tracks, Drivers and Slotcars) opens a small bar where you turn the columns of the list, or the rows of the cards in the Grid view, on and off. It is kept for each page and view.</li>
+          <li>Click a <b>row or a card</b> of Slotcars, Tracks or Drivers to see all of it in a window, like a trading card: the main picture, the details and (slotcars) the other pictures, which you can click to see large. Nothing can be changed there; <b>Edit</b> opens the form.</li>
         </ul>` },
       { id: 'results', title: 'Results and Records', note: 'What has been driven', body: `
         <ul>
@@ -51,6 +52,7 @@ const Help = (() => {
           <li>Open a session to see the standings and every lap. Besides the standard columns it shows the average and median lap, consistency, average speed, distance, pit stops and pit time, and penalty points (what the session has).</li>
           <li><b>View settings</b> (after Open all and Close all) turns the columns of the record and session tables on and off. <b>Export to PDF</b> first asks what to include (results, heats, every lap time, and the columns) and then makes a report you can print.</li>
           <li>An invalid lap, or one outside the lap limits of the track, is kept but shown struck through. It never counts for a personal best or a track record.</li>
+          <li>A small <b>trophy</b> marks the winner of a race, a timed race or a heat (not in practice or qualifying). A result the Race Director adjusted says so next to the driver's name.</li>
         </ul>` },
       { id: 'setups', title: 'Race Setup', note: 'Race setups, fuel, penalties and time tokens', body: `
         <ul>
@@ -63,7 +65,7 @@ const Help = (() => {
       { id: 'types', title: 'Session types', note: 'Six ways to race', body: `
         <ul>
           <li><b>Free practice</b>: no finish. It runs until you stop it and ranks the drivers by their best lap.</li>
-          <li><b>Qualifying</b>: a timed session ranked by best lap. Its winner picks their lane first in the next race on the same track.</li>
+          <li><b>Qualifying</b>: a timed session ranked by best lap. Two drivers with the same best lap: the one who set it first ranks higher. Its winner picks their lane first in the next race on the same track.</li>
           <li><b>Race by laps</b>: the first to reach the number of laps wins. The race ends when the lead car finishes, or when every car has finished.</li>
           <li><b>Timed race</b>: the most laps in the time wins.</li>
           <li><b>Heat-based race</b>: several heats, each limited by laps or by time; the overall result adds the heats up. How the heats are planned and counted, and the finals, are explained in Heat races, below.</li>
@@ -109,7 +111,7 @@ const Help = (() => {
           <li>A race keeps running when you open another tab. A <b>Race</b> tab with a green dot takes you back to it. The Trackmate and the Race Director keep working, but the keys above only work on the Race tab. Only one race can run at a time.</li>
           <li>Tick <b>Simulated cars</b> to watch a race without any hardware.</li>
           <li>The <b>Review laps</b> button lets you mark a lap invalid or delete it while the race is still running.</li>
-          <li>When a race (or a heat) ends, a <b>review</b> opens before anything is saved: check the order, clear penalty points, disqualify or reinstate a driver, correct laps. <b>Finalize results</b> saves them.</li>
+          <li>When a race (or a heat) ends, a <b>review</b> opens before anything is saved: check the order, clear penalty points, disqualify or reinstate a driver, correct laps, or <b>Adjust</b> the race time, the laps and (in a heat race decided on points) the championship points of a driver. <b>Finalize results</b> saves them.</li>
         </ul>` },
       { id: 'director', title: 'Race Director, flags and penalties', note: 'Control the race from anywhere', body: `
         <ul>
@@ -141,7 +143,7 @@ const Help = (() => {
     ['Making it yours', [
       { id: 'custom', title: 'Customization', note: 'Layouts, audio, pictures and your own widgets', body: `
         <ul>
-          <li><b>Layout Editor</b>: design a timing page by placing widgets (lap times, the leaderboard, start lights, the race flag, fuel, speed and many more). Drag, resize, undo and redo. Make a different layout for the second screen.</li>
+          <li><b>Layout Editor</b>: design a timing page by placing widgets (lap times, the leaderboard, start lights, the race flag, Race Laps counting up or down, fuel, speed and many more). Drag, resize, undo and redo. Make a different layout for the second screen.</li>
           <li><b>Leaderboard Editor</b>: design the rows of the Leaderboard widget.</li>
           <li><b>Audio Settings</b>: what the race says (see Audio calls below).</li>
           <li><b>Image Settings</b>: picture sets for the start lights, the race flag, the fuel level and the avatars. A start lights set is a grid: a picture for every light and every state of the race, such as the yellow flag. An <b>Avatars</b> set has a picture for each of the 8 lanes: the Avatar widget shows the picture of the driver, and a driver without one gets the avatar of the lane he or she drives in (the built-in standard avatars, unless you choose a set). Choose a set in the widget in the Layout Editor. The Race Flag widget can mirror the pictures of a set, and the Avatar widget can mirror its pictures.</li>
@@ -169,7 +171,7 @@ const Help = (() => {
       { id: 'look', title: 'Look and feel', note: 'Themes, name, header picture and logo', body: `
         <ul>
           <li><b>App Theme</b>: choose a ready-made colour theme, or make your own colours.</li>
-          <li><b>General</b>: type your own app name and welcome message, add a header picture to the Home tab (and choose which part of it shows), and add your club logo. <b>Pictures</b> sets how sharp the pictures you upload stay: Original (as uploaded, with transparency), High or Standard (smaller, for a lighter database).</li>
+          <li><b>General</b>: type your own app name and welcome message, add a header picture to the Home tab (and choose which part of it shows), and add your club logo. <b>Display</b> makes the whole app bigger (100% to 200%) for reading from a distance; it does not change the widgets of your layouts. <b>Pictures</b> sets how sharp the pictures you upload stay: Original (as uploaded, with transparency), High or Standard (smaller, for a lighter database).</li>
           <li><b>Racing Rules</b> is a tab of its own. Write the rules of your club there. They show on the Racing rules tile of the Live Race tab, also on phones.</li>
         </ul>` }
     ]],

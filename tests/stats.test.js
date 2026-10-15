@@ -78,4 +78,12 @@ let sp = S.lapSpeed({ trackId: 't1', carId: 'c1', time: 4000, lane: 2 }, [bends]
 ok('the speed of a record lap: its lane length over its time, and at scale', near(sp.speed, 10 / 4 * 3.6) && near(sp.scalespeed, 10 / 4 * 3.6 * 24));
 sp = S.lapSpeed({ trackId: 'gone', carId: 'x', time: 4000 }, [track], []);
 ok('...a deleted track or car gives nothing instead of an error', sp.speed === null && sp.scalespeed === null);
+// 1.2.0: who gets the winner's cup
+{ const win = (type, row) => S.isWinner({ sessionType: type }, row);
+  ok('the first of a race, a timed race or a heat race is the winner', win('race', { pos: 1, laps: 10 }) && win('timed', { pos: 1, laps: 3 }) && win('heats', { pos: '1', laps: 20 }));
+  ok('the others are not (second, last, a string that is not a position)', !win('race', { pos: 2, laps: 10 }) && !win('race', { pos: 0, laps: 10 }) && !win('race', { pos: 'x', laps: 10 }) && !win('race', {}));
+  ok('practice, qualifying and a Time Token Session have fastest laps, not winners', !win('practice', { pos: 1, laps: 10 }) && !win('qualifying', { pos: 1, laps: 10 }) && !win('tokens', { pos: 1, laps: 10 }) && !win(undefined, { pos: 1, laps: 10 }));
+  ok('a car that was disqualified or out, or that drove no lap, is not the winner', !win('race', { pos: 1, laps: 10, dq: true }) && !win('race', { pos: 1, laps: 10, retired: true }) && !win('race', { pos: 1, laps: 0 }) && !win('race', { pos: 1 }));
+  ok('nothing at all is nobody', !S.isWinner(null, { pos: 1, laps: 1 }) && !S.isWinner({ sessionType: 'race' }, null) && !S.isHeatWinner(undefined, undefined));
+  ok('the first of a heat in the summary of the heats (those rows do not say dq or retired) only in a heat race', S.isHeatWinner({ sessionType: 'heats' }, { pos: 1, laps: 5 }) && !S.isHeatWinner({ sessionType: 'heats' }, { pos: 2, laps: 5 }) && !S.isHeatWinner({ sessionType: 'race' }, { pos: 1, laps: 5 }) && !S.isHeatWinner({ sessionType: 'heats' }, { pos: 1, laps: 0 })); }
 console.log(fails ? fails + ' STATS TESTS FAILED' : 'ALL STATS TESTS PASSED'); process.exit(fails ? 1 : 0);

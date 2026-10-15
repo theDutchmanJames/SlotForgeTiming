@@ -40,6 +40,22 @@
   // the columns that are worked out from the laps and the saved figures (the rest the screen already had)
   const FIGURE_KEYS = ['avg', 'median', 'spread', 'speed', 'scalespeed', 'distance', 'pits', 'pittime', 'penalty'];
 
+  // ---- the winner ----
+  // Who gets the trophy: the first of a race, a timed race or a heat race (practice and qualifying have fastest laps, not winners; a car that was disqualified or out is not a winner).
+  const WINNER_TYPES = ['race', 'timed', 'heats'];
+  const isWinner = (session, row) => !!session && !!row && WINNER_TYPES.includes(session.sessionType) && Number(row.pos) === 1 && !row.dq && !row.retired && Number(row.laps) > 0;
+  // the first of a heat (or final) in the summary of the heats: those rows have no dq or retired
+  const isHeatWinner = (session, row) => !!session && !!row && session.sessionType === 'heats' && Number(row.pos) === 1 && Number(row.laps) > 0;
+
+  // ---- what the Race Director adjusted ----
+  // In the review of a race the Race Director can add or take off race time, laps and championship points of a driver. A result row (or a car of the engine) has them as adjMs, adjLaps and adjPoints.
+  // The text for it: "−1 lap, +5 s, +3 pts" (laps, then time, then points; what is zero is left out; nothing adjusted gives '').
+  const adjustedText = x => {
+    if (!x) return '';
+    const part = (v, one, many, show) => { const n = Number(v) || 0; if (!n) return ''; const a = Math.abs(n); return (n < 0 ? '\u2212' : '+') + (show ? show(a) : a) + ' ' + (a === 1 ? one : many); };
+    return [part(x.adjLaps, 'lap', 'laps'), part(x.adjMs, 's', 's', ms => Number((ms / 1000).toFixed(3))), part(x.adjPoints, 'pt', 'pts')].filter(Boolean).join(', ');
+  };
+
   // ---- the figures ----
   const clean = l => !(l.invalid || l.tooSlow || l.late);
   const sum = a => a.reduce((x, y) => x + y, 0);
@@ -140,7 +156,7 @@
     return out;
   }
 
-  const api = { SESSION_COLUMNS, STINT_COLUMNS, RECORD_COLUMNS, FIGURE_KEYS, figures, forSession, lapSpeed, lapLength, valueOf, text, hasAny, sessionColumns, notes, fmtSpeed, fmtScale, fmtDist, fmtSpread, fmtMs };
+  const api = { SESSION_COLUMNS, STINT_COLUMNS, RECORD_COLUMNS, FIGURE_KEYS, WINNER_TYPES, isWinner, isHeatWinner, adjustedText, figures, forSession, lapSpeed, lapLength, valueOf, text, hasAny, sessionColumns, notes, fmtSpeed, fmtScale, fmtDist, fmtSpread, fmtMs };
   root.Stats = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -61,6 +61,9 @@
     const skipFirst = !!cfg.skipFirst, type = cfg.type, minLap = cfg.minLap ?? MIN_LAP, maxLap = Number(cfg.maxLap) > 0 ? Number(cfg.maxLap) : 0;
     const P = { on: false, mode: 'every', every: 5, seconds: 5, steps: [], dq: 0, types: [], fuelPoints: 0, ...(cfg.penalty || {}) };
     const penOf = c => penaltyMs(P, c.points) + (c.extraMs || 0); // time penalty: from the points, plus any time the Race Director added
+    // What the Race Director corrects in the review (R.adjust): race time (ms), laps and championship points, added to or taken off what the race gave. They are signed amounts, kept apart from the penalties.
+    const addOf = c => penOf(c) + (c.adjMs || 0); // everything that is added to the time of the car: the penalty and the adjustment
+    const lapsOf = c => c.laps.length + (c.adjLaps || 0); // the laps that count: the laps driven, plus or minus the adjustment
     const F = { on: false, tank: 0, perLap: 0, rate: 0, target: 0, extra: 0, saving: 0, empty: 'retire', pitHold: 2000, ...(cfg.fuel || {}) };
     const Y = { target: 0, points: 0, ...(cfg.yellow || {}) }; // the yellow flag target lap time (ms; 0 = none) and the penalty points for a full lap under yellow that is faster
     const lapLimit = type === 'race' ? Number(cfg.laps) || 0 : 0;
@@ -68,7 +71,7 @@
     const R = {
       cfg, fuel: F, penalty: P, type, status: 'ready', t0: 0, pausedAt: 0, endAt: 0, timeUp: false, finished: 0, endedBy: '',
       yellow: Y, yellowAt: null, // yellowAt: when the yellow flag that is up now went up (a lap that started before that is not a lap under yellow)
-      cars: cfg.entries.map(e => ({ ...e, laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, invalid: [], removed: [], yellowFast: [], pitLaps: [], servedNow: false, last: 0, total: 0, best: null, done: false, place: 0, retired: false, fuel: F.on ? F.tank : 0, outOfFuel: false,
+      cars: cfg.entries.map(e => ({ ...e, laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, adjMs: 0, adjLaps: 0, adjPoints: 0, invalid: [], removed: [], yellowFast: [], pitLaps: [], servedNow: false, last: 0, total: 0, best: null, done: false, place: 0, retired: false, fuel: F.on ? F.tank : 0, outOfFuel: false,
         blockAt: null, pit: null, pits: [], lastPit: null, outlap: false, started: !skipFirst })),
       events: [], // what happened, in order: { type, car, t } (outoffuel, retired, pitstart, fuelfull, pitend, call, callend...)
       calls: [] // calls from a lane to the Race Director: { id, car, t, open, how }; how a call ended: 'penalty' or 'dismiss'
@@ -164,7 +167,7 @@
     // The car object stays the same one, so everything that points to it keeps working.
     R.restartCar = (i, t, who) => {
       const c = R.cars[i]; if (!c) return false;
-      Object.assign(c, who || {}, { laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, invalid: [], removed: [], yellowFast: [], pitLaps: [], servedNow: false, last: t, total: 0, best: null, done: false, place: 0, retired: false,
+      Object.assign(c, who || {}, { laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, adjMs: 0, adjLaps: 0, adjPoints: 0, invalid: [], removed: [], yellowFast: [], pitLaps: [], servedNow: false, last: t, total: 0, best: null, done: false, place: 0, retired: false,
         fuel: F.on ? F.tank : 0, outOfFuel: false, blockAt: null, pit: null, pits: [], lastPit: null, outlap: false, started: false });
       return true;
     };
@@ -261,6 +264,23 @@
     R.nullify = i => { const c = R.cars[i]; if (!c || !c.points) return false; const was = c.points; c.points = 0; c.undoPoints = was; log('penalty', i, R.endAt, { delta: -was, points: 0, ms: 0 }); return true; };
     R.restorePoints = i => { const c = R.cars[i]; if (!c || !c.undoPoints) return false; c.points = c.undoPoints; c.undoPoints = 0; log('penalty', i, R.endAt, { delta: c.points, points: c.points, ms: penaltyMs(P, c.points) }); return true; };
     R.forgive = (i, k) => { const c = R.cars[i]; if (!c || !c.pending[k]) return false; const [p] = c.pending.splice(k, 1); log('forgiven', i, R.endAt, { name: p.name }); return true; };
+    // The adjustment of one car: how much race time (ms), how many laps and how many championship points are added (a positive number) or taken off (a negative one). It stacks with what was adjusted before.
+    // The time cannot go below zero and the laps cannot go below none (a lap that was never driven has no lap time, so only the count changes). Returns true when something changed.
+    R.adjust = (i, a) => {
+      const c = R.cars[i]; if (!c || !a) return false;
+      const num = v => { const x = typeof v === 'string' && v.trim() !== '' ? Number(v) : v; return typeof x === 'number' && Number.isFinite(x) ? x : 0; }; // (a number, or a text with one in it: it comes from a field; nothing else is an amount)
+      const ms = Math.round(num(a.ms)), laps = Math.round(num(a.laps)), pts = num(a.points);
+      const was = [c.adjMs || 0, c.adjLaps || 0, c.adjPoints || 0];
+      c.adjMs = Math.max(was[0] + ms, -(c.total + penOf(c)));
+      c.adjLaps = Math.max(was[1] + laps, -c.laps.length);
+      c.adjPoints = Math.round((was[2] + pts) * 100) / 100;
+      const now = [c.adjMs, c.adjLaps, c.adjPoints];
+      if (now.every((v, k) => v === was[k])) return false;
+      log('adjusted', i, R.endAt, { ms: now[0] - was[0], laps: now[1] - was[1], points: now[2] - was[2] });
+      return true;
+    };
+    R.adjustReset = i => { const c = R.cars[i]; if (!c || !(c.adjMs || c.adjLaps || c.adjPoints)) return false; c.adjMs = 0; c.adjLaps = 0; c.adjPoints = 0; log('adjusted', i, R.endAt, { reset: true }); return true; };
+    R.lapsOf = lapsOf; R.adjOf = c => ({ ms: c.adjMs || 0, laps: c.adjLaps || 0, points: c.adjPoints || 0 });
     R.addTime = (i, ms) => { const c = R.cars[i]; if (!c || !(ms > 0)) return false; c.extraMs = (c.extraMs || 0) + ms; log('timeadded', i, R.endAt, { ms }); return true; };
     R.setDq = (i, on) => {
       const c = R.cars[i]; if (!c || c.dq === !!on) return false;
@@ -291,13 +311,20 @@
     };
 
     const cum = (car, n) => car.laps.slice(0, n).reduce((a, b) => a + b, 0);
+    // The moment (on the race clock) at which a car set its best lap: the end of the first lap that is as fast as the best one and counts. Two cars with the same best lap:
+    // the one that set it first ranks higher, as with the track records (the first to set a time keeps it).
+    const bestAt = c => {
+      const n = c.laps.findIndex((t, k) => t === c.best && !(c.bad || [])[k] && !(c.invalid || []).includes(k));
+      return n < 0 ? Infinity : c.total - c.laps.slice(n + 1).reduce((a, b) => a + b, 0);
+    };
     R.standings = () => {
-      const byBest = (a, b) => (a.best ?? 1e12) - (b.best ?? 1e12);
-      const eff = c => c.total + penOf(c); // total time including time penalties
-      const byLaps = (a, b) => b.laps.length - a.laps.length || eff(a) - eff(b);
+      const byBest = (a, b) => (a.best ?? 1e12) - (b.best ?? 1e12) || (a.best !== null && b.best !== null ? bestAt(a) - bestAt(b) : 0);
+      const eff = c => c.total + addOf(c); // total time including time penalties and the adjustment
+      const byLaps = (a, b) => lapsOf(b) - lapsOf(a) || eff(a) - eff(b);
       const order = R.cars.map((_, i) => i).sort((x, y) => {
         const a = R.cars[x], b = R.cars[y];
         if (a.retired !== b.retired) return a.retired ? 1 : -1; // retired cars rank behind the rest
+        if (type === 'race' && (a.adjLaps || b.adjLaps) && lapsOf(a) !== lapsOf(b)) return lapsOf(b) - lapsOf(a); // (laps added or taken off in the review count before who finished first)
         if (type === 'race' && a.done !== b.done) return a.done ? -1 : 1;
         if (type === 'race' && a.done && b.done) return eff(a) - eff(b) || a.place - b.place;
         return ((type === 'practice' || type === 'qualifying') ? byBest(a, b) : byLaps(a, b)) || x - y;
@@ -311,7 +338,7 @@
         else if (p > 0) {
           if (type === 'practice' || type === 'qualifying') gap = c.best === null ? '' : '+' + fmtTime(c.best - lead.best);
           // always a time: how long after the leader this car reached the lap it has completed (a lapped car is compared at its own lap count)
-          else if (c.laps.length) gap = '+' + fmtTime(Math.max(0, cum(c, c.laps.length) + penOf(c) - cum(lead, c.laps.length) - penOf(lead)));
+          else if (c.laps.length) gap = '+' + fmtTime(Math.max(0, cum(c, c.laps.length) + addOf(c) - cum(lead, c.laps.length) - addOf(lead)));
         }
         return { pos: p + 1, index: i, car: c, gap };
       });
@@ -320,7 +347,7 @@
     // (null when there is none, or the car is out), and how many full laps the car is behind the leader. Practice and qualifying compare best laps.
     R.gapInfo = () => {
       const st = R.standings(), byBest = type === 'practice' || type === 'qualifying', out = new Array(R.cars.length).fill(null);
-      const val = (c, k) => cum(c, k) + penOf(c);
+      const val = (c, k) => cum(c, k) + addOf(c);
       st.forEach((row, p) => {
         const c = row.car; if (c.dq || c.retired) return;
         let lead = null, ahead = null, down = 0;
@@ -480,9 +507,11 @@
       return all.sort((a, b) => a.lane - b.lane).map(({ p, lane }) => ({ lane, participant: p, ...participants[p] }));
     };
     H.record = race => {
-      const rows = race.standings().map(r => ({
-        participant: r.car.participant, pos: r.pos, laps: r.car.laps.length, total: r.car.total, best: r.car.best, points: points[r.pos - 1] || 0
-      }));
+      const rows = race.standings().map(r => { // (what the Race Director adjusted in the review is in the row: the laps and the time are the adjusted ones, the championship points come on top of the points of the place)
+        const a = race.adjOf ? race.adjOf(r.car) : { ms: 0, laps: 0, points: 0 }; // (a race that is not an engine race, such as a stand-in of a test, has no adjustments)
+        return { participant: r.car.participant, pos: r.pos, laps: race.lapsOf ? race.lapsOf(r.car) : r.car.laps.length, total: a.ms && Number.isFinite(r.car.total) ? r.car.total + a.ms : r.car.total, best: r.car.best, points: (points[r.pos - 1] || 0) + (byPoints ? a.points : 0),
+          ...(a.ms ? { adjMs: a.ms } : {}), ...(a.laps ? { adjLaps: a.laps } : {}), ...(byPoints && a.points ? { adjPoints: a.points } : {}) };
+      });
       if (byPoints && sc.fastestBonus > 0) { // the driver with the fastest lap of this heat gets the bonus (with the same lap time, the one who finished higher)
         let top = null; for (const r of rows) if (Number.isFinite(r.best) && (top === null || r.best < top.best)) top = r;
         if (top) { top.bonus = sc.fastestBonus; top.points += sc.fastestBonus; }
@@ -509,7 +538,8 @@
         const sum = (list, k) => list.reduce((t, h) => t + h[k], 0), div = sc.countBy === 'average' && counted.length ? counted.length : 1;
         const all = f ? hs.concat([f]) : hs, best = all.reduce((m, h) => (Number.isFinite(h.best) && (m === null || h.best < m) ? h.best : m), null);
         const heatLaps = sum(counted, 'laps') / div, heatPoints = sum(counted, 'points') / div; // (what the heats count; a final that is added comes on top of it, and is not averaged, dropped or limited to the best heats)
-        return { participant: i, ...p, laps: sum(all, 'laps'), points: sum(all, 'points'), best, heats: hs.length,
+        const adj = k => all.reduce((t, h) => t + (h[k] || 0), 0), am = adj('adjMs'), al = adj('adjLaps'), ap = Math.round(adj('adjPoints') * 100) / 100; // (what was adjusted in the reviews of its races, added up)
+        return { participant: i, ...p, laps: sum(all, 'laps'), points: sum(all, 'points'), best, heats: hs.length, ...(am ? { adjMs: am } : {}), ...(al ? { adjLaps: al } : {}), ...(ap ? { adjPoints: ap } : {}),
           counted: counted.length, dropped: hs.filter(h => !counted.includes(h)).map(h => h.heat).sort((x, y) => x - y),
           heatScore: byPoints ? heatPoints : heatLaps, scoreLaps: heatLaps + (added && f ? f.laps : 0), scorePoints: heatPoints + (added && f ? f.points : 0),
           finalName: groupOf[i], finalPos: f ? f.pos : null, finalLaps: f ? f.laps : null, finalPoints: f ? f.points : null,

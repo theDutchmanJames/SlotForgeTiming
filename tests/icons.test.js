@@ -27,4 +27,8 @@ ok('the colour is never part of a picture: it is whatever colour the page gives 
 ok('every picture is different from every other one', new Set(ids.map(id => I.PATHS[id])).size === ids.length);
 ok('the picture of the Live Race tile for a name does not change when it is asked for twice (no shared state)', ids.every(id => I.svg(id, { size: 18 }) === I.svg(id, { size: 18 })));
 
+// 1.2.0: the winner's cup
+ok('the winner\'s cup is a small picture with its own gold colours (not the colour of the text), a title for hover and screen readers, and a size', (() => { const t = I.trophy({ size: 20 }); return t.startsWith('<svg class="trophy" viewBox="0 0 24 24" width="20" height="20" role="img" aria-label="Winner"><title>Winner</title>') && t.includes('#f5b800') && !t.includes('currentColor') && t.endsWith('</svg>'); })());
+ok('...16 pixels when no size or a wrong size is given, and it is not one of the line pictures', ['x', 0, NaN, null, undefined].every(v => /width="16" height="16"/.test(I.trophy({ size: v }))) && /width="16"/.test(I.trophy()) && !I.has('trophy'));
+
 console.log(fails ? fails + ' ICON TESTS FAILED' : 'ALL ICON TESTS PASSED'); process.exit(fails ? 1 : 0);

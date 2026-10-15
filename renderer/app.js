@@ -83,13 +83,18 @@ function renderHardwareArea(box) {
   renderHardwareSettings(document.getElementById('hwbox'));
 }
 
-const GENERAL_FOLDERS = ['names', 'header', 'logo', 'pictures', 'data'];
+const GENERAL_FOLDERS = ['display', 'names', 'header', 'logo', 'pictures', 'data'];
+// the size of the interface: the window is zoomed (the Live Race window and the pages on phones are not; see UiScale)
+const applyUiScale = () => { if (typeof api !== 'undefined' && api.setZoom) api.setZoom(UiScale.factorOf(state.settings && state.settings.uiScale)); };
 async function renderGeneralSettings(box) {
   const S = state.settings, path = await api.dbPath(), hh = Banner.height(S), pos = Banner.pos(S), lpos = Banner.logoPos(S);
-  const pq = Picture.levelOf(S.pictureQuality), pic = !!S.homeHeader, logoOn = Banner.logoOn(S), hasLogo = !!S.clubLogo, side = Banner.logoSide(S), share = Banner.logoShare(S);
+  const us = UiScale.levelOf(S.uiScale), pq = Picture.levelOf(S.pictureQuality), pic = !!S.homeHeader, logoOn = Banner.logoOn(S), hasLogo = !!S.clubLogo, side = Banner.logoSide(S), share = Banner.logoShare(S);
   // the page is made of folders, as the Results and Records page is: each opens and closes, the choice is remembered while the app runs
   const sf = (id, title, note, body) => folderHtml('general', id, title, note, `<div class="fbody">${body}</div>`);
   box.innerHTML = folderTools
+    + sf('display', 'Display', 'interface size ' + us + '%', `<div class="field" style="max-width:480px"><label for="uiscale">Interface size (the text, buttons and check boxes of the whole app)</label>
+      <select id="uiscale">${UiScale.LEVELS.map(([k, t]) => `<option value="${k}"${k === us ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>
+      <span class="muted hint">Makes everything in this window bigger, for reading from a distance or with glasses. It does not change the layouts of the race screens: they always fit the window, and the size of their widgets is set in the Layout Editor. It is only for this window: the Live Race window and the pages on phones keep their size.</span></div>`)
     + sf('names', 'Name and welcome', S.appName ? S.appName : 'the standard name', `<div class="field" style="max-width:360px"><label for="appname">App Name (shown at the top of the window)</label><input id="appname" type="text" maxlength="40" value="${esc(S.appName || '')}" placeholder="${DEFAULT_NAME}"></div>
     <div class="field" style="max-width:560px"><label for="welcome">Welcome Message (shown at the top of the Home tab)</label><input id="welcome" type="text" maxlength="120" value="${esc(S.welcome || '')}" placeholder="${esc(DEFAULT_WELCOME)}"><span class="muted hint">Leave it empty for the standard message.</span></div>`)
     + sf('header', 'Header picture', pic ? 'a picture is set' : 'no picture', `<div class="field" style="max-width:480px"><label for="hdrfile">Header picture on the Home tab</label>
@@ -119,6 +124,7 @@ async function renderGeneralSettings(box) {
   folderWire(box);
   box.onclick = ev => { const fa = ev.target && ev.target.closest ? ev.target.closest('[data-folderall]') : null; if (fa) { folderAll('general', GENERAL_FOLDERS, fa.dataset.folderall === '1'); renderGeneralSettings(box); } };
   const $ = id => document.getElementById(id);
+  $('uiscale').onchange = async ev => { state.settings = await api.setSettings({ uiScale: UiScale.levelOf(ev.target.value) }); applyUiScale(); renderSettings(); };
   $('picq').onchange = async ev => { state.settings = await api.setSettings({ pictureQuality: Picture.levelOf(ev.target.value) }); renderSettings(); };
   $('appname').onchange = async ev => { state.settings = await api.setSettings({ appName: ev.target.value.trim() }); applyName(); };
   $('welcome').onchange = async ev => { state.settings = await api.setSettings({ welcome: ev.target.value.trim() }); };
@@ -314,8 +320,9 @@ function screenFailed(e) {
   applyTheme(); applyName();
   if (typeof location !== 'undefined' && location.hash === '#live') { // the second-screen window: only the Live Race pages
     document.body.classList.add('lv-window'); document.querySelector('header').hidden = true;
-    document.title = (state.settings.appName || DEFAULT_NAME) + ' – Live Race'; return LiveView.mount(view, { second: true });
+    document.title = (state.settings.appName || DEFAULT_NAME) + ' – Live Race'; if (api.setZoom) api.setZoom(1); return LiveView.mount(view, { second: true }); // (the second screen keeps its own size)
   }
+  applyUiScale();
   render();
   if (api.onHwChoose && typeof tmAutoConnect === 'function') tmAutoConnect(); // the remembered Trackmate, if it is plugged in
 })();

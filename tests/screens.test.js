@@ -10,8 +10,8 @@ const store={tracks:[{id:'t1',name:'Living room',lanes:2}],drivers:[],slotcars:[
 const calls=[];
 const exported=[]; let exportResult={saved:true,path:'C:/Reports/x.pdf'};
 let bkResult={ok:true,file:'b.json',date:'2026-10-11T10:00:00Z',appVersion:'0.44.0',counts:{tracks:2,layouts:1},laps:30}; const xfer=[]; let importResult={ok:true,file:'my.json',summary:{layouts:{count:1,names:['Main']},tracks:{count:2,names:['A','B']}}};
-const opened=[]; let depsResult={}; const api={exportDeps:async()=>depsResult,exportData:async(p,d)=>{xfer.push(['export',p,d]);return {saved:true,path:'C:/x.json',counts:{tracks:1}}},importOpen:async()=>importResult,importApply:async()=>{xfer.push(['apply']);return {layouts:1,tracks:2}},importCancel:async()=>{xfer.push(['cancel'])},backupSave:async()=>{xfer.push(['bksave']);return {saved:true,path:'C:/b.json'}},backupOpen:async()=>bkResult,backupRestore:async()=>{xfer.push(['bkrestore']);return {safety:'C:/s.json'}},backupCancel:async()=>{xfer.push(['bkcancel'])},liveOpen:async()=>{opened.push(1)},exportPdf:async(html,name)=>{exported.push([html,name]);return exportResult},schema:async()=>schema,getSettings:async()=>({theme:'dark'}),setSettings:async p=>{calls.push(['settings',p]);return p},dbPath:async()=>'x',
-  list:async e=>JSON.parse(JSON.stringify(store[e]||[])),customFields:async()=>[],linkedLaps:async()=>0,
+const opened=[]; const zooms=[]; const customDefs={}; let depsResult={}; const api={setZoom:f=>{zooms.push(f)},exportDeps:async()=>depsResult,exportData:async(p,d)=>{xfer.push(['export',p,d]);return {saved:true,path:'C:/x.json',counts:{tracks:1}}},importOpen:async()=>importResult,importApply:async()=>{xfer.push(['apply']);return {layouts:1,tracks:2}},importCancel:async()=>{xfer.push(['cancel'])},backupSave:async()=>{xfer.push(['bksave']);return {saved:true,path:'C:/b.json'}},backupOpen:async()=>bkResult,backupRestore:async()=>{xfer.push(['bkrestore']);return {safety:'C:/s.json'}},backupCancel:async()=>{xfer.push(['bkcancel'])},liveOpen:async()=>{opened.push(1)},exportPdf:async(html,name)=>{exported.push([html,name]);return exportResult},schema:async()=>schema,getSettings:async()=>({theme:'dark'}),setSettings:async p=>{calls.push(['settings',p]);return p},dbPath:async()=>'x',
+  list:async e=>JSON.parse(JSON.stringify(store[e]||[])),customFields:async e=>customDefs[e]||[],linkedLaps:async()=>0,
   add:async(e,item)=>{const row={...item,id:'L'+(store[e].length+1)};store[e].push(row);calls.push(['add',e,item]);return row},
   update:async(e,id,p)=>{calls.push(['update',e,id,p]);const r=store[e].find(x=>x.id===id);Object.assign(r,p);return r},
   remove:async(e,id)=>{store[e]=store[e].filter(x=>x.id!==id)}};
@@ -20,7 +20,7 @@ const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if
 const ctx=vm.createContext({document,api,console: appConsole,Intl,URL,Image:function(){},confirm:()=>true,alert(){},setTimeout,clearTimeout,setInterval,clearInterval,performance,});
 const listeners={}; ctx.window=ctx; ctx.addEventListener=(t,f)=>{(listeners[t]=listeners[t]||[]).push(f)}; ctx.removeEventListener=(t,f)=>{listeners[t]=(listeners[t]||[]).filter(x=>x!==f)};
 const errors=[];
-for(const f of ['engine.js','heats.js','tokens.js','speed.js','stats.js','viewset.js','picture.js','theme.js','banner.js','icons.js','delta.js','avatars.js','widgets.js','frame.js','backdrop.js','announcer.js','sound.js','timing.js','rows.js','richtext.js','canvas.js','liveshare.js','review.js','liveview.js','report.js','database.js','landing.js','race.js','undo.js','editor.js','tokenui.js','audioedit.js','widgetbuilder.js','transferui.js','themeui.js','help.js','hardware.js','trackmate.js','hardwareui.js','dsui.js','app.js']){
+for(const f of ['engine.js','heats.js','tokens.js','speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js','icons.js','delta.js','avatars.js','widgets.js','frame.js','backdrop.js','announcer.js','sound.js','timing.js','rows.js','richtext.js','canvas.js','liveshare.js','review.js','liveview.js','report.js','database.js','landing.js','race.js','undo.js','editor.js','tokenui.js','audioedit.js','widgetbuilder.js','transferui.js','themeui.js','help.js','hardware.js','trackmate.js','hardwareui.js','dsui.js','app.js']){
   try{vm.runInContext(fs.readFileSync(R+'renderer/'+f,'utf8'),ctx,{filename:f})}catch(e){errors.push(f+': '+e.message)}
 }
 const run=s=>vm.runInContext(s,ctx), E=id=>document.getElementById(id);
@@ -889,7 +889,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   E('rules').innerHTML='Changed'; E('rules').oninput(); E('rules').onblur(); await new Promise(r=>setTimeout(r,20));
   say('leaving the box saves straight away', calls.filter(c=>c[0]==='settings').pop()[1].rules==='Changed');
   say('the Racing Rules button is the same stand-out button (accent fill, a page picture in front of the words)', /<button class="btn primary pdfbtn" type="button" id="rules-pdf"><svg[^>]*>.*<\/svg><span>Export to PDF<\/span><\/button>/.test(E('view').innerHTML));
-  say('Racing Rules has an Export to PDF button and the credit line at the bottom right of the text', E('view').innerHTML.includes('id="rules-pdf"') && E('view').innerHTML.includes('class="rules-credit"') && E('view').innerHTML.includes('Claude AI and theDutchmanJames') && E('view').innerHTML.includes('SlotForum community'));
+  say('Racing Rules has an Export to PDF button and the credit at the bottom right of the text: the thanks, one line each', E('view').innerHTML.includes('id="rules-pdf"') && E('view').innerHTML.includes('class="rules-credit"') && E('view').innerHTML.includes('made by Claude and theDutchmanJames.<br>For all Slotcar Enthusiasts and special thanks to:<br>Bjorn F. - For being my best mate!<br>') && E('view').innerHTML.includes('Johnno @Slotracer, for the first constructive feedback</p>') && E('view').innerHTML.includes('LMP &amp; Superslab @Slotforum'));
   { const before = exported.length; E('rules').innerHTML=''; await E('rules-pdf').onclick();
     say('an empty rules text is not exported', exported.length === before && E('rulesmsg').textContent.includes('Write some rules'));
     E('rules').innerHTML='<h2>Safety</h2>No pushing'; await E('rules-pdf').onclick();
@@ -919,7 +919,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   const gridCall=calls.filter(c=>c[0]==='settings').pop();
   say('switching to grid is remembered', gridCall && gridCall[1].dbView==='grid');
   const g=E('subview').innerHTML;
-  say('grid shows a card per driver with the avatar as thumbnail', (g.match(/class="gcard"/g)||[]).length===2 && g.includes('src="data:image/jpeg;base64,AAA"'));
+  say('grid shows a card per driver with the avatar as thumbnail', (g.match(/class="gcard( |")/g)||[]).length===2 && g.includes('src="data:image/jpeg;base64,AAA"'));
   say('a driver without an avatar gets a coloured initial tile', g.includes('class="ph"') && g.includes('>S</span>'));
   say('cards show key details (nickname, callsign, flag)', g.includes('Speedy') && g.includes('ALX') && g.includes('fi-nl'));
   run("state.sub='slotcars'"); await run('render()');
@@ -934,6 +934,102 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   run("openForm('tracks', null)"); say('the track form offers a picture upload', E('dlg').innerHTML.includes('id="f-picture"') && E('dlg').innerHTML.includes('type="file"'));
   await E('subview').onclick({target:{closest:()=>({id:'vlist',dataset:{}})}}); await new Promise(r=>setTimeout(r,20));
   say('switching back to list works', calls.filter(c=>c[0]==='settings').pop()[1].dbView==='list' && E('subview').innerHTML.includes('<table'));
+  // ---- 1.2.0: the view card (click a row or a card of Slotcars, Tracks or Drivers) ----
+  { const wait = () => new Promise(r => setTimeout(r, 20)), dh = () => E('dlg').innerHTML, sh = () => E('subview').innerHTML;
+    const click = m => ({ target: { closest: sel => m[sel] || null } }); // (what a click on one thing gives: the element for each selector it is inside of)
+    const row = id => click({ '[data-view]': { dataset: { view: id } } });
+    let closes = 0; E('dlg').close = () => { closes++; };
+    Object.assign(store.tracks[0], { scale: '1:32', length: 12, notes: 'Line one\nLine two', laneModifier: 'none', outsideLane: 'first' }); // (a track saved without the lane length modifier counts as a loop, so this one says None)
+    store.slotcars.push({ id: 'c2', brand: 'Slot.it', manufacturer: 'Porsche', model: '956', scale: '1:32', motor: 'Flat <6>', tyres: 'Urethane', weight: '78 g', lapsDriven: 3, picture: 'data:image/jpeg;base64,MAIN', pictureFrame: { zoom: 2, x: 0, y: 0 }, extraPictures: ['data:image/jpeg;base64,G1', 'data:image/jpeg;base64,G2'], custom: { x1: 'Shelf 3' } },
+      { id: 'c3', brand: 'Ninco', model: 'Lola' });
+    customDefs.slotcars = [{ id: 'x1', label: 'Owned by', type: 'text' }, { id: 'x2', label: 'Bought', type: 'text' }];
+    run("state.sub='tracks'"); await run('render()');
+    say('the rows of the Tracks list can be clicked (and reached with the keyboard)', /<tr class="clickable" data-view="t1" tabindex="0"/.test(sh()));
+    E('dlg').innerHTML = '';
+    await E('subview').onclick(click({ button: { dataset: { edit: 't1' } } })); await wait();
+    say('the Edit button of a row still opens the form, not the card', dh().includes('Edit track') && !dh().includes('vcard'));
+    E('dlg').innerHTML = '';
+    let focused = null; E('vcclose').focus = o => { focused = o || {}; };
+    await E('subview').onclick(row('t1')); await wait();
+    say('...the Close button has the focus without scrolling (the card opens at its top)', focused !== null && focused.preventScroll === true); delete E('vcclose').focus;
+    say('a click on a row shows the card: a title, no form, nothing to type in', dh().includes('class="vcard"') && dh().includes('<h3 class="vctitle">Living room</h3>') && !dh().includes('<form') && !dh().includes('<input'));
+    say('...with every field that is filled in, with its label', dh().includes('<dt>Number of lanes</dt><dd>2</dd>') && dh().includes('<dt>Scale</dt><dd>1:32</dd>') && dh().includes('<dt>Track length (metres)</dt><dd>12 m</dd>'));
+    say('...a name is the title already, so it is not repeated; fields without a value are left out', !dh().includes('<dt>Name</dt>') && !dh().includes('<dt>Track Surface</dt>') && !dh().includes('<dt>Minimum lap time'));
+    say('...a field that the form would hide (it depends on another choice) is left out', !dh().includes('The track length is that of'));
+    say('...a long note shows in full with its lines, on a row of its own', dh().includes('<div class="wide"><dt>Notes</dt><dd>Line one<br>Line two</dd></div>'));
+    say('...a track without a picture has the coloured initial, and no gallery', dh().includes('class="ph"') && dh().includes('>L</span>') && dh().includes('vcpic gimg nopic') && !dh().includes('vcgal'));
+    say('...there are Close and Edit buttons, and the large picture is not shown', dh().includes('id="vcclose"') && dh().includes('id="vcedit"') && dh().includes('id="vcbig" hidden'));
+    E('dlg').onclick(click({ button: { id: 'vcclose', dataset: {} } }));
+    say('Close closes the card', closes === 1);
+    let shown = 0; E('dlg').showModal = () => { shown++; }; E('dlg').open = true; // (a real dialog is open while the card is shown)
+    E('dlg').onclick(click({ button: { id: 'vcedit', dataset: {} } })); await wait();
+    say('Edit opens the form of this track', dh().includes('Edit track') && dh().includes('<form') && !dh().includes('vcard') && E('dlg').onclick !== undefined);
+    say('...in the dialog that is open already (showModal on an open dialog is an error)', shown === 0);
+    E('dlg').open = false; await E('subview').onclick(click({ button: { id: 'add', dataset: {} } })); await wait();
+    say('...while a form that is opened from the list does open the dialog', shown === 1 && dh().includes('<form')); delete E('dlg').open; delete E('dlg').showModal;
+    // a track saved before the lane length modifier existed shows what it always did (a loop), not an empty field
+    store.tracks.push({ id: 't2', name: 'Old track', lanes: 2 }); await run('render()'); E('dlg').innerHTML = ''; await E('subview').onclick(row('t2')); await wait();
+    say('...the card of a track saved before the lane length modifier says so too (calculated from the bends, as a loop)', dh().includes('<dt>Lane length modifier</dt><dd>Calculated from the bends')); store.tracks.pop(); E('dlg').innerHTML = '';
+    run("state.sub='tracks'"); await run('render()');
+    let kept = 0; E('subview').onkeydown({ key: 'Enter', preventDefault() { kept++; }, target: { dataset: { view: 't1' } } }); await wait();
+    say('Enter on a focused row opens the card', dh().includes('class="vcard"') && dh().includes('Living room') && kept === 1);
+    E('dlg').innerHTML = ''; E('subview').onkeydown({ key: ' ', preventDefault() { kept++; }, target: { dataset: { view: 't1' } } }); await wait();
+    say('...Space does the same, and the page does not scroll (the key is kept from the page)', dh().includes('class="vcard"') && kept === 2);
+    E('dlg').innerHTML = '';
+    E('subview').onkeydown({ key: 'a', preventDefault() { kept++; }, target: { dataset: { view: 't1' } } }); E('subview').onkeydown({ key: 'Enter', preventDefault() { kept++; }, target: { dataset: {} } }); await wait();
+    say('...another key, or Enter on something else, does nothing (and is left to the page)', dh() === '' && kept === 2);
+
+    // Slotcars: the main picture, the details and a gallery
+    run("state.sub='slotcars'"); await run('render()');
+    E('dlg').innerHTML = ''; await E('subview').onclick(row('c2')); await wait();
+    say('a Slotcar card has the main picture on top, as a button that shows it large (with its framing)', dh().indexOf('class="vcpic gimg"') > -1 && dh().indexOf('class="vcpic gimg"') < dh().indexOf('class="vctitle"') && /data-big="0"[^>]*><img src="data:image\/jpeg;base64,MAIN"[^>]*transform:/.test(dh()));
+    say('...brand, manufacturer and model stay in the list (the title joins them), with the technical details, laps driven and the extra fields', dh().includes('<h3 class="vctitle">Slot.it Porsche 956</h3>') && dh().includes('<dt>Brand</dt><dd>Slot.it</dd>') && dh().includes('<dt>Manufacturer</dt><dd>Porsche</dd>') && dh().includes('<dt>Model</dt><dd>956</dd>') && dh().includes('<dt>Tyres</dt><dd>Urethane</dd>') && dh().includes('<dt>Weight</dt><dd>78 g</dd>') && dh().includes('<dt>Laps driven</dt><dd>3</dd>') && dh().includes('<dt>Owned by</dt><dd>Shelf 3</dd>'));
+    say('...text is safe (a "<" in a field is shown as text), and an empty field or extra field is left out', dh().includes('Flat &lt;6&gt;') && !dh().includes('Flat <6>') && !dh().includes('<dt>Gearing') && !dh().includes('<dt>Bought'));
+    say('...the other pictures are small ones at the bottom, below the details, after a heading that counts them', /2 more pictures<\/h4><div class="vcgal">/.test(dh()) && dh().indexOf('vcgal') > dh().indexOf('vcfields') && (dh().match(/class="vcthumb"/g) || []).length === 2 && dh().includes('data-big="1"') && dh().includes('data-big="2"') && !dh().includes('data-big="3"'));
+    say('...the card does not hold the main picture in the gallery twice', (dh().match(/base64,MAIN/g) || []).length === 1);
+    const big = () => E('vcbig').hidden, bigSrc = () => E('vcbigimg').src, ev0 = () => click({ button: { dataset: {} } });
+    E('dlg').onclick(click({ button: { dataset: { big: '1' } } }));
+    say('a click on a small picture shows it large', big() === false && bigSrc() === 'data:image/jpeg;base64,G1');
+    E('dlg').onclick(ev0());
+    say('...a click on the large picture closes it again (and not the card)', big() === true && closes === 1);
+    E('dlg').onclick(click({ button: { dataset: { big: '9' } } }));
+    say('...a button for a picture that is not there shows nothing large', big() === true && closes === 1);
+    E('dlg').onclick(click({ button: { dataset: { big: '2' } } }));
+    say('...every small picture shows its own', bigSrc() === 'data:image/jpeg;base64,G2');
+    let prevented = 0; E('dlg').oncancel({ preventDefault() { prevented++; } });
+    say('Escape while a picture is large closes the picture and keeps the card', prevented === 1 && big() === true);
+    E('dlg').oncancel({ preventDefault() { prevented++; } });
+    say('...Escape with nothing large is left alone, so it closes the card', prevented === 1);
+    E('dlg').onclick(click({ button: { dataset: { big: '0' } } }));
+    say('the main picture can be shown large too', big() === false && bigSrc() === 'data:image/jpeg;base64,MAIN');
+    E('dlg').onclick(ev0());
+    E('dlg').onclose();
+    say('when the card is closed, the Escape handler is gone (the forms must not keep it)', E('dlg').oncancel === null);
+
+    // a Slotcar with no pictures, and the grid
+    E('dlg').innerHTML = ''; await E('subview').onclick(row('c3')); await wait();
+    say('a Slotcar without pictures has the coloured initial of its name, no gallery and no large picture to open', dh().includes('<h3 class="vctitle">Ninco Lola</h3>') && dh().includes('class="ph"') && dh().includes('>N</span>') && !dh().includes('vcgal') && !dh().includes('data-big'));
+    await E('subview').onclick({ target: { closest: s => s === 'button' ? { id: 'vgrid', dataset: {} } : null } }); await wait();
+    say('in the grid every card can be clicked', (sh().match(/<article class="gcard clickable" data-view="c\d" tabindex="0"/g) || []).length === 3);
+    E('dlg').innerHTML = ''; await E('subview').onclick(row('c2')); await wait();
+    say('...and opens the same card', dh().includes('Slot.it Porsche 956') && dh().includes('vcgal'));
+    E('dlg').innerHTML = ''; await E('subview').onclick(click({ button: { dataset: { del: 'zzz' } } })).catch(() => {});
+    say('...a click on a button of a card opens no card', !dh().includes('vcard'));
+    await E('subview').onclick(row('nobody')); await wait();
+    say('...a click on a card that is not in the list opens nothing', !dh().includes('vcard'));
+    await E('subview').onclick({ target: { closest: s => s === 'button' ? { id: 'vlist', dataset: {} } : null } }); await wait();
+
+    // Drivers: the avatar on top, no gallery
+    run("state.sub='drivers'"); await run('render()');
+    E('dlg').innerHTML = ''; await E('subview').onclick(row('d1')); await wait();
+    say('a Driver card has the avatar on top, the details (callsign, flag...), and no gallery', dh().includes('<h3 class="vctitle">Alex</h3>') && dh().includes('base64,AAA') && dh().includes('<dt>Callsign (3 letters)</dt><dd>ALX</dd>') && dh().includes('fi-nl') && dh().includes('<dt>Nickname</dt><dd>Speedy</dd>') && !dh().includes('vcgal'));
+    say('...and the avatar can be shown large', dh().includes('data-big="0"'));
+
+    // the other pages with a list do not get a card
+    run("state.tab='setup'; state.setupSub='racesetups'"); await run('render()');
+    say('Race setups are not clickable (they have no card)', E('setupmgr').innerHTML.includes('Friday') && !E('setupmgr').innerHTML.includes('data-view') && !E('setupmgr').innerHTML.includes('clickable'));
+    run("state.tab='database'");
+    delete customDefs.slotcars; run('state.custom.slotcars = []'); E('dlg').innerHTML = ''; }
   run("state.tab='setup'"); await run('render()');
   say('race setups have a List / Grid switch', E('setupmgr').innerHTML.includes('id="vgrid"') && E('setupmgr').innerHTML.includes('id="vlist"'));
   const sl=E('setupmgr').innerHTML;
@@ -1229,6 +1325,24 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   store.laps=[{id:'l1',sessionId:'s1',driverId:'d1',carId:'c1',trackId:'t1',lapNumber:1,time:5500},{id:'l2',sessionId:'s1',driverId:'d1',carId:'c1',trackId:'t1',lapNumber:2,time:5000}];
   run("state.tab='database'; state.sub='results'"); await run('render()');
   say('every session has an Export to PDF button', E('resbody').innerHTML.includes('Export to PDF') && E('resbody').innerHTML.includes('data-pdf="s1"'));
+  { const cups = () => (E('resbody').innerHTML.match(/<svg class="trophy"/g) || []).length;
+    say('the winner of a race has the cup: in the summary line and in front of the name in the table', cups() === 2 && /Winner: <svg class="trophy"[^]*?<\/svg> Alex<\/summary>/.test(E('resbody').innerHTML) && /<td><svg class="trophy"[^]*?<\/svg> Alex<\/td>/.test(E('resbody').innerHTML));
+    say('...and with the Driver column on, the position cell has no cup (it is only there when the Driver column is off)', E('resbody').innerHTML.includes('<td>1</td><td><svg class="trophy"') && !E('resbody').innerHTML.includes('<td>1 <svg class="trophy"'));
+    const keepS = store.sessions; store.sessions = [...keepS, { id: 's9', setupName: 'Quali', sessionType: 'qualifying', trackId: 't1', trackName: 'Living room', date: '2026-10-12T18:30:00Z', standings: [{ pos: 1, driverId: 'd1', carId: 'c1', driverName: 'Alex', carName: 'NSR', laps: 2, best: 5000, total: 10500 }] },
+      { id: 's8', setupName: 'Heats', sessionType: 'heats', trackId: 't1', trackName: 'Living room', date: '2026-10-13T18:30:00Z', standings: [{ pos: 1, driverId: 'd1', carId: 'c1', driverName: 'Alex', carName: 'NSR', laps: 9, points: 0, best: 5000, total: null }, { pos: 2, driverId: 'd2', carId: 'c2', driverName: 'Sam', carName: 'NSR', laps: 8, points: 0, best: 5100, total: null }],
+        heatResults: [{ heat: 1, rows: [{ pos: 1, driverName: 'Alex', laps: 5 }, { pos: 2, driverName: 'Sam', laps: 4 }] }, { heat: 2, rows: [{ pos: 1, driverName: 'Sam', laps: 5 }, { pos: 2, driverName: 'Alex', laps: 4 }] }] }];
+    await run('render()'); const html = E('resbody').innerHTML;
+    say('a qualifying has no winner\'s cup (its line says Winner as before); a heat race has one in its line, one in the table and one for every heat (4)', cups() === 6 && html.includes('Quali · Qualifying') && /Winner: Alex<\/summary>/.test(html) && html.includes('1. <svg class="trophy"') && html.includes('2. Sam (4 laps'));
+    store.sessions = keepS; await run('render()'); }
+  { const keepS = store.sessions; // 1.2.0: what the Race Director adjusted in the review shows in the results
+    store.sessions = [{ ...keepS[0], standings: [{ ...keepS[0].standings[0], laps: 1, adjLaps: -1, adjMs: 5000 }] },
+      { id: 's7', setupName: 'Pts', sessionType: 'heats', resultBy: 'points', trackId: 't1', trackName: 'Living room', date: '2026-10-13T18:30:00Z', standings: [{ pos: 1, driverId: 'd1', carId: 'c1', driverName: 'Alex', carName: 'NSR', laps: 9, points: 23, adjPoints: 5, best: 5000, total: null }],
+        heatResults: [{ heat: 1, rows: [{ pos: 1, driverName: 'Alex', laps: 5, points: 15, adjPoints: 5 }, { pos: 2, driverName: 'Sam', laps: 3, points: 8, adjLaps: -1, adjMs: 2000 }] }] }];
+    await run('render()'); const html = E('resbody').innerHTML;
+    say('a driver whose result was adjusted has the amounts next to the name, and the total time has the adjustment in it (10.500 and 5 s is 15.500)', html.includes('Alex <span class="muted">(adjusted: −1 lap, +5 s)</span>') && html.includes('<td>15.500</td>'));
+    say('...in a heat race the table says it with the points, and every heat says what was adjusted in it', html.includes('Alex <span class="muted">(adjusted: +5 pts)</span>') && html.includes('Alex (5 laps, 15 pts, adjusted: +5 pts)') && html.includes('Sam (3 laps, 8 pts, adjusted: −1 lap, +2 s)'));
+    store.sessions = keepS; await run('render()');
+    say('...and a result that was not adjusted has nothing about it', !E('resbody').innerHTML.includes('adjusted')); }
   say('...and it stands out: filled with the accent colour, with a page picture, and the Delete button next to it does not', /<button class="btn primary pdfbtn" type="button" data-pdf="s1"><svg[^>]*>.*?<\/svg><span>Export to PDF<\/span><\/button><button class="btn danger" data-delsession="s1">/.test(E('resbody').innerHTML) && (E('resbody').innerHTML.match(/class="btn primary pdfbtn"/g) || []).length === (E('resbody').innerHTML.match(/data-pdf="/g) || []).length);
   // Export to PDF asks what to include first (1.0.0): the helper clicks the button, then Export in the dialog that opens
   const pdfOpen=()=>E('resbody').onclick({target:{closest:sel=>sel.includes('data-pdf')?{dataset:{pdf:'s1'}}:null}});
@@ -1365,6 +1479,10 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     say('Slotcars has it too: scale, motor, tyres and laps driven to start; gearing and weight can be turned on; the pictures and the name are not rows', h.includes('<legend>Rows on the slot car cards</legend>') && h.includes('data-vs="slotcars/grid" data-key="lapsDriven" checked') && h.includes('data-vs="slotcars/grid" data-key="gearing">') && !h.includes('data-vs="slotcars/grid" data-key="brand"') && !h.includes('data-key="extraPictures"') && !h.includes('data-key="picture"'));
     run("state.settings.dbView='list'"); await run('render()'); h=sv.innerHTML;
     say('...the list of Slotcars has every field to start, with the pictures', h.includes('<legend>Columns in the slot car list</legend>') && h.includes('data-vs="slotcars/list" data-key="extraPictures" checked') && h.includes('data-vs="slotcars/list" data-key="brand" checked'));
+    run("state.sub='results'"); await run('render()');
+    say('Results and Records gets none of the click handlers of the page that was before it (its View settings button used to bring up the Drivers page)', sv.onclick === null && sv.onchange === null && E('resbody').innerHTML.includes('data-viewbar="results"') && !E('resbody').innerHTML.includes('data-viewbar="mgr:'));
+    run("state.sub='drivers'"); await run('render()');
+    say('...and a list page that comes after it has its own again', typeof sv.onclick === 'function');
     // the other lists have none
     run("state.sub='tracks'"); run("state.tab='setup'"); await run('render()');
     say('the Race Setup list has no View settings (only Tracks, Drivers and Slotcars were asked for)', !E('setupmgr').innerHTML.includes('View settings'));
@@ -1804,11 +1922,22 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     say('Open all opens every folder', (E('settingsbox').innerHTML.match(/<details[^>]* open/g) || []).length === run('Help.folders().length'));
     E('settingsbox').onclick({ target: { closest: () => ({ dataset: { helpall: '0' } }) } });
     run("state.settingsSub='general'"); await run('render()');
-    say('General is made of folders (open at first), and has the name, header and logo settings in them', ['names', 'header', 'logo', 'pictures', 'data'].every(f => E('settingsbox').innerHTML.includes('data-folder="general:' + f + '"')) && E('settingsbox').innerHTML.includes('id="appname"') && (E('settingsbox').innerHTML.match(/<details class="dbfolder"[^>]* open/g) || []).length === 5);
+    say('General is made of folders (open at first), and has the name, header and logo settings in them', ['display', 'names', 'header', 'logo', 'pictures', 'data'].every(f => E('settingsbox').innerHTML.includes('data-folder="general:' + f + '"')) && E('settingsbox').innerHTML.includes('id="appname"') && (E('settingsbox').innerHTML.match(/<details class="dbfolder"[^>]* open/g) || []).length === 6);
     E('settingsbox').onclick({ target: { closest: () => ({ dataset: { folderall: '0' } }) } }); await new Promise(r => setTimeout(r, 40));
-    say('Close all closes every folder of General, and they stay closed when the page is drawn again', !/<details class="dbfolder"[^>]* open/.test(E('settingsbox').innerHTML) && (E('settingsbox').innerHTML.match(/<details class="dbfolder"/g) || []).length === 5 && E('settingsbox').innerHTML.includes('id="appname"'));
+    say('Close all closes every folder of General, and they stay closed when the page is drawn again', !/<details class="dbfolder"[^>]* open/.test(E('settingsbox').innerHTML) && (E('settingsbox').innerHTML.match(/<details class="dbfolder"/g) || []).length === 6 && E('settingsbox').innerHTML.includes('id="appname"'));
     E('settingsbox').onclick({ target: { closest: () => ({ dataset: { folderall: '1' } }) } }); await new Promise(r => setTimeout(r, 40));
-    say('Open all opens them again', (E('settingsbox').innerHTML.match(/<details class="dbfolder"[^>]* open/g) || []).length === 5);
+    say('Open all opens them again', (E('settingsbox').innerHTML.match(/<details class="dbfolder"[^>]* open/g) || []).length === 6);
+    { const wait = () => new Promise(r => setTimeout(r, 40)), ui = () => E('settingsbox').innerHTML.split('id="uiscale"')[1] || '';
+      say('General has a Display folder first, with the Interface size: six sizes, the standard one chosen', E('settingsbox').innerHTML.indexOf('data-folder="general:display"') < E('settingsbox').innerHTML.indexOf('data-folder="general:names"') && E('settingsbox').innerHTML.includes('id="uiscale"') && (ui().split('</select>')[0].match(/<option /g) || []).length === 6 && /<option value="100" selected>100% \(standard\)/.test(ui()));
+      say('...the folder says the size beside its title', /<summary><strong>Display<\/strong> <span class="muted">interface size 100%/.test(E('settingsbox').innerHTML));
+      say('...the app asked for the standard size (no zoom) when it started', zooms.length >= 1 && zooms[0] === 1);
+      const nz = zooms.length, nc = calls.length; await E('uiscale').onchange({ target: { value: '150' } }); await wait();
+      say('...choosing 150% saves it, zooms the window by 1.5 and shows it chosen', run('state.settings.uiScale') === 150 && calls.slice(nc).some(c => c[1].uiScale === 150) && zooms.slice(nz).pop() === 1.5 && /<option value="150" selected>/.test(ui()) && /interface size 150%/.test(E('settingsbox').innerHTML));
+      await E('uiscale').onchange({ target: { value: '200' } }); await wait();
+      say('...the largest size is a zoom of 2', run('state.settings.uiScale') === 200 && zooms[zooms.length - 1] === 2);
+      await E('uiscale').onchange({ target: { value: '137' } }); await wait();
+      say('...a size that does not exist becomes the standard, and the window is back to normal', run('state.settings.uiScale') === 100 && zooms[zooms.length - 1] === 1 && /<option value="100" selected>/.test(ui()));
+    }
     say('the folders have a note beside the title, the body has room around it, and the database file is in the last folder', /<summary><strong>Header picture<\/strong> <span class="muted">no picture<\/span>/.test(E('settingsbox').innerHTML) && /<div class="fbody">/.test(E('settingsbox').innerHTML) && E('settingsbox').innerHTML.indexOf('Saved in:') > E('settingsbox').innerHTML.indexOf('data-folder="general:data"'));
     run("state.settingsSub='help'"); await run('render()');
     say('going to General and back leaves the Help folders as they were (closed)', !/<details[^>]* open/.test(E('settingsbox').innerHTML));
@@ -1846,18 +1975,18 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   E('is-kind').onchange({target:{value:'flag'}});
   say('a flag set has a slot per race flag state', (E('setupbox').innerHTML.match(/data-slot=/g)||[]).length===7 && E('setupbox').innerHTML.includes('Yellow flag') && !E('setupbox').innerHTML.includes('Get ready'));
   E('is-kind').onchange({target:{value:'lights'}});
-  { const h=()=>E('setupbox').innerHTML, slots=()=>(h().match(/data-slot="/g)||[]).length, rows=['Light off','Light on','Ready','Racing (green flag)','Paused','Heat finished','Finished (chequered flag)','Yellow flag','Red flag'];
-    say('a start lights set is a grid: a row for Light off, Light on and every race state, by All lights and light 1 to 5 (54 pictures)', slots()===54 && rows.every(r=>h().includes('<th scope="row">'+r+'</th>')) && ['All lights','Light 1','Light 2','Light 3','Light 4','Light 5'].every(c=>h().includes('<th>'+c+'</th>')) && h().includes('Start lights (a picture per light and per race state)') && !h().includes('(a lit and an unlit light)'));
+  { const h=()=>E('setupbox').innerHTML, slots=()=>(h().match(/data-slot="/g)||[]).length, rows=['Lights off','Countdown','Pre-Race','Racing (green flag)','Paused','Heat finished','Finished (chequered flag)','Yellow flag','Red flag'];
+    say('a start lights set is a grid: a row for Lights off, Countdown and every race state (Pre-Race, not Ready; the old names are gone), by All lights and light 1 to 5 (54 pictures)', slots()===54 && !h().includes('<th scope="row">Ready</th>') && !h().includes('<th scope="row">Light on</th>') && !h().includes('<th scope="row">Light off</th>') && rows.every(r=>h().includes('<th scope="row">'+r+'</th>')) && ['All lights','Light 1','Light 2','Light 3','Light 4','Light 5'].every(c=>h().includes('<th>'+c+'</th>')) && h().includes('Start lights (a picture per light and per race state)') && !h().includes('(a lit and an unlit light)'));
     say('...every cell has a file chooser named for its row and light, and starts as a plain round light', h().includes('aria-label="Picture for Yellow flag, light 3"') && h().includes('data-slot="yellow_3"') && h().includes('data-slot="yellow"') && h().includes('data-slot="on_1"') && h().includes('data-slot="off"') && (h().match(/class="lgpick none"/g)||[]).length===54 && !h().includes('data-clear='));
     say('...and shows a preview of the five lights with three on', h().includes('id="is-prev"') && h().includes('class="slsvg"') && (h().match(/class="sl on"/g)||[]).length===3 && (h().match(/<circle/g)||[]).length===5);
     await E('setupbox').onchange({target:{dataset:{slot:'on'},files:[{}]}});
-    say('a picture in Light on / All lights is shown dimmed in every empty cell that falls back to it, and in the preview', (h().match(/class="lgpick behind"/g)||[]).length>=40 && h().includes('title="Yellow flag, light 3: uses the picture of on"') && h().includes('title="Light off, light 2: a plain round light"') && (h().match(/<image/g)||[]).length===3);
+    say('a picture in Countdown / All lights is shown dimmed in every empty cell that falls back to it, and in the preview', (h().match(/class="lgpick behind"/g)||[]).length>=40 && h().includes('title="Yellow flag, light 3: uses the Countdown picture"') && h().includes('title="Lights off, light 2: a plain round light"') && (h().match(/<image/g)||[]).length===3);
     await E('setupbox').onchange({target:{dataset:{slot:'yellow_3'},files:[{}]}});
     say('a picture of its own for one light in one state: the cell shows it undimmed with a Remove button, and the cells that fall back to it change', h().includes('data-clear="yellow_3"') && (h().match(/data-clear=/g)||[]).length===2 && !h().includes('title="Yellow flag, light 3: uses') && h().includes('Remove the picture for Yellow flag, light 3'));
     E('is-prev').onchange({target:{value:'yellow'}});
     say('the preview can show a race state', run('imgEd.preview')==='yellow' && h().includes('<option value="yellow" selected>') && h().includes('class="slsvg"'));
     E('setupbox').onclick({target:{closest:()=>({dataset:{clear:'yellow_3'}})}});
-    say('a picture is removed again (the cell falls back to Light on)', !h().includes('data-clear="yellow_3"') && h().includes('title="Yellow flag, light 3: uses the picture of on"'));
+    say('a picture is removed again (the cell falls back to Countdown)', !h().includes('data-clear="yellow_3"') && h().includes('title="Yellow flag, light 3: uses the Countdown picture"'));
     E('setupbox').onclick({target:{closest:()=>({dataset:{clear:'on'}})}});
     say('...and with nothing left everything is a plain round light again', (h().match(/class="lgpick none"/g)||[]).length===54 && (h().match(/<image/g)||[]).length===0);
   }
@@ -1930,7 +2059,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     store.imagesets.push({id:'old1',name:'Old lights',kind:'lights',images:{on:'data:ON',off:'data:OFF'}});
     run("state.customSub='images'"); await run('render()');
     await E('setupbox').onclick({target:{closest:()=>({dataset:{edit:'old1'}})}});
-    say('a set from before the grid: Light on and Light off are in their cells, and the other cells show Light on dimmed', (E('setupbox').innerHTML.match(/data-clear=/g)||[]).length===2 && E('setupbox').innerHTML.includes('data-clear="on"') && E('setupbox').innerHTML.includes('data-clear="off"') && E('setupbox').innerHTML.includes('uses the picture of on'));
+    say('a set from before the grid: Countdown and Lights off are in their cells, and the other cells show Countdown dimmed', (E('setupbox').innerHTML.match(/data-clear=/g)||[]).length===2 && E('setupbox').innerHTML.includes('data-clear="on"') && E('setupbox').innerHTML.includes('data-clear="off"') && E('setupbox').innerHTML.includes('uses the Countdown picture"'));
     await E('is-back').onclick();
     store.imagesets.length=0; keep.forEach(x=>store.imagesets.push(x));
   }

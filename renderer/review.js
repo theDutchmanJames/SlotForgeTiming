@@ -1,7 +1,7 @@
 // The end-of-race review: after the chequered flag the Race Director checks the result, corrects it and then presses Finalize.
 // html() draws the review from an engine (the race's own, or a viewer's copy); apply() carries out one correction on the real engine.
 const Review = (() => {
-  const ui = { open: new Set(), openStints: new Set(), del: null }; // what is unfolded on screen (not part of the race)
+  const ui = { open: new Set(), openStints: new Set(), adjust: new Set(), del: null }; // what is unfolded on screen (not part of the race)
   const fmt = ms => RaceEngine.fmtTime(ms);
   const secs = ms => `${Number.isInteger(ms / 1000) ? ms / 1000 : (ms / 1000).toFixed(1)} s`;
 
@@ -22,25 +22,41 @@ const Review = (() => {
       }).join('') || '<span class="muted">No laps</span>'}</div>`;
   }
 
-  function html(eng) {
-    const st = eng.standings(), on = eng.penalty && eng.penalty.on;
+  // The fields to adjust the result of one car: race time (seconds), laps and, in a race with championship points, those points. Each has an Add and a Deduct button; they stack with what was adjusted before.
+  const adjustHtml = (c, i, o) => {
+    const now = Stats.adjustedText({ adjMs: c.adjMs, adjLaps: c.adjLaps, adjPoints: c.adjPoints }), who = esc(c.driverName);
+    const field = (what, label, unit, step, aria) => `<span class="rv-adjf"><label>${label} <input type="number" min="0" step="${step}" class="rv-sec" data-rva="${i}:${what}" aria-label="${aria} ${who}"> ${unit}</label>
+        <button class="btn" data-rv="adjust" data-car="${i}" data-what="${what}" data-sign="1">Add</button> <button class="btn" data-rv="adjust" data-car="${i}" data-what="${what}" data-sign="-1">Deduct</button></span>`;
+    return `<div class="rv-adj"><strong>Adjust the result of ${who}</strong> <span class="muted">${now ? `adjusted now: ${esc(now)}` : 'nothing adjusted yet'}</span>
+      ${field('time', 'Race time', 's', 'any', 'Seconds to add to or take off the race time of')}${field('laps', 'Laps', 'laps', '1', 'Laps to add or take off for')}${o.champ ? field('points', 'Championship points', 'pts', 'any', 'Championship points to add or take off for') : ''}
+      ${now ? `<button class="btn" data-rv="adjustreset" data-car="${i}">Reset adjustments</button>` : ''}</div>`;
+  };
+
+  // o.champ: { on, list } when the race gives championship points (a heat race decided on points): they can be adjusted, and the points of the place are shown
+  function html(eng, o = {}) {
+    const st = eng.standings(), on = eng.penalty && eng.penalty.on, canAdjust = eng.type === 'race' || eng.type === 'timed', champ = canAdjust && !!o.champ && !!o.champ.on, cols = 6 + (champ ? 1 : 0);
+    const cup = Icons.trophy({ size: 16 }), wins = x => Stats.isWinner({ sessionType: eng.type }, { pos: x.pos, dq: x.car.dq, retired: x.car.retired, laps: eng.lapsOf(x.car) }); // (the winner of the race or heat: practice and qualifying have none)
     const rows = st.map(x => {
       const c = x.car, i = x.index, pen = eng.penMs(c), name = esc(c.driverName);
-      const timeCell = c.dq ? '<strong>DQ</strong>' : `<strong>${fmt(c.total + pen)}</strong>${pen ? `<br><small class="muted">includes +${fmt(pen)}</small>` : ''}`;
-      const pending = c.pending.map((p, k) => `<tr class="rv-sub"><td></td><td colspan="5">⚠ <strong>${esc(p.name)}</strong> was not served.
+      const adjText = Stats.adjustedText({ adjMs: c.adjMs, adjLaps: c.adjLaps, adjPoints: c.adjPoints }), adjMs = c.adjMs || 0;
+      const timeCell = c.dq ? '<strong>DQ</strong>' : `<strong>${fmt(c.total + pen + adjMs)}</strong>${pen ? `<br><small class="muted">includes +${fmt(pen)}</small>` : ''}`;
+      const pending = c.pending.map((p, k) => `<tr class="rv-sub"><td></td><td colspan="${cols - 1}">⚠ <strong>${esc(p.name)}</strong> was not served.
           Add <input type="number" min="0" step="any" class="rv-sec" data-rvt="${i}:${k}" value="${p.unserved}" aria-label="Seconds to add for ${esc(p.name)}"> s
           <button class="btn" data-rv="addtime" data-car="${i}" data-k="${k}">Add time</button>
           ${c.dq ? '' : `<button class="btn danger" data-rv="dq" data-car="${i}" data-k="${k}">Disqualify</button>`}
           <button class="btn" data-rv="forgive" data-car="${i}" data-k="${k}">Forgive</button></td></tr>`).join('');
       const open = ui.open.has(i);
-      const laps = !open ? '' : `<tr class="rv-sub"><td></td><td colspan="5">${lapListHtml(c, i, false)}</td></tr>`;
-      return `<tr><td>${x.pos}</td><td>${name}${c.dq ? ' <span class="muted">(disqualified)</span>' : c.retired ? ' <span class="muted">(out)</span>' : ''}</td><td class="num">${c.laps.length}</td>
-        <td class="num">${timeCell}</td><td>${on ? `${c.points} pts${pen ? ` · ${secs(pen)}` : ''}${c.pending.length ? ` · ${c.pending.length} not served` : ''}` : ''}</td>
+      const laps = !open ? '' : `<tr class="rv-sub"><td></td><td colspan="${cols - 1}">${lapListHtml(c, i, false)}</td></tr>`;
+      const adjOpen = canAdjust && ui.adjust.has(i), adjRow = !adjOpen ? '' : `<tr class="rv-sub"><td></td><td colspan="${cols - 1}">${adjustHtml(c, i, { champ })}</td></tr>`;
+      const lapsCell = `${eng.lapsOf(c)}${c.adjLaps ? `<br><small class="muted">${c.laps.length} driven</small>` : ''}`;
+      const pointsCell = !champ ? '' : `<td class="num">${((o.champ.list || [])[x.pos - 1] || 0) + (c.adjPoints || 0)}</td>`;
+      return `<tr><td>${x.pos}</td><td>${wins(x) ? cup + ' ' : ''}${name}${c.dq ? ' <span class="muted">(disqualified)</span>' : c.retired ? ' <span class="muted">(out)</span>' : ''}${adjText ? `<br><small class="muted">adjusted: ${esc(adjText)}</small>` : ''}</td><td class="num">${lapsCell}</td>
+        <td class="num">${timeCell}</td>${pointsCell}<td>${on ? `${c.points} pts${pen ? ` · ${secs(pen)}` : ''}${c.pending.length ? ` · ${c.pending.length} not served` : ''}` : ''}</td>
         <td class="actions">${on && c.points ? `<button class="btn" data-rv="nullify" data-car="${i}">Clear points</button> ` : ''}${on && c.undoPoints ? `<button class="btn" data-rv="restorepoints" data-car="${i}">Restore (${c.undoPoints} pts)</button> ` : ''}${c.dq ? `<button class="btn" data-rv="undq" data-car="${i}">Reinstate</button>` : `<button class="btn" data-rv="dq" data-car="${i}">Disqualify</button>`}
-        <button class="btn" data-rv="laps" data-car="${i}" aria-expanded="${open}">${open ? 'Hide laps' : 'Laps'}</button></td></tr>${pending}${laps}`;
+        ${canAdjust ? `<button class="btn" data-rv="adjopen" data-car="${i}" aria-expanded="${adjOpen}" title="Add or take off race time, laps${champ ? ' or championship points' : ''}">${adjOpen ? 'Hide adjust' : 'Adjust'}</button> ` : ''}<button class="btn" data-rv="laps" data-car="${i}" aria-expanded="${open}">${open ? 'Hide laps' : 'Laps'}</button></td></tr>${pending}${adjRow}${laps}`;
     }).join('');
     return `<h3>Race review</h3><p class="muted">The race is over. Check the result and fix it if needed, then press Finalize to save it. Nothing is saved before that.</p>
-      <div class="wrap"><table class="fields rv-table"><thead><tr><th>Pos</th><th>Driver</th><th>Laps</th><th>Time</th><th>${on ? 'Penalties' : ''}</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="wrap"><table class="fields rv-table"><thead><tr><th>Pos</th><th>Driver</th><th>Laps</th><th>Time</th>${champ ? '<th>Points</th>' : ''}<th>${on ? 'Penalties' : ''}</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
       <div class="row"><button class="btn primary" data-rv="finalize">Finalize results</button> <button class="btn danger" data-rv="discard" title="Nothing from this race is saved in the database">Delete all data</button></div>`;
   }
 
@@ -96,6 +112,12 @@ const Review = (() => {
       if (op === 'discard' && !confirm(d.what === 'session'
         ? 'Delete all data of this session?\n\nNo stint is recorded in the database: no laps, no results, no Token Records.\n\nThis can\'t be undone.'
         : 'Delete all data of this race?\n\nNothing is recorded in the database: no laps, no results, no records. In a heat race this includes the earlier heats.\n\nThis can\'t be undone.')) return;
+      if (op === 'adjopen') { if (ui.adjust.has(car)) ui.adjust.delete(car); else ui.adjust.add(car); return redraw(); }
+      if (op === 'adjust') { // add or deduct what is typed in the field of this row
+        const inp = root.querySelector(`[data-rva="${car}:${d.what}"]`), n = Number(inp && inp.value), sign = Number(d.sign) < 0 ? -1 : 1;
+        if (!Number.isFinite(n) || !(n > 0)) return; // (nothing, zero or a minus sign in the field: nothing to add; Deduct is the way to take off)
+        return send({ op, car, ms: d.what === 'time' ? sign * Math.round(n * 1000) : undefined, laps: d.what === 'laps' ? sign * Math.round(n) : undefined, points: d.what === 'points' ? sign * n : undefined });
+      }
       if (op === 'laps') { const set = sid === undefined ? ui.open : ui.openStints, key = sid === undefined ? car : sid; if (set.has(key)) set.delete(key); else set.add(key); return redraw(); }
       if (op === 'deltry') { ui.del = sid === undefined ? `${car}:${d.lap}` : `s${sid}:${d.lap}`; return redraw(); }
       if (op === 'delcancel') { ui.del = null; return redraw(); }
@@ -110,7 +132,7 @@ const Review = (() => {
   }
 
   // a new race or session: nothing is unfolded yet
-  function reset() { ui.open.clear(); ui.openStints.clear(); ui.del = null; }
+  function reset() { ui.open.clear(); ui.openStints.clear(); ui.adjust.clear(); ui.del = null; }
 
   // one correction on the real engine; true when something changed
   function apply(eng, c) {
@@ -119,6 +141,8 @@ const Review = (() => {
       case 'restorepoints': return eng.restorePoints(c.car);
       case 'forgive': return eng.forgive(c.car, c.k);
       case 'addtime': return eng.addTime(c.car, c.ms);
+      case 'adjust': return Number.isInteger(c.car) && eng.adjust(c.car, { ms: c.ms, laps: c.laps, points: c.points });
+      case 'adjustreset': return Number.isInteger(c.car) && eng.adjustReset(c.car);
       case 'dq': return eng.setDq(c.car, true);
       case 'undq': return eng.setDq(c.car, false);
       case 'invalid': return eng.setInvalid(c.car, c.lap, !!c.on);

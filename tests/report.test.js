@@ -75,9 +75,35 @@ ok('heats counted the standard way (a result of before): no Result column, no li
   const html = sessionHtml({ session: { setupName: 'S', sessionType: 'race', resultBy: 'points', date: '2026-01-01', standings: [{ pos: evil, driverName: 'A', carName: 'c', laps: evil, points: evil, best: 5000, total: 20000, penalty: 2000, penaltyPoints: evil }], heatResults: [{ heat: evil, rows: [{ pos: evil, driverName: 'A', laps: evil, points: evil }] }] }, laps: [] });
   ok('numbers in a session from an imported file cannot add anything to the report page', !html.includes('<img') && html.includes('&lt;img')); }
 { const h = rulesHtml({ title: 'Club <Rules>', html: '<h2>Safety</h2><ul><li><b>No</b> pushing</li></ul><script>x()</script><font color="#ff0000" size="5">Red</font>' });
-  ok('the rules page has the title, the formatting and the credit line', h.includes('<title>Club &lt;Rules&gt;</title>') && h.includes('<h2>Safety</h2>') && h.includes('<li><b>No</b> pushing</li>') && h.includes('size="5"') && h.includes('This App has been made by Claude AI and theDutchmanJames.<br>For all Slotcar Enthusiast and special greetings to the SlotForum community!'));
+  ok('the rules page has the title and the formatting', h.includes('<title>Club &lt;Rules&gt;</title>') && h.includes('<h2>Safety</h2>') && h.includes('<li><b>No</b> pushing</li>') && h.includes('size="5"'));
+  ok('the printed rules have no credit at all (it is only on the screen)', !h.includes('credit') && !h.includes('theDutchmanJames') && !h.includes('Claude') && !h.includes('special thanks') && CREDIT.every(l => !h.includes(l.slice(0, 20))));
   ok('unsafe things in the rules never reach the printed page', !h.includes('<script'));
-  ok('the credit text is exactly as asked', CREDIT.length === 2 && CREDIT[0] === 'This App has been made by Claude AI and theDutchmanJames.' && CREDIT[1] === 'For all Slotcar Enthusiast and special greetings to the SlotForum community!'); }
+  ok('the credit text on the screen is exactly as asked', CREDIT.join('\n') === ['This App has been made by Claude and theDutchmanJames.', 'For all Slotcar Enthusiasts and special thanks to:', 'Bjorn F. - For being my best mate!', 'RaceCoordinator, for the ideas, inspiration and their work on RCAI.', 'Kevan @Slotracer, the first person to say something, even though it was just smileys..', 'Dopamine @Slotforum, for his ideas on Audio Customization.', 'LMP & Superslab @Slotforum, for their BoP System.', 'Johnno @Slotracer, for the first constructive feedback'].join('\n')); }
+// ---- 1.2.0: the winner's cup ----
+{ const cups = html => (html.match(/<svg class="trophy"/g) || []).length;
+  const row = html => html.split('<tbody>')[1].split('</tr>')[0];
+  const h0 = sessionHtml({ session, laps });
+  ok('a race: the cup is in front of the winner\'s name in the table, once', cups(h0) === 1 && /<td>1<\/td><td><svg class="trophy"[^]*?<\/svg> Alex<\/td>/.test(row(h0)) && !h0.includes('</svg> Sam'));
+  ok('practice and qualifying have no winner: no cup', ['practice', 'qualifying'].every(t => cups(sessionHtml({ session: { ...session, sessionType: t }, laps })) === 0));
+  ok('a winner who was disqualified gets no cup', cups(sessionHtml({ session: { ...session, standings: [{ ...st[0], dq: true }, st[1]] }, laps })) === 0);
+  ok('without the Driver column the cup goes next to the position', (() => { const x = sessionHtml({ session, laps, options: { columns: ['pos', 'laps'] } }); return cups(x) === 1 && /<td>1 <svg class="trophy"/.test(row(x)); })());
+  ok('with the Driver column and no Position column the cup is still in front of the name only', (() => { const x = sessionHtml({ session, laps, options: { columns: ['driver', 'laps'] } }); return cups(x) === 1 && /<td><svg class="trophy"[^]*?<\/svg> Alex<\/td>/.test(row(x)); })());
+  const hs = { ...session, sessionType: 'heats', heatResults: [{ heat: 1, rows: [{ pos: 1, driverName: 'Alex', laps: 5 }, { pos: 2, driverName: 'Sam', laps: 4 }] }, { heat: 2, rows: [{ pos: 1, driverName: 'Sam', laps: 5 }, { pos: 2, driverName: 'Alex', laps: 4 }] }] };
+  const hh = sessionHtml({ session: hs, laps });
+  ok('a heat race: the winner of the table, and the winner of every heat in the heat summary (3 cups)', cups(hh) === 3 && hh.includes('1. <svg class="trophy"') && (hh.match(/1\. <svg class="trophy"[^]*?<\/svg> (Alex|Sam) \(5 laps/g) || []).length === 2 && hh.includes('2. Sam (4 laps') && hh.includes('2. Alex (4 laps'));
+  ok('...a PDF without the heats has only the cup of the table', cups(sessionHtml({ session: hs, laps, options: { heats: false } })) === 1); }
+// ---- 1.2.0: what the Race Director adjusted in the review ----
+{ const adj = { ...session, standings: [{ ...st[0], adjLaps: -1, adjMs: 5000 }, st[1]] };
+  const x = sessionHtml({ session: adj, laps }), plain = sessionHtml({ session, laps });
+  ok('a driver whose result was adjusted has it next to the name, with the amounts', x.includes('Alex (adjusted: −1 lap, +5 s)') && !x.includes('Sam &lt;b&gt; (adjusted'));
+  ok('...the total time has the adjustment in it (16.000 and 5 s is 21.000)', x.includes('<td>21.000</td>') && !x.includes('<td>16.000</td>') && plain.includes('<td>16.000</td>'));
+  ok('...a deduction counts the other way (16.000 and -2.5 s is 13.500)', sessionHtml({ session: { ...session, standings: [{ ...st[0], adjMs: -2500 }, st[1]] }, laps }).includes('<td>13.500</td>'));
+  ok('...a result that was not adjusted has no note at all', !plain.includes('adjusted'));
+  ok('...the note is safe', !sessionHtml({ session: { ...session, standings: [{ ...st[0], adjLaps: '<b>1</b>' }, st[1]] }, laps }).includes('<b>1</b>'));
+  const hs = { ...session, sessionType: 'heats', resultBy: 'points', heatResults: [{ heat: 1, rows: [{ pos: 1, driverName: 'Alex', laps: 5, points: 15, adjPoints: 5 }, { pos: 2, driverName: 'Sam', laps: 3, points: 8, adjLaps: -1, adjMs: 2000 }] }] };
+  const hh = sessionHtml({ session: hs, laps });
+  ok('a heat of a heat race says what was adjusted, with the points', hh.includes('Alex (5 laps, 15 pts, adjusted: +5 pts)') && hh.includes('Sam (3 laps, 8 pts, adjusted: −1 lap, +2 s)'));
+  ok('...a heat that was not adjusted is as before', sessionHtml({ session: { ...hs, heatResults: [{ heat: 1, rows: [{ pos: 1, driverName: 'Alex', laps: 5, points: 10 }] }] }, laps }).includes('Alex (5 laps, 10 pts)')); }
 // ---- 1.0.0: more figures in the results, and the choice of what goes in the PDF ----
 { const tracks = [{ id: 't1', length: 10, lanes: 2, laneModifier: 'none', scale: '1:32' }];
   const s2 = { ...session, trackId: 't1', standings: [{ ...st[0], pits: 1, pitTime: 4000, penaltyPoints: 2 }, st[1]] };

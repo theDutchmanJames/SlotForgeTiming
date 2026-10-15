@@ -29,7 +29,7 @@ const api = { liveStatic: s => { sent.stat = JSON.parse(JSON.stringify(s)); sent
 const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if (appConsole.expected) { appConsole.seen++; return; } console.log('FAIL the app reported an error: ' + a.map(x => (x && x.stack) || x).join(' ').slice(0, 300)); fails++; } };
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['engine.js', 'heats.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js', 'theme.js','banner.js', 'icons.js', 'delta.js','avatars.js','widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js','audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['engine.js', 'heats.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js','widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js','audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -47,7 +47,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   await openRace({ name: 'Sprint', sessionType: 'race', laps: 3, endRule: 'all', layout: '' }, store.tracks[0], rows(1, 2));
   say('default layout: 25 widgets for a 2-lane track (lanes 3-6 left out)', run('live.nodes.length') === 25 && run('live.nodes').every(n => n.w.lane === null || n.w.lane < 2));
   say('4 lane buttons -> only 2 on this track', run('live.lapBtns.length') === 2);
-  say('before the start: flag widget says Ready, names show', flagIs('Ready') && run("live.nodes.find(n=>n.w.type==='name'&&n.w.lane===0).val.innerHTML") === 'Alex');
+  say('before the start: flag widget says Pre-Race, names show', flagIs('Pre-Race') && run("live.nodes.find(n=>n.w.type==='name'&&n.w.lane===0).val.innerHTML") === 'Alex');
   say('nickname and flag icon of the driver', run("live.nodes.find(n=>n.w.type==='driverflag'&&n.w.lane===0).val.innerHTML").includes('fi-nl'));
   say('pause button is disabled before the start, start is enabled', node('pause').val.disabled === true && node('start').val.disabled === false);
   key(' ');
@@ -865,6 +865,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   await until(() => phase() === 'review');
   say('the race ends in a review: nothing is saved yet', phase() === 'review' && saved.length === 0);
   say('the review panel lists the drivers and the unserved penalty', E('review').innerHTML.includes('Race review') && E('review').innerHTML.includes('Stop-and-Go 5') && E('review').innerHTML.includes('Finalize'));
+  say('the review has the winner\'s cup in front of the name of the first driver (once)', (E('review').innerHTML.match(/<svg class="trophy"/g) || []).length === 1 && /<td>1<\/td><td><svg class="trophy"/.test(E('review').innerHTML));
   await until(() => sent.dyn && sent.dyn.phase === 'review'); await wait(150); cbs.dyn.forEach(f => f(plain(sent.dyn)));
   say('the Director page shows the review too', E('dir-review').innerHTML.includes('Race review'));
   const rv = (op, o = {}) => E('review').onclick({ target: { closest: () => ({ dataset: { rv: op, ...o } }) } });
@@ -878,9 +879,22 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   rv('nullify', { car: '1' }); say('points can be cleared', run('live.engine().cars[1].points') === 0 && before >= 0);
   rv('nullify', { car: '0' }); say('...and the clearing has an undo button', E('review').innerHTML.includes('Restore'));
   rv('restorepoints', { car: '0' }); say('undo brings the points back', run('live.engine().cars[0].points') > 0);
+  { // 1.2.0: adjust the race time and laps of a driver in the review (the same panel on the Director page)
+    E('review').querySelector = sel => ({ value: /:laps/.test(sel) ? '1' : '4' }); E('dir-review').querySelector = E('review').querySelector;
+    const lapsA = run('live.engine().cars[0].laps.length');
+    say('the review has an Adjust button for every driver, and no Points column (this race has no championship points)', (E('review').innerHTML.match(/data-rv="adjopen"/g) || []).length === 2 && !E('review').innerHTML.includes('<th>Points</th>'));
+    rv('adjopen', { car: '0' }); say('Adjust opens the panel of that driver, with fields for the time and the laps', E('review').innerHTML.includes('Adjust the result of') && E('review').innerHTML.includes('data-rva="0:time"') && E('review').innerHTML.includes('data-rva="0:laps"') && !E('review').innerHTML.includes('data-rva="1:time"'));
+    rv('adjust', { car: '0', what: 'time', sign: '1' }); say('Add 4 s puts 4 seconds on that driver and the review says so', run('live.engine().cars[0].adjMs') === 4000 && E('review').innerHTML.includes('adjusted: +4 s'));
+    E('dir-review').onclick({ target: { closest: () => ({ dataset: { rv: 'adjust', car: '0', what: 'laps', sign: '-1' } }) } });
+    say('the Director page can adjust too: Deduct 1 lap', run('live.engine().cars[0].adjLaps') === -1 && run('live.engine().lapsOf(live.engine().cars[0])') === lapsA - 1 && E('review').innerHTML.includes('\u22121 lap, +4 s'));
+    await wait(150); await until(() => sent.dyn && sent.dyn.cars && sent.dyn.cars[0] && sent.dyn.cars[0].adjLaps === -1, 3000).catch(() => {}); cbs.dyn.forEach(f => f(plain(sent.dyn)));
+    say('...and the Director page shows the adjustment too (it travels with the car)', E('dir-review').innerHTML.includes('adjusted: \u22121 lap, +4 s'));
+  }
   rv('finalize'); await wait(200);
   say('Finalize saves the session', phase() === 'finished' && saved.length === 1);
   const L = saved[0][1];
+  { const row = saved[0][0].standings.find(x => x.driverId === 'd1'), plainRow = saved[0][0].standings.find(x => x.driverId === 'd2');
+    say('Finalize saves what was adjusted with the result: the laps that count, and the adjustment next to them', row && row.adjMs === 4000 && row.adjLaps === -1 && row.laps === saved[0][1].filter(l => l.driverId === 'd1').length - 1 && !!plainRow && plainRow.adjMs === undefined && plainRow.adjLaps === undefined); }
   say('saved laps: the one removed from the records is missing, the invalid one is flagged and kept out of records', !L.some(l => l.driverId === 'd2' && l.lapNumber === 1) && L.some(l => l.driverId === 'd2' && l.lapNumber === 2 && l.invalid && l.noTrackRecord && l.noPersonalBest));
   say('and the other laps are saved as normal', L.some(l => l.driverId === 'd1' && l.lapNumber === 1 && !l.invalid && !l.noTrackRecord));
   run('LiveView.unmount')();
@@ -895,6 +909,34 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   E('review').onclick({ target: { closest: () => ({ dataset: { rv: 'discard' } }) } }); await wait(200);
   say('Delete all data ends the race and saves nothing', phase() === 'finished' && saved.length === nSaved && E('msg').textContent.includes('Nothing was saved'));
   run('state.autoFinalize = true');
+
+  // ---------- 1.2.0: the review of a heat race decided on points: adjust the championship points ----------
+  {
+    saved.length = 0; run('state.autoFinalize = false'); els.sim.checked = false;
+    await openRace({ name: 'HeatAdj', sessionType: 'heats', heatBy: 'laps', laps: 2, endRule: 'all', heatPlan: 'roundrobin', resultBy: 'points', points: '10, 8, 6', layout: '' }, store.tracks[0], rows(1, 2, 3));
+    key(' '); await until(() => phase() === 'running');
+    for (let k = 0; k < 14 && phase() === 'running'; k++) { await wait(60); key('1'); key('2'); }
+    await until(() => phase() === 'review');
+    const rvh = (op, o = {}) => E('review').onclick({ target: { closest: () => ({ dataset: { rv: op, ...o } }) } });
+    say('a heat decided on points: the review has a Points column with the points of the places (10 and 8)', phase() === 'review' && E('review').innerHTML.includes('<th>Points</th>') && /<td class="num">10<\/td>/.test(E('review').innerHTML) && /<td class="num">8<\/td>/.test(E('review').innerHTML));
+    const second = run('live.engine().standings()[1].index'), nm = run(`live.engine().cars[${second}].driverName`);
+    rvh('adjopen', { car: String(second) }); E('review').querySelector = () => ({ value: '5' });
+    say('...and the panel has a championship points field', E('review').innerHTML.includes(`data-rva="${second}:points"`));
+    rvh('adjust', { car: String(second), what: 'points', sign: '1' });
+    say('Add 5 points to the driver in second place: the review shows 13 and what was adjusted', run(`live.engine().cars[${second}].adjPoints`) === 5 && /<td class="num">13<\/td>/.test(E('review').innerHTML) && E('review').innerHTML.includes('adjusted: +5 pts'));
+    rvh('adjust', { car: String(second), what: 'time', sign: '1' });
+    say('...and 5 seconds on his time: the review says +5 s', run(`live.engine().cars[${second}].adjMs`) === 5000 && E('review').innerHTML.includes('adjusted: +5 s, +5 pts'));
+    const host5 = document.createElement('div'); await run('LiveView.mount')(host5, {}); run('LiveView.go')('director');
+    await until(() => sent.dyn && sent.dyn.phase === 'review' && sent.dyn.cars && sent.dyn.cars[second] && sent.dyn.cars[second].adjPoints === 5 && sent.dyn.cars[second].adjMs === 5000, 3000); await wait(100); cbs.dyn.forEach(f => f(plain(sent.dyn)));
+    say('the Director page has the same Points column, with the adjusted points (the championship comes with what is shared)', E('dir-review').innerHTML.includes('<th>Points</th>') && E('dir-review').innerHTML.includes('adjusted: +5 s, +5 pts') && /<td class="num">13<\/td>/.test(E('dir-review').innerHTML));
+    run('LiveView.unmount')(); run('state.autoFinalize = true'); rvh('finalize'); await until(() => ['between', 'finished'].includes(phase()));
+    els.sim.checked = true; let hn = 0;
+    while (phase() !== 'finished' && hn++ < 6) { key(' '); await until(() => ['between', 'finished'].includes(phase())); }
+    const sess = saved[0] && saved[0][0], row1 = sess && sess.heatResults[0].rows.find(r => r.driverName === nm), tot = sess && sess.standings.find(x => x.driverName === nm);
+    say('Finalize of the heat carries it into the heat result: the points of the place plus 5, the time plus 5 s, with the adjustment in the row', !!row1 && row1.adjPoints === 5 && row1.adjMs === 5000 && row1.points === 13 && sess.heatResults[0].rows.filter(r => r.adjPoints !== undefined).length === 1);
+    say('...and into the overall result: 5 more points in the total and the adjustment in its row, the sum of all points is 54 + 5', !!tot && tot.adjPoints === 5 && tot.adjMs === 5000 && sess.standings.reduce((t, x) => t + x.points, 0) === 59 && sess.standings.filter(x => x.adjPoints !== undefined).length === 1);
+    run('state.autoFinalize = true');
+  }
 
   // ---------- reviewing laps while a race goes on (any session type) ----------
   {

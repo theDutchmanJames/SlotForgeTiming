@@ -116,4 +116,14 @@ const folders = Help.folders();
   say('help.js is loaded by the page, before app.js (which draws it)', index.includes('<script src="help.js">') && index.indexOf('help.js') < index.indexOf('app.js') && read('renderer/app.js').includes("Help.render(document.getElementById('settingsbox'))"));
 }
 
+// ---- 1.2.0 ----
+{ const f = id => plain(folders.find(x => x.id === id).body);
+  say('the Database help says that a row or a card opens a card to look at, with the other pictures, and that Edit is for changing', /Click a row or a card of Slotcars, Tracks or Drivers/.test(f('database')) && /other pictures/.test(f('database')) && /Edit/.test(f('database')));
+  say('the Results help tells about the trophy and about adjusted results', /trophy/.test(f('results')) && /not in practice or qualifying/.test(f('results')) && /adjusted/.test(f('results')));
+  say('the race screen help says the review can adjust race time, laps and championship points', /Adjust the race time, the laps and \(in a heat race decided on points\) the championship points/i.test(f('screen')));
+  say('Look and feel says what Display does (the whole app, 100% to 200%, not the widgets)', /Display makes the whole app bigger \(100% to 200%\)/.test(f('look')) && /does not change the widgets/.test(f('look')));
+  say('the session types help says what happens with the same best lap', /same best lap: the one who set it first ranks higher/.test(f('types')));
+  say('Customization names the Race Laps widget', /Race Laps counting up or down/.test(f('custom')));
+  say('every folder is still short enough with the new lines', folders.every(x => plain(x.body).length < 1400)); }
+
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

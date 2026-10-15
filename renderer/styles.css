@@ -539,3 +539,32 @@ dialog:has(.formgrid) form{display:flex;flex-direction:column;max-height:calc(90
 .lv-clean .lv-head{position:fixed;top:0;left:0;right:0;z-index:60;margin:0;padding:10px 16px;background:color-mix(in srgb,var(--bg) 92%,transparent);border-bottom:1px solid var(--line);transform:translateY(-110%);transition:transform .2s}
 .lv-clean.lv-show .lv-head,.lv-clean .lv-head:focus-within{transform:none}
 .lv-clean:not(.lv-show) .fullview{cursor:none}
+.trophy{vertical-align:-3px;margin-right:2px;flex:none}
+
+/* the view card (click a row or card of Slotcars, Tracks or Drivers) */
+.clickable{cursor:pointer}
+.gcard.clickable:hover,.gcard.clickable:focus-visible{border-color:var(--accent)}
+.fields tr.clickable:hover td{background:rgba(127,127,127,.12)}
+.clickable:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+dialog:has(.vcard){width:min(640px,96vw)}
+.vcard{display:flex;flex-direction:column;gap:10px}
+.vcpic{display:block;padding:0;border:0;cursor:zoom-in;width:min(100%,calc(min(36vh,320px) * 4 / 3));margin:0 auto}
+.vcpic.nopic{cursor:default}
+.vctitle{margin:0;font-size:22px;text-align:center}
+.vcfields{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px 18px;margin:0}
+.vcfields>div{border-bottom:1px solid var(--line);padding-bottom:4px}.vcfields>div.wide{grid-column:1/-1}
+.vcfields dt{color:var(--muted);font-size:12px}
+.vcfields dd{margin:0;font-size:15px;overflow-wrap:anywhere}
+.vcgaltitle{margin:6px 0 0;font-size:14px;color:var(--muted)}
+.vcgal{display:flex;flex-wrap:wrap;gap:8px}
+.vcthumb{padding:0;border:0;background:none;border-radius:6px;cursor:zoom-in}
+.vcthumb:focus-visible{outline:2px solid var(--accent)}
+.vcbig{position:fixed;inset:0;z-index:10;background:rgba(0,0,0,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;cursor:zoom-out}
+.vcbig[hidden]{display:none}
+.vcbig img{max-width:94vw;max-height:84vh;object-fit:contain;border-radius:8px}
+.vcbig p{color:#ddd;margin:0;font-size:13px}
+/* the review: adjust the race time, laps and championship points of a driver */
+.rv-adj{display:flex;flex-direction:column;gap:8px;padding:4px 0}
+.rv-adjf{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.rv-adjf label{display:inline-flex;gap:6px;align-items:center;min-width:19em}
+.rv-adj>.btn{align-self:flex-start}

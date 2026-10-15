@@ -115,6 +115,11 @@
         const total = lapLimitOf(S.setup), n = c.laps.length, cur = c.done ? n : n + 1;
         return { html: total ? `${Math.min(cur, total)}/${total}` : String(cur) };
       }
+      case 'racelaps': { // the laps of the race as a whole: the lap the leader is on (up, with the number of laps of the race when it has one), or the laps left (down: nothing to count when the race has no number of laps)
+        const total = lapLimitOf(S.setup), most = Math.max(0, ...S.eng.cars.map(x => x.laps.length)), cur = S.eng.cars.some(x => x.done && x.laps.length === most) ? most : most + 1;
+        if (Wd.lapCountOf(opt) === 'down') return { html: total ? String(Math.max(0, total - most)) : '–' };
+        return { html: total ? (Wd.lapTotalOn(opt) ? `${Math.min(cur, total)}/${total}` : String(Math.min(cur, total))) : String(cur) };
+      }
       case 'laptime': {
         const f = S.flashOf(c);
         if (f && S.now - f.at < (opt.holdSeconds ?? 3) * 1000) {
@@ -170,7 +175,7 @@
         return { html };
       }
       case 'lights': { // counting down: the lights come on one by one; otherwise the choice for the state of the race
-        // a picture set gives a picture per light and per race state (a set from before the grid has only Light on and Light off)
+        // a picture set gives a picture per light and per race state (a set from before the grid has only Countdown and Lights off)
         const st = stateOf(S), imgs = opt.lightImages || {}, pics = { pick: (i, lit) => Wd.lightPic(imgs, st, i, lit) };
         if (st === 'countdown') return { html: Wd.lightsHtml(S.lights, pics) };
         // the widget's own choice for this state wins; without one, a race setup that lets the lights follow the flag lights all five for green, yellow and red

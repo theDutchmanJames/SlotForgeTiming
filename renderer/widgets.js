@@ -60,7 +60,7 @@
   // flag filled in: a waving flag on a pole (it can be mirrored, for a flag on the right of the page) or a round LED. One picture that scales to the widget
   // (the lights do the same). The chequered flag of the end of a heat or race is cut from the same curve as the cloth, so the squares bend with it.
   const FLAG_COLORS = { ready: '#4c9aff', running: '#2ecc40', paused: '#8a93a0', yellow: '#ffd400', red: '#d62828' };
-  const FLAG_NAMES = { ready: 'Ready', running: 'Racing (green flag)', paused: 'Paused', between: 'Heat finished (chequered flag)', finished: 'Finished (chequered flag)', yellow: 'Yellow flag', red: 'Red flag' };
+  const FLAG_NAMES = { ready: 'Pre-Race', running: 'Racing (green flag)', paused: 'Paused', between: 'Heat finished (chequered flag)', finished: 'Finished (chequered flag)', yellow: 'Yellow flag', red: 'Red flag' };
   const FLAG_STYLES = [['flags', 'Flags'], ['leds', 'LEDs'], ['text', 'Text (the background turns yellow or red)'], ['images', 'Image set (made under Customization > Image Settings)']];
   // What the widget shows. A widget made before there was a choice: a picture set or pictures of its own mean "images", the old "text" choice stays text, the rest is flags.
   const flagStyleOf = o => {
@@ -131,7 +131,7 @@
   const imgSample = (l, w) => { const o = (w && w.opt) || {}, src = o.image || ((o.rules || []).find(r => r.image) || {}).image; return src ? imageHtml(src, o.fit) : '<span class="muted">Image</span>'; };
 
   // Race flag: one optional picture per state; a state without a picture shows its name instead.
-  const FLAG_STATES = [['ready', 'Ready'], ['running', 'Racing (green flag)'], ['paused', 'Paused'],
+  const FLAG_STATES = [['ready', 'Pre-Race'], ['running', 'Racing (green flag)'], ['paused', 'Paused'],
     ['between', 'Heat finished'], ['finished', 'Finished (chequered flag)'], ['yellow', 'Yellow flag'], ['red', 'Red flag']];
   const SET_OPTION = kind => ({ key: 'imageSet', label: 'Picture set (made under Customization > Image Settings)', type: 'imageset', kind, default: '' });
   // Flag style: flags, LEDs, text or the pictures of a picture set (Customization > Image Settings). `when` says for which styles an option shows.
@@ -142,13 +142,13 @@
   // Start lights follow the race state too: for each state (the countdown lights them one by one) how many of the five lights are on, and in what colour
   const LIGHT_STATES = FLAG_STATES;
   // The picture grid of a Start lights set. A picture is stored under a key: `row` for all five lights, or `row_n` for light n (1 to 5).
-  // The rows are Light off, Light on and one per race state (the same states as the Race flag widget). A set made before the grid (only `on` and `off`) is a grid with two rows filled in.
-  const LIGHT_ROWS = [['off', 'Light off'], ['on', 'Light on'], ...FLAG_STATES];
+  // The rows are Lights off, Countdown (the row that used to be called Light on) and one per race state (the same states as the Race flag widget). A set made before the grid (only `on` and `off`) is a grid with two rows filled in.
+  const LIGHT_ROWS = [['off', 'Lights off'], ['on', 'Countdown'], ...FLAG_STATES];
   const LIGHT_COLS = [['', 'All lights'], ...[1, 2, 3, 4, 5].map(n => [String(n), 'Light ' + n])];
   const lightKey = (row, n) => (n ? row + '_' + n : row);
   // The keys to look at, best first, for light i (0 to 4) of the Start lights in race state `state`: lit or not.
-  // A lit light in a race state looks for that state's picture of the light, then of all lights, and then the Light on picture of the light and of all lights.
-  // The countdown (and a state with no row of its own) uses Light on. A light that is not lit uses Light off.
+  // A lit light in a race state looks for that state's picture of the light, then of all lights, and then the Countdown picture of the light and of all lights.
+  // The countdown (and a state with no row of its own) uses Countdown. A light that is not lit uses Lights off.
   const lightKeys = (state, i, lit) => {
     const n = i + 1;
     if (!lit) return ['off_' + n, 'off'];
@@ -277,6 +277,11 @@
   ];
 
   // Token Clock (Time Token Sessions): the paid time that is left on a lane
+  // Race Laps: the laps of the race as a whole (the leader's lap, not the lap of one driver), counting up (7/20) or down (13 laps left)
+  const RACELAPS_OPTIONS = [
+    { key: 'lapCount', label: 'Count', type: 'select', default: 'up', rerender: true, choices: [['up', 'Up: the lap the leader is on (7/20)'], ['down', 'Down: the laps left (13)']] },
+    { key: 'lapTotal', label: 'Show the number of laps of the race when counting up (7/20)', type: 'checkbox', default: true, show: o => !o || o.lapCount !== 'down' }];
+  const lapCountOf = o => (o && o.lapCount === 'down' ? 'down' : 'up'), lapTotalOn = o => !(o && o.lapTotal === false);
   const TOKENCLOCK_OPTIONS = [{ key: 'warnColour', label: 'Turn amber when the time is almost up (the colour and the number of seconds are set in Race Setup > Time Tokens)', type: 'checkbox', default: true }];
 
   const REGISTRY = [
@@ -313,6 +318,7 @@
     T('imagelane', 'Custom image (per lane)', 'Custom', { hidden: true, perLane: true, w: 150, h: 150, noTitle: true, sample: imgSample }),
     T('imagerace', 'Custom image (race)', 'Custom', { hidden: true, w: 150, h: 150, noTitle: true, sample: imgSample }),
     T('clock', 'Race Clock', 'Race', { title: 'Race clock', w: 200, options: CLOCK_OPTIONS, sample: '01:23.4' }),
+    T('racelaps', 'Race Laps', 'Race', { title: 'Race laps', w: 140, options: RACELAPS_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}; return lapCountOf(o) === 'down' ? '13' : lapTotalOn(o) ? '7/20' : '7'; } }),
     T('tokenclock', 'Token Clock', 'Time Tokens', { title: 'Token clock', perLane: true, w: 200, options: TOKENCLOCK_OPTIONS, sample: l => ['25:00', '12:34', '00:45', '1:05:00', '07:20', '04:59'][l % 6] }),
     T('lights', 'Start Lights', 'Race', { title: 'Start lights', w: 180, options: LIGHTS_OPTIONS, sample: lightsHtml(3) }),
     T('info', 'Race Info', 'Race', { title: 'Race info', w: 300, sample: 'Heat 2 of 3 · 4 laps left' }),
@@ -448,7 +454,7 @@
     return L;
   }
 
-  const api = { tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, flagImgHtml, avatarHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, LANES, bbox, colorsOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, ALIGNS, titleAlignOf, valueAlignOf, alignClassOf, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, resolveOpt, heightOf, withoutControls, moveWidget, resizeWidget, newWidget, defaultLayout };
+  const api = { tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, flagImgHtml, avatarHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, LANES, bbox, colorsOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, ALIGNS, titleAlignOf, valueAlignOf, alignClassOf, lapCountOf, lapTotalOn, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, resolveOpt, heightOf, withoutControls, moveWidget, resizeWidget, newWidget, defaultLayout };
   root.Widgets = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

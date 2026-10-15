@@ -5,7 +5,7 @@ const W = Wd.U, H = 562;
 const box = (x, y, w, h) => ({ x, y, w, h });
 
 // registry
-ok('48 widgets in the register', Wd.REGISTRY.length === 48 && new Set(Wd.REGISTRY.map(d => d.type)).size === 48);
+ok('49 widgets in the register', Wd.REGISTRY.length === 49 && new Set(Wd.REGISTRY.map(d => d.type)).size === 49);
 ok('every widget has sample content', Wd.REGISTRY.every(d => d.type === 'gap' ? true : String(Wd.sampleOf(d, 0)).length > 0));
 ok('lane widgets are marked per lane', Wd.def('bestlap').perLane && !Wd.def('clock').perLane && !Wd.def('start').perLane);
 ok('lap time widget has hold time and highlight colours', Wd.def('laptime').options.map(o => o.key).join() === 'holdSeconds,pbColor,recordColor');
@@ -79,7 +79,7 @@ ok('resizing an edge sticks to a guideline too', r.x + r.w === 500);
 ok('widget names and groups as chosen', (() => { const g = {}; Wd.REGISTRY.filter(d => !d.hidden).forEach(d => (g[d.group] = g[d.group] || []).push(d.label)); return JSON.stringify(g) === JSON.stringify({
   Driver: ['Nickname', 'Name', 'Callsign', 'Lane Colour', 'Avatar', 'Driver Flag'], Slotcar: ['Slotcar Picture', 'Slotcar Description'],
   Timing: ['Position in Race', 'Lap of Lap', 'Laptime', 'Last lap', 'Average Lap', 'Median Lap', 'Best Lap (this session)', 'Gap to Leader', 'Fuel Level', 'Slotcar Speed', 'Penalty Points', 'Championship Points', 'Pitstop Time'],
-  'Timing Records': ['Record Lap Time', 'Session Record Lap', 'Track Record'], 'Delta Timers': ['Laptime Delta', 'Average Lap Delta', 'Median Lap Delta', 'Best Lap Delta', 'Personal Best Delta', 'Pitstop Time Delta', 'Session Record Delta', 'Track Record Delta'], Race: ['Race Clock', 'Start Lights', 'Race Info', 'Race Flag', 'Leaderboard', 'Logo'], 'Time Tokens': ['Token Clock'], Controls: ['Start', 'Pause / Resume', 'Stop', 'Yellow flag', 'Red flag'] }); })());
+  'Timing Records': ['Record Lap Time', 'Session Record Lap', 'Track Record'], 'Delta Timers': ['Laptime Delta', 'Average Lap Delta', 'Median Lap Delta', 'Best Lap Delta', 'Personal Best Delta', 'Pitstop Time Delta', 'Session Record Delta', 'Track Record Delta'], Race: ['Race Clock', 'Race Laps', 'Start Lights', 'Race Info', 'Race Flag', 'Leaderboard', 'Logo'], 'Time Tokens': ['Token Clock'], Controls: ['Start', 'Pause / Resume', 'Stop', 'Yellow flag', 'Red flag'] }); })());
 ok('renamed widgets keep the title they showed in existing layouts', Wd.titleOf({ type: 'bestlap', title: '' }) === 'Best lap' && Wd.titleOf({ type: 'fuel', title: '' }) === 'Fuel' && Wd.titleOf({ type: 'position', title: '' }) === 'Position' && Wd.titleOf({ type: 'sessionrecord', title: '' }) === 'Session record lap');
 // groups
 const grp = [box(100, 100, 50, 50), box(300, 200, 100, 80)];
@@ -185,6 +185,12 @@ ok('...while a normal colour is still used', Wd.fuelHtml(5, 100, { critColor: '#
   ok('a different shape (4:3) is cut the same way', (() => { const l = L([wd('clock', null, { y: 10 }), wd('name', 0, { y: 100, h: 50 }), wd('stop', null, { y: 700 })], 4, 3); const x = Wd.withoutControls(l, 2); return hOf(l) === 750 && hOf(x.layout) === 150 + 10 && x.cut === 750 - 160; })());
   ok('the default layout (header, rows and controls at the bottom) gets shorter, and keeps all its widgets', (() => { const d = Wd.defaultLayout(), x = Wd.withoutControls(d, 6); return x.cut > 0 && hOf(x.layout) < hOf(d) && x.layout.widgets.length === d.widgets.length; })());
   ok('buttons are what the Controls group says: Start, Pause / Resume, Stop, Yellow flag and Red flag', Wd.REGISTRY.filter(d => d.button).map(d => d.type).join() === 'start,pause,stop,yellow,red');
+  // 1.2.0: the Race Laps widget
+  { const d = Wd.def('racelaps');
+    ok('Race Laps is a widget of the Race group that is for the whole race (not per lane), with a Count choice and a total tick box', d && d.group === 'Race' && !d.perLane && d.options.map(o => o.key).join() === 'lapCount,lapTotal' && d.options[0].type === 'select' && d.options[0].default === 'up' && d.options[0].choices.map(c => c[0]).join() === 'up,down' && d.options[1].type === 'checkbox' && d.options[1].default === true);
+    ok('...the total tick box only shows when counting up, and changing Count redraws the settings', d.options[0].rerender === true && d.options[1].show({}) === true && d.options[1].show({ lapCount: 'up' }) === true && d.options[1].show({ lapCount: 'down' }) === false);
+    ok('lapCountOf and lapTotalOn: up and the total are the standard, anything else is the standard too', Wd.lapCountOf({}) === 'up' && Wd.lapCountOf(undefined) === 'up' && Wd.lapCountOf({ lapCount: 'sideways' }) === 'up' && Wd.lapCountOf({ lapCount: 'down' }) === 'down' && Wd.lapTotalOn({}) === true && Wd.lapTotalOn(undefined) === true && Wd.lapTotalOn({ lapTotal: false }) === false && Wd.lapTotalOn({ lapTotal: 0 }) === true);
+    ok('its sample in the editor: 7/20, 7 without the total, 13 counting down', Wd.sampleOf(d, 0, { opt: {} }) === '7/20' && Wd.sampleOf(d, 0, { opt: { lapTotal: false } }) === '7' && Wd.sampleOf(d, 0, { opt: { lapCount: 'down' } }) === '13' && Wd.sampleOf(d, 0) === '7/20'); }
   // 1.1.0: aligning the title and the text
   ok('alignment: nothing is added for the standard (title left, text centred), a wrong word is the standard', Wd.alignClassOf({ type: 'clock' }) === '' && Wd.alignClassOf({ type: 'clock', titleAlign: 'up', valueAlign: 5 }) === '' && Wd.titleAlignOf({ type: 'clock' }) === 'left' && Wd.valueAlignOf({ type: 'clock' }) === 'center');
   ok('alignment: each title and text alignment gives its own class', Wd.alignClassOf({ type: 'clock', titleAlign: 'center' }) === ' ta-c' && Wd.alignClassOf({ type: 'clock', titleAlign: 'right' }) === ' ta-r' && Wd.alignClassOf({ type: 'clock', valueAlign: 'left' }) === ' va-l' && Wd.alignClassOf({ type: 'clock', valueAlign: 'right' }) === ' va-r' && Wd.alignClassOf({ type: 'clock', titleAlign: 'right', valueAlign: 'left' }) === ' ta-r va-l');

@@ -211,7 +211,7 @@ async function renderRace() {
     });
     if (live.phase === 'review') {
       ui('review').hidden = false; live.reviewShown = true;
-      if (!live.tkBusy) { const h = tokens ? Review.stintsHtml(tokens.closedList().filter(x => x.laps.length), { failed: live.tkFailed }) : Review.html(eng); if (h !== live.rvHtml) { live.rvHtml = h; ui('review').innerHTML = h; } } // (only when it changed: a button never changes under your finger; not while the stints are being saved)
+      if (!live.tkBusy) { const h = tokens ? Review.stintsHtml(tokens.closedList().filter(x => x.laps.length), { failed: live.tkFailed }) : Review.html(eng, { champ: champOf() }); if (h !== live.rvHtml) { live.rvHtml = h; ui('review').innerHTML = h; } } // (only when it changed: a button never changes under your finger; not while the stints are being saved)
     } else if (live.reviewShown) { ui('review').innerHTML = ''; ui('review').hidden = true; live.reviewShown = false; live.rvHtml = ''; }
     drawLapReview(); drawFinalPick();
     live.penBtns.forEach(x => { const c = S.carByLane(x.lane); x.b.disabled = !(['running', 'paused'].includes(live.phase) && c && !c.dq); x.b.hidden = !c; });
@@ -407,13 +407,15 @@ async function renderRace() {
     let standings, laps = live.laps;
     if (heats) {
       standings = heat.overall().map(o => ({ pos: o.pos, driverId: o.driverId, carId: o.carId, driverName: o.driverName, carName: o.carName, laps: o.laps, points: o.points, best: o.best, total: null,
+        ...(o.adjMs ? { adjMs: o.adjMs } : {}), ...(o.adjLaps ? { adjLaps: o.adjLaps } : {}), ...(o.adjPoints ? { adjPoints: o.adjPoints } : {}),
         ...(live.extraBy.has(o.participant) && live.extraBy.get(o.participant).has ? { pits: live.extraBy.get(o.participant).pits, pitTime: live.extraBy.get(o.participant).pitTime } : {}),
         ...(penCfg.on && live.extraBy.has(o.participant) ? { penaltyPoints: live.extraBy.get(o.participant).pen } : {}),
         ...(scoreCol ? { score: o.score, counted: o.counted, heats: o.heats, dropped: o.dropped.length ? o.dropped : undefined } : {}),
         ...(finalsOn && o.finalName ? { finalName: o.finalName, ...(o.finalPos !== null ? { finalPos: o.finalPos } : {}) } : {}),
         ...(finalsOn && fmode.finalMode === 'added' && o.finalPos !== null ? { heatScore: o.heatScore, finalPoints: o.finalPoints, finalLaps: o.finalLaps } : {}) }));
     } else {
-      standings = eng.standings().map(x => ({ pos: x.pos, driverId: x.car.driverId, carId: x.car.carId, driverName: x.car.driverName, carName: x.car.carName, laps: x.car.laps.length, best: x.car.best, total: x.car.total, retired: (x.car.retired && !x.car.dq) || undefined,
+      standings = eng.standings().map(x => ({ pos: x.pos, driverId: x.car.driverId, carId: x.car.carId, driverName: x.car.driverName, carName: x.car.carName, laps: eng.lapsOf(x.car), best: x.car.best, total: x.car.total, retired: (x.car.retired && !x.car.dq) || undefined,
+        ...(x.car.adjMs ? { adjMs: x.car.adjMs } : {}), ...(x.car.adjLaps ? { adjLaps: x.car.adjLaps } : {}),
         ...(hasPits(x.car) ? pitFigures(x.car) : {}), ...(penCfg.on ? { penaltyPoints: x.car.points, penalty: eng.penMs(x.car), dq: x.car.dq || undefined } : {}) }));
       laps = [];
       eng.cars.forEach(c => laps.push(...lapRows(c, date, {})));

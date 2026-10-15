@@ -26,7 +26,18 @@
     const size = Math.round(Number(o && o.size)) || 24, stroke = Number(o && o.stroke) || 1.6, cls = String((o && o.cls) || '').replace(/[^\w -]/g, '');
     return `<svg${cls ? ` class="${cls}"` : ''} viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PATHS[id]}</svg>`;
   };
-  const api = { PATHS, has, svg };
+  // The winner's cup (next to the winner of a race or a heat in the results, the PDF and the race review). Unlike the line pictures above it has its own colours (gold),
+  // so it looks the same on every theme and on paper. o.size: width and height in pixels.
+  const trophy = o => {
+    const size = Math.round(Number(o && o.size)) || 16;
+    return `<svg class="trophy" viewBox="0 0 24 24" width="${size}" height="${size}" role="img" aria-label="Winner"><title>Winner</title>`
+      + '<path d="M7.5 5.5H4.2v2a3.6 3.6 0 0 0 3.5 3.6M16.5 5.5h3.3v2a3.6 3.6 0 0 1-3.5 3.6" fill="none" stroke="#a86f00" stroke-width="1.5" stroke-linecap="round"/>'
+      + '<path d="M7 3h10v6.7a5 5 0 0 1-10 0z" fill="#f5b800" stroke="#a86f00" stroke-width="1.5" stroke-linejoin="round"/>'
+      + '<path d="M12 14.7v2.6" stroke="#a86f00" stroke-width="1.5" stroke-linecap="round"/>'
+      + '<path d="M8.2 21h7.6l-.9-3.7H9.1z" fill="#f5b800" stroke="#a86f00" stroke-width="1.5" stroke-linejoin="round"/>'
+      + '<path d="M9.6 5.2v4" stroke="#fff3b0" stroke-width="1.3" stroke-linecap="round"/></svg>';
+  };
+  const api = { PATHS, has, svg, trophy };
   root.Icons = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

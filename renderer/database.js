@@ -21,7 +21,7 @@ const COUNTRIES = (() => {
 const countryName = c => (COUNTRIES.find(x => x[0] === c) || [, c])[1];
 const flagHtml = c => c ? `<span class="fi fi-${esc(c.toLowerCase())}"></span>` : '';
 
-dlg.onclose = () => { dlg.oninput = null; if (manager && document.body.contains(manager.box)) mountManager(manager.box, manager.e); };
+dlg.onclose = () => { dlg.oninput = null; dlg.oncancel = null; if (manager && document.body.contains(manager.box)) mountManager(manager.box, manager.e); };
 
 async function renderDatabase(target = view) {
   target.innerHTML = '<h2>Database</h2><div class="sub" id="subtabs" role="tablist" style="display:flex;gap:4px"></div><div id="subview"></div>';
@@ -31,6 +31,7 @@ async function renderDatabase(target = view) {
 async function drawSub() {
   renderTabs(byId('subtabs'), SUBS, state.sub, id => { state.sub = id; drawSub(); });
   const box = byId('subview');
+  box.onclick = null; box.onchange = null; // (the page that was here before left its click handlers on this element; Results and Records draws in a box inside it and would get them too)
   if (state.sub === 'results') {
     manager = null;
     await renderResults(box);
@@ -89,7 +90,8 @@ const limitText = i => {
     default: return 'No limit';
   }
 };
-const VIEW_ENTITIES = ['tracks', 'drivers', 'slotcars']; // the pages with View settings
+const VIEW_ENTITIES = ['tracks', 'drivers', 'slotcars']; // the pages with View settings (and with the view card: click a row or a card)
+const hue = t => { let n = 0; for (const ch of t) n = (n * 31 + ch.charCodeAt(0)) % 360; return `hsl(${n} 45% 40%)`; }; // (the colour of a picture's placeholder, from the name)
 const VIRTUAL = { limit: { label: 'Laps / time', get: limitText } };
 const columnOf = (s, k) => k[0] === '@' ? { key: k, label: VIRTUAL[k.slice(1)].label, virtual: VIRTUAL[k.slice(1)] } : s.fields.find(f => f.key === k);
 const columnCell = (f, i) => f.virtual ? esc(f.virtual.get(i)) : cell(f, i[f.key]);
@@ -156,6 +158,7 @@ async function mountManager(box, e) {
   const mode = s.card ? (state.settings[viewKey] || 'list') : 'list';
   // View settings (Tracks, Drivers, Slotcars): the columns of the list and the rows of the cards can be turned on and off. The list starts with every field, a card with the fields of the schema's card.
   const viewable = VIEW_ENTITIES.includes(e) && !!s.card && !s.list, cardKeys = s.card || [];
+  const canView = VIEW_ENTITIES.includes(e); // a row or a card can be clicked to see everything of it (the view card)
   const customCand = f => ({ key: 'custom:' + f.id, label: f.label, custom: f });
   const listCands = !viewable ? null : [...s.fields.map(f => ({ key: f.key, label: f.label, on: true, field: f })), ...custom.map(f => ({ ...customCand(f), on: true }))];
   const gridCands = !viewable ? null : [...cardKeys.map(k => s.fields.find(f => f.key === k)).filter(Boolean).map(f => ({ key: f.key, label: f.label, on: true, field: f })),
@@ -170,7 +173,6 @@ async function mountManager(box, e) {
   const bar = !viewable || !viewBars.has(viewId) ? '' : viewBar(viewId, mode === 'grid' ? 'Turn rows of information on or off for the cards. This is remembered for the Grid view of this page.' : 'Turn columns of information on or off for the list. This is remembered for the List view of this page.',
     [viewGroup(mode === 'grid' ? `Rows on the ${s.label.toLowerCase()} cards` : `Columns in the ${s.label.toLowerCase()} list`, [e, mode], modeCands)]);
   const toggle = !s.card ? '' : `<span class="seg" role="group" aria-label="View"><button class="btn${mode === 'list' ? ' on' : ''}" id="vlist" aria-pressed="${mode === 'list'}">List</button><button class="btn${mode === 'grid' ? ' on' : ''}" id="vgrid" aria-pressed="${mode === 'grid'}">Grid</button></span>`;
-  const hue = t => { let n = 0; for (const ch of t) n = (n * 31 + ch.charCodeAt(0)) % 360; return `hsl(${n} 45% 40%)`; };
   const gridHtml = (items, skip) => `<div class="cards">${items.map(i => {
     // the picture: the item's own, or (race setups) the picture of the track it uses; each with its own framing
     let img = s.image && i[s.image], frame = s.image && i[s.image + 'Frame'];
@@ -186,11 +188,11 @@ async function mountManager(box, e) {
       const f = columnOf(s, k), v = f.virtual ? f.virtual.get(i) : i[k];
       return v === undefined || v === null || v === '' ? '' : `<div class="gd"><span class="muted">${esc(f.label)}</span> ${columnCell(f, i)}</div>`;
     })).join('') + (s.gallery && Array.isArray(i[s.gallery]) && i[s.gallery].length ? `<div class="gd muted">+${i[s.gallery].length} more ${i[s.gallery].length === 1 ? 'picture' : 'pictures'}</div>` : '');
-    return `<article class="gcard"><div class="gimg">${img ? `<img src="${esc(img)}" alt="" style="transform:${Widgets.frameTransform(frame)}">` : `<span class="ph" style="background:${hue(t)}">${esc((t.trim()[0] || '?').toUpperCase())}</span>`}</div>
+    return `<article class="gcard${canView ? ' clickable' : ''}"${canView ? ` data-view="${esc(i.id)}" tabindex="0" aria-label="View ${esc(t)}"` : ''}><div class="gimg">${img ? `<img src="${esc(img)}" alt="" style="transform:${Widgets.frameTransform(frame)}">` : `<span class="ph" style="background:${hue(t)}">${esc((t.trim()[0] || '?').toUpperCase())}</span>`}</div>
       <h3>${esc(t)}</h3>${details}<div class="row"><button class="btn" data-edit="${esc(i.id)}">Edit</button><button class="btn danger" data-del="${esc(i.id)}">Delete</button></div></article>`;
   }).join('')}</div>`;
   const tableHtml = (items, cols) => `<div class="wrap"><table class="fields"><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}<th></th></tr>` +
-    items.map(i => `<tr>${cols.map(c => `<td>${c.get(i)}</td>`).join('')}<td class="actions">
+    items.map(i => `<tr${canView ? ` class="clickable" data-view="${esc(i.id)}" tabindex="0" aria-label="View ${esc(titleOf(e, i))}"` : ''}>${cols.map(c => `<td>${c.get(i)}</td>`).join('')}<td class="actions">
       <button class="btn" data-edit="${esc(i.id)}">Edit</button> <button class="btn danger" data-del="${esc(i.id)}">Delete</button></td></tr>`).join('') + '</table></div>';
   // Race setups: one folder for each session type, with the setups of that type (a type without setups has no folder; a setup of a type that is not in the list goes in Other, so none is lost).
   // The session type is the folder, so it is not repeated in the list or on the cards.
@@ -211,8 +213,17 @@ async function mountManager(box, e) {
     const cb = ev.target;
     if (await viewToggle(cb, path => (path === e + '/' + mode ? modeCands : null))) { await mountManager(box, e); viewFocus(box, cb); }
   };
+  box.onkeydown = !canView ? null : ev => { // Enter or Space on a focused row or card opens it
+    const v = ev.target && ev.target.dataset && ev.target.dataset.view;
+    if (v && (ev.key === 'Enter' || ev.key === ' ') && items.some(i => i.id === v)) { ev.preventDefault(); openView(e, items.find(i => i.id === v)); }
+  };
   box.onclick = async ev => {
-    const b = ev.target.closest('button'); if (!b) return;
+    const b = ev.target.closest('button');
+    if (!b) { // not on a button: a click on a row or a card shows it
+      const v = canView && ev.target.closest('[data-view]'), it = v && items.find(i => i.id === v.dataset.view);
+      if (it) openView(e, it);
+      return;
+    }
     if (b.dataset.folderall) { folderAll('setups', folders.map(t => t.id), b.dataset.folderall === '1'); return mountManager(box, e); }
     if (b.dataset.viewbar) { if (viewBars.has(b.dataset.viewbar)) viewBars.delete(b.dataset.viewbar); else viewBars.add(b.dataset.viewbar); return mountManager(box, e); }
     if (b.dataset.vsreset) { await viewReset([[e, mode]]); return mountManager(box, e); }
@@ -293,6 +304,42 @@ const GALLERY_MAX = 12;
 
 // the groups of fields that are open in the form of each kind of item (kept while the app is open); a kind of item without groups has one flat list
 const formOpen = {};
+
+// The view card of a slotcar, a track or a driver (click its row or card): everything that is filled in, to look at, with nothing to change here.
+// The main picture is on top, then the details, then (slotcars) the other pictures as small ones to click. A click on a picture shows it large; a click on that, or Escape, closes it.
+function openView(e, item) {
+  const s = state.schema[e];
+  const getv = k => (e === 'tracks' && k === 'laneModifier' ? Speed.modifier(item) : item[k]); // (a track saved before the lane length modifier shows what it always did)
+  const filled = v => v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && !v.length);
+  const named = (s.title || []).length === 1; // (a name is the title of the card already; brand, manufacturer and model are three facts, so they stay in the list)
+  const rows = [
+    ...s.fields.filter(f => !['image', 'gallery'].includes(f.type) && !(named && s.title.includes(f.key)) && isShown(f, getv) && filled(getv(f.key)))
+      .map(f => ({ label: f.label, html: f.type === 'longtext' ? esc(getv(f.key)).replace(/\n/g, '<br>') : cell(f, getv(f.key)), wide: f.type === 'longtext' })),
+    ...(state.custom[e] || []).filter(f => filled((item.custom || {})[f.id])).map(f => ({ label: f.label, html: esc(item.custom[f.id]) }))
+  ];
+  const t = titleOf(e, item), main = s.image && item[s.image], frame = s.image && item[s.image + 'Frame'];
+  const gal = s.gallery && Array.isArray(item[s.gallery]) ? item[s.gallery].filter(Boolean) : [];
+  const pics = [main, ...gal].filter(Boolean); // (what a click can show large: the main picture first)
+  dlg.oninput = null; dlg.onchange = null;
+  dlg.innerHTML = `<div class="vcard"><button type="button" class="vcpic gimg${main ? '' : ' nopic'}"${main ? ' data-big="0" aria-label="Show the picture large"' : ' tabindex="-1" aria-hidden="true"'}>${main ? `<img src="${esc(main)}" alt="" style="transform:${Widgets.frameTransform(frame)}">` : `<span class="ph" style="background:${hue(t)}">${esc((t.trim()[0] || '?').toUpperCase())}</span>`}</button>
+    <h3 class="vctitle">${esc(t)}</h3>
+    ${rows.length ? `<dl class="vcfields">${rows.map(r => `<div${r.wide ? ' class="wide"' : ''}><dt>${esc(r.label)}</dt><dd>${r.html}</dd></div>`).join('')}</dl>` : '<p class="muted">Nothing more is filled in.</p>'}
+    ${gal.length ? `<h4 class="vcgaltitle">${gal.length === 1 ? 'Another picture' : gal.length + ' more pictures'}</h4><div class="vcgal">${gal.map((src, i) => `<button type="button" class="vcthumb" data-big="${i + (main ? 1 : 0)}" aria-label="Show picture ${i + 1} large"><img class="galthumb" src="${esc(src)}" alt="Picture ${i + 1}"></button>`).join('')}</div>` : ''}
+    <div class="row"><button class="btn" type="button" id="vcclose">Close</button><button class="btn primary" type="button" id="vcedit">Edit</button></div>
+    <div class="vcbig" id="vcbig" hidden role="dialog" aria-label="Large picture"><img id="vcbigimg" alt=""><p>Click the picture or press Escape to close it</p></div></div>`;
+  let large = false; // is a picture shown large at the moment? (it covers the card, so any click while it is shown is a click on it)
+  const showLarge = on => { large = on; byId('vcbig').hidden = !on; };
+  dlg.oncancel = ev => { if (large) { ev.preventDefault(); showLarge(false); } }; // (Escape closes the large picture first, then the card)
+  dlg.onclick = ev => {
+    if (large) return showLarge(false);
+    const b = ev.target.closest('button'); if (!b) return;
+    if (b.id === 'vcclose') return dlg.close();
+    if (b.id === 'vcedit') return openForm(e, item);
+    if (b.dataset && b.dataset.big !== undefined && pics[Number(b.dataset.big)]) { byId('vcbigimg').src = pics[Number(b.dataset.big)]; showLarge(true); }
+  };
+  if (!dlg.open) dlg.showModal();
+  byId('vcclose').focus({ preventScroll: true }); // (so the card opens at its top)
+}
 
 function openForm(e, item) {
   const s = state.schema[e];
@@ -422,7 +469,7 @@ function openForm(e, item) {
     await (item ? api.update(e, item.id, { ...built, custom }) : api.add(e, { ...built, custom }));
     dlg.close();
   };
-  dlg.showModal();
+  if (!dlg.open) dlg.showModal(); // (it is already open when Edit was pressed in the view card)
   if (groups) { const first = byId('f-' + fields[0].id); if (first && first.focus) first.focus(); } // the first field, as before, not the Open all button above the groups
 }
 
@@ -592,17 +639,18 @@ async function renderResultsPool(box, pool) {
     const fin = s.sessionType === 'heats' && !!s.finals, finArg = { finalMode: fin ? s.finals.finalMode : 'places', byPoints: pts };
     const figs = Stats.forSession(s, laps.filter(l => l.sessionId === s.id), tracks, cars), shownKeys = ViewSet.keys(Stats.SESSION_COLUMNS, viewSaved(['results', 'sessions']));
     const cols = Stats.sessionColumns(s, figs).filter(c => shownKeys.includes(c.key));
+    const cup = Icons.trophy({ size: 16 }), hasDriver = cols.some(c => c.key === 'driver'); // (the winner's cup goes next to the name; without the Driver column next to the position)
     const cellOf = (key, x, i) => {
       switch (key) {
-        case 'pos': return esc(x.pos);
-        case 'driver': return esc(x.driverName) + (x.dq ? ' <span class="muted">(disqualified)</span>' : x.retired ? ' <span class="muted">(retired, out of fuel)</span>' : '');
+        case 'pos': return esc(x.pos) + (!hasDriver && Stats.isWinner(s, x) ? ' ' + cup : '');
+        case 'driver': return (Stats.isWinner(s, x) ? cup + ' ' : '') + esc(x.driverName) + (x.dq ? ' <span class="muted">(disqualified)</span>' : x.retired ? ' <span class="muted">(retired, out of fuel)</span>' : '') + (Stats.adjustedText(x) ? ` <span class="muted">(adjusted: ${esc(Stats.adjustedText(x))})</span>` : '');
         case 'car': return esc(x.carName);
         case 'laps': return esc(x.laps);
         case 'points': return esc(x.points);
         case 'result': return esc(Heats.scoreText(x, s.scoring, finArg));
         case 'final': return esc(Heats.finalCell(x));
         case 'best': return esc(RaceEngine.fmtTime(x.best));
-        case 'total': return esc(RaceEngine.fmtTime(x.total + (x.penalty || 0))) + (x.penalty ? ` <span class="muted">(includes +${esc(RaceEngine.fmtTime(x.penalty))} penalty, ${esc(x.penaltyPoints)} points)</span>` : '');
+        case 'total': return esc(RaceEngine.fmtTime(x.total + (x.penalty || 0) + (x.adjMs || 0))) + (x.penalty ? ` <span class="muted">(includes +${esc(RaceEngine.fmtTime(x.penalty))} penalty, ${esc(x.penaltyPoints)} points)</span>` : '');
         default: return esc(Stats.text(key, figs[i]));
       }
     };
@@ -610,12 +658,12 @@ async function renderResultsPool(box, pool) {
       s.standings.map((x, i) => `<tr>${cols.map(c => `<td>${cellOf(c.key, x, i)}</td>`).join('')}</tr>`).join('') + '</table>' + (cols.length ? '' : '<p class="muted">No columns are on for this session. Turn some on in View settings.</p>') +
       statNote(cols.map(c => c.key)) +
       (s.sessionType === 'heats' && s.scoring && Heats.scoringText(s.scoring, pts) ? `<p class="muted">${esc(Heats.scoringText(s.scoring, pts))}</p>` : '') + (fin ? `<p class="muted">${esc(Heats.finalsSaid(s.finals))}</p>` : '') +
-      (s.heatResults ? `<h4>${s.finals ? 'Heats and finals' : 'Heats'}</h4>` + s.heatResults.map(h => `<p><strong>${esc(Heats.raceName(h))}</strong><br><span class="muted">${h.rows.map(r => `${esc(r.pos)}. ${esc(r.driverName)} (${esc(r.laps)} laps${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''})`).join(' · ')}</span></p>`).join('') : '') +
+      (s.heatResults ? `<h4>${s.finals ? 'Heats and finals' : 'Heats'}</h4>` + s.heatResults.map(h => `<p><strong>${esc(Heats.raceName(h))}</strong><br><span class="muted">${h.rows.map(r => `${esc(r.pos)}. ${Stats.isHeatWinner(s, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${Stats.adjustedText(r) ? ', adjusted: ' + esc(Stats.adjustedText(r)) : ''})`).join(' · ')}</span></p>`).join('') : '') +
       '<h4>All lap times</h4>' + s.standings.map(x => {
         const mine = laps.filter(l => l.sessionId === s.id && l.driverId === x.driverId).sort((a, b) => (a.heat || 0) - (b.heat || 0) || a.lapNumber - b.lapNumber);
         return `<p><strong>${esc(x.driverName)}</strong><br><span class="muted">${mine.map(l => { const t = esc(`${l.heat ? (l.final ? 'F' + l.final : 'H' + l.heat) + ' ' : ''}${l.lapNumber}: ${RaceEngine.fmtTime(l.time)}`); return l.invalid || l.tooSlow ? `<s class="lapbad" title="${l.invalid ? 'Invalid lap' : 'Too slow: not counted for records'}">${t}</s>` : l.pit ? `<em title="Lap with a pit stop">${t}</em>` : t; }).join(' · ') || 'no laps'}</span></p>`;
       }).join('') + `<div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}<button class="btn danger" data-delsession="${esc(s.id)}">Delete this session</button><span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
-    return `<details class="card sess"><summary>${esc(dateText(s.date))} · ${esc(s.setupName)} · ${esc(SESSION_LABEL[s.sessionType] || '')} · ${esc(s.trackName || '')}${win ? ' · Winner: ' + esc(win.driverName) : ''}</summary><div class="sessbody">${body}</div></details>`;
+    return `<details class="card sess"><summary>${esc(dateText(s.date))} · ${esc(s.setupName)} · ${esc(SESSION_LABEL[s.sessionType] || '')} · ${esc(s.trackName || '')}${win ? ' · Winner: ' + (Stats.isWinner(s, win) ? cup + ' ' : '') + esc(win.driverName) : ''}</summary><div class="sessbody">${body}</div></details>`;
   }).join('');
   const RES_FOLDERS = ['tracks', 'pb', 'sessions'];
   const sessCols = tokenPool ? Stats.STINT_COLUMNS : Stats.SESSION_COLUMNS, sessPath = ['results', tokenPool ? 'stints' : 'sessions'];
