@@ -55,6 +55,21 @@
     return { use: c.use === false ? 1 : hinder ? up : down, rate: c.rate === false ? 1 : hinder ? down : up, tank: c.tank === true ? (hinder ? down : up) : 1 };
   }
 
+  // Several things can hinder or help a car at once (Balance of Power, the weather): mix([[percentage, { use, rate, tank }], ...]) adds up the percentages of the sources, lever by lever
+  // (a source only counts for the levers that are switched on for it; the total of a lever is kept between -90 and 90), and gives the multipliers like factors().
+  function mix(parts) {
+    let u = 0, r = 0, t = 0;
+    (parts || []).forEach(([pct, c]) => {
+      const n = Math.max(-MAXP, Math.min(MAXP, Math.round(Number(pct) || 0)));
+      if (!n || !c) return;
+      if (c.use !== false) u += n;
+      if (c.rate !== false) r += n;
+      if (c.tank === true) t += n;
+    });
+    const cap = v => Math.max(-MAXP, Math.min(MAXP, v));
+    return { use: 1 - cap(u) / 100, rate: 1 + cap(r) / 100, tank: 1 + cap(t) / 100 };
+  }
+
   // The pace of a car: the median or the average of its last laps that count (not too slow, not invalid, not taken out, not a lap with a pit stop), in ms.
   // null while the car has fewer of them than the settings ask for. laneFactor: how long its lane is compared with the others (1 = the same): the pace is divided by it.
   function paceOf(car, cfg, laneFactor) {
@@ -142,7 +157,7 @@
     return (periods || []).map(p => `${kindOf(p.pct)} ${Math.abs(p.pct)}% (${when(p)})`).join(', ');
   }
 
-  const api = { MAXP, MODES, WHO, GRADE, SCALE, MEASURE, DEFAULTS, KEYS, clean, settingsOf, standardSettings, engineConfig, factors, paceOf, plan, signed, kindOf, shortText, effectText, view, periodsOf, noteOf };
+  const api = { MAXP, MODES, WHO, GRADE, SCALE, MEASURE, DEFAULTS, KEYS, clean, settingsOf, standardSettings, engineConfig, factors, mix, paceOf, plan, signed, kindOf, shortText, effectText, view, periodsOf, noteOf };
   root.Bop = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

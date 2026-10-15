@@ -581,3 +581,7 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .rv-adjf{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .rv-adjf label{display:inline-flex;gap:6px;align-items:center;min-width:19em}
 .rv-adj>.btn{align-self:flex-start}
+.wxbtns{margin-bottom:8px}
+.wxbtns .btn:disabled{opacity:.4;cursor:not-allowed}
+.wxbtns .btn[aria-pressed=true]{outline:2px solid var(--accent,#4da3ff);outline-offset:1px}
+.tyrechip{display:inline-block;padding:2px 10px;border-radius:12px;border:1px solid var(--line);color:#000;font-weight:600;white-space:nowrap}

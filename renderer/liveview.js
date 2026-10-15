@@ -17,7 +17,7 @@ const LiveView = (() => {
   // the line pictures of the tiles live in icons.js (the tabs along the top use the same ones)
   const icon = id => Icons.svg(id, { size: 40, cls: 'lv-ico' });
   const PHASE = { ready: 'Ready to start', countdown: 'Lights', running: 'Racing', paused: 'Paused', between: 'Heat finished', finished: 'Finished', review: 'Race review' };
-  let keyOff = null, host = null, V = null, page = 'tiles', nodes = null, tkPanel = null, bopPanel = null, lane = null, ticker = null, offs = [], second = false, lapsHtml = '';
+  let keyOff = null, host = null, V = null, page = 'tiles', nodes = null, tkPanel = null, bopPanel = null, wxPanel = null, lane = null, ticker = null, offs = [], second = false, lapsHtml = '';
 
   const $ = id => document.getElementById(id);
   const live = () => !!V && V.hasRace();
@@ -40,7 +40,7 @@ const LiveView = (() => {
     el.textContent = live() ? `${V.stat().title} · ${PHASE[d.phase] || ''}${left ? ` · next ${d.heat.final ? 'final ' + d.heat.final : 'heat'} in ` + left : ''}` : 'No race is running.';
   }
 
-  function go(p) { page = p; nodes = null; tkPanel = null; bopPanel = null; shell(); draw(true); }
+  function go(p) { page = p; nodes = null; tkPanel = null; bopPanel = null; wxPanel = null; shell(); draw(true); }
 
   // ---- the pages ----
   function draw(fresh) {
@@ -142,6 +142,7 @@ const LiveView = (() => {
           <div class="lv-ctl">${st.cfg.entries.map(e => `<button class="btn" data-cmd="call" data-lane="${e.lane}" title="A call from this lane: raises the yellow flag, like a call button">Call lane ${e.lane + 1}</button>`).join('')}</div>
           <ul id="dir-calls" class="lv-calls"></ul></div>
         ${st.cfg.bop ? '<div id="dir-bop" class="card boppanel"></div>' : ''}
+        ${st.cfg.weather ? '<div id="dir-wx" class="card boppanel"></div>' : ''}
         ${pen ? `<div class="wrap"><table class="fields"><thead><tr><th>Lane</th><th>Driver</th><th>Points</th><th>Time penalty</th><th>Not served yet</th><th></th></tr></thead><tbody>${st.cfg.entries.map(e =>
           `<tr data-row="${e.lane}"><td>${e.lane + 1}</td><td>${esc(e.driverName)}</td><td class="num dir-pts"></td><td class="num dir-sec"></td><td class="dir-pend"></td>
            <td class="actions"><button class="btn" data-cmd="penalty" data-lane="${e.lane}" data-n="-1" aria-label="Take back a point from ${esc(e.driverName)}">−1</button> <button class="btn danger" data-cmd="penalty" data-lane="${e.lane}" data-n="1">Penalty point +1</button>
@@ -150,6 +151,7 @@ const LiveView = (() => {
         <details class="card" id="dir-lapsbox" hidden><summary>Review laps</summary><div id="dir-laps" class="rv"></div></details>
         <div id="dir-review" class="card rv" hidden></div></div>`;
       lapsHtml = ''; bopPanel = st.cfg.bop ? BopPanel.build($('dir-bop'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, send: (l, how) => send({ type: 'bop', lane: l, how }) }) : null; // Balance of Power: the same lane controls as on the main computer
+      wxPanel = st.cfg.weather ? WeatherPanel.build($('dir-wx'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, now: () => V.clock(performance.now()), send: state => send({ type: 'weather', state }) }) : null; // the weather: the same controls as on the main computer
       Review.bind($('dir-review'), c => send({ type: 'review', ...c }), () => drawDirector($('lv-body'), false));
       Review.bind($('dir-laps'), c => send({ type: 'review', ...c }), () => drawDirector($('lv-body'), false));
       body.onclick = e => {
@@ -175,6 +177,7 @@ const LiveView = (() => {
     }
     set('[data-cmd="callresolve"]', b => { b.disabled = !on; });
     if (bopPanel) bopPanel.update();
+    if (wxPanel) wxPanel.update();
     // during the race: the laps of every car, to mark a lap invalid or take it out. Drawn again only when something in it changed, so a button never changes under your finger.
     const lb = $('dir-lapsbox'), tv = d.tokens ? Tokens.view(d.tokens) : null; lb.hidden = !on;
     if (on) { const h = Review.lapsHtml(eng, { late: tv ? (i, n) => tv.lateAt(eng.cars[i].lane, n) : null }); if (h !== lapsHtml) { lapsHtml = h; $('dir-laps').innerHTML = h; } } else lapsHtml = '';
@@ -237,7 +240,7 @@ const LiveView = (() => {
   function repaint() { status(); if (page !== 'tiles' && page !== 'rules' && page !== 'database') draw(false); }
   async function mount(el, opts = {}) {
     unmount();
-    host = el; second = !!opts.second; V = LiveShare.viewer(); page = 'tiles'; nodes = null; tkPanel = null; bopPanel = null; lane = null;
+    host = el; second = !!opts.second; V = LiveShare.viewer(); page = 'tiles'; nodes = null; tkPanel = null; bopPanel = null; wxPanel = null; lane = null;
     try { state.settings = await api.getSettings(); } catch { /* keep what we have */ }
     let got = null; try { got = await api.liveGet(); } catch { /* no race data yet: the pages open empty and fill in from the live messages */ }
     if (got && got.stat) { V.feedStatic(got.stat); if (got.dyn) V.feedDynamic(got.dyn, performance.now()); }

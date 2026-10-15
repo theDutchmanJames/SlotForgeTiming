@@ -56,8 +56,16 @@ const srv = createServer({ root: path.join(R, 'renderer'), appRoot: R, schema: {
     const n = cmds.length;
     for (const bad of [{ type: 'bop', lane: 1, how: 'dance' }, { type: 'bop', lane: 1 }, { type: 'bop', lane: 1, how: 5 }, { type: 'bop', lane: 1, how: null }, { type: 'bop', how: 'off' }, { type: 'bop', lane: -1, how: 'off' }, { type: 'bop', lane: 16, how: 'off' }, { type: 'bop', lane: 1.5, how: 'off' }, { type: 'bop', lane: '1', how: 'off' }, { type: 'bop', lane: null, how: 'off' }]) await send(bad);
     ok('...a lane or a button that makes no sense is refused by the server and never reaches the race (10 tries)', cmds.length === n); }
+  { // the weather (the buttons of the Race Director page)
+    const before = cmds.length, send = async c => { await api.liveCommand(c); await new Promise(r => setTimeout(r, 15)); };
+    for (const c of [{ type: 'weather', state: 'dry' }, { type: 'weather', state: 'cloudy' }, { type: 'weather', state: 'wet' }, { type: 'weather', state: 'clearing' }]) await send(c);
+    ok('the weather commands (Dry, Cloudy, Wet, Clearing) reach the race after the login', cmds.slice(before).map(c => c.state).join() === 'dry,cloudy,wet,clearing' && cmds.slice(before).every(c => c.type === 'weather'));
+    const n = cmds.length;
+    for (const bad of [{ type: 'weather' }, { type: 'weather', state: 'sunny' }, { type: 'weather', state: 5 }, { type: 'weather', state: null }, { type: 'weather', state: ['wet'] }, { type: 'weather', state: 'WET' }, { type: 'weather', state: '' }]) await send(bad);
+    ok('...a weather that is not one is refused by the server and never reaches the race (7 tries)', cmds.length === n);
+    ok('...the check itself is exported, and looks only at the weather command', require('../server.js').weatherCommand({ type: 'weather', state: 'wet' }) && !require('../server.js').weatherCommand({ type: 'weather', state: 'hail' }) && require('../server.js').weatherCommand({ type: 'start' })); }
   settings.netPassword = 'new'; await api.liveCommand({ type: 'stop' });
-  ok('after the password changes the login is gone', cmds.length === 2 + 8 + 5 && api.directorAuthed() === false);
+  ok('after the password changes the login is gone', cmds.length === 2 + 8 + 5 + 4 && api.directorAuthed() === false);
   await srv.close();
   console.log(fails ? fails + ' WEB TESTS FAILED' : 'ALL WEB TESTS PASSED'); process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('ERROR', e.stack); process.exit(1); });

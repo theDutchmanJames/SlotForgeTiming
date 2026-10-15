@@ -52,6 +52,12 @@
   // The text for it: "−1 lap, +5 s, +3 pts" (laps, then time, then points; what is zero is left out; nothing adjusted gives '').
   // What Balance of Power did to a car in a race (a result row has it as bopNote, such as "hindered 20% (from the start to lap 12)"): the text to show with the name, or ''
   const bopText = x => (x && x.bopNote ? 'Balance of Power: ' + x.bopNote : '');
+  // What the tyres did to a car in a race with a weather system (a result row has it as tyreNote, such as "Wet tyres after lap 9, 2 penalty points for the tyres after lap 11")
+  const tyreText = x => (x && x.tyreNote ? 'Tyres: ' + x.tyreNote : '');
+  // everything that was done to a car on top of the race, to show with its name
+  const notesText = x => [bopText(x), tyreText(x)].filter(Boolean).join('; ');
+  // what the weather did in a race or heat (a session or heat result has it as weatherNote, such as "Cloudy from lap 8, rain from lap 10"), or ''
+  const weatherText = x => (x && x.weatherNote ? 'Weather: ' + x.weatherNote : '');
   const adjustedText = x => {
     if (!x) return '';
     const part = (v, one, many, show) => { const n = Number(v) || 0; if (!n) return ''; const a = Math.abs(n); return (n < 0 ? '\u2212' : '+') + (show ? show(a) : a) + ' ' + (a === 1 ? one : many); };
@@ -158,7 +164,7 @@
     return out;
   }
 
-  const api = { SESSION_COLUMNS, STINT_COLUMNS, RECORD_COLUMNS, FIGURE_KEYS, WINNER_TYPES, isWinner, isHeatWinner, adjustedText, bopText, figures, forSession, lapSpeed, lapLength, valueOf, text, hasAny, sessionColumns, notes, fmtSpeed, fmtScale, fmtDist, fmtSpread, fmtMs };
+  const api = { SESSION_COLUMNS, STINT_COLUMNS, RECORD_COLUMNS, FIGURE_KEYS, WINNER_TYPES, isWinner, isHeatWinner, adjustedText, bopText, tyreText, notesText, weatherText, figures, forSession, lapSpeed, lapLength, valueOf, text, hasAny, sessionColumns, notes, fmtSpeed, fmtScale, fmtDist, fmtSpread, fmtMs };
   root.Stats = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

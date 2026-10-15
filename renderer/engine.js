@@ -2,6 +2,7 @@
 // Times are in milliseconds; the caller passes the current time `t` into every call.
 (function (root) {
   const B = typeof module !== 'undefined' ? require('./bop.js') : root.Bop; // Balance of Power: percentages and the way they change the fuel rules of a car
+  const W = typeof module !== 'undefined' ? require('./weather.js') : root.Wx; // Weather: the states, the tyres and what wrong tyres cost
   const MIN_LAP = 800; // crossings closer together than this are treated as double triggers
 
   function fmtTime(ms) {
@@ -68,15 +69,19 @@
     const F = { on: false, tank: 0, perLap: 0, rate: 0, target: 0, extra: 0, saving: 0, empty: 'retire', pitHold: 2000, ...(cfg.fuel || {}) };
     // Balance of Power (cfg.bop, see bop.js): only in a race or a timed race that has fuel, because it works through the fuel rules. Every car has its own percentage (car.bop: negative = hindered, positive = helped).
     const BP = cfg.bop && F.on && (type === 'race' || type === 'timed') ? B.clean(cfg.bop) : null, ONE = { use: 1, rate: 1, tank: 1 };
-    const fx = c => (BP && c.bop ? B.factors(c.bop, BP) : ONE); // what the car gets of the fuel rules now
-    const tankOf = c => (BP && c.bop ? Math.round(F.tank * fx(c).tank * 1e6) / 1e6 : F.tank); // (rounded: 100 x 1.1 is not 110.00000000000001 on a screen)
+    // Weather (cfg.weather, see weather.js): only in a race or a timed race. The tyres and the penalty points need no fuel; hurting a car on the wrong tyres (WXH) works through the fuel rules, like Balance of Power.
+    const WXC = cfg.weather && (type === 'race' || type === 'timed') ? cfg.weather : null, WXH = WXC && F.on && WXC.hinder ? WXC : null;
+    const hasFx = c => !!((BP && c.bop) || (WXH && c.wx));
+    // what the car gets of the fuel rules now: from Balance of Power (car.bop) and from the weather (car.wx), both signed whole percentages (negative: hindered), added up lever by lever
+    const fx = c => (!hasFx(c) ? ONE : WXH && c.wx ? B.mix([[BP && c.bop ? c.bop : 0, BP], [c.wx, WXH.levers]]) : B.factors(c.bop, BP));
+    const tankOf = c => (hasFx(c) ? Math.round(F.tank * fx(c).tank * 1e6) / 1e6 : F.tank); // (rounded: 100 x 1.1 is not 110.00000000000001 on a screen)
     const Y = { target: 0, points: 0, ...(cfg.yellow || {}) }; // the yellow flag target lap time (ms; 0 = none) and the penalty points for a full lap under yellow that is faster
     const lapLimit = type === 'race' ? Number(cfg.laps) || 0 : 0;
     const timeLimit = (type === 'timed' || type === 'qualifying') ? (Number(cfg.duration) || 0) * 60000 : 0;
     const R = {
       cfg, fuel: F, penalty: P, type, status: 'ready', t0: 0, pausedAt: 0, endAt: 0, timeUp: false, finished: 0, endedBy: '',
       yellow: Y, yellowAt: null, // yellowAt: when the yellow flag that is up now went up (a lap that started before that is not a lap under yellow)
-      cars: cfg.entries.map(e => ({ ...e, laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, adjMs: 0, adjLaps: 0, adjPoints: 0, invalid: [], removed: [], yellowFast: [], pitLaps: [], servedNow: false, last: 0, total: 0, best: null, done: false, place: 0, retired: false, fuel: F.on ? F.tank : 0, outOfFuel: false, bop: 0, bopHold: false, bopTo: null,
+      cars: cfg.entries.map(e => ({ ...e, laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, adjMs: 0, adjLaps: 0, adjPoints: 0, invalid: [], removed: [], yellowFast: [], pitLaps: [], servedNow: false, last: 0, total: 0, best: null, done: false, place: 0, retired: false, fuel: F.on ? F.tank : 0, outOfFuel: false, bop: 0, bopHold: false, bopTo: null, tyreOwn: W.cleanTyre(e.tyre), tyre: W.cleanTyre(e.tyre), wx: 0, wxDue: null,
         blockAt: null, pit: null, pits: [], lastPit: null, outlap: false, started: !skipFirst })),
       events: [], // what happened, in order: { type, car, t } (outoffuel, retired, pitstart, fuelfull, pitend, call, callend...)
       calls: [] // calls from a lane to the Race Director: { id, car, t, open, how }; how a call ended: 'penalty' or 'dismiss'
@@ -93,7 +98,7 @@
     };
 
     R.elapsed = t => R.status === 'running' ? t - R.t0 : R.status === 'paused' ? R.pausedAt - R.t0 : R.status === 'finished' ? R.endAt - R.t0 : 0;
-    R.start = t => { R.status = 'running'; R.t0 = t; R.cars.forEach(c => { c.last = t; if (BP && F.on) c.fuel = tankOf(c); }); }; // (a car that has Balance of Power before the start begins with a full tank of its own size)
+    R.start = t => { R.status = 'running'; R.t0 = t; R.cars.forEach(c => { c.last = t; if (F.on && hasFx(c)) c.fuel = tankOf(c); }); wxEval(t); }; // (a car that has Balance of Power before the start begins with a full tank of its own size)
     R.pause = t => { if (R.status === 'running') { R.status = 'paused'; R.pausedAt = t; } };
     R.resume = t => {
       if (R.status !== 'paused') return;
@@ -132,6 +137,7 @@
     R.tick = t => {
       if (R.status === 'running') R.cars.forEach((_, i) => { pitCheck(i, t); serveCheck(i, t); });
       if (R.status === 'running' && timeLimit && !R.timeUp && t - R.t0 >= timeLimit) R.timeUp = true;
+      wxEval(t);
       checkEnd(t);
     };
     // After the time is up, each car finishes on its next crossing, and that lap still counts.
@@ -164,6 +170,7 @@
         if (Y.points > 0 && R.addPoints(i, Y.points, t)) e.points = Y.points;
       }
       if (!c.dq && ((lapLimit && c.laps.length >= lapLimit) || (timeLimit && R.timeUp))) { c.done = true; c.place = ++R.finished; } // a car disqualified on this lap (fuel points) has not finished
+      wxEval(t); if (!wxEntering) wxDueCheck(c, i, t); // (a car that comes into the pits on this crossing is judged by its stop, or by its next crossing)
       bopEval(t);
       checkEnd(t);
       return true;
@@ -184,8 +191,10 @@
     function pitCheck(i, t) {
       const c = R.cars[i];
       if (c.blockAt === null || c.pit || t - c.blockAt < F.pitHold) return;
-      c.pit = { start: c.blockAt + F.pitHold, fuel0: c.fuel, full: false, ...(BP && c.bop ? { rate: F.rate * fx(c).rate, tank: tankOf(c) } : {}) }; // (the refuelling speed and the tank of a car with Balance of Power are fixed for the whole stop)
+      const tyres = wxTyres(c); // (the tyres are changed when the stop starts)
+      c.pit = { start: c.blockAt + F.pitHold, fuel0: c.fuel, full: false, ...(hasFx(c) ? { rate: F.rate * fx(c).rate, tank: tankOf(c) } : {}) }; // (the refuelling speed and the tank of a car with Balance of Power are fixed for the whole stop)
       log('pitstart', i, c.pit.start);
+      if (tyres) log('tyres', i, c.pit.start, tyres);
     }
     function fuelAt(i, t) {
       const c = R.cars[i];
@@ -207,6 +216,7 @@
       c.blockAt = null; c.pit = null;
     }
     R.fuelOf = fuelAt;
+    R.factorsOf = i => (R.cars[i] ? fx(R.cars[i]) : ONE); // how much more or less fuel car i uses, how much slower or faster it refuels, and how big its tank is (Balance of Power and the weather together)
     R.tankOf = i => (R.cars[i] ? tankOf(R.cars[i]) : F.tank); // the size of the tank of car i (smaller or bigger with Balance of Power)
 
     // ---- Balance of Power ----
@@ -242,16 +252,65 @@
       });
     }
     R.bopNoteOf = i => B.noteOf(B.periodsOf(R.events, i)); // what BoP did to car i in this race, in words (empty when nothing)
+    // ---- Weather ----
+    R.weather = WXC; // the settings (or null: this race has no weather)
+    let wxEntering = false; // true while a car that stopped on the sensor is counted as having crossed
+    R.wxState = 'dry'; R.wxStage = 0; // the weather now, and how many of the states of the forecast have begun
+    R.wxPlan = WXC ? W.plan(WXC, WXC.seed) : null; // the forecast: { unit, director, stages: [{ state, at }] }
+    const leaderLaps = () => R.cars.reduce((m, c) => Math.max(m, c.laps.length), 0);
+    // The forecast: a state begins when the leader has completed its laps, or when its time has gone (when the Race Director decides, nothing happens by itself)
+    function wxEval(t) {
+      if (!WXC || R.status !== 'running' || !R.wxPlan || R.wxPlan.director) return;
+      const x = R.wxPlan.unit === 'laps' ? leaderLaps() : t - R.t0, st = R.wxPlan.stages;
+      while (R.wxStage < st.length && x >= st[R.wxStage].at) R.wxSet(st[R.wxStage++].state, t, 'forecast');
+    }
+    // The weather becomes state ('dry' | 'cloudy' | 'wet' | 'clearing'). Cars that have to change tyres now get the reaction time (the laps they have to pit in); the cars are hindered, or not, for their tyres.
+    R.wxSet = (state, t, by) => {
+      if (!WXC || !W.STATES.some(s => s[0] === state) || state === R.wxState || R.status === 'finished') return false;
+      const was = R.wxState; R.wxState = state;
+      R.events.push({ type: 'weather', car: -1, t: t || 0, state, was, lap: leaderLaps(), at: R.status === 'ready' ? 0 : (t || 0) - R.t0, by: by || 'director' });
+      R.cars.forEach(c => { c.wxDue = null; const k = W.need(state, c.tyre, c.tyreOwn); if (k) c.wxDue = { kind: k, lap: c.laps.length + WXC.react }; wxRefresh(c); });
+      return true;
+    };
+    // the percentage the weather takes from a car on its tyres (negative: hindered); a tank that gets smaller keeps only what fits
+    function wxRefresh(c) {
+      if (!WXH) return;
+      const pct = -W.hinderOf(WXH, R.wxState, c.tyre);
+      if (pct === (c.wx || 0)) return;
+      c.wx = pct === 0 ? 0 : pct;
+      if (F.on && !c.pit) c.fuel = Math.min(c.fuel, tankOf(c));
+    }
+    // A pit stop starts: the car gets the tyres the weather asks for. (A stop is the only way to change tyres.)
+    function wxTyres(c) { // (gives what the log says when the tyres changed, so that it comes after the pit stop in the log)
+      if (!WXC) return null;
+      const to = W.tyreFor(WXC, R.wxState, c.tyreOwn); let said = null;
+      if (to !== c.tyre) { const was = c.tyre; c.tyre = to; said = { tyre: to, was, state: R.wxState, lap: c.laps.length }; }
+      if (c.wxDue && !W.need(R.wxState, c.tyre, c.tyreOwn)) c.wxDue = null;
+      wxRefresh(c);
+      return said;
+    }
+    // After the reaction time a car that is still on the wrong tyres gets the penalty points (once, or every lap), and it is logged even when there are no points
+    function wxDueCheck(c, i, t) {
+      const d = c.wxDue; if (!WXC || !d || c.laps.length < d.lap) return;
+      if (!W.need(R.wxState, c.tyre, c.tyreOwn)) { c.wxDue = null; return; }
+      const pts = d.kind === 'wet' ? WXC.wetPoints : WXC.dryPoints, added = pts > 0 && R.addPoints(i, pts, t, 'tyres');
+      log('tyredue', i, t, { kind: d.kind, points: added ? pts : 0, lap: c.laps.length, tyre: c.tyre });
+      if (WXC.repeat === 'every') d.lap = c.laps.length + 1; else c.wxDue = null;
+    }
+    // what a screen needs to know of car i: its tyre, its own tyre, whether it should change tyres now ('wet' | 'dry' | ''), how many percent the weather hinders it
+    R.wxOf = i => { const c = R.cars[i]; return c ? { tyre: c.tyre, own: c.tyreOwn, need: WXC ? W.need(R.wxState, c.tyre, c.tyreOwn) : '', hinder: -(c.wx || 0) } : null; };
+    R.tyreNoteOf = i => W.noteOf(R.events, i); // what the tyres did to car i in this race, in words (empty when nothing)
+    R.weatherNote = () => (WXC ? W.forecastNote(R.events, WXC.unit) : ''); // what the weather did in this race, in words
     // ---- penalty points ----
     R.penMs = penOf;
     // Adds (or with a negative n takes back) penalty points. Reaching the disqualify limit puts the car out of the race.
-    R.addPoints = (i, n, t) => {
+    R.addPoints = (i, n, t, why) => {
       const c = R.cars[i];
       if (!P.on || !c || R.status === 'ready' || !Number.isFinite(n) || n === 0) return false;
       const before = c.points;
       c.points = Math.max(0, c.points + n);
       if (c.points === before) return false;
-      log('penalty', i, t, { delta: c.points - before, points: c.points, ms: penaltyMs(P, c.points) });
+      log('penalty', i, t, { delta: c.points - before, points: c.points, ms: penaltyMs(P, c.points), ...(why ? { why } : {}) });
       if (P.dq && c.points >= P.dq && !c.dq) {
         c.dq = true; c.dqWasDone = c.done; c.dqWasRetired = c.retired; c.done = true; c.retired = true; log('disqualified', i, t); checkEnd(t);
       } else if (c.dq && (!P.dq || c.points < P.dq) && R.status !== 'finished') { // a mistaken point can still be taken back
@@ -265,7 +324,7 @@
       if (R.status !== 'running') return false;
       const c = R.cars[i];
       if (!c || c.done || c.blockAt !== null) return false;
-      R.cross(i, t);
+      wxEntering = true; R.cross(i, t); wxEntering = false;
       if (c.done) return true;
       c.blockAt = t; c.pit = null; c.servedNow = false;
       return true;
@@ -551,14 +610,16 @@
       const rows = race.standings().map(r => { // (what the Race Director adjusted in the review is in the row: the laps and the time are the adjusted ones, the championship points come on top of the points of the place)
         const a = race.adjOf ? race.adjOf(r.car) : { ms: 0, laps: 0, points: 0 }; // (a race that is not an engine race, such as a stand-in of a test, has no adjustments)
         const note = race.bopNoteOf && race.cars ? race.bopNoteOf(race.cars.indexOf(r.car)) : ''; // what Balance of Power did to the car, in words
+        const tyres = race.tyreNoteOf && race.cars ? race.tyreNoteOf(race.cars.indexOf(r.car)) : ''; // what the tyres did to the car (weather), in words
         return { participant: r.car.participant, pos: r.pos, laps: race.lapsOf ? race.lapsOf(r.car) : r.car.laps.length, total: a.ms && Number.isFinite(r.car.total) ? r.car.total + a.ms : r.car.total, best: r.car.best, points: (points[r.pos - 1] || 0) + (byPoints ? a.points : 0),
-          ...(a.ms ? { adjMs: a.ms } : {}), ...(a.laps ? { adjLaps: a.laps } : {}), ...(byPoints && a.points ? { adjPoints: a.points } : {}), ...(note ? { bopNote: note } : {}) };
+          ...(a.ms ? { adjMs: a.ms } : {}), ...(a.laps ? { adjLaps: a.laps } : {}), ...(byPoints && a.points ? { adjPoints: a.points } : {}), ...(note ? { bopNote: note } : {}), ...(tyres ? { tyreNote: tyres } : {}) };
       });
       if (byPoints && sc.fastestBonus > 0) { // the driver with the fastest lap of this heat gets the bonus (with the same lap time, the one who finished higher)
         let top = null; for (const r of rows) if (Number.isFinite(r.best) && (top === null || r.best < top.best)) top = r;
         if (top) { top.bonus = sc.fastestBonus; top.points += sc.fastestBonus; }
       }
-      const result = { heat: H.idx + 1, ...(H.idx >= H.count ? { final: names[H.idx - H.count] } : {}), rows };
+      const wnote = race.weatherNote ? race.weatherNote() : ''; // what the weather did in this heat, in words
+      const result = { heat: H.idx + 1, ...(H.idx >= H.count ? { final: names[H.idx - H.count] } : {}), ...(wnote ? { weatherNote: wnote } : {}), rows };
       H.results.push(result); H.idx++;
       if (H.idx === H.count && names.length) H.finalPlan = planFinals();
       return result;

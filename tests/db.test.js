@@ -50,4 +50,9 @@ ok('penalty systems can be added and removed', db.list('penaltysystems').length 
   fs.writeFileSync(old, JSON.stringify({ customFields: { slotcars: [{ id: 'a1', label: 'Old field', type: 'text', options: [] }] } }));
   const o = new Database(old);
   ok('a field saved before groups existed has no group: it is shown in More, and it can be moved', o.listCustomFields('slotcars')[0].group === undefined && o.setCustomFieldGroup('slotcars', 'a1', 'technical').group === 'technical'); }
+{ const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'slt-')), 'db.json'), w = new Database(f);
+  const sys = w.add('weathersystems', { name: 'Showers' }), setup = w.add('racesetups', { name: 'Wet race', weather: sys.id }), other = w.add('racesetups', { name: 'Dry race' });
+  ok('weather systems can be added, and are kept in the file', w.list('weathersystems').length === 1 && new Database(f).list('weathersystems')[0].name === 'Showers');
+  w.remove('weathersystems', sys.id);
+  ok('deleting a weather system clears it from the setups (and leaves the others alone)', w.list('weathersystems').length === 0 && w.list('racesetups').find(r => r.id === setup.id).weather === '' && w.list('racesetups').find(r => r.id === other.id).weather === undefined); }
 console.log(fails ? fails + ' DB TESTS FAILED' : 'ALL DB TESTS PASSED'); process.exit(fails ? 1 : 0);

@@ -5,7 +5,7 @@ const schema = require('./schema');
 
 const FORMAT = 'slotforge-timing-export', OLD_FORMATS = ['slot-lap-timer-export'], FILE_VERSION = 1; // exports made before the rename are still accepted
 // the order rows are added in on import (what is used comes before what uses it)
-const ORDER = ['tracks', 'slotcars', 'drivers', 'fuelrules', 'penaltysystems', 'imagesets', 'audiosets', 'customwidgets', 'rowdesigns', 'layouts', 'racesetups', 'sessions', 'laps'];
+const ORDER = ['tracks', 'slotcars', 'drivers', 'fuelrules', 'penaltysystems', 'weathersystems', 'imagesets', 'audiosets', 'customwidgets', 'rowdesigns', 'layouts', 'racesetups', 'sessions', 'laps'];
 const clone = x => JSON.parse(JSON.stringify(x));
 // the group of a form that an extra field is shown in: a group of that form in this version, otherwise '' (More)
 const groupOf = (e, g) => typeof g === 'string' && (schema[e].groups || []).some(x => x.id === g) ? g : '';
@@ -18,7 +18,7 @@ function refsOf(entity, row) {
     if (o.imageSet) out.push({ entity: 'imagesets', get: () => o.imageSet, set: v => { o.imageSet = v; } });
     if (withDesign && o.design) out.push({ entity: 'rowdesigns', get: () => o.design, set: v => { o.design = v; } });
   });
-  if (entity === 'racesetups') { field('track', 'tracks'); field('layout', 'layouts'); field('layout2', 'layouts'); field('penaltySystem', 'penaltysystems'); field('fuelRules', 'fuelrules'); field('audioSet', 'audiosets'); }
+  if (entity === 'racesetups') { field('track', 'tracks'); field('layout', 'layouts'); field('layout2', 'layouts'); field('penaltySystem', 'penaltysystems'); field('fuelRules', 'fuelrules'); field('weather', 'weathersystems'); field('audioSet', 'audiosets'); }
   if (entity === 'audiosets') Object.values(row.calls || {}).forEach(c => ((c && c.lines) || []).forEach(l => { if (l && l.only && l.only.driver) out.push({ entity: 'drivers', get: () => l.only.driver, set: v => { l.only.driver = v || 'gone'; } }); })); // ("only for this driver" in a sentence; a driver that did not come along stays a name nobody has, so the sentence is not said for everybody)
   if (entity === 'layouts') widgets(row.widgets, true);
   if (entity === 'rowdesigns') widgets(row.widgets, false);

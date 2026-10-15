@@ -141,4 +141,13 @@ ok('heats counted the standard way (a result of before): no Result column, no li
   ok('a wide table gets a smaller print size (more than 8 columns)', h2.length > 0 && sessionHtml({ session: s2, laps: l2, tracks }).includes('<table class="wide">') && !sessionHtml({ session: s2, laps: l2, options: { columns: ['pos', 'driver'] } }).includes('<table class="wide">'));
   ok('figures cannot carry HTML into the page (a name or a number from an imported file)', !sessionHtml({ session: { ...s2, standings: [{ ...s2.standings[0], pits: '<b>x</b>', penaltyPoints: '<i>y</i>' }] }, laps: l2, tracks }).includes('<b>x</b>'));
 }
+// ---- 1.4.0: what the weather and the tyres did ----
+{ const tn = 'Wet tyres after lap 9, 2 penalty points for the tyres after lap 11', x = sessionHtml({ session: { ...session, weatherNote: 'Cloudy from lap 8, rain from lap 10', standings: [{ ...st[0], tyreNote: tn }, st[1]] }, laps });
+  ok('a driver whose tyres were changed has it next to the name, in words', x.includes('Alex (Tyres: ' + tn + ')') && !x.includes('Sam (Tyres') && !x.includes('Sam &lt;b&gt; (Tyres'));
+  ok('...the weather is said under the title', x.includes('Weather: Cloudy from lap 8, rain from lap 10') && !sessionHtml({ session, laps }).includes('Weather:'));
+  ok('...with Balance of Power too, both are there', sessionHtml({ session: { ...session, standings: [{ ...st[0], bopNote: 'helped 10% (from the start)', tyreNote: 'Wet tyres after lap 2' }, st[1]] }, laps }).includes('Alex (Balance of Power: helped 10% (from the start); Tyres: Wet tyres after lap 2)'));
+  ok('...it is safe', !sessionHtml({ session: { ...session, weatherNote: '<b>x</b>', standings: [{ ...st[0], tyreNote: '<i>y</i>' }, st[1]] }, laps }).match(/<b>x<\/b>|<i>y<\/i>/));
+  const hs = { ...session, sessionType: 'heats', resultBy: 'laps', heatResults: [{ heat: 1, weatherNote: 'Cloudy from lap 3', rows: [{ pos: 1, driverName: 'Alex', laps: 5, points: 0, tyreNote: 'Wet tyres after lap 4' }, { pos: 2, driverName: 'Sam', laps: 3, points: 0 }] }, { heat: 2, rows: [{ pos: 1, driverName: 'Sam', laps: 5, points: 0 }] }] };
+  const hh = sessionHtml({ session: hs, laps });
+  ok('a heat says it too: its own weather next to its name, and the tyres in its row', hh.includes('(Weather: Cloudy from lap 3)') && hh.includes('Alex (5 laps, Tyres: Wet tyres after lap 4)') && hh.indexOf('Weather:') === hh.lastIndexOf('Weather:')); }
 console.log(fails ? fails + ' REPORT TESTS FAILED' : 'ALL REPORT TESTS PASSED'); process.exit(fails ? 1 : 0);

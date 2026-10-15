@@ -5,9 +5,9 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg',
   '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.json': 'application/json', '.ico': 'image/x-icon' };
 // what other devices may read from the database: no settings (they hold the password), nothing is ever written
-const READABLE = ['drivers', 'slotcars', 'tracks', 'racesetups', 'layouts', 'rowdesigns', 'sessions', 'laps', 'penaltysystems', 'fuelrules'];
+const READABLE = ['drivers', 'slotcars', 'tracks', 'racesetups', 'layouts', 'rowdesigns', 'sessions', 'laps', 'penaltysystems', 'fuelrules', 'weathersystems'];
 // what the Race Director page may send to the race
-const COMMANDS = ['start', 'pause', 'stop', 'yellow', 'red', 'penalty', 'assign', 'review', 'call', 'callresolve', 'addtime', 'reducetime', 'undotime', 'endtime', 'cleartime', 'setdriver', 'bop'];
+const COMMANDS = ['start', 'pause', 'stop', 'yellow', 'red', 'penalty', 'assign', 'review', 'call', 'callresolve', 'addtime', 'reducetime', 'undotime', 'endtime', 'cleartime', 'setdriver', 'bop', 'weather'];
 // The commands of the Tokens page (Time Token Sessions) are checked here before they go to the race window: a lane is a whole number from 0 to 15,
 // the minutes to add are a number above 0 and at most 1440 (a day), a driver is the id of a driver (or '' for a Guest).
 const TOKEN_COMMANDS = ['addtime', 'reducetime', 'undotime', 'endtime', 'cleartime', 'setdriver'];
@@ -21,6 +21,12 @@ function tokenCommand(c) {
 
 // The command of Balance of Power: a lane is a whole number from 0 to 15, and what is pressed one of the five buttons of the lane controls.
 const BOP_HOW = ['hinder', 'help', 'off', 'auto', 'accept'];
+const WX_STATES = ['dry', 'cloudy', 'wet', 'clearing'];
+// the Race Director sets the weather: one of the four states
+function weatherCommand(c) {
+  if (c.type !== 'weather') return true;
+  return typeof c.state === 'string' && WX_STATES.includes(c.state);
+}
 function bopCommand(c) {
   if (c.type !== 'bop') return true;
   return Number.isInteger(c.lane) && c.lane >= 0 && c.lane <= 15 && typeof c.how === 'string' && BOP_HOW.includes(c.how);
@@ -72,7 +78,7 @@ function createServer(o) {
         const b = await body(req), pw = password();
         if (!pw || typeof b.token !== 'string' || tokens.get(b.token) !== pw) return send(res, 401, { error: 'login' });
         if (!b.cmd || !COMMANDS.includes(b.cmd.type)) return send(res, 400, { error: 'unknown command' });
-        if (!tokenCommand(b.cmd) || !bopCommand(b.cmd)) return send(res, 400, { error: 'bad command' });
+        if (!tokenCommand(b.cmd) || !bopCommand(b.cmd) || !weatherCommand(b.cmd)) return send(res, 400, { error: 'bad command' });
         o.onCommand(b.cmd); return send(res, 200, { ok: true });
       }
       if (req.method === 'GET') { // the app's own pages
@@ -95,4 +101,4 @@ function createServer(o) {
     clientCount: () => clients.size
   };
 }
-module.exports = { createServer, tokenCommand, bopCommand };
+module.exports = { createServer, tokenCommand, bopCommand, weatherCommand };

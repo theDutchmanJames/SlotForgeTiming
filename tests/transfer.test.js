@@ -110,4 +110,12 @@ const e = tmp(); T.apply(e, JSON.parse(JSON.stringify(b1))); const reread = new 
   const z = tmp(); T.apply(z, JSON.parse(JSON.stringify({ ...bundle, items: { audiosets: bundle.items.audiosets } })));
   ok('an export without the drivers still imports (the sentence stays "for a driver that is gone", so it is not said for everybody)', z.data.audiosets.length === 1 && z.data.audiosets[0].calls.winner.lines[0].only.driver === 'gone' && z.data.audiosets[0].calls.winner.lines[1].only === undefined);
 }
+{ // 1.4.0: a weather system travels with the race setup that uses it
+  const x = tmp(), w = x.add('weathersystems', { name: 'Showers', startAt: 4 }), s = x.add('racesetups', { name: 'Wet', weather: w.id });
+  const out = T.collect(x.data, { racesetups: [s.id] }, true), dpx = T.dependencies(x.data, { racesetups: [s.id] });
+  ok('a race setup brings its weather system, and the dependencies list it', (out.items.weathersystems || []).length === 1 && out.items.weathersystems[0].name === 'Showers' && dpx.weathersystems && dpx.weathersystems.length === 1 && dpx.weathersystems[0].required === false);
+  const y = tmp(); y.add('weathersystems', { name: 'Showers' }); T.apply(y, JSON.parse(JSON.stringify(out)));
+  const imp = y.data.weathersystems.find(q => q.name === 'Showers (imported)'), st = y.data.racesetups[0];
+  ok('...an import keeps the link (to the imported copy, with a new id), and the clash of names is marked', y.data.weathersystems.length === 2 && imp && imp.startAt === 4 && st.weather === imp.id && imp.id !== w.id);
+  ok('...a weather system can also be exported on its own', (T.collect(x.data, { weathersystems: [w.id] }, false).items.weathersystems || []).length === 1); }
 if (fails) { console.log(fails + ' TRANSFER TESTS FAILED'); process.exit(1); } console.log('transfer: all PASSED');

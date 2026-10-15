@@ -59,9 +59,10 @@ const Help = (() => {
           <li><b>Race Setups</b> hold the rules of one kind of race: the session type, the track, the length, the start lights, penalties and fuel, the timing page and the audio set. Make as many as you like. Every option has a default and sits in a folder.</li>
           <li><b>Fuel Setups</b>: tank size, fuel per lap and what happens when the tank is empty.</li>
           <li><b>Penalty Systems</b>: how penalty points turn into seconds, when a driver is disqualified, and special penalties such as a Drivethrough or a Stop-and-Go.</li>
+          <li><b>Weather Systems</b>: a spell of rain with a forecast, the tyres to change in the pits and what the wrong tyres cost.</li>
           <li><b>Balance of Power</b>: how much a fast car is hindered and a slow car helped, by hand or by itself.</li>
           <li><b>Time Tokens</b>: the time buttons and the warning for a Time Token Session.</li>
-          <li>Fuel setups and penalty systems do nothing until you choose them in a race setup.</li>
+          <li>Fuel setups, penalty systems and weather systems do nothing until you choose them in a race setup.</li>
         </ul>` },
       { id: 'types', title: 'Session types', note: 'Six ways to race', body: `
         <ul>
@@ -137,6 +138,14 @@ const Help = (() => {
           <li>Set it up under Race Setup, <b>Balance of Power</b>: the percentage (a slider), only the fastest and slowest car or every car by its distance from the middle, and which of the three effects are on. It fine-tunes: a car that is seconds a lap faster will not be caught by fuel alone.</li>
           <li><b>Manual</b>: the Race Director presses Hinder, Help or Off for a lane. <b>Suggest</b>: the app proposes and he presses Accept. <b>Automatic</b>: the app applies it at the lap time difference you set and removes it a little below that. A lane you press stays as you set it until you press Auto.</li>
           <li>The race screen and the Race Director page have the lane buttons. The <b>Balance of Power</b> widget shows it per lane, and the audio set can say it comes on and goes off. The result says what it did, for example hindered 20% (from the start to lap 12).</li>
+        </ul>` },
+      { id: 'weather', title: 'Weather', note: 'Rain, tyres and pit stops', body: `
+        <ul>
+          <li>A <b>weather system</b> (Race Setup, Weather Systems) is a spell of rain: it starts after some laps of the leader or minutes, at a random moment, or when the Race Director says so, and lasts as long as you set. Choose one in a race setup (races, timed races and heats).</li>
+          <li>The weather goes <b>Dry</b>, <b>Cloudy</b> (the warning), <b>Wet</b>, <b>Clearing</b> and Dry again. The race screen and the Race Director page show it and what comes next; the Race Director can press the four weather buttons there.</li>
+          <li>Cars change tyres <b>in a pit stop</b>, from the <b>Tyre choice</b> of their slot car (Database, Slotcars) to Wet (or Intermediate) in Cloudy and Wet, and back in Clearing and Dry.</li>
+          <li>When it rains a car on dry tyres has to pit within the laps you set, and when it is dry again a car on Wet tyres has to. Otherwise it gets <b>penalty points</b> (needs a penalty system) and can be <b>hindered</b> like with Balance of Power (needs a fuel setup). Both add up, to 90% at most.</li>
+          <li>The result says what the weather and the tyres did. The audio set has calls for it, and simulated cars change tyres too.</li>
         </ul>` },
       { id: 'tokens', title: 'Time Token Sessions', note: 'Selling track time per lane', body: `
         <ul>
