@@ -40,10 +40,11 @@
     { id: 'refuelled', group: 'Pit and fuel', defaultOn: false, label: 'A car has refuelled (said when the pit stop is over)', vars: ['driver', 'refuelled', 'fuel', 'pit'], lines: ['{driver} has refuelled, {refuelled} litres', '{driver} takes on {refuelled} litres'] },
     { id: 'bopon', group: 'Balance of Power', label: 'Balance of Power is applied to a car (hindered or helped)', vars: ['driver', 'bop', 'effect'], lines: ['Balance of Power for {driver}', '{driver} has Balance of Power'] },
     { id: 'bopoff', group: 'Balance of Power', label: 'Balance of Power is taken off a car', vars: ['driver'], lines: ['Balance of Power for {driver} removed!', '{driver}, Balance of Power removed'] },
-    { id: 'weathercloudy', group: 'Weather', label: 'The sky clouds over (the weather becomes Cloudy: rain is coming)', vars: ['weather'], lines: ['It is getting cloudy, rain is on its way', 'Clouds are building up'] },
-    { id: 'weatherwet', group: 'Weather', label: 'It starts to rain (the weather becomes Wet)', vars: ['weather'], lines: ['It is raining! Wet tyres', 'The rain has started'] },
-    { id: 'weatherclearing', group: 'Weather', label: 'The rain has stopped and the track is drying (Clearing)', vars: ['weather'], lines: ['The rain has stopped, the track is drying', 'The skies are clearing'] },
-    { id: 'weatherdry', group: 'Weather', label: 'The track is dry again', vars: ['weather'], lines: ['The track is dry again', 'Dry weather, back to normal tyres'] },
+    { id: 'weathercloudy', group: 'Weather', label: 'The sky clouds over (the weather becomes Cloudy: rain is coming)', vars: ['weather', 'tracktemp', 'airtemp', 'windspeed', 'winddir'], lines: ['It is getting cloudy, rain is on its way', 'Clouds are building up'] },
+    { id: 'weatherwet', group: 'Weather', label: 'It starts to rain (the weather becomes Wet)', vars: ['weather', 'tracktemp', 'airtemp', 'windspeed', 'winddir'], lines: ['It is raining! Wet tyres', 'The rain has started'] },
+    { id: 'weatherclearing', group: 'Weather', label: 'The rain has stopped and the track is drying (Clearing)', vars: ['weather', 'tracktemp', 'airtemp', 'windspeed', 'winddir'], lines: ['The rain has stopped, the track is drying', 'The skies are clearing'] },
+    { id: 'weatherdry', group: 'Weather', label: 'The track is dry again', vars: ['weather', 'tracktemp', 'airtemp', 'windspeed', 'winddir'], lines: ['The track is dry again', 'Dry weather, back to normal tyres'] },
+    { id: 'weatherconditions', group: 'Weather', label: 'The conditions on the track (said at lights out, and after every change of the weather)', vars: ['weather', 'tracktemp', 'airtemp', 'windspeed', 'winddir'], lines: ['Track temperature {tracktemp}, air temperature {airtemp}, wind {windspeed} from the {winddir}', 'Conditions: track {tracktemp}, air {airtemp}, wind {windspeed}, {winddir}'] },
     { id: 'tyrechange', group: 'Weather', label: 'A car has new tyres (said when the pit stop starts)', vars: ['driver', 'tyre', 'weather'], lines: ['{driver} is on {tyre} tyres', '{driver} changes to {tyre} tyres'] },
     { id: 'wrongtyres', group: 'Weather', label: 'A car did not change tyres in time (when there are no penalty points for it)', vars: ['driver', 'tyre', 'weather'], lines: ['{driver} is on the wrong tyres', '{driver} stays out on {tyre} tyres'] },
     { id: 'tyrepenalty', group: 'Weather', label: 'A car gets penalty points for the wrong tyres (said instead of the penalty call)', vars: ['driver', 'points', 'tyre', 'weather'], lines: ['Penalty for {driver}, wrong tyres', '{driver} is penalised for the tyres'] },
@@ -83,8 +84,10 @@
     improved: 'How much better the lap was than the best before it (0.12 seconds)', off: 'How far a lap was from the track record (0.04 seconds)',
     pit: 'How long the pit stop took, as spoken (7.4 seconds)', refuelled: 'Litres of fuel put in during the pit stop', added: 'The time that was added, as spoken (5 minutes, 30 seconds)',
     bop: 'The Balance of Power percentage the car got, as a number (20)', effect: 'What Balance of Power does to the car: hindered or helped',
-    tyre: 'The tyres of the car, as a word (Wet, Soft, Intermediate...)', weather: 'The weather now: dry, cloudy, wet or clearing' };
-  const SAMPLE = { target: '15 seconds', driver: 'Alex', name: 'Alex', nickname: 'Speedy', callsign: 'ALX', other: 'Sam', time: '5.12', position: 'second', percent: '50', left: '5 laps', fuel: '12', lane: '2', seconds: '60', points: '2', penalty: 'drivethrough', lap: '4', laps: '10', gap: '0.8 seconds', lapsdown: '1 lap', heat: '2', heats: '3', final: 'A', car: 'Porsche 956', best: '5.10', track: 'Living room', gapahead: '0.8 seconds', record: '5.01', improved: '0.12 seconds', off: '0.04 seconds', pit: '7.4 seconds', refuelled: '8', added: '5 minutes', bop: '20', effect: 'hindered', tyre: 'Wet', weather: 'wet' };
+    tyre: 'The tyres of the car, as a word (Wet, Soft, Intermediate...)', weather: 'The weather now: dry, cloudy, wet or clearing',
+    tracktemp: 'The track temperature in the weather, as spoken (24 degrees)', airtemp: 'The air temperature, as spoken (20 degrees)', windspeed: 'The wind speed, as spoken (16 kilometres per hour)', winddir: 'Where the wind comes from, as spoken (south west)' };
+  const SAMPLE = { target: '15 seconds', driver: 'Alex', name: 'Alex', nickname: 'Speedy', callsign: 'ALX', other: 'Sam', time: '5.12', position: 'second', percent: '50', left: '5 laps', fuel: '12', lane: '2', seconds: '60', points: '2', penalty: 'drivethrough', lap: '4', laps: '10', gap: '0.8 seconds', lapsdown: '1 lap', heat: '2', heats: '3', final: 'A', car: 'Porsche 956', best: '5.10', track: 'Living room', gapahead: '0.8 seconds', record: '5.01', improved: '0.12 seconds', off: '0.04 seconds', pit: '7.4 seconds', refuelled: '8', added: '5 minutes', bop: '20', effect: 'hindered', tyre: 'Wet', weather: 'wet', tracktemp: '17 degrees', airtemp: '15 degrees', windspeed: '22 kilometres per hour', winddir: 'west' };
+  const condVars = (eng, state) => (eng.weather ? WxT.condSpeech(WxT.conditionsFor(eng.weather, state || 'dry', null, '')) : {}); // the conditions of a weather state of this race, as spoken
   const WEATHER_CALL = { cloudy: 'weathercloudy', wet: 'weatherwet', clearing: 'weatherclearing', dry: 'weatherdry' }; // the call for each state the weather becomes
   const ORD = ['zeroth', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth'];
   const ordinal = n => ORD[n] || `${n}th`;
@@ -171,7 +174,7 @@
       };
       const phase = ctx.phase;
       if (phase !== S.phase) {
-        if (phase === 'running' && S.phase === 'countdown') ev('lightsout', {});
+        if (phase === 'running' && S.phase === 'countdown') { ev('lightsout', {}); if (eng.weather && S.condFor !== eng) { S.condFor = eng; ev('weatherconditions', { weather: eng.wxState || 'dry', ...condVars(eng, eng.wxState) }); } } // (the conditions are said once in a race, not again after a restart)
         if (phase === 'between' && ctx.heat) ev(ctx.heat.final ? 'nextfinal' : 'nextheat', {});
         S.phase = phase; S.lights = 0;
       }
@@ -197,7 +200,7 @@
       const live = phase === 'running' || phase === 'paused';
       for (; S.ev < eng.events.length; S.ev++) {
         const e = eng.events[S.ev], c = cars[e.car];
-        if (e.type === 'weather') { if (live && e.was && WEATHER_CALL[e.state]) ev(WEATHER_CALL[e.state], { weather: e.state }); continue; } // (a race-wide event: no car; the weather the race starts with is not said)
+        if (e.type === 'weather') { if (live && e.was && WEATHER_CALL[e.state]) { ev(WEATHER_CALL[e.state], { weather: e.state, ...condVars(eng, e.state) }); ev('weatherconditions', { weather: e.state, ...condVars(eng, e.state) }); } continue; } // (a race-wide event: no car; the weather the race starts with is not said)
         if (!c) continue;
         // the Race Director's decisions are also said in the review after the race (they change the result); everything else only while racing
         if (!live && !(phase === 'review' && (e.type === 'forgiven' || e.type === 'timeadded'))) continue;

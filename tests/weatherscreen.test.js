@@ -29,7 +29,7 @@ const api = { liveStatic: s => { sent.stat = JSON.parse(JSON.stringify(s)); sent
 const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if (appConsole.expected) { appConsole.seen++; return; } console.log('FAIL the app reported an error: ' + a.map(x => (x && x.stack) || x).join(' ').slice(0, 300)); fails++; } };
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['bop.js', 'weather.js', 'engine.js', 'heats.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js','widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js','audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['bop.js', 'weather.js', 'engine.js', 'heats.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js','audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -109,6 +109,34 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   { const s = saved.at(-1) && saved.at(-1)[0], rowOf = n => s.standings.find(x => x.driverName === n);
     say('the result that is saved says what the weather did, and what the tyres did to each car', s && s.weatherNote === 'Cloudy from lap 2, rain from lap 3, clearing from lap 6' && rowOf('Alex').tyreNote === 'Wet tyres after lap 3' && rowOf('Sam').tyreNote === '2 penalty points for the tyres after lap 3');
     say('...the review had the same words (the log of the race)', eng().tyreNoteOf(0) === rowOf('Alex').tyreNote && eng().weatherNote() === s.weatherNote); }
+
+  // ---------- 1.5.0: the weather widgets on the timing page ----------
+  { const Wg = (type, lane, x, y, opt = {}) => ({ id: type + lane + x, type, lane, x, y, w: 200, h: 80, textSize: '', textColor: '', bgColor: '', opt });
+    store.layouts = [{ id: 'LW', name: 'Weather', ratioW: 16, ratioH: 9, widgets: [Wg('tyre', 0, 0, 0), Wg('tyre', 1, 200, 0), Wg('wxforecast', null, 0, 100), Wg('wxconditions', null, 0, 200), Wg('wxforecast', null, 400, 0, { show: 'text', showNext: false }), Wg('tyre', 0, 400, 100, { imageSet: 'IT1' }), Wg('textrace', null, 400, 200, { text: '{weather}|{nextweather}|{tracktemp}|{windspeed}|{winddir}' })] }];
+    store.imagesets = [{ id: 'IT1', name: 'Rubber', kind: 'tyres', images: { S: 'data:SOFTPIC', W: 'data:WETPIC' } }];
+    store.weathersystems = [{ ...sys, trackTempWet: 12, windDirWet: 90 }];
+    await openRace({ ...setupWx, id: 's-wl', layout: 'LW' }, store.tracks[0], rows(1, 2)); await wait(60);
+    const node = (type, lane, i = 0) => run(`live.nodes.filter(n=>n.w.type==='${type}'&&n.w.lane===${lane === null ? 'null' : lane})[${i}]`), html = (type, lane, i) => node(type, lane, i).val.innerHTML;
+    say('the weather widgets are drawn on the timing page: before the start the Soft car (lane 1) and the Medium car (lane 2) on their drawn tyres, the weather Dry with "Cloudy in 1 lap", the conditions of the dry weather', html('tyre', 0, 0).includes('aria-label="Soft tyres"') && html('tyre', 1, 0).includes('aria-label="Medium tyres"') && html('wxforecast', null, 0).includes('Cloudy in 1 lap') && html('wxforecast', null, 0).includes('aria-label="Dry"') && html('wxconditions', null, 0).includes('30 °C')); 
+    say('...a Tyres widget with a picture set shows the picture of the set where the set has one (the Soft), the other tyres are drawn', html('tyre', 0, 1).includes('src="data:SOFTPIC"'));
+    say('...and the custom text says the weather in words', html('textrace', null, 0) === 'Dry|Cloudy in 1 lap|30 °C|10 km/h|SW');
+    key(' '); await until(() => phase() === 'running', 3000); await wait(60);
+    await lap(); await until(() => html('wxforecast', null, 0).includes('aria-label="Cloudy"'), 3000);
+    say('after a lap it is cloudy: the forecast widget shows the cloud and "Rain in 1 lap", the conditions follow (25 °C, 16 km/h, WSW), the text widget too', html('wxforecast', null, 0).includes('Rain in 1 lap') && html('wxconditions', null, 0).includes('25 °C') && html('wxconditions', null, 0).includes('16 km/h') && html('wxforecast', null, 1) === '<span class="wxt">Cloudy</span>' && html('textrace', null, 0).startsWith('Cloudy|Rain in 1 lap|25 °C|16 km/h|'));
+    say('...the Soft car does not have to change in the clouds', !html('tyre', 0, 0).includes('Change') && node('tyre', 0, 0).el.style.background !== '#ffb300');
+    await lap(); await until(() => html('wxforecast', null, 0).includes('aria-label="Wet"'), 3000); await wait(60);
+    say('after two laps it rains: the weather widget shows the rain cloud, the conditions the Weather System has for rain (track 12 °C, air 15 °C, wind 22 km/h from the east), the Soft car has to change and the Medium car too, as the widget says', html('wxforecast', null, 0).includes('Clearing in 3 laps') && html('wxconditions', null, 0).includes('12 °C') && html('wxconditions', null, 0).includes('15 °C') && html('wxconditions', null, 0).includes('22 km/h') && html('wxconditions', null, 0).includes('>E<') && html('tyre', 0, 0).includes('Change<small>tyres</small>') && html('tyre', 1, 0).includes('Change<small>tyres</small>'));
+    say('...the Tyres widget with a picture set is amber too and keeps its picture', html('tyre', 0, 1).includes('src="data:SOFTPIC"') && html('tyre', 0, 1).includes('Change'));
+    ctx.__sent = sent; await wait(1300);
+    const same = run(`(() => { const V = LiveShare.viewer(); V.feedStatic(__sent.stat); V.feedDynamic(__sent.dyn, performance.now()); const S = V.shared(performance.now()); const bad = [];
+      live.nodes.filter(n => ['tyre', 'wxforecast', 'wxconditions', 'textrace'].includes(n.w.type)).forEach(n => { const out = Timing.content(n.w, S).html; if (out !== n.val.innerHTML) bad.push(n.w.type + n.w.lane + ': ' + out + ' vs ' + n.val.innerHTML); }); return bad; })()`);
+    say('a viewer rebuilt from the shared data (the live page on another screen) draws the same weather widgets as the race window', same.length === 0);
+    if (same.length) console.log(same);
+    run('live.pitBtns')[0].b.onclick(); await wait(400); run('live.pitBtns')[0].b.onclick(); await wait(60);
+    await until(() => html('tyre', 0, 0).includes('aria-label="Wet tyres"'), 3000);
+    say('after the pit stop the car is on Wet tyres: the widget shows them (not amber), also with the picture set (Wet has its picture)', html('tyre', 0, 0).includes('aria-label="Wet tyres"') && !html('tyre', 0, 0).includes('Change') && html('tyre', 0, 1).includes('src="data:WETPIC"') && html('tyre', 1, 0).includes('Change'));
+    key('s'); await until(() => phase() === 'finished', 3000); await wait(150);
+    store.layouts = []; store.imagesets = []; store.weathersystems = [sys]; }
 
   // ---------- the Race Director decides ----------
   const dir = { ...sys, id: 'w2', name: 'By hand', startMode: 'director' };

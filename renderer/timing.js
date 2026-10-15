@@ -8,6 +8,7 @@
   const Tk = typeof module !== 'undefined' ? require('./tokens.js') : root.Tokens;
   const Dl = typeof module !== 'undefined' ? require('./delta.js') : root.Delta; // the Delta Timers (delta.js)
   const Av = typeof module !== 'undefined' ? require('./avatars.js') : root.Avatars; // the standard avatars of the lanes (avatars.js)
+  const Ww = typeof module !== 'undefined' ? require('./weatherwidgets.js') : root.WxW; // the weather widgets (weatherwidgets.js)
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
   const median = a => { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
@@ -41,7 +42,7 @@
       laptime: c.done ? '–' : E.fmtTime(E_.lapElapsed(i, S.now)), last: laps ? E.fmtTime(c.laps[laps - 1]) : '–', best: c.best === null ? '–' : E.fmtTime(c.best), avg: g.length ? E.fmtTime(mean(g)) : '–', median: g.length ? E.fmtTime(median(g)) : '–',
       record: Number.isFinite(best) ? E.fmtTime(best) : '–', gap: esc(row.gap),
       fuel: F && F.on ? `${(Math.floor(E_.fuelOf(i, t) * 10 + 1e-9) / 10).toFixed(1).replace(/\.0$/, '')} L` : '–', fuelpct: F && F.on && F.tank ? Math.round(E_.fuelOf(i, t) / (E_.tankOf ? E_.tankOf(i) : F.tank) * 100) + '%' : '–', bop: c.bop ? Bp.signed(c.bop) : '–',
-      penpoints: P && P.on ? (c.dq ? 'DQ' : c.points) : '–', pentime: P && P.on ? `+${Number.isInteger(sec) ? sec : sec.toFixed(1)} s` : '–', champ, pits: c.pits ? c.pits.length : 0, pit: pit ? E.fmtTime(pit.ms) : '–', speed: speedOf(true), speedreal: speedOf(false) };
+      penpoints: P && P.on ? (c.dq ? 'DQ' : c.points) : '–', pentime: P && P.on ? `+${Number.isInteger(sec) ? sec : sec.toFixed(1)} s` : '–', champ, pits: c.pits ? c.pits.length : 0, pit: pit ? E.fmtTime(pit.ms) : '–', speed: speedOf(true), speedreal: speedOf(false), ...Ww.laneVars(c) };
   }
   function raceVars(S, t) {
     const laps = lapLimitOf(S.setup), time = timeLimitOf(S.setup), lead = S.standings()[0], most = Math.max(0, ...S.eng.cars.map(x => x.laps.length)), sr = S.sessionRecord ? S.sessionRecord() : null, tr = S.trackRecord ? S.trackRecord() : null;
@@ -49,7 +50,7 @@
     const rec = r => (r && Number.isFinite(r.time) ? E.fmtTime(r.time) : '–'), by = r => (r && Number.isFinite(r.time) && r.name ? esc(r.name) : '');
     return { clock: clockText(S.eng.elapsed(t)), timeleft: time ? mmss(Math.max(0, time - S.eng.elapsed(t))) : '–', lapsleft: laps ? Math.max(0, laps - most) : '–', lapstotal: laps || '–', leader: lead && lead.car ? esc(lead.car.driverName) : '–',
       flag: st === 'red' ? 'Red flag' : st === 'yellow' ? 'Yellow flag' : flagText[st] || '', heat: S.heat ? heatLabel(S.heat) : '',
-      track: esc((S.track && S.track.name) || ''), session: esc(S.setup.name || ''), type: esc(sessionLabel[S.setup.sessionType] || ''), sessionrecord: rec(sr), sessionrecordby: by(sr), trackrecord: rec(tr), trackrecordby: by(tr), yellowtarget: S.eng.yellow && S.eng.yellow.target > 0 ? E.fmtTime(S.eng.yellow.target) : '' };
+      track: esc((S.track && S.track.name) || ''), session: esc(S.setup.name || ''), type: esc(sessionLabel[S.setup.sessionType] || ''), sessionrecord: rec(sr), sessionrecordby: by(sr), trackrecord: rec(tr), trackrecordby: by(tr), yellowtarget: S.eng.yellow && S.eng.yellow.target > 0 ? E.fmtTime(S.eng.yellow.target) : '', ...Ww.raceVars(S.eng, t) };
   }
 
   const stateOf = S => (S.phase === 'countdown' ? 'countdown' : S.eng.flag === 'red' ? 'red' : S.eng.flag === 'yellow' ? 'yellow' : S.phase === 'review' ? 'finished' : S.phase); // the state of the race for the flag and lights widgets; a start (or restart) countdown comes first
@@ -152,6 +153,9 @@
         return { html: Wd.leaderHtml(rows, opt) };
       }
       case 'fuel': { const F = S.eng.fuel, i = S.eng.cars.indexOf(c); return { html: F && F.on ? Wd.fuelHtml(S.eng.fuelOf(i, t), S.eng.tankOf ? S.eng.tankOf(i) : F.tank, opt) : '–' }; }
+      case 'tyre': return Ww.tyreContent(opt, c, S); // the tyre of the car (the weather: a pit stop changes it)
+      case 'wxforecast': return Ww.forecastContent(opt, S, t); // the weather now, and what comes next
+      case 'wxconditions': return Ww.conditionsContent(opt, S); // track and air temperature, wind speed and direction
       case 'bop': { // Balance of Power: off, hindered (an arrow down) or helped (an arrow up), with the percentage
         const pct = c.bop || 0;
         if (!pct) return { html: opt.showOff === false ? '' : 'BoP off' };

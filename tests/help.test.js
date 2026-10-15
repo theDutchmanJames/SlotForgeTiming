@@ -124,6 +124,8 @@ const folders = Help.folders();
   say('Look and feel says what Display does (the whole app, 100% to 200%, not the widgets)', /Display makes the whole app bigger \(100% to 200%\)/.test(f('look')) && /does not change the widgets/.test(f('look')));
   say('the session types help says what happens with the same best lap', /same best lap: the one who set it first ranks higher/.test(f('types')));
   say('Customization names the Race Laps widget', /Race Laps counting up or down/.test(f('custom')));
+  say('1.5.0: a folder Weather widgets names the three widgets, the conditions, the units and the picture sets', ['Tyres', 'Weather Forecast', 'Track Conditions', 'track temperature', 'wind speed', 'Fahrenheit', 'picture sets', 'Change tyres', 'own numbers'].every(t => f('wxwidgets').includes(t)) && folders.findIndex(x => x.id === 'wxwidgets') === folders.findIndex(x => x.id === 'weather') + 1);
+  say('...Image Settings names the new kinds of sets, Weather Systems the temperatures and the wind, the audio the weather calls', /the tyres, the weather and the track conditions/.test(f('custom')) && /temperatures and the wind/.test(f('setups')) && /Weather<\/b>: weather, conditions, tyres|Weather: weather, conditions, tyres/.test(f('audio')));
   say('every folder is still short enough with the new lines', folders.every(x => plain(x.body).length < 1400)); }
 
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

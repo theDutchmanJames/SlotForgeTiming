@@ -34,12 +34,29 @@
     cloudyTyre: 'wet', clearingTyre: 'dry', react: 2, wetPoints: 2, dryPoints: 2, repeat: 'once', hinder: 'on', hUse: 'on', hRate: 'on', hTank: 'off' };
   STATE_KEYS.forEach(s => CLASSES.forEach(c => { DEFAULTS[HKEYS[s + '/' + c]] = TABLE[s][c]; }));
 
+  // The conditions on the track: every weather state has its own track temperature, air temperature, wind speed and wind direction (the Track Conditions widget shows them, the audio says them).
+  // The numbers are in the units of the weather system: metric (degrees Celsius, kilometres per hour) or imperial (degrees Fahrenheit, miles per hour). The direction is where the wind comes FROM, in degrees: 0 north, 90 east, 180 south, 270 west.
+  const COND_ITEMS = [['track', 'trackTemp', 'Track temperature'], ['air', 'airTemp', 'Air temperature'], ['wind', 'windSpeed', 'Wind speed'], ['dir', 'windDir', 'Wind direction']];
+  const CKEYS = {}; STATE_KEYS.forEach(s => COND_ITEMS.forEach(([item, base]) => { CKEYS[s + '/' + item] = base + s[0].toUpperCase() + s.slice(1); })); // trackTempDry, airTempCloudy, windSpeedWet, windDirClearing...
+  const COND = { dry: { track: 30, air: 24, wind: 10, dir: 225 }, cloudy: { track: 25, air: 20, wind: 16, dir: 250 }, wet: { track: 17, air: 15, wind: 22, dir: 270 }, clearing: { track: 21, air: 17, wind: 14, dir: 295 } }; // (metric)
+  STATE_KEYS.forEach(s => COND_ITEMS.forEach(([item]) => { DEFAULTS[CKEYS[s + '/' + item]] = COND[s][item]; }));
+  DEFAULTS.units = 'metric';
+
   const num = (v, d, lo, hi) => {
     const n = typeof v === 'string' && v.trim() !== '' ? Number(v.replace(',', '.')) : v;
     return typeof n === 'number' && Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d;
   };
   const pick = (v, list, d) => (list.includes(v) ? v : d);
 
+  // the conditions of a record: { units, dry: { track, air, wind, dir }, cloudy: ... } in the units of the record (a temperature from -60 to 150, a speed from 0 to 400, a direction 0 to 359 degrees; whole numbers)
+  function cleanCond(r) {
+    const units = r.units === 'imperial' ? 'imperial' : 'metric', out = { units };
+    STATE_KEYS.forEach(s => {
+      const g = item => num(r[CKEYS[s + '/' + item]], DEFAULTS[CKEYS[s + '/' + item]], item === 'wind' ? 0 : item === 'dir' ? -1e6 : -60, item === 'wind' ? 400 : item === 'dir' ? 1e6 : 150);
+      const dir = Math.round(g('dir')); out[s] = { track: Math.round(g('track')), air: Math.round(g('air')), wind: Math.round(g('wind')), dir: ((dir % 360) + 360) % 360 };
+    });
+    return out;
+  }
   // The settings of the record, cleaned into what the engine gets. seed: a whole number for the random choices (the same seed gives the same weather).
   // In laps all the numbers are whole laps (of the leader); in time they are minutes.
   function clean(rec, seed) {
@@ -58,6 +75,7 @@
       react: Math.round(num(r.react, DEFAULTS.react, 0, 20)), wetPoints: Math.round(num(r.wetPoints, DEFAULTS.wetPoints, 0, 100)), dryPoints: Math.round(num(r.dryPoints, DEFAULTS.dryPoints, 0, 100)),
       repeat: pick(r.repeat, ['once', 'every'], DEFAULTS.repeat),
       hinder: r.hinder !== 'off', levers: { use: r.hUse !== 'off', rate: r.hRate !== 'off', tank: r.hTank === 'on' }, table,
+      cond: cleanCond(r),
       seed: Math.floor(Number(seed)) || 0
     };
   }
@@ -141,6 +159,53 @@
     return out.join(', ');
   }
 
+  // ---- the conditions on the track ----
+  // the units to show: the widget's own choice ('metric' | 'imperial'), else the units of the weather system, else metric
+  const unitsOf = (cfg, want) => (want === 'metric' || want === 'imperial' ? want : cfg && cfg.cond && cfg.cond.units === 'imperial' ? 'imperial' : 'metric');
+  // a value of one kind ('track' and 'air': a temperature, 'wind': a speed, 'dir': a direction) in other units
+  const toUnits = (item, v, from, to) => {
+    if (from === to || !Number.isFinite(v)) return v;
+    if (item === 'track' || item === 'air') return to === 'imperial' ? v * 9 / 5 + 32 : (v - 32) * 5 / 9;
+    if (item === 'wind') return to === 'imperial' ? v * 0.621371 : v / 0.621371;
+    return v;
+  };
+  const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+  const COMPASS_WORDS = ['north', 'north north east', 'north east', 'east north east', 'east', 'east south east', 'south east', 'south south east', 'south', 'south south west', 'south west', 'west south west', 'west', 'west north west', 'north west', 'north north west'];
+  const degOf = d => (((Math.round(Number(d)) || 0) % 360) + 360) % 360;
+  const compass = d => COMPASS[Math.round(degOf(d) / 22.5) % 16], compassWord = d => COMPASS_WORDS[Math.round(degOf(d) / 22.5) % 16];
+  // The conditions of a weather state for a screen: { units, state, track, air, wind, dir } in whole numbers, in the units to show (want: 'metric' | 'imperial' | anything else for the units of the system).
+  // over: values of the widget itself ({ dry: { track, air, wind, dir }, ... }, in the units to show) instead of the ones of the weather system. null when there is nothing to show (no weather system and no values of its own).
+  function conditionsFor(cfg, state, over, want) {
+    const st = STATE_KEYS.includes(state) ? state : 'dry', units = unitsOf(cfg, want), base = over ? over[st] : cfg && cfg.cond && cfg.cond[st];
+    if (!base) return null;
+    const from = over ? units : cfg.cond.units, conv = (item, v) => Math.round(toUnits(item, Number(v) || 0, from, units));
+    return { units, state: st, track: conv('track', base.track), air: conv('air', base.air), wind: conv('wind', base.wind), dir: degOf(base.dir) };
+  }
+  // the conditions as they are printed: { track: '30 °C', air: '24 °C', wind: '10 km/h', dir: 'SW', degrees: '225°' }
+  function condText(c) {
+    if (!c) return { track: '–', air: '–', wind: '–', dir: '–', degrees: '–' };
+    const imp = c.units === 'imperial', deg = imp ? '°F' : '°C';
+    return { track: `${c.track} ${deg}`, air: `${c.air} ${deg}`, wind: `${c.wind} ${imp ? 'mph' : 'km/h'}`, dir: compass(c.dir), degrees: `${degOf(c.dir)}°` };
+  }
+  // the conditions as they are spoken: { tracktemp: '30 degrees', airtemp: '24 degrees', windspeed: '10 kilometres per hour', winddir: 'south west' }
+  function condSpeech(c) {
+    if (!c) return { tracktemp: '', airtemp: '', windspeed: '', winddir: '' };
+    const imp = c.units === 'imperial', one = n => Math.abs(n) === 1, deg = n => (n < 0 ? `minus ${-n} ${one(n) ? 'degree' : 'degrees'}` : `${n} ${one(n) ? 'degree' : 'degrees'}`);
+    return { tracktemp: deg(c.track), airtemp: deg(c.air), windspeed: `${c.wind} ${imp ? (one(c.wind) ? 'mile per hour' : 'miles per hour') : (one(c.wind) ? 'kilometre per hour' : 'kilometres per hour')}`, winddir: compassWord(c.dir) };
+  }
+
+  // ---- what the Weather Forecast widget shows ----
+  const NEXT_WORD = { cloudy: 'Cloudy', wet: 'Rain', clearing: 'Clearing', dry: 'Dry' };
+  // how far a race is: the laps of the leader, and the milliseconds of racing
+  const progressOf = (eng, t) => ({ laps: Math.max(0, ...(eng.cars || []).map(c => (c.laps || []).length)), ms: eng.status === 'ready' ? 0 : (eng.elapsed ? eng.elapsed(t) : 0) });
+  // { state, name, director, next: { state, left, text } | null }: the weather now, and when the forecast changes it next ("Rain in 3 laps"; nothing when the Race Director decides or when there is nothing left to come). null when the race has no weather.
+  function outlook(eng, t) {
+    const cfg = eng && eng.weather; if (!cfg) return null;
+    const p = progressOf(eng, t), state = eng.wxState || 'dry', director = !!(eng.wxPlan && eng.wxPlan.director) || cfg.start.mode === 'director';
+    const nx = director ? null : nextStage(eng.wxPlan, eng.wxStage || 0, p.laps, p.ms);
+    return { state, name: stateName(state), director, next: nx ? { state: nx.state, left: nx.left, text: nx.left > 0 ? `${NEXT_WORD[nx.state] || ''} in ${span(eng.wxPlan.unit, nx.left)}` : `${NEXT_WORD[nx.state] || ''} now` } : null };
+  }
+
   // ---- what the controls of the Race Director show ----
   const OPEN = ['ready', 'countdown', 'running', 'paused', 'between'];
   // eng: the engine (or the one of a viewer); phase: the phase of the race screen; t: now; lanes: the lanes to list (all when not given).
@@ -149,8 +214,7 @@
     const cfg = eng && eng.weather;
     if (!cfg) return { on: false, mode: '', state: '', name: '', info: '', rows: [], buttons: [] };
     const open = OPEN.includes(phase) && eng.status !== 'finished', director = !!(eng.wxPlan && eng.wxPlan.director) || cfg.start.mode === 'director';
-    const lapsL = Math.max(0, ...(eng.cars || []).map(c => (c.laps || []).length)), ms = eng.status === 'ready' ? 0 : (eng.elapsed ? eng.elapsed(t) : 0);
-    const nx = nextStage(eng.wxPlan, eng.wxStage || 0, lapsL, ms), name = stateName(eng.wxState || 'dry');
+    const pr = progressOf(eng, t), nx = nextStage(eng.wxPlan, eng.wxStage || 0, pr.laps, pr.ms), name = stateName(eng.wxState || 'dry');
     const says = { cloudy: 'clouds build up', wet: 'rain starts', clearing: 'the rain stops, the track clears', dry: 'the track is dry again' };
     const info = director ? `${name}. The Race Director decides: press a state.` : `${name}.${nx ? ` Next: ${says[nx.state]} in ${span(eng.wxPlan.unit, nx.left)}.` : ''}`;
     const state = eng.wxState || 'dry';
@@ -163,7 +227,7 @@
       buttons: STATES.map(([st, text]) => ({ state: st, text, on: state === st, disabled: !open || !director })) };
   }
 
-  const api = { STATES, TYRES, CLASSES, DEFAULTS, DEFAULT_TYRE, HKEYS, TABLE, MAXP, tyreOf, cleanTyre, classOf, tyreName, stateName, clean, rng, plan, nextStage, span, stageOf, tyreFor, need, hinderOf, forecastNote, noteOf, view };
+  const api = { STATES, TYRES, CLASSES, DEFAULTS, DEFAULT_TYRE, HKEYS, TABLE, MAXP, COND_ITEMS, CKEYS, COND, COMPASS, unitsOf, toUnits, compass, compassWord, conditionsFor, condText, condSpeech, outlook, progressOf, tyreOf, cleanTyre, classOf, tyreName, stateName, clean, rng, plan, nextStage, span, stageOf, tyreFor, need, hinderOf, forecastNote, noteOf, view };
   root.Wx = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

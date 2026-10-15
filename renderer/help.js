@@ -59,7 +59,7 @@ const Help = (() => {
           <li><b>Race Setups</b> hold the rules of one kind of race: the session type, the track, the length, the start lights, penalties and fuel, the timing page and the audio set. Make as many as you like. Every option has a default and sits in a folder.</li>
           <li><b>Fuel Setups</b>: tank size, fuel per lap and what happens when the tank is empty.</li>
           <li><b>Penalty Systems</b>: how penalty points turn into seconds, when a driver is disqualified, and special penalties such as a Drivethrough or a Stop-and-Go.</li>
-          <li><b>Weather Systems</b>: a spell of rain with a forecast, the tyres to change in the pits and what the wrong tyres cost.</li>
+          <li><b>Weather Systems</b>: a spell of rain with a forecast, the tyres to change in the pits, what the wrong tyres cost, and the temperatures and the wind of every weather.</li>
           <li><b>Balance of Power</b>: how much a fast car is hindered and a slow car helped, by hand or by itself.</li>
           <li><b>Time Tokens</b>: the time buttons and the warning for a Time Token Session.</li>
           <li>Fuel setups, penalty systems and weather systems do nothing until you choose them in a race setup.</li>
@@ -147,6 +147,12 @@ const Help = (() => {
           <li>When it rains a car on dry tyres has to pit within the laps you set, and when it is dry again a car on Wet tyres has to. Otherwise it gets <b>penalty points</b> (needs a penalty system) and can be <b>hindered</b> like with Balance of Power (needs a fuel setup). Both add up, to 90% at most.</li>
           <li>The result says what the weather and the tyres did. The audio set has calls for it, and simulated cars change tyres too.</li>
         </ul>` },
+      { id: 'wxwidgets', title: 'Weather widgets', note: 'Tyres, forecast and conditions on the timing page', body: `
+        <ul>
+          <li>Every weather has its <b>conditions</b>: track temperature, air temperature, wind speed and the direction the wind comes from (Weather Systems, folder Track conditions; Celsius and km/h, or Fahrenheit and mph). They change when the weather does. The audio says them at lights out and after every change, and custom text has them as {variables}.</li>
+          <li>In the Layout Editor, folder <b>Weather</b>: <b>Tyres</b> (the tyre of a lane's car; amber with "Change tyres" when it has to change), <b>Weather Forecast</b> (the weather now and what comes next, "Rain in 3 laps") and <b>Track Conditions</b> (temperatures, wind speed and an arrow for the wind).</li>
+          <li>They are drawn, or you make <b>picture sets</b> for them in Image Settings (Tyres, Weather, Track conditions). Track Conditions can show your own numbers instead of those of a weather system.</li>
+        </ul>` },
       { id: 'tokens', title: 'Time Token Sessions', note: 'Selling track time per lane', body: `
         <ul>
           <li>Choose the session type <b>Time Token Session</b> in a race setup. It has no start lights, laps, fuel or penalties. On Home the button says <b>Open the session</b>. Drivers and cars are optional: a lane without a driver is a Guest.</li>
@@ -164,7 +170,7 @@ const Help = (() => {
           <li><b>Layout Editor</b>: design a timing page by placing widgets (lap times, the leaderboard, start lights, the race flag, Race Laps counting up or down, fuel, speed and many more). Drag, resize, undo and redo. Make a different layout for the second screen.</li>
           <li><b>Leaderboard Editor</b>: design the rows of the Leaderboard widget.</li>
           <li><b>Audio Settings</b>: what the race says (see Audio calls below).</li>
-          <li><b>Image Settings</b>: picture sets for the start lights, the race flag, the fuel level and the avatars. A start lights set is a grid: a picture for every light and every state of the race, such as the yellow flag. An <b>Avatars</b> set has a picture for each of the 8 lanes: the Avatar widget shows the picture of the driver, and a driver without one gets the avatar of the lane he or she drives in (the built-in standard avatars, unless you choose a set). Choose a set in the widget in the Layout Editor. The Race Flag widget can mirror the pictures of a set, and the Avatar widget can mirror its pictures.</li>
+          <li><b>Image Settings</b>: picture sets for the start lights, the race flag, the fuel level, the avatars, the tyres, the weather and the track conditions (what you leave empty is drawn). A start lights set is a grid: a picture for every light and every state of the race, such as the yellow flag. An <b>Avatars</b> set has a picture for each of the 8 lanes: the Avatar widget shows the picture of the driver, and a driver without one gets the avatar of the lane he or she drives in (the built-in standard avatars, unless you choose a set). Choose a set in the widget in the Layout Editor. The Race Flag widget can mirror the pictures of a set, and the Avatar widget can mirror its pictures.</li>
           <li>Every widget can align its <b>title</b> and its <b>text</b> to the left, the center or the right (the Leaderboard only its title).</li>
           <li><b>Widget Builder</b>: make your own text or image widgets with {variables} such as the driver's name or a lap time.</li>
           <li>You choose the layouts and the audio set per race setup.</li>
@@ -180,7 +186,7 @@ const Help = (() => {
       { id: 'audio', title: 'Audio calls', note: 'A voice for the race', body: `
         <ul>
           <li>An <b>audio set</b> (Customization, Audio Settings) says what the race announces. The calls are in folders, and you switch every call on or off. Most of the newer calls are off until you switch them on.</li>
-          <li><b>Race progress</b>: laps or minutes to go, the last lap, the heats. <b>Gaps and battles</b>: closing in, a battle, a lapped car. <b>Laps and records</b>: records, the first lap, a lap close to the record. <b>Pit and fuel</b>: pits, half a tank, a refuel. <b>Penalties</b>: given, served, forgiven, time added. <b>Safety</b>: a lane calling for the marshal, no lap for a while, the Trackmate lost or back. <b>Time tokens</b>: time almost up, time up, time added, a lane freed.</li>
+          <li><b>Race progress</b>: laps or minutes to go, the last lap, the heats. <b>Gaps and battles</b>: closing in, a battle, a lapped car. <b>Laps and records</b>: records, the first lap, a lap close to the record. <b>Pit and fuel</b>: pits, half a tank, a refuel. <b>Penalties</b>: given, served, forgiven, time added. <b>Safety</b>: a lane calling for the marshal, no lap for a while, the Trackmate lost or back. <b>Time tokens</b>: time almost up, time up, added, a lane freed. <b>Weather</b>: weather, conditions, tyres.</li>
           <li>A call can have <b>several sentences</b>; one is picked at random each time. Use placeholders such as {driver}, {time}, {gap}, {gapahead}, {record} and {position}; the list is at the top of the audio set. Press Test to hear it.</li>
           <li>A sentence can be spoken by a <b>voice of your computer</b>, or you can choose a <b>sound file</b> (up to 10 MB) that plays instead. Drivers can be called by name, nickname or callsign.</li>
           <li>Under a sentence, <b>Only if</b> limits it to one driver, the top places, a fast lap or a small gap; a sentence whose conditions hold is said instead of the others. <b>Not again within</b> holds a call back for some seconds.</li>

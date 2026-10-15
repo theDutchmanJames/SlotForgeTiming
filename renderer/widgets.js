@@ -9,6 +9,7 @@
 
   const Av = typeof module !== 'undefined' ? require('./avatars.js') : root.Avatars; // the standard avatars of the lanes
   const Dl = typeof module !== 'undefined' ? require('./delta.js') : root.Delta; // the Delta Timers (what is compared, and the badge)
+  const Ww = typeof module !== 'undefined' ? require('./weatherwidgets.js') : root.WxW; // the weather widgets: Tyres, Weather Forecast, Track Conditions (the options, the samples)
   const NAMES = ['Alex', 'Sam', 'Kim', 'Lee', 'Max', 'Zoe'];
   const NICKS = ['Speedy', 'Sammy', 'Kimbo', 'Leeroy', 'Maxi', 'Zo'];
   const FLAGS = ['nl', 'de', 'gb', 'us', 'jp', 'fr'];
@@ -42,9 +43,10 @@
   // Custom text widgets: a line of text with {variables}. Unknown {words} stay as typed so a typo is easy to see.
   const TEXT_LANE_VARS = [['name', 'Driver name'], ['nickname', 'Nickname'], ['callsign', 'Callsign'], ['car', 'Slotcar'], ['lane', 'Lane number'], ['position', 'Position'], ['lap', 'Current lap'], ['laps', 'Laps completed'],
     ['laptime', 'Current lap time'], ['last', 'Last lap'], ['best', 'Best lap'], ['avg', 'Average lap'], ['median', 'Median lap'], ['record', 'Personal record lap'], ['gap', 'Gap to leader'],
-    ['fuel', 'Fuel left (litres)'], ['fuelpct', 'Fuel left (%)'], ['bop', 'Balance of Power (\u221220% hindered, +10% helped, a dash when it is off)'], ['penpoints', 'Penalty points'], ['pentime', 'Penalty time'], ['champ', 'Championship points'], ['pits', 'Pit stops made'], ['pit', 'Last pit stop time'], ['speed', 'Speed (scaled km/h)'], ['speedreal', 'Speed (real km/h)']];
+    ['fuel', 'Fuel left (litres)'], ['fuelpct', 'Fuel left (%)'], ['bop', 'Balance of Power (\u221220% hindered, +10% helped, a dash when it is off)'], ['penpoints', 'Penalty points'], ['pentime', 'Penalty time'], ['champ', 'Championship points'], ['pits', 'Pit stops made'], ['tyre', 'Tyres of the car (Soft, Wet...)'], ['pit', 'Last pit stop time'], ['speed', 'Speed (scaled km/h)'], ['speedreal', 'Speed (real km/h)']];
   const TEXT_RACE_VARS = [['clock', 'Race clock (counting up)'], ['timeleft', 'Time left'], ['lapsleft', 'Laps left'], ['lapstotal', 'Lap limit'], ['leader', 'Leader'], ['flag', 'Flag / race state'], ['heat', 'Heat'],
-    ['track', 'Track name'], ['session', 'Race setup name'], ['type', 'Session type'], ['sessionrecord', 'Session record lap'], ['sessionrecordby', 'Session record driver'], ['trackrecord', 'Track record lap'], ['trackrecordby', 'Track record driver'], ['yellowtarget', 'Yellow flag target lap time (empty when there is none)']];
+    ['track', 'Track name'], ['session', 'Race setup name'], ['type', 'Session type'], ['sessionrecord', 'Session record lap'], ['sessionrecordby', 'Session record driver'], ['trackrecord', 'Track record lap'], ['trackrecordby', 'Track record driver'], ['yellowtarget', 'Yellow flag target lap time (empty when there is none)'],
+    ['weather', 'Weather now (Dry, Cloudy, Wet, Clearing; a dash without a weather system)'], ['nextweather', 'The next change of the weather and when (Rain in 3 laps; empty when there is none)'], ['tracktemp', 'Track temperature (30 \u00B0C)'], ['airtemp', 'Air temperature (24 \u00B0C)'], ['windspeed', 'Wind speed (10 km/h)'], ['winddir', 'Wind direction (SW)']];
   const TEXT_LANE_DEFAULT = '{position}. {name}  {best}', TEXT_RACE_DEFAULT = '{timeleft} left';
   const fillText = (text, vars) => esc(String(text ?? '')).replace(/\{(\w+)\}/g, (m, k) => (Object.prototype.hasOwnProperty.call(vars, k) ? String(vars[k] ?? '') : m));
   const textOpts = (vars, dflt) => [{ key: 'text', label: 'Text, with {variables}', type: 'text', default: dflt }, { key: 'vars', label: 'Variables: ' + vars.map(v => '{' + v[0] + '} ' + v[1]).join(', '), type: 'note' }];
@@ -221,6 +223,9 @@
     if (w.type === 'fuel' && set.kind === 'fuel') return { ...o, mode: 'images', steps: set.steps, stepImages: set.images || [] };
     if (w.type === 'lights' && set.kind === 'lights') return { ...o, lightOn: (set.images || {}).on || '', lightOff: (set.images || {}).off || '', lightImages: set.images || {} };
     if (w.type === 'avatar' && set.kind === 'avatars') return { ...o, laneAvatars: set.images || {} };
+    if (w.type === 'tyre' && set.kind === 'tyres') return { ...o, tyreImages: set.images || {} };
+    if (w.type === 'wxforecast' && set.kind === 'weather') return { ...o, stateImages: set.images || {} };
+    if (w.type === 'wxconditions' && set.kind === 'conditions') return { ...o, condImages: set.images || {} };
     if (w.type === 'flag' && set.kind === 'flag') { const r = { ...o }; FLAG_STATES.forEach(([k]) => { r['img_' + k] = (set.images || {})[k] || ''; }); return r; }
     return o;
   }
@@ -327,6 +332,10 @@
     T('clock', 'Race Clock', 'Race', { title: 'Race clock', w: 200, options: CLOCK_OPTIONS, sample: '01:23.4' }),
     T('racelaps', 'Race Laps', 'Race', { title: 'Race laps', w: 140, options: RACELAPS_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}; return lapCountOf(o) === 'down' ? '13' : lapTotalOn(o) ? '7/20' : '7'; } }),
     T('tokenclock', 'Token Clock', 'Time Tokens', { title: 'Token clock', perLane: true, w: 200, options: TOKENCLOCK_OPTIONS, sample: l => ['25:00', '12:34', '00:45', '1:05:00', '07:20', '04:59'][l % 6] }),
+    // the weather (Race Setup > Weather Systems): the tyre of a lane's car, the weather now and next, and the conditions on the track (see weatherwidgets.js)
+    T('tyre', 'Tyres', 'Weather', { title: 'Tyres', perLane: true, w: 140, h: 80, textSize: 22, options: Ww.TYRE_OPTIONS, sample: (l, w) => Ww.tyreSample(l, (w && w.opt) || {}) }),
+    T('wxforecast', 'Weather Forecast', 'Weather', { title: 'Weather', w: 240, h: 80, options: Ww.FORECAST_OPTIONS, sample: (l, w) => Ww.forecastSample((w && w.opt) || {}) }),
+    T('wxconditions', 'Track Conditions', 'Weather', { title: 'Track conditions', w: 500, h: 60, textSize: 20, options: Ww.COND_OPTIONS, sample: (l, w) => Ww.conditionsSample((w && w.opt) || {}) }),
     T('lights', 'Start Lights', 'Race', { title: 'Start lights', w: 180, options: LIGHTS_OPTIONS, sample: lightsHtml(3) }),
     T('info', 'Race Info', 'Race', { title: 'Race info', w: 300, sample: 'Heat 2 of 3 · 4 laps left' }),
     T('flag', 'Race Flag', 'Race', { title: 'Race flag', w: 180, optsLabel: 'Flag style', options: FLAG_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, st = flagStyleOf(o), i = o.img_running;

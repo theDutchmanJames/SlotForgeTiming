@@ -585,3 +585,19 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .wxbtns .btn:disabled{opacity:.4;cursor:not-allowed}
 .wxbtns .btn[aria-pressed=true]{outline:2px solid var(--accent,#4da3ff);outline-offset:1px}
 .tyrechip{display:inline-block;padding:2px 10px;border-radius:12px;border:1px solid var(--line);color:#000;font-weight:600;white-space:nowrap}
+
+/* the weather widgets: Tyres, Weather Forecast, Track Conditions (weatherwidgets.js) */
+.wxw{display:flex;align-items:center;justify-content:center;gap:.35em;max-width:100%;max-height:100%;min-width:0}
+.wxic{height:1.5em;width:1.5em;flex:none;display:block;object-fit:contain}
+.wxt{display:flex;flex-direction:column;align-items:flex-start;line-height:1.1;white-space:nowrap}
+.wxt small{font-size:.55em;opacity:.85;font-weight:500}
+.wxt.ctr{align-items:center;text-align:center}
+.cdw{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:.15em .9em;max-width:100%}
+.cdw.cd-column{flex-direction:column;flex-wrap:nowrap;gap:.05em}
+.cdw.cd-grid{display:grid;grid-template-columns:repeat(2,auto);gap:.1em .9em;justify-content:center}
+.cdi{display:inline-flex;align-items:center;gap:.3em;white-space:nowrap}
+.cdi .wxic{height:1.15em;width:1.15em}
+.cdt{font-variant-numeric:tabular-nums}
+.lw-val:has(.wxw),.lw-val:has(.cdw){min-height:0;min-width:0;overflow:hidden}
+.setslot .wxic{height:32px;width:32px;opacity:.45}
+.lw-val:has(.tyrechip){padding:0}

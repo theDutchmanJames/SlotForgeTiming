@@ -8,6 +8,11 @@ const Wx = require('./renderer/weather.js'); // the tyres, the standard settings
 const WX_TABLE = [];
 Wx.STATES.forEach(([state, stateName]) => Wx.CLASSES.forEach(cls => WX_TABLE.push({ key: Wx.HKEYS[state + '/' + cls], group: 'hinder', type: 'number', min: 0, default: Wx.TABLE[state][cls],
   label: `${stateName} weather, ${cls === 'dry' ? 'dry' : cls === 'inter' ? 'Intermediate' : 'Wet'} tyres (% hindered)`, showIf: [{ hinder: ['on'] }] })));
+// The conditions on the track for every weather state (track temperature, air temperature, wind speed, wind direction): the Track Conditions widget shows them and the audio says them
+const WX_COND = [{ key: 'units', group: 'conditions', label: 'Units', type: 'select', default: Wx.DEFAULTS.units, options: [['metric', 'Degrees Celsius and kilometres per hour'], ['imperial', 'Degrees Fahrenheit and miles per hour']],
+  hint: 'The numbers below are in these units (changing the units does not convert them). A Track Conditions widget can show the other units.' }];
+Wx.STATES.forEach(([state, stateName]) => Wx.COND_ITEMS.forEach(([item, , itemName]) => WX_COND.push({ key: Wx.CKEYS[state + '/' + item], group: 'conditions', type: 'number', ...(item === 'wind' ? { min: 0 } : item === 'dir' ? { min: 0, max: 359 } : {}), default: Wx.COND[state][item],
+  label: `${stateName}: ${itemName.toLowerCase()}${item === 'dir' ? ' (degrees, where the wind comes from)' : ''}`, ...(item === 'dir' && state === 'dry' ? { hint: 'Where the wind comes from: 0 is north, 90 east, 180 south, 270 west.' } : {}) })));
 module.exports = {
   tracks: {
     label: 'Track', plural: 'Tracks', title: ['name'], image: 'picture', card: ['lanes', 'scale', 'surface'],
@@ -233,7 +238,8 @@ module.exports = {
       { id: 'basics', title: 'Basics', note: 'Name, and whether the weather is counted in laps or in minutes', open: true },
       { id: 'forecast', title: 'The rain', note: 'When it starts and how long it lasts, with the clouds before and the drying after', open: true },
       { id: 'tyres', title: 'Tyres and penalties', note: 'Which tyres a pit stop gives, and the points for staying on the wrong tyres', open: true },
-      { id: 'hinder', title: 'Hindering the cars', note: 'How much slower the wrong tyres make a car (through its fuel use, refuelling and tank)' }
+      { id: 'hinder', title: 'Hindering the cars', note: 'How much slower the wrong tyres make a car (through its fuel use, refuelling and tank)' },
+      { id: 'conditions', title: 'Track conditions', note: 'Track and air temperature, wind speed and direction for every weather state (shown by the Track Conditions widget, said by the audio)' }
     ],
     fields: [
       { key: 'name', group: 'basics', label: 'Name', type: 'text' },
@@ -267,7 +273,8 @@ module.exports = {
       { key: 'hUse', group: 'hinder', label: 'Hinder the fuel use', type: 'select', default: 'on', options: [['on', 'Yes'], ['off', 'No']], showIf: [{ hinder: ['on'] }] },
       { key: 'hRate', group: 'hinder', label: 'Hinder the refuelling speed', type: 'select', default: 'on', options: [['on', 'Yes'], ['off', 'No']], showIf: [{ hinder: ['on'] }] },
       { key: 'hTank', group: 'hinder', label: 'Make the tank smaller', type: 'select', default: 'off', options: [['off', 'No'], ['on', 'Yes']], showIf: [{ hinder: ['on'] }] },
-      ...WX_TABLE
+      ...WX_TABLE,
+      ...WX_COND
     ]
   },
   // Timing page layouts, built in the layout editor (Customization > Layout Editor).
