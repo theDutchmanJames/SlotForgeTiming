@@ -197,4 +197,8 @@ ok('...while a normal colour is still used', Wd.fuelHtml(5, 100, { critColor: '#
   ok('alignment: the Leaderboard has only a title alignment (its text is laid out by the board itself), whatever is saved', Wd.valueAlignOf({ type: 'leaderboard', valueAlign: 'right' }) === 'center' && Wd.alignClassOf({ type: 'leaderboard', valueAlign: 'right' }) === '' && Wd.alignClassOf({ type: 'leaderboard', titleAlign: 'center', valueAlign: 'left' }) === ' ta-c');
 }
 
+{ const d = Wd.def('carpicture'), mirror = d.options.find(o => o.key === 'carMirror'); // 1.30.1
+  ok('1.30.1: the Slotcar Picture widget has a Mirror tick box (off to begin with), before the position and zoom', d.options.map(o => o.key).join() === 'carMirror,frame' && mirror.type === 'checkbox' && mirror.default === false && /Mirror the picture/.test(mirror.label) && /left to right/.test(mirror.label));
+  ok('...the Avatar keeps its own Mirror setting under its own name (the two are not the same setting)', Wd.def('avatar').options.some(o => o.key === 'avatarMirror') && !d.options.some(o => o.key === 'avatarMirror')); }
+
 console.log(fails ? fails + ' WIDGET TESTS FAILED' : 'ALL WIDGET TESTS PASSED'); process.exit(fails ? 1 : 0);

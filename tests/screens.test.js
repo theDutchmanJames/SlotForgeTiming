@@ -2280,6 +2280,13 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   say('the editor shows them: title in bold, own row, value italic and normal weight', cv.includes('tspace') && cv.includes('font-weight:700') && cv.includes('font-style:italic') && cv.includes('font-weight:400'));
   run("editorAdd('carpicture')");
   say('slotcar picture widget has picture position settings and a slotcar preview note', E('side').innerHTML.includes('data-frame="frame"') && E('side').innerHTML.includes('slotcar'));
+  { const hh=()=>E('side').innerHTML, sl=()=>run('state.editing.sel[0]');
+    say('1.30.1: ...and a Mirror tick box (off to begin with), before the position and zoom', /id="o-carMirror" type="checkbox" data-opt="carMirror"(?! checked)/.test(hh()) && hh().includes('Mirror the picture (flip it left to right)') && hh().indexOf('data-opt="carMirror"')<hh().indexOf('data-frame="frame"'));
+    E('side').oninput({ target: { id: 'o-carMirror', type: 'checkbox', checked: true, dataset: { opt: 'carMirror' } } });
+    E('side').innerHTML = run('sideHtml()');
+    say('...ticking it stores it in the widget (and shows it ticked)', sl().opt.carMirror===true && /id="o-carMirror" type="checkbox" data-opt="carMirror" checked/.test(hh()));
+    E('side').oninput({ target: { id: 'o-carMirror', type: 'checkbox', checked: false, dataset: { opt: 'carMirror' } } });
+    E('side').innerHTML = run('sideHtml()'); say('...and unticking it again', !sl().opt.carMirror && !/data-opt="carMirror" checked/.test(hh())); }
   // 1.8.0: the team widgets choose the team they show
   run("state.editing.teams = [{ id: 'T1', name: 'Red Bulls', picture: 'data:image/png;base64,AA' }, { id: 'T2', name: 'Blue <Moons>' }]");
   run("editorAdd('teamname')"); E('side').innerHTML = run('sideHtml()');

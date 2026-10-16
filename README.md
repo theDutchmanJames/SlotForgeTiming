@@ -2170,3 +2170,15 @@ Good to know:
 4. There is no alarm yet: *Service due* is only said in the form. Say if you would like it on the card in the list, or on Home.
 5. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 6. The tests: `tests/carstats.test.js` (the numbers and the words, which laps count, the mileage), `tests/db.test.js` (the counts when sessions are saved and removed, cars from before), `tests/screens.test.js` (the folder, Reset, the interval, the card) and `tests/help.test.js`.
+
+## What to try (1.30.1): mirror the Slotcar Picture
+From your note: the same Mirror option that the Avatar widget has, for the Slotcar Picture widget.
+1. Open **Customization > Layouts**, make or open a layout, add a **Slotcar Picture** widget (folder *Slotcar*) and click it. The settings on the right have a new tick box **Mirror the picture (flip it left to right)**, above **Picture position and zoom**.
+2. Tick it. In a race the picture of the car on that lane is flipped left to right, inside its frame. The position and zoom you set work as before; the flip comes after them.
+3. Leave it unticked and nothing changes: the picture is shown as it was.
+
+Good to know:
+1. The preview in the Layout Editor shows a placeholder (*Car picture*), because the widget has no car there; the picture itself shows during a race, on the second screen and on a phone.
+2. It is a setting of each widget, so one layout can have a mirrored picture on the left lanes and a normal one on the right. The Avatar widget keeps its own Mirror setting.
+3. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+4. The tests: `tests/timing.test.js` (the picture, mirrored and not), `tests/widgets.test.js` (the setting) and `tests/screens.test.js` (the tick box in the editor).

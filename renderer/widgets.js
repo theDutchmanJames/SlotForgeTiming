@@ -296,7 +296,8 @@
   const AVATAR_OPTIONS = [{ ...SET_OPTION('avatars'), label: 'Avatars for a driver without a picture (sets are made under Customization > Image Settings)' },
     { key: 'avatarMirror', label: 'Mirror the pictures (flip them left to right)', type: 'checkbox', default: false },
     { key: 'frame', label: 'Picture position and zoom', type: 'frame', from: 'avatar' }];
-  const CARPIC_OPTIONS = [{ key: 'frame', label: 'Picture position and zoom', type: 'frame', from: 'car' }];
+  const CARPIC_OPTIONS = [{ key: 'carMirror', label: 'Mirror the picture (flip it left to right)', type: 'checkbox', default: false }, // (1.30.1: as the Avatar widget has)
+    { key: 'frame', label: 'Picture position and zoom', type: 'frame', from: 'car' }];
 
   // Fuel widget: a number, a bar, both, or one of your own pictures from full to empty.
   const FUEL_OPTIONS = [

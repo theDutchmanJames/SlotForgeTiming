@@ -162,7 +162,7 @@
         const v = Sp.toUnit(base * f, opt.unit);
         return { html: v.toFixed(scaled ? 0 : 1) + (opt.showUnit === false ? '' : opt.unit === 'mph' ? ' mph' : ' km/h') };
       }
-      case 'carpicture': return { html: c.carPicture ? `<span class="avframe"><img class="avimg" src="${esc(c.carPicture)}" alt="" style="transform:${Wd.frameTransform(opt.frame)}"></span>` : '' };
+      case 'carpicture': return { html: c.carPicture ? Wd.avatarHtml(c.carPicture, { frame: opt.frame, avatarMirror: !!opt.carMirror }) : '' }; // (the picture in its frame; 1.30.1: mirror flips it left to right inside the frame, as for the Avatar)
       case 'textlane': return { html: Wd.fillText(opt.text ?? Wd.TEXT_LANE_DEFAULT, laneVars(S, c, t)) };
       case 'imagelane': return { html: Wd.imageHtml(Wd.pickImage(opt, laneVars(S, c, t)), opt.fit) };
       case 'logo': return { html: Wd.imageHtml(opt.image, opt.fit) };

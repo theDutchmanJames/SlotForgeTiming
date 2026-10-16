@@ -216,6 +216,10 @@ ok('race clock always reads 00:00.0', C('clock', null, 16000).html === '00:16.0'
 }
 eng.cars[0].carPicture = 'data:image/png;base64,CAR'; eng.cars[0].carName = 'NSR Ford GT40';
 ok('slotcar picture widget shows the car\'s picture with its own framing', (h => h.includes('base64,CAR') && h.includes('translate(25%, 0%) scale(1.5)'))(C('carpicture', 0, 16000, undefined, { frame: { zoom: 1.5, x: 1, y: 0 } }).html));
+{ const cp = o => C('carpicture', 0, 16000, undefined, o).html;  // 1.30.1: the slotcar picture can be mirrored, as the Avatar can
+  ok('1.30.1: the slotcar picture can be mirrored: flipped left to right inside its frame, after the position and zoom', cp({ carMirror: true, frame: { zoom: 1.5, x: 1, y: 0 } }).includes('style="transform:translate(25%, 0%) scale(1.5) scaleX(-1)"') && cp({ carMirror: true }).includes('scaleX(-1)') && cp({ carMirror: true }).includes('base64,CAR'));
+  ok('...and it is not mirrored unless asked (not set, or switched off)', !cp({ frame: { zoom: 1.5, x: 1, y: 0 } }).includes('scaleX') && !cp({ carMirror: false }).includes('scaleX') && !cp({}).includes('scaleX') && cp({ frame: { zoom: 1.5, x: 1, y: 0 } }).includes('style="transform:translate(25%, 0%) scale(1.5)"'));
+  ok('...the picture of the widget is the same markup as before (a frame with one picture) and a car without a picture shows nothing, mirrored or not', cp({}).startsWith('<span class="avframe"><img class="avimg" src="data:image/png;base64,CAR"') && C('carpicture', 1, 16000, undefined, { carMirror: true }).html === ''); }
 ok('slotcar name widget shows brand, make and model', C('carname', 0).html === 'NSR Ford GT40' && C('carpicture', 1).html === '');
 ok('custom text (lane) fills in the driver\'s values and escapes the text', (() => { const h = C('textlane', 0, 16000, undefined, { text: '{position}. {name} <b>{best}</b> {car} {nope}' }).html;
   return h.startsWith('1. ') && h.includes('&lt;b&gt;') && !h.includes('<b>') && h.includes('NSR Ford GT40') && h.includes('{nope}') && C('textlane', 0).html.includes(eng.cars[0].driverName); })());
