@@ -537,7 +537,7 @@ async function renderRace() {
       };
       standings = heat.overall().map(o => ({ pos: o.pos, driverId: o.driverId, carId: o.carId, driverName: o.driverName, carName: o.carName, laps: o.laps, points: o.points, best: o.best, total: null,
         ...(o.asTeam ? teamStanding(o) : o.teamId ? { teamId: o.teamId, teamName: o.teamName } : {}),
-        ...(o.adjMs ? { adjMs: o.adjMs } : {}), ...(o.adjLaps ? { adjLaps: o.adjLaps } : {}), ...(o.adjPoints ? { adjPoints: o.adjPoints } : {}),
+        ...(o.adjMs ? { adjMs: o.adjMs } : {}), ...(o.adjLaps ? { adjLaps: o.adjLaps } : {}), ...(o.adjPoints ? { adjPoints: o.adjPoints } : {}), ...(o.damageNote ? { damageNote: o.damageNote, damagePoints: o.damagePoints, repairs: o.repairs, repairMs: o.repairMs } : {}),
         ...(live.extraBy.has(o.participant) && live.extraBy.get(o.participant).has ? { pits: live.extraBy.get(o.participant).pits, pitTime: live.extraBy.get(o.participant).pitTime } : {}),
         ...(penCfg.on && live.extraBy.has(o.participant) ? { penaltyPoints: live.extraBy.get(o.participant).pen } : {}),
         ...(scoreCol ? { score: o.score, counted: o.counted, heats: o.heats, dropped: o.dropped.length ? o.dropped : undefined } : {}),

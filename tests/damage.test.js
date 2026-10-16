@@ -74,5 +74,15 @@ ok('taking points back is not scaled; nothing is nothing', D.scale(-2, 3) === -2
   ok('late and early, of this car only', D.noteOf(car({ dmgTotal: 3, dmg: 3 }), [{ car: 0, type: 'damagelate' }, { car: 0, type: 'damagelate' }, { car: 1, type: 'damagelate' }, { car: 0, type: 'repairearly' }], 0) === '3 damage points, 3 damage points not repaired, late for the pits twice, left the pits too early once');
   ok('a car that damage put out; the stop that did it is no repair', D.noteOf(car({ dmgTotal: 10, dmg: 10, dmgOut: 'retire', repairs: [{ ms: 0, out: 'retire' }] }), [], 0) === '10 damage points, retired by damage' && D.noteOf(car({ dmgTotal: 10, dmgOut: 'dq' }), [], 0) === '10 damage points, disqualified by damage'); }
 
+// ---- 1.23.0: the damage of a driver in a heat race, added up over its heats and its final ----
+{ const row = o => ({ damagePoints: 0, repairs: 0, repairMs: 0, ...o });
+  ok('no damage in any heat: no note (and rows that are not there are no trouble)', D.totalNote([], null) === '' && D.totalNote([row({}), {}], null) === '' && D.totalNote(null, undefined) === '' && D.totalNote([row({})], row({})) === '');
+  ok('points in one heat', D.totalNote([row({ damagePoints: 1 })], null) === '1 damage point in 1 heat');
+  ok('points in several heats (a heat without damage is not counted), a repair with its time in the pits', D.totalNote([row({ damagePoints: 4, repairs: 1, repairMs: 10000 }), row({}), row({ damagePoints: 2 })], null) === '6 damage points in 2 heats, 1 repair (10 seconds in the pits)');
+  ok('...repairs are plural, the time has one decimal', D.totalNote([row({ damagePoints: 3, repairs: 2, repairMs: 25500 })], null) === '3 damage points in 1 heat, 2 repairs (25.5 seconds in the pits)');
+  ok('...the final is told too: after the heats, or alone', D.totalNote([row({ damagePoints: 3 })], row({ damagePoints: 2 })) === '5 damage points in 1 heat and the final' && D.totalNote([row({})], row({ damagePoints: 2 })) === '2 damage points in the final');
+  ok('...retired or disqualified by damage, and in which: the heats, the final', D.totalNote([row({ damagePoints: 10, damageOut: 'retire' }), row({ damagePoints: 10, damageOut: 'retire' })], row({ damagePoints: 10, damageOut: 'dq' })) === '30 damage points in 2 heats and the final, retired by damage in 2 heats, disqualified by damage in the final');
+  ok('...a heat that put the car out without points left (taken back later) still says so', D.totalNote([row({ damageOut: 'retire' })], null) === 'retired by damage in 1 heat'); }
+
 console.log(fails ? `\n${fails} FAILED` : '\nALL DAMAGE TESTS PASSED');
 process.exit(fails ? 1 : 0);

@@ -833,12 +833,14 @@
         const a = race.adjOf ? race.adjOf(r.car) : { ms: 0, laps: 0, points: 0 }; // (a race that is not an engine race, such as a stand-in of a test, has no adjustments)
         const note = race.bopNoteOf && race.cars ? race.bopNoteOf(race.cars.indexOf(r.car)) : ''; // what Balance of Power did to the car, in words
         const tyres = race.tyreNoteOf && race.cars ? race.tyreNoteOf(race.cars.indexOf(r.car)) : ''; // what the tyres did to the car (weather), in words
+        const dnote = race.damageNoteOf && race.cars ? race.damageNoteOf(race.cars.indexOf(r.car)) : ''; // what the damage did to the car (the Damage System), in words
         // result by total race time: did the car finish its laps, and the time of the heat (the finish time, or an estimate for a car that did not finish when the setup asks for one)
         const fin = byTime && race.finishedLaps ? race.finishedLaps(r.car) : false, est = byTime && !fin && sc.unfinished === 'estimate' && race.estimateOf ? race.estimateOf(r.car) : null;
         const tm = fin ? (race.timeOf ? race.timeOf(r.car) : r.car.total + a.ms) : est;
         return { participant: r.car.participant, pos: r.pos, laps: race.lapsOf ? race.lapsOf(r.car) : r.car.laps.length, total: a.ms && Number.isFinite(r.car.total) ? r.car.total + a.ms : r.car.total, best: r.car.best, points: (points[r.pos - 1] || 0) + (byPoints ? a.points : 0),
           ...(byTime ? { fin, tm: Number.isFinite(tm) ? tm : null, ...(est !== null && Number.isFinite(est) ? { est: true } : {}) } : {}),
-          ...(a.ms ? { adjMs: a.ms } : {}), ...(a.laps ? { adjLaps: a.laps } : {}), ...(byPoints && a.points ? { adjPoints: a.points } : {}), ...(note ? { bopNote: note } : {}), ...(tyres ? { tyreNote: tyres } : {}) };
+          ...(a.ms ? { adjMs: a.ms } : {}), ...(a.laps ? { adjLaps: a.laps } : {}), ...(byPoints && a.points ? { adjPoints: a.points } : {}), ...(note ? { bopNote: note } : {}), ...(tyres ? { tyreNote: tyres } : {}),
+          ...(dnote ? { damageNote: dnote, damagePoints: r.car.dmgTotal || 0, repairs: (r.car.repairs || []).filter(q => !q.out).length, repairMs: r.car.repairMs || 0, ...(r.car.dmgOut ? { damageOut: r.car.dmgOut } : {}) } : {}) };
       });
       if (byPoints && sc.fastestBonus > 0) { // the driver with the fastest lap of this heat gets the bonus (with the same lap time, the one who finished higher)
         let top = null; for (const r of rows) if (Number.isFinite(r.best) && (top === null || r.best < top.best)) top = r;
@@ -874,7 +876,9 @@
         const timed = counted.filter(h => !missing(h)), notFin = counted.length - timed.length, heatTime = timed.length ? sum(timed, 'tm') / (sc.countBy === 'average' ? timed.length : 1) : null;
         const finalMs = f && !missing(f) ? f.tm : null, addFinal = added && f, timeScore = heatTime === null && !(addFinal && finalMs !== null) ? null : (heatTime || 0) + (addFinal && finalMs !== null ? finalMs : 0);
         const adj = k => all.reduce((t, h) => t + (h[k] || 0), 0), am = adj('adjMs'), al = adj('adjLaps'), ap = Math.round(adj('adjPoints') * 100) / 100; // (what was adjusted in the reviews of its races, added up)
+        const dmNote = Dm.totalNote(hs, f); // what the damage did to the driver in all its heats and the final, in words
         return { participant: i, ...p, laps: sum(all, 'laps'), points: sum(all, 'points'), best, heats: hs.length, ...(am ? { adjMs: am } : {}), ...(al ? { adjLaps: al } : {}), ...(ap ? { adjPoints: ap } : {}),
+          ...(dmNote ? { damageNote: dmNote, damagePoints: all.reduce((t, h) => t + (h.damagePoints || 0), 0), repairs: all.reduce((t, h) => t + (h.repairs || 0), 0), repairMs: all.reduce((t, h) => t + (h.repairMs || 0), 0) } : {}),
           counted: counted.length, dropped: hs.filter(h => !counted.includes(h)).map(h => h.heat).sort((x, y) => x - y),
           heatScore: byTime ? heatTime : byPoints ? heatPoints : heatLaps, scoreLaps: heatLaps + (added && f ? f.laps : 0), scorePoints: heatPoints + (added && f ? f.points : 0),
           ...(byTime ? { timeScore, incomplete: notFin + (addFinal && finalMs === null ? 1 : 0), estimated: counted.filter(h => h.est).length + (addFinal && f.est ? 1 : 0), finalTime: f ? finalMs : null } : {}),

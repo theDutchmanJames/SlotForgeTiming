@@ -104,6 +104,20 @@
     if (car.dmgOut) out.push(car.dmgOut === 'dq' ? 'disqualified by damage' : 'retired by damage');
     return out.join(', ');
   }
+  // The damage of a driver in a heat-based race, added up (1.23.0): heats = the rows of the driver in the heats, final = its row in the final (or null), as the heat results give them (damagePoints, repairs, repairMs, damageOut).
+  // "9 damage points in 2 heats and the final, 3 repairs (45 seconds in the pits), retired by damage in 1 heat"; '' when the driver had no damage.
+  function totalNote(heats, final) {
+    const has = r => !!r && (r.damagePoints > 0 || !!r.damageOut), fin = has(final) ? final : null, mine = (heats || []).filter(has).concat(fin ? [fin] : []);
+    if (!mine.length) return '';
+    const where = list => { const h = list.filter(r => r !== fin).length, f = !!fin && list.includes(fin); return [h ? (h === 1 ? 'in 1 heat' : `in ${h} heats`) : '', f ? (h ? 'and the final' : 'in the final') : ''].filter(Boolean).join(' '); };
+    const sum = k => mine.reduce((n, r) => n + (Number(r[k]) || 0), 0), pts = sum('damagePoints'), rep = sum('repairs'), ms = sum('repairMs'), out = [];
+    if (pts > 0) out.push(`${plural(pts, 'damage point')} ${where(mine)}`);
+    if (rep) out.push(`${plural(rep, 'repair')} (${secText(Math.round(ms / 100) / 10)} in the pits)`);
+    const ret = mine.filter(r => r.damageOut && r.damageOut !== 'dq'), dq = mine.filter(r => r.damageOut === 'dq');
+    if (ret.length) out.push(`retired by damage ${where(ret)}`);
+    if (dq.length) out.push(`disqualified by damage ${where(dq)}`);
+    return out.join(', ');
+  }
 
   // ---- what the damage panel shows (race screen and Race Director page) ----
   // eng: the engine (the race window's, or the one a viewer follows); lanes: the lane numbers (0...); t: the clock of the screen (as performance.now()); phase: the phase of the race screen.
@@ -132,7 +146,7 @@
     return { on: true, info: rulesText(cfg), incidents: cfg.incidents, rows };
   }
 
-  const api = { noteOf, ACTIONS, DEFAULT_LEVELS, DEFAULT_INCIDENTS, defaults, clean, levelAt, levelOf, factorOf, scale, dueLap, doneAt, secText, levelText, rulesText, toneOf, secClock, view };
+  const api = { noteOf, totalNote, ACTIONS, DEFAULT_LEVELS, DEFAULT_INCIDENTS, defaults, clean, levelAt, levelOf, factorOf, scale, dueLap, doneAt, secText, levelText, rulesText, toneOf, secClock, view };
   root.Damage = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

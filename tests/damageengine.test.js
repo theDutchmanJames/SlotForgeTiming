@@ -218,5 +218,22 @@ const started = o => { const R = mk(o); R.start(0); R.cars.forEach(c => { c.star
   const X = started(); X.addDamage(0, 10, 5 * SEC); X.block(0, 10 * SEC); X.tick(14 * SEC);
   ok('a car that damage retired: told', X.damageNoteOf(0) === '10 damage points, retired by damage' && X.cars[0].dmgOut === 'retire'); }
 
+// ---- 1.23.0: a heat race: the result of a heat says what the damage did to each car, and the overall result adds it up ----
+{ const people = [0, 1].map(i => ({ driverId: 'd' + i, carId: 'c' + i, driverName: 'D' + i, carName: 'car' + i }));
+  const H = RE.createHeatRace({ participants: people, schedule: [[{ p: 0, lane: 0 }, { p: 1, lane: 1 }], [{ p: 0, lane: 0 }, { p: 1, lane: 1 }]], resultBy: 'laps', points: [] });
+  const heat = () => { const R = RE.createRace({ type: 'race', laps: 2, endRule: 'all', minLap: 800, damage: Dm.clean(rec({}), 0), entries: H.entries() }); R.start(0); R.cars.forEach(c => { c.started = true; }); return R; };
+  const R1 = heat(); R1.addDamage(0, 3, 5 * SEC); R1.block(0, 10 * SEC); R1.tick(25 * SEC); R1.unblock(0, 26 * SEC); R1.addDamage(0, 2, 40 * SEC);
+  R1.cross(0, 50 * SEC); R1.cross(0, 80 * SEC); R1.cross(1, 30 * SEC); R1.cross(1, 60 * SEC);
+  const a = H.record(R1).rows, a0 = a.find(x => x.participant === 0), a1 = a.find(x => x.participant === 1);
+  ok('the row of a heat says what the damage did to the car: the note and the figures', a0.damageNote === '5 damage points, 1 repair (10 seconds in the pits), 2 damage points not repaired' && a0.damagePoints === 5 && a0.repairs === 1 && a0.repairMs === 10 * SEC && !('damageOut' in a0));
+  ok('...a car without damage has nothing', !('damageNote' in a1) && !('damagePoints' in a1) && !('repairs' in a1) && !('repairMs' in a1));
+  const R2 = heat(); R2.addDamage(0, 10, 5 * SEC); R2.block(0, 10 * SEC); R2.tick(14 * SEC); R2.cross(1, 30 * SEC); R2.cross(1, 60 * SEC);
+  const b0 = H.record(R2).rows.find(x => x.participant === 0);
+  ok('...a car that damage put out says so (every heat starts without damage: the 5 points of heat 1 are not in heat 2)', b0.damageNote === '10 damage points, retired by damage' && b0.damagePoints === 10 && b0.repairs === 0 && b0.damageOut === 'retire');
+  const ov = H.overall(), o0 = ov.find(x => x.participant === 0), o1 = ov.find(x => x.participant === 1);
+  ok('the overall result adds the damage of the heats up: points, repairs, time in the pits, and in how many heats the car was put out', o0.damageNote === '15 damage points in 2 heats, 1 repair (10 seconds in the pits), retired by damage in 1 heat' && o0.damagePoints === 15 && o0.repairs === 1 && o0.repairMs === 10 * SEC);
+  ok('...a driver without damage has nothing in the overall result', !('damageNote' in o1) && !('damagePoints' in o1)); }
+ok('a stand-in race (no Damage System) gives rows with no damage note, and an overall result without one', (() => { const people = [0].map(i => ({ driverId: 'd', carId: 'c', driverName: 'D', carName: 'car' })); const H = RE.createHeatRace({ participants: people, schedule: [[{ p: 0, lane: 0 }]], resultBy: 'laps', points: [] }); const r = H.record({ standings: () => [{ pos: 1, car: { participant: 0, laps: [1], total: 1, best: 1 } }] }).rows[0]; return !('damageNote' in r) && !('damageNote' in H.overall()[0]); })());
+
 console.log(fails ? `\n${fails} FAILED` : '\nALL DAMAGE ENGINE TESTS PASSED');
 process.exit(fails ? 1 : 0);

@@ -152,6 +152,13 @@ ok('heats counted the standard way (a result of before): no Result column, no li
   const hs = { ...session, sessionType: 'heats', resultBy: 'laps', heatResults: [{ heat: 1, weatherNote: 'Cloudy from lap 3', rows: [{ pos: 1, driverName: 'Alex', laps: 5, points: 0, tyreNote: 'Wet tyres after lap 4' }, { pos: 2, driverName: 'Sam', laps: 3, points: 0 }] }, { heat: 2, rows: [{ pos: 1, driverName: 'Sam', laps: 5, points: 0 }] }] };
   const hh = sessionHtml({ session: hs, laps });
   ok('a heat says it too: its own weather next to its name, and the tyres in its row', hh.includes('(Weather: Cloudy from lap 3)') && hh.includes('Alex (5 laps, Tyres: Wet tyres after lap 4)') && hh.indexOf('Weather:') === hh.lastIndexOf('Weather:')); }
+// ---- 1.23.0: the damage in a heat-based race: in the row of a heat, and behind the name in the results table ----
+{ const dh = { ...session, sessionType: 'heats', resultBy: 'laps', standings: [{ ...st[0], damageNote: '9 damage points in 2 heats, 2 repairs (20 seconds in the pits)' }, st[1]],
+    heatResults: [{ heat: 1, rows: [{ pos: 1, driverName: 'Alex', laps: 5, points: 0, damageNote: '4 damage points, 1 repair (10 seconds in the pits)' }, { pos: 2, driverName: 'Sam', laps: 3, points: 0, damageNote: '10 damage points, retired by damage', damageOut: 'retire' }] }] };
+  const dx = sessionHtml({ session: dh, laps });
+  ok('a heat says what the damage did in the row of the car', dx.includes('Alex (5 laps, Damage: 4 damage points, 1 repair (10 seconds in the pits))') && dx.includes('Sam (3 laps, Damage: 10 damage points, retired by damage)'));
+  ok('...and the results table has the total behind the name of the driver', dx.includes('(Damage: 9 damage points in 2 heats, 2 repairs (20 seconds in the pits))'));
+  ok('...it is safe', !sessionHtml({ session: { ...dh, heatResults: [{ heat: 1, rows: [{ pos: 1, driverName: 'Alex', laps: 5, points: 0, damageNote: '<b>x</b>' }] }] }, laps }).includes('<b>x</b>')); }
 // ---- 1.9.0: an Endurance Race ----
 { const team = { pos: 1, asTeam: true, driverId: '', driverName: 'Red <Bulls>', teamId: 'T1', teamName: 'Red <Bulls>', carId: 'c1', carName: 'Car1', laps: 5, points: 0, best: 4800, total: 31000, swaps: 2, swapLost: 1,
     short: [{ driverId: 'd2', driverName: 'Sam', laps: 1, ms: 5000 }], drivers: [{ driverId: 'd1', driverName: 'Alex', laps: 4, ms: 20000 }, { driverId: 'd2', driverName: 'Sam', laps: 1, ms: 5000 }],

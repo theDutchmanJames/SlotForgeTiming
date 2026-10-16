@@ -119,7 +119,7 @@ const Help = (() => {
           <li>Points come from <b>incidents</b> (Contact +2, Hard crash +4: buttons on the race screen, the Race Director page and phones, and -1 to take a point back) and from a <b>deslot</b>: fill in the <b>Deslot time</b> of the track (Tracks, Lap time limits) and every slower lap gives the points of the system.</li>
           <li>After the stop the damage is gone. The repair can run <b>at the same time</b> as refuelling and a driver swap, or <b>after</b> them. A car that leaves too early keeps its damage; with a penalty system that, and a lap after the deadline, cost penalty points.</li>
           <li>A level can <b>retire</b> or <b>disqualify</b> the car when it stops in the pits; its laps count until then. A slot car with a <b>Damage factor</b> above 1 takes more damage.</li>
-          <li>The widgets <b>Damage</b> and <b>Repair Timer</b>, {damage} in texts, and the audio folder <b>Damage</b> show and say it. The results list the points, repairs and time in the pits.</li>
+          <li>The widgets <b>Damage</b> and <b>Repair Timer</b>, {damage} in texts, and the audio folder <b>Damage</b> show and say it. The results list the points, repairs and time in the pits, in a heat race per heat too.</li>
         </ul>` },
       { id: 'heatresults', title: 'Heat results', note: 'How the heats add up', body: `
         <ul>

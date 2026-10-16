@@ -1677,7 +1677,7 @@ Try it: Database > Tracks: fill in *Deslot time* (say 12 seconds) on your track.
 
 Good to know:
 1. **Changing tyres takes no time** in a stop with a damage system; the repair counts alongside fuel and driver swaps, as you chose in the damage system.
-2. **In a heat-based race** the damage works in every heat (the panel, the repairs, the widgets and the calls), but every heat starts without damage and the heat results do not list the damage yet. Tell me if you want that.
+2. **In a heat-based race** the damage works in every heat (the panel, the repairs, the widgets and the calls), but every heat starts without damage. The results list the damage of every heat, and the standings add it up (see 1.23.0).
 3. **Penalties need a penalty system** in the race setup (Race Setup > Penalty Systems). Without one, a late or early stop is only called out.
 4. **Simulated cars** do not deslot or stop for a repair by themselves; use the buttons and the pit button when you try it.
 5. **GitHub tags** (v0.97.0 to v1.10.0) are still not pushed; they are refused from here. The code itself is pushed to the main branch.
@@ -1993,3 +1993,18 @@ Good to know:
 4. A setting that says something other than mph (a damaged file, say) counts as km/h.
 5. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 6. The tests: `tests/speed.test.js` and `tests/stats.test.js` (the unit rules, both units, a dash without a speed), `tests/report.test.js` (the PDF in both units), `tests/screens.test.js` (the setting, the sessions, records and stints tables, the PDF call) and `tests/help.test.js`.
+
+## What to try (1.23.0): damage in the results of heat-based races
+From your list: in a heat-based race the Damage System already worked in every heat, but the results did not say anything about the damage. Now they do.
+1. Choose a race setup that is a **heat-based race** with a **Damage system** (Race Setup > Race Setups, the Rules folder). Start it and give a car some damage with the Damage folder (or the Adjust pads), let it stand still in the pits to repair, and give the same car or the other one more damage, as in a normal race.
+2. Finish the heats and open **Database > Results and Records**. Behind the name of every driver in the table there is a muted line such as *(Damage: 15 damage points in 2 heats, 1 repair (10 seconds in the pits), retired by damage in 1 heat)*. It adds up all the heats and the final.
+3. Under the table the **Heats** list has the damage of every car in that heat: *Alex (5 laps, Damage: 5 damage points, 1 repair (10 seconds in the pits))*. A car that damage put out of a heat says *retired by damage* (or *disqualified by damage*) there.
+4. Press **Export to PDF**: the table and the heats page in the PDF have the same words.
+
+Good to know:
+1. Every heat still starts without damage, so the damage of one heat does not carry over to the next. The total only adds up what happened in each heat.
+2. A driver without damage has no line at all, and a race without a Damage System has none, so the results look as before.
+3. The same words as in a normal race (*damage points*, *repairs*, *in the pits*, *not repaired*, *late for the pits*, *left the pits too early*) are used in the heat lines. The total says how many heats had damage, and in how many the driver was put out.
+4. Results that were saved before this version have no damage in their heats (it was not kept). Only races from now on have it.
+5. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+6. The tests: `tests/damage.test.js` (the total in words), `tests/damageengine.test.js` (the row of a heat and the overall result), `tests/damagescreen.test.js` (a heat race on the race screen, saved), `tests/report.test.js` (the PDF) and `tests/screens.test.js` (the Results table).

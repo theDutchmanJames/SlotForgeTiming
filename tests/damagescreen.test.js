@@ -221,6 +221,36 @@ const view = () => run('Damage.view(live.engine(), [0, 1], performance.now(), li
   say('a practice has nothing to adjust (no penalty system, no damage system, no race time): no Adjust folder', !!run('live.adjPanel') && E('fd-adjust').hidden === true);
   run('state.race = null; live = null'); saved.length = 0;
 
+  // ---------- a heat-based race (1.23.0): every heat starts without damage; the saved heats and the standings say what the damage did ----------
+  {
+    await openRace(dsetup({ id: 'ds7', name: 'Damage heats', sessionType: 'heats', heatBy: 'laps', laps: 2, heatPlan: 'manual', heats: 2, resultBy: 'laps' }), track, rows(1, 2));
+    key(' '); await until(() => phase() === 'running', 5000); await wait(60);
+    const onLane1 = () => eng().cars.find(c => c.lane === 0); // (the car on lane 1: the lanes are drawn for every heat, so it can be either driver)
+    const p1 = onLane1().participant;
+    await give1(0, 4);
+    run('live.pitBtns[0].b.onclick()'); await wait(400); run('live.pitBtns[0].b.onclick()'); await wait(40); // (repaired, then away again)
+    await give1(0, 2);
+    for (let n = 0; n < 3; n++) { key('1'); key('2'); await wait(80); }
+    await until(() => phase() === 'between', 4000); await wait(100);
+    key(' '); await until(() => phase() === 'running', 4000); await wait(60);
+    const p2 = onLane1().participant;
+    say('the next heat starts without damage (the damage of the first heat is in the result of that heat)', onLane1().dmg === 0 && onLane1().dmgTotal === 0 && onLane1().repairs.length === 0);
+    await give1(0, 4); await give1(0, 4); await give1(0, 4);
+    run('live.pitBtns[0].b.onclick()'); await wait(300);
+    for (let n = 0; n < 3; n++) { key('2'); await wait(80); } // (the other car drives the heat to its end)
+    await until(() => phase() === 'finished', 4000); await wait(200);
+    const s2 = saved.at(-1) && saved.at(-1)[0], hr = (s2 && s2.heatResults) || [], rowOf = (h, p) => ((hr[h] || {}).rows || []).find(x => x.participant === p) || {};
+    const q1 = 1 - p1, q2 = 1 - p2, stOf = p => ((s2 && s2.standings) || []).find(x => x.driverId === 'd' + (p + 1)) || {};
+    say('the heats are saved with what the damage did to each car in that heat: the note and the figures (a car without damage has none)', hr.length === 2 && /^6 damage points, 1 repair \(\d+(\.\d)? seconds? in the pits\), 2 damage points not repaired$/.test(rowOf(0, p1).damageNote) && rowOf(0, p1).damagePoints === 6 && rowOf(0, p1).repairs === 1 && rowOf(0, p1).repairMs >= 190 && !('damageOut' in rowOf(0, p1)) && !('damageNote' in rowOf(0, q1)) && !('damageNote' in rowOf(1, q2)));
+    say('...the heat that damage put a car out of says so', rowOf(1, p2).damageNote === '12 damage points, retired by damage' && rowOf(1, p2).damageOut === 'retire' && rowOf(1, p2).damagePoints === 12 && rowOf(1, p2).repairs === 0);
+    const inPits = '\\d+(\\.\\d)? seconds? in the pits', mine = stOf(p1), other = stOf(q1);
+    say('the standings add up the damage of every driver (and a driver without damage has no note)', p1 !== p2
+      ? new RegExp(`^6 damage points in 1 heat, 1 repair \\(${inPits}\\)$`).test(mine.damageNote) && mine.damagePoints === 6 && mine.repairs === 1 && mine.repairMs >= 190 && stOf(p2).damageNote === '12 damage points in 1 heat, retired by damage in 1 heat' && stOf(p2).damagePoints === 12 && stOf(p2).repairs === 0
+      : new RegExp(`^18 damage points in 2 heats, 1 repair \\(${inPits}\\), retired by damage in 1 heat$`).test(mine.damageNote) && mine.damagePoints === 18 && mine.repairs === 1 && mine.repairMs >= 190 && !('damageNote' in other) && !('damagePoints' in other));
+    say('...the results table shows it behind the name, in the lines of the heats too', run(`Stats.notesText(${JSON.stringify(stOf(p2))})`).startsWith('Damage: ') && run(`Stats.notesText(${JSON.stringify(stOf(p2))})`).includes('retired by damage in 1 heat') && run(`Stats.notesText(${JSON.stringify(rowOf(1, p2))})`) === 'Damage: 12 damage points, retired by damage');
+    run('state.race = null; live = null'); saved.length = 0;
+  }
+
   reachedEnd = true;
   console.log(fails ? fails + ' DAMAGE SCREEN TESTS FAILED' : 'ALL DAMAGE SCREEN TESTS PASSED'); process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('ERROR', e.stack); process.exit(1); });
