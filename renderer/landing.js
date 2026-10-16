@@ -5,10 +5,21 @@ const optionsOf = (entity, list, chosen, blank = '(choose)') =>
 // 1.17.0: the cards on the right of the Home tab need every saved lap. The laps are fetched once and kept while you stay on the Home tab (a change on Home does not fetch them again);
 // app.js forgets them (resetHome) whenever another tab was shown, because a race may have been saved or a record removed since. homeRun numbers the pictures, so a late answer never lands in a newer one.
 let homeLaps = null, homeRun = 0, homeOffTm = null;
+// 1.26.0: a line of text or a number in Customize is saved when you leave the field. Home is drawn again a moment later (HOME_SOFT_MS), so that a click or a Tab that comes next
+// is not lost to a page that changes under it, and the control that has the cursor then keeps it. While you are typing in a field (an input without its change yet) nothing is drawn.
+let HOME_SOFT_MS = 400;
+const homeFocusId = t => (t && t.dataset && t.dataset.hopt && (t.type === 'text' || t.type === 'number') ? t.id : ''); // (such a field of Customize: its id, else '')
+const homeFieldId = t => (t && typeof t.id === 'string' && t.id.startsWith('hg-') ? t.id : ''); // (any control of the settings in Customize: the one that keeps the cursor when Home is drawn again)
+function homeSoftDraw() { // (the moment after a change in such a field)
+  const c = state.homeCustom;
+  if (state.tab === 'home' && !(c && c.typing)) renderHome();
+}
 function resetHome() { homeLaps = null; }
 
 async function renderHome() {
-  const [drivers, cars, tracks, setups, sessions, rotations, teams, layouts, audiosets] = await Promise.all(['drivers', 'slotcars', 'tracks', 'racesetups', 'sessions', 'rotationsetups', 'teams', 'layouts', 'audiosets'].map(e => api.list(e)));
+  if (state.homeCustom) clearTimeout(state.homeCustom.timer); // (a drawing that was waiting is this one)
+  const [drivers, cars, tracks, setups, sessions, rotations, teams, layouts, audiosets, imagesets] = await Promise.all(['drivers', 'slotcars', 'tracks', 'racesetups', 'sessions', 'rotationsetups', 'teams', 'layouts', 'audiosets', 'imagesets'].map(e => api.list(e)));
+  const imageSets = Array.isArray(imagesets) ? imagesets : []; // (1.26.0: the picture sets of Customization > Image Settings, for the Weather and Tyres Available cards)
   const saved = state.settings;
   const grid = HomeGrid.gridOf(saved), hc = state.homeCustom = state.homeCustom || { open: false, sel: 0 }; // (1.25.0: the cards are a grid; hc is the Customize panel: open or not, and the card whose settings show)
   hc.sel = Math.min(Math.max(Math.floor(Number(hc.sel)) || 0, 0), grid.boards.length - 1);
@@ -172,9 +183,18 @@ async function renderHome() {
     if (b) {
       const ms = HG.maxSpan(g, b), cd = HG.info(HG.cardOf(b));
       const span = (key, n, max, label) => `<div class="field"><label for="hg-${key}">${label}</label><select id="hg-${key}" data-hspan="${key}">${Array.from({ length: max }, (_, i) => `<option value="${i + 1}"${n === i + 1 ? ' selected' : ''}>${i + 1}</option>`).join('')}</select></div>`;
-      const opt = o => { const v = HG.optionOf(b, o.key); return o.type === 'check' ? `<div class="field"><label class="inline"><input id="hg-${esc(o.key)}" type="checkbox" data-hopt="${esc(o.key)}" ${v ? 'checked' : ''}> ${esc(o.label)}</label></div>`
-        : `<div class="field"><label for="hg-${esc(o.key)}">${esc(o.label)}</label><select id="hg-${esc(o.key)}" data-hopt="${esc(o.key)}">${o.choices.map(([k, t]) => `<option value="${esc(k)}"${v === k ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></div>`; };
-      one = `<fieldset class="lv-optset"><legend>Card ${sel + 1}: ${esc(cd.label)} (${HG.where(b)})</legend><p class="hint2">${esc(cd.note)}</p><div class="lv-optgrid">${span('w', b.w, ms.w, 'Columns it covers')}${span('h', b.h, ms.h, 'Rows it covers')}${cd.options.map(opt).join('')}</div></fieldset>`;
+      // one option of the card: a tick, a choice, a number, a line of text or a picture set. The options of a row (a tyre: tick, name, how many) sit on one line (1.26.0).
+      const attrs = o => `id="hg-${esc(o.key)}" data-hopt="${esc(o.key)}"`;
+      const input = (o, v) => o.type === 'check' ? `<input id="hg-${esc(o.key)}" type="checkbox" data-hopt="${esc(o.key)}" ${v ? 'checked' : ''}>`
+        : o.type === 'number' ? `<input ${attrs(o)} type="number" min="${o.min}" max="${o.max}" step="1" value="${esc(v)}" aria-label="${esc(o.label)}">`
+        : o.type === 'text' ? `<input ${attrs(o)} type="text" maxlength="${o.max}" value="${esc(v)}" placeholder="${esc(o.placeholder || '')}" aria-label="${esc(o.label)}">`
+        : o.type === 'imageset' ? `<select ${attrs(o)}><option value="">None (drawn)</option>${imageSets.filter(r => r.kind === o.kind).map(r => `<option value="${esc(r.id)}"${r.id === v ? ' selected' : ''}>${esc(r.name || '(unnamed)')}</option>`).join('')}</select>`
+        : `<select ${attrs(o)}>${o.choices.map(([k, t]) => `<option value="${esc(k)}"${v === k ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>`;
+      const opt = o => { const v = HG.optionOf(b, o.key); return o.type === 'check' ? `<div class="field"><label class="inline">${input(o, v)} ${esc(o.label)}</label></div>`
+        : `<div class="field"><label for="hg-${esc(o.key)}">${esc(o.label)}</label>${input(o, v)}</div>`; };
+      const inRow = o => { const v = HG.optionOf(b, o.key); return o.type === 'check' ? `<label class="inline hm-ocheck">${input(o, v)} ${esc(o.label)}</label>` : `${input(o, v)}${o.suffix ? `<span class="muted">${esc(o.suffix)}</span>` : ''}`; };
+      const optsHtml = cd.options.reduce((out, o, k, all) => o.row ? (k > 0 && all[k - 1].row === o.row ? out : out + `<div class="hm-orow">${all.filter(x => x.row === o.row).map(inRow).join('')}</div>`) : out + opt(o), '');
+      one = `<fieldset class="lv-optset"><legend>Card ${sel + 1}: ${esc(cd.label)} (${HG.where(b)})</legend><p class="hint2">${esc(cd.note)}</p><div class="lv-optgrid">${span('w', b.w, ms.w, 'Columns it covers')}${span('h', b.h, ms.h, 'Rows it covers')}${optsHtml}</div></fieldset>`;
     }
     return `<section class="card hm-customize" id="hm-customize"><h3>Customize Home</h3><p class="hint2">Pick the grid with the little squares, then choose a card for every cell. A card can cover more cells (wider or taller). The grid is kept on this computer, and every change shows at once.</p>
       <div class="lv-gridtool"><div class="field"><span class="lbl" id="hg-gridlabel">Grid</span><div class="lv-gridpick" role="group" aria-labelledby="hg-gridlabel">${squares}</div><output id="hg-gridsize">${HG.sizeText(g)}</output></div>
@@ -182,6 +202,7 @@ async function renderHome() {
       <div class="row"><button type="button" class="btn" id="hmdefault"${HG.isDefault(g) ? ' disabled' : ''} title="Put the cards back the way Home was before you customized it">Back to the usual Home</button></div></section>`;
   };
   const startBoard = grid.boards.find(b => HG.cardOf(b) === 'start'), otherCells = grid.boards.filter(b => HG.cardOf(b) !== 'start').map(b => `<div class="hm-cell" id="hmc-${esc(HG.cardOf(b))}" data-card="${esc(HG.cardOf(b))}" style="${place(b)}"></div>`).join('');
+  const ae = hc.open && typeof document !== 'undefined' ? document.activeElement : null, keep = homeFieldId(ae) ? { id: ae.id, type: ae.type, start: ae.selectionStart, end: ae.selectionEnd } : null; // (the field of Customize that has the cursor now, and what is selected in it)
   view.innerHTML = `${homeHeaderHtml(state.settings)}
     <div class="hm-band"><div class="hm-flag" aria-hidden="true"></div><button type="button" class="btn hm-customize-btn" id="hmcustom" aria-expanded="${hc.open}" aria-controls="hm-customize" title="Choose the cards of Home and where they sit">Customize</button><h2>${esc(welcomeOf())}</h2>
       <p class="hm-sub">${esc(today)}${track ? ' · ' + esc(track.name) : ''}</p>
@@ -205,21 +226,39 @@ async function renderHome() {
       <div class="hm-go">${lightsHtml}<span class="hm-grow"></span><button class="btn primary big" id="start" ${issues.length || raceOn ? 'disabled' : ''}${raceOn ? ' title="A race is still running. Open the Race tab to finish or stop it first."' : ''}>${tokens ? 'Open the session' : 'Start race'}</button></div>`
       : '<p class="muted">Create a race setup in the Race Setup tab to get started.</p>') + `</section>${otherCells}</div>`;
 
+  if (keep) { // the field that had the cursor has it again, with the same part of the text selected (a number has no part: all of it, as when you come into it with Tab)
+    const el = document.getElementById(keep.id);
+    if (el && typeof el.focus === 'function') {
+      el.focus();
+      if (typeof keep.start === 'number' && typeof el.setSelectionRange === 'function') el.setSelectionRange(keep.start, typeof keep.end === 'number' ? keep.end : keep.start);
+      else if (keep.type === 'number' && typeof el.select === 'function') el.select();
+    }
+  }
   const persist = async () => {
     state.settings = await api.setSettings({ lastSetupId: setupId, assignments: { ...(saved.assignments || {}), [setupId]: rows } });
     renderHome();
   };
-  const saveGrid = async g => { state.settings = await api.setSettings({ homeGrid: g }); hc.open = true; renderHome(); }; // (the grid is saved for this computer; Customize stays open)
+  // (the grid is saved for this computer; Customize stays open. soft: a field was left, so the drawing waits a moment.) The changes are made on the grid as it was saved last, not on the one this drawing started from.
+  const cur = () => hc.latest || HG.gridOf(state.settings); // (hc.latest: a grid that is being saved right now)
+  const saveGrid = async (g, soft) => {
+    hc.latest = g;
+    try { state.settings = await api.setSettings({ homeGrid: g }); } finally { if (hc.latest === g) hc.latest = null; }
+    hc.open = true;
+    if (!soft) { renderHome(); return; }
+    clearTimeout(hc.timer); hc.timer = setTimeout(homeSoftDraw, HOME_SOFT_MS);
+  };
+  view.oninput = ev => { const c = state.homeCustom; if (c) c.typing = homeFocusId(ev.target) !== ''; }; // (typing in such a field: Home is left alone until the field is left)
   view.onchange = ev => {
     state.rotMsg = null;
     const t = ev.target, dd = t.dataset || {};
+    hc.typing = false;
     if (dd.hadd !== undefined) { // a card for an empty cell
       const [c, r] = String(dd.hadd).split(',').map(Number); if (!t.value) return;
-      const g2 = HG.add(grid, c, r, t.value); hc.sel = Math.max(0, g2.boards.findIndex(x => x.c === c && x.r === r)); saveGrid(g2); return;
+      const g2 = HG.add(cur(), c, r, t.value); hc.sel = Math.max(0, g2.boards.findIndex(x => x.c === c && x.r === r)); saveGrid(g2); return;
     }
-    if (dd.hcell !== undefined) { const i = Number(dd.hcell); hc.sel = i; saveGrid(t.value ? HG.setCard(grid, i, t.value) : HG.remove(grid, i)); return; } // (another card for a cell, or none: the card and its settings are gone)
-    if (dd.hspan) { const b = grid.boards[hc.sel]; if (b) saveGrid(HG.setSpan(grid, hc.sel, dd.hspan === 'w' ? t.value : b.w, dd.hspan === 'h' ? t.value : b.h)); return; }
-    if (dd.hopt) { if (grid.boards[hc.sel]) saveGrid(HG.setOpt(grid, hc.sel, { [dd.hopt]: t.type === 'checkbox' ? t.checked : t.value })); return; }
+    if (dd.hcell !== undefined) { const i = Number(dd.hcell); hc.sel = i; saveGrid(t.value ? HG.setCard(cur(), i, t.value) : HG.remove(cur(), i)); return; } // (another card for a cell, or none: the card and its settings are gone)
+    if (dd.hspan) { const g = cur(), b = g.boards[hc.sel]; if (b) saveGrid(HG.setSpan(g, hc.sel, dd.hspan === 'w' ? t.value : b.w, dd.hspan === 'h' ? t.value : b.h)); return; }
+    if (dd.hopt) { const g = cur(); if (g.boards[hc.sel]) saveGrid(HG.setOpt(g, hc.sel, { [dd.hopt]: t.type === 'checkbox' ? t.checked : t.value }), t.type === 'text' || t.type === 'number'); return; }
     if (ev.target.id === 'winlane') { const to = Number(ev.target.value); [rows[winRow], rows[to]] = [rows[to], rows[winRow]]; persist(); return; }
     if (ev.target.id === 'setup') { api.setSettings({ lastSetupId: ev.target.value }).then(s => { state.settings = s; renderHome(); }); return; }
     if (ev.target.dataset && ev.target.dataset.absent !== undefined) { const r = rows[Number(ev.target.dataset.absent)]; if (r) { if (ev.target.checked) r.absent = true; else delete r.absent; persist(); } return; }
@@ -239,7 +278,7 @@ async function renderHome() {
   view.onclick = ev => {
     const b = ev.target.closest('button'); if (!b) return;
     if (b.id === 'hmcustom') { hc.open = !hc.open; renderHome(); return; }
-    if (b.dataset.hgrid) { const [c, r] = String(b.dataset.hgrid).split(',').map(Number); saveGrid(HG.resize(grid, c, r)); return; } // a square of the grid picker
+    if (b.dataset.hgrid) { const [c, r] = String(b.dataset.hgrid).split(',').map(Number); saveGrid(HG.resize(cur(), c, r)); return; } // a square of the grid picker
     if (b.dataset.hsel !== undefined) { hc.sel = Number(b.dataset.hsel) || 0; renderHome(); return; } // the settings of a card
     if (b.id === 'hmdefault') { api.setSettings({ homeGrid: null }).then(s => { state.settings = s; hc.sel = 0; renderHome(); }); return; }
     if (b.dataset.session) { state.focusSession = b.dataset.session; state.resultsSub = 'racing'; state.tab = 'database'; state.sub = 'results'; render(); return; } // a recent race: its results
@@ -325,11 +364,14 @@ async function renderHome() {
   const cardsHtml = (laps, lists) => {
     const now = new Date(), last = HomeStats.lastRace({ sessions, laps, driverName: dn }), out = new Map();
     const d = { fmtDate: dateText, fmtShort: shortDate, fmtDist: Stats.fmtDist, trackName: track ? track.name || '' : '', hasTrack: !!track, hasSetup: !!setup, setupName: setup ? setup.name || '' : '', last };
+    const setImages = (kind, id) => { const r = id ? imageSets.find(x => x.id === id && x.kind === kind) : null; return r && r.images && typeof r.images === 'object' ? r.images : null; }; // (the pictures of a picture set; none when it was deleted)
     const nameIn = (list, id) => { const x = id && (list || []).find(r => r.id === id); return x ? x.name || '(unnamed)' : ''; };
     others.forEach(b => {
       const key = HG.cardOf(b), n = o => Number(HG.optionOf(b, o));
       if (HomeCards.NEEDS_RACES.includes(key) && !last) { out.set(key, ''); return; } // (nothing raced yet: one friendly card, below)
       if (key === 'record') d.rec = track ? HomeStats.recordCard({ laps, sessions, trackId: track.id, driverIds: byTeam ? [] : rows.filter(r => !r.absent).map(r => r.driverId), driverName: dn, carName: cn }) : null;
+      else if (key === 'weather') d.images = { weather: setImages('weather', HG.optionOf(b, 'weatherSet')), conditions: setImages('conditions', HG.optionOf(b, 'condSet')) };
+      else if (key === 'tyres') d.images = { tyres: setImages('tyres', HG.optionOf(b, 'tyreSet')) };
       else if (key === 'glance') d.glance = HomeStats.glance({ sessions, laps, tracks, driverName: dn });
       else if (key === 'recent') d.recent = HomeStats.recent({ sessions, count: n('count') });
       else if (key === 'fastest') { d.fastestScope = HG.optionOf(b, 'scope'); d.fastest = HomeStats.fastestWeek({ laps, sessions, trackId: track && track.id, scope: d.fastestScope, count: n('count'), now, driverName: dn, trackName: trackNameOf }); }

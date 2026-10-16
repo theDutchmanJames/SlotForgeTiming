@@ -2048,3 +2048,20 @@ Good to know:
 6. Cards cannot be dragged: you choose them in the list of a cell, as on the Leaderboard page.
 7. **Time Token Sessions** are still not carried on after a crash, and **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 8. The tests: `tests/homegrid.test.js` (the rules of the grid), `tests/homecards.test.js` (the markup of the cards), `tests/homestats.test.js` (the figures), `tests/screens.test.js` (Customize, the cards, a race that opens in Results, the shortcuts) and `tests/help.test.js`.
+
+## What to try (1.26.0): the Weather card and the Tyres Available card
+From your list: two more cards for Home, both for show. Nothing on them is read from a race: they say what you type in their settings.
+1. Open **Home**, press **Customize**, make the grid big enough (for example 4 columns by 3 rows) and pick **Weather** for one cell and **Tyres Available** for another.
+2. **Weather**: the settings show under the map (*Card 2 settings*). Choose the weather (Dry, Cloudy, Wet, Clearing), write a line under it (for example *Clearing after lunch*, or leave it empty), and type the track temperature, the air temperature, the wind speed and the direction the wind comes from (degrees: 0 north, 90 east, 180 south, 270 west). The card shows four tiles: *Track*, *Air*, *Wind* and *From* (SW). Tick or untick each value, add the degrees (*SW 225°*), and put them two by two, in a row or in a column.
+3. **Units**: choose *Fahrenheit and mph* and the numbers you typed are changed with them (31 °C becomes 88 °F, 10 km/h becomes 6 mph); back to Celsius gives the first numbers back.
+4. **Tyres Available**: a line for each tyre of the weather system, with a tick, your own name for it and how many sets (*Soft* shown as *Grippy*, 6 sets). Hard, Medium and Soft are ticked to begin with. Under the lines: *Show how many there are of each* (the number behind the name), and *Put the tyres* **in a column** or **in a row**.
+5. **Pictures**: both cards draw the pictures of the Weather Forecast, Track Conditions and Tyres widgets. If you made a picture set under Customization > Image Settings (Weather, Conditions or Tyres), you can choose it in the card; a slot of the set without a picture is drawn, and a set that was deleted is ignored.
+
+Good to know:
+1. A number or a line of text is saved when you leave the field, and Home is drawn again a moment later (not while you are typing in a field, and a click or a Tab that comes next is not lost). The control you went to keeps the cursor, so you can fill in the names of several tyres one after the other with Tab.
+2. A number that is too big or too small is held at the limit (temperatures from -60 to 150, wind from 0 to 400, the direction from 0 to 359, tyres from 0 to 99); anything that is not a number is the standard value (30, 24, 10 and 225). A name is cut at 24 characters and the line under the weather at 40.
+3. The tyres are the ones of the weather system, each at most once, in its order. The picture of a tyre keeps its compound colour (the Soft ring is red, whatever you call it).
+4. The cards do not follow a race or a weather system: the weather and the tyres of a race are on the race screen and in the widgets of the layouts.
+5. They need no saved race: a Home without races shows them as they are.
+6. Not done: tyres in other numbers than sets (laps, wear), a forecast on the card, and a different name for the card itself.
+7. The tests: `tests/homegrid.test.js` (the options: numbers, text, units that change the numbers, tyre rows), `tests/homecards.test.js` (the markup), `tests/screens.test.js` (Customize for both cards, saving, picture sets, the cursor) and `tests/help.test.js`.

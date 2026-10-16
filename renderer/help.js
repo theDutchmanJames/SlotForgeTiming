@@ -29,12 +29,12 @@ const Help = (() => {
     ['Setting things up', [
       { id: 'home', title: 'The Home tab', note: 'Pick a race and start it', body: `
         <ul>
-          <li>Pick a <b>race setup</b>, then choose a <b>driver</b> and a <b>car</b> for every lane. In a heat-based race you add participants instead. A lane has the colour its layout gives it on the race screen.</li>
+          <li>Pick a <b>race setup</b>, then choose a <b>driver</b> and a <b>car</b> for every lane. In a heat-based race you add participants instead. A lane has the colour of its layout.</li>
           <li>The start lights under the lanes light up as lanes get ready. What is still missing is listed above the button, so you can see why <b>Start race</b> is greyed out.</li>
           <li>If a <b>qualifying</b> was driven on the same track, its winner picks their lane first.</li>
-          <li>The band at the top shows the date and the track, and lights for the <b>Trackmate</b>, sharing on the network and the <b>audio set</b> of the setup. The welcome message and the header picture are changed in App Settings, General.</li>
-          <li>The cards: the <b>record to beat</b> on this track, the <b>last race</b>, <b>At a glance</b>, <b>Recent races</b> (click one to open its results), <b>Fastest laps this week</b>, <b>Records on all tracks</b>, <b>Top drivers</b>, <b>Personal bests</b> of the drivers in the lanes, <b>Rules of this race</b> and <b>Shortcuts</b>. They come from your saved races, not from Time Token Sessions.</li>
-          <li><b>Customize</b>, in the band, sets up the cards like the Leaderboard page: pick the grid with the little squares, a card for every cell, and let a card cover more cells. <b>Back to the usual Home</b> undoes it.</li>
+          <li>The band at the top shows the date and the track, and lights for the <b>Trackmate</b>, sharing on the network and the <b>audio set</b> of the setup. Welcome message and header picture: App Settings, General.</li>
+          <li>The cards: the <b>record to beat</b> on this track, the <b>last race</b>, <b>At a glance</b>, <b>Recent races</b> (click one to open its results), <b>Fastest laps this week</b>, <b>Records on all tracks</b>, <b>Top drivers</b>, <b>Personal bests</b> of the drivers in the lanes, <b>Rules of this race</b> and <b>Shortcuts</b>. Most come from saved races, not Time Token Sessions. <b>Weather</b> and <b>Tyres Available</b> are for show: you type them in <b>Customize</b>.</li>
+          <li><b>Customize</b>, in the band, sets up the cards like the Leaderboard page: pick the grid with the little squares and a card for every cell (a card can cover more cells). <b>Back to the usual Home</b> undoes it.</li>
           <li>When a race was stopped by a crash or a power cut, a note at the top offers <b>Resume the race</b> (it comes back paused, press Space to go on; a heat race keeps its finished heats), <b>Save what was recorded</b> or <b>Delete it</b>.</li>
         </ul>` },
       { id: 'database', title: 'Database', note: 'Tracks, drivers and slot cars', body: `

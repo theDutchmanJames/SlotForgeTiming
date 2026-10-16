@@ -170,7 +170,7 @@ const folders = Help.folders();
 
 // ---- 1.10.1 ----
 { const f = id => plain(folders.find(x => x.id === id).body);
-  say('the Home help no longer talks about the Available cards (they are gone from the Home tab), and the Live Race help says the button is lit during a race and off without one', !f('home').includes('Available') && !f('home').includes('Show all') && f('live').includes('red light on while a race is on') && f('live').includes('greyed out with the light off when no race is running'));
+  say('the Home help no longer talks about the Available cards (they are gone from the Home tab), and the Live Race help says the button is lit during a race and off without one', !f('home').includes('Available cards') && !f('home').includes('Show all') && f('live').includes('red light on while a race is on') && f('live').includes('greyed out with the light off when no race is running'));
   say('...and every folder is still short enough', folders.every(x => plain(x.body).length < 1400)); }
 
 // ---- 1.12.0 ----
@@ -222,4 +222,6 @@ const folders = Help.folders();
 { const hs = Help.folders().map(f => plain(f.body)).find(t => t.includes('General: type your own app name')) || ''; // 1.22.0
   say('1.22.0: the Settings help says Display also sets the speed unit of the tables, km/h or mph', hs.includes('speed unit') && hs.includes('km/h or mph') && hs.length < 1400); }
 
+{ const home = plain(Help.folders().find(f => f.id === 'home').body); // 1.26.0
+  say('1.26.0: the Home help names the Weather and Tyres Available cards, says they are for show and that you set them in Customize; the folder is still short', home.includes('Weather') && home.includes('Tyres Available') && home.includes('for show') && home.includes('you type them in Customize') && home.length < 1400); }
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

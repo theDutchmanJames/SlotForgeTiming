@@ -875,3 +875,23 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .hm-kv .who{display:flex;align-items:center;gap:8px;min-width:0}
 .hm-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--c,var(--line));flex:0 0 10px}
 .hm-go2{display:flex;flex-wrap:wrap;gap:8px}
+/* ---- 1.26.0: the Weather and Tyres Available cards of Home, and the rows of tyres in Customize ---- */
+.hm-sky{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.hm-sky .wxic{height:3.4em;width:3.4em}
+.hm-sky strong{display:block;font-size:1.3em}.hm-sky small{display:block;color:var(--muted)}
+.hm-ctiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.hm-ctiles.cd-row{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
+.hm-ctiles.cd-column{grid-template-columns:minmax(0,1fr)}
+.hm-ctile{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--bg);border:1px solid var(--line);min-width:0}
+.hm-ctile .wxic{height:2.1em;width:2.1em}
+.hm-ctile b{display:block;font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap}.hm-ctile small{display:block;font-size:12px;color:var(--muted)}
+.hm-tyres{list-style:none;margin:0;padding:0}
+.hm-tyres .wxic{height:2.6em;width:2.6em}.hm-tyres .c{font-variant-numeric:tabular-nums}
+.hm-ty-column li{display:flex;align-items:center;gap:12px;padding:6px 0;border-top:1px solid var(--line)}.hm-ty-column li:first-child{border-top:0}
+.hm-ty-column .n{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm-ty-row{display:flex;flex-wrap:wrap;gap:14px 18px;justify-content:center}
+.hm-ty-row li{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:72px;max-width:120px;text-align:center}
+.hm-ty-row .n{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm-orow{grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--line)}
+.hm-orow input[type=text]{flex:1 1 160px;min-width:120px}.hm-orow input[type=number]{width:72px}
+.hm-ocheck{min-width:130px}

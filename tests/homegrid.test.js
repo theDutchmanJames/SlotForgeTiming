@@ -11,10 +11,12 @@ const cards = g => g.boards.map(G.cardOf).join();
 const spots = g => g.boards.map(b => `${G.cardOf(b)}@${b.c}.${b.r}:${b.w}x${b.h}`).join(' ');
 
 // ---- the cards ----
-ok('there are eleven cards: Start a race, the three of before, and the seven new ones', G.CARDS.length === 11 && G.KEYS.join() === 'start,record,last,glance,recent,fastest,records,top,bests,rules,shortcuts');
-ok('...every card has a name and a line of words, and the keys are all different', G.CARDS.every(c => c.label && c.note) && new Set(G.KEYS).size === 11);
+ok('there are thirteen cards: Start a race, the three of before, the seven of 1.25.0 and, since 1.26.0, Weather and Tyres Available', G.CARDS.length === 13 && G.KEYS.join() === 'start,record,last,glance,recent,fastest,records,top,bests,rules,shortcuts,weather,tyres');
+ok('...every card has a name and a line of words, and the keys are all different', G.CARDS.every(c => c.label && c.note) && new Set(G.KEYS).size === 13);
 ok('...only Start a race is fixed (it cannot be taken away)', G.CARDS.filter(c => c.fixed).map(c => c.key).join() === 'start');
-ok('...a choice has a default that is one of its choices; a tick has a default of yes or no', G.CARDS.every(c => c.options.every(o => (o.type === 'check' ? typeof o.default === 'boolean' : o.choices.some(([k]) => k === o.default)))));
+ok('...a choice has a default that is one of its choices; a tick has a default of yes or no; a number a whole default inside its limits; a line of text a default that fits; a picture set has none',
+  G.CARDS.every(c => c.options.every(o => (o.type === 'check' ? typeof o.default === 'boolean' : o.type === 'number' ? Number.isInteger(o.default) && o.default >= o.min && o.default <= o.max
+    : o.type === 'text' ? typeof o.default === 'string' && o.default.length <= o.max : o.type === 'imageset' ? o.default === '' && typeof o.kind === 'string' : o.choices.some(([k]) => k === o.default)))));
 ok('...the options: Recent races has how many; Fastest laps has the tracks and the laps per track; Top drivers the period and how many; Shortcuts has a tick for every page',
   G.info('recent').options.map(o => o.key).join() === 'count' && G.info('fastest').options.map(o => o.key).join() === 'scope,count' && G.info('top').options.map(o => o.key).join() === 'period,count' && G.info('shortcuts').options.length === G.SHORTCUTS.length && G.info('nope') === null);
 
@@ -66,7 +68,7 @@ ok('a taller card: the cells below must be free; a card that would cover a cell 
 ok('...and Start a race can be made narrower or wider like any card', spots(G.setSpan(a1, 0, 1, 2)) === 'start@1.1:1x2 record@3.1:1x1 recent@4.1:1x1' && G.maxSpan(a1, a1.boards[0]).w === 2 && G.maxSpan(a1, a1.boards[0]).h === 2);
 
 // ---- the cards a cell can have ----
-ok('a cell can have the cards that are not in the grid, and the card it has now; never Start a race', G.available(a1, 1).map(c => c.key).join() === 'record,last,glance,fastest,records,top,bests,rules,shortcuts' && G.available(a1, -1).map(c => c.key).join() === 'last,glance,fastest,records,top,bests,rules,shortcuts');
+ok('a cell can have the cards that are not in the grid, and the card it has now; never Start a race', G.available(a1, 1).map(c => c.key).join() === 'record,last,glance,fastest,records,top,bests,rules,shortcuts,weather,tyres' && G.available(a1, -1).map(c => c.key).join() === 'last,glance,fastest,records,top,bests,rules,shortcuts,weather,tyres');
 ok('...the cards that are in the grid', G.used(a1).has('start') && G.used(a1).has('recent') && !G.used(a1).has('top') && G.used(null).size === 0);
 
 // ---- the default ----
@@ -89,6 +91,58 @@ ok('...and the places exist: the tabs of the app and the pages of the Database',
   ok('...the picker and the map of cells are the ones of the Leaderboard page (same squares, same cells)', /\.lv-gp\.on\{/.test(css) && /\.lv-gcell\.sel\{/.test(css) && !/\.hm-cols|\.hm-side/.test(css));
   ok('the page loads the grid rules and the cards before Home, after the grid rules of the Leaderboard', html.indexOf('livegrid.js') < html.indexOf('homegrid.js') && html.indexOf('homegrid.js') < html.indexOf('homecards.js') && html.indexOf('homecards.js') < html.indexOf('landing.js'));
   ok('the tabs the shortcuts name are the tabs of the app', TABS_OF_APP.every(t => app.includes(`['${t}',`))); }
+
+// ---- 1.26.0: the Weather card and the Tyres Available card (for show: set by hand under Customize) ----
+const W = require('../renderer/weather.js');
+const mk = (card, opt = {}) => ({ c: 1, r: 1, w: 1, h: 1, opt: { card, ...opt } }), o = (b, k) => G.optionOf(b, k);
+ok('the tyre rows are the tyres of the weather system, in its order, with its names', same(G.TYRE_PRESETS, W.TYRES.map(t => [t.code, t.name])));
+ok('the states of the weather are those of the weather system', same(G.WEATHER_STATES, W.STATES));
+ok('the Weather card has the weather, a line, the units, the four numbers, five ticks, the way to put them and two picture sets', G.info('weather').options.map(x => x.key).join() === 'state,line,units,track,air,wind,dir,showTrack,showAir,showWind,showDir,showDegrees,layout,weatherSet,condSet');
+ok('...its numbers begin with the dry values of the weather system (30, 24, 10 and 225), Celsius and km/h, two by two, no line', ['track', 'air', 'wind', 'dir'].every(k => o(mk('weather'), k) === W.COND.dry[k]) && o(mk('weather'), 'units') === 'metric' && o(mk('weather'), 'layout') === 'grid' && o(mk('weather'), 'line') === '' && o(mk('weather'), 'state') === 'dry');
+ok('...the four values and the picture sets: the ticks are on (not the degrees), a set is none', ['showTrack', 'showAir', 'showWind', 'showDir'].every(k => o(mk('weather'), k) === true) && o(mk('weather'), 'showDegrees') === false && o(mk('weather'), 'weatherSet') === '' && o(mk('weather'), 'condSet') === '');
+ok('a number is whole and stays inside its limits: 31.6 is 32, 500 °C is 150, -90 is -60, a wind of -5 is 0, a direction of 400 is 359; a number as text counts; anything else is the default',
+  o(mk('weather', { track: 31.6 }), 'track') === 32 && o(mk('weather', { track: 500 }), 'track') === 150 && o(mk('weather', { air: -90 }), 'air') === -60 && o(mk('weather', { wind: -5 }), 'wind') === 0 && o(mk('weather', { dir: 400 }), 'dir') === 359
+  && o(mk('weather', { track: '28' }), 'track') === 28 && o(mk('weather', { track: '28,4' }), 'track') === 28 && o(mk('weather', { track: 'warm' }), 'track') === 30 && o(mk('weather', { track: '' }), 'track') === 30 && o(mk('weather', { track: null }), 'track') === 30 && o(mk('weather', { track: NaN }), 'track') === 30 && o(mk('weather', { track: Infinity }), 'track') === 30);
+ok('a line of text is cut at its length and trimmed; text that is not text is the default', o(mk('weather', { line: '  Rain after lunch  ' }), 'line') === 'Rain after lunch' && o(mk('weather', { line: 'x'.repeat(100) }), 'line').length === 40 && o(mk('weather', { line: 5 }), 'line') === '' && o(mk('weather', { line: null }), 'line') === '');
+ok('a state that is not one of the four is Dry; units that are not known are Celsius and km/h; a layout that is not known is two by two', o(mk('weather', { state: 'snow' }), 'state') === 'dry' && o(mk('weather', { state: 'wet' }), 'state') === 'wet' && o(mk('weather', { units: 'x' }), 'units') === 'metric' && o(mk('weather', { layout: 'x' }), 'layout') === 'grid');
+ok('a picture set is the id of a set (text of a sensible length), else none', o(mk('weather', { weatherSet: 'abc123' }), 'weatherSet') === 'abc123' && o(mk('weather', { weatherSet: 5 }), 'weatherSet') === '' && o(mk('weather', { weatherSet: 'x'.repeat(65) }), 'weatherSet') === '' && o(mk('tyres', { tyreSet: 's9' }), 'tyreSet') === 's9');
+ok('an option the card does not have is nothing (a Weather card has no tyres, a Tyres card has no wind)', o(mk('weather'), 'on_S') === undefined && o(mk('tyres'), 'wind') === undefined && o(mk('record'), 'state') === undefined);
+
+// the units: a number that was never typed is the default in the units of the card; other units change the numbers that were typed
+ok('without numbers of its own an imperial card has the dry values in Fahrenheit and mph (86 °F, 75 °F, 6 mph)', o(mk('weather', { units: 'imperial' }), 'track') === 86 && o(mk('weather', { units: 'imperial' }), 'air') === 75 && o(mk('weather', { units: 'imperial' }), 'wind') === 6 && o(mk('weather', { units: 'imperial' }), 'dir') === 225);
+ok('...the same sums as weather.js (a temperature, a speed)', o(mk('weather', { units: 'imperial' }), 'track') === Math.round(W.toUnits('track', 30, 'metric', 'imperial')) && o(mk('weather', { units: 'imperial' }), 'wind') === Math.round(W.toUnits('wind', 10, 'metric', 'imperial')) && o(mk('weather', { units: 'imperial', track: 100 }), 'track') === 100);
+{ const g = G.add(G.resize(G.DEFAULT, 4, 3), 4, 1, 'weather'), i = g.boards.findIndex(b => G.cardOf(b) === 'weather');
+  const f = G.setOpt(g, i, { units: 'imperial', track: 31 }).boards[i];
+  ok('other units change the numbers: 24 °C becomes 75 °F and 10 km/h 6 mph; a number typed with the change is kept as it is (31); the direction does not change', o(f, 'units') === 'imperial' && o(f, 'track') === 31 && o(f, 'air') === 75 && o(f, 'wind') === 6 && o(f, 'dir') === 225 && f.opt.air === 75);
+  const typed = G.setOpt(G.setOpt(g, i, { track: 31, air: 22, wind: 12, dir: 90 }), i, { units: 'imperial' }).boards[i];
+  ok('...typed numbers: 31 °C is 88 °F, 22 °C is 72 °F, 12 km/h is 7 mph, and 90 degrees stays 90', o(typed, 'track') === 88 && o(typed, 'air') === 72 && o(typed, 'wind') === 7 && o(typed, 'dir') === 90);
+  const back = G.setOpt(G.setOpt(g, i, { units: 'imperial' }), i, { units: 'metric' }).boards[i];
+  ok('...and back again: Celsius and km/h with the first numbers', o(back, 'units') === 'metric' && o(back, 'track') === 30 && o(back, 'air') === 24 && o(back, 'wind') === 10);
+  const same2 = G.setOpt(G.setOpt(g, i, { track: 31 }), i, { units: 'metric' }).boards[i];
+  ok('...the same units again change nothing (31 stays 31), and units that are not known change nothing either', o(same2, 'track') === 31 && o(G.setOpt(G.setOpt(g, i, { track: 31 }), i, { units: 'furlongs' }).boards[i], 'track') === 31);
+  const lim = G.setOpt(G.setOpt(g, i, { track: 150 }), i, { units: 'imperial' }).boards[i];
+  ok('...a number that does not fit the other units stays inside the limits (150 °C is 150 °F at most)', o(lim, 'track') === 150);
+  ok('...the card of another kind has no units to change: its options are kept as they are', same(G.setOpt(G.DEFAULT, 1, { units: 'imperial' }), G.DEFAULT));
+  ok('...the grid that was changed is a new grid; the old one is as it was', !('track' in g.boards[i].opt) && !('units' in g.boards[i].opt)); }
+
+// Tyres Available: a row for every tyre of the weather system
+ok('the Tyres Available card has a row of three options for every tyre (a tick, your name, how many), then how many to show, the way to put the tyres and a picture set',
+  G.info('tyres').options.length === 6 * 3 + 3 && G.info('tyres').options.slice(0, 18).every((x, k) => x.row === G.TYRE_PRESETS[Math.floor(k / 3)][0]) && G.info('tyres').options.slice(18).map(x => x.key).join() === 'showCount,layout,tyreSet');
+ok('...the keys of a row are on_, name_ and count_ with the code of the tyre', G.info('tyres').options.slice(0, 3).map(x => x.key).join() === 'on_H,name_H,count_H' && G.info('tyres').options.slice(15, 18).map(x => x.key).join() === 'on_W,name_W,count_W');
+ok('...to begin with the Hard, Medium and Soft tyres are ticked, with their own names, 4 of each, no counts and in a column', same(G.tyresOf(mk('tyres')), [{ code: 'H', preset: 'Hard', name: 'Hard', count: 4 }, { code: 'M', preset: 'Medium', name: 'Medium', count: 4 }, { code: 'S', preset: 'Soft', name: 'Soft', count: 4 }]) && o(mk('tyres'), 'showCount') === false && o(mk('tyres'), 'layout') === 'column');
+{ const t = G.tyresOf(mk('tyres', { on_H: false, on_SS: true, on_W: true, name_S: ' Grippy ', name_W: 'Rain tyres', count_S: '6', count_W: 2, count_SS: 120, name_M: '' }));
+  ok('the tyres that are ticked come in the order of the weather system, with the name you gave (trimmed), else the name of the preset, and how many (a number as text counts, 120 is 99)',
+    t.map(x => x.code).join() === 'M,S,SS,W' && t.map(x => x.name).join() === 'Medium,Grippy,Supersoft,Rain tyres' && t.map(x => x.preset).join() === 'Medium,Soft,Supersoft,Wet' && t.map(x => x.count).join() === '4,6,99,2'); }
+ok('...no tyre ticked is an empty list; a count is never below 0 and a name never longer than 24 characters', G.tyresOf(mk('tyres', { on_H: false, on_M: false, on_S: false })).length === 0 && o(mk('tyres', { count_H: -3 }), 'count_H') === 0 && o(mk('tyres', { name_H: 'n'.repeat(60) }), 'name_H').length === 24);
+ok('a tick of a tyre is yes or no (text is not a tick)', o(mk('tyres', { on_SS: 'yes' }), 'on_SS') === false && o(mk('tyres', { on_H: 'no' }), 'on_H') === true);
+{ const g = G.add(G.resize(G.DEFAULT, 4, 3), 4, 1, 'tyres'), i = g.boards.findIndex(b => G.cardOf(b) === 'tyres');
+  const g2 = G.setOpt(G.setOpt(g, i, { name_S: 'Grippy' }), i, { count_S: '7', layout: 'row', showCount: true, nonsense: 1 }).boards[i];
+  ok('Customize changes one option at a time and keeps the others; a key the card does not have is not kept', g2.opt.name_S === 'Grippy' && o(g2, 'count_S') === 7 && o(g2, 'layout') === 'row' && o(g2, 'showCount') === true && !('nonsense' in g2.opt) && g2.opt.card === 'tyres');
+  ok('...the card is in the grid once: a second one is not added, and the card can be taken away and put back (its settings start again)', cards(G.add(g, 4, 3, 'tyres')).split(',').filter(x => x === 'tyres').length === 1);
+  const gone = G.remove(g, i); ok('...taken away, the card and its settings are gone', !cards(gone).includes('tyres') && same(G.tyresOf(G.add(gone, 4, 1, 'tyres').boards.find(b => G.cardOf(b) === 'tyres')), G.tyresOf(mk('tyres')))); }
+ok('both cards are offered for a cell, and a card that is in the grid is not offered again', G.available(G.DEFAULT, 0).some(c => c.key === 'weather') && G.available(G.DEFAULT, 0).some(c => c.key === 'tyres')
+  && !G.available(G.add(G.resize(G.DEFAULT, 4, 3), 4, 1, 'weather'), 1).some(c => c.key === 'weather') && G.available(G.add(G.resize(G.DEFAULT, 4, 3), 4, 1, 'weather'), 1).some(c => c.key === 'tyres'));
+ok('a saved grid with the new cards holds together (known cards, each once)', cards(G.tidy({ cols: 4, rows: 1, boards: [board('start', 1, 1), board('weather', 2, 1), board('weather', 3, 1), board('tyres', 4, 1)] })) === 'start,weather,tyres');
 
 console.log(fails ? fails + ' HOME GRID TESTS FAILED' : 'ALL HOME GRID TESTS PASSED');
 process.exit(fails ? 1 : 0);

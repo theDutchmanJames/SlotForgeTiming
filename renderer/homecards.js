@@ -1,9 +1,13 @@
 // The cards of the Home tab (1.17.0, a grid of them since 1.25.0): the words and the markup of every card except Start a race (that one is part of landing.js, because it
 // is the form of the page). Pure: a card is made from figures that landing.js worked out with homestats.js, so it can be tested without a screen.
-// d = { fmtDate(iso), fmtShort(iso), trackName, rec, last, glance, recent, fastest, records, top, bests, rules, setupName, hasTrack, hasSetup }
+// d = { fmtDate(iso), fmtShort(iso), trackName, rec, last, glance, recent, fastest, records, top, bests, rules, setupName, hasTrack, hasSetup, images }
+// (1.26.0: images = the pictures of the picture sets that the Weather and Tyres Available cards use: { weather, conditions, tyres }, each the images of a set or nothing.)
 (function (root) {
   const G = typeof module !== 'undefined' ? require('./homegrid.js') : root.HomeGrid;
   const esc = s => String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // The pictures of the weather widgets (weatherwidgets.js) are used for the weather and the tyres: the drawn ones, or those of a picture set. Looked up when a card is made,
+  // so a page that never shows these cards does not need that file.
+  const wxw = () => (typeof module !== 'undefined' ? require('./weatherwidgets.js') : root.WxW), wx = () => (typeof module !== 'undefined' ? require('./weather.js') : root.Wx);
   const SAFE = /^(#[0-9a-f]{3,8}|(rgb|hsl)a?\([0-9 ,.%/]+\))$/i; // (a colour goes into a style: only plain colour text does)
   const tag = t => (t ? `<span class="hm-tag">${esc(t)}</span>` : '');
   const card = (cls, title, tagText, inner) => `<section class="card ${cls}"><h3>${esc(title)}${tag(tagText)}</h3>${inner}</section>`;
@@ -68,11 +72,31 @@
       : '<p class="muted">No shortcut is switched on. Open Customize and tick the pages you want here.</p>');
   };
 
+  // 1.26.0 Weather: the weather and the conditions of the track as they were typed in the settings of the card (nothing is read from a race)
+  const weather = (d, board) => {
+    const W = wxw(), X = wx(), o = k => G.optionOf(board, k), img = d.images || {}, state = o('state');
+    const c = { units: o('units'), state, track: o('track'), air: o('air'), wind: o('wind'), dir: o('dir') }, tx = X.condText(c), line = o('line');
+    const tiles = [[o('showTrack'), 'tracktemp', tx.track, 'Track'], [o('showAir'), 'airtemp', tx.air, 'Air'], [o('showWind'), 'windspeed', tx.wind, 'Wind'],
+      [o('showDir'), 'winddir', o('showDegrees') ? `${tx.dir} ${tx.degrees}` : tx.dir, 'From']].filter(t => t[0])
+      .map(([, kind, text, label]) => `<div class="hm-ctile">${W.icon('cond', kind, img.conditions, c.dir, false)}<div><b>${esc(text)}</b><small>${label}</small></div></div>`).join('');
+    return card('hm-weather', 'Weather', '', `<div class="hm-sky">${W.icon('state', state, img.weather, 0, false)}<div><strong>${esc(X.stateName(state))}</strong>${line ? `<small>${esc(line)}</small>` : ''}</div></div>`
+      + (tiles ? `<div class="hm-ctiles cd-${esc(o('layout'))}">${tiles}</div>` : ''));
+  };
+
+  // 1.26.0 Tyres Available: the tyres that are ticked, with the name that was given, and how many (when that is switched on), in a column or in a row
+  const tyres = (d, board) => {
+    const W = wxw(), list = G.tyresOf(board), count = G.optionOf(board, 'showCount'), img = d.images || {};
+    return card('hm-tyrecard', 'Tyres Available', '', list.length
+      ? `<ul class="hm-tyres hm-ty-${esc(G.optionOf(board, 'layout'))}">${list.map(t => `<li>${W.icon('tyre', t.code, img.tyres, 0, false)}<span class="n">${esc(t.name)}</span>${count ? `<strong class="c">× ${t.count}</strong>` : ''}</li>`).join('')}</ul>`
+      : '<p class="muted">No tyre is ticked. Open Customize and tick the tyres you want here.</p>');
+  };
+
   // The card for a key, from the figures d (and the board, for the options of the card). Start a race is not made here.
   function html(key, d, board) {
     switch (key) {
       case 'record': return record(d); case 'last': return last(d); case 'glance': return glance(d); case 'recent': return recent(d); case 'fastest': return fastest(d);
       case 'records': return records(d); case 'top': return top(d); case 'bests': return bests(d); case 'rules': return rules(d); case 'shortcuts': return shortcuts(d, board);
+      case 'weather': return weather(d, board); case 'tyres': return tyres(d, board);
       default: return '';
     }
   }
