@@ -23,7 +23,7 @@ for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function
 const ctx=vm.createContext({document,api,console: appConsole,Intl,URL,Image:function(){},confirm:()=>true,alert(){},setTimeout,clearTimeout,setInterval,clearInterval,performance,});
 const listeners={}; ctx.window=ctx; ctx.addEventListener=(t,f)=>{(listeners[t]=listeners[t]||[]).push(f)}; ctx.removeEventListener=(t,f)=>{listeners[t]=(listeners[t]||[]).filter(x=>x!==f)};
 const errors=[];
-for(const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js','heats.js', 'rotation.js', 'tokens.js','speed.js','stats.js','homestats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js','icons.js','delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js','frame.js','backdrop.js','announcer.js','sound.js','timing.js','rows.js','richtext.js','canvas.js','liveshare.js','review.js','adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'liveview.js','report.js','database.js','landing.js','race.js','undo.js','editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','help.js','hardware.js','trackmate.js','hardwareui.js','dsui.js','app.js']){
+for(const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js','heats.js', 'rotation.js', 'tokens.js','speed.js','stats.js','homestats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js','icons.js','delta.js','avatars.js', 'weatherwidgets.js', 'boardorder.js', 'widgets.js','frame.js','backdrop.js','announcer.js','sound.js','timing.js','rows.js','richtext.js','canvas.js','liveshare.js','review.js','adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'liveview.js','report.js','database.js','landing.js','race.js','undo.js','editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','help.js','hardware.js','trackmate.js','hardwareui.js','dsui.js','app.js']){
   try{vm.runInContext(fs.readFileSync(R+'renderer/'+f,'utf8'),ctx,{filename:f})}catch(e){errors.push(f+': '+e.message)}
 }
 const run=s=>vm.runInContext(s,ctx), E=id=>document.getElementById(id);
@@ -2345,6 +2345,17 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   E('side').onchange({target:{dataset:{opt:'design'},value:id0}});
   slb=E('side').innerHTML;
   say('with a design chosen the classic column choices are hidden', run('state.editing.draft.widgets[0].opt.design')===id0 && !slb.includes('data-opt="colLast"') && slb.includes('data-opt="design"'));
+  { // 1.19.0: the leaderboard can be ordered by a value
+    const lbH = () => E('side').innerHTML;
+    say('1.19.0: the leaderboard widget has "Order by" (the race position is chosen) and no "Best or worst on top" yet, with a design and without', /<select id="o-orderBy"[^>]*>.*<option value="position" selected>Race position/.test(lbH()) && lbH().includes('<option value="best">Best lap') && lbH().includes('<option value="champ">Championship points') && lbH().includes('<option value="penpoints">Penalty points')
+      && !lbH().includes('id="o-orderDir"') && lbH().includes('The rows follow the race: the leader on top.'));
+    await E('side').onchange({ target: { dataset: { opt: 'orderBy' }, value: 'best', type: 'select-one' } });
+    say('...choosing the best lap keeps it on the widget, and now "Best or worst on top" is offered with Best first chosen, and the hint says what is on top', run('state.editing.draft.widgets[0].opt.orderBy') === 'best' && /<select id="o-orderDir"[^>]*>.*<option value="best" selected>Best first/.test(lbH()) && lbH().includes('<option value="worst">Worst first') && lbH().includes('puts the fastest lap on top') && lbH().includes('<option value="best" selected>Best lap'));
+    E('side').oninput({ target: { dataset: { opt: 'orderDir' }, value: 'worst', type: 'select-one' } });
+    say('...Worst first is kept on the widget too', run('state.editing.draft.widgets[0].opt.orderDir') === 'worst');
+    await E('side').onchange({ target: { dataset: { opt: 'orderBy' }, value: 'position', type: 'select-one' } });
+    say('...and the direction is gone from the settings', !lbH().includes('id="o-orderDir"') && run('state.editing.draft.widgets[0].opt.orderBy') === 'position');
+  }
   run("state.editing.draft.widgets.pop(); state.editing.sel = []");
   // choosing a timing device: the main process lists what it found, the person picks one, and the choice goes back
   {

@@ -31,7 +31,7 @@ const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if
 for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function') api[k] = (...x) => { x.forEach(v => { if (typeof v !== 'function') structuredClone(v); }); return f(...x); }; }
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','homestats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','homestats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'boardorder.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -799,6 +799,20 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   say('...and with To place 1 the first place only', names(boards()[0]).split(',').length === 1 && names(boards()[0]) !== second);
   await chg({ lb: 'to' }, '', 'number'); await wait(20);
   say('...both empty: everybody again', names(boards()[0]).split(',').length === 2);
+  { // 1.19.0: a board in the order of a value
+    const seq = h => ['Alex', 'Sam'].map(n => [n, h.indexOf(n)]).filter(x => x[1] >= 0).sort((a, b) => a[1] - b[1]).map(x => x[0]).join();
+    const raceOrder = seq(boards()[2]); // (a board that is not changed)
+    say('1.19.0: every board has "Order by" with the race position chosen, and no "Best or worst on top" until a value is chosen', body().innerHTML.includes('id="lb-orderBy"') && body().innerHTML.includes('Race position (as the race runs)') && body().innerHTML.includes('Best lap') && body().innerHTML.includes('Championship points')
+      && !body().innerHTML.includes('id="lb-orderDir"') && raceOrder.split(',').length === 2);
+    await chg({ lb: 'orderBy' }, 'name'); await wait(20);
+    say('...ordering board 1 by the driver name: saved in the settings of that board, the list opens "Best or worst on top", Alex first', run('state.settings.liveGrid.boards[0].opt.orderBy') === 'name' && body().innerHTML.includes('id="lb-orderDir"') && body().innerHTML.includes('value="name" selected') && body().innerHTML.includes('<details class="lv-opts" open>') && seq(boards()[0]) === 'Alex,Sam');
+    await chg({ lb: 'orderDir' }, 'worst'); await wait(20);
+    say('...Worst first turns it round (Sam first), and the other boards still follow the race', run('state.settings.liveGrid.boards[0].opt.orderDir') === 'worst' && seq(boards()[0]) === 'Sam,Alex' && seq(boards()[2]) === raceOrder);
+    await chg({ lb: 'from' }, '2', 'number'); await wait(20);
+    say('...and From place counts in that order: place 2 of Sam, Alex is Alex', seq(boards()[0]) === 'Alex');
+    await chg({ lb: 'from' }, '', 'number'); await chg({ lb: 'orderBy' }, 'position'); await wait(20);
+    say('...back to the race position: the board follows the race again and "Best or worst on top" is gone', seq(boards()[0]) === raceOrder && !body().innerHTML.includes('id="lb-orderDir"') && run('state.settings.liveGrid.boards[0].opt.orderBy') === 'position');
+  }
   await clk({ lbsel: '1' }); await wait(20);
   say('the settings of another board are shown on its own button (a row design has no column choices)', body().innerHTML.includes('Board 2 (column 2, row 1)') && !body().innerHTML.includes('data-lb="colLast"') && body().innerHTML.includes('id="lb-from"') && body().innerHTML.includes('id="lb-to"'));
   await clk({ lbsel: '2' }); await wait(20);

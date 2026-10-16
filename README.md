@@ -1934,3 +1934,19 @@ Good to know:
 3. Side by side (Left and right) the badge is as wide as its text and as high as the widget, so only a very short widget with big text makes the text shrink there.
 4. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 5. The tests: a new block in `tests/delta.test.js` (how much the text shrinks, that it grows back, that a badge that fits is left alone, that it always stops, and that the race page, the editor and the live view call it) and one line in `tests/help.test.js`. I also measured 324 widget sizes in a real browser: before, 108 stacked cases had text outside the badge, after, none.
+
+## What to try (1.19.0): order a leaderboard by any value
+From your wish: a board can list its rows by best lap, laps, championship points, penalty points, damage points or any other value we have, so the value you find most important is on top.
+1. Open **Live Race > Leaderboard > Customize**, pick a board and look at its new setting **Order by**. It is *Race position* as before: the board follows the race.
+2. Choose **Best lap**: the fastest lap is now on top, whoever leads the race. A second setting appears, **Best or worst on top**: *Best first* (the standard) or *Worst first*. Choose **Penalty points** with *Worst first* for a board of who has the most penalty points.
+3. The **Leaderboard widget** in the Layout Editor has the same two settings (Layouts > a Leaderboard widget), for the classic table and for your own row designs.
+4. The values: race position, best lap, last lap, average lap, median lap, personal best on this track, laps, speed (of the last lap), championship points, penalty points, penalty time, damage points, pit stops, fuel left, lane, driver name (A to Z). The hint under **Order by** says what stands on top for the one you chose.
+5. A *fastest laps* board: make a row design with the Best lap in it (Customization > Leaderboard Editor), put it in a cell and choose **Order by: Best lap**. Every board of the grid has its own choice, so one cell can follow the race while the one beside it shows the fastest laps.
+
+Good to know:
+1. The **Position** column of an ordered board counts its rows (1, 2, 3...), and the first row gets the leader look (the colour of the race leader in your row design). Other columns keep their own values: the Gap column still shows the gap in the race.
+2. A car that has no value yet (no lap, or the race has no such rule: no fuel rule, no damage system, no championship points, no track length for the speed) stays at the bottom, and cars with the same value keep their race order. A disqualified car counts as the worst for penalty points.
+3. **From place** and **To place** count in the order of the board: *Best lap* with places 2 to 4 shows the second to the fourth fastest.
+4. It works on phones and tablets too (they draw the boards the same way). A board that is set to the race position looks exactly as before.
+5. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+6. The tests: the new `tests/boardorder.test.js` (the values, both directions, ties, missing values, names, the list that goes in is not changed), `tests/rows.test.js` (a real race with three cars: every order, in both the classic table and a row design, the Position cell, the leader look, From and To), `tests/live.test.js` (the Customize panel saves it per board) and `tests/screens.test.js` (the two settings in the Layout Editor).

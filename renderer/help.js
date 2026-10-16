@@ -246,7 +246,7 @@ const Help = (() => {
           <li><b>Open on a second screen</b> puts these pages in their own window, for a TV or a projector. <b>Full screen</b> fills it.</li>
           <li>The <b>Race timing</b> page shows only the widget layout, without race buttons. Move the mouse or touch the screen to bring back the bar with the page choice and the full screen button.</li>
           <li>The pages follow the race that is running. They fill in as soon as a race starts.</li>
-          <li>The <b>Leaderboard</b> page is a grid: under <b>Customize</b> pick the number of columns and rows with the little squares, and choose a leaderboard for every cell (a row design from the Leaderboard Editor, or the classic table). A board can cover more cells and show only some places, such as 5 to 8.</li>
+          <li>The <b>Leaderboard</b> page is a grid: under <b>Customize</b> pick the number of columns and rows with the little squares, and choose a leaderboard for every cell (a row design from the Leaderboard Editor, or the classic table). A board can cover more cells and show only some places, such as 5 to 8. <b>Order by</b> sorts a board by a value (best lap for a fastest laps board, laps, points, penalties), best or worst first.</li>
           <li>The <b>Live Race</b> button in the top bar has its red light on while a race is on, and is greyed out with the light off when no race is running. It opens the pages either way.</li>
           <li>The Race Director and Tokens pages are the only ones that change anything, so they have their own look. On the Race Director page the Calls come first, then coloured folders: Adjust, Penalties, Balance of Power, Damage and Weather, and Endurance (brown) in an Endurance Race.</li>
         </ul>` },

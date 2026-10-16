@@ -117,6 +117,8 @@ const LiveView = (() => {
         ${span('w', b.w, ms.w, 'Columns it covers')}${span('h', b.h, ms.h, 'Rows it covers')}
         <div class="field"><label for="lb-from">From place</label><input id="lb-from" type="number" min="1" max="99" step="1" data-lb="from" value="${esc(o.from || '')}" placeholder="1"></div>
         <div class="field"><label for="lb-to">To place</label><input id="lb-to" type="number" min="0" max="99" step="1" data-lb="to" value="${esc(o.to || '')}" placeholder="last"></div>
+        <div class="field"><label for="lb-orderBy">Order by</label><select id="lb-orderBy" data-lb="orderBy">${BoardOrder.CHOICES.map(([k, t]) => `<option value="${k}"${BoardOrder.keyOf(o) === k ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></div>
+        ${BoardOrder.isOrdered(o) ? `<div class="field"><label for="lb-orderDir">Best or worst on top</label><select id="lb-orderDir" data-lb="orderDir">${BoardOrder.DIRECTIONS.map(([k, t]) => `<option value="${k}"${BoardOrder.dirOf(o) === k ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></div>` : ''}
         ${designs.some(r => r.id === o.design) ? '' : shown.map(d => d.type === 'select'
           ? `<div class="field"><label for="lb-${d.key}">${esc(d.label)}</label><select id="lb-${d.key}" data-lb="${d.key}">${d.choices.map(([k, t]) => `<option value="${k}"${(o[d.key] ?? d.default) === k ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></div>`
           : `<div class="field"><label class="inline"><input id="lb-${d.key}" type="checkbox" data-lb="${d.key}" ${(o[d.key] ?? d.default) ? 'checked' : ''}> ${esc(d.label)}</label></div>`).join('')}</div></fieldset>`;
@@ -149,7 +151,8 @@ const LiveView = (() => {
         if (d.lbspan) { const b = g.boards[boardSel]; if (!b) return; return save(G.setSpan(g, boardSel, d.lbspan === 'w' ? t.value : b.w, d.lbspan === 'h' ? t.value : b.h)); }
         if (!d.lb || !g.boards[boardSel]) return;
         const v = t.type === 'checkbox' ? t.checked : t.value;
-        state.settings = await api.setSettings({ liveGrid: G.setOpt(g, boardSel, { [d.lb]: v }) }); draw(false);
+        state.settings = await api.setSettings({ liveGrid: G.setOpt(g, boardSel, { [d.lb]: v }) });
+        if (d.lb === 'orderBy') { boardsOpen = true; drawBoard(body, true, true); } else draw(false); // (another value to order by: the settings come back with or without "Best or worst on top")
       };
     }
     const g = G.gridOf(state.settings);

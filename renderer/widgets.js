@@ -9,6 +9,7 @@
 
   const Av = typeof module !== 'undefined' ? require('./avatars.js') : root.Avatars; // the standard avatars of the lanes
   const Dl = typeof module !== 'undefined' ? require('./delta.js') : root.Delta; // the Delta Timers (what is compared, and the badge)
+  const Bo = typeof module !== 'undefined' ? require('./boardorder.js') : root.BoardOrder; // the order of a leaderboard (Order by)
   const Ww = typeof module !== 'undefined' ? require('./weatherwidgets.js') : root.WxW; // the weather widgets: Tyres, Weather Forecast, Track Conditions (the options, the samples)
   const NAMES = ['Alex', 'Sam', 'Kim', 'Lee', 'Max', 'Zoe'];
   const NICKS = ['Speedy', 'Sammy', 'Kimbo', 'Leeroy', 'Maxi', 'Zo'];
@@ -179,6 +180,8 @@
     { key: 'design', label: 'Row design', type: 'rowdesign', default: '' },
     { key: 'from', label: 'From place', type: 'number', default: 1, min: 1, max: 99, step: 1, hint: 'The first place the leaderboard shows. 1 shows from the leader.' },
     { key: 'to', label: 'To place', type: 'number', default: 0, min: 0, max: 99, step: 1, hint: 'The last place the leaderboard shows. 0 shows to the last place. With From place 5 and To place 8 it shows places 5 to 8.' },
+    { key: 'orderBy', label: 'Order by', type: 'select', default: 'position', rerender: true, choices: Bo.CHOICES, hintOf: v => Bo.hintOf(v) },
+    { key: 'orderDir', label: 'Best or worst on top', type: 'select', default: 'best', show: o => Bo.isOrdered(o), choices: Bo.DIRECTIONS },
     { key: 'scale', rowsOnly: true, label: 'Size of the rows', type: 'range', default: 100, min: 20, max: 100, step: 1, unit: '%', hint: '100% is as large as fits in the widget frame: with many drivers the rows shrink as a whole (text with them) so all of them stay inside. Less makes them smaller.' },
     { key: 'gaps', rowsOnly: true, label: 'Space between the columns', type: 'range', default: 100, min: 0, max: 100, step: 1, unit: '%', hint: '100% keeps the columns where the design has put them. Less closes up the blank space between them: the rows get narrower, so they can be drawn larger and the text gets bigger. Good for a tall, narrow widget.' },
     { key: 'fill', rowsOnly: true, label: 'Fill the frame', type: 'select', default: 'off', choices: [['off', 'Off: the rows keep the shape of the design'], ['rows', 'Taller rows'], ['gaps', 'More space between the rows']], hint: 'In a tall frame the rows keep the shape of the design and the empty space is under the last row. Taller rows: the rows grow taller until they fill the frame (the text keeps its size). More space between the rows: they keep their shape and the empty space goes between them. A frame that the rows already fill (for example a wide frame with many drivers) does not change. Size of the rows still applies: at 50% the board fills half the frame.' },

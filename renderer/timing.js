@@ -11,6 +11,7 @@
   const Ww = typeof module !== 'undefined' ? require('./weatherwidgets.js') : root.WxW; // the weather widgets (weatherwidgets.js)
   const En = typeof module !== 'undefined' ? require('./endurance.js') : root.Endurance; // the Endurance Race (endurance.js)
   const Dm = typeof module !== 'undefined' ? require('./damage.js') : root.Damage; // the Damage System (damage.js)
+  const Bo = typeof module !== 'undefined' ? require('./boardorder.js') : root.BoardOrder; // the order of a leaderboard (boardorder.js)
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
   const median = a => { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
@@ -70,6 +71,45 @@
     return { clock: clockText(S.eng.elapsed(t)), timeleft: time ? mmss(Math.max(0, time - S.eng.elapsed(t))) : '–', lapsleft: laps ? Math.max(0, laps - most) : '–', lapstotal: laps || '–', leader: lead && lead.car ? esc(lead.car.driverName) : '–',
       flag: st === 'red' ? 'Red flag' : st === 'yellow' ? 'Yellow flag' : flagText[st] || '', heat: S.heat ? heatLabel(S.heat) : '',
       track: esc((S.track && S.track.name) || ''), session: esc(S.setup.name || ''), type: esc(sessionLabel[S.setup.ofType || S.setup.sessionType] || ''), sessionrecord: rec(sr), sessionrecordby: by(sr), trackrecord: rec(tr), trackrecordby: by(tr), yellowtarget: S.eng.yellow && S.eng.yellow.target > 0 ? E.fmtTime(S.eng.yellow.target) : '', ...Ww.raceVars(S.eng, t) };
+  }
+
+  // The value a leaderboard is ordered by (see boardorder.js), as a number (or the name as text); null when the car has none yet: no lap, or the race has no such rule.
+  // Times are in milliseconds. t: the moment the values are read at.
+  function orderValue(key, c, S, t) {
+    const E_ = S.eng, i = E_.cars.indexOf(c), n = c.laps.length, P = E_.penalty, F = E_.fuel, ch = S.champ;
+    const good = () => E.goodLaps(c);
+    switch (key) {
+      case 'best': return c.best === null || c.best === undefined ? null : c.best;
+      case 'last': return n ? c.laps[n - 1] : null;
+      case 'avg': return good().length ? mean(good()) : null;
+      case 'median': return good().length ? median(good()) : null;
+      case 'record': { const b = S.personalBest(c.driverId); return Number.isFinite(b) ? b : null; }
+      case 'laps': return n;
+      case 'speed': { // the speed of the last lap, as the Speed widget shows it by default (scaled)
+        const track = S.track || {}, base = n ? Sp.kmh(Sp.laneLength(track, c.lane), c.laps[n - 1]) : null, f = Sp.scaleFactor(c.carScale) || Sp.scaleFactor(track.scale);
+        return base === null || !f ? null : base * f;
+      }
+      case 'champ': { // the championship points of the heat race, as the widget shows them (with the points of the place the car is in while the race runs)
+        if (!(ch && ch.on)) return null;
+        let v = ch.done.get(c.asTeam ? c.teamId : c.driverId) || 0;
+        if (['running', 'paused', 'review'].includes(S.phase) && E_.cars.some(x => x.laps.length)) v += ch.list[S.rowOf(c).pos - 1] || 0;
+        return v;
+      }
+      case 'penpoints': return P && P.on ? (c.dq ? Infinity : c.points) : null; // (a disqualified car is the worst there is)
+      case 'pentime': return P && P.on ? E_.penMs(c) : null;
+      case 'damage': { const d = damageLook(S, c, t); return d ? d.points : null; }
+      case 'pits': return c.pits ? c.pits.length : 0;
+      case 'fuel': return F && F.on && i >= 0 ? E_.fuelOf(i, t) : null;
+      case 'lane': return c.lane;
+      case 'name': return c.driverName || '';
+      default: return null;
+    }
+  }
+  // the standings of a leaderboard in the order it asks for (opt.orderBy, opt.orderDir); the standings themselves when it follows the race
+  function ordered(list, opt, S) {
+    if (!Bo.isOrdered(opt)) return list;
+    const t = S.eng.endAt && S.eng.status === 'finished' ? S.eng.endAt : S.now, key = Bo.keyOf(opt);
+    return Bo.order(list, opt, x => (x && x.car ? orderValue(key, x.car, S, t) : null));
   }
 
   const stateOf = S => (S.phase === 'countdown' ? 'countdown' : S.eng.flag === 'red' ? 'red' : S.eng.flag === 'yellow' ? 'yellow' : S.phase === 'review' ? 'finished' : S.phase); // the state of the race for the flag and lights widgets; a start (or restart) countdown comes first
@@ -169,8 +209,8 @@
       case 'leaderboard': {
         const design = opt.design && (S.rowDesigns || []).find(x => x.id === opt.design); // a row design you made, instead of the classic table
         const RowsM = typeof module !== 'undefined' ? require('./rows.js') : root.Rows;
-        if (design) return { html: RowsM.html(design, S, undefined, { scale: opt.scale, gaps: opt.gaps, fill: opt.fill, from: opt.from, to: opt.to }) };
-        const rows = RowsM.range(S.standings(), opt).map(x => { // (from and to: only some of the places, for a board that shows part of the field)
+        if (design) return { html: RowsM.html(design, S, undefined, { scale: opt.scale, gaps: opt.gaps, fill: opt.fill, from: opt.from, to: opt.to, orderBy: opt.orderBy, orderDir: opt.orderDir }) };
+        const rows = RowsM.range(ordered(S.standings(), opt, S), opt).map(x => { // (orderBy: the board in the order of a value; from and to: only some of the places, for a board that shows part of the field)
           const car = x.car, lc = S.laneColorsOf ? S.laneColorsOf(car.lane) : {};
           return { pos: x.pos, flag: car.flag, name: car.driverName, nickname: car.nickname || car.driverName, callsign: car.callsign || '',
             laps: String(car.laps.length), best: car.best === null ? '–' : E.fmtTime(car.best), last: car.laps.length ? E.fmtTime(car.laps[car.laps.length - 1]) : '–',
@@ -284,7 +324,7 @@
     }
   }
 
-  const api = { content, classifyLap, mean, median, contrast };
+  const api = { content, ordered, orderValue, classifyLap, mean, median, contrast };
   root.Timing = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

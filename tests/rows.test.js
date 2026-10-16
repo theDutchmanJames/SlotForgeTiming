@@ -164,4 +164,45 @@ ok('...more drivers than there are sample names still show something in every ce
   ok('...taller rows share the height (the header keeps its shape, and the row\'s own shape is let go)', has('.rrows[data-fill=rows] > .rrow:not(.rrow-head){flex:1 1 0;aspect-ratio:auto!important}'));
   ok('...more space: the rows after a row (not the one after the header) take the free height as their space', has('.rrows[data-fill=gaps] > .rrow:not(.rrow-head) + .rrow{margin-top:auto!important}'));
   ok('...and a frame without a fill is sized as before', /\.lw-val > \.rrows\{width:calc\(min\(100cqw, 100cqh \* var\(--rw, 1000\) \/ var\(--rtot, 1000\)\) \* var\(--rk, 1\)\);margin:0 auto\}/.test(css) && !/\.lw-val > \.rrows\{[^}]*height/.test(css)); }
+
+// ---- 1.19.0: a board in the order of a value (Order by) ----
+{
+  // Kim 2 laps (6.000 and 3.000, done at 9.000), Alex 2 laps (5.000 and 5.000, done at 10.000), Sam 1 lap (4.000); Sam has 3 penalty points. Race order: Kim, Alex, Sam.
+  const e2 = createRace({ type: 'race', laps: 5, endRule: 'all', minLap: 100, penalty: { on: true, mode: 'every', every: 5, seconds: 5, dq: 0, types: [] }, entries: people }); e2.start(0);
+  [5000, 10000].forEach(t => e2.cross(0, t)); e2.cross(1, 4000); [6000, 9000].forEach(t => e2.cross(2, t)); e2.addPoints(1, 3, 9500);
+  const S2 = (over = {}) => { const st = e2.standings(); return { eng: e2, now: 12000, phase: 'running', lights: 0, setup: { sessionType: 'race', laps: 5 }, heat: null, standings: () => st,
+    carByLane: l => e2.cars.find(c => c.lane === l) || null, rowOf: c => st.find(r => r.car === c), flashOf: () => null, personalBest: () => Infinity, laneColorsOf: () => ({}), rowDesigns: [{ id: 'R1', name: 'Mine', ...D }], ...over }; };
+  const board = (opt, over) => T.content({ type: 'leaderboard', opt }, S2(over)).html;
+  const order = h => ['Alex', 'Sam', 'Kim'].map(n => [n, h.indexOf('>' + n + '<')]).filter(x => x[1] >= 0).sort((a, b) => a[1] - b[1]).map(x => x[0]).join(' ');
+  const classic = opt => order(board(opt)), design = opt => order(board({ design: 'R1', ...opt }));
+  ok('the race order to begin with: Kim, Alex, Sam (the board follows the race)', classic({}) === 'Kim Alex Sam' && design({}) === 'Kim Alex Sam');
+  ok('ordered by the best lap: the fastest first (Kim 3.000, Sam 4.000, Alex 5.000), in the classic table and in a row design', classic({ orderBy: 'best' }) === 'Kim Sam Alex' && design({ orderBy: 'best' }) === 'Kim Sam Alex');
+  ok('...Worst first turns it round', classic({ orderBy: 'best', orderDir: 'worst' }) === 'Alex Sam Kim' && design({ orderBy: 'best', orderDir: 'worst' }) === 'Alex Sam Kim');
+  ok('the average lap (Sam 4.000, Kim 4.500, Alex 5.000) and the last lap (Kim 3.000, Sam 4.000, Alex 5.000)', classic({ orderBy: 'avg' }) === 'Sam Kim Alex' && design({ orderBy: 'avg' }) === 'Sam Kim Alex' && classic({ orderBy: 'last' }) === 'Kim Sam Alex');
+  ok('the laps (Kim and Alex 2, then Sam 1, the tie in race order), and the lane (Alex, Sam, Kim) and the name', classic({ orderBy: 'laps' }) === 'Kim Alex Sam' && classic({ orderBy: 'laps', orderDir: 'worst' }) === 'Sam Kim Alex'
+    && classic({ orderBy: 'lane' }) === 'Alex Sam Kim' && design({ orderBy: 'lane' }) === 'Alex Sam Kim' && classic({ orderBy: 'name' }) === 'Alex Kim Sam' && design({ orderBy: 'name', orderDir: 'worst' }) === 'Sam Kim Alex');
+  ok('the penalty points: the cleanest first (Kim and Alex 0 in race order, Sam 3), and the most first with Worst first (Sam, then the others in race order)', classic({ orderBy: 'penpoints' }) === 'Kim Alex Sam' && classic({ orderBy: 'penpoints', orderDir: 'worst' }) === 'Sam Kim Alex'
+    && design({ orderBy: 'penpoints', orderDir: 'worst' }) === 'Sam Kim Alex');
+  ok('a value this race has not got (no fuel rule, no damage rule, no championship points, no speed without a track length) leaves the race order', ['fuel', 'damage', 'champ', 'speed', 'pits', 'record'].every(k => classic({ orderBy: k }) === 'Kim Alex Sam' && design({ orderBy: k }) === 'Kim Alex Sam'));
+  ok('...and so does a setting that is not a value (a damaged file)', classic({ orderBy: 'bogus' }) === 'Kim Alex Sam' && design({ orderBy: 7, orderDir: 'sideways' }) === 'Kim Alex Sam');
+  ok('a board that follows the race is drawn exactly as before: the same text with the settings left out, "Race position" chosen or a direction without a value', board({}) === board({ orderBy: 'position' }) && board({}) === board({ orderDir: 'worst' }) && board({ design: 'R1' }) === board({ design: 'R1', orderBy: 'position', orderDir: 'worst' }));
+  ok('the From place and To place count in the order of the board: places 2 to 2 of the best-lap order is Sam, 1 to 1 is Kim, from 3 is Alex', classic({ orderBy: 'best', from: 2, to: 2 }) === 'Sam' && design({ orderBy: 'best', from: 2, to: 2 }) === 'Sam'
+    && classic({ orderBy: 'best', to: 1 }) === 'Kim' && design({ orderBy: 'best', from: 3 }) === 'Alex' && classic({ orderBy: 'lane', from: 2 }) === 'Sam Kim');
+  { // the Position cell and the leader look of an ordered board
+    const rowsOf = h => h.split('class="rrow ').slice(1), cls = r => r.slice(0, r.indexOf('"')), pos = r => (/class="lw live rcell[^"]*"[^>]*><span class="lw-val"[^>]*>(\d+)</.exec(r) || [])[1];
+    const lane = rowsOf(board({ design: 'R1', orderBy: 'lane' })), race = rowsOf(board({ design: 'R1' }));
+    ok('the Position cell of an ordered board counts its rows (1, 2, 3), the board of the race shows the places of the race', lane.map(pos).join() === '1,2,3' && race.map(pos).join() === '1,2,3' && rowsOf(board({ design: 'R1', orderBy: 'lane', orderDir: 'worst' })).map(pos).join() === '1,2,3');
+    ok('...so in the lane order Alex is first (position 1) though Kim leads the race, and Kim is third', lane[0].includes('>Alex<') && pos(lane[0]) === '1' && lane[2].includes('>Kim<') && pos(lane[2]) === '3');
+    ok('the first row of an ordered board has the leader look (the leader of that order), the race leader does not keep it', cls(lane[0]).includes('rrow-leader') && !cls(lane[2]).includes('rrow-leader') && cls(race[0]).includes('rrow-leader') && race[0].includes('>Kim<'));
+    const cl = board({ orderBy: 'lane' }).split('<tr>').slice(1), posOf = r => (/lb-pos">(\d+)</.exec(r) || [])[1];
+    ok('the classic table counts its rows too: Pos 1 for Alex, 2 for Sam, 3 for Kim (Kim leads the race)', cl.length === 3 && cl.map(posOf).join() === '1,2,3' && cl[0].includes('>Alex<') && cl[2].includes('>Kim<') && board({}).split('<tr>').slice(1)[0].includes('>Kim<')); }
+  { const alexGap = e2.standings().find(x => x.car.driverName === 'Alex').gap;
+    ok('the other cells keep their own values in an ordered board: Kim\'s best lap is still 3.000 and Alex has the gap of the race, not a gap in the order of the board', !!alexGap && board({ orderBy: 'lane' }).includes('>3.000<') && board({ orderBy: 'lane' }).includes('>' + alexGap + '<') && board({ design: 'R1', orderBy: 'lane' }).includes('>3.000<')); }
+  ok('the Leaderboard widget has "Order by" (a choice of values, the race position as the standard) and "Best or worst on top" that only shows when a value is chosen', (() => {
+    const o = Wd.def('leaderboard').options, by = o.find(x => x.key === 'orderBy'), dir = o.find(x => x.key === 'orderDir');
+    return by && dir && by.type === 'select' && by.default === 'position' && by.rerender === true && by.choices[0][0] === 'position' && by.choices.length === 16 && typeof by.hintOf === 'function' && by.hintOf('best').includes('fastest lap')
+      && dir.type === 'select' && dir.default === 'best' && dir.choices.map(c => c[0]).join() === 'best,worst' && dir.show({}) === false && dir.show({ orderBy: 'position' }) === false && dir.show({ orderBy: 'best' }) === true && !by.classic && !by.rowsOnly && !dir.classic && !dir.rowsOnly;
+  })());
+}
+
 console.log(fails ? fails + ' ROW TESTS FAILED' : 'ALL ROW TESTS PASSED'); process.exit(fails ? 1 : 0);

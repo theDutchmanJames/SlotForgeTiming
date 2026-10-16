@@ -206,4 +206,7 @@ const folders = Help.folders();
   say('1.18.0: the Delta Timers folder says the value and the badge can be top and bottom, and that the time is then on top', dl.includes('Value and badge') && dl.includes('top and bottom') && dl.includes('the time on top, the badge below it') && dl.length < 1400);
   say('1.18.1: ...and that the arrow and the number shrink to stay inside the badge in a small or narrow widget', dl.includes('shrink by themselves to stay inside the badge') && dl.includes('small or narrow')); }
 
+{ const lv = plain(folders.find(x => x.id === 'live').body); // 1.19.0
+  say('1.19.0: the Live Race folder says a board can be sorted by a value (Order by): the best lap for a fastest laps board, laps, points, penalties, with the best or worst first', lv.includes('Order by') && lv.includes('fastest laps board') && lv.includes('laps, points, penalties') && lv.includes('best or worst first')); }
+
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

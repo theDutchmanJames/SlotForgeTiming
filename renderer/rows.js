@@ -127,12 +127,12 @@
   // o.scale: the "Size of the rows" setting of the widget, o.gaps: its "Space between the columns", o.fill: its "Fill the frame".
   function html(d, S, max, o) {
     const T = typeof module !== 'undefined' ? require('./timing.js') : root.Timing, s = settings(d), L = layoutOf(d, o);
-    const list = range(S.standings() || [], o).slice(0, max || 99);
+    const list = range(T.ordered((S.standings() || []), o, S), o).slice(0, max || 99); // (a board that is ordered by a value: that order, then the places from .. to)
     const rows = list.map((x, i) => {
       const car = x.car, st = s.states ? stateOf(car, x.pos) : '';
       const base = st ? { color: s[st + 'Text'], bg: s[st + 'Bg'] } : { color: s.rowText, bg: i % 2 && s.altBg ? s.altBg : s.rowBg };
       const cells = d.widgets.filter(w => Wd.def(w.type) && Wd.def(w.type).perLane).map(w => {
-        const out = T.content({ ...w, lane: car.lane }, S);
+        const out = x.byOrder && w.type === 'position' ? { html: String(x.pos) } : T.content({ ...w, lane: car.lane }, S); // (in an ordered board the Position cell counts the rows of the board)
         const color = w.textColor || out.color || '', bg = w.bgColor || out.bg || '';
         return `<div class="lw live rcell${Wd.alignClassOf(w)}" style="${cellStyle(w, s, L)};${colourStyle(color, bg)}"><span class="lw-val"${Wd.valueStyleOf ? ` style="${Wd.valueStyleOf(w)}"` : ''}>${out.html}</span></div>`;
       }).join('');
