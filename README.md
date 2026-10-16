@@ -1701,3 +1701,25 @@ Good to know:
 4. **GitHub tags** (v0.97.0 to v1.10.1) are still not pushed; they are refused from here. The code itself is pushed to the main branch.
 5. The tests: additions to `tests/screens.test.js` (no Available on Home, both looks of the Live Race button and the stylesheet), `tests/teamsscreen.test.js` (the Team choice only in an Endurance Race and in heats with teams, the three columns, a stale team ignored) and `tests/help.test.js`.
 6. Files: `renderer/landing.js`, `renderer/app.js`, `renderer/styles.css`, `renderer/help.js`.
+
+## What to try (1.11.0): a grid of leaderboards, and the Rule sets folder
+Two things from your note of Friday 16 October.
+1. **The folder "Penalties, fuel and pits" in a race setup is now called "Rule sets".** It holds the Penalty system, Damage system, Fuel setup, Balance of Power, Weather system and the pit hold time, so a short name that covers all of them is better than a list. The grey line under the name lists them. Nothing else changed: the settings are where they were.
+2. **The Leaderboard page (Live Race tab > Leaderboard tile) is a grid.** Open **Customize**:
+   - **Grid**: little squares, 6 across and 4 down. Click the square at the bottom right of the size you want: 4 across and 1 down is four boards side by side, 2 by 2 is four boards in a square. The size is written next to the squares.
+   - **Leaderboard in every cell**: a list per cell with *(empty)*, *Classic table* and every row design you made in Customization > Leaderboard Editor. Choose one and the board is there. Choosing *(empty)* takes the board out again.
+   - **Board settings** (press *Board 2 settings* on a cell): **Columns it covers** and **Rows it covers** (a board can be wider or taller, as far as the cells next to it are free: one big board and two small ones), **From place** and **To place** (a board that shows places 1 to 4, another 5 to 8; empty = everybody), and for the classic table its columns.
+   - The boards share the row of the grid, so they stay the same height. The text of the classic table gets smaller in a narrow board; row designs scale to the width of their board. On a phone fewer columns read better.
+   - What you had before is kept: one board is a grid of 1 by 1, two boards one under the other 1 column by 2 rows, side by side 2 columns by 1 row. Your choices (row design, columns) are in the boards. The grid is saved for the device you set it on (a phone has its own).
+3. **The Leaderboard widget has the same two settings** (Layout Editor, the settings of the widget): **From place** and **To place**. So a leaderboard on the timing page can also show only part of the field.
+
+Try it: in Customization > Leaderboard Editor make two small row designs, for example one with the position, name and laps and one with the name and the best lap. Start a race with *Simulated cars*, open Live Race > Leaderboard > Customize, click the fourth square on the first row (4 columns by 1 row) and choose a design for each cell. Press *Board 1 settings* and set *To place* to 4; on the next board set *From place* to 5. In a Race Setup, open the **Rule sets** folder.
+
+Good to know:
+1. **The order of a board is always the race order.** A board cannot be sorted by best lap (yet). A "fastest laps" board would need that; tell me if you want it.
+2. **An empty cell stays empty**: the other boards do not move into it. Pick a smaller grid if you want no gaps.
+3. **A smaller grid drops the boards outside it** and cuts back a board that sticks out; making the grid bigger again does not bring them back.
+4. **The Layout Editor** still places leaderboard widgets freely on a timing page; the grid is for the Leaderboard page only.
+5. **GitHub tags** (v0.97.0 to v1.11.0) are still not pushed; they are refused from here. The code itself is pushed to the main branch.
+6. The tests: `tests/livegrid.test.js` (new: the rules of the grid, the places, the stylesheet), the Leaderboard page tests in `tests/live.test.js` (the old one-or-two-boards tests are replaced), and additions to `tests/help.test.js` and `tests/screens.test.js`.
+7. Files: `renderer/livegrid.js` (new), `renderer/liveview.js`, `renderer/rows.js`, `renderer/timing.js`, `renderer/widgets.js`, `renderer/styles.css`, `renderer/index.html`, `renderer/help.js`, `schema.js`.

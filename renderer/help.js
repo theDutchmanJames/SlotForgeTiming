@@ -65,7 +65,7 @@ const Help = (() => {
           <li><b>Weather Systems</b>: a spell of rain with a forecast, the tyres to change in the pits, what the wrong tyres cost, and the temperatures and the wind of every weather.</li>
           <li><b>Balance of Power</b>: how much a fast car is hindered and a slow car helped, by hand or by itself.</li>
           <li><b>Time Tokens</b>: the time buttons and the warning for a Time Token Session.</li>
-          <li>Fuel setups, penalty systems, damage systems and weather systems do nothing until you choose them in a race setup.</li>
+          <li>Fuel setups, penalty systems, damage systems and weather systems do nothing until you choose them in the <b>Rule sets</b> folder of a race setup (Balance of Power and the pit hold time are there too).</li>
         </ul>` },
       { id: 'types', title: 'Session types', note: 'Seven ways to race', body: `
         <ul>
@@ -206,7 +206,7 @@ const Help = (() => {
       { id: 'custom', title: 'Customization', note: 'Layouts, audio, pictures and your own widgets', body: `
         <ul>
           <li><b>Layout Editor</b>: design a timing page by placing widgets (lap times, the leaderboard, start lights, the race flag, Race Laps counting up or down, fuel, speed and many more). Drag, resize, undo and redo. Make a different layout for the second screen.</li>
-          <li><b>Leaderboard Editor</b>: design the rows of the Leaderboard widget.</li>
+          <li><b>Leaderboard Editor</b>: design the rows of the Leaderboard widget, also side by side in the grid of the Leaderboard page.</li>
           <li><b>Audio Settings</b>: what the race says (see Audio calls below).</li>
           <li><b>Image Settings</b>: picture sets for the start lights, the race flag, the fuel level, the avatars, the tyres, the weather and the track conditions (what you leave empty is drawn). A start lights set is a grid: a picture for every light and every state of the race, such as the yellow flag. An <b>Avatars</b> set has a picture for each of the 8 lanes: the Avatar widget shows the picture of the driver, and a driver without one gets the avatar of the lane he or she drives in (the built-in standard avatars, unless you choose a set). Choose a set in the widget in the Layout Editor. The Race Flag widget can mirror the pictures of a set, and the Avatar widget can mirror its pictures.</li>
           <li>Every widget can align its <b>title</b> and its <b>text</b> to the left, the center or the right (the Leaderboard only its title).</li>
@@ -244,6 +244,7 @@ const Help = (() => {
           <li><b>Open on a second screen</b> puts these pages in their own window, for a TV or a projector. <b>Full screen</b> fills it.</li>
           <li>The <b>Race timing</b> page shows only the widget layout, without race buttons. Move the mouse or touch the screen to bring back the bar with the page choice and the full screen button.</li>
           <li>The pages follow the race that is running. They fill in as soon as a race starts.</li>
+          <li>The <b>Leaderboard</b> page is a grid: under <b>Customize</b> pick the number of columns and rows with the little squares, and choose a leaderboard for every cell (a row design from the Leaderboard Editor, or the classic table). A board can cover more cells and show only some places, such as 5 to 8.</li>
           <li>The <b>Live Race</b> button in the top bar has its red light on while a race is on, and is greyed out with the light off when no race is running. It opens the pages either way.</li>
           <li>The Race Director and Tokens pages are the only ones that change anything, so they have their own look.</li>
         </ul>` },

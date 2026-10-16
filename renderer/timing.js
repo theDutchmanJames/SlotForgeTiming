@@ -168,8 +168,9 @@
       case 'heatlist': return { html: S.heat ? Wd.heatListHtml(S.heat, S.phase, opt) : '\u2013' }; // every heat of a heat-based race, with who won it
       case 'leaderboard': {
         const design = opt.design && (S.rowDesigns || []).find(x => x.id === opt.design); // a row design you made, instead of the classic table
-        if (design) return { html: (typeof module !== 'undefined' ? require('./rows.js') : root.Rows).html(design, S, undefined, { scale: opt.scale, gaps: opt.gaps, fill: opt.fill }) };
-        const rows = S.standings().map(x => {
+        const RowsM = typeof module !== 'undefined' ? require('./rows.js') : root.Rows;
+        if (design) return { html: RowsM.html(design, S, undefined, { scale: opt.scale, gaps: opt.gaps, fill: opt.fill, from: opt.from, to: opt.to }) };
+        const rows = RowsM.range(S.standings(), opt).map(x => { // (from and to: only some of the places, for a board that shows part of the field)
           const car = x.car, lc = S.laneColorsOf ? S.laneColorsOf(car.lane) : {};
           return { pos: x.pos, flag: car.flag, name: car.driverName, nickname: car.nickname || car.driverName, callsign: car.callsign || '',
             laps: String(car.laps.length), best: car.best === null ? '–' : E.fmtTime(car.best), last: car.laps.length ? E.fmtTime(car.laps[car.laps.length - 1]) : '–',

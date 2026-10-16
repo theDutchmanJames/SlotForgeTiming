@@ -337,9 +337,20 @@ dialog:has(.formgrid) form{display:flex;flex-direction:column;max-height:calc(90
 .rrows[data-fill=rows] > .rrow:not(.rrow-head){flex:1 1 0;aspect-ratio:auto!important}
 .rrows[data-fill=gaps] > .rrow:not(.rrow-head) + .rrow{margin-top:auto!important}
 
-.lv-boards{display:grid;gap:16px}
-.lv-boards.side{grid-template-columns:1fr 1fr}
-.lv-boards .lv-board{min-width:0}
+.lv-grid{display:grid;gap:16px;align-items:stretch} /* the boards of the Leaderboard page (1.11.0): each in its own cells (grid-column and grid-row are set on the board) */
+.lv-grid .lv-board{min-width:0;container-type:inline-size}
+.lv-grid .lv-board > table{font-size:clamp(13px,2.4cqw,38px)} /* the classic table grows with the width of its own board, not with the screen */
+.lv-gridtool{margin-top:10px}
+.lv-gridtool .lbl{font-size:13px;color:var(--muted)}
+.lv-gridpick{display:grid;grid-template-columns:repeat(6,28px);gap:4px}
+.lv-gp{width:28px;height:28px;padding:0;border:1px solid var(--line);border-radius:4px;background:transparent;cursor:pointer}
+.lv-gp.on{background:var(--accent);border-color:var(--accent)}
+.lv-gp:hover{border-color:var(--ink)}
+.lv-gridmap{display:grid;gap:6px}
+.lv-gcell{display:flex;flex-direction:column;gap:6px;min-width:0;padding:6px;border:1px dashed var(--line);border-radius:6px}
+.lv-gcell.sel{border:2px solid var(--accent);padding:5px}
+.lv-gcell.empty{opacity:.75}
+.lv-gcell select{width:100%}
 .lv-optset{border:1px solid var(--line);border-radius:8px;margin:10px 0 0;padding:4px 12px 8px}
 .lcsample{font-size:.6em;opacity:.7}
 

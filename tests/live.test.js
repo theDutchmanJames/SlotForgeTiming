@@ -31,7 +31,7 @@ const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if
 for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function') api[k] = (...x) => { x.forEach(v => { if (typeof v !== 'function') structuredClone(v); }); return f(...x); }; }
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'livegrid.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -768,7 +768,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
       say('a number that is not a number (nothing yet, infinity) is left as it is', LS.cap(null) === null && LS.cap(Infinity) === Infinity && LS.cap('x') === 'x' && LS.cap(5) === 5); }
   }
   run('delete state.settings.clubLogo');
-  say('the shared race carries the row designs and the page offers them', sent.stat.rowDesigns.length === 1 && body().innerHTML.includes('id="lb-design0"') && body().innerHTML.includes('Wide rows'));
+  say('the shared race carries the row designs and the page offers them', sent.stat.rowDesigns.length === 1 && body().innerHTML.includes('data-lbcell="0"') && body().innerHTML.includes('Wide rows'));
   const viaViewer = run(`(() => { const V = LiveShare.viewer(); V.feedStatic(__sent.stat); V.feedDynamic(__sent.dyn, performance.now()); return Timing.content({ type: 'leaderboard', opt: { design: 'RD1' } }, V.shared(performance.now())).html; })()`);
   say('a viewer draws the leaderboard widget with the row design', viaViewer.includes('rrows') && viaViewer.includes('Alex') && viaViewer.includes('Sam') && !viaViewer.includes('<table'));
   const fits0 = ctx.__fits;
@@ -776,21 +776,73 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   say('Leaderboard page with a row design chosen shows the rows and hides the column choices', E('lv-board').innerHTML.includes('rrows') && !body().innerHTML.includes('data-lb="colLast"') && body().innerHTML.includes('value="RD1" selected'));
   say('...its text is fitted to the cells, and there is no size slider on that page', ctx.__fits > fits0 && !body().innerHTML.includes('Size of the rows'));
   run("state.settings.liveBoard = {}"); run('LiveView.go')('board');
-  say('the page offers a second board', body().innerHTML.includes('id="lb-count"') && !body().innerHTML.includes('id="lb-side"') && !body().innerHTML.includes('Board 2'));
   const chg = (dataset, value, type) => body().onchange({ target: { dataset, value, type } });
-  await chg({ lbcfg: 'count' }, '2'); await wait(20);
-  say('two boards: one under the other, each with its own settings', (E('lv-board').innerHTML.match(/class="lv-board"/g) || []).length === 2 && !body().innerHTML.includes('lv-boards side') && body().innerHTML.includes('Board 2') && body().innerHTML.includes('id="lb-design1"') && body().innerHTML.includes('id="lb-side"'));
-  await chg({ lbcfg: 'side' }, 'side'); await wait(20);
-  say('...or side by side', body().innerHTML.includes('lv-boards side'));
-  await chg({ lb: 'design', b: '1' }, 'RD1'); await wait(20);
-  say('the second board has its own row design while the first stays classic', E('lv-board').innerHTML.includes('<table class="lb">') && (E('lv-board').innerHTML.match(/rrows/g) || []).length === 1 && run('state.settings.liveBoard2.design') === 'RD1' && !run('state.settings.liveBoard.design'));
-  await chg({ lb: 'design', b: '0' }, 'RD1'); await wait(20);
-  say('both boards can use row designs', (E('lv-board').innerHTML.match(/rrows/g) || []).length === 2);
-  await chg({ lb: 'design', b: '0' }, ''); await wait(20);
-  say('...the first board can be the classic table while the second uses rows', E('lv-board').innerHTML.includes('<table class="lb">') && (E('lv-board').innerHTML.match(/rrows/g) || []).length === 1);
-  await chg({ lbcfg: 'count' }, '1'); await wait(20);
-  run("state.settings.liveBoards = {}; state.settings.liveBoard2 = undefined; state.settings.liveBoard = {}"); run('LiveView.go')('board');
+  const clk = dataset => body().onclick({ target: { closest: () => ({ dataset }) } });
+  const boards = () => E('lv-board').innerHTML.split('class="lv-board"').slice(1);
+  const cnt = (h, re) => (h.match(re) || []).length;
+  say('1.11.0: the page offers a grid: 24 squares to pick it (6 by 4), its size in words, and one cell with the classic table', cnt(body().innerHTML, /data-lbgrid=/g) === 24 && body().innerHTML.includes('1 column × 1 row') && body().innerHTML.includes('data-lbcell="0"') && boards().length === 1 && boards()[0].includes('<table class="lb">') && body().innerHTML.includes('data-lb="colLast"'));
+  say('...the Customize list is closed when the page opens', body().innerHTML.includes('<details class="lv-opts"><summary>'));
+  await clk({ lbgrid: '4,1' }); await wait(20);
+  say('picking 4 columns by 1 row gives four cells: the board stays in the first, three are empty', body().innerHTML.includes('4 columns × 1 row') && cnt(body().innerHTML, /data-lbadd=/g) === 3 && boards().length === 1 && run('state.settings.liveGrid.cols') === 4 && run('state.settings.liveGrid.rows') === 1);
+  say('...the grid is saved as a grid (the old settings are not touched), and the list stays open while you work in it', run('state.settings.liveGrid.boards.length') === 1 && body().innerHTML.includes('<details class="lv-opts" open>'));
+  await chg({ lbadd: '2,1' }, 'RD1'); await wait(20);
+  say('a row design for an empty cell makes a board there, next to the first', boards().length === 2 && boards()[0].includes('<table class="lb">') && boards()[1].includes('rrows') && boards()[1].includes('grid-column:2 / span 1') && cnt(body().innerHTML, /data-lbadd=/g) === 2);
+  await chg({ lbadd: '3,1' }, '~classic'); await chg({ lbadd: '4,1' }, 'RD1'); await wait(20);
+  say('four boards side by side, each in its own column', boards().length === 4 && E('lv-board').innerHTML.includes('grid-template-columns:repeat(4,minmax(0,1fr))') && boards().map(b => b.includes('rrows') ? 'R' : 'C').join('') === 'CRCR' && cnt(body().innerHTML, /data-lbadd=/g) === 0);
+  say('...with a cell of its own in the Customize list: the leaderboard of every board is chosen there', cnt(body().innerHTML, /data-lbcell="\d"/g) === 4 && body().innerHTML.includes('aria-label="Leaderboard in column 3, row 1"'));
+  // places from .. to, per board
+  const names = h => ['Alex', 'Sam'].filter(n => h.includes(n)).join();
+  await clk({ lbsel: '0' }); await chg({ lb: 'from' }, '2', 'number'); await wait(20);
+  say('board 1 with From place 2 shows the second place only; the other boards still show everybody', run('state.settings.liveGrid.boards[0].opt.from') === '2' && names(boards()[0]) !== '' && names(boards()[0]).split(',').length === 1 && names(boards()[2]).split(',').length === 2 && names(boards()[1]).split(',').length === 2);
+  const second = names(boards()[0]);
+  await chg({ lb: 'from' }, '', 'number'); await chg({ lb: 'to' }, '1', 'number'); await wait(20);
+  say('...and with To place 1 the first place only', names(boards()[0]).split(',').length === 1 && names(boards()[0]) !== second);
+  await chg({ lb: 'to' }, '', 'number'); await wait(20);
+  say('...both empty: everybody again', names(boards()[0]).split(',').length === 2);
+  await clk({ lbsel: '1' }); await wait(20);
+  say('the settings of another board are shown on its own button (a row design has no column choices)', body().innerHTML.includes('Board 2 (column 2, row 1)') && !body().innerHTML.includes('data-lb="colLast"') && body().innerHTML.includes('id="lb-from"') && body().innerHTML.includes('id="lb-to"'));
+  await clk({ lbsel: '2' }); await wait(20);
+  say('...and a classic board has them', body().innerHTML.includes('Board 3 (column 3, row 1)') && body().innerHTML.includes('data-lb="colLast"') && body().innerHTML.includes('id="lb-w"') && body().innerHTML.includes('id="lb-h"'));
+  body().onchange({ target: { dataset: { lb: 'colLast' }, checked: true, type: 'checkbox' } }); await wait(20);
+  say('...a column choice is for that board only', run('state.settings.liveGrid.boards[2].opt.colLast') === true && !run('state.settings.liveGrid.boards[0].opt.colLast') && boards()[2].includes('lb-last') && !boards()[0].includes('lb-last'));
+  // boards that cover more cells
+  say('a board that has another board next to it cannot be wider (only 1 is offered)', !/<select id="lb-w"[^>]*><option value="1" selected>1<\/option><option value="2"/.test(body().innerHTML));
+  await chg({ lbspan: 'w' }, '2'); await wait(20);
+  say('...and asking for it anyway changes nothing', boards().length === 4 && run('state.settings.liveGrid.boards[2].w') === 1);
+  await chg({ lbcell: '3' }, ''); await wait(20);
+  say('a leaderboard of "(empty)" takes the board out of its cell', boards().length === 3 && cnt(body().innerHTML, /data-lbadd=/g) === 1 && run('state.settings.liveGrid.boards.length') === 3);
+  await clk({ lbsel: '2' }); await wait(20);
+  say('...now that the cell next to it is free, the board can be wider', /<select id="lb-w"[^>]*><option value="1" selected>1<\/option><option value="2">2<\/option><\/select>/.test(body().innerHTML));
+  await chg({ lbspan: 'w' }, '2'); await wait(20);
+  say('a board over two columns: drawn once, over both', boards().length === 3 && boards()[2].includes('grid-column:3 / span 2') && cnt(body().innerHTML, /data-lbadd=/g) === 0);
+  say('...and in the list of cells it is one cell, as wide as the board', body().innerHTML.includes('grid-column:3 / span 2;grid-row:1 / span 1"><select'));
+  await clk({ lbgrid: '4,2' }); await wait(20);
+  await chg({ lbspan: 'h' }, '2'); await wait(20);
+  say('a taller board in a grid of two rows covers both', run('state.settings.liveGrid.boards[2].h') === 2 && boards()[2].includes('grid-row:1 / span 2') && cnt(body().innerHTML, /data-lbadd=/g) === 2);
+  await clk({ lbgrid: '2,1' }); await wait(20);
+  say('a smaller grid drops the boards outside it and cuts back what sticks out', boards().length === 2 && run('state.settings.liveGrid.cols') === 2 && run('state.settings.liveGrid.rows') === 1 && boards().every(b => b.includes('span 1;grid-row:1 / span 1')));
+  // the old two boards are read as a grid
+  run("state.settings.liveGrid = undefined; state.settings.liveBoards = { count: 2, side: true }; state.settings.liveBoard = {}; state.settings.liveBoard2 = { design: 'RD1' }"); run('LiveView.go')('board');
+  say('the old settings (two boards side by side) are a grid of 2 columns until a grid is saved', body().innerHTML.includes('2 columns × 1 row') && boards().length === 2 && boards()[0].includes('<table class="lb">') && boards()[1].includes('rrows') && !body().innerHTML.includes('<details class="lv-opts" open>'));
+  run("state.settings.liveBoards = { count: 2 }"); run('LiveView.go')('board');
+  say('...and two boards one under the other are 1 column and 2 rows', body().innerHTML.includes('1 column × 2 rows') && boards()[1].includes('grid-row:2 / span 1'));
+  // a row design that is gone
+  run("state.settings.liveBoards = {}; state.settings.liveBoard = { design: 'GONE' }"); run('LiveView.go')('board');
+  say('a board with a row design that does not exist any more is the classic table, and says so in its list', boards()[0].includes('<table class="lb">') && /<option value="~classic" selected>/.test(body().innerHTML));
+  // no board at all
+  run("state.settings.liveBoard = {}; state.settings.liveGrid = { cols: 2, rows: 1, boards: [{ c: 1, r: 1, w: 1, h: 1, opt: {} }] }"); run('LiveView.go')('board');
+  await chg({ lbcell: '0' }, ''); await wait(20);
+  say('with no board in the grid the page says so, and the list says to pick one', E('lv-board').innerHTML.includes('No leaderboard in the grid yet') && body().innerHTML.includes('Pick a leaderboard for a cell') && cnt(body().innerHTML, /data-lbadd=/g) === 2 && boards().length === 0);
+  await chg({ lbadd: '1,1' }, '~classic'); await wait(20);
+  say('...and a leaderboard for a cell brings a board back', boards().length === 1 && boards()[0].includes('<table class="lb">'));
+  run("state.settings.liveGrid = undefined; state.settings.liveBoards = {}; state.settings.liveBoard2 = undefined; state.settings.liveBoard = {}"); run('LiveView.go')('board');
   say('...and back to the classic table', E('lv-board').innerHTML.includes('<table class="lb">') && body().innerHTML.includes('data-lb="colLast"'));
+  { // the places in the widget itself (also for a viewer on a phone)
+    const html = o => run(`(() => { const V = LiveShare.viewer(); V.feedStatic(__sent.stat); V.feedDynamic(__sent.dyn, performance.now()); return Timing.content({ type: 'leaderboard', opt: ${JSON.stringify(o)} }, V.shared(performance.now())).html; })()`);
+    const who = h => ['Alex', 'Sam'].filter(n => h.includes(n));
+    say('the Leaderboard widget with From place and To place shows those places: the classic table', who(html({})).length === 2 && who(html({ from: 2 })).length === 1 && who(html({ to: 1 })).length === 1 && who(html({ from: 2 }))[0] !== who(html({ to: 1 }))[0] && who(html({ from: 3 })).length === 0);
+    say('...and a row design', who(html({ design: 'RD1', from: 2 })).length === 1 && who(html({ design: 'RD1', to: 1 })).length === 1 && who(html({ design: 'RD1', from: 2 }))[0] !== who(html({ design: 'RD1', to: 1 }))[0] && who(html({ design: 'RD1' })).length === 2);
+  }
   run('LiveView.go')('driver');
   say('Driver stats page shows the picked driver with laps and best lap', E('lv-dstats').innerHTML.includes('Alex') && E('lv-dstats').innerHTML.includes('Best lap') && E('lv-dstats').innerHTML.includes('Laps'));
   run('LiveView.go')('rules');

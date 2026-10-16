@@ -116,11 +116,18 @@
     }).join(''), L);
   }
 
+  // Only the places from .. to of a ranking (1.11.0, for a leaderboard that shows part of the field, such as places 5 to 8). o.from: the first place (empty or 1 = from the first),
+  // o.to: the last place (empty or 0 = to the last). A "to" before "from" shows nobody.
+  function range(list, o) {
+    const from = Math.floor(Number(o && o.from)) || 1, to = Math.floor(Number(o && o.to)) || 0;
+    return from <= 1 && to <= 0 ? list : list.slice(Math.max(0, from - 1), to > 0 ? to : undefined);
+  }
+
   // The rows of a leaderboard. S = shared race state (needs standings() and what Timing.content reads). rows can be limited with max.
   // o.scale: the "Size of the rows" setting of the widget, o.gaps: its "Space between the columns", o.fill: its "Fill the frame".
   function html(d, S, max, o) {
     const T = typeof module !== 'undefined' ? require('./timing.js') : root.Timing, s = settings(d), L = layoutOf(d, o);
-    const list = (S.standings() || []).slice(0, max || 99);
+    const list = range(S.standings() || [], o).slice(0, max || 99);
     const rows = list.map((x, i) => {
       const car = x.car, st = s.states ? stateOf(car, x.pos) : '';
       const base = st ? { color: s[st + 'Text'], bg: s[st + 'Bg'] } : { color: s.rowText, bg: i % 2 && s.altBg ? s.altBg : s.rowBg };
@@ -146,7 +153,7 @@
     return `<div class="rrows"${fillAttr(o)} style="${fitStyle(d, n, o)}">${s.header ? headerHtml(d, s, L) : ''}${rows}</div>`;
   }
 
-  const api = { STATES, settings, defaultDesign, stateOf, html, sampleHtml, totalH, scaleOf, gapsOf, fillOf, layoutOf, fitStyle, fitText };
+  const api = { STATES, settings, defaultDesign, stateOf, range, html, sampleHtml, totalH, scaleOf, gapsOf, fillOf, layoutOf, fitStyle, fitText };
   root.Rows = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

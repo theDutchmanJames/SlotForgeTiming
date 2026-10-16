@@ -97,33 +97,65 @@ const LiveView = (() => {
   let revealT = null;
   const reveal = () => { if (!host || !host.classList) return; host.classList.add('lv-show'); clearTimeout(revealT); revealT = setTimeout(() => { if (host && host.classList) host.classList.remove('lv-show'); }, 2500); };
 
-  // Leaderboard page: one or two boards (one under the other, or side by side). Each board is the Leaderboard widget with its own
-  // row design (Customization > Leaderboard Editor) or the classic table. The choices are saved for this page.
-  const boardKey = i => (i ? 'liveBoard2' : 'liveBoard');
-  function drawBoard(body, fresh) {
-    const defs = Widgets.def('leaderboard').options.filter(o => o.type !== 'rowdesign' && o.type !== 'range'), designs = (V.stat() && V.stat().rowDesigns) || [];
-    const cfg = state.settings.liveBoards || {}, count = cfg.count === 2 ? 2 : 1, side = cfg.side === true;
+  // Leaderboard page: a grid of boards (1.11.0). You pick the grid with the little squares (up to 6 columns by 4 rows) and give every cell a leaderboard: a row design from
+  // Customization > Leaderboard Editor, the classic table, or nothing. A board can cover more cells (wider, taller) and show only some places (from .. to).
+  // The grid is saved for this page, on this device (the setting liveGrid; the old one or two boards are read as a grid until a grid is saved). The rules are in livegrid.js.
+  const CLASSIC = '~classic'; // (the value of "Classic table" in the lists; a row design has an id of its own)
+  let boardSel = 0, boardsOpen = false;
+  const gridTool = (g, designs, sel) => {
+    const G = LiveGrid, b = g.boards[sel], same = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+    const choice = cur => `<option value=""${cur === undefined ? ' selected' : ''}>(empty)</option><option value="${CLASSIC}"${cur === '' ? ' selected' : ''}>Classic table</option>${designs.map(r => `<option value="${esc(r.id)}"${cur === r.id ? ' selected' : ''}>${esc(r.name)}</option>`).join('')}`;
+    const squares = Array.from({ length: G.MAXR * G.MAXC }, (_, k) => { const c = k % G.MAXC + 1, r = Math.floor(k / G.MAXC) + 1; return `<button type="button" class="lv-gp${c <= g.cols && r <= g.rows ? ' on' : ''}" data-lbgrid="${c},${r}" aria-label="${same(c, 'column', 'columns')} by ${same(r, 'row', 'rows')}" aria-pressed="${c === g.cols && r === g.rows}"></button>`; }).join('');
+    const map = G.cells(g).map(x => x.board
+      ? `<div class="lv-gcell${x.index === sel ? ' sel' : ''}" style="grid-column:${x.c} / span ${x.board.w};grid-row:${x.r} / span ${x.board.h}"><select aria-label="Leaderboard in ${G.where(x.board)}" data-lbcell="${x.index}">${choice(designs.some(r => r.id === x.board.opt.design) ? x.board.opt.design : '')}</select><button type="button" class="btn" data-lbsel="${x.index}" aria-pressed="${x.index === sel}">Board ${x.index + 1} settings</button></div>`
+      : `<div class="lv-gcell empty" style="grid-column:${x.c};grid-row:${x.r}"><select aria-label="Leaderboard in column ${x.c}, row ${x.r}" data-lbadd="${x.c},${x.r}">${choice(undefined)}</select></div>`).join('');
+    let one = '<p class="muted">Pick a leaderboard for a cell to see its settings here.</p>';
+    if (b) {
+      const o = b.opt, ms = G.maxSpan(g, b), shown = Widgets.def('leaderboard').options.filter(d => d.classic);
+      const span = (key, n, max, label) => `<div class="field"><label for="lb-${key}">${label}</label><select id="lb-${key}" data-lbspan="${key}">${Array.from({ length: max }, (_, i) => `<option value="${i + 1}"${n === i + 1 ? ' selected' : ''}>${i + 1}</option>`).join('')}</select></div>`;
+      one = `<fieldset class="lv-optset"><legend>Board ${sel + 1} (${G.where(b)})</legend><div class="lv-optgrid">
+        ${span('w', b.w, ms.w, 'Columns it covers')}${span('h', b.h, ms.h, 'Rows it covers')}
+        <div class="field"><label for="lb-from">From place</label><input id="lb-from" type="number" min="1" max="99" step="1" data-lb="from" value="${esc(o.from || '')}" placeholder="1"></div>
+        <div class="field"><label for="lb-to">To place</label><input id="lb-to" type="number" min="0" max="99" step="1" data-lb="to" value="${esc(o.to || '')}" placeholder="last"></div>
+        ${designs.some(r => r.id === o.design) ? '' : shown.map(d => d.type === 'select'
+          ? `<div class="field"><label for="lb-${d.key}">${esc(d.label)}</label><select id="lb-${d.key}" data-lb="${d.key}">${d.choices.map(([k, t]) => `<option value="${k}"${(o[d.key] ?? d.default) === k ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></div>`
+          : `<div class="field"><label class="inline"><input id="lb-${d.key}" type="checkbox" data-lb="${d.key}" ${(o[d.key] ?? d.default) ? 'checked' : ''}> ${esc(d.label)}</label></div>`).join('')}</div></fieldset>`;
+    }
+    return `<div class="lv-gridtool"><div class="field"><span class="lbl" id="lb-gridlabel">Grid</span><div class="lv-gridpick" role="group" aria-labelledby="lb-gridlabel">${squares}</div><output id="lb-gridsize">${G.sizeText(g)}</output></div>
+      <div class="field"><span class="lbl">Leaderboard in every cell</span><div class="lv-gridmap" style="grid-template-columns:repeat(${g.cols},minmax(0,1fr))">${map}</div></div></div>${one}`;
+  };
+  function drawBoard(body, fresh, keepOpen) {
+    const G = LiveGrid, designs = (V.stat() && V.stat().rowDesigns) || [];
     if (fresh || !$('lv-board')) {
-      const one = i => {
-        const saved = state.settings[boardKey(i)] || {};
-        return `<fieldset class="lv-optset"><legend>${count > 1 ? `Board ${i + 1}` : 'Board'}</legend><div class="lv-optgrid"><div class="field"><label for="lb-design${i}">Row design</label><select id="lb-design${i}" data-lb="design" data-b="${i}"><option value="">Classic table</option>${designs.map(r => `<option value="${esc(r.id)}"${saved.design === r.id ? ' selected' : ''}>${esc(r.name)}</option>`).join('')}</select></div>${saved.design ? '' : defs.map(o => o.type === 'select'
-          ? `<div class="field"><label for="lb-${o.key}${i}">${esc(o.label)}</label><select id="lb-${o.key}${i}" data-lb="${o.key}" data-b="${i}">${o.choices.map(([k, t]) => `<option value="${k}"${(saved[o.key] ?? o.default) === k ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></div>`
-          : `<div class="field"><label class="inline"><input id="lb-${o.key}${i}" type="checkbox" data-lb="${o.key}" data-b="${i}" ${(saved[o.key] ?? o.default) ? 'checked' : ''}> ${esc(o.label)}</label></div>`).join('')}</div></fieldset>`;
+      if (!keepOpen) boardsOpen = false;
+      const g0 = G.gridOf(state.settings); boardSel = Math.min(Math.max(boardSel, 0), Math.max(0, g0.boards.length - 1));
+      body.innerHTML = `<details class="lv-opts"${boardsOpen ? ' open' : ''}><summary>Customize</summary>${gridTool(g0, designs, boardSel)}</details><div id="lv-board" class="lv-boards"></div>`;
+      const save = async g => { state.settings = await api.setSettings({ liveGrid: g }); boardsOpen = true; drawBoard(body, true, true); };
+      body.onclick = async e => { // a square of the grid picker, or the settings of a board
+        const b = e.target.closest ? e.target.closest('[data-lbgrid],[data-lbsel]') : null, d = (b && b.dataset) || {};
+        if (d.lbgrid) { const [c, r] = String(d.lbgrid).split(',').map(Number); return save(G.resize(G.gridOf(state.settings), c, r)); }
+        if (d.lbsel !== undefined) { boardSel = Number(d.lbsel) || 0; boardsOpen = true; drawBoard(body, true, true); }
       };
-      body.innerHTML = `<details class="lv-opts"><summary>Customize</summary>
-        <div class="lv-optgrid"><div class="field"><label for="lb-count">Boards shown</label><select id="lb-count" data-lbcfg="count"><option value="1"${count === 1 ? ' selected' : ''}>One</option><option value="2"${count === 2 ? ' selected' : ''}>Two</option></select></div>
-          ${count === 2 ? `<div class="field"><label for="lb-side">Arranged</label><select id="lb-side" data-lbcfg="side"><option value="stack"${side ? '' : ' selected'}>One under the other</option><option value="side"${side ? ' selected' : ''}>Side by side</option></select></div>` : ''}</div>
-        ${one(0)}${count === 2 ? one(1) : ''}</details>
-        <div id="lv-board" class="lv-boards${count === 2 && side ? ' side' : ''}"></div>`;
       body.onchange = async e => {
-        const t = e.target, d = t.dataset || {};
-        if (d.lbcfg) { const c = { ...(state.settings.liveBoards || {}) }; if (d.lbcfg === 'count') c.count = Number(t.value); else c.side = t.value === 'side'; state.settings = await api.setSettings({ liveBoards: c }); return drawBoard(body, true); }
-        if (!d.lb) return;
-        const key = boardKey(Number(d.b) || 0), o = { ...(state.settings[key] || {}), [d.lb]: t.type === 'checkbox' ? t.checked : t.value };
-        state.settings = await api.setSettings({ [key]: o }); if (d.lb === 'design') drawBoard(body, true); else draw(false);
+        const t = e.target, d = t.dataset || {}, g = G.gridOf(state.settings), design = v => ({ design: v === CLASSIC ? '' : v });
+        if (d.lbadd) { // a leaderboard for an empty cell
+          const [c, r] = String(d.lbadd).split(',').map(Number); if (!t.value) return;
+          const g2 = G.add(g, c, r, design(t.value)); boardSel = Math.max(0, g2.boards.findIndex(x => x.c === c && x.r === r)); return save(g2);
+        }
+        if (d.lbcell !== undefined) { // another leaderboard for a cell, or none (the board and its settings are gone)
+          const i = Number(d.lbcell); boardSel = i;
+          return save(t.value ? G.setOpt(g, i, design(t.value)) : G.remove(g, i));
+        }
+        if (d.lbspan) { const b = g.boards[boardSel]; if (!b) return; return save(G.setSpan(g, boardSel, d.lbspan === 'w' ? t.value : b.w, d.lbspan === 'h' ? t.value : b.h)); }
+        if (!d.lb || !g.boards[boardSel]) return;
+        const v = t.type === 'checkbox' ? t.checked : t.value;
+        state.settings = await api.setSettings({ liveGrid: G.setOpt(g, boardSel, { [d.lb]: v }) }); draw(false);
       };
     }
-    $('lv-board').innerHTML = Array.from({ length: count }, (_, i) => `<div class="lv-board">${Timing.content({ type: 'leaderboard', opt: state.settings[boardKey(i)] || {} }, S()).html}</div>`).join('');
+    const g = G.gridOf(state.settings);
+    $('lv-board').innerHTML = g.boards.length
+      ? `<div class="lv-grid" style="grid-template-columns:repeat(${g.cols},minmax(0,1fr))">${g.boards.map(b => `<div class="lv-board" style="grid-column:${b.c} / span ${b.w};grid-row:${b.r} / span ${b.h}">${Timing.content({ type: 'leaderboard', opt: b.opt }, S()).html}</div>`).join('')}</div>`
+      : '<p class="muted lv-empty">No leaderboard in the grid yet. Open Customize and pick one for a cell.</p>';
     if ($('lv-board').querySelectorAll) Rows.fitText($('lv-board')); // row designs: no text wider than its cell
   }
 
