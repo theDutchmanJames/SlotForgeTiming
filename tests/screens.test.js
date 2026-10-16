@@ -722,7 +722,16 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   await E('setupbox').onclick({target:{closest:()=>({dataset:{addline:'newleader'}})}});
   say('a sentence can be added to a call', (E('setupbox').innerHTML.match(/data-text="newleader:/g)||[]).length===4);
   E('setupbox').oninput({target:{dataset:{text:'newleader:3'},value:'Watch out, {driver} leads!'}});
-  say('the Voice choice has a tooltip that tells how to install more voices in Windows 11 and Windows 10', (E('setupbox').innerHTML.match(/title="To add more voices[^"]*Manage voices &gt; Add voices[^"]*Text-to-speech option[^"]*"/g) || []).length === 3 && E('setupbox').innerHTML.includes('id="au-voicehelp"') && E('setupbox').innerHTML.includes('tabindex="0"'));
+  say('the Voice choice has a tooltip that tells how to install more voices in Windows 11 and Windows 10', (E('setupbox').innerHTML.match(/title="To add more voices[^"]*Manage voices &gt; Add voices[^"]*Text-to-speech option[^"]*"/g) || []).length === 3 && E('setupbox').innerHTML.includes('id="au-voicehelp"') && /<button type="button" class="linkbtn" id="au-voicehelp" aria-expanded="false"/.test(E('setupbox').innerHTML));
+  { const html=()=>E('setupbox').innerHTML, note=()=>E('au-voicenote');
+    say('1.16.2: "How do I get more voices?" is a real button (it can be reached with the keyboard), and the answer is not shown until it is clicked', /<button type="button" class="linkbtn" id="au-voicehelp"[^>]*>ⓘ How do I get more voices\?<\/button>/.test(html()) && html().includes('id="au-voicenote" role="note" hidden>'));
+    E('au-voicehelp').onclick();
+    say('...a click shows the answer on the page: the Windows 11 way, the restart, and the Windows 10 way', note().hidden === false && /Settings &gt; Time &amp; language &gt; Speech &gt; Manage voices &gt; Add voices/.test(html()) && html().includes('should show up in the app after a restart') && html().includes('Windows 10: Settings'));
+    say('...the page remembers that it is shown', (await run('audVoiceNote')) === true);
+    await run('renderAudioSetEditor(document.getElementById("setupbox"))');
+    say('...the answer stays open when the editor is drawn again (a step, Undo or a folder), with aria-expanded for a screen reader, and a second click hides it', html().includes('id="au-voicenote" role="note">') && html().includes('aria-expanded="true"') && (E('au-voicehelp').onclick(), note().hidden === true && (await run('audVoiceNote')) === false));
+    await run('renderAudioSetEditor(document.getElementById("setupbox"))');
+    say('...hidden again after the next drawing', html().includes('id="au-voicenote" role="note" hidden>') && html().includes('aria-expanded="false"')); }
   { const box=()=>E('setupbox');
     say('1.16.1: the audio editor has a Voice report button, and the report is not shown until it is asked for', box().innerHTML.includes('id="au-vreport"') && box().innerHTML.includes('id="au-vbox" hidden') && voiceCalls.length===0);
     say('...the voice tooltip says that the Natural voices of Narrator (Andrew) are not offered to other apps, as far as we know, and points to the report', /Natural and Natural HD voices[^"]*Andrew[^"]*not offered to other apps[^"]*Voice report/.test(box().innerHTML));

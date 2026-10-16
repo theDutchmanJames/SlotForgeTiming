@@ -2,6 +2,7 @@
 let audEd = null; // { id, draft, dirty }
 // the tooltip on the Voice choice: the voices are the ones installed in Windows
 const VOICE_HELP = 'To add more voices and languages to Windows:\nWindows 11: Settings > Time & language > Speech > Manage voices > Add voices.\nWindows 10: Settings > Time & language > Language, add the language, and tick its Text-to-speech option.\nThen restart this app.\nThe Natural and Natural HD voices that Windows 11 adds for Narrator (such as Andrew) are, as far as we know, not offered to other apps. Voice report shows what this computer offers.';
+let audVoiceNote = false; // the answer to "How do I get more voices?" is shown (it stays shown when the editor is drawn again)
 let audOpen = new Set(); // the call groups (folders) that are open in the editor; all closed when a set is opened
 let audCond = new Set(); // the sentences whose "Only if" box is open ("call:number"); closed when a set is opened
 let audDrivers = []; // the drivers of the database, for the "only for driver" condition
@@ -59,12 +60,13 @@ function renderAudioSetEditor(box) {
   box.innerHTML = `<div class="ed-bar"><label>Name <input type="text" id="au-name" value="${esc(d.name)}" maxlength="40"></label>
       ${undoButtons('au')}<button class="btn primary" id="au-save">Save audio set</button><button class="btn" id="au-back">Back</button><span id="au-msg" class="muted" role="status"></span></div>
     <div class="ed-bar"><label title="${esc(VOICE_HELP)}">Voice <select id="au-voice" title="${esc(VOICE_HELP)}"><option value="">Default voice</option>${voices.map(v => `<option value="${esc(v.name)}"${v.name === d.voice ? ' selected' : ''}>${esc(v.name)}</option>`).join('')}</select></label>
-      <span class="muted" id="au-voicehelp" tabindex="0" role="img" aria-label="${esc(VOICE_HELP)}" title="${esc(VOICE_HELP)}" style="cursor:help">ⓘ How do I get more voices?</span>
+      <button type="button" class="linkbtn" id="au-voicehelp" aria-expanded="${audVoiceNote}" aria-controls="au-voicenote" title="${esc(VOICE_HELP)}">ⓘ How do I get more voices?</button>
       <button class="btn" type="button" id="au-vreport" title="Show the voices this computer offers to the app, to copy and send when a voice is missing">Voice report</button>
       <label>Speed <input type="number" id="au-rate" min="0.5" max="2" step="0.1" value="${esc(d.rate)}" style="width:5em"></label>
       <label>Pitch <input type="number" id="au-pitch" min="0" max="2" step="0.1" value="${esc(d.pitch)}" style="width:5em"></label>
       <label>Volume <input type="number" id="au-vol" min="0" max="1" step="0.1" value="${esc(d.volume)}" style="width:5em"></label>
       <label>Say drivers by their <select id="au-by">${[['name', 'name'], ['nickname', 'nickname'], ['callsign', 'callsign']].map(([k, t]) => `<option value="${k}"${d.driverBy === k ? ' selected' : ''}>${t}</option>`).join('')}</select></label></div>
+    <p class="hint2" id="au-voicenote" role="note"${audVoiceNote ? '' : ' hidden'}>If you want more voices, the safe way is Windows Settings &gt; Time &amp; language &gt; Speech &gt; Manage voices &gt; Add voices. Voices added there should show up in the app after a restart. (Windows 10: Settings &gt; Time &amp; language &gt; Language, add the language and tick its Text-to-speech option.)</p>
     <div class="audvreport" id="au-vbox" hidden><p class="muted">The voices this computer offers to the app. Copy the report and send it if a voice is missing.</p>
       <textarea id="au-vtext" readonly rows="12" style="width:100%" aria-label="Voice report"></textarea><p><button class="btn" type="button" id="au-vcopy">Copy the report</button> <span class="muted" id="au-vmsg" role="status"></span></p></div>
     <details class="audhelp" open><summary><strong>How sentences work, and the variables you can use</strong></summary>
@@ -93,6 +95,7 @@ function renderAudioSetEditor(box) {
   if ($('au-battlelaps')) $('au-battlelaps').onchange = e => { d.battleLaps = Math.round(Sound.bounded(e.target.value, 3, 2, 20)); e.target.value = d.battleLaps; step(); };
   if ($('au-pause')) $('au-pause').onchange = e => { const n = Number(e.target.value); d.preDelay = Number.isFinite(n) && e.target.value !== '' ? Math.max(0, Math.min(10, n)) : 1; e.target.value = d.preDelay; step(); };
   $('au-by').onchange = e => { d.driverBy = e.target.value; step(); };
+  $('au-voicehelp').onclick = () => { audVoiceNote = !audVoiceNote; $('au-voicenote').hidden = !audVoiceNote; $('au-voicehelp').setAttribute('aria-expanded', String(audVoiceNote)); }; // (a click shows the answer; another click hides it)
   $('au-vreport').onclick = async () => { // what the app is offered and what Windows lists (voicereport.js asks Windows; this only reads)
     $('au-vbox').hidden = false; $('au-vtext').value = 'Asking Windows for its voices...'; $('au-vmsg').textContent = '';
     let host = null; try { host = await api.voiceReport(); } catch (e) { host = null; }

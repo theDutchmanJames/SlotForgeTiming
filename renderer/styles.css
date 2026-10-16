@@ -540,6 +540,9 @@ dialog:has(.formgrid) form{display:flex;flex-direction:column;max-height:calc(90
 .trk-btn:not(:disabled):active{transform:translateY(1px) scale(.99)}
 .trk-btn:disabled{opacity:.38;cursor:not-allowed}
 .trk-hint{margin:0 0 8px;font-size:13px}
+.linkbtn{background:none;border:0;padding:0;font:inherit;color:var(--muted);cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.linkbtn:hover{color:var(--ink)}
+.linkbtn:focus-visible{outline:2px solid #4c9aff;outline-offset:2px;border-radius:3px}
 .trk-btn:focus-visible{outline:3px solid #4c9aff;outline-offset:2px}
 .trk-lap{--tc:#2fb86a;--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='13.5' r='8'/%3E%3Cpath d='M12 13.5V8.5M9.5 2.5h5M12 2.5v3M18.5 6.5l1.5-1.5'/%3E%3C/svg%3E");min-height:58px;font-size:19px;background:var(--tc);color:#06200f}
 .trk-lap::before{width:22px;height:22px}

@@ -1876,3 +1876,14 @@ Good to know:
 3. **GitHub tags** (v0.97.0 to v1.16.1) are still not pushed; they are refused from here. The code itself is pushed to the main branch.
 4. The tests: new `tests/voicereport.test.js`; new blocks in `tests/weatherwidgets.test.js` (the fit and where it is called), `tests/racefolders.test.js` (the line and the tooltips), `tests/screens.test.js` (the Voice report button) and `tests/help.test.js`.
 5. Files: `voicereport.js` (new), `main.js`, `preload.js`, `renderer/weatherwidgets.js`, `renderer/canvas.js`, `renderer/editor.js`, `renderer/race.js`, `renderer/sound.js`, `renderer/audioedit.js`, `renderer/styles.css`, `renderer/help.js`.
+
+## What to try (1.16.2): the answer to "How do I get more voices?"
+From your note: the little ⓘ next to Voice did nothing when you clicked it (the answer was only a tooltip).
+1. Open Customization > Audio Settings and an audio set. Click **ⓘ How do I get more voices?** next to Voice: the answer shows under the voice row: "If you want more voices, the safe way is Windows Settings > Time & language > Speech > Manage voices > Add voices. Voices added there should show up in the app after a restart." with the Windows 10 way in brackets. Click it again, or press Enter on it, to hide it.
+2. It is a real button now, so the keyboard can reach it, and a screen reader hears whether it is open. The answer stays open while you edit the set, and the tooltip is still there.
+
+Good to know:
+1. **Nothing else changed.** Voices work as in 1.16.1; the Voice report button is still there.
+2. **GitHub tags** (v0.97.0 to v1.16.2) are still not pushed; they are refused from here. The code itself is pushed to the main branch.
+3. The tests: a new block in `tests/screens.test.js` (the button, the answer, it stays open, it hides again).
+4. Files: `renderer/audioedit.js`, `renderer/styles.css`.
