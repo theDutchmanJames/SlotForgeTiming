@@ -7,7 +7,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 // what other devices may read from the database: no settings (they hold the password), nothing is ever written
 const READABLE = ['drivers', 'teams', 'slotcars', 'tracks', 'racesetups', 'layouts', 'rowdesigns', 'sessions', 'laps', 'penaltysystems', 'damagesystems', 'fuelrules', 'weathersystems'];
 // what the Race Director page may send to the race
-const COMMANDS = ['start', 'pause', 'stop', 'yellow', 'red', 'penalty', 'assign', 'review', 'call', 'callresolve', 'addtime', 'reducetime', 'undotime', 'endtime', 'cleartime', 'setdriver', 'bop', 'weather', 'swap', 'swapnext', 'damage'];
+const COMMANDS = ['start', 'pause', 'stop', 'yellow', 'red', 'penalty', 'assign', 'review', 'call', 'callresolve', 'addtime', 'reducetime', 'undotime', 'endtime', 'cleartime', 'setdriver', 'bop', 'weather', 'swap', 'swapnext', 'damage', 'pad'];
 // The commands of the Tokens page (Time Token Sessions) are checked here before they go to the race window: a lane is a whole number from 0 to 15,
 // the minutes to add are a number above 0 and at most 1440 (a day), a driver is the id of a driver (or '' for a Guest).
 const TOKEN_COMMANDS = ['addtime', 'reducetime', 'undotime', 'endtime', 'cleartime', 'setdriver'];
@@ -39,6 +39,12 @@ function swapCommand(c) {
 function damageCommand(c) {
   if (c.type !== 'damage') return true;
   return Number.isInteger(c.lane) && c.lane >= 0 && c.lane <= 15 && Number.isInteger(c.n) && c.n >= -20 && c.n <= 20 && c.n !== 0;
+}
+// The command of the adjust pads: a group, a lane (a whole number from 0 to 15) and an amount that is not 0 and not more than 100000 (seconds, laps or points; negative takes off).
+const PAD_GROUPS = ['points', 'time', 'laps', 'champ'];
+function padCommand(c) {
+  if (c.type !== 'pad') return true;
+  return typeof c.group === 'string' && PAD_GROUPS.includes(c.group) && Number.isInteger(c.lane) && c.lane >= 0 && c.lane <= 15 && typeof c.amount === 'number' && Number.isFinite(c.amount) && c.amount !== 0 && Math.abs(c.amount) <= 100000;
 }
 function bopCommand(c) {
   if (c.type !== 'bop') return true;
@@ -91,7 +97,7 @@ function createServer(o) {
         const b = await body(req), pw = password();
         if (!pw || typeof b.token !== 'string' || tokens.get(b.token) !== pw) return send(res, 401, { error: 'login' });
         if (!b.cmd || !COMMANDS.includes(b.cmd.type)) return send(res, 400, { error: 'unknown command' });
-        if (!tokenCommand(b.cmd) || !bopCommand(b.cmd) || !weatherCommand(b.cmd) || !swapCommand(b.cmd) || !damageCommand(b.cmd)) return send(res, 400, { error: 'bad command' });
+        if (!tokenCommand(b.cmd) || !bopCommand(b.cmd) || !weatherCommand(b.cmd) || !swapCommand(b.cmd) || !damageCommand(b.cmd) || !padCommand(b.cmd)) return send(res, 400, { error: 'bad command' });
         o.onCommand(b.cmd); return send(res, 200, { ok: true });
       }
       if (req.method === 'GET') { // the app's own pages
@@ -114,4 +120,4 @@ function createServer(o) {
     clientCount: () => clients.size
   };
 }
-module.exports = { createServer, tokenCommand, bopCommand, weatherCommand, swapCommand, damageCommand };
+module.exports = { createServer, tokenCommand, bopCommand, weatherCommand, swapCommand, damageCommand, padCommand };

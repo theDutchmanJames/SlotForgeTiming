@@ -67,10 +67,11 @@ function showRace(on) { // on: the Race tab is shown; otherwise the race (if the
 // App Settings: General and Network
 async function renderSettings() {
   view.innerHTML = '<h2>App Settings</h2><div class="sub" id="settingstabs" role="tablist" style="display:flex;gap:4px"></div><div id="settingsbox"></div>';
-  renderTabs(document.getElementById('settingstabs'), [['general', 'General'], ['theme', 'App Theme'], ['network', 'Network'], ['hardware', 'Timing Hardware'], ['transfer', 'Import and Export'], ['help', 'Help']], state.settingsSub, id => { state.settingsSub = id; renderSettings(); });
+  renderTabs(document.getElementById('settingstabs'), [['general', 'General'], ['theme', 'App Theme'], ['director', 'Race Director'], ['network', 'Network'], ['hardware', 'Timing Hardware'], ['transfer', 'Import and Export'], ['help', 'Help']], state.settingsSub, id => { state.settingsSub = id; renderSettings(); });
   if (state.settingsSub === 'help') return Help.render(document.getElementById('settingsbox'));
   if (state.settingsSub === 'transfer') return renderTransferSettings(document.getElementById('settingsbox'));
   if (state.settingsSub === 'theme') return renderThemeSettings(document.getElementById('settingsbox'));
+  if (state.settingsSub === 'director') return renderPadSettings(document.getElementById('settingsbox'));
   if (state.settingsSub === 'hardware') return renderHardwareArea(document.getElementById('settingsbox'));
   if (state.settingsSub === 'network') return renderNetworkSettings(document.getElementById('settingsbox'));
   return renderGeneralSettings(document.getElementById('settingsbox'));

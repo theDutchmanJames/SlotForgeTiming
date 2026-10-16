@@ -1745,3 +1745,25 @@ Good to know:
 3. **GitHub tags** (v0.97.0 to v1.11.1) are still not pushed; they are refused from here. The code itself is pushed to the main branch.
 4. The tests: new ones in `tests/weatherscreen.test.js` (the order, the colours, open and closed, the stylesheet) and `tests/help.test.js`.
 5. Files: `renderer/liveview.js`, `renderer/styles.css`, `renderer/help.js`.
+
+## What to try (1.12.0): adjust pads for the Race Director
+From your note of Friday 16 October and your answers. The Race Director adds or takes off penalty points, race time, laps and championship points with **pads**: a **+** button, a value and a **−** button.
+1. **A new Adjust folder** on the Race Director page (Live Race > Race Director), between the Calls and the Penalties. On the main computer, the second screen and the tablets.
+2. **Pick a lane first.** Big lane buttons show the lane and the driver. Nothing is picked when the page opens, so a press never lands on the wrong lane. The line above the pads says *Lane 2 · Sam*.
+3. **Then use the pads**, one group each, each in its own colour: **Penalty points** (yellow), **Time** in seconds (orange), **Laps** (violet) and **Championship points** (green). The **−** button is the same colour, darker and less coloured, and the sign is always on the button, so the colour is never the only sign. Every pad has a field for **another amount**.
+4. **Horizontal or vertical.** Horizontal: a column for every value, the + buttons on top, the values in the middle, the − buttons below. Vertical: a row for every value, `[+] value [−]`. Choose it on the page itself (the Horizontal and Vertical buttons under the pads) or in App Settings. On a phone or tablet it is kept on that device.
+5. **During the race.** Time and laps work while the race runs or is paused (they show in the standings straight away, and the review after the race keeps them). Penalty points work as before. Championship points can be given too; they count at the end of the race. Practice and qualifying have no time, laps or championship points (they are about the best lap), and a Time Token Session has no Adjust folder.
+6. **Undo.** Under the pads a line says what you did last (*Last: +10 s to Sam*) and the **Undo** button takes it back, one action at a time. A deduction that stopped at zero is undone by what was really taken.
+7. **The values are yours.** App Settings has a new tab, **Race Director** (after App Theme): one list of values for each group (standard: penalty points 1, 2, 5; seconds 5, 10, 30; laps 1, 2; championship points 1, 2, 5), up to six values each, the layout choice and a preview of the four pads. The lists are for the whole app and also reach the pages on phones and tablets.
+8. **The review after the race** has the same pads instead of the typed fields: *Adjust* on a driver opens pads for time and laps (and championship points in a heat race decided on points). The **Points column** of the review is green too.
+9. **The same look elsewhere on the page:** in the yellow Penalties folder the +1 and the special penalties are yellow and the −1 darker; in the red Damage folder the incidents are red and the −1 darker. Their values stay as they were (the special penalties and the damage incidents have their own lists).
+
+Try it: start a race with *Simulated cars* in a race setup with a penalty system, open Live Race > Race Director, press lane 2 and then +10 on the Time pad. The standings on the Race timing page show the 10 seconds at once. Press Undo. Then open App Settings > Race Director, change the seconds to `2, 4, 8`, choose Vertical and see the pads change on the Race Director page.
+
+Good to know:
+1. **Championship points on the Director page** only show in a heat race decided on points; other races hide that pad.
+2. **Laps and time cannot go below zero.** A deduction that would do so stops at zero (the line under the pads says what you pressed; Undo gives back what was really taken).
+3. **The Race tab of the main window** does not have the pads yet: the Race Director page does (it also opens on the main computer, in the Live Race window). Tell me if you want them on the Race tab too.
+4. **GitHub tags** (v0.97.0 to v1.12.0) are still not pushed; they are refused from here. The code itself is pushed to the main branch.
+5. The tests: new `tests/adjustpad.test.js` (lists, colours, markup, clicks, Undo, the style sheet), and new blocks in `tests/live.test.js` (the Adjust folder during a race), `tests/screens.test.js` (the settings page), `tests/adjust.test.js` (the review) and `tests/help.test.js`.
+6. Files: `renderer/adjustpad.js` (new), `renderer/padui.js` (new), `renderer/liveview.js`, `renderer/race.js`, `renderer/review.js`, `renderer/app.js`, `renderer/styles.css`, `renderer/help.js`, `renderer/index.html`.

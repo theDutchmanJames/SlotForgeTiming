@@ -155,11 +155,12 @@ const Help = (() => {
         </ul>` },
       { id: 'director', title: 'Race Director, flags and penalties', note: 'Control the race from anywhere', body: `
         <ul>
-          <li>The <b>Race Director</b> page (Live Race tab) has Start, Pause, Yellow, Red and Stop, plus buttons for the penalty points of every driver. It also works on a phone or tablet, behind a password.</li>
-          <li><b>Penalty points</b> come in steps of +1 (and −1 to take one back). The penalty system turns the points into seconds that are added to the driver's time, and can disqualify at a limit.</li>
+          <li>The <b>Race Director</b> page (Live Race tab) has Start, Pause, Yellow, Red and Stop, the calls and folders. It also works on a phone or tablet, behind a password.</li>
+          <li><b>Adjust</b>: pick a lane, then press the pads, <b>[+] value [−]</b>: penalty points, time, laps, championship points, also during the race. Undo takes the last one back. Values and layout: App Settings, Race Director.</li>
+          <li><b>Penalty points</b> turn into seconds added to the driver's time (the penalty system sets how, and can disqualify at a limit).</li>
           <li><b>Special penalties</b> take points off and must be served: a Drivethrough when the next pit stop starts, a Stop-and-Go by standing still on the sensor.</li>
           <li>A <b>call from a lane</b> raises the yellow flag and waits for the Race Director, who dismisses it or gives a penalty point.</li>
-          <li><b>Yellow flag target lap time</b>: in the race setup (the Yellow flag group) you can set a target, for example 15.000 when a normal lap is 7.500. While the yellow flag is up the race says the target. A full lap under yellow that is faster than the target is called out, marked in the lap review and costs the penalty points you set (a penalty system is needed for the points). A lap that began before the yellow flag does not count.</li>
+          <li><b>Yellow flag target lap time</b> (race setup, Yellow flag group): while the flag is up the race says the target. A full lap under yellow that is faster is called out, marked in the lap review and costs the penalty points you set (a penalty system is needed).</li>
           <li>The Trackmate <b>Trackcall</b> button can raise the flags and switch the track power. You choose how in the race setup.</li>
         </ul>` },
       { id: 'fuel', title: 'Fuel and pit stops', note: 'Tanks, refuelling and pit time', body: `

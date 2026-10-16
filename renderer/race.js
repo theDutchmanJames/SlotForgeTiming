@@ -247,7 +247,7 @@ async function renderRace() {
     });
     if (live.phase === 'review') {
       ui('review').hidden = false; live.reviewShown = true;
-      if (!live.tkBusy) { const h = tokens ? Review.stintsHtml(tokens.closedList().filter(x => x.laps.length), { failed: live.tkFailed }) : Review.html(eng, { champ: champOf() }); if (h !== live.rvHtml) { live.rvHtml = h; ui('review').innerHTML = h; } } // (only when it changed: a button never changes under your finger; not while the stints are being saved)
+      if (!live.tkBusy) { const h = tokens ? Review.stintsHtml(tokens.closedList().filter(x => x.laps.length), { failed: live.tkFailed }) : Review.html(eng, { champ: champOf(), settings: state.settings }); if (h !== live.rvHtml) { live.rvHtml = h; ui('review').innerHTML = h; } } // (only when it changed: a button never changes under your finger; not while the stints are being saved)
     } else if (live.reviewShown) { ui('review').innerHTML = ''; ui('review').hidden = true; live.reviewShown = false; live.rvHtml = ''; }
     drawLapReview(); drawFinalPick(); drawTeamPick();
     live.penBtns.forEach(x => { const c = S.carByLane(x.lane); x.b.disabled = !(['running', 'paused'].includes(live.phase) && c && !c.dq); x.b.hidden = !c; });
@@ -649,6 +649,16 @@ async function renderRace() {
       const i = eng.cars.findIndex(c => c.lane === lane);
       if (i >= 0 && eng.addDamage(i, n, now(), 'director')) update();
     },
+    pad(group, lane, amount) { // the adjust pads of the Race Director page (1.12.0): add (a positive amount) or take off (a negative one) penalty points, seconds of race time, laps or championship points for the car on this lane, during the race
+      if (tokens || !['running', 'paused'].includes(live.phase) || !Number.isFinite(amount) || !amount) return false;
+      const i = eng.cars.findIndex(c => c.lane === lane), car = eng.cars[i]; if (!car) return false;
+      if (group === 'points') { if (!eng.penalty.on || !eng.addPoints(i, Math.round(amount), now())) return false; }
+      else if (['time', 'laps', 'champ'].includes(group) && (eng.type === 'race' || eng.type === 'timed')) { // (practice and qualifying are about the best lap: nothing to adjust)
+        if (!eng.adjust(i, group === 'time' ? { ms: Math.round(amount * 1000) } : group === 'laps' ? { laps: Math.round(amount) } : { points: amount })) return false;
+      } else return false;
+      if (eng.status === 'finished') engineFinished(); else update();
+      return true;
+    },
     swapNext(lane, id) { // Endurance Race: the Race Director chooses who steps in next
       if (!eng.endurance || live.phase === 'finished' || live.phase === 'review') return;
       const i = eng.cars.findIndex(c => c.lane === lane);
@@ -711,6 +721,7 @@ async function renderRace() {
     else if (cmd.type === 'swap') actions.swap(Number(cmd.lane), cmd.to);
     else if (cmd.type === 'swapnext') actions.swapNext(Number(cmd.lane), cmd.id);
     else if (cmd.type === 'damage') actions.damage(Number(cmd.lane), Number(cmd.n));
+    else if (cmd.type === 'pad') actions.pad(cmd.group, Number(cmd.lane), Number(cmd.amount));
     else if (cmd.type === 'review') reviewCommand(cmd);
     else if (tokens && TOKEN_CMD[cmd.type]) TOKEN_CMD[cmd.type](cmd);
   });

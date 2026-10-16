@@ -687,3 +687,38 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .memlist{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:4px}
 .memlist li{display:flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--line);border-radius:8px}
 .memlist .memname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+
+/* The adjust pads (1.12.0): [+] value [−] for penalty points, time, laps and championship points. Each group has a colour (set on the pad: --pc plus, --mc minus, --pt/--mt the letters);
+   the minus button is the same colour, darker and less coloured. The sign is always on the button, so the colour is never the only sign. */
+.pad{--pc:#888;--pt:#111418;--mc:#555;--mt:#fff;border:1px solid var(--line);border-left:4px solid var(--pc);border-radius:8px;background:var(--panel);padding:8px 10px;margin:8px 0}
+.pad[hidden]{display:none}
+.pad-title{margin:0 0 6px}
+.pad-grid{display:grid;gap:6px;align-items:stretch}
+.pad-h .pad-grid{grid-template-columns:repeat(var(--n),minmax(3.2em,1fr));max-width:calc(var(--n) * 6.5em)}
+.pad-v .pad-grid{grid-template-columns:minmax(4em,1fr) minmax(3.6em,auto) minmax(4em,1fr);max-width:22em}
+.pad-btn{font:inherit;font-size:1.5rem;font-weight:700;line-height:1;min-height:46px;border-radius:8px;border:1px solid transparent;cursor:pointer;padding:0 8px}
+.pad-plus{background:var(--pc);color:var(--pt)}
+.pad-minus{background:var(--mc);color:var(--mt)}
+.pad-btn:not(:disabled):hover{filter:brightness(1.12)}
+.pad-btn:focus-visible,.pad-other:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.pad-btn:disabled{opacity:.38;cursor:not-allowed}
+.pad-val{align-self:center;text-align:center;font-weight:700;font-size:1.15rem;font-variant-numeric:tabular-nums}
+.pad-other{width:100%;min-width:0;box-sizing:border-box;align-self:center;text-align:center;font:inherit;padding:6px 2px}
+.adj-lanes{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 6px}
+.adj-lane{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:6.5em;min-height:56px;justify-content:center}
+.adj-lane small{font-size:.8em;opacity:.85}
+.adj-lane[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.adj-who{font-weight:700;margin:6px 0}
+.adj-line,.adj-layout{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0 0}
+.adj-layout .btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.rv-pads{display:flex;flex-wrap:wrap;gap:10px}
+.rv-pads .pad{margin:6px 0;flex:0 1 auto}
+.rv-champ{color:#3fb950;font-weight:700}
+[data-theme="light"] .rv-champ,[data-theme="ocean"] .rv-champ{color:#1f7a2e}
+/* The same look for the other add and deduct buttons of the Race Director page (1.12.0): penalty points and special penalties in the yellow folder, damage in the red one.
+   The plus button has the colour of the folder, the minus button a darker and less coloured version (the values come from adjustpad.js). */
+.dir-yellow .btn[data-cmd="penalty"][data-n="1"],.dir-yellow .btn[data-cmd="assign"]{background:#f2b705;color:#111418;border-color:transparent;font-weight:700}
+.dir-yellow .btn[data-cmd="penalty"][data-n="-1"]{background:#a58521;color:#111418;border-color:transparent;font-weight:700}
+.dir-red .btn[data-dm="give"]{background:#e5484d;color:#111418;border-color:transparent;font-weight:700}
+.dir-red .btn[data-dm="take"]{background:#9d444a;color:#ffffff;border-color:transparent;font-weight:700}
+.dir-yellow .btn[data-cmd="penalty"]:disabled,.dir-yellow .btn[data-cmd="assign"]:disabled,.dir-red .btn[data-dm]:disabled{opacity:.38}

@@ -22,7 +22,7 @@ for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function
 const ctx=vm.createContext({document,api,console: appConsole,Intl,URL,Image:function(){},confirm:()=>true,alert(){},setTimeout,clearTimeout,setInterval,clearInterval,performance,});
 const listeners={}; ctx.window=ctx; ctx.addEventListener=(t,f)=>{(listeners[t]=listeners[t]||[]).push(f)}; ctx.removeEventListener=(t,f)=>{listeners[t]=(listeners[t]||[]).filter(x=>x!==f)};
 const errors=[];
-for(const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js','heats.js', 'rotation.js', 'tokens.js','speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js','icons.js','delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js','frame.js','backdrop.js','announcer.js','sound.js','timing.js','rows.js','richtext.js','canvas.js','liveshare.js','review.js','livegrid.js', 'liveview.js','report.js','database.js','landing.js','race.js','undo.js','editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','help.js','hardware.js','trackmate.js','hardwareui.js','dsui.js','app.js']){
+for(const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js','heats.js', 'rotation.js', 'tokens.js','speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js','icons.js','delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js','frame.js','backdrop.js','announcer.js','sound.js','timing.js','rows.js','richtext.js','canvas.js','liveshare.js','review.js','adjustpad.js','padui.js','livegrid.js', 'liveview.js','report.js','database.js','landing.js','race.js','undo.js','editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','help.js','hardware.js','trackmate.js','hardwareui.js','dsui.js','app.js']){
   try{vm.runInContext(fs.readFileSync(R+'renderer/'+f,'utf8'),ctx,{filename:f})}catch(e){errors.push(f+': '+e.message)}
 }
 const run=s=>vm.runInContext(s,ctx), E=id=>document.getElementById(id);
@@ -2028,6 +2028,27 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   // ---- App Settings > Network access ----
   run("state.tab='settings'; state.settingsSub='general'"); await run('render()');
   say('App Settings has General, App Theme and Network sub-tabs; General keeps the name and header but not the theme or the network settings', E('settingstabs').innerHTML.includes('General') && E('settingstabs').innerHTML.includes('App Theme') && E('settingstabs').innerHTML.includes('Network') && E('settingsbox').innerHTML.includes('id="appname"') && !E('settingsbox').innerHTML.includes('id="theme"') && !E('settingsbox').innerHTML.includes('id="net-on"'));
+  // ---- App Settings > Race Director (1.12.0): the values of the adjust pads and their layout ----
+  await withMerge(async () => {
+    const tabs = E('settingstabs').innerHTML;
+    say('App Settings has a Race Director sub-tab, after App Theme and before Network', tabs.includes('data-id="director"') && tabs.indexOf('App Theme') < tabs.indexOf('Race Director') && tabs.indexOf('Race Director') < tabs.indexOf('>Network<'));
+    run("state.settings={theme:'dark'}; state.settingsSub='director'"); await run('render()');
+    const g = () => E('settingsbox').innerHTML;
+    say('the page has a field for the values of each group with the standard values, a layout choice and a preview of the four pads', ['pad-points','pad-time','pad-laps','pad-champ'].every(i => g().includes(`id="${i}"`)) && g().includes('value="1, 2, 5"') && g().includes('value="5, 10, 30"') && g().includes('value="1, 2"') && g().includes('data-padlayout="h" aria-pressed="true"') && g().includes('data-padlayout="v" aria-pressed="false"') && g().includes('id="pad-preview"') && (g().match(/data-pad="/g) || []).length === 4);
+    say('...the preview cannot be used by mistake (it is inert and hidden from a screen reader), and the page says where the values are used', g().includes('id="pad-preview" inert aria-hidden="true"') && g().includes('Adjust folder of the Race Director page') && g().includes('race review'));
+    const calls0 = calls.length;
+    E('settingsbox').onchange({ target: { closest: () => ({ dataset: { padlist: 'time' }, value: '30, 5, 10, 10, x, 2.5' }) } }); await new Promise(r => setTimeout(r, 30));
+    const last = calls[calls.length - 1];
+    say('typing the values of the time pad saves them cleaned (sorted, no doubles, no mistakes)', calls.length === calls0 + 1 && last[0] === 'settings' && JSON.stringify(last[1]) === '{"padSeconds":[2.5,5,10,30]}' && JSON.stringify(run('state.settings.padSeconds')) === '[2.5,5,10,30]');
+    say('...and the preview shows them', E('pad-preview').innerHTML.includes('data-v="2.5"') && E('pad-preview').innerHTML.includes('data-v="30"'));
+    E('settingsbox').onchange({ target: { closest: () => ({ dataset: { padlist: 'laps' }, value: 'abc' }) } }); await new Promise(r => setTimeout(r, 30));
+    say('text without numbers gives the standard values again', JSON.stringify(run('state.settings.padLaps')) === '[1,2]');
+    E('settingsbox').onclick({ target: { closest: () => ({ dataset: { padlayout: 'v' } }) } }); await new Promise(r => setTimeout(r, 30));
+    say('Vertical is saved in the settings, and the preview is drawn as rows', run('state.settings.padLayout') === 'v' && E('pad-preview').innerHTML.includes('pad-v') && !E('pad-preview').innerHTML.includes('pad-h'));
+    E('settingsbox').onclick({ target: { closest: () => ({ id: 'pad-reset', dataset: {} }) } }); await new Promise(r => setTimeout(r, 60));
+    say('Back to the standard values puts all four lists back (the layout stays)', JSON.stringify(run('[state.settings.padPoints, state.settings.padSeconds, state.settings.padLaps, state.settings.padChamp]')) === '[[1,2,5],[5,10,30],[1,2],[1,2,5]]' && run('state.settings.padLayout') === 'v' && g().includes('value="5, 10, 30"'));
+    run("state.settings={theme:'dark'}; state.settingsSub='general'");
+  });
   // ---- App Settings > Help ----
   { const tabs = E('settingstabs').innerHTML;
     say('App Settings has a Help sub-tab, last after Import and Export', tabs.includes('data-id="help"') && tabs.indexOf('Import and Export') < tabs.indexOf('>Help<') && tabs.indexOf('data-id="help"') > tabs.indexOf('data-id="transfer"'));

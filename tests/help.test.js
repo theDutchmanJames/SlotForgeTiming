@@ -173,4 +173,9 @@ const folders = Help.folders();
   say('the Home help no longer talks about the Available cards (they are gone from the Home tab), and the Live Race help says the button is lit during a race and off without one', !f('home').includes('Available') && !f('home').includes('Show all') && f('live').includes('red light on while a race is on') && f('live').includes('greyed out with the light off when no race is running'));
   say('...and every folder is still short enough', folders.every(x => plain(x.body).length < 1400)); }
 
+// ---- 1.12.0 ----
+{ const f = id => plain(folders.find(x => x.id === id).body);
+  say('the Race Director help explains the Adjust pads: pick a lane, [+] value [-], the four groups, during the race, Undo, and where the values and the layout are set', ['Adjust', 'pick a lane', '[+] value [\u2212]', 'penalty points, time, laps, championship points', 'during the race', 'Undo', 'App Settings, Race Director'].every(t => f('director').includes(t)));
+  say('...and every folder is still short enough', folders.every(x => plain(x.body).length < 1400)); }
+
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

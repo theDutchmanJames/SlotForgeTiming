@@ -31,7 +31,7 @@ const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if
 for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function') api[k] = (...x) => { x.forEach(v => { if (typeof v !== 'function') structuredClone(v); }); return f(...x); }; }
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'livegrid.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js','padui.js','livegrid.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -954,6 +954,67 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   say('Penalty point +1 on the Director page: the point goes to lane 2, the call is gone from the page', cmds[cmds.length - 1].type === 'callresolve' && cmds[cmds.length - 1].how === 'penalty' && eng().cars[1].points === 1 && openCalls() === '' && E('dir-calls').innerHTML.includes('No calls waiting'));
   ctrlKey(2); await repaint(1); clickD({ cmd: 'callresolve', id: '4', how: 'dismiss' }); await repaint(0);
   say('Dismiss on the Director page closes the call without points', openCalls() === '' && eng().cars[1].points === 1 && E('dir-calls').innerHTML.includes('No calls waiting'));
+  // ---------- 1.12.0: the Adjust folder of the Director page: pick a lane, then use the pads (during the race) ----------
+  {
+    const page = E('lv-body').innerHTML, box = E('dir-adj').innerHTML;
+    say('the Director page has an Adjust folder between the Calls and the Penalties', page.indexOf('<h3>Calls</h3>') > 0 && page.indexOf('<h3>Calls</h3>') < page.indexOf('data-dirf="adjust"') && page.indexOf('data-dirf="adjust"') < page.indexOf('data-dirf="penalties"') && page.includes('id="dir-adj"'));
+    say('...it has a button for every lane, the four pads in the order penalty points, time, laps, championship points, and Undo', ['data-adj-lane="0"', 'data-adj-lane="1"'].every(x => box.includes(x)) && ['points', 'time', 'laps', 'champ'].map(g => box.indexOf(`data-pad="${g}"`)).every((x, i, a) => x > 0 && (i === 0 || x > a[i - 1])) && box.includes('data-adj-undo') && box.includes('data-adj-layout="h"') && box.includes('pad-h'));
+    const mkb = (dataset, extra = {}) => ({ dataset, disabled: false, ...extra });
+    const laneB = [0, 1].map(l => mkb({ adjLane: String(l) }, { setAttribute(k, v) { this[k] = v; }, querySelector: () => ({ textContent: '' }) }));
+    const padB = id => [mkb({ sign: '1' }), mkb({ sign: '-1' })].map(b => Object.assign(b, { id }));
+    const pads = ['points', 'time', 'laps', 'champ'].map(id => ({ dataset: { pad: id }, hidden: false, btns: padB(id), querySelectorAll() { return this.btns; } }));
+    const undoB = mkb({}), layB = ['h', 'v'].map(v => mkb({ adjLayout: v }, { setAttribute(k, x) { this[k] = x; } }));
+    E('dir-adj').querySelectorAll = sel => (sel === '[data-adj-lane]' ? laneB : sel === '.pad' ? pads : sel === '[data-adj-undo]' ? [undoB] : sel === '[data-adj-layout]' ? layB : []);
+    const clickA = (sel, dataset, extra = {}) => E('lv-body').onclick({ target: { closest: s => (s === sel ? { dataset, disabled: false, ...extra } : null) } });
+    const again = async cond => { await until(cond, 3000); cbs.dyn.forEach(f => f(plain(sent.dyn))); };
+    const sentCar = i => run(`__sent.dyn.cars[${i}]`);
+    cbs.dyn.forEach(f => f(plain(sent.dyn)));
+    say('no lane picked yet: the page says so, every pad is switched off, and Undo too', E('adj-who').textContent.includes('Choose a lane') && pads.every(p => p.btns.every(b => b.disabled)) && undoB.disabled === true && E('adj-last').textContent === 'Nothing adjusted yet.');
+    say('...the pads that this race can use are shown: penalty points (there is a penalty system), time and laps; no championship points (this is no heat race)', pads.map(p => p.hidden).join() === 'false,false,false,true');
+    const nm = eng().cars[1].driverName, c0 = cmds.length;
+    clickA('[data-pad-do]', { padDo: 'time', v: '10', sign: '1' });
+    say('a pad pressed before a lane is picked sends nothing', cmds.length === c0 && !eng().cars[1].adjMs);
+    clickA('[data-adj-lane]', { adjLane: '1' });
+    say('picking lane 2 shows "Lane 2 · driver", marks the button and switches the pads on', E('adj-who').textContent === `Lane 2 · ${nm}` && laneB[1]['aria-pressed'] === 'true' && laneB[0]['aria-pressed'] === 'false' && pads.every(p => p.btns.every(b => !b.disabled || (p.btns.indexOf(b) === 1 && p.id === 'points'))));
+    clickA('[data-pad-do]', { padDo: 'time', v: '10', sign: '1' });
+    say('+ on the 10 s pad reaches the race: 10 seconds on lane 2, during the race', cmds[cmds.length - 1].type === 'pad' && cmds[cmds.length - 1].group === 'time' && cmds[cmds.length - 1].lane === 1 && cmds[cmds.length - 1].amount === 10 && eng().cars[1].adjMs === 10000 && phase() === 'running');
+    await again(() => sentCar(1).adjMs === 10000);
+    say('...and the line under the pads says what was done, with Undo ready', E('adj-last').textContent === `Last: +10 s to ${nm}` && undoB.disabled === false);
+    say('...the other lane was not touched', !eng().cars[0].adjMs);
+    clickA('[data-pad-do]', { padDo: 'laps', v: '2', sign: '1' }); await again(() => sentCar(1).adjLaps === 2);
+    say('+ on the 2 laps pad: two laps more for lane 2 (the standings count them)', eng().cars[1].adjLaps === 2 && eng().lapsOf(eng().cars[1]) === eng().cars[1].laps.length + 2 && E('adj-last').textContent === `Last: +2 laps to ${nm}`);
+    clickA('[data-adj-undo]', {}); await again(() => sentCar(1).adjLaps === 0);
+    say('Undo takes the last pad back with the opposite amount (laps 0 again), and the line says so', cmds[cmds.length - 1].type === 'pad' && cmds[cmds.length - 1].group === 'laps' && cmds[cmds.length - 1].amount === -2 && eng().cars[1].adjLaps === 0 && E('adj-last').textContent === `Undone: +2 laps to ${nm}`);
+    clickA('[data-adj-undo]', {}); await again(() => sentCar(1).adjMs === 0);
+    say('...and the one before it (the 10 seconds are gone again), then nothing is left to undo', eng().cars[1].adjMs === 0 && undoB.disabled === true && E('adj-last').textContent === `Undone: +10 s to ${nm}`);
+    clickA('[data-adj-undo]', {}); say('Undo with nothing to undo sends nothing', cmds[cmds.length - 1].amount === -10);
+    clickA('[data-pad-do]', { padDo: 'time', sign: '1', other: '1' }, { closest: () => ({ querySelector: () => ({ value: '2.5' }) }) }); await again(() => sentCar(1).adjMs === 2500);
+    say('the field for another amount works the same: 2.5 s', eng().cars[1].adjMs === 2500 && E('adj-last').textContent === `Last: +2.5 s to ${nm}`);
+    const c1 = cmds.length; clickA('[data-pad-do]', { padDo: 'time', sign: '1', other: '1' }, { closest: () => ({ querySelector: () => ({ value: '' }) }) }); clickA('[data-pad-do]', { padDo: 'laps', sign: '-1', other: '1' }, { closest: () => ({ querySelector: () => ({ value: '0' }) }) });
+    say('...an empty field or a zero sends nothing', cmds.length === c1);
+    const p0 = eng().cars[1].points;
+    clickA('[data-pad-do]', { padDo: 'points', v: '2', sign: '1' }); await again(() => sentCar(1).points === p0 + 2);
+    clickA('[data-pad-do]', { padDo: 'points', v: '5', sign: '-1' }); await again(() => sentCar(1).points === 0);
+    say('penalty points: +2, then −5 takes the car to zero, not below it', eng().cars[1].points === 0 && E('adj-last').textContent === `Last: −5 penalty points from ${nm}`);
+    clickA('[data-adj-undo]', {}); await again(() => sentCar(1).points === p0 + 2);
+    say('Undo gives back what was really taken (the points are back where they were, not 5 more)', cmds[cmds.length - 1].amount === p0 + 2 && eng().cars[1].points === p0 + 2);
+    clickA('[data-adj-undo]', {}); await again(() => sentCar(1).points === p0);
+    clickA('[data-adj-undo]', {}); await again(() => sentCar(1).adjMs === 0);
+    say('...and back to the start: the points, and the 2.5 s', eng().cars[1].points === p0 && eng().cars[1].adjMs === 0 && undoB.disabled === true);
+    // paused: the pads still work; after the race: the review has its own
+    run('live.actions.pause()'); await again(() => run('__sent.dyn.phase') === 'paused');
+    clickA('[data-pad-do]', { padDo: 'laps', v: '1', sign: '1' }); await again(() => sentCar(1).adjLaps === 1);
+    say('the pads work while the race is paused', phase() === 'paused' && eng().cars[1].adjLaps === 1 && pads.every(p => p.btns.every(b => !b.disabled || p.id === 'points')));
+    clickA('[data-adj-undo]', {}); await again(() => sentCar(1).adjLaps === 0); run('live.actions.pause()'); await again(() => run('__sent.dyn.phase') === 'running');
+    // the layout and the values come from the settings
+    clickA('[data-adj-layout]', { adjLayout: 'v' }); await wait(60);
+    say('Vertical: the layout is saved in the settings (this device) and the pads are drawn again as rows', run('state.settings.padLayout') === 'v' && E('dir-adj').innerHTML.includes('pad-v') && !E('dir-adj').innerHTML.includes('pad-h') && layB[1]['aria-pressed'] === 'true');
+    run('state.settings.padSeconds = [2, 4]'); cbs.dyn.forEach(f => f(plain(sent.dyn)));
+    say('the values of the time pad follow the settings (2 and 4), the other pads keep the standard values', ['2', '4'].every(v => E('dir-adj').innerHTML.includes(`data-pad-do="time" data-sign="1" data-v="${v}"`)) && !E('dir-adj').innerHTML.includes('data-pad-do="time" data-sign="1" data-v="5"') && E('dir-adj').innerHTML.includes('data-pad-do="laps" data-sign="1" data-v="1"'));
+    clickA('[data-adj-layout]', { adjLayout: 'h' }); await wait(60); run('delete state.settings.padSeconds');
+    cbs.dyn.forEach(f => f(plain(sent.dyn)));
+    say('Horizontal again, with the standard values', E('dir-adj').innerHTML.includes('pad-h') && E('dir-adj').innerHTML.includes('data-pad-do="time" data-sign="1" data-v="30"'));
+  }
   const dyn = run('__sent.dyn'); say('the waiting calls are part of what the race shares with other windows', Array.isArray(dyn.calls) && dyn.calls.length === 4 && dyn.calls.every(c => !c.open));
   ctrlKey(1); await repaint(1);
   say('a viewer sees the same open call', run(`(() => { const V = LiveShare.viewer(); V.feedStatic(__sent.stat); V.feedDynamic(__sent.dyn, performance.now()); return V.engine().calls.filter(c => c.open).length; })()`) === 1);
@@ -1014,21 +1075,20 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   rv('nullify', { car: '0' }); say('...and the clearing has an undo button', E('review').innerHTML.includes('Restore'));
   rv('restorepoints', { car: '0' }); say('undo brings the points back', run('live.engine().cars[0].points') > 0);
   { // 1.2.0: adjust the race time and laps of a driver in the review (the same panel on the Director page)
-    E('review').querySelector = sel => ({ value: /:laps/.test(sel) ? '1' : '4' }); E('dir-review').querySelector = E('review').querySelector;
     const lapsA = run('live.engine().cars[0].laps.length');
     say('the review has an Adjust button for every driver, and no Points column (this race has no championship points)', (E('review').innerHTML.match(/data-rv="adjopen"/g) || []).length === 2 && !E('review').innerHTML.includes('<th>Points</th>'));
-    rv('adjopen', { car: '0' }); say('Adjust opens the panel of that driver, with fields for the time and the laps', E('review').innerHTML.includes('Adjust the result of') && E('review').innerHTML.includes('data-rva="0:time"') && E('review').innerHTML.includes('data-rva="0:laps"') && !E('review').innerHTML.includes('data-rva="1:time"'));
-    rv('adjust', { car: '0', what: 'time', sign: '1' }); say('Add 4 s puts 4 seconds on that driver and the review says so', run('live.engine().cars[0].adjMs') === 4000 && E('review').innerHTML.includes('adjusted: +4 s'));
-    E('dir-review').onclick({ target: { closest: () => ({ dataset: { rv: 'adjust', car: '0', what: 'laps', sign: '-1' } }) } });
-    say('the Director page can adjust too: Deduct 1 lap', run('live.engine().cars[0].adjLaps') === -1 && run('live.engine().lapsOf(live.engine().cars[0])') === lapsA - 1 && E('review').innerHTML.includes('\u22121 lap, +4 s'));
+    rv('adjopen', { car: '0' }); say('Adjust opens the panel of that driver, with pads for the time and the laps', E('review').innerHTML.includes('Adjust the result of') && E('review').innerHTML.includes('data-pad="time"') && E('review').innerHTML.includes('data-pad="laps"') && E('review').innerHTML.includes('data-rv="adjust" data-car="0"') && !E('review').innerHTML.includes('data-rv="adjust" data-car="1"'));
+    rv('adjust', { car: '0', padDo: 'time', v: '5', sign: '1' }); say('+ on the 5 s pad puts 5 seconds on that driver and the review says so', run('live.engine().cars[0].adjMs') === 5000 && E('review').innerHTML.includes('adjusted: +5 s'));
+    E('dir-review').onclick({ target: { closest: () => ({ dataset: { rv: 'adjust', car: '0', padDo: 'laps', v: '1', sign: '-1' } }) } });
+    say('the Director page can adjust too: − on the 1 lap pad', run('live.engine().cars[0].adjLaps') === -1 && run('live.engine().lapsOf(live.engine().cars[0])') === lapsA - 1 && E('review').innerHTML.includes('\u22121 lap, +5 s'));
     await wait(150); await until(() => sent.dyn && sent.dyn.cars && sent.dyn.cars[0] && sent.dyn.cars[0].adjLaps === -1, 3000).catch(() => {}); cbs.dyn.forEach(f => f(plain(sent.dyn)));
-    say('...and the Director page shows the adjustment too (it travels with the car)', E('dir-review').innerHTML.includes('adjusted: \u22121 lap, +4 s'));
+    say('...and the Director page shows the adjustment too (it travels with the car)', E('dir-review').innerHTML.includes('adjusted: \u22121 lap, +5 s'));
   }
   rv('finalize'); await wait(200);
   say('Finalize saves the session', phase() === 'finished' && saved.length === 1);
   const L = saved[0][1];
   { const row = saved[0][0].standings.find(x => x.driverId === 'd1'), plainRow = saved[0][0].standings.find(x => x.driverId === 'd2');
-    say('Finalize saves what was adjusted with the result: the laps that count, and the adjustment next to them', row && row.adjMs === 4000 && row.adjLaps === -1 && row.laps === saved[0][1].filter(l => l.driverId === 'd1').length - 1 && !!plainRow && plainRow.adjMs === undefined && plainRow.adjLaps === undefined); }
+    say('Finalize saves what was adjusted with the result: the laps that count, and the adjustment next to them', row && row.adjMs === 5000 && row.adjLaps === -1 && row.laps === saved[0][1].filter(l => l.driverId === 'd1').length - 1 && !!plainRow && plainRow.adjMs === undefined && plainRow.adjLaps === undefined); }
   say('saved laps: the one removed from the records is missing, the invalid one is flagged and kept out of records', !L.some(l => l.driverId === 'd2' && l.lapNumber === 1) && L.some(l => l.driverId === 'd2' && l.lapNumber === 2 && l.invalid && l.noTrackRecord && l.noPersonalBest));
   say('and the other laps are saved as normal', L.some(l => l.driverId === 'd1' && l.lapNumber === 1 && !l.invalid && !l.noTrackRecord));
   run('LiveView.unmount')();
@@ -1052,17 +1112,17 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     for (let k = 0; k < 14 && phase() === 'running'; k++) { await wait(60); key('1'); key('2'); }
     await until(() => phase() === 'review');
     const rvh = (op, o = {}) => E('review').onclick({ target: { closest: () => ({ dataset: { rv: op, ...o } }) } });
-    say('a heat decided on points: the review has a Points column with the points of the places (10 and 8)', phase() === 'review' && E('review').innerHTML.includes('<th>Points</th>') && /<td class="num">10<\/td>/.test(E('review').innerHTML) && /<td class="num">8<\/td>/.test(E('review').innerHTML));
+    say('a heat decided on points: the review has a Points column with the points of the places (10 and 8)', phase() === 'review' && E('review').innerHTML.includes('<th class="rv-champ">Points</th>') && /<td class="num rv-champ">10<\/td>/.test(E('review').innerHTML) && /<td class="num rv-champ">8<\/td>/.test(E('review').innerHTML));
     const second = run('live.engine().standings()[1].index'), nm = run(`live.engine().cars[${second}].driverName`);
-    rvh('adjopen', { car: String(second) }); E('review').querySelector = () => ({ value: '5' });
-    say('...and the panel has a championship points field', E('review').innerHTML.includes(`data-rva="${second}:points"`));
-    rvh('adjust', { car: String(second), what: 'points', sign: '1' });
-    say('Add 5 points to the driver in second place: the review shows 13 and what was adjusted', run(`live.engine().cars[${second}].adjPoints`) === 5 && /<td class="num">13<\/td>/.test(E('review').innerHTML) && E('review').innerHTML.includes('adjusted: +5 pts'));
-    rvh('adjust', { car: String(second), what: 'time', sign: '1' });
+    rvh('adjopen', { car: String(second) });
+    say('...and the panel has a championship points pad (green)', E('review').innerHTML.includes('data-pad="champ"') && E('review').innerHTML.includes(`data-rv="adjust" data-car="${second}"`));
+    rvh('adjust', { car: String(second), padDo: 'champ', v: '5', sign: '1' });
+    say('Add 5 points to the driver in second place: the review shows 13 and what was adjusted', run(`live.engine().cars[${second}].adjPoints`) === 5 && /<td class="num rv-champ">13<\/td>/.test(E('review').innerHTML) && E('review').innerHTML.includes('adjusted: +5 pts'));
+    rvh('adjust', { car: String(second), padDo: 'time', v: '5', sign: '1' });
     say('...and 5 seconds on his time: the review says +5 s', run(`live.engine().cars[${second}].adjMs`) === 5000 && E('review').innerHTML.includes('adjusted: +5 s, +5 pts'));
     const host5 = document.createElement('div'); await run('LiveView.mount')(host5, {}); run('LiveView.go')('director');
     await until(() => sent.dyn && sent.dyn.phase === 'review' && sent.dyn.cars && sent.dyn.cars[second] && sent.dyn.cars[second].adjPoints === 5 && sent.dyn.cars[second].adjMs === 5000, 3000); await wait(100); cbs.dyn.forEach(f => f(plain(sent.dyn)));
-    say('the Director page has the same Points column, with the adjusted points (the championship comes with what is shared)', E('dir-review').innerHTML.includes('<th>Points</th>') && E('dir-review').innerHTML.includes('adjusted: +5 s, +5 pts') && /<td class="num">13<\/td>/.test(E('dir-review').innerHTML));
+    say('the Director page has the same Points column, with the adjusted points (the championship comes with what is shared)', E('dir-review').innerHTML.includes('<th class="rv-champ">Points</th>') && E('dir-review').innerHTML.includes('adjusted: +5 s, +5 pts') && /<td class="num rv-champ">13<\/td>/.test(E('dir-review').innerHTML));
     run('LiveView.unmount')(); run('state.autoFinalize = true'); rvh('finalize'); await until(() => ['between', 'finished'].includes(phase()));
     els.sim.checked = true; let hn = 0;
     while (phase() !== 'finished' && hn++ < 6) { key(' '); await until(() => ['between', 'finished'].includes(phase())); }

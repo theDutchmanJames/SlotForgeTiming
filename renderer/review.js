@@ -22,13 +22,12 @@ const Review = (() => {
       }).join('') || '<span class="muted">No laps</span>'}</div>`;
   }
 
-  // The fields to adjust the result of one car: race time (seconds), laps and, in a race with championship points, those points. Each has an Add and a Deduct button; they stack with what was adjusted before.
+  // The pads to adjust the result of one car (1.12.0): race time (seconds), laps and, in a race with championship points, those points. Each group is a set of [+] value [−] pads
+  // (the values are the lists of App Settings > Race Director, and there is a field for another amount); they stack with what was adjusted before.
   const adjustHtml = (c, i, o) => {
-    const now = Stats.adjustedText({ adjMs: c.adjMs, adjLaps: c.adjLaps, adjPoints: c.adjPoints }), who = esc(c.driverName);
-    const field = (what, label, unit, step, aria) => `<span class="rv-adjf"><label>${label} <input type="number" min="0" step="${step}" class="rv-sec" data-rva="${i}:${what}" aria-label="${aria} ${who}"> ${unit}</label>
-        <button class="btn" data-rv="adjust" data-car="${i}" data-what="${what}" data-sign="1">Add</button> <button class="btn" data-rv="adjust" data-car="${i}" data-what="${what}" data-sign="-1">Deduct</button></span>`;
-    return `<div class="rv-adj"><strong>Adjust the result of ${who}</strong> <span class="muted">${now ? `adjusted now: ${esc(now)}` : 'nothing adjusted yet'}</span>
-      ${field('time', 'Race time', 's', 'any', 'Seconds to add to or take off the race time of')}${field('laps', 'Laps', 'laps', '1', 'Laps to add or take off for')}${o.champ ? field('points', 'Championship points', 'pts', 'any', 'Championship points to add or take off for') : ''}
+    const now = Stats.adjustedText({ adjMs: c.adjMs, adjLaps: c.adjLaps, adjPoints: c.adjPoints });
+    return `<div class="rv-adj"><strong>Adjust the result of ${esc(c.driverName)}</strong> <span class="muted">${now ? `adjusted now: ${esc(now)}` : 'nothing adjusted yet'}</span>
+      <div class="rv-pads">${AdjustPad.padsHtml(o.settings, { groups: o.champ ? ['time', 'laps', 'champ'] : ['time', 'laps'], attrs: `data-rv="adjust" data-car="${i}"`, who: c.driverName })}</div>
       ${now ? `<button class="btn" data-rv="adjustreset" data-car="${i}">Reset adjustments</button>` : ''}</div>`;
   };
 
@@ -47,16 +46,16 @@ const Review = (() => {
           <button class="btn" data-rv="forgive" data-car="${i}" data-k="${k}">Forgive</button></td></tr>`).join('');
       const open = ui.open.has(i);
       const laps = !open ? '' : `<tr class="rv-sub"><td></td><td colspan="${cols - 1}">${lapListHtml(c, i, false)}</td></tr>`;
-      const adjOpen = canAdjust && ui.adjust.has(i), adjRow = !adjOpen ? '' : `<tr class="rv-sub"><td></td><td colspan="${cols - 1}">${adjustHtml(c, i, { champ })}</td></tr>`;
+      const adjOpen = canAdjust && ui.adjust.has(i), adjRow = !adjOpen ? '' : `<tr class="rv-sub"><td></td><td colspan="${cols - 1}">${adjustHtml(c, i, { champ, settings: o.settings })}</td></tr>`;
       const lapsCell = `${eng.lapsOf(c)}${c.adjLaps ? `<br><small class="muted">${c.laps.length} driven</small>` : ''}`;
-      const pointsCell = !champ ? '' : `<td class="num">${((o.champ.list || [])[x.pos - 1] || 0) + (c.adjPoints || 0)}</td>`;
+      const pointsCell = !champ ? '' : `<td class="num rv-champ">${((o.champ.list || [])[x.pos - 1] || 0) + (c.adjPoints || 0)}</td>`;
       return `<tr><td>${x.pos}</td><td>${wins(x) ? cup + ' ' : ''}${name}${c.dq ? ' <span class="muted">(disqualified)</span>' : c.retired ? ` <span class="muted">(${c.dmgOut ? 'out by damage' : 'out'})</span>` : ''}${adjText ? `<br><small class="muted">adjusted: ${esc(adjText)}</small>` : ''}${bopNote ? `<br><small class="muted">Balance of Power: ${esc(bopNote)}</small>` : ''}${tyreNote ? `<br><small class="muted">Tyres: ${esc(tyreNote)}</small>` : ''}${damageNote ? `<br><small class="muted">Damage: ${esc(damageNote)}</small>` : ''}</td><td class="num">${lapsCell}</td>
         <td class="num">${timeCell}</td>${pointsCell}<td>${on ? `${c.points} pts${pen ? ` · ${secs(pen)}` : ''}${c.pending.length ? ` · ${c.pending.length} not served` : ''}` : ''}</td>
         <td class="actions">${on && c.points ? `<button class="btn" data-rv="nullify" data-car="${i}">Clear points</button> ` : ''}${on && c.undoPoints ? `<button class="btn" data-rv="restorepoints" data-car="${i}">Restore (${c.undoPoints} pts)</button> ` : ''}${c.dq ? `<button class="btn" data-rv="undq" data-car="${i}">Reinstate</button>` : `<button class="btn" data-rv="dq" data-car="${i}">Disqualify</button>`}
         ${canAdjust ? `<button class="btn" data-rv="adjopen" data-car="${i}" aria-expanded="${adjOpen}" title="Add or take off race time, laps${champ ? ' or championship points' : ''}">${adjOpen ? 'Hide adjust' : 'Adjust'}</button> ` : ''}<button class="btn" data-rv="laps" data-car="${i}" aria-expanded="${open}">${open ? 'Hide laps' : 'Laps'}</button></td></tr>${pending}${adjRow}${laps}`;
     }).join('');
     return `<h3>Race review</h3><p class="muted">The race is over. Check the result and fix it if needed, then press Finalize to save it. Nothing is saved before that.</p>
-      <div class="wrap"><table class="fields rv-table"><thead><tr><th>Pos</th><th>Driver</th><th>Laps</th><th>Time</th>${champ ? '<th>Points</th>' : ''}<th>${on ? 'Penalties' : ''}</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="wrap"><table class="fields rv-table"><thead><tr><th>Pos</th><th>Driver</th><th>Laps</th><th>Time</th>${champ ? '<th class="rv-champ">Points</th>' : ''}<th>${on ? 'Penalties' : ''}</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
       <div class="row"><button class="btn primary" data-rv="finalize">Finalize results</button> <button class="btn danger" data-rv="discard" title="Nothing from this race is saved in the database">Delete all data</button></div>`;
   }
 
@@ -113,10 +112,9 @@ const Review = (() => {
         ? 'Delete all data of this session?\n\nNo stint is recorded in the database: no laps, no results, no Token Records.\n\nThis can\'t be undone.'
         : 'Delete all data of this race?\n\nNothing is recorded in the database: no laps, no results, no records. In a heat race this includes the earlier heats.\n\nThis can\'t be undone.')) return;
       if (op === 'adjopen') { if (ui.adjust.has(car)) ui.adjust.delete(car); else ui.adjust.add(car); return redraw(); }
-      if (op === 'adjust') { // add or deduct what is typed in the field of this row
-        const inp = root.querySelector(`[data-rva="${car}:${d.what}"]`), n = Number(inp && inp.value), sign = Number(d.sign) < 0 ? -1 : 1;
-        if (!Number.isFinite(n) || !(n > 0)) return; // (nothing, zero or a minus sign in the field: nothing to add; Deduct is the way to take off)
-        return send({ op, car, ms: d.what === 'time' ? sign * Math.round(n * 1000) : undefined, laps: d.what === 'laps' ? sign * Math.round(n) : undefined, points: d.what === 'points' ? sign * n : undefined });
+      if (op === 'adjust') { // a pad: add or deduct its value (or what is typed in the field of that pad)
+        const r = AdjustPad.read(b); if (!r) return; // (an empty field, zero, a minus sign or text: nothing to do)
+        return send({ op, car, ms: r.group === 'time' ? Math.round(r.amount * 1000) : undefined, laps: r.group === 'laps' ? r.amount : undefined, points: r.group === 'champ' ? r.amount : undefined });
       }
       if (op === 'laps') { const set = sid === undefined ? ui.open : ui.openStints, key = sid === undefined ? car : sid; if (set.has(key)) set.delete(key); else set.add(key); return redraw(); }
       if (op === 'deltry') { ui.del = sid === undefined ? `${car}:${d.lap}` : `s${sid}:${d.lap}`; return redraw(); }
