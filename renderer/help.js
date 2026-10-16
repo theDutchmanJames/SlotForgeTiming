@@ -151,7 +151,7 @@ const Help = (() => {
           <li><b>Full screen widgets</b> (or <b>F</b>) shows only the widgets, as large as the window allows. <b>Esc</b>, <b>F</b> or the <b>Exit full screen</b> button goes back. The race keeps running.</li>
           <li>A race keeps running when you open another tab. A <b>Race</b> tab with a green dot takes you back to it. The keys above only work on the Race tab. Only one race can run at a time.</li>
           <li><b>Review laps</b> marks a lap invalid or deletes it during the race.</li>
-          <li>Below are the coloured folders of the Race Director page: <b>Track actions</b> (green: a card for each lane with big <b>Lap</b> (counts a lap by hand, while the race runs), <b>Pit</b> and <b>Call</b> buttons), <b>Adjust</b> (pads for penalty points, damage points, time, laps and championship points), <b>Penalties</b>, <b>Balance of Power</b>, <b>Damage</b>, <b>Weather</b> and <b>Endurance</b>, when the race uses them.</li>
+          <li>Below are the coloured folders of the Race Director page: <b>Track actions</b> (green: a card for each lane with big <b>Lap</b> (counts a lap by hand, while the race runs), <b>Pit</b> and <b>Call</b> buttons), <b>Adjust</b> (pads for penalty points, damage points, time, laps and championship points), <b>Penalties</b>, <b>Balance of Power</b>, <b>Damage</b>, <b>Weather</b>, <b>Tyre Change</b> and <b>Endurance</b>, when the race uses them.</li>
           <li>When a race (or a heat) ends, a <b>review</b> opens before anything is saved: check the order, clear penalty points, disqualify or reinstate, correct laps, or <b>Adjust</b> the race time, the laps and (in a heat race decided on points) the championship points of a driver. <b>Finalize results</b> saves them.</li>
         </ul>` },
       { id: 'director', title: 'Race Director, flags and penalties', note: 'Control the race from anywhere', body: `
@@ -184,7 +184,7 @@ const Help = (() => {
           <li>A <b>weather system</b> (Race Setup, Weather Systems) is a spell of rain: it starts after some laps of the leader or minutes, at a random moment, or when the Race Director says so, and lasts as long as you set. Choose one in a race setup (races, timed races and heats).</li>
           <li>The weather goes <b>Dry</b>, <b>Cloudy</b> (the warning), <b>Wet</b>, <b>Clearing</b> and Dry again. The race screen and the Race Director page show it and what comes next; the Race Director can press the four weather buttons there.</li>
           <li>Cars change tyres <b>in a pit stop</b>, from the <b>Tyre choice</b> of their slot car (Database, Slotcars) to Wet (or Intermediate) in Cloudy and Wet, and back in Clearing and Dry.</li>
-          <li>The Race Director can give a car another <b>dry tyre</b> during the race (the Dry tyre choice in the Weather controls, also on the phone page), for example when a driver goes from Soft to Hard in an endurance race. It counts for this race only, unless he ticks the box that changes the slot car in the Database too.</li>
+          <li>In any race, with or without weather, the Race Director can give a car another tyre in the <b>Tyre Change</b> folder (race screen and phone page), for example Soft for Hard in an endurance race. It counts for this race only, unless he ticks the box that changes the slot car in the Database too. With weather only dry tyres can be chosen.</li>
           <li>When it rains a car on dry tyres has to pit within the laps you set, and when it is dry again a car on Wet tyres has to. Otherwise it gets <b>penalty points</b> (needs a penalty system) and can be <b>hindered</b> like with Balance of Power (needs a fuel setup). Both add up, to 90% at most.</li>
           <li>The result says what the weather and the tyres did. The audio set has calls for it, and simulated cars change tyres too.</li>
         </ul>` },
@@ -250,7 +250,7 @@ const Help = (() => {
           <li>The pages follow the race that is running. They fill in as soon as a race starts.</li>
           <li>The <b>Leaderboard</b> page is a grid: under <b>Customize</b> pick the number of columns and rows with the little squares, and choose a leaderboard for every cell (a row design from the Leaderboard Editor, or the classic table). A board can cover more cells and show only some places, such as 5 to 8. <b>Order by</b> sorts a board by a value (best lap for a fastest laps board, laps, points, penalties), best or worst first.</li>
           <li>The <b>Live Race</b> button in the top bar has its red light on while a race is on, and is greyed out with the light off when no race is running. It opens the pages either way.</li>
-          <li>The Race Director and Tokens pages are the only ones that change anything, so they have their own look. On the Race Director page the Calls come first, then coloured folders: Adjust, Penalties, Balance of Power, Damage and Weather, and Endurance (brown) in an Endurance Race.</li>
+          <li>The Race Director and Tokens pages are the only ones that change anything, so they have their own look. On the Race Director page the Calls come first, then coloured folders: Adjust, Penalties, Balance of Power, Damage, Weather and Tyre Change, and Endurance (brown) in an Endurance Race.</li>
         </ul>` },
       { id: 'network', title: 'Phones and tablets', note: 'Watch and control from the wifi', body: `
         <ul>

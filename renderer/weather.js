@@ -16,7 +16,6 @@
     { code: 'INT', name: 'Intermediate', cls: 'inter', color: '#43b02a' },
     { code: 'W', name: 'Wet', cls: 'wet', color: '#0067ff' }
   ];
-  const DRY_TYRES = TYRES.filter(t => t.cls === 'dry'); // the compounds a Slotcar races on, and the Race Director can give a car (1.31.0)
   const CLASSES = ['dry', 'inter', 'wet'];
   const DEFAULT_TYRE = 'M';
   const MAXP = 90; // the most a car can be hindered (the same limit as Balance of Power)
@@ -155,7 +154,7 @@
     (events || []).forEach(e => {
       if (!e || e.car !== car) return;
       if (e.type === 'tyres') out.push(`${tyreName(e.tyre)} tyres after lap ${Number(e.lap) || 0}`);
-      else if (e.type === 'tyreset') out.push(`${tyreName(e.tyre)} tyres, set by the Race Director after lap ${Number(e.lap) || 0}`);
+      else if (e.type === 'tyreset') out.push(`${tyreName(e.tyre)} tyres, set by the Race Director ${Number(e.lap) > 0 ? `after lap ${Number(e.lap)}` : 'before the first lap'}`);
       else if (e.type === 'tyredue' && e.points > 0) out.push(`${e.points} penalty point${e.points === 1 ? '' : 's'} for the tyres after lap ${Number(e.lap) || 0}`);
     });
     return out.join(', ');
@@ -211,7 +210,7 @@
   // ---- what the controls of the Race Director show ----
   const OPEN = ['ready', 'countdown', 'running', 'paused', 'between'];
   // eng: the engine (or the one of a viewer); phase: the phase of the race screen; t: now; lanes: the lanes to list (all when not given).
-  // { on, mode, state, name, info, canSetTyre, rows: [{ lane, who, code, tyre, color, own, ownCode, todo, hinder, hinderText }], buttons: [{ state, text, on, disabled }] }
+  // { on, mode, state, name, info, rows: [{ lane, who, code, tyre, color, own, todo, hinder, hinderText }], buttons: [{ state, text, on, disabled }] }
   function view(eng, phase, t, lanes) {
     const cfg = eng && eng.weather;
     if (!cfg) return { on: false, mode: '', state: '', name: '', info: '', rows: [], buttons: [] };
@@ -222,14 +221,25 @@
     const state = eng.wxState || 'dry';
     const rows = (eng.cars || []).filter(c => !lanes || lanes.includes(c.lane)).map(c => { // the cars: their tyres, what they have to do, how much they are hindered
       const k = need(state, c.tyre, c.tyreOwn), pct = Math.round(-(c.wx || 0)), t = tyreOf(c.tyre) || tyreOf(DEFAULT_TYRE);
-      return { lane: c.lane, who: c.driverName || `Lane ${c.lane + 1}`, code: t.code, tyre: t.name, color: t.color, own: tyreName(c.tyreOwn), ownCode: cleanTyre(c.tyreOwn),
+      return { lane: c.lane, who: c.driverName || `Lane ${c.lane + 1}`, code: t.code, tyre: t.name, color: t.color, own: tyreName(c.tyreOwn),
         todo: k === 'wet' ? 'Has to switch to Wet' : k === 'dry' ? `Has to switch back to ${tyreName(c.tyreOwn)}` : '', hinder: pct, hinderText: pct > 0 ? `Hindered ${pct}%` : '' };
     });
-    return { on: true, mode: director ? 'director' : cfg.start.mode, state, name, info, rows, canSetTyre: open, // (canSetTyre: the Race Director can set the dry tyre of a car, in any weather, while the race is not over)
+    return { on: true, mode: director ? 'director' : cfg.start.mode, state, name, info, rows,
       buttons: STATES.map(([st, text]) => ({ state: st, text, on: state === st, disabled: !open || !director })) };
   }
 
-  const api = { STATES, TYRES, DRY_TYRES, CLASSES, DEFAULTS, DEFAULT_TYRE, HKEYS, TABLE, MAXP, COND_ITEMS, CKEYS, COND, COMPASS, unitsOf, toUnits, compass, compassWord, conditionsFor, condText, condSpeech, outlook, progressOf, tyreOf, cleanTyre, classOf, tyreName, stateName, clean, rng, plan, nextStage, span, stageOf, tyreFor, need, hinderOf, forecastNote, noteOf, view };
+  // ---- what the Tyre Change folder of the Race Director shows (1.32.0; every race, with or without weather) ----
+  // eng: the engine (or the one of a viewer); phase: the phase of the race screen; lanes: the lanes to list (all when not given).
+  // { on, open (a tyre can be given now), weather (the race has weather: Wet and Intermediate can not be chosen), rows: [{ lane, who, code, tyre, color, ownCode, ownName }] }
+  // (code and tyre are the tyres the car is on; ownCode and ownName its own tyre: the one it races on, and goes back to after Wet or Intermediate tyres)
+  function tyreView(eng, phase, lanes) {
+    if (!eng || !Array.isArray(eng.cars)) return { on: false, open: false, weather: false, rows: [] };
+    const rows = eng.cars.filter(c => !lanes || lanes.includes(c.lane)).map(c => { const t = tyreOf(c.tyre) || tyreOf(DEFAULT_TYRE);
+      return { lane: c.lane, who: c.driverName || `Lane ${c.lane + 1}`, code: t.code, tyre: t.name, color: t.color, ownCode: cleanTyre(c.tyreOwn), ownName: tyreName(c.tyreOwn) }; });
+    return { on: true, open: OPEN.includes(phase) && eng.status !== 'finished', weather: !!eng.weather, rows };
+  }
+
+  const api = { STATES, TYRES, CLASSES, DEFAULTS, DEFAULT_TYRE, HKEYS, TABLE, MAXP, COND_ITEMS, CKEYS, COND, COMPASS, unitsOf, toUnits, compass, compassWord, conditionsFor, condText, condSpeech, outlook, progressOf, tyreOf, cleanTyre, classOf, tyreName, stateName, clean, rng, plan, nextStage, span, stageOf, tyreFor, need, hinderOf, forecastNote, noteOf, view, tyreView };
   root.Wx = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

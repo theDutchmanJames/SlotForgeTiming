@@ -165,7 +165,7 @@ const folders = Help.folders();
 { const f = id => plain(folders.find(x => x.id === id).body);
   say('the Race Setup help names the Rule sets folder, and the old name is gone from the help', f('setups').includes('Rule sets') && !Help.html().includes('Penalties, fuel and pits'));
   say('the Live Race help explains the Leaderboard grid (squares, a leaderboard per cell, more cells, some places), and the Customization help points to it', f('live').includes('Leaderboard page is a grid') && f('live').includes('little squares') && f('live').includes('5 to 8') && f('custom').includes('side by side in the grid of the Leaderboard page'));
-  say('the Live Race help says how the Race Director page is built: the Calls first, then folders for Penalties, Balance of Power, Damage and Weather', f('live').includes('Calls come first') && f('live').includes('Penalties, Balance of Power, Damage and Weather'));
+  say('the Live Race help says how the Race Director page is built: the Calls first, then folders for Penalties, Balance of Power, Damage, Weather and Tyre Change (1.32.0)', f('live').includes('Calls come first') && f('live').includes('Penalties, Balance of Power, Damage, Weather and Tyre Change'));
   say('...and every folder is still short enough', folders.every(x => plain(x.body).length < 1400)); }
 
 // ---- 1.10.1 ----
@@ -180,7 +180,7 @@ const folders = Help.folders();
 
 // ---- 1.12.1 ----
 { const f = id => plain(folders.find(x => x.id === id).body);
-  say('the Live Race help names the Adjust folder first and the brown Endurance folder', f('live').includes('coloured folders: Adjust, Penalties, Balance of Power, Damage and Weather, and Endurance (brown)'));
+  say('the Live Race help names the Adjust folder first and the brown Endurance folder', f('live').includes('coloured folders: Adjust, Penalties, Balance of Power, Damage, Weather and Tyre Change, and Endurance (brown)'));
   say('...and every folder is still short enough', folders.every(x => plain(x.body).length < 1400)); }
 
 // ---- 1.13.0 ----
@@ -235,6 +235,7 @@ const folders = Help.folders();
   say('1.29.0: the Delta Timers help describes the Lap to Lap Delta: the last lap against the lap before it, lap 9 against lap 8 on lap 10, two laps needed (a dash until then); the folder is still short', dl.includes('Lap to Lap Delta') && dl.includes('last lap and how far it is from the lap before it') && dl.includes('lap 9, against lap 8') && dl.includes('badge is a dash until then') && dl.length < 1400 && Object.keys(require('../renderer/delta.js').KINDS).includes('dlaplap')); }
 { const db = plain(Help.folders().find(f => f.id === 'database').body); // 1.30.0
   say('1.30.0: the Database help says a slot car has Statistics: a service interval, the laps since the last service (with a Reset button) and the mileage; the forms are still said to be in folders; the folder is still short', db.includes('Statistics: a service interval, the laps since the last service (with a Reset button) and the mileage') && db.includes('The forms are in folders you can keep closed') && db.includes('Slotcars: a brand, manufacturer or model, scale, motor, tyres, gearing, weight and pictures') && db.length < 1400); }
-{ const wx = plain(Help.folders().find(f => f.id === 'weather').body); // 1.31.0
-  say('1.31.0: the Weather help says the Race Director can give a car another dry tyre during the race (the Dry tyre choice, also on the phone page), for this race only unless the box that changes the slot car in the Database is ticked; the folder is still short', wx.includes('another dry tyre during the race') && wx.includes('Dry tyre choice in the Weather controls') && wx.includes('also on the phone page') && wx.includes('this race only') && wx.includes('changes the slot car in the Database too') && wx.length < 1400); }
+{ const wx = plain(Help.folders().find(f => f.id === 'weather').body), sc = plain(Help.folders().find(f => f.id === 'screen').body), lv = plain(Help.folders().find(f => f.id === 'live').body); // 1.31.0, 1.32.0
+  say('1.32.0: the Weather help says the Race Director can give a car another tyre in any race, with or without weather, in the Tyre Change folder (race screen and phone page), for this race only unless the box that changes the slot car in the Database is ticked, and that only dry tyres can be chosen with weather; the folders are still short', wx.includes('In any race, with or without weather') && wx.includes('Tyre Change folder (race screen and phone page)') && wx.includes('this race only') && wx.includes('changes the slot car in the Database too') && wx.includes('With weather only dry tyres can be chosen') && wx.length < 1400);
+  say('...and the race screen and Live Race help name the Tyre Change folder among the folders of the Race Director page', sc.includes('Weather, Tyre Change and Endurance') && lv.includes('Weather and Tyre Change, and Endurance (brown)') && sc.length < 1400 && lv.length < 1400); }
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

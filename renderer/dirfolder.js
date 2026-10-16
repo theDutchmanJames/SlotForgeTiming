@@ -1,5 +1,5 @@
 // The coloured folders (1.15.0): the collapsible folders of the Race Director page (1.11.1), made once for the Director page and the Race tab, so the two look and work the same.
-// A folder has a title, a short note, a colour (tone: yellow, white, red, blue, brown, green, teal or plain) and a body. A folder you close stays closed while the app is open (on both pages).
+// A folder has a title, a short note, a colour (tone: yellow, white, red, blue, brown, green, teal, purple or plain) and a body. A folder you close stays closed while the app is open (on both pages).
 const DirFolder = (() => {
   const shut = new Set(); // the ids of the folders that were closed
   // id: the folder; title and note: the text of the summary (made by the page: not escaped here); tone: the colour; inner: the html of the body; o.id: an id for the <details>, to find it

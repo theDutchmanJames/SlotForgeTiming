@@ -523,6 +523,7 @@ dialog:has(.formgrid) form{display:flex;flex-direction:column;max-height:calc(90
 /* The Race tab (1.15.0): the same folders as the Race Director page (Track actions green, Time tokens teal, then Penalties, Balance of Power, Damage, Weather, Endurance), and the lane buttons as cards */
 .dir-green{--fc:#2fb86a}
 .dir-teal{--fc:#1fb5ad}
+.dir-purple{--fc:#9b4dff} /* Tyre Change: the colour of the Supersoft tyre */
 .rt-folders{margin-top:12px}
 .rt-folders .boppanel,.rt-folders .tkpanel{margin-top:0}
 .dirfolder .tkhead>strong{display:none} /* (the folder has the name already) */
@@ -734,6 +735,7 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .wxbtns{margin-bottom:8px}
 .wxbtns .btn:disabled{opacity:.4;cursor:not-allowed}
 .wxbtns .btn[aria-pressed=true]{outline:2px solid var(--accent,#4da3ff);outline-offset:1px}
+.wxsave{display:block;margin-top:8px}
 .tyrechip{display:inline-block;padding:2px 10px;border-radius:12px;border:1px solid var(--line);color:#000;font-weight:600;white-space:nowrap}
 
 /* the weather widgets: Tyres, Weather Forecast, Track Conditions (weatherwidgets.js) */

@@ -46,7 +46,7 @@ const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if
 for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function') api[k] = (...x) => { x.forEach(v => { if (typeof v !== 'function') structuredClone(v); }); return f(...x); }; }
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'boardorder.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'report.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'homecards.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'enduranceui.js', 'damageui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'boardorder.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'report.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'homecards.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'enduranceui.js', 'damageui.js', 'weatherui.js', 'tyreui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -78,12 +78,12 @@ const btn = (arr, i) => run(`live.${arr}[${i}].b`);
   // ---------- a race with everything: the folders, in the order and the colours of the Race Director page ----------
   await openRace(full(), track, rows(1, 2));
   const f = folders();
-  say('the Race tab has the folders of the Race Director page, in its order: Track actions, Adjust, Penalties, Balance of Power, Damage, Weather', f.map(x => x.id).join() === 'track,adjust,penalties,bop,damage,weather');
-  say('...with the colours: green, plain, yellow, white, red, blue', f.map(x => x.tone).join() === 'green,plain,yellow,white,red,blue');
+  say('the Race tab has the folders of the Race Director page, in its order: Track actions, Adjust, Penalties, Balance of Power, Damage, Weather, Tyre Change (1.32.0: in every race)', f.map(x => x.id).join() === 'track,adjust,penalties,bop,damage,weather,tyre');
+  say('...with the colours: green, plain, yellow, white, red, blue, purple', f.map(x => x.tone).join() === 'green,plain,yellow,white,red,blue,purple');
   say('...each folder has an id of its own on the Race tab, and they are open to begin with', f.every(x => x.dom === 'fd-' + x.id && x.open));
   const html = E('racehost').innerHTML;
   say('the old flat cards and buttons are gone: no Adjust button, no button strips, no cards around the panels', !/id="(adjbtn|lapbtns|pitbtns|callbtns|penbtns)"/.test(html) && !/class="card (boppanel|tkpanel)/.test(html) && !html.includes('class="card boppanel adjpanel"'));
-  say('the panels are inside their folders (the panel of a folder has no card of its own)', ['boppanel', 'dmpanel', 'wxpanel'].every(id => new RegExp(`<div class="df-body">[^]*id="${id}" class="boppanel"`).test(html)) && html.includes('id="adjpanel" class="boppanel adjpanel"') && html.includes('id="penpanel"'));
+  say('the panels are inside their folders (the panel of a folder has no card of its own)', ['boppanel', 'dmpanel', 'wxpanel', 'typanel'].every(id => new RegExp(`<div class="df-body">[^]*id="${id}" class="boppanel"`).test(html)) && html.includes('id="adjpanel" class="boppanel adjpanel"') && html.includes('id="penpanel"'));
   say('the Calls strip, when there are calls, is above the folders; the review is below them', html.indexOf('id="calls"') > 0 && html.indexOf('id="calls"') < html.indexOf('data-dirf="track"') && html.indexOf('id="review"') > html.indexOf('data-dirf="weather"'));
   say('the keys are said on the page, as before', html.includes('Ctrl + number (or the Call button)'));
 
@@ -140,7 +140,7 @@ const btn = (arr, i) => run(`live.${arr}[${i}].b`);
 
   // ---------- only the folders the race needs ----------
   await openRace(full({ id: 'rf3', sessionType: 'practice', duration: 5, fuelRules: '', bop: '', penaltySystem: '', damageSystem: '', weather: '' }), track, rows(1, 2));
-  say('a practice without systems has the Track actions and the Adjust folder only (the Adjust folder is hidden, there is nothing to adjust)', folders().map(x => x.id).join() === 'track,adjust' && E('fd-adjust').hidden === true && !E('racehost').innerHTML.includes('id="penpanel"') && !run('live.penPanel'));
+  say('a practice without systems has the Track actions, the Adjust folder (hidden, there is nothing to adjust) and the Tyre Change folder only', folders().map(x => x.id).join() === 'track,adjust,tyre' && E('fd-adjust').hidden === true && !E('racehost').innerHTML.includes('id="penpanel"') && !run('live.penPanel'));
   say('...and no penalty system: no penalty folder, no penalty buttons anywhere', !E('racehost').innerHTML.includes('Penalty point +1') && run('live.penBtns') === undefined);
   run('state.race = null; live = null'); saved.length = 0;
 

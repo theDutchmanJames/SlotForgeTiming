@@ -304,16 +304,19 @@
       wxRefresh(c);
       return said;
     }
-    // The Race Director sets the dry tyre of a car (1.31.0): the driver took off one set and fitted another, for example Soft for Hard in an Endurance Race. Only a dry compound (Wet and Intermediate come from the weather).
-    // It is the tyre the car goes back to when the track is dry; a car that is on its own tyres is on the new ones now, a car on Wet or Intermediate tyres keeps them until it changes. Only for this race: the Slotcar in the Database is not changed.
-    R.wxTyre = (i, code, t) => {
+    // The Race Director gives a car another tyre (1.31.0; in every race since 1.32.0): the driver took off one set and fitted another, for example Soft for Hard in an Endurance Race.
+    // It is the tyre the car races on, and in a race with weather the tyre it goes back to when the track is dry: a car that is on its own tyres is on the new ones now, a car on Wet or Intermediate tyres keeps them until it changes.
+    // In a race with weather only a dry compound can be chosen (Wet and Intermediate come from the weather); without weather every tyre can. Only for this race: the Slotcar in the Database is not changed here (the race screen does that when he asks).
+    R.setTyre = (i, code, t) => {
       const c = R.cars[i], to = W.tyreOf(code);
-      if (!WXC || !c || !to || to.cls !== 'dry' || R.status === 'finished') return false;
+      if (!c || !to || R.status === 'finished' || (WXC && to.cls !== 'dry')) return false;
       const was = W.cleanTyre(c.tyreOwn); if (to.code === was) return false;
       const onOwn = W.cleanTyre(c.tyre) === was; c.tyreOwn = to.code; if (onOwn) c.tyre = to.code;
-      const k = W.need(R.wxState, c.tyre, c.tyreOwn); // (a car whose own tyre was a Wet one is on a dry one now: in the rain it has to change, like any car on the wrong tyres when the rain starts)
-      if (!k) c.wxDue = null; else if (!c.wxDue) c.wxDue = { kind: k, lap: c.laps.length + WXC.react };
-      wxRefresh(c);
+      if (WXC) {
+        const k = W.need(R.wxState, c.tyre, c.tyreOwn); // (a car whose own tyre was a Wet one is on a dry one now: in the rain it has to change, like any car on the wrong tyres when the rain starts)
+        if (!k) c.wxDue = null; else if (!c.wxDue) c.wxDue = { kind: k, lap: c.laps.length + WXC.react };
+        wxRefresh(c);
+      }
       log('tyreset', i, t || 0, { tyre: to.code, was, lap: c.laps.length, state: R.wxState, onOwn, by: 'director' });
       return true;
     };

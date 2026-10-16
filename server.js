@@ -27,11 +27,12 @@ function weatherCommand(c) {
   if (c.type !== 'weather') return true;
   return typeof c.state === 'string' && WX_STATES.includes(c.state);
 }
-// the Race Director sets the dry tyre of a car (1.31.0): a lane is a whole number from 0 to 15, the tyre one of the dry compounds (Hard, Medium, Soft, Supersoft), and save (also change the Slotcar in the Database) true or false when it is there
-const WX_DRY_TYRES = ['H', 'M', 'S', 'SS'];
+// the Race Director gives a car another tyre (1.31.0, in every race since 1.32.0): a lane is a whole number from 0 to 15, the tyre one of the six (Hard, Medium, Soft, Supersoft, Intermediate, Wet; the race itself
+// refuses Intermediate and Wet when the race has weather, because those come from the pit stops), and save (also change the Slotcar in the Database) true or false when it is there
+const TYRE_CODES = ['H', 'M', 'S', 'SS', 'INT', 'W'];
 function tyreCommand(c) {
   if (c.type !== 'tyre') return true;
-  return Number.isInteger(c.lane) && c.lane >= 0 && c.lane <= 15 && typeof c.tyre === 'string' && WX_DRY_TYRES.includes(c.tyre) && (c.save === undefined || typeof c.save === 'boolean'); // (save: the tyre is also kept on the Slotcar in the Database)
+  return Number.isInteger(c.lane) && c.lane >= 0 && c.lane <= 15 && typeof c.tyre === 'string' && TYRE_CODES.includes(c.tyre) && (c.save === undefined || typeof c.save === 'boolean'); // (save: the tyre is also kept on the Slotcar in the Database)
 }
 // The commands of an Endurance Race: a lane is a whole number from 0 to 15; the driver who steps in (swap) is the id of a driver, or left out; swapnext needs the id of the driver who is next.
 function swapCommand(c) {

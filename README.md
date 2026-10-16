@@ -2198,3 +2198,20 @@ Good to know:
 4. If the Database cannot be written, the race goes on with the new tyre and the Database keeps what it had.
 5. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 6. The tests: `tests/weather.test.js` (the engine, the result, saving and resuming), `tests/weatherscreen.test.js` (the choice, the tick box, the Database, the Race Director page), `tests/web.test.js` (the command of the phone page) and `tests/help.test.js`.
+
+## What to try (1.32.0): the Tyre Change folder, in every race
+From your note: the tyre choice in every race, in a folder of its own under the Race Director called Tyre Change.
+1. Start any race: a race, a timed race, heats, a practice, a qualifying, with or without a weather system. Under the track actions of the race screen there is a purple folder **Tyre Change** (after Weather, before Endurance). The Race Director page has the same folder, so it works from a phone too.
+2. For each lane it lists the driver, the tyres the car is on now (with the colour) and a **Tyre choice**. Pick another tyre and the car is on it at once (the Tyres widget changes too).
+3. Under the table is the tick box **Also change the tyre choice of the Slotcar in the Database**. Not ticked, the change is for this race only; ticked, the Slotcar in the Database gets it too.
+4. In a race **without weather** all six tyres can be chosen, including Intermediate and Wet. In a race **with weather** only the four dry tyres can: Wet and Intermediate are greyed out, because the pit stops give those. A car on Wet when you change its dry tyre keeps the Wet tyres and goes back to the new tyre in its next stop.
+5. The result notes it, for example *Hard tyres, set by the Race Director after lap 14*, or *before the first lap* when the car had not driven yet.
+
+Good to know:
+1. The tyre choice is not in the Weather folder any more: that folder keeps the weather buttons and the tyres the cars are on.
+2. A Time Token Session has no Tyre Change folder (its lanes are sold to guests, there is no car to choose a tyre for).
+3. It works from the lights until the race is over, and not in the review after the race. In heats, without the tick box the change counts for the heat that is running; the next heat starts from the Database.
+4. The phone page asks the race window to do it; the server only accepts a lane from 0 to 15, one of the six tyres and a save that is true or false.
+5. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+6. The tests: `tests/weather.test.js` (the engine with and without weather, the view, the words, resuming), `tests/weatherscreen.test.js` (the panel, the tick box, the Database, the Race Director page, a race without weather, heats), `tests/racefolders.test.js` (the folder and its colour), `tests/web.test.js` (the command) and `tests/help.test.js`.
+

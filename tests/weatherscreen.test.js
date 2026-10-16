@@ -31,7 +31,7 @@ const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if
 for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function') api[k] = (...x) => { x.forEach(v => { if (typeof v !== 'function') structuredClone(v); }); return f(...x); }; }
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'boardorder.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'homecards.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'damageui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'boardorder.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'homecards.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'damageui.js', 'weatherui.js', 'tyreui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -164,16 +164,19 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     press('wet'); press('dry', true); box.onclick({ target: { closest: () => null } }); box.onclick({ target: {} });
     say('a press on a button of the controls says which weather; a button that is off, and a click on something else, do nothing', same_(calls, ['wet']) && box.hidden === false); }
 
-  // ---------- 1.31.0: the Race Director gives a car another dry tyre ----------
+  // ---------- 1.31.0 / 1.32.0: the Race Director gives a car another tyre (the Tyre Change folder; the dry tyre in a race with weather) ----------
   { const upd = [], keepUpdate = api.update; api.update = async (e, id, p) => { upd.push([e, id, p]); return {}; };
     const own = i => eng().cars[i].tyreOwn, now_ = i => eng().cars[i].tyre, tyres = () => eng().events.filter(e => e.type === 'tyreset');
     say('the cars start on the dry tyre of their Slotcar (lane 1 Soft from its Database entry, lane 2 the standard Medium)', own(0) === 'S' && own(1) === 'M' && now_(0) === 'S' && now_(1) === 'M');
+    say('...the Tyre Change folder of this race (it has weather) has Intermediate and Wet greyed out, the dry tyres open', E('typanel').innerHTML.includes('value="INT" disabled') && E('typanel').innerHTML.includes('value="W" disabled') && !E('typanel').innerHTML.includes('value="S" disabled') && E('typanel').innerHTML.includes('pit stops'));
+    run("live.tyCount = 0; (function (f) { live.tyPanel.update = function () { live.tyCount++; return f.apply(this, arguments); }; })(live.tyPanel.update)");
     run('live.actions.tyre')(0, 'H');
-    say('the Race Director changes the dry tyre of a car on the race screen: lane 1 goes from Soft to Hard, and the car is on it at once', own(0) === 'H' && now_(0) === 'H' && now_(1) === 'M' && tyres().length === 1 && tyres()[0].by === 'director' && tyres()[0].was === 'S' && tyres()[0].tyre === 'H');
+    say('the Race Director changes the dry tyre of a car on the race screen: lane 1 goes from Soft to Hard, and the car is on it at once (at the time of the race clock)', own(0) === 'H' && now_(0) === 'H' && now_(1) === 'M' && tyres().length === 1 && tyres()[0].by === 'director' && tyres()[0].was === 'S' && tyres()[0].tyre === 'H' && tyres()[0].t > 0);
+    say('...and the Tyre Change panel is drawn again at once', run('live.tyCount') > 0);
     await wait(30);
     say('...for this race only: the Database is not asked to change anything', upd.length === 0);
-    run('live.actions.tyre')(0, 'H'); run('live.actions.tyre')(0, 'W'); run('live.actions.tyre')(0, 'I'); run('live.actions.tyre')(0, 'X'); run('live.actions.tyre')(5, 'S'); run('live.actions.tyre')(0, undefined);
-    say('...the tyre it already has, a Wet or Intermediate tyre (those come from the pits), a tyre that does not exist, an empty lane and no tyre at all do nothing', own(0) === 'H' && tyres().length === 1 && upd.length === 0);
+    run('live.actions.tyre')(0, 'H'); run('live.actions.tyre')(0, 'W'); run('live.actions.tyre')(0, 'INT'); run('live.actions.tyre')(0, 'X'); run('live.actions.tyre')(5, 'S'); run('live.actions.tyre')(0, undefined);
+    say('...the tyre it already has, a Wet or Intermediate tyre (in a race with weather those come from the pits), a tyre that does not exist, an empty lane and no tyre at all do nothing', own(0) === 'H' && tyres().length === 1 && upd.length === 0);
     run('live.actions.tyre')(1, 'SS', true); await wait(30);
     say('with the tick box the Slotcar in the Database gets it too (one change of the slotcar with the tyre only)', own(1) === 'SS' && upd.length === 1 && same_(upd[0], ['slotcars', 'c2', { tyreCompound: 'SS' }]));
     run('live.actions.tyre')(0, 'M', 'yes'); run('live.actions.tyre')(0, 'S', false); await wait(30);
@@ -181,7 +184,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     api.liveCommand({ type: 'tyre', lane: 0, tyre: 'M', save: true }); await wait(30);
     say('the Race Director page can do it too: the command goes to the race window, with the tick box if he wants it', own(0) === 'M' && upd.length === 2 && same_(upd[1], ['slotcars', 'c1', { tyreCompound: 'M' }]));
     api.liveCommand({ type: 'tyre', lane: 1, tyre: 'S' }); api.liveCommand({ type: 'tyre', lane: 1, tyre: 'W' }); api.liveCommand({ type: 'tyre' }); await wait(30);
-    say('...a command without the tick box leaves the Database alone, and one with a tyre that is not a dry one, or none, is ignored', own(1) === 'S' && upd.length === 2);
+    say('...a command without the tick box leaves the Database alone, and one with a tyre the race does not give (Wet in this race with weather), or none, is ignored', own(1) === 'S' && upd.length === 2);
     api.liveCommand({ type: 'tyre', lane: 1, tyre: 'M', save: 'yes' }); await wait(30);
     say('...and a save that is not exactly true does not change the Database, also when the command reaches the race window without the server', own(1) === 'M' && upd.length === 2);
     const wasPhase = phase(); run("live.phase = 'review'"); run('live.actions.tyre')(1, 'H'); const kept = own(1); run("live.phase = 'running'");
@@ -190,57 +193,94 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     run('live.actions.tyre')(1, 'H', true); await wait(30);
     say('if the Database cannot be written the race goes on with the new tyre', own(1) === 'H');
     api.update = keepUpdate;
-    // the tyre selection of the controls
-    { const sets = []; const mkSel = lane => ({ dataset: { wxOwn: String(lane) }, value: 'M', disabled: false, blurred: 0, blur() { this.blurred++; } });
+    // the Tyre Change panel
+    { const sets = []; const mkSel = lane => ({ dataset: { tyOwn: String(lane) }, value: 'M', disabled: false, blurred: 0, blur() { this.blurred++; } });
       const box = { hidden: true, innerHTML: '', onchange: null, onclick: null, querySelector: () => mk() };
-      const P = run('WeatherPanel').build(box, { eng: () => eng(), lanes: [0, 1], phase: () => phase(), now: () => 0, send: () => {}, setTyre: (l, c, sv) => sets.push([l, c, sv]) });
+      const P = run('TyrePanel').build(box, { eng: () => eng(), lanes: [0, 1], phase: () => phase(), weather: true, setTyre: (l, c, sv) => sets.push([l, c, sv]) });
       const html = box.innerHTML;
-      say('the controls with a tyre selection have a Dry tyre column: a choice for each lane with Hard, Medium, Soft and Supersoft (and no Wet or Intermediate), and the tick box for the Database', html.includes('<th>Dry tyre</th>') && html.includes('data-wx-own="0"') && html.includes('data-wx-own="1"') && (html.match(/<option /g) || []).length === 8 && ['H', 'M', 'S', 'SS'].every(c => html.includes(`value="${c}"`)) && !html.includes('value="W"') && !html.includes('value="I"') && html.includes('data-wx-save="1"') && html.includes('Also change the tyre choice of the Slotcar in the Database') && html.includes('this race only'));
+      say('the Tyre Change panel has a Tyre choice column: a choice for each lane with all six tyres, and the tick box for the Database', html.includes('<th>Tyre choice</th>') && html.includes('data-ty-own="0"') && html.includes('data-ty-own="1"') && (html.match(/<option /g) || []).length === 12 && ['H', 'M', 'S', 'SS', 'INT', 'W'].every(c => html.includes(`value="${c}"`)) && html.includes('data-ty-save="1"') && html.includes('Also change the tyre choice of the Slotcar in the Database') && html.includes('this race only'));
+      say('...in a race with weather Intermediate and Wet can not be chosen (they come from the pit stops), and the panel says so', (html.match(/ disabled>/g) || []).length === 4 && html.includes('value="INT" disabled') && html.includes('value="W" disabled') && !html.includes('value="S" disabled') && html.includes('Wet and Intermediate tyres come from the pit stops'));
+      const free = { hidden: true, innerHTML: '', onchange: null, querySelector: () => mk() }; run('TyrePanel').build(free, { eng: () => eng(), lanes: [0, 1], phase: () => phase(), weather: false, setTyre: () => {} });
+      say('...in a race without weather every tyre can be chosen, and there is nothing to say about the pit stops', !free.innerHTML.includes(' disabled>') && !free.innerHTML.includes('pit stops') && (free.innerHTML.match(/<option /g) || []).length === 12);
       const s0 = mkSel(0), s1 = mkSel(1); box.onchange({ target: s0 }); s1.value = 'S'; box.onchange({ target: s1 });
       say('picking a tyre sends the lane and the tyre, not saved to begin with, and lets go of the choice', same_(sets, [[0, 'M', false], [1, 'S', false]]) && s0.blurred === 1 && s1.blurred === 1);
-      box.onchange({ target: { dataset: { wxSave: '1' }, checked: true } }); s0.value = 'H'; box.onchange({ target: s0 });
+      box.onchange({ target: { dataset: { tySave: '1' }, checked: true } }); s0.value = 'H'; box.onchange({ target: s0 });
       say('with the box ticked the choice is sent as one to save too', same_(sets.at(-1), [0, 'H', true]));
-      const box2 = { hidden: true, innerHTML: '', onchange: null, querySelector: () => mk() }; run('WeatherPanel').build(box2, { eng: () => eng(), lanes: [0], phase: () => phase(), now: () => 0, send: () => {}, setTyre: (l, c, sv) => sets.push([l, c, sv]) });
+      const box2 = { hidden: true, innerHTML: '', onchange: null, querySelector: () => mk() }; run('TyrePanel').build(box2, { eng: () => eng(), lanes: [0], phase: () => phase(), weather: true, setTyre: (l, c, sv) => sets.push([l, c, sv]) });
       s1.value = 'SS'; box2.onchange({ target: s1 });
-      say('...and the box is remembered by the next panel that is built (while the app is open)', same_(sets.at(-1), [1, 'SS', true]));
-      box.onchange({ target: { dataset: { wxSave: '1' }, checked: false } }); const n = sets.length; const dis = mkSel(0); dis.disabled = true; box.onchange({ target: dis }); box.onchange({ target: { dataset: {} } }); box.onchange({ target: null });
+      say('...and the box is remembered by the next panel that is built (while the app is open), also ticked on the screen', same_(sets.at(-1), [1, 'SS', true]) && box2.innerHTML.includes('data-ty-save="1" checked>'));
+      box.onchange({ target: { dataset: { tySave: '1' }, checked: false } }); const n = sets.length; const dis = mkSel(0); dis.disabled = true; box.onchange({ target: dis }); box.onchange({ target: { dataset: {} } }); box.onchange({ target: null });
       say('a choice that is switched off, and a change of something else, are ignored', sets.length === n);
-      const plainBox = { hidden: true, innerHTML: '', onchange: null, querySelector: () => mk() }; run('WeatherPanel').build(plainBox, { eng: () => eng(), lanes: [0, 1], phase: () => phase(), now: () => 0, send: () => {} });
-      say('without a tyre selection (as before) there is no Dry tyre column, no choice and no tick box', !plainBox.innerHTML.includes('Dry tyre') && !plainBox.innerHTML.includes('data-wx-own') && !plainBox.innerHTML.includes('data-wx-save'));
+      const wxBox = { hidden: true, innerHTML: '', onchange: null, querySelector: () => mk() }; run('WeatherPanel').build(wxBox, { eng: () => eng(), lanes: [0, 1], phase: () => phase(), now: () => 0, send: () => {} });
+      say('the Weather panel keeps the weather and the tyres the cars are on, and has no tyre choice any more (it moved to Tyre Change)', wxBox.innerHTML.includes('data-wx="tyre"') && !wxBox.innerHTML.includes('Dry tyre') && !wxBox.innerHTML.includes('data-wx-own') && !wxBox.innerHTML.includes('<select'));
       // what update() does with the choices
-      const selOf = {}; [0, 1, 2].forEach(l => { selOf[l] = { value: '', disabled: false }; });
-      const rowOf = l => { const parts = {}; const r = { querySelector: sel => (/data-wx-own/.test(sel) ? selOf[l] : (parts[sel] = parts[sel] || { textContent: '', style: {} })) }; return r; }, rows_ = { 0: rowOf(0), 1: rowOf(1), 2: rowOf(2) };
+      const selOf = {}, chip = {}, who = {}; [0, 1, 2].forEach(l => { selOf[l] = { value: '', disabled: false }; chip[l] = { textContent: '', style: {} }; who[l] = { textContent: '' }; });
+      const rowOf = l => ({ querySelector: sel => (/data-ty-own/.test(sel) ? selOf[l] : /"tyre"/.test(sel) ? chip[l] : who[l]) }), rows_ = { 0: rowOf(0), 1: rowOf(1), 2: rowOf(2) };
       const box3 = { hidden: true, innerHTML: '', querySelector: sel => { const t = /tr\[data-lane="(\d+)"\]/.exec(sel); return t ? rows_[t[1]] : mk(); } };
-      let ph = 'running'; const P3 = run('WeatherPanel').build(box3, { eng: () => eng(), lanes: [0, 1, 2], phase: () => ph, now: () => 0, send: () => {}, setTyre: () => {} }); P3.update();
-      say('the controls show the dry tyre of each car, and are on for as long as the race is going', selOf[0].value === own(0) && selOf[1].value === own(1) && selOf[0].disabled === false && selOf[1].disabled === false);
+      let ph = 'running'; const P3 = run('TyrePanel').build(box3, { eng: () => eng(), lanes: [0, 1, 2], phase: () => ph, weather: true, setTyre: () => {} }); P3.update();
+      say('the panel shows the driver, the tyres of each car (with its colour) and its tyre choice, and the choices are on for as long as the race is going', selOf[0].value === own(0) && selOf[1].value === own(1) && selOf[0].disabled === false && selOf[1].disabled === false && who[0].textContent === 'Alex' && chip[0].textContent === `${now_(0)} ${{ H: 'Hard', M: 'Medium', S: 'Soft', SS: 'Supersoft' }[now_(0)]}` && chip[0].style.background !== undefined);
       run('live.actions.tyre')(0, 'SS'); P3.update();
-      say('...and follow the race when the tyre is changed from somewhere else (the Race Director page)', selOf[0].value === 'SS');
+      say('...and follow the race when the tyre is changed from somewhere else (the Race Director page)', selOf[0].value === 'SS' && chip[0].textContent === 'SS Supersoft' && chip[0].style.background === '#9b4dff');
       selOf[1].value = 'S'; const keepActive = document.activeElement; document.activeElement = selOf[1]; P3.update(); const underFinger = selOf[1].value; document.activeElement = keepActive; P3.update();
       say('...but never move under a finger that is choosing (the choice that has the focus keeps what he picked, and is put right once he lets go)', underFinger === 'S' && selOf[1].value === own(1));
       ph = 'finished'; P3.update();
       say('when the race is over the choices are off', selOf[0].disabled === true && selOf[1].disabled === true);
+      const none = { hidden: false, innerHTML: '', querySelector: () => mk() }, p2 = run('TyrePanel').build(none, { eng: () => null, lanes: [0], phase: () => 'running', weather: false, setTyre: () => {} }); p2.update();
+      say('with no engine (a viewer that has nothing yet) the panel is hidden', none.hidden === true);
     }
     // the Race Director page
-    { const host = document.createElement('div'); await run('LiveView.mount')(host, {}); await wait(50); run('LiveView.go')('director'); await wait(80);
-      const wx = E('dir-wx').innerHTML, before = cmds.length;
-      say('the Weather folder of the Race Director page has the Dry tyre choice for each lane and the tick box', wx.includes('<th>Dry tyre</th>') && wx.includes('data-wx-own="0"') && wx.includes('data-wx-own="1"') && wx.includes('data-wx-save="1"'));
-      E('dir-wx').onchange({ target: { dataset: { wxOwn: '1' }, value: 'H', disabled: false, blur() {} } }); await wait(60);
+    { run("globalThis.__tyUp = 0; TyrePanel.__orig = TyrePanel.build; TyrePanel.build = function (box, o) { const p = TyrePanel.__orig.call(this, box, o); const u = p.update; p.update = function () { globalThis.__tyUp++; return u.apply(this, arguments); }; return p; }");
+      const host = document.createElement('div'); await run('LiveView.mount')(host, {}); await wait(50); run('LiveView.go')('director'); await wait(80);
+      const ty = E('dir-ty').innerHTML, before = cmds.length;
+      { const n0 = run('__tyUp'); await wait(1300);
+        say('...the panel of the page is drawn again when the race changes, and has Intermediate and Wet greyed out in this race with weather', n0 > 0 && run('__tyUp') > n0 && ty.includes('value="INT" disabled') && ty.includes('value="W" disabled') && !ty.includes('value="H" disabled')); }
+      say('the Race Director page has a Tyre Change folder with the tyre choice for each lane and the tick box (and the Weather folder has none)', ty.includes('<th>Tyre choice</th>') && ty.includes('data-ty-own="0"') && ty.includes('data-ty-own="1"') && ty.includes('data-ty-save="1"') && E('lv-body').innerHTML.includes('data-dirf="tyre"') && !E('dir-wx').innerHTML.includes('data-wx-own'));
+      E('dir-ty').onchange({ target: { dataset: { tyOwn: '1' }, value: 'H', disabled: false, blur() {} } }); await wait(60);
       say('a choice there is sent to the race window as a command (without the tick box: no save), and the race window carries it out', cmds.length === before + 1 && same_(cmds.at(-1), { type: 'tyre', lane: 1, tyre: 'H' }) && own(1) === 'H');
-      E('dir-wx').onchange({ target: { dataset: { wxSave: '1' }, checked: true } }); E('dir-wx').onchange({ target: { dataset: { wxOwn: '0' }, value: 'H', disabled: false, blur() {} } }); await wait(60);
+      E('dir-ty').onchange({ target: { dataset: { tySave: '1' }, checked: true } }); E('dir-ty').onchange({ target: { dataset: { tyOwn: '0' }, value: 'H', disabled: false, blur() {} } }); await wait(60);
       say('...with the tick box ticked the command asks to save it too', same_(cmds.at(-1), { type: 'tyre', lane: 0, tyre: 'H', save: true }) && own(0) === 'H');
-      E('dir-wx').onchange({ target: { dataset: { wxSave: '1' }, checked: false } });
+      E('dir-ty').onchange({ target: { dataset: { tySave: '1' }, checked: false } });
+      run('TyrePanel.build = TyrePanel.__orig');
       run('LiveView.unmount')(); }
     api.update = async (e, id, p) => { upd.push([e, id, p]); return {}; };
     { // the controls of the race screen itself
-      const box = E('wxpanel'), n = upd.length; box.onchange({ target: { dataset: { wxSave: '1' }, checked: true } }); box.onchange({ target: { dataset: { wxOwn: '1' }, value: 'S', disabled: false, blur() {} } }); await wait(30);
-      say('the controls of the race screen itself do the same: a tyre and the tick box change the car and the slot car in the Database', own(1) === 'S' && upd.length === n + 1 && same_(upd.at(-1), ['slotcars', 'c2', { tyreCompound: 'S' }]));
-      box.onchange({ target: { dataset: { wxSave: '1' }, checked: false } }); box.onchange({ target: { dataset: { wxOwn: '1' }, value: 'H', disabled: false, blur() {} } }); await wait(30);
+      const box = E('typanel'), n = upd.length; box.onchange({ target: { dataset: { tySave: '1' }, checked: true } }); box.onchange({ target: { dataset: { tyOwn: '1' }, value: 'S', disabled: false, blur() {} } }); await wait(30);
+      say('the Tyre Change folder of the race screen itself does the same: a tyre and the tick box change the car and the slot car in the Database', own(1) === 'S' && upd.length === n + 1 && same_(upd.at(-1), ['slotcars', 'c2', { tyreCompound: 'S' }]));
+      box.onchange({ target: { dataset: { tySave: '1' }, checked: false } }); box.onchange({ target: { dataset: { tyOwn: '1' }, value: 'H', disabled: false, blur() {} } }); await wait(30);
       say('...and without the tick box only the car changes', own(1) === 'H' && upd.length === n + 1); }
     key('s'); await until(() => phase() === 'finished', 3000); await wait(100);
     await openRace(setupDir, store.tracks[0], [{ driverId: 'd1', carId: '' }, { driverId: 'd2', carId: 'c2' }]); await wait(50);
     { const n = upd.length; run('live.actions.tyre')(0, 'H', true); run('live.actions.tyre')(1, 'SS', true); await wait(30);
       say('a lane without a slot car can be given a tyre too, but there is no slot car in the Database to change (the other lane is saved)', eng().cars[0].tyreOwn === 'H' && eng().cars[1].tyreOwn === 'SS' && upd.length === n + 1 && same_(upd.at(-1), ['slotcars', 'c2', { tyreCompound: 'SS' }])); }
     key(' '); await until(() => phase() === 'running', 3000);
+    key('s'); await until(() => phase() === 'finished', 3000); await wait(100);
+    // 1.32.0: a race without a weather system has the Tyre Change folder too
+    const setupNo = { ...setupWx, id: 's-nowx', name: 'Dry race', weather: '' };
+    await openRace(setupNo, store.tracks[0], rows(1, 2)); await wait(50);
+    { const n = upd.length, host = E('racehost').innerHTML;
+      say('1.32.0: a race without a weather system has the Tyre Change folder (purple, after the others) and no Weather folder', !eng().weather && host.includes('data-dirf="tyre"') && host.includes('dir-purple') && host.includes('id="typanel"') && !host.includes('data-dirf="weather"') && !host.includes('id="wxpanel"'));
+      say('...with the panel built: a choice for each lane with all six tyres, none switched off, nothing about pit stops, and no Weather panel', !!run('live.tyPanel') && !run('live.wxPanel') && E('typanel').innerHTML.includes('data-ty-own="0"') && E('typanel').innerHTML.includes('data-ty-own="1"') && !E('typanel').innerHTML.includes(' disabled>') && !E('typanel').innerHTML.includes('pit stops'));
+      run('live.actions.tyre')(0, 'INT'); run('live.actions.tyre')(1, 'W', true); await wait(30);
+      say('the Race Director gives a car an Intermediate tyre, and another a Wet one (and the Database of that one is changed too): there is no weather to refuse them', eng().cars[0].tyre === 'INT' && eng().cars[0].tyreOwn === 'INT' && eng().cars[1].tyre === 'W' && upd.length === n + 1 && same_(upd.at(-1), ['slotcars', 'c2', { tyreCompound: 'W' }]));
+      key(' '); await until(() => phase() === 'running', 3000); await wait(60);
+      run('live.actions.tyre')(0, 'SS'); api.liveCommand({ type: 'tyre', lane: 1, tyre: 'H' }); await wait(60);
+      say('...also while the race runs, from the race screen and from the Race Director page', eng().cars[0].tyre === 'SS' && eng().cars[1].tyre === 'H' && eng().events.filter(e => e.type === 'tyreset').length === 4);
+      for (let k = 0; k < 2; k++) { key('1'); key('2'); await wait(80); }
+      const host2 = document.createElement('div'); await run('LiveView.mount')(host2, {}); await wait(50); run('LiveView.go')('director'); await wait(80);
+      say('the Race Director page of that race has the Tyre Change folder with the choices (all six open, there is no weather), and no Weather folder', E('lv-body').innerHTML.includes('data-dirf="tyre"') && E('dir-ty').innerHTML.includes('data-ty-own="1"') && !E('dir-ty').innerHTML.includes(' disabled>') && !(E('lv-body').innerHTML.includes('data-dirf="weather"')) && !E('lv-body').innerHTML.includes('id="dir-wx"'));
+      const before = cmds.length; E('dir-ty').onchange({ target: { dataset: { tyOwn: '0' }, value: 'M', disabled: false, blur() {} } }); await wait(60);
+      say('...and a choice there reaches the race', cmds.length === before + 1 && same_(cmds.at(-1), { type: 'tyre', lane: 0, tyre: 'M' }) && eng().cars[0].tyre === 'M');
+      run('LiveView.unmount')();
+      key('s'); await until(() => phase() === 'finished', 3000); await wait(150);
+      const sv = saved.at(-1) && saved.at(-1)[0], rowOf = nm => sv.standings.find(x => x.driverName === nm);
+      say('the result that is saved says what the Race Director did, in words (before the first lap, or after the lap he did it)', !!sv && rowOf('Alex').tyreNote.startsWith('Intermediate tyres, set by the Race Director before the first lap, Supersoft tyres, set by the Race Director before the first lap, Medium tyres, set by the Race Director after lap ') && /after lap [12]$/.test(rowOf('Alex').tyreNote) && rowOf('Sam').tyreNote === 'Wet tyres, set by the Race Director before the first lap, Hard tyres, set by the Race Director before the first lap');
+    }
+    // a Time Token Session has no Tyre Change folder (its lanes are sold to guests: there is no car to choose a tyre for)
+    run("globalThis.__tyBuilt = 0; TyrePanel.__orig2 = TyrePanel.build; TyrePanel.build = function () { globalThis.__tyBuilt++; return TyrePanel.__orig2.apply(this, arguments); }");
+    await openRace({ id: 's-tk', name: 'Tokens', sessionType: 'tokens', layout: '' }, store.tracks[1], rows(1, 2)); await wait(50);
+    { const host3 = document.createElement('div'); await run('LiveView.mount')(host3, {}); await wait(50); run('LiveView.go')('director'); await wait(80);
+      say('a Time Token Session has no Tyre Change folder, on the race screen and on the Race Director page (which is there, with its Calls)', E('lv-body').innerHTML.includes('id="lv-dir"') && E('racehost').innerHTML.includes('data-dirf="track"') && !E('racehost').innerHTML.includes('data-dirf="tyre"') && !run('live.tyPanel') && !E('lv-body').innerHTML.includes('data-dirf="tyre"') && !E('lv-body').innerHTML.includes('id="dir-ty"') && run('__tyBuilt') === 0);
+      run('LiveView.unmount')(); run('TyrePanel.build = TyrePanel.__orig2'); }
     api.update = keepUpdate;
   }
   key('s'); await until(() => phase() === 'finished', 3000); await wait(150);
@@ -270,8 +310,8 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     run('LiveView.go')('director'); await wait(80);
     let html = E('lv-body').innerHTML; const at = k => html.indexOf(`data-dirf="${k}"`), part = (k, next) => html.slice(at(k), next ? at(next) : undefined);
     say('the Race Director page: the buttons and the Calls card stay as they were (Calls is not a folder), and come first', html.indexOf('data-cmd="start"') < html.indexOf('<h3>Calls</h3>') && html.includes('<div class="card"><h3>Calls</h3>') && at('calls') === -1 && html.indexOf('<h3>Calls</h3>') < at('penalties'));
-    say('...then the folders in this order: Adjust (1.12.0), Penalties, Balance of Power, Damage, Weather', at('adjust') > 0 && at('adjust') < at('penalties') && at('penalties') < at('bop') && at('bop') < at('damage') && at('damage') < at('weather') && (html.match(/<details class="dbfolder dirfolder/g) || []).length === 5);
-    say('...each folder has the look of the Help folders (a title and a line beside it) and a colour of its own: Penalties yellow, Balance of Power white, Damage red, Weather blue', html.includes('<details class="dbfolder dirfolder dir-yellow" data-dirf="penalties" open><summary><strong>Penalties</strong> <span class="muted">') && html.includes('class="dbfolder dirfolder dir-white" data-dirf="bop"') && html.includes('class="dbfolder dirfolder dir-red" data-dirf="damage"') && html.includes('class="dbfolder dirfolder dir-blue" data-dirf="weather"') && html.includes('<strong>Balance of Power</strong>') && html.includes('<strong>Damage</strong>') && html.includes('<strong>Weather</strong>'));
+    say('...then the folders in this order: Adjust (1.12.0), Penalties, Balance of Power, Damage, Weather, Tyre Change (1.32.0)', at('adjust') > 0 && at('adjust') < at('penalties') && at('penalties') < at('bop') && at('bop') < at('damage') && at('damage') < at('weather') && at('weather') < at('tyre') && (html.match(/<details class="dbfolder dirfolder/g) || []).length === 6);
+    say('...each folder has the look of the Help folders (a title and a line beside it) and a colour of its own: Penalties yellow, Balance of Power white, Damage red, Weather blue, Tyre Change purple', html.includes('<details class="dbfolder dirfolder dir-yellow" data-dirf="penalties" open><summary><strong>Penalties</strong> <span class="muted">') && html.includes('class="dbfolder dirfolder dir-white" data-dirf="bop"') && html.includes('class="dbfolder dirfolder dir-red" data-dirf="damage"') && html.includes('class="dbfolder dirfolder dir-blue" data-dirf="weather"') && html.includes('<strong>Balance of Power</strong>') && html.includes('<strong>Damage</strong>') && html.includes('<strong>Weather</strong>') && html.includes('class="dbfolder dirfolder dir-purple" data-dirf="tyre"') && html.includes('<strong>Tyre Change</strong>'));
     say('...with the penalty points and the log in the Penalties folder, and the controls of each panel in its own folder', part('penalties', 'bop').includes('data-cmd="penalty"') && part('penalties', 'bop').includes('Penalty log') && part('bop', 'damage').includes('id="dir-bop"') && part('damage', 'weather').includes('id="dir-dm"') && part('weather').includes('id="dir-wx"') && !html.includes('class="card boppanel"'));
     say('...all open to begin with, as the page was', ['penalties', 'bop', 'damage', 'weather'].every(k => html.includes(`data-dirf="${k}" open>`)));
     fakes[2].open = false; fakes[2].ontoggle(); run('LiveView.go')('director'); await wait(60); html = E('lv-body').innerHTML;
@@ -279,7 +319,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     fakes[2].open = true; fakes[2].ontoggle(); run('LiveView.go')('director'); await wait(60); html = E('lv-body').innerHTML;
     say('...and opening it again is remembered too', html.includes('data-dirf="damage" open>'));
     { const css = require('fs').readFileSync(__dirname + '/../renderer/styles.css', 'utf8');
-      say('the colours are in the stylesheet (the folder takes its colour from --fc), white is a grey on a light theme, and the name inside a panel is not repeated under the folder name', /\.dirfolder\{--fc:var\(--accent\);border-left-color:var\(--fc\)\}/.test(css) && /\.dbfolder\.dirfolder>summary\{background:color-mix\(in srgb,var\(--fc\) 16%,var\(--panel\)\)\}/.test(css) && /\.dir-yellow\{--fc:#f2b705\}/.test(css) && /\.dir-white\{--fc:#ffffff\}/.test(css) && /\.dir-red\{--fc:#e5484d\}/.test(css) && /\.dir-blue\{--fc:#4c9aff\}/.test(css) && /\[data-theme="light"\] \.dir-white,\[data-theme="ocean"\] \.dir-white\{--fc:#7d8590\}/.test(css) && /\.dirfolder \.bophead>strong\{display:none\}/.test(css)); }
+      say('the colours are in the stylesheet (the folder takes its colour from --fc), white is a grey on a light theme, and the name inside a panel is not repeated under the folder name', /\.dirfolder\{--fc:var\(--accent\);border-left-color:var\(--fc\)\}/.test(css) && /\.dbfolder\.dirfolder>summary\{background:color-mix\(in srgb,var\(--fc\) 16%,var\(--panel\)\)\}/.test(css) && /\.dir-yellow\{--fc:#f2b705\}/.test(css) && /\.dir-white\{--fc:#ffffff\}/.test(css) && /\.dir-red\{--fc:#e5484d\}/.test(css) && /\.dir-blue\{--fc:#4c9aff\}/.test(css) && /\.dir-purple\{--fc:#9b4dff\}/.test(css) && /\[data-theme="light"\] \.dir-white,\[data-theme="ocean"\] \.dir-white\{--fc:#7d8590\}/.test(css) && /\.dirfolder \.bophead>strong\{display:none\}/.test(css)); }
     { // 1.12.1: the Damage points pad of the Adjust folder (this race has a damage system), and the plain colours of the folder
       const mkb = (dataset, extra = {}) => ({ dataset, disabled: false, ...extra });
       const laneB = [0, 1].map(l => mkb({ adjLane: String(l) }, { setAttribute(k, v) { this[k] = v; }, querySelector: () => ({ textContent: '' }) }));
