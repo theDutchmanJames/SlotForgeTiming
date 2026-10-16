@@ -171,5 +171,41 @@ ok('the arrow turns round whatever the number: -200 degrees is 340, 90.4 is 270 
 { const r = race(REC, { cars: 2 }), h = C(r, 'wxforecast', null, { show: 'text' }).html;
   ok('...and a forecast in laps does not care about the clock', h.includes('Cloudy in 2 laps') && C(r, 'wxforecast', null, { show: 'text' }, { now: 900000 }).html.includes('Cloudy in 2 laps')); }
 
+// 1.16.1: a small widget: the picture and the text are made smaller until they fit (a longer word, such as Cloudy, no longer pushes the picture out of the widget)
+{ const el = (cls, fs = '') => ({ className: cls, style: { fontSize: fs } }), val = child => ({ firstElementChild: child }), m = (boxW, boxH, w, h) => () => ({ boxW, boxH, w, h });
+  const a = el('wxw'); WW.fit(val(a), m(200, 80, 150, 60));
+  ok('1.16.1: a widget with room for its picture and text is left as it is', a.style.fontSize === '');
+  const b = el('wxw'); WW.fit(val(b), m(100, 80, 150, 60));
+  ok('...one that is too wide is made smaller, just enough (100 of 150 wide: 66%)', b.style.fontSize === '66%');
+  const c = el('wxw'); WW.fit(val(c), m(300, 40, 100, 80));
+  ok('...too high works the same (40 of 80 high: 50%)', c.style.fontSize === '50%');
+  const d = el('wxw'); WW.fit(val(d), m(300, 100, 100, 200)); const d2 = el('wxw'); WW.fit(val(d2), m(60, 100, 150, 50));
+  ok('...the smaller of the two decides (width 100/200 high 50% against 60/150 wide 40%)', d.style.fontSize === '50%' && d2.style.fontSize === '40%');
+  const e = el('wxw'); WW.fit(val(e), m(10, 10, 1000, 1000));
+  ok('...it never goes below 20% (the text would be too small to read)', e.style.fontSize === '20%');
+  const f = el('wxw', '55%'); WW.fit(val(f), m(300, 100, 100, 50));
+  ok('...a size from an earlier, longer word is taken away when the new one fits (Cloudy, then Dry)', f.style.fontSize === '');
+  const g = el('wxw'); WW.fit(val(g), m(0, 0, 150, 60)); const g2 = el('wxw'); WW.fit(val(g2), m(100, 0, 150, 60));
+  ok('...a widget that has no size yet (not shown) is left alone', g.style.fontSize === '' && g2.style.fontSize === '');
+  const h = el('wxt ctr'); WW.fit(val(h), m(50, 80, 100, 40));
+  ok('...the Tyres widget with only a name (wxt) is fitted the same way', h.style.fontSize === '50%');
+  const i = el('rrows', '10%'), j = el('cdw'); WW.fit(val(i), m(10, 10, 100, 100)); WW.fit(val(j), m(10, 10, 100, 100));
+  ok('...other content (a leaderboard, the conditions row, plain text, nothing) is not touched', i.style.fontSize === '10%' && j.style.fontSize === '' && (() => { WW.fit(val(null), m(1, 1, 5, 5)); WW.fit(null); WW.fit({}); return true; })());
+  const k = el('wxw'), l = el('wxw'), seen = [];
+  WW.fitAll({ querySelectorAll: sel => (sel === '.lw-val' ? [val(k), val(l), val(null)] : []) }, (x, v) => { seen.push(x); return { boxW: 100, boxH: 100, w: 200, h: 50 }; });
+  ok('...fitAll goes over every value box of a page (here three, one empty)', seen.length === 2 && k.style.fontSize === '50%' && l.style.fontSize === '50%');
+  ok('...and does nothing without a page', (() => { WW.fitAll(null); WW.fitAll({}); return true; })()); }
+// the pages that draw the widgets call it: the live page after the content changed (and when the widget gets its size), the layout editor after it drew the canvas
+{ const vm = require('vm'), fs = require('fs'), path = require('path'), src = f => fs.readFileSync(path.join(__dirname, '../renderer/' + f), 'utf8');
+  const fitted = []; let html = '<span class="wxw"><svg></svg><span class="wxt">Cloudy<small>Rain in 1 lap</small></span></span>';
+  const ctx = vm.createContext({ Timing: { content: () => ({ html }) }, Frame: { style: () => ({}) }, WxW: { fit: v => fitted.push(v) }, Widgets: {}, Backdrop: {}, document: {}, console });
+  const LC = vm.runInContext(src('canvas.js') + '\n;LiveCanvas', ctx), node = () => ({ w: { type: 'wxforecast' }, el: { style: {} }, val: { innerHTML: '' }, base: {}, layout: {}, last: null });
+  const n = node(); LC.paint([n], {});
+  ok('the live page fits a weather widget when its content is drawn', fitted.length === 1 && fitted[0] === n.val);
+  LC.paint([n], {}); ok('...not again while the content is the same', fitted.length === 1);
+  html = '<span class="wxw"><svg></svg><span class="wxt">Dry<small>Rain in 3 laps</small></span></span>'; LC.paint([n], {}); ok('...but again when the word changes (Cloudy, then Dry)', fitted.length === 2);
+  html = '12'; const n2 = node(); LC.paint([n2], {}); ok('...and not for a widget that is no weather widget', fitted.length === 2);
+  ok('the editor fits the weather widgets of its canvas after it drew them, and the live page watches the widget for a change of its size', /WxW\.fitAll\(\$\('canvas'\)\)/.test(src('editor.js')) && /new ResizeObserver\(\(\) => WxW\.fit\(val\)\)/.test(src('canvas.js'))); }
+
 if (fails) { console.log(fails + ' FAILED'); process.exit(1); }
 console.log('ALL WEATHER WIDGET TESTS PASSED');

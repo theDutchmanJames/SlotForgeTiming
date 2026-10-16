@@ -88,7 +88,19 @@
   function stop() { S.queue = []; S.busy = false; if (S.backend && S.backend.stop) S.backend.stop(); else if (root.speechSynthesis) root.speechSynthesis.cancel(); }
   const voices = () => { try { return be().voices ? be().voices() : []; } catch (e) { return []; } };
 
-  const api = { MAX_FILE, distances, counts, bounded, defaultSet, choose, passes, hasOnly, say, resetCool, stop, voices, pauseOf, state: S };
+  // The voice report (1.16.1): the voices the app is offered by the browser inside it, and what Windows lists (voicereport.js: host = { windows, os, parts: [{ title, lines }] }), as text
+  // that can be copied and sent. o: { ua (the browser's name), voices: [{ name, lang, localService }], host }
+  function reportText(o) {
+    o = o || {}; const ua = String(o.ua || ''), pick = (re, label) => { const m = re.exec(ua); return m ? `${label} ${m[1]}` : ''; }, voices = o.voices || [], host = o.host || null;
+    const lines = ['SlotForge Timing: voice report', [pick(/Electron\/([\d.]+)/, 'Electron'), pick(/Chrome\/([\d.]+)/, 'Chromium')].filter(Boolean).join(', ') + (host && host.os ? ` on ${host.os}` : ''), '',
+      `Voices the app is offered (${voices.length}):`, ...(voices.length ? voices.map(v => `  ${v.name} | ${v.lang || '?'} | ${v.localService === false ? 'online' : 'on this computer'}`) : ['  (none)'])];
+    if (!host) lines.push('', 'The voice lists of Windows could not be asked.');
+    else if (!host.windows) lines.push('', 'This computer is not running Windows, so there are no Windows voice lists to show.');
+    else (host.parts || []).forEach(p => lines.push('', `${p.title}:`, ...(p.lines || []).map(l => `  ${l}`)));
+    return lines.join('\n');
+  }
+
+  const api = { MAX_FILE, reportText, distances, counts, bounded, defaultSet, choose, passes, hasOnly, say, resetCool, stop, voices, pauseOf, state: S };
   root.Sound = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

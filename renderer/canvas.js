@@ -21,6 +21,7 @@ const LiveCanvas = (() => {
       Object.assign(el.style, { left: `${w.x / U * 100}%`, top: `${w.y / H * 100}%`, width: `${w.w / U * 100}%`, height: `${w.h / H * 100}%`, fontSize: `${(w.textSize || d.textSize) / 10}cqw`, borderRadius: Frame.corner(w, layout, U) }); // '' = the style sheet's corners
       if (d.button) val.onclick = ev => { if (ev && ev.currentTarget && ev.currentTarget.blur) ev.currentTarget.blur(); o.onButton(w.type); };
       el.appendChild(val); canvas.appendChild(el);
+      if (typeof ResizeObserver !== 'undefined' && typeof WxW !== 'undefined' && ['wxforecast', 'tyre'].includes(w.type)) new ResizeObserver(() => WxW.fit(val)).observe(val); // (the widget got its size, or the window changed: fit it again)
       nodes.push({ w, el, val, tit, base: Widgets.colorsOf(w, layout), layout, last: null });
     });
     return nodes;
@@ -32,6 +33,7 @@ const LiveCanvas = (() => {
       if (key === n.last) return;
       n.last = key; n.val.innerHTML = out.html;
       if (out.html.includes('class="rrows"') && typeof Rows !== 'undefined' && n.val.querySelectorAll) Rows.fitText(n.val); // a leaderboard of row designs: no text wider than its cell
+      if (/class="(wxw|wxt)[ "]/.test(out.html) && typeof WxW !== 'undefined') WxW.fit(n.val); // a weather widget: no picture or text outside the widget, whatever the word (Dry, Cloudy, Clearing)
       if (out.button) n.val.disabled = !!out.disabled;
       n.el.style.color = out.color || n.base.color || 'var(--ink)'; // own colour > event colour here, then lane colour, then theme
       Object.assign(n.el.style, Frame.style(out.bg || n.base.bg, n.w, 'var(--line)', n.layout)); // background and border: the widget's own settings (frame.js)

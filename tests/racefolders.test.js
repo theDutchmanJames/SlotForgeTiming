@@ -94,7 +94,9 @@ const btn = (arr, i) => run(`live.${arr}[${i}].b`);
   say('the buttons have a colour of their own (green Lap, orange Pit, amber Call) in the style sheet, and the Pit button lights while the car is in the pit',
     ['trk-lap', 'trk-pit', 'trk-call'].every(c => btn(c === 'trk-lap' ? 'lapBtns' : c === 'trk-pit' ? 'pitBtns' : 'callBtns', 0).className.includes(c)) && /\.trk-pit\[aria-pressed="true"\]/.test(fs.readFileSync(R + 'renderer/styles.css', 'utf8')));
   say('before the start every button is switched off, and the cards carry the names of the drivers once the race is drawn', [0, 1].every(i => btn('lapBtns', i).disabled && btn('pitBtns', i).disabled && btn('callBtns', i).disabled));
+  say('1.16.1: ...and the folder says why: the buttons work while the race is running, press Start (or Space) first; a switched off Lap button says so in its tooltip', E('trkhint').hidden === false && E('trkhint').textContent === 'The Lap, Pit and Call buttons work while the race is running. Press Start (or Space) first.' && btn('lapBtns', 0).title.includes('Press Start'));
   key(' '); await until(() => phase() === 'running', 5000); await wait(150);
+  say('1.16.1: while the race runs the line is gone, and the Lap button says what it does (counts a lap by hand, as if the sensor had seen the car)', E('trkhint').hidden === true && E('trkhint').textContent === '' && /counts a lap by hand/.test(btn('lapBtns', 0).title) && /sensor/.test(btn('lapBtns', 1).title));
   say('while the race runs the buttons work, and the names are on the cards', [0, 1].every(i => !btn('lapBtns', i).disabled && !btn('pitBtns', i).disabled && !btn('callBtns', i).disabled) && run('live.trkCards[0].who.textContent') === car(0).driverName && run('live.trkCards[1].who.textContent') === car(1).driverName);
   say('...no lane is lit yet (no car in the pit, no call)', btn('pitBtns', 0).attrs['aria-pressed'] === 'false' && btn('callBtns', 0).attrs['data-active'] === 'false');
   key('1'); await wait(60); key('1'); await wait(60); shiftKey(1); await wait(120);
@@ -124,6 +126,7 @@ const btn = (arr, i) => run(`live.${arr}[${i}].b`);
   key(' '); await wait(60);
   press('penalty', 0, { n: '1' });
   say('while the race is paused a penalty can be given, as before', phase() === 'paused' && car(0).points === 1);
+  say('1.16.1: ...and the line says that Lap and Pit wait for the resume while Call works (the Lap button is off, the Call button is on)', E('trkhint').hidden === false && /paused/.test(E('trkhint').textContent) && /Call works now/.test(E('trkhint').textContent) && btn('lapBtns', 0).disabled && !btn('callBtns', 0).disabled);
   key(' '); await wait(40);
   say('the log is made of the events of the race (the same lines as on the Race Director page)', run('PenaltyPanel.logHtml(live.engine())').includes('must serve: Drivethrough') && run('PenaltyPanel.logHtml(live.engine())').includes('+1 point'));
   run('state.race = null; live = null'); saved.length = 0;

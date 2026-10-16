@@ -145,7 +145,27 @@
     return conditionsHtml(c, opt);
   }
 
-  const api = { TYRE_OPTIONS, FORECAST_OPTIONS, COND_OPTIONS, OWN_ITEMS, ownKey, ownOf, tyreSvg, stateSvg, condSvg, rotationOf, icon, slotIcon, tyreContent, forecastContent, conditionsContent, conditionsOf, conditionsHtml, laneVars, raceVars, tyreSample, forecastSample, conditionsSample, onColor };
+  // A weather widget whose picture and text are bigger than the widget (a small widget, a longer word such as "Cloudy" or "Clearing", "Rain in 3 laps" under it) is made smaller,
+  // just enough to fit, so nothing is pushed out of the widget (1.16.1). It scales with the font size, so the picture and the small line shrink with the text. Works in the browser only:
+  // it measures the page. measure(el, val) -> { boxW, boxH, w, h } (the room in the widget, the room the content needs) can be replaced, to test.
+  const FIT_CLASS = /(^|\s)(wxw|wxt)(\s|$)/; // (the picture and text of the Forecast and Tyres widgets; the Track Conditions row wraps by itself)
+  const measureFit = (el, val) => {
+    const r = document.createRange(); r.selectNodeContents(el); const b = r.getBoundingClientRect(), cs = typeof getComputedStyle === 'function' ? getComputedStyle(val) : null, px = k => (cs ? parseFloat(cs[k]) || 0 : 0);
+    return { boxW: val.clientWidth - px('paddingLeft') - px('paddingRight'), boxH: val.clientHeight - px('paddingTop') - px('paddingBottom'), w: b.width, h: b.height };
+  };
+  function fit(val, measure) {
+    const el = val && val.firstElementChild; if (!el || !FIT_CLASS.test(String(el.className || ''))) return;
+    el.style.fontSize = '';
+    const m = (measure || measureFit)(el, val);
+    if (m.boxW > 0 && m.boxH > 0 && (m.w > m.boxW + 0.5 || m.h > m.boxH + 0.5)) el.style.fontSize = `${Math.max(20, Math.floor(Math.min(m.boxW / m.w, m.boxH / m.h) * 100))}%`;
+  }
+  // every value box in root that holds a weather widget
+  function fitAll(root, measure) {
+    if (!root || !root.querySelectorAll) return;
+    Array.from(root.querySelectorAll('.lw-val')).forEach(v => fit(v, measure));
+  }
+
+  const api = { TYRE_OPTIONS, FORECAST_OPTIONS, COND_OPTIONS, OWN_ITEMS, ownKey, ownOf, tyreSvg, stateSvg, condSvg, rotationOf, icon, slotIcon, tyreContent, forecastContent, conditionsContent, conditionsOf, conditionsHtml, laneVars, raceVars, tyreSample, forecastSample, conditionsSample, onColor, fit, fitAll };
   root.WxW = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

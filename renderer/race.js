@@ -106,7 +106,7 @@ async function renderRace() {
     <div id="finalpick" class="card" hidden></div>
     <div id="teampick" class="card" hidden></div>
     <div class="rt-folders">
-      ${folderHtml('track', 'Track actions', 'Lap, pit and call buttons for each lane', 'green', '<div id="trackgrid" class="trk-grid"></div>')}
+      ${folderHtml('track', 'Track actions', 'Lap, pit and call buttons for each lane', 'green', '<p class="trk-hint muted" id="trkhint" role="status" hidden></p><div id="trackgrid" class="trk-grid"></div>')}
       ${tokenSession ? folderHtml('tokens', 'Time tokens', 'Add time to a lane to switch it on', 'teal', '<div id="tokenpanel" class="tkpanel"></div>') : folderHtml('adjust', 'Adjust', 'Penalty points, damage points, time, laps and championship points for one lane', 'plain', '<div id="adjpanel" class="boppanel adjpanel"></div>')}
       ${penCfg.on ? folderHtml('penalties', 'Penalties', 'Points and penalties for each lane', 'yellow', '<div id="penpanel"></div>') : ''}
       ${bopCfg ? folderHtml('bop', 'Balance of Power', 'Even out fast and slow cars', 'white', '<div id="boppanel" class="boppanel"></div>') : ''}
@@ -128,11 +128,15 @@ async function renderRace() {
   // ---- build the page from the layout (once); widgets for lanes the track does not have are left out ----
   live.nodes = LiveCanvas.build(ui('canvas'), layout, lanes, { onButton: type => actions[type]() });
   // Track actions (1.15.0): a card for each lane with the buttons Lap, Pit and Call, large and in colour. The keys are said on the buttons (1-8 for Lap, Shift + number for Pit, Ctrl + number for Call).
+  const LAP_TITLE = 'A car crosses the line on this lane: counts a lap by hand, as if the sensor had seen the car';
+  // Why the Lap, Pit and Call buttons are dimmed (1.16.1): they only work while the race is running (Call also while it is paused)
+  const trackHint = () => ({ ready: 'The Lap, Pit and Call buttons work while the race is running. Press Start (or Space) first.', countdown: 'The race is starting. The buttons work when the lights go out.',
+    paused: 'The race is paused. Lap and Pit work again when you resume (Space); Call works now.', between: 'Between two heats. The buttons work when the next heat starts.', review: 'The race is over, so the buttons are off.' })[live.phase] || '';
   const mkEl = (tag, cls, text) => { const el = document.createElement(tag); el.className = cls; if (text !== undefined) el.textContent = text; return el; };
   for (let l = 0; l < lanes; l++) {
     const card = mkEl('div', 'trk-card'), head = mkEl('div', 'trk-head'), num = mkEl('span', 'trk-lane', String(l + 1)), who = mkEl('span', 'trk-who'), row = mkEl('div', 'trk-sub');
     head.appendChild(num); head.appendChild(who); card.appendChild(head);
-    const b = mkEl('button', 'btn trk-btn trk-lap', `Lap ${l + 1}`); b.onclick = () => crossLane(l); b.title = 'A car crosses the line on this lane'; if (l < 8) b.setAttribute('data-key', String(l + 1));
+    const b = mkEl('button', 'btn trk-btn trk-lap', `Lap ${l + 1}`); b.onclick = () => crossLane(l); b.title = LAP_TITLE; if (l < 8) b.setAttribute('data-key', String(l + 1));
     card.appendChild(b); live.lapBtns.push({ lane: l, b });
     if (!tokenSession) { const pb = mkEl('button', 'btn trk-btn trk-pit', `Pit ${l + 1}`); pb.onclick = () => togglePit(l); pb.title = 'Put this lane\'s car on the pit sensor; press again to drive off'; if (l < 8) pb.setAttribute('data-key', '⇧' + (l + 1));
       row.appendChild(pb); live.pitBtns.push({ lane: l, b: pb }); }
@@ -259,7 +263,8 @@ async function renderRace() {
       if (!live.tkBusy) { const h = tokens ? Review.stintsHtml(tokens.closedList().filter(x => x.laps.length), { failed: live.tkFailed }) : Review.html(eng, { champ: champOf(), settings: state.settings }); if (h !== live.rvHtml) { live.rvHtml = h; ui('review').innerHTML = h; } } // (only when it changed: a button never changes under your finger; not while the stints are being saved)
     } else if (live.reviewShown) { ui('review').innerHTML = ''; ui('review').hidden = true; live.reviewShown = false; live.rvHtml = ''; }
     drawLapReview(); drawFinalPick(); drawTeamPick();
-    live.lapBtns.forEach(x => { const c = S.carByLane(x.lane); x.b.disabled = !(live.phase === 'running' && c && !c.done); x.b.hidden = !c; });
+    live.lapBtns.forEach(x => { const c = S.carByLane(x.lane); x.b.disabled = !(live.phase === 'running' && c && !c.done); x.b.hidden = !c; x.b.title = x.b.disabled ? (c && c.done && live.phase === 'running' ? 'This car has finished' : trackHint() || 'Not now') : LAP_TITLE; });
+    { const h = trackHint(); if (ui('trkhint') && ui('trkhint').textContent !== h) { ui('trkhint').textContent = h; ui('trkhint').hidden = !h; } } // (why the buttons are dimmed: they only work while the race runs)
     live.callBtns.forEach(x => { const c = S.carByLane(x.lane), calling = !!c && eng.calls.some(k => k.open && eng.cars[k.car] && eng.cars[k.car].lane === x.lane); x.b.disabled = !(['running', 'paused'].includes(live.phase) && c && !c.done); x.b.hidden = !c; x.b.setAttribute('data-active', String(calling)); }); // (a lane with a call that waits for the Race Director stays lit)
     live.trkCards.forEach(x => { const c = S.carByLane(x.lane), name = c ? (c.driverName || '') : ''; x.card.hidden = !c; if (x.who.textContent !== name) x.who.textContent = name; });
     drawCalls();

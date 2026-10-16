@@ -11,6 +11,7 @@ const call = (channel, ...args) => ipcRenderer.invoke(channel, ...args);
 contextBridge.exposeInMainWorld('api', {
   schema: () => call('schema'),
   dbPath: () => call('db:path'),
+  voiceReport: () => call('voices:report'), // the voice lists of Windows, as text lines (Audio Settings > Voice report)
   list: entity => call('db:list', entity),
   add: (entity, item) => call('db:add', entity, item),
   update: (entity, id, patch) => call('db:update', entity, id, patch),

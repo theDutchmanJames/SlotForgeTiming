@@ -90,6 +90,7 @@ app.whenReady().then(() => {
   if (!gotLock) return;
   db = new Database(path.join(app.getPath('userData'), 'slotforge-timing.json'));
   ipcMain.handle('schema', () => schema);
+  ipcMain.handle('voices:report', () => require('./voicereport').collect()); // what this computer offers for text to speech (Audio Settings > Voice report)
   ipcMain.handle('db:path', () => db.file);
   ipcMain.handle('db:list', (_e, entity) => db.list(entity));
   ipcMain.handle('db:add', (_e, entity, item) => db.add(entity, item));
