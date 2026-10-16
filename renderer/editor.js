@@ -1,6 +1,18 @@
 // Race Setup tab: race setups and timing page layouts, plus the drag-and-drop layout editor.
 const PRESETS = [['16:9', 16, 9], ['16:10', 16, 10], ['4:3', 4, 3], ['21:9', 21, 9]];
 let editorKeyHandler = null;
+// The widget list and the settings panel stand beside the canvas, stay at the top of the window while the page scrolls, and scroll inside themselves when they are long.
+// Their height is what the window has left from where they start (1.29.1): a panel as tall as the whole window that starts below the top bar would push the whole page past the bottom of the window, and the app got a scrollbar of its own.
+const panelRoom = (windowH, top, below) => Math.max(160, Math.floor(windowH - Math.max(8, top) - Math.max(8, below || 0))); // top: where the panels start in the window; below: the room the page keeps under them (its padding)
+let panelFitWired = false;
+function fitPanels() {
+  const main = typeof document !== 'undefined' && document.querySelector ? document.querySelector('.ed-main') : null; if (!main || !main.children) return;
+  if (!(window.innerHeight > 0)) return;
+  let below = 0; // the padding and margin under the editor, up to the page
+  if (typeof getComputedStyle === 'function') for (let e = main, n = 0; e && e.parentElement && e !== document.body && n < 12; e = e.parentElement, n++) { const c = getComputedStyle(e); below += (parseFloat(c.paddingBottom) || 0) + (parseFloat(c.marginBottom) || 0) + (parseFloat(c.borderBottomWidth) || 0); }
+  const narrow = window.innerWidth <= 900, room = panelRoom(window.innerHeight, main.getBoundingClientRect().top, below); // (in one column, under 900 px, the panels are part of the page: the style sheet's height stays)
+  Array.from(main.children).filter(x => x.classList && (x.classList.contains('ed-pal') || x.classList.contains('ed-side'))).forEach(x => { x.style.maxHeight = narrow ? '' : room + 'px'; });
+}
 const clone = x => JSON.parse(JSON.stringify(x));
 const knownWidgets = list => (Array.isArray(list) ? list : []).filter(w => w && Widgets.def(w.type)); // a widget type this version does not know (from a file of another version) is left out instead of breaking the editor
 const editorDirty = () => !!(state.editing && state.editing.dirty);
@@ -300,9 +312,9 @@ function sideHtml() {
     const num = o.type === 'number';
     return `<div class="field"><label for="${id}">${esc(o.label)}</label><input id="${id}" type="${num ? 'number' : 'color'}" ${num ? `min="${o.min ?? 0}" ${o.max ? `max="${o.max}" ` : ''}step="${o.step ?? 0.5}"` : ''} data-opt="${o.key}" value="${esc(v)}"></div>`;
   }).join('');
-  // The settings are grouped like folders (Title, Text, Background and border, the widget's own options); a folder stays as you left it
-  const closed = state.sideClosed || (state.sideClosed = new Set());
-  const group = (name, label, inner) => (inner.trim() ? `<details class="sidegroup" data-side="${name}"${closed.has(name) ? '' : ' open'}><summary>${esc(label)}</summary>${inner}</details>` : '');
+  // The settings are grouped like folders (Title, Text, Background and border, the widget's own options); they start closed, and a folder stays as you left it
+  const opened = state.sideOpen || (state.sideOpen = new Set()); // (1.29.1: the folders start closed; the ones you open stay open for the next widget)
+  const group = (name, label, inner) => (inner.trim() ? `<details class="sidegroup" data-side="${name}"${opened.has(name) ? ' open' : ''}><summary>${esc(label)}</summary>${inner}</details>` : '');
   const slider = (id, label, v, min, max, step, hint, off) => `<div class="field"><label for="${id}">${label} <output id="${id}-v">${v}%</output></label>
     <input id="${id}" type="range" min="${min}" max="${max}" step="${step}" value="${v}"${off ? ' disabled' : ''}>${hint ? `<span class="muted hint">${hint}</span>` : ''}</div>`;
   const rad = common(w => Frame.cornerPct(w.radius) ?? '');
@@ -392,11 +404,12 @@ function renderEditor() {
     if (row) { $('e-preview').innerHTML = Rows.sampleHtml(d, 5, ed.imageSets); Rows.fitText($('e-preview')); }
   };
   const drawSide = () => {
-    $('side').innerHTML = sideHtml();
+    $('side').innerHTML = sideHtml(); fitPanels();
     attachFrames($('side'), key => (ed.sel[0].opt || {})[key], (key, f) => { ed.sel.forEach(w => { w.opt = w.opt || {}; w.opt[key] = f; }); mark(); });
   };
   const redraw = () => { drawCanvas(); drawSide(); };
   redraw();
+  if (!panelFitWired && window.addEventListener) { panelFitWired = true; window.addEventListener('resize', fitPanels); window.addEventListener('scroll', fitPanels, { passive: true }); } // (fitPanels does nothing when no editor is on the page)
 
   window.editorAddCustom = id => { // a saved widget from the Widget Builder: add its kind, then give the copy its text, size and look
     const r = (ed.customWidgets || []).find(x => x.id === id); if (!r) return;
@@ -617,7 +630,7 @@ function renderEditor() {
 
   // the side panel changes every selected widget at once
   const side = $('side');
-  if (side.addEventListener) side.addEventListener('toggle', ev => { const g = ev.target; if (g && g.dataset && g.dataset.side) { if (g.open) state.sideClosed.delete(g.dataset.side); else state.sideClosed.add(g.dataset.side); } }, true);
+  if (side.addEventListener) side.addEventListener('toggle', ev => { const g = ev.target; if (g && g.dataset && g.dataset.side) { if (g.open) state.sideOpen.add(g.dataset.side); else state.sideOpen.delete(g.dataset.side); fitPanels(); } }, true);
   side.oninput = e => {
     const sel = ed.sel, t = e.target; if (!sel.length) return;
     if (t.dataset.geo && sel.length === 1) { const k = t.dataset.geo, v = Number(t.value), H = Hh(), w = sel[0]; if (!Number.isFinite(v) || t.value === '') return;

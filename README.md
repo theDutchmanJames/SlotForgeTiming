@@ -2139,3 +2139,17 @@ Good to know:
 4. The name is *Lap to Lap Delta*; say if you would like another one.
 5. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 6. The tests: `tests/delta.test.js` (the numbers: lane 1 −0.100, lane 2 +0.100, lane 3 +0.700, one lap, no lap; what the live page draws, the colours; the folder and the register), `tests/widgets.test.js`, `tests/screens.test.js` (the settings in the Layout Editor) and `tests/help.test.js`.
+
+## What to try (1.29.1): closed settings folders and no scrollbar for the app
+From your note and screenshot: the long list of settings of a widget is overwhelming, and with all the folders open the app got a scrollbar next to the one of the settings panel.
+1. Open **Customization > Layouts**, open a layout and click a widget, for example a Delta Timer. The settings panel on the right now shows only the names of its folders (Title, Text, Frame, the widget's options, Place), all closed.
+2. Open the folders you need. They stay as you left them when you click another widget (a folder you opened stays open, the others stay closed), also when you leave the editor and come back, for as long as the app runs. The folders of the widget list on the left work the same way.
+3. Open every folder of a long widget. The settings panel gets its own scrollbar and the app (the page behind it) does not get one. The widget list on the left does the same.
+4. Resize the window or scroll the page: the panels follow, they always end at the bottom of the window.
+
+Good to know:
+1. In a window that is too short for the canvas itself (for example 650 pixels high) the page still scrolls, because the canvas and its toolbar need the room. That is the canvas, not the panels.
+2. In a narrow window (under 900 pixels) the panels sit under the canvas as a part of the page, as before.
+3. Which folders are open is not saved in the layout or in the settings; it is only remembered while the app runs (after a restart they are closed again).
+4. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+5. The tests: `tests/screens.test.js` (the folders start closed, the opened ones are remembered, the room for the panels and how it is applied).

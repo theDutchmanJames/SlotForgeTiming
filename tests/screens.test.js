@@ -112,11 +112,56 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     say('the settings are grouped: Title, then Text, then Background and border', at('title')>=0 && at('title')<at('text') && at('text')<at('frame') && side.includes('<summary>Background and border</summary>') && side.includes('<summary>Title</summary>') && side.includes('<summary>Text</summary>'));
     say('every setting is still there under its own id', ['s-title','s-showtitle','s-tsize','s-tbold','s-tspace','s-vbold','s-vital','s-size','s-bmode','s-bshade','s-trans'].every(i=>side.includes('id="'+i+'"')) && side.includes('data-color="textColor"') && side.includes('data-color="bgColor"'));
     say('Duplicate and Remove stay below the groups', side.indexOf('id="s-dup"')>at('frame') && side.indexOf('id="s-del"')>side.indexOf('id="s-dup"'));
-    say('the groups start open', !/<details class="sidegroup" data-side="[a-z]+">/.test(side)); }
-  E('side').ontoggle; // folders remember how you left them
-  run("state.sideClosed.add('title')"); E('side').innerHTML=run('sideHtml()');
-  say('a folder that was closed stays closed for the next widget', /<details class="sidegroup" data-side="title">/.test(E('side').innerHTML) && /<details class="sidegroup" data-side="text" open>/.test(E('side').innerHTML));
-  run("state.sideClosed.delete('title')"); E('side').innerHTML=run('sideHtml()');
+    say('1.29.1: the groups start closed (a long list of settings is not what you see first): none of them has the open attribute', !/<details class="sidegroup" data-side="[a-z]+" open>/.test(side) && (side.match(/<details class="sidegroup" data-side="[a-z]+">/g)||[]).length>=4); }
+  // folders remember how you left them (1.29.1: the ones you opened)
+  run("state.sideOpen.add('title')"); E('side').innerHTML=run('sideHtml()');
+  say('a folder that was opened stays open for the next widget, the others stay closed', /<details class="sidegroup" data-side="title" open>/.test(E('side').innerHTML) && /<details class="sidegroup" data-side="text">/.test(E('side').innerHTML) && /<details class="sidegroup" data-side="opts">/.test(E('side').innerHTML));
+  run("state.sideOpen.delete('title')"); E('side').innerHTML=run('sideHtml()');
+  { // 1.29.1: the settings folders remember how you left them, and the widget list and the settings panel are as tall as the window leaves room for (the page itself never gets a scrollbar from them)
+    const panel=cls=>({classList:{contains:c=>c===cls},style:{}}), pal=panel('ed-pal'), side=panel('ed-side'), stage=panel('ed-stage');
+    const page={}, form={parentElement:page}, mainEl={children:[pal,stage,side],parentElement:form,getBoundingClientRect:()=>({top:mainEl.top})};
+    const saved={q:document.querySelector,iH:ctx.innerHeight,iW:ctx.innerWidth,gcs:ctx.getComputedStyle,body:document.body};
+    const fake=(gcs)=>{ document.querySelector=sel=>(sel==='.ed-main'?mainEl:saved.q(sel)); document.body=page; ctx.innerHeight=1080; ctx.innerWidth=1920; mainEl.top=249; ctx.getComputedStyle=gcs||(e=>(e===form?{paddingBottom:'20px',marginBottom:'0px',borderBottomWidth:'0px'}:e===mainEl?{paddingBottom:'0px',marginBottom:'3px',borderBottomWidth:'0px'}:{paddingBottom:'99px',marginBottom:'0px',borderBottomWidth:'0px'})); pal.style={}; side.style={}; stage.style={}; };
+    const unfake=()=>{ document.querySelector=saved.q; document.body=saved.body; ctx.innerHeight=saved.iH; ctx.innerWidth=saved.iW; ctx.getComputedStyle=saved.gcs; if(saved.gcs===undefined) delete ctx.getComputedStyle; if(saved.iH===undefined) delete ctx.innerHeight; if(saved.iW===undefined) delete ctx.innerWidth; };
+    // the folders: opening one remembers it, closing it forgets it
+    let onToggle=null; const sd=E('side'), was=sd.addEventListener; sd.addEventListener=(t,f)=>{ if(t==='toggle') onToggle=f; };
+    fake(); side.style.maxHeight='old'; await run('render()'); sd.addEventListener=was;
+    say('the editor listens to the folders of the settings panel', typeof onToggle==='function');
+    say('drawing the settings panel fits the panels to the window (the widget list and the settings panel get the room from where they start to the bottom of the window)', pal.style.maxHeight==='808px' && side.style.maxHeight==='808px');
+    if(onToggle){ const g=open=>({target:{open,dataset:{side:'frame'}}}), set=()=>JSON.stringify([...run('state.sideOpen')]);
+      pal.style={}; side.style={}; onToggle(g(true)); const a=set(), fitted=side.style.maxHeight; onToggle(g(false)); const b=set(); onToggle({target:{open:true,dataset:{}}}); const c=set(); onToggle({target:{open:false,dataset:{}}}); const d2=set();
+      say('...opening a folder remembers it, closing it forgets it, and something else that toggles (a folder of the widget list) is left alone', a==='["frame"]' && b==='[]' && c==='[]' && d2==='[]');
+      say('...and the panels are fitted again when a folder opens (the list gets longer or shorter)', fitted==='808px');
+      run("state.sideOpen.clear()"); E('side').innerHTML=run('sideHtml()'); }
+    // the window listeners: once, whatever the number of times the editor is drawn
+    run('panelFitWired=false'); listeners.resize=[]; listeners.scroll=[]; await run('render()'); await run('render()');
+    say('the panels follow the window: one listener for resizing and one for scrolling, however often the editor is drawn', listeners.resize.length===1 && listeners.scroll.length===1 && typeof listeners.resize[0]==='function' && listeners.resize[0]===listeners.scroll[0]);
+    unfake();
+    // the room for a panel
+    say('the room for a panel: the window minus where it starts minus the room kept under it, and never less than 160', run('panelRoom(1080, 249, 20)')===811 && run('panelRoom(1080, -50, 20)')===1052 && run('panelRoom(1080, 249, 0)')===823 && run('panelRoom(300, 249, 20)')===160 && run('panelRoom(1080, 4, 4)')===1064 && run('panelRoom(1080, 9, 9)')===1062);
+    say('...rounded down to whole pixels', run('panelRoom(1080, 249.4, 20)')===810 && run('panelRoom(1080.9, 249, 20)')===811);
+    // fitPanels
+    fake(); run('fitPanels()');
+    say('both panels get the room from their place to the bottom of the window (the padding under the editor is kept free), and the canvas is left alone', pal.style.maxHeight==='808px' && side.style.maxHeight==='808px' && stage.style.maxHeight===undefined);
+    mainEl.top=-120; run('fitPanels()'); say('...scrolled down, where the panels stick to the top of the window, they get the whole window', side.style.maxHeight===(1080-8-23)+'px');
+    fake(); ctx.innerWidth=901; run('fitPanels()'); say('...in a window wider than 900 pixels the panels are fitted', side.style.maxHeight==='808px');
+    fake(); ctx.innerWidth=900; side.style.maxHeight='keep'; run('fitPanels()'); say('...in one column (900 pixels and narrower) the panels are part of the page and keep the height of the style sheet', side.style.maxHeight==='' && pal.style.maxHeight==='');
+    fake(); ctx.innerWidth=400; run('fitPanels()'); say('...also in a phone window', side.style.maxHeight==='' && pal.style.maxHeight==='');
+    fake(); ctx.innerHeight=undefined; side.style.maxHeight='keep'; run('fitPanels()'); say('...a window without a height changes nothing', side.style.maxHeight==='keep');
+    fake(); document.querySelector=()=>null; side.style.maxHeight='keep'; run('fitPanels()'); say('...and nothing happens when no editor is on the page', side.style.maxHeight==='keep');
+    fake(); document.querySelector=sel=>({}); side.style.maxHeight='keep'; let boom=null; try{ run('fitPanels()'); }catch(e){ boom=e; } say('...or when what is found has no panels in it', boom===null && side.style.maxHeight==='keep');
+    // what is kept free under the editor: padding, margin and border of the editor and the boxes around it, up to the page
+    fake(e=>({paddingBottom:'0px',marginBottom:'0px',borderBottomWidth:'0px'})); run('fitPanels()'); say('...with nothing kept free under the editor the panels keep 8 pixels (the space the sticky panels have at the top)', side.style.maxHeight==='823px');
+    fake(e=>({paddingBottom:'0px',marginBottom:'0px',borderBottomWidth:e===form?'4px':'0px'})); run('fitPanels()'); say('...less than 8 pixels under the editor changes nothing (the 8 pixels are kept anyway)', side.style.maxHeight==='823px');
+    fake(e=>({paddingBottom:'0px',marginBottom:'0px',borderBottomWidth:e===form?'14px':'0px'})); run('fitPanels()'); say('...a border of 14 pixels counts', side.style.maxHeight==='817px');
+    fake(e=>({paddingBottom:'0px',marginBottom:e===mainEl?'14px':'0px',borderBottomWidth:'0px'})); run('fitPanels()'); say('...a margin of 14 pixels counts', side.style.maxHeight==='817px');
+    fake(e=>({paddingBottom:e===form?'14px':'0px',marginBottom:'0px',borderBottomWidth:'0px'})); run('fitPanels()'); say('...a padding of 14 pixels counts', side.style.maxHeight==='817px');
+    fake(e=>({paddingBottom:e===form?'10px':e===mainEl?'3px':'0px',marginBottom:e===form?'2px':'0px',borderBottomWidth:e===form?'1px':'0px'})); run('fitPanels()'); say('...they add up: the editor and the box around it (3 + 10 + 2 + 1 = 16 pixels)', side.style.maxHeight==='815px');
+    fake(); document.body={}; run('fitPanels()'); say('...the page itself (the last box, which has no parent) is not counted', side.style.maxHeight==='808px');
+    fake(); ctx.getComputedStyle=undefined; run('fitPanels()'); say('...without a way to measure the boxes the panels keep 8 pixels under them', side.style.maxHeight==='823px');
+    unfake();
+    const css=fs.readFileSync(R+'renderer/styles.css','utf8');
+    say('...the style sheet keeps a height for the panels too (for the moment before the page has measured), and they scroll inside themselves', /\.ed-pal,\.ed-side\{position:sticky;top:8px;max-height:calc\(100vh - 16px\);overflow-y:auto\}/.test(css)); }
   const w57=()=>run('state.editing.draft.widgets[57]');
   say('a new widget has no border or transparency setting and looks as before', w57().borderMode===undefined && w57().transparency===undefined && !E('canvas').innerHTML.includes('color-mix'));
   say('...the border choice shows "Theme default" and the shade slider is switched off', /id="s-bmode"[^>]*><option value="" selected>Theme default/.test(E('side').innerHTML) && /id="s-bshade" type="range"[^>]*disabled/.test(E('side').innerHTML) && /id="s-trans" type="range"[^>]*value="0"/.test(E('side').innerHTML));
