@@ -29,10 +29,11 @@ const Help = (() => {
     ['Setting things up', [
       { id: 'home', title: 'The Home tab', note: 'Pick a race and start it', body: `
         <ul>
-          <li>Pick a <b>race setup</b>, then choose a <b>driver</b> and a <b>car</b> for every lane. In a heat-based race you add participants instead.</li>
-          <li>What is still missing is listed above the button, so you can see why <b>Start race</b> is greyed out.</li>
+          <li>Pick a <b>race setup</b>, then choose a <b>driver</b> and a <b>car</b> for every lane. In a heat-based race you add participants instead. A lane has the colour its layout gives it on the race screen.</li>
+          <li>The start lights under the lanes light up as lanes get ready. What is still missing is listed above the button, so you can see why <b>Start race</b> is greyed out.</li>
           <li>If a <b>qualifying</b> was driven on the same track, its winner picks their lane first.</li>
-          <li>The welcome message at the top and the header picture can be changed in App Settings, General.</li>
+          <li>The band at the top shows the date and the track, and lights for the <b>Trackmate</b>, sharing on the network and the <b>audio set</b> of the setup. The welcome message and the header picture are changed in App Settings, General.</li>
+          <li>On the right: the <b>record to beat</b> on this track (and who on the grid is closest), the <b>last race</b> with its podium and fastest lap, and <b>At a glance</b> (races, laps, distance, most wins). They come from your saved races, not from Time Token Sessions.</li>
           <li>When a race was stopped by a crash or a power cut, a note at the top offers <b>Resume the race</b> (it comes back paused, press Space to go on), <b>Save what was recorded</b> or <b>Delete it</b>.</li>
         </ul>` },
       { id: 'database', title: 'Database', note: 'Tracks, drivers and slot cars', body: `

@@ -23,7 +23,7 @@ for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function
 const ctx=vm.createContext({document,api,console: appConsole,Intl,URL,Image:function(){},confirm:()=>true,alert(){},setTimeout,clearTimeout,setInterval,clearInterval,performance,});
 const listeners={}; ctx.window=ctx; ctx.addEventListener=(t,f)=>{(listeners[t]=listeners[t]||[]).push(f)}; ctx.removeEventListener=(t,f)=>{listeners[t]=(listeners[t]||[]).filter(x=>x!==f)};
 const errors=[];
-for(const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js','heats.js', 'rotation.js', 'tokens.js','speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js','icons.js','delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js','frame.js','backdrop.js','announcer.js','sound.js','timing.js','rows.js','richtext.js','canvas.js','liveshare.js','review.js','adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'liveview.js','report.js','database.js','landing.js','race.js','undo.js','editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','help.js','hardware.js','trackmate.js','hardwareui.js','dsui.js','app.js']){
+for(const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js','heats.js', 'rotation.js', 'tokens.js','speed.js','stats.js','homestats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js','icons.js','delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js','frame.js','backdrop.js','announcer.js','sound.js','timing.js','rows.js','richtext.js','canvas.js','liveshare.js','review.js','adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'liveview.js','report.js','database.js','landing.js','race.js','undo.js','editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','help.js','hardware.js','trackmate.js','hardwareui.js','dsui.js','app.js']){
   try{vm.runInContext(fs.readFileSync(R+'renderer/'+f,'utf8'),ctx,{filename:f})}catch(e){errors.push(f+': '+e.message)}
 }
 const run=s=>vm.runInContext(s,ctx), E=id=>document.getElementById(id);
@@ -1742,11 +1742,67 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     store.tracks = [{ id: 't1', name: 'Living room', lanes: 2 }]; store.racesetups = [{ id: 'k1', name: 'Club night', sessionType: 'tokens', track: 't1' }];
     run("state.settings.lastSetupId = 'k1'; state.settings.assignments = {}; state.tab = 'home'"); await run('render()');
     const hh = E('view').innerHTML;
-    say('a Time Token Session can be started with no drivers and cars: the lanes say Guest and (no car), nothing is reported missing', hh.includes('Guest (no driver)') && hh.includes('(no car)') && !hh.includes('class="issues"') && !hh.includes('needs a driver') && /<button class="btn primary" id="start" >/.test(hh) );
+    say('a Time Token Session can be started with no drivers and cars: the lanes say Guest and (no car), nothing is reported missing', hh.includes('Guest (no driver)') && hh.includes('(no car)') && !hh.includes('class="issues"') && !hh.includes('needs a driver') && /<button class="btn primary big" id="start" >/.test(hh) );
     say('...the button says Open the session, and a line explains how time is added', hh.includes('Open the session') && !hh.includes('>Start race<') && hh.includes('A Time Token Session starts with every lane switched off'));
     store.racesetups = [{ id: 'k2', name: 'Friday', sessionType: 'race', track: 't1', laps: 5 }]; run("state.settings.lastSetupId = 'k2'"); await run('render()');
     say('a normal race still needs a driver and a car on every lane', E('view').innerHTML.includes('needs a driver and a car') && E('view').innerHTML.includes('>Start race<'));
     Object.assign(store, { racesetups: keep.racesetups, tracks: keep.tracks }); run(`state.settings.lastSetupId = ${JSON.stringify(keep.last || '')}; state.settings.assignments = ${JSON.stringify(keep.asg || {})}`); }
+  { // 1.17.0: the Home tab: the welcome band, coloured lanes, start lights and the cards on the right
+    const keep = { racesetups: store.racesetups, tracks: store.tracks, drivers: store.drivers, slotcars: store.slotcars, sessions: store.sessions, laps: store.laps, layouts: store.layouts, audiosets: store.audiosets, last: run('state.settings.lastSetupId'), asg: run('state.settings.assignments'), net: run('state.settings.netOn') };
+    const home = async () => { run("state.tab = 'home'"); await run('render()'); await new Promise(r => setTimeout(r, 10)); return E('view').innerHTML; }, side = () => E('homeside').innerHTML; // (the cards on the right are drawn into their own element, which the test page keeps apart)
+    store.tracks = [{ id: 't1', name: 'Living room', lanes: 3, length: 10, scale: '1:32', laneModifier: 'none' }, { id: 't2', name: 'Garage', lanes: 2, length: 25, laneModifier: 'none' }];
+    store.drivers = [{ id: 'd1', name: 'Dutch' }, { id: 'd2', name: 'Sam' }, { id: 'd3', name: 'Mila' }]; store.slotcars = [{ id: 'c1', brand: 'Porsche', model: '917' }, { id: 'c2', brand: 'Ford', model: 'GT40' }];
+    store.layouts = [{ id: 'ly1', name: 'Club', laneColors: [{ bg: '#112233' }, {}, { bg: 'red;x' }] }]; store.audiosets = [{ id: 'au1', name: 'Announcer' }];
+    store.racesetups = [{ id: 'k1', name: 'Club race', sessionType: 'race', track: 't1', laps: 20, layout: 'ly1', audioSet: 'au1' }, { id: 'k2', name: 'Quiet race', sessionType: 'race', track: 't1', laps: 5 }];
+    store.sessions = []; store.laps = [];
+    run("state.settings.lastSetupId = 'k1'; state.settings.netOn = false; state.settings.assignments = { k1: [{ driverId: 'd1', carId: 'c1' }, { driverId: 'd2', carId: 'c2' }, { driverId: 'd3', carId: '' }] }");
+    let hh = await home();
+    say('1.17.0: the Home tab has a welcome band with the welcome message, the date and the track', hh.includes('class="hm-band"') && /<h2>Welcome to the SlotForge/.test(hh) && /class="hm-sub">[^<]* · Living room</.test(hh));
+    say('...the chips: Trackmate, the network, the audio set of the setup and the counts of the database', hh.includes('data-key="tm" data-state="off"><i aria-hidden="true"></i>Trackmate not connected') && hh.includes('Not shared on the network') && hh.includes('Audio: Announcer') && hh.includes('3 drivers · 2 slotcars · 2 tracks'));
+    say('...a lane has the colour that its layout gives it on the race screen, else one of the eight colours (and never colour text that is not a colour)', hh.includes('data-row="0" style="--c:#112233"') && hh.includes('data-row="1" style="--c:' + run('HomeStats.PALETTE[1]') + '"') && hh.includes('data-row="2" style="--c:' + run('HomeStats.PALETTE[2]') + '"') && !hh.includes('red;x'));
+    say('...the start lights: one for every lane, lit when the lane has its driver and car, with the words', (hh.match(/<i class="on" style="--c:/g) || []).length === 2 && (hh.match(/<i style="--c:/g) || []).length === 1 && hh.includes('2 of 3 lanes are ready.'));
+    say('...the Start button is the big one, and still disabled while a lane is not ready', /<button class="btn primary big" id="start" disabled>/.test(hh) && hh.includes('Lane 3 needs a driver and a car.'));
+    run("state.settings.assignments = { k1: [{ driverId: 'd1', carId: 'c1' }, { driverId: 'd2', carId: 'c2' }, { driverId: 'd3', carId: 'c1' }] }"); hh = await home();
+    say('...every lane filled in but a car on two lanes: all the lights are lit, they say "filled in" (not ready), and the button stays off', (hh.match(/<i class="on" style="--c:/g) || []).length === 3 && hh.includes('All 3 lanes are filled in.') && !hh.includes('are ready.') && hh.includes('A car is used more than once.') && /id="start" disabled/.test(hh));
+    store.slotcars.push({ id: 'c3', brand: 'Lola', model: 'T70' }); run("state.settings.assignments = { k1: [{ driverId: 'd1', carId: 'c1' }, { driverId: 'd2', carId: 'c2' }, { driverId: 'd3', carId: 'c3' }] }"); hh = await home();
+    say('...with every lane ready and nothing else wrong all the lights are lit, they say ready, and the Start button works', (hh.match(/<i class="on" style="--c:/g) || []).length === 3 && hh.includes('All 3 lanes are ready.') && !hh.includes('class="issues"') && /<button class="btn primary big" id="start" >/.test(hh));
+    store.slotcars.pop();
+    run("state.settings.assignments = { k1: [{ driverId: 'd1', carId: 'c1' }, { driverId: 'd2', carId: 'c2' }] }"); hh = await home();
+    say('...no audio set: the chip says No audio', (run("state.settings.lastSetupId = 'k2'"), true) && (await home()).includes('No audio'));
+    run("state.settings.lastSetupId = 'k1'");
+    // the cards on the right
+    await home(); say('with nothing raced the right side says what will show up there', side().includes('class="card hm-empty"') && !side().includes('Record to beat') && !side().includes('hm-glance'));
+    const lapRow = (time, extra) => ({ id: 'L' + Math.random(), sessionId: 'S1', trackId: 't1', driverId: 'd2', carId: 'c2', lane: 1, time, lapNumber: 1, date: '2026-10-10T18:00:00.000Z', ...extra });
+    store.sessions = [{ id: 'S0', setupName: 'Old race', sessionType: 'race', trackId: 't1', trackName: 'Living room', date: '2026-09-12T18:00:00.000Z', standings: [{ pos: 1, driverId: 'd1', driverName: 'Dutch', carId: 'c1', laps: 10, best: 5100 }] },
+      { id: 'S1', setupName: 'Club race', sessionType: 'race', trackId: 't1', trackName: 'Living room', date: '2026-10-10T18:00:00.000Z', standings: [{ pos: 1, driverId: 'd2', driverName: 'Sam', carId: 'c2', laps: 20, best: 4861 }, { pos: 2, driverId: 'd1', driverName: 'Dutch', carId: 'c1', laps: 20, best: 4955 }, { pos: 3, driverId: 'd3', driverName: 'Mila', carId: 'c1', laps: 19, best: 5200 }] }];
+    store.laps = [lapRow(4861), lapRow(4955, { driverId: 'd1', carId: 'c1' }), lapRow(5200, { driverId: 'd3', carId: 'c1' }), lapRow(5100, { sessionId: 'S0', driverId: 'd1', carId: 'c1', date: '2026-09-12T18:00:00.000Z' }), lapRow(4000, { trackId: 't2', sessionId: 'S2' }), lapRow(3500, { driverId: 'd3', invalid: true, noTrackRecord: true, noPersonalBest: true })];
+    hh = await home(); const sd = side();
+    say('the record to beat: the fastest lap on the track of the setup, with the driver and the car, and who on the grid is closest', sd.includes('class="card hm-rec"') && sd.includes('<div class="hm-time">4.861</div>') && sd.includes('<strong>Sam</strong> · Ford GT40') && sd.includes('Sam is on the grid and holds the record.'));
+    say('...a lap that is invalid, or of another track, is not the record; the card says whose track it is', !sd.includes('3.500') && !sd.includes('>4.000<') && sd.includes('<span class="hm-tag">Living room</span>'));
+    say('the last race: the podium in the order of the places, the race, the track and the fastest lap', sd.includes('class="card hm-last"') && /<li class="p1"><span class="n">1<\/span><strong>Sam<\/strong><small>20 laps<\/small><\/li><li class="p2"><span class="n">2<\/span><strong>Dutch<\/strong>/.test(sd) && sd.includes('<li class="p3"><span class="n">3</span><strong>Mila</strong><small>19 laps</small>') && sd.includes('Club race on Living room · Fastest lap: Sam, 4.861'));
+    say('at a glance: races, laps, distance and who won most', sd.includes('<div class="v">2</div><div class="l">races raced</div>') && sd.includes('<div class="v">5</div><div class="l">laps driven</div>') && sd.includes('<div class="v">65 m</div>') && />Sam<\/div><div class="l">most wins \(1\)/.test(sd));
+    say('...a track that has no lap yet says so, and the first lap sets the record', (run("state.settings.lastSetupId = 'k1'"), store.tracks[0].id = 'tX', store.racesetups[0].track = 'tX', (await home(), side().includes('No lap has been saved on this track yet.'))));
+    store.tracks[0].id = 't1'; store.racesetups[0].track = 't1';
+    // the laps are fetched once while you stay on Home, and again when Home is shown again
+    let fetched = 0; const realList = api.list; api.list = async e => { if (e === 'laps') fetched++; return realList(e); };
+    await home(); const first = fetched;
+    await E('view').onchange({ target: { id: 'setup', value: 'k2' } }); await new Promise(r => setTimeout(r, 20)); await E('view').onchange({ target: { id: 'setup', value: 'k1' } }); await new Promise(r => setTimeout(r, 20));
+    say('the laps are fetched once while you stay on the Home tab (a change of setup does not fetch them again), and again when Home is shown again', first === 1 && fetched === 1 && (await home(), fetched === 2));
+    api.list = realList;
+    // the Trackmate chip follows the connection, while Home is open
+    await home(); run('Trackmate.link.setConnected(true)');
+    say('the Trackmate chip lights up when the Trackmate is connected, and goes dark when it is not', E('hm-chips').innerHTML.includes('data-state="on"><i aria-hidden="true"></i>Trackmate connected') && (run('Trackmate.link.setConnected(false)'), E('hm-chips').innerHTML.includes('Trackmate not connected')));
+    // a network that was switched on but could not start
+    run('state.settings.netOn = true'); api.netStatus = async () => ({ on: false, port: 0, error: 'Port 8787 is already in use. Choose another port.', passwordSet: false, urls: [] }); await home();
+    say('a network that is switched on but could not start gets a red light', E('hm-chips').innerHTML.includes('data-state="warn"><i aria-hidden="true"></i>Network sharing could not start'));
+    api.netStatus = async () => ({ on: true, port: 8787, error: '', passwordSet: false, urls: [] }); await home();
+    say('...and one that runs is lit', E('view').innerHTML.includes('data-state="on"><i aria-hidden="true"></i>Shared on the network'));
+    delete api.netStatus;
+    // a Time Token Session: nothing is needed, so every light is lit; only token sessions raced: the right side is still empty
+    store.racesetups = [{ id: 'kt', name: 'Club night', sessionType: 'tokens', track: 't1' }]; store.sessions = [{ id: 'T1', setupName: 'Club night', sessionType: 'tokens', date: '2026-10-11T18:00:00.000Z', standings: [] }]; store.laps = [lapRow(3000, { token: true })]; run("state.settings.lastSetupId = 'kt'; state.settings.assignments = {}");
+    hh = await home();
+    say('a Time Token Session has every light lit, and its sessions never show on Home as a race', (hh.match(/<i class="on" style="--c:/g) || []).length === 3 && hh.includes('All 3 lanes are ready.') && side().includes('class="card hm-empty"') && !side().includes('Record to beat'));
+    Object.assign(store, { racesetups: keep.racesetups, tracks: keep.tracks, drivers: keep.drivers, slotcars: keep.slotcars, sessions: keep.sessions, laps: keep.laps, layouts: keep.layouts, audiosets: keep.audiosets }); run(`state.settings.lastSetupId = ${JSON.stringify(keep.last || '')}; state.settings.assignments = ${JSON.stringify(keep.asg || {})}; state.settings.netOn = ${JSON.stringify(!!keep.net)}`); }
   { // Race Setups: the session type is the folder
     const keepSetups = store.racesetups, keepTracks = store.tracks;
     store.racesetups = [{id:'r1',name:'Friday',sessionType:'race',track:'t1',laps:10},{id:'r2',name:'Sprint',sessionType:'race',track:'t1',laps:5},{id:'r3',name:'Warm up',sessionType:'practice',track:'t1'},

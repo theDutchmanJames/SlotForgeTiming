@@ -1887,3 +1887,21 @@ Good to know:
 2. **GitHub tags** (v0.97.0 to v1.16.2) are still not pushed; they are refused from here. The code itself is pushed to the main branch.
 3. The tests: a new block in `tests/screens.test.js` (the button, the answer, it stays open, it hides again).
 4. Files: `renderer/audioedit.js`, `renderer/styles.css`.
+
+## What to try (1.17.0): a livelier Home tab
+From your note: with the Available cards gone, Home felt empty. It is now a band, the start card and three cards.
+1. Open **Home**. At the top is a band with a soft glow in your theme's colour, the date and the track of the selected race setup, and small lights: **Trackmate** (green when it is connected, also when you plug it in while Home is open), **Shared on the network** (green when it runs, red when it was switched on but could not start), the **audio set** of the setup (or "No audio") and how many drivers, slotcars and tracks you have.
+2. Under it, **Start a race** has a coloured strip on every lane. If the layout of the race setup gives a lane a colour, that is the colour; otherwise it is one of eight (red, blue, yellow, green, purple, orange, cyan, pink).
+3. Under the lanes, **start lights**: one for every lane (or participant), lit in the lane's colour when it has what it needs. The words next to them say "3 of 4 lanes are ready." When every lane is filled in but something else still stops the race (a driver on two lanes), they say "filled in", and the list above the button says what to fix. **Start race** is the bigger button on the right.
+4. On the right, three cards, from your saved races (a Time Token Session never counts here):
+   - **Record to beat**: the fastest lap on the track of the setup, with the driver, the car, the date and the race. Under it, who on the grid is closest and by how much (or that the record holder is on the grid). A lap that was taken out of the records is not the record.
+   - **Last race**: the podium (1 in the middle), what each did (laps, or points in a race on points), the race and the track, and the fastest lap of that race. After a qualifying or a practice it says "Last qualifying" or "Last free practice" with the best laps.
+   - **At a glance**: races raced, laps driven, distance (from the length of the lanes) and who won most.
+5. Make the window narrow: the cards go under the start card. Try another theme in App Settings: the band, the record time and the podium follow its colour.
+
+Good to know:
+1. **No saved race yet**: the right side shows one card that says what will appear.
+2. **Fast**: the laps for the cards are fetched once while you stay on Home (changing the race setup does not fetch them again) and again each time you come back to Home.
+3. **Not done**: the Sound chip of the mockup became the audio set of the setup, because the app has no general sound switch. Ties in "most wins" go to the one who won last.
+4. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+5. The tests: `tests/homestats.test.js` (new: the record, last race, podium, totals, chips, lane colours and start lights), a new block in `tests/screens.test.js` (the band, colours, lights, the cards, fetching once, the live Trackmate and network chips), and the Home folder of the help.

@@ -294,7 +294,7 @@ async function render() {
   };
   renderTabs(tabsEl, tabsNow(), state.tab, pick, TAB_ICONS);
   try {
-    if (state.tab === 'home') await renderHome();
+    if (state.tab === 'home') { if (typeof resetHome === 'function') resetHome(); await renderHome(); } // (the laps for the cards on Home are fetched again every time Home is shown)
     else if (state.tab === 'race') await renderRace();
     else if (state.tab === 'database') await renderDatabase();
     else if (state.tab === 'settings') await renderSettings();

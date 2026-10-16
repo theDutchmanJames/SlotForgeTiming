@@ -2,14 +2,20 @@
 const optionsOf = (entity, list, chosen, blank = '(choose)') =>
   `<option value="">${esc(blank)}</option>` + list.map(i => `<option value="${esc(i.id)}"${i.id === chosen ? ' selected' : ''}>${esc(titleOf(entity, i))}</option>`).join('');
 
+// 1.17.0: the cards on the right of the Home tab need every saved lap. The laps are fetched once and kept while you stay on the Home tab (a change on Home does not fetch them again);
+// app.js forgets them (resetHome) whenever another tab was shown, because a race may have been saved or a record removed since. homeRun numbers the pictures, so a late answer never lands in a newer one.
+let homeLaps = null, homeRun = 0, homeOffTm = null;
+function resetHome() { homeLaps = null; }
+
 async function renderHome() {
-  const [drivers, cars, tracks, setups, sessions, rotations, teams] = await Promise.all(['drivers', 'slotcars', 'tracks', 'racesetups', 'sessions', 'rotationsetups', 'teams'].map(e => api.list(e)));
+  const [drivers, cars, tracks, setups, sessions, rotations, teams, layouts, audiosets] = await Promise.all(['drivers', 'slotcars', 'tracks', 'racesetups', 'sessions', 'rotationsetups', 'teams', 'layouts', 'audiosets'].map(e => api.list(e)));
   const saved = state.settings;
   const resume = api.getResume && !(typeof raceActive === 'function' && raceActive()) ? await api.getResume().catch(() => null) : null; // (1.9.0: a race that was interrupted by a crash or a power cut, kept in a file)
   const setupId = setups.some(x => x.id === saved.lastSetupId) ? saved.lastSetupId : (setups[0]?.id || '');
   const rawSetup = setups.find(x => x.id === setupId);
   const setup = Endurance.effective(rawSetup); // (1.9.0: an Endurance Race is a race, a timed race or heats, with the rules of the swaps in setup.endurance)
   const track = setup && tracks.find(t => t.id === setup.track);
+  const layout = (setup && (layouts || []).find(x => x.id === setup.layout)) || null, laneHue = i => HomeStats.laneColor(layout, i); // (the colour of a lane on the race screen, else one of eight)
   const heats = setup?.sessionType === 'heats', tokens = setup?.sessionType === 'tokens';
   const endu = !!(setup && setup.endurance), enduSingle = endu && !heats; // (an Endurance Race in one go: every lane is a team, with the driver who starts) // (a Time Token Session: the driver and car of a lane are optional, a lane without a driver is a Guest)
   const lanes = Math.max(0, Math.floor(Number(track?.lanes)) || 0);
@@ -128,7 +134,7 @@ async function renderHome() {
     const m = membersOf(t), cur = drivers.find(d => d.id === r.driverId);
     return cur && !m.includes(cur) ? [...m, cur] : m;
   };
-  const rowHtml = (r, i) => `<div class="lane${rot ? ' rot' : ''}${away(r) ? ' away' : ''}${byTeam ? ' byteam' : ''}${withTeam && !byTeam ? ' threesel' : ''}" data-row="${i}">
+  const rowHtml = (r, i) => `<div class="lane${rot ? ' rot' : ''}${away(r) ? ' away' : ''}${byTeam ? ' byteam' : ''}${withTeam && !byTeam ? ' threesel' : ''}" data-row="${i}" style="--c:${esc(laneHue(i))}">
       <strong>${heats ? (byTeam ? 'Team ' : 'Participant ') : 'Lane '}${i + 1}${rot && rot.names[i] ? ' · ' + esc(rot.names[i]) : ''}</strong>
       ${byTeam ? teamSelect(r, i) : `${withTeam ? teamSelect(r, i) : ''}<select data-k="driverId" aria-label="${enduSingle ? 'Starting driver' : 'Driver'} for row ${i + 1}"${away(r) ? ' disabled' : ''}>${optionsOf('drivers', enduSingle && !r.teamId ? [] : driverList(r), r.driverId, tokens ? 'Guest (no driver)' : enduSingle ? (setup.endurance.next === 'random' ? '(starting driver: by lot)' : '(starting driver: the first of the team)') : undefined)}</select>`}
       <select data-k="carId" aria-label="Car for row ${i + 1}"${away(r) ? ' disabled' : ''}>${optionsOf('slotcars', cars, r.carId, tokens ? '(no car)' : undefined)}</select>
@@ -142,10 +148,19 @@ async function renderHome() {
       <p><strong>${esc(resume.name || '')}</strong>${resume.kind ? ' · ' + esc(resume.kind) : ''}${resume.trackName ? ' on ' + esc(resume.trackName) : ''}. It was ${esc(Endurance.clock(Number(resume.elapsed) || 0))} into the race when it was saved (${esc(resume.savedAt ? new Date(resume.savedAt).toLocaleString() : '')}).</p>
       <div class="row"><button class="btn primary" id="resumego">Resume the race</button><button class="btn" id="resumesave">Save what was recorded</button><button class="btn danger" id="resumedrop">Delete it</button></div>
       <p class="hint2">The race comes back paused, with its clock where it was. The laps driven since then are not in it (the review can add them), and the lap that was being driven is left out of the records. Press Space to carry on.</p></section>`;
+  // 1.17.0: the welcome band (date, track and status chips), the start card with its coloured lanes and start lights, and the cards on the right
+  const audio = setup && (audiosets || []).find(x => x.id === setup.audioSet), audioName = audio ? audio.name || '(unnamed)' : '';
+  const chipsNow = more => HomeStats.chips({ trackmate: typeof Trackmate !== 'undefined' && !!Trackmate.link.connected, netOn: !!state.settings.netOn, netError: more && more.netError, hasSetup: !!setup, audioName, drivers: drivers.length, cars: cars.length, tracks: tracks.length });
+  const chipHtml = c => `<span class="hm-chip" data-key="${c.key}"${c.state ? ` data-state="${c.state}"` : ''}>${c.state ? '<i aria-hidden="true"></i>' : ''}${esc(c.text)}</span>`;
+  const today = new Date().toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
+  const lt = HomeStats.lights(rows, { byTeam, enduSingle, tokens }, heats ? (byTeam ? 'team' : 'participant') : 'lane', issues.length > 0), shown = rows.map((r, i) => ({ r, i })).filter(x => !x.r.absent);
+  const lightsHtml = setup && track && lanes && rows.length ? `<div class="hm-lights" aria-hidden="true">${shown.map((x, k) => `<i${lt.ok[k] ? ' class="on"' : ''} style="--c:${esc(laneHue(x.i))}"></i>`).join('')}</div><span class="muted hm-ready" role="status">${esc(lt.text)}</span>` : '';
   view.innerHTML = `${homeHeaderHtml(state.settings)}
-    <h2>${esc(welcomeOf())}</h2>
+    <div class="hm-band"><div class="hm-flag" aria-hidden="true"></div><h2>${esc(welcomeOf())}</h2>
+      <p class="hm-sub">${esc(today)}${track ? ' · ' + esc(track.name) : ''}</p>
+      <div class="hm-chips" id="hm-chips">${chipsNow().map(chipHtml).join('')}</div></div>
     ${resumeHtml}
-    <section class="card"><h3>Start a race</h3>` + (setups.length ? `
+    <div class="hm-cols"><section class="card hm-start"><h3>Start a race</h3>` + (setups.length ? `
       <div class="field"><label for="setup">Race setup</label>
         <select id="setup">${setups.map(s => `<option value="${esc(s.id)}"${s.id === setupId ? ' selected' : ''}>${esc(s.name || '(unnamed)')}</option>`).join('')}</select></div>
       <p class="hint2">${esc(typeLabel)}${track ? ' on ' + esc(track.name) + (lanes ? ` (${lanes} lanes)` : '') : ''}</p>
@@ -159,8 +174,8 @@ async function renderHome() {
       ${tokens ? '<p class="hint2">A Time Token Session starts with every lane switched off. You add paid time to a lane on the race screen, and can change the driver there too. Here you can already put a driver and a car on a lane.</p>' : ''}
       ${raceOn ? '<p class="hint2" id="raceon">A race is running. <button class="btn" id="gorace">Go to the race</button></p>' : ''}
       ${issues.length ? `<ul class="issues">${issues.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
-      <div class="row"><button class="btn primary" id="start" ${issues.length || raceOn ? 'disabled' : ''}${raceOn ? ' title="A race is still running. Open the Race tab to finish or stop it first."' : ''}>${tokens ? 'Open the session' : 'Start race'}</button></div>`
-      : '<p class="muted">Create a race setup in the Race Setup tab to get started.</p>') + `</section>`;
+      <div class="hm-go">${lightsHtml}<span class="hm-grow"></span><button class="btn primary big" id="start" ${issues.length || raceOn ? 'disabled' : ''}${raceOn ? ' title="A race is still running. Open the Race tab to finish or stop it first."' : ''}>${tokens ? 'Open the session' : 'Start race'}</button></div>`
+      : '<p class="muted">Create a race setup in the Race Setup tab to get started.</p>') + `</section><div class="hm-side" id="homeside"></div></div>`;
 
   const persist = async () => {
     state.settings = await api.setSettings({ lastSetupId: setupId, assignments: { ...(saved.assignments || {}), [setupId]: rows } });
@@ -242,4 +257,43 @@ async function renderHome() {
       state.race = { setup: rawSetup, track, rows: go, ...(byTeam ? { byTeam: true } : {}), ...(heatPlan ? { schedule: heatPlan.schedule, ...(heatPlan.labels ? { labels: heatPlan.labels } : {}) } : {}) }; state.tab = 'race'; render(); // (a heat race is raced as planned above; with a rotation, only the participants who are here race)
     }
   };
+
+  // ---- the status chips stay true: the Trackmate can be plugged in while Home is open ----
+  const setChips = more => { const el = document.getElementById('hm-chips'); if (el) el.innerHTML = chipsNow(more).map(chipHtml).join(''); return !!el; };
+  const run = ++homeRun; let netError = '';
+  if (homeOffTm) { homeOffTm(); homeOffTm = null; }
+  if (typeof Trackmate !== 'undefined' && Trackmate.link && Trackmate.link.onStatus) {
+    const off = Trackmate.link.onStatus(() => { if (run !== homeRun || !setChips({ netError })) { off(); if (homeOffTm === off) homeOffTm = null; } });
+    homeOffTm = off;
+  }
+
+  // ---- the cards on the right: the record to beat, the last race and the totals (they need every saved lap, so they come when the laps are in) ----
+  const dateText = iso => { const d = iso ? new Date(iso) : null; return d && !isNaN(d) ? d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) : ''; };
+  const dn = id => { const d = drivers.find(x => x.id === id); return d ? titleOf('drivers', d) : ''; }, cn = id => { const c = cars.find(x => x.id === id); return c ? titleOf('slotcars', c) : ''; };
+  const sideHtml = laps => {
+    const last = HomeStats.lastRace({ sessions, laps, driverName: dn });
+    if (!last) return `<section class="card hm-empty"><h3>Your racing shows up here</h3><p class="muted">After the first race that is saved, this place shows the record to beat on your track, the podium of the last race and your totals.</p></section>`;
+    const g = HomeStats.glance({ sessions, laps, tracks, driverName: dn });
+    const rec = track ? HomeStats.recordCard({ laps, sessions, trackId: track.id, driverIds: byTeam ? [] : rows.filter(r => !r.absent).map(r => r.driverId), driverName: dn, carName: cn }) : null;
+    const recHtml = !rec ? '' : `<section class="card hm-rec"><h3>Record to beat<span class="hm-tag">${esc(track.name)}</span></h3>${rec.record
+      ? `<div class="hm-recrow"><div class="hm-time">${esc(rec.record.text)}</div><div><strong>${esc(rec.record.driver)}</strong>${rec.record.car ? ' · ' + esc(rec.record.car) : ''}<small>${esc([dateText(rec.record.date), rec.record.setupName].filter(Boolean).join(' · '))}</small></div></div>${rec.line ? `<p class="hint2">${esc(rec.line)}</p>` : ''}`
+      : '<p class="muted">No lap has been saved on this track yet. The first lap sets the record.</p>'}</section>`;
+    const lastHtml = `<section class="card hm-last"><h3>${esc(last.label)}<span class="hm-tag">${esc(dateText(last.date))}</span></h3>${last.podium.length
+      ? `<ol class="hm-pod">${last.podium.map(p => `<li class="p${p.pos}"><span class="n">${p.pos}</span><strong>${esc(p.name)}</strong><small>${esc(p.detail)}</small></li>`).join('')}</ol>` : '<p class="muted">No car finished a lap.</p>'}
+      <p class="hint2">${esc(last.setupName)}${last.trackName ? ' on ' + esc(last.trackName) : ''}${last.fastest ? ` · Fastest lap: ${esc(last.fastest.driver ? last.fastest.driver + ', ' : '')}${esc(last.fastest.text)}` : ''}</p></section>`;
+    const glanceHtml = `<section class="card hm-glance"><h3>At a glance</h3><div class="hm-tiles">
+      <div class="hm-tile"><div class="v">${g.races}</div><div class="l">${g.races === 1 ? 'race' : 'races'} raced</div></div>
+      <div class="hm-tile"><div class="v">${esc(g.laps.toLocaleString())}</div><div class="l">${g.laps === 1 ? 'lap' : 'laps'} driven</div></div>
+      <div class="hm-tile"><div class="v">${g.distance === null ? '–' : esc(Stats.fmtDist(g.distance))}</div><div class="l">distance</div></div>
+      <div class="hm-tile"><div class="v">${g.wins ? esc(g.wins.name) : '–'}</div><div class="l">${g.wins ? `most wins (${g.wins.count})` : 'most wins'}</div></div></div></section>`;
+    return recHtml + lastHtml + glanceHtml;
+  };
+  let allLaps;
+  try { homeLaps = homeLaps || Promise.resolve(api.list('laps')); allLaps = await homeLaps; } catch (x) { homeLaps = null; allLaps = []; }
+  if (run !== homeRun) return; // (another picture of Home was drawn while the laps came in)
+  const side = document.getElementById('homeside');
+  if (side) side.innerHTML = sideHtml(Array.isArray(allLaps) ? allLaps : []);
+  if (state.settings.netOn && api.netStatus) { // a network that was switched on but could not start gets a red light
+    try { const st = await api.netStatus(); if (run === homeRun && st && st.error) { netError = st.error; setChips({ netError }); } } catch (x) { /* the chip stays as the setting says */ }
+  }
 }

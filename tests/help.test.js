@@ -198,4 +198,8 @@ const folders = Help.folders();
   say('...and that a Lap button counts a lap by hand while the race runs', f('screen').includes('counts a lap by hand, while the race runs'));
   say('...every folder is still short enough', folders.every(x => plain(x.body).length < 1400)); }
 
+{ const home = plain(folders.find(x => x.id === 'home').body); // 1.17.0
+  say('1.17.0: the Home folder explains the lane colours, the start lights, the band with its lights and the cards on the right', home.includes('colour') && home.includes('start lights') && home.includes('Trackmate') && home.includes('audio set') && home.includes('record to beat') && home.includes('last race') && home.includes('At a glance'));
+  say('...it still says why Start race is greyed out and who picks the lane first, and the Home folder is short enough', home.includes('greyed out') && home.includes('picks their lane first') && home.length < 1400); }
+
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

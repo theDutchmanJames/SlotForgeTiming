@@ -804,3 +804,44 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .dir-red .btn[data-dm="give"]{background:#e5484d;color:#111418;border-color:transparent;font-weight:700}
 .dir-red .btn[data-dm="take"]{background:#9d444a;color:#ffffff;border-color:transparent;font-weight:700}
 .dir-yellow .btn[data-cmd="penalty"]:disabled,.dir-yellow .btn[data-cmd="assign"]:disabled,.dir-red .btn[data-dm]:disabled{opacity:.38}
+
+/* ---- 1.17.0: the Home tab ---- */
+.hm-band{position:relative;overflow:hidden;border-radius:12px;margin:0 0 16px;padding:20px 24px 22px;border:1px solid var(--line);background:linear-gradient(110deg,color-mix(in srgb,var(--accent) 30%,var(--panel)) 0%,var(--panel) 62%)}
+.hm-band h2{margin:0 0 4px;font-size:26px;position:relative}
+.hm-sub{margin:0;color:var(--muted);position:relative}
+.hm-flag{position:absolute;right:0;top:0;bottom:0;width:240px;opacity:.16;pointer-events:none;background:repeating-conic-gradient(var(--ink) 0 25%,transparent 0 50%) 0 0/36px 36px;-webkit-mask:linear-gradient(90deg,transparent,#000 70%);mask:linear-gradient(90deg,transparent,#000 70%)}
+.hm-chips{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;position:relative}
+.hm-chip{display:inline-flex;align-items:center;gap:7px;padding:4px 11px;border-radius:999px;background:color-mix(in srgb,var(--bg) 70%,transparent);border:1px solid var(--line);font-size:13px}
+.hm-chip i{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.hm-chip[data-state="on"] i{background:#3ecf8e;box-shadow:0 0 6px #3ecf8e}
+.hm-chip[data-state="warn"] i{background:#e5484d;box-shadow:0 0 6px #e5484d}
+.hm-cols{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;align-items:start}
+.hm-side{display:flex;flex-direction:column;gap:16px;min-width:0}.hm-side:empty{display:none}
+.hm-cols>.hm-side:empty+*{display:none}
+@media (max-width:960px){.hm-cols{grid-template-columns:minmax(0,1fr)}}
+.hm-start .lane{padding:6px 10px 6px 0;border:1px solid var(--line);border-radius:8px;background:var(--bg);overflow:hidden}
+.hm-start .lane>strong{align-self:stretch;display:flex;align-items:center;padding:0 10px;border-left:6px solid var(--c,var(--line));background:color-mix(in srgb,var(--c,var(--line)) 20%,var(--bg));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-start .lane{grid-template-columns:134px 1fr 1fr auto}.hm-start .lane.rot{grid-template-columns:174px 1fr 1fr auto auto}.hm-start .lane.threesel{grid-template-columns:134px 1fr 1fr 1fr auto}
+.hm-start .lane .teamline{grid-column:1/-1;padding-left:10px}
+.hm-go{display:flex;align-items:center;gap:14px;margin-top:14px;flex-wrap:wrap}
+.hm-grow{flex:1 1 0}
+.hm-lights{display:flex;gap:7px;flex-wrap:wrap}
+.hm-lights i{width:20px;height:20px;border-radius:50%;background:var(--line)}
+.hm-lights i.on{background:var(--c,var(--accent));box-shadow:0 0 8px color-mix(in srgb,var(--c,var(--accent)) 70%,transparent)}
+.hm-ready{font-size:14px}
+.btn.big{font-size:18px;padding:11px 30px}
+.hm-tag{float:right;font-size:12px;font-weight:400;color:var(--muted)}
+.hm-recrow{display:flex;gap:14px;align-items:center}
+.hm-time{font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--accent);line-height:1}
+.hm-recrow small{display:block;color:var(--muted)}
+.hm-rec .hint2,.hm-last .hint2{margin:10px 0 0}
+.hm-pod{list-style:none;margin:6px 0 0;padding:0;display:flex;gap:8px;align-items:flex-end;justify-content:center;border-bottom:2px solid var(--line)}
+.hm-pod li{flex:1 1 0;min-width:0;max-width:34%;border-radius:8px 8px 0 0;padding:8px 4px;background:var(--bg);border:1px solid var(--line);border-bottom:0;text-align:center;overflow:hidden}
+.hm-pod .p1{order:2;min-height:112px;background:color-mix(in srgb,var(--accent) 22%,var(--bg));border-color:var(--accent)}
+.hm-pod .p2{order:1;min-height:96px}.hm-pod .p3{order:3;min-height:84px}
+.hm-pod strong,.hm-pod small,.hm-pod .n{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm-pod small{color:var(--muted)}.hm-pod .n{font-size:20px;font-weight:700}
+.hm-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hm-tile{padding:10px 12px;border-radius:8px;background:var(--bg);border:1px solid var(--line);min-width:0}
+.hm-tile .v{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm-tile .l{font-size:12px;color:var(--muted)}
