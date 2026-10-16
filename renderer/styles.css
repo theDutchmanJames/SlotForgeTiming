@@ -66,6 +66,11 @@ input:disabled{opacity:.6}
 .imgrow input{width:auto;flex:1}
 .error{color:var(--accent);min-height:1.2em;margin:0 0 8px}
 .svc-note.due{color:var(--accent);font-weight:600}
+.svc-due{display:inline-block;margin:0 0 0 8px;padding:1px 9px;border:1px solid var(--accent);border-radius:12px;color:var(--accent);font-size:.8em;font-weight:600;white-space:nowrap}
+.gcard>.svc-due{margin:0 0 6px}
+.svc-tracks{width:auto;min-width:60%}
+.svc-tracks td:not(:first-child),.svc-tracks th:not(:first-child){text-align:right;font-variant-numeric:tabular-nums}
+.svc-tracks-box{overflow-x:auto}
 .xf{list-style:none;padding:0;margin:0 0 14px}
 .xf li{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)}
 .xf li{flex-wrap:wrap}

@@ -42,10 +42,10 @@ const Help = (() => {
           <li><b>Tracks</b>: a name and the number of lanes are needed. The rest is optional: scale, surface, a picture and the <b>track length</b>. Type the length in (in feet if you chose feet), or let the calculator work it out from the pieces of your track. With a length, the Slotcar Speed widget can show speeds. A <b>lane length modifier</b>, or the length of every lane, gives each lane its own length. A <b>minimum and maximum lap time</b> lets the app ignore crossings that cannot be a real lap.</li>
           <li><b>Drivers</b>: a name, and if you like a nickname, a three-letter callsign, a date of birth, a country flag and an avatar.</li>
           <li><b>Teams</b>: drivers who race together (see Teams, below).</li>
-          <li><b>Slotcars</b>: a brand, manufacturer or model, scale, motor, tyres, gearing, weight and pictures. <b>Statistics</b>: a service interval, the laps since the last service (with a Reset button) and the mileage.</li>
-          <li><b>Extra fields…</b> on every list adds fields of your own (text, number, date or pick-list), for your information. The forms are in folders you can keep closed.</li>
+          <li><b>Slotcars</b>: a brand, manufacturer or model, scale, motor, tyres, gearing, weight and pictures. <b>Statistics</b>: a service interval (with a Reset button, and a <b>Service due</b> mark), mileage, wins, deslots and the best lap per track.</li>
+          <li><b>Extra fields…</b> on every list adds fields of your own (text, number, date or pick-list). The forms are in folders you can keep closed.</li>
           <li><b>View settings</b> (on every page) opens a small bar where you turn the columns of the list, or the rows of the cards, on and off. It is kept for each page and view.</li>
-          <li>Click a <b>row or a card</b> of Slotcars, Tracks or Drivers to see all of it in a window, like a trading card: the main picture, the details and (slotcars) the other pictures, which you can click to see large. Nothing can be changed there; <b>Edit</b> opens the form.</li>
+          <li>Click a <b>row or a card</b> of Slotcars, Tracks or Drivers to see all of it in a window, like a trading card: the main picture, the details, the statistics and (slotcars) the other pictures, which you can click to see large. <b>Edit</b> opens the form.</li>
         </ul>` },
       { id: 'results', title: 'Results and Records', note: 'What has been driven', body: `
         <ul>

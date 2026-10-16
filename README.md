@@ -2215,3 +2215,22 @@ Good to know:
 5. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 6. The tests: `tests/weather.test.js` (the engine with and without weather, the view, the words, resuming), `tests/weatherscreen.test.js` (the panel, the tick box, the Database, the Race Director page, a race without weather, heats), `tests/racefolders.test.js` (the folder and its colour), `tests/web.test.js` (the command) and `tests/help.test.js`.
 
+
+## What to try (1.33.0): more statistics for a slot car, and a Service due mark
+From your note: all the statistics ideas, in the Statistics folder of a slot car.
+1. Open **Database > Slotcars**, press **Edit** on a car and open the **Statistics** folder. After the four fields of 1.30.0 it now has: **Services Done**, **Mileage**, **Mileage Since Last Service**, **Last Driven**, **Sessions Driven**, **Wins**, **Deslots**, **Fastest Lap Ever** and a table **Best Lap per Track**. Each has a short line under it that says what it counts.
+2. **Services Done** counts how many times you pressed **Reset** and saved. A car that was serviced before this version (it has a day under *Last Serviced*) counts as 1; a car that was never serviced is at 0. Press **Reset** and it shows the next number at once, and **Mileage Since Last Service** goes back to 0 (kept when you press **Save**).
+3. **Mileage Since Last Service** is the same distance as **Mileage**, counted from the day of the last Reset. Until a car is serviced for the first time it is all of the mileage.
+4. **Last Driven** is the day of the last lap saved with the car (*Never* when it has none). **Sessions Driven** is the number of sessions the car has laps in: races, qualifyings and practices.
+5. **Wins** are the races the car came first in (a single race, a timed race, a heat race or an endurance race; not when it was disqualified or retired). A practice or a qualifying has no winner.
+6. **Deslots** are the laps that took longer than the **deslot time** of their track (Tracks > Lap time limits). A lap with a pit stop is not a deslot, and a track without a deslot time has none.
+7. **Fastest Lap Ever** is the best valid lap of the car on any track, and the track it was on. **Best Lap per Track** lists every track with a valid lap: the number of laps, the best lap and the average lap, the track with the most laps first. A lap that is invalid, too slow, late or with a pit stop is not a valid lap.
+8. The card of a car (click it in the list or grid) shows the same, with **Next Service** (how many laps are left, or that the service is due) above them.
+9. A car whose laps since the last service have reached its interval has a **Service due** mark next to its name, on the card in the grid and in the first column of the list.
+
+Good to know:
+1. Services Done is kept with the car. All the other new figures are worked out from your laps, sessions and tracks each time the form or the card opens (a moment of *Calculating…*), so they always match your races and nothing has to be reset. If the laps cannot be read they show a dash.
+2. A Time Token Session is a pool of its own: its laps are not in any of these figures, as on the Home cards.
+3. The Service due mark is not on the Home tab yet. A Home card *Service Due* (the cars that need servicing) is a good next step: a mockup comes first, to your approval.
+4. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+5. The tests: `tests/carstats.test.js` (the services, and everything that is worked out: mileage since the service, last driven, sessions, wins, deslots, the fastest lap and the table), `tests/screens.test.js` (the form, Reset, the card, the Service due mark) and `tests/help.test.js`.

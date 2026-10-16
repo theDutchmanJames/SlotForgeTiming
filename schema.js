@@ -51,7 +51,7 @@ module.exports = {
       { id: 'basics', title: 'Basics', note: 'Brand, manufacturer, model and scale', open: true },
       { id: 'technical', title: 'Technical details', note: 'Motor, tyres, gearing and weight', open: true },
       { id: 'pictures', title: 'Pictures', note: 'The main picture, and more pictures of the chassis and parts' },
-      { id: 'stats', title: 'Statistics', note: 'The service interval, and the laps and mileage counted from your races' }
+      { id: 'stats', title: 'Statistics', note: 'The service interval, the services done, and the laps, mileage, wins and best laps counted from your races' }
     ],
     fields: [
       { key: 'brand', group: 'basics', label: 'Brand', type: 'text' },
@@ -73,7 +73,8 @@ module.exports = {
       { key: 'lapsDriven', group: 'stats', label: 'Laps Driven', type: 'number', automatic: true, hint: 'Every lap saved with this car, counted from your races.' },
       { key: 'lapsSinceService', group: 'stats', label: 'Laps Since Last Interval', type: 'number', automatic: true, reset: true,
         hint: 'The laps saved with this car since it was last serviced. Press Reset when you have serviced the car: the count starts again at 0 (when you save).' },
-      { key: 'serviceDate', group: 'stats', label: 'Last Serviced', type: 'datetime', automatic: true, hint: 'The day you pressed Reset (Never until then).' }
+      { key: 'serviceDate', group: 'stats', label: 'Last Serviced', type: 'datetime', automatic: true, hint: 'The day you pressed Reset (Never until then).' },
+      { key: 'servicesDone', group: 'stats', label: 'Services Done', type: 'number', automatic: true, hint: 'How many times you pressed Reset when you saved. A car that was serviced before this count existed counts as 1.' }
     ]
   },
   drivers: {
