@@ -183,10 +183,10 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   await openRace(setupTok, store.tracks[1], rows(1, 2)); key(' ');
   ops().add(0, 0.3); await wait(60); key('1'); await wait(60); key('1'); await wait(60); key('1'); ops().add(2, 0.3);
   await wait(100);
-  const leftBefore = tokens().left(0, run('live.engine().elapsed(performance.now())'));
+  const leftBefore = tokens().left(0, run('live.engine().elapsed(performance.now())')); // (the session is kept a moment later, when the window closes: the time left may be a little less, never more, and not by much even on a slow or busy computer)
   say('(a session is running and kept)', !!kept() && kept().data.lanes[0].stint.laps.length === 2 && kept().data.lanes[2].stint.left > 0);
   await openRace(setupTok, store.tracks[1], rows(1, 2)); // (the window was closed without ending: the session is opened again)
-  say('opened again: the session is back, with the time that was left, ready to start', phase() === 'ready' && tokens().stateOf(0, 0) === 'running' && tokens().left(0, 0) > 0 && tokens().left(0, 0) >= leftBefore - 1 && tokens().left(0, 0) <= 18000 && clockOf(0) !== '00:00' && tokens().stateOf(2, 0) === 'running' && tokens().stateOf(1, 0) === 'idle');
+  say('opened again: the session is back, with the time that was left, ready to start', phase() === 'ready' && tokens().stateOf(0, 0) === 'running' && tokens().left(0, 0) > 0 && tokens().left(0, 0) <= leftBefore && tokens().left(0, 0) >= leftBefore - 250 && clockOf(0) !== '00:00' && tokens().stateOf(2, 0) === 'running' && tokens().stateOf(1, 0) === 'idle');
   say('...with the laps of the stint on the lane', eng().cars[0].laps.length === 2 && eng().cars[0].best !== null && tokens().stintOf(0).laps.length === 2);
   const waiting = clockOf(0); await wait(250);
   say('...and the clocks stand still until Start is pressed', clockOf(0) === waiting && phase() === 'ready');
