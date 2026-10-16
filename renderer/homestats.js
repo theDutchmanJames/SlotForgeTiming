@@ -88,17 +88,132 @@
     const byTrack = new Map(); laps.forEach(l => { if (!byTrack.has(l.trackId)) byTrack.set(l.trackId, []); byTrack.get(l.trackId).push(l); });
     let distance = null;
     byTrack.forEach((list, id) => { const d = S.figures(list, (ctx.tracks || []).find(t => t.id === id) || {}, '').distance; if (d !== null) distance = (distance || 0) + d; });
-    const wins = new Map(); // who won how often: a driver, or a team that raced as a team; a Guest has no name to count under
-    sessions.forEach(s => (s.standings || []).forEach(x => {
-      if (!S.isWinner(s, x)) return;
-      const key = x.asTeam ? 't:' + (x.teamId || x.teamName || x.driverName || '') : x.driverId ? 'd:' + x.driverId : '';
-      if (!key || key === 't:') return;
-      const w = wins.get(key) || { count: 0, date: '', name: '' };
-      w.count++; if (String(s.date || '') >= w.date) { w.date = String(s.date || ''); w.name = (x.asTeam ? x.teamName || x.driverName : (ctx.driverName && ctx.driverName(x.driverId)) || x.driverName) || ''; }
-      wins.set(key, w);
-    }));
-    let top = null; wins.forEach(w => { if (w.name && (!top || w.count > top.count || (w.count === top.count && w.date > top.date))) top = w; }); // (a tie goes to the one who won last)
+    const top = winners({ sessions, driverName: ctx.driverName })[0];
     return { races, laps: valid, distance, wins: top ? { name: top.name, count: top.count } : null };
+  }
+
+  // ---- who won how often ----
+  // ctx: { sessions, driverName(id), since (a Date or a date text: only the races from then on count) }
+  // -> [{ name, count, date }] the one with the most wins first; a tie goes to the one who won last, and then to the one who was counted first.
+  // A driver, or a team that raced as a team; a Guest has no name to count under. A Time Token Session never counts.
+  function winners(ctx) {
+    const from = ctx.since ? new Date(ctx.since).getTime() : NaN, wins = new Map();
+    (ctx.sessions || []).filter(s => s && s.sessionType !== 'tokens').forEach(s => {
+      if (Number.isFinite(from) && !(Date.parse(s.date) >= from)) return;
+      (s.standings || []).forEach(x => {
+        if (!S.isWinner(s, x)) return;
+        const key = x.asTeam ? 't:' + (x.teamId || x.teamName || x.driverName || '') : x.driverId ? 'd:' + x.driverId : '';
+        if (!key || key === 't:') return;
+        const w = wins.get(key) || { count: 0, date: '', name: '' };
+        w.count++; if (String(s.date || '') >= w.date) { w.date = String(s.date || ''); w.name = (x.asTeam ? x.teamName || x.driverName : (ctx.driverName && ctx.driverName(x.driverId)) || x.driverName) || ''; }
+        wins.set(key, w);
+      });
+    });
+    return [...wins.values()].filter(w => w.name).sort((a, b) => b.count - a.count || (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  }
+
+  // ---- the week and the year ----
+  // Monday 00:00 of the week of `now` (local time): the week of the fastest laps starts there.
+  function weekStart(now) { const d = new Date(now); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d; }
+  const yearStart = now => { const d = new Date(now); return new Date(d.getFullYear(), 0, 1); };
+  const whole = (v, lo, hi, d) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
+
+  // ---- recent races ----
+  const KINDS = { practice: 'Free practice', qualifying: 'Qualifying', race: 'Race by laps', timed: 'Timed race', heats: 'Heat-based race', endurance: 'Endurance Race' };
+  // ctx: { sessions, count } -> [{ id, date, name, kind, result }] the newest first; a race says who won, qualifying and free practice the best lap. Time Token Sessions never show.
+  function recent(ctx) {
+    const n = whole(ctx.count, 1, 20, 5);
+    return (ctx.sessions || []).map((s, i) => ({ s, i })).filter(x => x.s && x.s.sessionType !== 'tokens')
+      .sort((a, b) => String(b.s.date || '').localeCompare(String(a.s.date || '')) || b.i - a.i).slice(0, n).map(({ s }) => {
+        const p = podium(s)[0], winner = S.WINNER_TYPES.includes(s.sessionType);
+        return { id: s.id, date: s.date || '', name: s.setupName || KINDS[s.sessionType] || 'Race', kind: KINDS[s.sessionType] || '', result: !p ? '' : winner ? p.name + ' won' : p.name + ', ' + p.detail };
+      });
+  }
+
+  // ---- the fastest laps of this week ----
+  // ctx: { laps, sessions, trackId (the track of the race setup), scope ('track' or 'all'), count (per track), now, driverName(id), trackName(id) }
+  // -> { since, tracks: [{ trackId, trackName, rows: [{ driverId, driver, time, text }] }] } the best lap of every driver on a track, the fastest first; tracks A to Z.
+  // The laps of a session are dated by the lap itself, else by its session. An invalid, too slow or late lap does not count (as in the last race).
+  function fastestWeek(ctx) {
+    const since = weekStart(ctx.now || new Date()), count = whole(ctx.count, 1, 20, 5), all = ctx.scope === 'all', dateOf = new Map((ctx.sessions || []).map(s => [s.id, s.date]));
+    const best = new Map(); // track|driver -> the lap
+    for (const l of ctx.laps || []) {
+      if (!racing(l) || !okTime(l) || l.invalid || l.tooSlow || l.late || !l.trackId || !l.driverId || (!all && l.trackId !== ctx.trackId)) continue;
+      if (!(Date.parse(l.date || dateOf.get(l.sessionId)) >= since.getTime())) continue;
+      const k = l.trackId + '|' + l.driverId, b = best.get(k);
+      if (!b || Number(l.time) < Number(b.time)) best.set(k, l);
+    }
+    const tracks = new Map();
+    best.forEach(l => { if (!tracks.has(l.trackId)) tracks.set(l.trackId, []); tracks.get(l.trackId).push(l); });
+    const out = [...tracks.entries()].map(([trackId, list]) => ({ trackId, trackName: (ctx.trackName && ctx.trackName(trackId)) || '(deleted)',
+      rows: list.sort((a, b) => Number(a.time) - Number(b.time)).slice(0, count).map(l => ({ driverId: l.driverId, driver: (ctx.driverName && ctx.driverName(l.driverId)) || '(deleted)', time: Number(l.time), text: E.fmtTime(Number(l.time)) })) }));
+    out.sort((a, b) => a.trackName.localeCompare(b.trackName));
+    return { since, tracks: out };
+  }
+
+  // ---- the records of all tracks ----
+  // ctx: { laps, sessions, trackName(id), driverName(id), carName(id) } -> [{ trackId, trackName, time, text, driver, car, date }] tracks A to Z; a track without a lap is not in it.
+  function allRecords(ctx) {
+    const ids = [...new Set((ctx.laps || []).filter(l => racing(l) && l.trackId).map(l => l.trackId))], out = [];
+    ids.forEach(id => {
+      const rec = trackRecord(ctx.laps, id); if (!rec) return;
+      const ses = (ctx.sessions || []).find(s => s.id === rec.sessionId);
+      out.push({ trackId: id, trackName: (ctx.trackName && ctx.trackName(id)) || '(deleted)', time: Number(rec.time), text: E.fmtTime(Number(rec.time)), driver: (ctx.driverName && ctx.driverName(rec.driverId)) || (rec.driverId ? '(deleted)' : 'Guest'),
+        car: (ctx.carName && ctx.carName(rec.carId)) || '', date: rec.date || (ses && ses.date) || '' });
+    });
+    return out.sort((a, b) => a.trackName.localeCompare(b.trackName));
+  }
+
+  // ---- personal bests of the drivers on the grid ----
+  // The best lap of a driver on a track that counts as a personal best (a lap taken out of the personal bests does not).
+  function personalBest(laps, trackId, driverId) {
+    let best = null;
+    if (!trackId || !driverId) return null;
+    for (const l of laps || []) { if (!racing(l) || l.trackId !== trackId || l.driverId !== driverId || l.noPersonalBest || !okTime(l)) continue; if (!best || Number(l.time) < Number(best.time)) best = l; }
+    return best;
+  }
+  // ctx: { laps, trackId, grid: [{ driverId, color }], driverName(id) } -> [{ driverId, name, color, time (null: no lap yet), text }] in the order of the lanes; a driver once
+  function gridBests(ctx) {
+    const seen = new Set(), out = [];
+    (ctx.grid || []).forEach(g => {
+      if (!g || !g.driverId || seen.has(g.driverId)) return;
+      seen.add(g.driverId);
+      const b = personalBest(ctx.laps, ctx.trackId, g.driverId);
+      out.push({ driverId: g.driverId, name: (ctx.driverName && ctx.driverName(g.driverId)) || '(deleted)', color: g.color || '', time: b ? Number(b.time) : null, text: b ? E.fmtTime(Number(b.time)) : '–' });
+    });
+    return out;
+  }
+
+  // ---- the rules of a race setup ----
+  // names: { typeLabel, rotation, penalty, damage, fuel, weather } the words for the session type and for the rule sets the setup points at ('' = it points at none, or at one that is gone)
+  // -> [[label, text]]. Only what applies to the kind of session: a free practice has no weather, a Time Token Session no penalties.
+  function rules(setup, names) {
+    if (!setup) return [];
+    const t = setup.sessionType, n = names || {}, out = [], num = (v, d) => (v === '' || v === null || v === undefined || !Number.isFinite(Number(v)) ? d : Number(v));
+    const heated = t === 'heats' || (t === 'endurance' && setup.enduranceBy === 'heats'), laps = num(setup.laps, 10), mins = num(setup.duration, 5);
+    out.push(['Race', n.typeLabel || t || '']);
+    let length = '';
+    if (t === 'race') length = plural(laps, 'lap', 'laps');
+    else if (t === 'timed' || t === 'qualifying') length = plural(mins, 'minute', 'minutes');
+    else if (t === 'endurance' && !heated) length = setup.enduranceBy === 'laps' ? plural(laps, 'lap', 'laps') : plural(mins, 'minute', 'minutes');
+    else if (heated) {
+      const each = setup.heatBy === 'time' ? plural(mins, 'minute', 'minutes') : plural(laps, 'lap', 'laps');
+      length = setup.rotation ? `${n.rotation ? 'Rotation "' + n.rotation + '"' : 'A rotation setup'}, heats of ${each}`
+        : setup.heatPlan === 'perdriver' ? `${plural(num(setup.heatsEach, 3), 'heat', 'heats')} for every driver, each ${each}`
+          : setup.heatPlan === 'roundrobin' ? `Round robin, heats of ${each}` : setup.heatPlan === 'rotation' ? `Lane rotation, heats of ${each}` : `${plural(num(setup.heats, 3), 'heat', 'heats')} of ${each}`;
+    } else length = 'As long as you like';
+    out.push(['Length', length]);
+    if (heated && (setup.finals === 'a' || setup.finals === 'ab')) out.push(['Finals', setup.finals === 'ab' ? 'A final and a B final' : 'A final']);
+    if (t === 'endurance') {
+      const unit = setup.swapUnit === 'laps' ? 'laps' : 'minutes', mode = setup.swapMode || 'every';
+      out.push(['Driver swaps', mode === 'moments' ? 'At ' + (String(setup.swapMoments || '30, 1:00:00, 2:00:00').trim()) : mode === 'free' ? 'When the team chooses' : `Every ${num(setup.swapEvery, 30)} ${unit}`]);
+    }
+    const racing6 = ['practice', 'qualifying', 'race', 'timed', 'heats', 'endurance'].includes(t), full = ['race', 'timed', 'heats', 'endurance'].includes(t);
+    if (racing6) out.push(['Penalties', n.penalty || 'Off']);
+    if (full) out.push(['Damage', n.damage || 'Off']);
+    if (racing6) out.push(['Fuel', n.fuel || 'Off']);
+    if (full) out.push(['Weather', n.weather || 'Off'], ['Balance of Power', setup.bop === 'on' ? 'On' : 'Off']);
+    return out;
   }
 
   // ---- the chips of the welcome band ----
@@ -124,7 +239,8 @@
     return { ok, ready: n, total: list.length, text };
   }
 
-  const api = { PALETTE, laneColor, trackRecord, bestOnGrid, recordCard, lastSession, podium, lastRace, glance, chips, rowReady, lights };
+  const api = { PALETTE, laneColor, trackRecord, bestOnGrid, recordCard, lastSession, podium, lastRace, glance, chips, rowReady, lights,
+    winners, weekStart, yearStart, recent, fastestWeek, allRecords, personalBest, gridBests, rules };
   root.HomeStats = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

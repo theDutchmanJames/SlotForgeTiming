@@ -10,6 +10,8 @@ function resetHome() { homeLaps = null; }
 async function renderHome() {
   const [drivers, cars, tracks, setups, sessions, rotations, teams, layouts, audiosets] = await Promise.all(['drivers', 'slotcars', 'tracks', 'racesetups', 'sessions', 'rotationsetups', 'teams', 'layouts', 'audiosets'].map(e => api.list(e)));
   const saved = state.settings;
+  const grid = HomeGrid.gridOf(saved), hc = state.homeCustom = state.homeCustom || { open: false, sel: 0 }; // (1.25.0: the cards are a grid; hc is the Customize panel: open or not, and the card whose settings show)
+  hc.sel = Math.min(Math.max(Math.floor(Number(hc.sel)) || 0, 0), grid.boards.length - 1);
   const resume = api.getResume && !(typeof raceActive === 'function' && raceActive()) ? await api.getResume().catch(() => null) : null; // (1.9.0: a race that was interrupted by a crash or a power cut, kept in a file)
   const setupId = setups.some(x => x.id === saved.lastSetupId) ? saved.lastSetupId : (setups[0]?.id || '');
   const rawSetup = setups.find(x => x.id === setupId);
@@ -155,12 +157,38 @@ async function renderHome() {
   const today = new Date().toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
   const lt = HomeStats.lights(rows, { byTeam, enduSingle, tokens }, heats ? (byTeam ? 'team' : 'participant') : 'lane', issues.length > 0), shown = rows.map((r, i) => ({ r, i })).filter(x => !x.r.absent);
   const lightsHtml = setup && track && lanes && rows.length ? `<div class="hm-lights" aria-hidden="true">${shown.map((x, k) => `<i${lt.ok[k] ? ' class="on"' : ''} style="--c:${esc(laneHue(x.i))}"></i>`).join('')}</div><span class="muted hm-ready" role="status">${esc(lt.text)}</span>` : '';
+  // 1.25.0: Customize, set up like the Leaderboard grid: the little squares (up to 6 columns by 4 rows), a card for every cell, and the settings of the card that is picked
+  const HG = HomeGrid, place = b => `grid-column:${b.c} / span ${b.w};grid-row:${b.r} / span ${b.h}`;
+  const customHtml = () => {
+    if (!hc.open) return '';
+    const g = grid, sel = hc.sel, b = g.boards[sel], same = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+    const choice = (cur, i) => `<option value=""${cur ? '' : ' selected'}>(empty)</option>${HG.available(g, i).map(c => `<option value="${esc(c.key)}"${c.key === cur ? ' selected' : ''}>${esc(c.label)}</option>`).join('')}`;
+    const squares = Array.from({ length: HG.MAXR * HG.MAXC }, (_, k) => { const c = k % HG.MAXC + 1, r = Math.floor(k / HG.MAXC) + 1; return `<button type="button" class="lv-gp${c <= g.cols && r <= g.rows ? ' on' : ''}" data-hgrid="${c},${r}" aria-label="${same(c, 'column', 'columns')} by ${same(r, 'row', 'rows')}" aria-pressed="${c === g.cols && r === g.rows}"></button>`; }).join('');
+    const map = HG.cells(g).map(x => x.board
+      ? `<div class="lv-gcell${x.index === sel ? ' sel' : ''}" style="${place(x.board)}">${HG.cardOf(x.board) === 'start' ? '<span class="hm-fixed">Start a race <small>(always on Home)</small></span>'
+        : `<select aria-label="Card in ${HG.where(x.board)}" data-hcell="${x.index}">${choice(HG.cardOf(x.board), x.index)}</select>`}<button type="button" class="btn" data-hsel="${x.index}" aria-pressed="${x.index === sel}">Card ${x.index + 1} settings</button></div>`
+      : `<div class="lv-gcell empty" style="grid-column:${x.c};grid-row:${x.r}"><select aria-label="Card in column ${x.c}, row ${x.r}" data-hadd="${x.c},${x.r}">${choice('', -1)}</select></div>`).join('');
+    let one = '<p class="muted">Pick a card for a cell to see its settings here.</p>';
+    if (b) {
+      const ms = HG.maxSpan(g, b), cd = HG.info(HG.cardOf(b));
+      const span = (key, n, max, label) => `<div class="field"><label for="hg-${key}">${label}</label><select id="hg-${key}" data-hspan="${key}">${Array.from({ length: max }, (_, i) => `<option value="${i + 1}"${n === i + 1 ? ' selected' : ''}>${i + 1}</option>`).join('')}</select></div>`;
+      const opt = o => { const v = HG.optionOf(b, o.key); return o.type === 'check' ? `<div class="field"><label class="inline"><input id="hg-${esc(o.key)}" type="checkbox" data-hopt="${esc(o.key)}" ${v ? 'checked' : ''}> ${esc(o.label)}</label></div>`
+        : `<div class="field"><label for="hg-${esc(o.key)}">${esc(o.label)}</label><select id="hg-${esc(o.key)}" data-hopt="${esc(o.key)}">${o.choices.map(([k, t]) => `<option value="${esc(k)}"${v === k ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></div>`; };
+      one = `<fieldset class="lv-optset"><legend>Card ${sel + 1}: ${esc(cd.label)} (${HG.where(b)})</legend><p class="hint2">${esc(cd.note)}</p><div class="lv-optgrid">${span('w', b.w, ms.w, 'Columns it covers')}${span('h', b.h, ms.h, 'Rows it covers')}${cd.options.map(opt).join('')}</div></fieldset>`;
+    }
+    return `<section class="card hm-customize" id="hm-customize"><h3>Customize Home</h3><p class="hint2">Pick the grid with the little squares, then choose a card for every cell. A card can cover more cells (wider or taller). The grid is kept on this computer, and every change shows at once.</p>
+      <div class="lv-gridtool"><div class="field"><span class="lbl" id="hg-gridlabel">Grid</span><div class="lv-gridpick" role="group" aria-labelledby="hg-gridlabel">${squares}</div><output id="hg-gridsize">${HG.sizeText(g)}</output></div>
+      <div class="field"><span class="lbl">Card in every cell</span><div class="lv-gridmap" style="grid-template-columns:repeat(${g.cols},minmax(0,1fr))">${map}</div></div></div>${one}
+      <div class="row"><button type="button" class="btn" id="hmdefault"${HG.isDefault(g) ? ' disabled' : ''} title="Put the cards back the way Home was before you customized it">Back to the usual Home</button></div></section>`;
+  };
+  const startBoard = grid.boards.find(b => HG.cardOf(b) === 'start'), otherCells = grid.boards.filter(b => HG.cardOf(b) !== 'start').map(b => `<div class="hm-cell" id="hmc-${esc(HG.cardOf(b))}" data-card="${esc(HG.cardOf(b))}" style="${place(b)}"></div>`).join('');
   view.innerHTML = `${homeHeaderHtml(state.settings)}
-    <div class="hm-band"><div class="hm-flag" aria-hidden="true"></div><h2>${esc(welcomeOf())}</h2>
+    <div class="hm-band"><div class="hm-flag" aria-hidden="true"></div><button type="button" class="btn hm-customize-btn" id="hmcustom" aria-expanded="${hc.open}" aria-controls="hm-customize" title="Choose the cards of Home and where they sit">Customize</button><h2>${esc(welcomeOf())}</h2>
       <p class="hm-sub">${esc(today)}${track ? ' · ' + esc(track.name) : ''}</p>
       <div class="hm-chips" id="hm-chips">${chipsNow().map(chipHtml).join('')}</div></div>
+    ${customHtml()}
     ${resumeHtml}
-    <div class="hm-cols"><section class="card hm-start"><h3>Start a race</h3>` + (setups.length ? `
+    <div class="hm-grid" id="homegrid" style="grid-template-columns:repeat(${grid.cols},minmax(0,1fr))"><section class="card hm-start" id="hmc-start" style="${place(startBoard)}"><h3>Start a race</h3>` + (setups.length ? `
       <div class="field"><label for="setup">Race setup</label>
         <select id="setup">${setups.map(s => `<option value="${esc(s.id)}"${s.id === setupId ? ' selected' : ''}>${esc(s.name || '(unnamed)')}</option>`).join('')}</select></div>
       <p class="hint2">${esc(typeLabel)}${track ? ' on ' + esc(track.name) + (lanes ? ` (${lanes} lanes)` : '') : ''}</p>
@@ -175,14 +203,23 @@ async function renderHome() {
       ${raceOn ? '<p class="hint2" id="raceon">A race is running. <button class="btn" id="gorace">Go to the race</button></p>' : ''}
       ${issues.length ? `<ul class="issues">${issues.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
       <div class="hm-go">${lightsHtml}<span class="hm-grow"></span><button class="btn primary big" id="start" ${issues.length || raceOn ? 'disabled' : ''}${raceOn ? ' title="A race is still running. Open the Race tab to finish or stop it first."' : ''}>${tokens ? 'Open the session' : 'Start race'}</button></div>`
-      : '<p class="muted">Create a race setup in the Race Setup tab to get started.</p>') + `</section><div class="hm-side" id="homeside"></div></div>`;
+      : '<p class="muted">Create a race setup in the Race Setup tab to get started.</p>') + `</section>${otherCells}</div>`;
 
   const persist = async () => {
     state.settings = await api.setSettings({ lastSetupId: setupId, assignments: { ...(saved.assignments || {}), [setupId]: rows } });
     renderHome();
   };
+  const saveGrid = async g => { state.settings = await api.setSettings({ homeGrid: g }); hc.open = true; renderHome(); }; // (the grid is saved for this computer; Customize stays open)
   view.onchange = ev => {
     state.rotMsg = null;
+    const t = ev.target, dd = t.dataset || {};
+    if (dd.hadd !== undefined) { // a card for an empty cell
+      const [c, r] = String(dd.hadd).split(',').map(Number); if (!t.value) return;
+      const g2 = HG.add(grid, c, r, t.value); hc.sel = Math.max(0, g2.boards.findIndex(x => x.c === c && x.r === r)); saveGrid(g2); return;
+    }
+    if (dd.hcell !== undefined) { const i = Number(dd.hcell); hc.sel = i; saveGrid(t.value ? HG.setCard(grid, i, t.value) : HG.remove(grid, i)); return; } // (another card for a cell, or none: the card and its settings are gone)
+    if (dd.hspan) { const b = grid.boards[hc.sel]; if (b) saveGrid(HG.setSpan(grid, hc.sel, dd.hspan === 'w' ? t.value : b.w, dd.hspan === 'h' ? t.value : b.h)); return; }
+    if (dd.hopt) { if (grid.boards[hc.sel]) saveGrid(HG.setOpt(grid, hc.sel, { [dd.hopt]: t.type === 'checkbox' ? t.checked : t.value })); return; }
     if (ev.target.id === 'winlane') { const to = Number(ev.target.value); [rows[winRow], rows[to]] = [rows[to], rows[winRow]]; persist(); return; }
     if (ev.target.id === 'setup') { api.setSettings({ lastSetupId: ev.target.value }).then(s => { state.settings = s; renderHome(); }); return; }
     if (ev.target.dataset && ev.target.dataset.absent !== undefined) { const r = rows[Number(ev.target.dataset.absent)]; if (r) { if (ev.target.checked) r.absent = true; else delete r.absent; persist(); } return; }
@@ -201,6 +238,18 @@ async function renderHome() {
   };
   view.onclick = ev => {
     const b = ev.target.closest('button'); if (!b) return;
+    if (b.id === 'hmcustom') { hc.open = !hc.open; renderHome(); return; }
+    if (b.dataset.hgrid) { const [c, r] = String(b.dataset.hgrid).split(',').map(Number); saveGrid(HG.resize(grid, c, r)); return; } // a square of the grid picker
+    if (b.dataset.hsel !== undefined) { hc.sel = Number(b.dataset.hsel) || 0; renderHome(); return; } // the settings of a card
+    if (b.id === 'hmdefault') { api.setSettings({ homeGrid: null }).then(s => { state.settings = s; hc.sel = 0; renderHome(); }); return; }
+    if (b.dataset.session) { state.focusSession = b.dataset.session; state.resultsSub = 'racing'; state.tab = 'database'; state.sub = 'results'; render(); return; } // a recent race: its results
+    if (b.dataset.go) { // a shortcut
+      const s = HG.SHORTCUTS.find(x => x.key === b.dataset.go);
+      if (!s) return;
+      if (s.key === 'live') { api.liveOpen(); return; }
+      if (s.key === 'results') state.resultsSub = 'racing';
+      Object.assign(state, s.to); render(); return;
+    }
     if (b.id === 'clearqual' && qual) { api.setSettings({ qualCleared: { ...(saved.qualCleared || {}), [track.id]: qual.id } }).then(s => { state.settings = s; renderHome(); }); return; }
     if (b.id === 'addrow') { rows.push({ driverId: '', carId: '' }); persist(); }
     if (b.id === 'rotnames' && rot) { // the drivers whose names are the names of the participants (only participants who have no driver yet)
@@ -267,32 +316,42 @@ async function renderHome() {
     homeOffTm = off;
   }
 
-  // ---- the cards on the right: the record to beat, the last race and the totals (they need every saved lap, so they come when the laps are in) ----
+  // ---- the other cards of the grid (1.25.0). The cards that need races come when the laps are in; Rules of this race needs the names of the rule sets of the setup. ----
   const dateText = iso => { const d = iso ? new Date(iso) : null; return d && !isNaN(d) ? d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) : ''; };
+  const shortDate = iso => { const d = iso ? new Date(iso) : null; return d && !isNaN(d) ? d.toLocaleDateString([], { day: 'numeric', month: 'short' }) : ''; };
   const dn = id => { const d = drivers.find(x => x.id === id); return d ? titleOf('drivers', d) : ''; }, cn = id => { const c = cars.find(x => x.id === id); return c ? titleOf('slotcars', c) : ''; };
-  const sideHtml = laps => {
-    const last = HomeStats.lastRace({ sessions, laps, driverName: dn });
-    if (!last) return `<section class="card hm-empty"><h3>Your racing shows up here</h3><p class="muted">After the first race that is saved, this place shows the record to beat on your track, the podium of the last race and your totals.</p></section>`;
-    const g = HomeStats.glance({ sessions, laps, tracks, driverName: dn });
-    const rec = track ? HomeStats.recordCard({ laps, sessions, trackId: track.id, driverIds: byTeam ? [] : rows.filter(r => !r.absent).map(r => r.driverId), driverName: dn, carName: cn }) : null;
-    const recHtml = !rec ? '' : `<section class="card hm-rec"><h3>Record to beat<span class="hm-tag">${esc(track.name)}</span></h3>${rec.record
-      ? `<div class="hm-recrow"><div class="hm-time">${esc(rec.record.text)}</div><div><strong>${esc(rec.record.driver)}</strong>${rec.record.car ? ' · ' + esc(rec.record.car) : ''}<small>${esc([dateText(rec.record.date), rec.record.setupName].filter(Boolean).join(' · '))}</small></div></div>${rec.line ? `<p class="hint2">${esc(rec.line)}</p>` : ''}`
-      : '<p class="muted">No lap has been saved on this track yet. The first lap sets the record.</p>'}</section>`;
-    const lastHtml = `<section class="card hm-last"><h3>${esc(last.label)}<span class="hm-tag">${esc(dateText(last.date))}</span></h3>${last.podium.length
-      ? `<ol class="hm-pod">${last.podium.map(p => `<li class="p${p.pos}"><span class="n">${p.pos}</span><strong>${esc(p.name)}</strong><small>${esc(p.detail)}</small></li>`).join('')}</ol>` : '<p class="muted">No car finished a lap.</p>'}
-      <p class="hint2">${esc(last.setupName)}${last.trackName ? ' on ' + esc(last.trackName) : ''}${last.fastest ? ` · Fastest lap: ${esc(last.fastest.driver ? last.fastest.driver + ', ' : '')}${esc(last.fastest.text)}` : ''}</p></section>`;
-    const glanceHtml = `<section class="card hm-glance"><h3>At a glance</h3><div class="hm-tiles">
-      <div class="hm-tile"><div class="v">${g.races}</div><div class="l">${g.races === 1 ? 'race' : 'races'} raced</div></div>
-      <div class="hm-tile"><div class="v">${esc(g.laps.toLocaleString())}</div><div class="l">${g.laps === 1 ? 'lap' : 'laps'} driven</div></div>
-      <div class="hm-tile"><div class="v">${g.distance === null ? '–' : esc(Stats.fmtDist(g.distance))}</div><div class="l">distance</div></div>
-      <div class="hm-tile"><div class="v">${g.wins ? esc(g.wins.name) : '–'}</div><div class="l">${g.wins ? `most wins (${g.wins.count})` : 'most wins'}</div></div></div></section>`;
-    return recHtml + lastHtml + glanceHtml;
+  const trackNameOf = id => { const t = tracks.find(x => x.id === id); return t ? t.name || '(unnamed)' : ''; };
+  const others = grid.boards.filter(b => HG.cardOf(b) !== 'start'), wants = key => others.some(b => HG.cardOf(b) === key);
+  const cardsHtml = (laps, lists) => {
+    const now = new Date(), last = HomeStats.lastRace({ sessions, laps, driverName: dn }), out = new Map();
+    const d = { fmtDate: dateText, fmtShort: shortDate, fmtDist: Stats.fmtDist, trackName: track ? track.name || '' : '', hasTrack: !!track, hasSetup: !!setup, setupName: setup ? setup.name || '' : '', last };
+    const nameIn = (list, id) => { const x = id && (list || []).find(r => r.id === id); return x ? x.name || '(unnamed)' : ''; };
+    others.forEach(b => {
+      const key = HG.cardOf(b), n = o => Number(HG.optionOf(b, o));
+      if (HomeCards.NEEDS_RACES.includes(key) && !last) { out.set(key, ''); return; } // (nothing raced yet: one friendly card, below)
+      if (key === 'record') d.rec = track ? HomeStats.recordCard({ laps, sessions, trackId: track.id, driverIds: byTeam ? [] : rows.filter(r => !r.absent).map(r => r.driverId), driverName: dn, carName: cn }) : null;
+      else if (key === 'glance') d.glance = HomeStats.glance({ sessions, laps, tracks, driverName: dn });
+      else if (key === 'recent') d.recent = HomeStats.recent({ sessions, count: n('count') });
+      else if (key === 'fastest') { d.fastestScope = HG.optionOf(b, 'scope'); d.fastest = HomeStats.fastestWeek({ laps, sessions, trackId: track && track.id, scope: d.fastestScope, count: n('count'), now, driverName: dn, trackName: trackNameOf }); }
+      else if (key === 'records') d.records = HomeStats.allRecords({ laps, sessions, trackName: trackNameOf, driverName: dn, carName: cn });
+      else if (key === 'top') { d.topPeriod = HG.optionOf(b, 'period'); d.top = HomeStats.winners({ sessions, driverName: dn, since: d.topPeriod === 'year' ? HomeStats.yearStart(now) : null }).slice(0, n('count')); }
+      else if (key === 'bests') {
+        const grid2 = []; rows.forEach((r, i) => { if (r.absent) return; (byTeam ? membersOf(teamOf(r.teamId)).map(m => m.id) : [r.driverId]).forEach(id => grid2.push({ driverId: id, color: laneHue(i) })); });
+        d.bests = HomeStats.gridBests({ laps, trackId: track && track.id, grid: grid2, driverName: dn });
+      } else if (key === 'rules') {
+        d.rules = HomeStats.rules(setup, { typeLabel, rotation: rotRec ? rotRec.name || '' : '', penalty: nameIn(lists.penaltysystems, setup && setup.penaltySystem), damage: nameIn(lists.damagesystems, setup && setup.damageSystem), fuel: nameIn(lists.fuelrules, setup && setup.fuelRules), weather: nameIn(lists.weathersystems, setup && setup.weather) });
+      }
+      out.set(key, HomeCards.html(key, d, b));
+    });
+    if (!last) { const first = others.find(b => HomeCards.NEEDS_RACES.includes(HG.cardOf(b))); if (first) out.set(HG.cardOf(first), HomeCards.empty()); } // (the first of them says what will show up)
+    return out;
   };
   let allLaps;
   try { homeLaps = homeLaps || Promise.resolve(api.list('laps')); allLaps = await homeLaps; } catch (x) { homeLaps = null; allLaps = []; }
+  const lists = {};
+  if (wants('rules') && setup) await Promise.all(['penaltysystems', 'damagesystems', 'fuelrules', 'weathersystems'].map(async e => { try { lists[e] = await api.list(e); } catch (x) { lists[e] = []; } }));
   if (run !== homeRun) return; // (another picture of Home was drawn while the laps came in)
-  const side = document.getElementById('homeside');
-  if (side) side.innerHTML = sideHtml(Array.isArray(allLaps) ? allLaps : []);
+  cardsHtml(Array.isArray(allLaps) ? allLaps : [], lists).forEach((html, key) => { const el = document.getElementById('hmc-' + key); if (el) el.innerHTML = html; });
   if (state.settings.netOn && api.netStatus) { // a network that was switched on but could not start gets a red light
     try { const st = await api.netStatus(); if (run === homeRun && st && st.error) { netError = st.error; setChips({ netError }); } } catch (x) { /* the chip stays as the setting says */ }
   }

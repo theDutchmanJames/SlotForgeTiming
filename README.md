@@ -2029,3 +2029,22 @@ Good to know:
 6. A **Time Token Session** is still not carried on.
 7. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 8. The tests: `tests/heatresume.test.js` (the whole way, on screen: kept while racing, between heats, the Home tab, Resume, Save what was recorded, a final with lanes, teams and the weather), `tests/heats.test.js` (the state of the heats as data, and what does not fit), `tests/resume.test.js` (the file), `tests/endurancescreen.test.js` and `tests/help.test.js`.
+
+## What to try (1.25.0): the cards of Home in a grid
+From your list: more cards on Home, in a grid you set up yourself, like the Leaderboard page. The Home you know is where you start: nothing changes until you open Customize.
+1. Open the **Home** tab and press **Customize** (top right, in the band). A panel opens with the little squares of the Leaderboard page. Press the square for 4 columns by 2 rows: the grid changes at once, and the cards that no longer fit are gone.
+2. Under **Card in every cell** each empty cell has a list. Pick **Recent races** for one, **Personal bests of the drivers on the grid** for another. The settings of the card you picked show under the map (*Card 3 settings*): the columns and rows it covers, and the options of the card (how many races, which tracks, the period, which pages for Shortcuts).
+3. The cards: **Record to beat**, **Last race** and **At a glance** (as before), and the new ones: **Recent races** (click a race: it opens in Results and Records, with its card open), **Fastest laps this week** (the best lap of every driver since Monday), **Records on all tracks**, **Top drivers** (wins as bars), **Personal bests of the drivers on the grid** (a dot in the colour of the lane), **Rules of this race** and **Shortcuts** (one button for each page you tick).
+4. **Start a race** is in the grid too. Give it more room (*Columns it covers*, *Rows it covers*), or make it narrower: its lanes stack when it gets narrow. It is always on Home: it has no list, so it cannot be taken away.
+5. To take a card away, choose *(empty)* in its cell. A card can be on Home once. **Back to the usual Home** puts the Home of before back.
+6. With no race saved yet the cards that need races have nothing to show: the first of them says what will show up, the others stay empty. **Rules of this race** and **Shortcuts** do not need races.
+
+Good to know:
+1. **Rules of this race** has this name so that it is not mixed up with the **Racing Rules** tab (the club rules you write yourself). It shows the length, the penalty, damage, fuel and weather systems and Balance of Power of the race setup that is picked on Home.
+2. **Fastest laps this week** starts the week on Monday at midnight. Times of different tracks cannot be compared, so *All tracks* gives a list for every track (the number of laps is per track); the standard is the track of the race setup.
+3. **Top drivers** counts wins of races (not qualifying or practice), this year or all time; a team that raced as a team counts under its team name. A Time Token Session is never counted anywhere on Home.
+4. The grid is saved for this computer (the setting `homeGrid`), like the grid of the Leaderboard page. A damaged saved grid is mended when Home is drawn: unknown cards are dropped, and Start a race comes back if it is missing.
+5. In a window narrower than 960 pixels every card gets a line of its own, wherever it sits in the grid.
+6. Cards cannot be dragged: you choose them in the list of a cell, as on the Leaderboard page.
+7. **Time Token Sessions** are still not carried on after a crash, and **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+8. The tests: `tests/homegrid.test.js` (the rules of the grid), `tests/homecards.test.js` (the markup of the cards), `tests/homestats.test.js` (the figures), `tests/screens.test.js` (Customize, the cards, a race that opens in Results, the shortcuts) and `tests/help.test.js`.

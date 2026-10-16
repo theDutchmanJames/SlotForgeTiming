@@ -713,17 +713,23 @@ async function renderResultsPool(box, pool) {
         const mine = Stats.ownLaps(x, laps).filter(l => l.sessionId === s.id).sort((a, b) => (a.heat || 0) - (b.heat || 0) || a.lapNumber - b.lapNumber);
         return `<p><strong>${esc(x.driverName)}</strong><br><span class="muted">${mine.map(l => { const t = esc(`${l.heat ? (l.final ? 'F' + l.final : 'H' + l.heat) + ' ' : ''}${l.lapNumber}: ${RaceEngine.fmtTime(l.time)}`); return l.invalid || l.tooSlow ? `<s class="lapbad" title="${l.invalid ? 'Invalid lap' : 'Too slow: not counted for records'}">${t}</s>` : l.pit ? `<em title="Lap with a pit stop">${t}</em>` : t; }).join(' · ') || 'no laps'}</span></p>`;
       }).join('') + `<div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}<button class="btn danger" data-delsession="${esc(s.id)}">Delete this session</button><span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
-    return `<details class="card sess"><summary>${esc(dateText(s.date))} · ${esc(s.setupName)} · ${esc(SESSION_LABEL[s.sessionType] || '')} · ${esc(s.trackName || '')}${win ? ' · Winner: ' + (Stats.isWinner(s, win) ? cup + ' ' : '') + esc(win.driverName) : ''}</summary><div class="sessbody">${body}</div></details>`;
+    return `<details class="card sess" data-sid="${esc(s.id)}"><summary>${esc(dateText(s.date))} · ${esc(s.setupName)} · ${esc(SESSION_LABEL[s.sessionType] || '')} · ${esc(s.trackName || '')}${win ? ' · Winner: ' + (Stats.isWinner(s, win) ? cup + ' ' : '') + esc(win.driverName) : ''}</summary><div class="sessbody">${body}</div></details>`;
   }).join('');
   const RES_FOLDERS = ['tracks', 'pb', 'sessions'];
   const sessCols = tokenPool ? Stats.STINT_COLUMNS : Stats.SESSION_COLUMNS, sessPath = ['results', tokenPool ? 'stints' : 'sessions'];
   const colsOf = path => (path === 'results/records' ? Stats.RECORD_COLUMNS : path === sessPath.join('/') ? sessCols : null);
   const bar = !viewBars.has('results') ? '' : viewBar('results', 'Turn columns on or off. This changes the tables on this page and is remembered. A column that has nothing to show for a session is left out of its table.',
     [viewGroup('Track records and personal bests', ['results', 'records'], Stats.RECORD_COLUMNS), viewGroup(tokenPool ? 'Stints' : 'Sessions', sessPath, sessCols)]);
+  if (state.focusSession && !tokenPool) folderClosed.delete(folderKey(folderPage, 'sessions')); // (1.25.0: a race clicked on Home opens here: its folder is open)
   box.innerHTML = folderToolsWith(viewButton('results')) + bar + folderHtml(folderPage, 'tracks', 'Track records', plural(trackRecords.length, 'record', 'records'), recTable(trackRecords, 'track'))
     + folderHtml(folderPage, 'pb', 'Personal bests', plural(personal.length, 'personal best', 'personal bests'), recTable(personal, 'pb'))
     + folderHtml(folderPage, 'sessions', tokenPool ? 'Stints' : 'Sessions', tokenPool ? plural(sessions.length, 'stint', 'stints') : plural(sessions.length, 'session', 'sessions'), sessionCards);
   folderWire(box);
+  if (state.focusSession && !tokenPool) { // the race that was clicked on Home: its card is open and in view
+    const id = state.focusSession; state.focusSession = null;
+    const d = [...box.querySelectorAll('details.sess')].find(x => x.dataset && x.dataset.sid === id);
+    if (d) { d.open = true; if (d.scrollIntoView) d.scrollIntoView({ block: 'center' }); }
+  }
   box.onclick = async ev => {
     const fa = ev.target.closest('[data-folderall]');
     if (fa) { folderAll(folderPage, RES_FOLDERS, fa.dataset.folderall === '1'); return renderResultsPool(box, pool); }

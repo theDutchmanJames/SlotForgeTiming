@@ -213,6 +213,8 @@ const folders = Help.folders();
   say('1.20.0: the Race Director folder says a race setup can have pad values of its own (Rule sets: Adjust pads), and is still short enough', dr.includes('A race setup can have pad values of its own') && dr.includes('Adjust pads') && dr.length < 1400);
   say('...and the form has the Adjust pads group that it names, in the Rule sets area of the race setup', schema.racesetups.groups.some(g => g.title === 'Adjust pads') && schema.racesetups.fields.some(f => f.group === 'pads')); }
 
+{ const home = plain(folders.find(x => x.id === 'home').body); // 1.25.0
+  say('1.25.0: the Home help names the seven new cards, says that Customize sets them up like the Leaderboard grid, and how to go back', ['Recent races', 'Fastest laps this week', 'Records on all tracks', 'Top drivers', 'Personal bests', 'Rules of this race', 'Shortcuts'].every(w => home.includes(w)) && home.includes('Customize') && home.includes('like the Leaderboard page') && home.includes('little squares') && home.includes('Back to the usual Home') && home.includes('click one to open its results') && home.length < 1400); }
 { const hf = Help.folders().map(f => plain(f.body)), a = hf.find(t => t.includes('Resume the race')) || '', b = hf.find(t => t.includes('can be continued from the Home tab')) || ''; // 1.24.0
   say('1.24.0: the help says a heat race keeps its finished heats after a crash, and can be continued', a.includes('a heat race keeps its finished heats') && b.includes('also a heat race') && a.length < 1400 && b.length < 1400); }
 { const dm = Help.folders().map(f => plain(f.body)).find(t => t.includes('A damage system (Race Setup')) || ''; // 1.23.0
