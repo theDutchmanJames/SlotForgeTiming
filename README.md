@@ -2033,7 +2033,7 @@ Good to know:
 ## What to try (1.25.0): the cards of Home in a grid
 From your list: more cards on Home, in a grid you set up yourself, like the Leaderboard page. The Home you know is where you start: nothing changes until you open Customize.
 1. Open the **Home** tab and press **Customize** (top right, in the band). A panel opens with the little squares of the Leaderboard page. Press the square for 4 columns by 2 rows: the grid changes at once, and the cards that no longer fit are gone.
-2. Under **Card in every cell** each empty cell has a list. Pick **Recent races** for one, **Personal bests of the drivers on the grid** for another. The settings of the card you picked show under the map (*Card 3 settings*): the columns and rows it covers, and the options of the card (how many races, which tracks, the period, which pages for Shortcuts).
+2. Under **Card in every cell** each empty cell has a list. Pick **Recent races** for one, **Personal Bests for Drivers on the Grid** for another. The settings of the card you picked show under the map (*Card 3 settings*): the columns and rows it covers, and the options of the card (how many races, which tracks, the period, which pages for Shortcuts).
 3. The cards: **Record to beat**, **Last race** and **At a glance** (as before), and the new ones: **Recent races** (click a race: it opens in Results and Records, with its card open), **Fastest laps this week** (the best lap of every driver since Monday), **Records on all tracks**, **Top drivers** (wins as bars), **Personal bests of the drivers on the grid** (a dot in the colour of the lane), **Rules of this race** and **Shortcuts** (one button for each page you tick).
 4. **Start a race** is in the grid too. Give it more room (*Columns it covers*, *Rows it covers*), or make it narrower: its lanes stack when it gets narrow. It is always on Home: it has no list, so it cannot be taken away.
 5. To take a card away, choose *(empty)* in its cell. A card can be on Home once. **Back to the usual Home** puts the Home of before back.
@@ -2065,3 +2065,13 @@ Good to know:
 5. They need no saved race: a Home without races shows them as they are.
 6. Not done: tyres in other numbers than sets (laps, wear), a forecast on the card, and a different name for the card itself.
 7. The tests: `tests/homegrid.test.js` (the options: numbers, text, units that change the numbers, tyre rows), `tests/homecards.test.js` (the markup), `tests/screens.test.js` (Customize for both cards, saving, picture sets, the cursor) and `tests/help.test.js`.
+
+## What to try (1.26.1): the Personal Bests card in a small cell
+A fix, and a new name: the card is now called **Personal Bests for Drivers on the Grid**.
+1. Open **Home**, press **Customize**, make the grid 4 columns by 2 rows (or bigger) and give one cell of 1 by 1 the card **Personal Bests for Drivers on the Grid**.
+2. The title wraps over two lines and the track name sits under it at the right. The rows start under the heading, and the times of all the drivers line up on the right edge (before, the first time stood to the left of the others).
+3. The same goes for every card with a track or a date at the right of its heading (Record to beat, Last race, Rules of this race and so on): in a narrow cell they can never touch the first row.
+
+Good to know:
+1. Only the look changed; nothing is saved differently. A Home you set up before keeps its cards.
+2. The tests: `tests/homecards.test.js` (the title) and `tests/homegrid.test.js` (the rule that holds the tag inside the heading).

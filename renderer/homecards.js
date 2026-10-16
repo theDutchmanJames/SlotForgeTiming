@@ -58,7 +58,7 @@
       : `<p class="muted">${year ? 'Nobody has won a race this year yet.' : 'Nobody has won a race yet.'}</p>`);
   };
 
-  const bests = d => card('hm-bests', 'Personal bests of the drivers on the grid', d.trackName, !d.hasTrack ? '<p class="muted">This race setup has no track yet.</p>'
+  const bests = d => card('hm-bests', 'Personal Bests for Drivers on the Grid', d.trackName, !d.hasTrack ? '<p class="muted">This race setup has no track yet.</p>'
     : !d.bests.length ? '<p class="muted">Choose the drivers for the lanes to see their personal bests here.</p>'
       : d.bests.map(b => `<div class="hm-kv"><span class="who"><i class="hm-dot" style="${SAFE.test(String(b.color).trim()) ? '--c:' + esc(String(b.color).trim()) : ''}"></i>${esc(b.name)}</span><strong${b.time === null ? ' class="muted"' : ''}>${esc(b.text)}</strong></div>`).join(''));
 

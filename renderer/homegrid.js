@@ -36,7 +36,7 @@
     { key: 'top', label: 'Top drivers', note: 'Who has won the most races',
       options: [{ key: 'period', label: 'Count the wins of', type: 'select', choices: [['year', 'This year'], ['all', 'All time']], default: 'year' },
         { key: 'count', label: 'How many drivers', type: 'select', choices: COUNTS, default: '5' }] },
-    { key: 'bests', label: 'Personal bests of the drivers on the grid', note: 'The best lap on this track of every driver in the lanes', options: [] },
+    { key: 'bests', label: 'Personal Bests for Drivers on the Grid', note: 'The best lap on this track of every driver in the lanes', options: [] },
     { key: 'rules', label: 'Rules of this race', note: 'Length, penalties, damage, fuel and weather of the race setup', options: [] },
     { key: 'shortcuts', label: 'Shortcuts', note: 'One click to the pages you use most',
       options: SHORTCUTS.map(s => yesNo('go_' + s.key, s.label, s.on)) }

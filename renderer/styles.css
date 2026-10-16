@@ -895,3 +895,5 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .hm-orow{grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--line)}
 .hm-orow input[type=text]{flex:1 1 160px;min-width:120px}.hm-orow input[type=number]{width:72px}
 .hm-ocheck{min-width:130px}
+/* 1.26.1: the heading of a card holds its tag (a float): a title that wraps in a narrow cell must not let the tag hang over the first row */
+.hm-grid .card>h3{display:flow-root}

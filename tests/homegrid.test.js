@@ -89,6 +89,7 @@ ok('...and the places exist: the tabs of the app and the pages of the Database',
   ok('...the Start a race card lets its lanes stack when the card is narrow (a container query, as the Leaderboard boards use)', /\.hm-start\{container-type:inline-size\}/.test(css) && /@container \(max-width:560px\)\{\.hm-start \.lane/.test(css));
   ok('...in a narrow window every card has a line to itself, wherever the grid put it', /@media \(max-width:960px\)\{\.hm-grid\{grid-template-columns:minmax\(0,1fr\)!important\}\.hm-grid>\*\{grid-column:1!important;grid-row:auto!important\}\}/.test(css));
   ok('...the picker and the map of cells are the ones of the Leaderboard page (same squares, same cells)', /\.lv-gp\.on\{/.test(css) && /\.lv-gcell\.sel\{/.test(css) && !/\.hm-cols|\.hm-side/.test(css));
+  ok('1.26.1: the heading of a card contains its floated tag, so a title that wraps in a 1x1 cell cannot push the tag over the first row (the first time would sit left of the others)', /\.hm-tag\{float:right/.test(css) && /\.hm-grid \.card>h3\{display:flow-root\}/.test(css));
   ok('the page loads the grid rules and the cards before Home, after the grid rules of the Leaderboard', html.indexOf('livegrid.js') < html.indexOf('homegrid.js') && html.indexOf('homegrid.js') < html.indexOf('homecards.js') && html.indexOf('homecards.js') < html.indexOf('landing.js'));
   ok('the tabs the shortcuts name are the tabs of the app', TABS_OF_APP.every(t => app.includes(`['${t}',`))); }
 
