@@ -22,6 +22,7 @@ async function renderHome() {
   // 1.8.0: the participants of a heat race can be teams (a team and a car; the drivers of the team take turns in the heats). The rotation says so, or the race setup when there is no rotation.
   const byTeam = heats && (rot ? Rot.isTeams(rot) : setup.participants === 'teams');
   const withTeam = byTeam || enduSingle; // (the team is the participant: it has to be chosen)
+  if (!withTeam) rows.forEach(r => { delete r.teamId; }); // (1.10.1: a session without teams has no Team choice on Home, so a team that was chosen for it earlier is not used)
   const teamOf = id => teams.find(t => t.id === id) || null, membersOf = t => (t && Array.isArray(t.drivers) ? t.drivers : []).map(id => drivers.find(d => d.id === id)).filter(Boolean);
   const wanted = rot ? rot.participants : heats ? Math.max(rows.length, 2) : lanes;
   while (rows.length < wanted) rows.push({ driverId: '', carId: '' });
@@ -120,30 +121,22 @@ async function renderHome() {
 
   const typeLabel = rawSetup ? (state.schema.racesetups.fields.find(f => f.key === 'sessionType').options.find(o => o[0] === rawSetup.sessionType) || [, ''])[1] : '';
   const away = r => !!rot && r.absent === true; // (not here today: the places of this participant in the rotation stay empty)
-  // a row: the team (optional, when there are teams; the participant itself when the participants are teams), the driver (the drivers of the team when there is one) and the car
-  const teamSelect = (r, i) => `<select data-k="teamId" aria-label="Team for ${byTeam ? 'participant' : 'row'} ${i + 1}"${away(r) ? ' disabled' : ''}>${optionsOf('teams', teams, r.teamId, withTeam ? '(choose a team)' : '(no team)')}</select>`;
+  // a row: the team (only in a session with teams: the team is the participant, or the team of an Endurance Race), the driver (the drivers of the team when there is one) and the car
+  const teamSelect = (r, i) => `<select data-k="teamId" aria-label="Team for ${byTeam ? 'participant' : 'row'} ${i + 1}"${away(r) ? ' disabled' : ''}>${optionsOf('teams', teams, r.teamId, '(choose a team)')}</select>`;
   const driverList = r => { // the drivers a row can have: the members of its team, and the driver it has now (a stand-in who is not in the team stays visible)
     const t = r.teamId ? teamOf(r.teamId) : null; if (!t) return drivers;
     const m = membersOf(t), cur = drivers.find(d => d.id === r.driverId);
     return cur && !m.includes(cur) ? [...m, cur] : m;
   };
-  const rowHtml = (r, i) => `<div class="lane${rot ? ' rot' : ''}${away(r) ? ' away' : ''}${byTeam ? ' byteam' : ''}" data-row="${i}">
+  const rowHtml = (r, i) => `<div class="lane${rot ? ' rot' : ''}${away(r) ? ' away' : ''}${byTeam ? ' byteam' : ''}${withTeam && !byTeam ? ' threesel' : ''}" data-row="${i}">
       <strong>${heats ? (byTeam ? 'Team ' : 'Participant ') : 'Lane '}${i + 1}${rot && rot.names[i] ? ' · ' + esc(rot.names[i]) : ''}</strong>
-      ${byTeam ? teamSelect(r, i) : `${teams.length ? teamSelect(r, i) : ''}<select data-k="driverId" aria-label="${enduSingle ? 'Starting driver' : 'Driver'} for row ${i + 1}"${away(r) ? ' disabled' : ''}>${optionsOf('drivers', enduSingle && !r.teamId ? [] : driverList(r), r.driverId, tokens ? 'Guest (no driver)' : enduSingle ? (setup.endurance.next === 'random' ? '(starting driver: by lot)' : '(starting driver: the first of the team)') : undefined)}</select>`}
+      ${byTeam ? teamSelect(r, i) : `${withTeam ? teamSelect(r, i) : ''}<select data-k="driverId" aria-label="${enduSingle ? 'Starting driver' : 'Driver'} for row ${i + 1}"${away(r) ? ' disabled' : ''}>${optionsOf('drivers', enduSingle && !r.teamId ? [] : driverList(r), r.driverId, tokens ? 'Guest (no driver)' : enduSingle ? (setup.endurance.next === 'random' ? '(starting driver: by lot)' : '(starting driver: the first of the team)') : undefined)}</select>`}
       <select data-k="carId" aria-label="Car for row ${i + 1}"${away(r) ? ' disabled' : ''}>${optionsOf('slotcars', cars, r.carId, tokens ? '(no car)' : undefined)}</select>
       ${rot ? `<label class="lane-away"><input type="checkbox" data-absent="${i}"${away(r) ? ' checked' : ''} aria-label="${byTeam ? 'Team' : 'Participant'} ${i + 1} is not here today"> Not here today</label>` : ''}
       ${heats && (rot ? rows.length > rot.participants : rows.length > 2) ? `<button class="btn" data-remove="${i}">Remove</button>` : '<span></span>'}
       ${withTeam && r.teamId ? `<span class="muted teamline">${membersOf(teamOf(r.teamId)).length ? 'Drivers: ' + esc(membersOf(teamOf(r.teamId)).map(d => titleOf('drivers', d)).join(', ')) : 'This team has no drivers yet.'}</span>` : ''}</div>`;
   const rotHtml = !rot ? '' : `<p class="hint2">Rotation setup <strong>${esc(rot.name)}</strong>: ${esc(Rot.describe(rot))}. Tick "Not here today" for ${byTeam ? 'every team' : 'anybody'} that does not come: their places stay empty. ${rot.names.some(x => x.trim()) ? `<button class="btn" id="rotnames" title="Choose the ${byTeam ? 'team' : 'driver'} whose name is the name of a participant in the rotation (only for participants who have no ${byTeam ? 'team' : 'driver'} yet)">${byTeam ? 'Pick the teams by name' : 'Pick the drivers by name'}</button>` : ''}</p>
       ${state.rotMsg && state.rotMsg.setupId === setupId ? `<p class="hint2" role="status">${esc(state.rotMsg.text)}</p>` : ''}`;
-
-  // drivers and slotcars: the 5 used last (then the rest in list order) and a button to the database for the full list
-  const recent = (state.settings.recent || {});
-  const lastUsed = (list, ids) => { const order = (ids || []).map(id => list.find(i => i.id === id)).filter(Boolean); return [...order, ...list.filter(i => !order.includes(i))]; };
-  const card = (label, entity, list, more) => { const shown = more ? lastUsed(list, recent[more.key]).slice(0, 5) : list;
-    return `<section class="card"><h3>${label}<span class="count">${list.length}</span></h3>` +
-    (list.length ? `<ul>${shown.map(i => `<li>${esc(titleOf(entity, i))}</li>`).join('')}</ul>` : '<span class="muted">None yet.</span>') +
-    (more && list.length > shown.length ? `<button class="btn" data-more="${more.sub}">Show all ${list.length} in the database</button>` : '') + '</section>'; };
 
   const resumeHtml = !resume || !resume.race ? '' : `<section class="card resumecard" id="resumecard"><h3>A race was interrupted</h3>
       <p><strong>${esc(resume.name || '')}</strong>${resume.kind ? ' · ' + esc(resume.kind) : ''}${resume.trackName ? ' on ' + esc(resume.trackName) : ''}. It was ${esc(Endurance.clock(Number(resume.elapsed) || 0))} into the race when it was saved (${esc(resume.savedAt ? new Date(resume.savedAt).toLocaleString() : '')}).</p>
@@ -167,9 +160,7 @@ async function renderHome() {
       ${raceOn ? '<p class="hint2" id="raceon">A race is running. <button class="btn" id="gorace">Go to the race</button></p>' : ''}
       ${issues.length ? `<ul class="issues">${issues.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
       <div class="row"><button class="btn primary" id="start" ${issues.length || raceOn ? 'disabled' : ''}${raceOn ? ' title="A race is still running. Open the Race tab to finish or stop it first."' : ''}>${tokens ? 'Open the session' : 'Start race'}</button></div>`
-      : '<p class="muted">Create a race setup in the Race Setup tab to get started.</p>') + `</section>
-    <h4>Available</h4>
-    <div class="grid">${card('Drivers', 'drivers', drivers, { key: 'drivers', sub: 'drivers' })}${card('Slot cars', 'slotcars', cars, { key: 'cars', sub: 'slotcars' })}${card('Tracks', 'tracks', tracks)}${card('Race setups', 'racesetups', setups)}</div>`;
+      : '<p class="muted">Create a race setup in the Race Setup tab to get started.</p>') + `</section>`;
 
   const persist = async () => {
     state.settings = await api.setSettings({ lastSetupId: setupId, assignments: { ...(saved.assignments || {}), [setupId]: rows } });
@@ -183,12 +174,11 @@ async function renderHome() {
     const row = ev.target.closest('[data-row]');
     if (row && ev.target.dataset.k) {
       const i = Number(row.dataset.row), k = ev.target.dataset.k, v = ev.target.value, r = rows[i];
-      if (k === 'teamId') { // a team for the row: with a driver on the row too, the driver is one of the team (the first one who is not on another row yet)
+      if (k === 'teamId') { // a team for the row (only in a session with teams): an Endurance Race row has its starting driver from the team too
         if (!v) delete r.teamId;
         else {
           r.teamId = v;
           if (enduSingle) { if (!membersOf(teamOf(v)).some(d => d.id === r.driverId)) r.driverId = ''; } // (the starting driver is chosen, or left to the rule)
-          else if (!byTeam) { const m = membersOf(teamOf(v)); if (!m.some(d => d.id === r.driverId)) { const taken = new Set(rows.filter((x, j) => j !== i).map(x => x.driverId).filter(Boolean)), first = m.find(d => !taken.has(d.id)); r.driverId = first ? first.id : ''; } }
         }
       } else r[k] = v;
       persist();
@@ -228,7 +218,6 @@ async function renderHome() {
       api.setSettings({ heatEdits: { ...(saved.heatEdits || {}), [setupId]: { key: heatPlan.key, schedule: res.schedule } } }).then(s => { state.settings = s; renderHome(); }); return;
     }
     if (b.dataset.remove !== undefined) { rows.splice(Number(b.dataset.remove), 1); persist(); }
-    if (b.dataset.more) { state.sub = b.dataset.more; state.tab = 'database'; render(); return; }
     if (b.id === 'gorace') { state.tab = 'race'; render(); return; }
     if ((b.id === 'resumego' || b.id === 'resumesave') && resume && resume.race) { // the race that was interrupted comes back (paused), or is closed and checked for saving
       if (typeof raceActive === 'function' && raceActive()) return;
@@ -240,8 +229,6 @@ async function renderHome() {
     }
     if (b.id === 'start') {
       if (typeof raceActive === 'function' && raceActive()) return; // (one race at a time: the one that is running is on the Race tab)
-      const front = (old, ids) => [...ids.filter(Boolean), ...(old || []).filter(x => !ids.includes(x))].slice(0, 20); // remember what was used last
-      api.setSettings({ recent: { drivers: front(recent.drivers, byTeam ? [] : rows.map(r => r.driverId)), cars: front(recent.cars, rows.map(r => r.carId)) } }).then(s => { state.settings = s; });
       let go = rot ? here : rows;
       if (enduSingle) { // the driver who starts for every team: the one that was chosen, else the next of the team who is not starting for another team (or one picked by lot)
         const taken = new Set(rows.map(r => r.driverId).filter(Boolean)), rnd = state.rand || Math.random;

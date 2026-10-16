@@ -4,6 +4,7 @@ Every version of SlotForge Timing, newest first. The README has a section **What
 
 ## Versions
 
+- **1.10.1**: Home and tabs: the Live Race button has two looks (switched off with no race running, lit while a race is on), the Available cards are gone from Home, the Team choice only shows in a session with teams (an Endurance Race, heats with teams), and the three dropdowns of a lane (Team, Driver, Slotcar) are spaced evenly
 - **1.10.0**: the Damage System: damage points from incidents and automatic deslots, levels (light, medium, heavy, critical) that ask for a stop in the pits to repair, a deadline per level, retire or disqualify as the end of a car, a Damage Systems tab, Damage and Repair Timer widgets, audio calls, and the damage in the results
 - **1.9.1**: fix for 1.9.0: starting a race showed "This screen could not be opened: An object could not be cloned". The settings of the race that go to the Live Race window held a function (the random generator for "a random driver steps in"), which Electron cannot send. It is left out now, and a snapshot that cannot be kept can never stop a race. The screen tests now check every call of the app interface the way Electron does.
 - **1.9.0**: the Endurance Race: teams whose drivers swap in the pits (when, who steps in, the shortest and longest time at the wheel), Current Driver, Next Driver and Swap Timer widgets, "Box Box" audio calls, penalties for a swap that is not made, stints in the result, and a race that can be carried on after a crash or a power cut

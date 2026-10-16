@@ -32,7 +32,6 @@ const Help = (() => {
           <li>Pick a <b>race setup</b>, then choose a <b>driver</b> and a <b>car</b> for every lane. In a heat-based race you add participants instead.</li>
           <li>What is still missing is listed above the button, so you can see why <b>Start race</b> is greyed out.</li>
           <li>If a <b>qualifying</b> was driven on the same track, its winner picks their lane first.</li>
-          <li>The <b>Available</b> cards show what you have. <b>Show all</b> opens the matching list in the Database.</li>
           <li>The welcome message at the top and the header picture can be changed in App Settings, General.</li>
           <li>When a race was stopped by a crash or a power cut, a note at the top offers <b>Resume the race</b> (it comes back paused, press Space to go on), <b>Save what was recorded</b> or <b>Delete it</b>.</li>
         </ul>` },
@@ -100,7 +99,7 @@ const Help = (() => {
       { id: 'teams', title: 'Teams', note: 'Drivers who race together', body: `
         <ul>
           <li>On the <b>Teams</b> page of the Database you make a team: a name, a picture and its drivers, in the order they take their turn. A driver can be in more than one team. A driver who is deleted leaves his teams.</li>
-          <li>On the <b>Home tab</b> a lane can have a <b>Team</b>; the driver is then one of the team. The <b>Team Name</b> and <b>Team Picture</b> widgets show the team of the lane (or one team you choose), {team} works in custom texts and audio calls, and the results get a Team column.</li>
+          <li>On the <b>Home tab</b> a session with teams (an Endurance Race, or heats whose participants are teams) has a <b>Team</b> on every lane; the driver is then one of the team. A session without teams has no Team choice. The <b>Team Name</b> and <b>Team Picture</b> widgets show the team of the lane (or one team you choose), {team} works in custom texts and audio calls, and the results get a Team column.</li>
           <li>The participants of a heat race can be <b>teams</b>: choose Teams in the race setup (<b>The participants of the heats are</b>) or in the rotation setup (<b>Participants are</b>, which wins). On Home you choose a team and a car for each. In every heat one driver of the team drives: <b>in turn</b>, <b>by lot</b>, or the one you choose before the heat.</li>
           <li>A driver who is in two teams drives for one of them in a heat. The result has a row per team with the drivers who drove for it; every lap still counts for the driver who drove it.</li>
         </ul>` },
@@ -245,6 +244,7 @@ const Help = (() => {
           <li><b>Open on a second screen</b> puts these pages in their own window, for a TV or a projector. <b>Full screen</b> fills it.</li>
           <li>The <b>Race timing</b> page shows only the widget layout, without race buttons. Move the mouse or touch the screen to bring back the bar with the page choice and the full screen button.</li>
           <li>The pages follow the race that is running. They fill in as soon as a race starts.</li>
+          <li>The <b>Live Race</b> button in the top bar has its red light on while a race is on, and is greyed out with the light off when no race is running. It opens the pages either way.</li>
           <li>The Race Director and Tokens pages are the only ones that change anything, so they have their own look.</li>
         </ul>` },
       { id: 'network', title: 'Phones and tablets', note: 'Watch and control from the wifi', body: `

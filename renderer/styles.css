@@ -24,6 +24,10 @@ nav{display:flex;gap:4px;flex-wrap:wrap}
 .tab.onair{--onair:color-mix(in srgb,#ff2d2d 80%,var(--ink));display:inline-flex;align-items:center;gap:9px;margin:3px 0 3px 12px;padding:5px 14px;background:transparent;color:var(--onair);border:1.5px solid var(--onair);border-radius:7px;font-weight:700;font-size:.86em;letter-spacing:.14em;text-transform:uppercase;text-shadow:0 0 6px color-mix(in srgb,var(--onair) 35%,transparent);box-shadow:0 0 8px color-mix(in srgb,var(--onair) 30%,transparent)}
 .tab.onair:hover{color:var(--onair);box-shadow:0 0 14px color-mix(in srgb,var(--onair) 60%,transparent)}
 .tab.onair .led{width:12px;height:12px}
+/* Switched off (1.10.1): no race is running. The same sign with the light out: grey letters and outline, no glow. It lights up again as soon as a race is on. */
+.tab.onair.off{--onair:color-mix(in srgb,var(--muted) 80%,transparent);font-weight:600;text-shadow:none;box-shadow:none}
+.tab.onair.off:hover{color:var(--ink);border-color:var(--ink);box-shadow:none}
+.tab.onair.off .led{background:#555a63;border-color:var(--line);box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
 .led.red{background:#ff3b3b;border-color:color-mix(in srgb,#ff3b3b 65%,var(--ink));box-shadow:0 0 8px 2px rgba(255,59,59,.85),inset 0 1px 1px rgba(255,255,255,.45)}
 .sub{margin-bottom:16px}
 main{width:100%;max-width:none;margin:0;padding:20px}
@@ -71,6 +75,7 @@ input:disabled{opacity:.6}
 .lane{display:grid;grid-template-columns:110px 1fr 1fr auto;gap:10px;align-items:center;margin-bottom:8px}
 .lane select{width:100%}
 .lane.rot{grid-template-columns:150px 1fr 1fr auto auto}
+.lane.threesel{grid-template-columns:110px 1fr 1fr 1fr auto} /* team, driver and car: three equal columns (1.10.1) */
 .lane.away strong,.lane.away select{opacity:.55}
 .lane-away{display:flex;align-items:center;gap:6px;font-size:14px;white-space:nowrap}
 .issues{margin:10px 0;padding-left:18px;color:var(--accent)}

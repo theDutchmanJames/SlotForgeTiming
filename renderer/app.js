@@ -43,6 +43,7 @@ function renderTabs(el, items, current, onPick, icons = {}) {
   el.innerHTML = items.map(([id, label, look]) =>
     look === 'racing' ? `<button class="tab racetab" role="tab" aria-selected="${id === current}" data-id="${id}" title="${esc(raceTabTitle())}"><span class="led on" aria-hidden="true"></span>${esc(label)}</button>`
     : look === 'onair' ? `<button class="tab onair" role="tab" aria-selected="${id === current}" data-id="${id}" title="Opens the Live Race on a second screen"><span class="led red" aria-hidden="true"></span>${esc(label)}</button>`
+    : look === 'offair' ? `<button class="tab onair off" role="tab" aria-selected="${id === current}" data-id="${id}" title="No race is running. Opens the Live Race on a second screen anyway."><span class="led" aria-hidden="true"></span>${esc(label)}</button>`
       : Icons.has(icons[id]) ? `<button class="tab hasico" role="tab" aria-selected="${id === current}" data-id="${id}">${Icons.svg(icons[id], { size: 18, cls: 'tabico' })}${esc(label)}</button>`
         : `<button class="tab" role="tab" aria-selected="${id === current}" data-id="${id}">${esc(label)}</button>`).join('');
   el.onclick = e => { const b = e.target.closest('[data-id]'); if (b) onPick(b.dataset.id); };
@@ -55,7 +56,8 @@ function renderTabs(el, items, current, onPick, icons = {}) {
 const raceKept = () => !!state.race && typeof live !== 'undefined' && !!live && !!live.alive;
 const RACE_WORDS = { ready: 'not started yet', countdown: 'starting', running: 'running', paused: 'paused', between: 'waiting for the next heat', review: 'waiting for you to check the laps', finished: 'finished' };
 const raceTabTitle = () => `The race is ${RACE_WORDS[typeof live !== 'undefined' && live ? live.phase : ''] || 'on'}. Click to go back to it.`;
-const tabsNow = () => (raceKept() ? [...TABS.slice(0, -1), ['race', 'Race', 'racing'], TABS[TABS.length - 1]] : TABS);
+// The Live Race tab has two looks (1.10.1): lit (red light) while a race is on, switched off (grey, the light out) when no race is running. It opens the Live Race pages in both cases.
+const tabsNow = () => (raceKept() ? [...TABS.slice(0, -1), ['race', 'Race', 'racing'], TABS[TABS.length - 1]] : TABS.map(t => (t[2] === 'onair' ? [t[0], t[1], 'offair'] : t)));
 function showRace(on) { // on: the Race tab is shown; otherwise the race (if there is one) is parked out of sight
   const h = document.getElementById('racehost');
   if (h) h.classList.toggle('parked', !on);

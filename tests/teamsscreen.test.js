@@ -43,7 +43,7 @@ const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if
 for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function') api[k] = (...x) => { x.forEach(v => { if (typeof v !== 'function') structuredClone(v); }); return f(...x); }; }
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'report.js', 'canvas.js', 'liveshare.js', 'review.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'report.js', 'canvas.js', 'liveshare.js', 'review.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'enduranceui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -137,35 +137,43 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   const rowsOf = h => h.split('data-row="').slice(1);
   const options = (rowHtml, k) => { const m = new RegExp('<select data-k="' + k + '"[^>]*>(.*?)</select>').exec(rowHtml); return m ? [...m[1].matchAll(/<option value="([^"]*)"( selected)?>([^<]*)</g)].map(x => ({ v: x[1], sel: !!x[2], t: x[3] })) : null; };
 
+  // 1.10.1: the Team choice is only there in a session that has teams (an Endurance Race in one go, or heats whose participants are teams)
+  const enduSetup = { sessionType: 'endurance', enduranceBy: 'laps', laps: 10 };
+  const lanes3 = h => (h.match(/class="lane[^"]*threesel[^"]*" data-row/g) || []).length;
   let hh = await home({}, [{ driverId: 'd1', carId: 'c1' }, { driverId: '', carId: '' }]);
   let r0 = rowsOf(hh)[0], r1 = rowsOf(hh)[1];
-  say('with teams in the database every lane has a Team choice (no team to begin with), before the driver and the car', options(r0, 'teamId').map(o => o.t).join() === '(no team),Red Bulls,Blue Moons,Shared,Empty' && options(r0, 'teamId').filter(o => o.sel).map(o => o.v).join() === '' && r0.indexOf('data-k="teamId"') < r0.indexOf('data-k="driverId"') && r0.indexOf('data-k="driverId"') < r0.indexOf('data-k="carId"'));
-  say('...a lane without a team can have any driver, as before', options(r0, 'driverId').length === 5 && options(r0, 'driverId').some(o => o.t === 'Lee'));
-  store.teams.splice(0, 4); const none = await home({}, [{ driverId: 'd1', carId: 'c1' }, { driverId: '', carId: '' }]); store.teams.push({ id: 'T1', name: 'Red Bulls', drivers: ['d1', 'd2'], picture: 'data:image/jpeg;base64,RED' }, { id: 'T2', name: 'Blue Moons', drivers: ['d3', 'd4'] }, { id: 'T3', name: 'Shared', drivers: ['d2', 'd3'] }, { id: 'T4', name: 'Empty', drivers: [] });
-  say('without any team in the database the Home tab is as it was: no Team choice', !none.includes('data-k="teamId"') && none.includes('data-k="driverId"'));
-  hh = await home({}, [{ driverId: '', carId: '' }, { driverId: '', carId: '' }]);
-  hh = await change(0, 'teamId', 'T1');
-  say('a team for a lane without a driver: the first driver of the team is put there, and the team is saved with the row', assignments()[0].teamId === 'T1' && assignments()[0].driverId === 'd1' && options(rowsOf(hh)[0], 'teamId').find(o => o.sel).t === 'Red Bulls');
-  say('...the drivers of that lane are the drivers of the team (Alex, Sam), in the order of the team', options(rowsOf(hh)[0], 'driverId').filter(o => o.v).map(o => o.t).join() === 'Alex,Sam' && options(rowsOf(hh)[0], 'driverId').find(o => o.sel).t === 'Alex' && options(rowsOf(hh)[1], 'driverId').filter(o => o.v).length === 4);
-  hh = await change(1, 'teamId', 'T1');
-  say('the same team on the next lane: the first driver of the team who is not on another lane (Sam)', assignments()[1].driverId === 'd2' && assignments()[1].teamId === 'T1');
-  hh = await change(1, 'teamId', 'T3');
-  say('a team that has the driver of the lane keeps him (Sam is in Shared too)', assignments()[1].driverId === 'd2' && assignments()[1].teamId === 'T3');
-  hh = await change(0, 'teamId', 'T2');
-  say('a team that does not have the driver of the lane takes its own first driver (Kim)', assignments()[0].driverId === 'd3' && assignments()[0].teamId === 'T2');
-  hh = await change(0, 'teamId', 'T4');
-  say('a team without drivers leaves the lane without a driver (and Home says the lane needs one)', assignments()[0].driverId === '' && assignments()[0].teamId === 'T4' && hh.includes('Lane 1 needs a driver and a car.') && options(rowsOf(hh)[0], 'driverId').filter(o => o.v).length === 0);
-  hh = await change(0, 'teamId', '');
-  say('no team again: the team is taken off the row (not left empty in it), the driver stays, and every driver is offered again', !('teamId' in assignments()[0]) && options(rowsOf(hh)[0], 'driverId').length === 5);
-  hh = await change(0, 'teamId', 'T2'); hh = await change(0, 'driverId', 'd4');
-  say('a driver of the team is chosen in the usual way', assignments()[0].driverId === 'd4' && assignments()[0].teamId === 'T2');
-  hh = await home({}, [{ driverId: 'd1', carId: 'c1', teamId: 'T9' }, { driverId: 'd2', carId: 'c2', teamId: 'T1' }]);
-  say('a team that was deleted since is taken off the row; the driver stays', !('teamId' in assignments()[0]) || assignments()[0].teamId === 'T9' ? !options(rowsOf(hh)[0], 'teamId').some(o => o.sel && o.v) && options(rowsOf(hh)[0], 'driverId').find(o => o.sel).t === 'Alex' : false);
-  hh = await home({}, [{ driverId: 'd3', carId: 'c1', teamId: 'T1' }, { driverId: 'd2', carId: 'c2', teamId: 'T1' }]);
-  say('a stand-in who is not in the team stays visible in the list of the lane (and does not block the race)', options(rowsOf(hh)[0], 'driverId').map(o => o.t).join() === '(choose),Alex,Sam,Kim' && options(rowsOf(hh)[0], 'driverId').find(o => o.sel).t === 'Kim' && !hh.includes('<ul class="issues">'));
+  say('a normal race has no Team choice, even with teams in the database: a driver and a car on every lane, every driver offered', !hh.includes('data-k="teamId"') && r0.includes('data-k="driverId"') && r0.includes('data-k="carId"') && options(r0, 'driverId').length === 5 && options(r0, 'driverId').some(o => o.t === 'Lee') && rowsOf(hh).length === 2);
+  say('...and the row keeps the two flexible columns (driver and car side by side, no third column)', lanes3(hh) === 0 && hh.includes('class="lane" data-row="0"'));
+  hh = await home({}, [{ driverId: 'd1', carId: 'c1', teamId: 'T1' }, { driverId: 'd3', carId: 'c2', teamId: 'T1' }]);
+  say('a team that an earlier session left on a lane is not shown in a session without teams: no Team choice, the driver stays, and the lane does not complain', !hh.includes('data-k="teamId"') && options(rowsOf(hh)[0], 'driverId').find(o => o.sel).t === 'Alex' && options(rowsOf(hh)[1], 'driverId').find(o => o.sel).t === 'Kim' && options(rowsOf(hh)[1], 'driverId').length === 5 && !hh.includes('<ul class="issues">'));
   await clickHome({ id: 'start' }); const started = JSON.parse(run('JSON.stringify(state.race)'));
-  say('Start gives the race the team of every lane', started.rows[0].teamId === 'T1' && started.rows[1].teamId === 'T1' && !started.byTeam && started.rows[0].driverId === 'd3');
+  say('...and Start gives the race lanes without a team', started.rows.length === 2 && started.rows.every(x => !('teamId' in x)) && !started.byTeam && started.rows[1].driverId === 'd3');
   run('state.race = null; live = null');
+  hh = await home({ sessionType: 'heats', track: 't4', heatBy: 'laps', laps: 3, heatPlan: 'manual', heats: 2, resultBy: 'laps', participants: 'drivers' }, [{ driverId: 'd1', carId: 'c1', teamId: 'T1' }, { driverId: 'd2', carId: 'c2' }, { driverId: 'd3', carId: 'c3' }]);
+  say('heats with drivers as the participants have no Team choice either', !hh.includes('data-k="teamId"') && rowsOf(hh).every(r => r.includes('data-k="driverId"')) && lanes3(hh) === 0);
+  hh = await home(enduSetup, [{ driverId: '', carId: 'c1' }, { driverId: '', carId: '' }]);
+  r0 = rowsOf(hh)[0];
+  say('an Endurance Race in one go has a Team choice on every lane, before the starting driver and the car, with nothing chosen to begin with', rowsOf(hh).every(r => options(r, 'teamId') && r.indexOf('data-k="teamId"') < r.indexOf('data-k="driverId"') && r.indexOf('data-k="driverId"') < r.indexOf('data-k="carId"')) && options(r0, 'teamId').map(o => o.t).join() === '(choose a team),Red Bulls,Blue Moons,Shared,Empty' && options(r0, 'teamId').filter(o => o.sel).map(o => o.v).join() === '');
+  say('...and its rows have three equal columns, so Team, Driver and Slotcar sit side by side (the class threesel)', lanes3(hh) === 2);
+  { const css = require('fs').readFileSync(__dirname + '/../renderer/styles.css', 'utf8'), plain = (css.match(/\.lane\{[^}]*\}/) || [''])[0], three = (css.match(/\.lane\.threesel\{[^}]*\}/) || [''])[0];
+    say('...in the stylesheet: a plain lane is a label and two flexible columns, a lane with a Team choice a label and three (so none of the three is pushed into the narrow last column)', /grid-template-columns:110px 1fr 1fr auto/.test(plain) && /grid-template-columns:110px 1fr 1fr 1fr auto/.test(three) && css.indexOf('.lane.threesel') > css.indexOf('.lane{')); }
+  hh = await change(0, 'teamId', 'T1');
+  say('a team for the lane: it is saved with the row, and the starting driver is one of the team (none chosen yet)', assignments()[0].teamId === 'T1' && assignments()[0].driverId === '' && options(rowsOf(hh)[0], 'driverId').filter(o => o.v).map(o => o.t).join() === 'Alex,Sam' && options(rowsOf(hh)[0], 'teamId').find(o => o.sel).t === 'Red Bulls');
+  hh = await change(0, 'driverId', 'd2'); hh = await change(0, 'teamId', 'T3');
+  say('a team that has the starting driver keeps him (Sam is in Shared too)', assignments()[0].driverId === 'd2' && assignments()[0].teamId === 'T3');
+  hh = await change(0, 'teamId', 'T2');
+  say('a team that does not have the starting driver clears him', assignments()[0].driverId === '' && assignments()[0].teamId === 'T2');
+  hh = await change(0, 'teamId', '');
+  say('no team again: the team is taken off the row (not left empty in it)', !('teamId' in assignments()[0]));
+  hh = await home(enduSetup, [{ driverId: 'd1', carId: 'c1', teamId: 'T1' }, { driverId: '', carId: 'c2', teamId: 'T2' }]);
+  say('an Endurance Race with a team and a car on every lane has nothing in the way of starting it', !hh.includes('<ul class="issues">'));
+  await clickHome({ id: 'start' }); const startedE = JSON.parse(run('JSON.stringify(state.race)'));
+  say('Start gives the race the team of every lane', startedE.rows.map(x => x.teamId).join() === 'T1,T2' && startedE.rows[0].driverId === 'd1');
+  run('state.race = null; live = null');
+  hh = await home({}, [{ driverId: 'd1', carId: 'c1', teamId: 'T9' }, { driverId: 'd2', carId: 'c2', teamId: 'T1' }]);
+  say('a team that was deleted since is taken off the row; the driver stays', !hh.includes('data-k="teamId"') && options(rowsOf(hh)[0], 'driverId').find(o => o.sel).t === 'Alex');
+  hh = await home(enduSetup, [{ driverId: 'd1', carId: 'c1', teamId: 'T9' }, { driverId: '', carId: 'c2', teamId: 'T1' }]);
+  say('...also in an Endurance Race: the lane has no team any more and says it needs one (the other lane keeps its team)', !options(rowsOf(hh)[0], 'teamId').some(o => o.sel && o.v) && options(rowsOf(hh)[1], 'teamId').find(o => o.sel).t === 'Red Bulls' && hh.includes('Lane 1 needs a team and a car.'));
 
   // ---------- the Home tab: teams as the participants of a heat race ----------
   const heatsSetup = over => ({ sessionType: 'heats', track: 't4', heatBy: 'laps', laps: 3, heatPlan: 'manual', heats: 2, resultBy: 'laps', participants: 'teams', teamDriver: 'order', ...over });
