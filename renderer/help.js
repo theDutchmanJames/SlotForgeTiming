@@ -156,7 +156,7 @@ const Help = (() => {
       { id: 'director', title: 'Race Director, flags and penalties', note: 'Control the race from anywhere', body: `
         <ul>
           <li>The <b>Race Director</b> page (Live Race tab) has Start, Pause, Yellow, Red and Stop, the calls and folders. It also works on a phone or tablet, behind a password.</li>
-          <li><b>Adjust</b>: pick a lane, then press the pads, <b>[+] value [−]</b>: penalty points, time, laps, championship points, also during the race. Undo takes the last one back. Values and layout: App Settings, Race Director.</li>
+          <li><b>Adjust</b>: pick a lane, then press the pads, <b>[+] value [−]</b>: penalty points, damage points, time, laps, championship points, also during the race. Undo takes the last one back. Values and layout: App Settings, Race Director.</li>
           <li><b>Penalty points</b> turn into seconds added to the driver's time (the penalty system sets how, and can disqualify at a limit).</li>
           <li><b>Special penalties</b> take points off and must be served: a Drivethrough when the next pit stop starts, a Stop-and-Go by standing still on the sensor.</li>
           <li>A <b>call from a lane</b> raises the yellow flag and waits for the Race Director, who dismisses it or gives a penalty point.</li>
@@ -247,7 +247,7 @@ const Help = (() => {
           <li>The pages follow the race that is running. They fill in as soon as a race starts.</li>
           <li>The <b>Leaderboard</b> page is a grid: under <b>Customize</b> pick the number of columns and rows with the little squares, and choose a leaderboard for every cell (a row design from the Leaderboard Editor, or the classic table). A board can cover more cells and show only some places, such as 5 to 8.</li>
           <li>The <b>Live Race</b> button in the top bar has its red light on while a race is on, and is greyed out with the light off when no race is running. It opens the pages either way.</li>
-          <li>The Race Director and Tokens pages are the only ones that change anything, so they have their own look. On the Race Director page the Calls come first, then coloured folders: Penalties, Balance of Power, Damage and Weather.</li>
+          <li>The Race Director and Tokens pages are the only ones that change anything, so they have their own look. On the Race Director page the Calls come first, then coloured folders: Adjust, Penalties, Balance of Power, Damage and Weather, and Endurance (brown) in an Endurance Race.</li>
         </ul>` },
       { id: 'network', title: 'Phones and tablets', note: 'Watch and control from the wifi', body: `
         <ul>

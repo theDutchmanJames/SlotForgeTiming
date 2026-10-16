@@ -164,14 +164,14 @@ const LiveView = (() => {
   // The page is built once and then only updated, so a button never changes under your finger.
   const send = cmd => api.liveCommand(cmd);
   // The Race Director page (1.11.1): the buttons and the calls on top, then folders like the ones in the Help, each with a colour of its own (Penalties yellow, Balance of Power white,
-  // Damage red, Weather blue). They are open to begin with, as the page was; a folder you close stays closed while the page is open.
+  // Damage red, Weather blue, Endurance brown). They are open to begin with, as the page was; a folder you close stays closed while the page is open.
   const dirShut = new Set();
   const folder = (id, title, note, tone, inner) => `<details class="dbfolder dirfolder${tone ? ' dir-' + tone : ''}" data-dirf="${id}"${dirShut.has(id) ? '' : ' open'}><summary><strong>${title}</strong> <span class="muted">${note}</span></summary><div class="df-body">${inner}</div></details>`;
   // The Adjust folder (1.12.0): pick a lane, then use the pads (penalty points, time, laps, championship points) for that lane. Nothing is picked to begin with, so a press never lands on the wrong lane.
   // What a pad did is kept in adjHist, to show the last action and to undo it (an undo is the same pad command with the opposite amount).
   let adjLane = null, adjRace = null, adjSig = '', rvShown = '';
   const adjHist = AdjustPad.history();
-  const adjVal = (eng, lane, group) => { const c = eng.cars.find(x => x.lane === lane); return !c ? null : group === 'points' ? c.points : group === 'time' ? Math.round(c.adjMs || 0) / 1000 : group === 'laps' ? (c.adjLaps || 0) : (c.adjPoints || 0); };
+  const adjVal = (eng, lane, group) => { const c = eng.cars.find(x => x.lane === lane); return !c ? null : group === 'points' ? c.points : group === 'damage' ? (c.dmg || 0) : group === 'time' ? Math.round(c.adjMs || 0) / 1000 : group === 'laps' ? (c.adjLaps || 0) : (c.adjPoints || 0); };
   function adjDraw(st) {
     const box = $('dir-adj'); if (!box) return;
     const S = state.settings || {}, lay = AdjustPad.layoutOf(S);
@@ -207,6 +207,7 @@ const LiveView = (() => {
     if (AdjustPad.signature(state.settings || {}) !== adjSig) adjDraw(st);
     if (adjLane !== null && !st.cfg.entries.some(e => e.lane === adjLane)) adjLane = null;
     const car = adjLane === null ? null : eng.cars.find(c => c.lane === adjLane), canAdj = eng.type === 'race' || eng.type === 'timed';
+    const dv = st.cfg.damage ? Damage.view(eng, st.cfg.entries.map(e => e.lane), V.clock(performance.now()), d.phase) : null, drow = dv && dv.on && car ? dv.rows.find(r => r.lane === car.lane) : null; // (what the damage panel allows for this lane)
     box.querySelectorAll('[data-adj-lane]').forEach(b => {
       const l = Number(b.dataset.adjLane), c = eng.cars.find(x => x.lane === l), sm = b.querySelector ? b.querySelector('small') : null;
       b.setAttribute('aria-pressed', String(l === adjLane)); b.disabled = !on; if (sm && c) sm.textContent = c.driverName;
@@ -214,8 +215,11 @@ const LiveView = (() => {
     $('adj-who').textContent = !on ? 'The pads work while the race is running or paused.' : car ? `Lane ${car.lane + 1} · ${car.driverName}` : 'Choose a lane. The pads act on that lane.';
     box.querySelectorAll('.pad').forEach(p => {
       const id = p.dataset.pad;
-      p.hidden = (id === 'points' && !pen) || (id !== 'points' && !canAdj) || (id === 'champ' && !(d.champ && d.champ.on));
-      p.querySelectorAll('button,input').forEach(el => { el.disabled = !on || !car || (id === 'points' && (car.dq || (!!el.dataset && el.dataset.sign === '-1' && car.points <= 0))); });
+      p.hidden = (id === 'points' && !pen) || (id === 'damage' && !(dv && dv.on)) || (id !== 'points' && id !== 'damage' && !canAdj) || (id === 'champ' && !(d.champ && d.champ.on));
+      p.querySelectorAll('button,input').forEach(el => {
+        const minus = !!el.dataset && el.dataset.sign === '-1';
+        el.disabled = !on || !car || (id === 'points' && (car.dq || (minus && car.points <= 0))) || (id === 'damage' && (!drow || (minus ? !drow.take : !drow.give)));
+      });
     });
     adjHist.settle((l, g) => adjVal(eng, l, g), performance.now());
     box.querySelectorAll('[data-adj-undo]').forEach(b => { b.disabled = !on || !adjHist.canUndo(); });
@@ -232,7 +236,7 @@ const LiveView = (() => {
         <div class="card"><h3>Calls</h3>
           <div class="lv-ctl">${st.cfg.entries.map(e => `<button class="btn" data-cmd="call" data-lane="${e.lane}" title="A call from this lane: raises the yellow flag, like a call button">Call lane ${e.lane + 1}</button>`).join('')}</div>
           <ul id="dir-calls" class="lv-calls"></ul></div>
-        ${st.tokenUi ? '' : folder('adjust', 'Adjust', 'Penalty points, time, laps and championship points for one lane', '', '<div id="dir-adj"></div>')}
+        ${st.tokenUi ? '' : folder('adjust', 'Adjust', 'Penalty points, damage points, time, laps and championship points for one lane', 'plain', '<div id="dir-adj"></div>')}
         ${folder('penalties', 'Penalties', 'Points and penalties for each lane', 'yellow', pen ? `<div class="wrap"><table class="fields"><thead><tr><th>Lane</th><th>Driver</th><th>Points</th><th>Time penalty</th><th>Not served yet</th><th></th></tr></thead><tbody>${st.cfg.entries.map(e =>
           `<tr data-row="${e.lane}"><td>${e.lane + 1}</td><td>${esc(e.driverName)}</td><td class="num dir-pts"></td><td class="num dir-sec"></td><td class="dir-pend"></td>
            <td class="actions"><button class="btn" data-cmd="penalty" data-lane="${e.lane}" data-n="-1" aria-label="Take back a point from ${esc(e.driverName)}">−1</button> <button class="btn danger" data-cmd="penalty" data-lane="${e.lane}" data-n="1">Penalty point +1</button>
@@ -241,7 +245,7 @@ const LiveView = (() => {
         ${st.cfg.bop ? folder('bop', 'Balance of Power', 'Even out fast and slow cars', 'white', '<div id="dir-bop" class="boppanel"></div>') : ''}
         ${st.cfg.damage ? folder('damage', 'Damage', 'Incidents and repairs', 'red', '<div id="dir-dm" class="boppanel"></div>') : ''}
         ${st.cfg.weather ? folder('weather', 'Weather', 'Rain, tyres and pit stops', 'blue', '<div id="dir-wx" class="boppanel"></div>') : ''}
-        ${st.cfg.endurance ? folder('endurance', 'Endurance', 'Driver swaps', '', '<div id="dir-en" class="boppanel"></div>') : ''}
+        ${st.cfg.endurance ? folder('endurance', 'Endurance', 'Driver swaps', 'brown', '<div id="dir-en" class="boppanel"></div>') : ''}
         <details class="card" id="dir-lapsbox" hidden><summary>Review laps</summary><div id="dir-laps" class="rv"></div></details>
         <div id="dir-review" class="card rv" hidden></div></div>`;
       if (adjRace !== st.raceId) { adjRace = st.raceId; adjLane = null; adjHist.clear(); } adjDraw(st);

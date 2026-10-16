@@ -653,6 +653,7 @@ async function renderRace() {
       if (tokens || !['running', 'paused'].includes(live.phase) || !Number.isFinite(amount) || !amount) return false;
       const i = eng.cars.findIndex(c => c.lane === lane), car = eng.cars[i]; if (!car) return false;
       if (group === 'points') { if (!eng.penalty.on || !eng.addPoints(i, Math.round(amount), now())) return false; }
+      else if (group === 'damage') { if (!eng.damage || !Number.isInteger(amount) || Math.abs(amount) > 20 || !eng.addDamage(i, amount, now(), 'director')) return false; } // (the damage points of the Damage System, as the damage command)
       else if (['time', 'laps', 'champ'].includes(group) && (eng.type === 'race' || eng.type === 'timed')) { // (practice and qualifying are about the best lap: nothing to adjust)
         if (!eng.adjust(i, group === 'time' ? { ms: Math.round(amount * 1000) } : group === 'laps' ? { laps: Math.round(amount) } : { points: amount })) return false;
       } else return false;

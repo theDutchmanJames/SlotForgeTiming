@@ -516,6 +516,9 @@ dialog:has(.formgrid) form{display:flex;flex-direction:column;max-height:calc(90
 [data-theme="light"] .dir-white,[data-theme="ocean"] .dir-white{--fc:#7d8590} /* white would not show on a white page */
 .dir-red{--fc:#e5484d}
 .dir-blue{--fc:#4c9aff}
+.dir-brown{--fc:#a8693a}
+.dir-plain{--fc:var(--muted)} /* the Adjust folder: the colours of the theme, not the accent */
+.dbfolder.dirfolder.dir-plain>summary{background:var(--panel)}
 .hw-head{padding:10px 16px;border-radius:7px 7px 0 0;background:color-mix(in srgb,var(--accent) 16%,var(--panel))}
 .hw-head h3{margin:0;font-size:19px}
 .hw-body{padding:4px 16px 14px}

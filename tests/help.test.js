@@ -175,7 +175,12 @@ const folders = Help.folders();
 
 // ---- 1.12.0 ----
 { const f = id => plain(folders.find(x => x.id === id).body);
-  say('the Race Director help explains the Adjust pads: pick a lane, [+] value [-], the four groups, during the race, Undo, and where the values and the layout are set', ['Adjust', 'pick a lane', '[+] value [\u2212]', 'penalty points, time, laps, championship points', 'during the race', 'Undo', 'App Settings, Race Director'].every(t => f('director').includes(t)));
+  say('the Race Director help explains the Adjust pads: pick a lane, [+] value [-], the four groups, during the race, Undo, and where the values and the layout are set', ['Adjust', 'pick a lane', '[+] value [\u2212]', 'penalty points, damage points, time, laps, championship points', 'during the race', 'Undo', 'App Settings, Race Director'].every(t => f('director').includes(t)));
+  say('...and every folder is still short enough', folders.every(x => plain(x.body).length < 1400)); }
+
+// ---- 1.12.1 ----
+{ const f = id => plain(folders.find(x => x.id === id).body);
+  say('the Live Race help names the Adjust folder first and the brown Endurance folder', f('live').includes('coloured folders: Adjust, Penalties, Balance of Power, Damage and Weather, and Endurance (brown)'));
   say('...and every folder is still short enough', folders.every(x => plain(x.body).length < 1400)); }
 
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

@@ -177,6 +177,13 @@ const pressSwap = (lane, over = {}) => E('enpanel').onclick({ target: { closest:
   say('...and the other screens are told who is at the wheel now', sent.dyn.cars[0].driverName === 'Sam' && sent.dyn.cars[0].driverId === 'd2' && sent.dyn.cars[0].en.swaps === 1);
   api.liveCommand({ type: 'swap', lane: 7 }); api.liveCommand({ type: 'swap', lane: -1 }); api.liveCommand({ type: 'swap' }); api.liveCommand({ type: 'swapnext', lane: 0, id: 'd2' }); await wait(60);
   say('a swap command for a lane without a car, or without a lane, does nothing; the next driver can not be chosen when the setup does not let the Race Director choose', eng().cars[0].driverName === 'Sam' && eng().cars[0].en.swaps === 1 && eng().cars[0].en.picked === false);
+  { // 1.12.1: the Endurance folder of the Race Director page is brown, and comes last
+    const host = document.createElement('div'); await run('LiveView.mount')(host, {}); run('LiveView.go')('director'); await wait(80);
+    const html = E('lv-body').innerHTML, at = k => html.indexOf(`data-dirf="${k}"`), css = fs.readFileSync(path.join(R, 'renderer', 'styles.css'), 'utf8');
+    say('the Race Director page of an Endurance Race has an Endurance folder, brown, after the Adjust and Penalties folders (it is the last folder)', at('endurance') > at('penalties') && at('penalties') > at('adjust') && html.includes('<details class="dbfolder dirfolder dir-brown" data-dirf="endurance" open><summary><strong>Endurance</strong>') && html.lastIndexOf('<details class="dbfolder dirfolder') === html.indexOf('<details class="dbfolder dirfolder dir-brown"'));
+    say('...and the style sheet has the brown', /\.dir-brown\{--fc:#a8693a\}/.test(css));
+    run('LiveView.unmount')();
+  }
   key('s'); await wait(30);
   run('LiveView.unmount') && run('LiveView.unmount')();
   await until(() => phase() === 'finished', 5000); await wait(100);

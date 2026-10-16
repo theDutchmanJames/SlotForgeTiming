@@ -1,4 +1,4 @@
-// The adjust pads (1.12.0): the Race Director adds or takes off penalty points, race time, laps and championship points with pads that look like [+]  value  [−].
+// The adjust pads (1.12.0): the Race Director adds or takes off penalty points, damage points, race time, laps and championship points with pads that look like [+]  value  [−].
 // Every group has its own colour (the minus button is a darker, greyer version of the plus button) and its own list of values, set in App Settings > Race Director.
 // This file holds the rules (the lists, the colours, the text), the markup of one pad and the reading of a click. Pure: no page and no settings store, so it runs in the tests too.
 (function (root) {
@@ -6,6 +6,7 @@
   // id: the group; key: the setting that holds its values; whole: only whole numbers; places: decimals that are kept; unit: how an amount is written
   const GROUPS = [
     { id: 'points', title: 'Penalty points', note: 'points on the penalty system', key: 'padPoints', defaults: [1, 2, 5], color: '#f2b705', whole: true, places: 0, unit: ['penalty point', 'penalty points'] },
+    { id: 'damage', title: 'Damage points', note: 'points on the damage system', key: 'padDamage', defaults: [1, 2, 4], color: '#e5484d', whole: true, places: 0, unit: ['damage point', 'damage points'] },
     { id: 'time', title: 'Time', note: 'seconds on the race time', key: 'padSeconds', defaults: [5, 10, 30], color: '#f08a24', whole: false, places: 3, unit: ['s', 's'] },
     { id: 'laps', title: 'Laps', note: 'laps counted for the car', key: 'padLaps', defaults: [1, 2], color: '#9b7bff', whole: true, places: 0, unit: ['lap', 'laps'] },
     { id: 'champ', title: 'Championship points', note: 'points for the championship', key: 'padChamp', defaults: [1, 2, 5], color: '#3fb950', whole: false, places: 2, unit: ['championship point', 'championship points'] },

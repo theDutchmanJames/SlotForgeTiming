@@ -4,6 +4,7 @@ Every version of SlotForge Timing, newest first. The README has a section **What
 
 ## Versions
 
+- **1.12.1**: a red Damage points pad in the Adjust folder of the Race Director page (and its values and preview in App Settings > Race Director), the Adjust folder in the normal colours of the theme instead of the accent, and the Endurance folder in brown
 - **1.12.0**: adjust pads for the Race Director: an Adjust folder on the Race Director page where you pick a lane and then use coloured pads, `[+] value [−]`, for penalty points (yellow), time (orange), laps (violet) and championship points (green), horizontal or vertical, a field for another amount, a line with the last action and Undo, working during the race; a Race Director page in App Settings with your own values for each group; the same pads in the race review instead of the typed fields, a green Points column, and the same coloured look for the penalty and damage buttons of the page
 - **1.11.1**: the Race Director page in coloured folders like the Help: the Calls stay on top, then Penalties (yellow), Balance of Power (white), Damage (red) and Weather (blue), in that order, open or closed as you like
 - **1.11.0**: the Leaderboard page is a grid (pick up to 6 columns by 4 rows with little squares, give every cell a row design from the Leaderboard Editor or the classic table, boards that cover more cells, From place and To place per board), the same two settings on the Leaderboard widget, and the race setup folder "Penalties, fuel and pits" is now called "Rule sets"

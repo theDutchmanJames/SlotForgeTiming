@@ -7,9 +7,9 @@ const ok = (name, cond) => { console.log((cond ? 'ok   ' : 'FAIL ') + name); if 
 const R = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
 
 // ---- the groups ----
-ok('four groups, in this order: penalty points, time, laps, championship points', A.GROUPS.map(g => g.id).join() === 'points,time,laps,champ');
-ok('...each with a title, a setting of its own and standard values', A.GROUPS.every(g => g.title && /^pad[A-Z]/.test(g.key) && g.defaults.length > 0 && new Set(A.GROUPS.map(x => x.key)).size === 4));
-ok('...the standard values', A.valuesOf({}, 'points').join() === '1,2,5' && A.valuesOf({}, 'time').join() === '5,10,30' && A.valuesOf({}, 'laps').join() === '1,2' && A.valuesOf({}, 'champ').join() === '1,2,5');
+ok('five groups, in this order: penalty points, damage points, time, laps, championship points', A.GROUPS.map(g => g.id).join() === 'points,damage,time,laps,champ');
+ok('...each with a title, a setting of its own and standard values', A.GROUPS.every(g => g.title && /^pad[A-Z]/.test(g.key) && g.defaults.length > 0 && new Set(A.GROUPS.map(x => x.key)).size === 5));
+ok('...the standard values', A.valuesOf({}, 'points').join() === '1,2,5' && A.valuesOf({}, 'damage').join() === '1,2,4' && A.valuesOf({}, 'time').join() === '5,10,30' && A.valuesOf({}, 'laps').join() === '1,2' && A.valuesOf({}, 'champ').join() === '1,2,5');
 ok('an unknown group has no values and no look', A.valuesOf({}, 'nope').length === 0 && A.look('nope') === null && A.byId('nope') === null && A.html({ group: 'nope' }) === '');
 
 // ---- the lists ----
@@ -27,14 +27,15 @@ ok('the signature changes with the layout and with a list, and not with anything
 
 // ---- the colours ----
 const hsl = h => { const [r, g, b] = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), L = (mx + mn) / 2, d = mx - mn; return { L, S: d === 0 ? 0 : d / (1 - Math.abs(2 * L - 1)) }; };
-ok('penalty points are yellow, time orange, laps violet and championship points green', A.look('points').plus === '#f2b705' && A.look('time').plus === '#f08a24' && A.look('laps').plus === '#9b7bff' && A.look('champ').plus === '#3fb950');
+ok('penalty points are yellow, damage points red, time orange, laps violet and championship points green', A.look('points').plus === '#f2b705' && A.look('damage').plus === '#e5484d' && A.look('time').plus === '#f08a24' && A.look('laps').plus === '#9b7bff' && A.look('champ').plus === '#3fb950');
 ok('the colours follow the folders of the Race Director page (yellow and red)', R('renderer/styles.css').includes('.dir-yellow{--fc:#f2b705}') && A.look('points').plus === '#f2b705');
 ok('the minus button is the same colour, darker and less coloured than the plus button (in every group)', A.GROUPS.every(g => { const l = A.look(g.id); return A.lum(l.minus) < A.lum(l.plus) && hsl(l.minus).S < hsl(l.plus).S && hsl(l.minus).L < hsl(l.plus).L; }));
-ok('...but not grey: it is still recognisably the same hue family (the minus buttons of two groups differ)', new Set(A.GROUPS.map(g => A.look(g.id).minus)).size === 4);
+ok('...but not grey: it is still recognisably the same hue family (the minus buttons of two groups differ)', new Set(A.GROUPS.map(g => A.look(g.id).minus)).size === 5);
 ok('the letters on every button can be read (contrast of at least 4.4 to 1), dark on light and white on dark', A.GROUPS.every(g => { const l = A.look(g.id); return A.contrast(l.plus, l.plusText) >= 4.4 && A.contrast(l.minus, l.minusText) >= 4.4; }) && A.look('points').plusText === '#111418');
 ok('the colours go on the pad as variables', A.styleOf('time') === `--pc:#f08a24;--pt:${A.look('time').plusText};--mc:${A.look('time').minus};--mt:${A.look('time').minusText}`);
 
 // ---- the words ----
+ok('damage points are whole numbers like penalty points, and read in words', A.clean('damage', '0.4 3 2.6').join() === '3' && A.unitText('damage', 1) === '1 damage point' && A.unitText('damage', 4) === '4 damage points' && A.describe('damage', -2, 'Kim') === '\u22122 damage points from Kim' && A.valuesOf({ padDamage: [4, 1] }, 'damage').join() === '1,4');
 ok('an amount in words: seconds as "s", the others singular or plural', A.unitText('time', 10) === '10 s' && A.unitText('time', 2.5) === '2.5 s' && A.unitText('laps', 1) === '1 lap' && A.unitText('laps', 2) === '2 laps' && A.unitText('points', 1) === '1 penalty point' && A.unitText('points', 5) === '5 penalty points' && A.unitText('champ', 2) === '2 championship points');
 ok('what was done: + to the driver, a real minus sign from the driver', A.describe('time', 10, 'Sam') === '+10 s to Sam' && A.describe('time', -10, 'Sam') === '−10 s from Sam' && A.describe('laps', 1, 'Kim') === '+1 lap to Kim' && A.describe('points', -2, 'Kim') === '−2 penalty points from Kim');
 ok('...nothing for zero, text or an unknown group', A.describe('time', 0, 'x') === '' && A.describe('time', NaN, 'x') === '' && A.describe('nope', 1, 'x') === '');
@@ -54,7 +55,7 @@ ok('the field for another amount: a number, whole for laps and penalty points, w
 ok('a pad can be switched off or hidden', cnt(A.html({ group: 'laps', disabled: true }), / disabled/g) === 7 && A.html({ group: 'laps', hidden: true }).includes(' hidden>') && !A.html({ group: 'laps' }).includes('disabled'));
 ok('without values a pad has the standard ones; a bad layout is horizontal', cnt(A.html({ group: 'time' }), /class="pad-val"/g) === 3 && A.html({ group: 'time', layout: 'x' }).includes('pad-h'));
 const all = A.padsHtml({ padLayout: 'v', padSeconds: [2] }, {});
-ok('all the pads for the settings: four, in order, in the layout of the settings, with the values of the settings', cnt(all, /<div class="pad pad-v/g) === 4 && all.indexOf('data-pad="points"') < all.indexOf('data-pad="time"') && all.indexOf('data-pad="laps"') < all.indexOf('data-pad="champ"') && all.includes('data-v="2"') && !all.includes('data-pad-do="time" data-sign="1" data-v="5"'));
+ok('all the pads for the settings: five, in order, in the layout of the settings, with the values of the settings', cnt(all, /<div class="pad pad-v/g) === 5 && all.indexOf('data-pad="points"') < all.indexOf('data-pad="damage"') && all.indexOf('data-pad="damage"') < all.indexOf('data-pad="time"') && all.indexOf('data-pad="laps"') < all.indexOf('data-pad="champ"') && all.includes('data-v="2"') && !all.includes('data-pad-do="time" data-sign="1" data-v="5"'));
 ok('...some of them only, and some hidden', A.padsHtml({}, { groups: ['time', 'laps'] }).includes('data-pad="laps"') && !A.padsHtml({}, { groups: ['time', 'laps'] }).includes('data-pad="points"') && /data-pad="champ"[^>]*hidden/.test(A.padsHtml({}, { hidden: ['champ'] })) && !/data-pad="time"[^>]*hidden/.test(A.padsHtml({}, { hidden: ['champ'] })));
 
 // ---- a click ----

@@ -40,11 +40,11 @@ function damageCommand(c) {
   if (c.type !== 'damage') return true;
   return Number.isInteger(c.lane) && c.lane >= 0 && c.lane <= 15 && Number.isInteger(c.n) && c.n >= -20 && c.n <= 20 && c.n !== 0;
 }
-// The command of the adjust pads: a group, a lane (a whole number from 0 to 15) and an amount that is not 0 and not more than 100000 (seconds, laps or points; negative takes off).
-const PAD_GROUPS = ['points', 'time', 'laps', 'champ'];
+// The command of the adjust pads: a group, a lane (a whole number from 0 to 15) and an amount that is not 0 and not more than 100000 (seconds, laps or points; negative takes off); damage points are a whole number from -20 to 20, as the damage command.
+const PAD_GROUPS = ['points', 'damage', 'time', 'laps', 'champ'];
 function padCommand(c) {
   if (c.type !== 'pad') return true;
-  return typeof c.group === 'string' && PAD_GROUPS.includes(c.group) && Number.isInteger(c.lane) && c.lane >= 0 && c.lane <= 15 && typeof c.amount === 'number' && Number.isFinite(c.amount) && c.amount !== 0 && Math.abs(c.amount) <= 100000;
+  return typeof c.group === 'string' && PAD_GROUPS.includes(c.group) && Number.isInteger(c.lane) && c.lane >= 0 && c.lane <= 15 && typeof c.amount === 'number' && Number.isFinite(c.amount) && c.amount !== 0 && Math.abs(c.amount) <= 100000 && (c.group !== 'damage' || (Number.isInteger(c.amount) && Math.abs(c.amount) <= 20));
 }
 function bopCommand(c) {
   if (c.type !== 'bop') return true;

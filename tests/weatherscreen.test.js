@@ -200,6 +200,29 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     say('...and opening it again is remembered too', html.includes('data-dirf="damage" open>'));
     { const css = require('fs').readFileSync(__dirname + '/../renderer/styles.css', 'utf8');
       say('the colours are in the stylesheet (the folder takes its colour from --fc), white is a grey on a light theme, and the name inside a panel is not repeated under the folder name', /\.dirfolder\{--fc:var\(--accent\);border-left-color:var\(--fc\)\}/.test(css) && /\.dbfolder\.dirfolder>summary\{background:color-mix\(in srgb,var\(--fc\) 16%,var\(--panel\)\)\}/.test(css) && /\.dir-yellow\{--fc:#f2b705\}/.test(css) && /\.dir-white\{--fc:#ffffff\}/.test(css) && /\.dir-red\{--fc:#e5484d\}/.test(css) && /\.dir-blue\{--fc:#4c9aff\}/.test(css) && /\[data-theme="light"\] \.dir-white,\[data-theme="ocean"\] \.dir-white\{--fc:#7d8590\}/.test(css) && /\.dirfolder \.bophead>strong\{display:none\}/.test(css)); }
+    { // 1.12.1: the Damage points pad of the Adjust folder (this race has a damage system), and the plain colours of the folder
+      const mkb = (dataset, extra = {}) => ({ dataset, disabled: false, ...extra });
+      const laneB = [0, 1].map(l => mkb({ adjLane: String(l) }, { setAttribute(k, v) { this[k] = v; }, querySelector: () => ({ textContent: '' }) }));
+      const pads = ['points', 'damage', 'time', 'laps', 'champ'].map(id => ({ dataset: { pad: id }, hidden: false, btns: [mkb({ sign: '1' }), mkb({ sign: '-1' })], querySelectorAll() { return this.btns; } }));
+      const undoB = mkb({});
+      E('dir-adj').querySelectorAll = sel => (sel === '[data-adj-lane]' ? laneB : sel === '.pad' ? pads : sel === '[data-adj-undo]' ? [undoB] : []);
+      const clickA = (sel, dataset) => E('lv-body').onclick({ target: { closest: s => (s === sel ? { dataset, disabled: false } : null) } });
+      const again = async cond => { await until(cond, 3000); cbs.dyn.forEach(f => f(plain(sent.dyn))); };
+      cbs.dyn.forEach(f => f(plain(sent.dyn)));
+      const adj = E('dir-adj').innerHTML, page = E('lv-body').innerHTML;
+      say('the Adjust folder has the normal colours of the theme (plain), not the accent', page.includes('<details class="dbfolder dirfolder dir-plain" data-dirf="adjust"') && /\.dir-plain\{--fc:var\(--muted\)\}/.test(require('fs').readFileSync(__dirname + '/../renderer/styles.css', 'utf8')) && /\.dbfolder\.dirfolder\.dir-plain>summary\{background:var\(--panel\)\}/.test(require('fs').readFileSync(__dirname + '/../renderer/styles.css', 'utf8')));
+      say('a race with a damage system has a red Damage points pad after the penalty points, with the standard values 1, 2 and 4', adj.indexOf('data-pad="points"') < adj.indexOf('data-pad="damage"') && adj.indexOf('data-pad="damage"') < adj.indexOf('data-pad="time"') && adj.includes('--pc:#e5484d') && [1, 2, 4].every(v => adj.includes(`data-pad-do="damage" data-sign="1" data-v="${v}"`)) && pads[1].hidden === false);
+      say('...with no lane picked the pad is switched off', pads[1].btns.every(b => b.disabled));
+      clickA('[data-adj-lane]', { adjLane: '1' });
+      say('...with lane 2 picked + is on and − is off (the damage panel allows a hit, and there is no damage to take back yet)', pads[1].btns[0].disabled === false && pads[1].btns[1].disabled === true);
+      const c0 = cmds.length; clickA('[data-pad-do]', { padDo: 'damage', v: '2', sign: '1' }); await again(() => sent.dyn && sent.dyn.cars[1].dmg === 2);
+      say('+2 gives lane 2 two damage points, through the damage system, and then − is on', cmds.length === c0 + 1 && cmds[c0].type === 'pad' && cmds[c0].group === 'damage' && cmds[c0].lane === 1 && cmds[c0].amount === 2 && eng().cars[1].dmg === 2 && pads[1].btns[1].disabled === false && E('adj-last').textContent === `Last: +2 damage points to ${eng().cars[1].driverName}`);
+      say('...the damage log has it as a hit of the Race Director', eng().events.some(e => e.type === 'damage' && e.car === 1 && e.delta === 2 && e.why === 'director'));
+      clickA('[data-adj-undo]', {}); await again(() => sent.dyn.cars[1].dmg === 0);
+      say('Undo takes the 2 points back', cmds[cmds.length - 1].amount === -2 && eng().cars[1].dmg === 0 && pads[1].btns[1].disabled === true);
+      const n = eng().cars[1].dmg; api.liveCommand({ type: 'pad', group: 'damage', lane: 1, amount: 21 }); api.liveCommand({ type: 'pad', group: 'damage', lane: 1, amount: 1.5 }); api.liveCommand({ type: 'pad', group: 'damage', lane: 7, amount: 1 }); await wait(60);
+      say('the race window refuses damage points that are not a whole number from -20 to 20, and a lane without a car', eng().cars[1].dmg === n && eng().cars[0].dmg === 0);
+    }
     body.querySelectorAll = keepQ;
     run('LiveView.unmount')();
     key('s'); await until(() => phase() === 'finished', 3000); await wait(100); }

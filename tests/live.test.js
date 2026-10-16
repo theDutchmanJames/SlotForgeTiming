@@ -958,24 +958,25 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   {
     const page = E('lv-body').innerHTML, box = E('dir-adj').innerHTML;
     say('the Director page has an Adjust folder between the Calls and the Penalties', page.indexOf('<h3>Calls</h3>') > 0 && page.indexOf('<h3>Calls</h3>') < page.indexOf('data-dirf="adjust"') && page.indexOf('data-dirf="adjust"') < page.indexOf('data-dirf="penalties"') && page.includes('id="dir-adj"'));
-    say('...it has a button for every lane, the four pads in the order penalty points, time, laps, championship points, and Undo', ['data-adj-lane="0"', 'data-adj-lane="1"'].every(x => box.includes(x)) && ['points', 'time', 'laps', 'champ'].map(g => box.indexOf(`data-pad="${g}"`)).every((x, i, a) => x > 0 && (i === 0 || x > a[i - 1])) && box.includes('data-adj-undo') && box.includes('data-adj-layout="h"') && box.includes('pad-h'));
+    say('...it has a button for every lane, the five pads in the order penalty points, damage points, time, laps, championship points, and Undo', ['data-adj-lane="0"', 'data-adj-lane="1"'].every(x => box.includes(x)) && ['points', 'damage', 'time', 'laps', 'champ'].map(g => box.indexOf(`data-pad="${g}"`)).every((x, i, a) => x > 0 && (i === 0 || x > a[i - 1])) && box.includes('data-adj-undo') && box.includes('data-adj-layout="h"') && box.includes('pad-h'));
     const mkb = (dataset, extra = {}) => ({ dataset, disabled: false, ...extra });
     const laneB = [0, 1].map(l => mkb({ adjLane: String(l) }, { setAttribute(k, v) { this[k] = v; }, querySelector: () => ({ textContent: '' }) }));
     const padB = id => [mkb({ sign: '1' }), mkb({ sign: '-1' })].map(b => Object.assign(b, { id }));
-    const pads = ['points', 'time', 'laps', 'champ'].map(id => ({ dataset: { pad: id }, hidden: false, btns: padB(id), querySelectorAll() { return this.btns; } }));
+    const pads = ['points', 'damage', 'time', 'laps', 'champ'].map(id => ({ dataset: { pad: id }, hidden: false, btns: padB(id), querySelectorAll() { return this.btns; } }));
     const undoB = mkb({}), layB = ['h', 'v'].map(v => mkb({ adjLayout: v }, { setAttribute(k, x) { this[k] = x; } }));
     E('dir-adj').querySelectorAll = sel => (sel === '[data-adj-lane]' ? laneB : sel === '.pad' ? pads : sel === '[data-adj-undo]' ? [undoB] : sel === '[data-adj-layout]' ? layB : []);
     const clickA = (sel, dataset, extra = {}) => E('lv-body').onclick({ target: { closest: s => (s === sel ? { dataset, disabled: false, ...extra } : null) } });
     const again = async cond => { await until(cond, 3000); cbs.dyn.forEach(f => f(plain(sent.dyn))); };
     const sentCar = i => run(`__sent.dyn.cars[${i}]`);
     cbs.dyn.forEach(f => f(plain(sent.dyn)));
+    say('the Adjust folder has the normal colours of the theme, not the accent (plain)', page.includes('<details class="dbfolder dirfolder dir-plain" data-dirf="adjust"'));
     say('no lane picked yet: the page says so, every pad is switched off, and Undo too', E('adj-who').textContent.includes('Choose a lane') && pads.every(p => p.btns.every(b => b.disabled)) && undoB.disabled === true && E('adj-last').textContent === 'Nothing adjusted yet.');
-    say('...the pads that this race can use are shown: penalty points (there is a penalty system), time and laps; no championship points (this is no heat race)', pads.map(p => p.hidden).join() === 'false,false,false,true');
+    say('...the pads that this race can use are shown: penalty points (there is a penalty system), time and laps; no damage points (no damage system) and no championship points (this is no heat race)', pads.map(p => p.hidden).join() === 'false,true,false,false,true');
     const nm = eng().cars[1].driverName, c0 = cmds.length;
     clickA('[data-pad-do]', { padDo: 'time', v: '10', sign: '1' });
     say('a pad pressed before a lane is picked sends nothing', cmds.length === c0 && !eng().cars[1].adjMs);
     clickA('[data-adj-lane]', { adjLane: '1' });
-    say('picking lane 2 shows "Lane 2 · driver", marks the button and switches the pads on', E('adj-who').textContent === `Lane 2 · ${nm}` && laneB[1]['aria-pressed'] === 'true' && laneB[0]['aria-pressed'] === 'false' && pads.every(p => p.btns.every(b => !b.disabled || (p.btns.indexOf(b) === 1 && p.id === 'points'))));
+    say('picking lane 2 shows "Lane 2 · driver", marks the button and switches the pads on', E('adj-who').textContent === `Lane 2 · ${nm}` && laneB[1]['aria-pressed'] === 'true' && laneB[0]['aria-pressed'] === 'false' && pads.filter(p => !p.hidden).every(p => p.btns.every(b => !b.disabled || (p.btns.indexOf(b) === 1 && p.id === 'points'))));
     clickA('[data-pad-do]', { padDo: 'time', v: '10', sign: '1' });
     say('+ on the 10 s pad reaches the race: 10 seconds on lane 2, during the race', cmds[cmds.length - 1].type === 'pad' && cmds[cmds.length - 1].group === 'time' && cmds[cmds.length - 1].lane === 1 && cmds[cmds.length - 1].amount === 10 && eng().cars[1].adjMs === 10000 && phase() === 'running');
     await again(() => sentCar(1).adjMs === 10000);
@@ -1004,7 +1005,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     // paused: the pads still work; after the race: the review has its own
     run('live.actions.pause()'); await again(() => run('__sent.dyn.phase') === 'paused');
     clickA('[data-pad-do]', { padDo: 'laps', v: '1', sign: '1' }); await again(() => sentCar(1).adjLaps === 1);
-    say('the pads work while the race is paused', phase() === 'paused' && eng().cars[1].adjLaps === 1 && pads.every(p => p.btns.every(b => !b.disabled || p.id === 'points')));
+    say('the pads work while the race is paused', phase() === 'paused' && eng().cars[1].adjLaps === 1 && pads.filter(p => !p.hidden).every(p => p.btns.every(b => !b.disabled || p.id === 'points')));
     clickA('[data-adj-undo]', {}); await again(() => sentCar(1).adjLaps === 0); run('live.actions.pause()'); await again(() => run('__sent.dyn.phase') === 'running');
     // the layout and the values come from the settings
     clickA('[data-adj-layout]', { adjLayout: 'v' }); await wait(60);

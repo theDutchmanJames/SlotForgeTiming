@@ -1767,3 +1767,19 @@ Good to know:
 4. **GitHub tags** (v0.97.0 to v1.12.0) are still not pushed; they are refused from here. The code itself is pushed to the main branch.
 5. The tests: new `tests/adjustpad.test.js` (lists, colours, markup, clicks, Undo, the style sheet), and new blocks in `tests/live.test.js` (the Adjust folder during a race), `tests/screens.test.js` (the settings page), `tests/adjust.test.js` (the review) and `tests/help.test.js`.
 6. Files: `renderer/adjustpad.js` (new), `renderer/padui.js` (new), `renderer/liveview.js`, `renderer/race.js`, `renderer/review.js`, `renderer/app.js`, `renderer/styles.css`, `renderer/help.js`, `renderer/index.html`.
+
+## What to try (1.12.1): Damage points pad, plain Adjust folder, brown Endurance folder
+From your notes of Friday 16 October.
+1. **Damage points are a pad too.** The Adjust folder on the Race Director page has a red **Damage points** pad, right after the Penalty points. It only shows in a race with a Damage System. Pick a lane, press **+** to give damage points, **−** to take them back, and Undo works for it as for the other pads. It uses the Damage System (levels, repairs, retire or disqualify) like the Damage folder does, and the log says it was a hit of the Race Director. The **+** button is off for a car that damage put out or that has finished, and **−** is off when there is no damage to take back.
+2. **App Settings > Race Director** now has a field for the **Damage points** values (standard 1, 2, 4), and its pad in the preview. All five pads are there: penalty points (yellow), damage points (red), time (orange), laps (violet) and championship points (green).
+3. **The Adjust folder has the normal colours of the theme** (a grey stripe and the plain panel colour), not the accent colour. It keeps its place between the Calls and the Penalties.
+4. **The Endurance folder is brown** (`#a8693a`) in an Endurance Race, still the last folder.
+
+Try it: start a race with *Simulated cars* in a race setup with a damage system. Open Live Race > Race Director, open Adjust, pick lane 2 and press **+** on the red pad. The Damage folder below shows the same points. Then open App Settings > Race Director, change the damage values to `1, 3, 5` and see the pad change.
+
+Good to know:
+1. **Damage points** go in whole numbers from 1 to 20 at a time (the same as the Damage folder). A slot car with a damage factor gets more or fewer points than you press, as it does in the Damage folder.
+2. **The review after the race** has no damage pad; damage is part of the race, not of the review.
+3. **GitHub tags** (v0.97.0 to v1.12.1) are still not pushed; they are refused from here. The code itself is pushed to the main branch.
+4. The tests: new blocks in `tests/weatherscreen.test.js` (the damage pad, the plain folder), `tests/endurancescreen.test.js` (the brown folder), `tests/adjustpad.test.js`, `tests/screens.test.js` (the settings page), `tests/web.test.js` (phones) and `tests/help.test.js`.
+5. Files: `renderer/adjustpad.js`, `renderer/liveview.js`, `renderer/race.js`, `renderer/styles.css`, `renderer/help.js`, `server.js`.
