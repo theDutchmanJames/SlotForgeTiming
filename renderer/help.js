@@ -147,10 +147,10 @@ const Help = (() => {
         <ul>
           <li>The race screen shows the timing page you chose in the race setup. A second layout can go on a second screen.</li>
           <li>Keys: <b>Space</b> starts, pauses and resumes. <b>Y</b> yellow flag, <b>R</b> red flag, <b>S</b> stop (it asks once). <b>1 to 8</b> count a lap for that lane without hardware, <b>Shift + 1 to 8</b> send that lane into the pit and <b>Ctrl + 1 to 8</b> make a call from that lane.</li>
-          <li>The <b>Full screen widgets</b> button in the bar under the page (or the <b>F</b> key) shows only the widgets of the layout, as large as the window allows, and puts the window on full screen too. <b>Esc</b>, <b>F</b> or the small <b>Exit full screen</b> button (move the mouse or touch the screen to see it) goes back. The race keeps running and is run with the keys as before.</li>
-          <li>A race keeps running when you open another tab. A <b>Race</b> tab with a green dot takes you back to it. The Trackmate and the Race Director keep working, but the keys above only work on the Race tab. Only one race can run at a time.</li>
+          <li>The <b>Full screen widgets</b> button (or the <b>F</b> key) shows only the widgets of the layout, as large as the window allows, on full screen. <b>Esc</b>, <b>F</b> or the small <b>Exit full screen</b> button (move the mouse to see it) goes back. The race keeps running, with the keys as before.</li>
+          <li>A race keeps running when you open another tab. A <b>Race</b> tab with a green dot takes you back to it. The keys above only work on the Race tab. Only one race can run at a time.</li>
           <li>Tick <b>Simulated cars</b> to watch a race without any hardware.</li>
-          <li>The <b>Review laps</b> button lets you mark a lap invalid or delete it while the race is still running.</li>
+          <li>The <b>Review laps</b> button lets you mark a lap invalid or delete it during the race. The <b>Adjust</b> button opens the same pads as the Race Director page: pick a lane, then adjust penalty points, damage points, time, laps or championship points.</li>
           <li>When a race (or a heat) ends, a <b>review</b> opens before anything is saved: check the order, clear penalty points, disqualify or reinstate a driver, correct laps, or <b>Adjust</b> the race time, the laps and (in a heat race decided on points) the championship points of a driver. <b>Finalize results</b> saves them.</li>
         </ul>` },
       { id: 'director', title: 'Race Director, flags and penalties', note: 'Control the race from anywhere', body: `

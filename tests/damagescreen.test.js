@@ -46,7 +46,7 @@ const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if
 for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function') api[k] = (...x) => { x.forEach(v => { if (typeof v !== 'function') structuredClone(v); }); return f(...x); }; }
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'report.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js','padui.js','livegrid.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'enduranceui.js', 'damageui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'report.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js','padui.js','livegrid.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'enduranceui.js', 'damageui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -150,6 +150,81 @@ const view = () => run('Damage.view(live.engine(), [0, 1], performance.now(), li
   key(' '); await until(() => phase() === 'running', 5000); await wait(450); await lapOn(0);
   say('...nothing is given, and the Race Director command does nothing', car(0).dmg === 0 && (api.liveCommand({ type: 'damage', lane: 0, n: 2 }), await wait(60), car(0).dmg === 0));
   run('state.race = null; live = null');
+
+
+  // ---------- 1.13.0: the Adjust panel on the Race tab: the pads of the Race Director page, for the race in this window ----------
+  const adjFakes = () => { // (stand-in buttons for the panel: the fake page does not parse HTML)
+    const mkb = (dataset, extra = {}) => ({ dataset, disabled: false, hidden: false, ...extra });
+    const laneB = [0, 1].map(l => mkb({ adjLane: String(l) }, { setAttribute(k, v) { this[k] = v; }, querySelector: () => ({ textContent: '' }) }));
+    const pads = ['points', 'damage', 'time', 'laps', 'champ'].map(id => ({ dataset: { pad: id }, hidden: false, btns: [mkb({ sign: '1' }), mkb({ sign: '-1' })], querySelectorAll() { return this.btns; } }));
+    const undoB = mkb({}), layB = ['h', 'v'].map(v => mkb({ adjLayout: v }, { setAttribute(k, x) { this[k] = x; } }));
+    E('adjpanel').querySelectorAll = sel => (sel === '[data-adj-lane]' ? laneB : sel === '.pad' ? pads : sel === '[data-adj-undo]' ? [undoB] : sel === '[data-adj-layout]' ? layB : []);
+    const clickA = async (sel, dataset, extra = {}) => { E('adjpanel').onclick({ target: { closest: x => (x === sel ? { dataset, disabled: false, ...extra } : null) } }); await wait(20); };
+    return { laneB, pads, undoB, layB, clickA };
+  };
+  await openRace(dsetup({ id: 'ds4' }), track, rows(1, 2));
+  {
+    const A = adjFakes();
+    say('a race with penalty and damage systems has an Adjust panel on the Race tab, but nothing to press before the start', !!run('live.adjPanel') && E('adjbtn').hidden === true && E('adjpanel').hidden === true);
+    key(' '); await until(() => phase() === 'running', 5000); await wait(80);
+    say('while the race runs the Adjust button is there, and the panel stays closed until it is pressed', E('adjbtn').hidden === false && E('adjbtn').textContent === 'Adjust' && E('adjpanel').hidden === true);
+    E('adjbtn').onclick({}); await wait(40);
+    const box = E('adjpanel').innerHTML;
+    say('...pressing it opens the panel: a button for every lane, the five pads in order, Undo and the layout buttons', E('adjpanel').hidden === false && E('adjbtn').textContent === 'Hide adjust' && box.includes('<strong>Adjust</strong>') && ['data-adj-lane="0"', 'data-adj-lane="1"'].every(x => box.includes(x))
+      && ['points', 'damage', 'time', 'laps', 'champ'].map(g => box.indexOf(`data-pad="${g}"`)).every((x, i, a) => x > 0 && (i === 0 || x > a[i - 1])) && box.includes('data-adj-undo') && box.includes('data-adj-layout="v"') && box.includes('pad-h'));
+    say('...no lane is picked yet: it says so, every pad and Undo are switched off', E('radj-who').textContent.includes('Choose a lane') && A.pads.every(p => p.btns.every(b => b.disabled)) && A.undoB.disabled === true && E('radj-last').textContent === 'Nothing adjusted yet.');
+    say('...the pads of this race: penalty points, damage points, time and laps; no championship points (no heat race)', A.pads.map(p => p.hidden).join() === 'false,false,false,false,true');
+    const nm = car(1).driverName;
+    await A.clickA('[data-adj-lane]', { adjLane: '1' });
+    say('picking lane 2 shows "Lane 2 · driver", marks the button and switches the pads on (nothing to take back yet: penalty minus, damage minus)', E('radj-who').textContent === `Lane 2 · ${nm}` && A.laneB[1]['aria-pressed'] === 'true' && A.laneB[0]['aria-pressed'] === 'false'
+      && A.pads[0].btns[0].disabled === false && A.pads[0].btns[1].disabled === true && A.pads[1].btns[0].disabled === false && A.pads[1].btns[1].disabled === true && A.pads[2].btns.every(b => !b.disabled));
+    await A.clickA('[data-pad-do]', { padDo: 'time', v: '10', sign: '1' });
+    say('+10 s adds ten seconds to lane 2 straight away (no command round trip), and the line says so, with Undo ready', car(1).adjMs === 10000 && car(0).adjMs === 0 && E('radj-last').textContent === `Last: +10 s to ${nm}` && A.undoB.disabled === false);
+    await A.clickA('[data-pad-do]', { padDo: 'laps', v: '2', sign: '1' });
+    say('+2 laps: the standings count them', car(1).adjLaps === 2 && eng().lapsOf(car(1)) === car(1).laps.length + 2 && E('radj-last').textContent === `Last: +2 laps to ${nm}`);
+    await A.clickA('[data-pad-do]', { padDo: 'points', v: '2', sign: '1' });
+    say('+2 penalty points (the penalty system), and now the minus button is on', car(1).points === 2 && A.pads[0].btns[1].disabled === false);
+    await A.clickA('[data-pad-do]', { padDo: 'damage', v: '2', sign: '1' });
+    say('+2 damage points go through the damage system (logged as damage), and the damage minus is on', car(1).dmg === 2 && events('damage').length === 1 && events('damage')[0].why === 'director' && A.pads[1].btns[1].disabled === false);
+    await A.clickA('[data-pad-do]', { padDo: 'points', v: '5', sign: '-1' });
+    say('−5 penalty points takes the car to zero, not below it', car(1).points === 0 && E('radj-last').textContent === `Last: −5 penalty points from ${nm}`);
+    await A.clickA('[data-adj-undo]', {});
+    say('Undo takes back what really happened (the two points that went, not five), and the line names the press that was undone', car(1).points === 2 && E('radj-last').textContent === `Undone: −5 penalty points from ${nm}`);
+    for (let n = 0; n < 4; n++) await A.clickA('[data-adj-undo]', {});
+    say('...the rest one by one: damage, penalty points, laps and time are back where they were, and nothing is left to undo', car(1).dmg === 0 && car(1).points === 0 && car(1).adjLaps === 0 && car(1).adjMs === 0 && A.undoB.disabled === true);
+    const e0 = eng().events.length; await A.clickA('[data-adj-undo]', {});
+    await A.clickA('[data-pad-do]', { padDo: 'time', sign: '1', other: '1' }, { closest: () => ({ querySelector: () => ({ value: '2.5' }) }) });
+    say('Undo with nothing to undo does nothing; the field for another amount works the same: 2.5 s', car(1).adjMs === 2500 && E('radj-last').textContent === `Last: +2.5 s to ${nm}`);
+    await A.clickA('[data-pad-do]', { padDo: 'time', sign: '1', other: '1' }, { closest: () => ({ querySelector: () => ({ value: '' }) }) });
+    say('...an empty field does nothing', car(1).adjMs === 2500);
+    await A.clickA('[data-adj-layout]', { adjLayout: 'v' }); await wait(60);
+    say('Vertical: the layout is saved in the settings and the pads are drawn as rows', run('state.settings.padLayout') === 'v' && E('adjpanel').innerHTML.includes('pad-v') && !E('adjpanel').innerHTML.includes('pad-h'));
+    await A.clickA('[data-adj-layout]', { adjLayout: 'h' }); await wait(60);
+    say('...and Horizontal again', run('state.settings.padLayout') === 'h' && E('adjpanel').innerHTML.includes('pad-h'));
+    await A.clickA('[data-adj-lane]', { adjLane: '0' });
+    say('another lane can be picked (the pads act on lane 1 then)', E('radj-who').textContent === `Lane 1 · ${car(0).driverName}`);
+    run('live.actions.pause()'); await wait(60);
+    await A.clickA('[data-pad-do]', { padDo: 'laps', v: '1', sign: '1' });
+    say('the pads work while the race is paused, too', phase() === 'paused' && E('adjbtn').hidden === false && car(0).adjLaps === 1);
+    E('adjbtn').onclick({}); await wait(40);
+    say('the button closes the panel again', E('adjpanel').hidden === true && E('adjbtn').textContent === 'Adjust');
+    run('live.actions.pause()'); await wait(60);
+  }
+  run('state.race = null; live = null'); saved.length = 0;
+
+  // a race with a penalty system but no Damage System has no damage pad; a practice without either has no Adjust button at all; a Time Token Session has no panel
+  await openRace(dsetup({ id: 'ds5', damageSystem: '' }), track, rows(1, 2));
+  {
+    const A = adjFakes();
+    key(' '); await until(() => phase() === 'running', 5000); await wait(80);
+    E('adjbtn').onclick({}); await wait(40);
+    say('without a Damage System the damage pad is hidden (penalty points, time and laps are there)', A.pads.map(p => p.hidden).join() === 'false,true,false,false,true');
+  }
+  run('state.race = null; live = null'); saved.length = 0;
+  await openRace(dsetup({ id: 'ds6', sessionType: 'practice', duration: 5, damageSystem: '', penaltySystem: '' }), track, rows(1, 2));
+  key(' '); await until(() => phase() === 'running', 5000); await wait(80);
+  say('a practice has nothing to adjust (no penalty system, no damage system, no race time): no Adjust button', !!run('live.adjPanel') && E('adjbtn').hidden === true && E('adjpanel').hidden === true);
+  run('state.race = null; live = null'); saved.length = 0;
 
   reachedEnd = true;
   console.log(fails ? fails + ' DAMAGE SCREEN TESTS FAILED' : 'ALL DAMAGE SCREEN TESTS PASSED'); process.exit(fails ? 1 : 0);

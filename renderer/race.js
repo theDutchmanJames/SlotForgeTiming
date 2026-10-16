@@ -76,7 +76,7 @@ async function renderRace() {
     if (!l.noPersonalBest && l.driverId) base.personal.set(l.driverId, Math.min(base.personal.get(l.driverId) ?? Infinity, l.time)); // (a Guest has no personal best)
   });
   live = { penBtns: [], phase: 'ready', calling: false, callRun: 0, callTimer: null, timers: null, sim: [], key: null, laps: [], stopping: false, flash: new Map(), lights: 0, nodes: [], lapBtns: [], pitBtns: [], callBtns: [], callsKey: null, // (null: the strip is drawn the first time)
-    alive: true, raceRef: r, stintBy: new Map(), extraBy: new Map(), bestBy: new Map(), bestAll: Infinity, bestAllName: '', priorBy: new Map(), priorAll: Infinity, priorAllName: '', lapsOpen: false, lapSig: null, rvHtml: '' }; // (prior: the bests of the heats that are finished)
+    alive: true, raceRef: r, stintBy: new Map(), extraBy: new Map(), bestBy: new Map(), bestAll: Infinity, bestAllName: '', priorBy: new Map(), priorAll: Infinity, priorAllName: '', lapsOpen: false, adjOpen: false, lapSig: null, rvHtml: '' }; // (prior: the bests of the heats that are finished)
   Review.reset();
   // a Time Token Session: the token clocks of the lanes (tokens.js). They run on the race clock, so a pause stops them.
   const tokenSet = Tokens.settingsOf(state.settings);
@@ -100,12 +100,13 @@ async function renderRace() {
   host.innerHTML = `<p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.ofType || setup.sessionType])} on ${esc(r.track.name)} · ${esc(limitFull)}</p>
     <div class="rt-stage"><div class="canvas live" id="canvas"></div></div>
     <div class="bar rt-tools"><label><input type="checkbox" id="sim"> Simulated cars</label><span id="tmstatus" class="muted" role="status"></span><span id="lapbtns"></span><span id="pitbtns"></span><span id="callbtns"></span><span id="penbtns"></span>
-      <button class="btn" id="fsbtn" type="button" title="Show only the widgets, as large as the window allows (F). Esc closes it.">Full screen widgets</button><button class="btn" id="lapsbtn" aria-expanded="false" hidden title="Check the laps while the race goes on: mark a lap invalid or take it out of the records">Review laps</button><span id="msg" class="muted" role="status"></span><button class="btn danger stopbtn" id="stopbtn">Stop race</button><button class="btn" id="back">Back to Home</button></div>
+      <button class="btn" id="fsbtn" type="button" title="Show only the widgets, as large as the window allows (F). Esc closes it.">Full screen widgets</button><button class="btn" id="lapsbtn" aria-expanded="false" hidden title="Check the laps while the race goes on: mark a lap invalid or take it out of the records">Review laps</button><button class="btn" id="adjbtn" type="button" aria-expanded="false" hidden title="Adjust penalty points, damage points, time, laps and championship points for one lane while the race goes on">Adjust</button><span id="msg" class="muted" role="status"></span><button class="btn danger stopbtn" id="stopbtn">Stop race</button><button class="btn" id="back">Back to Home</button></div>
     <div id="tokenpanel" class="card tkpanel" hidden></div>
     <div id="boppanel" class="card boppanel" hidden></div>
     <div id="wxpanel" class="card boppanel" hidden></div>
     <div id="enpanel" class="card boppanel" hidden></div>
     <div id="dmpanel" class="card boppanel" hidden></div>
+    <div id="adjpanel" class="card boppanel adjpanel" hidden></div>
     <div id="finalpick" class="card" hidden></div>
     <div id="teampick" class="card" hidden></div>
     <div id="calls" class="card calls" hidden></div>
@@ -254,6 +255,7 @@ async function renderRace() {
     live.lapBtns.forEach(x => { const c = S.carByLane(x.lane); x.b.disabled = !(live.phase === 'running' && c && !c.done); x.b.hidden = !c; });
     live.callBtns.forEach(x => { const c = S.carByLane(x.lane); x.b.disabled = !(['running', 'paused'].includes(live.phase) && c && !c.done); x.b.hidden = !c; });
     drawCalls();
+    drawAdjust();
     if (live.tkPanel) live.tkPanel.update();
     if (live.bopPanel) live.bopPanel.update();
     if (live.wxPanel) live.wxPanel.update();
@@ -263,6 +265,14 @@ async function renderRace() {
     ui('back').disabled = raceActive();
     ui('stopbtn').disabled = !(live.phase === 'running' || live.phase === 'paused' || live.phase === 'between');
     share();
+  };
+  // the Adjust panel (1.13.0): the pads of the Race Director page (penalty points, damage points, time, laps, championship points) on the Race tab, opened with the "Adjust" button while the race runs or is paused
+  const drawAdjust = () => {
+    const p = live.adjPanel, btn = ui('adjbtn'), box = ui('adjpanel'), on = !!p && (live.phase === 'running' || live.phase === 'paused') && p.usable();
+    btn.hidden = !on;
+    const label = live.adjOpen ? 'Hide adjust' : 'Adjust'; if (btn.textContent !== label) btn.textContent = label;
+    btn.setAttribute('aria-expanded', String(live.adjOpen));
+    box.hidden = !(on && live.adjOpen); if (!box.hidden) p.update();
   };
   // the calls that wait for the Race Director. The strip is only rebuilt when the calls change, so a button never changes under a finger.
   const drawCalls = () => {
@@ -703,6 +713,10 @@ async function renderRace() {
   });
   Review.bind(ui('review'), reviewCommand, () => update());
   Review.bind(ui('lapreview'), reviewCommand, () => update());
+  ui('adjbtn').onclick = ev => {
+    if (ev && ev.currentTarget && ev.currentTarget.blur) ev.currentTarget.blur();
+    live.adjOpen = !live.adjOpen; update();
+  };
   ui('lapsbtn').onclick = ev => {
     if (ev && ev.currentTarget && ev.currentTarget.blur) ev.currentTarget.blur();
     live.lapsOpen = !live.lapsOpen; ui('lapsbtn').setAttribute('aria-expanded', String(live.lapsOpen)); update();
@@ -899,6 +913,8 @@ async function renderRace() {
   if (bopCfg) live.bopPanel = BopPanel.build(ui('boppanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, send: (lane, how) => actions.bop(lane, how) }); // the Balance of Power lane controls
   if (setup.endurance) live.enPanel = EndurancePanel.build(ui('enpanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, now, send: (lane, what, id) => (what === 'swap' ? actions.swap(lane, id) : actions.swapNext(lane, id)) }); // the swaps of an Endurance Race
   if (eng.damage) live.dmPanel = DamagePanel.build(ui('dmpanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), incidents: eng.damage.incidents, phase: () => live.phase, now, send: (lane, n) => actions.damage(lane, n) }); // the damage of the cars (the Damage System)
+  if (!tokens) live.adjPanel = AdjustPanel.build(ui('adjpanel'), { id: 'radj', find: ui, title: 'Adjust', eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, now,
+    penalty: () => !!(eng.penalty && eng.penalty.on), damage: () => !!eng.damage, champ: () => !!(heats && setup.resultBy === 'points'), send: (group, lane, amount) => actions.pad(group, lane, amount), refresh: () => update(), raceKey: () => eng }); // the Adjust pads: the same as on the Race Director page, but they adjust the race directly
   if (eng.weather) live.wxPanel = WeatherPanel.build(ui('wxpanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, now, send: state => actions.weather(state) }); // the weather controls
 
   // ---- a race that was interrupted can be carried on (1.9.0) ----

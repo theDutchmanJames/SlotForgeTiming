@@ -1783,3 +1783,20 @@ Good to know:
 3. **GitHub tags** (v0.97.0 to v1.12.1) are still not pushed; they are refused from here. The code itself is pushed to the main branch.
 4. The tests: new blocks in `tests/weatherscreen.test.js` (the damage pad, the plain folder), `tests/endurancescreen.test.js` (the brown folder), `tests/adjustpad.test.js`, `tests/screens.test.js` (the settings page), `tests/web.test.js` (phones) and `tests/help.test.js`.
 5. Files: `renderer/adjustpad.js`, `renderer/liveview.js`, `renderer/race.js`, `renderer/styles.css`, `renderer/help.js`, `server.js`.
+
+## What to try (1.13.0): Adjust pads on the Race tab
+From your answer of Friday 16 October ("Sounds good, go ahead").
+1. **An Adjust button on the Race tab.** While a race is running or paused, the bar under the timing page has an **Adjust** button (next to *Review laps*). It opens an **Adjust** panel with the same lane buttons and pads as the Adjust folder on the Race Director page: pick a lane, then use the coloured pads, `[+] value [−]`, for penalty points (yellow), damage points (red), time (orange), laps (violet) and championship points (green). Press the button again (*Hide adjust*) to close it.
+2. **It adjusts the race straight away.** No command goes through the Race Director; the pad changes the race in this window, and the timing page, the standings and the other windows follow. Undo and the line under the pads ("Last: +10 s to Sam") work as on the Race Director page, and the layout buttons (Horizontal or Vertical) change the layout for this device.
+3. **Only the pads that apply are there.** Penalty points need a penalty system, damage points need a Damage System, time and laps are for races and timed races, and championship points only show in a heat race that is decided on points. A practice or qualifying without a penalty or damage system has no Adjust button at all. A Time Token Session has no Adjust panel.
+4. **The same builder on both pages.** The Adjust folder of the Race Director page and this panel are built by the same code (`renderer/adjustui.js`), so they look and behave the same. The lane you picked and what you did stay when the Race Director page is drawn again.
+
+Try it: start a race with *Simulated cars* and a penalty system. On the Race tab press **Adjust**, pick lane 2, press **+** on the 10 s pad (orange) and watch lane 2's time grow by ten seconds. Press **Undo**: it is back. Then open Live Race > Race Director: the same Adjust folder is there.
+
+Good to know:
+1. **Lanes without a car** have no button (a 4-lane track with 2 drivers shows 2 lane buttons).
+2. **A new heat** starts again: no lane picked and nothing to undo.
+3. **The values** of the pads (and their preview) are still set in App Settings > Race Director.
+4. **GitHub tags** (v0.97.0 to v1.13.0) are still not pushed; they are refused from here. The code itself is pushed to the main branch.
+5. The tests: `tests/adjustui.test.js` (the panel on its own), new blocks in `tests/damagescreen.test.js` (the Race tab panel), `tests/tokenrace.test.js` and `tests/help.test.js`; the Race Director tests in `tests/live.test.js` and `tests/weatherscreen.test.js` still pass unchanged.
+6. Files: `renderer/adjustui.js` (new), `renderer/liveview.js`, `renderer/race.js`, `renderer/index.html`, `renderer/help.js`.

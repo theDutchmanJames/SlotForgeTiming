@@ -40,7 +40,7 @@ const LiveView = (() => {
     el.textContent = live() ? `${V.stat().title} · ${PHASE[d.phase] || ''}${left ? ` · next ${d.heat.final ? 'final ' + d.heat.final : 'heat'} in ` + left : ''}` : 'No race is running.';
   }
 
-  function go(p) { page = p; nodes = null; tkPanel = null; bopPanel = null; wxPanel = null; enPanel = null; dmPanel = null; shell(); draw(true); }
+  function go(p) { page = p; nodes = null; tkPanel = null; bopPanel = null; wxPanel = null; enPanel = null; dmPanel = null; adjPanel = null; shell(); draw(true); }
 
   // ---- the pages ----
   function draw(fresh) {
@@ -168,64 +168,10 @@ const LiveView = (() => {
   const dirShut = new Set();
   const folder = (id, title, note, tone, inner) => `<details class="dbfolder dirfolder${tone ? ' dir-' + tone : ''}" data-dirf="${id}"${dirShut.has(id) ? '' : ' open'}><summary><strong>${title}</strong> <span class="muted">${note}</span></summary><div class="df-body">${inner}</div></details>`;
   // The Adjust folder (1.12.0): pick a lane, then use the pads (penalty points, time, laps, championship points) for that lane. Nothing is picked to begin with, so a press never lands on the wrong lane.
-  // What a pad did is kept in adjHist, to show the last action and to undo it (an undo is the same pad command with the opposite amount).
-  let adjLane = null, adjRace = null, adjSig = '', rvShown = '';
-  const adjHist = AdjustPad.history();
-  const adjVal = (eng, lane, group) => { const c = eng.cars.find(x => x.lane === lane); return !c ? null : group === 'points' ? c.points : group === 'damage' ? (c.dmg || 0) : group === 'time' ? Math.round(c.adjMs || 0) / 1000 : group === 'laps' ? (c.adjLaps || 0) : (c.adjPoints || 0); };
-  function adjDraw(st) {
-    const box = $('dir-adj'); if (!box) return;
-    const S = state.settings || {}, lay = AdjustPad.layoutOf(S);
-    box.innerHTML = `<div class="adj-lanes" role="group" aria-label="Choose a lane">${st.cfg.entries.map(e => `<button type="button" class="btn adj-lane" data-adj-lane="${e.lane}" aria-pressed="false"><strong>Lane ${e.lane + 1}</strong><small></small></button>`).join('')}</div>
-      <p class="adj-who" id="adj-who" aria-live="polite"></p>
-      <div class="adj-pads" id="adj-pads">${AdjustPad.padsHtml(S, {})}</div>
-      <p class="adj-line"><span id="adj-last" class="muted" aria-live="polite"></span> <button type="button" class="btn" data-adj-undo>Undo</button></p>
-      <p class="adj-layout"><span class="muted">Pads:</span> <button type="button" class="btn" data-adj-layout="h" aria-pressed="${lay === 'h'}">Horizontal</button> <button type="button" class="btn" data-adj-layout="v" aria-pressed="${lay === 'v'}">Vertical</button>
-        <span class="muted">The values are set in App Settings, Race Director.</span></p>`;
-    adjSig = AdjustPad.signature(S);
-  }
-  function adjPress(pb) {
-    if (pb.disabled || adjLane === null) return;
-    const r = AdjustPad.read(pb), eng = V.engine(), car = eng.cars.find(c => c.lane === adjLane); if (!r || !car) return;
-    adjHist.push({ lane: adjLane, group: r.group, amount: r.amount, text: AdjustPad.describe(r.group, r.amount, car.driverName), before: adjVal(eng, adjLane, r.group), at: performance.now() });
-    send({ type: 'pad', group: r.group, lane: adjLane, amount: r.amount });
-    drawDirector($('lv-body'), false);
-  }
-  function adjUndo() {
-    const u = adjHist.undo(); if (u) send({ type: 'pad', group: u.group, lane: u.lane, amount: u.amount });
-    drawDirector($('lv-body'), false);
-  }
-  async function adjLayout(v) { state.settings = await api.setSettings({ padLayout: v === 'v' ? 'v' : 'h' }); drawDirector($('lv-body'), false); }
-  function adjClick(t) {
-    const pick = t.closest('[data-adj-lane]'); if (pick) { if (!pick.disabled) { adjLane = Number(pick.dataset.adjLane); drawDirector($('lv-body'), false); } return; }
-    const pad = t.closest('[data-pad-do]'); if (pad) return adjPress(pad);
-    if (t.closest('[data-adj-undo]')) { if (adjHist.canUndo()) adjUndo(); return; }
-    const lay = t.closest('[data-adj-layout]'); if (lay) adjLayout(lay.dataset.adjLayout);
-  }
-  // each time the page is updated: which lane is picked, which pads are shown and usable, and the line under them
-  function adjUpdate(st, d, eng, on, pen) {
-    const box = $('dir-adj'); if (!box) return;
-    if (AdjustPad.signature(state.settings || {}) !== adjSig) adjDraw(st);
-    if (adjLane !== null && !st.cfg.entries.some(e => e.lane === adjLane)) adjLane = null;
-    const car = adjLane === null ? null : eng.cars.find(c => c.lane === adjLane), canAdj = eng.type === 'race' || eng.type === 'timed';
-    const dv = st.cfg.damage ? Damage.view(eng, st.cfg.entries.map(e => e.lane), V.clock(performance.now()), d.phase) : null, drow = dv && dv.on && car ? dv.rows.find(r => r.lane === car.lane) : null; // (what the damage panel allows for this lane)
-    box.querySelectorAll('[data-adj-lane]').forEach(b => {
-      const l = Number(b.dataset.adjLane), c = eng.cars.find(x => x.lane === l), sm = b.querySelector ? b.querySelector('small') : null;
-      b.setAttribute('aria-pressed', String(l === adjLane)); b.disabled = !on; if (sm && c) sm.textContent = c.driverName;
-    });
-    $('adj-who').textContent = !on ? 'The pads work while the race is running or paused.' : car ? `Lane ${car.lane + 1} · ${car.driverName}` : 'Choose a lane. The pads act on that lane.';
-    box.querySelectorAll('.pad').forEach(p => {
-      const id = p.dataset.pad;
-      p.hidden = (id === 'points' && !pen) || (id === 'damage' && !(dv && dv.on)) || (id !== 'points' && id !== 'damage' && !canAdj) || (id === 'champ' && !(d.champ && d.champ.on));
-      p.querySelectorAll('button,input').forEach(el => {
-        const minus = !!el.dataset && el.dataset.sign === '-1';
-        el.disabled = !on || !car || (id === 'points' && (car.dq || (minus && car.points <= 0))) || (id === 'damage' && (!drow || (minus ? !drow.take : !drow.give)));
-      });
-    });
-    adjHist.settle((l, g) => adjVal(eng, l, g), performance.now());
-    box.querySelectorAll('[data-adj-undo]').forEach(b => { b.disabled = !on || !adjHist.canUndo(); });
-    $('adj-last').textContent = adjHist.line();
-    box.querySelectorAll('[data-adj-layout]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.adjLayout === AdjustPad.layoutOf(state.settings || {}))));
-  }
+  // What a pad did is kept to show the last action and to undo it (an undo is the same pad command with the opposite amount).
+  // (the lane that is picked and what the pads did are kept here, so they stay when the page is drawn again; the panel itself is in adjustui.js)
+  let adjPanel = null, rvShown = '';
+  const adjMem = { lane: null, hist: AdjustPad.history(), key: undefined };
   function drawDirector(body, fresh) {
     const st = V.stat(), pen = !!(st.cfg.penalty && st.cfg.penalty.on);
     if (fresh || !$('lv-dir')) {
@@ -248,7 +194,9 @@ const LiveView = (() => {
         ${st.cfg.endurance ? folder('endurance', 'Endurance', 'Driver swaps', 'brown', '<div id="dir-en" class="boppanel"></div>') : ''}
         <details class="card" id="dir-lapsbox" hidden><summary>Review laps</summary><div id="dir-laps" class="rv"></div></details>
         <div id="dir-review" class="card rv" hidden></div></div>`;
-      if (adjRace !== st.raceId) { adjRace = st.raceId; adjLane = null; adjHist.clear(); } adjDraw(st);
+      adjPanel = st.tokenUi ? null : AdjustPanel.build($('dir-adj'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane), phase: () => V.dyn().phase, now: () => V.clock(performance.now()),
+        penalty: () => { const c = V.stat().cfg; return !!(c.penalty && c.penalty.on); }, damage: () => !!V.stat().cfg.damage, champ: () => { const c = V.dyn().champ; return !!(c && c.on); },
+        send: (group, lane, amount) => send({ type: 'pad', group, lane, amount }), refresh: () => drawDirector($('lv-body'), false), raceKey: () => V.stat().raceId, memory: adjMem, bind: false }); // the Adjust folder: the same pads as on the Race tab
       lapsHtml = ''; rvShown = ''; bopPanel = st.cfg.bop ? BopPanel.build($('dir-bop'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, send: (l, how) => send({ type: 'bop', lane: l, how }) }) : null; // Balance of Power: the same lane controls as on the main computer
       wxPanel = st.cfg.weather ? WeatherPanel.build($('dir-wx'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, now: () => V.clock(performance.now()), send: state => send({ type: 'weather', state }) }) : null; // the weather: the same controls as on the main computer
       enPanel = st.cfg.endurance ? EndurancePanel.build($('dir-en'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, now: () => V.clock(performance.now()), send: (l, what, id) => send(what === 'swap' ? { type: 'swap', lane: l, ...(id ? { to: id } : {}) } : { type: 'swapnext', lane: l, id }) }) : null; // an Endurance Race: the swaps, the same controls as on the main computer
@@ -258,7 +206,7 @@ const LiveView = (() => {
       Review.bind($('dir-laps'), c => send({ type: 'review', ...c }), () => drawDirector($('lv-body'), false));
       body.onclick = e => {
         const b = e.target.closest('[data-cmd]');
-        if (!b) return adjClick(e.target); // (not a button of the race: maybe one of the Adjust folder)
+        if (!b) return adjPanel && adjPanel.click(e.target); // (not a button of the race: maybe one of the Adjust folder)
         if (b.disabled) return;
         if (b.dataset.cmd === 'stop' && !confirm('Stop the race now? The laps so far are saved.')) return;
         send({ type: b.dataset.cmd, lane: b.dataset.lane === undefined ? undefined : Number(b.dataset.lane), n: b.dataset.n === undefined ? undefined : Number(b.dataset.n), typeIndex: b.dataset.type === undefined ? undefined : Number(b.dataset.type), id: b.dataset.id === undefined ? undefined : Number(b.dataset.id), how: b.dataset.how });
@@ -280,7 +228,7 @@ const LiveView = (() => {
         : '<li class="muted">No calls waiting. A call raises the yellow flag; you decide what it means.</li>';
     }
     set('[data-cmd="callresolve"]', b => { b.disabled = !on; });
-    adjUpdate(st, d, eng, on, pen);
+    if (adjPanel) adjPanel.update();
     if (bopPanel) bopPanel.update();
     if (wxPanel) wxPanel.update();
     if (enPanel) enPanel.update();
@@ -350,7 +298,7 @@ const LiveView = (() => {
   function repaint() { status(); if (page !== 'tiles' && page !== 'rules' && page !== 'database') draw(false); }
   async function mount(el, opts = {}) {
     unmount();
-    host = el; second = !!opts.second; V = LiveShare.viewer(); page = 'tiles'; nodes = null; tkPanel = null; bopPanel = null; wxPanel = null; enPanel = null; dmPanel = null; lane = null;
+    host = el; second = !!opts.second; V = LiveShare.viewer(); page = 'tiles'; nodes = null; tkPanel = null; bopPanel = null; wxPanel = null; enPanel = null; dmPanel = null; adjPanel = null; lane = null;
     try { state.settings = await api.getSettings(); } catch { /* keep what we have */ }
     let got = null; try { got = await api.liveGet(); } catch { /* no race data yet: the pages open empty and fill in from the live messages */ }
     if (got && got.stat) { V.feedStatic(got.stat); if (got.dyn) V.feedDynamic(got.dyn, performance.now()); }

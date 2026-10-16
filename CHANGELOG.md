@@ -4,6 +4,7 @@ Every version of SlotForge Timing, newest first. The README has a section **What
 
 ## Versions
 
+- **1.13.0**: the Adjust pads on the Race tab: an **Adjust** button (while the race runs or is paused) opens a panel with the lane buttons, the five pads (penalty points, damage points, time, laps, championship points), Undo and the layout buttons, and adjusts the race in the main window directly. The Race Director page and the Race tab use the same panel builder (`renderer/adjustui.js`).
 - **1.12.1**: a red Damage points pad in the Adjust folder of the Race Director page (and its values and preview in App Settings > Race Director), the Adjust folder in the normal colours of the theme instead of the accent, and the Endurance folder in brown
 - **1.12.0**: adjust pads for the Race Director: an Adjust folder on the Race Director page where you pick a lane and then use coloured pads, `[+] value [−]`, for penalty points (yellow), time (orange), laps (violet) and championship points (green), horizontal or vertical, a field for another amount, a line with the last action and Undo, working during the race; a Race Director page in App Settings with your own values for each group; the same pads in the race review instead of the typed fields, a green Points column, and the same coloured look for the penalty and damage buttons of the page
 - **1.11.1**: the Race Director page in coloured folders like the Help: the Calls stay on top, then Penalties (yellow), Balance of Power (white), Damage (red) and Weather (blue), in that order, open or closed as you like
