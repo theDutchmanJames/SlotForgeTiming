@@ -1800,3 +1800,22 @@ Good to know:
 4. **GitHub tags** (v0.97.0 to v1.13.0) are still not pushed; they are refused from here. The code itself is pushed to the main branch.
 5. The tests: `tests/adjustui.test.js` (the panel on its own), new blocks in `tests/damagescreen.test.js` (the Race tab panel), `tests/tokenrace.test.js` and `tests/help.test.js`; the Race Director tests in `tests/live.test.js` and `tests/weatherscreen.test.js` still pass unchanged.
 6. Files: `renderer/adjustui.js` (new), `renderer/liveview.js`, `renderer/race.js`, `renderer/index.html`, `renderer/help.js`.
+
+## What to try (1.14.0): a clearer Rotation Editor
+From your note of Friday 16 October ("a bit unclear to me now, so it might be for others as well"). This is step one: how the page is laid out and what it says. Dragging with the mouse comes next, in its own version, if you want it.
+1. **A page in order.** Race Setup > Rotation Setups > Edit now reads from top to bottom: the **name** with Undo, Redo, Save and Back; the **Size** (participants, lanes, drivers or teams); **Start from a plan**; the **Participants**; the **Heats** with their tools; the remarks; then the names, the groups and the table. Every part has a short line that says what to click.
+2. **Real places.** A place in a heat is a box you can see; an empty one is dashed and says "empty". You still click a participant, then a place, or two places to swap them.
+3. **Plans are buttons.** *Shuffled*, *Same number each*, *Round robin* and *Lane rotation* each have a line that says what they make. The number of heats you start from now follows the size (10 drivers on 4 lanes starts at 3 heats, not 2) until you type your own.
+4. **Fewer buttons on a heat.** A row has the two arrows, **Lock** and a **⋯** menu with *Copy this heat*, *Empty this heat* and *Delete this heat*. The shuffles and *Even out the lanes* are in a **Tools** menu next to *Add a heat*, each with a line that says what it does. A menu closes when you click somewhere else.
+5. **A warning can fix itself.** When some participants race no heat (for example after you add participants), the warning has a button: *Add a heat for them* puts them in a new heat at the end, in lane 1, 2, 3... One Undo takes it back. With more of them than lanes it says "Add a heat for the first 4" and you press it again.
+6. **Name a participant where you pick it.** Pick a participant and a Name field appears in the line below the chips. The name shows on the chip, in the grid and in the names list.
+
+Try it: open Race Setup > Rotation Setups > New rotation setup, set Participants to 10, and look at the warning about P9 and P10. Press *Add a heat for them*. Pick P3, type a name, click an empty place. Open the **⋯** of a heat and the **Tools** menu.
+
+Good to know:
+1. **Nothing is saved differently.** Rotations you made before open and save as they were; this is only the page. Home and the race use them as before.
+2. **Not in this version:** dragging participants and heats with the mouse, a colour per participant, and a new look for the groups (they are still under *Groups* at the bottom). I would like to know how you use groups before I change them.
+3. **The table "How often everybody races, and in which lane"** is still folded; the remarks above it already say whether the lanes are shared evenly.
+4. **GitHub tags** (v0.97.0 to v1.14.0) are still not pushed; they are refused from here. The code itself is pushed to the main branch.
+5. The tests: new blocks in `tests/rotationscreen.test.js` (the page, the fix button, the names, the menus, the plans) and `tests/rotation.test.js` (`addHeatFor`), and `tests/help.test.js`.
+6. Files: `renderer/rotationui.js`, `renderer/rotation.js`, `renderer/styles.css`, `renderer/help.js`.

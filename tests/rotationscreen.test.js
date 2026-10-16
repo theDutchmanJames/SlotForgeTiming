@@ -7,7 +7,7 @@ let fails = 0, reachedEnd = false;
 process.on('exit', code => { if (code === 0 && !reachedEnd) { console.log('FAIL the test stopped before its end (something waited for ever)'); process.exitCode = 1; } });
 process.on('unhandledRejection', e => { console.log('UNHANDLED:', e.stack || e.message); process.exit(1); });
 // (the stand-in does not read html: when the whole editor is drawn again, the parts inside it are given the html that the real page would have, as the real page does)
-const parts = ['ro-pool', 'ro-hold', 'ro-grid', 'ro-remarks', 'ro-names', 'ro-groups', 'ro-how', 'ro-genopts', 'ro-msg'];
+const parts = ['ro-pool', 'ro-hold', 'ro-grid', 'ro-remarks', 'ro-names', 'ro-groups', 'ro-how', 'ro-plans', 'ro-genopts', 'ro-msg'];
 const syncParts = html => parts.forEach(id => {
   const open = html.indexOf(`id="${id}"`); if (open < 0) return;
   const start = html.indexOf('>', open) + 1, tag = /<(\w+)/.exec(html.slice(html.lastIndexOf('<', open)))[1], re = new RegExp(`<(/?)${tag}\\b`, 'g'); re.lastIndex = start;
@@ -66,6 +66,7 @@ const Rot = require(R + 'renderer/rotation.js');
 
   const box = () => E('setupmgr'), html = () => box().innerHTML;
   const press = b => box().onclick({ target: { closest: () => ({ dataset: {}, disabled: false, ...b }) } });
+  const planBtn = k => press({ dataset: { plan: k } });
   const cell = (i, l) => press({ dataset: { cell: `${i}:${l}` } }), chip = p => press({ dataset: { pp: String(p) } }), btn = id => press({ id });
   const draft = () => JSON.parse(run('JSON.stringify(rotEd.draft)')), hist = () => run('rotEd.history.stats()');
   const msg = () => E('ro-msg').textContent;
@@ -149,22 +150,22 @@ const Rot = require(R + 'renderer/rotation.js');
 
   // ---------- starting from a plan ----------
   ctx.confirm = () => true;
-  E('ro-plan').onchange({ target: { value: 'perdriver' } });
+  await planBtn('perdriver');
   say('the plan options change with the plan: the same number of heats asks for the heats for everybody', E('ro-genopts').innerHTML.includes('id="ro-geach"') && !E('ro-genopts').innerHTML.includes('id="ro-gheats"'));
-  E('ro-plan').onchange({ target: { value: 'roundrobin' } }); say('...a round robin asks whether everybody races the same number of heats', E('ro-genopts').innerHTML.includes('id="ro-geven"') && !E('ro-genopts').innerHTML.includes('id="ro-geach"'));
-  E('ro-plan').onchange({ target: { value: 'rotation' } }); say('...a lane rotation asks nothing more', E('ro-genopts').innerHTML === '');
-  E('ro-plan').onchange({ target: { value: 'manual' } }); say('...shuffled asks for the number of heats', E('ro-genopts').innerHTML.includes('id="ro-gheats"'));
-  E('ro-plan').onchange({ target: { value: 'perdriver' } }); box().oninput({ target: { id: 'ro-geach', value: '2', dataset: {} } });
+  await planBtn('roundrobin'); say('...a round robin asks whether everybody races the same number of heats', E('ro-genopts').innerHTML.includes('id="ro-geven"') && !E('ro-genopts').innerHTML.includes('id="ro-geach"'));
+  await planBtn('rotation'); say('...a lane rotation asks nothing more', E('ro-genopts').innerHTML === '');
+  await planBtn('manual'); say('...shuffled asks for the number of heats', E('ro-genopts').innerHTML.includes('id="ro-gheats"'));
+  await planBtn('perdriver'); box().oninput({ target: { id: 'ro-geach', value: '2', dataset: {} } });
   ctx.confirm = () => false; const before = JSON.stringify(draft().heats); await btn('ro-gen');
   say('Make the heats asks first when there are heats, and No changes nothing', JSON.stringify(draft().heats) === before);
   asked = ''; ctx.confirm = t => { asked = t; return true; }; await btn('ro-gen');
   say('...Yes replaces them: 2 heats for everybody is 4 heats of 4, nothing is empty, nobody races none or more than twice, and the question says that locked heats go too', draft().heats.length === 4 && draft().heats.every(h => h.places.length === 4) && cellsHtml() === 16 && asked.includes('Locked heats are replaced too') && E('ro-remarks').innerHTML.includes('Every participant races 2 heats.') && msg() === '');
   E('ro-undo').onclick(); say('...and Undo brings the old heats back', JSON.stringify(draft().heats) === before);
-  E('ro-plan').onchange({ target: { value: 'manual' } }); box().oninput({ target: { id: 'ro-gheats', value: '3', dataset: {} } }); await btn('ro-gen');
+  await planBtn('manual'); box().oninput({ target: { id: 'ro-gheats', value: '3', dataset: {} } }); await btn('ro-gen');
   say('"Shuffled over a number of heats": 3 heats (8 participants over 3 heats of 4 lanes: 12 places)', draft().heats.length === 3 && draft().heats.every(h => h.places.length === 4));
-  E('ro-plan').onchange({ target: { value: 'roundrobin' } }); box().oninput({ target: { id: 'ro-geven', checked: true, dataset: {} } }); await btn('ro-gen');
+  await planBtn('roundrobin'); box().oninput({ target: { id: 'ro-geven', checked: true, dataset: {} } }); await btn('ro-gen');
   say('a round robin with the same number of heats for everybody: every participant races the same', Rot.check(draft()).some(c => /^Every participant races \d+ heats\.$/.test(c.text)));
-  E('ro-plan').onchange({ target: { value: 'rotation' } }); await btn('ro-gen');
+  await planBtn('rotation'); await btn('ro-gen');
   say('a lane rotation: 8 heats, everybody races once in every lane... (4 heats each: all four lanes once)', draft().heats.length === 8 && html().includes('Every participant races 4 heats.') && E('ro-remarks').innerHTML.includes('The lanes are shared evenly.'));
 
   // ---------- an existing rotation: groups, locking, order, lanes ----------
@@ -186,7 +187,7 @@ const Rot = require(R + 'renderer/rotation.js');
     say('...the group is named for a screen reader (group 1 by number, its members by its name)', E('ro-groups').innerHTML.includes('aria-label="Name of group 1"') && E('ro-groups').innerHTML.includes('aria-label="Participants in Pros"'));
     say('...the table of how often everybody races has a column for every lane', html().includes('<th>Participant</th><th>Heats</th><th>Lane 1</th><th>Lane 2</th><th>Lane 3</th><th>Lane 4</th></tr>'));
     say('...a remark that only informs is not drawn as a warning, and a warning is', /<p class="hint2">The participants race 1 to 2 heats/.test(E('ro-remarks').innerHTML) && !/hpwarn">The participants race/.test(E('ro-remarks').innerHTML));
-    say('...the plan to start from is the first one, the shuffled plan; the heats are closed because there are heats', html().includes('<option value="manual" selected>') && !html().includes('<option value="perdriver" selected>') && html().includes('<details class="hplanes" id="ro-genbox">'));
+    say('...the plan to start from is the first one, the shuffled plan (a button for each of the four plans, with a line that says what it makes); the plans are closed because there are heats', /data-plan="manual" aria-pressed="true"/.test(html()) && /data-plan="perdriver" aria-pressed="false"/.test(html()) && (html().match(/data-plan="/g) || []).length === 4 && html().includes('Everybody races once in every lane.') && html().includes('<details class="hplanes" id="ro-genbox">'));
     box().onclick({ target: { closest: () => null } }); await press({ disabled: true, dataset: { cell: '0:0' } });
     say('a click on nothing, or on a button that is off, does nothing', run('rotEd.hold') === null && hist().undo === 0);
   }
@@ -258,13 +259,47 @@ const Rot = require(R + 'renderer/rotation.js');
   await edit('r9');
   say('a rotation without heats says so, and its plan options are open', html().includes('No heats yet. Add a heat, or start from a plan.') && html().includes('<details class="hplanes" id="ro-genbox" open>') && !html().includes('<th>Lane 1</th><th>Lane 2</th><th>Lane 3</th><th>Lane 4</th><th>Group</th>'));
   say('...the plan starts as a shuffle over 5 heats (20 participants on 4 lanes), 2 heats for everybody, and not "the same number of heats" for a round robin', E('ro-genopts').innerHTML.includes('id="ro-gheats"') && E('ro-genopts').innerHTML.includes('value="5"') && run('rotEd.gen.each') === 2 && run('rotEd.gen.even') === false);
-  E('ro-plan').onchange({ target: { value: 'roundrobin' } }); say('...the round robin box is not ticked', E('ro-genopts').innerHTML.includes('id="ro-geven"') && !E('ro-genopts').innerHTML.includes(' checked'));
-  E('ro-plan').onchange({ target: { value: 'manual' } });
+  await planBtn('roundrobin'); say('...the round robin box is not ticked', E('ro-genopts').innerHTML.includes('id="ro-geven"') && !E('ro-genopts').innerHTML.includes(' checked'));
+  await planBtn('manual');
   await btn('ro-add'); setSize(20, 3); E('ro-lanes').onchange(); await wait(20);
   say('with a heat the plan options are closed, until somebody opens them (and that is remembered when the editor is drawn again)', html().includes('<details class="hplanes" id="ro-genbox">') && !html().includes('id="ro-genbox" open'));
   E('ro-genbox').open = true; E('ro-genbox').ontoggle(); say('...opening them is noted', run('rotEd.genOpen') === true);
   setSize(20, 4); E('ro-lanes').onchange(); await wait(20); say('...and they stay open', html().includes('id="ro-genbox" open'));
   E('ro-genbox').open = false; E('ro-genbox').ontoggle(); say('...closing them is noted too', run('rotEd.genOpen') === false);
+  ctx.confirm = () => true; await E('ro-back').onclick(); await wait(20);
+
+  // ---------- 1.14.0: the Rotation Editor made clearer ----------
+  store.rotationsetups = []; await run('render()'); await wait(20); await btn('newrot');
+  say('1.14.0: a page in order: name and buttons, the size, the plans, the participants, the heats with their tools, the remarks, then names, groups and the table', (() => { const h = html(); const at = x => h.indexOf(x); return at('id="ro-name"') < at('class="ed-bar ro-size"') && at('class="ed-bar ro-size"') < at('id="ro-genbox"') && at('id="ro-genbox"') < at('id="ro-pool"') && at('id="ro-pool"') < at('id="ro-add"') && at('id="ro-add"') < at('id="ro-grid"') && at('id="ro-grid"') < at('id="ro-remarks"') && at('id="ro-remarks"') < at('id="ro-namesbox"') && at('id="ro-namesbox"') < at('id="ro-groupsbox"'); })() && html().includes('Click one to pick it up') && html().includes('Click a place to fill it, or to swap it with another place'));
+  say('...the places are drawn as places: an empty one says "empty" (and is marked), a filled one has the participant', !html().includes('hpcell empty') && html().includes('class="hpcell" data-cell="0:0"'));
+  setSize(10, 4); E('ro-n').onchange(); await wait(20);
+  say('the number of heats of the plan follows the size until you choose one: 10 participants on 4 lanes is 3 heats (it was 2 for 8)', run('rotEd.gen.heats') === 3 && E('ro-genopts').innerHTML.includes('value="3"'));
+  say('...the page warns about the two who race no heat, with a button that adds a heat for them', E('ro-remarks').innerHTML.includes('These participants race no heat: P9, P10.') && E('ro-remarks').innerHTML.includes('data-fix="idle"') && E('ro-remarks').innerHTML.includes('Add a heat for them'));
+  { const n0 = hist().undo, h0 = draft().heats.length; await press({ dataset: { fix: 'idle' } });
+    say('the button puts a new heat at the end with P9 in lane 1 and P10 in lane 2, in one step to undo; the warning is gone', draft().heats.length === h0 + 1 && places(draft(), h0) === '8@0 9@1' && hist().undo === n0 + 1 && !E('ro-remarks').innerHTML.includes('no heat') && !E('ro-remarks').innerHTML.includes('data-fix'));
+    E('ro-undo').onclick(); say('...Undo takes the heat away again', draft().heats.length === h0 && E('ro-remarks').innerHTML.includes('data-fix="idle"')); }
+  await planBtn('manual'); box().oninput({ target: { id: 'ro-gheats', value: '4', dataset: {} } }); setSize(10, 4); E('ro-n').onchange(); await wait(20);
+  say('...a number of heats that you typed stays', run('rotEd.gen.heats') === '4' && E('ro-genopts').innerHTML.includes('value="4"'));
+  await btn('ro-gen'); say('Make the heats with 4 heats for 10 participants: everybody races, nothing to warn about', draft().heats.length === 4 && !E('ro-remarks').innerHTML.includes('no heat'));
+  { const D = { ...draft(), participants: 14, lanes: 4, heats: [{ label: '', locked: false, places: [0, 1, 2, 3].map((p, lane) => ({ p, lane })) }] };
+    run(`rotEd.draft = Rot.clean(${JSON.stringify(D)}, true)`); await btn('ro-drop');
+    E('ro-n').value = '14'; E('ro-n').onchange(); await wait(20);
+    say('with more participants than lanes without a heat, the button says how many it can take: "Add a heat for the first 4"', E('ro-remarks').innerHTML.includes('Add a heat for the first 4'));
+    await press({ dataset: { fix: 'idle' } }); say('...and a second press adds the next heat (P5 to P8 first)', draft().heats.length === 2 && places(draft(), 1) === '4@0 5@1 6@2 7@3'); }
+  // naming a participant on the picked chip
+  await btn('ro-drop'); await chip(2);
+  say('a picked participant can be named right there: a name field in the line that says who is picked', E('ro-hold').innerHTML.includes('id="ro-pname"') && E('ro-hold').innerHTML.includes('placeholder="Participant 3"') && E('ro-hold').innerHTML.includes('aria-label="Name of participant 3"'));
+  { const holdBefore = E('ro-hold').innerHTML; box().oninput({ target: { id: 'ro-pname', value: 'Sam', dataset: { pname: '2' } } });
+    say('typing the name changes the chip, the heat grid, the names box and the draft; the field itself is not drawn again', draft().names[2] === 'Sam' && E('ro-pool').innerHTML.includes('>Sam <small>') && E('ro-grid').innerHTML.includes('aria-label="Heat 1, lane 3: Sam"') && E('ro-names').innerHTML.includes('value="Sam"') && E('ro-hold').innerHTML === holdBefore);
+    box().oninput({ target: { id: '', value: 'Kim', dataset: { name: '2' } } });
+    say('...the names box does the same, and does not draw itself again while you type there', draft().names[2] === 'Kim' && E('ro-pool').innerHTML.includes('>Kim <small>') && E('ro-grid').innerHTML.includes('aria-label="Heat 1, lane 3: Kim"')); }
+  await btn('ro-drop');
+  // the menus
+  say('every heat row has Lock and a "⋯" menu with Copy, Empty and Delete, and the row has no other buttons than the two arrows', (() => { const g = E('ro-grid').innerHTML; return (g.match(/class="romenu romenu-row"/g) || []).length === draft().heats.length && g.includes('aria-label="More for heat 1"') && g.includes('Copy this heat') && g.includes('Empty this heat') && g.includes('Delete this heat') && g.includes('data-lock="0"') && g.includes('data-up="0"') && g.includes('data-down="0"'); })());
+  say('the tools are in a menu next to "Add a heat", each with a line that says what it does', ['ro-shufo', 'ro-rev', 'ro-shufl', 'ro-even'].every(id => html().includes(`id="${id}"`)) && html().includes('id="ro-tools"') && html().indexOf('id="ro-add"') < html().indexOf('id="ro-tools"') && html().includes('Locked heats stay where they are.') && html().includes('about equally often'));
+  E('ro-tools').open = true; await btn('ro-rev'); say('using a tool closes the menu, and it works (the order is reversed)', E('ro-tools').open === false);
+  say('the plans are buttons with a line each (there is no plan select any more)', !html().includes('id="ro-plan"') && html().includes('data-plan="roundrobin"') && html().includes('Everybody meets everybody.') && html().includes('Mixes everybody over a number of heats that you choose.'));
+  await planBtn('perdriver'); say('a plan button is pressed when it is the plan, and shows its options', /data-plan="perdriver" aria-pressed="true"/.test(E('ro-plans').innerHTML) && /data-plan="manual" aria-pressed="false"/.test(E('ro-plans').innerHTML) && E('ro-genopts').innerHTML.includes('id="ro-geach"'));
   ctx.confirm = () => true; await E('ro-back').onclick(); await wait(20);
 
   // ---------- the race setup form ----------

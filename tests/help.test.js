@@ -188,4 +188,10 @@ const folders = Help.folders();
   say('the race screen help names the Adjust button next to Review laps, with the five kinds of adjustment', f('screen').includes('The Adjust button opens the same pads as the Race Director page') && ['penalty points', 'damage points', 'time', 'laps', 'championship points'].every(x => f('screen').includes(x)));
   say('...and every folder is still short enough', folders.every(x => plain(x.body).length < 1400)); }
 
+// ---- 1.14.0 ----
+{ const f = id => plain(folders.find(x => x.id === id).body);
+  say('the rotation help names the Size, naming a picked participant, the "⋯" menu of a heat, the Tools menu and the buttons that come with a warning', ['Size', 'give it a name', '⋯', 'Tools menu', 'four plans', 'adds a heat for participants who race none'].every(w => f('rotation').includes(w)));
+  say('...and the names it uses are on the editor page (Tools, the plan buttons, "Add a heat")', (() => { const ui = read('renderer/rotationui.js'); return ui.includes('>Tools</summary>') && ui.includes('Start from a plan') && ui.includes('Add a heat for them') && ui.includes('Size</strong>'); })());
+  say('...every folder is still short enough', folders.every(x => plain(x.body).length < 1400)); }
+
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

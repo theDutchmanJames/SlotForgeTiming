@@ -124,6 +124,13 @@
     if (rec.heats.length >= LIMITS.maxHeats) return { error: `A rotation holds at most ${LIMITS.maxHeats} heats.` };
     return mapHeats(rec, hs => [...hs, { label: '', locked: false, places: [] }]);
   }
+  // A new heat for the participants who race no heat (1.14.0): the first ones that fit in the lanes, in the order of their numbers, in lane 1, 2, 3...
+  function addHeatFor(rec, ps) {
+    if (rec.heats.length >= LIMITS.maxHeats) return { error: `A rotation holds at most ${LIMITS.maxHeats} heats.` };
+    const who = [...new Set((Array.isArray(ps) ? ps : []).filter(p => Number.isInteger(p) && p >= 0 && p < rec.participants))].sort((a, b) => a - b).slice(0, rec.lanes);
+    if (!who.length) return { error: 'There is nobody to put in a heat.' };
+    return mapHeats(rec, hs => [...hs, { label: '', locked: false, places: who.map((p, k) => ({ p, lane: k })) }]);
+  }
   function removeHeat(rec, i) {
     const h = heatAt(rec, i); if (!h) return { error: 'That heat is not in the rotation.' };
     if (h.locked) return locked(i);
@@ -267,7 +274,8 @@
     if (empty.length) out.push({ level: 'warn', text: `${empty.length === 1 ? 'Heat ' : 'Heats '}${list(empty)} ${empty.length === 1 ? 'is' : 'are'} empty and will be left out of the race.` });
     if (!sched.length) return out;
     const st = Heats.stats(sched, rec.participants, rec.lanes), idle = st.per.map((x, p) => (x.heats ? '' : shortOf(rec, p))).filter(Boolean);
-    if (idle.length) out.push({ level: 'warn', text: `${idle.length === 1 ? 'This participant races' : 'These participants race'} no heat: ${list(idle)}.` });
+    const idleP = st.per.map((x, p) => (x.heats ? -1 : p)).filter(p => p >= 0); // (their numbers: the editor offers a heat for them)
+    if (idle.length) out.push({ level: 'warn', text: `${idle.length === 1 ? 'This participant races' : 'These participants race'} no heat: ${list(idle)}.`, fix: { kind: 'idle', ps: idleP } });
     const lone = rec.heats.map((h, i) => (h.places.length === 1 ? i + 1 : 0)).filter(Boolean);
     if (lone.length) out.push({ level: 'warn', text: `${lone.length === 1 ? 'Heat ' : 'Heats '}${list(lone)} ${lone.length === 1 ? 'has' : 'have'} one car only.` });
     const first = new Set(); rec.names.forEach((nm, p) => { const k = nm.trim().toLowerCase(), at = rec.names.findIndex(x => x.trim().toLowerCase() === k); if (k && at !== p) first.add(at); }); // (the first one who has a name that is used again)
@@ -289,7 +297,7 @@
   }
   const describe = rec => `${rec.participants} ${isTeams(rec) ? (rec.participants === 1 ? 'team' : 'teams') : 'participants'}, ${rec.lanes} ${rec.lanes === 1 ? 'lane' : 'lanes'}, ${rec.heats.filter(h => h.places.length).length} heats`;
 
-  const api = { LIMITS, clean, nameOf, shortOf, blank, generate, resize, place, swap, assignGroup, addHeat, removeHeat, duplicateHeat, clearHeat, moveHeat, setLabel, setLocked,
+  const api = { LIMITS, clean, nameOf, shortOf, blank, generate, resize, place, swap, assignGroup, addHeat, addHeatFor, removeHeat, duplicateHeat, clearHeat, moveHeat, setLabel, setLocked,
     shuffleOrder, reverseOrder, shuffleLanes, evenLanes, setParticipantsAre, isTeams, setName, addGroup, removeGroup, renameGroup, toggleMember, scheduleFor, lanesUsed, signature, problems, matchDrivers, check, perParticipant, describe };
   root.Rot = api;
   if (typeof module !== 'undefined') module.exports = api;

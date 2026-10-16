@@ -594,6 +594,31 @@ dialog:has(.formgrid) form{display:flex;flex-direction:column;max-height:calc(90
 .ronames{display:flex;flex-wrap:wrap;gap:8px 14px}
 .ronames label{display:flex;align-items:center;gap:6px;font-size:14px}
 .ronames input{width:11em}
+/* the Rotation Editor (1.14.0): plan buttons, real places in the grid, menus instead of rows full of buttons */
+.ed-bar.ro-size strong{margin-right:4px}
+.ro-sub{font-size:13px;font-weight:400;margin-left:8px}
+.ro-help{border-left:3px solid var(--accent);padding:6px 10px;background:var(--panel);border-radius:0 6px 6px 0}
+.roplans{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:8px 0}
+.roplan{font:inherit;color:inherit;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.roplan small{color:var(--muted)}
+.roplan:hover,.roplan:focus-visible{border-color:var(--accent)}
+.roplan.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.ro-heatshead{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
+.rogrid .hpcell{min-width:3.6em;text-align:center;background:var(--panel);border:1px solid var(--line);padding:6px 10px}
+.rogrid .hpcell:hover,.rogrid .hpcell:focus-visible{border-color:var(--accent)}
+.rogrid .hpcell.empty{border-style:dashed;background:transparent;color:var(--muted);font-size:13px}
+.rogrid .hpcell.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.rogrid .actions{white-space:normal}
+.romenu{position:relative;display:inline-block;vertical-align:top}
+.romenu>summary{display:inline-block;list-style:none;cursor:pointer}
+.romenu>summary::-webkit-details-marker{display:none}
+.romenu[open]>summary{border-color:var(--accent)}
+.romenu-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.romenu:not(.romenu-row)>.romenu-list{position:absolute;right:0;z-index:30;flex-direction:column;flex-wrap:nowrap;width:min(340px,86vw);padding:8px;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.romenu:not(.romenu-row)>.romenu-list .btn{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:2px}
+.romenu-list small{color:var(--muted);font-weight:400}
+#ro-remarks .hpwarn{color:var(--accent);font-weight:600}
+#ro-remarks .btn{font-weight:400}
 /* App Settings > General and Import and Export: the pages are made of folders, like Results and Records. The body of a folder has some room around what is in it. */
 .fbody{padding:14px 16px 6px}
 .fbody>:first-child,.fbody>h4:first-child{margin-top:0}

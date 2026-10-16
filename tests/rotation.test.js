@@ -252,5 +252,21 @@ const err = r => (r && r.error) || '';
   ok('on one lane there is nothing to say about the lanes', R.check(R.clean({ participants: 2, lanes: 1, heats: [{ places: [{ p: 0, lane: 0 }] }, { places: [{ p: 1, lane: 0 }] }, { places: [{ p: 0, lane: 0 }] }, { places: [{ p: 1, lane: 0 }] }] }, true)).every(c => !/^The lanes /.test(c.text)));
 }
 
+// ---- 1.14.0: a heat for the participants who race no heat ----
+{ const r = R.clean({ name: 'Ten', participants: 10, lanes: 4, heats: [{ places: [0, 1, 2, 3].map((p, lane) => ({ p, lane })) }, { places: [4, 5, 6, 7].map((p, lane) => ({ p, lane })) }] });
+  const idle = R.check(r).find(c => c.fix);
+  ok('the warning about participants who race no heat carries a fix with their numbers (P9 and P10 are 8 and 9)', !!idle && idle.fix.kind === 'idle' && same(idle.fix.ps, [8, 9]) && idle.level === 'warn');
+  ok('no other remark carries a fix', R.check(r).filter(c => c.fix).length === 1 && R.check(mk()).every(c => !c.fix));
+  const a = R.addHeatFor(r, idle.fix.ps);
+  ok('addHeatFor puts a new heat at the end with them in lane 1, 2, ...', !a.error && a.rec.heats.length === 3 && same(grid(a.rec)[2], '8@0 9@1') && !a.rec.heats[2].locked && a.rec.heats[2].label === '');
+  ok('...it changes nothing else, and the warning is gone', same(grid(a.rec).slice(0, 2), grid(r)) && !R.check(a.rec).some(c => c.fix) && R.check(a.rec).every(c => !/no heat/.test(c.text)));
+  const big = R.clean({ name: 'Twelve', participants: 12, lanes: 2, heats: [{ places: [{ p: 0, lane: 0 }, { p: 1, lane: 1 }] }] });
+  const more = R.addHeatFor(big, R.check(big).find(c => c.fix).fix.ps);
+  ok('only as many as there are lanes go in the new heat, the first ones by number (the others still have to be placed)', !more.error && same(grid(more.rec)[1], '2@0 3@1') && R.check(more.rec).find(c => c.fix).fix.ps.length === 8);
+  ok('a list with doubles, strangers or nothing is cleaned up or refused in words', same(grid(R.addHeatFor(r, [9, 9, 8, 77, -1, 'x']).rec)[2], '8@0 9@1') && /nobody/.test(err(R.addHeatFor(r, []))) && /nobody/.test(err(R.addHeatFor(r, [99, 'x']))) && /nobody/.test(err(R.addHeatFor(r))));
+  const full = R.clean({ name: 'Full', participants: 2, lanes: 2, heats: Array.from({ length: R.LIMITS.maxHeats }, () => ({ places: [{ p: 0, lane: 0 }] })) });
+  ok('a rotation that holds the most heats refuses another one, in words', /at most/.test(err(R.addHeatFor(full, [1]))));
+  ok('the saved record is the same shape as before (no new field): the cleaned record has the same keys', same(Object.keys(a.rec).sort(), Object.keys(r).sort())); }
+
 if (fails) { console.log(fails + ' ROTATION TESTS FAILED'); process.exit(1); }
 console.log('ALL ROTATION TESTS PASSED');
