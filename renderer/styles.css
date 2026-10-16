@@ -502,6 +502,20 @@ dialog:has(.formgrid) form{display:flex;flex-direction:column;max-height:calc(90
 /* 0.85.0: App Settings > Help */
 .helppage{max-width:920px}
 .helpwelcome{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;margin:0 0 16px;background:var(--panel)}
+/* the folders of the Race Director page (1.11.1): the look of the Help folders, each with a colour of its own (--fc; without one, the accent) */
+.dirfolder{--fc:var(--accent);border-left-color:var(--fc)}
+.dbfolder.dirfolder>summary{background:color-mix(in srgb,var(--fc) 16%,var(--panel))}
+.dbfolder.dirfolder>summary::before{border-color:var(--fc)}
+.dbfolder.dirfolder>summary:focus-visible{outline-color:var(--fc)}
+.dirfolder .df-body{padding:8px 16px 12px}
+.dirfolder .df-body>:first-child{margin-top:0}
+.dirfolder .boppanel{margin-top:0}
+.dirfolder .bophead>strong{display:none} /* the folder has the name already; the live line next to it stays */
+.dir-yellow{--fc:#f2b705}
+.dir-white{--fc:#ffffff}
+[data-theme="light"] .dir-white,[data-theme="ocean"] .dir-white{--fc:#7d8590} /* white would not show on a white page */
+.dir-red{--fc:#e5484d}
+.dir-blue{--fc:#4c9aff}
 .hw-head{padding:10px 16px;border-radius:7px 7px 0 0;background:color-mix(in srgb,var(--accent) 16%,var(--panel))}
 .hw-head h3{margin:0;font-size:19px}
 .hw-body{padding:4px 16px 14px}

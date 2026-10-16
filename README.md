@@ -1723,3 +1723,25 @@ Good to know:
 5. **GitHub tags** (v0.97.0 to v1.11.0) are still not pushed; they are refused from here. The code itself is pushed to the main branch.
 6. The tests: `tests/livegrid.test.js` (new: the rules of the grid, the places, the stylesheet), the Leaderboard page tests in `tests/live.test.js` (the old one-or-two-boards tests are replaced), and additions to `tests/help.test.js` and `tests/screens.test.js`.
 7. Files: `renderer/livegrid.js` (new), `renderer/liveview.js`, `renderer/rows.js`, `renderer/timing.js`, `renderer/widgets.js`, `renderer/styles.css`, `renderer/index.html`, `renderer/help.js`, `schema.js`.
+
+## What to try (1.11.1): the Race Director page in folders
+From your note of Friday 16 October. The Race Director page (Live Race tab > Race Director, on the main computer, the second screen and the tablets) now looks like the Help.
+1. **The buttons and the Calls stay as they were** at the top: Start, Pause, Yellow flag, Red flag, Stop race, then the Calls card. Calls is not a folder.
+2. **Under them come folders**, in this order, each with a coloured stripe, a coloured header and an arrow to open and close it, like the folders in the Help:
+   - **Penalties** (yellow): the points and the penalties per lane, and the penalty log. A race without a penalty system says so in the folder.
+   - **Balance of Power** (white): only when the race has Balance of Power.
+   - **Damage** (red): only when the race has a Damage System.
+   - **Weather** (blue): only when the race has a Weather system.
+   - **Endurance** (the colour of your theme): only in an Endurance Race. You did not name this one, so it is last, in the accent colour. Tell me a colour and a place if you want it elsewhere.
+3. **The folders are open when the page opens**, as the page was. A folder you close stays closed while the app is open (and when the page draws again during the race).
+4. **White** on a light theme (Light, Ocean) is a grey, because a white stripe would not show on a white page. On a theme you made yourself with a very light panel the white stripe is faint.
+5. The name that each panel had inside (for example "Balance of Power" on top of its controls) is left out in the Director page, because the folder has it; the line next to it (the state now) stays. On the Race tab the panels are as they were.
+
+Try it: start a race with *Simulated cars* in a race setup that has a penalty system, Balance of Power, a damage system and a weather system (Race Setup > Rule sets). Open Live Race > Race Director. Close the Damage folder, then watch the race for a while: it stays closed.
+
+Good to know:
+1. **The colours are the same in every theme** (white is the exception on the light themes).
+2. **The Review laps box and the review after the race** are below the folders and have not changed.
+3. **GitHub tags** (v0.97.0 to v1.11.1) are still not pushed; they are refused from here. The code itself is pushed to the main branch.
+4. The tests: new ones in `tests/weatherscreen.test.js` (the order, the colours, open and closed, the stylesheet) and `tests/help.test.js`.
+5. Files: `renderer/liveview.js`, `renderer/styles.css`, `renderer/help.js`.

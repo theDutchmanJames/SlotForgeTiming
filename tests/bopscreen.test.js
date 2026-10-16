@@ -168,7 +168,7 @@ const Bop_ = () => vm.runInContext('Bop', ctx), same_ = (a, b) => JSON.stringify
     run("globalThis.__bp = []; (function (b) { BopPanel.build = function (box, o) { const p = b(box, o), rec = { lanes: o.lanes, n: 0 }; globalThis.__bp.push(rec); return { update() { rec.n++; return p.update(); } }; }; })(BopPanel.build)");
     const host = document.createElement('div'); await run('LiveView.mount')(host, {}); await wait(50); run('LiveView.go')('director'); await wait(80);
     const html = E('lv-body').innerHTML, bop = E('dir-bop').innerHTML;
-    say('the Race Director page has the Balance of Power controls in a card of their own, with the buttons of each lane', html.includes('id="dir-bop"') && bop.includes('Balance of Power') && bop.includes('data-lane="0"') && bop.includes('aria-label="Off lane 2"') && bop.includes('aria-label="Accept lane 1"'));
+    say('the Race Director page has the Balance of Power controls in a folder of their own, with the buttons of each lane', html.includes('id="dir-bop"') && bop.includes('Balance of Power') && bop.includes('data-lane="0"') && bop.includes('aria-label="Off lane 2"') && bop.includes('aria-label="Accept lane 1"'));
     const before = cmds.length, press = (lane, how) => E('dir-bop').onclick({ target: { closest: () => ({ disabled: false, dataset: { bop: how }, blur() {}, closest: () => ({ dataset: { lane: String(lane) } }) }) } });
     press(1, 'hinder'); await wait(60);
     say('a press there is sent to the race window as a command with the lane and the button, and the race window carries it out', cmds.length === before + 1 && same_(cmds.at(-1), { type: 'bop', lane: 1, how: 'hinder' }) && car(1).bop === -25);

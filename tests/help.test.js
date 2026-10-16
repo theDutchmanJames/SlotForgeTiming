@@ -165,6 +165,7 @@ const folders = Help.folders();
 { const f = id => plain(folders.find(x => x.id === id).body);
   say('the Race Setup help names the Rule sets folder, and the old name is gone from the help', f('setups').includes('Rule sets') && !Help.html().includes('Penalties, fuel and pits'));
   say('the Live Race help explains the Leaderboard grid (squares, a leaderboard per cell, more cells, some places), and the Customization help points to it', f('live').includes('Leaderboard page is a grid') && f('live').includes('little squares') && f('live').includes('5 to 8') && f('custom').includes('side by side in the grid of the Leaderboard page'));
+  say('the Live Race help says how the Race Director page is built: the Calls first, then folders for Penalties, Balance of Power, Damage and Weather', f('live').includes('Calls come first') && f('live').includes('Penalties, Balance of Power, Damage and Weather'));
   say('...and every folder is still short enough', folders.every(x => plain(x.body).length < 1400)); }
 
 // ---- 1.10.1 ----

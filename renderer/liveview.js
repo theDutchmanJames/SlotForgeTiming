@@ -163,6 +163,10 @@ const LiveView = (() => {
   // Race Director: the race's buttons and penalty points. The buttons are sent to the race in the main window.
   // The page is built once and then only updated, so a button never changes under your finger.
   const send = cmd => api.liveCommand(cmd);
+  // The Race Director page (1.11.1): the buttons and the calls on top, then folders like the ones in the Help, each with a colour of its own (Penalties yellow, Balance of Power white,
+  // Damage red, Weather blue). They are open to begin with, as the page was; a folder you close stays closed while the page is open.
+  const dirShut = new Set();
+  const folder = (id, title, note, tone, inner) => `<details class="dbfolder dirfolder${tone ? ' dir-' + tone : ''}" data-dirf="${id}"${dirShut.has(id) ? '' : ' open'}><summary><strong>${title}</strong> <span class="muted">${note}</span></summary><div class="df-body">${inner}</div></details>`;
   function drawDirector(body, fresh) {
     const st = V.stat(), pen = !!(st.cfg.penalty && st.cfg.penalty.on);
     if (fresh || !$('lv-dir')) {
@@ -173,21 +177,22 @@ const LiveView = (() => {
         <div class="card"><h3>Calls</h3>
           <div class="lv-ctl">${st.cfg.entries.map(e => `<button class="btn" data-cmd="call" data-lane="${e.lane}" title="A call from this lane: raises the yellow flag, like a call button">Call lane ${e.lane + 1}</button>`).join('')}</div>
           <ul id="dir-calls" class="lv-calls"></ul></div>
-        ${st.cfg.bop ? '<div id="dir-bop" class="card boppanel"></div>' : ''}
-        ${st.cfg.weather ? '<div id="dir-wx" class="card boppanel"></div>' : ''}
-        ${st.cfg.endurance ? '<div id="dir-en" class="card boppanel"></div>' : ''}
-        ${st.cfg.damage ? '<div id="dir-dm" class="card boppanel"></div>' : ''}
-        ${pen ? `<div class="wrap"><table class="fields"><thead><tr><th>Lane</th><th>Driver</th><th>Points</th><th>Time penalty</th><th>Not served yet</th><th></th></tr></thead><tbody>${st.cfg.entries.map(e =>
+        ${folder('penalties', 'Penalties', 'Points and penalties for each lane', 'yellow', pen ? `<div class="wrap"><table class="fields"><thead><tr><th>Lane</th><th>Driver</th><th>Points</th><th>Time penalty</th><th>Not served yet</th><th></th></tr></thead><tbody>${st.cfg.entries.map(e =>
           `<tr data-row="${e.lane}"><td>${e.lane + 1}</td><td>${esc(e.driverName)}</td><td class="num dir-pts"></td><td class="num dir-sec"></td><td class="dir-pend"></td>
            <td class="actions"><button class="btn" data-cmd="penalty" data-lane="${e.lane}" data-n="-1" aria-label="Take back a point from ${esc(e.driverName)}">−1</button> <button class="btn danger" data-cmd="penalty" data-lane="${e.lane}" data-n="1">Penalty point +1</button>
            ${(st.cfg.penalty.types || []).map((t, ti) => `<button class="btn" data-cmd="assign" data-lane="${e.lane}" data-type="${ti}" title="Costs ${t.cost} penalty points; has to be served in the pits">${esc(t.name)} (−${t.cost})</button>`).join(' ')}</td></tr>`).join('')}</tbody></table></div>
-          <h3>Penalty log</h3><ol id="dir-log" class="lv-log"></ol>` : '<p class="muted">This race has no penalty system. Choose one in the race setup to give penalty points.</p>'}
+          <h3>Penalty log</h3><ol id="dir-log" class="lv-log"></ol>` : '<p class="muted">This race has no penalty system. Choose one in the race setup to give penalty points.</p>')}
+        ${st.cfg.bop ? folder('bop', 'Balance of Power', 'Even out fast and slow cars', 'white', '<div id="dir-bop" class="boppanel"></div>') : ''}
+        ${st.cfg.damage ? folder('damage', 'Damage', 'Incidents and repairs', 'red', '<div id="dir-dm" class="boppanel"></div>') : ''}
+        ${st.cfg.weather ? folder('weather', 'Weather', 'Rain, tyres and pit stops', 'blue', '<div id="dir-wx" class="boppanel"></div>') : ''}
+        ${st.cfg.endurance ? folder('endurance', 'Endurance', 'Driver swaps', '', '<div id="dir-en" class="boppanel"></div>') : ''}
         <details class="card" id="dir-lapsbox" hidden><summary>Review laps</summary><div id="dir-laps" class="rv"></div></details>
         <div id="dir-review" class="card rv" hidden></div></div>`;
       lapsHtml = ''; bopPanel = st.cfg.bop ? BopPanel.build($('dir-bop'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, send: (l, how) => send({ type: 'bop', lane: l, how }) }) : null; // Balance of Power: the same lane controls as on the main computer
       wxPanel = st.cfg.weather ? WeatherPanel.build($('dir-wx'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, now: () => V.clock(performance.now()), send: state => send({ type: 'weather', state }) }) : null; // the weather: the same controls as on the main computer
       enPanel = st.cfg.endurance ? EndurancePanel.build($('dir-en'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, now: () => V.clock(performance.now()), send: (l, what, id) => send(what === 'swap' ? { type: 'swap', lane: l, ...(id ? { to: id } : {}) } : { type: 'swapnext', lane: l, id }) }) : null; // an Endurance Race: the swaps, the same controls as on the main computer
       dmPanel = st.cfg.damage ? DamagePanel.build($('dir-dm'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), incidents: st.cfg.damage.incidents, phase: () => V.dyn().phase, now: () => V.clock(performance.now()), send: (l, n) => send({ type: 'damage', lane: l, n }) }) : null; // the damage of the cars, the same controls as on the main computer
+      if (body.querySelectorAll) body.querySelectorAll('details.dirfolder').forEach(el => { el.ontoggle = () => { if (el.open) dirShut.delete(el.dataset.dirf); else dirShut.add(el.dataset.dirf); }; });
       Review.bind($('dir-review'), c => send({ type: 'review', ...c }), () => drawDirector($('lv-body'), false));
       Review.bind($('dir-laps'), c => send({ type: 'review', ...c }), () => drawDirector($('lv-body'), false));
       body.onclick = e => {
