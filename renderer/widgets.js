@@ -152,20 +152,19 @@
   const LIGHT_COLS = [['', 'All lights'], ...[1, 2, 3, 4, 5].map(n => [String(n), 'Light ' + n])];
   const lightKey = (row, n) => (n ? row + '_' + n : row);
   // The keys to look at, best first, for light i (0 to 4) of the Start lights in race state `state`: lit or not.
-  // A lit light in a race state looks for that state's picture of the light, then of all lights, and then the Countdown picture of the light and of all lights.
+  // A lit light in a race state looks for that state's picture of the light, then of all lights, and nowhere else: every row stands on its own, so a Countdown picture is only used for the countdown (1.28.1; before, a state with no picture borrowed the Countdown one).
   // The countdown (and a state with no row of its own) uses Countdown. A light that is not lit uses Lights off.
   const lightKeys = (state, i, lit) => {
     const n = i + 1;
     if (!lit) return ['off_' + n, 'off'];
-    const own = LIGHT_STATES.some(([k]) => k === state) ? [state + '_' + n, state] : [];
-    return [...own, 'on_' + n, 'on'];
+    return LIGHT_STATES.some(([k]) => k === state) ? [state + '_' + n, state] : ['on_' + n, 'on'];
   };
   const lightPic = (images, state, i, lit) => { const im = images || {}; for (const k of lightKeys(state, i, lit)) if (im[k]) return im[k]; return ''; };
   // Which key would a cell of the grid use if it had no picture of its own (so the editor can show it dimmed)? '' when nothing is behind it.
+  // A cell of one light uses the picture of all lights of its own row (every row stands on its own, 1.28.1); a cell of all lights has nothing behind it.
   const lightBehind = (images, key) => {
     const im = images || {}, m = /^([a-z]+)(?:_([1-5]))?$/.exec(key); if (!m) return '';
-    const row = m[1], n = m[2], chain = row === 'off' || row === 'on' ? (n ? [row] : []) : (n ? [row, 'on_' + n, 'on'] : ['on']);
-    return chain.find(k => im[k]) || '';
+    return m[2] && im[m[1]] ? m[1] : '';
   };
   const LIGHT_COLORS = { ready: '#4c9aff', running: '#2ecc40', paused: '#ffd400', between: '#4c9aff', finished: '#ffffff', yellow: '#ffd400', red: '#d62828' };
   const lightColor = (opt, st) => (opt && opt['lightcol_' + st]) || LIGHT_COLORS[st] || '#4c9aff';

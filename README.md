@@ -2109,3 +2109,17 @@ Good to know:
 5. Not done: a *since a date* choice for Car Mileage, a check-list in Notes, links or pictures in Notes.
 6. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 7. The tests: `tests/homegrid.test.js` (the options, the text kind), `tests/homestats.test.js` (the mileage: laps added up like *At a glance*, this year, ties, no distance), `tests/homecards.test.js` (the markup), `tests/screens.test.js` (Customize for both cards, the text box and its cursor, saving, this year, the distance unit, the empty cards, Back to the usual Home) and `tests/help.test.js`.
+
+## What to try (1.28.1): the Countdown pictures are only for the countdown
+A fix, from your note: a picture dropped on *Countdown / All lights* was used for every other state too (Yellow flag, Red flag, Paused and so on).
+1. Open **Customization > Image Settings**, make a new set **For: Start lights** and drop one picture on **Countdown / All lights**.
+2. Only the five cells of the **Countdown** row show it (dimmed). The cells of Yellow flag, Red flag, Paused and the other rows stay plain round lights. Before, they all showed the Countdown picture.
+3. In the **Preview** (above the grid) choose *The countdown*: three lit lights with your picture. Choose *Yellow flag* or *Red flag*: plain round lights.
+4. Drop a picture on *Yellow flag / All lights*: the Preview of the Yellow flag and the cells of that row show it. Drop another on *Yellow flag / Light 3*: light 3 has its own picture, the others the *All lights* picture of the row.
+5. In a Layout, choose the set in a **Start Lights** widget: the countdown shows the Countdown pictures. In a race press **Y**: the yellow lights show the Yellow flag pictures, or plain round lights when that row is empty.
+
+Good to know:
+1. The rule is now: a light that is on uses the picture of that light in its state, then the *All lights* picture of the same state, and nothing else (a plain round light). The countdown is its own state. A light that is off uses *Lights off* (its own picture, then *All lights*) in every state.
+2. A set you made before this version with only Countdown pictures: its race states are now plain round lights. Drop the picture on each row you want to have it (for example *Racing (green flag) / All lights*).
+3. The colour of a plain round light is the colour in the settings of the Start Lights widget, as before.
+4. The tests: `tests/widgets.test.js` (the keys of a light, what a cell shows dimmed), `tests/timing.test.js` (what the widget draws in each state), `tests/screens.test.js` (the grid and the Preview) and `tests/help.test.js`.
