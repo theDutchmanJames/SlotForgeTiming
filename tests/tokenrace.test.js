@@ -30,7 +30,7 @@ const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if
 for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function') api[k] = (...x) => { x.forEach(v => { if (typeof v !== 'function') structuredClone(v); }); return f(...x); }; }
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js','padui.js','livegrid.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js','padui.js','livegrid.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -65,7 +65,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   say('the lane controls are on the page; there are no pit buttons', !!run('live.tkPanel') && run('live.pitBtns.length') === 0);
   key(' ');
   say('no start lights: Space opens the session at once', phase() === 'running');
-  say('a Time Token Session has no Adjust panel (the pads are for races): no button, no panel', !run('live.adjPanel') && E('adjbtn').hidden === true && E('adjpanel').hidden === true);
+  say('a Time Token Session has no Adjust panel (the pads are for races): no folder, no panel', !run('live.adjPanel') && !E('racehost').innerHTML.includes('data-dirf="adjust"') && !E('racehost').innerHTML.includes('id="adjpanel"'));
   key('1'); key('1');
   say('a crossing on a lane without time is ignored', eng().cars[0].laps.length === 0 && eng().cars[0].started === false);
 
@@ -664,7 +664,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     say('the Tokens page of a race that is not a Time Token Session says so', E('lv-body').innerHTML.includes('No Time Token Session is running') && !E('lv-body').innerHTML.includes('lv-tokens'));
     run('LiveView.unmount')(); key('s'); await until(() => phase() === 'finished', 3000); await wait(100); }
 
-  say('a button of the lane controls that cannot be pressed looks dimmed, on every screen the controls are on', /\.tkpanel \.btn:disabled\{[^}]*opacity:\.4[^}]*cursor:not-allowed/.test(fs.readFileSync(R + 'renderer/styles.css', 'utf8')) && fs.readFileSync(R + 'renderer/race.js', 'utf8').includes('id="tokenpanel" class="card tkpanel"') && fs.readFileSync(R + 'renderer/liveview.js', 'utf8').includes('class="card tkpanel"'));
+  say('a button of the lane controls that cannot be pressed looks dimmed, on every screen the controls are on', /\.tkpanel \.btn:disabled\{[^}]*opacity:\.4[^}]*cursor:not-allowed/.test(fs.readFileSync(R + 'renderer/styles.css', 'utf8')) && fs.readFileSync(R + 'renderer/race.js', 'utf8').includes('id="tokenpanel" class="tkpanel"') && fs.readFileSync(R + 'renderer/liveview.js', 'utf8').includes('class="card tkpanel"'));
 
   // ---------- the settings page ----------
   run("state.settings = { theme: 'dark' }; state.tab = 'setup'; state.setupSub = 'tokens'"); await run('render()'); await wait(50);

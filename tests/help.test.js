@@ -185,7 +185,7 @@ const folders = Help.folders();
 
 // ---- 1.13.0 ----
 { const f = id => plain(folders.find(x => x.id === id).body);
-  say('the race screen help names the Adjust button next to Review laps, with the five kinds of adjustment', f('screen').includes('The Adjust button opens the same pads as the Race Director page') && ['penalty points', 'damage points', 'time', 'laps', 'championship points'].every(x => f('screen').includes(x)));
+  say('the race screen help names the coloured folders of the Race Director page: Track actions (Lap, Pit, Call), Adjust with the five kinds of adjustment, Penalties, Balance of Power, Damage, Weather, Endurance', f('screen').includes('the coloured folders of the Race Director page') && ['Track actions', 'Lap', 'Pit', 'Call', 'Adjust', 'Penalties', 'Balance of Power', 'Damage', 'Weather', 'Endurance'].every(x => f('screen').includes(x)) && ['penalty points', 'damage points', 'time', 'laps', 'championship points'].every(x => f('screen').includes(x)) && !f('screen').includes('The Adjust button'));
   say('...and every folder is still short enough', folders.every(x => plain(x.body).length < 1400)); }
 
 // ---- 1.14.0 ----

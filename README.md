@@ -1819,3 +1819,21 @@ Good to know:
 4. **GitHub tags** (v0.97.0 to v1.14.0) are still not pushed; they are refused from here. The code itself is pushed to the main branch.
 5. The tests: new blocks in `tests/rotationscreen.test.js` (the page, the fix button, the names, the menus, the plans) and `tests/rotation.test.js` (`addHeatFor`), and `tests/help.test.js`.
 6. Files: `renderer/rotationui.js`, `renderer/rotation.js`, `renderer/styles.css`, `renderer/help.js`.
+
+## What to try (1.15.0): the Race tab in coloured folders, and new track buttons
+From your note of Friday 16 October: the options to add time or penalties under the Race tab did not match the coloured folders on the Race Director page, and the buttons for the track actions (calling a car to the pit) could be livelier.
+1. **The same folders as the Race Director page.** Under the buttons the Race tab now has coloured folders that open and close: **Track actions** (green), **Adjust**, **Penalties** (yellow), **Balance of Power** (white), **Damage** (red), **Weather** (blue) and **Endurance** (brown), in that order. A Time Token Session has **Track actions** and **Time tokens** (teal). A folder is only there when the race uses it, they are open to begin with, and a folder you close stays closed (also for the next race).
+2. **The Adjust button is gone.** The Adjust folder is there while the race waits, runs or is paused; the pads are the same as before.
+3. **Penalties in a folder.** The old "Penalty 1", "Penalty 2" buttons in the bar are replaced by the table of the Race Director page: points, time penalty and what is not served yet for every lane, with the buttons **−1**, **Penalty point +1** and the special penalties of the system (Drivethrough, Stop-and-Go), and the penalty log below. It is the same piece of code as on the Race Director page.
+4. **Track actions as cards.** Every lane has a card with its number and driver, a large green **Lap** button, an orange **Pit** button and an amber **Call** button, each with a small picture and the key (1, ⇧ 1, Ctrl 1). **Pit** lights up (and says "Leave pit 1") while the car is in the pit; **Call** lights up and pulses while that lane's call waits for the Race Director. A lane without a car has no card.
+5. **The Calls strip** (when a lane has called) stays at the top, above the folders.
+
+Try it: start a race with a penalty system, damage and weather, with Simulated cars on. Press Space. Click **Pit 1** (or Shift + 1), then **Call 2**, and look at the cards. Give lane 2 a point in the Penalties folder. Close the Weather folder and start a new race: it stays closed.
+
+Good to know:
+1. **The keys are the same:** 1 to 8 for a lap, Shift + number for the pit, Ctrl + number for a call. Nothing else about the race changed.
+2. **The Race Director page** looks as before; it now builds its Penalties folder with the same functions as the Race tab.
+3. **Not in this version:** dragging in the Rotation Editor, a colour per participant and a groups strip (planned as 1.16.0, when you say go).
+4. **GitHub tags** (v0.97.0 to v1.15.0) are still not pushed; they are refused from here. The code itself is pushed to the main branch.
+5. The tests: new `tests/racefolders.test.js` (folders, order, colours, cards, lights, penalties, closed folders, token session) and `tests/penaltyui.test.js` (the penalty panel on its own); updated `tests/damagescreen.test.js`, `tests/tokenrace.test.js`, `tests/live.test.js` and `tests/help.test.js`.
+6. Files: `renderer/dirfolder.js` and `renderer/penaltyui.js` (new), `renderer/race.js`, `renderer/liveview.js`, `renderer/styles.css`, `renderer/index.html`, `renderer/help.js`.

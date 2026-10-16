@@ -165,8 +165,7 @@ const LiveView = (() => {
   const send = cmd => api.liveCommand(cmd);
   // The Race Director page (1.11.1): the buttons and the calls on top, then folders like the ones in the Help, each with a colour of its own (Penalties yellow, Balance of Power white,
   // Damage red, Weather blue, Endurance brown). They are open to begin with, as the page was; a folder you close stays closed while the page is open.
-  const dirShut = new Set();
-  const folder = (id, title, note, tone, inner) => `<details class="dbfolder dirfolder${tone ? ' dir-' + tone : ''}" data-dirf="${id}"${dirShut.has(id) ? '' : ' open'}><summary><strong>${title}</strong> <span class="muted">${note}</span></summary><div class="df-body">${inner}</div></details>`;
+  const folder = (id, title, note, tone, inner) => DirFolder.html(id, title, note, tone, inner); // (the folders are made in dirfolder.js, as on the Race tab)
   // The Adjust folder (1.12.0): pick a lane, then use the pads (penalty points, time, laps, championship points) for that lane. Nothing is picked to begin with, so a press never lands on the wrong lane.
   // What a pad did is kept to show the last action and to undo it (an undo is the same pad command with the opposite amount).
   // (the lane that is picked and what the pads did are kept here, so they stay when the page is drawn again; the panel itself is in adjustui.js)
@@ -183,11 +182,7 @@ const LiveView = (() => {
           <div class="lv-ctl">${st.cfg.entries.map(e => `<button class="btn" data-cmd="call" data-lane="${e.lane}" title="A call from this lane: raises the yellow flag, like a call button">Call lane ${e.lane + 1}</button>`).join('')}</div>
           <ul id="dir-calls" class="lv-calls"></ul></div>
         ${st.tokenUi ? '' : folder('adjust', 'Adjust', 'Penalty points, damage points, time, laps and championship points for one lane', 'plain', '<div id="dir-adj"></div>')}
-        ${folder('penalties', 'Penalties', 'Points and penalties for each lane', 'yellow', pen ? `<div class="wrap"><table class="fields"><thead><tr><th>Lane</th><th>Driver</th><th>Points</th><th>Time penalty</th><th>Not served yet</th><th></th></tr></thead><tbody>${st.cfg.entries.map(e =>
-          `<tr data-row="${e.lane}"><td>${e.lane + 1}</td><td>${esc(e.driverName)}</td><td class="num dir-pts"></td><td class="num dir-sec"></td><td class="dir-pend"></td>
-           <td class="actions"><button class="btn" data-cmd="penalty" data-lane="${e.lane}" data-n="-1" aria-label="Take back a point from ${esc(e.driverName)}">−1</button> <button class="btn danger" data-cmd="penalty" data-lane="${e.lane}" data-n="1">Penalty point +1</button>
-           ${(st.cfg.penalty.types || []).map((t, ti) => `<button class="btn" data-cmd="assign" data-lane="${e.lane}" data-type="${ti}" title="Costs ${t.cost} penalty points; has to be served in the pits">${esc(t.name)} (−${t.cost})</button>`).join(' ')}</td></tr>`).join('')}</tbody></table></div>
-          <h3>Penalty log</h3><ol id="dir-log" class="lv-log"></ol>` : '<p class="muted">This race has no penalty system. Choose one in the race setup to give penalty points.</p>')}
+        ${folder('penalties', 'Penalties', 'Points and penalties for each lane', 'yellow', pen ? PenaltyPanel.tableHtml(st.cfg.entries, st.cfg.penalty.types) : PenaltyPanel.NONE)}
         ${st.cfg.bop ? folder('bop', 'Balance of Power', 'Even out fast and slow cars', 'white', '<div id="dir-bop" class="boppanel"></div>') : ''}
         ${st.cfg.damage ? folder('damage', 'Damage', 'Incidents and repairs', 'red', '<div id="dir-dm" class="boppanel"></div>') : ''}
         ${st.cfg.weather ? folder('weather', 'Weather', 'Rain, tyres and pit stops', 'blue', '<div id="dir-wx" class="boppanel"></div>') : ''}
@@ -201,7 +196,7 @@ const LiveView = (() => {
       wxPanel = st.cfg.weather ? WeatherPanel.build($('dir-wx'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, now: () => V.clock(performance.now()), send: state => send({ type: 'weather', state }) }) : null; // the weather: the same controls as on the main computer
       enPanel = st.cfg.endurance ? EndurancePanel.build($('dir-en'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, now: () => V.clock(performance.now()), send: (l, what, id) => send(what === 'swap' ? { type: 'swap', lane: l, ...(id ? { to: id } : {}) } : { type: 'swapnext', lane: l, id }) }) : null; // an Endurance Race: the swaps, the same controls as on the main computer
       dmPanel = st.cfg.damage ? DamagePanel.build($('dir-dm'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), incidents: st.cfg.damage.incidents, phase: () => V.dyn().phase, now: () => V.clock(performance.now()), send: (l, n) => send({ type: 'damage', lane: l, n }) }) : null; // the damage of the cars, the same controls as on the main computer
-      if (body.querySelectorAll) body.querySelectorAll('details.dirfolder').forEach(el => { el.ontoggle = () => { if (el.open) dirShut.delete(el.dataset.dirf); else dirShut.add(el.dataset.dirf); }; });
+      DirFolder.bind(body);
       Review.bind($('dir-review'), c => send({ type: 'review', ...c }), () => drawDirector($('lv-body'), false));
       Review.bind($('dir-laps'), c => send({ type: 'review', ...c }), () => drawDirector($('lv-body'), false));
       body.onclick = e => {
@@ -242,18 +237,8 @@ const LiveView = (() => {
       rv.hidden = false; if (h !== rvShown) { rvShown = h; rv.innerHTML = h; }
     } else if (!rv.hidden) { rv.hidden = true; rv.innerHTML = ''; rvShown = ''; }
     if (!pen) return;
-    st.cfg.entries.forEach(e => {
-      const row = body.querySelector(`[data-row="${e.lane}"]`), c = eng.cars.find(x => x.lane === e.lane); if (!row || !c) return;
-      row.querySelector('.dir-pts').textContent = c.dq ? 'DQ' : String(c.points);
-      const sec = eng.penMs(c) / 1000; row.querySelector('.dir-sec').textContent = sec ? `+${Number.isInteger(sec) ? sec : sec.toFixed(1)} s` : '–';
-      row.querySelector('[data-n="1"]').disabled = !on || c.dq;
-      row.querySelector('[data-n="-1"]').disabled = !(on && c.points > 0);
-      row.querySelector('.dir-pend').textContent = c.pending.map(p => p.name).join(', ') || '–';
-      row.querySelectorAll('[data-cmd="assign"]').forEach(b => { const ty = (st.cfg.penalty.types || [])[Number(b.dataset.type)]; b.disabled = !on || c.dq || !ty || c.points < ty.cost; });
-    });
-    const log = (eng.events || []).filter(x => ['penalty', 'disqualified', 'reinstated', 'assigned', 'served', 'leftearly', 'forgiven', 'timeadded', 'damage', 'repaired', 'repairearly', 'damagelate', 'damageout'].includes(x.type)).slice(-12).reverse();
-    $('dir-log').innerHTML = log.length ? log.map(x => { const c = eng.cars[x.car], who = esc(c ? c.driverName : '?');
-      return `<li>${x.type === 'penalty' ? `${who}: ${x.delta > 0 ? '+' : ''}${x.delta} point${Math.abs(x.delta) === 1 ? '' : 's'} (now ${x.points}${x.ms ? ', +' + x.ms / 1000 + ' s' : ''})` : x.type === 'disqualified' ? `${who} is disqualified` : x.type === 'reinstated' ? `${who} is back in the race` : x.type === 'assigned' ? `${who} must serve: ${esc(x.name)}` : x.type === 'served' ? `${who} served: ${esc(x.name)}` : x.type === 'leftearly' ? `${who} left too early (${esc(x.name)})${x.extra ? `, +${x.extra} point${x.extra === 1 ? '' : 's'}` : ''}` : x.type === 'forgiven' ? `${who}: ${esc(x.name)} forgiven` : x.type === 'damage' ? `${who}: ${x.delta > 0 ? '+' : ''}${x.delta} damage point${Math.abs(x.delta) === 1 ? '' : 's'} (now ${x.points}${x.name ? ', ' + esc(x.name) : ''})${x.why === 'deslot' ? ', a deslot' : ''}` : x.type === 'repaired' ? `${who} repaired: ${esc(x.name)} (${Math.round(x.ms / 100) / 10} s in the pits)` : x.type === 'repairearly' ? `${who} left the pits before the repair was done (${esc(x.name)})${x.extra ? `, +${x.extra} penalty point${x.extra === 1 ? '' : 's'}` : ''}` : x.type === 'damagelate' ? `${who} is late for the pits (${esc(x.name)})${x.points ? `, +${x.points} penalty point${x.points === 1 ? '' : 's'}` : ''}` : x.type === 'damageout' ? `${who} is ${x.how === 'dq' ? 'disqualified' : 'retired'} by damage (${esc(x.name)})` : `${who}: +${x.ms / 1000} s added`}</li>`; }).join('') : '<li class="muted">No penalties yet.</li>';
+    PenaltyPanel.refresh(body, eng, st.cfg.entries, st.cfg.penalty.types, on);
+    $('dir-log').innerHTML = PenaltyPanel.logHtml(eng); // (the log is made in penaltyui.js, as on the Race tab)
   }
 
   // Tokens (Time Token Session): the same lane controls as on the main computer. The clocks, the time buttons and the drivers come with the race;

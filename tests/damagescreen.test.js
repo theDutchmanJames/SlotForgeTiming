@@ -46,7 +46,7 @@ const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if
 for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function') api[k] = (...x) => { x.forEach(v => { if (typeof v !== 'function') structuredClone(v); }); return f(...x); }; }
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'report.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js','padui.js','livegrid.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'enduranceui.js', 'damageui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'report.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js','padui.js','livegrid.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'enduranceui.js', 'damageui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -165,12 +165,10 @@ const view = () => run('Damage.view(live.engine(), [0, 1], performance.now(), li
   await openRace(dsetup({ id: 'ds4' }), track, rows(1, 2));
   {
     const A = adjFakes();
-    say('a race with penalty and damage systems has an Adjust panel on the Race tab, but nothing to press before the start', !!run('live.adjPanel') && E('adjbtn').hidden === true && E('adjpanel').hidden === true);
+    say('a race with penalty and damage systems has an Adjust folder on the Race tab (no button to open it any more), but it says the pads work once the race runs', !!run('live.adjPanel') && E('fd-adjust').hidden === false && !fs.readFileSync(R + 'renderer/race.js', 'utf8').includes('id="adjbtn"') && E('radj-who').textContent.includes('running or paused'));
     key(' '); await until(() => phase() === 'running', 5000); await wait(80);
-    say('while the race runs the Adjust button is there, and the panel stays closed until it is pressed', E('adjbtn').hidden === false && E('adjbtn').textContent === 'Adjust' && E('adjpanel').hidden === true);
-    E('adjbtn').onclick({}); await wait(40);
     const box = E('adjpanel').innerHTML;
-    say('...pressing it opens the panel: a button for every lane, the five pads in order, Undo and the layout buttons', E('adjpanel').hidden === false && E('adjbtn').textContent === 'Hide adjust' && box.includes('<strong>Adjust</strong>') && ['data-adj-lane="0"', 'data-adj-lane="1"'].every(x => box.includes(x))
+    say('while the race runs the folder is there with a button for every lane, the five pads in order, Undo and the layout buttons (the folder has the name, the panel needs no title)', E('fd-adjust').hidden === false && !box.includes('<strong>Adjust</strong>') && ['data-adj-lane="0"', 'data-adj-lane="1"'].every(x => box.includes(x))
       && ['points', 'damage', 'time', 'laps', 'champ'].map(g => box.indexOf(`data-pad="${g}"`)).every((x, i, a) => x > 0 && (i === 0 || x > a[i - 1])) && box.includes('data-adj-undo') && box.includes('data-adj-layout="v"') && box.includes('pad-h'));
     say('...no lane is picked yet: it says so, every pad and Undo are switched off', E('radj-who').textContent.includes('Choose a lane') && A.pads.every(p => p.btns.every(b => b.disabled)) && A.undoB.disabled === true && E('radj-last').textContent === 'Nothing adjusted yet.');
     say('...the pads of this race: penalty points, damage points, time and laps; no championship points (no heat race)', A.pads.map(p => p.hidden).join() === 'false,false,false,false,true');
@@ -205,9 +203,7 @@ const view = () => run('Damage.view(live.engine(), [0, 1], performance.now(), li
     say('another lane can be picked (the pads act on lane 1 then)', E('radj-who').textContent === `Lane 1 · ${car(0).driverName}`);
     run('live.actions.pause()'); await wait(60);
     await A.clickA('[data-pad-do]', { padDo: 'laps', v: '1', sign: '1' });
-    say('the pads work while the race is paused, too', phase() === 'paused' && E('adjbtn').hidden === false && car(0).adjLaps === 1);
-    E('adjbtn').onclick({}); await wait(40);
-    say('the button closes the panel again', E('adjpanel').hidden === true && E('adjbtn').textContent === 'Adjust');
+    say('the pads work while the race is paused, too', phase() === 'paused' && E('fd-adjust').hidden === false && car(0).adjLaps === 1);
     run('live.actions.pause()'); await wait(60);
   }
   run('state.race = null; live = null'); saved.length = 0;
@@ -217,13 +213,12 @@ const view = () => run('Damage.view(live.engine(), [0, 1], performance.now(), li
   {
     const A = adjFakes();
     key(' '); await until(() => phase() === 'running', 5000); await wait(80);
-    E('adjbtn').onclick({}); await wait(40);
     say('without a Damage System the damage pad is hidden (penalty points, time and laps are there)', A.pads.map(p => p.hidden).join() === 'false,true,false,false,true');
   }
   run('state.race = null; live = null'); saved.length = 0;
   await openRace(dsetup({ id: 'ds6', sessionType: 'practice', duration: 5, damageSystem: '', penaltySystem: '' }), track, rows(1, 2));
   key(' '); await until(() => phase() === 'running', 5000); await wait(80);
-  say('a practice has nothing to adjust (no penalty system, no damage system, no race time): no Adjust button', !!run('live.adjPanel') && E('adjbtn').hidden === true && E('adjpanel').hidden === true);
+  say('a practice has nothing to adjust (no penalty system, no damage system, no race time): no Adjust folder', !!run('live.adjPanel') && E('fd-adjust').hidden === true);
   run('state.race = null; live = null'); saved.length = 0;
 
   reachedEnd = true;

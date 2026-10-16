@@ -75,8 +75,8 @@ async function renderRace() {
     if (!l.noTrackRecord && l.time < base.track) { base.trackName = nameOf('drivers', drivers, l.driverId) || (l.driverId ? '(deleted)' : 'Guest'); base.track = l.time; } // (a Guest, who has no driver in the database, can hold the track record of the Token Records)
     if (!l.noPersonalBest && l.driverId) base.personal.set(l.driverId, Math.min(base.personal.get(l.driverId) ?? Infinity, l.time)); // (a Guest has no personal best)
   });
-  live = { penBtns: [], phase: 'ready', calling: false, callRun: 0, callTimer: null, timers: null, sim: [], key: null, laps: [], stopping: false, flash: new Map(), lights: 0, nodes: [], lapBtns: [], pitBtns: [], callBtns: [], callsKey: null, // (null: the strip is drawn the first time)
-    alive: true, raceRef: r, stintBy: new Map(), extraBy: new Map(), bestBy: new Map(), bestAll: Infinity, bestAllName: '', priorBy: new Map(), priorAll: Infinity, priorAllName: '', lapsOpen: false, adjOpen: false, lapSig: null, rvHtml: '' }; // (prior: the bests of the heats that are finished)
+  live = { trkCards: [], phase: 'ready', calling: false, callRun: 0, callTimer: null, timers: null, sim: [], key: null, laps: [], stopping: false, flash: new Map(), lights: 0, nodes: [], lapBtns: [], pitBtns: [], callBtns: [], callsKey: null, // (null: the strip is drawn the first time)
+    alive: true, raceRef: r, stintBy: new Map(), extraBy: new Map(), bestBy: new Map(), bestAll: Infinity, bestAllName: '', priorBy: new Map(), priorAll: Infinity, priorAllName: '', lapsOpen: false, lapSig: null, rvHtml: '' }; // (prior: the bests of the heats that are finished)
   Review.reset();
   // a Time Token Session: the token clocks of the lanes (tokens.js). They run on the race clock, so a pause stops them.
   const tokenSet = Tokens.settingsOf(state.settings);
@@ -97,19 +97,23 @@ async function renderRace() {
   const planHtml = !heats ? '' : `<details class="card" id="heatlistcard" style="margin-top:12px" open><summary>Heat list (${heat.count} ${heat.count === 1 ? 'heat' : 'heats'}${finalsOn ? (heat.total - heat.count === 2 ? ' and 2 finals' : ' and a final') : ''})</summary>
     <div class="wrap" id="heatlist"></div><div class="row"><button class="btn" id="heatprint" type="button" title="Make a PDF of the heat list, to print or pin up">Print the heat list</button> <span id="heatprintmsg" class="muted" role="status"></span></div></details>`;
   const host = raceHost();
+  const folderHtml = (id, title, note, tone, inner) => DirFolder.html(id, title, note, tone, inner, { id: 'fd-' + id }); // (1.15.0: the folders of the Race Director page, with the same colours and order)
   host.innerHTML = `<p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.ofType || setup.sessionType])} on ${esc(r.track.name)} · ${esc(limitFull)}</p>
     <div class="rt-stage"><div class="canvas live" id="canvas"></div></div>
-    <div class="bar rt-tools"><label><input type="checkbox" id="sim"> Simulated cars</label><span id="tmstatus" class="muted" role="status"></span><span id="lapbtns"></span><span id="pitbtns"></span><span id="callbtns"></span><span id="penbtns"></span>
-      <button class="btn" id="fsbtn" type="button" title="Show only the widgets, as large as the window allows (F). Esc closes it.">Full screen widgets</button><button class="btn" id="lapsbtn" aria-expanded="false" hidden title="Check the laps while the race goes on: mark a lap invalid or take it out of the records">Review laps</button><button class="btn" id="adjbtn" type="button" aria-expanded="false" hidden title="Adjust penalty points, damage points, time, laps and championship points for one lane while the race goes on">Adjust</button><span id="msg" class="muted" role="status"></span><button class="btn danger stopbtn" id="stopbtn">Stop race</button><button class="btn" id="back">Back to Home</button></div>
-    <div id="tokenpanel" class="card tkpanel" hidden></div>
-    <div id="boppanel" class="card boppanel" hidden></div>
-    <div id="wxpanel" class="card boppanel" hidden></div>
-    <div id="enpanel" class="card boppanel" hidden></div>
-    <div id="dmpanel" class="card boppanel" hidden></div>
-    <div id="adjpanel" class="card boppanel adjpanel" hidden></div>
+    <div class="bar rt-tools"><label><input type="checkbox" id="sim"> Simulated cars</label><span id="tmstatus" class="muted" role="status"></span>
+      <button class="btn" id="fsbtn" type="button" title="Show only the widgets, as large as the window allows (F). Esc closes it.">Full screen widgets</button><button class="btn" id="lapsbtn" aria-expanded="false" hidden title="Check the laps while the race goes on: mark a lap invalid or take it out of the records">Review laps</button><span id="msg" class="muted" role="status"></span><button class="btn danger stopbtn" id="stopbtn">Stop race</button><button class="btn" id="back">Back to Home</button></div>
+    <div id="calls" class="card calls" hidden></div>
     <div id="finalpick" class="card" hidden></div>
     <div id="teampick" class="card" hidden></div>
-    <div id="calls" class="card calls" hidden></div>
+    <div class="rt-folders">
+      ${folderHtml('track', 'Track actions', 'Lap, pit and call buttons for each lane', 'green', '<div id="trackgrid" class="trk-grid"></div>')}
+      ${tokenSession ? folderHtml('tokens', 'Time tokens', 'Add time to a lane to switch it on', 'teal', '<div id="tokenpanel" class="tkpanel"></div>') : folderHtml('adjust', 'Adjust', 'Penalty points, damage points, time, laps and championship points for one lane', 'plain', '<div id="adjpanel" class="boppanel adjpanel"></div>')}
+      ${penCfg.on ? folderHtml('penalties', 'Penalties', 'Points and penalties for each lane', 'yellow', '<div id="penpanel"></div>') : ''}
+      ${bopCfg ? folderHtml('bop', 'Balance of Power', 'Even out fast and slow cars', 'white', '<div id="boppanel" class="boppanel"></div>') : ''}
+      ${eng.damage ? folderHtml('damage', 'Damage', 'Incidents and repairs', 'red', '<div id="dmpanel" class="boppanel"></div>') : ''}
+      ${eng.weather ? folderHtml('weather', 'Weather', 'Rain, tyres and pit stops', 'blue', '<div id="wxpanel" class="boppanel"></div>') : ''}
+      ${setup.endurance ? folderHtml('endurance', 'Endurance', 'Driver swaps', 'brown', '<div id="enpanel" class="boppanel"></div>') : ''}
+    </div>
     <div id="lapreview" class="card rv" hidden></div>
     <div id="review" class="card rv" hidden></div>
     <p class="muted">Space starts, pauses and resumes · Y yellow flag · R red flag · S stops the race · F shows the widgets full screen (Esc closes it) · press a lane's number key (or its Lap button) each time a car crosses the line${tokenSession ? ' (a lane without paid time ignores it, and a lane whose time is up records the lap but does not count it)' : ''} · Shift + number (or the Pit button) puts that lane's car on the sensor, press again to drive off · Ctrl + number (or the Call button) is a call from that lane: the yellow flag goes up and the Race Director decides what happens.</p>
@@ -123,14 +127,18 @@ async function renderRace() {
 
   // ---- build the page from the layout (once); widgets for lanes the track does not have are left out ----
   live.nodes = LiveCanvas.build(ui('canvas'), layout, lanes, { onButton: type => actions[type]() });
+  // Track actions (1.15.0): a card for each lane with the buttons Lap, Pit and Call, large and in colour. The keys are said on the buttons (1-8 for Lap, Shift + number for Pit, Ctrl + number for Call).
+  const mkEl = (tag, cls, text) => { const el = document.createElement(tag); el.className = cls; if (text !== undefined) el.textContent = text; return el; };
   for (let l = 0; l < lanes; l++) {
-    const b = document.createElement('button'); b.className = 'btn'; b.textContent = `Lap ${l + 1}`; b.onclick = () => crossLane(l);
-    ui('lapbtns').appendChild(b); live.lapBtns.push({ lane: l, b });
-    if (!tokenSession) { const pb = document.createElement('button'); pb.className = 'btn'; pb.textContent = `Pit ${l + 1}`; pb.onclick = () => togglePit(l);
-      ui('pitbtns').appendChild(pb); live.pitBtns.push({ lane: l, b: pb }); }
-    const cb = document.createElement('button'); cb.className = 'btn'; cb.textContent = `Call ${l + 1}`; cb.title = 'A call from this lane: raises the yellow flag, the Race Director decides'; cb.onclick = () => actions.call(l);
-    ui('callbtns').appendChild(cb); live.callBtns.push({ lane: l, b: cb });
-    if (penCfg.on) { const qb = document.createElement('button'); qb.className = 'btn'; qb.textContent = `Penalty ${l + 1}`; qb.title = 'Give this lane one penalty point'; qb.onclick = () => actions.penalty(l, 1); ui('penbtns').appendChild(qb); live.penBtns.push({ lane: l, b: qb }); }
+    const card = mkEl('div', 'trk-card'), head = mkEl('div', 'trk-head'), num = mkEl('span', 'trk-lane', String(l + 1)), who = mkEl('span', 'trk-who'), row = mkEl('div', 'trk-sub');
+    head.appendChild(num); head.appendChild(who); card.appendChild(head);
+    const b = mkEl('button', 'btn trk-btn trk-lap', `Lap ${l + 1}`); b.onclick = () => crossLane(l); b.title = 'A car crosses the line on this lane'; if (l < 8) b.setAttribute('data-key', String(l + 1));
+    card.appendChild(b); live.lapBtns.push({ lane: l, b });
+    if (!tokenSession) { const pb = mkEl('button', 'btn trk-btn trk-pit', `Pit ${l + 1}`); pb.onclick = () => togglePit(l); pb.title = 'Put this lane\'s car on the pit sensor; press again to drive off'; if (l < 8) pb.setAttribute('data-key', '⇧' + (l + 1));
+      row.appendChild(pb); live.pitBtns.push({ lane: l, b: pb }); }
+    const cb = mkEl('button', 'btn trk-btn trk-call', `Call ${l + 1}`); cb.title = 'A call from this lane: raises the yellow flag, the Race Director decides'; cb.onclick = () => actions.call(l); if (l < 8) cb.setAttribute('data-key', 'Ctrl ' + (l + 1));
+    row.appendChild(cb); live.callBtns.push({ lane: l, b: cb });
+    card.appendChild(row); ui('trackgrid').appendChild(card); live.trkCards.push({ lane: l, card, who });
   }
 
   // championship points of the heats finished so far: { on, list: points per position, done: [[driverId, points]] }
@@ -244,36 +252,38 @@ async function renderRace() {
     if (live.fsView) LiveCanvas.paint(live.fsView.nodes, S);
     live.pitBtns.forEach(x => {
       const c = S.carByLane(x.lane), blocked = !!c && c.blockAt !== null;
-      x.b.disabled = !(live.phase === 'running' && c && !c.done); x.b.hidden = !c; x.b.textContent = blocked ? `Leave pit ${x.lane + 1}` : `Pit ${x.lane + 1}`;
+      x.b.disabled = !(live.phase === 'running' && c && !c.done); x.b.hidden = !c; x.b.textContent = blocked ? `Leave pit ${x.lane + 1}` : `Pit ${x.lane + 1}`; x.b.setAttribute('aria-pressed', String(blocked)); // (the button stays lit while the car is in the pit)
     });
     if (live.phase === 'review') {
       ui('review').hidden = false; live.reviewShown = true;
       if (!live.tkBusy) { const h = tokens ? Review.stintsHtml(tokens.closedList().filter(x => x.laps.length), { failed: live.tkFailed }) : Review.html(eng, { champ: champOf(), settings: state.settings }); if (h !== live.rvHtml) { live.rvHtml = h; ui('review').innerHTML = h; } } // (only when it changed: a button never changes under your finger; not while the stints are being saved)
     } else if (live.reviewShown) { ui('review').innerHTML = ''; ui('review').hidden = true; live.reviewShown = false; live.rvHtml = ''; }
     drawLapReview(); drawFinalPick(); drawTeamPick();
-    live.penBtns.forEach(x => { const c = S.carByLane(x.lane); x.b.disabled = !(['running', 'paused'].includes(live.phase) && c && !c.dq); x.b.hidden = !c; });
     live.lapBtns.forEach(x => { const c = S.carByLane(x.lane); x.b.disabled = !(live.phase === 'running' && c && !c.done); x.b.hidden = !c; });
-    live.callBtns.forEach(x => { const c = S.carByLane(x.lane); x.b.disabled = !(['running', 'paused'].includes(live.phase) && c && !c.done); x.b.hidden = !c; });
+    live.callBtns.forEach(x => { const c = S.carByLane(x.lane), calling = !!c && eng.calls.some(k => k.open && eng.cars[k.car] && eng.cars[k.car].lane === x.lane); x.b.disabled = !(['running', 'paused'].includes(live.phase) && c && !c.done); x.b.hidden = !c; x.b.setAttribute('data-active', String(calling)); }); // (a lane with a call that waits for the Race Director stays lit)
+    live.trkCards.forEach(x => { const c = S.carByLane(x.lane), name = c ? (c.driverName || '') : ''; x.card.hidden = !c; if (x.who.textContent !== name) x.who.textContent = name; });
     drawCalls();
     drawAdjust();
+    if (live.penPanel) live.penPanel.update();
     if (live.tkPanel) live.tkPanel.update();
     if (live.bopPanel) live.bopPanel.update();
     if (live.wxPanel) live.wxPanel.update();
     if (live.enPanel) live.enPanel.update();
     if (live.dmPanel) live.dmPanel.update();
+    syncFolders();
     if (tokens && live.phase === 'running' && now() - (live.tkAt || -1e9) > 10000) persistTokens(true); // (the clocks that run: kept every ten seconds)
     ui('back').disabled = raceActive();
     ui('stopbtn').disabled = !(live.phase === 'running' || live.phase === 'paused' || live.phase === 'between');
     share();
   };
-  // the Adjust panel (1.13.0): the pads of the Race Director page (penalty points, damage points, time, laps, championship points) on the Race tab, opened with the "Adjust" button while the race runs or is paused
+  // the Adjust folder (1.13.0, a folder since 1.15.0): the pads of the Race Director page (penalty points, damage points, time, laps, championship points) on the Race tab; there while the race is waiting, running or paused
   const drawAdjust = () => {
-    const p = live.adjPanel, btn = ui('adjbtn'), box = ui('adjpanel'), on = !!p && (live.phase === 'running' || live.phase === 'paused') && p.usable();
-    btn.hidden = !on;
-    const label = live.adjOpen ? 'Hide adjust' : 'Adjust'; if (btn.textContent !== label) btn.textContent = label;
-    btn.setAttribute('aria-expanded', String(live.adjOpen));
-    box.hidden = !(on && live.adjOpen); if (!box.hidden) p.update();
+    const p = live.adjPanel, f = ui('fd-adjust'); if (!p || !f) return;
+    const show = ['ready', 'running', 'paused', 'between'].includes(live.phase) && p.usable();
+    f.hidden = !show; if (show) p.update();
   };
+  // the folders of the panels that decide themselves whether they have anything to show (Balance of Power, Damage, Weather, Endurance): when the panel is hidden, its folder goes too
+  const syncFolders = () => [['bop', 'boppanel'], ['damage', 'dmpanel'], ['weather', 'wxpanel'], ['endurance', 'enpanel']].forEach(([f, pn]) => { const fd = ui('fd-' + f), pb = ui(pn); if (fd && pb) fd.hidden = !!pb.hidden; });
   // the calls that wait for the Race Director. The strip is only rebuilt when the calls change, so a button never changes under a finger.
   const drawCalls = () => {
     const open = eng.calls.filter(c => c.open), key = open.map(c => `${c.id}:${c.car}${eng.cars[c.car].dq ? 'd' : ''}`).join(); // (a new heat starts counting again, so the car is part of the key too)
@@ -713,10 +723,6 @@ async function renderRace() {
   });
   Review.bind(ui('review'), reviewCommand, () => update());
   Review.bind(ui('lapreview'), reviewCommand, () => update());
-  ui('adjbtn').onclick = ev => {
-    if (ev && ev.currentTarget && ev.currentTarget.blur) ev.currentTarget.blur();
-    live.adjOpen = !live.adjOpen; update();
-  };
   ui('lapsbtn').onclick = ev => {
     if (ev && ev.currentTarget && ev.currentTarget.blur) ev.currentTarget.blur();
     live.lapsOpen = !live.lapsOpen; ui('lapsbtn').setAttribute('aria-expanded', String(live.lapsOpen)); update();
@@ -913,9 +919,12 @@ async function renderRace() {
   if (bopCfg) live.bopPanel = BopPanel.build(ui('boppanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, send: (lane, how) => actions.bop(lane, how) }); // the Balance of Power lane controls
   if (setup.endurance) live.enPanel = EndurancePanel.build(ui('enpanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, now, send: (lane, what, id) => (what === 'swap' ? actions.swap(lane, id) : actions.swapNext(lane, id)) }); // the swaps of an Endurance Race
   if (eng.damage) live.dmPanel = DamagePanel.build(ui('dmpanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), incidents: eng.damage.incidents, phase: () => live.phase, now, send: (lane, n) => actions.damage(lane, n) }); // the damage of the cars (the Damage System)
-  if (!tokens) live.adjPanel = AdjustPanel.build(ui('adjpanel'), { id: 'radj', find: ui, title: 'Adjust', eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, now,
+  if (!tokens) live.adjPanel = AdjustPanel.build(ui('adjpanel'), { id: 'radj', find: ui, eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, now,
     penalty: () => !!(eng.penalty && eng.penalty.on), damage: () => !!eng.damage, champ: () => !!(heats && setup.resultBy === 'points'), send: (group, lane, amount) => actions.pad(group, lane, amount), refresh: () => update(), raceKey: () => eng }); // the Adjust pads: the same as on the Race Director page, but they adjust the race directly
   if (eng.weather) live.wxPanel = WeatherPanel.build(ui('wxpanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, now, send: state => actions.weather(state) }); // the weather controls
+  if (penCfg.on) live.penPanel = PenaltyPanel.build(ui('penpanel'), { eng: () => eng, entries: () => eng.cars.map(c => ({ lane: c.lane, driverName: c.driverName })).sort((a, b) => a.lane - b.lane), cfg: () => penCfg, phase: () => live.phase,
+    send: cmd => (cmd.type === 'penalty' ? actions.penalty(cmd.lane, cmd.n) : actions.assign(cmd.lane, cmd.typeIndex)) }); // the Penalties folder: the same table as on the Race Director page, but the penalties are given right here
+  DirFolder.bind(host); // (a folder that is closed stays closed, also when the next race is shown)
 
   // ---- a race that was interrupted can be carried on (1.9.0) ----
   // While a single race runs (or waits in the review), a snapshot of it goes to a file every few seconds and whenever something changes (a lap, a swap, a flag, a pause). After a crash or a power cut the Home tab
