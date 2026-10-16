@@ -1966,3 +1966,16 @@ Good to know:
 5. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 6. The tests: `tests/adjustpad.test.js` (the rules: own list or the app-wide one, tidying, the other settings are not changed), `tests/adjustui.test.js` (the panel draws the values of the setup and draws again for the next race), `tests/screens.test.js` (the form: the folder, the tidy-up on save, the refusal), `tests/live.test.js` (a real race: Race tab, Race Director page and review) and `tests/help.test.js`.
 
+## What to try (1.21.0): the app icon at 1024 pixels
+From your list: a Mac wants an app icon of 1024 x 1024 pixels, and the icon was 512. I did not just enlarge it (that only makes it blurry): I traced your artwork as a drawing made of lines and shapes and drew it again at 1024.
+1. Look at `build/icon.png`: it is 1024 x 1024 pixels, round, with see-through corners, and the same dark car on the light grey circle with the red lanes. Open it next to the old one and zoom in: the edges of the headlights, the bumper and the lanes are sharp now.
+2. `build/icon.svg` is the drawing it was made from (it opens in any browser or drawing program). Change it there, save it again as a 1024 x 1024 PNG with a see-through background, and put that PNG in `build/icon.png`.
+3. To see it on a Mac: run `build-mac.command`. The app and the .dmg use the new icon, and the Mac makes the sharp Retina version from the 1024 picture. Windows and Linux use the same `icon.png`.
+
+Good to know:
+1. The picture is the same: colours, shapes and the round form. The traced version differs from the old one by about one part in two hundred, only along the edges. I added the soft grey glow in the windshield and the thin lines of the grille back as separate shapes, because a trace loses those.
+2. `build/icon.ico` (Windows, 16 to 256 pixels) is unchanged; it never needed 1024.
+3. The icon is still round. A Mac icon is normally a rounded square with a little space around it (see 0.90.0); if you want a Mac version like that, tell me how much space.
+4. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+5. The tests: `tests/mac.test.js` (1024 x 1024, see-through background, the drawing `icon.svg` exists and is a real drawing) and `tests/package.test.js` (round, colours, the Windows icon).
+
