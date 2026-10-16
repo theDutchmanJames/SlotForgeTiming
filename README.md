@@ -1905,3 +1905,18 @@ Good to know:
 3. **Not done**: the Sound chip of the mockup became the audio set of the setup, because the app has no general sound switch. Ties in "most wins" go to the one who won last.
 4. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 5. The tests: `tests/homestats.test.js` (new: the record, last race, podium, totals, chips, lane colours and start lights), a new block in `tests/screens.test.js` (the band, colours, lights, the cards, fetching once, the live Trackmate and network chips), and the Home folder of the help.
+
+## What to try (1.18.0): Delta Timers top and bottom
+From your question: could the Delta Timer also be shown vertically, with the time on top and the badge below it, as well as left and right?
+1. Open Customization > Layouts, make or open a layout and add a **Delta Timers** widget (for example *Best Lap Delta*). Click it: in its settings there is a new choice, **Value and badge**.
+2. **Left and right** is the standard and is exactly as before: the time on the left, the badge on the right, the badge as high as the widget.
+3. Choose **Top and bottom**: the time is on top and the coloured badge sits below it, as wide as the widget (green with ▲ for faster, red with ▼ for slower, as always). All eight Delta Timers have it, also the Session Record and Track Record ones.
+4. The time and the badge now share the height of the widget, so give it room: drag the widget taller (a box of about twice the old height is a good start) or make the text smaller. The hint under the choice says so.
+5. **Size of the badge** works in the new way too: 100% is as wide as the widget, a smaller badge is narrower (and its text smaller), a larger one has bigger text.
+6. The Live Race pages and the Race tab draw it the same way. The look (filled or outlined), arrow, decimals and colours all work in both arrangements.
+
+Good to know:
+1. The setting that chooses what the first value shows is now called **Left (or top) value shows**, because in the stacked widget that value is on top. Nothing else about it changed.
+2. A badge that is made bigger than its widget is wider than the box in the stacked widget, so its text can be cut off: lower the size of the badge or widen the widget.
+3. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+4. The tests: new blocks in `tests/delta.test.js` (the choice, the class, the badge size in both arrangements, the live page), `tests/screens.test.js` (the setting in the editor and the canvas) and `tests/help.test.js` (the Delta Timers folder).

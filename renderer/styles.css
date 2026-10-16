@@ -604,6 +604,10 @@ dialog:has(.formgrid) form{display:flex;flex-direction:column;max-height:calc(90
 .dlt-badge.dlt-outlined{box-shadow:none;border:.14em solid;box-sizing:border-box}
 .dlt-badge.dlt-none{background:rgba(128,128,128,.22);color:var(--muted);box-shadow:none;font-weight:600}
 .lw-val:has(.dlt){padding:0}
+/* 1.18.0: the value on top and the badge below it (the setting "Value and badge": Top and bottom) */
+.dlt.dlt-col{flex-direction:column;justify-content:center;gap:.1em;padding:.1em .3em}
+.dlt-col .dlt-val{flex:1 1 0;min-height:0;width:100%;line-height:1.1}
+.dlt-col .dlt-badge{margin:0 0 .16em;padding:.04em .55em;line-height:1.1}
 
 /* the plan of a heat race on the Home tab */
 .heatplan{margin:14px 0 6px;padding-top:6px;border-top:1px dashed var(--line)}

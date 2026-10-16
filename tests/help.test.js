@@ -85,7 +85,7 @@ const folders = Help.folders();
     const folder = W.REGISTRY ? Object.values(W.REGISTRY).filter(d => d.group === 'Delta Timers') : [];
     say('the Delta Timers the Help describes exist: a folder of that name in the Layout Editor, eight widgets, and the ways of comparing it names', text.includes('Delta Timers') && folder.length === 8 && Object.keys(Dl.KINDS).length === 8
       && ['a chosen lane', 'the leader', 'the fastest in the race', 'the track record', 'the session record'].every(w => text.includes(w)) && text.includes('−0.045') && text.includes('+0.321'));
-    say('...and so is its Left value shows setting: the six widgets that can show another value have it, the two record ones do not', /Left value shows/.test(text) && Object.keys(Dl.KINDS).filter(k => !Dl.KINDS[k].record).length === 6 && Object.keys(Dl.KINDS).filter(k => !Dl.KINDS[k].record).every(k => W.def(k).options.some(o => o.key === 'leftShows')) && Object.keys(Dl.KINDS).filter(k => Dl.KINDS[k].record).every(k => !W.def(k).options.some(o => o.key === 'leftShows'))); }
+    say('...and so is its Left (or top) value shows setting: the six widgets that can show another value have it, the two record ones do not', /Left \(or top\) value shows/.test(text) && Object.keys(Dl.KINDS).filter(k => !Dl.KINDS[k].record).length === 6 && Object.keys(Dl.KINDS).filter(k => !Dl.KINDS[k].record).every(k => W.def(k).options.some(o => o.key === 'leftShows')) && Object.keys(Dl.KINDS).filter(k => Dl.KINDS[k].record).every(k => !W.def(k).options.some(o => o.key === 'leftShows'))); }
   { const landing = read('renderer/landing.js');
     say('the Heat plan the Help names is on the Home tab, with its Shuffle again button, and the setup form says what the heat settings mean (hints)', text.includes('Heat plan') && text.includes('Shuffle again') && landing.includes('<h4>Heat plan</h4>') && landing.includes('>Shuffle again<')
       && ['heatBy', 'heatPlan', 'heats', 'resultBy', 'points'].every(k => schema.racesetups.fields.find(f => f.key === k).hint.length > 40)); }
@@ -201,5 +201,8 @@ const folders = Help.folders();
 { const home = plain(folders.find(x => x.id === 'home').body); // 1.17.0
   say('1.17.0: the Home folder explains the lane colours, the start lights, the band with its lights and the cards on the right', home.includes('colour') && home.includes('start lights') && home.includes('Trackmate') && home.includes('audio set') && home.includes('record to beat') && home.includes('last race') && home.includes('At a glance'));
   say('...it still says why Start race is greyed out and who picks the lane first, and the Home folder is short enough', home.includes('greyed out') && home.includes('picks their lane first') && home.length < 1400); }
+
+{ const dl = plain(folders.find(x => x.id === 'delta').body); // 1.18.0
+  say('1.18.0: the Delta Timers folder says the value and the badge can be top and bottom, and that the time is then on top', dl.includes('Value and badge') && dl.includes('top and bottom') && dl.includes('the time on top, the badge below it') && dl.length < 1400); }
 
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

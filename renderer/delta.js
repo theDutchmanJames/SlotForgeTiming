@@ -1,4 +1,4 @@
-// Delta Timers: a widget that shows a time (as the ordinary widget does) and, beside it, how far a lane is from something to compare with:
+// Delta Timers: a widget that shows a time (as the ordinary widget does) and, beside it (or, since 1.18.0 when you choose so, below it), how far a lane is from something to compare with:
 // a green badge (▼ −0.045) when it is faster, a red one (▲ +0.321) when it is slower. A negative difference is a faster one.
 // This file works the numbers out and makes the markup; it reads the shared race state (see liveshare.js) and draws nothing by itself.
 (function (root) {
@@ -131,6 +131,8 @@
   // the arrow: "up" (the standard) points up for a faster time, as in "you are 0.045 up on the pace"; "down" the other way round; "none" has no arrow
   const ARROWS = { up: { fast: '▲', slow: '▼' }, down: { fast: '▼', slow: '▲' } };
   const arrowOf = opt => { const a = opt && opt.arrow; return a === 'down' ? 'down' : (a === 'none' || a === false) ? 'none' : 'up'; }; // (a widget from 0.91.0 has true or false here)
+  // how the value and the badge sit (1.18.0): "row" (the standard) has the value on the left and the badge on the right, "column" has the value on top and the badge below it
+  const layoutOf = opt => (opt && opt.direction === 'column' ? 'column' : 'row');
   // the look: "filled" (the standard) is a solid block, "outlined" has only the outline and the text in the colour
   const styleOf = opt => (opt && opt.style === 'outlined' ? 'outlined' : 'filled');
   // The size and the text of the badge (settings of the widget). Scale: the whole badge, in percent (100 is the standard). Outline: the thickness of the line around it,
@@ -143,7 +145,7 @@
   // the style="" pieces for the size and the text; nothing for a standard badge, so a widget that has none of these settings looks exactly as before
   function sizeStyle(opt) {
     const k = scaleOf(opt) / 100, out = [];
-    if (k !== 1) out.push(`font-size:calc(.95em*${k})`, 'align-self:center', `height:min(100%,calc((100% - .32em)*${k}))`, 'margin:0'); // (the standard badge fills the height of the widget; a scaled one is a share of it)
+    if (k !== 1) out.push(`font-size:calc(.95em*${k})`, 'align-self:center', layoutOf(opt) === 'column' ? `width:min(100%,calc((100% - .32em)*${k}))` : `height:min(100%,calc((100% - .32em)*${k}))`, 'margin:0'); // (the standard badge fills the height of the widget, or its width when the badge is below the value; a scaled one is a share of it)
     if (!boldOf(opt)) out.push('font-weight:400');
     if (italicOf(opt)) out.push('font-style:italic');
     return out;
@@ -159,9 +161,9 @@
     const edge = custom || !outlined ? (line > 0 ? [`border:${line / 100}em solid ${outlined ? col : onColor(col)}`, 'box-sizing:border-box', ...(outlined ? [] : ['box-shadow:none'])] : outlined ? ['border:0', 'box-shadow:none'] : []) : [];
     return `<span class="dlt-badge dlt-${f.dir}${outlined ? ' dlt-outlined' : ''}" style="${[look, ...edge, ...size].join(';')}" title="${esc(title)}">${arrow}${SIGN[f.dir]}${f.text}</span>`;
   }
-  // the widget: the ordinary widget's content on the left, the badge on the right
+  // the widget: the ordinary widget's content on the left, the badge on the right (or the content on top and the badge below it)
   // from: whose value the left side shows when it is not the lane's own (a tooltip)
-  const wrap = (baseHtml, res, opt, from) => `<span class="dlt"><span class="dlt-val"${from ? ` title="${esc('Shows ' + from)}"` : ''}>${baseHtml}</span>${badge(res, opt)}</span>`;
+  const wrap = (baseHtml, res, opt, from) => `<span class="dlt${layoutOf(opt) === 'column' ? ' dlt-col' : ''}"><span class="dlt-val"${from ? ` title="${esc('Shows ' + from)}"` : ''}>${baseHtml}</span>${badge(res, opt)}</span>`;
   // the palette and the editor: lane 1 is faster, lane 2 slower, and so on
   const SAMPLE_MS = [-45, 321, -12, 87, 0, -230, 1204, -8];
   const sample = (baseHtml, lane, opt) => wrap(baseHtml, { ms: SAMPLE_MS[(lane || 0) % SAMPLE_MS.length], who: 'what it is compared with' }, opt);
@@ -179,13 +181,15 @@
         choices: [['', 'The next lane (the last lane with lane 1)'], ...Array.from({ length: MAX_LANES }, (_, i) => [String(i + 1), 'Lane ' + (i + 1)])],
         hint: 'A copy of the widget on the next lane keeps this choice: change it there if it should compare with another lane.' });
     }
-    if (!k.record) out.push({ key: 'leftShows', label: 'Left value shows', type: 'select', default: 'own', choices: [['own', "This lane's own value"], ['ref', 'The value it is compared with']],
+    if (!k.record) out.push({ key: 'leftShows', label: 'Left (or top) value shows', type: 'select', default: 'own', choices: [['own', "This lane's own value"], ['ref', 'The value it is compared with']],
       hintOf: v => (v === 'ref' ? 'The left side shows the lane (or the leader, the fastest, the record, its own best) it is compared with, for example lane 2\'s time. The badge still says how far this lane is from it.'
         : "The left side shows this lane's own value. The badge says how far it is from what it is compared with.") });
+    out.push({ key: 'direction', label: 'Value and badge', type: 'select', default: 'row', rerender: true, choices: [['row', 'Left and right: the value on the left, the badge on the right'], ['column', 'Top and bottom: the value on top, the badge below']],
+      hintOf: v => (v === 'column' ? 'The value and the badge share the height of the widget, so give it room: make the widget taller, or the text smaller. The badge is as wide as the widget; "Size of the badge" makes it narrower.' : 'The badge fills the height of the widget, beside the value.') });
     out.push({ key: 'decimals', label: 'Decimals of the difference', type: 'select', default: '3', choices: [['3', '3 (0.456)'], ['2', '2 (0.46)'], ['1', '1 (0.5)']] });
     out.push({ key: 'style', label: 'Look of the badge', type: 'select', default: 'filled', rerender: true, choices: [['filled', 'Filled (a solid block)'], ['outlined', 'Outlined (only the outline and the text)']],
       hintOf: v => (v === 'outlined' ? 'Only the outline and the text have the colour, the inside is empty.' : 'The whole block has the colour; the text turns black or white to be readable on it.') });
-    out.push({ key: 'badgeScale', label: 'Size of the badge', type: 'range', default: 100, min: 30, max: 200, step: 5, unit: '%', hint: '100% is the standard: the badge fills the height of the widget. A smaller or larger badge scales its text, outline and padding with it.' });
+    out.push({ key: 'badgeScale', label: 'Size of the badge', type: 'range', default: 100, min: 30, max: 200, step: 5, unit: '%', hint: '100% is the standard: the badge fills the height of the widget (its width when the badge is below the value). A smaller or larger badge scales its text, outline and padding with it.' });
     out.push({ key: 'badgeOutline', label: 'Outline thickness', type: 'range', default: 0, defaultOf: outlineDefault, min: 0, max: 40, step: 1, unit: '%', hint: 'The line around the badge, as a share of its text size. The outlined look has a line as standard; on the filled look the line has the colour of the text.' });
     out.push({ key: 'badgeBold', label: 'Badge text in bold', type: 'checkbox', default: true });
     out.push({ key: 'badgeItalic', label: 'Badge text in italic', type: 'checkbox', default: false });
@@ -196,7 +200,7 @@
     return out;
   }
 
-  const api = { KINDS, TARGET_WORDS, DEFAULTS, STAT, WHY, isDelta, baseOf, compute, leftOf, leftShowsOf, format, badge, wrap, sample, optionsFor, onColor, colorOf, decimalsOf, measureOf, compareOf, arrowOf, styleOf, scaleOf, outlineOf, boldOf, italicOf, sizeStyle, ARROWS };
+  const api = { KINDS, TARGET_WORDS, DEFAULTS, STAT, WHY, isDelta, baseOf, compute, leftOf, leftShowsOf, format, badge, wrap, sample, optionsFor, onColor, colorOf, decimalsOf, measureOf, compareOf, arrowOf, styleOf, layoutOf, scaleOf, outlineOf, boldOf, italicOf, sizeStyle, ARROWS };
   root.Delta = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

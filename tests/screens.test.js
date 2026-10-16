@@ -282,6 +282,13 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     say('...the outline thickness starts at the line of the outlined look (14) and at none for the filled look', /id="o-badgeOutline"[^>]*value="14"/.test(h()) && (await E('side').onchange({ target: { dataset: { opt: 'style' }, value: 'filled', type: 'select-one' } }), /id="o-badgeOutline"[^>]*value="0"/.test(h())));
     E('side').oninput({ target: { id: 'o-badgeScale', type: 'range', value: '65', dataset: { opt: 'badgeScale', unit: '%' } } });
     say('...the size is stored as a number and the badge in the canvas follows it', sel().opt.badgeScale === 65 && E('canvas').innerHTML.includes('font-size:calc(.95em*0.65)'));
+    // 1.18.0: the value and the badge side by side, or one above the other
+    say('1.18.0: a Delta Timer has "Value and badge", left and right as the standard, and the canvas draws it side by side', /<select id="o-direction"[^>]*>.*<option value="row" selected>Left and right/.test(h()) && h().includes('<option value="column">Top and bottom') && !E('canvas').innerHTML.includes('dlt-col') && h().includes('The badge fills the height of the widget, beside the value.'));
+    await E('side').onchange({ target: { dataset: { opt: 'direction' }, value: 'column', type: 'select-one' } });
+    say('...choosing Top and bottom is kept on the widget, the canvas stacks the badge below the value, and the hint says to give the widget room', sel().opt.direction === 'column' && E('canvas').innerHTML.includes('class="dlt dlt-col"') && h().includes('<option value="column" selected>Top and bottom') && h().includes('give it room'));
+    say('...the size of the badge is then a share of the width: the scaled badge in the canvas has a width, not a height', E('canvas').innerHTML.includes('width:min(100%,calc((100% - .32em)*0.65))') && !E('canvas').innerHTML.includes('height:min(100%,calc((100% - .32em)*0.65))'));
+    await E('side').onchange({ target: { dataset: { opt: 'direction' }, value: 'row', type: 'select-one' } });
+    say('...and back to Left and right the class goes again', sel().opt.direction === 'row' && !E('canvas').innerHTML.includes('dlt-col') && E('canvas').innerHTML.includes('height:min(100%,calc((100% - .32em)*0.65))'));
     run('state.editing.draft.widgets.length = ' + n0 + '; state.editing.sel = [state.editing.draft.widgets[' + (n0 - 1) + ']]'); E('side').innerHTML = run('sideHtml()'); // (the widgets of these checks are not part of the layout that is saved below; the leaderboard is selected again)
   }
   E('side').oninput({target:{dataset:{opt:'colLast'},type:'checkbox',checked:true,value:'on'}});
