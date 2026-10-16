@@ -42,6 +42,8 @@ const kept = { snap: null, saves: 0, clears: 0 };
 api.saveResume = async snap => { kept.snap = JSON.parse(JSON.stringify(snap)); kept.saves++; return true; }; api.getResume = async () => (kept.snap ? JSON.parse(JSON.stringify(kept.snap)) : null); api.clearResume = async () => { kept.snap = null; kept.clears++; return true; };
 // the app reports a screen that could not be drawn with console.error: that is a failed test (unless the test expects it)
 const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if (appConsole.expected) { appConsole.seen++; return; } console.log('FAIL the app reported an error: ' + a.map(x => (x && x.stack) || x).join(' ').slice(0, 300)); fails++; } };
+// the real app passes everything through Electron's structured clone, which refuses a function ("An object could not be cloned"): every call of the app interface is checked the same way here
+for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function') api[k] = (...x) => { x.forEach(v => { if (typeof v !== 'function') structuredClone(v); }); return f(...x); }; }
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
 for (const f of ['bop.js', 'weather.js', 'endurance.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'report.js', 'canvas.js', 'liveshare.js', 'review.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'enduranceui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
@@ -375,6 +377,15 @@ const pressSwap = (lane, over = {}) => E('enpanel').onclick({ target: { closest:
       run("state.tab = 'home'; state.race = null; live = null"); await run('render()'); await wait(40);
       say('...and the Home tab has no note about an interrupted race (and no error)', !E('view').innerHTML.includes('A race was interrupted'));
       api.saveResume = sv; api.clearResume = cl; api.getResume = gt; saved.length = 0; }
+    // a snapshot that can not be sent (the file call throws at once, like "An object could not be cloned") never stops the race
+    { const sv = api.saveResume; let calls = 0; api.saveResume = () => { calls++; throw new DOMException('An object could not be cloned.', 'DataCloneError'); }; saved.length = 0; kept.snap = null; kept.saves = 0;
+      await openRace(setupR, store.tracks[0], eRows);
+      key(' '); await until(() => phase() === 'running', 5000); await wait(60);
+      for (let n = 0; n < 12 && eng().cars[0].laps.length < 6; n++) await lapOn(0);
+      for (let n = 0; n < 12 && eng().cars[1].laps.length < 6; n++) await lapOn(1);
+      await until(() => phase() === 'finished', 5000); await wait(150);
+      say('when the snapshot can not be sent, the race still runs to the end and is saved (the failure is not an error of the race screen)', calls > 0 && saved.length === 1);
+      api.saveResume = sv; saved.length = 0; kept.snap = null; }
     // the Home tab
     const homeView = async () => { run("state.tab = 'home'; state.race = null; live = null"); await run('render()'); await wait(40); return E('view').innerHTML.replace(/&quot;/g, '"'); };
     const click = async b => { await E('view').onclick({ target: { closest: sel => (sel === 'button' ? { dataset: {}, ...b } : null) } }); await wait(40); };

@@ -28,9 +28,11 @@ const LiveShare = (() => {
       personalBest: id => Math.min(base.personal.get(id) ?? Infinity, ctx.bestBy.get(id) ?? Infinity) };
   }
 
+  // What goes to another window travels through Electron's structured clone, which refuses a function ("An object could not be cloned"): the engine's settings hold one (the random generator for a random next driver), and it stays here.
+  const sendable = cfg => Object.fromEntries(Object.entries(cfg || {}).filter(([, v]) => typeof v !== 'function'));
   // sent once per engine (a new heat has new cars): c = { raceId, title, eng, setup, layout, track, lanes, base }
   function packStatic(c) {
-    return { raceId: c.raceId, title: c.title, cfg: c.eng.cfg, setup: c.setup, layout: c.layout, track: c.track, lanes: c.lanes, rowDesigns: c.rowDesigns || [], imageSets: c.imageSets || [], teams: c.teams || [], clubLogo: c.clubLogo || '', tokenUi: c.tokenUi || null,
+    return { raceId: c.raceId, title: c.title, cfg: sendable(c.eng.cfg), setup: c.setup, layout: c.layout, track: c.track, lanes: c.lanes, rowDesigns: c.rowDesigns || [], imageSets: c.imageSets || [], teams: c.teams || [], clubLogo: c.clubLogo || '', tokenUi: c.tokenUi || null,
       base: { personal: [...c.base.personal], track: fin(c.base.track), trackName: c.base.trackName } };
   }
 

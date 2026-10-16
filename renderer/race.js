@@ -888,8 +888,8 @@ async function renderRace() {
     const t = now(), sig = [eng.status, eng.flag, eng.cars.reduce((n, c) => n + c.laps.length + c.points + (c.en ? c.en.swaps : 0) + (c.blockAt !== null ? 1 : 0), 0)].join('|');
     if (live.cpAt !== undefined && (t - live.cpAt < 2000 / speed || (sig === live.cpSig && t - live.cpAt < 5000 / speed))) return;
     live.cpAt = t; live.cpSig = sig;
-    Promise.resolve(api.saveResume({ v: 1, savedAt: new Date().toISOString(), name: setup.name, kind: SESSION_LABEL[setup.ofType || setup.sessionType] || '', trackName: r.track.name, wxSeed, elapsed: eng.elapsed(t), phase: live.phase,
-      race: { setup: lean(r.setup), track: lean(r.track), rows: r.rows }, eng: eng.snapshot(t) })).catch(() => {});
+    try { Promise.resolve(api.saveResume({ v: 1, savedAt: new Date().toISOString(), name: setup.name, kind: SESSION_LABEL[setup.ofType || setup.sessionType] || '', trackName: r.track.name, wxSeed, elapsed: eng.elapsed(t), phase: live.phase,
+      race: { setup: lean(r.setup), track: lean(r.track), rows: r.rows }, eng: eng.snapshot(t) })).catch(() => {}); } catch { /* a snapshot that can not be kept must never stop the race */ }
   }
   function clearCheckpoint() { live.cpOff = true; if (api.clearResume && !heats && !tokens) Promise.resolve(api.clearResume()).catch(() => {}); }
   function resumeRace(snap) {

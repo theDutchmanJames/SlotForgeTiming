@@ -17,6 +17,8 @@ const opened=[]; const zooms=[]; const customDefs={}; let depsResult={}; const a
   remove:async(e,id)=>{store[e]=store[e].filter(x=>x.id!==id)}};
 // the app reports a screen that could not be drawn with console.error: that is a failed test (unless the test expects it)
 const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if (appConsole.expected) { appConsole.seen++; return; } console.log('FAIL the app reported an error: ' + a.map(x => (x && x.stack) || x).join(' ').slice(0, 300)); fails++; } };
+// the real app passes everything through Electron's structured clone, which refuses a function ("An object could not be cloned"): every call of the app interface is checked the same way here
+for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function') api[k] = (...x) => { x.forEach(v => { if (typeof v !== 'function') structuredClone(v); }); return f(...x); }; }
 const ctx=vm.createContext({document,api,console: appConsole,Intl,URL,Image:function(){},confirm:()=>true,alert(){},setTimeout,clearTimeout,setInterval,clearInterval,performance,});
 const listeners={}; ctx.window=ctx; ctx.addEventListener=(t,f)=>{(listeners[t]=listeners[t]||[]).push(f)}; ctx.removeEventListener=(t,f)=>{listeners[t]=(listeners[t]||[]).filter(x=>x!==f)};
 const errors=[];

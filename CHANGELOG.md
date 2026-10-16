@@ -4,6 +4,7 @@ Every version of SlotForge Timing, newest first. The README has a section **What
 
 ## Versions
 
+- **1.9.1**: fix for 1.9.0: starting a race showed "This screen could not be opened: An object could not be cloned". The settings of the race that go to the Live Race window held a function (the random generator for "a random driver steps in"), which Electron cannot send. It is left out now, and a snapshot that cannot be kept can never stop a race. The screen tests now check every call of the app interface the way Electron does.
 - **1.9.0**: the Endurance Race: teams whose drivers swap in the pits (when, who steps in, the shortest and longest time at the wheel), Current Driver, Next Driver and Swap Timer widgets, "Box Box" audio calls, penalties for a swap that is not made, stints in the result, and a race that can be carried on after a crash or a power cut
 - **1.8.0**: Teams: teams in the Database (name, picture, drivers in turn), a Team on Home, teams as the participants of heats (in the race setup or the Rotation editor), Team Name and Team Picture widgets and the `{team}` variable
 - **1.7.0**: Rotation Setups, part 2: the result by total race time (a heat that is not finished ranks below, or is estimated), the Heat List on the Race tab and as a widget, a printed heat sheet, and the line-up read out between heats
