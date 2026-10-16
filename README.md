@@ -2182,3 +2182,19 @@ Good to know:
 2. It is a setting of each widget, so one layout can have a mirrored picture on the left lanes and a normal one on the right. The Avatar widget keeps its own Mirror setting.
 3. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 4. The tests: `tests/timing.test.js` (the picture, mirrored and not), `tests/widgets.test.js` (the setting) and `tests/screens.test.js` (the tick box in the editor).
+
+## What to try (1.31.0): the Race Director changes a car's dry tyre
+From your note: the Race Director can override the tyre of a slot car during a race (a driver who swaps his Soft tyres for Hard ones in an endurance race), and can change the Database entry too.
+1. Use a race setup with a **Weather System** (Race Setup, Weather Systems), start a race and look at the **Weather** controls (race screen, or the Weather folder of the Race Director page). There is a new column **Dry tyre**, with a choice for each lane: Hard, Medium, Soft or Supersoft. It shows the tyre of the slot car (Database, Slotcars, Tyre choice) to begin with.
+2. Pick another tyre for a lane. The car is on it at once (the Tyres widget and the tyre in the table change), and it counts for the weather rules from then on: a car on Hard has to change to Wet when it rains, as any dry tyre does.
+3. Under the table is the tick box **Also change the tyre choice of the Slotcar in the Database**. Not ticked, the change is for this race only; ticked, the tyre choice of that slot car in the Database changes too, so the next race starts from it. In heats, the next heat starts from the tyre of the Database, so with the box not ticked the change counts for the heat that is running.
+4. The same choice and tick box are on the Race Director page, so the Race Director can do it from a phone.
+5. After the race the result notes it: *Hard tyres, set by the Race Director after lap 14*.
+
+Good to know:
+1. Only the dry tyres can be chosen. **Wet** and **Intermediate** come from the pit stops (the weather asks for them), as before.
+2. It works in every weather, from the lights until the race is over, and not in the review after the race. A car that is on Wet tyres when you change its dry tyre stays on Wet until it changes tyres in the pits; the new dry tyre is the one it goes back to. Rain still makes a car on any dry tyre (Hard too) change to Wet, also a car whose slot car had a Wet or Intermediate tyre choice and was given a dry tyre in the rain: it gets the same laps to change as the others.
+3. A race without a weather system has no Weather controls, so there is nothing to change there (yet). Say if you want the choice in every race.
+4. If the Database cannot be written, the race goes on with the new tyre and the Database keeps what it had.
+5. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+6. The tests: `tests/weather.test.js` (the engine, the result, saving and resuming), `tests/weatherscreen.test.js` (the choice, the tick box, the Database, the Race Director page), `tests/web.test.js` (the command of the phone page) and `tests/help.test.js`.

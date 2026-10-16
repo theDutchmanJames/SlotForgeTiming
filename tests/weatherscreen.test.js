@@ -163,6 +163,86 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     const press = (state, disabled = false) => box.onclick({ target: { closest: () => ({ disabled, dataset: { wx: state }, blur() {} }) } });
     press('wet'); press('dry', true); box.onclick({ target: { closest: () => null } }); box.onclick({ target: {} });
     say('a press on a button of the controls says which weather; a button that is off, and a click on something else, do nothing', same_(calls, ['wet']) && box.hidden === false); }
+
+  // ---------- 1.31.0: the Race Director gives a car another dry tyre ----------
+  { const upd = [], keepUpdate = api.update; api.update = async (e, id, p) => { upd.push([e, id, p]); return {}; };
+    const own = i => eng().cars[i].tyreOwn, now_ = i => eng().cars[i].tyre, tyres = () => eng().events.filter(e => e.type === 'tyreset');
+    say('the cars start on the dry tyre of their Slotcar (lane 1 Soft from its Database entry, lane 2 the standard Medium)', own(0) === 'S' && own(1) === 'M' && now_(0) === 'S' && now_(1) === 'M');
+    run('live.actions.tyre')(0, 'H');
+    say('the Race Director changes the dry tyre of a car on the race screen: lane 1 goes from Soft to Hard, and the car is on it at once', own(0) === 'H' && now_(0) === 'H' && now_(1) === 'M' && tyres().length === 1 && tyres()[0].by === 'director' && tyres()[0].was === 'S' && tyres()[0].tyre === 'H');
+    await wait(30);
+    say('...for this race only: the Database is not asked to change anything', upd.length === 0);
+    run('live.actions.tyre')(0, 'H'); run('live.actions.tyre')(0, 'W'); run('live.actions.tyre')(0, 'I'); run('live.actions.tyre')(0, 'X'); run('live.actions.tyre')(5, 'S'); run('live.actions.tyre')(0, undefined);
+    say('...the tyre it already has, a Wet or Intermediate tyre (those come from the pits), a tyre that does not exist, an empty lane and no tyre at all do nothing', own(0) === 'H' && tyres().length === 1 && upd.length === 0);
+    run('live.actions.tyre')(1, 'SS', true); await wait(30);
+    say('with the tick box the Slotcar in the Database gets it too (one change of the slotcar with the tyre only)', own(1) === 'SS' && upd.length === 1 && same_(upd[0], ['slotcars', 'c2', { tyreCompound: 'SS' }]));
+    run('live.actions.tyre')(0, 'M', 'yes'); run('live.actions.tyre')(0, 'S', false); await wait(30);
+    say('...only a real true saves it (a word, or false, does not)', own(0) === 'S' && upd.length === 1);
+    api.liveCommand({ type: 'tyre', lane: 0, tyre: 'M', save: true }); await wait(30);
+    say('the Race Director page can do it too: the command goes to the race window, with the tick box if he wants it', own(0) === 'M' && upd.length === 2 && same_(upd[1], ['slotcars', 'c1', { tyreCompound: 'M' }]));
+    api.liveCommand({ type: 'tyre', lane: 1, tyre: 'S' }); api.liveCommand({ type: 'tyre', lane: 1, tyre: 'W' }); api.liveCommand({ type: 'tyre' }); await wait(30);
+    say('...a command without the tick box leaves the Database alone, and one with a tyre that is not a dry one, or none, is ignored', own(1) === 'S' && upd.length === 2);
+    api.liveCommand({ type: 'tyre', lane: 1, tyre: 'M', save: 'yes' }); await wait(30);
+    say('...and a save that is not exactly true does not change the Database, also when the command reaches the race window without the server', own(1) === 'M' && upd.length === 2);
+    const wasPhase = phase(); run("live.phase = 'review'"); run('live.actions.tyre')(1, 'H'); const kept = own(1); run("live.phase = 'running'");
+    say('in the review after the race the tyres are not changed any more', kept === 'M' && wasPhase === 'running');
+    api.update = async () => { throw new Error('database is closed'); };
+    run('live.actions.tyre')(1, 'H', true); await wait(30);
+    say('if the Database cannot be written the race goes on with the new tyre', own(1) === 'H');
+    api.update = keepUpdate;
+    // the tyre selection of the controls
+    { const sets = []; const mkSel = lane => ({ dataset: { wxOwn: String(lane) }, value: 'M', disabled: false, blurred: 0, blur() { this.blurred++; } });
+      const box = { hidden: true, innerHTML: '', onchange: null, onclick: null, querySelector: () => mk() };
+      const P = run('WeatherPanel').build(box, { eng: () => eng(), lanes: [0, 1], phase: () => phase(), now: () => 0, send: () => {}, setTyre: (l, c, sv) => sets.push([l, c, sv]) });
+      const html = box.innerHTML;
+      say('the controls with a tyre selection have a Dry tyre column: a choice for each lane with Hard, Medium, Soft and Supersoft (and no Wet or Intermediate), and the tick box for the Database', html.includes('<th>Dry tyre</th>') && html.includes('data-wx-own="0"') && html.includes('data-wx-own="1"') && (html.match(/<option /g) || []).length === 8 && ['H', 'M', 'S', 'SS'].every(c => html.includes(`value="${c}"`)) && !html.includes('value="W"') && !html.includes('value="I"') && html.includes('data-wx-save="1"') && html.includes('Also change the tyre choice of the Slotcar in the Database') && html.includes('this race only'));
+      const s0 = mkSel(0), s1 = mkSel(1); box.onchange({ target: s0 }); s1.value = 'S'; box.onchange({ target: s1 });
+      say('picking a tyre sends the lane and the tyre, not saved to begin with, and lets go of the choice', same_(sets, [[0, 'M', false], [1, 'S', false]]) && s0.blurred === 1 && s1.blurred === 1);
+      box.onchange({ target: { dataset: { wxSave: '1' }, checked: true } }); s0.value = 'H'; box.onchange({ target: s0 });
+      say('with the box ticked the choice is sent as one to save too', same_(sets.at(-1), [0, 'H', true]));
+      const box2 = { hidden: true, innerHTML: '', onchange: null, querySelector: () => mk() }; run('WeatherPanel').build(box2, { eng: () => eng(), lanes: [0], phase: () => phase(), now: () => 0, send: () => {}, setTyre: (l, c, sv) => sets.push([l, c, sv]) });
+      s1.value = 'SS'; box2.onchange({ target: s1 });
+      say('...and the box is remembered by the next panel that is built (while the app is open)', same_(sets.at(-1), [1, 'SS', true]));
+      box.onchange({ target: { dataset: { wxSave: '1' }, checked: false } }); const n = sets.length; const dis = mkSel(0); dis.disabled = true; box.onchange({ target: dis }); box.onchange({ target: { dataset: {} } }); box.onchange({ target: null });
+      say('a choice that is switched off, and a change of something else, are ignored', sets.length === n);
+      const plainBox = { hidden: true, innerHTML: '', onchange: null, querySelector: () => mk() }; run('WeatherPanel').build(plainBox, { eng: () => eng(), lanes: [0, 1], phase: () => phase(), now: () => 0, send: () => {} });
+      say('without a tyre selection (as before) there is no Dry tyre column, no choice and no tick box', !plainBox.innerHTML.includes('Dry tyre') && !plainBox.innerHTML.includes('data-wx-own') && !plainBox.innerHTML.includes('data-wx-save'));
+      // what update() does with the choices
+      const selOf = {}; [0, 1, 2].forEach(l => { selOf[l] = { value: '', disabled: false }; });
+      const rowOf = l => { const parts = {}; const r = { querySelector: sel => (/data-wx-own/.test(sel) ? selOf[l] : (parts[sel] = parts[sel] || { textContent: '', style: {} })) }; return r; }, rows_ = { 0: rowOf(0), 1: rowOf(1), 2: rowOf(2) };
+      const box3 = { hidden: true, innerHTML: '', querySelector: sel => { const t = /tr\[data-lane="(\d+)"\]/.exec(sel); return t ? rows_[t[1]] : mk(); } };
+      let ph = 'running'; const P3 = run('WeatherPanel').build(box3, { eng: () => eng(), lanes: [0, 1, 2], phase: () => ph, now: () => 0, send: () => {}, setTyre: () => {} }); P3.update();
+      say('the controls show the dry tyre of each car, and are on for as long as the race is going', selOf[0].value === own(0) && selOf[1].value === own(1) && selOf[0].disabled === false && selOf[1].disabled === false);
+      run('live.actions.tyre')(0, 'SS'); P3.update();
+      say('...and follow the race when the tyre is changed from somewhere else (the Race Director page)', selOf[0].value === 'SS');
+      selOf[1].value = 'S'; const keepActive = document.activeElement; document.activeElement = selOf[1]; P3.update(); const underFinger = selOf[1].value; document.activeElement = keepActive; P3.update();
+      say('...but never move under a finger that is choosing (the choice that has the focus keeps what he picked, and is put right once he lets go)', underFinger === 'S' && selOf[1].value === own(1));
+      ph = 'finished'; P3.update();
+      say('when the race is over the choices are off', selOf[0].disabled === true && selOf[1].disabled === true);
+    }
+    // the Race Director page
+    { const host = document.createElement('div'); await run('LiveView.mount')(host, {}); await wait(50); run('LiveView.go')('director'); await wait(80);
+      const wx = E('dir-wx').innerHTML, before = cmds.length;
+      say('the Weather folder of the Race Director page has the Dry tyre choice for each lane and the tick box', wx.includes('<th>Dry tyre</th>') && wx.includes('data-wx-own="0"') && wx.includes('data-wx-own="1"') && wx.includes('data-wx-save="1"'));
+      E('dir-wx').onchange({ target: { dataset: { wxOwn: '1' }, value: 'H', disabled: false, blur() {} } }); await wait(60);
+      say('a choice there is sent to the race window as a command (without the tick box: no save), and the race window carries it out', cmds.length === before + 1 && same_(cmds.at(-1), { type: 'tyre', lane: 1, tyre: 'H' }) && own(1) === 'H');
+      E('dir-wx').onchange({ target: { dataset: { wxSave: '1' }, checked: true } }); E('dir-wx').onchange({ target: { dataset: { wxOwn: '0' }, value: 'H', disabled: false, blur() {} } }); await wait(60);
+      say('...with the tick box ticked the command asks to save it too', same_(cmds.at(-1), { type: 'tyre', lane: 0, tyre: 'H', save: true }) && own(0) === 'H');
+      E('dir-wx').onchange({ target: { dataset: { wxSave: '1' }, checked: false } });
+      run('LiveView.unmount')(); }
+    api.update = async (e, id, p) => { upd.push([e, id, p]); return {}; };
+    { // the controls of the race screen itself
+      const box = E('wxpanel'), n = upd.length; box.onchange({ target: { dataset: { wxSave: '1' }, checked: true } }); box.onchange({ target: { dataset: { wxOwn: '1' }, value: 'S', disabled: false, blur() {} } }); await wait(30);
+      say('the controls of the race screen itself do the same: a tyre and the tick box change the car and the slot car in the Database', own(1) === 'S' && upd.length === n + 1 && same_(upd.at(-1), ['slotcars', 'c2', { tyreCompound: 'S' }]));
+      box.onchange({ target: { dataset: { wxSave: '1' }, checked: false } }); box.onchange({ target: { dataset: { wxOwn: '1' }, value: 'H', disabled: false, blur() {} } }); await wait(30);
+      say('...and without the tick box only the car changes', own(1) === 'H' && upd.length === n + 1); }
+    key('s'); await until(() => phase() === 'finished', 3000); await wait(100);
+    await openRace(setupDir, store.tracks[0], [{ driverId: 'd1', carId: '' }, { driverId: 'd2', carId: 'c2' }]); await wait(50);
+    { const n = upd.length; run('live.actions.tyre')(0, 'H', true); run('live.actions.tyre')(1, 'SS', true); await wait(30);
+      say('a lane without a slot car can be given a tyre too, but there is no slot car in the Database to change (the other lane is saved)', eng().cars[0].tyreOwn === 'H' && eng().cars[1].tyreOwn === 'SS' && upd.length === n + 1 && same_(upd.at(-1), ['slotcars', 'c2', { tyreCompound: 'SS' }])); }
+    key(' '); await until(() => phase() === 'running', 3000);
+    api.update = keepUpdate;
+  }
   key('s'); await until(() => phase() === 'finished', 3000); await wait(150);
 
   // ---------- the Race Director page ----------
@@ -253,6 +333,18 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     key('s'); await until(() => phase() === 'finished', 3000); await wait(150);
     { const s = saved.at(-1) && saved.at(-1)[0];
       say('the heats are saved with the weather: said once when it was the same in every heat', s && s.sessionType === 'heats' && typeof s.weatherNote === 'string' && s.weatherNote.startsWith('Cloudy from lap 2') && s.heatResults.every(h => !('weatherNote' in h))); } }
+
+  { store.weathersystems = [dir]; // 1.31.0: the dry tyre the Race Director gives a car in a heat: the next heat starts from the Database again, or from the new tyre when the Slotcar was changed too
+    const hd2 = { id: 'hs-tyre', name: 'Heats', sessionType: 'heats', heatBy: 'laps', laps: 2, heatPlan: 'manual', heats: 2, weather: 'w2', fuelRules: 'f1', lightsMin: 0, lightsMax: 0, endRule: 'all', resultBy: 'laps' };
+    for (const save of [false, true]) {
+      await openRace(hd2, store.tracks[0], rows(1, 2)); await wait(50); key(' '); await until(() => phase() === 'running', 3000); await wait(60);
+      const ci = () => eng().cars.findIndex(c => c.carId === 'c1'), first = eng().cars[ci()].tyreOwn;
+      run('live.actions.tyre')(eng().cars[ci()].lane, 'H', save); const during = eng().cars[ci()].tyreOwn;
+      for (let n = 0; n < 3; n++) { key('1'); key('2'); await wait(80); }
+      await until(() => phase() === 'between', 4000); await wait(60);
+      say(save ? 'in a heat race the Race Director gives a car Hard; with the tick box the next heat starts on Hard (the Slotcar was changed)' : 'in a heat race the Race Director gives a car Hard; without the tick box the next heat starts from the Slotcar again (Soft)', first === 'S' && during === 'H' && phase() === 'between' && eng().cars[ci()].tyreOwn === (save ? 'H' : 'S') && eng().cars.find(c => c.carId === 'c2').tyreOwn === 'M');
+      key('s'); await until(() => phase() === 'finished', 3000); await wait(100);
+    } }
 
   { store.weathersystems = [dir];
     const hd = { id: 'hs-dir', name: 'Heats', sessionType: 'heats', heatBy: 'laps', laps: 2, heatPlan: 'manual', heats: 2, weather: 'w2', fuelRules: 'f1', lightsMin: 0, lightsMax: 0, endRule: 'all', resultBy: 'laps' };

@@ -61,7 +61,7 @@ module.exports = {
       { key: 'motor', group: 'technical', label: 'Motor', type: 'text' },
       { key: 'tyres', group: 'technical', label: 'Tyres', type: 'text' },
       { key: 'tyreCompound', group: 'technical', label: 'Tyre choice (for the Weather System)', type: 'select', default: Wx.DEFAULT_TYRE, options: Wx.TYRES.map(t => [t.code, `${t.name} (${t.code})`]),
-        hint: 'The tyre this car races on when the track is dry. In a race with a Weather System a pit stop changes it to Wet (or Intermediate) when it rains, and back to this one when the track is dry again.' },
+        hint: 'The tyre this car races on when the track is dry. In a race with a Weather System a pit stop changes it to Wet (or Intermediate) when it rains, and back to this one when the track is dry again. The Race Director can give a car another dry tyre during a race (in the Weather folder of the race), for that race only or here too.' },
       { key: 'damageFactor', group: 'technical', label: 'Damage factor (for the Damage System)', type: 'number', min: 0, step: 'any', default: 1, optional: true,
         hint: '1 = like the other cars. A fragile car collects damage points faster (1.5: half as many again), a sturdy one slower (0.5); 0 = it never takes damage. Only used in a race with a Damage System.' },
       { key: 'gearing', group: 'technical', label: 'Gearing', type: 'text' },

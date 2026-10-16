@@ -184,6 +184,7 @@ const Help = (() => {
           <li>A <b>weather system</b> (Race Setup, Weather Systems) is a spell of rain: it starts after some laps of the leader or minutes, at a random moment, or when the Race Director says so, and lasts as long as you set. Choose one in a race setup (races, timed races and heats).</li>
           <li>The weather goes <b>Dry</b>, <b>Cloudy</b> (the warning), <b>Wet</b>, <b>Clearing</b> and Dry again. The race screen and the Race Director page show it and what comes next; the Race Director can press the four weather buttons there.</li>
           <li>Cars change tyres <b>in a pit stop</b>, from the <b>Tyre choice</b> of their slot car (Database, Slotcars) to Wet (or Intermediate) in Cloudy and Wet, and back in Clearing and Dry.</li>
+          <li>The Race Director can give a car another <b>dry tyre</b> during the race (the Dry tyre choice in the Weather controls, also on the phone page), for example when a driver goes from Soft to Hard in an endurance race. It counts for this race only, unless he ticks the box that changes the slot car in the Database too.</li>
           <li>When it rains a car on dry tyres has to pit within the laps you set, and when it is dry again a car on Wet tyres has to. Otherwise it gets <b>penalty points</b> (needs a penalty system) and can be <b>hindered</b> like with Balance of Power (needs a fuel setup). Both add up, to 90% at most.</li>
           <li>The result says what the weather and the tyres did. The audio set has calls for it, and simulated cars change tyres too.</li>
         </ul>` },

@@ -454,5 +454,54 @@ ok('the mix of the levers: use and refuelling are on unless a lever says false, 
 { const r = race(RAIN); at(r, 0, 10000); at(r, 1, 10000); const f = r.factorsOf(0);
   ok('the engine says what the fuel rules do to a car: 25% hindered by the weather is 25% more fuel and 25% slower refuelling; an unhindered car and a car that is not there are as always', near(f.use, 1.25) && near(f.rate, 0.75) && f.tank === 1 && same(race(null).factorsOf(0), { use: 1, rate: 1, tank: 1 }) && same(r.factorsOf(9), { use: 1, rate: 1, tank: 1 })); }
 
+// 1.31.0: the Race Director sets the dry tyre of a car (R.wxTyre)
+ok('the dry compounds a car can be given: Hard, Medium, Soft and Supersoft (not Intermediate or Wet)', same(W.DRY_TYRES.map(t => t.code), ['H', 'M', 'S', 'SS']));
+{ const r = race({ startMode: 'director' }, { cars: 4 }); drive(r, 2);
+  ok('he gives a car another dry tyre: it is on it now, it is its own tyre, and it is logged as his (tyre, the one it had, the lap, the weather)', r.wxTyre(0, 'H', 25000) === true && r.cars[0].tyre === 'H' && r.cars[0].tyreOwn === 'H' && r.cars[0].wxDue === null
+    && same(evs(r, 'tyreset').map(e => [e.car, e.tyre, e.was, e.lap, e.state, e.onOwn, e.by, e.t]), [[0, 'H', 'S', 2, 'dry', true, 'director', 25000]]));
+  ok('...the other cars keep theirs, and the screens see it (wxOf: tyre and own tyre)', r.cars.map(c => c.tyre).join() === 'H,M,H,W' && r.cars.map(c => c.tyreOwn).join() === 'H,M,H,W' && same(r.wxOf(0), { tyre: 'H', own: 'H', need: '', hinder: 0 }));
+  ok('...the same tyre again, a tyre that is not a dry one (Wet, Intermediate, nothing, rubbish) and a car that is not there change nothing and log nothing', r.wxTyre(0, 'H', 26000) === false && ['W', 'INT', 'x', '', undefined, null].every(c => r.wxTyre(1, c, 26000) === false) && r.wxTyre(9, 'S', 26000) === false && r.wxTyre(-1, 'S', 26000) === false
+    && r.cars[1].tyre === 'M' && evs(r, 'tyreset').length === 1);
+  ok('...the code is not case sensitive (it is the same code in a different case)', r.wxTyre(1, 's', 27000) === true && r.cars[1].tyre === 'S' && r.cars[1].tyreOwn === 'S');
+  ok('the note of the car says what he did: "Hard tyres, set by the Race Director after lap 2"', r.tyreNoteOf(0) === 'Hard tyres, set by the Race Director after lap 2' && r.tyreNoteOf(2) === '');
+  ok('without a time the event gets 0 (a lap is the way he sees it)', r.wxTyre(2, 'SS') === true && evs(r, 'tyreset').at(-1).t === 0);
+  r.stop(300000);
+  ok('...but not when the race is over', r.wxTyre(0, 'M', 310000) === false && r.cars[0].tyre === 'H'); }
+{ const r = race({ startMode: 'director' }, { cars: 3 }); drive(r, 1); r.wxSet('wet', 15000, 'director');
+  ok('in the rain a car on dry tyres still has to change to Wet (a dry tyre of another kind does not make it ready)', r.cars[0].wxDue !== null && r.wxTyre(0, 'M', 16000) === true && r.cars[0].tyre === 'M' && r.cars[0].wxDue !== null && r.cars[0].wxDue.kind === 'wet');
+  pit(r, 0, 17000);
+  ok('...the stop gives it Wet', r.cars[0].tyre === 'W' && r.cars[0].tyreOwn === 'M' && r.cars[0].wxDue === null); r.unblock(0, 20000);
+  ok('a car that is on Wet tyres gets a new own tyre without changing the tyres it is on (it stays on Wet until it changes)', r.wxTyre(0, 'H', 30000) === true && r.cars[0].tyre === 'W' && r.cars[0].tyreOwn === 'H' && evs(r, 'tyreset').at(-1).onOwn === false && evs(r, 'tyreset').at(-1).was === 'M');
+  r.wxSet('dry', 31000, 'director');
+  ok('...when the track is dry again it has to change back to the new tyre (Hard), and the pit stop gives it', r.cars[0].wxDue !== null && r.cars[0].wxDue.kind === 'dry' && W.view(r, 'running', 31000).rows[0].todo === 'Has to switch back to Hard' && (pit(r, 0, 40000), r.cars[0].tyre === 'H') && r.cars[0].wxDue === null);
+  const q = race({ startMode: 'director' }, { cars: 2 }); drive(q, 1); q.wxSet('wet', 15000, 'director'); pit(q, 1, 17000); q.wxSet('dry', 18000, 'director');
+  ok('a car on Wet tyres that gets another own tyre is still asked to switch back (to the new one) when the track is dry, and stays on Wet until it stops', q.cars[1].tyre === 'W' && q.cars[1].wxDue !== null && q.wxTyre(1, 'SS', 19000) === true && q.cars[1].wxDue !== null && q.cars[1].wxDue.kind === 'dry' && q.cars[1].tyre === 'W'); }
+{ const r = race({ startMode: 'director' }, { cars: 4 }); drive(r, 1); r.wxSet('wet', 15000, 'director');
+  ok('a car whose own tyre is a Wet one (lane 4) is fine in the rain: nothing to do, not hindered, and the view names its own tyre', r.cars[3].tyre === 'W' && r.cars[3].wxDue === null && r.cars[3].wx === 0 && W.view(r, 'running', 15000).rows[3].ownCode === 'W' && r.wxOf(3).need === '');
+  ok('...when the Race Director gives it a dry tyre in the rain it is on the wrong tyres: told to change to Wet (with the reaction time of the other cars), and hindered like them', r.wxTyre(3, 'S', 16000) === true && r.cars[3].tyre === 'S' && r.cars[3].wxDue !== null && r.cars[3].wxDue.kind === 'wet' && r.cars[3].wxDue.lap === r.cars[0].wxDue.lap && r.cars[3].wx === r.cars[0].wx && r.cars[0].wx < 0 && r.wxOf(3).need === 'wet');
+  const due = r.cars[3].wxDue.lap; clock(r)(3, 10000); r.wxTyre(3, 'M', 21000);
+  ok('...another dry tyre keeps the reaction time it had (the clock does not start again, also when a lap has passed)', r.cars[3].wxDue.lap === due && r.cars[3].laps.length === 2 && r.cars[3].tyre === 'M');
+  pit(r, 3, 23000);
+  ok('...and the stop gives it Wet, with the dry tyre it was given as its own (it goes back to that one) in the view', r.cars[3].tyre === 'W' && r.cars[3].tyreOwn === 'M' && r.cars[3].wxDue === null && W.view(r, 'running', 26000).rows[3].ownCode === 'M' && W.view(r, 'running', 26000).rows[3].code === 'W'); }
+{ const r = race({ startMode: 'director' }, { cars: 2, noFuel: true }); drive(r, 1);
+  ok('it works without fuel rules too (the tyres and the penalty points need no fuel)', r.wxTyre(1, 'SS', 15000) === true && r.cars[1].tyre === 'SS'); }
+{ const r = race(null, { cars: 2 });
+  ok('in a race without a weather system there is no such thing (the tyres stay what the Slotcars have)', r.wxTyre(0, 'H', 1000) === false && r.cars[0].tyre === 'S' && r.cars[0].tyreOwn === 'S' && evs(r, 'tyreset').length === 0); }
+{ const mk = () => E.createRace({ type: 'race', laps: 60, endRule: 'all', entries: entries(2), fuel: fuel(), weather: W.clean({ startMode: 'director' }) }), r = mk(); r.start(0); drive(r, 2); r.wxTyre(1, 'H', 25000);
+  const snap = r.snapshot(26000), q = mk(); q.start(0);
+  ok('a race that is continued after a crash has the tyres the Race Director gave (and the note of it)', q.restore(snap) === true && q.cars[1].tyre === 'H' && q.cars[1].tyreOwn === 'H' && q.cars[0].tyreOwn === 'S' && q.tyreNoteOf(1) === 'Hard tyres, set by the Race Director after lap 2'); }
+{ const r = race({ startMode: 'director' }, { cars: 2 }), v = ph => W.view(r, ph, 0);
+  ok('the controls: every row says the dry tyre of the car (its code, not its name), so a selection can show it', same(v('running').rows.map(x => x.ownCode), ['S', 'M']) && (r.wxTyre(0, 'SS', 1000), v('running').rows[0].ownCode === 'SS') && v('running').rows[0].own === 'Supersoft');
+  ok('...a car with no tyre choice is on the Medium', (q => W.view(q, 'running', 0).rows[0].ownCode === 'M')(E.createRace({ type: 'race', laps: 5, entries: [{ lane: 0 }], weather: W.clean({ startMode: 'director' }) })));
+  ok('...the dry tyre can be set while the race is open (before the start, running, paused, between heats) and not when it is over or in the review', ['ready', 'countdown', 'running', 'paused', 'between'].every(p => v(p).canSetTyre === true) && ['finished', 'review', 'setup', ''].every(p => v(p).canSetTyre === false));
+  ok('...also when the forecast decides (the weather buttons are off, the dry tyre is not)', (q => { const x = W.view(q, 'running', 0); return x.canSetTyre === true && x.buttons.every(b => b.disabled); })(race(REC)));
+  r.stop(5000); ok('...and not in a race that has finished', W.view(r, 'running', 6000).canSetTyre === false); }
+ok('the words for the tyre the Race Director set, and the other things the tyres did, in the order they happened', W.noteOf([{ type: 'tyres', car: 0, tyre: 'W', lap: 9 }, { type: 'tyreset', car: 0, tyre: 'SS', lap: 12 }, { type: 'tyreset', car: 1, tyre: 'H', lap: 3 }, { type: 'tyredue', car: 0, points: 2, lap: 14 }], 0) === 'Wet tyres after lap 9, Supersoft tyres, set by the Race Director after lap 12, 2 penalty points for the tyres after lap 14');
+
+{ const people = [0, 1].map(i => ({ driverId: 'd' + i, carId: 'c' + i, driverName: 'D' + i, carName: 'car', tyre: 'S' })); // a heat race builds the cars of every heat from the participants: a tyre saved on the participant is the tyre of the next heat
+  const H = E.createHeatRace({ participants: people, schedule: [[{ p: 0, lane: 0 }, { p: 1, lane: 1 }], [{ p: 0, lane: 0 }, { p: 1, lane: 1 }]], resultBy: 'laps', points: [] });
+  const first = H.entries().map(e => e.tyre).join(); people[0].tyre = 'H';
+  ok('the cars of the next heat start from the tyre that was kept on the participant (the Race Director also changed the Database)', first === 'S,S' && H.entries().map(e => e.tyre).join() === 'H,S'); }
+
 if (fails) { console.log(fails + ' FAILED'); process.exit(1); }
 console.log('ALL WEATHER TESTS PASSED');

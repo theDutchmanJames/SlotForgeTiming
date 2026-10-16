@@ -619,6 +619,12 @@ async function renderRace() {
     if (!live.restarting) return false;
     live.runId++; live.restarting = false; live.lights = 0; live.phase = 'paused'; update(); return true;
   }
+  // The Race Director also wants a new dry tyre on the Slotcar itself (1.31.0): the Database keeps it, and so do the participants of this race (the heats that are still to come start from them)
+  const saveTyreChoice = async (carId, code) => {
+    if (!carId || !code) return;
+    people.forEach(p => { if (p.carId === carId) p.tyre = code; });
+    try { await api.update('slotcars', carId, { tyreCompound: code }); } catch { /* the race goes on; the Database keeps what it had */ }
+  };
   const actions = {
     start() {
       if (!((live.phase === 'ready' || live.phase === 'between') && !live.calling)) return;
@@ -665,6 +671,11 @@ async function renderRace() {
     weather(state) { // the Race Director sets the weather (the buttons of the panel, or the Race Director page); only when the weather system leaves it to him
       if (!eng.weather || !eng.wxPlan || !eng.wxPlan.director || !['ready', 'countdown', 'running', 'paused', 'between'].includes(live.phase)) return;
       if (eng.wxSet(state, now(), 'director')) update();
+    },
+    tyre(lane, code, save) { // the Race Director sets the dry tyre of the car on this lane (the selection of the Weather controls, or the Race Director page), in any weather and until the race is over; save: also on the Slotcar in the Database
+      if (!eng.weather || !['ready', 'countdown', 'running', 'paused', 'between'].includes(live.phase)) return;
+      const i = eng.cars.findIndex(c => c.lane === lane);
+      if (i >= 0 && eng.wxTyre(i, code, now())) { if (save === true) saveTyreChoice(eng.cars[i].carId, eng.cars[i].tyreOwn); update(); }
     },
     swap(lane, to) { // Endurance Race: the team on this lane has swapped drivers (the Swap done button, or the Race Director page); to: the driver who steps in (only when the setup lets the Race Director choose)
       if (!eng.endurance || !['running', 'paused'].includes(live.phase)) return;
@@ -746,6 +757,7 @@ async function renderRace() {
     else if (cmd.type === 'callresolve') actions.callResolve(Number(cmd.id), cmd.how);
     else if (cmd.type === 'bop') actions.bop(Number(cmd.lane), cmd.how);
     else if (cmd.type === 'weather') actions.weather(cmd.state);
+    else if (cmd.type === 'tyre') actions.tyre(Number(cmd.lane), cmd.tyre, cmd.save === true);
     else if (cmd.type === 'swap') actions.swap(Number(cmd.lane), cmd.to);
     else if (cmd.type === 'swapnext') actions.swapNext(Number(cmd.lane), cmd.id);
     else if (cmd.type === 'damage') actions.damage(Number(cmd.lane), Number(cmd.n));
@@ -928,7 +940,7 @@ async function renderRace() {
   if (eng.damage) live.dmPanel = DamagePanel.build(ui('dmpanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), incidents: eng.damage.incidents, phase: () => live.phase, now, send: (lane, n) => actions.damage(lane, n) }); // the damage of the cars (the Damage System)
   if (!tokens) live.adjPanel = AdjustPanel.build(ui('adjpanel'), { id: 'radj', find: ui, eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, now, settings: () => AdjustPad.forSetup(state.settings, setup), // (the values of this race setup, else the ones from App Settings)
     penalty: () => !!(eng.penalty && eng.penalty.on), damage: () => !!eng.damage, champ: () => !!(heats && setup.resultBy === 'points'), send: (group, lane, amount) => actions.pad(group, lane, amount), refresh: () => update(), raceKey: () => eng }); // the Adjust pads: the same as on the Race Director page, but they adjust the race directly
-  if (eng.weather) live.wxPanel = WeatherPanel.build(ui('wxpanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, now, send: state => actions.weather(state) }); // the weather controls
+  if (eng.weather) live.wxPanel = WeatherPanel.build(ui('wxpanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, now, send: state => actions.weather(state), setTyre: (lane, code, save) => actions.tyre(lane, code, save) }); // the weather controls (and the dry tyre of each car)
   if (penCfg.on) live.penPanel = PenaltyPanel.build(ui('penpanel'), { eng: () => eng, entries: () => eng.cars.map(c => ({ lane: c.lane, driverName: c.driverName })).sort((a, b) => a.lane - b.lane), cfg: () => penCfg, phase: () => live.phase,
     send: cmd => (cmd.type === 'penalty' ? actions.penalty(cmd.lane, cmd.n) : actions.assign(cmd.lane, cmd.typeIndex)) }); // the Penalties folder: the same table as on the Race Director page, but the penalties are given right here
   DirFolder.bind(host); // (a folder that is closed stays closed, also when the next race is shown)

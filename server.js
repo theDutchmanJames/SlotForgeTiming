@@ -7,7 +7,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 // what other devices may read from the database: no settings (they hold the password), nothing is ever written
 const READABLE = ['drivers', 'teams', 'slotcars', 'tracks', 'racesetups', 'layouts', 'rowdesigns', 'sessions', 'laps', 'penaltysystems', 'damagesystems', 'fuelrules', 'weathersystems'];
 // what the Race Director page may send to the race
-const COMMANDS = ['start', 'pause', 'stop', 'yellow', 'red', 'penalty', 'assign', 'review', 'call', 'callresolve', 'addtime', 'reducetime', 'undotime', 'endtime', 'cleartime', 'setdriver', 'bop', 'weather', 'swap', 'swapnext', 'damage', 'pad'];
+const COMMANDS = ['start', 'pause', 'stop', 'yellow', 'red', 'penalty', 'assign', 'review', 'call', 'callresolve', 'addtime', 'reducetime', 'undotime', 'endtime', 'cleartime', 'setdriver', 'bop', 'weather', 'tyre', 'swap', 'swapnext', 'damage', 'pad'];
 // The commands of the Tokens page (Time Token Sessions) are checked here before they go to the race window: a lane is a whole number from 0 to 15,
 // the minutes to add are a number above 0 and at most 1440 (a day), a driver is the id of a driver (or '' for a Guest).
 const TOKEN_COMMANDS = ['addtime', 'reducetime', 'undotime', 'endtime', 'cleartime', 'setdriver'];
@@ -26,6 +26,12 @@ const WX_STATES = ['dry', 'cloudy', 'wet', 'clearing'];
 function weatherCommand(c) {
   if (c.type !== 'weather') return true;
   return typeof c.state === 'string' && WX_STATES.includes(c.state);
+}
+// the Race Director sets the dry tyre of a car (1.31.0): a lane is a whole number from 0 to 15, the tyre one of the dry compounds (Hard, Medium, Soft, Supersoft), and save (also change the Slotcar in the Database) true or false when it is there
+const WX_DRY_TYRES = ['H', 'M', 'S', 'SS'];
+function tyreCommand(c) {
+  if (c.type !== 'tyre') return true;
+  return Number.isInteger(c.lane) && c.lane >= 0 && c.lane <= 15 && typeof c.tyre === 'string' && WX_DRY_TYRES.includes(c.tyre) && (c.save === undefined || typeof c.save === 'boolean'); // (save: the tyre is also kept on the Slotcar in the Database)
 }
 // The commands of an Endurance Race: a lane is a whole number from 0 to 15; the driver who steps in (swap) is the id of a driver, or left out; swapnext needs the id of the driver who is next.
 function swapCommand(c) {
@@ -97,7 +103,7 @@ function createServer(o) {
         const b = await body(req), pw = password();
         if (!pw || typeof b.token !== 'string' || tokens.get(b.token) !== pw) return send(res, 401, { error: 'login' });
         if (!b.cmd || !COMMANDS.includes(b.cmd.type)) return send(res, 400, { error: 'unknown command' });
-        if (!tokenCommand(b.cmd) || !bopCommand(b.cmd) || !weatherCommand(b.cmd) || !swapCommand(b.cmd) || !damageCommand(b.cmd) || !padCommand(b.cmd)) return send(res, 400, { error: 'bad command' });
+        if (!tokenCommand(b.cmd) || !bopCommand(b.cmd) || !weatherCommand(b.cmd) || !tyreCommand(b.cmd) || !swapCommand(b.cmd) || !damageCommand(b.cmd) || !padCommand(b.cmd)) return send(res, 400, { error: 'bad command' });
         o.onCommand(b.cmd); return send(res, 200, { ok: true });
       }
       if (req.method === 'GET') { // the app's own pages
@@ -120,4 +126,4 @@ function createServer(o) {
     clientCount: () => clients.size
   };
 }
-module.exports = { createServer, tokenCommand, bopCommand, weatherCommand, swapCommand, damageCommand, padCommand };
+module.exports = { createServer, tokenCommand, bopCommand, weatherCommand, tyreCommand, swapCommand, damageCommand, padCommand };
