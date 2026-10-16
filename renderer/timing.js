@@ -9,6 +9,7 @@
   const Dl = typeof module !== 'undefined' ? require('./delta.js') : root.Delta; // the Delta Timers (delta.js)
   const Av = typeof module !== 'undefined' ? require('./avatars.js') : root.Avatars; // the standard avatars of the lanes (avatars.js)
   const Ww = typeof module !== 'undefined' ? require('./weatherwidgets.js') : root.WxW; // the weather widgets (weatherwidgets.js)
+  const En = typeof module !== 'undefined' ? require('./endurance.js') : root.Endurance; // the Endurance Race (endurance.js)
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
   const median = a => { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
@@ -28,9 +29,17 @@
   const heatLabel = h => (h.final ? `Final ${h.final}` : `Heat ${Math.min(h.idx + 1, h.count)} of ${h.count}`);
   const lapLimitOf = setup => (setup.sessionType === 'race' || (setup.sessionType === 'heats' && setup.heatBy !== 'time')) ? Number(setup.laps) || 0 : 0;
   const timeLimitOf = setup => (setup.sessionType === 'timed' || setup.sessionType === 'qualifying' || (setup.sessionType === 'heats' && setup.heatBy === 'time')) ? (Number(setup.duration) || 0) * 60000 : 0;
-  const sessionLabel = { practice: 'Free practice', qualifying: 'Qualifying', race: 'Race', timed: 'Timed race', heats: 'Heats', tokens: 'Time tokens' };
+  const sessionLabel = { practice: 'Free practice', qualifying: 'Qualifying', race: 'Race', timed: 'Timed race', heats: 'Heats', endurance: 'Endurance', tokens: 'Time tokens' };
   const flagText = { ready: 'Ready', running: 'Racing', paused: 'Paused', between: 'Heat finished', finished: 'Finished' };
 
+
+  // Endurance Race: the look at the swaps of a car (nothing for a car that does not swap), and the name of a driver of its team as the widget wants it
+  const swapLook = (S, c, t) => { const i = S.eng.cars.indexOf(c); return c && c.en && S.eng.endurance && S.eng.enLook && i >= 0 ? S.eng.enLook(i, t) : null; };
+  const rosterName = (c, id, how) => { const r = (c.roster || []).find(x => x.id === id); return r ? (how === 'nickname' ? r.nickname || r.name : how === 'callsign' ? r.callsign || r.name : r.name) || '' : ''; };
+  function swapVars(S, c, t) {
+    const l = swapLook(S, c, t); if (!l) return { nextdriver: '–', swap: '–', stint: '–' };
+    return { nextdriver: esc(rosterName(c, l.next) || '–'), swap: esc(En.chipOf(S.eng.endurance, l).text), stint: En.clock(l.stintMs) };
+  }
 
   // The {variables} of the custom text widgets. Values are already safe to put in HTML.
   function laneVars(S, c, t) {
@@ -42,7 +51,7 @@
       laptime: c.done ? '–' : E.fmtTime(E_.lapElapsed(i, S.now)), last: laps ? E.fmtTime(c.laps[laps - 1]) : '–', best: c.best === null ? '–' : E.fmtTime(c.best), avg: g.length ? E.fmtTime(mean(g)) : '–', median: g.length ? E.fmtTime(median(g)) : '–',
       record: Number.isFinite(best) ? E.fmtTime(best) : '–', gap: esc(row.gap),
       fuel: F && F.on ? `${(Math.floor(E_.fuelOf(i, t) * 10 + 1e-9) / 10).toFixed(1).replace(/\.0$/, '')} L` : '–', fuelpct: F && F.on && F.tank ? Math.round(E_.fuelOf(i, t) / (E_.tankOf ? E_.tankOf(i) : F.tank) * 100) + '%' : '–', bop: c.bop ? Bp.signed(c.bop) : '–',
-      penpoints: P && P.on ? (c.dq ? 'DQ' : c.points) : '–', pentime: P && P.on ? `+${Number.isInteger(sec) ? sec : sec.toFixed(1)} s` : '–', champ, pits: c.pits ? c.pits.length : 0, pit: pit ? E.fmtTime(pit.ms) : '–', speed: speedOf(true), speedreal: speedOf(false), ...Ww.laneVars(c) };
+      penpoints: P && P.on ? (c.dq ? 'DQ' : c.points) : '–', pentime: P && P.on ? `+${Number.isInteger(sec) ? sec : sec.toFixed(1)} s` : '–', champ, pits: c.pits ? c.pits.length : 0, pit: pit ? E.fmtTime(pit.ms) : '–', speed: speedOf(true), speedreal: speedOf(false), ...swapVars(S, c, t), ...Ww.laneVars(c) };
   }
   function raceVars(S, t) {
     const laps = lapLimitOf(S.setup), time = timeLimitOf(S.setup), lead = S.standings()[0], most = Math.max(0, ...S.eng.cars.map(x => x.laps.length)), sr = S.sessionRecord ? S.sessionRecord() : null, tr = S.trackRecord ? S.trackRecord() : null;
@@ -50,7 +59,7 @@
     const rec = r => (r && Number.isFinite(r.time) ? E.fmtTime(r.time) : '–'), by = r => (r && Number.isFinite(r.time) && r.name ? esc(r.name) : '');
     return { clock: clockText(S.eng.elapsed(t)), timeleft: time ? mmss(Math.max(0, time - S.eng.elapsed(t))) : '–', lapsleft: laps ? Math.max(0, laps - most) : '–', lapstotal: laps || '–', leader: lead && lead.car ? esc(lead.car.driverName) : '–',
       flag: st === 'red' ? 'Red flag' : st === 'yellow' ? 'Yellow flag' : flagText[st] || '', heat: S.heat ? heatLabel(S.heat) : '',
-      track: esc((S.track && S.track.name) || ''), session: esc(S.setup.name || ''), type: esc(sessionLabel[S.setup.sessionType] || ''), sessionrecord: rec(sr), sessionrecordby: by(sr), trackrecord: rec(tr), trackrecordby: by(tr), yellowtarget: S.eng.yellow && S.eng.yellow.target > 0 ? E.fmtTime(S.eng.yellow.target) : '', ...Ww.raceVars(S.eng, t) };
+      track: esc((S.track && S.track.name) || ''), session: esc(S.setup.name || ''), type: esc(sessionLabel[S.setup.ofType || S.setup.sessionType] || ''), sessionrecord: rec(sr), sessionrecordby: by(sr), trackrecord: rec(tr), trackrecordby: by(tr), yellowtarget: S.eng.yellow && S.eng.yellow.target > 0 ? E.fmtTime(S.eng.yellow.target) : '', ...Ww.raceVars(S.eng, t) };
   }
 
   const stateOf = S => (S.phase === 'countdown' ? 'countdown' : S.eng.flag === 'red' ? 'red' : S.eng.flag === 'yellow' ? 'yellow' : S.phase === 'review' ? 'finished' : S.phase); // the state of the race for the flag and lights widgets; a start (or restart) countdown comes first
@@ -162,6 +171,22 @@
       case 'tyre': return Ww.tyreContent(opt, c, S); // the tyre of the car (the weather: a pit stop changes it)
       case 'wxforecast': return Ww.forecastContent(opt, S, t); // the weather now, and what comes next
       case 'wxconditions': return Ww.conditionsContent(opt, S); // track and air temperature, wind speed and direction
+      case 'currentdriver': { // Endurance Race: the driver at the wheel (any race: the driver of the car), and how long he has been there
+        const name = opt.show === 'nickname' ? c.nickname || c.driverName : opt.show === 'callsign' ? c.callsign || c.driverName : c.driverName, l = opt.stint === true ? swapLook(S, c, t) : null;
+        return { html: esc(name || '') + (l ? ` \u00b7 ${En.clock(l.stintMs)}` : '') };
+      }
+      case 'nextdriver': { // Endurance Race: the driver who steps in at the next swap
+        const l = swapLook(S, c, t); if (!l) return { html: '' };
+        const n = rosterName(c, l.next, opt.show);
+        return { html: n ? (opt.prefix === true ? 'Next: ' : '') + esc(n) : '\u2013' };
+      }
+      case 'swaptimer': { // Endurance Race: the time to the swap, amber in the warning and red when the swap is due
+        const l = swapLook(S, c, t); if (!l) return { html: '' };
+        const cfg = S.eng.endurance, chip = En.chipOf(cfg, l), stand = l.standLeft === null || l.standLeft === undefined ? '' : ` \u00b7 stand still ${Math.ceil(l.standLeft / 1000)} s`;
+        const late = chip.kind === 'due' || chip.kind === 'overdue', text = opt.show === 'clock' ? (late ? 'NOW' : l.left === null || l.left === undefined ? '' : En.leftText(cfg, l.left)) : chip.text + stand;
+        const bg = chip.kind === 'soon' ? opt.soonColor || '#ffb000' : late ? opt.dueColor || '#e03131' : '';
+        return bg ? { html: esc(text), bg, color: contrast(bg) } : { html: esc(text) };
+      }
       case 'bop': { // Balance of Power: off, hindered (an arrow down) or helped (an arrow up), with the percentage
         const pct = c.bop || 0;
         if (!pct) return { html: opt.showOff === false ? '' : 'BoP off' };

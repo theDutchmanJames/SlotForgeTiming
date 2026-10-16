@@ -172,6 +172,9 @@ app.whenReady().then(() => {
   ipcMain.handle('custom:remove', (_e, entity, id) => db.removeCustomField(entity, id));
   ipcMain.handle('custom:group', (_e, entity, id, group) => db.setCustomFieldGroup(entity, id, group));
   ipcMain.handle('settings:get', () => db.getSettings());
+  ipcMain.handle('resume:get', () => db.getResume());
+  ipcMain.handle('resume:save', (_e, snap) => db.setResume(snap));
+  ipcMain.handle('resume:clear', () => db.clearResume());
   ipcMain.on('live:static', (e, s) => { live.stat = s; live.dyn = null; relay('live:static', s, e.sender); if (net.server) net.server.broadcast('static', s); });
   ipcMain.on('live:push', (e, d) => {
     // the race window sends what changed; the whole state is kept here for a window or phone that opens late

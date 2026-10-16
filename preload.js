@@ -35,6 +35,10 @@ contextBridge.exposeInMainWorld('api', {
   setZoom: factor => { const k = Number(factor); if (k >= 0.5 && k <= 3) webFrame.setZoomFactor(k); }, // the size of the interface of this window (App Settings > General > Display)
   getSettings: () => call('settings:get'),
   setSettings: patch => call('settings:set', patch),
+  // a race that is running is kept in a file, so that a crash or a power cut does not lose it (1.9.0)
+  getResume: () => call('resume:get'),
+  saveResume: snap => call('resume:save', snap),
+  clearResume: () => call('resume:clear'),
   // the running race, shared with the Live Race window
   liveStatic: s => ipcRenderer.send('live:static', s),
   livePush: d => ipcRenderer.send('live:push', d),

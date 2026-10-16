@@ -445,7 +445,7 @@ const mk2 = (o = {}, ents = one) => createRace({ type: 'race', laps: 10, minLap:
   }
   // the lists of the calls
   { const n = A.CALLS.length, groups = [...new Set(A.CALLS.map(c => c.group))];
-    ok('65 calls in 13 folders (1.3.0: Balance of Power after Pit and fuel; 1.4.0: Weather after Balance of Power; 1.5.0: the conditions call; 1.7.0: the line-up), the Safety folder after the flags', n === 65 && groups.join() === 'Start,Positions,Race progress,Gaps and battles,Laps and records,Pit and fuel,Balance of Power,Weather,Penalties,Flags,Safety,Finish,Time tokens');
+    ok('70 calls in 14 folders (1.3.0: Balance of Power after Pit and fuel; 1.4.0: Weather after Balance of Power; 1.5.0: the conditions call; 1.7.0: the line-up; 1.9.0: the Endurance folder after Balance of Power), the Safety folder after the flags', n === 70 && groups.join() === 'Start,Positions,Race progress,Gaps and battles,Laps and records,Pit and fuel,Balance of Power,Endurance,Weather,Penalties,Flags,Safety,Finish,Time tokens');
     const set = Sound.defaultSet('x'), fresh = ['firstlap', 'nearrecord', 'fuelhalf', 'refuelled', 'penaltyserved', 'penaltyforgiven', 'penaltytime', 'lanecall', 'nolap', 'trackmatelost', 'trackmateback', 'tokenadded', 'tokenfree'];
     ok('the 13 new calls exist, have sentences, and are off in a new audio set', fresh.every(id => A.CALLS.some(c => c.id === id) && set.calls[id].on === false && set.calls[id].lines.length > 0));
     const old = { calls: { winner: { on: true, lines: [{ text: 'x', file: '' }] } } };
@@ -569,6 +569,39 @@ const mk2 = (o = {}, ents = one) => createRace({ type: 'race', laps: 10, minLap:
   // a set from before has neither call: the ready-made sentences are used (the race has a target, so the calls are meant)
   ok('a set from before this version says the new calls with the ready-made sentences', Sound.choose({ calls: { winner: { on: true, lines: [{ text: 'x', file: '' }] } } }, 'yellowtarget', { target: '15 seconds' }, () => 0).text === 'Target lap time is 15 seconds' && /too fast under yellow/.test(Sound.choose({ calls: {} }, 'yellowfast', { driver: 'Sam' }, () => 0).text));
   ok('the target call is not an urgent one: it waits for the yellow flag call to finish, and does not cut it off', (() => { const src = require('fs').readFileSync(require('path').join(__dirname, '../renderer/sound.js'), 'utf8'); return !/URGENT = \[[^\]]*yellowtarget/.test(src) && !/URGENT = \[[^\]]*yellowfast/.test(src) && /URGENT = \[[^\]]*'yellowflag'/.test(src); })());
+}
+
+// 1.9.0: the calls of an Endurance Race
+{
+  const En = require('../renderer/endurance.js'), MIN = 60000, roster = [{ id: 'a', name: 'Alex', nickname: 'Speedy', callsign: 'ALX' }, { id: 'b', name: 'Bea', nickname: 'B', callsign: 'BEE' }];
+  const mkE = (over = {}) => createRace({ type: 'timed', duration: 120, minLap: 800, penalty: penaltyConfig({ everyPoints: 5, everySeconds: 5 }), endurance: En.clean({ sessionType: 'endurance', swapUnit: 'minutes', swapEvery: 30, swapWarn: 2, swapGrace: 30, swapConfirm: 'button', ...over }),
+    entries: [{ lane: 0, driverId: 'a', driverName: 'Alex', nickname: 'Speedy', callsign: 'ALX', teamId: 'T1', teamName: 'Red Bulls', roster }] });
+  const obs = (eng, an, t) => { eng.tick(t); return an.observe(eng, { phase: 'running', now: t }); };
+  const eng = mkE(), an = A.create({ driverBy: 'name' }); eng.start(0); obs(eng, an, 0);
+  ok('nothing is said about the swaps before the warning', names(obs(eng, an, 27 * MIN)) === '');
+  let out = obs(eng, an, 28 * MIN + 100);
+  ok('the warning comes at the time of the race setup: "swap soon" with the team, the driver who is next and how long is left', names(out) === 'swapsoon' && out[0].vars.team === 'Red Bulls' && out[0].vars.nextdriver === 'Bea' && out[0].vars.swapin === '2 minutes' && out[0].vars.driver === 'Alex');
+  out = obs(eng, an, 30 * MIN + 100);
+  ok('when the swap is due: "swap due", with the team and the driver who is next ("{team} needs to swap positions! Box Box!")', names(out) === 'swapdue' && out[0].vars.team === 'Red Bulls' && out[0].vars.nextdriver === 'Bea' && A.CALLS.find(c => c.id === 'swapdue').lines[0] === '{team} needs to swap positions! Box Box!');
+  eng.swap(0, 30 * MIN + 20000);
+  out = obs(eng, an, 30 * MIN + 20100);
+  ok('when the swap is made: "swap done" says who came in and who took over (the driver of the call is the one who left)', names(out) === 'swapdone' && out[0].vars.driver === 'Alex' && out[0].vars.nextdriver === 'Bea' && out[0].vars.team === 'Red Bulls');
+  ok('...the sentences of the calls name the driver who left and the one who stepped in', A.CALLS.find(c => c.id === 'swapdone').lines.some(l => l.includes('{driver}') && l.includes('{nextdriver}')) && A.CALLS.find(c => c.id === 'swapdone').vars.join() === 'driver,nextdriver');
+  // a late swap, without and with a penalty
+  const e2 = mkE(), a2 = A.create({}); e2.start(0); obs(e2, a2, 0); obs(e2, a2, 30 * MIN + 100);
+  out = obs(e2, a2, 30 * MIN + 31000);
+  ok('a swap that is not made in the grace time: "swap late" (no penalty in the race setup)', names(out) === 'swaplate' && out[0].vars.team === 'Red Bulls');
+  const e3 = mkE({ swapPenalty: 2 }), a3 = A.create({}); e3.start(0); obs(e3, a3, 0); obs(e3, a3, 30 * MIN + 100);
+  out = obs(e3, a3, 30 * MIN + 31000);
+  ok('...with penalty points the call is "swap penalty" instead, with the points', names(out) === 'swappenalty' && out[0].vars.points === 2 && out[0].vars.team === 'Red Bulls');
+  ok('...and the points are not said a second time by the call of any other penalty', namesAll(out).split(',').filter(x => x === 'penalty').length === 0 && e3.cars[0].points === 2);
+  // the calls are in their own folder, and only the warning is off in a new audio set
+  const swapCalls = A.CALLS.filter(c => c.group === 'Endurance');
+  const set = Sound.defaultSet('x');
+  ok('the five calls are in the folder Endurance; in a new audio set only the warning is off', swapCalls.map(c => c.id).join() === 'swapsoon,swapdue,swapdone,swaplate,swappenalty' && swapCalls.every(c => set.calls[c.id] && set.calls[c.id].lines.length > 0) && set.calls.swapsoon.on === false && ['swapdue', 'swapdone', 'swaplate', 'swappenalty'].every(id => set.calls[id].on === true));
+  // a race without swaps never says them, and a team race that does not swap neither
+  const plain = mk({ laps: 50 }), ap = A.create({}); plain.start(0); ap.observe(plain, { phase: 'running' });
+  ok('a race without Endurance rules says nothing about swaps', !namesAll(ap.observe(plain, { phase: 'running', now: 99 * MIN })).includes('swap'));
 }
 
 console.log(fails ? `${fails} FAILED` : 'audio: all PASSED'); process.exit(fails ? 1 : 0);

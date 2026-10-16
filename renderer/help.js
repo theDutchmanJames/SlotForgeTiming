@@ -34,6 +34,7 @@ const Help = (() => {
           <li>If a <b>qualifying</b> was driven on the same track, its winner picks their lane first.</li>
           <li>The <b>Available</b> cards show what you have. <b>Show all</b> opens the matching list in the Database.</li>
           <li>The welcome message at the top and the header picture can be changed in App Settings, General.</li>
+          <li>When a race was stopped by a crash or a power cut, a note at the top offers <b>Resume the race</b> (it comes back paused, press Space to go on), <b>Save what was recorded</b> or <b>Delete it</b>.</li>
         </ul>` },
       { id: 'database', title: 'Database', note: 'Tracks, drivers and slot cars', body: `
         <ul>
@@ -66,13 +67,14 @@ const Help = (() => {
           <li><b>Time Tokens</b>: the time buttons and the warning for a Time Token Session.</li>
           <li>Fuel setups, penalty systems and weather systems do nothing until you choose them in a race setup.</li>
         </ul>` },
-      { id: 'types', title: 'Session types', note: 'Six ways to race', body: `
+      { id: 'types', title: 'Session types', note: 'Seven ways to race', body: `
         <ul>
           <li><b>Free practice</b>: no finish. It runs until you stop it and ranks the drivers by their best lap.</li>
           <li><b>Qualifying</b>: a timed session ranked by best lap. Two drivers with the same best lap: the one who set it first ranks higher. Its winner picks their lane first in the next race on the same track.</li>
           <li><b>Race by laps</b>: the first to reach the number of laps wins. The race ends when the lead car finishes, or when every car has finished.</li>
           <li><b>Timed race</b>: the most laps in the time wins.</li>
           <li><b>Heat-based race</b>: several heats, each limited by laps or by time; the overall result adds the heats up. How the heats are planned and counted, and the finals, are explained in Heat races, below.</li>
+          <li><b>Endurance Race</b>: a long race for teams, where the drivers of a team swap at the wheel in the pits (see Endurance Race, below).</li>
           <li><b>Time Token Session</b>: not a race. You sell track time per lane (see Time Token Sessions below).</li>
         </ul>` },
       { id: 'heatraces', title: 'Heat races', note: 'How the heats are planned', body: `
@@ -100,6 +102,15 @@ const Help = (() => {
           <li>On the <b>Home tab</b> a lane can have a <b>Team</b>; the driver is then one of the team. The <b>Team Name</b> and <b>Team Picture</b> widgets show the team of the lane (or one team you choose), {team} works in custom texts and audio calls, and the results get a Team column.</li>
           <li>The participants of a heat race can be <b>teams</b>: choose Teams in the race setup (<b>The participants of the heats are</b>) or in the rotation setup (<b>Participants are</b>, which wins). On Home you choose a team and a car for each. In every heat one driver of the team drives: <b>in turn</b>, <b>by lot</b>, or the one you choose before the heat.</li>
           <li>A driver who is in two teams drives for one of them in a heat. The result has a row per team with the drivers who drove for it; every lap still counts for the driver who drove it.</li>
+        </ul>` },
+      { id: 'endurance', title: 'Endurance Race', note: 'Teams that swap drivers in the pits', body: `
+        <ul>
+          <li>Choose the session type <b>Endurance Race</b>. A team shares one car, and its drivers take turns. Give every lane a <b>Team</b> on Home. The race runs by time, by laps, or heat by heat (<b>The Endurance Race is</b>).</li>
+          <li>The folder <b>Endurance: driver swaps</b> of the race setup says when a swap is due: <b>every so often</b>, <b>at fixed moments</b> (30 minutes, 2 hours), or <b>free</b> within the shortest and longest stint. All times are in minutes or in laps. You can also set the least and the most a driver drives in the whole race.</li>
+          <li>The swap is made when the car stops on the pit sensor (like a Stop-and-Go), or when <b>Swap done</b> is pressed on the Race Director page or a phone. The driver who steps in is the next one in the team's order, chosen at each swap, or picked by lot.</li>
+          <li>When the swap is late, the laps keep counting or stop counting, and the team can get penalty points (they need a penalty system), again and again if you like.</li>
+          <li>The widgets <b>Current Driver</b>, <b>Next Driver</b> and <b>Swap Timer</b> (amber before the swap is due, red when it is late) show it on the timing page. The audio folder <b>Endurance</b> says "{team} needs to swap positions! Box Box!" and who came in and who took over.</li>
+          <li>The results show every driver's time at the wheel and stints. A race in one go that a crash or a power cut stops can be continued from the Home tab.</li>
         </ul>` },
       { id: 'heatresults', title: 'Heat results', note: 'How the heats add up', body: `
         <ul>
@@ -204,9 +215,9 @@ const Help = (() => {
         </ul>` },
       { id: 'audio', title: 'Audio calls', note: 'A voice for the race', body: `
         <ul>
-          <li>An <b>audio set</b> (Customization, Audio Settings) says what the race announces. The calls are in folders, and you switch every call on or off. Most of the newer calls are off until you switch them on.</li>
-          <li><b>Race progress</b>: laps or minutes to go, the last lap, the heats. <b>Gaps and battles</b>: closing in, a battle, a lapped car. <b>Laps and records</b>: records, the first lap, a lap close to the record. <b>Pit and fuel</b>: pits, half a tank, a refuel. <b>Penalties</b>: given, served, forgiven, time added. <b>Safety</b>: a lane calling for the marshal, no lap for a while, the Trackmate lost or back. <b>Time tokens</b>: time almost up, time up, added, a lane freed. <b>Weather</b>: weather, conditions, tyres.</li>
-          <li>A call can have <b>several sentences</b>; one is picked at random each time. Use placeholders such as {driver}, {team}, {time}, {gap}, {gapahead}, {record} and {position}; the list is at the top of the audio set. Press Test to hear it.</li>
+          <li>An <b>audio set</b> (Customization, Audio Settings) says what the race announces. The calls are in folders; switch each one on or off. Most of the newer calls are off until you switch them on.</li>
+          <li><b>Race progress</b>: laps or minutes to go, the last lap, the heats. <b>Gaps and battles</b>: closing in, a battle, a lapped car. <b>Laps and records</b>: records, the first lap, a near record. <b>Pit and fuel</b>: pits, half a tank, a refuel. <b>Penalties</b>: given, served, forgiven, time added. <b>Safety</b>: a lane calling for the marshal, no lap for a while, the Trackmate lost or back. <b>Time tokens</b>: time almost up, time up, added, a lane freed. <b>Weather</b>: weather, conditions, tyres. <b>Endurance</b>: driver swaps.</li>
+          <li>A call can have <b>several sentences</b>; one is picked at random each time. Use placeholders such as {driver}, {team}, {time}, {gap}, {gapahead}, {record} and {position}; the list is at the top. Press Test to hear it.</li>
           <li>A sentence can be spoken by a <b>voice of your computer</b>, or you can choose a <b>sound file</b> (up to 10 MB) that plays instead. Drivers can be called by name, nickname or callsign.</li>
           <li>Under a sentence, <b>Only if</b> limits it to one driver, the top places, a fast lap or a small gap; a sentence whose conditions hold is said instead of the others. <b>Not again within</b> holds a call back for some seconds.</li>
           <li>Pick the set in the race setup. <b>No audio</b> keeps the race silent. Sound plays on the computer that runs the race, not on phones.</li>

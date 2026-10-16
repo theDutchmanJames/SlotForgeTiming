@@ -75,6 +75,7 @@ input:disabled{opacity:.6}
 .lane-away{display:flex;align-items:center;gap:6px;font-size:14px;white-space:nowrap}
 .issues{margin:10px 0;padding-left:18px;color:var(--accent)}
 .hint2{margin:4px 0 12px;color:var(--muted)}
+.resumecard{border-left:4px solid var(--accent)}
 h4{margin:22px 0 8px;font-size:15px;color:var(--muted);font-weight:600}
 .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);padding:12px;border-radius:8px;margin-bottom:12px}
 .status{font-weight:700;font-size:18px;padding:4px 14px;border-radius:4px;border:1px solid var(--line);min-width:120px;text-align:center}
@@ -451,6 +452,13 @@ dialog:has(.formgrid) form{display:flex;flex-direction:column;max-height:calc(90
 .bopchip.bop-hindered{background:#ff8c00;border-color:#ff8c00;color:#000}
 .bopchip.bop-helped{background:#3ddc84;border-color:#3ddc84;color:#000}
 @media (max-width:700px){.boptable thead{display:none}.boptable tr{display:block;border-bottom:1px solid var(--line);padding:6px 0}.boptable td{display:block;border-bottom:0;padding:4px 12px}}
+
+/* Endurance Race: the swap panel */
+.entable select{min-width:150px}
+.enchip{display:inline-block;padding:2px 10px;border-radius:12px;border:1px solid var(--line);font-variant-numeric:tabular-nums;white-space:nowrap}
+.enchip.en-soon{background:#ffb000;border-color:#ffb000;color:#000}
+.enchip.en-due,.enchip.en-overdue{background:#e03131;border-color:#e03131;color:#fff;font-weight:600}
+@media (max-width:700px){.entable thead{display:none}.entable tr{display:block;border-bottom:0;padding:2px 0}.entable td{display:block;border-bottom:0;padding:4px 12px}}
 
 .tktable .tkminus{margin-top:6px}
 .tktable select{min-width:150px}

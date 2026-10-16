@@ -14,16 +14,19 @@ async function renderRace() {
   const [drivers, cars, layouts, allLaps, penSystems, fuelRules, weatherSystems, rowDesigns, imageSets, audioSets, teams] = await Promise.all(['drivers', 'slotcars', 'layouts', 'laps', 'penaltysystems', 'fuelrules', 'weathersystems', 'rowdesigns', 'imagesets', 'audiosets', 'teams'].map(e => api.list(e)));
   const find = (list, id) => list.find(x => x.id === id);
   const speed = state.speed || 1; // only changed by automated tests
-  const setup = r.setup, heats = setup.sessionType === 'heats', tokenSession = setup.sessionType === 'tokens'; // (a Time Token Session: lanes are switched on with paid time, see tokens.js)
+  const setup = Endurance.effective(r.setup), heats = setup.sessionType === 'heats', tokenSession = setup.sessionType === 'tokens'; // (a Time Token Session: lanes are switched on with paid time, see tokens.js)
   const nameOf = (entity, list, id) => { const it = find(list, id); return it ? titleOf(entity, it) : ''; };
   const personOf = driverId => { const d = find(drivers, driverId); return { driverId: d ? d.id : '', driverName: d ? titleOf('drivers', d) : 'Guest', nickname: d ? d.nickname || '' : '', callsign: d ? d.callsign || '' : '', flag: d ? d.flag || '' : '', avatar: d ? d.avatar || '' : '' }; };
   const byTeam = heats && r.byTeam === true; // (1.8.0: the participants are teams; the driver of a team is chosen for every heat, see assignDrivers)
+  const enduOn = !!setup.endurance; // (1.9.0: an Endurance Race: a team has a roster of the drivers who swap in the pits)
   const people = r.rows.map(x0 => {
     const x = byTeam ? { ...x0, driverId: '' } : x0, d = find(drivers, x.driverId) || {}, tm = find(teams, x.teamId);
+    const mates = (Array.isArray(tm && tm.drivers) ? tm.drivers : []).filter(id => find(drivers, id)), asRace = enduOn && !!tm && mates.length >= 2; // (a team of two drivers or more swaps)
     return { driverId: x.driverId || '', carId: x.carId || '', driverName: nameOf('drivers', drivers, x.driverId) || (tokenSession ? 'Guest' : ''), carName: nameOf('slotcars', cars, x.carId), carPicture: (find(cars, x.carId) || {}).picture || '', carScale: (find(cars, x.carId) || {}).scale || '', tyre: (find(cars, x.carId) || {}).tyreCompound || '', // (the tyre the car races on when it is dry: the weather changes it in the pits)
       nickname: d.nickname || '', callsign: d.callsign || '', flag: d.flag || '', avatar: d.avatar || '',
       ...(tm ? { teamId: tm.id, teamName: titleOf('teams', tm), teamPicture: tm.picture || '' } : {}),
-      ...(byTeam ? { asTeam: true, teamDrivers: (Array.isArray(tm && tm.drivers) ? tm.drivers : []).filter(id => find(drivers, id)) } : {}) };
+      ...(byTeam || asRace ? { asTeam: true, teamDrivers: mates } : {}),
+      ...(asRace ? { roster: mates.map(id => { const m = find(drivers, id); return { id, name: titleOf('drivers', m), nickname: m.nickname || '', callsign: m.callsign || '', flag: m.flag || '', avatar: m.avatar || '' }; }) } : {}) };
   });
   const lanes = Math.max(1, Math.floor(Number(r.track.lanes)) || people.length);
   const engineType = tokenSession ? 'practice' : heats ? (setup.heatBy === 'time' ? 'timed' : 'race') : setup.sessionType;
@@ -32,13 +35,13 @@ async function renderRace() {
   const bopCfg = setup.bop === 'on' && fuelCfg.on && (engineType === 'race' || engineType === 'timed') ? Bop.engineConfig(state.settings, Array.from({ length: lanes }, (_, l) => Speed.laneLength(r.track, l))) : null;
   const penCfg = RaceEngine.penaltyConfig(find(penSystems, setup.penaltySystem)); // penalty points and how they turn into time
   // Weather: only for a race or a timed race, with the weather system the setup has. Every engine (every heat) gets the settings with a seed for the random choices: the same one in every heat, unless the system says every heat has new weather
-  const wxRec = !tokenSession && (engineType === 'race' || engineType === 'timed') ? find(weatherSystems, setup.weather) : null, wxSeed = Heats.newSeed();
+  const wxRec = !tokenSession && (engineType === 'race' || engineType === 'timed') ? find(weatherSystems, setup.weather) : null, wxSeed = (r.resume && r.resume.wxSeed) || Heats.newSeed(); // (a race that is carried on after an interruption has the weather it had)
   const wxFor = () => (wxRec ? Wx.clean(wxRec, Wx.clean(wxRec, 0).same ? wxSeed : Heats.newSeed()) : null);
   // a final has its own length (0 is the same as a heat). lenNow: the length of the race that is racing, or is next while the race waits between two races
   const finalLen = () => ({ laps: Number(setup.finalLaps) > 0 ? Number(setup.finalLaps) : setup.laps, duration: Number(setup.finalDuration) > 0 ? Number(setup.finalDuration) : setup.duration });
   const lenNow = () => (heat && heat.isFinal() ? finalLen() : { laps: setup.laps, duration: setup.duration });
   const setupNow = () => (heat && heat.isFinal() ? { ...setup, ...finalLen() } : setup);
-  const mk = entries => RaceEngine.createRace({ penalty: penCfg, type: engineType, laps: lenNow().laps, duration: lenNow().duration, endRule: setup.endRule, minLap: Math.max(RaceEngine.MIN_LAP, (Number(r.track.minLap) || 0) * 1000) / speed, maxLap: (Number(r.track.maxLap) || 0) * 1000 / speed, fuel: fuelCfg, bop: bopCfg, yellow: RaceEngine.yellowConfig(setup), weather: wxFor(), skipFirst: tokenSession || setup.firstLap === 'skip', entries });
+  const mk = entries => RaceEngine.createRace({ penalty: penCfg, type: engineType, laps: lenNow().laps, duration: lenNow().duration, endRule: setup.endRule, minLap: Math.max(RaceEngine.MIN_LAP, (Number(r.track.minLap) || 0) * 1000) / speed, maxLap: (Number(r.track.maxLap) || 0) * 1000 / speed, fuel: fuelCfg, bop: bopCfg, yellow: RaceEngine.yellowConfig(setup), weather: wxFor(), skipFirst: tokenSession || setup.firstLap === 'skip', endurance: setup.endurance || null, rnd: state.rand || Math.random, entries });
   const pointList = String(setup.points || '').split(',').filter(t => t.trim() !== '').map(Number).filter(n => !isNaN(n)); // '10, 8, 6' -> [10, 8, 6]; blank pieces are skipped (Number('') would make them 0)
 
   let heat = null, eng;
@@ -71,7 +74,7 @@ async function renderRace() {
     if (!l.noPersonalBest && l.driverId) base.personal.set(l.driverId, Math.min(base.personal.get(l.driverId) ?? Infinity, l.time)); // (a Guest has no personal best)
   });
   live = { penBtns: [], phase: 'ready', calling: false, callRun: 0, callTimer: null, timers: null, sim: [], key: null, laps: [], stopping: false, flash: new Map(), lights: 0, nodes: [], lapBtns: [], pitBtns: [], callBtns: [], callsKey: null, // (null: the strip is drawn the first time)
-    alive: true, raceRef: r, extraBy: new Map(), bestBy: new Map(), bestAll: Infinity, bestAllName: '', priorBy: new Map(), priorAll: Infinity, priorAllName: '', lapsOpen: false, lapSig: null, rvHtml: '' }; // (prior: the bests of the heats that are finished)
+    alive: true, raceRef: r, stintBy: new Map(), extraBy: new Map(), bestBy: new Map(), bestAll: Infinity, bestAllName: '', priorBy: new Map(), priorAll: Infinity, priorAllName: '', lapsOpen: false, lapSig: null, rvHtml: '' }; // (prior: the bests of the heats that are finished)
   Review.reset();
   // a Time Token Session: the token clocks of the lanes (tokens.js). They run on the race clock, so a pause stops them.
   const tokenSet = Tokens.settingsOf(state.settings);
@@ -88,16 +91,18 @@ async function renderRace() {
   const finalsNote = !finalsOn ? '' : `, then ${heat.total - heat.count === 2 ? 'finals B and A' : 'a final A'}${setup.heatBy === 'time' ? (Number(setup.finalDuration) > 0 ? ` of ${setup.finalDuration} minutes` : '') : (Number(setup.finalLaps) > 0 ? ` of ${setup.finalLaps} laps` : '')}`;
   const limit = tokenSession ? 'paid time per lane' : heats ? `${heat.count} heats, each ${setup.heatBy === 'time' ? setup.duration + ' minutes' : setup.laps + ' laps'}${finalsNote}`
     : setup.sessionType === 'race' ? `${setup.laps} laps` : (setup.sessionType === 'timed' || setup.sessionType === 'qualifying') ? `${setup.duration} minutes` : 'no limit';
+  const limitFull = setup.endurance && !tokenSession ? `${limit}, ${Endurance.rulesText(setup.endurance)}` : limit; // (an Endurance Race says how it swaps)
   const planHtml = !heats ? '' : `<details class="card" id="heatlistcard" style="margin-top:12px" open><summary>Heat list (${heat.count} ${heat.count === 1 ? 'heat' : 'heats'}${finalsOn ? (heat.total - heat.count === 2 ? ' and 2 finals' : ' and a final') : ''})</summary>
     <div class="wrap" id="heatlist"></div><div class="row"><button class="btn" id="heatprint" type="button" title="Make a PDF of the heat list, to print or pin up">Print the heat list</button> <span id="heatprintmsg" class="muted" role="status"></span></div></details>`;
   const host = raceHost();
-  host.innerHTML = `<p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.sessionType])} on ${esc(r.track.name)} · ${esc(limit)}</p>
+  host.innerHTML = `<p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.ofType || setup.sessionType])} on ${esc(r.track.name)} · ${esc(limitFull)}</p>
     <div class="rt-stage"><div class="canvas live" id="canvas"></div></div>
     <div class="bar rt-tools"><label><input type="checkbox" id="sim"> Simulated cars</label><span id="tmstatus" class="muted" role="status"></span><span id="lapbtns"></span><span id="pitbtns"></span><span id="callbtns"></span><span id="penbtns"></span>
       <button class="btn" id="fsbtn" type="button" title="Show only the widgets, as large as the window allows (F). Esc closes it.">Full screen widgets</button><button class="btn" id="lapsbtn" aria-expanded="false" hidden title="Check the laps while the race goes on: mark a lap invalid or take it out of the records">Review laps</button><span id="msg" class="muted" role="status"></span><button class="btn danger stopbtn" id="stopbtn">Stop race</button><button class="btn" id="back">Back to Home</button></div>
     <div id="tokenpanel" class="card tkpanel" hidden></div>
     <div id="boppanel" class="card boppanel" hidden></div>
     <div id="wxpanel" class="card boppanel" hidden></div>
+    <div id="enpanel" class="card boppanel" hidden></div>
     <div id="finalpick" class="card" hidden></div>
     <div id="teampick" class="card" hidden></div>
     <div id="calls" class="card calls" hidden></div>
@@ -129,7 +134,7 @@ async function renderRace() {
   const shared = () => LiveShare.makeShared({ rowDesigns, imageSets, teams: teams.map(t => ({ id: t.id, name: t.name || '', picture: t.picture || '' })), clubLogo: state.settings.clubLogo, champ: champOf(), eng, track: r.track, now: now(), phase: live.phase, calling: live.calling, lights: live.lights, setup: setupNow(), heat: heatInfo(),
     flash: live.flash, layout, bestAll: live.bestAll, bestAllName: live.bestAllName, bestBy: live.bestBy, base, tokens: tokens ? tokens.snapshot() : null });
   // ---- share the race with the second-screen window (and later other devices) ----
-  const shareTitle = `${setup.name} · ${SESSION_LABEL[setup.sessionType]} on ${r.track.name} · ${limit}`;
+  const shareTitle = `${setup.name} · ${SESSION_LABEL[setup.ofType || setup.sessionType]} on ${r.track.name} · ${limit}`;
   const tokenUi = () => (tokenSession ? { increments: tokenSet.increments.slice(), decrements: tokenSet.decrements.slice(), drivers: drivers.map(d => ({ id: d.id, name: titleOf('drivers', d) })) } : null); // what the Tokens page on other screens needs: the time buttons and the drivers to choose from
   const shareStatic = () => { // everything heavy, once per heat
     live.raceId = String(Date.now()) + Math.random().toString(36).slice(2, 6);
@@ -210,7 +215,7 @@ async function renderRace() {
   const recomputeBests = () => {
     const by = new Map(live.priorBy); let all = live.priorAll, who = live.priorAllName;
     const put = (d, t, name) => { if (t < (by.get(d) ?? Infinity)) by.set(d, t); if (t < all) { all = t; who = name; } };
-    eng.cars.forEach(c => c.laps.forEach((t, n) => { if (!c.bad[n] && !c.invalid.includes(n) && !c.removed.includes(n)) put(c.driverId, t, c.driverName); }));
+    eng.cars.forEach(c => c.laps.forEach((t, n) => { if (!c.bad[n] && !c.invalid.includes(n) && !c.removed.includes(n)) put(c.en ? Endurance.driverAtLap(c.en, n) : c.driverId, t, c.driverName); })); // (an Endurance Race: the driver who drove that lap)
     if (tokens) tokens.closedList().forEach(x => x.laps.forEach(l => { if (!l.late && !l.bad && !l.invalid && !l.removed) put(x.who.driverId || '', l.t, x.who.driverName || 'Guest'); }));
     live.bestBy = by; live.bestAll = all; live.bestAllName = who;
   };
@@ -228,6 +233,7 @@ async function renderRace() {
     update(); return true;
   };
   const update = () => {
+    checkpoint();
     drawHeatList(); announce(); announceTokens(); if (live.powerFollow) live.powerFollow();
     const S = shared();
     LiveCanvas.paint(live.nodes, S);
@@ -248,6 +254,7 @@ async function renderRace() {
     if (live.tkPanel) live.tkPanel.update();
     if (live.bopPanel) live.bopPanel.update();
     if (live.wxPanel) live.wxPanel.update();
+    if (live.enPanel) live.enPanel.update();
     if (tokens && live.phase === 'running' && now() - (live.tkAt || -1e9) > 10000) persistTokens(true); // (the clocks that run: kept every ten seconds)
     ui('back').disabled = raceActive();
     ui('stopbtn').disabled = !(live.phase === 'running' || live.phase === 'paused' || live.phase === 'between');
@@ -340,9 +347,17 @@ async function renderRace() {
   const pitFigures = c => ({ pits: c.pits.length, pitTime: c.pits.reduce((a, p) => a + p.duration, 0) });
   const hasPits = c => fuelCfg.on || c.pits.length > 0;
   // the lap rows saved for the database: laps removed in the review are left out, invalid and too slow laps are kept but never count for records
-  const lapRows = (c, date, extra) => c.laps.map((time, n) => ({ time, n })).filter(x => !c.removed.includes(x.n)).map(x => ({ driverId: c.driverId, carId: c.carId, ...(c.teamId ? { teamId: c.teamId } : {}), trackId: r.track.id, ...extra, lane: c.lane + 1, lapNumber: x.n + 1, time: x.time, date,
+  const lapRows = (c, date, extra) => c.laps.map((time, n) => ({ time, n })).filter(x => !c.removed.includes(x.n)).map(x => ({ driverId: c.en ? Endurance.driverAtLap(c.en, x.n) : c.driverId, carId: c.carId, ...(c.teamId ? { teamId: c.teamId } : {}), trackId: r.track.id, ...extra, lane: c.lane + 1, lapNumber: x.n + 1, time: x.time, date,
     ...((c.pitLaps || []).includes(x.n) ? { pit: true } : {}),
     ...(c.bad[x.n] ? { noTrackRecord: true, noPersonalBest: true, tooSlow: true } : {}), ...(c.invalid.includes(x.n) ? { noTrackRecord: true, noPersonalBest: true, invalid: true } : {}) }));
+
+  // Endurance Race: who drove what. The stints of a car, as they are saved: [{ driverId, driverName, laps, ms, from, to, by }] (from and to: the race clock in ms), and the drivers with their laps and time.
+  const stintsOf = c => (c.en ? Endurance.stints(c.en, 0, c.laps.length).map(s => ({ driverId: s.d, driverName: nameOf('drivers', drivers, s.d) || (c.roster || []).map(m => (m.id === s.d ? m.name : '')).join(''), laps: s.laps, ms: s.ms, from: s.ms0, to: s.ms1, by: s.by })) : []);
+  const driversOf = (c, mine) => { // (the laps counted from the lap rows, so a lap that was taken out is not in them)
+    const out = []; stintsOf(c).forEach(s => { let d = out.find(x => x.driverId === s.driverId); if (!d) { d = { driverId: s.driverId, driverName: s.driverName, laps: 0, ms: 0 }; out.push(d); } d.ms += s.ms; });
+    out.forEach(d => { d.laps = mine.filter(l => l.driverId === d.driverId).length; });
+    return out;
+  };
 
   // a heat (or the single race) has ended: the Race Director reviews the result before it is saved
   function engineFinished() {
@@ -445,10 +460,15 @@ async function renderRace() {
       const res = heat.record(eng);
       eng.cars.forEach(c => { const a = live.extraBy.get(c.participant) || { pits: 0, pitTime: 0, has: false, pen: 0 }, p = pitFigures(c); live.extraBy.set(c.participant, { pits: a.pits + p.pits, pitTime: a.pitTime + p.pitTime, has: a.has || hasPits(c), pen: a.pen + (c.points || 0) }); });
       eng.cars.forEach(c => live.laps.push(...lapRows(c, date, { heat: raceNo, ...(fin ? { final: fin } : {}) })));
+      eng.cars.forEach(c => { if (c.en) live.stintBy.set(c.participant, [...(live.stintBy.get(c.participant) || []), ...stintsOf(c).map(q => ({ ...q, heat: raceNo, ...(fin ? { final: fin } : {}) }))]); }); // (the stints of every heat, for the result)
       live.priorBy = new Map(live.bestBy); live.priorAll = live.bestAll; live.priorAllName = live.bestAllName; // (the next race starts from what this one has set)
       res.rows.forEach(x => { // the name of a row: the driver; of a team that races as a team: "Team (driver)", and who drove
-        const pp = people[x.participant];
-        if (pp.asTeam) { teamHist[x.participant].push(pp.driverId); x.driverName = pp.driverName ? `${pp.teamName} (${pp.driverName})` : pp.teamName; x.by = pp.driverName; x.driverId = pp.driverId; x.teamId = pp.teamId || ''; }
+        const pp = people[x.participant], car = eng.cars.find(c => c.participant === x.participant), sts = car && car.en ? stintsOf(car) : null; // (an Endurance Race: the drivers swapped, so more than one drove)
+        if (pp.asTeam) {
+          const drove = sts ? sts.map(q => q.driverId).filter((id, i, a) => id && a.indexOf(id) === i) : [pp.driverId], names = sts ? drove.map(id => nameOf('drivers', drivers, id)).filter(Boolean).join(', ') : pp.driverName;
+          teamHist[x.participant].push(...drove); x.driverName = names ? `${pp.teamName} (${names})` : pp.teamName; x.by = names; x.driverId = sts ? '' : pp.driverId; x.teamId = pp.teamId || '';
+          if (sts) x.stints = sts.map(q => ({ driverId: q.driverId, driverName: q.driverName, laps: q.laps, ms: q.ms }));
+        }
         else { x.driverName = pp.driverName; if (pp.teamId) { x.teamId = pp.teamId; x.teamName = pp.teamName; } }
       });
       Object.keys(teamChosen).forEach(k => { delete teamChosen[k]; }); // (what was chosen was for that heat)
@@ -467,6 +487,7 @@ async function renderRace() {
     if (live.phase !== 'review') return;
     ui('review').innerHTML = ''; live.reviewShown = false; live.laps = [];
     live.phase = 'finished'; clearInterval(live.timers); stopBreak(); live.sim.forEach(clearTimeout); document.removeEventListener('keydown', live.key);
+    clearCheckpoint();
     ui('msg').textContent = 'The race was deleted. Nothing was saved.';
     update();
   }
@@ -481,7 +502,9 @@ async function renderRace() {
     if (heats) {
       const teamStanding = o => { // a team that raced as a team: the team is the row, with the drivers who drove for it
         const mine = laps.filter(l => l.teamId === o.teamId), ids = []; mine.forEach(l => { if (l.driverId && !ids.includes(l.driverId)) ids.push(l.driverId); });
-        return { asTeam: true, driverId: '', driverName: o.teamName || '', teamId: o.teamId || '', teamName: o.teamName || '', drivers: ids.map(id => ({ driverId: id, driverName: nameOf('drivers', drivers, id), laps: mine.filter(l => l.driverId === id).length })) };
+        const sts = live.stintBy.get(o.participant) || []; // (an Endurance Race: how long every driver was at the wheel, and the stints)
+        return { asTeam: true, driverId: '', driverName: o.teamName || '', teamId: o.teamId || '', teamName: o.teamName || '', drivers: ids.map(id => ({ driverId: id, driverName: nameOf('drivers', drivers, id), laps: mine.filter(l => l.driverId === id).length, ...(sts.length ? { ms: sts.filter(q => q.driverId === id).reduce((n, q) => n + q.ms, 0) } : {}) })),
+          ...(sts.length ? { stints: sts.map(q => ({ driverId: q.driverId, driverName: q.driverName, laps: q.laps, ms: q.ms, heat: q.heat, ...(q.final ? { final: q.final } : {}) })) } : {}) };
       };
       standings = heat.overall().map(o => ({ pos: o.pos, driverId: o.driverId, carId: o.carId, driverName: o.driverName, carName: o.carName, laps: o.laps, points: o.points, best: o.best, total: null,
         ...(o.asTeam ? teamStanding(o) : o.teamId ? { teamId: o.teamId, teamName: o.teamName } : {}),
@@ -493,19 +516,24 @@ async function renderRace() {
         ...(finalsOn && o.finalName ? { finalName: o.finalName, ...(o.finalPos !== null ? { finalPos: o.finalPos } : {}) } : {}),
         ...(finalsOn && fmode.finalMode === 'added' && o.finalPos !== null ? { heatScore: o.heatScore, finalPoints: o.finalPoints, finalLaps: o.finalLaps, ...(heat.scoring.byTime ? { finalTime: o.finalTime } : {}) } : {}) }));
     } else {
+      const teamRow = c => { // an Endurance Race: the team is the row, with the drivers who drove for it (their laps and time at the wheel) and the stints
+        const mine = lapRows(c, date, {});
+        return { asTeam: true, driverId: '', driverName: c.teamName || '', drivers: driversOf(c, mine), stints: stintsOf(c).map(q => ({ driverId: q.driverId, driverName: q.driverName, laps: q.laps, ms: q.ms, from: q.from, to: q.to, by: q.by })) };
+      };
       standings = eng.standings().map(x => ({ pos: x.pos, driverId: x.car.driverId, carId: x.car.carId, ...(x.car.teamId ? { teamId: x.car.teamId, teamName: x.car.teamName } : {}), driverName: x.car.driverName, carName: x.car.carName, laps: eng.lapsOf(x.car), best: x.car.best, total: x.car.total, retired: (x.car.retired && !x.car.dq) || undefined,
         ...(x.car.adjMs ? { adjMs: x.car.adjMs } : {}), ...(x.car.adjLaps ? { adjLaps: x.car.adjLaps } : {}), ...(eng.bopNoteOf(eng.cars.indexOf(x.car)) ? { bopNote: eng.bopNoteOf(eng.cars.indexOf(x.car)) } : {}), ...(eng.tyreNoteOf(eng.cars.indexOf(x.car)) ? { tyreNote: eng.tyreNoteOf(eng.cars.indexOf(x.car)) } : {}), // (what Balance of Power and the tyres did to the car, in words)
-        ...(hasPits(x.car) ? pitFigures(x.car) : {}), ...(penCfg.on ? { penaltyPoints: x.car.points, penalty: eng.penMs(x.car), dq: x.car.dq || undefined } : {}) }));
+        ...(hasPits(x.car) ? pitFigures(x.car) : {}), ...(penCfg.on ? { penaltyPoints: x.car.points, penalty: eng.penMs(x.car), dq: x.car.dq || undefined } : {}),
+        ...(x.car.en ? { ...teamRow(x.car), ...(x.car.swapLost ? { swapLost: x.car.swapLost } : {}), swaps: x.car.en.swaps } : {}) }));
       laps = [];
       eng.cars.forEach(c => laps.push(...lapRows(c, date, {})));
     }
-    if (!laps.length) { ui('msg').textContent = 'No laps were recorded, so nothing was saved.'; return; }
-    const session = { setupName: setup.name, sessionType: setup.sessionType, trackId: r.track.id, trackName: r.track.name, date, endedBy: heats ? '' : eng.endedBy, standings, ...(!heats && eng.weatherNote() ? { weatherNote: eng.weatherNote() } : {}) };
+    if (!laps.length) { clearCheckpoint(); ui('msg').textContent = 'No laps were recorded, so nothing was saved.'; return; }
+    const session = { setupName: setup.name, sessionType: setup.ofType || setup.sessionType, trackId: r.track.id, trackName: r.track.name, date, endedBy: heats ? '' : eng.endedBy, ...(!heats && eng.resumes ? { resumed: eng.resumes } : {}), standings, ...(!heats && eng.weatherNote() ? { weatherNote: eng.weatherNote() } : {}) };
     if (heats) { session.resultBy = heat.scoring.byTime ? 'time' : setup.resultBy;
       const wn = heat.results.map(h => h.weatherNote || ''), wxAll = wn.length > 0 && wn[0] !== '' && wn.every(n => n === wn[0]); // the weather of the heats: said once when it was the same in every heat, otherwise with every heat
       if (wxAll) session.weatherNote = wn[0];
       session.heatResults = heat.results.map(h => ({ heat: h.heat, ...(h.final ? { final: h.final } : {}), ...(h.weatherNote && !wxAll ? { weatherNote: h.weatherNote } : {}), rows: h.rows })); if (scoreNote) session.scoring = heat.scoring; if (finalsOn) session.finals = { finals: fmode.finals, finalMode: fmode.finalMode }; }
-    try { await api.saveSession(session, laps); ui('msg').textContent = `Saved ${laps.length} laps. See Database > Results and Records.`; }
+    try { await api.saveSession(session, laps); clearCheckpoint(); ui('msg').textContent = `Saved ${laps.length} laps. See Database > Results and Records.`; }
     catch (x) { ui('msg').textContent = 'Could not save the results: ' + x.message; }
   }
 
@@ -543,9 +571,10 @@ async function renderRace() {
   }
   const goRunning = () => {
     live.lights = 0; live.phase = 'running'; eng.start(now()); power(true); update();
-    live.timers = setInterval(() => { eng.tick(now()); if (eng.status === 'finished') engineFinished(); else update(); }, 100 / Math.min(speed, 10));
+    startTimers();
     startSim();
   };
+  const startTimers = () => { live.timers = setInterval(() => { eng.tick(now()); if (eng.status === 'finished') engineFinished(); else update(); }, 100 / Math.min(speed, 10)); };
   function startCountdown() {
     live.phase = 'countdown'; live.lights = 0; ui('msg').textContent = ''; power(setup.startPower !== 'off'); ui('sim').disabled = true; update();
     runLights(goRunning);
@@ -606,6 +635,16 @@ async function renderRace() {
       if (!eng.weather || !eng.wxPlan || !eng.wxPlan.director || !['ready', 'countdown', 'running', 'paused', 'between'].includes(live.phase)) return;
       if (eng.wxSet(state, now(), 'director')) update();
     },
+    swap(lane, to) { // Endurance Race: the team on this lane has swapped drivers (the Swap done button, or the Race Director page); to: the driver who steps in (only when the setup lets the Race Director choose)
+      if (!eng.endurance || !['running', 'paused'].includes(live.phase)) return;
+      const i = eng.cars.findIndex(c => c.lane === lane);
+      if (i >= 0 && eng.swap(i, now(), typeof to === 'string' && to ? to : undefined)) update();
+    },
+    swapNext(lane, id) { // Endurance Race: the Race Director chooses who steps in next
+      if (!eng.endurance || live.phase === 'finished' || live.phase === 'review') return;
+      const i = eng.cars.findIndex(c => c.lane === lane);
+      if (i >= 0 && eng.swapNext(i, id)) update();
+    },
     yellow() { if (live.restarting) return; eng.setFlag('yellow', now()); syncPhase(); },
     red() {
       if (cancelRestart()) return;
@@ -660,6 +699,8 @@ async function renderRace() {
     else if (cmd.type === 'callresolve') actions.callResolve(Number(cmd.id), cmd.how);
     else if (cmd.type === 'bop') actions.bop(Number(cmd.lane), cmd.how);
     else if (cmd.type === 'weather') actions.weather(cmd.state);
+    else if (cmd.type === 'swap') actions.swap(Number(cmd.lane), cmd.to);
+    else if (cmd.type === 'swapnext') actions.swapNext(Number(cmd.lane), cmd.id);
     else if (cmd.type === 'review') reviewCommand(cmd);
     else if (tokens && TOKEN_CMD[cmd.type]) TOKEN_CMD[cmd.type](cmd);
   });
@@ -834,6 +875,37 @@ async function renderRace() {
     if (!(kept && kept.data)) ui('msg').textContent = 'Press Start to open the session, then add time to a lane.';
   }
   if (bopCfg) live.bopPanel = BopPanel.build(ui('boppanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, send: (lane, how) => actions.bop(lane, how) }); // the Balance of Power lane controls
+  if (setup.endurance) live.enPanel = EndurancePanel.build(ui('enpanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, now, send: (lane, what, id) => (what === 'swap' ? actions.swap(lane, id) : actions.swapNext(lane, id)) }); // the swaps of an Endurance Race
   if (eng.weather) live.wxPanel = WeatherPanel.build(ui('wxpanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, now, send: state => actions.weather(state) }); // the weather controls
+
+  // ---- a race that was interrupted can be carried on (1.9.0) ----
+  // While a single race runs (or waits in the review), a snapshot of it goes to a file every few seconds and whenever something changes (a lap, a swap, a flag, a pause). After a crash or a power cut the Home tab
+  // offers to carry on: the race comes back paused, with its clock where it was in the last snapshot, and starts again with Space. The laps that were driven in between are lost (the review can add them),
+  // and the lap that was being driven is left out of the records. The file goes when the result is saved or deleted.
+  function lean(o) { return Object.fromEntries(Object.entries(o || {}).filter(([, v]) => !(typeof v === 'string' && v.length > 2000))); } // (a picture does not need to be written again every few seconds)
+  function checkpoint() {
+    if (!api.saveResume || heats || tokens || !live || !live.alive || live.cpOff || !['running', 'paused', 'review'].includes(live.phase)) return;
+    const t = now(), sig = [eng.status, eng.flag, eng.cars.reduce((n, c) => n + c.laps.length + c.points + (c.en ? c.en.swaps : 0) + (c.blockAt !== null ? 1 : 0), 0)].join('|');
+    if (live.cpAt !== undefined && (t - live.cpAt < 2000 / speed || (sig === live.cpSig && t - live.cpAt < 5000 / speed))) return;
+    live.cpAt = t; live.cpSig = sig;
+    Promise.resolve(api.saveResume({ v: 1, savedAt: new Date().toISOString(), name: setup.name, kind: SESSION_LABEL[setup.ofType || setup.sessionType] || '', trackName: r.track.name, wxSeed, elapsed: eng.elapsed(t), phase: live.phase,
+      race: { setup: lean(r.setup), track: lean(r.track), rows: r.rows }, eng: eng.snapshot(t) })).catch(() => {});
+  }
+  function clearCheckpoint() { live.cpOff = true; if (api.clearResume && !heats && !tokens) Promise.resolve(api.clearResume()).catch(() => {}); }
+  function resumeRace(snap) {
+    if (!eng.restore(snap.eng)) { live.cpOff = true; ui('msg').textContent = 'The saved race does not fit this race setup any more, so it could not be carried on.'; return; }
+    recomputeBests(); live.cpAt = now();
+    ui('sim').disabled = true;
+    if (snap.stopNow || eng.status === 'finished') {
+      live.phase = 'paused';
+      if (eng.status !== 'finished') eng.stop(eng.pausedAt);
+      engineFinished();
+      ui('msg').textContent = 'The race was interrupted. Check what was recorded below, then press Finalize.';
+      return;
+    }
+    live.phase = 'paused'; startTimers();
+    ui('msg').textContent = 'The race was interrupted and is back, paused where it was at the last saving point. Check the laps, then press Space (Pause / Resume) to carry on.';
+  }
+  if (r.resume && !heats && !tokens) resumeRace(r.resume);
   shareStatic(); update(); drawOverall();
 }

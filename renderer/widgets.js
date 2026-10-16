@@ -43,7 +43,8 @@
   // Custom text widgets: a line of text with {variables}. Unknown {words} stay as typed so a typo is easy to see.
   const TEXT_LANE_VARS = [['name', 'Driver name'], ['nickname', 'Nickname'], ['callsign', 'Callsign'], ['team', 'Team name'], ['car', 'Slotcar'], ['lane', 'Lane number'], ['position', 'Position'], ['lap', 'Current lap'], ['laps', 'Laps completed'],
     ['laptime', 'Current lap time'], ['last', 'Last lap'], ['best', 'Best lap'], ['avg', 'Average lap'], ['median', 'Median lap'], ['record', 'Personal record lap'], ['gap', 'Gap to leader'],
-    ['fuel', 'Fuel left (litres)'], ['fuelpct', 'Fuel left (%)'], ['bop', 'Balance of Power (\u221220% hindered, +10% helped, a dash when it is off)'], ['penpoints', 'Penalty points'], ['pentime', 'Penalty time'], ['champ', 'Championship points'], ['pits', 'Pit stops made'], ['tyre', 'Tyres of the car (Soft, Wet...)'], ['pit', 'Last pit stop time'], ['speed', 'Speed (scaled km/h)'], ['speedreal', 'Speed (real km/h)']];
+    ['fuel', 'Fuel left (litres)'], ['fuelpct', 'Fuel left (%)'], ['bop', 'Balance of Power (\u221220% hindered, +10% helped, a dash when it is off)'], ['penpoints', 'Penalty points'], ['pentime', 'Penalty time'], ['champ', 'Championship points'], ['pits', 'Pit stops made'], ['tyre', 'Tyres of the car (Soft, Wet...)'], ['pit', 'Last pit stop time'], ['speed', 'Speed (scaled km/h)'], ['speedreal', 'Speed (real km/h)'],
+    ['nextdriver', 'Next driver of the team (Endurance Race)'], ['swap', 'Time to the next driver swap (Endurance Race)'], ['stint', 'How long the driver has been at the wheel (Endurance Race)']];
   const TEXT_RACE_VARS = [['clock', 'Race clock (counting up)'], ['timeleft', 'Time left'], ['lapsleft', 'Laps left'], ['lapstotal', 'Lap limit'], ['leader', 'Leader'], ['flag', 'Flag / race state'], ['heat', 'Heat'],
     ['track', 'Track name'], ['session', 'Race setup name'], ['type', 'Session type'], ['sessionrecord', 'Session record lap'], ['sessionrecordby', 'Session record driver'], ['trackrecord', 'Track record lap'], ['trackrecordby', 'Track record driver'], ['yellowtarget', 'Yellow flag target lap time (empty when there is none)'],
     ['weather', 'Weather now (Dry, Cloudy, Wet, Clearing; a dash without a weather system)'], ['nextweather', 'The next change of the weather and when (Rain in 3 laps; empty when there is none)'], ['tracktemp', 'Track temperature (30 \u00B0C)'], ['airtemp', 'Air temperature (24 \u00B0C)'], ['windspeed', 'Wind speed (10 km/h)'], ['winddir', 'Wind direction (SW)']];
@@ -265,6 +266,14 @@
   // The Avatar widget: the driver's picture, or when the driver has none the avatar of the lane (the standard ones, or a picture set of the kind Avatars)
   // Team Name and Team Picture (1.8.0): the team of the lane (a team chosen on Home), or one team from Database > Teams that the widget always shows
   const TEAM_OPTION = { key: 'team', label: 'Team to show', type: 'team', default: '' };
+  // Endurance Race: the driver at the wheel, the driver who is next, and the time to the swap
+  const DRIVER_SHOW = { key: 'show', label: 'Show', type: 'select', default: 'name', choices: [['name', 'The name'], ['nickname', 'The nickname'], ['callsign', 'The callsign']] };
+  const CURDRIVER_OPTIONS = [DRIVER_SHOW, { key: 'stint', label: 'Add how long he has been at the wheel', type: 'checkbox', default: false }];
+  const NEXTDRIVER_OPTIONS = [DRIVER_SHOW, { key: 'prefix', label: 'Put "Next:" in front', type: 'checkbox', default: false }];
+  const SWAPTIMER_OPTIONS = [
+    { key: 'show', label: 'Show', type: 'select', default: 'words', choices: [['words', 'Words ("Swap in 12:30")'], ['clock', 'Only the clock (12:30)']] },
+    { key: 'soonColor', label: 'Colour when the swap is near (the warning of the race setup)', type: 'color', default: '#ffb000' },
+    { key: 'dueColor', label: 'Colour when the swap is due', type: 'color', default: '#e03131' }];
   const TEAMPIC_OPTIONS = [TEAM_OPTION, { key: 'frame', label: 'Picture position and zoom', type: 'frame', from: 'team' }];
   const TEAM_SAMPLES = ['Red Racers', 'Blue Bandits', 'Green Giants', 'Gold Gang', 'Night Owls', 'Pit Crew'];
   const AVATAR_OPTIONS = [{ ...SET_OPTION('avatars'), label: 'Avatars for a driver without a picture (sets are made under Customization > Image Settings)' },
@@ -339,6 +348,9 @@
     T('driverflag', 'Driver Flag', 'Driver', { title: 'Driver flag', perLane: true, w: 90, sample: l => `<span class="fi fi-${FLAGS[l]}"></span>` }),
     T('teamname', 'Team Name', 'Team', { title: 'Team', perLane: true, w: 220, options: [TEAM_OPTION], sample: l => TEAM_SAMPLES[l % TEAM_SAMPLES.length] }),
     T('teampicture', 'Team Picture', 'Team', { title: 'Team picture', perLane: true, w: 100, h: 100, options: TEAMPIC_OPTIONS, sample: l => `<span class="av">${TEAM_SAMPLES[l % TEAM_SAMPLES.length][0]}</span>` }),
+    T('currentdriver', 'Current Driver', 'Team', { title: 'Current driver', perLane: true, w: 260, options: CURDRIVER_OPTIONS, sample: l => NAMES[l % NAMES.length] }),
+    T('nextdriver', 'Next Driver', 'Team', { title: 'Next driver', perLane: true, w: 260, options: NEXTDRIVER_OPTIONS, sample: l => NAMES[(l + 1) % NAMES.length] }),
+    T('swaptimer', 'Swap Timer', 'Team', { title: 'Swap timer', perLane: true, w: 230, options: SWAPTIMER_OPTIONS, sample: l => ['Swap in 12:30', 'Swap in 0:45', 'SWAP NOW'][l % 3] }),
     T('carpicture', 'Slotcar Picture', 'Slotcar', { title: 'Slotcar picture', perLane: true, w: 160, h: 100, options: CARPIC_OPTIONS, sample: l => '<span class="carph">Car picture</span>' }),
     T('carname', 'Slotcar Description', 'Slotcar', { title: 'Slotcar', perLane: true, w: 260, sample: l => ['NSR Ford GT40', 'Slot.it Porsche 962', 'Scalextric Audi R8', 'Fly Ferrari 512', 'Ninco Mazda 787', 'SCX BMW M3', 'Carrera Corvette', 'Avant Slot Lola'][l] }),
     T('position', 'Position in Race', 'Timing', { title: 'Position', perLane: true, w: 70, sample: l => String(l + 1) }),

@@ -29,7 +29,7 @@ const api = { liveStatic: s => { sent.stat = JSON.parse(JSON.stringify(s)); sent
 const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if (appConsole.expected) { appConsole.seen++; return; } console.log('FAIL the app reported an error: ' + a.map(x => (x && x.stack) || x).join(' ').slice(0, 300)); fails++; } };
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['bop.js', 'weather.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['bop.js', 'weather.js', 'endurance.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -701,6 +701,18 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
       say('a new entry in the race log is a change by itself (no lap, nothing else): it is sent at once, and only that entry', m && m.events.tail.length === 1 && m.events.from === 0 && m.cars.every(c => c.laps.tail.length === 0) && m.seq === 2);
       const m2 = wire(S.pack(cx(r, 40300), 40300)); r.events.push({ type: 'callend', car: 0, t: 40400 }); const m3 = wire(S.pack(cx(r, 40500), 40500));
       say('...and the next entry is sent as an addition to the log, not the whole log again', m2 === null && m3.events.from === 1 && m3.events.tail.length === 1 && m3.events.tail[0].type === 'callend'); }
+    { // 1.9.0: an Endurance Race sends the state of the swaps and who is at the wheel for a car that swaps, and nothing extra for a car that does not
+      const roster = [{ id: 'a', name: 'Alex' }, { id: 'b', name: 'Bea' }], EN = run('Endurance').clean({ sessionType: 'endurance', swapUnit: 'laps', swapEvery: 2 });
+      const r = RE.createRace({ type: 'race', laps: 20, endurance: EN, minLap: 800, entries: [{ lane: 0, driverId: 'a', driverName: 'Alex', carId: 'c0', teamId: 'T', teamName: 'Red', roster }, { lane: 1, driverId: 'z', driverName: 'Zed', carId: 'c1' }] });
+      r.start(0); r.cross(0, 5000); r.cross(0, 10000); r.cross(1, 5500); r.tick(10100); r.swap(0, 10200);
+      const S = LS.sender(), m = wire(S.pack(cx(r, 10300), 10300)), a = LS.applyDynamic(null, m);
+      say('a car that swaps is sent with its swap state and the driver now at the wheel; a car that does not swap has neither', a.ok && a.state.cars[0].en && a.state.cars[0].en.swaps === 1 && a.state.cars[0].driverId === 'b' && a.state.cars[0].driverName === 'Bea' && a.state.cars[1].en === undefined && !('swapLost' in a.state.cars[1]));
+      r.cross(0, 15000); r.tick(15100);
+      const m2 = wire(S.pack(cx(r, 15200), 15200)), a2 = LS.applyDynamic(a.state, m2);
+      say('...a change in the swap state of one car is a change by itself, and the viewer has the same state as the race', m2 && a2.ok && JSON.stringify(a2.state.cars[0].en) === JSON.stringify(r.cars[0].en) && a2.state.cars[0].laps.length === r.cars[0].laps.length);
+      say('...the viewer works out the same look at the swaps as the race (the same rules, from the same state)', run('Endurance').look(EN, a2.state.cars[0].en, 15200, 3).state === run('Endurance').look(EN, r.cars[0].en, 15200, 3).state);
+      const plain = wire(LS.sender().pack(cx(mkRace(3), 40000), 40000));
+      say('a race without swaps does not send the swap keys at all', plain.cars.every(c => !('en' in c) && !('swapLaps' in c))); }
     { // a message that is missed
       const r = mkRace(5), S = LS.sender(), a = LS.applyDynamic(null, wire(S.pack(cx(r, 50000), 50000)));
       r.cross(0, 60000); const lost = wire(S.pack(cx(r, 60001), 60001)); r.cross(1, 61000); const next = wire(S.pack(cx(r, 61001), 61001));

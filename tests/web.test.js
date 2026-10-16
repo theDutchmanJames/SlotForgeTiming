@@ -64,8 +64,17 @@ const srv = createServer({ root: path.join(R, 'renderer'), appRoot: R, schema: {
     for (const bad of [{ type: 'weather' }, { type: 'weather', state: 'sunny' }, { type: 'weather', state: 5 }, { type: 'weather', state: null }, { type: 'weather', state: ['wet'] }, { type: 'weather', state: 'WET' }, { type: 'weather', state: '' }]) await send(bad);
     ok('...a weather that is not one is refused by the server and never reaches the race (7 tries)', cmds.length === n);
     ok('...the check itself is exported, and looks only at the weather command', require('../server.js').weatherCommand({ type: 'weather', state: 'wet' }) && !require('../server.js').weatherCommand({ type: 'weather', state: 'hail' }) && require('../server.js').weatherCommand({ type: 'start' })); }
+  { // 1.9.0: the swaps of an Endurance Race can be pressed on the Race Director page (a lane, and for the driver who steps in the id of a driver)
+    const before = cmds.length, send = async c => { await api.liveCommand(c); await new Promise(r => setTimeout(r, 15)); };
+    for (const c of [{ type: 'swap', lane: 0 }, { type: 'swap', lane: 3, to: 'd2' }, { type: 'swapnext', lane: 1, id: 'd3' }]) await send(c);
+    ok('the swap commands (Swap done with or without the driver who steps in, and the choice of the next driver) reach the race after the login', cmds.slice(before).map(c => c.type + (c.to || c.id || '')).join() === 'swap,swapd2,swapnextd3');
+    const n = cmds.length;
+    for (const bad of [{ type: 'swap' }, { type: 'swap', lane: -1 }, { type: 'swap', lane: 16 }, { type: 'swap', lane: 1.5 }, { type: 'swap', lane: '1' }, { type: 'swap', lane: 0, to: 5 }, { type: 'swap', lane: 0, to: 'x'.repeat(81) }, { type: 'swapnext', lane: 0 }, { type: 'swapnext', lane: 0, id: '' }, { type: 'swapnext', lane: 0, id: 7 }, { type: 'swapnext', id: 'd1' }, { type: 'swapnext', lane: 99, id: 'd1' }]) await send(bad);
+    ok('...a lane that is not a whole number from 0 to 15, a driver that is not an id, or a missing choice is refused by the server and never reaches the race (12 tries)', cmds.length === n);
+    const S = require('../server.js');
+    ok('...the check itself is exported, and looks only at the swap commands', S.swapCommand({ type: 'swap', lane: 2 }) && S.swapCommand({ type: 'swapnext', lane: 2, id: 'a' }) && !S.swapCommand({ type: 'swap', lane: 99 }) && !S.swapCommand({ type: 'swapnext', lane: 0 }) && S.swapCommand({ type: 'start' }) && S.swapCommand({ type: 'penalty', lane: 99 })); }
   settings.netPassword = 'new'; await api.liveCommand({ type: 'stop' });
-  ok('after the password changes the login is gone', cmds.length === 2 + 8 + 5 + 4 && api.directorAuthed() === false);
+  ok('after the password changes the login is gone', cmds.length === 2 + 8 + 5 + 4 + 3 && api.directorAuthed() === false);
   await srv.close();
   console.log(fails ? fails + ' WEB TESTS FAILED' : 'ALL WEB TESTS PASSED'); process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('ERROR', e.stack); process.exit(1); });

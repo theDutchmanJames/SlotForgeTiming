@@ -163,7 +163,7 @@ ok('each reason has its own words for the badge', Object.keys(D.WHY).sort().join
 // ---- in the widget list and the layout editor ----
 {
   const dl = Wd.REGISTRY.filter(d => d.group === 'Delta Timers');
-  ok('56 widgets in the register: the 40 before, the 8 Delta Timers, the Race Laps widget (1.2.0), Balance of Power (1.3.0), Tyres, Weather Forecast and Track Conditions (1.5.0), the Heat List (1.7.0) and Team Name and Team Picture (1.8.0)', Wd.REGISTRY.length === 56 && dl.length === 8 && new Set(Wd.REGISTRY.map(d => d.type)).size === 56 && Wd.REGISTRY.some(d => d.type === 'racelaps'));
+  ok('59 widgets in the register: the 40 before, the 8 Delta Timers, the Race Laps widget (1.2.0), Balance of Power (1.3.0), Tyres, Weather Forecast and Track Conditions (1.5.0), the Heat List (1.7.0) Team Name and Team Picture (1.8.0), and Current Driver, Next Driver and Swap Timer (1.9.0)', Wd.REGISTRY.length === 59 && dl.length === 8 && new Set(Wd.REGISTRY.map(d => d.type)).size === 59 && Wd.REGISTRY.some(d => d.type === 'racelaps'));
   ok('the Delta Timers folder holds the six per-lane times and the two records, in this order', dl.map(d => d.label).join() === 'Laptime Delta,Average Lap Delta,Median Lap Delta,Best Lap Delta,Personal Best Delta,Pitstop Time Delta,Session Record Delta,Track Record Delta');
   ok('the last laps widget has no Delta version (it is a list of times)', !Wd.REGISTRY.some(d => d.type === 'dlastlap') && !Object.keys(D.KINDS).includes('dlastlap'));
   ok('every Delta Timer is a lane widget, wide enough for the time and the badge, with a sample and its own title', dl.every(d => d.perLane && d.w >= 280 && d.h === 60 && String(Wd.sampleOf(d, 0, { opt: {} })).includes('dlt-badge') && /delta$/i.test(d.title)));

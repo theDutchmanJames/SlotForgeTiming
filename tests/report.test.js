@@ -150,4 +150,22 @@ ok('heats counted the standard way (a result of before): no Result column, no li
   const hs = { ...session, sessionType: 'heats', resultBy: 'laps', heatResults: [{ heat: 1, weatherNote: 'Cloudy from lap 3', rows: [{ pos: 1, driverName: 'Alex', laps: 5, points: 0, tyreNote: 'Wet tyres after lap 4' }, { pos: 2, driverName: 'Sam', laps: 3, points: 0 }] }, { heat: 2, rows: [{ pos: 1, driverName: 'Sam', laps: 5, points: 0 }] }] };
   const hh = sessionHtml({ session: hs, laps });
   ok('a heat says it too: its own weather next to its name, and the tyres in its row', hh.includes('(Weather: Cloudy from lap 3)') && hh.includes('Alex (5 laps, Tyres: Wet tyres after lap 4)') && hh.indexOf('Weather:') === hh.lastIndexOf('Weather:')); }
+// ---- 1.9.0: an Endurance Race ----
+{ const team = { pos: 1, asTeam: true, driverId: '', driverName: 'Red <Bulls>', teamId: 'T1', teamName: 'Red <Bulls>', carId: 'c1', carName: 'Car1', laps: 5, points: 0, best: 4800, total: 31000, swaps: 2, swapLost: 1,
+    short: [{ driverId: 'd2', driverName: 'Sam', laps: 1, ms: 5000 }], drivers: [{ driverId: 'd1', driverName: 'Alex', laps: 4, ms: 20000 }, { driverId: 'd2', driverName: 'Sam', laps: 1, ms: 5000 }],
+    stints: [{ driverId: 'd1', driverName: 'Alex', laps: 2, ms: 10000, from: 0, to: 10000 }, { driverId: 'd2', driverName: 'Sam', laps: 1, ms: 5000, from: 10000, to: 15000 }, { driverId: 'd1', driverName: 'Alex', laps: 2, ms: 10000, from: 15000, to: 25000 }] };
+  const es = { id: 'e1', setupName: 'Day race', sessionType: 'endurance', trackName: 'Living room', date: '2026-10-16T10:00:00Z', endedBy: 'Time up', standings: [team] };
+  const el = [lap('d1', 'c1', 1, 4800), lap('d1', 'c1', 2, 5000), lap('d2', 'c1', 3, 5200), lap('d1', 'c1', 4, 4900), lap('d1', 'c1', 5, 5100)].map(l => ({ ...l, teamId: 'T1' }));
+  const eh = sessionHtml({ session: es, laps: el });
+  ok('the sheet of an Endurance Race names the session type, and the winning team has the cup', eh.includes('Endurance Race') && /<svg[\s\S]*?<\/svg> Red &lt;Bulls&gt;/.test(eh));
+  ok('...the team is the row, with every driver\'s laps and time at the wheel, the swaps, the lap that did not count and who drove too little', eh.includes('(drivers: Alex (4 laps, 0:20), Sam (1 lap, 0:05)) (2 swaps; 1 lap not counted for swaps that were not made; drove too little: Sam (1 lap, 0:05))'));
+  ok('...a part Driver swaps lists the stints in order, with the race clock', eh.includes('<h2>Driver swaps</h2>') && eh.includes('<b>Red &lt;Bulls&gt;</b>: 1. Alex, 0:00 to 0:10, 2 laps (0:10); 2. Sam, 0:10 to 0:15, 1 lap (0:05); 3. Alex, 0:15 to 0:25, 2 laps (0:10)'));
+  ok('...the laps of the team are all on the lap page, in one column', eh.includes('<th>Red &lt;Bulls&gt;<br>') && (eh.slice(eh.indexOf('<table class="laps"')).match(/<tr><td>\d+<\/td>/g) || []).length === 5);
+  ok('...the sheet without the results leaves the swaps out, and a race with no stints has none', !sessionHtml({ session: es, laps: el, options: { results: false } }).includes('Driver swaps') && !sessionHtml({ session: { ...es, standings: [{ ...team, stints: undefined }] }, laps: el }).includes('Driver swaps'));
+  ok('a race that was carried on after an interruption says so under the result, and one that was not does not', sessionHtml({ session: { ...es, resumed: 1 }, laps: el }).includes('This race was interrupted and carried on. The first lap of every car after it is not counted for records.') && !eh.includes('was interrupted'));
+  const hr = { ...es, resultBy: 'laps', standings: [{ ...team, stints: [{ driverId: 'd1', driverName: 'Alex', laps: 3, ms: 9000, heat: 1 }, { driverId: 'd2', driverName: 'Sam', laps: 2, ms: 7000, heat: 2, final: 'A' }] }], heatResults: [{ heat: 1, rows: [{ pos: 1, driverName: 'Red (Alex)', laps: 3, points: 0 }] }, { heat: 2, final: 'A', rows: [{ pos: 1, driverName: 'Red (Sam)', laps: 2, points: 0 }] }] };
+  const hhh = sessionHtml({ session: hr, laps: el.map((l, i) => ({ ...l, heat: i < 3 ? 1 : 2 })) });
+  ok('a heat-based Endurance Race gets the summary of the heats and the heat in every stint', hhh.includes('<h2>Heats and finals</h2>') === false && hhh.includes('<h2>Heats</h2>') && hhh.includes('Heat 1, Alex, 3 laps (0:09)') && hhh.includes('Final A, Sam, 2 laps (0:07)'));
+}
+
 console.log(fails ? fails + ' REPORT TESTS FAILED' : 'ALL REPORT TESTS PASSED'); process.exit(fails ? 1 : 0);

@@ -1,6 +1,7 @@
 // The database: one JSON file on the user's PC, kept behind this small interface
 // so the storage underneath can change later without touching the rest of the app.
 const fs = require('fs');
+const path = require('path');
 const crypto = require('crypto');
 const schema = require('./schema');
 
@@ -152,6 +153,20 @@ class Database {
   }
   getSettings() { return this.data.settings; }
   setSettings(patch) { Object.assign(this.data.settings, patch); this.save(); return this.data.settings; }
+  // A race that is running is kept in a file of its own (1.9.0), so that a crash or a power cut does not lose it: the race screen saves a snapshot every few seconds and the Home tab offers to carry on.
+  // The file sits next to the database and is written whole, then renamed, so a cut in the middle leaves the earlier snapshot.
+  resumeFile() { return path.join(path.dirname(this.file), 'race-resume.json'); }
+  getResume() {
+    try { const x = JSON.parse(fs.readFileSync(this.resumeFile(), 'utf8')); return x && x.v === 1 && x.eng && x.race ? x : null; } catch { return null; }
+  }
+  setResume(snap) {
+    if (!snap || typeof snap !== 'object' || snap.v !== 1) return false;
+    const tmp = this.resumeFile() + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(snap));
+    fs.renameSync(tmp, this.resumeFile());
+    return true;
+  }
+  clearResume() { try { fs.unlinkSync(this.resumeFile()); } catch { /* nothing was kept */ } return true; }
 }
 
 module.exports = Database;

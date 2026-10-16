@@ -2,6 +2,7 @@
 // (new leader, fastest lap, flags...), each with the values its sentences can use ({driver}, {time}...). Nothing here plays sound.
 (function (root) {
   const WxT = typeof module !== 'undefined' ? require('./weather.js') : root.Wx; // the names of the tyres
+  const EnT = typeof module !== 'undefined' ? require('./endurance.js') : root.Endurance; // the Endurance Race (words for the swaps)
   // The calls of the first audio version. vars: the placeholders a line of that call can use. lines: the default sentences.
   const CALLS = [
     { id: 'prerace', group: 'Start', label: 'Before the start: said when Start is pressed (the start lights wait until it is finished)', vars: ['heat', 'heats', 'final', 'track'], lines: ['Drivers, get ready. The race is about to start!'] },
@@ -41,6 +42,11 @@
     { id: 'refuelled', group: 'Pit and fuel', defaultOn: false, label: 'A car has refuelled (said when the pit stop is over)', vars: ['driver', 'refuelled', 'fuel', 'pit'], lines: ['{driver} has refuelled, {refuelled} litres', '{driver} takes on {refuelled} litres'] },
     { id: 'bopon', group: 'Balance of Power', label: 'Balance of Power is applied to a car (hindered or helped)', vars: ['driver', 'bop', 'effect'], lines: ['Balance of Power for {driver}', '{driver} has Balance of Power'] },
     { id: 'bopoff', group: 'Balance of Power', label: 'Balance of Power is taken off a car', vars: ['driver'], lines: ['Balance of Power for {driver} removed!', '{driver}, Balance of Power removed'] },
+    { id: 'swapsoon', group: 'Endurance', defaultOn: false, label: 'A driver swap is coming up (said at the warning of the race setup)', vars: ['driver', 'nextdriver', 'swapin'], lines: ['{team}, a driver swap is coming up', '{team}, get ready to swap with {nextdriver}'] },
+    { id: 'swapdue', group: 'Endurance', label: 'A team has to swap drivers (the swap is due)', vars: ['driver', 'nextdriver'], lines: ['{team} needs to swap positions! Box Box!', 'Box box, {team}! Time to change drivers', '{team}, swap drivers now'] },
+    { id: 'swapdone', group: 'Endurance', label: 'A swap is made: the driver who came in ({driver}) and the driver who took over ({nextdriver})', vars: ['driver', 'nextdriver'], lines: ['{driver} has come in, {nextdriver} takes over for {team}', '{nextdriver} steps in for {driver}', 'New driver for {team}: {nextdriver} replaces {driver}'] },
+    { id: 'swaplate', group: 'Endurance', label: 'A team has not swapped within the grace time', vars: ['driver', 'nextdriver'], lines: ['{team} has not swapped yet! Come in now', '{team}, you must swap drivers'] },
+    { id: 'swappenalty', group: 'Endurance', label: 'A team gets penalty points for not swapping (said instead of the call above)', vars: ['driver', 'nextdriver', 'points'], lines: ['Penalty for {team}, the swap was not made', '{team} is penalised for not swapping'] },
     { id: 'weathercloudy', group: 'Weather', label: 'The sky clouds over (the weather becomes Cloudy: rain is coming)', vars: ['weather', 'tracktemp', 'airtemp', 'windspeed', 'winddir'], lines: ['It is getting cloudy, rain is on its way', 'Clouds are building up'] },
     { id: 'weatherwet', group: 'Weather', label: 'It starts to rain (the weather becomes Wet)', vars: ['weather', 'tracktemp', 'airtemp', 'windspeed', 'winddir'], lines: ['It is raining! Wet tyres', 'The rain has started'] },
     { id: 'weatherclearing', group: 'Weather', label: 'The rain has stopped and the track is drying (Clearing)', vars: ['weather', 'tracktemp', 'airtemp', 'windspeed', 'winddir'], lines: ['The rain has stopped, the track is drying', 'The skies are clearing'] },
@@ -79,6 +85,7 @@
     lane: 'The number of the lane', seconds: 'The seconds of paid time that are left (in the time-added call: the seconds that were added; in the no-lap call: how long)',
     fuel: 'Litres of fuel left (empty when the race has no fuel)', points: 'The driver\'s penalty points (in the penalty call: the points just given)', penalty: 'The name of the special penalty',
     gap: 'The gap to the car in front, as spoken (0.8 seconds)', lapsdown: 'How many laps a lapped driver is behind (1 lap)', heat: 'The number of the heat (empty when it is not a heat-based race, and in a final)', heats: 'The number of heats of the race (empty in a final)', final: 'The letter of the final, A or B (empty when it is not a final)', lineup: 'The drivers of the next heat or final with their lanes (Alex in lane 1, Sam in lane 2 and Kim in lane 3)',
+    nextdriver: 'The driver who steps in at the next swap, as the set says (name, nickname or callsign; in the swap call: the driver who took over, and the driver is then the one who came in)', swapin: 'How long before the swap the warning is said, as spoken (1 minute, 2 laps)',
     car: 'The driver\'s slot car', best: 'The driver\'s best lap of this race, as spoken', track: 'The name of the track',
     target: 'The yellow flag target lap time, as spoken (7.5 seconds)',
     gapahead: 'The gap to the car in front right now, as spoken (empty for the leader)', record: 'The track record, as spoken (empty when the track has none; in the track record call: the old record)',
@@ -87,7 +94,7 @@
     bop: 'The Balance of Power percentage the car got, as a number (20)', effect: 'What Balance of Power does to the car: hindered or helped',
     tyre: 'The tyres of the car, as a word (Wet, Soft, Intermediate...)', weather: 'The weather now: dry, cloudy, wet or clearing',
     tracktemp: 'The track temperature in the weather, as spoken (24 degrees)', airtemp: 'The air temperature, as spoken (20 degrees)', windspeed: 'The wind speed, as spoken (16 kilometres per hour)', winddir: 'Where the wind comes from, as spoken (south west)' };
-  const SAMPLE = { target: '15 seconds', team: 'Red Racers', driver: 'Alex', name: 'Alex', nickname: 'Speedy', callsign: 'ALX', other: 'Sam', time: '5.12', position: 'second', percent: '50', left: '5 laps', fuel: '12', lane: '2', seconds: '60', points: '2', penalty: 'drivethrough', lap: '4', laps: '10', gap: '0.8 seconds', lapsdown: '1 lap', heat: '2', heats: '3', final: 'A', lineup: 'Alex in lane 1, Sam in lane 2 and Kim in lane 3', car: 'Porsche 956', best: '5.10', track: 'Living room', gapahead: '0.8 seconds', record: '5.01', improved: '0.12 seconds', off: '0.04 seconds', pit: '7.4 seconds', refuelled: '8', added: '5 minutes', bop: '20', effect: 'hindered', tyre: 'Wet', weather: 'wet', tracktemp: '17 degrees', airtemp: '15 degrees', windspeed: '22 kilometres per hour', winddir: 'west' };
+  const SAMPLE = { nextdriver: 'Sam', swapin: '1 minute', target: '15 seconds', team: 'Red Racers', driver: 'Alex', name: 'Alex', nickname: 'Speedy', callsign: 'ALX', other: 'Sam', time: '5.12', position: 'second', percent: '50', left: '5 laps', fuel: '12', lane: '2', seconds: '60', points: '2', penalty: 'drivethrough', lap: '4', laps: '10', gap: '0.8 seconds', lapsdown: '1 lap', heat: '2', heats: '3', final: 'A', lineup: 'Alex in lane 1, Sam in lane 2 and Kim in lane 3', car: 'Porsche 956', best: '5.10', track: 'Living room', gapahead: '0.8 seconds', record: '5.01', improved: '0.12 seconds', off: '0.04 seconds', pit: '7.4 seconds', refuelled: '8', added: '5 minutes', bop: '20', effect: 'hindered', tyre: 'Wet', weather: 'wet', tracktemp: '17 degrees', airtemp: '15 degrees', windspeed: '22 kilometres per hour', winddir: 'west' };
   const condVars = (eng, state) => (eng.weather ? WxT.condSpeech(WxT.conditionsFor(eng.weather, state || 'dry', null, '')) : {}); // the conditions of a weather state of this race, as spoken
   const WEATHER_CALL = { cloudy: 'weathercloudy', wet: 'weatherwet', clearing: 'weatherclearing', dry: 'weatherdry' }; // the call for each state the weather becomes
   const ORD = ['zeroth', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth'];
@@ -164,6 +171,9 @@
     const who = c => { const name = c.driverName || '', nick = c.nickname || name, call = c.callsign || name; return { driver: by === 'nickname' ? nick : by === 'callsign' ? call : name, name, nickname: nick, callsign: call, team: c.teamName || '', car: c.carName || '', best: Number.isFinite(c.best) ? speakTime(c.best) : '',
       lane: Number.isInteger(c.lane) ? c.lane + 1 : '', points: c.points || 0, fuel: cur.eng && cur.eng.fuel && cur.eng.fuel.on && Number.isFinite(c.fuel) ? Math.round(c.fuel) : '', gapahead: gapAhead(c), _c: c }; };
 
+    // a driver of the roster of a team (Endurance Race), spoken as the set says
+    const rosterWho = (c, id) => { const r = (c.roster || []).find(x => x.id === id); if (!r) return { name: '', nickname: '', callsign: '', spoken: '' }; const name = r.name || '', nick = r.nickname || name, call = r.callsign || name; return { name, nickname: nick, callsign: call, spoken: by === 'nickname' ? nick : by === 'callsign' ? call : name }; };
+
     // eng: the race engine; ctx: { phase: 'ready' | 'countdown' | 'running' | 'paused' | 'review' | 'finished'..., lights }
     function observe(eng, ctx = {}) {
       // every call can say the track, and in a heat-based race the heat (the number of the heat that is racing, or is next while the race waits between two heats)
@@ -228,9 +238,13 @@
         else if (e.type === 'bopoff') ev('bopoff', who(c));
         else if (e.type === 'tyres') ev('tyrechange', { ...who(c), tyre: WxT.tyreName(e.tyre), weather: e.state });
         else if (e.type === 'tyredue') ev(e.points > 0 ? 'tyrepenalty' : 'wrongtyres', { ...who(c), tyre: WxT.tyreName(e.tyre), weather: eng.wxState || '', points: e.points });
-        else if (e.type === 'penalty' && e.delta > 0 && e.why !== 'tyres') ev('penalty', { ...who(c), points: e.delta }); // (penalty points for the tyres are said by their own call)
+        else if (e.type === 'penalty' && e.delta > 0 && e.why !== 'tyres' && e.why !== 'swaplate') ev('penalty', { ...who(c), points: e.delta }); // (penalty points for the tyres and for a swap that is not made are said by their own calls)
         else if (e.type === 'assigned') ev('specialpenalty', { ...who(c), penalty: pen });
         else if (e.type === 'disqualified') ev('disqualified', who(c));
+        else if (e.type === 'swapsoon') ev('swapsoon', { ...who(c), nextdriver: rosterWho(c, e.next).spoken, swapin: eng.endurance ? EnT.spanText(eng.endurance, eng.endurance.warn) : '' });
+        else if (e.type === 'swapdue') ev('swapdue', { ...who(c), nextdriver: rosterWho(c, e.next).spoken });
+        else if (e.type === 'swapdone') { const from = rosterWho(c, e.from), to = rosterWho(c, e.to); ev('swapdone', { ...who(c), driver: from.spoken, name: from.name, nickname: from.nickname, callsign: from.callsign, nextdriver: to.spoken }); }
+        else if (e.type === 'swaplate') ev(e.points > 0 ? 'swappenalty' : 'swaplate', { ...who(c), nextdriver: rosterWho(c, e.next).spoken, points: e.points });
       }
       if (live && eng.fuel && eng.fuel.on && eng.fuel.tank > 0) cars.forEach((c, i) => { // low on fuel: once, until the tank is filled up again
         if (c.done || c.outOfFuel) return;

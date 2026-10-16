@@ -3,6 +3,7 @@
 (function (root) {
   const B = typeof module !== 'undefined' ? require('./bop.js') : root.Bop; // Balance of Power: percentages and the way they change the fuel rules of a car
   const W = typeof module !== 'undefined' ? require('./weather.js') : root.Wx; // Weather: the states, the tyres and what wrong tyres cost
+  const En = typeof module !== 'undefined' ? require('./endurance.js') : root.Endurance; // Endurance Race: the swaps of drivers
   const MIN_LAP = 800; // crossings closer together than this are treated as double triggers
 
   function fmtTime(ms) {
@@ -65,7 +66,7 @@
     const penOf = c => penaltyMs(P, c.points) + (c.extraMs || 0); // time penalty: from the points, plus any time the Race Director added
     // What the Race Director corrects in the review (R.adjust): race time (ms), laps and championship points, added to or taken off what the race gave. They are signed amounts, kept apart from the penalties.
     const addOf = c => penOf(c) + (c.adjMs || 0); // everything that is added to the time of the car: the penalty and the adjustment
-    const lapsOf = c => c.laps.length + (c.adjLaps || 0); // the laps that count: the laps driven, plus or minus the adjustment
+    const lapsOf = c => c.laps.length + (c.adjLaps || 0) - (c.swapLost || 0); // the laps that count: the laps driven, plus or minus the adjustment, and not the laps of an Endurance Race that a swap that was refused took away
     const F = { on: false, tank: 0, perLap: 0, rate: 0, target: 0, extra: 0, saving: 0, empty: 'retire', pitHold: 2000, ...(cfg.fuel || {}) };
     // Balance of Power (cfg.bop, see bop.js): only in a race or a timed race that has fuel, because it works through the fuel rules. Every car has its own percentage (car.bop: negative = hindered, positive = helped).
     const BP = cfg.bop && F.on && (type === 'race' || type === 'timed') ? B.clean(cfg.bop) : null, ONE = { use: 1, rate: 1, tank: 1 };
@@ -76,20 +77,22 @@
     const fx = c => (!hasFx(c) ? ONE : WXH && c.wx ? B.mix([[BP && c.bop ? c.bop : 0, BP], [c.wx, WXH.levers]]) : B.factors(c.bop, BP));
     const tankOf = c => (hasFx(c) ? Math.round(F.tank * fx(c).tank * 1e6) / 1e6 : F.tank); // (rounded: 100 x 1.1 is not 110.00000000000001 on a screen)
     const Y = { target: 0, points: 0, ...(cfg.yellow || {}) }; // the yellow flag target lap time (ms; 0 = none) and the penalty points for a full lap under yellow that is faster
+    // Endurance Race (cfg.endurance, see endurance.js): only in a race or a timed race. A car whose entry has a roster of two drivers or more swaps drivers; the state of its swaps is car.en.
+    const EN = cfg.endurance && cfg.endurance.on && (type === 'race' || type === 'timed') ? { ...cfg.endurance } : null, enRnd = cfg.rnd || Math.random;
     const lapLimit = type === 'race' ? Number(cfg.laps) || 0 : 0;
     const timeLimit = (type === 'timed' || type === 'qualifying') ? (Number(cfg.duration) || 0) * 60000 : 0;
     const R = {
       cfg, fuel: F, penalty: P, type, status: 'ready', t0: 0, pausedAt: 0, endAt: 0, timeUp: false, finished: 0, endedBy: '',
       yellow: Y, yellowAt: null, // yellowAt: when the yellow flag that is up now went up (a lap that started before that is not a lap under yellow)
       cars: cfg.entries.map(e => ({ ...e, laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, adjMs: 0, adjLaps: 0, adjPoints: 0, invalid: [], removed: [], yellowFast: [], pitLaps: [], servedNow: false, last: 0, total: 0, best: null, done: false, place: 0, retired: false, fuel: F.on ? F.tank : 0, outOfFuel: false, bop: 0, bopHold: false, bopTo: null, tyreOwn: W.cleanTyre(e.tyre), tyre: W.cleanTyre(e.tyre), wx: 0, wxDue: null,
-        blockAt: null, pit: null, pits: [], lastPit: null, outlap: false, started: !skipFirst })),
+        blockAt: null, pit: null, pits: [], lastPit: null, outlap: false, started: !skipFirst, swapLost: 0, swapLaps: [], en: EN && Array.isArray(e.roster) && e.roster.length >= 2 ? En.newCar(EN, e.roster, e.driverId) : null })),
       events: [], // what happened, in order: { type, car, t } (outoffuel, retired, pitstart, fuelfull, pitend, call, callend...)
       calls: [] // calls from a lane to the Race Director: { id, car, t, open, how }; how a call ended: 'penalty' or 'dismiss'
     };
     let callId = 0;
     const log = (type, i, t, data) => R.events.push({ type, car: i, t, ...data });
 
-    const end = (t, why) => { R.cars.forEach((c, i) => { if (c.blockAt !== null) { pitCheck(i, t); serveCheck(i, t); closePit(i, t); } }); R.status = 'finished'; R.endAt = t; R.endedBy = why; R.flag = ''; R.yellowAt = null; R.calls.forEach(c => { c.open = false; }); };
+    const end = (t, why) => { R.cars.forEach((c, i) => { if (c.blockAt !== null) { pitCheck(i, t); serveCheck(i, t); closePit(i, t); } }); R.status = 'finished'; R.endAt = t; R.endedBy = why; R.flag = ''; R.yellowAt = null; R.calls.forEach(c => { c.open = false; }); enEnd(t, why); };
     const checkEnd = t => {
       if (R.status !== 'running') return;
       if (type === 'race' && cfg.endRule === 'leader' && R.finished > 0) return end(t, 'The lead car finished');
@@ -135,7 +138,7 @@
     R.lapElapsed = (i, t) => R.status === 'running' ? t - R.cars[i].last : R.status === 'paused' ? R.pausedAt - R.cars[i].last : 0;
     R.stop = t => { if (R.status === 'running' || R.status === 'paused') end(t, 'Stopped'); };
     R.tick = t => {
-      if (R.status === 'running') R.cars.forEach((_, i) => { pitCheck(i, t); serveCheck(i, t); });
+      if (R.status === 'running') R.cars.forEach((_, i) => { pitCheck(i, t); serveCheck(i, t); enEval(i, t); });
       if (R.status === 'running' && timeLimit && !R.timeUp && t - R.t0 >= timeLimit) R.timeUp = true;
       wxEval(t);
       checkEnd(t);
@@ -158,10 +161,11 @@
       }
       if (F.on) c.fuel = Math.max(0, Math.round((c.fuel - need) * 1e6) / 1e6);
       const pitLap = c.outlap; c.outlap = false; // (the lap in which the car stood in the pits)
-      const slow = maxLap > 0 && dt > maxLap; // too slow to be a real lap time: it counts as a lap, but is left out of best laps and averages
+      const slow = (maxLap > 0 && dt > maxLap) || !!c.resumed; c.resumed = false; // too slow to be a real lap time: it counts as a lap, but is left out of best laps and averages
       if (fuelShort && F.empty === 'warn' && P.fuelPoints > 0) R.addPoints(R.cars.indexOf(c), P.fuelPoints, t); // a car that carries on with an empty tank gets the points of the penalty system for every such lap
       if (pitLap) c.pitLaps.push(c.laps.length);
       c.laps.push(dt); c.bad.push(slow); c.last = t; c.total = t - R.t0;
+      if (c.en && c.en.lost) { c.swapLost++; c.swapLaps.push(c.laps.length - 1); } // a swap that was refused: this lap is driven, but it does not count
       if (!slow && (c.best === null || dt < c.best)) c.best = dt;
       // the yellow flag target: a lap that began after the yellow flag went up, and ended with it still up, must not be faster than the target (a lap that was part green does not count)
       if (Y.target > 0 && R.flag === 'yellow' && R.yellowAt !== null && lapStart >= R.yellowAt && dt < Y.target) {
@@ -169,8 +173,9 @@
         c.yellowFast.push(c.laps.length - 1); R.events.push(e);
         if (Y.points > 0 && R.addPoints(i, Y.points, t)) e.points = Y.points;
       }
-      if (!c.dq && ((lapLimit && c.laps.length >= lapLimit) || (timeLimit && R.timeUp))) { c.done = true; c.place = ++R.finished; } // a car disqualified on this lap (fuel points) has not finished
+      if (!c.dq && ((lapLimit && c.laps.length - c.swapLost >= lapLimit) || (timeLimit && R.timeUp))) { c.done = true; c.place = ++R.finished; } // a car disqualified on this lap (fuel points) has not finished
       wxEval(t); if (!wxEntering) wxDueCheck(c, i, t); // (a car that comes into the pits on this crossing is judged by its stop, or by its next crossing)
+      enEval(R.cars.indexOf(c), t); // (the laps of a stint are counted: a swap that is due by laps, or a swap by the sensor, may come with this crossing)
       bopEval(t);
       checkEnd(t);
       return true;
@@ -333,13 +338,93 @@
     R.unblock = (i, t) => {
       const c = R.cars[i];
       if (!c || c.blockAt === null) return false;
-      if (R.status === 'running') { pitCheck(i, t); serveCheck(i, t); }
+      if (R.status === 'running') { pitCheck(i, t); serveCheck(i, t); enSensor(i, t); }
       if (c.pending.length && !c.servedNow && R.status === 'running') { // left before the penalty was served
         const p = c.pending[0]; log('leftearly', i, t, { name: p.name, extra: p.extra }); if (p.extra) R.addPoints(i, p.extra, t);
       }
       closePit(i, t);
       return true;
     };
+    // ---- Endurance Race: the swaps of drivers ----
+    // A car with a roster of two drivers or more has a state (car.en, see endurance.js): who is at the wheel, the stints, when the swap is due. The swap is made when the car stands on the sensor long enough
+    // (the Stop-and-Go way) or when the Race Director presses Swap done; the driver at the wheel is then another one, in the car (driverId, driverName, nickname... are his), and the log says so.
+    R.endurance = EN;
+    const enBusy = i => new Set(R.cars.filter((o, j) => j !== i && o.driverId && !o.done).map(o => o.driverId)); // (drivers who are at the wheel of another car now)
+    const enClock = t => (R.status === 'paused' ? R.pausedAt : R.status === 'finished' ? R.endAt : t) - R.t0;
+    const enName = (c, id) => { const r = (c.roster || []).find(x => x.id === id); return r ? r.name || '' : ''; };
+    const enWheel = (c, id) => { const r = (c.roster || []).find(x => x.id === id); if (r) Object.assign(c, { driverId: r.id, driverName: r.name || '', nickname: r.nickname || '', callsign: r.callsign || '', flag: r.flag || '', avatar: r.avatar || '' }); };
+    // the swap is made (by: 'sensor' or 'button'); gives the result of Endurance.swap, or null when it can not be made
+    function enSwap(i, t, by, to) {
+      const c = R.cars[i], el = enClock(t), laps = c.laps.length;
+      const was = c.driverId, wasName = c.driverName, res = En.swap(EN, c.en, { el, laps, to, by, roster: c.roster, busy: enBusy(i), rnd: enRnd });
+      if (!res.ok) return null;
+      enWheel(c, res.to);
+      if (c.blockAt !== null) c.enSwapAt = c.blockAt; // (one swap in a stop)
+      log('swapdone', i, t, { from: was, fromName: wasName, to: res.to, toName: enName(c, res.to), by, early: res.early, over: res.over, stintMs: res.stintMs, stintLaps: res.stintLaps, lap: laps });
+      if (res.early && EN.early === 'penalty') R.addPoints(i, EN.penalty, t, 'swap');
+      En.plan(EN, c.en, c.roster, enBusy(i), el, laps, enRnd);
+      return res;
+    }
+    // the sensor: the car stands still for the swap time, and a swap is wanted (it is due; in a free swap also when the shortest stint is over)
+    function enSensor(i, t) {
+      const c = R.cars[i];
+      if (!c.en || EN.confirm === 'button' || c.blockAt === null || c.done || c.enSwapAt === c.blockAt || t - c.blockAt < EN.seconds * 1000) return; // (the caller looks at a race that is running)
+      const l = En.look(EN, c.en, enClock(t), c.laps.length);
+      if (l.due || (EN.mode === 'free' && l.allowed)) enSwap(i, t, 'sensor');
+    }
+    // every look at a car: the swap that is due (once), the penalty for a swap that is refused, the laps that stop counting, who is next, and the sensor
+    function enEval(i, t) {
+      const c = R.cars[i];
+      if (!c.en || c.done || R.status !== 'running') return;
+      const el = enClock(t), laps = c.laps.length, res = En.step(EN, c.en, el, laps);
+      En.plan(EN, c.en, c.roster, enBusy(i), el, laps, enRnd);
+      res.events.forEach(e => {
+        const base = { driver: c.driverId, driverName: c.driverName, next: c.en.nextId, nextName: enName(c, c.en.nextId) };
+        if (e.type === 'soon') log('swapsoon', i, t, base);
+        else if (e.type === 'due') log('swapdue', i, t, { ...base, why: e.why });
+        else if (e.type === 'late') {
+          const pts = EN.penalty * e.n, added = R.addPoints(i, pts, t, 'swaplate'); // (no points, or no penalty system: nothing is added)
+          log('swaplate', i, t, { ...base, n: e.n, total: e.total, points: added ? pts : 0, stop: EN.late === 'stop' });
+        }
+      });
+      enSensor(i, t);
+    }
+    // The Race Director says the swap is made (the button). to: the driver who steps in (else the one that was picked, or the one in turn). Not when the setup wants the sensor.
+    R.swap = (i, t, to) => {
+      const c = R.cars[i];
+      if (!c || !c.en || c.done || (R.status !== 'running' && R.status !== 'paused') || EN.confirm === 'sensor') return null;
+      return enSwap(i, t, 'button', EN.next === 'chosen' ? to : undefined);
+    };
+    // The Race Director picks who steps in next (only when the setup lets him choose). Gives true when it was taken.
+    R.swapNext = (i, id) => {
+      const c = R.cars[i];
+      if (!c || !c.en || EN.next !== 'chosen' || c.done || R.status === 'finished') return false;
+      const ok = En.pick(EN, c.en, c.roster, id, enBusy(i));
+      if (ok) log('swappick', i, 0, { to: id, toName: enName(c, id) });
+      return ok;
+    };
+    // The race is over: every stint at the wheel ends where its car finished (or where the race was stopped), and a driver who drove less than the shortest total is told (and gets his penalty points)
+    function enEnd(t, why) {
+      R.cars.forEach((c, i) => {
+        if (!c.en) return;
+        const el = c.done && c.laps.length ? c.total : t - R.t0;
+        En.close(EN, c.en, el, c.laps.length);
+        if (why === 'Stopped') return; // a race that was stopped early: nobody can be short
+        En.short(EN, c.en, c.roster, el, c.laps.length).forEach(x => {
+          const pts = EN.minPenalty, added = R.addPoints(i, pts, t, 'swap');
+          log('swapshort', i, t, { driver: x.id, driverName: enName(c, x.id), ms: x.ms, laps: x.laps, points: added ? pts : 0 });
+        });
+      });
+    }
+    // What a screen needs to show of the swaps of car i: the look at the stint ({ state, left, why, allowed, ... }), who is at the wheel and next, and the totals and stints. Null for a car that does not swap.
+    R.enLook = (i, t) => {
+      const c = R.cars[i]; if (!EN || !c || !c.en) return null;
+      const el = R.status === 'ready' ? 0 : enClock(t), laps = c.laps.length, standing = c.blockAt !== null && R.status === 'running' ? Math.max(0, EN.seconds * 1000 - (t - c.blockAt)) : null; // (standing: how long the car has to stand still for a swap by the sensor)
+      return { ...En.look(EN, c.en, el, laps), driver: c.driverId, next: c.en.nextId, picked: c.en.picked, swaps: c.en.swaps, choices: En.choices(EN, c.en, c.roster, enBusy(i), el, laps), totals: En.totals(c.en, c.roster, el, laps), stints: En.stints(c.en, el, laps), lost: !!c.en.lost, lostLaps: c.swapLost || 0, standLeft: standing };
+    };
+
+    R.cars.forEach(c => { if (c.en && c.driverId !== c.en.d) enWheel(c, c.en.d); }); // (a team that has no starting driver, or one who is not of the roster, starts with the first of the roster)
+
     // ---- special penalties (Drivethrough, Stop-and-Go) ----
     // A penalty is served by stopping on the sensor: a Drivethrough once the pit stop starts (the pit hold time), a Stop-and-Go once the car has stood still for its seconds.
     function serveCheck(i, t) {
@@ -385,7 +470,7 @@
     R.timeOf = c => c.total + addOf(c);
     R.lapLimit = lapLimit;
     // Did the car finish a race by laps? It drove all the laps, and was not retired or disqualified.
-    R.finishedLaps = c => lapLimit > 0 && c.done && !c.retired && !c.dq && c.laps.length >= lapLimit;
+    R.finishedLaps = c => lapLimit > 0 && c.done && !c.retired && !c.dq && c.laps.length - (c.swapLost || 0) >= lapLimit;
     // The time the car would have needed for all the laps: what it has, plus the laps it still had to drive at its own average lap (the laps that count for averages).
     // Null when it has no lap to average, or when it was retired or disqualified (such a car has no finish time to guess).
     R.estimateOf = c => {
@@ -429,6 +514,28 @@
     const bestAt = c => {
       const n = c.laps.findIndex((t, k) => t === c.best && !(c.bad || [])[k] && !(c.invalid || []).includes(k));
       return n < 0 ? Infinity : c.total - c.laps.slice(n + 1).reduce((a, b) => a + b, 0);
+    };
+    // ---- A race that was interrupted (a crash, a power cut): keep it, and carry on later (1.9.0) ----
+    // snapshot(t): everything that changes during a race, as plain data (t: the race page's clock now). restore(snap): puts it back into an engine made with the same settings. The race comes back
+    // paused, with its clock standing where it was at t; resume() then shifts every time by the time that went by, as after any pause. A lap that was being driven is not counted for records: its time
+    // includes the time that was lost.
+    const STATE = ['status', 't0', 'pausedAt', 'endAt', 'timeUp', 'finished', 'endedBy', 'yellowAt', 'flag', 'bopActive', 'bopSpread', 'wxState', 'wxStage', 'resumes'];
+    R.resumes = 0; // how many times this race was continued after an interruption
+    // (a car is kept as what differs from its entry: the names, the pictures and the roster of the entry are made again from the entry, so a snapshot stays small)
+    R.snapshot = t => {
+      const cars = R.cars.map((c, i) => { const e = cfg.entries[i] || {}, d = {}; Object.keys(c).forEach(k => { if (!(k in e) || JSON.stringify(c[k]) !== JSON.stringify(e[k])) d[k] = c[k]; }); return d; });
+      const snap = { v: 1, at: t, callId, cars, events: R.events, calls: R.calls }; STATE.forEach(k => { snap[k] = R[k]; });
+      return JSON.parse(JSON.stringify(snap));
+    };
+    R.restore = snap => {
+      if (!snap || snap.v !== 1 || !Array.isArray(snap.cars) || snap.cars.length !== R.cars.length || !['running', 'paused', 'finished'].includes(snap.status)) return false;
+      const x = JSON.parse(JSON.stringify(snap));
+      STATE.forEach(k => { if (x[k] !== undefined) R[k] = x[k]; });
+      R.cars.length = 0; R.cars.push(...x.cars.map((d, i) => ({ ...(cfg.entries[i] || {}), ...d }))); R.events.length = 0; R.events.push(...(x.events || [])); R.calls.length = 0; R.calls.push(...(x.calls || []));
+      callId = Number(x.callId) || 0; R.resumes = (Number(x.resumes) || 0) + 1;
+      if (R.status === 'running') { R.status = 'paused'; R.pausedAt = Number.isFinite(x.at) ? x.at : R.pausedAt; } // (it was racing: it waits, with the clock where it was)
+      if (R.status !== 'finished') R.cars.forEach(c => { c.resumed = true; });
+      return true;
     };
     R.standings = () => {
       const byBest = (a, b) => (a.best ?? 1e12) - (b.best ?? 1e12) || (a.best !== null && b.best !== null ? bestAt(a) - bestAt(b) : 0);
