@@ -1483,6 +1483,12 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   const pdfClick=async()=>{ const done=pdfOpen(); await dlgClick('pdfgo'); await done; };
   await pdfClick();
   say('the report is sent to be saved as a PDF with a sensible file name', exported.length===1 && exported[0][1]==='Friday Sprint 2026-10-11.pdf' && exported[0][0].includes('All lap times') && exported[0][0].includes('5.500'));
+  { const keepSet=api.setSettings; api.setSettings=async p=>{calls.push(['settings',p]);return {...run('state.settings'),...p}}; // (the stand-in of the window gives back only what was saved: here the speed unit has to stay)
+    run("state.settings.speedUnit='mph'; globalThis.__rs = Report.sessionHtml; Report.sessionHtml = a => { globalThis.__unit = a.unit; return globalThis.__rs(a); }"); const nE=exported.length; await pdfClick();
+    say('1.22.0: with the speed unit mph the PDF of a session is made with the unit mph (the speeds in it are written in mph: tests/report.test.js)', run('globalThis.__unit')==='mph' && exported.length===nE+1);
+    run("state.settings.speedUnit=undefined"); await pdfClick();
+    say('...and with no unit chosen it is made with km/h', run('globalThis.__unit')==='kmh' && exported.length===nE+2);
+    run("Report.sessionHtml = globalThis.__rs; state.settings.pdfPages=undefined"); api.setSettings=keepSet; exported.length=nE; }
   say('the user is told where it was saved', E('pdfmsg-s1').textContent==='Saved to C:/Reports/x.pdf');
   exportResult={saved:false}; await pdfClick();
   say('cancelling the save dialog is handled', E('pdfmsg-s1').textContent==='Export cancelled.');
@@ -1542,6 +1548,10 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     await tick('results/sessions','scalespeed',true); await tick('results/sessions','distance',true); await tick('results/records','lane',true); await tick('results/records','scalespeed',true); h=rb.innerHTML;
     say('columns that are off to start can be turned on: scale speed (car 1:24: 7.1 km/h is 169 at scale), distance', heads(h,'data-folder="results:sessions"').slice(-6).join()==='Average speed,Average scale speed,Distance,Pit stops,Pit time,Penalty points' && h.includes('<td>169 km/h</td>') && h.includes('<td>30 m</td>'));
     say('...in the records too: the lane and the scale speed of the lap', heads(h,'data-folder="results:tracks"').join()==='Track,Driver,Lap time,Car,Average speed,Average scale speed,Session,Lane,Set on,' && h.includes('<td>173 km/h</td>'));
+    { run("state.settings.speedUnit='mph'"); const rm=mk(); await run('renderResultsPool')(rm,'racing'); const hm=rm.innerHTML;
+      say('1.22.0: with the speed unit mph the sessions and the records show miles per hour (7.1 km/h is 4.4 mph, 169 at scale is 105 mph, the lap of 7.2 km/h is 4.5 mph and 173 at scale is 107 mph) and no km/h is left', !hm.includes('km/h') && hm.includes('<td>4.4 mph</td>') && hm.includes('<td>105 mph</td>') && hm.includes('<td>4.5 mph</td>') && hm.includes('<td>107 mph</td>'));
+      say('...the other columns are as they were (the lap times, the distance in metres)', hm.includes('<td>5.100</td>') && hm.includes('<td>30 m</td>'));
+      run("state.settings.speedUnit=undefined"); }
     // the last column cannot go
     for (const k of ['track','driver','time','car','speed','scalespeed','session','lane','date']) await tick('results/records',k,false);
     h=rb.innerHTML;
@@ -1567,6 +1577,8 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
       laps:[{id:'k1l1',sessionId:'k1',token:true,stint:'a',lane:2,driverId:'d1',carId:'c1',trackId:'t1',lapNumber:1,time:5200,date:'2026-10-11T19:01:00Z'},{id:'k1l2',sessionId:'k1',token:true,stint:'a',lane:2,driverId:'d1',carId:'c1',trackId:'t1',lapNumber:2,time:5000,date:'2026-10-11T19:02:00Z'}]});
     const tb=mk(); await run('renderResultsPool')(tb,'tokens'); h=tb.innerHTML;
     say('a stint has the average lap and the average speed besides its old columns (the lane 2 of a track with equal lanes: 10 m)', heads(h,'data-folder="tresults:sessions"').join()==='Driver,Car,Lane,Time bought,Laps,Late laps,Best lap,Total time,Average lap,Average speed' && h.includes('<td>5.100</td>') && h.includes('<td>7.1 km/h</td>'));
+    { run("state.settings.speedUnit='mph'"); const tm=mk(); await run('renderResultsPool')(tm,'tokens');
+      say('1.22.0: with the speed unit mph the average speed of a stint is in mph (7.1 km/h is 4.4 mph)', tm.innerHTML.includes('<td>4.4 mph</td>') && !tm.innerHTML.includes('km/h')); run("state.settings.speedUnit=undefined"); }
     say('...its bar has the group Stints, with its own columns', h.includes('<legend>Stints</legend>') && h.includes('data-vs="results/stints" data-key="distance"') && !h.includes('data-vs="results/sessions"'));
     await tb.onchange({target:{dataset:{vs:'results/stints',key:'late'},checked:false}});
     say('...turning one off changes the stints and not the sessions of the racing pool', !heads(tb.innerHTML,'data-folder="tresults:sessions"').includes('Late laps') && JSON.stringify(run('state.settings.viewSettings.results.stints'))==='{"late":false}' && JSON.stringify(run('state.settings.viewSettings.results.sessions'))==='{}');
@@ -2181,6 +2193,11 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
       say('...the largest size is a zoom of 2', run('state.settings.uiScale') === 200 && zooms[zooms.length - 1] === 2);
       await E('uiscale').onchange({ target: { value: '137' } }); await wait();
       say('...a size that does not exist becomes the standard, and the window is back to normal', run('state.settings.uiScale') === 100 && zooms[zooms.length - 1] === 1 && /<option value="100" selected>/.test(ui()));
+      say('1.22.0: the Display folder also has the speed unit of the tables, km/h to start, and says it beside its title', E('settingsbox').innerHTML.includes('id="speedunit"') && /<option value="kmh" selected>/.test(E('settingsbox').innerHTML.split('id="speedunit"')[1]) && /<option value="mph">Miles per hour \(mph\)<\/option>/.test(E('settingsbox').innerHTML) && /speeds in km\/h/.test(E('settingsbox').innerHTML));
+      { const nc2 = calls.length; await E('speedunit').onchange({ target: { value: 'mph' } }); await wait();
+        say('...choosing mph saves it, shows it chosen and in the folder note', run('state.settings.speedUnit') === 'mph' && calls.slice(nc2).some(c => c[1].speedUnit === 'mph') && /<option value="mph" selected>/.test(E('settingsbox').innerHTML.split('id="speedunit"')[1]) && /speeds in mph/.test(E('settingsbox').innerHTML));
+        await E('speedunit').onchange({ target: { value: 'furlongs' } }); await wait();
+        say('...a unit that does not exist becomes km/h', run('state.settings.speedUnit') === 'kmh' && /speeds in km\/h/.test(E('settingsbox').innerHTML)); }
     }
     say('the folders have a note beside the title, the body has room around it, and the database file is in the last folder', /<summary><strong>Header picture<\/strong> <span class="muted">no picture<\/span>/.test(E('settingsbox').innerHTML) && /<div class="fbody">/.test(E('settingsbox').innerHTML) && E('settingsbox').innerHTML.indexOf('Saved in:') > E('settingsbox').innerHTML.indexOf('data-folder="general:data"'));
     run("state.settingsSub='help'"); await run('render()');

@@ -43,4 +43,9 @@ ok('measured: the track length is not needed, and not used for a lane that has i
 ok('measured: a lane without a length of its own has the track length, or nothing', S.laneLength({ ...meas, laneLengths: '15.4' }, 2) === 16 && S.laneLength({ ...meas, laneLengths: '15.4,,16' }, 1) === 16 && S.laneLength({ ...meas, laneLengths: '', length: '' }, 0) === null && S.laneLength({ ...meas, laneLengths: '15.4', length: '' }, 2) === null);
 ok('measured: it does not matter which lane is the outside lane, or the spacing', S.laneLength({ ...meas, outsideLane: 'first', laneSpacing: 300 }, 2) === 16.2);
 ok('measured: a lane number outside the track is the nearest lane', S.laneLength(meas, 9) === 16.2 && S.laneLength(meas, -3) === 15.4);
+// ---- 1.22.0: the speed unit of the tables ----
+ok('the units are km/h and mph, in that order, with words for a list', JSON.stringify(S.UNITS.map(u => u[0])) === '["kmh","mph"]' && S.UNITS.every(u => typeof u[1] === 'string' && u[1].length > 5));
+ok('unitOf: mph only when the setting says mph; anything else (nothing, km/h, a mistake, no settings) is km/h', S.unitOf({ speedUnit: 'mph' }) === 'mph' && S.unitOf({ speedUnit: 'kmh' }) === 'kmh' && S.unitOf({}) === 'kmh' && S.unitOf(null) === 'kmh' && S.unitOf({ speedUnit: 'MPH' }) === 'kmh' && S.unitOf({ speedUnit: 5 }) === 'kmh');
+ok('unitName: "mph" and "km/h" (km/h for anything else)', S.unitName('mph') === 'mph' && S.unitName('kmh') === 'km/h' && S.unitName(undefined) === 'km/h');
+ok('a speed in mph is the km/h figure times 0.621371 (100 km/h is 62.1 mph); km/h stays as it is', near(S.toUnit(100, 'mph'), 62.1371) && S.toUnit(100, 'kmh') === 100 && S.toUnit(100) === 100);
 console.log(fails ? fails + ' SPEED TESTS FAILED' : 'ALL SPEED TESTS PASSED'); process.exit(fails ? 1 : 0);

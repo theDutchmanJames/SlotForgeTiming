@@ -122,6 +122,8 @@ ok('heats counted the standard way (a result of before): no Result column, no li
   let h2 = sessionHtml({ session: s2, laps: l2, tracks, cars: [] });
   ok('the table has the figures that are on until turned off: average lap, consistency, average speed, pit stops, pit time, penalty points', th(h2).join() === 'Pos,Driver,Car,Laps,Best lap,Total time,Average lap,Consistency,Average speed,Pit stops,Pit time,Penalty points');
   ok('...with the numbers (the pit lap is left out of the average: 5.200 and 5.000 make 5.100; 20 m in 10.2 s is 7.1 km/h)', h2.includes('<td>5.100</td>') && h2.includes('7.1 km/h') && h2.includes('<td>4.000</td>') && h2.includes('<td>2</td>'));
+  { const hm = sessionHtml({ session: s2, laps: l2, tracks, cars: [], unit: 'mph' });
+    ok('1.22.0: with the unit mph the speeds in the PDF are miles per hour (7.1 km/h is 4.4 mph), and nothing is left in km/h', hm.includes('4.4 mph') && !hm.includes('km/h') && hm.includes('<td>5.100</td>') && h2.includes('7.1 km/h') && !h2.includes('mph')); }
   ok('...a driver without pit stops or points has a dash', /<td>Sam &lt;b&gt;<\/td>.*?<td>–<\/td>/s.test(h2));
   ok('...and a line under the table says how the figures are counted', h2.includes('Lap figures count the valid laps only') && h2.includes('standard deviation'));
   ok('a lap with a pit stop is in italics on the lap page, and the page says so', h2.includes('<i title="pit stop">5.800</i>') && h2.includes('A lap with a pit stop is in italics.'));

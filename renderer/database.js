@@ -655,7 +655,7 @@ async function renderResultsPool(box, pool) {
   const lapText = l => `${l.heat ? (l.final ? 'F' + l.final : 'H' + l.heat) + ' ' : ''}${l.lapNumber}`;
   const RECCELL = {
     track: l => esc(name(tracks, l.trackId, 'tracks')), driver: l => esc(name(drivers, l.driverId, 'drivers')), time: l => `<strong>${esc(RaceEngine.fmtTime(l.time))}</strong>`,
-    car: l => esc(name(cars, l.carId, 'slotcars')), speed: l => esc(Stats.fmtSpeed(speedOf(l).speed)), scalespeed: l => esc(Stats.fmtScale(speedOf(l).scalespeed)),
+    car: l => esc(name(cars, l.carId, 'slotcars')), speed: l => esc(Stats.fmtSpeed(speedOf(l).speed, Speed.unitOf(state.settings))), scalespeed: l => esc(Stats.fmtScale(speedOf(l).scalespeed, Speed.unitOf(state.settings))),
     session: l => (sessionOf.get(l.sessionId) ? esc(sessionOf.get(l.sessionId).setupName) : '<span class="muted">–</span>'), lane: l => (l.lane ? esc(l.lane) : '<span class="muted">–</span>'),
     lapno: l => esc(lapText(l)), date: l => esc(dateText(l.date))
   };
@@ -676,7 +676,7 @@ async function renderResultsPool(box, pool) {
       const STCELL = { driver: esc(x.driverName), car: esc(x.carName), lane: esc(t.lane), bought: esc(boughtText(t.bought)), laps: esc(x.laps), late: esc(x.lateLaps || 0), best: esc(RaceEngine.fmtTime(x.best)), total: esc(RaceEngine.fmtTime(x.total)) };
       const stCols = Stats.STINT_COLUMNS.filter(c => stintKeys.includes(c.key) && (c.key in STCELL || Stats.hasAny(c.key, figs)));
       const body = `<table class="fields"><tr>${stCols.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr>
-        <tr>${stCols.map(c => `<td>${c.key in STCELL ? STCELL[c.key] : esc(Stats.text(c.key, figs[0]))}</td>`).join('')}</tr></table>${stCols.length ? '' : '<p class="muted">No columns are on. Turn some on in View settings.</p>'}${statNote(stCols.map(c => c.key))}
+        <tr>${stCols.map(c => `<td>${c.key in STCELL ? STCELL[c.key] : esc(Stats.text(c.key, figs[0], Speed.unitOf(state.settings)))}</td>`).join('')}</tr></table>${stCols.length ? '' : '<p class="muted">No columns are on. Turn some on in View settings.</p>'}${statNote(stCols.map(c => c.key))}
         <p class="muted">${esc(s.endedBy || '')}${t.carried ? ` · ${esc(boughtText(t.carried))} came over from the driver before` : ''}${t.left ? ` · ${esc(boughtText(t.left))} was not used` : ''}</p>
         <h4>All lap times</h4><p><span class="muted">${mine.map(l => { const tx = esc(`${l.lapNumber}: ${RaceEngine.fmtTime(l.time)}`); return l.late || l.invalid || l.tooSlow ? `<s class="lapbad" title="${l.late ? 'Late lap: driven after the time was up' : l.invalid ? 'Invalid lap' : 'Too slow: not counted for records'}">${tx}</s>` : tx; }).join(' · ') || 'no laps'}</span></p>
         <div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}<button class="btn danger" data-delsession="${esc(s.id)}">Delete this stint</button><span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
@@ -700,7 +700,7 @@ async function renderResultsPool(box, pool) {
         case 'final': return esc(Heats.finalCell(x));
         case 'best': return esc(RaceEngine.fmtTime(x.best));
         case 'total': return esc(RaceEngine.fmtTime(x.total + (x.penalty || 0) + (x.adjMs || 0))) + (x.penalty ? ` <span class="muted">(includes +${esc(RaceEngine.fmtTime(x.penalty))} penalty, ${esc(x.penaltyPoints)} points)</span>` : '');
-        default: return esc(Stats.text(key, figs[i]));
+        default: return esc(Stats.text(key, figs[i], Speed.unitOf(state.settings)));
       }
     };
     const body = `<table class="fields"><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr>` +
@@ -738,7 +738,7 @@ async function renderResultsPool(box, pool) {
       if (!options) return;
       msg.textContent = 'Making the PDF...';
       try {
-        const res = await api.exportPdf(Report.sessionHtml({ session: s, laps: mine, tracks, cars, options }), Report.fileName(s));
+        const res = await api.exportPdf(Report.sessionHtml({ session: s, laps: mine, tracks, cars, options, unit: Speed.unitOf(state.settings) }), Report.fileName(s));
         msg.textContent = res.saved ? 'Saved to ' + res.path : 'Export cancelled.';
       } catch (x) { msg.textContent = 'Could not make the PDF: ' + x.message; }
       return;

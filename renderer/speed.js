@@ -22,6 +22,10 @@
     return n > 0 ? n : null;
   }
   const toUnit = (kmhValue, unit) => (unit === 'mph' ? kmhValue * KMH_TO_MPH : kmhValue);
+  // the speed unit of the tables (1.22.0): the setting speedUnit of App Settings, General, Display; anything but 'mph' is km/h
+  const UNITS = [['kmh', 'Kilometres per hour (km/h)'], ['mph', 'Miles per hour (mph)']];
+  const unitOf = s => (s && s.speedUnit === 'mph' ? 'mph' : 'kmh');
+  const unitName = unit => (unit === 'mph' ? 'mph' : 'km/h');
   // an old free-text length such as "12 m" or "12,5" becomes a number of metres (empty when there is no number)
   function parseLength(v) {
     if (typeof v === 'number') return v > 0 ? v : '';
@@ -63,7 +67,7 @@
     const sp = Number(track.laneSpacing) > 0 ? Number(track.laneSpacing) : 100, steps = track.outsideLane === 'first' ? l : lanes - 1 - l;
     return Math.max(0.001, len - steps * 2 * Math.PI * turns(track) * sp / 1000);
   }
-  const api = { laneLength, modifier, turns, parseLaneLengths, MODIFIERS, lengthFromPieces, kmh, scaleFactor, toUnit, parseLength };
+  const api = { laneLength, modifier, turns, parseLaneLengths, MODIFIERS, lengthFromPieces, kmh, scaleFactor, toUnit, UNITS, unitOf, unitName, parseLength };
   root.Speed = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

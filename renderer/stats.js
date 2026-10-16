@@ -134,8 +134,9 @@
 
   // ---- text ----
   const dash = '–';
-  const fmtSpeed = v => (v === null || v === undefined ? dash : v.toFixed(1) + ' km/h');
-  const fmtScale = v => (v === null || v === undefined ? dash : Math.round(v) + ' km/h');
+  // the speeds are worked out in km/h; unit ('kmh' or 'mph', the setting speedUnit) says how they are written (1.22.0)
+  const fmtSpeed = (v, unit) => (v === null || v === undefined ? dash : Sp.toUnit(v, unit).toFixed(1) + ' ' + Sp.unitName(unit));
+  const fmtScale = (v, unit) => (v === null || v === undefined ? dash : Math.round(Sp.toUnit(v, unit)) + ' ' + Sp.unitName(unit));
   const fmtDist = m => (m === null || m === undefined ? dash : m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(2) + ' km');
   const fmtSpread = ms => (ms === null || ms === undefined ? dash : '±' + (ms / 1000).toFixed(3) + ' s');
   const fmtMs = ms => (ms === null || ms === undefined ? dash : E.fmtTime(Math.round(ms)));
@@ -150,14 +151,14 @@
       default: return undefined;
     }
   }
-  function text(key, fig) {
+  function text(key, fig, unit) {
     const v = valueOf(key, fig);
     if (v === undefined || v === null) return dash;
     switch (key) {
       case 'avg': case 'median': return fmtMs(v);
       case 'spread': return fmtSpread(v);
-      case 'speed': return fmtSpeed(v);
-      case 'scalespeed': return fmtScale(v);
+      case 'speed': return fmtSpeed(v, unit);
+      case 'scalespeed': return fmtScale(v, unit);
       case 'distance': return fmtDist(v);
       case 'pittime': return v > 0 ? fmtMs(v) : dash;
       default: return String(v);

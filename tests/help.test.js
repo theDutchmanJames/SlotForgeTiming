@@ -213,4 +213,7 @@ const folders = Help.folders();
   say('1.20.0: the Race Director folder says a race setup can have pad values of its own (Rule sets: Adjust pads), and is still short enough', dr.includes('A race setup can have pad values of its own') && dr.includes('Adjust pads') && dr.length < 1400);
   say('...and the form has the Adjust pads group that it names, in the Rule sets area of the race setup', schema.racesetups.groups.some(g => g.title === 'Adjust pads') && schema.racesetups.fields.some(f => f.group === 'pads')); }
 
+{ const hs = Help.folders().map(f => plain(f.body)).find(t => t.includes('General: type your own app name')) || ''; // 1.22.0
+  say('1.22.0: the Settings help says Display also sets the speed unit of the tables, km/h or mph', hs.includes('speed unit') && hs.includes('km/h or mph') && hs.length < 1400); }
+
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

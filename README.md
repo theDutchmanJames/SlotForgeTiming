@@ -1979,3 +1979,17 @@ Good to know:
 4. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 5. The tests: `tests/mac.test.js` (1024 x 1024, see-through background, the drawing `icon.svg` exists and is a real drawing) and `tests/package.test.js` (round, colours, the Windows icon).
 
+## What to try (1.22.0): mph in the tables
+From your list: the tables showed speeds in km/h only (the Speed widget in a layout already had a Unit choice). Now the tables have one too.
+1. Open **App Settings > General > Display**. Under *Interface size* there is a new choice, **Speed unit in the tables**: *Kilometres per hour (km/h)* (the standard) or *Miles per hour (mph)*. The folder title says which one is on ("speeds in mph").
+2. Choose **mph**, then open **Database > Results and Records** (racing records and token records). The *Average speed* and *Average scale speed* columns of the sessions, the stints, the track records and the personal bests are in mph. A lap of 7.1 km/h reads 4.4 mph, and a scale speed of 169 reads 105 mph.
+3. Open a session and press **Export to PDF**: the table in the PDF uses the same unit.
+4. Choose km/h again and everything is as it was.
+
+Good to know:
+1. The choice is kept per computer, like the other settings of App Settings.
+2. Only speeds change. Distances (the *Distance* column) stay in metres and kilometres, and lap times are lap times. If you want miles and feet for distances too, tell me.
+3. The **Speed widget** in a layout (and the weather widgets) keep their own Unit choice: a race screen can show mph while the tables show km/h, or the other way round.
+4. A setting that says something other than mph (a damaged file, say) counts as km/h.
+5. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+6. The tests: `tests/speed.test.js` and `tests/stats.test.js` (the unit rules, both units, a dash without a speed), `tests/report.test.js` (the PDF in both units), `tests/screens.test.js` (the setting, the sessions, records and stints tables, the PDF call) and `tests/help.test.js`.
