@@ -363,7 +363,7 @@ async function renderHome() {
   const others = grid.boards.filter(b => HG.cardOf(b) !== 'start'), wants = key => others.some(b => HG.cardOf(b) === key);
   const cardsHtml = (laps, lists) => {
     const now = new Date(), last = HomeStats.lastRace({ sessions, laps, driverName: dn }), out = new Map();
-    const d = { fmtDate: dateText, fmtShort: shortDate, fmtDist: Stats.fmtDist, trackName: track ? track.name || '' : '', hasTrack: !!track, hasSetup: !!setup, setupName: setup ? setup.name || '' : '', last };
+    const d = { fmtDate: dateText, fmtShort: shortDate, fmtDist: m => Stats.fmtDist(m, Speed.distUnitOf(state.settings)), trackName: track ? track.name || '' : '', hasTrack: !!track, hasSetup: !!setup, setupName: setup ? setup.name || '' : '', last };
     const setImages = (kind, id) => { const r = id ? imageSets.find(x => x.id === id && x.kind === kind) : null; return r && r.images && typeof r.images === 'object' ? r.images : null; }; // (the pictures of a picture set; none when it was deleted)
     const nameIn = (list, id) => { const x = id && (list || []).find(r => r.id === id); return x ? x.name || '(unnamed)' : ''; };
     others.forEach(b => {

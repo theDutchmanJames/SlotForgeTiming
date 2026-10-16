@@ -222,6 +222,9 @@ const folders = Help.folders();
 { const hs = Help.folders().map(f => plain(f.body)).find(t => t.includes('General: type your own app name')) || ''; // 1.22.0
   say('1.22.0: the Settings help says Display also sets the speed unit of the tables, km/h or mph', hs.includes('speed unit') && hs.includes('km/h or mph') && hs.length < 1400); }
 
+{ const hs2 = Help.folders().map(f => plain(f.body)).find(t => t.includes('General: type your own app name')) || '', tr = Help.folders().map(f => plain(f.body)).find(t => t.includes('Tracks: a name and the number of lanes')) || ''; // 1.27.0
+  say('1.27.0: the Settings help says Display also sets the distance unit (metres and kilometres, or feet and miles), that a track is then typed in feet and inches and that it stays saved in metres; the Tracks help says the length is typed in feet if you chose feet', hs2.includes('distance unit') && hs2.includes('feet and miles') && hs2.includes('feet and inches') && hs2.includes('saved in metres') && hs2.includes('speed unit') && hs2.length < 1400 && tr.includes('in feet if you chose feet') && tr.length < 1400); }
+
 { const home = plain(Help.folders().find(f => f.id === 'home').body); // 1.26.0
   say('1.26.0: the Home help names the Weather and Tyres Available cards, says they are for show and that you set them in Customize; the folder is still short', home.includes('Weather') && home.includes('Tyres Available') && home.includes('for show') && home.includes('you type them in Customize') && home.length < 1400); }
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

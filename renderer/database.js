@@ -40,11 +40,38 @@ async function drawSub() {
   await mountManager(box, state.sub);
 }
 
+// 1.27.0: the distance unit (App Settings, General, Display). A field with a unit in the schema is typed in feet or inches when the unit is feet and miles; what is kept stays in metres or millimetres.
+const dUnit = () => Speed.distUnitOf(state.settings);
+const fl = f => (f.labelFt && dUnit() === 'ft' ? f.labelFt : f.label), fh = f => (f.hintFt && dUnit() === 'ft' ? f.hintFt : f.hint);
+// the text of the value of a field with a unit as it is shown and typed in feet or inches; null when the field is shown as it is kept
+function typedText(f, v) {
+  if (!f.unit || dUnit() !== 'ft') return null;
+  const one = x => (f.unit === 'mm' ? Speed.smallTyped(x, 'ft') : Speed.lengthTyped(x, 'ft'));
+  if (f.type === 'numberlist') return String(v ?? '').split(',').map(x => x.trim()).map(x => (x !== '' && Number.isFinite(Number(x)) ? String(one(x)) : x)).join(', ');
+  if (f.type === 'tracklength' || f.type === 'number') { const p = f.type === 'tracklength' ? Speed.parseLength(v) : v; return p === '' || p === undefined || p === null ? '' : String(one(p)); }
+  return null;
+}
+// the attributes that let the form give back exactly what was kept when the text was not touched (feet are rounded, so the metres would drift at every save)
+const unitAttrs = (f, v) => { const t = typedText(f, v); return t === null ? '' : ` data-du="ft" data-shown="${esc(t)}" data-keep="${esc(f.type === 'tracklength' ? Speed.parseLength(v) : v ?? '')}"`; };
+// the value to keep for a field that was typed in feet or inches: the text that was not changed gives back what was saved, the rest is converted (a lane length one at a time)
+function keptValue(f, el) {
+  const txt = String(el.value).trim(), shown = String(el.dataset.shown ?? '').trim(), keep = el.dataset.keep ?? '';
+  if (f.type === 'numberlist') {
+    if (txt === shown) return String(keep);
+    const was = shown.split(',').map(x => x.trim()), kept = String(keep).split(',').map(x => x.trim());
+    return txt.split(',').map((x, i) => { x = x.trim(); if (x === '' || !Number.isFinite(Number(x))) return x; return x === was[i] && kept[i] !== undefined && kept[i] !== '' ? kept[i] : String(Speed.lengthKept(x, 'ft')); }).join(', ');
+  }
+  if (txt === '') return '';
+  if (txt === shown) return Number(keep);
+  return f.unit === 'mm' ? Speed.smallKept(txt, 'ft') : Speed.lengthKept(txt, 'ft');
+}
+
 function cell(f, v) {
   if (f.blank && (v === undefined || v === null || v === '')) return `<span class="muted">${esc(f.blank)}</span>`;
   if (v === undefined || v === null || v === '') return '';
   if (f.type === 'image') return `<img class="thumb" src="${esc(v)}" alt="">`;
-  if (f.type === 'tracklength') return typeof v === 'number' || Speed.parseLength(v) === '' ? `${esc(v)} m` : esc(v);
+  if (f.type === 'tracklength') return typeof v === 'number' ? esc(Speed.lengthText(v, dUnit())) : Speed.parseLength(v) === '' ? `${esc(v)} m` : esc(v);
+  { const t = typedText(f, v); if (t !== null) return esc(t); }
   if (f.type === 'gallery') return Array.isArray(v) && v.length ? `${v.length} more` : '';
   if (f.type === 'country') return flagHtml(v) + ' ' + esc(countryName(v));
   if (f.type === 'longtext') return esc(String(v).slice(0, 60));
@@ -151,9 +178,9 @@ async function mountManager(box, e) {
   state.custom[e] = custom;
   for (const f of s.fields) if (f.type === 'ref' || f.type === 'members') state.refs[f.ref] = await api.list(f.ref);
   const cols = s.list
-    ? s.list.map(k => columnOf(s, k)).map(f => ({ label: f.label, get: i => columnCell(f, i) }))
+    ? s.list.map(k => columnOf(s, k)).map(f => ({ label: fl(f), get: i => columnCell(f, i) }))
     : [
-      ...s.fields.map(f => ({ label: f.label, get: i => cell(f, i[f.key]) })),
+      ...s.fields.map(f => ({ label: fl(f), get: i => cell(f, i[f.key]) })),
       ...custom.map(f => ({ label: f.label, get: i => esc((i.custom || {})[f.id] ?? '') }))
     ];
   const viewKey = e === 'racesetups' ? 'setupView' : 'dbView'; // Race Setups remembers its own list / grid choice
@@ -162,9 +189,9 @@ async function mountManager(box, e) {
   const viewable = VIEW_ENTITIES.includes(e) && !!s.card && !s.list, cardKeys = s.card || [];
   const canView = VIEW_ENTITIES.includes(e); // a row or a card can be clicked to see everything of it (the view card)
   const customCand = f => ({ key: 'custom:' + f.id, label: f.label, custom: f });
-  const listCands = !viewable ? null : [...s.fields.map(f => ({ key: f.key, label: f.label, on: true, field: f })), ...custom.map(f => ({ ...customCand(f), on: true }))];
-  const gridCands = !viewable ? null : [...cardKeys.map(k => s.fields.find(f => f.key === k)).filter(Boolean).map(f => ({ key: f.key, label: f.label, on: true, field: f })),
-    ...s.fields.filter(f => !['image', 'gallery'].includes(f.type) && !(s.title || []).includes(f.key) && !cardKeys.includes(f.key)).map(f => ({ key: f.key, label: f.label, on: false, field: f })),
+  const listCands = !viewable ? null : [...s.fields.map(f => ({ key: f.key, label: fl(f), on: true, field: f })), ...custom.map(f => ({ ...customCand(f), on: true }))];
+  const gridCands = !viewable ? null : [...cardKeys.map(k => s.fields.find(f => f.key === k)).filter(Boolean).map(f => ({ key: f.key, label: fl(f), on: true, field: f })),
+    ...s.fields.filter(f => !['image', 'gallery'].includes(f.type) && !(s.title || []).includes(f.key) && !cardKeys.includes(f.key)).map(f => ({ key: f.key, label: fl(f), on: false, field: f })),
     ...custom.map(f => ({ ...customCand(f), on: false }))];
   const modeCands = mode === 'grid' ? gridCands : listCands, shownKeys = viewable ? ViewSet.keys(modeCands, viewSaved([e, mode])) : [];
   const candValue = (c, i) => (c.field ? i[c.field.key] : (i.custom || {})[c.custom.id]);
@@ -188,7 +215,7 @@ async function mountManager(box, e) {
       return v === undefined || v === null || v === '' ? '' : `<div class="gd"><span class="muted">${esc(c.label)}</span> ${candHtml(c, v)}</div>`;
     }) : s.card.filter(k => k !== skip).map(k => {
       const f = columnOf(s, k), v = f.virtual ? f.virtual.get(i) : i[k];
-      return v === undefined || v === null || v === '' ? '' : `<div class="gd"><span class="muted">${esc(f.label)}</span> ${columnCell(f, i)}</div>`;
+      return v === undefined || v === null || v === '' ? '' : `<div class="gd"><span class="muted">${esc(fl(f))}</span> ${columnCell(f, i)}</div>`;
     })).join('') + (s.gallery && Array.isArray(i[s.gallery]) && i[s.gallery].length ? `<div class="gd muted">+${i[s.gallery].length} more ${i[s.gallery].length === 1 ? 'picture' : 'pictures'}</div>` : '');
     return `<article class="gcard${canView ? ' clickable' : ''}"${canView ? ` data-view="${esc(i.id)}" tabindex="0" aria-label="View ${esc(t)}"` : ''}><div class="gimg">${img ? `<img src="${esc(img)}" alt="" style="transform:${Widgets.frameTransform(frame)}">` : `<span class="ph" style="background:${hue(t)}">${esc((t.trim()[0] || '?').toUpperCase())}</span>`}</div>
       <h3>${esc(t)}</h3>${details}<div class="row"><button class="btn" data-edit="${esc(i.id)}">Edit</button><button class="btn danger" data-del="${esc(i.id)}">Delete</button></div></article>`;
@@ -203,7 +230,7 @@ async function mountManager(box, e) {
     const other = items.filter(i => !types.some(t => t.id === i.sessionType));
     return [...types, { id: '_other', label: 'Other', list: other }].filter(t => t.list.length);
   })();
-  const folderCols = !folders ? null : (s.list || []).filter(k => k !== 'sessionType').map(k => columnOf(s, k)).map(f => ({ label: f.label, get: i => columnCell(f, i) }));
+  const folderCols = !folders ? null : (s.list || []).filter(k => k !== 'sessionType').map(k => columnOf(s, k)).map(f => ({ label: fl(f), get: i => columnCell(f, i) }));
   box.innerHTML = `<div class="row"><button class="btn primary" id="add">Add ${esc(s.label.toLowerCase())}</button>
       ${s.extra === false ? '' : '<button class="btn" id="extra">Extra fields…</button>'}${viewBtn}${toggle}</div>${bar}` +
     (folders ? (folders.length > 1 ? folderTools : '') + folders.map(t => folderHtml('setups', t.id, t.label, plural(t.list.length, 'race setup', 'race setups'), mode === 'grid' ? gridHtml(t.list, 'sessionType') : tableHtml(t.list, folderCols))).join('')
@@ -270,9 +297,9 @@ const diRows = incs => incs.length ? `<div class="ptrow dirow pthead muted"><spa
   <input type="number" min="1" step="1" data-di="${i}" data-dik="points" value="${esc(x.points)}" aria-label="Damage points it gives"><button type="button" class="btn" data-didel="${i}">Remove</button></div>`).join('')
   : '<p class="muted">No incidents yet: the Race Director then has only the plus and minus buttons.</p>';
 const calcRows = pieces => pieces.map((p, i) => `<div class="calcrow"><input type="number" min="0" step="1" class="calc-count" data-i="${i}" value="${esc(p.count)}" aria-label="Number of pieces"> &times;
-  <input type="number" min="0" step="any" class="calc-mm" data-i="${i}" value="${esc(p.mm)}" aria-label="Length of one piece in millimetres"> mm <button type="button" class="btn" data-calcdel="${i}">Remove</button></div>`).join('');
+  <input type="number" min="0" step="any" class="calc-mm" data-i="${i}" value="${esc(Speed.smallTyped(p.mm, dUnit()))}" aria-label="Length of one piece in ${dUnit() === 'ft' ? 'inches' : 'millimetres'}"> ${dUnit() === 'ft' ? 'in' : 'mm'} <button type="button" class="btn" data-calcdel="${i}">Remove</button></div>`).join('');
 const calcHtml = pieces => `<p class="muted">Number of pieces &times; length of one piece. Add a row for every kind of piece.</p><div id="calc-rows">${calcRows(pieces)}</div>
-  <div class="row"><button type="button" class="btn" data-calcadd="1">Add another piece type</button> <strong id="calc-total">${Speed.lengthFromPieces(pieces)} m</strong>
+  <div class="row"><button type="button" class="btn" data-calcadd="1">Add another piece type</button> <strong id="calc-total">${Speed.lengthText(Speed.lengthFromPieces(pieces), dUnit())}</strong>
   <button type="button" class="btn primary" data-calcuse="1">Use this length</button></div>`;
 
 // the drivers of a team (field type 'members'): in the order they take their turn, with a list to add one more from
@@ -282,18 +309,18 @@ const memRows = (ids, all) => `<ol class="memlist">${ids.length ? ids.map((id, i
 
 function fieldHtml(f, v, extra) {
   const id = 'f-' + f.id;
-  const lab = `<label for="${id}">${esc(f.label)}${f.optional ? ' <span class="muted">(optional)</span>' : ''}</label>`;
+  const lab = `<label for="${id}">${esc(fl(f))}${f.optional ? ' <span class="muted">(optional)</span>' : ''}</label>`;
   let inp;
   switch (f.type) {
     case 'longtext': inp = `<textarea id="${id}" rows="3">${esc(v)}</textarea>`; break;
-    case 'number': inp = `<input id="${id}" type="number" step="${f.step || 'any'}"${f.min !== undefined ? ` min="${f.min}"` : ''} value="${esc(v)}">`; break;
+    case 'number': inp = `<input id="${id}" type="number" step="${f.step || 'any'}"${f.min !== undefined ? ` min="${f.min}"` : ''} value="${esc(typedText(f, v) ?? v)}"${unitAttrs(f, v)}>`; break;
     case 'date': inp = `<input id="${id}" type="date" value="${esc(v)}">`; break;
     case 'choice': inp = `<input id="${id}" list="${id}-l" value="${esc(v)}"><datalist id="${id}-l">${f.options.map(o => `<option value="${esc(o)}">`).join('')}</datalist>`; break;
     case 'list': inp = `<select id="${id}"><option value=""></option>${f.options.map(o => `<option${o === v ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select>`; break;
     case 'select': inp = `<select id="${id}">${f.options.map(([k, l]) => `<option value="${esc(k)}"${k === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`; break;
     case 'ref': inp = `<select id="${id}"><option value="">${esc(f.blank || '(none)')}</option>${(state.refs[f.ref] || []).map(r => `<option value="${esc(r.id)}"${r.id === v ? ' selected' : ''}>${esc(titleOf(f.ref, r))}</option>`).join('')}</select>`; break;
     case 'country': inp = `<select id="${id}"><option value=""></option>${COUNTRIES.map(([c, n]) => `<option value="${c}"${c === v ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select><span id="${id}-flag">${flagHtml(v)}</span>`; break;
-    case 'tracklength': inp = `<div class="imgrow"><input id="${id}" type="number" min="0" step="any" value="${esc(Speed.parseLength(v))}"> <span>metres</span>
+    case 'tracklength': inp = `<div class="imgrow"><input id="${id}" type="number" min="0" step="any" value="${esc(typedText(f, v) ?? Speed.parseLength(v))}"${unitAttrs(f, v)}> <span>${dUnit() === 'ft' ? 'feet' : 'metres'}</span>
       <button type="button" class="btn" data-calcopen="1">Calculate from track pieces…</button></div><div id="calc" class="card" hidden>${calcHtml((extra && extra.pieces) || [])}</div>`; break;
     case 'penaltytypes': inp = `<p class="muted">Penalties the Race Director can give instead of leaving points to turn into time. One costs points, and must be served by stopping on the sensor in the pits. A Stop-and-Go needs the car to stand still for its seconds; a Drivethrough is served when the pit stop starts.</p><div id="pt-box">${ptRows((extra && extra.types) || [])}</div><button type="button" class="btn" data-ptadd="1">Add a special penalty</button>`; break;
     case 'damagelevels': inp = `<p class="muted">The highest level a car has reached counts. A car must stand still on the sensor in the pits for the seconds of its level: that repairs the damage (the points go back to 0), or retires or disqualifies the car. Leave a gap between the levels, so a hit does not skip one.</p><div id="dl-box">${dlRows((extra && extra.dlevels) || [])}</div><button type="button" class="btn" data-dladd="1">Add a level</button>`; break;
@@ -301,11 +328,11 @@ function fieldHtml(f, v, extra) {
     case 'members': inp = `<div id="mem-box">${memRows((extra && extra.members) || [], state.refs[f.ref] || [])}</div>`; break;
     case 'gallery': inp = `<div id="gal-box" class="gallery"></div><input id="${id}" type="file" accept="image/*" multiple data-gallery="1"><p class="muted">Up to ${GALLERY_MAX} extra pictures. A screenshot of a parts list is fine.</p>`; break;
     case 'image': inp = `<div class="imgrow"><img id="${id}-img" class="thumb" ${v ? `src="${esc(v)}"` : 'hidden'} alt=""><input id="${id}" type="file" accept="image/*"><button type="button" class="btn" data-clear="${f.id}">Remove</button></div>`; break;
-    default: inp = `<input id="${id}" type="text"${f.maxLength ? ` maxlength="${f.maxLength}"` : ''}${f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : ''} value="${esc(v)}">`;
+    default: inp = `<input id="${id}" type="text"${f.maxLength ? ` maxlength="${f.maxLength}"` : ''}${f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : ''} value="${esc(typedText(f, v) ?? v)}"${unitAttrs(f, v)}>`;
   }
   if (f.automatic) inp = `<input id="${id}" type="number" value="${esc(v ?? 0)}" disabled>`;
   const wide = ['longtext', 'gallery', 'tracklength', 'image', 'penaltytypes', 'damagelevels', 'damageincidents', 'members'].includes(f.type) ? ' full' : '';
-  return `<div class="field${wide}" data-key="${f.id}">${lab}${inp}${f.hint ? `<span class="muted hint">${esc(f.hint)}</span>` : ''}</div>`;
+  return `<div class="field${wide}" data-key="${f.id}">${lab}${inp}${fh(f) ? `<span class="muted hint">${esc(fh(f))}</span>` : ''}</div>`;
 }
 
 // A field with showIf is shown when any one of its conditions matches the current form values.
@@ -339,7 +366,7 @@ function openView(e, item) {
   const named = (s.title || []).length === 1; // (a name is the title of the card already; brand, manufacturer and model are three facts, so they stay in the list)
   const rows = [
     ...s.fields.filter(f => !['image', 'gallery'].includes(f.type) && !(named && s.title.includes(f.key)) && isShown(f, getv) && filled(getv(f.key)))
-      .map(f => ({ label: f.label, html: f.type === 'longtext' ? esc(getv(f.key)).replace(/\n/g, '<br>') : cell(f, getv(f.key)), wide: f.type === 'longtext' })),
+      .map(f => ({ label: fl(f), html: f.type === 'longtext' ? esc(getv(f.key)).replace(/\n/g, '<br>') : cell(f, getv(f.key)), wide: f.type === 'longtext' })),
     ...(state.custom[e] || []).filter(f => filled((item.custom || {})[f.id])).map(f => ({ label: f.label, html: esc(item.custom[f.id]) }))
   ];
   const t = titleOf(e, item), main = s.image && item[s.image], frame = s.image && item[s.image + 'Frame'];
@@ -429,9 +456,9 @@ function openForm(e, item) {
     if (d.ptadd) { types.push({ name: '', kind: 'stopgo', seconds: 5, cost: 5, extra: 1, unserved: 10 }); byId('pt-box').innerHTML = ptRows(types); return; }
     if (d.ptdel !== undefined) { types.splice(Number(d.ptdel), 1); byId('pt-box').innerHTML = ptRows(types); return; }
     if (d.calcopen) { byId('calc').hidden = !byId('calc').hidden; return; }
-    if (d.calcadd) { pieces.push({ count: '', mm: pieces.length ? pieces[pieces.length - 1].mm : 200 }); byId('calc-rows').innerHTML = calcRows(pieces); byId('calc-total').textContent = Speed.lengthFromPieces(pieces) + ' m'; return; }
-    if (d.calcdel !== undefined) { pieces.splice(Number(d.calcdel), 1); if (!pieces.length) pieces.push({ count: '', mm: 200 }); byId('calc-rows').innerHTML = calcRows(pieces); byId('calc-total').textContent = Speed.lengthFromPieces(pieces) + ' m'; return; }
-    if (d.calcuse) { const t = Speed.lengthFromPieces(pieces); if (t > 0) byId('f-length').value = t; return; }
+    if (d.calcadd) { pieces.push({ count: '', mm: pieces.length ? pieces[pieces.length - 1].mm : 200 }); byId('calc-rows').innerHTML = calcRows(pieces); byId('calc-total').textContent = Speed.lengthText(Speed.lengthFromPieces(pieces), dUnit()); return; }
+    if (d.calcdel !== undefined) { pieces.splice(Number(d.calcdel), 1); if (!pieces.length) pieces.push({ count: '', mm: 200 }); byId('calc-rows').innerHTML = calcRows(pieces); byId('calc-total').textContent = Speed.lengthText(Speed.lengthFromPieces(pieces), dUnit()); return; }
+    if (d.calcuse) { const t = Speed.lengthFromPieces(pieces); if (t > 0) { const el = byId('f-length'); el.value = Speed.lengthTyped(t, dUnit()); if (dUnit() === 'ft' && el.dataset) { el.dataset.du = 'ft'; el.dataset.shown = String(el.value); el.dataset.keep = String(t); } } return; }
     if (d.galview !== undefined) { galSel = galSel === Number(d.galview) ? null : Number(d.galview); drawGallery(); return; }
     if (d.galdel !== undefined) { gal.splice(Number(d.galdel), 1); galSel = null; drawGallery(); return; }
     if (d.galmain !== undefined) { // this picture becomes the main one; the old main picture goes into the gallery
@@ -450,8 +477,8 @@ function openForm(e, item) {
     const c = t && t.classList && t.dataset && t.dataset.i !== undefined;
     if (!c) return;
     const p = pieces[Number(t.dataset.i)]; if (!p) return;
-    if (t.className.includes('calc-count')) p.count = t.value; else if (t.className.includes('calc-mm')) p.mm = t.value;
-    byId('calc-total').textContent = Speed.lengthFromPieces(pieces) + ' m';
+    if (t.className.includes('calc-count')) p.count = t.value; else if (t.className.includes('calc-mm')) p.mm = dUnit() === 'ft' && t.value !== '' ? Speed.smallKept(t.value, 'ft') : t.value;
+    byId('calc-total').textContent = Speed.lengthText(Speed.lengthFromPieces(pieces), dUnit());
   };
   dlg.onchange = async ev => {
     const t = ev.target;
@@ -486,8 +513,8 @@ function openForm(e, item) {
       const el = byId('f-' + f.id);
       let v;
       if (f.type === 'image') { v = imgs[f.id]; if (!f.custom) built[f.key + 'Frame'] = v ? frames[f.id] : null; }
-      else if (f.type === 'number' || f.type === 'tracklength') v = el.value === '' ? '' : Number(el.value);
-      else { v = el.value.trim(); if (f.uppercase) v = v.toUpperCase(); }
+      else if (f.type === 'number' || f.type === 'tracklength') v = el.value === '' ? '' : el.dataset && el.dataset.du === 'ft' ? keptValue(f, el) : Number(el.value);
+      else { v = el.dataset && el.dataset.du === 'ft' ? keptValue(f, el) : el.value.trim(); if (f.uppercase) v = v.toUpperCase(); }
       if (f.type === 'padlist' && v !== '' && isShown(f, getValue)) { // (the values of an Adjust pad: tidied up - smallest first, no doubles, at most six - or the field is empty, which means the App Settings values)
         const own = AdjustPad.ownOf({ [AdjustPad.byId(f.pad).key]: v }, f.pad);
         if (!own) { byId('err').textContent = 'Please enter numbers above zero, separated by commas, for example 1, 3, 10. Leave the field empty to use the values from App Settings.'; return; }
@@ -676,7 +703,7 @@ async function renderResultsPool(box, pool) {
       const STCELL = { driver: esc(x.driverName), car: esc(x.carName), lane: esc(t.lane), bought: esc(boughtText(t.bought)), laps: esc(x.laps), late: esc(x.lateLaps || 0), best: esc(RaceEngine.fmtTime(x.best)), total: esc(RaceEngine.fmtTime(x.total)) };
       const stCols = Stats.STINT_COLUMNS.filter(c => stintKeys.includes(c.key) && (c.key in STCELL || Stats.hasAny(c.key, figs)));
       const body = `<table class="fields"><tr>${stCols.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr>
-        <tr>${stCols.map(c => `<td>${c.key in STCELL ? STCELL[c.key] : esc(Stats.text(c.key, figs[0], Speed.unitOf(state.settings)))}</td>`).join('')}</tr></table>${stCols.length ? '' : '<p class="muted">No columns are on. Turn some on in View settings.</p>'}${statNote(stCols.map(c => c.key))}
+        <tr>${stCols.map(c => `<td>${c.key in STCELL ? STCELL[c.key] : esc(Stats.text(c.key, figs[0], Speed.unitOf(state.settings), Speed.distUnitOf(state.settings)))}</td>`).join('')}</tr></table>${stCols.length ? '' : '<p class="muted">No columns are on. Turn some on in View settings.</p>'}${statNote(stCols.map(c => c.key))}
         <p class="muted">${esc(s.endedBy || '')}${t.carried ? ` · ${esc(boughtText(t.carried))} came over from the driver before` : ''}${t.left ? ` · ${esc(boughtText(t.left))} was not used` : ''}</p>
         <h4>All lap times</h4><p><span class="muted">${mine.map(l => { const tx = esc(`${l.lapNumber}: ${RaceEngine.fmtTime(l.time)}`); return l.late || l.invalid || l.tooSlow ? `<s class="lapbad" title="${l.late ? 'Late lap: driven after the time was up' : l.invalid ? 'Invalid lap' : 'Too slow: not counted for records'}">${tx}</s>` : tx; }).join(' · ') || 'no laps'}</span></p>
         <div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}<button class="btn danger" data-delsession="${esc(s.id)}">Delete this stint</button><span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
@@ -700,7 +727,7 @@ async function renderResultsPool(box, pool) {
         case 'final': return esc(Heats.finalCell(x));
         case 'best': return esc(RaceEngine.fmtTime(x.best));
         case 'total': return esc(RaceEngine.fmtTime(x.total + (x.penalty || 0) + (x.adjMs || 0))) + (x.penalty ? ` <span class="muted">(includes +${esc(RaceEngine.fmtTime(x.penalty))} penalty, ${esc(x.penaltyPoints)} points)</span>` : '');
-        default: return esc(Stats.text(key, figs[i], Speed.unitOf(state.settings)));
+        default: return esc(Stats.text(key, figs[i], Speed.unitOf(state.settings), Speed.distUnitOf(state.settings)));
       }
     };
     const body = `<table class="fields"><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr>` +
@@ -744,7 +771,7 @@ async function renderResultsPool(box, pool) {
       if (!options) return;
       msg.textContent = 'Making the PDF...';
       try {
-        const res = await api.exportPdf(Report.sessionHtml({ session: s, laps: mine, tracks, cars, options, unit: Speed.unitOf(state.settings) }), Report.fileName(s));
+        const res = await api.exportPdf(Report.sessionHtml({ session: s, laps: mine, tracks, cars, options, unit: Speed.unitOf(state.settings), distUnit: Speed.distUnitOf(state.settings) }), Report.fileName(s));
         msg.textContent = res.saved ? 'Saved to ' + res.path : 'Export cancelled.';
       } catch (x) { msg.textContent = 'Could not make the PDF: ' + x.message; }
       return;

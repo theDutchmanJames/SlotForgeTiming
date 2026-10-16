@@ -137,7 +137,8 @@
   // the speeds are worked out in km/h; unit ('kmh' or 'mph', the setting speedUnit) says how they are written (1.22.0)
   const fmtSpeed = (v, unit) => (v === null || v === undefined ? dash : Sp.toUnit(v, unit).toFixed(1) + ' ' + Sp.unitName(unit));
   const fmtScale = (v, unit) => (v === null || v === undefined ? dash : Math.round(Sp.toUnit(v, unit)) + ' ' + Sp.unitName(unit));
-  const fmtDist = m => (m === null || m === undefined ? dash : m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(2) + ' km');
+  // a distance is worked out in metres; distUnit ('m' or 'ft', the setting distanceUnit) says how it is written: metres and kilometres, or feet and miles (1.27.0)
+  const fmtDist = (m, distUnit) => (m === null || m === undefined ? dash : Sp.distText(m, distUnit));
   const fmtSpread = ms => (ms === null || ms === undefined ? dash : '±' + (ms / 1000).toFixed(3) + ' s');
   const fmtMs = ms => (ms === null || ms === undefined ? dash : E.fmtTime(Math.round(ms)));
   // The value of one of the worked-out columns for one row (fig = a row of forSession); undefined when there is nothing for it
@@ -151,7 +152,7 @@
       default: return undefined;
     }
   }
-  function text(key, fig, unit) {
+  function text(key, fig, unit, distUnit) {
     const v = valueOf(key, fig);
     if (v === undefined || v === null) return dash;
     switch (key) {
@@ -159,7 +160,7 @@
       case 'spread': return fmtSpread(v);
       case 'speed': return fmtSpeed(v, unit);
       case 'scalespeed': return fmtScale(v, unit);
-      case 'distance': return fmtDist(v);
+      case 'distance': return fmtDist(v, distUnit);
       case 'pittime': return v > 0 ? fmtMs(v) : dash;
       default: return String(v);
     }

@@ -2075,3 +2075,20 @@ A fix, and a new name: the card is now called **Personal Bests for Drivers on th
 Good to know:
 1. Only the look changed; nothing is saved differently. A Home you set up before keeps its cards.
 2. The tests: `tests/homecards.test.js` (the title) and `tests/homegrid.test.js` (the rule that holds the tag inside the heading).
+
+## What to try (1.27.0): miles and feet for distances
+From your list: the speeds had mph since 1.22.0, now the distances have feet and miles too.
+1. Open **App Settings > General > Display**. Under *Speed unit in the tables* there is a new choice, **Distance unit**: *Metres and kilometres* (the standard) or *Feet and miles*. The folder title says which one is on.
+2. Choose **Feet and miles**, then open **Database > Results and Records**. Turn on the *Distance* column (View settings): it is in feet up to a mile (*2774 ft*) and in miles from there (*1.24 mi*). The PDF of a session uses the same unit, and so does the **At a glance** card of Home.
+3. Open **Database > Tracks** and edit a track. The labels say *Track length (feet)*, *Distance between the lanes (inches, centre to centre)* and *Length of every lane (feet)*, and the numbers are the saved metres in feet (12 m is 39.37 ft; 100 mm is 3.94 in). The calculator takes the length of a piece in inches and shows its total in feet; *Use this length* fills the length box in feet.
+4. Type a length in feet (say 50) and save: it is kept as 15.24 m. Look at the track again in metres (choose *Metres and kilometres*): 15.24. Nothing else changed.
+5. Open the track again in feet and press Save without touching a number: nothing changes, not even in the last decimal.
+
+Good to know:
+1. Everything stays saved in metres and millimetres. The unit only changes how a length is shown and typed, so you can change it at any time. Backups, transfer files and the speeds do not change.
+2. A number you did not change is saved exactly as it was (the feet on the screen are rounded, the saved metres are not). In a list of lane lengths only the lane you changed is converted.
+3. The speed unit is separate: feet and miles with km/h is fine.
+4. Track lengths in lists and cards are written as *39.4 ft*; an old text length that was typed by hand ("12,5 m") stays as typed.
+5. Not done: the speed widgets and the weather widgets keep their own units; the voice does not say distances; a new piece row in the calculator starts with the length of the row above it.
+6. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+7. The tests: `tests/speed.test.js` (the conversions), `tests/stats.test.js` and `tests/report.test.js` (the tables and the PDF), `tests/screens.test.js` (the setting, the tables, Home, the track form in both units: labels, numbers, saving, the calculator) and `tests/help.test.js`.

@@ -23,9 +23,9 @@
 
   // What goes in the PDF. options (all optional, everything is in when it is left out): results (the table), heats (the summary of the heats and finals), laps (the page with every lap time),
   // columns (the keys of the columns of the table, as Stats.SESSION_COLUMNS names them; the default is the ones that are on until turned off).
-  // tracks and cars (the lists from the database) give the length and scale for the speeds; unit ('kmh' or 'mph', the setting speedUnit) is the unit they are written in.
+  // tracks and cars (the lists from the database) give the length and scale for the speeds; unit ('kmh' or 'mph', the setting speedUnit) is the unit they are written in; distUnit ('m' or 'ft', the setting distanceUnit, 1.27.0) is the one of the distance.
   const DEFAULT_OPTIONS = { results: true, heats: true, laps: true };
-  function sessionHtml({ session, laps, tracks, cars, options, unit }) {
+  function sessionHtml({ session, laps, tracks, cars, options, unit, distUnit }) {
     const opt = { ...DEFAULT_OPTIONS, ...(options || {}) };
     const pts = session.resultBy === 'points', isHeats = ST.heated(session);
     const res = isHeats && !!session.scoring && session.standings.some(x => x.score !== undefined); // a heat race with a result that is not just all heats added up
@@ -45,7 +45,7 @@
         case 'final': return esc(HT.finalCell(x));
         case 'best': return esc(E.fmtTime(x.best));
         case 'total': return esc(E.fmtTime(x.total + (x.penalty || 0) + (x.adjMs || 0))) + (x.penalty ? ` (includes +${esc(E.fmtTime(x.penalty))} penalty, ${esc(x.penaltyPoints)} points)` : '');
-        default: return esc(ST.text(key, figs[i], unit));
+        default: return esc(ST.text(key, figs[i], unit, distUnit));
       }
     };
     const standings = !opt.results || !cols.length ? '' : `<table${cols.length > 8 ? ' class="wide"' : ''}><thead><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr></thead><tbody>` +

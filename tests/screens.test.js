@@ -636,7 +636,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
       { const was = { document: ctx.document, URL: ctx.URL, Image: ctx.Image }; // the real upload function, with a picture of 5000 x 2500 pixels and a canvas that tells its size
         ctx.URL = { createObjectURL: () => 'blob:x', revokeObjectURL() {} };
         ctx.Image = function () { const i = this; Object.defineProperty(i, 'src', { set() { i.naturalWidth = 5000; i.naturalHeight = 2500; setTimeout(() => i.onload(), 0); } }); };
-        ctx.document = { createElement: () => { const c = { getContext: () => ({ fillRect() {}, drawImage() {} }), toDataURL: (m, k) => `${m} ${c.width}x${c.height} ${k}`.trim() }; return c; } };
+        ctx.document = Object.assign(Object.create(was.document), { createElement: () => { const c = { getContext: () => ({ fillRect() {}, drawImage() {} }), toDataURL: (m, k) => `${m} ${c.width}x${c.height} ${k}`.trim() }; return c; } }); // (the page's own document stays behind it: a timer of the page that fires meanwhile still finds getElementById)
         const up = async (quality, max) => { if (quality) run(`state.settings.pictureQuality='${quality}'`); else run('delete state.settings.pictureQuality'); return realResize({ type: 'image/png', size: 100 }, max); };
         const r = [await up(undefined, 512), await up('original', 512), await up('high', 512), await up('standard', 512), await up('standard', 1024)];
         Object.assign(ctx, was);
@@ -1492,10 +1492,14 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   await pdfClick();
   say('the report is sent to be saved as a PDF with a sensible file name', exported.length===1 && exported[0][1]==='Friday Sprint 2026-10-11.pdf' && exported[0][0].includes('All lap times') && exported[0][0].includes('5.500'));
   { const keepSet=api.setSettings; api.setSettings=async p=>{calls.push(['settings',p]);return {...run('state.settings'),...p}}; // (the stand-in of the window gives back only what was saved: here the speed unit has to stay)
-    run("state.settings.speedUnit='mph'; globalThis.__rs = Report.sessionHtml; Report.sessionHtml = a => { globalThis.__unit = a.unit; return globalThis.__rs(a); }"); const nE=exported.length; await pdfClick();
+    run("state.settings.speedUnit='mph'; globalThis.__rs = Report.sessionHtml; Report.sessionHtml = a => { globalThis.__unit = a.unit; globalThis.__dist = a.distUnit; return globalThis.__rs(a); }"); const nE=exported.length; await pdfClick();
     say('1.22.0: with the speed unit mph the PDF of a session is made with the unit mph (the speeds in it are written in mph: tests/report.test.js)', run('globalThis.__unit')==='mph' && exported.length===nE+1);
     run("state.settings.speedUnit=undefined"); await pdfClick();
     say('...and with no unit chosen it is made with km/h', run('globalThis.__unit')==='kmh' && exported.length===nE+2);
+    say('1.27.0: with no distance unit chosen the PDF is made with metres', run('globalThis.__dist')==='m');
+    run("state.settings.distanceUnit='ft'"); await pdfClick();
+    say('...and with the distance unit feet and miles it is made with feet (the distance in it is in feet: tests/report.test.js), the speed unit being a thing of its own', run('globalThis.__dist')==='ft' && run('globalThis.__unit')==='kmh' && exported.length===nE+3);
+    run("delete state.settings.distanceUnit");
     run("Report.sessionHtml = globalThis.__rs; state.settings.pdfPages=undefined"); api.setSettings=keepSet; exported.length=nE; }
   say('the user is told where it was saved', E('pdfmsg-s1').textContent==='Saved to C:/Reports/x.pdf');
   exportResult={saved:false}; await pdfClick();
@@ -1560,6 +1564,9 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
       say('1.22.0: with the speed unit mph the sessions and the records show miles per hour (7.1 km/h is 4.4 mph, 169 at scale is 105 mph, the lap of 7.2 km/h is 4.5 mph and 173 at scale is 107 mph) and no km/h is left', !hm.includes('km/h') && hm.includes('<td>4.4 mph</td>') && hm.includes('<td>105 mph</td>') && hm.includes('<td>4.5 mph</td>') && hm.includes('<td>107 mph</td>'));
       say('...the other columns are as they were (the lap times, the distance in metres)', hm.includes('<td>5.100</td>') && hm.includes('<td>30 m</td>'));
       run("state.settings.speedUnit=undefined"); }
+    { run("state.settings.distanceUnit='ft'"); const rm=mk(); await run('renderResultsPool')(rm,'racing'); const hf=rm.innerHTML;
+      say('1.27.0: with the distance unit feet and miles the distance of the sessions is in feet (30 m is 98 ft) and no metre is left; the speeds and the lap times are as they were', hf.includes('<td>98 ft</td>') && !hf.includes('<td>30 m</td>') && hf.includes('<td>5.100</td>') && hf.includes('km/h'));
+      run("delete state.settings.distanceUnit"); }
     // the last column cannot go
     for (const k of ['track','driver','time','car','speed','scalespeed','session','lane','date']) await tick('results/records',k,false);
     h=rb.innerHTML;
@@ -1587,6 +1594,9 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     say('a stint has the average lap and the average speed besides its old columns (the lane 2 of a track with equal lanes: 10 m)', heads(h,'data-folder="tresults:sessions"').join()==='Driver,Car,Lane,Time bought,Laps,Late laps,Best lap,Total time,Average lap,Average speed' && h.includes('<td>5.100</td>') && h.includes('<td>7.1 km/h</td>'));
     { run("state.settings.speedUnit='mph'"); const tm=mk(); await run('renderResultsPool')(tm,'tokens');
       say('1.22.0: with the speed unit mph the average speed of a stint is in mph (7.1 km/h is 4.4 mph)', tm.innerHTML.includes('<td>4.4 mph</td>') && !tm.innerHTML.includes('km/h')); run("state.settings.speedUnit=undefined"); }
+    { const vs0 = JSON.stringify(run('state.settings.viewSettings') ?? null); run("state.settings.viewSettings = { results: { stints: { distance: true } } }"); const tm0=mk(); await run('renderResultsPool')(tm0,'tokens'); run("state.settings.distanceUnit='ft'"); const tm=mk(); await run('renderResultsPool')(tm,'tokens');
+      say('1.27.0: the distance of a stint is in metres, and with the distance unit feet and miles in feet (20 m is 66 ft), the speed staying in km/h', tm0.innerHTML.includes('<td>20 m</td>') && !tm0.innerHTML.includes(' ft</td>') && tm.innerHTML.includes('<td>66 ft</td>') && !tm.innerHTML.includes('<td>20 m</td>') && tm.innerHTML.includes('<td>7.1 km/h</td>'));
+      run("delete state.settings.distanceUnit; state.settings.viewSettings = " + vs0 + "; if (state.settings.viewSettings === null) delete state.settings.viewSettings"); }
     say('...its bar has the group Stints, with its own columns', h.includes('<legend>Stints</legend>') && h.includes('data-vs="results/stints" data-key="distance"') && !h.includes('data-vs="results/sessions"'));
     await tb.onchange({target:{dataset:{vs:'results/stints',key:'late'},checked:false}});
     say('...turning one off changes the stints and not the sessions of the racing pool', !heads(tb.innerHTML,'data-folder="tresults:sessions"').includes('Late laps') && JSON.stringify(run('state.settings.viewSettings.results.stints'))==='{"late":false}' && JSON.stringify(run('state.settings.viewSettings.results.sessions'))==='{}');
@@ -1824,6 +1834,8 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     say('...a lap that is invalid, or of another track, is not the record; the card says whose track it is', !sd.includes('3.500') && !sd.includes('>4.000<') && sd.includes('<span class="hm-tag">Living room</span>'));
     say('the last race: the podium in the order of the places, the race, the track and the fastest lap', sd.includes('class="card hm-last"') && /<li class="p1"><span class="n">1<\/span><strong>Sam<\/strong><small>20 laps<\/small><\/li><li class="p2"><span class="n">2<\/span><strong>Dutch<\/strong>/.test(sd) && sd.includes('<li class="p3"><span class="n">3</span><strong>Mila</strong><small>19 laps</small>') && sd.includes('Club race on Living room · Fastest lap: Sam, 4.861'));
     say('at a glance: races, laps, distance and who won most', sd.includes('<div class="v">2</div><div class="l">races raced</div>') && sd.includes('<div class="v">5</div><div class="l">laps driven</div>') && sd.includes('<div class="v">65 m</div>') && />Sam<\/div><div class="l">most wins \(1\)/.test(sd));
+    { run("state.settings.distanceUnit='ft'"); await home(); const sf = side(); run("delete state.settings.distanceUnit"); await home();
+      say('1.27.0: with the distance unit feet and miles the glance card shows the distance in feet (65 m is 213 ft), and the other tiles stay as they are', sf.includes('<div class="v">213 ft</div>') && !sf.includes('<div class="v">65 m</div>') && sf.includes('<div class="v">5</div><div class="l">laps driven</div>') && side().includes('<div class="v">65 m</div>')); }
     say('...a track that has no lap yet says so, and the first lap sets the record', (run("state.settings.lastSetupId = 'k1'"), store.tracks[0].id = 'tX', store.racesetups[0].track = 'tX', (await home(), side().includes('No lap has been saved on this track yet.'))));
     store.tracks[0].id = 't1'; store.racesetups[0].track = 't1';
     // the laps are fetched once while you stay on Home, and again when Home is shown again
@@ -2141,6 +2153,46 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   say('an older text length is read as metres', E('f-length') && E('dlg').innerHTML.includes('value="12.5"'));
   run("document.getElementById('dlg').close()");
 
+  // ---- 1.27.0: the track form in feet and inches (what is kept stays in metres and millimetres) ----
+  { const trk = { id: 'ft1', name: 'Basement', lanes: 3, length: 12.35, laneModifier: 'measured', laneLengths: '11.55, 12.08,12.5', laneSpacing: 100, lengthPieces: [{ count: 50, mm: 247 }] }; // (numbers that do not come back when they go through feet and back: 11.55 m is 37.89 ft is 11.549 m, 100 mm is 3.94 in is 100.08 mm)
+    const sch = run('state.schema.tracks.fields'), fld = k => sch.find(f => f.key === k);
+    store.tracks.push(JSON.parse(JSON.stringify(trk))); // (the form of an old track saves with update: the stand-in for the database needs the track)
+    const saved = n => { const c = calls.slice(n).find(c => c[1] === 'tracks' && (c[0] === 'add' || c[0] === 'update')); return c ? (c[0] === 'add' ? c[2] : c[3]) : null; };
+    say('1.27.0: the schema marks the three fields that hold a length (the track length and the lane lengths in metres, the lane spacing in millimetres), each with its words for feet and inches', fld('length').unit === 'm' && fld('laneLengths').unit === 'm' && fld('laneSpacing').unit === 'mm' && fld('length').labelFt === 'Track length (feet)' && fld('laneLengths').labelFt === 'Length of every lane (feet), lane 1 first' && /inches, centre to centre/.test(fld('laneSpacing').labelFt) && /50\.5, 51\.8, 53\.1/.test(fld('laneLengths').hintFt) && /4 inches/.test(fld('laneSpacing').hintFt) && sch.filter(f => f.unit).length === 3);
+    run("openForm('tracks', " + JSON.stringify(trk) + ")"); await new Promise(r => setTimeout(r, 20)); const fm = E('dlg').innerHTML;
+    say('in metres the form is as it was: metres in the labels, the saved numbers, nothing to convert back', fm.includes('Track length (metres)') && fm.includes('value="12.35"') && fm.includes('value="11.55, 12.08,12.5"') && fm.includes('value="100"') && !fm.includes('data-du') && !fm.includes('data-shown') && fm.includes('> <span>metres</span>') && fm.includes('Length of one piece in millimetres') && fm.includes('<strong id="calc-total">12.35 m</strong>'));
+    run("document.getElementById('dlg').close()");
+    run("state.settings.distanceUnit='ft'");
+    run("openForm('tracks', " + JSON.stringify(trk) + ")"); await new Promise(r => setTimeout(r, 20)); const ff = E('dlg').innerHTML;
+    say('with feet and miles the form asks for feet: the labels say feet and inches, and the numbers shown are the saved metres in feet (12.35 m is 40.52 ft, 100 mm is 3.94 in)', ff.includes('Track length (feet)') && !ff.includes('Track length (metres)') && ff.includes('Length of every lane (feet), lane 1 first') && ff.includes('Distance between the lanes (inches, centre to centre)') && !ff.includes('millimetres, centre') && ff.includes('<span>feet</span>') && !ff.includes('<span>metres</span>'));
+    say('...the numbers: the length 40.52, the lanes 37.89, 39.63, 41.01 and the spacing 3.94, each with the text that is shown and the exact saved number behind it', /id="f-length"[^>]*value="40.52" data-du="ft" data-shown="40.52" data-keep="12.35"/.test(ff) && /id="f-laneLengths"[^>]*value="37.89, 39.63, 41.01" data-du="ft" data-shown="37.89, 39.63, 41.01" data-keep="11.55, 12.08,12.5"/.test(ff) && /id="f-laneSpacing"[^>]*value="3.94" data-du="ft" data-shown="3.94" data-keep="100"/.test(ff));
+    say('...the hints talk feet too, the calculator takes inches (247 mm is 9.72 in) and its total is in feet (12.35 m is 40.5 ft)', ff.includes('50.5, 51.8, 53.1') && !ff.includes('for example 15.4, 15.8, 16.2') && ff.includes('4 inches gives about 2 feet shorter') && ff.includes('Length of one piece in inches') && /class="calc-mm"[^>]*value="9.72"/.test(ff) && /<\/strong>|> in <button/.test(ff) && ff.includes('<strong id="calc-total">40.5 ft</strong>'));
+    const setf = () => { const el = k => document.getElementById('f-' + k), at = (k, shown, keep) => { el(k).dataset = { du: 'ft', shown, keep }; };
+      el('name').value = 'Basement'; el('lanes').value = '3'; el('laneModifier').value = 'measured';
+      el('length').value = '40.52'; at('length', '40.52', '12.35'); el('laneLengths').value = '37.89, 39.63, 41.01'; at('laneLengths', '37.89, 39.63, 41.01', '11.55, 12.08,12.5'); el('laneSpacing').value = '3.94'; at('laneSpacing', '3.94', '100'); };
+    setf(); let n1 = calls.length; await E('frm').onsubmit({ preventDefault() {} }); const g = saved(n1);
+    say('saving without touching a number gives back exactly what was saved (12.35, "11.55, 12.08,12.5" as it was written, 100, the pieces): the feet that are shown are rounded, the metres must not drift', g && g.length === 12.35 && g.laneLengths === '11.55, 12.08,12.5' && g.laneSpacing === 100 && JSON.stringify(g.lengthPieces) === '[{"count":50,"mm":247}]');
+    run("openForm('tracks', " + JSON.stringify(trk) + ")"); await new Promise(r => setTimeout(r, 20)); setf();
+    document.getElementById('f-length').value = '50'; document.getElementById('f-laneLengths').value = '37.89, 40, 41.01'; document.getElementById('f-laneSpacing').value = '4';
+    n1 = calls.length; await E('frm').onsubmit({ preventDefault() {} }); const g2 = saved(n1);
+    say('a number that is changed is typed in feet and kept in metres: 50 ft is 15.24 m, 4 in is 101.6 mm, and of the lanes only the one that was changed (40 ft is 12.192 m): the others stay exactly as saved', g2 && g2.length === 15.24 && g2.laneLengths === '11.55, 12.192, 12.5' && g2.laneSpacing === 101.6);
+    say('...the pieces do not add up to the new length any more, so none are kept', g2 && JSON.stringify(g2.lengthPieces) === '[]');
+    run("openForm('tracks', " + JSON.stringify({ ...trk, lengthPieces: [] }) + ")"); await new Promise(r => setTimeout(r, 20)); setf(); click({ calcopen: '1' });
+    E('dlg').oninput({ target: { classList: {}, dataset: { i: '0' }, className: 'calc-count', value: '60' } }); E('dlg').oninput({ target: { classList: {}, dataset: { i: '0' }, className: 'calc-mm', value: '8' } });
+    say('the calculator in inches: 60 pieces of 8 in (203.2 mm) are 12.192 m, and the total says 40 ft', E('calc-total').textContent === '40 ft');
+    click({ calcadd: '1' }); say('...a new row starts with the length of the one above it (8 in), and the total does not change', E('calc-total').textContent === '40 ft' && (E('calc-rows').innerHTML.match(/class="calc-mm"[^>]*value="8"/g) || []).length === 2); click({ calcdel: '1' });
+    click({ calcuse: '1' });
+    say('"Use this length" fills the length box in feet (40) and remembers the exact metres', E('f-length').value === 40 && E('f-length').dataset.shown === '40' && E('f-length').dataset.keep === '12.192' && E('f-length').dataset.du === 'ft');
+    n1 = calls.length; await E('frm').onsubmit({ preventDefault() {} }); const g3 = saved(n1);
+    say('...and the track is saved with 12.192 m and the pieces behind it (60 x 203.2 mm), as they add up exactly', g3 && g3.length === 12.192 && JSON.stringify(g3.lengthPieces) === '[{"count":60,"mm":203.2}]');
+    say('a length that is not a number in the list of lanes is still refused when it is typed in feet', await (async () => { run("openForm('tracks', " + JSON.stringify(trk) + ")"); await new Promise(r => setTimeout(r, 20)); setf(); document.getElementById('f-laneLengths').value = '37.73, x, 41.01'; const n2 = calls.length; await E('frm').onsubmit({ preventDefault() {} }); return !calls.slice(n2).some(c => c[1] === 'tracks') && /numbers separated by commas/.test(E('err').textContent); })());
+    run("document.getElementById('dlg').close()");
+    const C = (f, v) => run('cell(' + JSON.stringify(f) + ', ' + JSON.stringify(v) + ')');
+    say('in lists and cards a length is written in feet: the track length 39.4 ft, the lanes 37.73, 39.37, the spacing 3.94; an old text length stays as it was typed', C({ type: 'tracklength' }, 12) === '39.4 ft' && C({ type: 'numberlist', unit: 'm' }, '11.5, 12') === '37.73, 39.37' && C({ type: 'number', unit: 'mm' }, 100) === '3.94' && C({ type: 'tracklength' }, '12,5 m') === '12,5 m' && C({ type: 'number' }, 100) === '100' && C({ type: 'tracklength' }, '') === '');
+    say('...and the column headers and card rows use the words for feet (the label of the field in feet)', run("fl({ label: 'Track length (metres)', labelFt: 'Track length (feet)' })") === 'Track length (feet)' && run("fl({ label: 'Name' })") === 'Name');
+    run("delete state.settings.distanceUnit"); store.tracks = store.tracks.filter(t => t.id !== 'ft1');
+    say('back in metres everything is as it was (12 m, the metres in the labels)', C({ type: 'tracklength' }, 12) === '12 m' && C({ type: 'numberlist', unit: 'm' }, '11.5, 12') === '11.5, 12' && C({ type: 'number', unit: 'mm' }, 100) === '100' && run("fl({ label: 'Track length (metres)', labelFt: 'Track length (feet)' })") === 'Track length (metres)' && run("fh({ hint: 'a', hintFt: 'b' })") === 'a'); }
+
   const carItem = {id:'cx',brand:'NSR',manufacturer:'Ford',model:'GT40',picture:'data:main',pictureFrame:{zoom:2,x:1,y:0},extraPictures:['data:a','data:b','data:c']};
   store.slotcars.push(JSON.parse(JSON.stringify(carItem)));
   run(`openForm('slotcars', ${JSON.stringify(carItem)})`);
@@ -2381,6 +2433,11 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
         say('...choosing mph saves it, shows it chosen and in the folder note', run('state.settings.speedUnit') === 'mph' && calls.slice(nc2).some(c => c[1].speedUnit === 'mph') && /<option value="mph" selected>/.test(E('settingsbox').innerHTML.split('id="speedunit"')[1]) && /speeds in mph/.test(E('settingsbox').innerHTML));
         await E('speedunit').onchange({ target: { value: 'furlongs' } }); await wait();
         say('...a unit that does not exist becomes km/h', run('state.settings.speedUnit') === 'kmh' && /speeds in km\/h/.test(E('settingsbox').innerHTML)); }
+      say('1.27.0: the Display folder also has the distance unit, metres and kilometres to start, with both choices, and says it beside its title; the speed unit no longer says anything about distances', E('settingsbox').innerHTML.includes('id="distunit"') && /<option value="m" selected>Metres and kilometres \(m, km\)<\/option>/.test(E('settingsbox').innerHTML.split('id="distunit"')[1]) && /<option value="ft">Feet and miles \(ft, mi\)<\/option>/.test(E('settingsbox').innerHTML) && /distances in metres and kilometres/.test(E('settingsbox').innerHTML) && !E('settingsbox').innerHTML.includes('Distances stay in metres'));
+      { const nc3 = calls.length; await E('distunit').onchange({ target: { value: 'ft' } }); await wait();
+        say('...choosing feet and miles saves it, shows it chosen and in the folder note, and leaves the speed unit alone', run('state.settings.distanceUnit') === 'ft' && calls.slice(nc3).some(c => c[1].distanceUnit === 'ft') && !calls.slice(nc3).some(c => c[1].speedUnit !== undefined) && /<option value="ft" selected>/.test(E('settingsbox').innerHTML.split('id="distunit"')[1]) && /distances in feet and miles/.test(E('settingsbox').innerHTML));
+        await E('distunit').onchange({ target: { value: 'furlongs' } }); await wait();
+        say('...a unit that does not exist becomes metres', run('state.settings.distanceUnit') === 'm' && /distances in metres and kilometres/.test(E('settingsbox').innerHTML)); run("delete state.settings.distanceUnit"); }
     }
     say('the folders have a note beside the title, the body has room around it, and the database file is in the last folder', /<summary><strong>Header picture<\/strong> <span class="muted">no picture<\/span>/.test(E('settingsbox').innerHTML) && /<div class="fbody">/.test(E('settingsbox').innerHTML) && E('settingsbox').innerHTML.indexOf('Saved in:') > E('settingsbox').innerHTML.indexOf('data-folder="general:data"'));
     run("state.settingsSub='help'"); await run('render()');

@@ -39,7 +39,7 @@ const Help = (() => {
         </ul>` },
       { id: 'database', title: 'Database', note: 'Tracks, drivers and slot cars', body: `
         <ul>
-          <li><b>Tracks</b>: a name and the number of lanes are needed. The rest is optional: scale, surface, a picture and the <b>track length</b>. Type the length in, or let the calculator work it out from the pieces of your track. With a length, the Slotcar Speed widget can show speeds. A <b>lane length modifier</b>, or the length of every lane, gives each lane its own length. A <b>minimum and maximum lap time</b> lets the app ignore crossings that cannot be a real lap.</li>
+          <li><b>Tracks</b>: a name and the number of lanes are needed. The rest is optional: scale, surface, a picture and the <b>track length</b>. Type the length in (in feet if you chose feet), or let the calculator work it out from the pieces of your track. With a length, the Slotcar Speed widget can show speeds. A <b>lane length modifier</b>, or the length of every lane, gives each lane its own length. A <b>minimum and maximum lap time</b> lets the app ignore crossings that cannot be a real lap.</li>
           <li><b>Drivers</b>: a name, and if you like a nickname, a three-letter callsign, a date of birth, a country flag and an avatar.</li>
           <li><b>Teams</b>: drivers who race together (see Teams, below).</li>
           <li><b>Slotcars</b>: a brand, manufacturer or model, then scale, motor, tyres, gearing, weight, a main picture and more pictures. The laps driven are counted for you.</li>
@@ -236,7 +236,7 @@ const Help = (() => {
       { id: 'look', title: 'Look and feel', note: 'Themes, name, header picture and logo', body: `
         <ul>
           <li><b>App Theme</b>: choose a ready-made colour theme, or make your own colours.</li>
-          <li><b>General</b>: type your own app name and welcome message, add a header picture to the Home tab (and choose which part of it shows), and add your club logo. <b>Display</b> makes the whole app bigger (100% to 200%) for reading from a distance; it does not change the widgets of your layouts. It also sets the <b>speed unit</b> of the tables, km/h or mph. <b>Pictures</b> sets how sharp the pictures you upload stay: Original (as uploaded, with transparency), High or Standard (smaller, for a lighter database).</li>
+          <li><b>General</b>: type your own app name and welcome message, add a header picture to the Home tab (and choose which part of it shows), and add your club logo. <b>Display</b> makes the whole app bigger (100% to 200%) for reading from a distance; it does not change the widgets of your layouts. It also sets the <b>speed unit</b> of the tables, km/h or mph, and the <b>distance unit</b>: metres and kilometres, or feet and miles (a track is then typed in feet and inches; it stays saved in metres). <b>Pictures</b> sets how sharp the pictures you upload stay: Original (as uploaded, with transparency), High or Standard (smaller, for a lighter database).</li>
           <li><b>Racing Rules</b> is a tab of its own. Write the rules of your club there. They show on the Racing rules tile of the Live Race tab, also on phones.</li>
         </ul>` }
     ]],

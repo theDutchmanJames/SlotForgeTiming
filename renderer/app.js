@@ -91,16 +91,19 @@ const GENERAL_FOLDERS = ['display', 'names', 'header', 'logo', 'pictures', 'data
 const applyUiScale = () => { if (typeof api !== 'undefined' && api.setZoom) api.setZoom(UiScale.factorOf(state.settings && state.settings.uiScale)); };
 async function renderGeneralSettings(box) {
   const S = state.settings, path = await api.dbPath(), hh = Banner.height(S), pos = Banner.pos(S), lpos = Banner.logoPos(S);
-  const us = UiScale.levelOf(S.uiScale), su = Speed.unitOf(S), pq = Picture.levelOf(S.pictureQuality), pic = !!S.homeHeader, logoOn = Banner.logoOn(S), hasLogo = !!S.clubLogo, side = Banner.logoSide(S), share = Banner.logoShare(S);
+  const us = UiScale.levelOf(S.uiScale), su = Speed.unitOf(S), du = Speed.distUnitOf(S), pq = Picture.levelOf(S.pictureQuality), pic = !!S.homeHeader, logoOn = Banner.logoOn(S), hasLogo = !!S.clubLogo, side = Banner.logoSide(S), share = Banner.logoShare(S);
   // the page is made of folders, as the Results and Records page is: each opens and closes, the choice is remembered while the app runs
   const sf = (id, title, note, body) => folderHtml('general', id, title, note, `<div class="fbody">${body}</div>`);
   box.innerHTML = folderTools
-    + sf('display', 'Display', 'interface size ' + us + '%, speeds in ' + Speed.unitName(su), `<div class="field" style="max-width:480px"><label for="uiscale">Interface size (the text, buttons and check boxes of the whole app)</label>
+    + sf('display', 'Display', 'interface size ' + us + '%, speeds in ' + Speed.unitName(su) + ', distances in ' + Speed.distUnitName(du), `<div class="field" style="max-width:480px"><label for="uiscale">Interface size (the text, buttons and check boxes of the whole app)</label>
       <select id="uiscale">${UiScale.LEVELS.map(([k, t]) => `<option value="${k}"${k === us ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>
       <span class="muted hint">Makes everything in this window bigger, for reading from a distance or with glasses. It does not change the layouts of the race screens: they always fit the window, and the size of their widgets is set in the Layout Editor. It is only for this window: the Live Race window and the pages on phones keep their size.</span></div>
     <div class="field" style="max-width:480px"><label for="speedunit">Speed unit in the tables (Results and Records, the PDF of a session)</label>
       <select id="speedunit">${Speed.UNITS.map(([k, t]) => `<option value="${k}"${k === su ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>
-      <span class="muted hint">The average speed and the scale speed of the laps, sessions, stints and records. Distances stay in metres and kilometres. The Speed widget in a layout has a Unit choice of its own.</span></div>`)
+      <span class="muted hint">The average speed and the scale speed of the laps, sessions, stints and records. The Speed widget in a layout has a Unit choice of its own.</span></div>
+    <div class="field" style="max-width:480px"><label for="distunit">Distance unit (the distance driven in the tables and on Home, and the lengths of a track)</label>
+      <select id="distunit">${Speed.DIST_UNITS.map(([k, t]) => `<option value="${k}"${k === du ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>
+      <span class="muted hint">Feet and miles show the distance in the tables and on the At a glance card in feet (up to a mile) and miles, and you type the length of a track, its lanes and its pieces in feet and inches. Everything stays saved in metres, so you can change this at any time and nothing is lost.</span></div>`)
     + sf('names', 'Name and welcome', S.appName ? S.appName : 'the standard name', `<div class="field" style="max-width:360px"><label for="appname">App Name (shown at the top of the window)</label><input id="appname" type="text" maxlength="40" value="${esc(S.appName || '')}" placeholder="${DEFAULT_NAME}"></div>
     <div class="field" style="max-width:560px"><label for="welcome">Welcome Message (shown at the top of the Home tab)</label><input id="welcome" type="text" maxlength="120" value="${esc(S.welcome || '')}" placeholder="${esc(DEFAULT_WELCOME)}"><span class="muted hint">Leave it empty for the standard message.</span></div>`)
     + sf('header', 'Header picture', pic ? 'a picture is set' : 'no picture', `<div class="field" style="max-width:480px"><label for="hdrfile">Header picture on the Home tab</label>
@@ -132,6 +135,7 @@ async function renderGeneralSettings(box) {
   const $ = id => document.getElementById(id);
   $('uiscale').onchange = async ev => { state.settings = await api.setSettings({ uiScale: UiScale.levelOf(ev.target.value) }); applyUiScale(); renderSettings(); };
   $('speedunit').onchange = async ev => { state.settings = await api.setSettings({ speedUnit: Speed.unitOf({ speedUnit: ev.target.value }) }); renderSettings(); };
+  $('distunit').onchange = async ev => { state.settings = await api.setSettings({ distanceUnit: Speed.distUnitOf({ distanceUnit: ev.target.value }) }); renderSettings(); };
   $('picq').onchange = async ev => { state.settings = await api.setSettings({ pictureQuality: Picture.levelOf(ev.target.value) }); renderSettings(); };
   $('appname').onchange = async ev => { state.settings = await api.setSettings({ appName: ev.target.value.trim() }); applyName(); };
   $('welcome').onchange = async ev => { state.settings = await api.setSettings({ welcome: ev.target.value.trim() }); };
