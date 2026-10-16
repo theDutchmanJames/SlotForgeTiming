@@ -248,5 +248,26 @@ const every = (fn) => sizes.every(([c, l]) => [1, 2, 3].every(seed => fn(c, l, s
   ok('...nothing is added for a driver who is in no final, and nothing when the finals decide the places or the caller has no final information (as before)', H.scoreText({ score: 9, heatScore: 9, counted: 3, heats: 3, finalPos: null }, { countBy: 'total' }, fin) === '9' && H.scoreText(row, { countBy: 'total' }, { finalMode: 'places', byPoints: true }) === '25 (2 of 3 heats)' && H.scoreText(row, { countBy: 'total' }) === '25 (2 of 3 heats)' && H.scoreText({ score: 9, counted: 2, heats: 2 }, { countBy: 'average' }) === '9 avg');
 }
 
+// ---- 1.24.0: a heat race that was interrupted: the state of the heats as plain data, and back ----
+{ const people = [0, 1, 2].map(i => ({ driverId: 'd' + i, carId: 'c' + i, driverName: 'D' + i, carName: 'car' + i }));
+  const sched = [[{ p: 0, lane: 0 }, { p: 1, lane: 1 }], [{ p: 1, lane: 0 }, { p: 2, lane: 1 }], [{ p: 2, lane: 0 }, { p: 0, lane: 1 }]];
+  const mkH = (o = {}) => E.createHeatRace({ participants: people, schedule: o.schedule || sched, resultBy: 'laps', points: [], lanes: 2, finals: o.finals || 'none' });
+  const fake = (a, b) => ({ standings: () => [{ pos: 1, car: { participant: a, laps: [1, 1], total: 2, best: 1 } }, { pos: 2, car: { participant: b, laps: [1], total: 2, best: 1 } }] });
+  const A = mkH({ finals: 'a' }); A.record(fake(0, 1)); A.record(fake(1, 2));
+  const snap = A.snapshot(), plain = JSON.parse(JSON.stringify(snap));
+  ok('the snapshot of the heats is plain data: it goes through JSON and comes back the same', JSON.stringify(plain) === JSON.stringify(snap) && snap.v === 1 && snap.idx === 2 && snap.results.length === 2 && JSON.stringify(snap.schedule) === JSON.stringify(sched));
+  ok('...it is a copy: later heats are not in it', (A.record(fake(2, 0)), snap.results.length === 2 && snap.idx === 2));
+  const B = mkH({ finals: 'a' }), done = JSON.parse(JSON.stringify(snap));
+  ok('it goes back into a heat race made with the same settings: the heats that are done, and the same overall result', B.restore(done) === true && B.idx === 2 && B.results.length === 2 && JSON.stringify(B.overall()) === JSON.stringify((() => { const C = mkH({ finals: 'a' }); C.record(fake(0, 1)); C.record(fake(1, 2)); return C.overall(); })()));
+  ok('...the next heat is the one after the heats that are done', B.hasNext() && B.raceName(B.idx) === 'Heat 3' && JSON.stringify(B.entries().map(e => e.participant)) === JSON.stringify([2, 0]));
+  done.results.push({ heat: 3, rows: [] }); done.idx = 3; const F = mkH({ finals: 'a' });
+  ok('the finals come back: the plan of the final and the lanes that were chosen', (A.finalPlan !== null) && (F.restore({ ...JSON.parse(JSON.stringify(A.snapshot())), picks: { A: [{ p: 0, lane: 1 }] } }) === true) && F.idx === 3 && F.finalPlan.length === 1 && F.finalPlan[0].name === 'A' && F.finalNow().picks.length === 1 && F.finalNow().picks[0].lane === 1 && F.isFinal());
+  const bad = (name, change, mk2 = () => mkH({ finals: 'a' })) => { const t = mk2(), before = JSON.stringify(t.snapshot()), s2 = JSON.parse(JSON.stringify(snap)); change(s2); return t.restore(s2) === false && JSON.stringify(t.snapshot()) === before; };
+  ok('a snapshot that does not fit is refused and changes nothing: nothing at all, another version, no list of results', [null, undefined, 'x', {}].every(x => mkH().restore(x) === false) && bad('v', s2 => { s2.v = 2; }) && bad('results', s2 => { delete s2.results; }));
+  ok('...a number of heats that is not the number of results, or more than there are', bad('count', s2 => { s2.idx = 1; }) && bad('many', s2 => { s2.idx = 9; s2.results = new Array(9).fill({ rows: [] }); }) && bad('neg', s2 => { s2.idx = -1; s2.results = []; }));
+  ok('...other heats (another plan, so other drivers or lanes)', bad('plan', s2 => { s2.schedule = sched.slice(0, 2); }) && bad('lane', s2 => { s2.schedule = [[{ p: 0, lane: 1 }, { p: 1, lane: 0 }], ...sched.slice(1)]; }));
+  ok('...a final that is missing or is another one, a driver that is not there, lanes that are no list of choices', (() => { const T = mkH({ finals: 'a' }); const s3 = JSON.parse(JSON.stringify(A.snapshot())); const t1 = mkH({ finals: 'a' }); const f1 = JSON.parse(JSON.stringify(s3)); f1.finalPlan = null; const f2 = JSON.parse(JSON.stringify(s3)); f2.finalPlan[0].name = 'B'; const f3 = JSON.parse(JSON.stringify(s3)); f3.finalPlan[0].drivers = [0, 9]; const f4 = JSON.parse(JSON.stringify(s3)); f4.picks = []; return t1.restore(f1) === false && T.restore(f2) === false && mkH({ finals: 'a' }).restore(f3) === false && mkH({ finals: 'a' }).restore(f4) === false && T.idx === 0 && T.results.length === 0; })());
+  ok('a heat race without finals needs no plan of the final', mkH().restore(JSON.parse(JSON.stringify(snap))) === true && (() => { const N = mkH(); N.restore({ v: 1, schedule: sched, idx: 1, results: [{ heat: 1, rows: [] }], finalPlan: null, picks: {} }); return N.idx === 1 && N.finalPlan === null && Object.keys(N.picks).length === 0; })()); }
+
 console.log(fails ? `\n${fails} HEAT PLAN TESTS FAILED` : '\nheats: all PASSED');
 process.exit(fails ? 1 : 0);

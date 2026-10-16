@@ -158,7 +158,8 @@ class Database {
   // The file sits next to the database and is written whole, then renamed, so a cut in the middle leaves the earlier snapshot.
   resumeFile() { return path.join(path.dirname(this.file), 'race-resume.json'); }
   getResume() {
-    try { const x = JSON.parse(fs.readFileSync(this.resumeFile(), 'utf8')); return x && x.v === 1 && x.eng && x.race ? x : null; } catch { return null; }
+    // (a heat race that waits between two races has no engine, only the state of its heats: 1.24.0)
+    try { const x = JSON.parse(fs.readFileSync(this.resumeFile(), 'utf8')); return x && x.v === 1 && x.race && (x.eng || (x.heat && x.heat.state)) ? x : null; } catch { return null; }
   }
   setResume(snap) {
     if (!snap || typeof snap !== 'object' || snap.v !== 1) return false;

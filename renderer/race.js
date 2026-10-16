@@ -38,7 +38,9 @@ async function renderRace() {
   const damCfg = tokenSession ? null : Damage.clean(find(damageSystems, setup.damageSystem), r.track.deslotTime); // damage points, the levels and the repair in the pits (a race or a timed race; the deslot time is that of the track)
   // Weather: only for a race or a timed race, with the weather system the setup has. Every engine (every heat) gets the settings with a seed for the random choices: the same one in every heat, unless the system says every heat has new weather
   const wxRec = !tokenSession && (engineType === 'race' || engineType === 'timed') ? find(weatherSystems, setup.weather) : null, wxSeed = (r.resume && r.resume.wxSeed) || Heats.newSeed(); // (a race that is carried on after an interruption has the weather it had)
-  const wxFor = () => (wxRec ? Wx.clean(wxRec, Wx.clean(wxRec, 0).same ? wxSeed : Heats.newSeed()) : null);
+  // wxLast: the seed of the race that was made last (kept in the snapshot of an interrupted race); wxForce: the seed of the race that was interrupted, so the weather goes on as it was planned (1.24.0)
+  let wxLast = 0, wxForce = r.resume && r.resume.wxHeat !== undefined && r.resume.wxHeat !== null && Number.isFinite(Number(r.resume.wxHeat)) ? Number(r.resume.wxHeat) : null;
+  const wxFor = () => { if (!wxRec) return null; const seed = Wx.clean(wxRec, 0).same ? wxSeed : wxForce !== null ? wxForce : Heats.newSeed(); wxForce = null; wxLast = seed; return Wx.clean(wxRec, seed); };
   // a final has its own length (0 is the same as a heat). lenNow: the length of the race that is racing, or is next while the race waits between two races
   const finalLen = () => ({ laps: Number(setup.finalLaps) > 0 ? Number(setup.finalLaps) : setup.laps, duration: Number(setup.finalDuration) > 0 ? Number(setup.finalDuration) : setup.duration });
   const lenNow = () => (heat && heat.isFinal() ? finalLen() : { laps: setup.laps, duration: setup.duration });
@@ -447,7 +449,7 @@ async function renderRace() {
     else if (what === 'random') { if (!heat.randomRest()) return false; }
     else if (what === 'clear') heat.clearPicks();
     else return false;
-    regrid(); return true;
+    live.cpAt = undefined; regrid(); return true; // (the lanes that are chosen are kept at once)
   };
   live.pickAction = pickAction; // (for the automated tests)
   const drawFinalPick = () => {
@@ -505,7 +507,7 @@ async function renderRace() {
       if (heat.hasNext() && !live.stopping) {
         assignDrivers();
         live.phase = 'between'; eng = mk(heat.entries()); startBreak(); // (a final: the grid shows the lanes in the order of the heat result until the drivers have chosen)
-        live.ann = mkAnn(); live.flash = new Map(); shareStatic(); update(); return;
+        live.ann = mkAnn(); live.flash = new Map(); live.cpAt = undefined; shareStatic(); update(); return; // (cpAt: the heat that is done is kept at once)
       }
     }
     finishAll();
@@ -557,7 +559,7 @@ async function renderRace() {
       eng.cars.forEach(c => laps.push(...lapRows(c, date, {})));
     }
     if (!laps.length) { clearCheckpoint(); ui('msg').textContent = 'No laps were recorded, so nothing was saved.'; return; }
-    const session = { setupName: setup.name, sessionType: setup.ofType || setup.sessionType, trackId: r.track.id, trackName: r.track.name, date, endedBy: heats ? '' : eng.endedBy, ...(!heats && eng.resumes ? { resumed: eng.resumes } : {}), standings, ...(!heats && eng.weatherNote() ? { weatherNote: eng.weatherNote() } : {}) };
+    const session = { setupName: setup.name, sessionType: setup.ofType || setup.sessionType, trackId: r.track.id, trackName: r.track.name, date, endedBy: heats ? '' : eng.endedBy, ...(!heats && eng.resumes ? { resumed: eng.resumes } : {}), ...(heats && live.resumeCount ? { resumed: live.resumeCount } : {}), standings, ...(!heats && eng.weatherNote() ? { weatherNote: eng.weatherNote() } : {}) };
     if (heats) { session.resultBy = heat.scoring.byTime ? 'time' : setup.resultBy;
       const wn = heat.results.map(h => h.weatherNote || ''), wxAll = wn.length > 0 && wn[0] !== '' && wn.every(n => n === wn[0]); // the weather of the heats: said once when it was the same in every heat, otherwise with every heat
       if (wxAll) session.weatherNote = wn[0];
@@ -936,16 +938,42 @@ async function renderRace() {
   // offers to carry on: the race comes back paused, with its clock where it was in the last snapshot, and starts again with Space. The laps that were driven in between are lost (the review can add them),
   // and the lap that was being driven is left out of the records. The file goes when the result is saved or deleted.
   function lean(o) { return Object.fromEntries(Object.entries(o || {}).filter(([, v]) => !(typeof v === 'string' && v.length > 2000))); } // (a picture does not need to be written again every few seconds)
+  // A heat race (1.24.0) keeps the same: the heats that are done (their results and laps), the finals and the lanes chosen for them, and the race that is racing now (or none while it waits between two races)
+  const heatState = () => ({ state: heat.snapshot(), phase: live.phase, laps: live.laps, extraBy: [...live.extraBy], stintBy: [...live.stintBy], priorBy: [...live.priorBy], priorAll: Number.isFinite(live.priorAll) ? live.priorAll : null, priorAllName: live.priorAllName, resumes: live.resumeCount || 0,
+    ...(byTeam ? { drivers: people.map(p => p.driverId) } : {}), teamHist: teamHist.map(l => l.slice()) });
   function checkpoint() {
-    if (!api.saveResume || heats || tokens || !live || !live.alive || live.cpOff || !['running', 'paused', 'review'].includes(live.phase)) return;
-    const t = now(), sig = [eng.status, eng.flag, eng.cars.reduce((n, c) => n + c.laps.length + c.points + (c.en ? c.en.swaps : 0) + (c.blockAt !== null ? 1 : 0), 0)].join('|');
+    const waiting = heats && !!live && live.phase === 'between'; // (a heat race also waits between two races)
+    if (!api.saveResume || tokens || !live || !live.alive || live.cpOff || !(waiting || ['running', 'paused', 'review'].includes(live.phase))) return;
+    const t = now(), sig = [live.phase, eng.status, eng.flag, heats ? heat.idx + ':' + Object.values(heat.picks).reduce((n, x) => n + x.length, 0) : '', eng.cars.reduce((n, c) => n + c.laps.length + c.points + (c.en ? c.en.swaps : 0) + (c.blockAt !== null ? 1 : 0), 0)].join('|');
     if (live.cpAt !== undefined && (t - live.cpAt < 2000 / speed || (sig === live.cpSig && t - live.cpAt < 5000 / speed))) return;
     live.cpAt = t; live.cpSig = sig;
-    try { Promise.resolve(api.saveResume({ v: 1, savedAt: new Date().toISOString(), name: setup.name, kind: SESSION_LABEL[setup.ofType || setup.sessionType] || '', trackName: r.track.name, wxSeed, elapsed: eng.elapsed(t), phase: live.phase,
-      race: { setup: lean(r.setup), track: lean(r.track), rows: r.rows }, eng: eng.snapshot(t) })).catch(() => {}); } catch { /* a snapshot that can not be kept must never stop the race */ }
+    const where = !heats ? '' : waiting ? `between ${lc(heat.raceName(heat.idx - 1))} and ${lc(heat.raceName(heat.idx))}` : `${Endurance.clock(eng.elapsed(t))} into ${lc(heat.raceName(heat.idx))}${heat.idx < heat.count ? ' of ' + heat.count : ''}`; // (for the note on the Home tab)
+    try { Promise.resolve(api.saveResume({ v: 1, savedAt: new Date().toISOString(), name: setup.name, kind: SESSION_LABEL[setup.ofType || setup.sessionType] || '', trackName: r.track.name, wxSeed, wxHeat: wxLast, elapsed: waiting ? 0 : eng.elapsed(t), phase: live.phase,
+      ...(heats ? { where, heat: heatState() } : {}),
+      race: { setup: lean(r.setup), track: lean(r.track), rows: r.rows, ...(byTeam ? { byTeam: true } : {}), ...(heats ? { schedule: heat.schedule, ...(r.labels ? { labels: r.labels } : {}) } : {}) }, eng: waiting ? null : eng.snapshot(t) })).catch(() => {}); } catch { /* a snapshot that can not be kept must never stop the race */ }
   }
-  function clearCheckpoint() { live.cpOff = true; if (api.clearResume && !heats && !tokens) Promise.resolve(api.clearResume()).catch(() => {}); }
+  function clearCheckpoint() { live.cpOff = true; if (api.clearResume && !tokens) Promise.resolve(api.clearResume()).catch(() => {}); }
+  // A heat race that comes back: the heats that are done, the finals, the laps and figures of the finished races, and the drivers of the teams are put back, and the race is made again for the race that was racing (or is next).
+  // Says false when there is nothing more to restore (the race waits between two races, or it does not fit); true when the race that was racing is to be put back.
+  function resumeHeats(snap) {
+    const hs = snap.heat, mapOf = x => new Map(Array.isArray(x) ? x.filter(e => Array.isArray(e) && e.length === 2) : []);
+    if (!hs || typeof hs !== 'object' || !heat.restore(hs.state)) { live.cpOff = true; ui('msg').textContent = 'The saved race does not fit this race setup any more, so it could not be carried on.'; return false; }
+    if (byTeam && Array.isArray(hs.drivers)) hs.drivers.forEach((id, i) => { if (people[i] && typeof id === 'string') setDriver(i, id); });
+    if (Array.isArray(hs.teamHist)) hs.teamHist.forEach((l, i) => { if (teamHist[i] && Array.isArray(l)) { teamHist[i].length = 0; teamHist[i].push(...l.filter(x => typeof x === 'string')); } });
+    live.laps = Array.isArray(hs.laps) ? hs.laps : []; live.extraBy = mapOf(hs.extraBy); live.stintBy = mapOf(hs.stintBy); live.priorBy = mapOf(hs.priorBy);
+    live.priorAll = typeof hs.priorAll === 'number' && Number.isFinite(hs.priorAll) ? hs.priorAll : Infinity; live.priorAllName = String(hs.priorAllName || '');
+    wxForce = snap.wxHeat !== undefined && snap.wxHeat !== null && Number.isFinite(Number(snap.wxHeat)) ? Number(snap.wxHeat) : null; // (the weather of the race that was interrupted goes on)
+    eng = mk(heat.entries()); live.ann = mkAnn(); live.flash = new Map(); live.fpKey = null; live.tpKey = null; live.breakLeft = 0;
+    live.resumeCount = (Number(hs.resumes) || 0) + (snap.eng ? 1 : 0); // (how many times a race that was racing came back: the result says so; coming back between two races loses no lap)
+    if (snap.stopNow) live.stopping = true; // ("Save what was recorded": the race ends with the race that was racing, it does not go on with the next one)
+    if (snap.eng) return true;
+    live.phase = 'between'; recomputeBests();
+    if (snap.stopNow) { finishAll(); return false; }
+    ui('msg').textContent = 'The race was interrupted and is back, between two races. ' + betweenMsg();
+    return false;
+  }
   function resumeRace(snap) {
+    if (heats && !resumeHeats(snap)) return;
     if (!eng.restore(snap.eng)) { live.cpOff = true; ui('msg').textContent = 'The saved race does not fit this race setup any more, so it could not be carried on.'; return; }
     recomputeBests(); live.cpAt = now();
     ui('sim').disabled = true;
@@ -959,6 +987,6 @@ async function renderRace() {
     live.phase = 'paused'; startTimers();
     ui('msg').textContent = 'The race was interrupted and is back, paused where it was at the last saving point. Check the laps, then press Space (Pause / Resume) to carry on.';
   }
-  if (r.resume && !heats && !tokens) resumeRace(r.resume);
+  if (r.resume && !tokens) resumeRace(r.resume);
   shareStatic(); update(); drawOverall();
 }

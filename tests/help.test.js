@@ -213,6 +213,8 @@ const folders = Help.folders();
   say('1.20.0: the Race Director folder says a race setup can have pad values of its own (Rule sets: Adjust pads), and is still short enough', dr.includes('A race setup can have pad values of its own') && dr.includes('Adjust pads') && dr.length < 1400);
   say('...and the form has the Adjust pads group that it names, in the Rule sets area of the race setup', schema.racesetups.groups.some(g => g.title === 'Adjust pads') && schema.racesetups.fields.some(f => f.group === 'pads')); }
 
+{ const hf = Help.folders().map(f => plain(f.body)), a = hf.find(t => t.includes('Resume the race')) || '', b = hf.find(t => t.includes('can be continued from the Home tab')) || ''; // 1.24.0
+  say('1.24.0: the help says a heat race keeps its finished heats after a crash, and can be continued', a.includes('a heat race keeps its finished heats') && b.includes('also a heat race') && a.length < 1400 && b.length < 1400); }
 { const dm = Help.folders().map(f => plain(f.body)).find(t => t.includes('A damage system (Race Setup')) || ''; // 1.23.0
   say('1.23.0: the Damage help says the results list the damage in a heat race per heat too', dm.includes('in a heat race per heat too') && dm.length < 1400); }
 { const hs = Help.folders().map(f => plain(f.body)).find(t => t.includes('General: type your own app name')) || ''; // 1.22.0

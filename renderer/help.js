@@ -34,7 +34,7 @@ const Help = (() => {
           <li>If a <b>qualifying</b> was driven on the same track, its winner picks their lane first.</li>
           <li>The band at the top shows the date and the track, and lights for the <b>Trackmate</b>, sharing on the network and the <b>audio set</b> of the setup. The welcome message and the header picture are changed in App Settings, General.</li>
           <li>On the right: the <b>record to beat</b> on this track (and who on the grid is closest), the <b>last race</b> with its podium and fastest lap, and <b>At a glance</b> (races, laps, distance, most wins). They come from your saved races, not from Time Token Sessions.</li>
-          <li>When a race was stopped by a crash or a power cut, a note at the top offers <b>Resume the race</b> (it comes back paused, press Space to go on), <b>Save what was recorded</b> or <b>Delete it</b>.</li>
+          <li>When a race was stopped by a crash or a power cut, a note at the top offers <b>Resume the race</b> (it comes back paused, press Space to go on; a heat race keeps its finished heats), <b>Save what was recorded</b> or <b>Delete it</b>.</li>
         </ul>` },
       { id: 'database', title: 'Database', note: 'Tracks, drivers and slot cars', body: `
         <ul>
@@ -111,7 +111,7 @@ const Help = (() => {
           <li>The swap is made when the car stops on the pit sensor (like a Stop-and-Go), or when <b>Swap done</b> is pressed on the Race Director page or a phone. The driver who steps in is the next one in the team's order, chosen at each swap, or picked by lot.</li>
           <li>When the swap is late, the laps keep counting or stop counting, and the team can get penalty points (they need a penalty system), again and again if you like.</li>
           <li>The widgets <b>Current Driver</b>, <b>Next Driver</b> and <b>Swap Timer</b> (amber before the swap is due, red when it is late) show it on the timing page. The audio folder <b>Endurance</b> says "{team} needs to swap positions! Box Box!" and who came in and who took over.</li>
-          <li>The results show every driver's time at the wheel and stints. A race in one go that a crash or a power cut stops can be continued from the Home tab.</li>
+          <li>The results show every driver's time at the wheel and stints. A race that a crash or a power cut stops, also a heat race, can be continued from the Home tab.</li>
         </ul>` },
       { id: 'damage', title: 'Damage System', note: 'Damage points, and the stop in the pits that repairs them', body: `
         <ul>

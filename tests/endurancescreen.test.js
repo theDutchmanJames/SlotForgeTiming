@@ -254,7 +254,7 @@ const pressSwap = (lane, over = {}) => E('enpanel').onclick({ target: { closest:
   say('...the first heat of Red Bulls says who drove (the team with the drivers in brackets) and their stints', hs.heatResults[0].rows.some(x => x.driverName === 'Red Bulls (Alex, Sam)' && x.by === 'Alex, Sam' && x.driverId === '' && x.stints.map(q => q.driverId).join() === 'd1,d2'));
   say('...the team is one row in the result, with every driver who drove for it (laps and time), and the stints of both heats', hred.asTeam === true && hred.laps === 8 && hred.drivers.map(d => d.driverId + ':' + d.laps).join() === 'd1:6,d2:2' && hred.drivers.every(d => d.ms >= 0) && hred.stints.map(q => q.heat + ':' + q.driverId).join() === '1:d1,1:d2,2:d1');
   say('...every lap is for the driver who drove it', hl.filter(l => l.teamId === 'T1' && l.heat === 1).sort((a, b) => a.lapNumber - b.lapNumber).map(l => l.driverId).join() === 'd1,d1,d2,d2' && hl.filter(l => l.teamId === 'T1' && l.heat === 2).every(l => l.driverId === 'd1' || l.driverId === 'd2'));
-  say('a heat race keeps nothing in the file, and does not touch the race that is kept from an earlier interruption (not saved over, not deleted when the heats are saved)', kept.saves === 0 && kept.clears === 0 && kept.snap === oldSnap);
+  say('a heat race keeps its state in the file too (1.24.0), takes the place of the race that was kept from an earlier interruption, and deletes the file when the heats are saved', kept.saves > 0 && kept.snap === null && kept.clears >= 1 && kept.snap !== oldSnap);
   kept.snap = null;
   run('state.race = null; live = null'); saved.length = 0;
 

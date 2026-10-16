@@ -1642,7 +1642,7 @@ This is the Endurance Race from your idea of Thursday 15 October, with the answe
 Try it: Database > Teams, make two teams of two drivers. Race Setup > Race Setups: a new setup, *Session type: Endurance Race*, *The Endurance Race is: one long race of a number of laps* (12 laps), *The swaps are counted in: laps*, *A swap is needed: every so often, every 3 laps*, *Warn: 1 lap*, *The swap is made when: the Swap done button*. On Home choose a team and a car on two lanes, tick *Simulated cars*, and start. After three laps a team turns amber, then red ("Box Box"): press **Swap done** and watch Current Driver and the audio change. Leave one swap alone for the grace time and set *penalty points* to see the late call. To try the crash: stop the app in the middle of the race (close the window or end the process), open it again, and use *Resume the race* on Home.
 
 Good to know:
-1. **Resume is for a race in one go.** A heat-based Endurance Race (or a heat race) is not carried on after a crash; the finished heats are not kept either. This is the first version of it, so tell me how it feels in a real race.
+1. **Resume is for a race in one go.** A heat-based Endurance Race (or a heat race) is not carried on after a crash; the finished heats are not kept either. This is the first version of it, so tell me how it feels in a real race. (Since 1.24.0 a heat race is carried on too: see *What to try (1.24.0)*.)
 2. **A team with one driver, or a lane without a team, drives like a normal car** in an Endurance Race: no swaps.
 3. **Penalties need a penalty system** (Race Setup > Penalty Systems, chosen in the race setup). Without one the team is still called out, but no points are added.
 4. **Simulated cars** do not stop on the pit sensor by themselves for a swap, so use the Swap done button when you try it.
@@ -2008,3 +2008,24 @@ Good to know:
 4. Results that were saved before this version have no damage in their heats (it was not kept). Only races from now on have it.
 5. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 6. The tests: `tests/damage.test.js` (the total in words), `tests/damageengine.test.js` (the row of a heat and the overall result), `tests/damagescreen.test.js` (a heat race on the race screen, saved), `tests/report.test.js` (the PDF) and `tests/screens.test.js` (the Results table).
+
+## What to try (1.24.0): resume for heat-based races
+From your list: a crash or a power cut no longer loses a heat race. The race that is racing, and the heats that are already done, come back.
+1. Start a **heat-based race** with three heats (or a heat-based Endurance Race; tick *Simulated cars* if you have no hardware). Let heat 1 finish: the Race tab shows *Done* next to it in the heat list.
+2. During heat 2, stop the app the rough way (end the process, or pull the plug of the laptop if you dare). Open the app again.
+3. The **Home** tab shows *A race was interrupted* with the name of the race, the track, and where it was, such as *0:42 into heat 2 of 3*. Press **Resume the race**.
+4. The Race tab comes back **paused** in heat 2 with the laps it had at the last saving point (a few seconds before the crash). Heat 1 is still in the heat list and in the overall result. Press Space to carry on; heat 3 and the result follow as always.
+5. If the race stopped **between two heats** (or between the last heat and a final), it comes back between them: heat 1 done, heat 2 next, *The race was interrupted and is back, between two races.* It does not start by itself, even with a break and an automatic start: press Space when you are ready.
+6. **Save what was recorded** ends the race where it was and saves what it has: the finished heats, and the heat that was racing as far as it got (after the review, as before). **Delete it** throws it away.
+
+What comes back, besides the heats and their laps: the lanes of the heat plan, the **lanes the drivers had chosen for a final**, the driver who drives for each **team** in the next heat (and who has driven, so the order or the lot goes on as it would have), the pit stops and penalty points of the finished heats, and the **weather forecast** of the heat that was racing (not a new random one).
+
+Good to know:
+1. As with a race in one go, the laps driven after the last saving point are lost (the review can add them), and the lap that was being driven is left out of the records. The result says so (*This race was interrupted and carried on*), as for a race in one go, but only when a heat that was racing came back, not when the race came back between two heats.
+2. The file is written about every two seconds while a heat is racing, and at once when a heat is done or a lane for a final is chosen. It is deleted when the result is saved or deleted.
+3. Only one interrupted race is kept. Starting a new race replaces an older one at its first saving point (a single race already did).
+4. If the race setup was changed so that the heats no longer fit (other drivers or lanes), the race says so and starts as a new race instead of bringing back something that does not fit.
+5. Heat races that were interrupted with an older version were not kept, so there is nothing to bring back for those.
+6. A **Time Token Session** is still not carried on.
+7. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+8. The tests: `tests/heatresume.test.js` (the whole way, on screen: kept while racing, between heats, the Home tab, Resume, Save what was recorded, a final with lanes, teams and the weather), `tests/heats.test.js` (the state of the heats as data, and what does not fit), `tests/resume.test.js` (the file), `tests/endurancescreen.test.js` and `tests/help.test.js`.

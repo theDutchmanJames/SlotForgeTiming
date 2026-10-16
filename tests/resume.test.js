@@ -111,6 +111,10 @@ const through = R => JSON.parse(JSON.stringify(R.snapshot(0))); // (plain data, 
   fs.writeFileSync(db.resumeFile(), JSON.stringify({ v: 1, name: 'no engine' })); ok('...and neither is a file without a race in it', db.getResume() === null);
   fs.writeFileSync(db.resumeFile(), JSON.stringify({ v: 1, eng: snap.eng })); ok('...a file with an engine but without the race (setup, track, lanes) is nothing either: it can not be opened again', db.getResume() === null);
   fs.writeFileSync(db.resumeFile(), JSON.stringify({ v: 1, race: snap.race })); ok('...and the same for a race without an engine', db.getResume() === null);
+  const between = { v: 1, savedAt: '2026-10-16T10:00:00.000Z', name: 'Heat night', phase: 'between', race: snap.race, eng: null, heat: { state: { v: 1, idx: 1, results: [{ heat: 1, rows: [] }] } } };
+  ok('1.24.0: a heat race that waits between two races is kept without an engine, and comes back from the file the same', db.setResume(between) === true && same(db.getResume(), JSON.parse(JSON.stringify(between))));
+  fs.writeFileSync(db.resumeFile(), JSON.stringify({ ...between, heat: undefined })); ok('...without the state of the heats it is nothing (there is nothing to carry on with)', db.getResume() === null);
+  fs.writeFileSync(db.resumeFile(), JSON.stringify({ ...between, race: undefined })); ok('...and neither is it without the race', db.getResume() === null);
   db.setResume(snap); ok('clearing removes the file (and clearing twice is fine)', db.clearResume() === true && db.getResume() === null && !fs.existsSync(db.resumeFile()) && db.clearResume() === true);
   const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8'), pre = fs.readFileSync(path.join(__dirname, '..', 'preload.js'), 'utf8');
   ok('the main program and the preload script have the three calls (get, save, clear)', ['resume:get', 'resume:save', 'resume:clear'].every(c => main.includes("ipcMain.handle('" + c + "'") && pre.includes("call('" + c + "'")) && /getResume: \(\) =>/.test(pre) && /saveResume: snap =>/.test(pre) && /clearResume: \(\) =>/.test(pre));

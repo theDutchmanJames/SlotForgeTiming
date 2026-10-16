@@ -786,6 +786,20 @@
     const sizes = finalSizes(participants.length, lanes, fin.finals), names = sizes.length === 2 ? ['B', 'A'] : sizes.length === 1 ? ['A'] : [], rnd = cfg.rnd || Math.random;
     const H = { schedule, idx: 0, results: [], count: schedule.length, total: schedule.length + names.length, lanes, scoring: sc, finals: fin, finalPlan: null, picks: {} };
     H.hasNext = () => H.idx < H.total;
+    // A heat race that was interrupted (1.24.0): the state of the heats as plain data, and back. snapshot() holds what changes while the heats are raced: the schedule (to see that it is the same race), the heats that are done, the finals and the lanes chosen for them.
+    // restore(snap) puts it into a heat race that was made with the same settings; it says false (and changes nothing) when the schedule, the number of races or the finals do not fit.
+    H.snapshot = () => JSON.parse(JSON.stringify({ v: 1, schedule: H.schedule, idx: H.idx, results: H.results, finalPlan: H.finalPlan, picks: H.picks }));
+    H.restore = snap => {
+      if (!snap || snap.v !== 1 || !Array.isArray(snap.results) || !Number.isInteger(snap.idx) || snap.idx < 0 || snap.idx > H.total || snap.results.length !== snap.idx) return false;
+      if (JSON.stringify(snap.schedule) !== JSON.stringify(H.schedule)) return false; // (not the same heats any more: other drivers, other lanes)
+      const plan = snap.finalPlan;
+      if (names.length && snap.idx >= H.count) { if (!Array.isArray(plan) || plan.length !== names.length || !plan.every((g, i) => g && g.name === names[i] && Array.isArray(g.drivers) && g.drivers.every(p => Number.isInteger(p) && p >= 0 && p < participants.length))) return false; }
+      else if (plan !== null && plan !== undefined && !Array.isArray(plan)) return false;
+      if (snap.picks !== undefined && (snap.picks === null || typeof snap.picks !== 'object' || Array.isArray(snap.picks))) return false;
+      const x = JSON.parse(JSON.stringify(snap));
+      H.idx = x.idx; H.results.length = 0; H.results.push(...x.results); H.finalPlan = Array.isArray(x.finalPlan) ? x.finalPlan : null; H.picks = x.picks || {};
+      return true;
+    };
     // the finals are known when the last heat is recorded: the best of the heat result race the A final, the next ones the B final (the drivers of a final are listed best first)
     const planFinals = () => {
       const ranked = H.overall().map(o => o.participant), a = ranked.slice(0, sizes[0]), b = ranked.slice(sizes[0], sizes[0] + (sizes[1] || 0));
