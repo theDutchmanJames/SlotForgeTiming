@@ -1,4 +1,4 @@
-// Delta Timers (0.91.0): the numbers (delta.js), the eight widgets as the live timing page draws them (timing.js), and their place in the widget list.
+// Delta Timers (0.91.0): the numbers (delta.js), the nine widgets as the live timing page draws them (timing.js), and their place in the widget list.
 const { createRace } = require('../renderer/engine.js');
 const D = require('../renderer/delta.js');
 const T = require('../renderer/timing.js');
@@ -49,6 +49,20 @@ ok('compared with the track record (4.500) or the session record (4.800)', v('dr
 ok('without a lane chosen it is compared with the next lane, and the last lane with the first: lane 1 with lane 2 (-1.000), lane 2 with lane 3 (+1.200), lane 3 with lane 1 (-0.200)', v('drecordlap', 0, {}) === -1000 && v('drecordlap', 1, {}) === 1200 && v('drecordlap', 2, {}) === -200 && v('drecordlap', 2, { targetLane: '' }) === -200);
 ok('a choice that is not one of the choices falls back to the first: the measure to "my value against theirs", the comparison to a chosen lane', v('drecordlap', 1, { measure: 'bogus', compare: 'bogus', targetLane: '1' }) === 1000 && v('drecordlap', 1, { measure: 'static', compare: 'self', targetLane: '1' }) === 1000);
 
+// ---- Lap to Lap Delta (1.29.0): the last lap against the lap before it ----
+{
+  ok('Lap to Lap Delta: the last lap against the lap before it: lane 1 (5.200 then 5.100) is 0.100 faster, lane 2 (6.000 then 6.100) 0.100 slower, lane 3 (4.800 then 5.500) 0.700 slower', v('dlaplap', 0) === -100 && v('dlaplap', 1) === 100 && v('dlaplap', 2) === 700 && dm('dlaplap', 0).who === 'the lap before it');
+  ok('...it needs no other lane and no choice: the comparison, the lane, the measure and "left value shows" change nothing', [{ compare: 'leader', targetLane: '2' }, { measure: 'static', compare: 'track' }, { measure: 'self', leftShows: 'ref' }, { compare: 'bogus', targetLane: '9' }].every(o => v('dlaplap', 1, o) === 100 && v('dlaplap', 0, o) === -100));
+  const fake = laps => ({ lane: 0, laps, best: null });
+  const f2 = laps => D.compute('dlaplap', {}, fake(laps), S, 16000);
+  ok('...a lane on lap 10 has driven 9 laps: the 9th against the 8th (5.050 after 5.100 is 0.050 faster), and only the last two laps count', f2([5000, 5300, 5200, 5100, 5000, 5400, 5100, 5100, 5050]).ms === -50 && f2([5000, 5300, 5200, 5100, 5000, 5400, 5100, 5100, 5050]).ms === f2([9999, 5100, 5050]).ms && f2([5100, 5100]).ms === 0);
+  ok('...with one lap there is nothing to compare with ("before"), with no lap there is no time ("mine"), and a lap that is not a number is no lap', f2([5000]).ms === null && f2([5000]).why === 'before' && f2([]).why === 'mine' && f2([NaN, 5000]).why === 'before' && f2([5000, NaN]).why === 'mine' && D.compute('dlaplap', {}, null, S, 16000).why === 'mine');
+  ok('...and the dash says why: two laps are needed', D.badge(f2([5000])).includes('dlt-none') && D.badge(f2([5000])).includes('Needs two laps') && D.WHY.before.endsWith('.'));
+  ok('...it has no "left value shows": the value is the last lap, whatever the setting says (also while the lap before is not there yet: no blank left side)', D.leftOf('dlaplap', { leftShows: 'ref' }, car(0), dm('dlaplap', 0)) === null && D.leftOf('dlaplap', {}, car(0), dm('dlaplap', 0)) === null && D.leftOf('dlaplap', { leftShows: 'ref' }, fake([5000]), f2([5000])) === null && D.leftOf('dlaplap', { leftShows: 'ref' }, fake([]), f2([])) === null);
+  const k = D.KINDS.dlaplap;
+  ok('...its settings: one note about what is compared (no choice, no lane, no "left value shows") and then the look of every Delta Timer', D.optionsFor('dlaplap').map(o => o.key).join() === 'measurenote,direction,decimals,style,badgeScale,badgeOutline,badgeBold,badgeItalic,arrow,fasterColor,slowerColor,equalColor' && D.optionsFor('dlaplap')[0].label === "This lane's last lap against the lap before it." && k.label === 'Lap to Lap Delta' && k.steady === true && !k.record);
+}
+
 // ---- the other widgets ----
 ok('Laptime Delta compares the last lap: against theirs (lane 1 5.100 against lane 3 5.500 = -0.400), or against the lane\'s own best lap (5.100 against 5.000 = +0.100)', v('dlaptime', 0, { targetLane: '3' }) === -400 && v('dlaptime', 0, { measure: 'self' }) === 100 && v('dlaptime', 2, { measure: 'self' }) === 700);
 ok('...it has no "my latest lap against their value" (that is the same thing), and asking for it gives the first choice', v('dlaptime', 0, { measure: 'live', targetLane: '3' }) === -400);
@@ -73,7 +87,7 @@ ok('the record widgets are always compared with their record: a lane or a leader
 ok('a chosen lane without a car: "nolane"', dm('drecordlap', 1, { targetLane: '6' }).why === 'nolane' && dm('drecordlap', 1, { targetLane: '8' }).ms === null);
 ok('a lane compared with itself: "self"', dm('drecordlap', 1, { targetLane: '2' }).why === 'self' && dm('drecordlap', 1, { targetLane: '2' }).ms === null);
 ok('a lane with no car at all gives nothing', D.compute('drecordlap', {}, null, S, 0).ms === null);
-ok('each reason has its own words for the badge', Object.keys(D.WHY).sort().join() === 'mine,nolane,ref,self' && Object.values(D.WHY).every(t => /\.$/.test(t)));
+ok('each reason has its own words for the badge', Object.keys(D.WHY).sort().join() === 'before,mine,nolane,ref,self' && Object.values(D.WHY).every(t => /\.$/.test(t)));
 
 // ---- the badge ----
 {
@@ -124,6 +138,22 @@ ok('each reason has its own words for the badge', Object.keys(D.WHY).sort().join
   ok('a lane without a number yet shows a dash on the left and a dim dash in the badge', (h => h.includes('<span class="dlt-val">–</span>') && h.includes('dlt-none'))(C('drecordlap', 1, { targetLane: '1' }, { personalBest: () => Infinity }).html));
   ok('Session Record Delta shows the record and who set it on the left; its Show who set it setting works', C('dsessionrecord', 0, {}).html.includes('4.800<small class="rn">Kim</small>') && !C('dsessionrecord', 0, { showName: false }).html.includes('Kim') && C('dtrackrecord', 0, {}).html.includes('4.500<small class="rn">Old</small>'));
   ok('Laptime Delta keeps the colour of a lap that has just been set: the personal best or record colour of the whole widget', (o => o.bg === '#a45cff' && o.html.includes('dlt-badge'))(T.content({ type: 'dlaptime', lane: 0, opt: { targetLane: '3' } }, S0({ flashOf: c => (c === car(0) ? { at: 15900, time: 5100, kind: 'pb' } : null) }))));
+  { // Lap to Lap Delta: the last lap stays on the left for the whole lap (the Laptime widget runs a clock), the badge says how far it is from the lap before it
+    const l0 = C('dlaplap', 0, {}).html, l1 = C('dlaplap', 1, {}).html, l2 = C('dlaplap', 2, {}).html;
+    ok('Lap to Lap Delta shows the last lap on the left and a badge against the lap before: lane 1 5.100 with a green −0.100, lane 2 6.100 with a red +0.100, lane 3 5.500 with a red +0.700', l0.includes('<span class="dlt-val">5.100</span>') && l0.includes('−0.100') && l0.includes('dlt-fast') && l0.includes('▲') && l1.includes('<span class="dlt-val">6.100</span>') && l1.includes('+0.100') && l1.includes('dlt-slow') && l1.includes('▼') && l2.includes('<span class="dlt-val">5.500</span>') && l2.includes('+0.700'));
+    ok('...the left side is not the running clock of the lap that is being driven (the Laptime Delta shows that one)', !l0.includes('0.700<') && C('dlaptime', 0, { targetLane: '3' }).html.includes('<span class="dlt-val">0.700</span>') && C('dlaplap', 0, {}, { now: 19000 }).html.includes('<span class="dlt-val">5.100</span>'));
+    ok('...the badge says it in words: "0.100 s faster than the lap before it"', l0.includes('title="0.100 s faster than the lap before it"') && l1.includes('title="0.100 s slower than the lap before it"'));
+    ok('...the settings of the badge work as on every Delta Timer (colours, decimals, arrow, top and bottom)', (h => h.includes('background:#ff00ff') && h.includes('+0.7<') && !h.includes('▼') && h.includes('dlt dlt-col'))(C('dlaplap', 2, { slowerColor: '#ff00ff', decimals: '1', arrow: 'none', direction: 'column' }).html));
+    const hot = (kind, at, o) => T.content({ type: 'dlaplap', lane: 0, opt: o || {} }, S0({ flashOf: c => (c === car(0) ? { at, time: 5100, kind } : null) }));
+    ok('...a lap that has just been set takes the personal best colour (or the record colour) for a few seconds, then the plain widget again', hot('pb', 15900).bg === '#a45cff' && hot('pb', 15900).color === '#fff' && hot('record', 15900).bg === '#ffc400' && hot('record', 15900).color === '#000' && hot('pb', 15900, { pbColor: '#112233' }).bg === '#112233' && hot('pb', 12000).bg === undefined && hot('pb', 12900).bg === undefined && hot('pb', 13100).bg === '#a45cff' && hot('pb', 11100, { holdSeconds: 4 }).bg === undefined && hot('pb', 11100, { holdSeconds: 5 }).bg === '#a45cff' && hot('pb', 15900, { holdSeconds: 0 }).bg === undefined && hot('', 15900).bg === undefined && hot('pb', 15900).html.includes('5.100') && hot('pb', 12000).html.includes('5.100'));
+    ok('...a lane without a car shows nothing, as every lane widget does', C('dlaplap', 6, {}).html === '');
+    const e3 = createRace({ type: 'race', laps: 5, endRule: 'all', entries: people }); e3.start(0);
+    const L = (over, lane = 0) => T.content({ type: 'dlaplap', lane, opt: {} }, S0({ eng: Object.assign(Object.create(e3), { pitTime: () => null }), carByLane: l => e3.cars.find(c => c.lane === l) || null, ...over }));
+    const h0 = L().html; e3.cross(0, 5000); const h1 = L().html; e3.cross(0, 10200); const h2 = L().html; e3.cross(0, 15150); const h3 = L().html;
+    e3.cars[1].laps.push(NaN); const hn = L({}, 1).html; e3.cars[1].laps.length = 0;
+    ok('...a lap that is not a number is no lap: a dash on the left, not NaN', hn.includes('<span class="dlt-val">–</span>') && !hn.includes('NaN'));
+    ok('...as the race goes: no lap is a dash with a dim dash; one lap shows it with a dim dash (needs two laps); two laps compare the second with the first (5.200 is 0.200 slower); a third lap (4.950) is compared with the second', h0.includes('<span class="dlt-val">–</span>') && h0.includes('dlt-none') && h1.includes('<span class="dlt-val">5.000</span>') && h1.includes('dlt-none') && h1.includes('Needs two laps') && h2.includes('<span class="dlt-val">5.200</span>') && h2.includes('+0.200') && h2.includes('dlt-slow') && h3.includes('<span class="dlt-val">4.950</span>') && h3.includes('−0.250') && h3.includes('dlt-fast'));
+  }
   ok('Pitstop Time Delta shows the pit time and its badge', (h => h.includes('>8.200</span>') && h.includes('+1.200'))(C('dpitstop', 1, { targetLane: '1' }).html));
   ok('the badge says who it is compared with, with a name that cannot break the page', (n => { const old = car(0).driverName; car(0).driverName = 'A<b>"x"'; const h = C('drecordlap', 1, { targetLane: '1' }).html; car(0).driverName = old; return h.includes('lane 1 (A&lt;b&gt;&quot;x&quot;)') && !h.includes('<b>'); })());
   ok('in a Time Token Session a lane whose time is up turns the whole widget the "time is up" colour, as every lane widget does', (o => o.bg === '#ff0000')(T.content({ type: 'drecordlap', lane: 1, opt: {} }, S0({ tokens: { stateOf: l => (l === 1 ? 'out' : 'running'), outColor: '#ff0000' } }))));
@@ -163,8 +193,8 @@ ok('each reason has its own words for the badge', Object.keys(D.WHY).sort().join
 // ---- in the widget list and the layout editor ----
 {
   const dl = Wd.REGISTRY.filter(d => d.group === 'Delta Timers');
-  ok('61 widgets in the register: the 40 before, the 8 Delta Timers, the Race Laps widget (1.2.0), Balance of Power (1.3.0), Tyres, Weather Forecast and Track Conditions (1.5.0), the Heat List (1.7.0) Team Name and Team Picture (1.8.0), Current Driver, Next Driver and Swap Timer (1.9.0), and Damage and Repair Timer (1.10.0)', Wd.REGISTRY.length === 61 && dl.length === 8 && new Set(Wd.REGISTRY.map(d => d.type)).size === 61 && Wd.REGISTRY.some(d => d.type === 'racelaps'));
-  ok('the Delta Timers folder holds the six per-lane times and the two records, in this order', dl.map(d => d.label).join() === 'Laptime Delta,Average Lap Delta,Median Lap Delta,Best Lap Delta,Personal Best Delta,Pitstop Time Delta,Session Record Delta,Track Record Delta');
+  ok('62 widgets in the register: the 40 before, the 9 Delta Timers (Lap to Lap Delta came with 1.29.0), the Race Laps widget (1.2.0), Balance of Power (1.3.0), Tyres, Weather Forecast and Track Conditions (1.5.0), the Heat List (1.7.0) Team Name and Team Picture (1.8.0), Current Driver, Next Driver and Swap Timer (1.9.0), and Damage and Repair Timer (1.10.0)', Wd.REGISTRY.length === 62 && dl.length === 9 && new Set(Wd.REGISTRY.map(d => d.type)).size === 62 && Wd.REGISTRY.some(d => d.type === 'racelaps'));
+  ok('the Delta Timers folder holds the seven per-lane times and the two records, in this order (Lap to Lap Delta right after Laptime Delta)', dl.map(d => d.label).join() === 'Laptime Delta,Lap to Lap Delta,Average Lap Delta,Median Lap Delta,Best Lap Delta,Personal Best Delta,Pitstop Time Delta,Session Record Delta,Track Record Delta');
   ok('the last laps widget has no Delta version (it is a list of times)', !Wd.REGISTRY.some(d => d.type === 'dlastlap') && !Object.keys(D.KINDS).includes('dlastlap'));
   ok('every Delta Timer is a lane widget, wide enough for the time and the badge, with a sample and its own title', dl.every(d => d.perLane && d.w >= 280 && d.h === 60 && String(Wd.sampleOf(d, 0, { opt: {} })).includes('dlt-badge') && /delta$/i.test(d.title)));
   ok('Wd.titleOf gives the title of a Delta Timer', Wd.titleOf({ type: 'drecordlap', title: '' }) === 'Personal best delta' && Wd.titleOf({ type: 'dtrackrecord', title: 'My gap' }) === 'My gap');
@@ -195,7 +225,7 @@ ok('each reason has its own words for the badge', Object.keys(D.WHY).sort().join
 // ---- in a Leaderboard row design (every widget of a lane can be a column; the lane is the row's car) ----
 { const Rows = require('../renderer/rows.js');
   const design = { widgets: [{ id: 'n', type: 'name', lane: 0, x: 0, y: 0, w: 300, h: 70, opt: {} }, { id: 'd', type: 'drecordlap', lane: 0, x: 300, y: 0, w: 400, h: 70, opt: {} }, { id: 'e', type: 'dbestlap', lane: 0, x: 700, y: 0, w: 300, h: 70, opt: { compare: 'leader', arrow: false } }] };
-  ok('the Leaderboard Editor offers the delta widgets (they are widgets of one lane)', Wd.REGISTRY.filter(x => x.perLane && x.group === 'Delta Timers').length === 8);
+  ok('the Leaderboard Editor offers the delta widgets (they are widgets of one lane)', Wd.REGISTRY.filter(x => x.perLane && x.group === 'Delta Timers').length === 9);
   const h = Rows.html(design, S, 99, {});
   const rowsHtml = h.split('<div class="rrow ').slice(1), badges = r => [...r.matchAll(/dlt-badge dlt-(\w+)"[^>]*>((?:<span class="dlt-arrow">[^<]*<\/span>)?[^<]*)<\/span>/g)].map(m => m[1] + ':' + m[2].replace(/<[^>]+>/g, ''));
   ok('every row has its own personal best delta, in race order (lane 1, lane 3, lane 2): lane 1 (4.900) against lane 2 is green, lane 3 against lane 1 green, lane 2 against lane 3 red', rowsHtml.length === 3 && badges(rowsHtml[0])[0] === 'fast:▲−1.000' && badges(rowsHtml[1])[0] === 'fast:▲−0.200' && badges(rowsHtml[2])[0] === 'slow:▼+1.200');

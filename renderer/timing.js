@@ -139,11 +139,16 @@
         if (st === 'idle') return { html, color: 'var(--muted)' }; // nothing bought on this lane: dimmed
         return { html };
       }
-      case 'dlaptime': case 'davglap': case 'dmedlap': case 'dbestlap': case 'drecordlap': case 'dpitstop': case 'dsessionrecord': case 'dtrackrecord': { // a Delta Timer: the ordinary widget, with the difference beside it (delta.js)
+      case 'dlaplap': case 'dlaptime': case 'davglap': case 'dmedlap': case 'dbestlap': case 'drecordlap': case 'dpitstop': case 'dsessionrecord': case 'dtrackrecord': { // a Delta Timer: the ordinary widget, with the difference beside it (delta.js)
         const res = Dl.compute(type, opt, c, S, t), left = Dl.leftOf(type, opt, c, res);
         if (left) { // the left side shows the value it is compared with (another lane's, a record...): only the value, never the colours of that lane's flash
           const v = left.blank ? { html: '–' } : widgetContent({ ...w, type: left.type, lane: left.car ? left.car.lane : w.lane, opt: left.record ? { ...(w.opt || {}), showName: false } : w.opt }, S);
           return { html: Dl.wrap(v.html, res, opt, left.blank ? '' : left.who) };
+        }
+        if (Dl.KINDS[type].steady) { // Lap to Lap Delta: the last lap that was set stays on the left for the whole lap (the Laptime widget runs a clock instead), in the colour of a personal best or a record for a moment
+          const f = S.flashOf(c), last = c.laps.length ? c.laps[c.laps.length - 1] : null, fresh = f && S.now - f.at < (opt.holdSeconds ?? 3) * 1000;
+          const bg = fresh ? (f.kind === 'record' ? (opt.recordColor || '#ffc400') : f.kind === 'pb' ? (opt.pbColor || '#a45cff') : null) : null;
+          return { html: Dl.wrap(Number.isFinite(last) ? E.fmtTime(last) : '–', res, opt), ...(bg ? { bg, color: contrast(bg) } : {}) };
         }
         const base = widgetContent({ ...w, type: Dl.baseOf(type) }, S);
         return { ...base, html: Dl.wrap(base.html, res, opt) };

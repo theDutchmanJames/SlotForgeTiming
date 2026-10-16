@@ -2123,3 +2123,19 @@ Good to know:
 2. A set you made before this version with only Countdown pictures: its race states are now plain round lights. Drop the picture on each row you want to have it (for example *Racing (green flag) / All lights*).
 3. The colour of a plain round light is the colour in the settings of the Start Lights widget, as before.
 4. The tests: `tests/widgets.test.js` (the keys of a light, what a cell shows dimmed), `tests/timing.test.js` (what the widget draws in each state), `tests/screens.test.js` (the grid and the Preview) and `tests/help.test.js`.
+
+## What to try (1.29.0): the Lap to Lap Delta widget
+From your note: a Delta Timer that compares your last lap with the lap before it, as a widget of its own.
+1. Open **Customization > Layouts**, make or open a layout and look in the **Delta Timers** folder: **Lap to Lap Delta** is the second widget, after *Laptime Delta*. Place it on a lane.
+2. In a race the widget shows the last lap you set. On lap 10 it shows lap 9, and the badge says how far lap 9 was from lap 8: green with ▲ and a minus (▲ −0.100) when lap 9 was faster, red with ▼ and a plus (▼ +0.100) when it was slower. Point at the badge and it says it in words (*0.100 s faster than the lap before it*).
+3. After the first lap the time is shown and the badge is a dim dash (*Needs two laps*). With no lap yet both are a dash. From the second lap on, the badge compares each new lap with the one before it.
+4. The time stays on the last lap for the whole lap, it is not a clock (the *Laptime Delta* shows the running clock of the lap you are driving). The whole widget turns the personal best colour (or the track record colour) for a few seconds after a lap that was a personal best or a record: *Show finished lap for* (seconds), *Personal best colour* and *Track record colour* are in its settings, as in the Laptime widget.
+5. The look of the badge is as for every Delta Timer: the time on the left and the badge on the right, or the badge below the time (**Value and badge**), the number of decimals, filled or outlined, the size of the badge, the outline, bold and italic text, the arrow and the three colours.
+
+Good to know:
+1. It always compares a lane with its own lap before; there is no choice of another lane, the leader or a record, and no *Left (or top) value shows* (the time on the left is always the last lap). The other Delta Timers are as before, and the *Laptime Delta* still compares your last lap with another lane or with your own best lap.
+2. Only laps that are in the list of laps of the lane count (the last two). In a heat race the laps of a lane start again with every heat, so the first lap of a heat has no lap before it.
+3. The widget is also in the Leaderboard Editor (a row of the Leaderboard can hold it), on the second screen and on a phone, like the other Delta Timers.
+4. The name is *Lap to Lap Delta*; say if you would like another one.
+5. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+6. The tests: `tests/delta.test.js` (the numbers: lane 1 −0.100, lane 2 +0.100, lane 3 +0.700, one lap, no lap; what the live page draws, the colours; the folder and the register), `tests/widgets.test.js`, `tests/screens.test.js` (the settings in the Layout Editor) and `tests/help.test.js`.

@@ -223,6 +223,7 @@ const Help = (() => {
           <li><b>Left (or top) value shows</b>: this lane's own value (the standard), or the value it is compared with, for example lane 2's time. The badge always says how far this lane is from it.</li>
           <li>The look: a solid block or only an outline, the size of the whole badge, the thickness of the outline, bold and italic text, the arrow, the number of decimals and the three colours. The arrow and the number shrink by themselves to stay inside the badge when the widget is small or narrow.</li>
           <li>The Session Record and Track Record deltas always compare with that record, and show it on the left.</li>
+          <li><b>Lap to Lap Delta</b> shows the last lap and how far it is from the lap before it (on lap 10 it shows lap 9, against lap 8). It needs two laps, so the badge is a dash until then. The time stays for the whole lap.</li>
         </ul>` },
       { id: 'audio', title: 'Audio calls', note: 'A voice for the race', body: `
         <ul>

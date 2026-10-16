@@ -16,6 +16,7 @@
 
   // ---- what a car's number is ----
   const lastLap = c => (c && c.laps.length ? fin(c.laps[c.laps.length - 1]) : null);
+  const lapBefore = c => (c && c.laps.length > 1 ? fin(c.laps[c.laps.length - 2]) : null); // (the lap before the last one: 1.29.0, Lap to Lap Delta)
   const STAT = {
     laptime: c => lastLap(c), // (the lap time widget runs a clock: what is compared is the lap that was completed last)
     avglap: c => { const g = E.goodLaps(c); return g.length ? mean(g) : null; },
@@ -32,10 +33,13 @@
   //   static  this lane's number against the number of the lane it is compared with
   //   live    this lane's last lap against that number of the other lane (it changes with every lap)
   //   self    this lane's last lap against this lane's own number (no other lane needed)
+  //   previous  this lane's last lap against the lap before it (1.29.0, Lap to Lap Delta: no other lane, no choice to make; "steady": the left side keeps showing the last lap, it is no running clock)
   // targets: what it can be compared with. record: a record widget; it is always compared with that record.
   const KINDS = {
     dlaptime: { base: 'laptime', label: 'Laptime Delta', title: 'Laptime delta', stat: 'laptime', own: 'bestlap', ownWords: 'its own best lap', measures: ['static', 'self'], targets: ['lane', 'leader', 'fastest', 'track', 'session'],
       words: { static: "This lane's last lap against theirs", self: "This lane's last lap against its own best lap" } },
+    dlaplap: { base: 'laptime', label: 'Lap to Lap Delta', title: 'Lap to lap delta', stat: 'laptime', measures: ['previous'], targets: [], steady: true,
+      words: { previous: "This lane's last lap against the lap before it" } },
     davglap: { base: 'avglap', label: 'Average Lap Delta', title: 'Average lap delta', stat: 'avglap', ownWords: 'its own average lap', measures: ['static', 'live', 'self'], targets: ['lane', 'leader', 'fastest', 'track', 'session'],
       words: { static: "This lane's average lap against theirs", live: "This lane's last lap against their average lap", self: "This lane's last lap against its own average lap" } },
     dmedlap: { base: 'medlap', label: 'Median Lap Delta', title: 'Median lap delta', stat: 'medlap', ownWords: 'its own median lap', measures: ['static', 'live', 'self'], targets: ['lane', 'leader', 'fastest', 'track', 'session'],
@@ -68,6 +72,7 @@
   // what it is compared with: { time, who } or { why }
   function referenceOf(k, measure, opt, car, S, t) {
     if (k.record) { const r = recordTime(k.record, S); return r === null ? { why: 'ref' } : { time: r, who: `the ${k.record} record`, record: k.record }; }
+    if (measure === 'previous') { const r = lapBefore(car); return r === null ? { why: 'before' } : { time: r, who: 'the lap before it' }; }
     if (measure === 'self') { const r = STAT[k.own || k.stat](car, S, t); return r === null ? { why: 'ref' } : { time: r, who: k.ownWords, own: true }; }
     const mode = compareOf(k, opt);
     if (mode === 'track' || mode === 'session') { const r = recordTime(mode, S); return r === null ? { why: 'ref' } : { time: r, who: `the ${mode} record`, record: mode }; }
@@ -108,7 +113,7 @@
   // Otherwise { type, car, who, record }: draw the ordinary widget "type" for that car (a record widget needs no car); who is what the value belongs to.
   function leftOf(type, opt, car, res) {
     const k = KINDS[type];
-    if (!k || k.record || leftShowsOf(opt) === 'own' || !res || !res.ref) return null; // (the record widgets already show their record on the left)
+    if (!k || k.record || k.steady || leftShowsOf(opt) === 'own' || !res || !res.ref) return null; // (the record widgets already show their record on the left)
     const r = res.ref;
     if (r.why === 'self') return null; // it is the compared lane itself: its own value is what there is
     if (r.why) return { blank: true };
@@ -126,7 +131,7 @@
     const m = Math.floor(r / 60000), s = ((r % 60000) / 1000).toFixed(d);
     return { dir: r === 0 ? 'equal' : ms < 0 ? 'fast' : 'slow', text: m ? m + ':' + s.padStart(d + 3, '0') : s };
   }
-  const WHY = { mine: 'No time for this lane yet.', ref: 'Nothing to compare with yet.', self: 'This is the lane it is compared with.', nolane: 'There is no car in the chosen lane.' };
+  const WHY = { mine: 'No time for this lane yet.', before: 'Needs two laps: there is no lap before this one yet.', ref: 'Nothing to compare with yet.', self: 'This is the lane it is compared with.', nolane: 'There is no car in the chosen lane.' };
   const SIGN = { fast: '−', slow: '+', equal: '' };
   // the arrow: "up" (the standard) points up for a faster time, as in "you are 0.045 up on the pace"; "down" the other way round; "none" has no arrow
   const ARROWS = { up: { fast: '▲', slow: '▼' }, down: { fast: '▼', slow: '▲' } };
@@ -216,7 +221,7 @@
         choices: [['', 'The next lane (the last lane with lane 1)'], ...Array.from({ length: MAX_LANES }, (_, i) => [String(i + 1), 'Lane ' + (i + 1)])],
         hint: 'A copy of the widget on the next lane keeps this choice: change it there if it should compare with another lane.' });
     }
-    if (!k.record) out.push({ key: 'leftShows', label: 'Left (or top) value shows', type: 'select', default: 'own', choices: [['own', "This lane's own value"], ['ref', 'The value it is compared with']],
+    if (!k.record && !k.steady) out.push({ key: 'leftShows', label: 'Left (or top) value shows', type: 'select', default: 'own', choices: [['own', "This lane's own value"], ['ref', 'The value it is compared with']],
       hintOf: v => (v === 'ref' ? 'The left side shows the lane (or the leader, the fastest, the record, its own best) it is compared with, for example lane 2\'s time. The badge still says how far this lane is from it.'
         : "The left side shows this lane's own value. The badge says how far it is from what it is compared with.") });
     out.push({ key: 'direction', label: 'Value and badge', type: 'select', default: 'row', rerender: true, choices: [['row', 'Left and right: the value on the left, the badge on the right'], ['column', 'Top and bottom: the value on top, the badge below']],
