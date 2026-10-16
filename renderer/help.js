@@ -220,7 +220,7 @@ const Help = (() => {
           <li>A folder of widgets in the Layout Editor: a time on the left and a badge on the right that shows how far a lane is from another time. Green with ▲ and a minus (▲ −0.045) is faster, red with ▼ and a plus (▼ +0.321) is slower. <b>Value and badge</b> can put them <b>top and bottom</b> instead: the time on top, the badge below it.</li>
           <li><b>What is compared</b>: a lane's value against theirs, its last lap against theirs, or its last lap against its own value. <b>Compare with</b>: a chosen lane, the leader, the fastest in the race, the track record or the session record.</li>
           <li><b>Left (or top) value shows</b>: this lane's own value (the standard), or the value it is compared with, for example lane 2's time. The badge always says how far this lane is from it.</li>
-          <li>The look: a solid block or only an outline, the size of the whole badge, the thickness of the outline, bold and italic text, the arrow, the number of decimals and the three colours.</li>
+          <li>The look: a solid block or only an outline, the size of the whole badge, the thickness of the outline, bold and italic text, the arrow, the number of decimals and the three colours. The arrow and the number shrink by themselves to stay inside the badge when the widget is small or narrow.</li>
           <li>The Session Record and Track Record deltas always compare with that record, and show it on the left.</li>
         </ul>` },
       { id: 'audio', title: 'Audio calls', note: 'A voice for the race', body: `

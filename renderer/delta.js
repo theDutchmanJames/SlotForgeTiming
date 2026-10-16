@@ -168,6 +168,41 @@
   const SAMPLE_MS = [-45, 321, -12, 87, 0, -230, 1204, -8];
   const sample = (baseHtml, lane, opt) => wrap(baseHtml, { ms: SAMPLE_MS[(lane || 0) % SAMPLE_MS.length], who: 'what it is compared with' }, opt);
 
+  // ---- the arrow and the number fit the badge (1.18.1) ----
+  // The text of the badge (the arrow and the difference, "▲ −0.045" or "▼ +1:02.345") is made smaller, just enough to stay inside the badge, so nothing sticks out of the green or red
+  // block however the widget is resized: a narrow widget with the badge below the value, a long difference, a short widget with big text. A badge that already fits is left as it is.
+  // Works in the browser only: it measures the page. measure(badge) -> { boxW, boxH, w, h, em } can be replaced, to test: the room in the badge, the room its text needs (both with
+  // the padding), and the size of its text in em of the widget.
+  const FIT_MIN = 0.2; // (never smaller than a fifth: a widget this small has no room for a badge)
+  // by how much the text has to shrink: 1 when it fits, else the share (in hundredths, rounded down) that makes it fit
+  function fitFactor(m) {
+    if (!m || !(m.boxW > 0) || !(m.boxH > 0) || !(m.w > 0) || !(m.h > 0)) return 1; // (not on the screen yet: nothing to measure)
+    if (m.w <= m.boxW + 0.5 && m.h <= m.boxH + 0.5) return 1;
+    return Math.max(FIT_MIN, Math.floor(Math.min(m.boxW / m.w, m.boxH / m.h) * 100) / 100);
+  }
+  const measureBadge = b => {
+    const r = document.createRange(); r.selectNodeContents(b);
+    const t = r.getBoundingClientRect(), cs = getComputedStyle(b), px = k => parseFloat(cs[k]) || 0, up = b.parentNode ? parseFloat(getComputedStyle(b.parentNode).fontSize) || 0 : 0;
+    return { boxW: b.clientWidth, boxH: b.clientHeight, w: t.width + px('paddingLeft') + px('paddingRight'), h: px('fontSize') * 1.1 + px('paddingTop') + px('paddingBottom'), em: up > 0 ? px('fontSize') / up : 0 };
+  };
+  // the badge's own size from the markup (the size setting) is kept in data-fit and put back before every fit, so a widget that gets bigger again gets its full text back
+  function fitBadge(b, measure) {
+    if (!b || !b.style || !b.dataset) return;
+    if (b.dataset.fit === undefined) b.dataset.fit = b.style.getPropertyValue('font-size');
+    if (b.dataset.fit) b.style.setProperty('font-size', b.dataset.fit); else b.style.removeProperty('font-size');
+    let all = 1;
+    for (let i = 0; i < 3 && all > FIT_MIN; i++) { // (more than once: the size of the badge itself follows its text a little)
+      const m = (measure || measureBadge)(b), f = fitFactor(m);
+      if (f >= 1 || !(m.em > 0)) break;
+      all *= f; b.style.setProperty('font-size', `${(m.em * f).toFixed(4)}em`, 'important');
+    }
+  }
+  // every badge in root (a value box, a canvas, a leaderboard)
+  function fit(root, measure) {
+    if (!root || !root.querySelectorAll) return;
+    Array.from(root.querySelectorAll('.dlt-badge')).forEach(b => fitBadge(b, measure));
+  }
+
   // ---- the settings of a widget in the layout editor ----
   // show(opt): the setting only appears when it is of use; rerender: changing it redraws the settings
   function optionsFor(type) {
@@ -185,7 +220,7 @@
       hintOf: v => (v === 'ref' ? 'The left side shows the lane (or the leader, the fastest, the record, its own best) it is compared with, for example lane 2\'s time. The badge still says how far this lane is from it.'
         : "The left side shows this lane's own value. The badge says how far it is from what it is compared with.") });
     out.push({ key: 'direction', label: 'Value and badge', type: 'select', default: 'row', rerender: true, choices: [['row', 'Left and right: the value on the left, the badge on the right'], ['column', 'Top and bottom: the value on top, the badge below']],
-      hintOf: v => (v === 'column' ? 'The value and the badge share the height of the widget, so give it room: make the widget taller, or the text smaller. The badge is as wide as the widget; "Size of the badge" makes it narrower.' : 'The badge fills the height of the widget, beside the value.') });
+      hintOf: v => (v === 'column' ? 'The value and the badge share the height of the widget, so give it room: make the widget taller, or the text smaller. The badge is as wide as the widget; "Size of the badge" makes it narrower. The arrow and the number shrink when the badge is too small for them.' : 'The badge fills the height of the widget, beside the value. The arrow and the number shrink when the badge is too small for them.') });
     out.push({ key: 'decimals', label: 'Decimals of the difference', type: 'select', default: '3', choices: [['3', '3 (0.456)'], ['2', '2 (0.46)'], ['1', '1 (0.5)']] });
     out.push({ key: 'style', label: 'Look of the badge', type: 'select', default: 'filled', rerender: true, choices: [['filled', 'Filled (a solid block)'], ['outlined', 'Outlined (only the outline and the text)']],
       hintOf: v => (v === 'outlined' ? 'Only the outline and the text have the colour, the inside is empty.' : 'The whole block has the colour; the text turns black or white to be readable on it.') });
@@ -200,7 +235,7 @@
     return out;
   }
 
-  const api = { KINDS, TARGET_WORDS, DEFAULTS, STAT, WHY, isDelta, baseOf, compute, leftOf, leftShowsOf, format, badge, wrap, sample, optionsFor, onColor, colorOf, decimalsOf, measureOf, compareOf, arrowOf, styleOf, layoutOf, scaleOf, outlineOf, boldOf, italicOf, sizeStyle, ARROWS };
+  const api = { KINDS, TARGET_WORDS, DEFAULTS, STAT, WHY, isDelta, baseOf, compute, leftOf, leftShowsOf, format, badge, wrap, sample, optionsFor, onColor, colorOf, decimalsOf, measureOf, compareOf, arrowOf, styleOf, layoutOf, scaleOf, outlineOf, boldOf, italicOf, sizeStyle, fitFactor, fit, ARROWS };
   root.Delta = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

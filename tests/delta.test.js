@@ -225,5 +225,47 @@ ok('each reason has its own words for the badge', Object.keys(D.WHY).sort().join
     ok('...and the number in it is the same as in the row: only the arrangement changes', draw('dbestlap', 0, { direction: 'column' }).replace(' dlt-col', '') === draw('dbestlap', 0, {})); }
 }
 
+// ---- 1.18.1: the arrow and the number always fit the badge ----
+{
+  const fs = require('fs'), src = f => fs.readFileSync(require('path').join(__dirname, '..', 'renderer', f), 'utf8');
+  const F = D.fitFactor;
+  ok('a badge whose text fits is left alone (a factor of 1), also when it is a hair too wide (rounding of the page)', F({ boxW: 100, boxH: 30, w: 100, h: 30 }) === 1 && F({ boxW: 100, boxH: 30, w: 100.4, h: 30.4 }) === 1 && F({ boxW: 200, boxH: 40, w: 20, h: 10 }) === 1);
+  ok('a text that is too wide shrinks to the share that fits, in hundredths, rounded down (so it never sticks out by a hair)', F({ boxW: 100, boxH: 30, w: 150, h: 20 }) === 0.66 && F({ boxW: 120, boxH: 30, w: 152, h: 20 }) === 0.78 && F({ boxW: 100, boxH: 30, w: 101, h: 20 }) === 0.99);
+  ok('a text that is too tall shrinks the same way, and when both are too big the stricter one counts', F({ boxW: 200, boxH: 20, w: 100, h: 40 }) === 0.5 && F({ boxW: 100, boxH: 20, w: 150, h: 25 }) === 0.66 && F({ boxW: 100, boxH: 10, w: 150, h: 40 }) === 0.25);
+  ok('...never smaller than a fifth, however small the widget', F({ boxW: 10, boxH: 30, w: 1000, h: 20 }) === 0.2 && F({ boxW: 1, boxH: 1, w: 500, h: 500 }) === 0.2);
+  ok('a badge that is not on the screen (no size yet) or has nothing to measure gives 1: nothing is changed', [null, undefined, {}, { boxW: 0, boxH: 0, w: 50, h: 20 }, { boxW: 100, boxH: 30, w: 0, h: 0 }, { boxW: NaN, boxH: 30, w: 150, h: 20 }, { boxW: -5, boxH: 30, w: 150, h: 20 }].every(m => F(m) === 1));
+
+  // a badge made of fake parts: its text is 300 px wide at the standard size (.95em) and grows and shrinks with the size; the room is what it is told
+  const badge = own => { const props = {}; if (own) props['font-size'] = own; return { dataset: {}, props, style: { getPropertyValue: k => props[k] || '', setProperty(k, v, pr) { props[k] = v; props[k + '!'] = pr || ''; }, removeProperty(k) { delete props[k]; delete props[k + '!']; } } }; };
+  const emOf = b => { const v = b.props['font-size'] || ''; const m = /calc\(\.95em\*([\d.]+)\)/.exec(v); return /^[\d.]+em$/.test(v) ? parseFloat(v) : m ? 0.95 * parseFloat(m[1]) : 0.95; };
+  const model = (room, extra = 0, calls) => b => { if (calls) calls.n++; const em = emOf(b); return { boxW: room, boxH: 60, w: 300 * em / 0.95 + extra, h: 20 * em / 0.95, em }; };
+  const rootOf = list => ({ querySelectorAll: sel => (sel === '.dlt-badge' ? list : []) });
+
+  { const b = badge(''); D.fit(rootOf([b]), model(200));
+    ok('a badge that is too narrow gets a smaller text in em of the widget, and the size is set so it wins over the one of the markup', b.props['font-size'] === '0.6270em' && b.props['font-size!'] === 'important' && 300 * emOf(b) / 0.95 <= 200.5);
+    D.fit(rootOf([b]), model(400));
+    ok('...when the widget gets bigger again the text gets its full size back (the size of the markup is put back, here none)', !('font-size' in b.props) && emOf(b) === 0.95);
+    D.fit(rootOf([b]), model(100));
+    ok('...and shrinks again when it gets smaller', 300 * emOf(b) / 0.95 <= 100.5 && emOf(b) < 0.4); }
+  { const b = badge('calc(.95em*0.6)'); D.fit(rootOf([b]), model(100));
+    ok('a badge with its own size (the "Size of the badge" setting) shrinks from that size, and gets it back when it fits', 300 * emOf(b) / 0.95 <= 100.5 && emOf(b) < 0.57 && (D.fit(rootOf([b]), model(500)), b.props['font-size'] === 'calc(.95em*0.6)' && b.props['font-size!'] === '')); }
+  { const b = badge(''); D.fit(rootOf([b]), model(500));
+    ok('a badge that fits is not touched at all', Object.keys(b.props).length === 0 && b.dataset.fit === ''); }
+  { const b = badge(''), calls = { n: 0 }; D.fit(rootOf([b]), model(200, 20, calls));
+    ok('when the first try is not enough (a part of the badge does not scale with the text) it is tried again, and then it fits', calls.n >= 2 && calls.n <= 4 && 300 * emOf(b) / 0.95 + 20 <= 200.5); }
+  { const b = badge(''), calls = { n: 0 }; D.fit(rootOf([b]), () => { calls.n++; return { boxW: 10, boxH: 10, w: 1000, h: 1000, em: emOf(b) }; });
+    ok('it always stops: at most three tries, and the text never goes to nothing', calls.n <= 3 && emOf(b) > 0 && emOf(b) <= 0.95); }
+  { const b = badge(''); D.fit(rootOf([b]), b2 => ({ boxW: 100, boxH: 30, w: 300, h: 20, em: 0 }));
+    ok('a badge without a known text size (not on the screen) is left as it is', !('font-size' in b.props)); }
+  { const a = badge(''), c = badge(''), d2 = badge(''); D.fit(rootOf([a, c, d2]), b => (b === c ? model(500)(b) : model(150)(b)));
+    ok('every badge in a canvas is fitted on its own: the one that fits stays, the others shrink', !('font-size' in c.props) && 300 * emOf(a) / 0.95 <= 150.5 && 300 * emOf(d2) / 0.95 <= 150.5); }
+  ok('nothing breaks without a canvas, or with something that is no badge (a page that is not drawn yet)', (() => { try { D.fit(null); D.fit(undefined); D.fit({}); D.fit(rootOf([null, {}, { style: {} }, { style: {}, dataset: undefined }]), model(10)); return true; } catch (e) { return false; } })());
+
+  const canvas = src('canvas.js'), editor = src('editor.js'), live = src('liveview.js'), css = src('styles.css');
+  ok('the live race page fits the badges after it has drawn a widget with one, and again when the widget changes size (the window, a layout of another size)', /n\.val\.innerHTML = out\.html;[\s\S]{0,900}?out\.html\.includes\('dlt-badge'\)[^\n]*Delta\.fit\(n\.val\)/.test(canvas) && /ResizeObserver[^\n]*Delta\.isDelta\(w\.type\)[^\n]*Delta\.fit\(val\)/.test(canvas));
+  ok('the layout editor fits them every time it draws the canvas, so a widget that is dragged to another size keeps its text inside the badge; the live view with row designs does too', /WxW\.fitAll\(\$\('canvas'\)\)[^\n]*\n[^\n]*Delta\.fit\(\$\('canvas'\)\)/.test(editor) && /Delta\.fit\(\$\('lv-board'\)\)/.test(live));
+  ok('the fit puts the text in no wrapping and keeps the badge itself as it was: the stylesheet still says nowrap, and the markup has no new parts', /\.dlt-badge\{[^}]*white-space:nowrap/.test(css) && D.wrap('<b>1</b>', { ms: -45 }, { direction: 'column' }).includes('<span class="dlt-badge dlt-fast"') && !/dlt-fit|data-fit/.test(D.wrap('<b>1</b>', { ms: -45 }, { direction: 'column' })));
+}
+
 console.log(fails ? `\n${fails} DELTA TESTS FAILED` : '\ndelta: all PASSED');
 process.exit(fails ? 1 : 0);

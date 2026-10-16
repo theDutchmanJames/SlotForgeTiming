@@ -386,6 +386,7 @@ function renderEditor() {
     } else { ed.bgKey = null; ed.bgNode = null; }
     if (String($('canvas').innerHTML).includes('class="rrows"')) Rows.fitText($('canvas')); // a Leaderboard with a row design: no text wider than its cell
     if (typeof WxW !== 'undefined' && WxW.fitAll) WxW.fitAll($('canvas')); // the weather widgets: nothing outside a small widget
+    if (typeof Delta !== 'undefined' && Delta.fit) Delta.fit($('canvas')); // the Delta Timers: the arrow and the number inside the badge, also while the widget is dragged to another size
     if ($('e-background')) $('e-background').setAttribute('aria-pressed', String(Backdrop.has(d)));
     if ($('e-guides')) $('e-guides').setAttribute('aria-pressed', String(hasGuides()));
     if (row) { $('e-preview').innerHTML = Rows.sampleHtml(d, 5, ed.imageSets); Rows.fitText($('e-preview')); }

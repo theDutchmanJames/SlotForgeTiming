@@ -157,6 +157,7 @@ const LiveView = (() => {
       ? `<div class="lv-grid" style="grid-template-columns:repeat(${g.cols},minmax(0,1fr))">${g.boards.map(b => `<div class="lv-board" style="grid-column:${b.c} / span ${b.w};grid-row:${b.r} / span ${b.h}">${Timing.content({ type: 'leaderboard', opt: b.opt }, S()).html}</div>`).join('')}</div>`
       : '<p class="muted lv-empty">No leaderboard in the grid yet. Open Customize and pick one for a cell.</p>';
     if ($('lv-board').querySelectorAll) Rows.fitText($('lv-board')); // row designs: no text wider than its cell
+    if ($('lv-board').querySelectorAll && typeof Delta !== 'undefined') Delta.fit($('lv-board')); // a Delta Timer in a row design: the arrow and the number inside the badge
   }
 
 

@@ -1920,3 +1920,17 @@ Good to know:
 2. A badge that is made bigger than its widget is wider than the box in the stacked widget, so its text can be cut off: lower the size of the badge or widen the widget.
 3. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 4. The tests: new blocks in `tests/delta.test.js` (the choice, the class, the badge size in both arrangements, the live page), `tests/screens.test.js` (the setting in the editor and the canvas) and `tests/help.test.js` (the Delta Timers folder).
+
+## What to try (1.18.1): the badge text always fits
+From your note: in the stacked Delta Timer (Top and bottom) the arrow and the difference could stick out of the coloured badge when you made the widget smaller. Now they always stay inside it.
+1. Open Customization > Layouts, add a **Best Lap Delta** (or any Delta Timer) and choose **Value and badge: Top and bottom**.
+2. Drag a corner of the widget to make it narrower. The arrow and the number get smaller step by step, just enough to stay inside the badge; the time above it keeps its size. Drag it wider again and they grow back to their full size.
+3. It also works with a long difference (with 3 decimals a gap of a minute or more reads ▼ +1:02.345), a smaller or larger **Size of the badge**, the outlined look and no arrow.
+4. The Race tab and the Live Race pages do the same, also when the window is made smaller. A badge that already fits is not touched, so a widget that looked right before looks exactly the same.
+
+Good to know:
+1. The time above (or on the left of) the badge is not changed: if the widget is too small for both, make it taller or use a smaller text size, as the hint under **Value and badge** says. Only the badge text shrinks by itself.
+2. This also settles the second point of 1.18.0: a big badge in a narrow stacked widget no longer cuts its text off.
+3. Side by side (Left and right) the badge is as wide as its text and as high as the widget, so only a very short widget with big text makes the text shrink there.
+4. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+5. The tests: a new block in `tests/delta.test.js` (how much the text shrinks, that it grows back, that a badge that fits is left alone, that it always stops, and that the race page, the editor and the live view call it) and one line in `tests/help.test.js`. I also measured 324 widget sizes in a real browser: before, 108 stacked cases had text outside the badge, after, none.

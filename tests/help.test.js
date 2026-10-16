@@ -203,6 +203,7 @@ const folders = Help.folders();
   say('...it still says why Start race is greyed out and who picks the lane first, and the Home folder is short enough', home.includes('greyed out') && home.includes('picks their lane first') && home.length < 1400); }
 
 { const dl = plain(folders.find(x => x.id === 'delta').body); // 1.18.0
-  say('1.18.0: the Delta Timers folder says the value and the badge can be top and bottom, and that the time is then on top', dl.includes('Value and badge') && dl.includes('top and bottom') && dl.includes('the time on top, the badge below it') && dl.length < 1400); }
+  say('1.18.0: the Delta Timers folder says the value and the badge can be top and bottom, and that the time is then on top', dl.includes('Value and badge') && dl.includes('top and bottom') && dl.includes('the time on top, the badge below it') && dl.length < 1400);
+  say('1.18.1: ...and that the arrow and the number shrink to stay inside the badge in a small or narrow widget', dl.includes('shrink by themselves to stay inside the badge') && dl.includes('small or narrow')); }
 
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);
