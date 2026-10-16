@@ -36,7 +36,7 @@
     const cellOf = (key, x, i) => {
       switch (key) {
         case 'pos': return esc(x.pos) + (!hasDriver && ST.isWinner(session, x) ? ' ' + cup : '');
-        case 'driver': return (ST.isWinner(session, x) ? cup + ' ' : '') + esc(x.driverName) + (x.dq ? ' (disqualified)' : x.retired ? ' (retired, out of fuel)' : '') + (ST.adjustedText(x) ? ` (adjusted: ${esc(ST.adjustedText(x))})` : '') + (ST.notesText(x) ? ` (${esc(ST.notesText(x))})` : '') + (ST.driversText(x) ? ` (drivers: ${esc(ST.driversText(x))})` : '') + (ST.enduranceText(x) ? ` (${esc(ST.enduranceText(x))})` : '');
+        case 'driver': return (ST.isWinner(session, x) ? cup + ' ' : '') + esc(x.driverName) + (ST.outText(x) ? ` (${ST.outText(x)})` : '') + (ST.adjustedText(x) ? ` (adjusted: ${esc(ST.adjustedText(x))})` : '') + (ST.notesText(x) ? ` (${esc(ST.notesText(x))})` : '') + (ST.driversText(x) ? ` (drivers: ${esc(ST.driversText(x))})` : '') + (ST.enduranceText(x) ? ` (${esc(ST.enduranceText(x))})` : '');
         case 'team': return esc(x.teamName || '');
         case 'car': return esc(x.carName);
         case 'laps': return esc(x.laps);

@@ -73,8 +73,17 @@ const srv = createServer({ root: path.join(R, 'renderer'), appRoot: R, schema: {
     ok('...a lane that is not a whole number from 0 to 15, a driver that is not an id, or a missing choice is refused by the server and never reaches the race (12 tries)', cmds.length === n);
     const S = require('../server.js');
     ok('...the check itself is exported, and looks only at the swap commands', S.swapCommand({ type: 'swap', lane: 2 }) && S.swapCommand({ type: 'swapnext', lane: 2, id: 'a' }) && !S.swapCommand({ type: 'swap', lane: 99 }) && !S.swapCommand({ type: 'swapnext', lane: 0 }) && S.swapCommand({ type: 'start' }) && S.swapCommand({ type: 'penalty', lane: 99 })); }
+  { // 1.10.0: damage points of the Damage System can be given on the Race Director page (a lane, and a whole number of points; negative takes points back)
+    const before = cmds.length, send = async c => { await api.liveCommand(c); await new Promise(r => setTimeout(r, 15)); };
+    for (const c of [{ type: 'damage', lane: 0, n: 2 }, { type: 'damage', lane: 3, n: -1 }, { type: 'damage', lane: 15, n: 20 }]) await send(c);
+    ok('the damage commands (points given or taken back) reach the race after the login', cmds.slice(before).map(c => c.type + c.lane + ':' + c.n).join() === 'damage0:2,damage3:-1,damage15:20');
+    const n = cmds.length;
+    for (const bad of [{ type: 'damage' }, { type: 'damage', lane: 0 }, { type: 'damage', lane: 0, n: 0 }, { type: 'damage', lane: 0, n: 21 }, { type: 'damage', lane: 0, n: -21 }, { type: 'damage', lane: 0, n: 1.5 }, { type: 'damage', lane: 0, n: '2' }, { type: 'damage', lane: -1, n: 1 }, { type: 'damage', lane: 16, n: 1 }, { type: 'damage', lane: '1', n: 1 }, { type: 'damage', n: 1 }]) await send(bad);
+    ok('...a lane that is not a whole number from 0 to 15, or points that are not a whole number from -20 to 20 (not 0), are refused by the server and never reach the race (11 tries)', cmds.length === n);
+    const S = require('../server.js');
+    ok('...the check itself is exported, and looks only at the damage command', S.damageCommand({ type: 'damage', lane: 2, n: 3 }) && !S.damageCommand({ type: 'damage', lane: 2, n: 0 }) && !S.damageCommand({ type: 'damage', lane: 99, n: 1 }) && S.damageCommand({ type: 'start' }) && S.damageCommand({ type: 'penalty', lane: 99 })); }
   settings.netPassword = 'new'; await api.liveCommand({ type: 'stop' });
-  ok('after the password changes the login is gone', cmds.length === 2 + 8 + 5 + 4 + 3 && api.directorAuthed() === false);
+  ok('after the password changes the login is gone', cmds.length === 2 + 8 + 5 + 4 + 3 + 3 && api.directorAuthed() === false);
   await srv.close();
   console.log(fails ? fails + ' WEB TESTS FAILED' : 'ALL WEB TESTS PASSED'); process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('ERROR', e.stack); process.exit(1); });

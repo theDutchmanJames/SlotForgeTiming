@@ -67,7 +67,11 @@
   // What the tyres did to a car in a race with a weather system (a result row has it as tyreNote, such as "Wet tyres after lap 9, 2 penalty points for the tyres after lap 11")
   const tyreText = x => (x && x.tyreNote ? 'Tyres: ' + x.tyreNote : '');
   // everything that was done to a car on top of the race, to show with its name
-  const notesText = x => [bopText(x), tyreText(x)].filter(Boolean).join('; ');
+  // What the damage did to a car in a race with a Damage System (a result row has it as damageNote)
+  const damageText = x => (x && x.damageNote ? 'Damage: ' + x.damageNote : '');
+  // why a car is out of the results, as it is shown after its name: disqualified, or retired (out of fuel, or too much damage); '' for a car that is not out
+  const outText = x => (!x ? '' : x.dq ? (x.damageOut === 'dq' ? 'disqualified, too much damage' : 'disqualified') : x.retired ? (x.damageOut ? 'retired, too much damage' : 'retired, out of fuel') : '');
+  const notesText = x => [bopText(x), tyreText(x), damageText(x)].filter(Boolean).join('; ');
   // what the weather did in a race or heat (a session or heat result has it as weatherNote, such as "Cloudy from lap 8, rain from lap 10"), or ''
   const weatherText = x => (x && x.weatherNote ? 'Weather: ' + x.weatherNote : '');
   const adjustedText = x => {
@@ -200,7 +204,7 @@
 
   // a race that was interrupted (a crash, a power cut) and carried on says so under its result (1.9.0)
   const resumeText = session => (session && Number(session.resumed) > 0 ? `This race was interrupted and carried on${Number(session.resumed) > 1 ? ' ' + Number(session.resumed) + ' times' : ''}. The first lap of every car after it is not counted for records.` : '');
-  const api = { resumeText, heated, clockOf, enduranceText, stintLines, driversText, ownLaps, SESSION_COLUMNS, STINT_COLUMNS, RECORD_COLUMNS, FIGURE_KEYS, WINNER_TYPES, isWinner, isHeatWinner, heatTimeText, adjustedText, bopText, tyreText, notesText, weatherText, figures, forSession, lapSpeed, lapLength, valueOf, text, hasAny, sessionColumns, notes, fmtSpeed, fmtScale, fmtDist, fmtSpread, fmtMs };
+  const api = { resumeText, heated, clockOf, enduranceText, stintLines, driversText, ownLaps, SESSION_COLUMNS, STINT_COLUMNS, RECORD_COLUMNS, FIGURE_KEYS, WINNER_TYPES, isWinner, isHeatWinner, heatTimeText, adjustedText, bopText, tyreText, damageText, outText, notesText, weatherText, figures, forSession, lapSpeed, lapLength, valueOf, text, hasAny, sessionColumns, notes, fmtSpeed, fmtScale, fmtDist, fmtSpread, fmtMs };
   root.Stats = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

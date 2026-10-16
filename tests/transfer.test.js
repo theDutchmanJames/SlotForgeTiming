@@ -118,6 +118,14 @@ const e = tmp(); T.apply(e, JSON.parse(JSON.stringify(b1))); const reread = new 
   const imp = y.data.weathersystems.find(q => q.name === 'Showers (imported)'), st = y.data.racesetups[0];
   ok('...an import keeps the link (to the imported copy, with a new id), and the clash of names is marked', y.data.weathersystems.length === 2 && imp && imp.startAt === 4 && st.weather === imp.id && imp.id !== w.id);
   ok('...a weather system can also be exported on its own', (T.collect(x.data, { weathersystems: [w.id] }, false).items.weathersystems || []).length === 1); }
+{ // 1.10.0: a damage system travels with the race setup that uses it
+  const x = tmp(), d = x.add('damagesystems', { name: 'Club damage', stop: 'add', levels: [{ name: 'Light', from: 3, seconds: 10 }] }), s = x.add('racesetups', { name: 'Hard', damageSystem: d.id });
+  const out = T.collect(x.data, { racesetups: [s.id] }, true), dpx = T.dependencies(x.data, { racesetups: [s.id] });
+  ok('a race setup brings its damage system (with its levels), and the dependencies list it', (out.items.damagesystems || []).length === 1 && out.items.damagesystems[0].levels[0].seconds === 10 && dpx.damagesystems && dpx.damagesystems.length === 1 && dpx.damagesystems[0].required === false);
+  const y = tmp(); y.add('damagesystems', { name: 'Club damage' }); T.apply(y, JSON.parse(JSON.stringify(out)));
+  const imp = y.data.damagesystems.find(q => q.name === 'Club damage (imported)'), st = y.data.racesetups[0];
+  ok('...an import keeps the link (to the imported copy, with a new id), and the clash of names is marked', y.data.damagesystems.length === 2 && imp && imp.stop === 'add' && imp.levels.length === 1 && st.damageSystem === imp.id && imp.id !== d.id);
+  ok('...a damage system can also be exported on its own', (T.collect(x.data, { damagesystems: [d.id] }, false).items.damagesystems || []).length === 1); }
 { // 1.6.0: a rotation setup travels with the race setup that uses it
   const x = tmp(), r = x.add('rotationsetups', { name: 'Club night', participants: 4, lanes: 2, names: ['Piet'], heats: [{ label: 'A', locked: false, places: [{ p: 0, lane: 0 }] }] }), s = x.add('racesetups', { name: 'Heats', sessionType: 'heats', rotation: r.id });
   const out = T.collect(x.data, { racesetups: [s.id] }, true), dpx = T.dependencies(x.data, { racesetups: [s.id] });

@@ -63,13 +63,14 @@ const undoButtons = p => `<button class="btn" id="${p}-undo" title="Undo the las
 // Race Setup tab: the race setups you can pick on the Home tab, and the penalty systems they can use
 async function renderSetup() {
   view.innerHTML = '<h2>Race Setup</h2><div class="sub" id="setuptabs" role="tablist" style="display:flex;gap:4px"></div><p class="muted" id="setupnote"></p><div id="setupmgr"></div>';
-  renderTabs(document.getElementById('setuptabs'), [['setups', 'Race Setups'], ['rotation', 'Rotation Setups'], ['fuel', 'Fuel Setups'], ['penalties', 'Penalty Systems'], ['weather', 'Weather Systems'], ['bop', 'Balance of Power'], ['tokens', 'Time Tokens']], state.setupSub, id => {
+  renderTabs(document.getElementById('setuptabs'), [['setups', 'Race Setups'], ['rotation', 'Rotation Setups'], ['fuel', 'Fuel Setups'], ['penalties', 'Penalty Systems'], ['damage', 'Damage Systems'], ['weather', 'Weather Systems'], ['bop', 'Balance of Power'], ['tokens', 'Time Tokens']], state.setupSub, id => {
     // the rotation setup editor is closed by another tab: ask first when there are changes that are not saved
     if (rotEd && id !== 'rotation') { if (rotEd.dirty && !confirm('Discard your unsaved changes to this rotation setup?')) return; draftUndoEnd(rotEd); rotEd = null; }
     state.setupSub = id; renderSetup();
   });
-  const sub = state.setupSub, entity = sub === 'penalties' ? 'penaltysystems' : sub === 'fuel' ? 'fuelrules' : sub === 'weather' ? 'weathersystems' : 'racesetups';
+  const sub = state.setupSub, entity = sub === 'penalties' ? 'penaltysystems' : sub === 'damage' ? 'damagesystems' : sub === 'fuel' ? 'fuelrules' : sub === 'weather' ? 'weathersystems' : 'racesetups';
   document.getElementById('setupnote').textContent = sub === 'penalties' ? 'A penalty system says how penalty points turn into time and when a driver is disqualified. Choose one in a race setup.'
+    : sub === 'damage' ? 'A damage system gives a car damage points (a hit from the Race Director, a deslot). The level they reach says how long the car must stand in the pits to be repaired, or that it is out. Choose one in a race setup.'
     : sub === 'fuel' ? 'A fuel setup sets the tank, how much fuel a lap uses (more when faster, less when slower) and what happens when it runs out. Choose one in a race setup to race with fuel.'
     : sub === 'weather' ? 'A weather system is a spell of rain with a forecast: when it starts, how long it lasts, the clouds before and the drying after. Cars change tyres in the pits and can get penalty points or be hindered if they do not. Choose one in a race setup.'
     : sub === 'rotation' ? 'A rotation setup is a heat plan that you make yourself: which participant races in which heat and in which lane, and the order of the heats. Choose one in a race setup for a Heat-based race (under Session). Without one, the heats are planned from the settings of the race setup, as before.'

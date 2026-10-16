@@ -38,6 +38,7 @@ module.exports = {
       { key: 'laneLengths', group: 'length', label: 'Length of every lane (metres), lane 1 first', type: 'numberlist', default: '', optional: true, showIf: [{ laneModifier: ['measured'] }], hint: 'One number per lane, separated by commas, with a dot for decimals: for example 15.4, 15.8, 16.2. Use this when the lanes swap sides, the spacing is not the same everywhere, or you measured them.' },
       { key: 'minLap', group: 'laps', label: 'Minimum lap time (seconds)', type: 'number', min: 0, optional: true, hint: 'A crossing sooner than this after the last one is ignored (faulty trigger).' },
       { key: 'maxLap', group: 'laps', label: 'Maximum lap time (seconds)', type: 'number', min: 0, optional: true, hint: 'A slower lap still counts as a lap, but not for best laps and records.' },
+      { key: 'deslotTime', group: 'laps', label: 'Deslot time (seconds)', type: 'number', min: 0, optional: true, hint: 'A lap slower than this counts as a deslot. In a race with a Damage System a deslot gives the car damage points (set under Race Setup > Damage Systems). Empty or 0 = no automatic deslots.' },
       { key: 'picture', group: 'extras', label: 'Picture', type: 'image', optional: true },
       { key: 'notes', group: 'extras', label: 'Notes', type: 'longtext', optional: true }
     ]
@@ -60,6 +61,8 @@ module.exports = {
       { key: 'tyres', group: 'technical', label: 'Tyres', type: 'text' },
       { key: 'tyreCompound', group: 'technical', label: 'Tyre choice (for the Weather System)', type: 'select', default: Wx.DEFAULT_TYRE, options: Wx.TYRES.map(t => [t.code, `${t.name} (${t.code})`]),
         hint: 'The tyre this car races on when the track is dry. In a race with a Weather System a pit stop changes it to Wet (or Intermediate) when it rains, and back to this one when the track is dry again.' },
+      { key: 'damageFactor', group: 'technical', label: 'Damage factor (for the Damage System)', type: 'number', min: 0, step: 'any', default: 1, optional: true,
+        hint: '1 = like the other cars. A fragile car collects damage points faster (1.5: half as many again), a sturdy one slower (0.5); 0 = it never takes damage. Only used in a race with a Damage System.' },
       { key: 'gearing', group: 'technical', label: 'Gearing', type: 'text' },
       { key: 'weight', group: 'technical', label: 'Weight', type: 'text' },
       { key: 'picture', group: 'pictures', label: 'Main picture', type: 'image', optional: true },
@@ -226,6 +229,8 @@ module.exports = {
       { key: 'firstLap', group: 'start', label: 'First crossing of the start line', type: 'select', default: 'skip',
         options: [['skip', 'Only starts the timing: the short lap from the grid is not counted'], ['count', 'Counts as a lap']], showIf: RACING },
       { key: 'penaltySystem', group: 'rules', label: 'Penalty system', type: 'ref', ref: 'penaltysystems', blank: 'No penalties', showIf: RACING },
+      { key: 'damageSystem', group: 'rules', label: 'Damage system', type: 'ref', ref: 'damagesystems', blank: 'No damage', showIf: [{ sessionType: ['race', 'timed', 'heats', 'endurance'] }],
+        hint: 'Damage points, and the stop in the pits that repairs them. Make damage systems under Race Setup > Damage Systems. Only for races (a number of laps or a duration), not for practice or qualifying. Penalty points for a late or an early stop need a Penalty system above.' },
       { key: 'fuelRules', group: 'rules', label: 'Fuel setup', type: 'ref', ref: 'fuelrules', blank: 'No fuel', showIf: RACING },
       { key: 'bop', group: 'rules', label: 'Balance of Power', type: 'select', default: 'off', options: [['off', 'Off'], ['on', 'On: hinder the fastest car and help the slowest (set it up under Race Setup > Balance of Power)']], showIf: [{ sessionType: ['race', 'timed', 'heats', 'endurance'] }],
         hint: 'Works through the fuel rules, so it needs a Fuel setup above. Only for races (a number of laps or a duration), not for practice or qualifying.' },
@@ -289,6 +294,31 @@ module.exports = {
       { key: 'types', group: 'special', label: 'Special penalties', type: 'penaltytypes', optional: true },
       { key: 'dqPoints', group: 'limits', label: 'Disqualify at this many points (empty = never)', type: 'number', optional: true },
       { key: 'fuelPoints', group: 'limits', label: 'Penalty points for every lap driven on an empty tank', type: 'number', optional: true, hint: 'Only for fuel setups where the car carries on when the fuel runs out. Empty or 0 = no points.' }
+    ]
+  },
+  // Damage systems: the levels of damage a car can have, what each level asks of the pit stop, and the incidents the Race Director can give. Chosen per race setup.
+  damagesystems: {
+    label: 'Damage system', plural: 'Damage systems', title: ['name'], extra: false, linked: false, list: ['name', 'stop', 'deslotPoints'], card: ['stop', 'deslotPoints'],
+    // The form shows the fields in these collapsible groups, in this order (a field says which group it is in); a group whose fields are all hidden is hidden too.
+    groups: [
+      { id: 'basics', title: 'Basics', note: 'Name, the stop in the pits and the damage of a deslot', open: true },
+      { id: 'levels', title: 'Levels', note: 'How much damage asks for which stop in the pits', open: true },
+      { id: 'incidents', title: 'Incidents', note: 'What the Race Director can give a car with a button', open: true },
+      { id: 'fines', title: 'Penalty points', note: 'For a stop that is late, and for leaving too early' }
+    ],
+    fields: [
+      { key: 'name', group: 'basics', label: 'Name', type: 'text' },
+      { key: 'stop', group: 'basics', label: 'Repair and the other work in the stop', type: 'select', default: 'overlap',
+        options: [['overlap', 'At the same time: the longest job counts (a repair of 15 seconds and refuelling for 8 seconds is 15 seconds)'], ['add', 'One after the other: the repair starts when the other work in the stop is done']],
+        hint: 'The other work is refuelling and a driver swap by the sensor. Changing tyres takes no time.' },
+      { key: 'deslotPoints', group: 'basics', label: 'Damage points for a deslot', type: 'number', min: 0, default: 1,
+        hint: 'A lap slower than the deslot time of the track (Tracks > Lap time limits) gives this many damage points. 0 = none.' },
+      { key: 'levels', group: 'levels', label: 'Levels', type: 'damagelevels', optional: true },
+      { key: 'incidents', group: 'incidents', label: 'Incidents', type: 'damageincidents', optional: true },
+      { key: 'latePoints', group: 'fines', label: 'Penalty points for every lap after the deadline of a level', type: 'number', min: 0, default: 1,
+        hint: 'A level can say the car must be in the pits within some laps. It needs a penalty system in the race setup; without one the late lap is only called out. 0 = none.' },
+      { key: 'earlyPoints', group: 'fines', label: 'Penalty points for leaving before the repair is done', type: 'number', min: 0, default: 1,
+        hint: 'The damage stays. It needs a penalty system in the race setup. 0 = none.' }
     ]
   },
   // Weather systems: a spell of rain with a forecast, the tyres to change in the pits, and what the wrong tyres cost. Chosen per race setup.

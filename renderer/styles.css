@@ -293,7 +293,9 @@ dialog:has(.formgrid) form{display:flex;flex-direction:column;max-height:calc(90
 .lv-log{padding-left:20px}
 .ptrow{display:grid;grid-template-columns:2fr 1.4fr .8fr .8fr 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px}
 .ptrow.pthead{font-size:12px}
-@media (max-width:900px){.ptrow{grid-template-columns:1fr 1fr}}
+.ptrow.dlrow{grid-template-columns:1.6fr .9fr .9fr 1.4fr 1fr 1.4fr auto}
+.ptrow.dirow{grid-template-columns:2fr 1fr auto}
+@media (max-width:900px){.ptrow,.ptrow.dlrow,.ptrow.dirow{grid-template-columns:1fr 1fr}}
 .rv{margin-top:14px}
 .rv-sub td{background:var(--bg);font-size:14px}
 .rv-sec{width:80px !important;display:inline-block}
@@ -455,10 +457,16 @@ dialog:has(.formgrid) form{display:flex;flex-direction:column;max-height:calc(90
 
 /* Endurance Race: the swap panel */
 .entable select{min-width:150px}
+.dmchip{display:inline-block;padding:2px 10px;border-radius:12px;border:1px solid var(--line);font-variant-numeric:tabular-nums;white-space:nowrap}
+.dmchip.dm-minor{border-color:#ffb000}
+.dmchip.dm-amber{background:#ffb000;border-color:#ffb000;color:#000}
+.dmchip.dm-red{background:#e03131;border-color:#e03131;color:#fff;font-weight:600}
+.dmchip.dm-out{background:#222;border-color:#222;color:#fff;font-weight:600}
+.dmtable .actions{white-space:normal}
 .enchip{display:inline-block;padding:2px 10px;border-radius:12px;border:1px solid var(--line);font-variant-numeric:tabular-nums;white-space:nowrap}
 .enchip.en-soon{background:#ffb000;border-color:#ffb000;color:#000}
 .enchip.en-due,.enchip.en-overdue{background:#e03131;border-color:#e03131;color:#fff;font-weight:600}
-@media (max-width:700px){.entable thead{display:none}.entable tr{display:block;border-bottom:0;padding:2px 0}.entable td{display:block;border-bottom:0;padding:4px 12px}}
+@media (max-width:700px){.entable thead,.dmtable thead{display:none}.entable tr,.dmtable tr{display:block;border-bottom:0;padding:2px 0}.entable td,.dmtable td{display:block;border-bottom:0;padding:4px 12px}}
 
 .tktable .tkminus{margin-top:6px}
 .tktable select{min-width:150px}

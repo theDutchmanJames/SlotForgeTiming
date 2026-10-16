@@ -10,6 +10,7 @@
   const Av = typeof module !== 'undefined' ? require('./avatars.js') : root.Avatars; // the standard avatars of the lanes (avatars.js)
   const Ww = typeof module !== 'undefined' ? require('./weatherwidgets.js') : root.WxW; // the weather widgets (weatherwidgets.js)
   const En = typeof module !== 'undefined' ? require('./endurance.js') : root.Endurance; // the Endurance Race (endurance.js)
+  const Dm = typeof module !== 'undefined' ? require('./damage.js') : root.Damage; // the Damage System (damage.js)
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
   const median = a => { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
@@ -41,6 +42,15 @@
     return { nextdriver: esc(rosterName(c, l.next) || '–'), swap: esc(En.chipOf(S.eng.endurance, l).text), stint: En.clock(l.stintMs) };
   }
 
+  // Damage System: the look at the damage of a car (null: the race has no damage rules), and what the custom texts can say of it
+  const damageLook = (S, c, t) => { const i = S.eng.cars.indexOf(c); return c && S.eng.damage && S.eng.damageOf && i >= 0 ? S.eng.damageOf(i, t) : null; };
+  const damageName = d => (d.out ? (d.out === 'dq' ? 'Disqualified' : 'Retired') : d.level >= 0 ? d.name : d.points > 0 ? 'Minor damage' : 'No damage');
+  function damageVars(S, c, t) {
+    const d = damageLook(S, c, t); if (!d) return { damage: '–', damagelevel: '–', repairs: '–' };
+    return { damage: d.points, damagelevel: esc(damageName(d)), repairs: d.repairs };
+  }
+  const lapsWord = n => `${n} lap${n === 1 ? '' : 's'}`;
+
   // The {variables} of the custom text widgets. Values are already safe to put in HTML.
   function laneVars(S, c, t) {
     const E_ = S.eng, i = E_.cars.indexOf(c), row = S.rowOf(c), laps = c.laps.length, g = E.goodLaps(c), F = E_.fuel, P = E_.penalty, track = S.track || {}, ch = S.champ;
@@ -51,7 +61,7 @@
       laptime: c.done ? '–' : E.fmtTime(E_.lapElapsed(i, S.now)), last: laps ? E.fmtTime(c.laps[laps - 1]) : '–', best: c.best === null ? '–' : E.fmtTime(c.best), avg: g.length ? E.fmtTime(mean(g)) : '–', median: g.length ? E.fmtTime(median(g)) : '–',
       record: Number.isFinite(best) ? E.fmtTime(best) : '–', gap: esc(row.gap),
       fuel: F && F.on ? `${(Math.floor(E_.fuelOf(i, t) * 10 + 1e-9) / 10).toFixed(1).replace(/\.0$/, '')} L` : '–', fuelpct: F && F.on && F.tank ? Math.round(E_.fuelOf(i, t) / (E_.tankOf ? E_.tankOf(i) : F.tank) * 100) + '%' : '–', bop: c.bop ? Bp.signed(c.bop) : '–',
-      penpoints: P && P.on ? (c.dq ? 'DQ' : c.points) : '–', pentime: P && P.on ? `+${Number.isInteger(sec) ? sec : sec.toFixed(1)} s` : '–', champ, pits: c.pits ? c.pits.length : 0, pit: pit ? E.fmtTime(pit.ms) : '–', speed: speedOf(true), speedreal: speedOf(false), ...swapVars(S, c, t), ...Ww.laneVars(c) };
+      penpoints: P && P.on ? (c.dq ? 'DQ' : c.points) : '–', pentime: P && P.on ? `+${Number.isInteger(sec) ? sec : sec.toFixed(1)} s` : '–', champ, pits: c.pits ? c.pits.length : 0, pit: pit ? E.fmtTime(pit.ms) : '–', speed: speedOf(true), speedreal: speedOf(false), ...swapVars(S, c, t), ...damageVars(S, c, t), ...Ww.laneVars(c) };
   }
   function raceVars(S, t) {
     const laps = lapLimitOf(S.setup), time = timeLimitOf(S.setup), lead = S.standings()[0], most = Math.max(0, ...S.eng.cars.map(x => x.laps.length)), sr = S.sessionRecord ? S.sessionRecord() : null, tr = S.trackRecord ? S.trackRecord() : null;
@@ -186,6 +196,24 @@
         const late = chip.kind === 'due' || chip.kind === 'overdue', text = opt.show === 'clock' ? (late ? 'NOW' : l.left === null || l.left === undefined ? '' : En.leftText(cfg, l.left)) : chip.text + stand;
         const bg = chip.kind === 'soon' ? opt.soonColor || '#ffb000' : late ? opt.dueColor || '#e03131' : '';
         return bg ? { html: esc(text), bg, color: contrast(bg) } : { html: esc(text) };
+      }
+      case 'damage': { // Damage System: the level and the points of the car, amber for a level to pit for whenever you can, red for as fast as you can (or a car that is late)
+        const d = damageLook(S, c, t); if (!d) return { html: '\u2013' };
+        if (d.out) { const bg = d.out === 'dq' ? '#d62828' : opt.outColor || '#555b66'; return { html: d.out === 'dq' ? 'DQ' : 'RETIRED', bg, color: contrast(bg) }; }
+        if (!d.points) return { html: opt.showNone === false ? '' : opt.show === 'points' ? '0' : 'No damage' };
+        const text = opt.show === 'points' ? String(d.points) : opt.show === 'level' ? damageName(d) : `${damageName(d)} \u00b7 ${d.points}`;
+        const late = d.lapsLeft !== null && d.lapsLeft < 0, bg = late || d.tone === 'red' || d.tone === 'out' ? opt.redColor || '#e03131' : d.tone === 'amber' ? opt.amberColor || '#ffb000' : '';
+        return bg ? { html: esc(text), bg, color: contrast(bg) } : { html: esc(text) };
+      }
+      case 'repairtimer': { // Damage System: when the car should pit and for how long, and while it stands on the sensor how long the repair still takes
+        const d = damageLook(S, c, t); if (!d) return { html: '\u2013' };
+        if (d.out) return { html: opt.show === 'clock' ? '' : d.out === 'dq' ? 'DQ' : 'OUT' };
+        if (d.standLeft !== null) { const bg = opt.standColor || '#3ddc84', clock = Dm.secClock(d.standLeft); return { html: opt.show === 'clock' ? clock : `Repairing ${clock}`, bg, color: contrast(bg) }; }
+        if (!(d.points > 0) || d.level < 0) return { html: opt.show === 'clock' ? '' : '\u2013' };
+        const late = d.lapsLeft !== null && d.lapsLeft < 0, hasTime = d.action === 'repair' && d.seconds > 0, clock = hasTime ? Dm.secClock(d.seconds * 1000) : '';
+        const when = d.lapsLeft === null ? (d.urgent ? 'Pit as fast as you can' : 'Pit whenever you can') : late ? `Pit now, ${lapsWord(-d.lapsLeft)} late` : d.lapsLeft === 0 ? 'Pit now' : `Pit in ${lapsWord(d.lapsLeft)}`;
+        const bg = late || d.urgent ? opt.dueColor || '#e03131' : opt.soonColor || '#ffb000';
+        return { html: esc(opt.show === 'clock' ? clock : when + (clock ? ` \u00b7 ${clock}` : '')), bg, color: contrast(bg) };
       }
       case 'bop': { // Balance of Power: off, hindered (an arrow down) or helped (an arrow up), with the percentage
         const pct = c.bop || 0;

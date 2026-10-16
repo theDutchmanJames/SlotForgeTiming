@@ -50,8 +50,10 @@ const LiveShare = (() => {
   }
   const GROWING = ['laps', 'bad'];
   // an Endurance Race: the state of the swaps of a car, and who is at the wheel now (the driver of a car changes with a swap; in any other race it never does, so it is not sent)
-  const SWAP_KEYS = ['en', 'swapLost', 'swapLaps', 'enSwapAt', 'driverId', 'driverName', 'nickname', 'callsign', 'flag', 'avatar'];
-  const carCore = car => { const o = {}; CAR.forEach(k => { if (!GROWING.includes(k)) o[k] = cap(car[k]); }); if (car.en) SWAP_KEYS.forEach(k => { o[k] = cap(car[k]); }); return o; };
+  const SWAP_KEYS = ['en', 'swapLost', 'swapLaps', 'enSwapAt', 'driverId', 'driverName', 'nickname', 'callsign', 'flag', 'avatar', 'enSwapDoneAt'];
+  // the Damage System: the damage of a car, once it has had any (a race without damage sends none of this)
+  const DMG_KEYS = ['dmg', 'dmgTotal', 'dmgLvl', 'dmgDue', 'dmgOut', 'repairs', 'repairMs', 'repairedAt', 'damageFactor'];
+  const carCore = car => { const o = {}; CAR.forEach(k => { if (!GROWING.includes(k)) o[k] = cap(car[k]); }); if (car.en) SWAP_KEYS.forEach(k => { o[k] = cap(car[k]); }); if (car.dmgTotal > 0 || car.dmgOut) DMG_KEYS.forEach(k => { o[k] = cap(car[k]); }); return o; };
 
   // the whole state in one go (what a window that opens late is given; also what the tests compare with)
   function packDynamic(c) {

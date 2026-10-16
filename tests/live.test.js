@@ -31,7 +31,7 @@ const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if
 for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function') api[k] = (...x) => { x.forEach(v => { if (typeof v !== 'function') structuredClone(v); }); return f(...x); }; }
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['bop.js', 'weather.js', 'endurance.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -673,6 +673,18 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   { const st = run(`LiveShare.packStatic({ eng: { cfg: { type: 'race', laps: 5, rnd: Math.random, entries: [{ lane: 0 }] } }, base: { personal: new Map(), track: Infinity, trackName: '' } })`);
     let cloned = true; try { structuredClone(st); } catch { cloned = false; }
     say('1.9.1: the engine settings sent to the other windows hold no function (a random generator can not travel through Electron: "An object could not be cloned"), the other settings stay', cloned && !('rnd' in st.cfg) && st.cfg.type === 'race' && st.cfg.laps === 5 && st.cfg.entries.length === 1); }
+  { // 1.10.0: the damage of a car travels to the other windows (and nothing for a car that never had any)
+    const RE = run('RaceEngine'), LS = run('LiveShare'), Dm = run('Damage'), wire = m => JSON.parse(JSON.stringify(m));
+    const r = RE.createRace({ type: 'timed', duration: 600, minLap: 800, damage: Dm.clean(Dm.defaults(), 0), entries: [0, 1].map(i => ({ lane: i, driverId: 'd' + i, carId: 'c' + i, driverName: 'D' + i, carName: 'C' + i, damageFactor: i ? 2 : 1 })) }); r.start(0);
+    const cx = t => ({ raceId: 'x', eng: r, phase: 'running', calling: false, lights: 5, heat: null, flash: new Map(), bestAll: Infinity, bestAllName: '', bestBy: new Map(), now: t, champ: null });
+    const S = LS.sender(), m1 = wire(S.pack(cx(1000), 1000));
+    say('a car that never had damage sends no damage figures', m1.cars.every(c => !('dmg' in c) && !('repairs' in c)));
+    r.addDamage(0, 3, 2000); r.addDamage(1, 3, 2000);
+    const m2 = wire(S.pack(cx(2100), 2100)), a = LS.applyDynamic(null, m2);
+    say('...a car that had damage sends its points, level, deadline, repairs and damage factor, and a receiver has them (the factor of the car: 2 gives double)', a.ok && m2.cars[0].dmg === 3 && m2.cars[1].dmg === 6 && a.state.cars[1].dmgLvl === 1 && a.state.cars[1].damageFactor === 2 && a.state.cars[0].repairs.length === 0);
+    const st = LS.packStatic({ eng: r, base: { personal: new Map(), track: Infinity, trackName: '' } });
+    let cloned = true; try { structuredClone(st); } catch { cloned = false; }
+    say('...the rules of the Damage System travel in the settings of the race (no function in them), so a viewer works out the same levels', cloned && st.cfg.damage && st.cfg.damage.levels.length === 4 && st.cfg.damage.levels[0].name === 'Light damage'); }
   say('a race that is shared without a club logo sends none', run(`LiveShare.packStatic({ eng: __sent.stat.cfg && { cfg: __sent.stat.cfg }, base: { personal: new Map(), track: Infinity, trackName: '' } }).clubLogo`) === '');
   { // ---- the sender and the receiver of the changing part, on their own ----
     const RE = run('RaceEngine'), LS = run('LiveShare'), wire = m => JSON.parse(JSON.stringify(m));

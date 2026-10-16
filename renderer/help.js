@@ -62,10 +62,11 @@ const Help = (() => {
           <li><b>Rotation Setups</b>: a heat plan that you make yourself, for a heat-based race (see Rotation setups, below).</li>
           <li><b>Fuel Setups</b>: tank size, fuel per lap and what happens when the tank is empty.</li>
           <li><b>Penalty Systems</b>: how penalty points turn into seconds, when a driver is disqualified, and special penalties such as a Drivethrough or a Stop-and-Go.</li>
+          <li><b>Damage Systems</b>: damage points, and the stop in the pits that repairs them (see Damage System, below).</li>
           <li><b>Weather Systems</b>: a spell of rain with a forecast, the tyres to change in the pits, what the wrong tyres cost, and the temperatures and the wind of every weather.</li>
           <li><b>Balance of Power</b>: how much a fast car is hindered and a slow car helped, by hand or by itself.</li>
           <li><b>Time Tokens</b>: the time buttons and the warning for a Time Token Session.</li>
-          <li>Fuel setups, penalty systems and weather systems do nothing until you choose them in a race setup.</li>
+          <li>Fuel setups, penalty systems, damage systems and weather systems do nothing until you choose them in a race setup.</li>
         </ul>` },
       { id: 'types', title: 'Session types', note: 'Seven ways to race', body: `
         <ul>
@@ -111,6 +112,14 @@ const Help = (() => {
           <li>When the swap is late, the laps keep counting or stop counting, and the team can get penalty points (they need a penalty system), again and again if you like.</li>
           <li>The widgets <b>Current Driver</b>, <b>Next Driver</b> and <b>Swap Timer</b> (amber before the swap is due, red when it is late) show it on the timing page. The audio folder <b>Endurance</b> says "{team} needs to swap positions! Box Box!" and who came in and who took over.</li>
           <li>The results show every driver's time at the wheel and stints. A race in one go that a crash or a power cut stops can be continued from the Home tab.</li>
+        </ul>` },
+      { id: 'damage', title: 'Damage System', note: 'Damage points, and the stop in the pits that repairs them', body: `
+        <ul>
+          <li>A damage system (Race Setup, <b>Damage Systems</b>) gives cars <b>damage points</b>. Every <b>level</b> (Light damage from 3 points, Medium from 6...) says how long the car must stand still on the pit sensor to be repaired, whether it should pit <b>whenever it can</b> or <b>as fast as it can</b>, and can have a deadline in laps. The highest level reached counts. Choose it in the race setup (<b>Damage system</b>); it works in a race and a timed race.</li>
+          <li>Points come from <b>incidents</b> (Contact +2, Hard crash +4: buttons on the race screen, the Race Director page and phones, and -1 to take a point back) and from a <b>deslot</b>: fill in the <b>Deslot time</b> of the track (Tracks, Lap time limits) and every slower lap gives the points of the system.</li>
+          <li>After the stop the damage is gone. The repair can run <b>at the same time</b> as refuelling and a driver swap, or <b>after</b> them. A car that leaves too early keeps its damage; with a penalty system that, and a lap after the deadline, cost penalty points.</li>
+          <li>A level can <b>retire</b> or <b>disqualify</b> the car when it stops in the pits; its laps count until then. A slot car with a <b>Damage factor</b> above 1 takes more damage.</li>
+          <li>The widgets <b>Damage</b> and <b>Repair Timer</b>, {damage} in texts, and the audio folder <b>Damage</b> show and say it. The results list the points, repairs and time in the pits.</li>
         </ul>` },
       { id: 'heatresults', title: 'Heat results', note: 'How the heats add up', body: `
         <ul>
@@ -215,8 +224,8 @@ const Help = (() => {
         </ul>` },
       { id: 'audio', title: 'Audio calls', note: 'A voice for the race', body: `
         <ul>
-          <li>An <b>audio set</b> (Customization, Audio Settings) says what the race announces. The calls are in folders; switch each one on or off. Most of the newer calls are off until you switch them on.</li>
-          <li><b>Race progress</b>: laps or minutes to go, the last lap, the heats. <b>Gaps and battles</b>: closing in, a battle, a lapped car. <b>Laps and records</b>: records, the first lap, a near record. <b>Pit and fuel</b>: pits, half a tank, a refuel. <b>Penalties</b>: given, served, forgiven, time added. <b>Safety</b>: a lane calling for the marshal, no lap for a while, the Trackmate lost or back. <b>Time tokens</b>: time almost up, time up, added, a lane freed. <b>Weather</b>: weather, conditions, tyres. <b>Endurance</b>: driver swaps.</li>
+          <li>An <b>audio set</b> (Customization, Audio Settings) says what the race announces. The calls are in folders; switch each one on or off. Some calls start off.</li>
+          <li><b>Race progress</b>: laps or minutes to go, the last lap, the heats. <b>Gaps and battles</b>: closing in, a battle, lapped cars. <b>Laps and records</b>: records, a near record. <b>Pit and fuel</b>: pits, half a tank, a refuel. <b>Penalties</b>: given, served, forgiven, time added. <b>Safety</b>: a marshal call, no lap for a while, the Trackmate lost or back. <b>Time tokens</b>: time almost up, up, added, freed. <b>Weather</b>: weather, conditions, tyres. <b>Endurance</b>: driver swaps. <b>Damage</b>: a hit, a repair asked for, late or early in the pits, repaired, out.</li>
           <li>A call can have <b>several sentences</b>; one is picked at random each time. Use placeholders such as {driver}, {team}, {time}, {gap}, {gapahead}, {record} and {position}; the list is at the top. Press Test to hear it.</li>
           <li>A sentence can be spoken by a <b>voice of your computer</b>, or you can choose a <b>sound file</b> (up to 10 MB) that plays instead. Drivers can be called by name, nickname or callsign.</li>
           <li>Under a sentence, <b>Only if</b> limits it to one driver, the top places, a fast lap or a small gap; a sentence whose conditions hold is said instead of the others. <b>Not again within</b> holds a call back for some seconds.</li>

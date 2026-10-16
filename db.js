@@ -90,6 +90,7 @@ class Database {
     if (entity === 'weathersystems') d.racesetups.forEach(r => { if (r.weather === id) r.weather = ''; });
     if (entity === 'rotationsetups') d.racesetups.forEach(r => { if (r.rotation === id) r.rotation = ''; });
     if (entity === 'penaltysystems') d.racesetups.forEach(r => { if (r.penaltySystem === id) r.penaltySystem = ''; });
+    if (entity === 'damagesystems') d.racesetups.forEach(r => { if (r.damageSystem === id) r.damageSystem = ''; });
     if (entity === 'layouts') d.racesetups.forEach(r => { if (r.layout === id) r.layout = ''; if (r.layout2 === id) r.layout2 = ''; });
     if (entity === 'drivers') {
       d.teams.forEach(t => { if (Array.isArray(t.drivers)) t.drivers = t.drivers.filter(x => x !== id); });

@@ -44,6 +44,7 @@
   const TEXT_LANE_VARS = [['name', 'Driver name'], ['nickname', 'Nickname'], ['callsign', 'Callsign'], ['team', 'Team name'], ['car', 'Slotcar'], ['lane', 'Lane number'], ['position', 'Position'], ['lap', 'Current lap'], ['laps', 'Laps completed'],
     ['laptime', 'Current lap time'], ['last', 'Last lap'], ['best', 'Best lap'], ['avg', 'Average lap'], ['median', 'Median lap'], ['record', 'Personal record lap'], ['gap', 'Gap to leader'],
     ['fuel', 'Fuel left (litres)'], ['fuelpct', 'Fuel left (%)'], ['bop', 'Balance of Power (\u221220% hindered, +10% helped, a dash when it is off)'], ['penpoints', 'Penalty points'], ['pentime', 'Penalty time'], ['champ', 'Championship points'], ['pits', 'Pit stops made'], ['tyre', 'Tyres of the car (Soft, Wet...)'], ['pit', 'Last pit stop time'], ['speed', 'Speed (scaled km/h)'], ['speedreal', 'Speed (real km/h)'],
+    ['damage', 'Damage points (Damage System)'], ['damagelevel', 'Damage level (Light damage, Heavy damage...)'], ['repairs', 'Repairs made (Damage System)'],
     ['nextdriver', 'Next driver of the team (Endurance Race)'], ['swap', 'Time to the next driver swap (Endurance Race)'], ['stint', 'How long the driver has been at the wheel (Endurance Race)']];
   const TEXT_RACE_VARS = [['clock', 'Race clock (counting up)'], ['timeleft', 'Time left'], ['lapsleft', 'Laps left'], ['lapstotal', 'Lap limit'], ['leader', 'Leader'], ['flag', 'Flag / race state'], ['heat', 'Heat'],
     ['track', 'Track name'], ['session', 'Race setup name'], ['type', 'Session type'], ['sessionrecord', 'Session record lap'], ['sessionrecordby', 'Session record driver'], ['trackrecord', 'Track record lap'], ['trackrecordby', 'Track record driver'], ['yellowtarget', 'Yellow flag target lap time (empty when there is none)'],
@@ -274,6 +275,18 @@
     { key: 'show', label: 'Show', type: 'select', default: 'words', choices: [['words', 'Words ("Swap in 12:30")'], ['clock', 'Only the clock (12:30)']] },
     { key: 'soonColor', label: 'Colour when the swap is near (the warning of the race setup)', type: 'color', default: '#ffb000' },
     { key: 'dueColor', label: 'Colour when the swap is due', type: 'color', default: '#e03131' }];
+  // Damage System: the damage of the car and the repair it needs (see damage.js)
+  const DAMAGE_OPTIONS = [
+    { key: 'show', label: 'Show', type: 'select', default: 'both', choices: [['both', 'The level and the points ("Medium damage \u00b7 6")'], ['level', 'Only the level'], ['points', 'Only the points']] },
+    { key: 'showNone', label: 'Show "No damage" when the car has none (turn off to show nothing)', type: 'checkbox', default: true },
+    { key: 'amberColor', label: 'Colour of a level to pit for whenever you can', type: 'color', default: '#ffb000' },
+    { key: 'redColor', label: 'Colour of a level to pit for as fast as you can, of a level that ends the car, and of a car that is late', type: 'color', default: '#e03131' },
+    { key: 'outColor', label: 'Colour of a car that is retired by damage', type: 'color', default: '#555b66' }];
+  const REPAIRTIMER_OPTIONS = [
+    { key: 'show', label: 'Show', type: 'select', default: 'words', choices: [['words', 'Words ("Pit in 2 laps \u00b7 0:15", "Repairing 0:07")'], ['clock', 'Only the clock (the time in the pits)']] },
+    { key: 'soonColor', label: 'Colour when the car should pit whenever it can', type: 'color', default: '#ffb000' },
+    { key: 'dueColor', label: 'Colour when the car should pit as fast as it can, or is late', type: 'color', default: '#e03131' },
+    { key: 'standColor', label: 'Colour while the car is being repaired', type: 'color', default: '#3ddc84' }];
   const TEAMPIC_OPTIONS = [TEAM_OPTION, { key: 'frame', label: 'Picture position and zoom', type: 'frame', from: 'team' }];
   const TEAM_SAMPLES = ['Red Racers', 'Blue Bandits', 'Green Giants', 'Gold Gang', 'Night Owls', 'Pit Crew'];
   const AVATAR_OPTIONS = [{ ...SET_OPTION('avatars'), label: 'Avatars for a driver without a picture (sets are made under Customization > Image Settings)' },
@@ -368,6 +381,8 @@
     T('bop', 'Balance of Power', 'Timing', { title: 'Balance of Power', perLane: true, w: 170, options: BOP_OPTIONS, sample: l => ['BoP \u25BC \u221220%', 'BoP off', 'BoP \u25B2 +15%'][l % 3] }),
     T('speed', 'Slotcar Speed', 'Timing', { title: 'Speed', perLane: true, w: 190, options: SPEED_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, k = (o.unit === 'mph' ? 0.621371 : 1) * (o.mode === 'real' ? 1 : 32), v = (11.7 + l * 0.4) * k; return `${v.toFixed(o.mode === 'real' ? 1 : 0)}${o.showUnit === false ? '' : o.unit === 'mph' ? ' mph' : ' km/h'}`; } }),
     T('penalty', 'Penalty Points', 'Timing', { title: 'Penalty', perLane: true, w: 150, options: PENALTY_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, p = [0, 2, 5, 1, 0, 3][l], s = [0, 0, 5, 0, 0, 0][l]; return o.show === 'time' ? `+${s} s` : o.show === 'both' ? `${p} (+${s} s)` : String(p); } }),
+    T('damage', 'Damage', 'Timing', { title: 'Damage', perLane: true, w: 230, options: DAMAGE_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, k = l % 4, lv = ['No damage', 'Light damage', 'Heavy damage', 'Retired'][k], pts = [0, 3, 9, 10][k]; return o.show === 'points' ? String(pts) : o.show === 'level' || !pts ? lv : `${lv} \u00b7 ${pts}`; } }),
+    T('repairtimer', 'Repair Timer', 'Timing', { title: 'Repair timer', perLane: true, w: 260, options: REPAIRTIMER_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, k = l % 4, words = ['\u2013', 'Pit whenever you can \u00b7 0:10', 'Pit in 2 laps \u00b7 0:20', 'Repairing 0:07'][k], clock = ['', '0:10', '0:20', '0:07'][k]; return o.show === 'clock' ? clock : words; } }),
     T('champpoints', 'Championship Points', 'Timing', { title: 'Points', perLane: true, w: 150, options: CHAMP_OPTIONS, sample: l => String([10, 8, 6, 5, 4, 3][l] + (l === 0 ? 8 : 0)) }),
     T('pitstop', 'Pitstop Time', 'Timing', { title: 'Pitstop time', perLane: true, w: 150, sample: l => `7.${40 + l}2` }),
     // Delta Timers: the ordinary widget's time on the left and, on the right, a green (faster) or red (slower) badge with the difference (see delta.js)

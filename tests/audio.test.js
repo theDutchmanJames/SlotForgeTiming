@@ -445,7 +445,7 @@ const mk2 = (o = {}, ents = one) => createRace({ type: 'race', laps: 10, minLap:
   }
   // the lists of the calls
   { const n = A.CALLS.length, groups = [...new Set(A.CALLS.map(c => c.group))];
-    ok('70 calls in 14 folders (1.3.0: Balance of Power after Pit and fuel; 1.4.0: Weather after Balance of Power; 1.5.0: the conditions call; 1.7.0: the line-up; 1.9.0: the Endurance folder after Balance of Power), the Safety folder after the flags', n === 70 && groups.join() === 'Start,Positions,Race progress,Gaps and battles,Laps and records,Pit and fuel,Balance of Power,Endurance,Weather,Penalties,Flags,Safety,Finish,Time tokens');
+    ok('78 calls in 15 folders (1.10.0: the Damage folder after Endurance; 1.3.0: Balance of Power after Pit and fuel; 1.4.0: Weather after Balance of Power; 1.5.0: the conditions call; 1.7.0: the line-up; 1.9.0: the Endurance folder after Balance of Power), the Safety folder after the flags', n === 78 && groups.join() === 'Start,Positions,Race progress,Gaps and battles,Laps and records,Pit and fuel,Balance of Power,Endurance,Damage,Weather,Penalties,Flags,Safety,Finish,Time tokens');
     const set = Sound.defaultSet('x'), fresh = ['firstlap', 'nearrecord', 'fuelhalf', 'refuelled', 'penaltyserved', 'penaltyforgiven', 'penaltytime', 'lanecall', 'nolap', 'trackmatelost', 'trackmateback', 'tokenadded', 'tokenfree'];
     ok('the 13 new calls exist, have sentences, and are off in a new audio set', fresh.every(id => A.CALLS.some(c => c.id === id) && set.calls[id].on === false && set.calls[id].lines.length > 0));
     const old = { calls: { winner: { on: true, lines: [{ text: 'x', file: '' }] } } };
@@ -602,6 +602,55 @@ const mk2 = (o = {}, ents = one) => createRace({ type: 'race', laps: 10, minLap:
   // a race without swaps never says them, and a team race that does not swap neither
   const plain = mk({ laps: 50 }), ap = A.create({}); plain.start(0); ap.observe(plain, { phase: 'running' });
   ok('a race without Endurance rules says nothing about swaps', !namesAll(ap.observe(plain, { phase: 'running', now: 99 * MIN })).includes('swap'));
+}
+
+// 1.10.0: the calls of the Damage System
+{
+  const Dm = require('../renderer/damage.js'), SEC = 1000;
+  const mkD = (over = {}) => { const r = createRace({ type: 'timed', duration: 600, minLap: 800, penalty: penaltyConfig({ everyPoints: 5, everySeconds: 5 }), damage: Dm.clean({ ...Dm.defaults(), ...over }, 0),
+    entries: [{ lane: 0, driverId: 'a', driverName: 'Alex', nickname: 'Speedy', callsign: 'ALX', carId: 'c1' }] }); r.start(0); r.cars[0].started = true; return r; };
+  const obs = (eng, an, t) => { eng.tick(t); return an.observe(eng, { phase: 'running', now: t }); };
+  const dnames = ev => ev.filter(e => /^(damage|repair)/.test(e.call)).map(e => e.call).join(); // (the calls of the Damage System; the pit and the lap calls are not what is tested here)
+  const eng = mkD(), an = A.create({ driverBy: 'name' }); obs(eng, an, 0);
+  ok('damage points below the first level: only the (optional) hit call', (eng.addDamage(0, 2, 1 * SEC, 'hit'), names(obs(eng, an, 1 * SEC))) === 'damagehit');
+  let out = (eng.addDamage(0, 1, 2 * SEC), obs(eng, an, 2 * SEC));
+  const lvl = out.find(x => x.call === 'damagelevel');
+  ok('a level that asks for a repair: "damage level" with the level, the points, how soon and for how long', !!lvl && lvl.vars.level === 'Light damage' && lvl.vars.damage === 3 && lvl.vars.when === 'whenever you can' && lvl.vars.repair === '10 seconds' && lvl.vars.driver === 'Alex');
+  out = (eng.addDamage(0, 6, 3 * SEC), obs(eng, an, 3 * SEC));
+  const hv = out.find(x => x.call === 'damagelevel');
+  ok('...a heavy level says "as fast as you can" (and the points the car has now)', !!hv && hv.vars.level === 'Heavy damage' && hv.vars.when === 'as fast as you can' && hv.vars.repair === '20 seconds' && hv.vars.damage === 9);
+  out = (eng.addDamage(0, 1, 4 * SEC), obs(eng, an, 4 * SEC));
+  const cr = out.find(x => x.call === 'damagecritical');
+  ok('a level that ends the car: "damage critical", not the repair call', !!cr && cr.vars.level === 'Critical damage' && !out.some(x => x.call === 'damagelevel'));
+  eng.block(0, 10 * SEC); out = obs(eng, an, 13 * SEC);
+  ok('...and when the car stops in the pits it is retired: "damage out" with the level', dnames(out) === 'damageout' && out.find(x => x.call === 'damageout').vars.level === 'Critical damage' && out.find(x => x.call === 'damageout').vars.damage === 10);
+
+  // a repair: done in the pits, and a car that leaves too early
+  const e2 = mkD(), a2 = A.create({}); obs(e2, a2, 0); e2.addDamage(0, 3, 1 * SEC); obs(e2, a2, 1 * SEC);
+  e2.block(0, 5 * SEC); obs(e2, a2, 8 * SEC); out = obs(e2, a2, 16 * SEC);
+  ok('the repair is done: "repaired" with the level and how long it took', names(out).includes('repaired') && out.find(x => x.call === 'repaired').vars.repair === '10 seconds' && out.find(x => x.call === 'repaired').vars.level === 'Light damage');
+  const e3 = mkD(), a3 = A.create({}); obs(e3, a3, 0); e3.addDamage(0, 3, 1 * SEC); obs(e3, a3, 1 * SEC);
+  e3.block(0, 5 * SEC); obs(e3, a3, 8 * SEC); e3.unblock(0, 9 * SEC); out = obs(e3, a3, 9 * SEC);
+  ok('a car that leaves before the repair is done: "repair early" (with the penalty points said by that call, not a second time)', dnames(out) === 'repairearly' && out.find(x => x.call === 'repairearly').vars.points === 1 && e3.cars[0].points === 1 && !namesAll(out).includes('penalty'));
+
+  // late for the pits: the call, and the penalty point is not said as an ordinary penalty
+  const e4 = mkD(), a4 = A.create({}); obs(e4, a4, 0); e4.addDamage(0, 9, 1 * SEC); obs(e4, a4, 1 * SEC);
+  for (let n = 1; n <= 4; n++) { e4.cross(0, 1 * SEC + n * 30 * SEC); }
+  out = obs(e4, a4, 1 * SEC + 4 * 30 * SEC);
+  ok('late for the pits (Heavy damage within 3 laps): "damage late", and the penalty point is part of that call', dnames(out) === 'damagelate' && out.find(x => x.call === 'damagelate').vars.points === 1 && e4.cars[0].points === 1 && out.find(x => x.call === 'damagelate').vars.level === 'Heavy damage' && !namesAll(out).includes('penalty'));
+
+  // a car that damage disqualifies
+  const e5 = mkD({ levels: [{ name: 'Wreck', from: 4, seconds: 0, urgency: 'asap', within: 0, action: 'dq' }] }), a5 = A.create({}); obs(e5, a5, 0);
+  e5.addDamage(0, 4, 1 * SEC); out = obs(e5, a5, 1 * SEC); e5.block(0, 5 * SEC); out = obs(e5, a5, 8 * SEC);
+  ok('a car that damage disqualifies: "damage disqualified" instead of the retired call (and no second "disqualified")', dnames(out) === 'damagedq' && !namesAll(out).includes('disqualified') && out.find(x => x.call === 'damagedq').vars.level === 'Wreck');
+
+  // the folder and the default set
+  const dmgCalls = A.CALLS.filter(c => c.group === 'Damage'), set = Sound.defaultSet('x');
+  ok('eight calls in the folder Damage; in a new audio set only the hit call is off', dmgCalls.map(c => c.id).join() === 'damagehit,damagelevel,damagecritical,damagelate,repairearly,repaired,damageout,damagedq' && dmgCalls.every(c => set.calls[c.id] && set.calls[c.id].lines.length > 0) && set.calls.damagehit.on === false && dmgCalls.filter(c => c.id !== 'damagehit').every(c => set.calls[c.id].on === true));
+  ok('the new words {damage}, {level}, {repair} and {when} are explained and have a sample; every word of a sentence is a word of its call', ['damage', 'level', 'repair', 'when'].every(k => A.VARS[k] && A.SAMPLE[k] !== undefined) && dmgCalls.every(c => c.lines.every(l => [...l.matchAll(/\{(\w+)\}/g)].every(m => c.vars.includes(m[1]) || ['driver', 'team'].includes(m[1])))));
+  // a race without a Damage System never says them
+  const plain = mk({ laps: 50 }), ap = A.create({}); plain.start(0); ap.observe(plain, { phase: 'running' });
+  ok('a race without a Damage System says nothing about damage', !/damage|repair/.test(namesAll(ap.observe(plain, { phase: 'running', now: 99 * SEC }))));
 }
 
 console.log(fails ? `${fails} FAILED` : 'audio: all PASSED'); process.exit(fails ? 1 : 0);

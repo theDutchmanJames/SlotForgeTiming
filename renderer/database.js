@@ -254,6 +254,21 @@ const ptRows = types => types.length ? `<div class="ptrow pthead muted"><span>Na
   <input type="number" min="0" step="1" data-pt="${i}" data-ptk="cost" value="${esc(t.cost)}" aria-label="Points it costs"><input type="number" min="0" step="1" data-pt="${i}" data-ptk="extra" value="${esc(t.extra)}" aria-label="Points added for leaving early">
   <input type="number" min="0" step="any" data-pt="${i}" data-ptk="unserved" value="${esc(t.unserved)}" aria-label="Seconds added if never served"><button type="button" class="btn" data-ptdel="${i}">Remove</button></div>`).join('')
   : '<p class="muted">No special penalties yet.</p>';
+// the levels of a damage system: one row each (a name, from how many damage points, how long to stand still, how urgent, the deadline in laps, what the stop does)
+const dlRows = levels => levels.length ? `<div class="ptrow dlrow pthead muted"><span>Name</span><span>From (damage points)</span><span>Stand still (s)</span><span>Pit</span><span>Within (laps, 0 = no deadline)</span><span>The stop</span><span></span></div>` +
+  levels.map((l, i) => `<div class="ptrow dlrow"><input type="text" data-dl="${i}" data-dlk="name" value="${esc(l.name)}" aria-label="Name" maxlength="40">
+  <input type="number" min="1" step="1" data-dl="${i}" data-dlk="from" value="${esc(l.from)}" aria-label="From how many damage points">
+  <input type="number" min="0" step="any" data-dl="${i}" data-dlk="seconds" value="${esc(l.seconds)}" aria-label="Seconds to stand still on the sensor" title="How long the car must stand on the sensor in the pits. For a car that is retired or disqualified: how long before that happens (0 = as soon as the pit stop starts).">
+  <select data-dl="${i}" data-dlk="urgency" aria-label="Pit whenever you can, or as fast as you can"><option value="whenever"${l.urgency !== 'asap' ? ' selected' : ''}>Whenever you can</option><option value="asap"${l.urgency === 'asap' ? ' selected' : ''}>As fast as you can</option></select>
+  <input type="number" min="0" step="1" data-dl="${i}" data-dlk="within" value="${esc(l.within)}" aria-label="Laps within which the car must be in the pits" title="After this many laps the car gets penalty points for every lap (see Penalty points below). 0 = no deadline.">
+  <select data-dl="${i}" data-dlk="action" aria-label="What the stop does"><option value="repair"${l.action !== 'retire' && l.action !== 'dq' ? ' selected' : ''}>Repairs the car</option><option value="retire"${l.action === 'retire' ? ' selected' : ''}>Retires the car</option><option value="dq"${l.action === 'dq' ? ' selected' : ''}>Disqualifies the car</option></select>
+  <button type="button" class="btn" data-dldel="${i}">Remove</button></div>`).join('')
+  : '<p class="muted">No levels yet: damage points are counted, but no stop repairs or ends anything.</p>';
+// the incidents of a damage system: a name and the damage points it gives (the buttons of the Race Director)
+const diRows = incs => incs.length ? `<div class="ptrow dirow pthead muted"><span>Name</span><span>Damage points</span><span></span></div>` +
+  incs.map((x, i) => `<div class="ptrow dirow"><input type="text" data-di="${i}" data-dik="name" value="${esc(x.name)}" aria-label="Name" maxlength="40">
+  <input type="number" min="1" step="1" data-di="${i}" data-dik="points" value="${esc(x.points)}" aria-label="Damage points it gives"><button type="button" class="btn" data-didel="${i}">Remove</button></div>`).join('')
+  : '<p class="muted">No incidents yet: the Race Director then has only the plus and minus buttons.</p>';
 const calcRows = pieces => pieces.map((p, i) => `<div class="calcrow"><input type="number" min="0" step="1" class="calc-count" data-i="${i}" value="${esc(p.count)}" aria-label="Number of pieces"> &times;
   <input type="number" min="0" step="any" class="calc-mm" data-i="${i}" value="${esc(p.mm)}" aria-label="Length of one piece in millimetres"> mm <button type="button" class="btn" data-calcdel="${i}">Remove</button></div>`).join('');
 const calcHtml = pieces => `<p class="muted">Number of pieces &times; length of one piece. Add a row for every kind of piece.</p><div id="calc-rows">${calcRows(pieces)}</div>
@@ -281,13 +296,15 @@ function fieldHtml(f, v, extra) {
     case 'tracklength': inp = `<div class="imgrow"><input id="${id}" type="number" min="0" step="any" value="${esc(Speed.parseLength(v))}"> <span>metres</span>
       <button type="button" class="btn" data-calcopen="1">Calculate from track pieces…</button></div><div id="calc" class="card" hidden>${calcHtml((extra && extra.pieces) || [])}</div>`; break;
     case 'penaltytypes': inp = `<p class="muted">Penalties the Race Director can give instead of leaving points to turn into time. One costs points, and must be served by stopping on the sensor in the pits. A Stop-and-Go needs the car to stand still for its seconds; a Drivethrough is served when the pit stop starts.</p><div id="pt-box">${ptRows((extra && extra.types) || [])}</div><button type="button" class="btn" data-ptadd="1">Add a special penalty</button>`; break;
+    case 'damagelevels': inp = `<p class="muted">The highest level a car has reached counts. A car must stand still on the sensor in the pits for the seconds of its level: that repairs the damage (the points go back to 0), or retires or disqualifies the car. Leave a gap between the levels, so a hit does not skip one.</p><div id="dl-box">${dlRows((extra && extra.dlevels) || [])}</div><button type="button" class="btn" data-dladd="1">Add a level</button>`; break;
+    case 'damageincidents': inp = `<p class="muted">Buttons for the Race Director (on the race screen, the Race Director page and the phones): each gives a car these damage points. A deslot is counted by itself when the track has a deslot time.</p><div id="di-box">${diRows((extra && extra.dincs) || [])}</div><button type="button" class="btn" data-diadd="1">Add an incident</button>`; break;
     case 'members': inp = `<div id="mem-box">${memRows((extra && extra.members) || [], state.refs[f.ref] || [])}</div>`; break;
     case 'gallery': inp = `<div id="gal-box" class="gallery"></div><input id="${id}" type="file" accept="image/*" multiple data-gallery="1"><p class="muted">Up to ${GALLERY_MAX} extra pictures. A screenshot of a parts list is fine.</p>`; break;
     case 'image': inp = `<div class="imgrow"><img id="${id}-img" class="thumb" ${v ? `src="${esc(v)}"` : 'hidden'} alt=""><input id="${id}" type="file" accept="image/*"><button type="button" class="btn" data-clear="${f.id}">Remove</button></div>`; break;
     default: inp = `<input id="${id}" type="text"${f.maxLength ? ` maxlength="${f.maxLength}"` : ''} value="${esc(v)}">`;
   }
   if (f.automatic) inp = `<input id="${id}" type="number" value="${esc(v ?? 0)}" disabled>`;
-  const wide = ['longtext', 'gallery', 'tracklength', 'image', 'penaltytypes', 'members'].includes(f.type) ? ' full' : '';
+  const wide = ['longtext', 'gallery', 'tracklength', 'image', 'penaltytypes', 'damagelevels', 'damageincidents', 'members'].includes(f.type) ? ' full' : '';
   return `<div class="field${wide}" data-key="${f.id}">${lab}${inp}${f.hint ? `<span class="muted hint">${esc(f.hint)}</span>` : ''}</div>`;
 }
 
@@ -358,12 +375,14 @@ function openForm(e, item) {
   let pieces = ((item && item.lengthPieces) || []).map(p => ({ count: p.count, mm: p.mm }));
   if (!pieces.length) pieces = [{ count: '', mm: 200 }];
   let types = Array.isArray(item && item.types) ? item.types.map(t => ({ ...t })) : (item ? [] : PT_DEFAULTS.map(t => ({ ...t })));
+  const dmDef = Damage.defaults(); // (a new damage system starts with the examples: light, medium, heavy and critical damage)
+  let dlevels = Array.isArray(item && item.levels) ? item.levels.map(x => ({ ...x })) : (item ? [] : dmDef.levels), dincs = Array.isArray(item && item.incidents) ? item.incidents.map(x => ({ ...x })) : (item ? [] : dmDef.incidents);
   let gal = Array.isArray(item && item[s.gallery]) ? [...item[s.gallery]] : [], galSel = null;
   const memF = fields.find(f => f.type === 'members'); let members = memF && item && Array.isArray(item[memF.key]) ? item[memF.key].filter(Boolean) : []; // (the drivers of a team, in order)
   fields.filter(f => f.type === 'image').forEach(f => { imgs[f.id] = val(f) || ''; if (!f.custom) frames[f.id] = Widgets.frameOf(item && item[f.key + 'Frame']); });
   const frameBlock = f => f.type === 'image' && !f.custom ? `<div class="field frame full" id="frame-${f.id}" data-frame="${f.id}">${frameInner(imgs[f.id], frames[f.id], '4 / 3', false)}</div>` : '';
   const redrawFrame = key => { byId('frame-' + key).innerHTML = frameInner(imgs[key], frames[key], '4 / 3', false); attachFrames(dlg, k => frames[k], (k, f) => { frames[k] = f; }); };
-  const one = f => fieldHtml(f, val(f), { pieces, types, members }) + frameBlock(f);
+  const one = f => fieldHtml(f, val(f), { pieces, types, members, dlevels, dincs }) + frameBlock(f);
   // a schema with groups: the fields in collapsible sections with a coloured header, in the order of the groups (fields without a group of their own, such as your own fields, go last)
   const defs = Array.isArray(s.groups) && s.groups.length ? s.groups : null;
   const groups = defs ? [...defs.map(g => ({ ...g, fields: fields.filter(f => f.group === g.id) })), { id: '_more', title: 'More', note: '', fields: fields.filter(f => !defs.some(g => g.id === f.group)) }].filter(g => g.fields.length) : null;
@@ -403,6 +422,10 @@ function openForm(e, item) {
       else { const i = Number(d.memup !== undefined ? d.memup : d.memdown), j = d.memup !== undefined ? i - 1 : i + 1; if (j >= 0 && j < members.length && i >= 0 && i < members.length) [members[i], members[j]] = [members[j], members[i]]; }
       byId('mem-box').innerHTML = memRows(members, state.refs[memF.ref] || []); return;
     }
+    if (d.dladd) { dlevels.push({ name: '', from: dlevels.length ? (Number(dlevels[dlevels.length - 1].from) || 0) + 3 : 3, seconds: 10, urgency: 'whenever', within: 0, action: 'repair' }); byId('dl-box').innerHTML = dlRows(dlevels); return; }
+    if (d.dldel !== undefined) { dlevels.splice(Number(d.dldel), 1); byId('dl-box').innerHTML = dlRows(dlevels); return; }
+    if (d.diadd) { dincs.push({ name: '', points: 1 }); byId('di-box').innerHTML = diRows(dincs); return; }
+    if (d.didel !== undefined) { dincs.splice(Number(d.didel), 1); byId('di-box').innerHTML = diRows(dincs); return; }
     if (d.ptadd) { types.push({ name: '', kind: 'stopgo', seconds: 5, cost: 5, extra: 1, unserved: 10 }); byId('pt-box').innerHTML = ptRows(types); return; }
     if (d.ptdel !== undefined) { types.splice(Number(d.ptdel), 1); byId('pt-box').innerHTML = ptRows(types); return; }
     if (d.calcopen) { byId('calc').hidden = !byId('calc').hidden; return; }
@@ -421,6 +444,8 @@ function openForm(e, item) {
   };
   dlg.oninput = ev => {
     const t = ev.target;
+    if (t && t.dataset && t.dataset.dl !== undefined) { const lv = dlevels[Number(t.dataset.dl)]; if (lv) lv[t.dataset.dlk] = t.value; return; }
+    if (t && t.dataset && t.dataset.di !== undefined) { const ic = dincs[Number(t.dataset.di)]; if (ic) ic[t.dataset.dik] = t.value; return; }
     if (t && t.dataset && t.dataset.pt !== undefined) { const ty = types[Number(t.dataset.pt)]; if (ty) ty[t.dataset.ptk] = t.value; return; }
     const c = t && t.classList && t.dataset && t.dataset.i !== undefined;
     if (!c) return;
@@ -455,6 +480,8 @@ function openForm(e, item) {
       if (f.automatic) { if (!item) built[f.key] = 0; continue; }
       if (f.type === 'gallery') { built[f.key] = [...gal]; continue; }
       if (f.type === 'members') { built[f.key] = members.filter(id => (state.refs[f.ref] || []).some(x => x.id === id)); continue; }
+      if (f.type === 'damagelevels') { built[f.key] = dlevels.filter(l => String(l.name || '').trim() || Number(l.from) > 0).map(l => ({ name: String(l.name || '').trim(), from: Math.max(0, Math.floor(Number(l.from)) || 0), seconds: Math.max(0, Number(l.seconds) || 0), urgency: l.urgency === 'asap' ? 'asap' : 'whenever', within: Math.max(0, Math.floor(Number(l.within)) || 0), action: Damage.ACTIONS.includes(l.action) ? l.action : 'repair' })); continue; }
+      if (f.type === 'damageincidents') { built[f.key] = dincs.filter(x => String(x.name || '').trim()).map(x => ({ name: String(x.name).trim(), points: Math.max(1, Math.floor(Number(x.points)) || 1) })); continue; }
       if (f.type === 'penaltytypes') { built[f.key] = types.filter(t => String(t.name || '').trim()).map(t => ({ name: String(t.name).trim(), kind: t.kind === 'drivethrough' ? 'drivethrough' : 'stopgo', seconds: Number(t.seconds) || 0, cost: Number(t.cost) || 0, extra: Number(t.extra) || 0, unserved: Number(t.unserved) || 0 })); continue; }
       const el = byId('f-' + f.id);
       let v;
@@ -659,7 +686,7 @@ async function renderResultsPool(box, pool) {
     const cellOf = (key, x, i) => {
       switch (key) {
         case 'pos': return esc(x.pos) + (!hasDriver && Stats.isWinner(s, x) ? ' ' + cup : '');
-        case 'driver': return (Stats.isWinner(s, x) ? cup + ' ' : '') + esc(x.driverName) + (x.dq ? ' <span class="muted">(disqualified)</span>' : x.retired ? ' <span class="muted">(retired, out of fuel)</span>' : '') + (Stats.adjustedText(x) ? ` <span class="muted">(adjusted: ${esc(Stats.adjustedText(x))})</span>` : '') + (Stats.notesText(x) ? ` <span class="muted">(${esc(Stats.notesText(x))})</span>` : '') + (Stats.driversText(x) ? ` <span class="muted">(drivers: ${esc(Stats.driversText(x))})</span>` : '') + (Stats.enduranceText(x) ? ` <span class="muted">(${esc(Stats.enduranceText(x))})</span>` : '');
+        case 'driver': return (Stats.isWinner(s, x) ? cup + ' ' : '') + esc(x.driverName) + (Stats.outText(x) ? ` <span class="muted">(${Stats.outText(x)})</span>` : '') + (Stats.adjustedText(x) ? ` <span class="muted">(adjusted: ${esc(Stats.adjustedText(x))})</span>` : '') + (Stats.notesText(x) ? ` <span class="muted">(${esc(Stats.notesText(x))})</span>` : '') + (Stats.driversText(x) ? ` <span class="muted">(drivers: ${esc(Stats.driversText(x))})</span>` : '') + (Stats.enduranceText(x) ? ` <span class="muted">(${esc(Stats.enduranceText(x))})</span>` : '');
         case 'team': return esc(x.teamName || '');
         case 'car': return esc(x.carName);
         case 'laps': return esc(x.laps);
