@@ -34,6 +34,21 @@
   }
   const valuesOf = (s, id) => { const g = byId(id); return g ? clean(id, s && s[g.key]) : []; };
   const listText = list => list.map(fmt).join(', ');
+  // ---- values per race setup (1.20.0) ----
+  // A race setup can carry its own list for any of the five pads (the same names as the settings: padPoints, padDamage, padSeconds, padLaps, padChamp), typed as text like "1, 3, 10".
+  // A list that is empty (or has no usable number) is not the setup's own: that pad keeps the app-wide list from App Settings > Race Director.
+  const ownOf = (setup, id) => {
+    const g = byId(id), t = g && setup ? setup[g.key] : null; if (!g || t === null || t === undefined) return null;
+    const items = typeof t === 'string' ? parse(t) : Array.isArray(t) ? t : [];
+    return items.some(v => amount(g, v) !== null) ? clean(id, items) : null;
+  };
+  const hasOwn = setup => GROUPS.some(g => ownOf(setup, g.id) !== null);
+  // The settings as this race sees them: the app-wide settings, with the lists that the race setup has of its own on top. The very same object when the setup has none.
+  function forSetup(settings, setup) {
+    if (!hasOwn(setup)) return settings;
+    const own = {}; GROUPS.forEach(g => { const l = ownOf(setup, g.id); if (l) own[g.key] = l; });
+    return { ...(settings || {}), ...own };
+  }
   const layoutOf = s => (s && s.padLayout === 'v' ? 'v' : 'h');
   const signature = s => JSON.stringify([layoutOf(s), GROUPS.map(g => valuesOf(s, g.id))]); // changes when the layout or a list changes: then a page redraws its pads
 
@@ -138,7 +153,7 @@
     };
   }
 
-  const api = { GROUPS, MAXV, byId, amount, parse, clean, valuesOf, listText, layoutOf, signature, look, styleOf, minusOf, textOn, contrast, lum, unitText, describe, html, padsHtml, read, history, fmt };
+  const api = { GROUPS, MAXV, byId, amount, parse, clean, valuesOf, listText, ownOf, hasOwn, forSetup, layoutOf, signature, look, styleOf, minusOf, textOn, contrast, lum, unitText, describe, html, padsHtml, read, history, fmt };
   root.AdjustPad = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -28,7 +28,7 @@ const AdjustPanel = (() => {
         <div class="adj-pads" id="${pre}-pads">${AdjustPad.padsHtml(s, {})}</div>
         <p class="adj-line"><span id="${pre}-last" class="muted" aria-live="polite"></span> <button type="button" class="btn" data-adj-undo>Undo</button></p>
         <p class="adj-layout"><span class="muted">Pads:</span> <button type="button" class="btn" data-adj-layout="h" aria-pressed="${lay === 'h'}">Horizontal</button> <button type="button" class="btn" data-adj-layout="v" aria-pressed="${lay === 'v'}">Vertical</button>
-          <span class="muted">The values are set in App Settings, Race Director.</span></p>`;
+          <span class="muted">The values are set in App Settings, Race Director, and per race setup (its Adjust pads folder).</span></p>`;
       sig = AdjustPad.signature(s);
     }
     function press(pb) {

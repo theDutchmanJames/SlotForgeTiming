@@ -1950,3 +1950,19 @@ Good to know:
 4. It works on phones and tablets too (they draw the boards the same way). A board that is set to the race position looks exactly as before.
 5. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 6. The tests: the new `tests/boardorder.test.js` (the values, both directions, ties, missing values, names, the list that goes in is not changed), `tests/rows.test.js` (a real race with three cars: every order, in both the classic table and a row design, the Position cell, the leader look, From and To), `tests/live.test.js` (the Customize panel saves it per board) and `tests/screens.test.js` (the two settings in the Layout Editor).
+
+## What to try (1.20.0): Adjust pad values per race setup
+From your wish: the values on the Adjust pads can differ per race setup. A sprint race with a small penalty and a long endurance race with a big one no longer share one list.
+1. Open **Race Setup > Race Setups**, open a setup and look at the new folder **Adjust pads** (under Yellow flag). It has a field for each pad: *Penalty points*, *Damage points*, *Time* (in seconds), *Laps* and *Championship points*.
+2. Type up to six values, separated by commas, for example `1, 3, 10` in the penalty points field and `2.5, 5, 15` in the time field. Save. The list is tidied (smallest first, no doubles); text that is no number is refused with a message.
+3. Start a race with that setup. On the **Race tab** (Adjust folder), on the **Race Director page** (also on a phone or tablet) and in the **race review**, those pads now show your values. The other pads, whose field you left empty, keep the values from **App Settings > Race Director**.
+4. A setup with all five fields empty works exactly as before.
+
+Good to know:
+1. Empty means *use the App Settings values*. If you change the App Settings list later, every setup with an empty field follows it; a setup with its own list keeps it.
+2. The layout of the pads (horizontal or vertical) is not part of the setup: it stays a choice of each device.
+3. The Damage pad only appears when the race has a damage system, the Championship pad only in a heat race counted in points, the same as before.
+4. In a Time Token Session there are no Adjust pads, so the folder is not shown for that kind of session.
+5. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+6. The tests: `tests/adjustpad.test.js` (the rules: own list or the app-wide one, tidying, the other settings are not changed), `tests/adjustui.test.js` (the panel draws the values of the setup and draws again for the next race), `tests/screens.test.js` (the form: the folder, the tidy-up on save, the refusal), `tests/live.test.js` (a real race: Race tab, Race Director page and review) and `tests/help.test.js`.
+

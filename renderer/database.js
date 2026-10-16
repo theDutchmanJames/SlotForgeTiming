@@ -301,7 +301,7 @@ function fieldHtml(f, v, extra) {
     case 'members': inp = `<div id="mem-box">${memRows((extra && extra.members) || [], state.refs[f.ref] || [])}</div>`; break;
     case 'gallery': inp = `<div id="gal-box" class="gallery"></div><input id="${id}" type="file" accept="image/*" multiple data-gallery="1"><p class="muted">Up to ${GALLERY_MAX} extra pictures. A screenshot of a parts list is fine.</p>`; break;
     case 'image': inp = `<div class="imgrow"><img id="${id}-img" class="thumb" ${v ? `src="${esc(v)}"` : 'hidden'} alt=""><input id="${id}" type="file" accept="image/*"><button type="button" class="btn" data-clear="${f.id}">Remove</button></div>`; break;
-    default: inp = `<input id="${id}" type="text"${f.maxLength ? ` maxlength="${f.maxLength}"` : ''} value="${esc(v)}">`;
+    default: inp = `<input id="${id}" type="text"${f.maxLength ? ` maxlength="${f.maxLength}"` : ''}${f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : ''} value="${esc(v)}">`;
   }
   if (f.automatic) inp = `<input id="${id}" type="number" value="${esc(v ?? 0)}" disabled>`;
   const wide = ['longtext', 'gallery', 'tracklength', 'image', 'penaltytypes', 'damagelevels', 'damageincidents', 'members'].includes(f.type) ? ' full' : '';
@@ -488,6 +488,11 @@ function openForm(e, item) {
       if (f.type === 'image') { v = imgs[f.id]; if (!f.custom) built[f.key + 'Frame'] = v ? frames[f.id] : null; }
       else if (f.type === 'number' || f.type === 'tracklength') v = el.value === '' ? '' : Number(el.value);
       else { v = el.value.trim(); if (f.uppercase) v = v.toUpperCase(); }
+      if (f.type === 'padlist' && v !== '' && isShown(f, getValue)) { // (the values of an Adjust pad: tidied up - smallest first, no doubles, at most six - or the field is empty, which means the App Settings values)
+        const own = AdjustPad.ownOf({ [AdjustPad.byId(f.pad).key]: v }, f.pad);
+        if (!own) { byId('err').textContent = 'Please enter numbers above zero, separated by commas, for example 1, 3, 10. Leave the field empty to use the values from App Settings.'; return; }
+        v = AdjustPad.listText(own);
+      }
       if (f.type === 'numberlist' && isShown(f, getValue) && !/^\s*\d+(\.\d+)?(\s*,\s*\d+(\.\d+)?)*\s*$/.test(v)) {
         byId('err').textContent = 'Please enter numbers separated by commas, for example 10, 8, 6.';
         return;

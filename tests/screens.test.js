@@ -65,6 +65,22 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     document.getElementById('f-laneLengths').value='15.4, 15.8, 16.2'; await document.getElementById('frm').onsubmit({preventDefault(){}});
     say('...with one length per lane it is saved', got.length===1 && got[0][2].laneModifier==='measured' && got[0][2].laneLengths==='15.4, 15.8, 16.2' && got[0][2].lanes===3);
     api.update=prevUpd; api.add=prevAdd; stand.forEach((id,i)=>{ document.getElementById(id).value=keepVals[i]; }); }
+  // 1.20.0: the race setup form has an Adjust pads folder: the values of the five pads for this setup
+  { run("openForm('racesetups', {id:'pads1', name:'Pads', sessionType:'race', padPoints:'3, 1, 10, 1', padLaps:''})"); await new Promise(r=>setTimeout(r,20));
+    const f=E('dlg').innerHTML, i0=f.indexOf('Adjust pads');
+    say('the race setup form has an Adjust pads group (after Yellow flag, before Screens and sound) with a field for each pad', i0>f.indexOf('Yellow flag') && i0<f.indexOf('Screens and sound') && ['padPoints','padDamage','padSeconds','padLaps','padChamp'].every(k=>f.includes('id="f-'+k+'"')) && f.includes('Penalty points pad') && f.includes('Time pad (seconds)') && f.includes('Championship points pad'));
+    say('...a setup shows the list it has of its own, and the other fields are empty, with the group saying that an empty field uses the App Settings values', f.includes('value="3, 1, 10, 1"') && /id="f-padLaps"[^>]*value=""/.test(f) && /id="f-padLaps"[^>]*placeholder="Empty: the App Settings values"/.test(f) && f.includes('An empty field uses the values from App Settings, Race Director.'));
+    const prevAdd=api.add, prevUpd=api.update, got=[]; api.update=async(en,id,d)=>{got.push([en,id,d]);return {};}; api.add=async(en,d)=>{got.push([en,'',d]);return {};};
+    const set=(id,v)=>{ document.getElementById(id).value=v; }, keep=['f-name','f-sessionType','f-padPoints','f-padLaps','f-padSeconds'].map(id=>document.getElementById(id).value);
+    set('f-name','Pads'); set('f-sessionType','race'); set('f-padPoints','3, 1, 10, 1'); set('f-padLaps',''); set('f-padSeconds','');
+    await document.getElementById('frm').onsubmit({preventDefault(){}});
+    const rs=got[got.length-1]&&got[got.length-1][2];
+    say('saving tidies the list of a pad (sorted, no doubles) and leaves the other pads empty (the App Settings values)', got.length===1 && got[0][0]==='racesetups' && rs.padPoints==='1, 3, 10' && rs.padLaps==='' && rs.padSeconds==='' && rs.padDamage==='' && rs.padChamp==='');
+    set('f-padSeconds','2.5, five'); got.length=0; await document.getElementById('frm').onsubmit({preventDefault(){}});
+    say('...a mistake between numbers is left out (2.5 stays), and the time pad keeps its decimals', got.length===1 && got[0][2].padSeconds==='2.5');
+    set('f-padLaps','many'); got.length=0; await document.getElementById('frm').onsubmit({preventDefault(){}});
+    say('text without a single usable number is refused with a clear message and nothing is saved', got.length===0 && document.getElementById('err').textContent.includes('numbers above zero') && document.getElementById('err').textContent.includes('App Settings'));
+    api.update=prevUpd; api.add=prevAdd; ['f-name','f-sessionType','f-padPoints','f-padLaps','f-padSeconds'].forEach((id,k)=>{ document.getElementById(id).value=keep[k]; }); }
   // Layouts sub-tab
   run("state.tab='custom'; state.customSub='layouts'"); await run('render()');
   const lst=E('setupbox').innerHTML;
@@ -1113,31 +1129,31 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   {
     const sch=run('state.schema.racesetups'), parts=h=>h.split('<details class="fgroup"').slice(1), openForm_=()=>run("openForm('racesetups', null)");
     run('delete formOpen.racesetups'); openForm_(); const f=E('dlg').innerHTML, ps=parts(f);
-    say('the Race Setup form has its settings in groups, in this order: session, length, endurance, start, rules, yellow flag, screens, Trackmate', ps.map(x=>/data-fg="(\w+)"/.exec(x)[1]).join()==='session,length,endurance,start,rules,yellow,screens,trackmate' && sch.groups.length===8);
-    say('the settings are grouped as designed: Session (name, type, track), Length and result, Endurance, Start, Rule sets, Yellow flag, Screens and sound, Trackmate', sch.fields.map(f=>f.group+':'+f.key).join()==='session:name,session:sessionType,session:track,length:enduranceBy,length:heatBy,length:rotation,length:participants,length:teamDriver,length:heatPlan,length:heats,length:heatsEach,length:heatEven,length:heatSeeding,length:laps,length:duration,length:endRule,length:resultBy,length:unfinished,length:points,length:countBy,length:bestHeats,length:dropWorst,length:fastestBonus,length:tieBreak,length:finals,length:finalMode,length:finalLaps,length:finalDuration,length:breakSeconds,length:breakAuto,endurance:swapUnit,endurance:swapMode,endurance:swapEvery,endurance:swapMoments,endurance:stintMin,endurance:stintMax,endurance:totalMin,endurance:totalMax,endurance:swapWarn,endurance:swapConfirm,endurance:swapSeconds,endurance:swapNext,endurance:swapGrace,endurance:swapLate,endurance:swapPenalty,endurance:swapRepeat,endurance:swapEarly,endurance:minPenalty,start:lightsMin,start:lightsMax,start:lightsAfter,start:restartAfterRed,start:firstLap,rules:penaltySystem,rules:damageSystem,rules:fuelRules,rules:bop,rules:weather,rules:pitHold,yellow:yellowTarget,yellow:yellowPoints,screens:layout,screens:layout2,screens:audioSet,trackmate:startPower,trackmate:trackcall,trackmate:trackcallWindow');
-    say('every setting is in its own group, once, and nowhere else', sch.fields.length===67 && sch.fields.every(k=>ps.filter(x=>x.includes('data-key="'+k.key+'"')).length===1 && /data-fg="(\w+)"/.exec(ps.find(x=>x.includes('data-key="'+k.key+'"')))[1]===k.group && (f.match(new RegExp('id="f-'+k.key+'"','g'))||[]).length===1));
+    say('the Race Setup form has its settings in groups, in this order: session, length, endurance, start, rules, yellow flag, adjust pads, screens, Trackmate', ps.map(x=>/data-fg="(\w+)"/.exec(x)[1]).join()==='session,length,endurance,start,rules,yellow,pads,screens,trackmate' && sch.groups.length===9);
+    say('the settings are grouped as designed: Session (name, type, track), Length and result, Endurance, Start, Rule sets, Yellow flag, Adjust pads, Screens and sound, Trackmate', sch.fields.map(f=>f.group+':'+f.key).join()==='session:name,session:sessionType,session:track,length:enduranceBy,length:heatBy,length:rotation,length:participants,length:teamDriver,length:heatPlan,length:heats,length:heatsEach,length:heatEven,length:heatSeeding,length:laps,length:duration,length:endRule,length:resultBy,length:unfinished,length:points,length:countBy,length:bestHeats,length:dropWorst,length:fastestBonus,length:tieBreak,length:finals,length:finalMode,length:finalLaps,length:finalDuration,length:breakSeconds,length:breakAuto,endurance:swapUnit,endurance:swapMode,endurance:swapEvery,endurance:swapMoments,endurance:stintMin,endurance:stintMax,endurance:totalMin,endurance:totalMax,endurance:swapWarn,endurance:swapConfirm,endurance:swapSeconds,endurance:swapNext,endurance:swapGrace,endurance:swapLate,endurance:swapPenalty,endurance:swapRepeat,endurance:swapEarly,endurance:minPenalty,start:lightsMin,start:lightsMax,start:lightsAfter,start:restartAfterRed,start:firstLap,rules:penaltySystem,rules:damageSystem,rules:fuelRules,rules:bop,rules:weather,rules:pitHold,yellow:yellowTarget,yellow:yellowPoints,pads:padPoints,pads:padDamage,pads:padSeconds,pads:padLaps,pads:padChamp,screens:layout,screens:layout2,screens:audioSet,trackmate:startPower,trackmate:trackcall,trackmate:trackcallWindow');
+    say('every setting is in its own group, once, and nowhere else', sch.fields.length===72 && sch.fields.every(k=>ps.filter(x=>x.includes('data-key="'+k.key+'"')).length===1 && /data-fg="(\w+)"/.exec(ps.find(x=>x.includes('data-key="'+k.key+'"')))[1]===k.group && (f.match(new RegExp('id="f-'+k.key+'"','g'))||[]).length===1));
     say('each group has a header with its title and a line that says what is in it', sch.groups.every(g=>f.includes('<strong>'+g.title+'</strong>') && f.includes(g.note)) && f.includes('<summary><strong>Session</strong>'));
-    say('Session and Length and result are open, the others closed', ps.map(x=>/^ data-fg="\w+"( open)?>/.exec(x)[1]?1:0).join('')==='11000000');
+    say('Session and Length and result are open, the others closed', ps.map(x=>/^ data-fg="\w+"( open)?>/.exec(x)[1]?1:0).join('')==='110000000');
     say('Open all and Close all are offered, first, above the groups', f.includes('data-fgall="1"') && f.includes('data-fgall="0"') && f.indexOf('data-fgall')<f.indexOf('<details class="fgroup"') && f.includes('class="formgrid grouped"') && f.includes('class="fgrid"'));
     say('the buttons of the form are outside the groups (Save and Cancel stay in view)', f.indexOf('type="submit"')>f.lastIndexOf('</details>') && f.includes('id="cancel"'));
     run("state.schema.zzz={label:'Thing',plural:'Things',title:['name'],extra:false,fields:[{key:'name',label:'Name',type:'text'},{key:'size',label:'Size',type:'number'}]}");
     say('a form without groups is as it was (one flat list)', (run("openForm('zzz', null)"), !E('dlg').innerHTML.includes('fgroup') && E('dlg').innerHTML.includes('<div class="formgrid">') && !E('dlg').innerHTML.includes('data-fgall') && E('dlg').innerHTML.includes('id="f-size"')));
     run('delete state.schema.zzz');
     run("state.schema.racesetups.fields.push({ key: 'zzz', label: 'Something extra', type: 'text' })"); openForm_(); { const ex=parts(E('dlg').innerHTML), last=ex[ex.length-1];
-      say('a setting that is in no group is not lost: it goes into a last group, More', ex.length===9 && /^ data-fg="_more"/.test(last) && last.includes('data-key="zzz"') && last.includes('<strong>More</strong>') && ex.slice(0,8).every(x=>!x.includes('data-key="zzz"'))); }
-    run('state.schema.racesetups.fields.pop()'); openForm_(); say('...and without such a setting there is no More group', parts(E('dlg').innerHTML).length===8);
+      say('a setting that is in no group is not lost: it goes into a last group, More', ex.length===10 && /^ data-fg="_more"/.test(last) && last.includes('data-key="zzz"') && last.includes('<strong>More</strong>') && ex.slice(0,9).every(x=>!x.includes('data-key="zzz"'))); }
+    run('state.schema.racesetups.fields.pop()'); openForm_(); say('...and without such a setting there is no More group', parts(E('dlg').innerHTML).length===9);
     // opening and closing is remembered for the next time the form is opened
-    const mine=['session','length','endurance','start','rules','yellow','screens','trackmate'].map(id=>({dataset:{fg:id},open:id==='session'||id==='length',hidden:false}));
+    const mine=['session','length','endurance','start','rules','yellow','pads','screens','trackmate'].map(id=>({dataset:{fg:id},open:id==='session'||id==='length',hidden:false}));
     E('dlg').querySelectorAll=sel=>sel==='.fgroup'?mine:[];
     openForm_(); mine[3].open=true; mine[3].ontoggle(); mine[0].open=false; mine[0].ontoggle();
     openForm_(); const f2=parts(E('dlg').innerHTML).map(x=>/^ data-fg="\w+"( open)?>/.exec(x)[1]?1:0).join('');
-    say('a group you opened stays open the next time the form opens, and one you closed stays closed', f2==='01010000');
+    say('a group you opened stays open the next time the form opens, and one you closed stays closed', f2==='010100000');
     E('dlg').onclick({target:{closest:()=>({dataset:{fgall:'1'}})}});
     say('Open all opens every group and the form remembers it', mine.every(g=>g.open===true) && parts((openForm_(),E('dlg').innerHTML)).every(x=>/^ data-fg="\w+"( open)?>/.exec(x)[1]) );
     E('dlg').onclick({target:{closest:()=>({dataset:{fgall:'0'}})}});
     say('Close all closes every group and the form remembers it', mine.every(g=>g.open===false) && parts((openForm_(),E('dlg').innerHTML)).every(x=>!/^ data-fg="\w+"( open)?>/.exec(x)[1]));
     run('delete formOpen.racesetups'); openForm_();
-    say('another kind of form does not share it (and the memory is per kind of item)', !('zzz' in run('formOpen')) && parts(E('dlg').innerHTML).map(x=>/^ data-fg="\w+"( open)?>/.exec(x)[1]?1:0).join('')==='11000000');
+    say('another kind of form does not share it (and the memory is per kind of item)', !('zzz' in run('formOpen')) && parts(E('dlg').innerHTML).map(x=>/^ data-fg="\w+"( open)?>/.exec(x)[1]?1:0).join('')==='110000000');
     // a group with nothing to show is hidden: Length and result in a free practice
     const reg={}; E('dlg').querySelector=sel=>reg[sel]||(reg[sel]={hidden:false}); openForm_();
     const setv=(id,v)=>{ document.getElementById(id).value=v; };

@@ -209,4 +209,8 @@ const folders = Help.folders();
 { const lv = plain(folders.find(x => x.id === 'live').body); // 1.19.0
   say('1.19.0: the Live Race folder says a board can be sorted by a value (Order by): the best lap for a fastest laps board, laps, points, penalties, with the best or worst first', lv.includes('Order by') && lv.includes('fastest laps board') && lv.includes('laps, points, penalties') && lv.includes('best or worst first')); }
 
+{ const dr = plain(folders.find(x => x.id === 'director').body); // 1.20.0
+  say('1.20.0: the Race Director folder says a race setup can have pad values of its own (Rule sets: Adjust pads), and is still short enough', dr.includes('A race setup can have pad values of its own') && dr.includes('Adjust pads') && dr.length < 1400);
+  say('...and the form has the Adjust pads group that it names, in the Rule sets area of the race setup', schema.racesetups.groups.some(g => g.title === 'Adjust pads') && schema.racesetups.fields.some(f => f.group === 'pads')); }
+
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

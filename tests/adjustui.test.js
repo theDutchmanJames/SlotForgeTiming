@@ -91,5 +91,23 @@ const hidden = pg => pg.pads.map(p => p.hidden).join();
   const pg3 = page(); make(pg3, { bind: false });
   say('bind: false leaves the clicks to the page (it calls click itself)', pg3.box.onclick === undefined && typeof panel.click === 'function');
 
+  // ---- 1.20.0: the values of the race setup ----
+  {
+    const app = { padPoints: [1, 2, 5], padSeconds: [5, 10, 30] }; let setup = { padPoints: '3, 1, 10', padLaps: '4' };
+    const pgS = page(), pnl = make(pgS, { settings: () => AdjustPad.forSetup(app, setup), id: 'w' }); pnl.update();
+    const h = () => pgS.box.innerHTML, has = (g, v) => h().includes(`data-pad-do="${g}" data-sign="1" data-v="${v}"`);
+    say('a panel with the settings of a race setup draws its own values: penalty points 1, 3, 10 and laps 4', has('points', 3) && has('points', 10) && !has('points', 5) && has('laps', 4) && !has('laps', 2));
+    say('...the pads without a list of their own keep the app-wide values (time 5, 10, 30)', has('time', 5) && has('time', 30));
+    pgS.click('[data-adj-lane]', { adjLane: '0' }); pgS.click('[data-pad-do]', { padDo: 'laps', v: '4', sign: '1' });
+    say('...a press on one of those values sends that amount', sent[sent.length - 1].join() === 'laps,0,4' && els['w-last'].textContent === `Last: +4 laps to ${eng.cars.find(c => c.lane === 0).driverName}`);
+    setup = { padPoints: '2, 7' }; pnl.update();
+    say('another race setup (the next race or heat) draws the pads again with its values; the laps are back to the app-wide values', has('points', 7) && !has('points', 10) && has('laps', 2) && !has('laps', 4));
+    setup = { name: 'plain' }; pnl.update();
+    say('a race setup without lists of its own: the app-wide values of the settings', has('points', 5) && !has('points', 7) && has('laps', 1));
+    const before = h(); pnl.update();
+    say('nothing is drawn again while the values stay the same', h() === before);
+    say('the line under the pads says the values are set in App Settings and per race setup', h().includes('set in App Settings, Race Director, and per race setup'));
+  }
+
   console.log(fails ? fails + ' ADJUST PANEL TESTS FAILED' : 'ALL ADJUST PANEL TESTS PASSED'); process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('ERROR', e.stack); process.exit(1); });

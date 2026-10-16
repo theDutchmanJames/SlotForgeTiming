@@ -92,6 +92,25 @@ ok('...no field at all, an unknown group, no group, nothing at all', A.read(btn(
   h.settle(get, 5); ok('fractions: 0.5 points where 2 were added is a limit, so 0.5 is what is undone', h.undo().amount === -0.5);
 }
 
+// ---- 1.20.0: values per race setup ----
+{
+  const j = x => JSON.stringify(x);
+  ok('ownOf: the text of a race setup is a list of its own - sorted, without doubles ("3, 1, 10, 1" is 1, 3, 10)', j(A.ownOf({ padPoints: '3, 1, 10, 1' }, 'points')) === '[1,3,10]');
+  ok('...nothing, blanks, or no usable number is not a list of its own (null): the pad keeps the app-wide values', A.ownOf({}, 'points') === null && A.ownOf(null, 'points') === null && A.ownOf({ padPoints: '' }, 'points') === null && A.ownOf({ padPoints: '  ' }, 'points') === null && A.ownOf({ padPoints: 'x, -2, 0' }, 'points') === null && A.ownOf({ padPoints: 7 }, 'points') === null);
+  ok('...a mistake between good numbers is left out ("2, x, 5" is 2, 5), the group decides the decimals (points are whole, time keeps 2.5)', j(A.ownOf({ padPoints: '2, x, 5' }, 'points')) === '[2,5]' && j(A.ownOf({ padPoints: '2.6' }, 'points')) === '[3]' && j(A.ownOf({ padSeconds: '2.5, 5' }, 'time')) === '[2.5,5]');
+  ok('...a list that is already a list of numbers works too, at most six values are kept (the smallest ones), and an unknown group has none', j(A.ownOf({ padLaps: [3, 1] }, 'laps')) === '[1,3]' && A.ownOf({ padChamp: '9, 8, 7, 6, 5, 4, 3, 2, 1' }, 'champ').length === 6 && A.ownOf({ padChamp: '9, 8, 7, 6, 5, 4, 3, 2, 1' }, 'champ')[0] === 1 && A.ownOf({ padPoints: '1' }, 'nope') === null);
+  ok('hasOwn: true when any one pad has a list of its own', A.hasOwn({ padLaps: '1, 4' }) === true && A.hasOwn({ name: 'x' }) === false && A.hasOwn({ padLaps: ' ' }) === false && A.hasOwn(undefined) === false);
+  const app = { padPoints: [1, 2, 5], padSeconds: [5, 10, 30], padLayout: 'v', rules: 'x' };
+  ok('forSetup: a setup without lists of its own gives the very same settings back (nothing is copied)', A.forSetup(app, { name: 'plain', padPoints: '' }) === app && A.forSetup(app, null) === app && A.forSetup(undefined, {}) === undefined);
+  const mine = A.forSetup(app, { padPoints: '3, 1, 10', padLaps: '4' });
+  ok('...with lists of its own the setup wins for those pads: penalty points 1, 3, 10 and laps 4', j(A.valuesOf(mine, 'points')) === '[1,3,10]' && j(A.valuesOf(mine, 'laps')) === '[4]');
+  ok('...the other pads keep the app-wide values (time 5, 10, 30; damage and championship the standard ones), and the layout and the rest of the settings stay', j(A.valuesOf(mine, 'time')) === '[5,10,30]' && j(A.valuesOf(mine, 'damage')) === '[1,2,4]' && j(A.valuesOf(mine, 'champ')) === '[1,2,5]' && mine.padLayout === 'v' && mine.rules === 'x');
+  ok('...the settings themselves are not changed', j(app) === j({ padPoints: [1, 2, 5], padSeconds: [5, 10, 30], padLayout: 'v', rules: 'x' }) && mine !== app);
+  const html = A.padsHtml(mine, {});
+  ok('...the pads are drawn with the values of the setup', html.includes('data-pad-do="points" data-sign="1" data-v="10"') && html.includes('data-pad-do="points" data-sign="1" data-v="3"') && !html.includes('data-pad-do="points" data-sign="1" data-v="5"') && html.includes('data-pad-do="laps" data-sign="1" data-v="4"') && !html.includes('data-pad-do="laps" data-sign="1" data-v="2"') && html.includes('data-pad-do="time" data-sign="1" data-v="30"'));
+  ok('...and a page notices the other values: the signature changes with a race setup that has lists of its own, and is the same again without', A.signature(mine) !== A.signature(app) && A.signature(A.forSetup(app, { padPoints: '' })) === A.signature(app) && A.signature(A.forSetup(app, { padPoints: '10, 1, 3' })) === A.signature(A.forSetup(app, { padPoints: '1, 3, 10' })));
+}
+
 // ---- the places that use them ----
 const css = R('renderer/styles.css'), idx = R('renderer/index.html'), app = R('renderer/app.js'), live = R('renderer/liveview.js'), race = R('renderer/race.js'), rv = R('renderer/review.js');
 ok('the style sheet has the pads: grid, plus and minus colours from the variables, a visible focus, a switched off look', /\.pad\{[^}]*border-left:4px solid var\(--pc\)/.test(css) && /\.pad-plus\{background:var\(--pc\);color:var\(--pt\)\}/.test(css) && /\.pad-minus\{background:var\(--mc\);color:var\(--mt\)\}/.test(css) && /\.pad-btn:focus-visible/.test(css) && /\.pad-btn:disabled\{opacity/.test(css) && /\.pad-h \.pad-grid\{grid-template-columns:repeat\(var\(--n\)/.test(css) && /\.pad-v \.pad-grid\{grid-template-columns/.test(css) && /\.pad\[hidden\]\{display:none\}/.test(css));
@@ -105,6 +124,13 @@ ok('App Settings has a Race Director page, after App Theme', /\['theme', 'App Th
 ok('the race window does the pad commands (and only during the race, not for a Time Token Session)', /pad\(group, lane, amount\)/.test(race) && /cmd\.type === 'pad'\) actions\.pad\(cmd\.group, Number\(cmd\.lane\), Number\(cmd\.amount\)\)/.test(race) && /pad\(group, lane, amount\)[^\n]*\n\s*if \(tokens \|\| !\['running', 'paused'\]/.test(race));
 ok('the review draws pads instead of fields (no typed fields with Add and Deduct any more)', rv.includes('AdjustPad.padsHtml') && !rv.includes('data-rva') && !rv.includes('>Deduct<'));
 ok('the Director page has the Adjust folder', live.includes("folder('adjust', 'Adjust'") && live.includes('AdjustPad.history()'));
+{ const sch = require('../schema.js'), db = R('renderer/database.js'), padui = R('renderer/padui.js');
+  const f = sch.racesetups.fields.filter(x => x.group === 'pads');
+  ok('1.20.0: the race setup has an Adjust pads folder in the form with a field for each of the five pads, named like the settings and in the order of the pads', sch.racesetups.groups.some(g => g.id === 'pads') && f.map(x => x.key).join() === A.GROUPS.map(g => g.key).join() && f.map(x => x.pad).join() === A.GROUPS.map(g => g.id).join() && f.every(x => x.type === 'padlist' && x.default === '' && x.optional));
+  ok('...the folder comes after Yellow flag and before Screens and sound, and the fields are for races, practice and qualifying (not for a Time Token Session)', (() => { const ids = sch.racesetups.groups.map(g => g.id); return ids.indexOf('pads') === ids.indexOf('yellow') + 1 && ids.indexOf('pads') < ids.indexOf('screens'); })() && f.every(x => x.showIf && x.showIf.every(c => c.sessionType.includes('race') && !c.sessionType.includes('tokens'))));
+  ok('...the Race tab, the review and the Race Director page ask for the values of the setup', race.includes('settings: () => AdjustPad.forSetup(state.settings, setup)') && race.includes('settings: AdjustPad.forSetup(state.settings, setup)') && live.includes('AdjustPad.forSetup(state.settings, st && st.setup)') && live.includes('settings: padSettings') && live.includes('settings: padSettings()'));
+  ok('...the form tidies the typed list (and refuses text that is no list), and the App Settings page says a setup can have its own', db.includes("f.type === 'padlist'") && db.includes('AdjustPad.ownOf(') && padui.includes('A race setup can have values of its own')); }
+
 
 if (fails) { console.log(fails + ' FAILED'); process.exit(1); }
 console.log('ALL ADJUST PAD TESTS PASSED');

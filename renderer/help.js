@@ -157,7 +157,7 @@ const Help = (() => {
       { id: 'director', title: 'Race Director, flags and penalties', note: 'Control the race from anywhere', body: `
         <ul>
           <li>The <b>Race Director</b> page (Live Race tab) has Start, Pause, Yellow, Red and Stop, the calls and folders. It also works on a phone or tablet, behind a password.</li>
-          <li><b>Adjust</b>: pick a lane, then press the pads, <b>[+] value [−]</b>: penalty points, damage points, time, laps, championship points, also during the race. Undo takes the last one back. Values and layout: App Settings, Race Director.</li>
+          <li><b>Adjust</b>: pick a lane, then press the pads, <b>[+] value [−]</b>: penalty points, damage points, time, laps, championship points, also during the race. Undo takes the last one back. Values and layout: App Settings, Race Director. A race setup can have pad values of its own (its Adjust pads folder).</li>
           <li><b>Penalty points</b> turn into seconds added to the driver's time (the penalty system sets how, and can disqualify at a limit).</li>
           <li><b>Special penalties</b> take points off and must be served: a Drivethrough when the next pit stop starts, a Stop-and-Go by standing still on the sensor.</li>
           <li>A <b>call from a lane</b> raises the yellow flag and waits for the Race Director, who dismisses it or gives a penalty point.</li>

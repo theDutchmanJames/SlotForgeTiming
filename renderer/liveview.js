@@ -175,6 +175,7 @@ const LiveView = (() => {
   // (the lane that is picked and what the pads did are kept here, so they stay when the page is drawn again; the panel itself is in adjustui.js)
   let adjPanel = null, rvShown = '';
   const adjMem = { lane: null, hist: AdjustPad.history(), key: undefined };
+  const padSettings = () => { let st = null; try { st = V && V.stat(); } catch (e) { st = null; } return AdjustPad.forSetup(state.settings, st && st.setup); }; // (this device's settings, with the pad values that the race setup of the race on the track has of its own)
   function drawDirector(body, fresh) {
     const st = V.stat(), pen = !!(st.cfg.penalty && st.cfg.penalty.on);
     if (fresh || !$('lv-dir')) {
@@ -193,7 +194,7 @@ const LiveView = (() => {
         ${st.cfg.endurance ? folder('endurance', 'Endurance', 'Driver swaps', 'brown', '<div id="dir-en" class="boppanel"></div>') : ''}
         <details class="card" id="dir-lapsbox" hidden><summary>Review laps</summary><div id="dir-laps" class="rv"></div></details>
         <div id="dir-review" class="card rv" hidden></div></div>`;
-      adjPanel = st.tokenUi ? null : AdjustPanel.build($('dir-adj'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane), phase: () => V.dyn().phase, now: () => V.clock(performance.now()),
+      adjPanel = st.tokenUi ? null : AdjustPanel.build($('dir-adj'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane), phase: () => V.dyn().phase, now: () => V.clock(performance.now()), settings: padSettings,
         penalty: () => { const c = V.stat().cfg; return !!(c.penalty && c.penalty.on); }, damage: () => !!V.stat().cfg.damage, champ: () => { const c = V.dyn().champ; return !!(c && c.on); },
         send: (group, lane, amount) => send({ type: 'pad', group, lane, amount }), refresh: () => drawDirector($('lv-body'), false), raceKey: () => V.stat().raceId, memory: adjMem, bind: false }); // the Adjust folder: the same pads as on the Race tab
       lapsHtml = ''; rvShown = ''; bopPanel = st.cfg.bop ? BopPanel.build($('dir-bop'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, send: (l, how) => send({ type: 'bop', lane: l, how }) }) : null; // Balance of Power: the same lane controls as on the main computer
@@ -237,7 +238,7 @@ const LiveView = (() => {
     if (on) { const h = Review.lapsHtml(eng, { late: tv ? (i, n) => tv.lateAt(eng.cars[i].lane, n) : null }); if (h !== lapsHtml) { lapsHtml = h; $('dir-laps').innerHTML = h; } } else lapsHtml = '';
     const rv = $('dir-review'); // after the race: the review, with the same corrections as in the race window (a Time Token Session is checked on the main computer)
     if (d.phase === 'review') { // (drawn again only when it changed, so what you type in the field of a pad stays)
-      const h = st.tokenUi ? '<h3>Session review</h3><p class="muted">The session is over. The stints are checked on the main computer, where Finalize is pressed.</p>' : Review.html(eng, { champ: d.champ, settings: state.settings });
+      const h = st.tokenUi ? '<h3>Session review</h3><p class="muted">The session is over. The stints are checked on the main computer, where Finalize is pressed.</p>' : Review.html(eng, { champ: d.champ, settings: padSettings() });
       rv.hidden = false; if (h !== rvShown) { rvShown = h; rv.innerHTML = h; }
     } else if (!rv.hidden) { rv.hidden = true; rv.innerHTML = ''; rvShown = ''; }
     if (!pen) return;

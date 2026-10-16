@@ -1057,12 +1057,15 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   store.penaltysystems = [{ id: 'p2', name: 'Full', timeRule: 'every', everyPoints: 5, everySeconds: 5, types: [
     { name: 'Drivethrough', kind: 'drivethrough', cost: 3, extra: 1, unserved: 10 }, { name: 'Stop-and-Go 5', kind: 'stopgo', seconds: 5, cost: 5, extra: 2, unserved: 8 }] }];
   els.sim.checked = false; saved.length = 0;
-  await openRace({ name: 'Rev', sessionType: 'race', laps: 3, endRule: 'all', layout: '', penaltySystem: 'p2', pitHold: 0.05 }, store.tracks[0], rows(1, 2));
+  await openRace({ name: 'Rev', sessionType: 'race', laps: 3, endRule: 'all', layout: '', penaltySystem: 'p2', pitHold: 0.05, padLaps: '6, 3, 3', padSeconds: '2.5' }, store.tracks[0], rows(1, 2)); // (1.20.0: this race setup has pad values of its own for the laps and the time)
   key(' '); await until(() => phase() === 'running'); await wait(60);
   const host3 = document.createElement('div'); await run('LiveView.mount')(host3, {}); run('LiveView.go')('director');
   const click2 = (cmd, lane, n, type) => E('lv-body').onclick({ target: { closest: () => ({ dataset: { cmd, lane, n, type }, disabled: false }) } });
   for (let k = 0; k < 4; k++) click2('penalty', '0', '1');
   click2('assign', '0', undefined, '0');
+  { const has = (id, g, v) => E(id).innerHTML.includes(`data-pad-do="${g}" data-sign="1" data-v="${v}"`);
+    say('1.20.0: the Adjust folder of the Race tab uses the pad values of the race setup (laps 3 and 6, time 2.5), the other pads the values of the settings (penalty points 1, 2, 5)', has('adjpanel', 'laps', 3) && has('adjpanel', 'laps', 6) && !has('adjpanel', 'laps', 1) && !has('adjpanel', 'laps', 2) && has('adjpanel', 'time', 2.5) && !has('adjpanel', 'time', 30) && has('adjpanel', 'points', 5) && has('adjpanel', 'points', 1));
+    say('...so does the Adjust folder of the Race Director page (a phone gets the race setup with the race)', has('dir-adj', 'laps', 3) && has('dir-adj', 'laps', 6) && !has('dir-adj', 'laps', 1) && has('dir-adj', 'time', 2.5) && !has('dir-adj', 'time', 30) && has('dir-adj', 'points', 5) && has('dir-adj', 'points', 1)); }
   say('Race Director: a Drivethrough costs 3 points and is pending', run('live.engine().cars[0].points') === 1 && run('live.engine().cars[0].pending.length') === 1);
   click2('assign', '1', undefined, '0'); say('and cannot be given without the points', run('live.engine().cars[1].pending.length') === 0);
   run('live.actions.pit ? 0 : 0'); key('!');
@@ -1093,6 +1096,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     const lapsA = run('live.engine().cars[0].laps.length');
     say('the review has an Adjust button for every driver, and no Points column (this race has no championship points)', (E('review').innerHTML.match(/data-rv="adjopen"/g) || []).length === 2 && !E('review').innerHTML.includes('<th>Points</th>'));
     rv('adjopen', { car: '0' }); say('Adjust opens the panel of that driver, with pads for the time and the laps', E('review').innerHTML.includes('Adjust the result of') && E('review').innerHTML.includes('data-pad="time"') && E('review').innerHTML.includes('data-pad="laps"') && E('review').innerHTML.includes('data-rv="adjust" data-car="0"') && !E('review').innerHTML.includes('data-rv="adjust" data-car="1"'));
+    say('1.20.0: ...the pads in the review have the values of the race setup too (laps 3 and 6, time 2.5)', ['laps,3', 'laps,6', 'time,2.5'].every(x => E('review').innerHTML.includes(`data-pad-do="${x.split(',')[0]}" data-sign="1" data-v="${x.split(',')[1]}"`)) && !E('review').innerHTML.includes('data-pad-do="laps" data-sign="1" data-v="2"') && !E('review').innerHTML.includes('data-pad-do="time" data-sign="1" data-v="30"'));
     rv('adjust', { car: '0', padDo: 'time', v: '5', sign: '1' }); say('+ on the 5 s pad puts 5 seconds on that driver and the review says so', run('live.engine().cars[0].adjMs') === 5000 && E('review').innerHTML.includes('adjusted: +5 s'));
     E('dir-review').onclick({ target: { closest: () => ({ dataset: { rv: 'adjust', car: '0', padDo: 'laps', v: '1', sign: '-1' } }) } });
     say('the Director page can adjust too: − on the 1 lap pad', run('live.engine().cars[0].adjLaps') === -1 && run('live.engine().lapsOf(live.engine().cars[0])') === lapsA - 1 && E('review').innerHTML.includes('\u22121 lap, +5 s'));
