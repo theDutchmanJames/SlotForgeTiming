@@ -2153,3 +2153,20 @@ Good to know:
 3. Which folders are open is not saved in the layout or in the settings; it is only remembered while the app runs (after a restart they are closed again).
 4. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 5. The tests: `tests/screens.test.js` (the folders start closed, the opened ones are remembered, the room for the panels and how it is applied).
+
+## What to try (1.30.0): statistics for a slot car
+From your note: a service interval, the laps since the last service with a Reset button, and the mileage, in the Statistics folder of a slot car.
+1. Open **Database > Slotcars**, press **Edit** on a car (or **Add slot car**) and open the **Statistics** folder. It has, in this order: **Service Interval**, **Laps Driven**, **Laps Since Last Interval** (with the **Reset** button), **Last Serviced** and **Mileage**.
+2. Type a **Service Interval**, for example 300 laps. Under *Laps Since Last Interval* the form says how many laps are left (*288 laps to go until the next service*), and when the car has reached the interval it says *Service due* in red (and how many laps over).
+3. **Laps Driven** counts every lap saved with the car, as before (it now has capitals: *Laps Driven*). **Laps Since Last Interval** counts the laps saved since the car was last serviced. A car from before this version has had no service yet, so all of its laps count.
+4. Press **Reset** when you have serviced the car: the count shows 0 at once and **Last Serviced** shows today. It is kept when you press **Save** (**Cancel** leaves it as it was). The laps of the next race count from 0.
+5. **Mileage** is the distance the car has driven: every lap that counts times the length of its lane, the same sum as the **Car Mileage** card on Home (so a lap that does not count, a lap of a Time Token Session and a lap on a track without a length are not in it). It is shown in the distance unit of Display (metres and kilometres, or feet and miles). It is worked out when the form opens.
+6. Click a car in the list or grid to see its card: it shows the same numbers (the interval, Laps Driven, Laps Since Last Interval, Last Serviced and the Mileage).
+
+Good to know:
+1. The counts are updated when a race is saved, as Laps Driven always was; a race that is still running is not in them. A lap is counted for the laps since the last service when its session was saved after the Reset.
+2. If you delete a session, or a driver, track or car with laps, the laps leave the counts. A lap from before the last service was not in *Laps Since Last Interval* and stays out of it.
+3. *Laps Driven* counts every lap saved with the car (also an invalid lap), the Mileage only the laps that count, so the two can differ a little.
+4. There is no alarm yet: *Service due* is only said in the form. Say if you would like it on the card in the list, or on Home.
+5. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+6. The tests: `tests/carstats.test.js` (the numbers and the words, which laps count, the mileage), `tests/db.test.js` (the counts when sessions are saved and removed, cars from before), `tests/screens.test.js` (the folder, Reset, the interval, the card) and `tests/help.test.js`.

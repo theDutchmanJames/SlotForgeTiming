@@ -65,6 +65,7 @@ input:disabled{opacity:.6}
 .imgrow{display:flex;align-items:center;gap:10px}
 .imgrow input{width:auto;flex:1}
 .error{color:var(--accent);min-height:1.2em;margin:0 0 8px}
+.svc-note.due{color:var(--accent);font-weight:600}
 .xf{list-style:none;padding:0;margin:0 0 14px}
 .xf li{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)}
 .xf li{flex-wrap:wrap}

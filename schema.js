@@ -45,13 +45,13 @@ module.exports = {
     ]
   },
   slotcars: {
-    label: 'Slot car', plural: 'Slotcars', title: ['brand', 'manufacturer', 'model'], image: 'picture', gallery: 'extraPictures', card: ['scale', 'motor', 'tyres', 'lapsDriven'],
+    label: 'Slot car', plural: 'Slotcars', title: ['brand', 'manufacturer', 'model'], image: 'picture', gallery: 'extraPictures', card: ['scale', 'motor', 'tyres', 'lapsDriven'], // (1.30.0: the Statistics folder has the service interval, Laps Driven, Laps Since Last Interval, Last Serviced and (in the form) the Mileage)
     // The form shows the fields in these collapsible groups, in this order (a field says which group it is in); a group whose fields are all hidden is hidden too.
     groups: [
       { id: 'basics', title: 'Basics', note: 'Brand, manufacturer, model and scale', open: true },
       { id: 'technical', title: 'Technical details', note: 'Motor, tyres, gearing and weight', open: true },
       { id: 'pictures', title: 'Pictures', note: 'The main picture, and more pictures of the chassis and parts' },
-      { id: 'stats', title: 'Statistics', note: 'Laps driven, counted automatically from your races' }
+      { id: 'stats', title: 'Statistics', note: 'The service interval, and the laps and mileage counted from your races' }
     ],
     fields: [
       { key: 'brand', group: 'basics', label: 'Brand', type: 'text' },
@@ -68,7 +68,12 @@ module.exports = {
       { key: 'weight', group: 'technical', label: 'Weight', type: 'text' },
       { key: 'picture', group: 'pictures', label: 'Main picture', type: 'image', optional: true },
       { key: 'extraPictures', group: 'pictures', label: 'More pictures (chassis, parts list…)', type: 'gallery', optional: true },
-      { key: 'lapsDriven', group: 'stats', label: 'Laps driven', type: 'number', automatic: true }
+      { key: 'serviceInterval', group: 'stats', label: 'Service Interval', type: 'number', min: 1, step: 1, optional: true,
+        hint: 'The number of laps after which this car needs servicing. Leave it empty for no service interval.' },
+      { key: 'lapsDriven', group: 'stats', label: 'Laps Driven', type: 'number', automatic: true, hint: 'Every lap saved with this car, counted from your races.' },
+      { key: 'lapsSinceService', group: 'stats', label: 'Laps Since Last Interval', type: 'number', automatic: true, reset: true,
+        hint: 'The laps saved with this car since it was last serviced. Press Reset when you have serviced the car: the count starts again at 0 (when you save).' },
+      { key: 'serviceDate', group: 'stats', label: 'Last Serviced', type: 'datetime', automatic: true, hint: 'The day you pressed Reset (Never until then).' }
     ]
   },
   drivers: {

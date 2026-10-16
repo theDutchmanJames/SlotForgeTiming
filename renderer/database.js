@@ -66,6 +66,7 @@ function keptValue(f, el) {
   return f.unit === 'mm' ? Speed.smallKept(txt, 'ft') : Speed.lengthKept(txt, 'ft');
 }
 
+const plainDate = iso => { const d = iso ? new Date(iso) : null; return d && !isNaN(d) ? d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) : ''; }; // (a day, as in the Last Serviced of a slotcar)
 function cell(f, v) {
   if (f.blank && (v === undefined || v === null || v === '')) return `<span class="muted">${esc(f.blank)}</span>`;
   if (v === undefined || v === null || v === '') return '';
@@ -75,6 +76,7 @@ function cell(f, v) {
   if (f.type === 'gallery') return Array.isArray(v) && v.length ? `${v.length} more` : '';
   if (f.type === 'country') return flagHtml(v) + ' ' + esc(countryName(v));
   if (f.type === 'longtext') return esc(String(v).slice(0, 60));
+  if (f.type === 'datetime') return esc(plainDate(v));
   if (f.type === 'select') return esc((f.options.find(o => o[0] === v) || [, v])[1]);
   if (f.type === 'ref') { const r = (state.refs[f.ref] || []).find(x => x.id === v); return r ? esc(titleOf(f.ref, r)) : '<span class="muted">(deleted)</span>'; }
   if (f.type === 'members') return Array.isArray(v) && v.length ? v.map(id => { const r = (state.refs[f.ref] || []).find(x => x.id === id); return r ? esc(titleOf(f.ref, r)) : '<span class="muted">(deleted)</span>'; }).join(', ') : '';
@@ -325,14 +327,18 @@ function fieldHtml(f, v, extra) {
     case 'penaltytypes': inp = `<p class="muted">Penalties the Race Director can give instead of leaving points to turn into time. One costs points, and must be served by stopping on the sensor in the pits. A Stop-and-Go needs the car to stand still for its seconds; a Drivethrough is served when the pit stop starts.</p><div id="pt-box">${ptRows((extra && extra.types) || [])}</div><button type="button" class="btn" data-ptadd="1">Add a special penalty</button>`; break;
     case 'damagelevels': inp = `<p class="muted">The highest level a car has reached counts. A car must stand still on the sensor in the pits for the seconds of its level: that repairs the damage (the points go back to 0), or retires or disqualifies the car. Leave a gap between the levels, so a hit does not skip one.</p><div id="dl-box">${dlRows((extra && extra.dlevels) || [])}</div><button type="button" class="btn" data-dladd="1">Add a level</button>`; break;
     case 'damageincidents': inp = `<p class="muted">Buttons for the Race Director (on the race screen, the Race Director page and the phones): each gives a car these damage points. A deslot is counted by itself when the track has a deslot time.</p><div id="di-box">${diRows((extra && extra.dincs) || [])}</div><button type="button" class="btn" data-diadd="1">Add an incident</button>`; break;
+    case 'carstat': inp = `<input id="${id}" type="text" value="${esc(v ?? '')}" disabled>`; break; // (1.30.0: a figure worked out for the form, such as the Mileage of a slotcar; the screen fills it in)
     case 'members': inp = `<div id="mem-box">${memRows((extra && extra.members) || [], state.refs[f.ref] || [])}</div>`; break;
     case 'gallery': inp = `<div id="gal-box" class="gallery"></div><input id="${id}" type="file" accept="image/*" multiple data-gallery="1"><p class="muted">Up to ${GALLERY_MAX} extra pictures. A screenshot of a parts list is fine.</p>`; break;
     case 'image': inp = `<div class="imgrow"><img id="${id}-img" class="thumb" ${v ? `src="${esc(v)}"` : 'hidden'} alt=""><input id="${id}" type="file" accept="image/*"><button type="button" class="btn" data-clear="${f.id}">Remove</button></div>`; break;
     default: inp = `<input id="${id}" type="text"${f.maxLength ? ` maxlength="${f.maxLength}"` : ''}${f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : ''} value="${esc(typedText(f, v) ?? v)}"${unitAttrs(f, v)}>`;
   }
-  if (f.automatic) inp = `<input id="${id}" type="number" value="${esc(v ?? 0)}" disabled>`;
+  if (f.automatic) { // (a number or a day that the database keeps by itself; Laps Since Last Interval has the button that starts the count again, 1.30.0)
+    inp = f.type === 'datetime' ? `<input id="${id}" type="text" value="${esc(v ? plainDate(v) : 'Never')}" disabled>` : `<input id="${id}" type="number" value="${esc(v ?? 0)}" disabled>`;
+    if (f.reset) inp = `<div class="imgrow">${inp}<button type="button" class="btn" data-svcreset="1">Reset</button></div>`;
+  }
   const wide = ['longtext', 'gallery', 'tracklength', 'image', 'penaltytypes', 'damagelevels', 'damageincidents', 'members'].includes(f.type) ? ' full' : '';
-  return `<div class="field${wide}" data-key="${f.id}">${lab}${inp}${fh(f) ? `<span class="muted hint">${esc(fh(f))}</span>` : ''}</div>`;
+  return `<div class="field${wide}" data-key="${f.id}">${lab}${inp}${fh(f) ? `<span class="muted hint">${esc(fh(f))}</span>` : ''}${f.reset ? '<span class="muted hint svc-note" id="svc-note"></span>' : ''}</div>`;
 }
 
 // A field with showIf is shown when any one of its conditions matches the current form values.
@@ -367,6 +373,7 @@ function openView(e, item) {
   const rows = [
     ...s.fields.filter(f => !['image', 'gallery'].includes(f.type) && !(named && s.title.includes(f.key)) && isShown(f, getv) && filled(getv(f.key)))
       .map(f => ({ label: fl(f), html: f.type === 'longtext' ? esc(getv(f.key)).replace(/\n/g, '<br>') : cell(f, getv(f.key)), wide: f.type === 'longtext' })),
+    ...(e === 'slotcars' ? [{ label: CAR_MILEAGE.label, html: '<span id="vc-mileage">Calculating…</span>' }] : []), // (1.30.0: worked out from the laps when the card is open)
     ...(state.custom[e] || []).filter(f => filled((item.custom || {})[f.id])).map(f => ({ label: f.label, html: esc(item.custom[f.id]) }))
   ];
   const t = titleOf(e, item), main = s.image && item[s.image], frame = s.image && item[s.image + 'Frame'];
@@ -390,14 +397,21 @@ function openView(e, item) {
     if (b.dataset && b.dataset.big !== undefined && pics[Number(b.dataset.big)]) { byId('vcbigimg').src = pics[Number(b.dataset.big)]; showLarge(true); }
   };
   if (!dlg.open) dlg.showModal();
+  if (e === 'slotcars') { // the mileage of the car, as in its form
+    const out = byId('vc-mileage'), show = text => { out.textContent = text; };
+    Promise.all([api.list('laps'), api.list('tracks')]).then(([laps, tracks]) => { const m = CarStats.mileage(laps, tracks, item.id).distance; show(Stats.fmtDist(m, dUnit())); }).catch(() => show('–'));
+  }
   byId('vcclose').focus({ preventScroll: true }); // (so the card opens at its top)
 }
 
+// 1.30.0: the Mileage in the Statistics folder of a slotcar (worked out from the laps and the tracks when the form opens, like the Car Mileage card of Home; it is not saved)
+const CAR_MILEAGE = { key: '_mileage', id: '_mileage', group: 'stats', label: 'Mileage', type: 'carstat', custom: false,
+  hint: 'The distance this car has driven, worked out as the Car Mileage card on Home does: every lap that counts, times the length of its lane. Laps on a track without a length are left out.' };
 function openForm(e, item) {
   const s = state.schema[e];
-  const fields = [...s.fields.map(f => ({ ...f, id: f.key, custom: false })), ...(state.custom[e] || []).map(f => ({ ...f, custom: true }))];
+  const fields = [...s.fields.map(f => ({ ...f, id: f.key, custom: false })), ...(e === 'slotcars' ? [CAR_MILEAGE] : []), ...(state.custom[e] || []).map(f => ({ ...f, custom: true }))];
   // a track saved before the lane length modifier shows what it always did: calculated as a loop (or what version 0.60.0's track shape said)
-  const val = f => f.custom ? (item?.custom || {})[f.id] : item ? (e === 'tracks' && f.key === 'laneModifier' ? Speed.modifier(item) : e === 'tracks' && f.key === 'netTurns' && item.netTurns === undefined ? f.default : item[f.key]) : f.default;
+  const val = f => f.custom ? (item?.custom || {})[f.id] : item ? (e === 'slotcars' && f.key === 'lapsSinceService' ? CarStats.sinceOf(item) : e === 'tracks' && f.key === 'laneModifier' ? Speed.modifier(item) : e === 'tracks' && f.key === 'netTurns' && item.netTurns === undefined ? f.default : item[f.key]) : f.default;
   const imgs = {}, frames = {}, mainKey = s.image;
   let pieces = ((item && item.lengthPieces) || []).map(p => ({ count: p.count, mm: p.mm }));
   if (!pieces.length) pieces = [{ count: '', mm: 200 }];
@@ -433,12 +447,28 @@ function openForm(e, item) {
   };
   drawGallery();
   refreshShown();
+  // the statistics of a slotcar (1.30.0): what the form says about the service interval, the button that starts the count again, and the mileage
+  let serviceReset = false;
+  const syncService = () => {
+    const el = byId('svc-note'); if (!el) return;
+    const st = CarStats.status({ serviceInterval: (byId('f-serviceInterval') || {}).value }, serviceReset ? 0 : item ? CarStats.sinceOf(item) : 0);
+    el.textContent = CarStats.note(st) + (serviceReset ? ' The count starts again at 0 when you save.' : ''); el.classList.toggle('due', st.due);
+  };
+  syncService();
+  if (e === 'slotcars' && byId('f-_mileage')) {
+    const out = byId('f-_mileage'), show = m => { out.value = Stats.fmtDist(m, dUnit()); }; // (a distance that is not known, null, is a dash)
+    if (!item) show(0);
+    else { out.value = 'Calculating…'; Promise.all([api.list('laps'), api.list('tracks')]).then(([laps, tracks]) => show(CarStats.mileage(laps, tracks, item.id).distance)).catch(() => { out.value = '–'; }); }
+  }
   if (groups) dlg.querySelectorAll('.fgroup').forEach(el => { el.ontoggle = () => { const g = el.dataset.fg; if (el.open) opened.add(g); else opened.delete(g); }; }); // remembered for the next time the form opens
   attachFrames(dlg, k => frames[k], (k, f) => { frames[k] = f; });
   dlg.onclick = ev => {
     const b = ev.target.closest('button'); if (!b) return;
     if (b.id === 'cancel') dlg.close();
     const d = b.dataset || {};
+    if (d.svcreset) { // the car was serviced: the count starts again at 0 (kept when the form is saved), and the day is today
+      serviceReset = true; byId('f-lapsSinceService').value = 0; byId('f-serviceDate').value = plainDate(new Date().toISOString()); syncService(); return;
+    }
     if (d.fgall !== undefined && groups) { // open or close every group
       opened.clear(); if (d.fgall === '1') groups.forEach(g => opened.add(g.id));
       dlg.querySelectorAll('.fgroup').forEach(el => { el.open = d.fgall === '1'; }); return;
@@ -471,6 +501,7 @@ function openForm(e, item) {
   };
   dlg.oninput = ev => {
     const t = ev.target;
+    if (t && t.id === 'f-serviceInterval') { syncService(); return; }
     if (t && t.dataset && t.dataset.dl !== undefined) { const lv = dlevels[Number(t.dataset.dl)]; if (lv) lv[t.dataset.dlk] = t.value; return; }
     if (t && t.dataset && t.dataset.di !== undefined) { const ic = dincs[Number(t.dataset.di)]; if (ic) ic[t.dataset.dik] = t.value; return; }
     if (t && t.dataset && t.dataset.pt !== undefined) { const ty = types[Number(t.dataset.pt)]; if (ty) ty[t.dataset.ptk] = t.value; return; }
@@ -504,7 +535,8 @@ function openForm(e, item) {
     ev.preventDefault();
     const built = {}, custom = { ...(item?.custom || {}) };
     for (const f of fields) {
-      if (f.automatic) { if (!item) built[f.key] = 0; continue; }
+      if (f.automatic) { if (!item) built[f.key] = f.type === 'datetime' ? '' : 0; continue; }
+      if (f.type === 'carstat') continue; // (worked out for the form, not kept)
       if (f.type === 'gallery') { built[f.key] = [...gal]; continue; }
       if (f.type === 'members') { built[f.key] = members.filter(id => (state.refs[f.ref] || []).some(x => x.id === id)); continue; }
       if (f.type === 'damagelevels') { built[f.key] = dlevels.filter(l => String(l.name || '').trim() || Number(l.from) > 0).map(l => ({ name: String(l.name || '').trim(), from: Math.max(0, Math.floor(Number(l.from)) || 0), seconds: Math.max(0, Number(l.seconds) || 0), urgency: l.urgency === 'asap' ? 'asap' : 'whenever', within: Math.max(0, Math.floor(Number(l.within)) || 0), action: Damage.ACTIONS.includes(l.action) ? l.action : 'repair' })); continue; }
@@ -529,6 +561,10 @@ function openForm(e, item) {
         built.lengthPieces = used.length && Speed.lengthFromPieces(used) === v ? used : [];
       }
       if (f.custom) custom[f.id] = v; else built[f.key] = v;
+    }
+    if (e === 'slotcars') { // the service interval is a whole number of laps (empty = none); Reset starts the count again today
+      if (built.serviceInterval !== '' && built.serviceInterval !== undefined) built.serviceInterval = Math.max(1, Math.floor(Number(built.serviceInterval)) || 1);
+      if (serviceReset && item) { built.lapsSinceService = 0; built.serviceDate = new Date().toISOString(); }
     }
     if (e === 'tracks' && built.laneModifier === 'measured') { // one length for every lane
       const list = String(built.laneLengths || '').split(',').map(x => x.trim()).filter((x, i, a) => x !== '' || i < a.length - 1), n = Number(built.lanes);

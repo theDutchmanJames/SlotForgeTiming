@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const schema = require('./schema');
+const CarStats = require('./renderer/carstats.js'); // the slotcar statistics (1.30.0): which laps count since the last service
 
 const VERSION = 1;
 
@@ -39,6 +40,8 @@ class Database {
       if (r.firstLap === undefined) r.firstLap = 'skip'; // new in 0.32: the lap from the grid is not counted
       ['fuel', 'fuelTank', 'fuelPerLap', 'fuelEmpty', 'fuelRate'].forEach(k => { delete r[k]; });
     }
+    // new in 1.30.0: the laps since the last service. A car from before that has had no service yet, so every lap it has driven counts.
+    for (const c of d.slotcars) if (!Number.isFinite(c.lapsSinceService)) c.lapsSinceService = CarStats.sinceOf(c);
   }
   save() {
     const tmp = this.file + '.tmp';
@@ -66,11 +69,14 @@ class Database {
   }
   // Laps are removed together with whatever they belong to; cars' laps-driven counters follow.
   removeLapsWhere(pred) {
-    const gone = this.data.laps.filter(pred);
+    const gone = this.data.laps.filter(pred), sessionDate = new Map(this.data.sessions.map(s => [s.id, s.date]));
     this.data.laps = this.data.laps.filter(l => !pred(l));
     for (const l of gone) {
       const car = this.data.slotcars.find(c => c.id === l.carId);
-      if (car) car.lapsDriven = Math.max(0, (car.lapsDriven || 0) - 1);
+      if (car) {
+        if (CarStats.afterService(car, l, sessionDate.get(l.sessionId))) car.lapsSinceService = Math.max(0, CarStats.sinceOf(car) - 1); // (a lap from before the last service was not in that count)
+        car.lapsDriven = Math.max(0, (car.lapsDriven || 0) - 1);
+      }
     }
   }
   linkedLaps(entity, id) {
@@ -111,7 +117,10 @@ class Database {
     for (const l of laps) {
       this.data.laps.push({ ...l, id: crypto.randomUUID(), sessionId: s.id });
       const car = this.data.slotcars.find(c => c.id === l.carId);
-      if (car) car.lapsDriven = (car.lapsDriven || 0) + 1;
+      if (car) {
+        if (CarStats.afterService(car, l, s.date)) car.lapsSinceService = CarStats.sinceOf(car) + 1; // (sinceOf is every lap driven for a car that was never counted that way)
+        car.lapsDriven = (car.lapsDriven || 0) + 1;
+      }
     }
     this.save();
     return s.id;

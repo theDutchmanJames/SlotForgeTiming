@@ -66,4 +66,46 @@ ok('penalty systems can be added and removed', db.list('penaltysystems').length 
   w.update('rotationsetups', rot.id, { name: 'Friday' }); ok('...and changed', new Database(f).list('rotationsetups')[0].name === 'Friday');
   w.remove('rotationsetups', rot.id);
   ok('deleting a rotation setup clears it from the race setups that use it (and leaves the others alone)', w.list('rotationsetups').length === 0 && w.list('racesetups').find(r => r.id === setup.id).rotation === '' && w.list('racesetups').find(r => r.id === other.id).rotation === 'x'); }
+// 1.30.0: the statistics of a slotcar: Laps Driven and Laps Since Last Interval are counted when a session is saved, and follow when laps are removed
+{ const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'slt-svc-')), 'db.json');
+  fs.writeFileSync(f, JSON.stringify({ slotcars: [{ id: 'old', brand: 'Old', lapsDriven: 40 }, { id: 'new0', brand: 'Fresh' }, { id: 'kept', brand: 'Kept', lapsDriven: 40, lapsSinceService: 7 }] }));
+  let w = new Database(f); const car = id => w.list('slotcars').find(c => c.id === id);
+  ok('a car from before 1.30.0 has had no service yet: the laps since the last one are all of its laps (and a car with a count keeps it)', car('old').lapsSinceService === 40 && car('new0').lapsSinceService === 0 && car('kept').lapsSinceService === 7);
+  ok('...it is saved in the file by itself', new Database(f).list('slotcars').find(c => c.id === 'old').lapsSinceService === 40);
+  const lap = (carId, date) => ({ carId, time: 5, date });
+  w.saveSession({ date: '2026-02-01T10:00:00.000Z' }, [lap('old', '2026-02-01T10:00:00.000Z'), lap('old', '2026-02-01T10:00:00.000Z'), lap('new0', '2026-02-01T10:00:00.000Z'), lap('', '2026-02-01T10:00:00.000Z'), lap('gone', '2026-02-01T10:00:00.000Z')]);
+  ok('a saved session adds its laps to Laps Driven and to the laps since the last service', car('old').lapsDriven === 42 && car('old').lapsSinceService === 42 && car('new0').lapsDriven === 1 && car('new0').lapsSinceService === 1 && car('kept').lapsSinceService === 7);
+  // the car is serviced (what the form does when Reset is pressed and the form is saved)
+  w.update('slotcars', 'old', { lapsSinceService: 0, serviceDate: '2026-03-01T12:00:00.000Z' });
+  ok('after a service the count is 0 and Laps Driven is as it was', car('old').lapsSinceService === 0 && car('old').lapsDriven === 42 && car('old').serviceDate === '2026-03-01T12:00:00.000Z');
+  w.saveSession({ date: '2026-03-02T10:00:00.000Z' }, [lap('old', '2026-03-02T10:00:00.000Z'), lap('old', '2026-03-02T10:00:00.000Z'), lap('old', '2026-03-02T10:00:00.000Z')]);
+  ok('the laps of the next session count from 0 again', car('old').lapsDriven === 45 && car('old').lapsSinceService === 3);
+  w.saveSession({ date: '2026-02-20T10:00:00.000Z' }, [lap('old', undefined)]);
+  ok('a lap saved with the date of its session: a session from before the service does not count for the laps since (it counts for Laps Driven)', car('old').lapsDriven === 46 && car('old').lapsSinceService === 3);
+  w.saveSession({ date: '2026-03-05T10:00:00.000Z' }, [lap('old', undefined)]);
+  ok('...and one from after it does', car('old').lapsDriven === 47 && car('old').lapsSinceService === 4);
+  // removing laps: the counts follow, but a lap from before the service was never in the laps since
+  const dateOfSession = new Map(w.data.sessions.map(s => [s.id, s.date])), when = l => l.date || dateOfSession.get(l.sessionId);
+  ok('the laps are in the file (three from before the service, one of them without a date of its own, and four after it)', w.data.laps.filter(l => l.carId === 'old' && when(l) < '2026-03-01').length === 3 && w.data.laps.filter(l => l.carId === 'old' && when(l) > '2026-03-01').length === 4);
+  w.removeLapsWhere(l => l.carId === 'old' && when(l) < '2026-03-01');
+  ok('removing laps from before the service lowers Laps Driven, not the laps since the last service (a lap without a date has the date of its session)', car('old').lapsDriven === 44 && car('old').lapsSinceService === 4);
+  w.removeLapsWhere(l => l.carId === 'old' && l.date === '2026-03-02T10:00:00.000Z');
+  ok('removing laps from after it lowers both', car('old').lapsDriven === 41 && car('old').lapsSinceService === 1);
+  w.removeLapsWhere(l => l.carId === 'old');
+  ok('...to the 40 laps it had driven before they were counted, and the laps since the last service back to 0', car('old').lapsDriven === 40 && car('old').lapsSinceService === 0);
+  w.update('slotcars', 'old', { lapsDriven: 0 }); w.data.laps.push({ id: 'x1', carId: 'old', time: 5, date: '2026-05-01T00:00:00Z' }); w.removeLapsWhere(l => l.id === 'x1');
+  ok('...and neither goes below 0', car('old').lapsDriven === 0 && car('old').lapsSinceService === 0);
+  w.removeLapsWhere(l => l.carId === 'new0');
+  ok('a car that was never serviced loses laps from both counts', car('new0').lapsDriven === 0 && car('new0').lapsSinceService === 0);
+  const bare = w.add('slotcars', { brand: 'Bare', lapsDriven: 10 }); // (a car that was added without the count, for example from an older backup)
+  w.saveSession({ date: '2026-04-01T10:00:00.000Z' }, [lap(bare.id, '2026-04-01T10:00:00.000Z')]);
+  ok('a car without a count of its own starts it from all the laps it had driven when a session is saved (10 + 1)', car(bare.id).lapsDriven === 11 && car(bare.id).lapsSinceService === 11);
+  const added = w.add('slotcars', { brand: 'Added', lapsDriven: 0, lapsSinceService: 0 });
+  w.saveSession({ date: '2026-04-01T10:00:00.000Z' }, [{ carId: added.id, time: 5 }]);
+  ok('a lap without a date counts for the laps since the last service of a car that was never serviced', car(added.id).lapsSinceService === 1);
+  w.saveSession({ date: '2026-04-01T10:00:00.000Z' }, [{ carId: 'kept', time: 5, date: '2026-04-01T10:00:00.000Z' }]);
+  ok('the service interval is kept by the database like any other setting', (w.update('slotcars', 'kept', { serviceInterval: 300 }), new Database(f).list('slotcars').find(c => c.id === 'kept').serviceInterval === 300) && car('kept').lapsSinceService === 8);
+  w.removeSession(w.data.sessions[w.data.sessions.length - 1].id);
+  ok('removing a session takes its laps out of the counts', car('kept').lapsSinceService === 7 && car('kept').lapsDriven === 40);
+}
 console.log(fails ? fails + ' DB TESTS FAILED' : 'ALL DB TESTS PASSED'); process.exit(fails ? 1 : 0);
