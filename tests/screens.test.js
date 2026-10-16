@@ -2278,6 +2278,67 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     api.setSettings = realSet;
     Object.assign(store, { racesetups: keep.racesetups, tracks: keep.tracks, sessions: keep.sessions, laps: keep.laps, drivers: keep.drivers, slotcars: keep.slotcars, layouts: keep.layouts, audiosets: keep.audiosets });
     run(`state.settings.lastSetupId = ${JSON.stringify(keep.last || '')}; state.settings.assignments = ${JSON.stringify(keep.asg || {})}; ${keep.grid === undefined ? 'delete state.settings.homeGrid' : 'state.settings.homeGrid = ' + JSON.stringify(keep.grid)}; state.homeCustom = ${JSON.stringify(keep.custom || { open: false, sel: 0 })}; ${keep.du === undefined ? 'delete state.settings.distanceUnit' : 'state.settings.distanceUnit = ' + JSON.stringify(keep.du)}`); }
+  { // 1.34.0: the Service Due card of Home: the cars that need servicing, from the cars (no races needed), and a click on a car opens its card in the Database
+    const keep = { racesetups: store.racesetups, tracks: store.tracks, sessions: store.sessions, laps: store.laps, drivers: store.drivers, slotcars: store.slotcars, layouts: store.layouts, audiosets: store.audiosets,
+      last: run('state.settings.lastSetupId'), asg: run('state.settings.assignments'), grid: run('state.settings.homeGrid'), custom: run('state.homeCustom'), tab: run('state.tab'), sub: run('state.sub') };
+    const savedCalls = [], realSet = api.setSettings; api.setSettings = async p => { savedCalls.push(p); return { ...run('state.settings'), ...p }; };
+    const wait = ms => new Promise(r => setTimeout(r, ms)), home = async () => { run("state.tab = 'home'"); await run('render()'); await wait(10); return E('view').innerHTML; };
+    const change = async (dataset, value, type) => { await E('view').onchange({ target: { dataset, value, type: type || 'select-one', checked: value === true } }); await wait(15); return E('view').innerHTML; };
+    const clickHome = async dataset => { await E('view').onclick({ target: { closest: sel => (sel === 'button' ? { id: dataset.id || '', dataset } : null) } }); await wait(40); };
+    const board = k => JSON.parse(run('JSON.stringify(HomeGrid.gridOf(state.settings))')).boards.find(b => b.opt.card === k), cell = k => E('hmc-' + k).innerHTML, PIC = 'data:image/png;base64,PORSCHE';
+    store.tracks = [{ id: 't1', name: 'Living room', lanes: 2, length: 10, laneModifier: 'none' }]; store.drivers = [{ id: 'd1', name: 'Dutch' }]; store.layouts = []; store.audiosets = [];
+    store.racesetups = [{ id: 'k1', name: 'Club race', sessionType: 'race', track: 't1', laps: 20 }]; store.sessions = []; store.laps = [];
+    const car = (id, brand, model, interval, since, extra) => ({ id, brand, model, ...(interval ? { serviceInterval: interval } : {}), lapsSinceService: since, ...extra });
+    store.slotcars = [car('c1', 'Porsche', '917', 300, 342, { picture: PIC }), car('c2', 'Ford', 'GT40', 200, 200), car('c3', 'Ninco', 'Lola', 300, 278), car('c4', 'Slot.it', 'Fresh', 300, 100), car('c5', 'No', 'Interval', 0, 900), car('c6', 'Scalex', 'Mid', 300, 230)];
+    run(`state.settings.lastSetupId = 'k1'; state.settings.assignments = { k1: [{ driverId: 'd1', carId: 'c1' }] }; state.settings.homeGrid = ${JSON.stringify({ cols: 4, rows: 2, boards: [{ c: 1, r: 1, w: 2, h: 2, opt: { card: 'start' } }, { c: 3, r: 1, w: 2, h: 1, opt: { card: 'service' } }] })}; state.homeCustom = { open: true, sel: 1 }`);
+    let hh = await home();
+    say('Customize shows the settings of Service Due: what to show, what coming up means, how many cars, the bar and the picture', hh.includes('<legend>Card 2: Service Due (column 3, row 1)</legend>')
+      && /id="hg-show" data-hopt="show"><option value="soon" selected>Due and coming up<\/option><option value="due">Due only<\/option>/.test(hh) && /id="hg-within" data-hopt="within"><option value="5">5% of the interval<\/option><option value="10" selected>10% of the interval<\/option>/.test(hh)
+      && /id="hg-count" data-hopt="count">[^]*<option value="5" selected>5<\/option>/.test(hh) && hh.includes('id="hg-bars" type="checkbox" data-hopt="bars" checked') && hh.includes('id="hg-pics" type="checkbox" data-hopt="pics" checked'));
+    say('the card shows without any race saved: the cars that are due first (the most laps over first), then the cars coming up; a car far from its interval and a car without an interval are not there', cell('service').includes('class="card hm-svc"') && cell('service').includes('<span class="hm-tag">3 cars</span>')
+      && cell('service').indexOf('Porsche 917') < cell('service').indexOf('Ford GT40') && cell('service').indexOf('Ford GT40') < cell('service').indexOf('Ninco Lola') && !cell('service').includes('Fresh') && !cell('service').includes('Interval') && !cell('service').includes('Scalex'));
+    say('...a car that is due says Service due with its laps (342 of 300, 42 over; 200 of 200, due now), a car coming up how many laps to go (22 of 300), each with a bar (full, full, 93%) and the picture of the car that has one', cell('service').includes('<strong class="sv-st due">Service due</strong><small>342 of 300 laps · 42 over</small>')
+      && cell('service').includes('<small>200 of 200 laps · due now</small>') && cell('service').includes('<strong class="sv-st soon">22 laps to go</strong><small>278 of 300 laps</small>') && cell('service').includes(`<img class="hm-carpic" src="${PIC}" alt="">`) && cell('service').includes('<span class="hm-carpic"></span>')
+      && cell('service').includes('<i class="due" style="width:100%"></i>') && cell('service').includes('<i class="soon" style="width:93%"></i>'));
+    say('...every car is a button with its id, to open its card', ['c1', 'c2', 'c3'].every(id => cell('service').includes(`<button class="hm-mrow hm-carbtn" type="button" data-car="${id}" title="Open the card of this car">`)) && !cell('service').includes('data-car="c4"'));
+    hh = await change({ hopt: 'show' }, 'due');
+    say('Show: Due only leaves the car that is coming up out (2 cars)', cell('service').includes('<span class="hm-tag">2 cars</span>') && !cell('service').includes('Ninco') && !cell('service').includes('laps to go') && board('service').opt.show === 'due');
+    hh = await change({ hopt: 'show' }, 'soon'); hh = await change({ hopt: 'within' }, '5');
+    say('Coming up means within 5% of the interval: 22 laps to go of 300 is 7%, so that car is out', cell('service').includes('<span class="hm-tag">2 cars</span>') && !cell('service').includes('Ninco') && board('service').opt.within === '5');
+    hh = await change({ hopt: 'within' }, '25');
+    say('...within 25%: the car with 70 to go (230 of 300) comes up too, after the car with 22 to go (the fewest laps to go first)', cell('service').includes('<span class="hm-tag">4 cars</span>') && cell('service').indexOf('Ninco') < cell('service').indexOf('Scalex') && cell('service').includes('<small>230 of 300 laps</small>') && cell('service').includes('70 laps to go') && !cell('service').includes('Fresh'));
+    hh = await change({ hopt: 'count' }, '3');
+    say('Cars shown: with 4 cars and 3 chosen the card shows 3 and says so (3 of 4 cars)', cell('service').includes('<span class="hm-tag">3 of 4 cars</span>') && !cell('service').includes('Scalex') && (cell('service').match(/data-car="/g) || []).length === 3);
+    hh = await change({ hopt: 'count' }, '5'); hh = await change({ hopt: 'within' }, '10');
+    hh = await change({ hopt: 'bars' }, false, 'checkbox');
+    say('Bars off: the cars keep their picture and their words, with no bar', cell('service').includes('hm-mrow') && !cell('service').includes('hm-mbar') && cell('service').includes('hm-carpic') && cell('service').includes('Service due'));
+    hh = await change({ hopt: 'bars' }, true, 'checkbox'); hh = await change({ hopt: 'pics' }, false, 'checkbox');
+    say('Pictures off: the bars stay, the pictures go', !cell('service').includes('hm-carpic') && cell('service').includes('hm-mbar'));
+    hh = await change({ hopt: 'bars' }, false, 'checkbox');
+    say('Bars and pictures both off is the compact card: one line a car, a dot, the name and how far it is (42 laps over, due now, 22 laps to go)', !cell('service').includes('hm-mrow') && !cell('service').includes('hm-mbar') && !cell('service').includes('hm-carpic')
+      && cell('service').includes('<button class="hm-kv hm-carbtn" type="button" data-car="c1" title="Open the card of this car"><span class="who"><i class="sv-dot due"></i>Porsche 917</span><strong class="sv-st due">42 laps over</strong></button>')
+      && cell('service').includes('<span class="who"><i class="sv-dot due"></i>Ford GT40</span><strong class="sv-st due">due now</strong>') && cell('service').includes('<span class="who"><i class="sv-dot soon"></i>Ninco Lola</span><strong class="sv-st soon">22 laps to go</strong>'));
+    // a click on a car
+    await clickHome({ car: 'c3' });
+    say('a click on a car goes to Slotcars in the Database and opens the card of that car (and Home forgets the choice)', run('state.tab') === 'database' && run('state.sub') === 'slotcars' && run('state.focusCar') === null && E('dlg').innerHTML.includes('<h3 class="vctitle">Ninco Lola</h3>'));
+    E('dlg').innerHTML = ''; run("state.tab = 'database'; state.sub = 'slotcars'"); await run('render()'); await wait(20);
+    say('...the Slotcars page opened any other time opens no card', !E('dlg').innerHTML.includes('vctitle'));
+    run("state.focusCar = 'gone'"); await run('render()'); await wait(20);
+    say('...a car that is not in the database any more opens nothing, and the choice is forgotten', !E('dlg').innerHTML.includes('vctitle') && run('state.focusCar') === null);
+    // nothing to service
+    run("state.tab = 'home'"); store.slotcars = [car('c1', 'Porsche', '917', 300, 20), car('c5', 'No', 'Interval', 0, 900)]; hh = await home();
+    say('when no car needs servicing the card says so, with the words for the choice (within 10% of its service interval, or past it)', cell('service').includes('<span class="hm-tag">all good</span>') && cell('service').includes('No car needs servicing. A car shows here when it is within 10% of its service interval, or past it.') && !cell('service').includes('data-car'));
+    hh = await change({ hopt: 'show' }, 'due');
+    say('...and for Due only (when it has reached its service interval)', cell('service').includes('No car needs servicing. A car shows here when it has reached its service interval.'));
+    store.slotcars = [car('c5', 'No', 'Interval', 0, 900)]; hh = await home();
+    say('when no car has a service interval the card says where to set one, and there is nothing to be good about', cell('service').includes('No slotcar has a service interval yet. Set one in Database > Slotcars, in the Statistics folder of a car.') && !cell('service').includes('hm-tag'));
+    store.slotcars = []; hh = await home();
+    say('...no cars at all is the same card', cell('service').includes('No slotcar has a service interval yet.'));
+    await E('view').onclick({ target: { closest: sel => (sel === 'button' ? { id: 'hmdefault', dataset: {} } : null) } }); await wait(15);
+    say('"Back to the usual Home" takes the card away with the rest of the grid', savedCalls[savedCalls.length - 1].homeGrid === null && !E('view').innerHTML.includes('id="hmc-service"'));
+    api.setSettings = realSet;
+    Object.assign(store, { racesetups: keep.racesetups, tracks: keep.tracks, sessions: keep.sessions, laps: keep.laps, drivers: keep.drivers, slotcars: keep.slotcars, layouts: keep.layouts, audiosets: keep.audiosets });
+    run(`state.settings.lastSetupId = ${JSON.stringify(keep.last || '')}; state.settings.assignments = ${JSON.stringify(keep.asg || {})}; ${keep.grid === undefined ? 'delete state.settings.homeGrid' : 'state.settings.homeGrid = ' + JSON.stringify(keep.grid)}; state.homeCustom = ${JSON.stringify(keep.custom || { open: false, sel: 0 })}; state.tab = ${JSON.stringify(keep.tab || 'home')}; state.sub = ${JSON.stringify(keep.sub || '')}`); E('dlg').innerHTML = ''; }
   { // Race Setups: the session type is the folder
     const keepSetups = store.racesetups, keepTracks = store.tracks;
     store.racesetups = [{id:'r1',name:'Friday',sessionType:'race',track:'t1',laps:10},{id:'r2',name:'Sprint',sessionType:'race',track:'t1',laps:5},{id:'r3',name:'Warm up',sessionType:'practice',track:'t1'},

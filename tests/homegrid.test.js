@@ -11,8 +11,8 @@ const cards = g => g.boards.map(G.cardOf).join();
 const spots = g => g.boards.map(b => `${G.cardOf(b)}@${b.c}.${b.r}:${b.w}x${b.h}`).join(' ');
 
 // ---- the cards ----
-ok('there are fifteen cards: Start a race, the three of before, the seven of 1.25.0, Weather and Tyres Available since 1.26.0 and, since 1.28.0, Notes and Car Mileage', G.CARDS.length === 15 && G.KEYS.join() === 'start,record,last,glance,recent,fastest,records,top,bests,rules,shortcuts,weather,tyres,notes,mileage');
-ok('...every card has a name and a line of words, and the keys are all different', G.CARDS.every(c => c.label && c.note) && new Set(G.KEYS).size === 15);
+ok('there are sixteen cards: Start a race, the three of before, the seven of 1.25.0, Weather and Tyres Available since 1.26.0, since 1.28.0 Notes and Car Mileage and, since 1.34.0, Service Due', G.CARDS.length === 16 && G.KEYS.join() === 'start,record,last,glance,recent,fastest,records,top,bests,rules,shortcuts,weather,tyres,notes,mileage,service');
+ok('...every card has a name and a line of words, and the keys are all different', G.CARDS.every(c => c.label && c.note) && new Set(G.KEYS).size === 16);
 ok('...only Start a race is fixed (it cannot be taken away)', G.CARDS.filter(c => c.fixed).map(c => c.key).join() === 'start');
 ok('...a choice has a default that is one of its choices; a tick has a default of yes or no; a number a whole default inside its limits; a line of text a default that fits; a picture set has none',
   G.CARDS.every(c => c.options.every(o => (o.type === 'check' ? typeof o.default === 'boolean' : o.type === 'number' ? Number.isInteger(o.default) && o.default >= o.min && o.default <= o.max
@@ -68,7 +68,7 @@ ok('a taller card: the cells below must be free; a card that would cover a cell 
 ok('...and Start a race can be made narrower or wider like any card', spots(G.setSpan(a1, 0, 1, 2)) === 'start@1.1:1x2 record@3.1:1x1 recent@4.1:1x1' && G.maxSpan(a1, a1.boards[0]).w === 2 && G.maxSpan(a1, a1.boards[0]).h === 2);
 
 // ---- the cards a cell can have ----
-ok('a cell can have the cards that are not in the grid, and the card it has now; never Start a race', G.available(a1, 1).map(c => c.key).join() === 'record,last,glance,fastest,records,top,bests,rules,shortcuts,weather,tyres,notes,mileage' && G.available(a1, -1).map(c => c.key).join() === 'last,glance,fastest,records,top,bests,rules,shortcuts,weather,tyres,notes,mileage');
+ok('a cell can have the cards that are not in the grid, and the card it has now; never Start a race', G.available(a1, 1).map(c => c.key).join() === 'record,last,glance,fastest,records,top,bests,rules,shortcuts,weather,tyres,notes,mileage,service' && G.available(a1, -1).map(c => c.key).join() === 'last,glance,fastest,records,top,bests,rules,shortcuts,weather,tyres,notes,mileage,service');
 ok('...the cards that are in the grid', G.used(a1).has('start') && G.used(a1).has('recent') && !G.used(a1).has('top') && G.used(null).size === 0);
 
 // ---- the default ----
@@ -156,6 +156,14 @@ ok('...Car Mileage takes only the choices it has (a value that is not one is the
 { const g0 = G.add(G.DEFAULT, 1, 1, 'notes') === G.DEFAULT ? G.DEFAULT : G.resize(G.DEFAULT, 4, 3), g1 = G.add(G.add(g0, 4, 1, 'notes'), 4, 2, 'mileage');
   const i = g1.boards.findIndex(b => G.cardOf(b) === 'notes'), g2 = G.setOpt(g1, i, { text: 'Line 1\nLine 2', title: 'Club night', size: 'large', nonsense: 1 });
   ok('both cards can be put in the grid, and a change of the settings of Notes is saved with its lines; what is not an option of the card is left out', g1.boards.some(b => G.cardOf(b) === 'mileage') && g1.boards.some(b => G.cardOf(b) === 'notes') && g2.boards[i].opt.text === 'Line 1\nLine 2' && g2.boards[i].opt.title === 'Club night' && g2.boards[i].opt.size === 'large' && !('nonsense' in g2.boards[i].opt)); }
+
+// ---- 1.34.0: the Service Due card ----
+ok('Service Due has what to show, what coming up means, how many cars, the bar and the picture', G.info('service').options.map(x => x.key).join() === 'show,within,count,bars,pics' && G.info('service').label === 'Service Due' && /service interval/.test(G.info('service').note) && /Click a car/.test(G.info('service').note));
+ok('...it starts with the cars that are due and coming up, within 10% of the interval, 5 cars, the bar and the picture', o(mk('service'), 'show') === 'soon' && o(mk('service'), 'within') === '10' && o(mk('service'), 'count') === '5' && o(mk('service'), 'bars') === true && o(mk('service'), 'pics') === true);
+ok('...it takes only the choices it has (a value that is not one is the standard)', o(mk('service', { show: 'due' }), 'show') === 'due' && o(mk('service', { show: 'all' }), 'show') === 'soon' && o(mk('service', { within: '25' }), 'within') === '25' && o(mk('service', { within: '5' }), 'within') === '5' && o(mk('service', { within: '20' }), 'within') === '20' && o(mk('service', { within: '50' }), 'within') === '10'
+  && o(mk('service', { count: '8' }), 'count') === '8' && o(mk('service', { count: '9' }), 'count') === '5' && o(mk('service', { bars: false }), 'bars') === false && o(mk('service', { pics: false }), 'pics') === false);
+{ const g0 = G.resize(G.DEFAULT, 4, 3), g1 = G.add(g0, 4, 1, 'service'), i = g1.boards.findIndex(b => G.cardOf(b) === 'service'), g2 = G.setOpt(g1, i, { show: 'due', within: '20', nonsense: 1 });
+  ok('the card can be put in the grid, and its settings are saved (what is not an option of the card is left out)', i >= 0 && g2.boards[i].opt.show === 'due' && g2.boards[i].opt.within === '20' && !('nonsense' in g2.boards[i].opt) && G.available(g1, i).some(c => c.key === 'service') && !G.available(g1, -1).some(c => c.key === 'service')); }
 
 console.log(fails ? fails + ' HOME GRID TESTS FAILED' : 'ALL HOME GRID TESTS PASSED');
 process.exit(fails ? 1 : 0);

@@ -271,6 +271,7 @@ async function mountManager(box, e) {
       mountManager(box, e);
     }
   };
+  if (e === 'slotcars' && state.focusCar) { const it = items.find(i => i.id === state.focusCar); state.focusCar = null; if (it) openView(e, it); } // (a car clicked on Home, in the Service Due card: its card opens)
 }
 
 // special penalties of a penalty system: one row each (Drivethrough, Stop-and-Go...)

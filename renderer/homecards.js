@@ -2,6 +2,7 @@
 // is the form of the page). Pure: a card is made from figures that landing.js worked out with homestats.js, so it can be tested without a screen.
 // d = { fmtDate(iso), fmtShort(iso), trackName, rec, last, glance, recent, fastest, records, top, bests, rules, setupName, hasTrack, hasSetup, images }
 // (1.28.0: mileage = [{ name, picture, laps, distance }] for Car Mileage; Notes needs nothing.)
+// (1.34.0: service = [{ carId, name, picture, interval, since, left, over, due }], serviceTotal and serviceSet for Service Due; it needs no races, only cars.)
 // (1.26.0: images = the pictures of the picture sets that the Weather and Tyres Available cards use: { weather, conditions, tyres }, each the images of a set or nothing.)
 (function (root) {
   const G = typeof module !== 'undefined' ? require('./homegrid.js') : root.HomeGrid;
@@ -111,12 +112,35 @@
     return card('hm-mileage', 'Car Mileage', year ? 'this year' : 'all time', rows || `<p class="muted">${year ? 'No lap has been driven with a car this year yet.' : 'No lap has been saved with a car yet.'}</p>`);
   };
 
+  // 1.34.0 Service Due: the slotcars that need servicing, or soon will (d.service = [{ carId, name, picture, interval, since, left, over, due }], the cars that are shown, from CarStats.dueList;
+  // d.serviceTotal = how many cars there are before the list was cut, d.serviceSet = how many cars have a service interval). With a bar or a picture a car is a row like Car Mileage has;
+  // with neither it is one line with a dot. A click on a car opens its card (data-car).
+  const lapsText = n => `${Number(n).toLocaleString('en-US')} ${Number(n) === 1 ? 'lap' : 'laps'}`;
+  const service = (d, board) => {
+    const o = k => G.optionOf(board, k), list = d.service || [], total = Math.max(list.length, Number(d.serviceTotal) || 0), dueOnly = o('show') === 'due';
+    if (!list.length) {
+      return card('hm-svc', 'Service Due', Number(d.serviceSet) > 0 ? 'all good' : '', `<p class="muted">${Number(d.serviceSet) > 0
+        ? `No car needs servicing. A car shows here when ${dueOnly ? 'it has reached its service interval' : `it is within ${esc(o('within'))}% of its service interval, or past it`}.`
+        : 'No slotcar has a service interval yet. Set one in Database > Slotcars, in the Statistics folder of a car.'}</p>`);
+    }
+    const rich = o('bars') || o('pics'), pics = o('pics') && list.some(r => PIC.test(String(r.picture || '')));
+    const status = r => (r.due ? 'Service due' : `${lapsText(r.left)} to go`);
+    const short = r => (r.due ? (r.over > 0 ? `${lapsText(r.over)} over` : 'due now') : `${lapsText(r.left)} to go`);
+    const rows = list.map(r => {
+      const cls = r.due ? 'due' : 'soon', go = `type="button" data-car="${esc(r.carId)}" title="Open the card of this car"`;
+      if (!rich) return `<button class="hm-kv hm-carbtn" ${go}><span class="who"><i class="sv-dot ${cls}"></i>${esc(r.name)}</span><strong class="sv-st ${cls}">${esc(short(r))}</strong></button>`;
+      const more = `${Number(r.since).toLocaleString('en-US')} of ${lapsText(r.interval)}${r.due ? (r.over > 0 ? ` · ${r.over.toLocaleString('en-US')} over` : ' · due now') : ''}`;
+      return `<button class="hm-mrow hm-carbtn" ${go}>${pics ? (PIC.test(String(r.picture || '')) ? `<img class="hm-carpic" src="${esc(r.picture)}" alt="">` : '<span class="hm-carpic"></span>') : ''}<span class="mm"><span class="mt"><span class="mn">${esc(r.name)}</span><span class="mv"><strong class="sv-st ${cls}">${esc(status(r))}</strong><small>${esc(more)}</small></span></span>${o('bars') ? `<span class="hm-mbar sv-bar"><i class="${cls}" style="width:${Math.max(4, Math.min(100, Math.round(r.since / r.interval * 100)))}%"></i></span>` : ''}</span></button>`;
+    }).join('');
+    return card('hm-svc', 'Service Due', total > list.length ? `${list.length} of ${total} cars` : `${total} ${total === 1 ? 'car' : 'cars'}`, rows);
+  };
+
   // The card for a key, from the figures d (and the board, for the options of the card). Start a race is not made here.
   function html(key, d, board) {
     switch (key) {
       case 'record': return record(d); case 'last': return last(d); case 'glance': return glance(d); case 'recent': return recent(d); case 'fastest': return fastest(d);
       case 'records': return records(d); case 'top': return top(d); case 'bests': return bests(d); case 'rules': return rules(d); case 'shortcuts': return shortcuts(d, board);
-      case 'weather': return weather(d, board); case 'tyres': return tyres(d, board); case 'notes': return notes(d, board); case 'mileage': return mileage(d, board);
+      case 'weather': return weather(d, board); case 'tyres': return tyres(d, board); case 'notes': return notes(d, board); case 'mileage': return mileage(d, board); case 'service': return service(d, board);
       default: return '';
     }
   }

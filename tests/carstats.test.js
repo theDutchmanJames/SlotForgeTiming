@@ -90,4 +90,22 @@ ok('...a car that was serviced before the count existed has had one service (its
   ok('...a car without an id does not take the laps that have no car either', C.details({}, [D('', 't1', 3000, 's1'), D(undefined, 't1', 3000, 's1')], S, T).tracks.length === 0 && C.details({}, [D('', 't1', 3000, 's1')], S, T).sessions === 0);
 }
 
+// ---- 1.34.0: the cars for the Service Due card of Home
+{ const cars = [{ id: 'a', brand: 'Audi', serviceInterval: 200, lapsSinceService: 200 }, { id: 'p', brand: 'Porsche', serviceInterval: 300, lapsSinceService: 342, picture: 'data:image/png;base64,P' }, { id: 'l', brand: 'Lola', serviceInterval: 300, lapsSinceService: 278 },
+    { id: 'n', brand: 'Ninco', serviceInterval: 300, lapsSinceService: 270 }, { id: 'f', brand: 'Fresh', serviceInterval: 300, lapsSinceService: 100 }, { id: 'x', brand: 'NoInterval', lapsSinceService: 900 }, { id: 'z', serviceInterval: 100, lapsSinceService: 500 }, { id: 'b', brand: 'Bmw', serviceInterval: 300, lapsSinceService: 342 }, null];
+  const name = c => c.brand || '', pic = c => c.picture || '', list = soon => C.dueList({ cars, name, picture: pic, soon });
+  ok('the cars that are due first, the one with the most laps over first (Bmw and Porsche with 42 over, by name; then Audi, due now), then the cars coming up, the fewest laps to go first (Lola 22, Ninco 30)', list(10).map(r => r.name).join() === 'Bmw,Porsche,Audi,Lola,Ninco');
+  ok('...with 10% of the interval: 22 laps to go of 300 is coming up, 30 to go is exactly 10% and is too, 100 to go is not', list(10).map(r => r.name).join() === 'Bmw,Porsche,Audi,Lola,Ninco' && !list(10).some(r => r.name === 'Fresh'));
+  ok('...with 5% only the cars that are due (15 laps is the most to go): Lola with 22 to go is not coming up', list(5).map(r => r.name).join() === 'Bmw,Porsche,Audi');
+  ok('...with 0 (Due only) the cars that are due, and nothing else; text, nothing or a negative percent is 0', list(0).map(r => r.name).join() === 'Bmw,Porsche,Audi' && list(undefined).length === 3 && list('abc').length === 3 && list(-20).length === 3 && C.dueList({ cars, name, picture: pic }).length === 3);
+  ok('...a bigger percent lets more cars in (25%: 75 laps to go of 300; Fresh has 200 to go, so not yet; 70% lets it in)', list(25).length === 5 && list(70).map(r => r.name).join() === 'Bmw,Porsche,Audi,Lola,Ninco,Fresh');
+  const r = Object.fromEntries(list(10).map(x => [x.name, x]));
+  ok('...each car has its id, name, picture, interval, laps since, laps to go, laps over and whether it is due (a car coming up has 0 over)', r.Porsche.carId === 'p' && r.Porsche.picture === 'data:image/png;base64,P' && r.Porsche.interval === 300 && r.Porsche.since === 342 && r.Porsche.left === -42 && r.Porsche.over === 42 && r.Porsche.due === true
+    && r.Audi.over === 0 && r.Audi.left === 0 && r.Audi.due === true && r.Lola.carId === 'l' && r.Lola.left === 22 && r.Lola.over === 0 && r.Lola.due === false && r.Lola.since === 278 && r.Lola.picture === '');
+  ok('...a car without a service interval is never in it (900 laps and no interval), nor a car without a name, nor an empty place in the list', !list(100).some(x => x.carId === 'x' || x.carId === 'z') && list(100).length === 6);
+  ok('...nothing at all, no cars or no way to name them: an empty list, not a crash', C.dueList().length === 0 && C.dueList({}).length === 0 && C.dueList({ cars: [] }).length === 0 && C.dueList({ cars, soon: 10 }).length === 0 && C.dueList({ cars: [{ id: 'a', serviceInterval: 5, lapsSinceService: 9 }], name: () => '' }).length === 0);
+  ok('...a car that was never counted since a service has all its laps driven since it', C.dueList({ cars: [{ id: 'o', brand: 'Old', serviceInterval: 50, lapsDriven: 80 }], name }).map(x => x.since + ':' + x.over).join() === '80:30');
+  ok('...a tie goes by name, a car that is due always before one that is coming up', C.dueList({ cars: [{ id: '1', brand: 'Zed', serviceInterval: 10, lapsSinceService: 10 }, { id: '2', brand: 'Abe', serviceInterval: 10, lapsSinceService: 10 }, { id: '3', brand: 'Mid', serviceInterval: 100, lapsSinceService: 99 }], name, soon: 10 }).map(x => x.name).join() === 'Abe,Zed,Mid');
+}
+
 console.log(fails ? fails + ' CAR STATISTICS TESTS FAILED' : 'ALL CAR STATISTICS TESTS PASSED'); process.exit(fails ? 1 : 0);

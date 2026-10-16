@@ -2234,3 +2234,18 @@ Good to know:
 3. The Service due mark is not on the Home tab yet. A Home card *Service Due* (the cars that need servicing) is a good next step: a mockup comes first, to your approval.
 4. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 5. The tests: `tests/carstats.test.js` (the services, and everything that is worked out: mileage since the service, last driven, sessions, wins, deslots, the fastest lap and the table), `tests/screens.test.js` (the form, Reset, the card, the Service due mark) and `tests/help.test.js`.
+
+## What to try (1.34.0): the Service Due card on Home
+From your note: the Home card for the slot cars that need servicing, in both looks of the mockup.
+1. On **Home**, press **Customize**, pick a cell and choose the card **Service Due**. It works from your slot cars, so it also shows before the first race has been saved.
+2. The card lists the cars that are **due** first (laps since the last service have reached the service interval), the car with the most laps over on top, then the cars **coming up** (within 10% of their interval), the car with the fewest laps to go first. Each car shows *Service due* in red or *22 laps to go* in amber, with *342 of 300 laps · 42 over*, a bar and the picture of the car. A car without a service interval is not in it.
+3. **Click a car**: the Database opens on Slotcars with the card of that car (the Statistics are in it).
+4. The settings of the card (Customize): **Show** (Due and coming up, or Due only), **Coming up means within** (5, 10, 20 or 25% of the interval), **Cars shown** (3, 5, 8 or 10), **Show a bar for each car** and **Show the picture of the car**. The tag says *3 cars*, or *3 of 7 cars* when more cars need servicing than the card shows.
+5. With the bar and the picture both switched off the card is **compact**: one line a car with a dot, the name and *42 laps over*, *due now* or *22 laps to go*.
+6. When no car needs servicing the card says *all good* and when a car shows up. When no car has a service interval it says where to set one (Database > Slotcars, the Statistics folder of a car).
+
+Good to know:
+1. The laps since the last service are the ones the Database keeps (Laps Since Last Interval), so they are updated when a race is saved, as in 1.30.0. Press **Reset** in the form of the car when you have serviced it.
+2. A card for show cannot be edited: change a service interval in the form of the car.
+3. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+4. The tests: `tests/carstats.test.js` (the list of cars), `tests/homegrid.test.js` (the card and its settings), `tests/homecards.test.js` (both looks, the words, the safe text), `tests/screens.test.js` (Customize, the card on Home, the click, the card in the Database) and `tests/help.test.js`.

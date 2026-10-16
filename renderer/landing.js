@@ -282,6 +282,7 @@ async function renderHome() {
     if (b.dataset.hgrid) { const [c, r] = String(b.dataset.hgrid).split(',').map(Number); saveGrid(HG.resize(cur(), c, r)); return; } // a square of the grid picker
     if (b.dataset.hsel !== undefined) { hc.sel = Number(b.dataset.hsel) || 0; renderHome(); return; } // the settings of a card
     if (b.id === 'hmdefault') { api.setSettings({ homeGrid: null }).then(s => { state.settings = s; hc.sel = 0; renderHome(); }); return; }
+    if (b.dataset.car) { state.focusCar = b.dataset.car; state.tab = 'database'; state.sub = 'slotcars'; render(); return; } // a car of the Service Due card: its card in the Database
     if (b.dataset.session) { state.focusSession = b.dataset.session; state.resultsSub = 'racing'; state.tab = 'database'; state.sub = 'results'; render(); return; } // a recent race: its results
     if (b.dataset.go) { // a shortcut
       const s = HG.SHORTCUTS.find(x => x.key === b.dataset.go);
@@ -379,6 +380,10 @@ async function renderHome() {
       else if (key === 'records') d.records = HomeStats.allRecords({ laps, sessions, trackName: trackNameOf, driverName: dn, carName: cn });
       else if (key === 'top') { d.topPeriod = HG.optionOf(b, 'period'); d.top = HomeStats.winners({ sessions, driverName: dn, since: d.topPeriod === 'year' ? HomeStats.yearStart(now) : null }).slice(0, n('count')); }
       else if (key === 'mileage') { d.mileage = HomeStats.mileage({ laps, tracks, carName: cn, carPicture: id => { const c = cars.find(x => x.id === id); return c && typeof c.picture === 'string' ? c.picture : ''; }, since: HG.optionOf(b, 'period') === 'year' ? HomeStats.yearStart(now) : null }).slice(0, n('count')); }
+      else if (key === 'service') { // (the cars that need servicing: no races needed)
+        const due = CarStats.dueList({ cars, name: c => titleOf('slotcars', c), picture: c => (typeof c.picture === 'string' ? c.picture : ''), soon: HG.optionOf(b, 'show') === 'due' ? 0 : n('within') });
+        d.service = due.slice(0, n('count')); d.serviceTotal = due.length; d.serviceSet = cars.filter(c => CarStats.intervalOf(c) > 0).length;
+      }
       else if (key === 'bests') {
         const grid2 = []; rows.forEach((r, i) => { if (r.absent) return; (byTeam ? membersOf(teamOf(r.teamId)).map(m => m.id) : [r.driverId]).forEach(id => grid2.push({ driverId: id, color: laneHue(i) })); });
         d.bests = HomeStats.gridBests({ laps, trackId: track && track.id, grid: grid2, driverName: dn });

@@ -5,6 +5,7 @@
 //  - Mileage: the distance the car has driven, worked out as the Car Mileage card of Home does (the laps that count, times the length of the lane of every lap).
 // 1.33.0: Services Done (kept: a count of the Resets), and worked out from the laps, the sessions and the tracks each time (not kept, so they always match your races): Mileage Since Last Service, Last Driven,
 // Sessions Driven, Wins, Deslots, Fastest Lap Ever and the laps, best lap and average lap per track (see details()).
+// 1.34.0: dueList() for the Service Due card on Home.
 // Pure: it only works out numbers and text, so it can be tested without a screen. The database (db.js) and the form (database.js) both use it.
 (function (root) {
   const whole = v => { const n = Math.floor(Number(v)); return v === '' || v === null || v === undefined || !Number.isFinite(n) ? null : n; };
@@ -64,6 +65,20 @@
       tracks: rows
     };
   }
-  const api = { lapsDriven, sinceOf, intervalOf, status, note, afterService, servicesOf, mileage, details };
+  // The slotcars that need servicing, or soon will (1.34.0, the Home card Service Due).
+  // ctx: { cars, name(car) -> text, picture(car) -> a picture or '', soon (a percent: 0 = only the cars that are due; otherwise a car with that percent of its interval or less to go is coming up) }
+  // -> [{ carId, name, picture, interval, since, left, over (laps past the interval, 0 when not due), due }] the cars that are due first (the most laps over first), then the ones coming up
+  // (the fewest laps to go first); a tie goes by name. A car without a service interval is never in it, nor a car without a name.
+  function dueList(ctx) {
+    const soon = Math.max(0, Number(ctx && ctx.soon) || 0), out = [];
+    ((ctx && ctx.cars) || []).forEach(car => {
+      if (!car) return;
+      const st = status(car), name = (ctx.name && ctx.name(car)) || ''; if (!st.interval || !name) return;
+      if (!st.due && !(st.left <= st.interval * soon / 100)) return;
+      out.push({ carId: car.id, name, picture: (ctx.picture && ctx.picture(car)) || '', interval: st.interval, since: st.since, left: st.left, over: st.due ? st.since - st.interval : 0, due: st.due });
+    });
+    return out.sort((a, b) => (b.due - a.due) || (a.due ? b.over - a.over : a.left - b.left) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  }
+  const api = { lapsDriven, sinceOf, intervalOf, status, note, afterService, servicesOf, mileage, details, dueList };
   if (typeof module !== 'undefined') module.exports = api; else root.CarStats = api;
 })(typeof window !== 'undefined' ? window : globalThis);

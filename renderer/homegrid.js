@@ -79,7 +79,12 @@
       options: [{ key: 'show', label: 'Show', type: 'select', choices: [['both', 'Laps and distance'], ['laps', 'Laps'], ['distance', 'Distance']], default: 'both' },
         { key: 'count', label: 'Cars shown', type: 'select', choices: COUNTS, default: '5' },
         { key: 'period', label: 'Count', type: 'select', choices: [['all', 'All time'], ['year', 'This year']], default: 'all' },
-        yesNo('pics', 'Show the picture of the car (from Database > Slot Cars)', true), yesNo('bars', 'Show a bar for each car', true)] });
+        yesNo('pics', 'Show the picture of the car (from Database > Slot Cars)', true), yesNo('bars', 'Show a bar for each car', true)] },
+    { key: 'service', label: 'Service Due', note: 'The slotcars that need servicing, or soon will: the laps since the last service against the service interval (set in Database > Slotcars, in the Statistics folder). Click a car to open its card',
+      options: [{ key: 'show', label: 'Show', type: 'select', choices: [['soon', 'Due and coming up'], ['due', 'Due only']], default: 'soon' },
+        { key: 'within', label: 'Coming up means within', type: 'select', choices: [['5', '5% of the interval'], ['10', '10% of the interval'], ['20', '20% of the interval'], ['25', '25% of the interval']], default: '10' },
+        { key: 'count', label: 'Cars shown', type: 'select', choices: COUNTS, default: '5' },
+        yesNo('bars', 'Show a bar for each car', true), yesNo('pics', 'Show the picture of the car (from Database > Slot Cars)', true)] });
   const KEYS = CARDS.map(c => c.key);
   const info = key => CARDS.find(c => c.key === key) || null;
   const cardOf = b => (b && b.opt && typeof b.opt.card === 'string' ? b.opt.card : '');

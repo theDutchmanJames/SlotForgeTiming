@@ -920,3 +920,21 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .hm-carpic{flex:0 0 auto;width:52px;height:30px;object-fit:cover;border-radius:4px;background:var(--bg)}
 .hm-mbar{height:6px;border-radius:3px;background:var(--bg);margin-top:5px;overflow:hidden}
 .hm-mbar i{display:block;height:100%;border-radius:3px;background:var(--accent)}
+/* 1.34.0 Service Due: a car is a button (a click opens its card); red is due, amber is coming up */
+.hm-svc{--sv-due:#e5484d;--sv-soon:#f2b705}
+[data-theme="light"] .hm-svc,[data-theme="ocean"] .hm-svc{--sv-due:#d62828;--sv-soon:#b27a00}
+.hm-carbtn{width:100%;box-sizing:border-box;text-align:left;background:transparent;color:inherit;font:inherit;cursor:pointer;border:0;border-top:1px solid var(--line);border-radius:6px}
+.hm-carbtn:hover{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.hm-svc .mm,.hm-svc .mt,.hm-svc .mn,.hm-svc .mv{display:block}
+.hm-svc .mt{display:flex}
+.hm-svc .mv{text-align:right}
+.hm-svc .mv small{display:block;color:var(--muted);font-size:11px;white-space:nowrap}
+.hm-svc .hm-mbar{display:block}
+.hm-svc .hm-mbar i.due{background:var(--sv-due)}
+.hm-svc .hm-mbar i.soon{background:var(--sv-soon)}
+.hm-svc .sv-st.due{color:var(--sv-due)}
+.hm-svc .sv-st.soon{color:var(--sv-soon)}
+.hm-svc .sv-dot{display:inline-block;flex:0 0 auto;width:8px;height:8px;border-radius:50%}
+.hm-svc .sv-dot.due{background:var(--sv-due)}
+.hm-svc .sv-dot.soon{background:var(--sv-soon)}
+.hm-svc .hm-kv.hm-carbtn{padding:7px 4px}
