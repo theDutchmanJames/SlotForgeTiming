@@ -92,6 +92,29 @@
     return { races, laps: valid, distance, wins: top ? { name: top.name, count: top.count } : null };
   }
 
+  // ---- car mileage (1.28.0) ----
+  // ctx: { laps, tracks, carName(id), carPicture(id), since (a Date or a date text: only the laps from then on count) }
+  // -> [{ carId, name, picture, laps, distance (metres or null) }] the car with the most laps first (then the most distance, then A to Z). The laps are the ones of At a glance (a lap of a
+  // Time Token Session is not counted, nor a lap that does not count), so the cars add up to that card; the distance is worked out per track with the length of the lane of every lap.
+  // A lap without a car, a car that is not in the database any more (no name) and a car without a lap in the period are not in the list.
+  function mileage(ctx) {
+    const from = ctx.since ? new Date(ctx.since).getTime() : NaN, cars = new Map();
+    (ctx.laps || []).filter(racing).forEach(l => {
+      if (!l.carId || !okTime(l) || l.invalid || l.tooSlow || l.late) return;
+      if (Number.isFinite(from) && !(Date.parse(l.date) >= from)) return;
+      if (!cars.has(l.carId)) cars.set(l.carId, new Map());
+      const byTrack = cars.get(l.carId); if (!byTrack.has(l.trackId)) byTrack.set(l.trackId, []); byTrack.get(l.trackId).push(l);
+    });
+    const out = [];
+    cars.forEach((byTrack, carId) => {
+      const name = (ctx.carName && ctx.carName(carId)) || ''; if (!name) return;
+      let laps = 0, distance = null;
+      byTrack.forEach((list, trackId) => { laps += list.length; const d = S.figures(list, (ctx.tracks || []).find(t => t.id === trackId) || {}, '').distance; if (d !== null) distance = (distance || 0) + d; });
+      out.push({ carId, name, picture: (ctx.carPicture && ctx.carPicture(carId)) || '', laps, distance });
+    });
+    return out.sort((a, b) => b.laps - a.laps || (b.distance || 0) - (a.distance || 0) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  }
+
   // ---- who won how often ----
   // ctx: { sessions, driverName(id), since (a Date or a date text: only the races from then on count) }
   // -> [{ name, count, date }] the one with the most wins first; a tie goes to the one who won last, and then to the one who was counted first.
@@ -240,7 +263,7 @@
   }
 
   const api = { PALETTE, laneColor, trackRecord, bestOnGrid, recordCard, lastSession, podium, lastRace, glance, chips, rowReady, lights,
-    winners, weekStart, yearStart, recent, fastestWeek, allRecords, personalBest, gridBests, rules };
+    winners, weekStart, yearStart, recent, fastestWeek, allRecords, personalBest, gridBests, rules, mileage };
   root.HomeStats = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

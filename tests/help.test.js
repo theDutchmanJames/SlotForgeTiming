@@ -227,4 +227,6 @@ const folders = Help.folders();
 
 { const home = plain(Help.folders().find(f => f.id === 'home').body); // 1.26.0
   say('1.26.0: the Home help names the Weather and Tyres Available cards, says they are for show and that you set them in Customize; the folder is still short', home.includes('Weather') && home.includes('Tyres Available') && home.includes('for show') && home.includes('you type them in Customize') && home.length < 1400); }
+{ const home = plain(Help.folders().find(f => f.id === 'home').body); // 1.28.0
+  say('1.28.0: the Home help names the Notes and Car Mileage cards (Notes is typed in Customize, Car Mileage counts laps and distance per slot car from saved races); the folder is still short', home.includes('Car Mileage') && home.includes('laps and distance per slot car') && home.includes('Notes') && /Weather, Tyres Available and Notes are for show: you type them in Customize/.test(home) && home.length < 1400); }
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

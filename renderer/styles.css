@@ -897,3 +897,18 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .hm-ocheck{min-width:130px}
 /* 1.26.1: the heading of a card holds its tag (a float): a title that wraps in a narrow cell must not let the tag hang over the first row */
 .hm-grid .card>h3{display:flow-root}
+/* 1.28.0: the Notes card and the Car Mileage card */
+.hm-ntext{white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px;line-height:1.4}
+.hm-n-large .hm-ntext{font-size:21px}
+.hm-notes>p{margin:0}
+.hm-wide{grid-column:1/-1}
+.hm-wide textarea{width:100%;box-sizing:border-box;min-height:96px;resize:vertical;font:inherit}
+.hm-mrow{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line)}
+.hm-mrow:first-of-type{border-top:0}
+.hm-mrow .mm{flex:1 1 auto;min-width:0}
+.hm-mrow .mt{display:flex;justify-content:space-between;gap:10px}
+.hm-mrow .mn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.hm-mrow .mv{white-space:nowrap;font-variant-numeric:tabular-nums;font-size:13px}
+.hm-carpic{flex:0 0 auto;width:52px;height:30px;object-fit:cover;border-radius:4px;background:var(--bg)}
+.hm-mbar{height:6px;border-radius:3px;background:var(--bg);margin-top:5px;overflow:hidden}
+.hm-mbar i{display:block;height:100%;border-radius:3px;background:var(--accent)}

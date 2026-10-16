@@ -2092,3 +2092,20 @@ Good to know:
 5. Not done: the speed widgets and the weather widgets keep their own units; the voice does not say distances; a new piece row in the calculator starts with the length of the row above it.
 6. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 7. The tests: `tests/speed.test.js` (the conversions), `tests/stats.test.js` and `tests/report.test.js` (the tables and the PDF), `tests/screens.test.js` (the setting, the tables, Home, the track form in both units: labels, numbers, saving, the calculator) and `tests/help.test.js`.
+
+## What to try (1.28.0): the Notes card and the Car Mileage card
+From your list: two more cards for Home, drawn first as a mockup and made as you approved it.
+1. Open **Home**, press **Customize**, make the grid big enough (for example 4 columns by 2 rows) and pick **Notes** for one cell and **Car Mileage** for another.
+2. **Notes**: the settings show under the map. Give the card a **title** (*Notes* to begin with; *Club night* for example), type your words in the text box (for example *Doors open 19:00*, a new line, *Marshals: Sam and Kim*), choose the **size** (*Normal*, or *Large* for reading from a distance) and tick or untick **Show the title**. The card shows your words with their lines. With nothing typed it says *No notes yet. Open Customize and type them here.*
+3. **Car Mileage**: the slot cars with the most laps, the one in front first, with the laps and the distance (*Porsche 917 · 5 laps · 50 m*), the picture of the car and a bar that shows each car against the one in front. Settings: **Show** (*Laps and distance*, *Laps*, *Distance*; with *Distance* the bars follow the distance), **Cars shown** (3, 5, 8 or 10), **Count** (*All time* or *This year*), and ticks for **the picture of the car** and **the bar**.
+4. Drive and save a race with two different cars: the card counts every lap of the race for the car that drove it. Choose *This year* and laps of last year are left out (the card says *this year* next to the title).
+5. Open **App Settings > General > Display** and choose **Feet and miles**: the distance on the card is in feet and miles.
+
+Good to know:
+1. The laps are the same laps as the *At a glance* card: racing laps that count, from saved races. Time Token Sessions, invalid laps and laps that were too slow or too late are not counted. The distance is the laps times the length of the track they were driven on, so a car that raced on two tracks gets both.
+2. A car that is no longer in the Database is left out (its laps stay in the races), and so are laps that were saved without a car. A car without a name is left out too. With nothing to show the card says *No lap has been saved with a car yet.* (or *...with a car this year yet.*), and Home still works without any race.
+3. Equal laps are ordered by the distance and then by the name of the car.
+4. The words of Notes are saved when you leave the text box, and Home is drawn again a moment later (not while you are typing). The box keeps its cursor and selection, so a click or a Tab that comes next is not lost. Anything you type is shown as text (a `<b>` stays `<b>`).
+5. Not done: a *since a date* choice for Car Mileage, a check-list in Notes, links or pictures in Notes.
+6. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+7. The tests: `tests/homegrid.test.js` (the options, the text kind), `tests/homestats.test.js` (the mileage: laps added up like *At a glance*, this year, ties, no distance), `tests/homecards.test.js` (the markup), `tests/screens.test.js` (Customize for both cards, the text box and its cursor, saving, this year, the distance unit, the empty cards, Back to the usual Home) and `tests/help.test.js`.

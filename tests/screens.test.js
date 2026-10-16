@@ -2033,6 +2033,75 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     api.setSettings = realSet;
     Object.assign(store, { racesetups: keep.racesetups, tracks: keep.tracks, sessions: keep.sessions, laps: keep.laps, imagesets: keep.imagesets, drivers: keep.drivers, slotcars: keep.slotcars, layouts: keep.layouts, audiosets: keep.audiosets });
     run(`state.settings.lastSetupId = ${JSON.stringify(keep.last || '')}; state.settings.assignments = ${JSON.stringify(keep.asg || {})}; ${keep.grid === undefined ? 'delete state.settings.homeGrid' : 'state.settings.homeGrid = ' + JSON.stringify(keep.grid)}; state.homeCustom = ${JSON.stringify(keep.custom || { open: false, sel: 0 })}`); }
+  { // 1.28.0: the Notes card and the Car Mileage card of Home: what Customize offers for them (a box for the lines of Notes) and what they show
+    const keep = { racesetups: store.racesetups, tracks: store.tracks, sessions: store.sessions, laps: store.laps, drivers: store.drivers, slotcars: store.slotcars, layouts: store.layouts, audiosets: store.audiosets,
+      last: run('state.settings.lastSetupId'), asg: run('state.settings.assignments'), grid: run('state.settings.homeGrid'), custom: run('state.homeCustom'), du: run('state.settings.distanceUnit') };
+    const savedCalls = [], realSet = api.setSettings; api.setSettings = async p => { savedCalls.push(p); return { ...run('state.settings'), ...p }; };
+    const home = async () => { run("state.tab = 'home'"); await run('render()'); await new Promise(r => setTimeout(r, 10)); return E('view').innerHTML; };
+    const wait = ms => new Promise(r => setTimeout(r, ms)), soft = t => t === 'text' || t === 'number' || t === 'textarea';
+    run('HOME_SOFT_MS = 20');
+    const change = async (dataset, value, type) => { await E('view').onchange({ target: { dataset, value, type: type || 'select-one', checked: value === true } }); await wait(soft(type) ? 90 : 15); return E('view').innerHTML; };
+    const board = k => JSON.parse(run('JSON.stringify(HomeGrid.gridOf(state.settings))')).boards.find(b => b.opt.card === k), cell = k => E('hmc-' + k).innerHTML;
+    const yr = new Date().getFullYear(), at = (y, d) => `${y}-${d}T19:00:00.000Z`, PIC = 'data:image/png;base64,PORSCHE';
+    store.tracks = [{ id: 't1', name: 'Living room', lanes: 2, length: 10, laneModifier: 'none' }]; store.drivers = [{ id: 'd1', name: 'Dutch' }, { id: 'd2', name: 'Sam' }];
+    store.slotcars = [{ id: 'c1', brand: 'Porsche', model: '917', picture: PIC }, { id: 'c2', brand: 'Ford', model: 'GT40' }]; store.layouts = []; store.audiosets = [];
+    store.racesetups = [{ id: 'k1', name: 'Club race', sessionType: 'race', track: 't1', laps: 20 }]; store.sessions = []; store.laps = [];
+    const GRID = { cols: 4, rows: 2, boards: [{ c: 1, r: 1, w: 2, h: 2, opt: { card: 'start' } }, { c: 3, r: 1, w: 1, h: 1, opt: { card: 'notes' } }, { c: 4, r: 1, w: 1, h: 1, opt: { card: 'mileage' } }] };
+    run(`state.settings.lastSetupId = 'k1'; state.settings.assignments = { k1: [{ driverId: 'd1', carId: 'c1' }, { driverId: 'd2', carId: 'c2' }] }; state.settings.homeGrid = ${JSON.stringify(GRID)}; state.homeCustom = { open: true, sel: 1 }; delete state.settings.distanceUnit`);
+    let hh = await home();
+    say('1.28.0: Notes shows with no race saved at all, with its title and the line that says there are no notes yet; Car Mileage with nothing raced gives way to the friendly card', cell('notes').includes('class="card hm-notes hm-n-normal"') && cell('notes').includes('<h3>Notes</h3>') && cell('notes').includes('No notes yet.') && !cell('notes').includes('hm-empty') && cell('mileage').includes('class="card hm-empty"') && !cell('mileage').includes('hm-mileage'));
+    say('Customize shows the settings of the Notes card: the title, a box for the words (a text box of 6 lines that holds 600 characters, the whole width), the size and the tick for the title',
+      hh.includes('<legend>Card 2: Notes (column 3, row 1)</legend>') && hh.includes('id="hg-title" data-hopt="title" type="text" maxlength="40" value="Notes" placeholder="Notes"') && hh.includes('<div class="field hm-wide"><label for="hg-text">Your notes (a new line stays a new line)</label><textarea id="hg-text" data-hopt="text" rows="6" maxlength="600" placeholder="Doors open 19:00, first heat 19:30." aria-label="Your notes (a new line stays a new line)"></textarea></div>')
+      && /id="hg-size" data-hopt="size"><option value="normal" selected>Normal<\/option><option value="large">Large<\/option>/.test(hh) && hh.includes('id="hg-showTitle" type="checkbox" data-hopt="showTitle" checked'));
+    // typing in the box, and leaving it
+    run('globalThis.__n = 0; globalThis.__orig = renderHome; renderHome = async function () { globalThis.__n++; return __orig.apply(this, arguments); }');
+    await E('view').oninput({ target: { id: 'hg-text', type: 'textarea', dataset: { hopt: 'text' } } }); await wait(60);
+    say('while you type in the box of the words nothing is drawn (the box would lose what you type); that counts as typing like a line of text does', run('__n') === 0 && run('state.homeCustom.typing') === true && run("homeFocusId({ id: 'hg-text', type: 'textarea', dataset: { hopt: 'text' } })") === 'hg-text' && run("homeFocusId({ id: 'hg-text', type: 'select-one', dataset: { hopt: 'text' } })") === '');
+    const words = 'Doors open 19:00\nBring <b>tyres</b>\n\nMarshals: Sam and Kim';
+    await E('view').onchange({ target: { dataset: { hopt: 'text' }, value: words, type: 'textarea' } }); await wait(4); const early = run('__n'); await wait(120);
+    say('...when the box is left the words are saved with their lines and Home is drawn once, a moment later (not at once, so a click or a Tab that comes next is not lost), the card shows them with the lines and made safe', early === 0 && run('__n') === 1 && board('notes').opt.text === words && cell('notes').includes('<div class="hm-ntext">Doors open 19:00\nBring &lt;b&gt;tyres&lt;/b&gt;\n\nMarshals: Sam and Kim</div>') && !cell('notes').includes('No notes yet') && run('state.homeCustom.typing') === false);
+    run('renderHome = __orig');
+    say('...and the box has the words again, with their lines, after the page is drawn (the words are in the box, made safe)', E('view').innerHTML.includes('maxlength="600" placeholder="Doors open 19:00, first heat 19:30." aria-label="Your notes (a new line stays a new line)">Doors open 19:00\nBring &lt;b&gt;tyres&lt;/b&gt;\n\nMarshals: Sam and Kim</textarea>'));
+    hh = await change({ hopt: 'title' }, 'Club night', 'text'); hh = await change({ hopt: 'size' }, 'large');
+    say('the title and the size are saved and shown', cell('notes').includes('<h3>Club night</h3>') && cell('notes').includes('hm-n-large') && board('notes').opt.title === 'Club night' && board('notes').opt.size === 'large');
+    hh = await change({ hopt: 'showTitle' }, false, 'checkbox'); say('...the title can be switched off', !cell('notes').includes('<h3>') && cell('notes').includes('hm-ntext'));
+    await change({ hopt: 'text' }, '   ', 'textarea'); say('...and a box that is emptied is the line that says there are no notes yet', cell('notes').includes('No notes yet.') && !cell('notes').includes('hm-ntext'));
+    { const got = [], el = E('hg-text'); el.focus = () => got.push('focus text'); el.setSelectionRange = (a, b2) => got.push(`select ${a}-${b2}`);
+      document.activeElement = { id: 'hg-text', type: 'textarea', dataset: { hopt: 'text' }, selectionStart: 4, selectionEnd: 9 }; run('state.homeCustom.open = true'); await home();
+      say('when Home is drawn again the box of the words has the cursor again, with the same part selected', got.join() === 'focus text,select 4-9'); delete document.activeElement; }
+    // Car Mileage: settings and what it shows
+    run('state.homeCustom.sel = 2'); hh = await home();
+    say('Customize shows the settings of Car Mileage: what to show, how many cars, the period, the picture and the bar', hh.includes('<legend>Card 3: Car Mileage (column 4, row 1)</legend>')
+      && /id="hg-show" data-hopt="show"><option value="both" selected>Laps and distance<\/option><option value="laps">Laps<\/option><option value="distance">Distance<\/option>/.test(hh) && /id="hg-count" data-hopt="count">[^]*<option value="5" selected>5<\/option>/.test(hh)
+      && /id="hg-period" data-hopt="period"><option value="all" selected>All time<\/option><option value="year">This year<\/option>/.test(hh) && hh.includes('id="hg-pics" type="checkbox" data-hopt="pics" checked') && hh.includes('id="hg-bars" type="checkbox" data-hopt="bars" checked'));
+    const std = (pos, id, name, laps, car) => ({ pos, driverId: id, driverName: name, carId: car, laps, best: 5000 }), lp = (n, car, extra) => ({ id: 'L' + n + car + Math.random(), sessionId: 's1', trackId: 't1', driverId: car === 'c1' ? 'd1' : 'd2', carId: car, lane: 1, time: 5000, lapNumber: n, date: at(yr, '03-01'), ...extra });
+    store.sessions = [{ id: 's1', sessionType: 'race', date: at(yr, '03-01'), setupName: 'Club race', trackId: 't1', trackName: 'Living room', standings: [std(1, 'd1', 'Dutch', 5, 'c1'), std(2, 'd2', 'Sam', 3, 'c2')] }];
+    store.laps = [...[1, 2, 3, 4, 5].map(n => lp(n, 'c1')), ...[1, 2, 3].map(n => lp(n, 'c2')), lp(6, 'c2', { date: at(yr - 1, '06-01'), sessionId: 's0' }), lp(7, 'c1', { invalid: true })];
+    hh = await home();
+    say('with races saved the card lists the slotcars, the one with the most laps first, with the laps and the distance (5 laps of 10 m is 50 m), the picture of the car that has one, and the bars', cell('mileage').includes('class="card hm-mileage"') && cell('mileage').includes('<span class="hm-tag">all time</span>')
+      && cell('mileage').indexOf('Porsche 917') < cell('mileage').indexOf('Ford GT40') && cell('mileage').includes('<strong>5 laps</strong> · <span class="muted">50 m</span>') && cell('mileage').includes('<strong>4 laps</strong> · <span class="muted">40 m</span>')
+      && cell('mileage').includes(`<img class="hm-carpic" src="${PIC}" alt="">`) && cell('mileage').includes('<span class="hm-carpic"></span>') && cell('mileage').includes('style="width:100%"') && cell('mileage').includes('style="width:80%"'));
+    hh = await change({ hopt: 'period' }, 'year');
+    say('...this year only counts the laps of this year (the Ford has 3 laps, 30 m, the lap of last year is out)', cell('mileage').includes('<span class="hm-tag">this year</span>') && cell('mileage').includes('<strong>3 laps</strong> · <span class="muted">30 m</span>') && !cell('mileage').includes('4 laps') && board('mileage').opt.period === 'year');
+    hh = await change({ hopt: 'show' }, 'distance'); hh = await change({ hopt: 'pics' }, false, 'checkbox'); hh = await change({ hopt: 'bars' }, false, 'checkbox');
+    say('...Show, the picture and the bar are saved: only the distance, no picture, no bar', cell('mileage').includes('<strong>50 m</strong>') && !cell('mileage').includes('laps') && !cell('mileage').includes('hm-carpic') && !cell('mileage').includes('hm-mbar'));
+    { const base = { cars: store.slotcars, laps: store.laps }, rows = () => (cell('mileage').match(/class="hm-mrow"/g) || []).length;
+      store.slotcars = [...base.cars, ...[3, 4, 5, 6, 7].map(i => ({ id: 'c' + i, brand: 'Car', model: String(i) }))]; store.laps = [...base.laps, ...[3, 4, 5, 6, 7].map(i => lp(1, 'c' + i, { carId: 'c' + i }))]; await home();
+      const five = rows(); await change({ hopt: 'count' }, '3'); const three = rows(); await change({ hopt: 'count' }, '8'); const all = rows(); await change({ hopt: 'count' }, '5');
+      say('Cars shown: with seven cars that have laps the card shows 5 to begin with, 3 when you choose 3, and all seven when you choose 8', five === 5 && three === 3 && all === 7 && board('mileage').opt.count === '5');
+      store.slotcars = base.cars; store.laps = base.laps; await home(); }
+    hh = await change({ hopt: 'show' }, 'laps'); hh = await change({ hopt: 'count' }, '3'); run('state.settings.distanceUnit = "ft"'); hh = await home();
+    say('...and the number of cars, laps only; the distance is in the unit of App Settings (50 m is 164 ft)', cell('mileage').includes('<strong>5 laps</strong>') && !cell('mileage').includes('164 ft') && (await change({ hopt: 'show' }, 'both'), cell('mileage').includes('<span class="muted">164 ft</span>')) && !cell('mileage').includes(' m</span>'));
+    run('delete state.settings.distanceUnit'); await change({ hopt: 'count' }, '5');
+    store.slotcars = [{ id: 'c2', brand: 'Ford', model: 'GT40' }]; hh = await home();
+    say('a car that is not in the database any more is left out (its laps stay in the races)', !cell('mileage').includes('Porsche') && cell('mileage').includes('Ford GT40'));
+    store.laps = [lp(1, 'c1', { carId: undefined })]; store.slotcars = [{ id: 'c1', brand: 'Porsche', model: '917' }]; hh = await home();
+    say('...and laps without a car give the card that says no lap has been driven with a car this year yet (this year is still chosen), and with all time no lap has been saved with a car yet', cell('mileage').includes('No lap has been driven with a car this year yet.') && !cell('mileage').includes('hm-mrow') && (await change({ hopt: 'period' }, 'all'), cell('mileage').includes('No lap has been saved with a car yet.') && !cell('mileage').includes('this year yet')));
+    await click0(); async function click0() { await E('view').onclick({ target: { closest: sel => (sel === 'button' ? { id: 'hmdefault', dataset: {} } : null) } }); await wait(15); }
+    say('"Back to the usual Home" takes both cards away with the rest of the grid', savedCalls[savedCalls.length - 1].homeGrid === null && !E('view').innerHTML.includes('id="hmc-notes"') && !E('view').innerHTML.includes('id="hmc-mileage"'));
+    api.setSettings = realSet;
+    Object.assign(store, { racesetups: keep.racesetups, tracks: keep.tracks, sessions: keep.sessions, laps: keep.laps, drivers: keep.drivers, slotcars: keep.slotcars, layouts: keep.layouts, audiosets: keep.audiosets });
+    run(`state.settings.lastSetupId = ${JSON.stringify(keep.last || '')}; state.settings.assignments = ${JSON.stringify(keep.asg || {})}; ${keep.grid === undefined ? 'delete state.settings.homeGrid' : 'state.settings.homeGrid = ' + JSON.stringify(keep.grid)}; state.homeCustom = ${JSON.stringify(keep.custom || { open: false, sel: 0 })}; ${keep.du === undefined ? 'delete state.settings.distanceUnit' : 'state.settings.distanceUnit = ' + JSON.stringify(keep.du)}`); }
   { // Race Setups: the session type is the folder
     const keepSetups = store.racesetups, keepTracks = store.tracks;
     store.racesetups = [{id:'r1',name:'Friday',sessionType:'race',track:'t1',laps:10},{id:'r2',name:'Sprint',sessionType:'race',track:'t1',laps:5},{id:'r3',name:'Warm up',sessionType:'practice',track:'t1'},

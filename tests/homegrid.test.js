@@ -11,12 +11,12 @@ const cards = g => g.boards.map(G.cardOf).join();
 const spots = g => g.boards.map(b => `${G.cardOf(b)}@${b.c}.${b.r}:${b.w}x${b.h}`).join(' ');
 
 // ---- the cards ----
-ok('there are thirteen cards: Start a race, the three of before, the seven of 1.25.0 and, since 1.26.0, Weather and Tyres Available', G.CARDS.length === 13 && G.KEYS.join() === 'start,record,last,glance,recent,fastest,records,top,bests,rules,shortcuts,weather,tyres');
-ok('...every card has a name and a line of words, and the keys are all different', G.CARDS.every(c => c.label && c.note) && new Set(G.KEYS).size === 13);
+ok('there are fifteen cards: Start a race, the three of before, the seven of 1.25.0, Weather and Tyres Available since 1.26.0 and, since 1.28.0, Notes and Car Mileage', G.CARDS.length === 15 && G.KEYS.join() === 'start,record,last,glance,recent,fastest,records,top,bests,rules,shortcuts,weather,tyres,notes,mileage');
+ok('...every card has a name and a line of words, and the keys are all different', G.CARDS.every(c => c.label && c.note) && new Set(G.KEYS).size === 15);
 ok('...only Start a race is fixed (it cannot be taken away)', G.CARDS.filter(c => c.fixed).map(c => c.key).join() === 'start');
 ok('...a choice has a default that is one of its choices; a tick has a default of yes or no; a number a whole default inside its limits; a line of text a default that fits; a picture set has none',
   G.CARDS.every(c => c.options.every(o => (o.type === 'check' ? typeof o.default === 'boolean' : o.type === 'number' ? Number.isInteger(o.default) && o.default >= o.min && o.default <= o.max
-    : o.type === 'text' ? typeof o.default === 'string' && o.default.length <= o.max : o.type === 'imageset' ? o.default === '' && typeof o.kind === 'string' : o.choices.some(([k]) => k === o.default)))));
+    : (o.type === 'text' || o.type === 'longtext') ? typeof o.default === 'string' && o.default.length <= o.max : o.type === 'imageset' ? o.default === '' && typeof o.kind === 'string' : o.choices.some(([k]) => k === o.default)))));
 ok('...the options: Recent races has how many; Fastest laps has the tracks and the laps per track; Top drivers the period and how many; Shortcuts has a tick for every page',
   G.info('recent').options.map(o => o.key).join() === 'count' && G.info('fastest').options.map(o => o.key).join() === 'scope,count' && G.info('top').options.map(o => o.key).join() === 'period,count' && G.info('shortcuts').options.length === G.SHORTCUTS.length && G.info('nope') === null);
 
@@ -68,7 +68,7 @@ ok('a taller card: the cells below must be free; a card that would cover a cell 
 ok('...and Start a race can be made narrower or wider like any card', spots(G.setSpan(a1, 0, 1, 2)) === 'start@1.1:1x2 record@3.1:1x1 recent@4.1:1x1' && G.maxSpan(a1, a1.boards[0]).w === 2 && G.maxSpan(a1, a1.boards[0]).h === 2);
 
 // ---- the cards a cell can have ----
-ok('a cell can have the cards that are not in the grid, and the card it has now; never Start a race', G.available(a1, 1).map(c => c.key).join() === 'record,last,glance,fastest,records,top,bests,rules,shortcuts,weather,tyres' && G.available(a1, -1).map(c => c.key).join() === 'last,glance,fastest,records,top,bests,rules,shortcuts,weather,tyres');
+ok('a cell can have the cards that are not in the grid, and the card it has now; never Start a race', G.available(a1, 1).map(c => c.key).join() === 'record,last,glance,fastest,records,top,bests,rules,shortcuts,weather,tyres,notes,mileage' && G.available(a1, -1).map(c => c.key).join() === 'last,glance,fastest,records,top,bests,rules,shortcuts,weather,tyres,notes,mileage');
 ok('...the cards that are in the grid', G.used(a1).has('start') && G.used(a1).has('recent') && !G.used(a1).has('top') && G.used(null).size === 0);
 
 // ---- the default ----
@@ -90,6 +90,7 @@ ok('...and the places exist: the tabs of the app and the pages of the Database',
   ok('...in a narrow window every card has a line to itself, wherever the grid put it', /@media \(max-width:960px\)\{\.hm-grid\{grid-template-columns:minmax\(0,1fr\)!important\}\.hm-grid>\*\{grid-column:1!important;grid-row:auto!important\}\}/.test(css));
   ok('...the picker and the map of cells are the ones of the Leaderboard page (same squares, same cells)', /\.lv-gp\.on\{/.test(css) && /\.lv-gcell\.sel\{/.test(css) && !/\.hm-cols|\.hm-side/.test(css));
   ok('1.26.1: the heading of a card contains its floated tag, so a title that wraps in a 1x1 cell cannot push the tag over the first row (the first time would sit left of the others)', /\.hm-tag\{float:right/.test(css) && /\.hm-grid \.card>h3\{display:flow-root\}/.test(css));
+  ok('1.28.0: the words of a Notes card keep their lines (pre-wrap) and wrap long words, the large size is bigger, and the text box of Customize takes the whole row', /\.hm-ntext\{white-space:pre-wrap;overflow-wrap:anywhere/.test(css) && /\.hm-n-large \.hm-ntext\{font-size:21px/.test(css) && /\.hm-wide\{grid-column:1\/-1\}/.test(css));
   ok('the page loads the grid rules and the cards before Home, after the grid rules of the Leaderboard', html.indexOf('livegrid.js') < html.indexOf('homegrid.js') && html.indexOf('homegrid.js') < html.indexOf('homecards.js') && html.indexOf('homecards.js') < html.indexOf('landing.js'));
   ok('the tabs the shortcuts name are the tabs of the app', TABS_OF_APP.every(t => app.includes(`['${t}',`))); }
 
@@ -144,6 +145,17 @@ ok('a tick of a tyre is yes or no (text is not a tick)', o(mk('tyres', { on_SS: 
 ok('both cards are offered for a cell, and a card that is in the grid is not offered again', G.available(G.DEFAULT, 0).some(c => c.key === 'weather') && G.available(G.DEFAULT, 0).some(c => c.key === 'tyres')
   && !G.available(G.add(G.resize(G.DEFAULT, 4, 3), 4, 1, 'weather'), 1).some(c => c.key === 'weather') && G.available(G.add(G.resize(G.DEFAULT, 4, 3), 4, 1, 'weather'), 1).some(c => c.key === 'tyres'));
 ok('a saved grid with the new cards holds together (known cards, each once)', cards(G.tidy({ cols: 4, rows: 1, boards: [board('start', 1, 1), board('weather', 2, 1), board('weather', 3, 1), board('tyres', 4, 1)] })) === 'start,weather,tyres');
+
+// ---- 1.28.0: the Notes card and the Car Mileage card ----
+ok('Notes has a title (Notes to begin with), the words, a size and a tick for the title; Car Mileage has what to show, how many cars, the period, the picture and the bar',
+  G.info('notes').options.map(x => x.key).join() === 'title,text,size,showTitle' && G.info('mileage').options.map(x => x.key).join() === 'show,count,period,pics,bars' && o(mk('notes'), 'title') === 'Notes' && o(mk('notes'), 'text') === '' && o(mk('notes'), 'size') === 'normal' && o(mk('notes'), 'showTitle') === true);
+ok('...Car Mileage starts with laps and distance, 5 cars, all time, the picture and the bar', o(mk('mileage'), 'show') === 'both' && o(mk('mileage'), 'count') === '5' && o(mk('mileage'), 'period') === 'all' && o(mk('mileage'), 'pics') === true && o(mk('mileage'), 'bars') === true);
+ok('the words of Notes keep their lines (a Windows line break too), are trimmed, and are cut at 600 characters', o(mk('notes', { text: '  Doors open 19:00\r\nFirst heat 19:30\n\nBring tyres  ' }), 'text') === 'Doors open 19:00\nFirst heat 19:30\n\nBring tyres' && o(mk('notes', { text: 'x'.repeat(700) }), 'text').length === 600 && o(mk('notes', { text: 42 }), 'text') === '' && o(mk('notes', { text: null }), 'text') === '');
+ok('...the title is a line of at most 40 characters, the size one of its two, anything else the standard', o(mk('notes', { title: '  Club night  ' }), 'title') === 'Club night' && o(mk('notes', { title: 'y'.repeat(60) }), 'title').length === 40 && o(mk('notes', { size: 'large' }), 'size') === 'large' && o(mk('notes', { size: 'huge' }), 'size') === 'normal' && o(mk('notes', { showTitle: false }), 'showTitle') === false && o(mk('notes', { showTitle: 'no' }), 'showTitle') === true);
+ok('...Car Mileage takes only the choices it has (a value that is not one is the standard)', o(mk('mileage', { show: 'distance' }), 'show') === 'distance' && o(mk('mileage', { show: 'laps' }), 'show') === 'laps' && o(mk('mileage', { show: 'cars' }), 'show') === 'both' && o(mk('mileage', { count: '8' }), 'count') === '8' && o(mk('mileage', { count: '9' }), 'count') === '5' && o(mk('mileage', { period: 'year' }), 'period') === 'year' && o(mk('mileage', { period: 'month' }), 'period') === 'all' && o(mk('mileage', { bars: false }), 'bars') === false);
+{ const g0 = G.add(G.DEFAULT, 1, 1, 'notes') === G.DEFAULT ? G.DEFAULT : G.resize(G.DEFAULT, 4, 3), g1 = G.add(G.add(g0, 4, 1, 'notes'), 4, 2, 'mileage');
+  const i = g1.boards.findIndex(b => G.cardOf(b) === 'notes'), g2 = G.setOpt(g1, i, { text: 'Line 1\nLine 2', title: 'Club night', size: 'large', nonsense: 1 });
+  ok('both cards can be put in the grid, and a change of the settings of Notes is saved with its lines; what is not an option of the card is left out', g1.boards.some(b => G.cardOf(b) === 'mileage') && g1.boards.some(b => G.cardOf(b) === 'notes') && g2.boards[i].opt.text === 'Line 1\nLine 2' && g2.boards[i].opt.title === 'Club night' && g2.boards[i].opt.size === 'large' && !('nonsense' in g2.boards[i].opt)); }
 
 console.log(fails ? fails + ' HOME GRID TESTS FAILED' : 'ALL HOME GRID TESTS PASSED');
 process.exit(fails ? 1 : 0);

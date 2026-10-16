@@ -1,6 +1,7 @@
 // The cards of the Home tab (1.17.0, a grid of them since 1.25.0): the words and the markup of every card except Start a race (that one is part of landing.js, because it
 // is the form of the page). Pure: a card is made from figures that landing.js worked out with homestats.js, so it can be tested without a screen.
 // d = { fmtDate(iso), fmtShort(iso), trackName, rec, last, glance, recent, fastest, records, top, bests, rules, setupName, hasTrack, hasSetup, images }
+// (1.28.0: mileage = [{ name, picture, laps, distance }] for Car Mileage; Notes needs nothing.)
 // (1.26.0: images = the pictures of the picture sets that the Weather and Tyres Available cards use: { weather, conditions, tyres }, each the images of a set or nothing.)
 (function (root) {
   const G = typeof module !== 'undefined' ? require('./homegrid.js') : root.HomeGrid;
@@ -91,17 +92,36 @@
       : '<p class="muted">No tyre is ticked. Open Customize and tick the tyres you want here.</p>');
   };
 
+  // 1.28.0 Notes: the words that were typed in the settings of the card, with the lines as they were typed (nothing is read from a race)
+  const notes = (d, board) => {
+    const o = k => G.optionOf(board, k), text = o('text'), title = o('showTitle') ? o('title') || 'Notes' : '';
+    return `<section class="card hm-notes hm-n-${esc(o('size'))}">${title ? `<h3>${esc(title)}</h3>` : ''}${text ? `<div class="hm-ntext">${esc(text)}</div>` : '<p class="muted">No notes yet. Open Customize and type them here.</p>'}</section>`;
+  };
+
+  // 1.28.0 Car Mileage: the slotcars with the most laps (d.mileage, the cars that are shown), the laps and the distance, a bar and the picture of the car, as the settings of the card say
+  const PIC = /^data:image\//i; // (only a picture that is in the file itself goes into the page)
+  const mileage = (d, board) => {
+    const o = k => G.optionOf(board, k), show = o('show'), list = d.mileage || [], year = o('period') === 'year', byDist = show === 'distance';
+    const val = r => (byDist ? r.distance || 0 : r.laps), max = Math.max(1, ...list.map(val)), pics = o('pics') && list.some(r => PIC.test(String(r.picture || '')));
+    const rows = list.map(r => {
+      const laps = `${r.laps.toLocaleString()} ${r.laps === 1 ? 'lap' : 'laps'}`, dist = r.distance === null || r.distance === undefined ? null : d.fmtDist(r.distance);
+      const v = show === 'laps' ? `<strong>${esc(laps)}</strong>` : byDist ? `<strong>${esc(dist === null ? '–' : dist)}</strong>` : `<strong>${esc(laps)}</strong>${dist === null ? '' : ` · <span class="muted">${esc(dist)}</span>`}`;
+      return `<div class="hm-mrow">${pics ? (PIC.test(String(r.picture || '')) ? `<img class="hm-carpic" src="${esc(r.picture)}" alt="">` : '<span class="hm-carpic"></span>') : ''}<div class="mm"><div class="mt"><span class="mn">${esc(r.name)}</span><span class="mv">${v}</span></div>${o('bars') ? `<div class="hm-mbar"><i style="width:${Math.max(4, Math.round(val(r) / max * 100))}%"></i></div>` : ''}</div></div>`;
+    }).join('');
+    return card('hm-mileage', 'Car Mileage', year ? 'this year' : 'all time', rows || `<p class="muted">${year ? 'No lap has been driven with a car this year yet.' : 'No lap has been saved with a car yet.'}</p>`);
+  };
+
   // The card for a key, from the figures d (and the board, for the options of the card). Start a race is not made here.
   function html(key, d, board) {
     switch (key) {
       case 'record': return record(d); case 'last': return last(d); case 'glance': return glance(d); case 'recent': return recent(d); case 'fastest': return fastest(d);
       case 'records': return records(d); case 'top': return top(d); case 'bests': return bests(d); case 'rules': return rules(d); case 'shortcuts': return shortcuts(d, board);
-      case 'weather': return weather(d, board); case 'tyres': return tyres(d, board);
+      case 'weather': return weather(d, board); case 'tyres': return tyres(d, board); case 'notes': return notes(d, board); case 'mileage': return mileage(d, board);
       default: return '';
     }
   }
   // Cards that have nothing to show before a race is saved: they give way to one friendly card.
-  const NEEDS_RACES = ['record', 'last', 'glance', 'recent', 'fastest', 'records', 'top', 'bests'];
+  const NEEDS_RACES = ['record', 'last', 'glance', 'recent', 'fastest', 'records', 'top', 'bests', 'mileage'];
 
   const api = { html, empty, NEEDS_RACES, esc };
   root.HomeCards = api;

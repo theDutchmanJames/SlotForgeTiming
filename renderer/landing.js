@@ -8,7 +8,7 @@ let homeLaps = null, homeRun = 0, homeOffTm = null;
 // 1.26.0: a line of text or a number in Customize is saved when you leave the field. Home is drawn again a moment later (HOME_SOFT_MS), so that a click or a Tab that comes next
 // is not lost to a page that changes under it, and the control that has the cursor then keeps it. While you are typing in a field (an input without its change yet) nothing is drawn.
 let HOME_SOFT_MS = 400;
-const homeFocusId = t => (t && t.dataset && t.dataset.hopt && (t.type === 'text' || t.type === 'number') ? t.id : ''); // (such a field of Customize: its id, else '')
+const homeFocusId = t => (t && t.dataset && t.dataset.hopt && (t.type === 'text' || t.type === 'number' || t.type === 'textarea') ? t.id : ''); // (such a field of Customize: its id, else '')
 const homeFieldId = t => (t && typeof t.id === 'string' && t.id.startsWith('hg-') ? t.id : ''); // (any control of the settings in Customize: the one that keeps the cursor when Home is drawn again)
 function homeSoftDraw() { // (the moment after a change in such a field)
   const c = state.homeCustom;
@@ -187,11 +187,12 @@ async function renderHome() {
       const attrs = o => `id="hg-${esc(o.key)}" data-hopt="${esc(o.key)}"`;
       const input = (o, v) => o.type === 'check' ? `<input id="hg-${esc(o.key)}" type="checkbox" data-hopt="${esc(o.key)}" ${v ? 'checked' : ''}>`
         : o.type === 'number' ? `<input ${attrs(o)} type="number" min="${o.min}" max="${o.max}" step="1" value="${esc(v)}" aria-label="${esc(o.label)}">`
+        : o.type === 'longtext' ? `<textarea ${attrs(o)} rows="${o.rows || 5}" maxlength="${o.max}" placeholder="${esc(o.placeholder || '')}" aria-label="${esc(o.label)}">${esc(v)}</textarea>`
         : o.type === 'text' ? `<input ${attrs(o)} type="text" maxlength="${o.max}" value="${esc(v)}" placeholder="${esc(o.placeholder || '')}" aria-label="${esc(o.label)}">`
         : o.type === 'imageset' ? `<select ${attrs(o)}><option value="">None (drawn)</option>${imageSets.filter(r => r.kind === o.kind).map(r => `<option value="${esc(r.id)}"${r.id === v ? ' selected' : ''}>${esc(r.name || '(unnamed)')}</option>`).join('')}</select>`
         : `<select ${attrs(o)}>${o.choices.map(([k, t]) => `<option value="${esc(k)}"${v === k ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>`;
       const opt = o => { const v = HG.optionOf(b, o.key); return o.type === 'check' ? `<div class="field"><label class="inline">${input(o, v)} ${esc(o.label)}</label></div>`
-        : `<div class="field"><label for="hg-${esc(o.key)}">${esc(o.label)}</label>${input(o, v)}</div>`; };
+        : `<div class="field${o.type === 'longtext' ? ' hm-wide' : ''}"><label for="hg-${esc(o.key)}">${esc(o.label)}</label>${input(o, v)}</div>`; };
       const inRow = o => { const v = HG.optionOf(b, o.key); return o.type === 'check' ? `<label class="inline hm-ocheck">${input(o, v)} ${esc(o.label)}</label>` : `${input(o, v)}${o.suffix ? `<span class="muted">${esc(o.suffix)}</span>` : ''}`; };
       const optsHtml = cd.options.reduce((out, o, k, all) => o.row ? (k > 0 && all[k - 1].row === o.row ? out : out + `<div class="hm-orow">${all.filter(x => x.row === o.row).map(inRow).join('')}</div>`) : out + opt(o), '');
       one = `<fieldset class="lv-optset"><legend>Card ${sel + 1}: ${esc(cd.label)} (${HG.where(b)})</legend><p class="hint2">${esc(cd.note)}</p><div class="lv-optgrid">${span('w', b.w, ms.w, 'Columns it covers')}${span('h', b.h, ms.h, 'Rows it covers')}${optsHtml}</div></fieldset>`;
@@ -258,7 +259,7 @@ async function renderHome() {
     }
     if (dd.hcell !== undefined) { const i = Number(dd.hcell); hc.sel = i; saveGrid(t.value ? HG.setCard(cur(), i, t.value) : HG.remove(cur(), i)); return; } // (another card for a cell, or none: the card and its settings are gone)
     if (dd.hspan) { const g = cur(), b = g.boards[hc.sel]; if (b) saveGrid(HG.setSpan(g, hc.sel, dd.hspan === 'w' ? t.value : b.w, dd.hspan === 'h' ? t.value : b.h)); return; }
-    if (dd.hopt) { const g = cur(); if (g.boards[hc.sel]) saveGrid(HG.setOpt(g, hc.sel, { [dd.hopt]: t.type === 'checkbox' ? t.checked : t.value }), t.type === 'text' || t.type === 'number'); return; }
+    if (dd.hopt) { const g = cur(); if (g.boards[hc.sel]) saveGrid(HG.setOpt(g, hc.sel, { [dd.hopt]: t.type === 'checkbox' ? t.checked : t.value }), t.type === 'text' || t.type === 'number' || t.type === 'textarea'); return; }
     if (ev.target.id === 'winlane') { const to = Number(ev.target.value); [rows[winRow], rows[to]] = [rows[to], rows[winRow]]; persist(); return; }
     if (ev.target.id === 'setup') { api.setSettings({ lastSetupId: ev.target.value }).then(s => { state.settings = s; renderHome(); }); return; }
     if (ev.target.dataset && ev.target.dataset.absent !== undefined) { const r = rows[Number(ev.target.dataset.absent)]; if (r) { if (ev.target.checked) r.absent = true; else delete r.absent; persist(); } return; }
@@ -377,6 +378,7 @@ async function renderHome() {
       else if (key === 'fastest') { d.fastestScope = HG.optionOf(b, 'scope'); d.fastest = HomeStats.fastestWeek({ laps, sessions, trackId: track && track.id, scope: d.fastestScope, count: n('count'), now, driverName: dn, trackName: trackNameOf }); }
       else if (key === 'records') d.records = HomeStats.allRecords({ laps, sessions, trackName: trackNameOf, driverName: dn, carName: cn });
       else if (key === 'top') { d.topPeriod = HG.optionOf(b, 'period'); d.top = HomeStats.winners({ sessions, driverName: dn, since: d.topPeriod === 'year' ? HomeStats.yearStart(now) : null }).slice(0, n('count')); }
+      else if (key === 'mileage') { d.mileage = HomeStats.mileage({ laps, tracks, carName: cn, carPicture: id => { const c = cars.find(x => x.id === id); return c && typeof c.picture === 'string' ? c.picture : ''; }, since: HG.optionOf(b, 'period') === 'year' ? HomeStats.yearStart(now) : null }).slice(0, n('count')); }
       else if (key === 'bests') {
         const grid2 = []; rows.forEach((r, i) => { if (r.absent) return; (byTeam ? membersOf(teamOf(r.teamId)).map(m => m.id) : [r.driverId]).forEach(id => grid2.push({ driverId: id, color: laneHue(i) })); });
         d.bests = HomeStats.gridBests({ laps, trackId: track && track.id, grid: grid2, driverName: dn });

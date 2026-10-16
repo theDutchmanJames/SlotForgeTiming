@@ -68,6 +68,18 @@
         yesNo('showCount', 'Show how many there are of each', false),
         { key: 'layout', label: 'Put the tyres', type: 'select', choices: [['column', 'In a column'], ['row', 'In a row']], default: 'column' },
         IMAGES('tyreSet', 'Pictures of the tyres', 'tyres')] });
+  // 1.28.0 Notes: your own words, for show. Car Mileage: laps and distance of every slotcar, from the saved races
+  CARDS.push(
+    { key: 'notes', label: 'Notes', note: 'Your own words: the plan of the club night, the rules of the evening, who marshals. The card is for show: it says what you type here',
+      options: [{ key: 'title', label: 'Title of the card', type: 'text', max: 40, default: 'Notes', placeholder: 'Notes' },
+        { key: 'text', label: 'Your notes (a new line stays a new line)', type: 'longtext', max: 600, rows: 6, default: '', placeholder: 'Doors open 19:00, first heat 19:30.' },
+        { key: 'size', label: 'Size of the text', type: 'select', choices: [['normal', 'Normal'], ['large', 'Large']], default: 'normal' },
+        yesNo('showTitle', 'Show the title', true)] },
+    { key: 'mileage', label: 'Car Mileage', note: 'The slotcars that have driven the most: the laps and the distance, counted from your saved races',
+      options: [{ key: 'show', label: 'Show', type: 'select', choices: [['both', 'Laps and distance'], ['laps', 'Laps'], ['distance', 'Distance']], default: 'both' },
+        { key: 'count', label: 'Cars shown', type: 'select', choices: COUNTS, default: '5' },
+        { key: 'period', label: 'Count', type: 'select', choices: [['all', 'All time'], ['year', 'This year']], default: 'all' },
+        yesNo('pics', 'Show the picture of the car (from Database > Slot Cars)', true), yesNo('bars', 'Show a bar for each car', true)] });
   const KEYS = CARDS.map(c => c.key);
   const info = key => CARDS.find(c => c.key === key) || null;
   const cardOf = b => (b && b.opt && typeof b.opt.card === 'string' ? b.opt.card : '');
@@ -104,13 +116,14 @@
     return Math.min(o.max, Math.max(o.min, Math.round(n)));
   };
   // The value of an option of a board: what was chosen when it is one of the choices, else the default. A "check" is true or false; a "number" is a whole number
-  // inside its limits (its default, in the units of the card, when it was never typed); a "text" is a line of at most `max` characters; a picture set is the id of a set.
+  // inside its limits (its default, in the units of the card, when it was never typed); a "text" is a line of at most `max` characters, a "longtext" the same with new lines kept (1.28.0); a picture set is the id of a set.
   function optionOf(board, name) {
     const card = info(cardOf(board)), o = card && card.options.find(x => x.key === name);
     if (!o) return undefined;
     const v = board && board.opt ? board.opt[name] : undefined;
     if (o.type === 'check') return typeof v === 'boolean' ? v : o.default;
     if (o.type === 'text') return typeof v === 'string' ? v.trim().slice(0, o.max) : o.default;
+    if (o.type === 'longtext') return typeof v === 'string' ? v.replace(/\r\n?/g, '\n').trim().slice(0, o.max) : o.default; // (lines stay lines)
     if (o.type === 'imageset') return typeof v === 'string' && v.length <= 64 ? v : '';
     if (o.type === 'number') {
       const n = typeof v === 'string' && v.trim() !== '' ? Number(v.replace(',', '.')) : v;
