@@ -1837,3 +1837,23 @@ Good to know:
 4. **GitHub tags** (v0.97.0 to v1.15.0) are still not pushed; they are refused from here. The code itself is pushed to the main branch.
 5. The tests: new `tests/racefolders.test.js` (folders, order, colours, cards, lights, penalties, closed folders, token session) and `tests/penaltyui.test.js` (the penalty panel on its own); updated `tests/damagescreen.test.js`, `tests/tokenrace.test.js`, `tests/live.test.js` and `tests/help.test.js`.
 6. Files: `renderer/dirfolder.js` and `renderer/penaltyui.js` (new), `renderer/race.js`, `renderer/liveview.js`, `renderer/styles.css`, `renderer/index.html`, `renderer/help.js`.
+
+## What to try (1.16.0): dragging in the Rotation Editor, and a colour per participant
+From your note: "better to have an extra feature than have something missing", and the dragging that was promised in 1.14.0. The click method stays as it is; dragging is on top of it, with the mouse, a finger or a pen.
+1. **Drag a participant onto a place.** Take a participant from the row under *Participants* and drop it on a place of a heat. It stands there; whoever stood there leaves that heat (the same as clicking the participant and then the place). A participant who already stands in that heat moves to the new lane.
+2. **Drag a place onto another place** and the two swap. Onto an empty place the participant simply moves there. A swap that would put somebody in a heat twice says so and changes nothing.
+3. **Drag a place back onto the participants** (the row of chips) to empty it.
+4. **Drag a heat by its grip.** The dots in the first column of a heat are a grip: drag it onto another heat and the heat moves there, with its places and its label, the same as the arrows do (one step at a time, not past a locked heat).
+5. **You see what happens.** A ghost with the participant follows the pointer; the place under it lights up (a dark outline, or a red dashed one when it cannot be done, for example in a locked heat); the places of the participant you drag are marked while the others fade. **Esc** lets go and nothing changes. Near the top or the bottom of the window the page scrolls on its own, so a heat far away can be reached. A small move (a few pixels) is still a click.
+6. **A colour for every participant.** P1 is blue, P2 orange, P3 green, P4 yellow and so on (ten colours; P11 to P20 are lighter versions, P21 to P30 darker). The colour is on the chip, on every place of that participant in the heats, on the name in the list of names and in the table of how often everybody races. It follows the number, so nothing is saved and every rotation you made before has colours at once.
+7. **Pick a participant and see where it races.** When a participant (or a filled place) is picked, all places of that participant are marked and the other places fade. Let go and everything is as before.
+
+Try it: Race Setup > Rotation Setups > New rotation setup. Drag P8 onto a place in heat 1. Drag a place onto another place. Drag the dots of heat 2 above heat 1. Lock heat 1 and try to drop something on it. Start a drag and press Esc. Pick P3 by clicking and look at where it races.
+
+Good to know:
+1. **Groups are unchanged.** You wanted to keep them, so they are as they were (under *Groups* at the bottom, and the *Put a group here* choice in a heat). No groups strip.
+2. **Nothing is saved differently.** Rotations open, save and race as before; the colours are only drawn.
+3. **Not in this version:** choosing your own colour for a participant (the colour is by number), and dragging a participant onto the *Groups* box.
+4. **GitHub tags** (v0.97.0 to v1.16.0) are still not pushed; they are refused from here. The code itself is pushed to the main branch.
+5. The tests: new `tests/rotationdrag.test.js` (what a drop does, what can be picked up and what can be dropped on, the pointer, the ghost, the lights, Esc, scrolling) and new blocks in `tests/rotationscreen.test.js` (the editor with simulated drags, the colours, the marks, locked heats, saving) and `tests/rotation.test.js` (`moveHeatTo`, `colorOf`); `tests/help.test.js` and the screen lists of the other screen tests know the new file.
+6. Files: `renderer/rotationdrag.js` (new), `renderer/rotationui.js`, `renderer/rotation.js`, `renderer/styles.css`, `renderer/index.html`, `renderer/help.js`.

@@ -156,6 +156,15 @@
     if (o.locked) return locked(j);
     return mapHeats(rec, hs => { [hs[i], hs[j]] = [hs[j], hs[i]]; return hs; });
   }
+  // A heat is dragged to another position (1.16.0): the same as moving it up or down one step at a time, so it does not move past a locked heat either.
+  function moveHeatTo(rec, from, to) {
+    const h = heatAt(rec, from), o = heatAt(rec, to);
+    if (!h || !o) return { error: 'That heat is not in the rotation.' };
+    if (from === to) return { error: 'That heat is there already.' };
+    if (h.locked) return locked(from);
+    for (let k = Math.min(from, to); k <= Math.max(from, to); k++) if (k !== from && rec.heats[k].locked) return locked(k);
+    return mapHeats(rec, hs => { const [x] = hs.splice(from, 1); hs.splice(to, 0, x); return hs; });
+  }
   function setLabel(rec, i, label) {
     if (!heatAt(rec, i)) return { error: 'That heat is not in the rotation.' };
     return mapHeats(rec, hs => { hs[i].label = String(label === undefined || label === null ? '' : label); return hs; });
@@ -295,10 +304,18 @@
     const sched = rec.heats.filter(h => h.places.length).map(h => h.places);
     return sched.length ? Heats.stats(sched, rec.participants, rec.lanes).per : Array.from({ length: rec.participants }, () => ({ heats: 0, lanes: Array(rec.lanes).fill(0), meets: 0 }));
   }
+  // A colour for each participant (1.16.0), to see who stands where at a glance. It follows the number, nothing of it is saved: ten colours that are far apart (so P1 to P4 look different),
+  // then the same ten lighter for P11 to P20, then darker for P21 to P30, and so on. The name or number is always on the chip as well.
+  const PALETTE = ['#4c9aff', '#ff7a3d', '#3ecf8e', '#f2b705', '#a46bff', '#e5484d', '#1fb5ad', '#ff6fb5', '#9bd13e', '#b07a4a'];
+  const mixHex = (hex, to, k) => '#' + [1, 3, 5].map(i => Math.round(parseInt(hex.slice(i, i + 2), 16) * (1 - k) + to * k).toString(16).padStart(2, '0')).join('');
+  function colorOf(p) {
+    const n = Math.max(0, Math.floor(Number(p)) || 0), base = PALETTE[n % PALETTE.length], round = Math.floor(n / PALETTE.length) % 3;
+    return round === 0 ? base : round === 1 ? mixHex(base, 255, 0.4) : mixHex(base, 0, 0.35);
+  }
   const describe = rec => `${rec.participants} ${isTeams(rec) ? (rec.participants === 1 ? 'team' : 'teams') : 'participants'}, ${rec.lanes} ${rec.lanes === 1 ? 'lane' : 'lanes'}, ${rec.heats.filter(h => h.places.length).length} heats`;
 
-  const api = { LIMITS, clean, nameOf, shortOf, blank, generate, resize, place, swap, assignGroup, addHeat, addHeatFor, removeHeat, duplicateHeat, clearHeat, moveHeat, setLabel, setLocked,
-    shuffleOrder, reverseOrder, shuffleLanes, evenLanes, setParticipantsAre, isTeams, setName, addGroup, removeGroup, renameGroup, toggleMember, scheduleFor, lanesUsed, signature, problems, matchDrivers, check, perParticipant, describe };
+  const api = { LIMITS, clean, nameOf, shortOf, blank, generate, resize, place, swap, assignGroup, addHeat, addHeatFor, removeHeat, duplicateHeat, clearHeat, moveHeat, moveHeatTo, setLabel, setLocked,
+    shuffleOrder, reverseOrder, shuffleLanes, evenLanes, setParticipantsAre, isTeams, setName, addGroup, removeGroup, renameGroup, toggleMember, scheduleFor, lanesUsed, signature, problems, matchDrivers, check, perParticipant, describe, colorOf, PALETTE };
   root.Rot = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

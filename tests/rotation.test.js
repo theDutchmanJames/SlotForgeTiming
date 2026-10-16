@@ -268,5 +268,27 @@ const err = r => (r && r.error) || '';
   ok('a rotation that holds the most heats refuses another one, in words', /at most/.test(err(R.addHeatFor(full, [1]))));
   ok('the saved record is the same shape as before (no new field): the cleaned record has the same keys', same(Object.keys(a.rec).sort(), Object.keys(r).sort())); }
 
+// ---- 1.16.0: a heat moved to another position, and a colour for each participant ----
+{ const four = () => R.clean({ name: 'Four', participants: 8, lanes: 4, heats: ['A', 'B', 'C', 'D'].map((label, i) => ({ label, places: [0, 1, 2, 3].map(lane => ({ p: (i + lane) % 8, lane })) })) });
+  const labels = rec => rec.heats.map(h => h.label).join('');
+  const r = four();
+  ok('moveHeatTo: a heat goes to a later position, the heats in between move up', labels(R.moveHeatTo(r, 0, 2).rec) === 'BCAD');
+  ok('...to an earlier position, the heats in between move down', labels(R.moveHeatTo(r, 3, 1).rec) === 'ADBC');
+  ok('...to the next position it is the same as the arrow button', labels(R.moveHeatTo(r, 1, 2).rec) === labels(R.moveHeat(r, 1, 1).rec) && labels(R.moveHeatTo(r, 2, 1).rec) === labels(R.moveHeat(r, 2, -1).rec));
+  ok('...the places and the labels of the heats stay with their heat', same(R.moveHeatTo(r, 0, 3).rec.heats[3], r.heats[0]) && R.moveHeatTo(r, 0, 3).rec.heats.length === 4);
+  ok('the old rotation is not touched', labels(r) === 'ABCD' && labels(four()) === 'ABCD');
+  const lk = four(); lk.heats[2].locked = true;
+  ok('a locked heat does not move, and nothing moves past it or onto it (the same as with the arrow buttons)', /locked/.test(err(R.moveHeatTo(lk, 2, 0))) && /locked/.test(err(R.moveHeatTo(lk, 0, 3))) && /locked/.test(err(R.moveHeatTo(lk, 3, 1))) && /locked/.test(err(R.moveHeatTo(lk, 3, 2))));
+  ok('...the heats on one side of a locked heat still move among themselves', labels(R.moveHeatTo(lk, 0, 1).rec) === 'BACD' && labels(R.moveHeatTo(lk, 1, 0).rec) === 'BACD' && R.moveHeatTo(lk, 0, 1).rec.heats[2].locked === true);
+  ok('the same position and positions that do not exist are refused in words', /there already/.test(err(R.moveHeatTo(r, 1, 1))) && /not in the rotation/.test(err(R.moveHeatTo(r, 0, 9))) && /not in the rotation/.test(err(R.moveHeatTo(r, -1, 0))) && /not in the rotation/.test(err(R.moveHeatTo(r, 'x', 0))));
+  const cols = Array.from({ length: 10 }, (_, p) => R.colorOf(p));
+  ok('a colour for each participant: ten colours that are all different, as a hex number', new Set(cols).size === 10 && cols.every(c => /^#[0-9a-f]{6}$/.test(c)) && R.PALETTE.length === 10);
+  ok('...it follows the number: the same number gives the same colour', R.colorOf(3) === R.colorOf(3) && R.colorOf(3) === cols[3] && R.colorOf(13) !== R.colorOf(3));
+  const lighter = Array.from({ length: 10 }, (_, p) => R.colorOf(10 + p)), darker = Array.from({ length: 10 }, (_, p) => R.colorOf(20 + p));
+  const lum = c => [1, 3, 5].reduce((t, i) => t + parseInt(c.slice(i, i + 2), 16), 0);
+  ok('...P11 to P20 are the same ten lighter, P21 to P30 darker, so 30 participants look different', cols.every((c, p) => lum(lighter[p]) > lum(c) && lum(darker[p]) < lum(c)) && new Set([...cols, ...lighter, ...darker]).size === 30);
+  ok('...a number that is no number gives the first colour, and nothing of it is saved in the rotation', R.colorOf('x') === cols[0] && R.colorOf(-4) === cols[0] && R.colorOf(NaN) === cols[0] && !JSON.stringify(R.clean(r)).includes('#'));
+  ok('the first four colours (a heat of four lanes) are easy to tell apart: blue, orange, green, yellow', same(cols.slice(0, 4), ['#4c9aff', '#ff7a3d', '#3ecf8e', '#f2b705'])); }
+
 if (fails) { console.log(fails + ' ROTATION TESTS FAILED'); process.exit(1); }
 console.log('ALL ROTATION TESTS PASSED');

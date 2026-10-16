@@ -648,6 +648,25 @@ dialog:has(.formgrid) form{display:flex;flex-direction:column;max-height:calc(90
 .romenu:not(.romenu-row)>.romenu-list{position:absolute;right:0;z-index:30;flex-direction:column;flex-wrap:nowrap;width:min(340px,86vw);padding:8px;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .romenu:not(.romenu-row)>.romenu-list .btn{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:2px}
 .romenu-list small{color:var(--muted);font-weight:400}
+/* The Rotation Editor (1.16.0): a colour for each participant (--pc, from the number), and dragging: participants, places and heats */
+.rochip{border-left:5px solid var(--pc,var(--line))}
+.rochip.none{border-left-style:solid}
+.rogrid .hpcell:not(.empty){border-color:var(--pc,var(--line));background:color-mix(in srgb,var(--pc,transparent) 24%,var(--panel))}
+.rogrid .hpcell.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.rogrid.hl .hpcell:not(.mine){opacity:.4}
+.rogrid .hpcell.mine:not(.sel){box-shadow:0 0 0 2px var(--pc,var(--accent))}
+.rodot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--pc,var(--muted));margin-right:6px}
+.rochip[data-pp],.rogrid .hpcell:not(.empty){cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none}
+.ro-grip{display:inline-block;width:14px;height:21px;margin-right:6px;vertical-align:middle;cursor:grab;touch-action:none;opacity:.7;background:radial-gradient(circle,var(--muted) 1.5px,transparent 1.8px) 0 0/7px 7px}
+.ro-grip:hover{opacity:1}
+tr.rolocked .ro-grip{cursor:not-allowed;opacity:.25}
+.dragging{opacity:.35}
+.rogrid .hpcell.dropok{outline:3px solid var(--ink);outline-offset:1px}
+.rogrid .hpcell.dropno{outline:3px dashed #e5484d;outline-offset:1px}
+.rogrid tr.dropok>td{background:color-mix(in srgb,var(--ink) 14%,transparent)}
+.rogrid tr.dropno>td{background:color-mix(in srgb,#e5484d 18%,transparent)}
+#ro-pool.dropok{outline:2px solid var(--ink);outline-offset:3px;border-radius:8px}
+.rodrag{position:fixed;z-index:1000;pointer-events:none;padding:4px 12px;border-radius:14px;border:2px solid var(--pc,var(--accent));background:color-mix(in srgb,var(--pc,var(--accent)) 32%,var(--panel));color:var(--ink);font-weight:700;box-shadow:0 8px 20px rgba(0,0,0,.4);transform:translate(12px,-50%)}
 #ro-remarks .hpwarn{color:var(--accent);font-weight:600}
 #ro-remarks .btn{font-weight:400}
 /* App Settings > General and Import and Export: the pages are made of folders, like Results and Records. The body of a folder has some room around what is in it. */

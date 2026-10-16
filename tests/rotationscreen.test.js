@@ -43,7 +43,7 @@ const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if
 for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function') api[k] = (...x) => { x.forEach(v => { if (typeof v !== 'function') structuredClone(v); }); return f(...x); }; }
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'report.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js','padui.js','livegrid.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js','stats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'report.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -90,7 +90,7 @@ const Rot = require(R + 'renderer/rotation.js');
   await btn('newrot');
   say('a new rotation is 8 participants on 4 lanes, everybody racing once (2 heats of 4), named New rotation, not saved yet', draft().name === 'New rotation' && draft().participants === 8 && draft().lanes === 4 && draft().heats.length === 2 && cellsHtml() === 8 && html().includes('value="New rotation"') && run('rotEd.dirty') === true && run('rotEd.id') === null);
   say('...the grid has a row per heat and a column per lane, and the participants are P1 to P8 with the number of heats they race', html().includes('<th>Lane 1</th>') && html().includes('<th>Lane 4</th>') && !html().includes('<th>Lane 5</th>') && (html().match(/data-pp="/g) || []).length === 8 && html().includes('>P1 <small>1</small>') && html().includes('>P8 <small>1</small>'));
-  say('...it says that everybody races 1 heat, and how to fill a place', html().includes('Every participant races 1 heat.') && html().includes('To fill a place: click a participant, then a place.'));
+  say('...it says that everybody races 1 heat, and how to fill a place', html().includes('Every participant races 1 heat.') && html().includes('To fill a place: drag a participant onto it, or click a participant and then a place.'));
   say('...Undo and Redo are there and both off', html().includes('id="ro-undo"') && html().includes('id="ro-redo"') && E('ro-undo').disabled === true && E('ro-redo').disabled === true);
   say('...the plan options are shut when there are heats', html().includes('<details class="hplanes" id="ro-genbox">') && !html().includes('id="ro-genbox" open'));
   await chip(0);
@@ -100,7 +100,7 @@ const Rot = require(R + 'renderer/rotation.js');
   say('a participant picked and a place clicked: P1 stands there (heat 2, lane 4) and P8, who was there, leaves that heat; one step to undo', places(draft(), 1) === '4@0 5@1 6@2 0@3' && run('rotEd.hold') === null && hist().undo === 1);
   say('...the counts follow: P1 races 2 heats and P8 none, and the page warns about P8', E('ro-pool').innerHTML.includes('>P1 <small>2</small>') && E('ro-pool').innerHTML.includes('>P8 <small>0</small>') && /class="rochip none"/.test(E('ro-pool').innerHTML) && E('ro-remarks').innerHTML.includes('This participant races no heat: P8.') && E('ro-remarks').innerHTML.includes('hpwarn'));
   await cell(0, 0);
-  say('a place is picked: the page names the place and who is in it', E('ro-hold').innerHTML.includes('Heat 1, lane 1 (Participant 1) is picked') && E('ro-hold').innerHTML.includes('id="ro-empty">') && /data-cell="0:0" aria-pressed="true"/.test(E('ro-grid').innerHTML));
+  say('a place is picked: the page names the place and who is in it', E('ro-hold').innerHTML.includes('Heat 1, lane 1 (Participant 1) is picked') && E('ro-hold').innerHTML.includes('id="ro-empty">') && /data-cell="0:0"[^>]* aria-pressed="true"/.test(E('ro-grid').innerHTML));
   await cell(0, 0); say('...clicking it again lets go, and that is no step', run('rotEd.hold') === null && hist().undo === 1);
   await cell(0, 1); await cell(1, 0);
   say('two places clicked swap (heat 1 lane 2 with heat 2 lane 1): P2 and P5 change heats; the pick is gone; one more step', places(draft(), 0) === '0@0 4@1 2@2 3@3' && places(draft(), 1) === '1@0 5@1 6@2 0@3' && run('rotEd.hold') === null && hist().undo === 2);
@@ -176,14 +176,14 @@ const Rot = require(R + 'renderer/rotation.js');
   say('Edit opens the saved rotation: the heats and labels as saved, the names on the chips, the group in the heat rows, saved (nothing to save yet)', labels() === 'ABC' && html().includes('value="A"') && html().includes('value="C"') && E('ro-pool').innerHTML.includes('>Alex <small>2</small>') && E('ro-pool').innerHTML.includes('>Sam <small>1</small>') && E('ro-pool').innerHTML.includes('>P3 <small>2</small>') && html().includes('Pros (2)') && run('rotEd.dirty') === false && run('rotEd.id') === 'r1');
   say('...the names are in the list of names (open, because there are names) and the group is shown with its participants ticked', html().includes('<details class="hplanes" id="ro-namesbox" open>') && html().includes('value="Alex"') && html().includes('placeholder="Participant 3"') && html().includes('<details class="hplanes" id="ro-groupsbox" open>') && /data-gm="0:0" aria-pressed="true"/.test(html()) && /data-gm="0:2" aria-pressed="false"/.test(html()));
   say('...the remarks say that the participants race 1 to 2 heats, with the advice about the average', E('ro-remarks').innerHTML.includes('The participants race 1 to 2 heats.') && E('ro-remarks').innerHTML.includes('count the average per heat'));
-  say('...and a table says how often everybody races and in which lane (Alex: 2 heats, lane 1 twice)', html().includes('<td>Alex</td><td class="num">2</td><td class="num">2</td>'));
+  say('...and a table says how often everybody races and in which lane (Alex: 2 heats, lane 1 twice)', /<td><i class="rodot" style="--pc:#[0-9a-f]{6}"><\/i>Alex<\/td><td class="num">2<\/td><td class="num">2<\/td>/.test(html()));
   { const g0 = E('ro-grid').innerHTML, pl = E('ro-pool').innerHTML;
-    say('the grid has a column for every lane (1 to 4), then the group choice and the buttons; the heats are numbered from 1', g0.includes('<th>Heat</th><th>Label</th><th>Lane 1</th><th>Lane 2</th><th>Lane 3</th><th>Lane 4</th><th>Group</th><th>This heat</th>') && g0.includes('<td>1</td>') && g0.includes('<td>3</td>') && !g0.includes('<td>0</td>') && !g0.includes('<td>4</td>'));
+    say('the grid has a column for every lane (1 to 4), then the group choice and the buttons; the heats are numbered from 1', g0.includes('<th>Heat</th><th>Label</th><th>Lane 1</th><th>Lane 2</th><th>Lane 3</th><th>Lane 4</th><th>Group</th><th>This heat</th>') && /<\/span>1<\/td>/.test(g0) && /<\/span>3<\/td>/.test(g0) && !/<\/span>0<\/td>/.test(g0) && !/<\/span>4<\/td>/.test(g0));
     say('...the places, the labels, the group choices and the buttons are named for a screen reader, counting from 1', g0.includes('aria-label="Heat 1, lane 1: Alex"') && g0.includes('aria-label="Heat 3, lane 4: Participant 7"') && g0.includes('aria-label="Label of heat 1"') && g0.includes('aria-label="Label of heat 3"') && g0.includes('aria-label="Put a group in heat 1"') && g0.includes('aria-label="Put a group in heat 3"') && g0.includes('aria-label="Move heat 1 up"') && g0.includes('aria-label="Move heat 3 down"') && !g0.includes('heat 0') && !g0.includes('lane 0') && !g0.includes('heat 4'));
     say('...the first heat can not move up, the last can not move down, and the others can', /data-up="0"[^>]*disabled/.test(g0) && !/data-up="1"[^>]*disabled/.test(g0) && !/data-up="2"[^>]*disabled/.test(g0) && !/data-down="0"[^>]*disabled/.test(g0) && !/data-down="1"[^>]*disabled/.test(g0) && /data-down="2"[^>]*disabled/.test(g0));
     say('...a heat that is not locked is not marked as locked, and the group choice is on', !g0.includes('rolocked') && !g0.includes('🔒') && !/data-grp="\d"[^>]* disabled/.test(g0));
     say('the chips say how many heats every participant races (1 heat, 2 heats) for a screen reader', pl.includes('title="Alex: races 2 heats"') && pl.includes('title="Sam: races 1 heat"') && pl.includes('title="Participant 3: races 2 heats"'));
-    say('the names are labelled P1 to P8, and a name box says which participant it is for (placeholder and screen reader)', E('ro-names').innerHTML.includes('placeholder="Participant 1"') && E('ro-names').innerHTML.includes('aria-label="Name of participant 8"') && !E('ro-names').innerHTML.includes('participant 0') && !E('ro-names').innerHTML.includes('Participant 9') && E('ro-names').innerHTML.includes('<label>P1 ') && E('ro-names').innerHTML.includes('<label>P8 ') && !E('ro-names').innerHTML.includes('<label>P0 ') && !E('ro-names').innerHTML.includes('<label>P9 '));
+    say('the names are labelled P1 to P8, and a name box says which participant it is for (placeholder and screen reader)', E('ro-names').innerHTML.includes('placeholder="Participant 1"') && E('ro-names').innerHTML.includes('aria-label="Name of participant 8"') && !E('ro-names').innerHTML.includes('participant 0') && !E('ro-names').innerHTML.includes('Participant 9') && E('ro-names').innerHTML.includes('</i>P1 ') && E('ro-names').innerHTML.includes('</i>P8 ') && !E('ro-names').innerHTML.includes('</i>P0 ') && !E('ro-names').innerHTML.includes('</i>P9 '));
     say('...the group is named for a screen reader (group 1 by number, its members by its name)', E('ro-groups').innerHTML.includes('aria-label="Name of group 1"') && E('ro-groups').innerHTML.includes('aria-label="Participants in Pros"'));
     say('...the table of how often everybody races has a column for every lane', html().includes('<th>Participant</th><th>Heats</th><th>Lane 1</th><th>Lane 2</th><th>Lane 3</th><th>Lane 4</th></tr>'));
     say('...a remark that only informs is not drawn as a warning, and a warning is', /<p class="hint2">The participants race 1 to 2 heats/.test(E('ro-remarks').innerHTML) && !/hpwarn">The participants race/.test(E('ro-remarks').innerHTML));
@@ -270,7 +270,7 @@ const Rot = require(R + 'renderer/rotation.js');
 
   // ---------- 1.14.0: the Rotation Editor made clearer ----------
   store.rotationsetups = []; await run('render()'); await wait(20); await btn('newrot');
-  say('1.14.0: a page in order: name and buttons, the size, the plans, the participants, the heats with their tools, the remarks, then names, groups and the table', (() => { const h = html(); const at = x => h.indexOf(x); return at('id="ro-name"') < at('class="ed-bar ro-size"') && at('class="ed-bar ro-size"') < at('id="ro-genbox"') && at('id="ro-genbox"') < at('id="ro-pool"') && at('id="ro-pool"') < at('id="ro-add"') && at('id="ro-add"') < at('id="ro-grid"') && at('id="ro-grid"') < at('id="ro-remarks"') && at('id="ro-remarks"') < at('id="ro-namesbox"') && at('id="ro-namesbox"') < at('id="ro-groupsbox"'); })() && html().includes('Click one to pick it up') && html().includes('Click a place to fill it, or to swap it with another place'));
+  say('1.14.0: a page in order: name and buttons, the size, the plans, the participants, the heats with their tools, the remarks, then names, groups and the table', (() => { const h = html(); const at = x => h.indexOf(x); return at('id="ro-name"') < at('class="ed-bar ro-size"') && at('class="ed-bar ro-size"') < at('id="ro-genbox"') && at('id="ro-genbox"') < at('id="ro-pool"') && at('id="ro-pool"') < at('id="ro-add"') && at('id="ro-add"') < at('id="ro-grid"') && at('id="ro-grid"') < at('id="ro-remarks"') && at('id="ro-remarks"') < at('id="ro-namesbox"') && at('id="ro-namesbox"') < at('id="ro-groupsbox"'); })() && html().includes('Drag one to a place, or click it to pick it up') && html().includes('click a place to fill it or to swap it with another place'));
   say('...the places are drawn as places: an empty one says "empty" (and is marked), a filled one has the participant', !html().includes('hpcell empty') && html().includes('class="hpcell" data-cell="0:0"'));
   setSize(10, 4); E('ro-n').onchange(); await wait(20);
   say('the number of heats of the plan follows the size until you choose one: 10 participants on 4 lanes is 3 heats (it was 2 for 8)', run('rotEd.gen.heats') === 3 && E('ro-genopts').innerHTML.includes('value="3"'));
@@ -301,6 +301,96 @@ const Rot = require(R + 'renderer/rotation.js');
   say('the plans are buttons with a line each (there is no plan select any more)', !html().includes('id="ro-plan"') && html().includes('data-plan="roundrobin"') && html().includes('Everybody meets everybody.') && html().includes('Mixes everybody over a number of heats that you choose.'));
   await planBtn('perdriver'); say('a plan button is pressed when it is the plan, and shows its options', /data-plan="perdriver" aria-pressed="true"/.test(E('ro-plans').innerHTML) && /data-plan="manual" aria-pressed="false"/.test(E('ro-plans').innerHTML) && E('ro-genopts').innerHTML.includes('id="ro-geach"'));
   ctx.confirm = () => true; await E('ro-back').onclick(); await wait(20);
+
+  // ---------- 1.16.0: drag and drop, and a colour for every participant ----------
+  store.rotationsetups = []; await run('render()'); await wait(20); await btn('newrot');
+  { const col = p => Rot.colorOf(p);
+    say('1.16.0: every participant has a colour by number: on the chip, on its places in the heats and on its name in the list of names (nothing of it is saved with the rotation)',
+      E('ro-pool').innerHTML.includes(`data-pp="0"`) && E('ro-pool').innerHTML.includes(`--pc:${col(0)}`) && E('ro-pool').innerHTML.includes(`--pc:${col(7)}`) && E('ro-grid').innerHTML.includes(`data-p="0" data-color="${col(0)}"`)
+      && E('ro-names').innerHTML.includes(`<i class="rodot" style="--pc:${col(1)}"></i>P2`) && col(0) !== col(1) && !JSON.stringify(draft()).includes('#') && !JSON.stringify(draft()).includes('color'));
+    say('...a place without a participant has no colour', !/data-cell="[^"]*"[^>]*empty/.test(html()) || !E('ro-grid').innerHTML.includes('empty" data-cell="0:0" data-p'));
+    // picking a participant marks its places
+    say('nothing is picked: no places are marked', !/rogrid hl/.test(E('ro-grid').innerHTML) && !/hpcell mine/.test(E('ro-grid').innerHTML));
+    await chip(0);
+    say('a picked participant: the grid is in "highlight" mode, and its places (and only those) are marked', /rogrid hl/.test(E('ro-grid').innerHTML) && /hpcell mine" data-cell="0:0"/.test(E('ro-grid').innerHTML) && (E('ro-grid').innerHTML.match(/hpcell mine/g) || []).length === 1);
+    await btn('ro-drop'); say('...letting go takes the marks away', !/rogrid hl/.test(E('ro-grid').innerHTML) && !/hpcell mine/.test(E('ro-grid').innerHTML));
+    await cell(1, 2); say('a picked place marks the places of its participant (P7 stands in one)', /rogrid hl/.test(E('ro-grid').innerHTML) && /hpcell sel mine" data-cell="1:2"/.test(E('ro-grid').innerHTML)); await btn('ro-drop'); }
+
+  // the pointer, with stand-ins for the elements (they know the data they carry and what closest() finds)
+  { const isIn = (sel, e) => sel.split(',').some(s => { s = s.trim(); return s.startsWith('#') ? e.id === s.slice(1) : s.startsWith('[data-') ? e.dataset[s.slice(6, -1)] !== undefined : false; });
+    const thing = (ds, id = '') => { const e = { dataset: ds, id, cls: new Set(), pid: null, textContent: ds.short || '', classList: { add: c => e.cls.add(c), remove: c => e.cls.delete(c) }, setPointerCapture: x => { e.pid = x; }, releasePointerCapture: () => { e.pid = null; }, closest: sel => (isIn(sel, e) ? e : null) }; return e; };
+    const chipEl = p => thing({ pp: String(p), short: 'P' + (p + 1), color: Rot.colorOf(p) }), cellEl = (h, l, p) => thing(p === undefined ? { cell: `${h}:${l}` } : { cell: `${h}:${l}`, p: String(p), short: 'P' + (p + 1), color: Rot.colorOf(p) }), gripEl = h => thing({ hh: String(h), }), rowEl = h => thing({ hrow: String(h) }), trayEl = () => thing({}, 'ro-pool');
+    let under = null; document.elementFromPoint = () => under;
+    const ev = (x, y, o = {}) => ({ pointerId: 1, button: 0, clientX: x, clientY: y, target: null, ...o });
+    const downOn = (t, x = 50, y = 50, o = {}) => box().onpointerdown(ev(x, y, { target: t, ...o })), moveTo = (x, y, o = {}) => box().onpointermove(ev(x, y, o)), upAt = (x, y, o = {}) => box().onpointerup(ev(x, y, o));
+    const drag = async (src, over, x = 200, y = 120) => { downOn(src); under = over; moveTo(x, y); upAt(x, y); under = null; };
+    say('the editor takes the pointer: the box has a handler for the pointer going down, moving, going up and being cancelled', ['onpointerdown', 'onpointermove', 'onpointerup', 'onpointercancel'].every(k => typeof box()[k] === 'function'));
+
+    // a participant onto a place
+    store.rotationsetups = []; await run('render()'); await wait(20); await btn('newrot'); // (8 participants on 4 lanes: A = P1..P4, B = P5..P8)
+    let n0 = hist().undo; const before = JSON.stringify(draft());
+    await drag(chipEl(7), cellEl(0, 1, 1)); await wait(5);
+    say('a participant dragged onto a place: P8 stands in heat 1, lane 2 (P2 leaves that heat; P8 still races heat 2), the same change as the clicks make; one step to undo', places(draft(), 0) === '0@0 7@1 2@2 3@3' && places(draft(), 1) === '4@0 5@1 6@2 7@3' && hist().undo === n0 + 1 && run('rotEd.hold') === null);
+    say('...the page shows the change straight away, and the counts follow (P8 races 2 heats, P2 none)', E('ro-grid').innerHTML.includes('aria-label="Heat 1, lane 2: Participant 8"') && E('ro-pool').innerHTML.includes('>P8 <small>2</small>') && E('ro-pool').innerHTML.includes('>P2 <small>0</small>') && !/rogrid hl/.test(E('ro-grid').innerHTML));
+    E('ro-undo').onclick(); say('...Undo takes it back', JSON.stringify(draft()) === before);
+
+    // a click is still a click (a small move is no drag)
+    n0 = hist().undo; downOn(chipEl(3), 50, 50); moveTo(52, 53); upAt(52, 53); await chip(3);
+    say('a pointer that hardly moves is a click: the participant is picked as before, nothing is dragged', run('rotEd.hold.kind') === 'p' && run('rotEd.hold.p') === 3 && hist().undo === n0);
+    await cell(1, 3); say('...and the click on a place puts the participant there (the click method works as before)', places(draft(), 1) === '4@0 5@1 6@2 3@3'); E('ro-undo').onclick();
+
+    // a place onto a place: they swap
+    n0 = hist().undo; await drag(cellEl(0, 0, 0), cellEl(1, 1, 5)); await wait(5);
+    say('a place dragged onto another place: the two swap (P1 and P6 change heats); one step', places(draft(), 0) === '5@0 1@1 2@2 3@3' && places(draft(), 1) === '4@0 0@1 6@2 7@3' && hist().undo === n0 + 1);
+    E('ro-undo').onclick();
+    // ...and the click that comes straight after a drag is not a click
+    await drag(cellEl(0, 0, 0), cellEl(1, 1, 5)); await cell(0, 0);
+    say('the click that comes straight after a drag does nothing (no place is picked)', run('rotEd.hold') === null);
+    await wait(10); await cell(0, 0); say('...and the next click is a click again', run('rotEd.hold.kind') === 'cell'); await btn('ro-drop'); E('ro-undo').onclick();
+
+    // a place onto the participants: it is emptied
+    n0 = hist().undo; await drag(cellEl(0, 2, 2), trayEl()); await wait(5);
+    say('a place dragged back onto the participants is emptied (P3 leaves heat 1); one step', places(draft(), 0) === '0@0 1@1 3@3' && hist().undo === n0 + 1 && E('ro-pool').innerHTML.includes('>P3 <small>0</small>'));
+    E('ro-undo').onclick();
+
+    // a heat by its grip
+    n0 = hist().undo; const lab = labels(); await drag(gripEl(0), rowEl(1)); await wait(5);
+    say('a heat dragged by its grip onto another heat moves there, with its places and its label; one step', labels() === lab.split('').reverse().join('') && places(draft(), 0) === '4@0 5@1 6@2 7@3' && places(draft(), 1) === '0@0 1@1 2@2 3@3' && hist().undo === n0 + 1);
+    E('ro-undo').onclick(); say('...Undo puts it back', labels() === lab && places(draft(), 0) === '0@0 1@1 2@2 3@3');
+
+    // what cannot be done is said, and nothing changes
+    await press({ dataset: { lock: '1' } }); n0 = hist().undo;
+    say('(heat 2 is locked)', draft().heats[1].locked === true && E('ro-grid').innerHTML.includes('data-lk="1"'));
+    await drag(chipEl(0), cellEl(1, 0, 4)); await wait(5);
+    say('a participant dragged onto a place of a locked heat: the page says the heat is locked, nothing changes, no step', /locked/.test(msg()) && places(draft(), 1) === '4@0 5@1 6@2 7@3' && hist().undo === n0);
+    await drag(cellEl(1, 1, 5), cellEl(0, 0, 0)); await wait(5);
+    say('a place of a locked heat cannot be picked up at all (no drag, no message, no change)', places(draft(), 1) === '4@0 5@1 6@2 7@3' && places(draft(), 0) === '0@0 1@1 2@2 3@3' && hist().undo === n0);
+    await drag(gripEl(1), rowEl(0)); await wait(5);
+    say('...nor can a locked heat be moved by its grip', labels() === lab && hist().undo === n0);
+    await drag(gripEl(0), rowEl(1)); await wait(5);
+    say('...and a heat cannot be dropped onto a locked heat', /locked/.test(msg()) && labels() === lab && hist().undo === n0);
+    await press({ dataset: { lock: '1' } });
+
+    // dropped on nothing; Esc; a cancelled pointer; the right button
+    n0 = hist().undo; await drag(chipEl(7), thing({})); await wait(5);
+    say('a drop on something that is no place changes nothing', JSON.stringify(draft()) === before && hist().undo === n0 && run('rotEd.hold') === null);
+    downOn(chipEl(7)); under = cellEl(0, 1, 1); moveTo(200, 120); [...keyListeners].forEach(f => f({ key: 'Escape', target: { matches: () => false }, preventDefault() {} })); upAt(200, 120); under = null; await wait(5);
+    say('Esc during a drag lets go: nothing changes', JSON.stringify(draft()) === before && hist().undo === n0);
+    downOn(chipEl(7)); under = cellEl(0, 1, 1); moveTo(200, 120); box().onpointercancel(ev(200, 120)); under = null; await wait(5);
+    say('a pointer that is taken away by the system drops nowhere', JSON.stringify(draft()) === before && hist().undo === n0);
+    downOn(chipEl(7), 50, 50, { button: 2 }); under = cellEl(0, 1, 1); moveTo(200, 120); upAt(200, 120); under = null; await wait(5);
+    say('the right button does not drag', JSON.stringify(draft()) === before && hist().undo === n0);
+    downOn(cellEl(0, 1), 50, 50); under = cellEl(1, 1, 5); moveTo(200, 120); upAt(200, 120); under = null; await wait(5);
+    say('an empty place cannot be picked up', JSON.stringify(draft()) === before && hist().undo === n0);
+
+    // the colours are not saved, the groups are as before
+    typing(E('ro-name'), 'Sunday cup'); writes.length = 0; await E('ro-save').onclick();
+    const add = writes.find(w => w[0] === 'add' && w[1] === 'rotationsetups');
+    say('saving writes the rotation as before: no colours in it', !!add && !JSON.stringify(add[2]).includes('#') && !/colou?r/i.test(JSON.stringify(add[2])) && add[2].heats.length === 2);
+    say('Groups are still there, as they were: a box for them under the names and the choice in every heat row', html().includes('id="ro-groupsbox"') && !html().includes('rogroupstrip'));
+    ctx.confirm = () => true; await E('ro-back').onclick(); await wait(20);
+    say('back on the list the editor\'s pointer handlers are gone', box().onpointerdown === null && box().onpointermove === null && box().onpointerup === null && box().onpointercancel === null);
+    delete document.elementFromPoint; }
 
   // ---------- the race setup form ----------
   store.rotationsetups = [rotRec()];

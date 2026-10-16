@@ -14,6 +14,7 @@ async function renderRotations(box) {
     <div class="wrap"><table class="fields"><tr><th>Name</th><th>Size</th><th>Used by</th><th></th></tr>` +
     (list.length ? list.map(r => `<tr><td>${esc(r.name)}</td><td>${esc(Rot.describe(Rot.clean(r)))}</td><td>${usedBy(r).map(esc).join(', ') || '<span class="muted">no race setup</span>'}</td><td class="actions">
       <button class="btn" data-edit="${esc(r.id)}">Edit</button> <button class="btn" data-dup="${esc(r.id)}">Duplicate</button> <button class="btn danger" data-del="${esc(r.id)}">Delete</button></td></tr>`).join('') : '<tr><td colspan="4" class="muted">No rotation setups yet.</td></tr>') + '</table></div>';
+  box.onpointerdown = box.onpointermove = box.onpointerup = box.onpointercancel = null; // (dragging belongs to the editor: the list has none)
   box.onclick = async ev => {
     const b = ev.target.closest('button'); if (!b) return;
     if (b.id === 'newrot') { rotEd = { id: null, draft: Rot.blank(8, 4, 'New rotation'), dirty: true, hold: null, gen: null, msg: '' }; return renderRotations(box); }
@@ -33,23 +34,25 @@ function renderRotationEditor(box) {
   // ---- the parts of the page (each can be drawn again by itself, so that a click does not move the page and typing keeps its place) ----
   const poolHtml = () => `<div class="ropool" role="group" aria-label="Participants">${Rot.perParticipant(d).map((x, p) => {
     const on = !!rotEd.hold && rotEd.hold.kind === 'p' && rotEd.hold.p === p;
-    return `<button type="button" class="rochip${on ? ' sel' : ''}${x.heats ? '' : ' none'}" data-pp="${p}" aria-pressed="${on}" title="${esc(Rot.nameOf(d, p))}: races ${x.heats} ${x.heats === 1 ? 'heat' : 'heats'}">${esc(Rot.shortOf(d, p))} <small>${x.heats}</small></button>`; }).join('')}</div>`;
+    return `<button type="button" class="rochip${on ? ' sel' : ''}${x.heats ? '' : ' none'}" data-pp="${p}" aria-pressed="${on}" style="--pc:${Rot.colorOf(p)}" data-color="${Rot.colorOf(p)}" data-short="${esc(Rot.shortOf(d, p))}" title="${esc(Rot.nameOf(d, p))}: races ${x.heats} ${x.heats === 1 ? 'heat' : 'heats'}">${esc(Rot.shortOf(d, p))} <small>${x.heats}</small></button>`; }).join('')}</div>`;
   const holdHtml = () => {
     const h = rotEd.hold;
-    if (!h) return '<p class="hint2 ro-help">To fill a place: click a participant, then a place. To swap two places: click one place, then the other. The small number on a participant is the number of heats that participant races.</p>';
+    if (!h) return '<p class="hint2 ro-help">To fill a place: drag a participant onto it, or click a participant and then a place. To swap two places: drag one onto the other, or click one and then the other. Drag a place back onto the participants to empty it, and drag a heat by its grip (the dots in the first column) to move it. The small number on a participant is the number of heats that participant races.</p>';
     if (h.kind === 'p') return `<p class="hint2 ro-help" role="status">${esc(Rot.nameOf(d, h.p))} is picked. Click a place to put them there; whoever stood there leaves the heat. <button type="button" class="btn" id="ro-drop">Let go</button></p>
       <p class="hint2"><label>Name <input type="text" id="ro-pname" data-pname="${h.p}" value="${esc(d.names[h.p] || '')}" maxlength="${Rot.LIMITS.person}" placeholder="${Rot.isTeams(d) ? 'Team' : 'Participant'} ${h.p + 1}" aria-label="Name of ${Rot.isTeams(d) ? 'team' : 'participant'} ${h.p + 1}"></label> <span class="muted">(optional: it shows on the chip and on the Home tab)</span></p>`;
     const e = d.heats[h.heat] && d.heats[h.heat].places.find(x => x.lane === h.lane);
     return `<p class="hint2 ro-help" role="status">Heat ${h.heat + 1}, lane ${h.lane + 1} (${e ? esc(Rot.nameOf(d, e.p)) : 'empty'}) is picked. Click another place to swap the two. <button type="button" class="btn" id="ro-empty"${e ? '' : ' disabled'}>Empty this place</button> <button type="button" class="btn" id="ro-drop">Let go</button></p>`;
   };
+  // the participant whose places are marked: the one that is picked (a participant, or the one in a picked place)
+  const focusP = () => { const h = rotEd.hold; if (!h) return null; if (h.kind === 'p') return h.p; const x = d.heats[h.heat], e = x && x.places.find(y => y.lane === h.lane); return e ? e.p : null; };
   const gridHtml = () => {
     if (!d.heats.length) return '<p class="muted">No heats yet. Add a heat, or start from a plan.</p>';
-    const h0 = rotEd.hold && rotEd.hold.kind === 'cell' ? rotEd.hold : null;
-    return `<div class="wrap"><table class="fields heatplan-table rogrid"><thead><tr><th>Heat</th><th>Label</th>${lanes.map(l => `<th>Lane ${l + 1}</th>`).join('')}<th>Group</th><th>This heat</th></tr></thead><tbody>${d.heats.map((h, i) => `<tr${h.locked ? ' class="rolocked"' : ''}>
-      <td>${i + 1}${h.locked ? ' <span title="Locked" aria-hidden="true">🔒</span>' : ''}</td>
+    const h0 = rotEd.hold && rotEd.hold.kind === 'cell' ? rotEd.hold : null, fp = focusP();
+    return `<div class="wrap"><table class="fields heatplan-table rogrid${fp !== null ? ' hl' : ''}"><thead><tr><th>Heat</th><th>Label</th>${lanes.map(l => `<th>Lane ${l + 1}</th>`).join('')}<th>Group</th><th>This heat</th></tr></thead><tbody>${d.heats.map((h, i) => `<tr${h.locked ? ' class="rolocked"' : ''} data-hrow="${i}">
+      <td><span class="ro-grip" data-hh="${i}"${h.locked ? ' data-lk="1"' : ''} aria-hidden="true" title="${h.locked ? 'This heat is locked' : 'Drag to move this heat'}"></span>${i + 1}${h.locked ? ' <span title="Locked" aria-hidden="true">🔒</span>' : ''}</td>
       <td><input type="text" class="rolabel" data-label="${i}" value="${esc(h.label)}" maxlength="${Rot.LIMITS.label}" placeholder="Label" aria-label="Label of heat ${i + 1}"></td>
       ${lanes.map(l => { const e = h.places.find(x => x.lane === l), on = !!h0 && h0.heat === i && h0.lane === l;
-        return `<td><button type="button" class="hpcell${e ? '' : ' empty'}${on ? ' sel' : ''}" data-cell="${i}:${l}" aria-pressed="${on}" aria-label="Heat ${i + 1}, lane ${l + 1}: ${e ? esc(Rot.nameOf(d, e.p)) : 'empty'}"${h.locked ? ' title="This heat is locked"' : ''}>${e ? esc(Rot.shortOf(d, e.p)) : '<span>empty</span>'}</button></td>`; }).join('')}
+        return `<td><button type="button" class="hpcell${e ? '' : ' empty'}${on ? ' sel' : ''}${e && e.p === fp ? ' mine' : ''}" data-cell="${i}:${l}"${e ? ` data-p="${e.p}" data-color="${Rot.colorOf(e.p)}" data-short="${esc(Rot.shortOf(d, e.p))}" style="--pc:${Rot.colorOf(e.p)}"${h.locked ? ' data-lk="1"' : ''}` : ''} aria-pressed="${on}" aria-label="Heat ${i + 1}, lane ${l + 1}: ${e ? esc(Rot.nameOf(d, e.p)) : 'empty'}"${h.locked ? ' title="This heat is locked"' : ''}>${e ? esc(Rot.shortOf(d, e.p)) : '<span>empty</span>'}</button></td>`; }).join('')}
       <td>${d.groups.length ? `<select data-grp="${i}" aria-label="Put a group in heat ${i + 1}"${h.locked ? ' disabled' : ''}><option value="">Put a group here</option>${d.groups.map((g, k) => `<option value="${k}">${esc(g.name || 'Group ' + (k + 1))} (${g.members.length})</option>`).join('')}</select>` : '<span class="muted">–</span>'}</td>
       <td class="actions"><button type="button" class="btn" data-up="${i}" aria-label="Move heat ${i + 1} up" title="Move up"${i === 0 ? ' disabled' : ''}>↑</button> <button type="button" class="btn" data-down="${i}" aria-label="Move heat ${i + 1} down" title="Move down"${i === d.heats.length - 1 ? ' disabled' : ''}>↓</button>
         <button type="button" class="btn" data-lock="${i}" aria-pressed="${h.locked}" title="A locked heat stays where it is when you shuffle, and its places cannot be changed until you unlock it">${h.locked ? 'Unlock' : 'Lock'}</button>
@@ -60,8 +63,8 @@ function renderRotationEditor(box) {
   const remarksHtml = () => Rot.check(d).map(c => `<p class="hint2${c.level === 'warn' ? ' hpwarn' : ''}">${esc(c.text)}${c.fix ? ` <button type="button" class="btn" data-fix="${c.fix.kind}">${esc(fixLabel(c.fix))}</button>` : ''}</p>`).join('');
   const groupsHtml = () => d.groups.map((g, k) => `<div class="rogroup"><div class="row"><input type="text" data-gname="${k}" value="${esc(g.name)}" maxlength="${Rot.LIMITS.label}" aria-label="Name of group ${k + 1}"> <button type="button" class="btn danger" data-gdel="${k}">Remove this group</button></div>
     <div class="ropool" role="group" aria-label="Participants in ${esc(g.name || 'group ' + (k + 1))}">${Array.from({ length: d.participants }, (_, p) => { const on = g.members.includes(p);
-      return `<button type="button" class="rochip${on ? ' sel' : ''}" data-gm="${k}:${p}" aria-pressed="${on}" title="${esc(Rot.nameOf(d, p))}">${esc(Rot.shortOf(d, p))}</button>`; }).join('')}</div></div>`).join('') || '<p class="muted">No groups yet.</p>';
-  const namesHtml = () => `<div class="ronames">${Array.from({ length: d.participants }, (_, p) => `<label>P${p + 1} <input type="text" data-name="${p}" value="${esc(d.names[p])}" maxlength="${Rot.LIMITS.person}" placeholder="${Rot.isTeams(d) ? 'Team' : 'Participant'} ${p + 1}" aria-label="Name of ${Rot.isTeams(d) ? 'team' : 'participant'} ${p + 1}"></label>`).join('')}</div>`;
+      return `<button type="button" class="rochip${on ? ' sel' : ''}" data-gm="${k}:${p}" aria-pressed="${on}" style="--pc:${Rot.colorOf(p)}" title="${esc(Rot.nameOf(d, p))}">${esc(Rot.shortOf(d, p))}</button>`; }).join('')}</div></div>`).join('') || '<p class="muted">No groups yet.</p>';
+  const namesHtml = () => `<div class="ronames">${Array.from({ length: d.participants }, (_, p) => `<label><i class="rodot" style="--pc:${Rot.colorOf(p)}"></i>P${p + 1} <input type="text" data-name="${p}" value="${esc(d.names[p])}" maxlength="${Rot.LIMITS.person}" placeholder="${Rot.isTeams(d) ? 'Team' : 'Participant'} ${p + 1}" aria-label="Name of ${Rot.isTeams(d) ? 'team' : 'participant'} ${p + 1}"></label>`).join('')}</div>`;
   const plansHtml = () => `<div class="roplans" role="group" aria-label="Plan">${ROT_PLANS.map(([k, t, note]) => `<button type="button" class="roplan${k === gen.plan ? ' sel' : ''}" data-plan="${k}" aria-pressed="${k === gen.plan}"><strong>${esc(t)}</strong><small>${esc(note)}</small></button>`).join('')}</div>`;
   const genOptsHtml = () => (gen.plan === 'manual' ? `<label>Heats <input type="number" id="ro-gheats" min="1" max="${Rot.LIMITS.maxHeats}" value="${esc(gen.heats)}"></label>`
     : gen.plan === 'perdriver' ? `<label>Heats for everybody <input type="number" id="ro-geach" min="1" max="50" value="${esc(gen.each)}"></label>`
@@ -78,8 +81,8 @@ function renderRotationEditor(box) {
       <p class="hint2">Fills the rotation with the heats of one of the plans a race setup can make. Change whatever you like afterwards. It replaces all the heats you have now (locked ones too); Undo brings them back.</p>
       <div id="ro-plans">${plansHtml()}</div>
       <div class="ed-bar"><span id="ro-genopts">${genOptsHtml()}</span><button type="button" class="btn" id="ro-gen">Make the heats</button></div></details>
-    <h4>Participants <span class="muted ro-sub">Click one to pick it up</span></h4><div id="ro-pool">${poolHtml()}</div><div id="ro-hold">${holdHtml()}</div>
-    <div class="ro-heatshead"><h4>Heats <span class="muted ro-sub">Click a place to fill it, or to swap it with another place</span></h4>
+    <h4>Participants <span class="muted ro-sub">Drag one to a place, or click it to pick it up</span></h4><div id="ro-pool">${poolHtml()}</div><div id="ro-hold">${holdHtml()}</div>
+    <div class="ro-heatshead"><h4>Heats <span class="muted ro-sub">Drag a participant or a place onto a place, or click a place to fill it or to swap it with another place</span></h4>
       <div class="row"><button type="button" class="btn" id="ro-add">Add a heat</button>
         <details class="romenu" id="ro-tools"><summary class="btn" title="Shuffle the heats or the lanes, or even out the lanes">Tools</summary><div class="romenu-list">
           <button type="button" class="btn" id="ro-shufo"><strong>Shuffle the heat order</strong><small>Puts the heats in another order. Locked heats stay where they are.</small></button>
@@ -154,7 +157,11 @@ function renderRotationEditor(box) {
   };
 
   // ---- the clicks ----
+  const drag = RotDrag.attach(box, { d: () => d,
+    drop: (from, to) => { const res = RotDrag.plan(d, from, to); if (!res) return false; apply(res); return !res.error; }, // (the same changes as the buttons: an error is said, nothing changes)
+    end: changed => { if (!changed) refresh(); } });
   box.onclick = ev => {
+    if (drag.suppressed()) return; // (the click that comes after a drag is not a click)
     if (box.querySelectorAll) box.querySelectorAll('details.romenu[open]').forEach(m => { if (!(m.contains && m.contains(ev.target))) m.open = false; }); // (a menu closes when you click somewhere else)
     const b = ev.target.closest('button'); if (!b || b.disabled) return;
     const ds = b.dataset || {}, n = k => Number(ds[k]);
@@ -192,4 +199,4 @@ function renderRotationEditor(box) {
   };
 }
 // the numbers per participant: how many heats, and how often in which lane
-function howHtml(d) { return Rot.perParticipant(d).map((x, p) => `<tr><td>${esc(Rot.nameOf(d, p))}</td><td class="num">${x.heats}</td>${x.lanes.map(n => `<td class="num">${n}</td>`).join('')}</tr>`).join(''); }
+function howHtml(d) { return Rot.perParticipant(d).map((x, p) => `<tr><td><i class="rodot" style="--pc:${Rot.colorOf(p)}"></i>${esc(Rot.nameOf(d, p))}</td><td class="num">${x.heats}</td>${x.lanes.map(n => `<td class="num">${n}</td>`).join('')}</tr>`).join(''); }
