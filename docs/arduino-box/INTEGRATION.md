@@ -9,13 +9,13 @@ tests still pass. The Trackmate page is not changed; the box also works there, a
 firmware/SlotForgeBox/            (the whole folder: SlotForgeBox.ino and the .h files)
 renderer/arduinobox.js  renderer/arduinosim.js  renderer/arduinorace.js  renderer/arduinoui.js  renderer/arduinosketch.js  renderer/zipfile.js
 tests/arduinobox.test.js  tests/arduinosim.test.js  tests/arduinorace.test.js  tests/arduinosketch.test.js
-tools/pack-sketch.js  tools/check-firmware.sh  tools/arduino-stubs/  tools/fwhost/
+tools/pack-sketch.js  tools/check-firmware.sh  tools/arduino-stubs/  tools/fwhost/  tools/avrcheck/
 ```
 
 `package.json`:
 - `test`: add `&& node tests/arduinobox.test.js && node tests/arduinosim.test.js && node tests/arduinorace.test.js && node tests/arduinosketch.test.js` (after the trackmate test).
 - `build.files`: nothing to add for the app (`renderer/**` takes the embedded sketch along). The `firmware/` folder is source only; it does not need to be in the installer.
-- Convenience scripts: `"sketch": "node tools/pack-sketch.js"` and `"fwtest": "node tools/fwhost/run.js --strict"`. Rule: after any change in firmware/SlotForgeBox, run both (the arduinosketch test fails when the embedded sketch is stale; the bench needs a desktop g++ and prints SKIPPED without one).
+- Convenience scripts: `"sketch": "node tools/pack-sketch.js"` and `"fwtest": "node tools/fwhost/run.js --strict"`. Rule: after any change in firmware/SlotForgeBox, run both (the arduinosketch test fails when the embedded sketch is stale; the bench needs a desktop g++ and prints SKIPPED without one). `tools/check-firmware.sh` and `tools/avrcheck/check.sh` are **developer tools, not npm scripts and not part of `npm test`**: they are bash and need g++ / clang with the AVR target and git, which a Windows build machine has only with Git Bash installed. Run them by hand on a machine that has them (`bash tools/avrcheck/setup.sh` once, then `bash tools/avrcheck/check.sh`) before a firmware release. `tools/avrcheck/deps/` and `out/` are in its .gitignore.
 
 ## 2. Load the scripts (renderer/index.html)
 

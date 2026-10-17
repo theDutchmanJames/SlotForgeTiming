@@ -19,6 +19,7 @@ Read in this order: this file, INTEGRATION.md, then the top comment of each file
 | renderer/zipfile.js | A 40-line zip writer (stored, CRC32) for the download. |
 | tests/*.test.js | 76 checks: protocol and link (arduinobox), the virtual box end to end incl. the streams (arduinosim), the race glue (arduinorace), the embedded sketch and the zip, opened and verified by Python (arduinosketch). |
 | tools/pack-sketch.js, tools/check-firmware.sh, tools/arduino-stubs/ | Regenerate the embedded sketch; syntax-check the firmware for Nano and Mega with a desktop g++ (no Arduino toolchain needed). |
+| tools/avrcheck/ | **The AVR compile check** (written by the reviewing Claude): compiles the unmodified sketch for the real ATmega328P and ATmega2560 with clang's AVR backend against the real Arduino core, avr-libc 2.0.0 and the real Adafruit NeoPixel library (16-bit ints, the real API), warnings in the sketch's files fail it, and it prints the sizes. `bash tools/avrcheck/setup.sh` once (git, 120 MB), `bash tools/avrcheck/check.sh` in seconds; SKIPPED without a clang that has AVR. A developer tool for a Linux/Mac machine (or Git Bash), not part of `npm test`. Not the IDE's avr-gcc and not linked: press Verify in the IDE once as well. |
 | tools/fwhost/ | **The firmware test bench** (written by the reviewing Claude): compiles the unmodified sketch with g++ against a stand-in Arduino (simulated clock, scripted ADC with real conversion time, 64-byte 9600-baud serial buffer, button interrupts, NeoPixel timing, EEPROM in a file), plays cars over the sensors and reads the box through the app's own parser. `node tools/fwhost/run.js` inside the app (3 s); `--strict` fails on known issues too. Run it after every firmware change. |
 | smoke/ | A headless-Chromium run of the page against the virtual box (needs playwright). |
 
@@ -79,11 +80,11 @@ Same choices: hardware timestamps sent before the event so PC latency never touc
 
 ## Third review, fixed in 1.0.3 (found by the other Claude with the bench; his patch, applied as is)
 A car stalled on a sensor (or a sensor blocked) counted a lap every 3.3 s: the 1.0.2 "blocked for 3 s" rule ended the pass but let the pin re-arm after the blackout while the car was still there. Now a pin whose pass was ended that way stays `blocked` until its reading is back above the arm level; only then does the blackout start. Bench: a 10 s stall = 2 laps (arrival, and the next car), a 20 s block = 1 lap, the `[E pin N blocked for 3 s]` message once. The bench has the check (item 8) and passes in `--strict`.
+Also from his 1.37.1: `tests/arduinosketch.test.js` runs on Windows (python3 / python / py -3, CR-free output, binary compare); the package carries his copy byte for byte.
 Noted for the board test, no action: the drift rule re-learns the empty level from a single sample; a car hovering between the two thresholds for a second would lower a pin's thresholds until the next Calibrate (the `[C..]` line on the page shows it).
 
 ## Not verified on hardware yet
 
-The firmware syntax-checks for both boards with g++ (tools/check-firmware.sh) and its behaviour is mirrored by the virtual box, but it has not been compiled by the
-Arduino IDE nor run on a board. The first hardware checkpoint (INTEGRATION.md step 8): compile, flash a Nano, connect, see readings, calibrate, cover a sensor
+The firmware compiles for the real chips with clang/AVR (tools/avrcheck: 1.0.3, both boards, no warnings; Nano static RAM 882 of 2048 bytes, flash at most 24036 of 30720), syntax-checks with g++ (tools/check-firmware.sh) and its behaviour is mirrored by the virtual box and the bench, but it has not been compiled by the Arduino IDE's avr-gcc nor run on a board. The first hardware checkpoint (INTEGRATION.md step 8): compile, flash a Nano, connect, see readings, calibrate, cover a sensor
 by hand, see the letter and the trap figure. Things most likely to need a tweak on real hardware: the default thresholds (85 % / 60 % of the empty level), the
 blackout (300 ms), the ladder's resistor table, and the 1.8 s wait after opening the port (an Arduino resets when the port opens).

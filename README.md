@@ -175,7 +175,7 @@ Run `npm test` to check the race rules on their own.
 - renderer/widgetbuilder.js  Customization > Widget Builder (your own text and image widgets).
 - renderer/announcer.js, sound.js, audioedit.js  What the race says, how it is played, and the Audio Settings screen.
 - renderer/trackmate.js, hardware.js, hardwareui.js  The Trackmate Interface: the byte stream, the USB connection and its screen.
-- renderer/arduinobox.js, arduinosim.js, arduinorace.js, arduinoui.js, arduinosketch.js, zipfile.js  The Arduino box: the protocol, the virtual box, the race glue, its page and the embedded sketch. The source of the sketch is in firmware/SlotForgeBox/, the desktop test bench in tools/fwhost/, the documents in docs/arduino-box/.
+- renderer/arduinobox.js, arduinosim.js, arduinorace.js, arduinoui.js, arduinosketch.js, zipfile.js  The Arduino box: the protocol, the virtual box, the race glue, its page and the embedded sketch. The source of the sketch is in firmware/SlotForgeBox/, the desktop test bench in tools/fwhost/, the AVR compile check in tools/avrcheck/, the documents in docs/arduino-box/.
 - renderer/rows.js, richtext.js, landing.js, app.js, webapi.js  Leaderboard rows, the Racing Rules text, the Home tab, the tabs and App Settings, and the browser version of the api.
 - transfer.js, renderer/transferui.js  Export and import of single items; backup.js is the complete backup (tested by tests/transfer.test.js and tests/backup.test.js).
 - server.js, qr.js  The network access for tablets and phones, and its QR code.
@@ -2356,3 +2356,15 @@ Good to know:
 
 ## What to try (1.37.1): the Windows test fix
 Nothing to try in the app. Run `npm test` (or the Windows build with checks) on Windows: the last Arduino check, *Python opens it, every CRC checks, and a file reads back identical*, is now ok. Good to know: the check needs Python only as a second opinion on the sketch zip (`python3`, `python` or `py -3`); without Python it says *no Python found on this machine* and goes on. GitHub tags are still not pushed (refused from here).
+
+## What to try (1.37.2): the AVR compile check
+Nothing changes in the app. This version adds the check that compiles the box firmware for the real chips, and the updated documents in `docs/arduino-box/`.
+1. On a Mac or Linux machine (or Git Bash on Windows) with `git` and a `clang` that has the AVR target (Ubuntu: `apt install clang`; Mac: `brew install llvm`): `bash tools/avrcheck/setup.sh` once (about 120 MB of downloads into `tools/avrcheck/deps`, which git ignores).
+2. `bash tools/avrcheck/check.sh`. Expected: `ok nano (atmega328p): the sketch compiles, no warnings in its own files` and the same for the Mega, each with the sizes: the Nano uses 882 of 2048 bytes of static RAM and at most 24036 of 30720 bytes of flash. Without a clang that has AVR it says SKIPPED.
+3. Change something in `firmware/SlotForgeBox` on purpose (a call to a method that does not exist): the check fails and names the line. Undo it.
+
+Good to know:
+1. It is **clang**, not the Arduino IDE's avr-gcc, and it does not link: the flash figure is an upper bound and the RAM figure leaves out the stack and the 3 bytes a pixel. Press **Verify** in the Arduino IDE once as well; that is the last compile question.
+2. `tools/check-firmware.sh`, `tools/fwhost/run.js` and this check are developer tools run by hand after a change in the firmware. They are not part of `npm test` (the installer and the Windows build do not need them); `npm run sketch` and `npm run fwtest` stay the only scripts.
+3. **GitHub tags** are still not pushed (refused from here).
+
