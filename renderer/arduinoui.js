@@ -4,7 +4,7 @@
 // Settings kept in the app: abAuto (connect by itself), abDevice ({ vid, pid } of the remembered box), abVirtual (use the virtual box), abLaneMap (sensor letter -> lane).
 // The readings stream is on only while this page is shown and no race is bound to the box (see abWatchPage).
 // Settings kept in the BOX (sent with P/H/O and saved with W): the pin roles, thresholds, blackout, lights, relays, buzzer, safe state, ladder. "Save to the box" writes them to its EEPROM.
-let ab = { dev: null, info: {}, open: false, lines: [], t0: 0, keep: null, hide: true, gen: 0, pins: {}, lit: Array(8).fill(null), ledTimers: [], calib: null };
+let ab = { dev: null, info: {}, open: false, lines: [], t0: 0, keep: null, hide: true, gen: 0, pins: {}, lit: Array(8).fill(null), ledTimers: [], calib: null, pick: null };
 
 const abSettings = () => { const s = (typeof state !== 'undefined' && state.settings) || {}; return { auto: s.abAuto !== false, device: s.abDevice || null, virtual: s.abVirtual === true, laneMap: ArduinoBox.laneMap(s.abLaneMap) }; };
 const AB_LED_HOLD = 1000;
@@ -106,6 +106,20 @@ function abPinsRefresh() {
   }
 }
 
+// Choosing the COM port: in the app the main process lists the ports it found and asks the page to show them (the Trackmate and DS Electronics pages do the same on their pages).
+// The list is kept in ab.pick, so a redraw of the page while it is open does not lose it.
+function abDrawPick() {
+  const el = document.getElementById('ab-pick'); if (!el) return;
+  const p = ab.pick;
+  if (!p) { el.innerHTML = ''; el.onclick = null; return; }
+  el.innerHTML = `<div class="card"><strong>Choose a port</strong>${p.list.length ? p.list.map((d, i) => `<div class="row"><button class="btn" data-pick="${i}">${esc(d.displayName || d.name || d.portName || 'Port')} <span class="muted">${esc(d.portName || '')} ${d.vendorId !== undefined ? '(' + Hardware.hex4(d.vendorId) + ':' + Hardware.hex4(d.productId) + ')' : ''}</span></button></div>`).join('') : '<p class="muted">No ports found. Check the cable.</p>'}<button class="btn" data-pick="-1">Cancel</button></div>`;
+  el.onclick = ev => { const b = ev.target.closest('[data-pick]'); if (!b) return; const i = Number(b.dataset.pick), q = ab.pick; ab.pick = null; abDrawPick(); if (q) q.res(i >= 0 && q.list[i] ? q.list[i].portId || q.list[i].deviceId : ''); };
+}
+const abChoose = list => new Promise(res => {
+  if (ab.pick) ab.pick.res(''); // (an older question is dropped)
+  if (!document.getElementById('ab-pick')) { ab.pick = null; return res(''); } // (this page is not on screen: nobody can choose)
+  ab.pick = { list, res }; abDrawPick();
+});
 function renderArduinoSettings(box) {
   const t = abSettings(), can = typeof navigator !== 'undefined' && !!navigator.serial, L = ArduinoBox.link, v = L.version, n = (v && v.pins) || 8, opt = L.options;
   const sel = (id, list, cur, attrs = '') => `<select id="${id}" ${attrs}>${list.map(([val, label]) => `<option value="${val}"${String(cur) === String(val) ? ' selected' : ''}>${esc(label)}</option>`).join('')}</select>`;
@@ -121,6 +135,7 @@ function renderArduinoSettings(box) {
     <div class="row"><button class="btn primary" id="ab-find" ${can ? '' : 'disabled'}>Find the box (COM port)</button><button class="btn primary" id="ab-conn" ${ab.dev ? '' : 'disabled'}>${ab.open ? 'Disconnect' : 'Connect'}</button>
       <span class="muted">${ab.dev ? (ab.dev.virtual ? 'Virtual box' : esc(Hardware.describe('serial', ab.info))) + (ab.open ? ' is connected' : '') : 'No box chosen.'}${v ? ` · firmware ${esc(v.version)} on a ${esc(v.board)}${v.version !== ArduinoSketch.version ? ` (the app ships ${esc(ArduinoSketch.version)}: download it below and flash the box)` : ''}` : ''}${L.safe ? ' · SAFE STATE (no keep-alive)' : ''}</span>
       <span id="ab-msg" class="muted" role="status"></span></div>
+    <div id="ab-pick"></div>
     <div class="row"><label class="inline"><input type="checkbox" id="ab-auto" ${t.auto ? 'checked' : ''}> Remember this box and connect automatically when the app starts</label>
       <label class="inline"><input type="checkbox" id="ab-virtual" ${t.virtual ? 'checked' : ''}> Use the virtual box (four imaginary cars, for trying the app without an Arduino)</label></div>
     <div class="row"><strong>The sketch</strong><button class="btn" id="ab-download">Download the Arduino sketch (${esc(ArduinoSketch.version)})</button><span class="muted">A zip with the sketch and a README: open it in the Arduino IDE, pick your board and upload. Needs the "Adafruit NeoPixel" library for LED strip lights.</span></div>
@@ -141,6 +156,8 @@ function renderArduinoSettings(box) {
     <style>.ab-barcell{min-width:160px}.ab-bar{position:relative;height:14px;background:var(--panel);border-radius:4px;overflow:hidden}.ab-bar.off{opacity:.3}.ab-fill{height:100%;background:#4c9aff;width:0}.ab-bar.covered .ab-fill{background:#2ecc40}.ab-arm,.ab-trig{position:absolute;top:0;bottom:0;width:2px;background:#ffd400}.ab-trig{background:#d62828}</style>`;
   const $ = id => document.getElementById(id), save = patch => api.setSettings(patch).then(s => { state.settings = s; }), C = ArduinoBox.C;
   abShow(); abPinsRefresh(); abLeds();
+  if (api.onHwChoose) api.onHwChoose(async (_kind, list) => { api.hwChosen(await abChoose(list)); }); // (the last page drawn answers the main process)
+  abDrawPick();
   $('ab-find').onclick = async () => {
     try {
       ab.dev = await navigator.serial.requestPort(); ab.info = ab.dev.getInfo ? ab.dev.getInfo() : {};

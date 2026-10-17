@@ -2384,3 +2384,10 @@ Good to know:
 Good to know:
 1. It only holds the place. Nothing connects, nothing is saved and a race does not use it; the page is filled in when the support for oXigen Digital comes.
 2. Home still names only the hardware that exists (Trackmate, Arduino box, virtual box); oXigen joins it when it can connect.
+
+## What to try (1.38.1): the port list on the Arduino page, and a window that says why
+1. App Settings > Timing Hardware > Arduino, with a box plugged in: press **Find the box (COM port)**. A list **Choose a port** appears under the buttons; click the box (or Cancel). Before this version nothing could be chosen there. Then **Connect**.
+2. If the Live Race window ever opens white again, it should now show **This window could not be opened** with a reason and **Try again**. Send me that text. (Also: with the white window in front, Ctrl+Shift+I opens the developer tools; the Console tab has the error.)
+
+Good to know:
+1. The white Live Race window you saw could not be reproduced: the window opens fine with no race, with a running race and with the virtual box bound (tried in a real browser with the same page). The card above is there to catch it, not a fix for a known cause.

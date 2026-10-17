@@ -2647,12 +2647,35 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     say('the Arduino page has Find the box, Connect, the virtual box, the sketch download, Calibrate, the lights test, Power on and off, Beep and Save to the box', ['ab-find', 'ab-conn', 'ab-virtual', 'ab-download', 'ab-calib', 'ab-lighttest', 'ab-pon', 'ab-poff', 'ab-beep', 'ab-save', 'ab-log'].every(i => html().includes(`id="${i}"`)) && html().includes('Find the box') && html().includes('Download the Arduino sketch (' + run('ArduinoSketch.version') + ')'));
     say('...nothing is connected yet, so the box commands are switched off, and without COM port support (a browser) it says so', /id="ab-calib" disabled/.test(html()) && /id="ab-save" disabled/.test(html()) && /id="ab-find" disabled/.test(html()));
     say('...the pin table has the roles Not used, Lane sensor, Pit sensor and Call buttons for every analog pin', html().includes('data-pinrole="0"') && html().includes('data-pinrole="7"') && ['Not used', 'Lane sensor', 'Pit sensor', 'Call buttons (ladder)'].every(r => html().includes('>' + r + '<')));
+    // 1.38.1: in the app the main process lists the COM ports and asks the page to show them; the Arduino page had no list to show, so "Find the box" could never choose a port
+    { let ask = null; const picked = []; api.onHwChoose = f => { ask = f; }; api.hwChosen = id => picked.push(id); await run('render()');
+      say('1.38.1: the Arduino page waits for the port list of the main process (like the Trackmate and DS Electronics pages)', typeof ask === 'function' && html().includes('id="ab-pick"'));
+      let done = ask('serial', [{ displayName: 'Arduino Nano', portName: 'COM5', portId: 'p5', vendorId: 0x1a86, productId: 0x7523 }, { displayName: 'Communications Port', portName: 'COM1', portId: 'p1' }]); await wait(5);
+      say('...the ports found are shown, with their USB numbers when they have them, and a Cancel', E('ab-pick').innerHTML.includes('Arduino Nano') && E('ab-pick').innerHTML.includes('COM5') && E('ab-pick').innerHTML.includes('(1A86:7523)') && E('ab-pick').innerHTML.includes('data-pick="1"') && E('ab-pick').innerHTML.includes('data-pick="-1"'));
+      run('abRedraw()'); await wait(5); // (the page is drawn again while the list is open: a message from the box does that)
+      say('...a redraw of the page does not lose the list', E('ab-pick').innerHTML.includes('Arduino Nano'));
+      E('ab-pick').onclick({ target: { closest: () => ({ dataset: { pick: '0' } }) } }); const got = await done; await wait(5);
+      say('...the chosen port goes back to the main process and the list goes away', got === undefined && picked.join() === 'p5' && E('ab-pick').innerHTML === '');
+      done = ask('serial', []); await wait(5); say('...with no ports the page says so', E('ab-pick').innerHTML.includes('No ports found'));
+      E('ab-pick').onclick({ target: { closest: () => ({ dataset: { pick: '-1' } }) } }); await done; say('...Cancel sends an empty choice', picked.join() === 'p5,');
+      const first = ask('serial', [{ portName: 'COM1', portId: 'p1' }]), second = ask('serial', [{ portName: 'COM2', portId: 'p2' }]); await wait(5); await first;
+      say('...a second question drops the first one (it is answered empty) and shows the new list', picked.join() === 'p5,,' && E('ab-pick').innerHTML.includes('COM2') && !E('ab-pick').innerHTML.includes('COM1'));
+      E('ab-pick').onclick({ target: { closest: () => ({ dataset: { pick: '-1' } }) } }); await second;
+      run("state.hwSub='arduino'"); await run('render()'); delete api.onHwChoose; delete api.hwChosen; }
     ctx.ReadableStream = ReadableStream; ctx.WritableStream = WritableStream; // (the page of the app is in the browser, which has them; this stand-in page has to be given them)
     await E('ab-virtual').onchange({ target: { checked: true } }); await wait(150);
     say('the virtual box connects at once: the status line of the Arduino page says it is connected and the commands are switched on', run('abConnected()') === true && /id="ab-calib"(?! disabled)/.test(html()) && /id="ab-save"(?! disabled)/.test(html()) && E('ab-virtual') !== undefined);
     await E('ab-conn').onclick(); await wait(50); await E('ab-virtual').onchange({ target: { checked: false } }); await wait(50);
     say('...and it lets go again (nothing keeps running after the page is done)', run('abConnected()') === false);
     delete ctx.ReadableStream; delete ctx.WritableStream; run("state.hwSub='trackmate'"); await run('render()'); }
+  // ---- 1.38.1: a window that cannot start shows why (the Live Race window used to stay white) ----
+  { const appSrc = require('fs').readFileSync(require('path').join(__dirname, '../renderer/app.js'), 'utf8');
+    say('1.38.1: the start of the window is guarded: a failure goes to bootFailed', /\n\}\)\(\)\.catch\(bootFailed\);\s*$/.test(appSrc) && /function bootFailed\(e\)/.test(appSrc));
+    appConsole.expected = true; const seen0 = appConsole.seen; // (the failure is reported to the console, which is the point)
+    run("bootFailed(new Error('The schema could not be read'))");
+    say('...which shows the message and a Try again button in place of an empty page', E('view').innerHTML.includes('This window could not be opened') && E('view').innerHTML.includes('The schema could not be read') && E('view').innerHTML.includes('id="bootagain"') && run('view.hidden') === false);
+    run("bootFailed(undefined)"); say('...and does not fall over on an error without a message', E('view').innerHTML.includes('This window could not be opened') && appConsole.seen === seen0 + 2);
+    appConsole.expected = false; run("state.tab = 'settings'"); await run('render()'); }
   // ---- App Settings > Timing Hardware > oXigen Digital: a place held for it (1.38.0) ----
   { const t = E('hwtabs').innerHTML, at = k => t.indexOf(k);
     say('1.38.0: the Timing Hardware sub-tabs are Trackmate Interface, Arduino, DS Electronics, oXigen Digital, Other (in this order)', at('Trackmate Interface') > -1 && at('Trackmate Interface') < at('>Arduino<') && at('>Arduino<') < at('DS Electronics') && at('DS Electronics') < at('>oXigen Digital<') && at('>oXigen Digital<') < at('>Other<'));

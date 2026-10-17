@@ -332,6 +332,17 @@ function screenFailed(e) {
   view.onclick = ev => { const b = ev.target && ev.target.closest ? ev.target.closest('#errhome') : null; if (b) { state.tab = 'home'; render(); } };
 }
 
+// A window that cannot start (the Live Race window on a second screen most of all) shows why, in place of an empty page; "Try again" loads it once more.
+function bootFailed(e) {
+  console.error(e);
+  try {
+    view.hidden = false; view.onchange = null;
+    view.innerHTML = `<section class="card" id="bootfailed" role="alert"><h3>This window could not be opened</h3><p>${esc(e && e.message ? e.message : e)}</p>
+      <p class="muted">Nothing was lost: what was saved is still in the database.</p><div class="row"><button class="btn primary" id="bootagain">Try again</button></div></section>`;
+    view.onclick = ev => { const b = ev.target && ev.target.closest ? ev.target.closest('#bootagain') : null; if (b) location.reload(); };
+  } catch (x) { /* the console has it */ }
+}
+
 (async () => {
   state.schema = await api.schema();
   state.settings = await api.getSettings();
@@ -344,4 +355,4 @@ function screenFailed(e) {
   render();
   if (api.onHwChoose && typeof tmAutoConnect === 'function') tmAutoConnect(); // the remembered Trackmate, if it is plugged in
   if (typeof abAutoConnect === 'function') abAutoConnect(); // the remembered SlotForge box, or the virtual one when that is chosen
-})();
+})().catch(bootFailed);
