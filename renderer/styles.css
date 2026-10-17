@@ -138,6 +138,7 @@ details .fields{margin:10px 0}
 .lw .h{position:absolute;width:8px;height:8px;background:#4c9aff;border-radius:2px}
 .h.nw{left:-4px;top:-4px;cursor:nwse-resize}.h.ne{right:-4px;top:-4px;cursor:nesw-resize}
 .h.sw{left:-4px;bottom:-4px;cursor:nesw-resize}.h.se{right:-4px;bottom:-4px;cursor:nwse-resize}
+.lw.tiny .h.nw{left:-11px;top:-11px}.lw.tiny .h.ne{right:-11px;top:-11px}.lw.tiny .h.sw{left:-11px;bottom:-11px}.lw.tiny .h.se{right:-11px;bottom:-11px} /* 1.34.1: a small widget has its handles outside the corners, so the widget itself is not covered by them */
 .av{display:inline-flex;width:1.6em;height:1.6em;border-radius:50%;background:var(--accent);color:#fff;align-items:center;justify-content:center;font-size:.8em}
 .sl{display:inline-block;width:.8em;height:.8em;border-radius:50%;background:var(--line);margin:0 .15em}.sl.on{background:var(--accent)}
 @media (max-width:900px){.ed-main{grid-template-columns:1fr}}

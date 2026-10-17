@@ -5,7 +5,7 @@
   const GRID = 5;   // grid size in units
   const LANES = 8;  // most lanes a layout can use
   const MAG = 8;    // how close (in units) another widget's edge pulls a moving widget
-  const MIN = 40;   // smallest widget size
+  const MIN = 5;    // smallest widget size (one grid step: 0.5% of the width; it was 40 before 1.34.1)
 
   const Av = typeof module !== 'undefined' ? require('./avatars.js') : root.Avatars; // the standard avatars of the lanes
   const Dl = typeof module !== 'undefined' ? require('./delta.js') : root.Delta; // the Delta Timers (what is compared, and the badge)

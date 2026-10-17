@@ -256,11 +256,13 @@ function previewOf(def, w) {
   }
   return Widgets.sampleOf(def, w.lane, { ...w, opt: Widgets.resolveOpt(w, ed.imageSets, state.settings.clubLogo) });
 }
+const TINY = 60; // a widget narrower or lower than this many units (6% of the width) is small on the screen
 function widgetHtml(w, sel, single, d) {
   const def = Widgets.def(w.type), H = Widgets.heightOf(d), U = Widgets.U, col = Widgets.colorsOf(w, d);
   const style = `left:${w.x / U * 100}%;top:${w.y / H * 100}%;width:${w.w / U * 100}%;height:${w.h / H * 100}%;font-size:${(w.textSize || def.textSize) / 10}cqw;` +
     `color:${Widgets.cssVal(col.color) || 'var(--ink)'};${Frame.css(col.bg, w, 'var(--muted)', d)}${d.kind !== 'row' && Frame.corner(w, d, U) ? ';border-radius:' + Frame.corner(w, d, U) : ''}`; // (a row design has its own corner setting, used by Rows)
-  return `<div class="lw${sel ? ' sel' : ''}${def.button ? ' btnw' : ''}${w.titleSpace ? ' tspace' : ''}${Widgets.alignClassOf(w)}" data-i="${d.widgets.indexOf(w)}" style="${style}">
+  const tiny = single && (w.w < TINY || w.h < TINY); // (a small widget has its resize handles outside its corners, so the widget itself can still be grabbed and moved)
+  return `<div class="lw${sel ? ' sel' : ''}${tiny ? ' tiny' : ''}${def.button ? ' btnw' : ''}${w.titleSpace ? ' tspace' : ''}${Widgets.alignClassOf(w)}" data-i="${d.widgets.indexOf(w)}" style="${style}">
     ${Widgets.showTitleOf(w) && d.kind !== 'row' ? `<span class="lw-title" style="${Widgets.titleStyleOf(w)}">${esc(Widgets.titleOf(w))}</span>` : ''}
     ${def.perLane && d.kind !== 'row' ? `<span class="lw-lane">L${w.lane + 1}</span>` : ''}<span class="lw-val"${def.button ? '' : ` style="${Widgets.valueStyleOf(w)}"`}>${previewOf(def, w)}</span>
     ${single ? '<i class="h nw" data-h="nw"></i><i class="h ne" data-h="ne"></i><i class="h sw" data-h="sw"></i><i class="h se" data-h="se"></i>' : ''}</div>`;

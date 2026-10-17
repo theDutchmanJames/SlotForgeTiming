@@ -2249,3 +2249,17 @@ Good to know:
 2. A card for show cannot be edited: change a service interval in the form of the car.
 3. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 4. The tests: `tests/carstats.test.js` (the list of cars), `tests/homegrid.test.js` (the card and its settings), `tests/homecards.test.js` (both looks, the words, the safe text), `tests/screens.test.js` (Customize, the card on Home, the click, the card in the Database) and `tests/help.test.js`.
+
+## What to try (1.34.1): widgets as small as you want in the Layout Editor
+From your note: the widgets in the Layout Editor could not be scaled down as tiny as you want.
+1. Open **Customization > Layouts** (or a layout of a race setup), place a widget, select it and pull a corner handle in. A widget can now be as small as **5 units**: half a percent of the width of the layout, one step of the grid. Before it stopped at 40 units (4% of the width).
+2. With **Snap to grid, widgets and guidelines** on, the sizes still jump in steps of 5 and edges are pulled to neighbouring widgets. Switch the tick box off to drag the size to exactly what you want (7 units, 12 units, any whole number).
+3. A small widget (less than 60 units wide or high) has its four handles **outside** its corners when it is selected, so you can still grab the widget itself, drag it somewhere else, or pull a handle out again.
+4. The text inside keeps the size you gave it and is cut off at the edge of the widget, so a small widget needs a small **Text size** (the Text and Title sizes can go down to 5 and 3). The Widget Builder (Customization) also takes widths and heights from 5.
+
+Good to know:
+1. The smallest size is the same for every widget, and for the cells of a row design (the numbers for Left, Top, Width and Height there).
+2. A layout you made before keeps its widgets as they are. Only the limit for making them smaller changed.
+3. A very small widget is hard to see on the canvas. Drag a rectangle around it (or press Ctrl+A) to select it again, and use Undo if a pull went too far.
+4. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+5. The tests: `tests/widgets.test.js` (the smallest size from every corner, with and without snapping), `tests/screens.test.js` (the pull in the editor, the handles of a small widget, the Widget Builder).

@@ -37,6 +37,17 @@ r = Wd.resizeWidget(box(100, 100, 100, 50), 'nw', -23, -11, [], W, H, false);
 ok('resize nw keeps the opposite corner fixed', r.x === 77 && r.y === 89 && r.x + r.w === 200 && r.y + r.h === 150);
 r = Wd.resizeWidget(box(100, 100, 100, 50), 'se', -500, -500, [], W, H, true);
 ok('cannot shrink below the minimum size', r.w === Wd.MIN && r.h === Wd.MIN && r.x === 100 && r.y === 100);
+ok('the smallest size is 5 units, one grid step (0.5% of the width; it was 40 before 1.34.1)', Wd.MIN === 5 && Wd.MIN === Wd.GRID);
+r = Wd.resizeWidget(box(100, 100, 100, 50), 'se', -93, -43, [], W, H, false);
+ok('a widget can be pulled in to 7 by 7 without snapping (a size under the old 40)', r.w === 7 && r.h === 7 && r.x === 100 && r.y === 100);
+r = Wd.resizeWidget(box(100, 100, 100, 50), 'se', -97, -47, [], W, H, true);
+ok('...and with snapping to 5 by 5 (the grid step)', r.w === 5 && r.h === 5);
+r = Wd.resizeWidget(box(100, 100, 100, 50), 'se', -100, -50, [], W, H, false);
+ok('...not smaller than 5: pulled to the corner it stops at 5 by 5', r.w === 5 && r.h === 5 && r.x === 100 && r.y === 100);
+r = Wd.resizeWidget(box(100, 100, 100, 50), 'nw', 300, 300, [], W, H, false);
+ok('...the top left corner stops at 5 too, with the bottom right corner where it was', r.w === 5 && r.h === 5 && r.x === 195 && r.y === 145);
+r = Wd.resizeWidget(box(100, 100, 100, 50), 'ne', -300, 300, [], W, H, false);
+ok('...and so do the other two corners', r.w === 5 && r.h === 5 && r.x === 100 && r.y === 145 && (r = Wd.resizeWidget(box(100, 100, 100, 50), 'sw', 300, -300, [], W, H, false), r.w === 5 && r.h === 5 && r.x === 195 && r.y === 100));
 r = Wd.resizeWidget(box(100, 100, 100, 50), 'se', 5000, 5000, [], W, H, true);
 ok('cannot grow past the canvas', r.x + r.w === W && r.y + r.h === H);
 r = Wd.resizeWidget(box(100, 100, 100, 50), 'se', 96, 0, [other], W, H, true); // right edge -> 296, magnet to 300

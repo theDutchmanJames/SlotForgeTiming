@@ -542,6 +542,28 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   say('Ctrl+A selects everything', sel()===4);
   run("editorKeyHandler({key:'Delete',target:{matches:()=>false}})");
   say('Delete removes everything selected', widgets().length===0 && sel()===0);
+  // ---- 1.34.1: a widget can be made very small ----
+  await openEditor(); run("editorAdd('bestlap')"); { const g0 = widgets()[0]; g0.x = 100; g0.y = 100; g0.w = 150; g0.h = 60; }
+  { const se = (extra = {}) => onW(0, { target: { dataset: { h: 'se' }, closest: () => ({ dataset: { i: '0' } }) }, clientX: 250, clientY: 160, ...extra }), nw = () => onW(0, { target: { dataset: { h: 'nw' }, closest: () => ({ dataset: { i: '0' } }) }, clientX: 100, clientY: 100 });
+    E('canvas').onpointerdown(onW(0)); (listeners.pointerup||[]).slice(-1)[0]?.();
+    say('a widget can be as small as 5 units, in the editor and on the grid (it was 40): pulled in from the bottom right corner', run('Widgets.MIN') === 5 && (drag(se(), -900, -900), widgets()[0].w === 5 && widgets()[0].h === 5 && widgets()[0].x === 100 && widgets()[0].y === 100));
+    widgets()[0].w = 150; widgets()[0].h = 60;
+    drag(nw(), 900, 900);
+    say('...and from the top left corner, with the bottom right corner where it was', widgets()[0].w === 5 && widgets()[0].h === 5 && widgets()[0].x === 245 && widgets()[0].y === 155);
+    widgets()[0].x = 100; widgets()[0].y = 100; widgets()[0].w = 150; widgets()[0].h = 60; E('e-snap').onchange({ target: { checked: false } });
+    drag(se(), -143, -53);
+    say('without snapping the size is exactly what is dragged: 7 by 7 (no grid step, no 40)', widgets()[0].w === 7 && widgets()[0].h === 7);
+    say('a small widget that is selected has its handles outside its corners (the class tiny), so the widget itself can be grabbed', /class="lw sel tiny[ "]/.test(E('canvas').innerHTML) && (E('canvas').innerHTML.match(/class="h /g) || []).length === 4);
+    drag(onW(0, { clientX: 105, clientY: 105 }), 50, 40);
+    say('...and a drag on the small widget moves it (it is not a resize)', widgets()[0].x === 150 && widgets()[0].y === 140 && widgets()[0].w === 7 && widgets()[0].h === 7);
+    widgets()[0].w = 59; widgets()[0].h = 200; drag(onW(0, { clientX: 160, clientY: 150 }), 0, 0);
+    say('a widget narrower than 60 units counts as small, and one lower than 60 too', /class="lw sel tiny[ "]/.test(E('canvas').innerHTML) && (widgets()[0].w = 200, widgets()[0].h = 59, drag(onW(0, { clientX: 160, clientY: 150 }), 0, 0), /class="lw sel tiny[ "]/.test(E('canvas').innerHTML)));
+    widgets()[0].w = 60; widgets()[0].h = 60; drag(onW(0, { clientX: 160, clientY: 150 }), 0, 0);
+    say('...60 by 60 is not small, and keeps its handles on the corners', !E('canvas').innerHTML.includes('tiny') && E('canvas').innerHTML.includes('class="lw sel"'));
+    widgets()[0].w = 7; widgets()[0].h = 7; E('canvas').onpointerdown(ptr({ clientX: 900, clientY: 500 })); (listeners.pointerup||[]).slice(-1)[0]();
+    say('a small widget that is not selected has no handles, so nothing special', !E('canvas').innerHTML.includes('tiny') && !E('canvas').innerHTML.includes('class="h '));
+    E('e-snap').onchange({ target: { checked: true } });
+    say('the handles of a small widget are drawn outside the corners (the style sheet)', /\.lw\.tiny \.h\.nw\{left:-11px;top:-11px\}\.lw\.tiny \.h\.ne\{right:-11px;top:-11px\}\.lw\.tiny \.h\.sw\{left:-11px;bottom:-11px\}\.lw\.tiny \.h\.se\{right:-11px;bottom:-11px\}/.test(css2)); }
   // ---- duplicate for the next lane ----
   await openEditor(); run("editorAdd('bestlap')"); let w0=widgets()[0]; w0.x=100; w0.y=100; w0.w=150; w0.h=60; w0.lane=0;
   run('state.editing.sel=[state.editing.draft.widgets[0]]'); E('side').onclick({target:{closest:()=>({id:'s-dup'})}});
@@ -1056,6 +1078,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   say('Customization has a Widget Builder tab, and its list starts empty with a New button', E('customtabs').innerHTML.includes('Widget Builder') && E('setupbox').innerHTML.includes('id="newwb"') && E('setupbox').innerHTML.includes('No widgets yet'));
   await E('setupbox').onclick({target:{closest:()=>({id:'newwb',dataset:{}})}});
   say('a new widget has name, kind, text, variable buttons, size and a preview', ['wb-name','wb-type','wb-text','wb-w','wb-h','wb-size','wb-save','wb-prev'].every(i=>E('setupbox').innerHTML.includes('id="'+i+'"')) && E('setupbox').innerHTML.includes('data-var="best"'));
+  say('1.34.1: the width and the height of a custom widget can be as small as a widget can be (5)', /id="wb-w" type="number" min="5"/.test(E('setupbox').innerHTML) && /id="wb-h" type="number" min="5"/.test(E('setupbox').innerHTML));
   await E('wb-save').onclick(); say('saving without a name is refused', !calls.slice(-1).some(c=>c[0]==='add'&&c[1]==='customwidgets'));
   E('wb-name').oninput({target:{value:'Best lap line'}}); E('wb-text').oninput({target:{value:'{name}: {best}'}}); E('wb-size').onchange({target:{value:'44'}});
   const nW=calls.length; await E('wb-save').onclick();
@@ -2903,6 +2926,9 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   say('place and size can be typed', rd().widgets[6].x===300 && rd().widgets[6].w===400);
   E('side').oninput({target:{dataset:{geo:'w'},value:'9000',type:'number'}});
   say('...but stay inside the row', rd().widgets[6].x+rd().widgets[6].w<=1000);
+  E('side').oninput({target:{dataset:{geo:'w'},value:'7',type:'number'}}); E('side').oninput({target:{dataset:{geo:'h'},value:'6',type:'number'}});
+  say('1.34.1: the width and height of a cell of the row can be typed down to 5 (a width of 7 and a height of 6 stay as typed; 2 becomes 5)', rd().widgets[6].w===7 && rd().widgets[6].h===6 && (E('side').oninput({target:{dataset:{geo:'w'},value:'2',type:'number'}}), E('side').oninput({target:{dataset:{geo:'h'},value:'1',type:'number'}}), rd().widgets[6].w===5 && rd().widgets[6].h===5));
+  E('side').oninput({target:{dataset:{geo:'w'},value:'400',type:'number'}}); E('side').oninput({target:{dataset:{geo:'h'},value:'60',type:'number'}});
   E('e-rowh').oninput({target:{value:'100'}});
   say('row height changes the design and the canvas', rd().ratioH===100 && E('canvas').style.aspectRatio==='1000 / 100');
   E('e-radius').oninput({target:{value:'40'}});

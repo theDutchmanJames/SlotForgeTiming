@@ -57,7 +57,7 @@ function renderWidgetBuilderEditor(box) {
     <div class="field"><label for="wb-name">Name</label><input id="wb-name" type="text" maxlength="60" value="${esc(d.name)}"></div>
     <div class="field"><label for="wb-type">Kind</label><select id="wb-type">${wbKinds.map(k => `<option value="${k[0]}"${k[0] === d.type ? ' selected' : ''}>${esc(k[1])}</option>`).join('')}</select></div>
     ${img ? imgBody() : textBody}
-    <div class="row"><label>Width <input id="wb-w" type="number" min="40" max="1000" step="5" value="${esc(d.w)}" style="width:5em"></label><label>Height <input id="wb-h" type="number" min="40" max="1000" step="5" value="${esc(d.h)}" style="width:5em"></label>
+    <div class="row"><label>Width <input id="wb-w" type="number" min="${Widgets.MIN}" max="1000" step="5" value="${esc(d.w)}" style="width:5em"></label><label>Height <input id="wb-h" type="number" min="${Widgets.MIN}" max="1000" step="5" value="${esc(d.h)}" style="width:5em"></label>
       ${img ? '' : `<label>Text size <input id="wb-size" type="number" min="5" max="200" step="1" value="${esc(d.textSize)}" style="width:5em"></label>
       <label class="inline"><input type="checkbox" id="wb-bold" ${d.valueBold !== false ? 'checked' : ''}> Bold</label><label class="inline"><input type="checkbox" id="wb-italic" ${d.valueItalic ? 'checked' : ''}> Italic</label>`}</div>
     <p class="muted">Preview${img ? ' (the fixed picture, or the first rule\'s picture)' : ' with sample values'} (colours and the exact size are set in the Layout Editor):</p><div id="wb-prev">${preview()}</div>`;
