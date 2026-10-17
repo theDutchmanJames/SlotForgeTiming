@@ -2049,6 +2049,18 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     // the Trackmate chip follows the connection, while Home is open
     await home(); run('Trackmate.link.setConnected(true)');
     say('the Trackmate chip lights up when the Trackmate is connected, and goes dark when it is not', E('hm-chips').innerHTML.includes('data-state="on"><i aria-hidden="true"></i>Trackmate connected') && (run('Trackmate.link.setConnected(false)'), E('hm-chips').innerHTML.includes('Trackmate not connected')));
+    // the same chip for the Arduino box: ticking "Use the virtual box" must show on Home (the chip used to look at the Trackmate only)
+    run('state.settings.abVirtual = true'); const hv = await home(); // (the chip as drawn with the page; the live updates below land in #hm-chips)
+    say('1.37.3: with the virtual box chosen and not yet connected the chip says so, dark', hv.includes('data-key="tm" data-state="off"><i aria-hidden="true"></i>Virtual Arduino box not connected') && !hv.includes('Trackmate not connected'));
+    run('ArduinoBox.link.setConnected(true)');
+    say('...it lights up when the virtual box connects while Home is open', E('hm-chips').innerHTML.includes('data-state="on"><i aria-hidden="true"></i>Virtual Arduino box connected'));
+    run('Trackmate.link.setConnected(true)');
+    say('...with the Trackmate connected too, both are named', E('hm-chips').innerHTML.includes('>Trackmate and Virtual Arduino box connected'));
+    run('Trackmate.link.setConnected(false); ArduinoBox.link.setConnected(false)');
+    say('...and it goes dark again when the box goes away', E('hm-chips').innerHTML.includes('data-state="off"><i aria-hidden="true"></i>Virtual Arduino box not connected'));
+    run('state.settings.abVirtual = false; state.settings.abDevice = { vid: 9025, pid: 67 }'); const hr = await home();
+    say('...a remembered real box is the "Arduino box"; and with nothing chosen it is the Trackmate again', hr.includes('data-state="off"><i aria-hidden="true"></i>Arduino box not connected') && (run('delete state.settings.abDevice'), (await home()).includes('data-state="off"><i aria-hidden="true"></i>Trackmate not connected')));
+    run('delete state.settings.abVirtual');
     // a network that was switched on but could not start
     run('state.settings.netOn = true'); api.netStatus = async () => ({ on: false, port: 0, error: 'Port 8787 is already in use. Choose another port.', passwordSet: false, urls: [] }); await home();
     say('a network that is switched on but could not start gets a red light', E('hm-chips').innerHTML.includes('data-state="warn"><i aria-hidden="true"></i>Network sharing could not start'));

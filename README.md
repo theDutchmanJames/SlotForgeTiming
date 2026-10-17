@@ -2368,3 +2368,11 @@ Good to know:
 2. `tools/check-firmware.sh`, `tools/fwhost/run.js` and this check are developer tools run by hand after a change in the firmware. They are not part of `npm test` (the installer and the Windows build do not need them); `npm run sketch` and `npm run fwtest` stay the only scripts.
 3. **GitHub tags** are still not pushed (refused from here).
 
+## What to try (1.37.3): the Home chip follows the timing hardware
+1. App Settings > Timing Hardware > Arduino: tick **Use the virtual box**. Go to Home. The first chip under the date now says **Virtual Arduino box connected**, with the green light (it used to say *Trackmate not connected*).
+2. Untick it: the chip is dark again and says *Trackmate not connected* (nothing is chosen). Connect a real box, or a Trackmate: *Arduino box connected* / *Trackmate connected*. With both connected: *Trackmate and Arduino box connected*.
+3. With the virtual box ticked but not connected (Auto-connect off), the chip is dark and says *Virtual Arduino box not connected*.
+
+Good to know:
+1. There is no separate "which hardware do I use" setting. What is **connected** is named first; when nothing is connected, the chip names what was **chosen** (the virtual box ticked, a remembered box, a remembered Trackmate) and falls back to the Trackmate.
+2. The race screen's status line is unchanged: it says *Trackmate not connected · Arduino box connected* when only the box is connected. Say so if it should follow the same wording.

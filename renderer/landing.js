@@ -4,7 +4,7 @@ const optionsOf = (entity, list, chosen, blank = '(choose)') =>
 
 // 1.17.0: the cards on the right of the Home tab need every saved lap. The laps are fetched once and kept while you stay on the Home tab (a change on Home does not fetch them again);
 // app.js forgets them (resetHome) whenever another tab was shown, because a race may have been saved or a record removed since. homeRun numbers the pictures, so a late answer never lands in a newer one.
-let homeLaps = null, homeRun = 0, homeOffTm = null;
+let homeLaps = null, homeRun = 0, homeOffTm = null, homeOffAb = null;
 // 1.26.0: a line of text or a number in Customize is saved when you leave the field. Home is drawn again a moment later (HOME_SOFT_MS), so that a click or a Tab that comes next
 // is not lost to a page that changes under it, and the control that has the cursor then keeps it. While you are typing in a field (an input without its change yet) nothing is drawn.
 let HOME_SOFT_MS = 400;
@@ -165,7 +165,10 @@ async function renderHome() {
       <p class="hint2">The race comes back paused, with its clock where it was. The laps driven since then are not in it (the review can add them), and the lap that was being driven is left out of the records. Press Space to carry on.${resume.heat ? ' The heats that were done are kept.' : ''}</p></section>`;
   // 1.17.0: the welcome band (date, track and status chips), the start card with its coloured lanes and start lights, and the cards on the right
   const audio = setup && (audiosets || []).find(x => x.id === setup.audioSet), audioName = audio ? audio.name || '(unnamed)' : '';
-  const chipsNow = more => HomeStats.chips({ trackmate: typeof Trackmate !== 'undefined' && !!Trackmate.link.connected, netOn: !!state.settings.netOn, netError: more && more.netError, hasSetup: !!setup, audioName, drivers: drivers.length, cars: cars.length, tracks: tracks.length });
+  // the timing hardware chip: the Trackmate and the SlotForge (Arduino) box, the real one or the virtual one
+  const abLink = typeof ArduinoBox !== 'undefined' && ArduinoBox.link ? ArduinoBox.link : null;
+  const chipsNow = more => HomeStats.chips({ trackmate: typeof Trackmate !== 'undefined' && !!Trackmate.link.connected, trackmateChosen: !!state.settings.tmDevice,
+    arduino: { connected: !!(abLink && abLink.connected), virtual: state.settings.abVirtual === true, chosen: state.settings.abVirtual === true || !!state.settings.abDevice }, netOn: !!state.settings.netOn, netError: more && more.netError, hasSetup: !!setup, audioName, drivers: drivers.length, cars: cars.length, tracks: tracks.length });
   const chipHtml = c => `<span class="hm-chip" data-key="${c.key}"${c.state ? ` data-state="${c.state}"` : ''}>${c.state ? '<i aria-hidden="true"></i>' : ''}${esc(c.text)}</span>`;
   const today = new Date().toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
   const lt = HomeStats.lights(rows, { byTeam, enduSingle, tokens }, heats ? (byTeam ? 'team' : 'participant') : 'lane', issues.length > 0), shown = rows.map((r, i) => ({ r, i })).filter(x => !x.r.absent);
@@ -357,6 +360,12 @@ async function renderHome() {
   if (typeof Trackmate !== 'undefined' && Trackmate.link && Trackmate.link.onStatus) {
     const off = Trackmate.link.onStatus(() => { if (run !== homeRun || !setChips({ netError })) { off(); if (homeOffTm === off) homeOffTm = null; } });
     homeOffTm = off;
+  }
+  // (the box connects by itself a moment after the app starts, or when the virtual box is ticked: the same chip follows it)
+  if (homeOffAb) { homeOffAb(); homeOffAb = null; }
+  if (abLink && abLink.onStatus) {
+    const off = abLink.onStatus(() => { if (run !== homeRun || !setChips({ netError })) { off(); if (homeOffAb === off) homeOffAb = null; } });
+    homeOffAb = off;
   }
 
   // ---- the other cards of the grid (1.25.0). The cards that need races come when the laps are in; Rules of this race needs the names of the rule sets of the setup. ----
