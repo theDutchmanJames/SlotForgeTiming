@@ -41,6 +41,14 @@ There are default settings for everything, so you could dive right in by clickin
 This sets up a basic race. There is a default one in place as well, but this would get you started on customization later on, when you are comfortable with that.
 
 
+## Licence and copyright
+SlotForge Timing is made by theDutchmanJames. Copyright 2026 theDutchmanJames.
+
+You may use it, study it, change it and pass it on for any **non-commercial** purpose: at home, in a club, at a school, for a charity. You may not sell it, or use it for commercial purposes, without permission. The terms are in the file **LICENSE**: the [PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0), a ready-made licence (the text of the licence is what counts, this paragraph is only the short version). Whoever passes the program on has to pass on the LICENSE file (or its link) and the line `Required Notice: Copyright 2026 theDutchmanJames (https://github.com/theDutchmanJames/SlotForgeTiming)`.
+
+This is a "source available" licence, not an "open source" one in the strict sense: open source licences do not allow a ban on commercial use. The QR code library in `vendor/QRCode` keeps its own licence (`LICENSE-qrcode-terminal.txt`).
+
+
 ## CHANGES
 ## What to try (batch K1: small improvements)
 1. **Home**: the Drivers and Slot cars cards show the 5 used last (the rest fill in if fewer have been used), with a **Show all N in the database** button that opens the matching Database page.
@@ -2297,3 +2305,16 @@ Good to know:
 3. A fix on the way: the Home card with the rules did not show the driver swaps of an Endurance Race at all; it does now.
 4. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 5. The tests: `tests/distanceswap.test.js` (the rules, the engine at the line and anywhere, the widgets, the settings, Home, the results, the audio call), `tests/distancescreen.test.js` (Home, the race screen with the Swap Signal, a saved session with the metres of every driver), `tests/screens.test.js` (the settings) and `tests/help.test.js`.
+
+## What to try (1.35.2): author, licence and app id
+The program now says whose it is, and on what terms it may be used. Nothing changes in the way the program works.
+1. Open the file **LICENSE** (it is in the zip, in the repository and in the installed program): the PolyForm Noncommercial License 1.0.0, with the line *Required Notice: Copyright 2026 theDutchmanJames*. Free for any non-commercial use; commercial use needs your permission.
+2. `package.json` has the **author** (theDutchmanJames), the **licence**, the **home page**, the **repository** and the **bugs** page of the project on GitHub.
+3. The placeholder **app id** `com.example.slotforgetiming` is now `io.github.thedutchmanjames.slotforgetiming`, and the Linux package's **maintainer** (it was `noreply@slotforge.invalid`) is `James <thedutchmanjames@gmail.com>`. The installers carry a copyright line (*Copyright © 2026 theDutchmanJames*), which shows in the About / file properties of the installed program.
+
+Good to know:
+1. Your data is not touched: the data folder is fixed by name (`slotforge-timing`), not by the app id.
+2. A copy that was installed with the old app id is seen as another program by macOS and Windows: macOS asks for its permissions again (for example the local network), and Windows installs next to the old copy instead of replacing it. Uninstall the old copy once. The portable program and a copy started with `npm start` are not affected.
+3. You asked for "like MIT, but no commercial selling". PolyForm Noncommercial goes one step further than a ban on selling: it does not allow **any** commercial use (for example a paid slot car track that runs the program for its customers needs your permission). If you only want to forbid selling the program itself, say so and the licence can be changed; a ban on selling alone needs wording that a lawyer should look at.
+4. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+5. The tests: `tests/package.test.js` (the author, the licence and the LICENSE file, the app id, the maintainer, the copyright, the installer list, the README).
