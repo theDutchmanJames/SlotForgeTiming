@@ -42,7 +42,8 @@ api.saveResume = async snap => { kept.snap = JSON.parse(JSON.stringify(snap)); k
 const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if (appConsole.expected) { appConsole.seen++; return; } console.log('FAIL the app reported an error: ' + a.map(x => (x && x.stack) || x).join(' ').slice(0, 300)); fails++; } };
 // the real app passes everything through Electron's structured clone, which refuses a function ("An object could not be cloned"): every call of the app interface is checked the same way here
 for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function') api[k] = (...x) => { x.forEach(v => { if (typeof v !== 'function') structuredClone(v); }); return f(...x); }; }
-const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
+const timers = new Set(); // (every timer of the app: a race that is dropped by the test, without finishing, would keep its timer)
+const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval: (f, ms) => { const t = setInterval(f, ms); timers.add(t); return t; }, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
 for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js', 'distance.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'boardorder.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'report.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'homecards.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'enduranceui.js', 'damageui.js', 'weatherui.js', 'tyreui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
@@ -61,6 +62,7 @@ const nowMs = () => run('performance.now()');
 const events = type => eng().events.filter(e => e.type === type);
 const give = (lane, n) => E('dmpanel').onclick({ target: { closest: () => ({ disabled: false, dataset: { n: String(n) }, blur() {}, closest: () => ({ dataset: { lane: String(lane) } }) }) } });
 const car = i => eng().cars[i];
+const lookOf0 = i => eng().enLook(i, nowMs());
 const view = () => run('Damage.view(live.engine(), [0, 1], performance.now(), live.phase)');
 
 
@@ -147,7 +149,93 @@ const view = () => run('Damage.view(live.engine(), [0, 1], performance.now(), li
   store.teams = [{ id: 'T1', name: 'Red Bulls', drivers: ['d1', 'd2'] }, { id: 'T2', name: 'Blue Moons', drivers: ['d3', 'd4'] }];
   await openRace({ id: 'es1', name: 'Day race', sessionType: 'endurance', enduranceBy: 'distance', distance: 104, distanceMode: 'same', endRule: 'all', swapUnit: 'laps', swapMode: 'every', swapEvery: 5, layout: 'DL' }, meas, [{ teamId: 'T1', carId: 'c1', driverId: 'd1' }, { teamId: 'T2', carId: 'c2', driverId: 'd3' }]);
   say('an Endurance Race set to a distance is a race by distance with swaps: 11 laps on lane 1 (110 m), 10 laps on lane 2 (105 m); the swap rules are there too', !!eng().distance && eng().limitOf(eng().cars[0]) === 11 && eng().limitOf(eng().cars[1]) === 10 && !!eng().endurance && eng().cars.every(c => c.en) && html().includes('104 m'));
-  run('state.race = null; live = null');
+  run('state.race = null; live = null'); timers.forEach(clearInterval); // (a race that is not finished has its timer running)
+
+  // ---------- an Endurance Race with the swaps counted in distance (1.35.1) ----------
+  {
+    timers.forEach(clearInterval);
+    const sl = { ...JSON.parse(run('JSON.stringify(Widgets.defaultLayout())')), id: 'SL', name: 'Swap layout' };
+    sl.widgets = [0, 1].flatMap(lane => [wd('st' + lane, 'swaptimer', lane, 0, {}), wd('sg' + lane, 'swapsignal', lane, 1, {}), wd('cd' + lane, 'currentdriver', lane, 2, {})]);
+    store.layouts = [layout, sl];
+    const ssetup = over => ({ id: 'sw1', name: 'Swap race', sessionType: 'endurance', enduranceBy: 'laps', laps: 6, endRule: 'all', swapUnit: 'distance', swapMode: 'every', swapEveryDist: 20, swapWarnDist: 5, swapWhere: 'line', swapConfirm: 'button', swapNext: 'order', swapGrace: 30, swapLate: 'count', layout: 'SL', ...over });
+    const asg = [{ teamId: 'T1', carId: 'c1', driverId: 'd1' }, { teamId: 'T2', carId: 'c2', driverId: 'd3' }];
+    const home2 = async (setup, track) => {
+      store.racesetups = [{ track: track.id, ...setup }]; store.tracks[0] = meas;
+      run('state.settings.homeGrid = ' + JSON.stringify({ cols: 4, rows: 3, boards: [{ c: 1, r: 1, w: 2, h: 1, opt: { card: 'start' } }, { c: 3, r: 1, w: 2, h: 2, opt: { card: 'rules' } }] }) + ';'); run("state.settings.lastSetupId = '" + setup.id + "'; state.settings.assignments = " + JSON.stringify({ [setup.id]: asg }) + "; state.tab = 'home'; state.race = null; live = null");
+      await run('render()'); await wait(30); return E('view').innerHTML.replace(/&quot;/g, '"');
+    };
+    const rules = () => E('hmc-rules').innerHTML.replace(/&quot;/g, '"');
+    let hh = await home2(ssetup(), meas);
+    say('Home: an Endurance Race with swaps counted in distance on a track with lane lengths has no problem, and the rules say the swaps', !hh.includes('lane lengths are needed') && rules().includes('<span class="muted">Driver swaps</span><strong>Every 20 m, at the line</strong>'));
+    hh = await home2(ssetup(), store.tracks[1]);
+    say('...on a track without lane lengths Home says the lengths are needed, with the way out', hh.includes('The driver swaps are counted in distance, so the lane lengths are needed. The track has no length. Add the track length in the Database.') && /id="start"[^>]*disabled/.test(hh));
+    hh = await home2(ssetup({ swapUnit: 'laps', swapEvery: 2 }), store.tracks[1]);
+    say('...swaps counted in laps need no lengths', !hh.includes('lane lengths are needed'));
+    hh = await home2(ssetup({ swapWhere: 'anywhere' }), meas);
+    say('...anywhere on the track is told too', rules().includes('<strong>Every 20 m, anywhere on the track</strong>'));
+    run("state.settings.distanceUnit = 'ft'"); hh = await home2(ssetup({ swapEveryDist: 15.24 }), meas);
+    say('...in feet when App Settings say so', rules().includes('<strong>Every 50 ft, at the line</strong>')); run('delete state.settings.distanceUnit');
+    run('delete state.settings.homeGrid');
+
+    const n0 = saved.length;
+    await openRace(ssetup(), meas, [{ teamId: 'T1', carId: 'c1', driverId: 'd1' }, { teamId: 'T2', carId: 'c2', driverId: 'd3' }]);
+    say('the race has the swaps in distance: the rules are in metres, every car knows the length of its lane, and the race header says the swaps', eng().endurance.unit === 'distance' && eng().endurance.every === 20 && eng().endurance.where === 'line' && same_(eng().cfg.laneLengths, [10, 10.5]) && eng().cars.every(c => c.en) && html().includes('6 laps, a swap every 20 m at the line'));
+    key(' '); await until(() => phase() === 'running', 5000); await wait(60);
+    say('...nothing is driven, so the Swap Timer counts the whole 20 m and the Swap Signal is quiet', show('st0') === 'Swap in 20 m' && show('sg0') === '' && show('sg1') === '' && show('cd0').includes('Alex'));
+    await lapOn(0); await lapOn(1);
+    say('after a lap each (10 m and 10.5 m): 10 m and 9.5 m to go', show('st0') === 'Swap in 10 m' && show('st1') === 'Swap in 9.5 m' && show('sg0') === '' && lookOf0(0).dist === 10 && lookOf0(1).dist === 10.5);
+    await lapOn(0);
+    say('after the second lap of lane 1 (20 m) the swap is due: the Swap Timer and the Swap Signal say so, with who comes out and who steps in, and the other lane is not touched', show('st0') === 'SWAP NOW' && show('sg0').includes('<b>SWAP</b>') && show('sg0').includes('Alex → Sam') && show('sg1') === '' && events('swapdue').length === 1 && events('swapdue')[0].car === 0 && events('swapdue')[0].why === 'interval');
+    say('...nobody has been swapped yet: Alex is at the wheel, and the signal stays', eng().cars[0].driverName === 'Alex' && show('sg0').includes('SWAP'));
+    api.liveCommand({ type: 'swap', lane: 0 }); await wait(80);
+    say('Swap done: Sam is at the wheel, the stint of Alex was 20 m, the signal goes, and the next swap is 20 m further on', eng().cars[0].driverName === 'Sam' && events('swapdone')[0].stintM === 20 && show('sg0') === '' && show('st0') === 'Swap in 20 m' && show('cd0').includes('Sam'));
+    for (let n = 0; n < 4; n++) await lapOn(0);
+    say('...Sam drives the 4 laps left (40 m): his swap was due at 20 m again and is waiting for a button', show('sg0').includes('Sam → Alex') && lookOf0(0).stintM === 40);
+    await lapOn(1); await lapOn(1); // lane 2 has driven 3 laps (31.5 m): Kim swaps for Lee, who drives 2 laps (21 m), then Kim drives the last lap (10.5 m)
+    api.liveCommand({ type: 'swap', lane: 1 }); await wait(80);
+    await lapOn(1); await lapOn(1);
+    say('...a stint of 2 laps of 10.5 m is 21 m, and the swap of the other lane was made at 31.5 m', eng().cars[1].driverName === 'Lee' && lookOf0(1).stintM === 21 && events('swapdone').filter(e => e.car === 1)[0].stintM === 31.5);
+    api.liveCommand({ type: 'swap', lane: 1 }); await wait(80);
+    await lapOn(1);
+    await until(() => phase() === 'finished', 5000); await wait(150);
+    await until(() => saved.length > n0, 5000);
+    const s2 = saved[n0] && saved[n0][0], red = s2 && s2.standings.find(x => x.teamId === 'T1'), blue = s2 && s2.standings.find(x => x.teamId === 'T2');
+    say('what is saved: Red Bulls have Alex with 20 m (2 laps) and Sam with 40 m (4 laps), the stints name their metres, and Blue Moons have Kim with 31.5 + 10.5 = 42 m (4 laps) and Lee with 21 m (2 laps)', !!red && red.drivers.map(d => d.driverId + ':' + d.laps + ':' + d.meters).join() === 'd1:2:20,d2:4:40' && red.stints.map(q => q.driverId + ':' + q.meters).join() === 'd1:20,d2:40' && blue.drivers.map(d => d.driverId + ':' + d.laps + ':' + d.meters).join() === 'd3:4:42,d4:2:21' && blue.stints.map(q => q.driverId + ':' + q.meters).join() === 'd3:31.5,d4:21,d3:10.5' && s2.setupName === 'Swap race');
+    run('state.race = null; live = null'); timers.forEach(clearInterval);
+
+    // the distances in feet when App Settings say so: the header of the race and the Swap Timer
+    run("state.settings.distanceUnit = 'ft'");
+    await openRace(ssetup({ swapEveryDist: 15.24 }), meas, [{ teamId: 'T1', carId: 'c1', driverId: 'd1' }, { teamId: 'T2', carId: 'c2', driverId: 'd3' }]);
+    key(' '); await until(() => phase() === 'running', 5000); await wait(60);
+    say('in feet: the race says "a swap every 50 ft at the line" and the Swap Timer counts in feet (15.24 m is 50 ft)', html().includes('6 laps, a swap every 50 ft at the line') && eng().endurance.disp === 'ft' && show('st0') === 'Swap in 50 ft');
+    await lapOn(0);
+    say('...after a lap of 10 m, 36 ft to go', show('st0') === 'Swap in 17.2 ft'.replace('17.2', String(Math.round((15.24 - 10) / 0.3048 * 10) / 10)));
+    run('delete state.settings.distanceUnit; state.race = null; live = null'); timers.forEach(clearInterval);
+
+    // one message for a track without a length, not two, when the race is by distance as well
+    hh = await home2(ssetup({ enduranceBy: 'distance', distance: 104 }), store.tracks[1]);
+    say('Home: an Endurance Race by distance with swaps in distance on a track without a length says it once', (hh.match(/The track has no length/g) || []).length === 1 && !hh.includes('lane lengths are needed'));
+
+    // a heat-based Endurance Race: every heat swaps by distance, and the result of each team has the metres of every driver and of every stint
+    const plan2 = [[{ p: 0, lane: 0 }, { p: 1, lane: 1 }], [{ p: 0, lane: 0 }, { p: 1, lane: 1 }]];
+    saved.length = 0;
+    await openRace(ssetup({ enduranceBy: 'heats', heatBy: 'laps', laps: 4, heatPlan: 'manual', heats: 2, resultBy: 'laps', teamDriver: 'order' }), meas, [{ teamId: 'T1', carId: 'c1' }, { teamId: 'T2', carId: 'c2' }], { byTeam: true, schedule: plan2 });
+    key(' '); await until(() => phase() === 'running', 5000); await wait(60);
+    await lapOn(0); await lapOn(0);
+    say('heat 1: the swap is due after 20 m (2 laps of 10 m)', lookOf0(0).state === 'due' && lookOf0(0).dist === 20);
+    api.liveCommand({ type: 'swap', lane: 0 }); await wait(80);
+    for (let n = 0; n < 2; n++) await lapOn(0);
+    for (let n = 0; n < 4; n++) await lapOn(1);
+    await until(() => phase() === 'between', 6000);
+    say('...the heat ends, the next heat starts from nothing (the distance of the new cars is 0)', phase() === 'between' && eng().cars.every(c => c.en && c.en.stints.length === 1));
+    key(' '); await until(() => phase() === 'running', 5000); await wait(60);
+    for (let n = 0; n < 4; n++) { await lapOn(0); await lapOn(1); }
+    await until(() => phase() === 'finished', 6000); await wait(150);
+    await until(() => saved.length > 0, 5000);
+    const hs = saved[0] && saved[0][0], hred = hs && hs.standings.find(x => x.teamId === 'T1');
+    say('the heats are saved with the metres: Red Bulls drove Alex 20 m + 40 m (heat 2: no swap) = 60 m and Sam 20 m, in stints of 20, 20 and 40 m', !!hred && hred.drivers.map(d => d.driverId + ':' + d.meters).join() === 'd1:60,d2:20' && hred.stints.map(q => q.heat + ':' + q.driverId + ':' + q.meters).join() === '1:d1:20,1:d2:20,2:d1:40');
+    run('state.race = null; live = null'); timers.forEach(clearInterval);
+  }
 
   reachedEnd = true;
   console.log(fails ? fails + ' DISTANCE SCREEN TESTS FAILED' : 'ALL DISTANCE SCREEN TESTS PASSED'); process.exit(fails ? 1 : 0);

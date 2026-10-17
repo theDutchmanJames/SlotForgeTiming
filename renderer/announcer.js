@@ -251,7 +251,7 @@
         else if (e.type === 'penalty' && e.delta > 0 && e.why !== 'tyres' && e.why !== 'swaplate' && e.why !== 'damage' && e.why !== 'damagelate') ev('penalty', { ...who(c), points: e.delta }); // (penalty points for the tyres, for a swap that is not made and for the damage rules are said by their own calls)
         else if (e.type === 'assigned') ev('specialpenalty', { ...who(c), penalty: pen });
         else if (e.type === 'disqualified') ev('disqualified', who(c));
-        else if (e.type === 'swapsoon') ev('swapsoon', { ...who(c), nextdriver: rosterWho(c, e.next).spoken, swapin: eng.endurance ? EnT.spanText(eng.endurance, eng.endurance.warn) : '' });
+        else if (e.type === 'swapsoon') ev('swapsoon', { ...who(c), nextdriver: rosterWho(c, e.next).spoken, swapin: eng.endurance ? EnT.spokenSpan(eng.endurance, eng.endurance.warn) : '' });
         else if (e.type === 'swapdue') ev('swapdue', { ...who(c), nextdriver: rosterWho(c, e.next).spoken });
         else if (e.type === 'swapdone') { const from = rosterWho(c, e.from), to = rosterWho(c, e.to); ev('swapdone', { ...who(c), driver: from.spoken, name: from.name, nickname: from.nickname, callsign: from.callsign, nextdriver: to.spoken }); }
         else if (e.type === 'swaplate') ev(e.points > 0 ? 'swappenalty' : 'swaplate', { ...who(c), nextdriver: rosterWho(c, e.next).spoken, points: e.points });

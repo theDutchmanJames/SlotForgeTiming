@@ -230,7 +230,11 @@
     if (heated && (setup.finals === 'a' || setup.finals === 'ab')) out.push(['Finals', setup.finals === 'ab' ? 'A final and a B final' : 'A final']);
     if (t === 'endurance') {
       const unit = setup.swapUnit === 'laps' ? 'laps' : 'minutes', mode = setup.swapMode || 'every';
-      out.push(['Driver swaps', mode === 'moments' ? 'At ' + (String(setup.swapMoments || '30, 1:00:00, 2:00:00').trim()) : mode === 'free' ? 'When the team chooses' : `Every ${num(setup.swapEvery, 30)} ${unit}`]);
+      if (setup.swapUnit === 'distance') { // (1.35.1: swaps by distance; the lengths are kept in metres, n.distUnit says how to show them)
+        const Ds = typeof module !== 'undefined' ? require('./distance.js') : root.Distance, at = setup.swapWhere === 'anywhere' ? ', anywhere on the track' : ', at the line', one = v => Ds.text(v, n.distUnit, Math.abs(v * (n.distUnit === 'ft' ? 3.28084 : 1) - Math.round(v * (n.distUnit === 'ft' ? 3.28084 : 1))) < 0.05 ? 0 : 1);
+        const list = String(setup.swapMomentsDist ?? '100, 200').split(/[;,\s]+/).filter(x => x !== '' && Number(x) > 0).map(x => one(Number(x))).join(', ');
+        out.push(['Driver swaps', (mode === 'moments' ? 'At ' + list : mode === 'free' ? 'When the team chooses' : `Every ${one(num(setup.swapEveryDist, 50))}`) + at]);
+      } else out.push(['Driver swaps', mode === 'moments' ? 'At ' + (String(setup.swapMoments || '30, 1:00:00, 2:00:00').trim()) : mode === 'free' ? 'When the team chooses' : `Every ${num(setup.swapEvery, 30)} ${unit}`]);
     }
     const racing6 = ['practice', 'qualifying', 'race', 'timed', 'heats', 'endurance'].includes(t), full = ['race', 'timed', 'heats', 'endurance'].includes(t);
     if (racing6) out.push(['Penalties', n.penalty || 'Off']);

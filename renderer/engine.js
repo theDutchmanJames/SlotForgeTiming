@@ -5,6 +5,7 @@
   const W = typeof module !== 'undefined' ? require('./weather.js') : root.Wx; // Weather: the states, the tyres and what wrong tyres cost
   const En = typeof module !== 'undefined' ? require('./endurance.js') : root.Endurance; // Endurance Race: the swaps of drivers
   const Dm = typeof module !== 'undefined' ? require('./damage.js') : root.Damage; // Damage System: the levels of damage and the repair
+  const Dist = () => (typeof module !== 'undefined' ? require('./distance.js') : root.Distance); // Distance Racing: the lap time to estimate with (looked up when it is needed: distance.js is loaded after this file in the page)
   const MIN_LAP = 800; // crossings closer together than this are treated as double triggers
 
   function fmtTime(ms) {
@@ -386,33 +387,44 @@
     R.endurance = EN;
     const enBusy = i => new Set(R.cars.filter((o, j) => j !== i && o.driverId && !o.done).map(o => o.driverId)); // (drivers who are at the wheel of another car now)
     const enClock = t => (R.status === 'paused' ? R.pausedAt : R.status === 'finished' ? R.endAt : t) - R.t0;
+    // 1.35.1: the distance (metres) a car has driven, for swaps counted in distance: its laps times the length of its lane (cfg.laneLengths, else the lanes of a distance race; a lane with no known length has driven nothing).
+    // At the line: as of the last crossing. Anywhere: between two crossings it goes on, estimated from the time since the last crossing and the lap time to expect (never past the next crossing).
+    const enLen = c => Number((cfg.laneLengths || [])[c.lane]) || lenOf(c) || 0;
+    const enOdo = (c, t) => {
+      if (!EN || EN.unit !== 'distance') return 0;
+      const L = enLen(c); if (!(L > 0)) return 0;
+      const exact = c.laps.length * L; if (EN.where !== 'anywhere' || c.done || R.status === 'finished') return exact;
+      const lap = Dist().expectedLap(c.laps, c.bad), since = enClock(t) - c.total;
+      return lap && since > 0 ? exact + Math.min(since / lap, 0.99) * L : exact;
+    };
+    R.enOdo = enOdo;
     const enName = (c, id) => { const r = (c.roster || []).find(x => x.id === id); return r ? r.name || '' : ''; };
     const enWheel = (c, id) => { const r = (c.roster || []).find(x => x.id === id); if (r) Object.assign(c, { driverId: r.id, driverName: r.name || '', nickname: r.nickname || '', callsign: r.callsign || '', flag: r.flag || '', avatar: r.avatar || '' }); };
     // the swap is made (by: 'sensor' or 'button'); gives the result of Endurance.swap, or null when it can not be made
     function enSwap(i, t, by, to) {
-      const c = R.cars[i], el = enClock(t), laps = c.laps.length;
-      const was = c.driverId, wasName = c.driverName, res = En.swap(EN, c.en, { el, laps, to, by, roster: c.roster, busy: enBusy(i), rnd: enRnd });
+      const c = R.cars[i], el = enClock(t), laps = c.laps.length, m = enOdo(c, t);
+      const was = c.driverId, wasName = c.driverName, res = En.swap(EN, c.en, { el, laps, m, to, by, roster: c.roster, busy: enBusy(i), rnd: enRnd });
       if (!res.ok) return null;
       enWheel(c, res.to);
       if (c.blockAt !== null) { c.enSwapAt = c.blockAt; c.enSwapDoneAt = t; } // (one swap in a stop; the repair of damage can wait for it)
-      log('swapdone', i, t, { from: was, fromName: wasName, to: res.to, toName: enName(c, res.to), by, early: res.early, over: res.over, stintMs: res.stintMs, stintLaps: res.stintLaps, lap: laps });
+      log('swapdone', i, t, { from: was, fromName: wasName, to: res.to, toName: enName(c, res.to), by, early: res.early, over: res.over, stintMs: res.stintMs, stintLaps: res.stintLaps, stintM: res.stintM, m, lap: laps });
       if (res.early && EN.early === 'penalty') R.addPoints(i, EN.penalty, t, 'swap');
-      En.plan(EN, c.en, c.roster, enBusy(i), el, laps, enRnd);
+      En.plan(EN, c.en, c.roster, enBusy(i), el, laps, enRnd, m);
       return res;
     }
     // the sensor: the car stands still for the swap time, and a swap is wanted (it is due; in a free swap also when the shortest stint is over)
     function enSensor(i, t) {
       const c = R.cars[i];
       if (!c.en || EN.confirm === 'button' || c.blockAt === null || c.done || c.enSwapAt === c.blockAt || t - c.blockAt < EN.seconds * 1000) return; // (the caller looks at a race that is running)
-      const l = En.look(EN, c.en, enClock(t), c.laps.length);
+      const l = En.look(EN, c.en, enClock(t), c.laps.length, enOdo(c, t));
       if (l.due || (EN.mode === 'free' && l.allowed)) enSwap(i, t, 'sensor');
     }
     // every look at a car: the swap that is due (once), the penalty for a swap that is refused, the laps that stop counting, who is next, and the sensor
     function enEval(i, t) {
       const c = R.cars[i];
       if (!c.en || c.done || R.status !== 'running') return;
-      const el = enClock(t), laps = c.laps.length, res = En.step(EN, c.en, el, laps);
-      En.plan(EN, c.en, c.roster, enBusy(i), el, laps, enRnd);
+      const el = enClock(t), laps = c.laps.length, m = enOdo(c, t), res = En.step(EN, c.en, el, laps, m);
+      En.plan(EN, c.en, c.roster, enBusy(i), el, laps, enRnd, m);
       res.events.forEach(e => {
         const base = { driver: c.driverId, driverName: c.driverName, next: c.en.nextId, nextName: enName(c, c.en.nextId) };
         if (e.type === 'soon') log('swapsoon', i, t, base);
@@ -442,20 +454,20 @@
     function enEnd(t, why) {
       R.cars.forEach((c, i) => {
         if (!c.en) return;
-        const el = c.done && c.laps.length ? c.total : t - R.t0;
-        En.close(EN, c.en, el, c.laps.length);
+        const el = c.done && c.laps.length ? c.total : t - R.t0, m = EN.unit === 'distance' ? enLen(c) * c.laps.length : 0; // (a race is over at a crossing of the line, or stopped: the exact distance)
+        En.close(EN, c.en, el, c.laps.length, m);
         if (why === 'Stopped') return; // a race that was stopped early: nobody can be short
-        En.short(EN, c.en, c.roster, el, c.laps.length).forEach(x => {
+        En.short(EN, c.en, c.roster, el, c.laps.length, m).forEach(x => {
           const pts = EN.minPenalty, added = R.addPoints(i, pts, t, 'swap');
-          log('swapshort', i, t, { driver: x.id, driverName: enName(c, x.id), ms: x.ms, laps: x.laps, points: added ? pts : 0 });
+          log('swapshort', i, t, { driver: x.id, driverName: enName(c, x.id), ms: x.ms, laps: x.laps, m: x.m, points: added ? pts : 0 });
         });
       });
     }
     // What a screen needs to show of the swaps of car i: the look at the stint ({ state, left, why, allowed, ... }), who is at the wheel and next, and the totals and stints. Null for a car that does not swap.
     R.enLook = (i, t) => {
       const c = R.cars[i]; if (!EN || !c || !c.en) return null;
-      const el = R.status === 'ready' ? 0 : enClock(t), laps = c.laps.length, standing = c.blockAt !== null && R.status === 'running' ? Math.max(0, EN.seconds * 1000 - (t - c.blockAt)) : null; // (standing: how long the car has to stand still for a swap by the sensor)
-      return { ...En.look(EN, c.en, el, laps), driver: c.driverId, next: c.en.nextId, picked: c.en.picked, swaps: c.en.swaps, choices: En.choices(EN, c.en, c.roster, enBusy(i), el, laps), totals: En.totals(c.en, c.roster, el, laps), stints: En.stints(c.en, el, laps), lost: !!c.en.lost, lostLaps: c.swapLost || 0, standLeft: standing };
+      const el = R.status === 'ready' ? 0 : enClock(t), laps = c.laps.length, m = enOdo(c, t), standing = c.blockAt !== null && R.status === 'running' ? Math.max(0, EN.seconds * 1000 - (t - c.blockAt)) : null; // (standing: how long the car has to stand still for a swap by the sensor)
+      return { ...En.look(EN, c.en, el, laps, m), dist: m, driver: c.driverId, next: c.en.nextId, picked: c.en.picked, swaps: c.en.swaps, choices: En.choices(EN, c.en, c.roster, enBusy(i), el, laps, m), totals: En.totals(c.en, c.roster, el, laps, m), stints: En.stints(c.en, el, laps, m), lost: !!c.en.lost, lostLaps: c.swapLost || 0, standLeft: standing };
     };
 
     R.cars.forEach(c => { if (c.en && c.driverId !== c.en.d) enWheel(c, c.en.d); }); // (a team that has no starting driver, or one who is not of the roster, starts with the first of the roster)
@@ -491,7 +503,7 @@
       if (c.pit && F.on) { const rate = c.pit.rate ?? F.rate, tank = c.pit.tank ?? F.tank; if (rate > 0) at = Math.max(at, c.pit.start + Math.max(0, tank - c.pit.fuel0) / rate * 1000); }
       if (c.en && EN && EN.confirm !== 'button') {
         if (c.enSwapAt === c.blockAt) at = Math.max(at, c.enSwapDoneAt ?? at);
-        else { const l = En.look(EN, c.en, enClock(c.blockAt), c.laps.length); if (l.due || (EN.mode === 'free' && l.allowed)) at = Math.max(at, c.blockAt + EN.seconds * 1000); }
+        else { const l = En.look(EN, c.en, enClock(c.blockAt), c.laps.length, enOdo(c, c.blockAt)); if (l.due || (EN.mode === 'free' && l.allowed)) at = Math.max(at, c.blockAt + EN.seconds * 1000); }
       }
       return at;
     }

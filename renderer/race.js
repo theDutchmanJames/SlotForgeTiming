@@ -45,7 +45,10 @@ async function renderRace() {
   const finalLen = () => ({ laps: Number(setup.finalLaps) > 0 ? Number(setup.finalLaps) : setup.laps, duration: Number(setup.finalDuration) > 0 ? Number(setup.finalDuration) : setup.duration, distance: Number(setup.finalDistance) > 0 ? Number(setup.finalDistance) : setup.distance });
   const lenNow = () => (heat && heat.isFinal() ? finalLen() : { laps: setup.laps, duration: setup.duration, distance: setup.distance });
   const setupNow = () => (heat && heat.isFinal() ? { ...setup, ...finalLen() } : setup);
-  const mk = entries => RaceEngine.createRace({ penalty: penCfg, damage: damCfg, type: engineType, laps: lenNow().laps, duration: lenNow().duration, distance: engineType === 'race' ? Distance.config(setupNow(), r.track, lanes) : null, endRule: setup.endRule, minLap: Math.max(RaceEngine.MIN_LAP, (Number(r.track.minLap) || 0) * 1000) / speed, maxLap: (Number(r.track.maxLap) || 0) * 1000 / speed, fuel: fuelCfg, bop: bopCfg, yellow: RaceEngine.yellowConfig(setup), weather: wxFor(), skipFirst: tokenSession || setup.firstLap === 'skip', endurance: setup.endurance || null, rnd: state.rand || Math.random, entries });
+  // 1.35.1: swaps counted in distance need the length of every lane (metres) and the unit to say it in (App Settings: metres or feet)
+  const laneLens = Array.from({ length: lanes }, (_, l) => Number(Speed.laneLength(r.track || {}, l)) || 0);
+  const enduCfg = setup.endurance && setup.endurance.unit === 'distance' ? { ...setup.endurance, disp: Speed.distUnitOf(state.settings) } : setup.endurance || null;
+  const mk = entries => RaceEngine.createRace({ penalty: penCfg, damage: damCfg, type: engineType, laps: lenNow().laps, duration: lenNow().duration, distance: engineType === 'race' ? Distance.config(setupNow(), r.track, lanes) : null, endRule: setup.endRule, minLap: Math.max(RaceEngine.MIN_LAP, (Number(r.track.minLap) || 0) * 1000) / speed, maxLap: (Number(r.track.maxLap) || 0) * 1000 / speed, fuel: fuelCfg, bop: bopCfg, yellow: RaceEngine.yellowConfig(setup), weather: wxFor(), skipFirst: tokenSession || setup.firstLap === 'skip', endurance: enduCfg, laneLengths: setup.endurance && setup.endurance.unit === 'distance' ? laneLens : null, rnd: state.rand || Math.random, entries });
   const pointList = String(setup.points || '').split(',').filter(t => t.trim() !== '').map(Number).filter(n => !isNaN(n)); // '10, 8, 6' -> [10, 8, 6]; blank pieces are skipped (Number('') would make them 0)
 
   let heat = null, eng;
@@ -96,7 +99,7 @@ async function renderRace() {
   const finalsNote = !finalsOn ? '' : `, then ${heat.total - heat.count === 2 ? 'finals B and A' : 'a final A'}${setup.heatBy === 'time' ? (Number(setup.finalDuration) > 0 ? ` of ${setup.finalDuration} minutes` : '') : setup.heatBy === 'distance' ? (Number(setup.finalDistance) > 0 ? ` of ${Distance.text(Number(setup.finalDistance), dUnit)}` : '') : (Number(setup.finalLaps) > 0 ? ` of ${setup.finalLaps} laps` : '')}`;
   const limit = tokenSession ? 'paid time per lane' : heats ? `${heat.count} heats, each ${setup.heatBy === 'time' ? setup.duration + ' minutes' : setup.heatBy === 'distance' ? Distance.lengthText(setup, dUnit) : setup.laps + ' laps'}${finalsNote}`
     : setup.sessionType === 'race' ? (Distance.isOn(setup) ? Distance.lengthText(setup, dUnit) : `${setup.laps} laps`) : (setup.sessionType === 'timed' || setup.sessionType === 'qualifying') ? `${setup.duration} minutes` : 'no limit';
-  const limitFull = setup.endurance && !tokenSession ? `${limit}, ${Endurance.rulesText(setup.endurance)}` : limit; // (an Endurance Race says how it swaps)
+  const limitFull = setup.endurance && !tokenSession ? `${limit}, ${Endurance.rulesText(enduCfg)}` : limit; // (an Endurance Race says how it swaps)
   const planHtml = !heats ? '' : `<details class="card" id="heatlistcard" style="margin-top:12px" open><summary>Heat list (${heat.count} ${heat.count === 1 ? 'heat' : 'heats'}${finalsOn ? (heat.total - heat.count === 2 ? ' and 2 finals' : ' and a final') : ''})</summary>
     <div class="wrap" id="heatlist"></div><div class="row"><button class="btn" id="heatprint" type="button" title="Make a PDF of the heat list, to print or pin up">Print the heat list</button> <span id="heatprintmsg" class="muted" role="status"></span></div></details>`;
   const host = raceHost();
@@ -386,9 +389,10 @@ async function renderRace() {
     ...(c.bad[x.n] ? { noTrackRecord: true, noPersonalBest: true, tooSlow: true } : {}), ...(c.invalid.includes(x.n) ? { noTrackRecord: true, noPersonalBest: true, invalid: true } : {}) }));
 
   // Endurance Race: who drove what. The stints of a car, as they are saved: [{ driverId, driverName, laps, ms, from, to, by }] (from and to: the race clock in ms), and the drivers with their laps and time.
-  const stintsOf = c => (c.en ? Endurance.stints(c.en, 0, c.laps.length).map(s => ({ driverId: s.d, driverName: nameOf('drivers', drivers, s.d) || (c.roster || []).map(m => (m.id === s.d ? m.name : '')).join(''), laps: s.laps, ms: s.ms, from: s.ms0, to: s.ms1, by: s.by })) : []);
+  const enDist = !!(enduCfg && enduCfg.unit === 'distance');
+  const stintsOf = c => (c.en ? Endurance.stints(c.en, 0, c.laps.length).map(s => ({ driverId: s.d, driverName: nameOf('drivers', drivers, s.d) || (c.roster || []).map(m => (m.id === s.d ? m.name : '')).join(''), laps: s.laps, ms: s.ms, from: s.ms0, to: s.ms1, by: s.by, ...(enDist ? { meters: Math.round(s.m * 100) / 100 } : {}) })) : []); // (meters: swaps counted in distance say how far the driver drove in the stint)
   const driversOf = (c, mine) => { // (the laps counted from the lap rows, so a lap that was taken out is not in them)
-    const out = []; stintsOf(c).forEach(s => { let d = out.find(x => x.driverId === s.driverId); if (!d) { d = { driverId: s.driverId, driverName: s.driverName, laps: 0, ms: 0 }; out.push(d); } d.ms += s.ms; });
+    const out = []; stintsOf(c).forEach(s => { let d = out.find(x => x.driverId === s.driverId); if (!d) { d = { driverId: s.driverId, driverName: s.driverName, laps: 0, ms: 0, ...(enDist ? { meters: 0 } : {}) }; out.push(d); } d.ms += s.ms; if (enDist) d.meters = Math.round((d.meters + s.meters) * 100) / 100; });
     out.forEach(d => { d.laps = mine.filter(l => l.driverId === d.driverId).length; });
     return out;
   };
@@ -537,8 +541,8 @@ async function renderRace() {
       const teamStanding = o => { // a team that raced as a team: the team is the row, with the drivers who drove for it
         const mine = laps.filter(l => l.teamId === o.teamId), ids = []; mine.forEach(l => { if (l.driverId && !ids.includes(l.driverId)) ids.push(l.driverId); });
         const sts = live.stintBy.get(o.participant) || []; // (an Endurance Race: how long every driver was at the wheel, and the stints)
-        return { asTeam: true, driverId: '', driverName: o.teamName || '', teamId: o.teamId || '', teamName: o.teamName || '', drivers: ids.map(id => ({ driverId: id, driverName: nameOf('drivers', drivers, id), laps: mine.filter(l => l.driverId === id).length, ...(sts.length ? { ms: sts.filter(q => q.driverId === id).reduce((n, q) => n + q.ms, 0) } : {}) })),
-          ...(sts.length ? { stints: sts.map(q => ({ driverId: q.driverId, driverName: q.driverName, laps: q.laps, ms: q.ms, heat: q.heat, ...(q.final ? { final: q.final } : {}) })) } : {}) };
+        return { asTeam: true, driverId: '', driverName: o.teamName || '', teamId: o.teamId || '', teamName: o.teamName || '', drivers: ids.map(id => ({ driverId: id, driverName: nameOf('drivers', drivers, id), laps: mine.filter(l => l.driverId === id).length, ...(sts.length ? { ms: sts.filter(q => q.driverId === id).reduce((n, q) => n + q.ms, 0), ...(enDist ? { meters: Math.round(sts.filter(q => q.driverId === id).reduce((n, q) => n + (q.meters || 0), 0) * 100) / 100 } : {}) } : {}) })),
+          ...(sts.length ? { stints: sts.map(q => ({ driverId: q.driverId, driverName: q.driverName, laps: q.laps, ms: q.ms, heat: q.heat, ...(enDist ? { meters: q.meters } : {}), ...(q.final ? { final: q.final } : {}) })) } : {}) };
       };
       standings = heat.overall().map(o => ({ pos: o.pos, driverId: o.driverId, carId: o.carId, driverName: o.driverName, carName: o.carName, laps: o.laps, points: o.points, best: o.best, total: null,
         ...(o.asTeam ? teamStanding(o) : o.teamId ? { teamId: o.teamId, teamName: o.teamName } : {}),
@@ -552,7 +556,7 @@ async function renderRace() {
     } else {
       const teamRow = c => { // an Endurance Race: the team is the row, with the drivers who drove for it (their laps and time at the wheel) and the stints
         const mine = lapRows(c, date, {});
-        return { asTeam: true, driverId: '', driverName: c.teamName || '', drivers: driversOf(c, mine), stints: stintsOf(c).map(q => ({ driverId: q.driverId, driverName: q.driverName, laps: q.laps, ms: q.ms, from: q.from, to: q.to, by: q.by })) };
+        return { asTeam: true, driverId: '', driverName: c.teamName || '', drivers: driversOf(c, mine), stints: stintsOf(c).map(q => ({ driverId: q.driverId, driverName: q.driverName, laps: q.laps, ms: q.ms, from: q.from, to: q.to, by: q.by, ...(enDist ? { meters: q.meters } : {}) })) };
       };
       standings = eng.standings().map(x => ({ pos: x.pos, driverId: x.car.driverId, carId: x.car.carId, ...(x.car.teamId ? { teamId: x.car.teamId, teamName: x.car.teamName } : {}), driverName: x.car.driverName, carName: x.car.carName, laps: eng.lapsOf(x.car), best: x.car.best, total: x.car.total, retired: (x.car.retired && !x.car.dq) || undefined,
         ...(x.car.adjMs ? { adjMs: x.car.adjMs } : {}), ...(x.car.adjLaps ? { adjLaps: x.car.adjLaps } : {}), ...(eng.bopNoteOf(eng.cars.indexOf(x.car)) ? { bopNote: eng.bopNoteOf(eng.cars.indexOf(x.car)) } : {}), ...(eng.damageNoteOf(eng.cars.indexOf(x.car)) ? { damageNote: eng.damageNoteOf(eng.cars.indexOf(x.car)), damagePoints: x.car.dmgTotal, repairs: x.car.repairs.filter(q => !q.out).length, repairMs: x.car.repairMs, ...(x.car.dmgOut ? { damageOut: x.car.dmgOut } : {}) } : {}), ...(eng.tyreNoteOf(eng.cars.indexOf(x.car)) ? { tyreNote: eng.tyreNoteOf(eng.cars.indexOf(x.car)) } : {}), // (what Balance of Power and the tyres did to the car, in words)

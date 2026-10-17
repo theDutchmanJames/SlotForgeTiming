@@ -278,9 +278,19 @@
   const CURDRIVER_OPTIONS = [DRIVER_SHOW, { key: 'stint', label: 'Add how long he has been at the wheel', type: 'checkbox', default: false }];
   const NEXTDRIVER_OPTIONS = [DRIVER_SHOW, { key: 'prefix', label: 'Put "Next:" in front', type: 'checkbox', default: false }];
   const SWAPTIMER_OPTIONS = [
-    { key: 'show', label: 'Show', type: 'select', default: 'words', choices: [['words', 'Words ("Swap in 12:30")'], ['clock', 'Only the clock (12:30)']] },
+    { key: 'show', label: 'Show', type: 'select', default: 'words', choices: [['words', 'Words ("Swap in 12:30", or "Swap in 12 m" when the swaps are counted in distance)'], ['clock', 'Only the time or distance (12:30, 12 m)']] },
     { key: 'soonColor', label: 'Colour when the swap is near (the warning of the race setup)', type: 'color', default: '#ffb000' },
     { key: 'dueColor', label: 'Colour when the swap is due', type: 'color', default: '#e03131' }];
+  // 1.35.1: the Swap Signal: big, flashing, and there until the swap is made. Who comes out and who steps in is under the word.
+  const SWAPSIGNAL_OPTIONS = [
+    { key: 'when', label: 'Show it', type: 'select', default: 'due', choices: [['due', 'When the swap is due (it stays until the swap is made)'], ['soon', 'Also in the warning before the swap (in the warning colour)']] },
+    { key: 'text', label: 'The word', type: 'text', default: 'SWAP' },
+    { key: 'names', label: 'Show who comes out and who steps in ("Alex \u2192 Sam")', type: 'checkbox', default: true },
+    { ...DRIVER_SHOW, label: 'Show the drivers by' },
+    { key: 'flash', label: 'Flash while the swap is due', type: 'checkbox', default: true },
+    { key: 'soonColor', label: 'Colour of the warning', type: 'color', default: '#ffb000' },
+    { key: 'dueColor', label: 'Colour when the swap is due', type: 'color', default: '#e03131' },
+    { key: 'offColor', label: 'Colour of the dark flash', type: 'color', default: '#6b1414' }];
   // Damage System: the damage of the car and the repair it needs (see damage.js)
   const DAMAGE_OPTIONS = [
     { key: 'show', label: 'Show', type: 'select', default: 'both', choices: [['both', 'The level and the points ("Medium damage \u00b7 6")'], ['level', 'Only the level'], ['points', 'Only the points']] },
@@ -379,6 +389,7 @@
     T('currentdriver', 'Current Driver', 'Team', { title: 'Current driver', perLane: true, w: 260, options: CURDRIVER_OPTIONS, sample: l => NAMES[l % NAMES.length] }),
     T('nextdriver', 'Next Driver', 'Team', { title: 'Next driver', perLane: true, w: 260, options: NEXTDRIVER_OPTIONS, sample: l => NAMES[(l + 1) % NAMES.length] }),
     T('swaptimer', 'Swap Timer', 'Team', { title: 'Swap timer', perLane: true, w: 230, options: SWAPTIMER_OPTIONS, sample: l => ['Swap in 12:30', 'Swap in 0:45', 'SWAP NOW'][l % 3] }),
+    T('swapsignal', 'Swap Signal', 'Team', { title: 'Swap signal', perLane: true, w: 260, h: 110, options: SWAPSIGNAL_OPTIONS, sample: (l, w) => `<span class="swsig"><b>${esc((w && w.opt && w.opt.text) || 'SWAP')}</b>${w && w.opt && w.opt.names === false ? '' : `<small>${NAMES[l % NAMES.length]} \u2192 ${NAMES[(l + 1) % NAMES.length]}</small>`}</span>` }),
     T('carpicture', 'Slotcar Picture', 'Slotcar', { title: 'Slotcar picture', perLane: true, w: 160, h: 100, options: CARPIC_OPTIONS, sample: l => '<span class="carph">Car picture</span>' }),
     T('carname', 'Slotcar Description', 'Slotcar', { title: 'Slotcar', perLane: true, w: 260, sample: l => ['NSR Ford GT40', 'Slot.it Porsche 962', 'Scalextric Audi R8', 'Fly Ferrari 512', 'Ninco Mazda 787', 'SCX BMW M3', 'Carrera Corvette', 'Avant Slot Lola'][l] }),
     T('position', 'Position in Race', 'Timing', { title: 'Position', perLane: true, w: 70, sample: l => String(l + 1) }),

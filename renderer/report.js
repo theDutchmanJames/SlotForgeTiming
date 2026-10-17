@@ -36,7 +36,7 @@
     const cellOf = (key, x, i) => {
       switch (key) {
         case 'pos': return esc(x.pos) + (!hasDriver && ST.isWinner(session, x) ? ' ' + cup : '');
-        case 'driver': return (ST.isWinner(session, x) ? cup + ' ' : '') + esc(x.driverName) + (ST.outText(x) ? ` (${ST.outText(x)})` : '') + (ST.adjustedText(x) ? ` (adjusted: ${esc(ST.adjustedText(x))})` : '') + (ST.notesText(x) ? ` (${esc(ST.notesText(x))})` : '') + (ST.driversText(x) ? ` (drivers: ${esc(ST.driversText(x))})` : '') + (ST.enduranceText(x) ? ` (${esc(ST.enduranceText(x))})` : '');
+        case 'driver': return (ST.isWinner(session, x) ? cup + ' ' : '') + esc(x.driverName) + (ST.outText(x) ? ` (${ST.outText(x)})` : '') + (ST.adjustedText(x) ? ` (adjusted: ${esc(ST.adjustedText(x))})` : '') + (ST.notesText(x) ? ` (${esc(ST.notesText(x))})` : '') + (ST.driversText(x, distUnit) ? ` (drivers: ${esc(ST.driversText(x, distUnit))})` : '') + (ST.enduranceText(x, distUnit) ? ` (${esc(ST.enduranceText(x, distUnit))})` : '');
         case 'team': return esc(x.teamName || '');
         case 'car': return esc(x.carName);
         case 'laps': return esc(x.laps);
@@ -54,7 +54,7 @@
       (isHeats && session.scoring && HT.scoringText(session.scoring, pts) ? `<p class="sub">${esc(HT.scoringText(session.scoring, pts))}</p>` : '') + (fin ? `<p class="sub">${esc(HT.finalsSaid(session.finals))}</p>` : '') + (ST.weatherText(session) ? `<p class="sub">${esc(ST.weatherText(session))}</p>` : '') + (ST.resumeText(session) ? `<p class="sub">${esc(ST.resumeText(session))}</p>` : '');
     const heatSummary = !opt.heats || !session.heatResults ? '' : `<h2>${session.finals ? 'Heats and finals' : 'Heats'}</h2>` + session.heatResults.map(h =>
       `<p><b>${esc(HT.raceName(h))}</b>${ST.weatherText(h) ? ` (${esc(ST.weatherText(h))})` : ''}: ${h.rows.map(r => `${esc(r.pos)}. ${ST.isHeatWinner(session, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${esc(ST.heatTimeText(session, r))}${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${ST.adjustedText(r) ? ', adjusted: ' + esc(ST.adjustedText(r)) : ''}${ST.notesText(r) ? ', ' + esc(ST.notesText(r)) : ''})`).join(' &middot; ')}</p>`).join('');
-    const stintSheet = !opt.results || !ST.stintLines(session).length ? '' : '<h2>Driver swaps</h2>' + ST.stintLines(session).map(g => `<p><b>${esc(g.team)}</b>: ${g.stints.map(q => `${esc(q.n)}. ${esc(q.text)}`).join('; ')}</p>`).join('');
+    const stintSheet = !opt.results || !ST.stintLines(session, distUnit).length ? '' : '<h2>Driver swaps</h2>' + ST.stintLines(session, distUnit).map(g => `<p><b>${esc(g.team)}</b>: ${g.stints.map(q => `${esc(q.n)}. ${esc(q.text)}`).join('; ')}</p>`).join('');
     const groups = lapGroups(session, laps);
     const lapPages = groups.map(g => {
       const most = Math.max(...g.cols.map(c => c.laps.length));

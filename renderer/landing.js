@@ -68,6 +68,7 @@ async function renderHome() {
     if (!track) issues.push('This race setup has no track. Choose one in Race Setup.');
     else if (!lanes) issues.push('The track has no number of lanes. Add it in the Database.');
     const distProblem = Distance.problem(setup, track, lanes); if (distProblem) issues.push(distProblem); // (1.35.0: a race by distance needs the length of the lanes)
+    const swapProblem = Distance.swapProblem(setup, track, lanes); if (swapProblem && !/no length/.test(distProblem)) issues.push(swapProblem); // (1.35.1: so do driver swaps counted in distance)
     const label = i => heats ? (byTeam ? 'Team ' : 'Participant ') + (i + 1) : 'Lane ' + (i + 1);
     rotProblems.forEach(t => issues.push(t));
     if (byTeam) rows.forEach((r, i) => {
@@ -389,7 +390,7 @@ async function renderHome() {
         const grid2 = []; rows.forEach((r, i) => { if (r.absent) return; (byTeam ? membersOf(teamOf(r.teamId)).map(m => m.id) : [r.driverId]).forEach(id => grid2.push({ driverId: id, color: laneHue(i) })); });
         d.bests = HomeStats.gridBests({ laps, trackId: track && track.id, grid: grid2, driverName: dn });
       } else if (key === 'rules') {
-        d.rules = HomeStats.rules(setup, { typeLabel, distUnit: Speed.distUnitOf(state.settings), rotation: rotRec ? rotRec.name || '' : '', penalty: nameIn(lists.penaltysystems, setup && setup.penaltySystem), damage: nameIn(lists.damagesystems, setup && setup.damageSystem), fuel: nameIn(lists.fuelrules, setup && setup.fuelRules), weather: nameIn(lists.weathersystems, setup && setup.weather) });
+        d.rules = HomeStats.rules(rawSetup, { typeLabel, distUnit: Speed.distUnitOf(state.settings), rotation: rotRec ? rotRec.name || '' : '', penalty: nameIn(lists.penaltysystems, setup && setup.penaltySystem), damage: nameIn(lists.damagesystems, setup && setup.damageSystem), fuel: nameIn(lists.fuelrules, setup && setup.fuelRules), weather: nameIn(lists.weathersystems, setup && setup.weather) });
       }
       out.set(key, HomeCards.html(key, d, b));
     });

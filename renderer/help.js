@@ -83,6 +83,7 @@ const Help = (() => {
           <li>A race, the heats of a heat-based race and an Endurance Race can be limited by a <b>distance</b>: choose it under <i>The race is limited by</i> (or <i>Each heat is limited by</i>). The laps follow from the length of each lane (Database, Tracks: the track length and the lane lengths). Home says when a track has none.</li>
           <li><b>The lanes drive</b> the same distance (a shorter lane drives more laps), the same number of laps, or a distance you set for each lane. A car is only seen at the line, so it drives whole laps: on to the line after the distance, or to the nearest lap.</li>
           <li>The first car to drive its distance wins. The others rank by the distance they drove, and a gap is the time between two cars at the same distance. <i>The race may take at most</i> is a safety net.</li>
+          <li><b>Driver swaps by distance</b>: in an Endurance Race choose <i>Distance</i> for the swaps. A swap is due after so many metres (or feet), <i>at the line</i> or <i>anywhere on the track</i> (worked out between two crossings). <b>Swap Timer</b> shows "Swap in 12 m"; <b>Swap Signal</b> flashes "Alex → Sam" until the swap is made. The results give every driver's distance.</li>
           <li>The Layout Editor folder <b>Distance</b> has Distance Driven, Distance To Go and Laps To Go. <i>Smoothly</i> counts between two crossings from the lap time; <i>exact</i> changes at the line. They work in any race with laps. The text widgets know {distance}, {distleft}, {lapstogo} and {racedistance}.</li>
         </ul>` },
       { id: 'heatraces', title: 'Heat races', note: 'How the heats are planned', body: `
@@ -114,10 +115,10 @@ const Help = (() => {
       { id: 'endurance', title: 'Endurance Race', note: 'Teams that swap drivers in the pits', body: `
         <ul>
           <li>Choose the session type <b>Endurance Race</b>. A team shares one car, and its drivers take turns. Give every lane a <b>Team</b> on Home. The race runs by time, by laps, or heat by heat (<b>The Endurance Race is</b>).</li>
-          <li>The folder <b>Endurance: driver swaps</b> of the race setup says when a swap is due: <b>every so often</b>, <b>at fixed moments</b> (30 minutes, 2 hours), or <b>free</b> within the shortest and longest stint. All times are in minutes or in laps. You can also set the least and the most a driver drives in the whole race.</li>
+          <li>The folder <b>Endurance: driver swaps</b> of the race setup says when a swap is due: <b>every so often</b>, <b>at fixed moments</b> (30 minutes, 2 hours), or <b>free</b> within the shortest and longest stint. Count them in minutes, in laps or in distance (see Distance races). You can also set the least and the most a driver drives in the whole race.</li>
           <li>The swap is made when the car stops on the pit sensor (like a Stop-and-Go), or when <b>Swap done</b> is pressed on the Race Director page or a phone. The driver who steps in is the next one in the team's order, chosen at each swap, or picked by lot.</li>
           <li>When the swap is late, the laps keep counting or stop counting, and the team can get penalty points (they need a penalty system), again and again if you like.</li>
-          <li>The widgets <b>Current Driver</b>, <b>Next Driver</b> and <b>Swap Timer</b> (amber before the swap is due, red when it is late) show it on the timing page. The audio folder <b>Endurance</b> says "{team} needs to swap positions! Box Box!" and who came in and who took over.</li>
+          <li>The widgets <b>Current Driver</b>, <b>Next Driver</b>, <b>Swap Timer</b> (amber before the swap is due, red when it is late) and <b>Swap Signal</b> (a big SWAP, flashing) show it on the timing page. The audio folder <b>Endurance</b> says "{team} needs to swap positions! Box Box!" and who came in and who took over.</li>
           <li>The results show every driver's time at the wheel and stints. A race that a crash or a power cut stops, also a heat race, can be continued from the Home tab.</li>
         </ul>` },
       { id: 'damage', title: 'Damage System', note: 'Damage points, and the stop in the pits that repairs them', body: `

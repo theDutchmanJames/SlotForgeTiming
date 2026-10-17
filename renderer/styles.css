@@ -939,3 +939,7 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .hm-svc .sv-dot.due{background:var(--sv-due)}
 .hm-svc .sv-dot.soon{background:var(--sv-soon)}
 .hm-svc .hm-kv.hm-carbtn{padding:7px 4px}
+/* the Swap Signal widget (1.35.1): the word, big, with the drivers under it */
+.swsig{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;text-align:center}
+.swsig b{font-weight:800;letter-spacing:.04em}
+.swsig small{font-size:.5em;font-weight:600;opacity:.95}

@@ -2280,3 +2280,20 @@ Good to know:
 3. The audio calls (last lap, laps to go) use the laps of the lane of each car.
 4. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 5. The tests: `tests/distance.test.js` (the sums, the engine, the widgets, the settings) and `tests/distancescreen.test.js` (Home, the race screen, a saved session, heats and Endurance by distance), `tests/screens.test.js` (the settings and the folders) and `tests/help.test.js`.
+
+## What to try (1.35.1): driver swaps by distance
+The second half of Distance Racing: an Endurance Race whose drivers swap after a distance, with a widget that tells the team when.
+1. Open **Race Setups** and make an **Endurance Race** (by time, laps, distance or heats). In the folder **Endurance: driver swaps** the first setting, **Swaps are counted in**, now has a third choice, **Distance**. The settings below it then ask for metres (feet when App Settings > General > Display > Distance unit is feet and miles): **A swap is due every** (50 m), the **fixed distances** (100, 250, 400), the **shortest** and **longest stint**, the **least** and **most** a driver drives in the whole race, and **Warn** a number of metres before.
+2. **Where a swap is made**: *At the line* (the standard) or *Anywhere on the track*. A car is only seen when it crosses the line: at the line, the swap is due at the first crossing past the distance. Anywhere, the distance is estimated between two crossings from the last laps, so the swap is due at the right moment, for a swap on the straight.
+3. The swap itself is made as before: by the pit sensor or by **Swap done** on the race screen, the Race Director page or a phone; the next driver, the late swap (laps keep counting or stop) and the penalty points work the same.
+4. **Home** warns when the track or a lane has no length (the distance a car has driven is its laps times the length of its lane). The Home card **Rules of this race** says *Every 50 m, at the line*.
+5. In the Layout Editor (group **Team**): the **Swap Timer** counts down in metres (*Swap in 12 m*, amber in the warning, red when it is late). The new **Swap Signal** is made to be seen from far away: nothing while the swap is not near, then **SWAP** in red with *Alex → Sam* under it, flashing, until the swap is made, with how many seconds late the team is. Its settings: *When* (only when the swap is due, or also in the warning, in amber), the word, the names (name, nickname or call sign, or none), flashing on or off, and the three colours.
+6. The audio call *swap soon* says the distance (*swap in 12 metres*, {swapin}); *swap now* is said when it is due. The call *halfway* is the call of the race progress as before: it says half of the race is driven.
+7. The results (and the PDF) give every driver's distance and every stint's distance: *Alex (3 laps, 1:30, 30 m)*, in feet when you chose feet.
+
+Good to know:
+1. A swap in distance needs the lane lengths of the track (Database > Tracks). Without them no swap is due and Home says so. A race in minutes or laps does not need them.
+2. The settings for minutes and laps and the settings for distance are separate: switching the unit does not change the other numbers.
+3. A fix on the way: the Home card with the rules did not show the driver swaps of an Endurance Race at all; it does now.
+4. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+5. The tests: `tests/distanceswap.test.js` (the rules, the engine at the line and anywhere, the widgets, the settings, Home, the results, the audio call), `tests/distancescreen.test.js` (Home, the race screen with the Swap Signal, a saved session with the metres of every driver), `tests/screens.test.js` (the settings) and `tests/help.test.js`.

@@ -179,20 +179,21 @@
   // (an Endurance Race adds the time at the wheel: "Anna (7 laps, 12:30)")
   const clockOf = ms => { const s = Math.max(0, Math.round(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); };
   const lapsText = n => `${n} ${Number(n) === 1 ? 'lap' : 'laps'}`;
-  const driversText = x => (x && x.asTeam && Array.isArray(x.drivers) && x.drivers.length ? x.drivers.map(d => `${d.driverName || '?'} (${lapsText(d.laps)}${d.ms > 0 ? ', ' + clockOf(d.ms) : ''})`).join(', ') : '');
+  // (1.35.1: swaps counted in distance add the distance the driver drove, in metres or feet as distUnit says)
+  const driversText = (x, distUnit) => (x && x.asTeam && Array.isArray(x.drivers) && x.drivers.length ? x.drivers.map(d => `${d.driverName || '?'} (${lapsText(d.laps)}${d.ms > 0 ? ', ' + clockOf(d.ms) : ''}${d.meters > 0 ? ', ' + Sp.distText(d.meters, distUnit) : ''})`).join(', ') : '');
   // what an Endurance Race adds to a team's row: the swaps, the laps lost to swaps that were not made, and the drivers who drove less than the least they had to
-  function enduranceText(x) {
+  function enduranceText(x, distUnit) {
     if (!x || !x.asTeam) return '';
     const out = [];
     if (Number(x.swaps) > 0) out.push(`${x.swaps} ${Number(x.swaps) === 1 ? 'swap' : 'swaps'}`);
     if (Number(x.swapLost) > 0) out.push(`${lapsText(x.swapLost)} not counted for swaps that were not made`);
-    if (Array.isArray(x.short) && x.short.length) out.push('drove too little: ' + x.short.map(d => `${d.driverName || '?'} (${lapsText(d.laps)}, ${clockOf(d.ms)})`).join(', '));
+    if (Array.isArray(x.short) && x.short.length) out.push('drove too little: ' + x.short.map(d => `${d.driverName || '?'} (${lapsText(d.laps)}, ${clockOf(d.ms)}${d.meters > 0 ? ', ' + Sp.distText(d.meters, distUnit) : ''})`).join(', '));
     return out.join('; ');
   }
   // the stints of an Endurance Race, per team: [{ team, stints: [{ n, text }] }] (a heat race adds the heat; the time is the race clock)
-  function stintLines(session) {
+  function stintLines(session, distUnit) {
     return ((session && session.standings) || []).filter(x => x.asTeam && Array.isArray(x.stints) && x.stints.length).map(x => ({ team: x.teamName || x.driverName || '', stints: x.stints.map((q, n) => ({ n: n + 1,
-      text: `${q.heat ? (q.final ? 'Final ' + q.final : 'Heat ' + q.heat) + ', ' : ''}${q.driverName || '?'}${q.from !== undefined && q.to !== undefined ? ', ' + clockOf(q.from) + ' to ' + clockOf(q.to) : ''}, ${lapsText(q.laps)} (${clockOf(q.ms)})` })) }));
+      text: `${q.heat ? (q.final ? 'Final ' + q.final : 'Heat ' + q.heat) + ', ' : ''}${q.driverName || '?'}${q.from !== undefined && q.to !== undefined ? ', ' + clockOf(q.from) + ' to ' + clockOf(q.to) : ''}, ${lapsText(q.laps)} (${clockOf(q.ms)}${q.meters > 0 ? ', ' + Sp.distText(q.meters, distUnit) : ''})` })) }));
   }
 
   // The sentences under a table that explain the figures in it (keys: the columns that are shown)

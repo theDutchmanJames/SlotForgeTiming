@@ -68,6 +68,14 @@
       : `${missing.length === 1 ? 'Lane ' + missing[0] + ' has' : 'Lanes ' + missing.join(', ') + ' have'} no length, so the laps for the distance cannot be worked out. Add the lane lengths in the Database.`;
   }
 
+  // What keeps driver swaps that are counted in distance (1.35.1) from working: the distance a car has driven is its laps times the length of its lane, so every lane needs a length. '' when nothing does.
+  function swapProblem(setup, track, lanes) {
+    if (!setup || (setup.sessionType !== 'endurance' && setup.ofType !== 'endurance') || setup.swapUnit !== 'distance' || !track) return ''; // (the race screen and Home work with the setup as Endurance.effective makes it: a race, with ofType 'endurance')
+    const n = Math.max(1, Math.floor(Number(lanes)) || 1), missing = []; for (let l = 0; l < n; l++) if (!pos(Sp.laneLength(track, l))) missing.push(l + 1);
+    if (!missing.length) return '';
+    return `The driver swaps are counted in distance, so the lane lengths are needed. ${missing.length === n ? 'The track has no length' : missing.length === 1 ? 'Lane ' + missing[0] + ' has no length' : 'Lanes ' + missing.join(', ') + ' have no length'}. Add ${missing.length === n ? 'the track length' : 'the lane lengths'} in the Database.`;
+  }
+
   // The laps a car has to drive in this setup's lane (0 when it has no limit), for the engine and for the widgets.
   const lapsOfLane = (cfg, lane) => { const l = cfg && Array.isArray(cfg.lanes) ? cfg.lanes[Math.max(0, Math.min(cfg.lanes.length - 1, Math.floor(Number(lane)) || 0))] : null; return l ? l.laps : 0; };
 
@@ -118,7 +126,7 @@
   const unitOf = (opt, setting) => (opt && (opt.unit === 'm' || opt.unit === 'ft') ? opt.unit : setting === 'ft' ? 'ft' : 'm');
   const smoothOn = opt => !(opt && opt.update === 'exact');
 
-  const api = { MODES, ROUNDS, isOn, modeOf, roundOf, reference, lapsFor, config, problem, lapsOfLane, expectedLap, look, text, lengthText,
+  const api = { MODES, ROUNDS, isOn, modeOf, roundOf, reference, lapsFor, config, problem, swapProblem, lapsOfLane, expectedLap, look, text, lengthText,
     DISTANCE_OPTIONS, DISTLEFT_OPTIONS, LAPSTOGO_OPTIONS, unitOf, smoothOn };
   root.Distance = api;
   if (typeof module !== 'undefined') module.exports = api;

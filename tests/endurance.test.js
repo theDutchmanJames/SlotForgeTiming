@@ -108,7 +108,7 @@ ok('...no text, or none that makes sense, gives none', same(En.parseMoments('', 
   const r = En.swap(cfg, st, { el: 31 * MIN, laps: 15, by: 'sensor', roster });
   ok('a swap: the driver in turn steps in, the stint that was over is closed with its time and laps, and it says how it was made', r.ok && r.from === 'a' && r.to === 'b' && r.stintMs === 31 * MIN && r.stintLaps === 15 && r.due === true && r.early === false && st.d === 'b' && st.stints.length === 2 && st.stints[0].ms1 === 31 * MIN && st.stints[0].l1 === 15 && st.stints[0].by === 'sensor' && st.stints[1].d === 'b' && st.stints[1].ms0 === 31 * MIN && st.stints[1].l0 === 15);
   ok('...what was due or owed is over: no due moment, no penalties, no lost laps, no warning given, and a swap is counted', st.due === null && st.pen === 0 && st.lost === false && st.warned === false && st.swaps === 1 && st.nextId === '');
-  ok('...the driver has his total (31 minutes, 15 laps) and the new stint starts counting from zero', same(st.tot.a, { ms: 31 * MIN, laps: 15 }) && En.look(cfg, st, 36 * MIN, 17).stintMs === 5 * MIN && En.look(cfg, st, 36 * MIN, 17).stintLaps === 2 && En.look(cfg, st, 36 * MIN, 17).state === 'ok');
+  ok('...the driver has his total (31 minutes, 15 laps) and the new stint starts counting from zero', same(st.tot.a, { ms: 31 * MIN, laps: 15, m: 0 }) && En.look(cfg, st, 36 * MIN, 17).stintMs === 5 * MIN && En.look(cfg, st, 36 * MIN, 17).stintLaps === 2 && En.look(cfg, st, 36 * MIN, 17).state === 'ok');
   const r2 = En.swap(cfg, st, { el: 62 * MIN, laps: 30, by: 'button', roster }), r3 = En.swap(cfg, st, { el: 93 * MIN, laps: 45, by: 'button', roster });
   ok('...in turn: a, b, c, a (round the roster)', r2.to === 'c' && r3.to === 'a' && st.swaps === 3 && st.stints.map(s => s.d).join('') === 'abca'); }
 { const { cfg, st } = car({ swapEvery: 30 }, 'a');
@@ -215,8 +215,8 @@ ok('...no text, or none that makes sense, gives none', same(En.parseMoments('', 
   ok('...a driver who is not in the roster is not short, however little he drove', !En.short(cfg, st2, [{ id: 'a' }, { id: 'b' }], 20 * MIN, 8).some(x => x.id === 'x') && En.short(cfg, st2, [{ id: 'a' }, { id: 'b' }], 20 * MIN, 8).length === 2); }
 { const { cfg, st } = car({ swapEvery: 30 }, 'a');
   En.swap(cfg, st, { el: 31 * MIN, laps: 15, by: 'button', roster });
-  ok('close: at the end of the race the stint at the wheel ends too, and its time is in the total of the driver', En.close(cfg, st, 60 * MIN, 30) === true && st.stints[1].ms1 === 60 * MIN && st.stints[1].l1 === 30 && st.stints[1].by === 'end' && same(st.tot.b, { ms: 29 * MIN, laps: 15 }));
-  ok('...closing again changes nothing, and the totals are not counted twice', En.close(cfg, st, 90 * MIN, 45) === false && same(st.tot.b, { ms: 29 * MIN, laps: 15 }) && En.totals(st, roster, 90 * MIN, 45).find(x => x.id === 'b').ms === 29 * MIN);
+  ok('close: at the end of the race the stint at the wheel ends too, and its time is in the total of the driver', En.close(cfg, st, 60 * MIN, 30) === true && st.stints[1].ms1 === 60 * MIN && st.stints[1].l1 === 30 && st.stints[1].by === 'end' && same(st.tot.b, { ms: 29 * MIN, laps: 15, m: 0 }));
+  ok('...closing again changes nothing, and the totals are not counted twice', En.close(cfg, st, 90 * MIN, 45) === false && same(st.tot.b, { ms: 29 * MIN, laps: 15, m: 0 }) && En.totals(st, roster, 90 * MIN, 45).find(x => x.id === 'b').ms === 29 * MIN);
   const list = En.stints(st, 90 * MIN, 45);
   ok('...the stints after the end: the last one is not "now" any more, and ends where the race ended', list[1].now === false && list[1].ms1 === 60 * MIN && list[1].ms === 29 * MIN && list[0].now === false && En.totals(st, roster, 90 * MIN, 45).every(x => x.now === false) === false); }
 { const { cfg, st } = car({ swapNext: 'random', swapEvery: 30 }, 'a');

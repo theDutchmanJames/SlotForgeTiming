@@ -279,6 +279,16 @@
         const bg = chip.kind === 'soon' ? opt.soonColor || '#ffb000' : late ? opt.dueColor || '#e03131' : '';
         return bg ? { html: esc(text), bg, color: contrast(bg) } : { html: esc(text) };
       }
+      case 'swapsignal': { // Endurance Race (1.35.1): the signal that a driver swap is needed: the word, flashing, with who comes out and who steps in; it stays until the swap is made (or only the warning before it: amber)
+        const l = swapLook(S, c, t); if (!l) return { html: '' };
+        const late = l.state === 'due' || l.state === 'overdue', soon = l.state === 'soon' && opt.when === 'soon';
+        if (!late && !soon) return { html: '' };
+        const cfg = S.eng.endurance, word = late ? (String(opt.text ?? '').trim() || 'SWAP') : En.chipOf(cfg, l).text;
+        const names = opt.names === false ? '' : `<small>${esc(rosterName(c, l.driver, opt.show) || c.driverName || '?')} \u2192 ${esc(rosterName(c, l.next, opt.show) || '?')}</small>`;
+        const sub = l.state === 'overdue' ? `<small>${Math.round(l.over)} s late</small>` : '';
+        const on = opt.flash === false || Math.floor((S.now || 0) / 500) % 2 === 0, bg = late ? (on ? opt.dueColor || '#e03131' : opt.offColor || '#6b1414') : opt.soonColor || '#ffb000';
+        return { html: `<span class="swsig"><b>${esc(word)}</b>${names}${sub}</span>`, bg, color: contrast(bg) };
+      }
       case 'damage': { // Damage System: the level and the points of the car, amber for a level to pit for whenever you can, red for as fast as you can (or a car that is late)
         const d = damageLook(S, c, t); if (!d) return { html: '\u2013' };
         if (d.out) { const bg = d.out === 'dq' ? '#d62828' : opt.outColor || '#555b66'; return { html: d.out === 'dq' ? 'DQ' : 'RETIRED', bg, color: contrast(bg) }; }
