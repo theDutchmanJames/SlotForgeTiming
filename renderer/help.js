@@ -260,6 +260,15 @@ const Help = (() => {
           <li>The <b>Live Race</b> button in the top bar has its red light on while a race is on, and is greyed out with the light off when no race is running. It opens the pages either way.</li>
           <li>The Race Director and Tokens pages are the only ones that change anything, so they have their own look. On the Race Director page the Calls come first, then coloured folders: Adjust, Penalties, Balance of Power, Damage, Weather and Tyre Change, and Endurance (brown) in an Endurance Race.</li>
         </ul>` },
+      { id: 'driverstats', title: 'Driver stats', note: 'One driver, in a grid of your own', body: `
+        <ul>
+          <li>The <b>Driver stats</b> page of Live Race shows one driver at a time: pick the lane at the top. It is a grid, like the Leaderboard page.</li>
+          <li>Under <b>Customize</b> pick the grid with the little squares (up to 4 columns and 8 rows). Then pick a cell and choose what it shows. A cell can cover more columns and rows, and its label can be switched off.</li>
+          <li>A cell can show the position, the laps, the last, best, average and median lap, the gap, the record lap, the speed, laps to go, the distance, the Swap Signal and Swap Timer, the current and next driver, fuel, tyres, damage, the pitstop time, penalty points, the flag, the start lights, the points and the list of laps.</li>
+          <li>A cell the race has nothing for (no driver swaps, no fuel) is left blank, and a row with nothing in it is left out, so a phone does not waste room.</li>
+          <li>The grid you set on the computer is the <b>default for every device</b>. A phone that changes it keeps its own grid, and <b>Use the computer's layout again</b> gives it the computer's back.</li>
+          <li>A phone also <b>remembers its lane</b>. Switch that off in Customize, under Remember my lane.</li>
+        </ul>` },
       { id: 'network', title: 'Phones and tablets', note: 'Watch and control from the wifi', body: `
         <ul>
           <li>In <b>App Settings, Network</b>, tick <b>Share on my network</b>. An address and a QR code appear; scan the code with a phone or tablet on the same wifi.</li>

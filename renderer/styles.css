@@ -297,6 +297,21 @@ dialog:has(.formgrid) form{display:flex;flex-direction:column;max-height:calc(90
 .lv-stat{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column}
 .lv-stat strong{font-size:26px;font-variant-numeric:tabular-nums}
 .lv-laps{font-size:18px}
+.lv-dgrid{display:grid;grid-auto-rows:minmax(72px,auto);gap:8px;margin-bottom:14px;max-width:1000px} /* the grid of the Driver stats page (1.36.0): each cell in its own cells (grid-column and grid-row are set on the cell) */
+.lv-dg{min-width:0;justify-content:space-between;overflow:hidden}
+.lv-dg.big strong{font-size:clamp(44px,14vw,72px);line-height:1}
+.lv-dg.small strong{font-size:20px}
+.lv-dg .lv-laps{font-size:18px;overflow-wrap:anywhere}
+.lv-dg strong{overflow-wrap:anywhere}
+.lv-dg .swsig b{font-size:1.15em}
+.lv-dg.list{justify-content:flex-start}
+.lv-dg .flagsvg{width:auto;height:56px;max-width:100%}
+.lv-dg .slsvg{width:100%;max-width:240px;height:auto}
+.lv-dg strong svg,.lv-dg strong img{max-height:64px}
+.lv-dgmap{grid-auto-rows:46px}
+.lv-dgc{min-width:0;padding:0 6px;border-style:dashed;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lv-dgc.sel{border:2px solid var(--accent);font-weight:600}
+.lv-dgc.empty{opacity:.75}
 .ro #add,.ro #extra,.ro [data-edit],.ro [data-del],.ro [data-delsession],.ro [data-delrec]{display:none !important}
 .lv-ctl{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px}
 .lv-ctl .btn{padding:12px 20px;font-size:17px}

@@ -23,7 +23,9 @@
     web: true,
     schema: () => getJson('/api/schema'),
     getSettings: async () => { base = await getJson('/api/settings'); return { ...base, ...local() }; }, // what this device chose itself (leaderboard options...) stays on this device
-    setSettings: async patch => { local({ ...local(), ...patch }); return { ...base, ...local() }; },
+    // (a null takes the setting out of this device's own, so the computer's shows again: the Driver stats page uses it to go back to the layout of the computer)
+    setSettings: async patch => { const next = { ...local(), ...patch }; Object.keys(next).forEach(k => { if (next[k] === null) delete next[k]; }); local(next); return { ...base, ...local() }; },
+    ownSettings: () => local(), // what this device chose itself (the Driver stats page tells a layout of its own from the computer's)
     list: e => getJson('/api/list/' + encodeURIComponent(e)),
     customFields: e => getJson('/api/custom/' + encodeURIComponent(e)),
     linkedLaps: async () => 0, dbPath: async () => '',

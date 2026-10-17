@@ -31,7 +31,7 @@ const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if
 for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function') api[k] = (...x) => { x.forEach(v => { if (typeof v !== 'function') structuredClone(v); }); return f(...x); }; }
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js', 'distance.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'boardorder.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'homecards.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'tyreui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js', 'distance.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'boardorder.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'drivergrid.js', 'homecards.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'tyreui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -859,6 +859,100 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   }
   run('LiveView.go')('driver');
   say('Driver stats page shows the picked driver with laps and best lap', E('lv-dstats').innerHTML.includes('Alex') && E('lv-dstats').innerHTML.includes('Best lap') && E('lv-dstats').innerHTML.includes('Laps'));
+  // ---------- 1.36.0: the Driver stats grid ----------
+  { const dh = () => E('lv-dstats').innerHTML, panel = () => E('lv-dgpanel').innerHTML, cellsIn = h => [...h.matchAll(/data-cell="(\w+)"/g)].map(m => m[1]), nQuiet = h => (h.match(/lv-dg quiet/g) || []).length;
+    const dclk = dataset => body().onclick({ target: { closest: () => ({ dataset, disabled: false }) } }), dchg = (dataset, props = {}) => body().onchange({ target: { dataset, value: '', ...props } });
+    const mine = () => run('state.settings.driverGrid'), saved = () => JSON.parse(JSON.stringify(run('state.settings.driverGrid') ?? null)), settle = () => wait(40);
+    const getWas = api.getSettings; api.getSettings = async () => JSON.parse(JSON.stringify(run('state.settings'))); // (the stand-in keeps nothing: this one hands back what the page saved, as the app does)
+    const fresh = async () => { run('state.settings.driverGrid = undefined; state.settings.driverLane = undefined; state.settings.driverRemember = undefined'); run('LiveView.unmount')(); const h = document.createElement('div'); await run('LiveView.mount')(h, {}); run('LiveView.go')('driver'); await settle(); };
+    await fresh();
+    say('Driver stats: with no grid saved the default is drawn: the position, last lap, best lap, gap, laps to go, flag and the lap list; the cells a plain race has nothing for are not there',
+      cellsIn(dh()).join() === 'position,last,bestlap,gap,lapstogo,flag,laplist' && !/data-cell="(swapsignal|swaptimer|fuel|damage)"/.test(dh()));
+    say('...the rows nothing is left in are not drawn: the position starts in the first row and the lap list in the fifth; the tyres (the race has no weather) are blank, the flag stays where it was',
+      dh().includes('data-cell="position" style="grid-column:1 / span 2;grid-row:1 / span 2') && dh().includes('data-cell="laplist" style="grid-column:1 / span 4;grid-row:5 / span 2') && nQuiet(dh()) === 1 && dh().includes('data-cell="flag" style="grid-column:3 / span 2;grid-row:4 / span 1'));
+    say('...every cell has its label above the number, the lap list its list', dh().includes('<span class="muted">Position</span><strong>') && dh().includes('<span class="muted">Last lap</span>') && dh().includes('<span class="muted">Laps to go</span><strong>') && /<span class="muted">Lap list<\/span><div class="lv-laps">/.test(dh()) && dh().includes('Alex'));
+    say('...the last lap and the best lap are the times of the car; laps to go is just the number', (() => { const m = /data-cell="last"[^>]*><span[^>]*>Last lap<\/span><strong>([^<]*)</.exec(dh()), b = /data-cell="bestlap"[^>]*><span[^>]*>Best lap<\/span><strong>([^<]*)</.exec(dh()), l = /data-cell="lapstogo"[^>]*><span[^>]*>Laps to go<\/span><strong>([^<]*)</.exec(dh());
+      return m && b && l && /^\d+\.\d{3}$/.test(m[1]) && /^\d+\.\d{3}$/.test(b[1]) && /^\d+$/.test(l[1]); })());
+    say('...Customize is a list of its own above the stats, closed to begin with; it says this layout is the default for all devices, and has the grid of 4 columns by 8 rows, a button for each of the 32 squares and for each of the 12 cells',
+      body().innerHTML.includes('<details class="lv-opts" id="lv-dgtool"><summary>Customize</summary>') && panel().includes('This layout is the default for all devices') && panel().includes('4 columns × 8 rows') && cnt(panel(), /data-dggrid=/g) === 32 && cnt(panel(), /data-dgsel=/g) === 12);
+    say('...the cell that is picked first (the swap signal) says when it shows, and the cells are big, small or neither by the room they have', panel().includes('<p class="muted">Shows in a race with driver swaps (Endurance Race).</p>') && dh().includes('lv-dg lv-stat big" data-cell="position"') && dh().includes('lv-dg lv-stat" data-cell="last"') && dh().includes('lv-dg lv-stat big list" data-cell="laplist"'));
+    say('...the button to go back to the standard layout is there and cannot be used while nothing of your own is saved; lanes are remembered', panel().includes('data-dgreset="1" disabled>Use the standard layout again') && /data-dgremember="1" checked/.test(panel()));
+
+    // the lane
+    await dclk({ lane: '1' }); await settle();
+    say('picking a lane shows that driver and is remembered by the device', dh().includes('Sam') && !dh().includes('>Alex<') && run('state.settings.driverLane') === 1 && body().innerHTML.includes('data-lane="1" aria-pressed="true"'));
+    run('LiveView.unmount')(); { const h = document.createElement('div'); await run('LiveView.mount')(h, {}); run('LiveView.go')('driver'); await settle(); }
+    say('...and when the page is opened again the device is on that lane (not on the first one)', dh().includes('Sam') && body().innerHTML.includes('data-lane="1" aria-pressed="true"') && body().innerHTML.includes('data-lane="0" aria-pressed="false"'));
+    await dchg({ dgremember: '1' }, { checked: false }); await settle();
+    say('turning "Remember my lane" off forgets it', run('state.settings.driverRemember') === false && run('state.settings.driverLane') === null && !/data-dgremember="1" checked/.test(panel()));
+    await dclk({ lane: '0' }); await settle(); await dclk({ lane: '1' }); await settle();
+    say('...and the lanes picked after that are not remembered', run('state.settings.driverLane') === null);
+    run('LiveView.unmount')(); { const h = document.createElement('div'); await run('LiveView.mount')(h, {}); run('LiveView.go')('driver'); await settle(); }
+    say('...so the page opens on the first lane', body().innerHTML.includes('data-lane="0" aria-pressed="true"') && dh().includes('Alex'));
+    await dchg({ dgremember: '1' }, { checked: true }); await settle();
+    say('...and turning it on again remembers the lane that is on now', run('state.settings.driverRemember') === true && run('state.settings.driverLane') === 0 && /data-dgremember="1" checked/.test(panel()));
+
+    // Customize: the grid
+    await fresh();
+    await dclk({ dggrid: '2,3' }); await settle();
+    say('a square of the picker makes a smaller grid: the cells that no longer fit are gone, the others are cut back, and it is saved as the grid of this device (a computer: of all)',
+      saved().cols === 2 && saved().rows === 3 && saved().boards.map(b => `${b.c}.${b.r}:${b.w}x${b.h}=${b.opt.cell}`).join() === '1.1:2x1=swapsignal,1.2:2x2=position' && panel().includes('2 columns × 3 rows') && cellsIn(dh()).join() === 'position');
+    say('...the page draws it (the swap signal row is blank, so it is not drawn), the list stays on the page and the reset button can be used now', dh().includes('data-cell="position" style="grid-column:1 / span 2;grid-row:1 / span 2') && body().innerHTML.includes('id="lv-dgtool"') && /data-dgreset="1">Use the standard layout again/.test(panel()));
+    await dclk({ dgsel: '1,2' });
+    say('a cell of the map is picked: its settings are below, with its number, how many columns and rows it covers and its label', panel().includes('<legend>Position (column 1, row 2)</legend>') && panel().includes('<option value="position" selected>Position</option>') && /data-dgspan="w">.*<option value="2" selected>2<\/option>/.test(panel()) && /data-dglabel="1" checked/.test(panel()) && panel().includes('aria-pressed="true"') );
+    await dchg({ dgshow: '1' }, { value: 'avglap' }); await settle();
+    say('another number for the cell', saved().boards[1].opt.cell === 'avglap' && cellsIn(dh()).join() === 'avglap' && dh().includes('Average lap') && panel().includes('<legend>Average lap (column 1, row 2)</legend>'));
+    await dchg({ dgspan: 'w' }, { value: '1' }); await settle();
+    say('...fewer columns for it (and the same rows)', saved().boards[1].w === 1 && saved().boards[1].h === 2 && dh().includes('data-cell="avglap" style="grid-column:1 / span 1;grid-row:1 / span 2'));
+    await dchg({ dgspan: 'h' }, { value: '1' }); await settle();
+    say('...fewer rows (and the same columns), and a cell of one cell is small', saved().boards[1].w === 1 && saved().boards[1].h === 1 && dh().includes('lv-dg lv-stat small" data-cell="avglap" style="grid-column:1 / span 1;grid-row:1 / span 1'));
+    await dchg({ dglabel: '1' }, { checked: false }); await settle();
+    say('...without its label', saved().boards[1].opt.label === false && !dh().includes('Average lap') && !/data-dglabel="1" checked/.test(panel()));
+    await dclk({ dgsel: '2,2' });
+    say('an empty cell asks what it shows, and has no more settings', panel().includes('<legend>Empty cell (column 2, row 2)</legend>') && panel().includes('Pick what this cell shows') && !panel().includes('data-dgspan') && !panel().includes('data-dglabel'));
+    await dchg({ dgshow: '1' }, { value: 'gap' }); await settle();
+    say('...and a number for it makes a cell there', saved().boards.length === 3 && saved().boards[2].c === 2 && saved().boards[2].r === 2 && saved().boards[2].opt.cell === 'gap' && saved().boards[2].opt.label === true && cellsIn(dh()).join() === 'avglap,gap');
+    await dchg({ dgshow: '1' }, { value: '' }); await settle();
+    say('...(empty) takes the cell away again', saved().boards.length === 2 && cellsIn(dh()).join() === 'avglap' && panel().includes('<legend>Empty cell (column 2, row 2)</legend>'));
+    const was = JSON.stringify(saved()); await dchg({ dgshow: '1' }, { value: '' }); await settle();
+    say('...and (empty) for a cell that is empty changes nothing', JSON.stringify(saved()) === was);
+    await dchg({ dgshow: '1' }, { value: 'swapsignal' }); await dclk({ dgsel: '1,2' }); await settle();
+    say('the list of numbers has every cell, in groups', ['Race', 'Swaps', 'Car', 'Track', 'Other'].every(g => panel().includes(`<optgroup label="${g}">`)) && cnt(panel(), /<option value="[a-z]+"/g) >= 26 && panel().includes('<option value="swapsignal">Swap signal</option>') && panel().includes('<option value="lights">Start lights</option>'));
+    await dchg({ dgshow: '1' }, { value: 'nope' }); await settle();
+    say('a number that is not one is no change', saved().boards[1].opt.cell === 'avglap');
+    await dclk({ dgsel: '1,2' }); run('LiveView.go')('rules'); run('LiveView.go')('driver'); await settle();
+    say('leaving the page and coming back closes Customize and picks the first cell again', body().innerHTML.includes('id="lv-dgtool"><summary>') && panel().includes('<legend>Swap signal (column 1, row 1)</legend>'));
+    await dclk({ dgreset: '1' }); await settle();
+    say('the reset button goes back to the standard layout: the saved grid is dropped, and the page and the list show the default again', run('state.settings.driverGrid') === null && cellsIn(dh()).join() === 'position,last,bestlap,gap,lapstogo,flag,laplist' && panel().includes('4 columns × 8 rows') && panel().includes('data-dgreset="1" disabled'));
+
+    // a grid that is not much
+    run('state.settings.driverGrid = 5'); await fresh_(); 
+    say('a saved grid that is not a grid is not used: the default is', cellsIn(dh()).join() === 'position,last,bestlap,gap,lapstogo,flag,laplist');
+    run('state.settings.driverGrid = { cols: 2, rows: 2, boards: [] }'); await fresh_();
+    say('a grid with no cells says so, and says how to put some in', dh().includes('Nothing in the grid yet. Open Customize') && cellsIn(dh()).length === 0 && cnt(panel(), /data-dgsel=/g) === 4 && panel().includes('aria-label="Empty cell, column 1, row 1"'));
+    run('state.settings.driverGrid = { cols: 2, rows: 1, boards: [{ c: 1, r: 1, w: 2, h: 1, opt: { cell: "fuel", label: true } }] }'); await fresh_();
+    say('a grid that has nothing to show in this race (fuel is off) says so', dh().includes('Nothing in the grid has anything to show in this race.') && nQuiet(dh()) === 0);
+    run('state.settings.driverGrid = { cols: 2, rows: 1, boards: [{ c: 1, r: 1, w: 1, h: 1, opt: { cell: "fuel", label: true } }, { c: 2, r: 1, w: 1, h: 1, opt: { cell: "position", label: true } }, { c: 1, r: 2, w: 1, h: 1, opt: { cell: "nope" } }] }'); await fresh_();
+    say('a cell that does not exist is left out, a cell the race has nothing for is blank in a row that is drawn', cellsIn(dh()).join() === 'position' && nQuiet(dh()) === 1);
+
+    run('state.settings.driverGrid = { cols: 4, rows: 3, boards: [' + [['position', 1, 1, 1, 3], ...['fuel', 'penalty', 'champpoints', 'damage', 'tyre', 'swapsignal', 'swaptimer', 'nextdriver', 'distance'].map((k, i) => [k, 2 + i % 3, 1 + Math.floor(i / 3), 1, 1])].map(([k, c, r, w, h]) => `{ c: ${c}, r: ${r}, w: ${w}, h: ${h}, opt: { cell: '${k}', label: true } }`).join(',') + '] }'); await fresh_();
+    say('in a plain race (no fuel, penalties, championship, damage, weather, swaps or lane lengths) nine cells have nothing to show and are blank, the position is the only one that shows', cellsIn(dh()).join() === 'position' && nQuiet(dh()) === 9);
+
+    // another device
+    api.web = true; let ownNow = {}; api.ownSettings = () => ownNow;
+    run('state.settings.driverGrid = { cols: 1, rows: 1, boards: [{ c: 1, r: 1, w: 1, h: 1, opt: { cell: "bestlap", label: true } }] }'); run('LiveView.go')('rules'); run('LiveView.go')('driver'); await settle();
+    say('a phone that gets a grid from the computer draws it, and says it is the computer\'s (it is not the phone\'s own, so there is nothing to reset yet)', cellsIn(dh()).join() === 'bestlap' && panel().includes("You are using the computer's layout.") && /data-dgreset="1" disabled>Use the computer's layout again/.test(panel()));
+    run('state.settings.driverGrid = undefined'); run('LiveView.go')('rules'); run('LiveView.go')('driver'); await settle();
+    say('a phone that has no layout of its own says it uses the computer\'s, with a reset button that is not needed yet', panel().includes("You are using the computer's layout.") && panel().includes('data-dgreset="1" disabled>Use the computer&#39;s layout again') === false && /data-dgreset="1" disabled>Use the computer's layout again/.test(panel()));
+    await dclk({ dggrid: '3,2' }); ownNow = { driverGrid: mine() }; await settle(); run('LiveView.go')('rules'); run('LiveView.go')('driver'); await settle();
+    say('...a layout it keeps itself says "This device only"; the reset button works', panel().includes('This device only.') && !panel().includes('default for all devices') && /data-dgreset="1">Use the computer's layout again/.test(panel()) && saved().cols === 3);
+    ownNow = {}; await dclk({ dgreset: '1' }); await settle();
+    say('...and "Use the computer\'s layout again" drops it (the phone asks for null, which webapi.js takes out of its own settings)', run('state.settings.driverGrid') === null && cellsIn(dh()).join() === 'position,last,bestlap,gap,lapstogo,flag,laplist');
+    api.web = false; delete api.ownSettings;
+    api.getSettings = getWas; run('state.settings.driverGrid = undefined; state.settings.driverLane = undefined; state.settings.driverRemember = undefined');
+    run('LiveView.unmount')(); { const h = document.createElement('div'); await run('LiveView.mount')(h, {}); } run('LiveView.go')('driver');
+    async function fresh_() { run('LiveView.go')('rules'); run('LiveView.go')('driver'); await settle(); }
+  }
   run('LiveView.go')('rules');
   say('Racing rules page shows the rules', body().innerHTML.includes('No bumping'));
   // on another device (browser): the Race Director asks for the password first

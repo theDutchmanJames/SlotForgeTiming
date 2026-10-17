@@ -4,7 +4,8 @@
 // A cell that no board covers is empty. The boards are kept in reading order (row by row), so "board 3" is always the third one you read.
 (function (root) {
   'use strict';
-  const MAXC = 6, MAXR = 4;
+  // make(maxColumns, maxRows) gives the rules for a grid of that most size. The Leaderboard and Home grids are 6 x 4 (the LiveGrid below); the Driver stats grid (drivergrid.js) is 4 x 8.
+  function make(MAXC, MAXR) {
   const whole = (v, lo, hi, d) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
   const plain = o => (o && typeof o === 'object' && !Array.isArray(o) ? { ...o } : {});
   const overlaps = (a, b) => a.c < b.c + b.w && b.c < a.c + a.w && a.r < b.r + b.h && b.r < a.r + a.h;
@@ -69,7 +70,11 @@
   const sizeText = g => `${g.cols} ${g.cols === 1 ? 'column' : 'columns'} × ${g.rows} ${g.rows === 1 ? 'row' : 'rows'}`;
   const where = b => `column ${b.c}, row ${b.r}`;
 
-  const api = { MAXC, MAXR, clean, legacy, gridOf, boardAt, maxSpan, cells, resize, add, remove, setSpan, setOpt, setOptAll, sizeText, where };
+  return { MAXC, MAXR, clean, legacy, gridOf, boardAt, maxSpan, cells, resize, add, remove, setSpan, setOpt, setOptAll, sizeText, where };
+  }
+
+  const api = make(6, 4);
+  api.make = make;
   root.LiveGrid = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

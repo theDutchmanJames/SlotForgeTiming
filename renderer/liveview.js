@@ -40,7 +40,7 @@ const LiveView = (() => {
     el.textContent = live() ? `${V.stat().title} · ${PHASE[d.phase] || ''}${left ? ` · next ${d.heat.final ? 'final ' + d.heat.final : 'heat'} in ` + left : ''}` : 'No race is running.';
   }
 
-  function go(p) { page = p; nodes = null; tkPanel = null; bopPanel = null; wxPanel = null; tyPanel = null; enPanel = null; dmPanel = null; adjPanel = null; shell(); draw(true); }
+  function go(p) { page = p; dgOpen = false; dgSel = ''; nodes = null; tkPanel = null; bopPanel = null; wxPanel = null; tyPanel = null; enPanel = null; dmPanel = null; adjPanel = null; shell(); draw(true); }
 
   // ---- the pages ----
   function draw(fresh) {
@@ -270,21 +270,89 @@ const LiveView = (() => {
   }
 
   // Driver stats: pick a lane, see the same values the widgets show
-  const STATS = ['position', 'lap', 'laptime', 'bestlap', 'avglap', 'medlap', 'gap', 'recordlap', 'speed', 'fuel', 'pitstop', 'penalty', 'champpoints'];
+  // Driver stats page (1.36.0): the lanes to pick from, Customize, and the grid of the lane that is picked. What the grid shows and where is set under Customize, the way the Leaderboard
+  // page sets its boards (the rules are in drivergrid.js). The grid of the computer is the default for every device; a phone that changes it keeps its own grid on that phone, and
+  // can go back to the computer's. A device also remembers the lane it was on.
+  let dgOpen = false, dgSel = '';
+  const hasOwnGrid = () => (api.web ? !!(api.ownSettings && api.ownSettings().driverGrid) : !!state.settings.driverGrid);
+  const dgTool = (g, entries) => {
+    const D = DriverGrid, cs = D.cells(g), web = !!api.web, own = hasOwnGrid(), plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+    const sel = cs.find(x => `${x.c},${x.r}` === dgSel) || cs[0] || null; dgSel = sel ? `${sel.c},${sel.r}` : '';
+    const squares = Array.from({ length: D.MAXR * D.MAXC }, (_, k) => { const c = k % D.MAXC + 1, r = Math.floor(k / D.MAXC) + 1; return `<button type="button" class="lv-gp${c <= g.cols && r <= g.rows ? ' on' : ''}" data-dggrid="${c},${r}" aria-label="${plural(c, 'column', 'columns')} by ${plural(r, 'row', 'rows')}" aria-pressed="${c === g.cols && r === g.rows}"></button>`; }).join('');
+    const map = cs.map(x => { const d = x.board ? D.cellOf(x.board.opt.cell) : null, on = `${x.c},${x.r}` === dgSel;
+      return `<button type="button" class="btn lv-dgc${x.board ? '' : ' empty'}${on ? ' sel' : ''}" style="grid-column:${x.c} / span ${x.board ? x.board.w : 1};grid-row:${x.r} / span ${x.board ? x.board.h : 1}" data-dgsel="${x.c},${x.r}" aria-pressed="${on}" aria-label="${x.board ? esc(d.label) : 'Empty cell'}, ${D.where(x)}">${x.board ? esc(d.label) : '+'}</button>`; }).join('');
+    let one = '<p class="muted">The grid has no cells.</p>';
+    if (sel) {
+      const b = sel.board, d = b ? D.cellOf(b.opt.cell) : null, ms = b ? D.maxSpan(g, b) : null;
+      const shows = `<option value=""${b ? '' : ' selected'}>${b ? '(empty)' : 'Pick what this cell shows'}</option>${D.GROUPS.map(gr => `<optgroup label="${gr}">${D.CELLS.filter(c => c.group === gr).map(c => `<option value="${c.key}"${b && b.opt.cell === c.key ? ' selected' : ''}>${esc(c.label)}</option>`).join('')}</optgroup>`).join('')}`;
+      const span = (key, n, max, label) => `<div class="field"><label for="dg-${key}">${label}</label><select id="dg-${key}" data-dgspan="${key}">${Array.from({ length: max }, (_, i) => `<option value="${i + 1}"${n === i + 1 ? ' selected' : ''}>${i + 1}</option>`).join('')}</select></div>`;
+      one = `<fieldset class="lv-optset"><legend>${b ? esc(d.label) : 'Empty cell'} (${D.where(sel)})</legend><div class="lv-optgrid">
+        <div class="field"><label for="dg-show">Shows</label><select id="dg-show" data-dgshow="1">${shows}</select></div>
+        ${b ? `${span('w', b.w, ms.w, 'Columns it covers')}${span('h', b.h, ms.h, 'Rows it covers')}<div class="field"><label class="inline"><input type="checkbox" data-dglabel="1"${b.opt.label ? ' checked' : ''}> Show the label</label></div>` : ''}</div>
+        ${d && d.needs ? `<p class="muted">${esc(D.NEEDS[d.needs])}</p>` : ''}</fieldset>`;
+    }
+    const cur = entries.find(e => e.lane === lane);
+    const note = web ? (own ? '<strong>This device only.</strong> What you change here stays on this device and does not touch the others.' : "You are using the computer's layout. Change anything here and this device keeps a layout of its own.")
+      : '<strong>This layout is the default for all devices.</strong> Phones and tablets start with it. A device that makes its own layout keeps it.';
+    return `<div class="lv-gridtool"><p class="muted">${note}</p>
+      <div class="field"><span class="lbl" id="dg-gridlabel">Grid size</span><div class="lv-gridpick" style="grid-template-columns:repeat(${D.MAXC},28px)" role="group" aria-labelledby="dg-gridlabel">${squares}</div><output id="dg-gridsize">${D.sizeText(g)}</output><div class="muted">Up to ${D.MAXC} columns and ${D.MAXR} rows, on every device.</div></div>
+      <div class="field"><span class="lbl">Cells (pick one to change what it shows)</span><div class="lv-gridmap lv-dgmap" style="grid-template-columns:repeat(${g.cols},minmax(0,1fr))">${map}</div></div>${one}
+      <div class="field"><label class="inline"><input type="checkbox" data-dgremember="1"${D.rememberOn(state.settings) ? ' checked' : ''}> Remember my lane on this device</label>${cur ? `<div class="muted">Now: ${esc(cur.driverName)}, lane ${cur.lane + 1}. A lane that is not in the race is skipped: the first lane shows.</div>` : ''}</div>
+      <div class="row"><button type="button" class="btn" data-dgreset="1"${own ? '' : ' disabled'}>${web ? "Use the computer's layout again" : 'Use the standard layout again'}</button></div>
+      <p class="muted">${web ? "Drops this device's own layout and follows the computer again." : 'Goes back to the standard layout. Devices without a layout of their own follow it.'}</p></div>`;
+  };
+  const dgPanel = () => { const el = $('lv-dgpanel'); if (el) el.innerHTML = dgTool(DriverGrid.gridOf(state.settings), V.stat().cfg.entries); };
+  // The cells of the lane that is picked. A cell the race has nothing for is blank, and a row of blank cells is not drawn (drivergrid.js layout).
+  function paintDriver() {
+    const el = $('lv-dstats'), D = DriverGrid; if (!el || lane === null) return;
+    const st = S(), W = type => Widgets.newWidget(type, lane, 0, 0), c = st.carByLane(lane), html = type => Timing.content(W(type), st).html, dash = '–';
+    const facts = { swaps: html('swaptimer') !== '', fuel: !!(st.eng.fuel && st.eng.fuel.on), tyres: !!st.eng.weather, damage: !!st.eng.damage, penalty: !!(st.eng.penalty && st.eng.penalty.on), champ: !!(st.champ && st.champ.on),
+      laps: html('lapstogo') !== dash, driven: html('distance') !== dash, togo: html('distleft') !== dash };
+    const g = D.gridOf(state.settings), L = D.layout(g, key => D.applies(key, facts));
+    const one = x => {
+      const d = D.cellOf(x.key), pos = `grid-column:${x.c} / span ${x.w};grid-row:${x.r} / span ${x.h}`;
+      if (x.quiet) return `<div class="lv-dg quiet" style="${pos}"></div>`;
+      let r;
+      if (d.own === 'last') r = { html: c && c.laps.length ? RaceEngine.fmtTime(c.laps[c.laps.length - 1]) : dash };
+      else { const w = W(d.type); if (d.opt) w.opt = { ...w.opt, ...d.opt }; r = Timing.content(w, st); }
+      const paint = r.bg ? `;background:${esc(r.bg)};color:${esc(r.color || '')};border-color:${esc(r.bg)}` : '', size = x.w >= 2 && x.h >= 2 ? ' big' : x.w === 1 ? ' small' : '';
+      return `<div class="lv-dg lv-stat${size}${d.list ? ' list' : ''}" data-cell="${esc(x.key)}" style="${pos}${paint}">${x.label ? `<span${r.bg ? '' : ' class="muted"'}>${esc(d.label)}</span>` : ''}${d.list ? `<div class="lv-laps">${r.html || '<span class="muted">No laps yet</span>'}</div>` : `<strong>${r.html}</strong>`}</div>`;
+    };
+    el.innerHTML = `<div class="lv-who">${html('avatar')}<div><div class="lv-big">${html('name')} ${html('driverflag')}</div><div class="muted">${esc(c ? c.carName : '')}</div></div>${html('carpicture')}</div>
+      ${L.cells.length ? `<div class="lv-dgrid" style="grid-template-columns:repeat(${L.cols},minmax(0,1fr))">${L.cells.map(one).join('')}</div>` : `<p class="muted lv-empty">${g.boards.length ? 'Nothing in the grid has anything to show in this race.' : 'Nothing in the grid yet. Open Customize and pick a number for a cell.'}</p>`}`;
+  }
   function drawDriver(body, fresh) {
-    const entries = V.stat().cfg.entries, st = S();
-    if (lane === null || !entries.some(e => e.lane === lane)) lane = entries.length ? entries[0].lane : null;
+    const D = DriverGrid, entries = V.stat().cfg.entries;
+    lane = D.laneFor(entries.map(e => e.lane), lane, D.savedLane(state.settings));
     if (fresh || !$('lv-dstats')) {
-      body.innerHTML = `<div class="lv-lanes">${entries.map(e => `<button class="btn" data-lane="${e.lane}" aria-pressed="${e.lane === lane}">${esc(e.driverName)} <span class="muted">lane ${e.lane + 1}</span></button>`).join('')}</div><div id="lv-dstats" class="lv-dstats"></div>`;
-      body.onclick = e => { const b = e.target.closest('[data-lane]'); if (b) { lane = Number(b.dataset.lane); draw(true); } };
+      const was = $('lv-dgtool'); if (was && typeof was.open === 'boolean') dgOpen = was.open;
+      body.innerHTML = `<div class="lv-lanes">${entries.map(e => `<button class="btn" data-lane="${e.lane}" aria-pressed="${e.lane === lane}">${esc(e.driverName)} <span class="muted">lane ${e.lane + 1}</span></button>`).join('')}</div>
+        <details class="lv-opts" id="lv-dgtool"${dgOpen ? ' open' : ''}><summary>Customize</summary><div id="lv-dgpanel"></div></details><div id="lv-dstats" class="lv-dstats"></div>`;
+      const save = async g => { state.settings = await api.setSettings({ driverGrid: g }); dgOpen = true; dgPanel(); paintDriver(); };
+      const keep = patch => Promise.resolve(api.setSettings(patch)).then(s => { if (s) state.settings = s; }).catch(() => {});
+      body.onclick = async e => { // a lane, a square of the grid picker, a cell of the map, or the button that goes back to the layout of the computer
+        const b = e.target.closest ? e.target.closest('[data-lane],[data-dggrid],[data-dgsel],[data-dgreset]') : null, d = (b && b.dataset) || {};
+        if (d.lane !== undefined) { lane = Number(d.lane); draw(true); if (D.rememberOn(state.settings)) keep({ driverLane: lane }); return; }
+        if (d.dggrid) { const [c, r] = String(d.dggrid).split(',').map(Number); return save(D.resize(D.gridOf(state.settings), c, r)); }
+        if (d.dgsel) { dgSel = String(d.dgsel); dgOpen = true; return dgPanel(); }
+        if (d.dgreset && !b.disabled) { state.settings = await api.setSettings({ driverGrid: null }); dgOpen = true; dgPanel(); paintDriver(); }
+      };
+      body.onchange = async e => {
+        const t = e.target, d = t.dataset || {}, g = D.gridOf(state.settings), sel = D.cells(g).find(x => `${x.c},${x.r}` === dgSel);
+        if (d.dgremember !== undefined) { await keep(t.checked ? { driverRemember: true, driverLane: lane } : { driverRemember: false, driverLane: null }); dgPanel(); return; }
+        if (!sel) return;
+        if (d.dgshow !== undefined) { // another number for the cell, or none (a cell that has no number is empty)
+          if (sel.board) return save(t.value ? D.setCell(g, sel.index, t.value) : D.remove(g, sel.index));
+          return t.value ? save(D.add(g, sel.c, sel.r, t.value)) : undefined;
+        }
+        if (!sel.board) return;
+        if (d.dgspan) return save(D.setSpan(g, sel.index, d.dgspan === 'w' ? t.value : sel.board.w, d.dgspan === 'h' ? t.value : sel.board.h));
+        if (d.dglabel !== undefined) return save(D.setLabel(g, sel.index, t.checked));
+      };
+      dgPanel();
     }
     if (lane === null) return;
-    const W = type => Widgets.newWidget(type, lane, 0, 0), cell = (label, html) => `<div class="lv-stat"><span class="muted">${esc(label)}</span><strong>${html}</strong></div>`;
-    const c = st.carByLane(lane), f = st.eng.fuel && st.eng.fuel.on;
-    const lastW = { ...W('lastlap'), opt: { lapsPerColumn: 8, columns: 1, lapNumbers: true } };
-    $('lv-dstats').innerHTML = `<div class="lv-who">${Timing.content(W('avatar'), st).html}<div><div class="lv-big">${Timing.content(W('name'), st).html} ${Timing.content(W('driverflag'), st).html}</div><div class="muted">${esc(c ? c.carName : '')}</div></div>${Timing.content(W('carpicture'), st).html}</div>
-      <div class="lv-statgrid">${STATS.filter(t => (t !== 'fuel' || f) && (t !== 'penalty' || st.eng.penalty.on) && (t !== 'champpoints' || st.champ.on)).map(t => cell(Widgets.def(t).title || Widgets.def(t).label, Timing.content(W(t), st).html)).join('')}</div>
-      <h3>Laps</h3><div class="lv-laps">${Timing.content(lastW, st).html || '<span class="muted">No laps yet</span>'}</div>`;
+    paintDriver();
   }
 
   // ---- keeping up with the race ----

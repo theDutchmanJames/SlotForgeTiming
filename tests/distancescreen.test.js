@@ -45,7 +45,7 @@ for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function
 const timers = new Set(); // (every timer of the app: a race that is dropped by the test, without finishing, would keep its timer)
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval: (f, ms) => { const t = setInterval(f, ms); timers.add(t); return t; }, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js', 'distance.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'boardorder.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'report.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'homecards.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'enduranceui.js', 'damageui.js', 'weatherui.js', 'tyreui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js', 'distance.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'boardorder.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'report.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'drivergrid.js', 'homecards.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'enduranceui.js', 'damageui.js', 'weatherui.js', 'tyreui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -127,6 +127,26 @@ const view = () => run('Damage.view(live.engine(), [0, 1], performance.now(), li
   await until(() => saved.length > 0, 5000);
   say('what is saved: a race, lane 2\'s driver first with 5 laps, lane 1\'s driver second with 6 laps', saved.length === 1 && saved[0][0].sessionType === 'race' && saved[0][0].standings[0].driverId === 'd2' && saved[0][0].standings[0].laps === 5 && saved[0][0].standings[1].driverId === 'd1' && saved[0][0].standings[1].laps === 6);
   run('state.race = null; live = null');
+
+  // ---------- 1.36.0: the Driver stats grid has the distance cells (they show when the lane has a length) and laps to go ----------
+  {
+    await openRace(dsetup(), meas, rows(1, 2)); key(' '); await until(() => phase() === 'running', 5000); await wait(60); await lapOn(0);
+    { const n0 = sent.n; await until(() => sent.n >= n0 + 2, 3000); } // (a page opened now shows what the race sent last: wait until the race has sent the lap)
+    const host = document.createElement('div'); await run('LiveView.mount')(host, {}); await wait(50);
+    const cellsOf = (...keys) => `{ cols: ${keys.length}, rows: 1, boards: [${keys.map((k, i) => `{ c: ${i + 1}, r: 1, w: 1, h: 1, opt: { cell: '${k}', label: true } }`).join(',')}] }`;
+    run('state.settings.driverGrid = ' + cellsOf('distance', 'distleft', 'lapstogo')); run('LiveView.go')('driver');
+    const h = () => E('lv-dstats').innerHTML, v = k => (new RegExp(`data-cell="${k}"[^>]*><span[^>]*>[^<]*</span><strong>([^<]*)</strong>`).exec(h()) || [])[1], quiet = () => (h().match(/lv-dg quiet/g) || []).length;
+    say('the Driver stats page of a race by distance on a track with lane lengths has the distance driven, the distance to go and the laps to go of the lane (lane 1: a lap of its 6 driven, 5 to go)', /^\d+(\.\d)? m$/.test(v('distance')) && parseFloat(v('distance')) >= 10 && /^\d+(\.\d)? m$/.test(v('distleft')) && parseFloat(v('distleft')) <= 50.5 && v('lapstogo') === '5' && quiet() === 0);
+    run('LiveView.unmount')(); key('s'); await wait(30); run('state.race = null; live = null');
+    await openRace({ id: 'nl', name: 'Laps', sessionType: 'race', laps: 5, layout: 'DL' }, store.tracks[1], rows(1, 2));
+    const h2 = document.createElement('div'); await run('LiveView.mount')(h2, {}); await wait(50); run('state.settings.driverGrid = ' + cellsOf('distance', 'distleft', 'lapstogo')); run('LiveView.go')('driver'); await wait(80);
+    say('...on a track without a length the distance cells have nothing to show and are blank (the laps to go still show: the race has 5 laps)', h().includes('data-cell="lapstogo"') && !h().includes('data-cell="distance"') && !h().includes('data-cell="distleft"') && quiet() === 2 && v('lapstogo') === '5');
+    run('LiveView.unmount')(); key('s'); await wait(30); run('state.race = null; live = null');
+    await openRace({ id: 'pr', name: 'Practice', sessionType: 'practice', layout: 'DL' }, store.tracks[1], rows(1, 2));
+    const h3 = document.createElement('div'); await run('LiveView.mount')(h3, {}); await wait(50); run('state.settings.driverGrid = ' + cellsOf('position', 'lapstogo')); run('LiveView.go')('driver'); await wait(80);
+    say('...and in free practice (no number of laps) the laps to go have nothing to show either', h().includes('data-cell="position"') && !h().includes('data-cell="lapstogo"') && quiet() === 1);
+    run('LiveView.unmount')(); run('state.settings.driverGrid = undefined'); key('s'); await wait(30); run('state.race = null; live = null'); saved.length = 0;
+  }
 
   // ---------- heats by distance: the lane of the car in the heat decides its laps ----------
   await openRace({ ...dsetup(), sessionType: 'heats', heatBy: 'distance', heatPlan: 'manual', heats: 1, resultBy: 'time' }, meas, rows(1, 2));
