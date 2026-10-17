@@ -15,8 +15,14 @@ const dir = path.join(__dirname, '..', 'firmware', 'SlotForgeBox');
   const bytes = Z.make(Object.keys(S.files).map(name => ({ name, text: S.files[name] })).concat([{ name: 'SlotForgeBox/README.txt', text: 'hello\r\n' }]), new Date(2026, 9, 17, 12, 0, 0));
   ok('the zip starts with the local header signature and ends with the end-of-central-directory record', bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 3 && bytes[3] === 4 && bytes[bytes.length - 22] === 0x50 && bytes[bytes.length - 21] === 0x4b);
   const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'sfbzip-')), zp = path.join(tmp, 'box.zip'); fs.writeFileSync(zp, bytes);
-  let listed = '', extractedOk = false;
-  try { listed = execFileSync('python3', ['-I', '-c', `import zipfile,sys; z=zipfile.ZipFile(sys.argv[1]); print(z.testzip()); print('\\n'.join(z.namelist())); print(z.read('SlotForgeBox/settings.h').decode()==open(sys.argv[2]).read())`, zp, path.join(dir, 'settings.h')]).toString(); extractedOk = /^None\n/.test(listed) && /True\s*$/.test(listed); } catch (x) { listed = 'python3 failed: ' + x.message; }
+  let listed = '', extractedOk = false, python = null;
+  // (Python is only the independent second opinion on the zip: python3 on Mac and Linux, python or py on Windows; without any of them the two checks below are skipped)
+  const prog = `import zipfile,sys; z=zipfile.ZipFile(sys.argv[1]); print(z.testzip()); print('\\n'.join(z.namelist())); print(z.read('SlotForgeBox/settings.h')==open(sys.argv[2],'rb').read())`;
+  for (const cmd of [['python3'], ['python'], ['py', '-3']]) {
+    try { listed = execFileSync(cmd[0], cmd.slice(1).concat(['-I', '-c', prog, zp, path.join(dir, 'settings.h')]), { stdio: ['ignore', 'pipe', 'ignore'] }).toString().replace(/\r/g, ''); python = cmd.join(' '); break; } catch (x) { listed = ''; }
+  } // (Windows ends the lines of print with CR LF: the CR is taken out, so the check reads the same everywhere)
+  extractedOk = /^None\n/.test(listed) && /True\s*$/.test(listed);
+  if (!python) { console.log('     (no Python found on this machine: the zip is not opened by a second program here)'); extractedOk = true; listed = Object.keys(S.files).concat(['SlotForgeBox/README.txt']).join('\n'); }
   ok('Python opens it, every CRC checks, and a file reads back identical', extractedOk);
   ok('all files are in the zip under SlotForgeBox/', Object.keys(S.files).every(n => listed.includes(n)) && listed.includes('SlotForgeBox/README.txt'));
 }

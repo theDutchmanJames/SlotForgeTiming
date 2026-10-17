@@ -2353,3 +2353,6 @@ Good to know:
 5. When you leave the race screen the box shows STOP and gives a retired car's lane its power back.
 6. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 7. The tests: the package's `tests/arduinobox.test.js`, `arduinosim.test.js`, `arduinorace.test.js` and `arduinosketch.test.js`, `tests/boxscreen.test.js` (the race screen with the box: lights, beeps, power, laps, pit sensor, speed trap, Track call, leaving), `tests/screens.test.js` (the new settings) and `tests/help.test.js`. The desktop bench is `npm run fwtest`; it is not part of `npm test` because it needs g++.
+
+## What to try (1.37.1): the Windows test fix
+Nothing to try in the app. Run `npm test` (or the Windows build with checks) on Windows: the last Arduino check, *Python opens it, every CRC checks, and a file reads back identical*, is now ok. Good to know: the check needs Python only as a second opinion on the sketch zip (`python3`, `python` or `py -3`); without Python it says *no Python found on this machine* and goes on. GitHub tags are still not pushed (refused from here).
