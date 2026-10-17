@@ -276,13 +276,23 @@ const Help = (() => {
           <li>Those two need the <b>password</b> you type in the same place. With no password they stay closed to other devices.</li>
           <li>The first time, Windows may ask whether the app may use the network: allow it on private networks. On a Mac the question is whether the app may accept incoming network connections: choose Allow.</li>
         </ul>` },
-      { id: 'hardware', title: 'Timing hardware', note: 'Trackmate, DS Electronics or no hardware', body: `
+      { id: 'hardware', title: 'Timing hardware', note: 'Trackmate, Arduino, DS Electronics or no hardware', body: `
         <ul>
           <li>App Settings, <b>Timing Hardware</b> has a page per kind of hardware. On <b>Trackmate Interface</b> you connect the box by USB and check the sensors; the check lights show which sensor is seen. You choose which lane each sensor counts for.</li>
           <li>The Trackmate can also switch the <b>track power</b> (relay) and has a <b>Trackcall</b> button. What they do is set in the race setup.</li>
-          <li><b>DS Electronics</b> is a listening version for now.</li>
+          <li>The <b>Arduino</b> page is for a box you build yourself (next folder). <b>DS Electronics</b> is a listening version for now.</li>
           <li>The Monitor shows what the box sends, which helps when something does not count.</li>
           <li>No hardware? Use the number keys, or <b>Simulated cars</b>.</li>
+        </ul>` },
+      { id: 'arduino', title: 'The Arduino box', note: 'Build your own timing box with an Arduino', body: `
+        <ul>
+          <li>The <b>SlotForge box</b> is an Arduino (Nano or Mega) with the SlotForge sketch: lane sensors, pit sensors, start lights, track power relays, a buzzer and two buttons. It works next to a Trackmate or instead of one.</li>
+          <li>App Settings, Timing Hardware, <b>Arduino</b>. <b>Download the Arduino sketch</b>, upload it with the Arduino IDE, then <b>Find the box</b> (the COM port) and <b>Connect</b>. No box yet? Tick <b>Use the virtual box</b>: four imaginary cars to try everything.</li>
+          <li>Wire the sensors, press <b>Calibrate</b> with the track empty, then <b>Save to the box</b>. Pins that are not wired must be set to Not used, also the lanes a 2- or 3-lane track does not have.</li>
+          <li><b>Test the lights</b>, <b>Power on</b>, <b>Power off</b> and <b>Beep</b> check the wiring.</li>
+          <li>In a race the start lights, the flags and the track power follow the race. The rest is set in the race setup, folder <b>SlotForge box (Arduino)</b>.</li>
+          <li>Without a word from the app for 3 seconds the box cuts the track power by itself (you can change that). Two cars less than 0.3 seconds apart on one lane count as one lap.</li>
+          <li>The box is new: so far it has only been tried with the virtual box and in a computer simulation.</li>
         </ul>` },
       { id: 'transfer', title: 'Import, export and backup', note: 'Share items and keep a safe copy', body: `
         <ul>

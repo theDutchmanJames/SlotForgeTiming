@@ -72,7 +72,7 @@ async function renderRace() {
   } else if (tokenSession) eng = mk(Array.from({ length: lanes }, (_, i) => ({ lane: i, ...(people[i] || { driverId: '', carId: '', driverName: 'Guest', carName: '', carPicture: '', carScale: '', nickname: '', callsign: '', flag: '', avatar: '' }) }))); // every lane of the track can be sold, with or without a driver
   else eng = mk(people.map((p, i) => ({ lane: i, ...p })));
 
-  if (live) { if (live.fsView) live.fsView.close(); document.removeEventListener('keydown', live.fsKey); live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); if (live.offTm) live.offTm(); if (live.offTmStatus) live.offTmStatus(); if (live.offCmd) live.offCmd(); if (live.offResync) live.offResync(); clearTimeout(live.shareTimer); clearInterval(live.timers); clearInterval(live.breakTimer); (live.sim || []).forEach(clearTimeout); if (live.flushTokens) live.flushTokens(); document.removeEventListener('keydown', live.key); }
+  if (live) { if (live.fsView) live.fsView.close(); document.removeEventListener('keydown', live.fsKey); live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); if (live.offTm) live.offTm(); if (live.box) { live.box.off(); live.box = null; } if (live.offTmStatus) live.offTmStatus(); if (live.offCmd) live.offCmd(); if (live.offResync) live.offResync(); clearTimeout(live.shareTimer); clearInterval(live.timers); clearInterval(live.breakTimer); (live.sim || []).forEach(clearTimeout); if (live.flushTokens) live.flushTokens(); document.removeEventListener('keydown', live.key); }
   // earlier laps on this track, for personal best / track record highlights and the record lap widget
   const base = { personal: new Map(), track: Infinity, trackName: '' };
   // laps removed from the records (but kept in their session) do not count here
@@ -257,6 +257,7 @@ async function renderRace() {
   };
   const update = () => {
     checkpoint();
+    if (live.box) live.box.sync();
     drawHeatList(); announce(); announceTokens(); if (live.powerFollow) live.powerFollow();
     const S = shared();
     LiveCanvas.paint(live.nodes, S);
@@ -719,11 +720,11 @@ async function renderRace() {
   };
   live.actions = actions; actions.finalize = () => (tokens ? finalizeTokens() : finalize()); live.reviewCommand = reviewCommand; // (for the automated tests)
   // ---- the Trackmate: sensor hits count laps, the Trackcall button flags the race ----
-  const tmWord = () => (Trackmate.link.connected ? 'Trackmate connected' : 'Trackmate not connected');
+  const tmWord = () => (Trackmate.link.connected ? 'Trackmate connected' : 'Trackmate not connected') + (typeof abConnected === 'function' && abConnected() ? ' · Arduino box connected' : '');
   const drawTm = () => { const e = ui('tmstatus'); if (e) e.textContent = ' · ' + tmWord() + (Trackmate.link.connected && Trackmate.link.power !== null ? (Trackmate.link.power ? ', track power on' : ', track power off') : ''); };
   drawTm(); live.offTmStatus = Trackmate.link.onStatus(drawTm);
   // the track power (the Trackmate relay): only when it is connected
-  const power = on => { if (Trackmate.link.connected && typeof tmPower === 'function') tmPower(on); };
+  const power = on => { if (Trackmate.link.connected && typeof tmPower === 'function') tmPower(on); if (live.box) live.box.power(on); };
   const CUTS = { yellowredcut: ['red'], yellowcut: ['yellow'], redcut: ['red'] }; // which flags switch the power off, per Trackcall choice
   if (Trackmate.link.connected && typeof tmSetup === 'function') tmSetup(lanes).then(() => power(setup.startPower !== 'off')); // the interface is told the lanes; the track starts with or without power
   let callAt = 0; // when the last Trackcall press was
@@ -746,6 +747,13 @@ async function renderRace() {
     if (e.type === 'hit') { const lane = Trackmate.laneMap(state.settings.tmLaneMap)[e.lane]; const i = eng.cars.findIndex(c => c.lane === lane); if (i >= 0) crossCar(i, e.at); } // the sensor's lane can be changed in Timing hardware
     else if (e.type === 'call') { if (Number.isInteger(e.lane)) actions.call(e.lane); else trackcall(); } // a call button of one lane, or the one Trackcall button
   });
+  // ---- the SlotForge box (Arduino): laps, pit sensors, buttons and the speed trap come in; the start lights, the power and the buzzer follow the race ----
+  if (typeof ArduinoRace !== 'undefined' && ArduinoBox.link.connected) {
+    live.box = ArduinoRace.bind({ link: ArduinoBox.link, cars: () => eng.cars, crossCar, blockCar, unblockCar, actions, trackcall, phase: () => live.phase, lights: () => live.lights, flag: () => eng.flag,
+      setup: { ...setup, boxBeeps: setup.boxBeeps !== 'no', boxLaneLights: setup.boxLaneLights === 'yes' }, // (the race setup form has Yes/No choices, no tick boxes: the box wants true/false)
+      onJump: (lane, at) => { /* a crossing during the countdown: the jump-start handling is not built yet */ },
+      onTrap: (lane, ms) => { const i = eng.cars.findIndex(c => c.lane === lane); if (i >= 0) eng.cars[i].trapMs = ms; } });
+  }
   Review.bind(ui('review'), reviewCommand, () => update());
   Review.bind(ui('lapreview'), reviewCommand, () => update());
   ui('lapsbtn').onclick = ev => {
@@ -808,7 +816,7 @@ async function renderRace() {
   ui('fsbtn').onclick = ev => { if (ev && ev.currentTarget && ev.currentTarget.blur) ev.currentTarget.blur(); toggleFull(); };
   live.shown = () => { live.nodes.forEach(n => { n.last = null; }); update(); }; // the Race tab is shown again: everything is drawn once more (a leaderboard fits its text to the size it has now)
   // leaving the race screen (before the start, or after the end): the keys, the Trackmate and the Race Director buttons stop working on the other pages
-  live.leave = () => { if (live.fsView) live.fsView.close(); document.removeEventListener('keydown', live.fsKey); if (live.calling) { live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); } document.removeEventListener('keydown', live.key); ['offTm', 'offTmStatus', 'offCmd', 'offResync'].forEach(k => { if (live[k]) { live[k](); live[k] = null; } }); clearTimeout(live.shareTimer); live.shareTimer = null; if (live.flushTokens) live.flushTokens(); clearTimeout(live.tkTimer); live.tkTimer = null; };
+  live.leave = () => { if (live.fsView) live.fsView.close(); document.removeEventListener('keydown', live.fsKey); if (live.calling) { live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); } document.removeEventListener('keydown', live.key); ['offTm', 'offTmStatus', 'offCmd', 'offResync'].forEach(k => { if (live[k]) { live[k](); live[k] = null; } }); if (live.box) { live.box.off(); live.box = null; } clearTimeout(live.shareTimer); live.shareTimer = null; if (live.flushTokens) live.flushTokens(); clearTimeout(live.tkTimer); live.tkTimer = null; };
 
   // ---- Time Token Session: the lane controls, saving every stint, keeping the session across a restart ----
   const raceT = () => eng.elapsed(now()); // the race clock: the token clocks run on it, so a pause stops them

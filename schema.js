@@ -123,7 +123,8 @@ module.exports = {
       { id: 'yellow', title: 'Yellow flag', note: 'A target lap time while the yellow flag is up' },
       { id: 'pads', title: 'Adjust pads', note: 'The values on the Adjust pads for this race setup. An empty field uses the values from App Settings, Race Director.' },
       { id: 'screens', title: 'Screens and sound', note: 'Timing page layouts and the audio set' },
-      { id: 'trackmate', title: 'Trackmate', note: 'Track power at the start and the Trackcall button' }
+      { id: 'trackmate', title: 'Trackmate', note: 'Track power at the start and the Trackcall button' },
+      { id: 'box', title: 'SlotForge box (Arduino)', note: 'Pit stops, lane power, beeps and lane lights, when a SlotForge box is connected' }
     ],
     // showIf: the field is shown when ANY listed condition matches (each condition: all its keys match).
     fields: [
@@ -303,7 +304,19 @@ module.exports = {
           ['yellow', 'Each press switches the yellow flag on or off'], ['yellowcut', 'Each press switches the yellow flag on or off; a yellow flag turns the power off'],
           ['red', 'Each press stops or restarts the race (red flag)'], ['redcut', 'Each press stops or restarts the race (red flag); the red flag turns the power off'],
           ['power', 'Each press switches the track power off or on (the Trackmate relay), no flags'], ['none', 'Does nothing']] },
-      { key: 'trackcallWindow', group: 'trackmate', label: 'Trackcall: seconds within which a second press counts as a double press', type: 'number', default: 3, showIf: [{ trackcall: ['yellowred', 'yellowredcut'] }] }
+      { key: 'trackcallWindow', group: 'trackmate', label: 'Trackcall: seconds within which a second press counts as a double press', type: 'number', default: 3, showIf: [{ trackcall: ['yellowred', 'yellowredcut'] }] },
+      // the SlotForge box (Arduino): read by renderer/arduinorace.js. The track power at the start and the call buttons are the Trackmate choices above (they serve both).
+      { key: 'boxPit', group: 'box', label: 'A pit stop starts when', type: 'select', default: 'both',
+        options: [['both', 'The pit sensor sees the car, or the Pit button is pressed'], ['sensor', 'The pit sensor sees the car (the button does nothing)'], ['button', 'The Pit button is pressed (the sensor does nothing)']],
+        hint: 'The pit sensor of a lane is set up on the Arduino page (Timing Hardware).', showIf: RACING },
+      { key: 'boxLanePower', group: 'box', label: 'Lane power', type: 'select', default: 'retired',
+        options: [['retired', 'The power of a lane is cut when its car retires or is disqualified'], ['off', 'Never: the lanes keep their power']],
+        hint: 'Needs the lane power relays on the box (Arduino page).', showIf: RACING },
+      { key: 'boxBeeps', group: 'box', label: 'The box beeps the countdown and GO', type: 'select', default: 'yes',
+        options: [['yes', 'Yes: a short beep for every light and a long one at GO'], ['no', 'No: silent']], showIf: RACING },
+      { key: 'boxLaneLights', group: 'box', label: 'The status pixel of each lane shows the lane colour', type: 'select', default: 'no',
+        options: [['no', 'No'], ['yes', 'Yes']],
+        hint: 'Needs "A status pixel per lane" on the Arduino page.', showIf: RACING }
     ]
   },
   // Fuel rules: tank, use per lap (changing with the lap time) and refuelling. Chosen per race setup.

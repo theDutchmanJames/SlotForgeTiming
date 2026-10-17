@@ -29,7 +29,8 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      backgroundThrottling: false // the box needs its keep-alive every second, also when this window is minimized
     }
   });
   // USB timing hardware: Electron lets the page use COM ports and HID devices once the app allows it and the user has chosen one

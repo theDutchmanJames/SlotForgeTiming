@@ -80,8 +80,9 @@ async function renderSettings() {
 // Timing Hardware has a page per kind of hardware: the Trackmate Interface, DS Electronics (a listening version for now), and Other (empty for now)
 function renderHardwareArea(box) {
   box.innerHTML = '<div class="sub" id="hwtabs" role="tablist" style="display:flex;gap:4px"></div><div id="hwbox"></div>';
-  renderTabs(document.getElementById('hwtabs'), [['trackmate', 'Trackmate Interface'], ['ds', 'DS Electronics'], ['other', 'Other']], state.hwSub, id => { state.hwSub = id; renderHardwareArea(box); });
+  renderTabs(document.getElementById('hwtabs'), [['trackmate', 'Trackmate Interface'], ['arduino', 'Arduino'], ['ds', 'DS Electronics'], ['other', 'Other']], state.hwSub, id => { state.hwSub = id; renderHardwareArea(box); });
   if (state.hwSub === 'other') return;
+  if (state.hwSub === 'arduino') return renderArduinoSettings(document.getElementById('hwbox'));
   if (state.hwSub === 'ds') return renderDsSettings(document.getElementById('hwbox'));
   renderHardwareSettings(document.getElementById('hwbox'));
 }
@@ -336,4 +337,5 @@ function screenFailed(e) {
   applyUiScale();
   render();
   if (api.onHwChoose && typeof tmAutoConnect === 'function') tmAutoConnect(); // the remembered Trackmate, if it is plugged in
+  if (typeof abAutoConnect === 'function') abAutoConnect(); // the remembered SlotForge box, or the virtual one when that is chosen
 })();

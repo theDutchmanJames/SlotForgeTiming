@@ -175,6 +175,7 @@ Run `npm test` to check the race rules on their own.
 - renderer/widgetbuilder.js  Customization > Widget Builder (your own text and image widgets).
 - renderer/announcer.js, sound.js, audioedit.js  What the race says, how it is played, and the Audio Settings screen.
 - renderer/trackmate.js, hardware.js, hardwareui.js  The Trackmate Interface: the byte stream, the USB connection and its screen.
+- renderer/arduinobox.js, arduinosim.js, arduinorace.js, arduinoui.js, arduinosketch.js, zipfile.js  The Arduino box: the protocol, the virtual box, the race glue, its page and the embedded sketch. The source of the sketch is in firmware/SlotForgeBox/, the desktop test bench in tools/fwhost/, the documents in docs/arduino-box/.
 - renderer/rows.js, richtext.js, landing.js, app.js, webapi.js  Leaderboard rows, the Racing Rules text, the Home tab, the tabs and App Settings, and the browser version of the api.
 - transfer.js, renderer/transferui.js  Export and import of single items; backup.js is the complete backup (tested by tests/transfer.test.js and tests/backup.test.js).
 - server.js, qr.js  The network access for tablets and phones, and its QR code.
@@ -2334,3 +2335,21 @@ Good to know:
 3. A phone only keeps its own settings in its browser: another browser, or clearing the data of the browser, brings back the computer's grid.
 4. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 5. The tests: `tests/drivergrid.test.js` (the rules, the layout of rows, the lane, the phone's own settings), `tests/live.test.js` (the page, Customize, the lane, the reset), `tests/endurancescreen.test.js` (the swap cells), `tests/distancescreen.test.js` (the distance cells), `tests/weatherscreen.test.js` (the tyre cell) and `tests/help.test.js`.
+
+## What to try (1.37.0): the Arduino box
+This is the app's side of a timing box you build yourself (an Arduino Nano or Mega). The firmware has been tried **on a computer only**; the first real board is still to come, so please read this as a first checkpoint.
+1. App Settings > Timing Hardware > **Arduino**. Tick **Use the virtual box**: the pins fill in (four lanes on A0..A3, four pit sensors on A4..A7), the readings move and the check lights blink as imaginary cars pass. Press **Calibrate**: the thresholds change. Press **Test the lights**.
+2. Press **Download the Arduino sketch**: `SlotForgeBox-1.0.3.zip` lands in Downloads, with the sketch folder and a README. `docs/arduino-box/BUILD-GUIDE.md` in the project says what to buy and how to wire it.
+3. Home: a race setup on a 4-lane track, four drivers, **Start race** (leave *Simulated cars* off). The laps come from the virtual box. The countdown goes to the box as lights 1 to 5 with a short beep each, GO is green with a long beep, the yellow flag is a yellow light and a red flag or the end of the race is STOP. The virtual cars use the pit sensors, so pit stops happen.
+4. Race Setup > a race setup > folder **SlotForge box (Arduino)** (only for sessions that race): **A pit stop starts when** (sensor, button, or both), **Lane power** (cut a lane's power when its car retires or is disqualified, or never), **The box beeps the countdown and GO**, and **The status pixel of each lane shows the lane colour**. The track power at the start and the Track call button are the Trackmate choices in the folder above it; they serve the box too.
+5. With a real Nano: open the downloaded sketch in the Arduino IDE, install *Adafruit NeoPixel*, pick the board and upload. Untick the virtual box, **Find the box**, choose the port, **Connect**. The firmware version appears, and readings appear for the pins that have a role. Wire the sensors, press **Calibrate** with the track empty, then **Save to the box**. Cover a sensor with a finger: you see the letter in the log, the check light and the speed-trap figure.
+6. After any change in `firmware/SlotForgeBox`: `npm run sketch` (repacks the sketch inside the app) and `npm run fwtest` (the desktop bench; it needs g++ and says SKIPPED without it).
+
+Good to know:
+1. **Not built yet**: the jump-start settings (a car that crosses during the countdown is ignored for now) and the speed-trap widget (the figure is already kept on each car as `trapMs`).
+2. **Not on a board yet**: the real compiler (16-bit ints), the memory use and the electronics (crosstalk between analog inputs, noise, light) are only checked in the Arduino IDE and on the board. The desktop bench checks the logic and the timing: every lap counted, short passes (a pass of 4 ms is seen), the safe state, saved settings.
+3. If the app is silent for 3 seconds the box cuts the track power (a setting on the page). The main window now has `backgroundThrottling: false`, otherwise a minimized window slows its timers and the keep-alive would stop.
+4. Two cars less than 0.3 seconds apart on one lane count as one lap (the box's blackout time).
+5. When you leave the race screen the box shows STOP and gives a retired car's lane its power back.
+6. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+7. The tests: the package's `tests/arduinobox.test.js`, `arduinosim.test.js`, `arduinorace.test.js` and `arduinosketch.test.js`, `tests/boxscreen.test.js` (the race screen with the box: lights, beeps, power, laps, pit sensor, speed trap, Track call, leaving), `tests/screens.test.js` (the new settings) and `tests/help.test.js`. The desktop bench is `npm run fwtest`; it is not part of `npm test` because it needs g++.
