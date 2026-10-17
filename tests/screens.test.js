@@ -2653,6 +2653,14 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     await E('ab-conn').onclick(); await wait(50); await E('ab-virtual').onchange({ target: { checked: false } }); await wait(50);
     say('...and it lets go again (nothing keeps running after the page is done)', run('abConnected()') === false);
     delete ctx.ReadableStream; delete ctx.WritableStream; run("state.hwSub='trackmate'"); await run('render()'); }
+  // ---- App Settings > Timing Hardware > oXigen Digital: a place held for it (1.38.0) ----
+  { const t = E('hwtabs').innerHTML, at = k => t.indexOf(k);
+    say('1.38.0: the Timing Hardware sub-tabs are Trackmate Interface, Arduino, DS Electronics, oXigen Digital, Other (in this order)', at('Trackmate Interface') > -1 && at('Trackmate Interface') < at('>Arduino<') && at('>Arduino<') < at('DS Electronics') && at('DS Electronics') < at('>oXigen Digital<') && at('>oXigen Digital<') < at('>Other<'));
+    E('hwtabs').onclick({ target: { closest: () => ({ dataset: { id: 'oxigen' } }) } }); await new Promise(r => setTimeout(r, 10)); // (a click on the tab)
+    const h = E('hwbox').innerHTML;
+    say('...a click on the oXigen Digital tab selects it and opens a page that says there is nothing to set up yet', run('state.hwSub') === 'oxigen' && E('hwtabs').innerHTML.includes('aria-selected="true" data-id="oxigen"') && h.includes('<strong>oXigen Digital</strong>') && h.includes('There is nothing to set up here yet'));
+    say('...the page has no buttons, fields or lights (nothing connects, nothing is saved)', !/<(button|input|select|textarea)/.test(h) && !h.includes('class="led'));
+    run("state.hwSub='trackmate'"); await run('render()'); }
   // ---- App Settings > Timing Hardware > DS Electronics: the listening version ----
   { const t = E('hwtabs').innerHTML, at = k => t.indexOf(k);
     say('the sub-tabs are in this order: Trackmate Interface, DS Electronics, Other', at('Trackmate Interface') > -1 && at('Trackmate Interface') < at('DS Electronics') && at('DS Electronics') < at('>Other<'));

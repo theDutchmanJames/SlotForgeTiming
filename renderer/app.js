@@ -77,14 +77,20 @@ async function renderSettings() {
   return renderGeneralSettings(document.getElementById('settingsbox'));
 }
 
-// Timing Hardware has a page per kind of hardware: the Trackmate Interface, DS Electronics (a listening version for now), and Other (empty for now)
+// Timing Hardware has a page per kind of hardware: the Trackmate Interface, the Arduino box, DS Electronics (a listening version for now), oXigen Digital (a place held for it, nothing to set up yet) and Other (empty for now)
 function renderHardwareArea(box) {
   box.innerHTML = '<div class="sub" id="hwtabs" role="tablist" style="display:flex;gap:4px"></div><div id="hwbox"></div>';
-  renderTabs(document.getElementById('hwtabs'), [['trackmate', 'Trackmate Interface'], ['arduino', 'Arduino'], ['ds', 'DS Electronics'], ['other', 'Other']], state.hwSub, id => { state.hwSub = id; renderHardwareArea(box); });
+  renderTabs(document.getElementById('hwtabs'), [['trackmate', 'Trackmate Interface'], ['arduino', 'Arduino'], ['ds', 'DS Electronics'], ['oxigen', 'oXigen Digital'], ['other', 'Other']], state.hwSub, id => { state.hwSub = id; renderHardwareArea(box); });
   if (state.hwSub === 'other') return;
   if (state.hwSub === 'arduino') return renderArduinoSettings(document.getElementById('hwbox'));
   if (state.hwSub === 'ds') return renderDsSettings(document.getElementById('hwbox'));
+  if (state.hwSub === 'oxigen') return renderOxigenSettings(document.getElementById('hwbox'));
   renderHardwareSettings(document.getElementById('hwbox'));
+}
+
+// App Settings > Timing Hardware > oXigen Digital: only a place held for it. Nothing connects, nothing is saved and a race does not use it yet; the page is filled in when the support for oXigen Digital comes.
+function renderOxigenSettings(box) {
+  box.innerHTML = `<p class="muted"><strong>Coming.</strong> This page is the place for <strong>oXigen Digital</strong> timing. There is nothing to set up here yet: the app does not connect to anything on this page, and a race does not use it.</p>`;
 }
 
 const GENERAL_FOLDERS = ['display', 'names', 'header', 'logo', 'pictures', 'data'];

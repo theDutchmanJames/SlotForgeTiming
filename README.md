@@ -2376,3 +2376,11 @@ Good to know:
 Good to know:
 1. There is no separate "which hardware do I use" setting. What is **connected** is named first; when nothing is connected, the chip names what was **chosen** (the virtual box ticked, a remembered box, a remembered Trackmate) and falls back to the Trackmate.
 2. The race screen's status line is unchanged: it says *Trackmate not connected · Arduino box connected* when only the box is connected. Say so if it should follow the same wording.
+
+## What to try (1.38.0): the oXigen Digital sub-tab
+1. App Settings > Timing Hardware. The sub-tabs are now Trackmate Interface, Arduino, DS Electronics, **oXigen Digital**, Other.
+2. Click **oXigen Digital**: a short note says that nothing can be set up there yet. No buttons, no fields.
+
+Good to know:
+1. It only holds the place. Nothing connects, nothing is saved and a race does not use it; the page is filled in when the support for oXigen Digital comes.
+2. Home still names only the hardware that exists (Trackmate, Arduino box, virtual box); oXigen joins it when it can connect.

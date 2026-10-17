@@ -276,11 +276,11 @@ const Help = (() => {
           <li>Those two need the <b>password</b> you type in the same place. With no password they stay closed to other devices.</li>
           <li>The first time, Windows may ask whether the app may use the network: allow it on private networks. On a Mac the question is whether the app may accept incoming network connections: choose Allow.</li>
         </ul>` },
-      { id: 'hardware', title: 'Timing hardware', note: 'Trackmate, Arduino, DS Electronics or no hardware', body: `
+      { id: 'hardware', title: 'Timing hardware', note: 'Trackmate, Arduino, DS Electronics, oXigen Digital or no hardware', body: `
         <ul>
           <li>App Settings, <b>Timing Hardware</b> has a page per kind of hardware. On <b>Trackmate Interface</b> you connect the box by USB and check the sensors; the check lights show which sensor is seen. You choose which lane each sensor counts for.</li>
           <li>The Trackmate can also switch the <b>track power</b> (relay) and has a <b>Trackcall</b> button. What they do is set in the race setup.</li>
-          <li>The <b>Arduino</b> page is for a box you build yourself (next folder). <b>DS Electronics</b> is a listening version for now.</li>
+          <li>The <b>Arduino</b> page is for a box you build yourself (next folder). <b>DS Electronics</b> is a listening version for now. <b>oXigen Digital</b> is a place held for it: there is nothing to set up there yet.</li>
           <li>The Monitor shows what the box sends, which helps when something does not count.</li>
           <li>No hardware? Use the number keys, or <b>Simulated cars</b>.</li>
         </ul>` },
