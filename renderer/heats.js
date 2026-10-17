@@ -11,6 +11,7 @@
   };
   const newSeed = () => Math.floor(Math.random() * 4294967295) + 1;
 
+  const distText = (m, unit) => (typeof module !== 'undefined' ? require('./distance.js') : root.Distance).text(m, unit); // (a distance in words: 100 m; distance.js is loaded after this file in the page, so it is looked up when needed)
   const whole = (v, d, lo, hi) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
   // The heat settings of a race setup, with a default for everything that is missing (a setup from an older version has no such field).
   const PLANS = ['manual', 'perdriver', 'roundrobin', 'rotation'];
@@ -22,8 +23,9 @@
       each: whole(s.heatsEach, 3, 1, 50), // (perdriver: the number of heats of every driver)
       even: s.heatEven === 'yes' || s.heatEven === true, // (roundrobin: the same number of heats for everyone)
       seeding: s.heatSeeding === 'mixed' || s.heatSeeding === 'speed' ? s.heatSeeding : 'random',
-      by: s.heatBy === 'time' ? 'time' : 'laps',
+      by: s.heatBy === 'time' ? 'time' : s.heatBy === 'distance' ? 'distance' : 'laps',
       laps: whole(s.laps, 10, 1, 10000),
+      distance: Math.max(0, Number(s.distance) || 0),
       minutes: Math.max(0, Number(s.duration) || 0)
     };
   }
@@ -271,7 +273,7 @@
   const countedHeats = (n, sc) => { let c = n; if (sc.dropWorst && c >= 2) c--; if (sc.countBy === 'best') c = Math.min(c, sc.bestHeats); return c; };
 
   // What happens after the heats, in words (the Home tab). Nothing is known about who races in a final before the heats are raced, so the lines are about the rules.
-  function finalsLines(st, setup, o) {
+  function finalsLines(st, setup, o, unit) {
     const f = E.finalsOf(setup), sizes = E.finalSizes(st.count, st.lanes, f.finals);
     if (f.finals === 'none') return [];
     if (!sizes.length) return ['No finals: with one lane or one driver nobody can race against anybody.'];
@@ -281,16 +283,16 @@
     else if (f.finals === 'ab') first += st.count <= sizes[0] ? ' (all the drivers, so there is no final B)' : ' (only one driver is left over, so there is no final B)';
     lines.push(first + '. In a final the best-placed driver chooses a lane first.');
     lines.push(f.finalMode === 'added' ? 'What a driver scores in a final is added to the heat result.' : 'The finals decide the final places: the heat result only decides who races in which final.');
-    const own = o.by === 'time' ? Number(setup.finalDuration) > 0 && `${Number(setup.finalDuration)} minutes` : Number(setup.finalLaps) > 0 && `${Number(setup.finalLaps)} laps`;
+    const own = o.by === 'time' ? Number(setup.finalDuration) > 0 && `${Number(setup.finalDuration)} minutes` : o.by === 'distance' ? Number(setup.finalDistance) > 0 && distText(Number(setup.finalDistance), unit) : Number(setup.finalLaps) > 0 && `${Number(setup.finalLaps)} laps`;
     if (own) lines.push(`A final is ${own} long.`);
     return lines;
   }
 
   // The lines of text above the preview. names: the names of the participants. Plain strings (the screen escapes them).
-  function summary({ stats: st, setup, names, custom }) { // (custom: the heats come from a rotation setup, so there is no setting to advise about)
+  function summary({ stats: st, setup, names, custom, unit }) { // (custom: the heats come from a rotation setup, so there is no setting to advise about; unit: 'm' or 'ft' for a distance)
     const o = optionsOf(setup), sc = E.scoringOf(setup), lines = [];
     const heatWord = n => (n === 1 ? '1 heat' : n + ' heats');
-    const each = o.by === 'time' ? `${o.minutes} minutes` : `${o.laps} laps`;
+    const each = o.by === 'time' ? `${o.minutes} minutes` : o.by === 'distance' ? distText(o.distance, unit) : `${o.laps} laps`;
     let head = `${heatWord(st.heats)}, each ${each}`;
     if (o.by === 'time' && o.minutes) head += ` (${st.heats * o.minutes} minutes of racing in total)`;
     lines.push(head + '.');
@@ -311,7 +313,7 @@
     const how = scoringText(sc, !!setup && setup.resultBy === 'points');
     if (how) lines.push(how);
     if (setup && setup.resultBy === 'time' && !sc.byTime) lines.push('Total race time needs heats that are limited by laps. The heats here are limited by time, so the result is counted by laps.');
-    lines.push(...finalsLines(st, setup, o));
+    lines.push(...finalsLines(st, setup, o, unit));
     return lines.filter(Boolean);
   }
 

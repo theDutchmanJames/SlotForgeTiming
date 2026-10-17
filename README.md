@@ -2263,3 +2263,20 @@ Good to know:
 3. A very small widget is hard to see on the canvas. Drag a rectangle around it (or press Ctrl+A) to select it again, and use Undo if a pull went too far.
 4. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
 5. The tests: `tests/widgets.test.js` (the smallest size from every corner, with and without snapping), `tests/screens.test.js` (the pull in the editor, the handles of a small widget, the Widget Builder).
+
+## What to try (1.35.0): Distance Racing
+From your idea: a race that is driven for a distance, instead of laps or time. This is the first half (version 1.35.1 adds the driver swaps by distance).
+1. Open **Race Setups** and make or edit a **Race by laps or distance** setup. The new setting **The race is limited by** has *A number of laps* (as before) and *A distance*. The same choice (*By distance*) is there for the heats of a **Heats** race and for an **Endurance Race** (by distance, or by heats by distance). In the Length and result folder you set the **Distance of the race**, in metres (in feet when App Settings > General > Display > Distance unit is feet and miles).
+2. **The lanes drive**: *The same distance* (the fairest: a shorter lane drives more laps), *The same number of laps* (every lane drives the laps that the distance takes on a lane of the track length), or *A distance I set for each lane* (type them, lane 1 first, for instance 100, 105, 110; a lane without one drives the distance of the race).
+3. **A distance that is not a whole number of laps**: *Drive on to the line after it* (at least the distance, the standard) or *Round to the nearest lap*. A car is only seen when it crosses the line, so it always drives whole laps.
+4. **The race may take at most (minutes)**: a safety net, 0 = no limit. When the time is up every car finishes at its next crossing of the line and the cars are ranked by the distance they have driven.
+5. The race works out the laps of every lane from the length of the lane (Database > Tracks: the track length, and the lane lengths). **Home** warns you when the distance is missing, or the track or a lane has no length. The cars are ranked by who reached the distance first; the others by the distance driven. The gaps are a time (or laps behind) as in a race by laps.
+6. Three new widgets in the group **Distance** of the Layout Editor, all per lane: **Distance Driven** (84 m, or 84 of 103 m, or 81%), **Distance To Go** (19 m, with an option to add *to go*) and **Laps To Go** (5 laps to go, or Last lap). The distance changes **smoothly** (estimated between two crossings of the line from the last laps) or **only when the car crosses the line** (exact): your choice in the settings of the widget, together with the decimals and the unit (as set in App Settings, metres or feet). The Text widget has the variables for them as well.
+7. The summaries show the distance: the Home card of the setup rules, the Race Setups list, the header of the race, the heat plan, the results and the report.
+
+Good to know:
+1. Old race setups keep working: they are *by laps*. The session type that was called *Race by laps* is now called **Race by laps or distance**.
+2. A distance can only be driven when the lane lengths are known: the distance a car has driven is its laps times the length of its lane.
+3. The audio calls (last lap, laps to go) use the laps of the lane of each car.
+4. **GitHub tags** are still not pushed (refused from here); the code is pushed to the main branch.
+5. The tests: `tests/distance.test.js` (the sums, the engine, the widgets, the settings) and `tests/distancescreen.test.js` (Home, the race screen, a saved session, heats and Endurance by distance), `tests/screens.test.js` (the settings and the folders) and `tests/help.test.js`.

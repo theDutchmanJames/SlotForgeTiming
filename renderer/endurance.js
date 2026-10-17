@@ -44,8 +44,8 @@
   // with the rules of the swaps in setup.endurance; setup.ofType keeps what it really is. Any other setup is given back as it is.
   function effective(setup) {
     if (!setup || setup.sessionType !== 'endurance') return setup;
-    const by = setup.enduranceBy === 'laps' ? 'race' : setup.enduranceBy === 'heats' ? 'heats' : 'timed';
-    return { ...setup, sessionType: by, ofType: 'endurance', endurance: clean(setup), ...(by === 'heats' && !setup.rotation ? { participants: 'teams' } : {}) };
+    const by = setup.enduranceBy === 'laps' || setup.enduranceBy === 'distance' ? 'race' : setup.enduranceBy === 'heats' ? 'heats' : 'timed';
+    return { ...setup, sessionType: by, ofType: 'endurance', endurance: clean(setup), raceBy: setup.enduranceBy === 'distance' ? 'distance' : 'laps', ...(by === 'heats' && !setup.rotation ? { participants: 'teams' } : {}) }; // (raceBy: a long race by distance is a race by distance)
   }
 
   const cur = st => st.stints[st.stints.length - 1];

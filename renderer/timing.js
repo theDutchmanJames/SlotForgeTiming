@@ -11,6 +11,7 @@
   const Ww = typeof module !== 'undefined' ? require('./weatherwidgets.js') : root.WxW; // the weather widgets (weatherwidgets.js)
   const En = typeof module !== 'undefined' ? require('./endurance.js') : root.Endurance; // the Endurance Race (endurance.js)
   const Dm = typeof module !== 'undefined' ? require('./damage.js') : root.Damage; // the Damage System (damage.js)
+  const Ds = typeof module !== 'undefined' ? require('./distance.js') : root.Distance; // Distance Racing: the distance driven and to go (distance.js)
   const Bo = typeof module !== 'undefined' ? require('./boardorder.js') : root.BoardOrder; // the order of a leaderboard (boardorder.js)
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
@@ -31,6 +32,25 @@
   const heatLabel = h => (h.final ? `Final ${h.final}` : `Heat ${Math.min(h.idx + 1, h.count)} of ${h.count}`);
   const lapLimitOf = setup => (setup.sessionType === 'race' || (setup.sessionType === 'heats' && setup.heatBy !== 'time')) ? Number(setup.laps) || 0 : 0;
   const timeLimitOf = setup => (setup.sessionType === 'timed' || setup.sessionType === 'qualifying' || (setup.sessionType === 'heats' && setup.heatBy === 'time')) ? (Number(setup.duration) || 0) * 60000 : 0;
+  // The laps a car has to drive: in a Distance Race the laps of its own lane, else the laps of the race. 0: no limit.
+  const limitFor = (S, c) => (S.eng.distance && S.eng.limitOf ? S.eng.limitOf(c) : lapLimitOf(S.setup));
+  // The laps of the race as a whole: the lap the leader is on, and the laps the leader has to drive (in a Distance Race the leader's lane may have more or fewer laps than another)
+  function raceLaps(S) {
+    if (S.eng.distance && S.eng.limitOf) { const lead = (S.standings()[0] || {}).car; if (lead) return { total: S.eng.limitOf(lead), most: lead.laps.length, cur: lead.done ? lead.laps.length : lead.laps.length + 1 }; }
+    const total = lapLimitOf(S.setup), most = Math.max(0, ...S.eng.cars.map(x => x.laps.length));
+    return { total, most, cur: S.eng.cars.some(x => x.done && x.laps.length === most) ? most : most + 1 };
+  }
+  // The look at the distance of a car (distance.js look): its lane in metres from the race (a Distance Race) or from the track, the laps that count, the laps it has to drive, and for a smooth distance the part of the lap it is in
+  function distLook(S, c, smooth) {
+    const d = S.eng.distance, ln = d && d.lanes[Math.min(d.lanes.length - 1, c.lane | 0)], len = ln && ln.length > 0 ? ln.length : Sp.laneLength(S.track || {}, c.lane) || 0;
+    const i = S.eng.cars.indexOf(c), laps = S.eng.lapsOf ? S.eng.lapsOf(c) : c.laps.length, lap = smooth && !c.done ? Ds.expectedLap(c.laps, c.bad) : null;
+    return Ds.look(len, laps, limitFor(S, c), lap ? { lapMs: lap, sinceMs: i >= 0 ? S.eng.lapElapsed(i, S.now) : 0 } : null);
+  }
+  const distUnit = (S, opt) => Ds.unitOf(opt, S.distUnit);
+  const distLaneVars = (S, c) => {
+    const l = distLook(S, c, true), u = distUnit(S, {});
+    return { distance: l.driven === null ? '\u2013' : Ds.text(l.driven, u), distleft: l.left === null ? '\u2013' : Ds.text(l.left, u), lapstogo: l.lapsLeft === null ? '\u2013' : l.lapsLeft };
+  };
   const sessionLabel = { practice: 'Free practice', qualifying: 'Qualifying', race: 'Race', timed: 'Timed race', heats: 'Heats', endurance: 'Endurance', tokens: 'Time tokens' };
   const flagText = { ready: 'Ready', running: 'Racing', paused: 'Paused', between: 'Heat finished', finished: 'Finished' };
 
@@ -62,13 +82,13 @@
       laptime: c.done ? '–' : E.fmtTime(E_.lapElapsed(i, S.now)), last: laps ? E.fmtTime(c.laps[laps - 1]) : '–', best: c.best === null ? '–' : E.fmtTime(c.best), avg: g.length ? E.fmtTime(mean(g)) : '–', median: g.length ? E.fmtTime(median(g)) : '–',
       record: Number.isFinite(best) ? E.fmtTime(best) : '–', gap: esc(row.gap),
       fuel: F && F.on ? `${(Math.floor(E_.fuelOf(i, t) * 10 + 1e-9) / 10).toFixed(1).replace(/\.0$/, '')} L` : '–', fuelpct: F && F.on && F.tank ? Math.round(E_.fuelOf(i, t) / (E_.tankOf ? E_.tankOf(i) : F.tank) * 100) + '%' : '–', bop: c.bop ? Bp.signed(c.bop) : '–',
-      penpoints: P && P.on ? (c.dq ? 'DQ' : c.points) : '–', pentime: P && P.on ? `+${Number.isInteger(sec) ? sec : sec.toFixed(1)} s` : '–', champ, pits: c.pits ? c.pits.length : 0, pit: pit ? E.fmtTime(pit.ms) : '–', speed: speedOf(true), speedreal: speedOf(false), ...swapVars(S, c, t), ...damageVars(S, c, t), ...Ww.laneVars(c) };
+      penpoints: P && P.on ? (c.dq ? 'DQ' : c.points) : '–', pentime: P && P.on ? `+${Number.isInteger(sec) ? sec : sec.toFixed(1)} s` : '–', champ, pits: c.pits ? c.pits.length : 0, pit: pit ? E.fmtTime(pit.ms) : '–', speed: speedOf(true), speedreal: speedOf(false), ...swapVars(S, c, t), ...damageVars(S, c, t), ...distLaneVars(S, c), ...Ww.laneVars(c) };
   }
   function raceVars(S, t) {
-    const laps = lapLimitOf(S.setup), time = timeLimitOf(S.setup), lead = S.standings()[0], most = Math.max(0, ...S.eng.cars.map(x => x.laps.length)), sr = S.sessionRecord ? S.sessionRecord() : null, tr = S.trackRecord ? S.trackRecord() : null;
+    const rl = raceLaps(S), laps = rl.total, time = timeLimitOf(S.setup), lead = S.standings()[0], most = rl.most, sr = S.sessionRecord ? S.sessionRecord() : null, tr = S.trackRecord ? S.trackRecord() : null;
     const st = flagStateOf(S);
     const rec = r => (r && Number.isFinite(r.time) ? E.fmtTime(r.time) : '–'), by = r => (r && Number.isFinite(r.time) && r.name ? esc(r.name) : '');
-    return { clock: clockText(S.eng.elapsed(t)), timeleft: time ? mmss(Math.max(0, time - S.eng.elapsed(t))) : '–', lapsleft: laps ? Math.max(0, laps - most) : '–', lapstotal: laps || '–', leader: lead && lead.car ? esc(lead.car.driverName) : '–',
+    return { clock: clockText(S.eng.elapsed(t)), timeleft: time ? mmss(Math.max(0, time - S.eng.elapsed(t))) : '–', lapsleft: laps ? Math.max(0, laps - most) : '–', lapstotal: laps || '–', racedistance: S.eng.distance ? Ds.text(S.eng.distance.distance, distUnit(S, {})) : '–', leader: lead && lead.car ? esc(lead.car.driverName) : '–',
       flag: st === 'red' ? 'Red flag' : st === 'yellow' ? 'Yellow flag' : flagText[st] || '', heat: S.heat ? heatLabel(S.heat) : '',
       track: esc((S.track && S.track.name) || ''), session: esc(S.setup.name || ''), type: esc(sessionLabel[S.setup.ofType || S.setup.sessionType] || ''), sessionrecord: rec(sr), sessionrecordby: by(sr), trackrecord: rec(tr), trackrecordby: by(tr), yellowtarget: S.eng.yellow && S.eng.yellow.target > 0 ? E.fmtTime(S.eng.yellow.target) : '', ...Ww.raceVars(S.eng, t) };
   }
@@ -183,13 +203,29 @@
       case 'driverflag': return { html: c.flag ? `<span class="fi fi-${esc(String(c.flag).toLowerCase())}"></span>` : '' };
       case 'position': return { html: String(S.rowOf(c).pos) };
       case 'lap': {
-        const total = lapLimitOf(S.setup), n = c.laps.length, cur = c.done ? n : n + 1;
+        const total = limitFor(S, c), n = c.laps.length, cur = c.done ? n : n + 1;
         return { html: total ? `${Math.min(cur, total)}/${total}` : String(cur) };
       }
       case 'racelaps': { // the laps of the race as a whole: the lap the leader is on (up, with the number of laps of the race when it has one), or the laps left (down: nothing to count when the race has no number of laps)
-        const total = lapLimitOf(S.setup), most = Math.max(0, ...S.eng.cars.map(x => x.laps.length)), cur = S.eng.cars.some(x => x.done && x.laps.length === most) ? most : most + 1;
+        const { total, most, cur } = raceLaps(S);
         if (Wd.lapCountOf(opt) === 'down') return { html: total ? String(Math.max(0, total - most)) : '–' };
         return { html: total ? (Wd.lapTotalOn(opt) ? `${Math.min(cur, total)}/${total}` : String(Math.min(cur, total))) : String(cur) };
+      }
+      case 'distance': { // Distance Racing: the distance the car has driven (smoothly between two crossings of the line, or exactly), with the distance of the race or as a percentage
+        const l = distLook(S, c, Ds.smoothOn(opt)), u = distUnit(S, opt);
+        if (l.driven === null) return { html: '\u2013' };
+        if (opt.show === 'percent') return { html: l.pct === null ? '\u2013' : Math.round(l.pct) + '%' };
+        return { html: esc(Ds.text(l.driven, u, opt.decimals) + (opt.show === 'both' && l.target > 0 ? ' of ' + Ds.text(l.target, u, opt.decimals) : '')) };
+      }
+      case 'distleft': { // Distance Racing: the distance still to drive until the finish line (a race with laps or a distance)
+        const l = distLook(S, c, Ds.smoothOn(opt)), u = distUnit(S, opt);
+        return { html: l.left === null ? '\u2013' : esc(Ds.text(l.left, u, opt.decimals) + (opt.words === true ? ' to go' : '')) };
+      }
+      case 'lapstogo': { // the laps the car still has to drive; "Last lap" when it is on its last one
+        const n = limitFor(S, c) > 0 ? Math.max(0, limitFor(S, c) - (S.eng.lapsOf ? S.eng.lapsOf(c) : c.laps.length)) : null;
+        if (n === null) return { html: '\u2013' };
+        if (opt.show === 'number') return { html: String(n) };
+        return { html: n === 0 ? 'Finished' : n === 1 && opt.lastLap !== false ? 'Last lap' : `${n} ${n === 1 ? 'lap' : 'laps'} to go` };
       }
       case 'laptime': {
         const f = S.flashOf(c);
@@ -301,8 +337,8 @@
       case 'info': {
         const parts = [];
         if (S.heat) parts.push(heatLabel(S.heat));
-        const laps = lapLimitOf(S.setup), time = timeLimitOf(S.setup);
-        if (laps) parts.push(`${Math.max(0, laps - Math.max(0, ...S.eng.cars.map(x => x.laps.length)))} laps left`);
+        const rl = raceLaps(S), laps = rl.total, time = timeLimitOf(S.setup);
+        if (laps) parts.push(`${Math.max(0, laps - rl.most)} laps left`);
         else if (time) parts.push(`${mmss(Math.max(0, time - S.eng.elapsed(t)))} left`);
         else if (!S.heat) parts.push(S.setup.sessionType === 'tokens' ? 'Time tokens' : 'Free practice');
         if (S.heat && S.phase === 'between' && S.heat.breakLeft > 0) parts.push(`next ${S.heat.final ? 'final ' + S.heat.final : 'heat'} in ${mmss(S.heat.breakLeft * 1000)}`);

@@ -142,7 +142,7 @@
   const whole = (v, lo, hi, d) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
 
   // ---- recent races ----
-  const KINDS = { practice: 'Free practice', qualifying: 'Qualifying', race: 'Race by laps', timed: 'Timed race', heats: 'Heat-based race', endurance: 'Endurance Race' };
+  const KINDS = { practice: 'Free practice', qualifying: 'Qualifying', race: 'Race by laps or distance', timed: 'Timed race', heats: 'Heat-based race', endurance: 'Endurance Race' };
   // ctx: { sessions, count } -> [{ id, date, name, kind, result }] the newest first; a race says who won, qualifying and free practice the best lap. Time Token Sessions never show.
   function recent(ctx) {
     const n = whole(ctx.count, 1, 20, 5);
@@ -216,11 +216,12 @@
     const heated = t === 'heats' || (t === 'endurance' && setup.enduranceBy === 'heats'), laps = num(setup.laps, 10), mins = num(setup.duration, 5);
     out.push(['Race', n.typeLabel || t || '']);
     let length = '';
-    if (t === 'race') length = plural(laps, 'lap', 'laps');
+    const dist = () => (typeof module !== 'undefined' ? require('./distance.js') : root.Distance).lengthText(setup, n.distUnit); // (a race by distance: 100 m; n.distUnit is 'm' or 'ft')
+    if (t === 'race') length = setup.raceBy === 'distance' ? dist() : plural(laps, 'lap', 'laps');
     else if (t === 'timed' || t === 'qualifying') length = plural(mins, 'minute', 'minutes');
-    else if (t === 'endurance' && !heated) length = setup.enduranceBy === 'laps' ? plural(laps, 'lap', 'laps') : plural(mins, 'minute', 'minutes');
+    else if (t === 'endurance' && !heated) length = setup.enduranceBy === 'laps' ? plural(laps, 'lap', 'laps') : setup.enduranceBy === 'distance' ? dist() : plural(mins, 'minute', 'minutes');
     else if (heated) {
-      const each = setup.heatBy === 'time' ? plural(mins, 'minute', 'minutes') : plural(laps, 'lap', 'laps');
+      const each = setup.heatBy === 'time' ? plural(mins, 'minute', 'minutes') : setup.heatBy === 'distance' ? dist() : plural(laps, 'lap', 'laps');
       length = setup.rotation ? `${n.rotation ? 'Rotation "' + n.rotation + '"' : 'A rotation setup'}, heats of ${each}`
         : setup.heatPlan === 'perdriver' ? `${plural(num(setup.heatsEach, 3), 'heat', 'heats')} for every driver, each ${each}`
           : setup.heatPlan === 'roundrobin' ? `Round robin, heats of ${each}` : setup.heatPlan === 'rotation' ? `Lane rotation, heats of ${each}` : `${plural(num(setup.heats, 3), 'heat', 'heats')} of ${each}`;

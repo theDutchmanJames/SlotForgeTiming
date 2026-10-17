@@ -11,6 +11,7 @@
   const Dl = typeof module !== 'undefined' ? require('./delta.js') : root.Delta; // the Delta Timers (what is compared, and the badge)
   const Bo = typeof module !== 'undefined' ? require('./boardorder.js') : root.BoardOrder; // the order of a leaderboard (Order by)
   const Ww = typeof module !== 'undefined' ? require('./weatherwidgets.js') : root.WxW; // the weather widgets: Tyres, Weather Forecast, Track Conditions (the options, the samples)
+  const Ds = typeof module !== 'undefined' ? require('./distance.js') : root.Distance; // Distance Racing: the distance widgets (the options, the words)
   const NAMES = ['Alex', 'Sam', 'Kim', 'Lee', 'Max', 'Zoe'];
   const NICKS = ['Speedy', 'Sammy', 'Kimbo', 'Leeroy', 'Maxi', 'Zo'];
   const FLAGS = ['nl', 'de', 'gb', 'us', 'jp', 'fr'];
@@ -46,8 +47,9 @@
     ['laptime', 'Current lap time'], ['last', 'Last lap'], ['best', 'Best lap'], ['avg', 'Average lap'], ['median', 'Median lap'], ['record', 'Personal record lap'], ['gap', 'Gap to leader'],
     ['fuel', 'Fuel left (litres)'], ['fuelpct', 'Fuel left (%)'], ['bop', 'Balance of Power (\u221220% hindered, +10% helped, a dash when it is off)'], ['penpoints', 'Penalty points'], ['pentime', 'Penalty time'], ['champ', 'Championship points'], ['pits', 'Pit stops made'], ['tyre', 'Tyres of the car (Soft, Wet...)'], ['pit', 'Last pit stop time'], ['speed', 'Speed (scaled km/h)'], ['speedreal', 'Speed (real km/h)'],
     ['damage', 'Damage points (Damage System)'], ['damagelevel', 'Damage level (Light damage, Heavy damage...)'], ['repairs', 'Repairs made (Damage System)'],
+    ['distance', 'Distance driven (84 m), or the lane has no length: a dash'], ['distleft', 'Distance to go to the finish (19 m; a dash in a race with no laps or distance)'], ['lapstogo', 'Laps to go (a dash in a race with no laps or distance)'],
     ['nextdriver', 'Next driver of the team (Endurance Race)'], ['swap', 'Time to the next driver swap (Endurance Race)'], ['stint', 'How long the driver has been at the wheel (Endurance Race)']];
-  const TEXT_RACE_VARS = [['clock', 'Race clock (counting up)'], ['timeleft', 'Time left'], ['lapsleft', 'Laps left'], ['lapstotal', 'Lap limit'], ['leader', 'Leader'], ['flag', 'Flag / race state'], ['heat', 'Heat'],
+  const TEXT_RACE_VARS = [['clock', 'Race clock (counting up)'], ['timeleft', 'Time left'], ['lapsleft', 'Laps left'], ['lapstotal', 'Lap limit'], ['racedistance', 'Distance of the race (a dash when the race is not set to a distance)'], ['leader', 'Leader'], ['flag', 'Flag / race state'], ['heat', 'Heat'],
     ['track', 'Track name'], ['session', 'Race setup name'], ['type', 'Session type'], ['sessionrecord', 'Session record lap'], ['sessionrecordby', 'Session record driver'], ['trackrecord', 'Track record lap'], ['trackrecordby', 'Track record driver'], ['yellowtarget', 'Yellow flag target lap time (empty when there is none)'],
     ['weather', 'Weather now (Dry, Cloudy, Wet, Clearing; a dash without a weather system)'], ['nextweather', 'The next change of the weather and when (Rain in 3 laps; empty when there is none)'], ['tracktemp', 'Track temperature (30 \u00B0C)'], ['airtemp', 'Air temperature (24 \u00B0C)'], ['windspeed', 'Wind speed (10 km/h)'], ['winddir', 'Wind direction (SW)']];
   const TEXT_LANE_DEFAULT = '{position}. {name}  {best}', TEXT_RACE_DEFAULT = '{timeleft} left';
@@ -357,6 +359,14 @@
     { key: 'helpColor', label: 'Colour when the car is helped', type: 'color', default: '#3ddc84' }];
   const TOKENCLOCK_OPTIONS = [{ key: 'warnColour', label: 'Turn amber when the time is almost up (the colour and the number of seconds are set in Race Setup > Time Tokens)', type: 'checkbox', default: true }];
 
+    // the Distance widgets (1.35.0): what the layout editor shows in them (a race of 103 m)
+  const DIST_SAMPLE = [84.3, 62.1, 47.8, 31.2, 20.5, 9.9], DIST_TARGET = 103;
+  const distSample = (l, w, kind) => {
+    const o = (w && w.opt) || {}, u = Ds.unitOf(o, 'm'), v = DIST_SAMPLE[l % 6];
+    if (kind === 'driven') return o.show === 'percent' ? Math.round(v / DIST_TARGET * 100) + '%' : o.show === 'both' ? `${Ds.text(v, u, o.decimals)} of ${Ds.text(DIST_TARGET, u, o.decimals)}` : Ds.text(v, u, o.decimals);
+    if (kind === 'left') return Ds.text(DIST_TARGET - v, u, o.decimals) + (o.words ? ' to go' : '');
+    const n = [5, 4, 3, 2, 1, 6][l % 6]; return o.show === 'number' ? String(n) : n === 1 && o.lastLap !== false ? 'Last lap' : `${n} ${n === 1 ? 'lap' : 'laps'} to go`;
+  };
   const REGISTRY = [
     T('nickname', 'Nickname', 'Driver', { perLane: true, w: 170, sample: l => NICKS[l] }),
     T('name', 'Name', 'Driver', { perLane: true, w: 200, sample: l => NAMES[l] }),
@@ -400,6 +410,10 @@
     T('imagerace', 'Custom image (race)', 'Custom', { hidden: true, w: 150, h: 150, noTitle: true, sample: imgSample }),
     T('clock', 'Race Clock', 'Race', { title: 'Race clock', w: 200, options: CLOCK_OPTIONS, sample: '01:23.4' }),
     T('racelaps', 'Race Laps', 'Race', { title: 'Race laps', w: 140, options: RACELAPS_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}; return lapCountOf(o) === 'down' ? '13' : lapTotalOn(o) ? '7/20' : '7'; } }),
+    // Distance Racing (1.35.0): the distance a car has driven, the distance it still has to drive, and the laps to go (see distance.js). They work in any race with laps or a distance; the first one in any race that has lane lengths
+    T('distance', 'Distance Driven', 'Distance', { title: 'Distance driven', perLane: true, w: 200, options: Ds.DISTANCE_OPTIONS, sample: (l, w) => distSample(l, w, 'driven') }),
+    T('distleft', 'Distance To Go', 'Distance', { title: 'Distance to go', perLane: true, w: 200, options: Ds.DISTLEFT_OPTIONS, sample: (l, w) => distSample(l, w, 'left') }),
+    T('lapstogo', 'Laps To Go', 'Distance', { title: 'Laps to go', perLane: true, w: 170, options: Ds.LAPSTOGO_OPTIONS, sample: (l, w) => distSample(l, w, 'laps') }),
     T('tokenclock', 'Token Clock', 'Time Tokens', { title: 'Token clock', perLane: true, w: 200, options: TOKENCLOCK_OPTIONS, sample: l => ['25:00', '12:34', '00:45', '1:05:00', '07:20', '04:59'][l % 6] }),
     // the weather (Race Setup > Weather Systems): the tyre of a lane's car, the weather now and next, and the conditions on the track (see weatherwidgets.js)
     T('tyre', 'Tyres', 'Weather', { title: 'Tyres', perLane: true, w: 140, h: 80, textSize: 22, options: Ww.TYRE_OPTIONS, sample: (l, w) => Ww.tyreSample(l, (w && w.opt) || {}) }),

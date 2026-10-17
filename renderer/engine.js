@@ -82,8 +82,14 @@
     const EN = cfg.endurance && cfg.endurance.on && (type === 'race' || type === 'timed') ? { ...cfg.endurance } : null, enRnd = cfg.rnd || Math.random;
     // Damage System (cfg.damage, see damage.js): only in a race or a timed race. A car collects damage points (a hit by the Race Director, a deslot); the level they reach says how long it must stand in the pits.
     const DM = cfg.damage && cfg.damage.on && (type === 'race' || type === 'timed') ? cfg.damage : null;
-    const lapLimit = type === 'race' ? Number(cfg.laps) || 0 : 0;
-    const timeLimit = (type === 'timed' || type === 'qualifying') ? (Number(cfg.duration) || 0) * 60000 : 0;
+    // Distance Racing (cfg.distance, see distance.js): a race by laps whose lanes drive the laps that make up a distance, so a lane may have to drive more laps than another. Only in a race.
+    // DS.lanes[lane] = { length (metres), laps }. The longest time the race may take (DS.max, minutes; 0 = no limit) ends it like the time of a timed race: every car finishes on its next crossing.
+    const DS = cfg.distance && type === 'race' && Array.isArray(cfg.distance.lanes) && cfg.distance.lanes.length ? cfg.distance : null;
+    const dsLane = c => (DS ? DS.lanes[Math.max(0, Math.min(DS.lanes.length - 1, c.lane | 0))] : null);
+    const lenOf = c => { const d = dsLane(c); return d ? Number(d.length) || 0 : 0; };
+    const lapLimit = type === 'race' ? (DS ? Math.max(0, ...DS.lanes.map(l => Number(l.laps) || 0)) || Number(cfg.laps) || 0 : Number(cfg.laps) || 0) : 0;
+    const limitOf = c => { const d = dsLane(c); return d && Number(d.laps) > 0 ? Number(d.laps) : lapLimit; }; // the laps this car has to drive (0: no limit)
+    const timeLimit = (type === 'timed' || type === 'qualifying') ? (Number(cfg.duration) || 0) * 60000 : DS && Number(DS.max) > 0 ? Number(DS.max) * 60000 : 0;
     const R = {
       cfg, fuel: F, penalty: P, type, status: 'ready', t0: 0, pausedAt: 0, endAt: 0, timeUp: false, finished: 0, endedBy: '',
       yellow: Y, yellowAt: null, // yellowAt: when the yellow flag that is up now went up (a lap that started before that is not a lap under yellow)
@@ -182,7 +188,7 @@
         c.yellowFast.push(c.laps.length - 1); R.events.push(e);
         if (Y.points > 0 && R.addPoints(i, Y.points, t)) e.points = Y.points;
       }
-      if (!c.dq && ((lapLimit && c.laps.length - c.swapLost >= lapLimit) || (timeLimit && R.timeUp))) { c.done = true; c.place = ++R.finished; } // a car disqualified on this lap (fuel points) has not finished
+      if (!c.dq && ((limitOf(c) && c.laps.length - c.swapLost >= limitOf(c)) || (timeLimit && R.timeUp))) { c.done = true; c.place = ++R.finished; } // a car disqualified on this lap (fuel points) has not finished
       if (DM) damageLap(c, R.cars.indexOf(c), t, deslot);
       wxEval(t); if (!wxEntering) wxDueCheck(c, i, t); // (a car that comes into the pits on this crossing is judged by its stop, or by its next crossing)
       enEval(R.cars.indexOf(c), t); // (the laps of a stint are counted: a swap that is due by laps, or a swap by the sensor, may come with this crossing)
@@ -582,16 +588,16 @@
     R.lapsOf = lapsOf; R.adjOf = c => ({ ms: c.adjMs || 0, laps: c.adjLaps || 0, points: c.adjPoints || 0 });
     // The race time of a car: the time of its last crossing, plus time penalties and the adjustment of the review (what the standings call the effective time).
     R.timeOf = c => c.total + addOf(c);
-    R.lapLimit = lapLimit;
+    R.lapLimit = lapLimit; R.limitOf = limitOf; R.distance = DS; // (limitOf: the laps this car has to drive; distance: the settings of a Distance Race, or null)
     // Did the car finish a race by laps? It drove all the laps, and was not retired or disqualified.
-    R.finishedLaps = c => lapLimit > 0 && c.done && !c.retired && !c.dq && c.laps.length - (c.swapLost || 0) >= lapLimit;
+    R.finishedLaps = c => limitOf(c) > 0 && c.done && !c.retired && !c.dq && c.laps.length - (c.swapLost || 0) >= limitOf(c);
     // The time the car would have needed for all the laps: what it has, plus the laps it still had to drive at its own average lap (the laps that count for averages).
     // Null when it has no lap to average, or when it was retired or disqualified (such a car has no finish time to guess).
     R.estimateOf = c => {
-      if (!(lapLimit > 0) || c.retired || c.dq) return null;
+      if (!(limitOf(c) > 0) || c.retired || c.dq) return null;
       if (R.finishedLaps(c)) return R.timeOf(c);
       const g = goodLaps(c); if (!g.length) return null;
-      return R.timeOf(c) + Math.max(0, lapLimit - c.laps.length) * (g.reduce((a, b) => a + b, 0) / g.length);
+      return R.timeOf(c) + Math.max(0, limitOf(c) - c.laps.length) * (g.reduce((a, b) => a + b, 0) / g.length);
     };
     R.addTime = (i, ms) => { const c = R.cars[i]; if (!c || !(ms > 0)) return false; c.extraMs = (c.extraMs || 0) + ms; log('timeadded', i, R.endAt, { ms }); return true; };
     R.setDq = (i, on) => {
@@ -651,6 +657,22 @@
       if (R.status !== 'finished') R.cars.forEach(c => { c.resumed = true; });
       return true;
     };
+    // Distance Racing: the lanes differ in length, so the laps of two cars do not say who is ahead. A car that has driven its distance ranks first (the first to finish first); the others rank by the
+    // distance they have driven (the laps times the length of their lane). A gap is the time between the two cars at the same distance, worked out between the crossings of the line.
+    const reached = c => limitOf(c) > 0 && lapsOf(c) >= limitOf(c) && !c.dq;
+    const prog = c => lapsOf(c) * lenOf(c);
+    const timeAt = (x, d) => { // the time (ms) at which car x had driven distance d, from the laps it has; null when it has not driven that far
+      const L = lenOf(x); if (!(L > 0) || !(d >= 0)) return null;
+      const full = Math.floor(d / L + 1e-9);
+      if (full > x.laps.length) return null;
+      if (full === x.laps.length || d / L - full < 1e-9) return cum(x, full);
+      return cum(x, full) + (d / L - full) * x.laps[full];
+    };
+    const distGap = (c, ref) => { // how long after ref car c was at the same distance (null: ref has not driven that far)
+      const n = c.laps.length, mine = cum(c, n) + addOf(c);
+      const theirs = reached(c) && reached(ref) ? cum(ref, ref.laps.length) : timeAt(ref, Math.min(n * lenOf(c), ref.laps.length * lenOf(ref)));
+      return theirs === null ? null : Math.max(0, mine - (theirs + addOf(ref)));
+    };
     R.standings = () => {
       const byBest = (a, b) => (a.best ?? 1e12) - (b.best ?? 1e12) || (a.best !== null && b.best !== null ? bestAt(a) - bestAt(b) : 0);
       const eff = c => c.total + addOf(c); // total time including time penalties and the adjustment
@@ -658,6 +680,7 @@
       const order = R.cars.map((_, i) => i).sort((x, y) => {
         const a = R.cars[x], b = R.cars[y];
         if (a.retired !== b.retired) return a.retired ? 1 : -1; // retired cars rank behind the rest
+        if (DS) { const ra = reached(a), rb = reached(b); if (ra !== rb) return ra ? -1 : 1; if (ra) return eff(a) - eff(b) || a.place - b.place || x - y; return prog(b) - prog(a) || eff(a) - eff(b) || x - y; }
         if (type === 'race' && (a.adjLaps || b.adjLaps) && lapsOf(a) !== lapsOf(b)) return lapsOf(b) - lapsOf(a); // (laps added or taken off in the review count before who finished first)
         if (type === 'race' && a.done !== b.done) return a.done ? -1 : 1;
         if (type === 'race' && a.done && b.done) return eff(a) - eff(b) || a.place - b.place;
@@ -672,6 +695,7 @@
         else if (p > 0) {
           if (type === 'practice' || type === 'qualifying') gap = c.best === null ? '' : '+' + fmtTime(c.best - lead.best);
           // always a time: how long after the leader this car reached the lap it has completed (a lapped car is compared at its own lap count)
+          else if (DS) { const g = c.laps.length ? distGap(c, lead) : null; if (g !== null) gap = '+' + fmtTime(g); }
           else if (c.laps.length) gap = '+' + fmtTime(Math.max(0, cum(c, c.laps.length) + addOf(c) - cum(lead, c.laps.length) - addOf(lead)));
         }
         return { pos: p + 1, index: i, car: c, gap };
@@ -688,6 +712,7 @@
         if (p > 0) {
           const L = st[0].car, A = st[p - 1].car;
           if (byBest) { if (c.best !== null && L.best !== null) lead = Math.max(0, c.best - L.best); if (c.best !== null && A.best !== null) ahead = Math.max(0, c.best - A.best); }
+          else if (DS) { if (c.laps.length) { lead = distGap(c, L); ahead = distGap(c, A); down = lenOf(L) > 0 ? Math.max(0, Math.floor((prog(L) - prog(c)) / lenOf(L) + 1e-9)) : 0; } }
           else if (c.laps.length) {
             const n = c.laps.length, mine = val(c, n);
             lead = Math.max(0, mine - val(L, n)); ahead = Math.max(0, mine - val(A, n));

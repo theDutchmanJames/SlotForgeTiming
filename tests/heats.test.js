@@ -16,7 +16,7 @@ const seeded = seed => () => { seed = (seed * 1664525 + 1013904223) % 4294967296
 
 // ---- the heat settings of a setup ----
 { const o = H.optionsOf;
-  ok('a setup with nothing set gets the standards: I choose, 3 heats, 10 laps', JSON.stringify(o({})) === JSON.stringify({ plan: 'manual', heats: 3, each: 3, even: false, seeding: 'random', by: 'laps', laps: 10, minutes: 0 }) && o(undefined).plan === 'manual' && o(null).heats === 3);
+  ok('a setup with nothing set gets the standards: I choose, 3 heats, 10 laps', JSON.stringify(o({})) === JSON.stringify({ plan: 'manual', heats: 3, each: 3, even: false, seeding: 'random', by: 'laps', laps: 10, distance: 0, minutes: 0 }) && o(undefined).plan === 'manual' && o(null).heats === 3);
   ok('round robin, a time limit and numbers are taken over (a number that is no number, or too small, is mended)', o({ heatPlan: 'roundrobin', heatBy: 'time', duration: 4, heats: '5', laps: 7 }).plan === 'roundrobin' && o({ heatBy: 'time', duration: '4.5' }).minutes === 4.5 && o({ heats: '5' }).heats === 5 && o({ heats: 0 }).heats === 1 && o({ heats: 'x' }).heats === 3 && o({ laps: -3 }).laps === 1 && o({ heatPlan: 'weird' }).plan === 'manual' && o({ heats: 2.9 }).heats === 2);
 }
 

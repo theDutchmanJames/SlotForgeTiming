@@ -160,6 +160,7 @@
     const nearRecord = Number(o.nearRecord) > 0 ? Math.min(5, Number(o.nearRecord)) : 0, noLap = Number(o.noLapSeconds) > 0 ? Math.min(600, Number(o.noLapSeconds)) : 0;
     const closeGap = Number(o.closeGap) > 0 ? Math.min(30, Number(o.closeGap)) : 0, battleLaps = Math.max(2, Math.min(20, Math.floor(Number(o.battleLaps)) || 3));
     const dists = (Array.isArray(o.distances) ? o.distances : [50]).map(Number).filter(n => n > 0 && n < 100).sort((a, b) => a - b), by = ['name', 'nickname', 'callsign'].includes(o.driverBy) ? o.driverBy : 'name', lapLimit = Number(o.lapLimit) || 0;
+    const limitFor = (eng, c) => (eng && eng.distance && eng.limitOf ? eng.limitOf(c) : lapLimit); // the laps this car has to drive: in a Distance Race the laps of its lane, else the laps of the race (0: none)
     const base = o.base || {}, best = { all: Infinity, by: new Map(), personal: new Map(base.personal || []), track: Number.isFinite(base.track) ? base.track : Infinity };
     const S = { phase: null, flag: '', leader: null, laps: [], pos: [], lastLapDone: false, distDone: [], ev: -1, low: [], finished: false, ready: false, togoDone: [], minDone: [], lastOther: [], lastCar: -1, down: [], near: [], half: [], stuck: [], tm: undefined };
     // the race that is looked at now (for the words every driver call has: the fuel and the gap to the car in front)
@@ -283,7 +284,7 @@
         const c = cars[i], time = c.laps[n]; if (c.bad && c.bad[n]) return; // too slow laps never count
         const id = c.driverId, prevAll = best.all, prevPers = Math.min(best.personal.get(id) ?? Infinity, best.by.get(id) ?? Infinity), prevTrack = best.track;
         best.all = Math.min(best.all, time); best.by.set(id, Math.min(best.by.get(id) ?? Infinity, time));
-        const v = { ...who(c), time: speakTime(time), _time: time, lap: n + 1, laps: lapLimit || n + 1 };
+        const v = { ...who(c), time: speakTime(time), _time: time, lap: n + 1, laps: limitFor(eng, c) || n + 1 };
         if (Number.isFinite(prevTrack) && time < prevTrack) { best.track = time; ev('trackrecord', { ...v, improved: speakDiff(prevTrack - time), record: speakTime(prevTrack) }); }
         else {
           if (Number.isFinite(prevAll) && time < prevAll) ev('fastestlap', { ...v, improved: speakDiff(prevAll - time) });
@@ -296,7 +297,7 @@
       if (done.length && !S.finished) {
         const st = eng.standings(), order = st.map(x => cars.indexOf(x.car)), lead = order[0];
         if (st[0] && st[0].car.laps.length > 0) {
-          if (S.leader !== null && lead !== S.leader) ev('newleader', { ...who(cars[lead]), other: who(cars[S.leader]).driver, laps: lapLimit });
+          if (S.leader !== null && lead !== S.leader) ev('newleader', { ...who(cars[lead]), other: who(cars[S.leader]).driver, laps: limitFor(eng, cars[lead]) });
           S.leader = lead;
         }
         let moves = 0;
@@ -310,9 +311,10 @@
         });
         S.pos = order;
         // the leader starts the last lap of a race by laps
-        if (lapLimit && !S.lastLapDone && st[0].car.laps.length === lapLimit - 1 && st[0].car.laps.length > 0) { S.lastLapDone = true; S.lastCar = lead; ev('lastlap', { ...who(st[0].car), laps: lapLimit }); }
+        const leadLimit = limitFor(eng, st[0].car);
+        if (leadLimit && !S.lastLapDone && st[0].car.laps.length === leadLimit - 1 && st[0].car.laps.length > 0) { S.lastLapDone = true; S.lastCar = lead; ev('lastlap', { ...who(st[0].car), laps: leadLimit }); }
         // another driver starts the last lap (the car the last lap call was about is not called again)
-        if (lapLimit >= 2) done.forEach(([i, n]) => { if (n + 1 === lapLimit - 1 && !S.lastOther[i] && i !== S.lastCar) { S.lastOther[i] = true; ev('lastlapother', { ...who(cars[i]), laps: lapLimit }); } });
+        done.forEach(([i, n]) => { const lim = limitFor(eng, cars[i]); if (lim >= 2 && n + 1 === lim - 1 && !S.lastOther[i] && i !== S.lastCar) { S.lastOther[i] = true; ev('lastlapother', { ...who(cars[i]), laps: lim }); } });
         // gaps and battles, worked out for every car that completed a lap, from the times of the laps (only while racing)
         if (live) {
           const info = typeof eng.gapInfo === 'function' ? eng.gapInfo() : [], leadName = who(st[0].car).driver, seen = new Set(), thr = closeGap * 1000; let said = 0;
@@ -338,22 +340,23 @@
       // race distance: at each distance chosen in the set (percent of the laps, or of the time of a timed race). If several are passed at once only the last is called.
       if (live && !S.finished && dists.length) {
         const lead = eng.standings()[0], timed = eng.type === 'timed' && Number(eng.cfg.duration) > 0 && ctx.now !== undefined;
-        const total = timed ? Number(eng.cfg.duration) * 60000 : lapLimit, done = timed ? eng.elapsed(ctx.now) : lead ? lead.car.laps.length : 0;
+        const leadLim = lead ? limitFor(eng, lead.car) : 0, total = timed ? Number(eng.cfg.duration) * 60000 : leadLim, done = timed ? eng.elapsed(ctx.now) : lead ? lead.car.laps.length : 0;
         if (total > 0 && lead) {
           const hit = dists.filter(d => !S.distDone.includes(d) && done > 0 && done >= total * d / 100 - 1e-9);
           if (hit.length) {
             hit.forEach(d => S.distDone.push(d));
             const left = timed ? Math.max(1, Math.round((total - done) / 60000)) : Math.max(0, total - done), pc = hit[hit.length - 1];
-            ev('distance', { ...who(lead.car), percent: pc, left: timed ? `${left} minute${left === 1 ? '' : 's'}` : `${left} lap${left === 1 ? '' : 's'}`, laps: timed ? '' : lapLimit });
+            ev('distance', { ...who(lead.car), percent: pc, left: timed ? `${left} minute${left === 1 ? '' : 's'}` : `${left} lap${left === 1 ? '' : 's'}`, laps: timed ? '' : leadLim });
           }
         }
       }
       // laps or minutes to go: at each number chosen in the set (if several are passed at once, the smallest is called)
       if (live && !S.finished && (lapsToGo.length || minutesToGo.length)) {
         const lead = eng.standings()[0], total = Number(eng.cfg.duration) * 60000;
-        if (lead && lapLimit && lapsToGo.length) {
-          const have = lead.car.laps.length, hit = lapsToGo.filter(k => k < lapLimit && !S.togoDone.includes(k) && have > 0 && have >= lapLimit - k);
-          if (hit.length) { hit.forEach(k => S.togoDone.push(k)); ev('lapstogo', { ...who(lead.car), left: lapsText(hit[0]), laps: lapLimit }); }
+        const togoLim = lead ? limitFor(eng, lead.car) : 0;
+        if (lead && togoLim && lapsToGo.length) {
+          const have = lead.car.laps.length, hit = lapsToGo.filter(k => k < togoLim && !S.togoDone.includes(k) && have > 0 && have >= togoLim - k);
+          if (hit.length) { hit.forEach(k => S.togoDone.push(k)); ev('lapstogo', { ...who(lead.car), left: lapsText(hit[0]), laps: togoLim }); }
         }
         if (lead && minutesToGo.length && ctx.now !== undefined && (eng.type === 'timed' || eng.type === 'qualifying') && total > 0) {
           const spent = eng.elapsed(ctx.now), hit = minutesToGo.filter(m => m * 60000 < total && !S.minDone.includes(m) && spent > 0 && total - spent > 0 && total - spent <= m * 60000);

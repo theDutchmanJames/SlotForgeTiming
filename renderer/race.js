@@ -42,10 +42,10 @@ async function renderRace() {
   let wxLast = 0, wxForce = r.resume && r.resume.wxHeat !== undefined && r.resume.wxHeat !== null && Number.isFinite(Number(r.resume.wxHeat)) ? Number(r.resume.wxHeat) : null;
   const wxFor = () => { if (!wxRec) return null; const seed = Wx.clean(wxRec, 0).same ? wxSeed : wxForce !== null ? wxForce : Heats.newSeed(); wxForce = null; wxLast = seed; return Wx.clean(wxRec, seed); };
   // a final has its own length (0 is the same as a heat). lenNow: the length of the race that is racing, or is next while the race waits between two races
-  const finalLen = () => ({ laps: Number(setup.finalLaps) > 0 ? Number(setup.finalLaps) : setup.laps, duration: Number(setup.finalDuration) > 0 ? Number(setup.finalDuration) : setup.duration });
-  const lenNow = () => (heat && heat.isFinal() ? finalLen() : { laps: setup.laps, duration: setup.duration });
+  const finalLen = () => ({ laps: Number(setup.finalLaps) > 0 ? Number(setup.finalLaps) : setup.laps, duration: Number(setup.finalDuration) > 0 ? Number(setup.finalDuration) : setup.duration, distance: Number(setup.finalDistance) > 0 ? Number(setup.finalDistance) : setup.distance });
+  const lenNow = () => (heat && heat.isFinal() ? finalLen() : { laps: setup.laps, duration: setup.duration, distance: setup.distance });
   const setupNow = () => (heat && heat.isFinal() ? { ...setup, ...finalLen() } : setup);
-  const mk = entries => RaceEngine.createRace({ penalty: penCfg, damage: damCfg, type: engineType, laps: lenNow().laps, duration: lenNow().duration, endRule: setup.endRule, minLap: Math.max(RaceEngine.MIN_LAP, (Number(r.track.minLap) || 0) * 1000) / speed, maxLap: (Number(r.track.maxLap) || 0) * 1000 / speed, fuel: fuelCfg, bop: bopCfg, yellow: RaceEngine.yellowConfig(setup), weather: wxFor(), skipFirst: tokenSession || setup.firstLap === 'skip', endurance: setup.endurance || null, rnd: state.rand || Math.random, entries });
+  const mk = entries => RaceEngine.createRace({ penalty: penCfg, damage: damCfg, type: engineType, laps: lenNow().laps, duration: lenNow().duration, distance: engineType === 'race' ? Distance.config(setupNow(), r.track, lanes) : null, endRule: setup.endRule, minLap: Math.max(RaceEngine.MIN_LAP, (Number(r.track.minLap) || 0) * 1000) / speed, maxLap: (Number(r.track.maxLap) || 0) * 1000 / speed, fuel: fuelCfg, bop: bopCfg, yellow: RaceEngine.yellowConfig(setup), weather: wxFor(), skipFirst: tokenSession || setup.firstLap === 'skip', endurance: setup.endurance || null, rnd: state.rand || Math.random, entries });
   const pointList = String(setup.points || '').split(',').filter(t => t.trim() !== '').map(Number).filter(n => !isNaN(n)); // '10, 8, 6' -> [10, 8, 6]; blank pieces are skipped (Number('') would make them 0)
 
   let heat = null, eng;
@@ -92,9 +92,10 @@ async function renderRace() {
   const finalsSaid = !finalsOn ? '' : Heats.finalsSaid(fmode);
   const scoreNote = heats ? [Heats.scoringText(heat.scoring, byPts), finalsSaid].filter(Boolean).join(' ') : ''; // how the overall result is counted, when it is not the standard
   const scoreCol = heats && (heat.scoring.countBy !== 'total' || heat.scoring.dropWorst || heat.scoring.byTime || (finalsOn && fmode.finalMode === 'added')); // a column with the result that counts (average, best heats, worst heat dropped, a final that is added)
-  const finalsNote = !finalsOn ? '' : `, then ${heat.total - heat.count === 2 ? 'finals B and A' : 'a final A'}${setup.heatBy === 'time' ? (Number(setup.finalDuration) > 0 ? ` of ${setup.finalDuration} minutes` : '') : (Number(setup.finalLaps) > 0 ? ` of ${setup.finalLaps} laps` : '')}`;
-  const limit = tokenSession ? 'paid time per lane' : heats ? `${heat.count} heats, each ${setup.heatBy === 'time' ? setup.duration + ' minutes' : setup.laps + ' laps'}${finalsNote}`
-    : setup.sessionType === 'race' ? `${setup.laps} laps` : (setup.sessionType === 'timed' || setup.sessionType === 'qualifying') ? `${setup.duration} minutes` : 'no limit';
+  const dUnit = Speed.distUnitOf(state.settings); // (the unit of a distance on the screen: metres or feet)
+  const finalsNote = !finalsOn ? '' : `, then ${heat.total - heat.count === 2 ? 'finals B and A' : 'a final A'}${setup.heatBy === 'time' ? (Number(setup.finalDuration) > 0 ? ` of ${setup.finalDuration} minutes` : '') : setup.heatBy === 'distance' ? (Number(setup.finalDistance) > 0 ? ` of ${Distance.text(Number(setup.finalDistance), dUnit)}` : '') : (Number(setup.finalLaps) > 0 ? ` of ${setup.finalLaps} laps` : '')}`;
+  const limit = tokenSession ? 'paid time per lane' : heats ? `${heat.count} heats, each ${setup.heatBy === 'time' ? setup.duration + ' minutes' : setup.heatBy === 'distance' ? Distance.lengthText(setup, dUnit) : setup.laps + ' laps'}${finalsNote}`
+    : setup.sessionType === 'race' ? (Distance.isOn(setup) ? Distance.lengthText(setup, dUnit) : `${setup.laps} laps`) : (setup.sessionType === 'timed' || setup.sessionType === 'qualifying') ? `${setup.duration} minutes` : 'no limit';
   const limitFull = setup.endurance && !tokenSession ? `${limit}, ${Endurance.rulesText(setup.endurance)}` : limit; // (an Endurance Race says how it swaps)
   const planHtml = !heats ? '' : `<details class="card" id="heatlistcard" style="margin-top:12px" open><summary>Heat list (${heat.count} ${heat.count === 1 ? 'heat' : 'heats'}${finalsOn ? (heat.total - heat.count === 2 ? ' and 2 finals' : ' and a final') : ''})</summary>
     <div class="wrap" id="heatlist"></div><div class="row"><button class="btn" id="heatprint" type="button" title="Make a PDF of the heat list, to print or pin up">Print the heat list</button> <span id="heatprintmsg" class="muted" role="status"></span></div></details>`;
@@ -150,7 +151,7 @@ async function renderRace() {
 
   // championship points of the heats finished so far: { on, list: points per position, done: [[driverId, points]] }
   const champOf = () => (heats && setup.resultBy === 'points' ? { on: true, list: pointList, done: heat.overall().map(o => [o.asTeam ? o.teamId : o.driverId, o.points]) } : { on: false, list: [], done: [] });
-  const shared = () => LiveShare.makeShared({ rowDesigns, imageSets, teams: teams.map(t => ({ id: t.id, name: t.name || '', picture: t.picture || '' })), clubLogo: state.settings.clubLogo, champ: champOf(), eng, track: r.track, now: now(), phase: live.phase, calling: live.calling, lights: live.lights, setup: setupNow(), heat: heatInfo(),
+  const shared = () => LiveShare.makeShared({ rowDesigns, imageSets, teams: teams.map(t => ({ id: t.id, name: t.name || '', picture: t.picture || '' })), clubLogo: state.settings.clubLogo, distUnit: dUnit, champ: champOf(), eng, track: r.track, now: now(), phase: live.phase, calling: live.calling, lights: live.lights, setup: setupNow(), heat: heatInfo(),
     flash: live.flash, layout, bestAll: live.bestAll, bestAllName: live.bestAllName, bestBy: live.bestBy, base, tokens: tokens ? tokens.snapshot() : null });
   // ---- share the race with the second-screen window (and later other devices) ----
   const shareTitle = `${setup.name} · ${SESSION_LABEL[setup.ofType || setup.sessionType]} on ${r.track.name} · ${limit}`;
@@ -158,7 +159,7 @@ async function renderRace() {
   const shareStatic = () => { // everything heavy, once per heat
     live.raceId = String(Date.now()) + Math.random().toString(36).slice(2, 6);
     if (live.sender) live.sender.reset(); // a new heat: the first message after the static part holds everything
-    if (api.liveStatic) api.liveStatic(LiveShare.packStatic({ rowDesigns, imageSets, teams: LiveShare.teamsUsed(teams, find(layouts, setup.layout2) || layout, rowDesigns), clubLogo: state.settings.clubLogo, tokenUi: tokenUi(), raceId: live.raceId, title: shareTitle, eng, setup: setupNow(), layout: find(layouts, setup.layout2) || layout, track: r.track, lanes, base }));
+    if (api.liveStatic) api.liveStatic(LiveShare.packStatic({ rowDesigns, imageSets, teams: LiveShare.teamsUsed(teams, find(layouts, setup.layout2) || layout, rowDesigns), clubLogo: state.settings.clubLogo, distUnit: dUnit, tokenUi: tokenUi(), raceId: live.raceId, title: shareTitle, eng, setup: setupNow(), layout: find(layouts, setup.layout2) || layout, track: r.track, lanes, base }));
   };
   const share = () => { // the light part: only when something changed (at most about ten times a second), and a small message every second so the clocks stay right
     if (!api.livePush) return;
@@ -173,7 +174,7 @@ async function renderRace() {
   Sound.resetCool(); // (a new race: nothing was said lately, for the "not again within" waits of the audio set)
   const audioSet = find(audioSets, setup.audioSet), mkAnn = () => Announcer.create({ driverBy: audioSet && audioSet.driverBy, distances: audioSet ? Sound.distances(audioSet.distances) : [], lapsToGo: audioSet ? Sound.counts(audioSet.lapsToGo, [3]) : [], minutesToGo: audioSet ? Sound.counts(audioSet.minutesToGo, [1]) : [],
     closeGap: audioSet ? Sound.bounded(audioSet.closeGap, 1, 0.1, 30) : 1, battleLaps: audioSet ? Sound.bounded(audioSet.battleLaps, 3, 2, 20) : 3,
-    nearRecord: audioSet ? Sound.bounded(audioSet.nearRecord, 0.1, 0.01, 5) : 0.1, noLapSeconds: audioSet ? Math.round(Sound.bounded(audioSet.noLapSeconds, 30, 5, 600)) : 30, trackName: (r.track && r.track.name) || '', lapLimit: engineType === 'race' ? Number(lenNow().laps) || 0 : 0, base });
+    nearRecord: audioSet ? Sound.bounded(audioSet.nearRecord, 0.1, 0.01, 5) : 0.1, noLapSeconds: audioSet ? Math.round(Sound.bounded(audioSet.noLapSeconds, 30, 5, 600)) : 30, trackName: (r.track && r.track.name) || '', lapLimit: engineType === 'race' && !Distance.isOn(setupNow()) ? Number(lenNow().laps) || 0 : 0, base });
   // the race that is racing, or the next one while the race waits between two races. final: 'A' or 'B' when that race is a final (and also after the last final, when it is over);
   // total: the number of races with the finals; picking: the lanes of the final are not all chosen; breakLeft: the seconds of the break that are left
   const finalAt = () => { const i = Math.min(heat.idx, heat.total - 1); return i >= heat.count ? heat.raceName(i).slice(6) : ''; };

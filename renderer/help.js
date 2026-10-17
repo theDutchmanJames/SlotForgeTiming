@@ -72,11 +72,18 @@ const Help = (() => {
         <ul>
           <li><b>Free practice</b>: no finish. It runs until you stop it and ranks the drivers by their best lap.</li>
           <li><b>Qualifying</b>: a timed session ranked by best lap. Two drivers with the same best lap: the one who set it first ranks higher. Its winner picks their lane first in the next race on the same track.</li>
-          <li><b>Race by laps</b>: the first to reach the number of laps wins. The race ends when the lead car finishes, or when every car has finished.</li>
+          <li><b>Race by laps or distance</b>: the first to reach the number of laps, or to drive the distance, wins. The race ends when the lead car finishes, or when every car has finished (see Distance races, below).</li>
           <li><b>Timed race</b>: the most laps in the time wins.</li>
           <li><b>Heat-based race</b>: several heats, each limited by laps or by time; the overall result adds the heats up. How the heats are planned and counted, and the finals, are explained in Heat races, below.</li>
           <li><b>Endurance Race</b>: a long race for teams, where the drivers of a team swap at the wheel in the pits (see Endurance Race, below).</li>
           <li><b>Time Token Session</b>: not a race. You sell track time per lane (see Time Token Sessions below).</li>
+        </ul>` },
+      { id: 'distance', title: 'Distance races', note: 'Race for a distance, not for laps or time', body: `
+        <ul>
+          <li>A race, the heats of a heat-based race and an Endurance Race can be limited by a <b>distance</b>: choose it under <i>The race is limited by</i> (or <i>Each heat is limited by</i>). The laps follow from the length of each lane (Database, Tracks: the track length and the lane lengths). Home says when a track has none.</li>
+          <li><b>The lanes drive</b> the same distance (a shorter lane drives more laps), the same number of laps, or a distance you set for each lane. A car is only seen at the line, so it drives whole laps: on to the line after the distance, or to the nearest lap.</li>
+          <li>The first car to drive its distance wins. The others rank by the distance they drove, and a gap is the time between two cars at the same distance. <i>The race may take at most</i> is a safety net.</li>
+          <li>The Layout Editor folder <b>Distance</b> has Distance Driven, Distance To Go and Laps To Go. <i>Smoothly</i> counts between two crossings from the lap time; <i>exact</i> changes at the line. They work in any race with laps. The text widgets know {distance}, {distleft}, {lapstogo} and {racedistance}.</li>
         </ul>` },
       { id: 'heatraces', title: 'Heat races', note: 'How the heats are planned', body: `
         <ul>

@@ -67,6 +67,7 @@ async function renderHome() {
   if (setup) {
     if (!track) issues.push('This race setup has no track. Choose one in Race Setup.');
     else if (!lanes) issues.push('The track has no number of lanes. Add it in the Database.');
+    const distProblem = Distance.problem(setup, track, lanes); if (distProblem) issues.push(distProblem); // (1.35.0: a race by distance needs the length of the lanes)
     const label = i => heats ? (byTeam ? 'Team ' : 'Participant ') + (i + 1) : 'Lane ' + (i + 1);
     rotProblems.forEach(t => issues.push(t));
     if (byTeam) rows.forEach((r, i) => {
@@ -127,7 +128,7 @@ async function renderHome() {
   const heatPlanHtml = !heatPlan ? '' : (() => {
     const st = heatPlan.stats, nm = i => esc(heatPlan.names[i]), sel = state.heatSel && state.heatSel.setupId === setupId ? state.heatSel : null; // (the place that is clicked first, when you are swapping two places)
     return `<div class="heatplan"><h4>Heat plan</h4>
-      ${[...Heats.summary({ stats: st, setup, names: heatPlan.names, custom: heatPlan.rotation }), ...heatPlan.notes].map(t => `<p class="hint2${/do not race the same|not shared evenly/.test(t) ? ' hpwarn' : ''}">${esc(t)}</p>`).join('')}
+      ${[...Heats.summary({ stats: st, setup, names: heatPlan.names, custom: heatPlan.rotation, unit: Speed.distUnitOf(state.settings) }), ...heatPlan.notes].map(t => `<p class="hint2${/do not race the same|not shared evenly/.test(t) ? ' hpwarn' : ''}">${esc(t)}</p>`).join('')}
       <div class="wrap"><table class="fields heatplan-table"><thead><tr><th>Heat</th>${Array.from({ length: lanes }, (_, l) => `<th>Lane ${l + 1}</th>`).join('')}</tr></thead><tbody>${heatPlan.schedule.map((h, i) =>
         `<tr><td>${i + 1}${heatPlan.labels && heatPlan.labels[i] ? ` <span class="muted">${esc(heatPlan.labels[i])}</span>` : ''}</td>${Array.from({ length: lanes }, (_, l) => { const e = h.find(x => x.lane === l), on = !!(sel && sel.heat === i && sel.lane === l);
           return `<td><button type="button" class="hpcell${on ? ' sel' : ''}" data-hp="${i}:${l}" aria-pressed="${on}" title="Click this place, then another one, to swap the two">${e ? nm(e.p) : '<span class="muted">–</span>'}</button></td>`; }).join('')}</tr>`).join('')}</tbody></table></div>
@@ -388,7 +389,7 @@ async function renderHome() {
         const grid2 = []; rows.forEach((r, i) => { if (r.absent) return; (byTeam ? membersOf(teamOf(r.teamId)).map(m => m.id) : [r.driverId]).forEach(id => grid2.push({ driverId: id, color: laneHue(i) })); });
         d.bests = HomeStats.gridBests({ laps, trackId: track && track.id, grid: grid2, driverName: dn });
       } else if (key === 'rules') {
-        d.rules = HomeStats.rules(setup, { typeLabel, rotation: rotRec ? rotRec.name || '' : '', penalty: nameIn(lists.penaltysystems, setup && setup.penaltySystem), damage: nameIn(lists.damagesystems, setup && setup.damageSystem), fuel: nameIn(lists.fuelrules, setup && setup.fuelRules), weather: nameIn(lists.weathersystems, setup && setup.weather) });
+        d.rules = HomeStats.rules(setup, { typeLabel, distUnit: Speed.distUnitOf(state.settings), rotation: rotRec ? rotRec.name || '' : '', penalty: nameIn(lists.penaltysystems, setup && setup.penaltySystem), damage: nameIn(lists.damagesystems, setup && setup.damageSystem), fuel: nameIn(lists.fuelrules, setup && setup.fuelRules), weather: nameIn(lists.weathersystems, setup && setup.weather) });
       }
       out.set(key, HomeCards.html(key, d, b));
     });
