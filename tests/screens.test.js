@@ -2013,7 +2013,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     run("state.settings.lastSetupId = 'k1'; state.settings.netOn = false; state.settings.assignments = { k1: [{ driverId: 'd1', carId: 'c1' }, { driverId: 'd2', carId: 'c2' }, { driverId: 'd3', carId: '' }] }");
     let hh = await home();
     say('1.17.0: the Home tab has a welcome band with the welcome message, the date and the track', hh.includes('class="hm-band"') && /<h2>Welcome to the SlotForge/.test(hh) && /class="hm-sub">[^<]* · Living room</.test(hh));
-    say('...the chips: Trackmate, the network, the audio set of the setup and the counts of the database', hh.includes('data-key="tm" data-state="off"><i aria-hidden="true"></i>Trackmate not connected') && hh.includes('Not shared on the network') && hh.includes('Audio: Announcer') && hh.includes('3 drivers · 2 slotcars · 2 tracks'));
+    say('...the chips: Trackmate, the network, the audio set of the setup and the counts of the database', hh.includes('data-key="tm" data-state="warn"><i aria-hidden="true"></i>Trackmate not connected') && hh.includes('Not shared on the network') && hh.includes('Audio: Announcer') && hh.includes('3 drivers · 2 slotcars · 2 tracks'));
     say('...a lane has the colour that its layout gives it on the race screen, else one of the eight colours (and never colour text that is not a colour)', hh.includes('data-row="0" style="--c:#112233"') && hh.includes('data-row="1" style="--c:' + run('HomeStats.PALETTE[1]') + '"') && hh.includes('data-row="2" style="--c:' + run('HomeStats.PALETTE[2]') + '"') && !hh.includes('red;x'));
     say('...the start lights: one for every lane, lit when the lane has its driver and car, with the words', (hh.match(/<i class="on" style="--c:/g) || []).length === 2 && (hh.match(/<i style="--c:/g) || []).length === 1 && hh.includes('2 of 3 lanes are ready.'));
     say('...the Start button is the big one, and still disabled while a lane is not ready', /<button class="btn primary big" id="start" disabled>/.test(hh) && hh.includes('Lane 3 needs a driver and a car.'));
@@ -2049,18 +2049,21 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     // the Trackmate chip follows the connection, while Home is open
     await home(); run('Trackmate.link.setConnected(true)');
     say('the Trackmate chip lights up when the Trackmate is connected, and goes dark when it is not', E('hm-chips').innerHTML.includes('data-state="on"><i aria-hidden="true"></i>Trackmate connected') && (run('Trackmate.link.setConnected(false)'), E('hm-chips').innerHTML.includes('Trackmate not connected')));
-    // the same chip for the Arduino box: ticking "Use the virtual box" must show on Home (the chip used to look at the Trackmate only)
-    run('state.settings.abVirtual = true'); const hv = await home(); // (the chip as drawn with the page; the live updates below land in #hm-chips)
-    say('1.37.3: with the virtual box chosen and not yet connected the chip says so, dark', hv.includes('data-key="tm" data-state="off"><i aria-hidden="true"></i>Virtual Arduino box not connected') && !hv.includes('Trackmate not connected'));
+    // 1.39.0: the chip is the timing hardware that was CHOSEN (App Settings, Timing Hardware): green when connected, red when chosen and not connected, dim when none is chosen
+    const chipAfter = async patch => { run(`(p => Object.keys(p).forEach(k => { if (p[k] === null) delete state.settings[k]; else state.settings[k] = p[k]; }))(${JSON.stringify(patch)})`); const h = await home(); return h.match(/data-key="tm"[^>]*>(?:<i[^>]*><\/i>)?[^<]*/)[0].replace(/<i[^>]*><\/i>/, '|').replace(/data-key="tm" /, ''); };
+    say('1.39.0: the Trackmate chosen (also when nothing was chosen yet): red and "not connected" until it is connected', (await chipAfter({ timingHw: 'trackmate' })) === 'data-state="warn">|Trackmate not connected' && (await chipAfter({ timingHw: null })) === 'data-state="warn">|Trackmate not connected');
+    run('Trackmate.link.setConnected(true)'); say('...green when it is connected, and it follows the connection while Home is open', E('hm-chips').innerHTML.includes('data-state="on"><i aria-hidden="true"></i>Trackmate connected') && (run('Trackmate.link.setConnected(false)'), E('hm-chips').innerHTML.includes('data-state="warn"><i aria-hidden="true"></i>Trackmate not connected')));
+    say('...the virtual box ticked is the Arduino box in use (nothing chosen yet): "Virtual Arduino box not connected", red', (await chipAfter({ abVirtual: true })) === 'data-state="warn">|Virtual Arduino box not connected');
     run('ArduinoBox.link.setConnected(true)');
-    say('...it lights up when the virtual box connects while Home is open', E('hm-chips').innerHTML.includes('data-state="on"><i aria-hidden="true"></i>Virtual Arduino box connected'));
+    say('...it turns green when the virtual box connects while Home is open', E('hm-chips').innerHTML.includes('data-state="on"><i aria-hidden="true"></i>Virtual Arduino box connected'));
     run('Trackmate.link.setConnected(true)');
-    say('...with the Trackmate connected too, both are named', E('hm-chips').innerHTML.includes('>Trackmate and Virtual Arduino box connected'));
+    say('...one at a time: the Trackmate being connected as well changes nothing while the box is the one in use', !E('hm-chips').innerHTML.includes('Trackmate') );
     run('Trackmate.link.setConnected(false); ArduinoBox.link.setConnected(false)');
-    say('...and it goes dark again when the box goes away', E('hm-chips').innerHTML.includes('data-state="off"><i aria-hidden="true"></i>Virtual Arduino box not connected'));
-    run('state.settings.abVirtual = false; state.settings.abDevice = { vid: 9025, pid: 67 }'); const hr = await home();
-    say('...a remembered real box is the "Arduino box"; and with nothing chosen it is the Trackmate again', hr.includes('data-state="off"><i aria-hidden="true"></i>Arduino box not connected') && (run('delete state.settings.abDevice'), (await home()).includes('data-state="off"><i aria-hidden="true"></i>Trackmate not connected')));
-    run('delete state.settings.abVirtual');
+    say('...and it turns red again when the box goes away', E('hm-chips').innerHTML.includes('data-state="warn"><i aria-hidden="true"></i>Virtual Arduino box not connected'));
+    say('...a remembered real box is "Arduino box"', (await chipAfter({ abVirtual: false, abDevice: { vid: 9025, pid: 67 } })) === 'data-state="warn">|Arduino box not connected');
+    say('...a choice made beats what was set up: the Trackmate chosen with the virtual box ticked is the Trackmate', (await chipAfter({ abVirtual: true, timingHw: 'trackmate' })) === 'data-state="warn">|Trackmate not connected');
+    say('...none chosen: "No timing hardware chosen", dim, and not red even though a box is ticked', (await chipAfter({ timingHw: 'none' })) === 'data-state="off">|No timing hardware chosen');
+    run('delete state.settings.abVirtual; delete state.settings.abDevice; delete state.settings.timingHw');
     // a network that was switched on but could not start
     run('state.settings.netOn = true'); api.netStatus = async () => ({ on: false, port: 0, error: 'Port 8787 is already in use. Choose another port.', passwordSet: false, urls: [] }); await home();
     say('a network that is switched on but could not start gets a red light', E('hm-chips').innerHTML.includes('data-state="warn"><i aria-hidden="true"></i>Network sharing could not start'));
@@ -2071,6 +2074,10 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     store.racesetups = [{ id: 'kt', name: 'Club night', sessionType: 'tokens', track: 't1' }]; store.sessions = [{ id: 'T1', setupName: 'Club night', sessionType: 'tokens', date: '2026-10-11T18:00:00.000Z', standings: [] }]; store.laps = [lapRow(3000, { token: true })]; run("state.settings.lastSetupId = 'kt'; state.settings.assignments = {}");
     hh = await home();
     say('a Time Token Session has every light lit, and its sessions never show on Home as a race', (hh.match(/<i class="on" style="--c:/g) || []).length === 3 && hh.includes('All 3 lanes are ready.') && side().includes('class="card hm-empty"') && !side().includes('Record to beat'));
+    { const keepConfirm = ctx.confirm, asked = []; ctx.confirm = m => { asked.push(m); return false; }; run("Trackmate.link.setConnected(false); state.settings.timingHw = 'trackmate'; state.race = null");
+      await E('view').onclick({ target: { closest: () => ({ id: 'start', dataset: {} }) } }); await new Promise(r => setTimeout(r, 20));
+      say('1.39.0: a Time Token Session does not count laps from the hardware, so Open the session does not ask about it', asked.length === 0 && !!run('state.race'));
+      ctx.confirm = keepConfirm; run("delete state.settings.timingHw; state.race = null; state.tab = 'home'"); }
     Object.assign(store, { racesetups: keep.racesetups, tracks: keep.tracks, drivers: keep.drivers, slotcars: keep.slotcars, sessions: keep.sessions, laps: keep.laps, layouts: keep.layouts, audiosets: keep.audiosets }); run(`state.settings.lastSetupId = ${JSON.stringify(keep.last || '')}; state.settings.assignments = ${JSON.stringify(keep.asg || {})}; state.settings.netOn = ${JSON.stringify(!!keep.net)}`); }
   { // 1.25.0: the cards of Home in a grid: Customize (set up like the Leaderboard grid), the seven new cards, the races that open in Results and the shortcuts
     const keep = { racesetups: store.racesetups, tracks: store.tracks, drivers: store.drivers, slotcars: store.slotcars, sessions: store.sessions, laps: store.laps, layouts: store.layouts, audiosets: store.audiosets, pen: store.penaltysystems, fuel: store.fuelrules,
@@ -2146,6 +2153,22 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     hh = await home();
     say('a saved grid that is damaged (a card that does not exist, a size that is not a number) still gives a Home that works: the grid is mended and Start a race is there', hh.includes('id="hmc-start"') && hh.includes('id="hmc-rules"') && hh.includes('id="start"') && !hh.includes('zzz') && hh.includes('repeat(1,minmax(0,1fr))'));
     say('...Start race still starts the race from a Home like that', (run("state.settings.assignments = { k1: [{ driverId: 'd1', carId: 'c1' }, { driverId: 'd2', carId: 'c2' }, { driverId: 'd3', carId: 'c3' }] }"), await home(), await E('view').onclick({ target: { closest: () => ({ id: 'start', dataset: {} }) } }), run('state.tab') === 'race' && run("state.race && state.race.rows.length") === 3));
+    // 1.39.0: Start race with the timing hardware that was chosen not connected asks first (OK: start anyway, Cancel: do not start)
+    { const keepConfirm = ctx.confirm, asked = []; let answer = true;
+      ctx.confirm = m => { asked.push(String(m)); return answer; };
+      const attempt = async (patch, ans) => { answer = ans; asked.length = 0; run(`(p => Object.keys(p).forEach(k => { if (p[k] === null) delete state.settings[k]; else state.settings[k] = p[k]; }))(${JSON.stringify(patch)})`); run("state.race = null; state.tab = 'home'; if (typeof live !== 'undefined' && live) { try { live.leave && live.leave(); } catch (x) {} }"); await home();
+        await E('view').onclick({ target: { closest: () => ({ id: 'start', dataset: {} }) } }); await new Promise(r => setTimeout(r, 20)); return run('state.race') ? 'started' : 'not started'; };
+      run('Trackmate.link.setConnected(false); ArduinoBox.link.setConnected(false)');
+      say('1.39.0: the Trackmate is chosen and not connected: Start race asks, and says which hardware', (await attempt({ timingHw: 'trackmate' }, false)) === 'not started' && asked.length === 1 && asked[0].includes('The Trackmate Interface is the timing hardware you chose, and it is not connected'));
+      say('...OK starts the race anyway', (await attempt({ timingHw: 'trackmate' }, true)) === 'started' && asked.length === 1);
+      say('...the virtual box is named as such', (await attempt({ timingHw: 'arduino', abVirtual: true }, false)) === 'not started' && asked[0].includes('The virtual Arduino box is the timing hardware you chose'));
+      say('...a real box too', (await attempt({ timingHw: 'arduino', abVirtual: false }, false)) === 'not started' && asked[0].includes('The Arduino box is the timing hardware you chose'));
+      run('Trackmate.link.setConnected(true)');
+      say('...connected: no question, the race starts', (await attempt({ timingHw: 'trackmate' }, false)) === 'started' && asked.length === 0);
+      say('...one at a time: only the other hardware connected still asks', (await attempt({ timingHw: 'arduino', abVirtual: true }, false)) === 'not started' && asked.length === 1);
+      run('Trackmate.link.setConnected(false)');
+      say('...none chosen: no question, whatever is (not) connected', (await attempt({ timingHw: 'none' }, false)) === 'started' && asked.length === 0);
+      ctx.confirm = keepConfirm; run("delete state.settings.timingHw; delete state.settings.abVirtual"); }
     run("state.race = null; state.tab = 'home'");
     api.setSettings = realSet;
     Object.assign(store, { racesetups: keep.racesetups, tracks: keep.tracks, drivers: keep.drivers, slotcars: keep.slotcars, sessions: keep.sessions, laps: keep.laps, layouts: keep.layouts, audiosets: keep.audiosets, penaltysystems: keep.pen, fuelrules: keep.fuel });
@@ -2684,6 +2707,43 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     say('...a click on the oXigen Digital tab selects it and opens a page that says there is nothing to set up yet', run('state.hwSub') === 'oxigen' && E('hwtabs').innerHTML.includes('aria-selected="true" data-id="oxigen"') && h.includes('<strong>oXigen Digital</strong>') && h.includes('There is nothing to set up here yet'));
     say('...the page has no buttons, fields or lights (nothing connects, nothing is saved)', !/<(button|input|select|textarea)/.test(h) && !h.includes('class="led'));
     run("state.hwSub='trackmate'"); await run('render()'); }
+  // ---- 1.39.0: the timing hardware in use, chosen at the top of Timing Hardware (one at a time) ----
+  { const wait = ms => new Promise(r => setTimeout(r, ms)), page = () => E('settingsbox').innerHTML, setS = patch => run(`(p => Object.keys(p).forEach(k => { if (p[k] === null) delete state.settings[k]; else state.settings[k] = p[k]; }))(${JSON.stringify(patch)})`);
+    ctx.ReadableStream = ReadableStream; ctx.WritableStream = WritableStream; const keepSet = api.setSettings; api.setSettings = async p => ({ ...run('state.settings'), ...p }); // (the real setSettings answers with all the settings; the stand-in of the window only with what was saved)
+    setS({ timingHw: null, abVirtual: null, abDevice: null, tmDevice: null }); run("state.tab = 'settings'; state.settingsSub = 'hardware'; state.hwSub = 'trackmate'"); await run('render()');
+    say('1.39.0: the top of Timing Hardware has "Timing hardware in use" with None, Trackmate Interface and Arduino box', page().includes('Timing hardware in use') && page().includes('id="hw-use"') && ['none:None (keys or simulated cars)', 'trackmate:Trackmate Interface', 'arduino:Arduino box (SlotForge)'].every(o => page().includes(`<option value="${o.split(':')[0]}"`) && page().includes(o.split(':')[1])));
+    say('...nothing chosen yet: the Trackmate is the one in use, and its page has no "not in use" note', page().includes('<option value="trackmate" selected>') && !page().includes('Use this one'));
+    // choosing the Arduino box
+    await E('hw-use').onchange({ target: { value: 'arduino' } }); await wait(50);
+    say('...choosing the Arduino box saves the choice and shows its page', run('state.settings.timingHw') === 'arduino' && run('state.hwSub') === 'arduino' && page().includes('<option value="arduino" selected>'));
+    await E('hwtabs').onclick({ target: { closest: () => ({ dataset: { id: 'trackmate' } }) } }); await wait(20);
+    say('...the Trackmate page now says it is not in use for races, names the one that is, and offers Use this one', page().includes('This page is not in use for races: the app uses the Arduino box.') && page().includes('id="hw-usethis"'));
+    await E('hw-usethis').onclick(); await wait(50);
+    say('...Use this one makes it the one in use', run('state.settings.timingHw') === 'trackmate' && !page().includes('Use this one'));
+    await E('hw-use').onchange({ target: { value: 'none' } }); await wait(50);
+    say('...None: saved, and no page is "the one"; the pages still open', run('state.settings.timingHw') === 'none' && page().includes('<option value="none" selected>') && run('state.hwSub') === 'trackmate' && page().includes('This page is not in use for races: the app uses no timing hardware.'));
+    // letting go of the one that was in use
+    setS({ timingHw: 'trackmate' }); run("hw.kind0 = hw.kind; hw.open = true; hw.kind = 'hid'; hw.dev = { close: async () => {} }; Trackmate.link.setConnected(true)"); await run('render()');
+    await E('hw-use').onchange({ target: { value: 'arduino' } }); await wait(80);
+    say('...changing the choice disconnects the one that was in use (one at a time)', run('hw.open') === false && run('Trackmate.link.connected') === false);
+    // ticking the virtual box means the Arduino box is the one in use
+    run('hw.dev = null; hw.kind = hw.kind0'); setS({ timingHw: 'trackmate', abVirtual: false }); run("state.hwSub = 'arduino'"); await run('render()');
+    await E('ab-virtual').onchange({ target: { checked: true } }); await wait(150);
+    say('...ticking "Use the virtual box" makes the Arduino box the one in use, and it connects', run('state.settings.timingHw') === 'arduino' && run('abConnected()') === true);
+    await E('ab-conn').onclick(); await wait(50);
+    // only the one in use connects by itself
+    setS({ timingHw: 'trackmate', abVirtual: true, abAuto: true }); run('ab.dev = null');
+    const autoNo = await run('abAutoConnect()'); await wait(80);
+    say('...a box that is ticked or remembered does not connect by itself while another hardware is in use', autoNo === false && run('abConnected()') === false);
+    setS({ timingHw: 'arduino' }); const autoYes = await run('abAutoConnect()'); await wait(100);
+    say('...and it does when it is the one in use', autoYes === true && run('abConnected()') === true);
+    await E('ab-conn').onclick(); await wait(50); await E('ab-virtual').onchange({ target: { checked: false } }); await wait(50);
+    setS({ timingHw: 'arduino', tmDevice: { vid: 1, pid: 2 }, tmAuto: true }); run("hw.open = false");
+    { const keepSerial = ctx.navigator.serial; let looked = 0; ctx.navigator.serial = { getPorts: async () => { looked++; return []; } };
+      await run('tmAutoConnect()'); const whileOther = looked; setS({ timingHw: 'trackmate' }); await run('tmAutoConnect()'); ctx.navigator.serial = keepSerial;
+      say('...the Trackmate does not even look for its port by itself while the Arduino box is in use, and does when it is the one in use', whileOther === 0 && looked === 1); }
+    setS({ timingHw: null, abVirtual: null, abAuto: null, tmDevice: null, tmAuto: null }); run("state.hwSub = 'trackmate'"); await run('render()');
+    api.setSettings = keepSet; delete ctx.ReadableStream; delete ctx.WritableStream; }
   // ---- App Settings > Timing Hardware > DS Electronics: the listening version ----
   { const t = E('hwtabs').innerHTML, at = k => t.indexOf(k);
     say('the sub-tabs are in this order: Trackmate Interface, DS Electronics, Other', at('Trackmate Interface') > -1 && at('Trackmate Interface') < at('DS Electronics') && at('DS Electronics') < at('>Other<'));

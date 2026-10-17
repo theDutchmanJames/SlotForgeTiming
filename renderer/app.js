@@ -77,10 +77,38 @@ async function renderSettings() {
   return renderGeneralSettings(document.getElementById('settingsbox'));
 }
 
-// Timing Hardware has a page per kind of hardware: the Trackmate Interface, the Arduino box, DS Electronics (a listening version for now), oXigen Digital (a place held for it, nothing to set up yet) and Other (empty for now)
+// Timing Hardware has a page per kind of hardware: the Trackmate Interface, the Arduino box, DS Electronics (a listening version for now), oXigen Digital (a place held for it, nothing to set up yet) and Other (empty for now).
+// At the top the person chooses the timing hardware IN USE, one at a time (Hardware.timingChosen): only that one connects by itself at the start, counts laps in a race and is shown on Home and on the race screen.
+// The other pages stay usable for setting up and testing; a page that is not the one in use says so and has a "Use this one" button.
+async function setTimingHw(id) { // saves the choice and lets go of the hardware that was in use; connecting the new one and drawing the page is up to the caller
+  const old = Hardware.timingChosen(state.settings);
+  state.settings = await api.setSettings({ timingHw: id });
+  { const sel = document.getElementById('hw-use'), n = document.getElementById('hwnote'); // (the page may be on screen: it follows)
+    if (sel) sel.value = id;
+    if (n && state.hwSub === id) { n.hidden = true; n.innerHTML = ''; } }
+  if (old !== id) {
+    try { if (old === 'trackmate' && typeof hw !== 'undefined' && hw.open && typeof tmClose === 'function') await tmClose(); } catch (x) { /* already gone */ }
+    try { if (old === 'arduino' && typeof ab !== 'undefined' && ab.open && typeof abClose === 'function') await abClose(); } catch (x) { /* already gone */ }
+  }
+}
 function renderHardwareArea(box) {
-  box.innerHTML = '<div class="sub" id="hwtabs" role="tablist" style="display:flex;gap:4px"></div><div id="hwbox"></div>';
+  const chosen = Hardware.timingChosen(state.settings), names = { trackmate: 'the Trackmate Interface', arduino: 'the Arduino box', none: 'no timing hardware' };
+  const onPage = state.hwSub === 'trackmate' || state.hwSub === 'arduino';
+  box.innerHTML = `<div class="row" id="hwuse"><label><strong>Timing hardware in use</strong> <select id="hw-use">${Hardware.TIMING.map(([id, name]) => `<option value="${id}"${id === chosen ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select></label>
+      <span class="muted">One at a time. Only this one connects by itself, counts the laps of a race and shows on Home and on the race screen.</span></div>
+    <div class="sub" id="hwtabs" role="tablist" style="display:flex;gap:4px"></div>
+    <p class="muted" id="hwnote"${onPage && state.hwSub !== chosen ? '' : ' hidden'}>${onPage && state.hwSub !== chosen ? `This page is not in use for races: the app uses ${esc(names[chosen])}. <button class="btn" id="hw-usethis">Use this one</button>` : ''}</p>
+    <div id="hwbox"></div>`;
   renderTabs(document.getElementById('hwtabs'), [['trackmate', 'Trackmate Interface'], ['arduino', 'Arduino'], ['ds', 'DS Electronics'], ['oxigen', 'oXigen Digital'], ['other', 'Other']], state.hwSub, id => { state.hwSub = id; renderHardwareArea(box); });
+  const use = async id => { // the choice changed: the hardware that was in use is let go, the new one connects by itself when it can
+    await setTimingHw(id);
+    if (id === 'trackmate' && typeof tmAutoConnect === 'function') tmAutoConnect();
+    if (id === 'arduino' && typeof abAutoConnect === 'function') abAutoConnect();
+    if (id !== 'none') state.hwSub = id;
+    renderHardwareArea(box);
+  };
+  document.getElementById('hw-use').onchange = e => use(e.target.value);
+  const again = document.getElementById('hw-usethis'); if (again) again.onclick = () => use(state.hwSub);
   if (state.hwSub === 'other') return;
   if (state.hwSub === 'arduino') return renderArduinoSettings(document.getElementById('hwbox'));
   if (state.hwSub === 'ds') return renderDsSettings(document.getElementById('hwbox'));

@@ -843,6 +843,7 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .hm-chip i{width:9px;height:9px;border-radius:50%;background:var(--line)}
 .hm-chip[data-state="on"] i{background:#3ecf8e;box-shadow:0 0 6px #3ecf8e}
 .hm-chip[data-state="warn"] i{background:#e5484d;box-shadow:0 0 6px #e5484d}
+.hwwarn{color:#e5484d}
 .hm-start .lane{padding:6px 10px 6px 0;border:1px solid var(--line);border-radius:8px;background:var(--bg);overflow:hidden}
 .hm-start .lane>strong{align-self:stretch;display:flex;align-items:center;padding:0 10px;border-left:6px solid var(--c,var(--line));background:color-mix(in srgb,var(--c,var(--line)) 20%,var(--bg));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hm-start .lane{grid-template-columns:134px 1fr 1fr auto}.hm-start .lane.rot{grid-template-columns:174px 1fr 1fr auto auto}.hm-start .lane.threesel{grid-template-columns:134px 1fr 1fr 1fr auto}

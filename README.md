@@ -2391,3 +2391,16 @@ Good to know:
 
 Good to know:
 1. The white Live Race window you saw could not be reproduced: the window opens fine with no race, with a running race and with the virtual box bound (tried in a real browser with the same page). The card above is there to catch it, not a fix for a known cause.
+
+## What to try (1.39.0): choose the timing hardware
+1. App Settings > Timing Hardware. At the top: **Timing hardware in use** with None, Trackmate Interface and Arduino box (SlotForge). Choose **Arduino box**: its page opens, and the Trackmate page now says *This page is not in use for races* with a **Use this one** button.
+2. Go to Home. The first chip under the date names the one in use: red **Arduino box not connected** until it is connected, green **Arduino box connected** (or **Virtual Arduino box connected**) once it is. With **None** it is dim: *No timing hardware chosen*.
+3. Tick **Use the virtual box** (Arduino page): the Arduino box becomes the one in use and the virtual box connects; Home turns green.
+4. Choose the Trackmate again with nothing connected and press **Start race**: a question says that the Trackmate is the timing hardware you chose and is not connected. **OK** starts anyway (keys or simulated cars), **Cancel** does not start.
+5. Open a race with the Arduino box in use and a Trackmate connected as well: the race counts laps from the box only, and the status line above the cars names the box.
+
+Good to know:
+1. A hardware that is not the one in use is simply ignored by races and by Home. Changing the choice disconnects the one that was in use.
+2. Nothing chosen yet means what you had set up: the Trackmate, unless the virtual box is ticked or only a box is remembered. If you never use hardware, choose **None**: then Start race never asks.
+3. A box that connects *after* the race screen opened is not picked up by that race (connect first, then Start race; that is what the question is for).
+4. DS Electronics and oXigen Digital are not in the list yet: they cannot count laps.

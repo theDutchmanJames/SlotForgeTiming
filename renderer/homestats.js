@@ -245,20 +245,19 @@
   }
 
   // ---- the chips of the welcome band ----
-  // ctx: { trackmate (connected), trackmateChosen (a Trackmate is remembered), arduino: { connected, virtual (the virtual box is chosen), chosen (a box is remembered or the virtual one is chosen) },
+  // ctx: { hardware ('none', 'trackmate' or 'arduino': the timing hardware that was chosen; missing = trackmate), trackmate (connected), arduino (connected), virtual (the virtual box is the Arduino box),
   //   netOn, netError, hasSetup, audioName (the audio set of the selected setup, '' = none), drivers, cars, tracks (how many) }
   // -> [{ key, text, state }]  state: 'on' (green light), 'off' (dim light), 'warn' (red light), '' (no light)
-  // The first chip is the timing hardware. Connected: it names what is connected ("Trackmate connected", "Virtual Arduino box connected", both when both are).
-  // Not connected: it names what was chosen (a remembered Trackmate, a remembered or the virtual Arduino box); when nothing was chosen yet it says "Trackmate not connected".
-  function hardware(ctx) {
-    const a = ctx.arduino || {}, box = a.virtual ? 'Virtual Arduino box' : 'Arduino box';
-    const on = [ctx.trackmate && 'Trackmate', a.connected && box].filter(Boolean);
-    if (on.length) return { key: 'tm', text: on.join(' and ') + ' connected', state: 'on' };
-    const chosen = [ctx.trackmateChosen && 'Trackmate', a.chosen && box].filter(Boolean);
-    return { key: 'tm', text: (chosen.length ? chosen : ['Trackmate']).join(' and ') + ' not connected', state: 'off' };
+  // The first chip is the timing hardware that was chosen (one at a time): green when it is connected, red when it is chosen and not connected, dim when none is chosen.
+  // The same words are used on the race screen.
+  function timing(ctx) {
+    const hw = ctx.hardware || 'trackmate';
+    if (hw === 'none') return { key: 'tm', text: 'No timing hardware chosen', state: 'off' };
+    const name = hw === 'arduino' ? (ctx.virtual ? 'Virtual Arduino box' : 'Arduino box') : 'Trackmate', on = hw === 'arduino' ? !!ctx.arduino : !!ctx.trackmate;
+    return { key: 'tm', text: name + (on ? ' connected' : ' not connected'), state: on ? 'on' : 'warn' };
   }
   function chips(ctx) {
-    const out = [hardware(ctx)];
+    const out = [timing(ctx)];
     out.push(ctx.netError ? { key: 'net', text: 'Network sharing could not start', state: 'warn' } : { key: 'net', text: ctx.netOn ? 'Shared on the network' : 'Not shared on the network', state: ctx.netOn ? 'on' : 'off' });
     if (ctx.hasSetup) out.push(ctx.audioName ? { key: 'audio', text: 'Audio: ' + ctx.audioName, state: 'on' } : { key: 'audio', text: 'No audio', state: 'off' });
     out.push({ key: 'count', text: [plural(ctx.drivers || 0, 'driver', 'drivers'), plural(ctx.cars || 0, 'slotcar', 'slotcars'), plural(ctx.tracks || 0, 'track', 'tracks')].join(' · '), state: '' });
@@ -277,7 +276,7 @@
     return { ok, ready: n, total: list.length, text };
   }
 
-  const api = { PALETTE, laneColor, trackRecord, bestOnGrid, recordCard, lastSession, podium, lastRace, glance, chips, rowReady, lights,
+  const api = { PALETTE, laneColor, trackRecord, bestOnGrid, recordCard, lastSession, podium, lastRace, glance, chips, timing, rowReady, lights,
     winners, weekStart, yearStart, recent, fastestWeek, allRecords, personalBest, gridBests, rules, mileage };
   root.HomeStats = api;
   if (typeof module !== 'undefined') module.exports = api;

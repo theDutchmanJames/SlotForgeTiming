@@ -83,7 +83,17 @@
   const dsCapture = (o, lines) => dsHeader(o) + '\r\n\r\n' + (lines || []).join('\r\n') + '\r\n';
   const dsFileName = id => `ds-electronics-${DS_TYPES.some(t => t[0] === id) ? id : 'unit'}-log.txt`;
 
-  const api = { trackmateParser, cmd, trackmateInit, trackmatePower, trackmateNote, hex, ascii, hex4, line, parseHex, describe, DS_TYPES, dsTypeName, BAUDS, serialConfig, appVersion, dsHeader, dsCapture, dsFileName };
+  // ---- which timing hardware the app uses: one at a time ----
+  // The setting timingHw is the choice. Before anything was chosen it follows what was set up: before the Arduino box existed the only hardware was the Trackmate, so that stays the answer,
+  // except when the virtual box is ticked, or a box is remembered and no Trackmate is.
+  const TIMING = [['none', 'None (keys or simulated cars)'], ['trackmate', 'Trackmate Interface'], ['arduino', 'Arduino box (SlotForge)']];
+  const timingChosen = s => {
+    s = s || {};
+    if (TIMING.some(t => t[0] === s.timingHw)) return s.timingHw;
+    return s.abVirtual === true || (s.abDevice && !s.tmDevice) ? 'arduino' : 'trackmate';
+  };
+
+  const api = { TIMING, timingChosen, trackmateParser, cmd, trackmateInit, trackmatePower, trackmateNote, hex, ascii, hex4, line, parseHex, describe, DS_TYPES, dsTypeName, BAUDS, serialConfig, appVersion, dsHeader, dsCapture, dsFileName };
   root.Hardware = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

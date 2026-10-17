@@ -16,6 +16,15 @@ function homeSoftDraw() { // (the moment after a change in such a field)
 }
 function resetHome() { homeLaps = null; }
 
+// Starting a race while the timing hardware that was chosen is not connected: the person is told and asked (OK: start anyway with the keys or simulated cars, Cancel: go and connect it). true = go on.
+function timingReady() {
+  const hw = Hardware.timingChosen(state.settings);
+  if (hw === 'none') return true;
+  const on = hw === 'trackmate' ? typeof Trackmate !== 'undefined' && !!Trackmate.link.connected : typeof ArduinoBox !== 'undefined' && !!ArduinoBox.link.connected;
+  if (on) return true;
+  const name = hw === 'trackmate' ? 'The Trackmate Interface' : state.settings.abVirtual === true ? 'The virtual Arduino box' : 'The Arduino box';
+  return typeof confirm !== 'function' || confirm(`${name} is the timing hardware you chose, and it is not connected.\n\nOK: start anyway (laps can still be counted with the keys or simulated cars).\nCancel: do not start, so you can connect it (App Settings, Timing Hardware).`);
+}
 async function renderHome() {
   if (state.homeCustom) clearTimeout(state.homeCustom.timer); // (a drawing that was waiting is this one)
   const [drivers, cars, tracks, setups, sessions, rotations, teams, layouts, audiosets, imagesets] = await Promise.all(['drivers', 'slotcars', 'tracks', 'racesetups', 'sessions', 'rotationsetups', 'teams', 'layouts', 'audiosets', 'imagesets'].map(e => api.list(e)));
@@ -165,10 +174,10 @@ async function renderHome() {
       <p class="hint2">The race comes back paused, with its clock where it was. The laps driven since then are not in it (the review can add them), and the lap that was being driven is left out of the records. Press Space to carry on.${resume.heat ? ' The heats that were done are kept.' : ''}</p></section>`;
   // 1.17.0: the welcome band (date, track and status chips), the start card with its coloured lanes and start lights, and the cards on the right
   const audio = setup && (audiosets || []).find(x => x.id === setup.audioSet), audioName = audio ? audio.name || '(unnamed)' : '';
-  // the timing hardware chip: the Trackmate and the SlotForge (Arduino) box, the real one or the virtual one
+  // the timing hardware chip: the hardware that was chosen (App Settings, Timing Hardware), one at a time, and whether it is connected
   const abLink = typeof ArduinoBox !== 'undefined' && ArduinoBox.link ? ArduinoBox.link : null;
-  const chipsNow = more => HomeStats.chips({ trackmate: typeof Trackmate !== 'undefined' && !!Trackmate.link.connected, trackmateChosen: !!state.settings.tmDevice,
-    arduino: { connected: !!(abLink && abLink.connected), virtual: state.settings.abVirtual === true, chosen: state.settings.abVirtual === true || !!state.settings.abDevice }, netOn: !!state.settings.netOn, netError: more && more.netError, hasSetup: !!setup, audioName, drivers: drivers.length, cars: cars.length, tracks: tracks.length });
+  const chipsNow = more => HomeStats.chips({ hardware: Hardware.timingChosen(state.settings), trackmate: typeof Trackmate !== 'undefined' && !!Trackmate.link.connected, arduino: !!(abLink && abLink.connected), virtual: state.settings.abVirtual === true,
+    netOn: !!state.settings.netOn, netError: more && more.netError, hasSetup: !!setup, audioName, drivers: drivers.length, cars: cars.length, tracks: tracks.length });
   const chipHtml = c => `<span class="hm-chip" data-key="${c.key}"${c.state ? ` data-state="${c.state}"` : ''}>${c.state ? '<i aria-hidden="true"></i>' : ''}${esc(c.text)}</span>`;
   const today = new Date().toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
   const lt = HomeStats.lights(rows, { byTeam, enduSingle, tokens }, heats ? (byTeam ? 'team' : 'participant') : 'lane', issues.length > 0), shown = rows.map((r, i) => ({ r, i })).filter(x => !x.r.absent);
@@ -331,6 +340,7 @@ async function renderHome() {
     if (b.id === 'gorace') { state.tab = 'race'; render(); return; }
     if ((b.id === 'resumego' || b.id === 'resumesave') && resume && resume.race) { // the race that was interrupted comes back (paused), or is closed and checked for saving
       if (typeof raceActive === 'function' && raceActive()) return;
+      if (b.id === 'resumego' && !timingReady()) return;
       state.race = { setup: resume.race.setup, track: resume.race.track, rows: resume.race.rows, ...(resume.race.byTeam ? { byTeam: true } : {}), ...(resume.race.schedule ? { schedule: resume.race.schedule, ...(resume.race.labels ? { labels: resume.race.labels } : {}) } : {}), resume: b.id === 'resumesave' ? { ...resume, stopNow: true } : resume }; state.tab = 'race'; render(); return;
     }
     if (b.id === 'resumedrop') {
@@ -339,6 +349,7 @@ async function renderHome() {
     }
     if (b.id === 'start') {
       if (typeof raceActive === 'function' && raceActive()) return; // (one race at a time: the one that is running is on the Race tab)
+      if (!tokens && !timingReady()) return; // (the timing hardware that was chosen is not connected: asked, and the person may go and connect it)
       let go = rot ? here : rows;
       if (enduSingle) { // the driver who starts for every team: the one that was chosen, else the next of the team who is not starting for another team (or one picked by lot)
         const taken = new Set(rows.map(r => r.driverId).filter(Boolean)), rnd = state.rand || Math.random;

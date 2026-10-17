@@ -1535,6 +1535,20 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   await openRace({ name: 'TM', sessionType: 'practice', layout: 'C1', lightsMin: 0, lightsMax: 0 }, store.tracks[0], rows(1, 2));
   say('the race screen says the Trackmate is not connected', E('tmstatus').textContent.includes('Trackmate not connected'));
   run('Trackmate.link.setConnected(true)'); say('...and connected once it is', E('tmstatus').textContent.includes('Trackmate connected'));
+  // 1.39.0: one timing hardware at a time. The Trackmate counts laps only when it is the one that was chosen.
+  { run('live.leave && live.leave()'); await wait(20);
+    for (const other of ['arduino', 'none']) {
+      run(`state.settings.timingHw = '${other}'`);
+      await openRace({ name: 'TM-' + other, sessionType: 'practice', layout: 'C1', lightsMin: 0, lightsMax: 0 }, store.tracks[0], rows(1, 2));
+      key(' '); await until(() => phase() === 'running'); await wait(60);
+      feed('150\n\rA'); await wait(40); feed('200\n\r56\n\rA'); await wait(40);
+      say(`1.39.0: with ${other === 'none' ? 'no timing hardware' : 'the Arduino box'} chosen a connected Trackmate counts no laps`, run('live.engine().cars[0].laps.length') === 0 && run('live.engine().cars[1].laps.length') === 0);
+      feed('W'); say('...and its Trackcall button does nothing', run('live.engine().flag') === '');
+      say('...the status line names the hardware that was chosen, not the Trackmate', other === 'none' ? E('tmstatus').textContent.includes('No timing hardware chosen') : E('tmstatus').textContent.includes('Arduino box not connected'), E('tmstatus').textContent);
+      run('live.leave && live.leave()'); await wait(20);
+    }
+    run('delete state.settings.timingHw; Trackmate.link.setConnected(false); Trackmate.link.setConnected(true)'); // (as before this block: nothing chosen is the Trackmate, connected anew so no sensor is held)
+    await openRace({ name: 'TM', sessionType: 'practice', layout: 'C1', lightsMin: 0, lightsMax: 0 }, store.tracks[0], rows(1, 2)); }
   key(' '); await until(() => phase() === 'running'); await wait(60);
   feed('150\n\rA'); await wait(40); feed('200\n\r56\n\rA'); feed('200\n\r56\n\rA'); await wait(40);
   say('sensor hits count laps for their lane (a held sensor is one crossing)', run('live.engine().cars[0].laps.length') === 1 && run('live.engine().cars[1].laps.length') === 0);

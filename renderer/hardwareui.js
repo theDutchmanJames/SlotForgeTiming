@@ -90,7 +90,7 @@ async function tmClose() {
 // at startup: reconnect to the remembered device if it is plugged in. Never shows a window; quietly does nothing if anything is missing.
 async function tmAutoConnect() {
   try {
-    const t = tmSettings(); if (!t.auto || !t.device || typeof navigator === 'undefined' || !navigator.serial || hw.open) return false;
+    const t = tmSettings(); if (!t.auto || !t.device || typeof navigator === 'undefined' || !navigator.serial || hw.open || Hardware.timingChosen(state.settings) !== 'trackmate') return false; // (only the timing hardware in use connects by itself)
     const ports = await navigator.serial.getPorts();
     const port = ports.find(p => { const i = p.getInfo ? p.getInfo() : {}; return i.usbVendorId === t.device.vid && i.usbProductId === t.device.pid; });
     if (!port) return false;

@@ -121,3 +121,7 @@ slotcar has no length field yet; add `length` (mm, optional, default 130 for 1:3
 ## 9. Help text
 
 `tests/help.test.js` checks that names used in the Help exist in the app. Names on this page: "Find the box", "Connect", "Use the virtual box", "Download the Arduino sketch", "Calibrate", "Test the lights", "Save to the box", "Power on", "Power off", "Beep".
+
+## Added after 1.37.x (app side only, the package is not affected)
+- **1.38.1**: the Arduino page answers the main process's COM port list (`#ab-pick`, `abChoose`, `abDrawPick`), as the Trackmate and DS pages do. Without it `navigator.serial.requestPort()` never gets a choice in Electron.
+- **1.39.0**: the box is only bound to a race (`ArduinoRace.bind` in `race.js`) and only connects by itself (`abAutoConnect`) when it is the timing hardware in use (`Hardware.timingChosen(state.settings) === 'arduino'`; setting `timingHw`: none, trackmate or arduino). Ticking the virtual box sets it. A race opened while the box is not connected is not bound later (the Start race question is there to avoid that).

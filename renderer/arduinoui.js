@@ -77,7 +77,7 @@ async function abClose() {
 }
 async function abAutoConnect() {
   try {
-    const t = abSettings(); if (!t.auto || ab.open) return false;
+    const t = abSettings(); if (!t.auto || ab.open || Hardware.timingChosen(state.settings) !== 'arduino') return false; // (only the timing hardware in use connects by itself)
     if (t.virtual) { ab.dev = ArduinoSim.createSim().asPort(); ab.info = ab.dev.getInfo(); return await abOpen(); }
     if (!t.device || typeof navigator === 'undefined' || !navigator.serial) return false;
     const ports = await navigator.serial.getPorts();
@@ -168,7 +168,7 @@ function renderArduinoSettings(box) {
   };
   $('ab-conn').onclick = async () => { if (ab.open) await abClose(); else await abOpen(); renderArduinoSettings(box); };
   $('ab-auto').onchange = e => save({ abAuto: e.target.checked });
-  $('ab-virtual').onchange = async e => { await save({ abVirtual: e.target.checked }); if (ab.open) await abClose(); if (e.target.checked) { ab.dev = ArduinoSim.createSim().asPort(); ab.info = ab.dev.getInfo(); await abOpen(); } else ab.dev = null; renderArduinoSettings(box); };
+  $('ab-virtual').onchange = async e => { await save({ abVirtual: e.target.checked }); if (e.target.checked && Hardware.timingChosen(state.settings) !== 'arduino') await setTimingHw('arduino'); /* (ticking the virtual box means the Arduino box is the one in use) */ if (ab.open) await abClose(); if (e.target.checked) { ab.dev = ArduinoSim.createSim().asPort(); ab.info = ab.dev.getInfo(); await abOpen(); } else ab.dev = null; renderArduinoSettings(box); };
   $('ab-download').onclick = abDownloadSketch;
   $('ab-calib').onclick = () => abSend(C.calibrate(), 'calibrate');
   $('ab-blackout').onchange = e => abSend(C.option('blackout', Math.max(0, Math.min(5000, Number(e.target.value) || 0))), 'blackout');

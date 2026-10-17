@@ -29,7 +29,7 @@ const merge = (state, m) => vm.runInContext('LiveShare', ctx).applyDynamic(state
 const plain = d => { const x = { ...d }; delete x.seq; return x; }; // a whole state without a message number (what an older race window sends): always accepted
 const api = { liveStatic: s => { sent.stat = JSON.parse(JSON.stringify(s)); sent.dyn = null; sent.last = null; }, livePush: d => { const m = JSON.parse(JSON.stringify(d)); sent.last = m; sent.log.push(m); sent.n++; const r = merge(sent.dyn, m); if (r.ok) { if (!r.stale) sent.dyn = r.state; } else { sent.dyn = null; sent.gaps++; } },
   liveGet: async () => JSON.parse(JSON.stringify({ stat: sent.stat, dyn: sent.dyn })), onLive: f => { cbs.dyn.push(f); return () => {}; }, onLiveStatic: f => { cbs.stat.push(f); return () => {}; }, liveOpen: async () => ({ second: true }), liveCommand: c => { cmds.push(c); cbs.cmd.forEach(f => f(JSON.parse(JSON.stringify(c)))); }, onCommand: f => { cbs.cmd.push(f); return () => { cbs.cmd = cbs.cmd.filter(x => x !== f); }; },
-  schema: async () => schema, getSettings: async () => ({ theme: 'dark', rules: 'Be kind. No bumping.' }), setSettings: async p => ({ ...(ctx.__ready ? vm.runInContext('state.settings', ctx) : {}), ...p }), dbPath: async () => 'x',
+  schema: async () => schema, getSettings: async () => ({ theme: 'dark', rules: 'Be kind. No bumping.', timingHw: 'arduino' }), setSettings: async p => ({ ...(ctx.__ready ? vm.runInContext('state.settings', ctx) : {}), ...p }), dbPath: async () => 'x',
   list: async e => JSON.parse(JSON.stringify(store[e] || [])), customFields: async () => [], linkedLaps: async () => 0,
   saveSession: async (s, l) => { saved.push([s, l]); },
   add: async (e, item) => { const row = { ...item, id: 'N' + (store[e].length + 1) }; store[e].push(row); writes.push(['add', e, JSON.parse(JSON.stringify(item))]); return row; },
@@ -128,6 +128,26 @@ const nowMs = () => run('performance.now()');
   say('a race opened over another one lets go of the first one\'s box binding (the lights go to STOP, then the new race sets its own)', /\bLS\b.*\bL0\b/.test(reopened), reopened);
   run('live.leave && live.leave()'); await wait(20);
   say('the form values: Yes means true and No means false for the box, a setup from before the box has the defaults', run("(s => ({ b: s.boxBeeps !== 'no', l: s.boxLaneLights === 'yes' }))({})").b === true && run("(s => s.boxLaneLights === 'yes')({ boxLaneLights: 'yes' })") === true);
+
+  // ---- 1.39.0: one timing hardware at a time. The box is connected, but the Trackmate (or nothing) was chosen: the race does not bind to the box and does not touch it ----
+  for (const other of ['trackmate', 'none']) {
+    run(`state.settings.timingHw = '${other}'`); sentNow();
+    await openRace(setup, store.tracks[0], rows(1, 2));
+    say(`1.39.0: with ${other === 'none' ? 'no timing hardware' : 'the Trackmate'} chosen a connected box is left alone: nothing is bound and nothing is sent to it`, (run('live.box') === undefined || run('live.box') === null) && sentNow() === '');
+    key(' '); await until(() => phase() === 'countdown', 3000); await until(() => phase() === 'running', 12000); await wait(40);
+    hit(0); await wait(30);
+    say('...and its crossings do not count laps', lapsOf() === '[0,0]');
+    say('...the status line names the hardware that was chosen', other === 'none' ? String(E('tmstatus').textContent).includes('No timing hardware chosen') : String(E('tmstatus').textContent).includes('Trackmate not connected'), String(E('tmstatus').textContent));
+    run('live.leave && live.leave()'); await wait(20);
+  }
+  run("state.settings.timingHw = 'arduino'"); sentNow();
+  const marks = []; E('tmstatus').classList = { add() {}, remove() {}, toggle: (c, on) => marks.push(c + ':' + on) }; // (the page of the test only records the class)
+  await openRace(setup, store.tracks[0], rows(1, 2));
+  say('...and with the Arduino box chosen it is bound again', run('live.box') !== undefined && run('live.box') !== null);
+  say('...its status line has no red mark while the box is connected', marks.length > 0 && marks[marks.length - 1] === 'hwwarn:false', marks.join());
+  run("ArduinoBox.link.setConnected(false)"); await wait(10);
+  say('...and when the box goes away the status line says so, in red', String(E('tmstatus').textContent).includes('Arduino box not connected') && marks[marks.length - 1] === 'hwwarn:true', String(E('tmstatus').textContent) + ' ' + marks.join());
+  run('live.leave && live.leave()'); await wait(20);
 
   timers.forEach(t => clearInterval(t));
   reachedEnd = true;

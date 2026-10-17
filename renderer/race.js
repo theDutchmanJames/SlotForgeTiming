@@ -720,13 +720,16 @@ async function renderRace() {
   };
   live.actions = actions; actions.finalize = () => (tokens ? finalizeTokens() : finalize()); live.reviewCommand = reviewCommand; // (for the automated tests)
   // ---- the Trackmate: sensor hits count laps, the Trackcall button flags the race ----
-  const tmWord = () => (Trackmate.link.connected ? 'Trackmate connected' : 'Trackmate not connected') + (typeof abConnected === 'function' && abConnected() ? ' · Arduino box connected' : '');
-  const drawTm = () => { const e = ui('tmstatus'); if (e) e.textContent = ' · ' + tmWord() + (Trackmate.link.connected && Trackmate.link.power !== null ? (Trackmate.link.power ? ', track power on' : ', track power off') : ''); };
-  drawTm(); live.offTmStatus = Trackmate.link.onStatus(drawTm);
+  // One timing hardware at a time: the one chosen in App Settings, Timing Hardware. Only it counts laps and is told about the lights and the power; the status line names it, red when it is not connected.
+  const hwUse = Hardware.timingChosen(state.settings), abLinkNow = () => (typeof ArduinoBox !== 'undefined' ? ArduinoBox.link : null);
+  const tmWord = () => HomeStats.timing({ hardware: hwUse, trackmate: Trackmate.link.connected, arduino: !!(abLinkNow() && abLinkNow().connected), virtual: state.settings.abVirtual === true });
+  const drawTm = () => { const e = ui('tmstatus'); if (e) { const st = tmWord(); e.textContent = ' · ' + st.text + (hwUse === 'trackmate' && Trackmate.link.connected && Trackmate.link.power !== null ? (Trackmate.link.power ? ', track power on' : ', track power off') : ''); if (e.classList) e.classList.toggle('hwwarn', st.state === 'warn'); } };
+  drawTm();
+  { const offT = Trackmate.link.onStatus(drawTm), offA = abLinkNow() ? abLinkNow().onStatus(drawTm) : null; live.offTmStatus = () => { offT(); if (offA) offA(); }; }
   // the track power (the Trackmate relay): only when it is connected
-  const power = on => { if (Trackmate.link.connected && typeof tmPower === 'function') tmPower(on); if (live.box) live.box.power(on); };
+  const power = on => { if (hwUse === 'trackmate' && Trackmate.link.connected && typeof tmPower === 'function') tmPower(on); if (live.box) live.box.power(on); };
   const CUTS = { yellowredcut: ['red'], yellowcut: ['yellow'], redcut: ['red'] }; // which flags switch the power off, per Trackcall choice
-  if (Trackmate.link.connected && typeof tmSetup === 'function') tmSetup(lanes).then(() => power(setup.startPower !== 'off')); // the interface is told the lanes; the track starts with or without power
+  if (hwUse === 'trackmate' && Trackmate.link.connected && typeof tmSetup === 'function') tmSetup(lanes).then(() => power(setup.startPower !== 'off')); // the interface is told the lanes; the track starts with or without power
   let callAt = 0; // when the last Trackcall press was
   const trackcall = () => {
     const mode = setup.trackcall || 'yellowred', t = now();
@@ -743,12 +746,12 @@ async function renderRace() {
   live.pwWant = true;
   live.powerFollow = () => { const cut = CUTS[setup.trackcall]; if (!cut) return; const want = !cut.includes(eng.flag); if (want !== live.pwWant) { live.pwWant = want; power(want); } };
   live.trackcall = trackcall;
-  live.offTm = Trackmate.link.on(e => {
+  live.offTm = hwUse !== 'trackmate' ? null : Trackmate.link.on(e => {
     if (e.type === 'hit') { const lane = Trackmate.laneMap(state.settings.tmLaneMap)[e.lane]; const i = eng.cars.findIndex(c => c.lane === lane); if (i >= 0) crossCar(i, e.at); } // the sensor's lane can be changed in Timing hardware
     else if (e.type === 'call') { if (Number.isInteger(e.lane)) actions.call(e.lane); else trackcall(); } // a call button of one lane, or the one Trackcall button
   });
   // ---- the SlotForge box (Arduino): laps, pit sensors, buttons and the speed trap come in; the start lights, the power and the buzzer follow the race ----
-  if (typeof ArduinoRace !== 'undefined' && ArduinoBox.link.connected) {
+  if (hwUse === 'arduino' && typeof ArduinoRace !== 'undefined' && ArduinoBox.link.connected) {
     live.box = ArduinoRace.bind({ link: ArduinoBox.link, cars: () => eng.cars, crossCar, blockCar, unblockCar, actions, trackcall, phase: () => live.phase, lights: () => live.lights, flag: () => eng.flag,
       setup: { ...setup, boxBeeps: setup.boxBeeps !== 'no', boxLaneLights: setup.boxLaneLights === 'yes' }, // (the race setup form has Yes/No choices, no tick boxes: the box wants true/false)
       onJump: (lane, at) => { /* a crossing during the countdown: the jump-start handling is not built yet */ },

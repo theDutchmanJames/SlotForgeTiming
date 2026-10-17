@@ -278,7 +278,8 @@ const Help = (() => {
         </ul>` },
       { id: 'hardware', title: 'Timing hardware', note: 'Trackmate, Arduino, DS Electronics, oXigen Digital or no hardware', body: `
         <ul>
-          <li>App Settings, <b>Timing Hardware</b> has a page per kind of hardware. On <b>Trackmate Interface</b> you connect the box by USB and check the sensors; the check lights show which sensor is seen. You choose which lane each sensor counts for.</li>
+          <li>App Settings, <b>Timing Hardware</b>: at the top you choose the <b>Timing hardware in use</b>: <b>None</b> (keys or simulated cars), the <b>Trackmate Interface</b> or the <b>Arduino box</b>. One at a time: only the one in use connects by itself, counts the laps of a race and is shown on Home and on the race screen (green when it is connected, red when it is not). If you press Start race while it is not connected, the app asks whether to start anyway. Ticking <b>Use the virtual box</b> makes the Arduino box the one in use.</li>
+          <li>Below that, Timing Hardware has a page per kind of hardware. On <b>Trackmate Interface</b> you connect the box by USB and check the sensors; the check lights show which sensor is seen. You choose which lane each sensor counts for.</li>
           <li>The Trackmate can also switch the <b>track power</b> (relay) and has a <b>Trackcall</b> button. What they do is set in the race setup.</li>
           <li>The <b>Arduino</b> page is for a box you build yourself (next folder). <b>DS Electronics</b> is a listening version for now. <b>oXigen Digital</b> is a place held for it: there is nothing to set up there yet.</li>
           <li>The Monitor shows what the box sends, which helps when something does not count.</li>
