@@ -9,6 +9,8 @@
   const Dl = typeof module !== 'undefined' ? require('./delta.js') : root.Delta; // the Delta Timers (delta.js)
   const Av = typeof module !== 'undefined' ? require('./avatars.js') : root.Avatars; // the standard avatars of the lanes (avatars.js)
   const Ww = typeof module !== 'undefined' ? require('./weatherwidgets.js') : root.WxW; // the weather widgets (weatherwidgets.js)
+  const Tyw = typeof module !== 'undefined' ? require('./tyrewidgets.js') : root.TyreWidgets; // the Tyre Degradation widget and the Tyres cell (tyrewidgets.js, 1.40.0)
+  const Tw = typeof module !== 'undefined' ? require('./tyrewear.js') : root.TyreWear;
   const En = typeof module !== 'undefined' ? require('./endurance.js') : root.Endurance; // the Endurance Race (endurance.js)
   const Dm = typeof module !== 'undefined' ? require('./damage.js') : root.Damage; // the Damage System (damage.js)
   const Ds = typeof module !== 'undefined' ? require('./distance.js') : root.Distance; // Distance Racing: the distance driven and to go (distance.js)
@@ -255,12 +257,13 @@
           const car = x.car, lc = S.laneColorsOf ? S.laneColorsOf(car.lane) : {};
           return { pos: x.pos, flag: car.flag, name: car.driverName, nickname: car.nickname || car.driverName, callsign: car.callsign || '',
             laps: String(car.laps.length), best: car.best === null ? '–' : E.fmtTime(car.best), last: car.laps.length ? E.fmtTime(car.laps[car.laps.length - 1]) : '–',
-            current: car.done ? '–' : E.fmtTime(S.eng.lapElapsed(S.eng.cars.indexOf(car), S.now)), fuel: S.eng.fuel && S.eng.fuel.on ? `${(Math.floor(S.eng.fuelOf(S.eng.cars.indexOf(car), S.now) * 10 + 1e-9) / 10).toFixed(1).replace(/\.0$/, '')} L` : '–', gap: x.gap, color: lc.color, bg: lc.bg };
+            current: car.done ? '–' : E.fmtTime(S.eng.lapElapsed(S.eng.cars.indexOf(car), S.now)), fuel: S.eng.fuel && S.eng.fuel.on ? `${(Math.floor(S.eng.fuelOf(S.eng.cars.indexOf(car), S.now) * 10 + 1e-9) / 10).toFixed(1).replace(/\.0$/, '')} L` : '–', tyres: opt.colTyres === true && S.eng.tyrewear ? Tyw.cellHtml(Tw.view(S.eng, [car.lane], S.now).rows[0]) : '–', gap: x.gap, color: lc.color, bg: lc.bg };
         });
         return { html: Wd.leaderHtml(rows, opt) };
       }
       case 'fuel': { const F = S.eng.fuel, i = S.eng.cars.indexOf(c); return { html: F && F.on ? Wd.fuelHtml(S.eng.fuelOf(i, t), S.eng.tankOf ? S.eng.tankOf(i) : F.tank, opt) : '–' }; }
       case 'tyre': return Ww.tyreContent(opt, c, S); // the tyre of the car (the weather: a pit stop changes it)
+      case 'tyrelife': return Tyw.content(opt, c, S, t); // how much life the tyres of the car have left (Tyre Wear)
       case 'wxforecast': return Ww.forecastContent(opt, S, t); // the weather now, and what comes next
       case 'wxconditions': return Ww.conditionsContent(opt, S); // track and air temperature, wind speed and direction
       case 'currentdriver': { // Endurance Race: the driver at the wheel (any race: the driver of the car), and how long he has been there

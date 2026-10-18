@@ -413,7 +413,7 @@ async function renderHome() {
         const grid2 = []; rows.forEach((r, i) => { if (r.absent) return; (byTeam ? membersOf(teamOf(r.teamId)).map(m => m.id) : [r.driverId]).forEach(id => grid2.push({ driverId: id, color: laneHue(i) })); });
         d.bests = HomeStats.gridBests({ laps, trackId: track && track.id, grid: grid2, driverName: dn });
       } else if (key === 'rules') {
-        d.rules = HomeStats.rules(rawSetup, { typeLabel, distUnit: Speed.distUnitOf(state.settings), rotation: rotRec ? rotRec.name || '' : '', penalty: nameIn(lists.penaltysystems, setup && setup.penaltySystem), damage: nameIn(lists.damagesystems, setup && setup.damageSystem), fuel: nameIn(lists.fuelrules, setup && setup.fuelRules), weather: nameIn(lists.weathersystems, setup && setup.weather) });
+        d.rules = HomeStats.rules(rawSetup, { typeLabel, distUnit: Speed.distUnitOf(state.settings), rotation: rotRec ? rotRec.name || '' : '', penalty: nameIn(lists.penaltysystems, setup && setup.penaltySystem), damage: nameIn(lists.damagesystems, setup && setup.damageSystem), fuel: nameIn(lists.fuelrules, setup && setup.fuelRules), weather: nameIn(lists.weathersystems, setup && setup.weather), tyreWear: nameIn(lists.tyrewearsystems, setup && setup.tyreWear), tyreWearHere: ((lists.tyrewearsystems || []).find(x => setup && x.id === setup.tyreWear) || {})[setup && setup.sessionType] === 'on' });
       }
       out.set(key, HomeCards.html(key, d, b));
     });
@@ -423,7 +423,7 @@ async function renderHome() {
   let allLaps;
   try { homeLaps = homeLaps || Promise.resolve(api.list('laps')); allLaps = await homeLaps; } catch (x) { homeLaps = null; allLaps = []; }
   const lists = {};
-  if (wants('rules') && setup) await Promise.all(['penaltysystems', 'damagesystems', 'fuelrules', 'weathersystems'].map(async e => { try { lists[e] = await api.list(e); } catch (x) { lists[e] = []; } }));
+  if (wants('rules') && setup) await Promise.all(['penaltysystems', 'damagesystems', 'fuelrules', 'weathersystems', 'tyrewearsystems'].map(async e => { try { lists[e] = await api.list(e); } catch (x) { lists[e] = []; } }));
   if (run !== homeRun) return; // (another picture of Home was drawn while the laps came in)
   cardsHtml(Array.isArray(allLaps) ? allLaps : [], lists).forEach((html, key) => { const el = document.getElementById('hmc-' + key); if (el) el.innerHTML = html; });
   if (state.settings.netOn && api.netStatus) { // a network that was switched on but could not start gets a red light

@@ -26,6 +26,7 @@ const call = (port, method, url, data) => new Promise((resolve, reject) => {
   r = await get('/api/settings'); ok('settings are shared without the password', r.code === 200 && r.json.theme === 'midnight' && r.json.rules === 'Be kind.' && !('netPassword' in r.json) && !r.text.includes('secret'));
   r = await get('/api/list/drivers'); ok('the database can be read', r.code === 200 && r.json[0].entity === 'drivers');
   r = await get('/api/list/settings'); ok('...but only its tables', r.code === 404);
+  r = await get('/api/list/tyrewearsystems'); ok('...the tyre wear systems too (1.40.0: a phone that runs a race needs them) and the scripts of the tyre widgets are served', r.code === 200 && r.json[0].entity === 'tyrewearsystems' && (await get('/tyrewear.js')).text.includes('TyreWear') && (await get('/tyrewidgets.js')).text.includes('TyreWidgets'));
   r = await get('/api/schema'); ok('the schema is shared', r.json.tracks.label === 'Track');
   r = await get('/api/live'); ok('the running race can be fetched', r.json.stat.raceId === 'r1' && r.json.dyn.phase === 'running');
   r = await post('/api/add', {}); ok('nothing can be written', r.code === 404 || r.code === 405);

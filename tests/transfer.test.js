@@ -118,6 +118,14 @@ const e = tmp(); T.apply(e, JSON.parse(JSON.stringify(b1))); const reread = new 
   const imp = y.data.weathersystems.find(q => q.name === 'Showers (imported)'), st = y.data.racesetups[0];
   ok('...an import keeps the link (to the imported copy, with a new id), and the clash of names is marked', y.data.weathersystems.length === 2 && imp && imp.startAt === 4 && st.weather === imp.id && imp.id !== w.id);
   ok('...a weather system can also be exported on its own', (T.collect(x.data, { weathersystems: [w.id] }, false).items.weathersystems || []).length === 1); }
+{ // 1.40.0: a tyre wear system travels with the race setup that uses it, with its tyre table and weather table
+  const x = tmp(), t = x.add('tyrewearsystems', { name: 'Club tyres', unit: 'distance', tyres: { S: { wear: 30, bonus: 5, cliff: 30, hind: 30 } }, mult: { wet: { dry: 4 } } }), s = x.add('racesetups', { name: 'Tyres', tyreWear: t.id });
+  const out = T.collect(x.data, { racesetups: [s.id] }, true), dpx = T.dependencies(x.data, { racesetups: [s.id] });
+  ok('a race setup brings its tyre wear system, and the dependencies list it', (out.items.tyrewearsystems || []).length === 1 && out.items.tyrewearsystems[0].name === 'Club tyres' && dpx.tyrewearsystems && dpx.tyrewearsystems.length === 1 && dpx.tyrewearsystems[0].required === false);
+  const y = tmp(); y.add('tyrewearsystems', { name: 'Club tyres' }); T.apply(y, JSON.parse(JSON.stringify(out)));
+  const imp = y.data.tyrewearsystems.find(q => q.name === 'Club tyres (imported)'), st = y.data.racesetups[0];
+  ok('...an import keeps the link (to the imported copy, with a new id), the tables, and marks the clash of names', y.data.tyrewearsystems.length === 2 && imp && imp.unit === 'distance' && imp.tyres.S.wear === 30 && imp.mult.wet.dry === 4 && st.tyreWear === imp.id && imp.id !== t.id);
+  ok('...a tyre wear system can also be exported on its own', (T.collect(x.data, { tyrewearsystems: [t.id] }, false).items.tyrewearsystems || []).length === 1); }
 { // 1.10.0: a damage system travels with the race setup that uses it
   const x = tmp(), d = x.add('damagesystems', { name: 'Club damage', stop: 'add', levels: [{ name: 'Light', from: 3, seconds: 10 }] }), s = x.add('racesetups', { name: 'Hard', damageSystem: d.id });
   const out = T.collect(x.data, { racesetups: [s.id] }, true), dpx = T.dependencies(x.data, { racesetups: [s.id] });

@@ -35,6 +35,8 @@
     { key: 'nextdriver', label: 'Next driver', group: 'Swaps', type: 'nextdriver', needs: 'swaps' },
     { key: 'fuel', label: 'Fuel', group: 'Car', type: 'fuel', needs: 'fuel' },
     { key: 'tyre', label: 'Tyres', group: 'Car', type: 'tyre', needs: 'tyres' },
+    { key: 'tyrelife', label: 'Tyre life', group: 'Car', type: 'tyrelife', needs: 'tyrewear', opt: { look: 'cell' } },
+    { key: 'tyreleft', label: 'Tyre laps left', group: 'Car', type: 'tyrelife', needs: 'tyrewear', opt: { look: 'number', showPct: false, showLeft: true, showGrip: false, showName: false, showBox: false } },
     { key: 'damage', label: 'Damage', group: 'Car', type: 'damage', needs: 'damage' },
     { key: 'pitstop', label: 'Pitstop time', group: 'Car', type: 'pitstop' },
     { key: 'penalty', label: 'Penalty', group: 'Car', type: 'penalty', needs: 'penalty' },
@@ -45,7 +47,7 @@
   ];
   const NEEDS = {
     swaps: 'Shows in a race with driver swaps (Endurance Race).',
-    fuel: 'Shows when Fuel is on in the race.', tyres: 'Shows when the race has a weather system.', damage: 'Shows when the Damage System is on.',
+    fuel: 'Shows when Fuel is on in the race.', tyres: 'Shows when the race has a weather system.', tyrewear: 'Shows when the race has a Tyre Wear System.', damage: 'Shows when the Damage System is on.',
     penalty: 'Shows when Penalties are on.', champ: 'Shows in a championship race.',
     laps: 'Shows in a race with a number of laps or a distance.', driven: 'Shows when the lane has a length (Distance Racing).', togo: 'Shows in a race with a distance or laps and a lane length.'
   };

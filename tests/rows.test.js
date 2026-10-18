@@ -73,7 +73,7 @@ ok('...and when the design was deleted', lb({ design: 'gone' }, [design]).includ
 ok('the space between the columns flows from the widget to the rows too', lb({ design: 'R1', gaps: 0 }, [design]).includes('--rw:985') && !lb({ design: 'R1' }, [design]).includes('--rw') && !lb({ design: 'R1', gaps: 100 }, [design]).includes('--rw'));
 ok('the size of the rows flows from the widget to the rows', lb({ design: 'R1', scale: 50 }, [design]).includes('--rk:0.5') && lb({ design: 'R1' }, [design]).includes('--rk:1') && !lb({ scale: 50 }, [design]).includes('--rk'));
 ok('the old column choices are untouched', lb({ colLast: true }, []).includes('lb-last'));
-ok('the widget has a row design option, and the column options are marked classic', Wd.def('leaderboard').options[0].type === 'rowdesign' && Wd.def('leaderboard').options.filter(o => o.classic).length === 10);
+ok('the widget has a row design option, and the column options are marked classic', Wd.def('leaderboard').options[0].type === 'rowdesign' && Wd.def('leaderboard').options.filter(o => o.classic).length === 11);
 {
   const sc = Wd.def('leaderboard').options.find(o => o.key === 'scale');
   ok('the widget has a size slider for the rows, from 20 to 100 percent, shown only with a row design', sc && sc.type === 'range' && sc.min === 20 && sc.max === 100 && sc.default === 100 && sc.unit === '%' && sc.rowsOnly === true && !sc.classic && Wd.def('leaderboard').options.filter(o => o.rowsOnly).length === 3);

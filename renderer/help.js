@@ -63,10 +63,11 @@ const Help = (() => {
           <li><b>Fuel Setups</b>: tank size, fuel per lap and what happens when the tank is empty.</li>
           <li><b>Penalty Systems</b>: how penalty points turn into seconds, when a driver is disqualified, and special penalties such as a Drivethrough or a Stop-and-Go.</li>
           <li><b>Damage Systems</b>: damage points, and the stop in the pits that repairs them (see Damage System, below).</li>
+          <li><b>Tyre Wear Systems</b>: tyres that lose life while a car drives, and what that does to the car (see Tyre wear, below).</li>
           <li><b>Weather Systems</b>: a spell of rain with a forecast, the tyres to change in the pits, what the wrong tyres cost, and the temperatures and the wind of every weather.</li>
           <li><b>Balance of Power</b>: how much a fast car is hindered and a slow car helped, by hand or by itself.</li>
           <li><b>Time Tokens</b>: the time buttons and the warning for a Time Token Session.</li>
-          <li>Fuel setups, penalty systems, damage systems and weather systems do nothing until you choose them in the <b>Rule sets</b> folder of a race setup (Balance of Power and the pit hold time are there too).</li>
+          <li>Fuel setups, penalty systems, damage systems, tyre wear systems and weather systems do nothing until you choose them in the <b>Rule sets</b> folder of a race setup (Balance of Power and the pit hold time are there too).</li>
         </ul>` },
       { id: 'types', title: 'Session types', note: 'Seven ways to race', body: `
         <ul>
@@ -201,6 +202,15 @@ const Help = (() => {
           <li>Every weather has its <b>conditions</b>: track temperature, air temperature, wind speed and the direction the wind comes from (Weather Systems, folder Track conditions; Celsius and km/h, or Fahrenheit and mph). They change when the weather does. The audio says them at lights out and after every change, and custom text has them as {variables}.</li>
           <li>In the Layout Editor, folder <b>Weather</b>: <b>Tyres</b> (the tyre of a lane's car; amber with "Change tyres" when it has to change), <b>Weather Forecast</b> (the weather now and what comes next, "Rain in 3 laps") and <b>Track Conditions</b> (temperatures, wind speed and an arrow for the wind).</li>
           <li>They are drawn, or you make <b>picture sets</b> for them in Image Settings (Tyres, Weather, Track conditions). Track Conditions can show your own numbers instead of those of a weather system.</li>
+        </ul>` },
+      { id: 'tyrewear', title: 'Tyre wear', note: 'Tyres that wear out, and the pit stop that changes them', body: `
+        <ul>
+          <li>A <b>tyre wear system</b> (Race Setup, Tyre Wear Systems) makes the tyres lose life while a car drives, from 100% to 0%. Choose one in the <b>Rule sets</b> folder of a race setup. Races, heats and Endurance Races have it; practice and qualifying only when the system says so; a Time Token Session never. Every heat starts on fresh tyres.</li>
+          <li>Every tyre has four numbers: the <b>wear</b> (% of life lost in a lap, or in 100 m or 100 ft for Distance Racing), the <b>fresh bonus</b>, where the <b>grip drops</b> and the <b>hindrance at 0%</b>. Start from Standard, Sprint or Endurance. The weather table changes the wear in the rain.</li>
+          <li>Through the fuel rules, like Balance of Power (needs a Fuel setup), new tyres help the car and worn ones hinder it. Lap times and records are never changed.</li>
+          <li>At <b>0%</b>: nothing, penalty points every lap, the lap does not count until the car pits, or the car retires.</li>
+          <li>In the pits a car gets a fresh set; it takes the seconds you set, at the same time as the other work or after it. A car that leaves early keeps its worn tyres.</li>
+          <li>The <b>Tyre Change</b> folder shows the life of every car. The <b>Tyre Degradation</b> widget (Layout Editor, Weather) shows it as a worn tyre, a ring, a bar or a number; the Leaderboard and Driver stats have cells for it.</li>
         </ul>` },
       { id: 'tokens', title: 'Time Token Sessions', note: 'Selling track time per lane', body: `
         <ul>

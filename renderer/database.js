@@ -303,6 +303,25 @@ const diRows = incs => incs.length ? `<div class="ptrow dirow pthead muted"><spa
   incs.map((x, i) => `<div class="ptrow dirow"><input type="text" data-di="${i}" data-dik="name" value="${esc(x.name)}" aria-label="Name" maxlength="40">
   <input type="number" min="1" step="1" data-di="${i}" data-dik="points" value="${esc(x.points)}" aria-label="Damage points it gives"><button type="button" class="btn" data-didel="${i}">Remove</button></div>`).join('')
   : '<p class="muted">No incidents yet: the Race Director then has only the plus and minus buttons.</p>';
+// the tyres of a tyre wear system (field type 'tyretable'): the four numbers of every tyre, what a new set lasts, and the grip curve of the tyre that is selected
+const twWearLabel = unit => (unit === 'distance' ? `Wear per 100 ${dUnit() === 'ft' ? 'ft' : 'm'} (%)` : 'Wear per lap (%)');
+const twHead = unit => `<div class="twrow twhead muted"><span>Tyre</span><span>${twWearLabel(unit)}</span><span>Fresh bonus (%)</span><span>Grip drops from (% life left)</span><span>Hindrance at 0% (%)</span><span>Lasts about</span></div>`;
+const twRows = (tyres, unit, sel) => Wx.TYRES.map(ty => { const t = tyres[ty.code] || {}, c = ty.color;
+  return `<div class="twrow${ty.code === sel ? ' sel' : ''}" data-twrow="${ty.code}"><span class="twname"><b class="twchip" style="border-color:${c};color:${c}">${esc(ty.code === 'INT' ? 'I' : ty.code)}</b> ${esc(ty.name)}
+    <button type="button" class="btn small" data-twsel="${ty.code}" aria-label="Show the grip curve of the ${esc(ty.name)} tyre"${ty.code === sel ? ' disabled' : ''}>Curve</button></span>`
+    + TyreWear.NUMS.map(([k, label]) => `<label class="twf"><small>${esc(k === 'wear' ? twWearLabel(unit) : label)}</small><input type="number" step="any" min="${TyreWear.LIMITS[k][0]}" max="${TyreWear.LIMITS[k][1]}" data-tw="${ty.code}" data-twk="${k}" value="${esc(t[k] ?? '')}" aria-label="${esc(ty.name)}: ${esc(label)}"></label>`).join('')
+    + `<span class="twlasts" data-twlast="${ty.code}">${esc(TyreWear.lastsText(unit, dUnit(), Number(String(t.wear ?? '').replace(',', '.'))))}</span></div>`; }).join('');
+const twCurve = (tyres, sel) => { const ty = Wx.tyreOf(sel) || Wx.TYRES[0], t = TyreWear.cleanTyres(tyres)[ty.code];
+  return `<div class="twcurve"><div class="twsvg">${TyreWear.curveSvg(t)}</div><div class="twtext"><p><strong>${esc(ty.name)}.</strong> New tyres give the fresh bonus (${TyreWear.effectText(t.bonus)}). The bonus fades while the tyre wears.</p>
+    <p><strong>At ${t.cliff}% life left</strong> the bonus is gone. Below that the tyre starts to hinder the car.</p><p><strong>At 0%</strong> the hindrance is at its worst (${TyreWear.effectText(-t.hind)}).</p>
+    <p class="muted">A plus helps (less fuel used, faster refuelling), a minus hinders. Lap times are never changed.</p></div></div>`; };
+const twTable = (tyres, unit, sel) => `<div class="twbtns row"><span class="muted">Start from a ready-made system (you can change every number):</span> ${TyreWear.PRESET_KEYS.map(k => `<button type="button" class="btn" data-twpreset="${k}" title="${esc(TyreWear.PRESETS[k].note)}">${esc(TyreWear.PRESETS[k].name)}</button>`).join(' ')}</div>
+  <p class="muted">Standard is in between, Sprint wears the tyres quickly (short races, many stops) and Endurance wears them slowly.</p>
+  <div class="twtable" id="tw-table">${twHead(unit)}${twRows(tyres, unit, sel)}</div><div id="tw-curve">${twCurve(tyres, sel)}</div>`;
+// the weather table of a tyre wear system (field type 'wxmult'): how much more or less every kind of tyre wears in every weather
+const twMult = mult => `<div class="twtable twmult"><div class="twrow twhead muted"><span>Weather</span><span>Dry tyres (Hard, Medium, Soft, Supersoft)</span><span>Intermediate</span><span>Wet</span></div>`
+  + Wx.STATES.map(([st, name]) => `<div class="twrow"><span class="twname"><strong>${esc(name)}</strong></span>` + Wx.CLASSES.map(c => `<label class="twx"><small>${c === 'dry' ? 'Dry tyres' : c === 'inter' ? 'Intermediate' : 'Wet'}</small><input type="number" step="any" min="0" max="20" data-twm="${st}" data-twmc="${c}" value="${esc(mult[st] && mult[st][c] !== undefined ? mult[st][c] : '')}" aria-label="${esc(name)} weather, ${c === 'dry' ? 'dry' : c === 'inter' ? 'Intermediate' : 'Wet'} tyres: times the wear"><span>&times;</span></label>`).join('') + '</div>').join('') + '</div>'
+  + `  <p class="muted">The numbers multiply the wear above: 1.0 is normal, 0.5 is half the wear, 3.0 is three times. Intermediate and Wet tyres wear slower in the rain and slicks wear faster on a wet track. Only used in a race with a Weather System.</p>`;
 const calcRows = pieces => pieces.map((p, i) => `<div class="calcrow"><input type="number" min="0" step="1" class="calc-count" data-i="${i}" value="${esc(p.count)}" aria-label="Number of pieces"> &times;
   <input type="number" min="0" step="any" class="calc-mm" data-i="${i}" value="${esc(Speed.smallTyped(p.mm, dUnit()))}" aria-label="Length of one piece in ${dUnit() === 'ft' ? 'inches' : 'millimetres'}"> ${dUnit() === 'ft' ? 'in' : 'mm'} <button type="button" class="btn" data-calcdel="${i}">Remove</button></div>`).join('');
 const calcHtml = pieces => `<p class="muted">Number of pieces &times; length of one piece. Add a row for every kind of piece.</p><div id="calc-rows">${calcRows(pieces)}</div>
@@ -332,6 +351,8 @@ function fieldHtml(f, v, extra) {
     case 'penaltytypes': inp = `<p class="muted">Penalties the Race Director can give instead of leaving points to turn into time. One costs points, and must be served by stopping on the sensor in the pits. A Stop-and-Go needs the car to stand still for its seconds; a Drivethrough is served when the pit stop starts.</p><div id="pt-box">${ptRows((extra && extra.types) || [])}</div><button type="button" class="btn" data-ptadd="1">Add a special penalty</button>`; break;
     case 'damagelevels': inp = `<p class="muted">The highest level a car has reached counts. A car must stand still on the sensor in the pits for the seconds of its level: that repairs the damage (the points go back to 0), or retires or disqualifies the car. Leave a gap between the levels, so a hit does not skip one.</p><div id="dl-box">${dlRows((extra && extra.dlevels) || [])}</div><button type="button" class="btn" data-dladd="1">Add a level</button>`; break;
     case 'damageincidents': inp = `<p class="muted">Buttons for the Race Director (on the race screen, the Race Director page and the phones): each gives a car these damage points. A deslot is counted by itself when the track has a deslot time.</p><div id="di-box">${diRows((extra && extra.dincs) || [])}</div><button type="button" class="btn" data-diadd="1">Add an incident</button>`; break;
+    case 'tyretable': inp = `<div id="tw-box">${twTable((extra && extra.twt) || {}, (extra && extra.twunit) || 'lap', (extra && extra.twsel) || 'S')}</div>`; break; // (1.40.0)
+    case 'wxmult': inp = `<div id="tw-mult">${twMult((extra && extra.twm) || {})}</div>`; break;
     case 'carstat': inp = `<input id="${id}" type="text" value="${esc(v ?? '')}" disabled>`; break; // (1.30.0: a figure worked out for the form, such as the Mileage of a slotcar; the screen fills it in)
     case 'cartracks': inp = `<div id="${id}" class="svc-tracks-box"></div>`; break; // (1.33.0: the table of the tracks of a slotcar; the screen fills it in)
     case 'members': inp = `<div id="mem-box">${memRows((extra && extra.members) || [], state.refs[f.ref] || [])}</div>`; break;
@@ -343,7 +364,7 @@ function fieldHtml(f, v, extra) {
     inp = f.type === 'datetime' ? `<input id="${id}" type="text" value="${esc(v ? plainDate(v) : 'Never')}" disabled>` : `<input id="${id}" type="number" value="${esc(v ?? 0)}" disabled>`;
     if (f.reset) inp = `<div class="imgrow">${inp}<button type="button" class="btn" data-svcreset="1">Reset</button></div>`;
   }
-  const wide = ['longtext', 'gallery', 'tracklength', 'image', 'penaltytypes', 'damagelevels', 'damageincidents', 'members', 'cartracks'].includes(f.type) ? ' full' : '';
+  const wide = ['longtext', 'gallery', 'tracklength', 'image', 'penaltytypes', 'damagelevels', 'damageincidents', 'tyretable', 'wxmult', 'members', 'cartracks'].includes(f.type) ? ' full' : '';
   return `<div class="field${wide}" data-key="${f.id}">${lab}${inp}${fh(f) ? `<span class="muted hint">${esc(fh(f))}</span>` : ''}${f.reset ? '<span class="muted hint svc-note" id="svc-note"></span>' : ''}</div>`;
 }
 
@@ -441,12 +462,13 @@ function openForm(e, item) {
   let types = Array.isArray(item && item.types) ? item.types.map(t => ({ ...t })) : (item ? [] : PT_DEFAULTS.map(t => ({ ...t })));
   const dmDef = Damage.defaults(); // (a new damage system starts with the examples: light, medium, heavy and critical damage)
   let dlevels = Array.isArray(item && item.levels) ? item.levels.map(x => ({ ...x })) : (item ? [] : dmDef.levels), dincs = Array.isArray(item && item.incidents) ? item.incidents.map(x => ({ ...x })) : (item ? [] : dmDef.incidents);
+  let twt = TyreWear.cleanTyres(item && item.tyres), twm = TyreWear.cleanMult(item && item.mult), twsel = 'S'; // (a tyre wear system: the tyre table, the weather table and the tyre whose grip curve is shown; a new one starts as the Standard system)
   let gal = Array.isArray(item && item[s.gallery]) ? [...item[s.gallery]] : [], galSel = null;
   const memF = fields.find(f => f.type === 'members'); let members = memF && item && Array.isArray(item[memF.key]) ? item[memF.key].filter(Boolean) : []; // (the drivers of a team, in order)
   fields.filter(f => f.type === 'image').forEach(f => { imgs[f.id] = val(f) || ''; if (!f.custom) frames[f.id] = Widgets.frameOf(item && item[f.key + 'Frame']); });
   const frameBlock = f => f.type === 'image' && !f.custom ? `<div class="field frame full" id="frame-${f.id}" data-frame="${f.id}">${frameInner(imgs[f.id], frames[f.id], '4 / 3', false)}</div>` : '';
   const redrawFrame = key => { byId('frame-' + key).innerHTML = frameInner(imgs[key], frames[key], '4 / 3', false); attachFrames(dlg, k => frames[k], (k, f) => { frames[k] = f; }); };
-  const one = f => fieldHtml(f, val(f), { pieces, types, members, dlevels, dincs }) + frameBlock(f);
+  const one = f => fieldHtml(f, val(f), { pieces, types, members, dlevels, dincs, twt, twm, twsel, twunit: (item && item.unit) || TyreWear.DEFAULTS.unit }) + frameBlock(f);
   // a schema with groups: the fields in collapsible sections with a coloured header, in the order of the groups (fields without a group of their own, such as your own fields, go last)
   const defs = Array.isArray(s.groups) && s.groups.length ? s.groups : null;
   const groups = defs ? [...defs.map(g => ({ ...g, fields: fields.filter(f => f.group === g.id) })), { id: '_more', title: 'More', note: '', fields: fields.filter(f => !defs.some(g => g.id === f.group)) }].filter(g => g.fields.length) : null;
@@ -502,6 +524,8 @@ function openForm(e, item) {
       else { const i = Number(d.memup !== undefined ? d.memup : d.memdown), j = d.memup !== undefined ? i - 1 : i + 1; if (j >= 0 && j < members.length && i >= 0 && i < members.length) [members[i], members[j]] = [members[j], members[i]]; }
       byId('mem-box').innerHTML = memRows(members, state.refs[memF.ref] || []); return;
     }
+    if (d.twpreset) { const pr = TyreWear.PRESETS[d.twpreset]; if (pr) { twt = JSON.parse(JSON.stringify(pr.tyres)); byId('tw-box').innerHTML = twTable(twt, getValue('unit') || 'lap', twsel); } return; }
+    if (d.twsel) { twsel = d.twsel; dlg.querySelectorAll('[data-twrow]').forEach(r => { r.classList.toggle('sel', r.dataset.twrow === twsel); const bt = r.querySelector('[data-twsel]'); if (bt) bt.disabled = r.dataset.twrow === twsel; }); byId('tw-curve').innerHTML = twCurve(twt, twsel); return; }
     if (d.dladd) { dlevels.push({ name: '', from: dlevels.length ? (Number(dlevels[dlevels.length - 1].from) || 0) + 3 : 3, seconds: 10, urgency: 'whenever', within: 0, action: 'repair' }); byId('dl-box').innerHTML = dlRows(dlevels); return; }
     if (d.dldel !== undefined) { dlevels.splice(Number(d.dldel), 1); byId('dl-box').innerHTML = dlRows(dlevels); return; }
     if (d.diadd) { dincs.push({ name: '', points: 1 }); byId('di-box').innerHTML = diRows(dincs); return; }
@@ -525,6 +549,13 @@ function openForm(e, item) {
   dlg.oninput = ev => {
     const t = ev.target;
     if (t && t.id === 'f-serviceInterval') { syncService(); return; }
+    if (t && t.dataset && t.dataset.tw !== undefined) { // a number of a tyre: the "lasts about" and the grip curve follow
+      const code = t.dataset.tw; if (twt[code]) twt[code][t.dataset.twk] = t.value;
+      const lastsEl = dlg.querySelector(`[data-twlast="${code}"]`); if (lastsEl) lastsEl.textContent = TyreWear.lastsText(getValue('unit') || 'lap', dUnit(), Number(String(twt[code].wear ?? '').replace(',', '.')));
+      if (twsel !== code) { twsel = code; dlg.querySelectorAll('[data-twrow]').forEach(r => { r.classList.toggle('sel', r.dataset.twrow === twsel); const bt = r.querySelector('[data-twsel]'); if (bt) bt.disabled = r.dataset.twrow === twsel; }); }
+      byId('tw-curve').innerHTML = twCurve(twt, twsel); return;
+    }
+    if (t && t.dataset && t.dataset.twm !== undefined) { if (twm[t.dataset.twm]) twm[t.dataset.twm][t.dataset.twmc] = t.value; return; }
     if (t && t.dataset && t.dataset.dl !== undefined) { const lv = dlevels[Number(t.dataset.dl)]; if (lv) lv[t.dataset.dlk] = t.value; return; }
     if (t && t.dataset && t.dataset.di !== undefined) { const ic = dincs[Number(t.dataset.di)]; if (ic) ic[t.dataset.dik] = t.value; return; }
     if (t && t.dataset && t.dataset.pt !== undefined) { const ty = types[Number(t.dataset.pt)]; if (ty) ty[t.dataset.ptk] = t.value; return; }
@@ -537,6 +568,7 @@ function openForm(e, item) {
   dlg.onchange = async ev => {
     const t = ev.target;
     refreshShown();
+    if (t && t.id === 'f-unit' && byId('tw-box')) { byId('tw-box').innerHTML = twTable(twt, t.value, twsel); return; } // (per lap or per distance: the heading and the lasts about change)
     if (t.dataset && t.dataset.gallery && t.files) { // more pictures for the gallery
       const room = GALLERY_MAX - gal.length;
       try { for (const file of [...t.files].slice(0, Math.max(0, room))) gal.push(await resizeImage(file, 1024)); byId('err').textContent = t.files.length > room ? `Only ${GALLERY_MAX} extra pictures fit; the rest were skipped.` : ''; }
@@ -565,6 +597,8 @@ function openForm(e, item) {
       if (f.type === 'gallery') { built[f.key] = [...gal]; continue; }
       if (f.type === 'members') { built[f.key] = members.filter(id => (state.refs[f.ref] || []).some(x => x.id === id)); continue; }
       if (f.type === 'damagelevels') { built[f.key] = dlevels.filter(l => String(l.name || '').trim() || Number(l.from) > 0).map(l => ({ name: String(l.name || '').trim(), from: Math.max(0, Math.floor(Number(l.from)) || 0), seconds: Math.max(0, Number(l.seconds) || 0), urgency: l.urgency === 'asap' ? 'asap' : 'whenever', within: Math.max(0, Math.floor(Number(l.within)) || 0), action: Damage.ACTIONS.includes(l.action) ? l.action : 'repair' })); continue; }
+      if (f.type === 'tyretable') { built[f.key] = TyreWear.cleanTyres(twt); continue; }
+      if (f.type === 'wxmult') { built[f.key] = TyreWear.cleanMult(twm); continue; }
       if (f.type === 'damageincidents') { built[f.key] = dincs.filter(x => String(x.name || '').trim()).map(x => ({ name: String(x.name).trim(), points: Math.max(1, Math.floor(Number(x.points)) || 1) })); continue; }
       if (f.type === 'penaltytypes') { built[f.key] = types.filter(t => String(t.name || '').trim()).map(t => ({ name: String(t.name).trim(), kind: t.kind === 'drivethrough' ? 'drivethrough' : 'stopgo', seconds: Number(t.seconds) || 0, cost: Number(t.cost) || 0, extra: Number(t.extra) || 0, unserved: Number(t.unserved) || 0 })); continue; }
       const el = byId('f-' + f.id);
@@ -600,6 +634,10 @@ function openForm(e, item) {
         byId('err').textContent = `Please enter the length of every lane: ${n} numbers above 0, separated by commas (you entered ${list.filter(x => Number(x) > 0).length}).`;
         return;
       }
+    }
+    if (e === 'tyrewearsystems' && Number(built.crit) > Number(built.warn)) { // the red level must be at or below the amber level
+      byId('err').textContent = 'The critical (red) level must be at or below the warning (amber) level.';
+      return;
     }
     if (!s.title.some(k => String(built[k] ?? '').length)) {
       byId('err').textContent = 'Please fill in ' + s.title.map(k => s.fields.find(f => f.key === k).label).join(' or ') + '.';

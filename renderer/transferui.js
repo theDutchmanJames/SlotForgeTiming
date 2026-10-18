@@ -1,7 +1,7 @@
 // App Settings > Import and Export: pick items (a layout, a driver, a whole race setup...) and save them to a file; read such a file and add its items as copies.
 const trState = { picks: {}, skip: new Set(), open: new Set(), pending: null, msg: '', bk: null, bkMsg: '' }; // skip: "entity:id" of things the ticked items use that the user does not want in the file
-const TR_GROUPS = [['Database', ['tracks', 'slotcars', 'drivers', 'teams', 'racesetups', 'fuelrules', 'penaltysystems', 'damagesystems', 'weathersystems', 'rotationsetups']], ['Look and sound', ['layouts', 'rowdesigns', 'imagesets', 'audiosets', 'customwidgets']], ['History', ['sessions']]];
-const ORDER_DEPS = ['tracks', 'slotcars', 'drivers', 'teams', 'layouts', 'rowdesigns', 'imagesets', 'audiosets', 'fuelrules', 'penaltysystems', 'damagesystems', 'weathersystems', 'rotationsetups', 'customwidgets', 'racesetups', 'sessions'];
+const TR_GROUPS = [['Database', ['tracks', 'slotcars', 'drivers', 'teams', 'racesetups', 'fuelrules', 'penaltysystems', 'damagesystems', 'tyrewearsystems', 'weathersystems', 'rotationsetups']], ['Look and sound', ['layouts', 'rowdesigns', 'imagesets', 'audiosets', 'customwidgets']], ['History', ['sessions']]];
+const ORDER_DEPS = ['tracks', 'slotcars', 'drivers', 'teams', 'layouts', 'rowdesigns', 'imagesets', 'audiosets', 'fuelrules', 'penaltysystems', 'damagesystems', 'tyrewearsystems', 'weathersystems', 'rotationsetups', 'customwidgets', 'racesetups', 'sessions'];
 const trLabel = (e, r) => (e === 'sessions' ? [r.setupName, r.date].filter(Boolean).join(' · ') || '(session)' : titleOf(e, r));
 
 const TR_FOLDERS = ['backup', 'export', 'import'];

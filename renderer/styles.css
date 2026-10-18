@@ -327,6 +327,26 @@ dialog:has(.formgrid) form{display:flex;flex-direction:column;max-height:calc(90
 .ptrow.dlrow{grid-template-columns:1.6fr .9fr .9fr 1.4fr 1fr 1.4fr auto}
 .ptrow.dirow{grid-template-columns:2fr 1fr auto}
 @media (max-width:900px){.ptrow,.ptrow.dlrow,.ptrow.dirow{grid-template-columns:1fr 1fr}}
+/* Tyre wear systems (1.40.0): the tyre table, the grip curve and the weather table */
+.twtable{display:flex;flex-direction:column;margin:8px 0}
+.twrow{display:grid;grid-template-columns:1.7fr repeat(4,1fr) .9fr;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--line)}
+.twrow.sel{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.twrow.twhead{font-size:12px;padding-top:2px;padding-bottom:2px}
+.twrow input{width:100%;min-width:0}
+.twname{display:flex;align-items:center;gap:8px;font-weight:600}
+.twname .btn{margin-left:auto;padding:2px 8px;font-size:12px}
+.twchip{flex:none;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:2px solid;border-radius:50%;font-size:11px;font-weight:800}
+.twlasts{font-variant-numeric:tabular-nums;color:var(--muted)}
+.twmult .twrow{grid-template-columns:1fr 1.3fr 1fr 1fr}
+.twf,.twx{display:flex;flex-direction:column;gap:2px;min-width:0}
+.twx{flex-direction:row;align-items:center;gap:6px;flex-wrap:wrap}
+.twf>small,.twx>small{display:none;flex:1 0 100%;font-size:11px;color:var(--muted)}
+.twbtns{flex-wrap:wrap;align-items:center;gap:8px}
+.twcurve{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin:8px 0;padding:12px;border:1px solid var(--line);border-radius:8px}
+.twsvg{flex:0 1 440px;min-width:0;background:#171b21;border-radius:6px}
+.twtext{flex:1 1 220px;min-width:200px}
+.twtext p{margin:0 0 8px}
+@media (max-width:900px){.twrow,.twmult .twrow{grid-template-columns:1fr 1fr}.twrow.twhead{display:none}.twf>small,.twx>small{display:block}.twx>input{flex:1 1 0;min-width:0}}
 .rv{margin-top:14px}
 .rv-sub td{background:var(--bg);font-size:14px}
 .rv-sec{width:80px !important;display:inline-block}
@@ -963,3 +983,35 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .swsig{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;text-align:center}
 .swsig b{font-weight:800;letter-spacing:.04em}
 .swsig small{font-size:.5em;font-weight:600;opacity:.95}
+
+/* Tyre Wear in the Tyre Change folder (1.40.0) */
+.tytable .twlifecell{min-width:110px}
+.twbar{display:block;height:8px;border-radius:4px;background:var(--line);margin-top:4px;overflow:hidden}
+.twbar>i{display:block;height:100%;background:#3ecf8e;transition:width .3s}
+.tw-warn .twbar>i{background:#ffb84d}.tw-crit .twbar>i,.tw-out .twbar>i{background:#e5484d}
+.tw-warn [data-ty=life]{color:#ffc870}.tw-crit [data-ty=life],.tw-out [data-ty=life]{color:#ff8a8e}
+.twstate{display:inline-block;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700;background:#1f3a2e;color:#6fe0ae;white-space:nowrap}
+.twstate.tws-crit{background:#4a3a1e;color:#ffc870}.twstate.tws-out{background:#4a1f22;color:#ff8a8e}.twstate.tws-fit{background:#2d2440;color:#c79bff}
+/* The Tyre Degradation widget and the Tyres cell of the grids (1.40.0, tyrewidgets.js) */
+.twbox2{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.15em;width:100%;height:100%;min-height:0;line-height:1.1}
+.twbox2>.twpic,.twbox2>.twringw{flex:1 1 0;min-height:0;max-width:100%;display:block}
+.twringw{position:relative;aspect-ratio:1}
+.twring{position:absolute;inset:0;width:100%;height:100%}
+.twinner{position:absolute;inset:14%;display:flex;align-items:center;justify-content:center}
+.twinner svg,.twinner img,.twinner .wxic{width:100%;height:100%;object-fit:contain}
+.twl{display:flex;flex-direction:column;align-items:center;gap:.05em;white-space:nowrap}
+.twpct{font-variant-numeric:tabular-nums}
+.twnm,.twlf,.twgr,.twbox{font-size:.5em;font-weight:600;opacity:.9}
+.twgr.up{color:#6fe0ae}.twgr.down{color:#ff8a8e}
+.twbox{color:#ff8a8e;font-weight:800;opacity:1}
+.twfit{color:#c79bff}
+.twn{display:flex;flex-direction:column;align-items:center;line-height:1.1;font-variant-numeric:tabular-nums}
+.twn small{font-size:.5em;font-weight:500;color:var(--muted)}
+.twbarw{display:flex;align-items:center;gap:.4em;width:100%;height:100%;min-width:0}
+.twbarw .fbar{flex:1 1 auto;width:auto;min-width:0}
+.twchip2{flex:none;display:inline-flex;align-items:center;justify-content:center;width:1.4em;height:1.4em;border:.12em solid;border-radius:50%;font-size:.65em;font-weight:800;line-height:1}
+.twcell{display:inline-flex;align-items:center;gap:.4em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.twcell .twchip2{width:1.5em;height:1.5em;font-size:.6em}
+.twmini{display:inline-block;width:3em;height:.45em;border-radius:.25em;background:var(--line);overflow:hidden}
+.twmini>i{display:block;height:100%}
+.lw-val:has(.twbox2),.lw-val:has(.twbarw){min-height:0;min-width:0;overflow:hidden;container-type:size}

@@ -9,6 +9,7 @@ const HEATED = (extra = {}) => [{ sessionType: ['heats'], ...extra }, { sessionT
 // a race that is limited by a distance (1.35.0): a race, heats or an Endurance Race (one long race, or heat-based) set to Distance (extra: the other conditions that must match)
 const DIST = (extra = {}) => [{ sessionType: ['race'], raceBy: ['distance'], ...extra }, { sessionType: ['heats'], heatBy: ['distance'], ...extra }, { sessionType: ['endurance'], enduranceBy: ['distance'], ...extra }, { sessionType: ['endurance'], enduranceBy: ['heats'], heatBy: ['distance'], ...extra }];
 const Wx = require('./renderer/weather.js'); // the tyres, the standard settings and the hindrance table of a weather system (one place for them)
+const Tw = require('./renderer/tyrewear.js'); // the standard numbers of a tyre wear system (one place for them)
 // the 12 numbers of the hindrance table of a weather system: the weather state by the kind of tyre
 const WX_TABLE = [];
 Wx.STATES.forEach(([state, stateName]) => Wx.CLASSES.forEach(cls => WX_TABLE.push({ key: Wx.HKEYS[state + '/' + cls], group: 'hinder', type: 'number', min: 0, default: Wx.TABLE[state][cls],
@@ -278,6 +279,8 @@ module.exports = {
         hint: 'Works through the fuel rules, so it needs a Fuel setup above. Only for races (a number of laps or a duration), not for practice or qualifying.' },
       { key: 'weather', group: 'rules', label: 'Weather system', type: 'ref', ref: 'weathersystems', blank: 'No weather', showIf: [{ sessionType: ['race', 'timed', 'heats', 'endurance'] }],
         hint: 'A spell of rain with a forecast, and tyres to change in the pits. Make weather systems under Race Setup > Weather Systems. Only for races (a number of laps or a duration), not for practice or qualifying. Hindering the cars needs a Fuel setup above; the tyres and the penalty points do not.' },
+      { key: 'tyreWear', group: 'rules', label: 'Tyre wear system', type: 'ref', ref: 'tyrewearsystems', blank: 'No tyre wear', showIf: RACING,
+        hint: 'Tyres that wear out during the race and a fresh set in every pit stop. Make tyre wear systems under Race Setup > Tyre Wear Systems. Every heat starts on fresh tyres. A race (a number of laps or a duration) always has it; practice and qualifying only when the system says so. Helping and hindering the car needs a Fuel setup above; the rule at 0% and the display do not.' },
       { key: 'pitHold', group: 'rules', label: 'Pit stop: the sensor must be blocked this long to start a stop (seconds)', type: 'number', default: 2, showIf: RACING },
       { key: 'yellowTarget', group: 'yellow', label: 'Yellow flag: target lap time (seconds, 0 = none)', type: 'number', default: 0, min: 0, showIf: RACING,
         hint: 'While the yellow flag is up, drivers must drive slower than this. Say your normal lap is 7.500 and you set 15.000: a full lap under yellow that is faster than 15.000 is a lap that was too fast, and it is called out. A lap that was partly before the yellow flag does not count. 0 means no target.' },
@@ -383,6 +386,44 @@ module.exports = {
         hint: 'A level can say the car must be in the pits within some laps. It needs a penalty system in the race setup; without one the late lap is only called out. 0 = none.' },
       { key: 'earlyPoints', group: 'fines', label: 'Penalty points for leaving before the repair is done', type: 'number', min: 0, default: 1,
         hint: 'The damage stays. It needs a penalty system in the race setup. 0 = none.' }
+    ]
+  },
+  // Tyre wear systems (1.40.0): tyres lose life from 100% to 0% while a car drives, a pit stop gives a fresh set, and the life helps or hinders the car. Chosen per race setup.
+  tyrewearsystems: {
+    label: 'Tyre wear system', plural: 'Tyre wear systems', title: ['name'], extra: false, linked: false, list: ['name', 'unit', 'zero', 'changeSeconds'], card: ['unit', 'zero', 'changeSeconds'],
+    // The form shows the fields in these collapsible groups, in this order (a field says which group it is in); a group whose fields are all hidden is hidden too.
+    groups: [
+      { id: 'basics', title: 'Basics', note: 'Name, and whether the wear is counted per lap or per distance', open: true },
+      { id: 'tyres', title: 'The tyres', note: 'How fast every tyre wears, what a new tyre gives and what a worn out one costs', open: true },
+      { id: 'weather', title: 'Wear in the weather', note: 'How much faster or slower a tyre wears in dry, cloudy, wet and clearing weather (only used in a race with a Weather System)' },
+      { id: 'effect', title: 'What worn tyres do', note: 'Helping and hindering the car through the fuel rules, and what happens at 0%', open: true },
+      { id: 'pit', title: 'Pit stops', note: 'How long changing tyres takes', open: true },
+      { id: 'where', title: 'Where it applies', note: 'Practice and qualifying' },
+      { id: 'warn', title: 'Warning colours', note: 'Where the life of the tyres turns amber and red on the widgets' }
+    ],
+    fields: [
+      { key: 'name', group: 'basics', label: 'Name', type: 'text' },
+      { key: 'unit', group: 'basics', label: 'Wear is counted per', type: 'select', default: Tw.DEFAULTS.unit, options: [['lap', 'Lap'], ['distance', 'Distance (per 100 m, or per 100 ft when the distance unit of the app is feet)']],
+        hint: 'Distance uses the lane length of the track, so a longer lane wears the tyres more per lap. Choose it for Distance Racing: the numbers below are then per 100 m (100 ft), and the widgets say how many metres (feet) of tyre are left. A lane without a length counts every lap as the distance.' },
+      { key: 'tyres', group: 'tyres', label: 'Tyres', type: 'tyretable' },
+      { key: 'mult', group: 'weather', label: 'Wear in the weather', type: 'wxmult' },
+      { key: 'effect', group: 'effect', label: 'Hinder or help the car through the fuel rules', type: 'select', default: Tw.DEFAULTS.effect, options: [['on', 'Yes (needs a Fuel setup)'], ['off', 'No']],
+        hint: 'The grip curve of every tyre (above) decides how much. It works like Balance of Power: a hindered car uses more fuel a lap and refuels slower, and together with Balance of Power and the weather the percentages are added (never more than 90%). Lap times and records are never changed.' },
+      { key: 'eUse', group: 'effect', label: 'The fuel used in a lap', type: 'select', default: Tw.DEFAULTS.eUse, options: [['on', 'Yes'], ['off', 'No']], showIf: [{ effect: ['on'] }] },
+      { key: 'eRate', group: 'effect', label: 'The refuelling speed', type: 'select', default: Tw.DEFAULTS.eRate, options: [['on', 'Yes'], ['off', 'No']], showIf: [{ effect: ['on'] }] },
+      { key: 'eTank', group: 'effect', label: 'The size of the tank', type: 'select', default: Tw.DEFAULTS.eTank, options: [['off', 'No'], ['on', 'Yes']], showIf: [{ effect: ['on'] }] },
+      { key: 'zero', group: 'effect', label: 'When the tyres reach 0%', type: 'select', default: Tw.DEFAULTS.zero, options: Tw.ZERO,
+        hint: 'Works without Fuel too. It applies from the lap after the one that wore the tyres out, until the car has been in the pits for new tyres. Nothing: the tyres are shown as worn out and the car races on. The lap does not count: the car drives on, but its laps are not counted until it has been in the pits for new tyres.' },
+      { key: 'zeroPoints', group: 'effect', label: 'Penalty points every lap', type: 'number', min: 0, default: Tw.DEFAULTS.zeroPoints, showIf: [{ zero: ['points'] }],
+        hint: 'Needs a penalty system in the race setup. Without one nothing is added.' },
+      { key: 'changeSeconds', group: 'pit', label: 'Changing tyres takes (seconds)', type: 'number', min: 0, default: Tw.DEFAULTS.changeSeconds,
+        hint: '0 means no time: the new set is on when the pit stop starts. A car must stand on the sensor in the pits that long; one that leaves earlier keeps its worn tyres (and it is logged). The seconds count from the moment the car stopped on the sensor.' },
+      { key: 'stop', group: 'pit', label: 'Together with the other work in the stop (refuelling, repair, driver swap)', type: 'select', default: Tw.DEFAULTS.stop, options: [['overlap', 'At the same time: the longest job counts'], ['add', 'One after the other']] },
+      { key: 'practice', group: 'where', label: 'Practice', type: 'select', default: Tw.DEFAULTS.practice, options: [['off', 'No tyre wear'], ['on', 'Tyre wear']],
+        hint: 'A race, a timed race, heats and an Endurance Race always have it when the race setup has this system. A Time Token Session never does.' },
+      { key: 'qualifying', group: 'where', label: 'Qualifying', type: 'select', default: Tw.DEFAULTS.qualifying, options: [['off', 'No tyre wear'], ['on', 'Tyre wear']] },
+      { key: 'warn', group: 'warn', label: 'Warning (amber) at this life or less (%)', type: 'number', min: 0, max: 100, default: Tw.DEFAULTS.warn },
+      { key: 'crit', group: 'warn', label: 'Critical (red) at this life or less (%)', type: 'number', min: 0, max: 100, default: Tw.DEFAULTS.crit }
     ]
   },
   // Weather systems: a spell of rain with a forecast, the tyres to change in the pits, and what the wrong tyres cost. Chosen per race setup.

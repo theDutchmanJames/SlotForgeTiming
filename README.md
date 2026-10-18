@@ -2438,3 +2438,20 @@ Good to know:
 Good to know:
 1. The number in a very narrow vertical bar gets small (it has to fit the width of the bar). Use *Bar* without the number, or a second Fuel widget set to *Number*, if you want it big.
 
+## What to try (1.40.0): Tyre Wear, release 1
+Tyres now wear out. A tyre wear system gives every tyre a life from 100% to 0%; a fresh set goes on in every pit stop; new tyres help the car and worn ones hinder it. This is release 1 of three: the rules, the pages, the widget and the cells. (Tyre sets and the "next stop" queue come in release 2; audio calls and the results page come in release 3.)
+
+1. **Race Setup > Tyre Wear Systems** (a new tab between Damage Systems and Weather Systems). Add one: it starts as the **Standard** system. The table has the six tyres with four numbers each: **Wear per lap (%)**, **Fresh bonus (%)**, **Grip drops from (% life left)** and **Hindrance at 0% (%)**, and what a new set lasts. Press **Sprint** or **Endurance** to start from those numbers, and change any number. Under the table is the **grip curve** of one tyre (press *Curve* or type in its row).
+2. **Wear is counted per** lap or **per distance** (per 100 m, or 100 ft when App Settings say feet): the right choice for Distance Racing, where the widgets then say how many metres of tyre are left. Under *Wear in the weather* is a table of how much faster or slower a tyre wears in dry, cloudy, wet and clearing weather (Inter and Wet tyres wear slower in the rain).
+3. **What worn tyres do**: through the fuel rules (fuel used in a lap, refuelling speed, tank size; the same way as Balance of Power and the weather, added together, never more than 90%), and what happens at **0%**: nothing, penalty points every lap, the lap does not count until the car pits, or the car retires. The 0% rule works without a Fuel setup.
+4. **Pit stops**: *Changing tyres takes* some seconds (0 = no time), at the same time as refuelling and repair or one after the other. A car that leaves before the time is up keeps its worn tyres. Practice and qualifying can have tyre wear too (the *Where it applies* folder); a race, a timed race, heats and an Endurance Race always do, and a Time Token Session never.
+5. In **Race Setup > Race Setups**, folder **Rule sets**, choose the **Tyre wear system** (after Weather system). Start a race: every car begins on fresh tyres, every heat again.
+6. The **Tyre Change** folder (race screen and Race Director page) now has **Life**, **Left**, **Grip effect** and **State** (Driving, Box soon, Box now, Fitting...) for every lane, with a bar that turns amber and red at the warning levels of the system.
+7. Layout Editor, folder **Weather**: the new **Tyre Degradation** widget. *Show the tyre life as*: **The tyre wears away** (the tread gets shorter), **The tyre picture with a ring** (your own tyres from a picture set, with a ring that empties), **A bar** (horizontal or vertical, the bar of the Fuel widget) or **A number only**. Switches for the percentage, the laps (or metres) left, the grip effect, the name of the tyre and *BOX NOW* at 0%, and the three colours.
+8. The **Leaderboard** widget has a new column **Tyre life** (a chip, the life and a small bar), and the **Driver stats** grid has two new cells, **Tyre life** and **Tyre laps left**. The Home tab's rules card says which tyre wear system a race has.
+
+Good to know:
+1. Measured lap times, best laps and records are never changed by tyre wear. The wear shows in the fuel use, the pit stops, the penalty points, the lap that does not count, or the retirement.
+2. The grip effect needs a **Fuel setup** in the race setup (it works through the fuel rules). Without one the tyres still wear, the widgets still show the life, and the 0% rule still works; the grip effect is then left out.
+3. In a system that counts per distance, a lane that has no length counts every lap as 100 m (100 ft). Set the lane lengths of the track (Database > Tracks) for a real distance.
+4. If you delete a tyre wear system that a race setup uses, that setup has no tyre wear afterwards (nothing else in it changes).

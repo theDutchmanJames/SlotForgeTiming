@@ -11,7 +11,7 @@ const spots = g => g.boards.map(b => `${b.c}.${b.r}:${b.w}x${b.h}=${b.opt.cell}`
 const drawn = L => L.cells.map(x => `${x.key}@${x.c}.${x.r}:${x.w}x${x.h}${x.quiet ? 'q' : ''}`).join(' ');
 
 // ---- the cells ----
-ok('there are 26 cells, each with a key of its own, a name and a group that exists', D.CELLS.length === 26 && new Set(D.CELLS.map(c => c.key)).size === 26 && D.CELLS.every(c => c.label && D.GROUPS.includes(c.group)));
+ok('there are 28 cells (1.40.0: Tyre life, Tyre laps left), each with a key of its own, a name and a group that exists', D.CELLS.length === 28 && new Set(D.CELLS.map(c => c.key)).size === 28 && D.CELLS.every(c => c.label && D.GROUPS.includes(c.group)));
 ok('the groups are Race, Swaps, Car, Track and Other, and none is empty', same(D.GROUPS, ['Race', 'Swaps', 'Car', 'Track', 'Other']) && D.GROUPS.every(g => D.CELLS.some(c => c.group === g)));
 ok('every cell is made by a widget that exists, or on the page itself (the last lap), and a cell that needs something says what in words', D.CELLS.every(c => (c.own === 'last' ? c.key === 'last' : !!Wd.def(c.type)) && (!c.needs || (typeof D.NEEDS[c.needs] === 'string' && D.NEEDS[c.needs].length > 10))));
 ok('...and every need that is explained is a need of some cell', Object.keys(D.NEEDS).every(k => D.CELLS.some(c => c.needs === k)));

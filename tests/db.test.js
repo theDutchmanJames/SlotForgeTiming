@@ -85,6 +85,11 @@ ok('penalty systems can be added and removed', db.list('penaltysystems').length 
   ok('weather systems can be added, and are kept in the file', w.list('weathersystems').length === 1 && new Database(f).list('weathersystems')[0].name === 'Showers');
   w.remove('weathersystems', sys.id);
   ok('deleting a weather system clears it from the setups (and leaves the others alone)', w.list('weathersystems').length === 0 && w.list('racesetups').find(r => r.id === setup.id).weather === '' && w.list('racesetups').find(r => r.id === other.id).weather === undefined); }
+{ const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'slt-')), 'db.json'), w = new Database(f); // 1.40.0: tyre wear systems
+  const sys = w.add('tyrewearsystems', { name: 'Club tyres', tyres: { S: { wear: 6 } } }), setup = w.add('racesetups', { name: 'Tyre race', tyreWear: sys.id, weather: 'w1' }), other = w.add('racesetups', { name: 'Dry race' });
+  ok('tyre wear systems can be added, and are kept in the file with their tyre table', w.list('tyrewearsystems').length === 1 && new Database(f).list('tyrewearsystems')[0].tyres.S.wear === 6);
+  w.remove('tyrewearsystems', sys.id);
+  ok('deleting a tyre wear system clears it from the setups (and leaves the other settings and setups alone)', w.list('tyrewearsystems').length === 0 && w.list('racesetups').find(r => r.id === setup.id).tyreWear === '' && w.list('racesetups').find(r => r.id === setup.id).weather === 'w1' && w.list('racesetups').find(r => r.id === other.id).tyreWear === undefined); }
 { const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'slt-')), 'db.json'), w = new Database(f); // 1.10.0: damage systems
   const sys = w.add('damagesystems', { name: 'Club damage', levels: [{ name: 'Light', from: 3 }] }), setup = w.add('racesetups', { name: 'Hard race', damageSystem: sys.id }), other = w.add('racesetups', { name: 'Easy race' });
   ok('damage systems can be added, and are kept in the file with their levels', w.list('damagesystems').length === 1 && new Database(f).list('damagesystems')[0].levels[0].from === 3 && Array.isArray(new Database(f).list('damagesystems')[0].levels));
