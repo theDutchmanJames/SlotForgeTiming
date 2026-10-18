@@ -2427,6 +2427,6 @@ Only for the Arduino box (App Settings > Timing Hardware > Arduino). Nothing cha
 3. An older box (1.0.4 or earlier) still works with this app: the app reads its version and takes the old absolute times.
 
 Good to know:
-1. Firmware 1.0.5 needs this app (1.39.2 or newer): an older app with a 1.0.5 box places a buffered lap near the start of the connection. The sketch from the Arduino page always matches the app you downloaded it from.
+1. Firmware 1.0.5 needs this app (1.39.2 or newer): an older app with a 1.0.5 box places a buffered lap near the start of the connection. That is only about the rare laps driven while the PC was away; normal timing is the same with any combination. The sketch from the Arduino page always matches the app you downloaded it from.
 2. It only makes a difference for a lap the box buffered while the PC was away, and then only for a board that did not restart when the port was opened (the Nano and Mega normally do).
 
