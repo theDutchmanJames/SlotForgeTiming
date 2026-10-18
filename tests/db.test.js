@@ -24,6 +24,36 @@ ok('penalty systems can be added and removed', db.list('penaltysystems').length 
   ok('a file that holds something else than a database is treated the same way', d2.list('tracks').length === 0 && fs.readdirSync(dir).filter(n => n.includes('damaged')).length >= 1);
   const f3 = path.join(dir, 'new.json'); new Database(f3);
   ok('a missing file just starts a fresh database, nothing is kept', fs.existsSync(f3) && fs.readdirSync(dir).filter(n => n.startsWith('new') && n.includes('damaged')).length === 0); }
+// 1.39.1: a database that is there but cannot be read is never replaced by an empty one
+{ const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'slt-unr-')), f = path.join(dir, 'db.json');
+  fs.mkdirSync(f); // (reading it fails with EISDIR, as a locked or unreadable file fails with EBUSY or EACCES)
+  let err = null; try { new Database(f); } catch (x) { err = x; }
+  ok('a database file that cannot be read stops the start instead of beginning with an empty one', err && /cannot be read/.test(err.message) && fs.statSync(f).isDirectory());
+  const f2 = path.join(dir, 'bad.json'); fs.writeFileSync(f2, '{"drivers":[');
+  const realCopy = fs.copyFileSync; fs.copyFileSync = () => { throw Object.assign(new Error('no space'), { code: 'ENOSPC' }); };
+  let err2 = null; try { new Database(f2); } catch (x) { err2 = x; } finally { fs.copyFileSync = realCopy; }
+  ok('a damaged file that cannot be kept is not overwritten either', err2 && /damaged/.test(err2.message) && fs.readFileSync(f2, 'utf8') === '{"drivers":[');
+}
+// 1.39.1: a failed save of a finished race leaves nothing half done (saving it again must not make two copies)
+{ const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'slt-fail-')), 'db.json'), d = new Database(f);
+  const car = d.add('slotcars', { name: 'Red' });
+  const lap = { carId: car.id, driverId: 'x', lapNo: 1, time: 5000 }, real = d.save;
+  d.save = () => { throw new Error('disk full'); };
+  let err = null; try { d.saveSession({ date: '2026-10-18', standings: [] }, [lap, { ...lap, lapNo: 2 }]); } catch (x) { err = x; }
+  d.save = real;
+  ok('when the disk refuses the session it is taken out again and the error reaches the caller', err && err.message === 'disk full' && d.list('sessions').length === 0 && d.data.laps.length === 0);
+  ok('...and the lap counter of the car is as before', !d.list('slotcars')[0].lapsDriven);
+  d.saveSession({ date: '2026-10-18', standings: [] }, [lap, { ...lap, lapNo: 2 }]);
+  ok('...so a second try gives one session and two laps', d.list('sessions').length === 1 && d.data.laps.length === 2 && d.list('slotcars')[0].lapsDriven === 2);
+  ok('a save leaves no temporary file behind', !fs.existsSync(f + '.tmp') && JSON.parse(fs.readFileSync(f, 'utf8')).sessions.length === 1);
+}
+// 1.39.1: a session saved without its standings does not stop a driver or a car from being deleted
+{ const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'slt-nost-')), 'db.json'), d = new Database(f);
+  const dr = d.add('drivers', { name: 'A' }), car = d.add('slotcars', { name: 'R' });
+  d.data.sessions.push({ id: 's1', date: '2026-01-01' });
+  let err = null; try { d.remove('drivers', dr.id); d.remove('slotcars', car.id); } catch (x) { err = x; }
+  ok('deleting a driver or a car works when an old session has no standings', !err && d.list('drivers').length === 0 && d.list('slotcars').length === 0);
+}
 // extra fields and the group of the form they are shown in (0.75.0)
 { const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'slt-grp-')), 'db.json'), d = new Database(f);
   const tech = d.addCustomField('slotcars', { label: 'Chassis', type: 'text', group: 'technical' }), plain = d.addCustomField('slotcars', { label: 'Owner', type: 'text' });

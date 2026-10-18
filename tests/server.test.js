@@ -38,6 +38,11 @@ const call = (port, method, url, data) => new Promise((resolve, reject) => {
   r = await post('/api/command', { token, cmd: { type: 'penalty', lane: 1, n: 1 } }); ok('...including penalties', r.code === 200 && cmds[1].lane === 1);
   r = await post('/api/command', { token, cmd: { type: 'call', lane: 0 } }); ok('...a call from a lane', r.code === 200 && cmds.length === 3 && cmds[2].type === 'call' && cmds[2].lane === 0);
   r = await post('/api/command', { token, cmd: { type: 'callresolve', id: 1, how: 'dismiss' } }); ok('...and the decision about a call', r.code === 200 && cmds.length === 4 && cmds[3].how === 'dismiss');
+  r = await post('/api/command', { token, cmd: { type: 'penalty', lane: 99, n: 1 } }); const n0 = cmds.length; ok('a penalty for a lane that does not exist is refused (1.39.1)', r.code === 400);
+  r = await post('/api/command', { token, cmd: { type: 'penalty', lane: 1, n: 'lots' } }); ok('...and so is a penalty of "lots"', r.code === 400);
+  r = await post('/api/command', { token, cmd: { type: 'call' } }); ok('...a call without a lane', r.code === 400);
+  r = await post('/api/command', { token, cmd: { type: 'callresolve', id: 1, how: { x: 1 } } }); ok('...a decision that is not a word', r.code === 400);
+  r = await post('/api/command', { token, cmd: { type: 'assign', lane: 0, typeIndex: -3 } }); ok('...a penalty type that does not exist', r.code === 400 && cmds.length === n0);
   r = await post('/api/command', { token, cmd: { type: 'delete everything' } }); ok('unknown commands are refused', r.code === 400 && cmds.length === 4);
   cmds.length = 2;
   r = await get('/api/director'); ok('the page can ask whether a password is set', r.json.passwordSet === true);

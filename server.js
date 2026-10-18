@@ -8,6 +8,15 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 const READABLE = ['drivers', 'teams', 'slotcars', 'tracks', 'racesetups', 'layouts', 'rowdesigns', 'sessions', 'laps', 'penaltysystems', 'damagesystems', 'fuelrules', 'weathersystems'];
 // what the Race Director page may send to the race
 const COMMANDS = ['start', 'pause', 'stop', 'yellow', 'red', 'penalty', 'assign', 'review', 'call', 'callresolve', 'addtime', 'reducetime', 'undotime', 'endtime', 'cleartime', 'setdriver', 'bop', 'weather', 'tyre', 'swap', 'swapnext', 'damage', 'pad'];
+// The plain buttons of the Race Director page that carry something: a lane is a whole number from 0 to 15, a penalty a number of points, a call has an id and is answered with one word.
+const LANE = l => Number.isInteger(l) && l >= 0 && l <= 15;
+function plainCommand(c) {
+  if (c.type === 'penalty') return LANE(c.lane) && (c.n === undefined || (typeof c.n === 'number' && Number.isFinite(c.n) && Math.abs(c.n) <= 1000));
+  if (c.type === 'assign') return LANE(c.lane) && Number.isInteger(c.typeIndex) && c.typeIndex >= 0 && c.typeIndex < 100;
+  if (c.type === 'call') return LANE(c.lane);
+  if (c.type === 'callresolve') return Number.isInteger(c.id) && c.id >= 0 && typeof c.how === 'string' && c.how.length <= 30;
+  return true;
+}
 // The commands of the Tokens page (Time Token Sessions) are checked here before they go to the race window: a lane is a whole number from 0 to 15,
 // the minutes to add are a number above 0 and at most 1440 (a day), a driver is the id of a driver (or '' for a Guest).
 const TOKEN_COMMANDS = ['addtime', 'reducetime', 'undotime', 'endtime', 'cleartime', 'setdriver'];
@@ -104,7 +113,7 @@ function createServer(o) {
         const b = await body(req), pw = password();
         if (!pw || typeof b.token !== 'string' || tokens.get(b.token) !== pw) return send(res, 401, { error: 'login' });
         if (!b.cmd || !COMMANDS.includes(b.cmd.type)) return send(res, 400, { error: 'unknown command' });
-        if (!tokenCommand(b.cmd) || !bopCommand(b.cmd) || !weatherCommand(b.cmd) || !tyreCommand(b.cmd) || !swapCommand(b.cmd) || !damageCommand(b.cmd) || !padCommand(b.cmd)) return send(res, 400, { error: 'bad command' });
+        if (!plainCommand(b.cmd) || !tokenCommand(b.cmd) || !bopCommand(b.cmd) || !weatherCommand(b.cmd) || !tyreCommand(b.cmd) || !swapCommand(b.cmd) || !damageCommand(b.cmd) || !padCommand(b.cmd)) return send(res, 400, { error: 'bad command' });
         o.onCommand(b.cmd); return send(res, 200, { ok: true });
       }
       if (req.method === 'GET') { // the app's own pages

@@ -31,7 +31,7 @@ const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if
 for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function') api[k] = (...x) => { x.forEach(v => { if (typeof v !== 'function') structuredClone(v); }); return f(...x); }; }
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js', 'distance.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'boardorder.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'drivergrid.js', 'homecards.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'tyreui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['listnum.js', 'bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js', 'distance.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'boardorder.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'drivergrid.js', 'homecards.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'tyreui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -1736,6 +1736,26 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     { const keepSetups = store.racesetups; store.racesetups = [{ id: 'k-prac', name: 'Free', sessionType: 'practice', track: 't1', layout: '' }]; run("state.tab = 'home'"); await run('render()'); const home = E('view').innerHTML;
       say('with no race on, Home has no race notice and Start is on', /id="start"/.test(home) && !home.includes('id="raceon"') && !/id="start" disabled/.test(home)); store.racesetups = keepSetups; }
   }
+
+  // 1.39.1: a simulated car that is in the pit when the race is paused drives off again after the resume (the pause stopped its timer)
+  { run('state.autoFinalize = false'); store.laps = []; saved.length = 0;
+    await openRace({ name: 'Fuel', sessionType: 'practice', layout: '', lightsMin: 0, lightsMax: 0, fuel: 'on', fuelTank: 3, fuelPerLap: 1, fuelRate: 100, fuelEmpty: 'retire', pitHold: 0.05 }, store.tracks[0], rows(1, 2));
+    E('sim').checked = true; key(' '); await until(() => phase() === 'running');
+    const en = () => run('live.engine()');
+    await until(() => en().cars.some(c => c.blockAt !== null), 15000);
+    const idx = en().cars.findIndex(c => c.blockAt !== null);
+    key(' '); await wait(150); key(' ');
+    await until(() => en().cars[idx].blockAt === null, 6000);
+    say('a simulated car in the pit during a pause drives off after the resume (it used to stay there and run out of fuel)', idx >= 0 && en().cars[idx].blockAt === null && !en().cars[idx].retired);
+    key('s'); await wait(100); E('sim').checked = false; }
+
+  // 1.39.1: the announcer of the next heat knows the laps of the heats that are done (a record of heat 1 is not a record again in heat 2)
+  { run('state.autoFinalize = true'); store.laps = []; saved.length = 0;
+    await openRace({ name: 'Heats', sessionType: 'heats', heatBy: 'laps', laps: 2, endRule: 'all', heatPlan: 'roundrobin', resultBy: 'points', points: '10, 8, 6', layout: '' }, store.tracks[0], rows(1, 2, 3));
+    say('before the first heat the announcer starts from the records of the database only', run('live.annBase().track') === Infinity && run('live.annBase().personal.size') === 0);
+    E('sim').checked = true; key(' '); await until(() => ['between', 'finished'].includes(phase()), 20000);
+    say('...after heat 1 the base for the next heat holds the best laps of heat 1 (the track record and a best lap per driver)', phase() === 'between' && Number.isFinite(run('live.annBase().track')) && run('live.annBase().track') === run('live.priorAll') && run('live.annBase().personal.size') >= 1);
+    let m = 0; while (phase() !== 'finished' && m++ < 6) { key(' '); await until(() => ['between', 'finished'].includes(phase())); } E('sim').checked = false; }
 
   console.log(fails ? fails + ' LIVE PAGE TESTS FAILED' : 'ALL LIVE PAGE TESTS PASSED'); process.exit(fails ? 1 : 0);
 })();

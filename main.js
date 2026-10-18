@@ -52,9 +52,15 @@ const live = { stat: null, dyn: null };
 function relay(channel, payload, from) {
   BrowserWindow.getAllWindows().forEach(w => { if (!w.isDestroyed() && w.webContents !== from) w.webContents.send(channel, payload); });
 }
+// the date of today on this computer, 2026-10-18 (toISOString is the date in London: after midnight in Amsterdam it is still yesterday)
+const localDate = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
+// a handler that throws must not become the dialog "A JavaScript error occurred in the main process": it is logged and the app goes on
+const safe = (name, f) => (...a) => { try { return f(...a); } catch (x) { console.error('[' + name + ']', x); } };
 // Network access: other devices on the wifi follow the race in a browser (App Settings > Network access)
 const net = { server: null, port: 0, error: '' };
-async function applyNet() {
+let netChain = Promise.resolve();
+function applyNet() { const run = netChain.then(applyNetNow, applyNetNow); netChain = run.catch(() => {}); return run; } // (one at a time: a second change of the port or the PIN waits for the first)
+async function applyNetNow() {
   if (net.server) { await net.server.close(); net.server = null; }
   net.error = ''; net.port = 0;
   const s = db.getSettings();
@@ -89,7 +95,11 @@ function openLiveWindow() {
 
 app.whenReady().then(() => {
   if (!gotLock) return;
-  db = new Database(path.join(app.getPath('userData'), 'slotforge-timing.json'));
+  try { db = new Database(path.join(app.getPath('userData'), 'slotforge-timing.json')); } catch (x) {
+    // (a database that cannot be read or kept is not started with an empty one: the next save would destroy it)
+    dialog.showErrorBox('SlotForge Timing cannot open its data', String(x && x.message || x));
+    app.exit(1); return;
+  }
   ipcMain.handle('schema', () => schema);
   ipcMain.handle('voices:report', () => require('./voicereport').collect()); // what this computer offers for text to speech (Audio Settings > Voice report)
   ipcMain.handle('db:path', () => db.file);
@@ -111,7 +121,7 @@ app.whenReady().then(() => {
       const parent = BrowserWindow.fromWebContents(event.sender);
       const { canceled, filePath } = await dialog.showSaveDialog(parent, { defaultPath: name, filters: [{ name: 'PDF', extensions: ['pdf'] }] });
       if (canceled || !filePath) return { saved: false };
-      fs.writeFileSync(filePath, pdf);
+      Database.writeAtomic(filePath, pdf);
       return { saved: true, path: filePath };
     } finally {
       win.destroy();
@@ -126,7 +136,7 @@ app.whenReady().then(() => {
     const c = transfer.check(bundle); if (!c.ok) return { saved: false, error: c.error };
     const { canceled, filePath } = await dialog.showSaveDialog(BrowserWindow.fromWebContents(e.sender), { defaultPath: 'slotforge-timing-export.json', filters: [{ name: 'SlotForge Timing export', extensions: ['json'] }] });
     if (canceled || !filePath) return { saved: false };
-    fs.writeFileSync(filePath, JSON.stringify(bundle));
+    Database.writeAtomic(filePath, JSON.stringify(bundle));
     return { saved: true, path: filePath, counts: Object.fromEntries(Object.entries(c.summary).map(([k, v]) => [k, v.count])) };
   });
   ipcMain.handle('transfer:open', async e => {
@@ -144,9 +154,9 @@ app.whenReady().then(() => {
   ipcMain.handle('transfer:cancel', () => { pendingImport = null; });
   // Complete backup: the whole database in one file, and restoring it
   ipcMain.handle('backup:save', async e => {
-    const { canceled, filePath } = await dialog.showSaveDialog(BrowserWindow.fromWebContents(e.sender), { defaultPath: `slotforge-timing-backup-${new Date().toISOString().slice(0, 10)}.json`, filters: [{ name: 'SlotForge Timing backup', extensions: ['json'] }] });
+    const { canceled, filePath } = await dialog.showSaveDialog(BrowserWindow.fromWebContents(e.sender), { defaultPath: `slotforge-timing-backup-${localDate()}.json`, filters: [{ name: 'SlotForge Timing backup', extensions: ['json'] }] });
     if (canceled || !filePath) return { saved: false };
-    fs.writeFileSync(filePath, JSON.stringify(backup.make(db.data, { version: app.getVersion() })));
+    Database.writeAtomic(filePath, JSON.stringify(backup.make(db.data, { version: app.getVersion() })));
     return { saved: true, path: filePath };
   });
   ipcMain.handle('backup:open', async e => {
@@ -162,7 +172,7 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('backup:restore', () => {
     if (!pendingRestore) throw new Error('No backup file chosen.');
-    const safety = path.join(path.dirname(db.file), 'slotforge-timing.before-restore.json');
+    const safety = path.join(path.dirname(db.file), `slotforge-timing.before-restore-${localDate()}-${new Date().toTimeString().slice(0, 8).replace(/:/g, '')}.json`); // (a second restore does not overwrite the copy of the first)
     try { fs.copyFileSync(db.file, safety); } catch { /* nothing to copy yet */ } // the data as it was, in case the restore was a mistake
     db.replaceAll(pendingRestore.data); pendingRestore = null;
     applyNet().finally(() => BrowserWindow.getAllWindows().forEach(w => { if (!w.isDestroyed()) w.webContents.reload(); }));
@@ -177,14 +187,14 @@ app.whenReady().then(() => {
   ipcMain.handle('resume:get', () => db.getResume());
   ipcMain.handle('resume:save', (_e, snap) => db.setResume(snap));
   ipcMain.handle('resume:clear', () => db.clearResume());
-  ipcMain.on('live:static', (e, s) => { live.stat = s; live.dyn = null; relay('live:static', s, e.sender); if (net.server) net.server.broadcast('static', s); });
-  ipcMain.on('live:push', (e, d) => {
+  ipcMain.on('live:static', safe('live:static', (e, s) => { live.stat = s; live.dyn = null; relay('live:static', s, e.sender); if (net.server) net.server.broadcast('static', s); }));
+  ipcMain.on('live:push', safe('live:push', (e, d) => {
     // the race window sends what changed; the whole state is kept here for a window or phone that opens late
     const r = LiveShare.applyDynamic(live.dyn, d);
     if (!r.ok) { live.dyn = null; e.sender.send('live:resync'); } else if (!r.stale) live.dyn = r.state; // a message that does not fit: the race window is asked to send everything again
     relay('live:push', d, e.sender); if (net.server) net.server.broadcast('push', d);
-  });
-  ipcMain.on('live:command', (e, c) => relay('live:command', c, e.sender)); // Race Director buttons -> the race window
+  }));
+  ipcMain.on('live:command', safe('live:command', (e, c) => relay('live:command', c, e.sender))); // Race Director buttons -> the race window
   ipcMain.handle('live:get', () => ({ stat: live.stat, dyn: live.dyn }));
   // The window that asks (the main window with the race screen, for the fullscreen widget view) goes full screen or back; the answer is how it is now and how it was
   ipcMain.handle('win:fullscreen', (e, on) => { const w = BrowserWindow.fromWebContents(e.sender); if (!w || w.isDestroyed()) return { on: false, was: false }; const was = w.isFullScreen(); w.setFullScreen(on === undefined ? !was : !!on); return { on: w.isFullScreen(), was }; });

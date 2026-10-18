@@ -18,7 +18,10 @@
 #include <deque>
 #include <string>
 #include <algorithm>
-uint64_t sim_us = 0; uint32_t sim_extra_us = 0;
+#ifndef SIM_START_US
+#define SIM_START_US 0ull   // where the simulated clock starts (microseconds): a test can start the box shortly before millis() wraps after 49.7 days
+#endif
+uint64_t sim_us = SIM_START_US; uint32_t sim_extra_us = 0;
 unsigned char sim_eeprom[1024]; EEPROMT EEPROM; HardwareSerial Serial;
 struct Ev { uint64_t t; int kind; int a; int b; std::string s; };   // kind 0 adc, 1 rx, 2 btn
 static std::vector<Ev> evs; static size_t evi = 0; static uint64_t endAt = 0;

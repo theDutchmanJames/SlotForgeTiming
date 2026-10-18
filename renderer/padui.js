@@ -5,7 +5,7 @@ function renderPadSettings(box) {
   const S = state.settings || {}, lay = AdjustPad.layoutOf(S), $ = id => document.getElementById(id);
   const field = g => `<div class="field" style="max-width:520px"><label for="pad-${g.id}">${esc(g.title)} <span class="muted">(${esc(g.note)})</span></label>
       <input id="pad-${g.id}" type="text" inputmode="decimal" autocomplete="off" data-padlist="${g.id}" value="${esc(AdjustPad.listText(AdjustPad.valuesOf(S, g.id)))}" aria-describedby="pad-${g.id}-hint">
-      <span class="muted hint" id="pad-${g.id}-hint">Up to ${AdjustPad.MAXV} values, separated by commas. ${g.whole ? 'Whole numbers.' : 'Use a dot for decimals.'} The standard is ${esc(AdjustPad.listText(g.defaults))}.</span></div>`;
+      <span class="muted hint" id="pad-${g.id}-hint">Up to ${AdjustPad.MAXV} values, separated by commas. ${g.whole ? 'Whole numbers.' : 'Use a dot for decimals (a comma also works: 0,5).'} The standard is ${esc(AdjustPad.listText(g.defaults))}.</span></div>`;
   box.innerHTML = `<p class="muted" style="max-width:70ch">The Race Director adds or takes off penalty points, race time, laps and championship points with pads: a <strong>+</strong> button, a value and a <strong>−</strong> button.
       Choose the values here. They are used on the Adjust folder of the Race Director page (during the race) and in the race review. Every pad also has a field for any other amount.
       A race setup can have values of its own (Race Setup, Race Setups, the Adjust pads folder): that setup then uses its own list for that pad, and these values for the rest.</p>

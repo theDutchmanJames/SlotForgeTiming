@@ -176,12 +176,17 @@ function renderImageSetEditor(box) {
   if ($('is-prev')) $('is-prev').onchange = e => { imgEd.preview = e.target.value; renderImageSetEditor(box); };
   $('is-kind').onchange = e => { d.kind = e.target.value; d.images = d.kind === 'fuel' ? [] : {}; step(); renderImageSetEditor(box); };
   if ($('is-steps')) $('is-steps').onchange = e => { d.steps = Widgets.clampInt(e.target.value, 2, 20, 10); d.images = (d.images || []).slice(0, d.steps); step(); renderImageSetEditor(box); };
+  let imgSaving = false; // (a second click while the first is being written would add the set twice)
   $('is-save').onclick = async () => {
+    if (imgSaving) return;
     d.name = d.name.trim(); if (!d.name) { $('is-msg').textContent = 'Please give the set a name.'; return; }
+    imgSaving = true;
+    try {
     U.hist.touch(); const token = U.hist.commit(); // (the state that is written is the one the steps call saved)
     const data = clone({ name: d.name, kind: d.kind, ...(d.kind === 'fuel' ? { steps: Widgets.clampInt(d.steps, 2, 20, 10), images: Array.from({ length: Widgets.clampInt(d.steps, 2, 20, 10) }, (_, i) => (d.images || [])[i] || '') } : { images: d.images || {} }) });
     if (imgEd.id) await api.update('imagesets', imgEd.id, data); else { const row = await api.add('imagesets', data); imgEd.id = row.id; }
     U.hist.markSaved(token); imgEd.dirty = !U.hist.isClean(); $('is-msg').textContent = 'Saved.'; // (a change made while it was being written is not saved yet)
+    } finally { imgSaving = false; }
   };
   $('is-back').onclick = () => { if (imgEd.dirty && !confirm('Discard your unsaved changes to this picture set?')) return; draftUndoEnd(imgEd); imgEd = null; renderImageSets(box); };
   box.onclick = ev => { const b = ev.target.closest('button'); if (b && b.dataset.clear !== undefined) { if (Array.isArray(d.images)) d.images[b.dataset.clear] = ''; else delete d.images[b.dataset.clear]; step(); renderImageSetEditor(box); } }; // (a picture set of a flag or of lights is a list of the cells that have a picture: a removed picture leaves no empty entry)
@@ -429,19 +434,21 @@ function renderEditor() {
     outer: for (let y = 10; y + g.h <= H; y += 10) for (let x = 10; x + g.w <= U; x += 10) if (free(x, y)) { g.x = x; g.y = y; break outer; }
     d.widgets.push(g); ed.sel = [g]; mark(); redraw(); return g;
   };
-  window.editorSave = async () => {
+  let savingP = null; // (a second click, or Ctrl+S, while the first is being written is the same save: a layout that is new would be added twice)
+  const saveNow = async () => {
     d.name = d.name.trim();
     if (!d.name) { $('e-msg').textContent = `Please give the ${row ? 'row design' : 'layout'} a name.`; return false; }
     const token = hist.commit(); // what is saved is this state, whatever is changed while the save runs
     if (row) {
       const data = clone({ ...d, name: d.name, note: (d.note || '').trim(), kind: 'row' });
       if (ed.id) await api.update('rowdesigns', ed.id, data); else { const r = await api.add('rowdesigns', data); ed.id = r.id; }
-      ed.dirty = false; hist.markSaved(token); $('e-msg').textContent = 'Saved.'; return true;
+      hist.markSaved(token); ed.dirty = !hist.isClean(); $('e-msg').textContent = 'Saved.'; return true; // (a change made while it was being written is not saved yet)
     }
     const data = clone({ name: d.name, note: (d.note || '').trim(), ratioW: d.ratioW, ratioH: d.ratioH, widgets: d.widgets, guides: d.guides, laneColors: d.laneColors, ...Frame.pickLayout(d), ...Backdrop.pick(d) });
     if (ed.id) await api.update('layouts', ed.id, data); else { const row = await api.add('layouts', data); ed.id = row.id; }
-    ed.dirty = false; hist.markSaved(token); $('e-msg').textContent = 'Saved.'; return true;
+    hist.markSaved(token); ed.dirty = !hist.isClean(); $('e-msg').textContent = 'Saved.'; return true;
   };
+  window.editorSave = () => savingP || (savingP = saveNow().finally(() => { savingP = null; }));
   // Undo and redo: the editor is drawn again from the remembered state
   const goBack = redo => {
     if (!(redo ? hist.redo() : hist.undo())) { $('e-msg').textContent = redo ? 'Nothing to redo.' : 'Nothing to undo.'; return false; }

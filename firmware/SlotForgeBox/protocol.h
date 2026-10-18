@@ -40,7 +40,7 @@ public:
   void begin(uint32_t now) { Serial.begin(9600); lastTickAt = now; }
 
   // the tick: the ms since the previous tick, LF CR (exactly the Trackmate's)
-  void tick(uint32_t now) { Serial.print(now >= lastTickAt ? now - lastTickAt : 0UL); Serial.write('\n'); Serial.write('\r'); if (now > lastTickAt) lastTickAt = now; } // (never a negative delta: an event stamped a ms before the last tick gives 0)
+  void tick(uint32_t now) { int32_t d = (int32_t)(now - lastTickAt); Serial.print(d > 0 ? (uint32_t)d : 0UL); Serial.write('\n'); Serial.write('\r'); if (d > 0) lastTickAt = now; } // (never a negative delta: an event stamped a ms before the last tick gives 0; a signed difference, so it also works when millis() wraps after 49.7 days)
   // every event is preceded by a tick, so its time is the box clock
   void letter(char c, uint32_t now) { tick(now); Serial.write(c); }
   void ev(const char *s, uint32_t now) { if (!slotforge) return; tick(now); Serial.write('['); Serial.print(s); Serial.write(']'); }
@@ -48,6 +48,7 @@ public:
   void pit(uint8_t n, bool in, uint32_t now) { if (!slotforge) return; tick(now); Serial.write('['); Serial.write('P'); Serial.print(n); Serial.write(in ? '+' : '-'); Serial.write(']'); }
   void lane1(char tag, uint8_t n, uint32_t now) { if (!slotforge) return; tick(now); Serial.write('['); Serial.write(tag); Serial.print(n); Serial.write(']'); }
   void laneVal(char tag, uint8_t n, long v, uint32_t now) { if (!slotforge) return; tick(now); Serial.write('['); Serial.write(tag); Serial.print(n); Serial.write(' '); Serial.print(v); Serial.write(']'); }
+  void laneValU(char tag, uint8_t n, uint32_t v, uint32_t now) { if (!slotforge) return; tick(now); Serial.write('['); Serial.write(tag); Serial.print(n); Serial.write(' '); Serial.print(v); Serial.write(']'); } // (an unsigned value: a box time above 2^31 ms, 24.8 days, must not turn negative)
   void option(const char *key, long a, long b = -1, long c = -1, long d = -1) {
     Serial.print("[O "); Serial.print(key); Serial.write(' '); Serial.print(a);
     if (b >= 0) { Serial.write(' '); Serial.print(b); } if (c >= 0) { Serial.write(' '); Serial.print(c); } if (d >= 0) { Serial.write(' '); Serial.print(d); }

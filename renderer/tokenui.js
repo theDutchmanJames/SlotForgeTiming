@@ -28,11 +28,11 @@ async function renderTokenSettings(box) {
   const msg = t => { const m = document.getElementById('tk-msg'); if (m) m.textContent = t; };
   const save = async patch => { state.settings = await api.setSettings(patch); renderTokenSettings(box); };
   document.getElementById('tk-inc').onchange = ev => {
-    const raw = ev.target.value, list = Tokens.parseIncrements(raw), typed = String(raw).split(/[,;\s]+/).filter(x => x.trim() !== '');
+    const raw = ev.target.value, list = Tokens.parseIncrements(raw), typed = ListNum.items(raw).filter(x => x.trim() !== '');
     save({ tokenIncrements: list.join(', ') }).then(() => { const n = document.getElementById('tk-inc-note'); if (n) n.textContent = !typed.length || list.length < typed.length ? 'Some of that was not a usable number of minutes (or was there twice, or more than 8), so it was left out.' : 'Saved.'; });
   };
   document.getElementById('tk-dec').onchange = ev => {
-    const raw = ev.target.value, list = Tokens.parseDecrements(String(raw)), typed = String(raw).split(/[,;\s]+/).filter(x => x.trim() !== '');
+    const raw = ev.target.value, list = Tokens.parseDecrements(String(raw)), typed = ListNum.items(raw).filter(x => x.trim() !== '');
     save({ tokenDecrements: list.join(', ') }).then(() => { const n = document.getElementById('tk-dec-note'); if (n) n.textContent = list.length < typed.length ? 'Some of that was not a usable number of minutes (or was there twice, or more than 8), so it was left out.' : 'Saved.'; });
   };
   document.getElementById('tk-warn').onchange = ev => save({ tokenWarnSeconds: Tokens.settingsOf({ tokenWarnSeconds: ev.target.value }).warnSeconds });

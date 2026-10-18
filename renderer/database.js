@@ -5,6 +5,7 @@ const XTYPES = { text: 'Text', number: 'Number', date: 'Date', list: 'Pick-list'
 const dlg = document.getElementById('dlg');
 const byId = id => document.getElementById(id);
 let manager = null; // the list currently on screen: { box, e }
+let subRun = 0; // numbers the drawings of the lists and of the results: an answer that comes in late never paints over the page that was asked for after it
 
 // All countries, named by the system's own region data; flags come from the flag-icons package.
 // Codes that are obsolete duplicates or not countries are left out of the picker.
@@ -59,7 +60,7 @@ function keptValue(f, el) {
   if (f.type === 'numberlist') {
     if (txt === shown) return String(keep);
     const was = shown.split(',').map(x => x.trim()), kept = String(keep).split(',').map(x => x.trim());
-    return txt.split(',').map((x, i) => { x = x.trim(); if (x === '' || !Number.isFinite(Number(x))) return x; return x === was[i] && kept[i] !== undefined && kept[i] !== '' ? kept[i] : String(Speed.lengthKept(x, 'ft')); }).join(', ');
+    return ListNum.tidy(txt).split(',').map((x, i) => { x = x.trim(); if (x === '' || !Number.isFinite(Number(x))) return x; return x === was[i] && kept[i] !== undefined && kept[i] !== '' ? kept[i] : String(Speed.lengthKept(x, 'ft')); }).join(', ');
   }
   if (txt === '') return '';
   if (txt === shown) return Number(keep);
@@ -174,11 +175,14 @@ const pdfButton = attrs => `<button class="btn primary pdfbtn" type="button" ${a
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 async function mountManager(box, e) {
+  const run = ++subRun;
   manager = { box, e };
   const s = state.schema[e];
   const [items, custom] = await Promise.all([api.list(e), s.extra === false ? [] : api.customFields(e)]);
+  if (run !== subRun) return;
   state.custom[e] = custom;
   for (const f of s.fields) if (f.type === 'ref' || f.type === 'members') state.refs[f.ref] = await api.list(f.ref);
+  if (run !== subRun) return;
   const cols = s.list
     ? s.list.map(k => columnOf(s, k)).map(f => ({ label: fl(f), get: i => columnCell(f, i) }))
     : [
@@ -265,7 +269,7 @@ async function mountManager(box, e) {
     if (b.dataset.edit) openForm(e, it);
     else if (b.dataset.del) {
       const n = s.linked === false ? 0 : await api.linkedLaps(e, it.id);
-      const extra = s.linked === false ? '' : `\n\nThis also deletes ${n} saved ${n === 1 ? 'lap' : 'laps'} and the records they hold.`;
+      const extra = s.linked === false ? '' : `\n\nThis also deletes ${n} saved ${n === 1 ? 'lap' : 'laps'} and the records they hold${e === 'drivers' || e === 'slotcars' ? ', and takes them out of the results of past races' : ''}.`;
       if (!confirm(`Delete "${titleOf(e, it)}"?${extra}\n\nThis can't be undone.`)) return;
       await api.remove(e, it.id);
       mountManager(box, e);
@@ -550,8 +554,10 @@ function openForm(e, item) {
     }
     if (t.tagName === 'SELECT' && byId(t.id + '-flag')) byId(t.id + '-flag').innerHTML = flagHtml(t.value);
   };
+  let saving = false;
   byId('frm').onsubmit = async ev => {
     ev.preventDefault();
+    if (saving) return;
     const built = {}, custom = { ...(item?.custom || {}) };
     for (const f of fields) {
       if (f.automatic) { if (!item) built[f.key] = f.type === 'datetime' ? '' : 0; continue; }
@@ -571,9 +577,12 @@ function openForm(e, item) {
         if (!own) { byId('err').textContent = 'Please enter numbers above zero, separated by commas, for example 1, 3, 10. Leave the field empty to use the values from App Settings.'; return; }
         v = AdjustPad.listText(own);
       }
-      if (f.type === 'numberlist' && isShown(f, getValue) && !/^\s*\d+(\.\d+)?(\s*,\s*\d+(\.\d+)?)*\s*$/.test(v)) {
-        byId('err').textContent = 'Please enter numbers separated by commas, for example 10, 8, 6.';
-        return;
+      if (f.type === 'numberlist' && isShown(f, getValue)) {
+        v = ListNum.tidy(v); // (a decimal comma is made a dot: 15,4 is 15.4 metres)
+        if (!(f.optional && v === '') && !/^\s*\d+(\.\d+)?(\s*,\s*\d+(\.\d+)?)*\s*$/.test(v)) { // (an optional list may stay empty)
+          byId('err').textContent = 'Please enter numbers separated by commas, for example 10, 8, 6.';
+          return;
+        }
       }
       if (f.type === 'tracklength') { // keep the pieces only while they still add up to the length
         const used = pieces.filter(p => Number(p.count) > 0 && Number(p.mm) > 0).map(p => ({ count: Number(p.count), mm: Number(p.mm) }));
@@ -583,7 +592,7 @@ function openForm(e, item) {
     }
     if (e === 'slotcars') { // the service interval is a whole number of laps (empty = none); Reset starts the count again today
       if (built.serviceInterval !== '' && built.serviceInterval !== undefined) built.serviceInterval = Math.max(1, Math.floor(Number(built.serviceInterval)) || 1);
-      if (serviceReset && item) { built.lapsSinceService = 0; built.serviceDate = new Date().toISOString(); built.servicesDone = CarStats.servicesOf(item) + 1; }
+      if (serviceReset) { built.lapsSinceService = 0; built.serviceDate = new Date().toISOString(); built.servicesDone = CarStats.servicesOf(item) + 1; }
     }
     if (e === 'tracks' && built.laneModifier === 'measured') { // one length for every lane
       const list = String(built.laneLengths || '').split(',').map(x => x.trim()).filter((x, i, a) => x !== '' || i < a.length - 1), n = Number(built.lanes);
@@ -596,8 +605,12 @@ function openForm(e, item) {
       byId('err').textContent = 'Please fill in ' + s.title.map(k => s.fields.find(f => f.key === k).label).join(' or ') + '.';
       return;
     }
-    await (item ? api.update(e, item.id, { ...built, custom }) : api.add(e, { ...built, custom }));
-    dlg.close();
+    saving = true; // (a second click while the first is being written would add the row twice)
+    try {
+      await (item ? api.update(e, item.id, { ...built, custom }) : api.add(e, { ...built, custom }));
+      dlg.close();
+    } catch (x) { byId('err').textContent = 'It could not be saved: ' + (x && x.message ? x.message : x); } // (the form stays open: nothing is lost)
+    finally { saving = false; }
   };
   if (!dlg.open) dlg.showModal(); // (it is already open when Edit was pressed in the view card)
   if (groups) { const first = byId('f-' + fields[0].id); if (first && first.focus) first.focus(); } // the first field, as before, not the Open all button above the groups
@@ -717,8 +730,11 @@ function pdfChoice(session, figs) {
 
 async function renderResultsPool(box, pool) {
   const tokenPool = pool === 'tokens';
+  const run = ++subRun;
   const [allSessions, allLaps, drivers, cars, tracks] = await Promise.all(['sessions', 'laps', 'drivers', 'slotcars', 'tracks'].map(x => api.list(x)));
-  const sessions = allSessions.filter(x => (x.sessionType === 'tokens') === tokenPool), laps = allLaps.filter(l => !!l.token === tokenPool); // (the two pools never mix)
+  if (run !== subRun) return;
+  const sessions = allSessions.filter(x => (x.sessionType === 'tokens') === tokenPool).map(x => Array.isArray(x.standings) ? x : { ...x, standings: [] }); // (a session from a hand-made file may have no list of results: it shows with an empty table)
+  const laps = allLaps.filter(l => !!l.token === tokenPool); // (the two pools never mix)
   if (!sessions.length) { box.innerHTML = tokenPool ? '<p class="muted">No token results yet. Open a Time Token Session from the Home tab: every stint (one driver on one lane for one paid time) is saved here when it ends.</p>' : '<p class="muted">No results yet. Run a race from the Home tab and every lap is saved here.</p>'; return; }
   const name = (list, id, ent) => { const x = list.find(r => r.id === id); return x ? titleOf(ent, x) : tokenPool && !id ? 'Guest' : '(deleted)'; };
   const folderPage = tokenPool ? 'tresults' : 'results';
@@ -750,6 +766,12 @@ async function renderResultsPool(box, pool) {
   const personal = best(l => l.trackId + '|' + l.driverId, 'noPersonalBest').sort(byTrack);
 
   const recTable = (list, kind) => list.length ? `<div class="wrap"><table class="fields">${head}${list.map(recRow(kind)).join('')}</table></div>` : '<p class="muted">None yet.</p>';
+  // The end of the summary line of a session: who won a race (the first place; a driver who was deleted takes the place with them, so the runner-up is not called the winner), and who was fastest in a practice or a qualifying
+  const headline = (s, win, cup) => {
+    if (!win) return '';
+    if (Stats.WINNER_TYPES.includes(s.sessionType)) return Number(win.pos) === 1 ? ' · Winner: ' + (Stats.isWinner(s, win) ? cup + ' ' : '') + esc(win.driverName) : '';
+    return Number(win.best) > 0 ? ' · Fastest: ' + esc(win.driverName) : '';
+  };
   const sessionCards = [...sessions].reverse().map(s => {
     const win = s.standings[0];
     if (tokenPool) { // a stint: one driver, one lane, one paid time
@@ -765,7 +787,6 @@ async function renderResultsPool(box, pool) {
       return `<details class="card sess"><summary>${esc(dateText(s.date))} · Lane ${esc(t.lane)} · ${esc(x.driverName)} · ${esc(boughtText(t.bought))} · ${esc(x.laps)} ${Number(x.laps) === 1 ? 'lap' : 'laps'} · ${esc(s.trackName || '')}</summary><div class="sessbody">${body}</div></details>`;
     }
     const pts = s.resultBy === 'points';
-    const res = Stats.heated(s) && !!s.scoring && s.standings.some(x => x.score !== undefined); // a result that is not just all heats added up
     const fin = Stats.heated(s) && !!s.finals, finArg = { finalMode: fin ? s.finals.finalMode : 'places', byPoints: pts };
     const figs = Stats.forSession(s, laps.filter(l => l.sessionId === s.id), tracks, cars), shownKeys = ViewSet.keys(Stats.SESSION_COLUMNS, viewSaved(['results', 'sessions']));
     const cols = Stats.sessionColumns(s, figs).filter(c => shownKeys.includes(c.key));
@@ -795,7 +816,7 @@ async function renderResultsPool(box, pool) {
         const mine = Stats.ownLaps(x, laps).filter(l => l.sessionId === s.id).sort((a, b) => (a.heat || 0) - (b.heat || 0) || a.lapNumber - b.lapNumber);
         return `<p><strong>${esc(x.driverName)}</strong><br><span class="muted">${mine.map(l => { const t = esc(`${l.heat ? (l.final ? 'F' + l.final : 'H' + l.heat) + ' ' : ''}${l.lapNumber}: ${RaceEngine.fmtTime(l.time)}`); return l.invalid || l.tooSlow ? `<s class="lapbad" title="${l.invalid ? 'Invalid lap' : 'Too slow: not counted for records'}">${t}</s>` : l.pit ? `<em title="Lap with a pit stop">${t}</em>` : t; }).join(' · ') || 'no laps'}</span></p>`;
       }).join('') + `<div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}<button class="btn danger" data-delsession="${esc(s.id)}">Delete this session</button><span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
-    return `<details class="card sess" data-sid="${esc(s.id)}"><summary>${esc(dateText(s.date))} · ${esc(s.setupName)} · ${esc(SESSION_LABEL[s.sessionType] || '')} · ${esc(s.trackName || '')}${win ? ' · Winner: ' + (Stats.isWinner(s, win) ? cup + ' ' : '') + esc(win.driverName) : ''}</summary><div class="sessbody">${body}</div></details>`;
+    return `<details class="card sess" data-sid="${esc(s.id)}"><summary>${esc(dateText(s.date))} · ${esc(s.setupName)} · ${esc(SESSION_LABEL[s.sessionType] || '')} · ${esc(s.trackName || '')}${headline(s, win, cup)}</summary><div class="sessbody">${body}</div></details>`;
   }).join('');
   const RES_FOLDERS = ['tracks', 'pb', 'sessions'];
   const sessCols = tokenPool ? Stats.STINT_COLUMNS : Stats.SESSION_COLUMNS, sessPath = ['results', tokenPool ? 'stints' : 'sessions'];

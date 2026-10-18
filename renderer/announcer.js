@@ -111,15 +111,16 @@
   // a lap time as it is spoken: 5.12 (two decimals), or 1 minute 5.12
   function speakTime(ms) {
     if (!Number.isFinite(ms)) return '';
-    const s = ms / 1000; if (s < 60) return s.toFixed(2);
-    const m = Math.floor(s / 60);
-    return `${m} minute${m === 1 ? '' : 's'} ${(s - m * 60).toFixed(2)}`;
+    const cs = Math.round(ms / 10); if (cs < 6000) return (cs / 100).toFixed(2); // (hundredths first: 59.999 is 1 minute, not "60.00")
+    const m = Math.floor(cs / 6000), rest = (cs - m * 6000) / 100;
+    return `${m} minute${m === 1 ? '' : 's'}${rest === 0 ? '' : ' ' + rest.toFixed(2)}`;
   }
   // a gap as it is spoken: 0.8 seconds, 1 second, 12 seconds
   function speakGap(ms) {
     if (!Number.isFinite(ms)) return '';
     const s = ms / 1000; if (s >= 9.95) return `${Math.round(s)} seconds`;
-    const t = Math.round(s * 10) / 10; return t === 1 ? '1 second' : Number.isInteger(t) ? `${t} seconds` : `${t.toFixed(1)} seconds`;
+    const t = Math.round(s * 10) / 10; if (t === 0 && ms > 0) return 'less than a tenth of a second';
+    return t === 1 ? '1 second' : Number.isInteger(t) ? `${t} seconds` : `${t.toFixed(1)} seconds`;
   }
   // which conditions the sentences of a call can have: the driver the call is about, his position, the lap time (calls that say a time), the gap to the car in front
   const conditionsOf = call => {
@@ -130,8 +131,8 @@
   // a small difference as it is spoken: 0.12 seconds, 1 second (two decimals, because lap times are)
   function speakDiff(ms) {
     if (!Number.isFinite(ms)) return '';
-    const s = Math.abs(ms) / 1000; if (s >= 60) return speakTime(Math.abs(ms));
-    const t = s.toFixed(2); return t === '1.00' ? '1 second' : `${t} seconds`;
+    const cs = Math.round(Math.abs(ms) / 10); if (cs >= 6000) return speakTime(cs * 10);
+    const t = (cs / 100).toFixed(2); return t === '1.00' ? '1 second' : `${t} seconds`;
   }
   // a stretch of time as it is spoken, in whole seconds: 30 seconds, 5 minutes, 1 minute 30 seconds
   function speakSpan(ms) {
@@ -220,7 +221,7 @@
       // flags
       const flag = eng.flag || '';
       if (flag !== S.flag) {
-        if (flag === 'yellow') { ev('yellowflag', {}); if (eng.yellow && eng.yellow.target > 0) ev('yellowtarget', { target: speakTarget(eng.yellow.target) }); } else if (flag === 'red') ev('redflag', {}); else if (S.flag) ev('greenflag', {});
+        if (flag === 'yellow') { ev('yellowflag', {}); if (eng.yellow && eng.yellow.target > 0) ev('yellowtarget', { target: speakTarget(eng.yellow.target) }); } else if (flag === 'red') ev('redflag', {}); else if (S.flag && (phase === 'running' || phase === 'paused') && !out.some(o => o.call === 'lightsout')) ev('greenflag', {}); /* (not at the finish, and not with the lights out of a restart: those say it already) */
         S.flag = flag;
       }
       // things the engine logged: pits, fuel, penalties (only while racing; later review changes are not announced)
@@ -282,8 +283,8 @@
       done.sort((a, b) => cars[a[0]].total - cars[b[0]].total);
       done.forEach(([i, n]) => {
         const c = cars[i], time = c.laps[n]; if (c.bad && c.bad[n]) return; // too slow laps never count
-        const id = c.driverId, prevAll = best.all, prevPers = Math.min(best.personal.get(id) ?? Infinity, best.by.get(id) ?? Infinity), prevTrack = best.track;
-        best.all = Math.min(best.all, time); best.by.set(id, Math.min(best.by.get(id) ?? Infinity, time));
+        const id = c.driverId, prevAll = best.all, prevPers = id ? Math.min(best.personal.get(id) ?? Infinity, best.by.get(id) ?? Infinity) : Infinity, prevTrack = best.track; // (a Guest has no personal best: the Guests are not one driver)
+        best.all = Math.min(best.all, time); if (id) best.by.set(id, Math.min(best.by.get(id) ?? Infinity, time));
         const v = { ...who(c), time: speakTime(time), _time: time, lap: n + 1, laps: limitFor(eng, c) || n + 1 };
         if (Number.isFinite(prevTrack) && time < prevTrack) { best.track = time; ev('trackrecord', { ...v, improved: speakDiff(prevTrack - time), record: speakTime(prevTrack) }); }
         else {
@@ -306,7 +307,7 @@
           if (p >= 1 && was > p && cars[ci].laps.length > 0 && moves < 2) { // moved up (not into the lead: that is a new leader)
             // the driver passed = the one who was directly in front before and is now behind. A car that went into the pits, retired or was disqualified is not "passed".
             const o = S.pos[was - 1], oc = cars[o];
-            if (o !== undefined && order.indexOf(o) > p && oc.blockAt === null && !oc.dq && !oc.retired && !oc.done) { moves++; ev('overtake', { ...who(cars[ci]), other: who(oc).driver, position: ordinal(p + 1) }); }
+            if (o !== undefined && order.indexOf(o) > p && oc.laps.length > 0 && oc.blockAt === null && !oc.dq && !oc.retired && !oc.done) { /* (a car that has not crossed the line yet cannot be passed) */ moves++; ev('overtake', { ...who(cars[ci]), other: who(oc).driver, position: ordinal(p + 1) }); }
           }
         });
         S.pos = order;
@@ -366,8 +367,8 @@
       // the end of the race (a heat that is not the last one says that the heat is finished instead)
       if (eng.status === 'finished' && !S.finished && cars.some(c => c.laps.length)) {
         S.finished = true; ev(ctx.heat && ctx.heat.idx + 1 < (ctx.heat.total || ctx.heat.count) ? (ctx.heat.final ? 'finalend' : 'heatend') : 'finished', {});
-        const st = eng.standings(), w = st[0]; if (w) ev('winner', { ...who(w.car), laps: w.car.laps.length });
-        st.slice(1, 3).forEach((x, k) => { if (x.car.laps.length) ev('podium', { ...who(x.car), position: ordinal(k + 2), laps: x.car.laps.length }); });
+        const st = eng.standings(), w = st[0]; if (w && !w.car.retired) ev('winner', { ...who(w.car), laps: w.car.laps.length }); // (a car that was disqualified or retired is no winner)
+        st.slice(1, 3).forEach((x, k) => { if (x.car.laps.length && !x.car.retired && !(k === 0 && !w)) ev('podium', { ...who(x.car), position: ordinal(k + 2), laps: x.car.laps.length }); });
       }
       return out;
     }

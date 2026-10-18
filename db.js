@@ -8,6 +8,13 @@ const CarStats = require('./renderer/carstats.js'); // the slotcar statistics (1
 
 const VERSION = 1;
 
+// Written whole to a file of its own, flushed to the disk, then renamed over the real file: a crash or a power cut leaves the earlier version, never half of a new one.
+function writeAtomic(file, text) {
+  const tmp = file + '.tmp', fd = fs.openSync(tmp, 'w');
+  try { fs.writeSync(fd, text); try { fs.fsyncSync(fd); } catch { /* not every file system can flush */ } } finally { fs.closeSync(fd); }
+  fs.renameSync(tmp, file);
+}
+
 class Database {
   constructor(file) {
     this.file = file;
@@ -16,10 +23,17 @@ class Database {
     this.save();
   }
   load() {
-    let text; try { text = fs.readFileSync(this.file, 'utf8'); } catch { return {}; } // no file yet: a fresh start
+    let text;
+    try { text = fs.readFileSync(this.file, 'utf8'); } catch (x) {
+      if (x && x.code === 'ENOENT') return {}; // no file yet: a fresh start
+      // The file is there but cannot be read right now (locked by a virus scanner or a backup program, no permission): starting "fresh" would overwrite it with an empty database on the next save
+      throw new Error('The database file cannot be read (' + (x && x.code || x) + '): ' + this.file + '. Close other programs that use it and start SlotForge Timing again. Nothing was changed.');
+    }
     try { const d = JSON.parse(text); if (d && typeof d === 'object' && !Array.isArray(d)) return d; } catch { /* damaged, see below */ }
-    // The file exists but cannot be read: keep it (the app would otherwise overwrite it with an empty database) and start fresh
-    try { fs.copyFileSync(this.file, this.file.replace(/\.json$/, '') + '.damaged-' + Date.now() + '.json'); } catch { /* nothing more to do */ }
+    // The file exists but cannot be understood: keep it (the app would otherwise overwrite it with an empty database) and start fresh
+    try { fs.copyFileSync(this.file, this.file.replace(/\.json$/, '') + '.damaged-' + Date.now() + '.json'); } catch (x) {
+      throw new Error('The database file is damaged and a copy of it could not be kept (' + (x && x.code || x) + '): ' + this.file + '. Nothing was changed.'); // (no copy, no overwrite)
+    }
     return {};
   }
   ensure() {
@@ -43,11 +57,7 @@ class Database {
     // new in 1.30.0: the laps since the last service. A car from before that has had no service yet, so every lap it has driven counts.
     for (const c of d.slotcars) if (!Number.isFinite(c.lapsSinceService)) c.lapsSinceService = CarStats.sinceOf(c);
   }
-  save() {
-    const tmp = this.file + '.tmp';
-    fs.writeFileSync(tmp, JSON.stringify(this.data, null, 2));
-    fs.renameSync(tmp, this.file); // write-then-rename so a crash can't corrupt the file
-  }
+  save() { writeAtomic(this.file, JSON.stringify(this.data, null, 2)); }
   check(entity) {
     if (!schema[entity]) throw new Error('Unknown item type: ' + entity);
   }
@@ -101,28 +111,37 @@ class Database {
     if (entity === 'drivers') {
       d.teams.forEach(t => { if (Array.isArray(t.drivers)) t.drivers = t.drivers.filter(x => x !== id); });
       this.removeLapsWhere(l => l.driverId === id);
-      d.sessions.forEach(s => { s.standings = s.standings.filter(x => x.driverId !== id); });
+      d.sessions.forEach(s => { if (Array.isArray(s.standings)) s.standings = s.standings.filter(x => x.driverId !== id); });
     }
     if (entity === 'slotcars') {
       this.removeLapsWhere(l => l.carId === id);
-      d.sessions.forEach(s => { s.standings = s.standings.filter(x => x.carId !== id); });
+      d.sessions.forEach(s => { if (Array.isArray(s.standings)) s.standings = s.standings.filter(x => x.carId !== id); });
     }
     d[entity] = d[entity].filter(r => r.id !== id);
     this.save();
   }
   // One finished session with all of its laps, saved in a single write.
   saveSession(session, laps) {
-    const s = { ...session, id: crypto.randomUUID() };
+    const s = { ...session, id: crypto.randomUUID() }, before = new Map(), added = [];
     this.data.sessions.push(s);
     for (const l of laps) {
-      this.data.laps.push({ ...l, id: crypto.randomUUID(), sessionId: s.id });
+      const row = { ...l, id: crypto.randomUUID(), sessionId: s.id };
+      this.data.laps.push(row); added.push(row);
       const car = this.data.slotcars.find(c => c.id === l.carId);
       if (car) {
+        if (!before.has(car)) before.set(car, { since: car.lapsSinceService, driven: car.lapsDriven });
         if (CarStats.afterService(car, l, s.date)) car.lapsSinceService = CarStats.sinceOf(car) + 1; // (sinceOf is every lap driven for a car that was never counted that way)
         car.lapsDriven = (car.lapsDriven || 0) + 1;
       }
     }
-    this.save();
+    try { this.save(); } catch (x) {
+      // The disk would not take it (full, locked): take the session out again, so that saving it once more does not leave two copies, and the counters stay true
+      const gone = new Set(added);
+      this.data.laps = this.data.laps.filter(l => !gone.has(l));
+      this.data.sessions = this.data.sessions.filter(q => q !== s);
+      for (const [car, b] of before) { car.lapsSinceService = b.since; car.lapsDriven = b.driven; }
+      throw x;
+    }
     return s.id;
   }
   removeSession(id) {
@@ -172,12 +191,11 @@ class Database {
   }
   setResume(snap) {
     if (!snap || typeof snap !== 'object' || snap.v !== 1) return false;
-    const tmp = this.resumeFile() + '.tmp';
-    fs.writeFileSync(tmp, JSON.stringify(snap));
-    fs.renameSync(tmp, this.resumeFile());
+    writeAtomic(this.resumeFile(), JSON.stringify(snap));
     return true;
   }
   clearResume() { try { fs.unlinkSync(this.resumeFile()); } catch { /* nothing was kept */ } return true; }
 }
 
+Database.writeAtomic = writeAtomic; // (the backups, exports and PDFs that main.js writes are written the same way)
 module.exports = Database;

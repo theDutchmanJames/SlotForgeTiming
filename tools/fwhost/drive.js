@@ -17,11 +17,11 @@ class Scen { // a script for the box; times in microseconds
 }
 
 // compiles the host for a board ('nano' | 'mega') once per run; returns the path of the program, or null when there is no g++
-function build(board, outDir) {
+function build(board, outDir, startUs = 0) { // startUs: where the simulated clock starts (to test the wrap of millis() after 49.7 days)
   const gpp = spawnSync('g++', ['--version']); if (gpp.error || gpp.status !== 0) return null;
   fs.mkdirSync(outDir, { recursive: true });
-  const exe = path.join(outDir, 'host_' + board + (process.platform === 'win32' ? '.exe' : ''));
-  const args = ['-std=gnu++11', '-O1', '-w', `-DINO_PATH="${path.join(FIRMWARE, 'SlotForgeBox.ino').replace(/\\/g, '/')}"`].concat(board === 'mega' ? ['-D__AVR_ATmega2560__'] : [], ['-I', path.join(__dirname, 'shim'), '-I', FIRMWARE, '-o', exe, path.join(__dirname, 'host.cpp')]);
+  const exe = path.join(outDir, 'host_' + board + (startUs ? '_at' + startUs : '') + (process.platform === 'win32' ? '.exe' : ''));
+  const args = ['-std=gnu++11', '-O1', '-w', `-DINO_PATH="${path.join(FIRMWARE, 'SlotForgeBox.ino').replace(/\\/g, '/')}"`].concat(board === 'mega' ? ['-D__AVR_ATmega2560__'] : [], startUs ? [`-DSIM_START_US=${startUs}ull`] : [], ['-I', path.join(__dirname, 'shim'), '-I', FIRMWARE, '-o', exe, path.join(__dirname, 'host.cpp')]);
   const r = spawnSync('g++', args, { encoding: 'utf8' }); if (r.status !== 0) throw new Error('the firmware did not compile:\n' + r.stderr);
   return exe;
 }

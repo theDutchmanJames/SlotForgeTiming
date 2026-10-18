@@ -137,4 +137,27 @@ const e = tmp(); T.apply(e, JSON.parse(JSON.stringify(b1))); const reread = new 
   const z = tmp(); T.apply(z, JSON.parse(JSON.stringify({ ...out, items: { racesetups: out.items.racesetups } })));
   ok('...a race setup imported without its rotation has no rotation (the plan is made from its own settings)', z.data.racesetups[0].rotation === '');
   ok('...a rotation setup can also be exported on its own, and is checked in the file', (T.collect(x.data, { rotationsetups: [r.id] }, false).items.rotationsetups || []).length === 1 && T.check(JSON.parse(JSON.stringify(T.collect(x.data, { rotationsetups: [r.id] }, false)))).ok === true && T.check(JSON.parse(JSON.stringify(T.collect(x.data, { rotationsetups: [r.id] }, false)))).summary.rotationsetups.count === 1); }
+{ // 1.39.1: the laps of a team race keep their team, and a car is "(imported)" only when its whole title clashes
+  const a = tmp(), b = tmp();
+  const tr = a.add('tracks', { name: 'Ring', lanes: 4 }), d1 = a.add('drivers', { name: 'Anna' }), d2 = a.add('drivers', { name: 'Ben' });
+  const team = a.add('teams', { name: 'Red', drivers: [d1.id, d2.id] }), car = a.add('slotcars', { brand: 'Slot.it', model: 'Audi' });
+  const sid = a.saveSession({ setupName: 'Team race', sessionType: 'heats', trackId: tr.id, trackName: 'Ring', date: '2026-10-01T18:00:00Z', standings: [{ pos: 1, asTeam: true, driverId: '', teamId: team.id, teamName: 'Red', carId: car.id, laps: 2, best: 5000, total: 10000 }] },
+    [{ driverId: d1.id, carId: car.id, teamId: team.id, trackId: tr.id, lane: 1, lapNumber: 1, time: 5000 }, { driverId: d2.id, carId: car.id, teamId: team.id, trackId: tr.id, lane: 1, lapNumber: 2, time: 5000 }]);
+  const bundle = T.collect(a.data, { sessions: [sid] }, true), only = T.collect(a.data, { laps: a.data.laps.map(l => l.id) }, true);
+  ok('a team session is exported with its team (through the laps)', bundle.items.teams && bundle.items.teams.length === 1);
+  T.apply(b, JSON.parse(JSON.stringify(bundle)));
+  ok('after an import the laps of a team race point to the imported team (so the team still owns them)', b.data.teams.length === 1 && b.data.laps.length === 2 && b.data.laps.every(l => l.teamId === b.data.teams[0].id) && b.data.sessions[0].standings[0].teamId === b.data.teams[0].id);
+  ok('...the laps alone also bring the team along', only.items.teams && only.items.teams.length === 1);
+  const c = tmp(); T.apply(c, JSON.parse(JSON.stringify({ ...bundle, items: { ...bundle.items, teams: undefined } })));
+  ok('...without the team in the file the laps have no team instead of a team that does not exist', c.data.laps.every(l => l.teamId === ''));
+  const x = tmp(), y = tmp();
+  const lola = x.add('slotcars', { brand: 'Scalextric', manufacturer: '', model: 'Lola T70' });
+  y.add('slotcars', { brand: 'Scalextric', manufacturer: '', model: 'Porsche 917' }); y.add('slotcars', { brand: '', manufacturer: '', model: '' });
+  T.apply(y, T.collect(x.data, { slotcars: [lola.id] }, true));
+  ok('another model of the same brand is not a clash (the brand is left as it is)', y.data.slotcars.length === 3 && y.data.slotcars[2].brand === 'Scalextric' && y.data.slotcars[2].model === 'Lola T70');
+  T.apply(y, T.collect(x.data, { slotcars: [lola.id] }, true));
+  ok('the same car twice is a clash: the model gets (imported), the brand does not', y.data.slotcars[3].brand === 'Scalextric' && y.data.slotcars[3].model === 'Lola T70 (imported)');
+  const e = tmp(), f = tmp(); const blank = e.add('slotcars', { brand: '', manufacturer: '', model: '' }); f.add('slotcars', { brand: '', manufacturer: '', model: '' });
+  T.apply(f, T.collect(e.data, { slotcars: [blank.id] }, true));
+  ok('a car without any name does not become " (imported)"', f.data.slotcars.length === 2 && f.data.slotcars[1].brand === '' && f.data.slotcars[1].model === ''); }
 if (fails) { console.log(fails + ' TRANSFER TESTS FAILED'); process.exit(1); } console.log('transfer: all PASSED');

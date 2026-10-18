@@ -4,7 +4,7 @@
 #pragma once
 #include <Arduino.h>
 
-#define SFB_VERSION "1.0.3"
+#define SFB_VERSION "1.0.4"
 
 // ---- the board ----
 #if defined(__AVR_ATmega2560__)
@@ -35,6 +35,7 @@
 #define RELEASE_MS  8       // a pass is over only after the reading has stayed above arm this long (a bouncing contact or a flickering light sensor)
 #define DRIFT_MS    1000    // during a pass the reading stays above the trigger this long: the car is gone and the empty level has moved below arm (ambient light); the pass is ended and the level re-learned
 #define STUCK_MS    3000    // a pass longer than this with the reading below the trigger: something blocks the sensor; the pass is ended (thresholds untouched) and the PC is told
+#define PIT_STUCK_MS 120000UL // the same for a PIT sensor: a car stands there for a refuel, so it may be covered much longer (2 minutes); then the PC is told the car left ([P<n>-]) so the pit does not stay occupied
 #define BUFFERED_LAPS 32    // crossings kept while the PC is away
 #define READING_GAP_MS 30   // the readings stream sends ONE pin every 30 ms (8 sensors = a full set every 240 ms) and only when the serial buffer has room, so it never blocks the sensors
 

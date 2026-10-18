@@ -28,7 +28,6 @@
   function sessionHtml({ session, laps, tracks, cars, options, unit, distUnit }) {
     const opt = { ...DEFAULT_OPTIONS, ...(options || {}) };
     const pts = session.resultBy === 'points', isHeats = ST.heated(session);
-    const res = isHeats && !!session.scoring && session.standings.some(x => x.score !== undefined); // a heat race with a result that is not just all heats added up
     const fin = isHeats && !!session.finals, finArg = { finalMode: fin ? session.finals.finalMode : 'places', byPoints: pts };
     const figs = ST.forSession(session, laps, tracks, cars), want = new Set(opt.columns || ST.SESSION_COLUMNS.filter(c => c.on).map(c => c.key));
     const cols = ST.sessionColumns(session, figs).filter(c => want.has(c.key));
@@ -137,7 +136,9 @@
     </body></html>`;
   }
 
-  const fileName = session => `${session.setupName || 'Session'} ${(session.date || '').slice(0, 10)}.pdf`.replace(/[\\/:*?"<>|]/g, '-');
+  // the day of a race as the page shows it (local time): a race at 00:30 in Amsterdam is on the new day, not on the day of the UTC date
+  const dayOf = iso => { const t = Date.parse(iso), d = new Date(t), two = n => String(n).padStart(2, '0'); return Number.isFinite(t) ? `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}` : String(iso || '').slice(0, 10); };
+  const fileName = session => `${session.setupName || 'Session'} ${dayOf(session.date)}.pdf`.replace(/[\\/:*?"<>|]/g, '-');
   const api = { sessionHtml, heatSheetHtml, fileName, lapGroups, qrHtml, rulesHtml, CREDIT };
   root.Report = api;
   if (typeof module !== 'undefined') module.exports = api;

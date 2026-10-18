@@ -12,6 +12,7 @@ const people = n => Array.from({ length: n }, (_, i) => ({ driverId: 'd' + i, ca
   ok('a result by time is a result by time when the heats are limited by laps (or nothing is said about the heats)', s({ resultBy: 'time' }).byTime === true && s({ resultBy: 'time', heatBy: 'laps' }).byTime === true);
   ok('...but not when the heats are limited by time: everybody drives the same time, so the laps count', s({ resultBy: 'time', heatBy: 'time' }).byTime === false);
   ok('...a result by laps or points is never by time', s({ resultBy: 'laps' }).byTime === false && s({ resultBy: 'points', heatBy: 'laps' }).byTime === false);
+  ok('...and the settings of an earlier call are taken over when they say no, too (heats limited by time: the laps count, also when the heat race is made from those settings)', s(s({ resultBy: 'time', heatBy: 'time' })).byTime === false && s({ byTime: false, resultBy: 'time' }).byTime === false);
   ok('the settings of an earlier call are taken over (byTime: true)', s(s({ resultBy: 'time' })).byTime === true && s({ byTime: true, heatBy: 'time' }).byTime === true && s({ byTime: 'yes' }).byTime === false);
   ok('an unfinished heat is estimated only when the setup says so; anything else is the standard', s({ unfinished: 'estimate' }).unfinished === 'estimate' && s({ unfinished: 'below' }).unfinished === 'below' && s({ unfinished: 'x' }).unfinished === 'below' && s({ unfinished: undefined }).unfinished === 'below');
 }

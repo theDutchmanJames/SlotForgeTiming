@@ -102,12 +102,17 @@ function renderAudioSetEditor(box) {
     $('au-vtext').value = Sound.reportText({ ua: typeof navigator !== 'undefined' ? navigator.userAgent : '', voices: Sound.voices().map(v => ({ name: v.name, lang: v.lang, localService: v.localService })), host });
   };
   $('au-vcopy').onclick = async () => { try { await navigator.clipboard.writeText($('au-vtext').value); $('au-vmsg').textContent = 'Copied.'; } catch (e) { $('au-vtext').select(); $('au-vmsg').textContent = 'Select the text and copy it (Ctrl+C).'; } };
-  [['au-rate', 'rate', 0.5, 2], ['au-pitch', 'pitch', 0, 2], ['au-vol', 'volume', 0, 1]].forEach(([id, k, lo, hi]) => { $(id).onchange = e => { const n = Number(e.target.value); d[k] = Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : 1; e.target.value = d[k]; step(); }; });
+  [['au-rate', 'rate', 0.5, 2], ['au-pitch', 'pitch', 0, 2], ['au-vol', 'volume', 0, 1]].forEach(([id, k, lo, hi]) => { $(id).onchange = e => { const raw = String(e.target.value).trim(); if (raw === '') { e.target.value = d[k]; return; } /* (an emptied box is not a 0: a volume of 0 would mute the set) */ const n = Number(raw.replace(',', '.')); d[k] = Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : 1; e.target.value = d[k]; step(); }; });
+  let saving = false; // (a second click while the first is being written would add the set twice)
   $('au-save').onclick = async () => {
+    if (saving) return;
     d.name = d.name.trim(); if (!d.name) return msg('Please give the set a name.');
-    U.hist.touch(); const token = U.hist.commit(), data = clone(d); // (the state that is written is the one the steps call saved)
-    if (audEd.id) await api.update('audiosets', audEd.id, data); else { const row = await api.add('audiosets', data); audEd.id = row.id; }
-    U.hist.markSaved(token); audEd.dirty = !U.hist.isClean(); msg('Saved.'); // (a change made while it was being written is not saved yet)
+    saving = true;
+    try {
+      U.hist.touch(); const token = U.hist.commit(), data = clone(d); // (the state that is written is the one the steps call saved)
+      if (audEd.id) await api.update('audiosets', audEd.id, data); else { const row = await api.add('audiosets', data); audEd.id = row.id; }
+      U.hist.markSaved(token); audEd.dirty = !U.hist.isClean(); msg('Saved.'); // (a change made while it was being written is not saved yet)
+    } finally { saving = false; }
   };
   $('au-back').onclick = () => { if (audEd.dirty && !confirm('Discard your unsaved changes to this audio set?')) return; Sound.stop(); draftUndoEnd(audEd); audEd = null; renderAudioSets(box); };
   box.oninput = ev => { const t = ev.target; if (t.dataset.text) { ref(t.dataset.text).text = t.value; mark(); } };

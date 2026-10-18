@@ -34,6 +34,9 @@ function fake(setup) {
   f.cars[2].retired = true; f.b.sync(); f.b.sync(); ok('a retired car loses its lane power, once', f.sent.filter(x => x === 'Q30').length === 1);
   f.b.power(false); ok('power(off) goes to the box and the link', f.sent[f.sent.length - 1] === 'M0' && f.link.power === false);
   f.link.emit({ type: 'safe', on: true }); f.link.emit({ type: 'safe', on: false }); ok('back from the safe state the lights are told again', f.sent[f.sent.length - 1] === 'LG');
+  ok('...and the track power the race wants (the box cut it when it lost the PC): here off, as the race left it', f.sent[f.sent.length - 2] === 'M0' && f.link.power === false);
+  f.b.power(true); f.link.emit({ type: 'safe', on: true }); f.link.emit({ type: 'safe', on: false });
+  ok('...and when the race had the power on, it is switched on again (1.39.1)', f.sent[f.sent.length - 2] === 'M1' && f.link.power === true);
   f.st.phase = 'finished'; f.b.sync(); ok('finished: STOP', f.sent[f.sent.length - 1] === 'LS');
   f.b.off(); ok('off(): STOP and the cut lanes get their power back', f.sent.slice(-2).join() === 'LS,Q31');
   const n = f.did.length; f.link.emit({ type: 'hit', lane: 0, at: 1 }); ok('and nothing is listened to any more', f.did.length === n);

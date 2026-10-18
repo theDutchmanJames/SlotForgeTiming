@@ -30,7 +30,7 @@ const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if
 for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function') api[k] = (...x) => { x.forEach(v => { if (typeof v !== 'function') structuredClone(v); }); return f(...x); }; }
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js', 'distance.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'boardorder.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'drivergrid.js', 'homecards.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'tyreui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['listnum.js', 'bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'tokens.js', 'speed.js', 'distance.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'weatherwidgets.js', 'boardorder.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'drivergrid.js', 'homecards.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'tyreui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -200,6 +200,35 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   say('not carrying on: what the earlier session recorded is saved, and every lane is neutral', tokSessions().length >= 2 && tokSessions().some(([ss]) => ss.token.lane === 1 && ss.standings[0].laps === 2) && tokSessions().some(([ss]) => ss.token.lane === 2 && ss.standings[0].laps === 1) && [0, 1, 2, 3].every(l => tokens().stateOf(l, 0) === 'idle') && phase() === 'ready');
   say('...and it is not offered again', !kept());
   ctx.confirm = () => true;
+
+  // ---------- a session of another track that was not ended is saved with that track (1.39.1) ----------
+  { saved.length = 0; run("state.settings = { theme: 'dark', tokenWarnSeconds: 0.6 }"); ctx.confirm = () => true;
+    await openRace(setupTok, store.tracks[0], rows(1, 2)); key(' '); // (the Living room)
+    ops().add(0, 0.3); await wait(60); key('1'); await wait(60); key('1'); await wait(60); key('1'); await wait(60);
+    run('live.flushTokens()');
+    say('(a session on the Living room was not ended)', !!kept() && kept().trackId === 't1' && kept().data.lanes[0].stint.laps.length === 2);
+    await openRace(setupTok, store.tracks[1], rows(1, 2)); await wait(250); // the same setup, now on the Big track
+    say('the same setup on another track does not carry the laps over: this is a new session, nothing on the lanes', phase() === 'ready' && eng().cars[0].laps.length === 0 && [0, 1, 2, 3].every(l => tokens().stateOf(l, 0) === 'idle'));
+    say('...the laps of the earlier session are saved with the track they were driven on', tokSessions().length === 1 && tokSessions()[0][0].trackId === 't1' && tokSessions()[0][0].trackName === 'Living room' && tokSessions()[0][1].length === 2 && tokSessions()[0][1].every(l => l.trackId === 't1'));
+    say('...and it is not offered again', !kept()); }
+
+  // ---------- the keys of the race screen (1.39.1) ----------
+  { saved.length = 0; run("state.settings = { theme: 'dark' }");
+    const kx = o => run('live').key({ target: { matches: () => false }, preventDefault() {}, ...o });
+    await openRace(setupTok, store.tracks[1], rows(1, 2)); key(' ');
+    ops().add(0, 5); await wait(60); key('1'); await wait(60); // (the first crossing only starts the car)
+    const laps0 = () => eng().cars[0].laps.length;
+    kx({ key: '1', metaKey: true }); await wait(60); kx({ key: '1', altKey: true }); await wait(60); kx({ key: '1', repeat: true }); await wait(60); kx({ key: '1', ctrlKey: true, code: 'Numpad1' }); await wait(60);
+    say('Cmd+1, Alt+1, a key that is held down and Ctrl+Numpad 1 do not count a lap', laps0() === 0);
+    kx({ key: 'r', ctrlKey: true }); kx({ key: 's', ctrlKey: true }); await wait(30);
+    say('Ctrl+R and Ctrl+S (reload, save) are not the red flag and stop: the race goes on', phase() === 'running');
+    kx({ key: '&', code: 'Digit1' }); await wait(60);
+    say('a keyboard whose number row types other characters (AZERTY) counts the lap of the key that is pressed', laps0() === 1);
+    kx({ key: '1', code: 'Numpad1' }); await wait(60);
+    say('...and so does the number pad', laps0() === 2);
+    kx({ key: '!', code: 'Digit1', shiftKey: true }); await wait(30); kx({ key: '!', code: 'Digit1', shiftKey: true }); await wait(30);
+    say('in a Time Token Session Shift + number (the pit) does nothing: the engine gets no lap the stint does not have', laps0() === 2 && tokens().stintOf(0).laps.length === 2 && eng().cars[0].blockAt === null);
+    key('s'); await until(() => phase() === 'finished', 3000); await wait(100); }
 
   // ---------- stints that could not be saved stay in the review ----------
   { saved.length = 0; run("state.settings = { theme: 'dark' }");
@@ -440,15 +469,16 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     ops().add(3, 5); await wait(60); key('4'); await wait(60); key('4'); await wait(60); key('4'); ops().clear(3); await wait(30);
     const heldG = tokens().closedList().filter(x => x.lane === 3).pop();
     lr('invalid', { car: '0', lap: '1', on: '1' }); lr('invalid', { car: '0', lap: '1', on: '0' }); await wait(30);
-    say('the laps of a stint that has ended still count for the best laps that are shown', !!heldG && heldG.laps.length === 2 && run('live.bestBy.get(live.engine().cars[3].driverId)') === Math.min(...heldG.laps.map(l => l.t)) && run('live.bestAll') <= Math.min(...heldG.laps.map(l => l.t)));
+    say('the laps of a stint that has ended still count for the best laps that are shown', !!heldG && heldG.laps.length === 2 && run('live.bestAll') <= Math.min(...heldG.laps.map(l => l.t)));
+    say('...a Guest has no personal best: the Guests are not pooled as one driver (1.39.1)', run('live.engine().cars[3].driverId') === '' && run("live.bestBy.has('')") === false);
     lr('invalid', { car: '0', lap: '3', on: '1' }); await wait(30);
     lr('deltry', { car: '0', lap: '2' });
     say('Delete… asks how: from the records only, or from the race too', E('lapreview').innerHTML.includes('Remove lap 3') && E('lapreview').innerHTML.includes('From the records only') && E('lapreview').innerHTML.includes('From the race too (recalculate)'));
     lr('removelap', { car: '0', lap: '2', recalc: '0' }); await wait(30);
     say('from the records only: the lap stays in the race (still four laps) and in the stint, but is no record', eng().cars[0].laps.length === 4 && eng().cars[0].removed.join() === '2' && tokens().stintOf(0).laps.length === 4 && tokens().stintOf(0).laps[2].removed === true && flags(0) && run("live.bestBy.get('d1')") === bestWanted(0) && E('lapreview').innerHTML.includes('not in the records'));
-    const lapsBefore = eng().cars[0].laps.slice();
+    const lapsBefore = eng().cars[0].laps.slice(), totalBefore = eng().cars[0].total;
     lr('removelap', { car: '0', lap: '0', recalc: '1' }); await wait(30);
-    say('from the race too: one lap fewer in the race and in the stint, the corrections of the later laps move up', eng().cars[0].laps.join() === lapsBefore.slice(1).join() && tokens().stintOf(0).laps.length === 3 && eng().cars[0].removed.join() === '1' && eng().cars[0].invalid.join() === '2' && flags(0) && eng().cars[0].total === eng().cars[0].laps.reduce((a, b) => a + b, 0));
+    say('from the race too: one lap fewer in the race and in the stint, the corrections of the later laps move up', eng().cars[0].laps.join() === lapsBefore.slice(1).join() && tokens().stintOf(0).laps.length === 3 && eng().cars[0].removed.join() === '1' && eng().cars[0].invalid.join() === '2' && flags(0) && Math.abs(eng().cars[0].total - (totalBefore - lapsBefore[0])) < 1e-6); // (1.39.1: the time of the lap leaves the total; whatever came before the first crossing stays in it)
     // wrong or foreign commands do nothing during the session
     const snap = () => JSON.stringify([eng().cars.map(c => [c.laps, c.invalid, c.removed, c.points, c.dq, c.extraMs]), tokens().snapshot().lates, phase()]);
     const s0 = snap();

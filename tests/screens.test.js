@@ -1,5 +1,6 @@
 let fails=0, reachedEnd=false; process.on('exit',code=>{ if(code===0&&!reachedEnd){ console.log('FAIL the test stopped before its end (something waited for ever)'); process.exitCode=1; } }); process.on('unhandledRejection',e=>{console.log('UNHANDLED:',e.stack.split('\n').slice(0,6).join('\n'));process.exit(1)});
 const vm=require('vm'),fs=require('fs');
+const localDay=iso=>{ const d=new Date(iso), two=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+two(d.getMonth()+1)+'-'+two(d.getDate()); }; // (the day as the club sees it: these pages show local dates)
 const R=require('path').join(__dirname,'..')+'/';
 const schema=require(R+'schema.js');
 const els={};
@@ -23,7 +24,7 @@ for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function
 const ctx=vm.createContext({document,api,console: appConsole,Intl,URL,Image:function(){},confirm:()=>true,alert(){},setTimeout,clearTimeout,setInterval,clearInterval,performance,});
 const listeners={}; ctx.window=ctx; ctx.addEventListener=(t,f)=>{(listeners[t]=listeners[t]||[]).push(f)}; ctx.removeEventListener=(t,f)=>{listeners[t]=(listeners[t]||[]).filter(x=>x!==f)};
 const errors=[];
-for(const f of ['bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js','heats.js', 'rotation.js', 'tokens.js','speed.js', 'distance.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js','icons.js','delta.js','avatars.js', 'weatherwidgets.js', 'boardorder.js', 'widgets.js','frame.js','backdrop.js','announcer.js','sound.js','timing.js','rows.js','richtext.js','canvas.js','liveshare.js','review.js','adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'drivergrid.js', 'homecards.js', 'liveview.js','report.js','database.js','landing.js','race.js','undo.js','editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'tyreui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','help.js','hardware.js','trackmate.js','hardwareui.js','zipfile.js','arduinosketch.js','arduinobox.js','arduinosim.js','arduinorace.js','arduinoui.js','dsui.js','app.js']){
+for(const f of ['listnum.js', 'bop.js', 'weather.js', 'endurance.js', 'damage.js', 'engine.js','heats.js', 'rotation.js', 'tokens.js','speed.js', 'distance.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js','icons.js','delta.js','avatars.js', 'weatherwidgets.js', 'boardorder.js', 'widgets.js','frame.js','backdrop.js','announcer.js','sound.js','timing.js','rows.js','richtext.js','canvas.js','liveshare.js','review.js','adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'drivergrid.js', 'homecards.js', 'liveview.js','report.js','database.js','landing.js','race.js','undo.js','editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'tyreui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','help.js','hardware.js','trackmate.js','hardwareui.js','zipfile.js','arduinosketch.js','arduinobox.js','arduinosim.js','arduinorace.js','arduinoui.js','dsui.js','app.js']){
   try{vm.runInContext(fs.readFileSync(R+'renderer/'+f,'utf8'),ctx,{filename:f})}catch(e){errors.push(f+': '+e.message)}
 }
 const run=s=>vm.runInContext(s,ctx), E=id=>document.getElementById(id);
@@ -606,6 +607,9 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   run('state.editing.draft.name="Lanes"'); await run('editorSave()');
   say('saving keeps guidelines and lane colours', saveCalls.length===1 && saveCalls[0][1].guides.v.length===7 && saveCalls[0][1].laneColors[0].bg==='#001122');
   api.add=oldAdd;
+  { const got=[]; api.add=async(e,it)=>{got.push(e); await new Promise(r=>setTimeout(r,30)); return {id:'LY'}}; // a second click (or Ctrl+S) while the first save is being written is the same save
+    run('state.editing.id=null'); run('state.editing.draft.name="Twice"'); const both=await Promise.all([run('editorSave()'),run('editorSave()')]);
+    say('saving a new layout twice at once adds it once, and both calls come back saved', got.length===1 && both.every(x=>x===true) && run('state.editing.id')==='LY'); api.add=oldAdd; }
   say('a widget\'s own colour wins over its lane colour', run("Widgets.colorsOf(state.editing.draft.widgets[0], state.editing.draft).color")==='#00ff00' && run("Widgets.colorsOf(state.editing.draft.widgets[0], state.editing.draft).bg")==='#001122');
 
   // ---- batch 1 findings ----
@@ -1646,7 +1650,25 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
       { id: 's8', setupName: 'Heats', sessionType: 'heats', trackId: 't1', trackName: 'Living room', date: '2026-10-13T18:30:00Z', standings: [{ pos: 1, driverId: 'd1', carId: 'c1', driverName: 'Alex', carName: 'NSR', laps: 9, points: 0, best: 5000, total: null }, { pos: 2, driverId: 'd2', carId: 'c2', driverName: 'Sam', carName: 'NSR', laps: 8, points: 0, best: 5100, total: null }],
         heatResults: [{ heat: 1, rows: [{ pos: 1, driverName: 'Alex', laps: 5 }, { pos: 2, driverName: 'Sam', laps: 4 }] }, { heat: 2, rows: [{ pos: 1, driverName: 'Sam', laps: 5 }, { pos: 2, driverName: 'Alex', laps: 4 }] }] }];
     await run('render()'); const html = E('resbody').innerHTML;
-    say('a qualifying has no winner\'s cup (its line says Winner as before); a heat race has one in its line, one in the table and one for every heat (4)', cups() === 6 && html.includes('Quali · Qualifying') && /Winner: Alex<\/summary>/.test(html) && html.includes('1. <svg class="trophy"') && html.includes('2. Sam (4 laps'));
+    say('a qualifying has no winner\'s cup and its line says who was fastest, not who won; a heat race has one in its line, one in the table and one for every heat (4)', cups() === 6 && html.includes('Quali · Qualifying') && /Fastest: Alex<\/summary>/.test(html) && html.includes('1. <svg class="trophy"') && html.includes('2. Sam (4 laps'));
+    store.sessions = keepS; await run('render()'); }
+  { const prevAdd = api.add, got = []; // a double click on Save while the first save is being written adds one driver, not two; a failing save keeps the form open and says why
+    api.add = async (e, it) => { got.push([e, it.name]); await new Promise(r => setTimeout(r, 30)); return { id: 'DX' }; };
+    run('state.sub="drivers"'); run("openForm('drivers', null)"); await new Promise(r => setTimeout(r, 20));
+    document.getElementById('f-name').value = 'Twice'; E('dlg').open = true;
+    const ev = { preventDefault() {} }, frm = E('frm'); await Promise.all([frm.onsubmit(ev), frm.onsubmit(ev)]);
+    say('a double click on Save in a database form adds the row once', got.length === 1 && got[0][0] === 'drivers' && got[0][1] === 'Twice');
+    api.add = async () => { throw new Error('disk full'); }; E('dlg').open = true; await frm.onsubmit(ev);
+    say('...and a save that fails says why and keeps the form open', E('err').textContent.includes('disk full') && E('dlg').open === true);
+    api.add = prevAdd; E('dlg').open = false; run('state.sub="results"'); }
+  { const keepS = store.sessions, wait = () => new Promise(r => setTimeout(r, 20));
+    // the winner was deleted from the database: the runner-up is second, and is not called the winner; a session without results (a hand-made file) still shows
+    store.sessions = [{ id: 's7', setupName: 'No winner left', sessionType: 'race', trackId: 't1', trackName: 'Living room', date: '2026-10-14T18:30:00Z', standings: [{ pos: 2, driverId: 'd2', carId: 'c2', driverName: 'Sam', carName: 'NSR', laps: 4, best: 5200, total: 20500 }] },
+      { id: 's6', setupName: 'Empty file', sessionType: 'race', trackId: 't1', trackName: 'Living room', date: '2026-10-15T18:30:00Z' }];
+    await run('render()'); const h = E('resbody').innerHTML;
+    { const line = (h.split('<details').find(x => x.includes('No winner left')) || '').split('</summary>')[0];
+      say('a race whose winner was deleted does not call the runner-up the winner', line.includes('No winner left') && line.includes('Living room') && !line.includes('Winner') && !line.includes('Sam')); }
+    say('a session without a list of results shows with an empty table instead of an empty page', h.includes('Empty file') && h.includes('No winner left') && !E('resbody').innerHTML.includes('undefined'));
     store.sessions = keepS; await run('render()'); }
   { const keepS = store.sessions; // 1.2.0: what the Race Director adjusted in the review shows in the results
     store.sessions = [{ ...keepS[0], standings: [{ ...keepS[0].standings[0], laps: 1, adjLaps: -1, adjMs: 5000 }] },
@@ -1689,7 +1711,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   const dlgClick=(id,data)=>E('dlg').onclick({target:{closest:()=>({id,dataset:data||{}})}});
   const pdfClick=async()=>{ const done=pdfOpen(); await dlgClick('pdfgo'); await done; };
   await pdfClick();
-  say('the report is sent to be saved as a PDF with a sensible file name', exported.length===1 && exported[0][1]==='Friday Sprint 2026-10-11.pdf' && exported[0][0].includes('All lap times') && exported[0][0].includes('5.500'));
+  say('the report is sent to be saved as a PDF with a sensible file name', exported.length===1 && exported[0][1]==='Friday Sprint '+localDay('2026-10-11T18:30:00Z')+'.pdf' && exported[0][0].includes('All lap times') && exported[0][0].includes('5.500'));
   { const keepSet=api.setSettings; api.setSettings=async p=>{calls.push(['settings',p]);return {...run('state.settings'),...p}}; // (the stand-in of the window gives back only what was saved: here the speed unit has to stay)
     run("state.settings.speedUnit='mph'; globalThis.__rs = Report.sessionHtml; Report.sessionHtml = a => { globalThis.__unit = a.unit; globalThis.__dist = a.distUnit; return globalThis.__rs(a); }"); const nE=exported.length; await pdfClick();
     say('1.22.0: with the speed unit mph the PDF of a session is made with the unit mph (the speeds in it are written in mph: tests/report.test.js)', run('globalThis.__unit')==='mph' && exported.length===nE+1);
@@ -2730,7 +2752,14 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     run('hw.dev = null; hw.kind = hw.kind0'); setS({ timingHw: 'trackmate', abVirtual: false }); run("state.hwSub = 'arduino'"); await run('render()');
     await E('ab-virtual').onchange({ target: { checked: true } }); await wait(150);
     say('...ticking "Use the virtual box" makes the Arduino box the one in use, and it connects', run('state.settings.timingHw') === 'arduino' && run('abConnected()') === true);
-    await E('ab-conn').onclick(); await wait(50);
+    await E('ab-conn').onclick(); await wait(50); await E('ab-virtual').onchange({ target: { checked: false } }); await wait(50);
+    // 1.39.1: the same with nothing chosen yet (no timingHw saved: the tick alone already made the Arduino box the one in use): the choice is saved all the same and the list above follows
+    setS({ timingHw: null, abVirtual: false }); run('ab.dev = null'); run("state.hwSub = 'arduino'"); await run('render()');
+    say('...nothing chosen yet: the Trackmate is the one in use, and the Arduino page says so', run('Hardware.timingChosen(state.settings)') === 'trackmate' && page().includes('This page is not in use for races: the app uses the Trackmate Interface.'));
+    await E('ab-virtual').onchange({ target: { checked: true } }); await wait(150);
+    say('...ticking the virtual box saves the Arduino box as the choice (not only as a side effect of the tick), and the list above shows it', run('state.settings.timingHw') === 'arduino' && E('hw-use').value === 'arduino' && run('abConnected()') === true);
+    say('...and the note "not in use" is taken off the Arduino page', E('hwnote').hidden === true && E('hwnote').innerHTML === '');
+    await E('ab-conn').onclick(); await wait(50); await E('ab-virtual').onchange({ target: { checked: false } }); await wait(50);
     // only the one in use connects by itself
     setS({ timingHw: 'trackmate', abVirtual: true, abAuto: true }); run('ab.dev = null');
     const autoNo = await run('abAutoConnect()'); await wait(80);
@@ -3626,7 +3655,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
       { id: 'q0', sessionType: 'qualifying', trackId: 't1', date: '2026-09-01T18:00:00Z', standings: ['hp0', 'hp1', 'hp2', 'hp3', 'hp4', 'hp5', 'hp6', 'hp7'].map((id, i) => ({ pos: i + 1, driverId: id })) },
       { id: 'q9', sessionType: 'qualifying', trackId: 'other', date: '2026-10-05T18:00:00Z', standings: [{ pos: 1, driverId: 'hp3' }] }];
     h = await home({ heatPlan: 'manual', heatSeeding: 'speed', heats: 2 }, 8);
-    say('seeding with a qualifying: a line says it is seeded by the latest one on this track (1 October; the older one and the one on another track do not count)', h.includes('Seeded by the latest qualifying on this track (2026-10-01).') && !h.includes('drivers who did not take part'));
+    say('seeding with a qualifying: a line says it is seeded by the latest one on this track (1 October; the older one and the one on another track do not count)', h.includes('Seeded by the latest qualifying on this track ('+localDay('2026-10-01T18:00:00Z')+').') && !h.includes('drivers who did not take part'));
     let sch = await start();
     say('...the four fastest of that qualifying (Zoe, Kim, Tim, Alex) race in the last heat, the others in the first', sch.length === 2 && sch[1].map(e => e.p).sort().join() === '0,2,5,7' && sch[0].map(e => e.p).sort().join() === '1,3,4,6');
     h = await home({ heatPlan: 'manual', heatSeeding: 'mixed', heats: 4, laps: 6 }, 8);

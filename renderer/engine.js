@@ -9,9 +9,11 @@
   const MIN_LAP = 800; // crossings closer together than this are treated as double triggers
 
   function fmtTime(ms) {
-    if (ms === null || ms === undefined || ms === '') return '–';
-    const m = Math.floor(ms / 60000), s = (ms % 60000) / 1000;
-    return m ? m + ':' + s.toFixed(3).padStart(6, '0') : s.toFixed(3);
+    if (ms === null || ms === undefined || ms === '' || !Number.isFinite(Number(ms))) return '–';
+    ms = Number(ms); const neg = ms < 0; if (neg) ms = -ms;
+    let m = Math.floor(ms / 60000), t = ((ms % 60000) / 1000).toFixed(3);
+    if (Number(t) >= 60) { m += 1; t = '0.000'; } // (59.9996 seconds is 1:00.000, not 60.000)
+    return (neg ? '-' : '') + (m ? m + ':' + t.padStart(6, '0') : t);
   }
 
   // Fuel and pit settings from a race setup (missing or empty values get their defaults).
@@ -60,6 +62,8 @@
 
   // lap times without the ones over the track's maximum lap time
   const goodLaps = c => c.laps.filter((_, n) => !(c.bad || [])[n] && !(c.invalid || []).includes(n));
+  // the laps the live average and median are made of: as in the saved result, without the laps with a stop in the pits and the laps that were taken out of the records
+  const averageLaps = c => c.laps.filter((_, n) => !(c.bad || [])[n] && !(c.invalid || []).includes(n) && !(c.pitLaps || []).includes(n) && !(c.removed || []).includes(n));
 
   // cfg: { type: practice|qualifying|race|timed, laps, duration (minutes), endRule: all|leader, minLap, fuel: fuelConfig(...), entries: [...] }
   function createRace(cfg) {
@@ -151,7 +155,7 @@
     };
     // running time of the current lap for car i
     R.lapElapsed = (i, t) => R.status === 'running' ? t - R.cars[i].last : R.status === 'paused' ? R.pausedAt - R.cars[i].last : 0;
-    R.stop = t => { if (R.status === 'running' || R.status === 'paused') end(t, 'Stopped'); };
+    R.stop = t => { if (R.status === 'running' || R.status === 'paused') end(R.status === 'paused' ? R.pausedAt : t, 'Stopped'); }; // (a race stopped while it is paused ends where its clock stands: the pause is not racing time)
     R.tick = t => {
       if (R.status === 'running') R.cars.forEach((_, i) => { pitCheck(i, t); serveCheck(i, t); enEval(i, t); repairCheck(i, t); });
       if (R.status === 'running' && timeLimit && !R.timeUp && t - R.t0 >= timeLimit) R.timeUp = true;
@@ -627,10 +631,10 @@
     R.removeLap = (i, n, recalc) => {
       const c = R.cars[i]; if (!c || !(n >= 0 && n < c.laps.length)) return false;
       if (!recalc) { if (!c.removed.includes(n)) c.removed = [...c.removed, n].sort((a, b) => a - b); return true; }
-      c.laps.splice(n, 1); c.bad.splice(n, 1);
+      const gone = c.laps[n]; c.laps.splice(n, 1); c.bad.splice(n, 1);
       const shift = list => list.filter(x => x !== n).map(x => (x > n ? x - 1 : x));
       c.invalid = shift(c.invalid); c.removed = shift(c.removed); c.yellowFast = shift(c.yellowFast || []); c.pitLaps = shift(c.pitLaps || []);
-      c.total = c.laps.reduce((a, b) => a + b, 0); rebest(c); return true;
+      c.total = Math.max(0, c.total - gone); rebest(c); return true; // (every crossing after it comes that much sooner; the time before the first crossing, when the first lap is skipped, stays in the total)
     };
 
     // the time of the pit stop in progress (or the last one): { live, ms } or null
@@ -641,6 +645,8 @@
     };
 
     const cum = (car, n) => car.laps.slice(0, n).reduce((a, b) => a + b, 0);
+    // The race clock at the first crossing of the line, when the first lap is skipped (0 otherwise): a car that crossed 3 seconds later is 3 seconds behind with equal laps. The order is by the clock at the last crossing, so the gaps are too.
+    const startOf = c => (Number.isFinite(c.total) && c.laps.length ? Math.max(0, c.total - cum(c, c.laps.length)) : 0);
     // The moment (on the race clock) at which a car set its best lap: the end of the first lap that is as fast as the best one and counts. Two cars with the same best lap:
     // the one that set it first ranks higher, as with the track records (the first to set a time keeps it).
     const bestAt = c => {
@@ -681,9 +687,9 @@
       return cum(x, full) + (d / L - full) * x.laps[full];
     };
     const distGap = (c, ref) => { // how long after ref car c was at the same distance (null: ref has not driven that far)
-      const n = c.laps.length, mine = cum(c, n) + addOf(c);
+      const n = c.laps.length, mine = cum(c, n) + startOf(c) + addOf(c);
       const theirs = reached(c) && reached(ref) ? cum(ref, ref.laps.length) : timeAt(ref, Math.min(n * lenOf(c), ref.laps.length * lenOf(ref)));
-      return theirs === null ? null : Math.max(0, mine - (theirs + addOf(ref)));
+      return theirs === null ? null : Math.max(0, mine - (theirs + startOf(ref) + addOf(ref)));
     };
     R.standings = () => {
       const byBest = (a, b) => (a.best ?? 1e12) - (b.best ?? 1e12) || (a.best !== null && b.best !== null ? bestAt(a) - bestAt(b) : 0);
@@ -695,7 +701,7 @@
         if (DS) { const ra = reached(a), rb = reached(b); if (ra !== rb) return ra ? -1 : 1; if (ra) return eff(a) - eff(b) || a.place - b.place || x - y; return prog(b) - prog(a) || eff(a) - eff(b) || x - y; }
         if (type === 'race' && (a.adjLaps || b.adjLaps) && lapsOf(a) !== lapsOf(b)) return lapsOf(b) - lapsOf(a); // (laps added or taken off in the review count before who finished first)
         if (type === 'race' && a.done !== b.done) return a.done ? -1 : 1;
-        if (type === 'race' && a.done && b.done) return eff(a) - eff(b) || a.place - b.place;
+        if (type === 'race' && a.done && b.done) return lapsOf(b) - lapsOf(a) || eff(a) - eff(b) || a.place - b.place; // (a car that lost a lap in the review, or that retired early, ranks behind the cars that drove more laps: the time only decides between equal laps)
         return ((type === 'practice' || type === 'qualifying') ? byBest(a, b) : byLaps(a, b)) || x - y;
       });
       const lead = R.cars[order[0]];
@@ -708,7 +714,7 @@
           if (type === 'practice' || type === 'qualifying') gap = c.best === null ? '' : '+' + fmtTime(c.best - lead.best);
           // always a time: how long after the leader this car reached the lap it has completed (a lapped car is compared at its own lap count)
           else if (DS) { const g = c.laps.length ? distGap(c, lead) : null; if (g !== null) gap = '+' + fmtTime(g); }
-          else if (c.laps.length) gap = '+' + fmtTime(Math.max(0, cum(c, c.laps.length) + addOf(c) - cum(lead, c.laps.length) - addOf(lead)));
+          else if (c.laps.length) gap = '+' + fmtTime(Math.max(0, cum(c, c.laps.length) + startOf(c) + addOf(c) - cum(lead, c.laps.length) - startOf(lead) - addOf(lead)));
         }
         return { pos: p + 1, index: i, car: c, gap };
       });
@@ -717,7 +723,7 @@
     // (null when there is none, or the car is out), and how many full laps the car is behind the leader. Practice and qualifying compare best laps.
     R.gapInfo = () => {
       const st = R.standings(), byBest = type === 'practice' || type === 'qualifying', out = new Array(R.cars.length).fill(null);
-      const val = (c, k) => cum(c, k) + addOf(c);
+      const val = (c, k) => cum(c, k) + startOf(c) + addOf(c);
       st.forEach((row, p) => {
         const c = row.car; if (c.dq || c.retired) return;
         let lead = null, ahead = null, down = 0;
@@ -809,7 +815,7 @@
       fastestBonus: Math.max(0, Math.min(1000, Number(s.fastestBonus) || 0)),
       tieBreak: TIEBREAKS.includes(s.tieBreak) ? s.tieBreak : 'default',
       // the result by total race time (the lowest time wins) needs heats that are limited by laps: with heats limited by time everybody drives the same time, so the laps count
-      byTime: s.byTime === true || (s.resultBy === 'time' && s.heatBy !== 'time'),
+      byTime: typeof s.byTime === 'boolean' ? s.byTime : s.resultBy === 'time' && s.heatBy !== 'time', // (a settled answer is kept: the heat race is made from the answer of the setup, which knows heatBy)
       // a heat that was not finished: the driver ranks below the finishers ('below', by laps), or the finish time is estimated from the average lap of the driver ('estimate')
       unfinished: s.unfinished === 'estimate' ? 'estimate' : 'below'
     };
@@ -904,7 +910,7 @@
         // result by total race time: did the car finish its laps, and the time of the heat (the finish time, or an estimate for a car that did not finish when the setup asks for one)
         const fin = byTime && race.finishedLaps ? race.finishedLaps(r.car) : false, est = byTime && !fin && sc.unfinished === 'estimate' && race.estimateOf ? race.estimateOf(r.car) : null;
         const tm = fin ? (race.timeOf ? race.timeOf(r.car) : r.car.total + a.ms) : est;
-        return { participant: r.car.participant, pos: r.pos, laps: race.lapsOf ? race.lapsOf(r.car) : r.car.laps.length, total: a.ms && Number.isFinite(r.car.total) ? r.car.total + a.ms : r.car.total, best: r.car.best, points: (points[r.pos - 1] || 0) + (byPoints ? a.points : 0),
+        return { participant: r.car.participant, pos: r.pos, laps: race.lapsOf ? race.lapsOf(r.car) : r.car.laps.length, total: race.timeOf && Number.isFinite(race.timeOf(r.car)) ? race.timeOf(r.car) : a.ms && Number.isFinite(r.car.total) ? r.car.total + a.ms : r.car.total, best: r.car.best, points: (points[r.pos - 1] || 0) + (byPoints ? a.points : 0),
           ...(byTime ? { fin, tm: Number.isFinite(tm) ? tm : null, ...(est !== null && Number.isFinite(est) ? { est: true } : {}) } : {}),
           ...(a.ms ? { adjMs: a.ms } : {}), ...(a.laps ? { adjLaps: a.laps } : {}), ...(byPoints && a.points ? { adjPoints: a.points } : {}), ...(note ? { bopNote: note } : {}), ...(tyres ? { tyreNote: tyres } : {}),
           ...(dnote ? { damageNote: dnote, damagePoints: r.car.dmgTotal || 0, repairs: (r.car.repairs || []).filter(q => !q.out).length, repairMs: r.car.repairMs || 0, ...(r.car.dmgOut ? { damageOut: r.car.dmgOut } : {}) } : {}) };
@@ -971,7 +977,7 @@
     return H;
   }
 
-  const api = { fuelUse, goodLaps, penaltyConfig, penaltyMs, fuelConfig, yellowConfig, createRace, createHeatRace, scoringOf, finalsOf, finalSizes, buildSchedule, fmtTime, MIN_LAP };
+  const api = { fuelUse, goodLaps, averageLaps, penaltyConfig, penaltyMs, fuelConfig, yellowConfig, createRace, createHeatRace, scoringOf, finalsOf, finalSizes, buildSchedule, fmtTime, MIN_LAP };
   root.RaceEngine = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

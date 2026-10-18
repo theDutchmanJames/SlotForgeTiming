@@ -11,6 +11,7 @@
     { id: 'laps', title: 'Laps', note: 'laps counted for the car', key: 'padLaps', defaults: [1, 2], color: '#9b7bff', whole: true, places: 0, unit: ['lap', 'laps'] },
     { id: 'champ', title: 'Championship points', note: 'points for the championship', key: 'padChamp', defaults: [1, 2, 5], color: '#3fb950', whole: false, places: 2, unit: ['championship point', 'championship points'] },
   ];
+  const LN = typeof module !== 'undefined' ? require('./listnum.js') : root.ListNum; // (a decimal comma: 0,5 is half a second)
   const MAXV = 6, TOP = 100000, NEUTRAL = '#3a3f47';
   const byId = id => GROUPS.find(g => g.id === id) || null;
   const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -23,8 +24,8 @@
     const f = Math.pow(10, g.places), n = g.whole ? Math.round(x) : Math.round(x * f) / f;
     return n > 0 ? n : null;
   }
-  // The text of a list ("1, 2, 5" - separated by commas, semicolons or spaces; a dot for decimals) into numbers.
-  const parse = text => String(text === undefined || text === null ? '' : text).split(/[\s,;]+/).filter(Boolean).map(Number);
+  // The text of a list ("1, 2, 5" - separated by commas, semicolons or spaces; a dot or a comma for decimals: "0.5" or "0,5") into numbers.
+  const parse = text => LN.numbers(text);
   // Any list (from the settings, a field, a mistake) made into a good one: positive numbers, no doubles, smallest first, at most six. Nothing usable gives the standard list.
   function clean(id, list) {
     const g = byId(id); if (!g) return [];
@@ -129,12 +130,12 @@
         undone = '';
       },
       settle(valueOf, now) {
-        list = list.filter(e => {
+        list = list.filter((e, at, all) => {
           if (e.settled) return true;
           const v = valueOf(e.lane, e.group);
           if (typeof v === 'number' && Number.isFinite(v) && !near(v, e.before)) {
-            const moved = v - e.before;
-            e.amount = Math.sign(moved) === Math.sign(e.amount) && Math.abs(moved) < Math.abs(e.amount) ? Math.round(moved * 1000) / 1000 : e.amount; // (less than asked: it hit a limit)
+            const moved = v - e.before, lastOne = !all.slice(at + 1).some(x => !x.settled && x.lane === e.lane && x.group === e.group); // (the value is what all the presses so far made of it: only the last press can tell what it did itself)
+            e.amount = Math.sign(moved) === Math.sign(e.amount) && (lastOne || Math.abs(moved) < Math.abs(e.amount)) ? Math.round(moved * 1000) / 1000 : e.amount; // (what really moved: less than asked when it hit a limit, more than asked with a driver's damage factor; Undo takes back that)
             e.settled = true; return true;
           }
           return now - e.at < wait;

@@ -64,8 +64,10 @@
     const winner = S.WINNER_TYPES.includes(session.sessionType), byPts = session.resultBy === 'points';
     const rows = (session.standings || []).filter(x => x && !x.dq && (winner ? Number(x.laps) > 0 : Number.isFinite(Number(x.best)) && Number(x.best) > 0));
     rows.sort((a, b) => (Number(a.pos) || 999) - (Number(b.pos) || 999));
+    // a race whose winner was deleted from the database has no first place left: the runner-up stays second
+    const gap = winner && rows.length && !(session.standings || []).some(x => x && Number(x.pos) === 1) ? Math.max(0, Math.floor(Number(rows[0].pos)) - 1 || 0) : 0;
     return rows.slice(0, 3).map((x, i) => ({
-      pos: i + 1, name: (x.asTeam ? x.teamName || x.driverName : x.driverName) || 'Guest',
+      pos: i + 1 + gap, name: (x.asTeam ? x.teamName || x.driverName : x.driverName) || 'Guest',
       detail: winner ? (byPts && Number.isFinite(Number(x.points)) ? `${x.points} pts` : plural(Number(x.laps), 'lap', 'laps')) : E.fmtTime(Number(x.best))
     }));
   }
@@ -149,7 +151,7 @@
     return (ctx.sessions || []).map((s, i) => ({ s, i })).filter(x => x.s && x.s.sessionType !== 'tokens')
       .sort((a, b) => String(b.s.date || '').localeCompare(String(a.s.date || '')) || b.i - a.i).slice(0, n).map(({ s }) => {
         const p = podium(s)[0], winner = S.WINNER_TYPES.includes(s.sessionType);
-        return { id: s.id, date: s.date || '', name: s.setupName || KINDS[s.sessionType] || 'Race', kind: KINDS[s.sessionType] || '', result: !p ? '' : winner ? p.name + ' won' : p.name + ', ' + p.detail };
+        return { id: s.id, date: s.date || '', name: s.setupName || KINDS[s.sessionType] || 'Race', kind: KINDS[s.sessionType] || '', result: !p ? '' : winner && p.pos === 1 ? p.name + ' won' : winner ? p.name + ', ' + p.detail : p.name + ', ' + p.detail };
       });
   }
 

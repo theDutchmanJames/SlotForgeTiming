@@ -30,7 +30,8 @@ const LiveCanvas = (() => {
   // S: the shared state the widgets are drawn from (see race.js and liveshare.js)
   function paint(nodes, S) {
     nodes.forEach(n => {
-      const out = Timing.content(n.w, S), key = JSON.stringify([out.html, out.color, out.bg, out.disabled]);
+      let out; try { out = Timing.content(n.w, S); } catch (x) { if (!n.failed) { n.failed = true; console.error('A widget could not be drawn (' + (n.w && n.w.type) + '):', x); } return; } // (one widget that fails does not stop the others from being drawn)
+      const key = JSON.stringify([out.html, out.color, out.bg, out.disabled]);
       if (key === n.last) return;
       n.last = key; n.val.innerHTML = out.html;
       if (out.html.includes('class="rrows"') && typeof Rows !== 'undefined' && n.val.querySelectorAll) Rows.fitText(n.val); // a leaderboard of row designs: no text wider than its cell

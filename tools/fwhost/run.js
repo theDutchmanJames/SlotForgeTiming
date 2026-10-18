@@ -116,6 +116,41 @@ for (const [board, exe, nLanes, label] of [['nano', nano, 4, 'Nano with 8 sensor
   ok('a car stalled on a sensor for 10 s: one lap on arrival, one when it has left and a car comes again (not one lap every 3.3 s)', r.laps === 2 && r.said, r.laps + ' laps' + (r.said ? '' : ', no "blocked" message'));
 }
 
+// 9. a car stands in the pits for longer than 3 s (a refuel): the PC hears when it arrives and when it LEAVES, so the stop is timed right and the next car is seen
+{
+  const run = stopS => { const s = new Scen(); track(s, 8); s.adc(0, 4, 1023); connect(s); s.rx(3.2e6, 'P4 P1 0\n'); keepAlive(s, 3.4e6, 60e6); s.pass(8e6, 4, stopS * 1e6).pass(30e6, 4, 1e6); s.end(60e6);
+    return throughLink(runBox(nano, s), { jitterMs: 1 }).events.filter(e => e.type === 'pit'); };
+  const p = run(8), outAt = p.filter(e => !e.in).map(e => e.at / 1000), inAt = p.filter(e => e.in).map(e => e.at / 1000);
+  ok('a pit stop of 8 s (longer than the 3 s of a blocked lane sensor): in at 8 s and out at 16 s, and the next car is seen at 30 s', inAt.length === 2 && outAt.length === 2 && Math.abs(inAt[0] - 8) < 0.1 && Math.abs(outAt[0] - 16) < 0.2 && Math.abs(inAt[1] - 30) < 0.1, JSON.stringify({ inAt, outAt }));
+  const long = new Scen(); track(long, 8); long.adc(0, 4, 1023); connect(long); long.rx(3.2e6, 'P4 P1 0\n'); keepAlive(long, 3.4e6, 150e6); long.pass(8e6, 4, 140e6); long.end(150e6);
+  const q = throughLink(runBox(nano, long), { jitterMs: 1 }).events.filter(e => e.type === 'pit'), qOut = q.filter(e => !e.in);
+  ok('a pit sensor that stays covered for 2 minutes is told as free again (the pit does not stay occupied for ever)', q.filter(e => e.in).length === 1 && qOut.length === 1 && Math.abs(qOut[0].at / 1000 - 128) < 1, JSON.stringify(q.map(e => [e.in, Math.round(e.at / 1000)])));
+}
+
+// 10. the box has been on for 49.7 days: millis() wraps, and the box goes on as before (no flood of ticks, no lap lost)
+{
+  const base = (4294967296 - 15000) * 1000; // 15 s before the wrap, in microseconds
+  const wrapped = build('nano', dir, base);
+  const T = t => base + t, s = new Scen(); track(s, 8); s.adc(T(0), 4, 1023); s.rx(T(3.0e6), 'V\n'); for (let t = 3.2e6; t < 80e6; t += 1e6) s.rx(T(t), '!\n');
+  for (let n = 0; n < 20; n++) s.pass(T(5e6 + n * 3.0e6), 0, 30e3); s.end(T(80e6));
+  const out = runBox(wrapped, s), { events, msgs } = throughLink(out, { jitterMs: 1 }), ticks = msgs.filter(m => m.type === 'tick'), hits = events.filter(e => e.type === 'hit' && e.lane === 0);
+  const plain = new Scen(); track(plain, 8); plain.adc(0, 4, 1023); plain.rx(3.0e6, 'V\n'); for (let t = 3.2e6; t < 80e6; t += 1e6) plain.rx(t, '!\n'); for (let n = 0; n < 20; n++) plain.pass(5e6 + n * 3.0e6, 0, 30e3); plain.end(80e6);
+  const before = runBox(nano, plain);
+  ok('millis() wraps in the middle of a race: all 20 laps are counted, 3 s apart (within 10 ms)', hits.length === 20 && hits.every((h, i) => i === 0 || Math.abs((h.at - hits[i - 1].at) - 3000) < 10), hits.length + ' laps');
+  ok('...and the ticks go on as they did before (the same number of bytes as without a wrap: no flood of "0" ticks)', out.tx.length < before.tx.length * 1.1, out.tx.length + ' bytes, ' + before.tx.length + ' without the wrap');
+  ok('...no tick is larger than a second', ticks.every(t => t.ms <= 1000), 'largest ' + Math.max(...ticks.map(t => t.ms)));
+}
+
+// 11. laps buffered while the PC was away when the box clock is above 2^31 ms (24.8 days): the time is sent as a positive number (on the AVR a (long) cast of it would turn negative)
+{
+  const base = (2147483648 + 5000) * 1000; // just above 2^31 ms
+  const high = build('nano', dir, base);
+  const T = t => base + t, s = new Scen(); track(s, 8); s.adc(T(0), 4, 1023); s.rx(T(3.0e6), 'V\n'); for (let k = 0; k < 8; k++) s.rx(T(3.2e6 + k * 1e6), '!\n'); keepAlive(s, T(16.0e6), T(30e6));
+  s.pass(T(14.0e6), 0, 30e3); s.end(T(25e6));
+  const text = Buffer.from(runBox(high, s).tx.map(x => x[1])).toString('latin1');
+  ok('a lap buffered while the PC was away, with the box clock above 2^31 ms: the box sends its time as a positive number ([B1 2147502648])', text.includes('[B1 2147502648]') && !/\[B\d -/.test(text), (text.match(/\[B[^\]]*\]/g) || []).join(' '));
+}
+
 console.log(fails ? `\n${fails} FAILED` : `\nall passed${knownOpen ? ` (${knownOpen} known issue${knownOpen > 1 ? 's' : ''} still open: run with --strict to fail on them)` : ''}`);
 try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* the temp folder stays */ }
 process.exit(fails ? 1 : 0);

@@ -29,7 +29,9 @@ async function tmSend(list) {
 // switch the track power through the interface's relay
 async function tmPower(on) { const ok = await tmSend([Hardware.trackmatePower(on, tmSettings().relayNC)]); if (ok) Trackmate.link.setPower(on); return ok; }
 // the setup the Trackmate needs before it reports sensors: number of lanes, sensor type, debounce, start
-const tmSetup = lanes => { const t = tmSettings(); return tmSend(Hardware.trackmateInit({ lanes: lanes || t.lanes, closed: t.nc, debounce: t.deb })); };
+let tmRaceLanes = 0; // the lanes of the race that is open: a reconnect or "Send setup now" during that race tells the interface those, not the Lanes of the settings
+const tmUseLanes = n => { tmRaceLanes = Number(n) > 0 ? Number(n) : 0; };
+const tmSetup = lanes => { const t = tmSettings(); return tmSend(Hardware.trackmateInit({ lanes: lanes || tmRaceLanes || t.lanes, closed: t.nc, debounce: t.deb })); };
 
 // bytes from the port -> whole messages for the monitor, and race events through Trackmate.link
 function tmReceive(bytes) {
@@ -55,7 +57,9 @@ async function tmPollSignals() {
   tick();
 }
 // open the chosen device. setup: also send the Trackmate setup (a COM port device only).
-async function tmOpen(setup) {
+let tmOpening = false; // (one Connect at a time, as on the Arduino page)
+async function tmOpen(setup) { if (tmOpening) return false; tmOpening = true; try { return await tmOpenNow(setup); } finally { tmOpening = false; } }
+async function tmOpenNow(setup) {
   hw.prevTick = undefined; Trackmate.link.reset();
   try {
     hw.t0 = performance.now();
@@ -71,7 +75,7 @@ async function tmOpen(setup) {
           try { for (;;) { const { value, done } = await hw.reader.read(); if (done) break; if (value && value.length) tmReceive(value); } }
           catch (x) { hw.lines.push(`${((performance.now() - hw.t0) / 1000).toFixed(3).padStart(9)}  ERROR  ${x.message}`); tmShow(); } finally { hw.reader.releaseLock(); }
         }
-        if (hw.open) { hw.open = false; Trackmate.link.setConnected(false); tmNote('-- the device went away --'); tmRedraw(); }
+        if (hw.open) { hw.open = false; Trackmate.link.setConnected(false); tmNote('-- the device went away --'); try { if (hw.writer) { hw.writer.releaseLock(); hw.writer = null; } await hw.dev.close(); } catch (x) { /* it is gone */ } tmRedraw(); } // (the port is let go, so that Connect works again when the cable is back)
       })();
       if (setup) await tmSetup();
     } else {
@@ -151,9 +155,12 @@ function renderHardwareSettings(box) {
 
   const find = async kind => {
     try {
-      if (kind === 'serial') { hw.dev = await navigator.serial.requestPort(); hw.info = hw.dev.getInfo ? hw.dev.getInfo() : {}; }
-      else { const l = await navigator.hid.requestDevice({ filters: [] }); hw.dev = l[0]; hw.info = hw.dev ? { vendorId: hw.dev.vendorId, productId: hw.dev.productId, productName: hw.dev.productName } : {}; }
-      if (!hw.dev) return tmMsg('No device chosen.');
+      let dev = null, info = {};
+      if (kind === 'serial') { dev = await navigator.serial.requestPort(); info = dev.getInfo ? dev.getInfo() : {}; }
+      else { const l = await navigator.hid.requestDevice({ filters: [] }); dev = l[0] || null; info = dev ? { vendorId: dev.vendorId, productId: dev.productId, productName: dev.productName } : {}; }
+      if (!dev) return tmMsg('No device chosen.');
+      if (hw.open) await tmClose(); // (a new choice while connected: the old connection is closed first, not left open behind the new one)
+      hw.dev = dev; hw.info = info;
       hw.kind = kind;
       if (kind === 'serial' && hw.info.usbVendorId !== undefined) await save({ tmDevice: { vid: hw.info.usbVendorId, pid: hw.info.usbProductId } }); // remembered for the next start
       if (kind === 'serial') { hw.baud = 9600; hw.data = 8; hw.parity = 'none'; hw.stop = 1; }

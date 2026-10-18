@@ -4,7 +4,7 @@ const optionsOf = (entity, list, chosen, blank = '(choose)') =>
 
 // 1.17.0: the cards on the right of the Home tab need every saved lap. The laps are fetched once and kept while you stay on the Home tab (a change on Home does not fetch them again);
 // app.js forgets them (resetHome) whenever another tab was shown, because a race may have been saved or a record removed since. homeRun numbers the pictures, so a late answer never lands in a newer one.
-let homeLaps = null, homeRun = 0, homeOffTm = null, homeOffAb = null;
+let homeLaps = null, homeRun = 0, homeOffTm = null, homeOffAb = null, homeDraw = 0; // (homeDraw numbers the drawings of Home: the one that is slow does not paint over another tab, or over a newer Home)
 // 1.26.0: a line of text or a number in Customize is saved when you leave the field. Home is drawn again a moment later (HOME_SOFT_MS), so that a click or a Tab that comes next
 // is not lost to a page that changes under it, and the control that has the cursor then keeps it. While you are typing in a field (an input without its change yet) nothing is drawn.
 let HOME_SOFT_MS = 400;
@@ -26,13 +26,16 @@ function timingReady() {
   return typeof confirm !== 'function' || confirm(`${name} is the timing hardware you chose, and it is not connected.\n\nOK: start anyway (laps can still be counted with the keys or simulated cars).\nCancel: do not start, so you can connect it (App Settings, Timing Hardware).`);
 }
 async function renderHome() {
+  const draw = ++homeDraw;
   if (state.homeCustom) clearTimeout(state.homeCustom.timer); // (a drawing that was waiting is this one)
   const [drivers, cars, tracks, setups, sessions, rotations, teams, layouts, audiosets, imagesets] = await Promise.all(['drivers', 'slotcars', 'tracks', 'racesetups', 'sessions', 'rotationsetups', 'teams', 'layouts', 'audiosets', 'imagesets'].map(e => api.list(e)));
   const imageSets = Array.isArray(imagesets) ? imagesets : []; // (1.26.0: the picture sets of Customization > Image Settings, for the Weather and Tyres Available cards)
   const saved = state.settings;
   const grid = HomeGrid.gridOf(saved), hc = state.homeCustom = state.homeCustom || { open: false, sel: 0 }; // (1.25.0: the cards are a grid; hc is the Customize panel: open or not, and the card whose settings show)
   hc.sel = Math.min(Math.max(Math.floor(Number(hc.sel)) || 0, 0), grid.boards.length - 1);
+  if (draw !== homeDraw || state.tab !== 'home') return; // (another tab, or another drawing of Home, was asked for while the lists came in)
   const resume = api.getResume && !(typeof raceActive === 'function' && raceActive()) ? await api.getResume().catch(() => null) : null; // (1.9.0: a race that was interrupted by a crash or a power cut, kept in a file)
+  if (draw !== homeDraw || state.tab !== 'home') return;
   const setupId = setups.some(x => x.id === saved.lastSetupId) ? saved.lastSetupId : (setups[0]?.id || '');
   const rawSetup = setups.find(x => x.id === setupId);
   const setup = Endurance.effective(rawSetup); // (1.9.0: an Endurance Race is a race, a timed race or heats, with the rules of the swaps in setup.endurance)
@@ -125,7 +128,7 @@ async function renderHome() {
       else {
         ranks = rows.map(r => { const i = r.driverId ? q.standings.findIndex(x => x.driverId === r.driverId) : -1; return i < 0 ? null : i; });
         if (ranks.every(x => x === null)) { ranks = null; notes.push('None of these drivers took part in the latest qualifying, so they are shuffled.'); }
-        else notes.push(`Seeded by the latest qualifying on this track${q.date ? ' (' + String(q.date).slice(0, 10) + ')' : ''}${ranks.some(x => x === null) ? '; drivers who did not take part are placed last' : ''}.`);
+        else notes.push(`Seeded by the latest qualifying on this track${q.date ? ' (' + (Number.isFinite(Date.parse(q.date)) ? (d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)(new Date(q.date)) : String(q.date).slice(0, 10)) + ')' : ''}${ranks.some(x => x === null) ? '; drivers who did not take part are placed last' : ''}.`);
       }
     }
     const key = Heats.planKey({ count: rows.length, lanes, setup, seed, ranks }), edit = (saved.heatEdits || {})[setupId];

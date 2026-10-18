@@ -19,8 +19,8 @@
   const lapBefore = c => (c && c.laps.length > 1 ? fin(c.laps[c.laps.length - 2]) : null); // (the lap before the last one: 1.29.0, Lap to Lap Delta)
   const STAT = {
     laptime: c => lastLap(c), // (the lap time widget runs a clock: what is compared is the lap that was completed last)
-    avglap: c => { const g = E.goodLaps(c); return g.length ? mean(g) : null; },
-    medlap: c => { const g = E.goodLaps(c); return g.length ? median(g) : null; },
+    avglap: c => { const g = E.averageLaps(c); return g.length ? mean(g) : null; },
+    medlap: c => { const g = E.averageLaps(c); return g.length ? median(g) : null; },
     bestlap: c => fin(c.best),
     recordlap: (c, S) => fin(S.personalBest(c.driverId)),
     pitstop: (c, S, t) => { const p = S.eng.pitTime(S.eng.cars.indexOf(c), t); return p ? fin(p.ms) : null; }

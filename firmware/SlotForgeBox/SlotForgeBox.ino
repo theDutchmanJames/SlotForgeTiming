@@ -70,7 +70,11 @@ void onRelearn(uint8_t pin, uint16_t base) {
   Serial.print("[E pin "); Serial.print(pin); Serial.print(" re-learned: empty level "); Serial.print(base); Serial.write(']');
   Serial.print("[C"); Serial.print(pin); Serial.write(' '); Serial.print(base); Serial.write(' '); Serial.print(S.pins[pin].arm); Serial.write(' '); Serial.print(S.pins[pin].trig); Serial.write(']');
 }
-void onStuck(uint8_t pin) { if (proto.slotforge) { Serial.print("[E pin "); Serial.print(pin); Serial.print(" blocked for 3 s]"); } }
+void onStuck(uint8_t pin) {
+  PinSetting &p = S.pins[pin];
+  if (p.role == ROLE_PIT) proto.pit(p.index, false, loopNow); // (the pass is over for good: tell the PC the car left, else the pit stays occupied and the next car's entry is not seen)
+  if (proto.slotforge) { Serial.print("[E pin "); Serial.print(pin); Serial.print(" blocked for "); Serial.print((unsigned)((p.role == ROLE_PIT ? PIT_STUCK_MS : STUCK_MS) / 1000)); Serial.print(" s]"); }
+}
 void onCalibrated(uint8_t pin, uint16_t base) {
   if (!proto.slotforge) return;
   Serial.print("[C"); Serial.print(pin); Serial.write(' '); Serial.print(base); Serial.write(' '); Serial.print(S.pins[pin].arm); Serial.write(' '); Serial.print(S.pins[pin].trig); Serial.write(']');
@@ -110,7 +114,7 @@ void setOption(const char *key, const char *val) {
 }
 void handle(char *l, uint32_t now) {
   lastFromPcAt = now;
-  if (away) { away = false; proto.ev("S-", now); for (uint8_t i = 0; i < bufN; i++) proto.laneVal('B', buffered[i].lane, (long)buffered[i].at, now); bufN = 0; }
+  if (away) { away = false; proto.ev("S-", now); for (uint8_t i = 0; i < bufN; i++) proto.laneValU('B', buffered[i].lane, buffered[i].at, now); bufN = 0; }
   char c = l[0]; char *rest = l + 1; while (*rest == ' ') rest++;
   switch (c) {
     // Trackmate commands
@@ -173,7 +177,7 @@ void loop() {
   buttons.poll(now);
   if (proto.read()) handle(proto.line, now);
   // the Trackmate tick every 200 ms, and the letters of covered lanes every 50 ms
-  if (now - proto.lastTickAt >= TICK_MS) proto.tick(now);
+  if ((int32_t)(now - proto.lastTickAt) >= (int32_t)TICK_MS) proto.tick(now); // (a signed difference: it also works when millis() wraps after 49.7 days)
   if (now - lastLetterAt >= LETTER_MS) {
     for (uint8_t i = 0; i < SFB_ANALOG_PINS; i++) if (S.pins[i].role == ROLE_LANE && sensing.st[i].covered && S.pins[i].index >= 1 && S.pins[i].index <= compatLanes && !away) { Serial.write((uint8_t)('A' + (S.pins[i].index - 1))); }
     lastLetterAt = now;

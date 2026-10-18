@@ -133,7 +133,7 @@
   // The swap is made: the stint ends, the next driver starts. o: { el, laps, m (the distance driven, metres), to (the driver who steps in; else the one that was picked, else the suggestion), by ('sensor' | 'button'), busy, rnd, roster }
   // Gives { ok, from, to, early (before the shortest stint), over (the driver who steps in is past the longest total), stintMs, stintLaps, stintM, due (the swap was due) } or { ok: false, error }.
   function swap(cfg, st, o) {
-    const roster = o.roster || [], ids = roster.map(r => r.id), s = cur(st), at = s.d, l = look(cfg, st, o.el, o.laps, o.m);
+    const roster = o.roster || [], s = cur(st), at = s.d, l = look(cfg, st, o.el, o.laps, o.m);
     const k = choices(cfg, st, roster, o.busy, o.el, o.laps, o.m);
     let to = o.to || (st.picked || cfg.next === 'random' ? st.nextId : '') || '', c = k.find(x => x.id === to); // (in turn, the driver is worked out now: who is free may have changed since he was planned)
     if (!c || to === at || c.why === 'drives for another team now') { // nobody was named, or the one who was meant cannot: the driver in turn (or by lot) who can
@@ -213,7 +213,7 @@
   // the rules of a setup in a few words, for under the title of the race: "a swap every 30 minutes", "swaps at 30 minutes, 90 minutes", "a swap when the team chooses (stints of 10 to 40 minutes)"
   function rulesText(cfg) {
     if (!cfg || !cfg.on) return '';
-    const sp = n => spanText(cfg, n), bound = (lo, hi) => (lo > 0 && hi > 0 ? ` (stints of ${lo} to ${sp(hi)})` : hi > 0 ? ` (a stint of ${sp(hi)} at most)` : lo > 0 ? ` (a stint of ${sp(lo)} at least)` : '');
+    const sp = n => spanText(cfg, n), bound = (lo, hi) => (lo > 0 && hi > 0 ? ` (stints of ${sp(lo).replace(/\s*[A-Za-z]+\.?$/, '')} to ${sp(hi)})` : hi > 0 ? ` (a stint of ${sp(hi)} at most)` : lo > 0 ? ` (a stint of ${sp(lo)} at least)` : '');
     const where = cfg.unit === 'distance' ? (cfg.where === 'anywhere' ? ' anywhere on the track' : ' at the line') : ''; // (a swap by distance: at the next crossing of the line, or at the distance itself)
     if (cfg.mode === 'every') return `a swap every ${sp(cfg.every)}${where}`;
     if (cfg.mode === 'moments') return cfg.moments.length ? `swaps after ${cfg.moments.map(sp).join(', ')}${where}` : 'no swaps planned';

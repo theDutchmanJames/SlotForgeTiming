@@ -123,7 +123,7 @@ async function renderRace() {
     </div>
     <div id="lapreview" class="card rv" hidden></div>
     <div id="review" class="card rv" hidden></div>
-    <p class="muted">Space starts, pauses and resumes · Y yellow flag · R red flag · S stops the race · F shows the widgets full screen (Esc closes it) · press a lane's number key (or its Lap button) each time a car crosses the line${tokenSession ? ' (a lane without paid time ignores it, and a lane whose time is up records the lap but does not count it)' : ''} · Shift + number (or the Pit button) puts that lane's car on the sensor, press again to drive off · Ctrl + number (or the Call button) is a call from that lane: the yellow flag goes up and the Race Director decides what happens.</p>
+    <p class="muted">Space starts, pauses and resumes · Y yellow flag · R red flag · S stops the race · F shows the widgets full screen (Esc closes it) · press a lane's number key (or its Lap button) each time a car crosses the line${tokenSession ? ' (a lane without paid time ignores it, and a lane whose time is up records the lap but does not count it)' : ''}${tokenSession ? '' : ' · Shift + number (or the Pit button) puts that lane\'s car on the sensor, press again to drive off'} · Ctrl + number (or the Call button) is a call from that lane: the yellow flag goes up and the Race Director decides what happens.</p>
     ${planHtml}${heats ? '<h4>Overall result</h4>' + (scoreNote ? `<p class="hint2" id="overallnote">${esc(scoreNote)}</p>` : '') + `<div class="wrap"><table class="fields"><thead><tr><th>Pos</th><th>${byTeam ? 'Team' : 'Driver'}</th><th>Heats</th><th>Laps</th><th>Points</th>${scoreCol ? '<th>Result</th>' : ''}${finalsOn ? '<th>Final</th>' : ''}<th>Best lap</th></tr></thead><tbody id="overall"></tbody></table></div>` : ''}`;
 
   const now = () => performance.now();
@@ -175,9 +175,11 @@ async function renderRace() {
   };
   // announcements: only on this computer, and only when the race setup has an audio set
   Sound.resetCool(); // (a new race: nothing was said lately, for the "not again within" waits of the audio set)
+  // what the announcer measures a lap against: the records of the database and the laps of the heats that are already driven in this event (the next heat has a new announcer)
+  const annBase = () => { const personal = new Map(base.personal); live.priorBy.forEach((t, id) => { if (id && t < (personal.get(id) ?? Infinity)) personal.set(id, t); }); return { personal, track: Math.min(base.track, live.priorAll), trackName: base.trackName }; };
   const audioSet = find(audioSets, setup.audioSet), mkAnn = () => Announcer.create({ driverBy: audioSet && audioSet.driverBy, distances: audioSet ? Sound.distances(audioSet.distances) : [], lapsToGo: audioSet ? Sound.counts(audioSet.lapsToGo, [3]) : [], minutesToGo: audioSet ? Sound.counts(audioSet.minutesToGo, [1]) : [],
     closeGap: audioSet ? Sound.bounded(audioSet.closeGap, 1, 0.1, 30) : 1, battleLaps: audioSet ? Sound.bounded(audioSet.battleLaps, 3, 2, 20) : 3,
-    nearRecord: audioSet ? Sound.bounded(audioSet.nearRecord, 0.1, 0.01, 5) : 0.1, noLapSeconds: audioSet ? Math.round(Sound.bounded(audioSet.noLapSeconds, 30, 5, 600)) : 30, trackName: (r.track && r.track.name) || '', lapLimit: engineType === 'race' && !Distance.isOn(setupNow()) ? Number(lenNow().laps) || 0 : 0, base });
+    nearRecord: audioSet ? Sound.bounded(audioSet.nearRecord, 0.1, 0.01, 5) : 0.1, noLapSeconds: audioSet ? Math.round(Sound.bounded(audioSet.noLapSeconds, 30, 5, 600)) : 30, trackName: (r.track && r.track.name) || '', lapLimit: engineType === 'race' && !Distance.isOn(setupNow()) ? Number(lenNow().laps) || 0 : 0, base: annBase() });
   // the race that is racing, or the next one while the race waits between two races. final: 'A' or 'B' when that race is a final (and also after the last final, when it is over);
   // total: the number of races with the finals; picking: the lanes of the final are not all chosen; breakLeft: the seconds of the break that are left
   const finalAt = () => { const i = Math.min(heat.idx, heat.total - 1); return i >= heat.count ? heat.raceName(i).slice(6) : ''; };
@@ -189,7 +191,7 @@ async function renderRace() {
   const lineupNow = () => (heats && heat.hasNext() ? heat.entries().map(e => ({ lane: heat.isFinal() && !heat.picksDone() ? -1 : e.lane, name: e.asTeam && e.teamName ? `${e.teamName}${e.driverName ? ' with ' + e.driverName : ''}` : e.driverName || '', nickname: e.nickname || '', callsign: e.callsign || '' })).sort((a, b) => a.lane - b.lane) : []);
   const announce = () => {
     if (!audioSet || !live.ann) return;
-    try { live.ann.observe(eng, { phase: live.phase, lights: live.lights, now: now(), heat: heatInfo(), lineup: heats && live.phase === 'between' ? lineupNow() : undefined, trackmate: typeof Trackmate !== 'undefined' && Trackmate.link ? !!Trackmate.link.connected : undefined, idle: c => !!tokens && ['idle', 'out'].includes(tokens.stateOf(c.lane, raceT())) }).forEach(e => Sound.say(audioSet, e.call, e.vars, undefined, undefined, e.facts)); } catch (x) { /* a sound problem never stops the race */ }
+    try { live.ann.observe(eng, { phase: live.phase, lights: live.lights, now: now(), heat: heatInfo(), lineup: heats && live.phase === 'between' ? lineupNow() : undefined, trackmate: typeof Trackmate !== 'undefined' && Trackmate.link && Hardware.timingChosen(state.settings) === 'trackmate' ? !!Trackmate.link.connected : undefined /* (only when the Trackmate is the timing hardware: the box has no such call) */, idle: c => !!tokens && ['idle', 'out'].includes(tokens.stateOf(c.lane, raceT())) }).forEach(e => Sound.say(audioSet, e.call, e.vars, undefined, undefined, e.facts)); } catch (x) { /* a sound problem never stops the race */ }
   };
   live.ann = mkAnn(); live.announce = announce;
   // Time Token Session: the calls "time almost up" and "time is up", said once when a lane moves into that state (not for a lane that is restored, or has its time added),
@@ -237,7 +239,7 @@ async function renderRace() {
   // after a correction: the best laps that are shown (the highlights, the record lap) are worked out again from the laps that still count
   const recomputeBests = () => {
     const by = new Map(live.priorBy); let all = live.priorAll, who = live.priorAllName;
-    const put = (d, t, name) => { if (t < (by.get(d) ?? Infinity)) by.set(d, t); if (t < all) { all = t; who = name; } };
+    const put = (d, t, name) => { if (d && t < (by.get(d) ?? Infinity)) by.set(d, t); if (t < all) { all = t; who = name; } };
     eng.cars.forEach(c => c.laps.forEach((t, n) => { if (!c.bad[n] && !c.invalid.includes(n) && !c.removed.includes(n)) put(c.en ? Endurance.driverAtLap(c.en, n) : c.driverId, t, c.driverName); })); // (an Endurance Race: the driver who drove that lap)
     if (tokens) tokens.closedList().forEach(x => x.laps.forEach(l => { if (!l.late && !l.bad && !l.invalid && !l.removed) put(x.who.driverId || '', l.t, x.who.driverName || 'Guest'); }));
     live.bestBy = by; live.bestAll = all; live.bestAllName = who;
@@ -341,13 +343,13 @@ async function renderRace() {
     const c = eng.cars[i], d = c.driverId, tAt = at !== undefined ? at : now();
     const tokenT = tokens ? eng.elapsed(tAt) : 0, lateLap = !!tokens && tokens.stateOf(c.lane, tokenT) === 'out'; // after the paid time is up a lap is kept, but does not count
     if (tokens && tokens.stateOf(c.lane, tokenT) === 'idle') return; // a lane nobody paid for: the crossing is ignored
-    const prevPersonal = Math.min(base.personal.get(d) ?? Infinity, live.bestBy.get(d) ?? Infinity), prevTrack = Math.min(base.track, live.bestAll);
+    const prevPersonal = d ? Math.min(base.personal.get(d) ?? Infinity, live.bestBy.get(d) ?? Infinity) : Infinity, prevTrack = Math.min(base.track, live.bestAll);
     if (!eng.cross(i, tAt)) { if (eng.status === 'finished') engineFinished(); else update(); return; } // a car out of fuel may retire or not count
     const time = c.laps[c.laps.length - 1], slow = c.bad[c.bad.length - 1];
     if (tokens) { tokens.lap(c.lane, time, tokenT, slow); if (lateLap) eng.setInvalid(i, c.laps.length - 1, true); persistTokens(false); }
     if (!slow && !lateLap) { // a lap over the track's maximum lap time never counts as a best lap or record
       live.flash.set(c, { at: now(), time, kind: Timing.classifyLap(time, prevPersonal, prevTrack) });
-      live.bestBy.set(d, Math.min(live.bestBy.get(d) ?? Infinity, time));
+      if (d) live.bestBy.set(d, Math.min(live.bestBy.get(d) ?? Infinity, time)); // (a Guest has no personal best: the Guests are not one driver)
       if (time < live.bestAll) { live.bestAll = time; live.bestAllName = c.driverName; }
     }
     if (eng.status === 'finished') engineFinished(); else update();
@@ -355,23 +357,25 @@ async function renderRace() {
   // a car stops over the sensor (crossing counts as a lap), and later drives off
   const blockCar = i => { if (live.phase === 'running') { eng.block(i, now()); if (eng.status === 'finished') engineFinished(); else update(); } };
   const unblockCar = i => { eng.unblock(i, now()); update(); };
-  const togglePit = lane => { const i = eng.cars.findIndex(c => c.lane === lane); if (i < 0) return; if (eng.cars[i].blockAt !== null) unblockCar(i); else blockCar(i); };
+  const togglePit = lane => { if (tokens) return; /* (a token session has no pit: a crossing that way would count for the engine, not for the stint) */ const i = eng.cars.findIndex(c => c.lane === lane); if (i < 0) return; if (eng.cars[i].blockAt !== null) unblockCar(i); else blockCar(i); };
   const crossLane = lane => { const i = eng.cars.findIndex(c => c.lane === lane); if (i >= 0) crossCar(i); };
   const simulate = i => {
     const pace = (4200 + Math.random() * 1800) / speed;
+    // how long a simulated car stays in the pit: until the tank is full (the hold time is real time; the rest follows the test speed)
+    const stayOf = () => { const c = eng.cars[i], fx = eng.factorsOf(i); /* (Balance of Power and the weather change the use, the refuelling speed and the tank) */ return pitMs + 100 + (((eng.tankOf(i) - c.fuel) / ((fuelCfg.rate * fx.rate) || 1)) * 1000 + 300) / speed; };
+    const leave = () => { live.sim[i] = setTimeout(() => { unblockCar(i); next(); }, stayOf()); };
     const next = () => {
       if (live.phase !== 'running' || eng.cars[i].done) return;
       live.sim[i] = setTimeout(() => {
         const c = eng.cars[i];
-        const fx = eng.factorsOf(i); // (Balance of Power and the weather change the use, the refuelling speed and the tank)
+        const fx = eng.factorsOf(i);
         if (((fuelCfg.on && c.fuel <= fuelCfg.perLap * fx.use * 1.5) || (eng.weather && eng.wxOf(i).need)) && c.blockAt === null) { // low on fuel, or on the wrong tyres for the weather: the simulated car pits, stays until the tank is full
-          blockCar(i);
-          const stay = pitMs + 100 + (((eng.tankOf(i) - c.fuel) / ((fuelCfg.rate * fx.rate) || 1)) * 1000 + 300) / speed; // the hold time is real time; the rest follows the test speed
-          live.sim[i] = setTimeout(() => { unblockCar(i); next(); }, stay);
+          blockCar(i); leave();
         } else { crossCar(i); next(); }
       }, pace + (Math.random() - 0.5) * 700 / speed);
     };
-    next();
+    if (eng.cars[i].blockAt !== null) leave(); // (a pause stopped the timer of a car that was in the pit: after the pause it still drives off)
+    else next();
   };
   const startSim = () => { if (ui('sim').checked) eng.cars.forEach((_, i) => simulate(i)); };
   // keep the page's phase in step with the engine after a pause, resume or red flag
@@ -718,6 +722,7 @@ async function renderRace() {
       eng.setFlag('red', now()); syncPhase();
     }
   };
+  live.annBase = annBase; // (for the automated tests)
   live.actions = actions; actions.finalize = () => (tokens ? finalizeTokens() : finalize()); live.reviewCommand = reviewCommand; // (for the automated tests)
   // ---- the Trackmate: sensor hits count laps, the Trackcall button flags the race ----
   // One timing hardware at a time: the one chosen in App Settings, Timing Hardware. Only it counts laps and is told about the lights and the power; the status line names it, red when it is not connected.
@@ -729,11 +734,12 @@ async function renderRace() {
   // the track power (the Trackmate relay): only when it is connected
   const power = on => { if (hwUse === 'trackmate' && Trackmate.link.connected && typeof tmPower === 'function') tmPower(on); if (live.box) live.box.power(on); };
   const CUTS = { yellowredcut: ['red'], yellowcut: ['yellow'], redcut: ['red'] }; // which flags switch the power off, per Trackcall choice
+  if (typeof tmUseLanes === 'function') tmUseLanes(hwUse === 'trackmate' ? lanes : 0);
   if (hwUse === 'trackmate' && Trackmate.link.connected && typeof tmSetup === 'function') tmSetup(lanes).then(() => power(setup.startPower !== 'off')); // the interface is told the lanes; the track starts with or without power
   let callAt = 0; // when the last Trackcall press was
   const trackcall = () => {
     const mode = setup.trackcall || 'yellowred', t = now();
-    if (mode === 'power') return power(Trackmate.link.power === false); // switches the relay, in any phase of the race screen
+    if (mode === 'power') { const l = hwUse === 'arduino' ? abLinkNow() : Trackmate.link; return power(!!l && l.power === false); } // switches the relay of the timing hardware in use, in any phase of the race screen
     if (!['running', 'paused'].includes(live.phase) || mode === 'none') return;
     if (mode === 'yellow' || mode === 'yellowcut') return actions.yellow();
     if (mode === 'red' || mode === 'redcut') return actions.red();
@@ -790,14 +796,20 @@ async function renderRace() {
   live.key = ev => {
     if (state.tab !== 'race') return; // (the race goes on while another tab is shown, but the keys are for that tab then: Space and the letters would be typed into its fields)
     if (ev.target && ev.target.matches && ev.target.matches('input,select,textarea')) return;
-    if (ev.key === ' ') { ev.preventDefault(); if (live.phase === 'ready' || live.phase === 'between') actions.start(); else actions.pause(); return; }
+    if (ev.key === ' ') { ev.preventDefault(); if (ev.repeat || ev.ctrlKey || ev.metaKey || ev.altKey) return; if (live.phase === 'ready' || live.phase === 'between') actions.start(); else actions.pause(); return; }
+    if (ev.repeat || ev.metaKey || ev.altKey) return; // a key that is held down is one press; Alt and Cmd belong to the menu and the system
+    const code = String(ev.code || ''), digit = /^(?:Digit|Numpad)([1-8])$/.exec(code), main = /^Digit([1-8])$/.exec(code);
+    if (ev.ctrlKey) { // Ctrl + number is a call; the other Ctrl keys (Ctrl+R reload, Ctrl+S ...) are not ours
+      if (main) { ev.preventDefault(); const l = Number(main[1]) - 1; if (l < lanes) actions.call(l); }
+      return;
+    }
     const k = String(ev.key).toLowerCase();
     if (k === 'y') return actions.yellow();
     if (k === 'r') return actions.red();
     if (k === 's') return actions.stop(); // still asks "Stop the race now?"
-    if (ev.ctrlKey && /^Digit[1-8]$/.test(ev.code || '')) { ev.preventDefault(); const l = Number(ev.code.slice(5)) - 1; if (l < lanes) actions.call(l); return; }
-    if (ev.shiftKey && /^Digit[1-8]$/.test(ev.code || '')) { const l = Number(ev.code.slice(5)) - 1; if (l < lanes) togglePit(l); return; }
-    const lane = Number(ev.key) - 1;
+    if (ev.shiftKey && main) { const l = Number(main[1]) - 1; if (l < lanes) togglePit(l); return; }
+    // the lane from the key itself when the browser says which one it is (a keyboard whose number row types other characters, as on AZERTY, still works), else from the character
+    const lane = digit ? Number(digit[1]) - 1 : Number(ev.key) - 1;
     if (lane >= 0 && lane < lanes) crossLane(lane);
   };
   document.addEventListener('keydown', live.key);
@@ -819,7 +831,7 @@ async function renderRace() {
   ui('fsbtn').onclick = ev => { if (ev && ev.currentTarget && ev.currentTarget.blur) ev.currentTarget.blur(); toggleFull(); };
   live.shown = () => { live.nodes.forEach(n => { n.last = null; }); update(); }; // the Race tab is shown again: everything is drawn once more (a leaderboard fits its text to the size it has now)
   // leaving the race screen (before the start, or after the end): the keys, the Trackmate and the Race Director buttons stop working on the other pages
-  live.leave = () => { if (live.fsView) live.fsView.close(); document.removeEventListener('keydown', live.fsKey); if (live.calling) { live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); } document.removeEventListener('keydown', live.key); ['offTm', 'offTmStatus', 'offCmd', 'offResync'].forEach(k => { if (live[k]) { live[k](); live[k] = null; } }); if (live.box) { live.box.off(); live.box = null; } clearTimeout(live.shareTimer); live.shareTimer = null; if (live.flushTokens) live.flushTokens(); clearTimeout(live.tkTimer); live.tkTimer = null; };
+  live.leave = () => { if (live.fsView) live.fsView.close(); document.removeEventListener('keydown', live.fsKey); if (live.calling) { live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); } document.removeEventListener('keydown', live.key); if (typeof tmUseLanes === 'function') tmUseLanes(0); ['offTm', 'offTmStatus', 'offCmd', 'offResync'].forEach(k => { if (live[k]) { live[k](); live[k] = null; } }); if (live.box) { live.box.off(); live.box = null; } clearTimeout(live.shareTimer); live.shareTimer = null; if (live.flushTokens) live.flushTokens(); clearTimeout(live.tkTimer); live.tkTimer = null; };
 
   // ---- Time Token Session: the lane controls, saving every stint, keeping the session across a restart ----
   const raceT = () => eng.elapsed(now()); // the race clock: the token clocks run on it, so a pause stops them
@@ -828,16 +840,17 @@ async function renderRace() {
   live.tkChain = Promise.resolve(); live.tkTotal = 0;
   // When the Race Director presses Finalize, every stint is saved as a result of its own (with its laps). One at a time, in order. A stint without any laps is not saved. A stint that could not be saved is offered again.
   // (Until then the stints are held, also across a restart, so they can be checked and corrected in the review.)
-  const saveStints = () => {
+  const saveStints = home => { // (home: the track the stints were driven on, when that is not the track of this race)
     live.tkChain = live.tkChain.then(async () => {
+      const where = home || r.track;
       const list = tokens.takeClosed(), failed = [];
       for (const st of list) {
         if (!st.laps.length) continue;
         const date = st.startAt || new Date().toISOString(), counted = st.laps.filter(l => !l.late), who = st.who;
-        const rows = st.laps.map((l, n) => ({ l, n })).filter(x => !x.l.removed).map(({ l, n }) => ({ driverId: who.driverId || '', carId: who.carId || '', trackId: r.track.id, token: true, stint: st.id, lane: st.lane + 1, lapNumber: n + 1, time: l.t, date, // (a lap taken out in the review is not saved)
+        const rows = st.laps.map((l, n) => ({ l, n })).filter(x => !x.l.removed).map(({ l, n }) => ({ driverId: who.driverId || '', carId: who.carId || '', trackId: where.id, token: true, stint: st.id, lane: st.lane + 1, lapNumber: n + 1, time: l.t, date, // (a lap taken out in the review is not saved)
           ...(l.bad ? { noTrackRecord: true, noPersonalBest: true, tooSlow: true } : {}), ...(l.late || l.invalid ? { noTrackRecord: true, noPersonalBest: true, invalid: true } : {}), ...(l.late ? { late: true } : {}) }));
         if (!rows.length) continue;
-        const session = { setupName: setup.name, sessionType: 'tokens', trackId: r.track.id, trackName: r.track.name, date, endedBy: STINT_END[st.closedBy] || '',
+        const session = { setupName: setup.name, sessionType: 'tokens', trackId: where.id, trackName: where.name, date, endedBy: STINT_END[st.closedBy] || '',
           token: { stint: st.id, lane: st.lane + 1, bought: st.bought, carried: st.carried, left: st.left },
           standings: [{ pos: 1, driverId: who.driverId || '', carId: who.carId || '', driverName: who.driverName || 'Guest', carName: who.carName || '', laps: counted.length, lateLaps: st.laps.length - counted.length, best: st.best, total: counted.reduce((a, l) => a + l.t, 0), lane: st.lane + 1, bought: st.bought }] };
         try { await api.saveSession(session, rows); live.tkTotal++; } catch (x) { failed.push(st); }
@@ -939,7 +952,11 @@ async function renderRace() {
       T: raceT, phase: () => live.phase, label: lane => (eng.cars[carIndex(lane)] || {}).driverId || '', ops: tokenOps });
     // a session that was not ended (the app was closed or crashed): carry on with the time that was left, or save what it recorded
     const kept = (state.settings.tokenSessions || {})[setup.id];
-    if (kept && kept.data && tokens.restore(kept.data, 0)) {
+    if (kept && kept.data && kept.trackId && kept.trackId !== r.track.id && tokens.restore(kept.data, 0)) {
+      // the session that was not ended was driven on another track: it is not carried onto this one (its laps would count for the wrong track records), what it recorded is saved with the track it was driven on
+      tokens.closeAll(0); eng.cars.forEach(c => tokens.assign(c.lane, { driverId: c.driverId || '', driverName: c.driverName || 'Guest', carId: c.carId || '', carName: c.carName || '' }));
+      Promise.resolve(api.list ? api.list('tracks') : []).catch(() => []).then(list => { const t = (list || []).find(x => x.id === kept.trackId); return t ? saveStints({ id: t.id, name: titleOf('tracks', t) }) : tokens.takeClosed(); /* (that track is gone, and its sessions with it) */ }).then(() => { if (live.alive) ui('msg').textContent = 'A Time Token Session of this setup from another track was not ended: what it recorded is saved with that track. This is a new session.'; persistTokens(true); });
+    } else if (kept && kept.data && tokens.restore(kept.data, 0)) {
       const carryOn = typeof confirm !== 'function' || confirm('A Time Token Session of this race setup was not ended (the app was closed). OK: carry on with the time that was left on each lane. Cancel: save what it recorded and start a new session.');
       if (carryOn) {
         eng.cars.forEach((c, i) => {

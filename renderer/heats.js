@@ -294,7 +294,7 @@
     const heatWord = n => (n === 1 ? '1 heat' : n + ' heats');
     const each = o.by === 'time' ? `${o.minutes} minutes` : o.by === 'distance' ? distText(o.distance, unit) : `${o.laps} laps`;
     let head = `${heatWord(st.heats)}, each ${each}`;
-    if (o.by === 'time' && o.minutes) head += ` (${st.heats * o.minutes} minutes of racing in total)`;
+    if (o.by === 'time' && o.minutes) head += ` (${Math.round(st.heats * o.minutes * 1000) / 1000} minutes of racing in total)`;
     lines.push(head + '.');
     if (st.equal) lines.push(st.count > 1 ? `Every driver races ${heatWord(st.maxHeats)}.` : '');
     else if (sc.countBy === 'average') lines.push(`The drivers race ${st.minHeats} to ${st.maxHeats} heats. The result is the average per heat, so that is fair.`);

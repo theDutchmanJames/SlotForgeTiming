@@ -1,3 +1,4 @@
+process.env.TZ = 'Europe/Amsterdam'; // (the page shows the local time of the club: the tests are the same on every computer)
 const { sessionHtml, fileName, lapGroups, rulesHtml, CREDIT } = require('../renderer/report.js');
 let fails = 0;
 const ok = (name, cond) => { console.log((cond ? 'ok   ' : 'FAIL ') + name); if (!cond) fails++; };
@@ -17,6 +18,8 @@ ok('lap table header repeats on every page', h.includes('thead { display: table-
 ok('a driver with fewer laps leaves an empty cell', /<tr><td>3<\/td><td>5\.800<\/td><td><\/td><\/tr>/.test(h));
 ok('no points column in a normal race', !h.includes('<th>Points</th>'));
 ok('file name is safe and readable', fileName(session) === 'Friday -Sprint- 2026-10-11.pdf');
+ok('the day in the file name is the day the page shows (local time): a race at 00:30 on 2 October in Amsterdam is on the 2nd, not on the 1st (the UTC date)', fileName({ setupName: 'Club race', date: '2026-10-01T22:30:00Z' }) === 'Club race 2026-10-02.pdf' && sessionHtml({ session: { ...session, date: '2026-10-01T22:30:00Z' }, laps }).includes('2 October 2026'));
+ok('...a date that cannot be read keeps its first ten characters', fileName({ setupName: 'X', date: 'garbage-text-here' }) === 'X garbage-te.pdf' && fileName({ setupName: 'X' }) === 'X .pdf');
 ok('session without laps still makes a report', sessionHtml({ session, laps: [] }).includes('No laps were recorded.'));
 
 // heats with points

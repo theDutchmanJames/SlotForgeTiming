@@ -45,27 +45,34 @@
   const counts = (v, fallback) => (v === undefined || v === null ? fallback : [...new Set(String(v).split(/[\s,;]+/).map(Number).filter(n => Number.isInteger(n) && n >= 1))].sort((a, b) => a - b));
   // a number from lo to hi; a set that does not have the setting yet (or text that is no number) uses `fallback`
   const bounded = (v, fallback, lo, hi) => { const n = Number(v); return v !== undefined && v !== null && v !== '' && Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : fallback; };
-  const S = { queue: [], busy: false, backend: null, log: [], cool: new Map(), now: () => Date.now() };
+  const S = { queue: [], busy: false, gen: 0, backend: null, log: [], cool: new Map(), now: () => Date.now() }; // (gen: counts the times everything was stopped; a call that was cut off must not release the one that came after it)
   // the browser's own voices and sound player (replaced in tests)
   function browser() {
+    let cur = null; // what is playing now: held here, so that the browser does not collect it before it has ended, and so that it can be ended
+    const end = c => { if (cur === c) cur = null; clearTimeout(c.t); c.done(); };
     return {
       voices: () => (root.speechSynthesis ? root.speechSynthesis.getVoices() : []),
       speak(text, o, done) {
         if (!root.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') return done();
         const u = new SpeechSynthesisUtterance(text); u.rate = o.rate; u.pitch = o.pitch; u.volume = o.volume;
         const v = o.voice && root.speechSynthesis.getVoices().find(x => x.name === o.voice); if (v) { u.voice = v; u.lang = v.lang; }
-        u.onend = u.onerror = () => done(); root.speechSynthesis.speak(u);
+        const c = { u, done, t: setTimeout(() => end(c), Math.max(5000, String(text).length * 200 / (o.rate || 1))) }; // (a voice that never says it has finished does not hold up the calls that follow)
+        cur = c; u.onend = u.onerror = () => end(c); root.speechSynthesis.speak(u);
       },
-      file(url, o, done) { try { const a = new root.Audio(url); a.volume = o.volume; a.onended = a.onerror = () => done(); const p = a.play(); if (p && p.catch) p.catch(() => done()); } catch (e) { done(); } },
-      stop() { if (root.speechSynthesis) root.speechSynthesis.cancel(); }
+      file(url, o, done) { try { const a = new root.Audio(url); a.volume = o.volume; const c = { a, done, t: null }; cur = c; a.onended = a.onerror = () => end(c); const p = a.play(); if (p && p.catch) p.catch(() => end(c)); } catch (e) { done(); } },
+      stop() {
+        if (root.speechSynthesis) root.speechSynthesis.cancel();
+        const c = cur; if (c && c.a) { try { c.a.onended = c.a.onerror = null; c.a.pause(); } catch (e) { /* it is gone */ } end(c); } // (a recorded file stops too, not only the voice)
+      }
     };
   }
   const be = () => S.backend || (S.backend = browser());
   function next() {
     if (S.busy) return; const it = S.queue.shift(); if (!it) return;
-    S.busy = true; let over = false; const done = () => { if (over) return; over = true; S.busy = false; if (typeof it.after === 'function') { try { it.after(); } catch (e) { /* what follows a call never breaks the sound */ } } next(); };
+    S.busy = true; let over = false; const gen = S.gen;
+    const done = () => { if (over) return; over = true; const mine = gen === S.gen; if (mine) S.busy = false; if (typeof it.after === 'function') { try { it.after(); } catch (e) { /* what follows a call never breaks the sound */ } } if (mine) next(); }; // (a call that was cut off by an urgent one or by Stop ends without starting the next, which is already going)
     const o = { rate: num(it.set.rate, 1, 0.5, 2), pitch: num(it.set.pitch, 1, 0, 2), volume: num(it.set.volume, 1, 0, 1), voice: it.set.voice || '' };
-    S.log.push(it.what.file ? 'file' : it.what.text);
+    S.log.push(it.what.file ? 'file' : it.what.text); if (S.log.length > 200) S.log.splice(0, S.log.length - 200);
     if (it.what.file) be().file(it.what.file, o, done); else be().speak(it.what.text, o, done);
   }
   // "not again within N seconds": a call of the set (call.cooldown, call.coolFor 'driver' = counted for each driver) that was said lately is not said again; a call that is held back does not start a new wait
@@ -81,11 +88,11 @@
   function say(set, callId, vars, rnd, after, facts) {
     const what = choose(set, callId, vars, rnd, facts); if (!what) return null;
     if (cooling(set, callId, vars, facts)) return null;
-    if (URGENT.includes(callId)) { S.queue = []; if (be().stop) be().stop(); S.busy = false; }
+    if (URGENT.includes(callId)) { S.queue = []; S.gen++; if (be().stop) be().stop(); S.busy = false; }
     else if (S.queue.length > 3) S.queue.shift(); // an old news item is not worth reading out
     S.queue.push({ set, what, after }); next(); return what;
   }
-  function stop() { S.queue = []; S.busy = false; if (S.backend && S.backend.stop) S.backend.stop(); else if (root.speechSynthesis) root.speechSynthesis.cancel(); }
+  function stop() { S.queue = []; S.busy = false; S.gen++; if (S.backend && S.backend.stop) S.backend.stop(); else if (root.speechSynthesis) root.speechSynthesis.cancel(); }
   const voices = () => { try { return be().voices ? be().voices() : []; } catch (e) { return []; } };
 
   // The voice report (1.16.1): the voices the app is offered by the browser inside it, and what Windows lists (voicereport.js: host = { windows, os, parts: [{ title, lines }] }), as text

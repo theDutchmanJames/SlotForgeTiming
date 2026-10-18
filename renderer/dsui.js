@@ -15,7 +15,6 @@ const dscMsg = t => { const m = document.getElementById('ds-msg'); if (m) m.text
 const dscStatsText = () => !dsc.open ? (dsc.pieces ? `Last connection: ${dsc.bytes} byte(s) received in ${dsc.pieces} piece(s).` : '')
   : dsc.pieces ? `Received: ${dsc.bytes} byte(s) in ${dsc.pieces} piece(s). The last one came ${(dsc.last / 1000).toFixed(1)} s after connecting.` : 'Connected. Nothing has arrived yet: trigger a sensor of the unit, or press a button on it.';
 const dscStats = () => { const e = document.getElementById('ds-stats'); if (e) e.textContent = dscStatsText(); };
-const dscLed = () => { const e = document.getElementById('ds-led'); if (e) { e.classList.toggle('on', dsc.open); e.setAttribute('aria-label', 'Connection: ' + (dsc.open ? 'connected' : 'not connected')); } };
 const dscRedraw = () => { const b = document.getElementById('hwbox'); if (b && document.getElementById('ds-log') && typeof renderDsSettings === 'function') renderDsSettings(b); };
 
 // A read error (a wrong speed gives framing errors, over and over): the same error in a row is one line with a count
@@ -38,7 +37,9 @@ async function dscPoll() {
 }
 
 // connect and listen. Nothing is written to the port.
-async function dscOpen() {
+let dscOpening = false; // (one Connect at a time, as on the Arduino page)
+async function dscOpen() { if (dscOpening) return false; dscOpening = true; try { return await dscOpenNow(); } finally { dscOpening = false; } }
+async function dscOpenNow() {
   const c = dsc.cfg = Hardware.serialConfig(dsc.cfg); dsc.bytes = 0; dsc.pieces = 0; dsc.last = null;
   try {
     dsc.t0 = performance.now();

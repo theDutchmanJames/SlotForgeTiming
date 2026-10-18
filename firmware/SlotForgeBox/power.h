@@ -9,7 +9,7 @@ public:
   bool mainOn = false;
   bool laneOn[MAX_LANES];
   uint8_t lanePins[MAX_LANES] = SFB_LANE_RELAY_PINS;
-  uint32_t beepUntil = 0, secondBeepAt = 0;
+  uint32_t secondBeepAt = 0;
 
   void begin(Settings *s) {
     S = s; for (uint8_t i = 0; i < MAX_LANES; i++) laneOn[i] = true;
@@ -33,8 +33,8 @@ public:
   void beep(uint8_t pattern, uint32_t now) {
     if (!S->buzzer) return;
     uint16_t f = pattern == 3 ? 1200 : 880, d = pattern == 3 ? 600 : 120;
-    tone(PIN_BUZZER, f, d); beepUntil = now + d;
+    tone(PIN_BUZZER, f, d);
     if (pattern == 2) secondBeepAt = now + 270; // (the second beep is played by tick(): nothing in the sketch blocks)
   }
-  void tick(uint32_t now) { if (secondBeepAt && now >= secondBeepAt) { secondBeepAt = 0; if (S->buzzer) tone(PIN_BUZZER, 880, 120); } }
+  void tick(uint32_t now) { if (secondBeepAt && (int32_t)(now - secondBeepAt) >= 0) { secondBeepAt = 0; if (S->buzzer) tone(PIN_BUZZER, 880, 120); } }
 };

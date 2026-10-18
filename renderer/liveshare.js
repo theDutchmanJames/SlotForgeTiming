@@ -130,7 +130,7 @@ const LiveShare = (() => {
       feedStatic(s) { stat = s; dyn = null; need = false; eng = RaceEngine.createRace({ ...s.cfg, entries: s.cfg.entries.map(e => ({ ...e })) }); personal = new Map(s.base.personal); },
       // true when there is something new to draw. When a message did not fit (one was missed), needsSync() says: fetch the whole state and feed that.
       feedDynamic(d, localNow) {
-        if (!stat || d.raceId !== stat.raceId) { dyn = null; return false; }
+        if (!stat || d.raceId !== stat.raceId) { dyn = null; need = true; return false; } // (the message is of a race whose start we did not get, or an old one: fetch where the race window is now)
         const r = applyDynamic(dyn, d);
         if (!r.ok) { need = true; return false; }
         if (r.stale) return false; // this one (or a newer one) is in the state already

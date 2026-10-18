@@ -99,10 +99,15 @@ function renderWidgetBuilderEditor(box) {
     };
   }
   $('wb-back').onclick = () => { if (wbEd.dirty && !confirm('Discard your unsaved changes to this widget?')) return; draftUndoEnd(wbEd); wbEd = null; renderWidgetBuilder(box); };
+  let saving = false; // (a second click while the first is being written would add the widget twice)
   $('wb-save').onclick = async () => {
+    if (saving) return;
     if (!String(d.name).trim()) return msg('Give the widget a name.');
-    const token = U.hist.commit(), data = clone({ ...d, name: String(d.name).trim() }); // (the state that is written is the one the steps call saved)
-    if (wbEd.id) await api.update('customwidgets', wbEd.id, data); else { const row = await api.add('customwidgets', data); wbEd.id = row.id; }
-    U.hist.markSaved(token); wbEd.dirty = !U.hist.isClean(); msg('Saved.'); // (a change made while it was being written is not saved yet)
+    saving = true;
+    try {
+      const token = U.hist.commit(), data = clone({ ...d, name: String(d.name).trim() }); // (the state that is written is the one the steps call saved)
+      if (wbEd.id) await api.update('customwidgets', wbEd.id, data); else { const row = await api.add('customwidgets', data); wbEd.id = row.id; }
+      U.hist.markSaved(token); wbEd.dirty = !U.hist.isClean(); msg('Saved.'); // (a change made while it was being written is not saved yet)
+    } finally { saving = false; }
   };
 }

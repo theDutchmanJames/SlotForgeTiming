@@ -127,12 +127,17 @@ function renderRotationEditor(box) {
   };
   $('ro-n').onchange = resize; $('ro-lanes').onchange = resize;
   $('ro-kind').onchange = e => apply(Rot.setParticipantsAre(d, e.target.value), true);
+  let saving = false; // (a second click while the first is being written would add the setup twice)
   $('ro-save').onclick = async () => {
+    if (saving) return;
     if (!String(d.name).trim()) { say('Please give the rotation setup a name.'); return; }
-    U.hist.touch(); const token = U.hist.commit(); // (the state that is written is the one the steps call saved)
-    const data = clone(Rot.clean(d));
-    if (rotEd.id) await api.update('rotationsetups', rotEd.id, data); else { const row = await api.add('rotationsetups', data); rotEd.id = row.id; }
-    U.hist.markSaved(token); rotEd.dirty = !U.hist.isClean(); say('Saved.');
+    saving = true;
+    try {
+      U.hist.touch(); const token = U.hist.commit(); // (the state that is written is the one the steps call saved)
+      const data = clone(Rot.clean(d));
+      if (rotEd.id) await api.update('rotationsetups', rotEd.id, data); else { const row = await api.add('rotationsetups', data); rotEd.id = row.id; }
+      U.hist.markSaved(token); rotEd.dirty = !U.hist.isClean(); say('Saved.');
+    } finally { saving = false; }
   };
   $('ro-back').onclick = () => { if (rotEd.dirty && !confirm('Discard your unsaved changes to this rotation setup?')) return; draftUndoEnd(rotEd); rotEd = null; renderRotations(box); };
 

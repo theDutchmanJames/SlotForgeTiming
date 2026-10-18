@@ -13,7 +13,7 @@ const abNote = text => { ab.lines.push('          ' + text); abShow(); };
 const abShow = () => { const l = document.getElementById('ab-log'); if (l) { l.textContent = ab.lines.join('\n'); l.scrollTop = l.scrollHeight; } };
 const abMsg = t => { const m = document.getElementById('ab-msg'); if (m) m.textContent = t; };
 const abRedraw = () => { const b = document.getElementById('hwbox'); if (b && document.getElementById('ab-log') && typeof renderArduinoSettings === 'function') renderArduinoSettings(b); };
-const abConnected = () => !!(ab.open && ArduinoBox.link.connected);
+const abConnected = () => !!(ab.open && ArduinoBox.link.connected); // (the tests of the page ask it; the race asks the link itself)
 // The readings stream ([Z..] lines) runs only while the Arduino page is on screen: it costs serial time on the box (a Mega has 16 pins), so never during a race.
 // The app has no "page closed" hook, so a watcher looks every half second whether the page is still there and switches the stream accordingly.
 const abShown = () => !!document.getElementById('ab-log');
@@ -37,7 +37,10 @@ function abReceive(bytes) {
     abLog('<-', m.raw, ArduinoBox.note(m));
   });
 }
-async function abOpen() {
+// (one Connect at a time: a second click while the port is being opened would fail on the port that is half open and then mark the box as not connected)
+let abOpening = false;
+async function abOpen() { if (abOpening) return false; abOpening = true; try { return await abOpenNow(); } finally { abOpening = false; } }
+async function abOpenNow() {
   const L = ArduinoBox.link; L.setMap(abSettings().laneMap);
   try {
     ab.t0 = performance.now();
@@ -54,7 +57,7 @@ async function abOpen() {
         try { for (;;) { const { value, done } = await ab.reader.read(); if (done) break; if (value && value.length) abReceive(value); } }
         catch (x) { ab.lines.push(`${((performance.now() - ab.t0) / 1000).toFixed(3).padStart(9)}  ERROR  ${x.message}`); abShow(); } finally { try { ab.reader.releaseLock(); } catch (e) { /* gone */ } }
       }
-      if (ab.open && ab.gen === gen) { ab.open = false; clearInterval(ab.keep); L.setConnected(false); abNote('-- the box went away --'); abRedraw(); }
+      if (ab.open && ab.gen === gen) { ab.open = false; clearInterval(ab.keep); L.setConnected(false); abNote('-- the box went away --'); try { if (ab.writer) { ab.writer.releaseLock(); ab.writer = null; } await ab.dev.close(); } catch (x) { /* it is gone */ } abRedraw(); } // (the port is let go, so that Connect works again when the cable is back)
     })();
     // an Arduino resets when the port opens: give it a moment, then ask for SlotForge mode, the settings and the readings (the page is open)
     setTimeout(async () => { if (!ab.open) return; await abSend(ArduinoBox.C.version(), 'SlotForge mode'); await abSend(ArduinoBox.C.list()); abStreamOn = false; abWatchPage(); }, 2500); // (an Arduino resets when the port opens and takes up to 2 s to boot; the readings follow the page from here)
@@ -68,9 +71,11 @@ async function abOpen() {
   } catch (x) { ab.open = false; L.setConnected(false); abMsg('Could not connect: ' + x.message + ' (is another program using this port?)'); return false; }
 }
 async function abClose() {
-  ab.open = false; ab.gen++; clearInterval(ab.keep); ab.keep = null;
+  clearInterval(ab.keep); ab.keep = null;
   clearInterval(abWatch); abWatch = null; abStreamOn = false;
-  try { if (ab.writer) { await abSend(ArduinoBox.C.readings(false)); await abSend(ArduinoBox.C.trackmateMode()); } } catch (x) { /* going anyway */ }
+  // the box is told to stop the readings and to go back to Trackmate mode while the port still counts as open (abSend sends nothing otherwise); a port that no longer answers does not hold the Disconnect up
+  try { if (ab.writer && ab.open) await Promise.race([(async () => { await abSend(ArduinoBox.C.readings(false)); await abSend(ArduinoBox.C.trackmateMode()); })(), new Promise(r => setTimeout(r, 1000))]); } catch (x) { /* going anyway */ }
+  ab.open = false; ab.gen++;
   ArduinoBox.link.setConnected(false);
   try { if (ab.reader) await ab.reader.cancel().catch(() => {}); if (ab.writer) { ab.writer.releaseLock(); ab.writer = null; } await ab.dev.close(); } catch (x) { /* already closed */ }
   abNote('-- disconnected --');
@@ -160,15 +165,17 @@ function renderArduinoSettings(box) {
   abDrawPick();
   $('ab-find').onclick = async () => {
     try {
-      ab.dev = await navigator.serial.requestPort(); ab.info = ab.dev.getInfo ? ab.dev.getInfo() : {};
-      if (!ab.dev) return abMsg('No box chosen.');
+      const dev = await navigator.serial.requestPort();
+      if (!dev) return abMsg('No box chosen.');
+      if (ab.open) await abClose(); // (a new choice while connected: the old connection is closed first, not left open behind the new one)
+      ab.dev = dev; ab.info = dev.getInfo ? dev.getInfo() : {};
       if (ab.info.usbVendorId !== undefined) await save({ abDevice: { vid: ab.info.usbVendorId, pid: ab.info.usbProductId }, abVirtual: false });
       renderArduinoSettings(box);
     } catch (x) { abMsg(x.name === 'NotFoundError' ? 'No box chosen.' : 'Could not find a box: ' + x.message); }
   };
   $('ab-conn').onclick = async () => { if (ab.open) await abClose(); else await abOpen(); renderArduinoSettings(box); };
   $('ab-auto').onchange = e => save({ abAuto: e.target.checked });
-  $('ab-virtual').onchange = async e => { await save({ abVirtual: e.target.checked }); if (e.target.checked && Hardware.timingChosen(state.settings) !== 'arduino') await setTimingHw('arduino'); /* (ticking the virtual box means the Arduino box is the one in use) */ if (ab.open) await abClose(); if (e.target.checked) { ab.dev = ArduinoSim.createSim().asPort(); ab.info = ab.dev.getInfo(); await abOpen(); } else ab.dev = null; renderArduinoSettings(box); };
+  $('ab-virtual').onchange = async e => { await save({ abVirtual: e.target.checked }); if (e.target.checked && state.settings.timingHw !== 'arduino') await setTimingHw('arduino'); /* (ticking the virtual box means the Arduino box is the one in use: saved as the choice, also when nothing was chosen yet and the tick alone already made it the one in use, so the list above and the note follow) */ if (ab.open) await abClose(); if (e.target.checked) { ab.dev = ArduinoSim.createSim().asPort(); ab.info = ab.dev.getInfo(); await abOpen(); } else ab.dev = null; renderArduinoSettings(box); };
   $('ab-download').onclick = abDownloadSketch;
   $('ab-calib').onclick = () => abSend(C.calibrate(), 'calibrate');
   $('ab-blackout').onchange = e => abSend(C.option('blackout', Math.max(0, Math.min(5000, Number(e.target.value) || 0))), 'blackout');
@@ -177,7 +184,7 @@ function renderArduinoSettings(box) {
     const pinOf = i => L.pins[i] || { role: 'N', index: 0, kind: 0 };
     if (d.pinrole !== undefined || d.pinindex !== undefined || d.pinkind !== undefined) {
       const i = Number(d.pinrole ?? d.pinindex ?? d.pinkind), p = { ...pinOf(i) };
-      if (d.pinrole !== undefined) { p.role = el.value; if ((p.role === 'L' || p.role === 'P') && !p.index) p.index = i + 1; }
+      if (d.pinrole !== undefined) { p.role = el.value; if ((p.role === 'L' || p.role === 'P') && !p.index) { const used = new Set(Object.values(L.pins).filter(q => q && q.role === p.role && q.index).map(q => q.index)); p.index = i + 1 <= 8 && !used.has(i + 1) ? i + 1 : ([1, 2, 3, 4, 5, 6, 7, 8].find(n => !used.has(n)) || 8); } } // (a lane or pit number is 1 to 8: a pin beyond the eighth takes the first one that is free)
       if (d.pinindex !== undefined) p.index = Number(el.value); if (d.pinkind !== undefined) p.kind = Number(el.value);
       L.pins[i] = p; await abSend(C.pinRole(i, p.role, p.index, p.kind), `pin A${i}`); renderArduinoSettings(box);
     } else if (d.arm !== undefined || d.trig !== undefined) {

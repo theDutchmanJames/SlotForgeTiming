@@ -34,7 +34,7 @@ public:
   void (*onFree)(uint8_t pin, uint32_t atMs, uint32_t durMs) = nullptr; // the pass is over, with its duration
   void (*onCalibrated)(uint8_t pin, uint16_t base) = nullptr;
   void (*onRelearn)(uint8_t pin, uint16_t base) = nullptr;   // a drifted pass was ended and the pin's empty level re-learned
-  void (*onStuck)(uint8_t pin) = nullptr;                    // a sensor has been blocked for STUCK_MS: the pass was ended, thresholds untouched
+  void (*onStuck)(uint8_t pin) = nullptr;                    // a sensor has been blocked for STUCK_MS (PIT_STUCK_MS for a pit sensor): the pass was ended, thresholds untouched
 
   void begin(Settings *s) { S = s; for (uint8_t i = 0; i < SFB_ANALOG_PINS; i++) { st[i] = SensorState(); st[i].raw = 1023; st[i].base = 1023; } }
 
@@ -46,7 +46,7 @@ public:
     analogRead(A0 + pin); uint16_t r = analogRead(A0 + pin); // (twice: the first read after another channel can carry that channel's value with a high-impedance sensor)
     if (p.kind == KIND_CONTACT) r = r < 512 ? 0 : 1023;   // a contact: closed = car (wired to pull the input low)
     SensorState &x = st[pin]; x.raw = r;
-    if (calibrating) { x.calibSum += r; x.calibN++; if (now >= calibUntil) finishCalib(); return; }
+    if (calibrating) { x.calibSum += r; x.calibN++; if ((int32_t)(now - calibUntil) >= 0) finishCalib(); return; }
     if (x.blocked) { if (r >= p.arm) { x.blocked = false; x.freeAt = now; } return; } // still blocked: wait until the sensor is free
     if (!x.armed) { // arm, and go on to the confirm check in the SAME sample: a short pass (a guide blade through a beam, 3-6 ms) is seen on its first sample
       if (r < p.arm && now - x.freeAt >= S->blackoutMs) { x.armed = true; x.confirmed = false; x.armedAt = now; }
@@ -64,7 +64,7 @@ public:
         return;
       }
       // something blocks the sensor (below the trigger for STUCK_MS): end the pass so the lane is not covered for ever; the thresholds are left alone (a blocked sensor must not re-learn a wrong level)
-      if (now - x.confirmedAt > STUCK_MS) { x.armed = false; x.confirmed = false; x.covered = false; x.aboveSince = 0; x.aboveTrigSince = 0; x.freeAt = now; x.blocked = true; if (onStuck) onStuck(pin); return; }
+      if (now - x.confirmedAt > (p.role == ROLE_PIT ? PIT_STUCK_MS : STUCK_MS)) { x.armed = false; x.confirmed = false; x.covered = false; x.aboveSince = 0; x.aboveTrigSince = 0; x.freeAt = now; x.blocked = true; if (onStuck) onStuck(pin); return; }
     }
     if (r >= p.arm) { // above arm: the pass is over once it has stayed there RELEASE_MS (a bounce dips below again and the pass goes on)
       if (!x.aboveSince) x.aboveSince = now ? now : 1;

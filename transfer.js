@@ -24,7 +24,7 @@ function refsOf(entity, row) {
   if (entity === 'layouts') widgets(row.widgets, true);
   if (entity === 'rowdesigns') widgets(row.widgets, false);
   if (entity === 'sessions') { field('trackId', 'tracks'); (row.standings || []).forEach(s => { if (s.driverId) out.push({ entity: 'drivers', get: () => s.driverId, set: v => { s.driverId = v; } }); if (s.carId) out.push({ entity: 'slotcars', get: () => s.carId, set: v => { s.carId = v; } }); if (s.teamId) out.push({ entity: 'teams', get: () => s.teamId, set: v => { s.teamId = v; } }); }); }
-  if (entity === 'laps') { field('sessionId', 'sessions'); field('trackId', 'tracks'); field('driverId', 'drivers'); field('carId', 'slotcars'); }
+  if (entity === 'laps') { field('sessionId', 'sessions'); field('trackId', 'tracks'); field('driverId', 'drivers'); field('carId', 'slotcars'); field('teamId', 'teams'); } // (the laps of a team race carry the team: the results of that team are made of them)
   return out;
 }
 
@@ -70,7 +70,7 @@ function check(bundle) {
   if (!(bundle.fileVersion <= FILE_VERSION)) return { ok: false, error: 'This file comes from a newer version of the app. Update the app first.' };
   if (!bundle.items || typeof bundle.items !== 'object') return { ok: false, error: 'The file is empty.' };
   const summary = {};
-  for (const e of ORDER) { const list = bundle.items[e]; if (list === undefined) continue; if (!Array.isArray(list) || list.some(r => !r || typeof r !== 'object' || !r.id)) return { ok: false, error: `The file is damaged (${e}).` }; if (list.length) summary[e] = { count: list.length, names: list.slice(0, 12).map(r => titleOf(e, r)) }; }
+  for (const e of ORDER) { const list = bundle.items[e]; if (list === undefined) continue; if (!Array.isArray(list) || list.some(r => !r || typeof r !== 'object' || !r.id)) return { ok: false, error: `The file is damaged (${e}).` }; if (e === 'sessions' && list.some(r => !Array.isArray(r.standings))) return { ok: false, error: 'The file is damaged (sessions without results).' }; if (list.length) summary[e] = { count: list.length, names: list.slice(0, 12).map(r => titleOf(e, r)) }; }
   return Object.keys(summary).length ? { ok: true, summary } : { ok: false, error: 'The file has nothing to import.' };
 }
 
@@ -98,8 +98,9 @@ function apply(db, bundle) {
         refsOf(e, row).forEach(r => r.set(map[r.entity] && map[r.entity][r.get()] !== undefined ? map[r.entity][r.get()] : ''));
         if (e === 'teams') row.drivers = (Array.isArray(row.drivers) ? row.drivers : []).filter(Boolean);
         if (row.custom) { const m = {}; Object.entries(row.custom).forEach(([k, v]) => { if (fieldMap[e] && fieldMap[e][k]) m[fieldMap[e][k]] = v; }); row.custom = m; } else row.custom = {};
-        const key = e === 'sessions' || e === 'laps' ? null : (schema[e].title || [])[0];
-        if (key && typeof row[key] === 'string' && d[e].some(x => x[key] === row[key])) row[key] += ' (imported)';
+        // a clash of titles (the whole title: a car is brand + make + model) is marked on the last part that has text
+        const parts = e === 'sessions' || e === 'laps' ? [] : (schema[e].title || []).filter(k => typeof row[k] === 'string' && row[k] !== ''), title = parts.length ? titleOf(e, row) : '';
+        if (title && d[e].some(x => titleOf(e, x) === title)) row[parts[parts.length - 1]] += ' (imported)';
         d[e].push(row); counts[e] = (counts[e] || 0) + 1;
       }
     }

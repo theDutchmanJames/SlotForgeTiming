@@ -11,6 +11,7 @@
   const Dl = typeof module !== 'undefined' ? require('./delta.js') : root.Delta; // the Delta Timers (what is compared, and the badge)
   const Bo = typeof module !== 'undefined' ? require('./boardorder.js') : root.BoardOrder; // the order of a leaderboard (Order by)
   const Ww = typeof module !== 'undefined' ? require('./weatherwidgets.js') : root.WxW; // the weather widgets: Tyres, Weather Forecast, Track Conditions (the options, the samples)
+  const Re = typeof module !== 'undefined' ? require('./engine.js') : root.RaceEngine; // the one way a time is written
   const Ds = typeof module !== 'undefined' ? require('./distance.js') : root.Distance; // Distance Racing: the distance widgets (the options, the words)
   const NAMES = ['Alex', 'Sam', 'Kim', 'Lee', 'Max', 'Zoe'];
   const NICKS = ['Speedy', 'Sammy', 'Kimbo', 'Leeroy', 'Maxi', 'Zo'];
@@ -124,11 +125,20 @@
   };
   // Custom image widgets: a fixed picture, or the first rule that matches picks another one. A rule compares a {variable} with a value.
   const IMG_OPS = [['=', 'is'], ['!=', 'is not'], ['<', 'is less than'], ['>', 'is more than'], ['<=', 'is at most'], ['>=', 'is at least']];
-  const numOf = x => { const t = String(x ?? '').trim(); return /^[-+]?\d+([.,]\d+)?\s*(%|L)?$/.test(t) ? parseFloat(t.replace(',', '.')) : NaN; };
+  // a number in the text of a variable: "30", "30 °C", "10 km/h", "84 m", "+2 s", "50%", "1:05.123" (a time is worth its seconds); anything else is not a number
+  const numOf = x => {
+    const t = String(x ?? '').trim();
+    let m = /^([-+]?)(\d+):(\d{1,2}(?:[.,]\d+)?)$/.exec(t);
+    if (m) return (m[1] === '-' ? -1 : 1) * (Number(m[2]) * 60 + parseFloat(m[3].replace(',', '.')));
+    m = /^[-+]?\d+(?:[.,]\d+)?(?=\s*(?:%|°\s?[A-Za-z]?|[A-Za-z]{1,6}(?:\/[A-Za-z]{1,4})?)?$)/.exec(t);
+    return m ? parseFloat(m[0].replace(',', '.')) : NaN;
+  };
+  const pureNum = t => /^[-+]?\d+(?:[.,]\d+)?$/.test(t);
+  const unesc = t => t.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&'); // (the values of the variables are made safe for the page: a name with an & is compared as typed)
   function ruleHolds(r, vars) {
     if (!r || !r.var || !Object.prototype.hasOwnProperty.call(vars, r.var)) return false;
-    const a = String(vars[r.var] ?? '').trim(), b = String(r.value ?? '').trim(), na = numOf(a), nb = numOf(b), num = Number.isFinite(na) && Number.isFinite(nb);
-    const eq = num ? na === nb : a.toLowerCase() === b.toLowerCase();
+    const a = unesc(String(vars[r.var] ?? '').trim()), b = String(r.value ?? '').trim(), na = numOf(a), nb = numOf(b), num = Number.isFinite(na) && Number.isFinite(nb);
+    const eq = num && (pureNum(a) || pureNum(b)) ? na === nb : a.toLowerCase() === b.toLowerCase(); // ("2 Fast" is not "2 Furious": two texts with a number in them are compared as texts)
     switch (r.op) { case '!=': return !eq; case '<': return num && na < nb; case '>': return num && na > nb; case '<=': return num && na <= nb; case '>=': return num && na >= nb; default: return eq; }
   }
   const pickImage = (opt, vars) => { const hit = ((opt && opt.rules) || []).find(r => r.image && ruleHolds(r, vars)); return hit ? hit.image : (opt && opt.image) || ''; };
@@ -217,7 +227,7 @@
     { key: 'figures', label: 'Points, laps or time next to the names of the result', type: 'checkbox', default: true }
   ];
   const hlOn = (o, k) => { const d = HEATLIST_OPTIONS.find(x => x.key === k); return o && o[k] !== undefined ? o[k] : d.default; };
-  const timeText = ms => { const m = Math.floor(ms / 60000), x = (ms % 60000) / 1000; return m ? m + ':' + x.toFixed(3).padStart(6, '0') : x.toFixed(3); }; // (as RaceEngine.fmtTime)
+  const timeText = ms => Re.fmtTime(ms);
   const hlFigure = (r, by) => by === 'points' ? String(r.points || 0) : by === 'time' ? (r.tm !== undefined && r.tm !== null ? timeText(r.tm) + (r.fin === 0 ? '*' : '') : r.fin === 0 ? 'DNF' : '') : `${r.laps}`;
   function heatListHtml(heat, phase, opt) {
     const all = (heat && heat.list) || [];
@@ -378,12 +388,12 @@
     const n = [5, 4, 3, 2, 1, 6][l % 6]; return o.show === 'number' ? String(n) : n === 1 && o.lastLap !== false ? 'Last lap' : `${n} ${n === 1 ? 'lap' : 'laps'} to go`;
   };
   const REGISTRY = [
-    T('nickname', 'Nickname', 'Driver', { perLane: true, w: 170, sample: l => NICKS[l] }),
-    T('name', 'Name', 'Driver', { perLane: true, w: 200, sample: l => NAMES[l] }),
+    T('nickname', 'Nickname', 'Driver', { perLane: true, w: 170, sample: l => NICKS[l % NICKS.length] }),
+    T('name', 'Name', 'Driver', { perLane: true, w: 200, sample: l => NAMES[l % NAMES.length] }),
     T('callsign', 'Callsign', 'Driver', { perLane: true, w: 100, sample: l => ['ALX', 'SAM', 'KIM', 'LEE', 'MAX', 'ZOE', 'JAN', 'TIM'][l] }),
     T('lanecolor', 'Lane Colour', 'Driver', { title: 'Lane colour', perLane: true, w: 60, sample: l => `<span class="lcsample">${l + 1}</span>` }),
     T('avatar', 'Avatar', 'Driver', { perLane: true, w: 80, h: 80, options: AVATAR_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, pic = Av.forLane(o, l); return pic ? avatarHtml(pic, o) : `<span class="av">${NAMES[l % NAMES.length][0]}</span>`; } }),
-    T('driverflag', 'Driver Flag', 'Driver', { title: 'Driver flag', perLane: true, w: 90, sample: l => `<span class="fi fi-${FLAGS[l]}"></span>` }),
+    T('driverflag', 'Driver Flag', 'Driver', { title: 'Driver flag', perLane: true, w: 90, sample: l => `<span class="fi fi-${FLAGS[l % FLAGS.length]}"></span>` }),
     T('teamname', 'Team Name', 'Team', { title: 'Team', perLane: true, w: 220, options: [TEAM_OPTION], sample: l => TEAM_SAMPLES[l % TEAM_SAMPLES.length] }),
     T('teampicture', 'Team Picture', 'Team', { title: 'Team picture', perLane: true, w: 100, h: 100, options: TEAMPIC_OPTIONS, sample: l => `<span class="av">${TEAM_SAMPLES[l % TEAM_SAMPLES.length][0]}</span>` }),
     T('currentdriver', 'Current Driver', 'Team', { title: 'Current driver', perLane: true, w: 260, options: CURDRIVER_OPTIONS, sample: l => NAMES[l % NAMES.length] }),
@@ -406,10 +416,10 @@
     T('fuel', 'Fuel Level', 'Timing', { title: 'Fuel', perLane: true, w: 200, options: FUEL_OPTIONS, sample: (l, w) => fuelHtml(87.5 - l * 20, 120, (w && w.opt) || {}) }),
     T('bop', 'Balance of Power', 'Timing', { title: 'Balance of Power', perLane: true, w: 170, options: BOP_OPTIONS, sample: l => ['BoP \u25BC \u221220%', 'BoP off', 'BoP \u25B2 +15%'][l % 3] }),
     T('speed', 'Slotcar Speed', 'Timing', { title: 'Speed', perLane: true, w: 190, options: SPEED_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, k = (o.unit === 'mph' ? 0.621371 : 1) * (o.mode === 'real' ? 1 : 32), v = (11.7 + l * 0.4) * k; return `${v.toFixed(o.mode === 'real' ? 1 : 0)}${o.showUnit === false ? '' : o.unit === 'mph' ? ' mph' : ' km/h'}`; } }),
-    T('penalty', 'Penalty Points', 'Timing', { title: 'Penalty', perLane: true, w: 150, options: PENALTY_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, p = [0, 2, 5, 1, 0, 3][l], s = [0, 0, 5, 0, 0, 0][l]; return o.show === 'time' ? `+${s} s` : o.show === 'both' ? `${p} (+${s} s)` : String(p); } }),
+    T('penalty', 'Penalty Points', 'Timing', { title: 'Penalty', perLane: true, w: 150, options: PENALTY_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, p = [0, 2, 5, 1, 0, 3][l % 6], s = [0, 0, 5, 0, 0, 0][l % 6]; return o.show === 'time' ? `+${s} s` : o.show === 'both' ? `${p} (+${s} s)` : String(p); } }),
     T('damage', 'Damage', 'Timing', { title: 'Damage', perLane: true, w: 230, options: DAMAGE_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, k = l % 4, lv = ['No damage', 'Light damage', 'Heavy damage', 'Retired'][k], pts = [0, 3, 9, 10][k]; return o.show === 'points' ? String(pts) : o.show === 'level' || !pts ? lv : `${lv} \u00b7 ${pts}`; } }),
     T('repairtimer', 'Repair Timer', 'Timing', { title: 'Repair timer', perLane: true, w: 260, options: REPAIRTIMER_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, k = l % 4, words = ['\u2013', 'Pit whenever you can \u00b7 0:10', 'Pit in 2 laps \u00b7 0:20', 'Repairing 0:07'][k], clock = ['', '0:10', '0:20', '0:07'][k]; return o.show === 'clock' ? clock : words; } }),
-    T('champpoints', 'Championship Points', 'Timing', { title: 'Points', perLane: true, w: 150, options: CHAMP_OPTIONS, sample: l => String([10, 8, 6, 5, 4, 3][l] + (l === 0 ? 8 : 0)) }),
+    T('champpoints', 'Championship Points', 'Timing', { title: 'Points', perLane: true, w: 150, options: CHAMP_OPTIONS, sample: l => String([10, 8, 6, 5, 4, 3, 2, 1][l % 8] + (l === 0 ? 8 : 0)) }),
     T('pitstop', 'Pitstop Time', 'Timing', { title: 'Pitstop time', perLane: true, w: 150, sample: l => `7.${40 + l}2` }),
     // Delta Timers: the ordinary widget's time on the left and, on the right, a green (faster) or red (slower) badge with the difference (see delta.js)
     ...Object.keys(Dl.KINDS).map(type => { const k = Dl.KINDS[type];

@@ -97,7 +97,7 @@
   // Times are in milliseconds. t: the moment the values are read at.
   function orderValue(key, c, S, t) {
     const E_ = S.eng, i = E_.cars.indexOf(c), n = c.laps.length, P = E_.penalty, F = E_.fuel, ch = S.champ;
-    const good = () => E.goodLaps(c);
+    const good = () => E.averageLaps(c); // (the average and the median are those of the saved result: without the laps with a pit stop)
     switch (key) {
       case 'best': return c.best === null || c.best === undefined ? null : c.best;
       case 'last': return n ? c.laps[n - 1] : null;
@@ -176,7 +176,7 @@
       case 'lanecolor': { const lc = S.laneColorsOf ? S.laneColorsOf(c.lane) : {}; return { html: '', ...(lc.bg && !w.bgColor ? { bg: lc.bg } : {}) }; } // the colour set for the lane in the layout (Lane colours); a colour set on the widget itself wins and never changes the lane's colour for other widgets
       case 'nickname': return { html: esc(c.nickname || c.driverName) };
       case 'speed': {
-        const track = S.track || {}, ms = !c.laps.length ? null : opt.source === 'best' ? c.best : opt.source === 'average' ? (E.goodLaps(c).length ? mean(E.goodLaps(c)) : null) : c.laps[c.laps.length - 1];
+        const track = S.track || {}, ms = !c.laps.length ? null : opt.source === 'best' ? c.best : opt.source === 'average' ? (E.averageLaps(c).length ? mean(E.averageLaps(c)) : null) : c.laps[c.laps.length - 1];
         const base = Sp.kmh(Sp.laneLength(track, c.lane), ms), scaled = opt.mode !== 'real', f = scaled ? (Sp.scaleFactor(c.carScale) || Sp.scaleFactor(track.scale)) : 1;
         if (base === null || !f) return { html: '–' };
         const v = Sp.toUnit(base * f, opt.unit);
@@ -236,8 +236,8 @@
         return { html: c.done ? '–' : E.fmtTime(S.eng.lapElapsed(S.eng.cars.indexOf(c), S.now)) };
       }
       case 'lastlap': return { html: Wd.lapListHtml(c.laps.map((t, i) => ({ n: i + 1, t: E.fmtTime(t) })).reverse(), opt.lapsPerColumn, opt.columns, opt.lapNumbers !== false) };
-      case 'avglap': return { html: E.goodLaps(c).length ? E.fmtTime(mean(E.goodLaps(c))) : '–' };
-      case 'medlap': return { html: E.goodLaps(c).length ? E.fmtTime(median(E.goodLaps(c))) : '–' };
+      case 'avglap': return { html: E.averageLaps(c).length ? E.fmtTime(mean(E.averageLaps(c))) : '–' };
+      case 'medlap': return { html: E.averageLaps(c).length ? E.fmtTime(median(E.averageLaps(c))) : '–' };
       case 'bestlap': return { html: c.best === null ? '–' : E.fmtTime(c.best) };
       case 'gap': return { html: esc(S.rowOf(c).gap) };
       case 'recordlap': { const b = S.personalBest(c.driverId); return { html: Number.isFinite(b) ? E.fmtTime(b) : '–' }; }
@@ -348,7 +348,7 @@
         const parts = [];
         if (S.heat) parts.push(heatLabel(S.heat));
         const rl = raceLaps(S), laps = rl.total, time = timeLimitOf(S.setup);
-        if (laps) parts.push(`${Math.max(0, laps - rl.most)} laps left`);
+        if (laps) { const left = Math.max(0, laps - rl.most); parts.push(`${left} ${left === 1 ? 'lap' : 'laps'} left`); }
         else if (time) parts.push(`${mmss(Math.max(0, time - S.eng.elapsed(t)))} left`);
         else if (!S.heat) parts.push(S.setup.sessionType === 'tokens' ? 'Time tokens' : 'Free practice');
         if (S.heat && S.phase === 'between' && S.heat.breakLeft > 0) parts.push(`next ${S.heat.final ? 'final ' + S.heat.final : 'heat'} in ${mmss(S.heat.breakLeft * 1000)}`);

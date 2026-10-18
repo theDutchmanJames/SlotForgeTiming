@@ -33,7 +33,7 @@
     const g = d.glance;
     return `<section class="card hm-glance"><h3>At a glance</h3><div class="hm-tiles">
       <div class="hm-tile"><div class="v">${g.races}</div><div class="l">${g.races === 1 ? 'race' : 'races'} raced</div></div>
-      <div class="hm-tile"><div class="v">${esc(g.laps.toLocaleString())}</div><div class="l">${g.laps === 1 ? 'lap' : 'laps'} driven</div></div>
+      <div class="hm-tile"><div class="v">${esc(g.laps.toLocaleString('en-US'))}</div><div class="l">${g.laps === 1 ? 'lap' : 'laps'} driven</div></div>
       <div class="hm-tile"><div class="v">${g.distance === null ? '–' : esc(d.fmtDist(g.distance))}</div><div class="l">distance</div></div>
       <div class="hm-tile"><div class="v">${g.wins ? esc(g.wins.name) : '–'}</div><div class="l">${g.wins ? `most wins (${g.wins.count})` : 'most wins'}</div></div></div></section>`;
   };
@@ -105,7 +105,7 @@
     const o = k => G.optionOf(board, k), show = o('show'), list = d.mileage || [], year = o('period') === 'year', byDist = show === 'distance';
     const val = r => (byDist ? r.distance || 0 : r.laps), max = Math.max(1, ...list.map(val)), pics = o('pics') && list.some(r => PIC.test(String(r.picture || '')));
     const rows = list.map(r => {
-      const laps = `${r.laps.toLocaleString()} ${r.laps === 1 ? 'lap' : 'laps'}`, dist = r.distance === null || r.distance === undefined ? null : d.fmtDist(r.distance);
+      const laps = `${r.laps.toLocaleString('en-US')} ${r.laps === 1 ? 'lap' : 'laps'}`, dist = r.distance === null || r.distance === undefined ? null : d.fmtDist(r.distance);
       const v = show === 'laps' ? `<strong>${esc(laps)}</strong>` : byDist ? `<strong>${esc(dist === null ? '–' : dist)}</strong>` : `<strong>${esc(laps)}</strong>${dist === null ? '' : ` · <span class="muted">${esc(dist)}</span>`}`;
       return `<div class="hm-mrow">${pics ? (PIC.test(String(r.picture || '')) ? `<img class="hm-carpic" src="${esc(r.picture)}" alt="">` : '<span class="hm-carpic"></span>') : ''}<div class="mm"><div class="mt"><span class="mn">${esc(r.name)}</span><span class="mv">${v}</span></div>${o('bars') ? `<div class="hm-mbar"><i style="width:${Math.max(4, Math.round(val(r) / max * 100))}%"></i></div>` : ''}</div></div>`;
     }).join('');

@@ -2404,3 +2404,18 @@ Good to know:
 2. Nothing chosen yet means what you had set up: the Trackmate, unless the virtual box is ticked or only a box is remembered. If you never use hardware, choose **None**: then Start race never asks.
 3. A box that connects *after* the race screen opened is not picked up by that race (connect first, then Start race; that is what the question is for).
 4. DS Electronics and oXigen Digital are not in the list yet: they cannot count laps.
+
+## What to try (1.39.1): the big check-up
+Nothing new on the screens: this version fixes faults that a line-by-line check of the whole app found. A few you can see for yourself:
+1. Database > Drivers > Add driver. Type a name and **double-click Save** fast: there is one driver, not two. The same goes for every form, the Layout Editor, picture sets, rotation setups and audio sets.
+2. Database > Results and Records: the line of a **Qualifying** or **Free practice** now says **Fastest: Alex** (it said *Winner*). Delete the driver who won a race and the runner-up is not called the winner any more (Home shows them second).
+3. On a track, type the lane lengths as **15,4  15,8** (a decimal comma, a space between the numbers): they are 15.4 and 15.8 m. In the Adjust pad lists and the token minutes *0,5* is 0.5, and *1, 3, 10* is still a list of three.
+4. On the race screen hold down a number key or **Space**: it counts once, not again and again. The number keys also work on a French keyboard and on the number pad.
+5. Race Setup with **Heats** where each heat is limited by **Time** and the result is counted by **Total race time**: the table counts the laps (Help says so) and shows a score instead of *not finished*.
+6. Export a race that ended at 00:30 to a PDF: the file name has the date you see on the page, not the day before.
+7. Arduino box (firmware **1.0.4**, download the sketch again from the Arduino page and upload it): a car that stays on a pit sensor for 8 seconds now gives a pit time of 8 seconds, and the next car that enters the pit is seen.
+
+Good to know:
+1. The database file is written to a temporary file first and then renamed, and a file that cannot be read is never replaced by an empty one: the app says so and does not start. Nothing in your data changes.
+2. Not changed on purpose: pictures stored at full size make the database file big (App Settings > General > Pictures has a smaller quality); the web page of the LAN share has a 0.6 s delay per wrong password but no lock-out; a track without lanes can still be saved (Home flags it).
+3. Firmware 1.0.4 changes nothing in how the box talks: an older app works with it and the other way round.

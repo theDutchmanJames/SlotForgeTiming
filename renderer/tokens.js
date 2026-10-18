@@ -6,6 +6,7 @@
 // a finished stint is handed over (takeClosed) to be saved with its laps. Laps driven after the time was up are kept but marked "late".
 (function (root) {
   const MIN = 60000;
+  const LN = typeof module !== 'undefined' ? require('./listnum.js') : root.ListNum; // (a decimal comma: 0,5 minutes)
   const DEFAULTS = { increments: [1, 5, 10, 15, 30, 60], decrements: [1, 5, 10], warnSeconds: 60, warnColor: '#ffb300', outColor: '#d62828' };
   const hex = (v, d) => (/^#[0-9a-fA-F]{6}$/.test(String(v || '')) ? String(v).toLowerCase() : d);
   const clean = (v, d, lo, hi) => { const n = v === '' || v === null || v === undefined ? NaN : Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
@@ -13,7 +14,7 @@
   // "5, 10, 15, 30, 60" -> minutes. Anything that is not a number above zero is dropped; at most 8; nothing usable gives the default buttons.
   const minutesIn = text => {
     const seen = new Set(), list = [];
-    (Array.isArray(text) ? text : String(text === undefined || text === null ? '' : text).split(/[,;\s]+/)).forEach(x => {
+    (Array.isArray(text) ? text : LN.items(text)).forEach(x => {
       const n = Number(String(x).replace(',', '.'));
       if (String(x).trim() !== '' && Number.isFinite(n) && n > 0 && n <= 1440 && !seen.has(n)) { seen.add(n); list.push(n); }
     });

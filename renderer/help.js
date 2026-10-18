@@ -32,7 +32,7 @@ const Help = (() => {
           <li>Pick a <b>race setup</b>, then choose a <b>driver</b> and a <b>car</b> for every lane. In a heat-based race you add participants instead. A lane has the colour of its layout.</li>
           <li>The start lights under the lanes light up as lanes get ready. What is still missing is listed above the button, so you can see why <b>Start race</b> is greyed out.</li>
           <li>If a <b>qualifying</b> was driven on the same track, its winner picks their lane first.</li>
-          <li>The band at the top shows the date and the track, and lights for the <b>Trackmate</b>, the network and the <b>audio set</b>.</li>
+          <li>The band at the top shows the date and the track, and lights for the <b>Trackmate</b> or box, the network and the <b>audio set</b>.</li>
           <li>The cards: the <b>record to beat</b> on this track, the <b>last race</b>, <b>At a glance</b>, <b>Recent races</b> (click one to open its results), <b>Fastest laps this week</b>, <b>Records on all tracks</b>, <b>Top drivers</b>, <b>Personal bests</b> of the drivers in the lanes, <b>Rules of this race</b> and <b>Shortcuts</b>, <b>Car Mileage</b> (laps and distance per slot car) and <b>Service Due</b> (click a car to open it). Most come from saved races, not Time Token Sessions. <b>Weather</b>, <b>Tyres Available</b> and <b>Notes</b> are for show: you type them in <b>Customize</b>.</li>
           <li><b>Customize</b>, in the band, sets up the cards like the Leaderboard page: pick the grid with the little squares and a card for every cell (a card can cover more cells). <b>Back to the usual Home</b> undoes it.</li>
           <li>When a race was stopped by a crash or a power cut, a note at the top offers <b>Resume the race</b> (it comes back paused, press Space to go on; a heat race keeps its finished heats), <b>Save what was recorded</b> or <b>Delete it</b>.</li>
@@ -287,7 +287,7 @@ const Help = (() => {
         </ul>` },
       { id: 'arduino', title: 'The Arduino box', note: 'Build your own timing box with an Arduino', body: `
         <ul>
-          <li>The <b>SlotForge box</b> is an Arduino (Nano or Mega) with the SlotForge sketch: lane sensors, pit sensors, start lights, track power relays, a buzzer and two buttons. It works next to a Trackmate or instead of one.</li>
+          <li>The <b>SlotForge box</b> is an Arduino (Nano or Mega) with the SlotForge sketch: lane sensors, pit sensors, start lights, track power relays, a buzzer and two buttons. It is one of the choices for the timing hardware in use (Trackmate, Arduino box or None): one at a time.</li>
           <li>App Settings, Timing Hardware, <b>Arduino</b>. <b>Download the Arduino sketch</b>, upload it with the Arduino IDE, then <b>Find the box</b> (the COM port) and <b>Connect</b>. No box yet? Tick <b>Use the virtual box</b>: four imaginary cars to try everything.</li>
           <li>Wire the sensors, press <b>Calibrate</b> with the track empty, then <b>Save to the box</b>. Pins that are not wired must be set to Not used, also the lanes a 2- or 3-lane track does not have.</li>
           <li><b>Test the lights</b>, <b>Power on</b>, <b>Power off</b> and <b>Beep</b> check the wiring.</li>
