@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tyre Wear System: the tyres</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{font-family:inherit}
+.sec{flex:none;background:#222831;border:1px solid #343b47;border-radius:8px;overflow:hidden}
+.sech{padding:10px 14px;font-size:14px;font-weight:700;background:#2b323d;border-bottom:1px solid #343b47;color:#e8e6e1}
+.secb{padding:14px}
+.lbl{font-size:13px;color:#98a0ab;line-height:1.35}
+.inp{height:36px;box-sizing:border-box;background:#171b21;border:1px solid #343b47;border-radius:6px;color:#e8e6e1;font-family:inherit;font-size:14px;padding:0 10px;font-variant-numeric:tabular-nums}
+.chip{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;box-sizing:border-box;border-radius:50%;background:#2a2d34;border:3px solid #ffd12e;font-size:11px;font-weight:800;flex:none}
+table{border-collapse:collapse;width:100%}
+th{text-align:left;font-size:12px;font-weight:600;color:#98a0ab;padding:8px 10px;border-bottom:1px solid #343b47;vertical-align:bottom}
+td{padding:7px 10px;border-bottom:1px solid #2b323d;font-size:14px;color:#e8e6e1}
+.tn{display:flex;align-items:center;gap:10px;font-weight:600}
+.dim{color:#98a0ab}
+</style>
+</helmet>
+<div style="width:1000px;height:1620px;box-sizing:border-box;background:#171b21;color:#e8e6e1;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;padding:24px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+
+  <div style="display:flex;gap:2px;border-bottom:1px solid #343b47;flex:none;margin-bottom:-4px"><span style="padding:8px 8px;font-size:12px;color:#98a0ab;white-space:nowrap">Race Setups</span><span style="padding:8px 8px;font-size:12px;color:#98a0ab;white-space:nowrap">Rotation Setups</span><span style="padding:8px 8px;font-size:12px;color:#98a0ab;white-space:nowrap">Fuel Setups</span><span style="padding:8px 8px;font-size:12px;color:#98a0ab;white-space:nowrap">Penalty Systems</span><span style="padding:8px 8px;font-size:12px;color:#98a0ab;white-space:nowrap">Damage Systems</span><span style="padding:8px 8px;font-size:12px;font-weight:700;color:#ff6b70;border-bottom:2px solid #c8363c;margin-bottom:-1px;white-space:nowrap">Tyre Wear Systems</span><span style="padding:8px 8px;font-size:12px;color:#98a0ab;white-space:nowrap">Weather Systems</span><span style="padding:8px 8px;font-size:12px;color:#98a0ab;white-space:nowrap">Balance of Power</span><span style="padding:8px 8px;font-size:12px;color:#98a0ab;white-space:nowrap">Time Tokens</span></div>
+
+  <div style="display:flex;align-items:flex-end;justify-content:space-between">
+    <div>
+      <div style="font-size:13px;color:#98a0ab">Race Setup &rsaquo; Tyre Wear Systems</div>
+      <div style="font-size:26px;font-weight:700;line-height:1.2">Tyre Wear System</div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button type="button" style="height:40px;padding:0 18px;font-size:14px;color:#e8e6e1;background:#222831;border:1px solid #343b47;border-radius:6px">Cancel</button>
+      <button type="button" style="height:40px;padding:0 22px;font-size:14px;font-weight:700;color:#ffffff;background:#c8363c;border:1px solid #c8363c;border-radius:6px">Save</button>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">Name</div>
+    <div class="secb" style="display:flex;gap:28px;align-items:flex-end;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label class="lbl" for="nm">Name</label>
+        <input id="nm" class="inp" type="text" value="Standard" style="width:300px">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span class="lbl">Start from a ready-made system (you can change every number)</span>
+        <div style="display:flex;gap:8px">
+          <button type="button" aria-pressed="true" style="height:36px;padding:0 16px;font-size:14px;font-weight:700;color:#ffffff;background:#c8363c;border:1px solid #c8363c;border-radius:6px">Standard</button>
+          <button type="button" aria-pressed="false" style="height:36px;padding:0 16px;font-size:14px;color:#e8e6e1;background:#171b21;border:1px solid #343b47;border-radius:6px">Sprint</button>
+          <button type="button" aria-pressed="false" style="height:36px;padding:0 16px;font-size:14px;color:#e8e6e1;background:#171b21;border:1px solid #343b47;border-radius:6px">Endurance</button>
+        </div>
+      </div>
+    </div>
+    <div class="secb" style="padding-top:0"><span class="lbl">Sprint wears the tyres quickly (short races, many stops). Endurance wears them slowly. Standard is in between.</span></div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">Wear is counted per</div>
+    <div class="secb" style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;gap:32px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="radio" name="per" checked> Lap</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="radio" name="per"> Distance (metres or feet, as in App Settings)</label>
+      </div>
+      <span class="lbl">Distance uses the lane length of the track, so a longer lane wears the tyres more per lap. Choose it for Distance Racing: the numbers below are then per 100 m (per 100 ft), and the widgets say how many metres (feet) of tyre are left.</span>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">The tyres (all numbers are yours to change)</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:210px">Tyre</th>
+          <th>Wear per lap (%)</th>
+          <th>Fresh bonus (%)</th>
+          <th>Grip drops from (% life left)</th>
+          <th>Hindrance at 0% (%)</th>
+          <th style="width:110px">Lasts about</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="tn"><span class="chip" style="border-color:#f4f4f4;color:#f4f4f4">H</span>Hard</div></td>
+          <td><input class="inp" type="number" value="2.0" style="width:84px" aria-label="Hard: wear per lap"></td>
+          <td><input class="inp" type="number" value="0" style="width:84px" aria-label="Hard: fresh bonus"></td>
+          <td><input class="inp" type="number" value="20" style="width:84px" aria-label="Hard: grip drops from"></td>
+          <td><input class="inp" type="number" value="25" style="width:84px" aria-label="Hard: hindrance at 0 percent"></td>
+          <td class="dim">50 laps</td>
+        </tr>
+        <tr>
+          <td><div class="tn"><span class="chip" style="border-color:#ffd12e;color:#ffd12e">M</span>Medium</div></td>
+          <td><input class="inp" type="number" value="3.0" style="width:84px" aria-label="Medium: wear per lap"></td>
+          <td><input class="inp" type="number" value="2" style="width:84px" aria-label="Medium: fresh bonus"></td>
+          <td><input class="inp" type="number" value="25" style="width:84px" aria-label="Medium: grip drops from"></td>
+          <td><input class="inp" type="number" value="25" style="width:84px" aria-label="Medium: hindrance at 0 percent"></td>
+          <td class="dim">33 laps</td>
+        </tr>
+        <tr style="background:#2b3340">
+          <td><div class="tn"><span class="chip" style="border-color:#e8002d;color:#ff4d6a">S</span>Soft <span style="font-size:12px;font-weight:400;color:#98a0ab">(shown below)</span></div></td>
+          <td><input class="inp" type="number" value="4.5" style="width:84px;border-color:#ff6b70" aria-label="Soft: wear per lap"></td>
+          <td><input class="inp" type="number" value="5" style="width:84px;border-color:#ff6b70" aria-label="Soft: fresh bonus"></td>
+          <td><input class="inp" type="number" value="30" style="width:84px;border-color:#ff6b70" aria-label="Soft: grip drops from"></td>
+          <td><input class="inp" type="number" value="30" style="width:84px;border-color:#ff6b70" aria-label="Soft: hindrance at 0 percent"></td>
+          <td class="dim">22 laps</td>
+        </tr>
+        <tr>
+          <td><div class="tn"><span class="chip" style="border-color:#9b4dff;color:#c79bff">SS</span>Supersoft</div></td>
+          <td><input class="inp" type="number" value="7.0" style="width:84px" aria-label="Supersoft: wear per lap"></td>
+          <td><input class="inp" type="number" value="8" style="width:84px" aria-label="Supersoft: fresh bonus"></td>
+          <td><input class="inp" type="number" value="35" style="width:84px" aria-label="Supersoft: grip drops from"></td>
+          <td><input class="inp" type="number" value="35" style="width:84px" aria-label="Supersoft: hindrance at 0 percent"></td>
+          <td class="dim">14 laps</td>
+        </tr>
+        <tr>
+          <td><div class="tn"><span class="chip" style="border-color:#43b02a;color:#6fd653">I</span>Intermediate</div></td>
+          <td><input class="inp" type="number" value="3.0" style="width:84px" aria-label="Intermediate: wear per lap"></td>
+          <td><input class="inp" type="number" value="0" style="width:84px" aria-label="Intermediate: fresh bonus"></td>
+          <td><input class="inp" type="number" value="25" style="width:84px" aria-label="Intermediate: grip drops from"></td>
+          <td><input class="inp" type="number" value="25" style="width:84px" aria-label="Intermediate: hindrance at 0 percent"></td>
+          <td class="dim">33 laps</td>
+        </tr>
+        <tr>
+          <td style="border-bottom:0"><div class="tn"><span class="chip" style="border-color:#0067ff;color:#5b9bff">W</span>Wet</div></td>
+          <td style="border-bottom:0"><input class="inp" type="number" value="2.5" style="width:84px" aria-label="Wet: wear per lap"></td>
+          <td style="border-bottom:0"><input class="inp" type="number" value="0" style="width:84px" aria-label="Wet: fresh bonus"></td>
+          <td style="border-bottom:0"><input class="inp" type="number" value="25" style="width:84px" aria-label="Wet: grip drops from"></td>
+          <td style="border-bottom:0"><input class="inp" type="number" value="25" style="width:84px" aria-label="Wet: hindrance at 0 percent"></td>
+          <td class="dim" style="border-bottom:0">40 laps</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="secb" style="border-top:1px solid #343b47"><span class="lbl">Counted per distance, the first column reads <b style="color:#e8e6e1">Wear per 100 m (%)</b> and Lasts about is in metres: Soft at 30% per 100 m lasts about 330 m, which is 22 laps on a 15 m lane.</span></div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">What the numbers do: the grip curve of one tyre (Soft)</div>
+    <div class="secb" style="display:flex;gap:24px;align-items:center">
+      <svg width="440" height="236" viewBox="0 0 440 236" role="img" aria-label="Grip curve of the Soft tyre: plus 5 percent when new, zero at 30 percent life left, minus 30 percent at 0 percent life left" style="flex:none">
+        <rect x="0" y="0" width="440" height="236" rx="6" fill="#171b21"></rect>
+        <g stroke="#2b323d" stroke-width="1">
+          <line x1="50" y1="20" x2="410" y2="20"></line>
+          <line x1="50" y1="92" x2="410" y2="92"></line>
+          <line x1="50" y1="128" x2="410" y2="128"></line>
+          <line x1="50" y1="164" x2="410" y2="164"></line>
+          <line x1="50" y1="200" x2="410" y2="200"></line>
+        </g>
+        <line x1="50" y1="56" x2="410" y2="56" stroke="#98a0ab" stroke-width="1.5"></line>
+        <polygon points="50,56 50,38 302,56" fill="#3ecf8e" fill-opacity="0.28"></polygon>
+        <polygon points="302,56 410,164 410,56" fill="#e5484d" fill-opacity="0.28"></polygon>
+        <polyline points="50,38 302,56 410,164" fill="none" stroke="#e8e6e1" stroke-width="3" stroke-linejoin="round"></polyline>
+        <circle cx="50" cy="38" r="5" fill="#3ecf8e"></circle>
+        <circle cx="302" cy="56" r="5" fill="#ffb84d"></circle>
+        <circle cx="410" cy="164" r="5" fill="#e5484d"></circle>
+        <g font-family="'Segoe UI',system-ui,sans-serif" font-size="12" fill="#98a0ab">
+          <text x="44" y="24" text-anchor="end">+10</text>
+          <text x="44" y="60" text-anchor="end">0</text>
+          <text x="44" y="96" text-anchor="end">-10</text>
+          <text x="44" y="132" text-anchor="end">-20</text>
+          <text x="44" y="168" text-anchor="end">-30</text>
+          <text x="44" y="204" text-anchor="end">-40</text>
+          <text x="50" y="220" text-anchor="middle">100%</text>
+          <text x="140" y="220" text-anchor="middle">75%</text>
+          <text x="230" y="220" text-anchor="middle">50%</text>
+          <text x="320" y="220" text-anchor="middle">25%</text>
+          <text x="410" y="220" text-anchor="middle">0%</text>
+          <text x="230" y="234" text-anchor="middle">tyre life left</text>
+        </g>
+        <g font-family="'Segoe UI',system-ui,sans-serif" font-size="12" font-weight="700">
+          <text x="60" y="32" fill="#6fe0ae">+5% new</text>
+          <text x="302" y="44" text-anchor="middle" fill="#ffc870">cliff at 30%</text>
+          <text x="400" y="186" text-anchor="end" fill="#ff8a8e">-30% at 0%</text>
+        </g>
+      </svg>
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:14px;line-height:1.45">
+        <div><b>New tyres</b> give the fresh bonus (+5%). The bonus fades while the tyre wears.</div>
+        <div><b>At 30% life left</b> the bonus is gone. Below that the tyre starts to hinder the car.</div>
+        <div><b>At 0%</b> the hindrance is at its worst (-30%).</div>
+        <div class="lbl">A plus helps (less fuel used, faster refuelling), a minus hinders. What exactly changes, and what happens at 0%, is set on the next board. Lap times are never changed.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">Wear in the weather (only used in a race with a Weather System)</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:210px">Weather</th>
+          <th>Dry tyres (Hard, Medium, Soft, Supersoft)</th>
+          <th>Intermediate</th>
+          <th>Wet</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Dry</b></td>
+          <td><input class="inp" type="number" value="1.0" style="width:84px" aria-label="Dry weather, dry tyres"> <span class="dim">&times;</span></td>
+          <td><input class="inp" type="number" value="2.0" style="width:84px" aria-label="Dry weather, intermediate"> <span class="dim">&times;</span></td>
+          <td><input class="inp" type="number" value="3.0" style="width:84px" aria-label="Dry weather, wet tyres"> <span class="dim">&times;</span></td>
+        </tr>
+        <tr>
+          <td><b>Cloudy</b></td>
+          <td><input class="inp" type="number" value="1.0" style="width:84px" aria-label="Cloudy weather, dry tyres"> <span class="dim">&times;</span></td>
+          <td><input class="inp" type="number" value="1.5" style="width:84px" aria-label="Cloudy weather, intermediate"> <span class="dim">&times;</span></td>
+          <td><input class="inp" type="number" value="2.0" style="width:84px" aria-label="Cloudy weather, wet tyres"> <span class="dim">&times;</span></td>
+        </tr>
+        <tr style="background:#2b3340">
+          <td><b>Wet</b></td>
+          <td><input class="inp" type="number" value="2.5" style="width:84px" aria-label="Wet weather, dry tyres"> <span class="dim">&times;</span></td>
+          <td><input class="inp" type="number" value="0.7" style="width:84px;border-color:#ff6b70" aria-label="Wet weather, intermediate"> <span class="dim">&times; slower</span></td>
+          <td><input class="inp" type="number" value="0.5" style="width:84px;border-color:#ff6b70" aria-label="Wet weather, wet tyres"> <span class="dim">&times; slower</span></td>
+        </tr>
+        <tr>
+          <td style="border-bottom:0"><b>Clearing</b></td>
+          <td style="border-bottom:0"><input class="inp" type="number" value="1.5" style="width:84px" aria-label="Clearing, dry tyres"> <span class="dim">&times;</span></td>
+          <td style="border-bottom:0"><input class="inp" type="number" value="0.8" style="width:84px" aria-label="Clearing, intermediate"> <span class="dim">&times;</span></td>
+          <td style="border-bottom:0"><input class="inp" type="number" value="1.5" style="width:84px" aria-label="Clearing, wet tyres"> <span class="dim">&times;</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="secb" style="border-top:1px solid #343b47"><span class="lbl">The numbers multiply the wear above: 1.0 is normal, 0.5 is half the wear, 3.0 is three times. Here Wet and Intermediate tyres wear slower in the rain (the two outlined boxes), and slicks wear faster on a wet track.</span></div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1000,"height":1620}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

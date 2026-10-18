@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Widget: Tyre Degradation</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.tile{position:relative;box-sizing:border-box;background:#222831;border:1px solid #5a616c;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;flex:none;text-align:center}
+.tt{position:absolute;left:6px;top:3px;font-size:11px;color:#98a0ab;line-height:1.2}
+.big{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.sm{font-size:12px;color:#98a0ab;line-height:1.2;font-variant-numeric:tabular-nums}
+.cap{font-size:12px;color:#98a0ab;text-align:center;line-height:1.3}
+.grp{font-size:15px;font-weight:700;margin:0 0 2px 0}
+.gsub{font-size:13px;color:#98a0ab;line-height:1.4;margin-bottom:8px}
+.col{display:flex;flex-direction:column;align-items:center;gap:6px}
+.inp{height:34px;box-sizing:border-box;background:#171b21;border:1px solid #343b47;border-radius:6px;color:#e8e6e1;font-family:inherit;font-size:13px;padding:0 8px;width:100%}
+.opt{font-size:13px;display:flex;align-items:center;gap:8px}
+.lb{font-size:12px;color:#98a0ab}
+</style>
+</helmet>
+<div style="width:1000px;height:940px;box-sizing:border-box;background:#171b21;color:#e8e6e1;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;padding:24px;display:flex;gap:24px;overflow:hidden">
+
+  <div style="flex:none;width:650px;display:flex;flex-direction:column;gap:20px">
+    <div>
+      <div style="font-size:13px;color:#98a0ab">Layout Editor &rsaquo; Timing group</div>
+      <div style="font-size:24px;font-weight:700;line-height:1.2">Tyre Degradation, per lane</div>
+    </div>
+
+    <div>
+      <div class="grp">A. The tyre wears away (new, drawn like the tyres of the weather widget)</div>
+      <div class="gsub">The tread on the tyre gets shorter as the life goes down, until the tyre is bald. The coloured ring stays the colour of the tyre.</div>
+      <div style="display:flex;gap:10px">
+        <div class="tile" style="width:120px;height:170px"><span class="tt">Tyres</span>
+          <svg width="92" height="92" viewBox="0 0 100 100" role="img" aria-label="Soft tyre with full tread, 100 percent life left"><circle cx="50" cy="50" r="47" fill="#1b1d22" stroke="#000" stroke-width="2"></circle><circle cx="50" cy="50" r="41" fill="none" stroke="#5b616c" stroke-width="12" pathLength="16" stroke-dasharray="0.45 0.55"></circle><circle cx="50" cy="50" r="31" fill="#2a2d34"></circle><circle cx="50" cy="50" r="31" fill="none" stroke="#e8002d" stroke-width="8"></circle><text x="50" y="51" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI,Arial,sans-serif" font-weight="700" font-size="30" fill="#e8002d">S</text></svg>
+          <span class="big" style="color:#6fe0ae">100%</span><span class="sm">22 laps left</span></div>
+        <div class="tile" style="width:120px;height:170px"><span class="tt">Tyres</span>
+          <svg width="92" height="92" viewBox="0 0 100 100" role="img" aria-label="Soft tyre with shorter tread, 62 percent life left"><circle cx="50" cy="50" r="47" fill="#1b1d22" stroke="#000" stroke-width="2"></circle><circle cx="50" cy="50" r="43.28" fill="none" stroke="#5b616c" stroke-width="7.44" pathLength="16" stroke-dasharray="0.45 0.55"></circle><circle cx="50" cy="50" r="31" fill="#2a2d34"></circle><circle cx="50" cy="50" r="31" fill="none" stroke="#e8002d" stroke-width="8"></circle><text x="50" y="51" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI,Arial,sans-serif" font-weight="700" font-size="30" fill="#e8002d">S</text></svg>
+          <span class="big" style="color:#6fe0ae">62%</span><span class="sm">14 laps left</span></div>
+        <div class="tile" style="width:120px;height:170px"><span class="tt">Tyres</span>
+          <svg width="92" height="92" viewBox="0 0 100 100" role="img" aria-label="Soft tyre with little tread, 35 percent life left"><circle cx="50" cy="50" r="47" fill="#1b1d22" stroke="#000" stroke-width="2"></circle><circle cx="50" cy="50" r="44.9" fill="none" stroke="#5b616c" stroke-width="4.2" pathLength="16" stroke-dasharray="0.45 0.55"></circle><circle cx="50" cy="50" r="31" fill="#2a2d34"></circle><circle cx="50" cy="50" r="31" fill="none" stroke="#e8002d" stroke-width="8"></circle><text x="50" y="51" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI,Arial,sans-serif" font-weight="700" font-size="30" fill="#e8002d">S</text></svg>
+          <span class="big" style="color:#6fe0ae">35%</span><span class="sm">8 laps left</span></div>
+        <div class="tile" style="width:120px;height:170px;border-color:#a8782f"><span class="tt">Tyres</span>
+          <svg width="92" height="92" viewBox="0 0 100 100" role="img" aria-label="Soft tyre with almost no tread, 12 percent life left"><circle cx="50" cy="50" r="47" fill="#1b1d22" stroke="#000" stroke-width="2"></circle><circle cx="50" cy="50" r="46.28" fill="none" stroke="#5b616c" stroke-width="1.44" pathLength="16" stroke-dasharray="0.45 0.55"></circle><circle cx="50" cy="50" r="31" fill="#2a2d34"></circle><circle cx="50" cy="50" r="31" fill="none" stroke="#e8002d" stroke-width="8"></circle><text x="50" y="51" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI,Arial,sans-serif" font-weight="700" font-size="30" fill="#e8002d">S</text></svg>
+          <span class="big" style="color:#ffc870">12%</span><span class="sm">2 laps left</span></div>
+        <div class="tile" style="width:120px;height:170px;border-color:#e5484d;background:#2c1f24"><span class="tt">Tyres</span>
+          <svg width="92" height="92" viewBox="0 0 100 100" role="img" aria-label="Soft tyre, bald, 0 percent life left"><circle cx="50" cy="50" r="47" fill="#1b1d22" stroke="#000" stroke-width="2"></circle><circle cx="50" cy="50" r="31" fill="#2a2d34"></circle><circle cx="50" cy="50" r="31" fill="none" stroke="#e8002d" stroke-width="8"></circle><text x="50" y="51" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI,Arial,sans-serif" font-weight="700" font-size="30" fill="#e8002d">S</text></svg>
+          <span class="big" style="color:#ff8a8e">0%</span><span class="sm" style="color:#ffb3b5;font-weight:700">BOX NOW</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="grp">B. Your own tyre picture, with a life ring around it</div>
+      <div class="gsub">Uses the pictures of your tyre picture set (Customization &rsaquo; Image Settings), so the tyre can look like your own tyres. The ring empties as the life goes down.</div>
+      <div style="display:flex;gap:10px">
+        <div class="tile" style="width:120px;height:150px"><span class="tt">Tyres</span>
+          <svg width="92" height="92" viewBox="0 0 100 100" role="img" aria-label="Tyre picture with a full green ring, 100 percent"><circle cx="50" cy="50" r="46" fill="none" stroke="#343b47" stroke-width="5"></circle><circle cx="50" cy="50" r="46" fill="none" stroke="#3ecf8e" stroke-width="5" stroke-linecap="round" pathLength="100" stroke-dasharray="99.5 0.5" transform="rotate(-90 50 50)"></circle><g transform="translate(11 11) scale(0.78)"><circle cx="50" cy="50" r="47" fill="#1b1d22" stroke="#000" stroke-width="2"></circle><circle cx="50" cy="50" r="31" fill="#2a2d34"></circle><circle cx="50" cy="50" r="31" fill="none" stroke="#e8002d" stroke-width="8"></circle><text x="50" y="51" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI,Arial,sans-serif" font-weight="700" font-size="30" fill="#e8002d">S</text></g></svg>
+          <span class="big" style="color:#6fe0ae;font-size:18px">100%</span></div>
+        <div class="tile" style="width:120px;height:150px"><span class="tt">Tyres</span>
+          <svg width="92" height="92" viewBox="0 0 100 100" role="img" aria-label="Tyre picture with a ring that is 62 percent full"><circle cx="50" cy="50" r="46" fill="none" stroke="#343b47" stroke-width="5"></circle><circle cx="50" cy="50" r="46" fill="none" stroke="#3ecf8e" stroke-width="5" stroke-linecap="round" pathLength="100" stroke-dasharray="62 38" transform="rotate(-90 50 50)"></circle><g transform="translate(11 11) scale(0.78)"><circle cx="50" cy="50" r="47" fill="#1b1d22" stroke="#000" stroke-width="2"></circle><circle cx="50" cy="50" r="31" fill="#2a2d34"></circle><circle cx="50" cy="50" r="31" fill="none" stroke="#e8002d" stroke-width="8"></circle><text x="50" y="51" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI,Arial,sans-serif" font-weight="700" font-size="30" fill="#e8002d">S</text></g></svg>
+          <span class="big" style="color:#6fe0ae;font-size:18px">62%</span></div>
+        <div class="tile" style="width:120px;height:150px;border-color:#a8782f"><span class="tt">Tyres</span>
+          <svg width="92" height="92" viewBox="0 0 100 100" role="img" aria-label="Tyre picture with an amber ring that is 22 percent full"><circle cx="50" cy="50" r="46" fill="none" stroke="#343b47" stroke-width="5"></circle><circle cx="50" cy="50" r="46" fill="none" stroke="#ffb84d" stroke-width="5" stroke-linecap="round" pathLength="100" stroke-dasharray="22 78" transform="rotate(-90 50 50)"></circle><g transform="translate(11 11) scale(0.78)"><circle cx="50" cy="50" r="47" fill="#1b1d22" stroke="#000" stroke-width="2"></circle><circle cx="50" cy="50" r="31" fill="#2a2d34"></circle><circle cx="50" cy="50" r="31" fill="none" stroke="#e8002d" stroke-width="8"></circle><text x="50" y="51" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI,Arial,sans-serif" font-weight="700" font-size="30" fill="#e8002d">S</text></g></svg>
+          <span class="big" style="color:#ffc870;font-size:18px">22%</span></div>
+        <div class="tile" style="width:120px;height:150px;border-color:#e5484d;background:#2c1f24"><span class="tt">Tyres</span>
+          <svg width="92" height="92" viewBox="0 0 100 100" role="img" aria-label="Tyre picture with a red ring that is 6 percent full"><circle cx="50" cy="50" r="46" fill="none" stroke="#343b47" stroke-width="5"></circle><circle cx="50" cy="50" r="46" fill="none" stroke="#e5484d" stroke-width="5" stroke-linecap="round" pathLength="100" stroke-dasharray="6 94" transform="rotate(-90 50 50)"></circle><g transform="translate(11 11) scale(0.78)"><circle cx="50" cy="50" r="47" fill="#1b1d22" stroke="#000" stroke-width="2"></circle><circle cx="50" cy="50" r="31" fill="#2a2d34"></circle><circle cx="50" cy="50" r="31" fill="none" stroke="#e8002d" stroke-width="8"></circle><text x="50" y="51" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI,Arial,sans-serif" font-weight="700" font-size="30" fill="#e8002d">S</text></g></svg>
+          <span class="big" style="color:#ff8a8e;font-size:18px">6%</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="grp">C. Bar, horizontal or vertical (the same bar as the Fuel widget has now)</div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <div class="tile" style="width:310px;height:100px;align-items:stretch;justify-content:center;padding:0 14px;gap:6px"><span class="tt">Tyres</span>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:12px">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;box-sizing:border-box;border-radius:50%;background:#2a2d34;border:3px solid #e8002d;color:#ff4d6a;font-size:11px;font-weight:800;flex:none">S</span>
+            <div style="flex:1;height:26px;border-radius:7px;background:#343b47;position:relative;overflow:hidden"><div style="width:62%;height:26px;background:#3ecf8e"></div><div style="position:absolute;left:0;top:0;right:0;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;text-shadow:0 0 3px #000,0 0 3px #000">62% &middot; 14 laps</div></div>
+          </div>
+        </div>
+        <div class="tile" style="width:90px;height:210px;padding:26px 0 8px 0"><span class="tt">Tyres</span>
+          <div style="flex:1;width:34px;border-radius:8px;background:#343b47;position:relative;overflow:hidden;display:flex;align-items:flex-end"><div style="width:34px;height:62%;background:#3ecf8e"></div></div>
+          <span class="big" style="font-size:16px;color:#6fe0ae">62%</span></div>
+        <div class="tile" style="width:90px;height:210px;padding:26px 0 8px 0;border-color:#e5484d;background:#2c1f24"><span class="tt">Tyres</span>
+          <div style="flex:1;width:34px;border-radius:8px;background:#343b47;position:relative;overflow:hidden;display:flex;align-items:flex-end"><div style="width:34px;height:8%;background:#e5484d"></div></div>
+          <span class="big" style="font-size:16px;color:#ff8a8e">8%</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="grp">E. Number only (small widgets)</div>
+      <div style="display:flex;gap:10px">
+        <div class="tile" style="width:120px;height:80px"><span class="tt">Tyres</span><span class="big" style="color:#6fe0ae;margin-top:10px">62%</span></div>
+        <div class="tile" style="width:120px;height:80px"><span class="tt">Tyres</span><span class="big" style="color:#6fe0ae;margin-top:10px">14 laps</span></div>
+        <div class="tile" style="width:120px;height:80px"><span class="tt">Tyres</span><span class="big" style="color:#ffc870;margin-top:10px">205 m</span></div>
+        <div class="tile" style="width:120px;height:80px;border-color:#e5484d;background:#2c1f24"><span class="tt">Tyres</span><span class="big" style="color:#ff8a8e;margin-top:10px">BOX</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px">
+    <div style="background:#222831;border:1px solid #343b47;border-radius:8px;overflow:hidden">
+      <div style="padding:10px 14px;font-size:14px;font-weight:700;background:#2b323d;border-bottom:1px solid #343b47">Widget settings: Tyre Degradation</div>
+      <div style="padding:14px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;flex-direction:column;gap:5px"><label class="lb" for="sh">Show the tyre life as</label>
+          <select id="sh" class="inp"><option selected>The tyre wears away</option><option>My tyre picture with a life ring</option><option>Bar</option><option>Number</option></select></div>
+        <div style="display:flex;flex-direction:column;gap:5px"><label class="lb" for="ps">Picture set (made under Customization &rsaquo; Image Settings)</label>
+          <select id="ps" class="inp"><option selected>None (the tyres are drawn)</option><option>My club tyres</option></select></div>
+        <div style="display:flex;flex-direction:column;gap:5px"><span class="lb">Bar direction (for the bar)</span>
+          <div style="display:flex;gap:20px"><label class="opt"><input type="radio" name="dir" checked> Horizontal</label><label class="opt"><input type="radio" name="dir"> Vertical</label></div></div>
+        <div style="border-top:1px solid #343b47;padding-top:10px;display:flex;flex-direction:column;gap:8px">
+          <span class="lb">Also show</span>
+          <label class="opt"><input type="checkbox" checked> The percentage (62%)</label>
+          <label class="opt"><input type="checkbox" checked> The laps left (14 laps left)</label>
+          <label class="opt"><input type="checkbox" checked> The grip effect now (+2%)</label>
+          <label class="opt"><input type="checkbox"> The name of the tyre (Soft)</label>
+          <label class="opt"><input type="checkbox" checked> BOX NOW when the tyres are worn out</label>
+        </div>
+        <span class="lb" style="line-height:1.4">The warning and critical colours (25% and 10%) come from the Tyre Wear System of the race. In a Distance Race the laps left become metres (feet) left.</span>
+      </div>
+    </div>
+
+    <div style="background:#222831;border:1px solid #343b47;border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px">
+      <div class="grp" style="margin:0">D. With everything ticked</div>
+      <div style="display:flex;gap:10px">
+        <div class="tile" style="width:128px;height:206px"><span class="tt">Tyres</span>
+          <svg width="78" height="78" viewBox="0 0 100 100" role="img" aria-label="Soft tyre, 62 percent life left"><circle cx="50" cy="50" r="47" fill="#1b1d22" stroke="#000" stroke-width="2"></circle><circle cx="50" cy="50" r="43.28" fill="none" stroke="#5b616c" stroke-width="7.44" pathLength="16" stroke-dasharray="0.45 0.55"></circle><circle cx="50" cy="50" r="31" fill="#2a2d34"></circle><circle cx="50" cy="50" r="31" fill="none" stroke="#e8002d" stroke-width="8"></circle><text x="50" y="51" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI,Arial,sans-serif" font-weight="700" font-size="30" fill="#e8002d">S</text></svg>
+          <span class="big" style="color:#6fe0ae">62%</span><span class="sm">Soft</span><span class="sm">14 laps left</span><span class="sm" style="color:#6fe0ae;font-weight:700">grip +2%</span></div>
+        <div class="tile" style="width:128px;height:206px"><span class="tt">Tyres</span>
+          <svg width="78" height="78" viewBox="0 0 100 100" role="img" aria-label="Soft tyre, 62 percent life left"><circle cx="50" cy="50" r="47" fill="#1b1d22" stroke="#000" stroke-width="2"></circle><circle cx="50" cy="50" r="43.28" fill="none" stroke="#5b616c" stroke-width="7.44" pathLength="16" stroke-dasharray="0.45 0.55"></circle><circle cx="50" cy="50" r="31" fill="#2a2d34"></circle><circle cx="50" cy="50" r="31" fill="none" stroke="#e8002d" stroke-width="8"></circle><text x="50" y="51" text-anchor="middle" dominant-baseline="central" font-family="Segoe UI,Arial,sans-serif" font-weight="700" font-size="30" fill="#e8002d">S</text></svg>
+          <span class="big" style="color:#6fe0ae">62%</span><span class="sm">Soft</span><span class="sm">205 m left</span><span class="sm" style="color:#6fe0ae;font-weight:700">grip +2%</span></div>
+      </div>
+      <span class="cap" style="text-align:left">Left: a lap race. Right: a Distance Race, the same tyre counted in metres.</span>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1000,"height":940}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

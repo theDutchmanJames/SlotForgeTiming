@@ -1,0 +1,23 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-19T00:40:00Z" },
+  "title": "Tyre Wear mock-up",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 1000, "h": 1620, "title": "1. Tyre Wear System: the tyres" },
+    "Rules.dc.html": { "x": 1080, "y": 0, "w": 1000, "h": 1580, "title": "2. Tyre Wear System: rules, pit stops and sets" },
+    "TyreChange.dc.html": { "x": 0, "y": 2000, "w": 1100, "h": 830, "title": "3. Race screen: the Tyre Change folder" },
+    "Widgets.dc.html": { "x": 1180, "y": 2000, "w": 1000, "h": 940, "title": "4. Widget: Tyre Degradation" },
+    "Cells.dc.html": { "x": 2260, "y": 2000, "w": 1000, "h": 880, "title": "5. Widget: Available Tyres, and the Tyre life cells" },
+    "Results.dc.html": { "x": 0, "y": 3280, "w": 1000, "h": 700, "title": "6. Results: the tyre stints" },
+    "Audio.dc.html": { "x": 1080, "y": 3280, "w": 1000, "h": 900, "title": "7. Audio calls" }
+  },
+  "order": ["Main.dc.html", "Rules.dc.html", "TyreChange.dc.html", "Widgets.dc.html", "Cells.dc.html", "Results.dc.html", "Audio.dc.html"],
+  "notes": {
+    "t1": { "x": 0, "y": -300, "text": "Tyre Wear: the settings (Database > Tyre Wear Systems)", "kind": "title1", "maxW": 2080 },
+    "t2": { "x": 0, "y": 1700, "text": "Tyre Wear: in the race (folder, widgets, cells)", "kind": "title1", "maxW": 3260 },
+    "t3": { "x": 0, "y": 2980, "text": "Tyre Wear: after the race, and the audio calls", "kind": "title1", "maxW": 2080 }
+  },
+  "designSystems": []
+}
