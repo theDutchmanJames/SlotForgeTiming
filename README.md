@@ -2430,3 +2430,11 @@ Good to know:
 1. Firmware 1.0.5 needs this app (1.39.2 or newer): an older app with a 1.0.5 box places a buffered lap near the start of the connection. That is only about the rare laps driven while the PC was away; normal timing is the same with any combination. The sketch from the Arduino page always matches the app you downloaded it from.
 2. It only makes a difference for a lap the box buffered while the PC was away, and then only for a board that did not restart when the port was opened (the Nano and Mega normally do).
 
+## What to try (1.39.3): a vertical Fuel bar
+1. Layout Editor: add a **Fuel Level** widget (Timing group) and, in the side panel, keep **Show fuel as** on *Bar and number*. Under it are two new settings: **Bar direction** (*Vertical* fills the bar from the bottom and empties it downwards) and **Bar thickness** (10 to 100% of the widget).
+2. Make the widget tall and narrow (for example 60 wide, 200 high) and choose Vertical: a fuel gauge standing up. Make it big and small: the bar, its rounded corners and the number in it grow and shrink with the widget, and the number is never cut off.
+3. A Fuel widget you already had looks the same in a wide, low shape. In a tall widget the horizontal bar is now thinner than before (a share of the widget's smaller side); set the thickness to taste. The warning and critical colours work in both directions. *Number* and *Pictures* have no bar, so they do not show the two settings.
+
+Good to know:
+1. The number in a very narrow vertical bar gets small (it has to fit the width of the bar). Use *Bar* without the number, or a second Fuel widget set to *Number*, if you want it big.
+

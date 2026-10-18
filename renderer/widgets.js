@@ -324,13 +324,16 @@
   // Fuel widget: a number, a bar, both, or one of your own pictures from full to empty.
   const FUEL_OPTIONS = [
     SET_OPTION('fuel'),
-    { key: 'mode', label: 'Show fuel as', type: 'select', default: 'both', choices: [['number', 'Number'], ['bar', 'Bar'], ['both', 'Bar and number'], ['images', 'Pictures from the picture set']] },
+    { key: 'mode', label: 'Show fuel as', type: 'select', default: 'both', rerender: true, choices: [['number', 'Number'], ['bar', 'Bar'], ['both', 'Bar and number'], ['images', 'Pictures from the picture set']] },
+    { key: 'dir', label: 'Bar direction', type: 'select', default: 'horizontal', choices: [['horizontal', 'Horizontal (empties to the left)'], ['vertical', 'Vertical (empties downwards)']], show: o => fuelIsBar(o) }, // (1.39.3)
+    { key: 'thick', label: 'Bar thickness (% of the widget)', type: 'number', default: 60, min: 10, max: 100, step: 5, show: o => fuelIsBar(o) },
     { key: 'lowAt', label: 'Warning colour below (% of tank)', type: 'number', default: 25, min: 0, max: 100, step: 1 },
     { key: 'lowColor', label: 'Warning colour', type: 'color', default: '#ffd400' },
     { key: 'critAt', label: 'Critical colour below (% of tank)', type: 'number', default: 10, min: 0, max: 100, step: 1 },
     { key: 'critColor', label: 'Critical colour', type: 'color', default: '#d62828' }
   ]; // pictures come from a picture set (Customization > Image Settings)
   const fuelOpt = (o, k) => (o && o[k] !== undefined ? o[k] : FUEL_OPTIONS.find(x => x.key === k).default);
+  function fuelIsBar(o) { const m = fuelOpt(o, 'mode'); return m === 'bar' || m === 'both'; } // (the direction and the thickness only matter for a bar)
   // which of n pictures (0 = full ... n-1 = empty) belongs to a fraction of the tank
   const fuelStep = (frac, n) => Math.max(0, Math.min(n - 1, n - Math.ceil(Math.max(0, Math.min(1, frac)) * n - 1e-9)));
   function fuelHtml(litres, tank, opt) {
@@ -344,7 +347,9 @@
     }
     const num = `<span class="fnum"${col ? ` style="color:${col}"` : ''}>${txt}</span>`;
     if (mode === 'number' || mode === 'images') return num;
-    return `<span class="fbar"><span class="ffill" style="width:${Math.round(pct * 10) / 10}%;background:${col || 'var(--accent)'}"></span>${mode === 'both' ? `<span class="ftxt">${txt}</span>` : ''}</span>`;
+    // 1.39.3: the bar can stand up (it empties downwards) and its thickness is a share of the widget (the style sheet sizes it with the widget: `.fbar` in styles.css)
+    const vert = fuelOpt(opt, 'dir') === 'vertical', th = clampInt(fuelOpt(opt, 'thick'), 10, 100, 60), size = Math.round(pct * 10) / 10;
+    return `<span class="fbar${vert ? ' fv' : ''}" style="--th:${th}"><span class="ffill" style="${vert ? 'height' : 'width'}:${size}%;background:${col || 'var(--accent)'}"></span>${mode === 'both' ? `<span class="ftxt">${txt}</span>` : ''}</span>`;
   }
 
   // Speed: average speed over a lap from the track length. Real = the car's actual speed; scaled = as if the car were full size (1:1).

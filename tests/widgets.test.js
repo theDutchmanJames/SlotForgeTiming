@@ -212,4 +212,18 @@ ok('...while a normal colour is still used', Wd.fuelHtml(5, 100, { critColor: '#
   ok('1.30.1: the Slotcar Picture widget has a Mirror tick box (off to begin with), before the position and zoom', d.options.map(o => o.key).join() === 'carMirror,frame' && mirror.type === 'checkbox' && mirror.default === false && /Mirror the picture/.test(mirror.label) && /left to right/.test(mirror.label));
   ok('...the Avatar keeps its own Mirror setting under its own name (the two are not the same setting)', Wd.def('avatar').options.some(o => o.key === 'avatarMirror') && !d.options.some(o => o.key === 'avatarMirror')); }
 
+{ // 1.39.3: the Fuel bar can stand up, has a thickness, and the style sheet sizes it with the widget
+  const up = Wd.fuelHtml(30, 120, { mode: 'both', dir: 'vertical' }), flat = Wd.fuelHtml(30, 120, { mode: 'bar' }), th = o => (Wd.fuelHtml(30, 120, o).match(/--th:(\d+)/) || [])[1];
+  ok('1.39.3: the Fuel bar stands up with Vertical: it is filled in height from the bottom (class fv), the number stays in it', /class="fbar fv"/.test(up) && /class="ffill" style="height:25%/.test(up) && /class="ftxt">30 L/.test(up));
+  ok('...and by default, or with a direction that does not exist, it is the horizontal bar of before, filled in width', /class="fbar"/.test(flat) && /class="ffill" style="width:25%/.test(flat) && /class="fbar"/.test(Wd.fuelHtml(30, 120, { dir: 'sideways' })) && !/fv/.test(Wd.fuelHtml(30, 120, { dir: null })));
+  ok('...the thickness is a share of the widget from 10 to 100, 60 when it is not set or not a number', th({}) === '60' && th({ thick: 35 }) === '35' && th({ thick: '35' }) === '35' && th({ thick: -5 }) === '10' && th({ thick: 900 }) === '100' && th({ thick: 'abc' }) === '60');
+  ok('...the colours still work in a vertical bar (low and critical)', /background:#d62828/.test(Wd.fuelHtml(5, 100, { dir: 'vertical' })) && /background:#ffd400/.test(Wd.fuelHtml(20, 100, { dir: 'vertical' })));
+  ok('...a number or a picture has no bar, so no direction and no thickness', !/fbar/.test(Wd.fuelHtml(30, 120, { mode: 'number', dir: 'vertical' })) && !/fbar/.test(Wd.fuelHtml(30, 120, { mode: 'images', dir: 'vertical' })));
+  const opts = Wd.def('fuel').options, keys = o => opts.filter(x => !x.show || x.show(o)).map(x => x.key);
+  ok('...the side panel offers the direction and the thickness for Bar and for Bar and number (and when nothing is chosen yet), not for Number or Pictures', ['bar', 'both'].every(m => keys({ mode: m }).includes('dir') && keys({ mode: m }).includes('thick')) && keys(undefined).includes('dir') && ['number', 'images'].every(m => !keys({ mode: m }).includes('dir') && !keys({ mode: m }).includes('thick')) && opts.find(o => o.key === 'mode').rerender === true);
+  ok('...the sample in the Layout Editor follows the direction', /class="fbar fv"/.test(Wd.sampleOf(Wd.def('fuel'), 0, { opt: { dir: 'vertical' } })));
+  const css = require('fs').readFileSync(require('path').join(__dirname, '..', 'renderer', 'styles.css'), 'utf8');
+  ok('...the style sheet: the bar is sized by the box of the widget (a size container, a share of its smaller side), the corners and the text grow with it, a vertical bar fills from the bottom', /\.lw-val:has\(\.fbar\)\{[^}]*container-type:size/.test(css) && /\.fbar\{[^}]*height:calc\(var\(--th,60\) \* 1cqmin\)[^}]*border-radius:clamp\(/.test(css) && /\.fbar\.fv\{width:calc\(var\(--th,60\) \* 1cqmin\);height:100%/.test(css) && /\.fbar\.fv \.ffill\{[^}]*bottom:0/.test(css) && /\.ftxt\{[^}]*font-size:min\(/.test(css));
+}
+
 console.log(fails ? fails + ' WIDGET TESTS FAILED' : 'ALL WIDGET TESTS PASSED'); process.exit(fails ? 1 : 0);

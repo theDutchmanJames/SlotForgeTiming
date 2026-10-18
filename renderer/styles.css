@@ -201,12 +201,16 @@ details .fields{margin:10px 0}
 .ed-side .framebox{max-width:200px}
 
 /* ---- batch E: fuel ---- */
-.fbar{position:relative;display:block;width:100%;height:60%;min-height:.9em;background:var(--line);border-radius:6px;overflow:hidden}
+.fbar{position:relative;display:block;width:100%;height:calc(var(--th,60) * 1cqmin);min-height:.9em;background:var(--line);border-radius:clamp(3px,12cqmin,16px);overflow:hidden} /* 1.39.3: sized by the box of the widget (the .lw-val below is a size container): the thickness is a share of its smaller side, the corners grow with it */
 .ffill{position:absolute;left:0;top:0;bottom:0;transition:width .3s}
-.ftxt{position:relative;display:flex;height:100%;align-items:center;justify-content:center;font-size:.7em;font-weight:700;mix-blend-mode:normal;text-shadow:0 0 3px var(--bg)}
+.ftxt{position:relative;display:flex;height:100%;align-items:center;justify-content:center;font-size:min(.7em,calc(var(--th,60) * .55cqmin),27cqw);font-weight:700;mix-blend-mode:normal;text-shadow:0 0 3px var(--bg)} /* (never taller than the bar, never wider than the widget) */
+.fbar.fv{width:calc(var(--th,60) * 1cqmin);height:100%;min-height:0;min-width:.9em}
+.fbar.fv .ffill{left:0;right:0;top:auto;bottom:0;transition:height .3s}
+.fbar.fv .ftxt{font-size:min(.7em,calc(var(--th,60) * .28cqmin),30cqh)} /* (a number across a narrow bar has to fit its width) */
 .fnum{font-variant-numeric:tabular-nums}
 .fuelimg{max-width:100%;max-height:100%;object-fit:contain}
-.lw-val:has(.fbar){padding:0 6px}
+.lw-val:has(.fbar){padding:0 6px;container-type:size;min-height:0}
+.lw-val:has(.fbar.fv){padding:4px 6px}
 .optlist{display:flex;flex-direction:column;gap:4px}
 .optlist .inline{gap:6px}
 
