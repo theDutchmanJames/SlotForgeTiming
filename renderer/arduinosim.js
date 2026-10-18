@@ -28,9 +28,9 @@
     // ---- lines from the PC ----
     const handle = (line, now) => {
       lastFromPc = now;
-      if (S.away) { S.away = false; ev(now, 'S-'); S.buffered.forEach(b => ev(now, `B${b.lane} ${b.at}`)); S.buffered = []; }
+      if (S.away) { S.away = false; ev(now, 'S-'); S.buffered.forEach(b => ev(now, `B${b.lane} ${Math.round(now) - b.at}`)); S.buffered = []; } // (as the firmware since 1.0.5: ms ago)
       const c = line[0], rest = line.slice(1).trim(); S.log.push(line);
-      if (c === 'V') { S.slotforge = true; out('[V 1.0.0 virtual 8]'); }
+      if (c === 'V') { S.slotforge = true; out('[V 1.0.5 virtual 8]'); }
       else if (c === 'G') { S.slotforge = false; S.readings = false; }
       else if (c === 'A') S.compatLanes = Math.max(1, Math.min(8, Number(rest) || 8));
       else if (c === 'L') S.lights = rest[0] || '0';

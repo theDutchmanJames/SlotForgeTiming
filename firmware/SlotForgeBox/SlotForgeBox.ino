@@ -114,7 +114,7 @@ void setOption(const char *key, const char *val) {
 }
 void handle(char *l, uint32_t now) {
   lastFromPcAt = now;
-  if (away) { away = false; proto.ev("S-", now); for (uint8_t i = 0; i < bufN; i++) proto.laneValU('B', buffered[i].lane, buffered[i].at, now); bufN = 0; }
+  if (away) { away = false; proto.ev("S-", now); for (uint8_t i = 0; i < bufN; i++) proto.laneValU('B', buffered[i].lane, now - buffered[i].at, now); bufN = 0; } // (1.0.5: how many ms AGO, counted from the tick sent right before it: right also on a board that did not reset when the port opened, whose clock the PC never saw start)
   char c = l[0]; char *rest = l + 1; while (*rest == ' ') rest++;
   switch (c) {
     // Trackmate commands

@@ -85,6 +85,7 @@
     const subs = new Set(), statusSubs = new Set(); let P = parser(), hwMs = 0, recent = [], offset = null, sender = null; const lastHit = Array(8).fill(0);
     const emit = e => subs.forEach(f => { try { f(e); } catch (x) { /* a listener problem never stops the stream */ } });
     const toPc = h => (offset === null ? clock() : h + offset);
+    const relativeB = () => { const v = L.version && String(L.version.version).split('.').map(Number); return !v || v.length < 3 || v[0] > 1 || v[1] > 0 || v[2] >= 5; }; // (firmware 1.0.5 and later send a buffered lap as "ms ago"; an unknown version is taken as current)
     L.on = f => { subs.add(f); return () => subs.delete(f); };
     L.emit = emit;
     L.onStatus = f => { statusSubs.add(f); return () => statusSubs.delete(f); };
@@ -115,7 +116,7 @@
           else if (e.tag === 'Z' && e.n !== null) { L.readings[e.n] = Number(e.args[0]); emit({ type: 'reading', pin: e.n, raw: Number(e.args[0]) }); }
           else if (e.tag === 'C' && e.n !== null) { const r = { pin: e.n, base: Number(e.args[0]), arm: Number(e.args[1]), trig: Number(e.args[2]) }; L.pins[e.n] = { ...(L.pins[e.n] || {}), arm: r.arm, trig: r.trig }; emit({ type: 'calibrated', ...r }); }
           else if (e.tag === 'S') { L.safe = e.sign === '+'; emit({ type: 'safe', on: L.safe }); }
-          else if (e.tag === 'B' && e.n) { const h = Number(e.args[0]); L.hits++; emit({ type: 'hit', lane: L.map[e.n - 1], at: toPc(h), buffered: true }); }
+          else if (e.tag === 'B' && e.n) { const v = Number(e.args[0]); L.hits++; emit({ type: 'hit', lane: L.map[e.n - 1], at: toPc(relativeB() ? hwMs - v : v), buffered: true }); } // (1.0.5: ms before the tick that came with it; 1.0.4 and before: the absolute box time, right only when the box clock started at the connection)
           else if (e.tag === 'O') {
             if (e.args[0] === 'pin') { const [, pin, role, index, kind, arm, trig] = e.args.map(Number); L.pins[pin] = { role: ['N', 'L', 'P', 'K'][role] || 'N', index, kind, arm, trig }; }
             else L.options[e.args[0]] = e.args.slice(1).map(Number);

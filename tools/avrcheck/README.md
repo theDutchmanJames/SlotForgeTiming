@@ -11,6 +11,6 @@ It compiles the unmodified `firmware/SlotForgeBox/SlotForgeBox.ino` for the **AT
 - Timing is not tested here: that is what `tools/fwhost` does (on the desktop, with a simulated clock).
 
 ## What it caught while it was made
-Nothing wrong in the sketch: it compiles for both boards with no warnings in its own files (SlotForge box 1.0.4). On the Nano: static RAM 878 of 2048 bytes, flash at most 24368 of 30720. On the Mega: 1218 of 8192 and 25892 of 253952. A deliberate API error, an unused variable and a constant that overflows a 16-bit `int` (`300 * 300`, fine on the desktop bench where `int` is 32 bit) all make the check fail.
+Nothing wrong in the sketch: it compiles for both boards with no warnings in its own files (SlotForge box 1.0.5). On the Nano: static RAM 878 of 2048 bytes, flash at most 24380 of 30720. On the Mega: 1218 of 8192 and 25904 of 253952. A deliberate API error, an unused variable and a constant that overflows a 16-bit `int` (`300 * 300`, fine on the desktop bench where `int` is 32 bit) all make the check fail.
 
 `SFB_FIRMWARE=<folder>` checks another copy of the sketch folder.

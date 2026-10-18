@@ -20,7 +20,7 @@ function rig(cars) {
 { // SlotForge mode: version, pits, traps, readings, calibration, settings, save
   const r = rig(); r.sim.start(); r.step(500);
   r.sim.write(B.C.version()); r.step(50);
-  ok('V answers with the version and switches the mode', r.link.slotforge && r.link.version.version === '1.0.0' && r.link.version.board === 'virtual');
+  ok('V answers with the version and switches the mode', r.link.slotforge && r.link.version.version === '1.0.5' && r.link.version.board === 'virtual');
   r.step(90000);
   ok('pit sensors report in and out', r.out.some(e => e.type === 'pit' && e.in) && r.out.some(e => e.type === 'pit' && !e.in));
   ok('every pass ends with a speed-trap figure', r.out.filter(e => e.type === 'trap').length >= 10 && r.out.filter(e => e.type === 'trap').every(t => t.ms >= 40 && t.ms <= 60));
@@ -46,8 +46,11 @@ function rig(cars) {
   ok('no keep-alive for 3 s: the safe state, lights STOP, power cut', r.link.safe && r.sim.lights === 'S' && r.sim.mainPower === false && r.sim.beeps.includes(1));
   const before = r.out.filter(e => e.type === 'hit' && !e.buffered).length; r.step(9000, false);
   ok('laps while away are not sent as letters', r.out.filter(e => e.type === 'hit' && !e.buffered).length === before && r.sim.buffered.length >= 2);
+  const awayFrom = r.now() - 9000 - 4000 + 3000, back = r.now(); // (the PC stopped talking 4 s + 9 s ago; the box noticed after 3 s)
   r.sim.write(B.C.keepalive()); r.step(50);
   ok('the first line from the PC ends the safe state and the buffered laps arrive as hits', !r.link.safe && r.out.filter(e => e.type === 'hit' && e.buffered).length >= 2 && r.sim.buffered.length === 0);
+  { const hb = r.out.filter(e => e.type === 'hit' && e.buffered); // 1.0.5: sent as "ms ago", they land on the PC clock where the cars crossed: inside the time away, one lap (3 s) apart
+    ok('...with the time they were driven at: inside the time the PC was away, 3 s apart (within 20 ms)', hb.every(h => h.at >= awayFrom - 20 && h.at <= back + 20) && hb.slice(1).every((h, i) => Math.abs((h.at - hb[i].at) - 3000) <= 20)); }
 }
 { // asPort(): streams, as the page uses it
   (async () => {

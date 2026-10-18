@@ -65,4 +65,11 @@ function rig(jitter) {
   r.tick(100); r.letter('A'); const a = r.H(); for (let i = 0; i < 25; i++) r.tick(200); r.tick(60); r.letter('A'); const b = r.H();
   const hits = r.out.filter(e => e.type === 'hit'); ok('with up to 15 ms of USB delay the lap time is within 15 ms', hits.length === 2 && Math.abs((hits[1].at - hits[0].at) - (b - a)) <= 15);
 }
+{ // buffered laps: 1.0.5 sends "ms ago" (right on a board whose clock did not start at the connection); a 1.0.4 box still sends the absolute box time, and the link knows from the version
+  const feed = (ver, bValue) => { let pc = 10000; const L = B.createLink({ now: () => pc }); const hits = []; L.on(e => { if (e.type === 'hit') hits.push(e); }); L.setConnected(true);
+    const say = (t, text) => { pc = t; L.feed(Array.from(text, ch => ch.charCodeAt(0))); };
+    say(10000, `[V ${ver} nano 8]`); say(10200, '200\n\r'); say(10400, '200\n\r'); say(10600, '200\n\r'); say(10800, `200\n\r[S-]200\n\r[B1 ${bValue}]`); return hits[0]; };
+  const h5 = feed('1.0.5', 300); ok('1.0.5: [B1 300] after ticks adding up to 1000 ms is a lap 300 ms before that tick (box ms 700)', h5 && h5.buffered && Math.abs(h5.at - (10800 - 300)) <= 2, h5 && h5.at);
+  const h4 = feed('1.0.4', 700); ok('1.0.4: [B1 700] is the absolute box time 700 (the same lap), as before', h4 && h4.buffered && Math.abs(h4.at - (10800 - 300)) <= 2, h4 && h4.at);
+}
 console.log(fails ? `${fails} FAILED` : 'all passed'); process.exit(fails ? 1 : 0);

@@ -2419,3 +2419,14 @@ Good to know:
 1. The database file is written to a temporary file first and then renamed, and a file that cannot be read is never replaced by an empty one: the app says so and does not start. Nothing in your data changes.
 2. Not changed on purpose: pictures stored at full size make the database file big (App Settings > General > Pictures has a smaller quality); the web page of the LAN share has a 0.6 s delay per wrong password but no lock-out; a track without lanes can still be saved (Home flags it).
 3. Firmware 1.0.4 changes nothing in how the box talks: an older app works with it and the other way round.
+
+## What to try (1.39.2): firmware 1.0.5, buffered laps in "ms ago"
+Only for the Arduino box (App Settings > Timing Hardware > Arduino). Nothing changes on the screens.
+1. Download the sketch from the Arduino page again and upload it to the box. After Connect the box reports version **1.0.5** (the virtual box does too).
+2. Race with the box as usual: laps are timed as before. The case this version fixes (a lap the box buffered while the PC was away, on a board that did not restart when the port opened) is hard to make by hand; it is covered by the bench (`node tools/fwhost/run.js`, section 12: 500 s of uptime, 0 ms off) and by the tests.
+3. An older box (1.0.4 or earlier) still works with this app: the app reads its version and takes the old absolute times.
+
+Good to know:
+1. Firmware 1.0.5 needs this app (1.39.2 or newer): an older app with a 1.0.5 box places a buffered lap near the start of the connection. The sketch from the Arduino page always matches the app you downloaded it from.
+2. It only makes a difference for a lap the box buffered while the PC was away, and then only for a board that did not restart when the port was opened (the Nano and Mega normally do).
+

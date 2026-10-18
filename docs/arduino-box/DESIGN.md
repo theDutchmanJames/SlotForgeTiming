@@ -22,7 +22,7 @@ button on the Arduino page, as the user asked; no pre-built .hex is produced yet
 - `Z1` turns on a readings stream (`[Z<pin> <raw>]` every 250 ms per sensor pin) while the Arduino page is open: a live bar per pin with both thresholds drawn in. `Z0` turns it off (the page does when it disconnects).
 
 ## 3. When the PC goes away (as Race Coordinator)
-- In SlotForge mode the app sends `!` every second (the page and the race glue both do; two are harmless). 3 s without any line → **safe state**: lights STOP, a short beep, the main relay to the safe position (`O safeoff 1` = power off, default). Crossings are buffered (32) and sent as `[B<lane> <ms>]` when the next line arrives, after `[S-]`.
+- In SlotForge mode the app sends `!` every second (the page and the race glue both do; two are harmless). 3 s without any line → **safe state**: lights STOP, a short beep, the main relay to the safe position (`O safeoff 1` = power off, default). Crossings are buffered (32) and sent as `[B<lane> <ms>]` when the next line arrives, after `[S-]`: since firmware 1.0.5 `<ms>` is how long ago the crossing was, counted from the tick sent right before the event (up to 1.0.4 it was the absolute box time, which is only right when the board's clock started at the connection).
 - The AVR watchdog (2 s) is available but OFF by default (old-bootloader Nanos can get stuck in a reset loop after a watchdog reset); with Optiboot it may be enabled. Settings live in EEPROM, so a reset box behaves the same; the app re-sends `V`, `?`, `Z1` when it connects.
 - In Trackmate mode there is no keep-alive (Trackmate software sends none).
 

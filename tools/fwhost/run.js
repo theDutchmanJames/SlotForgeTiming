@@ -148,7 +148,19 @@ for (const [board, exe, nLanes, label] of [['nano', nano, 4, 'Nano with 8 sensor
   const T = t => base + t, s = new Scen(); track(s, 8); s.adc(T(0), 4, 1023); s.rx(T(3.0e6), 'V\n'); for (let k = 0; k < 8; k++) s.rx(T(3.2e6 + k * 1e6), '!\n'); keepAlive(s, T(16.0e6), T(30e6));
   s.pass(T(14.0e6), 0, 30e3); s.end(T(25e6));
   const text = Buffer.from(runBox(high, s).tx.map(x => x[1])).toString('latin1');
-  ok('a lap buffered while the PC was away, with the box clock above 2^31 ms: the box sends its time as a positive number ([B1 2147502648])', text.includes('[B1 2147502648]') && !/\[B\d -/.test(text), (text.match(/\[B[^\]]*\]/g) || []).join(' '));
+  ok('a lap buffered while the PC was away, with the box clock above 2^31 ms: the box sends how long ago it was, as a positive number ([B1 2000]: 2 s before the PC came back; up to 1.0.4 the absolute box time, 2147502648)', text.includes('[B1 2000]') && !/\[B\d -/.test(text), (text.match(/\[B[^\]]*\]/g) || []).join(' '));
+}
+
+// 12. a board that does NOT reset when the port opens (a Mega with the auto-reset disabled, a Nano with a capacitor on RESET): its clock is already well along when the PC connects.
+//     The laps buffered while the PC is away must still arrive with the right times. (The ticks carry deltas, so the PC's picture of the box clock starts at 0 at the connection; a buffered lap
+//     sent as an absolute box time would then be mapped 500 s off.)
+{
+  const base = 500e6; // the box has been on for 500 s when the PC connects
+  const late = build('nano', dir, base);
+  const T = t => base + t, s = new Scen(); track(s, 8); s.adc(T(0), 4, 1023); connect(s, T(3.0e6)); for (let k = 0; k < 8; k++) s.rx(T(3.2e6 + k * 1e6), '!\n'); keepAlive(s, T(16.0e6), T(41e6));
+  const truth = [12.0e6, 13.5e6, 14.4e6, 15.2e6, 17.0e6]; truth.forEach(t => s.pass(T(t), 0, 30e3)); s.end(T(30e6));
+  const h = throughLink(runBox(late, s), { jitterMs: 1 }).events.filter(e => e.type === 'hit' && e.lane === 0);
+  ok('a board that did not reset at the connection: the buffered laps still arrive with their own times (within 5 ms)', h.length === 5 && h.filter(e => e.buffered).length === 3 && h.every((e, i) => Math.abs((e.at - h[0].at) - (truth[i] - truth[0]) / 1000) < 5), h.map((e, i) => Math.round((e.at - h[0].at) - (truth[i] - truth[0]) / 1000) + ' ms off').join(', '));
 }
 
 console.log(fails ? `\n${fails} FAILED` : `\nall passed${knownOpen ? ` (${knownOpen} known issue${knownOpen > 1 ? 's' : ''} still open: run with --strict to fail on them)` : ''}`);

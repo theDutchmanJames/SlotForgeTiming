@@ -15,7 +15,7 @@
 //   [Z<pin> <raw>]        a reading of analog pin <pin> (0..1023), when the readings stream is on
 //   [C<pin> <base> <arm> <trig>]   calibration result of a pin
 //   [S+] [S-]             safe state entered (no keep-alive for 3 s) / left
-//   [B<n> <ms>]           a crossing of lane n buffered while the PC was away, at box time <ms> (sent when the PC is back)
+//   [B<n> <ms>]           a crossing of lane n buffered while the PC was away, <ms> before the tick sent right before this event (sent when the PC is back; up to 1.0.4 it was the absolute box time)
 //   [O <key> <value...>]  a setting (the answer to ?)
 //   [E <text>]            a message for the log
 // Commands in SlotForge mode (each a line ending in LF or CR):
