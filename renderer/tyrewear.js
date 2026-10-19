@@ -36,7 +36,7 @@
   // the sets: how many sets of each tyre a car (or a team) has, the one it starts on counted; 0 = that tyre is not allowed in the race. setsMode: none (no limit, as in 1.40.0), car, team
   const DEFAULT_SETS = { H: 2, M: 2, S: 2, SS: 1, INT: 2, W: 2 };
   const SETS_MODES = [['none', 'No limit: every stop gives fresh tyres'], ['car', 'Each car has its own sets'], ['team', 'The team shares its sets']];
-  const DEFAULTS = { setsMode: 'car', unit: 'lap', practice: 'off', qualifying: 'off', effect: 'on', eUse: 'on', eRate: 'on', eTank: 'off', zero: 'points', zeroPoints: 2, changeSeconds: 4, stop: 'overlap', warn: 25, crit: 10 };
+  const DEFAULTS = { setsMode: 'car', unit: 'lap', practice: 'off', qualifying: 'off', effect: 'on', eUse: 'on', eRate: 'on', eTank: 'off', zero: 'points', zeroPoints: 2, changeSeconds: 4, stop: 'overlap', warn: 25, crit: 10, call1: 50, call2: 25, call3: 10 };
 
   const num = (v, d, lo, hi) => {
     const n = typeof v === 'string' && v.trim() !== '' ? Number(v.replace(',', '.')) : v;
@@ -71,6 +71,17 @@
   // what a new record starts with: the Standard system
   const defaults = () => ({ ...DEFAULTS, tyres: clone(DEFAULT_TYRES), mult: clone(MULT), sets: clone(DEFAULT_SETS) });
 
+  // The wear levels at which the audio set calls (1.42.0): the life the tyres have left, in whole percents from 1 to 99, highest first. A box that is left empty is no call; a record from before 1.42.0 has the three levels of the form (50, 25 and 10).
+  function cleanCalls(rec) {
+    const out = [];
+    ['call1', 'call2', 'call3'].forEach(k => {
+      const v = rec ? rec[k] : undefined;
+      if (v === '' || v === null || (typeof v === 'string' && v.trim() === '')) return; // (empty: no call at this level)
+      const n = Math.round(Number(v === undefined ? DEFAULTS[k] : v));
+      if (Number.isFinite(n) && n >= 1 && n <= 99 && !out.includes(n)) out.push(n);
+    });
+    return out.sort((a, b) => b - a);
+  }
   // The settings of a record, cleaned into what the engine gets. ctx: { laneLen: [metres of every lane], disp: 'm' | 'ft' (the distance unit of the app) }. Gives null when there is no record.
   function clean(rec, ctx) {
     if (!rec || typeof rec !== 'object') return null;
@@ -83,7 +94,7 @@
       effect: rec.effect !== 'off', levers: { use: rec.eUse !== 'off', rate: rec.eRate !== 'off', tank: rec.eTank === 'on' },
       zero: pick(rec.zero, ZERO.map(z => z[0]), DEFAULTS.zero), zeroPoints: Math.round(num(rec.zeroPoints, DEFAULTS.zeroPoints, 0, 100)),
       changeMs: Math.round(num(rec.changeSeconds, DEFAULTS.changeSeconds, 0, 600) * 1000), stop: rec.stop === 'add' ? 'add' : 'overlap',
-      warn: Math.round(num(rec.warn, DEFAULTS.warn, 0, 100)), crit: Math.round(num(rec.crit, DEFAULTS.crit, 0, 100))
+      warn: Math.round(num(rec.warn, DEFAULTS.warn, 0, 100)), crit: Math.round(num(rec.crit, DEFAULTS.crit, 0, 100)), calls: cleanCalls(rec)
     };
   }
 
@@ -239,7 +250,7 @@
     return { on: true, cfg, rows };
   }
 
-  const api = { nextChoices, nextNote, DEFAULT_SETS, SETS_MODES, cleanSets, pickFit, setsTotal, setsText, CODES, NUMS, LIMITS, MAXP, PRESETS, PRESET_KEYS, DEFAULT_TYRES, MULT, ZERO, DEFAULTS, defaults, cleanTyres, cleanMult, clean, wearPerLap, effectPct, effectLever, levelOf, left, lasts, effectText, shownLife, leftText, zeroText, rulesText, view, unitM, lastsText, curveSvg, stateOf };
+  const api = { cleanCalls, nextChoices, nextNote, DEFAULT_SETS, SETS_MODES, cleanSets, pickFit, setsTotal, setsText, CODES, NUMS, LIMITS, MAXP, PRESETS, PRESET_KEYS, DEFAULT_TYRES, MULT, ZERO, DEFAULTS, defaults, cleanTyres, cleanMult, clean, wearPerLap, effectPct, effectLever, levelOf, left, lasts, effectText, shownLife, leftText, zeroText, rulesText, view, unitM, lastsText, curveSvg, stateOf };
   root.TyreWear = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

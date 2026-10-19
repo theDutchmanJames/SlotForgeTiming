@@ -120,7 +120,7 @@ module.exports = {
       { id: 'length', title: 'Length and result', note: 'Laps or time, heats, how the race ends and is counted', open: true },
       { id: 'endurance', title: 'Endurance: driver swaps', note: 'When a team swaps drivers in the pits, who steps in, and what a swap that is not made costs' },
       { id: 'start', title: 'Start', note: 'Start lights, restarts and the first lap' },
-      { id: 'rules', title: 'Rule sets', note: 'The penalty, damage, fuel and weather systems, Balance of Power and the pit stop sensor' },
+      { id: 'rules', title: 'Racing Systems', note: 'The penalty, damage, fuel, tyre wear and weather systems, Balance of Power and the pit stop sensor' },
       { id: 'yellow', title: 'Yellow flag', note: 'A target lap time while the yellow flag is up' },
       { id: 'pads', title: 'Adjust pads', note: 'The values on the Adjust pads for this race setup. An empty field uses the values from App Settings, Race Director.' },
       { id: 'screens', title: 'Screens and sound', note: 'Timing page layouts and the audio set' },
@@ -256,11 +256,11 @@ module.exports = {
         hint: 'When the swap is not made within this time, the team is late: the penalty and the lap counting below apply.' },
       { key: 'swapLate', group: 'endurance', label: 'While a swap is not made', type: 'select', default: 'count', options: [['count', 'The laps keep counting'], ['stop', 'The laps stop counting (they count again once the swap is made)']], showIf: [{ sessionType: ['endurance'] }] },
       { key: 'swapPenalty', group: 'endurance', label: 'Penalty points for a swap that is not made in time (0 = none)', type: 'number', default: 0, min: 0, step: 1, showIf: [{ sessionType: ['endurance'] }],
-        hint: 'Given when the grace time is over. It needs a penalty system (under Rule sets); without one nothing is added, but the team is still called out.' },
+        hint: 'Given when the grace time is over. It needs a penalty system (under Racing Systems); without one nothing is added, but the team is still called out.' },
       { key: 'swapRepeat', group: 'endurance', label: 'Give the penalty again every (seconds, 0 = once)', type: 'number', default: 0, min: 0, showIf: [{ sessionType: ['endurance'] }],
         hint: 'A team that keeps driving gets the penalty again after this many seconds, for as long as the swap is not made.' },
       { key: 'swapEarly', group: 'endurance', label: 'A swap before the shortest stint is over', type: 'select', default: 'allow', options: [['allow', 'Is allowed'], ['penalty', 'Costs the penalty points of a swap that is not made']], showIf: [{ sessionType: ['endurance'] }],
-        hint: 'Only when a shortest stint is set above. A swap before it is over is logged as too early. It needs a penalty system (under Rule sets).' },
+        hint: 'Only when a shortest stint is set above. A swap before it is over is logged as too early. It needs a penalty system (under Racing Systems).' },
       { key: 'minPenalty', group: 'endurance', label: 'Penalty points for every driver who drove less than the least (0 = none)', type: 'number', default: 0, min: 0, step: 1, showIf: [{ sessionType: ['endurance'] }],
         hint: 'Given to the team when the race is over, for each driver who did not drive the least set above (a driver who did not drive at all too). A race that is stopped early gives none. It needs a penalty system.' },
       { key: 'lightsMin', group: 'start', label: 'Start lights: shortest wait before lights out (seconds)', type: 'number', default: 1, showIf: RACING },
@@ -285,7 +285,7 @@ module.exports = {
       { key: 'yellowTarget', group: 'yellow', label: 'Yellow flag: target lap time (seconds, 0 = none)', type: 'number', default: 0, min: 0, showIf: RACING,
         hint: 'While the yellow flag is up, drivers must drive slower than this. Say your normal lap is 7.500 and you set 15.000: a full lap under yellow that is faster than 15.000 is a lap that was too fast, and it is called out. A lap that was partly before the yellow flag does not count. 0 means no target.' },
       { key: 'yellowPoints', group: 'yellow', label: 'Yellow flag: penalty points for a lap that is too fast', type: 'number', default: 1, min: 0, showIf: RACING,
-        hint: 'Given to the driver for every full lap under yellow that is faster than the target. It needs a penalty system (under Rule sets); without one the lap is only called out and marked in the lap review. 0 gives no points. Not used without a target above.' },
+        hint: 'Given to the driver for every full lap under yellow that is faster than the target. It needs a penalty system (under Racing Systems); without one the lap is only called out and marked in the lap review. 0 gives no points. Not used without a target above.' },
       { key: 'padPoints', group: 'pads', label: 'Penalty points pad', type: 'padlist', pad: 'points', default: '', optional: true, placeholder: 'Empty: the App Settings values', showIf: RACING,
         hint: 'Up to 6 whole numbers, separated by commas, for example 1, 3, 10.' },
       { key: 'padDamage', group: 'pads', label: 'Damage points pad', type: 'padlist', pad: 'damage', default: '', optional: true, placeholder: 'Empty: the App Settings values', showIf: RACING,
@@ -400,7 +400,7 @@ module.exports = {
       { id: 'pit', title: 'Pit stops', note: 'How long changing tyres takes', open: true },
       { id: 'sets', title: 'Sets of tyres', note: 'How many sets of every tyre a car or a team has, and what the Race Director can queue for the next stop' },
       { id: 'where', title: 'Where it applies', note: 'Practice and qualifying' },
-      { id: 'warn', title: 'Warning colours', note: 'Where the life of the tyres turns amber and red on the widgets' }
+      { id: 'warn', title: 'Warnings', note: 'Where the life of the tyres turns amber and red on the widgets, and when the audio set speaks' }
     ],
     fields: [
       { key: 'name', group: 'basics', label: 'Name', type: 'text' },
@@ -428,7 +428,11 @@ module.exports = {
         hint: 'A race, a timed race, heats and an Endurance Race always have it when the race setup has this system. A Time Token Session never does.' },
       { key: 'qualifying', group: 'where', label: 'Qualifying', type: 'select', default: Tw.DEFAULTS.qualifying, options: [['off', 'No tyre wear'], ['on', 'Tyre wear']] },
       { key: 'warn', group: 'warn', label: 'Warning (amber) at this life or less (%)', type: 'number', min: 0, max: 100, default: Tw.DEFAULTS.warn },
-      { key: 'crit', group: 'warn', label: 'Critical (red) at this life or less (%)', type: 'number', min: 0, max: 100, default: Tw.DEFAULTS.crit }
+      { key: 'crit', group: 'warn', label: 'Critical (red) at this life or less (%)', type: 'number', min: 0, max: 100, default: Tw.DEFAULTS.crit },
+      { key: 'call1', group: 'warn', label: 'Audio call at this life (%): first level', type: 'number', min: 1, max: 99, default: Tw.DEFAULTS.call1,
+        hint: 'The audio set says "tyres at 50 percent" when the tyres have this much life left or less (the call "A car\'s tyres reach a wear level" in the group Tyre wear). Each of the three levels is said once for every set of tyres. Empty = no call at this level.' },
+      { key: 'call2', group: 'warn', label: 'Audio call at this life (%): second level', type: 'number', min: 1, max: 99, default: Tw.DEFAULTS.call2 },
+      { key: 'call3', group: 'warn', label: 'Audio call at this life (%): third level', type: 'number', min: 1, max: 99, default: Tw.DEFAULTS.call3 }
     ]
   },
   // Weather systems: a spell of rain with a forecast, the tyres to change in the pits, and what the wrong tyres cost. Chosen per race setup.

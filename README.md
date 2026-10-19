@@ -2445,7 +2445,7 @@ Tyres now wear out. A tyre wear system gives every tyre a life from 100% to 0%; 
 2. **Wear is counted per** lap or **per distance** (per 100 m, or 100 ft when App Settings say feet): the right choice for Distance Racing, where the widgets then say how many metres of tyre are left. Under *Wear in the weather* is a table of how much faster or slower a tyre wears in dry, cloudy, wet and clearing weather (Inter and Wet tyres wear slower in the rain).
 3. **What worn tyres do**: through the fuel rules (fuel used in a lap, refuelling speed, tank size; the same way as Balance of Power and the weather, added together, never more than 90%), and what happens at **0%**: nothing, penalty points every lap, the lap does not count until the car pits, or the car retires. The 0% rule works without a Fuel setup.
 4. **Pit stops**: *Changing tyres takes* some seconds (0 = no time), at the same time as refuelling and repair or one after the other. A car that leaves before the time is up keeps its worn tyres. Practice and qualifying can have tyre wear too (the *Where it applies* folder); a race, a timed race, heats and an Endurance Race always do, and a Time Token Session never.
-5. In **Race Setup > Race Setups**, folder **Rule sets**, choose the **Tyre wear system** (after Weather system). Start a race: every car begins on fresh tyres, every heat again.
+5. In **Race Setup > Race Setups**, folder **Racing Systems** (called Rule sets before 1.42.0), choose the **Tyre wear system** (after Weather system). Start a race: every car begins on fresh tyres, every heat again.
 6. The **Tyre Change** folder (race screen and Race Director page) now has **Life**, **Left**, **Grip effect** and **State** (Driving, Box soon, Box now, Fitting...) for every lane, with a bar that turns amber and red at the warning levels of the system.
 7. Layout Editor, folder **Weather**: the new **Tyre Degradation** widget. *Show the tyre life as*: **The tyre wears away** (the tread gets shorter), **The tyre picture with a ring** (your own tyres from a picture set, with a ring that empties), **A bar** (horizontal or vertical, the bar of the Fuel widget) or **A number only**. Switches for the percentage, the laps (or metres) left, the grip effect, the name of the tyre and *BOX NOW* at 0%, and the three colours.
 8. The **Leaderboard** widget has a new column **Tyre life** (a chip, the life and a small bar), and the **Driver stats** grid has two new cells, **Tyre life** and **Tyre laps left**. The Home tab's rules card says which tyre wear system a race has.
@@ -2469,4 +2469,21 @@ Good to know:
 1. A Tyre Wear System from before 1.41.0 has no sets: it opens as **No limit** and behaves as it did. New systems start with **Each car** and 2 2 2 1 2 2 sets.
 2. With **The team**, the cars of a team share one box. A car that is not in a team always has a box of its own.
 3. Every heat starts with full boxes. An interrupted race comes back with the boxes, the queue and the tyres as they were.
-4. The audio calls for tyre wear and the tyre stints in the results come in release 3.
+4. The audio calls for tyre wear and the tyre stints in the results came in release 3 (1.42.0, below).
+
+## What to try (1.42.0): Tyre Wear, release 3 (audio calls, tyre stints in the results)
+
+1. **Race Setup > Race Setups**: the folder that was called **Rule sets** is now **Racing Systems** (the tab **Racing Rules** is where you write the rules of your club). Nothing in the folder moved.
+2. **Race Setup > Tyre Wear Systems**, folder **Warnings** (it was called *Warning colours*): three new numbers, **Audio call at this life (%)**, 50, 25 and 10 to begin with. A box you empty is no call at that level. The colours of the widgets are still set by the amber and red levels above them.
+3. **Customization > Audio Settings**, open a set: a new folder **Tyre wear** with six calls, each with two sentences and each can be switched off: a wear level (*Alex, tyres at 46 percent*; you can use {driver} {tyre} {percent} {left}), worn out tyres, new tyres (said when the change is done, with {sets}), the last set of a tyre, a tyre queued by the Race Director, and a car that left the pits too early.
+4. Race with a tyre wear system and that audio set. When the life of a set goes down to a level it is said, once for every set; after the stop the levels count again for the new set. {left} says *14 laps*, or *205 metres* (feet) in a Distance Race.
+5. After the race, **Database > Results**, open the race: under the table are the **Tyre stints**. Every set is a bar in the colour of the tyre, with its laps (*S . 9 laps*) and under it the life that was left when it came off (*off: 18%*) or at the flag (*flag: 31%*), coloured by the levels of the system. At the end of the line: the stops, the time the tyres took in the pits and the laps on worn out tyres (red when there are some). All bars are on one scale, so a car that stopped early has a shorter strip.
+6. The result table has a new column **Tyres** (the tyre at the flag). A heat race has a strip for every heat (and final), each heat on fresh tyres. A Distance Race counts the bars in metres (feet): *S . 120 m*.
+7. The two switches above the bars: **Show the tyre stints under the results** and **Show the laps on worn tyres (0%) in red** (a red hatched end on the bar). **Export to PDF** has a box **Tyre stints** (on to begin with) and the Tyres column in its list of columns.
+
+Good to know:
+1. Only races with a tyre wear system get this. The results of every other race, and of races from before 1.42.0, look as they did. The Slotcar statistics page has no tyre information.
+2. An audio set from before 1.42.0 does not have these six calls; it says them with the ready-made sentences. Open the set and save it to change them, or to switch one off.
+3. A race that comes back after an interruption carries on without level calls if it was started before 1.42.0.
+4. When it rains, a stop can have two calls: *new tyres* (Tyre wear) and the tyre change of the weather (Weather). Switch one of them off if you find it too much.
+5. Lap times, best laps, records and the lap chart are the measured values; the wear only shows as the stints.

@@ -729,13 +729,21 @@ const statNote = keys => { const n = Stats.notes(keys); return n.length ? `<p cl
 // time bought for a stint: "10 min", "1 min 30 s", "45 s"
 const boughtText = ms => { const sec = Math.round(Number(ms) / 1000); if (!Number.isFinite(sec)) return ''; const m = Math.floor(sec / 60), s = sec % 60; return !s ? `${m} min` : m ? `${m} min ${s} s` : `${s} s`; };
 
+// The tyre stints of a session that had Tyre Wear (1.42.0): a heading with its two switches (kept in the settings), and the bars under it. Nothing for a session without tyre wear.
+const tyreStintsSection = s => {
+  if (!Stats.tyreStints(s, dUnit()).length) return '';
+  const on = state.settings.tyreStints !== false, worn = state.settings.tyreWornRed === true;
+  return `<h4>Tyre stints</h4><div class="tysopt"><label class="inline"><input type="checkbox" data-tyshow="${esc(s.id)}"${on ? ' checked' : ''}> Show the tyre stints under the results</label>
+    <label class="inline"><input type="checkbox" data-tyworn="${esc(s.id)}"${worn ? ' checked' : ''}> Show the laps on worn tyres (0%) in red</label></div>${on ? Stats.tyreStintsHtml(s, { distUnit: dUnit(), worn }) + `<p class="muted statnote">${esc(Stats.tyreStintsNote(s))}</p>` : ''}`;
+};
+
 // The dialog of Export to PDF: what goes in the PDF. Resolves with the options for Report.sessionHtml, or null when it was cancelled.
 // The columns start as the View settings have them; the pages (results table, heats, lap times) start as they were picked the last time.
 function pdfChoice(session, figs) {
   const cols = Stats.sessionColumns(session, figs), screen = ViewSet.keys(Stats.SESSION_COLUMNS, viewSaved(['results', 'sessions']));
-  const pages = { results: true, heats: true, laps: true, ...(state.settings.pdfPages || {}) };
+  const pages = { results: true, heats: true, tyres: true, laps: true, ...(state.settings.pdfPages || {}) };
   const picked = new Set(cols.filter(c => screen.includes(c.key)).map(c => c.key));
-  const items = [['results', 'Results table'], ...(session.heatResults ? [['heats', session.finals ? 'Heats and finals' : 'Heats']] : []), ['laps', 'Every lap time (page 2 onwards)']];
+  const items = [['results', 'Results table'], ...(session.heatResults ? [['heats', session.finals ? 'Heats and finals' : 'Heats']] : []), ...(Stats.tyreStints(session, 'm').length ? [['tyres', 'Tyre stints']] : []), ['laps', 'Every lap time (page 2 onwards)']];
   dlg.innerHTML = `<h3>Export to PDF</h3><p class="muted">Choose what goes in the PDF.</p>
     <fieldset class="vsgroup"><legend>Include</legend>${items.map(([k, t]) => `<label class="vschip"><input type="checkbox" data-pdfpage="${k}"${pages[k] ? ' checked' : ''}> ${esc(t)}</label>`).join('')}</fieldset>
     <fieldset class="vsgroup"><legend>Columns of the results table</legend>${cols.map(c => `<label class="vschip"><input type="checkbox" data-pdfcol="${esc(c.key)}"${picked.has(c.key) ? ' checked' : ''}> ${esc(c.label)}</label>`).join('')}</fieldset>
@@ -765,7 +773,7 @@ function pdfChoice(session, figs) {
       const err = byId('pdferr'), has = items.some(([k]) => pages[k]);
       if (!has) { err.textContent = 'Pick at least one thing to include.'; return; }
       if (pages.results && !picked.size) { err.textContent = 'Pick at least one column, or leave the results table out.'; return; }
-      const chosen = { results: !!pages.results, heats: !!pages.heats, laps: !!pages.laps };
+      const chosen = { results: !!pages.results, heats: !!pages.heats, tyres: !!pages.tyres, laps: !!pages.laps };
       try { state.settings = await api.setSettings({ pdfPages: chosen }); } catch { /* remembering the choice is not needed for the PDF */ }
       finish({ ...chosen, columns: cols.filter(c => picked.has(c.key)).map(c => c.key) });
     };
@@ -857,6 +865,7 @@ async function renderResultsPool(box, pool) {
       (Stats.heated(s) && s.scoring && Heats.scoringText(s.scoring, pts) ? `<p class="muted">${esc(Heats.scoringText(s.scoring, pts))}</p>` : '') + (fin ? `<p class="muted">${esc(Heats.finalsSaid(s.finals))}</p>` : '') + (Stats.weatherText(s) ? `<p class="muted">${esc(Stats.weatherText(s))}</p>` : '') + (Stats.resumeText(s) ? `<p class="muted">${esc(Stats.resumeText(s))}</p>` : '') +
       (Stats.stintLines(s, dUnit()).length ? '<h4>Driver swaps</h4>' + Stats.stintLines(s, dUnit()).map(g => `<p><strong>${esc(g.team)}</strong><br><span class="muted">${g.stints.map(q => `${esc(q.n)}. ${esc(q.text)}`).join(' · ')}</span></p>`).join('') : '') +
       (s.heatResults ? `<h4>${s.finals ? 'Heats and finals' : 'Heats'}</h4>` + s.heatResults.map(h => `<p><strong>${esc(Heats.raceName(h))}</strong>${Stats.weatherText(h) ? ` <span class="muted">· ${esc(Stats.weatherText(h))}</span>` : ''}<br><span class="muted">${h.rows.map(r => `${esc(r.pos)}. ${Stats.isHeatWinner(s, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${esc(Stats.heatTimeText(s, r))}${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${Stats.adjustedText(r) ? ', adjusted: ' + esc(Stats.adjustedText(r)) : ''}${Stats.notesText(r) ? ', ' + esc(Stats.notesText(r)) : ''})`).join(' · ')}</span></p>`).join('') : '') +
+      tyreStintsSection(s) +
       '<h4>All lap times</h4>' + s.standings.map(x => {
         const mine = Stats.ownLaps(x, laps).filter(l => l.sessionId === s.id).sort((a, b) => (a.heat || 0) - (b.heat || 0) || a.lapNumber - b.lapNumber);
         return `<p><strong>${esc(x.driverName)}</strong><br><span class="muted">${mine.map(l => { const t = esc(`${l.heat ? (l.final ? 'F' + l.final : 'H' + l.heat) + ' ' : ''}${l.lapNumber}: ${RaceEngine.fmtTime(l.time)}`); return l.invalid || l.tooSlow ? `<s class="lapbad" title="${l.invalid ? 'Invalid lap' : 'Too slow: not counted for records'}">${t}</s>` : l.pit ? `<em title="Lap with a pit stop">${t}</em>` : t; }).join(' · ') || 'no laps'}</span></p>`;
@@ -892,7 +901,7 @@ async function renderResultsPool(box, pool) {
       if (!options) return;
       msg.textContent = 'Making the PDF...';
       try {
-        const res = await api.exportPdf(Report.sessionHtml({ session: s, laps: mine, tracks, cars, options, unit: Speed.unitOf(state.settings), distUnit: Speed.distUnitOf(state.settings) }), Report.fileName(s));
+        const res = await api.exportPdf(Report.sessionHtml({ session: s, laps: mine, tracks, cars, options: { ...options, tyreWorn: state.settings.tyreWornRed === true }, unit: Speed.unitOf(state.settings), distUnit: Speed.distUnitOf(state.settings) }), Report.fileName(s));
         msg.textContent = res.saved ? 'Saved to ' + res.path : 'Export cancelled.';
       } catch (x) { msg.textContent = 'Could not make the PDF: ' + x.message; }
       return;
@@ -909,6 +918,11 @@ async function renderResultsPool(box, pool) {
     if (confirm(tokenPool ? 'Delete this stint and all of its laps?\n\nThis can\'t be undone.' : 'Delete this session and all of its laps?\n\nThis can\'t be undone.')) { await api.removeSession(b.dataset.delsession); renderResultsPool(box, pool); }
   };  box.onchange = async ev => { // a check box of the View settings bar
     const cb = ev.target;
+    if (cb && cb.dataset && (cb.dataset.tyshow !== undefined || cb.dataset.tyworn !== undefined)) { // the tyre stints: shown or not, and the laps on worn out tyres in red (kept for every session)
+      const id = cb.dataset.tyshow !== undefined ? cb.dataset.tyshow : cb.dataset.tyworn;
+      try { state.settings = await api.setSettings(cb.dataset.tyshow !== undefined ? { tyreStints: !!cb.checked } : { tyreWornRed: !!cb.checked }); } catch { /* the choice is only a look */ }
+      state.focusSession = id; return renderResultsPool(box, pool); // (the race stays open where it was)
+    }
     if (await viewToggle(cb, colsOf)) { await renderResultsPool(box, pool); viewFocus(box, cb); }
   };
 }

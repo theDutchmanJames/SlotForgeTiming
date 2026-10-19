@@ -63,6 +63,13 @@
     { id: 'tyrechange', group: 'Weather', label: 'A car has new tyres (said when the pit stop starts)', vars: ['driver', 'tyre', 'weather'], lines: ['{driver} is on {tyre} tyres', '{driver} changes to {tyre} tyres'] },
     { id: 'wrongtyres', group: 'Weather', label: 'A car did not change tyres in time (when there are no penalty points for it)', vars: ['driver', 'tyre', 'weather'], lines: ['{driver} is on the wrong tyres', '{driver} stays out on {tyre} tyres'] },
     { id: 'tyrepenalty', group: 'Weather', label: 'A car gets penalty points for the wrong tyres (said instead of the penalty call)', vars: ['driver', 'points', 'tyre', 'weather'], lines: ['Penalty for {driver}, wrong tyres', '{driver} is penalised for the tyres'] },
+    // Tyre wear (1.42.0): said for a race with a Tyre Wear System (the levels of the first call are set in the system)
+    { id: 'tyrelevel', group: 'Tyre wear', label: 'A car\'s tyres reach a wear level (the levels are set in the Tyre Wear System: 50, 25 and 10% to begin with)', vars: ['driver', 'tyre', 'percent', 'left'], lines: ['{driver}, tyres at {percent} percent', '{driver} has {left} of tyre left'] },
+    { id: 'tyreworn', group: 'Tyre wear', label: 'A car\'s tyres are worn out (0% life left)', vars: ['driver', 'tyre'], lines: ['{driver}\'s tyres are gone, box box', '{driver} has no tyres left'] },
+    { id: 'tyrenew', group: 'Tyre wear', label: 'A car has new tyres (said when the tyre change is done)', vars: ['driver', 'tyre', 'sets'], lines: ['{driver} is out on fresh {tyre} tyres', '{driver} has new {tyre} tyres'] },
+    { id: 'tyrelast', group: 'Tyre wear', label: 'A car fits the last set of a tyre', vars: ['driver', 'tyre'], lines: ['{driver} is on the last set of {tyre}', 'Last {tyre} set for {driver}'] },
+    { id: 'tyrequeued', group: 'Tyre wear', label: 'The Race Director queued a tyre for the next pit stop', vars: ['driver', 'tyre'], lines: ['{driver}, {tyre} tyres for the next stop', '{tyre} tyres are waiting for {driver}'] },
+    { id: 'tyreearly', group: 'Tyre wear', label: 'A car left the pits before the tyre change was done', vars: ['driver', 'tyre', 'percent'], lines: ['{driver} left too early, still on the old tyres', '{driver} is out on worn tyres'] },
     { id: 'penalty', group: 'Penalties', label: 'Penalty points given', vars: ['driver', 'points'], lines: ['Penalty for {driver}', '{driver} gets a penalty'] },
     { id: 'specialpenalty', group: 'Penalties', label: 'A special penalty (drivethrough, stop and go...)', vars: ['driver', 'penalty'], lines: ['{driver}, {penalty}', '{penalty} for {driver}'] },
     { id: 'penaltyserved', group: 'Penalties', defaultOn: false, label: 'A special penalty has been served', vars: ['driver', 'penalty'], lines: ['{driver} has served the {penalty}', '{penalty} served by {driver}'] },
@@ -89,7 +96,7 @@
   // the values a placeholder can have, in the order they are shown to the user
   const VARS = { driver: 'The driver, as the set says (name, nickname or callsign)', name: 'The driver\'s name', nickname: 'The driver\'s nickname', callsign: 'The driver\'s callsign', team: 'The name of the team of the car (empty when the car races without a team)',
     other: 'The other driver involved (the one who was passed, or the leader before)', time: 'The lap time, as spoken', position: 'The position, as a word', lap: 'The lap number the time was set in',
-    laps: 'The number of laps of the race (the laps driven so far when there is no lap limit)', percent: 'The race distance reached, in percent', left: 'What is left of the race: laps or minutes',
+    laps: 'The number of laps of the race (the laps driven so far when there is no lap limit)', percent: 'The race distance reached, in percent (in the tyre wear calls: the life the tyres have left, in percent)', left: 'What is left of the race: laps or minutes (in the tyre wear call: what is left of the tyres, as laps (14 laps) or as distance (205 metres) in a Distance Race)',
     lane: 'The number of the lane', seconds: 'The seconds of paid time that are left (in the time-added call: the seconds that were added; in the no-lap call: how long)',
     fuel: 'Litres of fuel left (empty when the race has no fuel)', points: 'The driver\'s penalty points (in the penalty call: the points just given)', penalty: 'The name of the special penalty',
     gap: 'The gap to the car in front, as spoken (0.8 seconds)', lapsdown: 'How many laps a lapped driver is behind (1 lap)', heat: 'The number of the heat (empty when it is not a heat-based race, and in a final)', heats: 'The number of heats of the race (empty in a final)', final: 'The letter of the final, A or B (empty when it is not a final)', lineup: 'The drivers of the next heat or final with their lanes (Alex in lane 1, Sam in lane 2 and Kim in lane 3)',
@@ -100,10 +107,10 @@
     improved: 'How much better the lap was than the best before it (0.12 seconds)', off: 'How far a lap was from the track record (0.04 seconds)',
     pit: 'How long the pit stop took, as spoken (7.4 seconds)', refuelled: 'Litres of fuel put in during the pit stop', added: 'The time that was added, as spoken (5 minutes, 30 seconds)',
     bop: 'The Balance of Power percentage the car got, as a number (20)', effect: 'What Balance of Power does to the car: hindered or helped',
-    tyre: 'The tyres of the car, as a word (Wet, Soft, Intermediate...)', weather: 'The weather now: dry, cloudy, wet or clearing',
+    tyre: 'The tyres of the car, as a word (Wet, Soft, Intermediate...)', sets: 'How many sets of that tyre the car has left (empty when the race has no limit on the sets)', weather: 'The weather now: dry, cloudy, wet or clearing',
     damage: 'The damage points the car has now', level: 'The name of the damage level of the car (Light damage, Heavy damage...)', repair: 'How long the repair takes, as spoken (10 seconds; empty when the level has no time)', when: 'How soon the driver should pit: whenever you can, or as fast as you can',
     tracktemp: 'The track temperature in the weather, as spoken (24 degrees)', airtemp: 'The air temperature, as spoken (20 degrees)', windspeed: 'The wind speed, as spoken (16 kilometres per hour)', winddir: 'Where the wind comes from, as spoken (south west)' };
-  const SAMPLE = { nextdriver: 'Sam', swapin: '1 minute', target: '15 seconds', team: 'Red Racers', driver: 'Alex', name: 'Alex', nickname: 'Speedy', callsign: 'ALX', other: 'Sam', time: '5.12', position: 'second', percent: '50', left: '5 laps', fuel: '12', lane: '2', seconds: '60', points: '2', penalty: 'drivethrough', lap: '4', laps: '10', gap: '0.8 seconds', lapsdown: '1 lap', heat: '2', heats: '3', final: 'A', lineup: 'Alex in lane 1, Sam in lane 2 and Kim in lane 3', car: 'Porsche 956', best: '5.10', track: 'Living room', gapahead: '0.8 seconds', record: '5.01', improved: '0.12 seconds', off: '0.04 seconds', pit: '7.4 seconds', refuelled: '8', added: '5 minutes', bop: '20', effect: 'hindered', tyre: 'Wet', weather: 'wet', damage: '6', level: 'Medium damage', repair: '15 seconds', when: 'whenever you can', tracktemp: '17 degrees', airtemp: '15 degrees', windspeed: '22 kilometres per hour', winddir: 'west' };
+  const SAMPLE = { nextdriver: 'Sam', swapin: '1 minute', target: '15 seconds', team: 'Red Racers', driver: 'Alex', name: 'Alex', nickname: 'Speedy', callsign: 'ALX', other: 'Sam', time: '5.12', position: 'second', percent: '50', left: '5 laps', fuel: '12', lane: '2', seconds: '60', points: '2', penalty: 'drivethrough', lap: '4', laps: '10', gap: '0.8 seconds', lapsdown: '1 lap', heat: '2', heats: '3', final: 'A', lineup: 'Alex in lane 1, Sam in lane 2 and Kim in lane 3', car: 'Porsche 956', best: '5.10', track: 'Living room', gapahead: '0.8 seconds', record: '5.01', improved: '0.12 seconds', off: '0.04 seconds', pit: '7.4 seconds', refuelled: '8', added: '5 minutes', bop: '20', effect: 'hindered', tyre: 'Wet', sets: '1', weather: 'wet', damage: '6', level: 'Medium damage', repair: '15 seconds', when: 'whenever you can', tracktemp: '17 degrees', airtemp: '15 degrees', windspeed: '22 kilometres per hour', winddir: 'west' };
   const condVars = (eng, state) => (eng.weather ? WxT.condSpeech(WxT.conditionsFor(eng.weather, state || 'dry', null, '')) : {}); // the conditions of a weather state of this race, as spoken
   const WEATHER_CALL = { cloudy: 'weathercloudy', wet: 'weatherwet', clearing: 'weatherclearing', dry: 'weatherdry' }; // the call for each state the weather becomes
   const ORD = ['zeroth', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth'];
@@ -128,6 +135,12 @@
     return { driver, top: driver && !tokens, time: v.includes('time'), gap: driver && !tokens };
   };
   const lapsText = n => `${n} lap${n === 1 ? '' : 's'}`;
+  // what is left of the tyres as it is spoken: "14 laps", or in a Distance Race "205 metres" ("205 feet" when the app counts in feet); nothing when it is not known
+  function tyreLeft(eng, e) {
+    const cfg = eng && eng.tyrewear;
+    if (cfg && cfg.unit === 'distance') { if (e.dist === null || e.dist === undefined) return ''; const n = e.dist; return `${n} ${cfg.disp === 'ft' ? (n === 1 ? 'foot' : 'feet') : (n === 1 ? 'metre' : 'metres')}`; }
+    return e.laps === null || e.laps === undefined ? '' : lapsText(e.laps);
+  }
   // a small difference as it is spoken: 0.12 seconds, 1 second (two decimals, because lap times are)
   function speakDiff(ms) {
     if (!Number.isFinite(ms)) return '';
@@ -248,6 +261,12 @@
         else if (e.type === 'bopon' || (e.type === 'bopchange' && e.was * e.pct < 0)) ev('bopon', { ...who(c), bop: Math.abs(e.pct), effect: e.pct < 0 ? 'hindered' : 'helped' }); // (a car that goes from hindered to helped, or the other way, is told again; a change of the percentage alone is not said)
         else if (e.type === 'bopoff') ev('bopoff', who(c));
         else if (e.type === 'tyres') ev('tyrechange', { ...who(c), tyre: WxT.tyreName(e.tyre), weather: e.state });
+        else if (e.type === 'tyrelevel') ev('tyrelevel', { ...who(c), tyre: WxT.tyreName(e.tyre), percent: e.life, left: tyreLeft(eng, e) });
+        else if (e.type === 'tyreworn') ev('tyreworn', { ...who(c), tyre: WxT.tyreName(e.tyre) });
+        else if (e.type === 'tyrefresh') ev('tyrenew', { ...who(c), tyre: WxT.tyreName(e.tyre), sets: e.sets === undefined ? '' : e.sets });
+        else if (e.type === 'tyrelast') ev('tyrelast', { ...who(c), tyre: WxT.tyreName(e.tyre) });
+        else if (e.type === 'tyrequeue' && e.tyre) ev('tyrequeued', { ...who(c), tyre: WxT.tyreName(e.tyre) }); // (a queue that is cleared says nothing)
+        else if (e.type === 'tyreearly') ev('tyreearly', { ...who(c), tyre: WxT.tyreName(e.tyre), percent: e.life });
         else if (e.type === 'tyredue') ev(e.points > 0 ? 'tyrepenalty' : 'wrongtyres', { ...who(c), tyre: WxT.tyreName(e.tyre), weather: eng.wxState || '', points: e.points });
         else if (e.type === 'penalty' && e.delta > 0 && e.why !== 'tyres' && e.why !== 'swaplate' && e.why !== 'damage' && e.why !== 'damagelate') ev('penalty', { ...who(c), points: e.delta }); // (penalty points for the tyres, for a swap that is not made and for the damage rules are said by their own calls)
         else if (e.type === 'assigned') ev('specialpenalty', { ...who(c), penalty: pen });

@@ -11,6 +11,7 @@
 (function (root) {
   const E = typeof module !== 'undefined' ? require('./engine.js') : root.RaceEngine;
   const Sp = typeof module !== 'undefined' ? require('./speed.js') : root.Speed;
+  const Wx = typeof module !== 'undefined' ? require('./weather.js') : root.Wx; // the names and the colours of the tyres (the tyre stints)
 
   // ---- the columns ----
   // key, label, and whether it is shown until the person turns it off (on). Sessions: the table of a finished race, practice, qualifying or heat race.
@@ -22,7 +23,7 @@
     { key: 'avg', label: 'Average lap', on: true }, { key: 'median', label: 'Median lap', on: false }, { key: 'spread', label: 'Consistency', on: true },
     { key: 'speed', label: 'Average speed', on: true }, { key: 'scalespeed', label: 'Average scale speed', on: false }, { key: 'distance', label: 'Distance', on: false },
     { key: 'pits', label: 'Pit stops', on: true, note: 'only when the race had fuel or pit stops' }, { key: 'pittime', label: 'Pit time', on: true, note: 'only when the race had fuel or pit stops' },
-    { key: 'penalty', label: 'Penalty points', on: true, note: 'only with a penalty system' }
+    { key: 'penalty', label: 'Penalty points', on: true, note: 'only with a penalty system' }, { key: 'tyres', label: 'Tyres', on: true, note: 'only when the race had tyre wear: the tyre at the flag' }
   ];
   // A stint of a Time Token Session (one driver, one lane, one paid time)
   const STINT_COLUMNS = [
@@ -38,7 +39,7 @@
     { key: 'lane', label: 'Lane', on: false }, { key: 'lapno', label: 'Lap number', on: false }, { key: 'date', label: 'Set on', on: true }
   ];
   // the columns that are worked out from the laps and the saved figures (the rest the screen already had)
-  const FIGURE_KEYS = ['avg', 'median', 'spread', 'speed', 'scalespeed', 'distance', 'pits', 'pittime', 'penalty'];
+  const FIGURE_KEYS = ['avg', 'median', 'spread', 'speed', 'scalespeed', 'distance', 'pits', 'pittime', 'penalty', 'tyres'];
 
   // A session that was raced in heats: a heat-based race, or an Endurance Race that was raced heat by heat (1.9.0; its heats are saved the same way)
   const heated = session => !!session && (session.sessionType === 'heats' || (session.sessionType === 'endurance' && Array.isArray(session.heatResults)));
@@ -122,7 +123,7 @@
     return (session.standings || []).map(x => {
       const car = (cars || []).find(c => c.id === x.carId);
       const mine = ownLaps(x, laps).filter(l => l.sessionId === undefined || l.sessionId === session.id);
-      return { ...figures(mine, track, car && car.scale), pits: x.pits, pitTime: x.pitTime, penalty: x.penaltyPoints };
+      return { ...figures(mine, track, car && car.scale), pits: x.pits, pitTime: x.pitTime, penalty: x.penaltyPoints, tyres: x.tyres && x.tyres.last ? x.tyres.last : undefined };
     });
   }
   // speed of a single lap (a record), real and at scale
@@ -149,6 +150,7 @@
       case 'pits': return fig.pits;
       case 'pittime': return fig.pits === undefined ? undefined : fig.pitTime || 0;
       case 'penalty': return fig.penalty;
+      case 'tyres': return fig.tyres;
       default: return undefined;
     }
   }
@@ -162,6 +164,7 @@
       case 'scalespeed': return fmtScale(v, unit);
       case 'distance': return fmtDist(v, distUnit);
       case 'pittime': return v > 0 ? fmtMs(v) : dash;
+      case 'tyres': return Wx && Wx.tyreOf(v) ? Wx.tyreOf(v).name : String(v);
       default: return String(v);
     }
   }
@@ -196,6 +199,50 @@
       text: `${q.heat ? (q.final ? 'Final ' + q.final : 'Heat ' + q.heat) + ', ' : ''}${q.driverName || '?'}${q.from !== undefined && q.to !== undefined ? ', ' + clockOf(q.from) + ' to ' + clockOf(q.to) : ''}, ${lapsText(q.laps)} (${clockOf(q.ms)}${q.meters > 0 ? ', ' + Sp.distText(q.meters, distUnit) : ''})` })) }));
   }
 
+  // ---- the tyre stints (1.42.0) ----
+  // A result row of a race with Tyre Wear has tyres: { unit: 'lap' | 'distance', warn, crit, stints: [{ tyre, laps, m, life, worn, heat?, final? }], stops, ms, worn, last }. One row of the list per car (a heat race: one strip per heat),
+  // for the page and the PDF to draw as bars: the width of a bar is what the stint lasted (laps, or metres in a Distance Race), the label says the tyre and how long, and under it the life that was left when the set came off.
+  const TYRE_LETTER = { INT: 'I' }, TYRE_INK = { H: '#1b1d22', M: '#1b1d22', S: '#ffffff', SS: '#ffffff', INT: '#0e2208', W: '#ffffff' };
+  const tyreLetter = code => TYRE_LETTER[code] || code;
+  // the colour class of a life that is left: ok (green), warn (amber), crit (red); the levels of the system that was raced (the defaults when a row does not have them)
+  const lifeClass = (life, t) => { const w = t && Number.isFinite(Number(t.warn)) ? Number(t.warn) : 25, c = t && Number.isFinite(Number(t.crit)) ? Number(t.crit) : 10; return life <= c ? 'crit' : life <= w ? 'warn' : 'ok'; };
+  function tyreStints(session, distUnit) {
+    const out = [];
+    ((session && session.standings) || []).forEach((x, i) => {
+      const t = x && x.tyres; if (!t || !Array.isArray(t.stints) || !t.stints.length) return;
+      const byDist = t.unit === 'distance', groups = [];
+      t.stints.forEach((q, n) => {
+        const key = q.heat ? (q.final ? 'Final ' + q.final : 'Heat ' + q.heat) : '';
+        let g = groups.find(z => z.label === key); if (!g) groups.push(g = { label: key, stints: [] });
+        const last = n === t.stints.length - 1 || (t.stints[n + 1] && (t.stints[n + 1].heat || 0) !== (q.heat || 0)), tyre = Wx && Wx.tyreOf(q.tyre), size = Math.max(1, byDist && q.m > 0 ? q.m : q.laps);
+        g.stints.push({ tyre: q.tyre, name: tyre ? tyre.name : q.tyre, color: tyre ? tyre.color : '#888888', ink: TYRE_INK[q.tyre] || '#ffffff', size, laps: q.laps, worn: q.worn || 0, life: q.life,
+          label: `${tyreLetter(q.tyre)} · ${byDist && q.m > 0 ? Sp.distText(q.m, distUnit) : lapsText(q.laps)}`, short: `${tyreLetter(q.tyre)} · ${byDist && q.m > 0 ? Sp.distText(q.m, distUnit) : q.laps}`, end: last ? 'flag' : 'off', cls: lifeClass(q.life, t) });
+      });
+      groups.forEach(g => { g.total = g.stints.reduce((n, q) => n + q.size, 0); });
+      out.push({ row: i, who: x.driverName || '', groups, stops: t.stops || 0, ms: t.ms || 0, msText: t.ms > 0 ? (t.ms / 1000).toFixed(1) + ' s' : dash, worn: t.worn || 0, last: t.last || '' });
+    });
+    return out;
+  }
+
+  // The tyre stints as bars, for the page and for the PDF (the same markup; each draws it with its own style). o: { distUnit, worn (the laps on worn out tyres end the bar in red) }.
+  // The bars of all the cars are on one scale, so a car that stopped early has a shorter strip. Gives '' when no car of the session has tyre stints.
+  const escH = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function tyreStintsHtml(session, o = {}) {
+    const lines = tyreStints(session, o.distUnit); if (!lines.length) return '';
+    const widest = Math.max(...lines.flatMap(l => l.groups.map(g => g.total)));
+    const strip = g => `<div class="tys-strip" style="width:${(g.total / widest * 100).toFixed(2)}%">${g.stints.map(q => {
+      const share = q.size / g.total, wornPart = o.worn && q.worn > 0 ? Math.min(100, q.worn / q.laps * 100) : 0;
+      const tip = `${q.name}, ${q.laps} ${Number(q.laps) === 1 ? 'lap' : 'laps'}, ${q.life}% life left ${q.end === 'flag' ? 'at the flag' : 'when it came off'}${q.worn ? `, ${q.worn} ${q.worn === 1 ? 'lap' : 'laps'} on worn out tyres` : ''}`;
+      return `<div class="tys-seg" style="flex:${q.size} 1 0"><div class="tys-bar" style="background:${q.color};color:${q.ink}" title="${escH(tip)}"><span>${escH(share < 0.25 ? q.short : q.label)}</span>${wornPart ? `<i class="tys-worn" style="width:${wornPart.toFixed(1)}%"></i>` : ''}</div><div class="tys-end">${q.end}: <b class="tys-${q.cls}">${q.life}%</b></div></div>`;
+    }).join('')}</div>`;
+    return `<div class="tys"><div class="tys-row tys-head"><span class="tys-nm"></span><span class="tys-main"></span><span class="tys-sum"><b>Stops</b><b>Tyre time</b><b>Laps at 0%</b></span></div>${lines.map(l =>
+      `<div class="tys-row"><span class="tys-nm">${escH(l.who)}</span><div class="tys-main">${l.groups.map(g => `${g.label ? `<div class="tys-grp">${escH(g.label)}</div>` : ''}${strip(g)}`).join('')}</div><span class="tys-sum"><span>${l.stops}</span><span>${escH(l.msText)}</span><span${l.worn > 0 ? ' class="tys-bad"' : ''}>${l.worn}</span></span></div>`).join('')}</div>`;
+  }
+  // the line under the stints that says how they are counted
+  const tyreStintsNote = session => (((session && session.standings) || []).some(x => x.tyres && x.tyres.unit === 'distance')
+    ? 'The stints are counted in distance (the length of the lane), with the life that was left when each set came off. The wear shows here and in the Tyres column only: lap times, best laps and records are the measured values.'
+    : 'Every bar is a set of tyres, with the life that was left when it came off ("off") and at the end of the race ("flag"). The wear shows here and in the Tyres column only: lap times, best laps and records are the measured values.');
+
   // The sentences under a table that explain the figures in it (keys: the columns that are shown)
   function notes(keys) {
     const k = new Set(keys), out = [];
@@ -207,7 +254,7 @@
 
   // a race that was interrupted (a crash, a power cut) and carried on says so under its result (1.9.0)
   const resumeText = session => (session && Number(session.resumed) > 0 ? `This race was interrupted and carried on${Number(session.resumed) > 1 ? ' ' + Number(session.resumed) + ' times' : ''}. The first lap of every car after it is not counted for records.` : '');
-  const api = { resumeText, heated, clockOf, enduranceText, stintLines, driversText, ownLaps, SESSION_COLUMNS, STINT_COLUMNS, RECORD_COLUMNS, FIGURE_KEYS, WINNER_TYPES, isWinner, isHeatWinner, heatTimeText, adjustedText, bopText, tyreText, damageText, outText, notesText, weatherText, figures, forSession, lapSpeed, lapLength, valueOf, text, hasAny, sessionColumns, notes, fmtSpeed, fmtScale, fmtDist, fmtSpread, fmtMs };
+  const api = { tyreStintsHtml, tyreStintsNote, tyreStints, tyreLetter, resumeText, heated, clockOf, enduranceText, stintLines, driversText, ownLaps, SESSION_COLUMNS, STINT_COLUMNS, RECORD_COLUMNS, FIGURE_KEYS, WINNER_TYPES, isWinner, isHeatWinner, heatTimeText, adjustedText, bopText, tyreText, damageText, outText, notesText, weatherText, figures, forSession, lapSpeed, lapLength, valueOf, text, hasAny, sessionColumns, notes, fmtSpeed, fmtScale, fmtDist, fmtSpread, fmtMs };
   root.Stats = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -445,7 +445,7 @@ const mk2 = (o = {}, ents = one) => createRace({ type: 'race', laps: 10, minLap:
   }
   // the lists of the calls
   { const n = A.CALLS.length, groups = [...new Set(A.CALLS.map(c => c.group))];
-    ok('78 calls in 15 folders (1.10.0: the Damage folder after Endurance; 1.3.0: Balance of Power after Pit and fuel; 1.4.0: Weather after Balance of Power; 1.5.0: the conditions call; 1.7.0: the line-up; 1.9.0: the Endurance folder after Balance of Power), the Safety folder after the flags', n === 78 && groups.join() === 'Start,Positions,Race progress,Gaps and battles,Laps and records,Pit and fuel,Balance of Power,Endurance,Damage,Weather,Penalties,Flags,Safety,Finish,Time tokens');
+    ok('84 calls in 16 folders (1.42.0: the Tyre wear folder after Weather; 1.10.0: the Damage folder after Endurance; 1.3.0: Balance of Power after Pit and fuel; 1.4.0: Weather after Balance of Power; 1.5.0: the conditions call; 1.7.0: the line-up; 1.9.0: the Endurance folder after Balance of Power), the Safety folder after the flags', n === 84 && groups.join() === 'Start,Positions,Race progress,Gaps and battles,Laps and records,Pit and fuel,Balance of Power,Endurance,Damage,Weather,Tyre wear,Penalties,Flags,Safety,Finish,Time tokens');
     const set = Sound.defaultSet('x'), fresh = ['firstlap', 'nearrecord', 'fuelhalf', 'refuelled', 'penaltyserved', 'penaltyforgiven', 'penaltytime', 'lanecall', 'nolap', 'trackmatelost', 'trackmateback', 'tokenadded', 'tokenfree'];
     ok('the 13 new calls exist, have sentences, and are off in a new audio set', fresh.every(id => A.CALLS.some(c => c.id === id) && set.calls[id].on === false && set.calls[id].lines.length > 0));
     const old = { calls: { winner: { on: true, lines: [{ text: 'x', file: '' }] } } };

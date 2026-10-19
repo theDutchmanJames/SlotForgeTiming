@@ -67,7 +67,7 @@ const Help = (() => {
           <li><b>Weather Systems</b>: a spell of rain with a forecast, the tyres to change in the pits, what the wrong tyres cost, and the temperatures and the wind of every weather.</li>
           <li><b>Balance of Power</b>: how much a fast car is hindered and a slow car helped, by hand or by itself.</li>
           <li><b>Time Tokens</b>: the time buttons and the warning for a Time Token Session.</li>
-          <li>Fuel setups, penalty systems, damage systems, tyre wear systems and weather systems do nothing until you choose them in the <b>Rule sets</b> folder of a race setup (Balance of Power and the pit hold time are there too).</li>
+          <li>Fuel setups, penalty systems, damage systems, tyre wear systems and weather systems do nothing until you choose them in the <b>Racing Systems</b> folder of a race setup (Balance of Power and the pit hold time are there too).</li>
         </ul>` },
       { id: 'types', title: 'Session types', note: 'Seven ways to race', body: `
         <ul>
@@ -205,13 +205,14 @@ const Help = (() => {
         </ul>` },
       { id: 'tyrewear', title: 'Tyre wear', note: 'Tyres that wear out, and the pit stop that changes them', body: `
         <ul>
-          <li>A <b>tyre wear system</b> (Race Setup, Tyre Wear Systems) makes the tyres lose life while a car drives, from 100% to 0%. Choose one in the <b>Rule sets</b> folder of a race setup. Races, heats and Endurance Races have it; practice and qualifying only when the system says so; a Time Token Session never. Every heat starts on fresh tyres.</li>
-          <li>Every tyre has four numbers: the <b>wear</b> (% of life lost in a lap, or in 100 m or 100 ft for Distance Racing), the <b>fresh bonus</b>, where the <b>grip drops</b> and the <b>hindrance at 0%</b>. Start from Standard, Sprint or Endurance. The weather table changes the wear in the rain.</li>
+          <li>A <b>tyre wear system</b> (Race Setup, Tyre Wear Systems) makes the tyres lose life while a car drives, from 100% to 0%. Choose one in the <b>Racing Systems</b> folder of a race setup. Races, heats and Endurance Races have it; practice and qualifying only when the system says so; a Time Token Session never. Every heat starts on fresh tyres.</li>
+          <li>Every tyre has four numbers: the <b>wear</b> (% of life lost in a lap, or in 100 m or 100 ft for Distance Racing), the <b>fresh bonus</b>, where the <b>grip drops</b> and the <b>hindrance at 0%</b>. Start from Standard, Sprint or Endurance.</li>
           <li>Through the fuel rules, like Balance of Power (needs a Fuel setup), new tyres help the car and worn ones hinder it. Lap times and records are never changed.</li>
           <li>At <b>0%</b>: nothing, penalty points every lap, the lap does not count until the car pits, or the car retires.</li>
           <li>In the pits a car gets a fresh set; it takes the seconds you set, at the same time as the other work or after it. A car that leaves early keeps its worn tyres.</li>
           <li><b>Sets</b> (per car or team): a stop takes one set from the box; a tyre with none left can not be fitted. The Race Director queues the next tyre; rain tyres go first.</li>
-          <li>The <b>Tyre Change</b> folder shows the life, sets and next stop of every car. The <b>Tyre Degradation</b> and <b>Available Tyres</b> widgets (Layout Editor, Weather) show them; the Leaderboard and Driver stats have life cells.</li>
+          <li>The <b>Tyre Change</b> folder, the <b>Tyre Degradation</b> and <b>Available Tyres</b> widgets (Layout Editor, Weather) and the Leaderboard show the life, sets and next stop.</li>
+          <li>The audio set has <b>Tyre wear</b> calls; the results and the PDF show the tyre stints.</li>
         </ul>` },
       { id: 'tokens', title: 'Time Token Sessions', note: 'Selling track time per lane', body: `
         <ul>
@@ -246,8 +247,8 @@ const Help = (() => {
         </ul>` },
       { id: 'audio', title: 'Audio calls', note: 'A voice for the race', body: `
         <ul>
-          <li>An <b>audio set</b> (Customization, Audio Settings) says what the race announces. The calls are in folders; switch each one on or off. Some calls start off.</li>
-          <li><b>Race progress</b>: laps or minutes to go, the last lap, the heats. <b>Gaps and battles</b>, <b>Laps and records</b>, <b>Pit and fuel</b>, <b>Penalties</b>, <b>Safety</b> (a marshal call, no lap for a while, the Trackmate lost) and <b>Time tokens</b> have calls too. <b>Weather</b>: weather, conditions, tyres. <b>Endurance</b>: driver swaps. <b>Damage</b>: a hit, a repair, out.</li>
+          <li>An <b>audio set</b> (Customization, Audio Settings) says what the race announces. The calls are in folders; switch each one on or off.</li>
+          <li><b>Race progress</b>: laps or minutes to go, the last lap, the heats. <b>Gaps and battles</b>, <b>Laps and records</b>, <b>Pit and fuel</b>, <b>Penalties</b>, <b>Safety</b> and <b>Time tokens</b> have calls too. <b>Weather</b>: weather, conditions, tyres. <b>Tyre wear</b>: wear levels, worn out, new tyres. <b>Endurance</b>: driver swaps. <b>Damage</b>: a hit, a repair, out.</li>
           <li>A call can have <b>several sentences</b>; one is picked at random each time. Use placeholders such as {driver}, {team}, {time}, {gap}, {gapahead}, {record} and {position}; the list is at the top. Press Test to hear it.</li>
           <li>A sentence can be spoken by a <b>voice of your computer</b>, or you can choose a <b>sound file</b> (up to 10 MB) that plays instead. Drivers can be called by name, nickname or callsign. A voice is missing? <b>Voice report</b> next to the voice shows what your computer offers the app; copy it to send it. The Natural voices of Narrator (such as Andrew HD) are, as far as we know, not offered to other apps.</li>
           <li>Under a sentence, <b>Only if</b> limits it to one driver, the top places, a fast lap or a small gap; a sentence whose conditions hold is said instead of the others. <b>Not again within</b> holds a call back for some seconds.</li>

@@ -21,10 +21,10 @@
     }).filter(g => g.cols.length);
   }
 
-  // What goes in the PDF. options (all optional, everything is in when it is left out): results (the table), heats (the summary of the heats and finals), laps (the page with every lap time),
+  // What goes in the PDF. options (all optional, everything is in when it is left out): results (the table), heats (the summary of the heats and finals), tyres (the tyre stints of a race with Tyre Wear; tyreWorn: the laps on worn out tyres end the bar in red), laps (the page with every lap time),
   // columns (the keys of the columns of the table, as Stats.SESSION_COLUMNS names them; the default is the ones that are on until turned off).
   // tracks and cars (the lists from the database) give the length and scale for the speeds; unit ('kmh' or 'mph', the setting speedUnit) is the unit they are written in; distUnit ('m' or 'ft', the setting distanceUnit, 1.27.0) is the one of the distance.
-  const DEFAULT_OPTIONS = { results: true, heats: true, laps: true };
+  const DEFAULT_OPTIONS = { results: true, heats: true, tyres: true, laps: true };
   function sessionHtml({ session, laps, tracks, cars, options, unit, distUnit }) {
     const opt = { ...DEFAULT_OPTIONS, ...(options || {}) };
     const pts = session.resultBy === 'points', isHeats = ST.heated(session);
@@ -54,6 +54,7 @@
     const heatSummary = !opt.heats || !session.heatResults ? '' : `<h2>${session.finals ? 'Heats and finals' : 'Heats'}</h2>` + session.heatResults.map(h =>
       `<p><b>${esc(HT.raceName(h))}</b>${ST.weatherText(h) ? ` (${esc(ST.weatherText(h))})` : ''}: ${h.rows.map(r => `${esc(r.pos)}. ${ST.isHeatWinner(session, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${esc(ST.heatTimeText(session, r))}${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${ST.adjustedText(r) ? ', adjusted: ' + esc(ST.adjustedText(r)) : ''}${ST.notesText(r) ? ', ' + esc(ST.notesText(r)) : ''})`).join(' &middot; ')}</p>`).join('');
     const stintSheet = !opt.results || !ST.stintLines(session, distUnit).length ? '' : '<h2>Driver swaps</h2>' + ST.stintLines(session, distUnit).map(g => `<p><b>${esc(g.team)}</b>: ${g.stints.map(q => `${esc(q.n)}. ${esc(q.text)}`).join('; ')}</p>`).join('');
+    const tyreSheet = !opt.tyres || !ST.tyreStints(session, distUnit).length ? '' : '<h2>Tyre stints</h2>' + ST.tyreStintsHtml(session, { distUnit, worn: !!opt.tyreWorn }) + `<p class="sub">${esc(ST.tyreStintsNote(session))}</p>`;
     const groups = lapGroups(session, laps);
     const lapPages = groups.map(g => {
       const most = Math.max(...g.cols.map(c => c.laps.length));
@@ -74,11 +75,18 @@
       th { background: #eee; } .laps td, .laps th { text-align: right; } .laps td:first-child, .laps th:first-child { text-align: left; }
       .wide th, .wide td { font-size: 9pt; padding: 4px 5px; }
       thead { display: table-header-group; } tr { page-break-inside: avoid; }
+      .tys-row { display: flex; align-items: flex-start; gap: 10px; padding: 5px 0; border-bottom: 1px solid #ccc; page-break-inside: avoid; } .tys-head { color: #666; font-size: 8pt; padding-bottom: 2px; }
+      .tys-nm { flex: none; width: 70px; font-weight: bold; padding-top: 4px; } .tys-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; } .tys-grp { font-size: 8pt; color: #666; }
+      .tys-strip { display: flex; gap: 3px; } .tys-seg { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+      .tys-bar { position: relative; height: 22px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 8.5pt; font-weight: bold; overflow: hidden; white-space: nowrap; box-sizing: border-box; padding: 0 3px; border: 1px solid #999; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .tys-bar span { position: relative; z-index: 1; } .tys-worn { position: absolute; right: 0; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, #e5484d 0 4px, #a01e24 4px 8px); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .tys-end { font-size: 8pt; color: #555; text-align: right; white-space: nowrap; } .tys-ok { color: #1c7d52; } .tys-warn { color: #a36a00; } .tys-crit, .tys-bad { color: #c0262d; font-weight: bold; }
+      .tys-sum { flex: none; width: 170px; display: grid; grid-template-columns: 34px 52px 1fr; gap: 2px 6px; font-size: 9pt; text-align: right; padding-top: 4px; } .tys-head .tys-sum { padding-top: 0; } .tys-head .tys-sum b { font-weight: normal; white-space: nowrap; }
       .page2 { page-break-before: always; } .foot { color: #777; font-size: 9pt; margin-top: 16px; }
     </style></head><body>
       <h1>${esc(session.setupName)}</h1>
       <p class="meta">${esc(LABEL[session.sessionType] || '')} &middot; ${esc(session.trackName || '')} &middot; ${esc(dateText(session.date))}${session.endedBy ? ' &middot; ' + esc(session.endedBy) : ''}</p>
-      ${standings ? '<h2>Results</h2>' + standings : ''}${heatSummary}${stintSheet}
+      ${standings ? '<h2>Results</h2>' + standings : ''}${heatSummary}${stintSheet}${tyreSheet}
       ${opt.laps ? `<div class="page2"><h1>All lap times</h1><p class="meta">${esc(session.setupName)} &middot; ${esc(session.trackName || '')} &middot; ${esc(dateText(session.date))}. The fastest lap of each driver is in bold.${laps.some(l => l.pit) ? ' A lap with a pit stop is in italics.' : ''}</p>${lapPages || '<p>No laps were recorded.</p>'}
       <p class="foot">Made with SlotForge Timing</p></div>` : '<p class="foot">Made with SlotForge Timing</p>'}</body></html>`;
   }

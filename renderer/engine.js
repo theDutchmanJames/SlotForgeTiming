@@ -342,6 +342,7 @@
         if (!k) c.wxDue = null; else if (!c.wxDue) c.wxDue = { kind: k, lap: c.laps.length + WXC.react };
         wxRefresh(c);
       }
+      if (TWC && onOwn) twTyre(c); // (the stint of the results: the tyre is another one now, the life stays)
       twRefresh(c); // (the life stays as it is: this is a correction, not a new set)
       log('tyreset', i, t || 0, { tyre: to.code, was, lap: c.laps.length, state: R.wxState, onOwn, by: 'director' });
       return true;
@@ -373,13 +374,42 @@
       c.tw = pct === 0 ? 0 : pct;
       if (F.on && !c.pit) c.fuel = Math.min(c.fuel, tankOf(c));
     }
+    // The tyre stints of a car, for the results (1.42.0): one for every set that was on the car, with the laps driven, the metres of lane, the laps driven on worn out tyres and the life at the end (the last one is the set on the car now)
+    const twStint = c => { if (!c.twS) c.twS = []; if (!c.twS.length) c.twS.push({ tyre: W.cleanTyre(c.tyre), laps: 0, m: 0, worn: 0, life: c.twLife }); return c.twS[c.twS.length - 1]; };
+    // the tyre of the car is another one now (a new set, or a correction by the Race Director): a stint with no laps is only renamed, else a new stint begins on the life the car has now
+    function twTyre(c) {
+      const s = twStint(c), code = W.cleanTyre(c.tyre);
+      if (s.laps === 0) { s.tyre = code; s.life = c.twLife; return; }
+      c.twS.push({ tyre: code, laps: 0, m: 0, worn: 0, life: c.twLife });
+    }
+    // what the results need to know of the tyres of car i: the stints (with laps), the stops, the time the tyres took in the pits, the laps on worn out tyres and the tyre at the flag; null when the race has no tyre wear or the car drove no lap
+    R.twStintsOf = i => {
+      const c = R.cars[i]; if (!TWC || !c) return null;
+      const list = (c.twS || []).filter(q => q.laps > 0).map(q => ({ tyre: q.tyre, laps: q.laps, m: Math.round(q.m), life: Tw.shownLife(q.life), worn: q.worn }));
+      if (!list.length) return null;
+      return { unit: TWC.unit, warn: TWC.warn, crit: TWC.crit, stints: list, stops: c.twStops || 0, ms: Math.round(c.twMs || 0), worn: list.reduce((n, q) => n + q.worn, 0), last: W.cleanTyre(c.tyre) };
+    };
+    // a wear level that the audio set calls (1.42.0): the first level of the system that the life has gone down to; every level once for every set (a life that falls past several levels at once says the lowest)
+    function twLevels(c, i, t) {
+      const calls = Array.isArray(TWC.calls) ? TWC.calls : []; // (a race that was interrupted before 1.42.0 has no levels)
+      if (!calls.length) return;
+      const done = c.twCalled || (c.twCalled = []), hit = calls.filter(L => c.twLife <= L && !done.includes(L));
+      if (!hit.length) return;
+      hit.forEach(L => done.push(L));
+      if (c.twLife <= 0) return; // (a set that is worn out has its own call)
+      const lf = Tw.left(TWC, c.tyre, R.wxState, c.twLife, TWC.laneLen[c.lane] || 0);
+      log('tyrelevel', i, t, { tyre: c.tyre, level: Math.min(...hit), life: Tw.shownLife(c.twLife), lap: c.laps.length, laps: Number.isFinite(lf.laps) ? Math.max(0, Math.ceil(lf.laps - 1e-9)) : null, dist: Number.isFinite(lf.dist) ? Math.max(0, Math.round(lf.dist)) : null });
+    }
     // after a lap that counted: the penalty points of a car that drove it on worn out tyres, then the wear of the lap
     function twLap(c, i, t, gone) {
       if (gone && TWC.zero === 'points' && TWC.zeroPoints > 0) R.addPoints(i, TWC.zeroPoints, t, 'tyres');
+      const st = twStint(c); st.laps++; st.m += TWC.laneLen[c.lane] || 0; if (gone) st.worn++;
       if (c.twLife > 0) {
         c.twLife = Math.max(0, Math.round((c.twLife - Tw.wearPerLap(TWC, c.tyre, R.wxState, TWC.laneLen[c.lane] || 0)) * 1e6) / 1e6);
         if (c.twLife <= 0) log('tyreworn', i, t, { tyre: c.tyre, lap: c.laps.length, rule: TWC.zero });
+        twLevels(c, i, t);
       }
+      st.life = c.twLife;
       twRefresh(c);
     }
     // the moment the tyres of the car on the sensor are changed (null: no change is under way: no stop yet, the change is done, or it takes no time)
@@ -447,14 +477,16 @@
       if (pick.code !== c.tyre) { const was = c.tyre; c.tyre = pick.code; said = { tyre: pick.code, was, state: R.wxState, lap: c.laps.length }; }
       if (!forced) { c.tyreOwn = pick.code; c.twNext = ''; } // (the tyre it races on from now, and the queue is used up)
       if (WXC) { if (c.wxDue && !W.need(R.wxState, c.tyre, c.tyreOwn)) c.wxDue = null; wxRefresh(c); }
-      c.twLife = 100; c.twStops++; c.twDoneAt = c.blockAt; twRefresh(c);
-      return { tyre: c.tyre, said, ...(pick.asked ? { asked: pick.asked } : {}) };
+      c.twLife = 100; c.twStops++; c.twDoneAt = c.blockAt; c.twCalled = []; twTyre(c); twRefresh(c);
+      return { tyre: c.tyre, said, ...(p ? { sets: Number(p[pick.code]) || 0 } : {}), ...(p && !(Number(p[pick.code]) > 0) ? { last: pick.code } : {}), ...(pick.asked ? { asked: pick.asked } : {}) };
     }
     function twFitLog(i, at, ms, fit) {
       const c = R.cars[i];
       if (fit.none) { log('tyrenone', i, at, { tyre: fit.tyre, asked: fit.asked, lap: c.laps.length }); return; }
       if (fit.said) log('tyres', i, at, fit.said);
-      log('tyrefresh', i, at, { tyre: fit.tyre, lap: c.laps.length, ms, ...(fit.asked ? { asked: fit.asked } : {}) });
+      c.twMs = (c.twMs || 0) + ms; // (the time the tyre changes took, for the results)
+      log('tyrefresh', i, at, { tyre: fit.tyre, lap: c.laps.length, ms, ...(fit.sets !== undefined ? { sets: fit.sets } : {}), ...(fit.asked ? { asked: fit.asked } : {}) });
+      if (fit.last) log('tyrelast', i, at, { tyre: fit.last, lap: c.laps.length });
     }
     // the car stands in the pits and the time has come: the fresh set goes on
     function twCheck(i, t) {

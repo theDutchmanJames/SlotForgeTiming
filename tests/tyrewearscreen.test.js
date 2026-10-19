@@ -41,7 +41,7 @@ const phase = () => run('live.phase');
 const node = type => run('live.nodes').find(n => n.w.type === type);
 const flagIs = name => { const h = node('flag').val.innerHTML; return h.includes('class="flagsvg"') && h.includes('aria-label="' + name + '"'); }; // the Race Flag widget draws a flag; its label names the state
 const rows = (...ids) => ids.map(i => ({ driverId: 'd' + i, carId: 'c' + i }));
-const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume', ...setup }; run(`state.speed=40; state.race=${JSON.stringify({ setup, track, rows: r })}; state.tab='race'`); await run('render()'); };const Wx_ = () => vm.runInContext('Wx', ctx), same_ = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfterRed: 'resume', ...setup }; run(`state.speed=40; state.race=${JSON.stringify({ setup, track, rows: r, ...extra })}; state.tab='race'`); await run('render()'); };const Wx_ = () => vm.runInContext('Wx', ctx), same_ = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 (async () => {
   await wait(50); run('state.autoFinalize = true'); ctx.__sent = sent;
@@ -224,6 +224,48 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
       p.update();
       say('...and it opens again when the tyres are on', nx[0].disabled === false && parts[0].nnote.textContent === 'Queued by the Race Director'); }
   }
+
+  // ---------- 1.42.0: the tyre stints go with the result ----------
+  { key('s'); await until(() => phase() === 'finished', 3000);
+    saved.length = 0; store.tyrewearsystems = [{ ...rec }];
+    await openRace({ ...setupTw, laps: 4 }, store.tracks[0], rows(1, 2)); await wait(50);
+    key(' '); await until(() => phase() === 'running', 3000); await wait(60);
+    for (let n = 0; n < 8 && phase() !== 'finished'; n++) await lap();
+    await until(() => saved.length > 0, 4000); await wait(100);
+    const st = saved[0] && saved[0][0], rowsOf = st ? st.standings : [], soft = rowsOf.find(x => x.tyres && x.tyres.last === 'S'), med = rowsOf.find(x => x.tyres && x.tyres.last === 'M');
+    say('the race is saved with the tyre stints of every car: the stints, the stops, the tyre at the flag', saved.length === 1 && rowsOf.length === 2 && !!soft && !!med && soft.tyres.stints.length === 1 && med.tyres.stints.length === 1 && soft.tyres.stops === 0 && soft.tyres.ms === 0);
+    say('...a Soft that drove 4 laps has 82% left, a Medium 88%, counted in laps, with the levels of the system', !!soft && soft.tyres.stints[0].laps === 4 && soft.tyres.stints[0].life === 82 && med.tyres.stints[0].laps === 4 && med.tyres.stints[0].life === 88 && soft.tyres.unit === 'lap' && soft.tyres.warn === 25 && soft.tyres.crit === 10);
+    say('...the lap times and the results are what was measured (the wear is not in them)', rowsOf.every(x => x.laps === 4 && Number.isFinite(x.best)) && !JSON.stringify(rowsOf).includes('twLife'));
+    saved.length = 0;
+    await openRace({ ...setupTw, laps: 3, tyreWear: '' }, store.tracks[0], rows(1, 2)); await wait(50);
+    key(' '); await until(() => phase() === 'running', 3000); await wait(60);
+    for (let n = 0; n < 6 && phase() !== 'finished'; n++) await lap();
+    await until(() => saved.length > 0, 4000); await wait(100);
+    say('a race with no tyre wear system saves rows as before (no tyres in them)', saved.length === 1 && saved[0][0].standings.length === 2 && saved[0][0].standings.every(x => !('tyres' in x))); }
+    // a heat race: every heat starts on fresh tyres, the stints of the heats are added up for the result (the Soft wears out in 3 laps here, and its car stops once in every heat)
+    saved.length = 0; store.tyrewearsystems = [{ ...rec, changeSeconds: 0.2, tyres: { S: { wear: 40 } } }];
+    let resume = null; api.saveResume = async snap => { resume = JSON.parse(JSON.stringify(snap)); return true; };
+    const heatSetup = { id: 'hr-tw', name: 'Heat night', sessionType: 'heats', heatBy: 'laps', laps: 5, heatPlan: 'manual', heats: 2, resultBy: 'laps', fuelRules: 'f1', lightsMin: 0, lightsMax: 0, endRule: 'all', layout: '', tyreWear: 'tw1', pitHold: 0.1 };
+    const plan2 = [[{ p: 0, lane: 0 }, { p: 1, lane: 1 }], [{ p: 1, lane: 0 }, { p: 0, lane: 1 }]];
+    const lapOn = async lane => { key(String(lane + 1)); await wait(60); };
+    await openRace(heatSetup, store.tracks[0], rows(1, 2), { schedule: plan2 }); await wait(50);
+    let after1 = null;
+    for (let h = 1; h <= 2; h++) {
+      key(' '); await until(() => phase() === 'running', 5000); await wait(60);
+      const sl = eng().cars.findIndex(c => c.tyre === 'S'), ol = 1 - sl; // (the lane of the Soft car in this heat: the cars swap lanes in heat 2)
+      for (let n = 0; n < 3; n++) { await lapOn(sl); await lapOn(ol); }
+      const e = eng(); e.block(sl, run('performance.now()')); await wait(500); e.unblock(sl, run('performance.now()')); await wait(60); // (the Soft car stops: its 4th lap, on worn out tyres, then a fresh set)
+      await lapOn(ol); await lapOn(sl); await lapOn(ol);
+      if (h === 1) { await until(() => phase() === 'between', 6000); await wait(250); after1 = JSON.parse(JSON.stringify([...run('live.tyreBy').values()]));
+        say('after heat 1 the stints of the heat are kept for the result (one list for each driver)', after1.length === 2 && after1.every(x => x.stints.length >= 1 && x.stints.every(q => q.heat === 1)));
+        say('...the Soft car: two stints (4 laps with the last one on worn out tyres, then 1 lap on the fresh set), one stop that took time', after1.some(x => x.stints.length === 2 && x.stints[0].laps === 4 && x.stints[0].worn === 1 && x.stints[1].laps === 1 && x.stops === 1 && x.ms > 0 && x.worn === 1));
+        say('...and the snapshot that is kept for a race that is interrupted has them too (a resumed race has the result of the heats that are done)', !!resume && resume.heat && Array.isArray(resume.heat.tyreBy) && resume.heat.tyreBy.length === 2 && resume.heat.tyreBy.every(([, v]) => v.stints.length >= 1)); }
+    }
+    await until(() => saved.length > 0, 8000); await wait(150);
+    const hs = saved[0] && saved[0][0], hr = hs ? hs.standings : [], soft = hr.find(x => x.tyres && x.tyres.stints.some(q => q.worn > 0)), other = hr.find(x => x !== soft);
+    say('the heat race is saved with the stints of both heats for every driver, tagged with their heat', saved.length === 1 && hr.length === 2 && !!soft && soft.tyres.stints.length === 4 && [1, 1, 2, 2].every((h, k) => soft.tyres.stints[k].heat === h) && other.tyres.stints.every(q => q.heat === 1 || q.heat === 2) && other.tyres.stints.length === 2);
+    say('...the stops, the time the tyres took and the laps on worn out tyres of the heats are added up (2 stops, 2 worn laps, twice the time of one heat)', soft.tyres.stops === 2 && soft.tyres.worn === 2 && soft.tyres.ms > after1.find(x => x.stops === 1).ms * 1.5 && other.tyres.stops === 0 && other.tyres.worn === 0);
+    say('...the Soft car ends on the fresh set of the last heat (the tyre at the flag), each heat on a new set of tyres', soft.tyres.last === 'S' && soft.tyres.stints.map(q => q.life).join() !== '' && soft.tyres.stints[0].life === 0 && soft.tyres.stints[1].life === 60 && soft.tyres.stints[2].life === 0 && soft.tyres.stints[3].life === 60);
 
   key('s'); await until(() => phase() === 'finished', 3000); await wait(100);
 
