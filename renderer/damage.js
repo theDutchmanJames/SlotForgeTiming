@@ -6,6 +6,7 @@
 // repair, which sets the damage back to 0), says whether the driver should pit whenever he can or as fast as he can, can have a deadline in laps, and says what the stop does:
 // repair the car, retire it (the result stays) or disqualify it.
 (function (root) {
+  const Fl = typeof module !== 'undefined' ? require('./failures.js') : root.Failures; // Car Failures (1.43.0): the random failures of a Damage System (failures.js)
   const num = (v, d) => (v === '' || v === null || v === undefined || !Number.isFinite(Number(v)) ? d : Math.max(0, Number(v)));
   const ACTIONS = ['repair', 'retire', 'dq'];
 
@@ -16,7 +17,7 @@
     { name: 'Heavy damage', from: 9, seconds: 20, urgency: 'asap', within: 3, action: 'repair' },
     { name: 'Critical damage', from: 10, seconds: 0, urgency: 'asap', within: 1, action: 'retire' }];
   const DEFAULT_INCIDENTS = [{ name: 'Deslot', points: 1 }, { name: 'Contact', points: 2 }, { name: 'Hard crash', points: 4 }];
-  const defaults = () => ({ levels: DEFAULT_LEVELS.map(l => ({ ...l })), incidents: DEFAULT_INCIDENTS.map(x => ({ ...x })) });
+  const defaults = () => ({ levels: DEFAULT_LEVELS.map(l => ({ ...l })), incidents: DEFAULT_INCIDENTS.map(x => ({ ...x })), failures: Fl.defaults().list });
 
   // The rules of a Damage System record (and of the track: the time over which a lap is a deslot, in seconds, 0 = none). Gives null when there is no record.
   function clean(s, deslotSeconds) {
@@ -29,10 +30,12 @@
       .map((l, i) => ({ ...l, name: l.name || 'Level ' + (i + 1), ms: Math.round(l.seconds * 1000) }));
     const incidents = (Array.isArray(s.incidents) ? s.incidents : []).filter(x => x && String(x.name || '').trim() && Math.floor(num(x.points, 0)) >= 1)
       .map(x => ({ name: String(x.name).trim(), points: Math.floor(num(x.points, 0)) }));
+    const failures = Fl.clean({ on: s.failuresOn, list: s.failures, from: s.failFrom, to: s.failTo, max: s.failMax }, levels); // (1.43.0: Car Failures; null when they are off)
     return {
       on: true, stop: s.stop === 'add' ? 'add' : 'overlap', levels, incidents,
       deslotPoints: Math.floor(num(s.deslotPoints, 1)), deslotMs: Math.round(num(deslotSeconds, 0) * 1000),
-      latePoints: Math.floor(num(s.latePoints, 1)), earlyPoints: Math.floor(num(s.earlyPoints, 1))
+      latePoints: Math.floor(num(s.latePoints, 1)), earlyPoints: Math.floor(num(s.earlyPoints, 1)),
+      ...(failures ? { failures } : {})
     };
   }
 

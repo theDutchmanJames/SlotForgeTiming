@@ -13,6 +13,7 @@
   const Tw = typeof module !== 'undefined' ? require('./tyrewear.js') : root.TyreWear;
   const En = typeof module !== 'undefined' ? require('./endurance.js') : root.Endurance; // the Endurance Race (endurance.js)
   const Dm = typeof module !== 'undefined' ? require('./damage.js') : root.Damage; // the Damage System (damage.js)
+  const Fl = typeof module !== 'undefined' ? require('./failures.js') : root.Failures; // Car Failures (failures.js)
   const Ds = typeof module !== 'undefined' ? require('./distance.js') : root.Distance; // Distance Racing: the distance driven and to go (distance.js)
   const Bo = typeof module !== 'undefined' ? require('./boardorder.js') : root.BoardOrder; // the order of a leaderboard (boardorder.js)
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -72,6 +73,12 @@
     const d = damageLook(S, c, t); if (!d) return { damage: '–', damagelevel: '–', repairs: '–' };
     return { damage: d.points, damagelevel: esc(damageName(d)), repairs: d.repairs };
   }
+  // Car Failures: the look at the failure of a car (null: the race has none), and what the custom texts can say of it
+  const failureLook = (S, c, t) => { const i = S.eng.cars.indexOf(c); return c && S.eng.failures && S.eng.failureOf && i >= 0 ? S.eng.failureOf(i, t) : null; };
+  function failureVars(S, c, t) {
+    const f = failureLook(S, c, t); if (!f) return { failure: '\u2013', failures: '\u2013' };
+    return { failure: esc(f.out ? (f.out === 'dq' ? 'Disqualified' : 'Retired') : f.active ? f.name : 'No failure'), failures: f.count };
+  }
   const lapsWord = n => `${n} lap${n === 1 ? '' : 's'}`;
 
   // The {variables} of the custom text widgets. Values are already safe to put in HTML.
@@ -84,7 +91,7 @@
       laptime: c.done ? '–' : E.fmtTime(E_.lapElapsed(i, S.now)), last: laps ? E.fmtTime(c.laps[laps - 1]) : '–', best: c.best === null ? '–' : E.fmtTime(c.best), avg: g.length ? E.fmtTime(mean(g)) : '–', median: g.length ? E.fmtTime(median(g)) : '–',
       record: Number.isFinite(best) ? E.fmtTime(best) : '–', gap: esc(row.gap),
       fuel: F && F.on ? `${(Math.floor(E_.fuelOf(i, t) * 10 + 1e-9) / 10).toFixed(1).replace(/\.0$/, '')} L` : '–', fuelpct: F && F.on && F.tank ? Math.round(E_.fuelOf(i, t) / (E_.tankOf ? E_.tankOf(i) : F.tank) * 100) + '%' : '–', bop: c.bop ? Bp.signed(c.bop) : '–',
-      penpoints: P && P.on ? (c.dq ? 'DQ' : c.points) : '–', pentime: P && P.on ? `+${Number.isInteger(sec) ? sec : sec.toFixed(1)} s` : '–', champ, pits: c.pits ? c.pits.length : 0, pit: pit ? E.fmtTime(pit.ms) : '–', speed: speedOf(true), speedreal: speedOf(false), ...swapVars(S, c, t), ...damageVars(S, c, t), ...distLaneVars(S, c), ...Ww.laneVars(c) };
+      penpoints: P && P.on ? (c.dq ? 'DQ' : c.points) : '–', pentime: P && P.on ? `+${Number.isInteger(sec) ? sec : sec.toFixed(1)} s` : '–', champ, pits: c.pits ? c.pits.length : 0, pit: pit ? E.fmtTime(pit.ms) : '–', speed: speedOf(true), speedreal: speedOf(false), ...swapVars(S, c, t), ...damageVars(S, c, t), ...failureVars(S, c, t), ...distLaneVars(S, c), ...Ww.laneVars(c) };
   }
   function raceVars(S, t) {
     const rl = raceLaps(S), laps = rl.total, time = timeLimitOf(S.setup), lead = S.standings()[0], most = rl.most, sr = S.sessionRecord ? S.sessionRecord() : null, tr = S.trackRecord ? S.trackRecord() : null;
@@ -310,6 +317,14 @@
         const when = d.lapsLeft === null ? (d.urgent ? 'Pit as fast as you can' : 'Pit whenever you can') : late ? `Pit now, ${lapsWord(-d.lapsLeft)} late` : d.lapsLeft === 0 ? 'Pit now' : `Pit in ${lapsWord(d.lapsLeft)}`;
         const bg = late || d.urgent ? opt.dueColor || '#e03131' : opt.soonColor || '#ffb000';
         return { html: esc(opt.show === 'clock' ? clock : when + (clock ? ` \u00b7 ${clock}` : '')), bg, color: contrast(bg) };
+      }
+      case 'carfailure': { // Car Failures: the failure the car has now and what it asks: amber to pit for whenever you can, red as fast as you can (or late or a failure that ends the car), green while it is repaired
+        const f = failureLook(S, c, t); if (!f) return { html: '\u2013' };
+        if (f.out) { const bg = f.out === 'dq' ? '#d62828' : opt.outColor || '#555b66'; return { html: f.out === 'dq' ? 'DQ' : 'RETIRED', bg, color: contrast(bg) }; }
+        if (!f.active) return { html: opt.showNone === false ? '' : esc(String(opt.noneText ?? '').trim() || 'No failure') };
+        if (f.standLeft !== null) { const bg = opt.standColor || '#3ddc84'; return { html: esc(opt.show === 'name' ? f.name : `${f.name} \u00b7 Repairing ${Dm.secClock(f.standLeft)}`), bg, color: contrast(bg) }; }
+        const late = f.lapsLeft !== null && f.lapsLeft < 0, bg = late || f.tone === 'red' || f.tone === 'out' ? opt.redColor || '#e03131' : opt.amberColor || '#ffb000';
+        return { html: esc(opt.show === 'name' ? f.name : `${f.name} \u00b7 ${Fl.whenText(f, f.lapsLeft)}`), bg, color: contrast(bg) };
       }
       case 'bop': { // Balance of Power: off, hindered (an arrow down) or helped (an arrow up), with the percentage
         const pct = c.bop || 0;

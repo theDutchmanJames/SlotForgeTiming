@@ -326,7 +326,8 @@ dialog:has(.formgrid) form{display:flex;flex-direction:column;max-height:calc(90
 .ptrow.pthead{font-size:12px}
 .ptrow.dlrow{grid-template-columns:1.6fr .9fr .9fr 1.4fr 1fr 1.4fr auto}
 .ptrow.dirow{grid-template-columns:2fr 1fr auto}
-@media (max-width:900px){.ptrow,.ptrow.dlrow,.ptrow.dirow{grid-template-columns:1fr 1fr}}
+.ptrow.cfrow{grid-template-columns:2fr 2.4fr .9fr .9fr auto}
+@media (max-width:900px){.ptrow,.ptrow.dlrow,.ptrow.dirow,.ptrow.cfrow{grid-template-columns:1fr 1fr}}
 /* Tyre wear systems (1.40.0): the tyre table, the grip curve and the weather table */
 .twtable{display:flex;flex-direction:column;margin:8px 0}
 .twrow{display:grid;grid-template-columns:1.7fr repeat(4,1fr) .9fr;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--line)}

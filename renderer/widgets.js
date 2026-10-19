@@ -48,7 +48,7 @@
   const TEXT_LANE_VARS = [['name', 'Driver name'], ['nickname', 'Nickname'], ['callsign', 'Callsign'], ['team', 'Team name'], ['car', 'Slotcar'], ['lane', 'Lane number'], ['position', 'Position'], ['lap', 'Current lap'], ['laps', 'Laps completed'],
     ['laptime', 'Current lap time'], ['last', 'Last lap'], ['best', 'Best lap'], ['avg', 'Average lap'], ['median', 'Median lap'], ['record', 'Personal record lap'], ['gap', 'Gap to leader'],
     ['fuel', 'Fuel left (litres)'], ['fuelpct', 'Fuel left (%)'], ['bop', 'Balance of Power (\u221220% hindered, +10% helped, a dash when it is off)'], ['penpoints', 'Penalty points'], ['pentime', 'Penalty time'], ['champ', 'Championship points'], ['pits', 'Pit stops made'], ['tyre', 'Tyres of the car (Soft, Wet...)'], ['pit', 'Last pit stop time'], ['speed', 'Speed (scaled km/h)'], ['speedreal', 'Speed (real km/h)'],
-    ['damage', 'Damage points (Damage System)'], ['damagelevel', 'Damage level (Light damage, Heavy damage...)'], ['repairs', 'Repairs made (Damage System)'],
+    ['damage', 'Damage points (Damage System)'], ['damagelevel', 'Damage level (Light damage, Heavy damage...)'], ['repairs', 'Repairs made (Damage System)'], ['failure', 'Car failure now (Slow Puncture; No failure; a dash in a race without Car Failures)'], ['failures', 'Failures the car has had (Car Failures)'],
     ['distance', 'Distance driven (84 m), or the lane has no length: a dash'], ['distleft', 'Distance to go to the finish (19 m; a dash in a race with no laps or distance)'], ['lapstogo', 'Laps to go (a dash in a race with no laps or distance)'],
     ['nextdriver', 'Next driver of the team (Endurance Race)'], ['swap', 'Time to the next driver swap (Endurance Race)'], ['stint', 'How long the driver has been at the wheel (Endurance Race)']];
   const TEXT_RACE_VARS = [['clock', 'Race clock (counting up)'], ['timeleft', 'Time left'], ['lapsleft', 'Laps left'], ['lapstotal', 'Lap limit'], ['racedistance', 'Distance of the race (a dash when the race is not set to a distance)'], ['leader', 'Leader'], ['flag', 'Flag / race state'], ['heat', 'Heat'],
@@ -316,6 +316,15 @@
     { key: 'soonColor', label: 'Colour when the car should pit whenever it can', type: 'color', default: '#ffb000' },
     { key: 'dueColor', label: 'Colour when the car should pit as fast as it can, or is late', type: 'color', default: '#e03131' },
     { key: 'standColor', label: 'Colour while the car is being repaired', type: 'color', default: '#3ddc84' }];
+  // Car Failures (1.43.0): the failure the car has now (see failures.js)
+  const CARFAILURE_OPTIONS = [
+    { key: 'show', label: 'Show', type: 'select', default: 'words', choices: [['words', 'The name and what it asks ("Slow Puncture \u00b7 Pit in 2 laps")'], ['name', 'Only the name']] },
+    { key: 'showNone', label: 'Show a text when the car has no failure (turn off to show nothing)', type: 'checkbox', default: true },
+    { key: 'noneText', label: 'The text when the car has no failure', type: 'text', default: 'No failure' },
+    { key: 'amberColor', label: 'Colour of a failure to pit for whenever you can', type: 'color', default: '#ffb000' },
+    { key: 'redColor', label: 'Colour of a failure to pit for as fast as you can, of a failure that ends the car, and of a car that is late', type: 'color', default: '#e03131' },
+    { key: 'standColor', label: 'Colour while the car is being repaired', type: 'color', default: '#3ddc84' },
+    { key: 'outColor', label: 'Colour of a car that is retired by a failure', type: 'color', default: '#555b66' }];
   const TEAMPIC_OPTIONS = [TEAM_OPTION, { key: 'frame', label: 'Picture position and zoom', type: 'frame', from: 'team' }];
   const TEAM_SAMPLES = ['Red Racers', 'Blue Bandits', 'Green Giants', 'Gold Gang', 'Night Owls', 'Pit Crew'];
   const AVATAR_OPTIONS = [{ ...SET_OPTION('avatars'), label: 'Avatars for a driver without a picture (sets are made under Customization > Image Settings)' },
@@ -420,6 +429,7 @@
     T('fuel', 'Fuel Level', 'Slotcar', { title: 'Fuel', perLane: true, w: 200, options: FUEL_OPTIONS, sample: (l, w) => fuelHtml(87.5 - l * 20, 120, (w && w.opt) || {}) }),
     T('damage', 'Damage', 'Slotcar', { title: 'Damage', perLane: true, w: 230, options: DAMAGE_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, k = l % 4, lv = ['No damage', 'Light damage', 'Heavy damage', 'Retired'][k], pts = [0, 3, 9, 10][k]; return o.show === 'points' ? String(pts) : o.show === 'level' || !pts ? lv : `${lv} \u00b7 ${pts}`; } }),
     T('repairtimer', 'Repair Timer', 'Slotcar', { title: 'Repair timer', perLane: true, w: 260, options: REPAIRTIMER_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, k = l % 4, words = ['\u2013', 'Pit whenever you can \u00b7 0:10', 'Pit in 2 laps \u00b7 0:20', 'Repairing 0:07'][k], clock = ['', '0:10', '0:20', '0:07'][k]; return o.show === 'clock' ? clock : words; } }),
+    T('carfailure', 'Car Failure', 'Slotcar', { title: 'Car failure', perLane: true, w: 300, options: CARFAILURE_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, k = l % 4, name = ['', 'Lift and Coast', 'Slow Puncture', 'Brakes not working'][k], words = ['', 'Pit whenever you can', 'Pit in 2 laps', 'Repairing 0:07'][k]; return !k ? (o.showNone === false ? '' : String(o.noneText ?? 'No failure').trim() || 'No failure') : o.show === 'name' ? name : `${name} \u00b7 ${words}`; } }),
     T('penalty', 'Penalty Points', 'Slotcar', { title: 'Penalty', perLane: true, w: 150, options: PENALTY_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, p = [0, 2, 5, 1, 0, 3][l % 6], s = [0, 0, 5, 0, 0, 0][l % 6]; return o.show === 'time' ? `+${s} s` : o.show === 'both' ? `${p} (+${s} s)` : String(p); } }),
     T('bop', 'Balance of Power', 'Slotcar', { title: 'Balance of Power', perLane: true, w: 170, options: BOP_OPTIONS, sample: l => ['BoP \u25BC \u221220%', 'BoP off', 'BoP \u25B2 +15%'][l % 3] }),
     T('speed', 'Slotcar Speed', 'Slotcar', { title: 'Speed', perLane: true, w: 190, options: SPEED_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, k = (o.unit === 'mph' ? 0.621371 : 1) * (o.mode === 'real' ? 1 : 32), v = (11.7 + l * 0.4) * k; return `${v.toFixed(o.mode === 'real' ? 1 : 0)}${o.showUnit === false ? '' : o.unit === 'mph' ? ' mph' : ' km/h'}`; } }),

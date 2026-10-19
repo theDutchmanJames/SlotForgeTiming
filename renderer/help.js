@@ -130,6 +130,15 @@ const Help = (() => {
           <li>A level can <b>retire</b> or <b>disqualify</b> the car when it stops in the pits; its laps count until then. A slot car with a <b>Damage factor</b> above 1 takes more damage.</li>
           <li>The widgets <b>Damage</b> and <b>Repair Timer</b> (Layout Editor, folder <b>Slotcar</b>), {damage} in texts, and the audio folder <b>Damage</b> show and say it. The results list the points, repairs and time in the pits, in a heat race per heat too.</li>
         </ul>` },
+      { id: 'carfailures', title: 'Car Failures', note: 'Failures that strike a car at random, and the stop that clears them', body: `
+        <ul>
+          <li>A <b>Damage System</b> can have <b>Car Failures</b>: something goes wrong with a car at random, without a hit. Switch it on in the folder <b>Car Failures</b> of the Damage System (it is off to begin with). The standard four are Lift and Coast, Slow Puncture, Brakes not working and Engine Failure, Box to Retire; <b>Add the standard failures</b> brings back any you removed.</li>
+          <li>A failure has a <b>name</b>, a <b>level</b> (it uses that level's rules: pit whenever you can or as fast as you can, a deadline in laps, and whether the stop repairs, retires or disqualifies the car), a <b>chance</b> and <b>Stand still (s)</b>, the seconds on the pit sensor that clear it.</li>
+          <li>The chance is the chance that a car gets that failure at some point in the race: 5% is about 1 car in 20. It is rolled at the start and nobody knows who is next. The moment is random between the <b>earliest</b> and <b>latest moment</b> (% of the race), never in the first or last lap; <b>Failures for a car in a race, at most</b> is the limit.</li>
+          <li>A failure adds <b>no damage points</b>. One stop clears it and any damage; the stand still takes as long as the longest job (or both after each other, as the damage system says). Leaving early, or a lap after the deadline, costs penalty points like damage does.</li>
+          <li>A slot car with a <b>Failure factor</b> of 2 has twice the chance, 0 never has one.</li>
+          <li>The widget <b>Car Failure</b> (Layout Editor, folder <b>Slotcar</b>), <b>{failure}</b> in texts and the Race Director log show it.</li>
+        </ul>` },
       { id: 'heatresults', title: 'Heat results', note: 'How the heats add up', body: `
         <ul>
           <li><b>How the heats are added up</b> can be all heats, the <b>average per heat</b> (fair when drivers race a different number of heats) or <b>only the best heats</b> of every driver. <b>Drop the worst heat</b> takes away each driver's worst heat. With points you can give <b>bonus points for the fastest lap</b> of a heat. <b>A tie is decided by</b> chooses between the other measure, the fastest lap, the most heat wins and the lowest total time.</li>

@@ -71,8 +71,8 @@ const drive = (R, i, from, to, lapMs = 30 * SEC) => { for (let t = from + lapMs;
 
 // ---- in the widget list ----
 { const d = k => Wd.def(k);
-  ok('both are Slotcar widgets, one per lane, with a sample for the layout editor, just before Penalty Points', ['damage', 'repairtimer'].every(k => d(k).group === 'Slotcar' && d(k).perLane && Wd.sampleOf(d(k), 0, { opt: {} }) !== undefined)
-    && Wd.REGISTRY.findIndex(x => x.type === 'damage') + 1 === Wd.REGISTRY.findIndex(x => x.type === 'repairtimer') && Wd.REGISTRY.findIndex(x => x.type === 'repairtimer') + 1 === Wd.REGISTRY.findIndex(x => x.type === 'penalty'));
+  ok('both are Slotcar widgets, one per lane, with a sample for the layout editor, just before Car Failure and Penalty Points', ['damage', 'repairtimer'].every(k => d(k).group === 'Slotcar' && d(k).perLane && Wd.sampleOf(d(k), 0, { opt: {} }) !== undefined)
+    && Wd.REGISTRY.findIndex(x => x.type === 'damage') + 1 === Wd.REGISTRY.findIndex(x => x.type === 'repairtimer') && Wd.REGISTRY.findIndex(x => x.type === 'repairtimer') + 2 === Wd.REGISTRY.findIndex(x => x.type === 'penalty'));
   ok('...their settings', d('damage').options.map(o => o.key).join() === 'show,showNone,amberColor,redColor,outColor' && d('repairtimer').options.map(o => o.key).join() === 'show,soonColor,dueColor,standColor');
   ok('...the samples show every state', [0, 1, 2, 3].map(l => Wd.sampleOf(d('damage'), l, { opt: {} })).join('|') === 'No damage|Light damage · 3|Heavy damage · 9|Retired · 10' || true);
   ok('the custom text variables are listed', Wd.TEXT_LANE_VARS ? ['damage', 'damagelevel', 'repairs'].every(k => Wd.TEXT_LANE_VARS.some(v => v[0] === k)) : true); }

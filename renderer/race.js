@@ -25,6 +25,7 @@ async function renderRace() {
     const mates = (Array.isArray(tm && tm.drivers) ? tm.drivers : []).filter(id => find(drivers, id)), asRace = enduOn && !!tm && mates.length >= 2; // (a team of two drivers or more swaps)
     return { driverId: x.driverId || '', carId: x.carId || '', driverName: nameOf('drivers', drivers, x.driverId) || (tokenSession ? 'Guest' : ''), carName: nameOf('slotcars', cars, x.carId), carPicture: (find(cars, x.carId) || {}).picture || '', carScale: (find(cars, x.carId) || {}).scale || '', tyre: (find(cars, x.carId) || {}).tyreCompound || '', // (the tyre the car races on when it is dry: the weather changes it in the pits)
       ...(find(cars, x.carId) && Number.isFinite(Number(find(cars, x.carId).damageFactor)) && String(find(cars, x.carId).damageFactor).trim() !== '' ? { damageFactor: Math.max(0, Number(find(cars, x.carId).damageFactor)) } : {}), // (a fragile car gets more damage from a hit, see damage.js)
+      ...(find(cars, x.carId) && Number.isFinite(Number(find(cars, x.carId).failureFactor)) && String(find(cars, x.carId).failureFactor).trim() !== '' ? { failureFactor: Math.max(0, Number(find(cars, x.carId).failureFactor)) } : {}), // (a tired old car has more failures, see failures.js)
       nickname: d.nickname || '', callsign: d.callsign || '', flag: d.flag || '', avatar: d.avatar || '',
       ...(tm ? { teamId: tm.id, teamName: titleOf('teams', tm), teamPicture: tm.picture || '' } : {}),
       ...(byTeam || asRace ? { asTeam: true, teamDrivers: mates } : {}),

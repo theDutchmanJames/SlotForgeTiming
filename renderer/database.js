@@ -303,6 +303,16 @@ const diRows = incs => incs.length ? `<div class="ptrow dirow pthead muted"><spa
   incs.map((x, i) => `<div class="ptrow dirow"><input type="text" data-di="${i}" data-dik="name" value="${esc(x.name)}" aria-label="Name" maxlength="40">
   <input type="number" min="1" step="1" data-di="${i}" data-dik="points" value="${esc(x.points)}" aria-label="Damage points it gives"><button type="button" class="btn" data-didel="${i}">Remove</button></div>`).join('')
   : '<p class="muted">No incidents yet: the Race Director then has only the plus and minus buttons.</p>';
+// the Car Failures of a damage system (1.43.0): one row each (a name, the level whose rules it borrows, the chance in percent, the seconds to stand still)
+const cfRows = (list, levels) => list.length ? `<div class="ptrow cfrow pthead muted"><span>Name</span><span>Level (its rules)</span><span>Chance (%)</span><span>Stand still (s)</span><span></span></div>` +
+  list.map((x, i) => {
+    const names = levels.map(l => String(l.name || '').trim()).filter(Boolean), lost = String(x.level || '').trim() && !names.some(n => n.toLowerCase() === String(x.level).trim().toLowerCase());
+    return `<div class="ptrow cfrow"><input type="text" data-cf="${i}" data-cfk="name" value="${esc(x.name)}" aria-label="Name" maxlength="40">
+  <select data-cf="${i}" data-cfk="level" aria-label="The level whose rules the failure takes" title="The pit rules of this level (whenever you can or as fast as you can, the deadline in laps, and what the stop does: repair, retire or disqualify) are the rules of the failure."><option value="">None: pit whenever you can, no deadline, a repair</option>${names.map(n => `<option value="${esc(n)}"${String(x.level || '').trim().toLowerCase() === n.toLowerCase() ? ' selected' : ''}>${esc(n)}</option>`).join('')}${lost ? `<option value="${esc(x.level)}" selected>${esc(x.level)} (no such level)</option>` : ''}</select>
+  <input type="number" min="0" max="100" step="any" data-cf="${i}" data-cfk="chance" value="${esc(x.chance)}" aria-label="Chance in percent that a car gets this failure in a race" title="The chance in percent that a car gets this failure at some point in the race (before the Failure factor of the slot car).">
+  <input type="number" min="0" step="any" data-cf="${i}" data-cfk="seconds" value="${esc(x.seconds)}" aria-label="Seconds to stand still on the sensor" title="How long the car must stand on the sensor in the pits to clear the failure. For a failure that retires or disqualifies the car: how long before that happens (0 = as soon as the pit stop starts).">
+  <button type="button" class="btn" data-cfdel="${i}">Remove</button></div>`; }).join('')
+  : '<p class="muted">No failures yet. Add the standard failures, or make your own.</p>';
 // the tyres of a tyre wear system (field type 'tyretable'): the four numbers of every tyre, what a new set lasts, and the grip curve of the tyre that is selected
 const twWearLabel = unit => (unit === 'distance' ? `Wear per 100 ${dUnit() === 'ft' ? 'ft' : 'm'} (%)` : 'Wear per lap (%)');
 const twHead = unit => `<div class="twrow twhead muted"><span>Tyre</span><span>${twWearLabel(unit)}</span><span>Fresh bonus (%)</span><span>Grip drops from (% life left)</span><span>Hindrance at 0% (%)</span><span>Lasts about</span></div>`;
@@ -355,6 +365,7 @@ function fieldHtml(f, v, extra) {
     case 'penaltytypes': inp = `<p class="muted">Penalties the Race Director can give instead of leaving points to turn into time. One costs points, and must be served by stopping on the sensor in the pits. A Stop-and-Go needs the car to stand still for its seconds; a Drivethrough is served when the pit stop starts.</p><div id="pt-box">${ptRows((extra && extra.types) || [])}</div><button type="button" class="btn" data-ptadd="1">Add a special penalty</button>`; break;
     case 'damagelevels': inp = `<p class="muted">The highest level a car has reached counts. A car must stand still on the sensor in the pits for the seconds of its level: that repairs the damage (the points go back to 0), or retires or disqualifies the car. Leave a gap between the levels, so a hit does not skip one.</p><div id="dl-box">${dlRows((extra && extra.dlevels) || [])}</div><button type="button" class="btn" data-dladd="1">Add a level</button>`; break;
     case 'damageincidents': inp = `<p class="muted">Buttons for the Race Director (on the race screen, the Race Director page and the phones): each gives a car these damage points. A deslot is counted by itself when the track has a deslot time.</p><div id="di-box">${diRows((extra && extra.dincs) || [])}</div><button type="button" class="btn" data-diadd="1">Add an incident</button>`; break;
+    case 'carfailures': inp = `<p class="muted">Each failure has a chance (in percent) that a car gets it, at a random moment of the race. It borrows the rules of a level: pit whenever you can or as fast as you can, the deadline in laps, and what the stop does (repair, retire or disqualify the car). Stand still is the time the car must stand on the sensor in the pits to clear it. A failure adds no damage points.</p><div id="cf-box">${cfRows((extra && extra.cfails) || [], (extra && extra.dlevels) || [])}</div><button type="button" class="btn" data-cfadd="1">Add a failure</button> <button type="button" class="btn" data-cfstd="1">Add the standard failures</button>`; break; // (1.43.0)
     case 'tyretable': inp = `<div id="tw-box">${twTable((extra && extra.twt) || {}, (extra && extra.twunit) || 'lap', (extra && extra.twsel) || 'S')}</div>`; break; // (1.40.0)
     case 'wxmult': inp = `<div id="tw-mult">${twMult((extra && extra.twm) || {})}</div>`; break;
     case 'tyresets': inp = twSets((extra && extra.tws) || {}); break; // (1.41.0)
@@ -369,7 +380,7 @@ function fieldHtml(f, v, extra) {
     inp = f.type === 'datetime' ? `<input id="${id}" type="text" value="${esc(v ? plainDate(v) : 'Never')}" disabled>` : `<input id="${id}" type="number" value="${esc(v ?? 0)}" disabled>`;
     if (f.reset) inp = `<div class="imgrow">${inp}<button type="button" class="btn" data-svcreset="1">Reset</button></div>`;
   }
-  const wide = ['longtext', 'gallery', 'tracklength', 'image', 'penaltytypes', 'damagelevels', 'damageincidents', 'tyretable', 'wxmult', 'tyresets', 'members', 'cartracks'].includes(f.type) ? ' full' : '';
+  const wide = ['longtext', 'gallery', 'tracklength', 'image', 'penaltytypes', 'damagelevels', 'damageincidents', 'carfailures', 'tyretable', 'wxmult', 'tyresets', 'members', 'cartracks'].includes(f.type) ? ' full' : '';
   return `<div class="field${wide}" data-key="${f.id}">${lab}${inp}${fh(f) ? `<span class="muted hint">${esc(fh(f))}</span>` : ''}${f.reset ? '<span class="muted hint svc-note" id="svc-note"></span>' : ''}</div>`;
 }
 
@@ -466,14 +477,14 @@ function openForm(e, item) {
   if (!pieces.length) pieces = [{ count: '', mm: 200 }];
   let types = Array.isArray(item && item.types) ? item.types.map(t => ({ ...t })) : (item ? [] : PT_DEFAULTS.map(t => ({ ...t })));
   const dmDef = Damage.defaults(); // (a new damage system starts with the examples: light, medium, heavy and critical damage)
-  let dlevels = Array.isArray(item && item.levels) ? item.levels.map(x => ({ ...x })) : (item ? [] : dmDef.levels), dincs = Array.isArray(item && item.incidents) ? item.incidents.map(x => ({ ...x })) : (item ? [] : dmDef.incidents);
+  let dlevels = Array.isArray(item && item.levels) ? item.levels.map(x => ({ ...x })) : (item ? [] : dmDef.levels), dincs = Array.isArray(item && item.incidents) ? item.incidents.map(x => ({ ...x })) : (item ? [] : dmDef.incidents), cfails = Array.isArray(item && item.failures) ? item.failures.map(x => ({ ...x })) : (item ? [] : dmDef.failures);
   let twt = TyreWear.cleanTyres(item && item.tyres), twm = TyreWear.cleanMult(item && item.mult), tws = TyreWear.cleanSets(item && item.sets), twsel = 'S'; // (a tyre wear system: the tyre table, the weather table and the tyre whose grip curve is shown; a new one starts as the Standard system)
   let gal = Array.isArray(item && item[s.gallery]) ? [...item[s.gallery]] : [], galSel = null;
   const memF = fields.find(f => f.type === 'members'); let members = memF && item && Array.isArray(item[memF.key]) ? item[memF.key].filter(Boolean) : []; // (the drivers of a team, in order)
   fields.filter(f => f.type === 'image').forEach(f => { imgs[f.id] = val(f) || ''; if (!f.custom) frames[f.id] = Widgets.frameOf(item && item[f.key + 'Frame']); });
   const frameBlock = f => f.type === 'image' && !f.custom ? `<div class="field frame full" id="frame-${f.id}" data-frame="${f.id}">${frameInner(imgs[f.id], frames[f.id], '4 / 3', false)}</div>` : '';
   const redrawFrame = key => { byId('frame-' + key).innerHTML = frameInner(imgs[key], frames[key], '4 / 3', false); attachFrames(dlg, k => frames[k], (k, f) => { frames[k] = f; }); };
-  const one = f => fieldHtml(f, val(f), { pieces, types, members, dlevels, dincs, twt, twm, tws, twsel, twunit: (item && item.unit) || TyreWear.DEFAULTS.unit }) + frameBlock(f);
+  const one = f => fieldHtml(f, val(f), { pieces, types, members, dlevels, dincs, cfails, twt, twm, tws, twsel, twunit: (item && item.unit) || TyreWear.DEFAULTS.unit }) + frameBlock(f);
   // a schema with groups: the fields in collapsible sections with a coloured header, in the order of the groups (fields without a group of their own, such as your own fields, go last)
   const defs = Array.isArray(s.groups) && s.groups.length ? s.groups : null;
   const groups = defs ? [...defs.map(g => ({ ...g, fields: fields.filter(f => f.group === g.id) })), { id: '_more', title: 'More', note: '', fields: fields.filter(f => !defs.some(g => g.id === f.group)) }].filter(g => g.fields.length) : null;
@@ -531,8 +542,11 @@ function openForm(e, item) {
     }
     if (d.twpreset) { const pr = TyreWear.PRESETS[d.twpreset]; if (pr) { twt = JSON.parse(JSON.stringify(pr.tyres)); byId('tw-box').innerHTML = twTable(twt, getValue('unit') || 'lap', twsel); } return; }
     if (d.twsel) { twsel = d.twsel; dlg.querySelectorAll('[data-twrow]').forEach(r => { r.classList.toggle('sel', r.dataset.twrow === twsel); const bt = r.querySelector('[data-twsel]'); if (bt) bt.disabled = r.dataset.twrow === twsel; }); byId('tw-curve').innerHTML = twCurve(twt, twsel); return; }
-    if (d.dladd) { dlevels.push({ name: '', from: dlevels.length ? (Number(dlevels[dlevels.length - 1].from) || 0) + 3 : 3, seconds: 10, urgency: 'whenever', within: 0, action: 'repair' }); byId('dl-box').innerHTML = dlRows(dlevels); return; }
-    if (d.dldel !== undefined) { dlevels.splice(Number(d.dldel), 1); byId('dl-box').innerHTML = dlRows(dlevels); return; }
+    if (d.cfadd) { cfails.push({ name: '', level: dlevels.length ? String(dlevels[0].name || '') : '', chance: 5, seconds: 10 }); byId('cf-box').innerHTML = cfRows(cfails, dlevels); return; }
+    if (d.cfdel !== undefined) { cfails.splice(Number(d.cfdel), 1); byId('cf-box').innerHTML = cfRows(cfails, dlevels); return; }
+    if (d.cfstd) { Failures.DEFAULT_FAILURES.forEach(x => { if (!cfails.some(y => String(y.name || '').trim().toLowerCase() === x.name.toLowerCase())) cfails.push({ ...x }); }); byId('cf-box').innerHTML = cfRows(cfails, dlevels); return; }
+    if (d.dladd) { dlevels.push({ name: '', from: dlevels.length ? (Number(dlevels[dlevels.length - 1].from) || 0) + 3 : 3, seconds: 10, urgency: 'whenever', within: 0, action: 'repair' }); byId('dl-box').innerHTML = dlRows(dlevels); if (byId('cf-box')) byId('cf-box').innerHTML = cfRows(cfails, dlevels); return; }
+    if (d.dldel !== undefined) { dlevels.splice(Number(d.dldel), 1); byId('dl-box').innerHTML = dlRows(dlevels); if (byId('cf-box')) byId('cf-box').innerHTML = cfRows(cfails, dlevels); return; }
     if (d.diadd) { dincs.push({ name: '', points: 1 }); byId('di-box').innerHTML = diRows(dincs); return; }
     if (d.didel !== undefined) { dincs.splice(Number(d.didel), 1); byId('di-box').innerHTML = diRows(dincs); return; }
     if (d.ptadd) { types.push({ name: '', kind: 'stopgo', seconds: 5, cost: 5, extra: 1, unserved: 10 }); byId('pt-box').innerHTML = ptRows(types); return; }
@@ -562,7 +576,12 @@ function openForm(e, item) {
     }
     if (t && t.dataset && t.dataset.tws !== undefined) { if (tws[t.dataset.tws] !== undefined) tws[t.dataset.tws] = t.value; return; }
     if (t && t.dataset && t.dataset.twm !== undefined) { if (twm[t.dataset.twm]) twm[t.dataset.twm][t.dataset.twmc] = t.value; return; }
-    if (t && t.dataset && t.dataset.dl !== undefined) { const lv = dlevels[Number(t.dataset.dl)]; if (lv) lv[t.dataset.dlk] = t.value; return; }
+    if (t && t.dataset && t.dataset.dl !== undefined) {
+      const lv = dlevels[Number(t.dataset.dl)];
+      if (lv) { const was = lv[t.dataset.dlk]; lv[t.dataset.dlk] = t.value; if (t.dataset.dlk === 'name' && byId('cf-box')) { cfails.forEach(x => { if (String(x.level || '') === String(was || '')) x.level = t.value; }); byId('cf-box').innerHTML = cfRows(cfails, dlevels); } } // (a failure follows its level when the level is renamed)
+      return;
+    }
+    if (t && t.dataset && t.dataset.cf !== undefined) { const fl = cfails[Number(t.dataset.cf)]; if (fl) fl[t.dataset.cfk] = t.value; return; }
     if (t && t.dataset && t.dataset.di !== undefined) { const ic = dincs[Number(t.dataset.di)]; if (ic) ic[t.dataset.dik] = t.value; return; }
     if (t && t.dataset && t.dataset.pt !== undefined) { const ty = types[Number(t.dataset.pt)]; if (ty) ty[t.dataset.ptk] = t.value; return; }
     const c = t && t.classList && t.dataset && t.dataset.i !== undefined;
@@ -606,6 +625,7 @@ function openForm(e, item) {
       if (f.type === 'tyretable') { built[f.key] = TyreWear.cleanTyres(twt); continue; }
       if (f.type === 'wxmult') { built[f.key] = TyreWear.cleanMult(twm); continue; }
       if (f.type === 'tyresets') { built[f.key] = TyreWear.cleanSets(tws); continue; }
+      if (f.type === 'carfailures') { built[f.key] = cfails.filter(x => String(x.name || '').trim()).map(x => ({ name: String(x.name).trim(), level: String(x.level || '').trim(), chance: Math.min(100, Math.max(0, Math.round((Number(x.chance) || 0) * 100) / 100)), seconds: Math.max(0, Math.round((Number(x.seconds) || 0) * 100) / 100) })); continue; }
       if (f.type === 'damageincidents') { built[f.key] = dincs.filter(x => String(x.name || '').trim()).map(x => ({ name: String(x.name).trim(), points: Math.max(1, Math.floor(Number(x.points)) || 1) })); continue; }
       if (f.type === 'penaltytypes') { built[f.key] = types.filter(t => String(t.name || '').trim()).map(t => ({ name: String(t.name).trim(), kind: t.kind === 'drivethrough' ? 'drivethrough' : 'stopgo', seconds: Number(t.seconds) || 0, cost: Number(t.cost) || 0, extra: Number(t.extra) || 0, unserved: Number(t.unserved) || 0 })); continue; }
       const el = byId('f-' + f.id);

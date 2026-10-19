@@ -5,6 +5,7 @@
   const W = typeof module !== 'undefined' ? require('./weather.js') : root.Wx; // Weather: the states, the tyres and what wrong tyres cost
   const En = typeof module !== 'undefined' ? require('./endurance.js') : root.Endurance; // Endurance Race: the swaps of drivers
   const Dm = typeof module !== 'undefined' ? require('./damage.js') : root.Damage; // Damage System: the levels of damage and the repair
+  const Fl = typeof module !== 'undefined' ? require('./failures.js') : root.Failures; // Car Failures (1.43.0): the random failures of a Damage System
   const Tw = typeof module !== 'undefined' ? require('./tyrewear.js') : root.TyreWear; // Tyre Wear (1.40.0): the life of the tyres, the grip curve and the rules at 0%
   const Dist = () => (typeof module !== 'undefined' ? require('./distance.js') : root.Distance); // Distance Racing: the lap time to estimate with (looked up when it is needed: distance.js is loaded after this file in the page)
   const MIN_LAP = 800; // crossings closer together than this are treated as double triggers
@@ -91,6 +92,8 @@
     const EN = cfg.endurance && cfg.endurance.on && (type === 'race' || type === 'timed') ? { ...cfg.endurance } : null, enRnd = cfg.rnd || Math.random;
     // Damage System (cfg.damage, see damage.js): only in a race or a timed race. A car collects damage points (a hit by the Race Director, a deslot); the level they reach says how long it must stand in the pits.
     const DM = cfg.damage && cfg.damage.on && (type === 'race' || type === 'timed') ? cfg.damage : null;
+    // Car Failures (cfg.damage.failures, see failures.js): a part of the Damage System. Every car is rolled for them when the race starts; a failure starts at its moment and the stop in the pits clears it.
+    const FL = DM && DM.failures && DM.failures.on && DM.failures.list.length ? DM.failures : null, flRnd = cfg.rnd || Math.random;
     // Distance Racing (cfg.distance, see distance.js): a race by laps whose lanes drive the laps that make up a distance, so a lane may have to drive more laps than another. Only in a race.
     // DS.lanes[lane] = { length (metres), laps }. The longest time the race may take (DS.max, minutes; 0 = no limit) ends it like the time of a timed race: every car finishes on its next crossing.
     const DS = cfg.distance && type === 'race' && Array.isArray(cfg.distance.lanes) && cfg.distance.lanes.length ? cfg.distance : null;
@@ -103,7 +106,7 @@
       cfg, fuel: F, penalty: P, type, status: 'ready', t0: 0, pausedAt: 0, endAt: 0, timeUp: false, finished: 0, endedBy: '',
       yellow: Y, yellowAt: null, // yellowAt: when the yellow flag that is up now went up (a lap that started before that is not a lap under yellow)
       cars: cfg.entries.map(e => ({ ...e, laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, adjMs: 0, adjLaps: 0, adjPoints: 0, invalid: [], removed: [], yellowFast: [], pitLaps: [], servedNow: false, last: 0, total: 0, best: null, done: false, place: 0, retired: false, fuel: F.on ? F.tank : 0, outOfFuel: false, bop: 0, bopHold: false, bopTo: null, tyreOwn: W.cleanTyre(e.tyre), tyre: W.cleanTyre(e.tyre), wx: 0, wxDue: null, twLife: 100, tw: 0, twStops: 0, twDoneAt: null,
-        blockAt: null, pit: null, pits: [], lastPit: null, outlap: false, started: !skipFirst, swapLost: 0, swapLaps: [], dmg: 0, dmgTotal: 0, dmgLvl: -1, dmgDue: null, dmgOut: '', repairs: [], repairMs: 0, repairedAt: null, en: EN && Array.isArray(e.roster) && e.roster.length >= 2 ? En.newCar(EN, e.roster, e.driverId) : null })),
+        blockAt: null, pit: null, pits: [], lastPit: null, outlap: false, started: !skipFirst, swapLost: 0, swapLaps: [], dmg: 0, dmgTotal: 0, dmgLvl: -1, dmgDue: null, dmgOut: '', repairs: [], repairMs: 0, repairedAt: null, ...(FL ? { fail: null, failN: 0, failures: [], failMs: 0, failOut: '', flPlan: null } : {}), en: EN && Array.isArray(e.roster) && e.roster.length >= 2 ? En.newCar(EN, e.roster, e.driverId) : null })),
       events: [], // what happened, in order: { type, car, t } (outoffuel, retired, pitstart, fuelfull, pitend, call, callend...)
       calls: [] // calls from a lane to the Race Director: { id, car, t, open, how }; how a call ended: 'penalty' or 'dismiss'
     };
@@ -120,7 +123,7 @@
     };
 
     R.elapsed = t => R.status === 'running' ? t - R.t0 : R.status === 'paused' ? R.pausedAt - R.t0 : R.status === 'finished' ? R.endAt - R.t0 : 0;
-    R.start = t => { R.status = 'running'; R.t0 = t; R.cars.forEach(c => { c.last = t; twRefresh(c); if (F.on && hasFx(c)) c.fuel = tankOf(c); }); wxEval(t); }; // (a car that has Balance of Power, or tyres that help or hinder it, before the start begins with a full tank of its own size)
+    R.start = t => { R.status = 'running'; R.t0 = t; R.cars.forEach(c => { c.last = t; twRefresh(c); if (F.on && hasFx(c)) c.fuel = tankOf(c); }); wxEval(t); flRoll(); }; // (a car that has Balance of Power, or tyres that help or hinder it, before the start begins with a full tank of its own size)
     R.pause = t => { if (R.status === 'running') { R.status = 'paused'; R.pausedAt = t; } };
     R.resume = t => {
       if (R.status !== 'paused') return;
@@ -162,7 +165,7 @@
     R.lapElapsed = (i, t) => R.status === 'running' ? t - R.cars[i].last : R.status === 'paused' ? R.pausedAt - R.cars[i].last : 0;
     R.stop = t => { if (R.status === 'running' || R.status === 'paused') end(R.status === 'paused' ? R.pausedAt : t, 'Stopped'); }; // (a race stopped while it is paused ends where its clock stands: the pause is not racing time)
     R.tick = t => {
-      if (R.status === 'running') R.cars.forEach((_, i) => { pitCheck(i, t); serveCheck(i, t); enEval(i, t); repairCheck(i, t); twCheck(i, t); });
+      if (R.status === 'running') R.cars.forEach((_, i) => { pitCheck(i, t); serveCheck(i, t); enEval(i, t); flCheck(R.cars[i], i, t); repairCheck(i, t); twCheck(i, t); });
       if (R.status === 'running' && timeLimit && !R.timeUp && t - R.t0 >= timeLimit) R.timeUp = true;
       wxEval(t);
       checkEnd(t);
@@ -202,7 +205,7 @@
         if (Y.points > 0 && R.addPoints(i, Y.points, t)) e.points = Y.points;
       }
       if (!c.dq && ((limitOf(c) && c.laps.length - c.swapLost >= limitOf(c)) || (timeLimit && R.timeUp))) { c.done = true; c.place = ++R.finished; } // a car disqualified on this lap (fuel points) has not finished
-      if (DM) damageLap(c, R.cars.indexOf(c), t, deslot);
+      if (DM) { damageLap(c, R.cars.indexOf(c), t, deslot); flCheck(c, i, t); }
       if (TWC) twLap(c, i, t, twGone);
       wxEval(t); if (!wxEntering) wxDueCheck(c, i, t); // (a car that comes into the pits on this crossing is judged by its stop, or by its next crossing)
       enEval(R.cars.indexOf(c), t); // (the laps of a stint are counted: a swap that is due by laps, or a swap by the sensor, may come with this crossing)
@@ -515,7 +518,7 @@
       log('penalty', i, t, { delta: c.points - before, points: c.points, ms: penaltyMs(P, c.points), ...(why ? { why } : {}) });
       if (P.dq && c.points >= P.dq && !c.dq) {
         c.dq = true; c.dqWasDone = c.done; c.dqWasRetired = c.retired; c.done = true; c.retired = true; log('disqualified', i, t); checkEnd(t);
-      } else if (c.dq && !c.dmgOut && (!P.dq || c.points < P.dq) && R.status !== 'finished') { // a mistaken point can still be taken back (not for a car that damage put out: that is for the damage points)
+      } else if (c.dq && !c.dmgOut && !c.failOut && (!P.dq || c.points < P.dq) && R.status !== 'finished') { // a mistaken point can still be taken back (not for a car that damage put out: that is for the damage points)
         c.dq = false; c.done = !!c.dqWasDone; c.retired = !!c.dqWasRetired; log('reinstated', i, t);
       }
       return true;
@@ -540,8 +543,11 @@
       if (c.pending.length && !c.servedNow && R.status === 'running') { // left before the penalty was served
         const p = c.pending[0]; log('leftearly', i, t, { name: p.name, extra: p.extra }); if (p.extra) R.addPoints(i, p.extra, t);
       }
-      if (DM && R.status === 'running' && c.pit && !c.dmgOut && c.repairedAt !== c.blockAt && Dm.levelOf(DM, c.dmg)) { // left before the repair was done (a stop that was no pit stop is not counted)
-        const lv = Dm.levelOf(DM, c.dmg); log('repairearly', i, t, { name: lv.name, points: c.dmg, extra: DM.earlyPoints }); if (DM.earlyPoints > 0) R.addPoints(i, DM.earlyPoints, t, 'damage');
+      if (DM && R.status === 'running' && c.pit && !c.dmgOut && !c.failOut && c.repairedAt !== c.blockAt && (Dm.levelOf(DM, c.dmg) || flJob(c))) { // left before the repair was done (a stop that was no pit stop is not counted)
+        const lv = Dm.levelOf(DM, c.dmg), fj = flJob(c), extra = DM.earlyPoints; // (the penalty points are given once, also when the damage and a failure were both left unrepaired)
+        if (lv) log('repairearly', i, t, { name: lv.name, points: c.dmg, extra });
+        if (fj) log('failureearly', i, t, { name: fj.name, extra: lv ? 0 : extra });
+        if (extra > 0) R.addPoints(i, extra, t, lv ? 'damage' : 'failure');
       }
       closePit(i, t);
       return true;
@@ -672,39 +678,49 @@
       }
       return at;
     }
-    // the moment the repair of the car on the sensor is done (null: nothing to repair)
+    // the failure of car c that asks something of the stop (null: it has none): its rules from the system (failures.js)
+    const flJob = c => (FL && c.fail ? FL.list[c.fail.k] || null : null);
+    // the moment the repair of the car on the sensor is done (null: nothing to repair). The damage and a failure are worked on at the same time: the longest of the two counts
     function repairAt(c) {
-      const lv = dmgLevel(c);
-      return lv && c.blockAt !== null && !c.dmgOut ? Dm.doneAt(DM, lv, c.blockAt, DM.stop === 'add' ? otherDoneAt(c) : undefined) : null;
+      const lv = dmgLevel(c), fj = flJob(c);
+      return (lv || fj) && c.blockAt !== null && !c.dmgOut && !c.failOut ? Dm.doneAt(DM, { ms: Math.max(lv ? lv.ms : 0, fj ? fj.ms : 0) }, c.blockAt, DM.stop === 'add' ? otherDoneAt(c) : undefined) : null;
     }
     // the car stands in the pits and the time has come: repair it, or retire or disqualify it
     function repairCheck(i, t) {
       const c = R.cars[i];
-      if (!DM || c.blockAt === null || !c.pit || c.dmgOut || c.repairedAt === c.blockAt) return; // (a stop that has not started as a pit stop yet repairs nothing; one stop repairs once)
-      const lv = dmgLevel(c), at = repairAt(c);
-      if (!lv || at === null || t < at) return;
+      if (!DM || c.blockAt === null || !c.pit || c.dmgOut || c.failOut || c.repairedAt === c.blockAt) return; // (a stop that has not started as a pit stop yet repairs nothing; one stop repairs once)
+      const lv = dmgLevel(c), fj = flJob(c), at = repairAt(c);
+      if ((!lv && !fj) || at === null || t < at) return;
       c.repairedAt = c.blockAt;
-      const info = { name: lv.name, points: c.dmg, level: Dm.levelAt(DM, c.dmg), ms: Math.max(0, at - c.blockAt) };
-      if (lv.action === 'repair') {
-        c.repairs.push({ at: c.blockAt, ms: info.ms, name: lv.name, points: c.dmg }); c.repairMs += info.ms;
-        c.dmg = 0; c.dmgLvl = -1; c.dmgDue = null;
-        log('repaired', i, t, info);
-      } else {
-        c.repairs.push({ at: c.blockAt, ms: info.ms, name: lv.name, points: c.dmg, out: lv.action }); c.repairMs += info.ms;
-        c.dmgOut = lv.action; c.dmgWas = { done: c.done, retired: c.retired };
-        if (lv.action === 'dq') { c.dq = true; c.dqWasDone = c.done; c.dqWasRetired = c.retired; }
-        c.done = true; c.retired = true;
-        log('damageout', i, t, { ...info, how: lv.action });
-        checkEnd(t);
+      const ms = Math.max(0, at - c.blockAt);
+      if (lv) {
+        const info = { name: lv.name, points: c.dmg, level: Dm.levelAt(DM, c.dmg), ms };
+        if (lv.action === 'repair') {
+          c.repairs.push({ at: c.blockAt, ms: info.ms, name: lv.name, points: c.dmg }); c.repairMs += info.ms;
+          c.dmg = 0; c.dmgLvl = -1; c.dmgDue = null;
+          log('repaired', i, t, info);
+        } else {
+          c.repairs.push({ at: c.blockAt, ms: info.ms, name: lv.name, points: c.dmg, out: lv.action }); c.repairMs += info.ms;
+          c.dmgOut = lv.action; c.dmgWas = { done: c.done, retired: c.retired };
+          if (lv.action === 'dq') { c.dq = true; c.dqWasDone = c.done; c.dqWasRetired = c.retired; }
+          c.done = true; c.retired = true;
+          log('damageout', i, t, { ...info, how: lv.action });
+          checkEnd(t);
+        }
       }
+      if (fj) flRepair(c, i, t, fj, ms); // (a failure is cleared, or it ends the car, in the same stop as the damage)
     }
     // after every lap: the automatic damage points of a deslot, and the penalty points of a car that is late for the pits
     function damageLap(c, i, t, deslot) {
-      if (c.dmgOut || c.done) return;
+      if (c.dmgOut || c.failOut || c.done) return;
       if (deslot && DM.deslotPoints > 0) R.addDamage(i, DM.deslotPoints, t, 'deslot');
       if (c.dmg > 0 && c.dmgDue !== null && c.laps.length > c.dmgDue) {
         const lv = dmgLevel(c), added = DM.latePoints > 0 && R.addPoints(i, DM.latePoints, t, 'damagelate'); // (no points, or no penalty system: nothing is added)
         log('damagelate', i, t, { name: lv ? lv.name : '', points: added ? DM.latePoints : 0, lap: c.laps.length, due: c.dmgDue });
+      }
+      if (c.fail && c.fail.due !== null && c.laps.length > c.fail.due) { // a failure that is not repaired by its deadline costs penalty points for every lap, like a level
+        const added = DM.latePoints > 0 && R.addPoints(i, DM.latePoints, t, 'failurelate');
+        log('failurelate', i, t, { name: c.fail.name, points: added ? DM.latePoints : 0, lap: c.laps.length, due: c.fail.due });
       }
     }
     // Adds (or with a negative n takes back) damage points to car i. A hit is made more or less by the damage factor of the car (a fragile car); points that are taken back are not. A level that is reached for
@@ -739,6 +755,53 @@
       return { points: c.dmg, total: c.dmgTotal, level: c.dmgLvl, name: lv ? lv.name : '', urgent: !!(lv && lv.urgent), action: lv ? lv.action : '', seconds: lv ? lv.seconds : 0, within: lv ? lv.within : 0,
         tone: Dm.toneOf(lv, c.dmg), lapsLeft: c.dmgDue !== null && c.dmg > 0 ? c.dmgDue - c.laps.length : null, standLeft: ready !== null && c.repairedAt !== c.blockAt && R.status === 'running' ? Math.max(0, ready - te) : null,
         out: c.dmgOut, repairs: c.repairs.length, repairMs: c.repairMs };
+    };
+
+    // ---- Car Failures (see failures.js) ----
+    // Every car is rolled when the race starts: which failures it will get (a chance for each, times the Failure factor of the slot car) and at which lap (or time) they come. A failure borrows the rules of a level
+    // (pit whenever you can or as fast as you can, a deadline in laps, repair / retire / disqualify) and has its own seconds to stand still. It adds no damage points. The car is repaired by the stop in the pits,
+    // together with its damage (the longest job counts). A failure that is not repaired by its deadline costs the penalty points of the system for every lap, like a level.
+    R.failures = FL;
+    function flRoll() {
+      if (!FL) return;
+      R.cars.forEach(c => { if (!c.flPlan) c.flPlan = Fl.roll(FL, { laps: limitOf(c), ms: limitOf(c) > 0 ? 0 : timeLimit }, c.failureFactor, flRnd); });
+    }
+    // the next failure of the car starts when its lap (or time) has come; not while the car stands in the pits, not while it has a failure already, and not for a car that is out
+    function flCheck(c, i, t) {
+      if (!FL || R.status !== 'running' || !c.flPlan || !c.flPlan.length || c.fail || c.done || c.dq || c.dmgOut || c.failOut || c.blockAt !== null) return;
+      const nx = c.flPlan[0];
+      if (limitOf(c) > 0 ? c.laps.length - (c.swapLost || 0) < nx.at : !(R.elapsed(t) >= nx.at)) return;
+      c.flPlan.shift(); flStart(c, i, t, nx.k);
+    }
+    function flStart(c, i, t, k) {
+      const f = FL.list[k]; if (!f) return;
+      c.fail = { k, name: f.name, lap: c.laps.length, due: Dm.dueLap(null, c.laps.length, f) };
+      c.failN = (c.failN || 0) + 1;
+      log('failure', i, t, { name: f.name, level: f.level, lap: c.laps.length, seconds: f.seconds, urgent: f.urgent, within: f.within, action: f.action, due: c.fail.due });
+    }
+    // the stop has done its time: the failure is cleared, or it ends the car (retire or disqualify), as the level it borrows its rules from says
+    function flRepair(c, i, t, fj, ms) {
+      const rec = { at: c.blockAt, ms, name: fj.name, lap: c.fail.lap };
+      c.failMs += ms; c.fail = null;
+      if (fj.action === 'repair') { c.failures.push(rec); log('failurerepaired', i, t, { name: fj.name, ms }); return; }
+      c.failures.push({ ...rec, out: fj.action });
+      if (!c.dmgOut) { // (a car that the damage put out in this same stop is out already)
+        c.failOut = fj.action; c.failWas = { done: c.done, retired: c.retired };
+        if (fj.action === 'dq') { c.dq = true; c.dqWasDone = c.done; c.dqWasRetired = c.retired; }
+        c.done = true; c.retired = true;
+      }
+      log('failureout', i, t, { name: fj.name, ms, how: fj.action });
+      checkEnd(t);
+    }
+    // What a screen needs to know of the failure of car i: whether it has one, its name and what it asks, the laps left to the deadline (negative: late), and while the car stands on the sensor how long the repair still takes.
+    R.failureOf = (i, t) => {
+      const c = R.cars[i]; if (!FL || !c) return null;
+      const fj = flJob(c), at = repairAt(c), te = R.status === 'paused' ? R.pausedAt : R.status === 'finished' ? R.endAt : t;
+      const pitAt = c.blockAt !== null && !c.pit ? c.blockAt + F.pitHold : null, ready = at === null ? null : Math.max(at, pitAt ?? at);
+      const lapsLeft = fj && c.fail.due !== null ? c.fail.due - c.laps.length : null, last = c.failures && c.failures.length ? c.failures[c.failures.length - 1] : null;
+      return { active: !!fj, name: fj ? fj.name : '', level: fj ? fj.level : '', urgent: !!(fj && fj.urgent), action: fj ? fj.action : '', seconds: fj ? fj.seconds : 0, within: fj ? fj.within : 0, lapsLeft,
+        standLeft: fj && ready !== null && c.repairedAt !== c.blockAt && R.status === 'running' ? Math.max(0, ready - te) : null, tone: Fl.toneOf(fj, lapsLeft !== null && lapsLeft < 0),
+        out: c.failOut || '', count: c.failN || 0, repaired: (c.failures || []).filter(x => !x.out).length, last: last ? last.name : '' };
     };
 
     // ---- the end-of-race review: the Race Director corrects the result before it is saved ----
