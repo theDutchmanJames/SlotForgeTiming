@@ -180,7 +180,7 @@ const folders = Help.folders();
 { const f = id => plain(folders.find(x => x.id === id).body);
   say('the Race Setup help names the Racing Systems folder, and the old name is gone from the help', f('setups').includes('Racing Systems') && !Help.html().includes('Penalties, fuel and pits'));
   say('the Live Race help explains the Leaderboard grid (squares, a leaderboard per cell, more cells, some places), and the Customization help points to it', f('live').includes('Leaderboard page is a grid') && f('live').includes('little squares') && f('live').includes('5 to 8') && f('custom').includes('side by side in the grid of the Leaderboard page'));
-  say('the Live Race help says how the Race Director page is built: the Calls first, then folders for Penalties, Balance of Power, Damage, Weather and Tyre Change (1.32.0)', f('live').includes('Calls come first') && f('live').includes('Penalties, Balance of Power, Damage, Weather and Tyre Change'));
+  say('the Live Race help says how the Race Director page is built: the Calls first, then folders for Penalties, Balance of Power, Damage, Car Failures (1.44.0), Weather and Tyre Change (1.32.0)', f('live').includes('Calls come first') && f('live').includes('Penalties, Balance of Power, Damage, Car Failures, Weather and Tyre Change'));
   say('...and every folder is still short enough', folders.every(x => plain(x.body).length < 1400)); }
 
 // ---- 1.10.1 ----
@@ -195,7 +195,7 @@ const folders = Help.folders();
 
 // ---- 1.12.1 ----
 { const f = id => plain(folders.find(x => x.id === id).body);
-  say('the Live Race help names the Adjust folder first and the brown Endurance folder', f('live').includes('coloured folders: Adjust, Penalties, Balance of Power, Damage, Weather and Tyre Change, and Endurance (brown)'));
+  say('the Live Race help names the Adjust folder first and the brown Endurance folder', f('live').includes('coloured folders: Adjust, Penalties, Balance of Power, Damage, Car Failures, Weather and Tyre Change, and Endurance (brown)'));
   say('...and every folder is still short enough', folders.every(x => plain(x.body).length < 1400)); }
 
 // ---- 1.13.0 ----
@@ -258,12 +258,15 @@ const folders = Help.folders();
 { const ds = Help.folders().find(f => f.id === 'driverstats'), t = plain(ds.body); // 1.36.0
   say('1.36.0: the Driver stats help says the page is a grid (up to 4 columns and 8 rows, a cell with a number, wider and taller, a label that can go), what the cells can show, that a cell with nothing to show is blank and an empty row is left out', ds.title === 'Driver stats' && t.includes('up to 4 columns and 8 rows') && t.includes('can cover more columns and rows') && ['laps to go', 'Swap Signal and Swap Timer', 'current and next driver', 'tyres', 'damage', 'the flag', 'the start lights', 'the list of laps'].every(w => t.includes(w)) && t.includes('left blank') && t.includes('a row with nothing in it is left out'));
   say('...that the grid of the computer is the default for every device, a phone keeps its own and can go back, and a phone remembers its lane (and how to switch it off); the folder is short and comes after Live Race', t.includes('default for every device') && t.includes('keeps its own grid') && t.includes("Use the computer's layout again") && t.includes('remembers its lane') && t.includes('Remember my lane') && t.length < 1400 && Help.folders().findIndex(f => f.id === 'driverstats') === Help.folders().findIndex(f => f.id === 'live') + 1); }
-{ const ids = folders.map(x => x.id), cf = plain(folders.find(x => x.id === 'carfailures').body), W = require(R + 'renderer/widgets.js'), Fl = require(R + 'renderer/failures.js'); // 1.43.0
+{ const ids = folders.map(x => x.id), g = id => plain(folders.find(x => x.id === id).body), cf = plain(folders.find(x => x.id === 'carfailures').body), W = require(R + 'renderer/widgets.js'), Fl = require(R + 'renderer/failures.js'), A2 = require(R + 'renderer/announcer.js'); // 1.43.0
   say('1.43.0: the help has a Car Failures folder right after the Damage System, and tells: it is a part of the Damage System and off to begin with, the four standard failures, the name / level / chance / Stand still, what the chance means, the random moment, the limit per car, no damage points, one stop, penalty points, the Failure factor', ids.indexOf('carfailures') === ids.indexOf('damage') + 1
     && ['Car Failures', 'off to begin with', 'Lift and Coast', 'Slow Puncture', 'Brakes not working', 'Engine Failure, Box to Retire', 'Add the standard failures', 'name', 'level', 'chance', 'Stand still (s)', '1 car in 20', 'never in the first or last lap', 'earliest', 'latest moment', 'no damage points', 'One stop clears it', 'penalty points', 'Failure factor'].every(w => cf.includes(w)) && cf.length < 1400);
   say('...the names it uses are the real ones: the standard failures, the form fields, the button, the slot car field, the widget and the text variable', Fl.DEFAULT_FAILURES.every(x => cf.includes(x.name))
     && ['Earliest moment of a failure', 'Latest moment of a failure', 'Failures for a car in a race, at most'].every(l => schema.damagesystems.fields.some(f => f.label.startsWith(l))) && schema.damagesystems.groups.some(g => g.title === 'Car Failures')
     && schema.slotcars.fields.some(f => f.key === 'failureFactor' && f.label.startsWith('Failure factor')) && read('renderer/database.js').includes('Add the standard failures')
     && W.REGISTRY.some(d => d.label === 'Car Failure' && d.group === 'Slotcar') && W.TEXT_LANE_VARS.some(v => v[0] === 'failure') && cf.includes('{failure}'));
+  say('1.44.0: the Car Failures help says the Give and Clear buttons (on the race screen and the Race Director page), that clearing brings a retired car back, the audio folder, the log and the results; the audio, race screen and Live Race help name the folder', ['Give', 'Clear', 'Race Director page', 'brings back a car a failure retired', 'audio folder', 'the log and the results'].every(w => cf.includes(w))
+    && g('audio').includes('Car Failures: a failure, out') && g('screen').includes('Damage, Car Failures, Weather, Tyre Change and Endurance') && !cf.includes('Not in yet'));
+  say('...the buttons and the folder it names are real: the panel has Give, Clear and "At random", and the race screen and the Race Director page have the folder Car Failures', read('renderer/damageui.js').includes('>Give</button>') && read('renderer/damageui.js').includes('>Clear</button>') && read('renderer/damageui.js').includes('At random') && read('renderer/race.js').includes("folderHtml('failures', 'Car Failures'") && read('renderer/liveview.js').includes("folder('failures', 'Car Failures'") && A2.CALLS.some(c => c.group === 'Car Failures'));
   say('...the Damage System folder points to nothing that is gone and is still short', plain(folders.find(x => x.id === 'damage').body).length < 1400); }
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

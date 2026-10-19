@@ -132,12 +132,12 @@ const Help = (() => {
         </ul>` },
       { id: 'carfailures', title: 'Car Failures', note: 'Failures that strike a car at random, and the stop that clears them', body: `
         <ul>
-          <li>A <b>Damage System</b> can have <b>Car Failures</b>: something goes wrong with a car at random, without a hit. Switch it on in the folder <b>Car Failures</b> of the Damage System (it is off to begin with). The standard four are Lift and Coast, Slow Puncture, Brakes not working and Engine Failure, Box to Retire; <b>Add the standard failures</b> brings back any you removed.</li>
-          <li>A failure has a <b>name</b>, a <b>level</b> (it uses that level's rules: pit whenever you can or as fast as you can, a deadline in laps, and whether the stop repairs, retires or disqualifies the car), a <b>chance</b> and <b>Stand still (s)</b>, the seconds on the pit sensor that clear it.</li>
-          <li>The chance is the chance that a car gets that failure at some point in the race: 5% is about 1 car in 20. It is rolled at the start and nobody knows who is next. The moment is random between the <b>earliest</b> and <b>latest moment</b> (% of the race), never in the first or last lap; <b>Failures for a car in a race, at most</b> is the limit.</li>
-          <li>A failure adds <b>no damage points</b>. One stop clears it and any damage; the stand still takes as long as the longest job (or both after each other, as the damage system says). Leaving early, or a lap after the deadline, costs penalty points like damage does.</li>
-          <li>A slot car with a <b>Failure factor</b> of 2 has twice the chance, 0 never has one.</li>
-          <li>The widget <b>Car Failure</b> (Layout Editor, folder <b>Slotcar</b>), <b>{failure}</b> in texts and the Race Director log show it.</li>
+          <li>A <b>Damage System</b> can have <b>Car Failures</b>: faults that strike a car at random, without a hit. Switch them on in the folder <b>Car Failures</b> of the system (off to begin with). The standard four: Lift and Coast, Slow Puncture, Brakes not working, Engine Failure, Box to Retire (<b>Add the standard failures</b> brings them back).</li>
+          <li>A failure has a <b>name</b>, a <b>level</b> (its rules: pit whenever you can or as fast as you can, a deadline in laps, repair, retire or disqualify), a <b>chance</b> and <b>Stand still (s)</b>, the seconds on the pit sensor that clear it.</li>
+          <li>The chance is that a car gets the failure at some point in the race: 5% is about 1 car in 20. It is rolled at the start, at a random moment between the <b>earliest</b> and <b>latest moment</b> (% of the race), never in the first or last lap; <b>Failures for a car in a race, at most</b> is the limit. A slot car with <b>Failure factor</b> 2 has twice the chance, 0 never has one.</li>
+          <li>A failure adds <b>no damage points</b>. One stop clears it and any damage (the longest job counts, or both after each other, as the damage system says). Leaving early, or a lap late, costs penalty points like damage.</li>
+          <li>On the race screen and the Race Director page the folder <b>Car Failures</b> can <b>Give</b> a car a failure (chosen, or at random) or <b>Clear</b> it; clearing also brings back a car a failure retired.</li>
+          <li>The widget <b>Car Failure</b> (folder <b>Slotcar</b>), <b>{failure}</b> in texts, the audio folder <b>Car Failures</b>, the log and the results show it.</li>
         </ul>` },
       { id: 'heatresults', title: 'Heat results', note: 'How the heats add up', body: `
         <ul>
@@ -166,10 +166,10 @@ const Help = (() => {
         <ul>
           <li>The race screen shows the timing page of the race setup (a second layout can go on a second screen). <b>Simulated cars</b> races without hardware.</li>
           <li>Keys: <b>Space</b> starts, pauses and resumes. <b>Y</b> yellow flag, <b>R</b> red flag, <b>S</b> stop (it asks once). <b>1 to 8</b> count a lap for that lane without hardware, <b>Shift + 1 to 8</b> send it into the pit, <b>Ctrl + 1 to 8</b> make a call from it.</li>
-          <li><b>Full screen widgets</b> (or <b>F</b>) shows only the widgets, as large as the window allows. <b>Esc</b>, <b>F</b> or the <b>Exit full screen</b> button goes back. The race keeps running.</li>
+          <li><b>Full screen widgets</b> (or <b>F</b>) shows only the widgets, as large as the window allows. <b>Esc</b>, <b>F</b> or the <b>Exit full screen</b> button goes back.</li>
           <li>A race keeps running when you open another tab. A <b>Race</b> tab with a green dot takes you back to it. The keys above only work on the Race tab. Only one race can run at a time.</li>
           <li><b>Review laps</b> marks a lap invalid or deletes it during the race.</li>
-          <li>Below are the coloured folders of the Race Director page: <b>Track actions</b> (green: a card for each lane with big <b>Lap</b> (counts a lap by hand, while the race runs), <b>Pit</b> and <b>Call</b> buttons), <b>Adjust</b> (pads for penalty points, damage points, time, laps and championship points), <b>Penalties</b>, <b>Balance of Power</b>, <b>Damage</b>, <b>Weather</b>, <b>Tyre Change</b> and <b>Endurance</b>, when the race uses them.</li>
+          <li>Below are the coloured folders of the Race Director page: <b>Track actions</b> (green: a card for each lane with big <b>Lap</b> (counts a lap by hand, while the race runs), <b>Pit</b> and <b>Call</b> buttons), <b>Adjust</b> (pads for penalty points, damage points, time, laps and championship points), <b>Penalties</b>, <b>Balance of Power</b>, <b>Damage</b>, <b>Car Failures</b>, <b>Weather</b>, <b>Tyre Change</b> and <b>Endurance</b>, when the race uses them.</li>
           <li>When a race (or a heat) ends, a <b>review</b> opens before anything is saved: check the order, clear penalty points, disqualify or reinstate, correct laps, or <b>Adjust</b> the race time, the laps and (in a heat race decided on points) the championship points of a driver. <b>Finalize results</b> saves them.</li>
         </ul>` },
       { id: 'director', title: 'Race Director, flags and penalties', note: 'Control the race from anywhere', body: `
@@ -257,7 +257,7 @@ const Help = (() => {
       { id: 'audio', title: 'Audio calls', note: 'A voice for the race', body: `
         <ul>
           <li>An <b>audio set</b> (Customization, Audio Settings) says what the race announces. The calls are in folders; switch each one on or off.</li>
-          <li><b>Race progress</b>: laps or minutes to go, the last lap, the heats. <b>Gaps and battles</b>, <b>Laps and records</b>, <b>Pit and fuel</b>, <b>Penalties</b>, <b>Safety</b> and <b>Time tokens</b> have calls too. <b>Weather</b>: weather, conditions, tyres. <b>Tyre wear</b>: wear levels, worn out, new tyres. <b>Endurance</b>: driver swaps. <b>Damage</b>: a hit, a repair, out.</li>
+          <li><b>Race progress</b>: laps or minutes to go, the last lap, the heats. <b>Gaps and battles</b>, <b>Laps and records</b>, <b>Pit and fuel</b>, <b>Penalties</b>, <b>Safety</b> and <b>Time tokens</b> have calls too. <b>Weather</b>: weather, conditions, tyres. <b>Tyre wear</b>: wear levels, worn out, new tyres. <b>Endurance</b>: driver swaps. <b>Damage</b>: a hit, a repair, out. <b>Car Failures</b>: a failure, out.</li>
           <li>A call can have <b>several sentences</b>; one is picked at random each time. Use placeholders such as {driver}, {team}, {time}, {gap}, {gapahead}, {record} and {position}; the list is at the top. Press Test to hear it.</li>
           <li>A sentence can be spoken by a <b>voice of your computer</b>, or you can choose a <b>sound file</b> (up to 10 MB) that plays instead. Drivers can be called by name, nickname or callsign. A voice is missing? <b>Voice report</b> next to the voice shows what your computer offers the app; copy it to send it. The Natural voices of Narrator (such as Andrew HD) are, as far as we know, not offered to other apps.</li>
           <li>Under a sentence, <b>Only if</b> limits it to one driver, the top places, a fast lap or a small gap; a sentence whose conditions hold is said instead of the others. <b>Not again within</b> holds a call back for some seconds.</li>
@@ -276,10 +276,10 @@ const Help = (() => {
           <li>The Live Race tab has a tile per page: <b>Race timing</b>, <b>Leaderboard</b>, <b>Driver stats</b>, <b>Database</b> (read only), <b>Racing rules</b>, and the control pages <b>Race Director</b> and <b>Tokens</b>.</li>
           <li><b>Open on a second screen</b> puts these pages in their own window, for a TV or a projector. <b>Full screen</b> fills it.</li>
           <li>The <b>Race timing</b> page shows only the widget layout, without race buttons. Move the mouse or touch the screen to bring back the bar with the page choice and the full screen button.</li>
-          <li>The pages follow the race that is running. They fill in as soon as a race starts.</li>
+          <li>The pages follow the race that is running.</li>
           <li>The <b>Leaderboard</b> page is a grid: under <b>Customize</b> pick the number of columns and rows with the little squares, and choose a leaderboard for every cell (a row design from the Leaderboard Editor, or the classic table). A board can cover more cells and show only some places, such as 5 to 8. <b>Order by</b> sorts a board by a value (best lap for a fastest laps board, laps, points, penalties), best or worst first.</li>
           <li>The <b>Live Race</b> button in the top bar has its red light on while a race is on, and is greyed out with the light off when no race is running. It opens the pages either way.</li>
-          <li>The Race Director and Tokens pages are the only ones that change anything, so they have their own look. On the Race Director page the Calls come first, then coloured folders: Adjust, Penalties, Balance of Power, Damage, Weather and Tyre Change, and Endurance (brown) in an Endurance Race.</li>
+          <li>The Race Director and Tokens pages are the only ones that change anything, so they have their own look. On the Race Director page the Calls come first, then coloured folders: Adjust, Penalties, Balance of Power, Damage, Car Failures, Weather and Tyre Change, and Endurance (brown) in an Endurance Race.</li>
         </ul>` },
       { id: 'driverstats', title: 'Driver stats', note: 'One driver, in a grid of your own', body: `
         <ul>

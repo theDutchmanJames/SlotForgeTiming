@@ -773,11 +773,11 @@
       if (limitOf(c) > 0 ? c.laps.length - (c.swapLost || 0) < nx.at : !(R.elapsed(t) >= nx.at)) return;
       c.flPlan.shift(); flStart(c, i, t, nx.k);
     }
-    function flStart(c, i, t, k) {
+    function flStart(c, i, t, k, by) {
       const f = FL.list[k]; if (!f) return;
       c.fail = { k, name: f.name, lap: c.laps.length, due: Dm.dueLap(null, c.laps.length, f) };
       c.failN = (c.failN || 0) + 1;
-      log('failure', i, t, { name: f.name, level: f.level, lap: c.laps.length, seconds: f.seconds, urgent: f.urgent, within: f.within, action: f.action, due: c.fail.due });
+      log('failure', i, t, { name: f.name, level: f.level, lap: c.laps.length, seconds: f.seconds, urgent: f.urgent, within: f.within, action: f.action, due: c.fail.due, ...(by ? { by } : {}) });
     }
     // the stop has done its time: the failure is cleared, or it ends the car (retire or disqualify), as the level it borrows its rules from says
     function flRepair(c, i, t, fj, ms) {
@@ -803,6 +803,41 @@
         standLeft: fj && ready !== null && c.repairedAt !== c.blockAt && R.status === 'running' ? Math.max(0, ready - te) : null, tone: Fl.toneOf(fj, lapsLeft !== null && lapsLeft < 0),
         out: c.failOut || '', count: c.failN || 0, repaired: (c.failures || []).filter(x => !x.out).length, last: last ? last.name : '' };
     };
+
+    // What the Race Director can do with the failure of car i right now: give it one (it is racing, has no failure and does not stand on the sensor) or clear the one it has (also a failure that put the car out).
+    R.failureCan = i => {
+      const c = R.cars[i]; if (!FL || !c || !['running', 'paused'].includes(R.status)) return { give: false, clear: false };
+      return { give: !c.fail && !c.failOut && !c.done && !c.dq && !c.dmgOut && c.blockAt === null, clear: !!c.fail || !!c.failOut };
+    };
+    // The Race Director gives car i a failure: k is its number in the list of the Damage System, or -1 (or nothing) for one at random (by the chances of the list; all alike when none has a chance).
+    // It counts for the car like the ones that were rolled at the start (the limit for a car in a race is for those), and the failures of the plan that are left still come.
+    R.giveFailure = (i, k, t) => {
+      const c = R.cars[i]; if (!R.failureCan(i).give) return false;
+      let n = Number.isInteger(k) && k >= 0 ? k : -1;
+      if (n >= FL.list.length) return false;
+      if (n < 0) {
+        const total = FL.list.reduce((a, f) => a + f.chance, 0);
+        if (total > 0) { let r = flRnd() * total; n = FL.list.findIndex(f => (r -= f.chance) < 0); if (n < 0) n = FL.list.length - 1; } else n = Math.min(FL.list.length - 1, Math.floor(flRnd() * FL.list.length));
+      }
+      flStart(c, i, t, n, 'director'); return true;
+    };
+    // The Race Director clears the failure of car i (a mistake, or a car that does not need to stop). A car that a failure put out is back in the race, as a car is when the damage that put it out is taken back.
+    R.clearFailure = (i, t) => {
+      const c = R.cars[i]; if (!R.failureCan(i).clear) return false;
+      if (c.fail) {
+        const name = c.fail.name; c.failures.push({ at: t, ms: 0, name, lap: c.fail.lap, cleared: true }); c.fail = null;
+        log('failurecleared', i, t, { name, by: 'director' }); return true;
+      }
+      const rec = [...c.failures].reverse().find(x => x.out), was = c.failWas || {};
+      const stillDq = !!(P.dq && c.points >= P.dq); // (a car that has too many penalty points is out for that reason)
+      if (rec) { delete rec.out; rec.cleared = true; }
+      c.failOut = ''; c.failWas = null;
+      if (!stillDq) { c.dq = false; c.done = !!was.done; c.retired = !!was.retired; c.repairedAt = null; }
+      log('failurecleared', i, t, { name: rec ? rec.name : '', by: 'director', out: true });
+      if (!stillDq) log('reinstated', i, t, { by: 'failure' });
+      return true;
+    };
+    R.failureNoteOf = i => (FL && R.cars[i] ? Fl.noteOf(R.cars[i], R.events, i) : ''); // what the failures did to car i in this race, in words (empty when nothing)
 
     // ---- the end-of-race review: the Race Director corrects the result before it is saved ----
     const rebest = c => { const g = goodLaps(c); c.best = g.length ? Math.min(...g) : null; };
@@ -1131,13 +1166,15 @@
         const note = race.bopNoteOf && race.cars ? race.bopNoteOf(race.cars.indexOf(r.car)) : ''; // what Balance of Power did to the car, in words
         const tyres = race.tyreNoteOf && race.cars ? race.tyreNoteOf(race.cars.indexOf(r.car)) : ''; // what the tyres did to the car (weather), in words
         const dnote = race.damageNoteOf && race.cars ? race.damageNoteOf(race.cars.indexOf(r.car)) : ''; // what the damage did to the car (the Damage System), in words
+        const fnote = race.failureNoteOf && race.cars ? race.failureNoteOf(race.cars.indexOf(r.car)) : ''; // what the failures did to the car (Car Failures), in words
         // result by total race time: did the car finish its laps, and the time of the heat (the finish time, or an estimate for a car that did not finish when the setup asks for one)
         const fin = byTime && race.finishedLaps ? race.finishedLaps(r.car) : false, est = byTime && !fin && sc.unfinished === 'estimate' && race.estimateOf ? race.estimateOf(r.car) : null;
         const tm = fin ? (race.timeOf ? race.timeOf(r.car) : r.car.total + a.ms) : est;
         return { participant: r.car.participant, pos: r.pos, laps: race.lapsOf ? race.lapsOf(r.car) : r.car.laps.length, total: race.timeOf && Number.isFinite(race.timeOf(r.car)) ? race.timeOf(r.car) : a.ms && Number.isFinite(r.car.total) ? r.car.total + a.ms : r.car.total, best: r.car.best, points: (points[r.pos - 1] || 0) + (byPoints ? a.points : 0),
           ...(byTime ? { fin, tm: Number.isFinite(tm) ? tm : null, ...(est !== null && Number.isFinite(est) ? { est: true } : {}) } : {}),
           ...(a.ms ? { adjMs: a.ms } : {}), ...(a.laps ? { adjLaps: a.laps } : {}), ...(byPoints && a.points ? { adjPoints: a.points } : {}), ...(note ? { bopNote: note } : {}), ...(tyres ? { tyreNote: tyres } : {}),
-          ...(dnote ? { damageNote: dnote, damagePoints: r.car.dmgTotal || 0, repairs: (r.car.repairs || []).filter(q => !q.out).length, repairMs: r.car.repairMs || 0, ...(r.car.dmgOut ? { damageOut: r.car.dmgOut } : {}) } : {}) };
+          ...(dnote ? { damageNote: dnote, damagePoints: r.car.dmgTotal || 0, repairs: (r.car.repairs || []).filter(q => !q.out).length, repairMs: r.car.repairMs || 0, ...(r.car.dmgOut ? { damageOut: r.car.dmgOut } : {}) } : {}),
+          ...(fnote ? { failureNote: fnote, failures: r.car.failN || 0, failureRepairs: Fl.repairsOf(r.car), failureMs: r.car.failMs || 0, ...(r.car.failOut ? { failureOut: r.car.failOut } : {}) } : {}) };
       });
       if (byPoints && sc.fastestBonus > 0) { // the driver with the fastest lap of this heat gets the bonus (with the same lap time, the one who finished higher)
         let top = null; for (const r of rows) if (Number.isFinite(r.best) && (top === null || r.best < top.best)) top = r;
@@ -1174,8 +1211,10 @@
         const finalMs = f && !missing(f) ? f.tm : null, addFinal = added && f, timeScore = heatTime === null && !(addFinal && finalMs !== null) ? null : (heatTime || 0) + (addFinal && finalMs !== null ? finalMs : 0);
         const adj = k => all.reduce((t, h) => t + (h[k] || 0), 0), am = adj('adjMs'), al = adj('adjLaps'), ap = Math.round(adj('adjPoints') * 100) / 100; // (what was adjusted in the reviews of its races, added up)
         const dmNote = Dm.totalNote(hs, f); // what the damage did to the driver in all its heats and the final, in words
+        const flNote = Fl.totalNote(hs, f); // what the failures did to the driver in all its heats and the final, in words
         return { participant: i, ...p, laps: sum(all, 'laps'), points: sum(all, 'points'), best, heats: hs.length, ...(am ? { adjMs: am } : {}), ...(al ? { adjLaps: al } : {}), ...(ap ? { adjPoints: ap } : {}),
           ...(dmNote ? { damageNote: dmNote, damagePoints: all.reduce((t, h) => t + (h.damagePoints || 0), 0), repairs: all.reduce((t, h) => t + (h.repairs || 0), 0), repairMs: all.reduce((t, h) => t + (h.repairMs || 0), 0) } : {}),
+          ...(flNote ? { failureNote: flNote, failures: all.reduce((t, h) => t + (h.failures || 0), 0), failureRepairs: all.reduce((t, h) => t + (h.failureRepairs || 0), 0), failureMs: all.reduce((t, h) => t + (h.failureMs || 0), 0) } : {}),
           counted: counted.length, dropped: hs.filter(h => !counted.includes(h)).map(h => h.heat).sort((x, y) => x - y),
           heatScore: byTime ? heatTime : byPoints ? heatPoints : heatLaps, scoreLaps: heatLaps + (added && f ? f.laps : 0), scorePoints: heatPoints + (added && f ? f.points : 0),
           ...(byTime ? { timeScore, incomplete: notFin + (addFinal && finalMs === null ? 1 : 0), estimated: counted.filter(h => h.est).length + (addFinal && f.est ? 1 : 0), finalTime: f ? finalMs : null } : {}),

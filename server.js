@@ -7,7 +7,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 // what other devices may read from the database: no settings (they hold the password), nothing is ever written
 const READABLE = ['drivers', 'teams', 'slotcars', 'tracks', 'racesetups', 'layouts', 'rowdesigns', 'sessions', 'laps', 'penaltysystems', 'damagesystems', 'fuelrules', 'weathersystems', 'tyrewearsystems'];
 // what the Race Director page may send to the race
-const COMMANDS = ['start', 'pause', 'stop', 'yellow', 'red', 'penalty', 'assign', 'review', 'call', 'callresolve', 'addtime', 'reducetime', 'undotime', 'endtime', 'cleartime', 'setdriver', 'bop', 'weather', 'tyre', 'tyrenext', 'swap', 'swapnext', 'damage', 'pad'];
+const COMMANDS = ['start', 'pause', 'stop', 'yellow', 'red', 'penalty', 'assign', 'review', 'call', 'callresolve', 'addtime', 'reducetime', 'undotime', 'endtime', 'cleartime', 'setdriver', 'bop', 'weather', 'tyre', 'tyrenext', 'swap', 'swapnext', 'damage', 'failure', 'failureclear', 'pad'];
 // The plain buttons of the Race Director page that carry something: a lane is a whole number from 0 to 15, a penalty a number of points, a call has an id and is answered with one word.
 const LANE = l => Number.isInteger(l) && l >= 0 && l <= 15;
 function plainCommand(c) {
@@ -60,6 +60,12 @@ function swapCommand(c) {
 function damageCommand(c) {
   if (c.type !== 'damage') return true;
   return Number.isInteger(c.lane) && c.lane >= 0 && c.lane <= 15 && Number.isInteger(c.n) && c.n >= -20 && c.n <= 20 && c.n !== 0;
+}
+// The commands of Car Failures (1.44.0): a lane is a whole number from 0 to 15. 'failure' gives the car a failure: k is its number in the list of the Damage System (0 to 99), or -1 for a random one; 'failureclear' clears the failure of the car.
+function failureCommand(c) {
+  if (c.type === 'failureclear') return Number.isInteger(c.lane) && c.lane >= 0 && c.lane <= 15;
+  if (c.type !== 'failure') return true;
+  return Number.isInteger(c.lane) && c.lane >= 0 && c.lane <= 15 && Number.isInteger(c.k) && c.k >= -1 && c.k <= 99;
 }
 // The command of the adjust pads: a group, a lane (a whole number from 0 to 15) and an amount that is not 0 and not more than 100000 (seconds, laps or points; negative takes off); damage points are a whole number from -20 to 20, as the damage command.
 const PAD_GROUPS = ['points', 'damage', 'time', 'laps', 'champ'];
@@ -118,7 +124,7 @@ function createServer(o) {
         const b = await body(req), pw = password();
         if (!pw || typeof b.token !== 'string' || tokens.get(b.token) !== pw) return send(res, 401, { error: 'login' });
         if (!b.cmd || !COMMANDS.includes(b.cmd.type)) return send(res, 400, { error: 'unknown command' });
-        if (!plainCommand(b.cmd) || !tokenCommand(b.cmd) || !bopCommand(b.cmd) || !weatherCommand(b.cmd) || !tyreCommand(b.cmd) || !tyreNextCommand(b.cmd) || !swapCommand(b.cmd) || !damageCommand(b.cmd) || !padCommand(b.cmd)) return send(res, 400, { error: 'bad command' });
+        if (!plainCommand(b.cmd) || !tokenCommand(b.cmd) || !bopCommand(b.cmd) || !weatherCommand(b.cmd) || !tyreCommand(b.cmd) || !tyreNextCommand(b.cmd) || !swapCommand(b.cmd) || !damageCommand(b.cmd) || !failureCommand(b.cmd) || !padCommand(b.cmd)) return send(res, 400, { error: 'bad command' });
         o.onCommand(b.cmd); return send(res, 200, { ok: true });
       }
       if (req.method === 'GET') { // the app's own pages
@@ -141,4 +147,4 @@ function createServer(o) {
     clientCount: () => clients.size
   };
 }
-module.exports = { createServer, tokenCommand, bopCommand, weatherCommand, tyreCommand, tyreNextCommand, swapCommand, damageCommand, padCommand };
+module.exports = { createServer, tokenCommand, bopCommand, weatherCommand, tyreCommand, tyreNextCommand, swapCommand, damageCommand, failureCommand, padCommand };

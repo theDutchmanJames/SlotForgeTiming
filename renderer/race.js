@@ -121,6 +121,7 @@ async function renderRace() {
       ${penCfg.on ? folderHtml('penalties', 'Penalties', 'Points and penalties for each lane', 'yellow', '<div id="penpanel"></div>') : ''}
       ${bopCfg ? folderHtml('bop', 'Balance of Power', 'Even out fast and slow cars', 'white', '<div id="boppanel" class="boppanel"></div>') : ''}
       ${eng.damage ? folderHtml('damage', 'Damage', 'Incidents and repairs', 'red', '<div id="dmpanel" class="boppanel"></div>') : ''}
+      ${eng.failures ? folderHtml('failures', 'Car Failures', 'Give a car a failure, or clear it', 'red', '<div id="flpanel" class="boppanel"></div>') : ''}
       ${eng.weather ? folderHtml('weather', 'Weather', 'Rain, tyres and pit stops', 'blue', '<div id="wxpanel" class="boppanel"></div>') : ''}
       ${tokenSession ? '' : folderHtml('tyre', 'Tyre Change', 'Give a car another tyre', 'purple', '<div id="typanel" class="boppanel"></div>')}
       ${setup.endurance ? folderHtml('endurance', 'Endurance', 'Driver swaps', 'brown', '<div id="enpanel" class="boppanel"></div>') : ''}
@@ -290,6 +291,7 @@ async function renderRace() {
     if (live.tyPanel) live.tyPanel.update();
     if (live.enPanel) live.enPanel.update();
     if (live.dmPanel) live.dmPanel.update();
+    if (live.flPanel) live.flPanel.update();
     syncFolders();
     if (tokens && live.phase === 'running' && now() - (live.tkAt || -1e9) > 10000) persistTokens(true); // (the clocks that run: kept every ten seconds)
     ui('back').disabled = raceActive();
@@ -303,7 +305,7 @@ async function renderRace() {
     f.hidden = !show; if (show) p.update();
   };
   // the folders of the panels that decide themselves whether they have anything to show (Balance of Power, Damage, Weather, Endurance): when the panel is hidden, its folder goes too
-  const syncFolders = () => [['bop', 'boppanel'], ['damage', 'dmpanel'], ['weather', 'wxpanel'], ['endurance', 'enpanel']].forEach(([f, pn]) => { const fd = ui('fd-' + f), pb = ui(pn); if (fd && pb) fd.hidden = !!pb.hidden; });
+  const syncFolders = () => [['bop', 'boppanel'], ['damage', 'dmpanel'], ['failures', 'flpanel'], ['weather', 'wxpanel'], ['endurance', 'enpanel']].forEach(([f, pn]) => { const fd = ui('fd-' + f), pb = ui(pn); if (fd && pb) fd.hidden = !!pb.hidden; });
   // the calls that wait for the Race Director. The strip is only rebuilt when the calls change, so a button never changes under a finger.
   const drawCalls = () => {
     const open = eng.calls.filter(c => c.open), key = open.map(c => `${c.id}:${c.car}${eng.cars[c.car].dq ? 'd' : ''}`).join(); // (a new heat starts counting again, so the car is part of the key too)
@@ -560,7 +562,7 @@ async function renderRace() {
       };
       standings = heat.overall().map(o => ({ pos: o.pos, driverId: o.driverId, carId: o.carId, driverName: o.driverName, carName: o.carName, laps: o.laps, points: o.points, best: o.best, total: null,
         ...(o.asTeam ? teamStanding(o) : o.teamId ? { teamId: o.teamId, teamName: o.teamName } : {}),
-        ...(o.adjMs ? { adjMs: o.adjMs } : {}), ...(o.adjLaps ? { adjLaps: o.adjLaps } : {}), ...(o.adjPoints ? { adjPoints: o.adjPoints } : {}), ...(o.damageNote ? { damageNote: o.damageNote, damagePoints: o.damagePoints, repairs: o.repairs, repairMs: o.repairMs } : {}),
+        ...(o.adjMs ? { adjMs: o.adjMs } : {}), ...(o.adjLaps ? { adjLaps: o.adjLaps } : {}), ...(o.adjPoints ? { adjPoints: o.adjPoints } : {}), ...(o.damageNote ? { damageNote: o.damageNote, damagePoints: o.damagePoints, repairs: o.repairs, repairMs: o.repairMs } : {}), ...(o.failureNote ? { failureNote: o.failureNote, failures: o.failures, failureRepairs: o.failureRepairs, failureMs: o.failureMs } : {}),
         ...(live.extraBy.has(o.participant) && live.extraBy.get(o.participant).has ? { pits: live.extraBy.get(o.participant).pits, pitTime: live.extraBy.get(o.participant).pitTime } : {}),
         ...(penCfg.on && live.extraBy.has(o.participant) ? { penaltyPoints: live.extraBy.get(o.participant).pen } : {}),
         ...(live.tyreBy.has(o.participant) ? { tyres: live.tyreBy.get(o.participant) } : {}),
@@ -574,7 +576,7 @@ async function renderRace() {
         return { asTeam: true, driverId: '', driverName: c.teamName || '', drivers: driversOf(c, mine), stints: stintsOf(c).map(q => ({ driverId: q.driverId, driverName: q.driverName, laps: q.laps, ms: q.ms, from: q.from, to: q.to, by: q.by, ...(enDist ? { meters: q.meters } : {}) })) };
       };
       standings = eng.standings().map(x => ({ pos: x.pos, driverId: x.car.driverId, carId: x.car.carId, ...(x.car.teamId ? { teamId: x.car.teamId, teamName: x.car.teamName } : {}), driverName: x.car.driverName, carName: x.car.carName, laps: eng.lapsOf(x.car), best: x.car.best, total: x.car.total, retired: (x.car.retired && !x.car.dq) || undefined,
-        ...(x.car.adjMs ? { adjMs: x.car.adjMs } : {}), ...(x.car.adjLaps ? { adjLaps: x.car.adjLaps } : {}), ...(eng.bopNoteOf(eng.cars.indexOf(x.car)) ? { bopNote: eng.bopNoteOf(eng.cars.indexOf(x.car)) } : {}), ...(eng.damageNoteOf(eng.cars.indexOf(x.car)) ? { damageNote: eng.damageNoteOf(eng.cars.indexOf(x.car)), damagePoints: x.car.dmgTotal, repairs: x.car.repairs.filter(q => !q.out).length, repairMs: x.car.repairMs, ...(x.car.dmgOut ? { damageOut: x.car.dmgOut } : {}) } : {}), ...(eng.tyreNoteOf(eng.cars.indexOf(x.car)) ? { tyreNote: eng.tyreNoteOf(eng.cars.indexOf(x.car)) } : {}), // (what Balance of Power and the tyres did to the car, in words)
+        ...(x.car.adjMs ? { adjMs: x.car.adjMs } : {}), ...(x.car.adjLaps ? { adjLaps: x.car.adjLaps } : {}), ...(eng.bopNoteOf(eng.cars.indexOf(x.car)) ? { bopNote: eng.bopNoteOf(eng.cars.indexOf(x.car)) } : {}), ...(eng.damageNoteOf(eng.cars.indexOf(x.car)) ? { damageNote: eng.damageNoteOf(eng.cars.indexOf(x.car)), damagePoints: x.car.dmgTotal, repairs: x.car.repairs.filter(q => !q.out).length, repairMs: x.car.repairMs, ...(x.car.dmgOut ? { damageOut: x.car.dmgOut } : {}) } : {}), ...(eng.failureNoteOf && eng.failureNoteOf(eng.cars.indexOf(x.car)) ? { failureNote: eng.failureNoteOf(eng.cars.indexOf(x.car)), failures: x.car.failN, failureRepairs: Failures.repairsOf(x.car), failureMs: x.car.failMs, ...(x.car.failOut ? { failureOut: x.car.failOut } : {}) } : {}), ...(eng.tyreNoteOf(eng.cars.indexOf(x.car)) ? { tyreNote: eng.tyreNoteOf(eng.cars.indexOf(x.car)) } : {}), // (what Balance of Power and the tyres did to the car, in words)
         ...(hasPits(x.car) ? pitFigures(x.car) : {}), ...(penCfg.on ? { penaltyPoints: x.car.points, penalty: eng.penMs(x.car), dq: x.car.dq || undefined } : {}),
         ...(eng.twStintsOf && eng.twStintsOf(eng.cars.indexOf(x.car)) ? { tyres: eng.twStintsOf(eng.cars.indexOf(x.car)) } : {}),
         ...(x.car.en ? { ...teamRow(x.car), ...(x.car.swapLost ? { swapLost: x.car.swapLost } : {}), swaps: x.car.en.swaps } : {}) }));
@@ -715,6 +717,16 @@ async function renderRace() {
       const i = eng.cars.findIndex(c => c.lane === lane);
       if (i >= 0 && eng.addDamage(i, n, now(), 'director')) update();
     },
+    failure(lane, k) { // the Race Director gives the car on this lane a failure (k: its number in the list of the Damage System, or -1 for one at random)
+      if (!eng.failures || !['running', 'paused'].includes(live.phase)) return;
+      const i = eng.cars.findIndex(c => c.lane === lane);
+      if (i >= 0 && eng.giveFailure(i, Number.isInteger(k) ? k : -1, now())) update();
+    },
+    failureClear(lane) { // ... or clears the failure the car has (a car that a failure put out is back in the race)
+      if (!eng.failures || !['running', 'paused'].includes(live.phase)) return;
+      const i = eng.cars.findIndex(c => c.lane === lane);
+      if (i >= 0 && eng.clearFailure(i, now())) update();
+    },
     pad(group, lane, amount) { // the adjust pads of the Race Director page (1.12.0): add (a positive amount) or take off (a negative one) penalty points, seconds of race time, laps or championship points for the car on this lane, during the race
       if (tokens || !['running', 'paused'].includes(live.phase) || !Number.isFinite(amount) || !amount) return false;
       const i = eng.cars.findIndex(c => c.lane === lane), car = eng.cars[i]; if (!car) return false;
@@ -802,6 +814,8 @@ async function renderRace() {
     else if (cmd.type === 'swap') actions.swap(Number(cmd.lane), cmd.to);
     else if (cmd.type === 'swapnext') actions.swapNext(Number(cmd.lane), cmd.id);
     else if (cmd.type === 'damage') actions.damage(Number(cmd.lane), Number(cmd.n));
+    else if (cmd.type === 'failure') actions.failure(Number(cmd.lane), Number(cmd.k));
+    else if (cmd.type === 'failureclear') actions.failureClear(Number(cmd.lane));
     else if (cmd.type === 'pad') actions.pad(cmd.group, Number(cmd.lane), Number(cmd.amount));
     else if (cmd.type === 'review') reviewCommand(cmd);
     else if (tokens && TOKEN_CMD[cmd.type]) TOKEN_CMD[cmd.type](cmd);
@@ -990,6 +1004,7 @@ async function renderRace() {
   if (bopCfg) live.bopPanel = BopPanel.build(ui('boppanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, send: (lane, how) => actions.bop(lane, how) }); // the Balance of Power lane controls
   if (setup.endurance) live.enPanel = EndurancePanel.build(ui('enpanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, now, send: (lane, what, id) => (what === 'swap' ? actions.swap(lane, id) : actions.swapNext(lane, id)) }); // the swaps of an Endurance Race
   if (eng.damage) live.dmPanel = DamagePanel.build(ui('dmpanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), incidents: eng.damage.incidents, phase: () => live.phase, now, send: (lane, n) => actions.damage(lane, n) }); // the damage of the cars (the Damage System)
+  if (eng.failures) live.flPanel = FailurePanel.build(ui('flpanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), failures: eng.failures.list.map((f, k) => ({ k, name: f.name, chance: f.chance })), phase: () => live.phase, now, send: (lane, k) => actions.failure(lane, k), clear: lane => actions.failureClear(lane) }); // Car Failures: give a car a failure or clear it (1.44.0)
   if (!tokens) live.adjPanel = AdjustPanel.build(ui('adjpanel'), { id: 'radj', find: ui, eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, now, settings: () => AdjustPad.forSetup(state.settings, setup), // (the values of this race setup, else the ones from App Settings)
     penalty: () => !!(eng.penalty && eng.penalty.on), damage: () => !!eng.damage, champ: () => !!(heats && setup.resultBy === 'points'), send: (group, lane, amount) => actions.pad(group, lane, amount), refresh: () => update(), raceKey: () => eng }); // the Adjust pads: the same as on the Race Director page, but they adjust the race directly
   if (eng.weather) live.wxPanel = WeatherPanel.build(ui('wxpanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, now, send: state => actions.weather(state) }); // the weather controls

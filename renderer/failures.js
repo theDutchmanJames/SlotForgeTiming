@@ -70,7 +70,65 @@
   // what a failure asks, short, for the Car Failure widget and the texts: "Pit whenever you can", "Pit in 2 laps", "Pit now", "Pit now, 1 lap late"
   const whenText = (f, lapsLeft) => (lapsLeft === null || lapsLeft === undefined ? (f && f.urgent ? 'Pit as fast as you can' : 'Pit whenever you can') : lapsLeft < 0 ? `Pit now, ${lapsWord(-lapsLeft)} late` : lapsLeft === 0 ? 'Pit now' : `Pit in ${lapsWord(lapsLeft)}`);
 
-  const api = { DEFAULT_FAILURES, DEFAULTS, defaults, clean, factorOf, roll, failureText, rulesText, toneOf, whenText, secText };
+  // ---- the result: what the failures did to a car in a race, in words ("Slow Puncture (repaired, 10 seconds in the pits), Brakes not working (not repaired), late for the pits once") ----
+  const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+  const times = n => (n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`);
+  const clock = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+  const OUT = { retire: 'retired', dq: 'disqualified' };
+  // car: the car of the engine (failN, failures, fail, failOut); events: the log of the race; i: the number of the car in it. '' for a car that had no failure.
+  function noteOf(car, events, i) {
+    if (!car || !(car.failN > 0 || car.failOut)) return '';
+    const mine = type => (events || []).filter(e => e.car === i && e.type === type).length, out = [];
+    (car.failures || []).forEach(r => {
+      const how = r.cleared ? 'cleared by the Race Director' : r.out ? OUT[r.out] || 'out' : 'repaired';
+      out.push(`${r.name} (${how}${!r.cleared && r.ms > 0 ? `, ${secText(Math.round(r.ms / 100) / 10)} in the pits` : ''})`);
+    });
+    if (car.fail) out.push(`${car.fail.name} (not repaired)`);
+    const late = mine('failurelate'), early = mine('failureearly');
+    if (late) out.push(`late for the pits ${times(late)}`);
+    if (early) out.push(`left the pits too early ${times(early)}`);
+    return out.join(', ');
+  }
+  // How many failures of a car were repaired (a failure that put it out, or that the Race Director cleared, is not a repair)
+  const repairsOf = car => ((car && car.failures) || []).filter(r => !r.out && !r.cleared).length;
+  // The failures of a driver in a heat-based race, added up: heats = the rows of the driver in the heats, final = its row in the final (or null), as the heat results give them (failures, failureRepairs, failureMs, failureOut).
+  // "3 failures in 2 heats and the final, 2 repaired (25 seconds in the pits), retired by a failure in 1 heat"; '' when the driver had none.
+  function totalNote(heats, final) {
+    const has = r => !!r && (r.failures > 0 || !!r.failureOut), fin = has(final) ? final : null, mine = (heats || []).filter(has).concat(fin ? [fin] : []);
+    if (!mine.length) return '';
+    const where = list => { const h = list.filter(r => r !== fin).length, f = !!fin && list.includes(fin); return [h ? (h === 1 ? 'in 1 heat' : `in ${h} heats`) : '', f ? (h ? 'and the final' : 'in the final') : ''].filter(Boolean).join(' '); };
+    const sum = k => mine.reduce((n, r) => n + (Number(r[k]) || 0), 0), n = sum('failures'), rep = sum('failureRepairs'), ms = sum('failureMs'), out = [];
+    if (n > 0) out.push(`${plural(n, 'failure')} ${where(mine)}`);
+    if (rep) out.push(`${rep} repaired (${secText(Math.round(ms / 100) / 10)} in the pits)`);
+    const ret = mine.filter(r => r.failureOut && r.failureOut !== 'dq'), dq = mine.filter(r => r.failureOut === 'dq');
+    if (ret.length) out.push(`retired by a failure ${where(ret)}`);
+    if (dq.length) out.push(`disqualified by a failure ${where(dq)}`);
+    return out.join(', ');
+  }
+
+  // ---- what the Car Failures panel shows (race screen and Race Director page) ----
+  // eng: the engine (the race window's, or the one a viewer follows); lanes: the lane numbers (0...); t: the clock of the screen; phase: the phase of the race screen.
+  // Gives { on, info, failures: [{ k, name, chance }] (the ones the Race Director can give), rows: [{ lane, who, chip, kind, note, give, clear }] }; kind is the colour: ok, amber, red, out.
+  function view(eng, lanes, t, phase) {
+    const cfg = eng && eng.failures;
+    if (!cfg || !cfg.list.length || !eng.failureOf) return { on: false, info: '', failures: [], rows: [] };
+    const racing = phase === 'running' || phase === 'paused', rows = [];
+    (lanes || []).forEach(l => {
+      const i = eng.cars.findIndex(c => c.lane === l); if (i < 0) return;
+      const c = eng.cars[i], f = eng.failureOf(i, t); if (!f) return;
+      const can = eng.failureCan ? eng.failureCan(i) : { give: false, clear: false };
+      const chip = f.out ? (f.out === 'dq' ? 'Disqualified' : 'Retired') : f.active ? f.name : 'No failure';
+      let note = '';
+      if (f.out) note = 'Put out by a failure';
+      else if (f.standLeft !== null) note = `Repairing: stand still for ${clock(f.standLeft)} more`;
+      else if (f.active) note = whenText(f, f.lapsLeft) + (f.action === 'repair' ? `, ${secText(f.seconds)} in the pits` : f.action === 'retire' ? ': the car is retired' : ': the car is disqualified');
+      else if (f.count) note = `${plural(f.count, 'failure')} so far`;
+      rows.push({ lane: l, who: c.teamName ? `${c.teamName} · ${c.driverName}` : c.driverName || '', chip, kind: f.out ? 'out' : f.active ? (f.lapsLeft !== null && f.lapsLeft < 0 ? 'red' : f.tone) : 'ok', note, give: racing && can.give, clear: racing && can.clear });
+    });
+    return { on: true, info: rulesText(cfg), failures: cfg.list.map((f, k) => ({ k, name: f.name, chance: f.chance })), rows };
+  }
+
+  const api = { DEFAULT_FAILURES, DEFAULTS, defaults, clean, factorOf, roll, failureText, rulesText, toneOf, whenText, secText, noteOf, repairsOf, totalNote, view };
   root.Failures = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
