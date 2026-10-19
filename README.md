@@ -2629,3 +2629,19 @@ Good to know:
 2. A sound plays even when the spoken call of the same moment is off; the two do not depend on each other.
 3. Later (not in this version): sounds for damage, failures, tokens, the winner and the podium, the heat horn and pit work such as refuelling; and sounds that keep playing in the background (crowd murmur, rain, thunder) with their own start and stop. A different sound for every car is possible already with **Only if**; a sound that moves from left to right was not asked for.
 4. Not verified in the full Electron window or with real sound files: the channel was tested with a stand-in player (volume, lowering, cutting, waiting, the limit), and the folder was looked at in a browser. The files play with the same player as the sound files of sentences.
+
+## What to try (1.49.0): Ambient Race Sounds, release 2 (trouble, pit work, winner, swaps and tokens)
+
+What changed: the folder **Ambient Race Sounds** of an audio set (Customization > Audio Settings, the last folder) has **17 more sounds**, 32 in all. Everything about how they play is as in 1.48.0 (own channel, the voice can speak over them, the volume of the folder, lowering while a call is spoken, most sounds at once, volume and start after for every sound). Still no sounds included: you add the files.
+
+1. **Trouble** (a new section): **a car takes a hit** (a crash, a crunch), **a car is in critical trouble** (an alarm: a critical damage level or a critical failure), **a car has a failure** (a bang, a hiss), **fuel is running low**, **a car runs out of fuel**, **a penalty is given** (a short buzzer) and **a car is out of the race** (retired by damage or a failure, thrown out, or disqualified). The hit and the penalty can come quickly after each other, so they have **Not again within**.
+2. **Pit lane** has three more, for the moment the stop ends: **a car has been refuelled**, **new tyres have been fitted** (new tyres after a stop, or the tyres for the weather) and **a repair is done** (a damage repair or a failure repair). The pit crew sound of 1.48.0 still plays from the moment the car stops until it leaves.
+3. **Race moments** has **the winner** (a fanfare), **the second and third place** (applause, once for each) and **the next heat or final is about to start** (the heat horn).
+4. **Driver swaps and time tokens** (a new section): **a driver swap is due** (a bell), **a driver swap is done**, **the time of a lane is almost up** and **the time of a lane is up** (buzzers, in a Time Token Session). The **Only if** box of the two token sounds has only the driver, because a token session has no places or gaps.
+5. Try it: add a sound file to **a car runs out of fuel** and to **the winner**, race with the set, and run a car out of fuel. The sound plays when the engine stops, together with the spoken call (if it is on). A sound plays even when the call of the same moment is off.
+
+Good to know:
+1. The folder is long now (32 sounds, in 8 sections). **Open all folders** and the browser's find (Ctrl+F) help; say so if you would like the sections to open and close like folders.
+2. The refuel, tyre and repair sounds play when the stop is over (that is when the race knows it was done), not while the work is going on; the pit crew sound is the one for that.
+3. Still to come (release 3): sounds that keep playing in the background (crowd murmur, the paddock, rain, thunder), with their own start and stop.
+4. Not verified in the full Electron window or with real sound files. The new sounds were tested by running a short race through the channel and by checking in the code that every moment a sound waits for is really made by the race.

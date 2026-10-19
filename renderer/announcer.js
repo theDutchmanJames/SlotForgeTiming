@@ -105,12 +105,16 @@
   // and can be cut short by another (stop). vars: ['driver'] means the event is about one car, so the sound can have the conditions "only for this driver", "top N" and "gap under".
   // opts: what the sound can be set to besides its volume and its delay: who (which cars: all, the leader, cars that are close to another), cut (stop it when the stop event comes).
   // cool: the sound is the kind that comes often, so it can have "not again within".
+  // tokens: the sound is for a Time Token Session, which has no positions or gaps (so the Only if box has no "top" and no "gap").
   const AMBIENT_GROUP = 'Ambient Race Sounds';
   const AMBIENT = [
     { id: 'ambpass', section: 'On the track', label: 'A car crosses the line (a lap is set)', on: ['lapdone'], vars: ['driver'], opts: ['who'], cool: true },
     { id: 'ambpitin', section: 'Pit lane', label: 'A car stops in the pits (braking, tyre squeal)', on: ['pitin'], vars: ['driver'] },
     { id: 'ambpitwork', section: 'Pit lane', label: 'The pit crew at work (wheel guns, fuel, tools)', on: ['pitin'], stop: ['pitout'], vars: ['driver'], opts: ['cut'] },
     { id: 'ambpitout', section: 'Pit lane', label: 'A car leaves the pits (pulls away)', on: ['pitout'], vars: ['driver'] },
+    { id: 'ambrefuel', section: 'Pit lane', label: 'A car has been refuelled, as the stop ends (the pump stops, the fuel cap)', on: ['refuelled'], vars: ['driver'] },
+    { id: 'ambtyres', section: 'Pit lane', label: 'New tyres have been fitted, as the stop ends (the last wheel nut)', on: ['tyrenew', 'tyrechange'], vars: ['driver'] },
+    { id: 'ambrepair', section: 'Pit lane', label: 'A repair is done (a tool put down)', on: ['repaired', 'failurerepaired'], vars: ['driver'] },
     { id: 'ambprerace', section: 'The start', label: 'Start is pressed, before the lights (engines revving, the crowd)', on: ['prerace'], vars: [] },
     { id: 'ambbeep', section: 'The start', label: 'A start light comes on (a beep)', on: ['countdown5', 'countdown4', 'countdown3', 'countdown2', 'countdown1'], vars: [] },
     { id: 'amblightsout', section: 'The start', label: 'Lights out, the race starts (engines roar)', on: ['lightsout'], vars: [] },
@@ -119,9 +123,23 @@
     { id: 'ambgreen', section: 'Flags', label: 'Green flag (a short horn)', on: ['greenflag'], vars: [] },
     { id: 'amblastlap', section: 'Race moments', label: 'The leader starts the last lap (the bell)', on: ['lastlap'], vars: ['driver'] },
     { id: 'ambfinish', section: 'Race moments', label: 'The race, a heat or a final is finished (the finish horn, the crowd)', on: ['finished', 'heatend', 'finalend'], vars: [] },
+    { id: 'ambwinner', section: 'Race moments', label: 'The winner (a fanfare)', on: ['winner'], vars: ['driver'] },
+    { id: 'ambpodium', section: 'Race moments', label: 'The second and third place (applause)', on: ['podium'], vars: ['driver'] },
+    { id: 'ambnextheat', section: 'Race moments', label: 'The next heat or final is about to start (the heat horn)', on: ['nextheat', 'nextfinal'], vars: [] },
     { id: 'ambleader', section: 'The crowd', label: 'A new leader (the crowd roars)', on: ['newleader'], vars: ['driver'], cool: true },
     { id: 'ambfastest', section: 'The crowd', label: 'Fastest lap of the race, or a new track record (applause)', on: ['fastestlap', 'trackrecord'], vars: ['driver'], cool: true },
-    { id: 'ambovertake', section: 'The crowd', label: 'A driver moves up a place (the crowd says ooh)', on: ['overtake'], vars: ['driver'], cool: true }
+    { id: 'ambovertake', section: 'The crowd', label: 'A driver moves up a place (the crowd says ooh)', on: ['overtake'], vars: ['driver'], cool: true },
+    { id: 'ambdamagehit', section: 'Trouble', label: 'A car takes a hit (a crash, a crunch)', on: ['damagehit'], vars: ['driver'], cool: true },
+    { id: 'ambdamagecrit', section: 'Trouble', label: 'A car is in critical trouble (an alarm)', on: ['damagecritical', 'failurecritical'], vars: ['driver'] },
+    { id: 'ambfailure', section: 'Trouble', label: 'A car has a failure (a bang, a hiss)', on: ['failure', 'failurecritical'], vars: ['driver'] },
+    { id: 'ambfuellow', section: 'Trouble', label: 'Fuel is running low (a warning beep)', on: ['fuellow'], vars: ['driver'] },
+    { id: 'ambnofuel', section: 'Trouble', label: 'A car runs out of fuel (the engine splutters and dies)', on: ['outoffuel'], vars: ['driver'] },
+    { id: 'ambpenalty', section: 'Trouble', label: 'A penalty is given (a short buzzer)', on: ['penalty', 'specialpenalty'], vars: ['driver'], cool: true },
+    { id: 'ambout', section: 'Trouble', label: 'A car is out of the race: retired or disqualified (a long horn)', on: ['damageout', 'failureout', 'damagedq', 'failuredq', 'disqualified'], vars: ['driver'] },
+    { id: 'ambswapdue', section: 'Driver swaps and time tokens', label: 'A driver swap is due (a bell)', on: ['swapdue'], vars: ['driver'] },
+    { id: 'ambswapdone', section: 'Driver swaps and time tokens', label: 'A driver swap is done (a short horn)', on: ['swapdone'], vars: ['driver'] },
+    { id: 'ambtokenwarn', section: 'Driver swaps and time tokens', label: 'The time of a lane is almost up (a buzzer)', on: ['tokenwarning'], vars: ['driver', 'lane'], tokens: true },
+    { id: 'ambtokenout', section: 'Driver swaps and time tokens', label: 'The time of a lane is up (a long buzzer)', on: ['tokenout'], vars: ['driver', 'lane'], tokens: true }
   ];
   // the values a placeholder can have, in the order they are shown to the user
   const VARS = { driver: 'The driver, as the set says (name, nickname or callsign)', name: 'The driver\'s name', nickname: 'The driver\'s nickname', callsign: 'The driver\'s callsign', team: 'The name of the team of the car (empty when the car races without a team)',
@@ -162,7 +180,7 @@
   }
   // which conditions the sentences of a call can have: the driver the call is about, his position, the lap time (calls that say a time), the gap to the car in front
   const conditionsOf = call => {
-    const v = (call && call.vars) || [], driver = v.includes('driver'), tokens = !!call && call.group === 'Time tokens'; // (a Time Token Session has no positions or gaps)
+    const v = (call && call.vars) || [], driver = v.includes('driver'), tokens = !!call && (call.group === 'Time tokens' || call.tokens === true); // (a Time Token Session has no positions or gaps)
     return { driver, top: driver && !tokens, time: v.includes('time'), gap: driver && !tokens };
   };
   const lapsText = n => `${n} lap${n === 1 ? '' : 's'}`;

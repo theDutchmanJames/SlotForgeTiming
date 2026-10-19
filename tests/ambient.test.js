@@ -10,14 +10,14 @@ const S = Sound.state, FILE = 'data:audio/wav;base64,AAAA', FILE2 = 'data:audio/
 // ---- the list ----
 {
   const ids = A.AMBIENT.map(d => d.id), callIds = A.CALLS.map(c => c.id);
-  ok('fifteen ambient sounds, with their own ids (none is the id of a spoken call)', A.AMBIENT.length === 15 && new Set(ids).size === 15 && ids.every(i => !callIds.includes(i)));
+  ok('thirty-two ambient sounds (15 from release 1, 17 from release 2), with their own ids (none is the id of a spoken call)', A.AMBIENT.length === 32 && new Set(ids).size === 32 && ids.every(i => !callIds.includes(i)) && ids.every(i => /^amb[a-z]+$/.test(i)));
   ok('each starts on an event of the race: a spoken call or the lap event', A.AMBIENT.every(d => d.on.length > 0 && d.on.every(e => callIds.includes(e) || e === 'lapdone')));
   ok('...and what ends it is a spoken call', A.AMBIENT.every(d => (d.stop || []).every(e => callIds.includes(e))));
   ok('each has a label, a section and variables the announcer knows', A.AMBIENT.every(d => d.label && d.section && d.vars.every(v => A.VARS[v])));
   ok('the options are the ones the editor knows (which cars, stop at the pit exit)', A.AMBIENT.every(d => (d.opts || []).every(o => o === 'who' || o === 'cut')) && A.AMBIENT.find(d => d.id === 'ambpass').opts.includes('who') && A.AMBIENT.find(d => d.id === 'ambpitwork').opts.includes('cut'));
-  ok('the sections come in a row (a section is one heading in the folder)', (() => { const seen = []; A.AMBIENT.forEach(d => { if (seen[seen.length - 1] !== d.section) seen.push(d.section); }); return new Set(seen).size === seen.length && seen.length === 6; })());
+  ok('the sections come in a row (a section is one heading in the folder)', (() => { const seen = []; A.AMBIENT.forEach(d => { if (seen[seen.length - 1] !== d.section) seen.push(d.section); }); return new Set(seen).size === seen.length && seen.join('|') === 'On the track|Pit lane|The start|Flags|Race moments|The crowd|Trouble|Driver swaps and time tokens'; })());
   ok('the folder has its name', A.AMBIENT_GROUP === 'Ambient Race Sounds' && !A.CALLS.some(c => c.group === A.AMBIENT_GROUP));
-  ok('the sounds that can repeat quickly have a "not again within" (the pass of a car, a new leader, the fastest lap, a move up)', A.AMBIENT.filter(d => d.cool).map(d => d.id).join() === 'ambpass,ambleader,ambfastest,ambovertake');
+  ok('the sounds that can repeat quickly have a "not again within" (the pass of a car, a new leader, the fastest lap, a move up, a hit, a penalty)', A.AMBIENT.filter(d => d.cool).map(d => d.id).join() === 'ambpass,ambleader,ambfastest,ambovertake,ambdamagehit,ambpenalty');
 }
 
 // ---- the lap event: only when the set wants it ----
@@ -206,6 +206,33 @@ const rnd0 = () => 0;
   const f = fake(), set = { name: 'Old', calls: { newleader: { on: true, lines: [{ text: '{driver} leads', file: '' }] } } };
   const said = Sound.say(set, 'newleader', { driver: 'Alex' }, rnd0, undefined, { driverId: 'a' });
   ok('a set from before 1.48.0 says its calls as before and plays no sound', !!said && f.spoken.join() === 'Alex leads' && f.plays.length === 0 && Sound.ambientFor(set, 'lapdone', {}, {}).length === 0);
+  Sound.stop();
+}
+
+// ---- release 2: the trouble sounds, the pit-work sounds, the winner and the podium, the heat horn, the swaps and the time tokens ----
+{
+  const by = id => A.AMBIENT.find(d => d.id === id), fs = require('fs'), ann = fs.readFileSync(__dirname + '/../renderer/announcer.js', 'utf8'), race = fs.readFileSync(__dirname + '/../renderer/race.js', 'utf8'), body = ann.slice(ann.indexOf('function create'));
+  const sec = n => A.AMBIENT.filter(d => d.section === n).map(d => d.id).join();
+  ok('the section Trouble: a hit, a critical state, a failure, low fuel, out of fuel, a penalty, a car that is out', sec('Trouble') === 'ambdamagehit,ambdamagecrit,ambfailure,ambfuellow,ambnofuel,ambpenalty,ambout');
+  ok('...Pit lane has the pit-work sounds after the stop sounds, Race moments the winner, the podium and the heat horn, and the last section the swaps and the tokens', sec('Pit lane') === 'ambpitin,ambpitwork,ambpitout,ambrefuel,ambtyres,ambrepair' && sec('Race moments') === 'amblastlap,ambfinish,ambwinner,ambpodium,ambnextheat' && sec('Driver swaps and time tokens') === 'ambswapdue,ambswapdone,ambtokenwarn,ambtokenout');
+  const table = { ambdamagehit: 'damagehit', ambdamagecrit: 'damagecritical,failurecritical', ambfailure: 'failure,failurecritical', ambfuellow: 'fuellow', ambnofuel: 'outoffuel', ambpenalty: 'penalty,specialpenalty', ambout: 'damageout,failureout,damagedq,failuredq,disqualified',
+    ambrefuel: 'refuelled', ambtyres: 'tyrenew,tyrechange', ambrepair: 'repaired,failurerepaired', ambwinner: 'winner', ambpodium: 'podium', ambnextheat: 'nextheat,nextfinal', ambswapdue: 'swapdue', ambswapdone: 'swapdone', ambtokenwarn: 'tokenwarning', ambtokenout: 'tokenout' };
+  ok('each of the 17 new sounds waits for exactly the moments it says (the table of release 2)', Object.keys(table).length === 17 && Object.keys(table).every(id => by(id) && by(id).on.join() === table[id]));
+  ok('a critical state and a critical failure give the alarm; a failure of any kind gives the bang (both for a critical failure)', by('ambdamagecrit').on.join() === 'damagecritical,failurecritical' && by('ambfailure').on.join() === 'failure,failurecritical');
+  ok('a car that is out: retired by damage or a failure, thrown out by damage or a failure, or disqualified', by('ambout').on.join() === 'damageout,failureout,damagedq,failuredq,disqualified');
+  ok('a time token sound has an Only if box without places and gaps (a Time Token Session has none); the winner has them', !A.conditionsOf(by('ambtokenwarn')).top && !A.conditionsOf(by('ambtokenout')).gap && A.conditionsOf(by('ambtokenwarn')).driver && A.conditionsOf(by('ambwinner')).top && A.conditionsOf(by('ambwinner')).gap);
+  ok('the heat horn is for the next heat and for the next final; the tokens have the lane as a word', by('ambnextheat').on.join() === 'nextheat,nextfinal' && by('ambtokenwarn').vars.includes('lane') && by('ambtokenout').vars.includes('lane'));
+  ok('every moment a sound waits for is really made: by the announcer (an event of its own) or by the race screen (the tokens, the pre-race call)', A.AMBIENT.every(d => d.on.every(e => /^countdown[1-5]$/.test(e) ? /ev\('countdown' \+/.test(body) : new RegExp("ev\\([^\\n]*'" + e + "'").test(body) || new RegExp("said\\.push\\(\\['" + e + "'|Sound\\.say\\(audioSet, '" + e + "'").test(race))) && A.AMBIENT.every(d => (d.stop || []).every(e => new RegExp("ev\\([^\\n]*'" + e + "'").test(body))));
+  // a short race: what the announcer says goes through the channel, and the sounds of that moment play
+  const { createRace } = require('../renderer/engine.js');
+  const ent = [{ lane: 0, driverId: 'a', driverName: 'Alex' }, { lane: 1, driverId: 'b', driverName: 'Sam' }], eng = createRace({ type: 'race', laps: 2, minLap: 1000, entries: ent }), an = A.create({ lapSound: true, lapLimit: 2 }), evs = [];
+  const obs = ctx => an.observe(eng, ctx).forEach(e => evs.push(e));
+  obs({ phase: 'ready' }); for (let n = 1; n <= 5; n++) obs({ phase: 'countdown', lights: n });
+  eng.start(0); obs({ phase: 'running' }); eng.cross(0, 5000); obs({ phase: 'running' }); eng.cross(1, 5800); obs({ phase: 'running' }); eng.cross(0, 10000); obs({ phase: 'running' }); eng.cross(1, 11000); obs({ phase: 'running' }); obs({ phase: 'finished' });
+  const f = fake(), every = setOf(Object.fromEntries(A.AMBIENT.map(d => [d.id, snd(FILE)])), { ambMax: 16 });
+  evs.forEach(e => Sound.say(every, e.call, e.vars, rnd0, undefined, e.facts));
+  const count = id => f.plays.filter(h => h.id === id).length, played = {}; S.amb.log.forEach(x => { played[x.id] = (played[x.id] || 0) + 1; });
+  ok('a short race goes through the channel: five start lights, lights out, a sound for each of the four laps, the finish, the winner and the podium; and not the sounds of what did not happen', played.ambbeep === 5 && played.amblightsout === 1 && played.ambpass === 4 && played.ambfinish === 1 && played.ambwinner === 1 && played.ambpodium === 1 && played.amblastlap === 1 && !played.ambpitin && !played.ambdamagehit && !played.ambout && !played.ambtokenout && !played.ambnextheat);
   Sound.stop();
 }
 
