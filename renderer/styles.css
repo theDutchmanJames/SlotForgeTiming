@@ -676,6 +676,16 @@ dialog:has(.formgrid) form{display:flex;flex-direction:column;max-height:calc(90
 .ed-bar label{max-width:100%}.ed-bar select{max-width:100%;min-width:0}
 
 /* audio sets: the "Only if" box of a sentence, and the "not again within" row of a call */
+/* Ambient Race Sounds (1.48.0): a folder like the others (class audgroup), with sections, a row of settings for the whole folder and a row of options for each sound */
+.ambintro{padding:12px 14px 4px;border-bottom:1px solid var(--line)}
+.ambintro p{margin:0 0 8px}
+.ambset{gap:6px 14px;align-items:center;margin:0 0 10px}
+.ambset input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;margin:0}
+.ambset label{display:inline-flex;align-items:center;gap:6px}
+.ambsec{margin:0;padding:10px 14px 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-top:1px solid var(--line)}
+.ambintro+.ambsec{border-top:0}
+.ambcall .ambopts{margin-top:8px;gap:6px 14px;align-items:center}
+.ambcall .ambopts label{display:inline-flex;align-items:center;gap:6px}
 .audcond{margin:-2px 0 8px 8px;font-size:13px}
 .audcond>summary{cursor:pointer;color:var(--muted);padding:2px 0}
 .audcond[open]>summary{color:var(--ink)}

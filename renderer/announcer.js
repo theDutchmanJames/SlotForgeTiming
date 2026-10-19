@@ -100,6 +100,29 @@
     { id: 'tokenadded', group: 'Time tokens', defaultOn: false, label: 'Time is added to a lane (a Time Token Session)', vars: ['driver', 'lane', 'added', 'seconds'], lines: ['{added} added to lane {lane}', 'Lane {lane} has {added} more'] },
     { id: 'tokenfree', group: 'Time tokens', defaultOn: false, label: 'A lane is freed (a Time Token Session)', vars: ['driver', 'lane'], lines: ['Lane {lane} is free', 'Lane {lane} is free for the next driver'] }
   ];
+  // Ambient Race Sounds (1.48.0): sounds the user brings, played on a channel of their own at the same time as the spoken calls (sound.js). They are not calls: they say nothing, have no sentences,
+  // and are silent until a sound file is added. Each one starts when one of the events below happens (on: the id of a call that is about to be said, or an event with no call of its own: lapdone),
+  // and can be cut short by another (stop). vars: ['driver'] means the event is about one car, so the sound can have the conditions "only for this driver", "top N" and "gap under".
+  // opts: what the sound can be set to besides its volume and its delay: who (which cars: all, the leader, cars that are close to another), cut (stop it when the stop event comes).
+  // cool: the sound is the kind that comes often, so it can have "not again within".
+  const AMBIENT_GROUP = 'Ambient Race Sounds';
+  const AMBIENT = [
+    { id: 'ambpass', section: 'On the track', label: 'A car crosses the line (a lap is set)', on: ['lapdone'], vars: ['driver'], opts: ['who'], cool: true },
+    { id: 'ambpitin', section: 'Pit lane', label: 'A car stops in the pits (braking, tyre squeal)', on: ['pitin'], vars: ['driver'] },
+    { id: 'ambpitwork', section: 'Pit lane', label: 'The pit crew at work (wheel guns, fuel, tools)', on: ['pitin'], stop: ['pitout'], vars: ['driver'], opts: ['cut'] },
+    { id: 'ambpitout', section: 'Pit lane', label: 'A car leaves the pits (pulls away)', on: ['pitout'], vars: ['driver'] },
+    { id: 'ambprerace', section: 'The start', label: 'Start is pressed, before the lights (engines revving, the crowd)', on: ['prerace'], vars: [] },
+    { id: 'ambbeep', section: 'The start', label: 'A start light comes on (a beep)', on: ['countdown5', 'countdown4', 'countdown3', 'countdown2', 'countdown1'], vars: [] },
+    { id: 'amblightsout', section: 'The start', label: 'Lights out, the race starts (engines roar)', on: ['lightsout'], vars: [] },
+    { id: 'ambyellow', section: 'Flags', label: 'Yellow flag (a caution horn)', on: ['yellowflag'], vars: [] },
+    { id: 'ambred', section: 'Flags', label: 'Red flag (a siren)', on: ['redflag'], vars: [] },
+    { id: 'ambgreen', section: 'Flags', label: 'Green flag (a short horn)', on: ['greenflag'], vars: [] },
+    { id: 'amblastlap', section: 'Race moments', label: 'The leader starts the last lap (the bell)', on: ['lastlap'], vars: ['driver'] },
+    { id: 'ambfinish', section: 'Race moments', label: 'The race, a heat or a final is finished (the finish horn, the crowd)', on: ['finished', 'heatend', 'finalend'], vars: [] },
+    { id: 'ambleader', section: 'The crowd', label: 'A new leader (the crowd roars)', on: ['newleader'], vars: ['driver'], cool: true },
+    { id: 'ambfastest', section: 'The crowd', label: 'Fastest lap of the race, or a new track record (applause)', on: ['fastestlap', 'trackrecord'], vars: ['driver'], cool: true },
+    { id: 'ambovertake', section: 'The crowd', label: 'A driver moves up a place (the crowd says ooh)', on: ['overtake'], vars: ['driver'], cool: true }
+  ];
   // the values a placeholder can have, in the order they are shown to the user
   const VARS = { driver: 'The driver, as the set says (name, nickname or callsign)', name: 'The driver\'s name', nickname: 'The driver\'s nickname', callsign: 'The driver\'s callsign', team: 'The name of the team of the car (empty when the car races without a team)',
     other: 'The other driver involved (the one who was passed, or the leader before)', time: 'The lap time, as spoken', position: 'The position, as a word', lap: 'The lap number the time was set in',
@@ -178,7 +201,7 @@
   //      noLapSeconds: seconds (0 = no calls), trackName }
   function create(o = {}) {
     const whole = (v, lo) => (Array.isArray(v) ? v : []).map(Number).filter(n => Number.isInteger(n) && n >= lo).sort((a, b) => a - b);
-    const lapsToGo = whole(o.lapsToGo, 2), minutesToGo = whole(o.minutesToGo, 1), trackName = String(o.trackName || '');
+    const lapsToGo = whole(o.lapsToGo, 2), minutesToGo = whole(o.minutesToGo, 1), trackName = String(o.trackName || ''), lapSound = o.lapSound === true; // (lapSound: a sound is wanted for every lap of every car; without it no lap event is made, so the calls of a race stay as they were)
     const nearRecord = Number(o.nearRecord) > 0 ? Math.min(5, Number(o.nearRecord)) : 0, noLap = Number(o.noLapSeconds) > 0 ? Math.min(600, Number(o.noLapSeconds)) : 0;
     const closeGap = Number(o.closeGap) > 0 ? Math.min(30, Number(o.closeGap)) : 0, battleLaps = Math.max(2, Math.min(20, Math.floor(Number(o.battleLaps)) || 3));
     const dists = (Array.isArray(o.distances) ? o.distances : [50]).map(Number).filter(n => n > 0 && n < 100).sort((a, b) => a - b), by = ['name', 'nickname', 'callsign'].includes(o.driverBy) ? o.driverBy : 'name', lapLimit = Number(o.lapLimit) || 0;
@@ -199,7 +222,11 @@
       const i = cur.st.findIndex(x => x.car === c); return i < 0 ? null : i + 1;
     };
     // what a sentence's conditions are checked against: the driver, his position, the lap time and the gap to the car in front (the words of the sentence do not carry them)
-    const factsOf = (c, time) => ({ driverId: c && c.driverId !== undefined && c.driverId !== null ? c.driverId : '', place: c ? placeOf(c) : null, time: Number.isFinite(time) ? time : null, gap: c ? gapMs(c) : null });
+    const behindMs = c => { // the gap of the car right behind this one, in ms (null: nobody behind, or not known)
+      const p = placeOf(c); if (p === null || !cur.st[p]) return null;
+      return gapMs(cur.st[p].car);
+    };
+    const factsOf = (c, time) => ({ driverId: c && c.driverId !== undefined && c.driverId !== null ? c.driverId : '', place: c ? placeOf(c) : null, time: Number.isFinite(time) ? time : null, gap: c ? gapMs(c) : null, behind: c ? behindMs(c) : null });
     const who = c => { const name = c.driverName || '', nick = c.nickname || name, call = c.callsign || name; return { driver: by === 'nickname' ? nick : by === 'callsign' ? call : name, name, nickname: nick, callsign: call, team: c.teamName || '', car: c.carName || '', best: Number.isFinite(c.best) ? speakTime(c.best) : '',
       lane: Number.isInteger(c.lane) ? c.lane + 1 : '', points: c.points || 0, fuel: cur.eng && cur.eng.fuel && cur.eng.fuel.on && Number.isFinite(c.fuel) ? Math.round(c.fuel) : '', gapahead: gapAhead(c), _c: c }; };
 
@@ -313,6 +340,7 @@
       const done = [];
       cars.forEach((c, i) => { for (let n = S.laps[i]; n < c.laps.length; n++) done.push([i, n]); S.laps[i] = c.laps.length; });
       done.sort((a, b) => cars[a[0]].total - cars[b[0]].total);
+      if (lapSound && phase === 'running') done.forEach(([i, n]) => ev('lapdone', { ...who(cars[i]), lap: n + 1 })); // (a car crossed the line: only while racing, and only when a sound wants it)
       done.forEach(([i, n]) => {
         const c = cars[i], time = c.laps[n]; if (c.bad && c.bad[n]) return; // too slow laps never count
         const id = c.driverId, prevAll = best.all, prevPers = id ? Math.min(best.personal.get(id) ?? Infinity, best.by.get(id) ?? Infinity) : Infinity, prevTrack = best.track; // (a Guest has no personal best: the Guests are not one driver)
@@ -406,7 +434,7 @@
     }
     return { observe };
   }
-  const api = { CALLS, VARS, SAMPLE, EVERY_DRIVER, EVERY_CALL, conditionsOf, ordinal, speakTime, speakGap, speakDiff, speakSpan, speakTarget, fill, create };
+  const api = { CALLS, AMBIENT, AMBIENT_GROUP, VARS, SAMPLE, EVERY_DRIVER, EVERY_CALL, conditionsOf, ordinal, speakTime, speakGap, speakDiff, speakSpan, speakTarget, fill, create };
   root.Announcer = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

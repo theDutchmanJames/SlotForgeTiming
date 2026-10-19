@@ -94,7 +94,10 @@ const folders = Help.folders();
     say('the folders of an audio set that the Help names are the real ones (and the new ones are all named)', named.every(g => groups.includes(g) && text.includes(g)));
     const words = (audioText.match(/\{(\w+)\}/g) || []).map(w => w.slice(1, -1));
     say('...and the two boxes it names under a sentence and a call are in the audio editor', audioText.includes('Only if') && audioText.includes('Not again within') && read('renderer/audioedit.js').includes('Only if&hellip;') && read('renderer/audioedit.js').includes('Not again within (seconds)'));
-    say('...and so are the placeholders it names', words.length >= 5 && words.every(w => w in A.VARS)); }
+    say('...and so are the placeholders it names', words.length >= 5 && words.every(w => w in A.VARS));
+    { const ed = read('renderer/audioedit.js'), ids = folders.map(x => x.id), amb = folders.find(x => x.id === 'ambient'), ambText = amb ? plain(amb.body) : '';
+      say('1.48.0: the Help folder of the Ambient Race Sounds comes right after the audio folder, and names the real folder, say that no sounds are included, and that they play on a separate channel', !!amb && ids.indexOf('ambient') === ids.indexOf('audio') + 1 && ambText.includes(A.AMBIENT_GROUP) && /No sounds are included/.test(ambText) && /separate channel/.test(ambText) && amb.body.length < 3000);
+      say('...and the options it names are in the editor: the volume, start after, which cars, lower while a call is spoken, only if, not again within, test', ['Volume', 'Start after', 'every car', 'only the leader', 'only cars close together', 'Only if', 'Not again within', 'Test'].every(w => ambText.includes(w) && ed.toLowerCase().includes(w.toLowerCase())) && /lower them while a call is spoken/i.test(ambText) && /lower them while a call is spoken/i.test(ed)); } }
   { const Dl = require(R + 'renderer/delta.js'), W = require(R + 'renderer/widgets.js');
     const folder = W.REGISTRY ? Object.values(W.REGISTRY).filter(d => d.group === 'Delta Timers') : [];
     say('the Delta Timers the Help describes exist: a folder of that name in the Layout Editor, nine widgets, and the ways of comparing it names', text.includes('Delta Timers') && folder.length === 9 && Object.keys(Dl.KINDS).length === 9

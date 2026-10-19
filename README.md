@@ -2611,3 +2611,21 @@ Good to know:
 1. **Race Setups** (the red one) keeps the colour of your theme in its window, because that is the colour of its button. The Database forms (drivers, slotcars, tracks, teams) keep the colour of your theme too.
 2. The Rotation Setups page is not a window (it is a page of its own) and has no folders; its Save button already had the brown.
 3. Not verified in the full Electron window (the forms were opened in a browser with the real stylesheet, dark and light).
+
+## What to try (1.48.0): Ambient Race Sounds (release 1)
+
+What changed: every audio set has a new folder, **Ambient Race Sounds**, with 15 sounds that make a race feel real: a car passing when a lap is set, the pit crew at work, the start, the flags, the crowd. **No sounds are included**: you add your own sound files and each one plays at its moment of the race. They play on a **separate channel**, so the spoken calls (the voice) can play over them at the same time.
+
+1. **Customization > Audio Settings > New audio set** (or Edit a set). The folder is the last one, below the folders of the spoken calls. Hold the mouse over its name: the tooltip says that these sounds play on a separate channel. Open it: six sections (On the track, Pit lane, The start, Flags, Race moments, The crowd).
+2. Under **A car crosses the line (a lap is set)** press **Add a sound file**, choose a file with a car passing and press **Test**. **Played for** chooses the cars: **every car**, **only the leader** or **only cars close together** (the gap to the car in front, or the time the car behind is late, is under the number of seconds you fill in; 3 when empty).
+3. Start a race with that set: every time a car sets a lap, the sound plays. Say a call at the same time (a new leader, a flag): the sound is **lowered while the voice speaks** (to 35 percent, you set how far) and comes back when it is done. The tick box at the top of the folder turns the lowering off. The folder also has the **volume** of all the ambient sounds (80 percent to start with) and **most sounds at once** (6: the oldest one stops to make room).
+4. A pit stop has three sounds: **a car stops in the pits** (braking, tyre squeal), **the pit crew at work** (wheel guns, tools) and **a car leaves the pits** (pulls away). The pit crew sound stops when that car leaves the pits, unless you untick **stop it when the car leaves the pits**.
+5. The others: the start is pressed (before the lights), a start light (a beep), lights out (engines roar), yellow, red and green flag, the last lap (the bell), the finish of a race, a heat or a final (the horn, the crowd), a new leader (the crowd roars), the fastest lap or a track record (applause) and a driver who moves up a place (ooh).
+6. Every sound has its own **Volume** (percent) and **Start after** (seconds). A sound can have **several files** (one is picked at random each time), and the **Only if** box under a file gives a driver a file of his own (his own engine for his own car). The sounds that can come quickly after each other (a passing car, a new leader, the fastest lap, a move up) have **Not again within**, for the whole sound or for each driver.
+7. Not ticked, or without a file, a sound stays silent. **Test** plays a file as it will sound in the race (with the volume of the folder and of the sound).
+
+Good to know:
+1. The files are kept inside the database like the sound files of sentences (up to 10 MB each), so short files are best. They play on the computer that runs the race, like the voice.
+2. A sound plays even when the spoken call of the same moment is off; the two do not depend on each other.
+3. Later (not in this version): sounds for damage, failures, tokens, the winner and the podium, the heat horn and pit work such as refuelling; and sounds that keep playing in the background (crowd murmur, rain, thunder) with their own start and stop. A different sound for every car is possible already with **Only if**; a sound that moves from left to right was not asked for.
+4. Not verified in the full Electron window or with real sound files: the channel was tested with a stand-in player (volume, lowering, cutting, waiting, the limit), and the folder was looked at in a browser. The files play with the same player as the sound files of sentences.

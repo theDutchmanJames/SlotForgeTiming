@@ -278,6 +278,12 @@ const Help = (() => {
           <li>Under a sentence, <b>Only if</b> limits it to one driver, the top places, a fast lap or a small gap; a sentence whose conditions hold is said instead of the others. <b>Not again within</b> holds a call back for some seconds.</li>
           <li>Pick the set in the race setup. <b>No audio</b> keeps the race silent. Sound plays on the computer that runs the race, not on phones.</li>
         </ul>` },
+      { id: 'ambient', title: 'Ambient race sounds', note: 'Engines, pit crews and a crowd', body: `
+        <ul>
+          <li><b>Ambient Race Sounds</b> is the last folder of an audio set (Customization, Audio Settings). It holds the sounds that make a race feel real: a car passing when a lap is set, the pit crew at work, the start, the flags, the crowd. <b>No sounds are included</b>: add your own sound files, and each one plays at its moment of the race. A sound without a file stays silent.</li>
+          <li>They play on a <b>separate channel</b>, at the same time as the spoken calls; a call never cuts them off. <b>Lower them while a call is spoken</b> keeps the voice clear (you set how far). The folder also has the volume of all of them and the most sounds at once.</li>
+          <li>Every sound has its own <b>Volume</b> and <b>Start after</b>, and can have several files (one is picked at random). <b>Only if</b> gives a driver a file of his own. A passing car can be played for <b>every car</b>, <b>only the leader</b> or <b>only cars close together</b>. The pit crew stops when the car leaves the pits. <b>Not again within</b> stops a sound from coming back too soon. <b>Test</b> plays a file as it will sound in the race.</li>
+        </ul>` },
       { id: 'look', title: 'Look and feel', note: 'Themes, name, header picture and logo', body: `
         <ul>
           <li><b>App Theme</b>: choose a ready-made colour theme, or make your own colours.</li>
