@@ -757,9 +757,10 @@ const SESSION_LABEL = { practice: 'Free practice', qualifying: 'Qualifying', rac
 // The page has two pools that never mix: Racing Records (everything raced) and Token Records (the stints of Time Token Sessions, with their own records).
 async function renderResults(box) {
   manager = null;
-  const pool = state.resultsSub === 'tokens' ? 'tokens' : 'racing';
+  const pool = state.resultsSub === 'tokens' ? 'tokens' : state.resultsSub === 'champs' ? 'champs' : 'racing';
   box.innerHTML = '<div class="sub" id="respool" role="tablist"></div><div id="resbody"></div>';
-  renderTabs(byId('respool'), [['racing', 'Racing Records'], ['tokens', 'Token Records']], pool, id => { state.resultsSub = id; renderResults(box); });
+  renderTabs(byId('respool'), [['racing', 'Racing Records'], ['tokens', 'Token Records'], ['champs', 'Championships']], pool, id => { state.resultsSub = id; renderResults(box); });
+  if (pool === 'champs') { await renderChampStandings(byId('resbody')); return; } // (1.56.0: the standings of the championships)
   await renderResultsPool(byId('resbody'), pool);
 }
 // the lines that tell how the figures of a table are counted, as one small paragraph under it
@@ -897,7 +898,7 @@ async function renderResultsPool(box, pool) {
         default: return esc(Stats.text(key, figs[i], Speed.unitOf(state.settings), Speed.distUnitOf(state.settings)));
       }
     };
-    const body = `<table class="fields"><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr>` +
+    const body = (s.champ && typeof s.champ === 'object' && s.champ.id ? `<div class="chpanelbox" data-cpbox="${esc(s.id)}"></div>` : '') + `<table class="fields"><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr>` +
       s.standings.map((x, i) => `<tr>${cols.map(c => `<td>${cellOf(c.key, x, i)}</td>`).join('')}</tr>`).join('') + '</table>' + (cols.length ? '' : '<p class="muted">No columns are on for this session. Turn some on in View settings.</p>') +
       statNote(cols.map(c => c.key)) +
       (Stats.heated(s) && s.scoring && Heats.scoringText(s.scoring, pts) ? `<p class="muted">${esc(Heats.scoringText(s.scoring, pts))}</p>` : '') + (fin ? `<p class="muted">${esc(Heats.finalsSaid(s.finals))}</p>` : '') + (Stats.weatherText(s) ? `<p class="muted">${esc(Stats.weatherText(s))}</p>` : '') + (Stats.resumeText(s) ? `<p class="muted">${esc(Stats.resumeText(s))}</p>` : '') +
@@ -908,7 +909,7 @@ async function renderResultsPool(box, pool) {
         const mine = Stats.ownLaps(x, laps).filter(l => l.sessionId === s.id).sort((a, b) => (a.heat || 0) - (b.heat || 0) || a.lapNumber - b.lapNumber);
         return `<p><strong>${esc(x.driverName)}</strong><br><span class="muted">${mine.map(l => { const t = esc(`${l.heat ? (l.final ? 'F' + l.final : 'H' + l.heat) + ' ' : ''}${l.lapNumber}: ${RaceEngine.fmtTime(l.time)}`); return l.invalid || l.tooSlow ? `<s class="lapbad" title="${l.invalid ? 'Invalid lap' : 'Too slow: not counted for records'}">${t}</s>` : l.pit ? `<em title="Lap with a pit stop">${t}</em>` : t; }).join(' · ') || 'no laps'}</span></p>`;
       }).join('') + `<div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}<button class="btn danger" data-delsession="${esc(s.id)}">Delete this session</button><span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
-    return `<details class="card sess" data-sid="${esc(s.id)}"><summary>${esc(dateText(s.date))} · ${esc(s.setupName)} · ${esc(SESSION_LABEL[s.sessionType] || '')} · ${esc(s.trackName || '')}${s.champ && typeof s.champ === 'object' ? ` <span class="chtag" title="This race is part of a championship">${esc(Champ.tagText(s.champ))}</span>` : ''}${headline(s, win, cup)}</summary><div class="sessbody">${body}</div></details>`;
+    return `<details class="card sess" data-sid="${esc(s.id)}"><summary>${esc(dateText(s.date))} · ${esc(s.setupName)} · ${esc(SESSION_LABEL[s.sessionType] || '')} · ${esc(s.trackName || '')}${s.champ && typeof s.champ === 'object' ? ` <span class="chtag" title="This race is part of a championship">${esc(Champ.tagText(s.champ))}</span>${Champ.awardText(s.champ) ? ` <span class="chaward${s.champ.awarded && !s.champ.off ? ' done' : ''}">${esc(Champ.awardText(s.champ))}</span>` : ''}` : ''}${headline(s, win, cup)}</summary><div class="sessbody">${body}</div></details>`;
   }).join('');
   const RES_FOLDERS = ['tracks', 'pb', 'sessions'];
   const sessCols = tokenPool ? Stats.STINT_COLUMNS : Stats.SESSION_COLUMNS, sessPath = ['results', tokenPool ? 'stints' : 'sessions'];
@@ -920,6 +921,7 @@ async function renderResultsPool(box, pool) {
     + folderHtml(folderPage, 'pb', 'Personal bests', plural(personal.length, 'personal best', 'personal bests'), recTable(personal, 'pb'))
     + folderHtml(folderPage, 'sessions', tokenPool ? 'Stints' : 'Sessions', tokenPool ? plural(sessions.length, 'stint', 'stints') : plural(sessions.length, 'session', 'sessions'), sessionCards);
   folderWire(box);
+  if (!tokenPool && String(box.innerHTML).includes('data-cpbox')) champPanelsIn(box, async s => { state.focusSession = s.id; await renderResultsPool(box, pool); }); // (1.56.0: the points of a race of a championship, and what to do with them)
   if (state.focusSession && !tokenPool) { // the race that was clicked on Home: its card is open and in view
     const id = state.focusSession; state.focusSession = null;
     const d = [...box.querySelectorAll('details.sess')].find(x => x.dataset && x.dataset.sid === id);

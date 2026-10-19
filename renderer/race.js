@@ -137,6 +137,7 @@ async function renderRace() {
     </div>
     <div id="lapreview" class="card rv" hidden></div>
     <div id="review" class="card rv" hidden></div>
+    <div id="champpanel" class="card chpanelbox" hidden></div>
     <p class="muted">Space starts, pauses and resumes · Y yellow flag · R red flag · S stops the race · F shows the widgets full screen (Esc closes it) · press a lane's number key (or its Lap button) each time a car crosses the line${tokenSession ? ' (a lane without paid time ignores it, and a lane whose time is up records the lap but does not count it)' : ''}${tokenSession ? '' : ' · Shift + number (or the Pit button) puts that lane\'s car on the sensor, press again to drive off'} · Ctrl + number (or the Call button) is a call from that lane: the yellow flag goes up and the Race Director decides what happens.</p>
     ${planHtml}${heats ? '<h4>Overall result</h4>' + (scoreNote ? `<p class="hint2" id="overallnote">${esc(scoreNote)}</p>` : '') + `<div class="wrap"><table class="fields"><thead><tr><th>Pos</th><th>${byTeam ? 'Team' : 'Driver'}</th><th>Heats</th><th>Laps</th><th>Points</th>${scoreCol ? '<th>Result</th>' : ''}${finalsOn ? '<th>Final</th>' : ''}<th>Best lap</th></tr></thead><tbody id="overall"></tbody></table></div>` : ''}`;
 
@@ -603,8 +604,9 @@ async function renderRace() {
       if (wxAll) session.weatherNote = wn[0];
       session.heatResults = heat.results.map(h => ({ heat: h.heat, ...(h.final ? { final: h.final } : {}), ...(h.weatherNote && !wxAll ? { weatherNote: h.weatherNote } : {}), rows: h.rows })); if (scoreNote) session.scoring = heat.scoring; if (finalsOn) session.finals = { finals: fmode.finals, finalMode: fmode.finalMode }; }
     try {
-      await api.saveSession(session, laps); clearCheckpoint(); ui('msg').textContent = `Saved ${laps.length} laps.${r.champ ? ' It is part of ' + (r.champ.name || 'the championship') + '.' : ''} See Database > Results and Records.`;
+      const savedId = await api.saveSession(session, laps); clearCheckpoint(); ui('msg').textContent = `Saved ${laps.length} laps.${r.champ ? ' It is part of ' + (r.champ.name || 'the championship') + '.' : ''} See Database > Results and Records.`;
       if (r.champ && state.settings && state.settings.champTag) { try { state.settings = await api.setSettings({ champTag: null }); } catch (x) { /* the card on Home stays as it was */ } } // (the next race is a normal race until a session is loaded again)
+      if (r.champ && typeof champPanelsFor === 'function') { const cp = ui('champpanel'); if (cp) { cp.hidden = false; cp.dataset.cpbox = savedId; champPanelsFor([cp]).catch(() => { cp.hidden = true; }); } } // (1.56.0: the points of this race, to award)
     }
     catch (x) { ui('msg').textContent = 'Could not save the results: ' + x.message; }
   }

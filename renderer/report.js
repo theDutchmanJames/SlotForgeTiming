@@ -144,10 +144,29 @@
     </body></html>`;
   }
 
+  // The standings of a championship as a page to print (1.56.0): the table that ChampPts.tableOf makes ({ title, note, columns, rows, legend }) under the name of the championship.
+  // A dropped result is crossed out, a fastest lap bonus is bold, the leader's row is shaded. The page is landscape: a championship has many rounds.
+  function standingsHtml({ championship, table, lead }) {
+    const t = table || { title: '', columns: [], rows: [], legend: [] }, cls = c => (c ? ` class="${esc(c)}"` : '');
+    const head = t.columns.map(c => `<th${c.r ? ' class="r"' : ''}${c.title ? ` title="${esc(c.title)}"` : ''}>${esc(c.label)}</th>`).join('');
+    const body = t.rows.map(r => `<tr${r.lead ? ' class="lead"' : ''}>${r.cells.map((c, i) => `<td${(t.columns[i] || {}).r ? ` class="r${c.cls ? ' ' + esc(c.cls) : ''}"` : cls(c.cls)}>${c.b ? `<b${c.big ? ' class="big"' : ''}>${esc(c.t)}</b>` : esc(c.t)}</td>`).join('')}</tr>`).join('');
+    const legend = (t.legend || []).map(l => `<span${cls(l.cls)}>${esc(l.text)}</span>`).join(' &nbsp;&middot;&nbsp; ');
+    return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(championship)}</title><style>
+      @page { size: A4 landscape; margin: 14mm; }
+      body { font: 11pt/1.4 Arial, Helvetica, sans-serif; color: #111; margin: 0; }
+      h1 { font-size: 22pt; margin: 0 0 1mm; } p.sub { margin: 0 0 5mm; color: #555; } p.foot { color: #777; font-size: 9pt; margin-top: 8mm; }
+      table { border-collapse: collapse; width: 100%; } th, td { border-bottom: 1px solid #ccc; padding: 2mm 2.5mm; text-align: left; font-variant-numeric: tabular-nums; white-space: nowrap; } th { background: #eee; }
+      .r { text-align: right; } .big { font-size: 13pt; } tr.lead td { background: #fde8f1; -webkit-print-color-adjust: exact; print-color-adjust: exact; } tr { page-break-inside: avoid; }
+      .dr { color: #888; text-decoration: line-through; } .fl { font-weight: bold; color: #b8326f; } .mu { color: #888; }
+    </style></head><body><h1>${esc(championship)}</h1><p class="sub">${esc(t.title)}${t.note ? ' &middot; ' + esc(t.note) : ''}${lead ? ' &middot; ' + esc(lead) : ''}</p>
+      <table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>${legend ? `<p class="sub">${legend}</p>` : ''}<p class="foot">Made with SlotForge Timing</p></body></html>`;
+  }
+  const standingsFileName = (name, which) => `${name || 'Championship'} ${which === 'teams' ? 'teams' : which === 'rounds' ? 'rounds' : 'drivers'} standings.pdf`.replace(/[\\/:*?"<>|]/g, '-');
+
   // the day of a race as the page shows it (local time): a race at 00:30 in Amsterdam is on the new day, not on the day of the UTC date
   const dayOf = iso => { const t = Date.parse(iso), d = new Date(t), two = n => String(n).padStart(2, '0'); return Number.isFinite(t) ? `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}` : String(iso || '').slice(0, 10); };
   const fileName = session => `${session.setupName || 'Session'} ${dayOf(session.date)}.pdf`.replace(/[\\/:*?"<>|]/g, '-');
-  const api = { sessionHtml, heatSheetHtml, fileName, lapGroups, qrHtml, rulesHtml, CREDIT };
+  const api = { sessionHtml, heatSheetHtml, standingsHtml, standingsFileName, fileName, lapGroups, qrHtml, rulesHtml, CREDIT };
   root.Report = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -199,17 +199,23 @@ async function renderHome() {
     const picks = c.rounds.map((q, i) => q.sessions.length ? `<optgroup label="${esc(Champ.roundLabel(c, i))}">${q.sessions.map((s, k) => { const x = setups.find(y => y.id === s.setup), kind = Champ.kindOf(x);
       return `<option value="${i}:${k}">${p.done.has(Champ.keyOf(q.id, s.id)) ? '✓ ' : ''}${esc(kind ? Champ.KIND_LABEL[kind] : '?')}: ${esc(x ? x.name || '(unnamed)' : '(no race setup)')}</option>`; }).join('')}</optgroup>` : '').join('');
     const loaded = !!(ch && at && ch.c.id === c.id && ch.ri === at.round && ch.si === at.session);
+    // 1.56.0: who leads, and the top of the standings (the points of the races that are awarded)
+    const stand = ChampPts.standings(c, sessions, { drivers: drivers.map(x => ({ id: x.id, name: titleOf('drivers', x) })), teams: teams.map(x => ({ id: x.id, name: titleOf('teams', x) })), setups }), lead = ChampPts.leadText(stand);
+    const standWhich = state.champHomeWhich === 'teams' && stand.teams ? 'teams' : 'drivers', topRows = (standWhich === 'teams' ? stand.teams : stand.drivers).slice(0, 5), more = ChampPts.remainingNote(c, stand, setups);
+    const standHtml = !stand.decided ? '' : `<div class="chstand" id="chstand"><div class="chsthead"><b>Standings after round ${stand.last}</b>${stand.teams ? `<span class="chswitch"><button type="button" class="btn${standWhich === 'drivers' ? ' on' : ''}" data-chst="drivers">Drivers</button><button type="button" class="btn${standWhich === 'teams' ? ' on' : ''}" data-chst="teams">Teams</button></span>` : ''}</div>
+      <table class="num chmini"><tbody>${topRows.map(x => `<tr><td class="muted">${x.pos}</td><td><b>${esc(x.name)}</b></td><td class="r"><b>${esc(ChampPts.fmt(x.total))}</b></td></tr>`).join('')}</tbody></table>
+      ${more ? `<p class="hint2">${esc(more)}</p>` : ''}<div class="row"><button type="button" class="btn" data-chall="${esc(c.id)}">All standings</button></div></div>`;
     return `<section class="champband" id="champband" aria-label="Championship">
       <div class="chhead"><div><div class="chlabel">Championship</div>
         ${champs.length > 1 ? `<select id="champsel" aria-label="Championship">${champs.map(x => `<option value="${esc(x.id)}"${x.id === c.id ? ' selected' : ''}>${esc(x.name || '(unnamed)')}</option>`).join('')}</select>` : `<div class="chname">${esc(c.name || '(unnamed)')}</div>`}
         <p class="hint2" style="margin:2px 0 0">${!c.rounds.length ? 'It has no rounds yet. Make them in Race Setup > Championships.' : p.complete ? `Finished: all ${p.total} sessions are driven.` : !p.total ? 'It has no sessions yet. Add them in Race Setup > Championships.'
           : `Round ${ri + 1} of ${c.rounds.length}${r.name ? ' · ' + esc(r.name) : ''}${trackName ? ' · ' + esc(trackName) : ''}${r.date ? ' · ' + esc(r.date) : ''}`}</p></div>
-        ${p.total ? `<span class="chtag">${p.driven} of ${p.total} sessions driven</span>` : ''}</div>
+        <div class="chtags">${lead ? `<span class="chtag chlead">${esc(lead)}</span>` : ''}${p.total ? `<span class="chtag">${p.driven} of ${p.total} sessions driven</span>` : ''}</div></div>
       ${r && r.sessions.length && !p.complete ? `<ul class="chsteps">${r.sessions.map(step).join('')}</ul>` : ''}
       ${bad.length ? `<ul class="issues">${bad.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}${state.champMsg ? `<p class="hint2 hpwarn" role="alert">${esc(state.champMsg)}</p>` : ''}
       <div class="row">${at ? `<button type="button" class="btn chload" id="champload" data-load="${at.round}:${at.session}"${bad.length ? ' disabled' : ''}>${loaded ? 'Loaded: ' : 'Load '}${esc(nextKind ? Champ.KIND_LABEL[nextKind] : 'the next session')}</button>` : ''}
         ${picks ? `<select id="champpick" aria-label="Load another session"><option value="">${at ? 'Another session...' : 'Drive a session again...'}</option>${picks}</select>` : ''}
-        <span class="muted">Fills the card below; nothing starts until you press Start race.</span></div></section>`;
+        <span class="muted">Fills the card below; nothing starts until you press Start race.</span></div>${standHtml}</section>`;
   })();
   // 1.17.0: the welcome band (date, track and status chips), the start card with its coloured lanes and start lights, and the cards on the right
   const audio = setup && (audiosets || []).find(x => x.id === setup.audioSet), audioName = audio ? audio.name || '(unnamed)' : '';
@@ -344,6 +350,8 @@ async function renderHome() {
   view.onclick = ev => {
     const b = ev.target.closest('button'); if (!b) return;
     if (b.id === 'hmcustom') { hc.open = !hc.open; renderHome(); return; }
+    if (b.dataset.chst) { state.champHomeWhich = b.dataset.chst; renderHome(); return; }
+    if (b.dataset.chall) { champView.id = b.dataset.chall; champView.which = state.champHomeWhich === 'teams' ? 'teams' : 'drivers'; state.resultsSub = 'champs'; state.tab = 'database'; state.sub = 'results'; render(); return; } // 1.56.0: the standings of the championship
     if (b.id === 'champload') { const [i, k] = String(b.dataset.load).split(':').map(Number); loadSession(i, k); return; }
     if (b.dataset.hgrid) { const [c, r] = String(b.dataset.hgrid).split(',').map(Number); saveGrid(HG.resize(cur(), c, r)); return; } // a square of the grid picker
     if (b.dataset.hsel !== undefined) { hc.sel = Number(b.dataset.hsel) || 0; renderHome(); return; } // the settings of a card

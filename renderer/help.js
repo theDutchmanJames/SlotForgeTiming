@@ -248,7 +248,17 @@ const Help = (() => {
           <li>The kind of a session (Practice, Qualifying or Race) comes from its race setup. A Time Token Session can not be part of a championship. A race counts for 100%, 50% (a sprint) or no points.</li>
           <li>The <b>roster</b> holds the drivers, each with a team and the round he joins in.</li>
           <li>The <b>Home</b> card shows the round that is next and loads the next session with one click; <b>Another session</b> loads any other. It fills the card below, and nothing starts until you press <b>Start race</b>. Roster drivers come first in the driver boxes; others drive as guests.</li>
-          <li>The race says <b>Counts for</b> the championship on Home, the race screen and in Results and Records. A session is driven when its race is saved. Points come in the next release.</li>
+          <li>The race says <b>Counts for</b> the championship on Home, the race screen and in Results and Records. A session is driven when its race is saved.</li>
+          <li>The points, the bonuses, the dropped results and the standings are in the next folder, <b>Championship points</b>.</li>
+        </ul>` },
+      { id: 'championshippoints', title: 'Championship points', note: 'Table, bonuses, drops, teams and standings', body: `
+        <ul>
+          <li>In the championship (Race Setup, Championships) the <b>Points</b> section holds the table: start from a ready-made one or <b>My own</b>, change any place, add places, and set what every finisher after the last place gets. <b>One point per car beaten</b> needs no table.</li>
+          <li><b>Bonuses</b>: the fastest lap of the race (only in the first places you choose), pole position (fastest in the qualifying of the round, if he starts the race) and a point for starting. A car that is out or disqualified gets no points for its place.</li>
+          <li><b>Dropped results</b> take away the worst rounds of every driver and every team on its own. <b>Teams</b> count the best drivers of a team, all of them, or no team standings. A tie goes to the most wins, the last round or the qualifying.</li>
+          <li>A race at 50% (a sprint) gives half of the points, rounded the way you choose. A driver who is not in the roster is a guest: no points, and the drivers behind him move up (you can switch that off).</li>
+          <li>After a race a panel shows the points of the race. <b>Award these points</b> puts the race in the standings (a session counts once: awarding a second run replaces the first), <b>Undo</b> takes it out again, and <b>Do not count this race</b> keeps the result but offers the session again on Home. Races of teams are not scored.</li>
+          <li>Results and Records, <b>Championships</b>: Drivers, Teams and Rounds, with <b>Export to PDF</b>. Home shows who leads ("Maria leads by 5") and the top five.</li>
         </ul>` },
       { id: 'tokens', title: 'Time Token Sessions', note: 'Selling track time per lane', body: `
         <ul>

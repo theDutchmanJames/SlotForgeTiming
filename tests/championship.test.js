@@ -171,6 +171,19 @@ ok('...no race setup, a race setup that was deleted, a Time Token Session and no
   ok('...imported with it, the race counts for the copy of the championship (its new id)', e.data.sessions[0].champ && e.data.sessions[0].champ.id === e.data.championships[0].id && e.data.sessions[0].champ.id !== ch.id && e.data.sessions[0].champ.roundId === ch.rounds[0].id);
   const f = tmp(); T.apply(f, json(without));
   ok('...imported without it, the race is a normal race (no tag)', f.data.sessions.length === 1 && f.data.sessions[0].champ === undefined); }
+// 1.56.0: the points rules travel with the championship, and a race keeps its award (or "not counted") mark when it is imported with the championship
+{ const a = tmp(), tr = a.add('tracks', { name: 'Ring', lanes: 2 }), d1 = a.add('drivers', { name: 'Anna' }), su = a.add('racesetups', { name: 'Race', sessionType: 'race', track: tr.id });
+  const rules = { points: [10, 8, 6.5], pointsMode: 'table', pointsRest: 1, bonusFast: 1, bonusFastTop: 3, bonusPole: 2, bonusStart: 0.5, drops: 1, teamMode: 'all', teamBest: 3, tie: 'qual', sprintRound: 'down', guestRule: false };
+  const ch = a.add('championships', C.clean({ name: 'Cup', rounds: [{ name: 'One', track: tr.id, sessions: [{ setup: su.id }] }, { name: 'Two', track: tr.id, sessions: [{ setup: su.id }] }], roster: [{ driver: d1.id, team: '' }], ...rules }));
+  const cc = C.clean(ch, true), tag = (ri, extra) => ({ ...C.tagOf(cc, ri, 0, { setups: a.data.racesetups }), ...extra });
+  a.saveSession({ setupName: 'Race', sessionType: 'race', trackId: tr.id, date: '2026-10-02', champ: tag(0, { awarded: '2026-10-02T20:00:00.000Z' }), standings: [{ driverId: d1.id, carId: '' }] }, []);
+  a.saveSession({ setupName: 'Race', sessionType: 'race', trackId: tr.id, date: '2026-10-09', champ: tag(1, { off: true }), standings: [{ driverId: d1.id, carId: '' }] }, []);
+  const out = T.collect(a.data, { sessions: a.data.sessions.map(x => x.id), championships: [ch.id] }, true), b = tmp(); T.apply(b, json(out));
+  const imp = b.data.championships[0];
+  ok('the points rules come along with the championship (table, bonuses, drops, teams, tie, sprint, guest rule)', same(imp.points, [10, 8, 6.5]) && imp.pointsRest === 1 && imp.bonusFast === 1 && imp.bonusFastTop === 3 && imp.bonusPole === 2 && imp.bonusStart === 0.5 && imp.drops === 1 && imp.teamMode === 'all' && imp.teamBest === 3 && imp.tie === 'qual' && imp.sprintRound === 'down' && imp.guestRule === false);
+  const s1 = b.data.sessions.find(x => x.date === '2026-10-02'), s2 = b.data.sessions.find(x => x.date === '2026-10-09');
+  ok('...a race that was awarded is still awarded on the copy, one that was set to "do not count" still is, and both count for the copy of the championship', s1.champ.awarded === '2026-10-02T20:00:00.000Z' && !s1.champ.off && s2.champ.off === true && !s2.champ.awarded && s1.champ.id === imp.id && s2.champ.id === imp.id);
+  ok('...and the copy is found: the awarded race is driven, the one that is not counted is not', C.driven(C.clean(imp, true), b.data.sessions).size === 1); }
 
 console.log(fails ? fails + ' CHAMPIONSHIP TESTS FAILED' : 'ALL CHAMPIONSHIP TESTS PASSED');
 process.exit(fails ? 1 : 0);

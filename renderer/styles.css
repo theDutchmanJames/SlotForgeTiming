@@ -1207,6 +1207,69 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .chcounts b{color:var(--c-ch,#ec5f9a)}
 .chtag{display:inline-block;background:color-mix(in srgb,var(--c-ch,#ec5f9a) 25%,var(--panel));color:var(--ink);border:1px solid color-mix(in srgb,var(--c-ch,#ec5f9a) 55%,var(--panel));border-radius:5px;padding:2px 10px;font-size:12px;font-weight:700;white-space:nowrap}
 
+/* ---- The points of a championship (1.56.0). Design: docs/ui-reference/championship (Points, Standings, After, Home). Same pink as the rest of the championship. ---- */
+.chpanelbox,.chsec,.chstbar,.chstand{--c-ch:#ec5f9a;--on-ch:#10151b}
+[data-theme="light"] .chpanelbox,[data-theme="ocean"] .chpanelbox,[data-theme="light"] .chsec,[data-theme="ocean"] .chsec,[data-theme="light"] .chstbar,[data-theme="ocean"] .chstbar{--c-ch:#b8326f;--on-ch:#fff}
+/* the editor: the places of the table in a grid, the ready-made tables, the guest rule */
+.chplaces{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px 14px;margin:10px 0}
+.chplaces .field input{width:100%}
+#ch-presets .btn.on{background:var(--c-ch);border-color:var(--c-ch);color:var(--on-ch);font-weight:700}
+.chsec h4{margin:16px 0 6px;font-size:14px}
+.chguest{display:flex;gap:10px;align-items:flex-start;margin:10px 0 4px;line-height:1.4}
+.chguest input{margin-top:4px;flex:none}
+/* the panel after a race (race screen and the cards of Results and Records) */
+.chpanelbox{margin:0 0 12px}
+.chpanelbox[hidden],.chpanelbox:empty{display:none}
+.chpanel{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--c-ch);border-radius:10px;padding:12px 16px;display:flex;flex-direction:column;gap:10px}
+.chphead{font-size:15px}
+.chpstate{font-size:13px;margin-top:-6px}
+.chpt,.chtable{font-variant-numeric:tabular-nums}
+.chpt th.r,.chpt td.r,.chtable th.r,.chtable td.r{text-align:right}
+.chpt tr.chout td,.chpt tr.chguest td{color:var(--muted)}
+.chpt tr.chguest td{font-style:italic}
+.chpt td.pos{color:#3ecf8e;font-weight:700}
+.chpt .fl,.chtable .fl,.chlegend .fl{color:var(--c-ch);font-weight:700}
+.chpnote{margin:0;font-size:13px;line-height:1.45}
+.chpnote div{margin:2px 0}
+.chpbtns{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.chpbtns .muted{font-size:13px;flex:1 1 220px}
+.chpdone{display:flex;gap:12px;align-items:center;background:color-mix(in srgb,#3ecf8e 14%,var(--panel));border:1px solid color-mix(in srgb,#3ecf8e 45%,var(--panel));border-radius:8px;padding:10px 14px}
+.chpcheck{width:26px;height:26px;border-radius:50%;background:#3ecf8e;color:#10151b;display:inline-flex;align-items:center;justify-content:center;font-weight:800;flex:none}
+.chpmsg{color:var(--accent);margin:0}
+/* what became of the points, on the line of a race in Results and Records */
+.chaward{display:inline-block;padding:2px 9px;border-radius:5px;font-size:12px;font-weight:700;color:var(--muted);border:1px solid var(--line);white-space:nowrap}
+.chaward.done{color:var(--ink);background:color-mix(in srgb,#3ecf8e 22%,var(--panel));border-color:color-mix(in srgb,#3ecf8e 50%,var(--panel))}
+/* the Championships page of Results and Records */
+.chstbar{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;margin:0 0 12px}
+.chstbar .field{min-width:220px;margin:0}
+.chstbar .sub{margin:0;flex:1 1 auto}
+.chstbar #chs-msg{flex:1 1 100%;font-size:13px}
+p.chlead{margin:0 0 10px;font-size:15px}
+.chpending{margin:0 0 12px}
+.chtable td,.chtable th{white-space:nowrap}
+.chtable tr.lead td{background:color-mix(in srgb,var(--c-ch) 9%,var(--panel))}
+.chtable .big{font-size:16px}
+.chtable .dr,.chlegend .dr{color:var(--muted);text-decoration:line-through}
+.chtable .mu,.chlegend .mu{color:var(--muted)}
+.chlegend{margin:8px 0 0;font-size:13px}
+.chrounds{display:flex;gap:10px;flex-wrap:wrap}
+.chrc{flex:1 1 170px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-width:0;display:flex;flex-direction:column;gap:2px}
+.chrc.open{border-style:dashed}
+/* Home: who leads, and the top of the standings, inside the card of the championship */
+.champband .chtags{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.chtag.chlead{background:var(--c-ch);border-color:var(--c-ch);color:var(--on-ch)}
+.champband .chstand{border:1px solid var(--line);border-radius:8px;background:var(--bg);padding:10px 14px;display:flex;flex-direction:column;gap:6px}
+.champband .chsthead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.champband .chswitch{display:inline-flex;gap:6px}
+.champband .chswitch .btn{padding:4px 12px;min-height:0}
+.champband .chswitch .btn.on{background:var(--c-ch);border-color:var(--c-ch);color:var(--on-ch);font-weight:700}
+.chmini{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.chmini td{padding:5px 8px;border-bottom:1px solid var(--line);font-size:14px}
+.chmini tr:last-child td{border-bottom:0}
+.chmini td.r{text-align:right}
+.chmini tr:first-child td{background:color-mix(in srgb,var(--c-ch) 8%,var(--bg))}
+@media (max-width:760px){.chstbar .field{min-width:0;flex:1 1 100%}.chplaces{grid-template-columns:repeat(auto-fill,minmax(90px,1fr))}}
+
 /* ---- Soft lift (1.46.0): a slight depth for the whole app. Design: docs/ui-reference/depth ----
    Cards, folders, bars, dialogs and the widgets of a layout stand up a little like thick cards, buttons look a little shallow, and what is meant to be pressed in (the canvas of a race screen, the lane cards,
    the entry fields) is pressed in a little. The light comes from above: a thin light edge on top, a lip (the thickness) underneath, a short soft shadow. A pressed or switched on button moves down and sits in.

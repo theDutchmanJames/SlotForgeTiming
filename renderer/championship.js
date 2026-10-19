@@ -1,20 +1,32 @@
 // Championships (1.55.0): a series of rounds, driven in sessions (practice, qualifying, race), with a roster of drivers. Pure rules, no screen in here
 // (the page is in championshipui.js, the card on Home is in landing.js). The record is
-//   { name, rounds: [{ id, name, track, date, sessions: [{ id, setup, share }] }], roster: [{ driver, team, from }], guestRule }
+//   { name, rounds: [{ id, name, track, date, sessions: [{ id, setup, share }] }], roster: [{ driver, team, from }], guestRule, + the rules of the points (1.56.0, see POINTS below) }
 // - a round has a name (empty: "Round 3"), a track (empty: the track of the race setup of the session), a date as typed, and the sessions in the order they are driven;
 // - a session is driven with one of your race setups (setup = its id). Its kind (Practice, Qualifying or Race) comes from that race setup, and for a race the share says how
-//   much of the points it counts for: 100 (a full race), 50 (a sprint) or 0 (none). The points themselves come with the next release; this file only knows the shares;
+//   much of the points it counts for: 100 (a full race), 50 (a sprint) or 0 (none). The points are worked out in champpoints.js; this file keeps the rules they follow;
 // - the roster is the drivers of the championship: the team they drive for in it, and the round they join in (1 = from the start);
-// - guestRule: a driver who is not in the roster is a guest (no points, the drivers behind him move up). Kept now, used when points are awarded.
+// - guestRule: a driver who is not in the roster is a guest (no points, the drivers behind him move up);
 // A session that was driven carries a tag (see tagOf) which is saved with it: { id, name, round, roundId, roundName, session, sessionId, kind, share }.
+// 1.56.0: the tag also says whether the points of the session are awarded (awarded: the time) or the session is not counted (off: true); see champpoints.js.
 // Every change gives a new championship and leaves the old one alone.
 (function (root) {
-  const LIMITS = { name: 60, roundName: 40, date: 24, rounds: 40, sessions: 8, roster: 60 };
+  const LIMITS = { name: 60, roundName: 40, date: 24, rounds: 40, sessions: 8, roster: 60, places: 20, points: 1000, drops: 10, teamBest: 20, fastTop: 99 };
+  // The rules of the points (1.56.0): the table for the finishing places, the bonuses, the dropped results, the team points and the tie rule.
+  const DEFAULT_POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
+  const PRESETS = [
+    { id: 'f1', label: '25-18-15-12-10-8-6-4-2-1', mode: 'table', points: [25, 18, 15, 12, 10, 8, 6, 4, 2, 1] },
+    { id: 'ten', label: '10-8-6-5-4-3-2-1', mode: 'table', points: [10, 8, 6, 5, 4, 3, 2, 1] },
+    { id: 'beaten', label: 'One point per car beaten', mode: 'beaten' }
+  ];
+  const TEAM_MODES = ['best', 'all', 'none'], TIES = ['wins', 'last', 'qual'], SPRINT_ROUNDS = ['nearest', 'up', 'down', 'none'];
+  const RULE_DEFAULTS = { pointsMode: 'table', pointsRest: 0, bonusFast: 0, bonusFastTop: 10, bonusPole: 0, bonusStart: 0, drops: 0, teamMode: 'best', teamBest: 2, tie: 'wins', sprintRound: 'nearest' };
   const SHARES = [100, 50, 0];
   const KINDS = ['practice', 'qualifying', 'race'], KIND_LABEL = { practice: 'Practice', qualifying: 'Qualifying', race: 'Race' };
   const int = (v, d, lo, hi) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
   const str = (v, max) => (typeof v === 'string' ? v.replace(/[\r\n\t]+/g, ' ').trim().slice(0, max) : '');
   const id = (v) => (typeof v === 'string' && v.length <= 80 ? v : '');
+  const num = (v, d, lo, hi) => { const n = typeof v === 'string' && !v.trim() ? NaN : Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, Math.round(n * 100) / 100)) : d; }; // (a number with at most two decimals, kept between lo and hi)
+  const oneOf = (v, list, d) => (list.includes(v) ? v : d);
   const clone = x => JSON.parse(JSON.stringify(x));
   let counter = 0;
   const newId = p => p + Date.now().toString(36) + (++counter).toString(36) + Math.floor(Math.random() * 1296).toString(36);
@@ -35,7 +47,13 @@
     const rounds = (Array.isArray(r.rounds) ? r.rounds : []).slice(0, LIMITS.rounds).map(cleanRound).map(x => { unique(x, 'r'); x.sessions.forEach(s => unique(s, 's')); return x; });
     const taken = new Set(), roster = [];
     (Array.isArray(r.roster) ? r.roster : []).forEach(x => { const d = id(x && x.driver); if (!d || taken.has(d) || roster.length >= LIMITS.roster) return; taken.add(d); roster.push({ driver: d, team: id(x.team), from: int(x.from, 1, 1, LIMITS.rounds) }); });
-    const out = { name: str(r.name, LIMITS.name), rounds, roster, guestRule: r.guestRule !== false };
+    const table = (Array.isArray(r.points) ? r.points : DEFAULT_POINTS).slice(0, LIMITS.places).map(v => num(v, 0, 0, LIMITS.points));
+    const out = { name: str(r.name, LIMITS.name), rounds, roster, guestRule: r.guestRule !== false, points: table.length ? table : DEFAULT_POINTS.slice(),
+      pointsMode: oneOf(r.pointsMode, ['table', 'beaten'], RULE_DEFAULTS.pointsMode), pointsRest: num(r.pointsRest, RULE_DEFAULTS.pointsRest, 0, LIMITS.points),
+      bonusFast: num(r.bonusFast, RULE_DEFAULTS.bonusFast, 0, LIMITS.points), bonusFastTop: int(r.bonusFastTop, RULE_DEFAULTS.bonusFastTop, 1, LIMITS.fastTop),
+      bonusPole: num(r.bonusPole, RULE_DEFAULTS.bonusPole, 0, LIMITS.points), bonusStart: num(r.bonusStart, RULE_DEFAULTS.bonusStart, 0, LIMITS.points),
+      drops: int(r.drops, RULE_DEFAULTS.drops, 0, LIMITS.drops), teamMode: oneOf(r.teamMode, TEAM_MODES, RULE_DEFAULTS.teamMode), teamBest: int(r.teamBest, RULE_DEFAULTS.teamBest, 1, LIMITS.teamBest),
+      tie: oneOf(r.tie, TIES, RULE_DEFAULTS.tie), sprintRound: oneOf(r.sprintRound, SPRINT_ROUNDS, RULE_DEFAULTS.sprintRound) };
     if (keepId && typeof r.id === 'string') out.id = r.id;
     return out;
   }
@@ -124,13 +142,46 @@
     return { roster, others: list.filter(x => !ids.has(x.id)) };
   }
 
+  // ---- the rules of the points ----
+  // which ready-made table the rules are: 'f1', 'ten', 'beaten', or 'own' (any other numbers)
+  function presetOf(c) {
+    if (c.pointsMode === 'beaten') return 'beaten';
+    const p = PRESETS.find(x => x.mode === 'table' && c.pointsRest === 0 && x.points.length === c.points.length && x.points.every((v, i) => v === c.points[i]));
+    return p ? p.id : 'own';
+  }
+  // a ready-made table ('own' keeps the numbers that are there and makes them the ones in use)
+  function applyPreset(c, pid) {
+    const out = clone(c);
+    if (pid === 'own') { out.pointsMode = 'table'; return { rec: out }; }
+    const p = PRESETS.find(x => x.id === pid); if (!p) return { error: 'There is no such table.' };
+    out.pointsMode = p.mode; if (p.mode === 'table') { out.points = p.points.slice(); out.pointsRest = 0; }
+    return { rec: out };
+  }
+  function setPlace(c, i, value) {
+    if (!(i >= 0 && i < c.points.length)) return { error: 'There is no such place.' };
+    const n = Number(typeof value === 'string' && !value.trim() ? NaN : value); if (!Number.isFinite(n)) return { error: 'Please type a number of points.' };
+    const out = clone(c); out.points[i] = num(n, 0, 0, LIMITS.points); return { rec: out };
+  }
+  function addPlace(c) { if (c.points.length >= LIMITS.places) return { error: `The table has at most ${LIMITS.places} places.` }; const out = clone(c); out.points.push(0); return { rec: out }; }
+  function removePlace(c) { if (c.points.length <= 1) return { error: 'The table keeps at least one place.' }; const out = clone(c); out.points.pop(); return { rec: out }; }
+  const RULE_KEYS = ['pointsMode', 'pointsRest', 'bonusFast', 'bonusFastTop', 'bonusPole', 'bonusStart', 'drops', 'teamMode', 'teamBest', 'tie', 'sprintRound', 'guestRule'];
+  const RULE_NUMBERS = ['pointsRest', 'bonusFast', 'bonusFastTop', 'bonusPole', 'bonusStart', 'drops', 'teamBest'];
+  const RULE_CHOICES = { pointsMode: ['table', 'beaten'], teamMode: TEAM_MODES, tie: TIES, sprintRound: SPRINT_ROUNDS };
+  // one rule at a time (a number that is not a number is refused, a number out of range is kept in range); the result is cleaned like every record
+  function setRule(c, key, value) {
+    if (!RULE_KEYS.includes(key)) return { error: 'There is no such rule.' };
+    if (RULE_NUMBERS.includes(key) && !Number.isFinite(Number(typeof value === 'string' && !value.trim() ? NaN : value))) return { error: 'Please type a number.' };
+    if (RULE_CHOICES[key] && !RULE_CHOICES[key].includes(value)) return { error: 'Choose one of the options.' };
+    return { rec: clean({ ...c, [key]: value }, true) };
+  }
+
   // ---- what was driven, and what comes next ----
   const keyOf = (roundId, sessionId) => roundId + ':' + sessionId;
   // The saved sessions of this championship, by round and session: { key -> the latest saved session }. A session that was driven again is the latest one.
   function driven(c, sessions) {
     const out = new Map();
     (Array.isArray(sessions) ? sessions : []).forEach(s => {
-      const t = s && s.champ; if (!t || t.id !== c.id) return;
+      const t = s && s.champ; if (!t || t.id !== c.id || t.off) return; // (a session that was set to "do not count" was not driven, as far as the championship goes)
       const k = keyOf(t.roundId, t.sessionId), old = out.get(k);
       if (!old || String(s.date || '') >= String(old.date || '')) out.set(k, s);
     });
@@ -185,6 +236,8 @@
   // "Club Cup 2026 · Round 6 · Qualifying" (a sprint says its share: "Race at 50%")
   const roundKindText = t => (t ? `Round ${t.round} · ${KIND_LABEL[t.kind] || ''}${t.kind === 'race' && t.share !== 100 ? (t.share ? ` at ${t.share}%` : ' (no points)') : ''}` : '');
   const tagText = t => (t ? `${t.name || 'Championship'} · ${roundKindText(t)}` : '');
+  // what became of the points of a race (1.56.0): "points awarded", "not awarded yet" or "not counted"; nothing for a practice, a qualifying or a race that counts for nothing
+  const awardText = t => (!t || t.kind !== 'race' || t.share === 0 ? '' : t.off ? 'not counted' : t.awarded ? 'points awarded' : 'not awarded yet');
   // Where a tag is now in the championship: { ri, si } while the round and the session are still there, else null. (rounds and sessions are found by id, so moving them does not lose a tag)
   function find(c, tag) {
     if (!c || !tag || tag.id !== c.id) return null;
@@ -201,8 +254,8 @@
     return { c, ri: at.ri, si: at.si, tag, setup, track: trackFor(c.rounds[at.ri], setup, tracks) };
   }
 
-  const api = { LIMITS, SHARES, KINDS, KIND_LABEL, kindOf, shareOf, clean, blank, describe, roundLabel, addRound, removeRound, moveRound, setRound, addSession, removeSession, moveSession, setSession, copyFirstToAll,
-    addDriver, addTeam, removeDriver, setRoster, teamOfDriver, rosterFirst, keyOf, driven, progress, trackFor, sessionProblems, problems, tagOf, tagText, roundKindText, find, active };
+  const api = { LIMITS, SHARES, KINDS, KIND_LABEL, DEFAULT_POINTS, PRESETS, TEAM_MODES, TIES, SPRINT_ROUNDS, RULE_DEFAULTS, presetOf, applyPreset, setPlace, addPlace, removePlace, setRule, kindOf, shareOf, clean, blank, describe, roundLabel, addRound, removeRound, moveRound, setRound, addSession, removeSession, moveSession, setSession, copyFirstToAll,
+    addDriver, addTeam, removeDriver, setRoster, teamOfDriver, rosterFirst, keyOf, driven, progress, trackFor, sessionProblems, problems, tagOf, tagText, roundKindText, awardText, find, active };
   root.Champ = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
