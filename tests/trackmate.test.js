@@ -55,4 +55,73 @@ function rig(jitter) {
   ok('a time in the future, rubbish or nothing keeps a light off', on([6000, 'x', NaN, {}, true, -1], 5000) === '00000000');
   ok('the lights follow the letters A to H of the real parser', (() => { const lit = []; const p = require('../renderer/hardware.js').trackmateParser(); p.feed(Uint8Array.from([66, 72, 87, 49])).forEach(m => { if (m.type === 'lane') lit[m.lane - 1] = 100; }); return on(lit, 200) === '01000001'; })());
 }
+
+// 1.51.1: a car that stands on a sensor is a car in the pits: 'block' when the letters have kept coming for the hold time, 'free' when they stop
+{ const stand = (r, cycles) => { r.tick(157); r.letter('A'); for (let i = 0; i < cycles; i++) { r.tick(200); r.tick(56); r.letter('A'); } };
+  const kinds = r => r.out.map(e => e.type + ':' + e.lane).join(' ');
+  const r = rig(0); for (let i = 0; i < 5; i++) r.tick(200);
+  r.tick(157); r.letter('A'); const hitAt = r.out[0].at; let last = r.pc();
+  for (let i = 0; i < 7; i++) { r.tick(200); r.tick(56); r.letter('A'); last = r.pc(); }
+  ok('1.51.1: a sensor that has been covered for less than the hold time (7 letters, 1.8 seconds) is a crossing and nothing more', kinds(r) === 'hit:0');
+  r.tick(200); r.tick(56); r.letter('A'); last = r.pc();
+  ok('...at the first letter after 2 seconds (2.05 s on the clock of the box) the car is in the pits: one block, with the time of the first letter, the time of the lap', kinds(r) === 'hit:0 block:0' && r.out[1].at === hitAt);
+  for (let i = 0; i < 6; i++) { r.tick(200); r.tick(56); r.letter('A'); last = r.pc(); }
+  ok('...and it is said once, however long the car stays', kinds(r) === 'hit:0 block:0');
+  r.tick(200); r.tick(200); ok('...the car is still counted as there while the letters have been away for less than half a second', kinds(r) === 'hit:0 block:0');
+  r.tick(200); ok('...when they stay away the car has left: free, at the last letter plus half of the time between two letters (128 ms)', kinds(r) === 'hit:0 block:0 free:0' && r.out[2].at === last + 128);
+  for (let i = 0; i < 10; i++) r.tick(200);
+  stand(r, 8); r.tick(200); r.tick(200); r.tick(200);
+  ok('...the next time the car stands on the sensor is another stop, with its own crossing', kinds(r) === 'hit:0 block:0 free:0 hit:0 block:0 free:0'); }
+{ const r = rig(0); for (let i = 0; i < 5; i++) r.tick(200);
+  r.tick(157); r.letter('A'); for (let i = 0; i < 2; i++) { r.tick(200); r.tick(56); r.letter('A'); } for (let i = 0; i < 5; i++) r.tick(200);
+  ok('1.51.1: a car that only passes (a few letters in half a second) never makes a stop: no block, no free', r.out.map(e => e.type).join() === 'hit'); }
+{ const r = rig(0); r.link.setHold(3000); for (let i = 0; i < 5; i++) r.tick(200);
+  r.tick(157); r.letter('A'); for (let i = 0; i < 9; i++) { r.tick(200); r.tick(56); r.letter('A'); } const n9 = r.out.length;
+  for (let i = 0; i < 3; i++) { r.tick(200); r.tick(56); r.letter('A'); }
+  ok('1.51.1: the hold time is the pit hold time of the race: with 3 seconds there is no stop after 2.3 seconds, and there is one after 3.1', n9 === 1 && r.out.map(e => e.type).join() === 'hit,block');
+  const set = v => { const q = rig(0); q.link.setHold(v); return q.link.holdMs; };
+  ok('...never shorter than half a second (a pass can send letters that long), 2 seconds when it is not a number', set(0) === 500 && set(100) === 500 && set(1234.6) === 1235 && set('x') === 2000 && set(undefined) === 2000 && set(-5) === 2000 && rig(0).link.holdMs === 2000); }
+{ const r = rig(0); for (let i = 0; i < 5; i++) r.tick(200);
+  r.tick(100); r.letter('A'); r.tick(56); r.letter('B'); for (let i = 0; i < 9; i++) { r.tick(200); r.tick(56); r.letter('A'); }
+  ok('1.51.1: every sensor has its own stop: lane 1 stands, lane 2 only passed', r.out.map(e => e.type + ':' + e.lane).join(' ') === 'hit:0 hit:1 block:0');
+  r.link.reset(); for (let i = 0; i < 4; i++) r.tick(200);
+  ok('...and when the connection is made again nothing is left over of it (no free for a car that stood on the sensor)', r.out.map(e => e.type).join() === 'hit,hit,block'); }
+{ // the two real logs (docs/trackmate-logs): a normal crossing first, then a hand held on a sensor
+  const fs = require('fs'), path = require('path');
+  const replay = (name, hold) => {
+    let arrival = 0, lastT = null; const link = TM.createLink({ now: () => arrival }), out = [];
+    if (hold !== undefined) link.setHold(hold); link.on(e => out.push(e));
+    // the monitor leaves out the steady 200 ms ticks: they are put back where the log has a gap (one for every 200 ms of silence)
+    for (const l of fs.readFileSync(path.join(__dirname, '..', 'docs', 'trackmate-logs', name), 'utf8').split(/\r?\n/)) {
+      const m = /^\s*([\d.]+)\s+<-\s+(\d+) B\s+(.*)$/.exec(l); if (!m) continue;
+      const t = Number(m[1]) * 1000, bytes = m[3].trim().split(/\s+/).slice(0, Number(m[2])).map(h => parseInt(h, 16));
+      if (lastT !== null && t - lastT > 450 && bytes[bytes.length - 1] === 13) { const k = Math.round((t - lastT) / 200) - 1; for (let j = 1; j <= k; j++) { arrival = lastT + j * 200; link.feed(bytes0(200)); } }
+      arrival = t; link.feed(bytes); lastT = t;
+    }
+    return out;
+  };
+  const bytes0 = ms => Array.from(String(ms) + '\n\r', c => c.charCodeAt(0));
+  const shape = out => out.filter(e => e.type !== 'call').map(e => e.type + ':' + e.lane).join(' ');
+  const lin = replay('trackmate-log-linux.txt'), win = replay('trackmate-log-windows.txt');
+  ok('1.51.1: Linux log: two normal crossings, then lane 1 held for about 6 seconds: one stop, and the car leaves; lane 2 held and the log ends while it stands', shape(lin) === 'hit:0 hit:1 hit:0 block:0 free:0 hit:1 block:1');
+  { const b = lin.find(e => e.type === 'block' && e.lane === 0), f = lin.find(e => e.type === 'free' && e.lane === 0), h = lin.filter(e => e.type === 'hit' && e.lane === 0)[1];
+    ok('...the stop starts at the crossing (the time of the lap) and ends when the letters stop: 5.9 seconds on the clock of the box (the letters of the log run from 788.3 to 794.1)', b.at === h.at && f.at - b.at > 5700 && f.at - b.at < 6100); }
+  ok('...the two normal crossings at the start are no stop (and the three presses of the Trackcall button before them are calls, nothing else)', lin.filter(e => e.type === 'call').length === 3 && lin.filter(e => e.type !== 'call').slice(0, 2).every(e => e.type === 'hit'));
+  ok('1.51.1: Windows log: the crossings by hand (taps of one to three letters) are no stop; lane 1 held for 4.4 seconds is one, and it ends; lane 2 held for 2.05 seconds on the clock of the box is one, and the log ends while it stands', shape(win) === 'hit:0 hit:1 hit:0 hit:1 hit:0 hit:1 hit:0 hit:1 hit:0 hit:0 block:0 free:0 hit:1 block:1');
+  ok('...with a pit hold time of 2.5 seconds the short hold of lane 2 is no stop, the long one still is', shape(replay('trackmate-log-windows.txt', 2500)) === 'hit:0 hit:1 hit:0 hit:1 hit:0 hit:1 hit:0 hit:1 hit:0 hit:0 block:0 free:0 hit:1');
+  ok('...and with 6 seconds neither is', !replay('trackmate-log-windows.txt', 6000).some(e => e.type === 'block' || e.type === 'free') && !replay('trackmate-log-linux.txt', 7000).some(e => e.type === 'block' || e.type === 'free')); }
+
+
+{ // how the race screen listens to it (race.js): the pit hold time of the setup is the hold time of the link, a stop is a stop of the engine counted from the crossing, a token session has no pit
+  const race = require('fs').readFileSync(require('path').join(__dirname, '..', 'renderer', 'race.js'), 'utf8');
+  ok('1.51.1: the race gives the link the pit hold time of its setup when the Trackmate is the timing hardware', /if \(hwUse === 'trackmate'\) Trackmate\.link\.setHold\(pitMs\);/.test(race) && /pitMs = fuelCfg\.pitHold/.test(race));
+  ok('...a crossing of the Trackmate is counted at once, and the tyre penalty that may be due waits for the stop (held)', /if \(i >= 0\) crossCar\(i, e\.at, true\); \}/.test(race) && /eng\.cross\(i, tAt, held \? \{ holdDue: true \} : undefined\)/.test(race));
+  ok('...a block starts the stop of the engine at the time of the crossing, without a second crossing (crossed), and never later than now', /eng\.block\(i, Math\.min\(at, now\(\)\), true\)/.test(race));
+  ok('...a free ends it, at the time the sensor says (never later than now)', /eng\.unblock\(i, at !== undefined \? Math\.min\(at, now\(\)\) : now\(\)\)/.test(race));
+  ok('...a token session has no pit: a stand on the sensor does nothing there', /e\.type === 'block' \|\| e\.type === 'free'\) \{[^}]*i >= 0 && !tokens\) \{ if \(e\.type === 'block'\) holdCar\(i, e\.at\); else unblockCar\(i, e\.at\); \}/.test(race));
+  ok('...the other hardware does not change: the keys, the Pit button and the Arduino box cross and block as before (no held, no crossed)', /const blockCar = i => \{ if \(live\.phase === 'running'\) \{ eng\.block\(i, now\(\)\);/.test(race)); }
+
+{ const page = require('fs').readFileSync(require('path').join(__dirname, '..', 'renderer', 'hardwareui.js'), 'utf8'), sch = require('../schema.js');
+  ok('1.51.1: the Trackmate page says that a car standing on a sensor for the pit hold time is in the pits, and where that time is set (the setting is really there, in that folder)', /A car that stands on a sensor for the pit hold time of the race setup \(folder Racing Systems, <em>Pit stop: the sensor must be blocked this long<\/em>\) is in the pits, until it drives off\./.test(page) && sch.racesetups.fields.some(f => f.key === 'pitHold' && f.group === 'rules' && f.label.startsWith('Pit stop: the sensor must be blocked this long')) && sch.racesetups.groups.some(g => g.id === 'rules' && g.title === 'Racing Systems')); }
+
 console.log(fails ? fails + ' FAILED' : 'trackmate: all PASSED'); process.exit(fails ? 1 : 0);

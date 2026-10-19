@@ -2,14 +2,18 @@
 // Messages from the device: "digits LF CR" = milliseconds since the previous message (the device's own clock, sent every 200 ms and also
 // just before a sensor letter), A..H = the sensor of lane 1..8 sees a car (repeated while it is there), W = the Trackcall button.
 // A lap crossing is the FIRST letter of a lane after it has been quiet for 500 ms; its time is the device's clock, so it does not depend on USB delays.
+// 1.51.1: a sensor that stays covered is a car that stands on it: once the letters have kept coming for the pit hold time (the race setup says how long: "Pit stop: the sensor must be
+// blocked this long"), the link says { type: 'block', lane, at } (at = the first letter, when the car arrived), and when the letters stop { type: 'free', lane, at } (the car has left).
 (function (root) {
   const H = typeof module !== 'undefined' ? require('./hardware.js') : root.Hardware;
   const QUIET = 500; // ms without a letter before the sensor counts as free again
+  const LEAVE = 128; // a held sensor sends a letter about every 256 ms: the car left somewhere between its last letter and the one that did not come, so halfway
+  const MIN_HOLD = 500; // a pass of a car over the sensor can send letters for about half a second: a hold shorter than this is never a stop
 
   function createLink(o = {}) {
     const clock = o.now || (() => (typeof performance !== 'undefined' ? performance.now() : Date.now()));
-    const L = { connected: false, power: null, ticks: 0, lastTick: 0, hits: 0 }, subs = new Set(), statusSubs = new Set();
-    let parser = H.trackmateParser(), hwMs = 0, recent = [], offset = null; const active = Array(8).fill(false), lastHit = Array(8).fill(0);
+    const L = { connected: false, power: null, ticks: 0, lastTick: 0, hits: 0, holdMs: 2000 }, subs = new Set(), statusSubs = new Set();
+    let parser = H.trackmateParser(), hwMs = 0, recent = [], offset = null; const active = Array(8).fill(false), lastHit = Array(8).fill(0), firstHit = Array(8).fill(0), firstAt = Array(8).fill(0), held = Array(8).fill(false);
     const emit = e => subs.forEach(f => { try { f(e); } catch (x) { /* a listener problem never stops the stream */ } });
     // the device clock in the PC's clock: the smallest (arrival - device clock) of the last 25 messages is the one with the least USB delay
     const toPc = h => (offset === null ? clock() : h + offset);
@@ -18,7 +22,9 @@
     L.onStatus = f => { statusSubs.add(f); return () => statusSubs.delete(f); };
     L.setConnected = on => { on = !!on; if (on === L.connected) return; L.connected = on; if (!on) L.reset(); statusSubs.forEach(f => f(on)); };
     L.setPower = on => { L.power = on; statusSubs.forEach(f => f(L.connected)); }; // the track power as last switched (unknown = null)
-    L.reset = () => { L.power = null; parser = H.trackmateParser(); hwMs = 0; recent = []; offset = null; active.fill(false); lastHit.fill(0); L.ticks = 0; L.lastTick = 0; };
+    L.reset = () => { L.power = null; parser = H.trackmateParser(); hwMs = 0; recent = []; offset = null; active.fill(false); lastHit.fill(0); firstHit.fill(0); firstAt.fill(0); held.fill(false); L.ticks = 0; L.lastTick = 0; };
+    // how long a sensor must stay covered before it is a car in the pits (milliseconds; the race sets it from its setup, never below half a second)
+    L.setHold = ms => { const n = Number(ms); L.holdMs = Number.isFinite(n) && n >= 0 ? Math.max(MIN_HOLD, Math.round(n)) : 2000; };
     // bytes from the port; returns the whole messages (for the monitor screen)
     L.feed = bytes => {
       const arrival = clock(), msgs = parser.feed(bytes);
@@ -26,10 +32,14 @@
         if (m.type === 'tick') {
           hwMs += m.ms; L.ticks++; L.lastTick = m.ms;
           recent.push(arrival - hwMs); if (recent.length > 25) recent.shift(); offset = Math.min(...recent);
-          for (let i = 0; i < 8; i++) if (active[i] && hwMs - lastHit[i] > QUIET) active[i] = false;
+          for (let i = 0; i < 8; i++) if (active[i] && hwMs - lastHit[i] > QUIET) {
+            active[i] = false;
+            if (held[i]) { held[i] = false; emit({ type: 'free', lane: i, at: toPc(lastHit[i] + LEAVE) }); } // the car stood on the sensor and has gone
+          }
         } else if (m.type === 'lane') {
           const i = m.lane - 1;
-          if (!active[i]) { active[i] = true; L.hits++; emit({ type: 'hit', lane: i, at: toPc(hwMs) }); }
+          if (!active[i]) { active[i] = true; held[i] = false; firstHit[i] = hwMs; firstAt[i] = toPc(hwMs); L.hits++; emit({ type: 'hit', lane: i, at: firstAt[i] }); }
+          else if (!held[i] && hwMs - firstHit[i] >= L.holdMs) { held[i] = true; emit({ type: 'block', lane: i, at: firstAt[i] }); } // a letter after the hold time: the car is still there
           lastHit[i] = hwMs;
         } else if (m.type === 'call') emit({ type: 'call', at: toPc(hwMs) });
       });

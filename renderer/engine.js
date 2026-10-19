@@ -114,7 +114,7 @@
     let callId = 0;
     const log = (type, i, t, data) => R.events.push({ type, car: i, t, ...data });
 
-    const end = (t, why) => { R.cars.forEach((c, i) => { if (c.blockAt !== null) { pitCheck(i, t); serveCheck(i, t); repairCheck(i, t); twCheck(i, t); closePit(i, t); } }); R.status = 'finished'; R.endAt = t; R.endedBy = why; R.flag = ''; R.yellowAt = null; R.calls.forEach(c => { c.open = false; }); enEnd(t, why); };
+    const end = (t, why) => { R.cars.forEach((c, i) => { wxFlush(i, t, true); if (c.blockAt !== null) { pitCheck(i, t); serveCheck(i, t); repairCheck(i, t); twCheck(i, t); closePit(i, t); } }); R.status = 'finished'; R.endAt = t; R.endedBy = why; R.flag = ''; R.yellowAt = null; R.calls.forEach(c => { c.open = false; }); enEnd(t, why); };
     const checkEnd = t => {
       if (R.status !== 'running') return;
       if (type === 'race' && cfg.endRule === 'leader' && R.finished > 0) return end(t, 'The lead car finished');
@@ -165,16 +165,19 @@
     R.lapElapsed = (i, t) => R.status === 'running' ? t - R.cars[i].last : R.status === 'paused' ? R.pausedAt - R.cars[i].last : 0;
     R.stop = t => { if (R.status === 'running' || R.status === 'paused') end(R.status === 'paused' ? R.pausedAt : t, 'Stopped'); }; // (a race stopped while it is paused ends where its clock stands: the pause is not racing time)
     R.tick = t => {
-      if (R.status === 'running') R.cars.forEach((_, i) => { pitCheck(i, t); serveCheck(i, t); enEval(i, t); flCheck(R.cars[i], i, t); repairCheck(i, t); twCheck(i, t); });
+      if (R.status === 'running') R.cars.forEach((_, i) => { pitCheck(i, t); serveCheck(i, t); enEval(i, t); flCheck(R.cars[i], i, t); repairCheck(i, t); twCheck(i, t); wxFlush(i, t); });
       if (R.status === 'running' && timeLimit && !R.timeUp && t - R.t0 >= timeLimit) R.timeUp = true;
       wxEval(t);
       checkEnd(t);
     };
     // After the time is up, each car finishes on its next crossing, and that lap still counts.
-    R.cross = (i, t) => {
+    // o.holdDue (a Trackmate sensor, which is also where a car stops for the pits): the car may be on its way into the pits, which is only known when the sensor stays covered, so the penalty for tyres that are due
+    // waits for that (see wxFlush). Everything else about the crossing is counted at once.
+    R.cross = (i, t, o) => {
       if (R.status !== 'running') return false;
       const c = R.cars[i];
       if (!c || c.done) return false;
+      wxFlush(i, t, true);
       if (!c.started) { c.started = true; c.last = t; return false; } // the car starts just behind the line: its first crossing only starts the timing
       const dt = t - c.last, lapStart = c.last;
       if (dt < minLap) return false;
@@ -207,7 +210,7 @@
       if (!c.dq && ((limitOf(c) && c.laps.length - c.swapLost >= limitOf(c)) || (timeLimit && R.timeUp))) { c.done = true; c.place = ++R.finished; } // a car disqualified on this lap (fuel points) has not finished
       if (DM) { damageLap(c, R.cars.indexOf(c), t, deslot); flCheck(c, i, t); }
       if (TWC) twLap(c, i, t, twGone);
-      wxEval(t); if (!wxEntering) wxDueCheck(c, i, t); // (a car that comes into the pits on this crossing is judged by its stop, or by its next crossing)
+      wxEval(t); if (!wxEntering) { if (o && o.holdDue && WXC && c.wxDue && c.laps.length >= c.wxDue.lap) c.wxHold = t; else wxDueCheck(c, i, t); } // (a car that comes into the pits on this crossing is judged by its stop, or by its next crossing)
       enEval(R.cars.indexOf(c), t); // (the laps of a stint are counted: a swap that is due by laps, or a swap by the sensor, may come with this crossing)
       bopEval(t);
       checkEnd(t);
@@ -357,6 +360,13 @@
       const pts = d.kind === 'wet' ? WXC.wetPoints : WXC.dryPoints, added = pts > 0 && R.addPoints(i, pts, t, 'tyres');
       log('tyredue', i, t, { kind: d.kind, points: added ? pts : 0, lap: c.laps.length, tyre: c.tyre });
       if (WXC.repeat === 'every') d.lap = c.laps.length + 1; else c.wxDue = null;
+    }
+    // The tyre check of a crossing that was held back (R.cross with holdDue) is made now: the car did not stop on the sensor (a car that does has its stop judged instead, R.block clears the hold), so it was
+    // only passing. It is made as of the crossing, not as of now. force: at the next crossing and at the end of the race, otherwise only when the time to stop has gone by (the pit hold time, and a little more for the sensor to say so).
+    function wxFlush(i, t, force) {
+      const c = R.cars[i]; if (!c || c.wxHold === undefined) return;
+      if (!force && (c.blockAt !== null || t - c.wxHold < Math.max(F.pitHold, 500) + 700)) return;
+      const h = c.wxHold; c.wxHold = undefined; wxDueCheck(c, i, h);
     }
     // what a screen needs to know of car i: its tyre, its own tyre, whether it should change tyres now ('wet' | 'dry' | ''), how many percent the weather hinders it
     R.wxOf = i => { const c = R.cars[i]; return c ? { tyre: c.tyre, own: c.tyreOwn, need: WXC ? W.need(R.wxState, c.tyre, c.tyreOwn) : '', hinder: -(c.wx || 0) } : null; };
@@ -524,12 +534,13 @@
       return true;
     };
     R.goodLaps = goodLaps;
-    // the car stops over the sensor
-    R.block = (i, t) => {
+    // the car stops over the sensor. crossed: the crossing was counted when the car arrived (a Trackmate sensor: it is only known later that the car stays), t is that moment, and only the stop is started
+    R.block = (i, t, crossed) => {
       if (R.status !== 'running') return false;
       const c = R.cars[i];
       if (!c || c.done || c.blockAt !== null) return false;
-      wxEntering = true; R.cross(i, t); wxEntering = false;
+      if (crossed) c.wxHold = undefined; // (the tyres that were due are judged by the stop, as for a car that comes in with this crossing)
+      else { wxEntering = true; R.cross(i, t); wxEntering = false; }
       if (c.done) return true;
       c.blockAt = t; c.pit = null; c.servedNow = false;
       return true;

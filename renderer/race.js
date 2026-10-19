@@ -344,13 +344,14 @@ async function renderRace() {
   };
 
   // ---- crossings, simulated cars ----
-  const crossCar = (i, at) => {
+  // held: the crossing of a Trackmate sensor, which is also where a car stops for the pits: the tyres that are due are judged when it is known whether the car stays (engine.js, wxFlush)
+  const crossCar = (i, at, held) => {
     if (live.phase !== 'running') return;
     const c = eng.cars[i], d = c.driverId, tAt = at !== undefined ? at : now();
     const tokenT = tokens ? eng.elapsed(tAt) : 0, lateLap = !!tokens && tokens.stateOf(c.lane, tokenT) === 'out'; // after the paid time is up a lap is kept, but does not count
     if (tokens && tokens.stateOf(c.lane, tokenT) === 'idle') return; // a lane nobody paid for: the crossing is ignored
     const prevPersonal = d ? Math.min(base.personal.get(d) ?? Infinity, live.bestBy.get(d) ?? Infinity) : Infinity, prevTrack = Math.min(base.track, live.bestAll);
-    if (!eng.cross(i, tAt)) { if (eng.status === 'finished') engineFinished(); else update(); return; } // a car out of fuel may retire or not count
+    if (!eng.cross(i, tAt, held ? { holdDue: true } : undefined)) { if (eng.status === 'finished') engineFinished(); else update(); return; } // a car out of fuel may retire or not count
     const time = c.laps[c.laps.length - 1], slow = c.bad[c.bad.length - 1];
     if (tokens) { tokens.lap(c.lane, time, tokenT, slow); if (lateLap) eng.setInvalid(i, c.laps.length - 1, true); persistTokens(false); }
     if (!slow && !lateLap) { // a lap over the track's maximum lap time never counts as a best lap or record
@@ -362,7 +363,9 @@ async function renderRace() {
   };
   // a car stops over the sensor (crossing counts as a lap), and later drives off
   const blockCar = i => { if (live.phase === 'running') { eng.block(i, now()); if (eng.status === 'finished') engineFinished(); else update(); } };
-  const unblockCar = i => { eng.unblock(i, now()); update(); };
+  const unblockCar = (i, at) => { eng.unblock(i, at !== undefined ? Math.min(at, now()) : now()); update(); }; // (at: when a sensor says the car has gone, which is a little earlier than now)
+  // a Trackmate sensor has been covered for the pit hold time: the car stands in the pits. Its crossing was counted when it arrived (at); only the stop starts, counted from then.
+  const holdCar = (i, at) => { if (live.phase === 'running') { eng.block(i, Math.min(at, now()), true); if (eng.status === 'finished') engineFinished(); else update(); } };
   const togglePit = lane => { if (tokens) return; /* (a token session has no pit: a crossing that way would count for the engine, not for the stint) */ const i = eng.cars.findIndex(c => c.lane === lane); if (i < 0) return; if (eng.cars[i].blockAt !== null) unblockCar(i); else blockCar(i); };
   const crossLane = lane => { const i = eng.cars.findIndex(c => c.lane === lane); if (i >= 0) crossCar(i); };
   const simulate = i => {
@@ -780,8 +783,13 @@ async function renderRace() {
   live.pwWant = true;
   live.powerFollow = () => { const cut = CUTS[setup.trackcall]; if (!cut) return; const want = !cut.includes(eng.flag); if (want !== live.pwWant) { live.pwWant = want; power(want); } };
   live.trackcall = trackcall;
+  if (hwUse === 'trackmate') Trackmate.link.setHold(pitMs); // how long a car must stand on the sensor to be in the pits: the pit hold time of the race setup
   live.offTm = hwUse !== 'trackmate' ? null : Trackmate.link.on(e => {
-    if (e.type === 'hit') { const lane = Trackmate.laneMap(state.settings.tmLaneMap)[e.lane]; const i = eng.cars.findIndex(c => c.lane === lane); if (i >= 0) crossCar(i, e.at); } // the sensor's lane can be changed in Timing hardware
+    if (e.type === 'hit') { const lane = Trackmate.laneMap(state.settings.tmLaneMap)[e.lane]; const i = eng.cars.findIndex(c => c.lane === lane); if (i >= 0) crossCar(i, e.at, true); } // the sensor's lane can be changed in Timing hardware
+    else if (e.type === 'block' || e.type === 'free') { // a car that stands on the sensor is in the pits (a token session has no pit)
+      const lane = Trackmate.laneMap(state.settings.tmLaneMap)[e.lane], i = eng.cars.findIndex(c => c.lane === lane);
+      if (i >= 0 && !tokens) { if (e.type === 'block') holdCar(i, e.at); else unblockCar(i, e.at); }
+    }
     else if (e.type === 'call') { if (Number.isInteger(e.lane)) actions.call(e.lane); else trackcall(); } // a call button of one lane, or the one Trackcall button
   });
   // ---- the SlotForge box (Arduino): laps, pit sensors, buttons and the speed trap come in; the start lights, the power and the buzzer follow the race ----

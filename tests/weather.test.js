@@ -517,5 +517,37 @@ ok('...a tyre given before the car has driven a lap says so (not "after lap 0")'
   const first = H.entries().map(e => e.tyre).join(); people[0].tyre = 'H';
   ok('the cars of the next heat start from the tyre that was kept on the participant (the Race Director also changed the Database)', first === 'S,S' && H.entries().map(e => e.tyre).join() === 'H,S'); }
 
+// 1.51.1: a Trackmate sensor is also where a car stops for the pits: the tyres that are due are judged when it is known whether the car stays (R.cross with holdDue, R.block with crossed)
+const upTo4 = () => { const r = race(REC); at(r, 0, 10000); at(r, 0, 20000); at(r, 0, 30000); at(r, 0, 40000); return r; }; // car 0 (Soft) is on lap 4 in the rain, its tyres are due on lap 5
+{ const r = upTo4(), due = r.cars[0].wxDue;
+  ok('1.51.1: (the set-up) the rain has come and the car on dry tyres has to stop by lap 5', r.wxState === 'wet' && due && due.lap === 5 && r.cars[0].laps.length === 4);
+  ok('a crossing on lap 5 that may be the way into the pits is counted at once (a lap), but the penalty for the tyres waits', r.cross(0, 50000, { holdDue: true }) === true && r.cars[0].laps.length === 5 && r.cars[0].points === 0 && evs(r, 'tyredue').length === 0 && r.cars[0].wxHold === 50000 && r.cars[0].wxDue === due);
+  ok('...the car stays: the stop starts at the crossing, it is no second lap, and the stop is judged instead (new tyres, no penalty, nothing left waiting)', r.block(0, 50000, true) === true && r.cars[0].laps.length === 5 && r.cars[0].blockAt === 50000 && r.cars[0].wxHold === undefined && (r.tick(52500), r.cars[0].tyre === 'W') && r.cars[0].points === 0 && evs(r, 'tyredue').length === 0 && r.cars[0].wxDue === null && same(evs(r, 'tyres').map(e => [e.car, e.tyre, e.t]), [[0, 'W', 52000]]));
+  ok('...it is the stop of the pit hold time: it starts 2 seconds after the car arrived, as for any stop', r.cars[0].pit && r.cars[0].pit.start === 52000);
+  ok('...and a second block for the same car does nothing', r.block(0, 53000, true) === false && r.cars[0].blockAt === 50000);
+  r.unblock(0, 54000); ok('...it leaves: the stop is over, and the lap that follows counts as a pit lap', r.cars[0].blockAt === null && r.cars[0].pits.length === 1 && r.cars[0].pits[0].duration === 4000); }
+{ const r = upTo4(); r.cross(0, 50000, { holdDue: true }); r.tick(52600);
+  ok('1.51.1: a car that does not stay: nothing happens before the time to stop (2.7 seconds) has gone by', r.cars[0].points === 0 && evs(r, 'tyredue').length === 0 && r.cars[0].wxHold === 50000);
+  r.tick(52700);
+  ok('...then it was only passing: the penalty is given, as of the crossing (the log says the time of the crossing, and lap 5)', r.cars[0].points === 2 && r.cars[0].wxHold === undefined && same(evs(r, 'tyredue').map(e => [e.car, e.kind, e.points, e.lap, e.tyre, e.t]), [[0, 'wet', 2, 5, 'S', 50000]]) && evs(r, 'penalty').length === 1 && evs(r, 'penalty')[0].t === 50000);
+  r.tick(60000); at(r, 0, 70000); ok('...once, as the penalty system says', r.cars[0].points === 2 && evs(r, 'tyredue').length === 1); }
+{ const r = upTo4(); r.cross(0, 50000, { holdDue: true }); r.cross(0, 60000);
+  ok('1.51.1: the next crossing settles it first (no stop came: the penalty of lap 5), and then counts as always', r.cars[0].points === 2 && r.cars[0].laps.length === 6 && same(evs(r, 'tyredue').map(e => [e.lap, e.t]), [[5, 50000]]) && r.cars[0].wxHold === undefined); }
+{ const r = upTo4(); r.cross(0, 50000, { holdDue: true }); r.cross(0, 51000);
+  ok('1.51.1: a quick next crossing (before the time to stop has gone by) settles it too, as of the first crossing and lap 5', r.cars[0].points === 2 && r.cars[0].laps.length === 6 && same(evs(r, 'tyredue').map(e => [e.lap, e.t]), [[5, 50000]]) && r.cars[0].wxHold === undefined); }
+{ const r = upTo4(); r.cross(0, 50000, { holdDue: true }); r.stop(51000);
+  ok('1.51.1: when the race ends it is settled too (a car that finished on the wrong tyres is not let off)', r.status === 'finished' && r.cars[0].points === 2 && evs(r, 'tyredue').length === 1 && r.cars[0].wxHold === undefined); }
+{ const r = race(REC); at(r, 0, 10000);
+  ok('1.51.1: a crossing that is not due is just a crossing, held or not (nothing waits)', r.cross(0, 20000, { holdDue: true }) === true && r.cars[0].wxHold === undefined && r.cars[0].laps.length === 2);
+  const q = race(null); at(q, 0, 10000);
+  ok('...and without a weather system nothing is held either', q.cross(0, 20000, { holdDue: true }) === true && q.cars[0].wxHold === undefined && q.cars[0].laps.length === 2); }
+{ const r = race(REC); at(r, 0, 10000); at(r, 0, 20000); r.cross(0, 30000, { holdDue: true });
+  ok('1.51.1: a crossing without holdDue (the keys, the Arduino box, the simulated cars) is judged at once, as before', upTo4().cross(0, 50000) === true);
+  const w = upTo4(); w.cross(0, 50000); ok('...the penalty is given at that crossing', w.cars[0].points === 2 && w.cars[0].wxHold === undefined && evs(w, 'tyredue').length === 1); }
+{ const r = race(REC); at(r, 0, 10000); at(r, 0, 20000); at(r, 0, 30000);
+  ok('1.51.1: before the lap the tyres are due nothing waits either (it is judged on lap 5, not before)', r.cars[0].wxDue && r.cars[0].wxDue.lap === 5 && r.cross(0, 40000, { holdDue: true }) === true && r.cars[0].wxHold === undefined && r.cars[0].laps.length === 4); }
+{ const r = race(REC); r.cars[0].done = true;
+  ok('1.51.1: a car that is done cannot be put in the pits', r.block(0, 1000, true) === false && race(REC).block(0, 0, true) === true); }
+
 if (fails) { console.log(fails + ' FAILED'); process.exit(1); }
 console.log('ALL WEATHER TESTS PASSED');

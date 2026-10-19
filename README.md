@@ -2678,3 +2678,23 @@ Good to know:
 2. A number you type is only saved when you changed it. If a race is saved while the form is open, its laps are not overwritten by the number the form showed when it opened.
 3. The sub-tabs of the other tabs have no little pictures, as the Race Setup chips have.
 4. Not verified in the full Electron window. The buttons were checked in a browser (dark, light and ocean themes, and a narrow window), the form with its tests.
+
+
+## What to try (1.51.1): a car held on a Trackmate sensor is in the pits
+
+On Windows and Linux with the Trackmate hardware, a car that stood on the sensor for the pit hold time was not taken as a pit stop: the app only looked at the first letter the sensor sends (the lap) and threw the letters that follow away. That is fixed. The app now sees that the sensor stays covered, starts the pit stop and ends it when the car drives off. (Found with the two Trackmate logs of Dutch: the box and the connection were right, the app did not use what the box said.)
+
+1. **The pit hold time** is the time that counts: in the race setup, folder **Racing Systems**, **Pit stop: the sensor must be blocked this long to start a stop (seconds)**. It is 2 seconds unless you changed it. Start a race on the Trackmate hardware and drive a car over its sensor as always: the lap is counted at once.
+2. **Hold a car on the sensor** for longer than that time. The pit stop starts, counted from the moment the car arrived (so with 2 seconds the stop starts 2 seconds after the arrival, as for the Arduino box), and everything the stop does works as for any stop: new tyres, fuel, repairs, the time in the pits, the penalty for leaving early if the setup has one.
+3. **Drive the car off.** The sensor goes quiet, and the stop ends. The app takes the car as gone a little (about 0.13 second) after the last letter the sensor sent, so the time in the pits can be that much off.
+4. A car that **only drives past** (a lap) is a lap and nothing else, as before. A car that stands on the sensor shorter than the pit hold time is no stop, as before.
+5. **Weather, tyres due:** when the tyres of a car are due on the lap it comes in and the sensor is held, the stop settles it (new tyres, no penalty). When the car drives on over the sensor instead, the penalty for the tyres is given 0.7 second after the pit hold time has gone by, as of the moment of the crossing (and always before the next crossing or the end of the race). In the log of the race it says the crossing, lap and tyre it was.
+6. **Timing Hardware > Trackmate Interface** says on its page that a car standing on a sensor is in the pits.
+
+Good to know:
+1. A pit hold time shorter than **0.5 second** is taken as 0.5 second for Trackmate: a sensor covered by a car that drives by repeats its letter on its own.
+2. The time the sensor is covered is measured on the clock of the box, so the computer being busy does not make a pass look like a stop.
+3. A session with **time tokens** has no pit stops; held sensors are ignored there, as the keys are.
+4. The Arduino box has its own pit messages and is not changed. The keys and the simulated cars are not changed either.
+5. Tested with the two real logs you sent (Windows and Linux): the replay gives the laps, one stop with its end, and nothing for a car that only passes.
+6. Not verified in the full Electron window or with the real hardware: please try it on both machines and send a log if it does not work.

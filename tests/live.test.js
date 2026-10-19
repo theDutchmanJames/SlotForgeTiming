@@ -1706,6 +1706,13 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     say('...the keys are still listening, so they work again when the race tab is shown', keyListeners.size === k0 + 2);
     await wait(60); run("Trackmate.link.emit({ type: 'hit', lane: 0, at: performance.now() })"); await wait(30);
     say('...the Trackmate still counts laps while another tab is shown', laps(0) === 1 && laps(1) === 0);
+    // 1.51.1: a car that stands on the Trackmate sensor is in the pits
+    run("Trackmate.link.emit({ type: 'block', lane: 0, at: performance.now() - 100 })"); await wait(30);
+    say('...a car that stands on the sensor (the link says it stays) is in the pits: it is no extra lap, only the stop starts, from the moment it arrived', laps(0) === 1 && run('live.engine().cars[0].blockAt') !== null && run('live.engine().cars[1].blockAt') === null);
+    run("Trackmate.link.emit({ type: 'free', lane: 0, at: performance.now() })"); await wait(30);
+    say('...and when the sensor is free it leaves the pits', run('live.engine().cars[0].blockAt') === null && laps(0) === 1);
+    run("Trackmate.link.emit({ type: 'block', lane: 5, at: performance.now() })"); await wait(10);
+    say('...a sensor of a lane that is not racing does nothing', run('live.engine().cars.every(c => c.blockAt === null)'));
     api.liveCommand({ type: 'yellow' }); await wait(30);
     say('...and the Race Director (Live Race window) still controls it', run('live.engine().flag') === 'yellow');
     api.liveCommand({ type: 'yellow' });
