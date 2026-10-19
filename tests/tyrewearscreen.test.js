@@ -68,7 +68,7 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
     say('the tyre wear system has the standard settings of the code as its defaults (so a record and the engine mean the same)', fs.filter(x => x.default !== undefined).every(x => x.default === D[x.key]) && by('unit').default === 'lap' && by('changeSeconds').default === 4 && by('warn').default === 25 && by('crit').default === 10);
     say('...two special fields: the tyre table and the weather table', by('tyres').type === 'tyretable' && by('mult').type === 'wxmult');
     say('...the levers are asked only when the effect is on, the penalty points only for that rule at 0%', shown('eUse', { effect: 'on' }) && !shown('eUse', { effect: 'off' }) && shown('eTank', { effect: 'on' }) && shown('zeroPoints', { zero: 'points' }) && !shown('zeroPoints', { zero: 'retire' }) && !shown('zeroPoints', { zero: 'lap' }) && !shown('zeroPoints', { zero: 'none' }));
-    say('...the groups: basics, the tyres, the weather, what worn tyres do, pit stops, the sets of tyres, where it applies, warning colours', run('state.schema.tyrewearsystems.groups').map(g => g.id).join() === 'basics,tyres,weather,effect,pit,sets,where,warn' && fs.every(x => run('state.schema.tyrewearsystems.groups').some(g => g.id === x.group)));
+    say('...the groups: basics, the tyres, the weather, what worn tyres do, pit stops, mandatory stops, the sets of tyres, where it applies, warning colours', run('state.schema.tyrewearsystems.groups').map(g => g.id).join() === 'basics,tyres,weather,effect,pit,mand,sets,where,warn' && fs.every(x => run('state.schema.tyrewearsystems.groups').some(g => g.id === x.group)));
     say('...the choices are those of the code (zero rules, the ways to count)', same_(by('zero').options, TW().ZERO) && by('unit').options.map(o => o[0]).join() === 'lap,distance' && by('stop').options.map(o => o[0]).join() === 'overlap,add'); }
 
   { const fs = run('state.schema.tyrewearsystems.fields'), by = k => fs.find(x => x.key === k), shown = (key, r) => run('isShown')(by(key), k => r[k]);
@@ -201,8 +201,8 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
         chips[l] = {}; ['H', 'M', 'S', 'SS', 'INT', 'W'].forEach(c => { const n = part(); chips[l][c] = { classes: new Set(), classList: { toggle(k, on) { if (on) chips[l][c].classes.add(k); else chips[l][c].classes.delete(k); } }, querySelector: () => n, n }; });
         nx[l] = { value: '', disabled: false, options: ['', 'H', 'M', 'S', 'SS', 'INT', 'W'].map(v => ({ value: v, textContent: '', disabled: false, hidden: false })) };
         trs[l] = { dataset: {}, classList: { add() {}, remove() {} }, querySelector: sel => { const m = /data-ty="(\w+)"/.exec(sel), c = /data-sc="(\w+)"/.exec(sel); return m ? parts[l][m[1]] : c ? chips[l][c[1]] : /data-ty-next/.test(sel) ? nx[l] : null; } }; });
-      const wxn = part(), fix = { disabled: false }, laneSel = { value: '1' }, tyreSel = { value: 'H' };
-      const box = { hidden: true, innerHTML: '', querySelector: sel => { const t = /tr\[data-lane="(\d+)"\]/.exec(sel); return t ? trs[t[1]] : /wxnote/.test(sel) ? wxn : /data-ty-fix\]/.test(sel) ? fix : /fixlane/.test(sel) ? laneSel : /fixtyre/.test(sel) ? tyreSel : null; } };
+      const wxn = part(), mnn = part(), fix = { disabled: false }, laneSel = { value: '1' }, tyreSel = { value: 'H' };
+      const box = { hidden: true, innerHTML: '', querySelector: sel => { const t = /tr\[data-lane="(\d+)"\]/.exec(sel); return t ? trs[t[1]] : /wxnote/.test(sel) ? wxn : /mandnote/.test(sel) ? mnn : /data-ty-fix\]/.test(sel) ? fix : /fixlane/.test(sel) ? laneSel : /fixtyre/.test(sel) ? tyreSel : null; } };
       const p = run('TyrePanel').build(box, { eng: () => eng(), lanes: [0, 1], phase: () => 'running', now: () => performance.now(), wear: true, sets: true, weather: false, setTyre: (l, c, sv) => fixed.push([l, c, sv]), queue: (l, c) => queued.push([l, c]) }); p.update();
       say('the table shows the sets that are left of every tyre (dim at 0), and the tyre that is queued', chips[0].S.n.textContent === '1' && chips[0].H.n.textContent === '2' && chips[1].M.n.textContent === '1' && nx[0].value === 'SS' && nx[1].value === '');
       say('...the choices of the next stop say how many sets there are, hide the tyre the car is on, and the note says who decided', nx[0].options[0].textContent === 'Same (Soft · 1 set)' && nx[0].options[4].textContent === 'Supersoft (1 set)' && nx[0].options[3].hidden === true && nx[1].options[2].hidden === true && parts[0].nnote.textContent === 'Queued by the Race Director' && parts[1].nnote.textContent === 'Nothing queued');
@@ -222,7 +222,12 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
       const fitting = eng().twOf; eng().twOf = (i, t) => ({ ...fitting(i, t), fitting: 'SS', fitLeft: 1500 }); p.update(); eng().twOf = fitting;
       say('...a car whose tyres are being changed has its list shut and says so', nx[0].disabled === true && parts[0].nnote.textContent === 'The tyres are being changed now' && /^Fitting Supersoft/.test(parts[0].state.textContent));
       p.update();
-      say('...and it opens again when the tyres are on', nx[0].disabled === false && parts[0].nnote.textContent === 'Queued by the Race Director'); }
+      say('...and it opens again when the tyres are on', nx[0].disabled === false && parts[0].nnote.textContent === 'Queued by the Race Director');
+      say('1.52.0: a race with no mandatory stops has no line for them in the folder', mnn.hidden === true && mnn.textContent === '');
+      const mandOf = eng().mandOf; eng().mandOf = i => ({ stops: i, need: 1, two: false, dry: 1, wet: false, stopsOk: i >= 1, tyresOk: true, ok: i >= 1, judged: false, rule: 'Mandatory: at least 1 stop for tyres (30 s added to the race time if not)' }); p.update();
+      say('...with them the folder says the rule and where each lane stands (lane numbers from 1)', mnn.hidden === false && mnn.textContent.startsWith('Mandatory: at least 1 stop for tyres (30 s added to the race time if not). Lane 1: ') && mnn.textContent.includes(' · Lane 2: ') && mnn.textContent.includes('stops 0 of 1') && mnn.textContent.includes('done'));
+      eng().mandOf = mandOf; p.update();
+      say('...and the line goes away again when the rule does', mnn.hidden === true); }
   }
 
   // ---------- 1.42.0: the tyre stints go with the result ----------

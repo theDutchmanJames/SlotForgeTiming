@@ -11,6 +11,8 @@
 // speed, the size of the tank), the ones that Balance of Power and the weather use too, so it needs a Fuel setup. A rule for 0% life works without fuel. Measured lap times are never changed.
 // Release 2 (1.41.0): the sets. A system can say how many sets of each tyre a car (or a team) has: a stop takes one set out of the box, a set that was taken off is not used again, and a tyre with no sets left
 // can not be fitted or queued. The Race Director queues a tyre for the next stop; the weather's Intermediate or Wet tyres come before a queued tyre. Without a limit a stop gives a fresh set of the same tyre, as in 1.40.0.
+// Mandatory stops (1.52.0): a system can ask for a number of stops for tyres and/or two different dry tyres in a race. A car is judged when it finishes (or when the race ends), and a rule that was not kept costs
+// seconds, penalty points or the car's place in the race (mandCheck / mandText / mandNote). Rain tyres count: a stop for them is a stop, and a car that raced on Intermediate or Wet tyres has used two kinds of tyres.
 (function (root) {
   const Wx = typeof module !== 'undefined' ? require('./weather.js') : root.Wx;
   const CODES = Wx.TYRES.map(t => t.code);
@@ -32,11 +34,13 @@
   const DEFAULT_TYRES = PRESETS.standard.tyres;
   // how much more or less a tyre wears in a weather (x1 = normal): the weather state by the kind of tyre. Slicks in the rain wear fast, Intermediate and Wet tyres wear slower there.
   const MULT = { dry: { dry: 1, inter: 2, wet: 3 }, cloudy: { dry: 1, inter: 1.5, wet: 2 }, wet: { dry: 2.5, inter: 0.7, wet: 0.5 }, clearing: { dry: 1.5, inter: 0.8, wet: 1.5 } };
+  // what a car gets when it has not kept the mandatory stop rules (1.52.0)
+  const MAND_PENALTIES = [['none', 'Nothing, only noted in the results'], ['time', 'Seconds added to the race time'], ['points', 'Penalty points (needs a penalty system)'], ['dq', 'The car is disqualified']];
   const ZERO = [['none', 'Nothing, only show it'], ['points', 'Penalty points every lap'], ['lap', 'The lap does not count until the car pits'], ['retire', 'The car retires']];
   // the sets: how many sets of each tyre a car (or a team) has, the one it starts on counted; 0 = that tyre is not allowed in the race. setsMode: none (no limit, as in 1.40.0), car, team
   const DEFAULT_SETS = { H: 2, M: 2, S: 2, SS: 1, INT: 2, W: 2 };
   const SETS_MODES = [['none', 'No limit: every stop gives fresh tyres'], ['car', 'Each car has its own sets'], ['team', 'The team shares its sets']];
-  const DEFAULTS = { setsMode: 'car', unit: 'lap', practice: 'off', qualifying: 'off', effect: 'on', eUse: 'on', eRate: 'on', eTank: 'off', zero: 'points', zeroPoints: 2, changeSeconds: 4, stop: 'overlap', warn: 25, crit: 10, call1: 50, call2: 25, call3: 10 };
+  const DEFAULTS = { setsMode: 'car', unit: 'lap', practice: 'off', qualifying: 'off', effect: 'on', eUse: 'on', eRate: 'on', eTank: 'off', zero: 'points', zeroPoints: 2, changeSeconds: 4, stop: 'overlap', warn: 25, crit: 10, call1: 50, call2: 25, call3: 10, mandStops: 0, mandTwo: 'off', mandPenalty: 'time', mandSeconds: 30, mandPoints: 3 };
 
   const num = (v, d, lo, hi) => {
     const n = typeof v === 'string' && v.trim() !== '' ? Number(v.replace(',', '.')) : v;
@@ -94,8 +98,59 @@
       effect: rec.effect !== 'off', levers: { use: rec.eUse !== 'off', rate: rec.eRate !== 'off', tank: rec.eTank === 'on' },
       zero: pick(rec.zero, ZERO.map(z => z[0]), DEFAULTS.zero), zeroPoints: Math.round(num(rec.zeroPoints, DEFAULTS.zeroPoints, 0, 100)),
       changeMs: Math.round(num(rec.changeSeconds, DEFAULTS.changeSeconds, 0, 600) * 1000), stop: rec.stop === 'add' ? 'add' : 'overlap',
-      warn: Math.round(num(rec.warn, DEFAULTS.warn, 0, 100)), crit: Math.round(num(rec.crit, DEFAULTS.crit, 0, 100)), calls: cleanCalls(rec)
+      warn: Math.round(num(rec.warn, DEFAULTS.warn, 0, 100)), crit: Math.round(num(rec.crit, DEFAULTS.crit, 0, 100)), calls: cleanCalls(rec), mand: cleanMand(rec)
     };
+  }
+
+  // ---- the mandatory stops (1.52.0) ----
+  // The rule of a record, cleaned: null when it asks for nothing (no stops and no second tyre). stops: whole number of stops for tyres (0 to 20), two: two different dry tyres must be used,
+  // penalty: none | time | points | dq, with seconds (to 1 hour) or points (to 100) for the first two. A record from before 1.52.0 has none of it, so it asks for nothing.
+  function cleanMand(rec) {
+    const r = rec || {}, stops = Math.round(num(r.mandStops, DEFAULTS.mandStops, 0, 20)), two = r.mandTwo === 'on';
+    if (!stops && !two) return null;
+    return { stops, two, penalty: pick(r.mandPenalty, MAND_PENALTIES.map(z => z[0]), DEFAULTS.mandPenalty), seconds: Math.round(num(r.mandSeconds, DEFAULTS.mandSeconds, 0, 3600) * 10) / 10, points: Math.round(num(r.mandPoints, DEFAULTS.mandPoints, 0, 100)) };
+  }
+  // Has a car kept the rule? stops: the stops it made for tyres (a stop counts when tyres were fitted); used: the tyres it drove laps on. Two different dry tyres are kept by two dry kinds,
+  // and by any Intermediate or Wet tyre (a wet race is not held to the rule, as in Formula 1). missed: what was not kept ('stops', 'tyres').
+  function mandCheck(mand, stops, used) {
+    const dry = new Set(); let wet = false;
+    (Array.isArray(used) ? used : []).forEach(code => { if (Wx.classOf(code) === 'dry') dry.add(Wx.cleanTyre(code)); else wet = true; });
+    const stopsOk = !mand || (Number(stops) || 0) >= mand.stops, tyresOk = !mand || !mand.two || wet || dry.size >= 2;
+    return { stopsOk, tyresOk, ok: stopsOk && tyresOk, dry: dry.size, wet, missed: [...(stopsOk ? [] : ['stops']), ...(tyresOk ? [] : ['tyres'])] };
+  }
+  const secText = n => `${Math.round(n * 10) / 10} s`;
+  const pointsText = n => `${n} penalty point${n === 1 ? '' : 's'}`;
+  // the rule in words, for the form, the Home tab and the Help
+  function mandText(m) {
+    if (!m) return '';
+    const parts = [];
+    if (m.stops > 0) parts.push(`at least ${m.stops} stop${m.stops === 1 ? '' : 's'} for tyres`);
+    if (m.two) parts.push('two different dry tyres');
+    const pen = m.penalty === 'time' ? `${secText(m.seconds)} added to the race time` : m.penalty === 'points' ? pointsText(m.points) : m.penalty === 'dq' ? 'the car is disqualified' : 'only noted in the results';
+    return `Mandatory: ${parts.join(' and ')} (${pen} if not)`;
+  }
+  // where a car stands with the rule, in words, for the Tyre Change folder (v: what the engine's mandOf gives)
+  function mandStateText(v) {
+    if (!v) return '';
+    if (v.judged) return v.ok ? 'kept the rule' : 'did not keep the rule';
+    if (v.ok) return 'done';
+    const out = [];
+    if (!v.stopsOk) out.push(`stops ${v.stops} of ${v.need}`);
+    if (!v.tyresOk) out.push(`dry tyres ${Math.min(2, v.dry)} of 2`);
+    return out.join(', ');
+  }
+  // what a car that did not keep the rule is told, from the 'mandatory' events of the race (empty when it kept it, or was not judged)
+  function mandNote(events, car) {
+    const out = [];
+    (events || []).forEach(e => {
+      if (!e || e.type !== 'mandatory' || e.car !== car || e.ok) return;
+      const what = [];
+      if ((e.missed || []).includes('stops')) what.push(`${Number(e.stops) || 0} of ${Number(e.need) || 0} mandatory stop${e.need === 1 ? '' : 's'} made`);
+      if ((e.missed || []).includes('tyres')) what.push('two different dry tyres not used');
+      const pen = e.how === 'time' && e.ms > 0 ? `, ${secText(e.ms / 1000)} added` : e.how === 'points' && e.points > 0 ? `, ${pointsText(e.points)}` : e.how === 'dq' ? ', disqualified' : '';
+      out.push(what.join(' and ') + pen);
+    });
+    return out.join(', ');
   }
 
   // ---- the numbers ----
@@ -219,7 +274,7 @@
   // one line for the Home tab and the Help
   function rulesText(cfg) {
     if (!cfg) return '';
-    return `Wear per ${cfg.unit === 'distance' ? (cfg.disp === 'ft' ? '100 ft' : '100 m') : 'lap'}; ${cfg.effect ? 'the grip helps and hinders through the fuel rules' : 'no effect on the fuel rules'}; ${zeroText(cfg)}; changing tyres takes ${cfg.changeMs / 1000} s${cfg.changeMs ? '' : ' (no time)'}${cfg.sets && cfg.sets.mode !== 'none' ? `; ${setsText(cfg)}` : ''}.`;
+    return `Wear per ${cfg.unit === 'distance' ? (cfg.disp === 'ft' ? '100 ft' : '100 m') : 'lap'}; ${cfg.effect ? 'the grip helps and hinders through the fuel rules' : 'no effect on the fuel rules'}; ${zeroText(cfg)}; changing tyres takes ${cfg.changeMs / 1000} s${cfg.changeMs ? '' : ' (no time)'}${cfg.sets && cfg.sets.mode !== 'none' ? `; ${setsText(cfg)}` : ''}${cfg.mand ? `; ${mandText(cfg.mand).replace(/^Mandatory: /, 'mandatory: ')}` : ''}.`;
   }
 
   // what a car is doing with its tyres, in words, for the Tyre Change folder: the tyre that goes on while the tyres are being changed, "Box now" at 0%, "Box soon" at the critical level. cls: fit, out, crit, ok
@@ -245,12 +300,12 @@
       const team = d.sets && cfg.sets.mode === 'team' && c.teamId ? eng.cars.filter(x => x.teamId === c.teamId) : null; // (the cars that share the sets)
       rows.push({ lane: l, who: c.teamName ? `${c.teamName} · ${c.driverName}` : c.driverName || '', code: ty.code, tyre: ty.name, color: ty.color, life: d.life, shown: shownLife(d.life), level: d.level,
         effect: d.effect, effectText: d.effect === null ? '' : effectText(d.effect), leftText: leftText(cfg, d.left), lapsLeft: d.left.laps, fitting: d.fitting, fitLeft: d.fitLeft, stops: d.stops,
-        own: d.own, next: d.next, queued: d.queued || '', sets: d.sets, setsStart: d.sets ? cfg.sets.n : null, setsTotal: setsTotal(d.sets), setsMode: cfg.sets.mode, teamName: team ? c.teamName || '' : '', teamDrivers: team ? team.map(x => x.driverName || `Lane ${x.lane + 1}`) : [] });
+        own: d.own, next: d.next, queued: d.queued || '', sets: d.sets, setsStart: d.sets ? cfg.sets.n : null, setsTotal: setsTotal(d.sets), setsMode: cfg.sets.mode, teamName: team ? c.teamName || '' : '', teamDrivers: team ? team.map(x => x.driverName || `Lane ${x.lane + 1}`) : [], mand: eng.mandOf ? eng.mandOf(i) : null });
     });
     return { on: true, cfg, rows };
   }
 
-  const api = { cleanCalls, nextChoices, nextNote, DEFAULT_SETS, SETS_MODES, cleanSets, pickFit, setsTotal, setsText, CODES, NUMS, LIMITS, MAXP, PRESETS, PRESET_KEYS, DEFAULT_TYRES, MULT, ZERO, DEFAULTS, defaults, cleanTyres, cleanMult, clean, wearPerLap, effectPct, effectLever, levelOf, left, lasts, effectText, shownLife, leftText, zeroText, rulesText, view, unitM, lastsText, curveSvg, stateOf };
+  const api = { MAND_PENALTIES, cleanMand, mandCheck, mandText, mandNote, mandStateText, cleanCalls, nextChoices, nextNote, DEFAULT_SETS, SETS_MODES, cleanSets, pickFit, setsTotal, setsText, CODES, NUMS, LIMITS, MAXP, PRESETS, PRESET_KEYS, DEFAULT_TYRES, MULT, ZERO, DEFAULTS, defaults, cleanTyres, cleanMult, clean, wearPerLap, effectPct, effectLever, levelOf, left, lasts, effectText, shownLife, leftText, zeroText, rulesText, view, unitM, lastsText, curveSvg, stateOf };
   root.TyreWear = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

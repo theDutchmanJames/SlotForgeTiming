@@ -2698,3 +2698,23 @@ Good to know:
 4. The Arduino box has its own pit messages and is not changed. The keys and the simulated cars are not changed either.
 5. Tested with the two real logs you sent (Windows and Linux): the replay gives the laps, one stop with its end, and nothing for a car that only passes.
 6. Not verified in the full Electron window or with the real hardware: please try it on both machines and send a log if it does not work.
+
+
+## What to try (1.52.0): mandatory stops in the Tyre Wear System
+
+A tyre wear system can now ask every car for **a number of stops for tyres**, and/or for **two different dry tyres**, by the finish, as in a real race. A car that did not keep the rule gets seconds added to its race time, penalty points, or is disqualified; or nothing, with the result only saying so. It is the first part of what Dutch asked for on 19 October (Safety Car, Push and Save and the Championship follow, one at a time).
+
+1. Open **Race Setup > Tyre Wear Systems**, edit a system (or add one) and open the new folder **Mandatory stops**. Set **Stops for tyres every car must make** (0 = none; 1 is the usual one) and/or **Two different dry tyres must be used** to *Yes*. With both at 0 / No there is no rule, as before 1.52.0: every system you made earlier is unchanged.
+2. **A car that did not keep the rule gets** (the choice): *Nothing, only noted in the results*; *Seconds added to the race time* (standard 30, any number up to an hour); *Penalty points* (standard 3; they need a penalty system in the race, otherwise only a note is made); or *The car is disqualified*. The two fields below the choice follow what you pick.
+3. Choose the system in a race setup (folder **Racing Systems**) and start a race on the track, with the keys or the simulated cars. A stop counts as a mandatory stop **when tyres were fitted in it**: a car that drives off before the tyre change is done, or finds no set left, has not made one. Two different dry tyres means two of Hard, Medium, Soft and Supersoft (the same tyre twice is one tyre). A car that drove on **Intermediate or Wet tyres** has kept this part (a wet race, as in Formula 1), but not the stops.
+4. **When it is judged:** once for every car, when it finishes (after its last lap is counted) or, for a car that is still driving, when the race ends. A race that the Race Director stops by hand ('Stop') is not judged. A car that retired, was disqualified or drove no lap is not judged. Every heat of a heat race is judged on its own. Practice and qualifying never have the rule, even when the system has tyre wear there.
+5. **Where you see it:** the **Tyre Change** folder (race screen and Race Director page) gets one line with the rule and where every lane stands ('stops 0 of 1, dry tyres 1 of 2', 'done', or after the finish 'kept the rule' / 'did not keep the rule'); the **penalty log** says it in words ('D2: 0 of 1 mandatory stop made, 30 s added'; a kept rule is not in the log); the **results** and the review get 'Tyres: ...' with the same words, together with what the weather did to the tyres. Seconds are added to the race time like any time penalty, so the order of the results follows; penalty points go through the penalty system as usual.
+6. The Help folder **Tyre wear** has a bullet for it. The Race Director's correction of a tyre (Change button) counts for the rule too.
+
+Good to know:
+1. The penalty is given once, at the finish: seconds go on the race time like any time penalty (so the order of the results follows), nothing changes in the lap times or the records.
+2. Nothing is said or shown during the race that a car is 'late' for its stop: the Tyre Change line only counts what is done. A call in the audio set for this is not made yet.
+3. A car that is disqualified by this rule is out at its finish; the other cars are not held up (the race ends as it always does: when the lead car or every car has finished).
+4. Saved races, snapshots and the live pages (phones, Race Director) know the new rule; a race window of an older version simply has no rule.
+5. Tested: a new test file (`tests/mandatory.test.js`) and extra checks in the tyre wear screen, penalty panel and Help tests; 39 deliberate breakages of the new code were all caught.
+6. Not verified in the full Electron window or with the real hardware: please try one race with one stop and two tyres, with a car that does and a car that does not make its stop, and tell me what the results say.

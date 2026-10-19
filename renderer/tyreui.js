@@ -16,6 +16,7 @@ const TyrePanel = (() => {
       const setsCell = o.sets ? `<td class="twsetscell">${Wx.TYRES.map(t => `<span class="twsc" data-sc="${t.code}" style="--tc:${t.color}" title="${t.name}"><b>${letter(t.code)}</b><i>0</i></span>`).join('')}</td>` : '';
       box.innerHTML = `<p class="muted hint tyhint">Choose the tyre a car gets at its next pit stop. Every stop changes the tyres${o.sets ? ' and takes one set out of the box; a tyre with no sets left can not be picked' : ''}.${o.weather ? ' Intermediate and Wet tyres come from the weather and go on before the tyre you pick.' : ''}</p>
         <div class="twnote" data-ty="wxnote" hidden></div>
+        <div class="twnote twmand" data-ty="mandnote" hidden></div>
         <div class="wrap"><table class="fields boptable wxtable tytable"><thead><tr><th>Lane</th><th>Driver</th><th>Tyres now</th><th>Life</th><th>Left</th><th>Grip effect</th>${o.sets ? '<th>Sets left</th>' : ''}<th>Next stop</th><th>State</th></tr></thead><tbody>${o.lanes.map(l => `<tr data-lane="${l}">
           <td><strong>${l + 1}</strong></td><td data-ty="who"></td><td><span class="tyrechip" data-ty="tyre"></span></td><td class="twlifecell"><strong data-ty="life"></strong><span class="twbar"><i data-ty="bar"></i></span></td><td data-ty="left"></td><td data-ty="effect"></td>${setsCell}
           <td><select data-ty-next="${l}" aria-label="Tyre for the next stop of lane ${l + 1}">${['', ...Wx.TYRES.map(t => t.code)].map(c => `<option value="${c}">${c ? tyreName(c) : 'Same'}</option>`).join('')}</select><span class="twnotesm" data-ty="nnote"></span></td><td><span class="twstate" data-ty="state"></span></td></tr>`).join('')}</tbody></table></div>
@@ -89,6 +90,11 @@ const TyrePanel = (() => {
           const names = [...new Set(wv.rows.filter(r => r.next && r.next.kind === 'weather').map(r => tyreName(r.next.code)))];
           const text = names.length ? `The weather asks for ${names.join(' or ')} tyres: every car changes to them at its next stop, from those sets. A tyre queued below goes on after that.` : '';
           if (wxn.textContent !== text) wxn.textContent = text; wxn.hidden = !text;
+        }
+        const mn = box.querySelector('[data-ty="mandnote"]');
+        if (mn) { // the mandatory stops (1.52.0): the rule, and where every car stands with it
+          const have = wv.rows.filter(r => r.mand), text = have.length ? `${have[0].mand.rule}. ${have.map(r => `Lane ${r.lane + 1}: ${TyreWear.mandStateText(r.mand)}`).join(' · ')}` : '';
+          if (mn.textContent !== text) mn.textContent = text; mn.hidden = !text;
         }
         const fx = box.querySelector('[data-ty-fix]'); if (fx) fx.disabled = !v.open;
       }

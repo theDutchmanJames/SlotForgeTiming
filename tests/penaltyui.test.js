@@ -3,7 +3,7 @@
 const vm = require('vm'), fs = require('fs'), path = require('path');
 let fails = 0;
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
-const ctx = vm.createContext({ console });
+const ctx = vm.createContext({ console, TyreWear: require('../renderer/tyrewear.js') }); // (the app has TyreWear in the same page: the log words a missed mandatory stop with it)
 const PenaltyPanel = vm.runInContext(fs.readFileSync(path.join(__dirname, '../renderer/penaltyui.js'), 'utf8') + '\n;PenaltyPanel', ctx);
 
 // a stand-in for the page: when the html is set, a row with its cells and buttons is made for every data-row in it
@@ -83,6 +83,10 @@ say('without special penalties the row has the two point buttons only', !Penalty
   eng.events = [{ type: 'penalty', car: 0, delta: 2, points: 5, ms: 5000 }, { type: 'penalty', car: 1, delta: -1, points: 0, ms: 0 }, { type: 'reinstated', car: 2 }, { type: 'leftearly', car: 0, name: 'Drivethrough', extra: 1 }, { type: 'timeadded', car: 1, ms: 3000 }, { type: 'damage', car: 0, delta: 2, points: 2, name: 'Contact' }]; p.update();
   say('...every kind of line reads well', pg.log.innerHTML.includes('D1: +2 points (now 5, +5 s)') && pg.log.innerHTML.includes('D2: -1 point (now 0)') && pg.log.innerHTML.includes('D3 is back in the race') && pg.log.innerHTML.includes('D1 left too early (Drivethrough), +1 point')
     && pg.log.innerHTML.includes('D2: +3 s added') && pg.log.innerHTML.includes('D1: +2 damage points (now 2, Contact)'));
+  eng.events = [{ type: 'mandatory', car: 0, ok: true, stops: 1, need: 1, missed: [], how: '' }, { type: 'mandatory', car: 1, ok: false, stops: 0, need: 1, missed: ['stops'], how: 'time', ms: 30000 }, { type: 'mandatory', car: 2, ok: false, stops: 1, need: 1, missed: ['tyres'], how: 'dq' }]; p.update();
+  say('1.52.0: a missed mandatory stop is in the log in words, with what it cost; a rule that was kept is not (nothing happened)', pg.log.innerHTML.includes('D2: 0 of 1 mandatory stop made, 30 s added') && pg.log.innerHTML.includes('D3: two different dry tyres not used, disqualified') && !pg.log.innerHTML.includes('D1') && (pg.log.innerHTML.match(/<li>/g) || []).length === 2);
+  eng.events = [{ type: 'mandatory', car: 0, ok: true, stops: 1, need: 1, missed: [], how: '' }]; p.update();
+  say('...and when only kept rules happened, the log still says there is nothing', pg.log.innerHTML === '<li class="muted">No penalties yet.</li>');
   eng.events = []; p.update();
   say('no events: the log says there are no penalties yet', pg.log.innerHTML === '<li class="muted">No penalties yet.</li>');
 

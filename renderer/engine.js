@@ -82,6 +82,7 @@
     const WXC = cfg.weather && (type === 'race' || type === 'timed') ? cfg.weather : null, WXH = WXC && F.on && WXC.hinder ? WXC : null;
     // Tyre Wear (cfg.tyrewear, see tyrewear.js): a race or a timed race (heats are those too), and a practice or qualifying when the system says so. The 0% rule and the display need no fuel; the grip curve (TWH) works through the fuel rules, like Balance of Power and the weather.
     const TWC = cfg.tyrewear && cfg.tyrewear.on && (type === 'race' || type === 'timed' || (type === 'practice' && cfg.tyrewear.practice) || (type === 'qualifying' && cfg.tyrewear.qualifying)) ? cfg.tyrewear : null, TWH = TWC && F.on && TWC.effect ? TWC : null;
+    const MAND = TWC && TWC.mand && (type === 'race' || type === 'timed') ? TWC.mand : null; // Tyre Wear mandatory stops (1.52.0): null = no rule (also in practice and qualifying)
     const SETS = TWC && TWC.sets && (TWC.sets.mode === 'car' || TWC.sets.mode === 'team') && TWC.sets.n ? TWC.sets : null; // Tyre Wear sets (1.41.0): null = no limit, every stop gives a fresh set
     const hasFx = c => !!((BP && c.bop) || (WXH && c.wx) || (TWH && c.tw));
     // what the car gets of the fuel rules now: from Balance of Power (car.bop), from the weather (car.wx) and from its tyres (car.tw), all signed whole percentages (negative: hindered), added up lever by lever
@@ -114,7 +115,7 @@
     let callId = 0;
     const log = (type, i, t, data) => R.events.push({ type, car: i, t, ...data });
 
-    const end = (t, why) => { R.cars.forEach((c, i) => { wxFlush(i, t, true); if (c.blockAt !== null) { pitCheck(i, t); serveCheck(i, t); repairCheck(i, t); twCheck(i, t); closePit(i, t); } }); R.status = 'finished'; R.endAt = t; R.endedBy = why; R.flag = ''; R.yellowAt = null; R.calls.forEach(c => { c.open = false; }); enEnd(t, why); };
+    const end = (t, why) => { R.cars.forEach((c, i) => { wxFlush(i, t, true); if (c.blockAt !== null) { pitCheck(i, t); serveCheck(i, t); repairCheck(i, t); twCheck(i, t); closePit(i, t); } if (MAND && why !== 'Stopped') msJudge(c, i, t); }); R.status = 'finished'; R.endAt = t; R.endedBy = why; R.flag = ''; R.yellowAt = null; R.calls.forEach(c => { c.open = false; }); enEnd(t, why); };
     const checkEnd = t => {
       if (R.status !== 'running') return;
       if (type === 'race' && cfg.endRule === 'leader' && R.finished > 0) return end(t, 'The lead car finished');
@@ -210,6 +211,7 @@
       if (!c.dq && ((limitOf(c) && c.laps.length - c.swapLost >= limitOf(c)) || (timeLimit && R.timeUp))) { c.done = true; c.place = ++R.finished; } // a car disqualified on this lap (fuel points) has not finished
       if (DM) { damageLap(c, R.cars.indexOf(c), t, deslot); flCheck(c, i, t); }
       if (TWC) twLap(c, i, t, twGone);
+      if (MAND && c.done) msJudge(c, i, t); // (a car that has finished is judged for the mandatory stops, after its last lap was counted; the end of the race is checked at the end of this crossing)
       wxEval(t); if (!wxEntering) { if (o && o.holdDue && WXC && c.wxDue && c.laps.length >= c.wxDue.lap) c.wxHold = t; else wxDueCheck(c, i, t); } // (a car that comes into the pits on this crossing is judged by its stop, or by its next crossing)
       enEval(R.cars.indexOf(c), t); // (the laps of a stint are counted: a swap that is due by laps, or a swap by the sensor, may come with this crossing)
       bopEval(t);
@@ -370,7 +372,7 @@
     }
     // what a screen needs to know of car i: its tyre, its own tyre, whether it should change tyres now ('wet' | 'dry' | ''), how many percent the weather hinders it
     R.wxOf = i => { const c = R.cars[i]; return c ? { tyre: c.tyre, own: c.tyreOwn, need: WXC ? W.need(R.wxState, c.tyre, c.tyreOwn) : '', hinder: -(c.wx || 0) } : null; };
-    R.tyreNoteOf = i => W.noteOf(R.events, i); // what the tyres did to car i in this race, in words (empty when nothing)
+    R.tyreNoteOf = i => [W.noteOf(R.events, i), Tw.mandNote(R.events, i)].filter(Boolean).join(', '); // what the tyres did to car i in this race, in words (empty when nothing), with a mandatory stop that was missed
     R.weatherNote = () => (WXC ? W.forecastNote(R.events, WXC.unit) : ''); // what the weather did in this race, in words
 
     // ---- Tyre Wear (see tyrewear.js) ----
@@ -417,6 +419,7 @@
     function twLap(c, i, t, gone) {
       if (gone && TWC.zero === 'points' && TWC.zeroPoints > 0) R.addPoints(i, TWC.zeroPoints, t, 'tyres');
       const st = twStint(c); st.laps++; st.m += TWC.laneLen[c.lane] || 0; if (gone) st.worn++;
+      if (MAND && !(c.msUsed || (c.msUsed = [])).includes(st.tyre)) c.msUsed.push(st.tyre); // (the tyres that laps were driven on, for the mandatory stop rule)
       if (c.twLife > 0) {
         c.twLife = Math.max(0, Math.round((c.twLife - Tw.wearPerLap(TWC, c.tyre, R.wxState, TWC.laneLen[c.lane] || 0)) * 1e6) / 1e6);
         if (c.twLife <= 0) log('tyreworn', i, t, { tyre: c.tyre, lap: c.laps.length, rule: TWC.zero });
@@ -501,6 +504,26 @@
       log('tyrefresh', i, at, { tyre: fit.tyre, lap: c.laps.length, ms, ...(fit.sets !== undefined ? { sets: fit.sets } : {}), ...(fit.asked ? { asked: fit.asked } : {}) });
       if (fit.last) log('tyrelast', i, at, { tyre: fit.last, lap: c.laps.length });
     }
+    // ---- mandatory stops (1.52.0, see tyrewear.js) ----
+    // The rule is judged once for a car: when it finishes, or when the race ends (a race that the Race Director stops by hand is not judged). A car that retired or was disqualified is out of the race and is not judged,
+    // nor is a car that drove no lap. What it gets is the system's choice: seconds on its race time, penalty points (when the race has a penalty system), or the car is out of the race. The 'mandatory' event says what happened.
+    function msJudge(c, i, t) {
+      if (!MAND || c.msDone || c.dq || c.retired || !c.laps.length) return;
+      c.msDone = true;
+      const chk = Tw.mandCheck(MAND, c.twStops || 0, c.msUsed || []);
+      const e = { ok: chk.ok, stops: c.twStops || 0, need: MAND.stops, two: MAND.two, dry: chk.dry, wet: chk.wet, missed: chk.missed, how: chk.ok ? '' : MAND.penalty };
+      if (!chk.ok && MAND.penalty === 'time' && MAND.seconds > 0) { e.ms = Math.round(MAND.seconds * 1000); c.extraMs = (c.extraMs || 0) + e.ms; }
+      if (!chk.ok && MAND.penalty === 'points' && MAND.points > 0) { if (P.on) e.points = MAND.points; else e.noSystem = true; }
+      log('mandatory', i, t, e);
+      if (e.points) R.addPoints(i, e.points, t, 'mandatory');
+      if (!chk.ok && MAND.penalty === 'dq') { c.dq = true; c.dqWasDone = c.done; c.dqWasRetired = c.retired; c.done = true; c.retired = true; log('disqualified', i, t); }
+    }
+    // what a screen needs to know of the mandatory stops of car i (null: this race has no such rule)
+    R.mandOf = i => {
+      const c = R.cars[i]; if (!MAND || !c) return null;
+      const chk = Tw.mandCheck(MAND, c.twStops || 0, c.msUsed || []);
+      return { stops: c.twStops || 0, need: MAND.stops, two: MAND.two, dry: chk.dry, wet: chk.wet, stopsOk: chk.stopsOk, tyresOk: chk.tyresOk, ok: chk.ok, judged: !!c.msDone, rule: Tw.mandText(MAND) };
+    };
     // the car stands in the pits and the time has come: the fresh set goes on
     function twCheck(i, t) {
       const c = R.cars[i], at = twAt(c);
