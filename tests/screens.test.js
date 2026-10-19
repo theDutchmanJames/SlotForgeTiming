@@ -622,7 +622,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   await E('gform').onsubmit({preventDefault(){}});
   say('8 lanes, both directions: 7 vertical and 7 horizontal lines', run('state.editing.draft.guides.v.length')===7 && run('state.editing.draft.guides.h.length')===7);
   // a widget dragged near a line sticks to it
-  run('state.editing.draft.widgets[0].x=300; state.editing.draft.widgets[0].y=400'); run('state.editing.sel=[state.editing.draft.widgets[0]]'); drag(onW(0,{clientX:310,clientY:410}),46,0);
+  run('state.editing.draft.widgets[0].x=300; state.editing.draft.widgets[0].y=400'); run('state.editing.sel=[state.editing.draft.widgets[0]]'); drag(onW(0,{clientX:310,clientY:410}),48,0); // (the magnet reaches 3 units since 1.46.1: the right edge is at 498)
   say('dragging a widget near a guideline snaps its edge to it', widgets()[0].x+widgets()[0].w===500);
   // ---- lane colours ----
   E('e-lanecolors').onclick();
@@ -643,6 +643,58 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     run('state.editing.id=null'); run('state.editing.draft.name="Twice"'); const both=await Promise.all([run('editorSave()'),run('editorSave()')]);
     say('saving a new layout twice at once adds it once, and both calls come back saved', got.length===1 && both.every(x=>x===true) && run('state.editing.id')==='LY'); api.add=oldAdd; }
   say('a widget\'s own colour wins over its lane colour', run("Widgets.colorsOf(state.editing.draft.widgets[0], state.editing.draft).color")==='#00ff00' && run("Widgets.colorsOf(state.editing.draft.widgets[0], state.editing.draft).bg")==='#001122');
+
+  // ---- 1.46.1: holding Ctrl snaps to the grid only, the pink lines when an edge lines up, Tidy to grid ----
+  await openEditor(); run("editorAdd('bestlap')"); run("editorAdd('bestlap')");
+  { const dragWith = (downEv, dx, dy, extra = {}) => { E('canvas').onpointerdown({ ...downEv }); const mv = (listeners.pointermove || []).slice(-1)[0], up = (listeners.pointerup || []).slice(-1)[0];
+      mv({ clientX: downEv.clientX + dx, clientY: downEv.clientY + dy, ...extra }); const during = E('canvas').innerHTML; up(); return during; };
+    const put = (g, x, y, w, h) => Object.assign(g, { x, y, w, h });
+    const commit = () => run('state.editing.history.touch(), state.editing.history.commit()'); // (the values set by the test are a step of their own)
+    const reset = () => { put(widgets()[0], 180, 100, 100, 50); put(widgets()[1], 302, 300, 100, 50); run('state.editing.sel=[state.editing.draft.widgets[0]]'); };
+    const seH = () => onW(0, { target: { dataset: { h: 'se' }, closest: () => ({ dataset: { i: '0' } }) }, clientX: 280, clientY: 150 });
+    say('1.46.1: the magnet reaches 3 units (it was 8)', run('Widgets.MAG') === 3);
+    reset(); let during = dragWith(onW(0, { clientX: 230, clientY: 120 }), 19, 0);
+    say('dragging near a neighbour: the edge is pulled to it (the magnets work as before)', widgets()[0].x + 100 === 302);
+    say('...and a pink line is drawn where the edges line up (302 of 1000 across)', during.includes('class="snapl snapl-v" style="left:30.2%"'));
+    say('...the line is gone when the mouse is let go', !E('canvas').innerHTML.includes('class="snapl'));
+    reset(); during = dragWith(onW(0, { clientX: 230, clientY: 120 }), 19, 0, { ctrlKey: true });
+    say('holding Ctrl: the same drag goes to the grid only (200), not to the neighbour at 302', widgets()[0].x === 200 && widgets()[0].y === 100);
+    say('...no pink line, as nothing lines up', !during.includes('class="snapl'));
+    reset(); dragWith(onW(0, { clientX: 230, clientY: 120 }), 19, 0, { metaKey: true });
+    say('holding Cmd (a Mac) does the same', widgets()[0].x === 200);
+    reset(); dragWith(seH(), 22, 0);
+    say('resizing: the edge is pulled to the neighbour (302)', widgets()[0].x + widgets()[0].w === 302);
+    reset(); dragWith(seH(), 22, 0, { ctrlKey: true });
+    say('...and with Ctrl held it goes to the grid (300)', widgets()[0].x + widgets()[0].w === 300);
+    put(widgets()[0], 180, 240, 100, 50); put(widgets()[1], 600, 300, 100, 50); run('state.editing.sel=[state.editing.draft.widgets[0]]');
+    during = dragWith(onW(0, { clientX: 230, clientY: 260 }), 0, 8);
+    say('dragging down: the bottom edge is pulled to the top of the neighbour (300), and the pink line goes across at 300 of the page height', widgets()[0].y + 50 === 300 && during.includes(`class="snapl snapl-h" style="top:${300 / run('Widgets.heightOf(state.editing.draft)') * 100}%"`));
+    E('e-snap').onchange({ target: { checked: false } }); reset(); dragWith(onW(0, { clientX: 230, clientY: 120 }), 19, 0);
+    say('with snapping off nothing is pulled (199), Ctrl or not', widgets()[0].x === 199);
+    reset(); dragWith(onW(0, { clientX: 230, clientY: 120 }), 19, 0, { ctrlKey: true });
+    say('...also with Ctrl held', widgets()[0].x === 199);
+    E('e-snap').onchange({ target: { checked: true } });
+    say('the pink lines have their own style (solid, they never catch the mouse)', /\.snapl\{position:absolute;pointer-events:none/.test(css2) && /\.snapl-v\{[^}]*1px solid #ff3df0/.test(css2) && /\.snapl-h\{[^}]*1px solid #ff3df0/.test(css2));
+    // the side panel
+    run('state.editing.sel=[]'); E('canvas').onpointerdown(ptr({ clientX: 900, clientY: 500 })); (listeners.pointerup || []).slice(-1)[0]();
+    say('nothing selected: the side panel offers Tidy all widgets to the grid, and tells about Ctrl', E('side').innerHTML.includes('id="s-tidyall"') && E('side').innerHTML.includes('Tidy all widgets to the grid') && E('side').innerHTML.includes('Hold Ctrl'));
+    reset(); E('canvas').onpointerdown(onW(0, { clientX: 230, clientY: 120 })); (listeners.pointerup || []).slice(-1)[0]();
+    say('a widget selected: Tidy to grid is in the Arrange folder, with the tip about Ctrl', E('side').innerHTML.includes('data-side="arrange"') && E('side').innerHTML.includes('id="s-tidy"') && E('side').innerHTML.includes('Hold Ctrl') && !E('side').innerHTML.includes('id="s-tidyall"'));
+    // Tidy to grid
+    put(widgets()[0], 103, 97, 101, 52); put(widgets()[1], 302, 300, 100, 50); commit(); run('state.editing.sel=[state.editing.draft.widgets[0]]');
+    E('side').onclick({ target: { closest: () => ({ id: 's-tidy' }) } });
+    say('Tidy to grid: the edges of the selected widget go to the grid', widgets()[0].x === 105 && widgets()[0].y === 95 && widgets()[0].w === 100 && widgets()[0].h === 55);
+    say('...a widget that is not selected stays where it was', widgets()[1].x === 302);
+    say('...and it says what happened', E('e-msg').textContent === 'Tidied 1 widget to the grid.');
+    E('side').onclick({ target: { closest: () => ({ id: 's-tidy' }) } });
+    say('...tidying again says it is already on the grid', E('e-msg').textContent === 'Everything was already on the grid.');
+    run('editorUndo()');
+    say('Undo puts the widget back (one step)', widgets()[0].x === 103 && widgets()[0].y === 97 && widgets()[0].w === 101 && widgets()[0].h === 52 && widgets()[1].x === 302);
+    run('state.editing.sel=[]'); E('side').onclick({ target: { closest: () => ({ id: 's-tidyall' }) } });
+    say('Tidy all: with nothing selected every widget is tidied', widgets()[0].x === 105 && widgets()[1].x === 300 && widgets()[1].w === 100 && E('e-msg').textContent === 'Tidied 2 widgets to the grid.');
+    run('editorUndo()');
+    say('...and Undo brings both back in one step', widgets()[0].x === 103 && widgets()[1].x === 302);
+  }
 
   // ---- batch 1 findings ----
   run("document.querySelector('h1')"); run("tabsEl").onclick({ target: { closest: () => ({ dataset: { id: 'live' } }) } }); say('the Live Race tab opens the second screen instead of a page', opened.length === 1 && run('state.tab') !== 'live');

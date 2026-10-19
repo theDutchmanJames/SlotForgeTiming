@@ -245,6 +245,13 @@ const Help = (() => {
           <li><b>Widget Builder</b>: make your own text or image widgets with {variables} such as the driver's name or a lap time.</li>
           <li>You choose the layouts and the audio set per race setup.</li>
         </ul>` },
+      { id: 'layouteditor', title: 'Placing widgets', note: 'Snapping, the pink lines and Tidy to grid in the Layout Editor', body: `
+        <ul>
+          <li>A widget you drag <b>snaps</b> to the grid (5 units), to the edges of other widgets and to your guidelines. The magnet is small: it pulls from 3 units away. A <b>pink line</b> shows where an edge lines up exactly.</li>
+          <li>Hold <b>Ctrl</b> (Cmd on a Mac) while you drag or resize to snap to the grid only, without the magnets. Untick <b>Snap to grid, widgets and guidelines</b> to move freely.</li>
+          <li><b>Arrange</b> (side panel): <b>Tidy to grid</b> moves every edge of the selected widgets to the nearest grid line, so widgets that touch keep touching. With nothing selected the button is <b>Tidy all widgets to the grid</b>. Undo puts them back.</li>
+          <li>Select several widgets with Shift-click or a rectangle, or all with Ctrl+A. <b>Duplicate</b> makes copies for the next lane.</li>
+        </ul>` },
       { id: 'delta', title: 'Delta Timers', note: 'How far a lane is from another time', body: `
         <ul>
           <li>A folder of widgets in the Layout Editor: a time on the left and a badge on the right that shows how far a lane is from another time. Green with ▲ and a minus (▲ −0.045) is faster, red with ▼ and a plus (▼ +0.321) is slower. <b>Value and badge</b> can put them <b>top and bottom</b> instead: the time on top, the badge below it.</li>

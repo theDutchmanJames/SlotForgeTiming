@@ -17,9 +17,9 @@ ok('snap on: moves to the 5-unit grid', m.x === 115 && m.y === 105);
 m = Wd.moveWidget(w, 13, 7, [], W, H, false);
 ok('snap off: moves freely', m.x === 113 && m.y === 107);
 const other = box(300, 100, 100, 50);
-m = Wd.moveWidget(box(180, 100, 100, 50), 16, 0, [other], W, H, true); // right edge -> 296, near other's left edge 300
+m = Wd.moveWidget(box(180, 100, 100, 50), 18, 0, [other], W, H, true); // right edge -> 298, near other's left edge 300 (the magnet reaches 3 units, since 1.46.1)
 ok('sticks to the left edge of a neighbour', m.x + 100 === 300);
-m = Wd.moveWidget(box(420, 100, 100, 50), -16, 0, [other], W, H, true); // left edge -> 404, near other's right edge 400
+m = Wd.moveWidget(box(420, 100, 100, 50), -18, 0, [other], W, H, true); // left edge -> 402, near other's right edge 400
 ok('sticks to the right edge of a neighbour', m.x === 400);
 m = Wd.moveWidget(box(300, 160, 100, 50), 0, -9, [other], W, H, true); // top -> 151, near other's bottom 150
 ok('sticks below a neighbour', m.y === 150);
@@ -27,7 +27,7 @@ m = Wd.moveWidget(w, -500, -500, [], W, H, true);
 ok('cannot leave the canvas (top-left)', m.x === 0 && m.y === 0);
 m = Wd.moveWidget(w, 5000, 5000, [], W, H, true);
 ok('cannot leave the canvas (bottom-right)', m.x === W - 100 && m.y === H - 50);
-m = Wd.moveWidget(box(5, 5, 100, 50), 0, 0, [], W, H, true);
+m = Wd.moveWidget(box(3, 3, 100, 50), 0, 0, [], W, H, true);
 ok('sticks to the canvas edge', m.x === 0 && m.y === 0);
 
 // resizing
@@ -50,7 +50,7 @@ r = Wd.resizeWidget(box(100, 100, 100, 50), 'ne', -300, 300, [], W, H, false);
 ok('...and so do the other two corners', r.w === 5 && r.h === 5 && r.x === 100 && r.y === 145 && (r = Wd.resizeWidget(box(100, 100, 100, 50), 'sw', 300, -300, [], W, H, false), r.w === 5 && r.h === 5 && r.x === 195 && r.y === 100));
 r = Wd.resizeWidget(box(100, 100, 100, 50), 'se', 5000, 5000, [], W, H, true);
 ok('cannot grow past the canvas', r.x + r.w === W && r.y + r.h === H);
-r = Wd.resizeWidget(box(100, 100, 100, 50), 'se', 96, 0, [other], W, H, true); // right edge -> 296, magnet to 300
+r = Wd.resizeWidget(box(100, 100, 100, 50), 'se', 97, 0, [other], W, H, true); // right edge -> 297, magnet to 300 (the grid would say 295)
 ok('resized edge sticks to a neighbour', r.x + r.w === 300);
 r = Wd.resizeWidget(box(100, 100, 100, 50), 'ne', 0, -44, [], W, H, true);
 ok('resize ne moves the top edge up, the bottom stays put', r.x === 100 && r.y === 55 && r.w === 100 && r.h === 95 && r.y + r.h === 150);
@@ -77,16 +77,97 @@ g = Wd.guidesFor(8, 'both', 1000, 562);
 ok('8 lanes, both directions: 7 vertical and 7 horizontal lines', g.v.length === 7 && g.h.length === 7 && g.h[0] === 70.25);
 ok('horizontal only', Wd.guidesFor(4, 'horizontal', 1000, 600).h.join() === '150,300,450' && Wd.guidesFor(4, 'horizontal', 1000, 600).v.length === 0);
 const gd = { v: [500], h: [300] };
-m = Wd.moveWidget(box(380, 100, 100, 50), 16, 0, [], W, H, true, gd);
+m = Wd.moveWidget(box(380, 100, 100, 50), 17, 0, [], W, H, true, gd); // right edge -> 497
 ok('a widget\'s right edge sticks to a vertical guideline', m.x + 100 === 500);
-m = Wd.moveWidget(box(520, 100, 100, 50), -16, 0, [], W, H, true, gd);
+m = Wd.moveWidget(box(520, 100, 100, 50), -17, 0, [], W, H, true, gd); // left edge -> 503
 ok('a widget\'s left edge sticks to a vertical guideline', m.x === 500);
 m = Wd.moveWidget(box(100, 245, 100, 50), 0, 6, [], W, H, true, gd);
 ok('a widget\'s bottom edge sticks to a horizontal guideline', m.y + 50 === 300);
 m = Wd.moveWidget(box(380, 100, 100, 50), 16, 0, [], W, H, false, gd);
 ok('guidelines do nothing when snapping is off', m.x === 396);
-r = Wd.resizeWidget(box(100, 100, 100, 50), 'se', 296, 0, [], W, H, true, gd);
+r = Wd.resizeWidget(box(100, 100, 100, 50), 'se', 297, 0, [], W, H, true, gd);
 ok('resizing an edge sticks to a guideline too', r.x + r.w === 500);
+// ---- 1.46.1: a smaller magnet, the grid on its own (Ctrl), the lines that show an alignment, Tidy to grid ----
+ok('1.46.1: the magnet reaches 3 units, less than one grid step (it was 8, wider than the grid, so the grid could not be reached near an edge)', Wd.MAG === 3 && Wd.MAG < Wd.GRID);
+const far = box(300, 100, 100, 50);
+m = Wd.moveWidget(box(180, 100, 100, 50), 19, 0, [far], W, H, true); // right edge 299: 1 away from 300
+ok('...an edge 1 away is pulled', m.x + 100 === 300);
+m = Wd.moveWidget(box(180, 100, 100, 50), 17, 0, [far], W, H, true); // right edge 297: 3 away, the very edge of the reach
+ok('...an edge 3 away is still pulled', m.x + 100 === 300);
+m = Wd.moveWidget(box(180, 100, 100, 50), 16, 0, [far], W, H, true); // right edge 296: 4 away
+ok('...an edge 4 away is not: the grid has it (195 and 295)', m.x === 195 && m.x + 100 === 295);
+const odd = box(302, 100, 100, 50); // an edge that is not on the grid (like most of the default layout)
+m = Wd.moveWidget(box(180, 100, 100, 50), 19, 0, [odd], W, H, true); // right edge 299: the magnet says 302
+ok('grid and magnets: an edge off the grid still pulls', m.x + 100 === 302);
+m = Wd.moveWidget(box(180, 100, 100, 50), 19, 0, [odd], W, H, 'grid');
+ok('the grid only (Ctrl held): the same drag lands on the grid, the magnets are off', m.x === 200 && m.y === 100);
+m = Wd.moveWidget(box(180, 100, 100, 50), 19, 0, [odd], W, H, false);
+ok('...and with snapping off it is still free', m.x === 199);
+m = Wd.moveWidget(box(380, 100, 100, 50), 17, 0, [], W, H, 'grid', { v: [500], h: [] });
+ok('the grid only ignores the guidelines too', m.x === 395);
+m = Wd.moveWidget(box(3, 3, 100, 50), 0, 0, [], W, H, 'grid');
+ok('the grid only ignores the page edge too (3 units from it goes to 5)', m.x === 5 && m.y === 5);
+r = Wd.resizeWidget(box(100, 100, 100, 50), 'se', 99, 0, [box(302, 0, 10, 10)], W, H, 'grid');
+ok('resizing with the grid only: the edge goes to the grid, not to the neighbour at 302', r.x + r.w === 300);
+r = Wd.resizeWidget(box(100, 100, 100, 50), 'se', 99, 0, [box(302, 0, 10, 10)], W, H, true);
+ok('...with the magnets on it goes to the neighbour', r.x + r.w === 302);
+// the result is always on the grid or within 3 units of an edge that was offered
+{
+  let seed = 7, bad = 0; const rnd = n => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed % n; };
+  for (let i = 0; i < 400; i++) {
+    const o = box(rnd(800), rnd(400), 20 + rnd(150), 20 + rnd(100)), a = box(rnd(800), rnd(400), 20 + rnd(150), 20 + rnd(100));
+    const p = Wd.moveWidget(a, rnd(60) - 30, rnd(60) - 30, [o], W, H, true), tx = [0, W, o.x, o.x + o.w], ty = [0, H, o.y, o.y + o.h];
+    const okx = p.x % 5 === 0 || tx.some(t => Math.abs(t - p.x) < 0.001 || Math.abs(t - (p.x + a.w)) < 0.001) || p.x === W - a.w, oky = p.y % 5 === 0 || ty.some(t => Math.abs(t - p.y) < 0.001 || Math.abs(t - (p.y + a.h)) < 0.001) || p.y === H - a.h;
+    if (!okx || !oky) bad++;
+  }
+  ok('400 random moves: a widget always ends on the grid or exactly on an edge it was pulled to', bad === 0);
+}
+m = Wd.moveWidget(box(140, 90, 210, 58), 0, 4.2331932773109235, [box(140, 155, 210, 58)], W, H, true);
+ok('a position pulled by a magnet is a clean number (97, not 96.99999999999999, which a pixel to unit conversion gives)', m.y === 97);
+// snap lines: where an edge lines up with another widget or a guideline
+let sl = Wd.snapLines(box(300, 100, 100, 50), [box(300, 0, 50, 50), box(500, 150, 5, 5)], W, H, { v: [400], h: [] });
+ok('snap lines: the left edge with a neighbour (300), the right edge with a guideline (400), the bottom with a neighbour (150)', sl.v.join() === '300,400' && sl.h.join() === '150');
+sl = Wd.snapLines(box(301, 101, 100, 50), [box(300, 0, 50, 50)], W, H, { v: [], h: [] });
+ok('...one unit off is not lined up: no lines', sl.v.length === 0 && sl.h.length === 0);
+sl = Wd.snapLines(box(300.5, 100.5, 100, 50), [box(300, 0, 50, 50)], W, H, { v: [], h: [] });
+ok('...half a unit off is not lined up either', sl.v.length === 0 && sl.h.length === 0);
+sl = Wd.snapLines(box(299.999999, 100, 100, 50), [box(300, 0, 50, 50)], W, H, null);
+ok('...but a rounding error of a millionth of a unit still is', sl.v.join() === '300');
+sl = Wd.snapLines(box(100, 100, 100, 50), [box(400, 100, 30, 20)], W, H, null);
+ok('...the top edge lines up with the top of a neighbour (a horizontal line at 100)', sl.h.join() === '100' && sl.v.length === 0);
+
+sl = Wd.snapLines(box(0, 0, W, H), [], W, H, null);
+ok('...the page\'s own edges get no line', sl.v.length === 0 && sl.h.length === 0);
+sl = Wd.snapLines(box(100, 100, 100, 50), [box(100, 300, 40, 40), box(100, 400, 40, 40)], W, H, null);
+ok('...two neighbours on the same line give one line', sl.v.join() === '100' && sl.h.length === 0);
+// Tidy to grid: every edge to the nearest grid line, or the page's edge when that is closer
+let t = Wd.tidy([box(10, 90, 60, 58), box(75, 90, 60, 58)], W, H);
+ok('tidy: the edges go to the grid (90 + 58 = 148 becomes 150, so the height is 60)', t[0].x === 10 && t[0].y === 90 && t[0].w === 60 && t[0].h === 60 && t[1].x === 75 && t[1].h === 60);
+t = Wd.tidy([box(10, 90, 58, 58), box(68, 90, 60, 58)], W, H);
+ok('tidy: widgets that touched still touch (the edge at 68 goes to 70 for both)', t[0].x + t[0].w === 70 && t[1].x === 70);
+t = Wd.tidy([box(100, 555, 50, 7)], W, H);
+ok('tidy: 562 is closer to the bottom of the page (563) than to the grid (560), so it goes to 563', t[0].y + t[0].h === H);
+t = Wd.tidy([box(100, 550, 50, 10)], W, H);
+ok('...but an edge on the grid close to the page edge (560) stays where it is', t[0].y + t[0].h === 560);
+t = Wd.tidy([box(11, 11, 1, 1)], W, H);
+ok('tidy: a widget of 1 by 1 that would be 0 by 0 on the grid becomes 5 by 5, growing to the right and down', t[0].x === 10 && t[0].w === 5 && t[0].y === 10 && t[0].h === 5);
+t = Wd.tidy([box(998, 560, 1, 1)], W, H);
+ok('...and in the corner of the page it grows to the left and up instead', t[0].x === 995 && t[0].w === 5 && t[0].y === 555 && t[0].h === 5);
+t = Wd.tidy([box(3.4, 555, 12, 8)], W, H);
+ok('tidy: the page\'s own edge counts (the bottom 563 stays 563, not 565), and 3.4 goes to 5', t[0].x === 5 && t[0].y === 555 && t[0].y + t[0].h === H);
+t = Wd.tidy([box(12, 12, 2, 2)], W, H);
+ok('tidy: a widget never gets smaller than the smallest size', t[0].w >= Wd.MIN && t[0].h >= Wd.MIN);
+t = Wd.tidy([box(997, 560, 3, 3)], W, H);
+ok('tidy: ...also in the corner of the page, where it cannot grow outwards', t[0].w >= Wd.MIN && t[0].h >= Wd.MIN && t[0].x + t[0].w <= W && t[0].y + t[0].h <= H && t[0].x >= 0 && t[0].y >= 0);
+{
+  const dl = Wd.defaultLayout(), once = Wd.tidy(dl.widgets, W, Wd.heightOf(dl));
+  const twice = Wd.tidy(once, W, Wd.heightOf(dl));
+  ok('tidy on the default layout: every edge is on the grid or the page\'s edge', once.every(q => [q.x, q.y, q.x + q.w, q.y + q.h].every((v, i) => v % 5 === 0 || v === (i % 2 ? Wd.heightOf(dl) : W))));
+  ok('...it stays inside the page, nothing is smaller than the smallest size', once.every(q => q.x >= 0 && q.y >= 0 && q.x + q.w <= W && q.y + q.h <= Wd.heightOf(dl) && q.w >= Wd.MIN && q.h >= Wd.MIN));
+  ok('...doing it a second time changes nothing', JSON.stringify(once) === JSON.stringify(twice));
+  let clash2 = 0; for (let i = 0; i < once.length; i++) for (let j = i + 1; j < once.length; j++) if (overlap(once[i], once[j])) clash2++;
+  ok('...and no widget runs into another one that it did not touch before', clash2 === 0);
+}
 ok('widget names and folders as chosen (11 folders, the Slotcar folder holds the car widgets, every name says what it shows)', (() => { const g = {}; Wd.REGISTRY.filter(d => !d.hidden).forEach(d => (g[d.group] = g[d.group] || []).push(d.label)); return JSON.stringify(g) === JSON.stringify({
   Race: ['Race Clock', 'Race Lap Counter', 'Token Clock', 'Start Lights', 'Race Flag', 'Race Info', 'Leaderboard', 'Heat List', 'Logo'],
   Driver: ['Driver Name', 'Driver Nickname', 'Driver Callsign', 'Driver Avatar', 'Driver Flag', 'Lane Colour'],

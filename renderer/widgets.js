@@ -4,7 +4,7 @@
   const U = 1000;   // a layout is always 1000 units wide; its height follows the proportions
   const GRID = 5;   // grid size in units
   const LANES = 8;  // most lanes a layout can use
-  const MAG = 8;    // how close (in units) another widget's edge pulls a moving widget
+  const MAG = 3;    // how close (in units) another widget's edge pulls a moving widget (it was 8 before 1.46.1, wider than one grid step)
   const MIN = 5;    // smallest widget size (one grid step: 0.5% of the width; it was 40 before 1.34.1)
 
   const Av = typeof module !== 'undefined' ? require('./avatars.js') : root.Avatars; // the standard avatars of the lanes
@@ -500,17 +500,20 @@
 
   // ---- geometry ----
   // Snap a position (or a moving edge): pull to a nearby edge of another widget, otherwise to the grid.
+  // snap: false = free (whole units), true = the grid and the magnets, 'grid' = the grid only (hold Ctrl while dragging).
   function snapMove(pos, size, targets, snap) {
     if (!snap) return Math.round(pos);
+    if (snap === 'grid') return Math.round(pos / GRID) * GRID;
     let best = null;
     for (const t of targets) for (const d of [t - pos, t - (pos + size)]) if (Math.abs(d) <= MAG && (best === null || Math.abs(d) < Math.abs(best))) best = d;
-    return best === null ? Math.round(pos / GRID) * GRID : pos + best;
+    return best === null ? Math.round(pos / GRID) * GRID : Math.round((pos + best) * 100) / 100; // (a hundredth of a unit: no 96.99999999999999 in a saved layout)
   }
   function snapEdge(v, targets, snap) {
     if (!snap) return Math.round(v);
+    if (snap === 'grid') return Math.round(v / GRID) * GRID;
     let best = null;
     for (const t of targets) { const d = t - v; if (Math.abs(d) <= MAG && (best === null || Math.abs(d) < Math.abs(best))) best = d; }
-    return best === null ? Math.round(v / GRID) * GRID : v + best;
+    return best === null ? Math.round(v / GRID) * GRID : v + best; // (v + (t - v) is exactly t, so no rounding is needed here)
   }
   const edgesX = (others, W, g) => [0, W, ...((g && g.v) || []), ...others.flatMap(o => [o.x, o.x + o.w])];
   const edgesY = (others, H, g) => [0, H, ...((g && g.h) || []), ...others.flatMap(o => [o.y, o.y + o.h])];
@@ -531,6 +534,25 @@
     if (r - l < MIN) { if (handle.includes('e')) r = Math.min(W, l + MIN); else l = r - MIN; }
     if (b - t < MIN) { if (handle.includes('s')) b = Math.min(H, t + MIN); else t = b - MIN; }
     return { x: l, y: t, w: r - l, h: b - t };
+  }
+
+  // The lines to draw while dragging: where an edge of the box lines up exactly with an edge of another widget or a guideline
+  // (the page's own edges are left out). { v: [x...], h: [y...] }
+  function snapLines(box, others, W, H, guides) {
+    const near = (a, b) => Math.abs(a - b) < 0.01, hit = (edges, mine) => [...new Set(mine.filter(m => edges.some(e => near(e, m))).map(m => Math.round(m * 100) / 100))];
+    const ex = edgesX(others, W, guides).filter(e => e > 0 && e < W), ey = edgesY(others, H, guides).filter(e => e > 0 && e < H);
+    return { v: hit(ex, [box.x, box.x + box.w]), h: hit(ey, [box.y, box.y + box.h]) };
+  }
+  // Tidy to the grid: every edge goes to the nearest grid line (or the page's edge when that is closer), so widgets that touched still touch.
+  // Returns the new { x, y, w, h } for each widget in the list, in the same order.
+  function tidy(list, W, H) {
+    const edge = (v, max) => { const g = clamp(Math.round(v / GRID) * GRID, 0, max); return Math.abs(max - v) < Math.abs(g - v) ? max : g; };
+    return list.map(w => {
+      let l = edge(w.x, W), r = edge(w.x + w.w, W), t = edge(w.y, H), b = edge(w.y + w.h, H);
+      if (r - l < MIN) { if (l + MIN <= W) r = l + MIN; else l = r - MIN; }
+      if (b - t < MIN) { if (t + MIN <= H) b = t + MIN; else t = b - MIN; }
+      return { x: l, y: t, w: r - l, h: b - t };
+    });
   }
 
   const newWidget = (type, lane, x, y) => {
@@ -604,7 +626,7 @@
     return L;
   }
 
-  const api = { heatListHtml, HEATLIST_OPTIONS, tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, flagImgHtml, avatarHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, LANES, bbox, colorsOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, ALIGNS, titleAlignOf, valueAlignOf, alignClassOf, lapCountOf, lapTotalOn, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, resolveOpt, heightOf, withoutControls, moveWidget, resizeWidget, newWidget, defaultLayout };
+  const api = { heatListHtml, HEATLIST_OPTIONS, tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, flagImgHtml, avatarHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, MAG, LANES, bbox, colorsOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, ALIGNS, titleAlignOf, valueAlignOf, alignClassOf, lapCountOf, lapTotalOn, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, resolveOpt, heightOf, withoutControls, moveWidget, resizeWidget, snapLines, tidy, newWidget, defaultLayout };
   root.Widgets = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

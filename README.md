@@ -2557,3 +2557,16 @@ Good to know:
 2. The depth is made with shadows only, so it works on any colour. The cells of a leaderboard row design stay flat, and the button widgets (Start, Pause and the like) are shallow buttons that move down when you press them.
 3. Not verified in the full Electron window (the real stylesheet was checked in a browser against the real screens). Design option **B** (a side rail) of the Race Setup tabs and the label names are not touched.
 4. The design and the pictures are in `docs/ui-reference/depth`.
+
+## What to try (1.46.1): placing widgets exactly (a smaller magnet, Ctrl for the grid only, pink lines, Tidy to grid)
+
+1. **Customization > Layout Editor**, drag a widget. The magnet that pulls an edge to another widget or a guideline reaches **3 units** now (it was 8, more than one grid step of 5, so near an edge the magnets beat the grid almost everywhere). The grid has the say again unless an edge is really close.
+2. While you drag (or resize), a **pink line** is drawn where an edge of the widget lines up exactly with an edge of another widget or with a guideline. It is gone when you let go.
+3. Hold **Ctrl** (**Cmd** on a Mac) while you drag or resize: the widget snaps to the **grid only**, no magnets, no guidelines. You can press and release it during the drag. With **Snap to grid, widgets and guidelines** unticked nothing snaps (the pink lines still show an exact alignment).
+4. Select a widget (or several) and open **Arrange** in the side panel: **Tidy to grid** moves every edge to the nearest grid line (the page's own edge when that is closer), so widgets that touched still touch. With nothing selected the button is **Tidy all widgets to the grid**. The default layout has 57 widgets and 53 of them had an edge off the grid (a height of 58, for example); one press of Tidy all fixes them. **Undo** puts everything back in one step.
+
+Good to know:
+1. A layout you made before is not touched until you press Tidy. Tidy can make a widget up to 5 units bigger or smaller (58 high becomes 60), because every edge goes to its own nearest grid line; that keeps the gaps between widgets even.
+2. The magnet is still there (3 units): an edge that is not on the grid, as in the default layout, still pulls a widget that comes close. Hold Ctrl or tidy the layout when you want the grid.
+3. Coming next (1.47.0): align and distribute, resizing several widgets at once and mirroring a copy for the other side of the page.
+4. Not verified in the full Electron window (the real editor was driven with the mouse in a browser, with the real stylesheet).

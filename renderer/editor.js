@@ -300,7 +300,13 @@ const ownPictures = w => (w.type === 'fuel' ? ((w.opt || {}).stepImages || []).s
 
 function sideHtml() {
   const sel = state.editing.sel;
-  if (!sel.length) return '<p class="muted">Click a widget to change its settings. Shift-click or drag a rectangle to select several, and Ctrl+A selects all. Add widgets from the list on the left.</p>';
+  // The settings are grouped like folders (Title, Text, Background and border, the widget's own options); they start closed, and a folder stays as you left it
+  const opened = state.sideOpen || (state.sideOpen = new Set()); // (1.29.1: the folders start closed; the ones you open stay open for the next widget)
+  const group = (name, label, inner) => (inner.trim() ? `<details class="sidegroup" data-side="${name}"${opened.has(name) ? ' open' : ''}><summary>${esc(label)}</summary>${inner}</details>` : '');
+  const tidyHint = '<span class="muted hint">Moves every edge to the nearest grid line (5 units), so widgets that touch keep touching. Undo puts them back.</span>';
+  const snapHint = '<p class="muted hint">Hold Ctrl (Cmd on a Mac) while you drag to snap to the grid only. A pink line shows where an edge lines up with another widget or a guideline.</p>';
+  if (!sel.length) return `<p class="muted">Click a widget to change its settings. Shift-click or drag a rectangle to select several, and Ctrl+A selects all. Add widgets from the list on the left.</p>
+    ${group('arrange', 'Arrange', `${snapHint}<div class="row"><button class="btn" id="s-tidyall">Tidy all widgets to the grid</button></div>${tidyHint}`)}`;
   const single = sel.length === 1, w0 = sel[0], defs = sel.map(w => Widgets.def(w.type)), row = state.editing.draft.kind === 'row';
   const common = get => { const v = get(w0); return sel.every(w => get(w) === v) ? v : undefined; };
   const color = (key, label) => {
@@ -340,9 +346,6 @@ function sideHtml() {
     const num = o.type === 'number';
     return `<div class="field"><label for="${id}">${esc(o.label)}</label><input id="${id}" type="${num ? 'number' : 'color'}" ${num ? `min="${o.min ?? 0}" ${o.max ? `max="${o.max}" ` : ''}step="${o.step ?? 0.5}"` : ''} data-opt="${o.key}" value="${esc(v)}"></div>`;
   }).join('');
-  // The settings are grouped like folders (Title, Text, Background and border, the widget's own options); they start closed, and a folder stays as you left it
-  const opened = state.sideOpen || (state.sideOpen = new Set()); // (1.29.1: the folders start closed; the ones you open stay open for the next widget)
-  const group = (name, label, inner) => (inner.trim() ? `<details class="sidegroup" data-side="${name}"${opened.has(name) ? ' open' : ''}><summary>${esc(label)}</summary>${inner}</details>` : '');
   const slider = (id, label, v, min, max, step, hint, off) => `<div class="field"><label for="${id}">${label} <output id="${id}-v">${v}%</output></label>
     <input id="${id}" type="range" min="${min}" max="${max}" step="${step}" value="${v}"${off ? ' disabled' : ''}>${hint ? `<span class="muted hint">${hint}</span>` : ''}</div>`;
   const rad = common(w => Frame.cornerPct(w.radius) ?? '');
@@ -369,6 +372,7 @@ function sideHtml() {
     `<div class="field"><label for="s-radius">Rounded corners</label><input id="s-radius" type="number" min="0" max="50" step="0.5" value="${esc(rad === undefined ? '' : rad)}" placeholder="${rad === undefined ? 'different' : 'as the layout'}"><span class="muted hint">Empty follows the layout. 0 is square, 50 is fully round (on a square widget, a circle).</span></div>`);
   return `<h3>${single ? esc(d0.label) : sel.length + ' widgets selected'}</h3>
     ${allLane ? `<div class="field"><label for="s-lane">Lane</label><select id="s-lane">${lane === undefined ? '<option value="" selected>(different)</option>' : ''}${Array.from({ length: Widgets.LANES }, (_, l) => `<option value="${l}"${l === lane ? ' selected' : ''}>Lane ${l + 1}</option>`).join('')}</select></div>` : ''}
+    ${group('arrange', 'Arrange', `${snapHint}<div class="row"><button class="btn" id="s-tidy">Tidy to grid</button></div>${tidyHint}`)}
     ${row && single ? group('place', 'Place in the row', `<div class="field"><label>0 to ${Widgets.U} across, 0 to ${Widgets.heightOf(state.editing.draft)} down</label><div class="inline">${[['x', 'Left'], ['y', 'Top'], ['w', 'Width'], ['h', 'Height']].map(([k, t]) => `<label>${t} <input type="number" data-geo="${k}" value="${Math.round(w0[k])}" style="width:5em"></label>`).join(' ')}</div></div>`) : ''}
     ${group('title', row ? 'Header' : 'Title', titleBox)}${group('text', 'Text', textBox)}${group('frame', row ? 'Colour' : 'Background and border', frameBox)}${group('opts', d0.optsLabel || d0.label + ' settings', opts)}
     <div class="row"><button class="btn" id="s-dup">Duplicate${allLane ? ' (next lane)' : ''}</button><button class="btn danger" id="s-del">Remove</button></div>`;
@@ -399,7 +403,7 @@ function renderEditor() {
       ${row ? rowBar : `<label>Proportions <select id="e-ratio">${PRESETS.map(p => `<option value="${p[0]}"${preset && preset[0] === p[0] ? ' selected' : ''}>${p[0]}</option>`).join('')}<option value="custom"${preset ? '' : ' selected'}>Custom</option></select></label>
       <span id="e-custom" ${preset ? 'hidden' : ''}><input type="number" id="e-rw" min="1" max="50" value="${esc(d.ratioW)}" aria-label="Width"> : <input type="number" id="e-rh" min="1" max="50" value="${esc(d.ratioH)}" aria-label="Height"></span>`}
       ${row ? '' : `<label title="The corners of every widget: 0 is square, 50 is fully round. Empty keeps the classic small corners. A widget can have its own setting.">Rounded corners <input type="number" id="e-lradius" min="0" max="50" step="0.5" placeholder="classic" value="${esc(Frame.cornerPct(d.radius) ?? '')}" style="width:5.5em"></label>`}
-      <label><input type="checkbox" id="e-snap" ${ed.snap ? 'checked' : ''}> Snap to grid, widgets and guidelines</label>
+      <label title="Hold Ctrl (Cmd on a Mac) while you drag to snap to the grid only"><input type="checkbox" id="e-snap" ${ed.snap ? 'checked' : ''}> Snap to grid, widgets and guidelines</label>
       ${row ? '' : `<button class="btn" id="e-guides" aria-pressed="${hasGuides()}">Guidelines</button><button class="btn" id="e-lanecolors">Lane colours</button><button class="btn" id="e-background" aria-pressed="${Backdrop.has(d)}" title="A picture behind all the widgets, with blur and other filters">Background</button>`}
       <button class="btn" id="e-undo" title="Undo the last change (Ctrl+Z)" disabled>Undo</button><button class="btn" id="e-redo" title="Redo (Ctrl+Y)" disabled>Redo</button>
       <button class="btn primary" id="e-save">${row ? 'Save row design' : 'Save layout'}</button><button class="btn" id="e-back">Back</button><span id="e-msg" class="muted" role="status"></span></div>
@@ -417,9 +421,10 @@ function renderEditor() {
     $('canvas').style.aspectRatio = `${d.ratioW} / ${d.ratioH}`;
     $('canvas').style.backgroundSize = `${10 / U * 100}% ${10 / H * 100}%`;
     const lines = d.guides.v.map(x => `<i class="gl gl-v" style="left:${x / U * 100}%"></i>`).join('') + d.guides.h.map(y => `<i class="gl gl-h" style="top:${y / H * 100}%"></i>`).join('');
+    const sl = ed.snapLines ? ed.snapLines.v.map(x => `<i class="snapl snapl-v" style="left:${x / U * 100}%"></i>`).join('') + ed.snapLines.h.map(y => `<i class="snapl snapl-h" style="top:${y / H * 100}%"></i>`).join('') : ''; // (the pink lines while you drag: an edge lines up)
     const single = ed.sel.length === 1;
     const order = [...d.widgets].sort((a, b) => ed.sel.includes(a) - ed.sel.includes(b));
-    $('canvas').innerHTML = lines + order.map(w => widgetHtml(w, ed.sel.includes(w), single && ed.sel[0] === w, d)).join('');
+    $('canvas').innerHTML = lines + order.map(w => widgetHtml(w, ed.sel.includes(w), single && ed.sel[0] === w, d)).join('') + sl;
     // the background picture is kept as one element (a big picture is not rebuilt on every move of a widget)
     if (!row && Backdrop.has(d)) {
       const key = [d.bgImage, d.bgFit, d.bgBlur, d.bgBrightness, d.bgSaturation];
@@ -486,6 +491,14 @@ function renderEditor() {
     d.widgets.push(...copies);
     ed.lastDup = { srcBox: Widgets.bbox(src), copies }; ed.sel = copies; step(); redraw();
     $('e-msg').textContent = src.some(w => w.lane === Widgets.LANES - 1) ? `Lane ${Widgets.LANES} is the last lane.` : '';
+  };
+
+  // Tidy to grid: the selected widgets, or all of them when nothing is selected
+  const tidySel = () => {
+    const list = ed.sel.length ? ed.sel : d.widgets, nb = Widgets.tidy(list, U, Hh());
+    const changed = list.filter((g, i) => g.x !== nb[i].x || g.y !== nb[i].y || g.w !== nb[i].w || g.h !== nb[i].h).length;
+    if (changed) { list.forEach((g, i) => Object.assign(g, nb[i])); step(); redraw(); }
+    $('e-msg').textContent = changed ? `Tidied ${changed} widget${changed === 1 ? '' : 's'} to the grid.` : 'Everything was already on the grid.';
   };
 
   // toolbar
@@ -642,15 +655,18 @@ function renderEditor() {
     let moved = false; hist.hold(); // a drag is one step, however long it takes
     const move = ev => {
       const dx = (ev.clientX - sx) * k, dy = (ev.clientY - sy) * k;
-      if (handle && group.length === 1) Object.assign(group[0], Widgets.resizeWidget(from[0], handle, dx, dy, others, U, H, ed.snap, d.guides));
+      const mode = !ed.snap ? false : (ev.ctrlKey || ev.metaKey) ? 'grid' : true; // holding Ctrl (Cmd): the grid only, no magnets
+      if (handle && group.length === 1) Object.assign(group[0], Widgets.resizeWidget(from[0], handle, dx, dy, others, U, H, mode, d.guides));
       else {
-        const nb = Widgets.moveWidget(box0, dx, dy, others, U, H, ed.snap, d.guides), ox = nb.x - box0.x, oy = nb.y - box0.y;
+        const nb = Widgets.moveWidget(box0, dx, dy, others, U, H, mode, d.guides), ox = nb.x - box0.x, oy = nb.y - box0.y;
         group.forEach((g, i) => { g.x = from[i].x + ox; g.y = from[i].y + oy; });
       }
+      ed.snapLines = Widgets.snapLines(Widgets.bbox(group), others, U, H, d.guides);
       moved = true; mark(); drawCanvas();
     };
     const up = () => {
       window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up);
+      ed.snapLines = null; if (moved) drawCanvas();
       // moving the copies you just made sets the step for the next duplicate
       if (moved && ed.lastDup && group.length === ed.lastDup.copies.length && group.every(g => ed.lastDup.copies.includes(g))) ed.dupStep = Widgets.stepFrom(ed.lastDup.srcBox, group);
       hist.release();
@@ -731,6 +747,7 @@ function renderEditor() {
     }
     if (b.id === 's-del') removeSel();
     if (b.id === 's-dup') duplicateSel();
+    if (b.id === 's-tidy' || b.id === 's-tidyall') tidySel();
   };
 
   if (editorKeyHandler) document.removeEventListener('keydown', editorKeyHandler);
