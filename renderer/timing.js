@@ -264,6 +264,7 @@
       case 'fuel': { const F = S.eng.fuel, i = S.eng.cars.indexOf(c); return { html: F && F.on ? Wd.fuelHtml(S.eng.fuelOf(i, t), S.eng.tankOf ? S.eng.tankOf(i) : F.tank, opt) : '–' }; }
       case 'tyre': return Ww.tyreContent(opt, c, S); // the tyre of the car (the weather: a pit stop changes it)
       case 'tyrelife': return Tyw.content(opt, c, S, t); // how much life the tyres of the car have left (Tyre Wear)
+      case 'tyresets': return Tyw.setsContent(opt, c, S, t); // the sets that are left of every tyre (Tyre Wear with sets)
       case 'wxforecast': return Ww.forecastContent(opt, S, t); // the weather now, and what comes next
       case 'wxconditions': return Ww.conditionsContent(opt, S); // track and air temperature, wind speed and direction
       case 'currentdriver': { // Endurance Race: the driver at the wheel (any race: the driver of the car), and how long he has been there

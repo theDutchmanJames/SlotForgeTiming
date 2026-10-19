@@ -68,8 +68,13 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     say('the tyre wear system has the standard settings of the code as its defaults (so a record and the engine mean the same)', fs.filter(x => x.default !== undefined).every(x => x.default === D[x.key]) && by('unit').default === 'lap' && by('changeSeconds').default === 4 && by('warn').default === 25 && by('crit').default === 10);
     say('...two special fields: the tyre table and the weather table', by('tyres').type === 'tyretable' && by('mult').type === 'wxmult');
     say('...the levers are asked only when the effect is on, the penalty points only for that rule at 0%', shown('eUse', { effect: 'on' }) && !shown('eUse', { effect: 'off' }) && shown('eTank', { effect: 'on' }) && shown('zeroPoints', { zero: 'points' }) && !shown('zeroPoints', { zero: 'retire' }) && !shown('zeroPoints', { zero: 'lap' }) && !shown('zeroPoints', { zero: 'none' }));
-    say('...the groups: basics, the tyres, the weather, what worn tyres do, pit stops, where it applies, warning colours', run('state.schema.tyrewearsystems.groups').map(g => g.id).join() === 'basics,tyres,weather,effect,pit,where,warn' && fs.every(x => run('state.schema.tyrewearsystems.groups').some(g => g.id === x.group)));
+    say('...the groups: basics, the tyres, the weather, what worn tyres do, pit stops, the sets of tyres, where it applies, warning colours', run('state.schema.tyrewearsystems.groups').map(g => g.id).join() === 'basics,tyres,weather,effect,pit,sets,where,warn' && fs.every(x => run('state.schema.tyrewearsystems.groups').some(g => g.id === x.group)));
     say('...the choices are those of the code (zero rules, the ways to count)', same_(by('zero').options, TW().ZERO) && by('unit').options.map(o => o[0]).join() === 'lap,distance' && by('stop').options.map(o => o[0]).join() === 'overlap,add'); }
+
+  { const fs = run('state.schema.tyrewearsystems.fields'), by = k => fs.find(x => x.key === k), shown = (key, r) => run('isShown')(by(key), k => r[k]);
+    say('1.41.0: the sets of tyres: a choice of who owns the sets (no limit, each car, the team) and a row of six numbers', by('setsMode').group === 'sets' && same_(by('setsMode').options, TW().SETS_MODES) && by('setsMode').default === 'car' && by('sets').type === 'tyresets' && by('sets').group === 'sets');
+    say('...the numbers are asked only when there is a limit (each car, or the team)', shown('sets', { setsMode: 'car' }) && shown('sets', { setsMode: 'team' }) && !shown('sets', { setsMode: 'none' }));
+    say('...and the hint says what happens when a set is gone', by('sets').hint.includes('can not be fitted or queued') && by('sets').hint.includes('0 means that tyre is not allowed')); }
 
   // ---------- the form ----------
   run("openForm('tyrewearsystems', null)"); await wait(30);
@@ -79,7 +84,9 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     say('...ready-made systems to start from: Standard, Sprint and Endurance', ['standard', 'sprint', 'endurance'].every(k => h.includes(`data-twpreset="${k}"`)));
     say('...the grip curve of one tyre (the Soft) with what the numbers do', h.includes('id="tw-curve"') && h.includes('<svg viewBox="0 0 440 235"') && h.includes('+5% new') && h.includes('cliff at 30%') && h.includes('−30% at 0%') && h.includes('<strong>Soft.</strong>'));
     say('...the weather table: four weathers by dry, Intermediate and Wet tyres (12 numbers), as in the system', (h.match(/data-twm="/g) || []).length === 12 && /data-twm="wet" data-twmc="dry"[^>]*value="2.5"/.test(h) && /data-twm="wet" data-twmc="wet"[^>]*value="0.5"/.test(h));
-    say('...the other fields are there too: the unit, the effect, the rule at 0%, the time to change tyres, the warning levels', ['f-unit', 'f-effect', 'f-zero', 'f-changeSeconds', 'f-warn', 'f-crit', 'f-practice', 'f-qualifying', 'f-stop'].every(id => h.includes(`id="${id}"`))); }
+    say('...the other fields are there too: the unit, the effect, the rule at 0%, the time to change tyres, the warning levels', ['f-unit', 'f-effect', 'f-zero', 'f-changeSeconds', 'f-warn', 'f-crit', 'f-practice', 'f-qualifying', 'f-stop'].every(id => h.includes(`id="${id}"`)));
+    say('1.41.0: the sets: a row of six numbers, one per tyre, 2 2 2 1 2 2 to begin with (a set per car)', h.includes('id="tw-sets"') && (h.match(/data-tws="/g) || []).length === 6 && /data-tws="H"[^>]*value="2"/.test(h) && /data-tws="SS"[^>]*value="1"/.test(h) && /data-tws="W"[^>]*value="2"/.test(h) && /<option value="car" selected>/.test(h));
+    say('...with the choice of who owns them: no limit, each car, the team', ['none', 'car', 'team'].every(k => h.includes(`<option value="${k}"`)) && h.includes('Each car has its own sets') && h.includes('The team shares its sets')); }
   { const click = d => run('dlg').onclick({ target: { dataset: d, closest: () => ({ dataset: d }), tagName: 'BUTTON' } });
     run('dlg').onclick && click({ twpreset: 'sprint' });
     say('the Sprint button fills the table with the Sprint numbers (a Soft wears 8% and lasts 13 laps)', /data-tw="S" data-twk="wear"[^>]*value="8"/.test(E('tw-box').innerHTML) && E('tw-box').innerHTML.includes('>13 laps<'));
@@ -98,16 +105,19 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     run('dlg').onchange({ target: { id: 'f-unit', value: 'lap', dataset: {}, tagName: 'SELECT' } }); await wait(10);
     say('...and back to laps', E('tw-box').innerHTML.includes('Wear per lap (%)') && /data-twlast="S">10 laps</.test(E('tw-box').innerHTML) && /data-twlast="H">100 laps</.test(E('tw-box').innerHTML)); }
   { run('dlg').oninput({ target: { dataset: { twm: 'wet', twmc: 'dry' }, value: '4' } });
+    run('dlg').oninput({ target: { dataset: { tws: 'SS' }, value: '3' } }); run('dlg').oninput({ target: { dataset: { tws: 'W' }, value: '0' } });
     const set = (k, v) => { E('f-' + k).value = v; };
-    set('name', 'My tyres'); set('unit', 'lap'); set('effect', 'on'); set('eUse', 'on'); set('eRate', 'on'); set('eTank', 'off'); set('zero', 'points'); set('zeroPoints', '3'); set('changeSeconds', '5'); set('stop', 'add'); set('practice', 'on'); set('qualifying', 'off'); set('warn', '20'); set('crit', '30');
+    set('setsMode', 'team'); set('name', 'My tyres'); set('unit', 'lap'); set('effect', 'on'); set('eUse', 'on'); set('eRate', 'on'); set('eTank', 'off'); set('zero', 'points'); set('zeroPoints', '3'); set('changeSeconds', '5'); set('stop', 'add'); set('practice', 'on'); set('qualifying', 'off'); set('warn', '20'); set('crit', '30');
     await E('frm').onsubmit({ preventDefault() {} });
     say('a red level above the amber level is refused, and nothing is saved', E('err').textContent.includes('critical (red) level must be at or below') && added.length === 0);
     set('crit', '8'); await E('frm').onsubmit({ preventDefault() {} }); await wait(20);
     const r = (added[0] || [])[1] || {};
     say('saving keeps the table (cleaned: every number a number), the weather table, and the settings', added.length === 1 && added[0][0] === 'tyrewearsystems' && r.name === 'My tyres' && r.tyres.S.wear === 10 && r.tyres.S.bonus === 12 && r.tyres.H.wear === 1 && r.mult.wet.dry === 4 && r.mult.wet.wet === 0.5 && r.unit === 'lap' && r.zero === 'points' && r.zeroPoints === 3 && r.changeSeconds === 5 && r.stop === 'add' && r.practice === 'on' && r.warn === 20 && r.crit === 8);
+    say('1.41.0: ...and the sets: the way they are shared and the number of every tyre (cleaned)', r.setsMode === 'team' && same_(r.sets, { H: 2, M: 2, S: 2, SS: 3, INT: 2, W: 0 }) && TW().clean(r).sets.mode === 'team' && TW().clean(r).sets.n.SS === 3 && TW().clean(r).sets.n.W === 0);
     say('...and the engine reads it back as the same numbers (record, clean, engine)', (() => { const c = TW().clean(r, { laneLen: [15], disp: 'm' }); return c.tyres.S.wear === 10 && c.changeMs === 5000 && c.stop === 'add' && c.practice === true && c.qualifying === false && c.warn === 20 && c.crit === 8 && c.mult.wet.dry === 4; })()); }
   { run("openForm('tyrewearsystems', " + JSON.stringify({ id: 'x1', name: 'Old', unit: 'distance', tyres: { S: { wear: 30, bonus: 0, cliff: 30, hind: 30 } } }) + ")"); await wait(30);
     const h = E('dlg').innerHTML;
+    say('1.41.0: a system from before the sets (nothing about sets in the record) opens as "No limit": what it does', /<select id="f-setsMode">/.test(h) && !/<option value="(car|team)" selected>/.test(h) && !/<option value="none" selected>/.test(h));
     say('editing a system shows its numbers (a Soft at 30% per 100 m lasts 333 m), and a tyre it does not have a number for has the Standard one', h.includes('Wear per 100 m (%)') && h.includes('>333 m<') && /data-tw="H" data-twk="wear"[^>]*value="2"/.test(h) && /data-tw="S" data-twk="wear"[^>]*value="30"/.test(h)); }
 
   // ---------- the race window ----------
@@ -159,7 +169,63 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     say('...the amber level is amber, the red level red, and a worn out set says Box now', (() => { car(0).twLife = 20; p.update(); const a = parts[0].state.textContent; car(0).twLife = 6; p.update(); const b = parts[0].state.textContent; car(0).twLife = 0; p.update(); const c = parts[0].state.textContent; car(0).twLife = 91; p.update(); return a === 'Driving' && b === 'Box soon' && c === 'Box now' && parts[0].life.textContent === '91%'; })());
     const plain = { hidden: false, innerHTML: '', querySelector: () => mk() }; const q = run('TyrePanel').build(plain, { eng: () => eng(), lanes: [0], phase: () => 'running', wear: false, weather: false, setTyre: () => {} });
     say('a race without tyre wear builds the folder as before', !plain.innerHTML.includes('<th>Life</th>') && plain.innerHTML.includes('<th>Tyre choice</th>') && !!q); }
+  // ---------- 1.41.0: the sets, the next stop, the correction ----------
+  { key('s'); await until(() => phase() === 'finished', 3000);
+    store.tyrewearsystems = [{ ...rec, setsMode: 'car', sets: { H: 2, M: 2, S: 2, SS: 1, INT: 2, W: 2 } }];
+    await openRace(setupTw, store.tracks[0], rows(1, 2)); await wait(50);
+    say('a race with a system that has sets gives the engine the way they are shared and the numbers', eng().tyrewear.sets.mode === 'car' && eng().tyrewear.sets.n.SS === 1 && eng().tyrewear.sets.n.H === 2);
+    say('...every car starts on a set of its tyre: car 1 (Soft) has 1 Soft left, car 2 (Medium) has 1 Medium left', same_(eng().cars[0].twSets, { H: 2, M: 2, S: 1, SS: 1, INT: 2, W: 2 }) && same_(eng().cars[1].twSets, { H: 2, M: 1, S: 2, SS: 1, INT: 2, W: 2 }));
+    { const h = E('typanel').innerHTML;
+      say('the Tyre Change folder has the next stop, the sets left of every car and the correction of the Race Director', ['<th>Next stop</th>', '<th>Sets left</th>', '<th>Tyres now</th>', 'data-ty-next="0"', 'data-ty-next="1"', 'Correct the tyres now', 'data-ty-fix="1"', 'data-ty-fixlane', 'data-ty-fixtyre', 'data-sc="SS"'].every(x => h.includes(x)));
+      say('...the list of the next stop starts with "Same" and has the six tyres; the correction does too', /<select data-ty-next="0"[^>]*><option value="">Same<\/option><option value="H">Hard<\/option>/.test(h) && h.includes('<option value="W">Wet</option>'));
+      say('...it is not the "Tyre choice" list any more (that is the correction below the table)', !h.includes('<th>Tyre choice</th>') && !h.includes('data-ty-own')); }
+    key(' '); await until(() => phase() === 'running', 3000); await wait(60);
+    api.liveCommand({ type: 'tyrenext', lane: 0, tyre: 'SS' }); await wait(30);
+    say('the Race Director page queues a tyre for the next stop of a lane: the race window keeps it', eng().cars[0].twNext === 'SS' && eng().twOf(0, 0).queued === 'SS' && eng().twOf(0, 0).next.kind === 'queued');
+    api.liveCommand({ type: 'tyrenext', lane: 0, tyre: '' }); await wait(30);
+    say('...an empty tyre is "the same tyre" and clears it', eng().cars[0].twNext === '');
+    api.liveCommand({ type: 'tyrenext', lane: 0, tyre: 'SS' }); api.liveCommand({ type: 'tyrenext', lane: 0, tyre: 'XX' }); api.liveCommand({ type: 'tyrenext', lane: 7, tyre: 'H' }); api.liveCommand({ type: 'tyrenext' }); await wait(30);
+    say('...a tyre that is no tyre, a lane that is not there, or no tyre at all is ignored', eng().cars[0].twNext === 'SS' && eng().cars[1].twNext !== 'XX' && eng().cars.length === 2);
+    { const wasPhase = phase(); run("live.phase = 'review'"); run('live.actions.tyreNext')(1, 'H'); const kept = eng().cars[1].twNext || ''; run("live.phase = 'running'");
+      say('in the review after the race nothing can be queued any more', kept === '' && wasPhase === 'running'); }
+    say('...a race without weather can queue every tyre, Intermediate and Wet too', (run('live.actions.tyreNext')(1, 'W'), eng().cars[1].twNext === 'W') && (run('live.actions.tyreNext')(1, ''), eng().cars[1].twNext === ''));
+    { const q = eng().cars[1]; q.twSets.H = 0; run('live.actions.tyreNext')(1, 'H'); say('...a tyre with no sets left can not be queued', !q.twNext); q.twSets.H = 2; }
+    await wait(400); // (the race window shares its state at most about ten times a second: wait for the message that has the queue)
+    say('what is shared with the other windows: the box of every car and what is queued', sent.dyn && sent.dyn.cars.every(c => c.twSets && typeof c.twSets.S === 'number') && sent.dyn.cars[0].twNext === 'SS' && 'twTeams' in sent.dyn);
+    { const viewer = vm.runInContext('RaceEngine', ctx).createRace({ ...sent.stat.cfg, entries: sent.stat.cfg.entries.map(e => ({ ...e })) });
+      say('...a window that follows rebuilds the sets from the settings', !!viewer.tyrewear && viewer.tyrewear.sets.mode === 'car' && !!viewer.twOf(0, 0).sets); }
+    { // the folder's table with sets, drawn from the live engine (a stand-in for the page)
+      const queued = [], fixed = []; const part = () => ({ textContent: '', style: {}, dataset: {}, className: '', classList: { add() {}, remove() {} } });
+      const parts = {}, chips = {}, nx = {}, trs = {};
+      [0, 1].forEach(l => { parts[l] = {}; ['who', 'tyre', 'life', 'bar', 'left', 'effect', 'state', 'nnote'].forEach(k => { parts[l][k] = part(); });
+        chips[l] = {}; ['H', 'M', 'S', 'SS', 'INT', 'W'].forEach(c => { const n = part(); chips[l][c] = { classes: new Set(), classList: { toggle(k, on) { if (on) chips[l][c].classes.add(k); else chips[l][c].classes.delete(k); } }, querySelector: () => n, n }; });
+        nx[l] = { value: '', disabled: false, options: ['', 'H', 'M', 'S', 'SS', 'INT', 'W'].map(v => ({ value: v, textContent: '', disabled: false, hidden: false })) };
+        trs[l] = { dataset: {}, classList: { add() {}, remove() {} }, querySelector: sel => { const m = /data-ty="(\w+)"/.exec(sel), c = /data-sc="(\w+)"/.exec(sel); return m ? parts[l][m[1]] : c ? chips[l][c[1]] : /data-ty-next/.test(sel) ? nx[l] : null; } }; });
+      const wxn = part(), fix = { disabled: false }, laneSel = { value: '1' }, tyreSel = { value: 'H' };
+      const box = { hidden: true, innerHTML: '', querySelector: sel => { const t = /tr\[data-lane="(\d+)"\]/.exec(sel); return t ? trs[t[1]] : /wxnote/.test(sel) ? wxn : /data-ty-fix\]/.test(sel) ? fix : /fixlane/.test(sel) ? laneSel : /fixtyre/.test(sel) ? tyreSel : null; } };
+      const p = run('TyrePanel').build(box, { eng: () => eng(), lanes: [0, 1], phase: () => 'running', now: () => performance.now(), wear: true, sets: true, weather: false, setTyre: (l, c, sv) => fixed.push([l, c, sv]), queue: (l, c) => queued.push([l, c]) }); p.update();
+      say('the table shows the sets that are left of every tyre (dim at 0), and the tyre that is queued', chips[0].S.n.textContent === '1' && chips[0].H.n.textContent === '2' && chips[1].M.n.textContent === '1' && nx[0].value === 'SS' && nx[1].value === '');
+      say('...the choices of the next stop say how many sets there are, hide the tyre the car is on, and the note says who decided', nx[0].options[0].textContent === 'Same (Soft · 1 set)' && nx[0].options[4].textContent === 'Supersoft (1 set)' && nx[0].options[3].hidden === true && nx[1].options[2].hidden === true && parts[0].nnote.textContent === 'Queued by the Race Director' && parts[1].nnote.textContent === 'Nothing queued');
+      eng().cars[0].twSets.SS = 0; eng().cars[0].twSets.INT = 0; p.update();
+      say('...a tyre with no sets left is dim and can not be picked (and the queued tyre stays in the list)', chips[0].SS.classes.has('zero') && chips[0].INT.classes.has('zero') && !chips[0].H.classes.has('zero') && nx[0].options[5].disabled === true && nx[0].options[4].disabled === false && nx[1].options[4].disabled === false);
+      eng().cars[0].twSets.SS = 1; eng().cars[0].twSets.INT = 2;
+      box.onchange({ target: { dataset: { tyNext: '1' }, value: 'H', disabled: false, blur() {} } });
+      say('picking a tyre in the next stop list sends the lane and the tyre', same_(queued, [[1, 'H']]));
+      box.onchange({ target: { dataset: { tyNext: '1' }, value: '', disabled: false, blur() {} } });
+      box.onchange({ target: { dataset: { tyNext: '1' }, value: 'S', disabled: true, blur() {} } });
+      say('...the list that is shut (disabled) sends nothing, and "Same" sends an empty tyre', same_(queued, [[1, 'H'], [1, '']]));
+      box.onclick({ target: { closest: s => (/data-ty-fix/.test(s) ? { disabled: false } : null) } });
+      box.onclick({ target: { closest: () => null } });
+      say('the correction: Change sends the lane and the tyre that are chosen below the table, with the tick box; a click elsewhere does nothing', same_(fixed, [[1, 'H', false]]));
+      eng().cars[0].blockAt = null; run("live.phase = 'review'"); const q = run('TyrePanel').build(box, { eng: () => eng(), lanes: [0, 1], phase: () => 'review', now: () => performance.now(), wear: true, sets: true, weather: false, setTyre() {}, queue() {} }); q.update(); run("live.phase = 'running'");
+      say('...after the race the next stop lists and the Change button are shut', nx[0].disabled === true && fix.disabled === true);
+      const fitting = eng().twOf; eng().twOf = (i, t) => ({ ...fitting(i, t), fitting: 'SS', fitLeft: 1500 }); p.update(); eng().twOf = fitting;
+      say('...a car whose tyres are being changed has its list shut and says so', nx[0].disabled === true && parts[0].nnote.textContent === 'The tyres are being changed now' && /^Fitting Supersoft/.test(parts[0].state.textContent));
+      p.update();
+      say('...and it opens again when the tyres are on', nx[0].disabled === false && parts[0].nnote.textContent === 'Queued by the Race Director'); }
+  }
+
   key('s'); await until(() => phase() === 'finished', 3000); await wait(100);
 
-  console.log(fails ? fails + ' TYRE WEAR SCREEN TESTS FAILED' : 'ALL TYRE WEAR SCREEN TESTS PASSED'); process.exit(fails ? 1 : 0);
+  console.log(fails ?  fails + ' TYRE WEAR SCREEN TESTS FAILED' : 'ALL TYRE WEAR SCREEN TESTS PASSED'); process.exit(fails ? 1 : 0);
 })();

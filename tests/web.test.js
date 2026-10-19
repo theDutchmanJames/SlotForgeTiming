@@ -73,6 +73,16 @@ const srv = createServer({ root: path.join(R, 'renderer'), appRoot: R, schema: {
     ok('...a lane that is not a whole number from 0 to 15, a tyre that is not one of the six (I, Wet, int, h, another letter, a number), or a save that is not true or false is refused by the server and never reaches the race (16 tries)', cmds.length === n);
     const S = require('../server.js');
     ok('...the check itself is exported, and looks only at the tyre command', S.tyreCommand({ type: 'tyre', lane: 2, tyre: 'SS', save: true }) && S.tyreCommand({ type: 'tyre', lane: 0, tyre: 'M' }) && S.tyreCommand({ type: 'tyre', lane: 0, tyre: 'W' }) && S.tyreCommand({ type: 'tyre', lane: 0, tyre: 'INT' }) && !S.tyreCommand({ type: 'tyre', lane: 2, tyre: 'I' }) && !S.tyreCommand({ type: 'tyre', lane: 16, tyre: 'H' }) && !S.tyreCommand({ type: 'tyre', lane: 0, tyre: 'H', save: 'true' }) && S.tyreCommand({ type: 'start' }) && S.tyreCommand({ type: 'weather', state: 'hail' })); }
+  { // 1.41.0: the Race Director queues a tyre for the next stop (Tyre Wear): a lane and one of the six tyres, or an empty tyre for "the same"
+    const before = cmds.length, send = async c => { await api.liveCommand(c); await new Promise(r => setTimeout(r, 15)); };
+    for (const c of [{ type: 'tyrenext', lane: 0, tyre: 'H' }, { type: 'tyrenext', lane: 3, tyre: 'SS' }, { type: 'tyrenext', lane: 15, tyre: 'INT' }, { type: 'tyrenext', lane: 1, tyre: '' }]) await send(c);
+    ok('the next-stop commands (a tyre, or the same) reach the race after the login', cmds.slice(before).map(c => c.lane + c.tyre).join() === '0H,3SS,15INT,1' && cmds.slice(before).every(c => c.type === 'tyrenext'));
+    const n = cmds.length;
+    for (const bad of [{ type: 'tyrenext' }, { type: 'tyrenext', lane: 0 }, { type: 'tyrenext', tyre: 'H' }, { type: 'tyrenext', lane: 16, tyre: 'H' }, { type: 'tyrenext', lane: -1, tyre: 'H' }, { type: 'tyrenext', lane: 1.5, tyre: 'H' }, { type: 'tyrenext', lane: '1', tyre: 'H' }, { type: 'tyrenext', lane: 0, tyre: 'I' }, { type: 'tyrenext', lane: 0, tyre: 'h' }, { type: 'tyrenext', lane: 0, tyre: 5 }, { type: 'tyrenext', lane: 0, tyre: null }, { type: 'tyrenext', lane: 0, tyre: ['H'] }]) await send(bad);
+    ok('...a lane that is not a whole number from 0 to 15, or a tyre that is not one of the six (or empty), is refused by the server and never reaches the race (12 tries)', cmds.length === n);
+    const S = require('../server.js');
+    ok('...the check itself is exported, and looks only at the next-stop command', S.tyreNextCommand({ type: 'tyrenext', lane: 2, tyre: 'SS' }) && S.tyreNextCommand({ type: 'tyrenext', lane: 0, tyre: '' }) && !S.tyreNextCommand({ type: 'tyrenext', lane: 0, tyre: 'X' }) && !S.tyreNextCommand({ type: 'tyrenext', lane: 0 }) && S.tyreNextCommand({ type: 'tyre', lane: 99 }) && S.tyreNextCommand({ type: 'pause' }));
+    ok('...it is one of the commands the Race Director page may send, and the tyre command does not accept an empty tyre (that is only for the next stop)', typeof S.createServer === 'function' && !S.tyreCommand({ type: 'tyre', lane: 0, tyre: '' })); }
   { // 1.9.0: the swaps of an Endurance Race can be pressed on the Race Director page (a lane, and for the driver who steps in the id of a driver)
     const before = cmds.length, send = async c => { await api.liveCommand(c); await new Promise(r => setTimeout(r, 15)); };
     for (const c of [{ type: 'swap', lane: 0 }, { type: 'swap', lane: 3, to: 'd2' }, { type: 'swapnext', lane: 1, id: 'd3' }]) await send(c);
@@ -101,7 +111,7 @@ const srv = createServer({ root: path.join(R, 'renderer'), appRoot: R, schema: {
     const S = require('../server.js');
     ok('...the check itself is exported, and looks only at the pad command', S.padCommand({ type: 'pad', group: 'laps', lane: 2, amount: 1 }) && !S.padCommand({ type: 'pad', group: 'laps', lane: 99, amount: 1 }) && S.padCommand({ type: 'start' }) && S.padCommand({ type: 'damage', lane: 99 })); }
   settings.netPassword = 'new'; await api.liveCommand({ type: 'stop' });
-  ok('after the password changes the login is gone', cmds.length === 2 + 8 + 5 + 4 + 6 + 3 + 3 + 6 && api.directorAuthed() === false);
+  ok('after the password changes the login is gone', cmds.length === 2 + 8 + 5 + 4 + 6 + 4 + 3 + 3 + 6 && api.directorAuthed() === false);
   await srv.close();
   console.log(fails ? fails + ' WEB TESTS FAILED' : 'ALL WEB TESTS PASSED'); process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('ERROR', e.stack); process.exit(1); });

@@ -81,6 +81,7 @@
     const WXC = cfg.weather && (type === 'race' || type === 'timed') ? cfg.weather : null, WXH = WXC && F.on && WXC.hinder ? WXC : null;
     // Tyre Wear (cfg.tyrewear, see tyrewear.js): a race or a timed race (heats are those too), and a practice or qualifying when the system says so. The 0% rule and the display need no fuel; the grip curve (TWH) works through the fuel rules, like Balance of Power and the weather.
     const TWC = cfg.tyrewear && cfg.tyrewear.on && (type === 'race' || type === 'timed' || (type === 'practice' && cfg.tyrewear.practice) || (type === 'qualifying' && cfg.tyrewear.qualifying)) ? cfg.tyrewear : null, TWH = TWC && F.on && TWC.effect ? TWC : null;
+    const SETS = TWC && TWC.sets && (TWC.sets.mode === 'car' || TWC.sets.mode === 'team') && TWC.sets.n ? TWC.sets : null; // Tyre Wear sets (1.41.0): null = no limit, every stop gives a fresh set
     const hasFx = c => !!((BP && c.bop) || (WXH && c.wx) || (TWH && c.tw));
     // what the car gets of the fuel rules now: from Balance of Power (car.bop), from the weather (car.wx) and from its tyres (car.tw), all signed whole percentages (negative: hindered), added up lever by lever
     const fx = c => (!hasFx(c) ? ONE : (WXH && c.wx) || (TWH && c.tw) ? B.mix([[BP && c.bop ? c.bop : 0, BP], [WXH && c.wx ? c.wx : 0, WXH && WXH.levers], [TWH && c.tw ? c.tw : 0, TWH && TWH.levers]]) : B.factors(c.bop, BP));
@@ -106,6 +107,7 @@
       events: [], // what happened, in order: { type, car, t } (outoffuel, retired, pitstart, fuelfull, pitend, call, callend...)
       calls: [] // calls from a lane to the Race Director: { id, car, t, open, how }; how a call ended: 'penalty' or 'dismiss'
     };
+    R.twTeams = {}; // the sets that are left of a team that shares them (Tyre Wear): { teamId: { H: 2, M: 1, ... } }
     let callId = 0;
     const log = (type, i, t, data) => R.events.push({ type, car: i, t, ...data });
 
@@ -225,12 +227,12 @@
       const c = R.cars[i];
       if (c.blockAt === null || c.pit || t - c.blockAt < F.pitHold) return;
       const quick = !!TWC && TWC.changeMs <= 0; // Tyre Wear without a time to change tyres: the fresh set is on from the start of the stop
-      const tyres = TWC && !quick ? null : wxTyres(c); // (the tyres are changed when the stop starts; with a time to change tyres, when that time is up: twCheck)
-      if (quick) { c.twLife = 100; twRefresh(c); }
+      const tyres = TWC ? null : wxTyres(c); // (the tyres are changed when the stop starts; with Tyre Wear: at once when it takes no time, else when the time is up: twCheck)
+      const fit = quick ? twFit(c) : null; // (the new set is on before the stop works out the refuelling speed and the tank)
       c.pit = { start: c.blockAt + F.pitHold, fuel0: c.fuel, full: false, ...(hasFx(c) ? { rate: F.rate * fx(c).rate, tank: tankOf(c) } : {}) }; // (the refuelling speed and the tank of a car with Balance of Power are fixed for the whole stop)
       log('pitstart', i, c.pit.start);
       if (tyres) log('tyres', i, c.pit.start, tyres);
-      if (quick) { c.twStops++; c.twDoneAt = c.blockAt; log('tyrefresh', i, c.pit.start, { tyre: c.tyre, lap: c.laps.length, ms: 0 }); }
+      if (fit) twFitLog(i, c.pit.start, 0, fit);
     }
     function fuelAt(i, t) {
       const c = R.cars[i];
@@ -333,6 +335,8 @@
       if (!c || !to || R.status === 'finished' || (WXC && to.cls !== 'dry')) return false;
       const was = W.cleanTyre(c.tyreOwn); if (to.code === was) return false;
       const onOwn = W.cleanTyre(c.tyre) === was; c.tyreOwn = to.code; if (onOwn) c.tyre = to.code;
+      if (onOwn && SETS) { twGive(c, was); twTake(c, to.code); } // (a correction: the set on the car was another one than the box said)
+      if (c.twNext === to.code) c.twNext = '';
       if (WXC) {
         const k = W.need(R.wxState, c.tyre, c.tyreOwn); // (a car whose own tyre was a Wet one is on a dry one now: in the rain it has to change, like any car on the wrong tyres when the rain starts)
         if (!k) c.wxDue = null; else if (!c.wxDue) c.wxDue = { kind: k, lap: c.laps.length + WXC.react };
@@ -389,24 +393,83 @@
       }
       return Math.max(c.pit.start, from + TWC.changeMs);
     }
-    // the car stands in the pits and the time has come: the fresh set goes on (in weather, the tyre the weather asks for now)
+    // ---- the sets (1.41.0): the box of a car or a team, the tyre queued for the next stop, and which set goes on ----
+    const twKey = c => (SETS && SETS.mode === 'team' && c.teamId ? String(c.teamId) : null);
+    // the sets that are left in the box of car c (the box of its team when the team shares them); null: no limit
+    function twPool(c) {
+      if (!SETS) return null;
+      const k = twKey(c);
+      if (k) return R.twTeams[k] || (R.twTeams[k] = { ...SETS.n });
+      return c.twSets || (c.twSets = { ...SETS.n });
+    }
+    const twTake = (c, code) => { const p = twPool(c); if (p) p[code] = Math.max(0, (Number(p[code]) || 0) - 1); };
+    const twGive = (c, code) => { const p = twPool(c); if (p) p[code] = (Number(p[code]) || 0) + 1; };
+    // the tyre the weather asks for at the next stop (Intermediate or Wet), or '' when it asks for none (a dry compound goes on: the one that was queued, or the same one)
+    function twForced(c) {
+      if (!WXC) return '';
+      const to = W.tyreFor(WXC, R.wxState, c.tyreOwn);
+      return W.classOf(to) === 'dry' ? '' : to;
+    }
+    // what goes on at the next stop of car c: { code, kind: 'weather' | 'queued' | 'same' }
+    function twNextOf(c) {
+      const f = twForced(c);
+      if (f) return { code: f, kind: 'weather' };
+      if (c.twNext) return { code: c.twNext, kind: 'queued' };
+      return { code: W.cleanTyre(c.tyreOwn), kind: 'same' };
+    }
+    // the tyre that goes on when the tyres are changed now (null: there is no set to fit)
+    function twWill(c) {
+      const f = twForced(c), pk = Tw.pickFit(twPool(c), f || W.cleanTyre(c.twNext || c.tyreOwn), c.tyreOwn, !!f, !WXC);
+      return pk ? pk.code : null;
+    }
+    // The Race Director queues a tyre for the next stop ('' or the tyre the car races on: nothing queued, the same tyre goes on). With weather only a dry compound can be queued (the rain's tyres come from the weather),
+    // and with sets only a tyre that has a set left. The weather's Intermediate or Wet tyres go on before a queued tyre, which stays queued for the stop after that.
+    R.twQueue = (i, code, t) => {
+      const c = R.cars[i]; if (!TWC || !c || R.status === 'finished') return false;
+      const was = c.twNext || '';
+      const to = code ? W.tyreOf(code) : null;
+      if (code && (!to || (WXC && to.cls !== 'dry'))) return false;
+      const want = !to || to.code === W.cleanTyre(c.tyreOwn) ? '' : to.code; // (queueing the tyre it is on is the same as nothing queued)
+      const p = twPool(c);
+      if (want && p && (Number(p[want]) || 0) <= 0) return false; // (no set left of it)
+      if (want === was) return false;
+      c.twNext = want;
+      log('tyrequeue', i, t || 0, { tyre: want, was, lap: c.laps.length, by: 'director' });
+      return true;
+    };
+    // The set goes on: the tyre that is wanted (weather first, then the queued one, then the same tyre), or one that is left when there is none of it. Gives what the log says (null: nothing changed).
+    function twFit(c) {
+      const forced = twForced(c), ask = forced || W.cleanTyre(c.twNext || c.tyreOwn), p = twPool(c);
+      const pick = Tw.pickFit(p, ask, c.tyreOwn, !!forced, !WXC);
+      if (!pick) { c.twDoneAt = c.blockAt; return { none: true, asked: ask, tyre: c.tyre }; } // (no set of what is wanted and nothing else to fit: the stop does nothing for the tyres)
+      let said = null;
+      if (p) p[pick.code] = Math.max(0, (Number(p[pick.code]) || 0) - 1);
+      if (pick.code !== c.tyre) { const was = c.tyre; c.tyre = pick.code; said = { tyre: pick.code, was, state: R.wxState, lap: c.laps.length }; }
+      if (!forced) { c.tyreOwn = pick.code; c.twNext = ''; } // (the tyre it races on from now, and the queue is used up)
+      if (WXC) { if (c.wxDue && !W.need(R.wxState, c.tyre, c.tyreOwn)) c.wxDue = null; wxRefresh(c); }
+      c.twLife = 100; c.twStops++; c.twDoneAt = c.blockAt; twRefresh(c);
+      return { tyre: c.tyre, said, ...(pick.asked ? { asked: pick.asked } : {}) };
+    }
+    function twFitLog(i, at, ms, fit) {
+      const c = R.cars[i];
+      if (fit.none) { log('tyrenone', i, at, { tyre: fit.tyre, asked: fit.asked, lap: c.laps.length }); return; }
+      if (fit.said) log('tyres', i, at, fit.said);
+      log('tyrefresh', i, at, { tyre: fit.tyre, lap: c.laps.length, ms, ...(fit.asked ? { asked: fit.asked } : {}) });
+    }
+    // the car stands in the pits and the time has come: the fresh set goes on
     function twCheck(i, t) {
       const c = R.cars[i], at = twAt(c);
       if (at === null || t < at) return;
-      let said = null;
-      const to = WXC ? W.tyreFor(WXC, R.wxState, c.tyreOwn) : c.tyre;
-      if (to !== c.tyre) { const was = c.tyre; c.tyre = to; said = { tyre: to, was, state: R.wxState, lap: c.laps.length }; }
-      if (WXC) { if (c.wxDue && !W.need(R.wxState, c.tyre, c.tyreOwn)) c.wxDue = null; wxRefresh(c); }
-      c.twLife = 100; c.twStops++; c.twDoneAt = c.blockAt; twRefresh(c);
-      if (said) log('tyres', i, at, said);
-      log('tyrefresh', i, at, { tyre: c.tyre, lap: c.laps.length, ms: at - c.blockAt });
+      twFitLog(i, at, at - c.blockAt, twFit(c));
     }
+    if (SETS) R.cars.forEach(c => twTake(c, W.cleanTyre(c.tyre))); // every car starts on a set of its tyre (a restored race brings its own boxes back)
     // what a screen needs to know of the tyres of car i: the tyre, its life, the level (ok, warn, crit, out), what it does to the car (null: not through the fuel rules), what is left, the stops, and while the tyres are being changed the tyre that goes on and the time that is left
     R.twOf = (i, t) => {
       const c = R.cars[i]; if (!TWC || !c) return null;
       const at = twAt(c), te = R.status === 'paused' ? R.pausedAt : R.status === 'finished' ? R.endAt : t, busy = at !== null && R.status !== 'finished';
       return { tyre: c.tyre, life: c.twLife, level: Tw.levelOf(TWC, c.twLife), effect: TWH ? c.tw || 0 : null, left: Tw.left(TWC, c.tyre, R.wxState, c.twLife, TWC.laneLen[c.lane] || 0), stops: c.twStops,
-        fitting: busy ? (WXC ? W.tyreFor(WXC, R.wxState, c.tyreOwn) : c.tyre) : null, fitLeft: busy && Number.isFinite(te) ? Math.max(0, at - te) : null };
+        fitting: busy ? twWill(c) : null, fitLeft: busy && Number.isFinite(te) ? Math.max(0, at - te) : null,
+        own: W.cleanTyre(c.tyreOwn), next: twNextOf(c), queued: c.twNext || '', sets: SETS ? { ...twPool(c) } : null };
     };
     // ---- penalty points ----
     R.penMs = penOf;
@@ -723,7 +786,7 @@
     // snapshot(t): everything that changes during a race, as plain data (t: the race page's clock now). restore(snap): puts it back into an engine made with the same settings. The race comes back
     // paused, with its clock standing where it was at t; resume() then shifts every time by the time that went by, as after any pause. A lap that was being driven is not counted for records: its time
     // includes the time that was lost.
-    const STATE = ['status', 't0', 'pausedAt', 'endAt', 'timeUp', 'finished', 'endedBy', 'yellowAt', 'flag', 'bopActive', 'bopSpread', 'wxState', 'wxStage', 'resumes'];
+    const STATE = ['status', 't0', 'pausedAt', 'endAt', 'timeUp', 'finished', 'endedBy', 'yellowAt', 'flag', 'bopActive', 'bopSpread', 'wxState', 'wxStage', 'twTeams', 'resumes'];
     R.resumes = 0; // how many times this race was continued after an interruption
     // (a car is kept as what differs from its entry: the names, the pictures and the roster of the entry are made again from the entry, so a snapshot stays small)
     R.snapshot = t => {

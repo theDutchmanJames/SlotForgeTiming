@@ -7,7 +7,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 // what other devices may read from the database: no settings (they hold the password), nothing is ever written
 const READABLE = ['drivers', 'teams', 'slotcars', 'tracks', 'racesetups', 'layouts', 'rowdesigns', 'sessions', 'laps', 'penaltysystems', 'damagesystems', 'fuelrules', 'weathersystems', 'tyrewearsystems'];
 // what the Race Director page may send to the race
-const COMMANDS = ['start', 'pause', 'stop', 'yellow', 'red', 'penalty', 'assign', 'review', 'call', 'callresolve', 'addtime', 'reducetime', 'undotime', 'endtime', 'cleartime', 'setdriver', 'bop', 'weather', 'tyre', 'swap', 'swapnext', 'damage', 'pad'];
+const COMMANDS = ['start', 'pause', 'stop', 'yellow', 'red', 'penalty', 'assign', 'review', 'call', 'callresolve', 'addtime', 'reducetime', 'undotime', 'endtime', 'cleartime', 'setdriver', 'bop', 'weather', 'tyre', 'tyrenext', 'swap', 'swapnext', 'damage', 'pad'];
 // The plain buttons of the Race Director page that carry something: a lane is a whole number from 0 to 15, a penalty a number of points, a call has an id and is answered with one word.
 const LANE = l => Number.isInteger(l) && l >= 0 && l <= 15;
 function plainCommand(c) {
@@ -42,6 +42,11 @@ const TYRE_CODES = ['H', 'M', 'S', 'SS', 'INT', 'W'];
 function tyreCommand(c) {
   if (c.type !== 'tyre') return true;
   return Number.isInteger(c.lane) && c.lane >= 0 && c.lane <= 15 && typeof c.tyre === 'string' && TYRE_CODES.includes(c.tyre) && (c.save === undefined || typeof c.save === 'boolean'); // (save: the tyre is also kept on the Slotcar in the Database)
+}
+// the Race Director queues a tyre for the next stop of a car (Tyre Wear, 1.41.0): a lane from 0 to 15, and the tyre one of the six, or an empty text for "the same tyre"
+function tyreNextCommand(c) {
+  if (c.type !== 'tyrenext') return true;
+  return Number.isInteger(c.lane) && c.lane >= 0 && c.lane <= 15 && typeof c.tyre === 'string' && (c.tyre === '' || TYRE_CODES.includes(c.tyre));
 }
 // The commands of an Endurance Race: a lane is a whole number from 0 to 15; the driver who steps in (swap) is the id of a driver, or left out; swapnext needs the id of the driver who is next.
 function swapCommand(c) {
@@ -113,7 +118,7 @@ function createServer(o) {
         const b = await body(req), pw = password();
         if (!pw || typeof b.token !== 'string' || tokens.get(b.token) !== pw) return send(res, 401, { error: 'login' });
         if (!b.cmd || !COMMANDS.includes(b.cmd.type)) return send(res, 400, { error: 'unknown command' });
-        if (!plainCommand(b.cmd) || !tokenCommand(b.cmd) || !bopCommand(b.cmd) || !weatherCommand(b.cmd) || !tyreCommand(b.cmd) || !swapCommand(b.cmd) || !damageCommand(b.cmd) || !padCommand(b.cmd)) return send(res, 400, { error: 'bad command' });
+        if (!plainCommand(b.cmd) || !tokenCommand(b.cmd) || !bopCommand(b.cmd) || !weatherCommand(b.cmd) || !tyreCommand(b.cmd) || !tyreNextCommand(b.cmd) || !swapCommand(b.cmd) || !damageCommand(b.cmd) || !padCommand(b.cmd)) return send(res, 400, { error: 'bad command' });
         o.onCommand(b.cmd); return send(res, 200, { ok: true });
       }
       if (req.method === 'GET') { // the app's own pages
@@ -136,4 +141,4 @@ function createServer(o) {
     clientCount: () => clients.size
   };
 }
-module.exports = { createServer, tokenCommand, bopCommand, weatherCommand, tyreCommand, swapCommand, damageCommand, padCommand };
+module.exports = { createServer, tokenCommand, bopCommand, weatherCommand, tyreCommand, tyreNextCommand, swapCommand, damageCommand, padCommand };

@@ -1,6 +1,7 @@
 // The Tyre Degradation widget (1.40.0): how much life the tyres of a lane's car have left. Pure: what it shows is worked out from the race (tyrewear.js view rows) and the settings of the widget, and drawn as small pictures (SVG)
 // or as the bar of the Fuel widget. The register of the widgets (widgets.js) takes the options and the sample from here, the page that draws the widgets (timing.js) takes the content, and the Driver stats grid and the
 // Leaderboard take cellHtml. Looks: the tyre wears away (the tread gets shorter), your own tyre picture with a ring that empties, a bar (horizontal or vertical, the one of the Fuel widget), or a number.
+// 1.41.0: the Available Tyres widget (setsRowHtml, SETS_OPTIONS): how many sets of every tyre are left in the box of the car (or the team), with a ring on the tyre that is on the car and NEXT on the tyre that goes on at the next stop.
 (function (root) {
   const Wx = typeof module !== 'undefined' ? require('./weather.js') : root.Wx;
   const Tw = typeof module !== 'undefined' ? require('./tyrewear.js') : root.TyreWear;
@@ -105,6 +106,58 @@
   }
   const sample = (l, w) => rowHtml(sampleRow(l), (w && w.opt) || {}).html;
 
+  // ---- the Available Tyres widget (1.41.0): the sets that are left of every tyre ----
+  const SET_LOOKS = [['tyres', 'Tyres with a number'], ['dots', 'Tyres with a dot for each set (full = still in the box)'], ['list', 'A list'], ['number', 'A number only (7 sets left)']];
+  const setLook = o => (o && o.look) || 'tyres';
+  const hasTyres = o => ['tyres', 'dots'].includes(setLook(o));
+  const SETS_OPTIONS = [
+    { key: 'imageSet', label: 'Picture set (made under Customization > Image Settings)', type: 'imageset', kind: 'tyres', noneLabel: 'None (the tyres are drawn)', default: '' },
+    { key: 'look', label: 'Show the sets as', type: 'select', default: 'tyres', rerender: true, choices: SET_LOOKS },
+    { key: 'showRing', label: 'Ring on the tyre that is on the car', type: 'checkbox', default: true, show: hasTyres },
+    { key: 'showNext', label: 'NEXT on the tyre that goes on at the next stop (the one the Race Director queued, or the one the weather asks for)', type: 'checkbox', default: true, show: hasTyres },
+    { key: 'dim', label: 'Dim a tyre with no sets left', type: 'checkbox', default: true },
+    { key: 'hideNo', label: 'Hide the tyres this race does not allow (0 sets)', type: 'checkbox', default: false },
+    { key: 'showTeam', label: 'Show the team name when the sets are shared', type: 'checkbox', default: true }
+  ];
+  const SETS_DEFAULTS = Object.fromEntries(SETS_OPTIONS.map(o => [o.key, o.default]));
+  const sopt = (opt, k) => (opt && opt[k] !== undefined ? opt[k] : SETS_DEFAULTS[k]);
+  const andList = list => (list.length > 1 ? `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}` : list[0] || '');
+  // r: a row of TyreWear.view with sets (the sets left of every tyre, setsStart: how many there were), own (the tyre it races on), code (the tyre on the car), next ({ code, kind }), setsTotal, setsMode, teamName, teamDrivers
+  function setsRowHtml(r, opt) {
+    if (!r) return { html: '–' };
+    if (!r.sets) return { html: '<span class="twavn">No limit on the sets</span>' };
+    const lk = SET_LOOKS.some(x => x[0] === setLook(opt)) ? setLook(opt) : 'tyres', start = r.setsStart || {};
+    const dim = sopt(opt, 'dim') !== false, next = sopt(opt, 'showNext') !== false && r.next && r.next.kind !== 'same' ? r.next.code : '', ring = sopt(opt, 'showRing') !== false;
+    const team = sopt(opt, 'showTeam') !== false && r.setsMode === 'team' && r.teamName ? `<span class="twav-team"><small>Shared by</small><b>${esc(r.teamName)}</b>${r.teamDrivers && r.teamDrivers.length ? `<small>${esc(andList(r.teamDrivers))}</small>` : ''}</span>` : '';
+    const tyres = Wx.TYRES.filter(t => !(sopt(opt, 'hideNo') === true && Number(start[t.code]) === 0)), zero = t => !(r.sets[t.code] > 0);
+    const pic = t => `<span class="twav-c${ring && t.code === r.code && lk !== 'list' ? ' on' : ''}" style="--tc:${t.color}">${Ww.icon('tyre', t.code, opt && opt.tyreImages, 0, false)}</span>`;
+    let body;
+    if (lk === 'number') {
+      const n = r.setsTotal, cnt = Math.max(0, Number(n) || 0);
+      body = `<span class="twav-big"><b>${cnt}</b><span>${cnt === 1 ? 'set' : 'sets'} left</span></span>`;
+    } else if (lk === 'list') {
+      body = `<span class="twav-list">${tyres.map(t => `<span class="twav-row${dim && zero(t) ? ' zero' : ''}">${pic(t)}<span class="twav-nm">${esc(t.name)}</span><b>${r.sets[t.code]}</b></span>`).join('')}</span>`;
+    } else {
+      body = `<span class="twav-row2">${tyres.map(t => {
+        const n = Math.max(0, Number(r.sets[t.code]) || 0), tot = Math.max(n, Number(start[t.code]) || 0);
+        const under = lk === 'dots' ? `<span class="twav-dots">${Array.from({ length: Math.min(tot, 8) }, (_, i) => `<i class="${i < n ? 'f' : ''}"></i>`).join('')}</span>` : `<b class="twav-n">${n}</b>`;
+        return `<span class="twav-t${dim && zero(t) ? ' zero' : ''}" data-tyre="${t.code}">${next === t.code ? '<em class="twav-next">NEXT</em>' : ''}${pic(t)}${under}</span>`;
+      }).join('')}</span>`;
+    }
+    return { html: `<span class="twav${team ? ' withteam' : ''}">${team}${body}</span>` };
+  }
+  // the content for the car of a lane: the sets of its box (the box of the team when the sets are shared)
+  function setsContent(opt, c, S, t) {
+    const eng = S && S.eng; if (!eng || !eng.tyrewear || !c) return { html: '–' };
+    return setsRowHtml(Tw.view(eng, [c.lane], t).rows[0], opt);
+  }
+  // made-up values of the layout editor: a Soft on the car, a Supersoft queued, no Wet sets left
+  function setsSampleRow(l) {
+    const sets = { H: 2, M: 1, S: 1, SS: 1, INT: 2, W: 0 }, start = { H: 2, M: 2, S: 2, SS: 1, INT: 2, W: 2 }, k = l % 2;
+    return { lane: l, code: 'S', own: 'S', sets, setsStart: start, setsTotal: Tw.setsTotal(sets), setsMode: k ? 'team' : 'car', teamName: k ? 'Team Red' : '', teamDrivers: k ? ['Dutch', 'Maria'] : [], next: { code: 'SS', kind: 'queued' }, queued: 'SS', fitting: null };
+  }
+  const setsSample = (l, w) => setsRowHtml(setsSampleRow(l), (w && w.opt) || {}).html;
+
   // ---- one cell in a table: the Driver stats grid and the Leaderboard (a small tyre chip, the life, a mini bar; amber and red follow the warning levels) ----
   function cellHtml(r) {
     if (!r) return '–';
@@ -114,7 +167,7 @@
   // the text of the cell for a place that wants plain text (a PDF, a text widget): "S 62%", "–" when the race has no tyre wear
   const cellText = r => (r ? `${letterOf(r.code)} ${r.shown}%` : '–');
 
-  const api = { OPTIONS, LOOKS, DEFAULTS, wearSvg, ringSvg, lines, rowHtml, content, sampleRow, sample, cellHtml, cellText, look };
+  const api = { SETS_OPTIONS, SET_LOOKS, SETS_DEFAULTS, setsRowHtml, setsContent, setsSampleRow, setsSample, OPTIONS, LOOKS, DEFAULTS, wearSvg, ringSvg, lines, rowHtml, content, sampleRow, sample, cellHtml, cellText, look };
   root.TyreWidgets = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

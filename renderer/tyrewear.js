@@ -9,6 +9,8 @@
 //   hind   the % it hinders the car when it is worn out (0% life).
 // The grip curve is a straight line from +bonus at 100% life to 0 at the cliff, and from 0 at the cliff to -hind at 0% life. It works through the fuel levers (the fuel used in a lap, the refuelling
 // speed, the size of the tank), the ones that Balance of Power and the weather use too, so it needs a Fuel setup. A rule for 0% life works without fuel. Measured lap times are never changed.
+// Release 2 (1.41.0): the sets. A system can say how many sets of each tyre a car (or a team) has: a stop takes one set out of the box, a set that was taken off is not used again, and a tyre with no sets left
+// can not be fitted or queued. The Race Director queues a tyre for the next stop; the weather's Intermediate or Wet tyres come before a queued tyre. Without a limit a stop gives a fresh set of the same tyre, as in 1.40.0.
 (function (root) {
   const Wx = typeof module !== 'undefined' ? require('./weather.js') : root.Wx;
   const CODES = Wx.TYRES.map(t => t.code);
@@ -31,7 +33,10 @@
   // how much more or less a tyre wears in a weather (x1 = normal): the weather state by the kind of tyre. Slicks in the rain wear fast, Intermediate and Wet tyres wear slower there.
   const MULT = { dry: { dry: 1, inter: 2, wet: 3 }, cloudy: { dry: 1, inter: 1.5, wet: 2 }, wet: { dry: 2.5, inter: 0.7, wet: 0.5 }, clearing: { dry: 1.5, inter: 0.8, wet: 1.5 } };
   const ZERO = [['none', 'Nothing, only show it'], ['points', 'Penalty points every lap'], ['lap', 'The lap does not count until the car pits'], ['retire', 'The car retires']];
-  const DEFAULTS = { unit: 'lap', practice: 'off', qualifying: 'off', effect: 'on', eUse: 'on', eRate: 'on', eTank: 'off', zero: 'points', zeroPoints: 2, changeSeconds: 4, stop: 'overlap', warn: 25, crit: 10 };
+  // the sets: how many sets of each tyre a car (or a team) has, the one it starts on counted; 0 = that tyre is not allowed in the race. setsMode: none (no limit, as in 1.40.0), car, team
+  const DEFAULT_SETS = { H: 2, M: 2, S: 2, SS: 1, INT: 2, W: 2 };
+  const SETS_MODES = [['none', 'No limit: every stop gives fresh tyres'], ['car', 'Each car has its own sets'], ['team', 'The team shares its sets']];
+  const DEFAULTS = { setsMode: 'car', unit: 'lap', practice: 'off', qualifying: 'off', effect: 'on', eUse: 'on', eRate: 'on', eTank: 'off', zero: 'points', zeroPoints: 2, changeSeconds: 4, stop: 'overlap', warn: 25, crit: 10 };
 
   const num = (v, d, lo, hi) => {
     const n = typeof v === 'string' && v.trim() !== '' ? Number(v.replace(',', '.')) : v;
@@ -51,6 +56,12 @@
     });
     return out;
   }
+  // the sets of a record, cleaned: every tyre has a whole number from 0 to 99 (missing: the default)
+  function cleanSets(sets) {
+    const out = {};
+    CODES.forEach(code => { out[code] = Math.round(num(sets && typeof sets === 'object' ? sets[code] : undefined, DEFAULT_SETS[code], 0, 99)); });
+    return out;
+  }
   // the weather table of a record, cleaned: x0 to x20
   function cleanMult(m) {
     const out = {};
@@ -58,7 +69,7 @@
     return out;
   }
   // what a new record starts with: the Standard system
-  const defaults = () => ({ ...DEFAULTS, tyres: clone(DEFAULT_TYRES), mult: clone(MULT) });
+  const defaults = () => ({ ...DEFAULTS, tyres: clone(DEFAULT_TYRES), mult: clone(MULT), sets: clone(DEFAULT_SETS) });
 
   // The settings of a record, cleaned into what the engine gets. ctx: { laneLen: [metres of every lane], disp: 'm' | 'ft' (the distance unit of the app) }. Gives null when there is no record.
   function clean(rec, ctx) {
@@ -68,6 +79,7 @@
       on: true, unit, disp: c.disp === 'ft' ? 'ft' : 'm', laneLen: (Array.isArray(c.laneLen) ? c.laneLen : []).map(n => (Number.isFinite(Number(n)) && Number(n) > 0 ? Number(n) : 0)),
       practice: rec.practice === 'on', qualifying: rec.qualifying === 'on',
       tyres: cleanTyres(rec.tyres), mult: cleanMult(rec.mult),
+      sets: { mode: rec.setsMode === 'car' || rec.setsMode === 'team' ? rec.setsMode : 'none', n: cleanSets(rec.sets) }, // (a record from before 1.41.0 has no sets: no limit)
       effect: rec.effect !== 'off', levers: { use: rec.eUse !== 'off', rate: rec.eRate !== 'off', tank: rec.eTank === 'on' },
       zero: pick(rec.zero, ZERO.map(z => z[0]), DEFAULTS.zero), zeroPoints: Math.round(num(rec.zeroPoints, DEFAULTS.zeroPoints, 0, 100)),
       changeMs: Math.round(num(rec.changeSeconds, DEFAULTS.changeSeconds, 0, 600) * 1000), stop: rec.stop === 'add' ? 'add' : 'overlap',
@@ -137,6 +149,50 @@
       + `<text x="${(L + (W - L - R) / 2).toFixed(1)}" y="${H - 6}" text-anchor="middle" font-size="11" fill="#98a0ab">tyre life left</text></svg>`;
   }
 
+  // ---- the sets (1.41.0) ----
+  // Which set goes on at a stop. pool: the sets that are left in the box ({ H: 2, ... }), or null when there is no limit; ask: the tyre that is wanted (the weather's, the one the Race Director queued, or the same tyre);
+  // own: the tyre the car races on; forced: the weather asks for it (Intermediate or Wet), so there is nothing else to take; anyTyre: the race has no weather, so every tyre can be fitted.
+  // Gives { code } (and asked: the tyre that was wanted, when another one goes on because there is no set of it left), or null: no set can go on, the car keeps its worn tyres.
+  function pickFit(pool, ask, own, forced, anyTyre) {
+    const want = Wx.cleanTyre(ask);
+    if (!pool) return { code: want };
+    const has = c => (Number(pool[c]) || 0) > 0;
+    if (has(want)) return { code: want };
+    if (forced) return null; // (no Intermediate or Wet set: the car stays on the tyres it has)
+    const order = [Wx.cleanTyre(own)].concat(CODES.filter(c => anyTyre || Wx.classOf(c) === 'dry'));
+    const code = order.find(c => c !== want && has(c));
+    return code ? { code, asked: want } : null;
+  }
+  // how many sets are left in all (a pool, or null for no limit)
+  const setsTotal = pool => (pool ? CODES.reduce((n, c) => n + Math.max(0, Number(pool[c]) || 0), 0) : null);
+  // what the sets of a system say in words (the Help, the Home tab)
+  function setsText(cfg) {
+    if (!cfg || !cfg.sets || cfg.sets.mode === 'none') return 'no limit on the sets';
+    const n = CODES.filter(c => cfg.sets.n[c] > 0).map(c => `${cfg.sets.n[c]} ${Wx.tyreOf(c).name}`).join(', ');
+    return `sets ${cfg.sets.mode === 'team' ? 'shared by the team' : 'per car'}: ${n || 'none'}`;
+  }
+
+  // The choices of the "Next stop" list of a car in the Tyre Change folder: "Same (the tyre it races on)" first, then the tyres with their sets. row: a row of view(); weather: the race has weather
+  // (the rain's tyres come from the weather, so only dry tyres can be queued). A tyre with no sets left can not be picked (but a tyre that is queued stays in the list); the tyre the car races on is the first choice, so it is left out.
+  function nextChoices(row, weather) {
+    const lim = !!(row && row.sets), nm = n => `${n} ${n === 1 ? 'set' : 'sets'}`, own = (row && row.own) || Wx.DEFAULT_TYRE;
+    const out = [{ value: '', text: `Same (${Wx.tyreName(own)}${lim ? ` \u00b7 ${nm(Math.max(0, Number(row.sets[own]) || 0))}` : ''})`, disabled: false, hidden: false }];
+    Wx.TYRES.forEach(t => {
+      const n = lim ? Math.max(0, Number(row.sets[t.code]) || 0) : null;
+      out.push({ value: t.code, text: `${t.name}${lim ? ` (${nm(n)})` : ''}`, disabled: (!!weather && t.cls !== 'dry') || (lim && n <= 0 && row.queued !== t.code), hidden: t.code === own });
+    });
+    return out;
+  }
+  // what is said under the "Next stop" list: who decided what goes on at the next stop
+  function nextNote(row) {
+    if (!row) return '';
+    if (row.fitting) return 'The tyres are being changed now';
+    const n = row.next || {};
+    if (n.kind === 'weather') return `${Wx.tyreName(n.code)} from the weather${row.queued ? `, then ${Wx.tyreName(row.queued)}` : ''}`;
+    if (n.kind === 'queued') return 'Queued by the Race Director';
+    return 'Nothing queued';
+  }
+
   // ---- words ----
   const MINUS = '−';
   const lapsWord = n => `${n} ${n === 1 ? 'lap' : 'laps'}`;
@@ -152,7 +208,7 @@
   // one line for the Home tab and the Help
   function rulesText(cfg) {
     if (!cfg) return '';
-    return `Wear per ${cfg.unit === 'distance' ? (cfg.disp === 'ft' ? '100 ft' : '100 m') : 'lap'}; ${cfg.effect ? 'the grip helps and hinders through the fuel rules' : 'no effect on the fuel rules'}; ${zeroText(cfg)}; changing tyres takes ${cfg.changeMs / 1000} s${cfg.changeMs ? '' : ' (no time)'}.`;
+    return `Wear per ${cfg.unit === 'distance' ? (cfg.disp === 'ft' ? '100 ft' : '100 m') : 'lap'}; ${cfg.effect ? 'the grip helps and hinders through the fuel rules' : 'no effect on the fuel rules'}; ${zeroText(cfg)}; changing tyres takes ${cfg.changeMs / 1000} s${cfg.changeMs ? '' : ' (no time)'}${cfg.sets && cfg.sets.mode !== 'none' ? `; ${setsText(cfg)}` : ''}.`;
   }
 
   // what a car is doing with its tyres, in words, for the Tyre Change folder: the tyre that goes on while the tyres are being changed, "Box now" at 0%, "Box soon" at the critical level. cls: fit, out, crit, ok
@@ -175,13 +231,15 @@
       const i = eng.cars.findIndex(c => c.lane === l); if (i < 0) return;
       const c = eng.cars[i], d = eng.twOf(i, t); if (!d) return;
       const ty = Wx.tyreOf(d.tyre) || Wx.tyreOf(Wx.DEFAULT_TYRE);
+      const team = d.sets && cfg.sets.mode === 'team' && c.teamId ? eng.cars.filter(x => x.teamId === c.teamId) : null; // (the cars that share the sets)
       rows.push({ lane: l, who: c.teamName ? `${c.teamName} · ${c.driverName}` : c.driverName || '', code: ty.code, tyre: ty.name, color: ty.color, life: d.life, shown: shownLife(d.life), level: d.level,
-        effect: d.effect, effectText: d.effect === null ? '' : effectText(d.effect), leftText: leftText(cfg, d.left), lapsLeft: d.left.laps, fitting: d.fitting, fitLeft: d.fitLeft, stops: d.stops });
+        effect: d.effect, effectText: d.effect === null ? '' : effectText(d.effect), leftText: leftText(cfg, d.left), lapsLeft: d.left.laps, fitting: d.fitting, fitLeft: d.fitLeft, stops: d.stops,
+        own: d.own, next: d.next, queued: d.queued || '', sets: d.sets, setsStart: d.sets ? cfg.sets.n : null, setsTotal: setsTotal(d.sets), setsMode: cfg.sets.mode, teamName: team ? c.teamName || '' : '', teamDrivers: team ? team.map(x => x.driverName || `Lane ${x.lane + 1}`) : [] });
     });
     return { on: true, cfg, rows };
   }
 
-  const api = { CODES, NUMS, LIMITS, MAXP, PRESETS, PRESET_KEYS, DEFAULT_TYRES, MULT, ZERO, DEFAULTS, defaults, cleanTyres, cleanMult, clean, wearPerLap, effectPct, effectLever, levelOf, left, lasts, effectText, shownLife, leftText, zeroText, rulesText, view, unitM, lastsText, curveSvg, stateOf };
+  const api = { nextChoices, nextNote, DEFAULT_SETS, SETS_MODES, cleanSets, pickFit, setsTotal, setsText, CODES, NUMS, LIMITS, MAXP, PRESETS, PRESET_KEYS, DEFAULT_TYRES, MULT, ZERO, DEFAULTS, defaults, cleanTyres, cleanMult, clean, wearPerLap, effectPct, effectLever, levelOf, left, lasts, effectText, shownLife, leftText, zeroText, rulesText, view, unitM, lastsText, curveSvg, stateOf };
   root.TyreWear = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

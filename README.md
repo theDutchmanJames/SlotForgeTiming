@@ -2455,3 +2455,18 @@ Good to know:
 2. The grip effect needs a **Fuel setup** in the race setup (it works through the fuel rules). Without one the tyres still wear, the widgets still show the life, and the 0% rule still works; the grip effect is then left out.
 3. In a system that counts per distance, a lane that has no length counts every lap as 100 m (100 ft). Set the lane lengths of the track (Database > Tracks) for a real distance.
 4. If you delete a tyre wear system that a race setup uses, that setup has no tyre wear afterwards (nothing else in it changes).
+
+## What to try (1.41.0): Tyre Wear, release 2 (sets, next stop, Available Tyres)
+
+1. **Race Setup > Tyre Wear Systems**, open a system (or make a new one): the new folder **Sets of tyres**. *The sets belong to*: **No limit** (every stop gives fresh tyres, as before), **Each car** or **The team**. Under it a number of sets for each tyre; the set a car starts on counts as one, and 0 means that tyre is not allowed in the race.
+2. Start a race with that system. The **Tyre Change** folder (race screen and Race Director page) now shows **Sets left** for every car and a **Next stop** list. Pick a tyre in the list: the note under it says *Queued by the Race Director*. In the next pit stop that tyre goes on and one set comes out of the box.
+3. With a weather system: when it rains the list says *Wet from the weather* and the stop gives Wet tyres (from the Wet sets); the tyre you queued goes on in the stop after. Intermediate and Wet cannot be queued, they come from the weather.
+4. A tyre with no sets left is greyed out in the list and cannot be queued. If the set you queued is gone by the time of the stop (a team-mate took it), the car gets its own tyre, or a dry tyre that is left; when nothing is left it keeps its worn tyres.
+5. **Correct the tyres now** (under the table) is the instant tyre change of before: use it when the car really has other tyres than the race thinks. It moves a set in the box and keeps the life of the tyres.
+6. Layout Editor, folder **Weather**: the new **Available Tyres** widget (one per lane). *Show the sets as*: tyres with a number, tyres with a dot for each set, a list, or a number only. Switches for the ring on the tyre that is on the car, **NEXT**, dimming, hiding the tyres a race does not allow, and the team name.
+
+Good to know:
+1. A Tyre Wear System from before 1.41.0 has no sets: it opens as **No limit** and behaves as it did. New systems start with **Each car** and 2 2 2 1 2 2 sets.
+2. With **The team**, the cars of a team share one box. A car that is not in a team always has a box of its own.
+3. Every heat starts with full boxes. An interrupted race comes back with the boxes, the queue and the tyres as they were.
+4. The audio calls for tyre wear and the tyre stints in the results come in release 3.

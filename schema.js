@@ -398,6 +398,7 @@ module.exports = {
       { id: 'weather', title: 'Wear in the weather', note: 'How much faster or slower a tyre wears in dry, cloudy, wet and clearing weather (only used in a race with a Weather System)' },
       { id: 'effect', title: 'What worn tyres do', note: 'Helping and hindering the car through the fuel rules, and what happens at 0%', open: true },
       { id: 'pit', title: 'Pit stops', note: 'How long changing tyres takes', open: true },
+      { id: 'sets', title: 'Sets of tyres', note: 'How many sets of every tyre a car or a team has, and what the Race Director can queue for the next stop' },
       { id: 'where', title: 'Where it applies', note: 'Practice and qualifying' },
       { id: 'warn', title: 'Warning colours', note: 'Where the life of the tyres turns amber and red on the widgets' }
     ],
@@ -419,6 +420,10 @@ module.exports = {
       { key: 'changeSeconds', group: 'pit', label: 'Changing tyres takes (seconds)', type: 'number', min: 0, default: Tw.DEFAULTS.changeSeconds,
         hint: '0 means no time: the new set is on when the pit stop starts. A car must stand on the sensor in the pits that long; one that leaves earlier keeps its worn tyres (and it is logged). The seconds count from the moment the car stopped on the sensor.' },
       { key: 'stop', group: 'pit', label: 'Together with the other work in the stop (refuelling, repair, driver swap)', type: 'select', default: Tw.DEFAULTS.stop, options: [['overlap', 'At the same time: the longest job counts'], ['add', 'One after the other']] },
+      { key: 'setsMode', group: 'sets', label: 'The sets belong to', type: 'select', default: Tw.DEFAULTS.setsMode, options: Tw.SETS_MODES,
+        hint: 'No limit: every pit stop gives a fresh set of the same tyre, and the Race Director can still queue another tyre for the next stop. Each car: a car has its own box of sets. The team: all the cars of a team take their sets from one box (a car with no team has a box of its own).' },
+      { key: 'sets', group: 'sets', label: 'Sets of every tyre', type: 'tyresets', showIf: [{ setsMode: ['car', 'team'] }],
+        hint: 'The set a car starts on counts as one. 0 means that tyre is not allowed in this race. A set that was taken off is not used again, and a tyre with no sets left can not be fitted or queued: the car then gets its own tyre, or a dry tyre that is left (and keeps its worn tyres when there is nothing left to fit). In a race with weather the rain brings Intermediate or Wet tyres at the next stop, from their sets, before a tyre the Race Director queued.' },
       { key: 'practice', group: 'where', label: 'Practice', type: 'select', default: Tw.DEFAULTS.practice, options: [['off', 'No tyre wear'], ['on', 'Tyre wear']],
         hint: 'A race, a timed race, heats and an Endurance Race always have it when the race setup has this system. A Time Token Session never does.' },
       { key: 'qualifying', group: 'where', label: 'Qualifying', type: 'select', default: Tw.DEFAULTS.qualifying, options: [['off', 'No tyre wear'], ['on', 'Tyre wear']] },

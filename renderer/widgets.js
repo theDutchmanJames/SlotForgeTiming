@@ -275,7 +275,7 @@
     if (w.type === 'lights' && set.kind === 'lights') return { ...o, lightOn: (set.images || {}).on || '', lightOff: (set.images || {}).off || '', lightImages: set.images || {} };
     if (w.type === 'avatar' && set.kind === 'avatars') return { ...o, laneAvatars: set.images || {} };
     if (w.type === 'tyre' && set.kind === 'tyres') return { ...o, tyreImages: set.images || {} };
-    if (w.type === 'tyrelife' && set.kind === 'tyres') return { ...o, tyreImages: set.images || {} };
+    if ((w.type === 'tyrelife' || w.type === 'tyresets') && set.kind === 'tyres') return { ...o, tyreImages: set.images || {} };
     if (w.type === 'wxforecast' && set.kind === 'weather') return { ...o, stateImages: set.images || {} };
     if (w.type === 'wxconditions' && set.kind === 'conditions') return { ...o, condImages: set.images || {} };
     if (w.type === 'flag' && set.kind === 'flag') { const r = { ...o }; FLAG_STATES.forEach(([k]) => { r['img_' + k] = (set.images || {})[k] || ''; }); return r; }
@@ -447,6 +447,7 @@
     // the weather (Race Setup > Weather Systems): the tyre of a lane's car, the weather now and next, and the conditions on the track (see weatherwidgets.js)
     T('tyre', 'Tyres', 'Weather', { title: 'Tyres', perLane: true, w: 140, h: 80, textSize: 22, options: Ww.TYRE_OPTIONS, sample: (l, w) => Ww.tyreSample(l, (w && w.opt) || {}) }),
     T('tyrelife', 'Tyre Degradation', 'Weather', { title: 'Tyres', perLane: true, w: 160, h: 170, textSize: 22, options: Tyw.OPTIONS, sample: (l, w) => Tyw.sample(l, w) }), // (1.40.0: how much life the tyres of the car have left, see tyrewidgets.js)
+    T('tyresets', 'Available Tyres', 'Weather', { title: 'Available tyres', perLane: true, w: 360, h: 90, textSize: 20, options: Tyw.SETS_OPTIONS, sample: (l, w) => Tyw.setsSample(l, w) }), // (1.41.0: the sets that are left of every tyre, see tyrewidgets.js)
     T('wxforecast', 'Weather Forecast', 'Weather', { title: 'Weather', w: 240, h: 80, options: Ww.FORECAST_OPTIONS, sample: (l, w) => Ww.forecastSample((w && w.opt) || {}) }),
     T('wxconditions', 'Track Conditions', 'Weather', { title: 'Track conditions', w: 500, h: 60, textSize: 20, options: Ww.COND_OPTIONS, sample: (l, w) => Ww.conditionsSample((w && w.opt) || {}) }),
     T('lights', 'Start Lights', 'Race', { title: 'Start lights', w: 180, options: LIGHTS_OPTIONS, sample: lightsHtml(3) }),

@@ -113,5 +113,61 @@ const html = (r, opt) => Tyw.rowHtml(r, opt).html;
   ok('...they show only in a race with Tyre Wear (not with just a weather system)', Dg.applies('tyrelife', { tyrewear: true }) && !Dg.applies('tyrelife', { tyres: true }) && Dg.applies('tyreleft', { tyrewear: true }) && !Dg.applies('tyreleft', {}) && Dg.NEEDS.tyrewear.includes('Tyre Wear System'));
   ok('...a saved grid with them keeps them', Dg.clean({ cols: 4, rows: 8, boards: [{ c: 1, r: 1, w: 2, h: 1, opt: { cell: 'tyrelife', label: true } }] }).boards.length === 1); }
 
+// ---- 1.41.0: the Available Tyres widget (the sets that are left) ----
+{ const raceSets = (rec, o = {}) => { const r = E.createRace({ type: 'race', laps: 60, duration: 30, endRule: 'all', entries: entries(2).map((e, i) => ({ ...e, ...(o.team ? { teamId: 'tm', teamName: 'Team Red' } : {}) })), tyrewear: T.clean(rec) }); r.start(0); return r; };
+  const strip = h => h.replace(/<svg[\s\S]*?<\/svg>/g, '<svg/>');
+  const sRow = (o = {}) => ({ lane: 0, code: 'S', own: 'S', sets: { H: 2, M: 1, S: 1, SS: 1, INT: 2, W: 0 }, setsStart: { H: 2, M: 2, S: 2, SS: 1, INT: 2, W: 2 }, setsTotal: 7, setsMode: 'car', teamName: '', teamDrivers: [], next: { code: 'S', kind: 'same' }, queued: '', fitting: null, ...o });
+  const o = Tyw.SETS_OPTIONS, keys = o.map(x => x.key);
+  ok('the widget has every option that was approved: the look, the ring, NEXT, dim, hide the tyres that are not allowed, the team name, and the picture set', ['imageSet', 'look', 'showRing', 'showNext', 'dim', 'hideNo', 'showTeam'].every(k => keys.includes(k)) && keys.length === 7);
+  ok('...four looks: tyres with a number, tyres with dots, a list, a number only', Tyw.SET_LOOKS.map(x => x[0]).join() === 'tyres,dots,list,number');
+  ok('...the ring and NEXT are for the looks with tyres in a row (tyres, dots), not for the list or the number', ['showRing', 'showNext'].every(k => o.find(x => x.key === k).show({}) && o.find(x => x.key === k).show({ look: 'dots' }) && !o.find(x => x.key === k).show({ look: 'list' }) && !o.find(x => x.key === k).show({ look: 'number' })));
+  ok('...the defaults: tyres with a number, ring, NEXT, dim and the team name on, the tyres that are not allowed shown', Tyw.SETS_DEFAULTS.look === 'tyres' && Tyw.SETS_DEFAULTS.showRing === true && Tyw.SETS_DEFAULTS.showNext === true && Tyw.SETS_DEFAULTS.dim === true && Tyw.SETS_DEFAULTS.showTeam === true && Tyw.SETS_DEFAULTS.hideNo === false);
+  ok('...the picture set choice is the one of the Tyres widget (kind tyres)', o.find(x => x.key === 'imageSet').kind === 'tyres');
+
+  const a = Tyw.setsRowHtml(sRow({ next: { code: 'SS', kind: 'queued' }, queued: 'SS' }), {}).html;
+  const cell = (h, code) => (new RegExp(`<span class="twav-t[^"]*" data-tyre="${code}">[\\s\\S]*?</span></span>(?=<span class="twav-t|</span></span>)`).exec(h) || [''])[0];
+  ok('tyres with a number: the six tyres in order, with the number of sets left under each', ['H', 'M', 'S', 'SS', 'INT', 'W'].every(c => a.includes(`data-tyre="${c}"`)) && a.indexOf('data-tyre="H"') < a.indexOf('data-tyre="M"') && a.indexOf('data-tyre="INT"') < a.indexOf('data-tyre="W"')
+    && [2, 1, 1, 1, 2, 0].every((n, i) => strip(a).split('<b class="twav-n">')[i + 1].startsWith(String(n) + '<')));
+  ok('...a ring on the tyre that is on the car (the Soft) and nowhere else', (a.match(/twav-c on/g) || []).length === 1 && /twav-c on" style="--tc:#e8002d"/.test(a));
+  ok('...NEXT on the tyre that goes on at the next stop (the Supersoft the Race Director queued), once', (a.match(/<em class="twav-next">NEXT<\/em>/g) || []).length === 1 && /data-tyre="SS">\s*<em class="twav-next">NEXT/.test(a));
+  ok('...a tyre with no sets left (the Wet) is dimmed, the others are not', /twav-t zero" data-tyre="W"/.test(a) && (a.match(/twav-t zero/g) || []).length === 1);
+  ok('...the ring follows the tyre that is on the car, not the one it races on: in the rain the Intermediate has it, the Medium (its own) does not', (() => { const x = Tyw.setsRowHtml(sRow({ code: 'INT', own: 'M' }), {}).html; return (x.match(/twav-c on/g) || []).length === 1 && /twav-c on" style="--tc:#43b02a"/.test(x) && !/twav-c on" style="--tc:#ffd12e"/.test(x); })());
+  const b = Tyw.setsRowHtml(sRow(), { showRing: false, showNext: false, dim: false }).html, c = Tyw.setsRowHtml(sRow({ next: { code: 'W', kind: 'weather' } }), {}).html;
+  ok('...with the switches off there is no ring, no NEXT and no dimming', !b.includes('twav-c on') && !b.includes('twav-next') && !b.includes('zero') && /<b class="twav-n">0</.test(b));
+  ok('...nothing queued ("same") has no NEXT; the tyre the weather asks for gets it', !a.replace(/<em class="twav-next">NEXT<\/em>/, '').includes('NEXT') && !Tyw.setsRowHtml(sRow(), {}).html.includes('NEXT') && /data-tyre="W">\s*<em class="twav-next">NEXT/.test(c));
+  const d = Tyw.setsRowHtml(sRow(), { look: 'dots' }).html;
+  ok('dots: a dot for every set of the system, full for the ones that are still in the box (the Medium has 2, one is left: one full, one empty)', (() => { const m = /data-tyre="M">[\s\S]*?<span class="twav-dots">([\s\S]*?)<\/span>/.exec(d); return m && m[1] === '<i class="f"></i><i class=""></i>'; })() && !d.includes('twav-n'));
+  ok('...a tyre that is not allowed (0 sets in the system) has no dots at all, and the Wet that has none left has two empty ones', (() => { const x = Tyw.setsRowHtml(sRow({ setsStart: { H: 2, M: 2, S: 2, SS: 1, INT: 2, W: 0 }, sets: { H: 2, M: 1, S: 1, SS: 1, INT: 2, W: 0 } }), { look: 'dots' }).html; const m = /data-tyre="W">[\s\S]*?<span class="twav-dots">([\s\S]*?)<\/span>/.exec(x); return m && m[1] === ''; })() && /data-tyre="W">[\s\S]*?<span class="twav-dots"><i class=""><\/i><i class=""><\/i>/.test(d));
+  const l = Tyw.setsRowHtml(sRow(), { look: 'list' }).html;
+  ok('list: a row for every tyre with its name and number, no ring and no NEXT', ['Hard', 'Medium', 'Soft', 'Supersoft', 'Intermediate', 'Wet'].every(n => l.includes(`<span class="twav-nm">${n}</span>`)) && (l.match(/<b>\d<\/b>/g) || []).length === 6 && !l.includes('twav-c on') && !l.includes('NEXT') && /twav-row zero"[^>]*>[\s\S]*?Wet/.test(l));
+  const n = Tyw.setsRowHtml(sRow(), { look: 'number' }).html, n1 = Tyw.setsRowHtml(sRow({ setsTotal: 1 }), { look: 'number' }).html, n0 = Tyw.setsRowHtml(sRow({ setsTotal: 0 }), { look: 'number' }).html;
+  ok('number only: "7 sets left"; one set is "1 set left", none "0 sets left"', n.includes('<b>7</b><span>sets left</span>') && n1.includes('<b>1</b><span>set left</span>') && n0.includes('<b>0</b><span>sets left</span>') && !n.includes('data-tyre'));
+  const h = Tyw.setsRowHtml(sRow({ setsStart: { H: 2, M: 2, S: 2, SS: 1, INT: 2, W: 0 } }), { hideNo: true }).html;
+  ok('hide the tyres this race does not allow: the Wet (0 sets in the system) goes, the others stay; a Wet that has none left (it was allowed) stays', !h.includes('data-tyre="W"') && ['H', 'M', 'S', 'SS', 'INT'].every(k => h.includes(`data-tyre="${k}"`)) && Tyw.setsRowHtml(sRow(), { hideNo: true }).html.includes('data-tyre="W"'));
+  const t = Tyw.setsRowHtml(sRow({ setsMode: 'team', teamName: 'Team Red', teamDrivers: ['Dutch', 'Maria'] }), {}).html;
+  ok('shared sets: who shares them ("Shared by Team Red", "Dutch and Maria"), unless the switch is off; three drivers read "A, B and C"', t.includes('<small>Shared by</small><b>Team Red</b><small>Dutch and Maria</small>') && !Tyw.setsRowHtml(sRow({ setsMode: 'team', teamName: 'Team Red', teamDrivers: ['Dutch', 'Maria'] }), { showTeam: false }).html.includes('Team Red')
+    && Tyw.setsRowHtml(sRow({ setsMode: 'team', teamName: 'T', teamDrivers: ['A', 'B', 'C'] }), {}).html.includes('<small>A, B and C</small>') && !a.includes('Shared by'));
+  ok('...a team with no name (a lane that has no team) does not say "shared"', !Tyw.setsRowHtml(sRow({ setsMode: 'team', teamName: '' }), {}).html.includes('Shared by'));
+  ok('a name or a text that comes from the data is escaped', Tyw.setsRowHtml(sRow({ setsMode: 'team', teamName: '<i>x</i>', teamDrivers: ['<b>'] }), {}).html.includes('&lt;i&gt;x&lt;/i&gt;') && !Tyw.setsRowHtml(sRow({ setsMode: 'team', teamName: '<i>x</i>', teamDrivers: ['<b>'] }), {}).html.includes('<i>x</i>'));
+  ok('your own tyre pictures (a picture set) are used for the tyres', Tyw.setsRowHtml(sRow(), { tyreImages: { S: 'data:image/png;base64,AAA' } }).html.includes('data:image/png;base64,AAA'));
+  ok('a race with no limit on the sets says so, a lane with no row shows a dash', Tyw.setsRowHtml(sRow({ sets: null }), {}).html.includes('No limit on the sets') && Tyw.setsRowHtml(null, {}).html === '–');
+  ok('an unknown look is the tyres with numbers', Tyw.setsRowHtml(sRow(), { look: 'nonsense' }).html.includes('twav-n'));
+
+  // what the page draws: from a real race
+  const r = raceSets({ setsMode: 'car', sets: { H: 2, M: 2, S: 2, SS: 1, INT: 2, W: 2 }, changeSeconds: 0 }); r.twQueue(0, 'SS', 100);
+  const out = Tm.content({ type: 'tyresets', lane: 0, opt: {} }, S(r, 10000)), none = Tm.content({ type: 'tyresets', lane: 0, opt: {} }, S(race(null), 10000));
+  ok('the widget of a lane shows the box of its car from the race: the Soft car starts with 1 Soft left, 2 Hard, NEXT on the queued Supersoft', out.html.includes('data-tyre="S"') && /data-tyre="S">[\s\S]*?<b class="twav-n">1</.test(out.html) && /data-tyre="H">[\s\S]*?<b class="twav-n">2</.test(out.html) && /data-tyre="SS">\s*<em class="twav-next">NEXT/.test(out.html) && out.html.includes('twav-c on'));
+  ok('...the other lane has its own box (the Medium car: 1 Medium left, 2 Soft)', (() => { const x = Tm.content({ type: 'tyresets', lane: 1, opt: {} }, S(r, 10000)).html; return /data-tyre="M">[\s\S]*?<b class="twav-n">1</.test(x) && /data-tyre="S">[\s\S]*?<b class="twav-n">2</.test(x) && !x.includes('NEXT'); })());
+  ok('...in a race without Tyre Wear a dash', none.html === '–');
+  const u = Tm.content({ type: 'tyresets', lane: 0, opt: {} }, S(race({}), 10000));
+  ok('...in a race with no limit on the sets: the words say so', u.html.includes('No limit on the sets'));
+  const tm = raceSets({ setsMode: 'team', sets: { H: 2, M: 2, S: 3, SS: 1, INT: 2, W: 2 } }, { team: true }), tx = Tm.content({ type: 'tyresets', lane: 0, opt: {} }, S(tm, 10000)).html;
+  ok('...the team that shares the sets: both lanes say who shares the box, and they show the same numbers (a ring on the tyre that is on that lane\'s car)', (() => { const ty = Tm.content({ type: 'tyresets', lane: 1, opt: {} }, S(tm, 10000)).html, nums = h => (h.match(/<b class="twav-n">\d+/g) || []).join();
+    return tx.includes('Shared by') && tx.includes('Team Red') && tx.includes('D0 and D1') && ty.includes('D0 and D1') && nums(tx) === nums(ty) && /twav-c on" style="--tc:#e8002d"/.test(tx) && /twav-c on" style="--tc:#ffd12e"/.test(ty); })());
+  const reg = Wd.REGISTRY.find(x => x.type === 'tyresets');
+  ok('it is in the register as Available Tyres, in the group Weather, one for every lane, with its options and a sample', reg && reg.label === 'Available Tyres' && reg.group === 'Weather' && reg.perLane === true && reg.options === Tyw.SETS_OPTIONS && typeof reg.sample === 'function' && reg.sample(0, { opt: {} }).includes('twav'));
+  ok('...the layout editor sample shows a Soft on the car and a Supersoft queued, for the lanes with and without a team', reg.sample(0, { opt: {} }).includes('NEXT') && !reg.sample(0, { opt: {} }).includes('Shared by') && reg.sample(1, { opt: {} }).includes('Shared by'));
+  ok('...a picture set of tyres chosen in the widget gives its pictures', (Wd.resolveOpt({ type: 'tyresets', opt: { imageSet: 's1' } }, [{ id: 's1', kind: 'tyres', images: { S: 'data:x' } }]).tyreImages || {}).S === 'data:x'); }
+
 console.log(fails ? `${fails} TYRE WIDGET TESTS FAILED` : 'ALL TYRE WIDGET TESTS PASSED');
 process.exit(fails ? 1 : 0);

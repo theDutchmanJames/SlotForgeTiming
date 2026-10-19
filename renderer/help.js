@@ -210,7 +210,8 @@ const Help = (() => {
           <li>Through the fuel rules, like Balance of Power (needs a Fuel setup), new tyres help the car and worn ones hinder it. Lap times and records are never changed.</li>
           <li>At <b>0%</b>: nothing, penalty points every lap, the lap does not count until the car pits, or the car retires.</li>
           <li>In the pits a car gets a fresh set; it takes the seconds you set, at the same time as the other work or after it. A car that leaves early keeps its worn tyres.</li>
-          <li>The <b>Tyre Change</b> folder shows the life of every car. The <b>Tyre Degradation</b> widget (Layout Editor, Weather) shows it as a worn tyre, a ring, a bar or a number; the Leaderboard and Driver stats have cells for it.</li>
+          <li><b>Sets</b> (per car or team): a stop takes one set from the box; a tyre with none left can not be fitted. The Race Director queues the next tyre; rain tyres go first.</li>
+          <li>The <b>Tyre Change</b> folder shows the life, sets and next stop of every car. The <b>Tyre Degradation</b> and <b>Available Tyres</b> widgets (Layout Editor, Weather) show them; the Leaderboard and Driver stats have life cells.</li>
         </ul>` },
       { id: 'tokens', title: 'Time Token Sessions', note: 'Selling track time per lane', body: `
         <ul>
