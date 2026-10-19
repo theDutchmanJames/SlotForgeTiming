@@ -59,13 +59,14 @@ const Help = (() => {
       { id: 'setups', title: 'Race Setup', note: 'Race setups, fuel, penalties, balance of power and time tokens', body: `
         <ul>
           <li>The big <b>Race Setups</b> button is where everything comes together. The other sub-tabs have the colour of their folder on the race screen.</li>
-          <li><b>Race Setups</b> hold the rules of one kind of race: the session type, track, length, start lights, penalties, fuel, timing page and audio set. Every option has a default and sits in a folder.</li>
+          <li><b>Race Setups</b> hold the rules of one kind of race: the session type, track, length, penalties, fuel, timing page and audio set.</li>
           <li><b>Rotation Setups</b>: a heat plan you make yourself (see Rotation setups, below).</li>
           <li><b>Fuel Setups</b>: tank size, fuel per lap and what happens when the tank is empty.</li>
-          <li><b>Penalty Systems</b>: how penalty points turn into seconds, when a driver is disqualified, and special penalties such as a Drivethrough or a Stop-and-Go.</li>
+          <li><b>Penalty Systems</b>: how penalty points turn into seconds, when a driver is disqualified, and special penalties (a Drivethrough, a Stop-and-Go).</li>
           <li><b>Damage Systems</b>: damage points, and the stop in the pits that repairs them (see Damage System, below).</li>
           <li><b>Tyre Wear Systems</b>: tyres that lose life while a car drives, and what that does to the car (see Tyre wear, below).</li>
-          <li><b>Weather Systems</b>: a spell of rain with a forecast, the tyres to change in the pits, what the wrong tyres cost, and the temperatures and the wind of every weather.</li>
+          <li><b>Weather Systems</b>: a spell of rain with a forecast, the tyres to change in the pits, what the wrong tyres cost, and the temperatures and the wind.</li>
+          <li><b>Safety Car Systems</b>: slow laps and quicker pit work behind the Safety Car (see Safety Car, below).</li>
           <li><b>Balance of Power</b>: how much a fast car is hindered and a slow car helped, by hand or by itself.</li>
           <li><b>Time Tokens</b>: the time buttons and the warning for a Time Token Session.</li>
           <li>Fuel setups, penalty systems, damage systems, tyre wear systems and weather systems do nothing until you choose them in the <b>Racing Systems</b> folder of a race setup (Balance of Power and the pit hold time are there too).</li>
@@ -223,6 +224,14 @@ const Help = (() => {
           <li><b>Sets</b> (per car or team): a stop takes one set from the box; a tyre with none left can not be fitted. The Race Director queues the next tyre; rain tyres go first.</li>
           <li>The <b>Tyre Change</b> folder, the <b>Tyre Degradation</b> and <b>Available Tyres</b> widgets (Layout Editor, Tyres) and the Leaderboard show the life, sets and next stop.</li>
           <li>Audio has <b>Tyre wear</b> calls; results and the PDF show the stints.</li>
+        </ul>` },
+      { id: 'safetycar', title: 'Safety Car', note: 'The yellow flag as a Safety Car', body: `
+        <ul>
+          <li>A <b>safety car system</b> (Race Setup, Safety Car Systems) bundles three settings. Choose one in the <b>Racing Systems</b> folder of a race setup; it replaces the <b>Yellow flag</b> settings of that setup.</li>
+          <li>The Safety Car is out <b>while the yellow flag is up</b>: the yellow button, the Trackcall button and a call from a lane all bring it out. There is no button of its own. Yellow again, or the red flag, ends it.</li>
+          <li><b>Lap times</b>: a full lap behind the Safety Car must be slower than the limit. A lap that is too fast is called out and gets penalty points (they need a penalty system). A lap that began before the Safety Car came out does not count.</li>
+          <li><b>Pit stops</b>: refuelling, a repair and changing tyres take a number of percent less time for a car that comes in while the Safety Car is out. Driver swaps and penalties served in the pits are not shorter.</li>
+          <li>The flag widget and the yellow button say <b>Safety Car</b>, and the race log says when it came out and went in. The cars do not close up behind it (not yet).</li>
         </ul>` },
       { id: 'tokens', title: 'Time Token Sessions', note: 'Selling track time per lane', body: `
         <ul>

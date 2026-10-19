@@ -98,7 +98,7 @@
     const st = flagStateOf(S);
     const rec = r => (r && Number.isFinite(r.time) ? E.fmtTime(r.time) : '–'), by = r => (r && Number.isFinite(r.time) && r.name ? esc(r.name) : '');
     return { clock: clockText(S.eng.elapsed(t)), timeleft: time ? mmss(Math.max(0, time - S.eng.elapsed(t))) : '–', lapsleft: laps ? Math.max(0, laps - most) : '–', lapstotal: laps || '–', racedistance: S.eng.distance ? Ds.text(S.eng.distance.distance, distUnit(S, {})) : '–', leader: lead && lead.car ? esc(lead.car.driverName) : '–',
-      flag: st === 'red' ? 'Red flag' : st === 'yellow' ? 'Yellow flag' : flagText[st] || '', heat: S.heat ? heatLabel(S.heat) : '',
+      flag: st === 'red' ? 'Red flag' : st === 'yellow' ? (S.eng.safetyCar ? 'Safety Car' : 'Yellow flag') : flagText[st] || '', heat: S.heat ? heatLabel(S.heat) : '',
       track: esc((S.track && S.track.name) || ''), session: esc(S.setup.name || ''), type: esc(sessionLabel[S.setup.ofType || S.setup.sessionType] || ''), sessionrecord: rec(sr), sessionrecordby: by(sr), trackrecord: rec(tr), trackrecordby: by(tr), yellowtarget: S.eng.yellow && S.eng.yellow.target > 0 ? E.fmtTime(S.eng.yellow.target) : '', ...Ww.raceVars(S.eng, t) };
   }
 
@@ -380,13 +380,13 @@
         const img = style === 'images' ? opt['img_' + st] : '';
         if (img) return { html: Wd.flagImgHtml(img, flagText[st] || st, !!opt.imageMirror) };
         if (st === 'red') return { html: 'RED FLAG', bg: '#d62828', color: '#fff' }; // text, also for a state a picture set has no picture for
-        if (st === 'yellow') return { html: 'YELLOW FLAG', bg: '#ffd400', color: '#000' };
+        if (st === 'yellow') return { html: S.eng.safetyCar ? 'SAFETY CAR' : 'YELLOW FLAG', bg: '#ffd400', color: '#000' }; // (a race with a safety car system: the yellow flag is the Safety Car, 1.53.0)
         return { html: flagText[st] || '' };
       }
       case 'start': return { html: S.phase === 'between' && S.heat ? (S.heat.final ? `Start final ${S.heat.final}` : `Start heat ${S.heat.idx + 1}`) : 'Start', button: true, disabled: !(S.phase === 'ready' || S.phase === 'between') || !!S.calling || !!(S.heat && S.heat.picking) };
       case 'pause': return { html: S.phase === 'paused' ? 'Resume' : 'Pause', button: true, disabled: !(S.phase === 'running' || S.phase === 'paused') };
       case 'stop': return { html: 'Stop', button: true, disabled: !(S.phase === 'running' || S.phase === 'paused' || S.phase === 'between') };
-      case 'yellow': return { html: 'Yellow flag', button: true, disabled: !(S.phase === 'running' || S.eng.flag === 'yellow') || S.eng.flag === 'red',
+      case 'yellow': return { html: S.eng.safetyCar ? 'Safety Car' : 'Yellow flag', button: true, disabled: !(S.phase === 'running' || S.eng.flag === 'yellow') || S.eng.flag === 'red',
         ...(S.eng.flag === 'yellow' ? { bg: '#ffd400', color: '#000' } : {}) };
       case 'red': return { html: 'Red flag', button: true, disabled: !(S.phase === 'running' || S.phase === 'paused'),
         ...(S.eng.flag === 'red' ? { bg: '#d62828', color: '#fff' } : {}) };

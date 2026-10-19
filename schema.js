@@ -4,12 +4,15 @@
 // type: text | longtext | number | date | choice | country | image | tracklength (metres, with a calculator) | gallery (extra pictures)
 // the kinds of session that are raced (a Time Token Session has no start lights, laps, fuel or penalties)
 const RACING = [{ sessionType: ['practice', 'qualifying', 'race', 'timed', 'heats', 'endurance'] }];
+// the same, in a race setup that has no safety car system (a system replaces the Yellow flag settings: 1.53.0)
+const NO_SAFETYCAR = [{ sessionType: ['practice', 'qualifying', 'race', 'timed', 'heats', 'endurance'], safetyCar: [''] }];
 // a heat-based race: a Heat-based race, or an Endurance Race that is heat-based (extra: the other conditions that must match)
 const HEATED = (extra = {}) => [{ sessionType: ['heats'], ...extra }, { sessionType: ['endurance'], enduranceBy: ['heats'], ...extra }];
 // a race that is limited by a distance (1.35.0): a race, heats or an Endurance Race (one long race, or heat-based) set to Distance (extra: the other conditions that must match)
 const DIST = (extra = {}) => [{ sessionType: ['race'], raceBy: ['distance'], ...extra }, { sessionType: ['heats'], heatBy: ['distance'], ...extra }, { sessionType: ['endurance'], enduranceBy: ['distance'], ...extra }, { sessionType: ['endurance'], enduranceBy: ['heats'], heatBy: ['distance'], ...extra }];
 const Wx = require('./renderer/weather.js'); // the tyres, the standard settings and the hindrance table of a weather system (one place for them)
 const Tw = require('./renderer/tyrewear.js'); // the standard numbers of a tyre wear system (one place for them)
+const Sc = require('./renderer/safetycar.js'); // the standard numbers of a safety car system (one place for them)
 // the 12 numbers of the hindrance table of a weather system: the weather state by the kind of tyre
 const WX_TABLE = [];
 Wx.STATES.forEach(([state, stateName]) => Wx.CLASSES.forEach(cls => WX_TABLE.push({ key: Wx.HKEYS[state + '/' + cls], group: 'hinder', type: 'number', min: 0, default: Wx.TABLE[state][cls],
@@ -123,8 +126,8 @@ module.exports = {
       { id: 'length', title: 'Length and result', note: 'Laps or time, heats, how the race ends and is counted', open: true },
       { id: 'endurance', title: 'Endurance: driver swaps', note: 'When a team swaps drivers in the pits, who steps in, and what a swap that is not made costs' },
       { id: 'start', title: 'Start', note: 'Start lights, restarts and the first lap' },
-      { id: 'rules', title: 'Racing Systems', note: 'The penalty, damage, fuel, tyre wear and weather systems, Balance of Power and the pit stop sensor' },
-      { id: 'yellow', title: 'Yellow flag', note: 'A target lap time while the yellow flag is up' },
+      { id: 'rules', title: 'Racing Systems', note: 'The penalty, damage, fuel, tyre wear, weather and safety car systems, Balance of Power and the pit stop sensor' },
+      { id: 'yellow', title: 'Yellow flag', note: 'A target lap time while the yellow flag is up (not used when the race has a safety car system)' },
       { id: 'pads', title: 'Adjust pads', note: 'The values on the Adjust pads for this race setup. An empty field uses the values from App Settings, Race Director.' },
       { id: 'screens', title: 'Screens and sound', note: 'Timing page layouts and the audio set' },
       { id: 'trackmate', title: 'Trackmate', note: 'Track power at the start and the Trackcall button' },
@@ -284,10 +287,12 @@ module.exports = {
         hint: 'A spell of rain with a forecast, and tyres to change in the pits. Make weather systems under Race Setup > Weather Systems. Only for races (a number of laps or a duration), not for practice or qualifying. Hindering the cars needs a Fuel setup above; the tyres and the penalty points do not.' },
       { key: 'tyreWear', group: 'rules', label: 'Tyre wear system', type: 'ref', ref: 'tyrewearsystems', blank: 'No tyre wear', showIf: RACING,
         hint: 'Tyres that wear out during the race and a fresh set in every pit stop. Make tyre wear systems under Race Setup > Tyre Wear Systems. Every heat starts on fresh tyres. A race (a number of laps or a duration) always has it; practice and qualifying only when the system says so. Helping and hindering the car needs a Fuel setup above; the rule at 0% and the display do not.' },
+      { key: 'safetyCar', group: 'rules', label: 'Safety car system', type: 'ref', ref: 'safetycarsystems', blank: 'No safety car', showIf: RACING,
+        hint: 'The Safety Car is out while the yellow flag is up. The system sets how slowly the cars must drive (a lap that is too fast gets penalty points) and how much shorter the work in a pit stop is. Make safety car systems under Race Setup > Safety Car Systems. It replaces the Yellow flag settings below.' },
       { key: 'pitHold', group: 'rules', label: 'Pit stop: the sensor must be blocked this long to start a stop (seconds)', type: 'number', default: 2, showIf: RACING },
-      { key: 'yellowTarget', group: 'yellow', label: 'Yellow flag: target lap time (seconds, 0 = none)', type: 'number', default: 0, min: 0, showIf: RACING,
+      { key: 'yellowTarget', group: 'yellow', label: 'Yellow flag: target lap time (seconds, 0 = none)', type: 'number', default: 0, min: 0, showIf: NO_SAFETYCAR,
         hint: 'While the yellow flag is up, drivers must drive slower than this. Say your normal lap is 7.500 and you set 15.000: a full lap under yellow that is faster than 15.000 is a lap that was too fast, and it is called out. A lap that was partly before the yellow flag does not count. 0 means no target.' },
-      { key: 'yellowPoints', group: 'yellow', label: 'Yellow flag: penalty points for a lap that is too fast', type: 'number', default: 1, min: 0, showIf: RACING,
+      { key: 'yellowPoints', group: 'yellow', label: 'Yellow flag: penalty points for a lap that is too fast', type: 'number', default: 1, min: 0, showIf: NO_SAFETYCAR,
         hint: 'Given to the driver for every full lap under yellow that is faster than the target. It needs a penalty system (under Racing Systems); without one the lap is only called out and marked in the lap review. 0 gives no points. Not used without a target above.' },
       { key: 'padPoints', group: 'pads', label: 'Penalty points pad', type: 'padlist', pad: 'points', default: '', optional: true, placeholder: 'Empty: the App Settings values', showIf: RACING,
         hint: 'Up to 6 whole numbers, separated by commas, for example 1, 3, 10.' },
@@ -455,6 +460,24 @@ module.exports = {
         hint: 'The audio set says "tyres at 50 percent" when the tyres have this much life left or less (the call "A car\'s tyres reach a wear level" in the group Tyre wear). Each of the three levels is said once for every set of tyres. Empty = no call at this level.' },
       { key: 'call2', group: 'warn', label: 'Audio call at this life (%): second level', type: 'number', min: 1, max: 99, default: Tw.DEFAULTS.call2 },
       { key: 'call3', group: 'warn', label: 'Audio call at this life (%): third level', type: 'number', min: 1, max: 99, default: Tw.DEFAULTS.call3 }
+    ]
+  },
+  // Safety car systems (1.53.0): a few settings bundled in one record, chosen per race setup (Racing Systems). The Safety Car is out while the yellow flag is up (see safetycar.js).
+  safetycarsystems: {
+    label: 'Safety car system', plural: 'Safety car systems', title: ['name'], extra: false, linked: false, list: ['name', 'target', 'pitPercent'], card: ['target', 'pitPercent'],
+    groups: [
+      { id: 'basics', title: 'Basics', note: 'Name. The Safety Car is out while the yellow flag is up', open: true },
+      { id: 'laps', title: 'Lap times', note: 'How slowly the cars must drive behind the Safety Car', open: true },
+      { id: 'pit', title: 'Pit stops', note: 'Work in the pits goes faster behind the Safety Car', open: true }
+    ],
+    fields: [
+      { key: 'name', group: 'basics', label: 'Name', type: 'text' },
+      { key: 'target', group: 'laps', label: 'Laps must be slower than (seconds, 0 = no limit)', type: 'number', min: 0, max: 3600, default: Sc.DEFAULTS.target,
+        hint: 'While the Safety Car is out (the yellow flag is up) a lap must take longer than this. Say your normal lap is 7.500 and you set 15.000: a full lap under the Safety Car that is faster than 15.000 was too fast, and it is called out. A lap that was partly before the Safety Car came out does not count. 0 means no limit.' },
+      { key: 'points', group: 'laps', label: 'Penalty points for a lap that is too fast', type: 'number', min: 0, max: 100, default: Sc.DEFAULTS.points,
+        hint: 'Given to the driver for every full lap behind the Safety Car that is faster than the limit. It needs a penalty system (Racing Systems of the race setup); without one the lap is only called out and marked in the lap review. 0 gives no points. Not used without a limit above.' },
+      { key: 'pitPercent', group: 'pit', label: 'The work in a pit stop takes less time by (percent)', type: 'number', min: 0, max: Sc.MAX_PIT, default: Sc.DEFAULTS.pitPercent,
+        hint: 'Refuelling, a repair and changing tyres take this many percent less time when the car comes into the pits while the Safety Car is out. 50 makes a 10 second tyre change 5 seconds. Fixed when the car comes in, so a Safety Car that goes in while the car is in the pits changes nothing for that stop. Driver swaps, a penalty that is served in the pits and the pit hold time are not shortened. 0 changes nothing.' }
     ]
   },
   // Weather systems: a spell of rain with a forecast, the tyres to change in the pits, and what the wrong tyres cost. Chosen per race setup.

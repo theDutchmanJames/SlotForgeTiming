@@ -5,7 +5,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg',
   '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.json': 'application/json', '.ico': 'image/x-icon' };
 // what other devices may read from the database: no settings (they hold the password), nothing is ever written
-const READABLE = ['drivers', 'teams', 'slotcars', 'tracks', 'racesetups', 'layouts', 'rowdesigns', 'sessions', 'laps', 'penaltysystems', 'damagesystems', 'fuelrules', 'weathersystems', 'tyrewearsystems'];
+const READABLE = ['drivers', 'teams', 'slotcars', 'tracks', 'racesetups', 'layouts', 'rowdesigns', 'sessions', 'laps', 'penaltysystems', 'damagesystems', 'fuelrules', 'weathersystems', 'tyrewearsystems', 'safetycarsystems'];
 // what the Race Director page may send to the race
 const COMMANDS = ['start', 'pause', 'stop', 'yellow', 'red', 'penalty', 'assign', 'review', 'call', 'callresolve', 'addtime', 'reducetime', 'undotime', 'endtime', 'cleartime', 'setdriver', 'bop', 'weather', 'tyre', 'tyrenext', 'swap', 'swapnext', 'damage', 'failure', 'failureclear', 'pad'];
 // The plain buttons of the Race Director page that carry something: a lane is a whole number from 0 to 15, a penalty a number of points, a call has an id and is answered with one word.

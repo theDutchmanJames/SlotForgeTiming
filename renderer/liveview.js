@@ -219,7 +219,7 @@ const LiveView = (() => {
     const d = V.dyn(), eng = V.engine(), on = d.phase === 'running' || d.phase === 'paused', set = (sel, fn) => body.querySelectorAll(sel).forEach(fn);
     set('[data-cmd="start"]', b => { b.disabled = !(d.phase === 'ready' || d.phase === 'between') || !!d.calling; });
     set('[data-cmd="pause"]', b => { b.disabled = !on; b.textContent = d.phase === 'paused' ? 'Resume' : 'Pause'; });
-    set('[data-cmd="yellow"]', b => { b.disabled = !on; b.setAttribute('aria-pressed', String(eng.flag === 'yellow')); });
+    set('[data-cmd="yellow"]', b => { b.disabled = !on; b.setAttribute('aria-pressed', String(eng.flag === 'yellow')); b.textContent = eng.safetyCar ? 'Safety Car' : 'Yellow flag'; }); // (1.53.0: with a safety car system the yellow flag is the Safety Car)
     set('[data-cmd="red"]', b => { b.disabled = !on; b.setAttribute('aria-pressed', String(eng.flag === 'red')); });
     set('[data-cmd="stop"]', b => { b.disabled = !(on || d.phase === 'between'); });
     set('[data-cmd="call"]', b => { b.disabled = !on; });

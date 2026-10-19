@@ -77,7 +77,7 @@ const undoButtons = p => `<button class="btn" id="${p}-undo" title="Undo the las
 // Rotation (brown) and Fuel (green) have no folder. The design is in docs/ui-reference/race-setup-tabs. The buttons keep role "tab" and data-id, as every tab in the app does.
 const SETUP_HERO = ['setups', 'Race Setups', 'racesetups', 'race'];
 const SETUP_GROUPS = [
-  ['Systems', [['penalties', 'Penalty Systems', 'penalty', 'pen'], ['damage', 'Damage Systems', 'damage', 'dmg'], ['tyrewear', 'Tyre Wear Systems', 'tyre', 'tyre'], ['weather', 'Weather Systems', 'weather', 'wx']]],
+  ['Systems', [['penalties', 'Penalty Systems', 'penalty', 'pen'], ['damage', 'Damage Systems', 'damage', 'dmg'], ['tyrewear', 'Tyre Wear Systems', 'tyre', 'tyre'], ['weather', 'Weather Systems', 'weather', 'wx'], ['safetycar', 'Safety Car Systems', 'safetycar', 'sc']]],
   ['Setups', [['rotation', 'Rotation Setups', 'rotation', 'rot'], ['fuel', 'Fuel Setups', 'fuel', 'fuel']]],
   ['Extras', [['bop', 'Balance of Power', 'balance', 'bop'], ['tokens', 'Time Tokens', 'tokens', 'tok']]],
 ];
@@ -100,10 +100,11 @@ async function renderSetup() {
     if (rotEd && id !== 'rotation') { if (rotEd.dirty && !confirm('Discard your unsaved changes to this rotation setup?')) return; draftUndoEnd(rotEd); rotEd = null; }
     state.setupSub = id; renderSetup();
   };
-  const sub = state.setupSub, entity = sub === 'penalties' ? 'penaltysystems' : sub === 'damage' ? 'damagesystems' : sub === 'tyrewear' ? 'tyrewearsystems' : sub === 'fuel' ? 'fuelrules' : sub === 'weather' ? 'weathersystems' : 'racesetups';
+  const sub = state.setupSub, entity = sub === 'penalties' ? 'penaltysystems' : sub === 'damage' ? 'damagesystems' : sub === 'tyrewear' ? 'tyrewearsystems' : sub === 'safetycar' ? 'safetycarsystems' : sub === 'fuel' ? 'fuelrules' : sub === 'weather' ? 'weathersystems' : 'racesetups';
   document.getElementById('setupnote').textContent = sub === 'penalties' ? 'A penalty system says how penalty points turn into time and when a driver is disqualified. Choose one in a race setup.'
     : sub === 'damage' ? 'A damage system gives a car damage points (a hit from the Race Director, a deslot). The level they reach says how long the car must stand in the pits to be repaired, or that it is out. Choose one in a race setup.'
     : sub === 'tyrewear' ? 'A tyre wear system makes the tyres lose life while a car drives, from 100% to 0%. New tyres help the car, worn out tyres hinder it, and a pit stop gives a fresh set. Choose one in a race setup (Racing Systems).'
+    : sub === 'safetycar' ? 'A safety car system is the Safety Car that comes out with the yellow flag: how slowly the cars must drive (a lap that is too fast gets penalty points) and how much shorter the work in a pit stop is. Choose one in a race setup (Racing Systems); it replaces the Yellow flag settings there.'
     : sub === 'fuel' ? 'A fuel setup sets the tank, how much fuel a lap uses (more when faster, less when slower) and what happens when it runs out. Choose one in a race setup to race with fuel.'
     : sub === 'weather' ? 'A weather system is a spell of rain with a forecast: when it starts, how long it lasts, the clouds before and the drying after. Cars change tyres in the pits and can get penalty points or be hindered if they do not. Choose one in a race setup.'
     : sub === 'rotation' ? 'A rotation setup is a heat plan that you make yourself: which participant races in which heat and in which lane, and the order of the heats. Choose one in a race setup for a Heat-based race (under Session). Without one, the heats are planned from the settings of the race setup, as before.'

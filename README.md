@@ -2718,3 +2718,24 @@ Good to know:
 4. Saved races, snapshots and the live pages (phones, Race Director) know the new rule; a race window of an older version simply has no rule.
 5. Tested: a new test file (`tests/mandatory.test.js`) and extra checks in the tyre wear screen, penalty panel and Help tests; 39 deliberate breakages of the new code were all caught.
 6. Not verified in the full Electron window or with the real hardware: please try one race with one stop and two tyres, with a car that does and a car that does not make its stop, and tell me what the results say.
+
+
+## What to try (1.53.0): the Safety Car System
+
+A race setup can now have a **Safety Car**. It comes out with the yellow flag: while it is out, the cars must drive slower than a limit you choose (a lap that is too fast gets penalty points), and the work in a pit stop takes less time. There is no button of its own: the yellow flag *is* the Safety Car, so the flag buttons, the Trackcall button and a marshal call all bring it out.
+
+1. Open **Race Setup > Safety Car Systems** (the new button after Weather Systems, in orange) and add a system. It has three numbers: **Laps must be slower than** (seconds, standard 15; 0 = no limit), **Penalty points for a lap that is too fast** (standard 1) and **The work in a pit stop takes less time by** (percent, standard 50; 0 to 90).
+2. Open a race setup, folder **Racing Systems**, and choose it under **Safety car system**. A system **replaces the Yellow flag fields** of the setup (target lap time and penalty points): they are hidden as soon as you choose one and come back when you choose "No safety car".
+3. Start a race. Press **Y** (or the Yellow flag button, which now says **Safety Car**, or a call from a lane). The Race Flag widget in text style and the text variable *Flag* say **Safety Car** (the flag and LED pictures stay a yellow flag), the log of the penalty panel has the line **Safety Car out (after lap N)**, and the audio says the yellow flag call and the limit as it did for the yellow flag target.
+4. **A lap that is too fast** (a lap that began after the Safety Car came out, ended while it was still out, and took less than the limit) is called out and gets the points, with a penalty system in the race. Exactly the limit is allowed. A lap that was partly before the Safety Car came out does not count. The lap review marks it as **faster than the Safety Car limit**.
+5. **Pit stops are shorter.** A car that comes into the pits while the Safety Car is out has its refuelling, repair of damage and tyre change take the percent less time (50% = half). It is decided when the car comes in: a Safety Car that goes in during the stop does not make it longer, and one that comes out during the stop does not make it shorter. Driver swaps, a penalty that is served in the pits (stop and go) and the pit hold time are **not** shortened.
+6. Press **Y** again: **Safety Car in (after lap N)**. A red flag brings it in too, and it ends with the race.
+7. **Where else it shows:** the Home tab card *Rules of this race* has a line **Safety car** (only when the setup has one), the Race Director page button says Safety Car, the Help has a new folder **Safety Car**, and the system is exported, imported and shared with phones like the other systems.
+
+Good to know:
+1. The lap rule is "slower than": a lap *faster* than the limit is the one that is penalised (the direction of the yellow flag target that you know). If you meant it the other way round, tell me.
+2. No closing up of the gaps for now, as you said. No dedicated audio calls for "Safety Car out" and "in" yet: the yellow flag call and the limit are said, as before.
+3. A race setup from before has no safety car system and works as it always did (the Yellow flag fields included).
+4. A practice, qualifying, race, timed, heat and endurance race can have one; a Time Token Session never.
+5. Tested: two new test files (`tests/safetycar.test.js`, `tests/safetycarscreen.test.js`) and extra checks in the setup strip, rotation strip, penalty panel, Home, server and Help tests; 66 deliberate breakages of the new code were all caught (one change that makes no difference to the result was left alone).
+6. Not verified in the full Electron window or with the real hardware: please try one race with a Safety Car system, a fast lap behind it and one pit stop with the Safety Car out and one with it in, and tell me what you see.

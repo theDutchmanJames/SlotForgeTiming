@@ -126,7 +126,7 @@ const VIEW_ENTITIES = ['tracks', 'drivers', 'teams', 'slotcars']; // the pages w
 const hue = t => { let n = 0; for (const ch of t) n = (n * 31 + ch.charCodeAt(0)) % 360; return `hsl(${n} 45% 40%)`; }; // (the colour of a picture's placeholder, from the name)
 // The picture of a card that has none. On the Race Setup pages it is the icon of the system or setup, in the colour of its sub-tab (1.47.1: the same icon and colour as its button
 // in the strip: see SETUP_GROUPS in editor.js); on every other page it is the first letter of the name on a colour made from the name.
-const SETUP_LOOK = { racesetups: ['racesetups', 'race'], penaltysystems: ['penalty', 'pen'], damagesystems: ['damage', 'dmg'], tyrewearsystems: ['tyre', 'tyre'], weathersystems: ['weather', 'wx'], fuelrules: ['fuel', 'fuel'] };
+const SETUP_LOOK = { racesetups: ['racesetups', 'race'], penaltysystems: ['penalty', 'pen'], damagesystems: ['damage', 'dmg'], tyrewearsystems: ['tyre', 'tyre'], safetycarsystems: ['safetycar', 'sc'], weathersystems: ['weather', 'wx'], fuelrules: ['fuel', 'fuel'] };
 const noPicture = (e, t) => { const l = SETUP_LOOK[e]; return l ? `<span class="ph phicon ss-${l[1]}">${Icons.svg(l[0], { size: 72, stroke: 1.4 })}</span>` : `<span class="ph" style="background:${hue(t)}">${esc((t.trim()[0] || '?').toUpperCase())}</span>`; };
 // The windows that open from a Race Setup page (the form, the extra fields) have the colour of that sub-tab too (1.47.2): the class puts the colour on the folders, the Save button and the options in it (styles.css, .setupform).
 const setupToneClass = e => (SETUP_LOOK[e] ? ` setupform ss-${SETUP_LOOK[e][1]}` : '');

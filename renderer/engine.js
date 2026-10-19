@@ -6,6 +6,7 @@
   const En = typeof module !== 'undefined' ? require('./endurance.js') : root.Endurance; // Endurance Race: the swaps of drivers
   const Dm = typeof module !== 'undefined' ? require('./damage.js') : root.Damage; // Damage System: the levels of damage and the repair
   const Fl = typeof module !== 'undefined' ? require('./failures.js') : root.Failures; // Car Failures (1.43.0): the random failures of a Damage System
+  const Sc = typeof module !== 'undefined' ? require('./safetycar.js') : root.SafetyCar; // Safety Car (1.53.0): the lap target and the shorter pit work while the yellow flag is up
   const Tw = typeof module !== 'undefined' ? require('./tyrewear.js') : root.TyreWear; // Tyre Wear (1.40.0): the life of the tyres, the grip curve and the rules at 0%
   const Dist = () => (typeof module !== 'undefined' ? require('./distance.js') : root.Distance); // Distance Racing: the lap time to estimate with (looked up when it is needed: distance.js is loaded after this file in the page)
   const MIN_LAP = 800; // crossings closer together than this are treated as double triggers
@@ -88,7 +89,9 @@
     // what the car gets of the fuel rules now: from Balance of Power (car.bop), from the weather (car.wx) and from its tyres (car.tw), all signed whole percentages (negative: hindered), added up lever by lever
     const fx = c => (!hasFx(c) ? ONE : (WXH && c.wx) || (TWH && c.tw) ? B.mix([[BP && c.bop ? c.bop : 0, BP], [WXH && c.wx ? c.wx : 0, WXH && WXH.levers], [TWH && c.tw ? c.tw : 0, TWH && TWH.levers]]) : B.factors(c.bop, BP));
     const tankOf = c => (hasFx(c) ? Math.round(F.tank * fx(c).tank * 1e6) / 1e6 : F.tank); // (rounded: 100 x 1.1 is not 110.00000000000001 on a screen)
-    const Y = { target: 0, points: 0, ...(cfg.yellow || {}) }; // the yellow flag target lap time (ms; 0 = none) and the penalty points for a full lap under yellow that is faster
+    // Safety Car (1.53.0, cfg.safetycar, see safetycar.js): the yellow flag is the Safety Car. A race with a system uses ITS lap target and points instead of the Yellow flag fields of the race setup, and its pit work is shorter (R.block fixes it for the stop).
+    const SCC = Sc.fromConfig(cfg.safetycar);
+    const Y = SCC ? { target: SCC.target, points: SCC.points } : { target: 0, points: 0, ...(cfg.yellow || {}) }; // the yellow flag target lap time (ms; 0 = none) and the penalty points for a full lap under yellow that is faster
     // Endurance Race (cfg.endurance, see endurance.js): only in a race or a timed race. A car whose entry has a roster of two drivers or more swaps drivers; the state of its swaps is car.en.
     const EN = cfg.endurance && cfg.endurance.on && (type === 'race' || type === 'timed') ? { ...cfg.endurance } : null, enRnd = cfg.rnd || Math.random;
     // Damage System (cfg.damage, see damage.js): only in a race or a timed race. A car collects damage points (a hit by the Race Director, a deslot); the level they reach says how long it must stand in the pits.
@@ -115,7 +118,7 @@
     let callId = 0;
     const log = (type, i, t, data) => R.events.push({ type, car: i, t, ...data });
 
-    const end = (t, why) => { R.cars.forEach((c, i) => { wxFlush(i, t, true); if (c.blockAt !== null) { pitCheck(i, t); serveCheck(i, t); repairCheck(i, t); twCheck(i, t); closePit(i, t); } if (MAND && why !== 'Stopped') msJudge(c, i, t); }); R.status = 'finished'; R.endAt = t; R.endedBy = why; R.flag = ''; R.yellowAt = null; R.calls.forEach(c => { c.open = false; }); enEnd(t, why); };
+    const end = (t, why) => { R.cars.forEach((c, i) => { wxFlush(i, t, true); if (c.blockAt !== null) { pitCheck(i, t); serveCheck(i, t); repairCheck(i, t); twCheck(i, t); closePit(i, t); } if (MAND && why !== 'Stopped') msJudge(c, i, t); }); R.status = 'finished'; R.endAt = t; R.endedBy = why; R.flag = ''; R.yellowAt = null; if (scWas) scEdge(t); R.calls.forEach(c => { c.open = false; }); enEnd(t, why); };
     const checkEnd = t => {
       if (R.status !== 'running') return;
       if (type === 'race' && cfg.endRule === 'leader' && R.finished > 0) return end(t, 'The lead car finished');
@@ -140,17 +143,24 @@
     // Yellow: only a caution, timing carries on. Red: pauses the race until it is cleared or the race is resumed.
     // Pressing the same flag again clears it.
     R.flag = '';
+    // The Safety Car is out while the yellow flag is up (only in a race that has a Safety Car system). Every time that changes it is logged (event 'safetycar': out, and the laps the leader had driven).
+    R.safetyCar = SCC; // the settings (or null: this race has no Safety Car system)
+    R.scOut = () => !!SCC && R.flag === 'yellow';
+    let scWas = false;
+    const scEdge = t => { const now = R.scOut(); if (now === scWas) return; scWas = now; log('safetycar', -1, t, { out: now, laps: R.cars.reduce((m, c) => Math.max(m, c.laps.length), 0) }); };
+    const scFactor = () => (R.scOut() ? Sc.factor(SCC) : 1); // how long the work of a stop that begins now takes, as a part of the usual time
     R.setFlag = (kind, t) => {
       if (R.status === 'finished' || R.status === 'ready') return;
       if (kind === 'red') {
         if (R.flag === 'red') { R.flag = ''; R.resume(t); } else { R.flag = 'red'; R.yellowAt = null; R.pause(t); }
       } else if (kind === 'yellow' && R.flag !== 'red') { if (R.flag === 'yellow') { R.flag = ''; R.yellowAt = null; } else { R.flag = 'yellow'; R.yellowAt = t; } }
+      scEdge(t);
     };
     // A call from the lane of car i (a marshal call button): the yellow flag goes up, unless a flag is already up (a yellow is never switched off by a call), and the call waits for the
     // Race Director. A lane that calls again while its call is still waiting does not make a second call. Returns the call, or null when the race is not running.
     R.call = (i, t) => {
       if (!R.cars[i] || !['running', 'paused'].includes(R.status)) return null;
-      if (R.flag === '') { R.flag = 'yellow'; R.yellowAt = t; }
+      if (R.flag === '') { R.flag = 'yellow'; R.yellowAt = t; scEdge(t); }
       let c = R.calls.find(x => x.open && x.car === i);
       if (!c) { c = { id: ++callId, car: i, t, open: true, how: '' }; R.calls.push(c); log('call', i, t, { id: c.id }); }
       return c;
@@ -238,6 +248,7 @@
       const tyres = TWC ? null : wxTyres(c); // (the tyres are changed when the stop starts; with Tyre Wear: at once when it takes no time, else when the time is up: twCheck)
       const fit = quick ? twFit(c) : null; // (the new set is on before the stop works out the refuelling speed and the tank)
       c.pit = { start: c.blockAt + F.pitHold, fuel0: c.fuel, full: false, ...(hasFx(c) ? { rate: F.rate * fx(c).rate, tank: tankOf(c) } : {}) }; // (the refuelling speed and the tank of a car with Balance of Power are fixed for the whole stop)
+      if ((c.scf || 1) !== 1) c.pit.rate = (c.pit.rate ?? F.rate) / c.scf; // (under the Safety Car the tank fills faster: the work takes less time)
       log('pitstart', i, c.pit.start);
       if (tyres) log('tyres', i, c.pit.start, tyres);
       if (fit) twFitLog(i, c.pit.start, 0, fit);
@@ -437,7 +448,7 @@
         const rep = c.repairedAt === c.blockAt ? c.blockAt + ((c.repairs[c.repairs.length - 1] || {}).ms || 0) : repairAt(c);
         if (rep !== null) from = Math.max(from, rep);
       }
-      return Math.max(c.pit.start, from + TWC.changeMs);
+      return Math.max(c.pit.start, from + Math.round(TWC.changeMs * (c.scf || 1)));
     }
     // ---- the sets (1.41.0): the box of a car or a team, the tyre queued for the next stop, and which set goes on ----
     const twKey = c => (SETS && SETS.mode === 'team' && c.teamId ? String(c.teamId) : null);
@@ -565,7 +576,7 @@
       if (crossed) c.wxHold = undefined; // (the tyres that were due are judged by the stop, as for a car that comes in with this crossing)
       else { wxEntering = true; R.cross(i, t); wxEntering = false; }
       if (c.done) return true;
-      c.blockAt = t; c.pit = null; c.servedNow = false;
+      c.blockAt = t; c.pit = null; c.servedNow = false; c.scf = scFactor(); // (a stop is as short as the Safety Car makes it at the moment the car comes in)
       return true;
     };
     // the car leaves; a block shorter than pitHold is no pit stop
@@ -717,7 +728,7 @@
     // the moment the repair of the car on the sensor is done (null: nothing to repair). The damage and a failure are worked on at the same time: the longest of the two counts
     function repairAt(c) {
       const lv = dmgLevel(c), fj = flJob(c);
-      return (lv || fj) && c.blockAt !== null && !c.dmgOut && !c.failOut ? Dm.doneAt(DM, { ms: Math.max(lv ? lv.ms : 0, fj ? fj.ms : 0) }, c.blockAt, DM.stop === 'add' ? otherDoneAt(c) : undefined) : null;
+      return (lv || fj) && c.blockAt !== null && !c.dmgOut && !c.failOut ? Dm.doneAt(DM, { ms: Math.round(Math.max(lv ? lv.ms : 0, fj ? fj.ms : 0) * (c.scf || 1)) }, c.blockAt, DM.stop === 'add' ? otherDoneAt(c) : undefined) : null;
     }
     // the car stands in the pits and the time has come: repair it, or retire or disqualify it
     function repairCheck(i, t) {
@@ -962,6 +973,7 @@
       if (!snap || snap.v !== 1 || !Array.isArray(snap.cars) || snap.cars.length !== R.cars.length || !['running', 'paused', 'finished'].includes(snap.status)) return false;
       const x = JSON.parse(JSON.stringify(snap));
       STATE.forEach(k => { if (x[k] !== undefined) R[k] = x[k]; });
+      scWas = R.scOut(); // (the Safety Car that was out stays out, without a new line in the log)
       R.cars.length = 0; R.cars.push(...x.cars.map((d, i) => ({ ...(cfg.entries[i] || {}), ...d }))); R.events.length = 0; R.events.push(...(x.events || [])); R.calls.length = 0; R.calls.push(...(x.calls || []));
       callId = Number(x.callId) || 0; R.resumes = (Number(x.resumes) || 0) + 1;
       if (R.status === 'running') { R.status = 'paused'; R.pausedAt = Number.isFinite(x.at) ? x.at : R.pausedAt; } // (it was racing: it waits, with the clock where it was)

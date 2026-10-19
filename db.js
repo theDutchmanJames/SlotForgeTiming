@@ -105,6 +105,7 @@ class Database {
     if (entity === 'audiosets') d.racesetups.forEach(r => { if (r.audioSet === id) r.audioSet = ''; });
     if (entity === 'weathersystems') d.racesetups.forEach(r => { if (r.weather === id) r.weather = ''; });
     if (entity === 'tyrewearsystems') d.racesetups.forEach(r => { if (r.tyreWear === id) r.tyreWear = ''; });
+    if (entity === 'safetycarsystems') d.racesetups.forEach(r => { if (r.safetyCar === id) r.safetyCar = ''; });
     if (entity === 'rotationsetups') d.racesetups.forEach(r => { if (r.rotation === id) r.rotation = ''; });
     if (entity === 'penaltysystems') d.racesetups.forEach(r => { if (r.penaltySystem === id) r.penaltySystem = ''; });
     if (entity === 'damagesystems') d.racesetups.forEach(r => { if (r.damageSystem === id) r.damageSystem = ''; });

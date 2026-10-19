@@ -210,7 +210,7 @@
   }
 
   // ---- the rules of a race setup ----
-  // names: { typeLabel, rotation, penalty, damage, fuel, weather, tyreWear, tyreWearHere } the words for the session type and for the rule sets the setup points at ('' = it points at none, or at one that is gone)
+  // names: { typeLabel, rotation, penalty, damage, fuel, weather, safetyCar, tyreWear, tyreWearHere } the words for the session type and for the rule sets the setup points at ('' = it points at none, or at one that is gone)
   // -> [[label, text]]. Only what applies to the kind of session: a free practice has no weather, a Time Token Session no penalties.
   function rules(setup, names) {
     if (!setup) return [];
@@ -245,6 +245,7 @@
     if (full) out.push(['Weather', n.weather || 'Off'], ['Balance of Power', setup.bop === 'on' ? 'On' : 'Off']);
     if (full) out.push(['Tyre wear', n.tyreWear || 'Off']); // (1.40.0)
     else if (racing6 && n.tyreWear && n.tyreWearHere) out.push(['Tyre wear', n.tyreWear]); // (a practice or a qualifying has it only when the system says so)
+    if (racing6 && n.safetyCar) out.push(['Safety car', n.safetyCar]); // (1.53.0: only when the setup has one; most setups have none)
     return out;
   }
 

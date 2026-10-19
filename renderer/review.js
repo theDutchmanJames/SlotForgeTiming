@@ -8,11 +8,11 @@ const Review = (() => {
   // The laps of one car, each with what can be done to it.
   // mid: the race is still going on - the newest lap first, and a car that has finished only takes a lap out of the records (the rest is for the review after the race).
   // late(n): the lap was driven after the paid time was up (Time Token Session): it stays invalid.
-  function lapListHtml(c, i, mid, late) {
+  function lapListHtml(c, i, mid, late, sc) {
     const order = c.laps.map((_, n) => n); if (mid) order.reverse();
     return `<div class="rv-laps">${order.map(n => {
         const t = c.laps[n], after = !!late && late(n), inv = after || c.invalid.includes(n), rem = c.removed.includes(n), slow = c.bad[n];
-        const tags = [slow ? 'too slow' : '', after ? 'after the time ran out' : inv ? 'invalid' : '', rem ? 'not in the records' : '', (c.yellowFast || []).includes(n) ? 'faster than the yellow flag target' : ''].filter(Boolean);
+        const tags = [slow ? 'too slow' : '', after ? 'after the time ran out' : inv ? 'invalid' : '', rem ? 'not in the records' : '', (c.yellowFast || []).includes(n) ? (sc ? 'faster than the Safety Car limit' : 'faster than the yellow flag target') : ''].filter(Boolean);
         const del = ui.del === `${i}:${n}` ? `<span class="rv-del">Remove lap ${n + 1}:
             <button class="btn" data-rv="removelap" data-car="${i}" data-lap="${n}" data-recalc="0">From the records only</button>
             ${mid && c.done ? '' : `<button class="btn danger" data-rv="removelap" data-car="${i}" data-lap="${n}" data-recalc="1">From the race too (recalculate)</button>`}
@@ -45,7 +45,7 @@ const Review = (() => {
           ${c.dq ? '' : `<button class="btn danger" data-rv="dq" data-car="${i}" data-k="${k}">Disqualify</button>`}
           <button class="btn" data-rv="forgive" data-car="${i}" data-k="${k}">Forgive</button></td></tr>`).join('');
       const open = ui.open.has(i);
-      const laps = !open ? '' : `<tr class="rv-sub"><td></td><td colspan="${cols - 1}">${lapListHtml(c, i, false)}</td></tr>`;
+      const laps = !open ? '' : `<tr class="rv-sub"><td></td><td colspan="${cols - 1}">${lapListHtml(c, i, false, null, !!eng.safetyCar)}</td></tr>`;
       const adjOpen = canAdjust && ui.adjust.has(i), adjRow = !adjOpen ? '' : `<tr class="rv-sub"><td></td><td colspan="${cols - 1}">${adjustHtml(c, i, { champ, settings: o.settings })}</td></tr>`;
       const lapsCell = `${eng.lapsOf(c)}${c.adjLaps ? `<br><small class="muted">${c.laps.length} driven</small>` : ''}`;
       const pointsCell = !champ ? '' : `<td class="num rv-champ">${((o.champ.list || [])[x.pos - 1] || 0) + (c.adjPoints || 0)}</td>`;
@@ -68,7 +68,7 @@ const Review = (() => {
       return `<div class="rv-car"><div class="rv-head"><strong>Lane ${c.lane + 1}</strong> <span>${esc(c.driverName)}${c.dq ? ' <span class="muted">(disqualified)</span>' : ''}</span>
           <span class="muted rv-sum">${c.laps.length} ${c.laps.length === 1 ? 'lap' : 'laps'} · last ${last} · best ${best}</span>
           <button class="btn" data-rv="laps" data-car="${i}" aria-expanded="${open}">${open ? 'Hide laps' : 'Laps'}</button></div>
-        ${open ? lapListHtml(c, i, true, o.late ? n => o.late(i, n) : null) : ''}</div>`;
+        ${open ? lapListHtml(c, i, true, o.late ? n => o.late(i, n) : null, !!eng.safetyCar) : ''}</div>`;
     }).join('');
     return `<h3>Review laps</h3><p class="muted">Mark a lap invalid, or take it out of the records, while the race goes on. The newest lap is on top. The review after the race stays.</p>
       <div class="rv-cars">${blocks}</div>`;

@@ -13,6 +13,7 @@ async function renderRace() {
   if (live && live.alive && live.raceRef === r) { if (live.shown) live.shown(); return; } // the same race, still there: show it again
   const [drivers, cars, layouts, allLaps, penSystems, fuelRules, weatherSystems, rowDesigns, imageSets, audioSets, teams, damageSystems] = await Promise.all(['drivers', 'slotcars', 'layouts', 'laps', 'penaltysystems', 'fuelrules', 'weathersystems', 'rowdesigns', 'imagesets', 'audiosets', 'teams', 'damagesystems'].map(e => api.list(e)));
   let twSystems = []; try { twSystems = (await api.list('tyrewearsystems')) || []; } catch (x) { twSystems = []; } // (Tyre Wear Systems, 1.40.0)
+  let scSystems = []; try { scSystems = (await api.list('safetycarsystems')) || []; } catch (x) { scSystems = []; } // (Safety Car Systems, 1.53.0)
   const find = (list, id) => list.find(x => x.id === id);
   const speed = state.speed || 1; // only changed by automated tests
   const setup = Endurance.effective(r.setup), heats = setup.sessionType === 'heats', tokenSession = setup.sessionType === 'tokens'; // (a Time Token Session: lanes are switched on with paid time, see tokens.js)
@@ -51,8 +52,10 @@ async function renderRace() {
   const laneLens = Array.from({ length: lanes }, (_, l) => Number(Speed.laneLength(r.track || {}, l)) || 0);
   // Tyre Wear (1.40.0): the system of the setup, with the lane lengths (for a system that counts the wear per distance) and the distance unit of the app; never in a Time Token Session. The engine decides by the kind of session if it is used (practice and qualifying: when the system says so)
   const twCfg = tokenSession ? null : TyreWear.clean(find(twSystems, setup.tyreWear), { laneLen: laneLens, disp: Speed.distUnitOf(state.settings) });
+  // Safety Car (1.53.0): the system of the setup (never in a Time Token Session); its lap target and points replace the Yellow flag fields of the setup
+  const scCfg = tokenSession ? null : SafetyCar.clean(find(scSystems, setup.safetyCar));
   const enduCfg = setup.endurance && setup.endurance.unit === 'distance' ? { ...setup.endurance, disp: Speed.distUnitOf(state.settings) } : setup.endurance || null;
-  const mk = entries => RaceEngine.createRace({ penalty: penCfg, damage: damCfg, type: engineType, laps: lenNow().laps, duration: lenNow().duration, distance: engineType === 'race' ? Distance.config(setupNow(), r.track, lanes) : null, endRule: setup.endRule, minLap: Math.max(RaceEngine.MIN_LAP, (Number(r.track.minLap) || 0) * 1000) / speed, maxLap: (Number(r.track.maxLap) || 0) * 1000 / speed, fuel: fuelCfg, bop: bopCfg, yellow: RaceEngine.yellowConfig(setup), weather: wxFor(), tyrewear: twCfg, skipFirst: tokenSession || setup.firstLap === 'skip', endurance: enduCfg, laneLengths: setup.endurance && setup.endurance.unit === 'distance' ? laneLens : null, rnd: state.rand || Math.random, entries });
+  const mk = entries => RaceEngine.createRace({ penalty: penCfg, damage: damCfg, type: engineType, laps: lenNow().laps, duration: lenNow().duration, distance: engineType === 'race' ? Distance.config(setupNow(), r.track, lanes) : null, endRule: setup.endRule, minLap: Math.max(RaceEngine.MIN_LAP, (Number(r.track.minLap) || 0) * 1000) / speed, maxLap: (Number(r.track.maxLap) || 0) * 1000 / speed, fuel: fuelCfg, bop: bopCfg, yellow: RaceEngine.yellowConfig(setup), weather: wxFor(), tyrewear: twCfg, safetycar: scCfg, skipFirst: tokenSession || setup.firstLap === 'skip', endurance: enduCfg, laneLengths: setup.endurance && setup.endurance.unit === 'distance' ? laneLens : null, rnd: state.rand || Math.random, entries });
   const pointList = String(setup.points || '').split(',').filter(t => t.trim() !== '').map(Number).filter(n => !isNaN(n)); // '10, 8, 6' -> [10, 8, 6]; blank pieces are skipped (Number('') would make them 0)
 
   let heat = null, eng;
