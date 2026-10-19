@@ -52,7 +52,7 @@ const Bop_ = () => vm.runInContext('Bop', ctx), same_ = (a, b) => JSON.stringify
   // ---------- the settings page ----------
   run("state.settings = { theme: 'dark' }; state.tab = 'setup'; state.setupSub = 'bop'"); await run('render()'); await wait(50);
   const tabs = E('setuptabs').innerHTML;
-  say('Race Setup has a Balance of Power tab, after Penalty Systems and before Time Tokens', tabs.includes('Balance of Power') && tabs.indexOf('Penalty Systems') < tabs.indexOf('Balance of Power') && tabs.indexOf('Balance of Power') < tabs.indexOf('Time Tokens') && tabs.indexOf('Fuel Setups') < tabs.indexOf('Penalty Systems'));
+  say('Race Setup has a Balance of Power tab, after Penalty Systems and before Time Tokens', tabs.includes('Balance of Power') && tabs.indexOf('Penalty Systems') < tabs.indexOf('Balance of Power') && tabs.indexOf('Balance of Power') < tabs.indexOf('Time Tokens'));
   say('...with a note that says what it does', E('setupnote').textContent.includes('Balance of Power evens out a race') && E('setupnote').textContent.includes('fuel use, refuelling speed and tank'));
   { const page = E('setupmgr').innerHTML;
     say('the page starts with the standard settings: manual, both, extremes, 20%, fixed, median, 5 and 3 laps, 0.3 and 0.15 seconds', page.includes('<option value="manual" selected>') && page.includes('<option value="both" selected>') && page.includes('<option value="extremes" selected>') && page.includes('<option value="fixed" selected>') && page.includes('<option value="median" selected>')

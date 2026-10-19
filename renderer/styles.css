@@ -30,6 +30,29 @@ nav{display:flex;gap:4px;flex-wrap:wrap}
 .tab.onair.off .led{background:#555a63;border-color:var(--line);box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
 .led.red{background:#ff3b3b;border-color:color-mix(in srgb,#ff3b3b 65%,var(--ink));box-shadow:0 0 8px 2px rgba(255,59,59,.85),inset 0 1px 1px rgba(255,255,255,.45)}
 .sub{margin-bottom:16px}
+/* The sub-tabs of the Race Setup tab (1.45.0): a big Race Setups button and the other sub-tabs as coloured buttons in three groups. Design: docs/ui-reference/race-setup-tabs.
+   Each sub-tab has the colour of its folder on the race screen. The light themes get darker colours (like the folders do). */
+.setupstrip,.setuppage{--c-rot:#c4803f;--c-fuel:#2fb86a;--c-pen:#f2b705;--c-dmg:#e5484d;--c-tyre:#9b4dff;--c-wx:#4c9aff;--c-bop:#e8e6e1;--c-tok:#1fb5ad;--c-race:var(--accent)}
+[data-theme="light"] :is(.setupstrip,.setuppage),[data-theme="ocean"] :is(.setupstrip,.setuppage){--c-rot:#8a5124;--c-fuel:#1e8a4c;--c-pen:#9a7400;--c-dmg:#d62828;--c-tyre:#7c3aed;--c-wx:#0f6fd6;--c-bop:#5b6470;--c-tok:#0e8a84}
+.ss-rot{--c:var(--c-rot)}.ss-fuel{--c:var(--c-fuel)}.ss-pen{--c:var(--c-pen)}.ss-dmg{--c:var(--c-dmg)}.ss-tyre{--c:var(--c-tyre)}.ss-wx{--c:var(--c-wx)}.ss-bop{--c:var(--c-bop)}.ss-tok{--c:var(--c-tok)}.ss-race{--c:var(--c-race)}
+.setupstrip{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:stretch;margin-bottom:18px}
+.ssbig{display:flex;align-items:center;gap:14px;flex:0 0 214px;padding:14px 16px;border-radius:12px;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);font:inherit;text-align:left;cursor:pointer}
+.ssbig:hover{filter:brightness(1.08)}
+.ssbig[aria-selected="true"]{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--ink),0 8px 22px color-mix(in srgb,var(--accent) 45%,transparent)}
+.ssbig:focus-visible,.sstab:focus-visible{outline:3px solid #4c9aff;outline-offset:3px}
+.ssbigico{width:42px;height:42px;border-radius:50%;background:color-mix(in srgb,var(--on-accent) 18%,transparent);display:flex;align-items:center;justify-content:center;flex:none}
+.ssbig strong{display:block;font-size:17px;line-height:1.2}
+.ssbig small{display:block;font-size:12px;line-height:1.3;margin-top:3px}
+.ssgroups{display:flex;flex-wrap:wrap;gap:12px 24px;flex:1 1 420px;min-width:0;align-content:flex-start}
+.ssgroup{display:flex;flex-direction:column;gap:5px}
+.sslabel{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.sschips{display:flex;flex-wrap:wrap;gap:6px}
+.sstab{display:inline-flex;align-items:center;gap:8px;padding:7px 13px 7px 11px;border-radius:8px;font:inherit;font-size:13.5px;line-height:1.2;color:var(--ink);cursor:pointer;background:color-mix(in srgb,var(--c) 13%,var(--panel));border:1px solid color-mix(in srgb,var(--c) 42%,var(--line))}
+.sstab .ssico{color:var(--c);flex:none}
+.sstab:hover{background:color-mix(in srgb,var(--c) 24%,var(--panel))}
+.sstab[aria-selected="true"]{background:color-mix(in srgb,var(--c) 32%,var(--panel));border-color:var(--c);box-shadow:inset 0 -3px 0 var(--c);font-weight:700}
+.setuppage{border-top:4px solid var(--c);padding-top:14px}
+@media (max-width:700px){.setupstrip{flex-direction:column}.ssbig{flex:none;width:100%}.ssgroups{flex:none;flex-direction:column}}
 main{width:100%;max-width:none;margin:0;padding:20px}
 /* The race screen has a place of its own, so a race can keep running while another tab is shown. Parked: out of sight and out of reach, but still laid out at full size (so what it measures stays right). */
 #racehost.parked{position:fixed;left:0;top:0;width:100vw;height:100vh;overflow:hidden;visibility:hidden;pointer-events:none;z-index:-1}
@@ -683,6 +706,9 @@ dialog:has(.formgrid) form{display:flex;flex-direction:column;max-height:calc(90
 .ronames{display:flex;flex-wrap:wrap;gap:8px 14px}
 .ronames label{display:flex;align-items:center;gap:6px;font-size:14px}
 .ronames input{width:11em}
+.roname{display:inline-flex;align-items:center;gap:4px}
+.rodel{padding:2px 8px;line-height:1.2}
+.ro-count{margin-right:6px}
 /* the Rotation Editor (1.14.0): plan buttons, real places in the grid, menus instead of rows full of buttons */
 .ed-bar.ro-size strong{margin-right:4px}
 .ro-sub{font-size:13px;font-weight:400;margin-left:8px}

@@ -2517,6 +2517,18 @@ Good to know:
 4. Until the audio calls are in, a late failure or an early leave is said like any other penalty, with the ready-made penalty sentence.
 5. A failure whose level is not found in the system (you removed or renamed the level yourself) asks the least: pit whenever you can, no deadline, a repair. The table says *(no such level)*.
 
+## What to try (1.45.0): the Race Setup sub-tabs as coloured buttons, and adding and taking out participants
+
+1. Open the **Race Setup** tab. The sub-tabs are coloured buttons now. **Race Setups** is the big red button on the left (the colour of your theme), with the words *Where it all comes together*. The others are in three groups: **Systems** (Penalty yellow, Damage red, Tyre Wear purple, Weather blue), **Setups** (Rotation brown, Fuel green) and **Extras** (Balance of Power white, Time Tokens teal). Each has the colour of its folder on the race screen.
+2. Click through them. The one that is open is stronger (a stronger tint, a line under it), the big button gets a ring when it is open, and the page under the strip gets a line at the top in the same colour. Try the **Light** theme (the colours are darker) and make the window narrow (the big button goes full width and the groups go under each other).
+3. **Rotation Setups**: open a rotation (or make one). The **Participants** box in the Size bar was always 2 to 64 (8 is only where a new rotation starts). Above the participants there is a new button **Add a participant**: it adds P9 at the end, in no heat yet, and puts the cursor in its name.
+4. Under **Names of the participants** (open to begin with; if you close it, it stays closed) every participant has a **×**. Press it on a participant who is in a heat: it asks first (*Sam is in 1 heat. Taking them out removes them from that heat, and everybody after them moves up one number. Undo brings them back.*). Yes: they are gone from the heats, their name is gone, they leave their groups, and the participants after them move up one number and keep their lanes. **Undo** brings it all back. A participant who is in no heat goes at once.
+5. The **×** is off when there are 2 participants, and **Add a participant** is off at 64. For 24 people: type 24 in **Participants**, or press Add 16 times; **Start from a plan** makes the heats.
+
+Good to know:
+1. The tab order inside the strip is Race Setups, Systems, Setups, Extras (it was Setups before Systems). The sub-tabs have the same names and work as before.
+2. Both designs (A is built, B is a list down the left side for when there are many more systems) are in `docs/ui-reference/race-setup-tabs`.
+
 ## What to try (1.44.0): Car Failures, release 2 (Race Director buttons, audio calls, failures in the results)
 
 1. Race with a Damage System that has **Car Failures** switched on (see 1.43.0). On the race screen there is a new red folder **Car Failures**, right after **Damage**. It has a row for every lane: the car, its failure (or *No failure*), what it asks (*Pit in 3 laps, 8 seconds in the pits*, or the clock while it is being repaired) and two controls: a list with **At random** and the failures of the system (with their chances), and a **Give** button; and a **Clear** button.

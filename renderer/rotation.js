@@ -72,6 +72,27 @@
     return { rec: next, dropped: count(rec) - count(next) };
   }
 
+  // One more participant (1.45.0), or several: they get the next numbers, are in no heat yet and have no name. The numbers of the others stay as they are.
+  const word = rec => (isTeams(rec) ? 'teams' : 'participants');
+  function addParticipants(rec, count) {
+    const k = count === undefined ? 1 : Math.floor(Number(count));
+    if (!(k >= 1)) return { error: 'Add at least one.' };
+    if (rec.participants + k > LIMITS.maxP) return { error: `A rotation holds at most ${LIMITS.maxP} ${word(rec)}.` };
+    return { rec: clean({ ...rec, participants: rec.participants + k }, true), dropped: 0 };
+  }
+  // Takes participant p out (1.45.0): p goes out of every heat (a locked heat too: p no longer exists), out of the groups, and the name goes. The participants after p move up
+  // one number, with their places, names and groups. dropped: in how many heats p was (the screen asks first when it is more than none).
+  function removeParticipant(rec, p) {
+    if (!(Number.isInteger(p) && p >= 0 && p < rec.participants)) return { error: 'That participant does not exist.' };
+    if (rec.participants <= LIMITS.minP) return { error: `A rotation needs at least ${LIMITS.minP} ${word(rec)}.` };
+    const up = q => (q > p ? q - 1 : q), next = clone(rec); let dropped = 0;
+    next.participants = rec.participants - 1;
+    next.names = (rec.names || []).filter((_, i) => i !== p);
+    next.heats = rec.heats.map(h => ({ ...h, places: h.places.filter(e => { if (e.p === p) { dropped++; return false; } return true; }).map(e => ({ p: up(e.p), lane: e.lane })) }));
+    next.groups = rec.groups.map(g => ({ ...g, members: g.members.filter(m => m !== p).map(up) }));
+    return { rec: clean(next, true), dropped };
+  }
+
   // ---- changing places ----
   const heatAt = (rec, i) => (Number.isInteger(i) && i >= 0 && i < rec.heats.length ? rec.heats[i] : null);
   const laneOk = (rec, l) => Number.isInteger(l) && l >= 0 && l < rec.lanes;
@@ -314,7 +335,7 @@
   }
   const describe = rec => `${rec.participants} ${isTeams(rec) ? (rec.participants === 1 ? 'team' : 'teams') : 'participants'}, ${rec.lanes} ${rec.lanes === 1 ? 'lane' : 'lanes'}, ${rec.heats.filter(h => h.places.length).length} heats`;
 
-  const api = { LIMITS, clean, nameOf, shortOf, blank, generate, resize, place, swap, assignGroup, addHeat, addHeatFor, removeHeat, duplicateHeat, clearHeat, moveHeat, moveHeatTo, setLabel, setLocked,
+  const api = { LIMITS, clean, nameOf, shortOf, blank, generate, resize, addParticipants, removeParticipant, place, swap, assignGroup, addHeat, addHeatFor, removeHeat, duplicateHeat, clearHeat, moveHeat, moveHeatTo, setLabel, setLocked,
     shuffleOrder, reverseOrder, shuffleLanes, evenLanes, setParticipantsAre, isTeams, setName, addGroup, removeGroup, renameGroup, toggleMember, scheduleFor, lanesUsed, signature, problems, matchDrivers, check, perParticipant, describe, colorOf, PALETTE };
   root.Rot = api;
   if (typeof module !== 'undefined') module.exports = api;

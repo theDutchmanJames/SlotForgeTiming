@@ -64,7 +64,12 @@ function renderRotationEditor(box) {
   const groupsHtml = () => d.groups.map((g, k) => `<div class="rogroup"><div class="row"><input type="text" data-gname="${k}" value="${esc(g.name)}" maxlength="${Rot.LIMITS.label}" aria-label="Name of group ${k + 1}"> <button type="button" class="btn danger" data-gdel="${k}">Remove this group</button></div>
     <div class="ropool" role="group" aria-label="Participants in ${esc(g.name || 'group ' + (k + 1))}">${Array.from({ length: d.participants }, (_, p) => { const on = g.members.includes(p);
       return `<button type="button" class="rochip${on ? ' sel' : ''}" data-gm="${k}:${p}" aria-pressed="${on}" style="--pc:${Rot.colorOf(p)}" title="${esc(Rot.nameOf(d, p))}">${esc(Rot.shortOf(d, p))}</button>`; }).join('')}</div></div>`).join('') || '<p class="muted">No groups yet.</p>';
-  const namesHtml = () => `<div class="ronames">${Array.from({ length: d.participants }, (_, p) => `<label><i class="rodot" style="--pc:${Rot.colorOf(p)}"></i>P${p + 1} <input type="text" data-name="${p}" value="${esc(d.names[p])}" maxlength="${Rot.LIMITS.person}" placeholder="${Rot.isTeams(d) ? 'Team' : 'Participant'} ${p + 1}" aria-label="Name of ${Rot.isTeams(d) ? 'team' : 'participant'} ${p + 1}"></label>`).join('')}</div>`;
+  // (1.45.0: every participant has a button that takes it out; the button that adds one is above the pool of participants and under this list)
+  const namesHtml = () => `<div class="ronames">${Array.from({ length: d.participants }, (_, p) => { const w = Rot.isTeams(d) ? 'team' : 'participant';
+    return `<span class="roname"><label><i class="rodot" style="--pc:${Rot.colorOf(p)}"></i>P${p + 1} <input type="text" data-name="${p}" value="${esc(d.names[p])}" maxlength="${Rot.LIMITS.person}" placeholder="${Rot.isTeams(d) ? 'Team' : 'Participant'} ${p + 1}" aria-label="Name of ${w} ${p + 1}"></label>`
+      + `<button type="button" class="btn rodel" data-delp="${p}" aria-label="Take ${w} ${p + 1} out" title="Take ${w} ${p + 1} out of the rotation"${d.participants <= Rot.LIMITS.minP ? ' disabled' : ''}>\u00d7</button></span>`; }).join('')}</div>`;
+  const addpHtml = () => { const w = Rot.isTeams(d) ? 'team' : 'participant', full = d.participants >= Rot.LIMITS.maxP;
+    return `<button type="button" class="btn" data-addp="1"${full ? ' disabled' : ''} title="${full ? `A rotation holds at most ${Rot.LIMITS.maxP}` : `Adds ${w} ${d.participants + 1}, who is in no heat yet`}">Add a ${w}</button>`; };
   const plansHtml = () => `<div class="roplans" role="group" aria-label="Plan">${ROT_PLANS.map(([k, t, note]) => `<button type="button" class="roplan${k === gen.plan ? ' sel' : ''}" data-plan="${k}" aria-pressed="${k === gen.plan}"><strong>${esc(t)}</strong><small>${esc(note)}</small></button>`).join('')}</div>`;
   const genOptsHtml = () => (gen.plan === 'manual' ? `<label>Heats <input type="number" id="ro-gheats" min="1" max="${Rot.LIMITS.maxHeats}" value="${esc(gen.heats)}"></label>`
     : gen.plan === 'perdriver' ? `<label>Heats for everybody <input type="number" id="ro-geach" min="1" max="50" value="${esc(gen.each)}"></label>`
@@ -81,7 +86,7 @@ function renderRotationEditor(box) {
       <p class="hint2">Fills the rotation with the heats of one of the plans a race setup can make. Change whatever you like afterwards. It replaces all the heats you have now (locked ones too); Undo brings them back.</p>
       <div id="ro-plans">${plansHtml()}</div>
       <div class="ed-bar"><span id="ro-genopts">${genOptsHtml()}</span><button type="button" class="btn" id="ro-gen">Make the heats</button></div></details>
-    <h4>Participants <span class="muted ro-sub">Drag one to a place, or click it to pick it up</span></h4><div id="ro-pool">${poolHtml()}</div><div id="ro-hold">${holdHtml()}</div>
+    <div class="ro-heatshead"><h4>Participants <span class="muted ro-sub">Drag one to a place, or click it to pick it up</span></h4><div class="row"><span class="muted ro-count">${d.participants} in all</span>${addpHtml()}</div></div><div id="ro-pool">${poolHtml()}</div><div id="ro-hold">${holdHtml()}</div>
     <div class="ro-heatshead"><h4>Heats <span class="muted ro-sub">Drag a participant or a place onto a place, or click a place to fill it or to swap it with another place</span></h4>
       <div class="row"><button type="button" class="btn" id="ro-add">Add a heat</button>
         <details class="romenu" id="ro-tools"><summary class="btn" title="Shuffle the heats or the lanes, or even out the lanes">Tools</summary><div class="romenu-list">
@@ -90,8 +95,8 @@ function renderRotationEditor(box) {
           <button type="button" class="btn" id="ro-shufl"><strong>Shuffle the lanes</strong><small>Puts the participants of every heat in other lanes.</small></button>
           <button type="button" class="btn" id="ro-even"><strong>Even out the lanes</strong><small>Gives out the lanes again so that everybody drives in every lane about equally often. Who races in which heat stays as it is.</small></button></div></details></div></div>
     <div id="ro-grid">${gridHtml()}</div><div id="ro-remarks">${remarksHtml()}</div>
-    <details class="hplanes" id="ro-namesbox"${d.names.some(Boolean) ? ' open' : ''}><summary>Names of the participants (optional)</summary>
-      <p class="hint2">${Rot.isTeams(d) ? 'A name only helps you here and on the Home tab, where one button picks the teams that have these names. It does not have to be the name of a team.' : 'A name only helps you here and on the Home tab, where one button picks the drivers who have these names. It does not have to be the name of a driver.'} You can also name a participant by picking it above.</p><div id="ro-names">${namesHtml()}</div></details>
+    <details class="hplanes" id="ro-namesbox"${rotEd.namesOpen === false ? '' : ' open'}><summary>Names of the ${Rot.isTeams(d) ? 'teams' : 'participants'} (optional), and taking one out</summary>
+      <p class="hint2">${Rot.isTeams(d) ? 'A name only helps you here and on the Home tab, where one button picks the teams that have these names. It does not have to be the name of a team.' : 'A name only helps you here and on the Home tab, where one button picks the drivers who have these names. It does not have to be the name of a driver.'} You can also name a participant by picking it above. The \u00d7 takes a participant out of the rotation (and out of its heats); the ones after it move up one number. Add one with the button above.</p><div id="ro-names">${namesHtml()}</div></details>
     <details class="hplanes" id="ro-groupsbox"${d.groups.length ? ' open' : ''}><summary>Groups</summary>
       <p class="hint2">A group is some participants who belong together, such as the juniors. Put a group in a heat with the choice in the row of that heat: it takes the lanes in the order of the numbers.</p><div id="ro-groups">${groupsHtml()}</div><button type="button" class="btn" id="ro-addgrp">Add a group</button></details>
     <details class="hplanes"><summary>How often everybody races, and in which lane</summary><div class="wrap"><table class="fields heatplan-table"><thead><tr><th>Participant</th><th>Heats</th>${lanes.map(l => `<th>Lane ${l + 1}</th>`).join('')}</tr></thead><tbody id="ro-how">${howHtml(d)}</tbody></table></div></details>`;
@@ -143,6 +148,7 @@ function renderRotationEditor(box) {
 
   // ---- start from a plan ----
   $('ro-genbox').ontoggle = () => { rotEd.genOpen = $('ro-genbox').open === true; };
+  $('ro-namesbox').ontoggle = () => { rotEd.namesOpen = $('ro-namesbox').open === true; };
 
   // ---- typing in the page (the parts that hold the text that is typed are not drawn again) ----
   box.oninput = ev => {
@@ -170,6 +176,12 @@ function renderRotationEditor(box) {
     if (box.querySelectorAll) box.querySelectorAll('details.romenu[open]').forEach(m => { if (!(m.contains && m.contains(ev.target))) m.open = false; }); // (a menu closes when you click somewhere else)
     const b = ev.target.closest('button'); if (!b || b.disabled) return;
     const ds = b.dataset || {}, n = k => Number(ds[k]);
+    if (ds.addp !== undefined) { const before = d.participants; apply(Rot.addParticipants(d, 1), true); if (d.participants > before && box.querySelector) { const i = box.querySelector(`[data-name="${d.participants - 1}"]`); if (i && i.focus) i.focus(); } return; }
+    if (ds.delp !== undefined) {
+      const p = n('delp'), res = Rot.removeParticipant(d, p), who = Rot.nameOf(d, p);
+      if (!res.error && res.dropped > 0 && !confirm(`${who} is in ${res.dropped} ${res.dropped === 1 ? 'heat' : 'heats'}. Taking them out removes them from ${res.dropped === 1 ? 'that heat' : 'those heats'}, and everybody after them moves up one number. Undo brings them back.\n\nContinue?`)) return;
+      apply(res, true); return;
+    }
     if (ds.plan !== undefined) { gen.plan = ds.plan; $('ro-plans').innerHTML = plansHtml(); $('ro-genopts').innerHTML = genOptsHtml(); return; }
     if (ds.fix === 'idle') { const c = Rot.check(d).find(x => x.fix && x.fix.kind === 'idle'); if (c) apply(Rot.addHeatFor(d, c.fix.ps)); return; }
     if (['ro-shufo', 'ro-rev', 'ro-shufl', 'ro-even'].includes(b.id) && $('ro-tools')) $('ro-tools').open = false;

@@ -1,0 +1,52 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "A-States.dc.html": {
+      "h": 1220,
+      "title": "A · other states (hero open, light theme, narrow)",
+      "w": 1001,
+      "x": 1079,
+      "y": 0
+    },
+    "B-SideRail.dc.html": {
+      "h": 640,
+      "title": "B · Side rail (dark)",
+      "w": 1000,
+      "x": 2160,
+      "y": 0
+    },
+    "Main.dc.html": {
+      "h": 640,
+      "title": "A · Hero and coloured groups (dark)",
+      "w": 1000,
+      "x": 0,
+      "y": 0
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-19T08:40:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "t1": {
+      "kind": "title1",
+      "maxW": 3160,
+      "text": "Race Setup sub-tabs: two designs",
+      "w": 240,
+      "x": 0,
+      "y": -260
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "A-States.dc.html",
+    "B-SideRail.dc.html"
+  ],
+  "pages": [],
+  "title": "Race Setup Sub-tabs"
+}

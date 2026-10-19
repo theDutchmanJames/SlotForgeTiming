@@ -82,7 +82,8 @@ const Rot = require(R + 'renderer/rotation.js');
 
   // ---------- the tab and the list ----------
   const tabs = E('setuptabs').innerHTML;
-  say('Race Setup has a Rotation Setups tab, right after Race Setups and before Fuel Setups', tabs.includes('Rotation Setups') && tabs.indexOf('Race Setups') < tabs.indexOf('Rotation Setups') && tabs.indexOf('Rotation Setups') < tabs.indexOf('Fuel Setups'));
+  say('Race Setup has a Rotation Setups tab, in the Setups group and before Fuel Setups', tabs.includes('Rotation Setups') && tabs.indexOf('Race Setups') < tabs.indexOf('Rotation Setups') && tabs.indexOf('Rotation Setups') < tabs.indexOf('Fuel Setups'));
+  say('the strip of the Race Setup tab (1.45.0) has the Rotation Setups button selected, nine tabs in all, and the page under it has the brown edge of that sub-tab', /class="sstab ss-rot" role="tab" aria-selected="true" data-id="rotation"/.test(tabs) && (tabs.match(/role="tab"/g) || []).length === 9 && (tabs.match(/aria-selected="true"/g) || []).length === 1 && run('view.innerHTML').includes('class="setuppage ss-rot"'));
   say('...with a note that says what a rotation setup is, and that a race setup chooses one', E('setupnote').textContent.includes('A rotation setup is a heat plan that you make yourself') && E('setupnote').textContent.includes('Choose one in a race setup'));
   say('the list is empty to begin with, with a button for a new one and a line that says the participants are numbers', html().includes('id="newrot"') && html().includes('No rotation setups yet.') && html().includes('participants are numbers'));
 
@@ -133,6 +134,51 @@ const Rot = require(R + 'renderer/rotation.js');
   setSize(10, 3); E('ro-lanes').onchange(); await wait(20); say('fewer lanes take away the places in the lanes that go, and ask first (the places of lane 4 and higher; several places: "places" and "them")', draft().lanes === 3 && !html().includes('<th>Lane 4</th>') && /takes away [2-9] places that no longer fit\. Undo brings them back\./.test(asked) && draft().heats.every(h => h.places.every(e => e.lane < 3)));
   while (hist().undo > 0) E('ro-undo').onclick();
   say('...everything is undone step by step to the rotation as it was made', draft().participants === 8 && draft().lanes === 4 && places(draft(), 0) === '0 1 2 3'.split(' ').map((p, l) => p + '@' + l).join(' '));
+
+  // ---------- adding and taking out participants (1.45.0) ----------
+  { // (a rotation with two named participants and a group, to see that names and groups move up with the numbers)
+    box().oninput({ target: { dataset: { name: '0' }, value: 'Alex' } }); box().oninput({ target: { dataset: { name: '1' }, value: 'Sam' } });
+    btn('ro-addgrp'); await wait(10); press({ dataset: { gm: '0:0' } }); press({ dataset: { gm: '0:1' } });
+    const before = draft(), n0 = before.participants, u0 = hist().undo, delBtns = () => (html().match(/data-delp="/g) || []).length;
+    say('(set-up: Alex and Sam are named and in the group "Group 1")', draft().names[1] === 'Sam' && draft().groups.length === 1 && draft().groups[0].members.join() === '0,1');
+    say('the participants have an Add button above the pool and an × for each one in the list of names; the list is open to begin with', html().includes('data-addp="1"') && delBtns() === n0 && html().includes('id="ro-namesbox" open') && html().includes('aria-label="Take participant 3 out"'));
+    say('the × of participant 3 is the one with number 2 (the numbers in the page start at 0), and it says so for a screen reader', html().includes('data-delp="2" aria-label="Take participant 3 out"') && html().includes(`data-delp="${n0 - 1}" aria-label="Take participant ${n0} out"`) && !html().includes(`data-delp="${n0}"`));
+    let focused = ''; box().querySelector = sel => ({ focus() { focused = sel; } });
+    press({ dataset: { addp: '1' } }); await wait(20); delete box().querySelector;
+    say('Add a participant puts the cursor in the name of the new participant', focused === `[data-name="${n0}"]`);
+    say('Add a participant adds P9 at the end: in no heat, with no name, the others as they were, one step to undo', draft().participants === n0 + 1 && same(draft().names.slice(0, n0), before.names) && draft().names[n0] === '' && same(draft().heats, before.heats) && (html().match(/data-pp="/g) || []).length === n0 + 1 && hist().undo === u0 + 1);
+    E('ro-undo').onclick(); say('...and Undo takes P9 away again', draft().participants === n0 && (html().match(/data-pp="/g) || []).length === n0);
+    E('ro-redo').onclick(); say('...Redo brings it back', draft().participants === n0 + 1);
+    // taking one out: Sam is P2, in heat A only; the participants after Sam move up one number
+    let q = ''; ctx.confirm = t => { q = t; return false; };
+    press({ dataset: { delp: '1' } }); await wait(20);
+    say('taking out a participant who is in a heat asks first, and says who and in how many heats', q.includes('Sam is in 1 heat. Taking them out removes them from that heat, and everybody after them moves up one number. Undo brings them back.') && q.includes('Continue?'));
+    say('...No leaves the rotation as it was', draft().participants === n0 + 1 && places(draft(), 0) === '0@0 1@1 2@2 3@3' && hist().undo === u0 + 1);
+    ctx.confirm = t => { q = t; return true; };
+    press({ dataset: { delp: '1' } }); await wait(20);
+    say('...Yes takes Sam out: 8 participants again; heat A has P1, and P3 and P4 as P2 and P3, in the lanes they had', draft().participants === n0 && places(draft(), 0) === '0@0 1@2 2@3' && delBtns() === n0);
+    say('...the name goes with the participant, the names after it move up, and Sam leaves the group', draft().names[0] === 'Alex' && !draft().names.includes('Sam') && draft().names.length === n0 && draft().groups[0].members.join() === '0');
+    say('...in heat B (P5, P6, P7, P8) the numbers moved up by one: P4, P5, P6, P7, in the same lanes', places(draft(), 1) === '3@0 4@1 5@2 6@3');
+    E('ro-undo').onclick(); say('...Undo gives Sam back with everything: places, name and group', draft().participants === n0 + 1 && places(draft(), 0) === '0@0 1@1 2@2 3@3' && draft().names[1] === 'Sam' && draft().groups[0].members.join() === '0,1');
+    q = ''; press({ dataset: { delp: String(n0) } }); await wait(20);
+    say('a participant who is in no heat (the new P9) is taken out without a question', q === '' && draft().participants === n0 && same(draft().heats, before.heats));
+    // the column of buttons follows the limits: the least is 2, the most is 64
+    ctx.confirm = () => true; setSize(2, 4); E('ro-n').onchange(); await wait(20);
+    say('with 2 participants every × is disabled (a rotation needs two), and a click on one does nothing', draft().participants === 2 && (html().match(/data-delp="\d+"[^>]*disabled/g) || []).length === 2);
+    press({ dataset: { delp: '0' }, disabled: true }); say('...clicked anyway: nothing changes', draft().participants === 2);
+    ctx.__minus = Rot.removeParticipant(draft(), 0); say('...and the function says so in words', ctx.__minus.error === 'A rotation needs at least 2 participants.');
+    setSize(64, 4); E('ro-n').onchange(); await wait(20);
+    say('with 64 participants the Add button is disabled and says why', draft().participants === 64 && /data-addp="1" disabled title="A rotation holds at most 64"/.test(html()));
+    press({ dataset: { addp: '1' } }); say('...clicked anyway: the page says the most is 64 and nothing changes', draft().participants === 64 && msg() === 'A rotation holds at most 64 participants.');
+    while (hist().undo > u0) E('ro-undo').onclick();
+    // the list of names remembers that it was closed
+    E('ro-namesbox').open = false; E('ro-namesbox').ontoggle();
+    press({ dataset: { addp: '1' } }); await wait(20);
+    say('a list of names that was closed stays closed when a participant is added', draft().participants === n0 + 1 && !html().includes('id="ro-namesbox" open'));
+    E('ro-namesbox').open = true; E('ro-namesbox').ontoggle(); E('ro-undo').onclick();
+    say('...and the start is as it was: 8 participants, the heats, names and group of the start', draft().participants === n0 && same(draft().heats, before.heats) && same(draft().names, before.names) && same(draft().groups, before.groups));
+    while (hist().undo > 0) E('ro-undo').onclick(); // (the next checks start from the rotation as it was made)
+  }
 
   // ---------- 1.8.0: the participants are drivers or teams ----------
   say('the editor asks what the participants are: Drivers (chosen), or Teams', html().includes('id="ro-kind"') && html().includes('Participants are') && html().includes('<option value="drivers" selected>Drivers</option>') && html().includes('<option value="teams">Teams</option>') && !('participantsAre' in draft()));
@@ -247,6 +293,9 @@ const Rot = require(R + 'renderer/rotation.js');
   say('another Race Setup tab asks first when there are unsaved changes; No stays', run('rotEd') !== null && run('state.setupSub') === 'rotation');
   ctx.confirm = () => true; await E('setuptabs').onclick({ target: { closest: () => ({ dataset: { id: 'fuel' } }) } }); await wait(30);
   say('...Yes leaves, and the editor is closed', run('rotEd') === null && run('state.setupSub') === 'fuel');
+  run("state.setupSub = 'rotation'"); await run('render()'); await wait(30);
+  await press({ dataset: { edit: 'r1' } }); { let q2 = 0; ctx.confirm = () => { q2++; return false; }; await E('setuptabs').onclick({ target: { closest: () => ({ dataset: { id: 'fuel' } }) } }); await wait(30);
+    say('a rotation without unsaved changes is left without a question (the strip does not ask when there is nothing to lose)', q2 === 0 && run('rotEd') === null && run('state.setupSub') === 'fuel'); }
   run("state.setupSub = 'rotation'"); await run('render()'); await wait(30);
   writes.length = 0; await press({ dataset: { dup: 'r1' } }); await wait(20);
   say('Duplicate saves a copy with "(copy)" in its name', writes.some(w => w[0] === 'add' && w[1] === 'rotationsetups' && w[2].name === 'Friday night (copy)' && w[2].heats.length === 3));

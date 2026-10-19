@@ -15,6 +15,16 @@
     home: '<path d="M3.5 11 12 3.8l8.5 7.2M5.5 9.6V20h13V9.6M10 20v-5.5h4V20"/>',
     setup: '<path d="M9.5 4.5h5a7.5 7.5 0 0 1 0 15h-5a7.5 7.5 0 0 1 0-15z"/><path d="M10 9.5h4a2.5 2.5 0 0 1 0 5h-4a2.5 2.5 0 0 1 0-5z"/><path d="M12 4.5v5"/>',
     custom: '<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.5 0 2.1-.9 2.1-1.9 0-1.5-1.4-1.7-1.4-3 0-1 .8-1.8 1.9-1.8H17a3.5 3.5 0 0 0 3.5-3.5C20.5 6.7 16.7 3.5 12 3.5z"/><path d="M7.6 12h.01M9.8 7.9h.01M14.2 7.4h.01"/>',
+    // the sub-tabs of the Race Setup tab (1.45.0): a flag, a warning sign, a spanner, a tyre, a cloud with rain, two arrows going round, a fuel pump, a pair of scales
+    // (Time Tokens, the ninth sub-tab, uses the hourglass of the Live Race tile)
+    racesetups: '<path d="M4 22V4"/><path d="M4 4h14l-2.5 4.5L18 13H4"/>',
+    penalty: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+    damage: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+    tyre: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5M12 15.5V21M3 12h5.5M15.5 12H21"/>',
+    weather: '<path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="M16 14v6M8 14v6M12 16v6"/>',
+    rotation: '<path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/>',
+    fuel: '<path d="M3 22h12M4 9h10"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2 2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/>',
+    balance: '<path d="M12 3v18M5 21h14M5 7h14"/><path d="m5 7-3 8a4 4 0 0 0 6 0z"/><path d="m19 7-3 8a4 4 0 0 0 6 0z"/>',
     // a button: a page with a folded corner and an arrow going down (Export to PDF)
     pdf: '<path d="M6 3.5h8l4 4v13H6zM14 3.5v4h4M12 10.5v6M9.5 14l2.5 2.5 2.5-2.5"/>',
     settings: '<path d="M10.3 4.9 10.75 2.68h2.5L13.7 4.9A7.3 7.3 0 0 1 15.81 5.78L17.7 4.53 19.47 6.3 18.22 8.19A7.3 7.3 0 0 1 19.1 10.3L21.32 10.75v2.5L19.1 13.7A7.3 7.3 0 0 1 18.22 15.81L19.47 17.7 17.7 19.47 15.81 18.22A7.3 7.3 0 0 1 13.7 19.1L13.25 21.32h-2.5L10.3 19.1A7.3 7.3 0 0 1 8.19 18.22L6.3 19.47 4.53 17.7 5.78 15.81A7.3 7.3 0 0 1 4.9 13.7L2.68 13.25v-2.5L4.9 10.3A7.3 7.3 0 0 1 5.78 8.19L4.53 6.3 6.3 4.53 8.19 5.78A7.3 7.3 0 0 1 10.3 4.9z"/><circle cx="12" cy="12" r="3"/>'

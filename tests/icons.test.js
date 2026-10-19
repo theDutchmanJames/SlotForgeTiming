@@ -3,9 +3,9 @@ const I = require('../renderer/icons.js');
 let fails = 0; const ok = (name, cond) => { console.log((cond ? 'ok   ' : 'FAIL ') + name); if (!cond) fails++; };
 
 const ids = Object.keys(I.PATHS);
-const TILES = ['timing', 'board', 'driver', 'database', 'rules', 'director', 'tokens'], NEW = ['home', 'setup', 'custom', 'settings'], BUTTONS = ['pdf'];
+const TILES = ['timing', 'board', 'driver', 'database', 'rules', 'director', 'tokens'], NEW = ['home', 'setup', 'custom', 'settings'], BUTTONS = ['pdf'], SETUPTABS = ['racesetups', 'penalty', 'damage', 'tyre', 'weather', 'rotation', 'fuel', 'balance'];
 
-ok('the seven pictures of the Live Race tiles are there, the four for the tabs that had none, and the one for the Export to PDF button: twelve in all', ids.length === 12 && [...TILES, ...NEW, ...BUTTONS].every(id => I.has(id)));
+ok('the seven pictures of the Live Race tiles are there, the four for the tabs that had none, the one for the Export to PDF button, and the eight for the Race Setup sub-tabs (1.45.0): twenty in all', ids.length === 20 && [...TILES, ...NEW, ...BUTTONS, ...SETUPTABS].every(id => I.has(id)));
 ok('has() is true for a picture and false for anything else (also for names every object has)', I.has('home') && !I.has('') && !I.has('nope') && !I.has(undefined) && !I.has(null) && !I.has('constructor') && !I.has('toString') && !I.has('__proto__') && !I.has('hasOwnProperty'));
 ok('an unknown name gives no picture at all, not an empty frame', ['nope', '', undefined, 'constructor', '__proto__'].every(n => I.svg(n) === ''));
 

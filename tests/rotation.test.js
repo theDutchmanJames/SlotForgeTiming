@@ -290,5 +290,34 @@ const err = r => (r && r.error) || '';
   ok('...a number that is no number gives the first colour, and nothing of it is saved in the rotation', R.colorOf('x') === cols[0] && R.colorOf(-4) === cols[0] && R.colorOf(NaN) === cols[0] && !JSON.stringify(R.clean(r)).includes('#'));
   ok('the first four colours (a heat of four lanes) are easy to tell apart: blue, orange, green, yellow', same(cols.slice(0, 4), ['#4c9aff', '#ff7a3d', '#3ecf8e', '#f2b705'])); }
 
+// ---- adding and taking out participants (1.45.0) ----
+{ const base = mk({ names: ['Alex', 'Sam', 'Kim'], groups: [{ name: 'Pros', members: [1, 2, 5] }] }), snap = JSON.stringify(base);
+  const a1 = R.addParticipants(base), a3 = R.addParticipants(base, 3);
+  ok('adding one gives P9 at the end: no heat, no name, nothing else changes, and the rotation that was given is not touched', a1.rec.participants === 9 && a1.dropped === 0 && a1.rec.names.length === 9 && a1.rec.names[8] === '' && same(a1.rec.heats, base.heats) && same(a1.rec.groups, base.groups) && JSON.stringify(base) === snap);
+  ok('...several at once (the number is a whole number, at least 1)', a3.rec.participants === 11 && R.addParticipants(base, '2').rec.participants === 10 && R.addParticipants(base, 2.9).rec.participants === 10 && err(R.addParticipants(base, 0)) === 'Add at least one.' && err(R.addParticipants(base, -3)) === 'Add at least one.' && err(R.addParticipants(base, 'x')) === 'Add at least one.');
+  const big = R.clean({ participants: 64, lanes: 4 }, true);
+  ok('the most is 64: 64 + 1 is refused in words, 63 + 1 is fine; the same words for teams', err(R.addParticipants(big)) === 'A rotation holds at most 64 participants.' && R.addParticipants(R.clean({ participants: 63 }, true)).rec.participants === 64 && err(R.addParticipants(R.clean({ participants: 64, participantsAre: 'teams' }, true))) === 'A rotation holds at most 64 teams.' && err(R.addParticipants(R.clean({ participants: 62 }, true), 3)) === 'A rotation holds at most 64 participants.');
+  ok('a rotation of 24 is made by 16 more than 8, and all the heat plans of the screen still work for it', R.addParticipants(R.blank(8, 4, 'x'), 16).rec.participants === 24 && R.generate(R.addParticipants(R.blank(8, 4, 'x'), 16).rec, { plan: 'perdriver', each: 1 }, 7).rec.heats.length === 6);
+
+  const r1 = R.removeParticipant(base, 1);
+  ok('taking out Sam (P2) takes Sam out of the heats where Sam was, and says in how many (here 1: heat A)', r1.dropped === 1 && !r1.error && r1.rec.participants === 7 && JSON.stringify(base) === snap);
+  ok('...everybody after Sam moves up one number and keeps the lane: heat A 0@0 1@2 2@3, heat B 3@0 4@1 5@2 6@3, heat C 0@0 1@1 3@2 5@3', same(grid(r1.rec), ['0@0 1@2 2@3', '3@0 4@1 5@2 6@3', '0@0 1@1 3@2 5@3']));
+  ok('...the name goes (Alex stays P1, Kim is P2 now), the group loses Sam and its other members move up (1, 2, 5 became 1, 4)', same(r1.rec.names.slice(0, 2), ['Alex', 'Kim']) && r1.rec.names.length === 7 && same(r1.rec.groups[0].members, [1, 4]));
+  const g2 = R.removeParticipant(mk({ groups: [{ name: 'G', members: [1, 5] }] }), 1);
+  ok('a group that has the participant who goes loses them, and the ones after move up (members 1 and 5, P2 goes: only 4 is left; the next participant is not made a member)', same(g2.rec.groups[0].members, [4]));
+  const r0 = R.removeParticipant(base, 0), r7 = R.removeParticipant(base, 7);
+  ok('the first participant (in 2 heats) and the last (in 1) are taken out in the same way', r0.dropped === 2 && same(grid(r0.rec), ['0@1 1@2 2@3', '3@0 4@1 5@2 6@3', '1@1 3@2 5@3']) && r7.dropped === 1 && same(grid(r7.rec), ['0@0 1@1 2@2 3@3', '4@0 5@1 6@2', '0@0 2@1 4@2 6@3']));
+  const idle = R.addParticipants(base).rec;
+  ok('a participant who is in no heat goes with dropped 0 (the screen asks nothing)', R.removeParticipant(idle, 8).dropped === 0 && same(R.removeParticipant(idle, 8).rec, base));
+  const lk = mk({ names: [] }); lk.heats[0].locked = true;
+  ok('a locked heat loses the participant too, and stays locked and in its place', R.removeParticipant(lk, 2).rec.heats[0].locked === true && grid(R.removeParticipant(lk, 2).rec)[0] === '0@0 1@1 2@3');
+  ok('taking one out and adding one is not the same as nothing: the new one has no places, so the rotation tells so (a participant who races no heat)', R.check(R.addParticipants(R.removeParticipant(base, 3).rec).rec).some(c => c.fix && c.fix.kind === 'idle'));
+  ok('refused: a participant that is not there, a number that is no number, and going under 2 (in words, also for teams)', err(R.removeParticipant(base, 8)) === 'That participant does not exist.' && err(R.removeParticipant(base, -1)) === 'That participant does not exist.' && err(R.removeParticipant(base, '1')) === 'That participant does not exist.' && err(R.removeParticipant(base, 1.5)) === 'That participant does not exist.'
+    && err(R.removeParticipant(R.clean({ participants: 2 }, true), 0)) === 'A rotation needs at least 2 participants.' && err(R.removeParticipant(R.clean({ participants: 2, participantsAre: 'teams' }, true), 1)) === 'A rotation needs at least 2 teams.');
+  ok('the result is always in the proper form (cleaning it again changes nothing)', same(R.clean(r1.rec, true), r1.rec) && same(R.clean(r0.rec, true), r0.rec) && same(R.clean(a3.rec, true), a3.rec));
+  // taking every participant out one after the other, from the front, leaves two, and the heats stay valid the whole way
+  let cur = mk(), steps = 0; while (steps < 20 && !R.removeParticipant(cur, 0).error) { cur = R.removeParticipant(cur, 0).rec; steps++; }
+  ok('taking out the first participant again and again stops at 2 (six steps from 8), and the places that are left are all inside the numbers', steps === 6 && cur.participants === 2 && cur.heats.every(h => h.places.every(e => e.p >= 0 && e.p < 2))); }
+
 if (fails) { console.log(fails + ' ROTATION TESTS FAILED'); process.exit(1); }
 console.log('ALL ROTATION TESTS PASSED');

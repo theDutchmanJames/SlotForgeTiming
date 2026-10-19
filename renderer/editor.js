@@ -72,14 +72,34 @@ function draftUndoEnd(ed) {
 }
 const undoButtons = p => `<button class="btn" id="${p}-undo" title="Undo the last change (Ctrl+Z)" disabled>Undo</button><button class="btn" id="${p}-redo" title="Redo (Ctrl+Y)" disabled>Redo</button>`;
 
+// The sub-tabs of the Race Setup tab (1.45.0): one big Race Setups button, and the other eight as coloured buttons in three groups (Systems, Setups, Extras).
+// Every sub-tab has the colour of its folder on the race screen: Penalty yellow, Damage red, Tyre Wear purple, Weather blue, Balance of Power white, Time Tokens teal;
+// Rotation (brown) and Fuel (green) have no folder. The design is in docs/ui-reference/race-setup-tabs. The buttons keep role "tab" and data-id, as every tab in the app does.
+const SETUP_HERO = ['setups', 'Race Setups', 'racesetups', 'race'];
+const SETUP_GROUPS = [
+  ['Systems', [['penalties', 'Penalty Systems', 'penalty', 'pen'], ['damage', 'Damage Systems', 'damage', 'dmg'], ['tyrewear', 'Tyre Wear Systems', 'tyre', 'tyre'], ['weather', 'Weather Systems', 'weather', 'wx']]],
+  ['Setups', [['rotation', 'Rotation Setups', 'rotation', 'rot'], ['fuel', 'Fuel Setups', 'fuel', 'fuel']]],
+  ['Extras', [['bop', 'Balance of Power', 'balance', 'bop'], ['tokens', 'Time Tokens', 'tokens', 'tok']]],
+];
+const setupColorOf = id => { const all = [SETUP_HERO, ...SETUP_GROUPS.flatMap(g => g[1])].find(t => t[0] === id); return all ? all[3] : 'race'; };
+const setupTabsHtml = current => {
+  const [hid, hlabel, hicon] = SETUP_HERO;
+  const chip = ([id, label, icon, c]) => `<button type="button" class="sstab ss-${c}" role="tab" aria-selected="${id === current}" data-id="${id}">${Icons.svg(icon, { size: 16, stroke: 1.8, cls: 'ssico' })}${esc(label)}</button>`;
+  return `<button type="button" class="ssbig" role="tab" aria-selected="${hid === current}" data-id="${hid}"><span class="ssbigico">${Icons.svg(hicon, { size: 22, stroke: 1.8 })}</span><span><strong>${esc(hlabel)}</strong><small>Where it all comes together</small></span></button>`
+    + `<div class="ssgroups">${SETUP_GROUPS.map(([name, items]) => `<div class="ssgroup"><span class="sslabel" aria-hidden="true">${esc(name)}</span><div class="sschips">${items.map(chip).join('')}</div></div>`).join('')}</div>`;
+};
+
 // Race Setup tab: the race setups you can pick on the Home tab, and the penalty systems they can use
 async function renderSetup() {
-  view.innerHTML = '<h2>Race Setup</h2><div class="sub" id="setuptabs" role="tablist" style="display:flex;gap:4px"></div><p class="muted" id="setupnote"></p><div id="setupmgr"></div>';
-  renderTabs(document.getElementById('setuptabs'), [['setups', 'Race Setups'], ['rotation', 'Rotation Setups'], ['fuel', 'Fuel Setups'], ['penalties', 'Penalty Systems'], ['damage', 'Damage Systems'], ['tyrewear', 'Tyre Wear Systems'], ['weather', 'Weather Systems'], ['bop', 'Balance of Power'], ['tokens', 'Time Tokens']], state.setupSub, id => {
+  view.innerHTML = `<h2>Race Setup</h2><div class="setupstrip" id="setuptabs" role="tablist" aria-label="Race Setup sections"></div><div class="setuppage ss-${setupColorOf(state.setupSub)}" id="setuppage"><p class="muted" id="setupnote"></p><div id="setupmgr"></div></div>`;
+  const strip = document.getElementById('setuptabs');
+  strip.innerHTML = setupTabsHtml(state.setupSub);
+  strip.onclick = e => {
+    const b = e.target.closest('[data-id]'); if (!b) return; const id = b.dataset.id;
     // the rotation setup editor is closed by another tab: ask first when there are changes that are not saved
     if (rotEd && id !== 'rotation') { if (rotEd.dirty && !confirm('Discard your unsaved changes to this rotation setup?')) return; draftUndoEnd(rotEd); rotEd = null; }
     state.setupSub = id; renderSetup();
-  });
+  };
   const sub = state.setupSub, entity = sub === 'penalties' ? 'penaltysystems' : sub === 'damage' ? 'damagesystems' : sub === 'tyrewear' ? 'tyrewearsystems' : sub === 'fuel' ? 'fuelrules' : sub === 'weather' ? 'weathersystems' : 'racesetups';
   document.getElementById('setupnote').textContent = sub === 'penalties' ? 'A penalty system says how penalty points turn into time and when a driver is disqualified. Choose one in a race setup.'
     : sub === 'damage' ? 'A damage system gives a car damage points (a hit from the Race Director, a deslot). The level they reach says how long the car must stand in the pits to be repaired, or that it is out. Choose one in a race setup.'
