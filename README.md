@@ -2645,3 +2645,19 @@ Good to know:
 2. The refuel, tyre and repair sounds play when the stop is over (that is when the race knows it was done), not while the work is going on; the pit crew sound is the one for that.
 3. Still to come (release 3): sounds that keep playing in the background (crowd murmur, the paddock, rain, thunder), with their own start and stop.
 4. Not verified in the full Electron window or with real sound files. The new sounds were tested by running a short race through the channel and by checking in the code that every moment a sound waits for is really made by the race.
+
+## What to try (1.50.0): the sections as folders, and Ambient Race Sounds release 3 (sounds that keep playing)
+
+What changed, in two parts. **Part 1:** the ten sections of the folder **Ambient Race Sounds** are folders of their own, closed to start (you asked for that). **Part 2:** five new sounds that **keep playing in the background** from one moment of the race to another: the paddock, the crowd, thunder, rain and dry weather. That makes 37 sounds. Still no sounds included: you add the files.
+
+1. **Customization > Audio Settings > a set > Ambient Race Sounds.** Open it: ten closed folders (On the track, Pit lane, The start, Flags, Race moments, The crowd, Trouble, Driver swaps and time tokens, Background sounds, Weather). Each header says how many of its sounds have a file, so you see at once where you have been. Open the ones you need: they stay open while you work in the set. **Open all folders** and **Close all folders** at the top include them. A set you open next has them closed again.
+2. **Background sounds** has two sounds that play again and again: **the paddock** (from the pre-race call, or from the end of a heat or a final, until the lights go out) and **the crowd during the race** (from lights out until the race, the heat or the final is finished). Add a file to each and race: at lights out the paddock fades out while the crowd fades in; at the finish the crowd fades out.
+3. Under each of them: **Fade in (seconds)** and **Fade out (seconds)**. Empty is the usual, 2 seconds in and 3 out; 0 is no fade at all. The volume, the wait (start after) and the "lower them while a call is spoken" of the folder work for them too.
+4. **Weather** (a race with a Weather System) has **the rain starts** (a clap of thunder, once), **rain** (plays for as long as the weather is wet) and **dry weather** (birds, a light breeze: plays for as long as it is dry, from lights out in a race that starts dry). They end when the weather changes, and at the finish. When the weather changes back while a sound fades out, it fades back in.
+5. **Test** on a sound that keeps playing plays the file once, at the volume it will have.
+
+Good to know:
+1. A file that keeps playing should join up well at its end and its start (a loop). A short file is fine; the longer, the less you hear it repeat.
+2. These sounds are not counted in **Most sounds at once**; they play once at a time (a second start does nothing); and they are lowered while a call is spoken like the others.
+3. Pausing the race does not pause them yet, and a red flag does not stop them. The pit lane has no background sound (the pit crew sound is for each car).
+4. Not verified in the full Electron window or with real sound files. The fades were tested with a stand-in clock (every step of a tenth of a second), the folders in a browser (dark and light).

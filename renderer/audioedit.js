@@ -6,6 +6,7 @@ const VOICE_HELP = 'To add more voices and languages to Windows:\nWindows 11: Se
 const AMBIENT_HELP = 'These sounds play on a separate channel: they play at the same time as the spoken calls, and a spoken call never cuts them off.';
 let audVoiceNote = false; // the answer to "How do I get more voices?" is shown (it stays shown when the editor is drawn again)
 let audOpen = new Set(); // the call groups (folders) that are open in the editor; all closed when a set is opened
+let audSecOpen = new Set(); // the sections (folders) of the Ambient Race Sounds that are open in the editor; all closed when a set is opened
 let audCond = new Set(); // the sentences whose "Only if" box is open ("call:number"); closed when a set is opened
 let audDrivers = []; // the drivers of the database, for the "only for driver" condition
 // the text on the "Only if" line of a sentence: what is set
@@ -27,10 +28,10 @@ async function renderAudioSets(box) {
       <button class="btn" data-edit="${esc(r.id)}">Edit</button> <button class="btn" data-dup="${esc(r.id)}">Duplicate</button> <button class="btn danger" data-del="${esc(r.id)}">Delete</button></td></tr>`).join('') : '<tr><td colspan="4" class="muted">No audio sets yet.</td></tr>') + '</table></div>';
   box.onclick = async ev => {
     const b = ev.target.closest('button'); if (!b) return;
-    if (b.id === 'newaud') { audDrivers = await api.list('drivers'); audEd = { id: null, draft: Sound.defaultSet(), dirty: true }; audOpen = new Set(); audCond = new Set(); return renderAudioSets(box); }
+    if (b.id === 'newaud') { audDrivers = await api.list('drivers'); audEd = { id: null, draft: Sound.defaultSet(), dirty: true }; audOpen = new Set(); audSecOpen = new Set(); audCond = new Set(); return renderAudioSets(box); }
     const r = sets.find(x => x.id === (b.dataset.edit || b.dataset.dup || b.dataset.del)); if (!r) return;
     const own = () => { const d = Sound.defaultSet(r.name); Object.assign(d, clone({ voice: r.voice, rate: r.rate, pitch: r.pitch, volume: r.volume, driverBy: r.driverBy, distances: r.distances, lapsToGo: r.lapsToGo, minutesToGo: r.minutesToGo, closeGap: r.closeGap, battleLaps: r.battleLaps, nearRecord: r.nearRecord, noLapSeconds: r.noLapSeconds, preDelay: r.preDelay, ambVolume: r.ambVolume, ambDuck: r.ambDuck, ambDuckLevel: r.ambDuckLevel, ambMax: r.ambMax })); Object.keys(r.calls || {}).forEach(k => { d.calls[k] = clone(r.calls[k]); }); return d; };
-    if (b.dataset.edit) { audDrivers = await api.list('drivers'); audEd = { id: r.id, draft: own(), dirty: false }; audOpen = new Set(); audCond = new Set(); return renderAudioSets(box); }
+    if (b.dataset.edit) { audDrivers = await api.list('drivers'); audEd = { id: r.id, draft: own(), dirty: false }; audOpen = new Set(); audSecOpen = new Set(); audCond = new Set(); return renderAudioSets(box); }
     if (b.dataset.dup) { const d = own(); d.name = r.name + ' (copy)'; await api.add('audiosets', d); return renderAudioSets(box); }
     if (b.dataset.del && confirm(`Delete the audio set "${r.name}"?\n\nRace setups that use it will be silent until you choose another set.\n\nThis can't be undone.`)) { await api.remove('audiosets', r.id); renderAudioSets(box); }
   };
@@ -66,13 +67,14 @@ function renderAudioSetEditor(box) {
     return `<fieldset class="audcall ambcall"><legend><label><input type="checkbox" data-on="${def.id}"${cc.on !== false ? ' checked' : ''}> ${esc(def.label)}</label></legend>
       <div ${cc.on === false ? 'hidden' : ''}>${(cc.lines || []).map((l, n) => `<div class="row audline"><span class="audfile">${l.file ? `<span class="muted">sound file</span> <button class="btn" type="button" data-nofile="${def.id}:${n}">Remove file</button>` : `<input type="file" accept="audio/*" data-file="${def.id}:${n}" aria-label="Sound file ${n + 1} for ${esc(def.label)}">`}</span>
         <button class="btn" type="button" data-ambtest="${def.id}:${n}"${l.file ? '' : ' disabled'}>Test</button> <button class="btn" type="button" data-delline="${def.id}:${n}" aria-label="Delete this sound file">Delete</button></div>${condHtml(def, l, n)}`).join('')}
-      <div class="row"><button class="btn" type="button" data-addline="${def.id}">Add a sound file</button><span class="muted">${(cc.lines || []).length > 1 ? 'One of the files is picked at random each time.' : (cc.lines || []).length ? '' : 'Nothing plays until a file is added.'}</span></div>
+      <div class="row"><button class="btn" type="button" data-addline="${def.id}">Add a sound file</button><span class="muted">${(cc.lines || []).length > 1 ? 'One of the files is picked at random each time.' : (cc.lines || []).length ? '' : 'Nothing plays until a file is added.'}${def.loop ? ' It plays again and again until the moment that ends it comes.' : ''}</span></div>
       <div class="row ambopts"><label>Volume (percent) <input type="number" ${at('vol')} min="0" max="100" step="5" value="${vol}" placeholder="100" style="width:5.5em"></label>
         <label>Start after (seconds) <input type="number" ${at('delay')} min="0" max="30" step="0.1" value="${delay}" placeholder="0" style="width:5.5em"></label>
         ${o.includes('who') ? `<label>Played for <select ${at('who')}><option value="">every car</option><option value="leader"${cc.who === 'leader' ? ' selected' : ''}>only the leader</option><option value="close"${cc.who === 'close' ? ' selected' : ''}>only cars close together</option></select></label>${cc.who === 'close' ? `<label>closer than (seconds) <input type="number" ${at('near')} min="0.1" max="60" step="0.1" value="${cc.near > 0 ? cc.near : ''}" placeholder="3" style="width:5.5em"></label>` : ''}` : ''}
-        ${o.includes('cut') ? `<label><input type="checkbox" ${at('cut')}${cc.cut === false ? '' : ' checked'}> stop it when the car leaves the pits</label>` : ''}</div>${def.cool ? coolHtml(def) : ''}</div></fieldset>`; };
-  const ambHtml = () => { let sec = '', body = '';
-    Announcer.AMBIENT.forEach(def => { if (def.section !== sec) { sec = def.section; body += `<h4 class="ambsec">${esc(sec)}</h4>`; } body += ambCallHtml(def); });
+        ${o.includes('cut') ? `<label><input type="checkbox" ${at('cut')}${cc.cut === false ? '' : ' checked'}> stop it when the car leaves the pits</label>` : ''}
+        ${o.includes('fade') ? `<label>Fade in (seconds) <input type="number" ${at('fadein')} min="0" max="30" step="0.5" value="${cc.fadeIn === undefined ? '' : cc.fadeIn}" placeholder="2" style="width:5.5em"></label><label>Fade out (seconds) <input type="number" ${at('fadeout')} min="0" max="30" step="0.5" value="${cc.fadeOut === undefined ? '' : cc.fadeOut}" placeholder="3" style="width:5.5em"></label>` : ''}</div>${def.cool ? coolHtml(def) : ''}</div></fieldset>`; };
+  const ambHtml = () => { const secs = []; Announcer.AMBIENT.forEach(def => { let g = secs.find(x => x[0] === def.section); if (!g) secs.push(g = [def.section, []]); g[1].push(def); });
+    const body = secs.map(([name, list]) => `<details class="ambsection" data-section="${esc(name)}"${audSecOpen.has(name) ? ' open' : ''}><summary><strong>${esc(name)}</strong> <span class="muted">${list.filter(def => ambFiles(def.id) > 0).length} of ${list.length} sound${list.length === 1 ? '' : 's'} ${list.length === 1 ? 'has' : 'have'} a file</span></summary>${list.map(ambCallHtml).join('')}</details>`).join('');
     const withFile = Announcer.AMBIENT.filter(def => ambFiles(def.id) > 0).length, tip = esc(AMBIENT_HELP);
     return `<details class="audgroup ambgroup" data-group="${esc(Announcer.AMBIENT_GROUP)}" title="${tip}"${audOpen.has(Announcer.AMBIENT_GROUP) ? ' open' : ''}><summary title="${tip}"><strong>${esc(Announcer.AMBIENT_GROUP)}</strong> <span class="muted">${withFile} of ${Announcer.AMBIENT.length} sound${Announcer.AMBIENT.length === 1 ? '' : 's'} have a file</span> <span class="muted" aria-hidden="true">ⓘ</span></summary>
       <div class="ambintro"><p class="muted">${esc(AMBIENT_HELP)} No sounds are included: add your own sound files (engines passing, a pit crew, a crowd...) and each one plays when its moment of the race comes. A sound without a file stays silent.</p>
@@ -103,6 +105,7 @@ function renderAudioSetEditor(box) {
       return `<details class="audgroup" data-group="${esc(g)}"${audOpen.has(g) ? ' open' : ''}><summary><strong>${esc(g)}</strong> <span class="muted">${on} of ${list.length} call${list.length === 1 ? '' : 's'} on</span></summary>${list.map(callHtml).join('')}</details>`; }).join('')}${ambHtml()}`;
   box.querySelectorAll('.audcond').forEach(el => { el.ontoggle = () => { const k = el.dataset.condKey; if (el.open) audCond.add(k); else audCond.delete(k); }; });
   box.querySelectorAll('.audgroup').forEach(el => { el.ontoggle = () => { const g = el.dataset.group; if (el.open) audOpen.add(g); else audOpen.delete(g); }; }); // remembered when the editor redraws
+  box.querySelectorAll('.ambsection').forEach(el => { el.ontoggle = () => { const g = el.dataset.section; if (el.open) audSecOpen.add(g); else audSecOpen.delete(g); }; });
   // Undo and redo (a typed sentence is one step after a quiet moment; every other change is a step of its own)
   const U = draftUndo(audEd, 'au', () => renderAudioSetEditor(box)), mark = U.mark, step = U.step;
   const $ = id => document.getElementById(id), msg = t => { $('au-msg').textContent = t; };
@@ -146,7 +149,7 @@ function renderAudioSetEditor(box) {
   box.onclick = ev => {
     const b = ev.target.closest('button'); if (!b) return;
     const q = b.dataset;
-    if (q.openall) { audOpen = q.openall === '1' ? new Set([...groups.map(x => x[0]), Announcer.AMBIENT_GROUP]) : new Set(); return renderAudioSetEditor(box); }
+    if (q.openall) { audOpen = q.openall === '1' ? new Set([...groups.map(x => x[0]), Announcer.AMBIENT_GROUP]) : new Set(); audSecOpen = q.openall === '1' ? new Set(Announcer.AMBIENT.map(d => d.section)) : new Set(); return renderAudioSetEditor(box); }
     if (q.addline) { d.calls[q.addline].lines.push({ text: '', file: '' }); step(); return renderAudioSetEditor(box); }
     if (q.delline) { const [id, n] = q.delline.split(':'); d.calls[id].lines.splice(Number(n), 1); [...audCond].filter(k => k.startsWith(id + ':')).forEach(k => audCond.delete(k)); step(); return renderAudioSetEditor(box); }
     if (q.nofile) { ref(q.nofile).file = ''; step(); return renderAudioSetEditor(box); }
@@ -172,6 +175,7 @@ function renderAudioSetEditor(box) {
       else if (k === 'vol') { if (none || v >= 100) delete cc.vol; else cc.vol = Math.round(Sound.bounded(v, 100, 0, 100)); }
       else if (k === 'delay') { if (none || v <= 0) delete cc.delay; else cc.delay = Sound.bounded(v, 0, 0, 30); }
       else if (k === 'near') { if (none || v <= 0) delete cc.near; else cc.near = Sound.bounded(v, 3, 0.1, 60); }
+      else if (k === 'fadein' || k === 'fadeout') { const f = k === 'fadein' ? 'fadeIn' : 'fadeOut'; if (none) delete cc[f]; else cc[f] = Sound.bounded(v, 0, 0, 30); } // (0 is a fade of no length; empty is the usual: 2 seconds in, 3 out)
       step(); return renderAudioSetEditor(box);
     }
     if (t.dataset.cool) { // "not again within" (whole seconds, 1 to 3600; empty takes it away)

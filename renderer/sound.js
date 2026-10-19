@@ -86,40 +86,56 @@
   // Sound files the user brings, played on a channel of their own: they do not wait in the queue of the spoken calls, are not cut off by an urgent call, and any number (up to the limit of the set) can play
   // at the same time as each other and as the voice. A sound starts when an event of the race happens (Announcer.AMBIENT says which: on) and can be cut short by another (stop).
   // set: ambVolume (0 to 1), ambDuck (lower them while a call is said), ambDuckLevel (percent they are lowered to), ambMax (most sounds at once); call: vol (percent), delay (seconds), who/near, cut.
+  // A sound with loop: true (1.50.0) plays again and again from its start moment until its stop moment; it fades in and out (call.fadeIn 2 and call.fadeOut 3 seconds when not set), is only started once and is not counted in ambMax.
   const ambOf = set => ({ volume: num(set && set.ambVolume, 0.8, 0, 1), duck: !(set && set.ambDuck === false), level: num(set && set.ambDuckLevel, 35, 0, 100) / 100, max: Math.round(num(set && set.ambMax, 6, 1, 16)) });
   const ambVol = (set, call, ducked) => { const o = ambOf(set); return Math.max(0, Math.min(1, o.volume * num(call && call.vol, 100, 0, 100) / 100 * (ducked && o.duck ? o.level : 1))); };
-  // the browser's own player (replaced in tests): play(url, volume, ended) returns { stop(), volume(v) }
+  // the browser's own player (replaced in tests): play(url, volume, ended, { loop }) returns { stop(), volume(v) }
   function ambientBrowser() {
-    return { play(url, vol, ended) {
+    return { play(url, vol, ended, o) {
       try {
-        const a = new root.Audio(url); a.volume = vol; a.onended = a.onerror = ended;
+        const a = new root.Audio(url); a.volume = vol; a.loop = !!(o && o.loop); a.onended = a.onerror = ended;
         const p = a.play(); if (p && p.catch) p.catch(() => ended());
         return { stop() { try { a.onended = a.onerror = null; a.pause(); } catch (e) { /* it is gone */ } }, volume(v) { try { a.volume = v; } catch (e) { /* it is gone */ } } };
       } catch (e) { ended(); return null; }
     } };
   }
   const abe = () => S.ambBackend || (S.ambBackend = ambientBrowser());
-  const ambEnd = it => { const i = S.amb.items.indexOf(it); if (i >= 0) S.amb.items.splice(i, 1); };
+  const ambEnd = it => { const i = S.amb.items.indexOf(it); if (i >= 0) S.amb.items.splice(i, 1); if (it.fadeTimer !== null && it.fadeTimer !== undefined) { S.unlater(it.fadeTimer); it.fadeTimer = null; } };
   const ambHalt = it => { ambEnd(it); try { if (it.h) it.h.stop(); } catch (e) { /* it is gone */ } };
   // lower the sounds that play (and the ones that start while it lasts) while a call is said, back up when it is over
+  // the volume of a sound that plays: the volume of the set and of the sound, lowered while a call is said, and the fade of a loop
+  const ambApply = it => { try { if (it.h) it.h.volume(ambVol(it.set, it.call, S.amb.duck) * it.fade); } catch (e) { /* it is gone */ } };
   function ambDuck(on) {
     if (S.amb.duck === on) return; S.amb.duck = on;
-    S.amb.items.forEach(it => { try { if (it.h) it.h.volume(ambVol(it.set, it.call, on)); } catch (e) { /* it is gone */ } });
+    S.amb.items.forEach(ambApply);
+  }
+  // fade a sound (a loop) to a volume factor (1 = full, 0 = silent) in some seconds, in steps of a tenth of a second; done: called when it has got there
+  function ambFade(it, to, secs, done) {
+    if (it.fadeTimer !== null && it.fadeTimer !== undefined) { S.unlater(it.fadeTimer); it.fadeTimer = null; }
+    const from = it.fade, steps = Math.round(secs * 10); let n = 0;
+    if (!(steps >= 1)) { it.fade = to; ambApply(it); if (done) done(); return; }
+    const tick = () => { n++; it.fade = from + (to - from) * Math.min(1, n / steps); ambApply(it); if (n >= steps) { it.fadeTimer = null; if (done) done(); } else it.fadeTimer = S.later(tick, 100); };
+    it.fadeTimer = S.later(tick, 100);
   }
   // which car an event is about (the pit stop that ends is the one that began): the lane, else the driver
   const ambKey = (vars, facts) => String(vars && vars.lane !== undefined && vars.lane !== '' ? vars.lane : (vars && vars.driver) || (facts && facts.driverId) || '');
-  function ambStart(set, id, call, file, key) {
-    const max = ambOf(set).max, items = S.amb.items;
-    while (items.length >= max) ambHalt(items[0]); // (the oldest makes room: a new sound matters more than one that has played a while)
-    const it = { id, key, set, call, h: null }; items.push(it);
-    S.amb.log.push({ id, file: file.slice(0, 40), volume: ambVol(set, call, S.amb.duck) }); if (S.amb.log.length > 200) S.amb.log.splice(0, S.amb.log.length - 200);
-    try { it.h = abe().play(file, ambVol(set, call, S.amb.duck), () => ambEnd(it)); } catch (e) { ambEnd(it); } // (a player that cannot play leaves nothing behind that would take the place of another sound)
+  function ambStart(set, id, call, file, key, loop) {
+    const max = ambOf(set).max, items = S.amb.items, fin = num(call && call.fadeIn, 2, 0, 30);
+    if (!loop) for (let plain = items.filter(i => !i.loop); plain.length >= max; plain = items.filter(i => !i.loop)) ambHalt(plain[0]); // (the oldest makes room: a new sound matters more than one that has played a while; the loops are not counted)
+    const it = { id, key, set, call, h: null, loop: !!loop, fade: loop && fin > 0 ? 0 : 1, out: false, fadeTimer: null }; items.push(it);
+    S.amb.log.push({ id, file: file.slice(0, 40), volume: ambVol(set, call, S.amb.duck) * it.fade, loop: !!loop }); if (S.amb.log.length > 200) S.amb.log.splice(0, S.amb.log.length - 200);
+    try { it.h = abe().play(file, ambVol(set, call, S.amb.duck) * it.fade, () => ambEnd(it), { loop: !!loop }); } catch (e) { ambEnd(it); } // (a player that cannot play leaves nothing behind that would take the place of another sound)
+    if (loop && fin > 0 && items.includes(it)) ambFade(it, 1, fin);
     return it;
   }
   // an event cuts a sound that has not ended (or has not started: the delay is waiting) for the same car
+  // (a loop fades out first, and is gone when it has)
   function ambCut(id, key) {
     S.amb.pending = S.amb.pending.filter(p => { if (p.id === id && p.key === key) { S.unlater(p.timer); return false; } return true; });
-    S.amb.items.filter(it => it.id === id && it.key === key).forEach(ambHalt);
+    S.amb.items.filter(it => it.id === id && it.key === key).forEach(it => {
+      if (!it.loop) return ambHalt(it);
+      if (it.out) return; it.out = true; ambFade(it, 0, num(it.call && it.call.fadeOut, 3, 0, 30), () => ambHalt(it));
+    });
   }
   // one ambient sound (def of Announcer.AMBIENT) for an event: null when it is off, has no file, is held back by "which cars", or is cooling down
   function ambPlay(set, def, vars, facts, rnd) {
@@ -131,17 +147,23 @@
     }
     const what = choose(set, def.id, vars, rnd, facts); if (!what || !what.file) return null;
     if (cooling(set, def.id, vars, facts)) return null;
-    const key = ambKey(vars, facts), delay = num(c.delay, 0, 0, 30);
-    if (delay > 0) { const p = { id: def.id, key, timer: null }; p.timer = S.later(() => { S.amb.pending = S.amb.pending.filter(x => x !== p); try { ambStart(set, def.id, c, what.file, key); } catch (e) { /* a sound problem never stops the race */ } }, delay * 1000); S.amb.pending.push(p); }
-    else ambStart(set, def.id, c, what.file, key);
+    const key = def.loop ? 'loop' : ambKey(vars, facts), delay = num(c.delay, 0, 0, 30);
+    if (def.loop) { // a loop plays once at a time: one that is playing goes on (one that was fading out comes back), one that is waiting for its delay is not started twice
+      const on = S.amb.items.find(i => i.id === def.id);
+      if (on) { if (on.out) { on.out = false; ambFade(on, 1, num(c.fadeIn, 2, 0, 30)); } return null; }
+      if (S.amb.pending.some(p => p.id === def.id)) return null;
+    }
+    if (delay > 0) { const p = { id: def.id, key, timer: null }; p.timer = S.later(() => { S.amb.pending = S.amb.pending.filter(x => x !== p); try { ambStart(set, def.id, c, what.file, key, def.loop); } catch (e) { /* a sound problem never stops the race */ } }, delay * 1000); S.amb.pending.push(p); }
+    else ambStart(set, def.id, c, what.file, key, def.loop);
     return { id: def.id, file: what.file };
   }
   // an event of the race (the id of the call about to be said, or lapdone): the ambient sounds that end because of it, then the ones that start because of it
   function ambientFor(set, event, vars, facts, rnd) {
     if (!set || !set.calls) return [];
-    const key = ambKey(vars, facts);
-    A.AMBIENT.forEach(def => { if ((def.stop || []).includes(event) && (set.calls[def.id] || {}).cut !== false) ambCut(def.id, key); });
-    return A.AMBIENT.filter(def => def.on.includes(event)).map(def => ambPlay(set, def, vars, facts, rnd)).filter(Boolean);
+    const key = ambKey(vars, facts), events = [event]; // (the conditions of the weather come with a state: weatherconditions:wet is "the conditions are said, and it is wet")
+    if (event === 'weatherconditions' && vars && vars.weather) events.push('weatherconditions:' + vars.weather);
+    A.AMBIENT.forEach(def => { if ((def.stop || []).some(e => events.includes(e)) && (set.calls[def.id] || {}).cut !== false) ambCut(def.id, def.loop ? 'loop' : key); });
+    return A.AMBIENT.filter(def => def.on.some(e => events.includes(e))).map(def => ambPlay(set, def, vars, facts, rnd)).filter(Boolean);
   }
   // does the set want a sound for every lap of every car? (the announcer only makes the lap event when it does)
   const wantsLaps = set => { const c = set && set.calls && set.calls.ambpass; return !!c && c.on !== false && (c.lines || []).some(l => l && String(l.file || '').startsWith('data:')); };

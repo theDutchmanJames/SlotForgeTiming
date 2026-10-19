@@ -105,6 +105,8 @@
   // and can be cut short by another (stop). vars: ['driver'] means the event is about one car, so the sound can have the conditions "only for this driver", "top N" and "gap under".
   // opts: what the sound can be set to besides its volume and its delay: who (which cars: all, the leader, cars that are close to another), cut (stop it when the stop event comes).
   // cool: the sound is the kind that comes often, so it can have "not again within".
+  // loop: the sound plays again and again from its start moment (on) until its stop moment (stop), with a fade in and a fade out (opts: fade). A moment can be a call (see CALLS), lapdone, or the state the weather
+  // is said to be in: weatherconditions:dry, :cloudy, :wet or :clearing.
   // tokens: the sound is for a Time Token Session, which has no positions or gaps (so the Only if box has no "top" and no "gap").
   const AMBIENT_GROUP = 'Ambient Race Sounds';
   const AMBIENT = [
@@ -139,7 +141,12 @@
     { id: 'ambswapdue', section: 'Driver swaps and time tokens', label: 'A driver swap is due (a bell)', on: ['swapdue'], vars: ['driver'] },
     { id: 'ambswapdone', section: 'Driver swaps and time tokens', label: 'A driver swap is done (a short horn)', on: ['swapdone'], vars: ['driver'] },
     { id: 'ambtokenwarn', section: 'Driver swaps and time tokens', label: 'The time of a lane is almost up (a buzzer)', on: ['tokenwarning'], vars: ['driver', 'lane'], tokens: true },
-    { id: 'ambtokenout', section: 'Driver swaps and time tokens', label: 'The time of a lane is up (a long buzzer)', on: ['tokenout'], vars: ['driver', 'lane'], tokens: true }
+    { id: 'ambtokenout', section: 'Driver swaps and time tokens', label: 'The time of a lane is up (a long buzzer)', on: ['tokenout'], vars: ['driver', 'lane'], tokens: true },
+    { id: 'ambparaddock', section: 'Background sounds', label: 'The paddock, before the start and between heats: from the pre-race call, or the end of a heat, until the lights go out (a murmuring crowd)', on: ['prerace', 'heatend', 'finalend'], stop: ['lightsout'], vars: [], loop: true, opts: ['fade'] },
+    { id: 'ambcrowd', section: 'Background sounds', label: 'The crowd during the race: from lights out until the race, heat or final is finished (a murmuring crowd)', on: ['lightsout'], stop: ['finished', 'heatend', 'finalend'], vars: [], loop: true, opts: ['fade'] },
+    { id: 'ambthunder', section: 'Weather', label: 'The rain starts (a clap of thunder)', on: ['weatherwet'], vars: [] },
+    { id: 'ambrain', section: 'Weather', label: 'Rain, for as long as it is wet (needs a Weather System)', on: ['weatherconditions:wet'], stop: ['weatherconditions:cloudy', 'weatherconditions:clearing', 'weatherconditions:dry', 'finished', 'heatend', 'finalend'], vars: [], loop: true, opts: ['fade'] },
+    { id: 'ambdry', section: 'Weather', label: 'Dry weather, for as long as it is dry (birds, a light breeze; needs a Weather System)', on: ['weatherconditions:dry'], stop: ['weatherconditions:cloudy', 'weatherconditions:wet', 'weatherconditions:clearing', 'finished', 'heatend', 'finalend'], vars: [], loop: true, opts: ['fade'] }
   ];
   // the values a placeholder can have, in the order they are shown to the user
   const VARS = { driver: 'The driver, as the set says (name, nickname or callsign)', name: 'The driver\'s name', nickname: 'The driver\'s nickname', callsign: 'The driver\'s callsign', team: 'The name of the team of the car (empty when the car races without a team)',
