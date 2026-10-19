@@ -2690,6 +2690,12 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
       const look = run(`SETUP_LOOK['${ent}']`), tab = run(`[SETUP_HERO, ...SETUP_GROUPS.flatMap(g => g[1])].find(t => t[0] === '${sub}')`);
       say(`1.47.1: ${sub}: the card has the same icon and colour as the button of that sub-tab in the strip`, look[0] === tab[2] && look[1] === tab[3] && look[0] === icon && look[1] === col);
       say(`1.47.1: ${sub}: the page carries the colour of the sub-tab (the Add button and the card use it), and the Add button is there`, run('view.innerHTML').includes(`class="setuppage ss-${col}"`) && mgr.includes('id="add"'));
+      // 1.47.2: the windows that open from the page have the colour of the sub-tab too
+      run(`openForm('${ent}', null)`); const frm = E('dlg').innerHTML;
+      say(`1.47.2: ${sub}: the form that opens (Add or Edit) is marked with the colour of the sub-tab (class setupform ss-${col}), on the form itself`, frm.includes(`<form id="frm" class="setupform ss-${col}">`));
+      run("document.getElementById('dlg').close && 0");
+      await run(`openExtra('${ent}')`); const xf = E('dlg').innerHTML;
+      say(`1.47.2: ${sub}: the Extra fields window has it too, around all of its content`, xf.startsWith(`<div class="setupform ss-${col}"><h3>Extra fields`) && xf.endsWith('</div></div>') && xf.includes('id="xadd"'));
     }
     say('1.47.1: a picture a card has of its own is still shown instead of the icon (a race setup shows the picture of its track)', await (async () => {
       store.tracks = [{ id: 'tk1', name: 'Home', picture: 'data:image/jpeg;base64,TRK' }]; store.racesetups = [{ id: 'x1', name: 'With track', track: 'tk1' }];
@@ -2697,6 +2703,8 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
       return E('setupmgr').innerHTML.includes('src="data:image/jpeg;base64,TRK"') && !E('setupmgr').innerHTML.includes('phicon'); })());
     run("state.sub='drivers'; state.tab='database'"); await run('render()');
     say('1.47.1: the Database pages keep the first letter of the name (the icon is for the Race Setup pages only)', !E('subview').innerHTML.includes('phicon'));
+    run("openForm('drivers', null)"); const dfrm = E('dlg').innerHTML; await run("openExtra('drivers')");
+    say('1.47.2: the Database forms and their Extra fields window keep the colour of the theme (no setupform class)', dfrm.includes('<form id="frm">') && !dfrm.includes('setupform') && !E('dlg').innerHTML.includes('setupform'));
     ents.forEach(k => { if (keep[k] === undefined) delete store[k]; else store[k] = keep[k]; }); store.tracks = keepTracks; run(`state.refs.tracks = ${keepRefs}`);
     run(`state.settings.dbView=${JSON.stringify(keepView[0])}; state.settings.setupView=${JSON.stringify(keepView[1])}`);
   }

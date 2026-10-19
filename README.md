@@ -2598,3 +2598,16 @@ Good to know:
 1. Only the main button of a page takes the colour of the sub-tab. The forms that open in a window (*Add tyre wear system* opens one) keep the colour of your theme, and so does the highlighted **Grid** / **List** switch. Say so if you want those in the colour of the sub-tab too.
 2. The Database pages (Drivers, Slotcars, Tracks, Teams) keep the first letter of the name on a coloured square when there is no picture; the icon is only for the Race Setup pages.
 3. Not verified in the full Electron window (the real stylesheet was drawn in a browser, dark and light, for every sub-tab).
+
+## What to try (1.47.2): the windows of the Race Setup pages in the colour of the sub-tab
+
+What changed: after 1.47.1 only the Add button had the colour of the sub-tab; now the windows have it too.
+
+1. **Race Setup > Tyre Wear Systems > Add tyre wear system.** The window is **purple**: the folders (their header, the bar on the left and the arrow) and the **Save** button. Try the other sub-tabs: Penalty yellow, Damage red, Weather blue, Fuel green. On a light theme the colours are darker and the text on the Save button is white.
+2. **Extra fields…** (the button next to Add) opens a window in the same colour.
+3. The **Grid / List** switch on these pages has the colour of the sub-tab too.
+
+Good to know:
+1. **Race Setups** (the red one) keeps the colour of your theme in its window, because that is the colour of its button. The Database forms (drivers, slotcars, tracks, teams) keep the colour of your theme too.
+2. The Rotation Setups page is not a window (it is a page of its own) and has no folders; its Save button already had the brown.
+3. Not verified in the full Electron window (the forms were opened in a browser with the real stylesheet, dark and light).

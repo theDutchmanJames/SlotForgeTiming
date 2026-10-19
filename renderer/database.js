@@ -128,6 +128,8 @@ const hue = t => { let n = 0; for (const ch of t) n = (n * 31 + ch.charCodeAt(0)
 // in the strip: see SETUP_GROUPS in editor.js); on every other page it is the first letter of the name on a colour made from the name.
 const SETUP_LOOK = { racesetups: ['racesetups', 'race'], penaltysystems: ['penalty', 'pen'], damagesystems: ['damage', 'dmg'], tyrewearsystems: ['tyre', 'tyre'], weathersystems: ['weather', 'wx'], fuelrules: ['fuel', 'fuel'] };
 const noPicture = (e, t) => { const l = SETUP_LOOK[e]; return l ? `<span class="ph phicon ss-${l[1]}">${Icons.svg(l[0], { size: 72, stroke: 1.4 })}</span>` : `<span class="ph" style="background:${hue(t)}">${esc((t.trim()[0] || '?').toUpperCase())}</span>`; };
+// The windows that open from a Race Setup page (the form, the extra fields) have the colour of that sub-tab too (1.47.2): the class puts the colour on the folders, the Save button and the options in it (styles.css, .setupform).
+const setupToneClass = e => (SETUP_LOOK[e] ? ` setupform ss-${SETUP_LOOK[e][1]}` : '');
 const VIRTUAL = { limit: { label: 'Laps / time', get: limitText } };
 const columnOf = (s, k) => k[0] === '@' ? { key: k, label: VIRTUAL[k.slice(1)].label, virtual: VIRTUAL[k.slice(1)] } : s.fields.find(f => f.key === k);
 const columnCell = (f, i) => f.virtual ? esc(f.virtual.get(i)) : cell(f, i[f.key]);
@@ -493,7 +495,7 @@ function openForm(e, item) {
   const defs = Array.isArray(s.groups) && s.groups.length ? s.groups : null;
   const groups = defs ? [...defs.map(g => ({ ...g, fields: fields.filter(f => f.group === g.id) })), { id: '_more', title: 'More', note: '', fields: fields.filter(f => !defs.some(g => g.id === f.group)) }].filter(g => g.fields.length) : null;
   const opened = defs ? (formOpen[e] = formOpen[e] || new Set(defs.filter(g => g.open).map(g => g.id))) : null;
-  dlg.innerHTML = `<form id="frm"><h3>${item ? 'Edit' : 'Add'} ${esc(s.label.toLowerCase())}</h3>
+  dlg.innerHTML = `<form id="frm"${setupToneClass(e) ? ` class="${setupToneClass(e).trim()}"` : ''}><h3>${item ? 'Edit' : 'Add'} ${esc(s.label.toLowerCase())}</h3>
     ${groups ? `<div class="formgrid grouped"><div class="fgtools"><button type="button" class="btn" data-fgall="1">Open all</button><button type="button" class="btn" data-fgall="0">Close all</button></div>${groups.map(g =>
       `<details class="fgroup" data-fg="${esc(g.id)}"${opened.has(g.id) ? ' open' : ''}><summary><strong>${esc(g.title)}</strong>${g.note ? ` <span class="muted">${esc(g.note)}</span>` : ''}</summary><div class="fgrid">${g.fields.map(one).join('')}</div></details>`).join('')}</div>`
       : `<div class="formgrid">${fields.map(one).join('')}</div>`}
@@ -697,7 +699,7 @@ async function openExtra(e) {
   const list = await api.customFields(e);
   state.custom[e] = list;
   const grouped = (s.groups || []).length > 0;
-  dlg.innerHTML = `<h3>Extra fields for ${esc(s.plural.toLowerCase())}</h3>
+  dlg.innerHTML = `<div${setupToneClass(e) ? ` class="${setupToneClass(e).trim()}"` : ''}><h3>Extra fields for ${esc(s.plural.toLowerCase())}</h3>
     <p class="muted">Extra fields are for your own information. They don't affect lap times or records.</p>` +
     (list.length ? `<ul class="xf">${list.map(f => `<li><span>${esc(f.label)} <span class="muted">(${XTYPES[f.type]})</span></span>${grouped ? `<select data-grp="${esc(f.id)}" aria-label="Group of ${esc(f.label)}" title="Where this field appears in the form">${groupChoices(e, f.group)}</select>` : ''}<button class="btn danger" data-rm="${esc(f.id)}">Delete</button></li>`).join('')}</ul>`
       : '<p class="muted">No extra fields yet.</p>') +
@@ -706,7 +708,7 @@ async function openExtra(e) {
      <div class="field" id="xow" hidden><label for="xo">Options (separate with commas)</label><input id="xo" type="text"></div>
      ${grouped ? `<div class="field"><label for="xg">Group in the form</label><select id="xg">${groupChoices(e, '')}</select><span class="muted hint">Where the field appears. You can change it later in the list above.</span></div>` : ''}
      <p class="error" id="err" role="alert"></p>
-     <div class="row"><button class="btn primary" id="xadd">Add field</button><button class="btn" id="xclose">Close</button></div>`;
+     <div class="row"><button class="btn primary" id="xadd">Add field</button><button class="btn" id="xclose">Close</button></div></div>`;
   dlg.onchange = async ev => {
     const t = ev.target;
     if (t.id === 'xt') byId('xow').hidden = t.value !== 'list';
