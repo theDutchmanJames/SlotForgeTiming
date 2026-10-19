@@ -92,7 +92,7 @@ const html = (r, opt) => Tyw.rowHtml(r, opt).html;
 
 // ---- the register ----
 { const def = Wd.REGISTRY.find(x => x.type === 'tyrelife');
-  ok('the register has the Tyre Degradation widget: per lane, in the Weather group, with the options and a sample', !!def && def.perLane && def.group === 'Weather' && def.options === Tyw.OPTIONS && typeof def.sample === 'function' && def.label === 'Tyre Degradation');
+  ok('the register has the Tyre Degradation widget: per lane, in the Tyres group, with the options and a sample', !!def && def.perLane && def.group === 'Tyres' && def.options === Tyw.OPTIONS && typeof def.sample === 'function' && def.label === 'Tyre Degradation');
   ok('...a picture set of tyres chosen in the widget gives its pictures', (Wd.resolveOpt({ type: 'tyrelife', opt: { imageSet: 's1' } }, [{ id: 's1', kind: 'tyres', images: { S: 'data:x' } }]).tyreImages || {}).S === 'data:x');
   ok('...the Leaderboard has a Tyre life column that is off to begin with', (Wd.REGISTRY.find(x => x.type === 'leaderboard').options.find(o => o.key === 'colTyres') || {}).default === false);
   const rows = [{ pos: 1, name: 'A', laps: '3', best: '9.1', gap: '', tyres: '<b>T</b>' }];
@@ -165,7 +165,7 @@ const html = (r, opt) => Tyw.rowHtml(r, opt).html;
   ok('...the team that shares the sets: both lanes say who shares the box, and they show the same numbers (a ring on the tyre that is on that lane\'s car)', (() => { const ty = Tm.content({ type: 'tyresets', lane: 1, opt: {} }, S(tm, 10000)).html, nums = h => (h.match(/<b class="twav-n">\d+/g) || []).join();
     return tx.includes('Shared by') && tx.includes('Team Red') && tx.includes('D0 and D1') && ty.includes('D0 and D1') && nums(tx) === nums(ty) && /twav-c on" style="--tc:#e8002d"/.test(tx) && /twav-c on" style="--tc:#ffd12e"/.test(ty); })());
   const reg = Wd.REGISTRY.find(x => x.type === 'tyresets');
-  ok('it is in the register as Available Tyres, in the group Weather, one for every lane, with its options and a sample', reg && reg.label === 'Available Tyres' && reg.group === 'Weather' && reg.perLane === true && reg.options === Tyw.SETS_OPTIONS && typeof reg.sample === 'function' && reg.sample(0, { opt: {} }).includes('twav'));
+  ok('it is in the register as Available Tyres, in the folder Tyres, one for every lane, with its options and a sample', reg && reg.label === 'Available Tyres' && reg.group === 'Tyres' && reg.perLane === true && reg.options === Tyw.SETS_OPTIONS && typeof reg.sample === 'function' && reg.sample(0, { opt: {} }).includes('twav'));
   ok('...the layout editor sample shows a Soft on the car and a Supersoft queued, for the lanes with and without a team', reg.sample(0, { opt: {} }).includes('NEXT') && !reg.sample(0, { opt: {} }).includes('Shared by') && reg.sample(1, { opt: {} }).includes('Shared by'));
   ok('...a picture set of tyres chosen in the widget gives its pictures', (Wd.resolveOpt({ type: 'tyresets', opt: { imageSet: 's1' } }, [{ id: 's1', kind: 'tyres', images: { S: 'data:x' } }]).tyreImages || {}).S === 'data:x'); }
 

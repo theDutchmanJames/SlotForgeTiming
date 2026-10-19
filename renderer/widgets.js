@@ -396,72 +396,81 @@
     const n = [5, 4, 3, 2, 1, 6][l % 6]; return o.show === 'number' ? String(n) : n === 1 && o.lastLap !== false ? 'Last lap' : `${n} ${n === 1 ? 'lap' : 'laps'} to go`;
   };
   const REGISTRY = [
-    T('nickname', 'Nickname', 'Driver', { perLane: true, w: 170, sample: l => NICKS[l % NICKS.length] }),
-    T('name', 'Name', 'Driver', { perLane: true, w: 200, sample: l => NAMES[l % NAMES.length] }),
-    T('callsign', 'Callsign', 'Driver', { perLane: true, w: 100, sample: l => ['ALX', 'SAM', 'KIM', 'LEE', 'MAX', 'ZOE', 'JAN', 'TIM'][l] }),
-    T('lanecolor', 'Lane Colour', 'Driver', { title: 'Lane colour', perLane: true, w: 60, sample: l => `<span class="lcsample">${l + 1}</span>` }),
-    T('avatar', 'Avatar', 'Driver', { perLane: true, w: 80, h: 80, options: AVATAR_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, pic = Av.forLane(o, l); return pic ? avatarHtml(pic, o) : `<span class="av">${NAMES[l % NAMES.length][0]}</span>`; } }),
+    // ---- Race ----
+    T('clock', 'Race Clock', 'Race', { title: 'Race clock', w: 200, options: CLOCK_OPTIONS, sample: '01:23.4' }),
+    T('racelaps', 'Race Lap Counter', 'Race', { title: 'Race laps', w: 140, options: RACELAPS_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}; return lapCountOf(o) === 'down' ? '13' : lapTotalOn(o) ? '7/20' : '7'; } }),
+    T('tokenclock', 'Token Clock', 'Race', { title: 'Token clock', perLane: true, w: 200, options: TOKENCLOCK_OPTIONS, sample: l => ['25:00', '12:34', '00:45', '1:05:00', '07:20', '04:59'][l % 6] }),
+    T('lights', 'Start Lights', 'Race', { title: 'Start lights', w: 180, options: LIGHTS_OPTIONS, sample: lightsHtml(3) }),
+    T('flag', 'Race Flag', 'Race', { title: 'Race flag', w: 180, optsLabel: 'Flag style', options: FLAG_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, st = flagStyleOf(o), i = o.img_running;
+      return st === 'images' && i ? flagImgHtml(i, '', !!o.imageMirror) : st === 'flags' ? flagHtml('running', { mirror: !!o.flagMirror }) : st === 'leds' ? ledHtml('running') : 'Racing'; } }),
+    T('info', 'Race Info', 'Race', { title: 'Race info', w: 300, sample: 'Heat 2 of 3 · 4 laps left' }),
+    T('leaderboard', 'Leaderboard', 'Race', { w: 420, h: 220, textSize: 18, options: LEADER_OPTIONS, sample: (l, w) => leaderHtml(NAMES.slice(0, 4).map((n, i) => ({ pos: i + 1, flag: FLAGS[i], name: n, nickname: NICKS[i], callsign: n.slice(0, 3).toUpperCase(), laps: String(5 - (i > 2 ? 1 : 0)), best: `5.${10 + i * 6}4`, last: `5.${30 + i}2`, current: `2.${i}40`, fuel: `${90 - i * 20} L`, gap: i ? `+${i}.${i * 3}20` : '' })), (w && w.opt) || {}) }),
+    T('heatlist', 'Heat List', 'Race', { title: 'Heat list', w: 460, h: 200, textSize: 18, options: HEATLIST_OPTIONS, sample: (l, w) => heatListHtml(HEATLIST_SAMPLE, 'running', (w && w.opt) || {}) }),
+    T('logo', 'Logo', 'Race', { w: 200, h: 100, noTitle: true, options: [{ key: 'image', label: 'Logo picture', type: 'image', fallback: 'clubLogo' }, { key: 'fit', label: 'Fit', type: 'select', choices: [['contain', 'Show the whole logo'], ['cover', 'Fill the widget (may crop)']], default: 'contain' }], sample: imgSample }),
+    // ---- Driver ----
+    T('name', 'Driver Name', 'Driver', { title: 'Name', perLane: true, w: 200, sample: l => NAMES[l % NAMES.length] }),
+    T('nickname', 'Driver Nickname', 'Driver', { title: 'Nickname', perLane: true, w: 170, sample: l => NICKS[l % NICKS.length] }),
+    T('callsign', 'Driver Callsign', 'Driver', { title: 'Callsign', perLane: true, w: 100, sample: l => ['ALX', 'SAM', 'KIM', 'LEE', 'MAX', 'ZOE', 'JAN', 'TIM'][l] }),
+    T('avatar', 'Driver Avatar', 'Driver', { title: 'Avatar', perLane: true, w: 80, h: 80, options: AVATAR_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, pic = Av.forLane(o, l); return pic ? avatarHtml(pic, o) : `<span class="av">${NAMES[l % NAMES.length][0]}</span>`; } }),
     T('driverflag', 'Driver Flag', 'Driver', { title: 'Driver flag', perLane: true, w: 90, sample: l => `<span class="fi fi-${FLAGS[l % FLAGS.length]}"></span>` }),
-    T('teamname', 'Team Name', 'Team', { title: 'Team', perLane: true, w: 220, options: [TEAM_OPTION], sample: l => TEAM_SAMPLES[l % TEAM_SAMPLES.length] }),
-    T('teampicture', 'Team Picture', 'Team', { title: 'Team picture', perLane: true, w: 100, h: 100, options: TEAMPIC_OPTIONS, sample: l => `<span class="av">${TEAM_SAMPLES[l % TEAM_SAMPLES.length][0]}</span>` }),
-    T('currentdriver', 'Current Driver', 'Team', { title: 'Current driver', perLane: true, w: 260, options: CURDRIVER_OPTIONS, sample: l => NAMES[l % NAMES.length] }),
-    T('nextdriver', 'Next Driver', 'Team', { title: 'Next driver', perLane: true, w: 260, options: NEXTDRIVER_OPTIONS, sample: l => NAMES[(l + 1) % NAMES.length] }),
-    T('swaptimer', 'Swap Timer', 'Team', { title: 'Swap timer', perLane: true, w: 230, options: SWAPTIMER_OPTIONS, sample: l => ['Swap in 12:30', 'Swap in 0:45', 'SWAP NOW'][l % 3] }),
-    T('swapsignal', 'Swap Signal', 'Team', { title: 'Swap signal', perLane: true, w: 260, h: 110, options: SWAPSIGNAL_OPTIONS, sample: (l, w) => `<span class="swsig"><b>${esc((w && w.opt && w.opt.text) || 'SWAP')}</b>${w && w.opt && w.opt.names === false ? '' : `<small>${NAMES[l % NAMES.length]} \u2192 ${NAMES[(l + 1) % NAMES.length]}</small>`}</span>` }),
+    T('lanecolor', 'Lane Colour', 'Driver', { title: 'Lane colour', perLane: true, w: 60, sample: l => `<span class="lcsample">${l + 1}</span>` }),
+    // ---- Slotcar ----
     T('carpicture', 'Slotcar Picture', 'Slotcar', { title: 'Slotcar picture', perLane: true, w: 160, h: 100, options: CARPIC_OPTIONS, sample: l => '<span class="carph">Car picture</span>' }),
-    T('carname', 'Slotcar Description', 'Slotcar', { title: 'Slotcar', perLane: true, w: 260, sample: l => ['NSR Ford GT40', 'Slot.it Porsche 962', 'Scalextric Audi R8', 'Fly Ferrari 512', 'Ninco Mazda 787', 'SCX BMW M3', 'Carrera Corvette', 'Avant Slot Lola'][l] }),
-    T('position', 'Position in Race', 'Timing', { title: 'Position', perLane: true, w: 70, sample: l => String(l + 1) }),
-    T('lap', 'Lap of Lap', 'Timing', { title: 'Lap', perLane: true, w: 100, sample: l => `${4 - (l % 3)}/10` }),
-    T('laptime', 'Laptime', 'Timing', { title: 'Lap time', perLane: true, w: 150, sample: l => `3.${42 + l}1`, options: TIME_OPTIONS }),
-    T('lastlap', 'Last lap', 'Timing', { perLane: true, options: LAST_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}; return lapListHtml(Array.from({ length: 90 }, (_, i) => ({ n: 90 - i, t: `5.${20 + l * 7 + (i % 9)}3` })), o.lapsPerColumn, o.columns, o.lapNumbers !== false); } }),
-    T('avglap', 'Average Lap', 'Timing', { title: 'Average lap', perLane: true, sample: l => `5.${40 + l * 5}8` }),
-    T('medlap', 'Median Lap', 'Timing', { title: 'Median lap', perLane: true, sample: l => `5.${35 + l * 5}2` }),
-    T('bestlap', 'Best Lap (this session)', 'Timing', { title: 'Best lap', perLane: true, sample: l => `5.${10 + l * 6}4` }),
-    T('gap', 'Gap to Leader', 'Timing', { title: 'Gap to leader', perLane: true, w: 130, sample: l => (l ? `+${l}.${l * 3}20` : '') }),
-    T('recordlap', 'Record Lap Time', 'Timing Records', { title: 'Record lap time', perLane: true, sample: l => `4.${80 + l}7` }),
-    T('sessionrecord', 'Session Record Lap', 'Timing Records', { title: 'Session record lap', w: 220, options: RECORD_OPTIONS, sample: (l, w) => `4.912${(!w || !w.opt || w.opt.showName !== false) ? '<small class="rn">Sam</small>' : ''}` }),
-    T('trackrecord', 'Track Record', 'Timing Records', { title: 'Track record (ever set)', w: 220, options: RECORD_OPTIONS, sample: (l, w) => `4.587${(!w || !w.opt || w.opt.showName !== false) ? '<small class="rn">Alex</small>' : ''}` }),
-    T('fuel', 'Fuel Level', 'Timing', { title: 'Fuel', perLane: true, w: 200, options: FUEL_OPTIONS, sample: (l, w) => fuelHtml(87.5 - l * 20, 120, (w && w.opt) || {}) }),
-    T('bop', 'Balance of Power', 'Timing', { title: 'Balance of Power', perLane: true, w: 170, options: BOP_OPTIONS, sample: l => ['BoP \u25BC \u221220%', 'BoP off', 'BoP \u25B2 +15%'][l % 3] }),
-    T('speed', 'Slotcar Speed', 'Timing', { title: 'Speed', perLane: true, w: 190, options: SPEED_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, k = (o.unit === 'mph' ? 0.621371 : 1) * (o.mode === 'real' ? 1 : 32), v = (11.7 + l * 0.4) * k; return `${v.toFixed(o.mode === 'real' ? 1 : 0)}${o.showUnit === false ? '' : o.unit === 'mph' ? ' mph' : ' km/h'}`; } }),
-    T('penalty', 'Penalty Points', 'Timing', { title: 'Penalty', perLane: true, w: 150, options: PENALTY_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, p = [0, 2, 5, 1, 0, 3][l % 6], s = [0, 0, 5, 0, 0, 0][l % 6]; return o.show === 'time' ? `+${s} s` : o.show === 'both' ? `${p} (+${s} s)` : String(p); } }),
-    T('damage', 'Damage', 'Timing', { title: 'Damage', perLane: true, w: 230, options: DAMAGE_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, k = l % 4, lv = ['No damage', 'Light damage', 'Heavy damage', 'Retired'][k], pts = [0, 3, 9, 10][k]; return o.show === 'points' ? String(pts) : o.show === 'level' || !pts ? lv : `${lv} \u00b7 ${pts}`; } }),
-    T('repairtimer', 'Repair Timer', 'Timing', { title: 'Repair timer', perLane: true, w: 260, options: REPAIRTIMER_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, k = l % 4, words = ['\u2013', 'Pit whenever you can \u00b7 0:10', 'Pit in 2 laps \u00b7 0:20', 'Repairing 0:07'][k], clock = ['', '0:10', '0:20', '0:07'][k]; return o.show === 'clock' ? clock : words; } }),
-    T('champpoints', 'Championship Points', 'Timing', { title: 'Points', perLane: true, w: 150, options: CHAMP_OPTIONS, sample: l => String([10, 8, 6, 5, 4, 3, 2, 1][l % 8] + (l === 0 ? 8 : 0)) }),
-    T('pitstop', 'Pitstop Time', 'Timing', { title: 'Pitstop time', perLane: true, w: 150, sample: l => `7.${40 + l}2` }),
+    T('carname', 'Slotcar Name', 'Slotcar', { title: 'Slotcar', perLane: true, w: 260, sample: l => ['NSR Ford GT40', 'Slot.it Porsche 962', 'Scalextric Audi R8', 'Fly Ferrari 512', 'Ninco Mazda 787', 'SCX BMW M3', 'Carrera Corvette', 'Avant Slot Lola'][l] }),
+    T('fuel', 'Fuel Level', 'Slotcar', { title: 'Fuel', perLane: true, w: 200, options: FUEL_OPTIONS, sample: (l, w) => fuelHtml(87.5 - l * 20, 120, (w && w.opt) || {}) }),
+    T('damage', 'Damage', 'Slotcar', { title: 'Damage', perLane: true, w: 230, options: DAMAGE_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, k = l % 4, lv = ['No damage', 'Light damage', 'Heavy damage', 'Retired'][k], pts = [0, 3, 9, 10][k]; return o.show === 'points' ? String(pts) : o.show === 'level' || !pts ? lv : `${lv} \u00b7 ${pts}`; } }),
+    T('repairtimer', 'Repair Timer', 'Slotcar', { title: 'Repair timer', perLane: true, w: 260, options: REPAIRTIMER_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, k = l % 4, words = ['\u2013', 'Pit whenever you can \u00b7 0:10', 'Pit in 2 laps \u00b7 0:20', 'Repairing 0:07'][k], clock = ['', '0:10', '0:20', '0:07'][k]; return o.show === 'clock' ? clock : words; } }),
+    T('penalty', 'Penalty Points', 'Slotcar', { title: 'Penalty', perLane: true, w: 150, options: PENALTY_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, p = [0, 2, 5, 1, 0, 3][l % 6], s = [0, 0, 5, 0, 0, 0][l % 6]; return o.show === 'time' ? `+${s} s` : o.show === 'both' ? `${p} (+${s} s)` : String(p); } }),
+    T('bop', 'Balance of Power', 'Slotcar', { title: 'Balance of Power', perLane: true, w: 170, options: BOP_OPTIONS, sample: l => ['BoP \u25BC \u221220%', 'BoP off', 'BoP \u25B2 +15%'][l % 3] }),
+    T('speed', 'Slotcar Speed', 'Slotcar', { title: 'Speed', perLane: true, w: 190, options: SPEED_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, k = (o.unit === 'mph' ? 0.621371 : 1) * (o.mode === 'real' ? 1 : 32), v = (11.7 + l * 0.4) * k; return `${v.toFixed(o.mode === 'real' ? 1 : 0)}${o.showUnit === false ? '' : o.unit === 'mph' ? ' mph' : ' km/h'}`; } }),
+    // ---- Team and Swaps ----
+    T('teamname', 'Team Name', 'Team and Swaps', { title: 'Team', perLane: true, w: 220, options: [TEAM_OPTION], sample: l => TEAM_SAMPLES[l % TEAM_SAMPLES.length] }),
+    T('teampicture', 'Team Picture', 'Team and Swaps', { title: 'Team picture', perLane: true, w: 100, h: 100, options: TEAMPIC_OPTIONS, sample: l => `<span class="av">${TEAM_SAMPLES[l % TEAM_SAMPLES.length][0]}</span>` }),
+    T('currentdriver', 'Current Driver', 'Team and Swaps', { title: 'Current driver', perLane: true, w: 260, options: CURDRIVER_OPTIONS, sample: l => NAMES[l % NAMES.length] }),
+    T('nextdriver', 'Next Driver', 'Team and Swaps', { title: 'Next driver', perLane: true, w: 260, options: NEXTDRIVER_OPTIONS, sample: l => NAMES[(l + 1) % NAMES.length] }),
+    T('swaptimer', 'Driver Swap Timer', 'Team and Swaps', { title: 'Swap timer', perLane: true, w: 230, options: SWAPTIMER_OPTIONS, sample: l => ['Swap in 12:30', 'Swap in 0:45', 'SWAP NOW'][l % 3] }),
+    T('swapsignal', 'Driver Swap Signal', 'Team and Swaps', { title: 'Swap signal', perLane: true, w: 260, h: 110, options: SWAPSIGNAL_OPTIONS, sample: (l, w) => `<span class="swsig"><b>${esc((w && w.opt && w.opt.text) || 'SWAP')}</b>${w && w.opt && w.opt.names === false ? '' : `<small>${NAMES[l % NAMES.length]} \u2192 ${NAMES[(l + 1) % NAMES.length]}</small>`}</span>` }),
+    // ---- Position and Progress ----
+    T('position', 'Position in Race', 'Position and Progress', { title: 'Position', perLane: true, w: 70, sample: l => String(l + 1) }),
+    T('gap', 'Gap to Leader', 'Position and Progress', { title: 'Gap to leader', perLane: true, w: 130, sample: l => (l ? `+${l}.${l * 3}20` : '') }),
+    T('lap', 'Lap Number', 'Position and Progress', { title: 'Lap', perLane: true, w: 100, sample: l => `${4 - (l % 3)}/10` }),
+    T('lapstogo', 'Laps To Go', 'Position and Progress', { title: 'Laps to go', perLane: true, w: 170, options: Ds.LAPSTOGO_OPTIONS, sample: (l, w) => distSample(l, w, 'laps') }),
+    T('distance', 'Distance Driven', 'Position and Progress', { title: 'Distance driven', perLane: true, w: 200, options: Ds.DISTANCE_OPTIONS, sample: (l, w) => distSample(l, w, 'driven') }),
+    T('distleft', 'Distance To Go', 'Position and Progress', { title: 'Distance to go', perLane: true, w: 200, options: Ds.DISTLEFT_OPTIONS, sample: (l, w) => distSample(l, w, 'left') }),
+    T('champpoints', 'Championship Points', 'Position and Progress', { title: 'Points', perLane: true, w: 150, options: CHAMP_OPTIONS, sample: l => String([10, 8, 6, 5, 4, 3, 2, 1][l % 8] + (l === 0 ? 8 : 0)) }),
+    // ---- Lap Times and Records ----
+    T('laptime', 'Current Lap Time', 'Lap Times and Records', { title: 'Lap time', perLane: true, w: 150, sample: l => `3.${42 + l}1`, options: TIME_OPTIONS }),
+    T('lastlap', 'Lap Times List', 'Lap Times and Records', { title: 'Last lap', perLane: true, options: LAST_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}; return lapListHtml(Array.from({ length: 90 }, (_, i) => ({ n: 90 - i, t: `5.${20 + l * 7 + (i % 9)}3` })), o.lapsPerColumn, o.columns, o.lapNumbers !== false); } }),
+    T('bestlap', 'Best Lap (this session)', 'Lap Times and Records', { title: 'Best lap', perLane: true, sample: l => `5.${10 + l * 6}4` }),
+    T('avglap', 'Average Lap', 'Lap Times and Records', { title: 'Average lap', perLane: true, sample: l => `5.${40 + l * 5}8` }),
+    T('medlap', 'Median Lap', 'Lap Times and Records', { title: 'Median lap', perLane: true, sample: l => `5.${35 + l * 5}2` }),
+    T('pitstop', 'Pitstop Time', 'Lap Times and Records', { title: 'Pitstop time', perLane: true, w: 150, sample: l => `7.${40 + l}2` }),
+    T('recordlap', 'Personal Best Lap', 'Lap Times and Records', { title: 'Record lap time', perLane: true, sample: l => `4.${80 + l}7` }),
+    T('sessionrecord', 'Session Record Lap', 'Lap Times and Records', { title: 'Session record lap', w: 220, options: RECORD_OPTIONS, sample: (l, w) => `4.912${(!w || !w.opt || w.opt.showName !== false) ? '<small class="rn">Sam</small>' : ''}` }),
+    T('trackrecord', 'Track Record', 'Lap Times and Records', { title: 'Track record (ever set)', w: 220, options: RECORD_OPTIONS, sample: (l, w) => `4.587${(!w || !w.opt || w.opt.showName !== false) ? '<small class="rn">Alex</small>' : ''}` }),
+    // ---- Delta Timers ----
     // Delta Timers: the ordinary widget's time on the left and, on the right, a green (faster) or red (slower) badge with the difference (see delta.js)
     ...Object.keys(Dl.KINDS).map(type => { const k = Dl.KINDS[type];
       return T(type, k.label, 'Delta Timers', { title: k.title, perLane: true, w: k.record ? 340 : 290, options: [...Dl.optionsFor(type), ...(type === 'dlaptime' || k.steady ? TIME_OPTIONS : k.record ? RECORD_OPTIONS : [])],
         sample: (l, w) => Dl.sample(sampleOf(def(k.base), (!k.record && Dl.leftShowsOf(w && w.opt) === 'ref') ? l + 1 : l, w), l, (w && w.opt) || {}) }); }),
+    // ---- Tyres ----
+    T('tyre', 'Current Tyres', 'Tyres', { title: 'Tyres', perLane: true, w: 140, h: 80, textSize: 22, options: Ww.TYRE_OPTIONS, sample: (l, w) => Ww.tyreSample(l, (w && w.opt) || {}) }),
+    T('tyrelife', 'Tyre Degradation', 'Tyres', { title: 'Tyres', perLane: true, w: 160, h: 170, textSize: 22, options: Tyw.OPTIONS, sample: (l, w) => Tyw.sample(l, w) }), // (1.40.0: how much life the tyres of the car have left, see tyrewidgets.js)
+    T('tyresets', 'Available Tyres', 'Tyres', { title: 'Available tyres', perLane: true, w: 360, h: 90, textSize: 20, options: Tyw.SETS_OPTIONS, sample: (l, w) => Tyw.setsSample(l, w) }), // (1.41.0: the sets that are left of every tyre, see tyrewidgets.js)
+    // ---- Weather ----
+    T('wxforecast', 'Weather Forecast', 'Weather', { title: 'Weather', w: 240, h: 80, options: Ww.FORECAST_OPTIONS, sample: (l, w) => Ww.forecastSample((w && w.opt) || {}) }),
+    T('wxconditions', 'Track Conditions', 'Weather', { title: 'Track conditions', w: 500, h: 60, textSize: 20, options: Ww.COND_OPTIONS, sample: (l, w) => Ww.conditionsSample((w && w.opt) || {}) }),
+    // ---- Custom ----
     T('textlane', 'Custom text (per lane)', 'Custom', { hidden: true, perLane: true, w: 300, noTitle: true, options: textOpts(TEXT_LANE_VARS, TEXT_LANE_DEFAULT), sample: (l, w) => fillText(((w && w.opt) || {}).text ?? TEXT_LANE_DEFAULT, { name: NAMES[l % 6], nickname: NICKS[l % 6], callsign: NAMES[l % 6].toUpperCase(), car: 'Porsche 917', lane: l + 1, position: l + 1, lap: 4, laps: 3, laptime: `2.${l}41`, last: `5.${20 + l}3`, best: `5.${10 + l * 6}4`, avg: `5.${30 + l}0`, median: `5.${28 + l}1`, record: `4.${90 + l}2`, gap: l ? `+${l}.${l * 3}20` : '', fuel: `${(87.5 - l * 20) / 100 * 12}`.slice(0, 4) + ' L', fuelpct: Math.round(87.5 - l * 20) + '%', penpoints: l, pentime: `+${l * 2} s`, champ: 10 - l * 2, pits: 1, pit: `7.${40 + l}2`, speed: 180 - l * 5, speedreal: 5.6 - l * 0.2 }) }),
     T('textrace', 'Custom text (race)', 'Custom', { hidden: true, w: 300, noTitle: true, options: textOpts(TEXT_RACE_VARS, TEXT_RACE_DEFAULT), sample: (l, w) => fillText(((w && w.opt) || {}).text ?? TEXT_RACE_DEFAULT, { clock: '01:23.4', timeleft: '3:37', lapsleft: 4, lapstotal: 10, leader: 'Alex', flag: 'Racing', heat: 'Heat 2 of 3', track: 'Monza', session: 'Club race', type: 'Race', sessionrecord: '4.912', sessionrecordby: 'Sam', trackrecord: '4.587', trackrecordby: 'Alex', yellowtarget: '15.000' }) }),
     T('imagelane', 'Custom image (per lane)', 'Custom', { hidden: true, perLane: true, w: 150, h: 150, noTitle: true, sample: imgSample }),
     T('imagerace', 'Custom image (race)', 'Custom', { hidden: true, w: 150, h: 150, noTitle: true, sample: imgSample }),
-    T('clock', 'Race Clock', 'Race', { title: 'Race clock', w: 200, options: CLOCK_OPTIONS, sample: '01:23.4' }),
-    T('racelaps', 'Race Laps', 'Race', { title: 'Race laps', w: 140, options: RACELAPS_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}; return lapCountOf(o) === 'down' ? '13' : lapTotalOn(o) ? '7/20' : '7'; } }),
-    // Distance Racing (1.35.0): the distance a car has driven, the distance it still has to drive, and the laps to go (see distance.js). They work in any race with laps or a distance; the first one in any race that has lane lengths
-    T('distance', 'Distance Driven', 'Distance', { title: 'Distance driven', perLane: true, w: 200, options: Ds.DISTANCE_OPTIONS, sample: (l, w) => distSample(l, w, 'driven') }),
-    T('distleft', 'Distance To Go', 'Distance', { title: 'Distance to go', perLane: true, w: 200, options: Ds.DISTLEFT_OPTIONS, sample: (l, w) => distSample(l, w, 'left') }),
-    T('lapstogo', 'Laps To Go', 'Distance', { title: 'Laps to go', perLane: true, w: 170, options: Ds.LAPSTOGO_OPTIONS, sample: (l, w) => distSample(l, w, 'laps') }),
-    T('tokenclock', 'Token Clock', 'Time Tokens', { title: 'Token clock', perLane: true, w: 200, options: TOKENCLOCK_OPTIONS, sample: l => ['25:00', '12:34', '00:45', '1:05:00', '07:20', '04:59'][l % 6] }),
-    // the weather (Race Setup > Weather Systems): the tyre of a lane's car, the weather now and next, and the conditions on the track (see weatherwidgets.js)
-    T('tyre', 'Tyres', 'Weather', { title: 'Tyres', perLane: true, w: 140, h: 80, textSize: 22, options: Ww.TYRE_OPTIONS, sample: (l, w) => Ww.tyreSample(l, (w && w.opt) || {}) }),
-    T('tyrelife', 'Tyre Degradation', 'Weather', { title: 'Tyres', perLane: true, w: 160, h: 170, textSize: 22, options: Tyw.OPTIONS, sample: (l, w) => Tyw.sample(l, w) }), // (1.40.0: how much life the tyres of the car have left, see tyrewidgets.js)
-    T('tyresets', 'Available Tyres', 'Weather', { title: 'Available tyres', perLane: true, w: 360, h: 90, textSize: 20, options: Tyw.SETS_OPTIONS, sample: (l, w) => Tyw.setsSample(l, w) }), // (1.41.0: the sets that are left of every tyre, see tyrewidgets.js)
-    T('wxforecast', 'Weather Forecast', 'Weather', { title: 'Weather', w: 240, h: 80, options: Ww.FORECAST_OPTIONS, sample: (l, w) => Ww.forecastSample((w && w.opt) || {}) }),
-    T('wxconditions', 'Track Conditions', 'Weather', { title: 'Track conditions', w: 500, h: 60, textSize: 20, options: Ww.COND_OPTIONS, sample: (l, w) => Ww.conditionsSample((w && w.opt) || {}) }),
-    T('lights', 'Start Lights', 'Race', { title: 'Start lights', w: 180, options: LIGHTS_OPTIONS, sample: lightsHtml(3) }),
-    T('info', 'Race Info', 'Race', { title: 'Race info', w: 300, sample: 'Heat 2 of 3 · 4 laps left' }),
-    T('flag', 'Race Flag', 'Race', { title: 'Race flag', w: 180, optsLabel: 'Flag style', options: FLAG_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}, st = flagStyleOf(o), i = o.img_running;
-      return st === 'images' && i ? flagImgHtml(i, '', !!o.imageMirror) : st === 'flags' ? flagHtml('running', { mirror: !!o.flagMirror }) : st === 'leds' ? ledHtml('running') : 'Racing'; } }),
-    T('leaderboard', 'Leaderboard', 'Race', { w: 420, h: 220, textSize: 18, options: LEADER_OPTIONS, sample: (l, w) => leaderHtml(NAMES.slice(0, 4).map((n, i) => ({ pos: i + 1, flag: FLAGS[i], name: n, nickname: NICKS[i], callsign: n.slice(0, 3).toUpperCase(), laps: String(5 - (i > 2 ? 1 : 0)), best: `5.${10 + i * 6}4`, last: `5.${30 + i}2`, current: `2.${i}40`, fuel: `${90 - i * 20} L`, gap: i ? `+${i}.${i * 3}20` : '' })), (w && w.opt) || {}) }),
-    T('heatlist', 'Heat List', 'Race', { title: 'Heat list', w: 460, h: 200, textSize: 18, options: HEATLIST_OPTIONS, sample: (l, w) => heatListHtml(HEATLIST_SAMPLE, 'running', (w && w.opt) || {}) }),
-    T('logo', 'Logo', 'Race', { w: 200, h: 100, noTitle: true, options: [{ key: 'image', label: 'Logo picture', type: 'image', fallback: 'clubLogo' }, { key: 'fit', label: 'Fit', type: 'select', choices: [['contain', 'Show the whole logo'], ['cover', 'Fill the widget (may crop)']], default: 'contain' }], sample: imgSample }),
-    T('start', 'Start', 'Controls', { w: 140, button: true, sample: 'Start' }),
-    T('pause', 'Pause / Resume', 'Controls', { w: 170, button: true, sample: 'Pause' }),
-    T('stop', 'Stop', 'Controls', { w: 120, button: true, sample: 'Stop' }),
-    T('yellow', 'Yellow flag', 'Controls', { w: 170, button: true, sample: 'Yellow flag' }),
-    T('red', 'Red flag', 'Controls', { w: 150, button: true, sample: 'Red flag' })
+    // ---- Controls ----
+    T('start', 'Start Button', 'Controls', { w: 140, title: 'Start', button: true, sample: 'Start' }),
+    T('pause', 'Pause / Resume Button', 'Controls', { w: 170, title: 'Pause / Resume', button: true, sample: 'Pause' }),
+    T('stop', 'Stop Button', 'Controls', { w: 120, title: 'Stop', button: true, sample: 'Stop' }),
+    T('yellow', 'Yellow Flag Button', 'Controls', { w: 170, title: 'Yellow flag', button: true, sample: 'Yellow flag' }),
+    T('red', 'Red Flag Button', 'Controls', { w: 150, title: 'Red flag', button: true, sample: 'Red flag' })
   ];
   const def = type => REGISTRY.find(d => d.type === type);
   const sampleOf = (d, lane, widget) => (typeof d.sample === 'function' ? d.sample(lane || 0, widget) : d.sample || '');

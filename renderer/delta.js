@@ -36,7 +36,7 @@
   //   previous  this lane's last lap against the lap before it (1.29.0, Lap to Lap Delta: no other lane, no choice to make; "steady": the left side keeps showing the last lap, it is no running clock)
   // targets: what it can be compared with. record: a record widget; it is always compared with that record.
   const KINDS = {
-    dlaptime: { base: 'laptime', label: 'Laptime Delta', title: 'Laptime delta', stat: 'laptime', own: 'bestlap', ownWords: 'its own best lap', measures: ['static', 'self'], targets: ['lane', 'leader', 'fastest', 'track', 'session'],
+    dlaptime: { base: 'laptime', label: 'Lap Time Delta', title: 'Laptime delta', stat: 'laptime', own: 'bestlap', ownWords: 'its own best lap', measures: ['static', 'self'], targets: ['lane', 'leader', 'fastest', 'track', 'session'],
       words: { static: "This lane's last lap against theirs", self: "This lane's last lap against its own best lap" } },
     dlaplap: { base: 'laptime', label: 'Lap to Lap Delta', title: 'Lap to lap delta', stat: 'laptime', measures: ['previous'], targets: [], steady: true,
       words: { previous: "This lane's last lap against the lap before it" } },

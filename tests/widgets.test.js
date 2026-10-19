@@ -87,11 +87,29 @@ m = Wd.moveWidget(box(380, 100, 100, 50), 16, 0, [], W, H, false, gd);
 ok('guidelines do nothing when snapping is off', m.x === 396);
 r = Wd.resizeWidget(box(100, 100, 100, 50), 'se', 296, 0, [], W, H, true, gd);
 ok('resizing an edge sticks to a guideline too', r.x + r.w === 500);
-ok('widget names and groups as chosen', (() => { const g = {}; Wd.REGISTRY.filter(d => !d.hidden).forEach(d => (g[d.group] = g[d.group] || []).push(d.label)); return JSON.stringify(g) === JSON.stringify({
-  Driver: ['Nickname', 'Name', 'Callsign', 'Lane Colour', 'Avatar', 'Driver Flag'], Team: ['Team Name', 'Team Picture', 'Current Driver', 'Next Driver', 'Swap Timer', 'Swap Signal'], Slotcar: ['Slotcar Picture', 'Slotcar Description'],
-  Timing: ['Position in Race', 'Lap of Lap', 'Laptime', 'Last lap', 'Average Lap', 'Median Lap', 'Best Lap (this session)', 'Gap to Leader', 'Fuel Level', 'Balance of Power', 'Slotcar Speed', 'Penalty Points', 'Damage', 'Repair Timer', 'Championship Points', 'Pitstop Time'],
-  'Timing Records': ['Record Lap Time', 'Session Record Lap', 'Track Record'], 'Delta Timers': ['Laptime Delta', 'Lap to Lap Delta', 'Average Lap Delta', 'Median Lap Delta', 'Best Lap Delta', 'Personal Best Delta', 'Pitstop Time Delta', 'Session Record Delta', 'Track Record Delta'], Race: ['Race Clock', 'Race Laps', 'Start Lights', 'Race Info', 'Race Flag', 'Leaderboard', 'Heat List', 'Logo'], Distance: ['Distance Driven', 'Distance To Go', 'Laps To Go'], 'Time Tokens': ['Token Clock'], Weather: ['Tyres', 'Tyre Degradation', 'Available Tyres', 'Weather Forecast', 'Track Conditions'], Controls: ['Start', 'Pause / Resume', 'Stop', 'Yellow flag', 'Red flag'] }); })());
+ok('widget names and folders as chosen (11 folders, the Slotcar folder holds the car widgets, every name says what it shows)', (() => { const g = {}; Wd.REGISTRY.filter(d => !d.hidden).forEach(d => (g[d.group] = g[d.group] || []).push(d.label)); return JSON.stringify(g) === JSON.stringify({
+  Race: ['Race Clock', 'Race Lap Counter', 'Token Clock', 'Start Lights', 'Race Flag', 'Race Info', 'Leaderboard', 'Heat List', 'Logo'],
+  Driver: ['Driver Name', 'Driver Nickname', 'Driver Callsign', 'Driver Avatar', 'Driver Flag', 'Lane Colour'],
+  Slotcar: ['Slotcar Picture', 'Slotcar Name', 'Fuel Level', 'Damage', 'Repair Timer', 'Penalty Points', 'Balance of Power', 'Slotcar Speed'],
+  'Team and Swaps': ['Team Name', 'Team Picture', 'Current Driver', 'Next Driver', 'Driver Swap Timer', 'Driver Swap Signal'],
+  'Position and Progress': ['Position in Race', 'Gap to Leader', 'Lap Number', 'Laps To Go', 'Distance Driven', 'Distance To Go', 'Championship Points'],
+  'Lap Times and Records': ['Current Lap Time', 'Lap Times List', 'Best Lap (this session)', 'Average Lap', 'Median Lap', 'Pitstop Time', 'Personal Best Lap', 'Session Record Lap', 'Track Record'],
+  'Delta Timers': ['Lap Time Delta', 'Lap to Lap Delta', 'Average Lap Delta', 'Median Lap Delta', 'Best Lap Delta', 'Personal Best Delta', 'Pitstop Time Delta', 'Session Record Delta', 'Track Record Delta'],
+  Tyres: ['Current Tyres', 'Tyre Degradation', 'Available Tyres'],
+  Weather: ['Weather Forecast', 'Track Conditions'],
+  Controls: ['Start Button', 'Pause / Resume Button', 'Stop Button', 'Yellow Flag Button', 'Red Flag Button'] }); })());
 ok('renamed widgets keep the title they showed in existing layouts', Wd.titleOf({ type: 'bestlap', title: '' }) === 'Best lap' && Wd.titleOf({ type: 'fuel', title: '' }) === 'Fuel' && Wd.titleOf({ type: 'position', title: '' }) === 'Position' && Wd.titleOf({ type: 'sessionrecord', title: '' }) === 'Session record lap');
+ok('1.42.1: the 19 widgets with a new name show the title they showed before (so a saved layout looks the same)', (() => {
+  const want = { nickname: 'Nickname', name: 'Name', callsign: 'Callsign', avatar: 'Avatar', swaptimer: 'Swap timer', swapsignal: 'Swap signal', carname: 'Slotcar', lap: 'Lap', laptime: 'Lap time', lastlap: 'Last lap', recordlap: 'Record lap time', dlaptime: 'Laptime delta', racelaps: 'Race laps', tyre: 'Tyres', start: 'Start', pause: 'Pause / Resume', stop: 'Stop', yellow: 'Yellow flag', red: 'Red flag' };
+  return Object.keys(want).every(t => Wd.titleOf({ type: t, title: '' }) === want[t]) && Object.keys(want).length === 19;
+})());
+ok('1.42.1: every folder of the Add widget list is in the fixed order of the palette (none lands at the end), and the 68 widgets stay 68', (() => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'renderer', 'editor.js'), 'utf8');
+  const order = (src.match(/const GROUP_ORDER = \[([^\]]*)\]/) || [, ''])[1].split(',').map(x => x.trim().replace(/^'|'$/g, '')).filter(Boolean);
+  const groups = [...new Set(Wd.REGISTRY.map(d => d.group))];
+  return Wd.REGISTRY.length === 68 && groups.every(g => order.includes(g)) && order.join() === 'Race,Driver,Slotcar,Team and Swaps,Position and Progress,Lap Times and Records,Delta Timers,Tyres,Weather,Custom,Controls'
+    && groups.join() === order.filter(g => groups.includes(g)).join();
+})());
 // groups
 const grp = [box(100, 100, 50, 50), box(300, 200, 100, 80)];
 ok('group box surrounds every widget', JSON.stringify(Wd.bbox(grp)) === JSON.stringify({ x: 100, y: 100, w: 300, h: 180 }));

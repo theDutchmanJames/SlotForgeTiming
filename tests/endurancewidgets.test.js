@@ -36,6 +36,6 @@ const C = (eng, at, type, lane, opt) => { eng.tick(at); return Tm.content({ type
   ok('a car that stands on the sensor for a swap shows how long it has to stand still', (() => { const ee = mk({ swapEvery: 1, swapSeconds: 10 }); ee.tick(min(1.2)); ee.block(0, min(1.2)); return C(ee, min(1.2) + 3000, 'swaptimer', 0, {}).html === 'SWAP NOW · stand still 7 s'; })()); }
 
 const d = k => Wd.def(k);
-ok('the three are Team widgets, one per lane, with a sample for the layout editor', ['currentdriver', 'nextdriver', 'swaptimer'].every(k => d(k).group === 'Team' && d(k).perLane && Wd.sampleOf(d(k), 0, { opt: {} }) !== undefined));
+ok('the three are Team and Swaps widgets, one per lane, with a sample for the layout editor', ['currentdriver', 'nextdriver', 'swaptimer'].every(k => d(k).group === 'Team and Swaps' && d(k).perLane && Wd.sampleOf(d(k), 0, { opt: {} }) !== undefined));
 ok('...their settings: which name (and the stint), "Next:", and the words and the two colours', d('currentdriver').options.map(o => o.key).join() === 'show,stint' && d('nextdriver').options.map(o => o.key).join() === 'show,prefix' && d('swaptimer').options.map(o => o.key).join() === 'show,soonColor,dueColor' && d('swaptimer').options.find(o => o.key === 'soonColor').default === '#ffb000' && d('swaptimer').options.find(o => o.key === 'dueColor').default === '#e03131');
 console.log(fails ? fails + ' ENDURANCE WIDGET TESTS FAILED' : 'ALL ENDURANCE WIDGET TESTS PASSED'); process.exit(fails ? 1 : 0);

@@ -116,7 +116,7 @@ const lap = (r, n) => { for (let k = 1; k <= n; k++) r.cars.forEach((_, i) => at
 
 // ---- the register ----
 { const d = ['tyre', 'wxforecast', 'wxconditions'].map(Wd.def);
-  ok('three widgets in a group Weather: Tyres (one for each lane), Weather Forecast, Track Conditions', d.every(x => x.group === 'Weather') && d[0].perLane === true && !d[1].perLane && !d[2].perLane && d.map(x => x.label).join() === 'Tyres,Weather Forecast,Track Conditions');
+  ok('Current Tyres (one for each lane) is in the Tyres folder; Weather Forecast and Track Conditions are in the Weather folder', d[0].group === 'Tyres' && d[1].group === 'Weather' && d[2].group === 'Weather' && d[0].perLane === true && !d[1].perLane && !d[2].perLane && d.map(x => x.label).join() === 'Current Tyres,Weather Forecast,Track Conditions');
   ok('...each has a picture set option of its own kind, with its own "none"', d.map(x => x.options[0]).every(o => o.key === 'imageSet' && o.type === 'imageset') && d.map(x => x.options[0].kind).join() === 'tyres,weather,conditions' && d.every(x => /^None/.test(x.options[0].noneLabel)));
   ok('...the options of the Tyres: how it is shown, the warning; of the forecast: how it is shown, what is next; of the conditions: the values, the units, the four parts, the degrees, the layout, the note, and 16 numbers of its own', d[0].options.map(o => o.key).join() === 'imageSet,tyreShow,tyreWarn' && d[1].options.map(o => o.key).join() === 'imageSet,show,showNext'
     && d[2].options.map(o => o.key).slice(0, 10).join() === 'imageSet,values,units,showTrack,showAir,showWind,showDir,showDegrees,layout,ownnote' && d[2].options.length === 26 && d[2].options.filter(o => o.type === 'number').length === 16);

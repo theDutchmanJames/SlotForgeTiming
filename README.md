@@ -2487,3 +2487,15 @@ Good to know:
 3. A race that comes back after an interruption carries on without level calls if it was started before 1.42.0.
 4. When it rains, a stop can have two calls: *new tyres* (Tyre wear) and the tyre change of the weather (Weather). Switch one of them off if you find it too much.
 5. Lap times, best laps, records and the lap chart are the measured values; the wear only shows as the stints.
+
+## What to try (1.42.1): widget folders and clearer widget names
+
+1. **Layout Editor**, the **Add widget** list: the 68 widgets are in **11 folders** now, always in this order: **Race**, **Driver**, **Slotcar**, **Team and Swaps**, **Position and Progress**, **Lap Times and Records**, **Delta Timers**, **Tyres**, **Weather**, **Custom** (only when you have widgets of your own) and **Controls**. Open a folder to see its widgets; the folders start closed.
+2. What is in them: **Race** has the Race Clock, Race Lap Counter, Token Clock, Start Lights, Race Flag, Race Info, Leaderboard, Heat List and Logo. **Driver** has the name, nickname, callsign, avatar, flag and the lane colour. **Slotcar** now also holds what used to be in the folder *Car status* (Fuel Level, Damage, Repair Timer, Penalty Points, Balance of Power, Slotcar Speed) next to the Slotcar Picture and the Slotcar Name. **Team and Swaps** has the team, the driver at the wheel, the next driver and the swap widgets. **Position and Progress** has the position, the gap, the lap number, laps to go, the distance and the championship points. **Lap Times and Records** has the lap time widgets, the averages, the pitstop time and the three records. **Tyres** has Current Tyres, Tyre Degradation and Available Tyres. **Weather** has the forecast and the track conditions.
+3. Names that changed, so each one says what it shows: Name, Nickname, Callsign, Avatar are now **Driver Name**, **Driver Nickname**, **Driver Callsign**, **Driver Avatar**; Swap Timer and Swap Signal are **Driver Swap Timer** and **Driver Swap Signal**; Slotcar Description is **Slotcar Name**; Lap of Lap is **Lap Number**; Laptime is **Current Lap Time**; Last lap is **Lap Times List**; Record Lap Time is **Personal Best Lap**; Laptime Delta is **Lap Time Delta**; Race Laps is **Race Lap Counter**; Tyres is **Current Tyres**; the control widgets are called **Start Button**, **Pause / Resume Button**, **Stop Button**, **Yellow Flag Button** and **Red Flag Button**.
+4. The folders that went: *Timing*, *Timing Records*, *Distance*, *Time Tokens*, *Team* and the old *Car status*/*Slotcar* split. Their widgets are in the folders above.
+
+Good to know:
+1. **Nothing changes on a timing page.** The title a widget shows on the screen is still the one it had (Lap time, Last lap, Nickname, ...), and a title you typed yourself is yours. Only the names in the Add widget list changed.
+2. **Saved layouts keep working**: a layout remembers the kind of widget, not its folder or its name in the list.
+3. The Help page and the tests use the new names. The Delta Timers folder is as it was (the first widget is now called Lap Time Delta).

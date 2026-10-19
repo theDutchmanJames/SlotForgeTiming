@@ -84,8 +84,8 @@ const Help = (() => {
           <li>A race, the heats of a heat-based race and an Endurance Race can be limited by a <b>distance</b>: choose it under <i>The race is limited by</i> (or <i>Each heat is limited by</i>). The laps follow from the length of each lane (Database, Tracks: the track length and the lane lengths). Home says when a track has none.</li>
           <li><b>The lanes drive</b> the same distance (a shorter lane drives more laps), the same number of laps, or a distance you set for each lane. A car is only seen at the line, so it drives whole laps: on to the line after the distance, or to the nearest lap.</li>
           <li>The first car to drive its distance wins. The others rank by the distance they drove, and a gap is the time between two cars at the same distance. <i>The race may take at most</i> is a safety net.</li>
-          <li><b>Driver swaps by distance</b>: in an Endurance Race choose <i>Distance</i> for the swaps. A swap is due after so many metres (or feet), <i>at the line</i> or <i>anywhere on the track</i> (worked out between two crossings). <b>Swap Timer</b> shows "Swap in 12 m"; <b>Swap Signal</b> flashes "Alex → Sam" until the swap is made. The results give every driver's distance.</li>
-          <li>The Layout Editor folder <b>Distance</b> has Distance Driven, Distance To Go and Laps To Go. <i>Smoothly</i> counts between two crossings from the lap time; <i>exact</i> changes at the line. They work in any race with laps. The text widgets know {distance}, {distleft}, {lapstogo} and {racedistance}.</li>
+          <li><b>Driver swaps by distance</b>: in an Endurance Race choose <i>Distance</i> for the swaps. A swap is due after so many metres (or feet), <i>at the line</i> or <i>anywhere on the track</i> (worked out between two crossings). <b>Driver Swap Timer</b> shows "Swap in 12 m"; <b>Driver Swap Signal</b> flashes "Alex → Sam" until the swap is made. The results give every driver's distance.</li>
+          <li>The Layout Editor folder <b>Position and Progress</b> has Distance Driven, Distance To Go and Laps To Go. <i>Smoothly</i> counts between two crossings from the lap time; <i>exact</i> changes at the line. They work in any race with laps. The text widgets know {distance}, {distleft}, {lapstogo} and {racedistance}.</li>
         </ul>` },
       { id: 'heatraces', title: 'Heat races', note: 'How the heats are planned', body: `
         <ul>
@@ -119,7 +119,7 @@ const Help = (() => {
           <li>The folder <b>Endurance: driver swaps</b> of the race setup says when a swap is due: <b>every so often</b>, <b>at fixed moments</b> (30 minutes, 2 hours), or <b>free</b> within the shortest and longest stint. Count them in minutes, in laps or in distance (see Distance races). You can also set the least and the most a driver drives in the whole race.</li>
           <li>The swap is made when the car stops on the pit sensor (like a Stop-and-Go), or when <b>Swap done</b> is pressed on the Race Director page or a phone. The driver who steps in is the next one in the team's order, chosen at each swap, or picked by lot.</li>
           <li>When the swap is late, the laps keep counting or stop counting, and the team can get penalty points (they need a penalty system), again and again if you like.</li>
-          <li>The widgets <b>Current Driver</b>, <b>Next Driver</b>, <b>Swap Timer</b> (amber before the swap is due, red when it is late) and <b>Swap Signal</b> (a big SWAP, flashing) show it on the timing page. The audio folder <b>Endurance</b> says "{team} needs to swap positions! Box Box!" and who came in and who took over.</li>
+          <li>The widgets <b>Current Driver</b>, <b>Next Driver</b>, <b>Driver Swap Timer</b> (amber before the swap is due, red when it is late) and <b>Driver Swap Signal</b> (a big SWAP, flashing) show it on the timing page (folder <b>Team and Swaps</b>). The audio folder <b>Endurance</b> says "{team} needs to swap positions! Box Box!" and who came in and who took over.</li>
           <li>The results show every driver's time at the wheel and stints. A race that a crash or a power cut stops, also a heat race, can be continued from the Home tab.</li>
         </ul>` },
       { id: 'damage', title: 'Damage System', note: 'Damage points, and the stop in the pits that repairs them', body: `
@@ -128,7 +128,7 @@ const Help = (() => {
           <li>Points come from <b>incidents</b> (Contact +2, Hard crash +4: buttons on the race screen, the Race Director page and phones, and -1 to take a point back) and from a <b>deslot</b>: fill in the <b>Deslot time</b> of the track (Tracks, Lap time limits) and every slower lap gives the points of the system.</li>
           <li>After the stop the damage is gone. The repair can run <b>at the same time</b> as refuelling and a driver swap, or <b>after</b> them. A car that leaves too early keeps its damage; with a penalty system that, and a lap after the deadline, cost penalty points.</li>
           <li>A level can <b>retire</b> or <b>disqualify</b> the car when it stops in the pits; its laps count until then. A slot car with a <b>Damage factor</b> above 1 takes more damage.</li>
-          <li>The widgets <b>Damage</b> and <b>Repair Timer</b>, {damage} in texts, and the audio folder <b>Damage</b> show and say it. The results list the points, repairs and time in the pits, in a heat race per heat too.</li>
+          <li>The widgets <b>Damage</b> and <b>Repair Timer</b> (Layout Editor, folder <b>Slotcar</b>), {damage} in texts, and the audio folder <b>Damage</b> show and say it. The results list the points, repairs and time in the pits, in a heat race per heat too.</li>
         </ul>` },
       { id: 'heatresults', title: 'Heat results', note: 'How the heats add up', body: `
         <ul>
@@ -200,7 +200,7 @@ const Help = (() => {
       { id: 'wxwidgets', title: 'Weather widgets', note: 'Tyres, forecast and conditions on the timing page', body: `
         <ul>
           <li>Every weather has its <b>conditions</b>: track temperature, air temperature, wind speed and the direction the wind comes from (Weather Systems, folder Track conditions; Celsius and km/h, or Fahrenheit and mph). They change when the weather does. The audio says them at lights out and after every change, and custom text has them as {variables}.</li>
-          <li>In the Layout Editor, folder <b>Weather</b>: <b>Tyres</b> (the tyre of a lane's car; amber with "Change tyres" when it has to change), <b>Weather Forecast</b> (the weather now and what comes next, "Rain in 3 laps") and <b>Track Conditions</b> (temperatures, wind speed and an arrow for the wind).</li>
+          <li>In the Layout Editor, folder <b>Tyres</b>: <b>Current Tyres</b> (the tyre of a lane's car; amber with "Change tyres" when it has to change). Folder <b>Weather</b>: <b>Weather Forecast</b> (the weather now and what comes next, "Rain in 3 laps") and <b>Track Conditions</b> (temperatures, wind speed and an arrow for the wind).</li>
           <li>They are drawn, or you make <b>picture sets</b> for them in Image Settings (Tyres, Weather, Track conditions). Track Conditions can show your own numbers instead of those of a weather system.</li>
         </ul>` },
       { id: 'tyrewear', title: 'Tyre wear', note: 'Tyres that wear out, and the pit stop that changes them', body: `
@@ -211,7 +211,7 @@ const Help = (() => {
           <li>At <b>0%</b>: nothing, penalty points every lap, the lap does not count until the car pits, or the car retires.</li>
           <li>In the pits a car gets a fresh set; it takes the seconds you set, at the same time as the other work or after it. A car that leaves early keeps its worn tyres.</li>
           <li><b>Sets</b> (per car or team): a stop takes one set from the box; a tyre with none left can not be fitted. The Race Director queues the next tyre; rain tyres go first.</li>
-          <li>The <b>Tyre Change</b> folder, the <b>Tyre Degradation</b> and <b>Available Tyres</b> widgets (Layout Editor, Weather) and the Leaderboard show the life, sets and next stop.</li>
+          <li>The <b>Tyre Change</b> folder, the <b>Tyre Degradation</b> and <b>Available Tyres</b> widgets (Layout Editor, Tyres) and the Leaderboard show the life, sets and next stop.</li>
           <li>The audio set has <b>Tyre wear</b> calls; the results and the PDF show the tyre stints.</li>
         </ul>` },
       { id: 'tokens', title: 'Time Token Sessions', note: 'Selling track time per lane', body: `
@@ -228,7 +228,7 @@ const Help = (() => {
     ['Making it yours', [
       { id: 'custom', title: 'Customization', note: 'Layouts, audio, pictures and your own widgets', body: `
         <ul>
-          <li><b>Layout Editor</b>: design a timing page by placing widgets (lap times, the leaderboard, start lights, the race flag, Race Laps counting up or down, fuel, speed and many more). Drag, resize, undo and redo. Make a different layout for the second screen.</li>
+          <li><b>Layout Editor</b>: design a timing page by placing widgets (lap times, the leaderboard, start lights, the race flag, Race Lap Counter counting up or down, fuel, speed and more). Drag, resize, undo and redo. Make another layout for the second screen.</li>
           <li><b>Leaderboard Editor</b>: design the rows of the Leaderboard widget, also side by side in the grid of the Leaderboard page.</li>
           <li><b>Audio Settings</b>: what the race says (see Audio calls below).</li>
           <li><b>Image Settings</b>: picture sets for the start lights, the race flag, the fuel level, the avatars, the tyres, the weather and the track conditions (what you leave empty is drawn). A start lights set is a grid: a picture per light and per state; each row stands alone (Countdown is only for the countdown). An <b>Avatars</b> set has a picture for each of the 8 lanes: the Avatar widget shows the picture of the driver, and a driver without one gets the avatar of the lane he or she drives in (the built-in standard avatars, unless you choose a set). Choose a set in the widget in the Layout Editor. The Race Flag widget can mirror the pictures of a set, and the Avatar widget can mirror its pictures.</li>

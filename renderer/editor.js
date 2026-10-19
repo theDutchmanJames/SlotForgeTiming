@@ -356,7 +356,7 @@ function renderEditor() {
   const ed = state.editing, d = ed.draft;
   const preset = PRESETS.find(p => p[1] === d.ratioW && p[2] === d.ratioH);
   const row = d.kind === 'row', REG = (row ? Widgets.REGISTRY.filter(x => x.perLane) : Widgets.REGISTRY).filter(x => !x.hidden); // the custom text kinds are made in the Widget Builder, not added from here
-  const GROUP_ORDER = ['Race', 'Driver', 'Slotcar', 'Timing', 'Timing Records', 'Delta Timers', 'Controls'];
+  const GROUP_ORDER = ['Race', 'Driver', 'Slotcar', 'Team and Swaps', 'Position and Progress', 'Lap Times and Records', 'Delta Timers', 'Tyres', 'Weather', 'Custom', 'Controls']; // (every folder is in the list: the Layout Editor shows the folders in this order)
   const groups = [...new Set(REG.map(x => x.group))].sort((a, b) => (GROUP_ORDER.indexOf(a) + 100) % 100 - (GROUP_ORDER.indexOf(b) + 100) % 100);
   const savedWidgets = (ed.customWidgets || []).filter(r => !row || /lane$/.test(r.type));
   // the widget list: each group is a folder that can be opened and closed (it stays as you left it)
