@@ -874,7 +874,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     say('the tabs inside a screen (settings, hardware, customization) have no pictures (the Race Setup sub-tabs have their own, since 1.45.0)', ['settingstabs', 'hwtabs', 'customtabs'].every(id => !E(id).innerHTML.includes('<svg')) && E('settingstabs').innerHTML.includes('class="tab"') && !/hasico/.test(E('settingstabs').innerHTML));
     say('a tab that is given no picture (or one that does not exist) stays a plain tab', run(`(() => { const el = { innerHTML: '' }; renderTabs(el, [['a', 'A'], ['b', 'B'], ['c', 'C']], 'a', () => {}, { b: 'nope', c: 'constructor' }); return el.innerHTML; })()`) === '<button class="tab" role="tab" aria-selected="true" data-id="a">A</button><button class="tab" role="tab" aria-selected="false" data-id="b">B</button><button class="tab" role="tab" aria-selected="false" data-id="c">C</button>');
     say('the picture does not change what a click does (it is part of the button)', (() => { const picked = []; run('globalThis.__p=[]'); run(`(() => { const el = { innerHTML: '', onclick: null }; renderTabs(el, [['a', 'A']], 'b', id => globalThis.__p.push(id), { a: 'home' }); el.onclick({ target: { closest: () => ({ dataset: { id: 'a' } }) } }); })()`); return run('globalThis.__p').join() === 'a'; })());
-    say('the pictures are part of the stylesheet: in the accent colour of the theme (the colour of the Start Race button), so they change with the theme, and placed left of the text with a small gap', (css => { const rule = (css.match(/\.tab \.tabico\{[^}]*\}/) || [''])[0], row = (css.match(/\.tab\.hasico\{[^}]*\}/) || [''])[0], btn = (css.match(/\.btn\.primary\{[^}]*\}/) || [''])[0];
+    say('the pictures are part of the stylesheet: in the accent colour of the theme (the colour of the Start Race button), so they change with the theme, and placed left of the text with a small gap', (css => { const rule = (css.match(/\.tab \.tabico\{[^}]*\}/) || [''])[0], row = (css.match(/\.tab\.hasico\{[^}]*\}/) || [''])[0], btn = (css.match(/(?:^|[}\n])\.btn\.primary\{[^}]*\}/) || [''])[0]; // (the rule itself, not the one on the Race Setup pages: .setuppage .btn.primary)
       return /color:var\(--accent\)/.test(rule) && !/#[0-9a-f]{3}|rgb|hsl/i.test(rule) && /display:inline-flex/.test(row) && /align-items:center/.test(row) && /gap:\d+px/.test(row) && !/flex-direction|order:/.test(row) && /background:var\(--accent\)/.test(btn); })(require('fs').readFileSync(__dirname + '/../renderer/styles.css', 'utf8')));
   }
   run("state.tab='settings'"); await run('render()');
@@ -2676,6 +2676,30 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   { const css = fs.readFileSync(R + 'renderer/styles.css', 'utf8'), rule = re => re.test(css);
     say('the folders of the lists have the look of the groups of the forms: the same shared rules (bar, tinted header, chevron, closed header round, focus)', rule(/\.fgroup,\.audgroup,\.dbfolder,\.audhelp\{[^}]*border-left:4px solid var\(--accent\)/) && rule(/\.fgroup>summary,\.audgroup>summary,\.dbfolder>summary,\.audhelp>summary\{/) && rule(/\.dbfolder>summary::before/) && rule(/\.dbfolder\[open\]>summary::before/) && rule(/\.dbfolder:not\(\[open\]\)>summary/) && rule(/\.dbfolder>summary:focus-visible/) && rule(/\.dbfolder>summary::-webkit-details-marker/));
     say('the tables sit in a folder without a box of their own (in a narrow window they scroll sideways, their cells do not wrap), and the sessions are rows told apart by a line', rule(/\.dbfolder \.fields\{border:0/) && rule(/\.dbfolder>\.wrap td,\.dbfolder>\.wrap th\{white-space:nowrap\}/) && rule(/\.dbfolder>\.card\.sess\{[^}]*border:0;border-top:1px solid var\(--line\)/) && rule(/\.dbfolder>\.card\.sess:first-of-type\{border-top:0\}/) && rule(/\.sess>summary::-webkit-details-marker\{display:none\}/)); }
+  // ---- 1.47.1: Race Setup pages: a card without a picture shows the icon of the system or setup, in the colour of its sub-tab ----
+  { const ents = ['penaltysystems', 'damagesystems', 'tyrewearsystems', 'weathersystems', 'fuelrules', 'racesetups'], keep = {};
+    ents.forEach(k => { keep[k] = store[k]; });
+    const keepView = run("[state.settings.dbView, state.settings.setupView]"), keepTracks = store.tracks, keepRefs = run("JSON.stringify(state.refs.tracks || null)");
+    const cases = [['penalties', 'penaltysystems', 'penalty', 'pen'], ['damage', 'damagesystems', 'damage', 'dmg'], ['tyrewear', 'tyrewearsystems', 'tyre', 'tyre'], ['weather', 'weathersystems', 'weather', 'wx'], ['fuel', 'fuelrules', 'fuel', 'fuel'], ['setups', 'racesetups', 'racesetups', 'race']];
+    run("state.settings.dbView='grid'; state.settings.setupView='grid'; state.tab='setup'");
+    for (const [sub, ent, icon, col] of cases) {
+      store[ent] = [{ id: 'x1', name: 'Sample ' + sub }];
+      run(`state.setupSub='${sub}'`); await run('render()');
+      const mgr = E('setupmgr').innerHTML, path = run(`Icons.PATHS['${icon}']`);
+      say(`1.47.1: ${sub}: the card has the icon of the ${icon} (not the first letter) on a tile in the colour ss-${col}`, mgr.includes(`<span class="ph phicon ss-${col}">`) && !!path && mgr.includes(path) && !mgr.includes('class="ph"') && !mgr.includes('>S</span>'));
+      const look = run(`SETUP_LOOK['${ent}']`), tab = run(`[SETUP_HERO, ...SETUP_GROUPS.flatMap(g => g[1])].find(t => t[0] === '${sub}')`);
+      say(`1.47.1: ${sub}: the card has the same icon and colour as the button of that sub-tab in the strip`, look[0] === tab[2] && look[1] === tab[3] && look[0] === icon && look[1] === col);
+      say(`1.47.1: ${sub}: the page carries the colour of the sub-tab (the Add button and the card use it), and the Add button is there`, run('view.innerHTML').includes(`class="setuppage ss-${col}"`) && mgr.includes('id="add"'));
+    }
+    say('1.47.1: a picture a card has of its own is still shown instead of the icon (a race setup shows the picture of its track)', await (async () => {
+      store.tracks = [{ id: 'tk1', name: 'Home', picture: 'data:image/jpeg;base64,TRK' }]; store.racesetups = [{ id: 'x1', name: 'With track', track: 'tk1' }];
+      run("state.refs.tracks = [{ id: 'tk1', name: 'Home', picture: 'data:image/jpeg;base64,TRK' }]"); run("state.setupSub='setups'"); await run('render()');
+      return E('setupmgr').innerHTML.includes('src="data:image/jpeg;base64,TRK"') && !E('setupmgr').innerHTML.includes('phicon'); })());
+    run("state.sub='drivers'; state.tab='database'"); await run('render()');
+    say('1.47.1: the Database pages keep the first letter of the name (the icon is for the Race Setup pages only)', !E('subview').innerHTML.includes('phicon'));
+    ents.forEach(k => { if (keep[k] === undefined) delete store[k]; else store[k] = keep[k]; }); store.tracks = keepTracks; run(`state.refs.tracks = ${keepRefs}`);
+    run(`state.settings.dbView=${JSON.stringify(keepView[0])}; state.settings.setupView=${JSON.stringify(keepView[1])}`);
+  }
   // ---- batch E: fuel in the race setup and the Fuel widget settings ----
   run("state.sub='tracks'; state.tab='setup'; state.setupSub='setups'"); await run('render()');
   run("state.refs.fuelrules=[{id:'fr1',name:'Std'}]; openForm('racesetups', null)");

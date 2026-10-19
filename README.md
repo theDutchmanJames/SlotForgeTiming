@@ -2584,3 +2584,17 @@ Good to know:
 2. Align to the center can give a half unit (a widget of 51 is placed at 474.5); **Tidy to grid** puts it on the grid if you want that.
 3. The widgets on the layout do not have to be in a row: **Spread out** looks at their places (left to right, or top to bottom) and keeps the order. It says so when the widgets are wider together than the room between the outer two.
 4. Not verified in the full Electron window (the real editor was driven with the mouse in a browser, with the real stylesheet).
+
+## What to try (1.47.1): the Race Setup pages (no stripe, a coloured Add button, icons on the cards, a smaller Race Setups button)
+
+What changed: the Race Setup pages, after you looked at the redesigned tab.
+
+1. Open **Race Setup**. The **coloured stripe** under the buttons is gone.
+2. Click through the sub-tabs. The button that adds one (*Add penalty system*, *Add damage system*, *Add tyre wear system*, *Add weather system*, *Add fuel setup*, *New rotation setup*, *Add race setup*) is in the **colour of the sub-tab**: yellow, red, purple, blue, green, brown, and the colour of your theme for Race Setups. Try a light theme too: the colours are darker there and the text on them is white.
+3. Switch a page to **Grid**. A card without a picture shows the **icon** of the system or setup (the warning sign, the spanner, the tyre, the cloud, the fuel pump, the flag) in the colour of its sub-tab, instead of a red square with a letter. A race setup whose track has a picture still shows that picture.
+4. The big **Race Setups** button is **smaller** (and no longer as tall as the groups next to it).
+
+Good to know:
+1. Only the main button of a page takes the colour of the sub-tab. The forms that open in a window (*Add tyre wear system* opens one) keep the colour of your theme, and so does the highlighted **Grid** / **List** switch. Say so if you want those in the colour of the sub-tab too.
+2. The Database pages (Drivers, Slotcars, Tracks, Teams) keep the first letter of the name on a coloured square when there is no picture; the icon is only for the Race Setup pages.
+3. Not verified in the full Electron window (the real stylesheet was drawn in a browser, dark and light, for every sub-tab).

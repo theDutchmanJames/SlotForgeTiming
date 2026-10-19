@@ -124,6 +124,10 @@ const limitText = i => {
 };
 const VIEW_ENTITIES = ['tracks', 'drivers', 'teams', 'slotcars']; // the pages with View settings (and with the view card: click a row or a card)
 const hue = t => { let n = 0; for (const ch of t) n = (n * 31 + ch.charCodeAt(0)) % 360; return `hsl(${n} 45% 40%)`; }; // (the colour of a picture's placeholder, from the name)
+// The picture of a card that has none. On the Race Setup pages it is the icon of the system or setup, in the colour of its sub-tab (1.47.1: the same icon and colour as its button
+// in the strip: see SETUP_GROUPS in editor.js); on every other page it is the first letter of the name on a colour made from the name.
+const SETUP_LOOK = { racesetups: ['racesetups', 'race'], penaltysystems: ['penalty', 'pen'], damagesystems: ['damage', 'dmg'], tyrewearsystems: ['tyre', 'tyre'], weathersystems: ['weather', 'wx'], fuelrules: ['fuel', 'fuel'] };
+const noPicture = (e, t) => { const l = SETUP_LOOK[e]; return l ? `<span class="ph phicon ss-${l[1]}">${Icons.svg(l[0], { size: 72, stroke: 1.4 })}</span>` : `<span class="ph" style="background:${hue(t)}">${esc((t.trim()[0] || '?').toUpperCase())}</span>`; };
 const VIRTUAL = { limit: { label: 'Laps / time', get: limitText } };
 const columnOf = (s, k) => k[0] === '@' ? { key: k, label: VIRTUAL[k.slice(1)].label, virtual: VIRTUAL[k.slice(1)] } : s.fields.find(f => f.key === k);
 const columnCell = (f, i) => f.virtual ? esc(f.virtual.get(i)) : cell(f, i[f.key]);
@@ -223,7 +227,7 @@ async function mountManager(box, e) {
       const f = columnOf(s, k), v = f.virtual ? f.virtual.get(i) : i[k];
       return v === undefined || v === null || v === '' ? '' : `<div class="gd"><span class="muted">${esc(fl(f))}</span> ${columnCell(f, i)}</div>`;
     })).join('') + (s.gallery && Array.isArray(i[s.gallery]) && i[s.gallery].length ? `<div class="gd muted">+${i[s.gallery].length} more ${i[s.gallery].length === 1 ? 'picture' : 'pictures'}</div>` : '');
-    return `<article class="gcard${canView ? ' clickable' : ''}"${canView ? ` data-view="${esc(i.id)}" tabindex="0" aria-label="View ${esc(t)}"` : ''}><div class="gimg">${img ? `<img src="${esc(img)}" alt="" style="transform:${Widgets.frameTransform(frame)}">` : `<span class="ph" style="background:${hue(t)}">${esc((t.trim()[0] || '?').toUpperCase())}</span>`}</div>
+    return `<article class="gcard${canView ? ' clickable' : ''}"${canView ? ` data-view="${esc(i.id)}" tabindex="0" aria-label="View ${esc(t)}"` : ''}><div class="gimg">${img ? `<img src="${esc(img)}" alt="" style="transform:${Widgets.frameTransform(frame)}">` : noPicture(e, t)}</div>
       <h3>${esc(t)}</h3>${rowMark(e, i)}${details}<div class="row"><button class="btn" data-edit="${esc(i.id)}">Edit</button><button class="btn danger" data-del="${esc(i.id)}">Delete</button></div></article>`;
   }).join('')}</div>`;
   const tableHtml = (items, cols) => `<div class="wrap"><table class="fields"><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}<th></th></tr>` +
