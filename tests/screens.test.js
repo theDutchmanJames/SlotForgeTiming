@@ -696,6 +696,109 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     say('...and Undo brings both back in one step', widgets()[0].x === 103 && widgets()[1].x === 302);
   }
 
+  // ---- 1.47.0: align, spread out, same size, mirror, and resizing several widgets at once ----
+  await openEditor(); ['bestlap', 'bestlap', 'bestlap', 'bestlap'].forEach(t => run(`editorAdd('${t}')`));
+  { const put = (g, x, y, w, h) => Object.assign(g, { x, y, w, h }), click = k => E('side').onclick({ target: { closest: () => ({ dataset: { arr: k } }) } });
+    const commit = () => run('state.editing.history.touch(), state.editing.history.commit()'), msg = () => E('e-msg').textContent, side = () => E('side').innerHTML;
+    const pick = (...i) => { run('state.editing.sel=[]'); i.forEach(n => E('canvas').onpointerdown(onW(n, { clientX: 150, clientY: 120, shiftKey: true }))); }; // (Shift-click each one: the canvas and the side panel are drawn again, as when a person selects)
+    const reset = () => { put(widgets()[0], 100, 100, 100, 50); put(widgets()[1], 150, 160, 100, 50); put(widgets()[2], 500, 220, 100, 50); put(widgets()[3], 702, 400, 50, 50); widgets().forEach(g => { g.titleAlign = ''; g.valueAlign = ''; g.opt = {}; }); commit(); };
+    const frameAt = (h, x, y) => ptr({ target: { dataset: { gh: h }, closest: () => null }, clientX: x, clientY: y });
+    const dragFrame = (h, x, y, dx, dy, extra = {}) => { E('canvas').onpointerdown(frameAt(h, x, y)); const mv = (listeners.pointermove || []).slice(-1)[0], up = (listeners.pointerup || []).slice(-1)[0]; mv({ clientX: x + dx, clientY: y + dy, ...extra }); const during = E('canvas').innerHTML; up(); return during; };
+    // what the side panel offers
+    reset(); pick(0, 1, 2);
+    say('1.47.0: several widgets selected: Align (with the selection), Spread out, Same size, and the three mirrors are offered', ['align-left', 'align-center', 'align-right', 'align-top', 'align-middle', 'align-bottom', 'dist-x', 'dist-y', 'mirror-sel', 'mirror-page', 'flip-sel'].every(k => side().includes(`data-arr="${k}"`)) && side().includes('data-size="w"') && side().includes('data-size="h"') && side().includes('Align with the selection'));
+    pick(0, 1);
+    say('...two widgets: nothing to spread out (it needs three)', !side().includes('dist-x') && side().includes('mirror-sel') && side().includes('data-size="w"'));
+    pick(0);
+    say('...one widget: Align with the page and Mirror across the page only', side().includes('Align with the page') && side().includes('data-arr="align-left"') && side().includes('data-arr="mirror-page"') && !side().includes('dist-x') && !side().includes('data-size') && !side().includes('mirror-sel') && !side().includes('flip-sel'));
+    // align
+    pick(0, 1, 2); click('align-left');
+    say('Align left: every widget of the selection goes to the left edge of the selection', widgets().slice(0, 3).every(g => g.x === 100) && widgets()[2].y === 220 && msg() === 'Aligned 3 widgets to the left.');
+    say('...the widget that was not selected stayed', widgets()[3].x === 702);
+    click('align-left');
+    say('...doing it again says they are there already', msg() === 'They were already there.');
+    run('editorUndo()');
+    say('...Undo puts all three back in one step', widgets()[0].x === 100 && widgets()[1].x === 150 && widgets()[2].x === 500);
+    pick(0, 1, 2); click('align-bottom');
+    say('Align bottom: the bottoms line up with the lowest (270)', widgets().slice(0, 3).every(g => g.y + g.h === 270) && msg() === 'Aligned 3 widgets to the bottom.');
+    reset(); pick(1); click('align-center');
+    say('one widget aligns with the page: centered (450 + 50)', widgets()[1].x === 450 && widgets()[1].y === 160 && msg() === 'Aligned 1 widget in the center.');
+    reset(); pick(1); click('align-right');
+    say('...and to the right of the page', widgets()[1].x + widgets()[1].w === 1000);
+    // spread out
+    reset(); pick(0, 1, 2); click('dist-x');
+    say('Spread out across: the outer two stay, the one between goes in the middle (gaps of 100)', widgets()[0].x === 100 && widgets()[2].x === 500 && widgets()[1].x === 300 && msg() === 'Spread 3 widgets out evenly across.');
+    reset(); pick(0, 1, 2); click('dist-y');
+    say('Spread out down: the heights are shared out (100, 160 and 220: the middle goes to 160 already)', widgets()[1].y === 160 && widgets()[0].y === 100 && widgets()[2].y === 220);
+    put(widgets()[0], 100, 100, 300, 50); put(widgets()[1], 200, 160, 300, 50); put(widgets()[2], 400, 220, 100, 50); commit(); pick(0, 1, 2); click('dist-x');
+    say('widgets that are wider together than the room: nothing moves, and it says why', widgets()[1].x === 200 && /wider together/.test(msg()));
+    // same size
+    put(widgets()[1], 150, 160, 80, 50); commit(); pick(0, 1, 2);
+    say('...the width shows "different" and the height shows the one height they share (50)', /data-size="w"[^>]*placeholder="different"/.test(side()) && /data-size="h"[^>]*value="50"/.test(side()));
+    E('side').oninput({ target: { dataset: { size: 'w' }, value: '120' } });
+    say('typing a width gives every selected widget that width (the one that was not selected stays)', widgets().slice(0, 3).every(g => g.w === 120) && widgets()[3].w === 50);
+    E('side').oninput({ target: { dataset: { size: 'h' }, value: '30' } });
+    say('...and a height', widgets().slice(0, 3).every(g => g.h === 30));
+    E('side').oninput({ target: { dataset: { size: 'w' }, value: '5000' } });
+    say('...a widget stops at the edge of the page, whatever is typed', widgets().slice(0, 3).every(g => g.x + g.w <= 1000) && widgets()[2].x + widgets()[2].w === 1000);
+    E('side').oninput({ target: { dataset: { size: 'w' }, value: '' } });
+    say('...an empty field changes nothing', widgets()[2].x + widgets()[2].w === 1000);
+    E('side').oninput({ target: { dataset: { size: 'h' }, value: '1' } });
+    say('...nothing gets smaller than the smallest size', widgets().slice(0, 3).every(g => g.h === 5));
+    reset(); pick(0, 1); E('e-msg').textContent = ''; click('dist-x');
+    say('two widgets: Spread out does nothing (it needs three), not even a message', msg() === '' && widgets()[1].x === 150);
+    reset(); pick(2); E('e-msg').textContent = ''; click('mirror-sel'); click('flip-sel');
+    say('one widget: Mirror in the selection and Flip do nothing (the selection is the widget itself), and its text alignment stays', msg() === '' && widgets()[2].x === 500 && widgets()[2].titleAlign === '' && widgets()[2].y === 220);
+    // mirror
+    reset(); put(widgets()[0], 100, 100, 100, 50); put(widgets()[1], 300, 160, 60, 50); widgets()[0].titleAlign = ''; widgets()[1].valueAlign = 'left'; commit(); pick(0, 1); click('mirror-sel');
+    say('Mirror in the selection: left to right inside the box that holds them (100 to 360)', widgets()[0].x === 260 && widgets()[1].x === 100 && widgets()[0].y === 100 && widgets()[1].y === 160 && msg() === 'Mirrored 2 widgets in the selection.');
+    say('...the text alignment is swapped too: a title on the left goes right, a text on the left goes right', widgets()[0].titleAlign === 'right' && widgets()[1].valueAlign === 'right' && widgets()[1].titleAlign === 'right');
+    click('mirror-sel');
+    say('...mirroring again puts the places and the alignment back', widgets()[0].x === 100 && widgets()[1].x === 300 && widgets()[1].valueAlign === 'left' && widgets()[0].titleAlign === 'left');
+    run('editorUndo()'); run('editorUndo()');
+    say('...and each mirror is one step for Undo (twice undone: as at the start)', widgets()[0].x === 100 && widgets()[1].x === 300 && widgets()[0].titleAlign === '' && widgets()[1].valueAlign === 'left');
+    reset(); pick(2); click('mirror-page');
+    say('Mirror across the page: one widget goes to the other side of the middle (500 + 100 = 600 from the left becomes 400)', widgets()[2].x === 400 && widgets()[2].y === 220 && msg() === 'Mirrored 1 widget across the page.');
+    reset(); pick(0, 1, 2); click('mirror-page');
+    say('...several widgets: each goes to the other side', widgets()[0].x === 800 && widgets()[1].x === 750 && widgets()[2].x === 400);
+    reset(); pick(0, 1, 2); click('flip-sel');
+    say('Flip top to bottom: inside the box that holds them (100 to 270), the text is left as it is', widgets()[0].y === 220 && widgets()[2].y === 100 && widgets()[1].y === 160 && widgets()[0].titleAlign === '' && widgets()[0].x === 100 && msg() === 'Flipped 3 widgets top to bottom.');
+    reset(); run("state.editing.draft.widgets.push(Widgets.newWidget('carpicture', 0, 100, 400))"); pick(4); widgets()[4].opt = {}; click('mirror-page');
+    say('a slotcar picture flips its picture when it is mirrored across the page', widgets()[4].opt.carMirror === true); run('state.editing.draft.widgets.pop()');
+    // the frame round several widgets
+    reset(); pick(0, 1, 2);
+    say('several selected: a frame with four handles is drawn round them (100 to 600 across, 100 to 270 down)', (E('canvas').innerHTML.match(/data-gh="/g) || []).length === 4 && E('canvas').innerHTML.includes('class="gbox" style="left:10%;top:17.76'));
+    pick(1);
+    say('...one selected: no frame (the widget has its own handles)', !E('canvas').innerHTML.includes('gbox') && (E('canvas').innerHTML.match(/data-h="/g) || []).length === 4);
+    // resizing them all by the frame
+    reset(); pick(0, 1, 2); dragFrame('se', 600, 270, 50, 0);
+    say('dragging the bottom right corner of the frame: the box is 550 wide instead of 500, and every widget scales with it (a left edge at 150 goes to 155, the box edge goes exactly to 650)', widgets()[2].x + widgets()[2].w === 650 && widgets()[0].x === 100 && widgets()[0].w === 110 && widgets()[1].x === 155 && widgets()[0].y === 100 && widgets()[0].h === 50);
+    say('...the widget that was not selected stayed', widgets()[3].x === 702 && widgets()[3].w === 50);
+    say('...and no pink line is left when the mouse is let go', !E('canvas').innerHTML.includes('class="snapl'));
+    run('editorUndo()');
+    say('...all of it is one step for Undo', widgets()[0].w === 100 && widgets()[1].x === 150 && widgets()[2].x === 500 && widgets()[2].w === 100);
+    reset(); pick(0, 1, 2); dragFrame('nw', 100, 100, 50, 50);
+    say('the top left corner works the other way: the bottom right stays (600, 270)', widgets()[2].x + widgets()[2].w === 600 && Math.max(...widgets().slice(0, 3).map(g => g.y + g.h)) === 270 && widgets()[0].x === 150 && widgets()[0].y === 150);
+    reset(); pick(0, 1, 2); let during = dragFrame('se', 600, 270, 99, 0);
+    say('the right edge of the frame is pulled to a neighbour (702) like a single widget (the grid would say 700), and the pink line shows', widgets()[2].x + widgets()[2].w === 702 && during.includes(`class="snapl snapl-v" style="left:${702 / 1000 * 100}%"`));
+    say('...and the pink line is gone when the mouse is let go', !E('canvas').innerHTML.includes('class="snapl'));
+    reset(); pick(0, 1, 2); dragFrame('se', 600, 270, 99, 0, { ctrlKey: true });
+    say('...(and no line is left behind)', !E('canvas').innerHTML.includes('class="snapl'));
+    say('...holding Ctrl: the grid only (700)', widgets()[2].x + widgets()[2].w === 700);
+    reset(); pick(0, 1, 2); dragFrame('se', 600, 270, 99, 0, { metaKey: true });
+    say('...Cmd does the same', widgets()[2].x + widgets()[2].w === 700);
+    E('e-snap').onchange({ target: { checked: false } }); reset(); pick(0, 1, 2); dragFrame('se', 600, 270, 99, 0);
+    say('with snapping off nothing is pulled (699), and the widgets scale to whole units, not to the grid (a left edge at 500 goes to 579, not 580)', widgets()[2].x + widgets()[2].w === 699 && widgets()[2].x === 579 && widgets().slice(0, 3).every(g => Number.isInteger(g.x) && Number.isInteger(g.w)));
+    E('e-snap').onchange({ target: { checked: true } });
+    reset(); pick(0, 1, 2); dragFrame('se', 600, 270, -2000, -2000);
+    say('squeezing the selection as far as it goes: no widget gets smaller than the smallest size', widgets().slice(0, 3).every(g => g.w >= 5 && g.h >= 5));
+    reset(); pick(0, 1, 2); E('canvas').onpointerdown(frameAt('se', 600, 270)); (listeners.pointerup || []).slice(-1)[0]();
+    say('pressing a corner of the frame and letting go without moving changes nothing', widgets()[0].x === 100 && widgets()[0].w === 100 && widgets()[1].x === 150 && widgets()[2].w === 100);
+    reset(); pick(1); dragFrame('se', 250, 210, 80, 40);
+    say('a corner handle of the frame does nothing when only one widget is selected', widgets()[1].x === 150 && widgets()[1].w === 100 && widgets()[1].h === 50);
+    say('the frame has its own style (dashed, handles that take the mouse, above the widgets)', /\.gbox\{position:absolute;border:1px dashed #4c9aff;pointer-events:none;z-index:11\}/.test(css2) && /\.gbox \.h\{[^}]*pointer-events:auto/.test(css2));
+  }
+
   // ---- batch 1 findings ----
   run("document.querySelector('h1')"); run("tabsEl").onclick({ target: { closest: () => ({ dataset: { id: 'live' } }) } }); say('the Live Race tab opens the second screen instead of a page', opened.length === 1 && run('state.tab') !== 'live');
   run("state.tab='setup'; state.setupSub='penalties'"); await run('render()');

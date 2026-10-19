@@ -168,6 +168,70 @@ ok('tidy: ...also in the corner of the page, where it cannot grow outwards', t[0
   let clash2 = 0; for (let i = 0; i < once.length; i++) for (let j = i + 1; j < once.length; j++) if (overlap(once[i], once[j])) clash2++;
   ok('...and no widget runs into another one that it did not touch before', clash2 === 0);
 }
+// ---- 1.47.0: align, spread out, mirror, resize several widgets at once ----
+{
+  const A = box(100, 100, 50, 20), B = box(300, 160, 80, 30), C = box(200, 130, 60, 40), sel3 = [A, B, C], bb = Wd.bbox(sel3); // bb = 100,100 to 380,190
+  const col = (list, k) => list.map(q => q[k]).join();
+  ok('align left: every left edge goes to the left edge of the selection', col(Wd.alignRects(sel3, 'left', bb), 'x') === '100,100,100');
+  ok('align right: every right edge goes to the right edge of the selection (380)', Wd.alignRects(sel3, 'right', bb).every((q, i) => q.x + q.w === 380));
+  ok('align center: the middle of every widget is the middle of the selection (240)', Wd.alignRects(sel3, 'center', bb).every(q => q.x + q.w / 2 === 240));
+  ok('align top, bottom and middle work the same way down the page', col(Wd.alignRects(sel3, 'top', bb), 'y') === '100,100,100' && Wd.alignRects(sel3, 'bottom', bb).every(q => q.y + q.h === 190) && Wd.alignRects(sel3, 'middle', bb).every(q => q.y + q.h / 2 === 145));
+  ok('aligning across leaves the places down and the sizes alone', col(Wd.alignRects(sel3, 'left', bb), 'y') === '100,160,130' && col(Wd.alignRects(sel3, 'left', bb), 'w') === '50,80,60');
+  ok('...nothing is changed in the widgets themselves (new places are returned)', A.x === 100 && B.x === 300 && C.x === 200);
+  { const q = Wd.alignRects([box(10, 10, 51, 20)], 'center', { x: 0, y: 0, w: W, h: H })[0]; ok('one widget lines up with the page: centered (474.5 across, in hundredths)', q.x === 474.5 && q.y === 10); }
+  { const q = Wd.alignRects([box(10, 10, 100, 50)], 'bottom', { x: 0, y: 0, w: W, h: H })[0]; ok('...and to the bottom of the page', q.y + 50 === H); }
+  // spread out
+  let d3 = Wd.distributeRects([box(0, 0, 50, 20), box(60, 0, 50, 20), box(300, 0, 50, 20)], 'x');
+  ok('spread out across: the outer two stay, the one between goes in the middle (the gaps are 100 and 100)', d3.map(q => q.x).join() === '0,150,300');
+  d3 = Wd.distributeRects([box(300, 0, 50, 20), box(0, 0, 50, 20), box(60, 0, 50, 20)], 'x');
+  ok('...the order of the list does not matter, the answers come back in the order of the list', d3.map(q => q.x).join() === '300,0,150');
+  d3 = Wd.distributeRects([box(0, 0, 10, 20), box(20, 0, 40, 20), box(70, 0, 70, 20), box(300, 0, 20, 20)], 'x');
+  const gaps = [...d3].sort((a, b) => a.x - b.x).map((q, i, a) => (i ? q.x - (a[i - 1].x + a[i - 1].w) : null)).filter(v => v !== null);
+  ok('...widgets of different widths get the same gap between them (4 widgets, 3 equal gaps)', gaps.every(v => Math.abs(v - gaps[0]) < 0.011) && d3.map(q => q.x).sort((a, b) => a - b)[0] === 0 && Math.max(...d3.map(q => q.x + q.w)) === 320);
+  ok('spread out down uses the heights', Wd.distributeRects([box(0, 0, 50, 20), box(0, 10, 50, 20), box(0, 300, 50, 20)], 'y').map(q => q.y).join() === '0,150,300');
+  ok('wider together than the room: there is no gap, so nothing is done (null)', Wd.distributeRects([box(0, 0, 200, 20), box(100, 0, 200, 20), box(250, 0, 50, 20)], 'x') === null);
+  ok('two widgets cannot be spread out: they come back as they are', Wd.distributeRects([box(0, 0, 50, 20), box(60, 0, 50, 20)], 'x').map(q => q.x).join() === '0,60');
+  // mirror
+  let mr = Wd.mirrorRects([A, B], 'sel-x', W, H); // box 100..380
+  ok('mirror in the selection: left to right inside the box that holds them (100..380)', mr[0].x === 330 && mr[1].x === 100 && mr[0].y === 100 && mr[1].y === 160 && mr[0].w === 50 && mr[1].w === 80);
+  ok('...mirroring twice gives the places back', JSON.stringify(Wd.mirrorRects(mr, 'sel-x', W, H)) === JSON.stringify([A, B].map(q => ({ x: q.x, y: q.y, w: q.w, h: q.h }))));
+  mr = Wd.mirrorRects([A, B], 'page-x', W, H);
+  ok('mirror across the page: each widget goes to the other side of the middle (1000 - x - w)', mr[0].x === 850 && mr[1].x === 620 && mr[0].y === 100 && mr[1].y === 160);
+  ok('...and stays on the page, whatever its place', Wd.mirrorRects([box(0, 0, 40, 10), box(960, 0, 40, 10)], 'page-x', W, H).map(q => q.x).join() === '960,0');
+  mr = Wd.mirrorRects([A, B], 'sel-y', W, H); // box 100..190 down
+  ok('flip top to bottom inside the selection (100..190)', mr[0].y === 170 && mr[1].y === 100 && mr[0].x === 100 && mr[1].x === 300);
+  // the settings that go with a mirrored widget
+  { const q = { type: 'laptime', title: '', titleAlign: '', valueAlign: '' };
+    let ms = Wd.mirrorSettings(q);
+    ok('mirrored: a title on the left (the standard) goes right, a text in the center stays', ms.titleAlign === 'right' && ms.valueAlign === undefined);
+    ms = Wd.mirrorSettings({ type: 'laptime', titleAlign: 'right', valueAlign: 'left' });
+    ok('...right becomes left and left becomes right', ms.titleAlign === 'left' && ms.valueAlign === 'right');
+    ok('...a Leaderboard has only a title alignment', Wd.mirrorSettings({ type: 'leaderboard', valueAlign: 'left' }).valueAlign === undefined && Wd.mirrorSettings({ type: 'leaderboard' }).titleAlign === 'right');
+    ok('...a title or a text in the center gives no key at all (nothing to change)', Wd.mirrorSettings({ type: 'laptime', titleAlign: 'center' }).titleAlign === undefined && Wd.mirrorSettings({ type: 'laptime', valueAlign: 'center' }).valueAlign === undefined);
+    ok('...a button has none of it', Object.keys(Wd.mirrorSettings({ type: 'start' })).length === 0);
+    ok('...a slotcar picture flips its picture (Mirror on, then off again), without touching its other settings', (() => { const w1 = { type: 'carpicture', opt: { zoom: 3 } }, a = Wd.mirrorSettings(w1), b = Wd.mirrorSettings({ ...w1, ...a }); return a.opt.carMirror === true && a.opt.zoom === 3 && b.opt.carMirror === false && w1.opt.carMirror === undefined; })());
+    ok('...an avatar flips avatarMirror, the race flag flips its flag and its pictures', Wd.mirrorSettings({ type: 'avatar' }).opt.avatarMirror === true && (() => { const o = Wd.mirrorSettings({ type: 'flag' }).opt; return o.flagMirror === true && o.imageMirror === true; })());
+    ok('...a widget with no picture to flip gets no opt', Wd.mirrorSettings({ type: 'laptime' }).opt === undefined);
+    const w2 = { type: 'laptime', titleAlign: 'right' }, once = Wd.mirrorSettings(w2), twice = Wd.mirrorSettings({ ...w2, ...once });
+    ok('...mirroring twice reads as it did at the start', Wd.titleAlignOf({ ...w2, ...once, ...twice }) === 'right' && Wd.valueAlignOf({ ...w2, ...once, ...twice }) === 'center');
+  }
+  // resizing several at once
+  const grp = [box(100, 100, 100, 50), box(250, 100, 50, 50)], g0 = Wd.bbox(grp);
+  let sg = Wd.scaleGroup(grp, g0, { x: 100, y: 100, w: 402, h: 100 }, true, W, H);
+  ok('resizing the selection: the box is 2.01 times as wide and twice as high, the edges follow (left edges on the grid, the box edge exactly)', sg[0].x === 100 && sg[0].w === 200 && sg[1].x === 400 && sg[1].x + sg[1].w === 502 && sg[0].h === 100 && sg[1].h === 100);
+  sg = Wd.scaleGroup(grp, g0, { x: 100, y: 100, w: 402, h: 100 }, false, W, H);
+  ok('...without snapping the edges go to whole units, not to the grid (a left edge at 250 goes to 401 or 402, the grid says 400)', sg.every(q => Number.isInteger(q.x) && Number.isInteger(q.w)) && sg[1].x % 5 !== 0 && Math.abs(sg[1].x - 401.5) <= 0.5);
+  sg = Wd.scaleGroup([box(103, 101, 97, 49), box(251, 101, 49, 49)], { x: 103, y: 101, w: 197, h: 49 }, { x: 103, y: 101, w: 197, h: 49 }, true, W, H);
+  ok('...a box that did not change size leaves the widgets alone (nothing jumps to the grid)', sg[0].x === 103 && sg[0].y === 101 && sg[1].x === 251 && sg[1].w === 49);
+  sg = Wd.scaleGroup([box(100, 100, 100, 50), box(250, 100, 50, 50)], { x: 100, y: 100, w: 200, h: 50 }, { x: 52, y: 100, w: 248, h: 50 }, true, W, H);
+  ok('...the edge of the box that was pulled to a place off the grid (a magnet) is kept exactly (52), the other edges go to the grid', sg[0].x === 52 && sg[1].x + sg[1].w === 300 && sg[1].x % 5 === 0);
+  sg = Wd.scaleGroup([box(103, 101, 97, 49)], { x: 103, y: 101, w: 97, h: 49 }, { x: 203, y: 151, w: 97, h: 49 }, true, W, H);
+  ok('...a box that only moved moves the widgets by the same amount', sg[0].x === 203 && sg[0].y === 151);
+  sg = Wd.scaleGroup(grp, g0, { x: 100, y: 100, w: 5, h: 5 }, true, W, H);
+  ok('...squeezed to nothing no widget gets smaller than the smallest size, or leaves the page', sg.every(q => q.w >= Wd.MIN && q.h >= Wd.MIN && q.x >= 0 && q.y >= 0 && q.x + q.w <= W && q.y + q.h <= H));
+  sg = Wd.scaleGroup([box(900, 500, 100, 50), box(950, 530, 50, 33)], { x: 900, y: 500, w: 100, h: 50 }, { x: 900, y: 500, w: 300, h: 300 }, true, W, H);
+  ok('...grown past the page the widgets stop at the page', sg.every(q => q.x + q.w <= W && q.y + q.h <= H));
+}
 ok('widget names and folders as chosen (11 folders, the Slotcar folder holds the car widgets, every name says what it shows)', (() => { const g = {}; Wd.REGISTRY.filter(d => !d.hidden).forEach(d => (g[d.group] = g[d.group] || []).push(d.label)); return JSON.stringify(g) === JSON.stringify({
   Race: ['Race Clock', 'Race Lap Counter', 'Token Clock', 'Start Lights', 'Race Flag', 'Race Info', 'Leaderboard', 'Heat List', 'Logo'],
   Driver: ['Driver Name', 'Driver Nickname', 'Driver Callsign', 'Driver Avatar', 'Driver Flag', 'Lane Colour'],

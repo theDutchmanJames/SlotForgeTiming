@@ -370,9 +370,18 @@ function sideHtml() {
     slider('s-trans', 'Transparency', trans ?? 0, 0, 100, 1, 'Fades the background and the border, not the text. 0% is solid.', followsLayout === true) +
     `<div class="field"><label class="inline"><input type="checkbox" id="s-transfollow" ${followsLayout ? 'checked' : ''}> Same as the layout (Background button in the top bar)</label></div>` +
     `<div class="field"><label for="s-radius">Rounded corners</label><input id="s-radius" type="number" min="0" max="50" step="0.5" value="${esc(rad === undefined ? '' : rad)}" placeholder="${rad === undefined ? 'different' : 'as the layout'}"><span class="muted hint">Empty follows the layout. 0 is square, 50 is fully round (on a square widget, a circle).</span></div>`);
+  // Arrange (1.47.0): line up, spread out, one size, mirror. Several widgets line up with the box that holds them; one widget with the page.
+  const abtn = (k, t, tip) => `<button class="btn" data-arr="${k}"${tip ? ` title="${esc(tip)}"` : ''}>${t}</button>`, many = sel.length > 1;
+  const sizeIn = (k, label) => { const v = common(w => w[k]); return `<label>${label} <input type="number" data-size="${k}" min="${Widgets.MIN}" step="1" value="${v === undefined ? '' : esc(v)}" placeholder="${v === undefined ? 'different' : ''}"></label>`; };
+  const arrangeTools = `<div class="field"><label>Align ${many ? 'with the selection' : 'with the page'}</label>
+      <div class="arr">${[['left', 'Left'], ['center', 'Center'], ['right', 'Right'], ['top', 'Top'], ['middle', 'Middle'], ['bottom', 'Bottom']].map(([k, t]) => abtn('align-' + k, t)).join('')}</div></div>` +
+    (sel.length > 2 ? `<div class="field"><label>Spread out evenly (the outer two stay)</label><div class="arr">${abtn('dist-x', 'Across')}${abtn('dist-y', 'Down')}</div></div>` : '') +
+    (many ? `<div class="field"><label>Same size for all</label><div class="arrsize">${sizeIn('w', 'Width')}${sizeIn('h', 'Height')}</div><span class="muted hint">A widget stops at the edge of the page. Drag a corner of the frame round the selection to resize them all together.</span></div>` : '') +
+    `<div class="field"><label>Mirror</label><div class="arr">${many ? abtn('mirror-sel', 'In the selection', 'Left to right inside the box that holds the selection') : ''}${abtn('mirror-page', 'Across the page', 'To the other side of the middle of the page')}${many ? abtn('flip-sel', 'Flip top to bottom', 'Top to bottom inside the box that holds the selection') : ''}</div>
+      <span class="muted hint">Mirroring left to right also swaps left and right text alignment and flips the pictures that have a Mirror setting. Made copies for the next lane with Duplicate? Mirror them across the page.</span></div>`;
   return `<h3>${single ? esc(d0.label) : sel.length + ' widgets selected'}</h3>
     ${allLane ? `<div class="field"><label for="s-lane">Lane</label><select id="s-lane">${lane === undefined ? '<option value="" selected>(different)</option>' : ''}${Array.from({ length: Widgets.LANES }, (_, l) => `<option value="${l}"${l === lane ? ' selected' : ''}>Lane ${l + 1}</option>`).join('')}</select></div>` : ''}
-    ${group('arrange', 'Arrange', `${snapHint}<div class="row"><button class="btn" id="s-tidy">Tidy to grid</button></div>${tidyHint}`)}
+    ${group('arrange', 'Arrange', `${arrangeTools}${snapHint}<div class="row"><button class="btn" id="s-tidy">Tidy to grid</button></div>${tidyHint}`)}
     ${row && single ? group('place', 'Place in the row', `<div class="field"><label>0 to ${Widgets.U} across, 0 to ${Widgets.heightOf(state.editing.draft)} down</label><div class="inline">${[['x', 'Left'], ['y', 'Top'], ['w', 'Width'], ['h', 'Height']].map(([k, t]) => `<label>${t} <input type="number" data-geo="${k}" value="${Math.round(w0[k])}" style="width:5em"></label>`).join(' ')}</div></div>`) : ''}
     ${group('title', row ? 'Header' : 'Title', titleBox)}${group('text', 'Text', textBox)}${group('frame', row ? 'Colour' : 'Background and border', frameBox)}${group('opts', d0.optsLabel || d0.label + ' settings', opts)}
     <div class="row"><button class="btn" id="s-dup">Duplicate${allLane ? ' (next lane)' : ''}</button><button class="btn danger" id="s-del">Remove</button></div>`;
@@ -421,10 +430,11 @@ function renderEditor() {
     $('canvas').style.aspectRatio = `${d.ratioW} / ${d.ratioH}`;
     $('canvas').style.backgroundSize = `${10 / U * 100}% ${10 / H * 100}%`;
     const lines = d.guides.v.map(x => `<i class="gl gl-v" style="left:${x / U * 100}%"></i>`).join('') + d.guides.h.map(y => `<i class="gl gl-h" style="top:${y / H * 100}%"></i>`).join('');
+    const gbox = ed.sel.length > 1 ? (b => `<div class="gbox" style="left:${b.x / U * 100}%;top:${b.y / H * 100}%;width:${b.w / U * 100}%;height:${b.h / H * 100}%">${['nw', 'ne', 'sw', 'se'].map(c => `<i class="h ${c}" data-gh="${c}"></i>`).join('')}</div>`)(Widgets.bbox(ed.sel)) : ''; // (the frame round several selected widgets, with a handle in each corner, 1.47.0)
     const sl = ed.snapLines ? ed.snapLines.v.map(x => `<i class="snapl snapl-v" style="left:${x / U * 100}%"></i>`).join('') + ed.snapLines.h.map(y => `<i class="snapl snapl-h" style="top:${y / H * 100}%"></i>`).join('') : ''; // (the pink lines while you drag: an edge lines up)
     const single = ed.sel.length === 1;
     const order = [...d.widgets].sort((a, b) => ed.sel.includes(a) - ed.sel.includes(b));
-    $('canvas').innerHTML = lines + order.map(w => widgetHtml(w, ed.sel.includes(w), single && ed.sel[0] === w, d)).join('') + sl;
+    $('canvas').innerHTML = lines + order.map(w => widgetHtml(w, ed.sel.includes(w), single && ed.sel[0] === w, d)).join('') + gbox + sl;
     // the background picture is kept as one element (a big picture is not rebuilt on every move of a widget)
     if (!row && Backdrop.has(d)) {
       const key = [d.bgImage, d.bgFit, d.bgBlur, d.bgBrightness, d.bgSaturation];
@@ -493,6 +503,30 @@ function renderEditor() {
     $('e-msg').textContent = src.some(w => w.lane === Widgets.LANES - 1) ? `Lane ${Widgets.LANES} is the last lane.` : '';
   };
 
+  // Arrange (1.47.0): line up, spread out, mirror. Each is one step for Undo.
+  const arrange = kind => {
+    const list = ed.sel; if (!list.length) return;
+    const H = Hh(), n = list.length, words = `${n} widget${n === 1 ? '' : 's'}`;
+    let nb = null, msg = '', mirrorX = false;
+    if (kind.startsWith('align-')) {
+      const where = kind.slice(6); nb = Widgets.alignRects(list, where, n > 1 ? Widgets.bbox(list) : { x: 0, y: 0, w: U, h: H });
+      msg = `Aligned ${words} ${{ left: 'to the left', center: 'in the center', right: 'to the right', top: 'to the top', middle: 'in the middle', bottom: 'to the bottom' }[where]}.`;
+    } else if (kind === 'dist-x' || kind === 'dist-y') {
+      if (n < 3) return;
+      nb = Widgets.distributeRects(list, kind === 'dist-x' ? 'x' : 'y');
+      if (!nb) { $('e-msg').textContent = 'The widgets are wider together than the room between the outer two, so there is no space to share out.'; return; }
+      msg = `Spread ${words} out evenly ${kind === 'dist-x' ? 'across' : 'down'}.`;
+    } else if (kind === 'mirror-sel' || kind === 'mirror-page' || kind === 'flip-sel') {
+      if (kind !== 'mirror-page' && n < 2) return;
+      mirrorX = kind !== 'flip-sel';
+      nb = Widgets.mirrorRects(list, kind === 'mirror-sel' ? 'sel-x' : kind === 'mirror-page' ? 'page-x' : 'sel-y', U, H);
+      msg = kind === 'flip-sel' ? `Flipped ${words} top to bottom.` : `Mirrored ${words} ${kind === 'mirror-sel' ? 'in the selection' : 'across the page'}.`;
+    } else return;
+    const moved = list.filter((g, i) => g.x !== nb[i].x || g.y !== nb[i].y).length;
+    if (!moved && !mirrorX) { $('e-msg').textContent = 'They were already there.'; return; }
+    list.forEach((g, i) => { Object.assign(g, nb[i]); if (mirrorX) Object.assign(g, Widgets.mirrorSettings(g)); });
+    step(); redraw(); $('e-msg').textContent = msg;
+  };
   // Tidy to grid: the selected widgets, or all of them when nothing is selected
   const tidySel = () => {
     const list = ed.sel.length ? ed.sel : d.widgets, nb = Widgets.tidy(list, U, Hh());
@@ -642,8 +676,29 @@ function renderEditor() {
     };
     window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
   };
+  // resizing the selection: a corner of the frame round several widgets. The box that holds them is resized (snapping like a single widget does); every widget scales with it.
+  const groupResize = (e, handle) => {
+    const rect = $('canvas').getBoundingClientRect(), k = U / rect.width, H = Hh();
+    const group = [...ed.sel], from = group.map(g => ({ x: g.x, y: g.y, w: g.w, h: g.h })), box0 = Widgets.bbox(from);
+    const others = d.widgets.filter(o => !group.includes(o)), sx = e.clientX, sy = e.clientY;
+    let moved = false; hist.hold();
+    const move = ev => {
+      const mode = !ed.snap ? false : (ev.ctrlKey || ev.metaKey) ? 'grid' : true;
+      const nb = Widgets.resizeWidget(box0, handle, (ev.clientX - sx) * k, (ev.clientY - sy) * k, others, U, H, mode, d.guides);
+      Widgets.scaleGroup(from, box0, nb, mode, U, H).forEach((q, i) => Object.assign(group[i], q));
+      ed.snapLines = Widgets.snapLines(Widgets.bbox(group), others, U, H, d.guides);
+      moved = true; mark(); drawCanvas();
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up);
+      ed.snapLines = null; if (moved) drawCanvas();
+      hist.release(); drawSide();
+    };
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+  };
   $('canvas').onpointerdown = e => {
     hist.release(); // what was changed before (typing, a slider) is a step of its own
+    if (e.target && e.target.dataset && e.target.dataset.gh && ed.sel.length > 1) { groupResize(e, e.target.dataset.gh); e.preventDefault(); return; }
     const el = e.target.closest('.lw');
     if (!el) { marquee(e); e.preventDefault(); return; }
     const w = d.widgets[Number(el.dataset.i)], handle = e.target.dataset.h || null;
@@ -681,6 +736,9 @@ function renderEditor() {
   if (side.addEventListener) side.addEventListener('toggle', ev => { const g = ev.target; if (g && g.dataset && g.dataset.side) { if (g.open) state.sideOpen.add(g.dataset.side); else state.sideOpen.delete(g.dataset.side); fitPanels(); } }, true);
   side.oninput = e => {
     const sel = ed.sel, t = e.target; if (!sel.length) return;
+    if (t.dataset.size) { const k = t.dataset.size, v = Number(t.value), H = Hh(); if (!Number.isFinite(v) || t.value === '') return; // the same width or height for all of them (1.47.0)
+      sel.forEach(g => { if (k === 'w') g.w = Math.max(Widgets.MIN, Math.min(U - g.x, v)); else g.h = Math.max(Math.min(Widgets.MIN, H), Math.min(H - g.y, v)); });
+      mark(); drawCanvas(); return; }
     if (t.dataset.geo && sel.length === 1) { const k = t.dataset.geo, v = Number(t.value), H = Hh(), w = sel[0]; if (!Number.isFinite(v) || t.value === '') return;
       if (k === 'x') w.x = Math.max(0, Math.min(U - w.w, v)); else if (k === 'y') w.y = Math.max(0, Math.min(H - w.h, v)); else if (k === 'w') w.w = Math.max(Widgets.MIN, Math.min(U - w.x, v)); else w.h = Math.max(Math.min(Widgets.MIN, H), Math.min(H - w.y, v));
       mark(); drawCanvas(); return; }
@@ -745,6 +803,7 @@ function renderEditor() {
       api.add('imagesets', set).then(async row => { ed.imageSets = await api.list('imagesets'); ed.sel.forEach(x => { x.opt = x.opt || {}; x.opt.imageSet = row.id; }); step(); redraw(); $('e-msg').textContent = `Saved as the set "${set.name}". You can rename it under Customization > Image Settings.`; });
       return;
     }
+    if (b.dataset && b.dataset.arr) { arrange(b.dataset.arr); return; }
     if (b.id === 's-del') removeSel();
     if (b.id === 's-dup') duplicateSel();
     if (b.id === 's-tidy' || b.id === 's-tidyall') tidySel();

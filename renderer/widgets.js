@@ -555,6 +555,73 @@
     });
   }
 
+  // ---- arranging several widgets (1.47.0) ----
+  // Each of these takes the widgets (anything with x, y, w, h) and gives back the new { x, y, w, h } for each one, in the same order. Nothing is changed in place.
+  // where: 'left' | 'center' | 'right' (across) or 'top' | 'middle' | 'bottom' (down); to: the box they line up with ({ x, y, w, h }: the selection's box, or the page for one widget)
+  function alignRects(list, where, to) {
+    return list.map(g => {
+      const q = { x: g.x, y: g.y, w: g.w, h: g.h };
+      if (where === 'left') q.x = to.x; else if (where === 'right') q.x = to.x + to.w - g.w; else if (where === 'center') q.x = r2(to.x + (to.w - g.w) / 2);
+      else if (where === 'top') q.y = to.y; else if (where === 'bottom') q.y = to.y + to.h - g.h; else if (where === 'middle') q.y = r2(to.y + (to.h - g.h) / 2);
+      return q;
+    });
+  }
+  // The same gap between neighbours: the first and the last (by place) stay, the ones between spread out. axis: 'x' (across) or 'y' (down).
+  // Gives null when the widgets are wider together than the room between the outer ones (there would be no gap).
+  function distributeRects(list, axis) {
+    const pos = axis === 'x' ? 'x' : 'y', size = axis === 'x' ? 'w' : 'h';
+    const order = list.map((g, i) => i).sort((a, b) => list[a][pos] - list[b][pos] || a - b);
+    if (order.length < 3) return list.map(g => ({ x: g.x, y: g.y, w: g.w, h: g.h }));
+    const first = list[order[0]], last = list[order[order.length - 1]];
+    const span = last[pos] + last[size] - first[pos], used = order.reduce((n, i) => n + list[i][size], 0), gap = (span - used) / (order.length - 1);
+    if (gap < 0) return null;
+    const out = list.map(g => ({ x: g.x, y: g.y, w: g.w, h: g.h }));
+    let at = first[pos];
+    order.forEach(i => { out[i][pos] = r2(at); at += list[i][size] + gap; });
+    return out;
+  }
+  // Mirrored places. kind: 'sel-x' left to right inside the box of the list, 'page-x' around the middle of the page, 'sel-y' top to bottom inside the box of the list
+  function mirrorRects(list, kind, W, H) {
+    const b = bbox(list);
+    return list.map(g => {
+      const q = { x: g.x, y: g.y, w: g.w, h: g.h };
+      if (kind === 'sel-x') q.x = r2(2 * b.x + b.w - g.x - g.w); else if (kind === 'page-x') q.x = r2(W - g.x - g.w); else if (kind === 'sel-y') q.y = r2(2 * b.y + b.h - g.y - g.h);
+      return q;
+    });
+  }
+  // A widget mirrored left to right also swaps its left and right text alignment (center stays) and flips its pictures when it has a Mirror setting.
+  // Gives only what changes: { titleAlign, valueAlign, opt } (opt is a complete new copy of the widget's settings).
+  const MIRROR_KEYS = ['carMirror', 'avatarMirror', 'flagMirror', 'imageMirror'];
+  function mirrorSettings(w) {
+    const d = def(w.type), out = {}, swap = a => (a === 'left' ? 'right' : a === 'right' ? 'left' : a);
+    if (!d.button) {
+      const t = titleAlignOf(w); if (t !== 'center') out.titleAlign = swap(t);
+      { const v = valueAlignOf(w); if (v !== 'center') out.valueAlign = swap(v); } // (a Leaderboard has no text alignment: valueAlignOf says center)
+    }
+    const keys = MIRROR_KEYS.filter(k => (d.options || []).some(o => o.key === k));
+    if (keys.length) { out.opt = { ...(w.opt || {}) }; keys.forEach(k => { out.opt[k] = !out.opt[k]; }); }
+    return out;
+  }
+  // Resizing several widgets at once: the box that held them (box0) became nb; every widget keeps its place in it (its edges scale with the box).
+  // An edge that was the edge of the box goes exactly where the box's edge went (so a magnet or a guideline stays exact); the others go to the grid when snapping (snap is true or 'grid') or to whole units.
+  function scaleGroup(from, box0, nb, snap, W, H) {
+    const sx = box0.w > 0 ? nb.w / box0.w : 1, sy = box0.h > 0 ? nb.h / box0.h : 1;
+    const edge = (v, lo, newLo, scale) => {
+      if (v === lo) return newLo;
+      if (v === lo + (scale === sx ? box0.w : box0.h)) return newLo + (scale === sx ? nb.w : nb.h);
+      if (scale === 1) return newLo + (v - lo); // (this way is not resized: the widgets are not moved to the grid)
+      const at = newLo + (v - lo) * scale;
+      return snap ? Math.round(at / GRID) * GRID : Math.round(at);
+    };
+    return from.map(g => {
+      let l = edge(g.x, box0.x, nb.x, sx), r = edge(g.x + g.w, box0.x, nb.x, sx), t = edge(g.y, box0.y, nb.y, sy), b = edge(g.y + g.h, box0.y, nb.y, sy);
+      l = clamp(l, 0, W); r = clamp(r, 0, W); t = clamp(t, 0, H); b = clamp(b, 0, H);
+      if (r - l < MIN) { if (l + MIN <= W) r = l + MIN; else l = r - MIN; }
+      if (b - t < MIN) { if (t + MIN <= H) b = t + MIN; else t = b - MIN; }
+      return { x: r2(l), y: r2(t), w: r2(r - l), h: r2(b - t) };
+    });
+  }
+
   const newWidget = (type, lane, x, y) => {
     const d = def(type);
     return { id: uid(), type, lane: d.perLane ? lane || 0 : null, x, y, w: d.w, h: d.h, textSize: '', textColor: '', bgColor: '', title: '', showTitle: !d.noTitle, titleSize: '', titleBold: false, titleSpace: false, valueBold: true, valueItalic: false, opt: {} };
@@ -626,7 +693,7 @@
     return L;
   }
 
-  const api = { heatListHtml, HEATLIST_OPTIONS, tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, flagImgHtml, avatarHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, MAG, LANES, bbox, colorsOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, ALIGNS, titleAlignOf, valueAlignOf, alignClassOf, lapCountOf, lapTotalOn, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, resolveOpt, heightOf, withoutControls, moveWidget, resizeWidget, snapLines, tidy, newWidget, defaultLayout };
+  const api = { heatListHtml, HEATLIST_OPTIONS, tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, flagImgHtml, avatarHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, MAG, LANES, bbox, colorsOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, ALIGNS, titleAlignOf, valueAlignOf, alignClassOf, lapCountOf, lapTotalOn, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, resolveOpt, heightOf, withoutControls, moveWidget, resizeWidget, snapLines, tidy, alignRects, distributeRects, mirrorRects, mirrorSettings, MIRROR_KEYS, scaleGroup, newWidget, defaultLayout };
   root.Widgets = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

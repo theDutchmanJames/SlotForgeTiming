@@ -252,6 +252,14 @@ const Help = (() => {
           <li><b>Arrange</b> (side panel): <b>Tidy to grid</b> moves every edge of the selected widgets to the nearest grid line, so widgets that touch keep touching. With nothing selected the button is <b>Tidy all widgets to the grid</b>. Undo puts them back.</li>
           <li>Select several widgets with Shift-click or a rectangle, or all with Ctrl+A. <b>Duplicate</b> makes copies for the next lane.</li>
         </ul>` },
+      { id: 'arranging', title: 'Arranging several widgets', note: 'Align, spread out, one size, mirror and resize in the Layout Editor', body: `
+        <ul>
+          <li>Select several widgets (Shift-click, a rectangle, or Ctrl+A). In <b>Arrange</b> (side panel): <b>Align</b> to the selection (one widget aligns with the page), <b>Spread out evenly</b> across or down (three or more; the outer two stay) and <b>Width</b> and <b>Height</b> to give them all one size.</li>
+          <li>A dashed frame with four corner handles shows round the selection. Drag a corner to <b>resize them all together</b>: every widget scales with the frame. It snaps like a single widget does (Ctrl: the grid only).</li>
+          <li><b>Mirror</b>: <b>In the selection</b> swaps left and right inside the frame, <b>Flip top to bottom</b> does the same up and down, <b>Across the page</b> moves each widget to the other side of the middle of the page. Made copies for the next lane with <b>Duplicate</b>? Select them and mirror them across the page for a symmetrical layout.</li>
+          <li>Mirroring left to right also swaps left and right text alignment and flips the pictures that have a Mirror setting (slotcar picture, avatar, race flag).</li>
+          <li>Each action is one step: <b>Undo</b> brings everything back.</li>
+        </ul>` },
       { id: 'delta', title: 'Delta Timers', note: 'How far a lane is from another time', body: `
         <ul>
           <li>A folder of widgets in the Layout Editor: a time on the left and a badge on the right that shows how far a lane is from another time. Green with ▲ and a minus (▲ −0.045) is faster, red with ▼ and a plus (▼ +0.321) is slower. <b>Value and badge</b> can put them <b>top and bottom</b> instead: the time on top, the badge below it.</li>

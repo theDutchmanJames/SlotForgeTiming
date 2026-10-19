@@ -2570,3 +2570,17 @@ Good to know:
 2. The magnet is still there (3 units): an edge that is not on the grid, as in the default layout, still pulls a widget that comes close. Hold Ctrl or tidy the layout when you want the grid.
 3. Coming next (1.47.0): align and distribute, resizing several widgets at once and mirroring a copy for the other side of the page.
 4. Not verified in the full Electron window (the real editor was driven with the mouse in a browser, with the real stylesheet).
+
+## What to try (1.47.0): arranging several widgets (align, spread out, one size, mirror, resize together)
+
+1. **Customization > Layout Editor**: select several widgets (Shift-click, drag a rectangle, or Ctrl+A). Open **Arrange** in the side panel. **Align** Left / Center / Right / Top / Middle / Bottom lines them up with the box that holds the selection; with **one** widget selected it lines up with the page (center a widget with one click). **Spread out evenly** (three or more) puts the same gap between them, across or down; the outer two stay where they are. **Same size for all**: type a Width or Height and every selected widget gets it (a widget stops at the edge of the page).
+2. A dashed blue **frame with four handles** is drawn round the selection. Drag a corner: **all the widgets are resized together**, each keeping its place in the frame. It snaps like one widget does: to the grid and the magnets, **Ctrl** (Cmd) for the grid only, pink lines when an edge lines up.
+3. **Mirror**: **In the selection** swaps left and right inside the frame (a row that reads A B C becomes C B A), **Flip top to bottom** does the same up and down, **Across the page** moves each widget to the other side of the middle of the page. For a symmetrical layout: select a lane's widgets, press **Duplicate** (copies for the next lane), then **Across the page**.
+4. Mirroring left to right (the first and the third) also **swaps left and right text alignment** (a title on the left goes right; text in the center stays) and **flips the pictures** of the slotcar picture, the avatar and the race flag (their Mirror setting). Mirror twice and you are back where you started.
+5. Each of these is one step: **Undo** brings it all back.
+
+Good to know:
+1. Several widgets are resized with the frame by scaling their edges: an edge that is the edge of the frame goes exactly where the frame's edge went, the others go to the grid (to whole units with Snap off). Text sizes are not changed (they follow the widget as before). A widget never gets smaller than 5 units or leaves the page.
+2. Align to the center can give a half unit (a widget of 51 is placed at 474.5); **Tidy to grid** puts it on the grid if you want that.
+3. The widgets on the layout do not have to be in a row: **Spread out** looks at their places (left to right, or top to bottom) and keeps the order. It says so when the widgets are wider together than the room between the outer two.
+4. Not verified in the full Electron window (the real editor was driven with the mouse in a browser, with the real stylesheet).
