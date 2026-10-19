@@ -12,6 +12,7 @@
   const Bo = typeof module !== 'undefined' ? require('./boardorder.js') : root.BoardOrder; // the order of a leaderboard (Order by)
   const Ww = typeof module !== 'undefined' ? require('./weatherwidgets.js') : root.WxW; // the weather widgets: Tyres, Weather Forecast, Track Conditions (the options, the samples)
   const Tyw = typeof module !== 'undefined' ? require('./tyrewidgets.js') : root.TyreWidgets; // the Tyre Degradation widget (1.40.0: the options, the sample)
+  const Pw = typeof module !== 'undefined' ? require('./pacewidgets.js') : root.PaceW; // the Pace meter widget (1.54.0: the options, the sample)
   const Re = typeof module !== 'undefined' ? require('./engine.js') : root.RaceEngine; // the one way a time is written
   const Ds = typeof module !== 'undefined' ? require('./distance.js') : root.Distance; // Distance Racing: the distance widgets (the options, the words)
   const NAMES = ['Alex', 'Sam', 'Kim', 'Lee', 'Max', 'Zoe'];
@@ -207,7 +208,8 @@
     { key: 'colLast', classic: true, label: 'Last lap', type: 'checkbox', default: false },
     { key: 'colCurrent', classic: true, label: 'Current lap time', type: 'checkbox', default: false },
     { key: 'colFuel', classic: true, label: 'Fuel left', type: 'checkbox', default: false },
-    { key: 'colTyres', classic: true, label: 'Tyre life (a race with a Tyre Wear System)', type: 'checkbox', default: false }
+    { key: 'colTyres', classic: true, label: 'Tyre life (a race with a Tyre Wear System)', type: 'checkbox', default: false },
+    { key: 'colPace', classic: true, label: 'Pace: PUSH, NORMAL or SAVE (a race with a Push and Save System)', type: 'checkbox', default: false }
   ];
   const optOf = (o, key) => { const d = LEADER_OPTIONS.find(x => x.key === key); return o && o[key] !== undefined ? o[key] : d.default; };
   // rows: [{ pos, flag, name, nickname, callsign, laps, best, last, current, gap, color, bg }] (already formatted text)
@@ -215,8 +217,8 @@
     const on = k => optOf(opt, k), by = on('driverBy');
     const cols = [['Pos', 'pos', true], ['', 'flag', on('colFlag')], ['Driver', by, true], ['Callsign', 'callsign', on('colCallsign') && by !== 'callsign'],
       ['Nickname', 'nickname', on('colNickname') && by !== 'nickname'], ['Laps', 'laps', on('colLaps')], ['Best', 'best', on('colBest')],
-      ['Last', 'last', on('colLast')], ['Current', 'current', on('colCurrent')], ['Fuel', 'fuel', on('colFuel')], ['Tyres', 'tyres', on('colTyres')], ['Gap', 'gap', on('colGap')]].filter(c => c[2]);
-    const cell = (r, k) => k === 'flag' ? (r.flag ? `<span class="fi fi-${esc(String(r.flag).toLowerCase())}"></span>` : '') : k === 'tyres' ? (r.tyres || '–') : esc(r[k]); // (tyres: the cell that tyrewidgets.js made, already safe)
+      ['Last', 'last', on('colLast')], ['Current', 'current', on('colCurrent')], ['Fuel', 'fuel', on('colFuel')], ['Tyres', 'tyres', on('colTyres')], ['Pace', 'pace', on('colPace')], ['Gap', 'gap', on('colGap')]].filter(c => c[2]);
+    const cell = (r, k) => k === 'flag' ? (r.flag ? `<span class="fi fi-${esc(String(r.flag).toLowerCase())}"></span>` : '') : k === 'tyres' ? (r.tyres || '–') : k === 'pace' ? (r.pace || '–') : esc(r[k]); // (tyres and pace: the cells that tyrewidgets.js and pacewidgets.js made, already safe)
     return `<table class="lb">${rows.map(r => `<tr${cssVal(r.bg) || cssVal(r.color) ? ` style="${cssVal(r.bg) ? 'background:' + cssVal(r.bg) + ';' : ''}${cssVal(r.color) ? 'color:' + cssVal(r.color) : ''}"` : ''}>${cols.map(c => `<td class="lb-${c[1]}">${cell(r, c[1])}</td>`).join('')}</tr>`).join('')}</table>`;
   }
 
@@ -466,6 +468,7 @@
     // ---- Tyres ----
     T('tyre', 'Current Tyres', 'Tyres', { title: 'Tyres', perLane: true, w: 140, h: 80, textSize: 22, options: Ww.TYRE_OPTIONS, sample: (l, w) => Ww.tyreSample(l, (w && w.opt) || {}) }),
     T('tyrelife', 'Tyre Degradation', 'Tyres', { title: 'Tyres', perLane: true, w: 160, h: 170, textSize: 22, options: Tyw.OPTIONS, sample: (l, w) => Tyw.sample(l, w) }), // (1.40.0: how much life the tyres of the car have left, see tyrewidgets.js)
+    T('pace', 'Pace meter', 'Tyres', { title: 'Pace', perLane: true, w: 170, h: 100, textSize: 22, options: Pw.OPTIONS, sample: (l, w) => Pw.sample(l, w) }), // (1.54.0: how hard the car is driven and what it does to the tyres and the fuel, see pacewidgets.js)
     T('tyresets', 'Available Tyres', 'Tyres', { title: 'Available tyres', perLane: true, w: 360, h: 90, textSize: 20, options: Tyw.SETS_OPTIONS, sample: (l, w) => Tyw.setsSample(l, w) }), // (1.41.0: the sets that are left of every tyre, see tyrewidgets.js)
     // ---- Weather ----
     T('wxforecast', 'Weather Forecast', 'Weather', { title: 'Weather', w: 240, h: 80, options: Ww.FORECAST_OPTIONS, sample: (l, w) => Ww.forecastSample((w && w.opt) || {}) }),

@@ -13,6 +13,7 @@ const DIST = (extra = {}) => [{ sessionType: ['race'], raceBy: ['distance'], ...
 const Wx = require('./renderer/weather.js'); // the tyres, the standard settings and the hindrance table of a weather system (one place for them)
 const Tw = require('./renderer/tyrewear.js'); // the standard numbers of a tyre wear system (one place for them)
 const Sc = require('./renderer/safetycar.js'); // the standard numbers of a safety car system (one place for them)
+const Ps = require('./renderer/pushsave.js'); // the standard numbers and the ready-made systems of a push and save system (one place for them)
 // the 12 numbers of the hindrance table of a weather system: the weather state by the kind of tyre
 const WX_TABLE = [];
 Wx.STATES.forEach(([state, stateName]) => Wx.CLASSES.forEach(cls => WX_TABLE.push({ key: Wx.HKEYS[state + '/' + cls], group: 'hinder', type: 'number', min: 0, default: Wx.TABLE[state][cls],
@@ -126,7 +127,7 @@ module.exports = {
       { id: 'length', title: 'Length and result', note: 'Laps or time, heats, how the race ends and is counted', open: true },
       { id: 'endurance', title: 'Endurance: driver swaps', note: 'When a team swaps drivers in the pits, who steps in, and what a swap that is not made costs' },
       { id: 'start', title: 'Start', note: 'Start lights, restarts and the first lap' },
-      { id: 'rules', title: 'Racing Systems', note: 'The penalty, damage, fuel, tyre wear, weather and safety car systems, Balance of Power and the pit stop sensor' },
+      { id: 'rules', title: 'Racing Systems', note: 'The penalty, damage, fuel, tyre wear, weather, safety car and push and save systems, Balance of Power and the pit stop sensor' },
       { id: 'yellow', title: 'Yellow flag', note: 'A target lap time while the yellow flag is up (not used when the race has a safety car system)' },
       { id: 'pads', title: 'Adjust pads', note: 'The values on the Adjust pads for this race setup. An empty field uses the values from App Settings, Race Director.' },
       { id: 'screens', title: 'Screens and sound', note: 'Timing page layouts and the audio set' },
@@ -289,6 +290,8 @@ module.exports = {
         hint: 'Tyres that wear out during the race and a fresh set in every pit stop. Make tyre wear systems under Race Setup > Tyre Wear Systems. Every heat starts on fresh tyres. A race (a number of laps or a duration) always has it; practice and qualifying only when the system says so. Helping and hindering the car needs a Fuel setup above; the rule at 0% and the display do not.' },
       { key: 'safetyCar', group: 'rules', label: 'Safety car system', type: 'ref', ref: 'safetycarsystems', blank: 'No safety car', showIf: RACING,
         hint: 'The Safety Car is out while the yellow flag is up. The system sets how slowly the cars must drive (a lap that is too fast gets penalty points) and how much shorter the work in a pit stop is. Make safety car systems under Race Setup > Safety Car Systems. It replaces the Yellow flag settings below.' },
+      { key: 'pushSave', group: 'rules', label: 'Push and save system', type: 'ref', ref: 'pushsavesystems', blank: 'No push and save', showIf: RACING,
+        hint: 'How hard a driver drives changes how fast the tyres and the fuel are used up: pushing wears more, saving wears less. A lap is compared with the driver\'s best lap on the track (the records; without one, his best lap so far in the race). Make push and save systems under Race Setup > Push and Save Systems. Works on top of a Tyre wear system and a Fuel setup above; with a push and save system chosen, the Fuel setup\'s target lap time, most extra fuel and most saving are not used.' },
       { key: 'pitHold', group: 'rules', label: 'Pit stop: the sensor must be blocked this long to start a stop (seconds)', type: 'number', default: 2, showIf: RACING },
       { key: 'yellowTarget', group: 'yellow', label: 'Yellow flag: target lap time (seconds, 0 = none)', type: 'number', default: 0, min: 0, showIf: NO_SAFETYCAR,
         hint: 'While the yellow flag is up, drivers must drive slower than this. Say your normal lap is 7.500 and you set 15.000: a full lap under yellow that is faster than 15.000 is a lap that was too fast, and it is called out. A lap that was partly before the yellow flag does not count. 0 means no target.' },
@@ -343,7 +346,7 @@ module.exports = {
       { key: 'name', group: 'basics', label: 'Name', type: 'text' },
       { key: 'tank', group: 'basics', label: 'Tank size (litres)', type: 'number', default: 120 },
       { key: 'perLap', group: 'basics', label: 'Fuel used per lap at the target lap time (litres)', type: 'number', default: 2 },
-      { key: 'targetLap', group: 'basics', label: 'Target lap time (seconds)', type: 'number', optional: true, hint: 'A lap at the target time uses the amount above. Faster laps use more, slower laps less. Empty = every lap uses the same.' },
+      { key: 'targetLap', group: 'basics', label: 'Target lap time (seconds)', type: 'number', optional: true, hint: 'A lap at the target time uses the amount above. Faster laps use more, slower laps less. Empty = every lap uses the same. Not used in a race that has a Push and save system: that uses the pace against the driver\'s best lap instead.' },
       { key: 'empty', group: 'empty', label: 'When the fuel runs out', type: 'select', default: 'retire',
         options: [['retire', 'The car retires from the race'], ['stop', 'Laps stop counting until it has refuelled'], ['warn', 'The car carries on (a penalty system can add points for it)']] },
       { key: 'rate', group: 'empty', label: 'Refuelling speed in the pits (litres per second)', type: 'number', default: 10 },
@@ -478,6 +481,40 @@ module.exports = {
         hint: 'Given to the driver for every full lap behind the Safety Car that is faster than the limit. It needs a penalty system (Racing Systems of the race setup); without one the lap is only called out and marked in the lap review. 0 gives no points. Not used without a limit above.' },
       { key: 'pitPercent', group: 'pit', label: 'The work in a pit stop takes less time by (percent)', type: 'number', min: 0, max: Sc.MAX_PIT, default: Sc.DEFAULTS.pitPercent,
         hint: 'Refuelling, a repair and changing tyres take this many percent less time when the car comes into the pits while the Safety Car is out. 50 makes a 10 second tyre change 5 seconds. Fixed when the car comes in, so a Safety Car that goes in while the car is in the pits changes nothing for that stop. Driver swaps, a penalty that is served in the pits and the pit hold time are not shortened. 0 changes nothing.' }
+    ]
+  },
+  // Push and save systems (1.54.0): how hard a driver drives (the lap time against his best lap) changes how fast his tyres and his fuel are used up. Chosen per race setup (Racing Systems). See pushsave.js.
+  pushsavesystems: {
+    label: 'Push and save system', plural: 'Push and save systems', title: ['name'], extra: false, linked: false, list: ['name', 'normal', 'saveAt'], card: ['normal', 'saveAt'],
+    groups: [
+      { id: 'basics', title: 'Basics', note: 'Name, and a ready-made system to start from', open: true },
+      { id: 'pace', title: 'Pace', note: 'What counts as normal pace and as the most saving pace (percent over the best lap)', open: true },
+      { id: 'wear', title: 'Wear', note: 'How much more or less the tyres and the fuel are used up when pushing and when saving', open: true },
+      { id: 'laps', title: 'Which laps count', note: 'The start of the race, very slow laps and the yellow flag' }
+    ],
+    fields: [
+      { key: 'name', group: 'basics', label: 'Name', type: 'text' },
+      { key: 'presets', group: 'basics', label: 'Start from', type: 'pspresets' },
+      { key: 'normal', group: 'pace', label: 'Normal pace: the best lap plus (%)', type: 'number', min: 0, max: 50, default: Ps.DEFAULTS.normal,
+        hint: 'A lap this much slower than the driver\'s best lap is a normal race lap: the usual wear. Faster is pushing, slower is saving. Driving at the best lap itself (flat out) wears the most. 3 means a driver with a best lap of 10.000 is at normal pace on 10.300.' },
+      { key: 'saveAt', group: 'pace', label: 'Most saving pace: the best lap plus (%)', type: 'number', min: 1, max: 100, default: Ps.DEFAULTS.saveAt,
+        hint: 'From this pace on (and for slower laps) the wear is as low as it gets. In between normal pace and this pace the wear goes down in a straight line. Must be more than the normal pace (otherwise it is made 1 more).' },
+      { key: 'tyres', group: 'wear', label: 'The pace changes the tyre wear', type: 'select', default: Ps.DEFAULTS.tyres, options: [['on', 'Yes'], ['off', 'No: the tyres wear as usual']] },
+      { key: 'tyreExtra', group: 'wear', label: 'Tyres: wear when flat out is more by (%)', type: 'number', min: 0, max: 500, default: Ps.DEFAULTS.tyreExtra, showIf: [{ tyres: ['on'] }],
+        hint: 'A lap at the best lap wears the tyres this many percent more than the Tyre wear system says. 40 makes 4.5% a lap 6.3% a lap. It needs a Tyre wear system in the race setup.' },
+      { key: 'tyreSave', group: 'wear', label: 'Tyres: wear at the most saving pace is less by (%)', type: 'number', min: 0, max: 90, default: Ps.DEFAULTS.tyreSave, showIf: [{ tyres: ['on'] }],
+        hint: 'A lap at the most saving pace (or slower) wears the tyres this many percent less.' },
+      { key: 'fuel', group: 'wear', label: 'The pace changes the fuel use', type: 'select', default: Ps.DEFAULTS.fuel, options: [['on', 'Yes'], ['off', 'No: the fuel is used as usual']] },
+      { key: 'fuelExtra', group: 'wear', label: 'Fuel: use when flat out is more by (%)', type: 'number', min: 0, max: 500, default: Ps.DEFAULTS.fuelExtra, showIf: [{ fuel: ['on'] }],
+        hint: 'A lap at the best lap uses this many percent more than the litres per lap of the Fuel setup. It needs a Fuel setup in the race setup, which then uses this instead of its own target lap time, most extra and most saving.' },
+      { key: 'fuelSave', group: 'wear', label: 'Fuel: use at the most saving pace is less by (%)', type: 'number', min: 0, max: 90, default: Ps.DEFAULTS.fuelSave, showIf: [{ fuel: ['on'] }],
+        hint: 'A lap at the most saving pace (or slower) uses this many percent less.' },
+      { key: 'from', group: 'laps', label: 'The effect starts at lap', type: 'number', min: 1, max: 100, default: Ps.DEFAULTS.from,
+        hint: 'The first laps of a race are not typical (the cars are bunched up, and without a record there is no best lap yet). Laps before this one wear as usual.' },
+      { key: 'slow', group: 'laps', label: 'A lap slower than this is not pace (% of the best lap)', type: 'number', min: 101, max: 1000, default: Ps.DEFAULTS.slow,
+        hint: 'A lap like a deslot, a long stop or a car that was picked up takes much longer than a driver\'s pace: it wears as usual. 150 means slower than 1.5 times the best lap.' },
+      { key: 'yellowSave', group: 'laps', label: 'Laps under the yellow flag or the Safety Car', type: 'select', default: Ps.DEFAULTS.yellowSave, options: [['on', 'Count as saving (a slow lap there is saving)'], ['off', 'Count like any other lap']],
+        hint: 'Behind the Safety Car the cars drive slowly on purpose. As saving, that wears less, and the very slow lap limit above does not apply to a full lap under the yellow flag.' }
     ]
   },
   // Weather systems: a spell of rain with a forecast, the tyres to change in the pits, and what the wrong tyres cost. Chosen per race setup.

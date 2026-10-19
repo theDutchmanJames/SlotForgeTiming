@@ -5,7 +5,7 @@ const W = Wd.U, H = 562;
 const box = (x, y, w, h) => ({ x, y, w, h });
 
 // registry
-ok('69 widgets in the register (1.43.0: Car Failure; 1.41.0: Available Tyres; 1.40.0: Tyre Degradation; 1.35.1: Swap Signal; 1.35.0: Distance Driven, Distance To Go, Laps To Go; 1.29.0: Lap to Lap Delta; 1.10.0: Damage, Repair Timer; 1.3.0: Balance of Power; 1.5.0: Tyres, Weather Forecast, Track Conditions; 1.7.0: Heat List; 1.8.0: Team Name, Team Picture; 1.9.0: Current Driver, Next Driver, Swap Timer)', Wd.REGISTRY.length === 69 && new Set(Wd.REGISTRY.map(d => d.type)).size === 69);
+ok('70 widgets in the register (1.54.0: Pace meter; 1.43.0: Car Failure; 1.41.0: Available Tyres; 1.40.0: Tyre Degradation; 1.35.1: Swap Signal; 1.35.0: Distance Driven, Distance To Go, Laps To Go; 1.29.0: Lap to Lap Delta; 1.10.0: Damage, Repair Timer; 1.3.0: Balance of Power; 1.5.0: Tyres, Weather Forecast, Track Conditions; 1.7.0: Heat List; 1.8.0: Team Name, Team Picture; 1.9.0: Current Driver, Next Driver, Swap Timer)', Wd.REGISTRY.length === 70 && new Set(Wd.REGISTRY.map(d => d.type)).size === 70);
 ok('every widget has sample content', Wd.REGISTRY.every(d => d.type === 'gap' ? true : String(Wd.sampleOf(d, 0)).length > 0));
 ok('lane widgets are marked per lane', Wd.def('bestlap').perLane && !Wd.def('clock').perLane && !Wd.def('start').perLane);
 ok('lap time widget has hold time and highlight colours', Wd.def('laptime').options.map(o => o.key).join() === 'holdSeconds,pbColor,recordColor');
@@ -240,7 +240,7 @@ ok('widget names and folders as chosen (11 folders, the Slotcar folder holds the
   'Position and Progress': ['Position in Race', 'Gap to Leader', 'Lap Number', 'Laps To Go', 'Distance Driven', 'Distance To Go', 'Championship Points'],
   'Lap Times and Records': ['Current Lap Time', 'Lap Times List', 'Best Lap (this session)', 'Average Lap', 'Median Lap', 'Pitstop Time', 'Personal Best Lap', 'Session Record Lap', 'Track Record'],
   'Delta Timers': ['Lap Time Delta', 'Lap to Lap Delta', 'Average Lap Delta', 'Median Lap Delta', 'Best Lap Delta', 'Personal Best Delta', 'Pitstop Time Delta', 'Session Record Delta', 'Track Record Delta'],
-  Tyres: ['Current Tyres', 'Tyre Degradation', 'Available Tyres'],
+  Tyres: ['Current Tyres', 'Tyre Degradation', 'Pace meter', 'Available Tyres'],
   Weather: ['Weather Forecast', 'Track Conditions'],
   Controls: ['Start Button', 'Pause / Resume Button', 'Stop Button', 'Yellow Flag Button', 'Red Flag Button'] }); })());
 ok('renamed widgets keep the title they showed in existing layouts', Wd.titleOf({ type: 'bestlap', title: '' }) === 'Best lap' && Wd.titleOf({ type: 'fuel', title: '' }) === 'Fuel' && Wd.titleOf({ type: 'position', title: '' }) === 'Position' && Wd.titleOf({ type: 'sessionrecord', title: '' }) === 'Session record lap');
@@ -248,11 +248,11 @@ ok('1.42.1: the 19 widgets with a new name show the title they showed before (so
   const want = { nickname: 'Nickname', name: 'Name', callsign: 'Callsign', avatar: 'Avatar', swaptimer: 'Swap timer', swapsignal: 'Swap signal', carname: 'Slotcar', lap: 'Lap', laptime: 'Lap time', lastlap: 'Last lap', recordlap: 'Record lap time', dlaptime: 'Laptime delta', racelaps: 'Race laps', tyre: 'Tyres', start: 'Start', pause: 'Pause / Resume', stop: 'Stop', yellow: 'Yellow flag', red: 'Red flag' };
   return Object.keys(want).every(t => Wd.titleOf({ type: t, title: '' }) === want[t]) && Object.keys(want).length === 19;
 })());
-ok('1.42.1: every folder of the Add widget list is in the fixed order of the palette (none lands at the end), and there are 69 widgets', (() => {
+ok('1.42.1: every folder of the Add widget list is in the fixed order of the palette (none lands at the end), and there are 70 widgets', (() => {
   const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'renderer', 'editor.js'), 'utf8');
   const order = (src.match(/const GROUP_ORDER = \[([^\]]*)\]/) || [, ''])[1].split(',').map(x => x.trim().replace(/^'|'$/g, '')).filter(Boolean);
   const groups = [...new Set(Wd.REGISTRY.map(d => d.group))];
-  return Wd.REGISTRY.length === 69 && groups.every(g => order.includes(g)) && order.join() === 'Race,Driver,Slotcar,Team and Swaps,Position and Progress,Lap Times and Records,Delta Timers,Tyres,Weather,Custom,Controls'
+  return Wd.REGISTRY.length === 70 && groups.every(g => order.includes(g)) && order.join() === 'Race,Driver,Slotcar,Team and Swaps,Position and Progress,Lap Times and Records,Delta Timers,Tyres,Weather,Custom,Controls'
     && groups.join() === order.filter(g => groups.includes(g)).join();
 })());
 // groups

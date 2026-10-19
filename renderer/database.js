@@ -126,7 +126,7 @@ const VIEW_ENTITIES = ['tracks', 'drivers', 'teams', 'slotcars']; // the pages w
 const hue = t => { let n = 0; for (const ch of t) n = (n * 31 + ch.charCodeAt(0)) % 360; return `hsl(${n} 45% 40%)`; }; // (the colour of a picture's placeholder, from the name)
 // The picture of a card that has none. On the Race Setup pages it is the icon of the system or setup, in the colour of its sub-tab (1.47.1: the same icon and colour as its button
 // in the strip: see SETUP_GROUPS in editor.js); on every other page it is the first letter of the name on a colour made from the name.
-const SETUP_LOOK = { racesetups: ['racesetups', 'race'], penaltysystems: ['penalty', 'pen'], damagesystems: ['damage', 'dmg'], tyrewearsystems: ['tyre', 'tyre'], safetycarsystems: ['safetycar', 'sc'], weathersystems: ['weather', 'wx'], fuelrules: ['fuel', 'fuel'] };
+const SETUP_LOOK = { racesetups: ['racesetups', 'race'], penaltysystems: ['penalty', 'pen'], damagesystems: ['damage', 'dmg'], tyrewearsystems: ['tyre', 'tyre'], safetycarsystems: ['safetycar', 'sc'], pushsavesystems: ['pushsave', 'ps'], weathersystems: ['weather', 'wx'], fuelrules: ['fuel', 'fuel'] };
 const noPicture = (e, t) => { const l = SETUP_LOOK[e]; return l ? `<span class="ph phicon ss-${l[1]}">${Icons.svg(l[0], { size: 72, stroke: 1.4 })}</span>` : `<span class="ph" style="background:${hue(t)}">${esc((t.trim()[0] || '?').toUpperCase())}</span>`; };
 // The windows that open from a Race Setup page (the form, the extra fields) have the colour of that sub-tab too (1.47.2): the class puts the colour on the folders, the Save button and the options in it (styles.css, .setupform).
 const setupToneClass = e => (SETUP_LOOK[e] ? ` setupform ss-${SETUP_LOOK[e][1]}` : '');
@@ -334,6 +334,8 @@ const twCurve = (tyres, sel) => { const ty = Wx.tyreOf(sel) || Wx.TYRES[0], t = 
 const twTable = (tyres, unit, sel) => `<div class="twbtns row"><span class="muted">Start from a ready-made system (you can change every number):</span> ${TyreWear.PRESET_KEYS.map(k => `<button type="button" class="btn" data-twpreset="${k}" title="${esc(TyreWear.PRESETS[k].note)}">${esc(TyreWear.PRESETS[k].name)}</button>`).join(' ')}</div>
   <p class="muted">Standard is in between, Sprint wears the tyres quickly (short races, many stops) and Endurance wears them slowly.</p>
   <div class="twtable" id="tw-table">${twHead(unit)}${twRows(tyres, unit, sel)}</div><div id="tw-curve">${twCurve(tyres, sel)}</div>`;
+// the ready-made push and save systems (field type 'pspresets', 1.54.0): a button for each that fills in the four wear numbers
+const psPresets = () => `<div class="twbtns row"><span class="muted">Start from a ready-made system (you can change every number):</span> ${PushSave.PRESET_KEYS.map(k => `<button type="button" class="btn" data-pspreset="${k}" title="${esc(PushSave.PRESETS[k].note)}">${esc(PushSave.PRESETS[k].name)}</button>`).join(' ')}</div><p class="muted">Standard is in between, Gentle changes the wear a little and Strong makes pushing expensive and saving worth it. They set the four wear numbers below.</p>`;
 // the weather table of a tyre wear system (field type 'wxmult'): how much more or less every kind of tyre wears in every weather
 const twMult = mult => `<div class="twtable twmult"><div class="twrow twhead muted"><span>Weather</span><span>Dry tyres (Hard, Medium, Soft, Supersoft)</span><span>Intermediate</span><span>Wet</span></div>`
   + Wx.STATES.map(([st, name]) => `<div class="twrow"><span class="twname"><strong>${esc(name)}</strong></span>` + Wx.CLASSES.map(c => `<label class="twx"><small>${c === 'dry' ? 'Dry tyres' : c === 'inter' ? 'Intermediate' : 'Wet'}</small><input type="number" step="any" min="0" max="20" data-twm="${st}" data-twmc="${c}" value="${esc(mult[st] && mult[st][c] !== undefined ? mult[st][c] : '')}" aria-label="${esc(name)} weather, ${c === 'dry' ? 'dry' : c === 'inter' ? 'Intermediate' : 'Wet'} tyres: times the wear"><span>&times;</span></label>`).join('') + '</div>').join('') + '</div>'
@@ -375,6 +377,7 @@ function fieldHtml(f, v, extra) {
     case 'tyretable': inp = `<div id="tw-box">${twTable((extra && extra.twt) || {}, (extra && extra.twunit) || 'lap', (extra && extra.twsel) || 'S')}</div>`; break; // (1.40.0)
     case 'wxmult': inp = `<div id="tw-mult">${twMult((extra && extra.twm) || {})}</div>`; break;
     case 'tyresets': inp = twSets((extra && extra.tws) || {}); break; // (1.41.0)
+    case 'pspresets': inp = psPresets(); break; // (1.54.0)
     case 'carstat': inp = `<input id="${id}" type="text" value="${esc(v ?? '')}" disabled>`; break; // (1.30.0: a figure worked out for the form, such as the Mileage of a slotcar; the screen fills it in)
     case 'cartracks': inp = `<div id="${id}" class="svc-tracks-box"></div>`; break; // (1.33.0: the table of the tracks of a slotcar; the screen fills it in)
     case 'members': inp = `<div id="mem-box">${memRows((extra && extra.members) || [], state.refs[f.ref] || [])}</div>`; break;
@@ -386,7 +389,7 @@ function fieldHtml(f, v, extra) {
     inp = f.type === 'datetime' ? `<input id="${id}" type="text" value="${esc(v ? plainDate(v) : 'Never')}" disabled>` : `<input id="${id}" type="number" value="${esc(v ?? 0)}" disabled>`;
     if (f.reset) inp = `<div class="imgrow">${inp}<button type="button" class="btn" data-svcreset="1">Reset</button></div>`;
   }
-  const wide = ['longtext', 'gallery', 'tracklength', 'image', 'penaltytypes', 'damagelevels', 'damageincidents', 'carfailures', 'tyretable', 'wxmult', 'tyresets', 'members', 'cartracks'].includes(f.type) ? ' full' : '';
+  const wide = ['longtext', 'gallery', 'tracklength', 'image', 'penaltytypes', 'damagelevels', 'damageincidents', 'carfailures', 'tyretable', 'wxmult', 'tyresets', 'pspresets', 'members', 'cartracks'].includes(f.type) ? ' full' : '';
   return `<div class="field${wide}" data-key="${f.id}">${lab}${inp}${fh(f) ? `<span class="muted hint">${esc(fh(f))}</span>` : ''}${f.reset ? '<span class="muted hint svc-note" id="svc-note"></span>' : ''}</div>`;
 }
 
@@ -546,6 +549,7 @@ function openForm(e, item) {
       else { const i = Number(d.memup !== undefined ? d.memup : d.memdown), j = d.memup !== undefined ? i - 1 : i + 1; if (j >= 0 && j < members.length && i >= 0 && i < members.length) [members[i], members[j]] = [members[j], members[i]]; }
       byId('mem-box').innerHTML = memRows(members, state.refs[memF.ref] || []); return;
     }
+    if (d.pspreset) { const pr = PushSave.PRESETS[d.pspreset]; if (pr) Object.keys(pr.values).forEach(k => { const el = byId('f-' + k); if (el) el.value = pr.values[k]; }); return; } // (1.54.0: a ready-made push and save system changes the four wear numbers)
     if (d.twpreset) { const pr = TyreWear.PRESETS[d.twpreset]; if (pr) { twt = JSON.parse(JSON.stringify(pr.tyres)); byId('tw-box').innerHTML = twTable(twt, getValue('unit') || 'lap', twsel); } return; }
     if (d.twsel) { twsel = d.twsel; dlg.querySelectorAll('[data-twrow]').forEach(r => { r.classList.toggle('sel', r.dataset.twrow === twsel); const bt = r.querySelector('[data-twsel]'); if (bt) bt.disabled = r.dataset.twrow === twsel; }); byId('tw-curve').innerHTML = twCurve(twt, twsel); return; }
     if (d.cfadd) { cfails.push({ name: '', level: dlevels.length ? String(dlevels[0].name || '') : '', chance: 5, seconds: 10 }); byId('cf-box').innerHTML = cfRows(cfails, dlevels); return; }
@@ -624,7 +628,7 @@ function openForm(e, item) {
     const built = {}, custom = { ...(item?.custom || {}) };
     for (const f of fields) {
       if (f.automatic) { if (!item) built[f.key] = f.type === 'datetime' ? '' : 0; continue; }
-      if (f.type === 'carstat' || f.type === 'cartracks') continue; // (worked out for the form, not kept)
+      if (f.type === 'carstat' || f.type === 'cartracks' || f.type === 'pspresets') continue; // (worked out for the form, not kept)
       if (f.type === 'gallery') { built[f.key] = [...gal]; continue; }
       if (f.type === 'members') { built[f.key] = members.filter(id => (state.refs[f.ref] || []).some(x => x.id === id)); continue; }
       if (f.type === 'damagelevels') { built[f.key] = dlevels.filter(l => String(l.name || '').trim() || Number(l.from) > 0).map(l => ({ name: String(l.name || '').trim(), from: Math.max(0, Math.floor(Number(l.from)) || 0), seconds: Math.max(0, Number(l.seconds) || 0), urgency: l.urgency === 'asap' ? 'asap' : 'whenever', within: Math.max(0, Math.floor(Number(l.within)) || 0), action: Damage.ACTIONS.includes(l.action) ? l.action : 'repair' })); continue; }
@@ -671,6 +675,10 @@ function openForm(e, item) {
         byId('err').textContent = `Please enter the length of every lane: ${n} numbers above 0, separated by commas (you entered ${list.filter(x => Number(x) > 0).length}).`;
         return;
       }
+    }
+    if (e === 'pushsavesystems' && built.normal !== '' && built.saveAt !== '' && Number(built.saveAt) <= Number(built.normal)) { // the most saving pace must be slower than normal pace (1.54.0)
+      byId('err').textContent = 'The most saving pace must be more than the normal pace (the saving needs some room to grow in).';
+      return;
     }
     if (e === 'tyrewearsystems' && Number(built.crit) > Number(built.warn)) { // the red level must be at or below the amber level
       byId('err').textContent = 'The critical (red) level must be at or below the warning (amber) level.';

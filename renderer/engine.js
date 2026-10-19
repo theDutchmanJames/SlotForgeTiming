@@ -7,6 +7,7 @@
   const Dm = typeof module !== 'undefined' ? require('./damage.js') : root.Damage; // Damage System: the levels of damage and the repair
   const Fl = typeof module !== 'undefined' ? require('./failures.js') : root.Failures; // Car Failures (1.43.0): the random failures of a Damage System
   const Sc = typeof module !== 'undefined' ? require('./safetycar.js') : root.SafetyCar; // Safety Car (1.53.0): the lap target and the shorter pit work while the yellow flag is up
+  const Ps = typeof module !== 'undefined' ? require('./pushsave.js') : root.PushSave; // Push and Save (1.54.0): the wear of the tyres and the fuel follows how hard a driver drives
   const Tw = typeof module !== 'undefined' ? require('./tyrewear.js') : root.TyreWear; // Tyre Wear (1.40.0): the life of the tyres, the grip curve and the rules at 0%
   const Dist = () => (typeof module !== 'undefined' ? require('./distance.js') : root.Distance); // Distance Racing: the lap time to estimate with (looked up when it is needed: distance.js is loaded after this file in the page)
   const MIN_LAP = 800; // crossings closer together than this are treated as double triggers
@@ -91,6 +92,8 @@
     const tankOf = c => (hasFx(c) ? Math.round(F.tank * fx(c).tank * 1e6) / 1e6 : F.tank); // (rounded: 100 x 1.1 is not 110.00000000000001 on a screen)
     // Safety Car (1.53.0, cfg.safetycar, see safetycar.js): the yellow flag is the Safety Car. A race with a system uses ITS lap target and points instead of the Yellow flag fields of the race setup, and its pit work is shorter (R.block fixes it for the stop).
     const SCC = Sc.fromConfig(cfg.safetycar);
+    // Push and Save (1.54.0, cfg.pushsave, see pushsave.js): every lap is compared with the reference lap of the driver (the record he brought in c.psRec, or his best lap of this race, whichever is faster); the wear of the lap is changed by it.
+    const PSC = Ps.fromConfig(cfg.pushsave);
     const Y = SCC ? { target: SCC.target, points: SCC.points } : { target: 0, points: 0, ...(cfg.yellow || {}) }; // the yellow flag target lap time (ms; 0 = none) and the penalty points for a full lap under yellow that is faster
     // Endurance Race (cfg.endurance, see endurance.js): only in a race or a timed race. A car whose entry has a roster of two drivers or more swaps drivers; the state of its swaps is car.en.
     const EN = cfg.endurance && cfg.endurance.on && (type === 'race' || type === 'timed') ? { ...cfg.endurance } : null, enRnd = cfg.rnd || Math.random;
@@ -109,7 +112,7 @@
     const R = {
       cfg, fuel: F, penalty: P, type, status: 'ready', t0: 0, pausedAt: 0, endAt: 0, timeUp: false, finished: 0, endedBy: '',
       yellow: Y, yellowAt: null, // yellowAt: when the yellow flag that is up now went up (a lap that started before that is not a lap under yellow)
-      cars: cfg.entries.map(e => ({ ...e, laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, adjMs: 0, adjLaps: 0, adjPoints: 0, invalid: [], removed: [], yellowFast: [], pitLaps: [], servedNow: false, last: 0, total: 0, best: null, done: false, place: 0, retired: false, fuel: F.on ? F.tank : 0, outOfFuel: false, bop: 0, bopHold: false, bopTo: null, tyreOwn: W.cleanTyre(e.tyre), tyre: W.cleanTyre(e.tyre), wx: 0, wxDue: null, twLife: 100, tw: 0, twStops: 0, twDoneAt: null,
+      cars: cfg.entries.map(e => ({ ...e, laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, adjMs: 0, adjLaps: 0, adjPoints: 0, invalid: [], removed: [], yellowFast: [], ps: [], psNow: null, pitLaps: [], servedNow: false, last: 0, total: 0, best: null, done: false, place: 0, retired: false, fuel: F.on ? F.tank : 0, outOfFuel: false, bop: 0, bopHold: false, bopTo: null, tyreOwn: W.cleanTyre(e.tyre), tyre: W.cleanTyre(e.tyre), wx: 0, wxDue: null, twLife: 100, tw: 0, twStops: 0, twDoneAt: null,
         blockAt: null, pit: null, pits: [], lastPit: null, outlap: false, started: !skipFirst, swapLost: 0, swapLaps: [], dmg: 0, dmgTotal: 0, dmgLvl: -1, dmgDue: null, dmgOut: '', repairs: [], repairMs: 0, repairedAt: null, ...(FL ? { fail: null, failN: 0, failures: [], failMs: 0, failOut: '', flPlan: null } : {}), en: EN && Array.isArray(e.roster) && e.roster.length >= 2 ? En.newCar(EN, e.roster, e.driverId) : null })),
       events: [], // what happened, in order: { type, car, t } (outoffuel, retired, pitstart, fuelfull, pitend, call, callend...)
       calls: [] // calls from a lane to the Race Director: { id, car, t, open, how }; how a call ended: 'penalty' or 'dismiss'
@@ -145,6 +148,17 @@
     R.flag = '';
     // The Safety Car is out while the yellow flag is up (only in a race that has a Safety Car system). Every time that changes it is logged (event 'safetycar': out, and the laps the leader had driven).
     R.safetyCar = SCC; // the settings (or null: this race has no Safety Car system)
+    R.pushSave = PSC; // the Push and Save settings (or null: this race has none)
+    R.psRef = c => (PSC && c ? psRef(c) : { ms: 0, src: '' }); // the reference lap of a car now
+    // what the screens show of the pace of car c: the last lap's pace, what the tyres and the fuel are used up by now (a lap), what is usual, and how many laps they last at this pace; null without a system
+    R.psInfo = c => {
+      if (!PSC || !c) return null;
+      const now = c.psNow || { p: null, k: 'normal', t: 1, f: 1, w: 'early' }, ref = psRef(c);
+      const tUsual = TWC && c.twLife > 0 ? Tw.wearPerLap(TWC, c.tyre, R.wxState, TWC.laneLen[c.lane] || 0) : 0, fUsual = F.on ? F.perLap * fx(c).use : 0;
+      const tNow = tUsual * now.t, fNow = fUsual * now.f;
+      return { kind: now.k, p: now.p, why: now.w, tyres: now.t, fuel: now.f, ref: ref.ms, src: ref.src, tyreUsual: tUsual, tyreNow: tNow, fuelUsual: fUsual, fuelNow: fNow,
+        tyreLaps: tNow > 0 ? c.twLife / tNow : null, fuelLaps: fNow > 0 ? c.fuel / fNow : null };
+    };
     R.scOut = () => !!SCC && R.flag === 'yellow';
     let scWas = false;
     const scEdge = t => { const now = R.scOut(); if (now === scWas) return; scWas = now; log('safetycar', -1, t, { out: now, laps: R.cars.reduce((m, c) => Math.max(m, c.laps.length), 0) }); };
@@ -193,7 +207,8 @@
       const dt = t - c.last, lapStart = c.last;
       if (dt < minLap) return false;
       R.tick(t);
-      const use = fx(c).use, need = F.on ? (use === 1 ? fuelUse(F, dt) : Math.round(fuelUse(F, dt) * use * 1e6) / 1e6) : 0; // litres this lap took (a car with Balance of Power uses more or less)
+      const pse = PSC ? psLap(c, dt, lapStart) : null; // (what the pace of this lap does to the wear)
+      const use = fx(c).use, need = !F.on ? 0 : PSC ? Math.round(F.perLap * pse.fuel * use * 1e6) / 1e6 : (use === 1 ? fuelUse(F, dt) : Math.round(fuelUse(F, dt) * use * 1e6) / 1e6); // litres this lap took (a car with Balance of Power uses more or less)
       const fuelShort = F.on && c.fuel < need - 1e-9; // the tank did not hold enough for this lap
       if (fuelShort) { // not enough fuel to have driven this lap
         if (!c.outOfFuel) { c.outOfFuel = true; log('outoffuel', R.cars.indexOf(c), t); }
@@ -210,6 +225,7 @@
       if (pitLap) c.pitLaps.push(c.laps.length);
       const deslot = DM && DM.deslotMs > 0 && dt > DM.deslotMs && !pitLap && !wasResumed && !c.dmgOut; // (a lap with a stop in the pits, or the first lap after a resume, is slow for other reasons)
       c.laps.push(dt); c.bad.push(slow); c.last = t; c.total = t - R.t0;
+      if (pse) { c.psNow = { p: pse.p, k: pse.kind, t: pse.tyres, f: pse.fuel, w: pse.why }; (c.ps || (c.ps = [])).push(c.psNow); } // (kept for every lap: the lap review and the folder)
       if (c.en && c.en.lost) { c.swapLost++; c.swapLaps.push(c.laps.length - 1); } // a swap that was refused: this lap is driven, but it does not count
       if (!slow && (c.best === null || dt < c.best)) c.best = dt;
       // the yellow flag target: a lap that began after the yellow flag went up, and ended with it still up, must not be faster than the target (a lap that was part green does not count)
@@ -233,7 +249,7 @@
     // The car object stays the same one, so everything that points to it keeps working.
     R.restartCar = (i, t, who) => {
       const c = R.cars[i]; if (!c) return false;
-      Object.assign(c, who || {}, { laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, adjMs: 0, adjLaps: 0, adjPoints: 0, invalid: [], removed: [], yellowFast: [], pitLaps: [], servedNow: false, last: t, total: 0, best: null, done: false, place: 0, retired: false,
+      Object.assign(c, who || {}, { laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, adjMs: 0, adjLaps: 0, adjPoints: 0, invalid: [], removed: [], yellowFast: [], ps: [], psNow: null, pitLaps: [], servedNow: false, last: t, total: 0, best: null, done: false, place: 0, retired: false,
         fuel: F.on ? F.tank : 0, outOfFuel: false, blockAt: null, pit: null, pits: [], lastPit: null, outlap: false, started: false });
       return true;
     };
@@ -426,13 +442,25 @@
       const lf = Tw.left(TWC, c.tyre, R.wxState, c.twLife, TWC.laneLen[c.lane] || 0);
       log('tyrelevel', i, t, { tyre: c.tyre, level: Math.min(...hit), life: Tw.shownLife(c.twLife), lap: c.laps.length, laps: Number.isFinite(lf.laps) ? Math.max(0, Math.ceil(lf.laps - 1e-9)) : null, dist: Number.isFinite(lf.dist) ? Math.max(0, Math.round(lf.dist)) : null });
     }
+    // ---- Push and Save (1.54.0) ----
+    // the reference lap of a car: the record it brought (ms, 0 = none) or its best lap of this race, whichever is faster; { ms, src: 'record' | 'race' | '' }
+    const psRef = (c, extra) => {
+      const rec = Number(c.psRec) > 0 ? Number(c.psRec) : Infinity, race = Math.min(c.best === null || c.best === undefined ? Infinity : c.best, extra > 0 ? extra : Infinity);
+      return rec === Infinity && race === Infinity ? { ms: 0, src: '' } : rec <= race ? { ms: rec, src: 'record' } : { ms: race, src: 'race' };
+    };
+    // the effect of the lap that has just ended (lapMs) on the wear: a lap that is faster than the reference is the reference (a slow lap, by maxLap, is left out of it; the first lap after a resume is dealt with by lapEffect)
+    function psLap(c, lapMs, lapStart) {
+      const slowLap = maxLap > 0 && lapMs > maxLap;
+      const ref = psRef(c, slowLap ? 0 : lapMs);
+      return Ps.lapEffect(PSC, { lapMs, ref: ref.ms, lapNo: c.laps.length + 1, pit: !!c.outlap, resumed: !!c.resumed, yellow: R.flag === 'yellow' && R.yellowAt !== null && lapStart >= R.yellowAt });
+    }
     // after a lap that counted: the penalty points of a car that drove it on worn out tyres, then the wear of the lap
     function twLap(c, i, t, gone) {
       if (gone && TWC.zero === 'points' && TWC.zeroPoints > 0) R.addPoints(i, TWC.zeroPoints, t, 'tyres');
       const st = twStint(c); st.laps++; st.m += TWC.laneLen[c.lane] || 0; if (gone) st.worn++;
       if (MAND && !(c.msUsed || (c.msUsed = [])).includes(st.tyre)) c.msUsed.push(st.tyre); // (the tyres that laps were driven on, for the mandatory stop rule)
       if (c.twLife > 0) {
-        c.twLife = Math.max(0, Math.round((c.twLife - Tw.wearPerLap(TWC, c.tyre, R.wxState, TWC.laneLen[c.lane] || 0)) * 1e6) / 1e6);
+        c.twLife = Math.max(0, Math.round((c.twLife - Tw.wearPerLap(TWC, c.tyre, R.wxState, TWC.laneLen[c.lane] || 0) * (PSC && c.psNow ? c.psNow.t : 1)) * 1e6) / 1e6);
         if (c.twLife <= 0) log('tyreworn', i, t, { tyre: c.tyre, lap: c.laps.length, rule: TWC.zero });
         twLevels(c, i, t);
       }
@@ -935,7 +963,7 @@
     R.removeLap = (i, n, recalc) => {
       const c = R.cars[i]; if (!c || !(n >= 0 && n < c.laps.length)) return false;
       if (!recalc) { if (!c.removed.includes(n)) c.removed = [...c.removed, n].sort((a, b) => a - b); return true; }
-      const gone = c.laps[n]; c.laps.splice(n, 1); c.bad.splice(n, 1);
+      const gone = c.laps[n]; c.laps.splice(n, 1); c.bad.splice(n, 1); if (c.ps) c.ps.splice(n, 1);
       const shift = list => list.filter(x => x !== n).map(x => (x > n ? x - 1 : x));
       c.invalid = shift(c.invalid); c.removed = shift(c.removed); c.yellowFast = shift(c.yellowFast || []); c.pitLaps = shift(c.pitLaps || []);
       c.total = Math.max(0, c.total - gone); rebest(c); return true; // (every crossing after it comes that much sooner; the time before the first crossing, when the first lap is skipped, stays in the total)

@@ -32,9 +32,9 @@ nav{display:flex;gap:4px;flex-wrap:wrap}
 .sub{margin-bottom:16px}
 /* The sub-tabs of the Race Setup tab (1.45.0): a big Race Setups button and the other sub-tabs as coloured buttons in three groups. Design: docs/ui-reference/race-setup-tabs.
    Each sub-tab has the colour of its folder on the race screen. The light themes get darker colours (like the folders do). */
-.setupstrip,.setuppage,.setupform{--c-rot:#c4803f;--c-fuel:#2fb86a;--c-pen:#f2b705;--c-dmg:#e5484d;--c-tyre:#9b4dff;--c-wx:#4c9aff;--c-bop:#e8e6e1;--c-tok:#1fb5ad;--c-sc:#ff7a1a;--c-race:var(--accent);--on-rot:#10151b;--on-fuel:#10151b;--on-pen:#10151b;--on-dmg:#fff;--on-tyre:#fff;--on-wx:#10151b;--on-bop:#10151b;--on-tok:#10151b;--on-sc:#10151b;--on-race:var(--on-accent)}
-[data-theme="light"] :is(.setupstrip,.setuppage,.setupform),[data-theme="ocean"] :is(.setupstrip,.setuppage,.setupform){--c-rot:#8a5124;--c-fuel:#1e8a4c;--c-pen:#9a7400;--c-dmg:#d62828;--c-tyre:#7c3aed;--c-wx:#0f6fd6;--c-bop:#5b6470;--c-tok:#0e8a84;--c-sc:#c2570c;--on-rot:#fff;--on-fuel:#fff;--on-pen:#fff;--on-dmg:#fff;--on-tyre:#fff;--on-wx:#fff;--on-bop:#fff;--on-tok:#fff;--on-sc:#fff}
-.ss-rot{--c:var(--c-rot);--on:var(--on-rot)}.ss-fuel{--c:var(--c-fuel);--on:var(--on-fuel)}.ss-pen{--c:var(--c-pen);--on:var(--on-pen)}.ss-dmg{--c:var(--c-dmg);--on:var(--on-dmg)}.ss-tyre{--c:var(--c-tyre);--on:var(--on-tyre)}.ss-wx{--c:var(--c-wx);--on:var(--on-wx)}.ss-bop{--c:var(--c-bop);--on:var(--on-bop)}.ss-tok{--c:var(--c-tok);--on:var(--on-tok)}.ss-sc{--c:var(--c-sc);--on:var(--on-sc)}.ss-race{--c:var(--c-race);--on:var(--on-race)}
+.setupstrip,.setuppage,.setupform{--c-rot:#c4803f;--c-fuel:#2fb86a;--c-pen:#f2b705;--c-dmg:#e5484d;--c-tyre:#9b4dff;--c-wx:#4c9aff;--c-bop:#e8e6e1;--c-tok:#1fb5ad;--c-sc:#ff7a1a;--c-ps:#a6d23c;--c-race:var(--accent);--on-rot:#10151b;--on-fuel:#10151b;--on-pen:#10151b;--on-dmg:#fff;--on-tyre:#fff;--on-wx:#10151b;--on-bop:#10151b;--on-tok:#10151b;--on-sc:#10151b;--on-ps:#10151b;--on-race:var(--on-accent)}
+[data-theme="light"] :is(.setupstrip,.setuppage,.setupform),[data-theme="ocean"] :is(.setupstrip,.setuppage,.setupform){--c-rot:#8a5124;--c-fuel:#1e8a4c;--c-pen:#9a7400;--c-dmg:#d62828;--c-tyre:#7c3aed;--c-wx:#0f6fd6;--c-bop:#5b6470;--c-tok:#0e8a84;--c-sc:#c2570c;--c-ps:#5f7d10;--on-rot:#fff;--on-fuel:#fff;--on-pen:#fff;--on-dmg:#fff;--on-tyre:#fff;--on-wx:#fff;--on-bop:#fff;--on-tok:#fff;--on-sc:#fff;--on-ps:#fff}
+.ss-rot{--c:var(--c-rot);--on:var(--on-rot)}.ss-fuel{--c:var(--c-fuel);--on:var(--on-fuel)}.ss-pen{--c:var(--c-pen);--on:var(--on-pen)}.ss-dmg{--c:var(--c-dmg);--on:var(--on-dmg)}.ss-tyre{--c:var(--c-tyre);--on:var(--on-tyre)}.ss-wx{--c:var(--c-wx);--on:var(--on-wx)}.ss-bop{--c:var(--c-bop);--on:var(--on-bop)}.ss-tok{--c:var(--c-tok);--on:var(--on-tok)}.ss-sc{--c:var(--c-sc);--on:var(--on-sc)}.ss-ps{--c:var(--c-ps);--on:var(--on-ps)}.ss-race{--c:var(--c-race);--on:var(--on-race)}
 .setupstrip{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:stretch;margin-bottom:18px}
 .ssbig{display:flex;align-items:center;gap:10px;flex:0 0 176px;align-self:flex-start;padding:9px 12px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);font:inherit;text-align:left;cursor:pointer}
 .ssbig:hover{filter:brightness(1.08)}
@@ -614,6 +614,7 @@ dialog:has(.formgrid) form{display:flex;flex-direction:column;max-height:calc(90
 .dir-green{--fc:#2fb86a}
 .dir-teal{--fc:#1fb5ad}
 .dir-purple{--fc:#9b4dff} /* Tyre Change: the colour of the Supersoft tyre */
+.dir-lime{--fc:#a6d23c} /* Push and Save (1.54.0) */
 .rt-folders{margin-top:12px}
 .rt-folders .boppanel,.rt-folders .tkpanel{margin-top:0}
 .dirfolder .tkhead>strong{display:none} /* (the folder has the name already) */
@@ -1145,6 +1146,23 @@ dialog:has(.vcard){width:min(640px,96vw)}
   .tys-head .tys-main{display:none}
 }
 
+/* Push and Save (1.54.0): the pace badge (PUSH, NORMAL, SAVE), the folder of the Race Director, the Pace meter widget and its cells */
+.pspill{display:inline-block;padding:.15em .6em;border-radius:5px;font-size:.8em;font-weight:800;letter-spacing:.05em;color:#10151b;background:#c9ced6;white-space:nowrap}
+.pspill.psk-push{background:#ff6b6f}.pspill.psk-normal{background:#c9ced6}.pspill.psk-save{background:#3ecf8e}
+.pssub{display:block;color:var(--muted);font-size:.85em;margin-top:2px;font-weight:400}
+.psrules{margin:0 0 8px;color:var(--muted);font-size:.95em}
+.psbylap{margin-top:12px}.psbylap label{display:inline-flex;align-items:center;gap:8px;margin-bottom:6px}
+.pstable td,.pslaps td{vertical-align:middle}
+.psbox{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.2em;width:100%;height:100%;min-height:0;line-height:1.15;text-align:center}
+.psbox small{font-size:.6em;opacity:.85}
+.psl{display:flex;align-items:center;justify-content:center;gap:.5em;flex-wrap:wrap}
+.psgauge{flex:1 1 0;min-height:0;max-width:100%;display:block}
+.psbar{position:relative;display:block;width:100%;height:.7em;border-radius:.35em}
+.psmark{position:absolute;top:-.15em;bottom:-.15em;width:.2em;margin-left:-.1em;background:#fff;box-shadow:0 0 0 1px #000;border-radius:.1em}
+.pscell{display:inline-flex;align-items:center;gap:.4em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pswear{display:flex;gap:.9em;justify-content:center;align-items:center;font-variant-numeric:tabular-nums}
+.psw{display:flex;flex-direction:column;align-items:center;line-height:1.1}.psw small{font-size:.55em;opacity:.8}.psw b{font-size:1.05em}
+.lw-val:has(.psbox){min-height:0;min-width:0;overflow:hidden;container-type:size}
 /* ---- Soft lift (1.46.0): a slight depth for the whole app. Design: docs/ui-reference/depth ----
    Cards, folders, bars, dialogs and the widgets of a layout stand up a little like thick cards, buttons look a little shallow, and what is meant to be pressed in (the canvas of a race screen, the lane cards,
    the entry fields) is pressed in a little. The light comes from above: a thin light edge on top, a lip (the thickness) underneath, a short soft shadow. A pressed or switched on button moves down and sits in.

@@ -233,6 +233,15 @@ const Help = (() => {
           <li><b>Pit stops</b>: refuelling, a repair and changing tyres take a number of percent less time for a car that comes in while the Safety Car is out. Driver swaps and penalties served in the pits are not shorter.</li>
           <li>The flag widget and the yellow button say <b>Safety Car</b>, and the race log says when it came out and went in. The cars do not close up behind it (not yet).</li>
         </ul>` },
+      { id: 'pushsave', title: 'Push and Save', note: 'How hard a driver drives wears tyres and fuel', body: `
+        <ul>
+          <li>A <b>push and save system</b> (Race Setup, Push and Save Systems) makes the pace count. Choose one in the <b>Racing Systems</b> folder of a race setup. It works on top of a Tyre Wear System and a Fuel Setup, and lap times and grip are never changed.</li>
+          <li>Every lap is compared with the <b>reference lap</b> of the driver: his best lap on this track (the records) or, without one, his best lap so far in the race. A lap that beats it is the new reference.</li>
+          <li><b>PUSH</b> (faster than normal pace) wears the tyres and uses the fuel faster, <b>NORMAL</b> is the usual wear, <b>SAVE</b> (slower) wears less. Normal pace is the best lap plus 3% to begin with; you can change every number, and a ready-made system (Standard, Gentle, Strong) fills in the four wear numbers.</li>
+          <li>The effect starts at lap 3. A lap with a stop, the first lap after a pause and a very slow lap (over 150% of the best lap) wear as usual. Laps under the yellow flag or the Safety Car count as saving, if you leave that on.</li>
+          <li>With a push and save system the Fuel Setup's target lap time, most extra fuel and most saving are <b>not used</b>: the pace decides instead.</li>
+          <li>The <b>Push and Save</b> folder, the <b>Pace meter</b> widget (Layout Editor, Tyres), the <b>Pace</b> and <b>Wear now</b> cells of the Driver stats grid and the Leaderboard show it; the lap review tags every lap.</li>
+        </ul>` },
       { id: 'tokens', title: 'Time Token Sessions', note: 'Selling track time per lane', body: `
         <ul>
           <li>Choose the session type <b>Time Token Session</b> in a race setup. It has no start lights, laps, fuel or penalties. On Home the button says <b>Open the session</b>. Drivers and cars are optional: a lane without a driver is a Guest.</li>

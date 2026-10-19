@@ -17,7 +17,7 @@ const LiveView = (() => {
   // the line pictures of the tiles live in icons.js (the tabs along the top use the same ones)
   const icon = id => Icons.svg(id, { size: 40, cls: 'lv-ico' });
   const PHASE = { ready: 'Ready to start', countdown: 'Lights', running: 'Racing', paused: 'Paused', between: 'Heat finished', finished: 'Finished', review: 'Race review' };
-  let keyOff = null, host = null, V = null, page = 'tiles', nodes = null, tkPanel = null, bopPanel = null, wxPanel = null, tyPanel = null, enPanel = null, dmPanel = null, flPanel = null, lane = null, ticker = null, offs = [], second = false, lapsHtml = '';
+  let keyOff = null, host = null, V = null, page = 'tiles', nodes = null, tkPanel = null, bopPanel = null, wxPanel = null, tyPanel = null, psPanel = null, enPanel = null, dmPanel = null, flPanel = null, lane = null, ticker = null, offs = [], second = false, lapsHtml = '';
 
   const $ = id => document.getElementById(id);
   const live = () => !!V && V.hasRace();
@@ -40,7 +40,7 @@ const LiveView = (() => {
     el.textContent = live() ? `${V.stat().title} · ${PHASE[d.phase] || ''}${left ? ` · next ${d.heat.final ? 'final ' + d.heat.final : 'heat'} in ` + left : ''}` : 'No race is running.';
   }
 
-  function go(p) { page = p; dgOpen = false; dgSel = ''; nodes = null; tkPanel = null; bopPanel = null; wxPanel = null; tyPanel = null; enPanel = null; dmPanel = null; flPanel = null; adjPanel = null; shell(); draw(true); }
+  function go(p) { page = p; dgOpen = false; dgSel = ''; nodes = null; tkPanel = null; bopPanel = null; wxPanel = null; tyPanel = null; psPanel = null; enPanel = null; dmPanel = null; flPanel = null; adjPanel = null; shell(); draw(true); }
 
   // ---- the pages ----
   function draw(fresh) {
@@ -193,6 +193,7 @@ const LiveView = (() => {
         ${st.cfg.damage && st.cfg.damage.failures ? folder('failures', 'Car Failures', 'Give a car a failure, or clear it', 'red', '<div id="dir-fl" class="boppanel"></div>') : ''}
         ${st.cfg.weather ? folder('weather', 'Weather', 'Rain, tyres and pit stops', 'blue', '<div id="dir-wx" class="boppanel"></div>') : ''}
         ${st.tokenUi ? '' : folder('tyre', 'Tyre Change', 'Give a car another tyre', 'purple', '<div id="dir-ty" class="boppanel"></div>')}
+        ${st.cfg.pushsave ? folder('pushsave', 'Push and Save', 'How hard each driver drives, and what it costs in tyres and fuel', 'lime', '<div id="dir-ps" class="boppanel"></div>') : ''}
         ${st.cfg.endurance ? folder('endurance', 'Endurance', 'Driver swaps', 'brown', '<div id="dir-en" class="boppanel"></div>') : ''}
         <details class="card" id="dir-lapsbox" hidden><summary>Review laps</summary><div id="dir-laps" class="rv"></div></details>
         <div id="dir-review" class="card rv" hidden></div></div>`;
@@ -202,6 +203,7 @@ const LiveView = (() => {
       lapsHtml = ''; rvShown = ''; bopPanel = st.cfg.bop ? BopPanel.build($('dir-bop'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, send: (l, how) => send({ type: 'bop', lane: l, how }) }) : null; // Balance of Power: the same lane controls as on the main computer
       wxPanel = st.cfg.weather ? WeatherPanel.build($('dir-wx'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, now: () => V.clock(performance.now()), send: state => send({ type: 'weather', state }) }) : null; // the weather: the same controls as on the main computer
       tyPanel = st.tokenUi ? null : TyrePanel.build($('dir-ty'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, now: () => V.clock(performance.now()), wear: !!(st.cfg.tyrewear && st.cfg.tyrewear.on), sets: !!(st.cfg.tyrewear && st.cfg.tyrewear.sets && st.cfg.tyrewear.sets.mode !== 'none'), weather: !!st.cfg.weather, setTyre: (l, code, save) => send({ type: 'tyre', lane: l, tyre: code, ...(save ? { save: true } : {}) }), queue: (l, code) => send({ type: 'tyrenext', lane: l, tyre: code }) }); // Tyre Change: the same choice as on the main computer (every race)
+      psPanel = st.cfg.pushsave ? PushSavePanel.build($('dir-ps'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase }) : null;
       enPanel = st.cfg.endurance ? EndurancePanel.build($('dir-en'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, now: () => V.clock(performance.now()), send: (l, what, id) => send(what === 'swap' ? { type: 'swap', lane: l, ...(id ? { to: id } : {}) } : { type: 'swapnext', lane: l, id }) }) : null; // an Endurance Race: the swaps, the same controls as on the main computer
       dmPanel = st.cfg.damage ? DamagePanel.build($('dir-dm'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), incidents: st.cfg.damage.incidents, phase: () => V.dyn().phase, now: () => V.clock(performance.now()), send: (l, n) => send({ type: 'damage', lane: l, n }) }) : null; // the damage of the cars, the same controls as on the main computer
       flPanel = st.cfg.damage && st.cfg.damage.failures ? FailurePanel.build($('dir-fl'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), failures: st.cfg.damage.failures.list.map((f, k) => ({ k, name: f.name, chance: f.chance })), phase: () => V.dyn().phase, now: () => V.clock(performance.now()), send: (l, k) => send({ type: 'failure', lane: l, k }), clear: l => send({ type: 'failureclear', lane: l }) }) : null; // Car Failures: the same controls as on the main computer (1.44.0)
@@ -236,6 +238,7 @@ const LiveView = (() => {
     if (bopPanel) bopPanel.update();
     if (wxPanel) wxPanel.update();
     if (tyPanel) tyPanel.update();
+    if (psPanel) psPanel.update();
     if (enPanel) enPanel.update();
     if (dmPanel) dmPanel.update();
     if (flPanel) flPanel.update();
@@ -309,7 +312,7 @@ const LiveView = (() => {
   function paintDriver() {
     const el = $('lv-dstats'), D = DriverGrid; if (!el || lane === null) return;
     const st = S(), W = type => Widgets.newWidget(type, lane, 0, 0), c = st.carByLane(lane), html = type => Timing.content(W(type), st).html, dash = '–';
-    const facts = { swaps: html('swaptimer') !== '', fuel: !!(st.eng.fuel && st.eng.fuel.on), tyres: !!st.eng.weather, tyrewear: !!st.eng.tyrewear, damage: !!st.eng.damage, penalty: !!(st.eng.penalty && st.eng.penalty.on), champ: !!(st.champ && st.champ.on),
+    const facts = { swaps: html('swaptimer') !== '', fuel: !!(st.eng.fuel && st.eng.fuel.on), tyres: !!st.eng.weather, tyrewear: !!st.eng.tyrewear, pushsave: !!st.eng.pushSave, damage: !!st.eng.damage, penalty: !!(st.eng.penalty && st.eng.penalty.on), champ: !!(st.champ && st.champ.on),
       laps: html('lapstogo') !== dash, driven: html('distance') !== dash, togo: html('distleft') !== dash };
     const g = D.gridOf(state.settings), L = D.layout(g, key => D.applies(key, facts));
     const one = x => {
@@ -362,7 +365,7 @@ const LiveView = (() => {
   function repaint() { status(); if (page !== 'tiles' && page !== 'rules' && page !== 'database') draw(false); }
   async function mount(el, opts = {}) {
     unmount();
-    host = el; second = !!opts.second; V = LiveShare.viewer(); page = 'tiles'; nodes = null; tkPanel = null; bopPanel = null; wxPanel = null; tyPanel = null; enPanel = null; dmPanel = null; flPanel = null; adjPanel = null; lane = null;
+    host = el; second = !!opts.second; V = LiveShare.viewer(); page = 'tiles'; nodes = null; tkPanel = null; bopPanel = null; wxPanel = null; tyPanel = null; psPanel = null; enPanel = null; dmPanel = null; flPanel = null; adjPanel = null; lane = null;
     try { state.settings = await api.getSettings(); } catch { /* keep what we have */ }
     let got = null; try { got = await api.liveGet(); } catch { /* no race data yet: the pages open empty and fill in from the live messages */ }
     if (got && got.stat) { V.feedStatic(got.stat); if (got.dyn) V.feedDynamic(got.dyn, performance.now()); }

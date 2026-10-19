@@ -23,6 +23,7 @@
     tyre: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5M12 15.5V21M3 12h5.5M15.5 12H21"/>',
     weather: '<path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="M16 14v6M8 14v6M12 16v6"/>',
     safetycar: '<path d="M3.5 17v-3.4l1.9-3.9a2 2 0 0 1 1.8-1.2h9.6a2 2 0 0 1 1.8 1.2l1.9 3.9V17"/><path d="M3 17h18"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="16.5" cy="17.5" r="1.8"/><path d="M10.5 8.5V6.2h3v2.3M12 3.8v.5"/>',
+    pushsave: '<path d="M4.5 17a8.5 8.5 0 1 1 15 0"/><path d="M12 17l4-6"/><circle cx="12" cy="17" r="1.2"/><path d="M7 9.5l.9.9M12 6.5v1.3M17 9.5l-.9.9"/>',
     rotation: '<path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/>',
     fuel: '<path d="M3 22h12M4 9h10"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2 2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/>',
     balance: '<path d="M12 3v18M5 21h14M5 7h14"/><path d="m5 7-3 8a4 4 0 0 0 6 0z"/><path d="m19 7-3 8a4 4 0 0 0 6 0z"/>',

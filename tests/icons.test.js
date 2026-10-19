@@ -3,9 +3,9 @@ const I = require('../renderer/icons.js');
 let fails = 0; const ok = (name, cond) => { console.log((cond ? 'ok   ' : 'FAIL ') + name); if (!cond) fails++; };
 
 const ids = Object.keys(I.PATHS);
-const TILES = ['timing', 'board', 'driver', 'database', 'rules', 'director', 'tokens'], NEW = ['home', 'setup', 'custom', 'settings'], BUTTONS = ['pdf'], SETUPTABS = ['racesetups', 'penalty', 'damage', 'tyre', 'weather', 'rotation', 'fuel', 'balance', 'safetycar'];
+const TILES = ['timing', 'board', 'driver', 'database', 'rules', 'director', 'tokens'], NEW = ['home', 'setup', 'custom', 'settings'], BUTTONS = ['pdf'], SETUPTABS = ['racesetups', 'penalty', 'damage', 'tyre', 'weather', 'rotation', 'fuel', 'balance', 'safetycar', 'pushsave'];
 
-ok('the seven pictures of the Live Race tiles are there, the four for the tabs that had none, the one for the Export to PDF button, the eight for the Race Setup sub-tabs (1.45.0) and the Safety Car one (1.53.0): twenty-one in all', ids.length === 21 && [...TILES, ...NEW, ...BUTTONS, ...SETUPTABS].every(id => I.has(id)));
+ok('the seven pictures of the Live Race tiles are there, the four for the tabs that had none, the one for the Export to PDF button, the eight for the Race Setup sub-tabs (1.45.0) the Safety Car one (1.53.0) and the Push and Save one (1.54.0): twenty-two in all', ids.length === 22 && [...TILES, ...NEW, ...BUTTONS, ...SETUPTABS].every(id => I.has(id)));
 ok('has() is true for a picture and false for anything else (also for names every object has)', I.has('home') && !I.has('') && !I.has('nope') && !I.has(undefined) && !I.has(null) && !I.has('constructor') && !I.has('toString') && !I.has('__proto__') && !I.has('hasOwnProperty'));
 ok('an unknown name gives no picture at all, not an empty frame', ['nope', '', undefined, 'constructor', '__proto__'].every(n => I.svg(n) === ''));
 

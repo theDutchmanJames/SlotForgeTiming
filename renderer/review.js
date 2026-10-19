@@ -8,11 +8,17 @@ const Review = (() => {
   // The laps of one car, each with what can be done to it.
   // mid: the race is still going on - the newest lap first, and a car that has finished only takes a lap out of the records (the rest is for the review after the race).
   // late(n): the lap was driven after the paid time was up (Time Token Session): it stays invalid.
+  // Push and Save (1.54.0): what the pace of a lap did to the wear ("PUSH +0.4%, tyres ×1.35, fuel ×1.22"), or why the lap wore as usual
+  function paceTag(c, n) {
+    const p = c.ps && c.ps[n]; if (!p || typeof PushSave === 'undefined') return '';
+    if (p.p === null || p.p === undefined) return PushSave.whyText(p.w) ? `usual wear: ${PushSave.whyText(p.w)}` : '';
+    return [`${PushSave.kindText(p.k)} ${PushSave.pctText(p.p)}`, p.t !== 1 ? `tyres ${PushSave.multText(p.t)}` : '', p.f !== 1 ? `fuel ${PushSave.multText(p.f)}` : ''].filter(Boolean).join(', ');
+  }
   function lapListHtml(c, i, mid, late, sc) {
     const order = c.laps.map((_, n) => n); if (mid) order.reverse();
     return `<div class="rv-laps">${order.map(n => {
         const t = c.laps[n], after = !!late && late(n), inv = after || c.invalid.includes(n), rem = c.removed.includes(n), slow = c.bad[n];
-        const tags = [slow ? 'too slow' : '', after ? 'after the time ran out' : inv ? 'invalid' : '', rem ? 'not in the records' : '', (c.yellowFast || []).includes(n) ? (sc ? 'faster than the Safety Car limit' : 'faster than the yellow flag target') : ''].filter(Boolean);
+        const tags = [slow ? 'too slow' : '', after ? 'after the time ran out' : inv ? 'invalid' : '', rem ? 'not in the records' : '', (c.yellowFast || []).includes(n) ? (sc ? 'faster than the Safety Car limit' : 'faster than the yellow flag target') : '', paceTag(c, n)].filter(Boolean);
         const del = ui.del === `${i}:${n}` ? `<span class="rv-del">Remove lap ${n + 1}:
             <button class="btn" data-rv="removelap" data-car="${i}" data-lap="${n}" data-recalc="0">From the records only</button>
             ${mid && c.done ? '' : `<button class="btn danger" data-rv="removelap" data-car="${i}" data-lap="${n}" data-recalc="1">From the race too (recalculate)</button>`}
