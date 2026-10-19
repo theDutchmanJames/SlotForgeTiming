@@ -1105,3 +1105,36 @@ dialog:has(.vcard){width:min(640px,96vw)}
   .tys-main{order:3;flex:1 1 100%}
   .tys-head .tys-main{display:none}
 }
+
+/* ---- Soft lift (1.46.0): a slight depth for the whole app. Design: docs/ui-reference/depth ----
+   Cards, folders, bars, dialogs and the widgets of a layout stand up a little like thick cards, buttons look a little shallow, and what is meant to be pressed in (the canvas of a race screen, the lane cards,
+   the entry fields) is pressed in a little. The light comes from above: a thin light edge on top, a lip (the thickness) underneath, a short soft shadow. A pressed or switched on button moves down and sits in.
+   It is only box-shadow (nothing is added to a part and no colour is changed), so it works on any colour: the Custom theme, and the colours a widget has been given. --depth is the Depth setting
+   (App Settings > General > Display, themeui.js): 0 is flat and draws nothing at all. --k softens the shadows on a light page, --hl and --sh are the colour of the light and of the shadow, --lipa how dark the lip is.
+   A widget has its own --d: the depth fades with the transparency of its background (--wf, from frame.js), so a see-through widget stays flat. */
+html{--depth:.35;--d:var(--depth);--k:1;--hl:255,255,255;--sh:0,0,0;--lipa:.5}
+[data-theme="light"],[data-theme="ocean"],[data-tone="light"]{--k:.6;--sh:29,34,41;--lipa:.18}
+.lw{--d:calc(var(--depth)*var(--wf,1))}
+/* standing up: cards, folders, bars, dialogs, tiles and the widgets of a layout (a cell of a row design, in a leaderboard, stays flat) */
+.card,.bar,.ed-bar,.ed-pal,.ed-side,.gcard,.viewbar,.fgroup,.audgroup,.dbfolder,.audhelp,.lv-tile,.lv-board,.lv-stat,.tkchip,.helpwelcome,dialog,.lw:not(.rcell):not(.flat):not(.btnw){
+  box-shadow:inset 0 1px 0 rgba(var(--hl),calc(.16*var(--d))),inset 0 12px 14px -10px rgba(var(--hl),calc(.10*var(--d))),inset 0 -12px 14px -10px rgba(var(--sh),calc(.16*var(--d)*var(--k))),
+    0 calc(4px*var(--d)) 0 rgba(var(--sh),var(--lipa)),0 calc(3px + 10px*var(--d)) calc(6px + 16px*var(--d)) -4px rgba(var(--sh),calc(.6*var(--d)*var(--k)))}
+/* shallow buttons */
+.btn:not(:disabled),.roplan,.sstab:not([aria-selected="true"]),.ssbig:not([aria-selected="true"]){
+  box-shadow:inset 0 1px 0 rgba(var(--hl),calc(.20*var(--d))),inset 0 7px 8px -6px rgba(var(--hl),calc(.10*var(--d))),inset 0 -2px 0 rgba(var(--sh),calc(.20*var(--d)*var(--k))),
+    0 calc(2px*var(--d)) 0 rgba(var(--sh),var(--lipa)),0 calc(2px + 4px*var(--d)) calc(3px + 5px*var(--d)) -2px rgba(var(--sh),calc(.5*var(--d)*var(--k)))}
+/* the big buttons: the lane buttons of the race screen (Lap, Pit, Call), and a button widget in a layout */
+.trk-btn:not(:disabled),.lw.btnw{
+  box-shadow:inset 0 1px 0 rgba(var(--hl),calc(.26*var(--d))),inset 0 8px 10px -8px rgba(var(--hl),calc(.16*var(--d))),inset 0 -2px 0 rgba(var(--sh),calc(.22*var(--d)*var(--k))),
+    0 calc(3px*var(--d)) 0 rgba(var(--sh),var(--lipa)),0 calc(3px + 6px*var(--d)) calc(4px + 8px*var(--d)) -2px rgba(var(--sh),calc(.55*var(--d)*var(--k)))}
+/* pressed in: being pressed, or switched on */
+.btn:not(:disabled):active,.btn[aria-pressed="true"]:not(:disabled),.lw.btnw:active{transform:translateY(calc(2px*var(--d)));
+  box-shadow:inset 0 calc(2px + 2px*var(--d)) calc(4px + 4px*var(--d)) rgba(var(--sh),calc(.5*var(--d)*var(--k)))}
+.trk-btn:not(:disabled):active{transform:translateY(max(1px,calc(3px*var(--d)))) scale(.99);box-shadow:inset 0 calc(2px + 2px*var(--d)) calc(4px + 4px*var(--d)) rgba(var(--sh),calc(.5*var(--d)*var(--k)))}
+.trk-btn[aria-pressed="true"],.trk-btn[data-active="true"]{transform:translateY(calc(3px*var(--d)));
+  box-shadow:inset 0 calc(2px + 2px*var(--d)) calc(4px + 4px*var(--d)) rgba(var(--sh),calc(.5*var(--d)*var(--k))),0 0 0 3px color-mix(in srgb,var(--tc) 45%,transparent)}
+/* pressed in: the canvas of the race screen, the lane cards, the tiles of Home, the entry fields */
+.canvas.live{box-shadow:0 0 0 1px var(--line),inset 0 calc(2px + 3px*var(--d)) calc(6px + 8px*var(--d)) rgba(var(--sh),calc(.5*var(--d)*var(--k))),inset 0 -1px 0 rgba(var(--hl),calc(.06*var(--d)))}
+.trk-card,.hm-tile,.hm-ctile{box-shadow:inset 0 calc(2px + 3px*var(--d)) calc(6px + 8px*var(--d)) rgba(var(--sh),calc(.5*var(--d)*var(--k))),inset 0 -1px 0 rgba(var(--hl),calc(.06*var(--d)))}
+input[type=text],input[type=number],input[type=date],input:not([type]),textarea,select{box-shadow:inset 0 1px 2px rgba(var(--sh),calc(.35*var(--d)*var(--k)))}
+header{box-shadow:0 calc(1px + 3px*var(--d)) calc(4px + 8px*var(--d)) -3px rgba(var(--sh),calc(.55*var(--d)*var(--k)))}

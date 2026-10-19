@@ -24,7 +24,7 @@ for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function
 const ctx=vm.createContext({document,api,console: appConsole,Intl,URL,Image:function(){},confirm:()=>true,alert(){},setTimeout,clearTimeout,setInterval,clearInterval,performance,});
 const listeners={}; ctx.window=ctx; ctx.addEventListener=(t,f)=>{(listeners[t]=listeners[t]||[]).push(f)}; ctx.removeEventListener=(t,f)=>{listeners[t]=(listeners[t]||[]).filter(x=>x!==f)};
 const errors=[];
-for(const f of ['listnum.js', 'bop.js', 'weather.js', 'tyrewear.js', 'endurance.js', 'failures.js', 'damage.js', 'engine.js','heats.js', 'rotation.js', 'tokens.js','speed.js', 'distance.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','theme.js','banner.js','icons.js','delta.js','avatars.js', 'weatherwidgets.js', 'tyrewidgets.js', 'boardorder.js', 'widgets.js','frame.js','backdrop.js','announcer.js','sound.js','timing.js','rows.js','richtext.js','canvas.js','liveshare.js','review.js','adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'drivergrid.js', 'homecards.js', 'liveview.js','report.js','database.js','landing.js','race.js','undo.js','editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'tyreui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','help.js','hardware.js','trackmate.js','hardwareui.js','zipfile.js','arduinosketch.js','arduinobox.js','arduinosim.js','arduinorace.js','arduinoui.js','dsui.js','app.js']){
+for(const f of ['listnum.js', 'bop.js', 'weather.js', 'tyrewear.js', 'endurance.js', 'failures.js', 'damage.js', 'engine.js','heats.js', 'rotation.js', 'tokens.js','speed.js', 'distance.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','depth.js','theme.js','banner.js','icons.js','delta.js','avatars.js', 'weatherwidgets.js', 'tyrewidgets.js', 'boardorder.js', 'widgets.js','frame.js','backdrop.js','announcer.js','sound.js','timing.js','rows.js','richtext.js','canvas.js','liveshare.js','review.js','adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'drivergrid.js', 'homecards.js', 'liveview.js','report.js','database.js','landing.js','race.js','undo.js','editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'tyreui.js', 'rotationui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','help.js','hardware.js','trackmate.js','hardwareui.js','zipfile.js','arduinosketch.js','arduinobox.js','arduinosim.js','arduinorace.js','arduinoui.js','dsui.js','app.js']){
   try{vm.runInContext(fs.readFileSync(R+'renderer/'+f,'utf8'),ctx,{filename:f})}catch(e){errors.push(f+': '+e.message)}
 }
 const run=s=>vm.runInContext(s,ctx), E=id=>document.getElementById(id);
@@ -291,6 +291,38 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   E('side').onchange({target:{id:'s-bmode',value:'',dataset:{}}}); E('side').oninput({target:{id:'s-trans',value:'0',type:'range',dataset:{}}});
   say('back to Theme default and 0% transparency: the widget looks as before', !E('canvas').innerHTML.includes('color-mix') && E('canvas').innerHTML.includes('background:#336699'));
   E('side').onchange({target:{dataset:{theme:'bgColor'},checked:true}});
+  // 1.46.0: a border colour of your own, and the thickness of the border
+  say('1.46.0: the border choice also offers "Colour of your own"; the colour field is off until it is chosen; the thickness field is empty (standard)', /<option value="custom">Colour of your own<\/option>/.test(E('side').innerHTML) && /id="s-bcolor" type="color" value="#8f98a3" disabled/.test(E('side').innerHTML) && /id="s-bwidth" type="number" min="0" max="40" step="0.5" value="" placeholder="standard"/.test(E('side').innerHTML));
+  say('...a new widget has no colour or thickness of its own and --wf says it is solid', w57().borderColor===undefined && w57().borderWidth===undefined && /--wf:1[;"]/.test(E('canvas').innerHTML));
+  E('side').onchange({target:{id:'s-bmode',value:'custom',dataset:{}}});
+  say('choosing it switches the colour field on and the shade slider off', w57().borderMode==='custom' && !/id="s-bcolor" type="color"[^>]*disabled/.test(E('side').innerHTML) && /id="s-bshade" type="range"[^>]*disabled/.test(E('side').innerHTML));
+  say('...the border is the start grey until a colour is picked', E('canvas').innerHTML.includes('border-color:#8f98a3'));
+  E('side').oninput({target:{id:'s-bcolor',value:'#ffcc00',type:'color',dataset:{}}});
+  say('the colour you pick is the border of the widget, on the page at once, and the field shows it', w57().borderColor==='#ffcc00' && E('canvas').innerHTML.includes('border-color:#ffcc00;background-clip:padding-box'));
+  E('side').oninput({target:{id:'s-bcolor',value:'red;background:url(x)',type:'color',dataset:{}}});
+  say('...something that is not a colour is not taken', w57().borderColor==='#ffcc00' && !E('canvas').innerHTML.includes('url(x)'));
+  E('side').oninput({target:{id:'s-bcolor',value:'#FA0',type:'color',dataset:{}}});
+  say('...a colour is kept in its clean form (#rrggbb, small letters), also when it is typed short or in capitals', w57().borderColor==='#ffaa00');
+  E('side').oninput({target:{id:'s-bcolor',value:'#FFCC00',type:'color',dataset:{}}});
+  say('...#FFCC00 is kept as #ffcc00', w57().borderColor==='#ffcc00');
+  E('side').oninput({target:{id:'s-bwidth',value:'6',type:'number',dataset:{}}});
+  say('the thickness is saved, and drawn as a share of the page width (6 of 1000 units = 0.6cqw)', w57().borderWidth===6 && E('canvas').innerHTML.includes('border-width:0.6cqw'));
+  E('side').oninput({target:{id:'s-bwidth',value:'2.3',type:'number',dataset:{}}});
+  say('...in half steps, so 2.3 becomes 2.5', w57().borderWidth===2.5 && E('canvas').innerHTML.includes('border-width:0.25cqw'));
+  E('side').oninput({target:{id:'s-bwidth',value:'99',type:'number',dataset:{}}});
+  say('...40 is the most', w57().borderWidth===40 && E('canvas').innerHTML.includes('border-width:4cqw'));
+  run("state.editing.sel=[state.editing.draft.widgets[0], state.editing.draft.widgets[57]]"); E('side').innerHTML=run('sideHtml()');
+  say('with two widgets that differ, the thickness field says (different) and the border choice too', /id="s-bwidth"[^>]*placeholder="different"/.test(E('side').innerHTML) && E('side').innerHTML.includes('<option value="" selected>(different)</option>'));
+  E('side').oninput({target:{id:'s-bwidth',value:'3',type:'number',dataset:{}}});
+  say('...and typing one changes them both', run('state.editing.draft.widgets[0].borderWidth')===3 && w57().borderWidth===3);
+  run("state.editing.draft.widgets[0].borderWidth=''; state.editing.sel=[state.editing.draft.widgets[57]]"); E('side').innerHTML=run('sideHtml()');
+  E('side').oninput({target:{id:'s-bwidth',value:'',type:'number',dataset:{}}});
+  say('emptying the thickness goes back to the standard thin line', w57().borderWidth==='' && !E('canvas').innerHTML.includes('border-width'));
+  E('side').oninput({target:{id:'s-trans',value:'40',type:'range',dataset:{}}});
+  say('a see-through widget has a custom border that fades too, and --wf (the solidity, for the depth) follows the transparency', E('canvas').innerHTML.includes('border-color:color-mix(in srgb, #ffcc00 60%, transparent)') && /--wf:0\.6[;"]/.test(E('canvas').innerHTML));
+  E('side').oninput({target:{id:'s-trans',value:'0',type:'range',dataset:{}}});
+  E('side').onchange({target:{id:'s-bmode',value:'',dataset:{}}}); run("delete state.editing.draft.widgets[57].borderColor"); run("delete state.editing.draft.widgets[57].borderWidth");
+  say('back to the Theme default: the widget looks as before', !E('canvas').innerHTML.includes('border-width') && !E('canvas').innerHTML.includes('color-mix'));
   // rounded corners: one setting for the layout (top bar), an override per widget
   say('the top bar has a Rounded corners field, empty = the classic corners', /id="e-lradius"[^>]*placeholder="classic" value=""/.test(run('view.innerHTML')));
   say('...and nothing has a corner of its own yet', !E('canvas').innerHTML.includes('border-radius'));
@@ -2946,6 +2978,14 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
       say('...the largest size is a zoom of 2', run('state.settings.uiScale') === 200 && zooms[zooms.length - 1] === 2);
       await E('uiscale').onchange({ target: { value: '137' } }); await wait();
       say('...a size that does not exist becomes the standard, and the window is back to normal', run('state.settings.uiScale') === 100 && zooms[zooms.length - 1] === 1 && /<option value="100" selected>/.test(ui()));
+      { const dp = () => E('settingsbox').innerHTML.split('id="depthlevel"')[1] || '';
+        say('1.46.0: the Display folder has the Depth too: four levels, the standard Soft lift chosen, and the page got it when the app started (--depth 0.35)', E('settingsbox').innerHTML.includes('id="depthlevel"') && (dp().split('</select>')[0].match(/<option /g) || []).length === 4 && /<option value="35" selected>Soft lift \(standard\)/.test(dp()) && document.documentElement.style.props['--depth'] === '0.35');
+        const nd = calls.length; await E('depthlevel').onchange({ target: { value: '75' } }); await wait();
+        say('...choosing Thick card saves it and puts 0.75 on the page', run('state.settings.depth') === 75 && calls.slice(nd).some(c => c[1].depth === 75) && document.documentElement.style.props['--depth'] === '0.75' && /<option value="75" selected>/.test(dp()));
+        await E('depthlevel').onchange({ target: { value: '0' } }); await wait();
+        say('...Flat is a real choice (0), not the standard', run('state.settings.depth') === 0 && document.documentElement.style.props['--depth'] === '0' && /<option value="0" selected>Flat/.test(dp()));
+        await E('depthlevel').onchange({ target: { value: '44' } }); await wait();
+        say('...a level that does not exist becomes the standard', run('state.settings.depth') === 35 && document.documentElement.style.props['--depth'] === '0.35' && /<option value="35" selected>/.test(dp())); }
       say('1.22.0: the Display folder also has the speed unit of the tables, km/h to start, and says it beside its title', E('settingsbox').innerHTML.includes('id="speedunit"') && /<option value="kmh" selected>/.test(E('settingsbox').innerHTML.split('id="speedunit"')[1]) && /<option value="mph">Miles per hour \(mph\)<\/option>/.test(E('settingsbox').innerHTML) && /speeds in km\/h/.test(E('settingsbox').innerHTML));
       { const nc2 = calls.length; await E('speedunit').onchange({ target: { value: 'mph' } }); await wait();
         say('...choosing mph saves it, shows it chosen and in the folder note', run('state.settings.speedUnit') === 'mph' && calls.slice(nc2).some(c => c[1].speedUnit === 'mph') && /<option value="mph" selected>/.test(E('settingsbox').innerHTML.split('id="speedunit"')[1]) && /speeds in mph/.test(E('settingsbox').innerHTML));

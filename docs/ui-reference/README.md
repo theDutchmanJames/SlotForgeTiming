@@ -29,3 +29,19 @@ The decisions behind these pictures are in the roadmap (Project doc `claude/road
 | `3-option-b-side-rail.png` | **Option B (not built, for when more systems arrive):** the same buttons as a list on the left (236 px wide) instead of a strip on top; it costs width instead of height and takes any number of systems |
 
 Colours (each sub-tab has the colour of its folder on the race screen): Penalty Systems yellow `#f2b705`, Damage Systems red `#e5484d`, Tyre Wear Systems purple `#9b4dff`, Weather Systems blue `#4c9aff`, Balance of Power white `#e8e6e1`, Time Tokens teal `#1fb5ad`; Rotation Setups brown `#c4803f` and Fuel Setups green `#2fb86a` (they have no folder, Dutch approved these two). The big button is the theme's accent colour (`#c8363c` in the dark theme). On the light themes the colours are a little darker: `#8a5124`, `#1e8a4c`, `#9a7400`, `#d62828`, `#7c3aed`, `#0f6fd6`, `#5b6470`, `#0e8a84`.
+
+## depth/ (19 Oct 2026, the depth of the app: option A, Soft lift, built in 1.46.0; option B, Thick card, is the 75 level)
+
+Dutch asked for a very slight feeling of depth on the race screen: a thick card, a shallow button. The design was made on a Claude Design canvas (*Race Screen Depth*: today flat, A Soft lift, B Thick card, and the parts, button states and themes). He chose **A** and asked for it in the whole app, with a setting to turn it down or off. For this set the pictures are **screenshots of the built app** (1.46.0, the real stylesheet in headless Chromium), not renders of the boards: the boards in `source/` need the Claude Design runtime to draw. The built app is the truth.
+
+| Picture | What it shows |
+|---|---|
+| `1-race-screen-flat.png` | The race screen with Depth **Flat (no depth)**: the plain look of before 1.46.0 |
+| `2-race-screen-soft-lift.png` | **Soft lift (standard)**, depth 35: a light edge on top, a thin lip underneath and a soft shadow |
+| `3-race-screen-thick-card.png` | **Thick card**, depth 75 (design B): the same, stronger. **Medium** is 55 |
+| `4-race-screen-light-soft-lift.png` | Soft lift in the light theme (the lip and the shadow are lighter there; the Ocean theme and a Custom theme with a light panel do the same) |
+| `5-widget-border-colour-and-thickness.png` | Widgets with a border of their own: a colour (any) and a thickness; a see-through widget (60%) stays flat |
+| `6-home-soft-lift.png` | Home with Soft lift: cards and buttons stand up a little, fields are a little sunk |
+| `7-settings-depth.png` | App Settings > General > Display: the **Depth** choice |
+
+How it is made (renderer/styles.css, the layer at the end, and renderer/depth.js): box-shadows only, no extra elements and no change of colour, so it works on any theme colour and on a widget colour of your own. The page has `--depth` (0 to 1; Flat 0, Soft lift .35, Medium .55, Thick card .75), and a widget fades it with its own solidity (`--wf`), so a transparent widget stays flat. A button that is pressed moves down. The light themes take the light values through `data-theme` (light, ocean) or `data-tone="light"` (a Custom theme with a light panel).

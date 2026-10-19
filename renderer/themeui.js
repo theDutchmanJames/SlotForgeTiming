@@ -6,6 +6,11 @@ function applyTheme() {
   root.dataset.theme = Theme.THEMES.some(x => x[0] === t) ? t : 'dark';
   Theme.COLORS.forEach(([k]) => root.style.setProperty('--' + k, custom ? c[k] : '')); // '' takes the colour away again
   root.style.setProperty('--on-accent', custom ? Theme.onAccent(c.accent) : '');
+  if (custom && Theme.isLight(c.panel)) root.dataset.tone = 'light'; else delete root.dataset.tone; // (light panels get the softer shadows of the depth, styles.css; the ready-made light themes say it there)
+}
+// the depth of the cards, buttons and widgets (App Settings > General > Display): the style sheet works with one number
+function applyDepth() {
+  document.documentElement.style.setProperty('--depth', String(Depth.factorOf(state.settings && state.settings.depth)));
 }
 
 // the colours of a ready-made theme, read from its tile on this screen (the tile carries that theme), so styles.css stays the only place they are written down

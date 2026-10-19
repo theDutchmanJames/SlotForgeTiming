@@ -126,13 +126,16 @@ const GENERAL_FOLDERS = ['display', 'names', 'header', 'logo', 'pictures', 'data
 const applyUiScale = () => { if (typeof api !== 'undefined' && api.setZoom) api.setZoom(UiScale.factorOf(state.settings && state.settings.uiScale)); };
 async function renderGeneralSettings(box) {
   const S = state.settings, path = await api.dbPath(), hh = Banner.height(S), pos = Banner.pos(S), lpos = Banner.logoPos(S);
-  const us = UiScale.levelOf(S.uiScale), su = Speed.unitOf(S), du = Speed.distUnitOf(S), pq = Picture.levelOf(S.pictureQuality), pic = !!S.homeHeader, logoOn = Banner.logoOn(S), hasLogo = !!S.clubLogo, side = Banner.logoSide(S), share = Banner.logoShare(S);
+  const us = UiScale.levelOf(S.uiScale), dp = Depth.levelOf(S.depth), su = Speed.unitOf(S), du = Speed.distUnitOf(S), pq = Picture.levelOf(S.pictureQuality), pic = !!S.homeHeader, logoOn = Banner.logoOn(S), hasLogo = !!S.clubLogo, side = Banner.logoSide(S), share = Banner.logoShare(S);
   // the page is made of folders, as the Results and Records page is: each opens and closes, the choice is remembered while the app runs
   const sf = (id, title, note, body) => folderHtml('general', id, title, note, `<div class="fbody">${body}</div>`);
   box.innerHTML = folderTools
     + sf('display', 'Display', 'interface size ' + us + '%, speeds in ' + Speed.unitName(su) + ', distances in ' + Speed.distUnitName(du), `<div class="field" style="max-width:480px"><label for="uiscale">Interface size (the text, buttons and check boxes of the whole app)</label>
       <select id="uiscale">${UiScale.LEVELS.map(([k, t]) => `<option value="${k}"${k === us ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>
       <span class="muted hint">Makes everything in this window bigger, for reading from a distance or with glasses. It does not change the layouts of the race screens: they always fit the window, and the size of their widgets is set in the Layout Editor. It is only for this window: the Live Race window and the pages on phones keep their size.</span></div>
+    <div class="field" style="max-width:480px"><label for="depthlevel">Depth (how much cards, buttons, folders and widgets stand up from the page)</label>
+      <select id="depthlevel">${Depth.LEVELS.map(([k, t]) => `<option value="${k}"${k === dp ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>
+      <span class="muted hint">A light edge on top, a thin lip underneath and a soft shadow, so a card looks a little thick and a button a little shallow. A pressed button moves down. Flat is the plain look of before, and it is a little lighter to draw, which can help on a slow computer such as a Raspberry Pi. It applies to the whole app, the Live Race pages and the widgets of your layouts, on this computer and on the devices that follow the race.</span></div>
     <div class="field" style="max-width:480px"><label for="speedunit">Speed unit in the tables (Results and Records, the PDF of a session)</label>
       <select id="speedunit">${Speed.UNITS.map(([k, t]) => `<option value="${k}"${k === su ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>
       <span class="muted hint">The average speed and the scale speed of the laps, sessions, stints and records. The Speed widget in a layout has a Unit choice of its own.</span></div>
@@ -169,6 +172,7 @@ async function renderGeneralSettings(box) {
   box.onclick = ev => { const fa = ev.target && ev.target.closest ? ev.target.closest('[data-folderall]') : null; if (fa) { folderAll('general', GENERAL_FOLDERS, fa.dataset.folderall === '1'); renderGeneralSettings(box); } };
   const $ = id => document.getElementById(id);
   $('uiscale').onchange = async ev => { state.settings = await api.setSettings({ uiScale: UiScale.levelOf(ev.target.value) }); applyUiScale(); renderSettings(); };
+  $('depthlevel').onchange = async ev => { state.settings = await api.setSettings({ depth: Depth.levelOf(ev.target.value) }); applyDepth(); renderSettings(); };
   $('speedunit').onchange = async ev => { state.settings = await api.setSettings({ speedUnit: Speed.unitOf({ speedUnit: ev.target.value }) }); renderSettings(); };
   $('distunit').onchange = async ev => { state.settings = await api.setSettings({ distanceUnit: Speed.distUnitOf({ distanceUnit: ev.target.value }) }); renderSettings(); };
   $('picq').onchange = async ev => { state.settings = await api.setSettings({ pictureQuality: Picture.levelOf(ev.target.value) }); renderSettings(); };
@@ -374,7 +378,7 @@ function bootFailed(e) {
 (async () => {
   state.schema = await api.schema();
   state.settings = await api.getSettings();
-  applyTheme(); applyName();
+  applyTheme(); applyDepth(); applyName();
   if (typeof location !== 'undefined' && location.hash === '#live') { // the second-screen window: only the Live Race pages
     document.body.classList.add('lv-window'); document.querySelector('header').hidden = true;
     document.title = (state.settings.appName || DEFAULT_NAME) + ' – Live Race'; if (api.setZoom) api.setZoom(1); return LiveView.mount(view, { second: true }); // (the second screen keeps its own size)

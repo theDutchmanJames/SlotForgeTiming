@@ -286,9 +286,9 @@ const TINY = 60; // a widget narrower or lower than this many units (6% of the w
 function widgetHtml(w, sel, single, d) {
   const def = Widgets.def(w.type), H = Widgets.heightOf(d), U = Widgets.U, col = Widgets.colorsOf(w, d);
   const style = `left:${w.x / U * 100}%;top:${w.y / H * 100}%;width:${w.w / U * 100}%;height:${w.h / H * 100}%;font-size:${(w.textSize || def.textSize) / 10}cqw;` +
-    `color:${Widgets.cssVal(col.color) || 'var(--ink)'};${Frame.css(col.bg, w, 'var(--muted)', d)}${d.kind !== 'row' && Frame.corner(w, d, U) ? ';border-radius:' + Frame.corner(w, d, U) : ''}`; // (a row design has its own corner setting, used by Rows)
+    `color:${Widgets.cssVal(col.color) || 'var(--ink)'};${Frame.css(col.bg, w, 'var(--muted)', d, U)};--wf:${Frame.solidity(w, d)}${d.kind !== 'row' && Frame.corner(w, d, U) ? ';border-radius:' + Frame.corner(w, d, U) : ''}`; // (a row design has its own corner setting, used by Rows; --wf: how solid the widget is, the depth of the page fades with it)
   const tiny = single && (w.w < TINY || w.h < TINY); // (a small widget has its resize handles outside its corners, so the widget itself can still be grabbed and moved)
-  return `<div class="lw${sel ? ' sel' : ''}${tiny ? ' tiny' : ''}${def.button ? ' btnw' : ''}${w.titleSpace ? ' tspace' : ''}${Widgets.alignClassOf(w)}" data-i="${d.widgets.indexOf(w)}" style="${style}">
+  return `<div class="lw${sel ? ' sel' : ''}${tiny ? ' tiny' : ''}${d.kind === 'row' ? ' flat' : ''}${def.button ? ' btnw' : ''}${w.titleSpace ? ' tspace' : ''}${Widgets.alignClassOf(w)}" data-i="${d.widgets.indexOf(w)}" style="${style}">
     ${Widgets.showTitleOf(w) && d.kind !== 'row' ? `<span class="lw-title" style="${Widgets.titleStyleOf(w)}">${esc(Widgets.titleOf(w))}</span>` : ''}
     ${def.perLane && d.kind !== 'row' ? `<span class="lw-lane">L${w.lane + 1}</span>` : ''}<span class="lw-val"${def.button ? '' : ` style="${Widgets.valueStyleOf(w)}"`}>${previewOf(def, w)}</span>
     ${single ? '<i class="h nw" data-h="nw"></i><i class="h ne" data-h="ne"></i><i class="h sw" data-h="sw"></i><i class="h se" data-h="se"></i>' : ''}</div>`;
@@ -346,7 +346,7 @@ function sideHtml() {
   const slider = (id, label, v, min, max, step, hint, off) => `<div class="field"><label for="${id}">${label} <output id="${id}-v">${v}%</output></label>
     <input id="${id}" type="range" min="${min}" max="${max}" step="${step}" value="${v}"${off ? ' disabled' : ''}>${hint ? `<span class="muted hint">${hint}</span>` : ''}</div>`;
   const rad = common(w => Frame.cornerPct(w.radius) ?? '');
-  const bmode = common(w => Frame.mode(w)), bshade = common(w => Frame.shade(w)), trans = common(w => Frame.transparency(w, state.editing.draft)), followsLayout = common(w => Frame.ownTransparency(w) === null);
+  const bmode = common(w => Frame.mode(w)), bshade = common(w => Frame.shade(w)), bcolor = common(w => Frame.colorOf(w)), bwidth = common(w => Frame.widthOf(w) ?? ''), trans = common(w => Frame.transparency(w, state.editing.draft)), followsLayout = common(w => Frame.ownTransparency(w) === null);
   const alignSelect = (id, label, v) => `<div class="field"><label for="${id}">${label}</label><select id="${id}">${v === undefined ? '<option value="" selected>(different)</option>' : ''}${Widgets.ALIGNS.map(([k, t]) => `<option value="${k}"${k === v ? ' selected' : ''}>${t}</option>`).join('')}</select></div>`;
   const titleBox = defs.some(d => !d.button) ? [
     single ? `<div class="field"><label for="s-title">${row ? 'Header text' : 'Title'} (empty = ${esc(d0.title || d0.label)})</label><input id="s-title" type="text" maxlength="40" value="${esc(w0.title || '')}"></div>` : '',
@@ -360,8 +360,10 @@ function sideHtml() {
     (defs.some(d => !d.button && d.type !== 'leaderboard') ? alignSelect('s-valign', 'Text alignment', common(w => Widgets.valueAlignOf(w))) : '') + // (the Leaderboard has none: its columns come from the layout you make)
     `<div class="field"><label for="s-size">Text size${single ? ` (default ${d0.textSize})` : ''}</label><input id="s-size" type="number" min="5" max="200" value="${esc(size || '')}" placeholder="${size === undefined ? 'different' : (single ? d0.textSize : '')}"></div>` + color('textColor', 'Text colour');
   const frameBox = color('bgColor', 'Background colour') + (row ? '' :
-    `<div class="field"><label for="s-bmode">Border</label><select id="s-bmode">${bmode === undefined ? '<option value="" selected>(different)</option>' : ''}${[['', 'Theme default'], ['shade', 'Shade of the background'], ['off', 'No border']].map(([k, t]) => `<option value="${k}"${k === bmode ? ' selected' : ''}>${t}</option>`).join('')}</select></div>` +
-    slider('s-bshade', 'Border shade', bshade ?? Frame.DEFAULT_SHADE, 0, 100, 0.5, '0% white, 50% the background colour, 100% black', bmode === '' || bmode === 'off') +
+    `<div class="field"><label for="s-bmode">Border</label><select id="s-bmode">${bmode === undefined ? '<option value="" selected>(different)</option>' : ''}${[['', 'Theme default'], ['shade', 'Shade of the background'], ['custom', 'Colour of your own'], ['off', 'No border']].map(([k, t]) => `<option value="${k}"${k === bmode ? ' selected' : ''}>${t}</option>`).join('')}</select></div>` +
+    `<div class="field"><label for="s-bcolor">Border colour (for "Colour of your own")</label><input id="s-bcolor" type="color" value="${esc(bcolor ?? Frame.COLOR_START)}"${bmode === 'custom' ? '' : ' disabled'}></div>` +
+    slider('s-bshade', 'Border shade', bshade ?? Frame.DEFAULT_SHADE, 0, 100, 0.5, '0% white, 50% the background colour, 100% black', bmode === '' || bmode === 'off' || bmode === 'custom') +
+    `<div class="field"><label for="s-bwidth">Border thickness</label><input id="s-bwidth" type="number" min="0" max="40" step="0.5" value="${esc(bwidth ?? '')}" placeholder="${bwidth === undefined ? 'different' : 'standard'}"><span class="muted hint">Empty is the standard thin line. The thickness is a share of the page (a page is 1000 units wide, 40 is the most), so the border keeps its look on every screen, like the text does. It counts for every kind of border.</span></div>` +
     slider('s-trans', 'Transparency', trans ?? 0, 0, 100, 1, 'Fades the background and the border, not the text. 0% is solid.', followsLayout === true) +
     `<div class="field"><label class="inline"><input type="checkbox" id="s-transfollow" ${followsLayout ? 'checked' : ''}> Same as the layout (Background button in the top bar)</label></div>` +
     `<div class="field"><label for="s-radius">Rounded corners</label><input id="s-radius" type="number" min="0" max="50" step="0.5" value="${esc(rad === undefined ? '' : rad)}" placeholder="${rad === undefined ? 'different' : 'as the layout'}"><span class="muted hint">Empty follows the layout. 0 is square, 50 is fully round (on a square widget, a circle).</span></div>`);
@@ -670,6 +672,8 @@ function renderEditor() {
     else if (t.id === 's-tsize') sel.forEach(w => { w.titleSize = t.value === '' ? '' : Number(t.value); });
     else if (t.id === 's-title') sel[0].title = t.value;
     else if (t.id === 's-bshade') { sel.forEach(w => { w.borderShade = Number(t.value); }); const o = $('s-bshade-v'); if (o) o.textContent = `${Frame.shade(sel[0])}%`; }
+    else if (t.id === 's-bcolor') { const h = Frame.hex(t.value); if (h) sel.forEach(w => { w.borderColor = h; }); }
+    else if (t.id === 's-bwidth') { const v = Frame.widthOf({ borderWidth: t.value }); sel.forEach(w => { w.borderWidth = v === null ? '' : v; }); }
     else if (t.id === 's-radius') { const v = Frame.cornerPct(t.value); sel.forEach(w => { w.radius = v === null ? '' : v; }); }
     else if (t.id === 's-trans') { sel.forEach(w => { w.transparency = Number(t.value); }); const o = $('s-trans-v'); if (o) o.textContent = `${Frame.transparency(sel[0], d)}%`; }
     else if (t.dataset.color) { sel.forEach(w => { w[t.dataset.color] = t.value; }); const cb = side.querySelector(`[data-theme="${t.dataset.color}"]`); if (cb) cb.checked = false; }

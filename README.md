@@ -2517,18 +2517,6 @@ Good to know:
 4. Until the audio calls are in, a late failure or an early leave is said like any other penalty, with the ready-made penalty sentence.
 5. A failure whose level is not found in the system (you removed or renamed the level yourself) asks the least: pit whenever you can, no deadline, a repair. The table says *(no such level)*.
 
-## What to try (1.45.0): the Race Setup sub-tabs as coloured buttons, and adding and taking out participants
-
-1. Open the **Race Setup** tab. The sub-tabs are coloured buttons now. **Race Setups** is the big red button on the left (the colour of your theme), with the words *Where it all comes together*. The others are in three groups: **Systems** (Penalty yellow, Damage red, Tyre Wear purple, Weather blue), **Setups** (Rotation brown, Fuel green) and **Extras** (Balance of Power white, Time Tokens teal). Each has the colour of its folder on the race screen.
-2. Click through them. The one that is open is stronger (a stronger tint, a line under it), the big button gets a ring when it is open, and the page under the strip gets a line at the top in the same colour. Try the **Light** theme (the colours are darker) and make the window narrow (the big button goes full width and the groups go under each other).
-3. **Rotation Setups**: open a rotation (or make one). The **Participants** box in the Size bar was always 2 to 64 (8 is only where a new rotation starts). Above the participants there is a new button **Add a participant**: it adds P9 at the end, in no heat yet, and puts the cursor in its name.
-4. Under **Names of the participants** (open to begin with; if you close it, it stays closed) every participant has a **×**. Press it on a participant who is in a heat: it asks first (*Sam is in 1 heat. Taking them out removes them from that heat, and everybody after them moves up one number. Undo brings them back.*). Yes: they are gone from the heats, their name is gone, they leave their groups, and the participants after them move up one number and keep their lanes. **Undo** brings it all back. A participant who is in no heat goes at once.
-5. The **×** is off when there are 2 participants, and **Add a participant** is off at 64. For 24 people: type 24 in **Participants**, or press Add 16 times; **Start from a plan** makes the heats.
-
-Good to know:
-1. The tab order inside the strip is Race Setups, Systems, Setups, Extras (it was Setups before Systems). The sub-tabs have the same names and work as before.
-2. Both designs (A is built, B is a list down the left side for when there are many more systems) are in `docs/ui-reference/race-setup-tabs`.
-
 ## What to try (1.44.0): Car Failures, release 2 (Race Director buttons, audio calls, failures in the results)
 
 1. Race with a Damage System that has **Car Failures** switched on (see 1.43.0). On the race screen there is a new red folder **Car Failures**, right after **Damage**. It has a row for every lane: the car, its failure (or *No failure*), what it asks (*Pit in 3 laps, 8 seconds in the pits*, or the clock while it is being repaired) and two controls: a list with **At random** and the failures of the system (with their chances), and a **Give** button; and a **Clear** button.
@@ -2544,3 +2532,28 @@ Good to know:
 2. An audio set from before 1.44.0 does not have these seven calls; it says them with the ready-made sentences. Open the set and save it to change them or switch one off.
 3. A failure that the Race Director gives is announced like any other (the audio call and the log say so; the log adds *given by the Race Director*).
 4. Not in (it was not asked for): a failure column in the Leaderboard, a card on the Home tab, and failure figures on the Slotcar statistics page.
+## What to try (1.45.0): the Race Setup sub-tabs as coloured buttons, and adding and taking out participants
+
+1. Open the **Race Setup** tab. The sub-tabs are coloured buttons now. **Race Setups** is the big red button on the left (the colour of your theme), with the words *Where it all comes together*. The others are in three groups: **Systems** (Penalty yellow, Damage red, Tyre Wear purple, Weather blue), **Setups** (Rotation brown, Fuel green) and **Extras** (Balance of Power white, Time Tokens teal). Each has the colour of its folder on the race screen.
+2. Click through them. The one that is open is stronger (a stronger tint, a line under it), the big button gets a ring when it is open, and the page under the strip gets a line at the top in the same colour. Try the **Light** theme (the colours are darker) and make the window narrow (the big button goes full width and the groups go under each other).
+3. **Rotation Setups**: open a rotation (or make one). The **Participants** box in the Size bar was always 2 to 64 (8 is only where a new rotation starts). Above the participants there is a new button **Add a participant**: it adds P9 at the end, in no heat yet, and puts the cursor in its name.
+4. Under **Names of the participants** (open to begin with; if you close it, it stays closed) every participant has a **×**. Press it on a participant who is in a heat: it asks first (*Sam is in 1 heat. Taking them out removes them from that heat, and everybody after them moves up one number. Undo brings them back.*). Yes: they are gone from the heats, their name is gone, they leave their groups, and the participants after them move up one number and keep their lanes. **Undo** brings it all back. A participant who is in no heat goes at once.
+5. The **×** is off when there are 2 participants, and **Add a participant** is off at 64. For 24 people: type 24 in **Participants**, or press Add 16 times; **Start from a plan** makes the heats.
+
+Good to know:
+1. The tab order inside the strip is Race Setups, Systems, Setups, Extras (it was Setups before Systems). The sub-tabs have the same names and work as before.
+2. Both designs (A is built, B is a list down the left side for when there are many more systems) are in `docs/ui-reference/race-setup-tabs`.
+
+## What to try (1.46.0): Soft lift (depth in the whole app) and a border colour and thickness for widgets
+
+1. Open the **Race** screen (or any tab). Cards, folders, buttons and the widgets of your layouts stand up from the page a little: a light edge on top, a thin lip underneath, a soft shadow. Text fields are a little sunk. Press and hold a button: it moves down.
+2. **App Settings > General > Display > Depth**: **Flat (no depth)** is the look of before (and a little lighter for a slow computer such as a Raspberry Pi), **Soft lift (standard)** is the design you chose, **Medium** and **Thick card** (design B) are stronger. The change is at once, also in the Live Race window and on a phone that follows the race.
+3. Try the themes (**App Theme**): dark, carbon, light, ocean, and a Custom theme with a light panel. In the light ones the lip and the shadow are lighter.
+4. **Customization > Layout Editor**: select a widget. In the frame settings, **Border** has **Colour of your own**: pick any colour. **Border thickness** (0 to 40, in half steps; empty is the standard thin line): the border grows and shrinks with the page like the text does, also in the full screen widget view and the Live Race pages. The thickness works with every kind of border (the theme's, a shade, your colour). Select several widgets to set them all at once. A layout from before looks as it did.
+5. Set **Transparency** of a widget to 60: its depth fades with it, a see-through widget stays flat.
+
+Good to know:
+1. Only the look changes: no setting of a race, a layout or a result is touched. The border colour and thickness are saved in the layout, so they go along with an export.
+2. The depth is made with shadows only, so it works on any colour. The cells of a leaderboard row design stay flat, and the button widgets (Start, Pause and the like) are shallow buttons that move down when you press them.
+3. Not verified in the full Electron window (the real stylesheet was checked in a browser against the real screens). Design option **B** (a side rail) of the Race Setup tabs and the label names are not touched.
+4. The design and the pictures are in `docs/ui-reference/depth`.
