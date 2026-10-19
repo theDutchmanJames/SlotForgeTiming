@@ -1,5 +1,6 @@
 // 1.45.0: the sub-tabs of the Race Setup tab as coloured buttons (renderer/editor.js, styles.css, icons.js; design in docs/ui-reference/race-setup-tabs):
 // one big Race Setups button, three groups (Systems, Setups, Extras), the colour of each sub-tab is the colour of its folder on the race screen.
+// 1.51.0: the sub-tabs of the other main tabs are the same buttons without the colours (the last tests).
 const fs = require('fs'), vm = require('vm'), path = require('path');
 const R = path.join(__dirname, '..', 'renderer') + '/';
 const Icons = require(R + 'icons.js');
@@ -59,6 +60,28 @@ ok('1.47.1: the card picture on a Race Setup page is the icon in the colour of t
 ok('1.47.1: the big Race Setups button is smaller than it was in 1.45.0 (214 px wide, 42 px picture, 17 px name) and does not stretch to the height of the groups next to it', (() => { const b = (css.match(/\.ssbig\{([^}]*)\}/) || [, ''])[1], w = +((b.match(/flex:0 0 (\d+)px/) || [])[1] || 999), ico = +((css.match(/\.ssbigico\{width:(\d+)px/) || [])[1] || 999), nm = +((css.match(/\.ssbig strong\{[^}]*font-size:(\d+)px/) || [])[1] || 999); return w < 214 && w >= 150 && ico < 42 && ico >= 28 && nm < 17 && nm >= 13 && /align-self:flex-start/.test(b); })());
 ok('the buttons can be reached with the keyboard and show where they are (a focus ring)', /\.ssbig:focus-visible,\.sstab:focus-visible\{outline:3px solid/.test(css));
 ok('the mock-ups are kept with the code: the three pictures and their sources', ['1-option-a-top-strip.png', '2-option-a-states.png', '3-option-b-side-rail.png'].every(f => fs.existsSync(path.join(__dirname, '..', 'docs/ui-reference/race-setup-tabs', f))) && ['Main', 'A-States', 'B-SideRail'].every(f => fs.existsSync(path.join(__dirname, '..', 'docs/ui-reference/race-setup-tabs/source', f + '.dc.html'))));
+
+// 1.51.0: the sub-tabs of the other main tabs have the same buttons, without the colours
+{ const app = fs.readFileSync(R + 'app.js', 'utf8'), dbjs = fs.readFileSync(R + 'database.js', 'utf8');
+  const bars = [[app, 'settingstabs'], [app, 'hwtabs'], [dbjs, 'subtabs'], [dbjs, 'respool'], [editor, 'customtabs']];
+  ok('1.51.0: the five other bars of sub-tabs (Database, Results and Records, Customization, App Settings, Timing Hardware) are a .sub with role tablist, and nothing of their look is written in the page any more (it is in the style sheet)', bars.every(([src, id]) => new RegExp(`<div class="sub" id="${id}" role="tablist"></div>`).test(src)) && !/role="tablist" style=/.test(app + dbjs + editor));
+  const rule = sel => (css.match(new RegExp('(?:^|\\n)' + sel.replace(/[.[\]()*+?^$|\\"=]/g, '\\$&') + '\\{([^}]*)\\}')) || [, ''])[1];
+  const bar = rule('.sub[role="tablist"]'), chip = rule('.sub[role="tablist"] .tab'), hov = rule('.sub[role="tablist"] .tab:hover'), sel = rule('.sub[role="tablist"] .tab[aria-selected="true"]');
+  const same = (a, b, props) => props.every(k => { const g = t => ((t.match(new RegExp('(?:^|;)' + k + ':([^;]*)')) || [])[1] || '').trim(); return g(a) && g(a) === g(b); });
+  const sstab = rule('.sstab'), sshov = rule('.sstab:hover'), sssel = rule('.sstab[aria-selected="true"]');
+  ok('1.51.0: they are buttons with the shape of the Race Setup chips: the same corners, size of text, spacing, border and tint', same(chip, sstab, ['border-radius', 'font-size', 'line-height', 'color', 'background', 'border']) && /padding:7px 13px/.test(chip) && /border-radius:8px/.test(chip) && /font-size:13\.5px/.test(chip));
+  ok('1.51.0: ...with the same hover and the same stronger look for the one that is open (a stronger tint, its own border, a bar under it, bold)', same(hov, sshov, ['background']) && same(sel, sssel, ['background', 'border-color', 'box-shadow', 'font-weight']) && /box-shadow:inset 0 -3px 0 var\(--c\)/.test(sel) && /font-weight:700/.test(sel));
+  ok('1.51.0: ...and they wrap onto a second line in a narrow window, with a small gap between them', /display:flex/.test(bar) && /flex-wrap:wrap/.test(bar) && /gap:6px/.test(bar));
+  ok('1.51.0: ...without a colour of their own: their --c is the text colour of the theme on the panel, and no colour code or accent colour is written in these rules (so every theme, also your own, has them)', /--c:color-mix\(in srgb,var\(--ink\) \d+%,var\(--panel\)\)/.test(bar) && ![bar, chip, hov, sel].some(r => /#[0-9a-fA-F]{3,6}\b|var\(--accent\)|var\(--c-/.test(r)));
+  ok('1.51.0: the main tabs along the top keep their underline (the new rules only apply inside a .sub bar)', /\.tab\{[^}]*border-bottom:3px solid transparent/.test(css) && /\.tab\[aria-selected="true"\]\{[^}]*border-bottom-color:var\(--accent\)/.test(css) && !/\n\.tab\{[^}]*border-radius/.test(css));
+  ok('1.51.0: the old rule that only wrapped these bars on a narrow window is gone (they always wrap now)', !/@media \(max-width:700px\)\{\.sub\[role="tablist"\]\{flex-wrap:wrap\}\}/.test(css));
+  // the buttons themselves are still made by renderTabs: a button with role tab, its name, and exactly one that is open
+  const rt = app.slice(app.indexOf('function renderTabs'), app.indexOf('\n}\n', app.indexOf('function renderTabs')) + 3);
+  const el = {}, tctx = vm.createContext({ Icons: { has: () => false }, esc: x => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;'), raceTabTitle: () => '', el });
+  vm.runInContext(rt + '\nel.f = renderTabs;', tctx);
+  const box = {}; el.f(box, [['tracks', 'Tracks'], ['drivers', 'Drivers'], ['results', 'Results and Records']], 'drivers', () => {});
+  ok('1.51.0: a bar of sub-tabs still has real buttons with role tab and the name of the page, and only the open page is selected', (box.innerHTML.match(/<button class="tab" role="tab"/g) || []).length === 3 && (box.innerHTML.match(/aria-selected="true"/g) || []).length === 1 && /aria-selected="true" data-id="drivers">Drivers</.test(box.innerHTML) && box.innerHTML.includes('>Results and Records<'));
+}
 
 if (fails) { console.log(fails + ' SETUP STRIP TESTS FAILED'); process.exit(1); }
 console.log('ALL SETUP STRIP TESTS PASSED');

@@ -25,7 +25,7 @@ const flagHtml = c => c ? `<span class="fi fi-${esc(c.toLowerCase())}"></span>` 
 dlg.onclose = () => { dlg.oninput = null; dlg.oncancel = null; if (manager && document.body.contains(manager.box)) mountManager(manager.box, manager.e); };
 
 async function renderDatabase(target = view) {
-  target.innerHTML = '<h2>Database</h2><div class="sub" id="subtabs" role="tablist" style="display:flex;gap:4px"></div><div id="subview"></div>';
+  target.innerHTML = '<h2>Database</h2><div class="sub" id="subtabs" role="tablist"></div><div id="subview"></div>';
   await drawSub();
 }
 
@@ -477,7 +477,7 @@ function openForm(e, item) {
   const s = state.schema[e];
   const fields = [...s.fields.map(f => ({ ...f, id: f.key, custom: false })), ...(e === 'slotcars' ? [...CAR_STATS, CAR_TRACKS] : []), ...(state.custom[e] || []).map(f => ({ ...f, custom: true }))];
   // a track saved before the lane length modifier shows what it always did: calculated as a loop (or what version 0.60.0's track shape said)
-  const val = f => f.custom ? (item?.custom || {})[f.id] : item ? (e === 'slotcars' && f.key === 'lapsSinceService' ? CarStats.sinceOf(item) : e === 'slotcars' && f.key === 'servicesDone' ? CarStats.servicesOf(item) : e === 'tracks' && f.key === 'laneModifier' ? Speed.modifier(item) : e === 'tracks' && f.key === 'netTurns' && item.netTurns === undefined ? f.default : item[f.key]) : f.default;
+  const val = f => f.custom ? (item?.custom || {})[f.id] : item ? (e === 'slotcars' && f.key === 'lapsSinceService' ? CarStats.sinceOf(item) : e === 'slotcars' && f.key === 'lapsDriven' ? CarStats.lapsDriven(item) : e === 'slotcars' && f.key === 'servicesDone' ? CarStats.servicesOf(item) : e === 'tracks' && f.key === 'laneModifier' ? Speed.modifier(item) : e === 'tracks' && f.key === 'netTurns' && item.netTurns === undefined ? f.default : item[f.key]) : f.default;
   const imgs = {}, frames = {}, mainKey = s.image;
   let pieces = ((item && item.lengthPieces) || []).map(p => ({ count: p.count, mm: p.mm }));
   if (!pieces.length) pieces = [{ count: '', mm: 200 }];
@@ -658,6 +658,10 @@ function openForm(e, item) {
       if (f.custom) custom[f.id] = v; else built[f.key] = v;
     }
     if (e === 'slotcars') { // the service interval is a whole number of laps (empty = none); Reset starts the count again today
+      // Laps Driven (1.51.0) can be typed: a whole number from 0. It is only sent when it was changed (a race that is saved while the form is open keeps its laps), and an empty box leaves it as it is (a new car starts at 0).
+      const typedLaps = built.lapsDriven;
+      if (typedLaps !== '' && typedLaps !== undefined && !(Number.isInteger(typedLaps) && typedLaps >= 0)) { byId('err').textContent = 'Please enter Laps Driven as a whole number, 0 or more.'; return; }
+      if (item && (typedLaps === '' || typedLaps === undefined || typedLaps === CarStats.lapsDriven(item))) delete built.lapsDriven; else if (typedLaps === '' || typedLaps === undefined) built.lapsDriven = 0;
       if (built.serviceInterval !== '' && built.serviceInterval !== undefined) built.serviceInterval = Math.max(1, Math.floor(Number(built.serviceInterval)) || 1);
       if (serviceReset) { built.lapsSinceService = 0; built.serviceDate = new Date().toISOString(); built.servicesDone = CarStats.servicesOf(item) + 1; }
     }
@@ -746,7 +750,7 @@ const SESSION_LABEL = { practice: 'Free practice', qualifying: 'Qualifying', rac
 async function renderResults(box) {
   manager = null;
   const pool = state.resultsSub === 'tokens' ? 'tokens' : 'racing';
-  box.innerHTML = '<div class="sub" id="respool" role="tablist" style="display:flex;gap:4px"></div><div id="resbody"></div>';
+  box.innerHTML = '<div class="sub" id="respool" role="tablist"></div><div id="resbody"></div>';
   renderTabs(byId('respool'), [['racing', 'Racing Records'], ['tokens', 'Token Records']], pool, id => { state.resultsSub = id; renderResults(box); });
   await renderResultsPool(byId('resbody'), pool);
 }

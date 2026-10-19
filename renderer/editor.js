@@ -119,7 +119,7 @@ async function renderSetup() {
 // Customization tab: Layout Editor, Leaderboard Editor, Audio Settings, Image Settings and Widget Builder
 async function renderCustom() {
   if (state.editing) { state.editing.drivers = await api.list('drivers'); state.editing.cars = await api.list('slotcars'); state.editing.rowDesigns = await api.list('rowdesigns'); state.editing.imageSets = await api.list('imagesets'); state.editing.teams = await api.list('teams'); state.editing.customWidgets = await api.list('customwidgets'); return renderEditor(); } // drivers' pictures are used to preview the Avatar framing
-  view.innerHTML = '<h2>Customization</h2><div class="sub" id="customtabs" role="tablist" style="display:flex;gap:4px"></div><div id="setupbox"></div>';
+  view.innerHTML = '<h2>Customization</h2><div class="sub" id="customtabs" role="tablist"></div><div id="setupbox"></div>';
   renderTabs(document.getElementById('customtabs'), [['layouts', 'Layout Editor'], ['rows', 'Leaderboard Editor'], ['audio', 'Audio Settings'], ['images', 'Image Settings'], ['widgets', 'Widget Builder']], state.customSub, id => {
     // the picture set and widget editors are closed by another tab: ask first when there are changes that are not saved
     if (imgEd && imgEd.dirty && !confirm('Discard your unsaved changes to this picture set?')) return;

@@ -142,5 +142,12 @@ ok('penalty systems can be added and removed', db.list('penaltysystems').length 
   ok('the service interval is kept by the database like any other setting', (w.update('slotcars', 'kept', { serviceInterval: 300 }), new Database(f).list('slotcars').find(c => c.id === 'kept').serviceInterval === 300) && car('kept').lapsSinceService === 8);
   w.removeSession(w.data.sessions[w.data.sessions.length - 1].id);
   ok('removing a session takes its laps out of the counts', car('kept').lapsSinceService === 7 && car('kept').lapsDriven === 40);
+  // 1.51.0: Laps Driven can be set by hand (an old car that has driven laps already): the count goes on from that number, and the laps since the last service are not touched
+  w.update('slotcars', 'kept', { lapsDriven: 5000 });
+  ok('1.51.0: a number typed in Laps Driven is kept in the file, and the laps since the last service stay as they were', new Database(f).list('slotcars').find(c => c.id === 'kept').lapsDriven === 5000 && car('kept').lapsSinceService === 7);
+  w.saveSession({ date: '2026-05-01T10:00:00.000Z' }, [lap('kept', '2026-05-01T10:00:00.000Z'), lap('kept', '2026-05-01T10:00:00.000Z')]);
+  ok('1.51.0: the next laps count on from it (5000 + 2), and the laps since the last service count too (7 + 2)', car('kept').lapsDriven === 5002 && car('kept').lapsSinceService === 9);
+  w.removeSession(w.data.sessions[w.data.sessions.length - 1].id);
+  ok('1.51.0: removing that session takes the two laps off again (5000), as before', car('kept').lapsDriven === 5000 && car('kept').lapsSinceService === 7);
 }
 console.log(fails ? fails + ' DB TESTS FAILED' : 'ALL DB TESTS PASSED'); process.exit(fails ? 1 : 0);

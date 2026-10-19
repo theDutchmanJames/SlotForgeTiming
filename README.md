@@ -2661,3 +2661,20 @@ Good to know:
 2. These sounds are not counted in **Most sounds at once**; they play once at a time (a second start does nothing); and they are lowered while a call is spoken like the others.
 3. Pausing the race does not pause them yet, and a red flag does not stop them. The pit lane has no background sound (the pit crew sound is for each car).
 4. Not verified in the full Electron window or with real sound files. The fades were tested with a stand-in clock (every step of a tenth of a second), the folders in a browser (dark and light).
+
+## What to try (1.51.0): the same sub-tab buttons everywhere, and Laps Driven you can type
+
+What changed, in two parts. **Part 1:** the sub-tabs of the other main tabs (Database, Customization, App Settings, and the pages inside them) have the buttons of the Race Setup tab, without the colours. **Part 2:** **Laps Driven** of a slot car is a number you can type, for an old car that has driven laps already.
+
+1. **Database, Customization, App Settings.** The sub-tabs (Tracks, Drivers, Teams, Slotcars, Results and Records; Layout Editor and the others; General, App Theme and the others) are rounded buttons now, with a border and a light tint, the same as the Race Setup chips. The page that is open is stronger: a stronger tint, a full border, a bar under the name and bold text. Hover makes a button a little lighter, as there.
+2. The pages inside them have them too: **Racing Records / Token Records** (Database, Results and Records) and the five boxes of **App Settings > Timing Hardware** (Trackmate Interface, Arduino and the others). In a narrow window the buttons wrap onto a second line.
+3. They have no colour of their own: they take the text colour of the theme (so they follow every theme, also your own). The main tabs along the top keep their underline.
+4. **Database > Slotcars > Add slot car** (or **Edit** on a car) **> Statistics > Laps Driven.** The box can be typed in now: for an old car type 5000 and press **Save**. From then on every lap saved with the car counts on from 5000 (5001, 5002, ...), and when you delete a session or a race its laps come off again, as before.
+5. A new car can start with laps driven too: type the number in **Add slot car**. An empty box on a new car is 0; on a car that already exists, an empty box leaves the laps as they are.
+6. Only a whole number from 0 is taken (**-3** and **12.5** are refused, and the form says so). You can type 0 to start the count again.
+
+Good to know:
+1. **Laps Since Last Interval** and the **Mileage** are not changed by the number you type. The laps since the last service go on from where they are (press **Reset** when you service the car), and the Mileage and the other figures are worked out from the laps that are saved in the app, as before.
+2. A number you type is only saved when you changed it. If a race is saved while the form is open, its laps are not overwritten by the number the form showed when it opened.
+3. The sub-tabs of the other tabs have no little pictures, as the Race Setup chips have.
+4. Not verified in the full Electron window. The buttons were checked in a browser (dark, light and ocean themes, and a narrow window), the form with its tests.

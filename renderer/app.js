@@ -66,7 +66,7 @@ function showRace(on) { // on: the Race tab is shown; otherwise the race (if the
 
 // App Settings: General and Network
 async function renderSettings() {
-  view.innerHTML = '<h2>App Settings</h2><div class="sub" id="settingstabs" role="tablist" style="display:flex;gap:4px"></div><div id="settingsbox"></div>';
+  view.innerHTML = '<h2>App Settings</h2><div class="sub" id="settingstabs" role="tablist"></div><div id="settingsbox"></div>';
   renderTabs(document.getElementById('settingstabs'), [['general', 'General'], ['theme', 'App Theme'], ['director', 'Race Director'], ['network', 'Network'], ['hardware', 'Timing Hardware'], ['transfer', 'Import and Export'], ['help', 'Help']], state.settingsSub, id => { state.settingsSub = id; renderSettings(); });
   if (state.settingsSub === 'help') return Help.render(document.getElementById('settingsbox'));
   if (state.settingsSub === 'transfer') return renderTransferSettings(document.getElementById('settingsbox'));
@@ -96,7 +96,7 @@ function renderHardwareArea(box) {
   const onPage = state.hwSub === 'trackmate' || state.hwSub === 'arduino';
   box.innerHTML = `<div class="row" id="hwuse"><label><strong>Timing hardware in use</strong> <select id="hw-use">${Hardware.TIMING.map(([id, name]) => `<option value="${id}"${id === chosen ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select></label>
       <span class="muted">One at a time. Only this one connects by itself, counts the laps of a race and shows on Home and on the race screen.</span></div>
-    <div class="sub" id="hwtabs" role="tablist" style="display:flex;gap:4px"></div>
+    <div class="sub" id="hwtabs" role="tablist"></div>
     <p class="muted" id="hwnote"${onPage && state.hwSub !== chosen ? '' : ' hidden'}>${onPage && state.hwSub !== chosen ? `This page is not in use for races: the app uses ${esc(names[chosen])}. <button class="btn" id="hw-usethis">Use this one</button>` : ''}</p>
     <div id="hwbox"></div>`;
   renderTabs(document.getElementById('hwtabs'), [['trackmate', 'Trackmate Interface'], ['arduino', 'Arduino'], ['ds', 'DS Electronics'], ['oxigen', 'oXigen Digital'], ['other', 'Other']], state.hwSub, id => { state.hwSub = id; renderHardwareArea(box); });

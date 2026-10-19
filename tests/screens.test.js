@@ -80,7 +80,8 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     say('...a day that is not a date shows as nothing (Last Serviced of a car with a wrong date), and a day is written as day, month and year', run("plainDate('nonsense')")==='' && run("plainDate('')")==='' && run("plainDate(undefined)")==='' && /2026/.test(run("plainDate('2026-03-01T12:00:00.000Z')")) && /^\D*\d{1,2}\D+2026$|^\D*2026\D*$|2026/.test(run("plainDate('2026-03-01T12:00:00.000Z')")));
     say('...with those names (Laps Driven now with capitals)', ['Service Interval','Laps Driven','Laps Since Last Interval','Last Serviced','Services Done','Mileage','Mileage Since Last Service','Last Driven','Sessions Driven','Wins','Deslots','Fastest Lap Ever','Best Lap per Track'].every(l=>f.includes('<label for="f-'+({'Service Interval':'serviceInterval','Laps Driven':'lapsDriven','Laps Since Last Interval':'lapsSinceService','Last Serviced':'serviceDate','Services Done':'servicesDone','Mileage':'_mileage','Mileage Since Last Service':'_mileageSince','Last Driven':'_lastDriven','Sessions Driven':'_sessions','Wins':'_wins','Deslots':'_deslots','Fastest Lap Ever':'_fastest','Best Lap per Track':'_byTrack'})[l]+'">'+l)) && !f.includes('Laps driven'));
     say('...the Service Interval is a number you can type (whole laps from 1, optional) and has 300', /id="f-serviceInterval" type="number" step="1" min="1" value="300"/.test(f) && /data-key="serviceInterval"[^]*?\(optional\)/.test(f));
-    say('...Laps Driven, Laps Since Last Interval, Last Serviced, Services Done and all the worked-out figures are shown but cannot be typed over', ['lapsDriven','lapsSinceService','serviceDate','servicesDone','_mileage','_mileageSince','_lastDriven','_sessions','_wins','_deslots','_fastest'].every(k=>new RegExp('id="f-'+k+'"[^>]*disabled').test(f)));
+    say('...Laps Since Last Interval, Last Serviced, Services Done and all the worked-out figures are shown but cannot be typed over', ['lapsSinceService','serviceDate','servicesDone','_mileage','_mileageSince','_lastDriven','_sessions','_wins','_deslots','_fastest'].every(k=>new RegExp('id="f-'+k+'"[^>]*disabled').test(f)));
+    say('...Laps Driven is a number you can type (whole laps from 0), and has the 50 of the car (1.51.0)', /id="f-lapsDriven" type="number" step="1" min="0" value="50"/.test(f) && !/id="f-lapsDriven"[^>]*disabled/.test(f) && /data-key="lapsDriven"[^]*?class="muted hint">[^<]*type the number yourself/.test(f));
     say('...Services Done of a car that was serviced before the count existed is 1 (its Last Serviced tells), and the table of the tracks is a box the screen fills in', /id="f-servicesDone" type="number" value="1" disabled/.test(f) && f.includes('id="f-_byTrack" class="svc-tracks-box"') && (f.match(/id="f-_byTrack"/g)||[]).length===1 && f.includes('<div class="field full" data-key="_byTrack">'));
     say('...every worked-out figure has its hint (what it counts), the table too', ['_mileage','_mileageSince','_lastDriven','_sessions','_wins','_deslots','_fastest','_byTrack'].every(k=>{ const i=f.indexOf('data-key="'+k+'"'); return i>0 && /class="muted hint"/.test(f.slice(i, i+900)); }));
     say('...Laps Since Last Interval shows 12, and has the button that starts the count again', /id="f-lapsSinceService" type="number" value="12" disabled/.test(f) && f.includes('data-svcreset="1"') && f.includes('data-svcreset="1">Reset</button>') && (f.match(/data-svcreset/g)||[]).length===1);
@@ -147,16 +148,40 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     got.length=0; set('f-serviceInterval','0'); await el('frm').onsubmit({preventDefault(){}}); const zero=got.length&&got[0][2].serviceInterval;
     got.length=0; set('f-serviceInterval',''); await el('frm').onsubmit({preventDefault(){}}); const none=got.length&&got[0][2].serviceInterval;
     say('saving: a service interval of 250.7 becomes 250 laps, 0 becomes 1, and an empty one stays empty (no interval)', frac===250 && zero===1 && none==='');
+    // 1.51.0: Laps Driven can be typed (an old car that has driven laps already). It is only sent when it was changed.
+    run(`openForm('slotcars', ${JSON.stringify(car)})`); await wait(); got.length=0; set('f-brand','Slot.it'); set('f-model','956'); set('f-serviceInterval','300'); set('f-lapsDriven','5000');
+    await el('frm').onsubmit({preventDefault(){}});
+    say('typing 5000 in Laps Driven saves 5000, and not the other counts (the laps since the last interval, the day and the services are not sent)', got.length===1 && got[0][0]==='slotcars' && got[0][1]==='c1' && got[0][2].lapsDriven===5000 && !('lapsSinceService' in got[0][2]) && !('serviceDate' in got[0][2]) && !('servicesDone' in got[0][2]));
+    got.length=0; set('f-lapsDriven','50'); await el('frm').onsubmit({preventDefault(){}});
+    say('...the number that is already there (50) is not sent again: a race saved while the form is open keeps its laps', got.length===1 && !('lapsDriven' in got[0][2]));
+    got.length=0; set('f-lapsDriven',''); await el('frm').onsubmit({preventDefault(){}});
+    say('...an empty box leaves the laps as they are', got.length===1 && !('lapsDriven' in got[0][2]));
+    got.length=0; set('f-lapsDriven','0'); await el('frm').onsubmit({preventDefault(){}});
+    say('...0 can be typed (the count starts again)', got.length===1 && got[0][2].lapsDriven===0);
+    got.length=0; set('f-lapsDriven','1e3'); await el('frm').onsubmit({preventDefault(){}});
+    say('...and 1000 typed as 1e3 is 1000', got.length===1 && got[0][2].lapsDriven===1000);
+    for (const bad of ['-3','12.5']) { got.length=0; el('err').textContent=''; set('f-lapsDriven',bad); await el('frm').onsubmit({preventDefault(){}});
+      say(`...${bad} is not a whole number from 0: the form says so and nothing is saved`, got.length===0 && el('err').textContent==='Please enter Laps Driven as a whole number, 0 or more.'); }
+    run(`openForm('slotcars', ${JSON.stringify(car)})`); await wait(); await E('dlg').onclick({target:{closest:()=>({id:'',dataset:{svcreset:'1'}})}}); got.length=0; set('f-brand','Slot.it'); set('f-model','956'); set('f-serviceInterval','300'); set('f-lapsDriven','5000'); await el('frm').onsubmit({preventDefault(){}});
+    say('...with Reset in the same form both are kept: 5000 laps driven, and the laps since the last interval start again at 0', got.length===1 && got[0][2].lapsDriven===5000 && got[0][2].lapsSinceService===0 && got[0][2].servicesDone===2);
+    set('f-serviceInterval',''); set('f-lapsDriven',''); // (the stand-in for the window keeps what was typed: the tests that follow start from empty boxes)
     // a new car: no counts to reset, nothing to work out
     listed=[]; run('delete formOpen.slotcars'); run("openForm('slotcars', null)"); await wait(); f=E('dlg').innerHTML;
-    say('a new slot car: Laps Driven and Laps Since Last Interval are 0, Last Serviced says Never, the Mileage is 0 m without looking at the laps', /id="f-lapsDriven" type="number" value="0" disabled/.test(f) && /id="f-lapsSinceService" type="number" value="0" disabled/.test(f) && /id="f-serviceDate" type="text" value="Never" disabled/.test(f) && el('f-_mileage').value==='0 m' && !listed.includes('laps'));
+    say('a new slot car: Laps Driven and Laps Since Last Interval are 0, Last Serviced says Never, the Mileage is 0 m without looking at the laps', /id="f-lapsDriven" type="number" step="1" min="0" value="0"/.test(f) && !/id="f-lapsDriven"[^>]*disabled/.test(f) && /id="f-lapsSinceService" type="number" value="0" disabled/.test(f) && /id="f-serviceDate" type="text" value="Never" disabled/.test(f) && el('f-_mileage').value==='0 m' && !listed.includes('laps'));
     say('...a new slot car has no figures of races yet: Services Done 0, no distance since a service, Never driven, no sessions, wins or deslots, no fastest lap, and no valid laps for the table', /id="f-servicesDone" type="number" value="0" disabled/.test(f) && el('f-_mileageSince').value==='0 m' && el('f-_lastDriven').value==='Never' && el('f-_sessions').value==='0' && el('f-_wins').value==='0' && el('f-_deslots').value==='0' && el('f-_fastest').value==='–' && el('f-_byTrack').innerHTML.includes('No valid laps yet.') && !listed.includes('sessions') && !listed.includes('tracks'));
     say('...and says there is no service interval until one is typed', el('svc-note').textContent==='No service interval is set.');
     set('f-brand','New'); set('f-serviceInterval',''); got.length=0; await el('frm').onsubmit({preventDefault(){}});
     say('...saving it starts the counts at 0, without a day of service (and Reset is not needed)', got.length===1 && got[0][0]==='slotcars' && got[0][1]==='' && got[0][2].lapsDriven===0 && got[0][2].lapsSinceService===0 && got[0][2].serviceDate==='' && got[0][2].servicesDone===0 && !('_mileage' in got[0][2]));
+    run('delete formOpen.slotcars'); run("openForm('slotcars', null)"); await wait(); got.length=0; set('f-brand','Old one'); set('f-serviceInterval',''); set('f-lapsDriven','5000'); await el('frm').onsubmit({preventDefault(){}});
+    say('...a new car can start with laps driven already: 5000 typed is saved as 5000, and the laps since the last interval still start at 0', got.length===1 && got[0][1]==='' && got[0][2].lapsDriven===5000 && got[0][2].lapsSinceService===0);
+    set('f-lapsDriven','');
     // a car from before 1.30.0 (no count of its own): all its laps count
     run(`openForm('slotcars', ${JSON.stringify({id:'c3',brand:'Old',lapsDriven:80})})`); await wait(); f=E('dlg').innerHTML;
     say('a car without a count of the laps since the last service shows all its laps driven (80), and Last Serviced says Never', /id="f-lapsSinceService" type="number" value="80" disabled/.test(f) && /id="f-serviceDate" type="text" value="Never" disabled/.test(f));
+    run(`openForm('slotcars', ${JSON.stringify({id:'c4',brand:'Bare'})})`); await wait(); { const g=E('dlg').innerHTML;
+      say('1.51.0: a car that has no Laps Driven at all (an old backup) shows 0 in the box, not an empty box', /id="f-lapsDriven" type="number" step="1" min="0" value="0"/.test(g)); }
+    run(`openForm('slotcars', ${JSON.stringify({id:'c5',brand:'Odd',lapsDriven:7.9})})`); await wait(); { const g=E('dlg').innerHTML;
+      say('...and a count that is not a whole number shows as the whole laps (7.9 is 7)', /id="f-lapsDriven" type="number" step="1" min="0" value="7"/.test(g)); }
     // the mileage in the miles-and-feet setting, and a track without a length
     run("state.settings.distanceUnit='ft'"); run(`openForm('slotcars', ${JSON.stringify(car)})`); await wait();
     say('the Mileage follows the distance unit of the display settings (feet and miles: 131 ft)', el('f-_mileage').value==='131 ft'); run("state.settings.distanceUnit=undefined");
@@ -1725,11 +1750,11 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     run('delete formOpen.drivers'); openF('drivers',{id:'d1',name:'Ann',nickname:'A',callsign:'ANN',flag:'nl',avatar:'data:image/png;base64,AAAA'});
     { const ps=parts(E('dlg').innerHTML), av=ps.find(x=>/data-fg="avatar"/.test(x));
       say('the driver form: the avatar and its framing are in the Avatar group, the callsign and the flag in theirs', av.includes('id="f-avatar"') && av.includes('data-frame="avatar"') && !av.includes('id="f-name"') && ps[0].includes('id="f-callsign"') && ps[1].includes('id="f-flag"') && ps[1].includes('id="f-dateOfBirth"')); }
-    // the slot car form: pictures and the gallery in Pictures, the laps driven (counted by the app) shown but not editable in Statistics
+    // the slot car form: pictures and the gallery in Pictures, the laps driven (counted by the app, and typed when you want) in Statistics
     run('delete formOpen.slotcars'); openF('slotcars',null);
     { const ps=parts(E('dlg').innerHTML), pic=ps.find(x=>/data-fg="pictures"/.test(x)), st=ps.find(x=>/data-fg="stats"/.test(x));
       say('the slot car form: the main picture and the gallery are in Pictures', pic.includes('id="f-picture"') && pic.includes('id="gal-box"') && !st.includes('id="f-picture"'));
-      say('...and the laps driven are in Statistics, shown but not editable', /id="f-lapsDriven"[^>]*disabled/.test(st)); }
+      say('...and the laps driven are in Statistics, and can be typed (1.51.0)', /id="f-lapsDriven"/.test(st) && !/id="f-lapsDriven"[^>]*disabled/.test(st)); }
     // the fuel setup: the empty tank group comes before the fast and slow laps, and the list columns did not change
     say('the fuel setup: the table of fuel setups has the same columns as before (name, tank, fuel per lap, target lap)', run("state.schema.fuelrules.list.join()")==='name,tank,perLap,targetLap' && run("state.schema.fuelrules.card.join()")==='tank,perLap,targetLap');
     say('the penalty system: the table has the same columns as before (name, time rule, disqualification points)', run("state.schema.penaltysystems.list.join()")==='name,timeRule,dqPoints' && run("state.schema.penaltysystems.card.join()")==='timeRule,dqPoints');
