@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Home: the next session of the championship</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{font-family:inherit}
+.card{background:#222831;border:1px solid #343b47;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+.ct{font-size:17px;font-weight:700}
+.note{font-size:13px;color:#98a0ab;line-height:1.45}
+.note b{color:#e8e6e1}
+.sel{height:36px;width:100%;box-sizing:border-box;background:#171b21;border:1px solid #343b47;border-radius:6px;color:#e8e6e1;font-family:inherit;font-size:14px;padding:0 10px}
+.btn{height:38px;padding:0 16px;font-size:14px;color:#e8e6e1;background:#171b21;border:1px solid #343b47;border-radius:6px}
+.tab{font-size:14px;color:#98a0ab;padding:8px 12px}
+.step{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:8px;border:1px solid #343b47;background:#171b21;font-size:14px}
+.si{width:22px;height:22px;border-radius:50%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex:none}
+.lane{display:grid;grid-template-columns:120px minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:center;padding:6px 8px;border:1px solid #343b47;border-radius:8px;background:#171b21}
+.ln{height:36px;display:flex;align-items:center;padding:0 12px;font-weight:700;font-size:14px;border-left:5px solid var(--lc);background:color-mix(in srgb,var(--lc) 22%,#171b21);border-radius:2px 6px 6px 2px}
+.num{font-variant-numeric:tabular-nums}
+table{border-collapse:collapse;width:100%}
+td{padding:7px 4px;border-bottom:1px solid #2b323d;font-size:14px;color:#e8e6e1}
+.dotc{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px}
+</style>
+</helmet>
+<div style="width:1100px;height:920px;box-sizing:border-box;background:#171b21;color:#e8e6e1;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+
+  <div style="display:flex;align-items:center;gap:20px;padding:12px 20px;border-bottom:1px solid #343b47;background:#222831;flex:none">
+    <b style="font-size:20px">SlotForge Timing</b>
+    <div style="display:flex;gap:2px"><span class="tab" style="color:#e8e6e1;font-weight:700;border-bottom:3px solid #c8363c">Home</span><span class="tab">Database</span><span class="tab">Race Setup</span><span class="tab">Customization</span><span class="tab">App Settings</span><span class="tab">Racing Rules</span></div>
+  </div>
+
+  <div style="padding:20px;display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:20px;align-items:start">
+
+    <div style="display:flex;flex-direction:column;gap:16px">
+
+      <div class="card" style="border-top:3px solid #ec5f9a">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+          <div>
+            <div class="note" style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:#ffb3d1">Championship</div>
+            <div class="ct" style="font-size:20px;margin-top:2px">Club Cup 2026</div>
+            <div class="note" style="margin-top:2px">Round 6 of 6 &middot; Final round &middot; Brands Hatch &middot; Sat 24 Oct</div>
+          </div>
+          <span style="background:color-mix(in srgb,#ec5f9a 25%,#171b21);color:#ffb3d1;border-radius:5px;padding:3px 10px;font-size:12px;font-weight:700;white-space:nowrap">Maria leads by 5</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="step"><span class="si" style="background:#1d3a2d;color:#5fe0a0">&#10003;</span><span style="flex:1">Practice 5 min</span><span class="note">done</span></div>
+          <div class="step" style="border-color:#ec5f9a;background:color-mix(in srgb,#ec5f9a 12%,#171b21)"><span class="si" style="background:#ec5f9a;color:#1a0a12">2</span><span style="flex:1;font-weight:700">Qualifying 5 min</span><span style="color:#ffb3d1;font-size:13px;font-weight:700">next</span></div>
+          <div class="step"><span class="si" style="border:2px solid #4a5260;color:#98a0ab">3</span><span style="flex:1">Race: Club Night heat, 20 laps</span><span class="note">points: 100%</span></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <button type="button" class="btn" style="background:#ec5f9a;border-color:#ec5f9a;color:#1a0a12;font-weight:700">Load Qualifying</button>
+          <button type="button" class="btn">Another session</button>
+          <span class="note" style="margin-left:4px">Fills the card below; nothing starts until you press Start race.</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ct">Start a race</div>
+        <div style="background:color-mix(in srgb,#ec5f9a 12%,#222831);border:1px solid color-mix(in srgb,#ec5f9a 40%,#222831);border-radius:8px;padding:8px 12px;font-size:13px"><b style="color:#ffb3d1">Counts for Club Cup 2026</b> &middot; Round 6 &middot; Qualifying <span class="note" style="margin-left:6px">(change the race setup and it is a normal race again)</span></div>
+        <label style="display:flex;flex-direction:column;gap:6px"><span class="note">Race setup</span><select class="sel"><option>Qualifying 5 min</option></select></label>
+        <div class="note">Qualifying on Brands Hatch (4 lanes)</div>
+        <div class="lane"><span class="ln" style="--lc:#e5484d">Lane 1</span><select class="sel"><option>Maria</option></select><select class="sel"><option>Mini Cooper</option></select></div>
+        <div class="lane"><span class="ln" style="--lc:#4c8bf5">Lane 2</span><select class="sel"><option>Dutch</option></select><select class="sel"><option>Lotus Elan</option></select></div>
+        <div class="lane"><span class="ln" style="--lc:#f2b705">Lane 3</span><select class="sel"><option>Sam</option></select><select class="sel"><option>(choose)</option></select></div>
+        <div class="lane"><span class="ln" style="--lc:#3ecf8e">Lane 4</span><select class="sel"><option>Eli</option></select><select class="sel"><option>(choose)</option></select></div>
+        <div class="note" style="color:#ff9a9e">Lane 3 needs a car. Lane 4 needs a car.</div>
+        <div class="note">The 6 drivers of the roster are listed first in the driver boxes. Choose who drives in which lane as usual; a driver who is not in the roster drives as a guest.</div>
+        <div style="display:flex;justify-content:space-between;align-items:center"><span class="note">2 of 4 lanes are ready.</span><button type="button" class="btn" style="height:44px;padding:0 28px;background:#e8484d;border-color:#e8484d;color:#fff;font-size:16px">Start race</button></div>
+      </div>
+
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="card">
+        <div class="ct">Standings after round 5</div>
+        <div style="display:flex;gap:8px"><button type="button" class="btn" style="height:32px;padding:0 12px;font-size:13px;background:#ec5f9a;border-color:#ec5f9a;color:#1a0a12;font-weight:700">Drivers</button><button type="button" class="btn" style="height:32px;padding:0 12px;font-size:13px">Teams</button></div>
+        <table class="num">
+          <tbody>
+            <tr><td style="width:26px;color:#98a0ab">1</td><td><span class="dotc" style="background:#ff9a3d"></span><b>Maria</b></td><td style="text-align:right;font-weight:700">89</td></tr>
+            <tr><td style="color:#98a0ab">2</td><td><span class="dotc" style="background:#4c9aff"></span><b>Dutch</b></td><td style="text-align:right;font-weight:700">84</td></tr>
+            <tr><td style="color:#98a0ab">3</td><td><span class="dotc" style="background:#ff9a3d"></span><b>Sam</b></td><td style="text-align:right;font-weight:700">77</td></tr>
+            <tr><td style="color:#98a0ab">4</td><td><span class="dotc" style="background:#4c9aff"></span><b>Eli</b></td><td style="text-align:right;font-weight:700">51</td></tr>
+            <tr><td style="color:#98a0ab;border-bottom:0">5</td><td style="border-bottom:0"><span class="dotc" style="background:#3ecf8e"></span><b>Noa</b></td><td style="text-align:right;font-weight:700;border-bottom:0">40</td></tr>
+          </tbody>
+        </table>
+        <div class="note">One round is left: it gives up to 26 points a driver, so Dutch can still pass Maria.</div>
+        <button type="button" class="btn" style="align-self:flex-start">All standings</button>
+      </div>
+
+      <div class="card">
+        <div class="ct">Your last race</div>
+        <div class="note">Round 5 &middot; Race &middot; Hairpin Hill<br>Sam won, Maria 2nd, Dutch 3rd. Points awarded Sat 17 Oct, 21:42.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":920}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

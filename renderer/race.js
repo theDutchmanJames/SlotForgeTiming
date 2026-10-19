@@ -116,7 +116,7 @@ async function renderRace() {
     <div class="wrap" id="heatlist"></div><div class="row"><button class="btn" id="heatprint" type="button" title="Make a PDF of the heat list, to print or pin up">Print the heat list</button> <span id="heatprintmsg" class="muted" role="status"></span></div></details>`;
   const host = raceHost();
   const folderHtml = (id, title, note, tone, inner) => DirFolder.html(id, title, note, tone, inner, { id: 'fd-' + id }); // (1.15.0: the folders of the Race Director page, with the same colours and order)
-  host.innerHTML = `<p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.ofType || setup.sessionType])} on ${esc(r.track.name)} · ${esc(limitFull)}</p>
+  host.innerHTML = `<p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.ofType || setup.sessionType])} on ${esc(r.track.name)} · ${esc(limitFull)}${r.champ ? ` · <span class="chtag" id="chtag" title="This race is saved as part of the championship">${esc(Champ.tagText(r.champ))}</span>` : ''}</p>
     <div class="rt-stage"><div class="canvas live" id="canvas"></div></div>
     <div class="bar rt-tools"><label><input type="checkbox" id="sim"> Simulated cars</label><span id="tmstatus" class="muted" role="status"></span>
       <button class="btn" id="fsbtn" type="button" title="Show only the widgets, as large as the window allows (F). Esc closes it.">Full screen widgets</button><button class="btn" id="lapsbtn" aria-expanded="false" hidden title="Check the laps while the race goes on: mark a lap invalid or take it out of the records">Review laps</button><span id="msg" class="muted" role="status"></span><button class="btn danger stopbtn" id="stopbtn">Stop race</button><button class="btn" id="back">Back to Home</button></div>
@@ -597,12 +597,15 @@ async function renderRace() {
       eng.cars.forEach(c => laps.push(...lapRows(c, date, {})));
     }
     if (!laps.length) { clearCheckpoint(); ui('msg').textContent = 'No laps were recorded, so nothing was saved.'; return; }
-    const session = { setupName: setup.name, sessionType: setup.ofType || setup.sessionType, trackId: r.track.id, trackName: r.track.name, date, endedBy: heats ? '' : eng.endedBy, ...(!heats && eng.resumes ? { resumed: eng.resumes } : {}), ...(heats && live.resumeCount ? { resumed: live.resumeCount } : {}), standings, ...(!heats && eng.weatherNote() ? { weatherNote: eng.weatherNote() } : {}) };
+    const session = { setupName: setup.name, sessionType: setup.ofType || setup.sessionType, trackId: r.track.id, trackName: r.track.name, date, ...(r.champ ? { champ: r.champ } : {}), endedBy: heats ? '' : eng.endedBy, ...(!heats && eng.resumes ? { resumed: eng.resumes } : {}), ...(heats && live.resumeCount ? { resumed: live.resumeCount } : {}), standings, ...(!heats && eng.weatherNote() ? { weatherNote: eng.weatherNote() } : {}) };
     if (heats) { session.resultBy = heat.scoring.byTime ? 'time' : setup.resultBy;
       const wn = heat.results.map(h => h.weatherNote || ''), wxAll = wn.length > 0 && wn[0] !== '' && wn.every(n => n === wn[0]); // the weather of the heats: said once when it was the same in every heat, otherwise with every heat
       if (wxAll) session.weatherNote = wn[0];
       session.heatResults = heat.results.map(h => ({ heat: h.heat, ...(h.final ? { final: h.final } : {}), ...(h.weatherNote && !wxAll ? { weatherNote: h.weatherNote } : {}), rows: h.rows })); if (scoreNote) session.scoring = heat.scoring; if (finalsOn) session.finals = { finals: fmode.finals, finalMode: fmode.finalMode }; }
-    try { await api.saveSession(session, laps); clearCheckpoint(); ui('msg').textContent = `Saved ${laps.length} laps. See Database > Results and Records.`; }
+    try {
+      await api.saveSession(session, laps); clearCheckpoint(); ui('msg').textContent = `Saved ${laps.length} laps.${r.champ ? ' It is part of ' + (r.champ.name || 'the championship') + '.' : ''} See Database > Results and Records.`;
+      if (r.champ && state.settings && state.settings.champTag) { try { state.settings = await api.setSettings({ champTag: null }); } catch (x) { /* the card on Home stays as it was */ } } // (the next race is a normal race until a session is loaded again)
+    }
     catch (x) { ui('msg').textContent = 'Could not save the results: ' + x.message; }
   }
 
@@ -1049,7 +1052,7 @@ async function renderRace() {
     const where = !heats ? '' : waiting ? `between ${lc(heat.raceName(heat.idx - 1))} and ${lc(heat.raceName(heat.idx))}` : `${Endurance.clock(eng.elapsed(t))} into ${lc(heat.raceName(heat.idx))}${heat.idx < heat.count ? ' of ' + heat.count : ''}`; // (for the note on the Home tab)
     try { Promise.resolve(api.saveResume({ v: 1, savedAt: new Date().toISOString(), name: setup.name, kind: SESSION_LABEL[setup.ofType || setup.sessionType] || '', trackName: r.track.name, wxSeed, wxHeat: wxLast, elapsed: waiting ? 0 : eng.elapsed(t), phase: live.phase,
       ...(heats ? { where, heat: heatState() } : {}),
-      race: { setup: lean(r.setup), track: lean(r.track), rows: r.rows, ...(byTeam ? { byTeam: true } : {}), ...(heats ? { schedule: heat.schedule, ...(r.labels ? { labels: r.labels } : {}) } : {}) }, eng: waiting ? null : eng.snapshot(t) })).catch(() => {}); } catch { /* a snapshot that can not be kept must never stop the race */ }
+      race: { setup: lean(r.setup), track: lean(r.track), rows: r.rows, ...(r.champ ? { champ: r.champ } : {}), ...(byTeam ? { byTeam: true } : {}), ...(heats ? { schedule: heat.schedule, ...(r.labels ? { labels: r.labels } : {}) } : {}) }, eng: waiting ? null : eng.snapshot(t) })).catch(() => {}); } catch { /* a snapshot that can not be kept must never stop the race */ }
   }
   function clearCheckpoint() { live.cpOff = true; if (api.clearResume && !tokens) Promise.resolve(api.clearResume()).catch(() => {}); }
   // A heat race that comes back: the heats that are done, the finals, the laps and figures of the finished races, and the drivers of the teams are put back, and the race is made again for the race that was racing (or is next).

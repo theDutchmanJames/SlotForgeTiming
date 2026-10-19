@@ -45,3 +45,18 @@ Dutch asked for a very slight feeling of depth on the race screen: a thick card,
 | `7-settings-depth.png` | App Settings > General > Display: the **Depth** choice |
 
 How it is made (renderer/styles.css, the layer at the end, and renderer/depth.js): box-shadows only, no extra elements and no change of colour, so it works on any theme colour and on a widget colour of your own. The page has `--depth` (0 to 1; Flat 0, Soft lift .35, Medium .55, Thick card .75), and a widget fades it with its own solidity (`--wf`), so a transparent widget stays flat. A button that is pressed moves down. The light themes take the light values through `data-theme` (light, ocean) or `data-tone="light"` (a Custom theme with a light panel).
+
+## championship/ (19 Oct 2026, design of the Championship feature; release 1 built in 1.55.0, release 2 NOT built yet)
+
+No PNG pictures yet, only the editable boards in `championship/source/` (open the `*.dc.html` files on a Claude Design canvas; `canvas.json` has the layout).
+
+| Board | What it shows | Built |
+|---|---|---|
+| `Main.dc.html` | Race Setup, sub-tab **Championships**: the list of championships | 1.55.0 |
+| `Rounds.dc.html` | A championship: name, rounds and their sessions (race setup, kind, share), the roster | 1.55.0 |
+| `Home.dc.html` | Home: the card with the next session of the championship, loading it, the "Counts for" line, the standings on the right | the card and the loading in 1.55.0; the standings and "Maria leads by 5" are release 2 |
+| `Points.dc.html` | Points table and presets, bonuses, dropped results, team points, tie rule, and the roster with the guest rule | the roster in 1.55.0 (the guest rule is stored, not applied yet); the rest is release 2 (not built) |
+| `After.dc.html` | The race screen after a race: **Award these points / Do not count this race / Undo** | release 2 (not built) |
+| `Standings.dc.html` | The pool **Championships** in Results and Records: drivers and teams, round by round | release 2 (not built) |
+
+The decisions behind these boards are in the roadmap (Project doc `claude/roadmap-and-decisions.md`, entry "Championship").

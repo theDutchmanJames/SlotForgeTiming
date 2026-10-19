@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Results and Records: the championship standings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{font-family:inherit}
+.tab{font-size:14px;color:#98a0ab;padding:8px 12px}
+.sub{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:8px;font-size:13.5px;color:#e8e6e1;background:color-mix(in srgb,#e8e6e1 10%,#222831);border:1px solid color-mix(in srgb,#e8e6e1 28%,#222831)}
+.sub.on{background:color-mix(in srgb,#ec5f9a 32%,#222831);border-color:#ec5f9a;box-shadow:inset 0 -3px 0 #ec5f9a;font-weight:700}
+.sec{flex:none;background:#222831;border:1px solid #343b47;border-radius:8px;overflow:hidden}
+.sech{padding:10px 14px;font-size:14px;font-weight:700;background:#2b323d;border-bottom:1px solid #343b47;color:#e8e6e1;display:flex;justify-content:space-between;align-items:baseline}
+.sech span{font-weight:400;font-size:12px;color:#98a0ab}
+.note{font-size:13px;color:#98a0ab;line-height:1.45}
+.note b{color:#e8e6e1}
+.sel{height:36px;box-sizing:border-box;background:#171b21;border:1px solid #343b47;border-radius:6px;color:#e8e6e1;font-family:inherit;font-size:14px;padding:0 10px;min-width:220px}
+.btn{height:36px;padding:0 14px;font-size:13.5px;color:#e8e6e1;background:#222831;border:1px solid #343b47;border-radius:6px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th{text-align:left;font-size:12px;font-weight:600;color:#98a0ab;padding:8px 8px;border-bottom:1px solid #343b47;white-space:nowrap}
+td{padding:10px 8px;border-bottom:1px solid #2b323d;font-size:14px;color:#e8e6e1;white-space:nowrap}
+th.r,td.r{text-align:right}
+.dr{color:#8a919c;text-decoration:line-through}
+.fl{color:#ffb3d1;font-weight:700}
+.dotc{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px}
+.lead td{background:color-mix(in srgb,#ec5f9a 8%,#222831)}
+.rc{background:#171b21;border:1px solid #343b47;border-radius:8px;padding:10px 12px;flex:1;min-width:0}
+</style>
+</helmet>
+<div style="width:1100px;height:1060px;box-sizing:border-box;background:#171b21;color:#e8e6e1;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+
+  <div style="display:flex;align-items:center;gap:20px;padding:12px 20px;border-bottom:1px solid #343b47;background:#222831;flex:none">
+    <b style="font-size:20px">SlotForge Timing</b>
+    <div style="display:flex;gap:2px"><span class="tab">Home</span><span class="tab" style="color:#e8e6e1;font-weight:700;border-bottom:3px solid #c8363c">Database</span><span class="tab">Race Setup</span><span class="tab">Customization</span><span class="tab">App Settings</span><span class="tab">Racing Rules</span></div>
+  </div>
+
+  <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="sub">Tracks</span><span class="sub">Drivers</span><span class="sub">Teams</span><span class="sub">Slotcars</span><span class="sub on" style="--x:1">Results and Records</span></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="sub">Racing Records</span><span class="sub">Token Records</span><span class="sub on">Championships</span></div>
+
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+        <label style="display:flex;flex-direction:column;gap:6px"><span class="note">Championship</span><select class="sel"><option>Club Cup 2026</option><option>Winter Series 2025</option></select></label>
+        <div style="display:flex;gap:6px"><span class="sub on">Drivers</span><span class="sub">Teams</span><span class="sub">Rounds</span></div>
+      </div>
+      <button type="button" class="btn" style="background:#c8363c;border-color:#c8363c;color:#fff;font-weight:700">Export to PDF</button>
+    </div>
+
+    <div class="sec">
+      <div class="sech">Drivers: after round 5 of 6 <span>Best 5 of 6 rounds count</span></div>
+      <table>
+        <thead><tr><th>Pos</th><th>Driver</th><th>Team</th><th class="r">R1</th><th class="r">R2</th><th class="r">R3</th><th class="r">R4</th><th class="r">R5</th><th class="r">R6</th><th class="r">Points</th><th class="r">Behind</th><th class="r">Wins</th></tr></thead>
+        <tbody>
+          <tr class="lead"><td>1</td><td><b>Maria</b></td><td><span class="dotc" style="background:#ff9a3d"></span>Orange Foxes</td><td class="r fl">19</td><td class="r fl">26</td><td class="r fl">26</td><td class="r dr">15</td><td class="r">18</td><td class="r" style="color:#98a0ab">&ndash;</td><td class="r"><b style="font-size:16px">89</b></td><td class="r" style="color:#98a0ab">&ndash;</td><td class="r">2</td></tr>
+          <tr><td>2</td><td><b>Dutch</b></td><td><span class="dotc" style="background:#4c9aff"></span>Blue Arrows</td><td class="r">25</td><td class="r">18</td><td class="r dr">15</td><td class="r fl">26</td><td class="r">15</td><td class="r" style="color:#98a0ab">&ndash;</td><td class="r"><b style="font-size:16px">84</b></td><td class="r">&minus;5</td><td class="r">2</td></tr>
+          <tr><td>3</td><td><b>Sam</b></td><td><span class="dotc" style="background:#ff9a3d"></span>Orange Foxes</td><td class="r">15</td><td class="r dr">12</td><td class="r">18</td><td class="r">18</td><td class="r fl">26</td><td class="r" style="color:#98a0ab">&ndash;</td><td class="r"><b style="font-size:16px">77</b></td><td class="r">&minus;12</td><td class="r">1</td></tr>
+          <tr><td>4</td><td><b>Eli</b></td><td><span class="dotc" style="background:#4c9aff"></span>Blue Arrows</td><td class="r">12</td><td class="r">15</td><td class="r dr">10</td><td class="r">12</td><td class="r">12</td><td class="r" style="color:#98a0ab">&ndash;</td><td class="r"><b style="font-size:16px">51</b></td><td class="r">&minus;38</td><td class="r">0</td></tr>
+          <tr><td>5</td><td><b>Noa</b></td><td><span class="dotc" style="background:#3ecf8e"></span>Green Hornets</td><td class="r">10</td><td class="r dr">8</td><td class="r">12</td><td class="r">8</td><td class="r">10</td><td class="r" style="color:#98a0ab">&ndash;</td><td class="r"><b style="font-size:16px">40</b></td><td class="r">&minus;49</td><td class="r">0</td></tr>
+          <tr><td style="border-bottom:0">6</td><td style="border-bottom:0"><b>Jens</b></td><td style="border-bottom:0"><span class="dotc" style="background:#3ecf8e"></span>Green Hornets</td><td class="r dr" style="border-bottom:0">8</td><td class="r" style="border-bottom:0">10</td><td class="r" style="border-bottom:0">8</td><td class="r" style="border-bottom:0">10</td><td class="r" style="border-bottom:0">8</td><td class="r" style="color:#98a0ab;border-bottom:0">&ndash;</td><td class="r" style="border-bottom:0"><b style="font-size:16px">36</b></td><td class="r" style="border-bottom:0">&minus;53</td><td class="r" style="border-bottom:0">0</td></tr>
+        </tbody>
+      </table>
+      <div style="padding:10px 14px;border-top:1px solid #343b47" class="note"><span class="dr">15</span> a dropped result &nbsp;&middot;&nbsp; <span class="fl">19</span> includes the fastest lap bonus &nbsp;&middot;&nbsp; &ndash; the round has not been driven</div>
+    </div>
+
+    <div class="sec">
+      <div class="sech">Teams: the 2 best drivers of a team count in a race <span>Best 5 of 6 rounds count</span></div>
+      <table>
+        <thead><tr><th>Pos</th><th>Team</th><th>Drivers</th><th class="r">R1</th><th class="r">R2</th><th class="r">R3</th><th class="r">R4</th><th class="r">R5</th><th class="r">R6</th><th class="r">Points</th><th class="r">Behind</th></tr></thead>
+        <tbody>
+          <tr class="lead"><td>1</td><td><span class="dotc" style="background:#ff9a3d"></span><b>Orange Foxes</b></td><td>Maria, Sam</td><td class="r">34</td><td class="r">38</td><td class="r">44</td><td class="r dr">33</td><td class="r">44</td><td class="r" style="color:#98a0ab">&ndash;</td><td class="r"><b style="font-size:16px">160</b></td><td class="r" style="color:#98a0ab">&ndash;</td></tr>
+          <tr><td>2</td><td><span class="dotc" style="background:#4c9aff"></span><b>Blue Arrows</b></td><td>Dutch, Eli</td><td class="r">37</td><td class="r">33</td><td class="r dr">25</td><td class="r">38</td><td class="r">27</td><td class="r" style="color:#98a0ab">&ndash;</td><td class="r"><b style="font-size:16px">135</b></td><td class="r">&minus;25</td></tr>
+          <tr><td style="border-bottom:0">3</td><td style="border-bottom:0"><span class="dotc" style="background:#3ecf8e"></span><b>Green Hornets</b></td><td style="border-bottom:0">Noa, Jens</td><td class="r dr" style="border-bottom:0">18</td><td class="r" style="border-bottom:0">18</td><td class="r" style="border-bottom:0">20</td><td class="r" style="border-bottom:0">18</td><td class="r" style="border-bottom:0">18</td><td class="r" style="color:#98a0ab;border-bottom:0">&ndash;</td><td class="r" style="border-bottom:0"><b style="font-size:16px">74</b></td><td class="r" style="border-bottom:0">&minus;86</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sec">
+      <div class="sech">Rounds <span>Winner of each race</span></div>
+      <div style="padding:12px 14px;display:flex;gap:10px">
+        <div class="rc"><div class="note">Round 1 &middot; Brands Hatch</div><b>Dutch</b></div>
+        <div class="rc"><div class="note">Round 2 &middot; Kidney Bean</div><b>Maria</b></div>
+        <div class="rc"><div class="note">Round 3 &middot; Oval Speedway</div><b>Maria</b></div>
+        <div class="rc"><div class="note">Round 4 &middot; Figure Eight</div><b>Dutch</b></div>
+        <div class="rc"><div class="note">Round 5 &middot; Hairpin Hill</div><b>Sam</b></div>
+        <div class="rc" style="border-style:dashed"><div class="note">Round 6 &middot; Brands Hatch</div><span class="note">Sat 24 Oct</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":1060}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -101,6 +101,9 @@ class Database {
       d.sessions = d.sessions.filter(s => s.trackId !== id);
       d.racesetups.forEach(r => { if (r.track === id) r.track = ''; });
     }
+    if (entity === 'tracks') d.championships.forEach(c => (c.rounds || []).forEach(r => { if (r.track === id) r.track = ''; })); // (a round with no track uses the track of its race setup)
+    if (entity === 'teams') d.championships.forEach(c => (c.roster || []).forEach(x => { if (x.team === id) x.team = ''; }));
+    if (entity === 'drivers') d.championships.forEach(c => { if (Array.isArray(c.roster)) c.roster = c.roster.filter(x => x.driver !== id); });
     if (entity === 'fuelrules') d.racesetups.forEach(r => { if (r.fuelRules === id) r.fuelRules = ''; });
     if (entity === 'audiosets') d.racesetups.forEach(r => { if (r.audioSet === id) r.audioSet = ''; });
     if (entity === 'weathersystems') d.racesetups.forEach(r => { if (r.weather === id) r.weather = ''; });

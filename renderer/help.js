@@ -242,6 +242,14 @@ const Help = (() => {
           <li>With a push and save system the Fuel Setup's target lap time, most extra fuel and most saving are <b>not used</b>: the pace decides instead.</li>
           <li>The <b>Push and Save</b> folder, the <b>Pace meter</b> widget (Layout Editor, Tyres), the <b>Pace</b> and <b>Wear now</b> cells of the Driver stats grid and the Leaderboard show it; the lap review tags every lap.</li>
         </ul>` },
+      { id: 'championships', title: 'Championships', note: 'Rounds, sessions and a roster of drivers', body: `
+        <ul>
+          <li>Make one in <b>Race Setup, Championships</b>: the <b>rounds</b> (a name, a track and a date if you want) and the <b>sessions</b> of every round, each driven with one of your race setups. A new round starts with the sessions of the round before it.</li>
+          <li>The kind of a session (Practice, Qualifying or Race) comes from its race setup. A Time Token Session can not be part of a championship. A race counts for 100%, 50% (a sprint) or no points.</li>
+          <li>The <b>roster</b> holds the drivers, each with a team and the round he joins in.</li>
+          <li>The <b>Home</b> card shows the round that is next and loads the next session with one click; <b>Another session</b> loads any other. It fills the card below, and nothing starts until you press <b>Start race</b>. Roster drivers come first in the driver boxes; others drive as guests.</li>
+          <li>The race says <b>Counts for</b> the championship on Home, the race screen and in Results and Records. A session is driven when its race is saved. Points come in the next release.</li>
+        </ul>` },
       { id: 'tokens', title: 'Time Token Sessions', note: 'Selling track time per lane', body: `
         <ul>
           <li>Choose the session type <b>Time Token Session</b> in a race setup. It has no start lights, laps, fuel or penalties. On Home the button says <b>Open the session</b>. Drivers and cars are optional: a lane without a driver is a Guest.</li>

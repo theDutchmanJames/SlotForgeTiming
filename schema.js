@@ -572,6 +572,8 @@ module.exports = {
   imagesets: { label: 'Image set', plural: 'Image sets', title: ['name'], internal: true, fields: [] },
   // Rotation setups (1.6.0): a heat plan made by hand, in Race Setup > Rotation Setups, and chosen in a race setup (see rotation.js).
   rotationsetups: { label: 'Rotation setup', plural: 'Rotation setups', title: ['name'], internal: true, fields: [] },
+  // Championships (1.55.0): rounds with their sessions, and a roster of drivers, made in Race Setup > Championships (see championship.js). A session that counts for one carries the tag of it (session.champ).
+  championships: { label: 'Championship', plural: 'Championships', title: ['name'], internal: true, fields: [] },
   // Leaderboard row designs, built in Customization > Leaderboard Editor.
   rowdesigns: { label: 'Row design', plural: 'Row designs', title: ['name'], internal: true, fields: [] },
   // Saved by the app itself while racing; never edited through forms.

@@ -32,9 +32,9 @@ nav{display:flex;gap:4px;flex-wrap:wrap}
 .sub{margin-bottom:16px}
 /* The sub-tabs of the Race Setup tab (1.45.0): a big Race Setups button and the other sub-tabs as coloured buttons in three groups. Design: docs/ui-reference/race-setup-tabs.
    Each sub-tab has the colour of its folder on the race screen. The light themes get darker colours (like the folders do). */
-.setupstrip,.setuppage,.setupform{--c-rot:#c4803f;--c-fuel:#2fb86a;--c-pen:#f2b705;--c-dmg:#e5484d;--c-tyre:#9b4dff;--c-wx:#4c9aff;--c-bop:#e8e6e1;--c-tok:#1fb5ad;--c-sc:#ff7a1a;--c-ps:#a6d23c;--c-race:var(--accent);--on-rot:#10151b;--on-fuel:#10151b;--on-pen:#10151b;--on-dmg:#fff;--on-tyre:#fff;--on-wx:#10151b;--on-bop:#10151b;--on-tok:#10151b;--on-sc:#10151b;--on-ps:#10151b;--on-race:var(--on-accent)}
-[data-theme="light"] :is(.setupstrip,.setuppage,.setupform),[data-theme="ocean"] :is(.setupstrip,.setuppage,.setupform){--c-rot:#8a5124;--c-fuel:#1e8a4c;--c-pen:#9a7400;--c-dmg:#d62828;--c-tyre:#7c3aed;--c-wx:#0f6fd6;--c-bop:#5b6470;--c-tok:#0e8a84;--c-sc:#c2570c;--c-ps:#5f7d10;--on-rot:#fff;--on-fuel:#fff;--on-pen:#fff;--on-dmg:#fff;--on-tyre:#fff;--on-wx:#fff;--on-bop:#fff;--on-tok:#fff;--on-sc:#fff;--on-ps:#fff}
-.ss-rot{--c:var(--c-rot);--on:var(--on-rot)}.ss-fuel{--c:var(--c-fuel);--on:var(--on-fuel)}.ss-pen{--c:var(--c-pen);--on:var(--on-pen)}.ss-dmg{--c:var(--c-dmg);--on:var(--on-dmg)}.ss-tyre{--c:var(--c-tyre);--on:var(--on-tyre)}.ss-wx{--c:var(--c-wx);--on:var(--on-wx)}.ss-bop{--c:var(--c-bop);--on:var(--on-bop)}.ss-tok{--c:var(--c-tok);--on:var(--on-tok)}.ss-sc{--c:var(--c-sc);--on:var(--on-sc)}.ss-ps{--c:var(--c-ps);--on:var(--on-ps)}.ss-race{--c:var(--c-race);--on:var(--on-race)}
+.setupstrip,.setuppage,.setupform{--c-rot:#c4803f;--c-fuel:#2fb86a;--c-pen:#f2b705;--c-dmg:#e5484d;--c-tyre:#9b4dff;--c-wx:#4c9aff;--c-bop:#e8e6e1;--c-tok:#1fb5ad;--c-sc:#ff7a1a;--c-ps:#a6d23c;--c-ch:#ec5f9a;--c-race:var(--accent);--on-rot:#10151b;--on-fuel:#10151b;--on-pen:#10151b;--on-dmg:#fff;--on-tyre:#fff;--on-wx:#10151b;--on-bop:#10151b;--on-tok:#10151b;--on-sc:#10151b;--on-ps:#10151b;--on-ch:#10151b;--on-race:var(--on-accent)}
+[data-theme="light"] :is(.setupstrip,.setuppage,.setupform),[data-theme="ocean"] :is(.setupstrip,.setuppage,.setupform){--c-rot:#8a5124;--c-fuel:#1e8a4c;--c-pen:#9a7400;--c-dmg:#d62828;--c-tyre:#7c3aed;--c-wx:#0f6fd6;--c-bop:#5b6470;--c-tok:#0e8a84;--c-sc:#c2570c;--c-ps:#5f7d10;--c-ch:#b8326f;--on-rot:#fff;--on-fuel:#fff;--on-pen:#fff;--on-dmg:#fff;--on-tyre:#fff;--on-wx:#fff;--on-bop:#fff;--on-tok:#fff;--on-sc:#fff;--on-ps:#fff;--on-ch:#fff}
+.ss-rot{--c:var(--c-rot);--on:var(--on-rot)}.ss-fuel{--c:var(--c-fuel);--on:var(--on-fuel)}.ss-pen{--c:var(--c-pen);--on:var(--on-pen)}.ss-dmg{--c:var(--c-dmg);--on:var(--on-dmg)}.ss-tyre{--c:var(--c-tyre);--on:var(--on-tyre)}.ss-wx{--c:var(--c-wx);--on:var(--on-wx)}.ss-bop{--c:var(--c-bop);--on:var(--on-bop)}.ss-tok{--c:var(--c-tok);--on:var(--on-tok)}.ss-sc{--c:var(--c-sc);--on:var(--on-sc)}.ss-ps{--c:var(--c-ps);--on:var(--on-ps)}.ss-ch{--c:var(--c-ch);--on:var(--on-ch)}.ss-race{--c:var(--c-race);--on:var(--on-race)}
 .setupstrip{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:stretch;margin-bottom:18px}
 .ssbig{display:flex;align-items:center;gap:10px;flex:0 0 176px;align-self:flex-start;padding:9px 12px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);font:inherit;text-align:left;cursor:pointer}
 .ssbig:hover{filter:brightness(1.08)}
@@ -1163,6 +1163,50 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .pswear{display:flex;gap:.9em;justify-content:center;align-items:center;font-variant-numeric:tabular-nums}
 .psw{display:flex;flex-direction:column;align-items:center;line-height:1.1}.psw small{font-size:.55em;opacity:.8}.psw b{font-size:1.05em}
 .lw-val:has(.psbox){min-height:0;min-width:0;overflow:hidden;container-type:size}
+/* ---- Championships (1.55.0). Design: docs/ui-reference/championship. Pink (--c-ch) is the colour of a championship everywhere: the Race Setup tab, the card on Home, the tag on the race screen and in the results. ---- */
+.champband{--c-ch:#ec5f9a;--on-ch:#10151b}
+[data-theme="light"] .champband,[data-theme="ocean"] .champband{--c-ch:#b8326f;--on-ch:#fff}
+.chsec{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--c-ch,#ec5f9a);border-radius:8px;padding:12px 16px;margin:0 0 14px}
+.chsec h3{margin:0 0 4px;font-size:16px}
+.chround{border:1px solid var(--line);border-radius:8px;margin:8px 0;background:var(--bg)}
+.chround.next{border-color:var(--c-ch,#ec5f9a);background:color-mix(in srgb,var(--c-ch,#ec5f9a) 8%,var(--bg))}
+.chround>summary{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;cursor:pointer;list-style:none}
+.chround>summary::-webkit-details-marker{display:none}
+.chround>summary::before{content:"\25B6";color:var(--muted);font-size:12px;width:14px}
+.chround[open]>summary::before{content:"\25BC";color:var(--c-ch,#ec5f9a)}
+.chrn{font-weight:700;min-width:70px}.chrname{flex:1 1 140px;min-width:100px}.chrtrack{flex:0 1 180px}
+.chpill{display:inline-block;padding:2px 10px;border-radius:5px;font-size:12px;font-weight:700;border:1px solid transparent}
+.chpill.done{background:color-mix(in srgb,#3ecf8e 22%,var(--panel));color:var(--ink);border-color:color-mix(in srgb,#3ecf8e 50%,var(--panel))}
+.chpill.next{background:var(--c-ch,#ec5f9a);color:var(--on-ch,#10151b)}
+.chpill.todo{background:var(--panel);color:var(--muted);border-color:var(--line)}
+.chrbody{padding:0 14px 14px}
+.chrbody h4{margin:14px 0 4px;font-size:14px}
+.chfields{display:flex;flex-wrap:wrap;gap:12px 20px}.chfields .field{flex:1 1 200px;max-width:300px}
+.chses{display:grid;grid-template-columns:28px minmax(160px,1.5fr) 100px minmax(150px,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.chses select{width:100%}
+.chnum{font-weight:700;color:var(--muted);text-align:center}
+.chkind{display:inline-block;padding:2px 9px;border-radius:5px;font-size:12px;font-weight:700;background:var(--panel);border:1px solid var(--line);justify-self:start}
+.chkind.k-race{background:color-mix(in srgb,var(--c-ch,#ec5f9a) 22%,var(--panel));border-color:color-mix(in srgb,var(--c-ch,#ec5f9a) 55%,var(--panel))}
+.chbtns{display:flex;gap:6px}
+.chroster td input[type=number]{width:80px}
+@media (max-width:760px){.chses{grid-template-columns:28px 1fr;}.chses .chkind,.chses .chpts,.chses .chbtns{grid-column:2}}
+/* the card on Home: the next session of the championship */
+.champband{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--c-ch);border-radius:10px;padding:16px 18px;margin:0 0 16px;display:flex;flex-direction:column;gap:10px}
+.champband .chhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.champband .chlabel{font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--c-ch)}
+.champband .chname{font-size:20px;font-weight:700;margin:2px 0}
+.champband .chsteps{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.champband .chstep{display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg)}
+.champband .chstep.next{border-color:var(--c-ch);background:color-mix(in srgb,var(--c-ch) 12%,var(--bg))}
+.champband .chstep .si{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex:none;border:2px solid var(--line);color:var(--muted)}
+.champband .chstep.done .si{background:color-mix(in srgb,#3ecf8e 25%,var(--panel));border-color:transparent;color:var(--ink)}
+.champband .chstep.next .si{background:var(--c-ch);border-color:var(--c-ch);color:var(--on-ch)}
+.champband .chstep .grow{flex:1}
+.champband .btn.chload{background:var(--c-ch);border-color:var(--c-ch);color:var(--on-ch);font-weight:700}
+.chcounts{background:color-mix(in srgb,var(--c-ch,#ec5f9a) 12%,var(--panel));border:1px solid color-mix(in srgb,var(--c-ch,#ec5f9a) 40%,var(--panel));border-radius:8px;padding:8px 12px;font-size:14px;margin:0 0 10px}
+.chcounts b{color:var(--c-ch,#ec5f9a)}
+.chtag{display:inline-block;background:color-mix(in srgb,var(--c-ch,#ec5f9a) 25%,var(--panel));color:var(--ink);border:1px solid color-mix(in srgb,var(--c-ch,#ec5f9a) 55%,var(--panel));border-radius:5px;padding:2px 10px;font-size:12px;font-weight:700;white-space:nowrap}
+
 /* ---- Soft lift (1.46.0): a slight depth for the whole app. Design: docs/ui-reference/depth ----
    Cards, folders, bars, dialogs and the widgets of a layout stand up a little like thick cards, buttons look a little shallow, and what is meant to be pressed in (the canvas of a race screen, the lane cards,
    the entry fields) is pressed in a little. The light comes from above: a thin light edge on top, a lip (the thickness) underneath, a short soft shadow. A pressed or switched on button moves down and sits in.

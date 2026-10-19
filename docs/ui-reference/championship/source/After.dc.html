@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>After the race: awarding the championship points</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{font-family:inherit}
+.sec{flex:none;background:#222831;border:1px solid #343b47;border-radius:8px;overflow:hidden}
+.sech{padding:10px 14px;font-size:14px;font-weight:700;background:#2b323d;border-bottom:1px solid #343b47;color:#e8e6e1;display:flex;justify-content:space-between;align-items:baseline}
+.sech span{font-weight:400;font-size:12px;color:#98a0ab}
+.note{font-size:13px;color:#98a0ab;line-height:1.45}
+.note b{color:#e8e6e1}
+.btn{height:38px;padding:0 16px;font-size:14px;color:#e8e6e1;background:#171b21;border:1px solid #343b47;border-radius:6px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th{text-align:left;font-size:12px;font-weight:600;color:#98a0ab;padding:8px 10px;border-bottom:1px solid #343b47;white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid #2b323d;font-size:14px;color:#e8e6e1;white-space:nowrap}
+th.r,td.r{text-align:right}
+.tag{display:inline-block;background:color-mix(in srgb,#ec5f9a 25%,#171b21);color:#ffb3d1;border-radius:5px;padding:3px 10px;font-size:12px;font-weight:700}
+.pos{color:#5fe0a0;font-weight:700}
+</style>
+</helmet>
+<div style="width:1000px;height:1000px;box-sizing:border-box;background:#171b21;color:#e8e6e1;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;padding:24px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;flex:none">
+    <div>
+      <div style="font-size:13px;color:#98a0ab">Race screen</div>
+      <div style="font-size:26px;font-weight:700;line-height:1.2">Race: Club Night heat</div>
+      <div style="margin-top:6px"><span class="tag">Club Cup 2026 &middot; Round 5 &middot; Race</span></div>
+    </div>
+    <div style="font-size:14px;color:#98a0ab">Finished &middot; Hairpin Hill</div>
+  </div>
+
+  <div class="sec" style="border-top:3px solid #ec5f9a">
+    <div class="sech">Championship points: Club Cup 2026, Round 5 <span>Not awarded yet</span></div>
+    <table>
+      <thead><tr><th>Pos</th><th>Driver</th><th class="r">Race points</th><th class="r">Fastest lap</th><th class="r">This round</th><th class="r">Total now</th><th class="r">Change</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td><b>Sam</b></td><td class="r">25</td><td class="r"><b style="color:#ffb3d1">+1</b> <span class="note">7.318</span></td><td class="r"><b>26</b></td><td class="r"><b>77</b></td><td class="r pos">+14</td></tr>
+        <tr><td>2</td><td><b>Maria</b></td><td class="r">18</td><td class="r"><span class="note">&ndash;</span></td><td class="r"><b>18</b></td><td class="r"><b>89</b></td><td class="r pos">+3</td></tr>
+        <tr><td>3</td><td><b>Dutch</b></td><td class="r">15</td><td class="r"><span class="note">&ndash;</span></td><td class="r"><b>15</b></td><td class="r"><b>84</b></td><td class="r" style="color:#98a0ab">0</td></tr>
+        <tr><td>4</td><td><b>Eli</b></td><td class="r">12</td><td class="r"><span class="note">&ndash;</span></td><td class="r"><b>12</b></td><td class="r"><b>51</b></td><td class="r pos">+2</td></tr>
+        <tr><td>5</td><td><b>Noa</b></td><td class="r">10</td><td class="r"><span class="note">&ndash;</span></td><td class="r"><b>10</b></td><td class="r"><b>40</b></td><td class="r pos">+2</td></tr>
+        <tr><td style="border-bottom:0">6</td><td style="border-bottom:0"><b>Jens</b></td><td class="r" style="border-bottom:0">8</td><td class="r" style="border-bottom:0"><span class="note">&ndash;</span></td><td class="r" style="border-bottom:0"><b>8</b></td><td class="r" style="border-bottom:0"><b>36</b></td><td class="r" style="color:#98a0ab;border-bottom:0">0</td></tr>
+      </tbody>
+    </table>
+    <div style="padding:12px 14px;border-top:1px solid #343b47;display:flex;flex-direction:column;gap:6px" class="note">
+      <div><b>The change is smaller than the points of the round when a result is dropped.</b> Dutch scored 15, and his worst result (15, round 3) is dropped, so his total stays 84. Teams: Orange Foxes 44 this round, Blue Arrows 27, Green Hornets 18.</div>
+      <div>Every driver in this race is in the roster. A driver who is not would be a guest: no points, and the drivers behind him move up.</div>
+    </div>
+    <div style="padding:14px;border-top:1px solid #343b47;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button type="button" class="btn" style="background:#ec5f9a;border-color:#ec5f9a;color:#1a0a12;font-weight:700;height:42px;padding:0 22px">Award these points</button>
+      <button type="button" class="btn">Do not count this race</button>
+      <span class="note">You can still change penalties in the lap review first; the points are worked out from the final result.</span>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">After you award them <span>The same panel, a minute later</span></div>
+    <div style="padding:14px;display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+      <span style="width:26px;height:26px;border-radius:50%;background:#1d3a2d;color:#5fe0a0;display:flex;align-items:center;justify-content:center;font-weight:800">&#10003;</span>
+      <div style="flex:1;min-width:320px"><b>Points awarded</b> <span class="note">Sat 17 Oct, 21:42</span><div class="note" style="margin-top:2px">Club Cup 2026 now has 5 of 6 rounds driven. Maria leads Dutch by 5 points.</div></div>
+      <button type="button" class="btn">Open standings</button>
+      <button type="button" class="btn">Undo</button>
+    </div>
+    <div class="note" style="padding:0 14px 14px">Undo takes the points of this session out of the standings again. A session can only be awarded once: if you award it again (after a re-run, say), its earlier points are replaced, never added twice.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">In the other sessions of a round <span>What the panel says</span></div>
+    <table>
+      <tbody>
+        <tr><td style="width:180px"><b>Practice</b></td><td class="note" style="white-space:normal">Nothing to award. The results are saved as always.</td></tr>
+        <tr><td><b>Qualifying</b></td><td class="note" style="white-space:normal">The grid for the race of this round. Pole position gives the bonus, if the championship has one (Club Cup 2026: none).</td></tr>
+        <tr><td style="border-bottom:0"><b>Race at 50%</b></td><td class="note" style="border-bottom:0;white-space:normal">A sprint: the points of the table are halved (25 becomes 12.5) and rounded as the championship says.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1000,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
