@@ -306,4 +306,10 @@ const folders = Help.folders();
   say('1.58.2: the Race Setup folder lists Fuel Systems with the other systems (after Damage Systems, before Tyre Wear Systems), and the folder is still short', st.indexOf('Damage Systems') < st.indexOf('Fuel Systems') && st.indexOf('Fuel Systems') < st.indexOf('Tyre Wear Systems') && st.length < 1400);
   say('...and no folder calls it a fuel setup any more', folders.every(x => !/fuel setup/i.test(plain(x.body)))); }
 
+// ---- 1.59.0: Random flags ----
+{ const g = plain(folders.find(x => x.id === 'safetycar').body).replace(/\s+/g, ' ');
+  say('1.59.0: the Safety Car folder tells about Random flags: yellow flags at random moments, as if other cars caused them; the chance, how many, how long, the earliest and latest moment and a warning are set; the Race Director can lift one early', /Random flags: the system can also put the yellow flag up at random moments, as if other cars caused it/.test(g) && /the chance that a race has any, how many, how long, the earliest and latest moment, and a warning/.test(g) && /Race Director can lift one early/.test(g));
+  say('...and the folder is still short', g.length < 1400);
+  say('...and the red flag is not promised', !/red flag/i.test(g.slice(g.indexOf('Random flags')))); }
+
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

@@ -377,6 +377,14 @@
       }
       case 'flag': { // the race state as a flag, an LED, text or a picture of a picture set (the widget's Flag style)
         const st = flagStateOf(S), style = Wd.flagStyleOf(opt);
+        if (st === 'running' && S.eng.rndSoon) { // 1.59.0: a random yellow flag is about to come (the warning of the Safety car system): the yellow flag flashes, twice a second, in whatever the widget shows
+          const dim = Math.floor((S.now || 0) / 500) % 2 === 1, fade = h => (!dim ? h : /^<(svg|img) [^>]*style="/.test(h) ? h.replace(/^(<(?:svg|img) [^>]*style=")/, '$1opacity:.25;') : h.replace(/^<(svg|img) /, '<$1 style="opacity:.25" '));
+          const yimg = style === 'images' ? opt.img_yellow : '';
+          if (style === 'flags') return { html: fade(Wd.flagHtml('yellow', { mirror: !!opt.flagMirror })) };
+          if (style === 'leds') return { html: fade(Wd.ledHtml('yellow')) };
+          if (yimg) return { html: fade(Wd.flagImgHtml(yimg, 'Yellow flag soon', !!opt.imageMirror)) };
+          return { html: S.eng.safetyCar ? 'SAFETY CAR SOON' : 'YELLOW FLAG SOON', bg: dim ? '#8a7400' : '#ffd400', color: dim ? '#fff' : '#000' };
+        }
         if (style === 'flags') return { html: Wd.flagHtml(st, { mirror: !!opt.flagMirror }) };
         if (style === 'leds') return { html: Wd.ledHtml(st) };
         const img = style === 'images' ? opt['img_' + st] : '';

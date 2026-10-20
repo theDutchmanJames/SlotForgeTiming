@@ -2884,3 +2884,30 @@ Good to know:
 - Only the name and the place changed. The saved data, the colour and the picture are the same, so nothing needs to be redone.
 - The Balance of Power page, the hints of the Weather, Tyre Wear and Push and Save forms and the help now say fuel system too.
 - Tested: the order and the groups (7, 2 and 2) in `tests/setupstrip.test.js`, the help folder in `tests/help.test.js`; 99 PASSED in `npm test`. 18 deliberate breakages (the chip back in Setups, the old name in the chip, the table, the field, the help or the hints) were tried and all were caught.
+
+## What to try (1.59.0): Random flags in the Safety Car System
+
+A Safety car system has a new folder, **Random flags**. Switched on, the yellow flag (the Safety Car) goes up at random moments in the race, whatever the drivers do, as if one of eighteen other cars on the track had caused it. The rules of the system work as always while it is out: a lap must be slower than the limit, the work in a pit stop takes less time. The red flag is not part of it (parked, as you said).
+
+Everything is yours to set, in the folder Random flags of the system (it starts closed; the settings show when the switch is On):
+- **Random yellow flags**: Off or On.
+- **Chance that a race has random flags (percent)**: 100 = every race, 60 = six races in ten (the others get none). Good for a championship, where not every round has them.
+- **How many flags**: Exactly N, From N to M, or At least N with a chance of one more (and then one more again).
+- **A flag ends**: by itself when its time is up, or only when the Race Director lifts it.
+- **How long**: always the same time, or a time between two (5 to 600 seconds), drawn for each flag.
+- **Earliest and latest moment** (percent of the race), **at least this long between two flags**, and for a free practice (it has no end) **the minutes to spread them over**.
+- **Warning** (seconds, 0 = none): the Race Flag widget flashes yellow and says SAFETY CAR SOON, and the new audio call **Yellow flag soon** is said (Audio Settings, Flags folder; on for a new set).
+
+1. Open **Race Setup > Safety Car Systems**, add a system (or open yours) and open the folder **Random flags**. Switch it On, and try: exactly 2 flags, 20 seconds each, earliest 10%, latest 80%, a warning of 5 seconds.
+2. In a race setup choose that system (Racing Systems) and start a short race, say 10 laps. Nothing shows beforehand: the moments are drawn when the race starts.
+3. A few seconds before the first flag the Race Flag widget flashes (SAFETY CAR SOON) and the call is said. Then the yellow flag goes up by itself: the Safety Car is out, laps that are too fast are called out as always, and it comes down again after its time (the green flag call is said).
+4. Press the yellow flag button (Safety Car) while a random flag is up: it is lifted, just like a flag you raised yourself. With "Only when the Race Director lifts it" it stays up until you do.
+5. Open the race log on the Race Director page: it lists them, for example "Random yellow flag 1 of 2 (20 s)", "... is over (the time was up)" and "... is about to come".
+6. Try a qualifying or a timed race too: there the moments are on the clock, not in laps.
+
+Good to know:
+- In a race by laps a moment is a place in the laps of the leader, never in the first lap or the last. In a timed race, a qualifying and a practice it is a time on the race clock.
+- If the flags do not fit between the earliest and the latest moment (with their length and the gap), fewer are drawn; never more than 20. When a flag is due while another yellow flag is up (a marshal call, the Race Director), it waits for that one to end and for the gap. During a red flag the plan stands still. After the time is up, or when a car has finished, no new flag comes.
+- The plan is kept with the race: a race that is carried on after an interruption goes on by the same plan. Every heat of a heat race draws for itself. A phone or second screen that follows the race flashes the warning too.
+- Not done: the Red Flag randomizer (parked), a line about random flags in the Rules of this race card on Home, and a way to see the plan during the race (on purpose: it is a surprise).
+- Tested: a new `tests/randomflags.test.js` (106 checks: the rules, the plan, the form, the engine, the warning, the snapshot) and `tests/randomflagsscreen.test.js` (22 checks: the form and its saving, and a race on screen with the warning, the flag and the log), and checks more in the audio, timing, penalty panel, help and Safety Car tests. 80 deliberate breakages were tried: 79 were caught, and one is a guard that can never matter (the plan is empty either way). The flags were watched in a simulated race, not on the Pi or with real cars: please try a short race on the Pi and on Windows, with the warning on a second screen.

@@ -232,6 +232,7 @@ const Help = (() => {
           <li><b>Lap times</b>: a full lap behind the Safety Car must be slower than the limit. A lap that is too fast is called out and gets penalty points (they need a penalty system). A lap that began before the Safety Car came out does not count.</li>
           <li><b>Pit stops</b>: refuelling, a repair and changing tyres take a number of percent less time for a car that comes in while the Safety Car is out. Driver swaps and penalties served in the pits are not shorter.</li>
           <li>The flag widget and the yellow button say <b>Safety Car</b>, and the race log says when it came out and went in. The cars do not close up behind it (not yet).</li>
+          <li><b>Random flags</b>: the system can also put the yellow flag up at random moments, as if other cars caused it, whatever the drivers do. You set the chance that a race has any, how many, how long, the earliest and latest moment, and a warning. The Race Director can lift one early.</li>
         </ul>` },
       { id: 'pushsave', title: 'Push and Save', note: 'How hard a driver drives wears tyres and fuel', body: `
         <ul>

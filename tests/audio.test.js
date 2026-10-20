@@ -445,7 +445,7 @@ const mk2 = (o = {}, ents = one) => createRace({ type: 'race', laps: 10, minLap:
   }
   // the lists of the calls
   { const n = A.CALLS.length, groups = [...new Set(A.CALLS.map(c => c.group))];
-    ok('91 calls in 17 folders (1.44.0: the Car Failures folder after Damage; 1.42.0: the Tyre wear folder after Weather; 1.10.0: the Damage folder after Endurance; 1.3.0: Balance of Power after Pit and fuel; 1.4.0: Weather after Balance of Power; 1.5.0: the conditions call; 1.7.0: the line-up; 1.9.0: the Endurance folder after Balance of Power), the Safety folder after the flags', n === 91 && groups.join() === 'Start,Positions,Race progress,Gaps and battles,Laps and records,Pit and fuel,Balance of Power,Endurance,Damage,Car Failures,Weather,Tyre wear,Penalties,Flags,Safety,Finish,Time tokens');
+    ok('92 calls in 17 folders (1.59.0: the call Yellow flag soon in the Flags folder; 1.44.0: the Car Failures folder after Damage; 1.42.0: the Tyre wear folder after Weather; 1.10.0: the Damage folder after Endurance; 1.3.0: Balance of Power after Pit and fuel; 1.4.0: Weather after Balance of Power; 1.5.0: the conditions call; 1.7.0: the line-up; 1.9.0: the Endurance folder after Balance of Power), the Safety folder after the flags', n === 92 && groups.join() === 'Start,Positions,Race progress,Gaps and battles,Laps and records,Pit and fuel,Balance of Power,Endurance,Damage,Car Failures,Weather,Tyre wear,Penalties,Flags,Safety,Finish,Time tokens');
     const set = Sound.defaultSet('x'), fresh = ['firstlap', 'nearrecord', 'fuelhalf', 'refuelled', 'penaltyserved', 'penaltyforgiven', 'penaltytime', 'lanecall', 'nolap', 'trackmatelost', 'trackmateback', 'tokenadded', 'tokenfree'];
     ok('the 13 new calls exist, have sentences, and are off in a new audio set', fresh.every(id => A.CALLS.some(c => c.id === id) && set.calls[id].on === false && set.calls[id].lines.length > 0));
     const old = { calls: { winner: { on: true, lines: [{ text: 'x', file: '' }] } } };
@@ -568,6 +568,24 @@ const mk2 = (o = {}, ents = one) => createRace({ type: 'race', laps: 10, minLap:
   ok('what happened in the review after the race is not called out later (only while racing)', of(ev, 'yellowfast').length === 0);
   // a set from before has neither call: the ready-made sentences are used (the race has a target, so the calls are meant)
   ok('a set from before this version says the new calls with the ready-made sentences', Sound.choose({ calls: { winner: { on: true, lines: [{ text: 'x', file: '' }] } } }, 'yellowtarget', { target: '15 seconds' }, () => 0).text === 'Target lap time is 15 seconds' && /too fast under yellow/.test(Sound.choose({ calls: {} }, 'yellowfast', { driver: 'Sam' }, () => 0).text));
+  // 1.59.0: the warning before a random yellow flag
+  { const Sc = require('../renderer/safetycar.js'), mkr = () => { const e = mk2({ laps: 50, safetycar: Sc.clean({ rndOn: 'on', rndMode: 'exact', rndMin: 1, rndWarn: 10 }), rnd: () => 0 }, two), a = A.create({ lapLimit: 50 }); e.start(0); run(e, a, 0); return [e, a]; };
+    ok('the call Yellow flag soon is in the Flags folder, on in a new set, with two sentences and no words in them', call('yellowsoon') && call('yellowsoon').group === 'Flags' && Sound.defaultSet('x').calls.yellowsoon.on === true && call('yellowsoon').lines.length >= 2 && call('yellowsoon').vars.length === 0 && /Safety car system/.test(call('yellowsoon').label));
+    let [e, a] = mkr(), ev = run(e, a, 500);
+    ok('nothing is said while no random flag is about to come', ev.length === 0 && e.rndSoon === false);
+    e.rndSoon = true; ev = run(e, a, 1000);
+    ok('when the warning comes on, the call is said once', ev.map(x => x.call).join() === 'yellowsoon');
+    ev = run(e, a, 1500); const again = run(e, a, 2000);
+    ok('...not again while it lasts', ev.length === 0 && again.length === 0);
+    e.rndSoon = false; run(e, a, 2500); e.rndSoon = true; ev = run(e, a, 3000);
+    ok('...but again for the next flag (when the warning has gone out and comes on again)', ev.map(x => x.call).join() === 'yellowsoon');
+    e.rndSoon = false; e.setFlag('yellow', 3500); ev = run(e, a, 3500);
+    ok('...and when the flag comes up, only the yellow flag is called (the warning is over)', ev.map(x => x.call).join() === 'yellowflag,yellowtarget');
+    [e, a] = mkr(); e.rndSoon = true; ev = a.observe(e, { phase: 'paused', now: 1000 }); const back = run(e, a, 1500);
+    ok('a warning that comes on while the race is paused is not said when it goes on (the flag is as near as it was; no sound in a pause)', ev.length === 0 && back.length === 0);
+    [e, a] = mkr(); e.rndSoon = true; ev = a.observe(e, { phase: 'ready', now: 0 });
+    ok('...nor before the start', ev.length === 0);
+    ok('a set from before this version says it with the ready-made sentences', /yellow flag/i.test(Sound.choose({ calls: {} }, 'yellowsoon', {}, () => 0).text)); }
   ok('the target call is not an urgent one: it waits for the yellow flag call to finish, and does not cut it off', (() => { const src = require('fs').readFileSync(require('path').join(__dirname, '../renderer/sound.js'), 'utf8'); return !/URGENT = \[[^\]]*yellowtarget/.test(src) && !/URGENT = \[[^\]]*yellowfast/.test(src) && /URGENT = \[[^\]]*'yellowflag'/.test(src); })());
 }
 

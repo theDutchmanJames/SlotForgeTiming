@@ -92,6 +92,11 @@
     const tankOf = c => (hasFx(c) ? Math.round(F.tank * fx(c).tank * 1e6) / 1e6 : F.tank); // (rounded: 100 x 1.1 is not 110.00000000000001 on a screen)
     // Safety Car (1.53.0, cfg.safetycar, see safetycar.js): the yellow flag is the Safety Car. A race with a system uses ITS lap target and points instead of the Yellow flag fields of the race setup, and its pit work is shorter (R.block fixes it for the stop).
     const SCC = Sc.fromConfig(cfg.safetycar);
+    // Random flags (1.59.0, SCC.rnd, see safetycar.js): the plan (the places and lengths of the yellow flags) is drawn when the race starts (rnRoll) and kept in the snapshot; rnCheck puts the yellow flag up and
+    // takes it down by the plan, and sets R.rndSoon for the warning. It does not look at the drivers at all. RN.up: the flag that is up now because of the plan (yEl: where the flag went up on the race clock, liftAt: when it comes
+    // down on the race clock, or null when only the Race Director lifts it).
+    const RNC = SCC && SCC.rnd ? SCC.rnd : null, rnRnd = cfg.rnd || Math.random;
+    const RN = RNC ? { plan: null, unit: 'ms', i: 0, up: null, lastEnd: -1e9, soon: false, warnedFor: -1 } : null;
     // Push and Save (1.54.0, cfg.pushsave, see pushsave.js): every lap is compared with the reference lap of the driver (the record he brought in c.psRec, or his best lap of this race, whichever is faster); the wear of the lap is changed by it.
     const PSC = Ps.fromConfig(cfg.pushsave);
     const Y = SCC ? { target: SCC.target, points: SCC.points } : { target: 0, points: 0, ...(cfg.yellow || {}) }; // the yellow flag target lap time (ms; 0 = none) and the penalty points for a full lap under yellow that is faster
@@ -130,7 +135,7 @@
     };
 
     R.elapsed = t => R.status === 'running' ? t - R.t0 : R.status === 'paused' ? R.pausedAt - R.t0 : R.status === 'finished' ? R.endAt - R.t0 : 0;
-    R.start = t => { R.status = 'running'; R.t0 = t; R.cars.forEach(c => { c.last = t; twRefresh(c); if (F.on && hasFx(c)) c.fuel = tankOf(c); }); wxEval(t); flRoll(); }; // (a car that has Balance of Power, or tyres that help or hinder it, before the start begins with a full tank of its own size)
+    R.start = t => { R.status = 'running'; R.t0 = t; R.cars.forEach(c => { c.last = t; twRefresh(c); if (F.on && hasFx(c)) c.fuel = tankOf(c); }); wxEval(t); flRoll(); rnRoll(); }; // (a car that has Balance of Power, or tyres that help or hinder it, before the start begins with a full tank of its own size)
     R.pause = t => { if (R.status === 'running') { R.status = 'paused'; R.pausedAt = t; } };
     R.resume = t => {
       if (R.status !== 'paused') return;
@@ -191,6 +196,7 @@
     R.stop = t => { if (R.status === 'running' || R.status === 'paused') end(R.status === 'paused' ? R.pausedAt : t, 'Stopped'); }; // (a race stopped while it is paused ends where its clock stands: the pause is not racing time)
     R.tick = t => {
       if (R.status === 'running') R.cars.forEach((_, i) => { pitCheck(i, t); serveCheck(i, t); enEval(i, t); flCheck(R.cars[i], i, t); repairCheck(i, t); twCheck(i, t); wxFlush(i, t); });
+      rnCheck(t);
       if (R.status === 'running' && timeLimit && !R.timeUp && t - R.t0 >= timeLimit) R.timeUp = true;
       wxEval(t);
       checkEnd(t);
@@ -835,6 +841,49 @@
     // (pit whenever you can or as fast as you can, a deadline in laps, repair / retire / disqualify) and has its own seconds to stand still. It adds no damage points. The car is repaired by the stop in the pits,
     // together with its damage (the longest job counts). A failure that is not repaired by its deadline costs the penalty points of the system for every lap, like a level.
     R.failures = FL;
+    // ---- Random flags (1.59.0) ----
+    R.randomFlags = RNC; // the settings (or null: this race has no random flags)
+    R.rndSoon = false; // a random flag is about to come (the warning): the Race Flag widget flashes, and the call is said
+    R.rndInfo = () => (RN && RN.plan ? { unit: RN.unit, plan: RN.plan.map(p => ({ ...p })), next: RN.i, up: RN.up ? { ...RN.up } : null } : null); // (for the tests: the plan is not shown on the screens)
+    function rnRoll() {
+      if (!RN || RN.plan) return;
+      const r = Sc.roll(RNC, { laps: type === 'race' ? lapLimit : 0, ms: timeLimit }, rnRnd);
+      RN.unit = r.unit; RN.plan = r.plan;
+    }
+    // where the race is now, in the unit of the plan: the laps of the leader and the part of his lap (from the time since his last crossing, by what his last laps took), or the milliseconds of the race clock
+    function rnPos(t) {
+      if (RN.unit !== 'laps') return { pos: t - R.t0, lap: 0 };
+      let lead = null; R.cars.forEach(c => { if (!lead || c.laps.length > lead.laps.length) lead = c; });
+      if (!lead) return { pos: 0, lap: 0 };
+      const last = lead.laps.slice(-3), lap = last.length ? last.reduce((a, b) => a + b, 0) / last.length : 0;
+      return { pos: lead.laps.length + (lap > 0 ? Math.min(0.999, Math.max(0, (t - lead.last) / lap)) : 0), lap };
+    }
+    function rnEnd(t, how) {
+      log('randomend', -1, t, { n: RN.up.n, by: how }); RN.up = null; RN.lastEnd = t - R.t0;
+    }
+    function rnCheck(t) {
+      if (!RN || !RN.plan || R.status !== 'running') { R.rndSoon = !!(RN && RN.soon && R.status === 'paused'); return; }
+      const el = t - R.t0;
+      if (RN.up) {
+        if (!(R.flag === 'yellow' && R.yellowAt !== null && R.yellowAt - R.t0 === RN.up.yEl)) rnEnd(t, 'hand'); // lifted by hand (or another flag went up): the plan is done with it
+        else if (RN.up.liftAt !== null && el >= RN.up.liftAt) { R.flag = ''; R.yellowAt = null; scEdge(t); rnEnd(t, 'time'); }
+      }
+      if (RN.up || RN.i >= RN.plan.length || R.timeUp || (timeLimit > 0 && el >= timeLimit) || R.cars.some(c => c.done)) { RN.soon = false; R.rndSoon = false; return; } // (no new flag once the time is up, or a car has finished)
+      const nx = RN.plan[RN.i], at = rnPos(t), toGo = nx.at - at.pos; // (toGo in laps, or in ms)
+      if (toGo <= 0) { // its moment has come: it waits while any flag is up, and until the gap since the last flag has gone by
+        if (R.flag === '' && el - RN.lastEnd >= RNC.gap) {
+          R.flag = 'yellow'; R.yellowAt = t; scEdge(t);
+          RN.up = { yEl: el, liftAt: RNC.end === 'timer' ? el + nx.len : null, n: RN.i + 1 };
+          log('randomflag', -1, t, { n: RN.i + 1, of: RN.plan.length, len: RNC.end === 'timer' ? nx.len : null });
+          RN.i++; RN.soon = false; R.rndSoon = false;
+          return;
+        }
+      }
+      const ms = RN.unit === 'laps' ? (at.lap > 0 ? toGo * at.lap : Infinity) : toGo;
+      RN.soon = RNC.warn > 0 && ms <= RNC.warn;
+      if (RN.soon && RN.warnedFor !== RN.i) { RN.warnedFor = RN.i; log('randomsoon', -1, t, { n: RN.i + 1 }); }
+      R.rndSoon = RN.soon;
+    }
     function flRoll() {
       if (!FL) return;
       R.cars.forEach(c => { if (!c.flPlan) c.flPlan = Fl.roll(FL, { laps: limitOf(c), ms: limitOf(c) > 0 ? 0 : timeLimit }, c.failureFactor, flRnd); });
@@ -995,6 +1044,7 @@
     R.snapshot = t => {
       const cars = R.cars.map((c, i) => { const e = cfg.entries[i] || {}, d = {}; Object.keys(c).forEach(k => { if (!(k in e) || JSON.stringify(c[k]) !== JSON.stringify(e[k])) d[k] = c[k]; }); return d; });
       const snap = { v: 1, at: t, callId, cars, events: R.events, calls: R.calls }; STATE.forEach(k => { snap[k] = R[k]; });
+      if (RN && RN.plan) snap.rn = { plan: RN.plan, unit: RN.unit, i: RN.i, up: RN.up, lastEnd: RN.lastEnd, warnedFor: RN.warnedFor, soon: RN.soon };
       return JSON.parse(JSON.stringify(snap));
     };
     R.restore = snap => {
@@ -1002,6 +1052,11 @@
       const x = JSON.parse(JSON.stringify(snap));
       STATE.forEach(k => { if (x[k] !== undefined) R[k] = x[k]; });
       scWas = R.scOut(); // (the Safety Car that was out stays out, without a new line in the log)
+      if (RN && x.rn && Array.isArray(x.rn.plan)) { // (the random flags go on by the same plan: the places that were passed stay passed)
+        const q = x.rn, up = q.up && Number.isFinite(Number(q.up.yEl)) ? { yEl: Number(q.up.yEl), liftAt: q.up.liftAt === null ? null : Number(q.up.liftAt), n: Number(q.up.n) || 1 } : null;
+        RN.plan = q.plan.filter(p => p && Number.isFinite(Number(p.at)) && Number.isFinite(Number(p.len))).map(p => ({ at: Number(p.at), len: Number(p.len) })); RN.unit = q.unit === 'laps' ? 'laps' : 'ms';
+        RN.i = Math.max(0, Math.min(RN.plan.length, Number(q.i) || 0)); RN.up = up && (up.liftAt === null || Number.isFinite(up.liftAt)) ? up : null; RN.lastEnd = Number.isFinite(Number(q.lastEnd)) ? Number(q.lastEnd) : -1e9; RN.warnedFor = Number.isFinite(Number(q.warnedFor)) ? Number(q.warnedFor) : -1; RN.soon = !!q.soon; R.rndSoon = RN.soon;
+      }
       R.cars.length = 0; R.cars.push(...x.cars.map((d, i) => ({ ...(cfg.entries[i] || {}), ...d }))); R.events.length = 0; R.events.push(...(x.events || [])); R.calls.length = 0; R.calls.push(...(x.calls || []));
       callId = Number(x.callId) || 0; R.resumes = (Number(x.resumes) || 0) + 1;
       if (R.status === 'running') { R.status = 'paused'; R.pausedAt = Number.isFinite(x.at) ? x.at : R.pausedAt; } // (it was racing: it waits, with the clock where it was)

@@ -8,7 +8,7 @@
 const LiveShare = (() => {
   const Tk = typeof module !== 'undefined' ? require('./tokens.js') : Tokens; // the token clocks of a Time Token Session
   const CAR = ['laps', 'bad', 'last', 'total', 'best', 'done', 'place', 'retired', 'fuel', 'outOfFuel', 'blockAt', 'pit', 'pits', 'lastPit', 'outlap', 'points', 'undoPoints', 'dq', 'pending', 'served', 'extraMs', 'adjMs', 'adjLaps', 'adjPoints', 'invalid', 'removed', 'bop', 'bopHold', 'bopTo', 'tyre', 'tyreOwn', 'wx', 'wxDue', 'twLife', 'tw', 'twStops', 'twDoneAt', 'twSets', 'twNext', 'msUsed', 'msDone', 'scf', 'ps', 'psNow'];
-  const ENG = ['status', 't0', 'pausedAt', 'endAt', 'timeUp', 'finished', 'endedBy', 'flag', 'calls', 'bopActive', 'bopSpread', 'wxState', 'wxStage', 'twTeams'];
+  const ENG = ['status', 't0', 'pausedAt', 'endAt', 'timeUp', 'finished', 'endedBy', 'flag', 'calls', 'bopActive', 'bopSpread', 'wxState', 'wxStage', 'twTeams', 'rndSoon'];
   const fin = v => (Number.isFinite(v) ? v : null); // Infinity does not survive being sent as text
 
   // ctx: { eng, track, now, phase, calling (the pre-race call is being said), lights, setup, heat, flash: Map(car -> {at,time,kind}), layout, bestAll, bestAllName, bestBy: Map, base: {personal: Map, track, trackName}, tokens (the snapshot of the token clocks, or nothing) }

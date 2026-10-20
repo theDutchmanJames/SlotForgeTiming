@@ -127,6 +127,23 @@ const img = 'data:image/png;base64,AAA';
 ok('flag picture is used for its state', C('flag', null, 0, undefined, { img_running: img }).html.includes('flagimg'));
 ok('with the Image set style a state without a picture shows its name as text; with the Flags style the pictures are ignored', C('flag', null, 0, { phase: 'paused' }, { flagStyle: 'images', img_running: img }).html === 'Paused' && C('flag', null, 0, { phase: 'paused' }, { img_running: img }).html === 'Paused' && C('flag', null, 16000, undefined, { flagStyle: 'flags', img_running: img }).html.includes('flagsvg'));
 ok('yellow / red use their own pictures', (() => { eng.flag = 'yellow'; const y = C('flag', null, 0, undefined, { img_yellow: img }).html; eng.flag = ''; return y.includes('flagimg'); })());
+ok('1.59.0: a random yellow flag that is about to come makes the Race Flag widget flash yellow, twice a second, in every style: the yellow flag, the LED, the picture of the set, or the text', (() => {
+  const W = require('../renderer/widgets.js'), at = (ms, o, over) => C('flag', null, ms, over, o);
+  eng.rndSoon = true;
+  const fl0 = at(0, { flagStyle: 'flags' }).html, fl1 = at(500, { flagStyle: 'flags' }).html, fl2 = at(1000, { flagStyle: 'flags' }).html;
+  const led0 = at(0, { flagStyle: 'leds' }).html, led1 = at(500, { flagStyle: 'leds' }).html;
+  const im0 = at(0, { flagStyle: 'images', img_yellow: img, img_running: img }).html, im1 = at(500, { flagStyle: 'images', img_yellow: img, img_running: img }).html;
+  const t0 = at(0, { flagStyle: 'text' }), t1 = at(500, { flagStyle: 'text' }), t2 = at(1000, { flagStyle: 'text' });
+  const yellowFlag = W.flagHtml('yellow', {});
+  const flags = fl0 === yellowFlag && fl1 !== fl0 && /opacity:\.25/.test(fl1) && fl2 === fl0 && !/opacity/.test(fl0) && fl0.includes('flagsvg');
+  const leds = led0 === W.ledHtml('yellow') && led1 !== led0 && /opacity:\.25/.test(led1);
+  const images = im0.includes('flagimg') && /opacity:\.25/.test(im1) && !/opacity/.test(im0) && im0.includes('Yellow flag soon');
+  const text = t0.html === 'YELLOW FLAG SOON' && t0.bg === '#ffd400' && t0.color === '#000' && t1.html === 'YELLOW FLAG SOON' && t1.bg === '#8a7400' && t1.color === '#fff' && t2.bg === '#ffd400';
+  eng.safetyCar = { target: 15000 }; const sc = at(0, { flagStyle: 'text' }).html; eng.safetyCar = null;
+  const paused = at(0, { flagStyle: 'text' }, { phase: 'paused' }).html;
+  eng.flag = 'yellow'; const up = at(0, { flagStyle: 'text' }).html; eng.flag = '';
+  eng.rndSoon = false; const none = at(0, { flagStyle: 'text' }).html;
+  return flags && leds && images && text && sc === 'SAFETY CAR SOON' && paused === 'Paused' && up === 'YELLOW FLAG' && none !== 'YELLOW FLAG SOON' && none !== 'SAFETY CAR SOON'; })());
 ok('the Race Flag widget always shows a flag, never the countdown: Ready before and during the start, the red flag during a restart', (() => {
   const W = require('../renderer/widgets.js'), txt = { flagStyle: 'text' }, start = C('flag', null, 0, { phase: 'countdown', lights: 2 }, txt).html; eng.flag = 'red'; const restart = C('flag', null, 0, { phase: 'countdown', lights: 2 }, txt).html; eng.flag = '';
   return start === 'Ready' && restart === 'RED FLAG' && !W.FLAG_STATES.some(x => x[0] === 'countdown') && W.FLAG_STATES.length === 7; })());

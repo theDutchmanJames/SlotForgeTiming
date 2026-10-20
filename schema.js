@@ -471,7 +471,8 @@ module.exports = {
     groups: [
       { id: 'basics', title: 'Basics', note: 'Name. The Safety Car is out while the yellow flag is up', open: true },
       { id: 'laps', title: 'Lap times', note: 'How slowly the cars must drive behind the Safety Car', open: true },
-      { id: 'pit', title: 'Pit stops', note: 'Work in the pits goes faster behind the Safety Car', open: true }
+      { id: 'pit', title: 'Pit stops', note: 'Work in the pits goes faster behind the Safety Car', open: true },
+      { id: 'random', title: 'Random flags', note: 'Yellow flags (the Safety Car) at random moments, as if other cars on the track caused them', open: false }
     ],
     fields: [
       { key: 'name', group: 'basics', label: 'Name', type: 'text' },
@@ -480,7 +481,31 @@ module.exports = {
       { key: 'points', group: 'laps', label: 'Penalty points for a lap that is too fast', type: 'number', min: 0, max: 100, default: Sc.DEFAULTS.points,
         hint: 'Given to the driver for every full lap behind the Safety Car that is faster than the limit. It needs a penalty system (Racing Systems of the race setup); without one the lap is only called out and marked in the lap review. 0 gives no points. Not used without a limit above.' },
       { key: 'pitPercent', group: 'pit', label: 'The work in a pit stop takes less time by (percent)', type: 'number', min: 0, max: Sc.MAX_PIT, default: Sc.DEFAULTS.pitPercent,
-        hint: 'Refuelling, a repair and changing tyres take this many percent less time when the car comes into the pits while the Safety Car is out. 50 makes a 10 second tyre change 5 seconds. Fixed when the car comes in, so a Safety Car that goes in while the car is in the pits changes nothing for that stop. Driver swaps, a penalty that is served in the pits and the pit hold time are not shortened. 0 changes nothing.' }
+        hint: 'Refuelling, a repair and changing tyres take this many percent less time when the car comes into the pits while the Safety Car is out. 50 makes a 10 second tyre change 5 seconds. Fixed when the car comes in, so a Safety Car that goes in while the car is in the pits changes nothing for that stop. Driver swaps, a penalty that is served in the pits and the pit hold time are not shortened. 0 changes nothing.' },
+      { key: 'rndOn', group: 'random', label: 'Random yellow flags', type: 'select', default: Sc.RND_DEFAULTS.on, options: [['off', 'Off'], ['on', 'On']],
+        hint: 'On: the yellow flag, which is the Safety Car with the rules above, goes up at random moments in a race, whatever the drivers do, as if one of the other cars on the track caused it. The moments are drawn when the race starts and are not shown while it runs (the race log lists them afterwards). A race setup with this Safety car system has them in practice, qualifying, races, timed races, heats and Endurance Races. The Race Director can lift a yellow flag whenever he wants.' },
+      { key: 'rndChance', group: 'random', label: 'Chance that a race has random flags (percent)', type: 'number', min: 0, max: 100, default: Sc.RND_DEFAULTS.chance, showIf: [{ rndOn: ['on'] }],
+        hint: '100 = every race has them. 60 = six races in ten do; the other four are drawn without any (with a heat race, every heat is drawn for itself).' },
+      { key: 'rndMode', group: 'random', label: 'How many flags', type: 'select', default: Sc.RND_DEFAULTS.mode, options: Sc.RND_MODES, showIf: [{ rndOn: ['on'] }],
+        hint: 'Exactly N, a number from N to M (any number in between is as likely), or at least N: after the N each further flag has the chance below, one after the other. More than 20 in a race is never drawn.' },
+      { key: 'rndMin', group: 'random', label: 'Number of flags (N)', type: 'number', min: 0, max: Sc.MAX_FLAGS, default: Sc.RND_DEFAULTS.min, showIf: [{ rndOn: ['on'] }], hint: '0 to 20. When the flags do not fit in the race (see the earliest and latest moment and the time between), there are fewer.' },
+      { key: 'rndMax', group: 'random', label: 'Up to (M)', type: 'number', min: 0, max: Sc.MAX_FLAGS, default: Sc.RND_DEFAULTS.max, showIf: [{ rndOn: ['on'], rndMode: ['range'] }], hint: 'Never less than N.' },
+      { key: 'rndMore', group: 'random', label: 'Chance of one more flag (percent)', type: 'number', min: 0, max: 100, default: Sc.RND_DEFAULTS.more, showIf: [{ rndOn: ['on'], rndMode: ['atleast'] }],
+        hint: 'After the N flags: 30 means that three races in ten get an extra flag, and then three in ten of those get one more, and so on. 0 = exactly N.' },
+      { key: 'rndEnd', group: 'random', label: 'A flag ends', type: 'select', default: Sc.RND_DEFAULTS.end, options: Sc.RND_ENDS, showIf: [{ rndOn: ['on'] }],
+        hint: 'By itself: the flag comes down when its time is up (and the Race Director can lift it earlier). Only when the Race Director lifts it: it stays up until he presses the yellow flag button, like a flag he raised himself.' },
+      { key: 'rndLenMode', group: 'random', label: 'How long a flag lasts', type: 'select', default: Sc.RND_DEFAULTS.lenMode, options: Sc.RND_LENGTHS, showIf: [{ rndOn: ['on'], rndEnd: ['timer'] }], hint: 'Every flag lasts the same time, or a time between two limits that is drawn for each flag when the race starts.' },
+      { key: 'rndLen', group: 'random', label: 'Seconds', type: 'number', min: 5, max: 600, default: Sc.RND_DEFAULTS.len, showIf: [{ rndOn: ['on'], rndEnd: ['timer'] }], hint: '5 to 600. With two times, the shortest.' },
+      { key: 'rndLenMax', group: 'random', label: 'Up to (seconds)', type: 'number', min: 5, max: 600, default: Sc.RND_DEFAULTS.lenMax, showIf: [{ rndOn: ['on'], rndEnd: ['timer'], rndLenMode: ['range'] }], hint: 'Every flag gets a time between the two, drawn when the race starts.' },
+      { key: 'rndFrom', group: 'random', label: 'Earliest moment (percent of the race)', type: 'number', min: 0, max: 100, default: Sc.RND_DEFAULTS.from, showIf: [{ rndOn: ['on'] }],
+        hint: 'No flag before this part of the race has been driven (the laps of the leader, or the time on the clock). In a race by laps never in the first lap or the last. If the two moments are typed the other way round, they swap.' },
+      { key: 'rndTo', group: 'random', label: 'Latest moment (percent of the race)', type: 'number', min: 0, max: 100, default: Sc.RND_DEFAULTS.to, showIf: [{ rndOn: ['on'] }], hint: 'No flag comes up after this part of the race (one that has come up may last longer).' },
+      { key: 'rndGap', group: 'random', label: 'At least this long between two flags (seconds)', type: 'number', min: 0, max: 600, default: Sc.RND_DEFAULTS.gap, showIf: [{ rndOn: ['on'] }],
+        hint: 'From the end of one flag to the start of the next. A flag that is due while another flag is up (one a marshal or the Race Director raised, or a red flag) waits for it to end and for this time to pass.' },
+      { key: 'rndFree', group: 'random', label: 'Free practice: spread the flags over (minutes)', type: 'number', min: 1, max: 240, default: Sc.RND_DEFAULTS.free, showIf: [{ rndOn: ['on'] }],
+        hint: 'A free practice has no end, so there is no part of it to take a percentage of. The flags are drawn in this many minutes from the start; the earliest and latest moment count in them too.' },
+      { key: 'rndWarn', group: 'random', label: 'Warn before a flag comes (seconds, 0 = no warning)', type: 'number', min: 0, max: 60, default: Sc.RND_DEFAULTS.warn, showIf: [{ rndOn: ['on'] }],
+        hint: 'A heads-up: the Race Flag widget flashes the yellow flag, and the call "Yellow flag soon" is said (Audio Settings). In a race by laps it needs a lap of the leader to know how long a lap takes. 0 = the flag just comes.' }
     ]
   },
   // Push and save systems (1.54.0): how hard a driver drives (the lap time against his best lap) changes how fast his tyres and his fuel are used up. Chosen per race setup (Racing Systems). See pushsave.js.

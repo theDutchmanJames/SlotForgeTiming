@@ -84,6 +84,7 @@
     { id: 'penaltytime', group: 'Penalties', defaultOn: false, label: 'Time is added to a driver (by the Race Director, also in the review after the race)', vars: ['driver', 'added'], lines: ['{added} added to the time of {driver}', '{driver} gets a time penalty of {added}'] },
     { id: 'disqualified', group: 'Penalties', label: 'A driver is disqualified', vars: ['driver'], lines: ['{driver} is disqualified', 'Disqualified: {driver}'] },
     { id: 'yellowflag', group: 'Flags', label: 'Yellow flag', vars: [], lines: ['Yellow flag, take care', 'Yellow flag'] },
+    { id: 'yellowsoon', group: 'Flags', label: 'A random yellow flag is about to come (the warning set in the Safety car system, Random flags)', vars: [], lines: ['Yellow flag soon', 'Careful, a yellow flag is coming'] },
     { id: 'yellowtarget', group: 'Flags', label: 'The yellow flag target lap time (said after the yellow flag call, when the race has a target)', vars: ['target'], lines: ['Target lap time is {target}', 'Yellow flags, target lap time is {target}'] },
     { id: 'yellowfast', group: 'Flags', label: 'A driver is faster than the yellow flag target (a full lap under yellow)', vars: ['driver', 'time', 'lap', 'target'], lines: ['{driver}, too fast under yellow', '{driver}, slow down, the yellow flag is up'] },
     { id: 'redflag', group: 'Flags', label: 'Red flag', vars: [], lines: ['Red flag, the race is stopped', 'Red flag'] },
@@ -297,6 +298,8 @@
         if (flag === 'yellow') { ev('yellowflag', {}); if (eng.yellow && eng.yellow.target > 0) ev('yellowtarget', { target: speakTarget(eng.yellow.target) }); } else if (flag === 'red') ev('redflag', {}); else if (S.flag && (phase === 'running' || phase === 'paused') && !out.some(o => o.call === 'lightsout')) ev('greenflag', {}); /* (not at the finish, and not with the lights out of a restart: those say it already) */
         S.flag = flag;
       }
+      // a random yellow flag is about to come (1.59.0, the warning of the Safety car system): said once when the warning starts, only while the race runs
+      { const soon = !!eng.rndSoon; if (soon && !S.soon && phase === 'running') ev('yellowsoon', {}); S.soon = soon; }
       // things the engine logged: pits, fuel, penalties (only while racing; later review changes are not announced)
       if (S.ev < 0) S.ev = eng.events.length;
       const live = phase === 'running' || phase === 'paused';
