@@ -8,7 +8,7 @@
 //   cliff  the life (%) at which the bonus is gone and the tyre starts to hinder the car,
 //   hind   the % it hinders the car when it is worn out (0% life).
 // The grip curve is a straight line from +bonus at 100% life to 0 at the cliff, and from 0 at the cliff to -hind at 0% life. It works through the fuel levers (the fuel used in a lap, the refuelling
-// speed, the size of the tank), the ones that Balance of Power and the weather use too, so it needs a Fuel setup. A rule for 0% life works without fuel. Measured lap times are never changed.
+// speed, the size of the tank), the ones that Balance of Power and the weather use too, so it needs a Fuel system. A rule for 0% life works without fuel. Measured lap times are never changed.
 // Release 2 (1.41.0): the sets. A system can say how many sets of each tyre a car (or a team) has: a stop takes one set out of the box, a set that was taken off is not used again, and a tyre with no sets left
 // can not be fitted or queued. The Race Director queues a tyre for the next stop; the weather's Intermediate or Wet tyres come before a queued tyre. Without a limit a stop gives a fresh set of the same tyre, as in 1.40.0.
 // Mandatory stops (1.52.0): a system can ask for a number of stops for tyres and/or two different dry tyres in a race. A car is judged when it finishes (or when the race ends), and a rule that was not kept costs

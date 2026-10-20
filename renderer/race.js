@@ -36,7 +36,7 @@ async function renderRace() {
   const lanes = Math.max(1, Math.floor(Number(r.track.lanes)) || people.length);
   const engineType = tokenSession ? 'practice' : heats ? (setup.heatBy === 'time' ? 'timed' : 'race') : setup.sessionType;
   const fuelCfg = RaceEngine.fuelConfig(setup, find(fuelRules, setup.fuelRules)), pitMs = fuelCfg.pitHold; // fuel on/off, tank, use per lap, refuel speed; pit stop hold time
-  // Balance of Power: only for a race or a timed race with a Fuel Setup, when the race setup has it on (the settings are those of Race Setup > Balance of Power; the lane lengths are for the lane correction)
+  // Balance of Power: only for a race or a timed race with a Fuel System, when the race setup has it on (the settings are those of Race Setup > Balance of Power; the lane lengths are for the lane correction)
   const bopCfg = setup.bop === 'on' && fuelCfg.on && (engineType === 'race' || engineType === 'timed') ? Bop.engineConfig(state.settings, Array.from({ length: lanes }, (_, l) => Speed.laneLength(r.track, l))) : null;
   const penCfg = RaceEngine.penaltyConfig(find(penSystems, setup.penaltySystem)); // penalty points and how they turn into time
   const damCfg = tokenSession ? null : Damage.clean(find(damageSystems, setup.damageSystem), r.track.deslotTime); // damage points, the levels and the repair in the pits (a race or a timed race; the deslot time is that of the track)

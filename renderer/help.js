@@ -61,15 +61,15 @@ const Help = (() => {
           <li>The big <b>Race Setups</b> button is where everything comes together. The other sub-tabs have the colour of their folder on the race screen.</li>
           <li><b>Race Setups</b> hold the rules of one kind of race: the session type, track, length, penalties, fuel, timing page and audio set.</li>
           <li><b>Rotation Setups</b>: a heat plan you make yourself (see Rotation setups, below).</li>
-          <li><b>Fuel Setups</b>: tank size, fuel per lap and what happens when the tank is empty.</li>
           <li><b>Penalty Systems</b>: how penalty points turn into seconds, when a driver is disqualified, and special penalties (a Drivethrough, a Stop-and-Go).</li>
           <li><b>Damage Systems</b>: damage points, and the stop in the pits that repairs them (see Damage System, below).</li>
+          <li><b>Fuel Systems</b>: tank size, fuel per lap, and what happens on an empty tank.</li>
           <li><b>Tyre Wear Systems</b>: tyres that lose life while a car drives, and what that does to the car (see Tyre wear, below).</li>
           <li><b>Weather Systems</b>: a spell of rain with a forecast, the tyres to change in the pits, what the wrong tyres cost, and the temperatures and the wind.</li>
           <li><b>Safety Car Systems</b>: slow laps and quicker pit work behind the Safety Car (see Safety Car, below).</li>
           <li><b>Balance of Power</b>: how much a fast car is hindered and a slow car helped, by hand or by itself.</li>
           <li><b>Time Tokens</b>: the time buttons and the warning for a Time Token Session.</li>
-          <li>Fuel setups, penalty systems, damage systems, tyre wear systems and weather systems do nothing until you choose them in the <b>Racing Systems</b> folder of a race setup (Balance of Power and the pit hold time are there too).</li>
+          <li>Fuel systems, penalty systems, damage systems, tyre wear systems and weather systems do nothing until you choose them in the <b>Racing Systems</b> folder of a race setup (Balance of Power and the pit hold time are there too).</li>
         </ul>` },
       { id: 'types', title: 'Session types', note: 'Seven ways to race', body: `
         <ul>
@@ -185,14 +185,14 @@ const Help = (() => {
         </ul>` },
       { id: 'fuel', title: 'Fuel and pit stops', note: 'Tanks, refuelling and pit time', body: `
         <ul>
-          <li>Choose a <b>fuel setup</b> in the race setup. A car that runs dry retires, stops counting laps until it has refuelled, or only gets a warning, as you decided. A lap driven on an empty tank can also cost penalty points.</li>
+          <li>Choose a <b>fuel system</b> in the race setup. A car that runs dry retires, stops counting laps until it has refuelled, or only gets a warning, as you decided. A lap driven on an empty tank can also cost penalty points.</li>
           <li>A fast lap uses a little more fuel and a slow lap saves some, within the limits you set.</li>
           <li>A <b>pit stop</b> starts when a car stays on the sensor for the hold time of the race setup (2 seconds by default). The tank fills while it stands there. Fuel is optional: pit stops work without it.</li>
           <li>The <b>Fuel</b> and <b>Pitstop time</b> widgets show it on the timing page, and the leaderboard has a Fuel left column.</li>
         </ul>` },
       { id: 'bop', title: 'Balance of Power', note: 'Even out fast and slow cars', body: `
         <ul>
-          <li><b>Balance of Power</b> (BoP) hinders a car that is too fast and helps a car that is too slow. It works through the fuel rules, so the race setup needs a <b>fuel setup</b> and Balance of Power set to On (races, timed races and heat races).</li>
+          <li><b>Balance of Power</b> (BoP) hinders a car that is too fast and helps a car that is too slow. It works through the fuel rules, so the race setup needs a <b>fuel system</b> and Balance of Power set to On (races, timed races and heat races).</li>
           <li>A car hindered by 20% uses 20% more fuel a lap and refuels 20% slower (and, if you choose, has a 20% smaller tank), so it pits sooner or has to drive slower. A helped car gets the opposite. It counts from the next lap and the next pit stop.</li>
           <li>Set it up under Race Setup, <b>Balance of Power</b>: the percentage (a slider), only the fastest and slowest car or every car by its distance from the middle, and which of the three effects are on. It fine-tunes: a car that is seconds a lap faster will not be caught by fuel alone.</li>
           <li><b>Manual</b>: the Race Director presses Hinder, Help or Off for a lane. <b>Suggest</b>: the app proposes and he presses Accept. <b>Automatic</b>: the app applies it at the lap time difference you set and removes it a little below that. A lane you press stays as you set it until you press Auto.</li>
@@ -204,7 +204,7 @@ const Help = (() => {
           <li>The weather goes <b>Dry</b>, <b>Cloudy</b> (the warning), <b>Wet</b>, <b>Clearing</b> and Dry again. The race screen and the Race Director page show it and what comes next; the Race Director can press the four weather buttons there.</li>
           <li>Cars change tyres <b>in a pit stop</b>, from the <b>Tyre choice</b> of their slot car (Database, Slotcars) to Wet (or Intermediate) in Cloudy and Wet, and back in Clearing and Dry.</li>
           <li>In any race, with or without weather, the Race Director can give a car another tyre in the <b>Tyre Change</b> folder (race screen and phone page), for example Soft for Hard in an endurance race. It counts for this race only, unless he ticks the box that changes the slot car in the Database too. With weather only dry tyres can be chosen.</li>
-          <li>When it rains a car on dry tyres has to pit within the laps you set, and when it is dry again a car on Wet tyres has to. Otherwise it gets <b>penalty points</b> (needs a penalty system) and can be <b>hindered</b> like with Balance of Power (needs a fuel setup). Both add up, to 90% at most.</li>
+          <li>When it rains a car on dry tyres has to pit within the laps you set, and when it is dry again a car on Wet tyres has to. Otherwise it gets <b>penalty points</b> (needs a penalty system) and can be <b>hindered</b> like with Balance of Power (needs a fuel system). Both add up, to 90% at most.</li>
           <li>The result says what the weather and the tyres did. The audio set has calls for it, and simulated cars change tyres too.</li>
         </ul>` },
       { id: 'wxwidgets', title: 'Weather widgets', note: 'Tyres, forecast and conditions on the timing page', body: `
@@ -217,7 +217,7 @@ const Help = (() => {
         <ul>
           <li>A <b>tyre wear system</b> (Race Setup, Tyre Wear Systems) makes the tyres lose life while a car drives, from 100% to 0%. Choose one in the <b>Racing Systems</b> folder of a race setup. Races, heats and Endurance Races have it; practice and qualifying only when the system says so; a Time Token Session never. Every heat starts on fresh tyres.</li>
           <li>Every tyre has four numbers: the <b>wear</b> (% of life lost per lap, or per 100 m or 100 ft for Distance Racing), the <b>fresh bonus</b>, where the <b>grip drops</b> and the <b>hindrance at 0%</b>. Start from Standard, Sprint or Endurance.</li>
-          <li>Through the fuel rules (needs a Fuel setup), new tyres help the car and worn ones hinder it. Lap times and records are never changed.</li>
+          <li>Through the fuel rules (needs a Fuel system), new tyres help the car and worn ones hinder it. Lap times and records are never changed.</li>
           <li>At <b>0%</b>: nothing, penalty points every lap, the lap does not count until the car pits, or the car retires.</li>
           <li>In the pits a car gets a fresh set, taking the seconds you set, with the other work or after it. A car that leaves early keeps its worn tyres.</li>
           <li><b>Mandatory stops</b>: stops and/or two different dry tyres, or seconds, points or disqualification.</li>
@@ -235,11 +235,11 @@ const Help = (() => {
         </ul>` },
       { id: 'pushsave', title: 'Push and Save', note: 'How hard a driver drives wears tyres and fuel', body: `
         <ul>
-          <li>A <b>push and save system</b> (Race Setup, Push and Save Systems) makes the pace count. Choose one in the <b>Racing Systems</b> folder of a race setup. It works on top of a Tyre Wear System and a Fuel Setup, and lap times and grip are never changed.</li>
+          <li>A <b>push and save system</b> (Race Setup, Push and Save Systems) makes the pace count. Choose one in the <b>Racing Systems</b> folder of a race setup. It works on top of a Tyre Wear System and a Fuel System, and lap times and grip are never changed.</li>
           <li>Every lap is compared with the <b>reference lap</b> of the driver: his best lap on this track (the records) or, without one, his best lap so far in the race. A lap that beats it is the new reference.</li>
           <li><b>PUSH</b> (faster than normal pace) wears the tyres and uses the fuel faster, <b>NORMAL</b> is the usual wear, <b>SAVE</b> (slower) wears less. Normal pace is the best lap plus 3% to begin with; you can change every number, and a ready-made system (Standard, Gentle, Strong) fills in the four wear numbers.</li>
           <li>The effect starts at lap 3. A lap with a stop, the first lap after a pause and a very slow lap (over 150% of the best lap) wear as usual. Laps under the yellow flag or the Safety Car count as saving, if you leave that on.</li>
-          <li>With a push and save system the Fuel Setup's target lap time, most extra fuel and most saving are <b>not used</b>: the pace decides instead.</li>
+          <li>With a push and save system the Fuel System's target lap time, most extra fuel and most saving are <b>not used</b>: the pace decides instead.</li>
           <li>The <b>Push and Save</b> folder, the <b>Pace meter</b> widget (Layout Editor, Tyres), the <b>Pace</b> and <b>Wear now</b> cells of the Driver stats grid and the Leaderboard show it; the lap review tags every lap.</li>
         </ul>` },
       { id: 'championships', title: 'Championships', note: 'Rounds, sessions and a roster of drivers', body: `

@@ -77,7 +77,7 @@ const FAST = { tyres: { S: { wear: 50 }, M: { wear: 50 }, H: { wear: 50 }, W: { 
 { const r = race({ effect: 'off' }); at(r, 0, 10000);
   ok('with the grip effect off the tyres wear and the rule works, but the fuel rules are left alone', r.cars[0].tw === 0 && lit(r, 0) === 98 && r.twOf(0, 0).effect === null && near(r.cars[0].twLife, 95.5)); }
 { const r = race({}, { noFuel: true }); at(r, 0, 10000);
-  ok('without a Fuel setup there is nothing to hinder: the tyres still wear and are shown, there is just no effect', r.cars[0].tw === 0 && near(r.cars[0].twLife, 95.5) && r.twOf(0, 0).effect === null && r.fuelOf(0, 1e9) === null); }
+  ok('without a Fuel system there is nothing to hinder: the tyres still wear and are shown, there is just no effect', r.cars[0].tw === 0 && near(r.cars[0].twLife, 95.5) && r.twOf(0, 0).effect === null && r.fuelOf(0, 1e9) === null); }
 { const bop = Bp.engineConfig({}, [15, 15]);
   const r = race({}, { tyres: ['S', 'S'], bop }); r.bopSet(0, -20, 0, 'director'); at(r, 0, 10000);
   ok('Balance of Power and the tyres add up lever by lever: BoP -20% and a Soft +5% is -15% (the car uses 15% more fuel)', r.cars[0].bop === -20 && r.cars[0].tw === 5 && Math.abs(r.factorsOf(0).use - 1.15) < 1e-9);

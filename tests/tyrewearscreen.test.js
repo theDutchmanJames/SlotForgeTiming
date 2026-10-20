@@ -138,7 +138,7 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
     const timed = { ...setupTw, sessionType: 'timed', duration: 5 }; await openRace(timed, store.tracks[0], rows(1, 2)); await wait(30);
     say('...a timed race has it', eng().tyrewear !== null);
     const nofuel = { ...setupTw, fuelRules: '' }; await openRace(nofuel, store.tracks[0], rows(1, 2)); await wait(30);
-    say('...a race without a fuel setup has it too (the 0% rule and the display need no fuel; the grip effect is off)', eng().tyrewear !== null && eng().fuel.on === false && eng().cars.every(c => c.tw === 0));
+    say('...a race without a fuel system has it too (the 0% rule and the display need no fuel; the grip effect is off)', eng().tyrewear !== null && eng().fuel.on === false && eng().cars.every(c => c.tw === 0));
     const gone = { ...setupTw, tyreWear: 'tw-deleted' }; await openRace(gone, store.tracks[0], rows(1, 2)); await wait(30);
     say('...a race setup whose system is gone has none', eng().tyrewear === null);
     const tok = { ...setupTw, sessionType: 'tokens' }; await openRace(tok, store.tracks[0], rows(1, 2)); await wait(30);

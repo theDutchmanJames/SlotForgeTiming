@@ -70,7 +70,7 @@ const setup = async () => { run("state.tab = 'setup'; state.setupSub = 'champion
   // ---------- the page: a sub-tab of Race Setup ----------
   run("state.settings = { theme: 'dark' }"); await setup();
   const tabs = E('setuptabs').innerHTML;
-  say('Race Setup has a Championships tab in the group of the Setups, after Fuel Setups and before the Extras', tabs.includes('Championships') && tabs.indexOf('Fuel Setups') < tabs.indexOf('Championships') && tabs.indexOf('Championships') < tabs.indexOf('Balance of Power'));
+  say('Race Setup has a Championships tab in the group of the Setups, after Rotation Setups and before the Extras', tabs.includes('Championships') && tabs.indexOf('Rotation Setups') < tabs.indexOf('Championships') && tabs.indexOf('Championships') < tabs.indexOf('Balance of Power'));
   say('...it is the open one, in its own colour (the class of the chip is ss-ch) with its own picture', /class="sstab ss-ch" role="tab" aria-selected="true" data-id="championships"/.test(tabs) && tabs.includes(run("Icons.PATHS['championship']")) && E('setuppage') !== undefined);
   say('...a note says what a championship is', E('setupnote').textContent.includes('A championship is a series of rounds') && E('setupnote').textContent.includes('one click loads it'));
   say('...there are none yet: the page says so and has the New championship button', mgr().innerHTML.includes('No championships yet.') && mgr().innerHTML.includes('id="newch"'));

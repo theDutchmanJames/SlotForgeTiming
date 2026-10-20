@@ -2,7 +2,7 @@
 // Every lap is compared with the driver's reference lap: his best lap on the track (the records; while he drives, a lap that beats it is the new one), and when he has none his best lap so far in the race.
 // Driving at the reference is flat out (it wears the most). A normal race lap is a bit slower (normal pace, the best lap plus 3% to begin with): the wear is the usual wear there.
 // Slower than that saves: the wear goes down until the most saving pace (the best lap plus 8% to begin with), and stays there for slower laps.
-// The wear of a lap is the usual wear of the Tyre Wear System (and the usual litres of the Fuel Setup) times a number between 1 + extra and 1 - saving. Lap times and grip are never touched.
+// The wear of a lap is the usual wear of the Tyre Wear System (and the usual litres of the Fuel System) times a number between 1 + extra and 1 - saving. Lap times and grip are never touched.
 // This file holds the rules and the words and nothing else (no screen, no clock), so they can be tested on their own; engine.js uses it.
 (function (root) {
   const num = (v, d, lo, hi) => { const n = Number(String(v ?? '').replace(',', '.')); return v === '' || v === null || v === undefined || !Number.isFinite(n) ? d : Math.min(hi, Math.max(lo, n)); };

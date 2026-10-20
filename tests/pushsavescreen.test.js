@@ -71,7 +71,7 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
 
   // ---------- the field of the race setup ----------
   { const F = run('state.schema.racesetups.fields'), isShown = run('isShown'), f = F.find(x => x.key === 'pushSave'), shown = (fld, o) => isShown(fld, k => o[k]), keys = F.map(x => x.key);
-    say('a race setup has a Push and save system field in the rules: a choice of the systems, "No push and save" to begin with', f && f.group === 'rules' && f.type === 'ref' && f.ref === 'pushsavesystems' && f.blank === 'No push and save' && f.hint.includes('Fuel setup'));
+    say('a race setup has a Push and save system field in the rules: a choice of the systems, "No push and save" to begin with', f && f.group === 'rules' && f.type === 'ref' && f.ref === 'pushsavesystems' && f.blank === 'No push and save' && f.hint.includes('Fuel system'));
     say('...it is asked for every kind of racing and not for a Time Token Session', ['race', 'timed', 'heats', 'endurance', 'practice', 'qualifying'].every(t => shown(f, { sessionType: t })) && !shown(f, { sessionType: 'tokens' }));
     say('...it comes after the Safety car system and before the pit stop sensor time', keys.indexOf('pushSave') === keys.indexOf('safetyCar') + 1 && keys.indexOf('pushSave') < keys.indexOf('pitHold')); }
 

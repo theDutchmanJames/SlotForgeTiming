@@ -2870,3 +2870,17 @@ Good to know:
 - The other cards of Home keep the look they have; you told me you do not want the new header on them, so nothing is planned there.
 - Chromium draws the opened list by itself, so I could check the colours the options have (in a dark and a light theme) but not photograph the open list here. Please look at it on Windows and on the Pi (Linux draws that list in the same way).
 - Tested: one check more in `tests/startcard.test.js` (41 now); 6 deliberate breakages of the rule were tried and all were caught.
+
+## What to try (1.58.2): Fuel Systems, with the other systems
+
+**Fuel Setups** is now called **Fuel Systems**, and its green button has moved to where it belongs: in the **Systems** group of the **Race Setup** tab, between Damage Systems and Tyre Wear Systems. The **Setups** group keeps Rotation Setups and Championships.
+
+1. Open **Race Setup**. In the group **Systems** you see Penalty, Damage, **Fuel**, Tyre Wear, Weather, Safety Car and Push and Save Systems. The group **Setups** has two buttons left.
+2. Click **Fuel Systems**: the page, the **Add fuel system** button and the form say fuel system. Your saved fuel setups are all still there, just under the new name.
+3. Make or edit a race setup: the choice in the Racing Systems folder is now called **Fuel system** (still "No fuel" when you pick nothing).
+4. Open App Settings > Help > Race Setup: the list names Fuel Systems with the other systems.
+
+Good to know:
+- Only the name and the place changed. The saved data, the colour and the picture are the same, so nothing needs to be redone.
+- The Balance of Power page, the hints of the Weather, Tyre Wear and Push and Save forms and the help now say fuel system too.
+- Tested: the order and the groups (7, 2 and 2) in `tests/setupstrip.test.js`, the help folder in `tests/help.test.js`; 99 PASSED in `npm test`. 18 deliberate breakages (the chip back in Setups, the old name in the chip, the table, the field, the help or the hints) were tried and all were caught.

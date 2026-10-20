@@ -233,7 +233,7 @@ const lit = (r, i) => Math.round(r.fuelOf(i, 1e9) * 1e6) / 1e6;
 { const r = race({ ...RAIN, hinder: 'off' }); at(r, 0, 10000); at(r, 1, 10000); at(r, 1, 20000);
   ok('with the hindrance off the cars are not hindered, only the points can come (and the tyres change)', r.cars.every(c => c.wx === 0) && lit(r, 0) === 98 && lit(r, 1) === 96 && r.cars[0].wxDue && r.cars[0].wxDue.kind === 'wet' && r.wxOf(0).hinder === 0); }
 { const r = race(RAIN, { noFuel: true }); at(r, 0, 10000); at(r, 1, 10000); drive(r, 0);
-  ok('without a Fuel Setup there is no hindrance (nothing to hinder) but the tyres and the penalty points work as they always do', r.cars.every(c => c.wx === 0) && r.fuelOf(0, 1e9) === null && r.cars[0].wxDue && r.cars[0].wxDue.kind === 'wet' && (pit(r, 1, 20000), r.cars[1].tyre === 'W')); }
+  ok('without a Fuel System there is no hindrance (nothing to hinder) but the tyres and the penalty points work as they always do', r.cars.every(c => c.wx === 0) && r.fuelOf(0, 1e9) === null && r.cars[0].wxDue && r.cars[0].wxDue.kind === 'wet' && (pit(r, 1, 20000), r.cars[1].tyre === 'W')); }
 { const r = race(RAIN, { cars: 3 }); [0, 1, 2].forEach(i => at(r, i, 10000));
   ok('the cars on the tyres the weather asks for are not hindered: the Wet car (4th tyre H, W only at index 3), S/M/H are all dry class', r.cars.map(c => c.wx).join() === '-25,-25,-25'); }
 { const r = E.createRace({ type: 'race', laps: 60, endRule: 'all', entries: [{ lane: 0, tyre: 'W' }, { lane: 1, tyre: 'S' }], fuel: fuel(), weather: W.clean(RAIN, 1) }); r.start(0);

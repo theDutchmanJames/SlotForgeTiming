@@ -1715,7 +1715,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     say('fields in closed groups are saved with the rest', saved && saved[2].name==='Grouped track' && saved[2].lanes===4 && Number(saved[2].minLap)===2 && Number(saved[2].maxLap)===40 && saved[2].notes==='Fast');
     run('delete formOpen.tracks');
   }
-  // ---- the Driver, Slot car, Fuel setup and Penalty system forms: the same groups ----
+  // ---- the Driver, Slot car, Fuel system and Penalty system forms: the same groups ----
   {
     const parts=h=>h.split('<details class="fgroup"').slice(1), openState=h=>parts(h).map(x=>/^ data-fg="\w+"( open)?>/.exec(x)[1]?1:0).join('');
     const openF=(e,item)=>run(`openForm('${e}', ${item?JSON.stringify(item):'null'})`);
@@ -1755,8 +1755,8 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     { const ps=parts(E('dlg').innerHTML), pic=ps.find(x=>/data-fg="pictures"/.test(x)), st=ps.find(x=>/data-fg="stats"/.test(x));
       say('the slot car form: the main picture and the gallery are in Pictures', pic.includes('id="f-picture"') && pic.includes('id="gal-box"') && !st.includes('id="f-picture"'));
       say('...and the laps driven are in Statistics, and can be typed (1.51.0)', /id="f-lapsDriven"/.test(st) && !/id="f-lapsDriven"[^>]*disabled/.test(st)); }
-    // the fuel setup: the empty tank group comes before the fast and slow laps, and the list columns did not change
-    say('the fuel setup: the table of fuel setups has the same columns as before (name, tank, fuel per lap, target lap)', run("state.schema.fuelrules.list.join()")==='name,tank,perLap,targetLap' && run("state.schema.fuelrules.card.join()")==='tank,perLap,targetLap');
+    // the fuel system: the empty tank group comes before the fast and slow laps, and the list columns did not change
+    say('the fuel system: the table of fuel systems has the same columns as before (name, tank, fuel per lap, target lap)', run("state.schema.fuelrules.list.join()")==='name,tank,perLap,targetLap' && run("state.schema.fuelrules.card.join()")==='tank,perLap,targetLap');
     say('the penalty system: the table has the same columns as before (name, time rule, disqualification points)', run("state.schema.penaltysystems.list.join()")==='name,timeRule,dqPoints' && run("state.schema.penaltysystems.card.join()")==='timeRule,dqPoints');
     say('the driver and slot car tables list every field in the order of the form (as before the groups)', run("state.schema.drivers.fields.map(f=>f.key).join()")==='name,nickname,callsign,dateOfBirth,flag,avatar' && run("state.schema.slotcars.fields.map(f=>f.key).join()")==='brand,manufacturer,model,scale,motor,tyres,tyreCompound,damageFactor,failureFactor,gearing,weight,picture,extraPictures,serviceInterval,lapsDriven,lapsSinceService,serviceDate,servicesDone');
     // the penalty system: the time rule fields still come and go inside Basics, and the special penalties are in their group
@@ -1834,7 +1834,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     run('delete formOpen.fuelrules'); E('dlg').querySelectorAll=()=>[mk(),mk(),mk()]; openF('fuelrules',null);
     { const setv=(id,v)=>{ document.getElementById(id).value=v; }; setv('f-name','Closed groups'); setv('f-tank','90'); setv('f-perLap','1.5'); setv('f-maxExtra','40'); setv('f-maxSaving','10'); setv('f-empty','warn'); setv('f-rate','7');
       const nb=calls.length; await E('frm').onsubmit({preventDefault(){}}); const saved=calls.slice(nb).find(c=>c[0]==='add'&&c[1]==='fuelrules');
-      say('the fuel setup: the settings in the closed group (fast and slow laps) are saved with the rest', saved && saved[2].name==='Closed groups' && Number(saved[2].tank)===90 && Number(saved[2].maxExtra)===40 && Number(saved[2].maxSaving)===10 && saved[2].empty==='warn' && Number(saved[2].rate)===7); }
+      say('the fuel system: the settings in the closed group (fast and slow laps) are saved with the rest', saved && saved[2].name==='Closed groups' && Number(saved[2].tank)===90 && Number(saved[2].maxExtra)===40 && Number(saved[2].maxSaving)===10 && saved[2].empty==='warn' && Number(saved[2].rate)===7); }
     run('delete formOpen.penaltysystems'); openF('penaltysystems',null);
     { const setv=(id,v)=>{ document.getElementById(id).value=v; }; setv('f-name','Strict'); setv('f-timeRule','every'); setv('f-everyPoints','3'); setv('f-everySeconds','4'); setv('f-dqPoints','30'); setv('f-fuelPoints','2');
       const nb=calls.length; await E('frm').onsubmit({preventDefault(){}}); const saved=calls.slice(nb).find(c=>c[0]==='add'&&c[1]==='penaltysystems');
@@ -2474,7 +2474,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     run(`state.settings.homeGrid = ${JSON.stringify(ALL)}; state.homeCustom = { open: false, sel: 0 }`);
     hh = await home(); const cell = k => E('hmc-' + k).innerHTML;
     say('a Home with all the cards and nothing raced yet: the first card that needs races says what will show up and the others that need races are empty; the rules and the shortcuts are there', cell('record').includes('class="card hm-empty"') && ['last', 'glance', 'recent', 'fastest', 'records', 'top', 'bests'].every(k => cell(k) === '') && cell('rules').includes('class="card hm-rules"') && cell('shortcuts').includes('class="card hm-shortcuts"'));
-    say('...the rules of the race setup: the kind, the laps, the penalty system and the fuel setup by name, and what it has not is Off', cell('rules').includes('<span class="hm-tag">Club race</span>') && cell('rules').includes('<span class="muted">Length</span><strong>20 laps</strong>') && cell('rules').includes('<strong>Club penalties</strong>') && cell('rules').includes('<strong>Sprint fuel</strong>') && /<span class="muted">Weather<\/span><strong>Off<\/strong>/.test(cell('rules')));
+    say('...the rules of the race setup: the kind, the laps, the penalty system and the fuel system by name, and what it has not is Off', cell('rules').includes('<span class="hm-tag">Club race</span>') && cell('rules').includes('<span class="muted">Length</span><strong>20 laps</strong>') && cell('rules').includes('<strong>Club penalties</strong>') && cell('rules').includes('<strong>Sprint fuel</strong>') && /<span class="muted">Weather<\/span><strong>Off<\/strong>/.test(cell('rules')));
     const now = new Date(), nowIso = now.toISOString(), lastYear = new Date(now.getFullYear() - 1, 5, 1).toISOString(), lapRow = (time, extra) => ({ id: 'L' + Math.random(), sessionId: 'S1', trackId: 't1', driverId: 'd2', carId: 'c2', lane: 1, time, lapNumber: 1, date: nowIso, ...extra });
     store.sessions = [{ id: 'S0', setupName: 'Old race', sessionType: 'race', trackId: 't1', trackName: 'Living room', date: lastYear, standings: [{ pos: 1, driverId: 'd1', driverName: 'Dutch', carId: 'c1', laps: 10, best: 5100 }] },
       { id: 'S1', setupName: 'Club race', sessionType: 'race', trackId: 't1', trackName: 'Living room', date: nowIso, standings: [{ pos: 1, driverId: 'd2', driverName: 'Sam', carId: 'c2', laps: 20, best: 4861 }, { pos: 2, driverId: 'd1', driverName: 'Dutch', carId: 'c1', laps: 20, best: 4955 }, { pos: 3, driverId: 'd3', driverName: 'Mila', carId: 'c3', laps: 19, best: 5200 }] }];
@@ -2817,7 +2817,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   run("state.refs.fuelrules=[{id:'fr1',name:'Std'}]; openForm('racesetups', null)");
   say('the setup form has the fuel rules choice and the pit hold time (the fuel settings moved to Fuel rules)', ['f-fuelRules','f-pitHold'].every(id => E('dlg').innerHTML.includes('id="'+id+'"')) && !E('dlg').innerHTML.includes('id="f-fuelTank"'));
   run("state.setupSub='fuel'"); await run('render()');
-  say('Race Setup has a Fuel Setups sub-tab', E('setuptabs').innerHTML.includes('Fuel Setups') && E('setupmgr').innerHTML.includes('id="add"'));
+  say('Race Setup has a Fuel Systems sub-tab', E('setuptabs').innerHTML.includes('Fuel Systems') && E('setupmgr').innerHTML.includes('id="add"'));
   run("openForm('fuelrules', null)");
   say('the fuel rule form: tank, litres per lap, target lap, extra and saving limits, empty-tank choices, refuel speed', ['f-tank','f-perLap','f-targetLap','f-maxExtra','f-maxSaving','f-empty','f-rate'].every(id => E('dlg').innerHTML.includes('id="'+id+'"'))
     && ['retire','stop','warn'].every(v => E('dlg').innerHTML.includes('value="'+v+'"')));

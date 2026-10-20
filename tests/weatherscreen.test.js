@@ -57,12 +57,12 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   const tabs = E('setuptabs').innerHTML;
   say('Race Setup has a Weather Systems tab, after Penalty Systems and before Balance of Power', tabs.includes('Weather Systems') && tabs.indexOf('Penalty Systems') < tabs.indexOf('Weather Systems') && tabs.indexOf('Weather Systems') < tabs.indexOf('Balance of Power') && tabs.indexOf('Balance of Power') < tabs.indexOf('Time Tokens'));
   say('...with a note that says what a weather system is, and that a race setup chooses one', E('setupnote').textContent.includes('A weather system is a spell of rain') && E('setupnote').textContent.includes('Choose one in a race setup'));
-  say('...and the sets are made and kept like the fuel setups and penalty systems (the page lists the sets of that kind)', E('setupmgr').innerHTML.includes('Showers') && run('state.schema.weathersystems.plural') === 'Weather systems');
+  say('...and the sets are made and kept like the fuel systems and penalty systems (the page lists the sets of that kind)', E('setupmgr').innerHTML.includes('Showers') && run('state.schema.weathersystems.plural') === 'Weather systems');
 
   // ---------- the fields ----------
   { const F = run('state.schema.racesetups.fields'), isShown = run('isShown'), f = F.find(x => x.key === 'weather');
     const shown = type => isShown(f, k => ({ sessionType: type })[k]);
-    say('a race setup has a Weather system field in the rules: a choice of the weather systems, "No weather" to begin with, that says what it needs', f && f.group === 'rules' && f.type === 'ref' && f.ref === 'weathersystems' && f.blank === 'No weather' && f.hint.includes('Hindering the cars needs a Fuel setup'));
+    say('a race setup has a Weather system field in the rules: a choice of the weather systems, "No weather" to begin with, that says what it needs', f && f.group === 'rules' && f.type === 'ref' && f.ref === 'weathersystems' && f.blank === 'No weather' && f.hint.includes('Hindering the cars needs a Fuel system'));
     say('...it is asked for a race, a timed race and a heat race, and not for practice, qualifying or a Time Token Session', ['race', 'timed', 'heats'].every(shown) && ['practice', 'qualifying', 'tokens'].every(t => !shown(t)));
     const keys = F.map(x => x.key); say('...it comes after Balance of Power', keys.indexOf('weather') === keys.indexOf('bop') + 1); }
   { const f = run('state.schema.slotcars.fields').find(x => x.key === 'tyreCompound');
@@ -88,7 +88,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     const timed = { ...setupWx, sessionType: 'timed', duration: 5 }; await openRace(timed, store.tracks[0], rows(1, 2)); await wait(30);
     say('...a timed race has it', eng().weather !== null && !!run('live.wxPanel'));
     const nofuel = { ...setupWx, fuelRules: '' }; await openRace(nofuel, store.tracks[0], rows(1, 2)); await wait(30);
-    say('...and so has a race without a fuel setup (the cars are only not hindered)', eng().weather !== null && !!run('live.wxPanel') && eng().fuel.on === false);
+    say('...and so has a race without a fuel system (the cars are only not hindered)', eng().weather !== null && !!run('live.wxPanel') && eng().fuel.on === false);
     const gone = { ...setupWx, weather: 'w-deleted' }; await openRace(gone, store.tracks[0], rows(1, 2)); await wait(30);
     say('...and a race setup whose weather system is gone has none', eng().weather === null); }
   await openRace(setupWx, store.tracks[0], rows(1, 2)); await wait(50);

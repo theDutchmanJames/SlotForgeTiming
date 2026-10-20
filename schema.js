@@ -281,17 +281,17 @@ module.exports = {
       { key: 'penaltySystem', group: 'rules', label: 'Penalty system', type: 'ref', ref: 'penaltysystems', blank: 'No penalties', showIf: RACING },
       { key: 'damageSystem', group: 'rules', label: 'Damage system', type: 'ref', ref: 'damagesystems', blank: 'No damage', showIf: [{ sessionType: ['race', 'timed', 'heats', 'endurance'] }],
         hint: 'Damage points, and the stop in the pits that repairs them. Make damage systems under Race Setup > Damage Systems. Only for races (a number of laps or a duration), not for practice or qualifying. Penalty points for a late or an early stop need a Penalty system above.' },
-      { key: 'fuelRules', group: 'rules', label: 'Fuel setup', type: 'ref', ref: 'fuelrules', blank: 'No fuel', showIf: RACING },
+      { key: 'fuelRules', group: 'rules', label: 'Fuel system', type: 'ref', ref: 'fuelrules', blank: 'No fuel', showIf: RACING },
       { key: 'bop', group: 'rules', label: 'Balance of Power', type: 'select', default: 'off', options: [['off', 'Off'], ['on', 'On: hinder the fastest car and help the slowest (set it up under Race Setup > Balance of Power)']], showIf: [{ sessionType: ['race', 'timed', 'heats', 'endurance'] }],
-        hint: 'Works through the fuel rules, so it needs a Fuel setup above. Only for races (a number of laps or a duration), not for practice or qualifying.' },
+        hint: 'Works through the fuel rules, so it needs a Fuel system above. Only for races (a number of laps or a duration), not for practice or qualifying.' },
       { key: 'weather', group: 'rules', label: 'Weather system', type: 'ref', ref: 'weathersystems', blank: 'No weather', showIf: [{ sessionType: ['race', 'timed', 'heats', 'endurance'] }],
-        hint: 'A spell of rain with a forecast, and tyres to change in the pits. Make weather systems under Race Setup > Weather Systems. Only for races (a number of laps or a duration), not for practice or qualifying. Hindering the cars needs a Fuel setup above; the tyres and the penalty points do not.' },
+        hint: 'A spell of rain with a forecast, and tyres to change in the pits. Make weather systems under Race Setup > Weather Systems. Only for races (a number of laps or a duration), not for practice or qualifying. Hindering the cars needs a Fuel system above; the tyres and the penalty points do not.' },
       { key: 'tyreWear', group: 'rules', label: 'Tyre wear system', type: 'ref', ref: 'tyrewearsystems', blank: 'No tyre wear', showIf: RACING,
-        hint: 'Tyres that wear out during the race and a fresh set in every pit stop. Make tyre wear systems under Race Setup > Tyre Wear Systems. Every heat starts on fresh tyres. A race (a number of laps or a duration) always has it; practice and qualifying only when the system says so. Helping and hindering the car needs a Fuel setup above; the rule at 0% and the display do not.' },
+        hint: 'Tyres that wear out during the race and a fresh set in every pit stop. Make tyre wear systems under Race Setup > Tyre Wear Systems. Every heat starts on fresh tyres. A race (a number of laps or a duration) always has it; practice and qualifying only when the system says so. Helping and hindering the car needs a Fuel system above; the rule at 0% and the display do not.' },
       { key: 'safetyCar', group: 'rules', label: 'Safety car system', type: 'ref', ref: 'safetycarsystems', blank: 'No safety car', showIf: RACING,
         hint: 'The Safety Car is out while the yellow flag is up. The system sets how slowly the cars must drive (a lap that is too fast gets penalty points) and how much shorter the work in a pit stop is. Make safety car systems under Race Setup > Safety Car Systems. It replaces the Yellow flag settings below.' },
       { key: 'pushSave', group: 'rules', label: 'Push and save system', type: 'ref', ref: 'pushsavesystems', blank: 'No push and save', showIf: RACING,
-        hint: 'How hard a driver drives changes how fast the tyres and the fuel are used up: pushing wears more, saving wears less. A lap is compared with the driver\'s best lap on the track (the records; without one, his best lap so far in the race). Make push and save systems under Race Setup > Push and Save Systems. Works on top of a Tyre wear system and a Fuel setup above; with a push and save system chosen, the Fuel setup\'s target lap time, most extra fuel and most saving are not used.' },
+        hint: 'How hard a driver drives changes how fast the tyres and the fuel are used up: pushing wears more, saving wears less. A lap is compared with the driver\'s best lap on the track (the records; without one, his best lap so far in the race). Make push and save systems under Race Setup > Push and Save Systems. Works on top of a Tyre wear system and a Fuel system above; with a push and save system chosen, the Fuel system\'s target lap time, most extra fuel and most saving are not used.' },
       { key: 'pitHold', group: 'rules', label: 'Pit stop: the sensor must be blocked this long to start a stop (seconds)', type: 'number', default: 2, showIf: RACING },
       { key: 'yellowTarget', group: 'yellow', label: 'Yellow flag: target lap time (seconds, 0 = none)', type: 'number', default: 0, min: 0, showIf: NO_SAFETYCAR,
         hint: 'While the yellow flag is up, drivers must drive slower than this. Say your normal lap is 7.500 and you set 15.000: a full lap under yellow that is faster than 15.000 is a lap that was too fast, and it is called out. A lap that was partly before the yellow flag does not count. 0 means no target.' },
@@ -335,7 +335,7 @@ module.exports = {
   },
   // Fuel rules: tank, use per lap (changing with the lap time) and refuelling. Chosen per race setup.
   fuelrules: {
-    label: 'Fuel setup', plural: 'Fuel setups', title: ['name'], extra: false, linked: false, list: ['name', 'tank', 'perLap', 'targetLap'], card: ['tank', 'perLap', 'targetLap'],
+    label: 'Fuel system', plural: 'Fuel systems', title: ['name'], extra: false, linked: false, list: ['name', 'tank', 'perLap', 'targetLap'], card: ['tank', 'perLap', 'targetLap'],
     // The form shows the fields in these collapsible groups, in this order (a field says which group it is in); a group whose fields are all hidden is hidden too.
     groups: [
       { id: 'basics', title: 'Basics', note: 'Name, tank size and the fuel used per lap', open: true },
@@ -371,7 +371,7 @@ module.exports = {
       { key: 'steps', group: 'basics', label: 'Steps: points=seconds, separated by commas (5=5, 10=12, 15=30). The highest step reached counts.', type: 'text', default: '5=5, 10=12, 15=30', showIf: [{ timeRule: ['steps'] }] },
       { key: 'types', group: 'special', label: 'Special penalties', type: 'penaltytypes', optional: true },
       { key: 'dqPoints', group: 'limits', label: 'Disqualify at this many points (empty = never)', type: 'number', optional: true },
-      { key: 'fuelPoints', group: 'limits', label: 'Penalty points for every lap driven on an empty tank', type: 'number', optional: true, hint: 'Only for fuel setups where the car carries on when the fuel runs out. Empty or 0 = no points.' }
+      { key: 'fuelPoints', group: 'limits', label: 'Penalty points for every lap driven on an empty tank', type: 'number', optional: true, hint: 'Only for fuel systems where the car carries on when the fuel runs out. Empty or 0 = no points.' }
     ]
   },
   // Damage systems: the levels of damage a car can have, what each level asks of the pit stop, and the incidents the Race Director can give. Chosen per race setup.
@@ -430,7 +430,7 @@ module.exports = {
         hint: 'Distance uses the lane length of the track, so a longer lane wears the tyres more per lap. Choose it for Distance Racing: the numbers below are then per 100 m (100 ft), and the widgets say how many metres (feet) of tyre are left. A lane without a length counts every lap as the distance.' },
       { key: 'tyres', group: 'tyres', label: 'Tyres', type: 'tyretable' },
       { key: 'mult', group: 'weather', label: 'Wear in the weather', type: 'wxmult' },
-      { key: 'effect', group: 'effect', label: 'Hinder or help the car through the fuel rules', type: 'select', default: Tw.DEFAULTS.effect, options: [['on', 'Yes (needs a Fuel setup)'], ['off', 'No']],
+      { key: 'effect', group: 'effect', label: 'Hinder or help the car through the fuel rules', type: 'select', default: Tw.DEFAULTS.effect, options: [['on', 'Yes (needs a Fuel system)'], ['off', 'No']],
         hint: 'The grip curve of every tyre (above) decides how much. It works like Balance of Power: a hindered car uses more fuel a lap and refuels slower, and together with Balance of Power and the weather the percentages are added (never more than 90%). Lap times and records are never changed.' },
       { key: 'eUse', group: 'effect', label: 'The fuel used in a lap', type: 'select', default: Tw.DEFAULTS.eUse, options: [['on', 'Yes'], ['off', 'No']], showIf: [{ effect: ['on'] }] },
       { key: 'eRate', group: 'effect', label: 'The refuelling speed', type: 'select', default: Tw.DEFAULTS.eRate, options: [['on', 'Yes'], ['off', 'No']], showIf: [{ effect: ['on'] }] },
@@ -506,7 +506,7 @@ module.exports = {
         hint: 'A lap at the most saving pace (or slower) wears the tyres this many percent less.' },
       { key: 'fuel', group: 'wear', label: 'The pace changes the fuel use', type: 'select', default: Ps.DEFAULTS.fuel, options: [['on', 'Yes'], ['off', 'No: the fuel is used as usual']] },
       { key: 'fuelExtra', group: 'wear', label: 'Fuel: use when flat out is more by (%)', type: 'number', min: 0, max: 500, default: Ps.DEFAULTS.fuelExtra, showIf: [{ fuel: ['on'] }],
-        hint: 'A lap at the best lap uses this many percent more than the litres per lap of the Fuel setup. It needs a Fuel setup in the race setup, which then uses this instead of its own target lap time, most extra and most saving.' },
+        hint: 'A lap at the best lap uses this many percent more than the litres per lap of the Fuel system. It needs a Fuel system in the race setup, which then uses this instead of its own target lap time, most extra and most saving.' },
       { key: 'fuelSave', group: 'wear', label: 'Fuel: use at the most saving pace is less by (%)', type: 'number', min: 0, max: 90, default: Ps.DEFAULTS.fuelSave, showIf: [{ fuel: ['on'] }],
         hint: 'A lap at the most saving pace (or slower) uses this many percent less.' },
       { key: 'from', group: 'laps', label: 'The effect starts at lap', type: 'number', min: 1, max: 100, default: Ps.DEFAULTS.from,
@@ -555,7 +555,7 @@ module.exports = {
       { key: 'wetPoints', group: 'tyres', label: 'Penalty points for not switching to Wet tyres', type: 'number', min: 0, default: Wx.DEFAULTS.wetPoints, hint: 'Needs a penalty system in the race setup. Without one the car is only called out and hindered. 0 = no points.' },
       { key: 'dryPoints', group: 'tyres', label: 'Penalty points for not switching back to dry tyres', type: 'number', min: 0, default: Wx.DEFAULTS.dryPoints },
       { key: 'repeat', group: 'tyres', label: 'The points are given', type: 'select', default: 'once', options: [['once', 'Once'], ['every', 'For every lap until the car has changed tyres']] },
-      { key: 'hinder', group: 'hinder', label: 'Hinder cars on the wrong tyres', type: 'select', default: 'on', options: [['on', 'Yes: they use more fuel and refuel slower (needs a Fuel setup)'], ['off', 'No']],
+      { key: 'hinder', group: 'hinder', label: 'Hinder cars on the wrong tyres', type: 'select', default: 'on', options: [['on', 'Yes: they use more fuel and refuel slower (needs a Fuel system)'], ['off', 'No']],
         hint: 'Works like Balance of Power: a hindered car uses more fuel a lap and refuels slower, and together with Balance of Power the percentages are added (never more than 90%). It stops when the car has the right tyres. Cars that are hindered are shown on the Director page.' },
       { key: 'hUse', group: 'hinder', label: 'Hinder the fuel use', type: 'select', default: 'on', options: [['on', 'Yes'], ['off', 'No']], showIf: [{ hinder: ['on'] }] },
       { key: 'hRate', group: 'hinder', label: 'Hinder the refuelling speed', type: 'select', default: 'on', options: [['on', 'Yes'], ['off', 'No']], showIf: [{ hinder: ['on'] }] },

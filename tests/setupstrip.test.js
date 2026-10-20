@@ -15,18 +15,18 @@ vm.runInContext(editor.slice(a, b).replace(/^const /gm, 'var ') + '\nout.html = 
 const html = id => ctx.out.html(id);
 const buttons = h => [...h.matchAll(/<button type="button" class="(ssbig|sstab ss-\w+)" role="tab" aria-selected="(true|false)" data-id="(\w+)">(.*?)<\/button>/g)].map(m => ({ cls: m[1], sel: m[2] === 'true', id: m[3], inner: m[4], text: m[4].replace(/<[^>]*>/g, '') }));
 
-const ids = ['setups', 'penalties', 'damage', 'tyrewear', 'weather', 'safetycar', 'pushsave', 'rotation', 'fuel', 'championships', 'bop', 'tokens'];
-const labels = { setups: 'Race Setups', penalties: 'Penalty Systems', damage: 'Damage Systems', tyrewear: 'Tyre Wear Systems', weather: 'Weather Systems', safetycar: 'Safety Car Systems', pushsave: 'Push and Save Systems', rotation: 'Rotation Setups', fuel: 'Fuel Setups', championships: 'Championships', bop: 'Balance of Power', tokens: 'Time Tokens' };
+const ids = ['setups', 'penalties', 'damage', 'fuel', 'tyrewear', 'weather', 'safetycar', 'pushsave', 'rotation', 'championships', 'bop', 'tokens'];
+const labels = { setups: 'Race Setups', penalties: 'Penalty Systems', damage: 'Damage Systems', tyrewear: 'Tyre Wear Systems', weather: 'Weather Systems', safetycar: 'Safety Car Systems', pushsave: 'Push and Save Systems', rotation: 'Rotation Setups', fuel: 'Fuel Systems', championships: 'Championships', bop: 'Balance of Power', tokens: 'Time Tokens' };
 const bs = buttons(html('damage'));
-ok('twelve sub-tabs, every one a real button with role tab, in this order: Race Setups, then Systems (Penalty, Damage, Tyre Wear, Weather, Safety Car, Push and Save), Setups (Rotation, Fuel, Championships), Extras (Balance of Power, Time Tokens)', bs.length === 12 && bs.map(x => x.id).join() === ids.join());
+ok('twelve sub-tabs, every one a real button with role tab, in this order: Race Setups, then Systems (Penalty, Damage, Fuel, Tyre Wear, Weather, Safety Car, Push and Save), Setups (Rotation, Championships), Extras (Balance of Power, Time Tokens)', bs.length === 12 && bs.map(x => x.id).join() === ids.join());
 ok('...with the names the app has always used (and the big button says what it is for)', bs.every(x => x.text.startsWith(labels[x.id])) && bs[0].text === 'Race SetupsWhere it all comes together');
 ok('...the first is the big button, the other eleven are chips', bs[0].cls === 'ssbig' && bs.slice(1).every(x => x.cls.startsWith('sstab ss-')));
 ok('exactly the sub-tab that is open is selected, for each of the eleven', ids.every(id => { const s = buttons(html(id)).filter(x => x.sel); return s.length === 1 && s[0].id === id; }));
-ok('each sub-tab gives the page its own colour code (the big button the accent, the others their own)', JSON.stringify(Object.fromEntries(ids.map(id => [id, ctx.out.color(id)]))) === JSON.stringify({ setups: 'race', penalties: 'pen', damage: 'dmg', tyrewear: 'tyre', weather: 'wx', safetycar: 'sc', pushsave: 'ps', rotation: 'rot', fuel: 'fuel', championships: 'ch', bop: 'bop', tokens: 'tok' }));
+ok('each sub-tab gives the page its own colour code (the big button the accent, the others their own)', JSON.stringify(Object.fromEntries(ids.map(id => [id, ctx.out.color(id)]))) === JSON.stringify({ setups: 'race', penalties: 'pen', damage: 'dmg', fuel: 'fuel', tyrewear: 'tyre', weather: 'wx', safetycar: 'sc', pushsave: 'ps', rotation: 'rot', championships: 'ch', bop: 'bop', tokens: 'tok' }));
 ok('a name that is none of them selects nothing (and the page edge takes the accent colour)', buttons(html('nope')).every(x => !x.sel) && ctx.out.color('nope') === 'race' && ctx.out.color(undefined) === 'race');
 const h = html('fuel');
 ok('three groups with their names above them, in order; the names are not tabs and are hidden from a screen reader', [...h.matchAll(/<span class="sslabel" aria-hidden="true">(\w+)<\/span>/g)].map(m => m[1]).join() === 'Systems,Setups,Extras' && (h.match(/class="ssgroup"/g) || []).length === 3);
-ok('...the groups hold 6, 3 and 2 chips', ctx.out.groups.map(g => g[1].length).join() === '6,3,2');
+ok('...the groups hold 7, 2 and 2 chips', ctx.out.groups.map(g => g[1].length).join() === '7,2,2');
 ok('every button has its own picture, drawn from the set of pictures of the app (the line pictures: no two alike)', bs.every(x => x.inner.includes('<svg') && x.inner.includes('stroke="currentColor"')) && new Set(bs.map(x => (x.inner.match(/<svg.*<\/svg>/) || [''])[0])).size === 12 && ctx.out.groups.flatMap(g => g[1]).concat([ctx.out.hero]).every(t => Icons.has(t[2])));
 ok('the pictures are for the eye only: the buttons say their name in text, the pictures say nothing', bs.every(x => !/<svg[^>]*role=/.test(x.inner)));
 ok('a label with a character that needs escaping cannot break the page (the text goes through esc)', !/<script/.test(h));
@@ -82,6 +82,15 @@ ok('the mock-ups are kept with the code: the three pictures and their sources', 
   const box = {}; el.f(box, [['tracks', 'Tracks'], ['drivers', 'Drivers'], ['results', 'Results and Records']], 'drivers', () => {});
   ok('1.51.0: a bar of sub-tabs still has real buttons with role tab and the name of the page, and only the open page is selected', (box.innerHTML.match(/<button class="tab" role="tab"/g) || []).length === 3 && (box.innerHTML.match(/aria-selected="true"/g) || []).length === 1 && /aria-selected="true" data-id="drivers">Drivers</.test(box.innerHTML) && box.innerHTML.includes('>Results and Records<'));
 }
+
+// 1.58.2: Fuel Systems (it was Fuel Setups, in the Setups group) sits with the other systems, after the Damage Systems
+{ const g = Object.fromEntries(ctx.out.groups.map(([name, items]) => [name, items.map(t => t[0])]));
+  ok('1.58.2: Fuel Systems is in the Systems group, between Damage Systems and Tyre Wear Systems (and so the Setups group is Rotation Setups and Championships)', g.Systems.join() === 'penalties,damage,fuel,tyrewear,weather,safetycar,pushsave' && g.Setups.join() === 'rotation,championships');
+  const fb = buttons(html('fuel')).find(x => x.id === 'fuel');
+  ok('...the chip says Fuel Systems and keeps its id, its picture and its green', fb && fb.text === 'Fuel Systems' && fb.cls === 'sstab ss-fuel' && fb.inner.includes('<svg') && ctx.out.color('fuel') === 'fuel');
+  const sch = require(path.join(R, '..', 'schema.js'));
+  ok('...and the records are called Fuel systems everywhere: the table, the form, and the field of the race setup', sch.fuelrules.label === 'Fuel system' && sch.fuelrules.plural === 'Fuel systems' && sch.racesetups.fields.find(x => x.key === 'fuelRules').label === 'Fuel system');
+  ok('...the page note of the tab says fuel system, and no text of the app calls it a fuel setup any more', /sub === 'fuel' \? 'A fuel system sets the tank/.test(editor) && ['renderer/editor.js', 'renderer/help.js', 'renderer/bopui.js', 'schema.js'].every(f => !/fuel setup/i.test(fs.readFileSync(path.join(R, '..', f), 'utf8')))); }
 
 if (fails) { console.log(fails + ' SETUP STRIP TESTS FAILED'); process.exit(1); }
 console.log('ALL SETUP STRIP TESTS PASSED');

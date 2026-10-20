@@ -59,7 +59,7 @@ const Bop_ = () => vm.runInContext('Bop', ctx), same_ = (a, b) => JSON.stringify
       && page.includes('id="bop-percent" min="1" max="90" step="1" value="20"') && page.includes('id="bop-window" type="number" min="3" max="50" step="1" value="5"') && page.includes('id="bop-minlaps" type="number" min="1" max="5" step="1" value="3"') && page.includes('id="bop-apply" type="number" min="0.01" max="600" step="0.05" value="0.3"') && page.includes('id="bop-remove" type="number" min="0" max="0.3" step="0.05" value="0.15"'));
     say('...fuel use, refuelling and the lane correction are on, the tank is off, and the slider has its number', page.includes('id="bop-use" checked') && page.includes('id="bop-rate" checked') && page.includes('id="bop-lanes" checked') && !page.includes('id="bop-tank" checked') && page.includes('<strong id="bop-percent-n">20%</strong>'));
     say('...every choice names what it does, and the three modes are there', ['Manual: the Race Director decides', 'Suggest: the app proposes, the Race Director accepts', 'Automatic: the app applies and removes it', 'Hinder the fastest car and help the slowest car', 'Only hinder the fastest car', 'Only help the slowest car', 'Only the fastest and the slowest car', 'Every car, by how far it is from the middle of the field', 'Median lap', 'Average lap'].every(t => page.includes(t)));
-    say('...it says it needs a fuel setup and is for fine-tuning, and has a way back to the standard settings', page.includes('It needs a Fuel Setup') && page.includes('fine-tunes') && page.includes('id="bop-reset"'));
+    say('...it says it needs a fuel system and is for fine-tuning, and has a way back to the standard settings', page.includes('It needs a Fuel System') && page.includes('fine-tunes') && page.includes('id="bop-reset"'));
     say('...with nothing about the full percentage while the strength is fixed; the example says what 20% does', !page.includes('id="bop-full"') && E('bop-example').textContent === 'At 20%, a hindered car uses 20% more fuel per lap and refuels 20% slower. A helped car gets the opposite.'); }
   const set = async (id, value, extra = {}) => { E(id).onchange({ target: { value, ...extra } }); await wait(30); };
   await set('bop-mode', 'auto'); say('a mode is kept, and the page is drawn again with it', settings().bopMode === 'auto' && E('setupmgr').innerHTML.includes('<option value="auto" selected>') && !E('setupmgr').innerHTML.includes('(not used in Manual mode)'));
@@ -101,20 +101,20 @@ const Bop_ = () => vm.runInContext('Bop', ctx), same_ = (a, b) => JSON.stringify
   // ---------- the field in the race setup ----------
   { const F = run('state.schema.racesetups.fields'), isShown = run('isShown'), f = F.find(x => x.key === 'bop');
     const shown = type => isShown(f, k => ({ sessionType: type })[k]);
-    say('a race setup has a Balance of Power field in the rules, off to start with, that says what it needs', f && f.group === 'rules' && f.default === 'off' && f.options.map(o => o[0]).join() === 'off,on' && f.hint.includes('needs a Fuel setup') && f.type === 'select');
+    say('a race setup has a Balance of Power field in the rules, off to start with, that says what it needs', f && f.group === 'rules' && f.default === 'off' && f.options.map(o => o[0]).join() === 'off,on' && f.hint.includes('needs a Fuel system') && f.type === 'select');
     say('...it is asked for a race, a timed race and a heat race, and not for practice, qualifying or a Time Token Session', ['race', 'timed', 'heats'].every(shown) && ['practice', 'qualifying', 'tokens'].every(t => !shown(t)));
-    const keys = F.map(x => x.key); say('...it comes after the fuel setup', keys.indexOf('bop') === keys.indexOf('fuelRules') + 1); }
+    const keys = F.map(x => x.key); say('...it comes after the fuel system', keys.indexOf('bop') === keys.indexOf('fuelRules') + 1); }
 
   // ---------- the race window ----------
   run("state.settings = { theme: 'dark', bopMode: 'manual', bopPercent: 25, bopTank: true }");
   store.racesetups = [setupOn];
   await openRace(setupOn, store.tracks[0], rows(1, 2)); await wait(50);
-  say('a race with Balance of Power on, a fuel setup and a race gets it from the settings of the page', eng().bop && eng().bop.mode === 'manual' && eng().bop.percent === 25 && eng().bop.tank === true && eng().bop.use === true && !eng().bop.laneFactors && eng().fuel.on === true);
+  say('a race with Balance of Power on, a fuel system and a race gets it from the settings of the page', eng().bop && eng().bop.mode === 'manual' && eng().bop.percent === 25 && eng().bop.tank === true && eng().bop.use === true && !eng().bop.laneFactors && eng().fuel.on === true);
   say('...and its lane controls are on the page, with a row for each lane', !!run('live.bopPanel') && E('boppanel').hidden === false && /Balance of Power/.test(E('boppanel').innerHTML) && E('boppanel').innerHTML.includes('data-lane="0"') && E('boppanel').innerHTML.includes('data-lane="1"') && E('boppanel').innerHTML.includes('aria-label="Hinder lane 1"'));
   { const off = { ...setupOn, bop: 'off' }; await openRace(off, store.tracks[0], rows(1, 2)); await wait(30);
     say('a race setup with Balance of Power off has none: no settings in the engine, no controls', eng().bop === null && !run('live.bopPanel'));
     const nofuel = { ...setupOn, fuelRules: '' }; await openRace(nofuel, store.tracks[0], rows(1, 2)); await wait(30);
-    say('...and so has a race without a fuel setup (it works through the fuel rules)', eng().bop === null && !run('live.bopPanel'));
+    say('...and so has a race without a fuel system (it works through the fuel rules)', eng().bop === null && !run('live.bopPanel'));
     const prac = { ...setupOn, sessionType: 'practice' }; await openRace(prac, store.tracks[0], rows(1, 2)); await wait(30);
     say('...and so has practice', eng().bop === null && !run('live.bopPanel'));
     const timed = { ...setupOn, sessionType: 'timed', duration: 5 }; await openRace(timed, store.tracks[0], rows(1, 2)); await wait(30);

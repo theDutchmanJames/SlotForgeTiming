@@ -77,13 +77,13 @@ ok('why a lap wears as usual, and where the reference lap comes from', Ps.whyTex
   ok('...the limits of the form are those of the rules (so the form never keeps a number the rules would change)', f('normal').min === 0 && f('normal').max === 50 && f('saveAt').min === 1 && f('saveAt').max === 100 && f('tyreExtra').max === 500 && f('tyreSave').max === 90 && f('fuelExtra').max === 500 && f('fuelSave').max === 90 && f('from').min === 1 && f('from').max === 100 && f('slow').min === 101 && f('slow').max === 1000);
   ok('...the extra and saving numbers are shown while their switch is on, and hidden when the tyres or the fuel are switched off', ['tyreExtra', 'tyreSave'].every(k => shown(f(k), {}) === false || shown(f(k), { tyres: 'on' })) && ['tyreExtra', 'tyreSave'].every(k => shown(f(k), { tyres: 'on' }) && !shown(f(k), { tyres: 'off' }))
     && ['fuelExtra', 'fuelSave'].every(k => shown(f(k), { fuel: 'on' }) && !shown(f(k), { fuel: 'off' })));
-  ok('...the hints say what the paces mean, that the tyres need a Tyre wear system, and that the fuel replaces the target of the Fuel setup', /best lap/.test(f('normal').hint) && /straight line/.test(f('saveAt').hint) && /Tyre wear system/.test(f('tyreExtra').hint) && /target lap time/.test(f('fuelExtra').hint));
+  ok('...the hints say what the paces mean, that the tyres need a Tyre wear system, and that the fuel replaces the target of the Fuel system', /best lap/.test(f('normal').hint) && /straight line/.test(f('saveAt').hint) && /Tyre wear system/.test(f('tyreExtra').hint) && /target lap time/.test(f('fuelExtra').hint));
   ok('every setting of the form is one of the rules that clean() reads (no setting without a rule)', same(sys.fields.map(x => x.key), ['name', 'presets', 'normal', 'saveAt', 'tyres', 'tyreExtra', 'tyreSave', 'fuel', 'fuelExtra', 'fuelSave', 'from', 'slow', 'yellowSave']));
   ok('a race setup has a Push and save system field in the rules, a choice of the systems, "No push and save" to begin with, for the sessions that race', setup('pushSave') && setup('pushSave').group === 'rules' && setup('pushSave').type === 'ref' && setup('pushSave').ref === 'pushsavesystems' && setup('pushSave').blank === 'No push and save'
     && same(setup('pushSave').showIf, setup('safetyCar').showIf));
-  ok('...it sits with the other systems (before the pit stop sensor time), and its hint says what it does with the Fuel setup and where to make one', S.racesetups.fields.filter(x => x.group === 'rules').map(x => x.key).indexOf('pushSave') < S.racesetups.fields.filter(x => x.group === 'rules').map(x => x.key).indexOf('pitHold')
-    && /Fuel setup/.test(setup('pushSave').hint) && /not used/.test(setup('pushSave').hint) && /Race Setup > Push and Save Systems/.test(setup('pushSave').hint));
-  ok('...and the hint of the target lap time of a Fuel setup says that a Push and save system replaces it', /Push and save system/.test(S.fuelrules.fields.find(x => x.key === 'targetLap').hint)); }
+  ok('...it sits with the other systems (before the pit stop sensor time), and its hint says what it does with the Fuel system and where to make one', S.racesetups.fields.filter(x => x.group === 'rules').map(x => x.key).indexOf('pushSave') < S.racesetups.fields.filter(x => x.group === 'rules').map(x => x.key).indexOf('pitHold')
+    && /Fuel system/.test(setup('pushSave').hint) && /not used/.test(setup('pushSave').hint) && /Race Setup > Push and Save Systems/.test(setup('pushSave').hint));
+  ok('...and the hint of the target lap time of a Fuel system says that a Push and save system replaces it', /Push and save system/.test(S.fuelrules.fields.find(x => x.key === 'targetLap').hint)); }
 
 // ---- the race engine ----
 const fuel = (x = {}) => ({ on: true, tank: 100, perLap: 2, rate: 10, target: 0, extra: 0, saving: 0, empty: 'retire', pitHold: 2000, ...x });
@@ -115,7 +115,7 @@ const USUAL = 4.5; // what the Tyre Wear System takes in a lap on the Soft (the 
   ok('...every lap keeps what its pace did: kind, percentage and the two numbers (tyres, fuel), or why it wore as usual', same(r.cars[0].ps.map(x => x.w), ['early', 'early', '', '', '']) && same(r.cars[0].ps.map(x => x.k), ['normal', 'normal', 'push', 'push', 'normal']) && r.cars[0].ps[2].p === 0 && r.cars[0].ps[4].p === 3 && r.cars[0].ps[2].t === 1.4 && r.cars[0].ps[4].t === 1
     && r.cars[0].ps[2].f === 1 && r.cars[0].psNow === r.cars[0].ps[4]);
   const f = race({ fuel: 'off' }, { rec: [10000, 10000], tyres: false }); lapsOf(f, 0, [10000, 10000, 10000, 10000, 10300]);
-  ok('...the fuel is not touched when the system does not change it (the switch is off): the litres of the fuel setup (without tyre wear: new tyres help a car through its fuel)', lit(f, 0) === 100 - 5 * 2);
+  ok('...the fuel is not touched when the system does not change it (the switch is off): the litres of the fuel system (without tyre wear: new tyres help a car through its fuel)', lit(f, 0) === 100 - 5 * 2);
   ok('the other car, which has not driven, is as it was', life(r, 1) === 100 && r.cars[1].ps.length === 0);
   ok('lap times are never touched', same(r.cars[0].laps, [10000, 10000, 10000, 10000, 10300]) && r.cars[0].best === 10000); }
 { const times = [10000, 10000, 10000, 10000, 10300, 10800, 12000], f = [1, 1, 1.5, 1.5, 1, 0.6, 0.6].map(x => x * 2);
@@ -124,11 +124,11 @@ const USUAL = 4.5; // what the Tyre Wear System takes in a lap on the Soft (the 
   ok('the fuel follows the pace in the same way (here 50% more flat out and 40% less when saving)', near(lit(a, 0), 100 - f.reduce((x, y) => x + y, 0)));
   ok('...and the tyres wear as usual when the system leaves them alone', near(life(b, 0), 100 - 7 * USUAL)); }
 
-// the fuel setup: with a system its target lap time, most extra and most saving are not used
+// the fuel system: with a system its target lap time, most extra and most saving are not used
 { const F = { target: 10000, extra: 25, saving: 30 };
   const a = race(null, { rec: [10000], fuel: F, cars: 1, tyres: false }), b = race({ tyres: 'off' }, { rec: [10000], fuel: F, cars: 1, tyres: false });
   lapsOf(a, 0, [10800, 10800, 10800]); lapsOf(b, 0, [10800, 10800, 10800]);
-  ok('without a system the Fuel setup works from its target lap time (a slow lap uses less); with a system it is the pace that decides: the litres of the fuel setup times the number of the pace',
+  ok('without a system the Fuel system works from its target lap time (a slow lap uses less); with a system it is the pace that decides: the litres of the fuel system times the number of the pace',
     lit(a, 0) !== lit(b, 0) && near(lit(a, 0), 100 - 3 * 2 * 10000 / 10800) && near(lit(b, 0), 100 - (2 + 2 + 2 * 0.8)));
   const c = race({ tyres: 'off' }, { rec: [10000], fuel: false, cars: 1 }); lapsOf(c, 0, [10000, 10000, 10000, 10000]);
   ok('a race with a system but no fuel has no fuel to use, and nothing breaks', c.cars[0].laps.length === 4 && c.cars[0].fuel === 0 && c.cars[0].ps[3].f === 1.25); }

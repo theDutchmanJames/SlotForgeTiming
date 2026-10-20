@@ -43,7 +43,7 @@ async function renderBopSettings(box) {
       ${check('bop-lanes', S.lanes, 'Correct for the length of the lanes', 'A car on a longer lane is not held back for being on it. Needs the lane lengths of the track (Database > Tracks).')}
     </section>
     <div class="row"><button class="btn" id="bop-reset">Back to the standard settings</button> <span class="muted" id="bop-msg" role="status"></span></div>
-    <p class="muted">To use these: turn Balance of Power on in a race setup (Race Setups > Balance of Power). It needs a Fuel Setup, because it works through the fuel rules. It only changes the fuel use, the refuelling and the tank of a car, so it fine-tunes: a car that is several seconds a lap faster will not be caught by it alone. Where a long race or short tank makes the cars pit, it bites the most.</p>`;
+    <p class="muted">To use these: turn Balance of Power on in a race setup (Race Setups > Balance of Power). It needs a Fuel System, because it works through the fuel rules. It only changes the fuel use, the refuelling and the tank of a car, so it fine-tunes: a car that is several seconds a lap faster will not be caught by it alone. Where a long race or short tank makes the cars pit, it bites the most.</p>`;
   const el = id => document.getElementById(id);
   const example = P => { // what the percentage does to a car, with the effects that are on
     const t = Bop.effectText(-P, S);

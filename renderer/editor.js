@@ -72,13 +72,13 @@ function draftUndoEnd(ed) {
 }
 const undoButtons = p => `<button class="btn" id="${p}-undo" title="Undo the last change (Ctrl+Z)" disabled>Undo</button><button class="btn" id="${p}-redo" title="Redo (Ctrl+Y)" disabled>Redo</button>`;
 
-// The sub-tabs of the Race Setup tab (1.45.0): one big Race Setups button, and the other eight as coloured buttons in three groups (Systems, Setups, Extras).
+// The sub-tabs of the Race Setup tab (1.45.0): one big Race Setups button, and the other eight as coloured buttons in three groups (Systems, Setups, Extras). Fuel Systems sits with the other systems (1.58.2).
 // Every sub-tab has the colour of its folder on the race screen: Penalty yellow, Damage red, Tyre Wear purple, Weather blue, Balance of Power white, Time Tokens teal;
 // Rotation (brown) and Fuel (green) have no folder. The design is in docs/ui-reference/race-setup-tabs. The buttons keep role "tab" and data-id, as every tab in the app does.
 const SETUP_HERO = ['setups', 'Race Setups', 'racesetups', 'race'];
 const SETUP_GROUPS = [
-  ['Systems', [['penalties', 'Penalty Systems', 'penalty', 'pen'], ['damage', 'Damage Systems', 'damage', 'dmg'], ['tyrewear', 'Tyre Wear Systems', 'tyre', 'tyre'], ['weather', 'Weather Systems', 'weather', 'wx'], ['safetycar', 'Safety Car Systems', 'safetycar', 'sc'], ['pushsave', 'Push and Save Systems', 'pushsave', 'ps']]],
-  ['Setups', [['rotation', 'Rotation Setups', 'rotation', 'rot'], ['fuel', 'Fuel Setups', 'fuel', 'fuel'], ['championships', 'Championships', 'championship', 'ch']]],
+  ['Systems', [['penalties', 'Penalty Systems', 'penalty', 'pen'], ['damage', 'Damage Systems', 'damage', 'dmg'], ['fuel', 'Fuel Systems', 'fuel', 'fuel'], ['tyrewear', 'Tyre Wear Systems', 'tyre', 'tyre'], ['weather', 'Weather Systems', 'weather', 'wx'], ['safetycar', 'Safety Car Systems', 'safetycar', 'sc'], ['pushsave', 'Push and Save Systems', 'pushsave', 'ps']]],
+  ['Setups', [['rotation', 'Rotation Setups', 'rotation', 'rot'], ['championships', 'Championships', 'championship', 'ch']]],
   ['Extras', [['bop', 'Balance of Power', 'balance', 'bop'], ['tokens', 'Time Tokens', 'tokens', 'tok']]],
 ];
 const setupColorOf = id => { const all = [SETUP_HERO, ...SETUP_GROUPS.flatMap(g => g[1])].find(t => t[0] === id); return all ? all[3] : 'race'; };
@@ -106,8 +106,8 @@ async function renderSetup() {
     : sub === 'damage' ? 'A damage system gives a car damage points (a hit from the Race Director, a deslot). The level they reach says how long the car must stand in the pits to be repaired, or that it is out. Choose one in a race setup.'
     : sub === 'tyrewear' ? 'A tyre wear system makes the tyres lose life while a car drives, from 100% to 0%. New tyres help the car, worn out tyres hinder it, and a pit stop gives a fresh set. Choose one in a race setup (Racing Systems).'
     : sub === 'safetycar' ? 'A safety car system is the Safety Car that comes out with the yellow flag: how slowly the cars must drive (a lap that is too fast gets penalty points) and how much shorter the work in a pit stop is. Choose one in a race setup (Racing Systems); it replaces the Yellow flag settings there.'
-    : sub === 'pushsave' ? 'A push and save system makes the way a driver drives count: a lap close to his best lap (pushing) wears the tyres and uses the fuel faster, a slower lap (saving) wears less. Choose one in a race setup (Racing Systems); it works with a tyre wear system and a fuel setup, and the fuel setup\'s own target lap time is then not used.'
-    : sub === 'fuel' ? 'A fuel setup sets the tank, how much fuel a lap uses (more when faster, less when slower) and what happens when it runs out. Choose one in a race setup to race with fuel.'
+    : sub === 'pushsave' ? 'A push and save system makes the way a driver drives count: a lap close to his best lap (pushing) wears the tyres and uses the fuel faster, a slower lap (saving) wears less. Choose one in a race setup (Racing Systems); it works with a tyre wear system and a fuel system, and the fuel system\'s own target lap time is then not used.'
+    : sub === 'fuel' ? 'A fuel system sets the tank, how much fuel a lap uses (more when faster, less when slower) and what happens when it runs out. Choose one in a race setup to race with fuel.'
     : sub === 'weather' ? 'A weather system is a spell of rain with a forecast: when it starts, how long it lasts, the clouds before and the drying after. Cars change tyres in the pits and can get penalty points or be hindered if they do not. Choose one in a race setup.'
     : sub === 'rotation' ? 'A rotation setup is a heat plan that you make yourself: which participant races in which heat and in which lane, and the order of the heats. Choose one in a race setup for a Heat-based race (under Session). Without one, the heats are planned from the settings of the race setup, as before.'
     : sub === 'championships' ? 'A championship is a series of rounds. Every round has its sessions (practice, qualifying, a race), each driven with one of your race setups, and the championship has a roster of drivers. On the Home tab the next session is waiting: one click loads it, and the race that you drive is saved as part of the championship.'
