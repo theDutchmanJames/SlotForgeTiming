@@ -312,4 +312,10 @@ const folders = Help.folders();
   say('...and the folder is still short', g.length < 1400);
   say('...and the red flag is not promised', !/red flag/i.test(g.slice(g.indexOf('Random flags')))); }
 
+// ---- 1.60.0: Performance ----
+{ const fo = folders.find(x => x.id === 'performance'), g = fo ? plain(fo.body) : '';
+  say('1.60.0: the help has a folder Performance (with the Making it yours folders) that says where the report is, what it shows, the Copy report button, the line on the race screen (off to begin with), and that nothing is measured while both are off', !!fo && ['App Settings, General, Performance', 'Copy report', 'Show the Performance line on the race screen', 'frames a second', 'screen update', 'Raspberry Pi', 'graphics card', 'off to begin with', 'Nothing is measured'].every(t => g.includes(t)));
+  say('...the names it uses are in the app: the folder, the switch and the button', ['Performance', 'Show the Performance line on the race screen', 'Copy report'].every(t => read('renderer/app.js').includes(t)));
+  say('...and the folder is short, and it comes after Look and feel', g.length < 1400 && folders.findIndex(x => x.id === 'performance') === folders.findIndex(x => x.id === 'look') + 1); }
+
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

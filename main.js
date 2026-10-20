@@ -183,10 +183,14 @@ app.whenReady().then(() => {
   ipcMain.handle('custom:add', (_e, entity, field) => db.addCustomField(entity, field));
   ipcMain.handle('custom:remove', (_e, entity, id) => db.removeCustomField(entity, id));
   ipcMain.handle('custom:group', (_e, entity, id, group) => db.setCustomFieldGroup(entity, id, group));
+  // how the computer and the app are doing (the Performance line, 1.60.0): it only looks while somebody asks
+  const perf = require('./perfstats').createCollector({ app, screen, os, process, db, version: app.getVersion(), readText: p => fs.promises.readFile(p, 'utf8') });
+  ipcMain.handle('perf:stats', () => perf.collect());
   ipcMain.handle('settings:get', () => db.getSettings());
-  ipcMain.handle('resume:get', () => db.getResume());
-  ipcMain.handle('resume:save', (_e, snap) => db.setResume(snap));
-  ipcMain.handle('resume:clear', () => db.clearResume());
+  // the race save is written in the background (1.60.0): the program does not wait for the disk, a read waits for a save that is on its way
+  ipcMain.handle('resume:get', async () => { await db.resumeIdle(); return db.getResume(); });
+  ipcMain.handle('resume:save', (_e, snap) => db.saveResumeAsync(snap));
+  ipcMain.handle('resume:clear', () => db.clearResumeAsync());
   ipcMain.on('live:static', safe('live:static', (e, s) => { live.stat = s; live.dyn = null; relay('live:static', s, e.sender); if (net.server) net.server.broadcast('static', s); }));
   ipcMain.on('live:push', safe('live:push', (e, d) => {
     // the race window sends what changed; the whole state is kept here for a window or phone that opens late
@@ -207,4 +211,9 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => app.quit());
-app.on('before-quit', () => { if (net.server) net.server.close(); });
+let quitFlushed = false;
+app.on('before-quit', e => {
+  if (net.server) net.server.close();
+  // a race save that is on its way is written first (at most three seconds): the file then holds the last state, not the one before
+  if (!quitFlushed && db && db.resumePending()) { e.preventDefault(); quitFlushed = true; Promise.race([db.resumeIdle(), new Promise(r => setTimeout(r, 3000))]).catch(() => {}).then(() => app.quit()); }
+});

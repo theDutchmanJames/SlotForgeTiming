@@ -28,7 +28,7 @@
     ownSettings: () => local(), // what this device chose itself (the Driver stats page tells a layout of its own from the computer's)
     list: e => getJson('/api/list/' + encodeURIComponent(e)),
     customFields: e => getJson('/api/custom/' + encodeURIComponent(e)),
-    linkedLaps: async () => 0, dbPath: async () => '',
+    linkedLaps: async () => 0, dbPath: async () => '', perfStats: async () => null, // (a browser on another device has no link to the core of the app)
     liveGet: () => getJson('/api/live'),
     onLiveStatic: f => { lists.static.add(f); stream(); return () => lists.static.delete(f); },
     onLive: f => { lists.push.add(f); stream(); return () => lists.push.delete(f); },

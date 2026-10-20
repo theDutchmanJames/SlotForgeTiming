@@ -15,6 +15,14 @@ function writeAtomic(file, text) {
   fs.renameSync(tmp, file);
 }
 
+// The same, without making the program wait for the disk (1.60.0): the writing and the flushing are done by the system's helper threads. The race save is written like this every
+// few seconds in a race: on an SD card (a Raspberry Pi) flushing to the disk can take a long time, and a program that waits for it makes the window stutter.
+async function writeAtomicAsync(file, text) {
+  const tmp = file + '.tmp', fh = await fs.promises.open(tmp, 'w');
+  try { await fh.writeFile(text); try { await fh.sync(); } catch { /* not every file system can flush */ } } finally { await fh.close(); }
+  await fs.promises.rename(tmp, file);
+}
+
 class Database {
   constructor(file) {
     this.file = file;
@@ -201,6 +209,42 @@ class Database {
     return true;
   }
   clearResume() { try { fs.unlinkSync(this.resumeFile()); } catch { /* nothing was kept */ } return true; }
+  // The same three, as the program uses them while a race is running (1.60.0): saving and clearing are done in the background, one at a time and in the order they came.
+  // When a newer save or clear comes while one is being written, only the newest is done after it (the file only ever holds the latest state), and the ones it replaced
+  // are answered when it is done. A save that was asked before a clear can never bring the file back after it.
+  // The answer of a save is true when it was written (false: it is not a snapshot, or the writing failed).
+  saveResumeAsync(snap) {
+    if (!snap || typeof snap !== 'object' || snap.v !== 1) return Promise.resolve(false);
+    let text; try { text = JSON.stringify(snap); } catch { return Promise.resolve(false); }
+    return this.queueResume({ op: 'write', text });
+  }
+  clearResumeAsync() { return this.queueResume({ op: 'clear' }); }
+  queueResume(job) {
+    const q = this.rq || (this.rq = { running: false, next: null, waiters: [], idle: [], stats: { writes: 0, lastMs: 0, maxMs: 0, failed: 0 } });
+    return new Promise(resolve => {
+      if (q.next) { job.waiters = q.next.waiters; } else job.waiters = [];
+      job.waiters.push(resolve); q.next = job;
+      if (!q.running) this.runResume();
+    });
+  }
+  async runResume() {
+    const q = this.rq; q.running = true;
+    while (q.next) {
+      const job = q.next; q.next = null; let ok = true; const t0 = process.hrtime.bigint();
+      try {
+        if (job.op === 'write') { await writeAtomicAsync(this.resumeFile(), job.text); q.stats.writes++; const ms = Number(process.hrtime.bigint() - t0) / 1e6; q.stats.lastMs = Math.round(ms * 10) / 10; q.stats.maxMs = Math.max(q.stats.maxMs, q.stats.lastMs); }
+        else { try { await fs.promises.unlink(this.resumeFile()); } catch { /* nothing was kept */ } }
+      } catch (x) { ok = false; q.stats.failed++; console.error('[race save]', x && x.message || x); }
+      job.waiters.forEach(r => r(job.op === 'write' ? ok : true));
+    }
+    q.running = false;
+    q.idle.splice(0).forEach(r => r());
+  }
+  resumePending() { const q = this.rq; return !!q && (q.running || !!q.next); }
+  // resolves when nothing is being written or waiting to be (a read of the file waits for this, so it never sees a file that is half way)
+  resumeIdle() { return this.resumePending() ? new Promise(r => this.rq.idle.push(r)) : Promise.resolve(); }
+  // how the saving of the race goes: the number of saves, how long the last and the slowest took, and how many failed (the Performance line shows it)
+  resumeStats() { return this.rq ? { ...this.rq.stats } : { writes: 0, lastMs: 0, maxMs: 0, failed: 0 }; }
 }
 
 Database.writeAtomic = writeAtomic; // (the backups, exports and PDFs that main.js writes are written the same way)

@@ -121,7 +121,7 @@ function renderOxigenSettings(box) {
   box.innerHTML = `<p class="muted"><strong>Coming.</strong> This page is the place for <strong>oXigen Digital</strong> timing. There is nothing to set up here yet: the app does not connect to anything on this page, and a race does not use it.</p>`;
 }
 
-const GENERAL_FOLDERS = ['display', 'names', 'header', 'logo', 'pictures', 'data'];
+const GENERAL_FOLDERS = ['display', 'names', 'header', 'logo', 'pictures', 'performance', 'data'];
 // the size of the interface: the window is zoomed (the Live Race window and the pages on phones are not; see UiScale)
 const applyUiScale = () => { if (typeof api !== 'undefined' && api.setZoom) api.setZoom(UiScale.factorOf(state.settings && state.settings.uiScale)); };
 async function renderGeneralSettings(box) {
@@ -167,6 +167,12 @@ async function renderGeneralSettings(box) {
     + sf('pictures', 'Pictures', (Picture.LEVELS.find(l => l[0] === pq) || [0, ''])[1], `<div class="field" style="max-width:480px"><label for="picq">Quality of the pictures you upload (drivers, slotcars, widgets, picture sets, logo, header)</label>
       <select id="picq">${Picture.LEVELS.map(([k, t]) => `<option value="${k}"${k === pq ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>
       <span class="muted hint">Original keeps a picture exactly as you uploaded it, with its transparency (only a picture over 4000 px or 12 MB is made smaller). Pictures are saved inside the database file, so many large originals make the database bigger and the app slower to open, especially on a small computer such as a Raspberry Pi: choose High or Standard then. This applies to pictures you upload from now on; pictures that are already saved stay as they are.</span></div>`)
+    + sf('performance', 'Performance', 'how the computer and the app are doing', `<div class="field" style="max-width:640px"><label class="inline"><input id="perfswitch" type="checkbox"${S.perfLine ? ' checked' : ''}> Show the Performance line on the race screen</label>
+      <span class="muted hint">A small line under the buttons of the race screen: how many frames a second the window draws, how long a screen update takes, the CPU the app uses (window, graphics and the core of the app) and how long the core was stuck. Nothing is measured while it is off.</span></div>
+      <div class="field"><label for="perfout">Report (updated every second while this folder is open)</label>
+      <pre id="perfout" class="perfout" tabindex="0">measuring...</pre>
+      <div class="row"><button class="btn" id="perfcopy" type="button">Copy report</button><span id="perfmsg" class="muted" role="status"></span></div>
+      <span class="muted hint">Open the race screen with a race running while you look at this, or leave the line on and look at it during a race. If the Raspberry Pi gets slow, copy the report and send it: it shows whether the window is drawn by the graphics card or by the processor, how hot the processor is, and what the app is busy with. Measuring costs a little itself.</span></div>`)
     + sf('data', 'Database file', 'where everything is saved', `<div class="row"><span>Saved in:</span><code>${esc(path)}</code></div>`);
   folderWire(box);
   box.onclick = ev => { const fa = ev.target && ev.target.closest ? ev.target.closest('[data-folderall]') : null; if (fa) { folderAll('general', GENERAL_FOLDERS, fa.dataset.folderall === '1'); renderGeneralSettings(box); } };
@@ -175,6 +181,8 @@ async function renderGeneralSettings(box) {
   $('depthlevel').onchange = async ev => { state.settings = await api.setSettings({ depth: Depth.levelOf(ev.target.value) }); applyDepth(); renderSettings(); };
   $('speedunit').onchange = async ev => { state.settings = await api.setSettings({ speedUnit: Speed.unitOf({ speedUnit: ev.target.value }) }); renderSettings(); };
   $('distunit').onchange = async ev => { state.settings = await api.setSettings({ distanceUnit: Speed.distUnitOf({ distanceUnit: ev.target.value }) }); renderSettings(); };
+  $('perfswitch').onchange = async ev => { state.settings = await api.setSettings({ perfLine: !!ev.target.checked }); }; // (the page is not drawn again: the report goes on)
+  if (typeof PerfUI !== 'undefined') PerfUI.panel({ out: $('perfout'), copy: $('perfcopy'), msg: $('perfmsg') });
   $('picq').onchange = async ev => { state.settings = await api.setSettings({ pictureQuality: Picture.levelOf(ev.target.value) }); renderSettings(); };
   $('appname').onchange = async ev => { state.settings = await api.setSettings({ appName: ev.target.value.trim() }); applyName(); };
   $('welcome').onchange = async ev => { state.settings = await api.setSettings({ welcome: ev.target.value.trim() }); };

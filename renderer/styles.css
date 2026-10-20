@@ -1343,6 +1343,10 @@ p.chlead{margin:0 0 10px;font-size:15px}
 .chmini tr:first-child td{background:color-mix(in srgb,var(--c-ch) 8%,var(--bg))}
 @media (max-width:760px){.chstbar .field{min-width:0;flex:1 1 100%}.chplaces{grid-template-columns:repeat(auto-fill,minmax(90px,1fr))}}
 
+/* ---- The Performance line (1.60.0): the small line under the buttons of the race screen, and the report in App Settings > General ---- */
+.perfline{margin:.3rem 0 0;font-size:12px;font-variant-numeric:tabular-nums}
+.perfout{margin:.4rem 0;padding:.6rem .8rem;max-height:30rem;overflow:auto;white-space:pre-wrap;word-break:break-word;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--ink)}
+
 /* ---- Soft lift (1.46.0): a slight depth for the whole app. Design: docs/ui-reference/depth ----
    Cards, folders, bars, dialogs and the widgets of a layout stand up a little like thick cards, buttons look a little shallow, and what is meant to be pressed in (the canvas of a race screen, the lane cards,
    the entry fields) is pressed in a little. The light comes from above: a thin light edge on top, a lip (the thickness) underneath, a short soft shadow. A pressed or switched on button moves down and sits in.

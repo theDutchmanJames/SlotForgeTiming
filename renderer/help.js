@@ -330,6 +330,13 @@ const Help = (() => {
           <li><b>General</b>: type your own app name and welcome message, add a header picture to the Home tab (and choose which part of it shows), and add your club logo. <b>Display</b> makes the whole app bigger (100% to 200%) for reading from a distance; it does not change the widgets of your layouts. It also sets the <b>speed unit</b> of the tables, km/h or mph, and the <b>distance unit</b>: metres and kilometres, or feet and miles (a track is then typed in feet and inches; it stays saved in metres). <b>Depth</b> sets how much cards, buttons, folders and widgets stand up from the page: Flat (the plain look), Soft lift (the standard), Medium or Thick card. It covers the whole app, the Live Race pages and your widgets, and a see-through widget stays flat. Flat is lighter to draw, which can help on a slow computer such as a Raspberry Pi. <b>Pictures</b> sets how sharp the pictures you upload stay: Original (as uploaded, with transparency), High or Standard (smaller, for a lighter database).</li>
           <li>In the Layout Editor every widget has its own <b>Border</b> with <b>Colour of your own</b> (any colour you pick) and a <b>Border thickness</b> that grows and shrinks with the page like the text. Select several widgets to set them all at once.</li>
           <li><b>Racing Rules</b> is a tab of its own. Write the rules of your club there. They show on the Racing rules tile of the Live Race tab, also on phones.</li>
+        </ul>` },
+      { id: 'performance', title: 'Performance', note: 'Is the app slow? Measure it', body: `
+        <ul>
+          <li>Open <b>App Settings, General, Performance</b>. The report there updates every second while the folder is open: the frames a second the window draws, the slowest frame, how long a screen update takes, the CPU the app uses (window, graphics and the core of the app), how long the core was stuck, how long the race save takes, and whether the window is drawn by the graphics card or by the processor. On a Raspberry Pi it also shows the model, the temperature and the processor speed.</li>
+          <li><b>Copy report</b> puts it on the clipboard, to paste in a message. A report made during a race, with the race screen open, says the most.</li>
+          <li>Tick <b>Show the Performance line on the race screen</b> for a small line with the same figures under the buttons of the race screen. It is off to begin with, and costs a little itself.</li>
+          <li>Nothing is measured while the folder is closed and the line is off. On a slow computer, <b>Depth</b> Flat (Look and feel) is lighter to draw.</li>
         </ul>` }
     ]],
     ['Connecting and sharing', [

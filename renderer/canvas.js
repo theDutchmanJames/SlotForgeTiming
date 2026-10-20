@@ -38,6 +38,9 @@ const LiveCanvas = (() => {
       if (/class="(wxw|wxt)[ "]/.test(out.html) && typeof WxW !== 'undefined') WxW.fit(n.val); // a weather widget: no picture or text outside the widget, whatever the word (Dry, Cloudy, Clearing)
       if (out.html.includes('dlt-badge') && typeof Delta !== 'undefined') Delta.fit(n.val); // a Delta Timer: the arrow and the number inside the badge, however small the widget
       if (out.button) n.val.disabled = !!out.disabled;
+      const colors = `${out.color}\u0001${out.bg}`; // (the colours only change now and then: a widget whose text changes ten times a second is not given the same colours ten times a second)
+      if (n.colors === colors) return;
+      n.colors = colors;
       n.el.style.color = out.color || n.base.color || 'var(--ink)'; // own colour > event colour here, then lane colour, then theme
       Object.assign(n.el.style, Frame.style(out.bg || n.base.bg, n.w, 'var(--line)', n.layout, Widgets.U)); // background and border: the widget's own settings (frame.js)
       if (n.el.style.setProperty) n.el.style.setProperty('--wf', String(Frame.solidity(n.w, n.layout))); // how solid it is: the depth of the page (styles.css) fades with it

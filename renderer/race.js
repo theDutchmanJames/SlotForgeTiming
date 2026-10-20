@@ -84,7 +84,7 @@ async function renderRace() {
   } else if (tokenSession) eng = mk(Array.from({ length: lanes }, (_, i) => ({ lane: i, ...(people[i] || { driverId: '', carId: '', driverName: 'Guest', carName: '', carPicture: '', carScale: '', nickname: '', callsign: '', flag: '', avatar: '' }) }))); // every lane of the track can be sold, with or without a driver
   else eng = mk(people.map((p, i) => ({ lane: i, ...p })));
 
-  if (live) { if (live.fsView) live.fsView.close(); document.removeEventListener('keydown', live.fsKey); live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); if (live.offTm) live.offTm(); if (live.box) { live.box.off(); live.box = null; } if (live.offTmStatus) live.offTmStatus(); if (live.offCmd) live.offCmd(); if (live.offResync) live.offResync(); clearTimeout(live.shareTimer); clearInterval(live.timers); clearInterval(live.breakTimer); (live.sim || []).forEach(clearTimeout); if (live.flushTokens) live.flushTokens(); document.removeEventListener('keydown', live.key); }
+  if (live) { if (live.perfStop) live.perfStop(); if (live.fsView) live.fsView.close(); document.removeEventListener('keydown', live.fsKey); live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); if (live.offTm) live.offTm(); if (live.box) { live.box.off(); live.box = null; } if (live.offTmStatus) live.offTmStatus(); if (live.offCmd) live.offCmd(); if (live.offResync) live.offResync(); clearTimeout(live.shareTimer); clearInterval(live.timers); clearInterval(live.breakTimer); (live.sim || []).forEach(clearTimeout); if (live.flushTokens) live.flushTokens(); document.removeEventListener('keydown', live.key); }
   // earlier laps on this track, for personal best / track record highlights and the record lap widget
   const base = { personal: new Map(), track: Infinity, trackName: '' };
   // laps removed from the records (but kept in their session) do not count here
@@ -120,6 +120,7 @@ async function renderRace() {
     <div class="rt-stage"><div class="canvas live" id="canvas"></div></div>
     <div class="bar rt-tools"><label><input type="checkbox" id="sim"> Simulated cars</label><span id="tmstatus" class="muted" role="status"></span>
       <button class="btn" id="fsbtn" type="button" title="Show only the widgets, as large as the window allows (F). Esc closes it.">Full screen widgets</button><button class="btn" id="lapsbtn" aria-expanded="false" hidden title="Check the laps while the race goes on: mark a lap invalid or take it out of the records">Review laps</button><span id="msg" class="muted" role="status"></span><button class="btn danger stopbtn" id="stopbtn">Stop race</button><button class="btn" id="back">Back to Home</button></div>
+    <p id="perfline" class="muted perfline" hidden role="status" aria-label="Performance"></p>
     <div id="calls" class="card calls" hidden></div>
     <div id="finalpick" class="card" hidden></div>
     <div id="teampick" class="card" hidden></div>
@@ -149,6 +150,15 @@ async function renderRace() {
 
   // ---- build the page from the layout (once); widgets for lanes the track does not have are left out ----
   live.nodes = LiveCanvas.build(ui('canvas'), layout, lanes, { onButton: type => actions[type]() });
+  // the Performance line (App Settings > General > Performance, 1.60.0): a small line under the buttons with the frames a second, the time of a screen update and the CPU of the app, when it is switched on
+  const syncPerfLine = () => {
+    if (typeof PerfUI === 'undefined') return;
+    const want = !!(state.settings && state.settings.perfLine) && !!ui('perfline');
+    if (want && !live.perfStop) live.perfStop = PerfUI.line(ui('perfline'));
+    else if (!want && live.perfStop) { live.perfStop(); live.perfStop = null; }
+  };
+  if (typeof PerfUI !== 'undefined') PerfUI.race = () => ({ name: setup.name, widgets: live.nodes.length, lanes });
+  syncPerfLine();
   // Track actions (1.15.0): a card for each lane with the buttons Lap, Pit and Call, large and in colour. The keys are said on the buttons (1-8 for Lap, Shift + number for Pit, Ctrl + number for Call).
   const LAP_TITLE = 'A car crosses the line on this lane: counts a lap by hand, as if the sensor had seen the car';
   // Why the Lap, Pit and Call buttons are dimmed (1.16.1): they only work while the race is running (Call also while it is paused)
@@ -272,7 +282,7 @@ async function renderRace() {
     recomputeBests(); if (tokens) persistTokens(false);
     update(); return true;
   };
-  const update = () => {
+  const updateNow = () => {
     checkpoint();
     if (live.box) live.box.sync();
     drawHeatList(); announce(); announceTokens(); if (live.powerFollow) live.powerFollow();
@@ -308,6 +318,12 @@ async function renderRace() {
     ui('back').disabled = raceActive();
     ui('stopbtn').disabled = !(live.phase === 'running' || live.phase === 'paused' || live.phase === 'between');
     share();
+  };
+  // (how long a screen update takes is measured for the Performance line, only while it is shown: 1.60.0)
+  const update = () => {
+    const t0 = typeof PerfUI !== 'undefined' && PerfUI.active() ? performance.now() : -1;
+    updateNow();
+    if (t0 >= 0) PerfUI.noteUpdate(performance.now() - t0);
   };
   // the Adjust folder (1.13.0, a folder since 1.15.0): the pads of the Race Director page (penalty points, damage points, time, laps, championship points) on the Race tab; there while the race is waiting, running or paused
   const drawAdjust = () => {
@@ -889,7 +905,7 @@ async function renderRace() {
   };
   document.addEventListener('keydown', live.fsKey);
   ui('fsbtn').onclick = ev => { if (ev && ev.currentTarget && ev.currentTarget.blur) ev.currentTarget.blur(); toggleFull(); };
-  live.shown = () => { live.nodes.forEach(n => { n.last = null; }); update(); }; // the Race tab is shown again: everything is drawn once more (a leaderboard fits its text to the size it has now)
+  live.shown = () => { live.nodes.forEach(n => { n.last = null; }); syncPerfLine(); update(); }; // the Race tab is shown again: everything is drawn once more (a leaderboard fits its text to the size it has now)
   // leaving the race screen (before the start, or after the end): the keys, the Trackmate and the Race Director buttons stop working on the other pages
   live.leave = () => { if (live.fsView) live.fsView.close(); document.removeEventListener('keydown', live.fsKey); if (live.calling) { live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); } document.removeEventListener('keydown', live.key); if (typeof tmUseLanes === 'function') tmUseLanes(0); ['offTm', 'offTmStatus', 'offCmd', 'offResync'].forEach(k => { if (live[k]) { live[k](); live[k] = null; } }); if (live.box) { live.box.off(); live.box = null; } clearTimeout(live.shareTimer); live.shareTimer = null; if (live.flushTokens) live.flushTokens(); clearTimeout(live.tkTimer); live.tkTimer = null; };
 

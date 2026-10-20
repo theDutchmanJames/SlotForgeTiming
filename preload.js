@@ -37,6 +37,7 @@ contextBridge.exposeInMainWorld('api', {
   getSettings: () => call('settings:get'),
   setSettings: patch => call('settings:set', patch),
   // a race that is running is kept in a file, so that a crash or a power cut does not lose it (1.9.0)
+  perfStats: () => call('perf:stats'), // how the computer and the app are doing (App Settings > General > Performance)
   getResume: () => call('resume:get'),
   saveResume: snap => call('resume:save', snap),
   clearResume: () => call('resume:clear'),
