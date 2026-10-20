@@ -247,7 +247,7 @@ const Help = (() => {
           <li>Make one in <b>Race Setup, Championships</b>: the <b>rounds</b> (a name, a track and a date if you want) and the <b>sessions</b> of every round, each driven with one of your race setups. A new round starts with the sessions of the round before it.</li>
           <li>The kind of a session (Practice, Qualifying or Race) comes from its race setup. A Time Token Session can not be part of a championship. A race counts for 100%, 50% (a sprint) or no points.</li>
           <li>The <b>roster</b> holds the drivers, each with a team and the round he joins in.</li>
-          <li>The <b>Home</b> card shows the round that is next and loads the next session with one click; <b>Another session</b> loads any other. It fills the card below, and nothing starts until you press <b>Start race</b>. Roster drivers come first in the driver boxes; others drive as guests.</li>
+          <li>On <b>Home</b>, choose the championship at the top of <b>Start a race</b> (<b>None</b> is a normal race). Its card shows the round that is next and loads the next session with one click; <b>Another session</b> loads any other. It fills the race setup below, and nothing starts until you press <b>Start race</b>. Roster drivers come first in the driver boxes; others drive as guests.</li>
           <li>The race says <b>Counts for</b> the championship on Home, the race screen and in Results and Records. A session is driven when its race is saved.</li>
           <li>The points, the bonuses, the dropped results and the standings are in the next folder, <b>Championship points</b>.</li>
         </ul>` },

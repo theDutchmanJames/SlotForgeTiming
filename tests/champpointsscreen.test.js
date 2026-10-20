@@ -242,6 +242,9 @@ const setup = async () => { run("state.tab = 'setup'; state.setupSub = 'champion
   // ---------- Home ----------
   put(); store.sessions = [R1(true)]; run("state.settings = { theme: 'dark', lastSetupId: 's-race' }");
   { const h = await home();
+    say('Home: nothing of the standings is shown until the championship is chosen in Start a race', !h.includes('id="chstand"') && !h.includes('chlead') && h.includes('id="champsel"')); }
+  await homeChange('champsel', 'ch1'); await wait(150);
+  { const h = view().innerHTML;
     say('Home: the card of the championship says who leads ("Alex leads by 7") next to how much is driven', h.includes('class="chtag chlead">Alex leads by 7<') && h.includes('chtags'));
     say('...and shows the top of the standings: Standings after round 1, the first five with their points, Drivers and Teams, what is left, and All standings', h.includes('id="chstand"') && h.includes('Standings after round 1') && h.includes('data-chst="drivers"') && h.includes('data-chst="teams"') && /<b>Alex<\/b><\/td><td class="r"><b>25<\/b>/.test(h) && h.includes('One round is left: it gives up to 25 points a driver, so Sam, Kim and Lee can still pass Alex.') && h.includes('data-chall="ch1"')); }
   await homeClick({ chst: 'teams' }); await wait(150);
@@ -254,12 +257,12 @@ const setup = async () => { run("state.tab = 'setup'; state.setupSub = 'champion
     say('a championship without team standings has no Drivers/Teams buttons on Home, and a choice of Teams that was left over shows the drivers', h.includes('id="chstand"') && !h.includes('data-chst=') && /<tr><td class="muted">1<\/td><td><b>Alex<\/b>/.test(h)); run("state.champHomeWhich = 'drivers'"); put(); }
   { const more = [5, 6, 7]; store.drivers.push(...more.map(n => ({ id: 'd' + n, name: 'Pat' + n }))); const ids = [1, 2, 3, 4, 5, 6, 7], nm = n => (n < 5 ? NAMES['d' + n] : 'Pat' + n);
     put({ roster: ids.map(n => ({ driver: 'd' + n, team: n < 5 ? 'tm1' : 'tm2' })) }); store.sessions = [sess('H1', '2026-10-03T12:00:00.000Z', 0, 2, ids.map(n => rw(n, 'd' + n, nm(n), 5000 + 100 * n)), { awarded: true })];
-    const all = await home(), h = all.slice(all.indexOf('id="chstand"'), all.indexOf('id="homegrid"'));
+    const all = await home(), h = all.slice(all.indexOf('id="chstand"'), all.indexOf('id="setup"'));
     say('the top of the standings on Home has five drivers (of seven), the first five in order', (h.match(/<tr><td class="muted">\d+<\/td>/g) || []).length === 5 && h.includes('Pat5') && !h.includes('Pat6') && h.indexOf('Alex') < h.indexOf('Sam') && h.indexOf('Lee') < h.indexOf('Pat5'));
     store.drivers.length = 4; put(); }
 
   // ---------- a race that counts, on the race screen ----------
-  run("state.settings = { theme: 'dark', lastSetupId: 's-race', assignments: { 's-race': [1, 2, 3, 4].map(i => ({ driverId: 'd' + i, carId: 'c' + i })) } }"); store.sessions = []; saved.length = 0;
+  run("state.settings = { theme: 'dark', lastSetupId: 's-race', champId: 'ch1', assignments: { 's-race': [1, 2, 3, 4].map(i => ({ driverId: 'd' + i, carId: 'c' + i })) } }"); store.sessions = []; saved.length = 0; await home();
   await homeClick({ id: 'champload', load: '0:0' }); await wait(120);
   await homeChange('champpick', '0:2'); await wait(150);
   run('state.speed = 40'); await homeClick({ id: 'start' }); await wait(150);

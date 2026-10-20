@@ -2802,3 +2802,18 @@ Good to know:
 6. Limits: a table of 1 to 20 places with 0 to 1000 points (two decimals), the fastest lap in the first 1 to 99 places, 0 to 10 dropped results, 1 to 20 drivers of a team count.
 7. Tested: two new test files (`tests/champpoints.test.js`, 169 checks, for the rules, the standings, the sentences and the changes written to a race, and `tests/champpointsscreen.test.js`, 72 checks, for the Points section, the panel on the race screen and in Results and Records, the Championships tab with the PDF and Home), extra checks in the championship test (export and import), the Help test and the 18 screen tests that load the program; 198 deliberate breakages of the new code were tried and 186 were caught, the other 12 change nothing (for example a shortcut whose answer is the same without it, a number that is only stored and not used, and a test that is already true one line before it).
 8. Not verified in the full Electron window or with the real hardware: please drive a qualifying and a race of a championship that has a fastest lap bonus and a pole bonus, look at the panel under the lap review, press **Award these points**, open **Results and Records > Championships** and look at Home. Then press **Undo** and check that the standings go back, and try **Export to PDF**.
+
+## What to try (1.56.1): the championship is chosen in Start a race
+
+The card of the championship was on Home for good as soon as a championship existed. Now **Start a race** has a **Championship** choice at the top, and the card appears **inside Start a race**, under that choice, only when you choose a championship. Nothing else about the championship changed.
+
+1. Open **Home**. With at least one championship, **Start a race** starts with the choice **Championship**, set to **None: a normal race**. Nothing of the championship is on Home. (With no championship the choice is not there either.)
+2. Choose your championship in it. Its card appears right under the choice and above the **Race setup** box: the round, its track and date, how many sessions are driven, who leads, the steps of the round, **Load** (the next session), **Another session...** and the top of the standings. The card has a pink edge and a light pink tint, so it is clear what belongs to the championship and what is the race below it.
+3. Press **Load Qualifying** (or whatever is next) as before: it fills the race setup and the lanes below and the line **Counts for ...** says the race is part of the championship. Nothing starts until **Start race**.
+4. Choose **None: a normal race** again: the card is gone, a session that was loaded is let go (it is a normal race again), and the race setup and lanes stay as they are. The choice is remembered, so Home comes back the way you left it.
+5. With more than one championship the choice lists them all. Choosing another one lets go of a session that was loaded for the first one.
+
+Good to know:
+- A championship that you chose before this version (by loading a session) is still chosen. If you never chose one, Home shows none until you do; before, the first one was shown for you.
+- The name of the championship is in the choice only; the card shows the round.
+- Tested: the two championship screen tests (`championshipscreen`, `champpointsscreen`) changed with it (the choice, the card inside Start a race, None, two championships, a loaded session that is let go) and a check of the style, the Help test says where to choose it; 16 deliberate breakages of the change were tried and all were caught (two gaps in the tests were closed, and one needless line was removed). The picture was looked at in a real browser (dark, light and a narrow window). Not verified in the full Electron window.

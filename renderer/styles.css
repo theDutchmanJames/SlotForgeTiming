@@ -1263,6 +1263,11 @@ p.chlead{margin:0 0 10px;font-size:15px}
 .champband .chswitch{display:inline-flex;gap:6px}
 .champband .chswitch .btn{padding:4px 12px;min-height:0}
 .champband .chswitch .btn.on{background:var(--c-ch);border-color:var(--c-ch);color:var(--on-ch);font-weight:700}
+/* 1.56.1: the card of the championship sits inside Start a race, under the Championship choice, and only when a championship is chosen */
+.hm-start .champband{background:color-mix(in srgb,var(--c-ch) 7%,var(--bg));border:1px solid color-mix(in srgb,var(--c-ch) 50%,var(--line));border-top:3px solid var(--c-ch);border-radius:8px;padding:12px 14px;margin:2px 0 12px}
+.champband .chline{font-weight:600;line-height:1.35;flex:1 1 220px;min-width:0}
+.hm-start .champband .btn.chload{white-space:nowrap;flex:none}
+.hm-start .champband .row{align-items:center}
 .chmini{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
 .chmini td{padding:5px 8px;border-bottom:1px solid var(--line);font-size:14px}
 .chmini tr:last-child td{border-bottom:0}
