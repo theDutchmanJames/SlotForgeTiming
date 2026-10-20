@@ -297,4 +297,8 @@ const folders = Help.folders();
   say('...the buttons and the words it names exist in the program', ['Award these points', 'Do not count this race', 'Undo', 'Export to PDF', 'One point per car beaten', 'My own', 'Championships', 'Dropped results'].every(w => ui.includes(w) || read('renderer/championship.js').includes(w)));
   say('1.56.1: the Championships folder says where the championship is chosen: at the top of Start a race, with None for a normal race', g('championships').includes('at the top of Start a race') && g('championships').includes('None is a normal race') && !g('championships').includes('The Home card'));
   say('...and both folders are short', g('championships').length < 1400 && g('championshippoints').length < 1400); }
+{ const g = id => plain(folders.find(x => x.id === id).body).replace(/\s+/g, ' ');
+  say('1.57.0: the Championship points folder says that races of teams are scored: the team gets the points of its place once, each driver who drove gets the same, a share by laps or nothing, with a minimum share of laps; it no longer says they are not scored',
+    g('championshippoints').includes('Races of teams (Endurance, team heats) are scored') && g('championshippoints').includes('the team gets the points of its place once') && g('championshippoints').includes('a share by laps, or nothing') && g('championshippoints').includes('minimum share of laps') && !g('championshippoints').includes('not scored'));
+  say('...and the folder is still short', g('championshippoints').length < 1400); }
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

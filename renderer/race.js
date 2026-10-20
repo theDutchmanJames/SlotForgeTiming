@@ -421,6 +421,12 @@ async function renderRace() {
     out.forEach(d => { d.laps = mine.filter(l => l.driverId === d.driverId).length; });
     return out;
   };
+  // 1.57.0: the driver of a team who set the best lap of the team (for the fastest lap bonus of a championship, which goes to the team and to him)
+  const bestByOf = (laps, best) => {
+    if (!(Number(best) > 0)) return '';
+    const ok = laps.filter(l => l.driverId && !l.invalid), hit = ok.find(l => l.time === best) || ok.reduce((a, l) => (!a || l.time < a.time ? l : a), null);
+    return hit ? hit.driverId : '';
+  };
 
   // a heat (or the single race) has ended: the Race Director reviews the result before it is saved
   function engineFinished() {
@@ -571,7 +577,7 @@ async function renderRace() {
       const teamStanding = o => { // a team that raced as a team: the team is the row, with the drivers who drove for it
         const mine = laps.filter(l => l.teamId === o.teamId), ids = []; mine.forEach(l => { if (l.driverId && !ids.includes(l.driverId)) ids.push(l.driverId); });
         const sts = live.stintBy.get(o.participant) || []; // (an Endurance Race: how long every driver was at the wheel, and the stints)
-        return { asTeam: true, driverId: '', driverName: o.teamName || '', teamId: o.teamId || '', teamName: o.teamName || '', drivers: ids.map(id => ({ driverId: id, driverName: nameOf('drivers', drivers, id), laps: mine.filter(l => l.driverId === id).length, ...(sts.length ? { ms: sts.filter(q => q.driverId === id).reduce((n, q) => n + q.ms, 0), ...(enDist ? { meters: Math.round(sts.filter(q => q.driverId === id).reduce((n, q) => n + (q.meters || 0), 0) * 100) / 100 } : {}) } : {}) })),
+        return { asTeam: true, driverId: '', driverName: o.teamName || '', teamId: o.teamId || '', teamName: o.teamName || '', bestBy: bestByOf(mine, o.best), drivers: ids.map(id => ({ driverId: id, driverName: nameOf('drivers', drivers, id), laps: mine.filter(l => l.driverId === id).length, ...(sts.length ? { ms: sts.filter(q => q.driverId === id).reduce((n, q) => n + q.ms, 0), ...(enDist ? { meters: Math.round(sts.filter(q => q.driverId === id).reduce((n, q) => n + (q.meters || 0), 0) * 100) / 100 } : {}) } : {}) })),
           ...(sts.length ? { stints: sts.map(q => ({ driverId: q.driverId, driverName: q.driverName, laps: q.laps, ms: q.ms, heat: q.heat, ...(enDist ? { meters: q.meters } : {}), ...(q.final ? { final: q.final } : {}) })) } : {}) };
       };
       standings = heat.overall().map(o => ({ pos: o.pos, driverId: o.driverId, carId: o.carId, driverName: o.driverName, carName: o.carName, laps: o.laps, points: o.points, best: o.best, total: null,
@@ -587,7 +593,7 @@ async function renderRace() {
     } else {
       const teamRow = c => { // an Endurance Race: the team is the row, with the drivers who drove for it (their laps and time at the wheel) and the stints
         const mine = lapRows(c, date, {});
-        return { asTeam: true, driverId: '', driverName: c.teamName || '', drivers: driversOf(c, mine), stints: stintsOf(c).map(q => ({ driverId: q.driverId, driverName: q.driverName, laps: q.laps, ms: q.ms, from: q.from, to: q.to, by: q.by, ...(enDist ? { meters: q.meters } : {}) })) };
+        return { asTeam: true, driverId: '', driverName: c.teamName || '', bestBy: bestByOf(mine, c.best), drivers: driversOf(c, mine), stints: stintsOf(c).map(q => ({ driverId: q.driverId, driverName: q.driverName, laps: q.laps, ms: q.ms, from: q.from, to: q.to, by: q.by, ...(enDist ? { meters: q.meters } : {}) })) };
       };
       standings = eng.standings().map(x => ({ pos: x.pos, driverId: x.car.driverId, carId: x.car.carId, ...(x.car.teamId ? { teamId: x.car.teamId, teamName: x.car.teamName } : {}), driverName: x.car.driverName, carName: x.car.carName, laps: eng.lapsOf(x.car), best: x.car.best, total: x.car.total, retired: (x.car.retired && !x.car.dq) || undefined,
         ...(x.car.adjMs ? { adjMs: x.car.adjMs } : {}), ...(x.car.adjLaps ? { adjLaps: x.car.adjLaps } : {}), ...(eng.bopNoteOf(eng.cars.indexOf(x.car)) ? { bopNote: eng.bopNoteOf(eng.cars.indexOf(x.car)) } : {}), ...(eng.damageNoteOf(eng.cars.indexOf(x.car)) ? { damageNote: eng.damageNoteOf(eng.cars.indexOf(x.car)), damagePoints: x.car.dmgTotal, repairs: x.car.repairs.filter(q => !q.out).length, repairMs: x.car.repairMs, ...(x.car.dmgOut ? { damageOut: x.car.dmgOut } : {}) } : {}), ...(eng.failureNoteOf && eng.failureNoteOf(eng.cars.indexOf(x.car)) ? { failureNote: eng.failureNoteOf(eng.cars.indexOf(x.car)), failures: x.car.failN, failureRepairs: Failures.repairsOf(x.car), failureMs: x.car.failMs, ...(x.car.failOut ? { failureOut: x.car.failOut } : {}) } : {}), ...(eng.tyreNoteOf(eng.cars.indexOf(x.car)) ? { tyreNote: eng.tyreNoteOf(eng.cars.indexOf(x.car)) } : {}), // (what Balance of Power and the tyres did to the car, in words)

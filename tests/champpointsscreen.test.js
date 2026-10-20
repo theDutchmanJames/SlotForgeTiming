@@ -90,7 +90,9 @@ const setup = async () => { run("state.tab = 'setup'; state.setupSub = 'champion
       && h.includes('25-18-15-12-10-8-6-4-2-1') && h.includes('10-8-6-5-4-3-2-1') && h.includes('One point per car beaten') && h.includes('My own') && /class="btn on" data-preset="f1"/.test(h) && h.includes('data-pf="place:9"') && !h.includes('data-pf="place:10"') && /id="ch-pl-0"[^>]*value="25"/.test(h) && h.includes('Every finisher after 10th gets (points)'));
     say('...the bonuses, the dropped results, the teams, the ties, the sprint and the guest rule', h.includes('Fastest lap of the race (points)') && h.includes('Only when the driver finishes in the first (places)') && h.includes('Pole position, fastest in qualifying (points)') && h.includes('Starting the race (points for every driver)')
       && h.includes('The worst round results that do not count') && h.includes('Every round counts.') && h.includes('Team points in a race') && h.includes('A tie in the standings is decided by') && h.includes('A race at 50% (a sprint) gives half of the points, rounded') && /id="ch-guest" data-pf="rule:guestRule" checked/.test(h)
-      && /<option value="best" selected>/.test(h) && /<option value="wins" selected>/.test(h) && /<option value="nearest" selected>/.test(h)); }
+      && /<option value="best" selected>/.test(h) && /<option value="wins" selected>/.test(h) && /<option value="nearest" selected>/.test(h));
+    say('...and what a race of teams gives the drivers (every driver who drove, no minimum share of the laps), with the sentence about the bonuses of a team (1.57.0)', h.includes('A race of teams (an Endurance Race, a heat race for teams) gives the drivers who drove for a team') && /<option value="every" selected>/.test(h) && h.includes('The points of the team: every driver who drove gets them')
+      && h.includes('A share of the points, by the laps each one drove') && h.includes('Nothing: only the team gets points') && /id="ch-p-teamMin"[^>]*value="0"/.test(h) && !/id="ch-p-teamMin"[^>]*disabled/.test(h) && h.includes('at least this share of the laps of his team') && h.includes('A team that races as a team always gets the points of its place once, in the Teams standings.') && h.includes('Fastest lap: the team and the driver who set the lap. Pole: the team of the pole sitter')); }
   await click({ preset: 'ten' });
   say('a ready-made table puts its numbers in the places (here 8 places, 10 to 1)', run('chEd.draft.points.join()') === '10,8,6,5,4,3,2,1' && mgr().innerHTML.includes('data-pf="place:7"') && !mgr().innerHTML.includes('data-pf="place:8"') && mgr().innerHTML.includes('Every finisher after 8th gets') && /class="btn on" data-preset="ten"/.test(mgr().innerHTML));
   await click({ preset: 'beaten' });
@@ -116,6 +118,14 @@ const setup = async () => { run("state.tab = 'setup'; state.setupSub = 'champion
   say('team points: all the drivers of the team count (the box for how many is off)', run('chEd.draft.teamMode') === 'all' && E('ch-p-teamBest').disabled === true);
   await change({ pf: 'rule:teamMode' }, 'best'); await change({ pf: 'rule:teamBest' }, '1'); await change({ pf: 'rule:tie' }, 'last'); await change({ pf: 'rule:sprintRound' }, 'down');
   say('...the best 1 driver of a team, the tie by the last round and a sprint rounded down are kept (and the box for how many is on again)', run('chEd.draft.teamMode') === 'best' && run('chEd.draft.teamBest') === 1 && run('chEd.draft.tie') === 'last' && run('chEd.draft.sprintRound') === 'down' && E('ch-p-teamBest').disabled === false);
+  await change({ pf: 'rule:teamRace' }, 'team');
+  say('a race of teams that gives the drivers nothing: the box for the minimum share of the laps is off', run('chEd.draft.teamRace') === 'team' && E('ch-p-teamMin').disabled === true);
+  await change({ pf: 'rule:teamRace' }, 'split'); await change({ pf: 'rule:teamMin' }, '30');
+  say('...the drivers share by their laps with a minimum of 30% (and the box is on again)', run('chEd.draft.teamRace') === 'split' && run('chEd.draft.teamMin') === 30 && E('ch-p-teamMin').disabled === false);
+  await change({ pf: 'rule:teamRace' }, 'zzz'); await change({ pf: 'rule:teamMin' }, 'x');
+  say('...a kind that is not one, or a minimum that is not a number, is refused', run('chEd.draft.teamRace') === 'split' && run('chEd.draft.teamMin') === 30 && E('ch-msg').textContent === 'Please type a number.');
+  await change({ pf: 'rule:teamMin' }, '250');
+  say('...a minimum above 100 is kept at 100', run('chEd.draft.teamMin') === 100); await change({ pf: 'rule:teamMin' }, '30');
   await change({ pf: 'rule:teamMode' }, 'zzz'); await change({ pf: 'rule:bonusFast' }, 'x');
   say('a rule that is not one of the choices, or a number that is not a number, is refused and changes nothing', run('chEd.draft.teamMode') === 'best' && run('chEd.draft.bonusFast') === 1 && E('ch-msg').textContent === 'Please type a number.');
   mgr().onchange({ target: { dataset: { pf: 'rule:guestRule' }, type: 'checkbox', checked: false, id: 'ch-guest' } });
@@ -124,8 +134,11 @@ const setup = async () => { run("state.tab = 'setup'; state.setupSub = 'champion
   say('Undo takes the last change back (the guest rule is on again)', run('chEd.draft.guestRule') === true);
   updated.length = 0; await E('ch-save').onclick();
   { const rec = (updated[0] || [])[2] || {};
-    say('Save writes the points with the championship (the table, the bonuses, the drops, the teams, the tie, the sprint)', updated.length === 1 && rec.points.length === 11 && rec.points[0] === 30 && rec.pointsRest === 1 && rec.bonusFast === 1 && rec.bonusFastTop === 3 && rec.bonusPole === 2 && rec.bonusStart === 0.5 && rec.drops === 0 && rec.teamBest === 1 && rec.tie === 'last' && rec.sprintRound === 'down' && rec.guestRule === true && rec.pointsMode === 'table'); }
+    say('Save writes the points with the championship (the table, the bonuses, the drops, the teams, what a race of teams gives, the tie, the sprint)', updated.length === 1 && rec.points.length === 11 && rec.points[0] === 30 && rec.pointsRest === 1 && rec.bonusFast === 1 && rec.bonusFastTop === 3 && rec.bonusPole === 2 && rec.bonusStart === 0.5 && rec.drops === 0 && rec.teamBest === 1 && rec.tie === 'last' && rec.sprintRound === 'down' && rec.guestRule === true && rec.pointsMode === 'table' && rec.teamRace === 'split' && rec.teamMin === 30); }
   await E('ch-back').onclick(); await wait(50);
+  put({ teamRace: 'team' }); await setup(); await click({ edit: 'ch1' });
+  say('an editor that opens on a championship where only the team gets the points of a race of teams: that is the choice, and the minimum share of the laps is off from the start', /<option value="team" selected>/.test(mgr().innerHTML) && /id="ch-p-teamMin"[^>]*disabled/.test(mgr().innerHTML));
+  put(); await E('ch-back').onclick(); await wait(50);
 
   // ---------- the panel after a race ----------
   put(); const box = { dataset: { cpbox: 'R1' }, innerHTML: '', hidden: true };
@@ -189,7 +202,7 @@ const setup = async () => { run("state.tab = 'setup'; state.setupSub = 'champion
     store.sessions = [qual, sess('R1', '2026-10-03T12:00:00.000Z', 0, 2, [rw(1, 'd1', 'Alex', 4300), rw(2, 'd2', 'Sam', 4200), rw(3, 'd3', 'Kim', 4500), rw(4, 'd4', 'Lee', 9000, { retired: true })], {})];
     await champPanelsFor([bx]); const h = bx.innerHTML;
     const c = h.replace(/>\s+</g, '><'), row = n => (c.match(new RegExp('<b>' + n + '</b></td>(.*?)</tr>')) || [])[1] || '';
-    say('with bonuses the panel has their columns: the fastest lap, the pole and the start', h.includes('Fastest lap</th>') && h.includes('Pole</th>') && h.includes('Start</th>'));
+    say('with bonuses the panel has their columns: the fastest lap, the pole and the start (a race of drivers: the first column is "Driver")', h.includes('<th>Driver</th>') && !h.includes('Driver or team') && h.includes('Fastest lap</th>') && h.includes('Pole</th>') && h.includes('Start</th>'));
     say('...Sam has the fastest lap (18 + 1 + 1 for the start = 20 this round, the lap time beside the bonus), Kim is on pole (15 + 3 + 1 = 19), Alex 25 + 1 = 26', row('Sam').includes('<b class="fl">+1</b><span class="muted">4.200</span>') && /<b>20<\/b>/.test(row('Sam')) && row('Kim').includes('<b class="fl">+3</b>') && /<b>19<\/b>/.test(row('Kim')) && /<b>26<\/b>/.test(row('Alex')));
     say('...Lee retired: no place ("Out"), no race points, only the point for starting', c.includes('<tr class="chout"><td>Out</td><td><b>Lee</b>') && /<td class="r">0<\/td>/.test(row('Lee')) && /<b>1<\/b>/.test(row('Lee')) && row('Lee').includes('+1'));
     say('...and the teams of this round, with the bonuses in them (Foxes 26 + 20, Arrows 19 + 1)', h.includes('Teams, this round: Foxes 46, Arrows 20.'));
@@ -198,6 +211,48 @@ const setup = async () => { run("state.tab = 'setup'; state.setupSub = 'champion
       const dq = { dataset: { cpbox: 'R1' }, innerHTML: '', hidden: true };
       store.sessions = [qual, sess('R1', '2026-10-03T12:00:00.000Z', 0, 2, [rw(1, 'd1', 'Alex', 4300), rw(2, 'd3', 'Kim', 4500, { dq: true })], {})]; await champPanelsFor([dq]);
       say('...when the pole sitter is disqualified the note names him and says why the bonus is not given', dq.innerHTML.includes('The pole bonus (Kim) is not given: he did not start the race, was disqualified, or is a guest.') && !/<b class="fl">\+3<\/b>/.test(dq.innerHTML)); } }
+
+  // ---------- a race of teams (1.57.0) ----------
+  { put({ bonusFast: 1, bonusStart: 1 }); const tb = { dataset: { cpbox: 'T1' }, innerHTML: '', hidden: true };
+    const trow = (pos, tid, name, ds, ex) => ({ pos, driverId: '', carId: 'x', driverName: name, asTeam: true, teamId: tid, teamName: name, laps: ds.reduce((a, d) => a + d[1], 0), best: 4000 + pos, total: null, bestBy: ds[0][0], drivers: ds.map(([id, laps]) => ({ driverId: id, driverName: NAMES[id], laps })), ...(ex || {}) });
+    const teamRace = o => sess('T1', '2026-10-03T12:00:00.000Z', 0, 2, [trow(1, 'tm1', 'Foxes', [['d1', 6], ['d2', 4]]), trow(2, 'tm2', 'Arrows', [['d3', 5], ['d4', 5]], { best: 3900, bestBy: 'd4' })], o || {});
+    store.sessions = [teamRace()]; await champPanelsFor([tb]); const h = tb.innerHTML, c = h.replace(/>\s+</g, '><'), row = n => (c.match(new RegExp('<b>' + n + '</b>(?:<span class="muted">team</span>)?</td>(.*?)</tr>')) || [])[1] || '', mrow = n => (c.match(new RegExp('<span class="chmem">' + n + '</span>(.*?)</tr>')) || [])[1] || '';
+    say('a race of teams has a panel (it said "driven by teams, no points" before 1.57.0): the teams in the table, the drivers who drove under their team', !h.includes('driven by teams') && h.includes('Not awarded yet') && c.includes('<th>Driver or team</th>') && c.includes('<tr class="chteam"><td>1</td><td><b>Foxes</b><span class="muted">team</span></td>') && (c.match(/<tr class="chmember">/g) || []).length === 4 && c.includes('<tr class="chmember"><td></td><td><span class="chmem">Alex</span>'));
+    say('...the drivers show their laps: Alex 6 laps, Sam 4 laps, and the points of the team: Foxes 25 + 1 for starting = 26, and so does every driver who drove for it', mrow('Alex').includes('6 laps') && mrow('Sam').includes('4 laps') && /<b>26<\/b>/.test(row('Foxes')) && /<b>26<\/b>/.test(mrow('Alex')) && /<b>26<\/b>/.test(mrow('Sam')));
+    say('...the fastest lap is the one of Arrows, set by Lee: the bonus is in the row of the team and in the row of Lee, not in the row of Kim (Arrows 18 + 1 + 1 = 20, Kim 19, Lee 20)', row('Arrows').includes('<b class="fl">+1</b>') && mrow('Lee').includes('<b class="fl">+1</b>') && !mrow('Kim').includes('class="fl"') && /<b>20<\/b>/.test(row('Arrows')) && /<b>19<\/b>/.test(mrow('Kim')) && /<b>20<\/b>/.test(mrow('Lee')));
+    say('...the notes: what a race of teams gives, and the teams of this round', h.includes('A race of teams gives the team the points of its place (in the Teams standings, once) and every driver who drove for it the same points') && h.includes('Teams, this round: Foxes 26, Arrows 20.') && h.includes('Award these points'));
+    await cp(tb, 'award', 'T1'); await wait(40);
+    say('Award these points awards the race of teams like any race (the tag of the session says when), and the panel says so', !!store.sessions[0].champ.awarded && tb.innerHTML.includes('Points awarded') && tb.innerHTML.includes('Undo'));
+    await cp(tb, 'undo', 'T1'); await wait(40);
+    say('...Undo takes it out again', !store.sessions[0].champ.awarded && tb.innerHTML.includes('Award these points'));
+    put({ teamMode: 'none', teamRace: 'team' }); store.sessions = [teamRace()]; const tn = { dataset: { cpbox: 'T1' }, innerHTML: '', hidden: true }; await champPanelsFor([tn]);
+    { const cn = tn.innerHTML.replace(/>\s+</g, '><');
+      say('with no team standings, and drivers who get nothing from a race of teams: the team has its points and no total, the drivers are named without points, and the notes say so', cn.includes('This championship has no team standings') && cn.includes('The drivers get no points from it') && (cn.match(/<tr class="chmember">/g) || []).length === 4 && !/<tr class="chteam">.*?<b>25<\/b><\/td><td class="r"><b>25<\/b>/.test(cn)
+        && /<span class="chmem">Alex<\/span>.*?<\/tr>/.exec(cn)[0].includes('<td class="r"><span class="muted">–</span></td>') && (/<span class="chmem">Alex<\/span>.*?<\/tr>/.exec(cn)[0].match(/<b>–<\/b>/g) || []).length === 2 && !/<span class="chmem">Alex<\/span>.*?<\/tr>/.exec(cn)[0].includes('+')); }
+    put({ drops: 0 }); store.sessions = [teamRace({ awarded: true })]; run('champView.id = "ch1"; champView.which = "teams"'); run("state.tab = 'database'; state.sub = 'results'; state.resultsSub = 'champs'"); await run('render()'); await wait(120);
+    { const t = E('resbody').innerHTML;
+      say('the Teams standings have the team that raced as a team (Foxes 25 once, not 50), and say what a race of teams gives', t.indexOf('Foxes') < t.indexOf('Arrows') && /<b class="big">25<\/b>/.test(t) && /<b class="big">18<\/b>/.test(t) && !/<b class="big">50<\/b>/.test(t) && t.includes('A race of teams gives the team the points of its place')); }
+    run('champView.which = "drivers"'); await run('render()'); await wait(100);
+    { const t = E('resbody').innerHTML;
+      say('...the Drivers standings have both drivers of the team (Alex and Sam 25, Kim and Lee 18) with the same note', t.indexOf('Alex') < t.indexOf('Kim') && (t.match(/<b class="big">25<\/b>/g) || []).length === 2 && (t.match(/<b class="big">18<\/b>/g) || []).length === 2 && t.includes('A race of teams gives the team the points of its place')); }
+    run('champView.which = "rounds"'); await run('render()'); await wait(100);
+    say('...and the winner of the round is the team', E('resbody').innerHTML.includes('<b>Foxes</b>'));
+    store.sessions = [teamRace()]; run('champView.which = "drivers"'); await run('render()'); await wait(100);
+    say('a race of teams that is saved and not awarded is waiting, like any race (the page says so)', E('resbody').innerHTML.includes('1 race of this championship is saved but not awarded yet')); }
+  { const trow = (pos, tid, name, ds, ex) => ({ pos, driverId: '', carId: 'x', driverName: name, asTeam: true, teamId: tid, teamName: name, laps: ds.reduce((a, d) => a + d[1], 0), best: 4000 + pos, total: null, bestBy: ds[0][0], drivers: ds.map(([id, laps]) => ({ driverId: id, driverName: NAMES[id], laps })), ...(ex || {}) });
+    const rows2 = [trow(1, 'tm1', 'Foxes', [['d1', 6], ['d2', 4]]), trow(2, 'tm2', 'Arrows', [['d3', 5], ['d4', 5]], { best: 3900, bestBy: 'd4' })];
+    put({ bonusFast: 1, bonusFastTop: 1 }); store.sessions = [sess('T2', '2026-10-03T12:00:00.000Z', 0, 2, rows2, {})]; const nb = { dataset: { cpbox: 'T2' }, innerHTML: '', hidden: true }; await champPanelsFor([nb]);
+    { const c = nb.innerHTML.replace(/>\s+</g, '><'), arrows = (c.match(/<b>Arrows<\/b>(?:<span class="muted">team<\/span>)?<\/td>(.*?)<\/tr>/) || [])[1] || '';
+      say('a fastest lap of a team outside the places that get the bonus: the lap time is shown in the row of the team (grey), nobody gets the bonus, and a note names the driver and his team', arrows.includes('<span class="muted">3.900</span>') && !c.includes('class="fl"') && c.includes('The fastest lap (Lee of Arrows) gives no bonus')); }
+    put({ teamMin: 50 }); store.sessions = [sess('T3', '2026-10-03T12:00:00.000Z', 0, 2, [trow(1, 'tm1', 'Foxes', [['d1', 6], ['d2', 4]])], {})]; const sb = { dataset: { cpbox: 'T3' }, innerHTML: '', hidden: true }; await champPanelsFor([sb]);
+    { const c = sb.innerHTML.replace(/>\s+</g, '><'), sam = (c.match(/<span class="chmem">Sam<\/span>(.*?)<\/tr>/) || [])[1] || '', alex = (c.match(/<span class="chmem">Alex<\/span>(.*?)<\/tr>/) || [])[1] || '';
+      say('a driver who drove less than the minimum share of the laps: "too few" beside his laps, 0 points and no total; the driver who drove enough has his', sam.includes('4 laps, too few') && /<td class="r">0<\/td>/.test(sam) && !/<b>25<\/b>/.test(sam) && sam.includes('<b>–</b>') && /<b>25<\/b>/.test(alex) && c.includes('Sam drove less than 50% of the laps of the team and get no points.')); }
+    put({ bonusPole: 3 }); { const qs = sess('Q9', '2026-10-03T11:00:00.000Z', 0, 1, [rw(1, 'd1', 'Alex', 4000), rw(2, 'd3', 'Kim', 4100)], { type: 'qualifying' });
+      store.sessions = [qs, sess('T4', '2026-10-03T12:00:00.000Z', 0, 2, [trow(1, 'tm1', 'Foxes', [['d1', 6], ['d2', 4]], { dq: true }), trow(2, 'tm2', 'Arrows', [['d3', 5], ['d4', 5]])], {})]; const pb = { dataset: { cpbox: 'T4' }, innerHTML: '', hidden: true }; await champPanelsFor([pb]);
+      const c = pb.innerHTML.replace(/>\s+</g, '><');
+      say('the pole sitter\'s team was disqualified: the note names him and his team and says why nobody gets the pole bonus', c.includes('The pole bonus (Alex of Foxes) is not given: the team was disqualified or is a guest.') && !c.includes('class="fl">+3<') && c.includes('<td>DQ</td>')); }
+    const css = fs.readFileSync(R + 'renderer/styles.css', 'utf8');
+    say('1.57.0: the drivers under a team are indented and smaller, a team has a line above it, a guest driver is grey', /\.chpt tr\.chteam td\{border-top:1px solid var\(--line\)\}/.test(css) && /\.chpt tr\.chmember td\{font-size:\.92em/.test(css) && /\.chpt tr\.chmember \.chmem\{display:inline-block;padding-left:1\.2em;color:var\(--ink\)\}/.test(css) && /\.chpt tr\.chmember\.chguest \.chmem\{color:var\(--muted\)\}/.test(css)); }
 
   // ---------- Results and Records: Championships ----------
   { put(); store.sessions = [R1(true), R2(true)];

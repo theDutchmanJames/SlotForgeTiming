@@ -136,7 +136,7 @@ const withRule = (c, key, v) => C.setRule(c, key, v).rec;
   const pr = P.sessionResult(c, S(c, 0, 0, [R(1, 'a')]), null), qq = P.sessionResult(c, S(c, 0, 1, [R(1, 'a')]), null);
   ok('only a race gives points: a practice and a qualifying say what they are', !pr.ok && pr.reason === 'practice' && !qq.ok && qq.reason === 'qualifying');
   const tm = C.clean({ ...c, rounds: [{ name: 'x', sessions: [{ setup: 'se' }] }] }, true), teamsRace = S(tm, 0, 0, [{ pos: 1, driverId: '', driverName: 'Team A', asTeam: true, drivers: [{ driverId: 'a' }] }]);
-  ok('a race that was driven by teams (an Endurance Race) has no drivers to give points to', P.sessionResult(tm, teamsRace, null).reason === 'teams' && P.awardView(tm, teamsRace, [teamsRace], ctx).state === 'teams');
+  ok('a race that was driven by teams (an Endurance Race) is scored too since 1.57.0 (teamraces.test.js has the details): it is a race result and a race panel', P.sessionResult(tm, teamsRace, null).ok === true && P.awardView(tm, teamsRace, [teamsRace], ctx).state === 'race');
   ok('a session of a round that is not in the championship any more, or of another championship, gives nothing', P.sessionResult(c, { ...race(c, 0, raw), champ: { ...race(c, 0, raw).champ, roundId: 'gone' } }, null).reason === 'notfound' && P.sessionResult(c, { id: 'x', standings: [] }, null).reason === 'notfound'
     && P.sessionResult(c, { ...race(c, 0, raw), champ: { ...race(c, 0, raw).champ, id: 'other' } }, null).reason === 'notfound');
   ok('rows without a driver (a team row) are left out, the rest is scored', all(P.sessionResult(c, S(c, 0, 2, [R(1, 'a'), { pos: 2, driverId: '', driverName: 'Team', asTeam: false }, R(3, 'b')]), null)) === '25,18'); }
@@ -376,9 +376,9 @@ const withRule = (c, key, v) => C.setRule(c, key, v).rec;
 { // the changes written to a session: only the sessions that were awarded are touched
   const c = champ(), a = race(c, 0, ['a', 'b'], { awarded: false }), a2 = race(c, 0, ['b', 'a'], { awarded: true }), a3 = race(c, 0, ['a', 'b'], { awarded: false });
   ok('award: a race of the same session that was never awarded is not written again (only the awarded one loses its mark)', P.awardPatches([a, a2, a3], a, 'award', 'now').map(x => x.id).join() === a2.id + ',' + a.id); }
-{ // a race of teams is not waiting to be awarded
+{ // a race of teams waits to be awarded like any other race (since 1.57.0)
   const c = C.clean({ ...champ(), rounds: [{ name: 'x', sessions: [{ setup: 'se' }] }] }, true), team = S(c, 0, 0, [{ pos: 1, driverId: '', driverName: 'Team A', asTeam: true, drivers: [{ driverId: 'a' }] }], { awarded: false });
-  ok('a race that was driven by teams is not pending (it can not be scored)', C.driven(c, [team]).size === 1 && P.pendingOf(c, [team]).length === 0); }
+  ok('a race that was driven by teams is pending until it is awarded', C.driven(c, [team]).size === 1 && P.pendingOf(c, [team]).length === 1 && P.pendingOf(c, [{ ...team, champ: { ...team.champ, awarded: 'x' } }]).length === 0); }
 { // the table: a fastest lap bonus that was dropped is shown as dropped; a driver who joins later is "n/a" and the legend says so
   const c = withRule(withRule(champ(), 'drops', 1), 'bonusFast', 1), r1 = race(c, 0, [R(1, 'b', 9100), R(2, 'a', 8000), R(3, 'c', 9300), R(4, 'd', 9400)]), r2 = race(c, 1, [R(1, 'a', 9000), R(2, 'b', 8500), R(3, 'c', 9300), R(4, 'd', 9400)]);
   const t = P.tableOf(c, P.standings(c, [r1, r2], ctx), 'drivers'), arow = t.rows.find(r => r.cells[1].t === 'A');

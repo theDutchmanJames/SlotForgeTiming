@@ -1227,6 +1227,11 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .chpt th.r,.chpt td.r,.chtable th.r,.chtable td.r{text-align:right}
 .chpt tr.chout td,.chpt tr.chguest td{color:var(--muted)}
 .chpt tr.chguest td{font-style:italic}
+/* 1.57.0: a team that raced as a team, and the drivers who drove for it under it */
+.chpt tr.chteam td{border-top:1px solid var(--line)}
+.chpt tr.chmember td{font-size:.92em;padding-top:2px;padding-bottom:2px}
+.chpt tr.chmember .chmem{display:inline-block;padding-left:1.2em;color:var(--ink)}
+.chpt tr.chmember.chguest .chmem{color:var(--muted)}
 .chpt td.pos{color:#3ecf8e;font-weight:700}
 .chpt .fl,.chtable .fl,.chlegend .fl{color:var(--c-ch);font-weight:700}
 .chpnote{margin:0;font-size:13px;line-height:1.45}

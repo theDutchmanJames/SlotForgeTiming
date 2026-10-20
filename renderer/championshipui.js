@@ -116,9 +116,11 @@ function renderChampionshipEditor(box) {
       <h4>Teams, ties and sprints</h4>
       <div class="chfields"><div class="field"><label for="ch-p-teamMode">Team points in a race</label>${choose('teamMode', 'ch-p-teamMode', [['best', 'The best drivers of the team'], ['all', 'All drivers of the team'], ['none', 'No team standings']], 'Team points in a race')}</div>
         <div class="field"><label for="ch-p-teamBest">How many drivers of a team count</label><input type="number" step="1" min="1" max="${Champ.LIMITS.teamBest}" id="ch-p-teamBest" data-pf="rule:teamBest" value="${d.teamBest}"${d.teamMode === 'best' ? '' : ' disabled'}></div>
+        <div class="field"><label for="ch-p-teamRace">A race of teams (an Endurance Race, a heat race for teams) gives the drivers who drove for a team</label>${choose('teamRace', 'ch-p-teamRace', [['every', 'The points of the team: every driver who drove gets them'], ['split', 'A share of the points, by the laps each one drove'], ['team', 'Nothing: only the team gets points']], 'What a race of teams gives the drivers')}</div>
+        <div class="field"><label for="ch-p-teamMin">A driver needs at least this share of the laps of his team (percent, 0 = no minimum)</label><input type="number" step="1" min="0" max="${Champ.LIMITS.teamMin}" id="ch-p-teamMin" data-pf="rule:teamMin" value="${d.teamMin}"${d.teamRace === 'team' ? ' disabled' : ''}></div>
         <div class="field"><label for="ch-p-tie">A tie in the standings is decided by</label>${choose('tie', 'ch-p-tie', [['wins', 'Most wins, then most 2nd places, and so on'], ['last', 'The best result of the last round'], ['qual', 'The best qualifying results (most poles, then most 2nd places, and so on)']], 'A tie in the standings is decided by')}</div>
         <div class="field"><label for="ch-p-sprintRound">A race at 50% (a sprint) gives half of the points, rounded</label>${choose('sprintRound', 'ch-p-sprintRound', [['nearest', 'To the nearest point (12.5 becomes 13)'], ['up', 'Up (12.2 becomes 13)'], ['down', 'Down (12.8 becomes 12)'], ['none', 'Not rounded (12.5 stays 12.5)']], 'Rounding of a sprint')}</div></div>
-      <p class="hint2">When two drivers or teams are still level, the order of the roster decides.</p>`;
+      <p class="hint2">A team that races as a team always gets the points of its place once, in the Teams standings. Fastest lap: the team and the driver who set the lap. Pole: the team of the pole sitter, and him if he drove. Starting the race: the team and every driver who drove. When two drivers or teams are still level, the order of the roster decides.</p>`;
   };
 
   box.innerHTML = `<div class="ed-bar ch-top"><label>Name <input type="text" id="ch-name" value="${esc(d.name)}" maxlength="${Champ.LIMITS.name}"></label>
@@ -204,9 +206,9 @@ function renderChampionshipEditor(box) {
   };
   // the points: a place, a bonus, a rule. It is kept as soon as it is changed (the page is not drawn again; what depends on it is changed where it is)
   const pointsChanged = () => {
-    const pre = Champ.presetOf(d), dr = $('ch-dropsaid'), tb = $('ch-p-teamBest');
+    const pre = Champ.presetOf(d), dr = $('ch-dropsaid'), tb = $('ch-p-teamBest'), tm = $('ch-p-teamMin');
     box.querySelectorAll('[data-preset]').forEach(b => { if (b.classList) b.classList.toggle('on', b.dataset.preset === pre); });
-    if (dr) dr.textContent = dropSaid(); if (tb) tb.disabled = d.teamMode !== 'best';
+    if (dr) dr.textContent = dropSaid(); if (tb) tb.disabled = d.teamMode !== 'best'; if (tm) tm.disabled = d.teamRace === 'team';
   };
   box.onchange = e => {
     const t = e.target, ds = t.dataset || {};
@@ -246,20 +248,28 @@ function champPanelHtml(c, v, s) {
   if (v.state === 'practice') return wrap(head(title), note('Practice: nothing to award. The results are saved as always.'));
   if (v.state === 'qualifying') return wrap(head(title), note(`Qualifying: the grid for the race of this round.${c.bonusPole > 0 ? (v.pole ? ` Pole position: ${esc(v.pole)}. ${F(c.bonusPole)} bonus ${c.bonusPole === 1 ? 'point' : 'points'} if he starts the race.` : '') : ' This championship has no bonus for pole position.'}`));
   if (v.state === 'noshare') return wrap(head(title), note('This race counts for no points (Race Setup > Championships, the points of the session). It stays in the results.'));
-  if (v.state === 'teams') return wrap(head(title), note('This race was driven by teams. The points of a championship are for drivers, so it gives no points. It stays in the results.'));
-  const cols = [c.bonusFast > 0 && 'fast', c.bonusPole > 0 && 'pole', c.bonusStart > 0 && 'start'].filter(Boolean), sprint = v.share !== 100;
+  const cols = [c.bonusFast > 0 && 'fast', c.bonusPole > 0 && 'pole', c.bonusStart > 0 && 'start'].filter(Boolean), sprint = v.share !== 100, anyTeam = v.rows.some(x => x.kind === 'team');
   const lapText = ms => esc(RaceEngine.fmtTime(ms));
-  const rowHtml = x => `<tr class="${x.guest ? 'chguest' : x.out ? 'chout' : ''}"><td>${x.guest ? 'guest' : x.out ? esc(x.outText) : x.place}</td><td><b>${esc(x.name)}</b></td>
-    <td class="r">${F(sprint ? x.pts : x.base)}</td>
-    ${cols.includes('fast') ? `<td class="r">${x.fastest ? `<b class="fl">+${F(x.fastest)}</b> <span class="muted">${lapText(x.best)}</span>` : v.fastest && v.fastest.driverId === x.driverId ? `<span class="muted">${lapText(x.best)}</span>` : '<span class="muted">–</span>'}</td>` : ''}
-    ${cols.includes('pole') ? `<td class="r">${x.pole ? `<b class="fl">+${F(x.pole)}</b>` : '<span class="muted">–</span>'}</td>` : ''}
-    ${cols.includes('start') ? `<td class="r">${x.start ? `+${F(x.start)}` : '<span class="muted">–</span>'}</td>` : ''}
-    <td class="r"><b>${x.guest ? '–' : F(x.round)}</b></td><td class="r"><b>${x.total === null ? '–' : F(x.total)}</b></td><td class="r ${x.change > 0 ? 'pos' : 'muted'}">${x.total === null ? '' : esc(ChampPts.signed(x.change))}</td></tr>`;
-  const table = `<div class="wrap"><table class="fields chpt"><thead><tr><th>Pos</th><th>Driver</th><th class="r">Race points${sprint ? ` (at ${v.share}%)` : ''}</th>${cols.includes('fast') ? '<th class="r">Fastest lap</th>' : ''}${cols.includes('pole') ? '<th class="r">Pole</th>' : ''}${cols.includes('start') ? '<th class="r">Start</th>' : ''}<th class="r">This round</th><th class="r">Total now</th><th class="r">Change</th></tr></thead><tbody>${v.rows.map(rowHtml).join('')}</tbody></table></div>`;
+  const dash = '<span class="muted">–</span>';
+  // a line of the table: a driver, a team that raced as a team (1.57.0), or a driver under the team he drove for
+  const lineHtml = (x, member) => {
+    const nopts = member && (x.noPoints || x.short), cls = x.guest ? 'chguest' : member ? 'chmember' : x.out ? 'chout' : x.kind === 'team' ? 'chteam' : '';
+    const first = member ? '' : x.guest ? 'guest' : x.out ? esc(x.outText) : x.place;
+    const who = member ? `<span class="chmem">${esc(x.name)}</span> <span class="muted">${x.laps} ${x.laps === 1 ? 'lap' : 'laps'}${x.short ? ', too few' : ''}</span>` : `<b>${esc(x.name)}</b>${x.kind === 'team' ? ' <span class="muted">team</span>' : ''}`;
+    const fast = member ? (x.fastest ? `<b class="fl">+${F(x.fastest)}</b>` : dash) : x.fastest ? `<b class="fl">+${F(x.fastest)}</b> <span class="muted">${lapText(x.best)}</span>` : v.fastest && v.fastest.shown === x.shown ? `<span class="muted">${lapText(x.best)}</span>` : dash;
+    return `<tr class="${cls}"><td>${first}</td><td>${who}</td>
+    <td class="r">${nopts ? (x.noPoints ? dash : '0') : F(sprint ? x.pts : x.base)}</td>
+    ${cols.includes('fast') ? `<td class="r">${nopts ? dash : fast}</td>` : ''}
+    ${cols.includes('pole') ? `<td class="r">${!nopts && x.pole ? `<b class="fl">+${F(x.pole)}</b>` : dash}</td>` : ''}
+    ${cols.includes('start') ? `<td class="r">${!nopts && x.start ? `+${F(x.start)}` : dash}</td>` : ''}
+    <td class="r"><b>${x.guest || nopts || x.total === null ? '–' : F(x.round)}</b></td><td class="r"><b>${x.guest || nopts || x.total === null ? '–' : F(x.total)}</b></td><td class="r ${x.change > 0 ? 'pos' : 'muted'}">${x.guest || nopts || x.total === null ? '' : esc(ChampPts.signed(x.change))}</td></tr>`;
+  };
+  const rowHtml = x => lineHtml(x, false) + (x.members || []).map(m => lineHtml(m, true)).join('');
+  const table = `<div class="wrap"><table class="fields chpt"><thead><tr><th>Pos</th><th>${anyTeam ? 'Driver or team' : 'Driver'}</th><th class="r">Race points${sprint ? ` (at ${v.share}%)` : ''}</th>${cols.includes('fast') ? '<th class="r">Fastest lap</th>' : ''}${cols.includes('pole') ? '<th class="r">Pole</th>' : ''}${cols.includes('start') ? '<th class="r">Start</th>' : ''}<th class="r">This round</th><th class="r">Total now</th><th class="r">Change</th></tr></thead><tbody>${v.rows.map(rowHtml).join('')}</tbody></table></div>`;
   const notes = [...v.notes.map(esc)];
   if (sprint) notes.push(`This race counts at ${v.share}%: the points of the place and the bonuses are halved together, ${{ nearest: 'rounded to the nearest point', up: 'rounded up', down: 'rounded down', none: 'not rounded' }[c.sprintRound]}.`);
-  if (c.bonusFast > 0 && v.fastest && !v.fastest.got) notes.push(`The fastest lap (${esc(v.fastest.name)}) gives no bonus: it is outside the first ${c.bonusFastTop} places, or by a guest.`);
-  if (c.bonusPole > 0) notes.push(!v.pole ? 'No qualifying session was driven in this round (or nobody set a lap), so nobody gets the pole bonus.' : v.pole.got ? '' : `The pole bonus (${esc(v.pole.name)}) is not given: he did not start the race, was disqualified, or is a guest.`);
+  if (c.bonusFast > 0 && v.fastest && !v.fastest.got) notes.push(`The fastest lap (${esc(v.fastest.name)}${v.fastest.team && v.fastest.team !== v.fastest.name ? ' of ' + esc(v.fastest.team) : ''}) gives no bonus: it is outside the first ${c.bonusFastTop} places, or by a guest.`);
+  if (c.bonusPole > 0) notes.push(!v.pole ? 'No qualifying session was driven in this round (or nobody set a lap), so nobody gets the pole bonus.' : v.pole.got ? '' : v.pole.team ? `The pole bonus (${esc(v.pole.name)} of ${esc(v.pole.team)}) is not given: the team was disqualified or is a guest.` : `The pole bonus (${esc(v.pole.name)}) is not given: he did not start the race, was disqualified, or is a guest.`);
   if (v.teams && v.teams.length) notes.push(`Teams, this round: ${v.teams.map(t => `${esc(t.name)} ${F(t.pts)}`).join(', ')}.`);
   const lines = notes.filter(Boolean).map(t => `<div>${t}</div>`).join('');
   if (v.awarded) {
