@@ -2857,3 +2857,16 @@ Good to know:
 - The card keeps everything it had: the qualifying winner's lane choice, the heat plan, the rotation text, **A race is running**. Only the look of the rows, the title and the bottom changed.
 - The Help text of the Home tab and of Championships says where things are now. The pictures and the boards of the design are in `docs/ui-reference/start-race/`.
 - Tested: a new test file `tests/startcard.test.js` (40 checks) and the Home checks of seven other test files that pinned the old markup; 57 deliberate breakages of the change were tried and all were caught in the end (4 guards that could never be false were removed and one loose style check was tightened). The card was looked at in a real browser (dark, light, a narrow window, a championship chosen, heats, teams, rotation, Time Tokens, Endurance, a driver twice, a lane not ready). Not verified in the full Electron window or on the Raspberry Pi: please look at Home on the Pi (the card on a small screen) and on Windows, with a race setup of two lanes and one of four.
+
+## What to try (1.58.1): the list under the name of the race setup is dark again
+
+On Windows the list that opens when you click the name of the race setup in **Start a race** was white, with the names in a pale colour that was hard to read. Now the list has the colours of the card (dark in the dark themes, light in the light themes), like the lists of the driver, the car and the championship.
+
+1. Open **Home** and click the **name of the race setup** (the large title of **Start a race**). The list is dark, with the names readable; the one that is chosen is marked.
+2. Try it in a light theme as well (App Settings > App Theme): the list is light with dark names.
+3. Click the driver, the car and (with a championship) the championship choice: they were dark before and still are.
+
+Good to know:
+- The other cards of Home keep the look they have; you told me you do not want the new header on them, so nothing is planned there.
+- Chromium draws the opened list by itself, so I could check the colours the options have (in a dark and a light theme) but not photograph the open list here. Please look at it on Windows and on the Pi (Linux draws that list in the same way).
+- Tested: one check more in `tests/startcard.test.js` (41 now); 6 deliberate breakages of the rule were tried and all were caught.

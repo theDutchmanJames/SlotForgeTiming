@@ -951,6 +951,8 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .hs-title{position:relative;display:inline-flex;align-items:center;margin:1px 0 7px;max-width:100%}
 .hs-title select{appearance:none;-webkit-appearance:none;font:inherit;font-size:21px;font-weight:700;line-height:1.25;color:var(--ink);background:transparent;border:0;border-bottom:1px dashed var(--line);border-radius:0;padding:1px 30px 2px 0;cursor:pointer;min-width:0;max-width:100%;text-overflow:ellipsis}
 .hs-title:hover select{border-bottom-color:var(--muted)}
+/* the list that opens under the title: a select with no background of its own gets a white list in Chromium, with the light text of the theme on it. The options carry the colours of the card (1.58.1). */
+.hs-title select option,.hs-title select optgroup,.hs-sel select option,.hs-sel select optgroup{background:var(--panel);color:var(--ink)}
 .hs-title .hs-chev{right:4px}
 .hs-chips{display:flex;flex-wrap:wrap;gap:6px}
 .hs-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 11px;border-radius:999px;background:var(--bg);border:1px solid var(--line);font-size:13px;color:var(--muted);line-height:1.4}
