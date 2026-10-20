@@ -342,9 +342,10 @@ async function render() {
   }
   showRace(state.tab === 'race');
   const pick = id => {
-    if (id === 'live') { api.liveOpen(); return; } // Live Race is the second screen: it opens its own window, also during a race
+    if (id === 'live') { if (typeof PerfUI !== 'undefined') PerfUI.mark('Live Race tab pressed'); api.liveOpen(); return; } // Live Race is the second screen: it opens its own window, also during a race
     if (typeof editorDirty === 'function' && editorDirty() && !confirm('Discard your unsaved layout changes?')) return;
     if (typeof editorLeave === 'function') editorLeave();
+    if (typeof PerfUI !== 'undefined') PerfUI.mark(`Tab: ${id}`); // (for the Performance report, 1.60.1: what was on the screen when the figures changed)
     state.tab = id; render();
   };
   renderTabs(tabsEl, tabsNow(), state.tab, pick, TAB_ICONS);

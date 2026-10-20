@@ -145,5 +145,35 @@ for (const [name, K] of [['button', HTMLButtonElement_], ['input', HTMLInputElem
   say('back to the first colours: they are written again (the last colours are kept, not the first)', styleCalls === 4);
   delete globalThis.Timing; delete globalThis.Widgets; delete globalThis.Frame; }
 
+// ---- the painter tells how long each part of a widget took (1.60.1: for the Performance report; nothing is measured when nobody asks) ----
+{ const LiveCanvas = require(R + 'renderer/canvas.js');
+  let T = 0, out = { html: '1', color: '', bg: '' }, nowCalls = 0;
+  const tm = { now: () => { nowCalls++; return T; }, adds: [], add: (...a) => tm.adds.push(a) };
+  globalThis.Timing = { content: () => { T += 5; if (out.boom) throw new Error('x'); return out; } };
+  globalThis.Widgets = { U: 1000 };
+  globalThis.Frame = { style: () => { T += 2; return {}; }, solidity: () => 1 };
+  globalThis.Rows = { fitText: () => { T += 11; } };
+  globalThis.WxW = { fit: () => { T += 13; } };
+  const mkNode = type => { const style = new Proxy({}, { set: (t, k, v) => { t[k] = v; return true; }, get: (t, k) => (k === 'setProperty' ? (a, b) => { t[a] = b; } : t[k]) });
+    return { w: { type }, layout: {}, el: { style }, val: { _h: '', set innerHTML(v) { T += 7; this._h = v; }, get innerHTML() { return this._h; }, querySelectorAll: () => [] }, base: {}, last: null }; };
+  const n = mkNode('clock');
+  LiveCanvas.paint([n], {}, tm);
+  say('with a timer: a widget that is drawn says its type and the three times: text 5, page 7 + 2 (the colours), fit 0', tm.adds.length === 1 && tm.adds[0][0] === 'clock' && tm.adds[0][1] === 5 && tm.adds[0][2] === 9 && tm.adds[0][3] === 0);
+  tm.adds.length = 0; LiveCanvas.paint([n], {}, tm);
+  say('...a widget whose text did not change says only the time of making its text (nothing was written, nothing fitted)', tm.adds.length === 1 && tm.adds[0][1] === 5 && tm.adds[0][2] === 0 && tm.adds[0][3] === 0);
+  tm.adds.length = 0; out = { html: '<div class="rrows">x</div>', color: '', bg: '' }; LiveCanvas.paint([n], {}, tm);
+  say('...a leaderboard of row designs: the fitting of its text is counted as fit (11), apart from the page (7)', tm.adds[0][1] === 5 && tm.adds[0][2] === 7 && tm.adds[0][3] === 11);
+  tm.adds.length = 0; out = { html: '<div class="wxw">x</div>', color: '#fff', bg: '' }; LiveCanvas.paint([n], {}, tm);
+  say('...a weather widget: its fit (13) is counted as fit, and the new colours (2) as page: 7 + 2', tm.adds[0][1] === 5 && tm.adds[0][2] === 9 && tm.adds[0][3] === 13);
+  tm.adds.length = 0; out = { boom: true }; const b = mkNode('lastlap'); b.failed = true; LiveCanvas.paint([b], {}, tm);
+  say('...a widget that fails says nothing (and the others go on)', tm.adds.length === 0);
+  out = { html: '1', color: '', bg: '' }; tm.adds.length = 0; LiveCanvas.paint([mkNode('a'), mkNode('b'), mkNode('c')], {}, tm);
+  say('...every widget says its own type, in order', tm.adds.map(a => a[0]).join() === 'a,b,c');
+  nowCalls = 0; LiveCanvas.paint([mkNode('d')], {}); LiveCanvas.paint([mkNode('d')], {}, null); LiveCanvas.paint([mkNode('d')], {}, undefined);
+  say('without a timer nothing is measured (the clock is not read at all)', nowCalls === 0);
+  const n2 = mkNode('e'); LiveCanvas.paint([n2], {}); LiveCanvas.paint([n2], {}, tm);
+  say('...and the result on the page is the same with or without the timer', n2.val.innerHTML === '1');
+  delete globalThis.Timing; delete globalThis.Widgets; delete globalThis.Frame; delete globalThis.Rows; delete globalThis.WxW; }
+
 console.log(fails ? `\n${fails} FAILED` : '\nquiet PASSED');
 process.exit(fails ? 1 : 0);

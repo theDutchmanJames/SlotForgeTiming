@@ -1,7 +1,7 @@
 // 1.60.0: what the core of the app tells about the computer and the app (perfstats.js), with the things it asks given to it: the processes, the graphics, the screen, the computer,
 // the processor's heat and speed, how long the core was stuck, the race save. And the whole way to the line: what it tells, made safe by renderer/perf.js, as a report.
 const fs = require('fs'), path = require('path');
-const { createCollector, STEP, KEEP, IDLE_STOP } = require('../perfstats.js');
+const { createCollector, STEP, KEEP, IDLE_STOP, STALLS_KEEP } = require('../perfstats.js');
 const Perf = require('../renderer/perf.js');
 let fails = 0;
 const ok = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
@@ -108,6 +108,71 @@ function deps(over = {}) {
 
   { const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8'), pre = fs.readFileSync(path.join(__dirname, '..', 'preload.js'), 'utf8'), web = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'webapi.js'), 'utf8');
     ok('main.js answers "perf:stats" from the collector (made when the database is there), the preload script and the browser version have perfStats', /createCollector\(\{ app, screen, os, process, db,/.test(main) && main.includes("ipcMain.handle('perf:stats', () => perf.collect())") && pre.includes("perfStats: () => call('perf:stats')") && /perfStats: async \(\) => null/.test(web)); }
+
+  // ---- 1.60.1: the stalls with their clock time, the marks, the windows ----
+  { const { d, clock } = deps(), C = createCollector(d);
+    await C.collect(); // (somebody asks: it looks)
+    clock.t += 100; C.sample(); clock.t += 199; C.sample(); clock.t += 200; C.sample(); clock.t += 1568; C.sample();
+    const a = await C.collect();
+    ok('a look that came 99 ms late is not written down; 100 ms late is, and 1468 ms late is, each with the clock time of the look', a.stalls.length === 2 && a.stalls[0].ms === 100 && a.stalls[0].at === 1000499 && a.stalls[1].ms === 1468 && a.stalls[1].at === 1002067); }
+  { const x = deps(), K = createCollector(x.d); await K.collect(); x.clock.t += 199; K.sample();
+    const r = await K.collect();
+    ok('a look that was 99 ms late (199 ms after the last) is no stall', r.stalls.length === 0);
+    x.clock.t += 200; K.sample(); const r2 = await K.collect();
+    ok('...and one that was exactly 100 ms late is (the smallest stall that is written down)', r2.stalls.length === 1 && r2.stalls[0].ms === 100); }
+  { const x = deps(), K = createCollector(x.d); await K.collect();
+    for (let i = 0; i < 40; i++) { x.clock.t += 100 + 100 + i; K.sample(); K.touch(); }
+    const r = await K.collect();
+    ok('at most the last 10 stalls are given (of 40 that were written down: 100 + i ms, the last ones)', r.stalls.length === 10 && r.stalls[9].ms === 139 && r.stalls[0].ms === 130);
+    r.stalls[0].ms = -5; const r2 = await K.collect();
+    ok('...they are copies', r2.stalls[0].ms === 130);
+    ok('...the collector keeps 10 (STALLS_KEEP), not more', STALLS_KEEP === 10 && require('../perfstats.js').STALL_MIN === 100); }
+  { for (const n of [10, 11]) { const x = deps(), K = createCollector(x.d); await K.collect();
+      for (let i = 0; i < n; i++) { x.clock.t += 100 + 100 + i; K.sample(); K.touch(); }
+      const r = await K.collect();
+      ok(`${n} stalls written down: all ten of them are given when there are ten, the last ten when there are eleven`, r.stalls.length === 10 && r.stalls[9].ms === 100 + n - 1 && r.stalls[0].ms === 100 + n - 10);
+      const y = deps(), L = createCollector(y.d); for (let i = 0; i < n; i++) L.mark('m' + i);
+      const c = await L.collect();
+      ok(`...and the same for ${n} marks`, c.marks.length === 10 && c.marks[9].text === 'm' + (n - 1) && c.marks[0].text === 'm' + (n - 10)); } }
+  { const x = deps(), K = createCollector(x.d);
+    K.mark('Live Race window opened (1460 ms in the core)');
+    ok('a mark is kept when nobody is looking (no timer is started for it)', K.running() === false && x.timers.length === 0);
+    const a = await K.collect();
+    ok('...and is given with the clock time of the mark', a.marks.length === 1 && a.marks[0].text === 'Live Race window opened (1460 ms in the core)' && a.marks[0].at === 1000000);
+    K.mark(''); K.mark(null); K.mark(5); K.mark(undefined); K.mark({}); K.mark('y'.repeat(300));
+    const b = await K.collect();
+    ok('...a mark that is not text, or empty, is left out; a long one is cut at 100', b.marks.length === 2 && b.marks[1].text.length === 100);
+    for (let i = 0; i < 50; i++) K.mark('m' + i);
+    const c = await K.collect();
+    ok('...at most the last 10 are given', c.marks.length === 10 && c.marks[9].text === 'm49' && c.marks[0].text === 'm40');
+    c.marks[0].text = 'changed';
+    ok('...as copies', (await K.collect()).marks[0].text === 'm40');
+    ok('...and 10 are kept', require('../perfstats.js').MARKS_KEEP === 10); }
+  { const { d } = deps(), C = createCollector(d), a = await C.collect();
+    ok('the processes come with their number (so a window can be given its own figures)', a.metrics.every(m => typeof m.pid === 'number' || m.pid === undefined) && a.metrics.length === 3); }
+  { const calls = [];
+    const { d } = deps({ windows: () => { calls.push(1); return [{ title: 'SlotForge Timing', pid: 11, visible: true, minimized: false, focused: true, live: false }, { title: 'Live Race', pid: 12, visible: true, minimized: false, focused: false, live: true }]; } });
+    const a = await createCollector(d).collect();
+    ok('the windows are asked of the app each time the core is asked', a.windows.length === 2 && a.windows[1].live === true && a.windows[0].title === 'SlotForge Timing' && calls.length === 1);
+    const { d: d2 } = deps({ windows: () => { throw new Error('gone'); } });
+    ok('...a window list that throws is an empty list (the rest of the answer is still given)', (await createCollector(d2).collect()).windows.length === 0 && (await createCollector(d2).collect()).os.cpus === 4);
+    const { d: d3 } = deps({ windows: () => null });
+    ok('...a list that is nothing is an empty list', (await createCollector(d3).collect()).windows.length === 0);
+    const { d: d4 } = deps();
+    ok('...an app that has no list of windows gives an empty list', (await createCollector(d4).collect()).windows.length === 0);
+    const { d: d5 } = deps({ windows: () => Array.from({ length: 20 }, (_, i) => ({ title: 'w' + i, pid: i })) });
+    ok('...at most 8 windows are given', (await createCollector(d5).collect()).windows.length === 8); }
+  { // the whole way: a stall, a mark and two windows, made safe and put in a report
+    const px = 21, { d, clock } = deps({ app: { getAppMetrics: () => [{ type: 'Tab', pid: 11, cpu: { percentCPUUsage: 15 }, memory: { workingSetSize: 307200 } }, { type: 'Tab', pid: 12, cpu: { percentCPUUsage: 25 }, memory: { workingSetSize: 614400 } }], getGPUFeatureStatus: () => ({ gpu_compositing: 'enabled_on', rasterization: 'enabled_on' }), getGPUInfo: async () => ({}) },
+      windows: () => [{ title: 'SlotForge Timing', pid: 11, visible: true }, { title: 'Live Race', pid: 12, live: true, visible: true }] });
+    const C = createCollector(d); await C.collect(); C.mark('Live Race window opened (1460 ms in the core)'); clock.t += 1568; C.sample();
+    const m = Perf.cleanMain(await C.collect()), rep = Perf.report(null, m, {});
+    ok('a stall, a mark and two windows come through the core, made safe, into the report', m.windows[1].cpu === 25 && m.windows[1].memMB === 600 && m.windows[0].memMB === 300 && /was stuck for 1468 ms at \d\d:\d\d:\d\d/.test(rep) && rep.includes('Live Race window opened (1460 ms in the core)') && rep.includes('Windows (2 open):') && rep.includes('The Live Race window is open')); }
+  { const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
+    ok('main.js gives the collector the list of windows (title, process, shown, minimized, in front, and which one is the Live Race window)', /windows: \(\) => BrowserWindow\.getAllWindows\(\)\.filter\(w => !w\.isDestroyed\(\)\)\.map\(w => \{ try \{ return \{ title: w\.getTitle\(\), pid: w\.webContents\.getOSProcessId\(\), visible: w\.isVisible\(\), minimized: w\.isMinimized\(\), focused: w\.isFocused\(\), live: w === liveWin \}/.test(main));
+    ok('...tells it when the Live Race window opened and how long that took in the core, and when it closed', /const opened = Date\.now\(\);/.test(main) && /perfCollector\.mark\(`Live Race window opened \(\$\{Date\.now\(\) - opened\} ms in the core\)`\)/.test(main) && /perfCollector\.mark\('Live Race window closed'\)/.test(main));
+    ok('...the collector is the one that answers "perf:stats" and is the one the window opening tells', /const perf = perfCollector = require\('\.\/perfstats'\)\.createCollector\(/.test(main) && /let perfCollector = null;/.test(main));
+    ok('...the time is taken before the window is made and the mark is written after it is there', main.indexOf('const opened = Date.now();') < main.indexOf('liveWin = new BrowserWindow(') && main.indexOf('liveWin = new BrowserWindow(') < main.indexOf('perfCollector.mark(`Live Race window opened')); }
 
   console.log(fails ? fails + ' PERFSTATS TESTS FAILED' : 'ALL PERFSTATS TESTS PASSED'); process.exit(fails ? 1 : 0);
 })();

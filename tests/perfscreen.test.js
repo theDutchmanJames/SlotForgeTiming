@@ -9,7 +9,7 @@ const mk = () => new Proxy({ innerHTML: '', style: {}, dataset: {}, hidden: fals
   { get: (t, k) => (k in t ? t[k] : () => mk()), set: (t, k, v) => { t[k] = v; return true; } });
 const els = {}; const copied = [];
 const iv = new Set(), raf = { calls: 0, cancelled: 0, last: null }; // (the timers that are running, and the frames the page asked for)
-class PO { constructor(cb) { PO.last = this; this.cb = cb; this.observed = null; this.disconnected = false; } observe(o) { this.observed = o; } disconnect() { this.disconnected = true; } } // (the observer of long tasks)
+class PO { constructor(cb) { PO.last = this; (PO.all = PO.all || []).push(this); this.cb = cb; this.observed = null; this.disconnected = false; } observe(o) { this.observed = o; } disconnect() { this.disconnected = true; } } // (the observer of long tasks)
 const keyListeners = new Set(); const document = { addEventListener(t, f) { if (t === 'keydown') keyListeners.add(f); }, removeEventListener(t, f) { if (t === 'keydown') keyListeners.delete(f); }, querySelector: () => mk(), querySelectorAll: () => [mk(), mk(), mk()],
   getElementById: id => els[id] || (els[id] = mk()), documentElement: { dataset: {}, style: { setProperty() {} } }, body: { contains: () => true }, createElement: () => mk() };
 const store = {
@@ -169,6 +169,96 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
     const n0 = iv.size; run('live.shown()'); run('live.shown()'); run('live.shown()');
     say('showing the race screen again does not make another line: still one watcher and one timer', P().watching() === 1 && iv.size === n0);
     run('live.perfStop()'); run('live.perfStop = null'); }
+
+  // ---------- 1.60.1: where the time goes, the marks, the worst of the race ----------
+  api.perfStats = async () => ({ at: 1, metrics: [{ type: 'Tab', pid: 11, cpu: 14, memMB: 300 }], windows: [{ title: 'SlotForge Timing', pid: 11, visible: true }], stalls: [{ at: 1760970000000, ms: 1468 }], marks: [{ at: 1760970000500, text: 'Live Race window opened (1460 ms in the core)' }], lag: { max10: 3 }, save: { writes: 1, lastMs: 2 } });
+  { P().watch()(); // a clean start
+    say('nobody looks: there are no timers for the parts of an update and for the widgets (nothing is measured)', P().phases() === null && P().widgetTimer() === null);
+    const u = P().watch(), p = P().phases(), wt = P().widgetTimer();
+    say('somebody looks: both are there', typeof p === 'function' && !!wt && typeof wt.now === 'function' && typeof wt.add === 'function' && typeof wt.now() === 'number');
+    P().noteUpdate(10); p('state'); p('widgets'); wt.add('clock', 1, 2, 3); wt.add('clock', 1, 2, 3);
+    const s = P().monitor().snapshot();
+    say('...what they are told is in the figures: the parts by name and the widgets with their three times', s.parts.map(x => x.name).sort().join() === 'state,widgets' && s.parts.every(x => x.avg >= 0) && s.widgets.length === 1 && s.widgets[0].type === 'clock' && s.widgets[0].draw === 2 && s.widgets[0].write === 4 && s.widgets[0].fit === 6 && s.widgets[0].count === 2);
+    const p2 = P().phases(); p2('a');
+    say('...each timer of phases() counts from its own start (a second one does not add the time of the first)', P().monitor().snapshot().parts.some(x => x.name === 'a'));
+    u(); say('...and when the last one stops looking they are gone again', P().phases() === null && P().widgetTimer() === null);
+    P().noteUpdate(5); say('...a widget told by an old timer after that is still harmless', (() => { try { wt.add('late', 1, 1, 1); return true; } catch (x) { return false; } })()); }
+
+  { const u = P().watch(); P().noteUpdate(1);
+    const spin = ms => { const t0 = performance.now(); while (performance.now() - t0 < ms); };
+    const p = P().phases(); spin(40); p('first'); spin(40); p('second');
+    const pr = P().monitor().snapshot().parts, f = pr.find(x => x.name === 'first'), s = pr.find(x => x.name === 'second');
+    say('the time of a part is the time since the call before it (40 ms of waiting, then 40 ms): the first part about 40 ms (not the time since the page started), the second about 40 ms (not 80)', !!f && !!s && f.avg >= 40 && f.avg < 70 && s.avg >= 40 && s.avg < 70);
+    u(); }
+
+  { P().watch()();
+    P().mark('Tab: settings'); P().mark(''); P().mark(null);
+    const m0 = P().monitor().snapshot();
+    say('a mark is kept (the nothing and the empty are not)', m0.marks.length >= 1 && m0.marks[m0.marks.length - 1].text === 'Tab: settings' && m0.marks.every(x => x.text));
+    P().raceStarted(); const m1 = P().monitor().snapshot();
+    say('a race that starts: a mark "Race started", and the worst figures and the rows begin', m1.marks[m1.marks.length - 1].text === 'Race started' && m1.race !== null && m1.race.update === 0 && m1.race.seconds === 0);
+    say('...the clock time of a mark is the wall clock (about now)', Math.abs(m1.marks[m1.marks.length - 1].at - Date.now()) < 2000); }
+
+  // the browser's own account of slow frames (not in every browser)
+  { PO.supportedEntryTypes = ['longtask', 'long-animation-frame']; PO.all = [];
+    const u = P().watch(), two = PO.all.slice();
+    say('where the browser can tell it, a second observer is made for the long animation frames (the other one stays for the long tasks)', two.length === 2 && two[0].observed.entryTypes[0] === 'longtask' && two[1].observed.type === 'long-animation-frame');
+    two[1].cb({ getEntries: () => [{ duration: 120, startTime: performance.now() - 120, renderStart: performance.now() - 50, scripts: [{ duration: 60, forcedStyleAndLayoutDuration: 6, sourceFunctionName: 'update', sourceURL: 'file:///x/race.js' }] }, { duration: 'x' }, null] });
+    const l = P().monitor().snapshot().loaf;
+    say('...a slow frame it tells about is counted with what it says (the rubbish is not)', l && l.count === 1 && l.avg === 120 && l.script === 60 && l.forced === 6 && l.top[0].name === 'update race.js');
+    u(); say('...when nobody looks any more both are let go', two[0].disconnected === true && two[1].disconnected === true);
+    const u2 = P().watch(); say('...and a new look makes new ones', PO.all.length === 4 && PO.all[3].disconnected === false); u2();
+    PO.all = []; PO.supportedEntryTypes = ['longtask'];
+    const u3 = P().watch(); say('a browser without that kind of entry gets no second observer', PO.all.length === 1); u3();
+    delete PO.supportedEntryTypes; PO.all = []; const u4 = P().watch(); say('...nor one that does not say what it can', PO.all.length === 1); u4();
+    PO.supportedEntryTypes = ['longtask', 'long-animation-frame']; const OLD = ctx.PerformanceObserver;
+    let made = 0; ctx.PerformanceObserver = class { constructor(cb) { made++; this.cb = cb; } observe(o) { if (o.type === 'long-animation-frame') throw new Error('not here'); } disconnect() {} }; ctx.PerformanceObserver.supportedEntryTypes = ['longtask', 'long-animation-frame'];
+    let ok1 = true; try { const u5 = P().watch(); u5(); } catch (x) { ok1 = false; }
+    say('an observer that cannot be started does not break the looking (the long tasks still work)', ok1 && made === 2);
+    ctx.PerformanceObserver = OLD; delete PO.supportedEntryTypes; PO.all = []; }
+
+  // the page's own figures for a row of the history: the elements and (where the browser tells it) the memory of the page
+  { P().watch()(); P().raceStarted();
+    document.getElementsByTagName = () => ({ length: 4321 }); Object.defineProperty(performance, 'memory', { value: { usedJSHeapSize: 52428800 }, configurable: true });
+    const u = P().watch(); const stop = P().line(place(mk())); await wait(1300);
+    const h = P().monitor().snapshot().history;
+    say('...the page is counted (4321 elements) and the memory of the page is taken from the browser (50 MB)', h.length === 1 && h[0].dom === 4321 && h[0].heapMB === 50);
+    delete performance.memory; delete document.getElementsByTagName;
+    Object.defineProperty(performance, 'memory', { value: {}, configurable: true });
+    P().raceStarted(); const stop0 = P().line(place(mk())); await wait(300); const h0 = P().monitor().snapshot().history; delete performance.memory; stop0();
+    say('a browser that has a memory figure but gives no number in it: the row has no memory of the page (null, not NaN)', h0.length === 1 && h0[0].heapMB === null);
+    say('the line adds a row to the history in a race (the first at once): the CPU of the window from the core, the elements of the page counted (a number), the memory of the page where the browser tells it', h.length === 1 && h[0].at <= 2 && h[0].winCpu === 14 && h[0].memMB === 300 && typeof h[0].dom === 'number' && (h[0].heapMB === null || typeof h[0].heapMB === 'number'));
+    stop(); u(); }
+
+  // the box with the report (App Settings > General > Performance) adds the rows of the history too
+  { P().watch()(); P().raceStarted();
+    const out = place(mk()), pn = P().panel({ out }); await wait(1300); // (a row made at one look is in the report of the next look)
+    say('the report box adds a row to the history in a race, and the rows are in the report it shows', P().monitor().snapshot().history.length === 1 && /Since the race started, one row every 30 seconds/.test(out.textContent) && /\n {2}0:00 {2}/.test(out.textContent));
+    pn(); }
+
+  // the real race screen: press Start with the line on
+  { run("state.settings = { theme: 'dark', perfLine: true }"); fresh(); await openRace(); place(E('perfline')); await wait(100);
+    const marksBefore = P().monitor().snapshot().marks.length;
+    key(' '); await until(() => phase() === 'running', 3000); await wait(700);
+    const s = P().monitor().snapshot(), names = s.parts.map(x => x.name);
+    say('a race that starts is marked, and its worst figures begin (at the start of the countdown)', s.marks.filter(x => x.text === 'Race started').length >= 1 && s.marks.length > marksBefore && s.race !== null && s.race.seconds >= 0);
+    const KNOWN = ['save point', 'heat list', 'announcer', 'state', 'widgets', 'pit buttons', 'review', 'lap review', 'lane buttons', 'calls', 'adjust pad', 'panels', 'folders', 'buttons', 'share', 'full screen widgets'];
+    say('the screen update tells where its time goes: the parts of an update are in the figures (the biggest twelve at most, all of them named parts of the update, the widgets and the state among them)', names.length >= 8 && names.length <= 12 && names.every(n => KNOWN.includes(n)) && names.includes('widgets') && names.includes('state') && new Set(names).size === names.length);
+    say('...and every part is a time (not NaN, not below zero)', s.parts.every(x => Number.isFinite(x.avg) && x.avg >= 0));
+    say('...the widgets are in the figures by type, with a time each, and the types are those of the page', s.widgets.length > 0 && s.widgets.every(w => Number.isFinite(w.avg) && w.avg >= 0 && w.count >= 1) && s.widgets.every(w => run('live.nodes').some(n => n.w.type === w.type)));
+    say('...and the worst figures of the race count the updates (the longest update is more than nothing)', s.race.update > 0);
+    run("state.settings.perfLine = false"); run('live.shown()'); await wait(30);
+    const p0 = P().monitor().snapshot().parts.length; await wait(300);
+    say('with the line off nothing is measured any more: no new times for the parts', P().monitor().snapshot().parts.length === p0 || P().watching() === 0);
+    say('...but the worst figures of the race stay for the report', P().monitor().snapshot().race !== null && P().monitor().snapshot().race.update > 0);
+    key('s'); await until(() => phase() === 'finished' || phase() === 'review', 3000); }
+
+  // the tab and the Live Race tab are noted, and the line of the report that says so
+  { const app = fs.readFileSync(R + 'renderer/app.js', 'utf8'), race = fs.readFileSync(R + 'renderer/race.js', 'utf8');
+    say('app.js notes the Live Race tab before it opens the window, and every other tab that is chosen', /if \(id === 'live'\) \{ if \(typeof PerfUI !== 'undefined'\) PerfUI\.mark\('Live Race tab pressed'\); api\.liveOpen\(\); return; \}/.test(app) && app.includes("PerfUI.mark(`Tab: ${id}`)"));
+    say('race.js lets the performance figures start with the race (startCountdown) and times the parts of an update', /function startCountdown\(\) \{\n    if \(typeof PerfUI !== 'undefined'\) PerfUI\.raceStarted\(\);/.test(race) && race.includes("PerfUI.phases()") && race.includes('PerfUI.widgetTimer()'));
+    say('...and the parts are named in the order of the update (save point, heat list, announcer, state, widgets, pit buttons, review, lap review, lane buttons, calls, adjust pad, panels, folders, buttons, share)', ['save point', 'heat list', 'announcer', 'state', 'widgets', 'pit buttons', 'review', 'lap review', 'lane buttons', 'calls', 'adjust pad', 'panels', 'folders', 'buttons', 'share'].map(n => race.indexOf(`ph('${n}')`)).every((v, i, a) => v > 0 && (i === 0 || v > a[i - 1])));
+    say('...the full screen view is timed apart, and the widgets of the page are given the timer (the full screen ones are not)', race.includes("ph('full screen widgets')") && race.includes('LiveCanvas.paint(live.nodes, S, typeof PerfUI') && race.includes('LiveCanvas.paint(live.fsView.nodes, S);')); }
 
   { const tags = fs.readFileSync(R + 'renderer/index.html', 'utf8').match(/<script src="[^"]+"><\/script>/g) || [], at = n => tags.findIndex(t => t.includes('"' + n + '"'));
     say('index.html loads perf.js and then perfui.js, before race.js and app.js (the race screen and the settings use them)', at('perf.js') > at('webapi.js') && at('perf.js') >= 0 && at('perfui.js') === at('perf.js') + 1 && at('perfui.js') < at('race.js') && at('race.js') < at('app.js')); }

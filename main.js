@@ -48,6 +48,7 @@ function createWindow() {
 // The Live Race pages in their own window, on a second screen when there is one.
 // The race window pushes snapshots here; they are kept (so a window opened late catches up) and passed on.
 let liveWin = null;
+let perfCollector = null; // (the Performance report, 1.60.1: it is told when the Live Race window opens and how long that took)
 const live = { stat: null, dyn: null };
 function relay(channel, payload, from) {
   BrowserWindow.getAllWindows().forEach(w => { if (!w.isDestroyed() && w.webContents !== from) w.webContents.send(channel, payload); });
@@ -79,6 +80,7 @@ function netStatus() {
 }
 function openLiveWindow() {
   if (liveWin && !liveWin.isDestroyed()) { liveWin.focus(); return false; }
+  const opened = Date.now();
   const displays = screen.getAllDisplays(), primary = screen.getPrimaryDisplay();
   const other = displays.find(d => d.id !== primary.id);
   const b = (other || primary).workArea;
@@ -89,7 +91,8 @@ function openLiveWindow() {
   });
   if (other) liveWin.maximize(); // press F11 for full screen
   liveWin.loadFile(path.join(__dirname, 'renderer', 'index.html'), { hash: 'live' });
-  liveWin.on('closed', () => { liveWin = null; });
+  liveWin.on('closed', () => { liveWin = null; if (perfCollector) perfCollector.mark('Live Race window closed'); });
+  if (perfCollector) perfCollector.mark(`Live Race window opened (${Date.now() - opened} ms in the core)`);
   return !!other;
 }
 
@@ -184,7 +187,8 @@ app.whenReady().then(() => {
   ipcMain.handle('custom:remove', (_e, entity, id) => db.removeCustomField(entity, id));
   ipcMain.handle('custom:group', (_e, entity, id, group) => db.setCustomFieldGroup(entity, id, group));
   // how the computer and the app are doing (the Performance line, 1.60.0): it only looks while somebody asks
-  const perf = require('./perfstats').createCollector({ app, screen, os, process, db, version: app.getVersion(), readText: p => fs.promises.readFile(p, 'utf8') });
+  const perf = perfCollector = require('./perfstats').createCollector({ app, screen, os, process, db, version: app.getVersion(), readText: p => fs.promises.readFile(p, 'utf8'),
+    windows: () => BrowserWindow.getAllWindows().filter(w => !w.isDestroyed()).map(w => { try { return { title: w.getTitle(), pid: w.webContents.getOSProcessId(), visible: w.isVisible(), minimized: w.isMinimized(), focused: w.isFocused(), live: w === liveWin }; } catch { return null; } }).filter(Boolean) });
   ipcMain.handle('perf:stats', () => perf.collect());
   ipcMain.handle('settings:get', () => db.getSettings());
   // the race save is written in the background (1.60.0): the program does not wait for the disk, a read waits for a save that is on its way

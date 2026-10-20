@@ -27,24 +27,33 @@ const LiveCanvas = (() => {
     });
     return nodes;
   }
-  // S: the shared state the widgets are drawn from (see race.js and liveshare.js)
-  function paint(nodes, S) {
-    nodes.forEach(n => {
-      let out; try { out = Timing.content(n.w, S); } catch (x) { if (!n.failed) { n.failed = true; console.error('A widget could not be drawn (' + (n.w && n.w.type) + '):', x); } return; } // (one widget that fails does not stop the others from being drawn)
-      const key = JSON.stringify([out.html, out.color, out.bg, out.disabled]);
-      if (key === n.last) return;
-      n.last = key; n.val.innerHTML = out.html;
-      if (out.html.includes('class="rrows"') && typeof Rows !== 'undefined' && n.val.querySelectorAll) Rows.fitText(n.val); // a leaderboard of row designs: no text wider than its cell
-      if (/class="(wxw|wxt)[ "]/.test(out.html) && typeof WxW !== 'undefined') WxW.fit(n.val); // a weather widget: no picture or text outside the widget, whatever the word (Dry, Cloudy, Clearing)
-      if (out.html.includes('dlt-badge') && typeof Delta !== 'undefined') Delta.fit(n.val); // a Delta Timer: the arrow and the number inside the badge, however small the widget
-      if (out.button) n.val.disabled = !!out.disabled;
-      const colors = `${out.color}\u0001${out.bg}`; // (the colours only change now and then: a widget whose text changes ten times a second is not given the same colours ten times a second)
-      if (n.colors === colors) return;
+  // One widget: its text, then its colours. tm (given by the Performance line while somebody looks, 1.60.1): { now(), add(type, drawMs, writeMs, fitMs) } hears how long
+  // each part took: making the text (draw), putting it in the page (write) and fitting it to its place (fit, which makes the page measure itself).
+  function drawNode(n, S, tm) {
+    const t0 = tm ? tm.now() : 0;
+    let out; try { out = Timing.content(n.w, S); } catch (x) { if (!n.failed) { n.failed = true; console.error('A widget could not be drawn (' + (n.w && n.w.type) + '):', x); } return; } // (one widget that fails does not stop the others from being drawn)
+    const t1 = tm ? tm.now() : 0;
+    const key = JSON.stringify([out.html, out.color, out.bg, out.disabled]);
+    if (key === n.last) { if (tm) tm.add(n.w.type, t1 - t0, 0, 0); return; }
+    n.last = key; n.val.innerHTML = out.html;
+    const t2 = tm ? tm.now() : 0;
+    if (out.html.includes('class="rrows"') && typeof Rows !== 'undefined' && n.val.querySelectorAll) Rows.fitText(n.val); // a leaderboard of row designs: no text wider than its cell
+    if (/class="(wxw|wxt)[ "]/.test(out.html) && typeof WxW !== 'undefined') WxW.fit(n.val); // a weather widget: no picture or text outside the widget, whatever the word (Dry, Cloudy, Clearing)
+    if (out.html.includes('dlt-badge') && typeof Delta !== 'undefined') Delta.fit(n.val); // a Delta Timer: the arrow and the number inside the badge, however small the widget
+    const t3 = tm ? tm.now() : 0;
+    if (out.button) n.val.disabled = !!out.disabled;
+    const colors = `${out.color}\u0001${out.bg}`; // (the colours only change now and then: a widget whose text changes ten times a second is not given the same colours ten times a second)
+    if (n.colors !== colors) {
       n.colors = colors;
       n.el.style.color = out.color || n.base.color || 'var(--ink)'; // own colour > event colour here, then lane colour, then theme
       Object.assign(n.el.style, Frame.style(out.bg || n.base.bg, n.w, 'var(--line)', n.layout, Widgets.U)); // background and border: the widget's own settings (frame.js)
       if (n.el.style.setProperty) n.el.style.setProperty('--wf', String(Frame.solidity(n.w, n.layout))); // how solid it is: the depth of the page (styles.css) fades with it
-    });
+    }
+    if (tm) tm.add(n.w.type, t1 - t0, (t2 - t1) + (tm.now() - t3), t3 - t2);
+  }
+  // S: the shared state the widgets are drawn from (see race.js and liveshare.js)
+  function paint(nodes, S, tm) {
+    nodes.forEach(n => drawNode(n, S, tm));
   }
   // The fullscreen view: only the widgets of the layout, as large as the window allows, without the buttons (the race is run with the keys).
   // A small bar with a way out appears when the pointer moves (or the screen is touched) and goes away again after a moment. Esc closes the view.

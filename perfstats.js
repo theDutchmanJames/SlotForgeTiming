@@ -4,13 +4,16 @@
 const STEP = 100;          // the core looks at the clock every 100 ms to see whether it was stuck
 const KEEP = 60000;        // ...and remembers it for a minute
 const IDLE_STOP = 30000;   // nobody asked for 30 seconds: it stops looking (nothing runs when the Performance line is not shown)
+const STALL_MIN = 100;     // a stall of 100 ms or more is written down with its clock time (1.60.1)
+const STALLS_KEEP = 10, MARKS_KEEP = 10; // (the last ten of each are kept and given)
 
 function createCollector(d) {
   const now = d.now || Date.now, setI = d.setInterval || setInterval, clearI = d.clearInterval || clearInterval;
-  const st = { timer: null, last: 0, lags: [], all: 0, asked: 0, gpuDevice: null };
+  const st = { timer: null, last: 0, lags: [], all: 0, asked: 0, gpuDevice: null, stalls: [], marks: [] };
   const sample = () => {
     const t = now(), lag = Math.max(0, t - st.last - STEP); st.last = t;
     st.lags.push([t, lag]); if (lag > st.all) st.all = lag;
+    if (lag >= STALL_MIN) { st.stalls.push({ at: t, ms: lag }); while (st.stalls.length > STALLS_KEEP) st.stalls.shift(); }
     while (st.lags.length && t - st.lags[0][0] > KEEP) st.lags.shift();
     if (t - st.asked > IDLE_STOP) stop();
   };
@@ -40,7 +43,7 @@ function createCollector(d) {
   async function collect() {
     touch();
     const out = { at: now() };
-    try { out.metrics = (d.app.getAppMetrics() || []).map(m => ({ type: m.type, cpu: m.cpu && m.cpu.percentCPUUsage, memMB: m.memory && m.memory.workingSetSize ? m.memory.workingSetSize / 1024 : 0 })); } catch { out.metrics = []; }
+    try { out.metrics = (d.app.getAppMetrics() || []).map(m => ({ type: m.type, pid: m.pid, cpu: m.cpu && m.cpu.percentCPUUsage, memMB: m.memory && m.memory.workingSetSize ? m.memory.workingSetSize / 1024 : 0 })); } catch { out.metrics = []; }
     try { out.gpuStatus = d.app.getGPUFeatureStatus(); } catch { out.gpuStatus = {}; }
     out.gpuDevice = await gpuDevice();
     try { const s = d.screen.getPrimaryDisplay(); out.display = { width: s.size.width, height: s.size.height, scale: s.scaleFactor, count: d.screen.getAllDisplays().length }; } catch { out.display = {}; }
@@ -61,9 +64,14 @@ function createCollector(d) {
     out.versions = { app: d.version || '', electron: d.process.versions && d.process.versions.electron || '', chrome: d.process.versions && d.process.versions.chrome || '', node: d.process.versions && d.process.versions.node || '' };
     out.lag = { max10: lagOf(10000), max60: lagOf(KEEP), all: st.all };
     out.save = d.db && d.db.resumeStats ? d.db.resumeStats() : {};
+    out.stalls = st.stalls.map(s => ({ at: s.at, ms: s.ms }));
+    out.marks = st.marks.map(x => ({ at: x.at, text: x.text }));
+    try { out.windows = d.windows ? d.windows().slice(0, 8) : []; } catch { out.windows = []; } // (the windows that are open: the race window and the Live Race window)
     return out;
   }
-  return { collect, touch, stop, running: () => st.timer !== null, sample, size: () => st.lags.length };
+  // something the core did that is worth knowing when the figures are read (the Live Race window was opened, and it took so long): it gets the clock time
+  const mark = text => { if (typeof text !== 'string' || !text) return; st.marks.push({ at: now(), text: text.slice(0, 100) }); while (st.marks.length > MARKS_KEEP) st.marks.shift(); };
+  return { collect, touch, stop, mark, running: () => st.timer !== null, sample, size: () => st.lags.length };
 }
 
-module.exports = { createCollector, STEP, KEEP, IDLE_STOP };
+module.exports = { createCollector, STEP, KEEP, IDLE_STOP, STALL_MIN, STALLS_KEEP, MARKS_KEEP };

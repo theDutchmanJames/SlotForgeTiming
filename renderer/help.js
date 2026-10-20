@@ -334,7 +334,7 @@ const Help = (() => {
       { id: 'performance', title: 'Performance', note: 'Is the app slow? Measure it', body: `
         <ul>
           <li>Open <b>App Settings, General, Performance</b>. The report there updates every second while the folder is open: the frames a second the window draws, the slowest frame, how long a screen update takes, the CPU the app uses (window, graphics and the core of the app), how long the core was stuck, how long the race save takes, and whether the window is drawn by the graphics card or by the processor. On a Raspberry Pi it also shows the model, the temperature and the processor speed.</li>
-          <li><b>Copy report</b> puts it on the clipboard, to paste in a message. A report made during a race, with the race screen open, says the most.</li>
+          <li><b>Copy report</b> puts it on the clipboard, to paste in a message. It also names the widgets and the parts of a screen update that take the most time, the worst figures since the race started, a row every 30 seconds (does the app get slower during a race?), when the core was stuck and which windows are open (the Live Race tab is a second window). Switch the line on before the race starts; copy the report during the race or after it.</li>
           <li>Tick <b>Show the Performance line on the race screen</b> for a small line with the same figures under the buttons of the race screen. It is off to begin with, and costs a little itself.</li>
           <li>Nothing is measured while the folder is closed and the line is off. On a slow computer, <b>Depth</b> Flat (Look and feel) is lighter to draw.</li>
         </ul>` }

@@ -283,27 +283,31 @@ async function renderRace() {
     update(); return true;
   };
   const updateNow = () => {
-    checkpoint();
+    const ph = (typeof PerfUI !== 'undefined' && PerfUI.phases()) || (() => {}); // (how long each part of an update takes: only while the Performance line or report is shown, 1.60.1)
+    checkpoint(); ph('save point');
     if (live.box) live.box.sync();
-    drawHeatList(); announce(); announceTokens(); if (live.powerFollow) live.powerFollow();
-    const S = shared();
-    LiveCanvas.paint(live.nodes, S);
-    if (live.fsView) LiveCanvas.paint(live.fsView.nodes, S);
+    drawHeatList(); ph('heat list');
+    announce(); announceTokens(); if (live.powerFollow) live.powerFollow(); ph('announcer');
+    const S = shared(); ph('state');
+    LiveCanvas.paint(live.nodes, S, typeof PerfUI !== 'undefined' ? PerfUI.widgetTimer() : null); ph('widgets');
+    if (live.fsView) { LiveCanvas.paint(live.fsView.nodes, S); ph('full screen widgets'); }
     live.pitBtns.forEach(x => {
       const c = S.carByLane(x.lane), blocked = !!c && c.blockAt !== null;
       x.b.disabled = !(live.phase === 'running' && c && !c.done); x.b.hidden = !c; x.b.textContent = blocked ? `Leave pit ${x.lane + 1}` : `Pit ${x.lane + 1}`; x.b.setAttribute('aria-pressed', String(blocked)); // (the button stays lit while the car is in the pit)
-    });
+    }); ph('pit buttons');
     if (live.phase === 'review') {
       ui('review').hidden = false; live.reviewShown = true;
       if (!live.tkBusy) { const h = tokens ? Review.stintsHtml(tokens.closedList().filter(x => x.laps.length), { failed: live.tkFailed }) : Review.html(eng, { champ: champOf(), settings: AdjustPad.forSetup(state.settings, setup) }); if (h !== live.rvHtml) { live.rvHtml = h; ui('review').innerHTML = h; } } // (only when it changed: a button never changes under your finger; not while the stints are being saved)
     } else if (live.reviewShown) { ui('review').innerHTML = ''; ui('review').hidden = true; live.reviewShown = false; live.rvHtml = ''; }
-    drawLapReview(); drawFinalPick(); drawTeamPick();
+    ph('review');
+    drawLapReview(); drawFinalPick(); drawTeamPick(); ph('lap review');
     live.lapBtns.forEach(x => { const c = S.carByLane(x.lane); x.b.disabled = !(live.phase === 'running' && c && !c.done); x.b.hidden = !c; x.b.title = x.b.disabled ? (c && c.done && live.phase === 'running' ? 'This car has finished' : trackHint() || 'Not now') : LAP_TITLE; });
     { const h = trackHint(); if (ui('trkhint') && ui('trkhint').textContent !== h) { ui('trkhint').textContent = h; ui('trkhint').hidden = !h; } } // (why the buttons are dimmed: they only work while the race runs)
     live.callBtns.forEach(x => { const c = S.carByLane(x.lane), calling = !!c && eng.calls.some(k => k.open && eng.cars[k.car] && eng.cars[k.car].lane === x.lane); x.b.disabled = !(['running', 'paused'].includes(live.phase) && c && !c.done); x.b.hidden = !c; x.b.setAttribute('data-active', String(calling)); }); // (a lane with a call that waits for the Race Director stays lit)
     live.trkCards.forEach(x => { const c = S.carByLane(x.lane), name = c ? (c.driverName || '') : ''; x.card.hidden = !c; if (x.who.textContent !== name) x.who.textContent = name; });
-    drawCalls();
-    drawAdjust();
+    ph('lane buttons');
+    drawCalls(); ph('calls');
+    drawAdjust(); ph('adjust pad');
     if (live.penPanel) live.penPanel.update();
     if (live.tkPanel) live.tkPanel.update();
     if (live.bopPanel) live.bopPanel.update();
@@ -313,11 +317,13 @@ async function renderRace() {
     if (live.enPanel) live.enPanel.update();
     if (live.dmPanel) live.dmPanel.update();
     if (live.flPanel) live.flPanel.update();
-    syncFolders();
+    ph('panels');
+    syncFolders(); ph('folders');
     if (tokens && live.phase === 'running' && now() - (live.tkAt || -1e9) > 10000) persistTokens(true); // (the clocks that run: kept every ten seconds)
     ui('back').disabled = raceActive();
     ui('stopbtn').disabled = !(live.phase === 'running' || live.phase === 'paused' || live.phase === 'between');
-    share();
+    ph('buttons');
+    share(); ph('share');
   };
   // (how long a screen update takes is measured for the Performance line, only while it is shown: 1.60.0)
   const update = () => {
@@ -672,6 +678,7 @@ async function renderRace() {
   };
   const startTimers = () => { live.timers = setInterval(() => { eng.tick(now()); if (eng.status === 'finished') engineFinished(); else update(); }, 100 / Math.min(speed, 10)); };
   function startCountdown() {
+    if (typeof PerfUI !== 'undefined') PerfUI.raceStarted(); // (the worst figures and the rows of the Performance report start again, 1.60.1)
     live.phase = 'countdown'; live.lights = 0; ui('msg').textContent = ''; power(setup.startPower !== 'off'); ui('sim').disabled = true; update();
     runLights(goRunning);
   }

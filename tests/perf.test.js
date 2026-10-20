@@ -135,5 +135,363 @@ const R0 = { fps: 58, slowest: 41, updates: 10, updateAvg: 0.62, updateMax: 3, u
   ok('...after half a minute of ten updates a second it still says ten (the rate of the last ten seconds)', near(s.updates, 10, 0.5) && near(s.updateLoad, 0.3, 0.11));
   ok('...and the average time of an update is rounded to hundredths (0.33 ms)', s.updateAvg === 0.33 && s.updateMax === 0.33); }
 
+// =========================================================== 1.60.1: where the time goes, the worst of the race, the rows, the marks ===========================================================
+const fillUpdates = (M, n, f) => { for (let i = 0; i < n; i++) f(i * 100); }; // (n updates, one every 100 ms)
+
+// ---- the parts of an update and the widgets ----
+{ const M = Perf.createMonitor({ now: () => 0 });
+  M.frame(0);
+  fillUpdates(M, 20, t => { M.update(50, t); M.part('state', 10, t); M.part('widgets', 30, t); M.part('panels', 5, t); M.widget('leaderboard', 2, 6, 20, t); M.widget('clock', 1, 1, 0, t); });
+  const s = M.snapshot(2000);
+  ok('the parts of an update: the average per update, the biggest first (widgets 30, state 10, panels 5)', s.parts.map(x => x.name).join() === 'widgets,state,panels' && s.parts[0].avg === 30 && s.parts[1].avg === 10 && s.parts[2].avg === 5);
+  ok('the widgets: text, page and fit apart, the total per update, the slowest first (leaderboard 28 = 2 + 6 + 20)', s.widgets.length === 2 && s.widgets[0].type === 'leaderboard' && s.widgets[0].avg === 28 && s.widgets[0].draw === 2 && s.widgets[0].write === 6 && s.widgets[0].fit === 20 && s.widgets[1].type === 'clock' && s.widgets[1].avg === 2);
+  ok('...and how many of that type were drawn in an update (one each)', s.widgets[0].count === 1 && s.widgets[1].count === 1);
+  const T = Perf.createMonitor({ now: () => 0 }); T.frame(0);
+  fillUpdates(T, 10, t => { T.update(10, t); T.widget('leaderboard', 1, 1, 1, t); T.widget('leaderboard', 1, 1, 1, t); T.widget('leaderboard', 1, 1, 1, t); });
+  const st = T.snapshot(1000);
+  ok('three widgets of one type in an update are one line: x3, the times added (9 ms)', st.widgets.length === 1 && st.widgets[0].count === 3 && st.widgets[0].avg === 9 && st.widgets[0].draw === 3); }
+
+{ const M = Perf.createMonitor({ now: () => 0 }); M.frame(0);
+  M.part('state', 10, 100); M.widget('clock', 1, 1, 1, 100);
+  const s = M.snapshot(1000);
+  ok('parts and widgets without a single update (no race running) give empty lists, not NaN', Array.isArray(s.parts) && s.parts.length === 0 && Array.isArray(s.widgets) && s.widgets.length === 0); }
+
+{ const M = Perf.createMonitor({ now: () => 0 }); M.frame(0);
+  M.update(5, 100); M.part('ok', 4, 100);
+  M.part('neg', -1, 100); M.part('nan', NaN, 100); M.part('str', '3', 100); M.part(5, 3, 100); M.part(undefined, 3, 100); M.part('inf', Infinity, 100);
+  M.widget('neg', -1, 1, 1, 100); M.widget('str', '1', 1, 1, 100); M.widget('nan', 1, NaN, 1, 100); M.widget(7, 1, 1, 1, 100); M.widget('inf', 1, 1, Infinity, 100);
+  const s = M.snapshot(500);
+  ok('a time that is not a number, below zero or infinite, and a name that is not text, are left out (only the good part is there)', s.parts.length === 1 && s.parts[0].name === 'ok' && s.widgets.length === 0);
+  const P = Perf.createMonitor({ now: () => 0 }); P.frame(0); P.update(5, 100); P.part('__proto__', 3, 100); P.part('constructor', 2, 100); P.widget('__proto__', 1, 1, 1, 100); P.widget('toString', 1, 1, 1, 100);
+  const sp = P.snapshot(500);
+  ok('a name like __proto__ or constructor is only a name (nothing breaks, nothing leaks)', sp.parts.length === 2 && sp.widgets.length === 2 && ({}).polluted === undefined && sp.parts.find(x => x.name === '__proto__').avg === 3); }
+
+{ const M = Perf.createMonitor({ now: () => 0 }); M.frame(0);
+  for (let i = 0; i < 15; i++) M.part('p' + i, i + 1, 100);
+  for (let i = 0; i < 12; i++) M.widget('w' + i, i + 1, 0, 0, 100);
+  M.update(1, 100);
+  const s = M.snapshot(500);
+  ok('at most 12 parts and 8 widgets are given, the biggest ones (p14 first, w11 first)', s.parts.length === 12 && s.parts[0].name === 'p14' && s.widgets.length === 8 && s.widgets[0].type === 'w11' && s.parts[11].name === 'p3' && s.widgets[7].type === 'w4'); }
+
+{ const M = Perf.createMonitor({ now: () => 0 }); M.frame(0);
+  for (let i = 0; i < 100; i++) { M.update(10, i * 100); M.part('old', 100, i * 100); }
+  for (let i = 100; i < 200; i++) { M.update(10, i * 100); M.part('new', 20, i * 100); }
+  const s = M.snapshot(20000);
+  ok('only the last ten seconds count: what was spent ten to twenty seconds ago is forgotten (the old part is gone, the new one is 20 ms per update)', s.parts.length === 1 && s.parts[0].name === 'new' && s.parts[0].avg === 20); }
+
+{ const M = Perf.createMonitor({ now: () => 0 }); M.frame(0);
+  M.update(10, 0); M.part('a', 4, 0); M.widget('x', 1, 2, 3, 0); M.reset();
+  M.frame(10); M.update(10, 100); const s = M.snapshot(1500);
+  ok('reset (somebody looks again) starts the parts and the widgets from nothing', s.parts.length === 0 && s.widgets.length === 0); }
+
+// ---- the browser's own account of slow frames ----
+{ const f = Perf.loafFrom({ duration: 120, startTime: 1000, renderStart: 1070, scripts: [{ duration: 40, forcedStyleAndLayoutDuration: 8, sourceFunctionName: 'update', sourceURL: 'file:///app/renderer/race.js?x=1', invoker: 'TimerHandler:setInterval' }, { duration: 20, forcedStyleAndLayoutDuration: 2, invoker: 'FrameRequestCallback' }] });
+  ok('a slow frame: the length, the scripts together (60), the drawing of the page after the scripts (1120 - 1070 = 50), the layout the scripts forced (10)', f.dur === 120 && f.script === 60 && f.render === 50 && f.forced === 10);
+  ok('...the biggest script is named by its function and file, without the folder and the query', f.top.name === 'update race.js' && f.top.ms === 40);
+  const g = Perf.loafFrom({ duration: 80, startTime: 0, renderStart: 0, scripts: [{ duration: 10, invoker: 'FrameRequestCallback' }] });
+  ok('...a frame with no render time known gives 0 for it, and a script without a function name is named by who called it', g.render === 0 && g.top.name === 'FrameRequestCallback');
+  const h = Perf.loafFrom({ duration: 50, startTime: 0, renderStart: 10, scripts: [{ duration: 500, forcedStyleAndLayoutDuration: 900 }] });
+  ok('...scripts cannot be longer than the frame (50), the forced layout cannot be more than the scripts', h.script === 50 && h.forced === 50 && h.top.name === 'script');
+  ok('...a frame with no scripts has no biggest script', Perf.loafFrom({ duration: 70, startTime: 0, renderStart: 20 }).top === null);
+  ok('...rubbish gives null (nothing, no duration, a negative one, not a number)', Perf.loafFrom(null) === null && Perf.loafFrom({}) === null && Perf.loafFrom({ duration: -5 }) === null && Perf.loafFrom({ duration: 'x' }) === null && Perf.loafFrom('a') === null);
+  const k = Perf.loafFrom({ duration: 60, startTime: 0, renderStart: 30, scripts: [null, 'x', { duration: -3 }, { duration: 'y' }, { duration: 10, forcedStyleAndLayoutDuration: -4 }, { duration: NaN }] });
+  ok('...scripts that are rubbish are skipped (only the one of 10 ms counts, a negative forced time is nothing)', k.script === 10 && k.forced === 0);
+  const many = Array.from({ length: 100 }, () => ({ duration: 1 }));
+  ok('...at most 60 scripts are looked at', Perf.loafFrom({ duration: 500, startTime: 0, renderStart: 400, scripts: many }).script === 60);
+  const long = 'x'.repeat(200);
+  ok('...a long name is cut', Perf.loafFrom({ duration: 50, startTime: 0, renderStart: 10, scripts: [{ duration: 5, sourceFunctionName: long, sourceURL: '/a/' + long }] }).top.name.length <= 71); }
+
+{ const M = Perf.createMonitor({ now: () => 0 });
+  M.frame(0);
+  ok('a monitor that has seen no slow frame says null (no figures at all)', M.snapshot(100).loaf === null);
+  M.loaf({ dur: 100, script: 60, render: 30, forced: 10, top: { name: 'a race.js', ms: 40 } }, 100);
+  M.loaf({ dur: 200, script: 100, render: 90, forced: 20, top: { name: 'a race.js', ms: 60 } }, 200);
+  M.loaf({ dur: 60, script: 20, render: 30, forced: 0, top: { name: 'b canvas.js', ms: 10 } }, 300);
+  const l = M.snapshot(1000).loaf;
+  ok('slow frames: the number (3), the average (120), the longest (200), the average script (60), drawing (50) and forced layout (10)', l.count === 3 && l.avg === 120 && l.max === 200 && l.script === 60 && l.render === 50 && near(l.forced, 10, 1e-9));
+  ok('...the slowest scripts, as an average over the slow frames: a race.js (40 + 60) / 3, then b canvas.js (10 / 3)', l.top.length === 2 && l.top[0].name === 'a race.js' && near(l.top[0].ms, 100 / 3, 1e-9) && l.top[1].name === 'b canvas.js' && near(l.top[1].ms, 10 / 3, 1e-9));
+  M.loaf(null, 400); M.loaf({ dur: 'x' }, 400); M.loaf({}, 400);
+  ok('...rubbish is not counted', M.snapshot(1000).loaf.count === 3);
+  ok('...and after ten seconds they are forgotten', M.snapshot(11000).loaf === null);
+  const N = Perf.createMonitor({ now: () => 0 }); for (let i = 0; i < 6; i++) N.loaf({ dur: 100, script: 1, render: 1, forced: 0, top: { name: 's' + i, ms: i + 1 } }, 100);
+  ok('...at most three scripts are named', N.snapshot(200).loaf.top.length === 3 && N.snapshot(200).loaf.top[0].name === 's5');
+  N.loaf({ dur: 100, script: 1, render: 1, forced: 0 }, 150);
+  ok('...a slow frame without a script to name is counted but names nothing', N.snapshot(200).loaf.count === 7); }
+
+// ---- the worst figures of the race ----
+{ const M = Perf.createMonitor({ now: () => 0, wall: () => 5000 });
+  ok('before a race has started there are no worst figures (and no rows)', M.snapshot(0).race === null && M.snapshot(0).history.length === 0 && M.due(0) === false);
+  M.newRace(1000, 7000);
+  M.frame(1000); M.frame(1017); M.frame(1217); M.update(30, 1300); M.update(90, 1400); M.update(40, 1500); M.long(120, 1500); M.long(70, 1600); M.loaf({ dur: 150, script: 1, render: 1, forced: 0 }, 1700); M.loaf({ dur: 90, script: 1, render: 1, forced: 0 }, 1800);
+  const s = M.snapshot(2000);
+  ok('after a race has started: the slowest frame (200), the longest update (90), the longest stuck (120), the longest slow frame (150)', s.race && s.race.frame === 200 && s.race.update === 90 && s.race.long === 120 && s.race.loaf === 150);
+  ok('...when it started (the clock time given) and how long ago in seconds', s.race.wall === 7000 && s.race.seconds === 1);
+  M.frame(5000); // a gap of 3.7 seconds: the window was hidden, not a slow frame
+  ok('...a gap of more than two seconds between frames is a hidden window: it is not the slowest frame of the race', M.snapshot(5001).race.frame === 200);
+  M.frame(6900); M.frame(7000);
+  ok('...a gap of just under two seconds is (1900)', M.snapshot(7001).race.frame === 1900 || M.snapshot(7001).race.frame === 1900.0);
+  M.update(NaN, 7000); M.update(-5, 7000); M.long('x', 7000); M.long(-1, 7000); M.loaf({ dur: NaN }, 7000);
+  const w = M.snapshot(7100).race;
+  ok('...rubbish does not change the worst figures', w.update === 90 && w.long === 120 && w.loaf === 150); }
+
+{ const M = Perf.createMonitor({ now: () => 0 });
+  M.newRace(0, 1000); M.frame(0);
+  for (let t = 0; t < 4000; t += 100) { M.frame(t); }
+  ok('the frames a second: the least seen in the race is kept (60 at first)', M.snapshot(4000).race.minFps >= 9);
+  const a = M.snapshot(4000).race.minFps;
+  for (let t = 4000; t < 7000; t += 500) M.frame(t);
+  const b = M.snapshot(7000).race.minFps;
+  ok('...it goes down when the screen gets slower (about 2 a second now)', b < a && b <= 3);
+  for (let t = 7000; t < 13000; t += 16.7) M.frame(t);
+  ok('...and does not go up again when it gets fast again', M.snapshot(13000).race.minFps === b);
+  const L = Perf.createMonitor({ now: () => 0 }); L.newRace(0, 1); L.frame(0);
+  for (let i = 0; i < 20; i++) L.update(90, i * 100);
+  const l1 = L.snapshot(2000);
+  ok('the busiest the updates were (9 times a second... 90 ms each = 90%) is kept', l1.race.load >= 89);
+  for (let i = 20; i < 200; i++) L.update(1, i * 100);
+  ok('...and stays when they are quick again', L.snapshot(20000).race.load >= 89 && L.snapshot(20000).updateLoad < 5); }
+
+{ const M = Perf.createMonitor({ now: () => 0 });
+  M.newRace(0, 1000); M.update(77, 100); M.frame(0); M.frame(1900); M.mark('a', 5);
+  M.reset();
+  const s = M.snapshot(200);
+  ok('reset (the race screen was away and is looked at again) keeps the worst figures and the marks, and forgets the figures of the last ten seconds', s.race.update === 77 && s.race.frame === 1900 && s.marks.length === 1 && s.updateAvg === null && s.fps === null);
+  M.newRace(300, 2000);
+  const n = M.snapshot(400);
+  ok('a new race starts the worst figures from nothing, with the time it started', n.race.update === 0 && n.race.frame === 0 && n.race.long === 0 && n.race.load === 0 && n.race.loaf === 0 && n.race.minFps === null && n.race.wall === 2000);
+  ok('...and the marks stay (they tell what happened, race or not)', n.marks.length === 1); }
+
+// ---- a row every 30 seconds ----
+{ const M = Perf.createMonitor({ now: () => 0 });
+  const r = { fps: 55, updateAvg: 73.5, updateMax: 90, updateLoad: 70 }, m = { procs: { memoryMB: 1234.6, window: 21.4 } };
+  ok('without a race there is no row (and none is due)', M.sample(r, m, { heapMB: 100, dom: 2000 }, 1000) === false && M.snapshot(1000).history.length === 0 && M.due(1000) === false);
+  M.newRace(1000, 1);
+  ok('in a race a row is due at once', M.due(1000) === true);
+  ok('...the first row is taken', M.sample(r, m, { heapMB: 100.4, dom: 2000.2 }, 1000) === true);
+  const h = M.snapshot(1000).history[0];
+  ok('...with the seconds since the race started (0), the frames, the update, the load, the app memory (rounded), the window CPU (rounded), the memory of the page and the elements', h.at === 0 && h.fps === 55 && h.update === 73.5 && h.updateMax === 90 && h.load === 70 && h.memMB === 1235 && h.winCpu === 21 && h.heapMB === 100 && h.dom === 2000);
+  ok('...the next one is not due before 30 seconds are over (29.9 s: no)', M.due(30900) === false && M.sample(r, m, {}, 30900) === false);
+  ok('...at 30 seconds it is due, and its time is 30 seconds', M.due(31000) === true && M.sample({ ...r, fps: 40 }, m, {}, 31000) === true && M.snapshot(31000).history[1].at === 30 && M.snapshot(31000).history[1].fps === 40);
+  ok('...and not again straight after', M.sample(r, m, {}, 31010) === false);
+  const q = M.snapshot(31000).history[1];
+  ok('...without figures of the page or the core the row says null (and no crash)', q.heapMB === null && q.dom === null);
+  M.sample(r, null, undefined, 61000);
+  const z = M.snapshot(61000).history[2];
+  ok('...without the answer of the core (an older app, a phone) the memory and CPU are null', z.memMB === null && z.winCpu === null && z.at === 60);
+  M.sample(r, m, { heapMB: 'x', dom: NaN }, 91000);
+  ok('...a figure that is not a number is null', M.snapshot(91000).history[3].heapMB === null && M.snapshot(91000).history[3].dom === null);
+  M.reset();
+  ok('...reset keeps the rows (a race screen that comes back is still the same race)', M.snapshot(100000).history.length === 4);
+  M.newRace(100000, 9);
+  ok('...a new race starts the rows again, and the first is due at once', M.snapshot(100000).history.length === 0 && M.due(100000) === true);
+  ok('...a missing snapshot gives no row', M.sample(null, m, {}, 100000) === false && M.snapshot(100000).history.length === 0); }
+
+{ const M = Perf.createMonitor({ now: () => 0 }); M.newRace(0, 1);
+  for (let i = 0; i < 300; i++) M.sample({ fps: 1, updateAvg: i, updateMax: i, updateLoad: i }, null, {}, i * 30000);
+  const hh = M.snapshot(1e9).history;
+  ok('at most 240 rows are kept (two hours): the oldest go', hh.length === Perf.HIST_MAX && hh.length === 240 && hh[0].update === 60 && hh[239].update === 299);
+  hh[0].update = -1;
+  ok('...the snapshot gives copies (changing one does not change the monitor)', M.snapshot(1e9).history[0].update === 60); }
+
+// ---- the marks ----
+{ const M = Perf.createMonitor({ now: () => 0, wall: () => 4242 });
+  M.mark('Race started'); M.mark('  Live Race tab pressed \u0001 ', 5000); M.mark(''); M.mark('   '); M.mark(null); M.mark(5); M.mark(undefined);
+  const ms = M.snapshot(0).marks;
+  ok('marks: the text and the clock time (the clock of the monitor when none is given), rubbish and empty ones are left out, control characters and spaces cleaned', ms.length === 2 && ms[0].text === 'Race started' && ms[0].at === 4242 && ms[1].text === 'Live Race tab pressed' && ms[1].at === 5000);
+  M.mark('x'.repeat(200));
+  ok('...a long text is cut at 80', M.snapshot(0).marks[2].text.length === 80);
+  const M2 = Perf.createMonitor({ now: () => 0 }); for (let i = 0; i < 50; i++) M2.mark('m' + i, i);
+  const m2 = M2.snapshot(0).marks;
+  ok('...at most 40 are kept, the newest', m2.length === 40 && m2[0].text === 'm10' && m2[39].text === 'm49');
+  m2[0].text = 'changed';
+  ok('...the snapshot gives copies', M2.snapshot(0).marks[0].text === 'm10'); }
+
+// ---- what the core tells: windows, stalls, marks ----
+{ const raw = { at: 5, metrics: [{ type: 'Browser', pid: 1, cpu: 2, memMB: 100 }, { type: 'Tab', pid: 11, cpu: 20.04, memMB: 900.4 }, { type: 'Tab', pid: 12, cpu: 25, memMB: 700 }, { type: 'GPU', pid: 3, cpu: 3, memMB: 300 }],
+    windows: [{ title: 'SlotForge Timing', pid: 11, visible: true, minimized: false, focused: false, live: false }, { title: 'Live Race', pid: 12, visible: false, minimized: true, focused: true, live: true }],
+    stalls: [{ at: 100, ms: 1468.4 }], marks: [{ at: 90, text: 'Live Race window opened (1460 ms in the core)' }] };
+  const m = Perf.cleanMain(raw);
+  ok('each window gets the CPU and the memory of its own process (by the number of the process)', m.windows.length === 2 && m.windows[0].cpu === 20 && m.windows[0].memMB === 900 && m.windows[1].cpu === 25 && m.windows[1].memMB === 700);
+  ok('...its title, whether it is the Live Race window, shown, minimized and in front', m.windows[0].title === 'SlotForge Timing' && m.windows[0].live === false && m.windows[0].visible === true && m.windows[1].live === true && m.windows[1].visible === false && m.windows[1].minimized === true && m.windows[1].focused === true);
+  ok('...two windows with two processes do not share', m.windows[0].shares === false && m.windows[1].shares === false);
+  ok('the stalls and the marks come through (the stall rounded)', m.stalls.length === 1 && m.stalls[0].at === 100 && m.stalls[0].ms === 1468 && m.marks.length === 1 && m.marks[0].at === 90 && m.marks[0].text.startsWith('Live Race window opened'));
+  const two = Perf.cleanMain({ metrics: [{ type: 'Tab', pid: 11, cpu: 30, memMB: 800 }], windows: [{ title: 'A', pid: 11 }, { title: 'B', pid: 11, live: true }] });
+  ok('two windows in one process say so (one process for both) and both have the figures of it', two.windows[0].shares === true && two.windows[1].shares === true && two.windows[0].cpu === 30 && two.windows[1].memMB === 800);
+  const one = Perf.cleanMain({ metrics: [{ type: 'Tab', pid: 11, cpu: 30, memMB: 800 }], windows: [{ title: 'A', pid: 11 }] });
+  ok('a single window does not share', one.windows[0].shares === false);
+  const lone = Perf.cleanMain({ metrics: [{ type: 'GPU', pid: 3, cpu: 5, memMB: 100 }], windows: [{ title: 'A', pid: 3 }, { title: 'B' }, { title: 'C', pid: 'x' }] });
+  ok('a window whose process is not a window process (the GPU), or has no number, has no figures', lone.windows[0].cpu === null && lone.windows[0].memMB === null && lone.windows[1].pid === null && lone.windows[1].cpu === null && lone.windows[2].pid === null && lone.windows[1].shares === false);
+  const none = Perf.cleanMain({ metrics: [] });
+  ok('an answer without windows, stalls or marks (an older app) gives empty lists', none.windows.length === 0 && none.stalls.length === 0 && none.marks.length === 0);
+  const bad = Perf.cleanMain({ windows: 'x', stalls: 5, marks: { a: 1 } });
+  ok('...and a wrong kind of answer too', bad.windows.length === 0 && bad.stalls.length === 0 && bad.marks.length === 0);
+  const junk = Perf.cleanMain({ windows: [null, 'x', 5, { title: 'ok', pid: 1 }].concat(Array.from({ length: 20 }, (_, i) => ({ title: 'w' + i, pid: 100 + i }))), stalls: [null, { at: 1 }, { ms: 1 }, { at: 'x', ms: 5 }, { at: 1, ms: 'x' }].concat(Array.from({ length: 20 }, (_, i) => ({ at: i, ms: 100 + i }))), marks: [null, { at: 1 }, { text: 'x' }, { at: 1, text: '' }, { at: 1, text: '  ' }, { at: 'a', text: 'b' }].concat(Array.from({ length: 30 }, (_, i) => ({ at: i, text: 'm' + i }))) });
+  ok('windows: rubbish is skipped and at most 8 are given', junk.windows.length === 8 && junk.windows[0].title === 'ok');
+  ok('stalls: rubbish is skipped and at most the last 10 are given', junk.stalls.length === 10 && junk.stalls[9].ms === 119 && junk.stalls[0].ms === 110);
+  ok('marks: rubbish is skipped and at most the last 20 are given', junk.marks.length === 20 && junk.marks[19].text === 'm29' && junk.marks[0].text === 'm10');
+  const big = Perf.cleanMain({ stalls: [{ at: 1, ms: 1e9 }, { at: 2, ms: -5 }], marks: [{ at: 1, text: 'x'.repeat(300) }], windows: [{ title: 'y'.repeat(300) }] });
+  ok('a stall is kept within an hour, below zero is zero, long texts are cut', big.stalls[0].ms === 3600000 && big.stalls[1].ms === 0 && big.marks[0].text.length === 100 && big.windows[0].title.length === 60); }
+
+// ---- the report ----
+{ let T = 0; const M = Perf.createMonitor({ now: () => T, wall: () => 1760970000000 });
+  M.newRace(0, 1760970000000);
+  for (let s = 0; s < 125; s++) { T = s * 1000; for (let k = 0; k < 10; k++) { const t = T + k * 100; M.frame(t); M.update(70, t); M.part('state', 12, t); M.part('widgets', 40, t); M.widget('leaderboard', 2, 5, 20, t); M.loaf({ dur: 120, script: 60, render: 55, forced: 9, top: { name: 'update race.js', ms: 41 } }, t); }
+    M.sample(M.snapshot(T), { procs: { memoryMB: 1200 + s * 12, window: 20 } }, { heapMB: 100 + s, dom: 3000 + s * 10 }, T); }
+  T = 124999; M.mark('Live Race tab pressed', 1760970060000);
+  const r = M.snapshot(T);
+  const m = Perf.cleanMain({ metrics: [{ type: 'Tab', pid: 11, cpu: 20, memMB: 900 }, { type: 'Tab', pid: 12, cpu: 25, memMB: 700 }], windows: [{ title: 'SlotForge Timing', pid: 11, visible: true }, { title: 'Live Race', pid: 12, live: true, visible: true, focused: true }],
+    stalls: [{ at: 1760970061000, ms: 1468 }], marks: [{ at: 1760970060500, text: 'Live Race window opened (1460 ms in the core)' }] });
+  const rep = Perf.report(r, m, { when: 'x', race: { name: 'T', widgets: 57, lanes: 2 } }), lines = rep.split('\n');
+  const at = s => lines.findIndex(x => x.includes(s));
+  ok('the report says where a screen update spends its time: the parts, the biggest first, with milliseconds', at('Where a screen update spends its time') >= 0 && lines[at('Where a screen update spends its time') + 1] === '  widgets 40 ms · state 12 ms');
+  ok('...the slowest widgets with text, page and fit', lines[at('Slowest widgets') + 1] === '  leaderboard: 27 ms (text 2, page 5, fit 20)');
+  ok('...the slow frames: how many, the average, the longest, what script, what page, what forced', rep.includes('Slow frames (over 50 ms) in the last 10 seconds: 100, 120 ms on average, the longest 120 ms. On average: scripts 60 ms (of which the page measuring itself 9 ms), drawing the page 55 ms'));
+  ok('...and the slowest scripts', rep.includes('  slowest scripts: update race.js 41 ms'));
+  ok('...the worst of the race with the time it started and how long ago', /Worst since the race started \(\d\d:\d\d:\d\d, 2 min 5 s ago\): slowest frame 100 ms, longest screen update 70 ms, longest stuck 0 ms, longest slow frame 120 ms, fewest frames \d+ a second, busiest \d+% of the time on updates/.test(rep));
+  const rows = lines.filter(x => /^ {2}\d+:\d\d {2}/.test(x));
+  ok('...the rows of the history: 5 rows of 30 seconds (0:00 to 2:00 in steps of half a minute)', rows.length === 5 && rows[0].startsWith('  0:00') && rows[1].startsWith('  0:30') && rows[4].startsWith('  2:00'));
+  ok('...each row with the frames, the update, the load, the memory of the app and the page, the elements and the CPU', /^ {2}2:00 {2}\d+ frames\/s · update 70 ms \(\d+% of the time, slowest 70\) · app \d+ MB · page \d+ MB · \d+ elements · window CPU 20%$/.test(rows[4]));
+  ok('...the windows with their own CPU and memory', rep.includes('Windows (2 open):') && rep.includes('  SlotForge Timing: CPU 20%, 900 MB') && rep.includes('  Live Race: CPU 25%, 700 MB, in front'));
+  ok('...the stalls with the clock time', /The core of the app was stuck for over 100 ms at: \d\d:\d\d:\d\d \(1468 ms\)/.test(rep));
+  const ev = lines.slice(at('What happened (clock time):') + 1, at('What happened (clock time):') + 4);
+  ok('...what happened, from the window and from the core together, in the order of the clock', ev.length >= 3 && /Live Race tab pressed/.test(ev[0]) && /Live Race window opened \(1460 ms in the core\)/.test(ev[1]) && /Race started/.test(ev[2]) === false || (ev[0].includes('Race started') === false));
+  ok('...the notes: the Live Race window, the stall of 1468 ms, the widget that takes the time', rep.includes('The Live Race window is open: it draws the timing page a second time, in a process of its own.') && /The core of the app was stuck for 1468 ms at \d\d:\d\d:\d\d\./.test(rep) && rep.includes('The widget "leaderboard" takes 27 ms of every update'));
+  ok('...and the part that was already there is still there (the first line, Frames, Screen updates, Race save)', lines[0].startsWith('SlotForge Timing') && rep.includes('Frames: 10 a second') && rep.includes('Screen updates: 10 a second') && rep.includes('Race save:')); }
+
+{ const M = Perf.createMonitor({ now: () => 0 }); M.frame(0); for (let i = 0; i < 20; i++) M.frame(i * 16.7 + 17);
+  const r = M.snapshot(400), rep = Perf.report(r, null, {});
+  ok('a report without a race, a slow frame or a window has none of the new parts', !/Where a screen update|Slowest widgets|Slow frames|Worst since|Since the race started|Windows \(|stuck for over|What happened/.test(rep)); }
+
+{ const M = Perf.createMonitor({ now: () => 0 }); M.newRace(0, 1760970000000); M.frame(0);
+  for (let i = 0; i < 100; i++) M.sample({ fps: 30, updateAvg: i, updateMax: i, updateLoad: i }, null, {}, i * 30000);
+  const rep = Perf.report(M.snapshot(3000000), null, {}), rows = rep.split('\n').filter(x => /^ {2}\d+:\d\d {2}/.test(x));
+  ok('a long race: at most 24 rows are in the report, and the first and the last of the race are among them', rows.length === 24 && rows[0].startsWith('  0:00') && rows[23].startsWith('  49:30'));
+  const M2 = Perf.createMonitor({ now: () => 0 }); M2.newRace(0, 1); for (let i = 0; i < 24; i++) M2.sample({ fps: 30, updateAvg: i, updateMax: i, updateLoad: i }, null, {}, i * 30000);
+  ok('...24 rows are all given', Perf.report(M2.snapshot(1e9), null, {}).split('\n').filter(x => /^ {2}\d+:\d\d {2}/.test(x)).length === 24); }
+
+{ const M = Perf.createMonitor({ now: () => 0 }); M.frame(0); M.update(5, 0);
+  M.mark('a'); const r = M.snapshot(100);
+  const m = Perf.cleanMain({ marks: [{ at: 1, text: 'from the core' }, { at: 5e12, text: 'late' }] });
+  const rep = Perf.report(r, m, {}), ev = rep.split('\n').filter(x => /^ {2}\d\d:\d\d:\d\d {2}/.test(x));
+  ok('what happened: the marks of the window and of the core are put in the order of the clock', ev.length === 3 && ev[0].includes('from the core') && ev[1].includes(' a') && ev[2].includes('late'));
+  const many = Perf.cleanMain({ marks: Array.from({ length: 20 }, (_, i) => ({ at: i + 1, text: 'e' + i })) });
+  const rep2 = Perf.report(null, many, {}).split('\n').filter(x => /^ {2}\d\d:\d\d:\d\d {2}/.test(x));
+  ok('...at most the last 14 are in the report', rep2.length === 14 && rep2[13].includes('e19') && rep2[0].includes('e6')); }
+
+{ const rep = Perf.report(null, Perf.cleanMain({ windows: [{ title: 'Race', pid: 11 }, { title: 'Live Race', pid: 12, live: true, visible: false, minimized: true }, { title: 'Other', pid: 13, live: true }, { title: '', pid: 14 }], metrics: [{ type: 'Tab', pid: 12, cpu: 5, memMB: 50 }] }), {});
+  ok('a window with no title is untitled; a Live Race window whose title does not say so is marked; hidden and minimized are said; no process figures say unknown', rep.includes('  Race: CPU unknown, memory unknown') && rep.includes('  Live Race: CPU 5%, 50 MB, hidden, minimized') && rep.includes('  Other [Live Race]: CPU unknown') && rep.includes('  untitled: CPU unknown'));
+  const sh = Perf.report(null, Perf.cleanMain({ windows: [{ title: 'A', pid: 1 }, { title: 'B', pid: 1 }], metrics: [{ type: 'Tab', pid: 1, cpu: 9, memMB: 99 }] }), {});
+  ok('...two windows in one process say so', sh.split('(one process for both windows)').length === 3); }
+
+// ---- the notes ----
+{ const base = { fps: 60, updateAvg: 20, updates: 10, updateLoad: 5, updateMax: 25, longCount: 0, longMax: 0, widgets: [], parts: [], loaf: null, history: [] };
+  const has = (r, m, s) => Perf.notes(r, m).some(x => x.includes(s));
+  const w = (avg, over = {}) => ({ ...base, updateAvg: 20, widgets: [{ type: 'leaderboard', avg, draw: 1, write: 1, fit: 1, count: 1, ...over }] });
+  ok('a widget that takes 7 ms of a 20 ms update (35% but under 8 ms) is not named', !has(w(7), null, 'The widget'));
+  ok('...8 ms of a 40 ms update (20%) is not named, and 8 ms of 23 ms (34.8%) is not either', !has({ ...w(8), updateAvg: 40 }, null, 'The widget') && !has({ ...w(8), updateAvg: 23 }, null, 'The widget'));
+  ok('...8 ms of a 22 ms update (36%) is named', has({ ...w(8), updateAvg: 22 }, null, 'The widget "leaderboard" takes 8 ms of every update, 36% of it'));
+  ok('...exactly 35% (14 of 40 ms) is named', has({ ...w(14), updateAvg: 40 }, null, 'The widget "leaderboard"'));
+  ok('...34% (13.6 of 40 ms) is not', !has({ ...w(13.6), updateAvg: 40 }, null, 'The widget'));
+  ok('...mostly fit: it says so (fit 15 of 20)', has(w(20, { fit: 15, draw: 2, write: 3 }), null, ', mostly in fitting it to its place.'));
+  ok('...mostly in the page: it says so (write 15 of 20)', has(w(20, { fit: 3, draw: 2, write: 15 }), null, ', mostly in putting it in the page.'));
+  ok('...fit exactly half is "mostly fit" (10 of 20)', has(w(20, { fit: 10, draw: 5, write: 5 }), null, 'mostly in fitting'));
+  ok('...text mostly: it says nothing about where', has(w(20, { fit: 1, draw: 18, write: 1 }), null, 'of every update, ') && !has(w(20, { fit: 1, draw: 18, write: 1 }), null, 'mostly'));
+  ok('...several of them are counted (3 of them)', has(w(20, { count: 3 }), null, '(3 of them)') && !has(w(20, { count: 1 }), null, 'of them'));
+  ok('...no update time known: no widget note (nothing divided by nothing)', !has({ ...w(20), updateAvg: null }, null, 'The widget'));
+  ok('a slow frame that is mostly drawing the page says so (render over script)', has({ ...base, loaf: { count: 3, avg: 100, max: 120, script: 40, render: 50, forced: 0, top: [] } }, null, 'more time goes in drawing the page') && !has({ ...base, loaf: { count: 3, avg: 100, max: 120, script: 50, render: 50, forced: 0, top: [] } }, null, 'more time goes in drawing the page'));
+  ok('...forced layout: 5 ms and a quarter of the script is named', has({ ...base, loaf: { count: 3, avg: 100, max: 120, script: 20, render: 5, forced: 5, top: [] } }, null, 'the page measuring itself again and again'));
+  ok('...4.9 ms is not', !has({ ...base, loaf: { count: 3, avg: 100, max: 120, script: 20, render: 5, forced: 4.9, top: [] } }, null, 'measuring itself'));
+  ok('...5 ms of 40 ms script (under a quarter) is not', !has({ ...base, loaf: { count: 3, avg: 100, max: 120, script: 40, render: 5, forced: 5, top: [] } }, null, 'measuring itself'));
+  const row = (at, o = {}) => ({ at, fps: 30, update: 70, updateMax: 80, load: 50, memMB: 1000, winCpu: 20, heapMB: 100, dom: 3000, ...o });
+  const hist = (a, b, n = 3) => ({ ...base, history: [a, ...Array.from({ length: n - 2 }, (_, i) => row(30 + i * 5)), b] });
+  ok('an update that took 70 ms and now takes 98 ms (x1.4) after a minute: "it gets slower during the race"', has(hist(row(0), row(60, { update: 98 })), null, 'it gets slower during the race') && has(hist(row(0), row(60, { update: 98 })), null, 'took 70 ms at 0:00 of the race and 98 ms at 1:00: it gets slower'));
+  ok('...x1.39 is not', !has(hist(row(0), row(60, { update: 97.5 })), null, 'gets slower'));
+  ok('...and 15 ms more is needed (10 ms to 14.9 ms is x1.49 but only +4.9: no; 10 to 25 is yes)', !has(hist(row(0, { update: 10 }), row(60, { update: 24.9 })), null, 'gets slower') && has(hist(row(0, { update: 10 }), row(60, { update: 25 })), null, 'gets slower'));
+  ok('...under a minute into the race it is too early to say', !has(hist(row(0), row(59, { update: 200 })), null, 'gets slower') && has(hist(row(0), row(60, { update: 200 })), null, 'gets slower'));
+  ok('...two rows are too few to say', !has({ ...base, history: [row(0), row(120, { update: 300 })] }, null, 'gets slower') && has(hist(row(0), row(120, { update: 300 }), 4), null, 'gets slower'));
+  ok('...rows without an update time are not used (null)', !has({ ...base, history: [row(0, { update: null }), row(60, { update: null }), row(120, { update: null })] }, null, 'gets slower'));
+  ok('the memory of the page doubled and 100 MB more: named; 99 MB more is not; x1.99 is not', has(hist(row(0, { heapMB: 100 }), row(60, { heapMB: 200 })), null, 'The memory of the page grew from 100 MB to 200 MB') && !has(hist(row(0, { heapMB: 100 }), row(60, { heapMB: 199 })), null, 'memory of the page') && !has(hist(row(0, { heapMB: 1000 }), row(60, { heapMB: 1900 })), null, 'memory of the page'));
+  ok('...no figure: not named', !has(hist(row(0, { heapMB: null }), row(60, { heapMB: 900 })), null, 'memory of the page') && !has(hist(row(0, { heapMB: 100 }), row(60, { heapMB: null })), null, 'memory of the page'));
+  ok('the page grew by half and 1000 elements: named; 999 more is not; x1.49 is not', has(hist(row(0, { dom: 2000 }), row(60, { dom: 3000 })), null, 'The page grew from 2000 to 3000 elements') && !has(hist(row(0, { dom: 2000 }), row(60, { dom: 2999 })), null, 'elements') && !has(hist(row(0, { dom: 5000 }), row(60, { dom: 7400 })), null, 'elements'));
+  ok('the memory of the app grew by half and 500 MB: named; 499 more is not; x1.49 is not', has(hist(row(0, { memMB: 1000 }), row(60, { memMB: 1500 })), null, 'The memory of the app grew from 1000 MB to 1500 MB') && !has(hist(row(0, { memMB: 1000 }), row(60, { memMB: 1499 })), null, 'memory of the app') && !has(hist(row(0, { memMB: 2000 }), row(60, { memMB: 2990 })), null, 'memory of the app'));
+  const cm = (o = {}) => Perf.cleanMain({ windows: [{ title: 'Race', pid: 1 }], ...o });
+  ok('the Live Race window open: named; only the race window: not', has(null, cm({ windows: [{ title: 'Race', pid: 1 }, { title: 'Live Race', pid: 2, live: true }] }), 'The Live Race window is open') && !has(null, cm(), 'Live Race window'));
+  ok('a stall of 500 ms is named with its time; 499 ms is not; the latest big one is named', has(null, cm({ stalls: [{ at: 1760970061000, ms: 500 }] }), 'was stuck for 500 ms at') && !has(null, cm({ stalls: [{ at: 1, ms: 499 }] }), 'was stuck for') && has(null, cm({ stalls: [{ at: 1, ms: 900 }, { at: 2, ms: 600 }, { at: 3, ms: 100 }] }), 'stuck for 600 ms'));
+  ok('when all is well there is nothing to note', Perf.notes({ ...base, history: [row(0), row(30), row(60)] }, cm()).length === 0); }
+
+// ---- 1.60.1, the edges (found by breaking the code on purpose and seeing what the tests did not notice) ----
+{ const A = Perf.createMonitor({ now: () => 0 }); A.newRace(0, 1); A.frame(0); A.frame(2000);
+  const B = Perf.createMonitor({ now: () => 0 }); B.newRace(0, 1); B.frame(0); B.frame(2001);
+  ok('a frame that came 2000 ms after the one before is a slow frame of the race; one that came 2001 ms after is a window that was hidden (not counted)', A.snapshot(2000).race.frame === 2000 && B.snapshot(2001).race.frame === 0);
+  const U = Perf.createMonitor({ now: () => 0 }); U.newRace(0, 1); U.update(33.37, 10); U.update(12.04, 20); U.long(41.6, 30);
+  const us = U.snapshot(2600).race;
+  ok('the worst of the race: the update to a tenth of a millisecond, the stuck time and the seconds rounded', us.update === 33.4 && us.long === 42 && us.seconds === 3);
+  const P = Perf.createMonitor({ now: () => 0 }); P.part('widgets', 40, 100); P.update(5, 100); P.update(5, 14000);
+  ok('the times of the parts that are older than ten seconds do not count, when the updates go on', P.snapshot(14500).parts.length === 0);
+  const H = Perf.createMonitor({ now: () => 0 }); H.newRace(1000, 1); H.sample({ fps: 30, updateAvg: 5, updateMax: 6, updateLoad: 1 }, null, {}, 2500);
+  ok('a row of the history says the seconds since the race started, rounded (1.5 s is 2)', H.snapshot(3000).history[0].at === 2);
+  const R = Perf.createMonitor({ now: () => 0 }); R.update(5, 100); R.part('state', 3, 100); R.reset(); R.update(5, 200);
+  ok('after reset the times of the parts that were there before do not come back', R.snapshot(300).parts.length === 0);
+  const R2 = Perf.createMonitor({ now: () => 0 }); R2.update(5, 100); R2.part('state', 3, 100); R2.part('state', 3, 2500); R2.reset(); R2.update(5, 2600);
+  ok('...also when they were in an earlier second', R2.snapshot(2700).parts.length === 0);
+  const D = Perf.createMonitor({ now: () => 0 }); D.update(1, 0); D.update(1, 100); D.update(1, 200); D.part('state', 1, 250); D.widget('y', 0.5, 0.25, 0.25, 250);
+  const ds = D.snapshot(300);
+  ok('averages over the updates are rounded to a hundredth: 1 ms over 3 updates is 0.33; 0.5, 0.25 and 0.25 are 0.17, 0.08, 0.08 (1.0 is 0.33)', ds.parts[0].avg === 0.33 && ds.widgets[0].draw === 0.17 && ds.widgets[0].write === 0.08 && ds.widgets[0].fit === 0.08 && ds.widgets[0].avg === 0.33);
+  const C = Perf.createMonitor({ now: () => 0 }); C.update(1, 0); C.update(1, 100); C.widget('z', 1, 1, 1, 150); C.widget('z', 1, 1, 1, 160); C.widget('z', 1, 1, 1, 170);
+  ok('...the number of widgets of a type is the number drawn over the updates, rounded (3 draws over 2 updates is 2)', C.snapshot(300).widgets[0].count === 2); }
+
+{ const L = Perf.loafFrom({ duration: 100, startTime: 0, scripts: [{ duration: 10, sourceFunctionName: 'a' }, { duration: 40, sourceFunctionName: 'b', sourceURL: 'http://x/y/race.js?v=1' }, { duration: 20, sourceFunctionName: 'c' }] });
+  ok('the biggest script of a slow frame is named (not the first one)', L.top.name === 'b race.js' && L.top.ms === 40);
+  const E = Perf.loafFrom({ duration: 100, startTime: 0, scripts: [{ duration: 20, sourceFunctionName: 'first' }, { duration: 20, sourceFunctionName: 'second' }] });
+  ok('...of two that are as big the first one', E.top.name === 'first');
+  ok('the time of drawing the page is what is left of the frame after the render started (never below zero)', Perf.loafFrom({ duration: 50, startTime: 100, renderStart: 120, scripts: [] }).render === 30 && Perf.loafFrom({ duration: 50, startTime: 100, renderStart: 200, scripts: [] }).render === 0); }
+
+{ const w = Perf.cleanMain({ windows: [{ title: 'A' }, { title: 'B', visible: false, live: true }] }).windows;
+  ok('a window that does not say whether it is shown is shown, and one that does not say it is the Live Race window is not (and not minimized or in front)', w[0].visible === true && w[0].live === false && w[0].minimized === false && w[0].focused === false && w[1].visible === false && w[1].live === true);
+  const rep = Perf.report(null, Perf.cleanMain({ windows: [{ title: 'A' }] }), {});
+  ok('...so the report does not call it hidden', rep.includes('  A: CPU unknown, memory unknown') && !/hidden|minimized|in front/.test(rep));
+  const s = Perf.cleanMain({ stalls: [null, { at: 1 }, { ms: 1 }, { at: 'x', ms: 5 }, { at: 5, ms: 'x' }, { at: 6, ms: 200 }] }).stalls;
+  ok('a stall needs a time and a length (rubbish is left out, also when there are only a few)', s.length === 1 && s[0].at === 6 && s[0].ms === 200);
+  const k = Perf.cleanMain({ marks: [null, { at: 1 }, { text: 'x' }, { at: 2, text: '' }, { at: 3, text: '   ' }, { at: 4, text: 5 }, { at: 'x', text: 'y' }, { at: 5, text: 'ok' }] }).marks;
+  ok('a mark needs a time and a text (rubbish and empty ones are left out, also when there are only a few)', k.length === 1 && k[0].at === 5 && k[0].text === 'ok'); }
+
+// ---- the notes at their edges ----
+{ const base = { fps: 60, updateAvg: 20, updates: 10, updateLoad: 5, updateMax: 25, longCount: 0, longMax: 0, widgets: [], parts: [], loaf: null, history: [] };
+  const has = (r, m, s) => Perf.notes(r, m).some(x => x.includes(s));
+  const w = (avg, over = {}) => ({ ...base, updateAvg: 20, widgets: [{ type: 'leaderboard', avg, draw: 1, write: 1, fit: 1, count: 1, ...over }] });
+  const loaf = (script, forced) => ({ ...base, loaf: { count: 3, avg: 100, max: 120, script, render: 5, forced, top: [] } });
+  const row = (at, o = {}) => ({ at, fps: 30, update: 70, updateMax: 80, load: 50, memMB: 1000, winCpu: 20, heapMB: 100, dom: 3000, ...o });
+  ok('two windows and none of them is the Live Race window: no note about it', !has(null, Perf.cleanMain({ windows: [{ title: 'Race', pid: 1 }, { title: 'Other', pid: 2 }] }), 'Live Race window is open'));
+  ok('a widget whose page part is exactly half of its time is "mostly in putting it in the page" (10 of 20, the fit being less)', has(w(20, { fit: 5, draw: 5, write: 10 }), null, 'mostly in putting it in the page') && !has(w(20, { fit: 5, draw: 6, write: 9 }), null, 'mostly'));
+  ok('slow frames: forced layout is named from 5 ms and a quarter of the script, not under 5 ms of a small script (4.9 of 10), not under a quarter of a big one (24.9 of 100)', has(loaf(100, 25), null, 'measuring itself') && !has(loaf(100, 24.9), null, 'measuring itself') && !has(loaf(10, 4.9), null, 'measuring itself') && has(loaf(10, 5), null, 'measuring itself'));
+  const hist = (...rows) => ({ ...base, history: rows });
+  ok('rows without an update time are left out of the comparison (one between two real ones: two are too few; one at the end is not the last)', !has(hist(row(0), row(30, { update: null }), row(60, { update: 98 })), null, 'gets slower') && has(hist(row(0), row(30), row(60, { update: 98 }), row(90, { update: null })), null, '70 ms at 0:00 of the race and 98 ms at 1:00'));
+  ok('...the note says when the first and the last row were (the first row need not be at the start)', has(hist(row(10), row(40), row(70, { update: 98 })), null, '70 ms at 0:10 of the race and 98 ms at 1:10: it gets slower during the race'));
+  ok('the memory of the page: x2 but only 99 MB more is not named; 100 MB more is', !has(hist(row(0, { heapMB: 40 }), row(30), row(60, { heapMB: 139 })), null, 'memory of the page') && has(hist(row(0, { heapMB: 40 }), row(30), row(60, { heapMB: 140 })), null, 'memory of the page'));
+  ok('the elements of the page: x3 but only 999 more is not named; 1000 more is', !has(hist(row(0, { dom: 500 }), row(30), row(60, { dom: 1499 })), null, 'page grew') && has(hist(row(0, { dom: 500 }), row(30), row(60, { dom: 1500 })), null, 'page grew'));
+  ok('the memory of the app: x1.8 but only 499 MB more is not named; 500 MB more is', !has(hist(row(0, { memMB: 600 }), row(30), row(60, { memMB: 1099 })), null, 'memory of the app') && has(hist(row(0, { memMB: 600 }), row(30), row(60, { memMB: 1100 })), null, 'memory of the app')); }
+
+// ---- the report at its edges ----
+{ const wall = new Date(2026, 9, 20, 14, 5, 9).getTime();
+  const M = Perf.createMonitor({ now: () => 0 }); M.newRace(0, wall); M.frame(0); M.update(5, 10);
+  const rep = Perf.report(M.snapshot(400), null, {});
+  ok('the worst of the race says the hour, minute and second the race started (14:05:09), and "–" for the fewest frames when there were not enough to count', rep.includes('Worst since the race started (14:05:09, 0 s ago): slowest frame 0 ms') && rep.includes('fewest frames –, busiest'));
+  ok('...and how long ago it started', Perf.report(M.snapshot(5400), null, {}).includes('(14:05:09, 5 s ago)'));
+  const N = Perf.createMonitor({ now: () => 0 }); N.newRace(0, null); N.frame(0);
+  ok('...a race with no clock time is "–" (not 1970)', Perf.report(N.snapshot(100), null, {}).includes('Worst since the race started (–, '));
+  const F = Perf.createMonitor({ now: () => 0 }); F.newRace(0, wall); for (let i = 0; i <= 60; i++) F.frame(i * 20);
+  ok('...and when there were enough frames it says how many a second at the fewest', /fewest frames 50 a second,/.test(Perf.report(F.snapshot(1200), null, {})));
+  const Q = Perf.createMonitor({ now: () => 0 }); Q.frame(0); Q.update(5, 0); Q.loaf({ dur: 100, script: 50, render: 20, forced: 0, top: null }, 10);
+  const rq = Perf.report(Q.snapshot(100), null, {});
+  ok('slow frames without a named script have no line of slowest scripts', rq.includes('Slow frames (over 50 ms)') && !rq.includes('slowest scripts'));
+  const T = Perf.createMonitor({ now: () => 0 }); T.newRace(0, wall); T.frame(0);
+  for (let i = 0; i < 100; i++) T.sample({ fps: 30, updateAvg: i, updateMax: i, updateLoad: i }, null, {}, i * 30000);
+  const rows = Perf.report(T.snapshot(3000000), null, {}).split('\n').filter(x => /^ {2}\d+:\d\d {2}/.test(x));
+  ok('a long race: the rows that are left are spread over the race (the 3rd one is the 10th of 100: 4:30)', rows[1].startsWith('  2:00') && rows[2].startsWith('  4:30') && rows[22].startsWith('  47:30'));
+  const none = Perf.report(null, Perf.cleanMain({ metrics: [] }), {});
+  ok('a core that tells no windows and no stalls has no list of them in the report', !none.includes('Windows (') && !none.includes('stuck for over'));
+  const stalls = Perf.report(null, Perf.cleanMain({ stalls: [{ at: wall, ms: 250 }] }), {});
+  ok('...and one that tells a stall has it with the clock time', stalls.includes('The core of the app was stuck for over 100 ms at: 14:05:09 (250 ms)') && !stalls.includes('Windows (')); }
+
 console.log(fails ? `\n${fails} FAILED` : '\nperf PASSED');
 process.exit(fails ? 1 : 0);

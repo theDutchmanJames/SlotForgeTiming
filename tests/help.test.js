@@ -317,5 +317,9 @@ const folders = Help.folders();
   say('1.60.0: the help has a folder Performance (with the Making it yours folders) that says where the report is, what it shows, the Copy report button, the line on the race screen (off to begin with), and that nothing is measured while both are off', !!fo && ['App Settings, General, Performance', 'Copy report', 'Show the Performance line on the race screen', 'frames a second', 'screen update', 'Raspberry Pi', 'graphics card', 'off to begin with', 'Nothing is measured'].every(t => g.includes(t)));
   say('...the names it uses are in the app: the folder, the switch and the button', ['Performance', 'Show the Performance line on the race screen', 'Copy report'].every(t => read('renderer/app.js').includes(t)));
   say('...and the folder is short, and it comes after Look and feel', g.length < 1400 && folders.findIndex(x => x.id === 'performance') === folders.findIndex(x => x.id === 'look') + 1); }
+// ---- 1.60.1: the report says where the time goes ----
+{ const fo = folders.find(x => x.id === 'performance'), g = fo ? plain(fo.body) : '';
+  say('1.60.1: the help folder says the report names the widgets and parts that take the time, the worst figures of the race, a row every 30 seconds, the stuck core and the windows (the Live Race tab is a second window), and to switch the line on before the race', ['widgets and the parts of a screen update', 'worst figures since the race started', 'a row every 30 seconds', 'when the core was stuck', 'which windows are open', 'Live Race tab is a second window', 'Switch the line on before the race starts', 'does the app get slower during a race?'].every(s => g.includes(s)));
+  say('...and the folder is still short enough', g.length < 1400); }
 
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);
