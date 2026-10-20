@@ -81,10 +81,10 @@
       // many times it was made smaller, r.m = the first measure (the badge box and its text, px), r.key / r.prev = the shape of the text now and before (when it changed shape)
       delta(type, r, t = clock()) {
         begin(t); if (typeof type !== 'string' || !r || typeof r !== 'object' || !DELTA_WHY.includes(r.why)) return;
-        const b = pile(t), a = b.deltas[type] || (b.deltas[type] = { calls: 0, skip: 0, first: 0, shape: 0, recheck: 0, again: 0, resize: 0, roomy: 0, shrunk: 0, tight: 0, unknown: 0, steps: 0 });
+        const b = pile(t), a = b.deltas[type] || (b.deltas[type] = { calls: 0, skip: 0, first: 0, shape: 0, recheck: 0, again: 0, resize: 0, kept: 0, roomy: 0, shrunk: 0, tight: 0, unknown: 0, steps: 0 });
         if (r.why === 'resize') { a.resize++; return; } // (the widget or the window changed size: delta.js fit() measures every badge of the widget again; not one of the calls of the update)
         a.calls++; a[r.why]++;
-        if (r.why === 'skip') return;
+        if (r.why === 'skip') { if (r.how === 'kept') a.kept++; return; } // (1.60.7: left alone, and given the smaller size that was found before)
         const how = DELTA_HOW.includes(r.how) ? r.how : 'unknown'; a[how]++; a.steps += num(r.steps, 0, 10, 0);
         const d = st.dlast[type] || (st.dlast[type] = { m: null, how: null, steps: 0, from: null, to: null });
         d.m = geo(r.m); d.how = how; d.steps = num(r.steps, 0, 10, 0);
@@ -123,7 +123,7 @@
         });
         const dTot = Object.create(null); // (1.60.5) the Delta Timer badges of the last ten seconds, by widget type
         st.buckets.concat(st.cur ? [st.cur] : []).filter(b => t - b.start <= WINDOW).forEach(b => Object.keys(b.deltas).forEach(k => { const a = dTot[k] || (dTot[k] = {}); Object.keys(b.deltas[k]).forEach(f => { a[f] = (a[f] || 0) + b.deltas[k][f]; }); }));
-        const delta = Object.keys(dTot).map(k => { const a = dTot[k], d = st.dlast[k]; return { type: k, calls: a.calls, skipped: a.skip, measured: a.calls - a.skip, first: a.first, shape: a.shape, recheck: a.recheck, again: a.again, resize: a.resize, roomy: a.roomy, shrunk: a.shrunk, tight: a.tight, unknown: a.unknown, steps: a.steps, last: d ? { m: d.m, how: d.how, steps: d.steps, from: d.from, to: d.to } : null }; })
+        const delta = Object.keys(dTot).map(k => { const a = dTot[k], d = st.dlast[k]; return { type: k, calls: a.calls, skipped: a.skip, measured: a.calls - a.skip, first: a.first, shape: a.shape, recheck: a.recheck, again: a.again, resize: a.resize, kept: a.kept || 0, roomy: a.roomy, shrunk: a.shrunk, tight: a.tight, unknown: a.unknown, steps: a.steps, last: d ? { m: d.m, how: d.how, steps: d.steps, from: d.from, to: d.to } : null }; })
           .filter(x => x.calls > 0 || x.resize > 0).sort((a, b) => b.measured - a.measured || b.calls - a.calls || b.resize - a.resize).slice(0, 5);
         const per = v => Math.round(v / ups.length * 100) / 100; // (only used when there are updates)
         const parts = ups.length ? Object.keys(partTot).map(k => ({ name: k, avg: per(partTot[k]) })).sort((a, b) => b.avg - a.avg).slice(0, 12) : [];
@@ -219,7 +219,7 @@
   // the Delta Timer badges of one widget type: how often they were looked at, measured and why (the counts that are not 0)
   function deltaLines(d) {
     const L = [], list = a => a.filter(x => x[0] > 0).map(x => `${x[0]} ${x[1]}`).join(', ');
-    L.push(`  ${d.type}: ${d.calls} badge${d.calls === 1 ? '' : 's'} looked at in the last ${f0(d.span)} s, ${d.measured} measured, ${d.skipped} left alone${d.resize ? `; the widget or the window changed size ${d.resize} time(s) (each time every badge is measured again)` : ''}`);
+    L.push(`  ${d.type}: ${d.calls} badge${d.calls === 1 ? '' : 's'} looked at in the last ${f0(d.span)} s, ${d.measured} measured, ${d.skipped} left alone${d.kept ? ` (${d.kept} of them put at the smaller size that was found before)` : ''}${d.resize ? `; the widget or the window changed size ${d.resize} time(s) (each time every badge is measured again)` : ''}`);
     if (d.measured) {
       L.push('    why measured: ' + list([[d.first, 'for the first time'], [d.shape, 'the text changed shape (signs, number of figures, class or style)'], [d.recheck, 'the regular check (every 30th time)'], [d.again, 'it did not fit with room to spare the last time']]));
       L.push('    how it came out: ' + list([[d.roomy, 'fitted with room to spare'], [d.shrunk, `had to be made smaller (${d.shrunk ? Math.round(d.steps / d.shrunk * 10) / 10 : 0} steps on average)`], [d.tight, 'fitted, but without room to spare'], [d.unknown, 'could not be measured (not on the screen yet)']]));
@@ -295,7 +295,7 @@
         r.widgets.forEach(w => L.push(`  ${w.type}${w.count > 1 ? ' x' + w.count : ''}: ${f1(w.avg)} ms (text ${f1(w.draw)}, page ${f1(w.write)}, fit ${f1(w.fit)})`));
       }
       if (r.delta && r.delta.length) {
-        L.push('', 'Delta Timer badges (the arrow and the number are fitted inside the badge; a badge that fitted with room to spare is left alone while its text keeps the same shape):');
+        L.push('', 'Delta Timer badges (the arrow and the number are fitted inside the badge; a badge that fitted with room to spare is left alone while its text keeps the same shape, and one that had to be made smaller is put at the size found before):');
         r.delta.forEach(d => deltaLines({ ...d, span: Math.min(10, r.seconds) }).forEach(x => L.push(x)));
       }
       if (r.loaf) {

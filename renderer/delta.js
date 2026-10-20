@@ -205,25 +205,36 @@
   const SLACK = 0.1, RECHECK = 30;
   const roomyOf = m => (m.row === true ? true : m.row === false ? m.w <= m.boxW * (1 - SLACK) : m.w <= m.boxW * (1 - SLACK) && m.h <= m.boxH * (1 - SLACK));
   const shapeOf = b => `${String(b.textContent).replace(/[0-9]/g, '0')}|${b.className}|${b.getAttribute ? b.getAttribute('style') || '' : ''}`;
+  // 1.60.7: a badge that had to be made smaller was measured at every look (1.60.3 to 1.60.6 only left alone a badge that fitted with room to spare, and the Pi report of 1.60.5 showed a
+  // Lap Time Delta that is almost twice too wide for its widget: 129 looks in 10 seconds, 129 measures). What it comes out at depends on the shape of its text (the signs, the number of
+  // figures, the class and the style: the figures are as wide as each other, the badge is set in tabular figures) and on the size of its widget (a resize makes fit() forget everything), so
+  // the size that was found is kept with the shape and put on the next badge of that shape without measuring, until the RECHECK-th look or until the shape changes. A badge that did not
+  // fit in the end (three tries were not enough) is not kept: it is measured again. One that is at the smallest size (a fifth) is kept:
+  // measuring it again cannot make it smaller. A badge that fitted without room to spare and without shrinking ('tight') is still measured every time.
   // the badge's own size from the markup (the size setting) is kept in data-fit and put back before every fit, so a widget that gets bigger again gets its full text back
   // memo, i: where the last fit of this badge was kept (fitQuick), or nothing: measure
   // note (1.60.5, given by the Performance report while somebody looks; changes nothing): called with what happened to this badge: { why, how, steps, m, key, prev }. why: 'skip' (left alone), 'first'
   // (nothing known about it yet), 'shape' (its text changed shape), 'recheck' (the regular check), 'again' (it did not fit with room to spare the last time); when it was measured, how: 'roomy',
-  // 'shrunk' (made smaller, in steps steps), 'tight' (it fitted, without room to spare) or 'unknown' (not on the screen), m: the first measure.
+  // 'shrunk' (made smaller, in steps steps), 'tight' (it fitted, without room to spare) or 'unknown' (not on the screen), m: the first measure. A badge that is left alone says how: 'kept' (1.60.7)
+  // when it was given the smaller size that was found before.
   function fitBadge(b, measure, memo, i, note) {
     if (!b || !b.style || !b.dataset) return;
     const key = memo ? shapeOf(b) : null, was = memo ? memo[i] : null;
-    if (was && was.key === key && ++was.n < RECHECK) { if (note) tell(note, { why: 'skip' }); return; } // (the same shape, with room to spare: it fits as it is)
+    if (was && was.key === key && ++was.n < RECHECK) { // (the same shape: with room to spare it fits as it is, one that was made smaller gets the size that was found)
+      if (was.size) { if (b.dataset.fit === undefined) b.dataset.fit = b.style.getPropertyValue('font-size'); b.style.setProperty('font-size', was.size, 'important'); }
+      if (note) tell(note, was.size ? { why: 'skip', how: 'kept' } : { why: 'skip' });
+      return;
+    }
     if (b.dataset.fit === undefined) b.dataset.fit = b.style.getPropertyValue('font-size');
     if (b.dataset.fit) b.style.setProperty('font-size', b.dataset.fit); else b.style.removeProperty('font-size');
-    let all = 1, roomy = false, steps = 0, first = null;
+    let all = 1, roomy = false, steps = 0, first = null, fitted = false;
     for (let k = 0; k < 3 && all > FIT_MIN; k++) { // (more than once: the size of the badge itself follows its text a little)
       const m = (measure || measureBadge)(b), f = fitFactor(m);
       if (k === 0) first = m;
-      if (f >= 1 || !(m.em > 0)) { roomy = f >= 1 && k === 0 && roomyOf(m); break; }
+      if (f >= 1 || !(m.em > 0)) { roomy = f >= 1 && k === 0 && roomyOf(m); fitted = f >= 1 && m.em > 0; break; } // (fitted: seen to fit, with a text size that was really measured)
       all *= f; steps++; b.style.setProperty('font-size', `${(m.em * f).toFixed(4)}em`, 'important');
     }
-    if (memo) memo[i] = roomy ? { key, n: 0 } : null;
+    if (memo) memo[i] = roomy ? { key, n: 0 } : (fitted || all <= FIT_MIN) && all < 1 ? { key, n: 0, size: b.style.getPropertyValue('font-size') } : null; // (1.60.7: the size a shrunk badge came out at is kept too)
     if (note) tell(note, { why: !memo ? 'first' : was === undefined ? 'first' : was === null ? 'again' : was.key === key ? 'recheck' : 'shape', how: !(first && first.boxW > 0 && first.boxH > 0 && first.w > 0 && first.h > 0) ? 'unknown' : roomy ? 'roomy' : all < 1 ? 'shrunk' : 'tight', steps, m: first, key, prev: was ? was.key : null });
   }
   // (a report that fails must not stop a badge from being fitted)

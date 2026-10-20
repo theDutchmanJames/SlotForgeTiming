@@ -216,6 +216,12 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
     say('somebody looks: the timer takes a note about a badge, and so does deltaNote (the resize of a widget): counted by type', typeof wt.note === 'function' && d.length === 1 && d[0].type === 'dlaptime' && d[0].calls === 2 && d[0].measured === 1 && d[0].skipped === 1 && d[0].resize === 1 && d[0].shrunk === 1);
     say('...a note that does not fit (nothing, text) is left out without a fuss', (() => { try { P().deltaNote('x', null); P().deltaNote(5, { why: 'first' }); wt.note(undefined, undefined); return P().monitor().snapshot().delta.length === 1; } catch (x) { return false; } })());
     u(); }
+  // 1.60.7: a badge that is left alone with the smaller size found before is told as "skip" + "kept"
+  { const u = P().watch(), wt = P().widgetTimer();
+    wt.note('dlaptime', { why: 'first', how: 'shrunk', steps: 1, m: { boxW: 59, boxH: 97, w: 62, h: 40, row: true } }); wt.note('dlaptime', { why: 'skip', how: 'kept' }); wt.note('dlaptime', { why: 'skip', how: 'kept' });
+    const d = P().monitor().snapshot().delta;
+    say('the timer passes "kept" on: counted as left alone and as kept', d.length === 1 && d[0].calls === 3 && d[0].skipped === 2 && d[0].kept === 2 && d[0].measured === 1);
+    u(); }
   { const canvas = fs.readFileSync(R + 'renderer/canvas.js', 'utf8');
     say('canvas.js tells the report when the resize of a widget made its badge be fitted again (only when PerfUI is there)', /new ResizeObserver\(\(\) => \{ Delta\.fit\(val\); if \(typeof PerfUI !== 'undefined' && PerfUI\.deltaNote\) PerfUI\.deltaNote\(w\.type, \{ why: 'resize' \}\); \}\)/.test(canvas)); }
 

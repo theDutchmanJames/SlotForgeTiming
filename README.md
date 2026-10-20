@@ -3066,3 +3066,19 @@ Good to know:
 - I planned to also stop the three scans of the widget text in `drawNode`; with the lights text under 1500 characters they cost nothing, so I left them.
 - **Still not done:** the Lap Time Delta badge that has to shrink at every update (1.60.7: remember the shrink), the other picture widgets (car picture, avatar, flag, tyres, weather, fuel) which could use the same links, and the stall of the core when a setting is saved. They wait for your go.
 - Tested: new checks in `tests/picmemo.test.js`, `tests/perf.test.js` and `tests/perfscreen.test.js`. The code was broken on purpose 62 times: 59 caught, the other 3 cannot change the result.
+
+## What to try (1.60.7): The Lap Time Delta no longer gets measured at every update
+
+What changed: in your report of 1.60.5 every badge of the Lap Time Delta was measured at every update (129 of 129 in 10 seconds): the badge is almost twice as wide as its widget allows (box 98 px, text 176 px), so each new badge was made smaller, and that makes the page measure itself: 1.8 ms of the 4.1 ms of an update on your Pi. Now a badge that had to be made smaller remembers the size it came out at, and the next badge with the same kind of text (same arrow, same sign, same number of figures, same colour) is given that size straight away, without measuring. What you see is the same; the report has a new count for it.
+
+How to try it:
+1. Race as before (Soft lift, layers on, the Performance line on, the Live Race tab closed). Copy the report about a minute after the start and send all of it.
+2. What I look at: in **Delta Timer badges**, `dlaptime` should now say a handful measured (the first look, a change of shape, every 30th look) and the rest *left alone (... of them put at the smaller size that was found before)*, and in **The widgets in that update** `dlaptime x2` should have a fit of about 0 (it was 1.7 ms).
+3. Look at the Lap Time Delta itself while the laps come in: the number and the arrow must stay inside the badge, as before. Pay attention at the moments the text changes kind: from a plus to a minus, from 9.99 to 10.01, the very first lap (the dash becomes a number). If the text sticks out of the badge for a moment, tell me when it happens and what the number looked like.
+
+Good to know:
+- This relies on the digits being as wide as each other (the badge is set in tabular figures). If your font does not have them, a number can be a hair wider than the size that was kept; at most 29 updates later (3 seconds) it is measured again, and it is also measured again when the widget or the window changes size.
+- A badge that fits without room to spare, one that could not be made to fit in three tries and one that cannot be measured are measured at every update, as before.
+- In my test setup (Chromium, the processor slowed down 4 times, emulated graphics: **not the Pi**; the badge made narrower than its text as in your log) the measures of the Lap Time Delta went from 129 of 129 looks to 6 of 130, its fit from 6.2 to 0.7 ms per update, and the badges came out at the same sizes as before. Not measured on the Pi, in Electron or on Windows.
+- **Still not done:** the stall of the core when a setting is saved (the whole database, the pictures too, is written at once), the same short links for the other picture widgets (car picture, avatar, flag, tyres, weather, fuel), and loading the start lights' pictures before the race. They wait for your go. Pi Performance Mode (1.61.0) is dropped.
+- Tested: new checks in `tests/delta.test.js`, `tests/perf.test.js` and `tests/perfscreen.test.js`. The code was broken on purpose 32 times: 31 caught, the other 1 cannot change the result.

@@ -330,13 +330,13 @@ ok('each reason has its own words for the badge', Object.keys(D.WHY).sort().join
     D.fitQuick(root, m); const a = c.n;
     ok('a badge that is too wide shrinks as before (fitQuick measures the same as fit)', 300 * emOf(b) / 0.95 <= 200.5 && emOf(b) < 0.7);
     for (let i = 0; i < 3; i++) D.fitQuick(rootOf2(root, '123.4' + i), m);
-    ok('...and one that needed shrinking is measured every time: it is only skipped when it fitted with room to spare', c.n >= a + 3); }
+    ok('...and one that needed shrinking is not measured again while its text keeps the shape (1.60.7): the next badges get the size that was found', c.n === a); }
   { // a badge that is too TALL shrinks, and is then narrow enough to have room to spare: that is no reason to skip it next time (the next badge is a new one, with the full text size again)
     const tall = b => { const em = emOf(b); return { boxW: 400, boxH: 10, w: 300 * em / 0.95, h: 20 * em / 0.95, em }; };
     const root = rootOf([]), c = { n: 0 }, m = b => { c.n++; return tall(b); };
     let sizes = [];
     for (let i = 0; i < 6; i++) { const b = qbadge('1.2' + i); root.querySelectorAll = () => [b]; D.fitQuick(root, m); sizes.push(emOf(b)); }
-    ok('a badge that was made smaller to fit (here by its height) is measured every time, and every new badge comes out small again', c.n >= 6 && sizes.every(x => x < 0.5)); }
+    ok('a badge that was made smaller to fit (here by its height) is measured once (1.60.7), and every new badge comes out small again at the very same size', c.n >= 1 && c.n <= 3 && sizes.every(x => x < 0.5 && x === sizes[0]), JSON.stringify([c.n, sizes])); }
   { // a property check: whatever the sequence of texts and widths, a badge that comes out of fitQuick never sticks out by more than a hair, as long as the room is the same as at the last measure
     let bad = 0, seed = 7; const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
     for (let t = 0; t < 300; t++) {
@@ -363,7 +363,7 @@ ok('each reason has its own words for the badge', Object.keys(D.WHY).sort().join
   { const root = rootOf([]), c = { n: 0 }, m = b => { c.n++; const em = emOf(b); return { row: true, boxW: 300 * em / 0.95, boxH: 20, w: 300 * em / 0.95, h: 40 * em / 0.95, em }; };
     const sizes = [];
     for (let i = 0; i < 6; i++) { const b = qbadge('1.2' + i); root.querySelectorAll = () => [b]; D.fitQuick(root, m); sizes.push(emOf(b)); }
-    ok('...and one in a row that had to shrink to its height is measured every time, and every new badge (full size again) comes out small again', c.n >= 12 && sizes.every(x => x < 0.5 && x > 0.4), JSON.stringify([c.n, sizes])); }
+    ok('...and one in a row that had to shrink to its height is measured once (1.60.7: at the first look, the second try shows it fits), and every new badge (full size again) comes out small again at that size', c.n === 2 && sizes.every(x => x < 0.5 && x > 0.4 && x === sizes[0]), JSON.stringify([c.n, sizes])); }
   { const root = rootOf([]), c = { n: 0 }, m = b => { c.n++; const em = emOf(b); return { row: true, boxW: 300 * em / 0.95, boxH: 20, w: 300 * em / 0.95, h: 40 * em / 0.95, em }; };
     const b = qbadge('1.23'); root.querySelectorAll = () => [b]; D.fitQuick(root, m);
     ok('...a badge in a row that is too high still shrinks to its height, as before (the width of the row does not matter)', emOf(b) < 0.5 && emOf(b) > 0.4, emOf(b)); }
@@ -399,7 +399,7 @@ ok('each reason has its own words for the badge', Object.keys(D.WHY).sort().join
     ok('...every RECHECK-th time it says "recheck"', notes.filter(x => x.why === 'recheck').length === 1 && notes.filter(x => x.why === 'skip').length === D.RECHECK - 1 && notes[D.RECHECK - 1].why === 'recheck' && notes[D.RECHECK - 1].how === 'roomy', JSON.stringify(notes.map(x => x.why)));
     notes.length = 0; const tight = rowM({ n: 0 }, 20);
     const rt = rootOf([]); go('▼ +1.23', tight, rt); go('▼ +1.24', tight, rt); go('▼ +1.25', tight, rt);
-    ok('...a badge that had to shrink says "shrunk" with how many steps, and is "again" at every update after it (the last time it did not fit with room to spare)', notes.length === 3 && notes[0].how === 'shrunk' && notes[0].steps >= 1 && notes[0].why === 'first' && notes[1].why === 'again' && notes[1].how === 'shrunk' && notes[2].why === 'again', JSON.stringify(notes.map(x => [x.why, x.how, x.steps])));
+    ok('...a badge that had to shrink says "shrunk" with how many steps; after that it is left alone and says "skip" with how "kept" (1.60.7: it was given the smaller size that was found)', notes.length === 3 && notes[0].how === 'shrunk' && notes[0].steps >= 1 && notes[0].why === 'first' && notes[1].why === 'skip' && notes[1].how === 'kept' && notes[2].why === 'skip' && notes[2].how === 'kept', JSON.stringify(notes.map(x => [x.why, x.how, x.steps])));
     notes.length = 0; const col = b => { const em = emOf(b); return { row: false, boxW: 300 * em / 0.95 + 5, boxH: 60, w: 300 * em / 0.95, h: 20, em }; };
     const rc = rootOf([]); go('▼ +1.23', col, rc); go('▼ +1.24', col, rc);
     ok('...a badge in a column that fits without a tenth of spare width says "tight" (not roomy, not shrunk) and is measured again', notes.length === 2 && notes[0].how === 'tight' && notes[0].steps === 0 && notes[1].why === 'again' && notes[1].how === 'tight', JSON.stringify(notes));
@@ -417,6 +417,92 @@ ok('each reason has its own words for the badge', Object.keys(D.WHY).sort().join
     ok('...a note that is no function is ignored, and fit() (the editor, the resize of a widget) has none', notes.length === 0);
     const two = rootOf([qbadge('1.2'), qbadge('3.4')]); notes.length = 0; D.fitQuick(two, rowM({ n: 0 }), note); D.fitQuick(two, rowM({ n: 0 }), note);
     ok('...a widget with two badges tells about each of them', notes.map(x => x.why).join() === 'first,first,skip,skip'); }
+
+  // ---- 1.60.7: a badge that had to be made smaller keeps the size it came out at (for the same shape of text and the same widget), and is not measured at every update ----
+  { const lenModel = (room, c, boxH = 60) => b => { if (c) c.n++; const em = emOf(b), len = (b.textContent || '').length; return { boxW: room, boxH, w: 50 * len * em / 0.95, h: 20 * em / 0.95, em }; }; // (the text is as wide as it is long)
+    const go = (r, text, m, own, cls, st, note) => { const b = qbadge(text, own, cls, st === undefined && own ? 'font-size:' + own : st); r.querySelectorAll = () => [b]; D.fitQuick(r, m, note); return b; };
+    { const root = rootOf([]), c = { n: 0 }, m = lenModel(200, c), notes = [];
+      const first = go(root, '▼ +1.23', m, '', undefined, undefined, x => notes.push(x)), n1 = c.n;
+      ok('a badge that is too wide is made smaller at its first look, as before', first.props['font-size!'] === 'important' && /^[\d.]+em$/.test(first.props['font-size']) && 50 * 7 * emOf(first) / 0.95 <= 200.5 && emOf(first) < 0.6 && n1 >= 2 && n1 <= 3, JSON.stringify([n1, first.props]));
+      const later = []; for (let i = 0; i < 10; i++) later.push(go(root, '▼ +1.2' + (i % 10), m, '', undefined, undefined, x => notes.push(x)));
+      ok('...the next badges (new elements, full size again) of the same shape get that very size, set so it wins over the markup, without a measure', c.n === n1 && later.every(b => b.props['font-size'] === first.props['font-size'] && b.props['font-size!'] === 'important'), JSON.stringify([c.n, n1]));
+      ok('...they remember the size of the markup too (here none), so a later fit() can give the full size back', later.every(b => b.dataset.fit === ''));
+      ok('...and the report hears "skip" with "kept" for each of them', notes.slice(1).length === 10 && notes.slice(1).every(x => x.why === 'skip' && x.how === 'kept') && notes[0].why === 'first' && notes[0].how === 'shrunk', JSON.stringify(notes.map(x => [x.why, x.how])));
+    }
+    { const root = rootOf([]), c = { n: 0 }, m = lenModel(200, c), own = 'calc(.95em*0.9)';
+      const first = go(root, '▼ +1.23', m, own); const n1 = c.n; const next = go(root, '▼ +1.24', m, own);
+      ok('a badge with a size of its own (the "Size of the badge" setting) is kept at the smaller size too, and still remembers its own size', c.n === n1 && next.props['font-size'] === first.props['font-size'] && next.props['font-size!'] === 'important' && next.dataset.fit === own && first.props['font-size'] !== own && /em$/.test(next.props['font-size']));
+      const bigger = go(root, '▼ +1.24', m, 'calc(.95em*0.5)');
+      ok('...but a badge with another size of its own (its style says so) is another shape and is measured again', c.n > n1 && bigger.dataset.fit === 'calc(.95em*0.5)'); }
+    { const root = rootOf([]), c = { n: 0 }, m = lenModel(200, c);
+      go(root, '▼ +1.23', m); const n1 = c.n; const longer = go(root, '▼ +10.23', m), n2 = c.n;
+      ok('a text of another shape (one figure more) is measured again, and comes out smaller (the same room, more text)', n2 > n1 && 50 * 8 * emOf(longer) / 0.95 <= 200.5 && emOf(longer) < emOf(go(root, '▼ +10.23', m)) + 1e-9);
+      const again = go(root, '▼ +11.99', m);
+      ok('...and that size is kept for that shape, in turn', c.n === n2 && again.props['font-size'] === longer.props['font-size']);
+      const back = go(root, '▼ +1.50', m);
+      ok('...going back to the first shape measures it again (only the last shape is remembered) and gives the first size', c.n > n2 && 50 * 7 * emOf(back) / 0.95 <= 200.5 && emOf(back) > emOf(longer)); }
+    { const root = rootOf([]), c = { n: 0 }, notes = [], note = x => notes.push(x); let room = 200;
+      const m = b => lenModel(room, c)(b);
+      go(root, '▼ +1.23', m, '', undefined, undefined, note); const n1 = c.n; let last;
+      room = 100; // (the room became smaller without anybody telling: nothing is measured until the regular check)
+      for (let i = 1; i < D.RECHECK; i++) last = go(root, '▼ +1.2' + (i % 10), m, '', undefined, undefined, note);
+      ok('how long it is kept: until the RECHECK-th look, not for ever; up to there the size found before is used (also when the room has changed)', c.n === n1 && 50 * 7 * emOf(last) / 0.95 > 100.5 && notes.slice(1).every(x => x.why === 'skip' && x.how === 'kept') && notes.length === D.RECHECK);
+      last = go(root, '▼ +1.29', m, '', undefined, undefined, note);
+      ok('...at the RECHECK-th look it is measured again ("recheck", how "shrunk"), and the size follows the room', c.n > n1 && notes[notes.length - 1].why === 'recheck' && notes[notes.length - 1].how === 'shrunk' && 50 * 7 * emOf(last) / 0.95 <= 100.5, JSON.stringify(notes[notes.length - 1]));
+      const n2 = c.n; for (let i = 0; i < 5; i++) go(root, '▼ +1.2' + i, m);
+      ok('...and the new size is kept in turn', c.n === n2); }
+    { const root = rootOf([]), c = { n: 0 }; let room = 200; const m = b => lenModel(room, c)(b);
+      const a = go(root, '▼ +1.23', m); const n1 = c.n; room = 120;
+      const rb = go(root, '▼ +1.24', m); D.fit(root, m); // the widget or the window changed size: the ResizeObserver calls fit() (here it fits the badge that is there)
+      ok('when the widget changes size (fit(), the ResizeObserver) the kept size is forgotten: the badge is measured again and fits the new room', c.n > n1 && 50 * 7 * emOf(rb) / 0.95 <= 120.5 && emOf(rb) < emOf(a));
+      const n2 = c.n, after = go(root, '▼ +1.25', m);
+      ok('...the next update measures it once more (nothing is kept after a resize) and then keeps the new size', c.n > n2 && 50 * 7 * emOf(after) / 0.95 <= 120.5 && (go(root, '▼ +1.26', m), c.n === n2 + (c.n - n2)) && (() => { const k = c.n; go(root, '▼ +1.27', m); return c.n === k; })()); }
+    { const root = rootOf([]), c = { n: 0 }, notes = [];
+      const m = b => { c.n++; const em = emOf(b); return { boxW: 200, boxH: 60, w: 300 * em / 0.95 + 150, h: 20, em }; }; // (a part of the badge does not scale with the text: three tries are not enough to make it fit)
+      for (let i = 0; i < 6; i++) go(root, '1.2' + i, m, '', undefined, undefined, x => notes.push(x));
+      ok('a badge that does not fit in the end (three tries were not enough) is not kept: it is measured at every update, as before', c.n >= 12 && notes.every(x => x.why !== 'skip') && notes.every(x => x.steps === 3), JSON.stringify([c.n, notes.map(x => [x.why, x.steps])])); }
+    { const root = rootOf([]), c = { n: 0 }, notes = [];
+      const m = b => { c.n++; return { boxW: 10, boxH: 10, w: 1000, h: 1000, em: emOf(b) }; }; // (it never fits, however small: the smallest size, a fifth)
+      const sizes = []; for (let i = 0; i < 6; i++) sizes.push(emOf(go(root, '1.2' + i, m, '', undefined, undefined, x => notes.push(x))));
+      ok('a badge at the smallest size (a fifth) cannot get any smaller by being measured again: it is kept at that size like any other', c.n === 1 && sizes.every(x => Math.abs(x - 0.19) < 1e-9) && notes.slice(1).every(x => x.why === 'skip' && x.how === 'kept'), JSON.stringify([c.n, sizes, notes.map(x => x.why)]));
+      go(root, '▲ +10.23', m, '', undefined, undefined, x => notes.push(x));
+      ok('...but a new shape is measured again, and at the regular check too', c.n === 2 && notes[notes.length - 1].why === 'shape'); }
+    { const root = rootOf([]), c = { n: 0 }, notes = [];
+      const m = b => { c.n++; if (c.n % 2 === 0) return { boxW: 0, boxH: 0, w: 0, h: 0, em: 0 }; return lenModel(200)(b); }; // (the badge cannot be measured any more after the first step: it was never seen to fit)
+      for (let i = 0; i < 6; i++) go(root, '▼ +1.2' + i, m, '', undefined, undefined, x => notes.push(x));
+      ok('a badge that was made smaller but could not be measured afterwards (so it was never seen to fit) is not kept: it is measured at every update', notes.every(x => x.why !== 'skip') && c.n >= 6, JSON.stringify(notes.map(x => x.why))); }
+    { const root = rootOf([]), c = { n: 0 }, notes = [];
+      const m = b => { c.n++; const em = emOf(b), len = (b.textContent || '').length; return { boxW: 50 * len * em / 0.95 + 5, boxH: 60, w: 50 * len * em / 0.95, h: 20, em }; }; // (fits without a tenth to spare)
+      for (let i = 0; i < 6; i++) go(root, '1.2' + i, m, '', undefined, undefined, x => notes.push(x));
+      ok('a badge that fitted at once without room to spare ("tight", nothing to remember) is still measured at every update', c.n === 6 && notes.every(x => x.how === 'tight')); }
+    { const root = rootOf([]), c = { n: 0 }; let both = [qbadge('▼ +1.23'), qbadge('1.23')]; root.querySelectorAll = () => both;
+      const m = b => { c.n++; const em = emOf(b), len = (b.textContent || '').length; return { boxW: len > 5 ? 200 : 900, boxH: 60, w: 50 * len * em / 0.95, h: 20 * em / 0.95, em }; };
+      D.fitQuick(root, m); const n1 = c.n; const p = both; both = [qbadge('▼ +1.24'), qbadge('1.24')]; D.fitQuick(root, m);
+      ok('a widget with two badges keeps each on its own: the one that had to shrink gets its size, the one that did not stays as it is', c.n === n1 && both[0].props['font-size'] === p[0].props['font-size'] && both[0].props['font-size'] !== undefined && both[1].props['font-size'] === undefined && both[1].dataset.fit === undefined); }
+    { // the same sequence with the memory (fitQuick) and without (every badge measured: fit on a fresh badge): the badges come out the same, however the texts and the room change
+      const shapes = ['0.00', '-0.00', '▲ +00.00', '▼ -0.0', '00.00', '▼ +0.00', '▲ -00.0'], owns = ['', '', 'calc(.95em*0.8)'];
+      const sim = (change, seed0) => { // change: the chance that the shape (and the own size) is another one at a look
+        let bad = 0, differ = 0, measured = 0, looks = 0, seed = seed0; const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+        for (let t = 0; t < 200; t++) {
+          let room = 80 + Math.floor(rnd() * 400), shape = shapes[0], own = ''; const root = rootOf([]), c = { n: 0 };
+          for (let i = 0; i < 90; i++) {
+            if (rnd() < 0.05) { room = 80 + Math.floor(rnd() * 400); D.fit(root, lenModel(room)); } // (a resize: the ResizeObserver)
+            if (rnd() < change) { shape = shapes[Math.floor(rnd() * shapes.length)]; own = owns[Math.floor(rnd() * owns.length)]; }
+            const text = shape.replace(/0/g, () => String(Math.floor(rnd() * 10))), st = own ? 'font-size:' + own : '';
+            const b = qbadge(text, own, undefined, st); root.querySelectorAll = () => [b]; D.fitQuick(root, lenModel(room, c)); looks++;
+            const ref = qbadge(text, own, undefined, st); D.fit(rootOf([ref]), lenModel(room));
+            if (b.props['font-size'] !== ref.props['font-size']) differ++;
+            if (50 * text.length * emOf(b) / 0.95 > room + 0.5) bad++;
+          }
+          measured += c.n;
+        }
+        return { bad, differ, measured, looks };
+      };
+      const a = sim(1, 11), b = sim(0.1, 12);
+      ok('200 runs of 90 updates (other texts, other rooms, resizes), the shape changing at every look: a badge with the memory comes out the same as one measured every time, and never sticks out', a.differ === 0 && a.bad === 0, JSON.stringify(a));
+      ok('...also when the shape changes now and then (one look in ten)', b.differ === 0 && b.bad === 0, JSON.stringify(b));
+      ok('...and then the memory saves most of the measures (a measure is only needed for a new shape, after a resize, or at the regular check)', b.measured < b.looks * 0.5, JSON.stringify(b)); }
+  }
 
   const canvas = src('canvas.js'), editor = src('editor.js'), live = src('liveview.js'), css = src('styles.css');
   ok('the live race page fits the badges after it has drawn a widget with one, and again when the widget changes size (the window, a layout of another size)', /n\.val\.innerHTML = out\.html;[\s\S]{0,900}?out\.html\.includes\('dlt-badge'\)[^\n]*Delta\.fitQuick\(n\.val[^\n]*Delta\.fit\(n\.val\)/.test(canvas) && /ResizeObserver[^\n]*Delta\.isDelta\(w\.type\)[^\n]*Delta\.fit\(val\)/.test(canvas));

@@ -665,5 +665,28 @@ const fillUpdates = (M, n, f) => { for (let i = 0; i < n; i++) f(i * 100); }; //
   const Z5 = Perf.createMonitor({ now: () => 0 }); Z5.delta('a', { why: 'shape', how: 'roomy', steps: 0, key: 'new', prev: 'old' }, 100); Z5.reset(); Z5.delta('a', { why: 'skip' }, 200);
   ok('when the window figures start again the last measure and shape go too (a type that is only left alone afterwards has none)', Z5.snapshot(300).delta[0].last === null); }
 
+// ---- 1.60.7: a badge that was made smaller is left alone with the size that was found before: the report counts those ("kept")
+{ const m = { boxW: 59, boxH: 97, w: 62.34, h: 40.04, row: true };
+  const K = Perf.createMonitor({ now: () => 0 });
+  K.delta('dlaptime', { why: 'first', how: 'shrunk', steps: 2, m }, 1000);
+  for (let i = 0; i < 5; i++) K.delta('dlaptime', { why: 'skip', how: 'kept' }, 1100 + i); K.delta('dlaptime', { why: 'skip' }, 1200);
+  const d = K.snapshot(2000).delta;
+  ok('a badge that is left alone with the smaller size found before is counted as left alone, and as "kept" (a part of the left-alone ones)', d.length === 1 && d[0].calls === 7 && d[0].skipped === 6 && d[0].kept === 5 && d[0].measured === 1, JSON.stringify(d));
+  ok('...it is not a measure: how it came out and the steps are not touched, and the last measure stays what it was', d[0].shrunk === 1 && d[0].steps === 2 && d[0].roomy === 0 && d[0].unknown === 0 && d[0].last && d[0].last.how === 'shrunk' && d[0].last.steps === 2 && d[0].last.m.boxW === 59);
+  const R = Perf.report(K.snapshot(2000), null, {}).split('\n'), at = R.findIndex(x => x.startsWith('Delta Timer badges'));
+  ok('the report says it in plain words, after the left-alone count', R[at + 1] === '  dlaptime: 7 badges looked at in the last 1 s, 1 measured, 6 left alone (5 of them put at the smaller size that was found before)', R[at + 1]);
+  ok('...and the heading tells that a badge that had to be made smaller is put at the size found before', R[at].includes('one that had to be made smaller is put at the size found before'));
+  const N = Perf.createMonitor({ now: () => 0 }); N.delta('a', { why: 'first', how: 'roomy', steps: 0, m }, 1000); N.delta('a', { why: 'skip' }, 1100);
+  const Rn = Perf.report(N.snapshot(2000), null, {}).split('\n'), an = Rn.findIndex(x => x.startsWith('Delta Timer badges'));
+  ok('without any kept the line is as before (no clause)', Rn[an + 1] === '  a: 2 badges looked at in the last 1 s, 1 measured, 1 left alone' && N.snapshot(2000).delta[0].kept === 0, Rn[an + 1]);
+  const O = Perf.createMonitor({ now: () => 0 }); O.delta('a', { why: 'first', how: 'kept', steps: 0, m }, 1000); O.delta('a', { why: 'resize', how: 'kept' }, 1000); O.delta('a', { why: 'recheck', how: 'kept', steps: 1 }, 1100);
+  ok('"kept" only means something on a badge that was left alone: on a measure it is an odd answer, counted as unknown; on a resize it is nothing', O.snapshot(2000).delta[0].kept === 0 && O.snapshot(2000).delta[0].unknown === 2 && O.snapshot(2000).delta[0].resize === 1);
+  const W = Perf.createMonitor({ now: () => 0 }); W.delta('a', { why: 'skip', how: 'kept' }, 1000);
+  ok('the figures are for the last ten seconds: after that the kept ones are forgotten too', W.snapshot(20000).delta.length === 0);
+  const Y = Perf.createMonitor({ now: () => 0 }); Y.delta('a', { why: 'skip', how: 'kept' }, 100); Y.reset(); Y.delta('a', { why: 'skip' }, 200);
+  ok('when the window figures start again the kept ones are counted from nothing', Y.snapshot(300).delta[0].kept === 0 && Y.snapshot(300).delta[0].skipped === 1);
+  ok('a report from an older snapshot (no kept in it) prints no clause and no "undefined"', (() => { const sn = K.snapshot(2000); delete sn.delta[0].kept; const t = Perf.report(sn, null, {}); return t.includes('6 left alone') && !t.includes('of them put') && !t.includes('undefined'); })());
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nperf PASSED');
 process.exit(fails ? 1 : 0);
