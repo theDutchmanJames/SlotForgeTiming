@@ -187,14 +187,23 @@
   }
   const measureBadge = b => {
     const r = document.createRange(); r.selectNodeContents(b);
-    const t = r.getBoundingClientRect(), cs = getComputedStyle(b), px = k => parseFloat(cs[k]) || 0, up = b.parentNode ? parseFloat(getComputedStyle(b.parentNode).fontSize) || 0 : 0;
-    return { boxW: b.clientWidth, boxH: b.clientHeight, w: t.width + px('paddingLeft') + px('paddingRight'), h: px('fontSize') * 1.1 + px('paddingTop') + px('paddingBottom'), em: up > 0 ? px('fontSize') / up : 0 };
+    const t = r.getBoundingClientRect(), cs = getComputedStyle(b), px = k => parseFloat(cs[k]) || 0, pcs = b.parentNode ? getComputedStyle(b.parentNode) : null, up = pcs ? parseFloat(pcs.fontSize) || 0 : 0;
+    // row: true when the badge sits in a row of the widget (the value and the badge side by side): there it is exactly as wide as its text, and only its height is the room it has; false in a
+    // column (the value on top, the badge below): there the badge is as wide as the widget and as high as its text; undefined when that is not known (1.60.4, see fitBadge)
+    const flex = !!pcs && /flex/.test(pcs.display || '') && cs.flexGrow === '0', dir = flex ? String(pcs.flexDirection || '') : '';
+    return { boxW: b.clientWidth, boxH: b.clientHeight, w: t.width + px('paddingLeft') + px('paddingRight'), h: px('fontSize') * 1.1 + px('paddingTop') + px('paddingBottom'), em: up > 0 ? px('fontSize') / up : 0,
+      row: /^row/.test(dir) ? true : /^column/.test(dir) ? false : undefined };
   };
   // 1.60.3: a Delta Timer on the race screen is drawn again at every update (the difference changes all the time) and every time the badge was measured, which makes the page lay itself out
-  // again: about 1 to 1.5 ms for each Delta Timer on a Raspberry Pi, a third of the whole update. A badge that fitted with room to spare (SLACK of its width) is not measured again as long as
+  // again: about 1 to 1.5 ms for each Delta Timer on a Raspberry Pi, a third of the whole update. A badge that fitted with room to spare (SLACK of the room it has) is not measured again as long as
   // its text has the same shape (the same signs and the same number of figures: the figures of a widget are as wide as each other) and its widget has not changed size; every RECHECK
   // updates it is measured anyway. The widget's own ResizeObserver (canvas.js) calls fit(), which forgets what was fitted.
+  // 1.60.4: in a row (the standard, value and badge side by side) the badge is as wide as its text, so the width is no room at all, and its height does not depend on the figures: a badge that
+  // fitted there fits the next time with the same shape (1.60.3 asked for spare width in a row too, which is never there: the Pi log still showed 2.3 ms of fitting for two Lap Time Deltas,
+  // and the test setup measured the badge at every update, 15.7 times a second). In a column (the value on top) the badge is as wide as the widget and as high as its text, so a tenth of spare
+  // width is asked for. A measure that does not say which (an older stand-in) must have a tenth to spare both ways, as in 1.60.3.
   const SLACK = 0.1, RECHECK = 30;
+  const roomyOf = m => (m.row === true ? true : m.row === false ? m.w <= m.boxW * (1 - SLACK) : m.w <= m.boxW * (1 - SLACK) && m.h <= m.boxH * (1 - SLACK));
   const shapeOf = b => `${String(b.textContent).replace(/[0-9]/g, '0')}|${b.className}|${b.getAttribute ? b.getAttribute('style') || '' : ''}`;
   // the badge's own size from the markup (the size setting) is kept in data-fit and put back before every fit, so a widget that gets bigger again gets its full text back
   // memo, i: where the last fit of this badge was kept (fitQuick), or nothing: measure
@@ -207,7 +216,7 @@
     let all = 1, roomy = false;
     for (let k = 0; k < 3 && all > FIT_MIN; k++) { // (more than once: the size of the badge itself follows its text a little)
       const m = (measure || measureBadge)(b), f = fitFactor(m);
-      if (f >= 1 || !(m.em > 0)) { roomy = f >= 1 && k === 0 && m.w <= m.boxW * (1 - SLACK); break; }
+      if (f >= 1 || !(m.em > 0)) { roomy = f >= 1 && k === 0 && roomyOf(m); break; }
       all *= f; b.style.setProperty('font-size', `${(m.em * f).toFixed(4)}em`, 'important');
     }
     if (memo) memo[i] = roomy ? { key, n: 0 } : null;
@@ -257,7 +266,7 @@
     return out;
   }
 
-  const api = { KINDS, TARGET_WORDS, DEFAULTS, STAT, WHY, isDelta, baseOf, compute, leftOf, leftShowsOf, format, badge, wrap, sample, optionsFor, onColor, colorOf, decimalsOf, measureOf, compareOf, arrowOf, styleOf, layoutOf, scaleOf, outlineOf, boldOf, italicOf, sizeStyle, fitFactor, fit, fitQuick, SLACK, RECHECK, ARROWS };
+  const api = { KINDS, TARGET_WORDS, DEFAULTS, STAT, WHY, isDelta, baseOf, compute, leftOf, leftShowsOf, format, badge, wrap, sample, optionsFor, onColor, colorOf, decimalsOf, measureOf, compareOf, arrowOf, styleOf, layoutOf, scaleOf, outlineOf, boldOf, italicOf, sizeStyle, fitFactor, fit, fitQuick, measureBadge, roomyOf, SLACK, RECHECK, ARROWS };
   root.Delta = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

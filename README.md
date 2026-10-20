@@ -3008,3 +3008,23 @@ Good to know:
 - The layers cost a few MB of graphics memory.
 - **Still not done:** when you change a setting, the core of the app stalls for 1.4 to 1.5 seconds, because the whole database (the pictures too) is written at once. That explains the old unexplained stalls; it is for a later version. Pi Performance Mode (1.61.0) waits for your go.
 - Tested: new checks in `tests/depth.test.js` (the tickbox and its saving, the style rule, the order at the start), `tests/delta.test.js` (when the badge is measured and when not, and that it never sticks out), `tests/perf.test.js` and `tests/perfscreen.test.js` (the Look line, the slow frames over 2 seconds) and `tests/help.test.js`. The code was broken on purpose 45 times: all caught.
+
+## What to try (1.60.4): The Lap Time Delta fix, a lighter race save, and a report that names the slow part
+
+For the Lap Time Delta and for the hitch when the race starts. Your log of 1.60.3 showed the layers working (60 frames a second, slowest frame 33 ms), but the two Lap Time Deltas still spent 2.3 ms of every update on fitting, and the first row of the race had an update of 151.4 ms on average with 421.9 ms the slowest.
+
+What changed (the race screen looks the same):
+- **The Lap Time Delta is now really measured less often.** In 1.60.3 the rule never applied in the standard layout (the value and the badge side by side: the badge is exactly as wide as its text, so there was never room to spare in width). Now only its height counts there, and that does not depend on the figures. In my test setup the badge was measured 15.7 times a second and now 1.4. A badge that has to shrink is still measured every time.
+- **The race save no longer turns the pictures into text.** Every two to five seconds the race writes a save point, so it can carry on after a crash. To keep only what changed, it compared the picture of each car and the avatar as text. With pictures of 1 MB that took 90 to 160 ms in my test setup, and the first one happens just as the start lights go out. Now a picture that is the same is not looked at: about 1 ms. What is saved is exactly the same as before.
+- **The report names the slow part.** The line "Worst since the race started" now says what the longest update spent its time on and when, for example: `longest screen update 254.5 ms (at 0:05: save point 193 ms, widgets 49 ms, adjust pad 4 ms)`.
+
+How to try it:
+1. Race as before: Depth Soft lift, the layers tickbox on, the Performance line on, your high-resolution pictures, the Live Race tab closed. Copy the report a minute after the start. Look at **Worst since the race started** (it now has the parts) and at the first row (0:01), where 1.60.3 had 151.4 ms on average and 421.9 ms the slowest.
+2. Look at **Slowest widgets**: the line `dlaptime x2`, the part "fit" (it was 2.3 ms).
+3. If the first row is still slow, the Worst line now says what it spent its time on: copy the report to me and I will know where to look.
+
+Good to know:
+- I could reproduce a slow first update after the start lights go out (151 ms, of which 128 ms the save point), but only with large pictures, in my test setup with the processor slowed down. Your later rows show a save point of 0.3 ms per update, so on your Pi the later save points are cheap; **I do not know that this is your 421.9 ms**. Your next report decides.
+- I found nothing else in the start: the lights and the first update of each widget take 8 to 15 ms in the test setup.
+- **Still not done:** when you change a setting, the core of the app stalls for about 1.4 seconds because the whole database (the pictures too) is written at once (1445 ms at 20:31:13 in your log). Pi Performance Mode (1.61.0) also waits. Both wait for your go.
+- Tested: new checks in `tests/delta.test.js` (a badge in a row is measured twice in 60 updates, one that is too tall still shrinks every time, the row and column room, `measureBadge` on a stand-in page), `tests/resume.test.js` (a save point of cars with pictures of 2 million characters never turns a picture into text and holds exactly what it held before) and `tests/perf.test.js` (the parts and the time of the longest update, the report line). The code was broken on purpose 56 times: all caught except 2 that cannot change the result. Everything was measured in Chromium and the test setup: **not on the Pi**.

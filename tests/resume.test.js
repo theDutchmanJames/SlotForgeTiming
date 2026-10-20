@@ -120,4 +120,32 @@ const through = R => JSON.parse(JSON.stringify(R.snapshot(0))); // (plain data, 
   ok('the main program and the preload script have the three calls (get, save, clear)', ['resume:get', 'resume:save', 'resume:clear'].every(c => main.includes("ipcMain.handle('" + c + "'") && pre.includes("call('" + c + "'")) && /getResume: \(\) =>/.test(pre) && /saveResume: snap =>/.test(pre) && /clearResume: \(\) =>/.test(pre));
 }
 
+// ---- 1.60.4: a picture is not turned into text to see that it is the entry's own ----
+// The save point (the snapshot of the race, every few seconds) compared every field of every car with the entry by turning both into text. For a picture of a megabyte that is two megabytes of text per field per car,
+// at every save point: on the test setup 90 to 160 ms of the screen update. A field that is the very same value is left alone now.
+{ const PIC = 'data:image/jpeg;base64,' + 'QUJD'.repeat(500000); // 2 million characters
+  const withPic = (lane, over) => entry(lane, { carPicture: PIC, avatar: PIC + 'x'.repeat(lane), ...over });
+  const A = mk({ entries: [withPic(0), withPic(1, { driverId: 'b', driverName: 'Bea' })] }); A.start(1000); drive(A, 0, 1000, 1000 + 2 * MIN); A.cross(1, 1000 + 40 * SEC);
+  const real = JSON.stringify; let biggest = 0, calls = 0;
+  JSON.stringify = function (v, ...r) { calls++; if (typeof v === 'string') biggest = Math.max(biggest, v.length); return real.call(this, v, ...r); };
+  let snap; try { snap = A.snapshot(1000 + 2 * MIN + 100); } finally { JSON.stringify = real; }
+  ok('a snapshot of cars with pictures of 2 million characters never turns one of them into text', biggest < 100000 && calls > 0, biggest);
+  ok('...the pictures are not in it (they are made again from the entry), the laps are', !('carPicture' in snap.cars[0]) && !('avatar' in snap.cars[1]) && snap.cars[0].laps.length === 4 && snap.cars[1].laps.length === 1 && real(snap).length < 5000);
+  A.cars[0].carPicture = PIC + 'changed';
+  const snap2 = A.snapshot(1000 + 2 * MIN + 200);
+  ok('...a picture that the race changed (not the same text as the entry\'s) is in it, and only that one', snap2.cars[0].carPicture === PIC + 'changed' && !('avatar' in snap2.cars[0]) && !('carPicture' in snap2.cars[1]));
+  A.cars[1].carPicture = PIC.slice(); // (a copy of the same text is the same text)
+  ok('...a copy of the same picture text is not a change either', !('carPicture' in A.snapshot(1000 + 2 * MIN + 300).cars[1]));
+  const B = mk({ entries: [withPic(0), withPic(1, { driverId: 'b', driverName: 'Bea' })] }); B.restore(JSON.parse(real(snap)));
+  ok('...and it comes back as before: the pictures are the entry\'s again, the laps are there', B.status === 'paused' && B.cars[0].carPicture === PIC && B.cars[1].avatar === PIC + 'x' && B.cars[0].laps.length === 4);
+  { const E = mk({ entries: [withPic(0, { avatar: '', tag2: false }), withPic(1, { driverId: 'b', driverName: 'Bea', avatar: '' })] }); E.start(1000);
+    E.cars[0].avatar = 0; E.cars[1].roster = JSON.parse(JSON.stringify(roster)); E.cars[0].tag2 = 0;
+    const sx = E.snapshot(2000);
+    ok('...a value that only looks like the entry\'s (0 for an empty text, 0 for false) is a change, as before', sx.cars[0].avatar === 0 && sx.cars[0].tag2 === 0);
+    ok('...a copy of a list or a record with the same content is not a change, as before (the roster of the entry is made again)', !('roster' in sx.cars[1]) && !('roster' in sx.cars[0])); }
+  // the values that are not text are compared as before (an object that looks the same is the same, a changed one is a change, NaN and null are both 'null' in a file)
+  const C = mk(); C.start(1000); C.cars[0].tag = { a: 1 }; C.cars[1].tag = { a: 1 };
+  const e0 = C.snapshot(2000); ok('...a field that the entry does not have is in the snapshot', 'tag' in e0.cars[0] && 'tag' in e0.cars[1]);
+}
+
 console.log(fails ? fails + ' RESUME TESTS FAILED' : 'ALL RESUME TESTS PASSED'); process.exit(fails ? 1 : 0);

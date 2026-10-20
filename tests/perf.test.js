@@ -524,5 +524,33 @@ const fillUpdates = (M, n, f) => { for (let i = 0; i < n; i++) f(i * 100); }; //
   const stalls = Perf.report(null, Perf.cleanMain({ stalls: [{ at: wall, ms: 250 }] }), {});
   ok('...and one that tells a stall has it with the clock time', stalls.includes('The core of the app was stuck for over 100 ms at: 14:05:09 (250 ms)') && !stalls.includes('Windows (')); }
 
+// ---- 1.60.4: the longest update of the race says which parts it spent its time on, and when ----
+{ const M = Perf.createMonitor({ now: () => 0 }); M.newRace(1000, 1760970000000);
+  const upd = (parts, total, t) => { parts.forEach(([n, v]) => M.part(n, v, t)); M.update(total, t); };
+  upd([['save point', 0.3], ['widgets', 4.6], ['panels', 0.2]], 5, 2000);
+  let r = M.snapshot(2000);
+  ok('the longest update keeps its parts of at least a millisecond (the small ones are left out) and when it was, in seconds from the start of the race', r.race.update === 5 && r.race.updateAt === 1 && r.race.updateParts.length === 1 && r.race.updateParts[0].name === 'widgets' && r.race.updateParts[0].ms === 4.6, JSON.stringify(r.race));
+  upd([['save point', 151], ['widgets', 13.64], ['panels', 3.24], ['state', 1.4], ['share', 0.9]], 169, 6350);
+  r = M.snapshot(6000);
+  ok('...a longer update takes its place: its three biggest parts, the biggest first', r.race.update === 169 && r.race.updateAt === 5 && r.race.updateParts.map(x => x.name + ':' + x.ms).join() === 'save point:151,widgets:13.6,panels:3.2', JSON.stringify(r.race.updateParts));
+  upd([['widgets', 90]], 100, 7000); upd([['widgets', 90]], 169, 7500); r = M.snapshot(7500);
+  ok('...a shorter update after it (or an equal one) does not take its place', r.race.update === 169 && r.race.updateAt === 5 && r.race.updateParts[0].name === 'save point');
+  const rep = Perf.report(r, null, {});
+  ok('...the report says it: the figure, then (at the time of the race: the parts)', rep.includes('longest screen update 169 ms (at 0:05: save point 151 ms, widgets 14 ms, panels 3 ms), longest stuck'), rep.split('\n').find(x => x.includes('Worst since')));
+  const N = Perf.createMonitor({ now: () => 0 }); N.newRace(0, 1); N.update(60, 1000); N.part('b', 80, 2000); N.update(90, 2000);
+  ok('...the parts of the update before are not in the next one, and the parts of one name are added up', N.snapshot(2000).race.updateParts.length === 1 && N.snapshot(2000).race.updateParts[0].name === 'b');
+  const S = Perf.createMonitor({ now: () => 0 }); S.newRace(0, 1); S.part('widgets', 10, 100); S.part('widgets', 15, 100); S.part('state', 2, 100); S.update(30, 100);
+  ok('...a part that comes twice in one update is added up', S.snapshot(100).race.updateParts.map(x => x.name + ':' + x.ms).join() === 'widgets:25,state:2');
+  const Q = Perf.createMonitor({ now: () => 0 }); Q.newRace(0, 1); Q.update(40, 100); Q.update(50, 200);
+  ok('...an update without parts (the report was not open) leaves the line as it was', Q.snapshot(200).race.updateParts.length === 0 && !/longest screen update 50 ms \(/.test(Perf.report(Q.snapshot(200), null, {})) && Perf.report(Q.snapshot(200), null, {}).includes('longest screen update 50 ms, longest stuck'));
+  const P = Perf.createMonitor({ now: () => 0 }); P.newRace(0, 1); P.part('widgets', 40, 100); P.newRace(1000, 1);
+  ok('...a new race starts without the parts of an update before it, and nothing yet of the longest update', P.snapshot(1500).race.updateParts.length === 0 && P.snapshot(1500).race.updateAt === null);
+  P.update(50, 1500); ok('...(the update after it has none of those parts either)', P.snapshot(1500).race.updateParts.length === 0 && P.snapshot(1500).race.update === 50);
+  const R = Perf.createMonitor({ now: () => 0 }); R.newRace(0, 1); R.part('widgets', 40, 100); R.reset(); R.update(50, 200);
+  ok('...and when the window figures start again the parts that were waiting go too', R.snapshot(200).race.updateParts.length === 0);
+  const Z = Perf.createMonitor({ now: () => 0 }); Z.newRace(0, 1); for (let i = 0; i < 100; i++) Z.part('p' + i, 5, 100); Z.update(500, 100);
+  ok('...a flood of parts is kept within bounds and still gives three', Z.snapshot(100).race.updateParts.length === 3);
+  Z.update(NaN, 200); Z.update(-4, 300); ok('...and an update with no usable time changes nothing', Z.snapshot(300).race.update === 500 && Z.snapshot(300).race.updateParts.length === 3); }
+
 console.log(fails ? `\n${fails} FAILED` : '\nperf PASSED');
 process.exit(fails ? 1 : 0);

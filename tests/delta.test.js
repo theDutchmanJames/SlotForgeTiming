@@ -347,6 +347,44 @@ ok('each reason has its own words for the badge', Object.keys(D.WHY).sort().join
   ok('fitQuick copes with nothing to fit, or something that is no canvas', (() => { try { D.fitQuick(null); D.fitQuick(undefined); D.fitQuick({}); D.fitQuick(rootOf([null, {}, { style: {} }]), model(10)); return true; } catch (e) { return false; } })());
   ok('a fake without textContent or getAttribute (an older stand-in) is still handled', (() => { try { const b = badge(''); D.fitQuick(rootOf([b]), model(200)); D.fitQuick(rootOf([b]), model(200)); return true; } catch (e) { return false; } })());
 
+
+  // ---- 1.60.4: in a row the badge is as wide as its text, so only its height is room; in a column the other way round (1.60.3 asked for spare width in a row too and never skipped)
+  ok('roomyOf: in a row (value and badge side by side) the width is the text\'s own and the height does not depend on the figures, so a badge that fitted can be left alone', D.roomyOf({ row: true, boxW: 59, w: 58.7, boxH: 97, h: 40 }) === true && D.roomyOf({ row: true, boxW: 59, w: 58.7, boxH: 40.4, h: 40 }) === true && D.roomyOf({ row: true, boxW: 59, w: 58.7, boxH: 42, h: 40.1 }) === true);
+  ok('...in a column (value on top, badge below) the height is the text\'s own, so only a tenth of spare width counts', D.roomyOf({ row: false, boxW: 300, w: 90, boxH: 30, h: 29.5 }) === true && D.roomyOf({ row: false, boxW: 95, w: 90, boxH: 30, h: 29.5 }) === false && D.roomyOf({ row: false, boxW: 100, w: 90, boxH: 30, h: 29.5 }) === true && D.roomyOf({ row: false, boxW: 99.9, w: 90, boxH: 30, h: 29.5 }) === false);
+  ok('...and when it is not known which (a stand-in, a markup of another kind) both must have a tenth to spare, as in 1.60.3', D.roomyOf({ boxW: 300, w: 90, boxH: 97, h: 40 }) === true && D.roomyOf({ boxW: 59, w: 58.7, boxH: 97, h: 40 }) === false && D.roomyOf({ boxW: 300, w: 90, boxH: 41, h: 40 }) === false && D.roomyOf({ row: undefined, boxW: 59, w: 58.7, boxH: 97, h: 40 }) === false);
+  { const rowModel = calls => b => { calls.n++; const em = emOf(b); return { row: true, boxW: 300 * em / 0.95 + 1, boxH: 97, w: 300 * em / 0.95, h: 40 * em / 0.95, em }; };
+    const root = rootOf([]), c = { n: 0 }, m = rowModel(c);
+    for (let i = 0; i < 60; i++) { const b = qbadge('1.2' + (i % 10)); root.querySelectorAll = () => [b]; D.fitQuick(root, m); }
+    ok('a badge in a row, as wide as its text with room in height, is measured at the start and then only every RECHECK updates (60 updates: 2 measures), not at every update', c.n === 2, c.n); }
+  { const rowModel = (c, boxH) => b => { c.n++; const em = emOf(b); return { row: true, boxW: 300 * em / 0.95, boxH, w: 300 * em / 0.95, h: 40 * em / 0.95, em }; };
+    const root = rootOf([]), c = { n: 0 }, m = rowModel(c, 41);
+    for (let i = 0; i < 10; i++) { const b = qbadge('1.2' + i); root.querySelectorAll = () => [b]; D.fitQuick(root, m); }
+    ok('...also when its height is only just enough (the figures do not change the height): measured once, then left alone', c.n === 1, c.n); }
+  { const root = rootOf([]), c = { n: 0 }, m = b => { c.n++; const em = emOf(b); return { row: true, boxW: 300 * em / 0.95, boxH: 20, w: 300 * em / 0.95, h: 40 * em / 0.95, em }; };
+    const sizes = [];
+    for (let i = 0; i < 6; i++) { const b = qbadge('1.2' + i); root.querySelectorAll = () => [b]; D.fitQuick(root, m); sizes.push(emOf(b)); }
+    ok('...and one in a row that had to shrink to its height is measured every time, and every new badge (full size again) comes out small again', c.n >= 12 && sizes.every(x => x < 0.5 && x > 0.4), JSON.stringify([c.n, sizes])); }
+  { const root = rootOf([]), c = { n: 0 }, m = b => { c.n++; const em = emOf(b); return { row: true, boxW: 300 * em / 0.95, boxH: 20, w: 300 * em / 0.95, h: 40 * em / 0.95, em }; };
+    const b = qbadge('1.23'); root.querySelectorAll = () => [b]; D.fitQuick(root, m);
+    ok('...a badge in a row that is too high still shrinks to its height, as before (the width of the row does not matter)', emOf(b) < 0.5 && emOf(b) > 0.4, emOf(b)); }
+  { // the same, with the room and the text measured from a fake page by measureBadge itself
+    const mk = (parent, own, box, text) => ({ parentNode: { _cs: parent }, _cs: own, clientWidth: box[0], clientHeight: box[1], _t: text });
+    const realDoc = global.document, realCs = global.getComputedStyle;
+    global.document = { createRange: () => { let node; return { selectNodeContents: n => { node = n; }, getBoundingClientRect: () => ({ width: node._t }) }; } };
+    global.getComputedStyle = n => n._cs;
+    try {
+      const own = { paddingLeft: '8', paddingRight: '8', paddingTop: '0', paddingBottom: '0', fontSize: '20', flexGrow: '0' };
+      const rowP = { fontSize: '25', display: 'flex', flexDirection: 'row' }, colP = { fontSize: '25', display: 'flex', flexDirection: 'column' };
+      const a = D.measureBadge(mk(rowP, own, [59, 97], 42.7)), b = D.measureBadge(mk(colP, own, [300, 29], 42.7));
+      ok('measureBadge: the room (box), the text with its padding, the size of the text in em of the widget', a.boxW === 59 && a.boxH === 97 && Math.abs(a.w - 58.7) < 1e-9 && Math.abs(a.h - 22) < 1e-9 && Math.abs(a.em - 0.8) < 1e-9);
+      ok('...and whether the badge is in a row (a flex row, and it does not grow), in a column, or neither', a.row === true && b.row === false &&
+        D.measureBadge(mk({ ...rowP, display: 'block' }, own, [59, 97], 40)).row === undefined && D.measureBadge(mk(rowP, { ...own, flexGrow: '1' }, [59, 97], 40)).row === undefined &&
+        D.measureBadge(mk({ ...rowP, flexDirection: 'row-reverse' }, own, [59, 97], 40)).row === true && D.measureBadge(mk({ ...colP, flexDirection: 'column-reverse' }, own, [59, 97], 40)).row === false &&
+        D.measureBadge({ ...mk(rowP, own, [59, 97], 40), parentNode: null }).row === undefined);
+    } finally { global.document = realDoc; global.getComputedStyle = realCs; } }
+  { const cssAll = src('styles.css');
+    ok('what this relies on is in the style sheet: the badge does not grow or shrink (flex:0 0 auto) and is as high as the widget (stretch), the widget is a row, the "value on top" widget a column', /\.dlt-badge\{flex:0 0 auto;[^}]*align-self:stretch/.test(cssAll) && /\.dlt\{display:flex;/.test(cssAll) && !/\.dlt\{[^}]*flex-direction/.test(cssAll) && /\.dlt\.dlt-col\{flex-direction:column/.test(cssAll)); }
+
   const canvas = src('canvas.js'), editor = src('editor.js'), live = src('liveview.js'), css = src('styles.css');
   ok('the live race page fits the badges after it has drawn a widget with one, and again when the widget changes size (the window, a layout of another size)', /n\.val\.innerHTML = out\.html;[\s\S]{0,900}?out\.html\.includes\('dlt-badge'\)[^\n]*\(Delta\.fitQuick \|\| Delta\.fit\)\(n\.val\)/.test(canvas) && /ResizeObserver[^\n]*Delta\.isDelta\(w\.type\)[^\n]*Delta\.fit\(val\)/.test(canvas));
   ok('the layout editor fits them every time it draws the canvas, so a widget that is dragged to another size keeps its text inside the badge; the live view with row designs does too', /WxW\.fitAll\(\$\('canvas'\)\)[^\n]*\n[^\n]*Delta\.fit\(\$\('canvas'\)\)/.test(editor) && /Delta\.fit\(\$\('lv-board'\)\)/.test(live));

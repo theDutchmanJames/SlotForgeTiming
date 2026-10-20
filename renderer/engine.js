@@ -1041,8 +1041,10 @@
     const STATE = ['status', 't0', 'pausedAt', 'endAt', 'timeUp', 'finished', 'endedBy', 'yellowAt', 'flag', 'bopActive', 'bopSpread', 'wxState', 'wxStage', 'twTeams', 'resumes'];
     R.resumes = 0; // how many times this race was continued after an interruption
     // (a car is kept as what differs from its entry: the names, the pictures and the roster of the entry are made again from the entry, so a snapshot stays small)
+    // 1.60.4: a field is the entry's own when it is the very same value (a picture is the same text as the entry's: it is not turned into text, twice, to see that). Only values that are not the same are compared as text, as before.
+    const sameField = (a, b) => a === b || (typeof a === 'string' && typeof b === 'string' ? false : JSON.stringify(a) === JSON.stringify(b));
     R.snapshot = t => {
-      const cars = R.cars.map((c, i) => { const e = cfg.entries[i] || {}, d = {}; Object.keys(c).forEach(k => { if (!(k in e) || JSON.stringify(c[k]) !== JSON.stringify(e[k])) d[k] = c[k]; }); return d; });
+      const cars = R.cars.map((c, i) => { const e = cfg.entries[i] || {}, d = {}; Object.keys(c).forEach(k => { if (!(k in e) || !sameField(c[k], e[k])) d[k] = c[k]; }); return d; });
       const snap = { v: 1, at: t, callId, cars, events: R.events, calls: R.calls }; STATE.forEach(k => { snap[k] = R[k]; });
       if (RN && RN.plan) snap.rn = { plan: RN.plan, unit: RN.unit, i: RN.i, up: RN.up, lastEnd: RN.lastEnd, warnedFor: RN.warnedFor, soon: RN.soon };
       return JSON.parse(JSON.stringify(snap));

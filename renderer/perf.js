@@ -13,10 +13,15 @@
   // ---- this window: frames, screen updates, long tasks, and (1.60.1) where the time of an update goes, the worst of the race, a row every 30 seconds ----
   const HIST_EVERY = 30000, HIST_MAX = 240, MARKS_MAX = 40;
   const mean = (a, f) => (a.length ? a.reduce((n, x) => n + f(x), 0) / a.length : 0);
+  // the parts of one update, added up by name, the biggest three of at least a millisecond (a list of [name, ms]); the rest is small enough to leave out
+  const worstParts = list => {
+    const by = new Map(); list.forEach(([n, v]) => by.set(n, (by.get(n) || 0) + v));
+    return [...by.entries()].filter(x => x[1] >= 1).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  };
   function createMonitor(o = {}) {
     const clock = o.now || (() => (typeof performance !== 'undefined' ? performance.now() : Date.now()));
     const wallNow = o.wall || Date.now;
-    const st = { frames: [], updates: [], longs: [], skip: [], loafs: [], buckets: [], cur: null, last: null, started: null, race: null, hist: [], histAt: null, marks: [] };
+    const st = { frames: [], updates: [], longs: [], skip: [], loafs: [], buckets: [], cur: null, last: null, started: null, race: null, hist: [], histAt: null, marks: [], upd: [] };
     const prune = (a, t, w) => { while (a.length && t - a[0][0] > w) a.shift(); };
     const begin = t => { if (st.started === null) st.started = t; };
     const peak = (k, v) => { if (st.race && v > st.race[k]) st.race[k] = v; }; // (the callers only give numbers or null; null is never more)
@@ -30,13 +35,21 @@
       // a frame was drawn (called from requestAnimationFrame): t in ms
       frame(t = clock()) { begin(t); if (st.last !== null) { st.frames.push([t, t - st.last]); if (t - st.last <= 2000) peak('frame', t - st.last); } st.last = t; prune(st.frames, t, WINDOW); }, // (a gap of more than two seconds is a window that was hidden, not a slow frame)
       // a screen update of the race took ms
-      update(ms, t = clock()) { begin(t); if (isNum(ms) && ms >= 0) { st.updates.push([t, ms]); peak('update', ms); } prune(st.updates, t, WINDOW); },
+      // (1.60.4: the update that is the longest of the race keeps which parts it spent its time on, and when: a report with 227 ms as the longest update then says whether that was the save point, the widgets or something else)
+      update(ms, t = clock()) {
+        begin(t);
+        if (isNum(ms) && ms >= 0) {
+          if (st.race && ms > st.race.update) { st.race.updateAt = (t - st.race.t0) / 1000; st.race.updateParts = worstParts(st.upd); }
+          st.updates.push([t, ms]); peak('update', ms);
+        }
+        st.upd = []; prune(st.updates, t, WINDOW);
+      },
       // the window was stuck for ms (a long task)
       long(ms, t = clock()) { begin(t); if (isNum(ms) && ms >= 0) { st.longs.push([t, ms]); peak('long', ms); } prune(st.longs, t, WINDOW); },
       // the total of writes to the page that were left out (quiet.js), at this moment
       skipped(total, t = clock()) { begin(t); if (isNum(total)) st.skip.push([t, total]); prune(st.skip, t, WINDOW); },
       // a part of a screen update (the state, the widgets, the panels...) took ms
-      part(name, ms, t = clock()) { begin(t); if (typeof name !== 'string' || !isNum(ms) || ms < 0) return; const b = pile(t); b.parts[name] = (b.parts[name] || 0) + ms; },
+      part(name, ms, t = clock()) { begin(t); if (typeof name !== 'string' || !isNum(ms) || ms < 0) return; const b = pile(t); b.parts[name] = (b.parts[name] || 0) + ms; st.upd.push([name, ms]); if (st.upd.length > 40) st.upd.shift(); },
       // a widget of this type was drawn: ms to make its text, to put it in the page, to fit it to its place
       widget(type, drawMs, writeMs, fitMs, t = clock()) {
         begin(t); if (typeof type !== 'string' || ![drawMs, writeMs, fitMs].every(v => isNum(v) && v >= 0)) return;
@@ -47,7 +60,7 @@
       // something happened that is worth knowing when the figures are read (a race started, a window was opened): it gets the clock time
       mark(txt, wall = wallNow()) { const s = text(txt, 80); if (!s) return; st.marks.push({ at: wall, text: s }); while (st.marks.length > MARKS_MAX) st.marks.shift(); },
       // a race starts: the worst figures and the rows start again (they stay after the race, so a report copied afterwards still has them)
-      newRace(t = clock(), wall = wallNow()) { st.race = { wall, t0: t, frame: 0, update: 0, long: 0, load: 0, loaf: 0, minFps: null }; st.hist = []; st.histAt = null; },
+      newRace(t = clock(), wall = wallNow()) { st.race = { wall, t0: t, frame: 0, update: 0, updateAt: null, updateParts: [], long: 0, load: 0, loaf: 0, minFps: null }; st.hist = []; st.histAt = null; st.upd = []; },
       due,
       // a row of the history: only once in 30 seconds, and only in a race
       sample(r, m, extra, t = clock()) {
@@ -60,7 +73,7 @@
         return true;
       },
       // the window figures start again (somebody looks again); the worst of the race, its rows and the marks stay
-      reset() { st.frames.length = st.updates.length = st.longs.length = st.skip.length = st.loafs.length = st.buckets.length = 0; st.cur = null; st.last = null; st.started = null; },
+      reset() { st.frames.length = st.updates.length = st.longs.length = st.skip.length = st.loafs.length = st.buckets.length = 0; st.cur = null; st.last = null; st.started = null; st.upd = []; },
       snapshot(t = clock()) {
         [st.frames, st.updates, st.longs, st.skip, st.loafs].forEach(a => prune(a, t, WINDOW));
         const seen = st.started === null ? 0 : Math.min(WINDOW, t - st.started), fspan = Math.min(FPS_WINDOW, seen);
@@ -96,7 +109,7 @@
         if (st.race) { // the worst figures of the race that started last
           if (out.fps !== null && (st.race.minFps === null || out.fps < st.race.minFps)) st.race.minFps = out.fps;
           peak('load', out.updateLoad);
-          out.race = { wall: st.race.wall, seconds: Math.round((t - st.race.t0) / 1000), frame: Math.round(st.race.frame), update: r1(st.race.update), long: Math.round(st.race.long), load: r1(st.race.load), loaf: Math.round(st.race.loaf), minFps: st.race.minFps };
+          out.race = { wall: st.race.wall, seconds: Math.round((t - st.race.t0) / 1000), frame: Math.round(st.race.frame), update: r1(st.race.update), updateAt: st.race.updateAt === null ? null : Math.round(st.race.updateAt), updateParts: st.race.updateParts.map(x => ({ name: x[0], ms: r1(x[1]) })), long: Math.round(st.race.long), load: r1(st.race.load), loaf: Math.round(st.race.loaf), minFps: st.race.minFps };
         } else out.race = null;
         out.history = st.hist.map(h => ({ ...h }));
         out.marks = st.marks.map(x => ({ ...x }));
@@ -230,7 +243,7 @@
         L.push('', `Slow frames (over 50 ms) in the last ${f0(Math.min(10, r.seconds))} seconds: ${r.loaf.count}, ${f0(r.loaf.avg)} ms on average, the longest ${f0(r.loaf.max)} ms. On average: scripts ${f0(r.loaf.script)} ms (of which the page measuring itself ${f0(r.loaf.forced)} ms), drawing the page ${f0(r.loaf.render)} ms${r.loaf.script + r.loaf.render < r.loaf.avg * 0.25 ? ' (the browser does not say where the rest of the time went)' : ''}`);
         if (r.loaf.top.length) L.push('  slowest scripts: ' + r.loaf.top.map(x => `${x.name} ${f0(x.ms)} ms`).join(' · '));
       }
-      if (r.race) L.push('', `Worst since the race started (${clockText(r.race.wall)}, ${spanText(r.race.seconds)} ago): slowest frame ${r.race.frame} ms, longest screen update ${f1(r.race.update)} ms, longest stuck ${r.race.long} ms, longest slow frame ${r.race.loaf} ms, fewest frames ${r.race.minFps === null ? '–' : r.race.minFps + ' a second'}, busiest ${f0(r.race.load)}% of the time on updates`);
+      if (r.race) L.push('', `Worst since the race started (${clockText(r.race.wall)}, ${spanText(r.race.seconds)} ago): slowest frame ${r.race.frame} ms, longest screen update ${f1(r.race.update)} ms${r.race.updateParts && r.race.updateParts.length ? ` (at ${rowTime(r.race.updateAt || 0)}: ${r.race.updateParts.map(x => `${x.name} ${f0(x.ms)} ms`).join(', ')})` : ''}, longest stuck ${r.race.long} ms, longest slow frame ${r.race.loaf} ms, fewest frames ${r.race.minFps === null ? '–' : r.race.minFps + ' a second'}, busiest ${f0(r.race.load)}% of the time on updates`);
       if (r.history && r.history.length) {
         L.push('', 'Since the race started, one row every 30 seconds (time, frames, screen update, app memory, memory of the page, page elements, CPU of the window):');
         thin(r.history, 24).forEach(h => L.push(`  ${rowTime(h.at)}  ${h.fps === null ? '–' : h.fps} frames/s · update ${f1(h.update)} ms (${f0(h.load)}% of the time, slowest ${f1(h.updateMax)}) · app ${h.memMB === null ? '–' : h.memMB} MB · page ${h.heapMB === null ? '–' : h.heapMB} MB · ${h.dom === null ? '–' : h.dom} elements · window CPU ${h.winCpu === null ? '–' : h.winCpu}%`));
