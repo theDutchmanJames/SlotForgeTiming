@@ -27,7 +27,49 @@
     while (L.length > MAX_ENTRIES || (s.chars > MAX_CHARS && L.length > 1)) s.chars -= L.pop().size;
     return html;
   }
-  const api = { once, site, BIG, MAX_ENTRIES, MAX_CHARS };
+
+  // 1.60.6: a big picture as a short link.
+  // Even when the text is built once, the page still has to read it: every time the start lights change (five lights, one picture each) the page was given the five pictures themselves,
+  // megabytes of text, and made five pictures from them again. On a Raspberry Pi 5 that took 160 to 190 ms at every light, which is the hitch at the start of a race. Here a big picture
+  // is turned into a file in the memory of the window once (a blob) and the page is given its short address (blob:...) instead: writing the five lights takes a few milliseconds, and
+  // the page keeps the pictures it has already made. Nothing is changed in what is shown. It is switched on by the app itself (setLinks, app.js); without that, and for anything that is
+  // not a big picture made as base64 data, or when anything goes wrong, the picture is given as it was.
+  const MAX_LINKS = 256;       // the pictures kept as links by one window
+  const MAX_LINK_BYTES = 256e6; // and the most bytes they hold on to; beyond that the oldest is let go
+  const links = { on: false, map: new Map(), bytes: 0 };
+  const DATA_HEAD = /^data:([^;,]*)(;base64)?,/;
+  const bytesOf = b64 => {
+    if (typeof Uint8Array.fromBase64 === 'function') return Uint8Array.fromBase64(b64);
+    const bin = atob(b64), u = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    return u;
+  };
+  const letGo = e => { try { if (e.size && typeof URL.revokeObjectURL === 'function') URL.revokeObjectURL(e.url); } catch (x) { /* it is gone either way */ } };
+  function link(src) {
+    if (!links.on || !isBig(src)) return src;
+    const kept = links.map.get(src);
+    if (kept) return kept.url;
+    let e = { url: src, size: 0 }; // (a picture that cannot be made into a link stays as it is, and is not tried again)
+    try {
+      const m = DATA_HEAD.exec(src.slice(0, 200));
+      if (m && m[2]) {
+        const bytes = bytesOf(src.slice(m[0].length));
+        e = { url: URL.createObjectURL(new Blob([bytes], { type: m[1] || 'image/png' })), size: bytes.length };
+      }
+    } catch (x) { e = { url: src, size: 0 }; }
+    links.map.set(src, e); links.bytes += e.size;
+    for (const [k, old] of links.map) { // (the oldest first: a Map keeps the order it was filled in)
+      if (links.map.size <= api.MAX_LINKS && links.bytes <= api.MAX_LINK_BYTES) break;
+      if (k === src) break; // (never the one that was just made)
+      links.map.delete(k); links.bytes -= old.size; letGo(old);
+    }
+    return e.url;
+  }
+  function setLinks(on) { links.on = !!on; if (!on) clearLinks(); }
+  function clearLinks() { links.map.forEach(letGo); links.map.clear(); links.bytes = 0; }
+  const linkStats = () => ({ on: links.on, count: links.map.size, bytes: links.bytes });
+
+  const api = { once, site, link, setLinks, clearLinks, linkStats, BIG, MAX_ENTRIES, MAX_CHARS, MAX_LINKS, MAX_LINK_BYTES };
   root.PicMemo = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

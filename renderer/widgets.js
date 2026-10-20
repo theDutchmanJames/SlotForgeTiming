@@ -9,6 +9,7 @@
 
   const Av = typeof module !== 'undefined' ? require('./avatars.js') : root.Avatars; // the standard avatars of the lanes
   const PM = typeof module !== 'undefined' ? require('./picmemo.js') : root.PicMemo; // the text of a picture is built once (1.60.2)
+  const link = src => (PM && typeof PM.link === 'function' ? PM.link(src) : src); // a big picture as a short link, once the app has switched that on (1.60.6, picmemo.js): the page is not given the picture itself
   const SITE_AV = PM.site(), SITE_IMG = PM.site(), SITE_FLAG = PM.site(), SITE_FUEL = PM.site(), SITE_LIGHTS = PM.site();
   const Dl = typeof module !== 'undefined' ? require('./delta.js') : root.Delta; // the Delta Timers (what is compared, and the badge)
   const Bo = typeof module !== 'undefined' ? require('./boardorder.js') : root.BoardOrder; // the order of a leaderboard (Order by)
@@ -68,7 +69,7 @@
     const lit = i => i < on, srcs = [0, 1, 2, 3, 4].map(i => (pics ? (typeof pics.pick === 'function' ? pics.pick(i, lit(i)) : (lit(i) ? pics.on : pics.off)) : undefined)); // (what picture each light has, looked at before the text is made: 1.60.2)
     return PM.once(SITE_LIGHTS, [on, cssVal(color), ...srcs.map(x => x || '')], () => `<svg class="slsvg" viewBox="0 0 500 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Start lights">${[0, 1, 2, 3, 4].map(i => {
       const src = srcs[i], cls = 'sl' + (lit(i) ? ' on' : '');
-      return src ? `<image class="${cls}" href="${esc(src)}" x="${i * 100 + 4}" y="4" width="92" height="92" preserveAspectRatio="xMidYMid meet"/>` : `<circle class="${cls}" cx="${50 + i * 100}" cy="50" r="42"${lit(i) && cssVal(color) ? ` style="fill:${cssVal(color)}"` : ''}/>`;
+      return src ? `<image class="${cls}" href="${esc(link(src))}" x="${i * 100 + 4}" y="4" width="92" height="92" preserveAspectRatio="xMidYMid meet"/>` : `<circle class="${cls}" cx="${50 + i * 100}" cy="50" r="42"${lit(i) && cssVal(color) ? ` style="fill:${cssVal(color)}"` : ''}/>`;
     }).join('')}</svg>`);
   };
   // The Race flag widget's pictures, drawn like the pictures on the Live Race tiles (24 x 24, a rounded line in the text colour) with the colour of the

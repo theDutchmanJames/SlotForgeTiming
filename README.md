@@ -3050,3 +3050,19 @@ Good to know:
 - The Delta Timer badges are measured exactly as before; the report only hears what happened. It costs nothing when neither the Performance line nor the report is shown.
 - **Still not done:** the stall of the core when a setting is saved (the whole database, the pictures too, is written at once: 1437 ms at 21:28:56 in your log), the fix for what these lines show, and Pi Performance Mode (1.61.0). All wait for your go.
 - Tested: new checks in `tests/perf.test.js` (the widgets of the longest update, the slow update of a row, the counts of the Delta Timer badges and the report text), `tests/delta.test.js` (what `fitQuick` tells for each way a badge can be measured or left alone, and that the badges come out the same with or without the report listening), `tests/quiet.test.js` (the painter passes the note on) and `tests/perfscreen.test.js`. The code was broken on purpose 79 times: 76 caught, the other 3 cannot change the result (a second safeguard for the same thing, or a start value that is read as empty either way).
+
+## What to try (1.60.6): The start lights no longer cost 160 to 190 ms at every light
+
+What changed: the report of 1.60.5 showed that the hitch at the start of a race is the Start Lights widget: `lights: 197.3 ms (text 9.3, page 159.1, fit 28.9)`. The five pictures of the lights were in the page as text (megabytes), and every light that came on made the page read it and make five pictures again. Now a big picture is made into a file in the memory of the window once, and the page gets its short address instead. What you see is the same. The report has a new line (`Big pictures in the widgets as short links (1.60.6): on, 10 kept, 4.1 MB`) that says it is on.
+
+How to try it:
+1. Race as before (Soft lift, layers on, the Performance line on, your lights picture set on the Start Lights widget, the Live Race tab closed). Watch the countdown: the lights should come on one by one as before, with the same pictures, and go out at the start. The first time a light with a picture comes on it makes its link (a few milliseconds more than the next ones).
+2. Copy the report about a minute after the start and send all of it. I look at: `The widgets in that update` and the `its slowest update` line of the first row (the lights should be gone from them or small), the line `Worst since the race started`, and the new line about the short links (it must say `on`).
+3. If you use the second screen (Live Race window), look at its start lights too: they use the same links.
+
+Good to know:
+- In my test setup (Chromium, the processor slowed down 4 times, a lights set of ten pictures of 0.5 MB, emulated graphics: **not the Pi**) a light that came on went from 120 to 305 ms to 8 to 13 ms in the lights widget, and the longest update of the countdown from 327 to 30 ms. On your Pi the first light with a picture may take about 10 ms more, once.
+- If a picture cannot be made into a link (an old picture format of the database, a window that does not allow it), it is used as before: the page is given the picture itself, so nothing is lost, only the gain.
+- I planned to also stop the three scans of the widget text in `drawNode`; with the lights text under 1500 characters they cost nothing, so I left them.
+- **Still not done:** the Lap Time Delta badge that has to shrink at every update (1.60.7: remember the shrink), the other picture widgets (car picture, avatar, flag, tyres, weather, fuel) which could use the same links, and the stall of the core when a setting is saved. They wait for your go.
+- Tested: new checks in `tests/picmemo.test.js`, `tests/perf.test.js` and `tests/perfscreen.test.js`. The code was broken on purpose 62 times: 59 caught, the other 3 cannot change the result.

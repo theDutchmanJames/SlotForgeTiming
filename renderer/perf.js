@@ -322,7 +322,7 @@
   }
 
   // ---- the report (to copy and send) ----
-  // extra: what only the window knows: { version, when, screen: {w, h, dpr}, look: {depth, layers} | null, race: {name, widgets, lanes} | null, speedNote }
+  // extra: what only the window knows: { version, when, screen: {w, h, dpr}, look: {depth, layers} | null, links: {on, count, bytes} | null (1.60.6), race: {name, widgets, lanes} | null, speedNote }
   function report(r, m, extra = {}) {
     const L = [];
     const ver = text(extra.version, 20) || (m && m.versions.app);
@@ -340,6 +340,7 @@
     } else L.push('The core of the app did not answer (a page on a phone, or an older version): only the window figures follow.');
     if (extra.screen) L.push(`Window: ${f0(extra.screen.w)} x ${f0(extra.screen.h)}${extra.screen.dpr && extra.screen.dpr !== 1 ? ' at ' + Math.round(extra.screen.dpr * 100) + '%' : ''}`);
     if (extra.look) L.push(`Look: depth ${text(extra.look.depth, 40) || 'unknown'}, widgets on their own layers: ${extra.look.layers ? 'on' : 'off'}`);
+    if (extra.links && typeof extra.links === 'object') L.push(`Big pictures in the widgets as short links (1.60.6): ${extra.links.on ? 'on' : 'off'}${extra.links.on ? `, ${f0(extra.links.count)} kept, ${f1((Number(extra.links.bytes) || 0) / 1e6)} MB` : ''}`);
     if (extra.race) L.push(`Race screen: ${text(extra.race.name, 60) || 'open'}, ${f0(extra.race.widgets)} widgets, ${f0(extra.race.lanes)} lanes`); else L.push('Race screen: not open');
     if (r) {
       L.push(`Frames: ${r.fps === null ? 'measuring' : r.fps + ' a second'}, slowest frame ${r.slowest === null ? '–' : r.slowest + ' ms'} (last ${f0(Math.min(10, r.seconds))} seconds)`);

@@ -178,6 +178,14 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
     say('...a page with no settings (yet) gives no Look line, and no error', !t.includes('Look:') && t.includes('Window:'));
     run("state.settings = { theme: 'dark' }"); }
 
+  // 1.60.6: the report says whether the big pictures of the widgets go to the page as short links
+  { const links = async on => { run('PicMemo.setLinks(' + on + ')'); const out = place(mk()), pn = P().panel({ out }); await wait(150); pn(); return out.textContent; };
+    let t = await links(true);
+    say('the report says the big pictures go to the page as short links when that is on', /Big pictures in the widgets as short links \(1\.60\.6\): on, \d+ kept, [\d.]+ MB/.test(t));
+    t = await links(false);
+    say('...and off when it is not', t.includes('short links (1.60.6): off') && !t.includes('kept'));
+    run('PicMemo.setLinks(true)'); }
+
   { run("state.settings = { theme: 'dark', perfLine: true }"); fresh(); await openRace(); place(E('perfline')); await wait(50);
     say('a race screen with the switch on has its line (one watcher)', P().watching() === 1);
     const n0 = iv.size; run('live.shown()'); run('live.shown()'); run('live.shown()');

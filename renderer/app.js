@@ -391,6 +391,7 @@ function bootFailed(e) {
   state.schema = await api.schema();
   state.settings = await api.getSettings();
   applyTheme(); applyDepth(); applyLayers(); applyName();
+  if (typeof PicMemo !== 'undefined' && PicMemo.setLinks) PicMemo.setLinks(true); // big pictures in the widgets go to the page as short links (1.60.6): this window and the second screen
   if (typeof location !== 'undefined' && location.hash === '#live') { // the second-screen window: only the Live Race pages
     document.body.classList.add('lv-window'); document.querySelector('header').hidden = true;
     document.title = (state.settings.appName || DEFAULT_NAME) + ' – Live Race'; if (api.setZoom) api.setZoom(1); return LiveView.mount(view, { second: true }); // (the second screen keeps its own size)

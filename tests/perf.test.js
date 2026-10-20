@@ -116,6 +116,16 @@ const R0 = { fps: 58, slowest: 41, updates: 10, updateAvg: 0.62, updateMax: 3, u
   ok('...a window that does not know its look (an older page, an error) gives no Look line at all', !lines({}).some(l => /^Look:/.test(l)) && !lines({ look: null }).some(l => /^Look:/.test(l)));
   ok('...a depth without a name is "unknown", and a long or odd one is cut (it is text of the page)', lines({ look: { depth: '', layers: true } }).includes('Look: depth unknown, widgets on their own layers: on') && lines({ look: { depth: 'x'.repeat(500), layers: true } }).find(l => /^Look:/.test(l)).length < 120);
   ok('...a report without figures (the core did not answer) still has it', Perf.report(null, null, { look: { depth: 'Soft lift (35)', layers: true } }).includes('Look: depth Soft lift (35)')); }
+// ---- 1.60.6: the report says whether the big pictures of the widgets go to the page as short links
+{ const m = Perf.cleanMain({ metrics: [{ type: 'Tab', cpu: 14.2, memMB: 300 }] });
+  const lines = x => Perf.report(R0, m, x).split('\n'), at = (L, re) => L.findIndex(l => re.test(l));
+  const on = lines({ race: { name: 'Club race', widgets: 41, lanes: 4 }, look: { depth: 'Soft lift (35)', layers: true }, links: { on: true, count: 10, bytes: 4087519 } });
+  ok('the report says that the big pictures go to the page as short links, how many are kept and how much they hold', on.includes('Big pictures in the widgets as short links (1.60.6): on, 10 kept, 4.1 MB'));
+  ok('...it comes between the Look line and the race screen line', at(on, /^Big pictures/) === at(on, /^Look:/) + 1 && at(on, /^Race screen:/) === at(on, /^Big pictures/) + 1);
+  ok('...switched off it says off and nothing more', lines({ links: { on: false, count: 0, bytes: 0 } }).includes('Big pictures in the widgets as short links (1.60.6): off'));
+  ok('...a window that does not know (an older page, an error) gives no such line', !lines({}).some(l => /^Big pictures/.test(l)) && !lines({ links: null }).some(l => /^Big pictures/.test(l)) && !lines({ links: 'on' }).some(l => /^Big pictures/.test(l)));
+  ok('...odd figures do not break the line', lines({ links: { on: true, count: 'x', bytes: 'y' } }).includes('Big pictures in the widgets as short links (1.60.6): on, – kept, 0 MB'));
+  ok('...a report without figures (the core did not answer) still has it', Perf.report(null, null, { links: { on: true, count: 2, bytes: 2e6 } }).includes('short links (1.60.6): on, 2 kept, 2 MB')); }
 { const M = Perf.createMonitor({ now: () => 0, wall: () => 5000 }); M.newRace(1000, 7000);
   M.loaf({ dur: 150, script: 1, render: 1, forced: 0 }, 1700); M.loaf({ dur: 5000, script: 0, render: 0, forced: 0 }, 1800); M.loaf({ dur: 2001, script: 0, render: 0, forced: 0 }, 1850); M.loaf({ dur: 2000, script: 0, render: 0, forced: 0 }, 1900);
   const s = M.snapshot(2000);

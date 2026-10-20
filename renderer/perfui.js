@@ -78,12 +78,14 @@ const PerfUI = (() => {
       return { depth: name + (lvl ? ` (${lvl})` : ''), layers: Depth.layersOn(S) };
     } catch (e) { return null; }
   }
+  // the big pictures of the widgets as short links (1.60.6, picmemo.js): whether it is on and how many pictures are kept, so a copied report says it
+  function linksOf() { try { return typeof PicMemo !== 'undefined' && typeof PicMemo.linkStats === 'function' ? PicMemo.linkStats() : null; } catch (e) { return null; } }
   // the report in a box (App Settings > General > Performance): out is the element it is written to, copy the button, msg where it says "Copied."
   // race: what the race screen tells about itself (PerfUI.race, set by race.js); the version comes from the core of the app
   function panel(o) {
     const out = o.out; if (!out) return () => {};
     let unwatch = null, busy = false, gone = false, last = '';
-    const make = (r, main) => Perf.report(r, main, { when: new Date().toLocaleString(), screen: typeof window !== 'undefined' ? { w: window.innerWidth, h: window.innerHeight, dpr: window.devicePixelRatio } : null, look: lookOf(), race: PerfUI.race ? PerfUI.race() : null });
+    const make = (r, main) => Perf.report(r, main, { when: new Date().toLocaleString(), screen: typeof window !== 'undefined' ? { w: window.innerWidth, h: window.innerHeight, dpr: window.devicePixelRatio } : null, look: lookOf(), links: linksOf(), race: PerfUI.race ? PerfUI.race() : null });
     const show = async () => {
       if (gone || busy) return;
       if (out.isConnected === false) return stop();
