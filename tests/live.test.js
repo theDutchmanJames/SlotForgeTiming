@@ -442,6 +442,19 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     say('the layout (with its picture) is shared with the Race Director page and the tablets', sent.stat && sent.stat.layout.bgImage === PIC && sent.stat.layout.bgBlur === 30);
   }
 
+  // ---------- 1.60.8: the pictures of the start lights are made ready when the race screen is built ----------
+  { const P1 = 'data:image/png;base64,' + 'A'.repeat(3000), P2 = 'data:image/png;base64,' + 'B'.repeat(3000), P3 = 'data:image/png;base64,' + 'C'.repeat(3000);
+    store.imagesets = [{ id: 'isL', name: 'Lights', kind: 'lights', images: { off: P2, on: P1, green: P3 } }];
+    const lay = (id, w) => ({ id, name: id, ratioW: 16, ratioH: 9, laneColors: [], widgets: w });
+    store.layouts = [lay('LL', [WD('clock', null, { y: 0 }), WD('lights', null, { y: 100, opt: { imageSet: 'isL' } })]), lay('LN', [WD('clock', null, { y: 0 })])];
+    ctx.__prep = []; run("{ const p = PicMemo.prepare; __prepOrig = p; PicMemo.prepare = l => { __prep.push(Array.from(l)); return p(l); }; }");
+    await openRace({ name: 'Lights', sessionType: 'practice', layout: 'LL' }, store.tracks[0], rows(1, 2));
+    say('opening the race screen hands the pictures of its start lights to the queue that makes them ready, the countdown pictures first', ctx.__prep.length >= 1 && JSON.stringify(ctx.__prep[ctx.__prep.length - 1]) === JSON.stringify([P2, P1, P3]), JSON.stringify(ctx.__prep.map(l => l.length)));
+    ctx.__prep.length = 0;
+    await openRace({ name: 'No lights', sessionType: 'practice', layout: 'LN' }, store.tracks[0], rows(1, 2));
+    say('...a layout with no start lights hands over nothing', ctx.__prep.every(l => l.length === 0));
+    run('PicMemo.prepare = __prepOrig'); }
+
   // ---------- the club logo in the race window ----------
   { run("state.settings.clubLogo = 'data:image/png;base64,RACELOGO'");
     store.layouts = [{ id: 'L9', name: 'Logos', ratioW: 16, ratioH: 9, laneColors: [], widgets: [WD('logo', null, { id: 'lg1', y: 0 }), WD('logo', null, { id: 'lg2', y: 100, opt: { image: 'data:image/png;base64,OWNPIC' } })] }];

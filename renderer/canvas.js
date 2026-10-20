@@ -2,7 +2,7 @@
 // Live Race pages (second screen), so both always look the same.
 const LiveCanvas = (() => {
   // o.onButton(type): when given, control widgets (start, pause, ...) are made as working buttons;
-  // without it they are left out (a read-only page). o.maxH: space kept free below the page, in px.
+  // without it they are left out (a read-only page). o.maxH: space kept free below the page, in px. o.imageSets (1.60.8): the picture sets of the race, to make the pictures of the start lights ready.
   function build(canvas, layout, lanes, o = {}) {
     const U = Widgets.U, H = Widgets.heightOf(layout), nodes = [];
     canvas.innerHTML = '';
@@ -25,6 +25,7 @@ const LiveCanvas = (() => {
       if (typeof ResizeObserver !== 'undefined' && typeof Delta !== 'undefined' && Delta.isDelta(w.type)) new ResizeObserver(() => { Delta.fit(val); if (typeof PerfUI !== 'undefined' && PerfUI.deltaNote) PerfUI.deltaNote(w.type, { why: 'resize' }); }).observe(val); // (a Delta Timer: the arrow and the number stay inside the badge when the widget or the window changes size)
       nodes.push({ w, el, val, tit, base: Widgets.colorsOf(w, layout), layout, last: null });
     });
+    if (o.imageSets && typeof Widgets.prepareLights === 'function') Widgets.prepareLights(layout, o.imageSets); // (1.60.8: the pictures of the start lights are made ready now, one at a time, so the first light does not pay for them)
     return nodes;
   }
   // One widget: its text, then its colours. tm (given by the Performance line while somebody looks, 1.60.1): { now(), add(type, drawMs, writeMs, fitMs) } hears how long

@@ -3067,6 +3067,25 @@ Good to know:
 - **Still not done:** the Lap Time Delta badge that has to shrink at every update (1.60.7: remember the shrink), the other picture widgets (car picture, avatar, flag, tyres, weather, fuel) which could use the same links, and the stall of the core when a setting is saved. They wait for your go.
 - Tested: new checks in `tests/picmemo.test.js`, `tests/perf.test.js` and `tests/perfscreen.test.js`. The code was broken on purpose 62 times: 59 caught, the other 3 cannot change the result.
 
+## What to try (1.60.8): Short links for the other pictures, and the start lights made ready before the race
+
+What changed: since 1.60.6 the start lights are given to the page as short links instead of the whole picture, which took a light that comes on from 160 to 190 ms to about 10. In 1.60.8 the other pictures get the same treatment: the avatar, driver and team picture, the slotcar picture, logos and images, the race flag pictures, the fuel pictures (the steps of the tank), and the tyre, weather and wind pictures. They matter most where a picture *changes* during a race (a fuel picture while a car refuels, a flag, a tyre). And the pictures of the start lights are now made ready while the race screen is being built, one picture at a time, so the first light that comes on no longer has to make its own file.
+
+How to try it:
+1. Race as before (Soft lift, layers on, the Performance line on, the Live Race tab closed), with the pictures you use: start lights with a picture set, fuel pictures if you have them, avatars and slotcar pictures. Copy the report about a minute after the start and send all of it.
+2. What I look at: the line *Big pictures in the widgets as short links* must say `on` and now ends with `made ready ahead of time: N (x ms)`; in **The widgets in that update** the lights, the fuel widgets and the picture widgets should be small, and the slowest update of the first row and of the refuelling should be shorter than in the report of 1.60.5.
+3. Look at the pictures themselves: every avatar, slotcar picture, flag, fuel picture and tyre picture must look exactly as before and must not flash or go blank when it changes. If one stays empty, tell me which widget it is and when it happened.
+4. If you use the second screen (Live Race window), look at its start lights and fuel pictures too.
+
+Good to know:
+- In my test setup (Chromium, the processor slowed down 4 times, emulated graphics: **not the Pi**; the runs vary by about 15%) a light in the countdown went from 5 to 13 ms to 0.6 to 6 ms in the lights widget. With two cars refuelling and ten pictures of 1000 px in the fuel widgets, the page writes of the fuel widgets went from about 420 ms to 3 ms in 14 seconds, the longest update from 150 ms to about 40 ms, and the messages of a stuck window disappeared. The avatar and slotcar pictures did not change during a race, and there I could not measure any difference. Not measured on the Pi, in Electron or on Windows.
+- Making the pictures ready takes 6 to 16 ms per picture on the test setup (five pictures: 30 to 80 ms in five separate moments); on the Pi it will take more, but never more than one picture in a moment. It starts when the race screen opens, so it should be done before you press Start. If it is not done yet (waiting), the light uses its own file when it is needed, as before.
+- It never takes more than three quarters of the room for links (192 of 256 links, 192 MB of 256 MB), so what is in use is not thrown out. If the pictures of the lights do not fit, the report says how many had no room.
+- A picture that is a link exists twice in the memory of the window: as text and as a file (at most 256 MB of files). If a picture cannot be made into a link, it is used as before.
+- Whether the preparation also decodes the picture ahead of time on the Pi is not known; I added a decode of each picture for that, and the test setup cannot show whether it helps.
+- **Still not done:** the stall of the core when a setting is saved (the whole database, the pictures too, is written at once). It waits for your go. Pi Performance Mode (1.61.0) is dropped.
+- Tested: new checks in `tests/picmemo.test.js`, `tests/perf.test.js`, `tests/perfscreen.test.js` and `tests/live.test.js`. The code was broken on purpose 72 times: 68 caught, the other 4 cannot change the result.
+
 ## What to try (1.60.7): The Lap Time Delta no longer gets measured at every update
 
 What changed: in your report of 1.60.5 every badge of the Lap Time Delta was measured at every update (129 of 129 in 10 seconds): the badge is almost twice as wide as its widget allows (box 98 px, text 176 px), so each new badge was made smaller, and that makes the page measure itself: 1.8 ms of the 4.1 ms of an update on your Pi. Now a badge that had to be made smaller remembers the size it came out at, and the next badge with the same kind of text (same arrow, same sign, same number of figures, same colour) is given that size straight away, without measuring. What you see is the same; the report has a new count for it.

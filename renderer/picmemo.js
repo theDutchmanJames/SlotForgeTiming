@@ -20,10 +20,14 @@
     if (!s || !deps.some(isBig)) return build();
     const L = s.list;
     for (let i = 0; i < L.length; i++) {
-      if (same(L[i].deps, deps)) { const e = L[i]; if (i > 0) { L.splice(i, 1); L.unshift(e); } return e.html; } // (the one used last comes first)
+      if (same(L[i].deps, deps)) {
+        const e = L[i];
+        if (e.gen !== links.gen) { L.splice(i, 1); s.chars -= e.size; break; } // (1.60.8: the links changed since this text was made, a link in it may have been let go: make it again)
+        if (i > 0) { L.splice(i, 1); L.unshift(e); } return e.html; // (the one used last comes first)
+      }
     }
     const html = build(), size = typeof html === 'string' ? html.length : 0;
-    L.unshift({ deps, html, size }); s.chars += size;
+    L.unshift({ deps, html, size, gen: links.gen }); s.chars += size;
     while (L.length > MAX_ENTRIES || (s.chars > MAX_CHARS && L.length > 1)) s.chars -= L.pop().size;
     return html;
   }
@@ -36,7 +40,7 @@
   // not a big picture made as base64 data, or when anything goes wrong, the picture is given as it was.
   const MAX_LINKS = 256;       // the pictures kept as links by one window
   const MAX_LINK_BYTES = 256e6; // and the most bytes they hold on to; beyond that the oldest is let go
-  const links = { on: false, map: new Map(), bytes: 0 };
+  const links = { on: false, map: new Map(), bytes: 0, gen: 0 }; // (gen: changes whenever a link is let go or the links are switched, so text made with the old ones is made again, 1.60.8)
   const DATA_HEAD = /^data:([^;,]*)(;base64)?,/;
   const bytesOf = b64 => {
     if (typeof Uint8Array.fromBase64 === 'function') return Uint8Array.fromBase64(b64);
@@ -61,15 +65,47 @@
     for (const [k, old] of links.map) { // (the oldest first: a Map keeps the order it was filled in)
       if (links.map.size <= api.MAX_LINKS && links.bytes <= api.MAX_LINK_BYTES) break;
       if (k === src) break; // (never the one that was just made)
-      links.map.delete(k); links.bytes -= old.size; letGo(old);
+      links.map.delete(k); links.bytes -= old.size; letGo(old); links.gen++;
     }
     return e.url;
   }
-  function setLinks(on) { links.on = !!on; if (!on) clearLinks(); }
-  function clearLinks() { links.map.forEach(letGo); links.map.clear(); links.bytes = 0; }
-  const linkStats = () => ({ on: links.on, count: links.map.size, bytes: links.bytes });
+  function setLinks(on) { const was = links.on; links.on = !!on; if (!on) clearLinks(); else if (!was) { links.gen++; } }
+  function clearLinks() { links.map.forEach(letGo); links.map.clear(); links.bytes = 0; links.gen++; stopReady(); }
 
-  const api = { once, site, link, setLinks, clearLinks, linkStats, BIG, MAX_ENTRIES, MAX_CHARS, MAX_LINKS, MAX_LINK_BYTES };
+  // 1.60.8: pictures made ready before they are needed.
+  // The first time a picture is used its link has to be made (about 10 ms for 0.5 MB) and the browser has to decode it. For the start lights that was the first light of the countdown. Here a list
+  // of pictures (the start lights set, when the race screen is built) is made ready one picture at a time, each in a moment of its own (setTimeout), so the screen stays free: the link is made, and a
+  // picture that is not on the screen is asked to decode (Image.decode, off the main thread). Never more than three quarters of what the links may hold, so a picture that is in use is not let go for it.
+  const READY_SHARE = 0.75;
+  const ready = { queue: [], set: new Set(), busy: false, gen: 0, made: 0, left: 0, ms: 0 };
+  const clock = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
+  const soon = fn => { try { return typeof setTimeout === 'function' ? setTimeout(fn, 0) : fn(); } catch (x) { return fn(); } };
+  const roomFor = src => links.map.size + 1 <= api.MAX_LINKS * READY_SHARE && links.bytes + Math.ceil(src.length * 0.75) <= api.MAX_LINK_BYTES * READY_SHARE;
+  function warm(url) { // (the browser decodes the picture now, not at the first light; what comes of it is up to the browser)
+    try { if (typeof Image === 'function') { const im = new Image(); im.src = url; if (typeof im.decode === 'function') { const p = im.decode(); if (p && typeof p.catch === 'function') p.catch(() => {}); } } } catch (x) { /* a picture that cannot be warmed up is made when it is used */ }
+  }
+  function stopReady() { ready.gen++; ready.queue.length = 0; ready.set.clear(); ready.busy = false; }
+  function readyStep(g) {
+    if (g !== ready.gen) return;
+    const src = ready.queue.shift();
+    if (src === undefined) { ready.busy = false; return; }
+    ready.set.delete(src);
+    if (links.on && !links.map.has(src)) {
+      if (roomFor(src)) { const t0 = clock(); const url = link(src); ready.ms += clock() - t0; ready.made++; if (url !== src) warm(url); } else ready.left++;
+    }
+    if (ready.queue.length) soon(() => readyStep(g)); else ready.busy = false;
+  }
+  // list: pictures (data text), the ones that are needed first at the front. Returns how many were put in the queue (a picture that is small, already a link, or already in the queue is not)
+  function prepare(list) {
+    if (!links.on || !Array.isArray(list)) return 0;
+    let n = 0;
+    for (const src of list) if (isBig(src) && !links.map.has(src) && !ready.set.has(src)) { ready.queue.push(src); ready.set.add(src); n++; }
+    if (n && !ready.busy) { ready.busy = true; const g = ready.gen; soon(() => readyStep(g)); }
+    return n;
+  }
+  const linkStats = () => ({ on: links.on, count: links.map.size, bytes: links.bytes, ready: { made: ready.made, left: ready.left, waiting: ready.queue.length, ms: Math.round(ready.ms * 10) / 10 } });
+
+  const api = { once, site, link, setLinks, clearLinks, linkStats, prepare, READY_SHARE, BIG, MAX_ENTRIES, MAX_CHARS, MAX_LINKS, MAX_LINK_BYTES };
   root.PicMemo = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

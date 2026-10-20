@@ -187,10 +187,184 @@ const big1 = 'data:image/png;base64,' + b64(3000), big2 = 'data:image/jpeg;base6
   say('the start lights ask for the link of each picture', /<image class="\$\{cls\}" href="\$\{esc\(link\(src\)\)\}"/.test(wid) && /const link = src => \(PM && typeof PM\.link === 'function' \? PM\.link\(src\) : src\)/.test(wid));
   say('picmemo.js is loaded before widgets.js', idx.indexOf('picmemo.js') > 0 && idx.indexOf('picmemo.js') < idx.indexOf('src="widgets.js"'));
 }
+// ---- 1.60.8: the other picture widgets use the links too, and the pictures of the start lights are made ready before the race ----
+{ PM.setLinks(true); PM.clearLinks(); made.length = 0; gone.length = 0;
+  const A = 'data:image/png;base64,' + b64(7000, 3), B = 'data:image/jpeg;base64,' + b64(7001, 5), C = 'data:image/png;base64,' + b64(7002, 7), D = 'data:image/png;base64,' + b64(7003, 9);
+  Object.values(Wd.picSites).forEach(x => { x.list.length = 0; x.chars = 0; }); WW.picSite.list.length = 0; WW.picSite.chars = 0;
+  const live = h => /src="blob:test\/\d+"/.test(h) && !h.includes('base64') && h.length < 1500;
+  const av = Wd.avatarHtml(A, { frame: {} }), car = Wd.avatarHtml(B, { frame: { zoom: 1.5 }, avatarMirror: true }), logo = Wd.imageHtml(C, 'cover'), logo2 = Wd.imageHtml(C), fl = Wd.flagImgHtml(D, 'Green flag', true);
+  say('a driver avatar, a slotcar picture, an image or logo and a race flag picture are written with a short link, not with the picture', live(av) && live(car) && live(logo) && live(fl));
+  say('...the rest of the text is as it was (the frame, the mirror, the fit, the words)', av.startsWith('<span class="avframe"><img class="avimg" src="blob:') && car.includes('scaleX(-1)') && logo.includes('object-fit:cover') && fl.includes('alt="Green flag"') && fl.includes('scaleX(-1)') && logo2.includes('class="flagimg"') && !logo2.includes('object-fit'));
+  say('...a picture is made into a file once, however many widgets show it (the cover and the plain image share one file)', made.length === 4 && (logo.match(/blob:test\/\d+/) || [])[0] === (logo2.match(/blob:test\/\d+/) || [])[0]);
+  say('...the same call again gives the very same text and no new file', Wd.avatarHtml(A, { frame: {} }) === av && Wd.flagImgHtml(D, 'Green flag', true) === fl && made.length === 4);
+  const imgs = Array.from({ length: 4 }, (_, i) => 'data:image/png;base64,' + b64(7100 + i, 11 + i)), fu = Wd.fuelHtml(95, 100, { mode: 'images', steps: 4, stepImages: imgs }), fu2 = Wd.fuelHtml(5, 100, { mode: 'images', steps: 4, stepImages: imgs });
+  say('the fuel picture is a link, and each step of the tank has its own', live(fu) && live(fu2) && fu !== fu2 && /class="fuelimg"/.test(fu) && /alt="Fuel about 100%"/.test(fu));
+  const t1 = WW.icon('tyre', 'S', { S: A }, 0, false), t2 = WW.icon('state', 'rain', { rain: B }, 0, true), t3 = WW.icon('cond', 'winddir', { winddir: C }, 90, false);
+  say('a tyre, a weather and a wind picture of a set are links too, with their class and turn', live(t1) && live(t2) && live(t3) && t1.includes('class="wxic"') && t2.includes('class="flagimg"') && t3.includes('rotate(270deg)'));
+  const small = 'data:image/png;base64,AAAA';
+  say('a small picture and a picture with an address stay as they were', Wd.avatarHtml(small, {}).includes('src="' + small + '"') && Wd.imageHtml('x.png').includes('src="x.png"') && Wd.flagImgHtml(small, '', false).includes(small) && WW.icon('tyre', 'S', { S: small }, 0, false).includes(small));
+  // a link that is let go must not stay in a text that was made with it
+  PM.clearLinks(); made.length = 0; gone.length = 0; PM.MAX_LINKS = 2;
+  const urlOf = h => h.match(/blob:test\/\d+/)[0], alive = h => !gone.includes(urlOf(h));
+  const t0 = Wd.avatarHtml(A, {}), url0 = urlOf(t0), tB0 = Wd.avatarHtml(B, {}); Wd.avatarHtml(C, {});
+  say('only two links are kept here: the oldest (A) was let go, and its file released', gone.length === 1 && gone[0] === url0 && PM.linkStats().count === 2);
+  const t0b = Wd.avatarHtml(A, {});
+  say('a text that was made with a link that has been let go is made again (a picture asked for again must not get the old address)', t0b !== t0 && urlOf(t0b) !== url0 && alive(t0b));
+  const tB1 = Wd.avatarHtml(B, {}), tC1 = Wd.avatarHtml(C, {});
+  say('...also when it comes round again later (three pictures in two places): every text handed out has a link that is alive at that moment', alive(tB1) && alive(tC1) && tB1 !== tB0 && gone.length >= 3);
+  const tC2 = Wd.avatarHtml(C, {}), tC3 = Wd.avatarHtml(C, {});
+  say('...and a link that is kept gives the very same text again', tC2 === tC3 && alive(tC3));
+  PM.MAX_LINKS = 256; PM.clearLinks(); made.length = 0; gone.length = 0;
+  const n0 = Wd.avatarHtml(A, {}); PM.clearLinks(); const n1 = Wd.avatarHtml(A, {});
+  say('clearing the links makes the texts again too (the old address is gone)', n1 !== n0 && n1.match(/blob:test\/\d+/)[0] !== n0.match(/blob:test\/\d+/)[0]);
+  PM.setLinks(false); const off = Wd.avatarHtml(A, {}), on0 = off.includes(A);
+  say('switched off, the same builders write the picture itself again', on0 && !off.includes('blob:'));
+  PM.setLinks(true); const back = Wd.avatarHtml(A, {});
+  say('...and switched on again, the text made while it was off is not kept: the link is written again', back.includes('blob:') && !back.includes(A));
+  { // the memo of a site when the links change: the old text goes, its size goes with it, and a text that is still good is kept
+    const gs = PM.site(), big = A + 'g', mkT = () => 'x'.repeat(500); let nb = 0; const bt = () => { nb++; return mkT(); };
+    PM.clearLinks(); PM.once(gs, [big], bt); PM.once(gs, [big], bt);
+    say('a text made after the links changed is kept as long as nothing changes again (made once, not every time)', nb === 1 && gs.list.length === 1 && gs.chars === 500, JSON.stringify([nb, gs.list.length, gs.chars]));
+    PM.clearLinks(); PM.once(gs, [big], bt);
+    say('...and when they change again it is made again, the old one is replaced (not kept next to it) and its size is taken off', nb === 2 && gs.list.length === 1 && gs.chars === 500, JSON.stringify([nb, gs.list.length, gs.chars]));
+  }
+  PM.setLinks(true); PM.clearLinks(); Object.values(Wd.picSites).forEach(x => { x.list.length = 0; x.chars = 0; }); WW.picSite.list.length = 0; WW.picSite.chars = 0;
+}
+{ // the pictures of the start lights, in the order they are needed
+  const P = n => 'data:image/png;base64,' + b64(6100 + n, 50 + n), off = P(0), on = P(1), off2 = P(2), on3 = P(3), green = P(4);
+  const im = { off, on, off_2: off2, on_3: on3, green_1: green, junk: 5, empty: '' };
+  const l = Wd.lightSetPictures(im);
+  say('a lights set: the countdown pictures first (each light off, then on, as the countdown shows them), then the rest of the set, each picture once', JSON.stringify(l) === JSON.stringify([off, on, off2, on, on3, green].filter((x, i, a) => a.indexOf(x) === i)), JSON.stringify(l.map(x => [off, on, off2, on3, green].indexOf(x))));
+  say('...anything that is not a picture text (a number, an empty cell) is left out; nothing gives nothing', !l.includes(5) && !l.includes('') && Wd.lightSetPictures(null).length === 0 && Wd.lightSetPictures({}).length === 0 && Wd.lightSetPictures(undefined).length === 0);
+  const sets = [{ id: 's1', kind: 'lights', images: im }, { id: 's2', kind: 'lights', images: { on: P(9), off: P(8) } }, { id: 'f1', kind: 'flag', images: { green: P(7) } }];
+  const W = (type, opt) => ({ type, lane: null, opt: opt || {} });
+  const lay = { widgets: [W('clock'), W('lights', { imageSet: 's1' }), W('lights', { imageSet: 's1' }), W('lights', { imageSet: 's2' }), W('lights'), W('lights', { imageSet: 'nope' }), W('flag', { imageSet: 'f1' }), null] };
+  const all = Wd.lightPictures(lay, sets);
+  say('the pictures of all the lights widgets of a layout: each set once, the first widget first; other widgets, a widget without a set and an unknown set add nothing', all.length === 7 && all[0] === off && all[4] === green && all[5] === P(8) && all[6] === P(9), String(all.length));
+  say('...a set of the wrong kind (a flag set chosen for the lights) is not used', !all.includes(P(7)));
+  const own = Wd.lightPictures({ widgets: [W('lights', { lightImages: { on: P(20), off: P(21) } })] }, []);
+  say('...a widget with pictures of its own counts too', own.length === 2 && own[0] === P(21) && own[1] === P(20));
+  const five = Wd.lightSetPictures({ zzz: P(30), on_5: P(31), off_5: P(32) });
+  say('all five lights of the countdown come before the rest of the set (the fifth light too)', JSON.stringify(five) === JSON.stringify([P(32), P(31), P(30)]), JSON.stringify(five.map(x => [P(30), P(31), P(32)].indexOf(x))));
+  say('...a widget of another type is never asked for lights pictures, even when it has some of its own', Wd.lightPictures({ widgets: [W('clock', { lightImages: { on: P(40) } }), W('flag', { lightImages: { on: P(41) } })] }, sets).length === 0);
+  say('...a layout that cannot be read gives 0 from prepareLights, not an error', Wd.prepareLights({ get widgets() { throw new Error('x'); } }, sets) === 0);
+  say('...no layout, no sets, no widgets: nothing', Wd.lightPictures(null, sets).length === 0 && Wd.lightPictures({}, null).length === 0 && Wd.lightPictures({ widgets: [] }, sets).length === 0);
+  PM.setLinks(false); const offN = Wd.prepareLights(lay, sets);
+  say('with the links off nothing is made ready (prepareLights gives 0)', offN === 0);
+  const keepST = global.setTimeout, queued = []; global.setTimeout = f => { queued.push(f); return 0; };
+  PM.setLinks(true); PM.clearLinks(); const n = Wd.prepareLights(lay, sets);
+  say('with the links on the pictures are queued (not made at once), and prepareLights says how many', n === all.length && queued.length === 1 && PM.linkStats().ready.waiting === n && PM.linkStats().count === 0, JSON.stringify([n, all.length, queued.length]));
+  global.setTimeout = keepST; PM.setLinks(false); queued.length = 0;
+}
+{ // the widget code asks for the links where the picture goes into the text, and the race windows hand over the picture sets
+  const wid = fs.readFileSync(R + 'renderer/widgets.js', 'utf8'), wxw = fs.readFileSync(R + 'renderer/weatherwidgets.js', 'utf8'), cv = fs.readFileSync(R + 'renderer/canvas.js', 'utf8'), race = fs.readFileSync(R + 'renderer/race.js', 'utf8'), lv = fs.readFileSync(R + 'renderer/liveview.js', 'utf8');
+  say('every picture of the widgets goes into the text as link(...): the avatar and slotcar picture, the image, the race flag picture, the fuel picture', ['avimg', 'flagimg', 'fuelimg'].every(c => new RegExp('<img class="' + c + '" src="\\$\\{esc\\(link\\(').test(wid)) && (wid.match(/src="\$\{esc\(link\(/g) || []).length === 4);
+  say('...and the weather and tyre pictures (weatherwidgets.js)', /<img class="\$\{cls\}" src="\$\{esc\(link\(src\)\)\}"/.test(wxw) && /const link = src => \(PM && typeof PM\.link === 'function' \? PM\.link\(src\) : src\)/.test(wxw));
+  say('the page builder makes the lights ready after the widgets are built, with the picture sets it is given', /nodes\.push\([^\n]*\n    \}\);\n    if \(o\.imageSets && typeof Widgets\.prepareLights === 'function'\) Widgets\.prepareLights\(layout, o\.imageSets\);[^\n]*\n    return nodes;/.test(cv));
+  say('the race screen and the second screen hand over the picture sets', /LiveCanvas\.build\(ui\('canvas'\), layout, lanes, \{ onButton: type => actions\[type\]\(\), imageSets \}\)/.test(race) && /\{ maxH: 0, imageSets: V\.stat\(\)\.imageSets \}/.test(lv));
+}
+// the queue, one picture at a time
+async function ready160() {
+  const keepST = global.setTimeout, keepImage = global.Image, queued = [], images = [], decodes = [];
+  global.setTimeout = f => { queued.push(f); return queued.length; };
+  global.Image = class { set src(v) { this._s = v; images.push(v); } get src() { return this._s; } decode() { decodes.push(this._s); return Promise.resolve(); } };
+  const keepC = URL.createObjectURL, keepR = URL.revokeObjectURL; made.length = 0; gone.length = 0;
+  URL.createObjectURL = b => { made.push(b); return 'blob:test/' + made.length; }; URL.revokeObjectURL = u => { gone.push(u); };
+  const pics = Array.from({ length: 6 }, (_, i) => 'data:image/png;base64,' + b64(8000 + i, 61 + i)), step = () => { const f = queued.shift(); if (f) f(); return !!f; }, drain = () => { let n = 0; while (step()) n++; return n; };
+  PM.setLinks(true); PM.clearLinks(); made.length = 0; images.length = 0; decodes.length = 0; queued.length = 0;
+  say('prepare puts the big pictures in a queue and makes nothing yet; a small picture, a duplicate and a non-picture are not queued', PM.prepare([pics[0], pics[1], 'data:image/png;base64,AAAA', pics[0], 7, null, pics[2]]) === 3 && made.length === 0 && queued.length === 1 && PM.linkStats().ready.waiting === 3);
+  step();
+  say('...one picture is made in each moment (the first now, the others one by one), so the screen stays free', made.length === 1 && queued.length === 1 && PM.linkStats().ready.waiting === 2 && PM.linkStats().count === 1);
+  say('...a picture that was made is asked to decode (an image with its link, not the picture text)', images.length === 1 && images[0] === 'blob:test/1' && decodes.length === 1);
+  drain();
+  const st = PM.linkStats();
+  say('...in the end all three are links, nothing waits, and the stats say so', st.count === 3 && made.length === 3 && st.ready.made === 3 && st.ready.waiting === 0 && st.ready.left === 0 && typeof st.ready.ms === 'number' && queued.length === 0);
+  say('...the links made ready are the ones a widget gets later (no second file)', PM.link(pics[0]) === 'blob:test/1' && made.length === 3 && Wd.avatarHtml(pics[2], {}).includes('blob:test/3') && made.length === 3);
+  say('a picture that already is a link, and one that is queued twice, is not queued again', PM.prepare([pics[0], pics[1]]) === 0 && PM.prepare([pics[3], pics[3]]) === 1 && PM.prepare([pics[3]]) === 0);
+  drain();
+  say('asking again after the queue ran dry starts it again', made.length === 4 && PM.linkStats().ready.waiting === 0);
+  // making ready never takes more than three quarters of what the links may hold
+  PM.clearLinks(); made.length = 0; PM.MAX_LINKS = 4; PM.prepare(pics.slice(0, 5)); drain();
+  say('it stops at three quarters of the number of links that are allowed (here 3 of 4), and says how many had no room', made.length === 3 && PM.linkStats().count === 3 && PM.linkStats().ready.left === 2, JSON.stringify(PM.linkStats()));
+  PM.MAX_LINKS = 256; PM.clearLinks(); made.length = 0; PM.MAX_LINK_BYTES = 36000; PM.prepare(pics.slice(0, 5)); drain();
+  say('...and at three quarters of the bytes that are allowed (here 3 pictures of 8000 bytes in 36000: 27000)', made.length === 3 && PM.linkStats().bytes === 8000 + 8001 + 8002, JSON.stringify(PM.linkStats()));
+  PM.MAX_LINK_BYTES = 256e6; PM.clearLinks(); made.length = 0; queued.length = 0;
+  // switching off in the middle of the queue stops it
+  PM.prepare(pics.slice(0, 4)); step(); const afterOne = made.length; PM.setLinks(false); const rest = queued.length; drain();
+  say('switching the links off stops the queue: nothing more is made, nothing waits', afterOne === 1 && made.length === 1 && PM.linkStats().ready.waiting === 0 && rest <= 1);
+  PM.setLinks(true); PM.clearLinks(); made.length = 0; queued.length = 0;
+  PM.prepare(pics.slice(0, 4)); step(); PM.clearLinks(); drain();
+  say('...so does clearing them (a moment of the old queue that was already waiting makes nothing)', made.length === 1 && PM.linkStats().count === 0 && PM.linkStats().ready.waiting === 0);
+  PM.prepare(pics.slice(0, 2)); drain();
+  say('...and the queue works again afterwards', made.length === 3 && PM.linkStats().count === 2);
+  // one queue, one chain of moments: asking again while it runs adds to the queue, it does not start a second chain
+  PM.clearLinks(); made.length = 0; queued.length = 0;
+  PM.prepare(pics.slice(0, 3)); const addN = PM.prepare([pics[3]]);
+  say('asking again while the queue runs adds to it and does not start a second run (one moment waits, not two)', addN === 1 && queued.length === 1 && PM.linkStats().ready.waiting === 4);
+  step();
+  say('...so the pictures are made one in each moment, the added one too', made.length === 1 && queued.length === 1);
+  drain();
+  say('...all four in the end', made.length === 4 && PM.linkStats().count === 4);
+  // clearing in the middle and asking again: the moment of the old queue that still waits must not take the pictures of the new queue
+  PM.clearLinks(); made.length = 0; queued.length = 0;
+  PM.prepare(pics.slice(0, 3)); PM.clearLinks(); PM.prepare(pics.slice(3, 6));
+  say('after clearing, a new queue gets its own moment next to the old one that still waits', queued.length === 2 && PM.linkStats().ready.waiting === 3);
+  step();
+  say('...the old moment does nothing (it does not take pictures of the new queue)', made.length === 0 && PM.linkStats().ready.waiting === 3);
+  step();
+  say('...the new moment makes one', made.length === 1 && PM.linkStats().ready.waiting === 2);
+  drain();
+  // a picture that was made ready and then let go (the links are limited) is queued again when it is asked for again
+  PM.clearLinks(); made.length = 0; queued.length = 0; PM.MAX_LINKS = 2;
+  PM.prepare([pics[0]]); drain(); PM.link(pics[1]); PM.link(pics[2]);
+  const again = PM.prepare([pics[0]]);
+  say('a picture that was made ready and then let go is queued again when it is asked for again (it is not remembered as queued)', PM.linkStats().count === 2 && again === 1);
+  drain(); PM.MAX_LINKS = 256; PM.clearLinks(); made.length = 0; queued.length = 0;
+  // a picture that got its link in the meantime (a widget asked for it) is not counted as made ready
+  const mm0 = PM.linkStats().ready.made;
+  PM.prepare([pics[0], pics[1]]); PM.link(pics[0]); drain();
+  say('a picture that got its link before its moment came is not made again and not counted', made.length === 2 && PM.linkStats().ready.made - mm0 === 1, JSON.stringify([made.length, PM.linkStats().ready.made - mm0]));
+  // the time it took
+  const keepPerf = Object.getOwnPropertyDescriptor(global, 'performance'); let tk = 0;
+  Object.defineProperty(global, 'performance', { value: { now: () => (tk += 5) }, configurable: true, writable: true });
+  PM.clearLinks(); made.length = 0; queued.length = 0; const ms0 = PM.linkStats().ready.ms;
+  PM.prepare(pics.slice(0, 2)); drain();
+  const ms1 = PM.linkStats().ready.ms;
+  if (keepPerf) Object.defineProperty(global, 'performance', keepPerf); else delete global.performance;
+  say('the time spent making the pictures ready is added up (two pictures of 5 ms each: 10 ms)', ms1 - ms0 === 10, JSON.stringify([ms0, ms1]));
+  // something that is not a list queues nothing and fails nowhere
+  PM.clearLinks(); made.length = 0; queued.length = 0;
+  let threwP = false, oddN = -1; try { oddN = [null, undefined, 5, 'x', {}, { length: 1, 0: pics[0] }].reduce((t, x) => t + PM.prepare(x), 0); } catch (e) { threwP = true; }
+  say('something that is not a list (nothing, a number, a text, an object) queues nothing and does not fail', !threwP && oddN === 0 && PM.linkStats().ready.waiting === 0 && queued.length === 0);
+  PM.clearLinks(); made.length = 0; queued.length = 0;
+  // things that go wrong are not allowed to stop anything
+  PM.clearLinks(); made.length = 0; queued.length = 0;
+  global.Image = class { set src(v) { throw new Error('no images here'); } decode() { return Promise.reject(new Error('x')); } };
+  PM.prepare(pics.slice(0, 2)); drain();
+  say('a window that cannot make an image to warm up with does not stop the links', made.length === 2 && PM.linkStats().count === 2);
+  PM.clearLinks(); made.length = 0;
+  global.Image = class { set src(v) {} decode() { return Promise.reject(new Error('cannot decode')); } };
+  PM.prepare(pics.slice(0, 2)); drain(); await new Promise(r => setImmediate(r));
+  say('...nor does a picture that cannot be decoded (the rejection is not left unhandled)', made.length === 2);
+  PM.clearLinks(); made.length = 0; global.Image = undefined;
+  PM.prepare(pics.slice(0, 2)); drain();
+  say('...nor does a window with no Image at all', made.length === 2 && PM.linkStats().count === 2);
+  PM.clearLinks(); made.length = 0; URL.createObjectURL = () => { throw new Error('no blobs'); };
+  images.length = 0; global.Image = class { set src(v) { images.push(v); } };
+  PM.prepare(pics.slice(0, 2)); drain();
+  say('...nor does a window that cannot make files (the pictures stay as they are, nothing is warmed up with the picture text)', images.length === 0 && PM.linkStats().ready.waiting === 0);
+  PM.setLinks(false); PM.clearLinks(); global.setTimeout = keepST; global.Image = keepImage; URL.createObjectURL = keepC; URL.revokeObjectURL = keepR;
+  // without a timer the queue still runs (at once)
+  PM.setLinks(true); URL.createObjectURL = b => { made.push(b); return 'blob:test/' + made.length; }; made.length = 0; global.setTimeout = undefined;
+  PM.prepare(pics.slice(0, 2));
+  say('a window without setTimeout makes them at once', made.length === 2);
+  global.setTimeout = keepST; PM.setLinks(false); PM.clearLinks(); URL.createObjectURL = keepC;
+}
 PM.setLinks(false); URL.createObjectURL = keepURL.c; URL.revokeObjectURL = keepURL.r;
 
 // the bytes in a file made for a picture are the bytes of the picture
 (async () => {
+  await ready160();
   URL.createObjectURL = b => { made.push(b); return 'blob:test/' + made.length; };
   PM.setLinks(true); const keepFrom = Uint8Array.fromBase64;
   for (const reader of ['the reader of the browser', 'atob']) {

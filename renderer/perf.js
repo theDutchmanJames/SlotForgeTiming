@@ -214,6 +214,13 @@
   const spanText = s => (s >= 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s} s`);
   const rowTime = s => `${Math.floor(s / 60)}:${pad2(s % 60)}`;
   // 1.60.5: the widgets of one update, as in the table of the slowest widgets: 'dlaptime x2: 60 ms (text 0.4, page 0.5, fit 59)'
+  // 1.60.8: the pictures made ready before they were needed (the start lights set, when the race screen was built): how many, how long it took, and how many had no room or still wait
+  const readyText = r => {
+    if (!r || typeof r !== 'object') return '';
+    const made = Number(r.made) || 0, left = Number(r.left) || 0, waiting = Number(r.waiting) || 0;
+    if (!made && !left && !waiting) return '';
+    return `; made ready ahead of time: ${f0(made)} (${f1(Number(r.ms) || 0)} ms)${left ? `, ${f0(left)} without room` : ''}${waiting ? `, ${f0(waiting)} still waiting` : ''}`;
+  };
   const widText = a => `${a.type}${a.count > 1 ? ' x' + a.count : ''}: ${f1(a.ms)} ms (text ${f1(a.draw)}, page ${f1(a.write)}, fit ${f1(a.fit)})`;
   const partText = x => `${x.name} ${f0(x.ms)} ms`;
   // the Delta Timer badges of one widget type: how often they were looked at, measured and why (the counts that are not 0)
@@ -340,7 +347,7 @@
     } else L.push('The core of the app did not answer (a page on a phone, or an older version): only the window figures follow.');
     if (extra.screen) L.push(`Window: ${f0(extra.screen.w)} x ${f0(extra.screen.h)}${extra.screen.dpr && extra.screen.dpr !== 1 ? ' at ' + Math.round(extra.screen.dpr * 100) + '%' : ''}`);
     if (extra.look) L.push(`Look: depth ${text(extra.look.depth, 40) || 'unknown'}, widgets on their own layers: ${extra.look.layers ? 'on' : 'off'}`);
-    if (extra.links && typeof extra.links === 'object') L.push(`Big pictures in the widgets as short links (1.60.6): ${extra.links.on ? 'on' : 'off'}${extra.links.on ? `, ${f0(extra.links.count)} kept, ${f1((Number(extra.links.bytes) || 0) / 1e6)} MB` : ''}`);
+    if (extra.links && typeof extra.links === 'object') L.push(`Big pictures in the widgets as short links (1.60.6): ${extra.links.on ? 'on' : 'off'}${extra.links.on ? `, ${f0(extra.links.count)} kept, ${f1((Number(extra.links.bytes) || 0) / 1e6)} MB${readyText(extra.links.ready)}` : ''}`);
     if (extra.race) L.push(`Race screen: ${text(extra.race.name, 60) || 'open'}, ${f0(extra.race.widgets)} widgets, ${f0(extra.race.lanes)} lanes`); else L.push('Race screen: not open');
     if (r) {
       L.push(`Frames: ${r.fps === null ? 'measuring' : r.fps + ' a second'}, slowest frame ${r.slowest === null ? '–' : r.slowest + ' ms'} (last ${f0(Math.min(10, r.seconds))} seconds)`);

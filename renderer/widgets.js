@@ -151,8 +151,8 @@
   }
   const pickImage = (opt, vars) => { const hit = ((opt && opt.rules) || []).find(r => r.image && ruleHolds(r, vars)); return hit ? hit.image : (opt && opt.image) || ''; };
   // a picture of the Race flag widget (a picture set): mirror flips it left to right
-  const flagImgHtml = (src, alt, mirror) => PM.once(SITE_FLAG, [src, alt || '', !!mirror], () => `<img class="flagimg" src="${esc(src)}" alt="${esc(alt || '')}"${mirror ? ' style="transform:scaleX(-1)"' : ''}>`);
-  const imageHtml = (src, fit) => (src ? PM.once(SITE_IMG, [src, fit === 'cover'], () => `<img class="flagimg" src="${esc(src)}" alt=""${fit === 'cover' ? ' style="width:100%;height:100%;object-fit:cover"' : ''}>`) : '');
+  const flagImgHtml = (src, alt, mirror) => PM.once(SITE_FLAG, [src, alt || '', !!mirror], () => `<img class="flagimg" src="${esc(link(src))}" alt="${esc(alt || '')}"${mirror ? ' style="transform:scaleX(-1)"' : ''}>`);
+  const imageHtml = (src, fit) => (src ? PM.once(SITE_IMG, [src, fit === 'cover'], () => `<img class="flagimg" src="${esc(link(src))}" alt=""${fit === 'cover' ? ' style="width:100%;height:100%;object-fit:cover"' : ''}>`) : '');
   const imgSample = (l, w) => { const o = (w && w.opt) || {}, src = o.image || ((o.rules || []).find(r => r.image) || {}).image; return src ? imageHtml(src, o.fit) : '<span class="muted">Image</span>'; };
 
   // Race flag: one optional picture per state; a state without a picture shows its name instead.
@@ -289,8 +289,25 @@
     if (w.type === 'flag' && set.kind === 'flag') { const r = { ...o }; FLAG_STATES.forEach(([k]) => { r['img_' + k] = (set.images || {})[k] || ''; }); return r; }
     return o;
   }
+  // 1.60.8: the pictures of the Start lights widgets of a layout, in the order they are needed (the countdown first: each light off, then on; then the rest of the set), so they can be made ready
+  // before the race (PicMemo.prepare). sets: the picture sets as the race has them. A widget with pictures of its own (lightImages) counts too.
+  const lightSetPictures = images => {
+    const im = images || {}, out = [], seen = new Set(), add = x => { if (typeof x === 'string' && x && !seen.has(x)) { seen.add(x); out.push(x); } };
+    for (let i = 0; i < 5; i++) { add(lightPic(im, 'countdown', i, false)); add(lightPic(im, 'countdown', i, true)); }
+    Object.keys(im).forEach(k => add(im[k]));
+    return out;
+  };
+  const lightPictures = (layout, sets) => {
+    const out = [], seen = new Set();
+    ((layout && layout.widgets) || []).forEach(w => {
+      if (!w || w.type !== 'lights') return;
+      lightSetPictures(resolveOpt(w, sets).lightImages).forEach(x => { if (!seen.has(x)) { seen.add(x); out.push(x); } });
+    });
+    return out;
+  };
+  const prepareLights = (layout, sets) => { try { return PM && typeof PM.prepare === 'function' ? PM.prepare(lightPictures(layout, sets)) : 0; } catch (x) { return 0; } }; // (making pictures ready is never worth a failure of the race screen)
   // an avatar or a slotcar picture in its round (or square) frame, with the position and zoom of the widget; mirror flips the picture left to right inside the frame
-  const avatarHtml = (src, opt) => { const ft = frameTransform(opt && opt.frame), mirror = !!(opt && opt.avatarMirror); return PM.once(SITE_AV, [src, ft, mirror], () => `<span class="avframe"><img class="avimg" src="${esc(src)}" alt="" style="transform:${ft}${mirror ? ' scaleX(-1)' : ''}"></span>`); };
+  const avatarHtml = (src, opt) => { const ft = frameTransform(opt && opt.frame), mirror = !!(opt && opt.avatarMirror); return PM.once(SITE_AV, [src, ft, mirror], () => `<span class="avframe"><img class="avimg" src="${esc(link(src))}" alt="" style="transform:${ft}${mirror ? ' scaleX(-1)' : ''}"></span>`); };
   // The Avatar widget: the driver's picture, or when the driver has none the avatar of the lane (the standard ones, or a picture set of the kind Avatars)
   // Team Name and Team Picture (1.8.0): the team of the lane (a team chosen on Home), or one team from Database > Teams that the widget always shows
   const TEAM_OPTION = { key: 'team', label: 'Team to show', type: 'team', default: '' };
@@ -364,7 +381,7 @@
     if (mode === 'images') {
       const n = clampInt(opt && opt.steps !== undefined ? opt.steps : 10, 2, 20, 10), step = fuelStep(frac, n), img = ((opt && opt.stepImages) || [])[step];
       // (1.60.2: the words of the picture follow the picture, not the litres: with the litres in them the text changed with every tenth of a litre, so the whole picture was put in the page again at every update while a car filled up)
-      if (img) { const alt = `Fuel about ${Math.round(100 * (n - 1 - step) / (n - 1))}%`; return PM.once(SITE_FUEL, [img, alt], () => `<img class="fuelimg" src="${esc(img)}" alt="${alt}">`); }
+      if (img) { const alt = `Fuel about ${Math.round(100 * (n - 1 - step) / (n - 1))}%`; return PM.once(SITE_FUEL, [img, alt], () => `<img class="fuelimg" src="${esc(link(img))}" alt="${alt}">`); }
     }
     const num = `<span class="fnum"${col ? ` style="color:${col}"` : ''}>${txt}</span>`;
     if (mode === 'number' || mode === 'images') return num;
@@ -704,7 +721,7 @@
   }
 
   const picSites = { av: SITE_AV, img: SITE_IMG, flag: SITE_FLAG, fuel: SITE_FUEL, lights: SITE_LIGHTS }; // (where the text of the pictures is kept: for the tests)
-  const api = { picSites, heatListHtml, HEATLIST_OPTIONS, tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, flagImgHtml, avatarHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, MAG, LANES, bbox, colorsOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, ALIGNS, titleAlignOf, valueAlignOf, alignClassOf, lapCountOf, lapTotalOn, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, resolveOpt, heightOf, withoutControls, moveWidget, resizeWidget, snapLines, tidy, alignRects, distributeRects, mirrorRects, mirrorSettings, MIRROR_KEYS, scaleGroup, newWidget, defaultLayout };
+  const api = { lightPictures, lightSetPictures, prepareLights, picSites, heatListHtml, HEATLIST_OPTIONS, tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, flagImgHtml, avatarHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, MAG, LANES, bbox, colorsOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, ALIGNS, titleAlignOf, valueAlignOf, alignClassOf, lapCountOf, lapTotalOn, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, resolveOpt, heightOf, withoutControls, moveWidget, resizeWidget, snapLines, tidy, alignRects, distributeRects, mirrorRects, mirrorSettings, MIRROR_KEYS, scaleGroup, newWidget, defaultLayout };
   root.Widgets = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

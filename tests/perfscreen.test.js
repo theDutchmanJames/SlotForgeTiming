@@ -184,6 +184,8 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
     say('the report says the big pictures go to the page as short links when that is on', /Big pictures in the widgets as short links \(1\.60\.6\): on, \d+ kept, [\d.]+ MB/.test(t));
     t = await links(false);
     say('...and off when it is not', t.includes('short links (1.60.6): off') && !t.includes('kept'));
+    { const st = run('PicMemo.linkStats()');
+      say('1.60.8: the window\'s figures about the pictures made ready ahead of time reach the report (made, no room, waiting, ms)', st.ready && ['made', 'left', 'waiting', 'ms'].every(k => typeof st.ready[k] === 'number')); }
     run('PicMemo.setLinks(true)'); }
 
   { run("state.settings = { theme: 'dark', perfLine: true }"); fresh(); await openRace(); place(E('perfline')); await wait(50);

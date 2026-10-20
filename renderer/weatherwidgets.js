@@ -7,6 +7,7 @@
   const esc = x => String(x ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const PM = typeof module !== 'undefined' ? require('./picmemo.js') : root.PicMemo; // the text of a picture is built once (1.60.2)
   const SITE_PIC = PM.site();
+  const link = src => (PM && typeof PM.link === 'function' ? PM.link(src) : src); // a big picture as a short link, once the app has switched that on (1.60.8, picmemo.js)
   const cap = s => s[0].toUpperCase() + s.slice(1);
   // black or white text, whichever reads better on a colour like #e8002d
   const onColor = hex => { const m = /^#([0-9a-f]{6})$/i.exec(String(hex || '')); if (!m) return '#fff'; const n = parseInt(m[1], 16), l = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; return l > 0.6 ? '#000' : '#fff'; };
@@ -45,7 +46,7 @@
   }
   // the arrow points the way the wind blows: the opposite of where it comes from (a wind from the north, 0 degrees, blows to the south)
   const rotationOf = dir => (((Math.round(Number(dir)) || 0) + 180) % 360 + 360) % 360;
-  const pic = (src, alt, cls, style) => PM.once(SITE_PIC, [src, alt, cls, style || ''], () => `<img class="${cls}" src="${esc(src)}" alt="${esc(alt)}"${style ? ` style="${style}"` : ''}>`);
+  const pic = (src, alt, cls, style) => PM.once(SITE_PIC, [src, alt, cls, style || ''], () => `<img class="${cls}" src="${esc(link(src))}" alt="${esc(alt)}"${style ? ` style="${style}"` : ''}>`);
   // an icon from a picture set when it has the picture, else the drawn one. solo: one picture that fills the widget (the flag widget does the same); else a small icon in a line of text.
   const icon = (kind, key, images, dir, solo) => {
     const src = images && images[key], cls = solo ? (src ? 'flagimg' : 'flagsvg') : 'wxic', rot = kind === 'cond' && key === 'winddir' ? `transform:rotate(${rotationOf(dir)}deg)` : '';

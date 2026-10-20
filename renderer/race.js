@@ -149,7 +149,7 @@ async function renderRace() {
   };
 
   // ---- build the page from the layout (once); widgets for lanes the track does not have are left out ----
-  live.nodes = LiveCanvas.build(ui('canvas'), layout, lanes, { onButton: type => actions[type]() });
+  live.nodes = LiveCanvas.build(ui('canvas'), layout, lanes, { onButton: type => actions[type](), imageSets });
   // the Performance line (App Settings > General > Performance, 1.60.0): a small line under the buttons with the frames a second, the time of a screen update and the CPU of the app, when it is switched on
   const syncPerfLine = () => {
     if (typeof PerfUI === 'undefined') return;

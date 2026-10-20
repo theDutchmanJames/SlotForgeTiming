@@ -89,7 +89,7 @@ const LiveView = (() => {
   function drawTiming(body, fresh) {
     if (!nodes || fresh) {
       body.innerHTML = '<div class="fullview" id="lv-fv"><div class="canvas live" id="lv-canvas"></div></div>';
-      nodes = LiveCanvas.build($('lv-canvas'), Widgets.withoutControls(V.stat().layout, V.stat().lanes).layout, V.stat().lanes, { maxH: 0 });
+      nodes = LiveCanvas.build($('lv-canvas'), Widgets.withoutControls(V.stat().layout, V.stat().lanes).layout, V.stat().lanes, { maxH: 0, imageSets: V.stat().imageSets });
     }
     LiveCanvas.paint(nodes, S());
   }
