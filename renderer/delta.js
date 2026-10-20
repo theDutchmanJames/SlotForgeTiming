@@ -207,20 +207,27 @@
   const shapeOf = b => `${String(b.textContent).replace(/[0-9]/g, '0')}|${b.className}|${b.getAttribute ? b.getAttribute('style') || '' : ''}`;
   // the badge's own size from the markup (the size setting) is kept in data-fit and put back before every fit, so a widget that gets bigger again gets its full text back
   // memo, i: where the last fit of this badge was kept (fitQuick), or nothing: measure
-  function fitBadge(b, measure, memo, i) {
+  // note (1.60.5, given by the Performance report while somebody looks; changes nothing): called with what happened to this badge: { why, how, steps, m, key, prev }. why: 'skip' (left alone), 'first'
+  // (nothing known about it yet), 'shape' (its text changed shape), 'recheck' (the regular check), 'again' (it did not fit with room to spare the last time); when it was measured, how: 'roomy',
+  // 'shrunk' (made smaller, in steps steps), 'tight' (it fitted, without room to spare) or 'unknown' (not on the screen), m: the first measure.
+  function fitBadge(b, measure, memo, i, note) {
     if (!b || !b.style || !b.dataset) return;
     const key = memo ? shapeOf(b) : null, was = memo ? memo[i] : null;
-    if (was && was.key === key && ++was.n < RECHECK) return; // (the same shape, with room to spare: it fits as it is)
+    if (was && was.key === key && ++was.n < RECHECK) { if (note) tell(note, { why: 'skip' }); return; } // (the same shape, with room to spare: it fits as it is)
     if (b.dataset.fit === undefined) b.dataset.fit = b.style.getPropertyValue('font-size');
     if (b.dataset.fit) b.style.setProperty('font-size', b.dataset.fit); else b.style.removeProperty('font-size');
-    let all = 1, roomy = false;
+    let all = 1, roomy = false, steps = 0, first = null;
     for (let k = 0; k < 3 && all > FIT_MIN; k++) { // (more than once: the size of the badge itself follows its text a little)
       const m = (measure || measureBadge)(b), f = fitFactor(m);
+      if (k === 0) first = m;
       if (f >= 1 || !(m.em > 0)) { roomy = f >= 1 && k === 0 && roomyOf(m); break; }
-      all *= f; b.style.setProperty('font-size', `${(m.em * f).toFixed(4)}em`, 'important');
+      all *= f; steps++; b.style.setProperty('font-size', `${(m.em * f).toFixed(4)}em`, 'important');
     }
     if (memo) memo[i] = roomy ? { key, n: 0 } : null;
+    if (note) tell(note, { why: !memo ? 'first' : was === undefined ? 'first' : was === null ? 'again' : was.key === key ? 'recheck' : 'shape', how: !(first && first.boxW > 0 && first.boxH > 0 && first.w > 0 && first.h > 0) ? 'unknown' : roomy ? 'roomy' : all < 1 ? 'shrunk' : 'tight', steps, m: first, key, prev: was ? was.key : null });
   }
+  // (a report that fails must not stop a badge from being fitted)
+  const tell = (note, what) => { try { note(what); } catch (x) { /* the report is not important enough */ } };
   // every badge in root (a value box, a canvas, a leaderboard)
   function fit(root, measure) {
     if (!root || !root.querySelectorAll) return;
@@ -228,10 +235,10 @@
     Array.from(root.querySelectorAll('.dlt-badge')).forEach(b => fitBadge(b, measure));
   }
   // the badge of a widget on the race screen: as fit(), but a badge with room to spare is only measured now and then (see above)
-  function fitQuick(root, measure) {
+  function fitQuick(root, measure, note) {
     if (!root || !root.querySelectorAll) return;
     const memo = root._dfit || (root._dfit = []);
-    Array.from(root.querySelectorAll('.dlt-badge')).forEach((b, i) => fitBadge(b, measure, memo, i));
+    Array.from(root.querySelectorAll('.dlt-badge')).forEach((b, i) => fitBadge(b, measure, memo, i, typeof note === 'function' ? note : undefined));
   }
 
   // ---- the settings of a widget in the layout editor ----

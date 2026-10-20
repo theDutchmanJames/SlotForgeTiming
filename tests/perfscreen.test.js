@@ -197,6 +197,19 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
     say('...each timer of phases() counts from its own start (a second one does not add the time of the first)', P().monitor().snapshot().parts.some(x => x.name === 'a'));
     u(); say('...and when the last one stops looking they are gone again', P().phases() === null && P().widgetTimer() === null);
     P().noteUpdate(5); say('...a widget told by an old timer after that is still harmless', (() => { try { wt.add('late', 1, 1, 1); return true; } catch (x) { return false; } })()); }
+  // ---------- 1.60.5: the Delta Timer badges ----------
+  { P().watch()(); // a clean start
+    P().deltaNote('dlaptime', { why: 'first', how: 'roomy', steps: 0 });
+    say('nobody looks: a badge that is measured because its widget changed size is not counted (nothing runs)', P().monitor().snapshot().delta.length === 0);
+    const u = P().watch(), wt = P().widgetTimer();
+    wt.note('dlaptime', { why: 'first', how: 'shrunk', steps: 2, m: { boxW: 59, boxH: 97, w: 62, h: 40, row: true } }); wt.note('dlaptime', { why: 'skip' });
+    P().deltaNote('dlaptime', { why: 'resize' });
+    const d = P().monitor().snapshot().delta;
+    say('somebody looks: the timer takes a note about a badge, and so does deltaNote (the resize of a widget): counted by type', typeof wt.note === 'function' && d.length === 1 && d[0].type === 'dlaptime' && d[0].calls === 2 && d[0].measured === 1 && d[0].skipped === 1 && d[0].resize === 1 && d[0].shrunk === 1);
+    say('...a note that does not fit (nothing, text) is left out without a fuss', (() => { try { P().deltaNote('x', null); P().deltaNote(5, { why: 'first' }); wt.note(undefined, undefined); return P().monitor().snapshot().delta.length === 1; } catch (x) { return false; } })());
+    u(); }
+  { const canvas = fs.readFileSync(R + 'renderer/canvas.js', 'utf8');
+    say('canvas.js tells the report when the resize of a widget made its badge be fitted again (only when PerfUI is there)', /new ResizeObserver\(\(\) => \{ Delta\.fit\(val\); if \(typeof PerfUI !== 'undefined' && PerfUI\.deltaNote\) PerfUI\.deltaNote\(w\.type, \{ why: 'resize' \}\); \}\)/.test(canvas)); }
 
   { const u = P().watch(); P().noteUpdate(1);
     const spin = ms => { const t0 = performance.now(); while (performance.now() - t0 < ms); };

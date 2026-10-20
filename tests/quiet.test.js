@@ -203,5 +203,31 @@ for (const [name, K] of [['button', HTMLButtonElement_], ['input', HTMLInputElem
   say('with a timer an unchanged widget says its type and the time of making the text (and seeing that it is the same), nothing for the page or the fit', tm.adds.length === 1 && tm.adds[0][0] === 'x' && tm.adds[0][1] === 3 && tm.adds[0][2] === 0 && tm.adds[0][3] === 0);
   delete globalThis.Timing; delete globalThis.Widgets; delete globalThis.Frame; }
 
+// ---- 1.60.5: a Delta Timer badge is fitted with fitQuick, and the timer hears how it went ----
+{ const LiveCanvas = require(R + 'renderer/canvas.js');
+  let out = { html: '<span class="dlt-badge">1</span>', color: '', bg: '' }, T = 0; const calls = [];
+  globalThis.Timing = { content: () => out };
+  globalThis.Widgets = { U: 1000 };
+  globalThis.Frame = { style: () => ({}), solidity: () => 1 };
+  globalThis.Delta = { fitQuick: (root, measure, note) => { calls.push(['quick', root, measure, note]); if (note) note({ why: 'first' }); }, fit: root => calls.push(['fit', root]) };
+  const style = new Proxy({}, { set: (t, k, v) => { t[k] = v; return true; }, get: (t, k) => (k === 'setProperty' ? (a, b) => { t[a] = b; } : t[k]) });
+  const mk = type => ({ w: { type }, layout: {}, el: { style }, val: { innerHTML: '', id: type }, base: {}, last: null });
+  const heard = []; const tm = { now: () => T, add: () => {}, note: (type, what) => heard.push([type, what]) };
+  const a = mk('dlaptime');
+  LiveCanvas.paint([a], {}, tm);
+  say('a widget with a Delta badge is fitted with fitQuick, given its own value box, no measure of its own, and a note', calls.length === 1 && calls[0][0] === 'quick' && calls[0][1] === a.val && calls[0][2] === undefined && typeof calls[0][3] === 'function');
+  say('...and the note tells the timer the type of the widget and what happened to the badge', heard.length === 1 && heard[0][0] === 'dlaptime' && heard[0][1].why === 'first');
+  calls.length = 0; heard.length = 0; const b = mk('dbestlap'); LiveCanvas.paint([b], {});
+  say('without a timer there is no note (nothing to tell, nothing made)', calls.length === 1 && calls[0][3] === undefined && heard.length === 0);
+  calls.length = 0; LiveCanvas.paint([mk('dlaplap')], {}, { now: () => T, add: () => {} });
+  say('...a timer of an older kind (no note) is fine too', calls.length === 1 && calls[0][3] === undefined);
+  calls.length = 0; heard.length = 0; const c = mk('dsessionrecord'); LiveCanvas.paint([c], {}, tm); LiveCanvas.paint([c], {}, tm);
+  say('a widget whose text did not change is not fitted again, and tells nothing', calls.length === 1 && heard.length === 1);
+  delete globalThis.Delta.fitQuick; calls.length = 0; LiveCanvas.paint([mk('dlaptime')], {}, tm);
+  say('an older Delta without fitQuick (a stand-in) is fitted with fit(), as before', calls.length === 1 && calls[0][0] === 'fit');
+  out = { html: '<b>no badge</b>', color: '', bg: '' }; calls.length = 0; LiveCanvas.paint([mk('clock')], {}, tm);
+  say('a widget without a badge does not call the Delta fit at all', calls.length === 0);
+  delete globalThis.Timing; delete globalThis.Widgets; delete globalThis.Frame; delete globalThis.Delta; }
+
 console.log(fails ? `\n${fails} FAILED` : '\nquiet PASSED');
 process.exit(fails ? 1 : 0);

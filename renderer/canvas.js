@@ -22,13 +22,13 @@ const LiveCanvas = (() => {
       if (d.button) val.onclick = ev => { if (ev && ev.currentTarget && ev.currentTarget.blur) ev.currentTarget.blur(); o.onButton(w.type); };
       el.appendChild(val); canvas.appendChild(el);
       if (typeof ResizeObserver !== 'undefined' && typeof WxW !== 'undefined' && ['wxforecast', 'tyre'].includes(w.type)) new ResizeObserver(() => WxW.fit(val)).observe(val); // (the widget got its size, or the window changed: fit it again)
-      if (typeof ResizeObserver !== 'undefined' && typeof Delta !== 'undefined' && Delta.isDelta(w.type)) new ResizeObserver(() => Delta.fit(val)).observe(val); // (a Delta Timer: the arrow and the number stay inside the badge when the widget or the window changes size)
+      if (typeof ResizeObserver !== 'undefined' && typeof Delta !== 'undefined' && Delta.isDelta(w.type)) new ResizeObserver(() => { Delta.fit(val); if (typeof PerfUI !== 'undefined' && PerfUI.deltaNote) PerfUI.deltaNote(w.type, { why: 'resize' }); }).observe(val); // (a Delta Timer: the arrow and the number stay inside the badge when the widget or the window changes size)
       nodes.push({ w, el, val, tit, base: Widgets.colorsOf(w, layout), layout, last: null });
     });
     return nodes;
   }
   // One widget: its text, then its colours. tm (given by the Performance line while somebody looks, 1.60.1): { now(), add(type, drawMs, writeMs, fitMs) } hears how long
-  // each part took: making the text (draw), putting it in the page (write) and fitting it to its place (fit, which makes the page measure itself).
+  // each part took: making the text (draw), putting it in the page (write) and fitting it to its place (fit, which makes the page measure itself). tm.note(type, what) (1.60.5) hears what happened to a Delta Timer badge.
   function drawNode(n, S, tm) {
     const t0 = tm ? tm.now() : 0;
     let out; try { out = Timing.content(n.w, S); } catch (x) { if (!n.failed) { n.failed = true; console.error('A widget could not be drawn (' + (n.w && n.w.type) + '):', x); } return; } // (one widget that fails does not stop the others from being drawn)
@@ -41,7 +41,7 @@ const LiveCanvas = (() => {
     const t2 = tm ? tm.now() : 0;
     if (out.html.includes('class="rrows"') && typeof Rows !== 'undefined' && n.val.querySelectorAll) Rows.fitText(n.val); // a leaderboard of row designs: no text wider than its cell
     if (/class="(wxw|wxt)[ "]/.test(out.html) && typeof WxW !== 'undefined') WxW.fit(n.val); // a weather widget: no picture or text outside the widget, whatever the word (Dry, Cloudy, Clearing)
-    if (out.html.includes('dlt-badge') && typeof Delta !== 'undefined') (Delta.fitQuick || Delta.fit)(n.val); // a Delta Timer: the arrow and the number inside the badge, however small the widget
+    if (out.html.includes('dlt-badge') && typeof Delta !== 'undefined') { if (Delta.fitQuick) Delta.fitQuick(n.val, undefined, tm && tm.note ? r => tm.note(n.w.type, r) : undefined); else Delta.fit(n.val); } // a Delta Timer: the arrow and the number inside the badge, however small the widget (1.60.5: the report hears how it went)
     const t3 = tm ? tm.now() : 0;
     if (out.button) n.val.disabled = !!out.disabled;
     const colors = `${out.color}\u0001${out.bg}`; // (the colours only change now and then: a widget whose text changes ten times a second is not given the same colours ten times a second)

@@ -32,7 +32,9 @@ const PerfUI = (() => {
   const pnow = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const phases = () => { if (watchers <= 0) return null; let last = pnow(); return name => { const t = pnow(); mon().part(name, t - last); last = t; }; };
   // the same for the widgets: handed to LiveCanvas.paint, which says per widget how long making the text, writing it to the page and fitting it took. Null while nobody looks.
-  const widgetTimer = () => (watchers > 0 ? { now: pnow, add: (type, drawMs, writeMs, fitMs) => mon().widget(type, drawMs, writeMs, fitMs) } : null);
+  const widgetTimer = () => (watchers > 0 ? { now: pnow, add: (type, drawMs, writeMs, fitMs) => mon().widget(type, drawMs, writeMs, fitMs), note: (type, what) => mon().delta(type, what) } : null);
+  // (1.60.5) a Delta Timer badge was measured because its widget or the window changed size (canvas.js): only counted while somebody looks
+  const deltaNote = (type, what) => { if (watchers > 0) { try { mon().delta(type, what); } catch (x) { /* a note that does not fit is left out */ } } };
   // something that happened, for the report ("Live Race window opened"); the race starting also starts the worst figures and the rows of the report again
   const mark = txt => { try { mon().mark(txt); } catch (x) { /* a note that does not fit is left out */ } };
   const raceStarted = () => { try { mon().newRace(); mon().mark('Race started'); } catch (x) { /* nothing to start */ } };
@@ -101,6 +103,6 @@ const PerfUI = (() => {
     return stop;
   }
 
-  return { watch, active, watching: () => watchers, noteUpdate, phases, widgetTimer, mark, raceStarted, line, panel, monitor: mon, race: null };
+  return { watch, active, watching: () => watchers, noteUpdate, phases, widgetTimer, deltaNote, mark, raceStarted, line, panel, monitor: mon, race: null };
 })();
 if (typeof module !== 'undefined') module.exports = PerfUI;

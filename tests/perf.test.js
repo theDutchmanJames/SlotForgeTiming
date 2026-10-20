@@ -552,5 +552,108 @@ const fillUpdates = (M, n, f) => { for (let i = 0; i < n; i++) f(i * 100); }; //
   ok('...a flood of parts is kept within bounds and still gives three', Z.snapshot(100).race.updateParts.length === 3);
   Z.update(NaN, 200); Z.update(-4, 300); ok('...and an update with no usable time changes nothing', Z.snapshot(300).race.update === 500 && Z.snapshot(300).race.updateParts.length === 3); }
 
+// ---- 1.60.5: the longest update also names its slowest widgets; a row says what its slowest update was; the Delta Timer badges are counted ----
+{ const M = Perf.createMonitor({ now: () => 0 }); M.newRace(1000, 1760970000000);
+  const wid = (list, t) => list.forEach(([ty, d, w, f]) => M.widget(ty, d, w, f, t));
+  wid([['laptime', 0.1, 0.2, 0], ['clock', 0.1, 0.2, 0]], 2000); M.part('widgets', 4, 2000); M.update(5, 2000);
+  let r = M.snapshot(2000);
+  ok('the longest update keeps the widgets that took a millisecond or more (the small ones are left out), by type, with text, page and fit apart', r.race.updateWidgets.length === 0 && r.race.update === 5);
+  wid([['dsessionrecord', 1, 1.2, 40.55], ['dsessionrecord', 0.25, 0.5, 20.25], ['dlaptime', 0.4, 0.5, 59.4], ['carpicture', 5.5, 0, 0], ['position', 0.2, 0.3, 0.1], ['avatar', 1.2, 0, 0], ['lap', 0.1, 0.1, 0]], 6350); M.update(160.34, 6350);
+  r = M.snapshot(6350);
+  const w = r.race.updateWidgets;
+  ok('...a longer update takes its place: the biggest four types, the biggest first, a type that comes twice is added up with its count', w.map(x => x.type + ':' + x.count).join() === 'dsessionrecord:2,dlaptime:1,carpicture:1,avatar:1', JSON.stringify(w));
+  ok('...the figures are rounded to a tenth: text, page, fit and the total', w[0].ms === 63.8 && w[0].draw === 1.3 && w[0].write === 1.7 && w[0].fit === 60.8 && w[1].fit === 59.4, JSON.stringify(w[0]));
+  wid([['x', 0, 0, 90]], 7000); M.update(100, 7000); wid([['y', 0, 0, 90]], 7500); M.update(160.34, 7500); r = M.snapshot(7500);
+  ok('...a shorter update after it, or an equal one, does not take its place', r.race.updateWidgets[0].type === 'dsessionrecord' && r.race.update === 160.3);
+  const rep = Perf.report(r, null, {}).split('\n'), at = rep.findIndex(x => x.startsWith('Worst since the race started'));
+  ok('...the report says it on a line under the worst figures: type x count: ms (text, page, fit), the biggest first', rep[at + 1] === '  The widgets in that update: dsessionrecord x2: 63.8 ms (text 1.3, page 1.7, fit 60.8) · dlaptime: 60.3 ms (text 0.4, page 0.5, fit 59.4) · carpicture: 5.5 ms (text 5.5, page 0, fit 0) · avatar: 1.2 ms (text 1.2, page 0, fit 0)', rep[at + 1]);
+  const N = Perf.createMonitor({ now: () => 0 }); N.newRace(0, 1); wid.call(null, []); N.widget('a', 0, 0, 80, 100); N.update(90, 100); N.widget('b', 0, 0, 50, 200); N.update(95, 200);
+  ok('...the widgets of the update before are not in the next one', N.snapshot(200).race.updateWidgets.length === 1 && N.snapshot(200).race.updateWidgets[0].type === 'b');
+  const Q = Perf.createMonitor({ now: () => 0 }); Q.newRace(0, 1); Q.update(50, 100);
+  ok('...an update without widgets (nothing was timed) leaves the line out', Q.snapshot(100).race.updateWidgets.length === 0 && !Perf.report(Q.snapshot(100), null, {}).includes('The widgets in that update'));
+  const P = Perf.createMonitor({ now: () => 0 }); P.newRace(0, 1); P.widget('a', 0, 0, 80, 100); P.newRace(1000, 1); P.update(50, 1500);
+  ok('...a new race starts without the widgets that were waiting, and without the longest update of the race before', P.snapshot(1500).race.updateWidgets.length === 0);
+  const R = Perf.createMonitor({ now: () => 0 }); R.newRace(0, 1); R.widget('a', 0, 0, 80, 100); R.reset(); R.update(50, 200);
+  ok('...and when the window figures start again the widgets that were waiting go too', R.snapshot(200).race.updateWidgets.length === 0);
+  const Z = Perf.createMonitor({ now: () => 0 }); Z.newRace(0, 1); for (let i = 0; i < 1000; i++) Z.widget('w' + (i % 50), 0, 0, 2, 100); Z.update(500, 100);
+  ok('...a flood of widgets is kept within bounds (the last 300 count) and still gives four', Z.snapshot(100).race.updateWidgets.length === 4 && Z.snapshot(100).race.updateWidgets.every(x => x.count <= 7));
+  const B = Perf.createMonitor({ now: () => 0 }); B.newRace(0, 1); B.widget(5, 1, 1, 1, 100); B.widget('a', -1, 0, 0, 100); B.widget('a', NaN, 0, 0, 100); B.widget('ok', 0, 0, 30, 100); B.update(40, 100);
+  ok('...a widget with no usable type or time is not counted', B.snapshot(100).race.updateWidgets.map(x => x.type).join() === 'ok'); }
+
+{ // the rows: what the slowest update of the last ten seconds was (kept when it took 20 ms or more, and it is the one the row's "slowest" is about)
+  const M = Perf.createMonitor({ now: () => 0 });
+  M.part('widgets', 330, 1000); M.widget('avatar', 100, 0, 0, 1000); M.widget('dlaptime', 0, 0, 200, 1000); M.update(369, 1000); // before the race starts
+  M.part('widgets', 3, 1500); M.update(4, 1500);
+  M.newRace(2000, 1760970000000);
+  const snap = M.snapshot(2100); M.sample(snap, null, {}, 2100);
+  const h = M.snapshot(2100).history[0];
+  ok('the first row has the update from before the race clock started: a race that starts with a slow update (the screen being built) says what it was', h.slow && h.slow.ms === 369 && h.slow.parts[0].name === 'widgets' && h.slow.widgets.map(x => x.type).join() === 'dlaptime,avatar', JSON.stringify(h));
+  const rows = Perf.report(M.snapshot(2100), null, {}).split('\n'), at = rows.findIndex(x => /^ {2}0:00 /.test(x));
+  ok('...and the report puts it under the row: the slowest update, its parts, its widgets', at > 0 && rows[at + 1] === '        its slowest update (369 ms): widgets 330 ms · dlaptime: 200 ms (text 0, page 0, fit 200) · avatar: 100 ms (text 100, page 0, fit 0)', rows[at + 1]);
+  const Q = Perf.createMonitor({ now: () => 0 }); Q.newRace(0, 1); Q.part('widgets', 10, 100); Q.update(15, 100); Q.sample(Q.snapshot(200), null, {}, 200);
+  ok('a row whose slowest update is under 20 ms has nothing to say about it (null, and no extra line)', Q.snapshot(200).history[0].slow === null && !Perf.report(Q.snapshot(200), null, {}).includes('its slowest update'));
+  const W = Perf.createMonitor({ now: () => 0 }); W.newRace(0, 1); W.part('widgets', 90, 1000); W.update(100, 1000); W.part('widgets', 40, 12000); W.update(50, 12000); W.sample(W.snapshot(12500), null, {}, 12500);
+  ok('...an update that is out of the ten seconds of the row is not the row\'s: the slowest one in the window is (50 ms, not 100)', W.snapshot(12500).history[0].slow.ms === 50);
+  const E = Perf.createMonitor({ now: () => 0 }); E.newRace(0, 1); E.part('widgets', 40, 1000); E.update(45, 1000); E.update(10, 2000); E.sample(E.snapshot(2500), null, {}, 2500);
+  ok('...the row\'s slowest update is the biggest one of the window, not the last one', E.snapshot(2500).history[0].slow.ms === 45);
+  const F = Perf.createMonitor({ now: () => 0 }); F.newRace(0, 1); for (let i = 0; i < 200; i++) { F.part('widgets', 30, 100 + i); F.update(30 + i, 100 + i); }
+  ok('...a flood of slow updates keeps the window bounded and the slowest one', (F.sample(F.snapshot(400), null, {}, 400), F.snapshot(400).history[0].slow.ms === 229));
+  const S = Perf.createMonitor({ now: () => 0 }); S.newRace(0, 1); S.part('widgets', 30, 100); S.update(40, 100); S.reset(); S.update(10, 200); S.sample(S.snapshot(300), null, {}, 300);
+  ok('...and when the window figures start again the slow updates that were kept go too', S.snapshot(300).history[0].slow === null);
+  const S2 = Perf.createMonitor({ now: () => 0 }); S2.newRace(0, 1); S2.part('widgets', 30, 100); S2.update(40, 100); S2.reset(); S2.update(40, 200); S2.sample(S2.snapshot(300), null, {}, 300);
+  ok('...also when the update after it is just as slow: the row has that update, without the parts of the one before', S2.snapshot(300).history[0].slow.ms === 40 && S2.snapshot(300).history[0].slow.parts.length === 0);
+  const U = Perf.createMonitor({ now: () => 0 }); U.newRace(0, 1); U.part('widgets', 22, 100); U.update(25, 100); U.part('widgets', 19, 200); U.update(19.9, 200); U.part('widgets', 20, 300); U.update(20, 300);
+  ok('an update of 20 ms is kept, one of 19.9 ms is not (the limit is 20; 25 is kept too)', (U.sample(U.snapshot(400), null, {}, 400), U.snapshot(400).history[0].slow.ms === 25) && (() => { const V = Perf.createMonitor({ now: () => 0 }); V.newRace(0, 1); V.part('widgets', 20, 100); V.update(20, 100); V.sample(V.snapshot(200), null, {}, 200); const W2 = Perf.createMonitor({ now: () => 0 }); W2.newRace(0, 1); W2.part('widgets', 19, 100); W2.update(19.9, 100); W2.sample(W2.snapshot(200), null, {}, 200); return V.snapshot(200).history[0].slow.ms === 20 && W2.snapshot(200).history[0].slow === null; })());
+  const X = Perf.createMonitor({ now: () => 0 }); X.newRace(0, 1); X.part('widgets', 90, 1000); X.update(100, 1000); X.sample({ fps: 30, updateAvg: 1, updateMax: 5, updateLoad: 1 }, null, {}, 1500); X.sample({ fps: 30, updateAvg: 1, updateMax: 100, updateLoad: 1 }, null, {}, 40000);
+  ok('a row whose "slowest" is not that update (the figures were taken from another moment) does not claim it; neither does one far later than the update', X.snapshot(2000).history[0].slow === null && X.snapshot(2000).history[1].slow === null);
+  const Y = Perf.createMonitor({ now: () => 0 }); Y.newRace(0, 1); Y.update(40, 100); Y.sample(Y.snapshot(200), null, {}, 200);
+  ok('a slow update whose parts and widgets were not timed (nothing to name) has a row without the extra line', Y.snapshot(200).history[0].slow !== null && Y.snapshot(200).history[0].slow.parts.length === 0 && !Perf.report(Y.snapshot(200), null, {}).includes('its slowest update')); }
+
+{ // the Delta Timer badges
+  const M = Perf.createMonitor({ now: () => 0 });
+  const m = { boxW: 59, boxH: 97, w: 62.34, h: 40.04, row: true };
+  M.delta('dlaptime', { why: 'first', how: 'shrunk', steps: 2, m }, 1000); M.delta('dlaptime', { why: 'again', how: 'shrunk', steps: 1, m }, 1100); M.delta('dlaptime', { why: 'skip' }, 1200); M.delta('dlaptime', { why: 'skip' }, 1200);
+  M.delta('dlaptime', { why: 'shape', how: 'roomy', steps: 0, m, key: '▲ +0.00|dlt-badge up|', prev: '▼ -0.00|dlt-badge down|' }, 1300); M.delta('dlaptime', { why: 'recheck', how: 'tight', steps: 0, m }, 1400); M.delta('dlaptime', { why: 'resize' }, 1500);
+  M.delta('dbestlap', { why: 'skip' }, 1500);
+  const d = M.snapshot(2000).delta;
+  ok('the badges are counted by widget type: looked at, left alone, measured; the one with the most measures first', d.length === 2 && d[0].type === 'dlaptime' && d[0].calls === 6 && d[0].skipped === 2 && d[0].measured === 4 && d[1].type === 'dbestlap' && d[1].measured === 0, JSON.stringify(d));
+  ok('...why they were measured (first, shape, recheck, again) and how it came out (roomy, shrunk, tight), with the steps added up', d[0].first === 1 && d[0].shape === 1 && d[0].recheck === 1 && d[0].again === 1 && d[0].roomy === 1 && d[0].shrunk === 2 && d[0].tight === 1 && d[0].unknown === 0 && d[0].steps === 3);
+  ok('...a resize is counted on its own (the widget or the window changed size), and is not one of the looks of an update', d[0].resize === 1 && d[0].calls === 6);
+  ok('...the last measure is kept (rounded to a tenth), and the last change of shape with what it was before', JSON.stringify(d[0].last) === JSON.stringify({ m: { boxW: 59, boxH: 97, w: 62.3, h: 40, row: true }, how: 'tight', steps: 0, from: '▼ -0.00|dlt-badge down|', to: '▲ +0.00|dlt-badge up|' }), JSON.stringify(d[0].last));
+  ok('...a type that was only left alone has nothing measured to show', d[1].last === null && d[1].skipped === 1);
+  const R = Perf.report(M.snapshot(2000), null, {}).split('\n'), at = R.findIndex(x => x.startsWith('Delta Timer badges'));
+  ok('the report has a part for the Delta Timer badges, with the counts that are not zero in plain words', at >= 0 && R[at + 1] === '  dlaptime: 6 badges looked at in the last 1 s, 4 measured, 2 left alone; the widget or the window changed size 1 time(s) (each time every badge is measured again)' &&
+    R[at + 2] === '    why measured: 1 for the first time, 1 the text changed shape (signs, number of figures, class or style), 1 the regular check (every 30th time), 1 it did not fit with room to spare the last time' &&
+    R[at + 3] === '    how it came out: 1 fitted with room to spare, 2 had to be made smaller (1.5 steps on average), 1 fitted, but without room to spare' &&
+    R[at + 4] === '    last measured: badge box 59 x 97 px, text 62.3 x 40 px, value and badge side by side' && R[at + 5] === '    last change of shape: "▼ -0.00|dlt-badge down|" -> "▲ +0.00|dlt-badge up|"' && R[at + 6] === '  dbestlap: 1 badge looked at in the last 1 s, 0 measured, 1 left alone', JSON.stringify(R.slice(at, at + 8)));
+  { const C = Perf.createMonitor({ now: () => 0 }); C.delta('col', { why: 'first', how: 'shrunk', steps: 1, m: { ...m, row: false } }, 1000); C.delta('odd', { why: 'first', how: 'unknown', steps: 0, m: { ...m, row: undefined } }, 1000);
+    const T2 = Perf.report(C.snapshot(2000), null, {}); const lm = T2.split('\n').filter(x => x.includes('last measured'));
+    ok('...a badge below the value, or one whose layout is not known, says so; one that could not be measured says that', lm.length === 2 && lm.some(x => x.endsWith('badge below the value')) && lm.some(x => x.endsWith('layout not known')) && T2.includes('1 could not be measured (not on the screen yet)'), lm.join(' | ')); }
+  const W = Perf.createMonitor({ now: () => 0 }); W.delta('a', { why: 'first', how: 'roomy', steps: 0, m }, 1000);
+  ok('the figures are for the last ten seconds: after that they are forgotten (the last measure is kept for the type)', W.snapshot(20000).delta.length === 0);
+  const B = Perf.createMonitor({ now: () => 0 });
+  B.delta(5, { why: 'first' }); B.delta('a', null); B.delta('a', 'x'); B.delta('a', { why: 'nonsense' }); B.delta('a', { why: 'first', how: 'weird', steps: 'many', m: 'x' }, 100); B.delta('a', { why: 'shape', how: 'roomy', key: 5, prev: 6 }, 110);
+  const b = B.snapshot(200).delta;
+  ok('odd input is made safe: no type or no valid reason counts nothing; a measure that is no measure, a strange "how" and steps count as unknown and 0', b.length === 1 && b[0].calls === 2 && b[0].unknown === 1 && b[0].roomy === 1 && b[0].steps === 0 && b[0].last.m === null && b[0].last.from === null, JSON.stringify(b));
+  const T = Perf.createMonitor({ now: () => 0 }); T.delta('a', { why: 'shape', how: 'roomy', steps: 0, key: 'k'.repeat(500), prev: 'p'.repeat(500) }, 100);
+  ok('a shape of a very long style is cut (100 characters each)', T.snapshot(200).delta[0].last.to.length === 100 && T.snapshot(200).delta[0].last.from.length === 100);
+  const X = Perf.createMonitor({ now: () => 0 }); for (let i = 0; i < 9; i++) X.delta('t' + i, { why: 'first', how: 'roomy', steps: 0 }, 100 + i);
+  ok('at most five types are in the report', X.snapshot(200).delta.length === 5);
+  const Y = Perf.createMonitor({ now: () => 0 }); Y.delta('a', { why: 'first', how: 'roomy', steps: 0 }, 100); Y.reset();
+  ok('when the window figures start again the counts and the last measures go', Y.snapshot(200).delta.length === 0);
+  ok('a report without any Delta Timer badges has no part for them', !Perf.report(Y.snapshot(200), null, {}).includes('Delta Timer badges') && !Perf.report(null, null, {}).includes('Delta Timer badges'));
+  const Z = Perf.createMonitor({ now: () => 0 }); Z.delta('a', { why: 'shape', how: 'roomy', steps: 0, key: 'new', prev: 'old' }, 100); Z.delta('a', { why: 'recheck', how: 'roomy', steps: 0, key: 'new', prev: 'new' }, 200); Z.delta('a', { why: 'again', how: 'tight', steps: 0, key: 'x', prev: 'x' }, 300);
+  ok('only a change of shape sets "the last change of shape" (a recheck or another measure with the same shape leaves it)', Z.snapshot(400).delta[0].last.from === 'old' && Z.snapshot(400).delta[0].last.to === 'new');
+  const Z2 = Perf.createMonitor({ now: () => 0 }); Z2.delta('a', { why: 'first', how: 'roomy', steps: 0, key: 'k', m }, 100);
+  ok('...and a type that never changed shape has no such line, but has its last measure', !Perf.report(Z2.snapshot(200), null, {}).includes('last change of shape') && Perf.report(Z2.snapshot(200), null, {}).includes('last measured: badge box 59 x 97 px'));
+  const Z3 = Perf.createMonitor({ now: () => 0 }); for (let i = 0; i < 10; i++) Z3.delta('quiet', { why: 'skip' }, 100); Z3.delta('busy', { why: 'first', how: 'roomy', steps: 0, m }, 100); Z3.delta('busy', { why: 'again', how: 'roomy', steps: 0, m }, 100);
+  ok('the types are ordered by what was measured, not by how often they were looked at', Z3.snapshot(200).delta.map(x => x.type).join() === 'busy,quiet');
+  const rz = Perf.report(Z3.snapshot(200), null, {}).split('\n'), qz = rz.findIndex(x => x.startsWith('  quiet:'));
+  ok('...a type that was only left alone has no "why measured" and no "how it came out"', qz > 0 && !rz.slice(qz, qz + 3).some(x => x.includes('why measured') || x.includes('how it came out')));
+  const Z4 = Perf.createMonitor({ now: () => 0 }); Z4.delta('r', { why: 'resize' }, 100); Z4.delta('r', { why: 'resize' }, 100);
+  ok('a type that was only resized (no update looked at it) is in the report with that', Z4.snapshot(200).delta.length === 1 && Z4.snapshot(200).delta[0].calls === 0 && Z4.snapshot(200).delta[0].resize === 2 && Perf.report(Z4.snapshot(200), null, {}).includes('r: 0 badges looked at in the last 0 s, 0 measured, 0 left alone; the widget or the window changed size 2 time(s)'));
+  const Z5 = Perf.createMonitor({ now: () => 0 }); Z5.delta('a', { why: 'shape', how: 'roomy', steps: 0, key: 'new', prev: 'old' }, 100); Z5.reset(); Z5.delta('a', { why: 'skip' }, 200);
+  ok('when the window figures start again the last measure and shape go too (a type that is only left alone afterwards has none)', Z5.snapshot(300).delta[0].last === null); }
+
 console.log(fails ? `\n${fails} FAILED` : '\nperf PASSED');
 process.exit(fails ? 1 : 0);

@@ -385,8 +385,41 @@ ok('each reason has its own words for the badge', Object.keys(D.WHY).sort().join
   { const cssAll = src('styles.css');
     ok('what this relies on is in the style sheet: the badge does not grow or shrink (flex:0 0 auto) and is as high as the widget (stretch), the widget is a row, the "value on top" widget a column', /\.dlt-badge\{flex:0 0 auto;[^}]*align-self:stretch/.test(cssAll) && /\.dlt\{display:flex;/.test(cssAll) && !/\.dlt\{[^}]*flex-direction/.test(cssAll) && /\.dlt\.dlt-col\{flex-direction:column/.test(cssAll)); }
 
+  // ---- 1.60.5: fitQuick tells the Performance report what happened to each badge (why it was measured or left alone, and how it came out); it changes nothing ----
+  { const rowM = (c, boxH = 97, wide = 1) => b => { c.n++; const em = emOf(b); return { row: true, boxW: 300 * em / 0.95 * wide, boxH, w: 300 * em / 0.95, h: 40 * em / 0.95, em }; };
+    const notes = []; const note = x => notes.push(x);
+    const root = rootOf([]), c = { n: 0 }, m = rowM(c);
+    const go = (text, mm = m, r = root) => { const b = qbadge(text); r.querySelectorAll = () => [b]; D.fitQuick(r, mm, note); return b; };
+    go('▼ +1.23'); go('▼ +1.24'); go('▼ +1.25');
+    ok('note: the first time a badge is seen it says "first" and "roomy" (it fitted at full size, in a row), then "skip" while the text keeps its shape', notes.length === 3 && notes[0].why === 'first' && notes[0].how === 'roomy' && notes[0].steps === 0 && notes[1].why === 'skip' && notes[2].why === 'skip' && notes[1].how === undefined);
+    ok('...a measured badge says the first measure it took: the box and the text, and whether it is in a row', notes[0].m && notes[0].m.row === true && notes[0].m.boxH === 97 && notes[0].m.h === 40 && Math.round(notes[0].m.w) === 300);
+    notes.length = 0; go('▲ -1.23');
+    ok('...a text of another shape (the sign and the arrow) says "shape", with the shape now and the one before (digits as 0)', notes.length === 1 && notes[0].why === 'shape' && notes[0].key.startsWith('▲ -0.00|') && notes[0].prev.startsWith('▼ +0.00|'), JSON.stringify(notes));
+    notes.length = 0; for (let i = 0; i < D.RECHECK; i++) go('▲ -1.2' + (i % 10));
+    ok('...every RECHECK-th time it says "recheck"', notes.filter(x => x.why === 'recheck').length === 1 && notes.filter(x => x.why === 'skip').length === D.RECHECK - 1 && notes[D.RECHECK - 1].why === 'recheck' && notes[D.RECHECK - 1].how === 'roomy', JSON.stringify(notes.map(x => x.why)));
+    notes.length = 0; const tight = rowM({ n: 0 }, 20);
+    const rt = rootOf([]); go('▼ +1.23', tight, rt); go('▼ +1.24', tight, rt); go('▼ +1.25', tight, rt);
+    ok('...a badge that had to shrink says "shrunk" with how many steps, and is "again" at every update after it (the last time it did not fit with room to spare)', notes.length === 3 && notes[0].how === 'shrunk' && notes[0].steps >= 1 && notes[0].why === 'first' && notes[1].why === 'again' && notes[1].how === 'shrunk' && notes[2].why === 'again', JSON.stringify(notes.map(x => [x.why, x.how, x.steps])));
+    notes.length = 0; const col = b => { const em = emOf(b); return { row: false, boxW: 300 * em / 0.95 + 5, boxH: 60, w: 300 * em / 0.95, h: 20, em }; };
+    const rc = rootOf([]); go('▼ +1.23', col, rc); go('▼ +1.24', col, rc);
+    ok('...a badge in a column that fits without a tenth of spare width says "tight" (not roomy, not shrunk) and is measured again', notes.length === 2 && notes[0].how === 'tight' && notes[0].steps === 0 && notes[1].why === 'again' && notes[1].how === 'tight', JSON.stringify(notes));
+    notes.length = 0; const rs = rootOf([]); go('▼ +1.23', tight, rs);
+    ok('...the note carries the FIRST measure (the full-size text), not the one after the shrink', notes.length === 1 && notes[0].how === 'shrunk' && Math.round(notes[0].m.w) === 300 && notes[0].steps >= 1, JSON.stringify(notes[0].m));
+    ok('...a measure with any of box width, box height, text width, text height at 0 is "unknown"', [{ boxW: 0, boxH: 60, w: 50, h: 20, em: 0.95 }, { boxW: 100, boxH: 0, w: 50, h: 20, em: 0.95 }, { boxW: 100, boxH: 60, w: 0, h: 20, em: 0.95 }, { boxW: 100, boxH: 60, w: 50, h: 0, em: 0.95 }].every(bad => { notes.length = 0; go('▼ +1.23', () => bad, rootOf([])); return notes.length === 1 && notes[0].how === 'unknown'; }));
+    notes.length = 0; go('▼ +1.23', () => ({ boxW: 0, boxH: 0, w: 0, h: 0, em: 0 }), rootOf([]));
+    ok('...a badge that is not on the screen yet (nothing to measure) says "unknown"', notes.length === 1 && notes[0].how === 'unknown' && notes[0].steps === 0, JSON.stringify(notes));
+    // behaviour is the same with or without a note
+    const run = withNote => { const r = rootOf([]), cc = { n: 0 }, sizes = []; for (let i = 0; i < 70; i++) { const b = qbadge(i % 23 === 0 ? '▲ -1.2' + i % 10 : '▼ +1.2' + i % 10); r.querySelectorAll = () => [b]; D.fitQuick(r, rowM(cc, i < 35 ? 97 : 20), withNote ? () => {} : undefined); sizes.push(emOf(b)); } return JSON.stringify([cc.n, sizes]); };
+    ok('...and the badges come out the same, measured as often, with a note as without one', run(true) === run(false));
+    const bad = qbadge('1.23'); root.querySelectorAll = () => [bad]; const cb = { n: 0 };
+    ok('...a note that fails (throws) does not stop the badge from being fitted', (() => { try { D.fitQuick(root, rowM(cb, 20), () => { throw new Error('x'); }); return emOf(bad) < 0.5 && cb.n >= 1; } catch (e) { return false; } })());
+    notes.length = 0; D.fitQuick(root, rowM({ n: 0 }), 'not a function'); D.fitQuick(root, rowM({ n: 0 }), null); D.fit(root, rowM({ n: 0 }));
+    ok('...a note that is no function is ignored, and fit() (the editor, the resize of a widget) has none', notes.length === 0);
+    const two = rootOf([qbadge('1.2'), qbadge('3.4')]); notes.length = 0; D.fitQuick(two, rowM({ n: 0 }), note); D.fitQuick(two, rowM({ n: 0 }), note);
+    ok('...a widget with two badges tells about each of them', notes.map(x => x.why).join() === 'first,first,skip,skip'); }
+
   const canvas = src('canvas.js'), editor = src('editor.js'), live = src('liveview.js'), css = src('styles.css');
-  ok('the live race page fits the badges after it has drawn a widget with one, and again when the widget changes size (the window, a layout of another size)', /n\.val\.innerHTML = out\.html;[\s\S]{0,900}?out\.html\.includes\('dlt-badge'\)[^\n]*\(Delta\.fitQuick \|\| Delta\.fit\)\(n\.val\)/.test(canvas) && /ResizeObserver[^\n]*Delta\.isDelta\(w\.type\)[^\n]*Delta\.fit\(val\)/.test(canvas));
+  ok('the live race page fits the badges after it has drawn a widget with one, and again when the widget changes size (the window, a layout of another size)', /n\.val\.innerHTML = out\.html;[\s\S]{0,900}?out\.html\.includes\('dlt-badge'\)[^\n]*Delta\.fitQuick\(n\.val[^\n]*Delta\.fit\(n\.val\)/.test(canvas) && /ResizeObserver[^\n]*Delta\.isDelta\(w\.type\)[^\n]*Delta\.fit\(val\)/.test(canvas));
   ok('the layout editor fits them every time it draws the canvas, so a widget that is dragged to another size keeps its text inside the badge; the live view with row designs does too', /WxW\.fitAll\(\$\('canvas'\)\)[^\n]*\n[^\n]*Delta\.fit\(\$\('canvas'\)\)/.test(editor) && /Delta\.fit\(\$\('lv-board'\)\)/.test(live));
   ok('the fit puts the text in no wrapping and keeps the badge itself as it was: the stylesheet still says nowrap, and the markup has no new parts', /\.dlt-badge\{[^}]*white-space:nowrap/.test(css) && D.wrap('<b>1</b>', { ms: -45 }, { direction: 'column' }).includes('<span class="dlt-badge dlt-fast"') && !/dlt-fit|data-fit/.test(D.wrap('<b>1</b>', { ms: -45 }, { direction: 'column' })));
 }

@@ -18,17 +18,33 @@
     const by = new Map(); list.forEach(([n, v]) => by.set(n, (by.get(n) || 0) + v));
     return [...by.entries()].filter(x => x[1] >= 1).sort((a, b) => b[1] - a[1]).slice(0, 3);
   };
+  // 1.60.5: the widgets of one update, added up by type, the biggest four of at least a millisecond ([type, draw, write, fit] each; count = how many of that type)
+  const worstWidgets = list => {
+    const by = new Map(); list.forEach(([t, d, w, f]) => { const a = by.get(t) || { type: t, count: 0, draw: 0, write: 0, fit: 0 }; a.count++; a.draw += d; a.write += w; a.fit += f; by.set(t, a); });
+    return [...by.values()].map(a => ({ ...a, ms: a.draw + a.write + a.fit })).filter(a => a.ms >= 1).sort((a, b) => b.ms - a.ms).slice(0, 4);
+  };
+  const SLOW_UPDATE = 20, SLOW_KEEP = 60; // (an update of this many ms or more keeps its parts and its widgets for a while, so a row of the report can say what its slowest update was)
+  // the reasons a Delta Timer badge is measured (delta.js fitBadge), and how that measure turned out
+  const DELTA_WHY = ['skip', 'first', 'shape', 'recheck', 'again', 'resize'], DELTA_HOW = ['roomy', 'shrunk', 'tight', 'unknown'];
+  const outParts = list => (list || []).map(x => ({ name: x[0], ms: r1(x[1]) }));
+  const outWidgets = list => (list || []).map(a => ({ type: a.type, count: a.count, ms: r1(a.ms), draw: r1(a.draw), write: r1(a.write), fit: r1(a.fit) }));
+  const geo = m => (m && typeof m === 'object' ? { boxW: r1(num(m.boxW, 0, 1e5, 0)), boxH: r1(num(m.boxH, 0, 1e5, 0)), w: r1(num(m.w, 0, 1e5, 0)), h: r1(num(m.h, 0, 1e5, 0)), row: m.row === true ? true : m.row === false ? false : null } : null);
   function createMonitor(o = {}) {
     const clock = o.now || (() => (typeof performance !== 'undefined' ? performance.now() : Date.now()));
     const wallNow = o.wall || Date.now;
-    const st = { frames: [], updates: [], longs: [], skip: [], loafs: [], buckets: [], cur: null, last: null, started: null, race: null, hist: [], histAt: null, marks: [], upd: [] };
+    const st = { frames: [], updates: [], longs: [], skip: [], loafs: [], buckets: [], cur: null, last: null, started: null, race: null, hist: [], histAt: null, marks: [], upd: [], updw: [], slowups: [], dlast: Object.create(null) };
     const prune = (a, t, w) => { while (a.length && t - a[0][0] > w) a.shift(); };
     const begin = t => { if (st.started === null) st.started = t; };
     const peak = (k, v) => { if (st.race && v > st.race[k]) st.race[k] = v; }; // (the callers only give numbers or null; null is never more)
     const pile = t => { // (the one-second pile that the times of the parts and of the widgets are added to)
-      if (!st.cur || t - st.cur.start >= 1000) { if (st.cur) st.buckets.push(st.cur); st.cur = { start: t, parts: Object.create(null), widgets: Object.create(null) }; }
+      if (!st.cur || t - st.cur.start >= 1000) { if (st.cur) st.buckets.push(st.cur); st.cur = { start: t, parts: Object.create(null), widgets: Object.create(null), deltas: Object.create(null) }; }
       while (st.buckets.length && t - st.buckets[0].start > WINDOW) st.buckets.shift();
       return st.cur;
+    };
+    // (1.60.5) what the slowest update of the last ten seconds was, when it kept its parts and widgets (it took SLOW_UPDATE ms or more) and it is the one the row's 'slowest' is about
+    const slowOf = (r, t) => {
+      const sl = st.slowups.filter(x => t - x[0] <= WINDOW).reduce((a, x) => (!a || x[1] > a[1] ? x : a), null);
+      return sl && isNum(r.updateMax) && Math.abs(Math.round(sl[1] * 100) / 100 - r.updateMax) < 0.011 ? { ms: r1(sl[1]), parts: outParts(sl[2]), widgets: outWidgets(sl[3]) } : null;
     };
     const due = (t = clock()) => st.race !== null && (st.histAt === null || t - st.histAt >= HIST_EVERY);
     return {
@@ -39,10 +55,14 @@
       update(ms, t = clock()) {
         begin(t);
         if (isNum(ms) && ms >= 0) {
-          if (st.race && ms > st.race.update) { st.race.updateAt = (t - st.race.t0) / 1000; st.race.updateParts = worstParts(st.upd); }
+          // (1.60.5: also which widgets; and an update of SLOW_UPDATE ms or more keeps its parts and widgets for the window, so the row of the report that has it as its slowest can say what it was)
+          const longest = !!st.race && ms > st.race.update, keep = ms >= SLOW_UPDATE;
+          const parts = longest || keep ? worstParts(st.upd) : null, wids = longest || keep ? worstWidgets(st.updw) : null;
+          if (longest) { st.race.updateAt = (t - st.race.t0) / 1000; st.race.updateParts = parts; st.race.updateWidgets = wids; }
+          if (keep) { st.slowups.push([t, ms, parts, wids]); if (st.slowups.length > SLOW_KEEP) st.slowups.shift(); }
           st.updates.push([t, ms]); peak('update', ms);
         }
-        st.upd = []; prune(st.updates, t, WINDOW);
+        st.upd = []; st.updw = []; prune(st.updates, t, WINDOW); prune(st.slowups, t, WINDOW);
       },
       // the window was stuck for ms (a long task)
       long(ms, t = clock()) { begin(t); if (isNum(ms) && ms >= 0) { st.longs.push([t, ms]); peak('long', ms); } prune(st.longs, t, WINDOW); },
@@ -54,13 +74,28 @@
       widget(type, drawMs, writeMs, fitMs, t = clock()) {
         begin(t); if (typeof type !== 'string' || ![drawMs, writeMs, fitMs].every(v => isNum(v) && v >= 0)) return;
         const b = pile(t), a = b.widgets[type] || (b.widgets[type] = [0, 0, 0, 0]); a[0] += drawMs; a[1] += writeMs; a[2] += fitMs; a[3]++;
+        st.updw.push([type, drawMs, writeMs, fitMs]); if (st.updw.length > 300) st.updw.shift();
+      },
+      // 1.60.5: a Delta Timer badge was looked at (delta.js fitBadge): r.why = skip (left alone), first, shape (the text changed shape), recheck (every 30th), again (it did not fit with room
+      // to spare the last time), resize (the widget or the window changed size); when it was measured r.how = roomy, shrunk, tight (fitted, but with no room to spare) or unknown, r.steps = how
+      // many times it was made smaller, r.m = the first measure (the badge box and its text, px), r.key / r.prev = the shape of the text now and before (when it changed shape)
+      delta(type, r, t = clock()) {
+        begin(t); if (typeof type !== 'string' || !r || typeof r !== 'object' || !DELTA_WHY.includes(r.why)) return;
+        const b = pile(t), a = b.deltas[type] || (b.deltas[type] = { calls: 0, skip: 0, first: 0, shape: 0, recheck: 0, again: 0, resize: 0, roomy: 0, shrunk: 0, tight: 0, unknown: 0, steps: 0 });
+        if (r.why === 'resize') { a.resize++; return; } // (the widget or the window changed size: delta.js fit() measures every badge of the widget again; not one of the calls of the update)
+        a.calls++; a[r.why]++;
+        if (r.why === 'skip') return;
+        const how = DELTA_HOW.includes(r.how) ? r.how : 'unknown'; a[how]++; a.steps += num(r.steps, 0, 10, 0);
+        const d = st.dlast[type] || (st.dlast[type] = { m: null, how: null, steps: 0, from: null, to: null });
+        d.m = geo(r.m); d.how = how; d.steps = num(r.steps, 0, 10, 0);
+        if (r.why === 'shape' && typeof r.key === 'string') { d.from = text(r.prev, 100); d.to = text(r.key, 100); }
       },
       // a long animation frame (a frame that took over 50 ms; see loafFrom)
       loaf(x, t = clock()) { begin(t); if (x && isNum(x.dur) && x.dur <= 2000) { st.loafs.push([t, x]); peak('loaf', x.dur); } prune(st.loafs, t, WINDOW); }, // (as with a frame: over two seconds is a window that was hidden, not a slow frame; 1.60.3)
       // something happened that is worth knowing when the figures are read (a race started, a window was opened): it gets the clock time
       mark(txt, wall = wallNow()) { const s = text(txt, 80); if (!s) return; st.marks.push({ at: wall, text: s }); while (st.marks.length > MARKS_MAX) st.marks.shift(); },
       // a race starts: the worst figures and the rows start again (they stay after the race, so a report copied afterwards still has them)
-      newRace(t = clock(), wall = wallNow()) { st.race = { wall, t0: t, frame: 0, update: 0, updateAt: null, updateParts: [], long: 0, load: 0, loaf: 0, minFps: null }; st.hist = []; st.histAt = null; st.upd = []; },
+      newRace(t = clock(), wall = wallNow()) { st.race = { wall, t0: t, frame: 0, update: 0, updateAt: null, updateParts: [], updateWidgets: [], long: 0, load: 0, loaf: 0, minFps: null }; st.hist = []; st.histAt = null; st.upd = []; st.updw = []; },
       due,
       // a row of the history: only once in 30 seconds, and only in a race
       sample(r, m, extra, t = clock()) {
@@ -68,12 +103,12 @@
         st.histAt = t;
         const e = extra || {};
         st.hist.push({ at: Math.round((t - st.race.t0) / 1000), fps: r.fps, update: r.updateAvg, updateMax: r.updateMax, load: r.updateLoad, memMB: m ? Math.round(m.procs.memoryMB) : null, winCpu: m ? Math.round(m.procs.window) : null,
-          heapMB: isNum(e.heapMB) ? Math.round(e.heapMB) : null, dom: isNum(e.dom) ? Math.round(e.dom) : null });
+          heapMB: isNum(e.heapMB) ? Math.round(e.heapMB) : null, dom: isNum(e.dom) ? Math.round(e.dom) : null, slow: slowOf(r, t) });
         while (st.hist.length > HIST_MAX) st.hist.shift();
         return true;
       },
       // the window figures start again (somebody looks again); the worst of the race, its rows and the marks stay
-      reset() { st.frames.length = st.updates.length = st.longs.length = st.skip.length = st.loafs.length = st.buckets.length = 0; st.cur = null; st.last = null; st.started = null; st.upd = []; },
+      reset() { st.frames.length = st.updates.length = st.longs.length = st.skip.length = st.loafs.length = st.buckets.length = 0; st.cur = null; st.last = null; st.started = null; st.upd = []; st.updw = []; st.slowups.length = 0; st.dlast = Object.create(null); },
       snapshot(t = clock()) {
         [st.frames, st.updates, st.longs, st.skip, st.loafs].forEach(a => prune(a, t, WINDOW));
         const seen = st.started === null ? 0 : Math.min(WINDOW, t - st.started), fspan = Math.min(FPS_WINDOW, seen);
@@ -86,6 +121,10 @@
           Object.keys(b.parts).forEach(k => { partTot[k] = (partTot[k] || 0) + b.parts[k]; });
           Object.keys(b.widgets).forEach(k => { const a = widTot[k] || (widTot[k] = [0, 0, 0, 0]), v = b.widgets[k]; for (let i = 0; i < 4; i++) a[i] += v[i]; });
         });
+        const dTot = Object.create(null); // (1.60.5) the Delta Timer badges of the last ten seconds, by widget type
+        st.buckets.concat(st.cur ? [st.cur] : []).filter(b => t - b.start <= WINDOW).forEach(b => Object.keys(b.deltas).forEach(k => { const a = dTot[k] || (dTot[k] = {}); Object.keys(b.deltas[k]).forEach(f => { a[f] = (a[f] || 0) + b.deltas[k][f]; }); }));
+        const delta = Object.keys(dTot).map(k => { const a = dTot[k], d = st.dlast[k]; return { type: k, calls: a.calls, skipped: a.skip, measured: a.calls - a.skip, first: a.first, shape: a.shape, recheck: a.recheck, again: a.again, resize: a.resize, roomy: a.roomy, shrunk: a.shrunk, tight: a.tight, unknown: a.unknown, steps: a.steps, last: d ? { m: d.m, how: d.how, steps: d.steps, from: d.from, to: d.to } : null }; })
+          .filter(x => x.calls > 0 || x.resize > 0).sort((a, b) => b.measured - a.measured || b.calls - a.calls || b.resize - a.resize).slice(0, 5);
         const per = v => Math.round(v / ups.length * 100) / 100; // (only used when there are updates)
         const parts = ups.length ? Object.keys(partTot).map(k => ({ name: k, avg: per(partTot[k]) })).sort((a, b) => b.avg - a.avg).slice(0, 12) : [];
         const widgets = ups.length ? Object.keys(widTot).map(k => { const a = widTot[k]; return { type: k, avg: per(a[0] + a[1] + a[2]), draw: per(a[0]), write: per(a[1]), fit: per(a[2]), count: Math.round(a[3] / ups.length) }; }).sort((a, b) => b.avg - a.avg).slice(0, 8) : [];
@@ -104,12 +143,12 @@
           longCount: st.longs.length,
           longMax: st.longs.length ? Math.round(Math.max(...st.longs.map(l => l[1]))) : 0,
           skipped: sk === null ? null : Math.max(0, Math.round(sk)),
-          parts, widgets, loaf
+          parts, widgets, delta, loaf
         };
         if (st.race) { // the worst figures of the race that started last
           if (out.fps !== null && (st.race.minFps === null || out.fps < st.race.minFps)) st.race.minFps = out.fps;
           peak('load', out.updateLoad);
-          out.race = { wall: st.race.wall, seconds: Math.round((t - st.race.t0) / 1000), frame: Math.round(st.race.frame), update: r1(st.race.update), updateAt: st.race.updateAt === null ? null : Math.round(st.race.updateAt), updateParts: st.race.updateParts.map(x => ({ name: x[0], ms: r1(x[1]) })), long: Math.round(st.race.long), load: r1(st.race.load), loaf: Math.round(st.race.loaf), minFps: st.race.minFps };
+          out.race = { wall: st.race.wall, seconds: Math.round((t - st.race.t0) / 1000), frame: Math.round(st.race.frame), update: r1(st.race.update), updateAt: st.race.updateAt === null ? null : Math.round(st.race.updateAt), updateParts: outParts(st.race.updateParts), updateWidgets: outWidgets(st.race.updateWidgets), long: Math.round(st.race.long), load: r1(st.race.load), loaf: Math.round(st.race.loaf), minFps: st.race.minFps };
         } else out.race = null;
         out.history = st.hist.map(h => ({ ...h }));
         out.marks = st.marks.map(x => ({ ...x }));
@@ -174,6 +213,22 @@
   const clockText = at => { const d = new Date(at); return isNum(at) && !Number.isNaN(d.getTime()) ? `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}` : '–'; };
   const spanText = s => (s >= 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s} s`);
   const rowTime = s => `${Math.floor(s / 60)}:${pad2(s % 60)}`;
+  // 1.60.5: the widgets of one update, as in the table of the slowest widgets: 'dlaptime x2: 60 ms (text 0.4, page 0.5, fit 59)'
+  const widText = a => `${a.type}${a.count > 1 ? ' x' + a.count : ''}: ${f1(a.ms)} ms (text ${f1(a.draw)}, page ${f1(a.write)}, fit ${f1(a.fit)})`;
+  const partText = x => `${x.name} ${f0(x.ms)} ms`;
+  // the Delta Timer badges of one widget type: how often they were looked at, measured and why (the counts that are not 0)
+  function deltaLines(d) {
+    const L = [], list = a => a.filter(x => x[0] > 0).map(x => `${x[0]} ${x[1]}`).join(', ');
+    L.push(`  ${d.type}: ${d.calls} badge${d.calls === 1 ? '' : 's'} looked at in the last ${f0(d.span)} s, ${d.measured} measured, ${d.skipped} left alone${d.resize ? `; the widget or the window changed size ${d.resize} time(s) (each time every badge is measured again)` : ''}`);
+    if (d.measured) {
+      L.push('    why measured: ' + list([[d.first, 'for the first time'], [d.shape, 'the text changed shape (signs, number of figures, class or style)'], [d.recheck, 'the regular check (every 30th time)'], [d.again, 'it did not fit with room to spare the last time']]));
+      L.push('    how it came out: ' + list([[d.roomy, 'fitted with room to spare'], [d.shrunk, `had to be made smaller (${d.shrunk ? Math.round(d.steps / d.shrunk * 10) / 10 : 0} steps on average)`], [d.tight, 'fitted, but without room to spare'], [d.unknown, 'could not be measured (not on the screen yet)']]));
+    }
+    const l = d.last;
+    if (l && l.m) L.push(`    last measured: badge box ${f0(l.m.boxW)} x ${f0(l.m.boxH)} px, text ${f1(l.m.w)} x ${f1(l.m.h)} px, ${l.m.row === true ? 'value and badge side by side' : l.m.row === false ? 'badge below the value' : 'layout not known'}`);
+    if (l && l.to) L.push(`    last change of shape: "${l.from || ''}" -> "${l.to}"`);
+    return L;
+  }
   const thin = (a, n) => (a.length <= n ? a : Array.from({ length: n }, (_, i) => a[Math.round(i * (a.length - 1) / (n - 1))])); // (at most n rows, the first and the last always there)
 
   // ---- the line (the race screen, small) ----
@@ -239,14 +294,21 @@
         L.push('', 'Slowest widgets (average per update: making the text and seeing whether it changed + putting it in the page + fitting it to its place):');
         r.widgets.forEach(w => L.push(`  ${w.type}${w.count > 1 ? ' x' + w.count : ''}: ${f1(w.avg)} ms (text ${f1(w.draw)}, page ${f1(w.write)}, fit ${f1(w.fit)})`));
       }
+      if (r.delta && r.delta.length) {
+        L.push('', 'Delta Timer badges (the arrow and the number are fitted inside the badge; a badge that fitted with room to spare is left alone while its text keeps the same shape):');
+        r.delta.forEach(d => deltaLines({ ...d, span: Math.min(10, r.seconds) }).forEach(x => L.push(x)));
+      }
       if (r.loaf) {
         L.push('', `Slow frames (over 50 ms) in the last ${f0(Math.min(10, r.seconds))} seconds: ${r.loaf.count}, ${f0(r.loaf.avg)} ms on average, the longest ${f0(r.loaf.max)} ms. On average: scripts ${f0(r.loaf.script)} ms (of which the page measuring itself ${f0(r.loaf.forced)} ms), drawing the page ${f0(r.loaf.render)} ms${r.loaf.script + r.loaf.render < r.loaf.avg * 0.25 ? ' (the browser does not say where the rest of the time went)' : ''}`);
         if (r.loaf.top.length) L.push('  slowest scripts: ' + r.loaf.top.map(x => `${x.name} ${f0(x.ms)} ms`).join(' · '));
       }
       if (r.race) L.push('', `Worst since the race started (${clockText(r.race.wall)}, ${spanText(r.race.seconds)} ago): slowest frame ${r.race.frame} ms, longest screen update ${f1(r.race.update)} ms${r.race.updateParts && r.race.updateParts.length ? ` (at ${rowTime(r.race.updateAt || 0)}: ${r.race.updateParts.map(x => `${x.name} ${f0(x.ms)} ms`).join(', ')})` : ''}, longest stuck ${r.race.long} ms, longest slow frame ${r.race.loaf} ms, fewest frames ${r.race.minFps === null ? '–' : r.race.minFps + ' a second'}, busiest ${f0(r.race.load)}% of the time on updates`);
+      if (r.race && r.race.updateWidgets && r.race.updateWidgets.length) L.push('  The widgets in that update: ' + r.race.updateWidgets.map(widText).join(' · '));
       if (r.history && r.history.length) {
         L.push('', 'Since the race started, one row every 30 seconds (time, frames, screen update, app memory, memory of the page, page elements, CPU of the window):');
-        thin(r.history, 24).forEach(h => L.push(`  ${rowTime(h.at)}  ${h.fps === null ? '–' : h.fps} frames/s · update ${f1(h.update)} ms (${f0(h.load)}% of the time, slowest ${f1(h.updateMax)}) · app ${h.memMB === null ? '–' : h.memMB} MB · page ${h.heapMB === null ? '–' : h.heapMB} MB · ${h.dom === null ? '–' : h.dom} elements · window CPU ${h.winCpu === null ? '–' : h.winCpu}%`));
+        thin(r.history, 24).forEach(h => { L.push(`  ${rowTime(h.at)}  ${h.fps === null ? '–' : h.fps} frames/s · update ${f1(h.update)} ms (${f0(h.load)}% of the time, slowest ${f1(h.updateMax)}) · app ${h.memMB === null ? '–' : h.memMB} MB · page ${h.heapMB === null ? '–' : h.heapMB} MB · ${h.dom === null ? '–' : h.dom} elements · window CPU ${h.winCpu === null ? '–' : h.winCpu}%`);
+          if (h.slow && (h.slow.parts.length || h.slow.widgets.length)) L.push(`        its slowest update (${f1(h.slow.ms)} ms): ${[h.slow.parts.map(partText).join(', '), h.slow.widgets.map(widText).join(' · ')].filter(Boolean).join(' · ')}`);
+        });
       }
     }
     if (m && m.windows.length) {
