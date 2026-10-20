@@ -8,6 +8,8 @@
   const MIN = 5;    // smallest widget size (one grid step: 0.5% of the width; it was 40 before 1.34.1)
 
   const Av = typeof module !== 'undefined' ? require('./avatars.js') : root.Avatars; // the standard avatars of the lanes
+  const PM = typeof module !== 'undefined' ? require('./picmemo.js') : root.PicMemo; // the text of a picture is built once (1.60.2)
+  const SITE_AV = PM.site(), SITE_IMG = PM.site(), SITE_FLAG = PM.site(), SITE_FUEL = PM.site(), SITE_LIGHTS = PM.site();
   const Dl = typeof module !== 'undefined' ? require('./delta.js') : root.Delta; // the Delta Timers (what is compared, and the badge)
   const Bo = typeof module !== 'undefined' ? require('./boardorder.js') : root.BoardOrder; // the order of a leaderboard (Order by)
   const Ww = typeof module !== 'undefined' ? require('./weatherwidgets.js') : root.WxW; // the weather widgets: Tyres, Weather Forecast, Track Conditions (the options, the samples)
@@ -62,10 +64,13 @@
   // The start lights: five circles drawn as one picture that scales to the widget, so they stay round at any size or shape.
   // pics: { on, off } pictures from a picture set (a light without a picture is drawn as a plain circle)
   // pics: { on, off } (one lit and one unlit picture for all five lights), or { pick(i, lit) } that gives the picture of light i (0 to 4), as the picture grid of a set does
-  const lightsHtml = (on, pics, color) => `<svg class="slsvg" viewBox="0 0 500 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Start lights">${[0, 1, 2, 3, 4].map(i => {
-    const lit = i < on, src = pics && (typeof pics.pick === 'function' ? pics.pick(i, lit) : (lit ? pics.on : pics.off)), cls = 'sl' + (lit ? ' on' : '');
-    return src ? `<image class="${cls}" href="${esc(src)}" x="${i * 100 + 4}" y="4" width="92" height="92" preserveAspectRatio="xMidYMid meet"/>` : `<circle class="${cls}" cx="${50 + i * 100}" cy="50" r="42"${lit && cssVal(color) ? ` style="fill:${cssVal(color)}"` : ''}/>`;
-  }).join('')}</svg>`;
+  const lightsHtml = (on, pics, color) => {
+    const lit = i => i < on, srcs = [0, 1, 2, 3, 4].map(i => (pics ? (typeof pics.pick === 'function' ? pics.pick(i, lit(i)) : (lit(i) ? pics.on : pics.off)) : undefined)); // (what picture each light has, looked at before the text is made: 1.60.2)
+    return PM.once(SITE_LIGHTS, [on, cssVal(color), ...srcs.map(x => x || '')], () => `<svg class="slsvg" viewBox="0 0 500 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Start lights">${[0, 1, 2, 3, 4].map(i => {
+      const src = srcs[i], cls = 'sl' + (lit(i) ? ' on' : '');
+      return src ? `<image class="${cls}" href="${esc(src)}" x="${i * 100 + 4}" y="4" width="92" height="92" preserveAspectRatio="xMidYMid meet"/>` : `<circle class="${cls}" cx="${50 + i * 100}" cy="50" r="42"${lit(i) && cssVal(color) ? ` style="fill:${cssVal(color)}"` : ''}/>`;
+    }).join('')}</svg>`);
+  };
   // The Race flag widget's pictures, drawn like the pictures on the Live Race tiles (24 x 24, a rounded line in the text colour) with the colour of the
   // flag filled in: a waving flag on a pole (it can be mirrored, for a flag on the right of the page) or a round LED. One picture that scales to the widget
   // (the lights do the same). The chequered flag of the end of a heat or race is cut from the same curve as the cloth, so the squares bend with it.
@@ -145,8 +150,8 @@
   }
   const pickImage = (opt, vars) => { const hit = ((opt && opt.rules) || []).find(r => r.image && ruleHolds(r, vars)); return hit ? hit.image : (opt && opt.image) || ''; };
   // a picture of the Race flag widget (a picture set): mirror flips it left to right
-  const flagImgHtml = (src, alt, mirror) => `<img class="flagimg" src="${esc(src)}" alt="${esc(alt || '')}"${mirror ? ' style="transform:scaleX(-1)"' : ''}>`;
-  const imageHtml = (src, fit) => (src ? `<img class="flagimg" src="${esc(src)}" alt=""${fit === 'cover' ? ' style="width:100%;height:100%;object-fit:cover"' : ''}>` : '');
+  const flagImgHtml = (src, alt, mirror) => PM.once(SITE_FLAG, [src, alt || '', !!mirror], () => `<img class="flagimg" src="${esc(src)}" alt="${esc(alt || '')}"${mirror ? ' style="transform:scaleX(-1)"' : ''}>`);
+  const imageHtml = (src, fit) => (src ? PM.once(SITE_IMG, [src, fit === 'cover'], () => `<img class="flagimg" src="${esc(src)}" alt=""${fit === 'cover' ? ' style="width:100%;height:100%;object-fit:cover"' : ''}>`) : '');
   const imgSample = (l, w) => { const o = (w && w.opt) || {}, src = o.image || ((o.rules || []).find(r => r.image) || {}).image; return src ? imageHtml(src, o.fit) : '<span class="muted">Image</span>'; };
 
   // Race flag: one optional picture per state; a state without a picture shows its name instead.
@@ -284,7 +289,7 @@
     return o;
   }
   // an avatar or a slotcar picture in its round (or square) frame, with the position and zoom of the widget; mirror flips the picture left to right inside the frame
-  const avatarHtml = (src, opt) => `<span class="avframe"><img class="avimg" src="${esc(src)}" alt="" style="transform:${frameTransform(opt && opt.frame)}${opt && opt.avatarMirror ? ' scaleX(-1)' : ''}"></span>`;
+  const avatarHtml = (src, opt) => { const ft = frameTransform(opt && opt.frame), mirror = !!(opt && opt.avatarMirror); return PM.once(SITE_AV, [src, ft, mirror], () => `<span class="avframe"><img class="avimg" src="${esc(src)}" alt="" style="transform:${ft}${mirror ? ' scaleX(-1)' : ''}"></span>`); };
   // The Avatar widget: the driver's picture, or when the driver has none the avatar of the lane (the standard ones, or a picture set of the kind Avatars)
   // Team Name and Team Picture (1.8.0): the team of the lane (a team chosen on Home), or one team from Database > Teams that the widget always shows
   const TEAM_OPTION = { key: 'team', label: 'Team to show', type: 'team', default: '' };
@@ -356,8 +361,9 @@
     const col = cssVal(pct < fuelOpt(opt, 'critAt') ? fuelOpt(opt, 'critColor') : pct < fuelOpt(opt, 'lowAt') ? fuelOpt(opt, 'lowColor') : '');
     const txt = `${(Math.floor(litres * 10 + 1e-9) / 10).toFixed(1).replace(/\.0$/, '')} L`, mode = fuelOpt(opt, 'mode');
     if (mode === 'images') {
-      const n = clampInt(opt && opt.steps !== undefined ? opt.steps : 10, 2, 20, 10), img = ((opt && opt.stepImages) || [])[fuelStep(frac, n)];
-      if (img) return `<img class="fuelimg" src="${esc(img)}" alt="${esc(txt)}">`;
+      const n = clampInt(opt && opt.steps !== undefined ? opt.steps : 10, 2, 20, 10), step = fuelStep(frac, n), img = ((opt && opt.stepImages) || [])[step];
+      // (1.60.2: the words of the picture follow the picture, not the litres: with the litres in them the text changed with every tenth of a litre, so the whole picture was put in the page again at every update while a car filled up)
+      if (img) { const alt = `Fuel about ${Math.round(100 * (n - 1 - step) / (n - 1))}%`; return PM.once(SITE_FUEL, [img, alt], () => `<img class="fuelimg" src="${esc(img)}" alt="${alt}">`); }
     }
     const num = `<span class="fnum"${col ? ` style="color:${col}"` : ''}>${txt}</span>`;
     if (mode === 'number' || mode === 'images') return num;
@@ -696,7 +702,8 @@
     return L;
   }
 
-  const api = { heatListHtml, HEATLIST_OPTIONS, tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, flagImgHtml, avatarHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, MAG, LANES, bbox, colorsOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, ALIGNS, titleAlignOf, valueAlignOf, alignClassOf, lapCountOf, lapTotalOn, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, resolveOpt, heightOf, withoutControls, moveWidget, resizeWidget, snapLines, tidy, alignRects, distributeRects, mirrorRects, mirrorSettings, MIRROR_KEYS, scaleGroup, newWidget, defaultLayout };
+  const picSites = { av: SITE_AV, img: SITE_IMG, flag: SITE_FLAG, fuel: SITE_FUEL, lights: SITE_LIGHTS }; // (where the text of the pictures is kept: for the tests)
+  const api = { picSites, heatListHtml, HEATLIST_OPTIONS, tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, flagImgHtml, avatarHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, MAG, LANES, bbox, colorsOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, ALIGNS, titleAlignOf, valueAlignOf, alignClassOf, lapCountOf, lapTotalOn, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, resolveOpt, heightOf, withoutControls, moveWidget, resizeWidget, snapLines, tidy, alignRects, distributeRects, mirrorRects, mirrorSettings, MIRROR_KEYS, scaleGroup, newWidget, defaultLayout };
   root.Widgets = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

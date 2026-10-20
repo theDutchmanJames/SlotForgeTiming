@@ -32,10 +32,12 @@ const LiveCanvas = (() => {
   function drawNode(n, S, tm) {
     const t0 = tm ? tm.now() : 0;
     let out; try { out = Timing.content(n.w, S); } catch (x) { if (!n.failed) { n.failed = true; console.error('A widget could not be drawn (' + (n.w && n.w.type) + '):', x); } return; } // (one widget that fails does not stop the others from being drawn)
+    // Is it what is on the screen already? The parts are compared one by one (1.60.2): they used to be put together in one text first (JSON.stringify), which for a widget with a
+    // picture of a few megabytes meant making and comparing several megabytes, ten times a second, for nothing. The time of this check counts as "making the text" in the report.
+    const L = n.last;
+    if (L && L[0] === out.html && L[1] === out.color && L[2] === out.bg && L[3] === out.disabled) { if (tm) tm.add(n.w.type, tm.now() - t0, 0, 0); return; }
     const t1 = tm ? tm.now() : 0;
-    const key = JSON.stringify([out.html, out.color, out.bg, out.disabled]);
-    if (key === n.last) { if (tm) tm.add(n.w.type, t1 - t0, 0, 0); return; }
-    n.last = key; n.val.innerHTML = out.html;
+    n.last = [out.html, out.color, out.bg, out.disabled]; n.val.innerHTML = out.html;
     const t2 = tm ? tm.now() : 0;
     if (out.html.includes('class="rrows"') && typeof Rows !== 'undefined' && n.val.querySelectorAll) Rows.fitText(n.val); // a leaderboard of row designs: no text wider than its cell
     if (/class="(wxw|wxt)[ "]/.test(out.html) && typeof WxW !== 'undefined') WxW.fit(n.val); // a weather widget: no picture or text outside the widget, whatever the word (Dry, Cloudy, Clearing)

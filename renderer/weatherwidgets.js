@@ -5,6 +5,8 @@
 (function (root) {
   const Wx = typeof module !== 'undefined' ? require('./weather.js') : root.Wx;
   const esc = x => String(x ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const PM = typeof module !== 'undefined' ? require('./picmemo.js') : root.PicMemo; // the text of a picture is built once (1.60.2)
+  const SITE_PIC = PM.site();
   const cap = s => s[0].toUpperCase() + s.slice(1);
   // black or white text, whichever reads better on a colour like #e8002d
   const onColor = hex => { const m = /^#([0-9a-f]{6})$/i.exec(String(hex || '')); if (!m) return '#fff'; const n = parseInt(m[1], 16), l = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; return l > 0.6 ? '#000' : '#fff'; };
@@ -43,7 +45,7 @@
   }
   // the arrow points the way the wind blows: the opposite of where it comes from (a wind from the north, 0 degrees, blows to the south)
   const rotationOf = dir => (((Math.round(Number(dir)) || 0) + 180) % 360 + 360) % 360;
-  const pic = (src, alt, cls, style) => `<img class="${cls}" src="${esc(src)}" alt="${esc(alt)}"${style ? ` style="${style}"` : ''}>`;
+  const pic = (src, alt, cls, style) => PM.once(SITE_PIC, [src, alt, cls, style || ''], () => `<img class="${cls}" src="${esc(src)}" alt="${esc(alt)}"${style ? ` style="${style}"` : ''}>`);
   // an icon from a picture set when it has the picture, else the drawn one. solo: one picture that fills the widget (the flag widget does the same); else a small icon in a line of text.
   const icon = (kind, key, images, dir, solo) => {
     const src = images && images[key], cls = solo ? (src ? 'flagimg' : 'flagsvg') : 'wxic', rot = kind === 'cond' && key === 'winddir' ? `transform:rotate(${rotationOf(dir)}deg)` : '';
@@ -165,7 +167,7 @@
     Array.from(root.querySelectorAll('.lw-val')).forEach(v => fit(v, measure));
   }
 
-  const api = { TYRE_OPTIONS, FORECAST_OPTIONS, COND_OPTIONS, OWN_ITEMS, ownKey, ownOf, tyreSvg, stateSvg, condSvg, rotationOf, icon, slotIcon, tyreContent, forecastContent, conditionsContent, conditionsOf, conditionsHtml, laneVars, raceVars, tyreSample, forecastSample, conditionsSample, onColor, fit, fitAll };
+  const api = { picSite: SITE_PIC, TYRE_OPTIONS, FORECAST_OPTIONS, COND_OPTIONS, OWN_ITEMS, ownKey, ownOf, tyreSvg, stateSvg, condSvg, rotationOf, icon, slotIcon, tyreContent, forecastContent, conditionsContent, conditionsOf, conditionsHtml, laneVars, raceVars, tyreSample, forecastSample, conditionsSample, onColor, fit, fitAll };
   root.WxW = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

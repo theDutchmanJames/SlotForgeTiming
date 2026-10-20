@@ -200,7 +200,7 @@
     if (r) {
       const w0 = r.widgets && r.widgets[0];
       if (w0 && r.updateAvg && w0.avg >= 8 && w0.avg >= r.updateAvg * 0.35) n.push(`The widget "${w0.type}"${w0.count > 1 ? ` (${w0.count} of them)` : ''} takes ${f1(w0.avg)} ms of every update, ${f0(w0.avg / r.updateAvg * 100)}% of it${w0.fit >= w0.avg * 0.5 ? ', mostly in fitting it to its place' : w0.write >= w0.avg * 0.5 ? ', mostly in putting it in the page' : ''}.`);
-      if (r.loaf && r.loaf.render > r.loaf.script) n.push('In the slow frames more time goes in drawing the page (style, layout, paint) than in the scripts of the app.');
+      if (r.loaf && r.loaf.render >= 5 && r.loaf.render > r.loaf.script) n.push('In the slow frames more time goes in drawing the page (style, layout, paint) than in the scripts of the app.');
       if (r.loaf && r.loaf.forced >= 5 && r.loaf.forced >= r.loaf.script * 0.25) n.push(`In the slow frames ${f0(r.loaf.forced)} ms of the scripts is the page measuring itself again and again (layout forced by a script).`);
       const h = (r.history || []).filter(x => x.update !== null);
       if (h.length >= 3) {
@@ -223,11 +223,11 @@
     if (r) {
       if (r.parts && r.parts.length) { L.push('', `Where a screen update spends its time (average per update, last ${f0(Math.min(10, r.seconds))} seconds):`, '  ' + r.parts.map(x => `${x.name} ${f1(x.avg)} ms`).join(' · ')); }
       if (r.widgets && r.widgets.length) {
-        L.push('', 'Slowest widgets (average per update: making the text + putting it in the page + fitting it to its place):');
+        L.push('', 'Slowest widgets (average per update: making the text and seeing whether it changed + putting it in the page + fitting it to its place):');
         r.widgets.forEach(w => L.push(`  ${w.type}${w.count > 1 ? ' x' + w.count : ''}: ${f1(w.avg)} ms (text ${f1(w.draw)}, page ${f1(w.write)}, fit ${f1(w.fit)})`));
       }
       if (r.loaf) {
-        L.push('', `Slow frames (over 50 ms) in the last ${f0(Math.min(10, r.seconds))} seconds: ${r.loaf.count}, ${f0(r.loaf.avg)} ms on average, the longest ${f0(r.loaf.max)} ms. On average: scripts ${f0(r.loaf.script)} ms (of which the page measuring itself ${f0(r.loaf.forced)} ms), drawing the page ${f0(r.loaf.render)} ms`);
+        L.push('', `Slow frames (over 50 ms) in the last ${f0(Math.min(10, r.seconds))} seconds: ${r.loaf.count}, ${f0(r.loaf.avg)} ms on average, the longest ${f0(r.loaf.max)} ms. On average: scripts ${f0(r.loaf.script)} ms (of which the page measuring itself ${f0(r.loaf.forced)} ms), drawing the page ${f0(r.loaf.render)} ms${r.loaf.script + r.loaf.render < r.loaf.avg * 0.25 ? ' (the browser does not say where the rest of the time went)' : ''}`);
         if (r.loaf.top.length) L.push('  slowest scripts: ' + r.loaf.top.map(x => `${x.name} ${f0(x.ms)} ms`).join(' · '));
       }
       if (r.race) L.push('', `Worst since the race started (${clockText(r.race.wall)}, ${spanText(r.race.seconds)} ago): slowest frame ${r.race.frame} ms, longest screen update ${f1(r.race.update)} ms, longest stuck ${r.race.long} ms, longest slow frame ${r.race.loaf} ms, fewest frames ${r.race.minFps === null ? '–' : r.race.minFps + ' a second'}, busiest ${f0(r.race.load)}% of the time on updates`);

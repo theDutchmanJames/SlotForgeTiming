@@ -471,6 +471,19 @@ const fillUpdates = (M, n, f) => { for (let i = 0; i < n; i++) f(i * 100); }; //
   ok('the elements of the page: x3 but only 999 more is not named; 1000 more is', !has(hist(row(0, { dom: 500 }), row(30), row(60, { dom: 1499 })), null, 'page grew') && has(hist(row(0, { dom: 500 }), row(30), row(60, { dom: 1500 })), null, 'page grew'));
   ok('the memory of the app: x1.8 but only 499 MB more is not named; 500 MB more is', !has(hist(row(0, { memMB: 600 }), row(30), row(60, { memMB: 1099 })), null, 'memory of the app') && has(hist(row(0, { memMB: 600 }), row(30), row(60, { memMB: 1100 })), null, 'memory of the app')); }
 
+// ---- 1.60.2: the note about drawing the page needs figures the browser really gave ----
+{ const base = { fps: 60, updateAvg: 20, updates: 10, updateLoad: 5, updateMax: 25, longCount: 0, longMax: 0, widgets: [], parts: [], loaf: null, history: [] };
+  const has = (r, s) => Perf.notes(r, null).some(x => x.includes(s));
+  const lo = (script, render, avg = 100) => ({ ...base, loaf: { count: 3, avg, max: 120, script, render, forced: 0, top: [] } });
+  ok('slow frames with 0 ms of scripts and 0 ms of drawing (the browser gave no detail) do not say the page is drawn too slowly', !has(lo(0, 0), 'drawing the page'));
+  ok('...nor does a little drawing (4.9 ms) that is more than the scripts', !has(lo(0, 4.9), 'drawing the page') && !has(lo(1, 4.9), 'drawing the page'));
+  ok('...5 ms of drawing that is more than the scripts is named', has(lo(0, 5), 'drawing the page') && has(lo(4, 5), 'drawing the page'));
+  ok('...drawing that is not more than the scripts is not named', !has(lo(5, 5), 'drawing the page') && !has(lo(60, 30), 'drawing the page'));
+  const rep = (script, render, avg) => { const M = Perf.createMonitor({ now: () => 0 }); M.loaf({ dur: avg, script, render, forced: 0 }, 100); return Perf.report(M.snapshot(200), Perf.cleanMain({}), { when: 'x' }); };
+  ok('the report says so when the browser does not tell where the time of the slow frames went (scripts and drawing together under a quarter)', rep(0, 0, 100).includes('drawing the page 0 ms (the browser does not say where the rest of the time went)') && rep(10, 14, 100).includes('(the browser does not say'));
+  ok('...and does not when it does (a quarter or more)', !rep(10, 15, 100).includes('the browser does not say') && !rep(60, 30, 120).includes('the browser does not say'));
+  ok('the table of the widgets says that making the text includes seeing whether it changed', Perf.report({ ...base, seconds: 20, widgets: [{ type: 'clock', avg: 2, draw: 2, write: 0, fit: 0, count: 1 }], parts: [] }, Perf.cleanMain({}), { when: 'x' }).includes('making the text and seeing whether it changed')); }
+
 // ---- the report at its edges ----
 { const wall = new Date(2026, 9, 20, 14, 5, 9).getTime();
   const M = Perf.createMonitor({ now: () => 0 }); M.newRace(0, wall); M.frame(0); M.update(5, 10);

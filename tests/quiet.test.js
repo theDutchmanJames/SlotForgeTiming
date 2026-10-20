@@ -175,5 +175,33 @@ for (const [name, K] of [['button', HTMLButtonElement_], ['input', HTMLInputElem
   say('...and the result on the page is the same with or without the timer', n2.val.innerHTML === '1');
   delete globalThis.Timing; delete globalThis.Widgets; delete globalThis.Frame; delete globalThis.Rows; delete globalThis.WxW; }
 
+// ---- 1.60.2: a widget is compared part by part, not as one long text ----
+{ const LiveCanvas = require(R + 'renderer/canvas.js');
+  let out = { html: 'a', color: '', bg: '', disabled: false }, writes = 0, contentCalls = 0, T = 0;
+  globalThis.Timing = { content: () => { contentCalls++; T += 3; return out; } };
+  globalThis.Widgets = { U: 1000 };
+  globalThis.Frame = { style: () => ({}), solidity: () => 1 };
+  const style = new Proxy({}, { set: (t, k, v) => { t[k] = v; return true; }, get: (t, k) => (k === 'setProperty' ? (a, b) => { t[a] = b; } : t[k]) });
+  const n = { w: { type: 'x' }, layout: {}, el: { style }, val: { set innerHTML(v) { writes++; this._h = v; }, get innerHTML() { return this._h; } }, base: {}, last: null };
+  const paint = tm => LiveCanvas.paint([n], {}, tm);
+  paint(); say('the first paint writes the widget', writes === 1 && n.val.innerHTML === 'a');
+  out = { html: 'a', color: '', bg: '', disabled: false }; paint();
+  say('the same text, colour, background and state again: nothing is written', writes === 1);
+  out = { html: 'b', color: '', bg: '', disabled: false }; paint(); say('another text: written', writes === 2 && n.val.innerHTML === 'b');
+  out = { html: 'b', color: '#f00', bg: '', disabled: false }; paint(); say('...another colour with the same text: written again', writes === 3);
+  out = { html: 'b', color: '#f00', bg: '#000', disabled: false }; paint(); say('...another background: written again', writes === 4);
+  out = { html: 'b', color: '#f00', bg: '#000', disabled: true }; paint(); say('...a button that is switched off: written again', writes === 5);
+  out = { html: 'b', color: '#f00', bg: '#000', disabled: true }; paint(); say('...and then the same again: nothing', writes === 5);
+  n.last = null; paint(); say('a widget that is told to forget what it showed (the Race tab is shown again) is drawn once more', writes === 6);
+  out = { html: 'b', color: '#f00', bg: '#000', disabled: undefined }; paint(); say('...a state that was false and is not given any more counts as another (as before)', writes === 7);
+  const big = 'x'.repeat(3e6); const same = big + 'y'; out = { html: same, color: '', bg: '' }; paint(); const w1 = writes;
+  out = { html: same, color: '', bg: '' }; paint(); say('a text of three million characters that is the very same text is recognised without writing', writes === w1);
+  out = { html: big + 'y', color: '', bg: '' }; paint(); say('...an equal text made again is also recognised', writes === w1);
+  out = { html: big + 'z', color: '', bg: '' }; paint(); say('...one character different is written', writes === w1 + 1);
+  const tm = { now: () => T, adds: [], add: (...a) => tm.adds.push(a) };
+  out = { html: 'q', color: '', bg: '' }; paint(tm); tm.adds.length = 0; T = 0; paint(tm);
+  say('with a timer an unchanged widget says its type and the time of making the text (and seeing that it is the same), nothing for the page or the fit', tm.adds.length === 1 && tm.adds[0][0] === 'x' && tm.adds[0][1] === 3 && tm.adds[0][2] === 0 && tm.adds[0][3] === 0);
+  delete globalThis.Timing; delete globalThis.Widgets; delete globalThis.Frame; }
+
 console.log(fails ? `\n${fails} FAILED` : '\nquiet PASSED');
 process.exit(fails ? 1 : 0);

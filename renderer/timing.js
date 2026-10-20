@@ -201,7 +201,7 @@
       case 'teamname': case 'teampicture': { // the team of the lane, or the team that was chosen in the widget (Database > Teams)
         const t = opt.team ? (S.teams || []).find(x => x.id === opt.team) : c && c.teamName ? { name: c.teamName, picture: c.teamPicture } : null;
         if (!t) return { html: '' };
-        return type === 'teamname' ? { html: esc(t.name || '') } : { html: t.picture ? `<span class="avframe"><img class="avimg" src="${esc(t.picture)}" alt="" style="transform:${Wd.frameTransform(opt.frame)}"></span>` : '' };
+        return type === 'teamname' ? { html: esc(t.name || '') } : { html: t.picture ? Wd.avatarHtml(t.picture, { frame: opt.frame }) : '' }; // (the picture's text is built once: 1.60.2)
       }
       case 'carname': return { html: esc(c.carName || '') };
       case 'callsign': return { html: esc(c.callsign || '') };
