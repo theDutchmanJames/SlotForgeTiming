@@ -41,7 +41,7 @@ const LiveCanvas = (() => {
     const t2 = tm ? tm.now() : 0;
     if (out.html.includes('class="rrows"') && typeof Rows !== 'undefined' && n.val.querySelectorAll) Rows.fitText(n.val); // a leaderboard of row designs: no text wider than its cell
     if (/class="(wxw|wxt)[ "]/.test(out.html) && typeof WxW !== 'undefined') WxW.fit(n.val); // a weather widget: no picture or text outside the widget, whatever the word (Dry, Cloudy, Clearing)
-    if (out.html.includes('dlt-badge') && typeof Delta !== 'undefined') Delta.fit(n.val); // a Delta Timer: the arrow and the number inside the badge, however small the widget
+    if (out.html.includes('dlt-badge') && typeof Delta !== 'undefined') (Delta.fitQuick || Delta.fit)(n.val); // a Delta Timer: the arrow and the number inside the badge, however small the widget
     const t3 = tm ? tm.now() : 0;
     if (out.button) n.val.disabled = !!out.disabled;
     const colors = `${out.color}\u0001${out.bg}`; // (the colours only change now and then: a widget whose text changes ten times a second is not given the same colours ten times a second)

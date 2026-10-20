@@ -76,7 +76,7 @@ ok('with --depth 0 (Flat) no layer of any shadow shows, on a dark and on a light
 const app = read('app.js'), ui = read('themeui.js'), html = read('index.html');
 ok('depth.js is loaded by the page after uiscale.js and before the code that uses it', html.indexOf('<script src="uiscale.js">') > 0 && html.indexOf('<script src="depth.js">') > html.indexOf('<script src="uiscale.js">') && html.indexOf('<script src="depth.js">') < html.indexOf('<script src="themeui.js">') && html.indexOf('<script src="depth.js">') < html.indexOf('<script src="app.js">'));
 { const boot = app.slice(app.lastIndexOf('(async () => {')), live = boot.indexOf("location.hash === '#live'");
-  ok('the depth is put on the page when the app starts, before the Live Race window or the main window goes its own way (and so also on a phone)', /applyTheme\(\); applyDepth\(\); applyName\(\);/.test(boot) && boot.indexOf('applyDepth()') < live); }
+  ok('the depth is put on the page when the app starts, before the Live Race window or the main window goes its own way (and so also on a phone)', /applyTheme\(\); applyDepth\(\); applyLayers\(\); applyName\(\);/.test(boot) && boot.indexOf('applyDepth()') < live && boot.indexOf('applyLayers()') < live); }
 ok('applyDepth gives the page one number: --depth, the saved level divided by 100 (the standard when nothing is saved)', /function applyDepth\(\) \{\s*document\.documentElement\.style\.setProperty\('--depth', String\(Depth\.factorOf\(state\.settings && state\.settings\.depth\)\)\);\s*\}/.test(ui));
 ok('the Custom theme tells the page when its panels are light (data-tone), and any other theme takes it away again', /if \(custom && Theme\.isLight\(c\.panel\)\) root\.dataset\.tone = 'light'; else delete root\.dataset\.tone;/.test(ui));
 ok('the Depth is a choice in App Settings > General > Display, saved as depth, applied at once', /id="depthlevel"/.test(app) && /api\.setSettings\(\{ depth: Depth\.levelOf\(ev\.target\.value\) \}\); applyDepth\(\);/.test(app));
@@ -86,6 +86,25 @@ ok('...and it says what it does and that Flat is the plain look of before', /Fla
 const canvasJs = read('canvas.js'), editor = read('editor.js');
 ok('a live widget gets its solidity as --wf (and the thickness of its border) every time it is painted', /Frame\.style\(out\.bg \|\| n\.base\.bg, n\.w, 'var\(--line\)', n\.layout, Widgets\.U\)/.test(canvasJs) && /setProperty\('--wf', String\(Frame\.solidity\(n\.w, n\.layout\)\)\)/.test(canvasJs));
 ok('a widget in the editor gets the same, and the widgets of a row design are marked flat (they have a look of their own)', /Frame\.css\(col\.bg, w, 'var\(--muted\)', d, U\)\};--wf:\$\{Frame\.solidity\(w, d\)\}/.test(editor) && /\$\{d\.kind === 'row' \? ' flat' : ''\}/.test(editor));
+
+// ---- 1.60.3: the widgets' changing text on layers of their own (Depth.layersOn, applyLayers, the tickbox, the rule of the style sheet)
+ok('layersOn: on when nothing is saved (and for a setting that is no setting)', D.layersOn(undefined) === true && D.layersOn(null) === true && D.layersOn({}) === true && D.layersOn('x') === true && D.layersOn(5) === true && D.layersOn([]) === true);
+ok('...only an explicit false switches it off (0, "false", null or a text do not)', D.layersOn({ widgetLayers: false }) === false && [0, '', 'false', null, undefined, 'off', NaN, true, 1, 'on'].every(v => D.layersOn({ widgetLayers: v }) === true));
+{ const fn = (/function applyLayers\(\) \{[^}]*\}/.exec(ui) || [''])[0];
+  const vm = require('vm'), page = { documentElement: { dataset: {} } }, state = { settings: {} };
+  const run = st => { state.settings = st; vm.runInNewContext(fn + '; applyLayers();', { document: page, Depth: D, state }); return page.documentElement.dataset.layers; };
+  ok('applyLayers puts data-layers on the page: "on" by default and "off" when the tickbox was taken away', run({}) === 'on' && run({ widgetLayers: false }) === 'off' && run({ widgetLayers: true }) === 'on' && run(undefined) === 'on'); }
+{ const boot = app.slice(app.lastIndexOf('(async () => {')); const live = boot.indexOf("location.hash === '#live'");
+  ok('the layers are put on the page at the start, before the Live Race window or the main window goes its own way (and so also on a phone)', boot.indexOf('applyLayers()') > 0 && boot.indexOf('applyLayers()') < live); }
+ok('the tickbox is in App Settings > General > Performance, ticked unless it was switched off, before the switch of the Performance line', /<input id="layerswitch" type="checkbox"\$\{Depth\.layersOn\(S\) \? ' checked' : ''\}>/.test(app) && app.indexOf('id="layerswitch"') > app.indexOf("sf('performance'") && app.indexOf('id="layerswitch"') < app.indexOf('id="perfswitch"'));
+ok('...it is saved as widgetLayers (true or false), the page gets the new state at once, and the page is not drawn again', /\$\('layerswitch'\)\.onchange = async ev => \{ state\.settings = await api\.setSettings\(\{ widgetLayers: !!ev\.target\.checked \}\); applyLayers\(\); \};/.test(app));
+ok('...it says what it does, and that text can be softer on some Windows computers', /Draw the changing text of each widget on its own layer/.test(app) && /softer on some Windows/.test(app) && /switch this off/.test(app));
+{ const sheet = css.replace(/\/\*[\s\S]*?\*\//g, ''), mine = sheet.match(/[^{}]*will-change[^{}]*\{[^{}]*\}|[^{}]*\{[^{}]*will-change[^{}]*\}/g) || [];
+  ok('the style sheet has one rule for the layers: the changing text of a live widget, only when the page says "on", and nothing else but will-change: transform', /html\[data-layers="on"\] \.lw\.live \.lw-val\{will-change:transform\}/.test(sheet) && (sheet.match(/will-change/g) || []).length === 1 && mine.length === 1);
+  ok('...it is not for the Layout Editor, the cells of a row design, or the widget itself (no .rcell, no canvas, no .lw without .live)', !/data-layers[^{]*(rcell|editor|canvas|row)/.test(sheet) && /data-layers="on"\] \.lw\.live \.lw-val/.test(sheet) && !/data-layers="on"\] \.lw[^.]/.test(sheet));
+  ok('...it comes before the Soft lift part, which stays at the end of the style sheet', css.indexOf('html[data-layers="on"]') > 0 && css.indexOf('html[data-layers="on"]') < from && css.lastIndexOf('/* ----') === from);
+  ok('...and the Soft lift part does not touch it (will-change, data-layers)', !/will-change|data-layers/.test(layer)); }
+ok('the Live Race page and the phone page load the same style sheet and the same Depth (so they get the layers too)', /styles\.css/.test(html) && /<script src="depth\.js">/.test(html));
 
 // ---- the reference set (docs/ui-reference/depth): the pictures and the design boards stay with the code
 { const dir = path.join(__dirname, '..', 'docs', 'ui-reference', 'depth'), pics = ['1-race-screen-flat.png', '2-race-screen-soft-lift.png', '3-race-screen-thick-card.png', '4-race-screen-light-soft-lift.png', '5-widget-border-colour-and-thickness.png', '6-home-soft-lift.png', '7-settings-depth.png'];

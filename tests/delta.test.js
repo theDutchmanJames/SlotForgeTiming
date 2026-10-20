@@ -291,8 +291,64 @@ ok('each reason has its own words for the badge', Object.keys(D.WHY).sort().join
     ok('every badge in a canvas is fitted on its own: the one that fits stays, the others shrink', !('font-size' in c.props) && 300 * emOf(a) / 0.95 <= 150.5 && 300 * emOf(d2) / 0.95 <= 150.5); }
   ok('nothing breaks without a canvas, or with something that is no badge (a page that is not drawn yet)', (() => { try { D.fit(null); D.fit(undefined); D.fit({}); D.fit(rootOf([null, {}, { style: {} }, { style: {}, dataset: undefined }]), model(10)); return true; } catch (e) { return false; } })());
 
+
+  // ---- 1.60.3: fitQuick, the fit of the race screen: a badge with room to spare is not measured again while its text keeps the same shape
+  const qbadge = (text, own, cls = 'dlt-badge dlt-fast', st = '') => { const b = badge(own); b.textContent = text; b.className = cls; b.getAttribute = k => (k === 'style' ? st : null); return b; };
+  const count = (room, extra) => { const c = { n: 0 }; return { c, m: model(room, extra, c) }; };
+  ok('fitQuick is there, and so are its two numbers (a tenth of room to spare, a measure every 30 updates)', typeof D.fitQuick === 'function' && D.SLACK === 0.1 && D.RECHECK === 30);
+  { const root = rootOf([qbadge('▼ -0.45')]), { c, m } = count(400);
+    D.fitQuick(root, m); const first = c.n;
+    ok('the first time a badge is seen it is measured (and it has room to spare, so nothing is changed)', first === 1 && Object.keys(root.querySelectorAll('.dlt-badge')[0].props).length === 0);
+    for (let i = 0; i < 10; i++) D.fitQuick(rootOf2(root, '▼ -0.4' + (i % 10)), m);
+    ok('...after that the same shape is not measured again: ten more updates with other figures cost no measure at all', c.n === first); }
+  function rootOf2(root, text) { const b = qbadge(text); root.querySelectorAll = sel => (sel === '.dlt-badge' ? [b] : []); return root; } // (the page draws a new badge at each update: the root is what keeps the memory)
+  { const root = rootOf([qbadge('▼ -0.45')]), { c, m } = count(400);
+    D.fitQuick(root, m); const a = c.n;
+    D.fitQuick(rootOf2(root, '▲ +0.45'), m);
+    ok('a badge whose text has another shape (the arrow, the sign) is measured again', c.n > a);
+    const b = c.n; D.fitQuick(rootOf2(root, '▲ +10.45'), m);
+    ok('...and so is one with another number of figures', c.n > b);
+    const d = c.n; D.fitQuick(rootOf2(root, '▲ +99.99'), m);
+    ok('...but not one with the same number of figures and other digits', c.n === d); }
+  { const root = rootOf([qbadge('1.23')]), { c, m } = count(400);
+    D.fitQuick(root, m); const a = c.n; const other = qbadge('1.23', '', 'dlt-badge dlt-slow'); root.querySelectorAll = () => [other]; D.fitQuick(root, m);
+    ok('a badge with another colour class (faster, slower) is measured again', c.n > a);
+    const b = c.n; const styled = qbadge('1.23', '', 'dlt-badge dlt-slow', 'font-size:calc(.95em*0.6)'); root.querySelectorAll = () => [styled]; D.fitQuick(root, m);
+    ok('...and so is one with another size of its own (the style of the markup)', c.n > b); }
+  { const root = rootOf([qbadge('1.23')]), { c, m } = count(400); let n = 0;
+    for (let i = 0; i < D.RECHECK * 3; i++) { D.fitQuick(rootOf2(root, '1.2' + (i % 10)), m); }
+    ok('it measures anyway every RECHECK updates (3 x 30 updates: the first, and then once for each 30)', c.n === 3 || c.n === 4, c.n); }
+  { const root = rootOf([qbadge('1.23')]), { c, m } = count(400);
+    D.fitQuick(root, m); D.fitQuick(rootOf2(root, '1.24'), m); const a = c.n;
+    D.fit(root, m); const b = c.n; D.fitQuick(rootOf2(root, '1.25'), m);
+    ok('fit() (the widget changed size: its ResizeObserver) forgets what was kept: the next fitQuick measures again', b === a + 1 && c.n === b + 1); }
+  { const root = rootOf([qbadge('1.23')]), { c, m } = count(305);  // 300 wide in 305: it fits but without a tenth to spare
+    D.fitQuick(root, m); const a = c.n;
+    for (let i = 0; i < 5; i++) D.fitQuick(rootOf2(root, '1.2' + i), m);
+    ok('a badge that only just fits is measured every time (there is no room to spare, a wider number would not fit)', c.n === a + 5); }
+  { const b = qbadge('123.45'), root = rootOf([b]), { c, m } = count(200);
+    D.fitQuick(root, m); const a = c.n;
+    ok('a badge that is too wide shrinks as before (fitQuick measures the same as fit)', 300 * emOf(b) / 0.95 <= 200.5 && emOf(b) < 0.7);
+    for (let i = 0; i < 3; i++) D.fitQuick(rootOf2(root, '123.4' + i), m);
+    ok('...and one that needed shrinking is measured every time: it is only skipped when it fitted with room to spare', c.n >= a + 3); }
+  { // a badge that is too TALL shrinks, and is then narrow enough to have room to spare: that is no reason to skip it next time (the next badge is a new one, with the full text size again)
+    const tall = b => { const em = emOf(b); return { boxW: 400, boxH: 10, w: 300 * em / 0.95, h: 20 * em / 0.95, em }; };
+    const root = rootOf([]), c = { n: 0 }, m = b => { c.n++; return tall(b); };
+    let sizes = [];
+    for (let i = 0; i < 6; i++) { const b = qbadge('1.2' + i); root.querySelectorAll = () => [b]; D.fitQuick(root, m); sizes.push(emOf(b)); }
+    ok('a badge that was made smaller to fit (here by its height) is measured every time, and every new badge comes out small again', c.n >= 6 && sizes.every(x => x < 0.5)); }
+  { // a property check: whatever the sequence of texts and widths, a badge that comes out of fitQuick never sticks out by more than a hair, as long as the room is the same as at the last measure
+    let bad = 0, seed = 7; const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+    for (let t = 0; t < 300; t++) {
+      const room = 100 + Math.floor(rnd() * 500), root = rootOf([]), texts = ['0.45', '-0.45', '▲ +10.45', '▼ -0.4', '12.34'];
+      for (let i = 0; i < 80; i++) { const b = qbadge(texts[Math.floor(rnd() * texts.length)]); root.querySelectorAll = () => [b]; D.fitQuick(root, model(room)); if (300 * emOf(b) / 0.95 > room + 0.5) bad++; }
+    }
+    ok('300 runs of 80 updates in rooms of 100 to 600 px: a badge never sticks out of its room', bad === 0, bad); }
+  ok('fitQuick copes with nothing to fit, or something that is no canvas', (() => { try { D.fitQuick(null); D.fitQuick(undefined); D.fitQuick({}); D.fitQuick(rootOf([null, {}, { style: {} }]), model(10)); return true; } catch (e) { return false; } })());
+  ok('a fake without textContent or getAttribute (an older stand-in) is still handled', (() => { try { const b = badge(''); D.fitQuick(rootOf([b]), model(200)); D.fitQuick(rootOf([b]), model(200)); return true; } catch (e) { return false; } })());
+
   const canvas = src('canvas.js'), editor = src('editor.js'), live = src('liveview.js'), css = src('styles.css');
-  ok('the live race page fits the badges after it has drawn a widget with one, and again when the widget changes size (the window, a layout of another size)', /n\.val\.innerHTML = out\.html;[\s\S]{0,900}?out\.html\.includes\('dlt-badge'\)[^\n]*Delta\.fit\(n\.val\)/.test(canvas) && /ResizeObserver[^\n]*Delta\.isDelta\(w\.type\)[^\n]*Delta\.fit\(val\)/.test(canvas));
+  ok('the live race page fits the badges after it has drawn a widget with one, and again when the widget changes size (the window, a layout of another size)', /n\.val\.innerHTML = out\.html;[\s\S]{0,900}?out\.html\.includes\('dlt-badge'\)[^\n]*\(Delta\.fitQuick \|\| Delta\.fit\)\(n\.val\)/.test(canvas) && /ResizeObserver[^\n]*Delta\.isDelta\(w\.type\)[^\n]*Delta\.fit\(val\)/.test(canvas));
   ok('the layout editor fits them every time it draws the canvas, so a widget that is dragged to another size keeps its text inside the badge; the live view with row designs does too', /WxW\.fitAll\(\$\('canvas'\)\)[^\n]*\n[^\n]*Delta\.fit\(\$\('canvas'\)\)/.test(editor) && /Delta\.fit\(\$\('lv-board'\)\)/.test(live));
   ok('the fit puts the text in no wrapping and keeps the badge itself as it was: the stylesheet still says nowrap, and the markup has no new parts', /\.dlt-badge\{[^}]*white-space:nowrap/.test(css) && D.wrap('<b>1</b>', { ms: -45 }, { direction: 'column' }).includes('<span class="dlt-badge dlt-fast"') && !/dlt-fit|data-fit/.test(D.wrap('<b>1</b>', { ms: -45 }, { direction: 'column' })));
 }

@@ -67,12 +67,21 @@ const PerfUI = (() => {
     return stop;
   }
 
+  // the look of the page that decides how heavy it is to draw (the depth, and since 1.60.3 the widgets on their own layers): the report says it, so a copied report needs no explanation
+  function lookOf() {
+    try {
+      const S = typeof state !== 'undefined' && state ? state.settings : null;
+      if (!S || typeof Depth === 'undefined') return null;
+      const lvl = Depth.levelOf(S.depth), name = String((Depth.LEVELS.find(l => l[0] === lvl) || [0, ''])[1]).replace(/ \(.*\)$/, '');
+      return { depth: name + (lvl ? ` (${lvl})` : ''), layers: Depth.layersOn(S) };
+    } catch (e) { return null; }
+  }
   // the report in a box (App Settings > General > Performance): out is the element it is written to, copy the button, msg where it says "Copied."
   // race: what the race screen tells about itself (PerfUI.race, set by race.js); the version comes from the core of the app
   function panel(o) {
     const out = o.out; if (!out) return () => {};
     let unwatch = null, busy = false, gone = false, last = '';
-    const make = (r, main) => Perf.report(r, main, { when: new Date().toLocaleString(), screen: typeof window !== 'undefined' ? { w: window.innerWidth, h: window.innerHeight, dpr: window.devicePixelRatio } : null, race: PerfUI.race ? PerfUI.race() : null });
+    const make = (r, main) => Perf.report(r, main, { when: new Date().toLocaleString(), screen: typeof window !== 'undefined' ? { w: window.innerWidth, h: window.innerHeight, dpr: window.devicePixelRatio } : null, look: lookOf(), race: PerfUI.race ? PerfUI.race() : null });
     const show = async () => {
       if (gone || busy) return;
       if (out.isConnected === false) return stop();

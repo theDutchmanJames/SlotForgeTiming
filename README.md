@@ -2986,3 +2986,25 @@ Good to know:
 - Pictures smaller than 2000 characters are not kept, and at most 16 pictures per kind of widget and 128 million characters are kept; beyond that the oldest are made again when they are asked for.
 - Still **not explained**: the lag with only a fuel bar and number (my test setup does not show it; it may be the last straw on an update that was already 80 to 89% of the time), the core of the app that stalled for 1.4 s several times while you clicked through the app before the race, and the 777 ms stall when the Live Race window is closed.
 - Tested: `tests/picmemo.test.js` (39 checks: the helper and its limits, and every kind of picture widget: another picture, frame, flip, colour, number of lights or words gives another text), `tests/quiet.test.js` (the part-by-part compare and a forced redraw) and `tests/perf.test.js` (the notes and the wording of the report). Besides that the code was broken on purpose 42 times to see whether the tests notice: all but one did, and that one (`==` instead of `===`) cannot change the result. Everything was measured and tested in Chromium and in test stand-ins: **not on the Pi, not in the Electron window, not on Windows**.
+
+## What to try (1.60.3): The changing text has a layer of its own
+
+For the lag on the Pi when two cars refuel. Your Depth Flat test showed what is left: with Flat the race ran at a steady 60 frames a second (0 slow frames in 10 seconds, an update of 4.9 ms); with Soft lift it had 63 slow frames in 10 seconds and 29 to 53 frames a second. So the code of the app is no longer the problem, the graphics chip is: the whole race screen is one layer, and when a number changes, the area around it (and the shadows of the widgets next to it) is drawn again.
+
+What changed (the race screen looks the same):
+- **The changing text of each widget is a layer of its own** on the race screen, the Live Race tab and a phone. A number that changes only draws that number. Not in the Layout Editor.
+- **A tickbox** in App Settings > General > Performance: **Draw the changing text of each widget on its own layer**. It is on to begin with. Switch it off to compare, or if the text looks less sharp.
+- **The Lap Time Delta** is measured less often (the badge fits with room to spare, so it is not measured at every update, only when its text changes shape, when the widget changes size, and every 30 updates).
+- **The report has a new line, Look:** with your Depth and whether the layers are on, so I can read a copied report without asking.
+- A slow frame of over 2 seconds (a hidden window) no longer counts as a slow frame in the report.
+
+How to try it:
+1. Put **Depth** back to **Soft lift** (Look and feel), with the new tickbox on. Race with both cars refuelling, copy the report while they fill up, and look at **Frames** and **Slow frames** (1.60.2: 63 in 10 seconds, 121 ms on average; Depth Flat: 0).
+2. If you like, copy a second report with the tickbox **off** (same race, same Depth), so we can see how much the layers do on the Pi itself. The **Look:** line says which one is which.
+3. On Windows, look at small text such as the lap times: on some computers it can look a little softer with the layers (grey instead of coloured edges). If you see it, tell me which computer and switch the tickbox off there.
+
+Good to know:
+- In my test setup (an emulated graphics chip, 58 widgets at 125%, two cars refuelling) the graphics work went down by 78% and the average frame from 124 to 31 ms. That is not the Pi, so your report decides.
+- The layers cost a few MB of graphics memory.
+- **Still not done:** when you change a setting, the core of the app stalls for 1.4 to 1.5 seconds, because the whole database (the pictures too) is written at once. That explains the old unexplained stalls; it is for a later version. Pi Performance Mode (1.61.0) waits for your go.
+- Tested: new checks in `tests/depth.test.js` (the tickbox and its saving, the style rule, the order at the start), `tests/delta.test.js` (when the badge is measured and when not, and that it never sticks out), `tests/perf.test.js` and `tests/perfscreen.test.js` (the Look line, the slow frames over 2 seconds) and `tests/help.test.js`. The code was broken on purpose 45 times: all caught.

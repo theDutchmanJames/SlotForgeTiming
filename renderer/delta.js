@@ -190,22 +190,39 @@
     const t = r.getBoundingClientRect(), cs = getComputedStyle(b), px = k => parseFloat(cs[k]) || 0, up = b.parentNode ? parseFloat(getComputedStyle(b.parentNode).fontSize) || 0 : 0;
     return { boxW: b.clientWidth, boxH: b.clientHeight, w: t.width + px('paddingLeft') + px('paddingRight'), h: px('fontSize') * 1.1 + px('paddingTop') + px('paddingBottom'), em: up > 0 ? px('fontSize') / up : 0 };
   };
+  // 1.60.3: a Delta Timer on the race screen is drawn again at every update (the difference changes all the time) and every time the badge was measured, which makes the page lay itself out
+  // again: about 1 to 1.5 ms for each Delta Timer on a Raspberry Pi, a third of the whole update. A badge that fitted with room to spare (SLACK of its width) is not measured again as long as
+  // its text has the same shape (the same signs and the same number of figures: the figures of a widget are as wide as each other) and its widget has not changed size; every RECHECK
+  // updates it is measured anyway. The widget's own ResizeObserver (canvas.js) calls fit(), which forgets what was fitted.
+  const SLACK = 0.1, RECHECK = 30;
+  const shapeOf = b => `${String(b.textContent).replace(/[0-9]/g, '0')}|${b.className}|${b.getAttribute ? b.getAttribute('style') || '' : ''}`;
   // the badge's own size from the markup (the size setting) is kept in data-fit and put back before every fit, so a widget that gets bigger again gets its full text back
-  function fitBadge(b, measure) {
+  // memo, i: where the last fit of this badge was kept (fitQuick), or nothing: measure
+  function fitBadge(b, measure, memo, i) {
     if (!b || !b.style || !b.dataset) return;
+    const key = memo ? shapeOf(b) : null, was = memo ? memo[i] : null;
+    if (was && was.key === key && ++was.n < RECHECK) return; // (the same shape, with room to spare: it fits as it is)
     if (b.dataset.fit === undefined) b.dataset.fit = b.style.getPropertyValue('font-size');
     if (b.dataset.fit) b.style.setProperty('font-size', b.dataset.fit); else b.style.removeProperty('font-size');
-    let all = 1;
-    for (let i = 0; i < 3 && all > FIT_MIN; i++) { // (more than once: the size of the badge itself follows its text a little)
+    let all = 1, roomy = false;
+    for (let k = 0; k < 3 && all > FIT_MIN; k++) { // (more than once: the size of the badge itself follows its text a little)
       const m = (measure || measureBadge)(b), f = fitFactor(m);
-      if (f >= 1 || !(m.em > 0)) break;
+      if (f >= 1 || !(m.em > 0)) { roomy = f >= 1 && k === 0 && m.w <= m.boxW * (1 - SLACK); break; }
       all *= f; b.style.setProperty('font-size', `${(m.em * f).toFixed(4)}em`, 'important');
     }
+    if (memo) memo[i] = roomy ? { key, n: 0 } : null;
   }
   // every badge in root (a value box, a canvas, a leaderboard)
   function fit(root, measure) {
     if (!root || !root.querySelectorAll) return;
+    root._dfit = null; // (measured now: what was kept about an earlier fit may be out of date, the widget or the window changed size)
     Array.from(root.querySelectorAll('.dlt-badge')).forEach(b => fitBadge(b, measure));
+  }
+  // the badge of a widget on the race screen: as fit(), but a badge with room to spare is only measured now and then (see above)
+  function fitQuick(root, measure) {
+    if (!root || !root.querySelectorAll) return;
+    const memo = root._dfit || (root._dfit = []);
+    Array.from(root.querySelectorAll('.dlt-badge')).forEach((b, i) => fitBadge(b, measure, memo, i));
   }
 
   // ---- the settings of a widget in the layout editor ----
@@ -240,7 +257,7 @@
     return out;
   }
 
-  const api = { KINDS, TARGET_WORDS, DEFAULTS, STAT, WHY, isDelta, baseOf, compute, leftOf, leftShowsOf, format, badge, wrap, sample, optionsFor, onColor, colorOf, decimalsOf, measureOf, compareOf, arrowOf, styleOf, layoutOf, scaleOf, outlineOf, boldOf, italicOf, sizeStyle, fitFactor, fit, ARROWS };
+  const api = { KINDS, TARGET_WORDS, DEFAULTS, STAT, WHY, isDelta, baseOf, compute, leftOf, leftShowsOf, format, badge, wrap, sample, optionsFor, onColor, colorOf, decimalsOf, measureOf, compareOf, arrowOf, styleOf, layoutOf, scaleOf, outlineOf, boldOf, italicOf, sizeStyle, fitFactor, fit, fitQuick, SLACK, RECHECK, ARROWS };
   root.Delta = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

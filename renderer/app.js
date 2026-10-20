@@ -167,7 +167,9 @@ async function renderGeneralSettings(box) {
     + sf('pictures', 'Pictures', (Picture.LEVELS.find(l => l[0] === pq) || [0, ''])[1], `<div class="field" style="max-width:480px"><label for="picq">Quality of the pictures you upload (drivers, slotcars, widgets, picture sets, logo, header)</label>
       <select id="picq">${Picture.LEVELS.map(([k, t]) => `<option value="${k}"${k === pq ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>
       <span class="muted hint">Original keeps a picture exactly as you uploaded it, with its transparency (only a picture over 4000 px or 12 MB is made smaller). Pictures are saved inside the database file, so many large originals make the database bigger and the app slower to open, especially on a small computer such as a Raspberry Pi: choose High or Standard then. This applies to pictures you upload from now on; pictures that are already saved stay as they are.</span></div>`)
-    + sf('performance', 'Performance', 'how the computer and the app are doing', `<div class="field" style="max-width:640px"><label class="inline"><input id="perfswitch" type="checkbox"${S.perfLine ? ' checked' : ''}> Show the Performance line on the race screen</label>
+    + sf('performance', 'Performance', 'how the computer and the app are doing', `<div class="field" style="max-width:640px"><label class="inline"><input id="layerswitch" type="checkbox"${Depth.layersOn(S) ? ' checked' : ''}> Draw the changing text of each widget on its own layer</label>
+      <span class="muted hint">Makes the race screen much lighter for the graphics card, most of all on a slow computer such as a Raspberry Pi: when a number changes, only that number is drawn again, not the whole page with every shadow. The look stays the same, but text can be a little softer on some Windows computers: switch this off if you see that. It applies to the race screen and the Live Race pages.</span></div>
+      <div class="field" style="max-width:640px"><label class="inline"><input id="perfswitch" type="checkbox"${S.perfLine ? ' checked' : ''}> Show the Performance line on the race screen</label>
       <span class="muted hint">A small line under the buttons of the race screen: how many frames a second the window draws, how long a screen update takes, the CPU the app uses (window, graphics and the core of the app) and how long the core was stuck. Nothing is measured while it is off.</span></div>
       <div class="field"><label for="perfout">Report (updated every second while this folder is open)</label>
       <pre id="perfout" class="perfout" tabindex="0">measuring...</pre>
@@ -181,6 +183,7 @@ async function renderGeneralSettings(box) {
   $('depthlevel').onchange = async ev => { state.settings = await api.setSettings({ depth: Depth.levelOf(ev.target.value) }); applyDepth(); renderSettings(); };
   $('speedunit').onchange = async ev => { state.settings = await api.setSettings({ speedUnit: Speed.unitOf({ speedUnit: ev.target.value }) }); renderSettings(); };
   $('distunit').onchange = async ev => { state.settings = await api.setSettings({ distanceUnit: Speed.distUnitOf({ distanceUnit: ev.target.value }) }); renderSettings(); };
+  $('layerswitch').onchange = async ev => { state.settings = await api.setSettings({ widgetLayers: !!ev.target.checked }); applyLayers(); }; // (the page is not drawn again: the style sheet does the rest)
   $('perfswitch').onchange = async ev => { state.settings = await api.setSettings({ perfLine: !!ev.target.checked }); }; // (the page is not drawn again: the report goes on)
   if (typeof PerfUI !== 'undefined') PerfUI.panel({ out: $('perfout'), copy: $('perfcopy'), msg: $('perfmsg') });
   $('picq').onchange = async ev => { state.settings = await api.setSettings({ pictureQuality: Picture.levelOf(ev.target.value) }); renderSettings(); };
@@ -387,7 +390,7 @@ function bootFailed(e) {
 (async () => {
   state.schema = await api.schema();
   state.settings = await api.getSettings();
-  applyTheme(); applyDepth(); applyName();
+  applyTheme(); applyDepth(); applyLayers(); applyName();
   if (typeof location !== 'undefined' && location.hash === '#live') { // the second-screen window: only the Live Race pages
     document.body.classList.add('lv-window'); document.querySelector('header').hidden = true;
     document.title = (state.settings.appName || DEFAULT_NAME) + ' – Live Race'; if (api.setZoom) api.setZoom(1); return LiveView.mount(view, { second: true }); // (the second screen keeps its own size)

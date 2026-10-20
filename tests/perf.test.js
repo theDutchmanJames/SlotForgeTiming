@@ -106,6 +106,24 @@ const R0 = { fps: 58, slowest: 41, updates: 10, updateAvg: 0.62, updateMax: 3, u
   ok('with no race running the screen updates say so, and the writes left out are a dash', idle.includes('Screen updates: none (no race running)') && idle.includes('left out because the value was the same: –'));
   ok('the version comes from the core of the app when the window does not give it', Perf.report(R0, m, {}).startsWith('SlotForge Timing 1.60.0: performance report')); }
 
+// ---- 1.60.3: the look of the page in the report (the depth and the layers of the widgets), and the slow frames of a hidden window
+{ const m = Perf.cleanMain({ metrics: [{ type: 'Tab', cpu: 14.2, memMB: 300 }] });
+  const lines = x => Perf.report(R0, m, x).split('\n'), at = (L, re) => L.findIndex(l => re.test(l));
+  const soft = lines({ race: { name: 'Club race', widgets: 41, lanes: 4 }, look: { depth: 'Soft lift (35)', layers: true } });
+  ok('the report has a Look line: the depth, and whether the changing text of the widgets is on layers of their own', soft.includes('Look: depth Soft lift (35), widgets on their own layers: on'));
+  ok('...it comes right before the race screen line (the two are read together)', at(soft, /^Look:/) >= 0 && at(soft, /^Look:/) + 1 === at(soft, /^Race screen:/));
+  ok('...and with the tickbox off it says off, with Flat it says Flat', lines({ look: { depth: 'Flat', layers: false } }).includes('Look: depth Flat, widgets on their own layers: off'));
+  ok('...a window that does not know its look (an older page, an error) gives no Look line at all', !lines({}).some(l => /^Look:/.test(l)) && !lines({ look: null }).some(l => /^Look:/.test(l)));
+  ok('...a depth without a name is "unknown", and a long or odd one is cut (it is text of the page)', lines({ look: { depth: '', layers: true } }).includes('Look: depth unknown, widgets on their own layers: on') && lines({ look: { depth: 'x'.repeat(500), layers: true } }).find(l => /^Look:/.test(l)).length < 120);
+  ok('...a report without figures (the core did not answer) still has it', Perf.report(null, null, { look: { depth: 'Soft lift (35)', layers: true } }).includes('Look: depth Soft lift (35)')); }
+{ const M = Perf.createMonitor({ now: () => 0, wall: () => 5000 }); M.newRace(1000, 7000);
+  M.loaf({ dur: 150, script: 1, render: 1, forced: 0 }, 1700); M.loaf({ dur: 5000, script: 0, render: 0, forced: 0 }, 1800); M.loaf({ dur: 2001, script: 0, render: 0, forced: 0 }, 1850); M.loaf({ dur: 2000, script: 0, render: 0, forced: 0 }, 1900);
+  const s = M.snapshot(2000);
+  ok('a slow frame over two seconds (the window was hidden or the computer slept) is not counted: not in the slow frames, and not the longest of the race', s.loaf && s.loaf.count === 2 && s.loaf.max === 2000 && s.race.loaf === 2000);
+  ok('...the same as with the frames: 2000 ms is still a slow frame, 2001 is not', s.loaf.count === 2); }
+{ const M = Perf.createMonitor({ now: () => 0, wall: () => 5000 }); M.loaf({ dur: 90000, script: 0, render: 0, forced: 0 }, 100);
+  ok('...and a monitor that only saw such a frame has seen no slow frame at all', M.snapshot(200).loaf === null); }
+
 
 // ---- the edges (found by breaking the figures on purpose) ----
 { const clean = Perf.cleanMain, has = (r, m, re) => Perf.notes(r, m).some(x => re.test(x));

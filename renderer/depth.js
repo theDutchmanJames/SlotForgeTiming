@@ -12,7 +12,10 @@
     return LEVELS.some(l => l[0] === n) ? n : DEFAULT;
   };
   const factorOf = v => levelOf(v) / 100; // (what the style sheet gets: 0 is flat, 0.35 the standard)
-  const api = { LEVELS, DEFAULT, levelOf, factorOf };
+  // 1.60.3: the changing text of every widget on the race screens goes on a layer of its own (styles.css, "Widgets on their own layers"): on, unless it was switched off
+  // (App Settings > General > Performance). Only an explicit false switches it off, so an older database and a phone that knows nothing of it get the new look.
+  const layersOn = s => !(s && typeof s === 'object' && s.widgetLayers === false);
+  const api = { LEVELS, DEFAULT, levelOf, factorOf, layersOn };
   root.Depth = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

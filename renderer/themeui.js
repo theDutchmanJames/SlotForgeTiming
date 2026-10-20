@@ -13,6 +13,11 @@ function applyDepth() {
   document.documentElement.style.setProperty('--depth', String(Depth.factorOf(state.settings && state.settings.depth)));
 }
 
+// widgets on their own layers (App Settings > General > Performance): the style sheet looks at this one word on the page
+function applyLayers() {
+  document.documentElement.dataset.layers = Depth.layersOn(state.settings) ? 'on' : 'off';
+}
+
 // the colours of a ready-made theme, read from its tile on this screen (the tile carries that theme), so styles.css stays the only place they are written down
 function themePalette(key) {
   const cs = getComputedStyle(document.querySelector(`[data-pick="${key}"]`));

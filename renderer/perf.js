@@ -43,7 +43,7 @@
         const b = pile(t), a = b.widgets[type] || (b.widgets[type] = [0, 0, 0, 0]); a[0] += drawMs; a[1] += writeMs; a[2] += fitMs; a[3]++;
       },
       // a long animation frame (a frame that took over 50 ms; see loafFrom)
-      loaf(x, t = clock()) { begin(t); if (x && isNum(x.dur)) { st.loafs.push([t, x]); peak('loaf', x.dur); } prune(st.loafs, t, WINDOW); },
+      loaf(x, t = clock()) { begin(t); if (x && isNum(x.dur) && x.dur <= 2000) { st.loafs.push([t, x]); peak('loaf', x.dur); } prune(st.loafs, t, WINDOW); }, // (as with a frame: over two seconds is a window that was hidden, not a slow frame; 1.60.3)
       // something happened that is worth knowing when the figures are read (a race started, a window was opened): it gets the clock time
       mark(txt, wall = wallNow()) { const s = text(txt, 80); if (!s) return; st.marks.push({ at: wall, text: s }); while (st.marks.length > MARKS_MAX) st.marks.shift(); },
       // a race starts: the worst figures and the rows start again (they stay after the race, so a report copied afterwards still has them)
@@ -247,7 +247,7 @@
   }
 
   // ---- the report (to copy and send) ----
-  // extra: what only the window knows: { version, when, screen: {w, h, dpr}, race: {name, widgets, lanes} | null, speedNote }
+  // extra: what only the window knows: { version, when, screen: {w, h, dpr}, look: {depth, layers} | null, race: {name, widgets, lanes} | null, speedNote }
   function report(r, m, extra = {}) {
     const L = [];
     const ver = text(extra.version, 20) || (m && m.versions.app);
@@ -264,6 +264,7 @@
       if (m.switches.length) L.push('Started with: ' + m.switches.join(' '));
     } else L.push('The core of the app did not answer (a page on a phone, or an older version): only the window figures follow.');
     if (extra.screen) L.push(`Window: ${f0(extra.screen.w)} x ${f0(extra.screen.h)}${extra.screen.dpr && extra.screen.dpr !== 1 ? ' at ' + Math.round(extra.screen.dpr * 100) + '%' : ''}`);
+    if (extra.look) L.push(`Look: depth ${text(extra.look.depth, 40) || 'unknown'}, widgets on their own layers: ${extra.look.layers ? 'on' : 'off'}`);
     if (extra.race) L.push(`Race screen: ${text(extra.race.name, 60) || 'open'}, ${f0(extra.race.widgets)} widgets, ${f0(extra.race.lanes)} lanes`); else L.push('Race screen: not open');
     if (r) {
       L.push(`Frames: ${r.fps === null ? 'measuring' : r.fps + ' a second'}, slowest frame ${r.slowest === null ? '–' : r.slowest + ' ms'} (last ${f0(Math.min(10, r.seconds))} seconds)`);

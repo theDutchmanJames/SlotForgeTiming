@@ -164,6 +164,20 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
     const t = out.textContent;
     say('the report tells the window (its size) and the race screen that is open (the name, the widgets, the lanes)', t.includes('Window: 1280 x 720') && /Race screen: Perf race, \d+ widgets, \d+ lanes/.test(t)); }
 
+  // 1.60.3: the look of the page (the depth and the layers of the widgets) is in the report, as the settings have it at that moment
+  { const look = async st => { run('state.settings = ' + st); const out = place(mk()), pn = P().panel({ out }); await wait(150); pn(); return out.textContent; };
+    let t = await look("{ theme: 'dark' }");
+    say('the report has the look of the page: with nothing saved the standard depth (Soft lift) and the layers on', t.includes('Look: depth Soft lift (35), widgets on their own layers: on'));
+    t = await look("{ theme: 'dark', depth: 0, widgetLayers: false }");
+    say('...with Flat and the tickbox taken away it says Flat and off', t.includes('Look: depth Flat, widgets on their own layers: off'));
+    t = await look("{ theme: 'dark', depth: 75, widgetLayers: true }");
+    say('...Thick card with the layers on', t.includes('Look: depth Thick card (75), widgets on their own layers: on'));
+    t = await look("{ theme: 'dark', depth: 'banana' }");
+    say('...a depth that is not one of the levels is the standard, as the page itself takes it', t.includes('Look: depth Soft lift (35)'));
+    t = await look('null');
+    say('...a page with no settings (yet) gives no Look line, and no error', !t.includes('Look:') && t.includes('Window:'));
+    run("state.settings = { theme: 'dark' }"); }
+
   { run("state.settings = { theme: 'dark', perfLine: true }"); fresh(); await openRace(); place(E('perfline')); await wait(50);
     say('a race screen with the switch on has its line (one watcher)', P().watching() === 1);
     const n0 = iv.size; run('live.shown()'); run('live.shown()'); run('live.shown()');
