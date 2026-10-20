@@ -937,16 +937,77 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .hm-chip[data-state="on"] i{background:#3ecf8e;box-shadow:0 0 6px #3ecf8e}
 .hm-chip[data-state="warn"] i{background:#e5484d;box-shadow:0 0 6px #e5484d}
 .hwwarn{color:#e5484d}
-.hm-start .lane{padding:6px 10px 6px 0;border:1px solid var(--line);border-radius:8px;background:var(--bg);overflow:hidden}
-.hm-start .lane>strong{align-self:stretch;display:flex;align-items:center;padding:0 10px;border-left:6px solid var(--c,var(--line));background:color-mix(in srgb,var(--c,var(--line)) 20%,var(--bg));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hm-start .lane{grid-template-columns:134px 1fr 1fr auto}.hm-start .lane.rot{grid-template-columns:174px 1fr 1fr auto auto}.hm-start .lane.threesel{grid-template-columns:134px 1fr 1fr 1fr auto}
-.hm-start .lane .teamline{grid-column:1/-1;padding-left:10px}
-.hm-go{display:flex;align-items:center;gap:14px;margin-top:14px;flex-wrap:wrap}
+/* ---- Start a race (1.58.0): the same language as the championship card. Design: docs/ui-reference/start-race.
+   A 3px edge in the accent colour, a tile with a picture, a small caps label and the race setup as the title, the facts as pills, dark inset rows for the lanes (the lane colour, a number, a tick when filled in), one pill that says whether the race can start. ---- */
+.hm-start{--hs-ok:#3ecf8e;--hs-warn:#ffb84d;display:flex;flex-direction:column;gap:12px;padding:16px 18px 18px;border-top:3px solid var(--accent);border-radius:10px}
+[data-theme="light"] .hm-start,[data-theme="ocean"] .hm-start,[data-tone="light"] .hm-start{--hs-ok:#1e8a4c;--hs-warn:#9a6a00}
+.hm-start>*{margin:0}
+.hs-vh{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.hs-head{display:flex;gap:14px;align-items:flex-start}
+.hs-tile{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--accent) 20%,var(--panel));color:var(--accent);flex:none}
+.hs-ht{min-width:0;flex:1}
+.hs-label{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--accent)}
+.hs-label.hs-muted{color:var(--muted)}
+.hs-title{position:relative;display:inline-flex;align-items:center;margin:1px 0 7px;max-width:100%}
+.hs-title select{appearance:none;-webkit-appearance:none;font:inherit;font-size:21px;font-weight:700;line-height:1.25;color:var(--ink);background:transparent;border:0;border-bottom:1px dashed var(--line);border-radius:0;padding:1px 30px 2px 0;cursor:pointer;min-width:0;max-width:100%;text-overflow:ellipsis}
+.hs-title:hover select{border-bottom-color:var(--muted)}
+.hs-title .hs-chev{right:4px}
+.hs-chips{display:flex;flex-wrap:wrap;gap:6px}
+.hs-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 11px;border-radius:999px;background:var(--bg);border:1px solid var(--line);font-size:13px;color:var(--muted);line-height:1.4}
+.hs-chip b{color:var(--ink);font-weight:700}
+.hs-chip.hs-type{background:color-mix(in srgb,var(--accent) 14%,var(--bg));border-color:color-mix(in srgb,var(--accent) 45%,var(--line));color:var(--ink)}
+.hs-chip svg{flex:none}
+/* a choice with a little picture in front: the select keeps all its own behaviour, the arrow and the picture are only drawn on it */
+.hs-sel{position:relative;display:block;min-width:0}
+.hs-sel select{appearance:none;-webkit-appearance:none;width:100%;min-width:0;font:inherit;font-size:15px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 32px 7px 38px;text-overflow:ellipsis;cursor:pointer}
+.hs-sel.hs-noico select{padding-left:12px}
+.hs-sel:hover select{border-color:var(--muted)}
+.hs-sel select:disabled{cursor:default;opacity:.6}
+.hs-sico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);display:flex;pointer-events:none}
+.hs-chev{position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--muted);display:flex}
+/* the championship: one quiet row (the pink card opens under it) */
+.hs-champ{display:flex;align-items:center;gap:10px;padding:7px 8px;background:var(--bg);border:1px solid var(--line);border-left:4px solid var(--c-ch,#ec5f9a);border-radius:8px;--c-ch:#ec5f9a}
+[data-theme="light"] .hs-champ,[data-theme="ocean"] .hs-champ{--c-ch:#b8326f}
+.hs-ctile{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--c-ch) 20%,var(--panel));color:var(--c-ch);flex:none}
+.hs-clabel{font-weight:600;font-size:14px;white-space:nowrap}
+.hs-grow2{flex:1;min-width:0}
+.hs-sub{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font-size:14px;margin-bottom:-4px}
+.hm-start>.hint2{padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:14px}
+.hm-start>.hint2 select{margin:0 4px}
+/* the rows: a number in the colour of the lane, the choices, a tick. Something missing: amber, and the row says what */
+.hs-lanes{display:flex;flex-direction:column;gap:8px}
+.hm-start .lane{display:grid;grid-template-columns:32px minmax(0,1fr) auto;grid-template-areas:"n f t" ". w w";column-gap:10px;row-gap:0;align-items:center;margin:0;padding:9px 12px 9px 9px;border:1px solid color-mix(in srgb,var(--c,var(--line)) 38%,var(--line));border-radius:10px;background:color-mix(in srgb,var(--c,var(--line)) 7%,var(--bg))}
+.hm-start .lane.need{border-color:color-mix(in srgb,var(--hs-warn) 60%,var(--line));background:color-mix(in srgb,var(--hs-warn) 7%,var(--bg))}
+.hs-num{grid-area:n;position:relative;width:32px;height:32px;border-radius:50%;background:var(--c,var(--line));color:var(--on,#fff);font-weight:800;font-size:15px;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 0 0 3px color-mix(in srgb,var(--c,var(--line)) 22%,transparent)}
+.hs-fields{grid-area:f;min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.hs-tick{grid-area:t;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center}
+.hs-tick.ok{background:color-mix(in srgb,var(--hs-ok) 25%,var(--panel));color:var(--hs-ok)}
+.hs-tick.warn{background:color-mix(in srgb,var(--hs-warn) 22%,var(--panel));color:var(--hs-warn)}
+.hs-more{grid-area:m;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.hm-start .lane:not(:has(>.hs-more)){grid-template-areas:"n f t" ". w w"}
+.hm-start .lane:has(>.hs-more){grid-template-columns:32px minmax(0,1fr) auto auto;grid-template-areas:"n f m t" ". w w w"}
+.hs-rname{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm-start .lane.rot:has(>.hs-more){grid-template-columns:32px minmax(0,1fr) 172px 24px}
+.hs-tick.off{background:none}
+.hm-start .lane:is(.threesel,.rot) .hs-sel select{font-size:14px;padding-right:26px}
+.hm-start .lane:is(.threesel,.rot) .hs-chev{right:7px}
+.hs-note{grid-area:w;display:flex;flex-wrap:wrap;gap:2px 12px;margin-top:6px;font-size:13px}
+.hs-why{color:var(--hs-warn);font-weight:600}
+.hm-start .issues{list-style:none;display:flex;flex-direction:column;gap:4px;padding:9px 12px;border:1px solid color-mix(in srgb,var(--hs-warn) 55%,var(--line));border-radius:8px;background:color-mix(in srgb,var(--hs-warn) 8%,var(--bg));color:var(--hs-warn);font-weight:600;font-size:14px}
+.hm-start .lane .teamline{padding-left:0}
+/* the bottom: one pill that says whether the race can start, and Start */
+.hm-start>.hm-go{margin-top:auto}
+.hm-go{display:flex;align-items:center;gap:14px;padding-top:14px;border-top:1px solid var(--line);flex-wrap:wrap}
 .hm-grow{flex:1 1 0}
-.hm-lights{display:flex;gap:7px;flex-wrap:wrap}
-.hm-lights i{width:20px;height:20px;border-radius:50%;background:var(--line)}
-.hm-lights i.on{background:var(--c,var(--accent));box-shadow:0 0 8px color-mix(in srgb,var(--c,var(--accent)) 70%,transparent)}
+.hs-status{display:inline-flex;align-items:center;gap:10px;padding:6px 14px 6px 12px;border-radius:999px;background:var(--bg);border:1px solid var(--line);font-size:14px;font-weight:600}
+.hs-status.ok{border-color:color-mix(in srgb,var(--hs-ok) 50%,var(--line))}
+.hs-status.warn{border-color:color-mix(in srgb,var(--hs-warn) 55%,var(--line))}
+.hm-lights{display:inline-flex;gap:5px;flex-wrap:wrap}
+.hm-lights i{width:11px;height:11px;border-radius:50%;background:var(--line);display:block}
+.hm-lights i.on{background:var(--c,var(--accent));box-shadow:0 0 7px color-mix(in srgb,var(--c,var(--accent)) 75%,transparent)}
 .hm-ready{font-size:14px}
+.hm-start #start{display:inline-flex;align-items:center;gap:10px;font-size:18px;font-weight:700;padding:11px 28px 11px 22px;border-radius:10px;box-shadow:0 8px 20px color-mix(in srgb,var(--accent) 38%,transparent)}
+.hm-start #start[disabled]{opacity:.4;cursor:not-allowed;box-shadow:none;filter:grayscale(.4)}
 .btn.big{font-size:18px;padding:11px 30px}
 .hm-tag{float:right;font-size:12px;font-weight:400;color:var(--muted)}
 .hm-recrow{display:flex;gap:14px;align-items:center}
@@ -969,7 +1030,7 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .hm-cell:empty{display:none}
 .hm-cell>.card{height:100%;box-sizing:border-box}
 .hm-start{container-type:inline-size}
-@container (max-width:560px){.hm-start .lane,.hm-start .lane.rot,.hm-start .lane.threesel,.hm-start .lane.byteam{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.hm-start .lane>strong{grid-column:1/-1;padding:4px 10px}}
+@container (max-width:560px){.hm-start{padding:14px 14px 16px}.hm-start .lane:has(>.hs-more),.hm-start .lane.rot:has(>.hs-more){grid-template-columns:32px minmax(0,1fr) auto;grid-template-areas:"n f t" ". m m" ". w w"}.hs-more{margin-top:8px}.hs-champ{flex-wrap:wrap}.hs-title select{font-size:19px}.hm-go #start{width:100%;justify-content:center}}
 @media (max-width:960px){.hm-grid{grid-template-columns:minmax(0,1fr)!important}.hm-grid>*{grid-column:1!important;grid-row:auto!important}}
 .hm-customize-btn{position:absolute;top:14px;right:16px;z-index:1}
 .hm-customize{margin:0 0 16px}
@@ -1269,7 +1330,7 @@ p.chlead{margin:0 0 10px;font-size:15px}
 .champband .chswitch .btn{padding:4px 12px;min-height:0}
 .champband .chswitch .btn.on{background:var(--c-ch);border-color:var(--c-ch);color:var(--on-ch);font-weight:700}
 /* 1.56.1: the card of the championship sits inside Start a race, under the Championship choice, and only when a championship is chosen */
-.hm-start .champband{background:color-mix(in srgb,var(--c-ch) 7%,var(--bg));border:1px solid color-mix(in srgb,var(--c-ch) 50%,var(--line));border-top:3px solid var(--c-ch);border-radius:8px;padding:12px 14px;margin:2px 0 12px}
+.hm-start .champband{background:color-mix(in srgb,var(--c-ch) 7%,var(--bg));border:1px solid color-mix(in srgb,var(--c-ch) 50%,var(--line));border-top:3px solid var(--c-ch);border-radius:8px;padding:12px 14px;margin:0}
 .champband .chline{font-weight:600;line-height:1.35;flex:1 1 220px;min-width:0}
 .hm-start .champband .btn.chload{white-space:nowrap;flex:none}
 .hm-start .champband .row{align-items:center}

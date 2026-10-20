@@ -60,3 +60,19 @@ No PNG pictures yet, only the editable boards in `championship/source/` (open th
 | `Standings.dc.html` | The pool **Championships** in Results and Records: drivers and teams, round by round | release 2 (not built) |
 
 The decisions behind these boards are in the roadmap (Project doc `claude/roadmap-and-decisions.md`, entry "Championship").
+
+## start-race/ (20 Oct 2026, the Start a race card on Home: option A built in 1.58.0, option B kept for later)
+
+Dutch asked for a look at the **Start a race** card and a small re-design in the spirit of the Championship card and these reference sets. The design was made on a Claude Design canvas (*Start a race redesign*: today, A lanes as rows, B a starting grid). He chose **A**. As for *depth*, the pictures here are **screenshots of the built app** (1.58.0, the real stylesheet in headless Chromium); the boards of the design are in `source/` (open the `*.dc.html` files on a Claude Design canvas; `canvas.json` has the layout, `start-race.css` is the stylesheet the boards link to).
+
+| Picture | What it shows |
+|---|---|
+| `1-start-race-dark-lane-needs-a-driver.png` | The card in the dark theme: the name of the race setup as the title, the pills (kind, laps, track, lanes), a ready lane with a green tick and a lane that says what it needs, "1 of 2 lanes is ready" and Start off |
+| `2-start-race-light-heat-teams.png` | The light theme, a heat race of teams: the rows with a team, a car and Remove, the heat plan under them |
+| `3-start-race-rotation.png` | A rotation: participants with their names and the Not here today tick |
+| `4-start-race-narrow-window.png` | A narrow window: the rows keep the number, the choices and the tick; the note goes under them |
+| `5-start-race-endurance.png` | An Endurance Race: every lane is a team with its starting driver |
+| `6-start-race-time-tokens.png` | A Time Token Session: nothing is needed to fill a lane, the button says Open the session |
+| `7-start-race-driver-twice.png` | A problem that is not about one row (a driver on two lanes): it stays in the list under the rows |
+
+Option **B (not built)**: the lanes as a starting grid (a card per lane, side by side) with the driver and the car under the lane number; `source/B-*.dc.html`. How it is made: `renderer/landing.js` (`rowHtml`, `chipsHtml`, `lightsHtml`) and the block "Start a race (1.58.0)" in `renderer/styles.css`; the colours are the ones of the lanes on the race screen and the accent, green and amber of the theme.

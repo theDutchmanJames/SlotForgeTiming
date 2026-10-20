@@ -469,7 +469,7 @@ const Rot = require(R + 'renderer/rotation.js');
 
   let h = await home();
   say('a race setup with a rotation: the Home tab plans the heats from it: 3 heats of 4 places, with their labels', h.includes('<h4>Heat plan</h4>') && hp(h) === 12 && h.includes('<span class="muted">A</span>') && h.includes('<span class="muted">C</span>') && h.includes('Rotation setup "Club night": 8 participants, 4 lanes, 3 heats.'));
-  say('...the participants are told apart by number and by the name the rotation gives them, and each has a Not here today tick', h.includes('Participant 1</strong>') === false && h.includes('Participant 1 · Alex') && h.includes('Participant 2 · Sam') && h.includes('Participant 3</strong>') && (h.match(/data-absent="/g) || []).length === 8 && h.includes('Not here today'));
+  say('...the participants are told apart by number and by the name the rotation gives them, and each has a Not here today tick', h.includes('Participant 1</span>') === false && h.includes('Participant 1 · Alex') && h.includes('Participant 2 · Sam') && h.includes('Participant 3</span>') && (h.match(/data-absent="/g) || []).length === 8 && h.includes('Not here today'));
   say('...it does not shuffle (no "Shuffle again"), does not add participants (no "Add participant"), and has no Remove buttons', !h.includes('id="reshuffle"') && !h.includes('id="addrow"') && !h.includes('data-remove='));
   say('...it says what the rotation means (Alex and the others race 2 heats, the rest 1: no advice about settings that are not used) and nothing is wrong', h.includes('do not race the same number of heats') && !h.includes('To avoid it') && !h.includes('<ul class="issues">'));
   say('...a button picks the drivers by the names of the rotation, because it has names', h.includes('id="rotnames"') && h.includes('Pick the drivers by name'));
@@ -487,7 +487,7 @@ const Rot = require(R + 'renderer/rotation.js');
   h = await home({ rotation: '' }, 2); say('a heat race that plans itself keeps two rows at least: with two rows there is no Remove button', !h.includes('data-remove='));
   h = await home({ rotation: '' }, 3); say('...with three each row can be removed', (h.match(/data-remove="/g) || []).length === 3);
   h = await home({}, 8, undefined, { ...rotRec(), names: [] });
-  say('a rotation without names has no button to pick drivers by name', !h.includes('id="rotnames"') && h.includes('Participant 1</strong>'));
+  say('a rotation without names has no button to pick drivers by name', !h.includes('id="rotnames"') && h.includes('Participant 1</span>'));
 
   // not here today
   h = await home(); h = await tick(1, true);

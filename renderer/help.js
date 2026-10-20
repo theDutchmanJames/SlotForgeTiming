@@ -30,7 +30,7 @@ const Help = (() => {
       { id: 'home', title: 'The Home tab', note: 'Pick a race and start it', body: `
         <ul>
           <li>Pick a <b>race setup</b>, then choose a <b>driver</b> and a <b>car</b> for every lane. In a heat-based race you add participants instead. A lane has the colour of its layout.</li>
-          <li>The start lights under the lanes light up as lanes get ready. What is still missing is listed above the button, so you can see why <b>Start race</b> is greyed out.</li>
+          <li>The start lights under the lanes light up as lanes get ready. A row says what it needs; the rest is above the button, so you know why <b>Start race</b> is greyed out.</li>
           <li>If a <b>qualifying</b> was driven on the same track, its winner picks their lane first.</li>
           <li>The band at the top shows the date and the track, and lights for the <b>Trackmate</b> or box, the network and the <b>audio set</b>.</li>
           <li>The cards: the <b>record to beat</b> on this track, the <b>last race</b>, <b>At a glance</b>, <b>Recent races</b> (click one to open its results), <b>Fastest laps this week</b>, <b>Records on all tracks</b>, <b>Top drivers</b>, <b>Personal bests</b> of the drivers in the lanes, <b>Rules of this race</b> and <b>Shortcuts</b>, <b>Car Mileage</b> (laps and distance per slot car) and <b>Service Due</b> (click a car to open it). Most come from saved races, not Time Token Sessions. <b>Weather</b>, <b>Tyres Available</b> and <b>Notes</b> are for show: you type them in <b>Customize</b>.</li>
@@ -247,7 +247,7 @@ const Help = (() => {
           <li>Make one in <b>Race Setup, Championships</b>: the <b>rounds</b> (a name, a track and a date if you want) and the <b>sessions</b> of every round, each driven with one of your race setups. A new round starts with the sessions of the round before it.</li>
           <li>The kind of a session (Practice, Qualifying or Race) comes from its race setup. A Time Token Session can not be part of a championship. A race counts for 100%, 50% (a sprint) or no points.</li>
           <li>The <b>roster</b> holds the drivers, each with a team and the round he joins in.</li>
-          <li>On <b>Home</b>, choose the championship at the top of <b>Start a race</b> (<b>None</b> is a normal race). Its card shows the round that is next and loads the next session with one click; <b>Another session</b> loads any other. It fills the race setup below, and nothing starts until you press <b>Start race</b>. Roster drivers come first in the driver boxes; others drive as guests.</li>
+          <li>On <b>Home</b>, choose the championship in <b>Start a race</b>, under the name of the race setup (<b>None</b> is a normal race). Its card shows the round that is next and loads the next session with one click; <b>Another session</b> loads any other. It fills the race setup and the lanes, and nothing starts until you press <b>Start race</b>. Roster drivers come first in the driver boxes; others drive as guests.</li>
           <li>The race says <b>Counts for</b> the championship on Home, the race screen and in Results and Records. A session is driven when its race is saved.</li>
           <li>The points, the bonuses, the dropped results and the standings are in the next folder, <b>Championship points</b>.</li>
         </ul>` },

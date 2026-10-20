@@ -84,7 +84,7 @@ const pressSwap = (lane, over = {}) => E('enpanel').onclick({ target: { closest:
     const rowsOf = h => h.split('data-row="').slice(1);
     const options = (rowHtml, k) => { const m = new RegExp('<select data-k="' + k + '"[^>]*>(.*?)</select>').exec(rowHtml); return m ? [...m[1].matchAll(/<option value="([^"]*)"( selected)?>([^<]*)</g)].map(x => ({ v: x[1], sel: !!x[2], t: x[3] })) : null; };
     let hh = await home({}, [{ driverId: '', carId: '' }, { driverId: '', carId: '' }]);
-    say('the Home tab says what the setup is: an Endurance Race', hh.includes('Endurance Race on Living room'));
+    say('the Home tab says what the setup is: an Endurance Race', hh.includes('<span class="hs-chip hs-type"><b>Endurance Race</b></span>') && /Living room<\/span><span class="hs-chip">2 lanes<\/span>/.test(hh));
     say('every lane has a team (it has to be chosen), a starting driver and a car', rowsOf(hh).length === 2 && rowsOf(hh).every(r => options(r, 'teamId')[0].t === '(choose a team)' && options(r, 'driverId') && options(r, 'carId')));
     say('...a lane without a team has no starting driver to choose from, and says what the blank means (the first of the team)', options(rowsOf(hh)[0], 'driverId').length === 1 && options(rowsOf(hh)[0], 'driverId')[0].t === '(starting driver: the first of the team)');
     say('...and the race can not start: every lane needs a team and a car', hh.includes('Lane 1 needs a team and a car.') && hh.includes('Lane 2 needs a team and a car.') && /id="start" disabled/.test(hh));

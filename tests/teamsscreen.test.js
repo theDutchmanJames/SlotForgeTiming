@@ -178,7 +178,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   // ---------- the Home tab: teams as the participants of a heat race ----------
   const heatsSetup = over => ({ sessionType: 'heats', track: 't4', heatBy: 'laps', laps: 3, heatPlan: 'manual', heats: 2, resultBy: 'laps', participants: 'teams', teamDriver: 'order', ...over });
   hh = await home(heatsSetup(), [{ driverId: 'd1', carId: 'c1', teamId: 'T1' }, { driverId: '', carId: 'c2' }, { driverId: '', carId: '' }]);
-  say('a heat race with teams as participants: a team and a car per row (no driver), the drivers of the team in words, and Add team', rowsOf(hh).length === 3 && rowsOf(hh).every(r => !r.includes('data-k="driverId"') && r.includes('data-k="teamId"') && r.includes('data-k="carId"')) && rowsOf(hh)[0].includes('Team 1</strong>') && rowsOf(hh)[0].includes('Drivers: Alex, Sam') && hh.includes('id="addrow">Add team<'));
+  say('a heat race with teams as participants: a team and a car per row (no driver), the drivers of the team in words, and Add team', rowsOf(hh).length === 3 && rowsOf(hh).every(r => !r.includes('data-k="driverId"') && r.includes('data-k="teamId"') && r.includes('data-k="carId"')) && rowsOf(hh)[0].includes('Team 1</span>') && rowsOf(hh)[0].includes('Drivers: Alex, Sam') && hh.includes('id="addrow">Add team<'));
   say('...it says what every team lacks: a team and a car', hh.includes('Team 2 needs a team and a car.') && hh.includes('Team 3 needs a team and a car.') && !hh.includes('Team 1 needs') && /id="start"[^>]*disabled/.test(hh));
   hh = await change(1, 'teamId', 'T2'); hh = await change(2, 'teamId', 'T4'); hh = await change(2, 'carId', 'c3');
   say('choosing a team does not put a driver on the row (the driver comes from the team in every heat)', assignments()[1].teamId === 'T2' && assignments()[1].driverId === '' && assignments()[2].teamId === 'T4');
@@ -191,7 +191,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   say('Start gives the race the teams: byTeam, the team and the car of every row, and the plan as shown', rt.byTeam === true && rt.rows.map(r => r.teamId).join() === 'T1,T2,T3' && rt.rows.map(r => r.carId).join() === 'c1,c2,c3' && Array.isArray(rt.schedule) && rt.schedule.length === 2);
   run('state.race = null; live = null');
   hh = await home(heatsSetup({ participants: 'drivers' }), [{ driverId: 'd1', carId: 'c1', teamId: 'T1' }, { driverId: 'd2', carId: 'c2' }, { driverId: 'd3', carId: 'c3' }]);
-  say('with drivers as the participants the rows are the rows of drivers (with the optional team), as before', rowsOf(hh).every(r => r.includes('data-k="driverId"')) && hh.includes('id="addrow">Add participant<') && rowsOf(hh)[0].includes('Participant 1</strong>'));
+  say('with drivers as the participants the rows are the rows of drivers (with the optional team), as before', rowsOf(hh).every(r => r.includes('data-k="driverId"')) && hh.includes('id="addrow">Add participant<') && rowsOf(hh)[0].includes('Participant 1</span>'));
   hh = await home(heatsSetup(), [{ driverId: 'd1', carId: 'c1', teamId: 'T1' }, { driverId: 'd2', carId: 'c2', teamId: 'T2' }, { driverId: 'd3', carId: 'c3', teamId: 'T3' }]);
   await clickHome({ id: 'start' }); const rt2 = JSON.parse(run('JSON.stringify(state.race)'));
   say('the driver that was on a row is not used when the participants are teams', rt2.byTeam === true && hh.includes('Red Bulls'));

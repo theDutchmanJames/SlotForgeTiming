@@ -77,7 +77,8 @@ async function renderHome() {
 
   // what is still missing before the race can start
   const raceOn = typeof raceActive === 'function' && raceActive(); // a race is running (on the Race tab): another one can not be started
-  const issues = [];
+  const issues = [], rowMsgs = {}; // (1.58.0: what a row still needs is said in that row; it is in the list of issues too, so that Start stays off, but the list under the rows does not say it again)
+  const rowMsg = (i, t) => { issues.push(t); rowMsgs[i] = t; };
   if (setup) {
     if (!track) issues.push('This race setup has no track. Choose one in Race Setup.');
     else if (!lanes) issues.push('The track has no number of lanes. Add it in the Database.');
@@ -87,18 +88,18 @@ async function renderHome() {
     rotProblems.forEach(t => issues.push(t));
     if (byTeam) rows.forEach((r, i) => {
       if (rot && r.absent) return;
-      if (!r.teamId || !r.carId) issues.push(label(i) + ' needs a team and a car.');
+      if (!r.teamId || !r.carId) rowMsg(i, label(i) + ' needs a team and a car.');
       else if (!membersOf(teamOf(r.teamId)).length) issues.push(`The team ${titleOf('teams', teamOf(r.teamId))} has no drivers. Add them in Database > Teams.`);
       else if (endu && membersOf(teamOf(r.teamId)).length < 2) issues.push(`The team ${titleOf('teams', teamOf(r.teamId))} has one driver only: an Endurance Race needs a team of two drivers or more. Add drivers in Database > Teams.`);
     });
     else if (enduSingle) {
       rows.forEach((r, i) => {
-        if (!r.teamId || !r.carId) issues.push(label(i) + ' needs a team and a car.');
+        if (!r.teamId || !r.carId) rowMsg(i, label(i) + ' needs a team and a car.');
         else if (membersOf(teamOf(r.teamId)).length < 2) issues.push(`The team ${titleOf('teams', teamOf(r.teamId))} has ${membersOf(teamOf(r.teamId)).length ? 'one driver only' : 'no drivers'}: an Endurance Race needs a team of two drivers or more. Add drivers in Database > Teams.`);
       });
       const st = rows.map(r => r.driverId).filter(Boolean); if (st.length !== new Set(st).size) issues.push('A driver starts for two teams. Choose another starting driver.');
     }
-    else if (!tokens) rows.forEach((r, i) => { if (!(rot && r.absent) && (!r.driverId || !r.carId)) issues.push(label(i) + ' needs a driver and a car.'); });
+    else if (!tokens) rows.forEach((r, i) => { if (!(rot && r.absent) && (!r.driverId || !r.carId)) rowMsg(i, label(i) + ' needs a driver and a car.'); });
     const dup = key => { const ids = here.map(r => r[key]).filter(Boolean); return ids.length !== new Set(ids).size; };
     if (withTeam) { if (dup('teamId')) issues.push('A team is used more than once.'); }
     else if (dup('driverId')) issues.push('A driver is used more than once.');
@@ -155,6 +156,12 @@ async function renderHome() {
   })();
 
   const typeLabel = rawSetup ? (state.schema.racesetups.fields.find(f => f.key === 'sessionType').options.find(o => o[0] === rawSetup.sessionType) || [, ''])[1] : '';
+  // 1.58.0: the facts of the race setup as little pills under its name: the kind, how long (laps or minutes, where that is one number), the track and the number of lanes
+  const lenText = !setup ? '' : setup.sessionType === 'race' && (!setup.raceBy || setup.raceBy === 'laps') && Number(setup.laps) > 0 ? `${Number(setup.laps)} lap${Number(setup.laps) === 1 ? '' : 's'}`
+    : (setup.sessionType === 'qualifying' || setup.sessionType === 'timed') && Number(setup.duration) > 0 ? `${Number(setup.duration)} min` : '';
+  const typeShort = typeLabel.replace(/ by laps or distance$/, ''); // ("Race by laps or distance" is "Race" here: the next pill says how long)
+  const chipsHtml = [typeShort ? `<span class="hs-chip hs-type"><b>${esc(typeShort)}</b></span>` : '', lenText ? `<span class="hs-chip">${esc(lenText)}</span>` : '', track ? `<span class="hs-chip">${Icons.svg('pin', { size: 14 })}${esc(track.name)}</span>` : '',
+    lanes ? `<span class="hs-chip">${lanes} lane${lanes === 1 ? '' : 's'}</span>` : ''].join('');
   const away = r => !!rot && r.absent === true; // (not here today: the places of this participant in the rotation stay empty)
   // a row: the team (only in a session with teams: the team is the participant, or the team of an Endurance Race), the driver (the drivers of the team when there is one) and the car
   // 1.55.0: a session of a championship lists the drivers of its roster first (those who have joined by this round); anybody else drives as a guest
@@ -170,13 +177,23 @@ async function renderHome() {
     const m = membersOf(t), cur = drivers.find(d => d.id === r.driverId);
     return cur && !m.includes(cur) ? [...m, cur] : m;
   };
-  const rowHtml = (r, i) => `<div class="lane${rot ? ' rot' : ''}${away(r) ? ' away' : ''}${byTeam ? ' byteam' : ''}${withTeam && !byTeam ? ' threesel' : ''}" data-row="${i}" style="--c:${esc(laneHue(i))}">
-      <strong>${heats ? (byTeam ? 'Team ' : 'Participant ') : 'Lane '}${i + 1}${rot && rot.names[i] ? ' · ' + esc(rot.names[i]) : ''}</strong>
-      ${byTeam ? teamSelect(r, i) : `${withTeam ? teamSelect(r, i) : ''}<select data-k="driverId" aria-label="${enduSingle ? 'Starting driver' : 'Driver'} for row ${i + 1}"${away(r) ? ' disabled' : ''}>${driverOpts(enduSingle && !r.teamId ? [] : driverList(r), r.driverId, tokens ? 'Guest (no driver)' : enduSingle ? (setup.endurance.next === 'random' ? '(starting driver: by lot)' : '(starting driver: the first of the team)') : undefined)}</select>`}
-      <select data-k="carId" aria-label="Car for row ${i + 1}"${away(r) ? ' disabled' : ''}>${optionsOf('slotcars', cars, r.carId, tokens ? '(no car)' : undefined)}</select>
-      ${rot ? `<label class="lane-away"><input type="checkbox" data-absent="${i}"${away(r) ? ' checked' : ''} aria-label="${byTeam ? 'Team' : 'Participant'} ${i + 1} is not here today"> Not here today</label>` : ''}
-      ${heats && (rot ? rows.length > rot.participants : rows.length > 2) ? `<button class="btn" data-remove="${i}">Remove</button>` : '<span></span>'}
-      ${withTeam && r.teamId ? `<span class="muted teamline">${membersOf(teamOf(r.teamId)).length ? 'Drivers: ' + esc(membersOf(teamOf(r.teamId)).map(d => titleOf('drivers', d)).join(', ')) : 'This team has no drivers yet.'}</span>` : ''}</div>`;
+  // 1.58.0: a row is a dark inset row in the colour of its lane: the number in a circle, the choices with a little picture in front, and a tick when the row is filled in. What it still needs is said inside the row.
+  const sel2 = (ico, html) => `<div class="hs-sel${ico ? '' : ' hs-noico'}">${ico ? `<span class="hs-sico" aria-hidden="true">${Icons.svg(ico, { size: ico === 'car' ? 22 : 17 })}</span>` : ''}${html}<span class="hs-chev" aria-hidden="true">${Icons.svg('chevron', { size: 16, stroke: 2 })}</span></div>`;
+  const onLane = c => (/^#[0-9a-f]{6}$/i.test(c) && typeof AdjustPad !== 'undefined' ? AdjustPad.textOn(c) : '#ffffff'); // (the number on a lane colour: dark or white, whichever reads better)
+  const rowHtml = (r, i) => {
+    const gone = away(r), ready = rowOk.has(i) ? rowOk.get(i) : true, // (an away row is in no lamp, and has no message: it is never marked)
+      who = (heats ? (byTeam ? 'Team ' : 'Participant ') : 'Lane ') + (i + 1) + (rot && rot.names[i] ? ' · ' + rot.names[i] : '');
+    const note = [rowMsgs[i] ? `<span class="hs-why">${esc(rowMsgs[i])}</span>` : '',
+      withTeam && r.teamId ? `<span class="muted teamline">${membersOf(teamOf(r.teamId)).length ? 'Drivers: ' + esc(membersOf(teamOf(r.teamId)).map(d => titleOf('drivers', d)).join(', ')) : 'This team has no drivers yet.'}</span>` : ''].filter(Boolean).join(' ');
+    const more = (rot && rot.names[i] ? `<span class="muted hs-rname">${esc(rot.names[i])}</span>` : '') + (rot ? `<label class="lane-away"><input type="checkbox" data-absent="${i}"${away(r) ? ' checked' : ''} aria-label="${byTeam ? 'Team' : 'Participant'} ${i + 1} is not here today"> Not here today</label>` : '')
+      + (heats && (rot ? rows.length > rot.participants : rows.length > 2) ? `<button class="btn" data-remove="${i}">Remove</button>` : '');
+    return `<div class="lane${rot ? ' rot' : ''}${gone ? ' away' : ''}${byTeam ? ' byteam' : ''}${withTeam && !byTeam ? ' threesel' : ''}${!ready ? ' need' : ''}" data-row="${i}" style="--c:${esc(laneHue(i))}">
+      <strong class="hs-num" style="--on:${onLane(laneHue(i))}" title="${esc(who)}"><span class="hs-vh">${esc(who)}</span><span aria-hidden="true">${i + 1}</span></strong>
+      <div class="hs-fields">${byTeam ? sel2('', teamSelect(r, i)) : `${withTeam ? sel2('', teamSelect(r, i)) : ''}${sel2('driver', `<select data-k="driverId" aria-label="${enduSingle ? 'Starting driver' : 'Driver'} for row ${i + 1}"${away(r) ? ' disabled' : ''}>${driverOpts(enduSingle && !r.teamId ? [] : driverList(r), r.driverId, tokens ? 'Guest (no driver)' : enduSingle ? (setup.endurance.next === 'random' ? '(starting driver: by lot)' : '(starting driver: the first of the team)') : undefined)}</select>`)}`}${sel2('car', `<select data-k="carId" aria-label="Car for row ${i + 1}"${away(r) ? ' disabled' : ''}>${optionsOf('slotcars', cars, r.carId, tokens ? '(no car)' : undefined)}</select>`)}</div>
+      ${more ? `<div class="hs-more">${more}</div>` : ''}
+      ${gone ? '<span class="hs-tick off" aria-hidden="true"></span>' : `<span class="hs-tick ${ready ? 'ok' : 'warn'}" role="img" aria-label="${ready ? 'Ready' : 'Not ready yet'}">${Icons.svg(ready ? 'check' : 'alert', { size: 13, stroke: 2.6 })}</span>`}
+      ${note ? `<div class="hs-note">${note}</div>` : ''}</div>`;
+  };
   const rotHtml = !rot ? '' : `<p class="hint2">Rotation setup <strong>${esc(rot.name)}</strong>: ${esc(Rot.describe(rot))}. Tick "Not here today" for ${byTeam ? 'every team' : 'anybody'} that does not come: their places stay empty. ${rot.names.some(x => x.trim()) ? `<button class="btn" id="rotnames" title="Choose the ${byTeam ? 'team' : 'driver'} whose name is the name of a participant in the rotation (only for participants who have no ${byTeam ? 'team' : 'driver'} yet)">${byTeam ? 'Pick the teams by name' : 'Pick the drivers by name'}</button>` : ''}</p>
       ${state.rotMsg && state.rotMsg.setupId === setupId ? `<p class="hint2" role="status">${esc(state.rotMsg.text)}</p>` : ''}`;
 
@@ -216,8 +233,8 @@ async function renderHome() {
         <span class="muted">Fills the race setup and the lanes below; nothing starts until you press Start race.</span></div>${standHtml}</section>`;
   })();
   // 1.56.1: the choice of the championship, at the top of Start a race: None (a normal race) or one of the championships. Only the one that is chosen shows its card.
-  const champPickHtml = !champs.length ? '' : `<div class="field"><label for="champsel">Championship</label>
-        <select id="champsel"><option value="">None: a normal race</option>${champs.map(x => `<option value="${esc(x.id)}"${champShown && x.id === champShown.id ? ' selected' : ''}>${esc(x.name || '(unnamed)')}</option>`).join('')}</select></div>`;
+  const champPickHtml = !champs.length ? '' : `<div class="hs-champ"><span class="hs-ctile" aria-hidden="true">${Icons.svg('championship', { size: 18 })}</span><label class="hs-clabel" for="champsel">Championship</label>
+        <div class="hs-sel hs-noico hs-grow2"><select id="champsel"><option value="">None: a normal race</option>${champs.map(x => `<option value="${esc(x.id)}"${champShown && x.id === champShown.id ? ' selected' : ''}>${esc(x.name || '(unnamed)')}</option>`).join('')}</select><span class="hs-chev" aria-hidden="true">${Icons.svg('chevron', { size: 16, stroke: 2 })}</span></div></div>`;
   // 1.17.0: the welcome band (date, track and status chips), the start card with its coloured lanes and start lights, and the cards on the right
   const audio = setup && (audiosets || []).find(x => x.id === setup.audioSet), audioName = audio ? audio.name || '(unnamed)' : '';
   // the timing hardware chip: the hardware that was chosen (App Settings, Timing Hardware), one at a time, and whether it is connected
@@ -227,7 +244,10 @@ async function renderHome() {
   const chipHtml = c => `<span class="hm-chip" data-key="${c.key}"${c.state ? ` data-state="${c.state}"` : ''}>${c.state ? '<i aria-hidden="true"></i>' : ''}${esc(c.text)}</span>`;
   const today = new Date().toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
   const lt = HomeStats.lights(rows, { byTeam, enduSingle, tokens }, heats ? (byTeam ? 'team' : 'participant') : 'lane', issues.length > 0), shown = rows.map((r, i) => ({ r, i })).filter(x => !x.r.absent);
-  const lightsHtml = setup && track && lanes && rows.length ? `<div class="hm-lights" aria-hidden="true">${shown.map((x, k) => `<i${lt.ok[k] ? ' class="on"' : ''} style="--c:${esc(laneHue(x.i))}"></i>`).join('')}</div><span class="muted hm-ready" role="status">${esc(lt.text)}</span>` : '';
+  const laneSub = tokens ? 'A lane can have no driver (a Guest) and no car.' : heats ? `${rows.length} ${byTeam ? 'teams' : 'participants'} race on ${lanes} lanes. Pick who takes part.` : enduSingle ? 'Every lane is a team with its starting driver.' : 'Pick who drives what.';
+  const rowSaid = new Set(Object.values(rowMsgs)), otherIssues = issues.filter(x => !rowSaid.has(x)); // (the list under the rows keeps what is not about one row)
+  const rowOk = new Map(shown.map((x, k) => [x.i, lt.ok[k]])), allReady = !issues.length; // (1.58.0: a tick for every row, and one pill that says whether the race can start: nothing is wrong, and then every row is filled in, because what a row lacks is one of the issues)
+  const lightsHtml = setup && track && lanes && rows.length ? `<div class="hs-status ${allReady ? 'ok' : 'warn'}" role="status"><div class="hm-lights" aria-hidden="true">${shown.map((x, k) => `<i${lt.ok[k] ? ' class="on"' : ''} style="--c:${esc(laneHue(x.i))}"></i>`).join('')}</div><span class="hm-ready">${esc(lt.text)}</span></div>` : '';
   // 1.25.0: Customize, set up like the Leaderboard grid: the little squares (up to 6 columns by 4 rows), a card for every cell, and the settings of the card that is picked
   const HG = HomeGrid, place = b => `grid-column:${b.c} / span ${b.w};grid-row:${b.r} / span ${b.h}`;
   const customHtml = () => {
@@ -270,24 +290,25 @@ async function renderHome() {
       <div class="hm-chips" id="hm-chips">${chipsNow().map(chipHtml).join('')}</div></div>
     ${customHtml()}
     ${resumeHtml}
-    <div class="hm-grid" id="homegrid" style="grid-template-columns:repeat(${grid.cols},minmax(0,1fr))"><section class="card hm-start" id="hmc-start" style="${place(startBoard)}"><h3>Start a race</h3>` + (setups.length ? `
+    <div class="hm-grid" id="homegrid" style="grid-template-columns:repeat(${grid.cols},minmax(0,1fr))"><section class="card hm-start" id="hmc-start" style="${place(startBoard)}">` + (setups.length ? `
+      <div class="hs-head"><span class="hs-tile" aria-hidden="true">${Icons.svg('racesetups', { size: 24 })}</span>
+        <div class="hs-ht"><label class="hs-label" for="setup">Start a race</label>
+          <div class="hs-title"><select id="setup" aria-label="Race setup">${setups.map(s => `<option value="${esc(s.id)}"${s.id === setupId ? ' selected' : ''}>${esc(s.name || '(unnamed)')}</option>`).join('')}</select><span class="hs-chev" aria-hidden="true">${Icons.svg('chevron', { size: 16, stroke: 2 })}</span></div>
+          <div class="hs-chips">${chipsHtml}</div></div></div>
       ${champPickHtml}${champHtml}
       ${ch ? `<p class="chcounts" id="chcounts"><b>Counts for ${esc(ch.c.name || 'the championship')}</b> · ${esc(Champ.roundKindText(ch.tag))} <span class="muted">(change the race setup and it is a normal race again)</span></p>` : ''}
-      <div class="field"><label for="setup">Race setup</label>
-        <select id="setup">${setups.map(s => `<option value="${esc(s.id)}"${s.id === setupId ? ' selected' : ''}>${esc(s.name || '(unnamed)')}</option>`).join('')}</select></div>
-      <p class="hint2">${esc(typeLabel)}${track ? ' on ' + esc(track.name) + (lanes ? ` (${lanes} lanes)` : '') : ''}</p>
       ${qual && lanes > 1 ? `<p class="hint2">🏁 ${esc(qual.name)} won the latest qualifying on this track and picks a lane first. ${winRow >= 0
         ? `Starting lane: <select id="winlane" aria-label="Starting lane for ${esc(qual.name)}">${Array.from({ length: lanes }, (_, i) => `<option value="${i}"${i === winRow ? ' selected' : ''}>Lane ${i + 1}</option>`).join('')}</select>`
         : 'Assign them below, then choose their lane here.'} <button class="btn" id="clearqual">Clear qualifying result</button></p>` : ''}
       ${rotHtml}
-      ${track && lanes ? rows.map(rowHtml).join('') : ''}
+      ${track && lanes ? `<div class="hs-sub"><span class="hs-label hs-muted">${heats ? (byTeam ? 'Teams' : 'Participants') : 'Lanes'}</span><span class="muted">${esc(laneSub)}</span></div><div class="hs-lanes">${rows.map(rowHtml).join('')}</div>` : ''}
       ${heats && track && !rot ? `<button class="btn" id="addrow">${byTeam ? 'Add team' : 'Add participant'}</button>` : ''}
       ${heatPlanHtml}
       ${tokens ? '<p class="hint2">A Time Token Session starts with every lane switched off. You add paid time to a lane on the race screen, and can change the driver there too. Here you can already put a driver and a car on a lane.</p>' : ''}
       ${raceOn ? '<p class="hint2" id="raceon">A race is running. <button class="btn" id="gorace">Go to the race</button></p>' : ''}
-      ${issues.length ? `<ul class="issues">${issues.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
-      <div class="hm-go">${lightsHtml}<span class="hm-grow"></span><button class="btn primary big" id="start" ${issues.length || raceOn ? 'disabled' : ''}${raceOn ? ' title="A race is still running. Open the Race tab to finish or stop it first."' : ''}>${tokens ? 'Open the session' : 'Start race'}</button></div>`
-      : '<p class="muted">Create a race setup in the Race Setup tab to get started.</p>') + `</section>${otherCells}</div>`;
+      ${otherIssues.length ? `<ul class="issues">${otherIssues.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+      <div class="hm-go">${lightsHtml}<span class="hm-grow"></span><button class="btn primary big" id="start" ${issues.length || raceOn ? 'disabled' : ''}${raceOn ? ' title="A race is still running. Open the Race tab to finish or stop it first."' : ''}>${Icons.svg('racesetups', { size: 20 })}<span>${tokens ? 'Open the session' : 'Start race'}</span></button></div>`
+      : '<h3>Start a race</h3><p class="muted">Create a race setup in the Race Setup tab to get started.</p>') + `</section>${otherCells}</div>`;
 
   if (keep) { // the field that had the cursor has it again, with the same part of the text selected (a number has no part: all of it, as when you come into it with Tab)
     const el = document.getElementById(keep.id);
