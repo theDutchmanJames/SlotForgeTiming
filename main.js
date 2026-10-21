@@ -208,7 +208,8 @@ app.whenReady().then(() => {
   ipcMain.handle('win:fullscreen', (e, on) => { const w = BrowserWindow.fromWebContents(e.sender); if (!w || w.isDestroyed()) return { on: false, was: false }; const was = w.isFullScreen(); w.setFullScreen(on === undefined ? !was : !!on); return { on: w.isFullScreen(), was }; });
   ipcMain.handle('live:fullscreen', (_e, on) => { if (!liveWin || liveWin.isDestroyed()) return false; liveWin.setFullScreen(on === undefined ? !liveWin.isFullScreen() : !!on); return liveWin.isFullScreen(); });
   ipcMain.handle('live:open', () => ({ second: openLiveWindow() }));
-  ipcMain.handle('settings:set', async (_e, patch) => { const s = db.setSettings(patch); if (Object.keys(patch || {}).some(k => k.startsWith('net'))) await applyNet(); return s; });
+  // a setting is written to the settings file in the background (1.61.0): the core does not wait for the disk, the answer comes when the file is written
+  ipcMain.handle('settings:set', async (_e, patch) => { const s = await db.setSettingsAsync(patch); if (Object.keys(patch || {}).some(k => k.startsWith('net'))) await applyNet(); return s; });
   ipcMain.handle('net:status', () => netStatus());
   applyNet().finally(createWindow);
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
@@ -218,6 +219,6 @@ app.on('window-all-closed', () => app.quit());
 let quitFlushed = false;
 app.on('before-quit', e => {
   if (net.server) net.server.close();
-  // a race save that is on its way is written first (at most three seconds): the file then holds the last state, not the one before
-  if (!quitFlushed && db && db.resumePending()) { e.preventDefault(); quitFlushed = true; Promise.race([db.resumeIdle(), new Promise(r => setTimeout(r, 3000))]).catch(() => {}).then(() => app.quit()); }
+  // a race save or a setting that is on its way is written first (at most three seconds): the files then hold the last state, not the one before
+  if (!quitFlushed && db && db.writesPending()) { e.preventDefault(); quitFlushed = true; Promise.race([db.writesIdle(), new Promise(r => setTimeout(r, 3000))]).catch(() => {}).then(() => app.quit()); }
 });

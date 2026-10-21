@@ -150,4 +150,169 @@ ok('penalty systems can be added and removed', db.list('penaltysystems').length 
   w.removeSession(w.data.sessions[w.data.sessions.length - 1].id);
   ok('1.51.0: removing that session takes the two laps off again (5000), as before', car('kept').lapsDriven === 5000 && car('kept').lapsSinceService === 7);
 }
-console.log(fails ? fails + ' DB TESTS FAILED' : 'ALL DB TESTS PASSED'); process.exit(fails ? 1 : 0);
+// 1.61.0: the settings are kept in a file of their own ('name.settings.json' next to 'name.json') and written in the background
+const tmpDb = (name = 'db.json', text) => { const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'slt-set-')), f = path.join(dir, name); if (text !== undefined) fs.writeFileSync(f, typeof text === 'string' ? text : JSON.stringify(text)); return { dir, f, sf: path.join(dir, name.replace(/\.json$/, '') + '.settings.json') }; };
+const read = f => fs.readFileSync(f, 'utf8'), readJ = f => JSON.parse(read(f)), leftovers = dir => fs.readdirSync(dir).filter(n => n.endsWith('.tmp'));
+{ // the first start of this version: the settings of the database file are used, and the settings file is made
+  const t = tmpDb('db.json', { settings: { theme: 'light', rules: 'Be kind.', liveGrid: { a: 1 } }, drivers: [{ id: 'd1', name: 'Alex' }] });
+  const d = new Database(t.f);
+  ok('1.61.0: with no settings file the settings of the database file are used, and the settings file is made at once', d.getSettings().theme === 'light' && d.getSettings().rules === 'Be kind.' && fs.existsSync(t.sf) && readJ(t.sf).rules === 'Be kind.' && readJ(t.sf).liveGrid.a === 1);
+  ok('...the file is named after the database (name.settings.json), and no temporary file is left', path.basename(t.sf) === 'db.settings.json' && Database.settingsFileOf('/x/slotforge-timing.json') === '/x/slotforge-timing.settings.json' && leftovers(t.dir).length === 0);
+  ok('...the database file keeps the settings too (a complete copy, for an older version)', readJ(t.f).settings.rules === 'Be kind.' && readJ(t.f).drivers[0].name === 'Alex');
+}
+{ // the next start: the settings file is as it should be, so it is not written again
+  const t = tmpDb('db.json', { settings: { theme: 'light' } }); new Database(t.f);
+  const realOpen = fs.openSync, opened = []; fs.openSync = function (p, fl, ...r) { opened.push([String(p), fl]); return realOpen.call(this, p, fl, ...r); };
+  let d; try { d = new Database(t.f); } finally { fs.openSync = realOpen; }
+  ok('1.61.0: a start with a settings file that holds just what the settings are does not write it again (the database file is written, as before)', d.getSettings().theme === 'light' && !opened.some(o => o[0].startsWith(t.sf) && o[1] !== 'r') && opened.some(o => o[0].startsWith(t.f) && o[1] !== 'r'));
+}
+{ // the settings file wins
+  const t = tmpDb('db.json', { settings: { theme: 'light', old: 1 }, drivers: [] }); fs.writeFileSync(t.sf, JSON.stringify({ theme: 'dark', newer: 2 }));
+  const d = new Database(t.f);
+  ok('1.61.0: when there is a settings file it holds the settings: those of the database file are not mixed in', d.getSettings().theme === 'dark' && d.getSettings().newer === 2 && d.getSettings().old === undefined);
+  const t2 = tmpDb('db.json', { drivers: [] }); fs.writeFileSync(t2.sf, '{"rules":"x"}');
+  const d2 = new Database(t2.f);
+  ok('...a setting the file does not have gets its default (theme dark), and the file is made complete', d2.getSettings().theme === 'dark' && d2.getSettings().rules === 'x' && readJ(t2.sf).theme === 'dark');
+}
+{ // a settings file that cannot be understood is kept under another name, as for the database
+  const t = tmpDb('db.json', { settings: { theme: 'light', rules: 'From the database.' } }); fs.writeFileSync(t.sf, '{"theme":"da');
+  const d = new Database(t.f), kept = fs.readdirSync(t.dir).filter(n => n.includes('settings.damaged-'));
+  ok('1.61.0: a damaged settings file is kept under another name, the settings of the database file are used, and a good settings file is made', d.getSettings().rules === 'From the database.' && kept.length === 1 && read(path.join(t.dir, kept[0])) === '{"theme":"da' && readJ(t.sf).rules === 'From the database.');
+  const t2 = tmpDb('db.json', { settings: { theme: 'light' } }); fs.writeFileSync(t2.sf, '[1,2]');
+  const d2 = new Database(t2.f);
+  ok('...a file that holds something else than settings is treated the same way', d2.getSettings().theme === 'light' && fs.readdirSync(t2.dir).filter(n => n.includes('settings.damaged-')).length === 1 && !Array.isArray(readJ(t2.sf)));
+  const t3 = tmpDb('db.json', { settings: { theme: 'light' } }); fs.mkdirSync(t3.sf);
+  let err = null; try { new Database(t3.f); } catch (x) { err = x; }
+  ok('...a settings file that is there but cannot be read stops the start (nothing is changed)', err && /settings file cannot be read/.test(err.message) && fs.statSync(t3.sf).isDirectory());
+  const t4 = tmpDb('db.json', { settings: { theme: 'light' } }); fs.writeFileSync(t4.sf, '{"theme"');
+  const realCopy = fs.copyFileSync; fs.copyFileSync = () => { throw Object.assign(new Error('no space'), { code: 'ENOSPC' }); };
+  let err2 = null; try { new Database(t4.f); } catch (x) { err2 = x; } finally { fs.copyFileSync = realCopy; }
+  ok('...one that is damaged and cannot be kept is not overwritten', err2 && /settings file is damaged/.test(err2.message) && read(t4.sf) === '{"theme"');
+}
+{ // a change is written to the settings file only
+  const t = tmpDb('db.json', { drivers: [{ id: 'd1', name: 'Alex' }] }), d = new Database(t.f), before = read(t.f);
+  const realStringify = JSON.stringify; let whole = 0; JSON.stringify = function (v, ...r) { if (v === d.data) whole++; return realStringify.call(this, v, ...r); };
+  const realOpen = fs.openSync, opened = []; fs.openSync = function (p, ...r) { opened.push(String(p)); return realOpen.call(this, p, ...r); };
+  let got; try { got = d.setSettings({ theme: 'light', uiScale: 1.25 }); } finally { JSON.stringify = realStringify; fs.openSync = realOpen; }
+  ok('1.61.0: setSettings changes the settings at once and writes the settings file before it returns', got === d.getSettings() && got.theme === 'light' && readJ(t.sf).theme === 'light' && readJ(t.sf).uiScale === 1.25);
+  ok('...it does not turn the whole database into text and does not touch the database file', whole === 0 && read(t.f) === before && !opened.some(p => p.startsWith(t.f)) && opened.some(p => p.startsWith(t.sf)));
+  ok('...and nothing is left behind, and the next start has the settings', leftovers(t.dir).length === 0 && new Database(t.f).getSettings().uiScale === 1.25);
+}
+const asyncTests = async () => {
+  { const t = tmpDb('db.json', { drivers: [{ id: 'd1', name: 'Alex' }] }), d = new Database(t.f), before = read(t.f);
+    const realStringify = JSON.stringify; let whole = 0; JSON.stringify = function (v, ...r) { if (v === d.data) whole++; return realStringify.call(this, v, ...r); };
+    let p; try { p = d.setSettingsAsync({ depth: 55 }); } finally { JSON.stringify = realStringify; }
+    ok('1.61.0: setSettingsAsync changes the settings in memory at once, and the write is on its way (the program does not wait for the disk)', d.getSettings().depth === 55 && d.writesPending() === true && !fs.existsSync(t.sf + '.never') && whole === 0);
+    const s = await p;
+    ok('...the answer is the settings, given when the file is written; the database file is not touched', s === d.getSettings() && readJ(t.sf).depth === 55 && read(t.f) === before && d.writesPending() === false && leftovers(t.dir).length === 0);
+    const w0 = d.dbStats().settings.writes; await d.setSettingsAsync({ depth: 55 });
+    ok('...a setting set to the value it has is not written again', d.dbStats().settings.writes === w0 && readJ(t.sf).depth === 55);
+  }
+  { // several changes at once: written one at a time, the newest text wins, everybody is answered
+    const t = tmpDb('db.json', {}), d = new Database(t.f), order = [];
+    const ps = [1, 2, 3, 4, 5].map(i => d.setSettingsAsync({ n: i, ['k' + i]: i }).then(() => order.push(i)));
+    await Promise.all(ps);
+    ok('1.61.0: five changes in a row are all answered, in the order they were asked, and the file holds all of them with the last value', order.join() === '1,2,3,4,5' && readJ(t.sf).n === 5 && [1, 2, 3, 4, 5].every(i => readJ(t.sf)['k' + i] === i));
+    ok('...and they were not five writes (what waited while one was on its way was put together)', d.dbStats().settings.writes <= 2, JSON.stringify(d.dbStats().settings));
+    const d2 = new Database(t.f);
+    ok('...the next start has the last state', d2.getSettings().n === 5 && d2.getSettings().k3 === 3);
+  }
+  { // a write that fails: everyone who waited for it is told, the settings in memory stay, and the next write is done (with everything)
+    const t = tmpDb('db.json', {}), d = new Database(t.f), realOpen = fs.promises.open;
+    fs.promises.open = async () => { throw Object.assign(new Error('disk full'), { code: 'ENOSPC' }); };
+    const r = [d.setSettingsAsync({ a: 1 }), d.setSettingsAsync({ b: 2 })].map(p => p.then(() => 'ok', x => x.message));
+    let res; try { res = await Promise.all(r); } finally { fs.promises.open = realOpen; }
+    ok('1.61.0: when the disk refuses, the callers are told why (the ones that waited together too), and the settings in memory are as asked', res[0] === 'disk full' && res[1] === 'disk full' && d.getSettings().a === 1 && d.getSettings().b === 2 && d.dbStats().settings.failed >= 1 && !d.writesPending());
+    ok('...nothing half is left, and the file is as it was', leftovers(t.dir).length === 0 && readJ(t.sf).a === undefined);
+    await d.setSettingsAsync({ c: 3 });
+    ok('...the next change writes everything that was asked for since', readJ(t.sf).a === 1 && readJ(t.sf).b === 2 && readJ(t.sf).c === 3);
+  }
+  { // asking again for the text that is in the file, while a newer one is on its way, is not answered early
+    const t = tmpDb('db.json', {}), d = new Database(t.f);
+    await d.setSettingsAsync({ z: 1 });
+    const p2 = d.setSettingsAsync({ z: 2 }), p3 = d.setSettingsAsync({ z: 1 });
+    await Promise.all([p2, p3]);
+    ok('1.61.0: a setting put back to the value the file has, while a write of another value is on its way, is written after it (the file ends with what was asked last)', readJ(t.sf).z === 1 && d.getSettings().z === 1 && new Database(t.f).getSettings().z === 1);
+  }
+  { // the sync version while a background write is on its way: after it, so the file ends with the newest
+    const t = tmpDb('db.json', {}), d = new Database(t.f);
+    const p = d.setSettingsAsync({ v: 1 }); d.setSettings({ v: 2 }); d.setSettings({ v: 3 });
+    await p; await d.writesIdle();
+    ok('1.61.0: a synchronous change made while a background write is on its way is written after it (the file ends with the newest value)', readJ(t.sf).v === 3 && d.getSettings().v === 3 && leftovers(t.dir).length === 0);
+  }
+  { // a restore replaces the settings file too, and a full save keeps the database file complete
+    const t = tmpDb('db.json', {}), d = new Database(t.f); d.setSettings({ rules: 'old', keep: 1 });
+    d.replaceAll({ settings: { theme: 'light', rules: 'restored' }, drivers: [{ id: 'x', name: 'Back' }] });
+    ok('1.61.0: restoring a backup writes the settings of the backup to the settings file (the old settings file would otherwise win at the next start)', readJ(t.sf).rules === 'restored' && readJ(t.sf).keep === undefined && new Database(t.f).getSettings().rules === 'restored' && new Database(t.f).list('drivers')[0].name === 'Back');
+    d.setSettings({ liveGrid: { z: 1 } }); d.add('drivers', { name: 'New' });
+    ok('...a full save writes the settings as they are into the database file too', readJ(t.f).settings.liveGrid.z === 1 && readJ(t.f).drivers.length === 2);
+    const t2 = tmpDb('db.json', {}), d2 = new Database(t2.f), realSave = d2.save; d2.save = () => { throw new Error('disk full'); };
+    let e = null; try { d2.replaceAll({ settings: { rules: 'x' } }); } catch (x) { e = x; } d2.save = realSave;
+    ok('...a restore that cannot be saved changes nothing: not the settings in memory and not the settings file', e && e.message === 'disk full' && d2.getSettings().rules === undefined && readJ(t2.sf).rules === undefined);
+  }
+  { // closing waits for what is on its way
+    const t = tmpDb('db.json', {}), d = new Database(t.f);
+    ok('1.61.0: nothing on its way: nothing to wait for', d.writesPending() === false && await d.writesIdle() === undefined);
+    { const p0 = d.setSettingsAsync({ only: 1 });
+      ok('...a setting on its way is waited for (nothing else is)', d.writesPending() === true && d.sw.pending() === true && d.resumePending() === false);
+      await d.writesIdle(); ok('...and when it is idle the setting is on the disk', d.writesPending() === false && readJ(t.sf).only === 1); await p0; }
+    { const q0 = d.saveResumeAsync({ v: 1, race: { a: 1 }, eng: {} });
+      ok('...a race save on its way is waited for (nothing else is)', d.writesPending() === true && d.resumePending() === true && d.sw.pending() === false);
+      await d.writesIdle(); ok('...and when it is idle the race save is on the disk', d.writesPending() === false && readJ(path.join(t.dir, 'race-resume.json')).race.a === 1); await q0; }
+    const p = d.setSettingsAsync({ q: 1 }), q = d.saveResumeAsync({ v: 1, race: {}, eng: {} });
+    ok('...both on their way are waited for', d.writesPending() === true && d.sw.pending() === true && d.resumePending() === true);
+    await d.writesIdle();
+    ok('...and when it is idle both are on the disk', d.writesPending() === false && readJ(t.sf).q === 1 && readJ(path.join(t.dir, 'race-resume.json')).v === 1);
+    await Promise.all([p, q]);
+  }
+  { // the writer on its own
+    const t = tmpDb('w.txt'), W = Database.LatestWriter, w = new W(t.f);
+    ok('1.61.0: LatestWriter: a new text is written and answered, the same text again is answered without a write', await w.write('one') === true && read(t.f) === 'one' && w.stats.writes === 1 && await w.write('one') === true && w.stats.writes === 1);
+    const a = w.write('two'), b = w.write('three');
+    ok('...writeNow does not go in front of a write that is on its way', w.writeNow('four') === false && w.pending() === true);
+    await Promise.all([a, b]);
+    ok('...the first text goes at once, and what arrived while it was on its way is one write with the newest text (three writes in all, not four)', read(t.f) === 'three' && w.stats.writes === 3 && w.writeNow('four') === true && read(t.f) === 'four' && w.written === 'four' && w.writeNow('four') === true);
+    { const realOpen = fs.openSync; let opens = 0; fs.openSync = function (...r) { opens++; return realOpen.apply(this, r); };
+      let same; try { same = w.writeNow('four'); } finally { fs.openSync = realOpen; }
+      ok('...writeNow with the text that is in the file does not touch the disk', same === true && opens === 0); }
+    { const realH = process.hrtime.bigint, seq = [0n, 300000000n, 0n, 2000000n]; let k = 0; process.hrtime.bigint = () => seq[k++];
+      try { await w.write('slow'); await w.write('quick'); } finally { process.hrtime.bigint = realH; }
+      ok('...the time of the last write and of the slowest are kept (a quick one after a slow one does not hide it)', w.stats.lastMs === 2 && w.stats.maxMs === 300); }
+    let idle = false; const c = w.write('five'); w.whenIdle().then(() => { idle = true; });
+    ok('...whenIdle waits for it', idle === false); await c; await new Promise(r => setImmediate(r));
+    ok('...and is answered when it is done', idle === true && w.pending() === false);
+  }
+  { // the figures for the Performance report
+    const t = tmpDb('db.json', { drivers: [{ id: 'a', picture: 'data:image/png;base64,' + 'A'.repeat(1500000) }], tracks: [{ id: 't', name: 'x' }] }), d = new Database(t.f);
+    d.add('tracks', { name: 'T2' }); d.setSettings({ k: 1 });
+    const st = d.dbStats();
+    ok('1.61.0: dbStats: the file (size, saves, last and slowest time, the time of the text and of the file), the settings file, the biggest tables', st.file.bytes > 1500000 && st.file.saves >= 2 && st.file.lastMs >= 0 && st.file.maxMs >= st.file.lastMs && st.file.textMs >= 0 && st.file.fileMs >= 0 && st.file.failed === 0 && st.settings.bytes > 0 && st.settings.writes === 0);
+    { const d3 = new Database(tmpDb('db.json', {}).f), realH = process.hrtime.bigint, seq = [0n, 100000000n, 300000000n, 0n, 1000000n, 2000000n]; let k = 0, f0s = d3.dbStats().file.saves;
+      process.hrtime.bigint = () => seq[k++]; try { d3.save(); d3.save(); } finally { process.hrtime.bigint = realH; }
+      const f = d3.dbStats().file;
+      ok('...the times of a save: the last (making the text, writing the file), and the slowest, which is kept when a quick one follows', f.saves === f0s + 2 && f.lastMs === 2 && f.textMs === 1 && f.fileMs === 1 && f.maxMs === 300); }
+    ok('...the biggest table comes first (counted, not turned into text), at most five', st.tables[0].name === 'drivers' && st.tables[0].bytes > 1500000 && st.tables.length <= 5 && st.tables.every((x, i, a) => i === 0 || a[i - 1].bytes >= x.bytes) && st.total >= st.tables[0].bytes);
+    d.add('drivers', { name: 'More', picture: 'data:image/png;base64,' + 'B'.repeat(900000) });
+    ok('...the count is kept for a minute (it is not made at every question)', d.dbStats().tables[0].bytes === st.tables[0].bytes);
+    const realNow = Date.now; Date.now = () => realNow() + 61000; let later; try { later = d.dbStats(); } finally { Date.now = realNow; }
+    d.add('drivers', { name: 'Third', picture: 'data:image/png;base64,' + 'C'.repeat(700000) }); d.sizes.at = Date.now() + 5e6;
+    ok('...and when the clock was put back it is made again too (a count from the future is not trusted)', d.dbStats().tables[0].bytes > later.tables[0].bytes + 600000);
+    { const g = d.dbStats(); g.file.saves = 999; g.settings.writes = 999; g.tables.length = 0;
+      ok('...the figures that are given out are a copy for the file (changing them changes nothing)', d.dbStats().file.saves !== 999); }
+    ok('...and made again after that', later.tables[0].bytes > st.tables[0].bytes + 800000);
+    const f0 = d.stats.failed, realWrite = d.save, realRename = fs.renameSync; fs.renameSync = () => { throw new Error('locked'); }; let e = null; try { d.save(); } catch (x) { e = x; } finally { fs.renameSync = realRename; }
+    ok('...a save that fails is counted (and the error still reaches the caller)', e && e.message === 'locked' && d.dbStats().file.failed === f0 + 1);
+    ok('Database.approxSize: a text is its length and two quotes, null 4, empty list and object 2, and a number or a flag is a few characters', Database.approxSize('abc') === 5 && Database.approxSize(null) === 4 && Database.approxSize(undefined) === 4 && Database.approxSize([]) === 2 && Database.approxSize({}) === 2 && Database.approxSize(7) > 0 && Database.approxSize(true) > 0 && Database.approxSize(() => 1) === 0);
+    const big = { settings: { a: 1, theme: 'dark', liveGrid: { x: [1, 2, 3] } }, drivers: Array.from({ length: 50 }, (_, i) => ({ id: 'd' + i, name: 'Driver ' + i, picture: 'data:image/png;base64,' + 'A'.repeat(20000) })), laps: Array.from({ length: 2000 }, (_, i) => ({ id: 'l' + i, t: 12.345 + i, lane: i % 2, driver: 'd' + (i % 50) })) };
+    const ratio = Database.approxSize(big) / JSON.stringify(big, null, 2).length;
+    ok('...and on a database with pictures it comes within a few percent of the size of the file (' + ratio.toFixed(2) + ')', ratio > 0.85 && ratio < 1.15);
+  }
+  { // main.js: the handler waits for the settings file, closing waits for what is on its way, and the core tells the figures
+    const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8'), ps = fs.readFileSync(path.join(__dirname, '..', 'perfstats.js'), 'utf8');
+    ok('1.61.0: main.js writes a setting with setSettingsAsync (not the synchronous one), and closing waits for the settings file as well as the race save', /ipcMain\.handle\('settings:set', async \(_e, patch\) => \{ const s = await db\.setSettingsAsync\(patch\);/.test(main) && !/db\.setSettings\(/.test(main) && /db\.writesPending\(\)/.test(main) && /db\.writesIdle\(\)/.test(main));
+    ok('...the core tells the report about the database (dbStats)', /out\.database = d\.db && d\.db\.dbStats \? d\.db\.dbStats\(\) : \{\}/.test(ps));
+  }
+  console.log(fails ? fails + ' DB TESTS FAILED' : 'ALL DB TESTS PASSED'); process.exit(fails ? 1 : 0);
+};
+asyncTests().catch(x => { console.error(x); process.exit(1); });
+

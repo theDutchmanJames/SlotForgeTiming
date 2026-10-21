@@ -23,13 +23,83 @@ async function writeAtomicAsync(file, text) {
   await fs.promises.rename(tmp, file);
 }
 
+// 1.61.0: a file that is written in the background, one write at a time. While one write is on its way only the newest text waits for its turn (the file only ever holds the latest
+// state), and everyone who asked for a write that was replaced is answered when the newer text is on the disk (or told that it could not be written). Used for the settings file.
+class LatestWriter {
+  constructor(file) { this.file = file; this.running = false; this.next = null; this.idle = []; this.written = null; this.stats = { writes: 0, lastMs: 0, maxMs: 0, failed: 0 }; }
+  pending() { return this.running || !!this.next; }
+  // asking for the text that is already in the file, with nothing on its way, is answered at once (nothing is written)
+  write(text) {
+    if (!this.pending() && text === this.written) return Promise.resolve(true);
+    return new Promise((resolve, reject) => {
+      const job = this.next || (this.next = { text, waiters: [] });
+      job.text = text; job.waiters.push({ resolve, reject });
+      if (!this.running) this.run();
+    });
+  }
+  // at once, in the program's own time: for the moments nothing else is writing (the start of the program, a restore). Gives false when a write is on its way (then ask write() instead).
+  writeNow(text) {
+    if (this.pending()) return false;
+    if (text !== this.written) { writeAtomic(this.file, text); this.written = text; }
+    return true;
+  }
+  async run() {
+    this.running = true;
+    while (this.next) {
+      const job = this.next; this.next = null; let err = null; const t0 = process.hrtime.bigint();
+      try { await writeAtomicAsync(this.file, job.text); this.written = job.text; this.stats.writes++; const ms = Math.round(Number(process.hrtime.bigint() - t0) / 1e5) / 10; this.stats.lastMs = ms; this.stats.maxMs = Math.max(this.stats.maxMs, ms); }
+      catch (x) { err = x || new Error('The file could not be written.'); this.stats.failed++; }
+      job.waiters.forEach(w => (err ? w.reject(err) : w.resolve(true)));
+    }
+    this.running = false;
+    this.idle.splice(0).forEach(r => r());
+  }
+  // resolves when nothing is being written or waiting to be
+  whenIdle() { return this.pending() ? new Promise(r => this.idle.push(r)) : Promise.resolve(); }
+}
+
+// 1.61.0: about how many characters a piece of data takes in the file, found by adding up the lengths of its texts (a picture is one text: no copying, no turning it into text)
+function approxSize(v) {
+  if (typeof v === 'string') return v.length + 2;
+  if (typeof v === 'number') return 8;
+  if (typeof v === 'boolean') return 5;
+  if (v === null || v === undefined) return 4;
+  if (Array.isArray(v)) { let n = 2; for (let i = 0; i < v.length; i++) n += approxSize(v[i]) + 2; return n; }
+  if (typeof v === 'object') { let n = 2; for (const k in v) n += k.length + 5 + approxSize(v[k]); return n; }
+  return 0;
+}
+
+// The settings are kept in a file of their own next to the database (1.61.0), 'name.settings.json' for 'name.json': a setting is changed all over the program, and the database
+// holds every picture and sound, so writing it whole for each change stalled the core of the program for a third of a second to more than a second.
+const settingsFileOf = file => String(file).replace(/\.json$/, '') + '.settings.json';
+
 class Database {
   constructor(file) {
     this.file = file;
+    this.settingsPath = settingsFileOf(file);
+    this.sw = new LatestWriter(this.settingsPath);
+    this.stats = { saves: 0, lastMs: 0, maxMs: 0, textMs: 0, fileMs: 0, bytes: 0, failed: 0 }; // the full saves of the database file (the Performance report shows them)
+    this.sizes = { at: 0, list: [] };
     this.data = this.load();
+    this.loadSettingsFile();
     this.ensure();
     this.save();
+    try { this.sw.writeNow(this.settingsText()); } catch { /* the database file holds the settings too; every change is written to the settings file again */ }
   }
+  // The settings file, when there is one, holds the latest settings (every change is written there before anything else could be older). No file yet (the first start of
+  // 1.61.0): the settings of the database file are used, and the file is made. A file that cannot be understood is kept under another name, as for the database.
+  loadSettingsFile() {
+    let text;
+    try { text = fs.readFileSync(this.settingsPath, 'utf8'); } catch (x) {
+      if (x && x.code === 'ENOENT') return;
+      throw new Error('The settings file cannot be read (' + (x && x.code || x) + '): ' + this.settingsPath + '. Close other programs that use it and start SlotForge Timing again. Nothing was changed.');
+    }
+    try { const s = JSON.parse(text); if (s && typeof s === 'object' && !Array.isArray(s)) { this.data.settings = s; this.sw.written = text; return; } } catch { /* damaged, see below */ }
+    try { fs.copyFileSync(this.settingsPath, this.settingsPath.replace(/\.json$/, '') + '.damaged-' + Date.now() + '.json'); } catch (x) {
+      throw new Error('The settings file is damaged and a copy of it could not be kept (' + (x && x.code || x) + '): ' + this.settingsPath + '. Nothing was changed.');
+    }
+  }
+  settingsText() { return JSON.stringify(this.data.settings, null, 2); }
   load() {
     let text;
     try { text = fs.readFileSync(this.file, 'utf8'); } catch (x) {
@@ -65,7 +135,12 @@ class Database {
     // new in 1.30.0: the laps since the last service. A car from before that has had no service yet, so every lap it has driven counts.
     for (const c of d.slotcars) if (!Number.isFinite(c.lapsSinceService)) c.lapsSinceService = CarStats.sinceOf(c);
   }
-  save() { writeAtomic(this.file, JSON.stringify(this.data, null, 2)); }
+  save() {
+    const t0 = process.hrtime.bigint(), text = JSON.stringify(this.data, null, 2), t1 = process.hrtime.bigint(), st = this.stats;
+    try { writeAtomic(this.file, text); } catch (x) { st.failed++; throw x; }
+    const t2 = process.hrtime.bigint(), ms = d => Math.round(Number(d) / 1e5) / 10;
+    st.saves++; st.textMs = ms(t1 - t0); st.fileMs = ms(t2 - t1); st.lastMs = ms(t2 - t0); st.maxMs = Math.max(st.maxMs, st.lastMs); st.bytes = text.length;
+  }
   check(entity) {
     if (!schema[entity]) throw new Error('Unknown item type: ' + entity);
   }
@@ -192,10 +267,22 @@ class Database {
   // Restoring a backup: everything is replaced by the data from the file (missing parts get their defaults).
   replaceAll(data) {
     const old = this.data;
-    try { this.data = JSON.parse(JSON.stringify(data)); this.ensure(); this.save(); } catch (x) { this.data = old; throw x; } // a file that cannot be used leaves what is there untouched
+    try { this.data = JSON.parse(JSON.stringify(data)); this.ensure(); this.save(); this.putSettings(); } catch (x) { this.data = old; throw x; } // a file that cannot be used leaves what is there untouched
   }
   getSettings() { return this.data.settings; }
-  setSettings(patch) { Object.assign(this.data.settings, patch); this.save(); return this.data.settings; }
+  // The settings file gets the settings as they are now: at once when nothing is being written to it, else after what is on its way (the newest text is the last one written).
+  putSettings() {
+    const text = this.settingsText();
+    if (!this.sw.writeNow(text)) this.sw.write(text).catch(x => console.error('[settings]', x && x.message || x));
+  }
+  // A setting is changed in the settings file only (1.61.0), in the background: the program does not wait for the disk. The answer comes when the file is written (or with the
+  // reason it could not be); the settings in memory are changed at once.
+  setSettingsAsync(patch) {
+    Object.assign(this.data.settings, patch);
+    return this.sw.write(this.settingsText()).then(() => this.data.settings);
+  }
+  // The same, in the program's own time (tests, and anything that cannot wait): the settings file is written before this returns, unless a write is on its way, then after it.
+  setSettings(patch) { Object.assign(this.data.settings, patch); this.putSettings(); return this.data.settings; }
   // A race that is running is kept in a file of its own (1.9.0), so that a crash or a power cut does not lose it: the race screen saves a snapshot every few seconds and the Home tab offers to carry on.
   // The file sits next to the database and is written whole, then renamed, so a cut in the middle leaves the earlier snapshot.
   resumeFile() { return path.join(path.dirname(this.file), 'race-resume.json'); }
@@ -243,9 +330,22 @@ class Database {
   resumePending() { const q = this.rq; return !!q && (q.running || !!q.next); }
   // resolves when nothing is being written or waiting to be (a read of the file waits for this, so it never sees a file that is half way)
   resumeIdle() { return this.resumePending() ? new Promise(r => this.rq.idle.push(r)) : Promise.resolve(); }
+  // 1.61.0: anything on its way to a file in the background (the race save, the settings file): closing the program waits for it
+  writesPending() { return this.resumePending() || this.sw.pending(); }
+  writesIdle() { return Promise.all([this.resumeIdle(), this.sw.whenIdle()]).then(() => undefined); }
+  // how the database goes (the Performance report shows it): the size of the file and the full saves, the settings file, and the biggest tables by a count of their texts (kept for a minute)
+  dbStats() {
+    const now = Date.now();
+    if (now - this.sizes.at > 60000 || now < this.sizes.at) {
+      const list = Object.keys(this.data).map(k => ({ name: k, bytes: approxSize(this.data[k]) })).filter(x => x.bytes > 0).sort((a, b) => b.bytes - a.bytes);
+      this.sizes = { at: now, list, total: list.reduce((t, x) => t + x.bytes, 0) };
+    }
+    const w = this.sw.stats;
+    return { file: { ...this.stats }, settings: { bytes: this.sw.written ? this.sw.written.length : 0, writes: w.writes, lastMs: w.lastMs, maxMs: w.maxMs, failed: w.failed }, tables: this.sizes.list.slice(0, 5), total: this.sizes.total || 0 };
+  }
   // how the saving of the race goes: the number of saves, how long the last and the slowest took, and how many failed (the Performance line shows it)
   resumeStats() { return this.rq ? { ...this.rq.stats } : { writes: 0, lastMs: 0, maxMs: 0, failed: 0 }; }
 }
 
-Database.writeAtomic = writeAtomic; // (the backups, exports and PDFs that main.js writes are written the same way)
+Database.writeAtomic = writeAtomic; Database.LatestWriter = LatestWriter; Database.approxSize = approxSize; Database.settingsFileOf = settingsFileOf; // (the backups, exports and PDFs that main.js writes are written the same way)
 module.exports = Database;

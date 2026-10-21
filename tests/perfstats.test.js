@@ -17,7 +17,7 @@ function deps(over = {}) {
     screen: { getPrimaryDisplay: () => ({ size: { width: 1920, height: 1080 }, scaleFactor: 1 }), getAllDisplays: () => [{}, {}] },
     os: { platform: () => 'linux', arch: () => 'arm64', release: () => '6.6.62', cpus: () => [1, 2, 3, 4].map(() => ({ model: 'Cortex-A76' })), totalmem: () => 8 * 1073741824, freemem: () => 5 * 1073741824, loadavg: () => [1.2, 0.9, 0.6] },
     process: { env: { XDG_SESSION_TYPE: 'wayland' }, argv: ['electron', '.', '--ozone-platform=x11', '--disable-gpu', '--inspect=9229', '--no-sandbox'], versions: { electron: '38.0.0', chrome: '140.0.0.0', node: '22.0.0' } },
-    db: { resumeStats: () => ({ writes: 7, lastMs: 3.2, maxMs: 11.4, failed: 0 }) }, version: '1.60.0',
+    db: { resumeStats: () => ({ writes: 7, lastMs: 3.2, maxMs: 11.4, failed: 0 }), dbStats: () => ({ file: { bytes: 5000000, saves: 3, lastMs: 21, maxMs: 40, textMs: 9, fileMs: 12, failed: 0 }, settings: { bytes: 900, writes: 2, lastMs: 1, maxMs: 2, failed: 0 }, tables: [{ name: 'drivers', bytes: 4000000 }], total: 5000000 }) }, version: '1.60.0',
     readText: async p => { if (p in files) return files[p]; throw new Error('ENOENT'); },
     now: () => clock.t, setInterval: (f, ms) => { const t = { f, ms, off: false, unref() { t.unrefd = true; } }; timers.push(t); return t; }, clearInterval: t => { t.off = true; }, ...over
   };
@@ -39,6 +39,9 @@ function deps(over = {}) {
     ok('the computer: system, kind, memory in MB, load', a.os.platform === 'linux' && a.os.arch === 'arm64' && a.os.cpus === 4 && a.os.cpuModel === 'Cortex-A76' && a.os.memoryMB === 8192 && a.os.freeMB === 5120 && a.os.load[0] === 1.2);
     ok('a Raspberry Pi says which one it is (without the character that ends its name), how hot it is and how fast it runs', a.os.model === 'Raspberry Pi 5 Model B Rev 1.0' && a.thermal.tempC === 62.5 && a.thermal.mhz === 2400 && a.thermal.maxMhz === 2400 && a.thermal.governor === 'ondemand');
     ok('the versions, and how the race save goes', a.versions.app === '1.60.0' && a.versions.electron === '38.0.0' && a.versions.chrome === '140.0.0.0' && a.save.writes === 7 && a.save.maxMs === 11.4);
+    ok('1.61.0: the database as the core tells it (file, settings file, tables) goes into the answer', a.database.file.bytes === 5000000 && a.database.file.saves === 3 && a.database.settings.writes === 2 && a.database.tables[0].name === 'drivers' && a.database.total === 5000000);
+    { const x = await createCollector(deps({ db: { resumeStats: () => ({}), dbStats: () => { throw new Error('gone'); } } }).d).collect(), y = await createCollector(deps({ db: { resumeStats: () => ({}) } }).d).collect(), z = await createCollector(deps({ db: null }).d).collect();
+      ok('...a core whose database cannot be asked (it throws, an older one, none) gives an empty database and the rest of the answer is there', JSON.stringify(x.database) === '{}' && JSON.stringify(y.database) === '{}' && JSON.stringify(z.database) === '{}' && x.os.cpus === 4 && typeof x.save === 'object'); }
     ok('nothing was stuck yet', a.lag.max10 === 0 && a.lag.all === 0);
 
     // the core is stuck: the clock jumps 600 ms between two looks (100 ms was expected)

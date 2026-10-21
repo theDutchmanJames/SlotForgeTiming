@@ -171,6 +171,19 @@
   // ---- what the core of the app tells (perfstats.js), made safe: it comes over a link, and an old or odd answer must not break the page ----
   const TYPE_OF = { Tab: 'window', GPU: 'graphics', Browser: 'core' };
   const isOn = v => typeof v === 'string' && v.startsWith('enabled');
+  // 1.61.0: the database as the core tells it (renderer/perf.js only cleans it and puts it in words): the size of the file and its full saves, the settings file, the biggest tables
+  function cleanDatabase(raw) {
+    const db = raw && typeof raw === 'object' ? raw : {}, f = db.file && typeof db.file === 'object' ? db.file : null, s = db.settings && typeof db.settings === 'object' ? db.settings : {};
+    return {
+      has: !!f,
+      file: { bytes: num(f && f.bytes, 0, 1e12, 0), saves: num(f && f.saves, 0, 1e9, 0), lastMs: num(f && f.lastMs, 0, 1e7, 0), maxMs: num(f && f.maxMs, 0, 1e7, 0), textMs: num(f && f.textMs, 0, 1e7, 0), fileMs: num(f && f.fileMs, 0, 1e7, 0), failed: num(f && f.failed, 0, 1e9, 0) },
+      settings: { bytes: num(s.bytes, 0, 1e12, 0), writes: num(s.writes, 0, 1e9, 0), lastMs: num(s.lastMs, 0, 1e7, 0), maxMs: num(s.maxMs, 0, 1e7, 0), failed: num(s.failed, 0, 1e9, 0) },
+      tables: (Array.isArray(db.tables) ? db.tables : []).filter(x => x && typeof x === 'object' && isNum(x.bytes) && text(x.name, 40)).slice(0, 5).map(x => ({ name: text(x.name, 40), bytes: num(x.bytes, 0, 1e12, 0) })),
+      total: num(db.total, 0, 1e12, 0)
+    };
+  }
+  // a size in words: 'adjust 412 KB' / '147.2 MB'
+  const sizeText = n => (!isNum(n) ? '–' : n < 1e6 ? `${f1(n / 1e3)} KB` : `${f1(n / 1e6)} MB`);
   function cleanMain(raw) {
     if (!raw || typeof raw !== 'object') return null;
     const procs = { window: 0, graphics: 0, core: 0, other: 0, total: 0, memoryMB: 0 };
@@ -204,6 +217,7 @@
       versions: { app: text(v.app, 20), electron: text(v.electron, 20), chrome: text(v.chrome, 30), node: text(v.node, 20) },
       lag: { max10: isNum(lag.max10) ? Math.round(num(lag.max10, 0, 3.6e6, 0)) : null, max60: isNum(lag.max60) ? Math.round(num(lag.max60, 0, 3.6e6, 0)) : null, all: isNum(lag.all) ? Math.round(num(lag.all, 0, 3.6e6, 0)) : null },
       save: { writes: num(sv.writes, 0, 1e9, 0), lastMs: num(sv.lastMs, 0, 1e6, 0), maxMs: num(sv.maxMs, 0, 1e6, 0), failed: num(sv.failed, 0, 1e9, 0) },
+      database: cleanDatabase(raw.database),
       at: isNum(raw.at) ? raw.at : null
     };
   }
@@ -265,6 +279,11 @@
       if (m.lag.max10 !== null && m.lag.max10 >= 100) n.push(`The core of the app was stuck for ${m.lag.max10} ms in the last ten seconds: the whole window waits when that happens.`);
       if (m.save.maxMs >= 150) n.push(`Saving the race took up to ${f0(m.save.maxMs)} ms. That goes on in the background, but a slow disk (an SD card) can be the cause of other waits.`);
       if (m.save.failed) n.push(`${m.save.failed} race save(s) could not be written.`);
+      if (m.database && m.database.has) {
+        if (m.database.file.maxMs >= 150) n.push(`Saving the whole database (${sizeText(m.database.file.bytes)}) took up to ${f0(m.database.file.maxMs)} ms, and the core waits for it. Settings are written apart and in the background; a change to a driver, a car, a race setup or a finished race still writes the whole file.`);
+        if (m.database.file.failed) n.push(`${m.database.file.failed} save(s) of the database could not be written.`);
+        if (m.database.settings.failed) n.push(`${m.database.settings.failed} write(s) of the settings file could not be done.`);
+      }
       if (m.os.memoryMB && m.os.freeMB && m.os.freeMB < m.os.memoryMB * 0.1) n.push(`The computer is nearly out of memory (${m.os.freeMB} MB of ${m.os.memoryMB} MB free).`);
       if (m.os.cpus && m.procs.total > m.os.cpus * 70) n.push('The app uses nearly all of the processor.');
     }
@@ -359,6 +378,12 @@
       L.push(`CPU of the app (% of one core): total ${f0(m.procs.total)}, window ${f0(m.procs.window)}, graphics ${f0(m.procs.graphics)}, core ${f0(m.procs.core)}, other ${f0(m.procs.other)}; memory ${f0(m.procs.memoryMB)} MB`);
       L.push(`Core of the app stalled: up to ${m.lag.max10 === null ? '–' : m.lag.max10} ms (10 s), ${m.lag.max60 === null ? '–' : m.lag.max60} ms (60 s), ${m.lag.all === null ? '–' : m.lag.all} ms (since measuring began)`);
       L.push(`Race save: ${m.save.writes} written, last ${f1(m.save.lastMs)} ms, slowest ${f1(m.save.maxMs)} ms, ${m.save.failed} failed`);
+      if (m.database && m.database.has) {
+        const df = m.database.file, ds = m.database.settings, tb = m.database.tables;
+        L.push(`Database file (1.61.0): ${sizeText(df.bytes)}, ${f0(df.saves)} saved since the app started, last ${f1(df.lastMs)} ms (making the text ${f1(df.textMs)}, writing the file ${f1(df.fileMs)}), slowest ${f1(df.maxMs)} ms, ${f0(df.failed)} failed`);
+        L.push(`Settings file: ${sizeText(ds.bytes)}, ${f0(ds.writes)} written, last ${f1(ds.lastMs)} ms, slowest ${f1(ds.maxMs)} ms, ${f0(ds.failed)} failed`);
+        if (tb.length) L.push(`Biggest parts of the database (counted, about): ${tb.map(x => `${x.name} ${sizeText(x.bytes)}`).join(', ')}`);
+      }
     }
     detail(r, m).forEach(x => L.push(x));
     const nn = notes(r, m); if (nn.length) { L.push('', 'Notes:'); nn.forEach(x => L.push('- ' + x)); }

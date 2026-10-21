@@ -696,5 +696,24 @@ const fillUpdates = (M, n, f) => { for (let i = 0; i < n; i++) f(i * 100); }; //
   ok('a report from an older snapshot (no kept in it) prints no clause and no "undefined"', (() => { const sn = K.snapshot(2000); delete sn.delta[0].kept; const t = Perf.report(sn, null, {}); return t.includes('6 left alone') && !t.includes('of them put') && !t.includes('undefined'); })());
 }
 
+// ---- 1.61.0: the database in the report ----
+{ const DB = { file: { bytes: 147200000, saves: 12, lastMs: 913.46, maxMs: 1210.4, textMs: 402.2, fileMs: 511.3, failed: 0 }, settings: { bytes: 5120, writes: 9, lastMs: 1.84, maxMs: 6.2, failed: 0 }, tables: [{ name: 'drivers', bytes: 91000000 }, { name: 'laps', bytes: 41500000 }, { name: 'audioSets', bytes: 9300000 }, { name: 'cars', bytes: 800000 }, { name: 'tracks', bytes: 412000 }, { name: 'sixth', bytes: 1 }], total: 147200000 };
+  const m = Perf.cleanMain({ database: DB }), rep = Perf.report(R0, m, {}), L = rep.split('\n'), at = re => L.findIndex(x => re.test(x)), has = (r, mm, re) => Perf.notes(r, mm).some(x => re.test(x));
+  ok('1.61.0: the report tells the database file: its size, the saves since the start, the last, the time of the text and of the file, the slowest, the failed', rep.includes('Database file (1.61.0): 147.2 MB, 12 saved since the app started, last 913.5 ms (making the text 402.2, writing the file 511.3), slowest 1210.4 ms, 0 failed'));
+  ok('...the settings file: size, written, last, slowest, failed', rep.includes('Settings file: 5.1 KB, 9 written, last 1.8 ms, slowest 6.2 ms, 0 failed'));
+  ok('...and the biggest parts, five of them, counted (the sixth is left out)', rep.includes('Biggest parts of the database (counted, about): drivers 91 MB, laps 41.5 MB, audioSets 9.3 MB, cars 800 KB, tracks 412 KB') && !rep.includes('sixth'));
+  ok('...in order, straight after the race save and before the notes', at(/^Race save:/) >= 0 && at(/^Database file/) === at(/^Race save:/) + 1 && at(/^Settings file/) === at(/^Race save:/) + 2 && at(/^Biggest parts/) === at(/^Race save:/) + 3 && at(/^Notes:/) > at(/^Biggest parts/));
+  ok('...a database that saves in 150 ms or more is noted, with what it means and what is written apart', has(R0, m, /Saving the whole database \(147\.2 MB\) took up to 1210 ms.*Settings are written apart/) && has(R0, Perf.cleanMain({ database: { ...DB, file: { ...DB.file, maxMs: 150 } } }), /took up to 150 ms/) && !has(R0, Perf.cleanMain({ database: { ...DB, file: { ...DB.file, maxMs: 149 } } }), /whole database/));
+  ok('...a save of the database that failed is noted, and so is a write of the settings file (each on its own)', has(R0, Perf.cleanMain({ database: { ...DB, file: { ...DB.file, failed: 2 } } }), /^2 save\(s\) of the database could not be written/) && !has(R0, Perf.cleanMain({ database: { ...DB, file: { ...DB.file, failed: 2 } } }), /settings file/) && has(R0, Perf.cleanMain({ database: { ...DB, settings: { ...DB.settings, failed: 3 } } }), /^3 write\(s\) of the settings file could not be done/) && !has(R0, m, /could not be/));
+  const none = Perf.report(R0, Perf.cleanMain({}), {}), old = Perf.report(R0, Perf.cleanMain({ save: { writes: 3 } }), {});
+  ok('...a core that tells nothing about the database (an older one, or an error) prints no line and no "undefined" or "NaN"', !none.includes('Database file') && !none.includes('Settings file') && !old.includes('Biggest parts') && !/undefined|NaN/.test(none + old + rep));
+  const junk = Perf.cleanMain({ database: { file: { bytes: -5, saves: 'x', lastMs: NaN, maxMs: 1e99, textMs: null, fileMs: {}, failed: Infinity }, settings: 'no', tables: [null, 3, { name: 7, bytes: 1 }, { name: 'ok', bytes: 'big' }, { name: 'fine', bytes: 2048 }, { name: 'x'.repeat(200), bytes: 5 }], total: 'x' } });
+  const jr = Perf.report(R0, junk, {});
+  ok('...nonsense from the core is made safe: sizes clamp to what is possible, bad tables are left out, long names are cut', junk.database.has === true && junk.database.file.bytes === 0 && junk.database.file.saves === 0 && junk.database.file.maxMs <= 1e7 && junk.database.settings.bytes === 0 && junk.database.tables.length === 2 && junk.database.tables[0].name === 'fine' && junk.database.tables[1].name.length <= 40 && !/undefined|NaN|Infinity/.test(jr));
+  ok('...cleanMain gives a database that has nothing in it when the core tells nothing', Perf.cleanMain({}).database.has === false && Perf.cleanMain({}).database.tables.length === 0);
+  const tiny = Perf.report(R0, Perf.cleanMain({ database: { file: { bytes: 999000, saves: 1 }, settings: { bytes: 0 }, tables: [] } }), {});
+  ok('...a size under a million is in KB, the line of the parts is left out when no table is told', tiny.includes('Database file (1.61.0): 999 KB') && !tiny.includes('Biggest parts'));
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nperf PASSED');
 process.exit(fails ? 1 : 0);

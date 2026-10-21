@@ -85,13 +85,13 @@ const onDisk = db => { try { return JSON.parse(fs.readFileSync(db.resumeFile(), 
   { // the files that use it
     const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
     ok('main.js saves and clears in the background, and a read waits for the saves that are on their way', main.includes("ipcMain.handle('resume:save', (_e, snap) => db.saveResumeAsync(snap))") && main.includes("ipcMain.handle('resume:clear', () => db.clearResumeAsync())") && /ipcMain\.handle\('resume:get', async \(\) => \{ await db\.resumeIdle\(\); return db\.getResume\(\); \}\)/.test(main));
-    ok('...and on closing, a save that is on its way is written first (not for longer than three seconds)', /before-quit', e => \{[\s\S]*db\.resumePending\(\)[\s\S]*e\.preventDefault\(\)[\s\S]*3000[\s\S]*app\.quit\(\)/.test(main)); }
+    ok('...and on closing, a save that is on its way (a race save, since 1.61.0 a settings file too) is written first (not for longer than three seconds)', /before-quit', e => \{[\s\S]*db\.writesPending\(\)[\s\S]*e\.preventDefault\(\)[\s\S]*3000[\s\S]*app\.quit\(\)/.test(main)); }
 
   { // closing the program (the real lines of main.js, with a stand-in for the app and the database)
     const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8'), code = main.slice(main.indexOf('let quitFlushed = false;'));
     const setup = (pending, idle) => {
       const handlers = {}, calls = { quit: 0, prevented: 0, closed: 0 }, timers = [];
-      vm.runInNewContext(code, { app: { on: (ev, f) => { handlers[ev] = f; }, quit: () => { calls.quit++; } }, net: { server: { close: () => { calls.closed++; } } }, db: { resumePending: pending, resumeIdle: idle }, Promise, setTimeout: (f, ms) => { timers.push({ f, ms }); return timers.length; } });
+      vm.runInNewContext(code, { app: { on: (ev, f) => { handlers[ev] = f; }, quit: () => { calls.quit++; } }, net: { server: { close: () => { calls.closed++; } } }, db: { writesPending: pending, writesIdle: idle }, Promise, setTimeout: (f, ms) => { timers.push({ f, ms }); return timers.length; } });
       return { calls, timers, fire() { handlers['before-quit']({ preventDefault: () => { calls.prevented++; } }); } };
     };
     const a = setup(() => false, () => Promise.resolve()); a.fire(); await wait(5);
