@@ -71,12 +71,11 @@ const Help = (() => {
           <li><b>Time Tokens</b>: the time buttons and the warning for a Time Token Session.</li>
           <li>Fuel systems, penalty systems, damage systems, tyre wear systems and weather systems do nothing until you choose them in the <b>Racing Systems</b> folder of a race setup (Balance of Power and the pit hold time are there too).</li>
         </ul>` },
-      { id: 'types', title: 'Session types', note: 'Seven ways to race', body: `
+      { id: 'types', title: 'Session types', note: 'Six ways to race', body: `
         <ul>
           <li><b>Free practice</b>: no finish. It runs until you stop it and ranks the drivers by their best lap.</li>
           <li><b>Qualifying</b>: a timed session ranked by best lap. Two drivers with the same best lap: the one who set it first ranks higher. Its winner picks their lane first in the next race on the same track.</li>
-          <li><b>Race by laps or distance</b>: the first to reach the number of laps, or to drive the distance, wins. The race ends when the lead car finishes, or when every car has finished (see Distance races, below).</li>
-          <li><b>Timed race</b>: the most laps in the time wins.</li>
+          <li><b>Race</b>: limited by a number of laps, a distance or a time (the setting <i>The race is limited by</i>). Laps or distance: the first to reach them wins. The race ends when the lead car finishes, or when every car has finished (see Distance races, below). A time: when the time is up every car finishes on its next crossing of the line (that lap still counts), and the most laps in the time wins; with the same number of laps the lowest total time wins. (Before 1.62.0 this was the session type <i>Timed race</i>: those setups are now a Race limited by a time.)</li>
           <li><b>Heat-based race</b>: several heats, each limited by laps or by time; the overall result adds the heats up. How the heats are planned and counted, and the finals, are explained in Heat races, below.</li>
           <li><b>Endurance Race</b>: a long race for teams, where the drivers of a team swap at the wheel in the pits (see Endurance Race, below).</li>
           <li><b>Time Token Session</b>: not a race. You sell track time per lane (see Time Token Sessions below).</li>
@@ -98,7 +97,7 @@ const Help = (() => {
       { id: 'heatplan', title: 'Heat plan and break', note: 'See, change and time the heats', body: `
         <ul>
           <li>On the Home tab a <b>Heat plan</b> shows the heats by lane, how often every driver races and in which lane; <b>Shuffle again</b> makes another plan, and the plan you see is the plan that is raced. To change the plan yourself, click a place and then another place: the two swap (a place with a dash is empty, so a driver can move there). A driver can not race twice in a heat. <b>Reset my changes</b> brings back the plan that was made; changing the number of participants or the heat settings makes a new plan.</li>
-          <li>On the Race tab the <b>Heat list</b> shows every heat with its drivers by lane, the heat that is racing or next, and for a finished heat its winner and the points, laps or times. The <b>Heat List</b> widget shows it on the Live Race page. <b>Print the heat list</b> (also on Home) makes a PDF sheet. The audio call <b>line-up</b> reads the drivers of the next heat.</li>
+          <li>On the Race tab the <b>Heat list</b> shows every heat with its drivers by lane, the heat that is racing or next, and for a finished heat its winner and the points, laps or times. The <b>Heat List</b> widget shows it on the Live Race page, and the <b>Next Heat</b> widget shows only the drivers of the heat that comes next, with their lanes (before the start, while a heat is racing and between two heats, with the countdown of the break; "Race finished" after the last). <b>Print the heat list</b> (also on Home) makes a PDF sheet. The audio call <b>line-up</b> reads the drivers of the next heat.</li>
           <li><b>Break between heats</b>: with a number of seconds, the race counts down after each heat (the Race Info widget and the Live Race page show "next heat in 1:30"). <b>When the break is over</b> either waits for Start or lets the start lights begin by themselves; Start (Space) always starts the next heat at once, and Stop ends the race.</li>
         </ul>` },
       { id: 'rotation', title: 'Rotation setups', note: 'Make your own heat schedule', body: `

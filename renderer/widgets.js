@@ -254,6 +254,35 @@
     };
     return `<table class="hlw">${shown.map(x => `<tr class="hlw-${x.state}"><td class="hlw-n">${esc(x.name)}</td><td class="hlw-d">${(x.drivers || []).map(d => `${withNums && d.lane >= 0 ? (d.lane + 1) + ': ' : ''}${esc(d.name)}`).join(' \u00b7 ')}</td><td class="hlw-win">${cellOf(x)}</td></tr>`).join('')}</table>`;
   }
+  // The Next Heat widget (1.62.0): the drivers of the heat that comes next, with their lanes. heat and phase are those of the Heat List. The heat at heat.idx is the one that is racing
+  // (countdown, running, paused) or has just finished and waits for the check (review), so the next one is the heat after it; before the start and between two heats it is the heat at heat.idx.
+  const NEXTHEAT_OPTIONS = [
+    { key: 'howmany', label: 'Heats shown', type: 'select', default: '1', choices: [['1', 'The next heat'], ['2', 'The next two heats'], ['3', 'The next three heats']] },
+    { key: 'title', label: 'Name of the heat above the drivers', type: 'checkbox', default: true },
+    { key: 'lanes', label: 'Lane numbers in front of the drivers', type: 'checkbox', default: true },
+    { key: 'layout', label: 'The drivers are shown', type: 'select', default: 'list', choices: [['list', 'One under the other'], ['line', 'On one line']] },
+    { key: 'countdown', label: 'Countdown of the break between two heats', type: 'checkbox', default: true, hint: 'Shown with the next heat while the race counts down to its start (a break set in the Race Setup).' }
+  ];
+  const nhOn = (o, k) => { const d = NEXTHEAT_OPTIONS.find(x => x.key === k); return o && o[k] !== undefined ? o[k] : d.default; };
+  const clockSecs = s => { const n = Math.max(0, Math.round(Number(s) || 0)), h = Math.floor(n / 3600), m = Math.floor(n % 3600 / 60), x = String(n % 60).padStart(2, '0'); return h ? `${h}:${String(m).padStart(2, '0')}:${x}` : `${m}:${x}`; };
+  function nextHeatHtml(heat, phase, opt) {
+    const all = (heat && heat.list) || [];
+    if (!all.length) return '–';
+    const racing = ['countdown', 'running', 'paused', 'review'].includes(phase), idx = Math.max(0, heat.idx || 0), first = racing ? idx + 1 : idx;
+    if (first >= all.length) return `<span class="nhw-none">${racing ? 'This is the last heat' : 'Race finished'}</span>`;
+    const many = Math.max(1, Math.min(3, Math.floor(Number(nhOn(opt, 'howmany'))) || 1)), withNums = nhOn(opt, 'lanes') !== false, line = nhOn(opt, 'layout') === 'line';
+    const count = Number(heat.count) || 0, left = Number(heat.breakLeft) || 0;
+    const blocks = all.slice(first, first + many).map((x, k) => {
+      const i = first + k, ds = (x.drivers || []).slice().sort((a, b) => (a.lane < 0 ? 1e6 : a.lane) - (b.lane < 0 ? 1e6 : b.lane) || 0);
+      const name = esc(x.name) + (count && i < count ? ` of ${count}` : ''), head = nhOn(opt, 'title') === false ? '' : `<div class="nhw-t">${k === 0 ? 'Next: ' : ''}${name}</div>`;
+      const who = ds.map(d => `${withNums && d.lane >= 0 ? (d.lane + 1) + ': ' : ''}${esc(d.name)}`);
+      const body = line ? `<div class="nhw-d">${who.join(' · ')}</div>` : `<div class="nhw-d nhw-list">${who.map(w => `<div>${w}</div>`).join('')}</div>`;
+      const note = k === 0 && heat.picking && i === idx ? '<div class="nhw-c">The lanes are picked before the start</div>' : '';
+      const clock = k === 0 && phase === 'between' && left > 0 && nhOn(opt, 'countdown') !== false ? `<div class="nhw-c">Starts in ${clockSecs(left)}</div>` : '';
+      return `<div class="nhw-b">${head}${body}${clock}${note}</div>`;
+    });
+    return `<div class="nhw">${blocks.join('')}</div>`;
+  }
   const HEATLIST_SAMPLE = { idx: 1, by: 'points', list: [
     { name: 'Heat 1', drivers: [{ lane: 0, name: 'Alex' }, { lane: 1, name: 'Sam' }, { lane: 2, name: 'Kim' }], rows: [{ pos: 1, name: 'Sam', points: 10, laps: 10 }, { pos: 2, name: 'Alex', points: 8, laps: 10 }, { pos: 3, name: 'Kim', points: 6, laps: 9 }] },
     { name: 'Heat 2', drivers: [{ lane: 0, name: 'Kim' }, { lane: 1, name: 'Alex' }, { lane: 2, name: 'Sam' }], rows: [] },
@@ -441,6 +470,7 @@
     T('info', 'Race Info', 'Race', { title: 'Race info', w: 300, sample: 'Heat 2 of 3 · 4 laps left' }),
     T('leaderboard', 'Leaderboard', 'Race', { w: 420, h: 220, textSize: 18, options: LEADER_OPTIONS, sample: (l, w) => leaderHtml(NAMES.slice(0, 4).map((n, i) => ({ pos: i + 1, flag: FLAGS[i], name: n, nickname: NICKS[i], callsign: n.slice(0, 3).toUpperCase(), laps: String(5 - (i > 2 ? 1 : 0)), best: `5.${10 + i * 6}4`, last: `5.${30 + i}2`, current: `2.${i}40`, fuel: `${90 - i * 20} L`, gap: i ? `+${i}.${i * 3}20` : '' })), (w && w.opt) || {}) }),
     T('heatlist', 'Heat List', 'Race', { title: 'Heat list', w: 460, h: 200, textSize: 18, options: HEATLIST_OPTIONS, sample: (l, w) => heatListHtml(HEATLIST_SAMPLE, 'running', (w && w.opt) || {}) }),
+    T('nextheat', 'Next Heat', 'Race', { title: 'Next heat', w: 300, h: 160, textSize: 22, options: NEXTHEAT_OPTIONS, sample: (l, w) => nextHeatHtml({ ...HEATLIST_SAMPLE, count: 3, breakLeft: 90 }, 'between', (w && w.opt) || {}) }),
     T('logo', 'Logo', 'Race', { w: 200, h: 100, noTitle: true, options: [{ key: 'image', label: 'Logo picture', type: 'image', fallback: 'clubLogo' }, { key: 'fit', label: 'Fit', type: 'select', choices: [['contain', 'Show the whole logo'], ['cover', 'Fill the widget (may crop)']], default: 'contain' }], sample: imgSample }),
     // ---- Driver ----
     T('name', 'Driver Name', 'Driver', { title: 'Name', perLane: true, w: 200, sample: l => NAMES[l % NAMES.length] }),
@@ -721,7 +751,7 @@
   }
 
   const picSites = { av: SITE_AV, img: SITE_IMG, flag: SITE_FLAG, fuel: SITE_FUEL, lights: SITE_LIGHTS }; // (where the text of the pictures is kept: for the tests)
-  const api = { lightPictures, lightSetPictures, prepareLights, picSites, heatListHtml, HEATLIST_OPTIONS, tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, flagImgHtml, avatarHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, MAG, LANES, bbox, colorsOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, ALIGNS, titleAlignOf, valueAlignOf, alignClassOf, lapCountOf, lapTotalOn, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, resolveOpt, heightOf, withoutControls, moveWidget, resizeWidget, snapLines, tidy, alignRects, distributeRects, mirrorRects, mirrorSettings, MIRROR_KEYS, scaleGroup, newWidget, defaultLayout };
+  const api = { lightPictures, lightSetPictures, prepareLights, picSites, heatListHtml, HEATLIST_OPTIONS, nextHeatHtml, NEXTHEAT_OPTIONS, tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, flagImgHtml, avatarHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, MAG, LANES, bbox, colorsOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, ALIGNS, titleAlignOf, valueAlignOf, alignClassOf, lapCountOf, lapTotalOn, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, resolveOpt, heightOf, withoutControls, moveWidget, resizeWidget, snapLines, tidy, alignRects, distributeRects, mirrorRects, mirrorSettings, MIRROR_KEYS, scaleGroup, newWidget, defaultLayout };
   root.Widgets = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -144,7 +144,7 @@
   const whole = (v, lo, hi, d) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
 
   // ---- recent races ----
-  const KINDS = { practice: 'Free practice', qualifying: 'Qualifying', race: 'Race by laps or distance', timed: 'Timed race', heats: 'Heat-based race', endurance: 'Endurance Race' };
+  const KINDS = { practice: 'Free practice', qualifying: 'Qualifying', race: 'Race', timed: 'Timed race', heats: 'Heat-based race', endurance: 'Endurance Race' };
   // ctx: { sessions, count } -> [{ id, date, name, kind, result }] the newest first; a race says who won, qualifying and free practice the best lap. Time Token Sessions never show.
   function recent(ctx) {
     const n = whole(ctx.count, 1, 20, 5);
@@ -219,7 +219,7 @@
     out.push(['Race', n.typeLabel || t || '']);
     let length = '';
     const dist = () => (typeof module !== 'undefined' ? require('./distance.js') : root.Distance).lengthText(setup, n.distUnit); // (a race by distance: 100 m; n.distUnit is 'm' or 'ft')
-    if (t === 'race') length = setup.raceBy === 'distance' ? dist() : plural(laps, 'lap', 'laps');
+    if (t === 'race') length = setup.raceBy === 'time' ? plural(mins, 'minute', 'minutes') : setup.raceBy === 'distance' ? dist() : plural(laps, 'lap', 'laps');
     else if (t === 'timed' || t === 'qualifying') length = plural(mins, 'minute', 'minutes');
     else if (t === 'endurance' && !heated) length = setup.enduranceBy === 'laps' ? plural(laps, 'lap', 'laps') : setup.enduranceBy === 'distance' ? dist() : plural(mins, 'minute', 'minutes');
     else if (heated) {

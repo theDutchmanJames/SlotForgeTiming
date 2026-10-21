@@ -885,6 +885,12 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .hlw tr.hlw-done{opacity:.8}
 .hlw tr.hlw-later{opacity:.65}
 .hlw tr.hlw-current,.hlw tr.hlw-next{background:rgba(255,255,255,.14);font-weight:700}
+.lw-val:has(.nhw){align-items:stretch;justify-content:flex-start;overflow:hidden;text-align:left}
+.nhw{width:100%;font-size:.8em;font-weight:500;line-height:1.25}
+.nhw-b+.nhw-b{margin-top:.5em}
+.nhw-t{font-weight:700}
+.nhw-c{opacity:.8;font-size:.85em}
+.nhw-none{opacity:.85}
 
 /* the drivers of a team (Database > Teams) */
 .memlist{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:4px}

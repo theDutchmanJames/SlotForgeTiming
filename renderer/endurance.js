@@ -5,6 +5,7 @@
 // A stint is the time one driver is at the wheel. "unit" is how the setup counts: in minutes, in laps or (1.35.1) in distance (metres: the laps of a car times the length of its lane; stints, swaps,
 // the shortest and longest stint, the totals of a driver). The functions that look at the stint take the distance the car has driven (m, metres) as their last argument; only a count in distance uses it.
 (function (root) {
+  const RaceLimit = typeof module !== 'undefined' ? require('./racelimit.js') : root.RaceLimit; // (what limits a race)
   const num = (v, d) => (v === '' || v === null || !Number.isFinite(Number(v)) ? d : Math.max(0, Number(v)));
   const MODES = ['every', 'moments', 'free'], NEXT = ['order', 'chosen', 'random'], CONFIRM = ['both', 'sensor', 'button'];
   const EPS = 1e-9;
@@ -48,6 +49,7 @@
   // The race setup as the race screen works with it: an Endurance Race is raced as the kind of race it is made of (a race by laps, a timed race or heats),
   // with the rules of the swaps in setup.endurance; setup.ofType keeps what it really is. Any other setup is given back as it is.
   function effective(setup) {
+    if (setup && setup.sessionType === 'race' && setup.raceBy === 'time') return RaceLimit.effective(setup); // (1.62.0: a Race limited by a time is raced as a Timed race)
     if (!setup || setup.sessionType !== 'endurance') return setup;
     const by = setup.enduranceBy === 'laps' || setup.enduranceBy === 'distance' ? 'race' : setup.enduranceBy === 'heats' ? 'heats' : 'timed';
     return { ...setup, sessionType: by, ofType: 'endurance', endurance: clean(setup), raceBy: setup.enduranceBy === 'distance' ? 'distance' : 'laps', ...(by === 'heats' && !setup.rotation ? { participants: 'teams' } : {}) }; // (raceBy: a long race by distance is a race by distance)

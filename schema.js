@@ -3,9 +3,9 @@
 // A field with unit: 'm' or 'mm' holds a length (kept in metres or millimetres). When the distance unit is feet and miles (1.27.0) it is typed in feet or inches; labelFt and hintFt are its words then.
 // type: text | longtext | number | date | choice | country | image | tracklength (metres, with a calculator) | gallery (extra pictures)
 // the kinds of session that are raced (a Time Token Session has no start lights, laps, fuel or penalties)
-const RACING = [{ sessionType: ['practice', 'qualifying', 'race', 'timed', 'heats', 'endurance'] }];
+const RACING = [{ sessionType: ['practice', 'qualifying', 'race', 'heats', 'endurance'] }];
 // the same, in a race setup that has no safety car system (a system replaces the Yellow flag settings: 1.53.0)
-const NO_SAFETYCAR = [{ sessionType: ['practice', 'qualifying', 'race', 'timed', 'heats', 'endurance'], safetyCar: [''] }];
+const NO_SAFETYCAR = [{ sessionType: ['practice', 'qualifying', 'race', 'heats', 'endurance'], safetyCar: [''] }];
 // a heat-based race: a Heat-based race, or an Endurance Race that is heat-based (extra: the other conditions that must match)
 const HEATED = (extra = {}) => [{ sessionType: ['heats'], ...extra }, { sessionType: ['endurance'], enduranceBy: ['heats'], ...extra }];
 // a race that is limited by a distance (1.35.0): a race, heats or an Endurance Race (one long race, or heat-based) set to Distance (extra: the other conditions that must match)
@@ -138,17 +138,17 @@ module.exports = {
     fields: [
       { key: 'name', group: 'session', label: 'Name', type: 'text' },
       { key: 'sessionType', group: 'session', label: 'Session type', type: 'select', default: 'race',
-        options: [['practice', 'Free practice'], ['qualifying', 'Qualifying'], ['race', 'Race by laps or distance'], ['timed', 'Timed race'], ['heats', 'Heat-based race'], ['endurance', 'Endurance Race'], ['tokens', 'Time Token Session']],
-        hint: 'A Time Token Session runs for as long as you like. Each lane is switched on with paid time and turns red when the time is up. Its settings are in Race Setup > Time Tokens. An Endurance Race is a long race in which the drivers of a team swap in the pits and drive the same car; its swap rules are in the Endurance folder below.' },
+        options: [['practice', 'Free practice'], ['qualifying', 'Qualifying'], ['race', 'Race'], ['heats', 'Heat-based race'], ['endurance', 'Endurance Race'], ['tokens', 'Time Token Session']],
+        hint: 'A Race is limited by a number of laps, a distance or a time (see The race is limited by below). A Time Token Session runs for as long as you like. Each lane is switched on with paid time and turns red when the time is up. Its settings are in Race Setup > Time Tokens. An Endurance Race is a long race in which the drivers of a team swap in the pits and drive the same car; its swap rules are in the Endurance folder below.' },
       { key: 'track', group: 'session', label: 'Track (sets the number of lanes)', type: 'ref', ref: 'tracks' },
-      { key: 'raceBy', group: 'length', label: 'The race is limited by', type: 'select', default: 'laps', options: [['laps', 'A number of laps'], ['distance', 'A distance']], showIf: [{ sessionType: ['race'] }],
-        hint: 'A number of laps: the first to drive them wins. A distance: every car drives the same distance (or the distances you set below), so a car in a shorter lane drives more laps. Between two crossings of the line the distance is worked out from the laps and the length of the lane, so the lane lengths of the track have to be known (Database > Tracks).' },
+      { key: 'raceBy', group: 'length', label: 'The race is limited by', type: 'select', default: 'laps', options: [['laps', 'A number of laps'], ['distance', 'A distance'], ['time', 'A time']], showIf: [{ sessionType: ['race'] }],
+        hint: 'A number of laps: the first to drive them wins. A time: the race lasts that long, every car finishes on its next crossing of the line after the time is up (that lap still counts), and the car with the most laps wins (with equal laps, the lowest total time). A distance: every car drives the same distance (or the distances you set below), so a car in a shorter lane drives more laps. Between two crossings of the line the distance is worked out from the laps and the length of the lane, so the lane lengths of the track have to be known (Database > Tracks).' },
       { key: 'enduranceBy', group: 'length', label: 'The Endurance Race is', type: 'select', default: 'time',
         options: [['time', 'One long race of a set time'], ['laps', 'One long race of a number of laps'], ['distance', 'One long race of a set distance'], ['heats', 'Heat-based: a series of heats, planned by a rotation setup or by the settings below']], showIf: [{ sessionType: ['endurance'] }],
         hint: 'In an Endurance Race the participants are teams. The drivers of a team swap in the pits and drive the same car. One long race: the team races from start to finish and swaps as often as the rules below say. Heat-based: every heat is an endurance race of its own, with swaps; the drivers who start a heat are chosen as in a heat-based race with teams.' },
       { key: 'heatBy', group: 'length', label: 'Each heat is limited by', type: 'select', default: 'laps',
-        options: [['laps', 'Number of laps'], ['time', 'Duration'], ['distance', 'Distance']], showIf: HEATED(),
-        hint: 'Number of laps: a heat ends when the cars have driven that many laps. Duration: every heat runs for the same time. Distance: every car drives the same distance (or the distances you set), so a car in a shorter lane drives more laps; the lane lengths of the track have to be known.' },
+        options: [['laps', 'Number of laps'], ['time', 'A time'], ['distance', 'Distance']], showIf: HEATED(),
+        hint: 'Number of laps: a heat ends when the cars have driven that many laps. A time: every heat runs for the same time. Distance: every car drives the same distance (or the distances you set), so a car in a shorter lane drives more laps; the lane lengths of the track have to be known.' },
       { key: 'rotation', group: 'length', label: 'Rotation setup', type: 'ref', ref: 'rotationsetups', blank: 'None: plan the heats from the settings below', showIf: HEATED(),
         hint: 'A heat plan that you made yourself in Race Setup > Rotation Setups: which participant races in which heat and in which lane. With one chosen, the settings that plan the heats (up to "Who races together") are not used. Everything about how the result is counted still is.' },
       { key: 'participants', group: 'length', label: 'The participants of the heats are', type: 'select', default: 'drivers', options: [['drivers', 'Drivers'], ['teams', 'Teams (made under Database > Teams)']], showIf: [{ sessionType: ['heats'], rotation: [''] }],
@@ -181,10 +181,10 @@ module.exports = {
       { key: 'distanceMax', group: 'length', label: 'The race may take at most (minutes, 0 = no limit)', type: 'number', default: 0, min: 0, showIf: DIST(),
         hint: 'A safety net: when the time is up every car finishes at its next crossing of the line, and the cars are ranked by the distance they have driven. 0 means the race lasts until the distance is driven.' },
       { key: 'duration', group: 'length', label: 'Duration (minutes)', type: 'number', default: 5,
-        showIf: [{ sessionType: ['qualifying', 'timed'] }, { sessionType: ['endurance'], enduranceBy: ['time'] }, ...HEATED({ heatBy: ['time'] })] },
+        showIf: [{ sessionType: ['qualifying'] }, { sessionType: ['race'], raceBy: ['time'] }, { sessionType: ['endurance'], enduranceBy: ['time'] }, ...HEATED({ heatBy: ['time'] })] },
       { key: 'endRule', group: 'length', label: 'The race ends', type: 'select', default: 'all',
         options: [['all', 'When every car has finished'], ['leader', 'When the lead car finishes']],
-        showIf: [{ sessionType: ['race'] }, { sessionType: ['endurance'], enduranceBy: ['laps', 'distance'] }, ...HEATED({ heatBy: ['laps', 'distance'] })] },
+        showIf: [{ sessionType: ['race'], raceBy: ['laps', 'distance', ''] }, { sessionType: ['endurance'], enduranceBy: ['laps', 'distance'] }, ...HEATED({ heatBy: ['laps', 'distance'] })] },
       { key: 'resultBy', group: 'length', label: 'Overall result counted by', type: 'select', default: 'laps',
         options: [['laps', 'Total laps'], ['points', 'Points'], ['time', 'Total race time (heats limited by laps or distance)']], showIf: HEATED(),
         hint: 'Total laps: the driver with the most laps wins (not for heats by distance: choose points or total race time). Points: every heat gives points for the position, and the most points wins. Total race time: the driver with the lowest time for the laps or the distance of the heats wins (the winner of a heat is the first to finish), which needs heats that are limited by laps or by distance. How the heats are added up, and what decides a tie, is set below.' },
@@ -279,12 +279,12 @@ module.exports = {
       { key: 'firstLap', group: 'start', label: 'First crossing of the start line', type: 'select', default: 'skip',
         options: [['skip', 'Only starts the timing: the short lap from the grid is not counted'], ['count', 'Counts as a lap']], showIf: RACING },
       { key: 'penaltySystem', group: 'rules', label: 'Penalty system', type: 'ref', ref: 'penaltysystems', blank: 'No penalties', showIf: RACING },
-      { key: 'damageSystem', group: 'rules', label: 'Damage system', type: 'ref', ref: 'damagesystems', blank: 'No damage', showIf: [{ sessionType: ['race', 'timed', 'heats', 'endurance'] }],
+      { key: 'damageSystem', group: 'rules', label: 'Damage system', type: 'ref', ref: 'damagesystems', blank: 'No damage', showIf: [{ sessionType: ['race', 'heats', 'endurance'] }],
         hint: 'Damage points, and the stop in the pits that repairs them. Make damage systems under Race Setup > Damage Systems. Only for races (a number of laps or a duration), not for practice or qualifying. Penalty points for a late or an early stop need a Penalty system above.' },
       { key: 'fuelRules', group: 'rules', label: 'Fuel system', type: 'ref', ref: 'fuelrules', blank: 'No fuel', showIf: RACING },
-      { key: 'bop', group: 'rules', label: 'Balance of Power', type: 'select', default: 'off', options: [['off', 'Off'], ['on', 'On: hinder the fastest car and help the slowest (set it up under Race Setup > Balance of Power)']], showIf: [{ sessionType: ['race', 'timed', 'heats', 'endurance'] }],
+      { key: 'bop', group: 'rules', label: 'Balance of Power', type: 'select', default: 'off', options: [['off', 'Off'], ['on', 'On: hinder the fastest car and help the slowest (set it up under Race Setup > Balance of Power)']], showIf: [{ sessionType: ['race', 'heats', 'endurance'] }],
         hint: 'Works through the fuel rules, so it needs a Fuel system above. Only for races (a number of laps or a duration), not for practice or qualifying.' },
-      { key: 'weather', group: 'rules', label: 'Weather system', type: 'ref', ref: 'weathersystems', blank: 'No weather', showIf: [{ sessionType: ['race', 'timed', 'heats', 'endurance'] }],
+      { key: 'weather', group: 'rules', label: 'Weather system', type: 'ref', ref: 'weathersystems', blank: 'No weather', showIf: [{ sessionType: ['race', 'heats', 'endurance'] }],
         hint: 'A spell of rain with a forecast, and tyres to change in the pits. Make weather systems under Race Setup > Weather Systems. Only for races (a number of laps or a duration), not for practice or qualifying. Hindering the cars needs a Fuel system above; the tyres and the penalty points do not.' },
       { key: 'tyreWear', group: 'rules', label: 'Tyre wear system', type: 'ref', ref: 'tyrewearsystems', blank: 'No tyre wear', showIf: RACING,
         hint: 'Tyres that wear out during the race and a fresh set in every pit stop. Make tyre wear systems under Race Setup > Tyre Wear Systems. Every heat starts on fresh tyres. A race (a number of laps or a duration) always has it; practice and qualifying only when the system says so. Helping and hindering the car needs a Fuel system above; the rule at 0% and the display do not.' },

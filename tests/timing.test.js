@@ -110,6 +110,15 @@ ok('race info: time left', C('info', null, 16000, { setup: { sessionType: 'timed
   ok('the heat text variable names the final too', C('textrace', null, 16000, { ...fin(3, 'A'), standings: () => eng.standings() }, { text: '{heat}' }).html === 'Final A' && C('textrace', null, 16000, { ...fin(1), standings: () => eng.standings() }, { text: '{heat}' }).html === 'Heat 2 of 2');
 }
 ok('race info: free practice', C('info', null, 16000, { setup: { sessionType: 'practice' } }).html === 'Free practice');
+// 1.62.0: a race setup as it was saved (the live pages get it so): a Race limited by a time has minutes and no laps
+ok('a Race limited by a time has no laps to drive and a time to run (the live pages work with the setup as it was saved)', (() => { const raw = { sessionType: 'race', raceBy: 'time', laps: 20, duration: 1 };
+  return C('info', null, 16000, { setup: raw }).html === '0:44 left' && C('info', null, 16000, { setup: { sessionType: 'race', raceBy: 'laps', laps: 5 } }).html === '2 laps left' && C('info', null, 16000, { setup: { sessionType: 'race', laps: 5 } }).html === '2 laps left'; })());
+ok('the session type in a custom text says "Timed race" for a Race limited by a time (the live pages get the setup as it was saved), and "Race" for a race by laps', (() => { const t = setup => C('textrace', null, 16000, { setup, standings: () => eng.standings() }, { text: '{type}' }).html;
+  return t({ sessionType: 'race', raceBy: 'time', duration: 1 }) === 'Timed race' && t({ sessionType: 'race', raceBy: 'laps', laps: 5 }) === 'Race' && t({ sessionType: 'race', laps: 5 }) === 'Race' && t({ sessionType: 'timed', duration: 1 }) === 'Timed race' && t({ sessionType: 'heats', heatBy: 'time' }) === 'Heats'; })());
+ok('a race by laps has no time limit, whatever is left in the field Duration (the live pages work with the setup as it was saved)', C('info', null, 16000, { setup: { sessionType: 'race', raceBy: 'laps', laps: 5, duration: 1 } }).html === '2 laps left' && C('info', null, 16000, { setup: { sessionType: 'race', raceBy: 'distance', laps: 5, duration: 1 } }).html !== '0:44 left' && C('info', null, 16000, { setup: { sessionType: 'race', laps: 5, duration: 1 } }).html === '2 laps left');
+ok('the Next Heat widget shows a dash in a race that is no heat race, and the next heat in one that is', C('nextheat', null).html === '\u2013'
+  && C('nextheat', null, 16000, { phase: 'between', heat: { idx: 1, count: 2, breakLeft: 75, list: [{ name: 'Heat 1', drivers: [] }, { name: 'Heat 2', drivers: [{ lane: 1, name: 'Sam' }, { lane: 0, name: 'Alex' }] }] } }).html
+  === '<div class="nhw"><div class="nhw-b"><div class="nhw-t">Next: Heat 2 of 2</div><div class="nhw-d nhw-list"><div>1: Alex</div><div>2: Sam</div></div><div class="nhw-c">Starts in 1:15</div></div></div>');
 ok('start lights follow the countdown', C('lights', null, 0, { phase: 'countdown', lights: 2 }).html.match(/sl on/g).length === 2 && !C('lights', null, 0).html.includes('sl on'));
 ok('flag widget as text: racing, yellow, red', C('flag', null, 16000, undefined, { flagStyle: 'text' }).html === 'Racing' && (() => { eng.flag = 'yellow'; const y = C('flag', null, 16000, undefined, { flagStyle: 'text' }); eng.flag = 'red'; const r = C('flag', null, 16000, undefined, { flagShow: 'text' }); /* (0.62.0 called it flagShow) */ eng.flag = ''; return y.html === 'YELLOW FLAG' && y.bg === '#ffd400' && r.html === 'RED FLAG' && r.bg === '#d62828'; })());
 
@@ -224,6 +233,8 @@ eng.cars[0].avatar = '';
 // ---- batch F ----
 ok('clock counts down with a time limit, up without, and stops at 00:00.0', (() => { const tl = { setup: { sessionType: 'timed', duration: 1 } };
   return C('clock', null, 16000, tl).html === '00:44.0' && C('clock', null, 90000, tl).html === '00:00.0' && C('clock', null, 16000, tl, { countdown: false }).html === '00:16.0' && C('clock', null, 16000).html === '00:16.0'; })());
+ok('the race clock of a race by laps or by a distance counts up, also with minutes left in the field Duration; a Race limited by a time counts down (the live pages get the setup as it was saved)', (() => { const cl = setup => C('clock', null, 16000, { setup }).html;
+  return cl({ sessionType: 'race', raceBy: 'laps', laps: 5, duration: 1 }) === '00:16.0' && cl({ sessionType: 'race', raceBy: 'distance', duration: 1 }) === '00:16.0' && cl({ sessionType: 'race', laps: 5, duration: 1 }) === '00:16.0' && cl({ sessionType: 'race', raceBy: 'time', duration: 1 }) === '00:44.0'; })());
 ok('race clock always reads 00:00.0', C('clock', null, 16000).html === '00:16.0' && C('clock', null, 0).html === '00:00.0' && C('clock', null, 83400).html === '01:23.4' && C('clock', null, 600000).html === '10:00.0' && C('clock', null, 3725500).html === '62:05.5');
 {
   const lapsOf = C('lastlap', 0, 16000, undefined, { lapsPerColumn: 3, columns: 1 }).html;

@@ -8,7 +8,7 @@ const session = { id: 's1', setupName: 'Friday "Sprint"', sessionType: 'race', t
 const lap = (d, c, n, time, heat) => ({ driverId: d, carId: c, lapNumber: n, time, heat });
 const laps = [lap('d1', 'c1', 1, 5200), lap('d1', 'c1', 2, 5000), lap('d1', 'c1', 3, 5800), lap('d2', 'c2', 1, 6400), lap('d2', 'c2', 2, 5600)];
 let h = sessionHtml({ session, laps });
-ok('page 1 has the title, session type, track and date', h.includes('Friday &quot;Sprint&quot;') && h.includes('Race by laps') && h.includes('Living room') && h.includes('11 October 2026'));
+ok('page 1 has the title, session type, track and date', h.includes('Friday &quot;Sprint&quot;') && h.includes('Race &middot; Living room') && h.includes('11 October 2026'));
 ok('standings show position, driver, car, laps, best lap and total time', h.includes('<th>Total time</th>') && h.includes('NSR Ford GT40') && h.includes('5.000') && h.includes('16.000'));
 ok('names are escaped (no HTML injection)', h.includes('Sam &lt;b&gt;') && !h.includes('Sam <b>'));
 ok('lap times start on a new page', /class="page2"/.test(h) && h.includes('page-break-before: always') && h.indexOf('All lap times') > h.indexOf('Results'));

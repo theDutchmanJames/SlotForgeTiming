@@ -5,6 +5,7 @@ const path = require('path');
 const crypto = require('crypto');
 const schema = require('./schema');
 const CarStats = require('./renderer/carstats.js'); // the slotcar statistics (1.30.0): which laps count since the last service
+const RaceLimit = require('./renderer/racelimit.js'); // what limits a race (1.62.0)
 
 const VERSION = 1;
 
@@ -174,6 +175,7 @@ class Database {
         d.fuelrules.push(rule); r.fuelRules = rule.id;
       }
       if (r.firstLap === undefined) r.firstLap = 'skip'; // new in 0.32: the lap from the grid is not counted
+      RaceLimit.upgrade(r); // new in 1.62.0: the session type Timed race is a Race limited by a time
       ['fuel', 'fuelTank', 'fuelPerLap', 'fuelEmpty', 'fuelRate'].forEach(k => { delete r[k]; });
     }
     // new in 1.30.0: the laps since the last service. A car from before that has had no service yet, so every lap it has driven counts.

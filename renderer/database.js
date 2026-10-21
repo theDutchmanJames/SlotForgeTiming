@@ -114,7 +114,7 @@ function attachFrames(root, get, set) {
 const limitText = i => {
   const laps = n => `${n} ${Number(n) === 1 ? 'lap' : 'laps'}`, mins = n => `${n} min`, dist = () => (i.distance === '' || i.distance === undefined ? '' : Distance.text(Number(i.distance), Speed.distUnitOf(state.settings))); // (1.35.0: a distance, in metres or feet)
   switch (i.sessionType) {
-    case 'race': return i.raceBy === 'distance' ? dist() : i.laps === '' || i.laps === undefined ? '' : laps(i.laps);
+    case 'race': return i.raceBy === 'time' ? (i.duration === '' || i.duration === undefined ? '' : mins(i.duration)) : i.raceBy === 'distance' ? dist() : i.laps === '' || i.laps === undefined ? '' : laps(i.laps);
     case 'timed': case 'qualifying': return i.duration === '' || i.duration === undefined ? '' : mins(i.duration);
     case 'heats': return i.heatBy === 'time' ? `${mins(i.duration)} per heat` : i.heatBy === 'distance' ? `${dist()} per heat` : `${laps(i.laps)} per heat`;
     case 'endurance': return i.enduranceBy === 'heats' ? (i.heatBy === 'time' ? `${mins(i.duration)} per heat` : i.heatBy === 'distance' ? `${dist()} per heat` : `${laps(i.laps)} per heat`) : i.enduranceBy === 'laps' ? (i.laps === '' || i.laps === undefined ? '' : laps(i.laps)) : i.enduranceBy === 'distance' ? dist() : (i.duration === '' || i.duration === undefined ? '' : mins(i.duration));
@@ -752,7 +752,7 @@ async function openExtra(e) {
 
 // ---- Results and Records ----
 const dateText = iso => iso ? new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '';
-const SESSION_LABEL = { practice: 'Free practice', qualifying: 'Qualifying', race: 'Race by laps or distance', timed: 'Timed race', heats: 'Heat-based race', endurance: 'Endurance Race', tokens: 'Time Token Session' };
+const SESSION_LABEL = { practice: 'Free practice', qualifying: 'Qualifying', race: 'Race', timed: 'Timed race', heats: 'Heat-based race', endurance: 'Endurance Race', tokens: 'Time Token Session' };
 
 // The page has two pools that never mix: Racing Records (everything raced) and Token Records (the stints of Time Token Sessions, with their own records).
 async function renderResults(box) {

@@ -3157,3 +3157,20 @@ Good to know:
 - A side fix: the 1.61.1 text told you to start "with the Performance line on". That line only exists on the race screen; the report is in App Settings > General > Performance. Corrected there.
 - **Not done:** the report tidy-up, pictures and sounds as files of their own. We stop here unless you ask.
 - Tested: new checks in `tests/db.test.js`, `tests/perf.test.js`, `tests/perfstats.test.js`, `tests/depth.test.js`, `tests/transfer.test.js` and `tests/package.test.js`. The code was broken on purpose 197 times: 193 caught, the other 4 cannot change the result. The first pass caught 160 of 196; the ones that got through showed real gaps (a write that fails halfway, a half written file, the edges of the slices, the undo of a race) and got tests.
+
+## What to try (1.62.0): A Race limited by a time, and the Next Heat widget
+
+What changed: in a Race you can now choose **The race is limited by: A time**, next to a number of laps and a distance. The session type **Timed race** is gone from the list: it was the same thing, and a setup that had it is now a Race limited by a time with the same minutes. In a heat race the choice that was called *Duration* is now called **A time**, so a Race and a heat race ask the same question. There is also a new widget, **Next Heat**.
+
+How to try it:
+1. Open **Race Setups** and make a new setup. **Session type** is *Race*. Under **The race is limited by** choose **A time** and set the minutes in **Duration (minutes)**. The laps, the distance and *The race ends* are gone from the form then.
+2. Look at your old Timed race setups (if you had any): they are *Race* setups limited by a time now, with their minutes.
+3. Start a race with it. The race screen says *Timed race on <track> · N minutes*. When the time is up every car finishes on its next crossing of the line (that lap still counts). The car with the most laps wins, and with the same number of laps the lowest total time.
+4. Make a heat race (heat plan on, a break of 30 seconds is nice), open the layout editor and add the **Next Heat** widget from the folder **Race**. Start the race: before the start it shows heat 1 with the lanes, while heat 1 races it shows heat 2, and between two heats it shows the coming heat with *Starts in 0:30*. After the last heat it says *Race finished*. In its settings you can show two or three heats, hide the name, the lane numbers or the countdown, or put the drivers on one line.
+
+Good to know:
+- The session of a race limited by a time is saved as a **Timed race**, so in the history, the statistics and the championships nothing changed for the races you did before.
+- A database that you open with 1.62.0 and save keeps the converted setups. An **older version** reads such a setup as a race by laps (it does not know the choice *A time*).
+- The words on the race screen and in the history for a race by laps are now *Race* (it was *Race by laps or distance*).
+- **Not done yet** (next releases, one at a time): the Total Time widget and *Total time* in the leaderboard's *Order by* (B), a time race compared by distance (C), the scoring choices for heats (D), sectors for the order of cars that did not finish (E).
+- Tested: `tests/racelimit.test.js` (new), and new checks in `tests/distancescreen.test.js` (a race by a time on the race screen), `tests/live.test.js` and `tests/timing.test.js` (the Next Heat widget, and the live pages that get the setup as it was saved) and `tests/screens.test.js` (the setup form, the list and the history). The code was broken on purpose 110 times: 105 caught, the other 5 cannot change the result. The first pass caught 90 of the first 105; the others showed real gaps (a leftover time in a race by laps, the edges of the break countdown, a lane that is not picked yet, the number of heats shown, the labels) and got tests.

@@ -45,7 +45,7 @@ for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function
 const timers = new Set(); // (every timer of the app: a race that is dropped by the test, without finishing, would keep its timer)
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval: (f, ms) => { const t = setInterval(f, ms); timers.add(t); return t; }, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['listnum.js', 'bop.js', 'weather.js', 'tyrewear.js', 'safetycar.js', 'pushsave.js', 'endurance.js', 'failures.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'championship.js', 'champpoints.js', 'tokens.js', 'speed.js', 'distance.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','depth.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'picmemo.js', 'weatherwidgets.js', 'tyrewidgets.js', 'pacewidgets.js', 'boardorder.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'report.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'drivergrid.js', 'homecards.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'enduranceui.js', 'damageui.js', 'weatherui.js', 'tyreui.js', 'pushsaveui.js', 'rotationui.js', 'championshipui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['listnum.js', 'bop.js', 'weather.js', 'tyrewear.js', 'safetycar.js', 'pushsave.js', 'racelimit.js', 'endurance.js', 'failures.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'championship.js', 'champpoints.js', 'tokens.js', 'speed.js', 'distance.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','depth.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'picmemo.js', 'weatherwidgets.js', 'tyrewidgets.js', 'pacewidgets.js', 'boardorder.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'report.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'drivergrid.js', 'homecards.js', 'liveview.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'enduranceui.js', 'damageui.js', 'weatherui.js', 'tyreui.js', 'pushsaveui.js', 'rotationui.js', 'championshipui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -111,7 +111,7 @@ const view = () => run('Damage.view(live.engine(), [0, 1], performance.now(), li
   // ---------- the race ----------
   saved.length = 0;
   await openRace(dsetup(), meas, rows(1, 2));
-  say('the race screen names the race and its distance', html().includes('Race by laps or distance on Long track') && html().includes('52 m'));
+  say('the race screen names the race and its distance', html().includes('Race on Long track') && html().includes('52 m'));
   say('every lane drives its own laps: lane 1 (10 m) 6 laps, lane 2 (10.5 m) 5 laps; the engine knows the distance settings', !!eng().distance && eng().distance.mode === 'same' && eng().limitOf(eng().cars[0]) === 6 && eng().limitOf(eng().cars[1]) === 5 && eng().type === 'race');
   say('before the start: nothing driven, the whole distance to go (60 m and 52.5 m), all the laps to go', show('dx0') === '0.0 m' && show('dx1') === '0.0 m' && show('dl0') === '60.0 m' && show('dl1') === '52.5 m' && show('lt0') === '6 laps to go' && show('lt1') === '5 laps to go');
   say('...the Race Laps and Race Info widgets know the laps of the leader\'s lane (lane 1 leads at the start: the laps of lane 1)', show('rl') === '1/6' && show('inf') === '6 laps left');
@@ -254,6 +254,24 @@ const view = () => run('Damage.view(live.engine(), [0, 1], performance.now(), li
     await until(() => saved.length > 0, 5000);
     const hs = saved[0] && saved[0][0], hred = hs && hs.standings.find(x => x.teamId === 'T1');
     say('the heats are saved with the metres: Red Bulls drove Alex 20 m + 40 m (heat 2: no swap) = 60 m and Sam 20 m, in stints of 20, 20 and 40 m', !!hred && hred.drivers.map(d => d.driverId + ':' + d.meters).join() === 'd1:60,d2:20' && hred.stints.map(q => q.heat + ':' + q.driverId + ':' + q.meters).join() === '1:d1:20,1:d2:20,2:d1:40');
+    run('state.race = null; live = null'); timers.forEach(clearInterval);
+  }
+
+  // ---------- 1.62.0: a race limited by a time ----------
+  {
+    saved.length = 0;
+    await openRace({ id: 'rt1', name: 'By the clock', sessionType: 'race', raceBy: 'time', duration: 0.05, laps: 20, distance: 52, layout: 'DL' }, meas, rows(1, 2));
+    say('a Race limited by a time is raced as a Timed race: its minutes are the length, and the laps and the distance of the setup mean nothing', eng().type === 'timed' && eng().cfg.duration === 0.05 && !eng().distance && eng().limitOf(eng().cars[0]) === 0 && html().includes('Timed race on Long track') && html().includes('0.05 minutes') && !html().includes('52 m')); // (3 seconds: the race clock does not follow the test speed)
+    say('...the Race Laps widget has no laps to count down, and the Race Info widget no laps left', !/\/20/.test(show('rl')) && !/laps? left/.test(show('inf')));
+    key(' '); await until(() => phase() === 'running', 5000); await wait(60);
+    await lapOn(0); await lapOn(0); await lapOn(1);
+    say('while the time runs nobody has finished, whatever the laps', !eng().cars.some(c => c.done) && !eng().timeUp);
+    await until(() => eng().timeUp, 8000);
+    say('when the time is up the race goes on until every car has crossed the line', eng().timeUp === true && phase() === 'running');
+    await lapOn(0); await lapOn(1);
+    await until(() => phase() === 'finished', 6000); await wait(150); await until(() => saved.length > 0, 5000);
+    const ss = saved[0] && saved[0][0];
+    say('...that last lap counts: lane 1 has 3 laps and wins, lane 2 has 2, and the session is saved as a Timed race', !!ss && ss.sessionType === 'timed' && ss.standings[0].laps === 3 && ss.standings[1].laps === 2 && ss.standings[0].driverId === 'd1');
     run('state.race = null; live = null'); timers.forEach(clearInterval);
   }
 

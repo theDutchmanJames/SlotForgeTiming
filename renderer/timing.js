@@ -34,8 +34,8 @@
 
   // the name of the race for the widgets: "Heat 2 of 3", or "Final A" (a heat race with finals; S.heat.final is also set after the last final)
   const heatLabel = h => (h.final ? `Final ${h.final}` : `Heat ${Math.min(h.idx + 1, h.count)} of ${h.count}`);
-  const lapLimitOf = setup => (setup.sessionType === 'race' || (setup.sessionType === 'heats' && setup.heatBy !== 'time')) ? Number(setup.laps) || 0 : 0;
-  const timeLimitOf = setup => (setup.sessionType === 'timed' || setup.sessionType === 'qualifying' || (setup.sessionType === 'heats' && setup.heatBy === 'time')) ? (Number(setup.duration) || 0) * 60000 : 0;
+  const lapLimitOf = setup => ((setup.sessionType === 'race' && setup.raceBy !== 'time') || (setup.sessionType === 'heats' && setup.heatBy !== 'time')) ? Number(setup.laps) || 0 : 0; // (1.62.0: a Race limited by a time has no laps to drive)
+  const timeLimitOf = setup => (setup.sessionType === 'timed' || (setup.sessionType === 'race' && setup.raceBy === 'time') || setup.sessionType === 'qualifying' || (setup.sessionType === 'heats' && setup.heatBy === 'time')) ? (Number(setup.duration) || 0) * 60000 : 0;
   // The laps a car has to drive: in a Distance Race the laps of its own lane, else the laps of the race. 0: no limit.
   const limitFor = (S, c) => (S.eng.distance && S.eng.limitOf ? S.eng.limitOf(c) : lapLimitOf(S.setup));
   // The laps of the race as a whole: the lap the leader is on, and the laps the leader has to drive (in a Distance Race the leader's lane may have more or fewer laps than another)
@@ -100,7 +100,8 @@
     const rec = r => (r && Number.isFinite(r.time) ? E.fmtTime(r.time) : '–'), by = r => (r && Number.isFinite(r.time) && r.name ? esc(r.name) : '');
     return { clock: clockText(S.eng.elapsed(t)), timeleft: time ? mmss(Math.max(0, time - S.eng.elapsed(t))) : '–', lapsleft: laps ? Math.max(0, laps - most) : '–', lapstotal: laps || '–', racedistance: S.eng.distance ? Ds.text(S.eng.distance.distance, distUnit(S, {})) : '–', leader: lead && lead.car ? esc(lead.car.driverName) : '–',
       flag: st === 'red' ? 'Red flag' : st === 'yellow' ? (S.eng.safetyCar ? 'Safety Car' : 'Yellow flag') : flagText[st] || '', heat: S.heat ? heatLabel(S.heat) : '',
-      track: esc((S.track && S.track.name) || ''), session: esc(S.setup.name || ''), type: esc(sessionLabel[S.setup.ofType || S.setup.sessionType] || ''), sessionrecord: rec(sr), sessionrecordby: by(sr), trackrecord: rec(tr), trackrecordby: by(tr), yellowtarget: S.eng.yellow && S.eng.yellow.target > 0 ? E.fmtTime(S.eng.yellow.target) : '', ...Ww.raceVars(S.eng, t) };
+      track: esc((S.track && S.track.name) || ''), session: esc(S.setup.name || ''), type: esc(sessionLabel[S.setup.ofType || (S.setup.sessionType === 'race' && S.setup.raceBy === 'time' ? 'timed' : S.setup.sessionType)] || ''), // (1.62.0: a Race limited by a time is a Timed race, as the race screen says)
+       sessionrecord: rec(sr), sessionrecordby: by(sr), trackrecord: rec(tr), trackrecordby: by(tr), yellowtarget: S.eng.yellow && S.eng.yellow.target > 0 ? E.fmtTime(S.eng.yellow.target) : '', ...Ww.raceVars(S.eng, t) };
   }
 
   // The value a leaderboard is ordered by (see boardorder.js), as a number (or the name as text); null when the car has none yet: no lap, or the race has no such rule.
@@ -257,6 +258,7 @@
         return { html: E.fmtTime(r.time) + (opt.showName !== false && r.name ? `<small class="rn">${esc(r.name)}</small>` : '') };
       }
       case 'heatlist': return { html: S.heat ? Wd.heatListHtml(S.heat, S.phase, opt) : '\u2013' }; // every heat of a heat-based race, with who won it
+      case 'nextheat': return { html: S.heat ? Wd.nextHeatHtml(S.heat, S.phase, opt) : '\u2013' }; // 1.62.0: the drivers of the next heat, by lane
       case 'leaderboard': {
         const design = opt.design && (S.rowDesigns || []).find(x => x.id === opt.design); // a row design you made, instead of the classic table
         const RowsM = typeof module !== 'undefined' ? require('./rows.js') : root.Rows;

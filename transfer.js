@@ -2,6 +2,7 @@
 // Pure functions over the database's data object, so they can be tested without Electron.
 const crypto = require('crypto');
 const schema = require('./schema');
+const RaceLimit = require('./renderer/racelimit.js'); // what limits a race (1.62.0)
 
 const FORMAT = 'slotforge-timing-export', OLD_FORMATS = ['slot-lap-timer-export'], FILE_VERSION = 1; // exports made before the rename are still accepted
 // the order rows are added in on import (what is used comes before what uses it)
@@ -101,6 +102,7 @@ function apply(db, bundle) {
       for (const src of bundle.items[e] || []) {
         const row = clone(src); const oldId = row.id; row.id = crypto.randomUUID(); map[e][oldId] = row.id;
         refsOf(e, row).forEach(r => r.set(map[r.entity] && map[r.entity][r.get()] !== undefined ? map[r.entity][r.get()] : ''));
+        if (e === 'racesetups') RaceLimit.upgrade(row); // (a file made before 1.62.0 may hold a Timed race: that is a Race limited by a time now)
         if (e === 'teams') row.drivers = (Array.isArray(row.drivers) ? row.drivers : []).filter(Boolean);
         if (e === 'championships') row.roster = (Array.isArray(row.roster) ? row.roster : []).filter(x => x && x.driver); // (a driver that did not come along is not in the roster)
         if (e === 'sessions' && row.champ) { const m = map.championships[row.champ.id]; if (m) row.champ.id = m; else delete row.champ; } // (a race that counted for a championship that did not come along is a normal race)
