@@ -133,6 +133,7 @@ const pressSwap = (lane, over = {}) => E('enpanel').onclick({ target: { closest:
   await wait(200);
   say('...the state is kept again (the same heat that is done), also before the first key is pressed', kept.saves > 0 && kept.snap && kept.snap.heat.state.idx === 1 && kept.snap.eng === null);
   say('...the figures of the heat that is done come back too: its laps, the best laps, and the pits and penalty points of every driver', run('live.laps.length') === 4 && run('live.priorAll') < 1e12 && run('live.priorBy.size') === 2 && run('live.extraBy.size') === 2);
+  say('...and so does what a leaderboard that counts over all heats remembers of heat 1 (the lap times that count and the heats driven, of both drivers)', run('live.memoBy.size') === 2 && run('[...live.memoBy.values()].every(m => m.n === 1 && m.laps.length === 2 && m.laps.every(t => t > 0))') === true);
   await startHeat(); await bothLaps(2); await until(() => phase() === 'between', 6000);
   await startHeat(); await bothLaps(2); await until(() => phase() === 'finished', 8000); await wait(250);
   say('the heats are raced to the end and saved with all three heats (and it does not say it was carried on: no lap was lost between two heats)', saved.length === 1 && saved[0][0].heatResults.length === 3 && saved[0][0].heatResults[0].heat === 1 && kept.snap === null && !('resumed' in saved[0][0]));

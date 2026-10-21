@@ -125,8 +125,9 @@
 
   // The rows of a leaderboard. S = shared race state (needs standings() and what Timing.content reads). rows can be limited with max.
   // o.scale: the "Size of the rows" setting of the widget, o.gaps: its "Space between the columns", o.fill: its "Fill the frame".
-  function html(d, S, max, o) {
+  function html(d, S0, max, o) {
     const T = typeof module !== 'undefined' ? require('./timing.js') : root.Timing, s = settings(d), L = layoutOf(d, o);
+    const S = o && o.countOver === 'all' && T.overallState ? T.overallState(S0) || S0 : S0; // (1.67.0: "Count over: All heats so far" lists every participant of a heat race, from the heats that are done and the one that is racing)
     const list = range(T.ordered((S.standings() || []), o, S), o).slice(0, max || 99); // (a board that is ordered by a value: that order, then the places from .. to)
     const rows = list.map((x, i) => {
       const car = x.car, st = s.states ? stateOf(car, x.pos) : '';

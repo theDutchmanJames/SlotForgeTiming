@@ -75,6 +75,15 @@ ok('a board is removed by its number', spots(G.remove(four, 1)) === '1.1:1x1 3.1
   ok('the Leaderboard widget has From place (1) and To place (0 = to the last), numbers from 0 or 1 to 99', from && to && from.type === 'number' && from.default === 1 && from.min === 1 && to.type === 'number' && to.default === 0 && to.min === 0 && to.max === 99 && from.max === 99);
   ok('...they apply to a row design and to the classic table (they are not "classic only" or "rows only")', !from.classic && !to.classic && !from.rowsOnly && !to.rowsOnly); }
 
+// ---- 1.67.0: the board can count over all heats ----
+{ const W = require('../renderer/widgets.js'), G = require('../renderer/livegrid.js'), fs = require('fs'), view = fs.readFileSync(__dirname + '/../renderer/liveview.js', 'utf8');
+  const co = W.def('leaderboard').options.find(x => x.key === 'countOver');
+  ok('the Leaderboard widget has "Count over": this race or heat (the standard, so every layout stays as it was) or all heats so far', !!co && co.type === 'select' && co.default === 'heat' && co.choices.map(c => c[0]).join() === 'heat,all' && /heat/i.test(co.choices[0][1]) && /all heats/i.test(co.choices[1][1]));
+  ok('...it is not one of the classic-only settings (the board settings have their own choice for it, so it is not shown twice)', !co.classic);
+  ok('...the board settings of the Live Race page have the choice, once, and a change is saved with the board (data-lb="countOver")', (view.match(/data-lb="countOver"/g) || []).length === 1 && /id="lb-over"/.test(view));
+  const g0 = G.gridOf({ liveGrid: { cols: 1, rows: 1, boards: [{ c: 1, r: 1, w: 1, h: 1, opt: { from: 2, to: 4 } }] } }), g1 = G.gridOf({ liveGrid: G.setOpt(g0, 0, { countOver: 'all' }) });
+  ok('...the grid keeps it with the board, and the other settings of the board stay', g1.boards.length === 1 && g1.boards[0].opt.countOver === 'all' && g1.boards[0].opt.from === 2 && g1.boards[0].opt.to === 4 && g0.boards[0].opt.countOver === undefined); }
+
 // ---- the stylesheet and the page ----
 { const fs = require('fs'), css = fs.readFileSync(__dirname + '/../renderer/styles.css', 'utf8'), html = fs.readFileSync(__dirname + '/../renderer/index.html', 'utf8');
   ok('the boards sit in a grid, each in its own cells, and the classic table grows with its own board (not with the screen)', /\.lv-grid\{display:grid;gap:16px/.test(css) && /\.lv-grid \.lv-board\{min-width:0;container-type:inline-size\}/.test(css) && /\.lv-grid \.lv-board > table\{font-size:clamp\(13px,2\.4cqw,38px\)\}/.test(css));

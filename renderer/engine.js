@@ -68,6 +68,9 @@
   const goodLaps = c => c.laps.filter((_, n) => !(c.bad || [])[n] && !(c.invalid || []).includes(n));
   // the laps the live average and median are made of: as in the saved result, without the laps with a stop in the pits and the laps that were taken out of the records
   const averageLaps = c => c.laps.filter((_, n) => !(c.bad || [])[n] && !(c.invalid || []).includes(n) && !(c.pitLaps || []).includes(n) && !(c.removed || []).includes(n));
+  // 1.67.0: what a leaderboard that counts over all heats remembers of a participant after a heat: the lap times that count (the average and the median are made of them, in ms rounded to 3 decimals),
+  // the metres (m: of this heat, or not a number when the heat does not know them; dn counts the heats that did, n all heats, so the total is only told when every heat knew its metres)
+  const memoStep = (a, c, m) => { const p = a || { laps: [], dist: 0, dn: 0, n: 0 }; return { laps: p.laps.concat(averageLaps(c).map(t => Math.round(t * 1000) / 1000)), dist: p.dist + (Number.isFinite(m) ? m : 0), dn: p.dn + (Number.isFinite(m) ? 1 : 0), n: p.n + 1 }; };
 
   // cfg: { type: practice|qualifying|race|timed, laps, duration (minutes), endRule: all|leader, minLap, fuel: fuelConfig(...), entries: [...] }
   function createRace(cfg) {
@@ -1354,7 +1357,7 @@
       const free = f.free.slice(), all = f.picks.concat(f.drivers.filter(p => !f.picks.some(x => x.p === p)).map(p => ({ p, lane: free.shift() })));
       return all.sort((a, b) => a.lane - b.lane).map(({ p, lane }) => ({ lane, participant: p, ...participants[p] }));
     };
-    H.record = race => {
+    const build = race => { // (the result of a race, as H.record keeps it; 1.67.0: H.preview gives the same for the race that is racing now, without keeping it)
       const rows = race.standings().map(r => { // (what the Race Director adjusted in the review is in the row: the laps and the time are the adjusted ones, the championship points come on top of the points of the place)
         const a = race.adjOf ? race.adjOf(r.car) : { ms: 0, laps: 0, points: 0 }; // (a race that is not an engine race, such as a stand-in of a test, has no adjustments)
         const note = race.bopNoteOf && race.cars ? race.bopNoteOf(race.cars.indexOf(r.car)) : ''; // what Balance of Power did to the car, in words
@@ -1379,6 +1382,15 @@
       }
       const wnote = race.weatherNote ? race.weatherNote() : ''; // what the weather did in this heat, in words
       const result = { heat: H.idx + 1, ...(H.idx >= H.count ? { final: names[H.idx - H.count] } : {}), ...(wnote ? { weatherNote: wnote } : {}), rows };
+      return result;
+    };
+    H.preview = build;
+    // 1.67.0, for a leaderboard that counts over all heats: what the overall result counts (to tell the gap in it: time, points, metres or laps; metres only when the heats really counted them),
+    // and a short text that changes whenever something that is in the result of the race that is racing now changes (laps, a finish, penalties, corrections, sectors), to see when the order has to be made again
+    H.kind = rows => (byTime ? 'time' : byPoints ? 'points' : rows && rows.some(o => o.measure === 'distance') ? 'distance' : 'laps');
+    H.stamp = race => H.results.length + ':' + (race ? race.cars.map(c => [c.laps.length, c.done ? 1 : 0, c.total, c.dq ? 1 : 0, c.retired ? 1 : 0, c.points, c.adjMs, c.adjLaps, c.adjPoints, c.removed.length, c.invalid.length, c.extraMs, c.sector, c.secOrder, c.best].join(':')).join('|') : '-');
+    H.record = race => {
+      const result = build(race);
       H.results.push(result); H.idx++;
       if (H.idx === H.count && names.length) H.finalPlan = planFinals();
       return result;
@@ -1394,9 +1406,9 @@
       }
       return [...by].map(([p, a]) => [p, a[0], a[1]]);
     };
-    H.overall = () => {
-      const heatsOf = participants.map(() => []), finalOf = participants.map(() => null), groupOf = participants.map(() => null), added = fin.finalMode === 'added';
-      for (const hr of H.results) for (const r of hr.rows) {
+    H.overall = extra => { // (extra: the result of the race that is racing now, from H.preview, to see where everybody stands if it ended now; 1.67.0)
+      const rs = extra ? H.results.concat([extra]) : H.results, heatsOf = participants.map(() => []), finalOf = participants.map(() => null), groupOf = participants.map(() => null), added = fin.finalMode === 'added';
+      for (const hr of rs) for (const r of (hr === extra && byTime ? hr.rows.filter(x => x.fin) : hr.rows)) { // (heats scored by time: a car of the race that is racing counts when it has finished, as in the saved result)
         if (!heatsOf[r.participant]) continue;
         if (hr.final) finalOf[r.participant] = { ...r, name: hr.final }; else heatsOf[r.participant].push({ ...r, heat: hr.heat });
       }
@@ -1406,7 +1418,7 @@
       const missing = h => h.tm === null || h.tm === undefined;
       const betterTime = (a, b) => (sc.unfinished === 'estimate' ? (missing(a) - missing(b)) || (missing(a) ? 0 : a.tm - b.tm) : (!a.fin - !b.fin) || (a.fin ? a.tm - b.tm : 0)) || b.laps - a.laps || a.heat - b.heat;
       // 1.65.0, heats limited by a time (lapsFirst): the most laps, or the furthest distance when the cars are compared by distance (every heat holds its metres), then the lowest total time. Without the metres of every heat the laps count.
-      const lf = sc.lapsFirst && !byTime && !byPoints, useDist = lf && sc.byDistance && H.results.length > 0 && H.results.every(hr => hr.rows.every(r => Number.isFinite(r.dist))), msr = h => (useDist ? h.dist : h.laps);
+      const lf = sc.lapsFirst && !byTime && !byPoints, useDist = lf && sc.byDistance && rs.length > 0 && rs.every(hr => hr.rows.every(r => Number.isFinite(r.dist))), msr = h => (useDist ? h.dist : h.laps);
       const better = byTime ? betterTime : lf ? (a, b) => msr(b) - msr(a) || (a.total ?? Infinity) - (b.total ?? Infinity) || a.heat - b.heat : (a, b) => (byPoints ? b.points - a.points || b.laps - a.laps : b.laps - a.laps || b.points - a.points) || (a.total ?? Infinity) - (b.total ?? Infinity) || a.heat - b.heat;
       const acc = participants.map((p, i) => {
         const hs = heatsOf[i], ranked = hs.slice().sort(better), f = finalOf[i];
@@ -1451,7 +1463,7 @@
     return H;
   }
 
-  const api = { fuelUse, goodLaps, averageLaps, penaltyConfig, penaltyMs, fuelConfig, yellowConfig, createRace, createHeatRace, scoringOf, finalsOf, finalSizes, buildSchedule, fmtTime, MIN_LAP };
+  const api = { fuelUse, goodLaps, averageLaps, memoStep, penaltyConfig, penaltyMs, fuelConfig, yellowConfig, createRace, createHeatRace, scoringOf, finalsOf, finalSizes, buildSchedule, fmtTime, MIN_LAP };
   root.RaceEngine = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

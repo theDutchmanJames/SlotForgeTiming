@@ -113,9 +113,85 @@
     const recorded = !!h && !!mine && (S.phase === 'finished' || h.idx >= (h.total || h.count || 0));
     return { heat: now, all: recorded ? prior : prior + now };
   }
+  // ---------- 1.67.0: a leaderboard that counts over all heats ----------
+  // The leaderboard setting "Count over: All heats so far" draws every participant of a heat race, in the order of the overall result, from a state of its own: the real state, with the cars
+  // replaced by "overall cars" (virtual: true). An overall car holds who the participant is (S.roster), what the heats that are done left behind (S.prior: laps, points, best lap, metres and the lap
+  // times that count) and the car that is racing now (real; none for a driver who is not on track): its laps are the lap times that count in all heats, its best lap the best of all heats, so the
+  // widgets that show a lap time, the average or the median work as they are. What cannot be added up (the lap that runs, fuel, tyres, penalties...) is the real car's, a dash for a driver who is not racing.
+  const OVER_FIELDS = new Set(['position', 'gap', 'name', 'nickname', 'callsign', 'avatar', 'driverflag', 'carname', 'carpicture', 'teamname', 'teampicture', 'lanecolor', 'bestlap', 'avglap', 'medlap', 'lastlap', 'recordlap']); // (from the fields of the overall car)
+  const finiteMin = (a, b) => { const x = Number.isFinite(a) ? a : Infinity, y = Number.isFinite(b) ? b : Infinity, m = Math.min(x, y); return m === Infinity ? null : m; };
+  function overallState(S) {
+    if (S.__over !== undefined) return S.__over;
+    const h = S.heat, ro = S.roster, pr = Array.isArray(S.prior) ? S.prior : [];
+    let res = null;
+    if (h && Array.isArray(h.order) && h.order.length && Array.isArray(ro) && ro.length) {
+      const kind = h.ovBy || 'laps', lead = h.order[0] ? h.order[0][1] : null, real = new Map(S.eng.cars.map(c => [c.participant, c])), cars = new Map();
+      const gapOf = score => { // how far behind the leader of the overall result, in what the result counts
+        if (!Number.isFinite(score) || !Number.isFinite(lead)) return '';
+        const d = kind === 'time' ? score - lead : lead - score;
+        if (!(d > 1e-9)) return '';
+        return kind === 'time' ? '+' + E.fmtTime(d) : kind === 'points' ? '−' + Math.round(d * 100) / 100 : kind === 'distance' ? '+' + Ds.text(d, S.distUnit === 'ft' ? 'ft' : 'm') : '+' + d + (d === 1 ? ' lap' : ' laps');
+      };
+      const rows = h.order.map(([p, score], i) => {
+        const id = ro[p] || {}, rc = real.get(p) || null, pri = pr.find(x => x && x.p === p) || null, pv = pri && Array.isArray(pri.valid) ? pri.valid : [], k = pv.length, shift = a => (Array.isArray(a) ? a.map(n => n + k) : []);
+        const vc = { virtual: true, real: rc, participant: p, lane: rc ? rc.lane : 1000 + p, prior: pri,
+          driverId: id.driverId || '', carId: id.carId || '', driverName: id.driverName || '', nickname: id.nickname || '', callsign: id.callsign || '', flag: id.flag || '', avatar: id.avatar || '', carName: id.carName || '', carPicture: id.carPicture || '', carScale: id.carScale || '',
+          teamId: id.teamId || '', teamName: id.teamName || '', teamPicture: id.teamPicture || '', asTeam: !!id.asTeam,
+          laps: pv.concat(rc ? rc.laps : []), bad: pv.map(() => false).concat(rc ? rc.bad || [] : []), invalid: rc ? shift(rc.invalid) : [], removed: rc ? shift(rc.removed) : [], pitLaps: rc ? shift(rc.pitLaps) : [],
+          best: finiteMin(pri && pri.best, rc && rc.best), lapsAll: (pri ? Number(pri.laps) || 0 : 0) + (rc ? (S.eng.lapsOf ? S.eng.lapsOf(rc) : rc.laps.length) : 0),
+          retired: !!(rc && rc.retired), dq: !!(rc && rc.dq), outOfFuel: !!(rc && rc.outOfFuel), blockAt: rc ? rc.blockAt : null, pending: rc ? rc.pending : [] };
+        cars.set(vc.lane, vc);
+        return { pos: i + 1, index: i, car: vc, gap: i === 0 ? '' : gapOf(score) };
+      });
+      res = Object.assign(Object.create(S), { base: S, over: true, standings: () => rows, carByLane: lane => cars.get(lane) || null, rowOf: c => (c && c.virtual ? rows.find(x => x.car === c) : S.rowOf(c)) });
+    }
+    try { Object.defineProperty(S, '__over', { value: res, enumerable: false, configurable: true, writable: true }); } catch (e) { /* (a state that cannot be written to is made again at every look) */ }
+    return res;
+  }
+  // the time a participant has raced in all heats so far (and in this one): { heat, all }, the same as totalTimes; a driver who is not racing now has only the heats that are done
+  function overallTotals(c, S0, t, penalties) {
+    if (c.real) return totalTimes(c.real, S0, t, penalties);
+    const h = S0.heat, mine = h && Array.isArray(h.before) ? h.before.find(x => x && x[0] === c.participant) : null, v = mine ? Number(penalties ? mine[1] : mine[2]) : NaN;
+    return { heat: NaN, all: Number.isFinite(v) ? v : NaN };
+  }
+  // the championship points of a participant as the widget shows them: the heats that are done, and what the place of the car in the race that is racing now is worth
+  function overallPoints(c, S0, live) {
+    const ch = S0.champ; if (!ch || !ch.on) return null;
+    let pts = ch.done.get(c.asTeam ? c.teamId : c.driverId) || 0;
+    if (live !== false && c.real && ['running', 'paused', 'review'].includes(S0.phase) && S0.eng.cars.some(x => x.laps.length)) pts += ch.list[S0.rowOf(c.real).pos - 1] || 0;
+    return pts;
+  }
+  // what a widget of an overall car shows; null: it is made from the fields of the car, as for any car
+  function overallContent(w, type, opt, c, S, t) {
+    const S0 = S.base || S;
+    if (OVER_FIELDS.has(type)) return null;
+    switch (type) {
+      case 'lap': return { html: String(c.lapsAll) }; // (the laps driven in all heats so far)
+      case 'totaltime': return { html: Wd.totalTimeHtml(overallTotals(c, S0, t, Wd.ttPenalties(opt)), Wd.ttScope(opt) === 'heat' ? { ...opt, scope: 'all' } : opt) }; // (in this board a total is a total: "this race or heat" counts as all heats; "both" shows both)
+      case 'champpoints': { const v = overallPoints(c, S0, opt.live); return { html: v === null ? '–' : String(v) }; }
+      case 'distance': {
+        const pri = c.prior, cur = c.real ? distLook(S0, c.real, Ds.smoothOn(opt)).driven : 0;
+        if ((pri && !Number.isFinite(pri.dist)) || cur === null || (!pri && !c.real)) return { html: '–' }; // (a heat without metres: the total cannot be added up)
+        return { html: esc(Ds.text((pri ? pri.dist : 0) + cur, distUnit(S0, opt), opt.decimals)) };
+      }
+      default: return c.real ? widgetContent({ ...w, lane: c.real.lane }, S0) : { html: '–' }; // (the car that is racing now; a driver who is not on track has nothing)
+    }
+  }
+
   // The value a leaderboard is ordered by (see boardorder.js), as a number (or the name as text); null when the car has none yet: no lap, or the race has no such rule.
   // Times are in milliseconds. t: the moment the values are read at.
   function orderValue(key, c, S, t) {
+    if (c.virtual) { // (1.67.0, a leaderboard that counts over all heats: the values of the overall car; what cannot be added up is the real car's)
+      const S0 = S.base || S;
+      switch (key) {
+        case 'laps': return c.lapsAll;
+        case 'totaltime': case 'totaltimeall': { if (c.real && (!c.real.done || c.real.retired || c.real.dq)) return null; const v = overallTotals(c, S0, t, true).all; return Number.isFinite(v) ? v : null; }
+        case 'champ': return overallPoints(c, S0);
+        case 'best': case 'last': case 'avg': case 'median': case 'record': case 'name': break;
+        case 'lane': return c.real ? c.real.lane : null;
+        default: return c.real ? orderValue(key, c.real, S0, t) : null;
+      }
+    }
     const E_ = S.eng, i = E_.cars.indexOf(c), n = c.laps.length, P = E_.penalty, F = E_.fuel, ch = S.champ;
     const good = () => E.averageLaps(c); // (the average and the median are those of the saved result: without the laps with a pit stop)
     switch (key) {
@@ -176,6 +252,7 @@
     const c = perLane ? S.carByLane(w.lane) : null;
     if (perLane && !c && !((type === 'teamname' || type === 'teampicture') && opt.team)) return { html: '' }; // (a widget that shows one chosen team needs no car)
     const t = S.eng.endAt && S.eng.status === 'finished' ? S.eng.endAt : S.now;
+    if (c && c.virtual) { const v = overallContent(w, type, opt, c, S, t); if (v) return v; } // (a leaderboard that counts over all heats, 1.67.0)
     switch (type) {
       case 'tokenclock': {
         const K = S.tokens; if (!K) return { html: '–' };
@@ -277,12 +354,13 @@
       case 'leaderboard': {
         const design = opt.design && (S.rowDesigns || []).find(x => x.id === opt.design); // a row design you made, instead of the classic table
         const RowsM = typeof module !== 'undefined' ? require('./rows.js') : root.Rows;
-        if (design) return { html: RowsM.html(design, S, undefined, { scale: opt.scale, gaps: opt.gaps, fill: opt.fill, from: opt.from, to: opt.to, orderBy: opt.orderBy, orderDir: opt.orderDir }) };
-        const rows = RowsM.range(ordered(S.standings(), opt, S), opt).map(x => { // (orderBy: the board in the order of a value; from and to: only some of the places, for a board that shows part of the field)
-          const car = x.car, lc = S.laneColorsOf ? S.laneColorsOf(car.lane) : {};
+        if (design) return { html: RowsM.html(design, S, undefined, { scale: opt.scale, gaps: opt.gaps, fill: opt.fill, from: opt.from, to: opt.to, orderBy: opt.orderBy, orderDir: opt.orderDir, countOver: opt.countOver }) };
+        const SS = opt.countOver === 'all' ? overallState(S) || S : S, ES = SS.eng; // (1.67.0: a board that counts over all heats lists every participant; what only the car on track has is read from that car)
+        const rows = RowsM.range(ordered(SS.standings(), opt, SS), opt).map(x => { // (orderBy: the board in the order of a value; from and to: only some of the places, for a board that shows part of the field)
+          const car = x.car, rc = car.virtual ? car.real : car, lc = SS.laneColorsOf ? SS.laneColorsOf(car.lane) : {}, ri = rc ? ES.cars.indexOf(rc) : -1;
           return { pos: x.pos, flag: car.flag, name: car.driverName, nickname: car.nickname || car.driverName, callsign: car.callsign || '',
-            laps: String(car.laps.length), best: car.best === null ? '–' : E.fmtTime(car.best), last: car.laps.length ? E.fmtTime(car.laps[car.laps.length - 1]) : '–',
-            current: car.done ? '–' : E.fmtTime(S.eng.lapElapsed(S.eng.cars.indexOf(car), S.now)), fuel: S.eng.fuel && S.eng.fuel.on ? `${(Math.floor(S.eng.fuelOf(S.eng.cars.indexOf(car), S.now) * 10 + 1e-9) / 10).toFixed(1).replace(/\.0$/, '')} L` : '–', tyres: opt.colTyres === true && S.eng.tyrewear ? Tyw.cellHtml(Tw.view(S.eng, [car.lane], S.now).rows[0]) : '–', pace: opt.colPace === true && S.eng.pushSave ? Pw.rowHtml(S.eng.psInfo(car), S.eng.pushSave, { look: 'cell' }).html : '–', gap: x.gap, color: lc.color, bg: lc.bg };
+            laps: String(car.virtual ? car.lapsAll : car.laps.length), best: car.best === null ? '–' : E.fmtTime(car.best), last: car.laps.length ? E.fmtTime(car.laps[car.laps.length - 1]) : '–',
+            current: !rc || rc.done ? '–' : E.fmtTime(ES.lapElapsed(ri, SS.now)), fuel: rc && ES.fuel && ES.fuel.on ? `${(Math.floor(ES.fuelOf(ri, SS.now) * 10 + 1e-9) / 10).toFixed(1).replace(/\.0$/, '')} L` : '–', tyres: rc && opt.colTyres === true && ES.tyrewear ? Tyw.cellHtml(Tw.view(ES, [rc.lane], SS.now).rows[0]) : '–', pace: rc && opt.colPace === true && ES.pushSave ? Pw.rowHtml(ES.psInfo(rc), ES.pushSave, { look: 'cell' }).html : '–', gap: x.gap, color: lc.color, bg: lc.bg };
         });
         return { html: Wd.leaderHtml(rows, opt) };
       }
@@ -421,7 +499,7 @@
     }
   }
 
-  const api = { content, ordered, orderValue, classifyLap, mean, median, contrast };
+  const api = { content, ordered, orderValue, overallState, classifyLap, mean, median, contrast };
   root.Timing = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -112,11 +112,13 @@ const LiveView = (() => {
     let one = '<p class="muted">Pick a leaderboard for a cell to see its settings here.</p>';
     if (b) {
       const o = b.opt, ms = G.maxSpan(g, b), shown = Widgets.def('leaderboard').options.filter(d => d.classic);
+      const countOver = Widgets.def('leaderboard').options.find(d => d.key === 'countOver'); // (1.67.0: count over all heats so far)
       const span = (key, n, max, label) => `<div class="field"><label for="lb-${key}">${label}</label><select id="lb-${key}" data-lbspan="${key}">${Array.from({ length: max }, (_, i) => `<option value="${i + 1}"${n === i + 1 ? ' selected' : ''}>${i + 1}</option>`).join('')}</select></div>`;
       one = `<fieldset class="lv-optset"><legend>Board ${sel + 1} (${G.where(b)})</legend><div class="lv-optgrid">
         ${span('w', b.w, ms.w, 'Columns it covers')}${span('h', b.h, ms.h, 'Rows it covers')}
         <div class="field"><label for="lb-from">From place</label><input id="lb-from" type="number" min="1" max="99" step="1" data-lb="from" value="${esc(o.from || '')}" placeholder="1"></div>
         <div class="field"><label for="lb-to">To place</label><input id="lb-to" type="number" min="0" max="99" step="1" data-lb="to" value="${esc(o.to || '')}" placeholder="last"></div>
+        <div class="field"><label for="lb-over">${esc(countOver.label)}</label><select id="lb-over" data-lb="countOver">${countOver.choices.map(([k, t]) => `<option value="${k}"${(o.countOver === 'all' ? 'all' : 'heat') === k ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></div>
         <div class="field"><label for="lb-orderBy">Order by</label><select id="lb-orderBy" data-lb="orderBy">${BoardOrder.CHOICES.map(([k, t]) => `<option value="${k}"${BoardOrder.keyOf(o) === k ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></div>
         ${BoardOrder.isOrdered(o) ? `<div class="field"><label for="lb-orderDir">Best or worst on top</label><select id="lb-orderDir" data-lb="orderDir">${BoardOrder.DIRECTIONS.map(([k, t]) => `<option value="${k}"${BoardOrder.dirOf(o) === k ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></div>` : ''}
         ${designs.some(r => r.id === o.design) ? '' : shown.map(d => d.type === 'select'

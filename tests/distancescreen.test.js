@@ -459,6 +459,111 @@ const view = () => run('Damage.view(live.engine(), [0, 1], performance.now(), li
     store.tracks[0] = meas;
   }
 
+  // ---------- 1.67.0: a leaderboard that counts over all heats ----------
+  {
+    const Dz = JSON.parse(run('JSON.stringify(Rows.defaultDesign())'));
+    store.rowdesigns = [{ ...Dz, id: 'rd', name: 'Overall row', widgets: ['position', 'name', 'lap', 'bestlap', 'avglap', 'totaltime', 'gap'].map((t, i) => { const w = JSON.parse(run(`JSON.stringify(Widgets.newWidget('${t}', 0, ${10 + i * 100}, 5))`)); w.w = 95; w.h = 60; w.showTitle = false; return w; }) }];
+    store.rowdesigns.push({ ...Dz, id: 'rdd', name: 'Overall distance', widgets: ['name', 'distance'].map((t, i) => { const w = JSON.parse(run(`JSON.stringify(Widgets.newWidget('${t}', 0, ${10 + i * 100}, 5))`)); w.w = 95; w.h = 60; w.showTitle = false; return w; }) });
+    const lb = (id, opt) => ({ ...JSON.parse(run("JSON.stringify(Widgets.newWidget('leaderboard', null, 10, 10))")), id, opt });
+    store.layouts = [{ ...layout, id: 'OV', name: 'Overall boards', widgets: [lb('lbAll', { countOver: 'all' }), lb('lbRow', { countOver: 'all', design: 'rd' }), lb('lbHeat', {}), lb('lbRowHeat', { design: 'rd' }), lb('lbDist', { countOver: 'all', design: 'rdd' })] }];
+    const ptrack = { id: 'plain', name: 'Plain track', lanes: 2, length: 10, laneModifier: 'measured', laneLengths: '10, 12' };
+    const oset = over => ({ id: 'hov', name: 'Overall heats', sessionType: 'heats', heatBy: 'laps', laps: 2, heatPlan: 'manual', heats: 2, resultBy: 'laps', layout: 'OV', ...over });
+    const board = id => run('live.nodes').find(n => n.w.id === id).val.innerHTML;
+    const text = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    // the total time of a car that is on track runs on with the clock, so two screens drawn a moment apart can differ in that column only
+    const noTotal = t => t.replace(/(\d+ \S+ \d+ (?:[\d.]+|\u2013) (?:[\d.]+|\u2013)) [\d.]+/g, '$1 T');
+    const click = (rv, dataset) => E('review').onclick({ target: { closest: () => ({ disabled: false, dataset: { rv, ...dataset } }) } });
+    const viewerBoard = (opt, extra) => run(`(() => { const v = LiveShare.viewer(); v.feedStatic(${JSON.stringify(sent.stat)}); v.feedDynamic(${JSON.stringify(sent.dyn)}, performance.now()); const S = v.shared(performance.now()); return Timing.content({ type: 'leaderboard', opt: ${JSON.stringify(opt)} }, { ...S, rowDesigns: ${JSON.stringify(store.rowdesigns)} }).html; })()`);
+    kept.snap = null;
+    await openRace(oset(), ptrack, rows(1, 2, 3));
+    run('state.autoFinalize = false');
+    say('before the start the overall board lists every driver of the race, the heat board only the two cars of the first heat', ['Alex', 'Sam', 'Kim'].every(n => text(board('lbAll')).includes(n)) && !text(board('lbHeat')).includes(eng().cars.length === 2 ? ['Alex', 'Sam', 'Kim'].find(n => !eng().cars.some(c => c.driverName === n)) : 'xx'));
+    say('...the static part of the live link carries who is who (3 drivers), and nothing from earlier heats yet', sent.stat.roster.length === 3 && sent.stat.roster[1].driverName === 'Sam' && Array.isArray(sent.stat.prior) && sent.stat.prior.length === 0);
+    key(' '); await until(() => phase() === 'running', 5000); await wait(60);
+    const ln = i => eng().cars[i].lane, nm = i => eng().cars[i].driverName, out1 = [0, 1, 2].map(i => ['Alex', 'Sam', 'Kim'][i]).filter(n => !eng().cars.some(c => c.driverName === n))[0];
+    await lapOn(ln(0)); await lapOn(ln(1)); await lapOn(ln(0)); await lapOn(ln(1));
+    await until(() => phase() === 'review', 6000); await wait(100);
+    say('heat 1 is over and waits in the review: the overall board has all three drivers, the two who raced with 2 laps and the one who did not at the bottom, 2 laps behind', text(board('lbAll')).includes(out1) && text(board('lbAll')).endsWith('+2 laps') && text(board('lbAll')).indexOf(out1) > text(board('lbAll')).indexOf(nm(0)) && text(board('lbAll')).indexOf(out1) > text(board('lbAll')).indexOf(nm(1)));
+    say('...the same drivers in a row design: place, name, laps, best lap, average lap, total time and the gap', /^1 \S+ 2 [\d.]+ [\d.]+ [\d.]+ 2 \S+ 2 [\d.]+ [\d.]+ [\d.]+ 3 \S+ 0 – – – \+2 laps$/.test(text(board('lbRow'))));
+    say('...and the boards that are not set to count over all heats show the two cars of the heat only', !text(board('lbHeat')).includes(out1) && !text(board('lbRowHeat')).includes(out1));
+    eng().adjust(1, { laps: 1 }); // (the Race Director gives the second car a lap in the review: 3 laps count, and so do their 30 m)
+    click('finalize', {}); await until(() => phase() === 'between', 5000); await wait(250);
+    say('heat 1 is finalized: the next heat gets the roster and what heat 1 left behind (both drivers, with 2 laps and 3 laps (a lap was added in the review), 2 valid lap times each and their best lap)', sent.stat.roster.length === 3 && sent.stat.prior.length === 2 && sent.stat.prior.map(x => x.laps).sort().join() === '2,3' && sent.stat.prior.every(x => x.valid.length === 2 && x.best > 0 && x.pts === 0));
+    say('...what was left behind is rounded to milliseconds (the best lap and every lap time), and a heat by laps on a track with lane lengths has its metres (the laps that count times the length of the lane: 3 laps of 10 m on lane 1 and 2 laps of 12 m on lane 2)', sent.stat.prior.every(x => x.best === Math.round(x.best * 1000) / 1000 && x.valid.every(t => t === Math.round(t * 1000) / 1000)) && sent.stat.prior.map(x => x.dist).sort((a, b) => a - b).join() === '24,30');
+    say('...the board between the heats is the one of the end of the heat: the same drivers in the same places with what they drove (the driver who did not race at the bottom, on the grid of heat 2 with nothing driven yet)', /^1 \S+ 3 [\d.]+ [\d.]+ [\d.]+ 2 \S+ 2 [\d.]+ [\d.]+ [\d.]+ \+1 lap 3 \S+ 0 \u2013 \u2013 0\.000 \+3 laps$/.test(text(board('lbRow'))));
+    say('...a board with the distance adds up the metres: 30 m and 24 m for the two who raced (3 laps of 10 m and 2 laps of 12 m), nothing yet for the one who did not', /^\S+ 30 m \S+ 24 m \S+ 0 m$/.test(text(board('lbDist'))));
+    say('...the lap times that count are what the average and the median are made of: they are those of the cars of heat 1, in milliseconds', (() => { const m = new Map(sent.stat.prior.map(x => [x.p, x.valid])); return [...m.values()].every(v => v.every(t => t > 0 && t < 5000)); })());
+    say('...the heat that is kept for a restart holds them too (memoBy: 2 drivers with their lap times)', !!kept.snap && !!kept.snap.heat && Array.isArray(kept.snap.heat.memoBy) && kept.snap.heat.memoBy.length === 2 && kept.snap.heat.memoBy.every(e => e[1].laps.length === 2 && e[1].n === 1));
+    say('between the heats the overall board still shows all three drivers with what they did (3, 2 and 0 laps: 1 lap and 3 laps behind the leader)', text(board('lbAll')).includes(out1) && text(board('lbAll')).includes('+1 lap') && text(board('lbAll')).includes('+3 laps'));
+    key(' '); await until(() => phase() === 'running', 8000); await wait(60);
+    const third = ['Alex', 'Sam', 'Kim'].filter(n => eng().cars.some(c => c.driverName === n));
+    await lapOn(ln(0)); await wait(60);
+    const dyn = sent.dyn.heat;
+    say('in heat 2 the order is that of the standing including the heat that runs: the live link carries it (a lap of the first car in heat 2 is counted at once)', Array.isArray(dyn.order) && dyn.order.length === 3 && dyn.ovBy === 'laps' && dyn.order.every(x => x[1] === null || Number.isFinite(x[1])));
+    say('...the driver who raced heat 1 and has a lap in heat 2 now leads or follows with 3 laps, the others have their laps; the board and the live link agree', (() => { const t = text(board('lbAll')); return /3/.test(t) && t.split('+').length >= 2; })());
+    say('another screen draws the same overall board from what the live link carries, classic and row design', viewerBoard({ countOver: 'all' }) === board('lbAll') && noTotal(text(viewerBoard({ countOver: 'all', design: 'rd' }))) === noTotal(text(board('lbRow'))));
+    say('...and without the setting it draws the heat only, as before', viewerBoard({}) === board('lbHeat'));
+    run('state.race = null; live = null'); timers.forEach(clearInterval);
+    // heats of a time that compare by distance: the order counts metres (the car on the longer lane is ahead with fewer laps), and says so
+    saved.length = 0;
+    await openRace(oset({ id: 'hdt', name: 'Overall distance heats', heatBy: 'time', duration: 0.1, compareBy: 'distance', resultByTime: 'lapstime', resultBy: 'laps' }), { id: 'two', name: 'Two lengths', lanes: 2, length: 10, laneModifier: 'measured', laneLengths: '10, 14' }, rows(1, 2, 3));
+    key(' '); await until(() => phase() === 'running', 5000); await wait(60);
+    const pOf = lane => eng().cars.find(c => c.lane === lane).participant;
+    await lapOn(0); await lapOn(0); await lapOn(0); await lapOn(0); await lapOn(1); await lapOn(1); await lapOn(1); await wait(150);
+    say('heats of a time that compare by distance: the order is in metres (42 m on the lane of 14 m before 40 m on the lane of 10 m, though it has fewer laps), and the gap is told in metres', sent.dyn.heat.ovBy === 'distance' && sent.dyn.heat.order[0][0] === pOf(1) && sent.dyn.heat.order[0][1] === 42 && sent.dyn.heat.order[1][0] === pOf(0) && sent.dyn.heat.order[1][1] === 40);
+    run('state.race = null; live = null'); timers.forEach(clearInterval);
+
+    // heats scored by points on a track without lane lengths: the order counts the points of the heats that are done only (not the heat that is next), and no metres are told
+    saved.length = 0;
+    await openRace(oset({ id: 'hpt', name: 'Overall points', resultBy: 'points', points: '10, 8, 6' }), { id: 'nolen', name: 'No lengths', lanes: 2 }, rows(1, 2, 3));
+    run('state.autoFinalize = false');
+    key(' '); await until(() => phase() === 'running', 5000); await wait(60);
+    await lapOn(ln(0)); await lapOn(ln(1)); await lapOn(ln(0)); await lapOn(ln(1));
+    await until(() => phase() === 'review', 6000); await wait(100);
+    say('heats scored by points: the order counts the places of the heat that runs now (10 and 8 points, the driver who is not racing 0), and it says that it counts points', sent.dyn.heat.ovBy === 'points' && sent.dyn.heat.order.map(x => x[1]).join() === '10,8,0');
+    click('finalize', {}); await until(() => phase() === 'between', 5000); await wait(250);
+    say('...between the heats the points are those of the heat that is done (10, 8 and 0), not those of the heat that is next', sent.dyn.heat.order.map(x => x[1]).join() === '10,8,0');
+    say('...a track without lane lengths has no metres: the heats left behind tell none, and the Distance column is a dash for everybody', sent.stat.prior.length === 2 && sent.stat.prior.every(x => !('dist' in x)) && (text(board('lbDist')).match(/–/g) || []).length === 3);
+    run('state.race = null; live = null'); timers.forEach(clearInterval);
+  }
+
+  // ---------- 1.67.0: the sector choice works in every heat ----------
+  {
+    const stk = { id: 'sx', name: 'Sector track', lanes: 3, length: 10, sectors: 4, sectorNames: 'Start,Hairpin,,Back' };
+    const hs = { id: 'hsec', name: 'Sector heats', sessionType: 'heats', heatBy: 'laps', laps: 3, heatPlan: 'manual', heats: 2, endRule: 'leader', resultBy: 'laps', layout: 'DL' };
+    const review = () => E('review').innerHTML;
+    const choose = (car, value) => E('review').onchange({ target: { closest: () => ({ dataset: { rvs: String(car) }, value: String(value) }) } });
+    const click = (rv, dataset) => E('review').onclick({ target: { closest: () => ({ disabled: false, dataset: { rv, ...dataset } }) } });
+    saved.length = 0;
+    await openRace(hs, stk, rows(1, 2, 3));
+    run('state.autoFinalize = false');
+    key(' '); await until(() => phase() === 'running', 5000); await wait(60);
+    const ln = i => eng().cars[i].lane;
+    for (let k = 0; k < 2; k++) { await lapOn(ln(0)); await lapOn(ln(1)); await lapOn(ln(2)); }
+    await lapOn(ln(0));
+    await until(() => phase() === 'review', 6000); await wait(100);
+    say('heat 1 of a heat race on a track with sectors: the review has the choice of a sector for the two cars that did not finish, and not for the one that did', eng().cars[0].done && review().includes('data-rvs="1"') && review().includes('data-rvs="2"') && !review().includes('data-rvs="0"'));
+    choose(2, 3);
+    say('...a sector chosen in heat 1 puts that car ahead of the other one that is on the same laps (before the heat is finalized)', eng().cars[2].sector === 3 && eng().standings().map(x => x.index).join() === '0,2,1');
+    const n1 = eng().cars[1].driverName, n2 = eng().cars[2].driverName;
+    click('finalize', {});
+    await until(() => phase() === 'between', 5000); await wait(150);
+    key(' '); await until(() => phase() === 'running', 8000); await wait(60);
+    say('...heat 2 starts clean: no car has a sector from heat 1', eng().cars.every(c => !c.sector));
+    for (let k = 0; k < 2; k++) { await lapOn(ln(0)); await lapOn(ln(1)); await lapOn(ln(2)); }
+    await lapOn(ln(0));
+    await until(() => phase() === 'review', 6000); await wait(100);
+    say('...and heat 2 has its own review with the choice of a sector for the cars that did not finish, with nothing chosen yet', eng().cars[0].done && review().includes('data-rvs="1"') && review().includes('data-rvs="2"') && !review().includes(' selected>Sector') && eng().cars.every(c => !c.sector));
+    choose(1, 1);
+    say('...a sector chosen in heat 2 belongs to that heat and to that car only', eng().cars[1].sector === 1 && !eng().cars[2].sector);
+    click('finalize', {});
+    await until(() => saved.length > 0, 8000); await wait(150);
+    const sr = saved[0] && saved[0][0], hr = sr && sr.heatResults;
+    const secs = h => h.rows.filter(r => r.sector !== undefined).map(r => r.driverName + ':' + r.sector).join();
+    say('the saved race has both heats; the sector of heat 1 is in the row of heat 1 (the car it was chosen for), the one of heat 2 in heat 2', !!hr && hr.length === 2 && secs(hr[0]) === n2 + ':3' && secs(hr[1]) === n1 + ':1');
+    run('state.race = null; live = null'); timers.forEach(clearInterval);
+  }
+
   reachedEnd = true;
   console.log(fails ? fails + ' DISTANCE SCREEN TESTS FAILED' : 'ALL DISTANCE SCREEN TESTS PASSED'); process.exit(fails ? 1 : 0);
 })();

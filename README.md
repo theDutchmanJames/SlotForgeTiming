@@ -3247,3 +3247,23 @@ Good to know:
 - In a heat the sector only decides the places of the heat; the laps of each driver and the overall result of the heats are not changed.
 - Nothing changes for a race on a track without sectors, or for cars that all finish.
 - Tested: `tests/sectors.test.js` (new) and new checks in `tests/distancescreen.test.js`, `tests/screens.test.js`, `tests/report.test.js` and `tests/help.test.js`. The code was broken on purpose 97 times: 83 caught. The other 14 cannot change a result: two guards that only save work (the ranking is skipped when no sector is set), three checks for a car that is out or disqualified that the check for a car that has not finished already covers (those cars are always marked as finished), a tie that the sort keeps in the order it already had, a count of one in a group, the same sector number with the bounds checked twice, an empty choice that the check for 0 already catches, a check of the state of the race that no sector can pass before the race is over, and two checks of the car number in the review that the engine repeats. The first pass caught 78 of the 97; the gaps showed real holes (an old order of the arrows that must stop counting when the laps change, a sector for a car in the same laps as a car that finished, a disqualified car in a group, the direction of the arrows) and got tests.
+
+## What to try (1.67.0): a leaderboard that remembers the heats
+
+What changed: a leaderboard has a new setting, **Count over**. With **All heats so far** the board of a race with heats lists every driver in the order of the overall result, and every column remembers the heats before: the total time and the laps add up, the best lap is the best of all heats, the average and the median lap are those of all laps, the points add up. The board moves while a heat runs, because the heat that is racing is counted as it stands. With **This race or heat** (the standard) nothing changes.
+
+How to try it:
+1. Make a race setup with **heats** (2 heats, by laps, 3 drivers, 2 lanes) and start it.
+2. On the Live Race tab open **Leaderboard** > **Customize**, pick a board and set **Count over** to **All heats so far**. (In a layout the same setting is on the Leaderboard widget.) Put a second board next to it and leave it on **This race or heat**.
+3. Before the start the first board lists all three drivers, the one who is not in heat 1 at the bottom with dashes. Drive heat 1: the board with the standard shows the two cars of the heat, the other one shows the three drivers.
+4. Press **Finalize** and start heat 2 with another pair of drivers. The first board keeps what heat 1 left behind: a driver who raced both heats has the laps, the total time and the best lap of both; the average lap is made of all his laps. A lap in heat 2 moves a driver up or down at once.
+5. Try a row design with Total Time, Best Lap, Average Lap, Lap Number and Gap in it, and **Order by** *Total time*. Open the Live Race page on a second screen or a phone: it shows the same board.
+
+Good to know:
+- **Championship points** add up over the heats only when the heats are scored by **Points**; otherwise that column is a dash.
+- **Gap** is in what the result counts: time, points (−3), laps (+1 lap) or distance.
+- Current Lap, Fuel, Tyres and the penalty widgets cannot add up: they show the car that is on track now, and a dash for a driver who is not racing.
+- The setting does nothing in a race that is not a race of heats.
+- The championship (earlier rounds plus this race) comes in 1.68.0, on this same setting.
+- The **sector** choice in the review (1.66.0) is there in every heat, before you finalize that heat, and is saved with the heat; the new screen test checks this over two heats.
+- Tested: `tests/boardall.test.js` (new) and new checks in `tests/distancescreen.test.js`, `tests/livegrid.test.js` and `tests/help.test.js`. Mutation check: 187 changed versions of the new code, in three rounds. The first round found gaps in the tests (laps that do not count, the points of the heat that runs, the colours of the rows, what the order is made of, the metres); they are closed with new checks, and the memory step, the order stamp and the kind of result moved into the engine so they could be tested. What is left over is equivalent (the gap of the leader, a clause that a dash already covers, a fallback to the same car, the rounding of the metres in the live link).
