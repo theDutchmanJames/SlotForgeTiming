@@ -15,7 +15,7 @@
 body{margin:0}
 </style>
 </helmet>
-<div class="sheet" style="width: 1240px; height: 620px; padding: 36px 44px 40px; display: flex; flex-direction: column; gap: 20px; font-family: Inter, system-ui, sans-serif; color: #e8e6e1">
+<div class="sheet" style="width: 1240px; height: 650px; padding: 36px 44px 40px; display: flex; flex-direction: column; gap: 20px; font-family: Inter, system-ui, sans-serif; color: #e8e6e1">
 
 <div>
 <h1>Race Setups</h1>
@@ -40,7 +40,7 @@ body{margin:0}
 </div>
 <div class="pills" style="margin-top: 0"><span class="pill red">One race</span><span class="pill">10 laps</span><span class="pill">Living room, 4 lanes</span></div>
 <div class="lv"><span class="k">Ends</span><span>After 10 laps, when every car has finished.</span></div>
-<div class="lv"><span class="k">Wins</span><span>The most laps, then the shortest time.</span></div>
+<div class="lv"><span class="k">Wins</span><span>The first car to finish the 10 laps wins.</span></div>
 <div class="row" style="margin-top: auto; gap: 10px"><button class="btn sm">Edit</button><button class="btn sm ghost del">Delete</button></div>
 </div>
 
@@ -63,8 +63,8 @@ body{margin:0}
 <span class="dot"></span>
 </div>
 <div class="pills" style="margin-top: 0"><span class="pill red">Driver swaps</span><span class="pill">30 minutes</span><span class="pill">Living room, 4 lanes</span></div>
-<div class="lv"><span class="k">Ends</span><span>After 30 minutes. Teams swap drivers in the pits.</span></div>
-<div class="lv"><span class="k">Wins</span><span>The most laps, then the shortest time.</span></div>
+<div class="lv"><span class="k">Ends</span><span>After 30 minutes. Every car finishes on its next crossing of the line.</span></div>
+<div class="lv"><span class="k">Wins</span><span>The car with the most laps wins; with equal laps, the shortest total time.</span></div>
 <div class="row" style="margin-top: auto; gap: 10px"><button class="btn sm">Edit</button><button class="btn sm ghost del">Delete</button></div>
 </div>
 
@@ -79,7 +79,7 @@ body{margin:0}
 
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":620}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":650}}'>
 class Component extends DCLogic {
 renderVals() {
 return {};

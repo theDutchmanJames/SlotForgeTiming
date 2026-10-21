@@ -310,7 +310,7 @@
     else {
       const most = st.per.map((x, i) => [x.heats, i]).filter(([n]) => n === st.maxHeats).map(([, i]) => names[i]);
       const few = st.per.filter(x => x.heats === st.minHeats).length;
-      const fix = custom ? '' : o.plan === 'manual' ? ' To avoid it, choose the plan "Every driver races the same number of heats".' : o.plan === 'roundrobin' ? ' To avoid it, set "Same number of heats for everyone" to Yes.' : '';
+      const fix = custom ? '' : o.plan === 'manual' ? ' To avoid it, choose the plan "Same for every driver".' : o.plan === 'roundrobin' ? ' To avoid it, set "Same number of heats for everyone" to Yes.' : '';
       const fair = ' Or count the average per heat.';
       lines.push(`The drivers do not race the same number of heats: ${st.minHeats} to ${st.maxHeats} (${few} race${few === 1 ? 's' : ''} ${st.minHeats}, ${most.length} race${most.length === 1 ? 's' : ''} ${st.maxHeats}). The overall result adds the heats up, so a driver with an extra heat has an advantage.${fix}${fair}`);
     }

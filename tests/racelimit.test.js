@@ -23,7 +23,7 @@ const F = schema.racesetups, field = k => F.fields.find(f => f.key === k);
 const shown = (f, vals) => !f.showIf || f.showIf.some(c => Object.entries(c).every(([k, vs]) => vs.includes(vals[k] ?? '')));
 const keys = vals => F.fields.filter(f => shown(f, vals)).map(f => f.key);
 ok('the session types: no Timed race any more, and the Race is just "Race"', field('sessionType').options.map(o => o[0]).join() === 'practice,qualifying,race,heats,endurance,tokens' && field('sessionType').options.find(o => o[0] === 'race')[1] === 'Race');
-ok('"The race is limited by" has a time next to laps and a distance, and the hint says how a time race is decided', field('raceBy').options.map(o => o[0]).join() === 'laps,distance,time' && field('raceBy').options.find(o => o[0] === 'time')[1] === 'A time' && /most laps/.test(field('raceBy').hint) && /lowest total time/.test(field('raceBy').hint));
+ok('"The race is over after" (1.69.0: it was "The race is limited by") has a time next to laps and a distance, in the order laps, time, distance, and the hint says how a time race is decided', field('raceBy').label === 'The race is over after' && field('raceBy').options.map(o => o[0]).join() === 'laps,time,distance' && field('raceBy').options.find(o => o[0] === 'time')[1] === 'Time' && /most laps/.test(field('raceBy').hint) && /lowest total time/.test(field('raceBy').hint));
 ok('a race limited by a time asks for the minutes and not for the laps, the distance or the rule about the lead car', (() => { const k = keys({ sessionType: 'race', raceBy: 'time' });
   return k.includes('duration') && !k.includes('laps') && !k.includes('endRule') && !k.includes('distance') && !k.includes('distanceMode') && !k.includes('distanceMax'); })());
 ok('...a race by laps asks for the laps and the lead car rule and not for the minutes (as before), also when raceBy was never saved', ['laps', ''].every(r => { const k = keys({ sessionType: 'race', raceBy: r }); return k.includes('laps') && k.includes('endRule') && !k.includes('duration'); }));
@@ -32,7 +32,7 @@ ok('...all the rules of a race (penalties, fuel, damage, weather, Balance of Pow
   return ['penaltySystem', 'fuelRules', 'damageSystem', 'weather', 'bop', 'lightsMin', 'safetyCar', 'yellowTarget'].every(k => t.includes(k) === l.includes(k) && t.includes(k)); })());
 ok('qualifying, a heat race by time and an Endurance Race by time still ask for their minutes', keys({ sessionType: 'qualifying' }).includes('duration') && keys({ sessionType: 'heats', heatBy: 'time' }).includes('duration') && keys({ sessionType: 'endurance', enduranceBy: 'time' }).includes('duration')
   && !keys({ sessionType: 'practice' }).includes('duration') && !keys({ sessionType: 'heats', heatBy: 'laps' }).includes('duration'));
-ok('a heat race is limited by "A time" (it was "Duration")', field('heatBy').options.map(o => o.join(':')).join() === 'laps:Number of laps,time:A time,distance:Distance' && /A time: every heat runs for the same time/.test(field('heatBy').hint));
+ok('a heat is over after laps, a time or a distance, with the same words as a race (1.69.0: it was "Each heat is limited by" with "A time")', field('heatBy').label === 'Each heat is over after' && field('heatBy').options.map(o => o.join(':')).join() === 'laps:Laps,time:Time,distance:Distance' && /Time: every heat runs for the same time/.test(field('heatBy').hint));
 
 // ---- old data ----
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rl-'));

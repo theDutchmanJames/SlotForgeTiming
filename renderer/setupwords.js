@@ -1,0 +1,152 @@
+// A race setup in words (1.69.0). The Race Setups page and the form of a race setup say what a setup does in plain words: the pills of the header (kind, format, limit, track), the sentence
+// "In plain words" (what it is, how it ends, who wins) and the two lines of a card (Ends, Wins). This file holds the sentences and nothing else (no screen, no storage), so they can be tested on their own.
+// It reads a setup as the database keeps it, or as the form holds it (every value may be text) and changes nothing of it. The words follow the rules of the engine:
+// a lap race is won by the first car to finish its laps, a time race by the most laps (or the furthest distance, when the cars are compared by distance) and then the lowest total time,
+// a distance race by the first car to drive the distance, and heats by the overall result that the setup chooses (points, laps or time).
+(function (root) {
+  const KINDS = [['practice', 'Free practice'], ['qualifying', 'Qualifying'], ['race', 'Race'], ['heats', 'Heat-based race'], ['endurance', 'Endurance Race'], ['tokens', 'Time Token Session']];
+  const num = v => { const t = String(v === undefined || v === null ? '' : v).trim().replace(',', '.'); const n = Number(t); return t !== '' && Number.isFinite(n) ? n : null; };
+  const pos = v => { const n = num(v); return n !== null && n > 0 ? n : null; };
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const inOr = (v, list, d) => (list.includes(v) ? v : d);
+  const cap = x => x.charAt(0).toUpperCase() + x.slice(1);
+
+  // the name of the kind of session for the eyebrow of a card and the first pill: a heat-based race and an Endurance Race are races
+  function kindOf(s) {
+    const t = s && s.sessionType;
+    if (t === 'practice') return 'Free practice';
+    if (t === 'qualifying') return 'Qualifying';
+    if (t === 'tokens') return 'Time tokens';
+    return 'Race';
+  }
+  // how a race is limited, in words: '10 laps', '5 minutes', '100 m'; '' when the number is not typed (yet). dist(n) says a distance in the unit of the person (metres or feet).
+  function lim(by, s, ctx, fields) {
+    const f = fields || { laps: 'laps', duration: 'duration', distance: 'distance' };
+    if (by === 'time') { const m = pos(s[f.duration]); return m === null ? '' : plural(m, 'minute', 'minutes'); }
+    if (by === 'distance') { const d = pos(s[f.distance]); return d === null ? '' : ctx.dist(d); }
+    const l = pos(s[f.laps]); return l === null ? '' : plural(l, 'lap', 'laps');
+  }
+  // what limits a heat of this setup ('laps', 'time' or 'distance'), and what limits a one-race session (a Race: raceBy, an Endurance Race: enduranceBy)
+  const heatLimitBy = s => inOr(s.heatBy, ['laps', 'time', 'distance'], 'laps');
+  const raceLimitBy = s => (s.sessionType === 'endurance' ? inOr(s.enduranceBy, ['time', 'laps', 'distance', 'heats'], 'time') : inOr(s.raceBy, ['laps', 'time', 'distance'], 'laps'));
+
+  // the points of a heat for the card and the sentence: '10, 8, 6' (the first four at most)
+  const pointsText = s => String(s.points === undefined || s.points === null || String(s.points).trim() === '' ? '10, 8, 6, 5, 4, 3, 2, 1' : s.points).split(',').map(x => x.trim()).filter(Boolean).slice(0, 4).join(', ');
+
+  // the sentences about a race or a heat that ends by itself: say = a sentence of the plain words, card = the end of the line "Ends" of a card (it comes after "After 10 laps")
+  function endsOne(by, s) {
+    const leader = s.endRule === 'leader';
+    if (by === 'time') return { card: '. Every car finishes on its next crossing of the line.', say: 'When the time is up, every car finishes on its next crossing of the line (that lap counts).' };
+    if (by === 'distance') {
+      const m = inOr(s.distanceMode, ['same', 'laps', 'manual'], 'same'), mx = pos(s.distanceMax);
+      const how = m === 'laps' ? 'Every lane drives the same number of laps.' : m === 'manual' ? 'Every lane drives the distance you set for it.' : 'Every car drives the same distance, so a car in a shorter lane drives more laps.';
+      const cardHow = m === 'laps' ? 'Every lane drives the same number of laps.' : m === 'manual' ? 'Every lane drives its own distance.' : 'Every car drives the same distance.';
+      return { card: '. ' + cardHow + (leader ? ' It ends when the leader has finished.' : ''), say: how + ' ' + (leader ? 'It ends when the leader has finished.' : 'It ends when every car has finished.') + (mx ? ` It lasts ${plural(mx, 'minute', 'minutes')} at most.` : '') };
+    }
+    return { card: leader ? ', when the leader has finished.' : ', when every car has finished.', say: leader ? 'It ends when the leader has finished.' : 'It ends when every car has finished.' };
+  }
+  // who wins a race (one race, not heats)
+  function winsOne(by, s, laps) {
+    if (by === 'time') return s.compareBy === 'distance' ? 'The car that drove the furthest wins (laps times the length of its lane); with equal distance, the shortest total time.' : 'The car with the most laps wins; with equal laps, the shortest total time.';
+    if (by === 'distance') return 'The first car to drive the distance wins.';
+    return `The first car to finish ${laps || 'the laps'} wins.`;
+  }
+  // who wins the heats: the overall result the setup chooses
+  function winsHeats(s, hb, nn) {
+    const r = hb === 'time' ? inOr(s.resultByTime, ['lapstime', 'laps', 'points'], 'lapstime') : inOr(s.resultBy, ['laps', 'points', 'time'], 'laps');
+    const final = s.finals === 'a' ? ' The best drivers then race a final.' : s.finals === 'ab' ? ' The best drivers then race an A final, and the next ones a B final.' : '';
+    let w;
+    const who = nn ? nn[0] : 'driver';
+    if (r === 'points') w = `The ${who} with the most points over the heats wins.`;
+    else if (r === 'time') w = `The ${who} with the lowest total time over the heats wins.`;
+    else if (r === 'lapstime') w = `The ${who} with the most laps${s.compareBy === 'distance' ? ' (the furthest distance)' : ''} over the heats wins; with equal laps, the lowest total time.`;
+    else w = `The ${who} with the most laps over the heats wins.`;
+    return { result: r, text: w + final };
+  }
+  // how the heats are planned, in a sentence
+  function planText(s, nn) {
+    const one = nn ? nn[0] : 'driver', many = nn ? nn[1] : 'drivers';
+    if (s.rotation) return null; // (the rotation setup plans them: the caller names it)
+    const p = inOr(s.heatPlan, ['manual', 'perdriver', 'roundrobin', 'rotation'], 'manual'), n = pos(s.heats), e = pos(s.heatsEach);
+    if (p === 'perdriver') return e ? `Every ${one} races ${plural(e, 'heat', 'heats')}.` : `Every ${one} races the same number of heats.`;
+    if (p === 'roundrobin') return `Every ${one} meets every other ${one} (round robin).` + (s.heatEven === 'yes' ? ` Heats are added until everyone has raced as many as the busiest ${one}.` : '');
+    if (p === 'rotation') return `Every ${one} races once in every lane.`;
+    return n ? `There are ${plural(n, 'heat', 'heats')} and the ${many} are spread over them.` : `The ${many} are spread over a number of heats you choose.`;
+  }
+  const seedText = (s, nn) => (s.rotation || !['manual', 'perdriver'].includes(inOr(s.heatPlan, ['manual', 'perdriver', 'roundrobin', 'rotation'], 'manual')) ? '' : s.heatSeeding === 'mixed' ? `${cap((nn || ['driver', 'drivers'])[1])} are mixed fast and slow by the latest qualifying.` : s.heatSeeding === 'speed' ? `The fastest ${(nn || ['driver', 'drivers'])[1]} race together, the best heat last.` : `The ${(nn || ['driver', 'drivers'])[1]} are shuffled.`);
+  const countText = (s, nn) => {
+    const c = inOr(s.countBy, ['total', 'average', 'best'], 'total'), b = pos(s.bestHeats);
+    return (c === 'average' ? 'The average per heat counts.' : c === 'best' ? `Only the best ${b ? plural(b, 'heat', 'heats') : 'heats'} of every ${nn ? nn[0] : 'driver'} count.` : 'All heats are added up.') + (s.dropWorst === 'yes' ? ` The worst heat of every ${nn ? nn[0] : 'driver'} is dropped.` : '');
+  };
+  // how the drivers of a team swap in the pits (an Endurance Race)
+  function swapText(s, ctx) {
+    const u = inOr(s.swapUnit, ['minutes', 'laps', 'distance'], 'minutes'), m = inOr(s.swapMode, ['every', 'moments', 'free'], 'every');
+    if (m === 'moments') return 'The drivers of a team swap in the pits at fixed moments of the race.';
+    if (m === 'free') return 'The drivers of a team swap in the pits when the team chooses.';
+    if (u === 'distance') { const d = pos(s.swapEveryDist); return d ? `The drivers of a team swap in the pits every ${ctx.dist(d)}.` : 'The drivers of a team swap in the pits every so often.'; }
+    const n = pos(s.swapEvery); return n ? `The drivers of a team swap in the pits every ${u === 'laps' ? plural(n, 'lap', 'laps') : plural(n, 'minute', 'minutes')}.` : 'The drivers of a team swap in the pits every so often.';
+  }
+
+  // The words for a setup. s: the setup (or the values of the form); ctx: { track: { name, lanes } | null, rotation: the name of the chosen rotation setup, dist: n => text of a distance }.
+  // -> { kind, format, limit, place, pills: [{ text, tone }], cardPills: [{ text, tone }], say: [{ t, b }], ends, wins, ready: { ok, text } }
+  function describe(s, ctx) {
+    s = s || {}; ctx = ctx || {};
+    const c = { track: ctx.track || null, rotation: ctx.rotation || '', dist: typeof ctx.dist === 'function' ? ctx.dist : n => `${n} m` };
+    const t = inOr(s.sessionType, KINDS.map(k => k[0]), 'race');
+    const tn = c.track && String(c.track.name || '').trim(), lanes = c.track ? pos(c.track.lanes) : null;
+    const say = [], add = (x, b) => { if (x) say.push({ t: x, b: !!b }); };
+    const heated = t === 'heats' || (t === 'endurance' && raceLimitBy(s) === 'heats');
+    const swaps = t === 'endurance';
+    const by = heated ? heatLimitBy(s) : raceLimitBy(s);
+    const limit = t === 'practice' || t === 'tokens' ? '' : t === 'qualifying' ? lim('time', s, c) : lim(by, s, c);
+    // the pills: kind, format, limit, track, lanes
+    const format = t === 'race' ? 'One race' : t === 'heats' ? 'Heats' : t === 'endurance' ? (heated ? 'Heats with driver swaps' : 'Driver swaps') : '';
+    let limitPill = limit;
+    if (heated && limit) { const n = !s.rotation && inOr(s.heatPlan, ['manual', 'perdriver', 'roundrobin', 'rotation'], 'manual') === 'manual' ? pos(s.heats) : null; limitPill = n ? `${plural(n, 'heat', 'heats')} of ${limit}` : `${limit} per heat`; }
+    const pills = [{ text: kindOf(s), tone: 'red' }, ...(format ? [{ text: format, tone: 'red' }] : []), ...(limitPill ? [{ text: limitPill, tone: '' }] : []), ...(tn ? [{ text: tn, tone: '' }] : []), ...(lanes ? [{ text: plural(lanes, 'lane', 'lanes'), tone: '' }] : [])];
+    const place = tn ? (lanes ? `${tn}, ${plural(lanes, 'lane', 'lanes')}` : tn) : '';
+    // the pills of a card: the kind is its eyebrow, so they start at the format, and the track and its lanes are one pill
+    const cardPills = [...(format ? [{ text: format, tone: 'red' }] : []), ...(limitPill ? [{ text: limitPill, tone: '' }] : []), ...(place ? [{ text: place, tone: '' }] : [])];
+    const onTrack = tn ? [' on ', tn] : null;
+    const onPlace = () => { if (onTrack) { add(onTrack[0]); add(onTrack[1], true); } };
+    let ends = '', wins = '';
+
+    if (t === 'tokens') {
+      add('A '); add('time token session', true); onPlace(); add('. It is not a race: each lane is switched on with paid time and turns red when the time is up.');
+      ends = 'Runs until you stop it.'; wins = 'No winner: this is not a race.';
+    } else if (t === 'practice') {
+      add('A '); add('free practice', true); add(' session'); onPlace(); add('. Everyone drives and the cars are ranked by their fastest lap. It runs until you stop it.');
+      ends = 'Runs until you stop it.'; wins = 'Ranked by the fastest lap.';
+    } else if (t === 'qualifying') {
+      add('A '); add('qualifying', true); add(' session'); if (limit) { add(' of '); add(limit, true); } onPlace(); add('. The cars are ranked by their fastest lap.');
+      ends = limit ? `After ${limit}.` : 'After a time you set.'; wins = 'Ranked by the fastest lap.';
+    } else if (!heated) { // one race (a race, or an Endurance Race of a time, laps or distance)
+      const e = endsOne(by, s), ln = pos(s.laps), lapsText = by === 'laps' ? (ln === 1 ? 'the lap' : ln ? `the ${ln} laps` : 'the laps') : '';
+      add(swaps ? 'An ' : 'A '); add(swaps ? 'endurance race' : 'race', true); if (limit) { add(' of '); add(limit, true); } onPlace(); add('. ');
+      if (swaps) add(swapText(s, c) + ' ');
+      add(e.say + ' ' + winsOne(by, s, lapsText));
+      wins = winsOne(by, s, lapsText); ends = limit ? `After ${limit}${e.card}` : e.card.replace(/^[.,] ?/, '').replace(/^./, x => x.toUpperCase());
+    } else { // heats (a heat-based race, or an Endurance Race of heats)
+      const nn = swaps || s.participants === 'teams' ? ['team', 'teams'] : ['driver', 'drivers'], w = winsHeats(s, by, nn), plan = planText(s, nn), seed = seedText(s, nn), br = pos(s.breakSeconds);
+      add('A '); add(swaps ? 'race in heats with driver swaps' : 'race in heats', true); onPlace(); add('. ');
+      if (s.rotation) { add('The heats follow the rotation setup '); add(c.rotation || 'you chose', !!c.rotation); add('. '); } else if (plan) add(plan + ' ');
+      if (!s.rotation && t === 'heats' && s.participants === 'teams') add('The teams race, and the drivers of a team take turns. ');
+      if (seed) add(seed + ' ');
+      if (swaps) add(swapText(s, c) + ' ');
+      add('Each heat is over after '); add(limit || (by === 'laps' ? 'a number of laps' : by === 'time' ? 'a time' : 'a distance'), !!limit); add('. ');
+      if (w.result === 'points') add(`A heat scores points by position (${pointsText(s)}).${pos(s.fastestBonus) ? ` The fastest lap of a heat gets ${plural(pos(s.fastestBonus), 'extra point', 'extra points')}.` : ''} `);
+      add(countText(s, nn) + ' ' + w.text);
+      if (br) add(` There is a break of ${plural(br, 'second', 'seconds')} between heats${s.breakAuto === 'yes' ? ', and then the start lights begin by themselves' : ''}.`);
+      const heatsN = !s.rotation && inOr(s.heatPlan, ['manual', 'perdriver', 'roundrobin', 'rotation'], 'manual') === 'manual' ? pos(s.heats) : null;
+      ends = `Each heat is over after ${limit || 'a set limit'}.${heatsN ? ` ${plural(heatsN, 'heat', 'heats')} in all.` : ''}`;
+      wins = w.text;
+    }
+    const ok = !!tn;
+    return { kind: kindOf(s), format, limit, place, pills, cardPills, say, ends, wins, ready: { ok, text: ok ? 'Ready to race' : 'Choose a track' } };
+  }
+  const plain = parts => parts.map(p => p.t).join('');
+
+  const api = { KINDS, kindOf, describe, plain };
+  root.SetupWords = api;
+  if (typeof module !== 'undefined') module.exports = api;
+})(typeof window !== 'undefined' ? window : globalThis);

@@ -134,8 +134,14 @@ const VIRTUAL = { limit: { label: 'Laps / time', get: limitText } };
 const columnOf = (s, k) => k[0] === '@' ? { key: k, label: VIRTUAL[k.slice(1)].label, virtual: VIRTUAL[k.slice(1)] } : s.fields.find(f => f.key === k);
 const columnCell = (f, i) => f.virtual ? esc(f.virtual.get(i)) : cell(f, i[f.key]);
 
-// ---- folders: the pages that list things in folders (Results and Records, Race Setups) look like the groups of the forms ----
+// ---- folders: the pages that list things in folders (Results and Records) look like the groups of the forms ----
 // A folder is open unless the person closed it; that is remembered while the app runs (key: page + folder), also when the page is drawn again.
+// Race Setups (1.69.0): the kind that the page shows ('all' or a session type), the picture of each kind on a card, and the kinds of the row above the cards
+let setupFilter = 'all';
+const SETUP_FILTERS = [['all', 'All'], ['practice', 'Practice'], ['qualifying', 'Qualifying'], ['race', 'Race'], ['heats', 'Heats'], ['endurance', 'Endurance'], ['tokens', 'Time tokens']];
+// the kinds of the row "Start from a kind": the short names of the kinds, with the session type each one starts
+const SETUP_START = [['practice', 'Free practice'], ['qualifying', 'Qualifying'], ['race', 'Race'], ['heats', 'Heats'], ['endurance', 'Endurance'], ['tokens', 'Time tokens']];
+const SETUP_KIND_ICON = { practice: 'car', qualifying: 'timing', race: 'racesetups', heats: 'layers', endurance: 'rotation', tokens: 'tokens' };
 const folderClosed = new Set();
 const folderKey = (page, id) => page + ':' + id;
 const folderHtml = (page, id, title, note, body) => `<details class="dbfolder" data-folder="${esc(folderKey(page, id))}"${folderClosed.has(folderKey(page, id)) ? '' : ' open'}><summary><strong>${esc(title)}</strong> <span class="muted">${esc(note)}</span></summary>${body}</details>`;
@@ -196,7 +202,7 @@ async function mountManager(box, e) {
       ...custom.map(f => ({ label: f.label, get: i => esc((i.custom || {})[f.id] ?? '') }))
     ];
   const viewKey = e === 'racesetups' ? 'setupView' : 'dbView'; // Race Setups remembers its own list / grid choice
-  const mode = s.card ? (state.settings[viewKey] || 'list') : 'list';
+  const mode = s.card ? (state.settings[viewKey] || (e === 'racesetups' ? 'grid' : 'list')) : 'list'; // (1.69.0: the Race Setups page starts as cards)
   // View settings (Tracks, Drivers, Slotcars): the columns of the list and the rows of the cards can be turned on and off. The list starts with every field, a card with the fields of the schema's card.
   const viewable = VIEW_ENTITIES.includes(e) && !!s.card && !s.list, cardKeys = s.card || [];
   const canView = VIEW_ENTITIES.includes(e); // a row or a card can be clicked to see everything of it (the view card)
@@ -213,7 +219,7 @@ async function mountManager(box, e) {
   const viewBtn = viewable ? viewButton(viewId) : '';
   const bar = !viewable || !viewBars.has(viewId) ? '' : viewBar(viewId, mode === 'grid' ? 'Turn rows of information on or off for the cards. This is remembered for the Grid view of this page.' : 'Turn columns of information on or off for the list. This is remembered for the List view of this page.',
     [viewGroup(mode === 'grid' ? `Rows on the ${s.label.toLowerCase()} cards` : `Columns in the ${s.label.toLowerCase()} list`, [e, mode], modeCands)]);
-  const toggle = !s.card ? '' : `<span class="seg" role="group" aria-label="View"><button class="btn${mode === 'list' ? ' on' : ''}" id="vlist" aria-pressed="${mode === 'list'}">List</button><button class="btn${mode === 'grid' ? ' on' : ''}" id="vgrid" aria-pressed="${mode === 'grid'}">Grid</button></span>`;
+  const toggle = !s.card ? '' : `<span class="seg" role="group" aria-label="View"><button class="btn${mode === 'list' ? ' on' : ''}" id="vlist" aria-pressed="${mode === 'list'}">List</button><button class="btn${mode === 'grid' ? ' on' : ''}" id="vgrid" aria-pressed="${mode === 'grid'}">${e === 'racesetups' ? 'Cards' : 'Grid'}</button></span>`;
   const gridHtml = (items, skip) => `<div class="cards">${items.map(i => {
     // the picture: the item's own, or (race setups) the picture of the track it uses; each with its own framing
     let img = s.image && i[s.image], frame = s.image && i[s.image + 'Frame'];
@@ -235,21 +241,28 @@ async function mountManager(box, e) {
   const tableHtml = (items, cols) => `<div class="wrap"><table class="fields"><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}<th></th></tr>` +
     items.map(i => `<tr${canView ? ` class="clickable" data-view="${esc(i.id)}" tabindex="0" aria-label="View ${esc(titleOf(e, i))}"` : ''}>${cols.map((c, n) => `<td>${c.get(i)}${n === 0 ? rowMark(e, i) : ''}</td>`).join('')}<td class="actions">
       <button class="btn" data-edit="${esc(i.id)}">Edit</button> <button class="btn danger" data-del="${esc(i.id)}">Delete</button></td></tr>`).join('') + '</table></div>';
-  // Race setups: one folder for each session type, with the setups of that type (a type without setups has no folder; a setup of a type that is not in the list goes in Other, so none is lost).
-  // The session type is the folder, so it is not repeated in the list or on the cards.
-  const folders = e !== 'racesetups' || !items.length ? null : (() => {
-    const types = s.fields.find(f => f.key === 'sessionType').options.map(([id, label]) => ({ id, label, list: items.filter(i => i.sessionType === id) }));
-    const other = items.filter(i => !types.some(t => t.id === i.sessionType));
-    return [...types, { id: '_other', label: 'Other', list: other }].filter(t => t.list.length);
-  })();
-  const folderCols = !folders ? null : (s.list || []).filter(k => k !== 'sessionType').map(k => columnOf(s, k)).map(f => ({ label: fl(f), get: i => columnCell(f, i) }));
+  // Race setups (1.69.0): a row of kinds to filter on, and each setup as a card that says in words how it ends and who wins (setupwords.js). The folders per session type are gone.
+  const rsShown = e !== 'racesetups' ? items : setupFilter === 'all' ? items : items.filter(i => i.sessionType === setupFilter);
+  const rsCtx = i => ({ track: (state.refs.tracks || []).find(t => t.id === i.track) || null, rotation: ((state.refs.rotationsetups || []).find(r => r.id === i.rotation) || {}).name || '', dist: n => Distance.text(n, dUnit()) });
+  const rsCard = i => {
+    const d = SetupWords.describe(i, rsCtx(i)), t = titleOf(e, i);
+    return `<article class="rscard"><div class="rshead"><span class="rstile">${Icons.svg(SETUP_KIND_ICON[i.sessionType] || 'racesetups', { size: 22 })}</span><div class="rstitle"><div class="rseye">${esc(d.kind)}</div><div class="rsname">${esc(t)}</div></div>
+      <span class="rsdot${d.ready.ok ? '' : ' off'}" role="img" title="${esc(d.ready.text)}" aria-label="${esc(d.ready.text)}"></span></div>
+      <div class="rspills">${d.cardPills.map(p => `<span class="rspill${p.tone ? ' ' + p.tone : ''}">${esc(p.text)}</span>`).join('')}</div>
+      <div class="rslv"><span class="k">Ends</span><span>${esc(d.ends)}</span></div><div class="rslv"><span class="k">Wins</span><span>${esc(d.wins)}</span></div>
+      <div class="row"><button class="btn" data-edit="${esc(i.id)}">Edit</button><button class="btn danger" data-del="${esc(i.id)}">Delete</button></div></article>`;
+  };
+  const rsFilter = e !== 'racesetups' ? '' : `<span class="seg rsfilter" role="group" aria-label="Show">${SETUP_FILTERS.map(([id, label]) => `<button class="btn${setupFilter === id ? ' on' : ''}" data-rsf="${id}" aria-pressed="${setupFilter === id}">${esc(label)}</button>`).join('')}</span>`;
+  const rsStart = e !== 'racesetups' ? '' : `<div class="rscard rsstart"><span class="rstile">${Icons.svg('plus', { size: 22 })}</span><div class="rstitle"><div class="rsname">Start from a kind</div><span class="hint">A new setup opens with the right kind already chosen.</span></div>
+    <div class="rskinds">${SETUP_START.map(([id, label]) => `<button class="rspill" type="button" data-rskind="${id}">${esc(label)}</button>`).join('')}</div></div>`;
+  const rsEmpty = !items.length ? 'No race setups yet. Use the button above, or start from a kind below.' : `Nothing under ${SETUP_FILTERS.find(f => f[0] === setupFilter)[1]} yet. Start one below.`;
+  const rsBody = e !== 'racesetups' ? '' : (rsShown.length ? (mode === 'grid' ? `<div class="rscards">${rsShown.map(rsCard).join('')}</div>` : tableHtml(rsShown, cols)) : `<p class="muted">${esc(rsEmpty)}</p>`) + rsStart;
   box.innerHTML = `<div class="row"><button class="btn primary" id="add">Add ${esc(s.label.toLowerCase())}</button>
-      ${s.extra === false ? '' : '<button class="btn" id="extra">Extra fields…</button>'}${viewBtn}${toggle}</div>${bar}` +
-    (folders ? (folders.length > 1 ? folderTools : '') + folders.map(t => folderHtml('setups', t.id, t.label, plural(t.list.length, 'race setup', 'race setups'), mode === 'grid' ? gridHtml(t.list, 'sessionType') : tableHtml(t.list, folderCols))).join('')
+      ${s.extra === false ? '' : '<button class="btn" id="extra">Extra fields…</button>'}${rsFilter}${viewBtn}${toggle}</div>${bar}` +
+    (e === 'racesetups' ? rsBody
       : items.length && mode === 'grid' ? gridHtml(items)
       : items.length ? tableHtml(items, viewCols || cols)
       : `<p class="muted">No ${esc(s.plural.toLowerCase())} yet. Use the button above to add one.</p>`);
-  if (folders) folderWire(box);
   box.onchange = !viewable ? null : async ev => { // a check box of the View settings bar
     const cb = ev.target;
     if (await viewToggle(cb, path => (path === e + '/' + mode ? modeCands : null))) { await mountManager(box, e); viewFocus(box, cb); }
@@ -265,7 +278,8 @@ async function mountManager(box, e) {
       if (it) openView(e, it);
       return;
     }
-    if (b.dataset.folderall) { folderAll('setups', folders.map(t => t.id), b.dataset.folderall === '1'); return mountManager(box, e); }
+    if (b.dataset.rsf) { setupFilter = b.dataset.rsf; return mountManager(box, e); } // (Race Setups: the kind to show)
+    if (b.dataset.rskind) return openForm(e, null, { sessionType: b.dataset.rskind }); // (Race Setups: Start from a kind)
     if (b.dataset.viewbar) { if (viewBars.has(b.dataset.viewbar)) viewBars.delete(b.dataset.viewbar); else viewBars.add(b.dataset.viewbar); return mountManager(box, e); }
     if (b.dataset.vsreset) { await viewReset([[e, mode]]); return mountManager(box, e); }
     if (b.id === 'add') return openForm(e, null);
@@ -476,11 +490,11 @@ const carTracksHtml = d => !d.tracks.length ? '<span class="muted">No valid laps
 const loadCarStats = item => Promise.all([api.list('laps'), api.list('sessions'), api.list('tracks')]).then(([laps, sessions, tracks]) => CarStats.details(item, laps, sessions, tracks));
 // a mark for the list and the cards of the slotcars that need servicing
 const rowMark = (e, i) => (e === 'slotcars' && CarStats.status(i).due ? '<span class="svc-due" title="The laps since the last service have reached the service interval">Service due</span>' : '');
-function openForm(e, item) {
+function openForm(e, item, preset) { // preset: values a new item starts with (Race Setups: Start from a kind)
   const s = state.schema[e];
   const fields = [...s.fields.map(f => ({ ...f, id: f.key, custom: false })), ...(e === 'slotcars' ? [...CAR_STATS, CAR_TRACKS] : []), ...(state.custom[e] || []).map(f => ({ ...f, custom: true }))];
   // a track saved before the lane length modifier shows what it always did: calculated as a loop (or what version 0.60.0's track shape said)
-  const val = f => f.custom ? (item?.custom || {})[f.id] : item ? (e === 'slotcars' && f.key === 'lapsSinceService' ? CarStats.sinceOf(item) : e === 'slotcars' && f.key === 'lapsDriven' ? CarStats.lapsDriven(item) : e === 'slotcars' && f.key === 'servicesDone' ? CarStats.servicesOf(item) : e === 'tracks' && f.key === 'laneModifier' ? Speed.modifier(item) : e === 'tracks' && f.key === 'netTurns' && item.netTurns === undefined ? f.default : item[f.key]) : f.default;
+  const val = f => f.custom ? (item?.custom || {})[f.id] : item ? (e === 'slotcars' && f.key === 'lapsSinceService' ? CarStats.sinceOf(item) : e === 'slotcars' && f.key === 'lapsDriven' ? CarStats.lapsDriven(item) : e === 'slotcars' && f.key === 'servicesDone' ? CarStats.servicesOf(item) : e === 'tracks' && f.key === 'laneModifier' ? Speed.modifier(item) : e === 'tracks' && f.key === 'netTurns' && item.netTurns === undefined ? f.default : item[f.key]) : preset && !f.custom && preset[f.key] !== undefined ? preset[f.key] : f.default;
   const imgs = {}, frames = {}, mainKey = s.image;
   let pieces = ((item && item.lengthPieces) || []).map(p => ({ count: p.count, mm: p.mm }));
   if (!pieces.length) pieces = [{ count: '', mm: 200 }];
@@ -499,13 +513,24 @@ function openForm(e, item) {
   const groups = defs ? [...defs.map(g => ({ ...g, fields: fields.filter(f => f.group === g.id) })), { id: '_more', title: 'More', note: '', fields: fields.filter(f => !defs.some(g => g.id === f.group)) }].filter(g => g.fields.length) : null;
   const opened = defs ? (formOpen[e] = formOpen[e] || new Set(defs.filter(g => g.open).map(g => g.id))) : null;
   dlg.innerHTML = `<form id="frm"${setupToneClass(e) ? ` class="${setupToneClass(e).trim()}"` : ''}><h3>${item ? 'Edit' : 'Add'} ${esc(s.label.toLowerCase())}</h3>
+    ${e === 'racesetups' ? '<div class="rssay" id="rssay" aria-live="polite"></div>' : ''}
     ${groups ? `<div class="formgrid grouped"><div class="fgtools"><button type="button" class="btn" data-fgall="1">Open all</button><button type="button" class="btn" data-fgall="0">Close all</button></div>${groups.map(g =>
       `<details class="fgroup" data-fg="${esc(g.id)}"${opened.has(g.id) ? ' open' : ''}><summary><strong>${esc(g.title)}</strong>${g.note ? ` <span class="muted">${esc(g.note)}</span>` : ''}</summary><div class="fgrid">${g.fields.map(one).join('')}</div></details>`).join('')}</div>`
       : `<div class="formgrid">${fields.map(one).join('')}</div>`}
     <p class="error" id="err" role="alert"></p>
     <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" id="cancel">Cancel</button></div></form>`;
   const getValue = k => byId('f-' + k)?.value;
+  // Race Setups (1.69.0): the pills and the sentence "In plain words" at the top of the form follow what is typed (the words are made in setupwords.js)
+  const sayDraw = () => {
+    const box = byId('rssay'); if (!box) return;
+    const v = {};
+    fields.forEach(f => { if (f.custom) return; const el = byId('f-' + f.id); if (el) v[f.key] = el.dataset && el.dataset.du === 'ft' ? keptValue(f, el) : el.value; });
+    const d = SetupWords.describe(v, { track: (state.refs.tracks || []).find(t => t.id === v.track) || null, rotation: ((state.refs.rotationsetups || []).find(r => r.id === v.rotation) || {}).name || '', dist: n => Distance.text(n, dUnit()) });
+    box.innerHTML = `<div class="rspills">${d.pills.map(p => `<span class="rspill${p.tone ? ' ' + p.tone : ''}">${esc(p.text)}</span>`).join('')}<span class="rsready${d.ready.ok ? ' ok' : ''}">${Icons.svg(d.ready.ok ? 'check' : 'penalty', { size: 15, stroke: 2 })}${esc(d.ready.text)}</span></div>
+      <div class="rssaytext"><span class="rseye">In plain words</span><p>${d.say.map(p => (p.b ? `<b>${esc(p.t)}</b>` : esc(p.t))).join('')}</p></div>`;
+  };
   const refreshShown = () => {
+    sayDraw();
     fields.forEach(f => { const w = dlg.querySelector(`[data-key="${f.id}"]`); if (w) w.hidden = !isShown(f, getValue); });
     if (groups) groups.forEach(g => { const el = dlg.querySelector(`[data-fg="${g.id}"]`); if (el) el.hidden = !g.fields.some(f => isShown(f, getValue)); }); // a group with nothing to show is not shown
   };
@@ -577,6 +602,7 @@ function openForm(e, item) {
   };
   dlg.oninput = ev => {
     const t = ev.target;
+    if (e === 'racesetups') sayDraw(); // (the sentence follows every key that is typed)
     if (t && t.id === 'f-serviceInterval') { syncService(); return; }
     if (t && t.dataset && t.dataset.tw !== undefined) { // a number of a tyre: the "lasts about" and the grip curve follow
       const code = t.dataset.tw; if (twt[code]) twt[code][t.dataset.twk] = t.value;

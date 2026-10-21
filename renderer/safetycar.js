@@ -1,4 +1,4 @@
-// Safety Car System (1.53.0): a few settings bundled in one record, chosen in the Racing Systems folder of a race setup.
+// Safety Car System (1.53.0): a few settings bundled in one record, chosen in the Rules and systems folder of a race setup.
 // The Safety Car is out while the yellow flag is up (the flag buttons, the Trackcall button and a marshal call all raise it), so there is no button of its own. While it is out:
 //   1. the lap times must be slower than a target (a lap that is too fast gets penalty points, and is called out, as under the plain yellow flag of a race setup),
 //   2. the work in a pit stop (refuelling, a repair, changing tyres) takes a number of percent less time.

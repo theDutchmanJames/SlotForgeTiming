@@ -1,0 +1,113 @@
+// A race setup in words (1.69.0, renderer/setupwords.js): the pills, the sentence "In plain words" and the two lines of a card (Ends, Wins).
+// The sentences have to say what the engine does, so the win rules are also run through the race engine here: a sentence that says "the first car to finish wins" is only
+// right when the engine ranks the first car to finish first, even if another car has the faster best lap.
+const W = require('../renderer/setupwords.js'), E = require('../renderer/engine.js'), Ds = require('../renderer/distance.js');
+let fails = 0; const ok = (name, cond) => { console.log((cond ? 'ok   ' : 'FAIL ') + name); if (!cond) fails++; };
+
+const living = { name: 'Living room', lanes: 4 };
+const d = (s, ctx) => W.describe(s, ctx === undefined ? { track: living } : ctx);
+const say = (s, ctx) => W.plain(d(s, ctx).say);
+
+// ---- the kinds ----
+ok('the kind of a setup is its small heading: a heat-based race and an Endurance Race are races, a Time Token Session is Time tokens', W.kindOf({ sessionType: 'practice' }) === 'Free practice' && W.kindOf({ sessionType: 'qualifying' }) === 'Qualifying'
+  && W.kindOf({ sessionType: 'race' }) === 'Race' && W.kindOf({ sessionType: 'heats' }) === 'Race' && W.kindOf({ sessionType: 'endurance' }) === 'Race' && W.kindOf({ sessionType: 'tokens' }) === 'Time tokens');
+ok('...a setup with no kind, an odd kind, or nothing at all is a race (as the form starts)', W.kindOf({}) === 'Race' && W.kindOf({ sessionType: 'enduro' }) === 'Race' && W.kindOf(null) === 'Race' && W.kindOf(undefined) === 'Race');
+ok('the six session types of the form are the six kinds of the words, in the order of the form', W.KINDS.map(k => k[0]).join() === 'practice,qualifying,race,heats,endurance,tokens' && require('../schema.js').racesetups.fields.find(f => f.key === 'sessionType').options.map(o => o[0]).join() === W.KINDS.map(k => k[0]).join());
+
+// ---- one race: how it ends and who wins ----
+{ const r = d({ sessionType: 'race', raceBy: 'laps', laps: 10, endRule: 'all' });
+  ok('a race of laps: it ends after the laps, when every car has finished, and the first car to finish wins', r.ends === 'After 10 laps, when every car has finished.' && r.wins === 'The first car to finish the 10 laps wins.');
+  ok('...the sentence names the kind, the limit and the track, in that order, and the limit and the track are bold', W.plain(r.say) === 'A race of 10 laps on Living room. It ends when every car has finished. The first car to finish the 10 laps wins.'
+    && r.say.filter(p => p.b).map(p => p.t).join('|') === 'race|10 laps|Living room');
+  ok('...the pills: Race, One race, 10 laps, Living room, 4 lanes; and the card has the same without the kind (its heading) and with the track and its lanes in one pill', r.pills.map(p => p.text).join('|') === 'Race|One race|10 laps|Living room|4 lanes'
+    && r.cardPills.map(p => p.text).join('|') === 'One race|10 laps|Living room, 4 lanes' && r.pills[0].tone === 'red' && r.pills[1].tone === 'red' && r.pills[2].tone === '');
+  ok('...ready to race with a track', r.ready.ok === true && r.ready.text === 'Ready to race' && r.kind === 'Race' && r.format === 'One race' && r.limit === '10 laps' && r.place === 'Living room, 4 lanes'); }
+ok('the race ends when the leader has finished, when the setup says so', d({ sessionType: 'race', raceBy: 'laps', laps: 10, endRule: 'leader' }).ends === 'After 10 laps, when the leader has finished.' && /It ends when the leader has finished\./.test(say({ sessionType: 'race', raceBy: 'laps', laps: 10, endRule: 'leader' })));
+ok('one lap is "1 lap", and "the lap" in the sentence', d({ sessionType: 'race', raceBy: 'laps', laps: 1 }).limit === '1 lap' && /The first car to finish the lap wins\./.test(say({ sessionType: 'race', raceBy: 'laps', laps: 1 })));
+{ const r = d({ sessionType: 'race', raceBy: 'time', duration: 10 });
+  ok('a race of time: it ends after the minutes, every car finishes on its next crossing of the line, and the most laps wins, then the shortest total time', r.ends === 'After 10 minutes. Every car finishes on its next crossing of the line.' && r.wins === 'The car with the most laps wins; with equal laps, the shortest total time.' && r.limit === '10 minutes'); }
+ok('...compared by distance, the furthest car wins (laps times the length of its lane), then the shortest total time', d({ sessionType: 'race', raceBy: 'time', duration: 5, compareBy: 'distance' }).wins === 'The car that drove the furthest wins (laps times the length of its lane); with equal distance, the shortest total time.');
+ok('...and a leftover compare setting does nothing for a race of laps', d({ sessionType: 'race', raceBy: 'laps', laps: 5, compareBy: 'distance' }).wins === 'The first car to finish the 5 laps wins.');
+{ const r = d({ sessionType: 'race', raceBy: 'distance', distance: 100 }, { track: living, dist: n => n + ' m' });
+  ok('a race of distance: the limit is the distance as the person reads it, and the first car to drive it wins', r.limit === '100 m' && r.wins === 'The first car to drive the distance wins.' && /^After 100 m\. Every car drives the same distance\./.test(r.ends)); }
+ok('...in feet when the unit says so (the words use the distance the screen gives them)', d({ sessionType: 'race', raceBy: 'distance', distance: 30.48 }, { track: living, dist: n => Ds.text(n, 'ft') }).limit === '100 ft');
+ok('...the distance modes: the same distance (a shorter lane drives more laps), the same laps, or a distance per lane', /a car in a shorter lane drives more laps/.test(say({ sessionType: 'race', raceBy: 'distance', distance: 100 })) && /Every lane drives the same number of laps\./.test(say({ sessionType: 'race', raceBy: 'distance', distance: 100, distanceMode: 'laps' }))
+  && /Every lane drives the distance you set for it\./.test(say({ sessionType: 'race', raceBy: 'distance', distance: 100, distanceMode: 'manual' })));
+ok('...the longest a distance race may last is said when it is set, and not when it is not', /It lasts 20 minutes at most\./.test(say({ sessionType: 'race', raceBy: 'distance', distance: 100, distanceMax: 20 })) && !/at most/.test(say({ sessionType: 'race', raceBy: 'distance', distance: 100 })));
+
+// ---- the words follow the engine ----
+{ const people = [0, 1, 2].map(i => ({ lane: i, driverId: 'd' + i, carId: 'c' + i, driverName: ['Alex', 'Sam', 'Kim'][i], nickname: '', carName: 'car' }));
+  // a race of 3 laps: Kim finishes first, although Alex has the fastest lap and Sam is in front on the road until the last lap
+  const lapsRace = E.createRace({ type: 'race', laps: 3, endRule: 'all', entries: people }); lapsRace.start(0);
+  [[0, 4000], [0, 9000], [0, 14500]].forEach(([i, t]) => lapsRace.cross(i, t)); // Alex: 4.0, 5.0, 5.5 (fastest lap 4.0 s), finishes at 14.5 s
+  [[1, 5000], [1, 10000], [1, 15500]].forEach(([i, t]) => lapsRace.cross(i, t)); // Sam finishes at 15.5 s
+  [[2, 4800], [2, 9400], [2, 14000]].forEach(([i, t]) => lapsRace.cross(i, t)); // Kim finishes first, at 14.0 s
+  ok('a race of laps: the engine ranks the first car to finish first, as the sentence says (Kim, then Alex, then Sam), whoever has the fastest lap', lapsRace.standings().map(r => r.car.driverName).join() === 'Kim,Alex,Sam' && /^The first car to finish/.test(d({ sessionType: 'race', raceBy: 'laps', laps: 3 }).wins));
+  // a race of time: the most laps wins, then the shortest total time
+  const timed = E.createRace({ type: 'timed', duration: 1, endRule: 'all', entries: people }); timed.start(0);
+  for (let n = 1; n <= 4; n++) timed.cross(0, n * 5000); for (let n = 1; n <= 5; n++) timed.cross(1, n * 4000); for (let n = 1; n <= 5; n++) timed.cross(2, n * 4100);
+  ok('a race of time: the engine ranks the car with the most laps first, and with equal laps the shortest total time (Sam, Kim, Alex), as the sentence says', timed.standings().map(r => r.car.driverName).join() === 'Sam,Kim,Alex' && /most laps wins; with equal laps, the shortest total time/.test(d({ sessionType: 'race', raceBy: 'time', duration: 1 }).wins));
+  // a race of distance: the first car to drive the distance wins
+  const lens = { lanes: 3, laneModifier: 'measured', laneLengths: '10, 10.25, 10.5', length: 10.25 };
+  const dist = E.createRace({ type: 'race', laps: 0, endRule: 'all', entries: people, distance: Ds.config({ sessionType: 'race', raceBy: 'distance', distance: 52 }, lens, 3) }); dist.start(0);
+  for (let n = 1; n <= 6; n++) [5000, 5200, 5500].forEach((m, i) => { if (!dist.cars[i].done) dist.cross(i, Math.round(n * m)); });
+  ok('a race of distance: the engine ranks the car that drove the distance first (Kim, 5 laps of 10.5 m, at 27.5 s), as the sentence says', dist.standings()[0].car.driverName === 'Kim' && d({ sessionType: 'race', raceBy: 'distance', distance: 52 }).wins === 'The first car to drive the distance wins.'); }
+
+// ---- heats ----
+{ const h = { sessionType: 'heats', heatBy: 'laps', laps: 8, heats: 3, heatPlan: 'manual', resultBy: 'points' }, r = d(h);
+  ok('a heat race: each heat is over after its laps, the number of heats is said, and the most points win', r.ends === 'Each heat is over after 8 laps. 3 heats in all.' && r.wins === 'The driver with the most points over the heats wins.' && r.format === 'Heats' && r.limit === '8 laps');
+  ok('...the pills say 3 heats of 8 laps, and the sentence says how it is planned, how a heat scores, and how the heats are added up',
+    r.pills.map(p => p.text).join('|') === 'Race|Heats|3 heats of 8 laps|Living room|4 lanes' && /^A race in heats on Living room\. There are 3 heats and the drivers are spread over them\./.test(W.plain(r.say)) && /A heat scores points by position \(10, 8, 6, 5\)\./.test(W.plain(r.say)) && /All heats are added up\./.test(W.plain(r.say)));
+  ok('...with a time, laps, or a distance for the heats: "per heat" (no number of heats in the pill when the rotation or a plan decides)', d({ ...h, heatPlan: 'roundrobin' }).pills[2].text === '8 laps per heat' && d({ ...h, rotation: 'rot1' }, { track: living, rotation: 'Club night' }).pills[2].text === '8 laps per heat'
+    && d({ ...h, heatBy: 'time', duration: 4 }).pills[2].text === '3 heats of 4 minutes' && d({ ...h, heatBy: 'time', duration: 4 }).ends === 'Each heat is over after 4 minutes. 3 heats in all.'); }
+ok('...the overall winner follows the setup: points, laps, or the lowest total time (and for heats of a time the most laps, then the lowest total time)', /most points/.test(d({ sessionType: 'heats', heatBy: 'laps', laps: 5, resultBy: 'points' }).wins) && /most laps over the heats/.test(d({ sessionType: 'heats', heatBy: 'laps', laps: 5, resultBy: 'laps' }).wins)
+  && /lowest total time over the heats/.test(d({ sessionType: 'heats', heatBy: 'laps', laps: 5, resultBy: 'time' }).wins) && /most laps over the heats wins; with equal laps, the lowest total time/.test(d({ sessionType: 'heats', heatBy: 'time', duration: 3 }).wins)
+  && /most points/.test(d({ sessionType: 'heats', heatBy: 'time', duration: 3, resultByTime: 'points' }).wins) && /furthest distance/.test(d({ sessionType: 'heats', heatBy: 'time', duration: 3, compareBy: 'distance' }).wins));
+ok('...the other setting of the result does not count: a setting for heats of a time is ignored for heats of laps, and the other way round', /most laps/.test(d({ sessionType: 'heats', heatBy: 'laps', laps: 5, resultBy: 'laps', resultByTime: 'points' }).wins) && !/points/.test(d({ sessionType: 'heats', heatBy: 'laps', laps: 5, resultBy: 'laps', resultByTime: 'points' }).wins)
+  && /most points/.test(d({ sessionType: 'heats', heatBy: 'time', duration: 3, resultBy: 'laps', resultByTime: 'points' }).wins));
+ok('...the plans: Same for every driver, Everyone meets everyone (and the extra heats for an equal number), and Every lane once', /Every driver races 3 heats\./.test(say({ sessionType: 'heats', heatBy: 'laps', laps: 5, heatPlan: 'perdriver', heatsEach: 3 })) && /Every driver meets every other driver \(round robin\)\./.test(say({ sessionType: 'heats', heatBy: 'laps', laps: 5, heatPlan: 'roundrobin' }))
+  && /Heats are added until everyone has raced as many as the busiest driver\./.test(say({ sessionType: 'heats', heatBy: 'laps', laps: 5, heatPlan: 'roundrobin', heatEven: 'yes' })) && /Every driver races once in every lane\./.test(say({ sessionType: 'heats', heatBy: 'laps', laps: 5, heatPlan: 'rotation' })));
+ok('...a rotation setup plans the heats, and the sentence names it (or says "you chose" when it is not found)', /The heats follow the rotation setup Club night\./.test(say({ sessionType: 'heats', heatBy: 'laps', laps: 5, rotation: 'r1' }, { track: living, rotation: 'Club night' })) && /The heats follow the rotation setup you chose\./.test(say({ sessionType: 'heats', heatBy: 'laps', laps: 5, rotation: 'r1' })));
+ok('...teams: the teams race and the drivers of a team take turns; the winner is a team', /The teams race, and the drivers of a team take turns\./.test(say({ sessionType: 'heats', heatBy: 'laps', laps: 5, participants: 'teams' })) && d({ sessionType: 'heats', heatBy: 'laps', laps: 5, participants: 'teams', resultBy: 'points' }).wins === 'The team with the most points over the heats wins.');
+ok('...how the heats are added up: the average, the best heats, the worst heat dropped, a bonus for the fastest lap, a break, and the finals', /The average per heat counts\./.test(say({ sessionType: 'heats', heatBy: 'laps', laps: 5, countBy: 'average' })) && /Only the best 2 heats of every driver count\./.test(say({ sessionType: 'heats', heatBy: 'laps', laps: 5, countBy: 'best', bestHeats: 2 }))
+  && /worst heat/.test(say({ sessionType: 'heats', heatBy: 'laps', laps: 5, dropWorst: 'yes' })) && /The fastest lap of a heat gets 1 extra point\./.test(say({ sessionType: 'heats', heatBy: 'laps', laps: 5, resultBy: 'points', fastestBonus: 1 })) && /There is a break of 90 seconds between heats\./.test(say({ sessionType: 'heats', heatBy: 'laps', laps: 5, breakSeconds: 90 }))
+  && /start lights begin by themselves/.test(say({ sessionType: 'heats', heatBy: 'laps', laps: 5, breakSeconds: 90, breakAuto: 'yes' })) && /then race a final/.test(d({ sessionType: 'heats', heatBy: 'laps', laps: 5, finals: 'a' }).wins) && /an A final, and the next ones a B final/.test(d({ sessionType: 'heats', heatBy: 'laps', laps: 5, finals: 'ab' }).wins));
+ok('...points as typed: the first four of a longer list, and the standard list when none is typed', /\(10, 8, 6, 5\)/.test(say({ sessionType: 'heats', heatBy: 'laps', laps: 5, resultBy: 'points' })) && /\(25, 18, 15, 12\)/.test(say({ sessionType: 'heats', heatBy: 'laps', laps: 5, resultBy: 'points', points: '25, 18, 15, 12, 10, 8' })));
+
+// ---- an Endurance Race ----
+{ const r = d({ sessionType: 'endurance', enduranceBy: 'time', duration: 30 });
+  ok('an Endurance Race of a time: driver swaps are in the format pill, it ends after the minutes, and the most laps wins', r.format === 'Driver swaps' && r.pills.map(p => p.text).join('|') === 'Race|Driver swaps|30 minutes|Living room|4 lanes' && r.ends === 'After 30 minutes. Every car finishes on its next crossing of the line.' && /most laps wins/.test(r.wins)
+    && /^An endurance race of 30 minutes on Living room\. The drivers of a team swap in the pits/.test(W.plain(r.say))); }
+ok('...swaps every so often, at fixed moments, or when the team chooses', /swap in the pits every 20 minutes\./.test(say({ sessionType: 'endurance', enduranceBy: 'time', duration: 60, swapMode: 'every', swapUnit: 'minutes', swapEvery: 20 })) && /every 15 laps\./.test(say({ sessionType: 'endurance', enduranceBy: 'time', duration: 60, swapMode: 'every', swapUnit: 'laps', swapEvery: 15 }))
+  && /at fixed moments/.test(say({ sessionType: 'endurance', enduranceBy: 'time', duration: 60, swapMode: 'moments' })) && /when the team chooses/.test(say({ sessionType: 'endurance', enduranceBy: 'time', duration: 60, swapMode: 'free' })));
+ok('...an Endurance Race of heats is a race in heats with driver swaps, of teams, and the pill says so', d({ sessionType: 'endurance', enduranceBy: 'heats', heatBy: 'laps', laps: 6, heats: 2 }).format === 'Heats with driver swaps' && /^A race in heats with driver swaps on Living room\./.test(say({ sessionType: 'endurance', enduranceBy: 'heats', heatBy: 'laps', laps: 6, heats: 2 }))
+  && /The team with/.test(d({ sessionType: 'endurance', enduranceBy: 'heats', heatBy: 'laps', laps: 6, heats: 2 }).wins));
+
+// ---- the other kinds ----
+ok('free practice: it runs until you stop it, and the cars are ranked by their fastest lap; no format and no limit pill', d({ sessionType: 'practice' }).ends === 'Runs until you stop it.' && d({ sessionType: 'practice' }).wins === 'Ranked by the fastest lap.' && d({ sessionType: 'practice' }).pills.map(p => p.text).join('|') === 'Free practice|Living room|4 lanes'
+  && say({ sessionType: 'practice' }) === 'A free practice session on Living room. Everyone drives and the cars are ranked by their fastest lap. It runs until you stop it.');
+ok('qualifying: it ends after its minutes and ranks by the fastest lap', d({ sessionType: 'qualifying', duration: 5 }).ends === 'After 5 minutes.' && d({ sessionType: 'qualifying', duration: 5 }).wins === 'Ranked by the fastest lap.' && d({ sessionType: 'qualifying', duration: 5 }).pills.map(p => p.text).join('|') === 'Qualifying|5 minutes|Living room|4 lanes'
+  && say({ sessionType: 'qualifying', duration: 5 }) === 'A qualifying session of 5 minutes on Living room. The cars are ranked by their fastest lap.' && d({ sessionType: 'qualifying' }).ends === 'After a time you set.');
+ok('a Time Token Session: not a race, no winner, and nothing about laps or a limit', d({ sessionType: 'tokens' }).wins === 'No winner: this is not a race.' && d({ sessionType: 'tokens' }).ends === 'Runs until you stop it.' && /It is not a race/.test(say({ sessionType: 'tokens' })) && d({ sessionType: 'tokens' }).pills.map(p => p.text).join('|') === 'Time tokens|Living room|4 lanes' && d({ sessionType: 'tokens', laps: 10 }).limit === '');
+
+// ---- no track, nothing typed, and text as it comes from the form ----
+{ const r = d({ sessionType: 'race', raceBy: 'laps', laps: 5 }, { track: null });
+  ok('no track: "Choose a track" instead of "Ready to race", no track and no lane pill, and the sentence has no place', r.ready.ok === false && r.ready.text === 'Choose a track' && r.pills.map(p => p.text).join('|') === 'Race|One race|5 laps' && !/ on /.test(W.plain(r.say)) && r.place === ''); }
+ok('...a track with no name or no lanes gives what it has (a track with no lanes is a track)', d({ sessionType: 'race', raceBy: 'laps', laps: 5 }, { track: { name: 'Garage' } }).pills.map(p => p.text).join('|') === 'Race|One race|5 laps|Garage' && d({ sessionType: 'race', raceBy: 'laps', laps: 5 }, { track: { name: '', lanes: 4 } }).ready.ok === false && d({ sessionType: 'race', raceBy: 'laps', laps: 5 }, { track: { name: 'Garage', lanes: 1 } }).place === 'Garage, 1 lane');
+ok('nothing typed yet: no limit pill, and the sentence still reads (no "of ")', d({ sessionType: 'race', raceBy: 'laps', laps: '' }).limit === '' && W.plain(d({ sessionType: 'race', raceBy: 'laps', laps: '' }).say).startsWith('A race on Living room.') && d({ sessionType: 'race', raceBy: 'time', duration: '' }).pills.map(p => p.text).join('|') === 'Race|One race|Living room|4 lanes'
+  && d({ sessionType: 'race', raceBy: 'laps', laps: 0 }).limit === '' && d({ sessionType: 'race', raceBy: 'laps', laps: -3 }).limit === '' && d({ sessionType: 'race', raceBy: 'laps', laps: 'abc' }).limit === '');
+ok('the form holds text: "10", "7,5" (a decimal comma), and spaces all work; the words never change what they are given', d({ sessionType: 'race', raceBy: 'laps', laps: '10' }).limit === '10 laps' && d({ sessionType: 'race', raceBy: 'time', duration: '7,5' }).limit === '7.5 minutes' && d({ sessionType: 'race', raceBy: 'laps', laps: ' 12 ' }).limit === '12 laps'
+  && (() => { const s = Object.freeze({ sessionType: 'race', raceBy: 'laps', laps: '10' }); try { d(s); return true; } catch (x) { return false; } })());
+ok('a setup with nothing in it, null, or undefined gives a race with words and no crash (the form starts like that)', ['', null, undefined, {}].every(s => { try { const r = W.describe(s === '' ? {} : s, {}); return r.kind === 'Race' && Array.isArray(r.say) && r.say.length > 0 && typeof r.ends === 'string' && typeof r.wins === 'string' && r.ready.ok === false; } catch (x) { return false; } })
+  && (() => { try { W.describe(); return true; } catch (x) { return false; } })());
+ok('the sentence parts are text only (a track name with a tag in it is data, for the screen to escape): the words do not add any markup of their own', W.describe({ sessionType: 'race', raceBy: 'laps', laps: 5 }, { track: { name: '<b>x</b>', lanes: 2 } }).say.every(p => typeof p.t === 'string' && typeof p.b === 'boolean') && !/</.test(W.plain(d({ sessionType: 'heats', heatBy: 'laps', laps: 5, participants: 'teams', finals: 'ab', breakSeconds: 30 }).say)));
+ok('plain() joins the parts into the sentence', W.plain([{ t: 'A ', b: false }, { t: 'race', b: true }, { t: '.', b: false }]) === 'A race.' && W.plain([]) === '');
+
+// ---- the real setups of the app ----
+{ const sch = require('../schema.js').racesetups, defaults = {};
+  sch.fields.forEach(f => { if (f.default !== undefined) defaults[f.key] = f.default; });
+  ok('every kind with the defaults of the form gives a sentence, two lines for a card and no empty pill (nothing says "undefined" or "NaN")', W.KINDS.every(([id]) => { const r = W.describe({ ...defaults, sessionType: id }, { track: living }); const all = [W.plain(r.say), r.ends, r.wins, ...r.pills.map(p => p.text), ...r.cardPills.map(p => p.text)].join('|'); return r.say.length > 0 && r.ends && r.wins && r.pills.every(p => p.text.trim()) && !/undefined|NaN|null|\[object/.test(all); }));
+  ok('...also for every way to limit a race, a heat and an Endurance Race', ['laps', 'time', 'distance'].every(by => ['race', 'heats', 'endurance'].every(t => { const r = W.describe({ ...defaults, sessionType: t, raceBy: by, heatBy: by, enduranceBy: t === 'endurance' ? (by === 'distance' ? 'distance' : by) : 'time', laps: 5, duration: 5, distance: 100 }, { track: living }); return !/undefined|NaN|null/.test(W.plain(r.say) + r.ends + r.wins) && r.limit; })));
+  ok('...and the setup words never say that the race ends by "lead car" (the setting now says the leader)', !/lead car/.test(JSON.stringify(W.describe({ ...defaults, sessionType: 'race', endRule: 'leader' }, { track: living })))); }
+
+if (fails) { console.log(fails + ' FAILED'); process.exit(1); } else console.log('ALL SETUP WORDS TESTS PASSED');

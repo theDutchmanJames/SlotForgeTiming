@@ -69,20 +69,27 @@ const Help = (() => {
           <li><b>Safety Car Systems</b>: slow laps and quicker pit work behind the Safety Car (see Safety Car, below).</li>
           <li><b>Balance of Power</b>: how much a fast car is hindered and a slow car helped, by hand or by itself.</li>
           <li><b>Time Tokens</b>: the time buttons and the warning for a Time Token Session.</li>
-          <li>Fuel systems, penalty systems, damage systems, tyre wear systems and weather systems do nothing until you choose them in the <b>Racing Systems</b> folder of a race setup (Balance of Power and the pit hold time are there too).</li>
+          <li>Fuel systems, penalty systems, damage systems, tyre wear systems and weather systems do nothing until you choose them in the <b>Rules and systems</b> folder of a race setup (Balance of Power and the pit hold time are there too).</li>
+        </ul>` },
+      { id: 'setupwords', title: 'Race Setups in words', note: 'Cards, kinds and the sentence in the form', body: `
+        <ul>
+          <li>Every race setup is a <b>card</b> that says in words how it ends (<b>Ends</b>) and who wins (<b>Wins</b>). The dot is green when the setup is ready to race: a track is chosen.</li>
+          <li>The row of kinds (All, Practice, Qualifying, Race, Heats, Endurance, Time tokens) shows one kind. <b>List</b> and <b>Cards</b> switch the view. <b>Start from a kind</b> opens a new setup with that kind already chosen.</li>
+          <li>At the top of the form, the pills and <b>In plain words</b> change as you type: what kind of session it is, how it ends and who wins.</li>
+          <li>The sections of the form are named after what you decide in them: Session, Heats (a heat-based race), Ends and winner, Driver swaps (an Endurance Race), Start, Rules and systems, Yellow flag, Adjust pads, Screens and sound, Trackmate and SlotForge box (Arduino).</li>
         </ul>` },
       { id: 'types', title: 'Session types', note: 'Six ways to race', body: `
         <ul>
           <li><b>Free practice</b>: no finish. It runs until you stop it and ranks the drivers by their best lap.</li>
           <li><b>Qualifying</b>: a timed session ranked by best lap. Two drivers with the same best lap: the one who set it first ranks higher. Its winner picks their lane first in the next race on the same track.</li>
-          <li><b>Race</b>: limited by a number of laps, a distance or a time (the setting <i>The race is limited by</i>). Laps or distance: the first to reach them wins. The race ends when the lead car finishes, or when every car has finished (see Distance races, below). A time: when the time is up every car finishes on its next crossing of the line (that lap still counts), and the most laps in the time wins; with the same number of laps the lowest total time wins (or <i>Cars are compared by</i> Distance, see Time races by distance). (Before 1.62.0 this was the session type <i>Timed race</i>: those setups are now a Race limited by a time.)</li>
+          <li><b>Race</b>: limited by a number of laps, a distance or a time (the setting <i>The race is over after</i>). Laps or distance: the first to reach them wins. The race ends when the lead car finishes, or when every car has finished (see Distance races, below). A time: when the time is up every car finishes on its next crossing of the line (that lap still counts), and the most laps in the time wins; with the same number of laps the lowest total time wins (or <i>Cars are compared by</i> Distance, see Time races by distance). (Before 1.62.0 this was the session type <i>Timed race</i>: those setups are now a Race limited by a time.)</li>
           <li><b>Heat-based race</b>: several heats, each limited by laps or by time; the overall result adds the heats up. How the heats are planned and counted, and the finals, are explained in Heat races, below.</li>
           <li><b>Endurance Race</b>: a long race for teams, where the drivers of a team swap at the wheel in the pits (see Endurance Race, below).</li>
           <li><b>Time Token Session</b>: not a race. You sell track time per lane (see Time Token Sessions below).</li>
         </ul>` },
       { id: 'distance', title: 'Distance races', note: 'Race for a distance, not for laps or time', body: `
         <ul>
-          <li>A race, the heats of a heat-based race and an Endurance Race can be limited by a <b>distance</b>: choose it under <i>The race is limited by</i> (or <i>Each heat is limited by</i>). The laps follow from the length of each lane (Database, Tracks: the track length and the lane lengths). Home says when a track has none.</li>
+          <li>A race, the heats of a heat-based race and an Endurance Race can be limited by a <b>distance</b>: choose it under <i>The race is over after</i> (or <i>Each heat is over after</i>). The laps follow from the length of each lane (Database, Tracks: the track length and the lane lengths). Home says when a track has none.</li>
           <li><b>The lanes drive</b> the same distance (a shorter lane drives more laps), the same number of laps, or a distance you set for each lane. A car is only seen at the line, so it drives whole laps: on to the line after the distance, or to the nearest lap.</li>
           <li>The first car to drive its distance wins. The others rank by the distance they drove, and a gap is the time between two cars at the same distance. <i>The race may take at most</i> is a safety net.</li>
           <li><b>Driver swaps by distance</b>: in an Endurance Race choose <i>Distance</i> for the swaps. A swap is due after so many metres (or feet), <i>at the line</i> or <i>anywhere on the track</i> (worked out between two crossings). <b>Driver Swap Timer</b> shows "Swap in 12 m"; <b>Driver Swap Signal</b> flashes "Alex → Sam" until the swap is made. The results give every driver's distance.</li>
@@ -111,19 +118,19 @@ const Help = (() => {
         <ul>
           <li>Under <b>Race Setup</b>, on the <b>Rotation Setups</b> tab, you make a heat schedule by hand: set the <b>Size</b> (up to 64 <b>participants</b>: <b>Add a participant</b> adds one, and the <b>×</b> in the list of names takes one out) and the <b>lanes</b>, then <b>drag</b> a participant onto a place (heat and lane), or click a participant and then a place. Drag a place onto another, or click two places, to swap them; drag a place back onto the participants to empty it, and a heat by its grip to move it. Each participant has a colour. Pick one to give it a name.</li>
           <li><b>Groups</b> put some participants in a heat at once. <b>Lock</b> keeps a heat where it is when you shuffle; the <b>⋯</b> button of a heat copies, empties or deletes it. The <b>Tools</b> menu has <b>Shuffle the heat order</b>, <b>Shuffle the lanes</b> and <b>Even out the lanes</b>, and <b>Start from a plan</b> (four plans) fills the heats for you. A warning can come with a button, such as one that adds a heat for participants who race none. Undo and Redo (Ctrl+Z, Ctrl+Y) take a change back.</li>
-          <li>Choose the rotation in a race setup (<b>Rotation setup</b>, in Length and result). On the Home tab the participants are the rows (drivers, or teams when you set <b>Participants are</b> to Teams). Tick <b>Not here today</b> for anybody who does not come: the others stay in their places and an empty heat is left out. The track needs as many lanes as the rotation uses. <b>Pick the drivers by name</b> uses the rotation's names. Finals work as in every heat race.</li>
+          <li>Choose the rotation in a race setup (<b>Rotation setup</b>, in Ends and winner). On the Home tab the participants are the rows (drivers, or teams when you set <b>Participants are</b> to Teams). Tick <b>Not here today</b> for anybody who does not come: the others stay in their places and an empty heat is left out. The track needs as many lanes as the rotation uses. <b>Pick the drivers by name</b> uses the rotation's names. Finals work as in every heat race.</li>
         </ul>` },
       { id: 'teams', title: 'Teams', note: 'Drivers who race together', body: `
         <ul>
           <li>On the <b>Teams</b> page of the Database you make a team: a name, a picture and its drivers, in the order they take their turn. A driver can be in more than one team. A driver who is deleted leaves his teams.</li>
           <li>On the <b>Home tab</b> a session with teams (an Endurance Race, or heats whose participants are teams) has a <b>Team</b> on every lane; the driver is then one of the team. A session without teams has no Team choice. The <b>Team Name</b> and <b>Team Picture</b> widgets show the team of the lane (or one team you choose), {team} works in custom texts and audio calls, and the results get a Team column.</li>
-          <li>The participants of a heat race can be <b>teams</b>: choose Teams in the race setup (<b>The participants of the heats are</b>) or in the rotation setup (<b>Participants are</b>, which wins). On Home you choose a team and a car for each. In every heat one driver of the team drives: <b>in turn</b>, <b>by lot</b>, or the one you choose before the heat.</li>
+          <li>The participants of a heat race can be <b>teams</b>: choose Teams in the race setup (<b>The heats are raced by</b>) or in the rotation setup (<b>Participants are</b>, which wins). On Home you choose a team and a car for each. In every heat one driver of the team drives: <b>in turn</b>, <b>by lot</b>, or the one you choose before the heat.</li>
           <li>A driver who is in two teams drives for one of them in a heat. The result has a row per team with the drivers who drove for it; every lap still counts for the driver who drove it.</li>
         </ul>` },
       { id: 'endurance', title: 'Endurance Race', note: 'Teams that swap drivers in the pits', body: `
         <ul>
           <li>Choose the session type <b>Endurance Race</b>. A team shares one car, and its drivers take turns. Give every lane a <b>Team</b> on Home. The race runs by time, by laps, or heat by heat (<b>The Endurance Race is</b>).</li>
-          <li>The folder <b>Endurance: driver swaps</b> of the race setup says when a swap is due: <b>every so often</b>, <b>at fixed moments</b> (30 minutes, 2 hours), or <b>free</b> within the shortest and longest stint. Count them in minutes, in laps or in distance (see Distance races). You can also set the least and the most a driver drives in the whole race.</li>
+          <li>The folder <b>Driver swaps</b> of the race setup says when a swap is due: <b>every so often</b>, <b>at fixed moments</b> (30 minutes, 2 hours), or <b>free</b> within the shortest and longest stint. Count them in minutes, in laps or in distance (see Distance races). You can also set the least and the most a driver drives in the whole race.</li>
           <li>The swap is made when the car stops on the pit sensor (like a Stop-and-Go), or when <b>Swap done</b> is pressed on the Race Director page or a phone. The driver who steps in is the next one in the team's order, chosen at each swap, or picked by lot.</li>
           <li>When the swap is late, the laps keep counting or stop counting, and the team can get penalty points (they need a penalty system), again and again if you like.</li>
           <li>The widgets <b>Current Driver</b>, <b>Next Driver</b>, <b>Driver Swap Timer</b> (amber before the swap is due, red when it is late) and <b>Driver Swap Signal</b> (a big SWAP, flashing) show it on the timing page (folder <b>Team and Swaps</b>). The audio folder <b>Endurance</b> says "{team} needs to swap positions! Box Box!" and who came in and who took over.</li>
@@ -149,7 +156,7 @@ const Help = (() => {
       { id: 'heatresults', title: 'Heat results', note: 'How the heats add up', body: `
         <ul>
           <li><b>How the heats are added up</b> can be all heats, the <b>average per heat</b> (fair when drivers race a different number of heats) or <b>only the best heats</b> of every driver. <b>Drop the worst heat</b> takes away each driver's worst heat. With points you can give <b>bonus points for the fastest lap</b> of a heat. <b>A tie is decided by</b> chooses between the other measure, the fastest lap, the most heat wins and the lowest total time.</li>
-          <li><b>Overall result counted by</b> follows how the heats are limited. <b>Heats of a time</b>: the most laps wins, then the lowest total time (when the cars are compared by distance: the furthest total distance, then the lowest total time). <b>Heats of laps or a distance</b>: <b>total time, then laps</b>: the lowest total of the finish times wins. Points are there for every kind of heat.</li>
+          <li><b>The overall winner is</b> follows how the heats are limited. <b>Heats of a time</b>: the most laps wins, then the lowest total time (when the cars are compared by distance: the furthest total distance, then the lowest total time). <b>Heats of laps or a distance</b>: <b>total time, then laps</b>: the lowest total of the finish times wins. Points are there for every kind of heat.</li>
           <li>A driver who did not finish a heat ranks below those who did, by laps, or, with <b>A heat that is not finished</b> on estimate, gets a finish time worked out from their own average lap. Setups from before 1.65.0 count what they counted.</li>
           <li>When something other than the standard is chosen, the race screen, the saved results and the PDF report say how the result was counted and show a <b>Result</b> column.</li>
         </ul>` },
@@ -237,7 +244,7 @@ const Help = (() => {
         </ul>` },
       { id: 'tyrewear', title: 'Tyre wear', note: 'Tyres that wear out, and the pit stop that changes them', body: `
         <ul>
-          <li>A <b>tyre wear system</b> (Race Setup, Tyre Wear Systems) makes the tyres lose life while a car drives, from 100% to 0%. Choose one in the <b>Racing Systems</b> folder of a race setup. Races, heats and Endurance Races have it; practice and qualifying only when the system says so; a Time Token Session never. Every heat starts on fresh tyres.</li>
+          <li>A <b>tyre wear system</b> (Race Setup, Tyre Wear Systems) makes the tyres lose life while a car drives, from 100% to 0%. Choose one in the <b>Rules and systems</b> folder of a race setup. Races, heats and Endurance Races have it; practice and qualifying only when the system says so; a Time Token Session never. Every heat starts on fresh tyres.</li>
           <li>Every tyre has four numbers: the <b>wear</b> (% of life lost per lap, or per 100 m or 100 ft for Distance Racing), the <b>fresh bonus</b>, where the <b>grip drops</b> and the <b>hindrance at 0%</b>. Start from Standard, Sprint or Endurance.</li>
           <li>Through the fuel rules (needs a Fuel system), new tyres help the car and worn ones hinder it. Lap times and records are never changed.</li>
           <li>At <b>0%</b>: nothing, penalty points every lap, the lap does not count until the car pits, or the car retires.</li>
@@ -249,7 +256,7 @@ const Help = (() => {
         </ul>` },
       { id: 'safetycar', title: 'Safety Car', note: 'The yellow flag as a Safety Car', body: `
         <ul>
-          <li>A <b>safety car system</b> (Race Setup, Safety Car Systems) bundles three settings. Choose one in the <b>Racing Systems</b> folder of a race setup; it replaces the <b>Yellow flag</b> settings of that setup.</li>
+          <li>A <b>safety car system</b> (Race Setup, Safety Car Systems) bundles three settings. Choose one in the <b>Rules and systems</b> folder of a race setup; it replaces the <b>Yellow flag</b> settings of that setup.</li>
           <li>The Safety Car is out <b>while the yellow flag is up</b>: the yellow button, the Trackcall button and a call from a lane all bring it out. There is no button of its own. Yellow again, or the red flag, ends it.</li>
           <li><b>Lap times</b>: a full lap behind the Safety Car must be slower than the limit. A lap that is too fast is called out and gets penalty points (they need a penalty system). A lap that began before the Safety Car came out does not count.</li>
           <li><b>Pit stops</b>: refuelling, a repair and changing tyres take a number of percent less time for a car that comes in while the Safety Car is out. Driver swaps and penalties served in the pits are not shorter.</li>
@@ -258,7 +265,7 @@ const Help = (() => {
         </ul>` },
       { id: 'pushsave', title: 'Push and Save', note: 'How hard a driver drives wears tyres and fuel', body: `
         <ul>
-          <li>A <b>push and save system</b> (Race Setup, Push and Save Systems) makes the pace count. Choose one in the <b>Racing Systems</b> folder of a race setup. It works on top of a Tyre Wear System and a Fuel System, and lap times and grip are never changed.</li>
+          <li>A <b>push and save system</b> (Race Setup, Push and Save Systems) makes the pace count. Choose one in the <b>Rules and systems</b> folder of a race setup. It works on top of a Tyre Wear System and a Fuel System, and lap times and grip are never changed.</li>
           <li>Every lap is compared with the <b>reference lap</b> of the driver: his best lap on this track (the records) or, without one, his best lap so far in the race. A lap that beats it is the new reference.</li>
           <li><b>PUSH</b> (faster than normal pace) wears the tyres and uses the fuel faster, <b>NORMAL</b> is the usual wear, <b>SAVE</b> (slower) wears less. Normal pace is the best lap plus 3% to begin with; you can change every number, and a ready-made system (Standard, Gentle, Strong) fills in the four wear numbers.</li>
           <li>The effect starts at lap 3. A lap with a stop, the first lap after a pause and a very slow lap (over 150% of the best lap) wear as usual. Laps under the yellow flag or the Safety Car count as saving, if you leave that on.</li>

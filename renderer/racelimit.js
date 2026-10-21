@@ -1,4 +1,4 @@
-// What limits a race (1.62.0). A Race is limited by a number of laps, by a distance or by a time (the setting "The race is limited by"; a heat race and an Endurance Race have
+// What limits a race (1.62.0). A Race is limited by a number of laps, by a distance or by a time (the setting "The race is over after"; a heat race and an Endurance Race have
 // a setting of their own). A race limited by a time is raced, saved and shown as a Timed race: the engine, the history, the statistics and the championships keep the session type
 // "timed", exactly as a heat race with heats of a set time already did. Pure: the database, the import, the race screen and the live page use it, and so do the tests.
 (function (root) {
@@ -12,7 +12,7 @@
   const isTime = s => !!s && ((s.sessionType === 'race' && s.raceBy === 'time') || s.sessionType === 'timed');
   // The setup as the race screen works with it: a Race limited by a time is a Timed race. Any other setup is given back as it is.
   const effective = s => (s && s.sessionType === 'race' && s.raceBy === 'time' ? { ...s, sessionType: 'timed' } : s);
-  // Heats limited by a time have a scoring choice of their own (1.65.0, the setting "Overall result counted by", resultByTime): 'lapstime' (the most laps, or the furthest distance when the cars are compared by distance, then the
+  // Heats limited by a time have a scoring choice of their own (1.65.0, the setting "The overall winner is", resultByTime): 'lapstime' (the most laps, or the furthest distance when the cars are compared by distance, then the
   // lowest total time), 'laps' (total laps, as it was before) or 'points'. The rest of the program knows the result of a heat race as resultBy ('laps' or 'points'), so the setup the race screen works with carries both.
   const SCORING = ['lapstime', 'laps', 'points'];
   const isTimeHeats = s => !!s && (s.sessionType === 'heats' || (s.sessionType === 'endurance' && s.enduranceBy === 'heats')) && s.heatBy === 'time';

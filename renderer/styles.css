@@ -203,6 +203,36 @@ details .fields{margin:10px 0}
 .ph{display:flex;width:100%;height:100%;align-items:center;justify-content:center;font-size:48px;font-weight:700;color:#fff}
 .gcard h3{margin:4px 0 2px}.gd{font-size:14px}.gcard .row{margin-top:auto}
 
+/* ---- Race Setups (1.69.0): the row of kinds, the cards, and the pills and the sentence "In plain words" at the top of the form (the look of docs/ui-reference/race-setups) ---- */
+.rssay,.rscard{--rs-ok:#2fb86a;--rs-warn:#f2b705}
+[data-theme="light"] :is(.rssay,.rscard),[data-theme="ocean"] :is(.rssay,.rscard){--rs-ok:#1e8a4c;--rs-warn:#9a7400}
+.rsfilter{margin-left:0}
+.rscards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:stretch;margin-bottom:16px}
+.rscard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px 14px;display:flex;flex-direction:column;gap:12px}
+.rscard .row{margin:auto 0 0}
+.rshead{display:flex;align-items:center;gap:12px}
+.rstile{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none;color:var(--accent);border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.rstitle{flex:1;min-width:0}
+.rseye{font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:var(--accent)}
+.rsname{font-weight:700;font-size:16.5px;overflow-wrap:anywhere}
+.rsdot{width:10px;height:10px;border-radius:50%;background:var(--rs-ok);flex:none}
+.rsdot.off{background:none;border:1.5px solid var(--muted)}
+.rspills{display:flex;gap:8px;flex-wrap:wrap}
+.rspill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:3px 12px;font:inherit;font-size:13px}
+.rspill.red{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent);font-weight:600}
+.rslv{display:grid;grid-template-columns:52px 1fr;gap:10px;font-size:14px;line-height:1.4}
+.rslv .k{color:var(--muted);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding-top:3px}
+.rsstart{margin-top:16px;flex-direction:row;flex-wrap:wrap;align-items:center;gap:14px 18px;background:none;border-style:dashed}
+.rsstart .rstitle{flex:1 1 220px}
+.rskinds{display:flex;gap:8px;flex-wrap:wrap}
+button.rspill{cursor:pointer}
+button.rspill:hover,button.rspill:focus-visible{border-color:var(--accent)}
+.rssay{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:10px 14px;margin:0 0 10px;display:flex;flex-direction:column;gap:8px;max-height:30vh;overflow-y:auto;flex:none}
+.rssay .rspills{align-items:center}
+.rsready{display:inline-flex;align-items:center;gap:5px;margin-left:auto;font-size:13px;font-weight:600;color:var(--rs-warn)}
+.rsready.ok{color:var(--rs-ok)}
+.rssaytext p{margin:2px 0 0;font-size:14px;line-height:1.5}
+
 .marq{position:absolute;border:1px dashed #4c9aff;background:rgba(76,154,255,.12);pointer-events:none;z-index:9}
 .gl{position:absolute;pointer-events:none;z-index:8}
 .gl-v{top:0;bottom:0;width:0;border-left:1px dashed #00c2c7}

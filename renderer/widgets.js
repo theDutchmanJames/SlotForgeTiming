@@ -448,7 +448,7 @@
     { key: 'show', label: 'Show', type: 'select', default: 'points', choices: [['points', 'Penalty points'], ['time', 'Time penalty (seconds)'], ['both', 'Both']] }
   ];
 
-  // Championship points of a heat or round robin race (needs "Overall result counted by: Points")
+  // Championship points of a heat or round robin race (needs "The overall winner is: Points")
   const CHAMP_OPTIONS = [
     { key: 'live', label: 'Count the current heat as if it ended now (turn off to count finished heats only)', type: 'checkbox', default: true }
   ];
