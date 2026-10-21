@@ -36,6 +36,8 @@
     // the Race Setups page (1.69.0): the pile of layers (heats) and the plus of "Start from a kind"
     layers: '<path d="M12 3.5l9 5-9 5-9-5z"/><path d="M3 13.5l9 5 9-5"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
+    // the Race Setup form (1.70.0): the arrow of One race
+    arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     pin: '<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
     // a button: a page with a folded corner and an arrow going down (Export to PDF)
     pdf: '<path d="M6 3.5h8l4 4v13H6zM14 3.5v4h4M12 10.5v6M9.5 14l2.5 2.5 2.5-2.5"/>',

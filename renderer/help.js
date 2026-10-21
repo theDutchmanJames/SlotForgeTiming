@@ -16,7 +16,7 @@ const Help = (() => {
       <ol class="hw-steps">
         <li><b>Add a track</b> under Database, Tracks. You are presented with a bunch of options you can skip for now: a name and the number of lanes are all you really need. The track length might be useful.</li>
         <li>Then <b>add a driver and a slot car</b>. Skip all other options for now.</li>
-        <li><b>Set up a race</b> under Race Setup. Give it a name, pick a Session Type and your track, and hit Save.</li>
+        <li><b>Set up a race</b> under Race Setup. Give it a name, pick the Kind of session and your track, and hit Save.</li>
         <li>Go back to <b>Home</b>, pick your race, choose a driver and a car for every lane and hit <b>Start race</b> (<b>Open the session</b> for a Time Token Session).</li>
       </ol>
       <p>This sets up a basic race. For more in-depth explanations of the possibilities, read the information below.</p>
@@ -59,7 +59,7 @@ const Help = (() => {
       { id: 'setups', title: 'Race Setup', note: 'Race setups, fuel, penalties, balance of power and time tokens', body: `
         <ul>
           <li>The big <b>Race Setups</b> button is where everything comes together. The other sub-tabs have the colour of their folder on the race screen.</li>
-          <li><b>Race Setups</b> hold the rules of one kind of race: the session type, track, length, penalties, fuel, timing page and audio set.</li>
+          <li><b>Race Setups</b> hold the rules of one kind of race: kind, track, length, penalties, fuel, timing page and audio set.</li>
           <li><b>Rotation Setups</b>: a heat plan you make yourself (see Rotation setups, below).</li>
           <li><b>Penalty Systems</b>: how penalty points turn into seconds, when a driver is disqualified, and special penalties (a Drivethrough, a Stop-and-Go).</li>
           <li><b>Damage Systems</b>: damage points, and the stop in the pits that repairs them (see Damage System, below).</li>
@@ -76,16 +76,18 @@ const Help = (() => {
           <li>Every race setup is a <b>card</b> that says in words how it ends (<b>Ends</b>) and who wins (<b>Wins</b>). The dot is green when the setup is ready to race: a track is chosen.</li>
           <li>The row of kinds (All, Practice, Qualifying, Race, Heats, Endurance, Time tokens) shows one kind. <b>List</b> and <b>Cards</b> switch the view. <b>Start from a kind</b> opens a new setup with that kind already chosen.</li>
           <li>At the top of the form, the pills and <b>In plain words</b> change as you type: what kind of session it is, how it ends and who wins.</li>
+          <li>A question with a few answers is a row of buttons or cards, and a yes or no question is a <b>switch</b>. <b>Kind of session</b>, <b>Format</b> and <b>Teams swap drivers in the pits</b> replace the old Session type list. What is stored does not change, so every setup opens as it was.</li>
           <li>The sections of the form are named after what you decide in them: Session, Heats (a heat-based race), Ends and winner, Driver swaps (an Endurance Race), Start, Rules and systems, Yellow flag, Adjust pads, Screens and sound, Trackmate and SlotForge box (Arduino).</li>
         </ul>` },
-      { id: 'types', title: 'Session types', note: 'Six ways to race', body: `
+      { id: 'types', title: 'Kinds of session', note: 'Kind, Format and Swaps', body: `
         <ul>
+          <li>A race setup asks three short questions: the <b>Kind of session</b>, the <b>Format</b> of a race (<b>One race</b> or <b>Heats</b>) and <b>Teams swap drivers in the pits</b>. They replace the old Session type list; older setups open as they were.</li>
           <li><b>Free practice</b>: no finish. It runs until you stop it and ranks the drivers by their best lap.</li>
           <li><b>Qualifying</b>: a timed session ranked by best lap. Two drivers with the same best lap: the one who set it first ranks higher. Its winner picks their lane first in the next race on the same track.</li>
-          <li><b>Race</b>: limited by a number of laps, a distance or a time (the setting <i>The race is over after</i>). Laps or distance: the first to reach them wins. The race ends when the lead car finishes, or when every car has finished (see Distance races, below). A time: when the time is up every car finishes on its next crossing of the line (that lap still counts), and the most laps in the time wins; with the same number of laps the lowest total time wins (or <i>Cars are compared by</i> Distance, see Time races by distance). (Before 1.62.0 this was the session type <i>Timed race</i>: those setups are now a Race limited by a time.)</li>
-          <li><b>Heat-based race</b>: several heats, each limited by laps or by time; the overall result adds the heats up. How the heats are planned and counted, and the finals, are explained in Heat races, below.</li>
-          <li><b>Endurance Race</b>: a long race for teams, where the drivers of a team swap at the wheel in the pits (see Endurance Race, below).</li>
-          <li><b>Time Token Session</b>: not a race. You sell track time per lane (see Time Token Sessions below).</li>
+          <li><b>Race</b>: over after laps, a distance or a time (<i>The race is over after</i>). Laps or distance: the first to reach them wins; the race ends when the lead car finishes, or when every car has (see Distance races). A time: when it is up every car finishes on its next crossing of the line (that lap counts), and the most laps wins, then the lowest total time (or <i>Cars are compared by</i> Distance, see Time races by distance).</li>
+          <li>The <b>Format Heats</b>: several heats, each over after laps, time or distance; the overall result adds the heats up (see Heat races, below).</li>
+          <li><b>Teams swap drivers in the pits</b>: a long race for teams, where the drivers of a team swap at the wheel in the pits (see Endurance Race, below).</li>
+          <li><b>Time tokens</b>: not a race. You sell track time per lane (see Time Token Sessions below).</li>
         </ul>` },
       { id: 'distance', title: 'Distance races', note: 'Race for a distance, not for laps or time', body: `
         <ul>
@@ -104,7 +106,7 @@ const Help = (() => {
         </ul>` },
       { id: 'heatraces', title: 'Heat races', note: 'How the heats are planned', body: `
         <ul>
-          <li><b>How the heats are planned</b> has four choices: you choose the number of heats; <b>every driver races the same number of heats</b> (you say how many); <b>round robin</b>, where every driver meets every other driver (with <i>Same number of heats for everyone</i> on Yes, a few heats are added so nobody races less than the busiest driver); or <b>lane rotation</b>, where every driver races once in every lane. In every plan the lanes are shared as evenly as possible.</li>
+          <li><b>How the heats are planned</b> has four choices: you choose the number of heats; <b>every driver races the same number of heats</b> (you say how many); <b>round robin</b>, where every driver meets every other driver (with <i>Give everyone the same number of heats</i> on, a few heats are added so nobody races less than the busiest driver); or <b>lane rotation</b>, where every driver races once in every lane. In every plan the lanes are shared as evenly as possible.</li>
           <li>To make the plan yourself, choose a <b>Rotation setup</b> in the race setup. Then the settings that plan the heats are not used.</li>
           <li><b>Who races together</b> can use the latest qualifying on the track: the fastest drivers together (the best heat last), or every heat with fast and slow drivers mixed.</li>
         </ul>` },
@@ -112,7 +114,7 @@ const Help = (() => {
         <ul>
           <li>On the Home tab a <b>Heat plan</b> shows the heats by lane, how often every driver races and in which lane; <b>Shuffle again</b> makes another plan, and the plan you see is the plan that is raced. To change the plan yourself, click a place and then another place: the two swap (a place with a dash is empty, so a driver can move there). A driver can not race twice in a heat. <b>Reset my changes</b> brings back the plan that was made; changing the number of participants or the heat settings makes a new plan.</li>
           <li>On the Race tab the <b>Heat list</b> shows every heat with its drivers by lane, the heat that is racing or next, and for a finished heat its winner and the points, laps or times. The <b>Heat List</b> widget shows it on the Live Race page, and the <b>Next Heat</b> widget shows only the drivers of the heat that comes next, with their lanes (before the start, while a heat is racing and between two heats, with the countdown of the break; "Race finished" after the last). <b>Print the heat list</b> (also on Home) makes a PDF sheet. The audio call <b>line-up</b> reads the drivers of the next heat.</li>
-          <li><b>Break between heats</b>: with a number of seconds, the race counts down after each heat (the Race Info widget and the Live Race page show "next heat in 1:30"). <b>When the break is over</b> either waits for Start or lets the start lights begin by themselves; Start (Space) always starts the next heat at once, and Stop ends the race.</li>
+          <li><b>Break between heats</b>: with a number of seconds, the race counts down after each heat (the Race Info widget and the Live Race page show "next heat in 1:30"). <b>The start lights begin by themselves when the break is over</b>, off or on: off waits for Start; Start (Space) always starts the next heat at once, and Stop ends the race.</li>
         </ul>` },
       { id: 'rotation', title: 'Rotation setups', note: 'Make your own heat schedule', body: `
         <ul>
@@ -129,9 +131,9 @@ const Help = (() => {
         </ul>` },
       { id: 'endurance', title: 'Endurance Race', note: 'Teams that swap drivers in the pits', body: `
         <ul>
-          <li>Choose the session type <b>Endurance Race</b>. A team shares one car, and its drivers take turns. Give every lane a <b>Team</b> on Home. The race runs by time, by laps, or heat by heat (<b>The Endurance Race is</b>).</li>
+          <li>Choose <b>Race</b> and turn on <b>Teams swap drivers in the pits</b> (an Endurance Race). A team shares one car, and its drivers take turns. Give every lane a <b>Team</b> on Home. The race is by time, by laps, or heat by heat (the Format <b>Heats</b>).</li>
           <li>The folder <b>Driver swaps</b> of the race setup says when a swap is due: <b>every so often</b>, <b>at fixed moments</b> (30 minutes, 2 hours), or <b>free</b> within the shortest and longest stint. Count them in minutes, in laps or in distance (see Distance races). You can also set the least and the most a driver drives in the whole race.</li>
-          <li>The swap is made when the car stops on the pit sensor (like a Stop-and-Go), or when <b>Swap done</b> is pressed on the Race Director page or a phone. The driver who steps in is the next one in the team's order, chosen at each swap, or picked by lot.</li>
+          <li>The swap is made when the car stops on the pit sensor, or when <b>Swap done</b> is pressed on the Race Director page or a phone. The driver who steps in is the next one in the team's order, chosen at each swap, or picked by lot.</li>
           <li>When the swap is late, the laps keep counting or stop counting, and the team can get penalty points (they need a penalty system), again and again if you like.</li>
           <li>The widgets <b>Current Driver</b>, <b>Next Driver</b>, <b>Driver Swap Timer</b> (amber before the swap is due, red when it is late) and <b>Driver Swap Signal</b> (a big SWAP, flashing) show it on the timing page (folder <b>Team and Swaps</b>). The audio folder <b>Endurance</b> says "{team} needs to swap positions! Box Box!" and who came in and who took over.</li>
           <li>The results show every driver's time at the wheel and stints. A race that a crash or a power cut stops, also a heat race, can be continued from the Home tab.</li>
@@ -155,7 +157,7 @@ const Help = (() => {
         </ul>` },
       { id: 'heatresults', title: 'Heat results', note: 'How the heats add up', body: `
         <ul>
-          <li><b>How the heats are added up</b> can be all heats, the <b>average per heat</b> (fair when drivers race a different number of heats) or <b>only the best heats</b> of every driver. <b>Drop the worst heat</b> takes away each driver's worst heat. With points you can give <b>bonus points for the fastest lap</b> of a heat. <b>A tie is decided by</b> chooses between the other measure, the fastest lap, the most heat wins and the lowest total time.</li>
+          <li><b>How the heats are added up</b> can be <b>Total</b> (all heats), <b>Average</b> (the <b>average per heat</b>, fair when drivers race a different number of heats) or <b>Best heats</b> (<b>only the best heats</b> of every driver). <b>Drop the worst heat</b> takes away each driver's worst heat. With points you can give <b>bonus points for the fastest lap</b> of a heat. <b>A tie is decided by</b> chooses between the other measure, the fastest lap, the most heat wins and the lowest total time.</li>
           <li><b>The overall winner is</b> follows how the heats are limited. <b>Heats of a time</b>: the most laps wins, then the lowest total time (when the cars are compared by distance: the furthest total distance, then the lowest total time). <b>Heats of laps or a distance</b>: <b>total time, then laps</b>: the lowest total of the finish times wins. Points are there for every kind of heat.</li>
           <li>A driver who did not finish a heat ranks below those who did, by laps, or, with <b>A heat that is not finished</b> on estimate, gets a finish time worked out from their own average lap. Setups from before 1.65.0 count what they counted.</li>
           <li>When something other than the standard is chosen, the race screen, the saved results and the PDF report say how the result was counted and show a <b>Result</b> column.</li>
@@ -293,7 +295,7 @@ const Help = (() => {
         </ul>` },
       { id: 'tokens', title: 'Time Token Sessions', note: 'Selling track time per lane', body: `
         <ul>
-          <li>Choose the session type <b>Time Token Session</b> in a race setup. It has no start lights, laps, fuel or penalties. On Home the button says <b>Open the session</b>. Drivers and cars are optional: a lane without a driver is a Guest.</li>
+          <li>Choose the kind <b>Time tokens</b> in a race setup. It has no start lights, laps, fuel or penalties. On Home the button says <b>Open the session</b>. Drivers and cars are optional: a lane without a driver is a Guest.</li>
           <li>Every lane starts switched off. Press a time button on a lane (the buttons are set under Race Setup, Time Tokens) and the lane is on while the <b>Token Clock</b> counts down. The minus buttons take time off again.</li>
           <li>The clock turns amber in the last minute (you can change that) and everything of that lane turns <b>red</b> when the time is up.</li>
           <li>A lap driven after the time was up is kept but never counts for a record.</li>

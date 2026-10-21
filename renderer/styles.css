@@ -232,6 +232,48 @@ button.rspill:hover,button.rspill:focus-visible{border-color:var(--accent)}
 .rsready{display:inline-flex;align-items:center;gap:5px;margin-left:auto;font-size:13px;font-weight:600;color:var(--rs-warn)}
 .rsready.ok{color:var(--rs-ok)}
 .rssaytext p{margin:2px 0 0;font-size:14px;line-height:1.5}
+/* the buttons of the Race Setup form (1.70.0, formui.js): a question, and its answer as buttons, cards, a switch or boxes. The colours come from the theme. */
+.field.fu{gap:8px}
+.fu-q{font-weight:650;font-size:13.5px;color:var(--ink)}
+.fu-q small{font-weight:400;font-size:12.5px;margin-left:8px}
+.fu select[hidden],.fu input[hidden]{display:none!important}
+.fu-race[hidden]{display:none}
+.fu-seg{display:inline-flex;flex-wrap:wrap;align-self:flex-start;max-width:100%;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg)}
+.fu-b{border:0;border-right:1px solid var(--line);background:none;color:var(--muted);padding:8px 16px;font:inherit;font-size:14.5px;font-weight:600;cursor:pointer}
+.fu-b:last-child{border-right:0}
+.fu-b:hover{color:var(--ink)}
+.fu-b.on{background:var(--accent);color:var(--on-accent)}
+.fu-b:focus-visible,.fu-card:focus-visible,.fu-sw:focus-visible{outline:3px solid #4c9aff;outline-offset:2px}
+.fu-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.fu-cards.fu-c4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.fu-cards.fu-c2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.fu-card{position:relative;display:flex;flex-direction:column;gap:6px;text-align:left;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:12px;padding:12px 14px 13px;font:inherit;cursor:pointer}
+.fu-card:hover{border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
+.fu-card.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--panel))}
+.fu-ct{display:flex;align-items:center;gap:9px;font-size:14.5px;padding-right:24px}
+.fu-ci{display:inline-flex;color:var(--muted)}
+.fu-card.on .fu-ci{color:var(--accent)}
+.fu-cd{font-size:12.5px;color:var(--muted);line-height:1.4}
+.fu-ck{display:none;position:absolute;top:10px;right:10px;width:18px;height:18px;border-radius:50%;background:var(--accent);color:var(--on-accent);align-items:center;justify-content:center}
+.fu-ck svg{width:12px;height:12px;stroke-width:3.2}
+.fu-card.on .fu-ck{display:inline-flex}
+.fu-race{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.fu-sw{display:flex;align-items:flex-start;gap:12px;text-align:left;background:none;border:0;padding:2px 0;margin:0;color:var(--ink);font:inherit;cursor:pointer}
+.fu-tg{position:relative;flex:none;width:42px;height:24px;border-radius:999px;background:var(--line);margin-top:1px;transition:background .12s}
+.fu-tg:after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--muted);transition:left .12s}
+.fu-sw.on .fu-tg{background:var(--accent)}
+.fu-sw.on .fu-tg:after{left:21px;background:var(--on-accent)}
+.fu-swt{display:flex;flex-direction:column;gap:2px}
+.fu-swt b{font-size:13.5px}
+.fu-swt .hint{display:block}
+.fu-boxes{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.fu-boxlist{display:contents}
+.fu-box{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:0 12px;height:40px;color:var(--muted)}
+.fu-box small{font-size:12.5px}
+.fu-box input[type=number]{width:3.4em;border:0;background:none;box-shadow:none;color:var(--ink);font-weight:650;font-size:15px;padding:0;outline:0}
+.fu-box:focus-within{border-color:var(--accent)}
+.fu-boxes .btn{height:40px;min-width:40px;padding:0 12px}
+@media (max-width:760px){.fu-cards.fu-c4{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 .marq{position:absolute;border:1px dashed #4c9aff;background:rgba(76,154,255,.12);pointer-events:none;z-index:9}
 .gl{position:absolute;pointer-events:none;z-index:8}

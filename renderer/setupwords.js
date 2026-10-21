@@ -146,7 +146,50 @@
   }
   const plain = parts => parts.map(p => p.t).join('');
 
-  const api = { KINDS, kindOf, describe, plain };
+  // ---- the picker (1.70.0): three questions instead of the Session type dropdown ----
+  // The dropdown answered three questions at once: what kind of session it is, one race or heats, and do the teams swap drivers. The form now asks them one by one. Nothing new is stored:
+  // the answers are read from, and written as, the same two settings as before, so every setup opens as it was.
+  //   Kind: Free practice (practice), Qualifying (qualifying), Time tokens (tokens), or Race (race, heats or endurance)
+  //   Format (a Race only): One race, or Heats        Swaps (a Race only): off, or the drivers of a team swap in the pits
+  //   One race, no swaps: sessionType race      Heats, no swaps: sessionType heats
+  //   One race with swaps: sessionType endurance, enduranceBy time, laps or distance      Heats with swaps: sessionType endurance, enduranceBy heats
+  const PICKER = {
+    kinds: [['practice', 'Free practice', 'Everyone drives. Ranked by fastest lap.'], ['qualifying', 'Qualifying', 'Ranked by fastest lap. The result can seed the heats.'],
+      ['race', 'Race', 'Laps and time decide the winner.'], ['tokens', 'Time tokens', 'Not a race. You sell track time per lane.']],
+    formats: [['one', 'One race', 'All cars start together and there is one result.'], ['heats', 'Heats', 'A series of races. Drivers take turns and the heats are added up.']],
+    swaps: ['Teams swap drivers in the pits', 'An endurance race: the drivers of a team take turns in the same car.'],
+    icons: { practice: 'car', qualifying: 'timing', race: 'racesetups', tokens: 'tokens', one: 'arrow', heats: 'layers' }
+  };
+  const UNITS = ['laps', 'time', 'distance'];
+  // the three answers of a setup (or of the values of the form): { kind, format, swaps }; format is '' and swaps false for a kind that is not a race
+  function parts(s) {
+    s = s || {};
+    const t = inOr(s.sessionType, KINDS.map(k => k[0]), 'race');
+    if (t === 'practice' || t === 'qualifying' || t === 'tokens') return { kind: t, format: '', swaps: false };
+    return { kind: 'race', format: t === 'heats' || (t === 'endurance' && s.enduranceBy === 'heats') ? 'heats' : 'one', swaps: t === 'endurance' };
+  }
+  // the setting that says what a race, or a heat, is over after: a race raceBy, a race with swaps enduranceBy, heats (with or without swaps) heatBy
+  const limitKey = p => (p.format === 'heats' ? 'heatBy' : p.swaps ? 'enduranceBy' : 'raceBy');
+  // What to store when an answer changes: the settings that change, as { sessionType, enduranceBy?, raceBy?, heatBy? }. s: the values now. change: { kind } or { format } or { swaps }.
+  // memory: what the race was before another kind was chosen ({ format, swaps }), so Race comes back as it was. "Over after" (laps, time or distance) goes along with the answer: it is the
+  // same question for a race, a race with swaps and a heat, but each has its own setting, so the one that is used from now on gets the answer of the one that was used.
+  function pick(s, change, memory) {
+    s = s || {}; change = change || {};
+    const now = parts(s);
+    let p = { ...now, ...change };
+    if (change.kind === 'race' && now.kind !== 'race') { const m = memory || {}; p = { kind: 'race', format: m.format === 'heats' ? 'heats' : 'one', swaps: !!m.swaps }; }
+    if (p.kind !== 'race') return { sessionType: p.kind };
+    const out = { sessionType: p.swaps ? 'endurance' : p.format === 'heats' ? 'heats' : 'race' };
+    if (p.swaps && p.format === 'heats') out.enduranceBy = 'heats';
+    if (now.kind === 'race') {
+      const from = limitKey(now), to = limitKey(p), unit = s[from];
+      if (from !== to && UNITS.includes(unit)) out[to] = unit;
+    }
+    if (p.swaps && p.format === 'one' && !UNITS.includes(out.enduranceBy !== undefined ? out.enduranceBy : s.enduranceBy)) out.enduranceBy = 'time'; // (it must not stay "heats": that would make it heats again)
+    return out;
+  }
+
+  const api = { KINDS, PICKER, kindOf, describe, plain, parts, pick };
   root.SetupWords = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

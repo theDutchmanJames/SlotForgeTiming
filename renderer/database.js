@@ -370,6 +370,7 @@ const memRows = (ids, all) => `<ol class="memlist">${ids.length ? ids.map((id, i
   <div class="row"><select id="mem-pick" aria-label="Driver to add"><option value="">${all.some(d => !ids.includes(d.id)) ? 'Choose a driver…' : 'Every driver is in the team'}</option>${all.filter(d => !ids.includes(d.id)).map(d => `<option value="${esc(d.id)}">${esc(titleOf('drivers', d))}</option>`).join('')}</select> <button type="button" class="btn" data-memadd="1">Add to the team</button></div>`;
 
 function fieldHtml(f, v, extra) {
+  if (f.ui && FormUI.has(f.ui)) return FormUI.field(f, v, { label: f.ask || fl(f), hint: fh(f), icon: n => Icons.svg(n, { size: 18, stroke: 1.8 }), picker: SetupWords.PICKER, parts: extra && extra.parts }); // (switches, buttons, cards and boxes for a setting: 1.70.0, formui.js)
   const id = 'f-' + f.id;
   const lab = `<label for="${id}">${esc(fl(f))}${f.optional ? ' <span class="muted">(optional)</span>' : ''}</label>`;
   let inp;
@@ -507,7 +508,13 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
   fields.filter(f => f.type === 'image').forEach(f => { imgs[f.id] = val(f) || ''; if (!f.custom) frames[f.id] = Widgets.frameOf(item && item[f.key + 'Frame']); });
   const frameBlock = f => f.type === 'image' && !f.custom ? `<div class="field frame full" id="frame-${f.id}" data-frame="${f.id}">${frameInner(imgs[f.id], frames[f.id], '4 / 3', false)}</div>` : '';
   const redrawFrame = key => { byId('frame-' + key).innerHTML = frameInner(imgs[key], frames[key], '4 / 3', false); attachFrames(dlg, k => frames[k], (k, f) => { frames[k] = f; }); };
-  const one = f => fieldHtml(f, val(f), { pieces, types, members, dlevels, dincs, cfails, twt, twm, tws, twsel, twunit: (item && item.unit) || TyreWear.DEFAULTS.unit }) + frameBlock(f);
+  // Race Setups (1.70.0): the three answers that the Session type used to give at once (kind, format, swaps) and the list of the points in boxes
+  const fieldOf = k => fields.find(f => !f.custom && f.key === k);
+  const startParts = e === 'racesetups' && fieldOf('sessionType') ? SetupWords.parts({ sessionType: val(fieldOf('sessionType')), enduranceBy: fieldOf('enduranceBy') ? val(fieldOf('enduranceBy')) : '' }) : null;
+  let raceMemory = startParts && startParts.kind === 'race' ? { format: startParts.format, swaps: startParts.swaps } : { format: 'one', swaps: false }; // (what the race was before another kind was chosen, so Race comes back as it was)
+  const places = {}; // the numbers of a list that is shown in boxes, by setting
+  fields.filter(f => f.ui === 'boxes').forEach(f => { const l = FormUI.listOf(val(f)); places[f.id] = l.length ? l : FormUI.listOf(f.default); }); // (a setup that has no list yet counts the standard one, as the race does: its boxes show it)
+  const one = f => fieldHtml(f, f.ui === 'boxes' ? FormUI.joinList(places[f.id]) : val(f), { pieces, types, members, dlevels, dincs, cfails, twt, twm, tws, twsel, twunit: (item && item.unit) || TyreWear.DEFAULTS.unit, parts: startParts }) + frameBlock(f);
   // a schema with groups: the fields in collapsible sections with a coloured header, in the order of the groups (fields without a group of their own, such as your own fields, go last)
   const defs = Array.isArray(s.groups) && s.groups.length ? s.groups : null;
   const groups = defs ? [...defs.map(g => ({ ...g, fields: fields.filter(f => f.group === g.id) })), { id: '_more', title: 'More', note: '', fields: fields.filter(f => !defs.some(g => g.id === f.group)) }].filter(g => g.fields.length) : null;
@@ -521,16 +528,28 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
     <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" id="cancel">Cancel</button></div></form>`;
   const getValue = k => byId('f-' + k)?.value;
   // Race Setups (1.69.0): the pills and the sentence "In plain words" at the top of the form follow what is typed (the words are made in setupwords.js)
-  const sayDraw = () => {
-    const box = byId('rssay'); if (!box) return;
+  const formValues = () => { // what the form holds now, by setting
     const v = {};
     fields.forEach(f => { if (f.custom) return; const el = byId('f-' + f.id); if (el) v[f.key] = el.dataset && el.dataset.du === 'ft' ? keptValue(f, el) : el.value; });
+    return v;
+  };
+  const sayDraw = () => {
+    const box = byId('rssay'); if (!box) return;
+    const v = formValues();
     const d = SetupWords.describe(v, { track: (state.refs.tracks || []).find(t => t.id === v.track) || null, rotation: ((state.refs.rotationsetups || []).find(r => r.id === v.rotation) || {}).name || '', dist: n => Distance.text(n, dUnit()) });
     box.innerHTML = `<div class="rspills">${d.pills.map(p => `<span class="rspill${p.tone ? ' ' + p.tone : ''}">${esc(p.text)}</span>`).join('')}<span class="rsready${d.ready.ok ? ' ok' : ''}">${Icons.svg(d.ready.ok ? 'check' : 'penalty', { size: 15, stroke: 2 })}${esc(d.ready.text)}</span></div>
       <div class="rssaytext"><span class="rseye">In plain words</span><p>${d.say.map(p => (p.b ? `<b>${esc(p.t)}</b>` : esc(p.t))).join('')}</p></div>`;
   };
+  // the buttons, the switches and the cards show what the form holds (1.70.0: they are only a face for the settings, which are kept as before)
+  const syncControls = () => {
+    fields.forEach(f => { if (f.ui === 'switch' || f.ui === 'seg' || f.ui === 'cards') FormUI.sync(dlg, f, getValue(f.key)); });
+    if (fields.some(f => f.ui === 'kind')) FormUI.syncKind(dlg, byId, SetupWords.parts({ sessionType: getValue('sessionType'), enduranceBy: getValue('enduranceBy') }));
+  };
+  // a button was pressed: the setting takes its value, and everything that follows from it (what is shown, the words, the buttons) is drawn again
+  const setValues = out => { let changed = false; Object.entries(out).forEach(([k, v]) => { const el = byId('f-' + k); if (el && el.value !== v) { el.value = v; changed = true; } }); if (changed) refreshShown(); };
   const refreshShown = () => {
     sayDraw();
+    syncControls();
     fields.forEach(f => { const w = dlg.querySelector(`[data-key="${f.id}"]`); if (w) w.hidden = !isShown(f, getValue); });
     if (groups) groups.forEach(g => { const el = dlg.querySelector(`[data-fg="${g.id}"]`); if (el) el.hidden = !g.fields.some(f => isShown(f, getValue)); }); // a group with nothing to show is not shown
   };
@@ -561,6 +580,18 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
     const b = ev.target.closest('button'); if (!b) return;
     if (b.id === 'cancel') dlg.close();
     const d = b.dataset || {};
+    if (d.pick) { setValues({ [d.pick]: d.on !== undefined ? (getValue(d.pick) === d.on ? d.off : d.on) : d.val }); return; } // (a button of a segmented choice or of cards, or a switch: 1.70.0)
+    if (d.kind !== undefined || d.format !== undefined || d.swaps !== undefined) { // the picker of a race setup: another kind, format or swaps
+      const now = SetupWords.parts(formValues()); if (now.kind === 'race') raceMemory = { format: now.format, swaps: now.swaps };
+      setValues(SetupWords.pick(formValues(), d.kind !== undefined ? { kind: d.kind } : d.format !== undefined ? { format: d.format } : { swaps: !now.swaps }, raceMemory)); return;
+    }
+    if (d.pbadd !== undefined || d.pbdrop !== undefined) { // the points of a list in boxes: one place more, or one less
+      const id = d.pbadd !== undefined ? d.pbadd : d.pbdrop, list = places[id]; if (!list) return;
+      places[id] = d.pbadd !== undefined ? (list.length >= FormUI.MAX_BOXES ? list : FormUI.addPlace(list)) : FormUI.dropPlace(list);
+      byId('pb-' + id).innerHTML = FormUI.boxRows(id, places[id]); byId('f-' + id).value = FormUI.joinList(places[id]);
+      byId('pb-add-' + id).disabled = places[id].length >= FormUI.MAX_BOXES; byId('pb-drop-' + id).disabled = places[id].length <= 1;
+      refreshShown(); return;
+    }
     if (d.svcreset) { // the car was serviced: the count starts again at 0 (kept when the form is saved), and the day is today
       serviceReset = true; byId('f-lapsSinceService').value = 0; byId('f-serviceDate').value = plainDate(new Date().toISOString()); byId('f-servicesDone').value = CarStats.servicesOf(item) + 1; byId('f-_mileageSince').value = Stats.fmtDist(0, dUnit()); syncService(); return;
     }
@@ -603,6 +634,10 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
   dlg.oninput = ev => {
     const t = ev.target;
     if (e === 'racesetups') sayDraw(); // (the sentence follows every key that is typed)
+    if (t && t.dataset && t.dataset.pbf !== undefined) { // a box of a list of numbers: the list is kept as text, as it always was ("10, 8, 6")
+      const id = t.dataset.pbf, list = places[id]; if (list) { list[Number(t.dataset.pb)] = t.value; byId('f-' + id).value = FormUI.joinList(list); sayDraw(); }
+      return;
+    }
     if (t && t.id === 'f-serviceInterval') { syncService(); return; }
     if (t && t.dataset && t.dataset.tw !== undefined) { // a number of a tyre: the "lasts about" and the grip curve follow
       const code = t.dataset.tw; if (twt[code]) twt[code][t.dataset.twk] = t.value;
