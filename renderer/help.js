@@ -69,15 +69,15 @@ const Help = (() => {
           <li><b>Safety Car Systems</b>: slow laps and quicker pit work behind the Safety Car (see Safety Car, below).</li>
           <li><b>Balance of Power</b>: how much a fast car is hindered and a slow car helped, by hand or by itself.</li>
           <li><b>Time Tokens</b>: the time buttons and the warning for a Time Token Session.</li>
-          <li>Fuel systems, penalty systems, damage systems, tyre wear systems and weather systems do nothing until you choose them in the <b>Rules and systems</b> folder of a race setup (Balance of Power and the pit hold time are there too).</li>
+          <li>Fuel systems, penalty systems, damage systems, tyre wear systems and weather systems do nothing until you choose them in the <b>Rules and systems</b> section of a race setup (Balance of Power and the pit hold time are there too).</li>
         </ul>` },
       { id: 'setupwords', title: 'Race Setups in words', note: 'Cards, kinds and the sentence in the form', body: `
         <ul>
           <li>Every race setup is a <b>card</b> that says in words how it ends (<b>Ends</b>) and who wins (<b>Wins</b>). The dot is green when the setup is ready to race: a track is chosen.</li>
           <li>The row of kinds (All, Practice, Qualifying, Race, Heats, Endurance, Time tokens) shows one kind. <b>List</b> and <b>Cards</b> switch the view. <b>Start from a kind</b> opens a new setup with that kind already chosen.</li>
-          <li>At the top of the form, the pills and <b>In plain words</b> change as you type: what kind of session it is, how it ends and who wins.</li>
+          <li>At the top of the form, the pills and <b>In plain words</b> change as you type: what kind of session it is, how it ends and who wins. <b>Used by</b> (under the rail) lists the championships that use this setup.</li>
           <li>A question with a few answers is a row of buttons or cards, and a yes or no question is a <b>switch</b>. <b>Kind of session</b>, <b>Format</b> and <b>Teams swap drivers in the pits</b> replace the old Session type list. What is stored does not change, so every setup opens as it was.</li>
-          <li>The sections of the form are named after what you decide in them: Session, Heats (a heat-based race), Ends and winner, Driver swaps (an Endurance Race), Start, Rules and systems, Yellow flag, Adjust pads, Screens and sound, Trackmate and SlotForge box (Arduino).</li>
+          <li>The <b>rail</b> on the left has a row for each section with a short note and a dot: green is filled in or changed, amber is something missing, an open ring is nothing changed. Click a row to go to that section. The sections: Session, Heats (a heat-based race), Ends and winner, Driver swaps (an Endurance Race), Start, Rules and systems, Screens and sound, and <b>Advanced</b>, which holds Yellow flag, Adjust pads, Trackmate and SlotForge box (Arduino). Nothing that was stored changed.</li>
         </ul>` },
       { id: 'types', title: 'Kinds of session', note: 'Kind, Format and Swaps', body: `
         <ul>
@@ -211,7 +211,7 @@ const Help = (() => {
           <li><b>Penalty points</b> turn into seconds added to the driver's time (the penalty system sets how, and can disqualify at a limit).</li>
           <li><b>Special penalties</b> take points off and must be served: a Drivethrough when the next pit stop starts, a Stop-and-Go by standing still on the sensor.</li>
           <li>A <b>call from a lane</b> raises the yellow flag and waits for the Race Director, who dismisses it or gives a penalty point.</li>
-          <li><b>Yellow flag target lap time</b> (race setup, Yellow flag group): while the flag is up the race says the target. A full lap under yellow that is faster is called out, marked in the lap review and costs the penalty points you set (a penalty system is needed).</li>
+          <li><b>Yellow flag target lap time</b> (race setup, Advanced, Yellow flag): while the flag is up the race says the target. A full lap under yellow that is faster is called out, marked in the lap review and costs the penalty points you set (a penalty system is needed).</li>
           <li>The Trackmate <b>Trackcall</b> button can raise the flags and switch the track power. You choose how in the race setup.</li>
         </ul>` },
       { id: 'fuel', title: 'Fuel and pit stops', note: 'Tanks, refuelling and pit time', body: `
@@ -246,7 +246,7 @@ const Help = (() => {
         </ul>` },
       { id: 'tyrewear', title: 'Tyre wear', note: 'Tyres that wear out, and the pit stop that changes them', body: `
         <ul>
-          <li>A <b>tyre wear system</b> (Race Setup, Tyre Wear Systems) makes the tyres lose life while a car drives, from 100% to 0%. Choose one in the <b>Rules and systems</b> folder of a race setup. Races, heats and Endurance Races have it; practice and qualifying only when the system says so; a Time Token Session never. Every heat starts on fresh tyres.</li>
+          <li>A <b>tyre wear system</b> (Race Setup, Tyre Wear Systems) makes the tyres lose life while a car drives, from 100% to 0%. Choose one in the <b>Rules and systems</b> section of a race setup. Races, heats and Endurance Races have it; practice and qualifying only when the system says so; a Time Token Session never. Every heat starts on fresh tyres.</li>
           <li>Every tyre has four numbers: the <b>wear</b> (% of life lost per lap, or per 100 m or 100 ft for Distance Racing), the <b>fresh bonus</b>, where the <b>grip drops</b> and the <b>hindrance at 0%</b>. Start from Standard, Sprint or Endurance.</li>
           <li>Through the fuel rules (needs a Fuel system), new tyres help the car and worn ones hinder it. Lap times and records are never changed.</li>
           <li>At <b>0%</b>: nothing, penalty points every lap, the lap does not count until the car pits, or the car retires.</li>
@@ -258,7 +258,7 @@ const Help = (() => {
         </ul>` },
       { id: 'safetycar', title: 'Safety Car', note: 'The yellow flag as a Safety Car', body: `
         <ul>
-          <li>A <b>safety car system</b> (Race Setup, Safety Car Systems) bundles three settings. Choose one in the <b>Rules and systems</b> folder of a race setup; it replaces the <b>Yellow flag</b> settings of that setup.</li>
+          <li>A <b>safety car system</b> (Race Setup, Safety Car Systems) bundles three settings. Choose one in the <b>Rules and systems</b> section of a race setup; it replaces the <b>Yellow flag</b> settings of that setup.</li>
           <li>The Safety Car is out <b>while the yellow flag is up</b>: the yellow button, the Trackcall button and a call from a lane all bring it out. There is no button of its own. Yellow again, or the red flag, ends it.</li>
           <li><b>Lap times</b>: a full lap behind the Safety Car must be slower than the limit. A lap that is too fast is called out and gets penalty points (they need a penalty system). A lap that began before the Safety Car came out does not count.</li>
           <li><b>Pit stops</b>: refuelling, a repair and changing tyres take a number of percent less time for a car that comes in while the Safety Car is out. Driver swaps and penalties served in the pits are not shorter.</li>
@@ -267,7 +267,7 @@ const Help = (() => {
         </ul>` },
       { id: 'pushsave', title: 'Push and Save', note: 'How hard a driver drives wears tyres and fuel', body: `
         <ul>
-          <li>A <b>push and save system</b> (Race Setup, Push and Save Systems) makes the pace count. Choose one in the <b>Rules and systems</b> folder of a race setup. It works on top of a Tyre Wear System and a Fuel System, and lap times and grip are never changed.</li>
+          <li>A <b>push and save system</b> (Race Setup, Push and Save Systems) makes the pace count. Choose one in the <b>Rules and systems</b> section of a race setup. It works on top of a Tyre Wear System and a Fuel System, and lap times and grip are never changed.</li>
           <li>Every lap is compared with the <b>reference lap</b> of the driver: his best lap on this track (the records) or, without one, his best lap so far in the race. A lap that beats it is the new reference.</li>
           <li><b>PUSH</b> (faster than normal pace) wears the tyres and uses the fuel faster, <b>NORMAL</b> is the usual wear, <b>SAVE</b> (slower) wears less. Normal pace is the best lap plus 3% to begin with; you can change every number, and a ready-made system (Standard, Gentle, Strong) fills in the four wear numbers.</li>
           <li>The effect starts at lap 3. A lap with a stop, the first lap after a pause and a very slow lap (over 150% of the best lap) wear as usual. Laps under the yellow flag or the Safety Car count as saving, if you leave that on.</li>

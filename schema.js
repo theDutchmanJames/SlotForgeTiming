@@ -140,9 +140,22 @@ module.exports = {
       { id: 'trackmate', title: 'Trackmate', note: 'Track power at the start and the Trackcall button' },
       { id: 'box', title: 'SlotForge box (Arduino)', note: 'Pit stops, lane power, beeps and lane lights, when a SlotForge box is connected' }
     ],
+    // The form of a race setup has a rail (1.71.0, renderer/railform.js): the sections that the person sees, in this order. A section is made of one or more of the groups above (Advanced holds four: the
+    // yellow flag, the Adjust pads, Trackmate and the SlotForge box). ask: what the section answers, shown while it is open; icon: the picture on its row; open: open when the form opens;
+    // optional: it is listed under "Only if you need it". Nothing here changes where a setting is stored: a setting still says which group it is in.
+    rail: [
+      { id: 'session', title: 'Session', ask: 'What are you setting up?', icon: 'racesetups', open: true, groups: ['session'] },
+      { id: 'heats', title: 'Heats', ask: 'Who races, and when?', icon: 'layers', open: true, groups: ['heats'] },
+      { id: 'length', title: 'Ends and winner', ask: 'How long does it last, and who wins?', icon: 'board', open: true, groups: ['length'] },
+      { id: 'endurance', title: 'Driver swaps', ask: 'When do the drivers of a team swap?', icon: 'rotation', groups: ['endurance'] },
+      { id: 'start', title: 'Start', ask: 'How does the race begin?', icon: 'lights', groups: ['start'] },
+      { id: 'rules', title: 'Rules and systems', ask: 'Which systems are on?', icon: 'shield', groups: ['rules'] },
+      { id: 'screens', title: 'Screens and sound', ask: 'What do the screens show and say?', icon: 'screen', groups: ['screens'] },
+      { id: 'advanced', title: 'Advanced', ask: 'The yellow flag, the adjust pads, Trackmate and the SlotForge box.', icon: 'sliders', optional: true, groups: ['yellow', 'pads', 'trackmate', 'box'] }
+    ],
     // showIf: the field is shown when ANY listed condition matches (each condition: all its keys match).
     fields: [
-      { key: 'name', group: 'session', label: 'Name', type: 'text' },
+      { key: 'name', group: 'session', label: 'Name', type: 'text', placeholder: 'Name this race setup' },
       { key: 'sessionType', group: 'session', label: 'Session type', ask: 'Kind of session', ui: 'kind', type: 'select', default: 'race',
         options: [['practice', 'Free practice'], ['qualifying', 'Qualifying'], ['race', 'Race'], ['heats', 'Heat-based race'], ['endurance', 'Endurance Race'], ['tokens', 'Time Token Session']],
         hint: 'A Time Token Session is not a race: each lane is switched on with paid time and turns red when the time is up (its settings are in Race Setup > Time Tokens). With Heats and swaps, every heat is a race with driver swaps of its own; the drivers who start a heat are chosen as in a heat race with teams.' },

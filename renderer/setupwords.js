@@ -189,7 +189,94 @@
     return out;
   }
 
-  const api = { KINDS, PICKER, kindOf, describe, plain, parts, pick };
+  // ---- the rail (1.71.0): a short note and a dot for every section of the form ----
+  // The form has a rail on the left with a row for every section: its name, a short note of what it holds now, and a dot. The same note, a little longer, is on the row of a section that is closed.
+  // The dot: green = filled in (Session, Heats and Ends and winner: what they need is there) or changed from the standard (all the others); an amber dot = something that is needed is missing;
+  // an open ring = nothing changed from the standard. This file works out the notes and the dots from the values of the form and nothing else, so they can be tested on their own.
+  //   s: the values of the form, by setting (every value may be text)
+  //   ctx: { track, rotation, dist (see describe), defaults: { setting: its standard value }, shown: setting => is it shown now? (a setting that is hidden counts for nothing) }
+  //   -> { id: { rail, row, state: 'ok' | 'todo' | 'plain' } } for the sections session, heats, length, endurance, start, rules, screens and advanced
+  const START_KEYS = ['lightsMin', 'lightsMax', 'lightsAfter', 'restartAfterRed', 'firstLap'];
+  const SYSTEMS = [['penaltySystem', 'Penalty', 'penalty system'], ['damageSystem', 'Damage', 'damage system'], ['fuelRules', 'Fuel', 'fuel system'], ['weather', 'Weather', 'weather system'], ['tyreWear', 'Tyre wear', 'tyre wear system'],
+    ['safetyCar', 'Safety car', 'safety car system'], ['pushSave', 'Push and save', 'push and save system']];
+  const ADVANCED = [['yellow', 'Yellow flag', 'yellow flag', ['yellowTarget', 'yellowPoints']], ['pads', 'Pads', 'adjust pads', ['padPoints', 'padDamage', 'padSeconds', 'padLaps', 'padChamp']],
+    ['trackmate', 'Trackmate', 'Trackmate', ['startPower', 'trackcall', 'trackcallWindow']], ['box', 'Box', 'SlotForge box', ['boxPit', 'boxLanePower', 'boxBeeps', 'boxLaneLights']]];
+  const text = v => (v === undefined || v === null ? '' : String(v));
+  const cleanParts = list => list.filter(Boolean);
+  function rail(s, ctx) {
+    s = s || {}; ctx = ctx || {};
+    const c = { dist: typeof ctx.dist === 'function' ? ctx.dist : n => `${n} m`, track: ctx.track || null, rotation: ctx.rotation || '' };
+    const shown = typeof ctx.shown === 'function' ? ctx.shown : () => true, defs = ctx.defaults || {};
+    // changed from the standard: shown, typed, and not the standard value (an empty field uses the standard, so it is not a change)
+    const changed = keys => keys.filter(k => shown(k) && text(s[k]).trim() !== '' && text(s[k]).trim() !== text(defs[k]).trim());
+    const t = inOr(s.sessionType, KINDS.map(k => k[0]), 'race'), p = parts(s);
+    const heated = p.kind === 'race' && p.format === 'heats', swaps = p.swaps;
+    const out = {};
+    const make = (rail, row, state) => ({ rail: rail.join(' · '), row: cap(row.join(', ')), state });
+    // Session: the kind, the format and the swaps (a race), and the track
+    const kindName = { practice: 'Free practice', qualifying: 'Qualifying', tokens: 'Time tokens', race: 'Race' }[p.kind];
+    const tn = c.track && text(c.track.name).trim(), named = text(s.name).trim() !== '';
+    out.session = make(p.kind === 'race' ? ['Race', heated ? 'heats' : 'one race', ...(swaps ? ['driver swaps'] : [])] : [kindName],
+      p.kind === 'race' ? ['Race', heated ? 'heats' : 'one race', swaps ? 'driver swaps' : 'no driver swaps', tn ? `on ${tn}` : 'no track chosen'] : [kindName, tn ? `on ${tn}` : 'no track chosen'], named && tn ? 'ok' : 'todo');
+    // Heats: how they are planned and who races together
+    {
+      const plan = inOr(s.heatPlan, ['manual', 'perdriver', 'roundrobin', 'rotation'], 'manual'), n = pos(s.heats), e = pos(s.heatsEach), br = pos(s.breakSeconds), own = !s.rotation;
+      const planRail = !own ? `Rotation: ${c.rotation || 'chosen'}` : plan === 'perdriver' ? (e ? `${e} each` : 'Same for every driver') : plan === 'roundrobin' ? 'Round robin' : plan === 'rotation' ? 'Every lane once' : (n ? plural(n, 'heat', 'heats') : 'Number of heats');
+      const planRow = !own ? `rotation ${c.rotation || 'chosen'}` : plan === 'perdriver' ? (e ? `${plural(e, 'heat', 'heats')} for every driver` : 'the same for every driver') : plan === 'roundrobin' ? 'everyone meets everyone' : plan === 'rotation' ? 'every lane once' : (n ? plural(n, 'heat', 'heats') : 'a number of heats');
+      const seeded = own && (plan === 'manual' || plan === 'perdriver'), sd = inOr(s.heatSeeding, ['random', 'mixed', 'speed'], 'random');
+      const seedRail = seeded ? { random: 'shuffled', mixed: 'mixed by qualifying', speed: 'fastest together' }[sd] : '', seedRow = seeded ? { random: 'shuffled', mixed: 'mixed fast and slow', speed: 'fastest together, best heat last' }[sd] : '';
+      out.heats = heated ? make(cleanParts([planRail, seedRail]), cleanParts([planRow, seedRow, br ? `a break of ${plural(br, 'second', 'seconds')}` : '']), own && ((plan === 'manual' && !n) || (plan === 'perdriver' && !e)) ? 'todo' : 'ok') : make([], [], 'plain');
+    }
+    // Ends and winner: how long it lasts, and who wins
+    {
+      const by = heated ? heatLimitBy(s) : raceLimitBy(s), limit = p.kind === 'qualifying' ? lim('time', s, c) : p.kind === 'race' ? lim(by, s, c) : '';
+      if (p.kind === 'race' && !heated) {
+        const win = by === 'time' ? (s.compareBy === 'distance' ? 'furthest wins' : 'most laps wins') : by === 'distance' ? 'first to drive it wins' : 'first to finish wins';
+        out.length = make([limit || (by === 'laps' ? 'Set the laps' : by === 'time' ? 'Set the time' : 'Set the distance'), win], [limit || 'no limit set yet', win], limit ? 'ok' : 'todo');
+      } else if (heated) {
+        const r = by === 'time' ? inOr(s.resultByTime, ['lapstime', 'laps', 'points'], 'lapstime') : inOr(s.resultBy, ['laps', 'points', 'time'], 'laps');
+        const res = r === 'points' ? 'Most points' : r === 'time' ? 'Lowest total time' : s.compareBy === 'distance' && by === 'time' ? 'Furthest distance' : 'Most laps';
+        const cb = inOr(s.countBy, ['total', 'average', 'best'], 'total'), b = pos(s.bestHeats);
+        const count = cb === 'best' ? `best ${b || 'few'} count` : cb === 'average' ? 'average counts' : '', drop = s.dropWorst === 'yes' ? 'worst heat dropped' : '';
+        out.length = make(cleanParts([res, count, drop]), cleanParts([limit ? `${limit} per heat` : 'no heat limit set yet', res.toLowerCase(), count, drop]), limit ? 'ok' : 'todo');
+      } else if (p.kind === 'qualifying') out.length = make([limit || 'Set the time', 'fastest lap'], [limit || 'no time set yet', 'ranked by the fastest lap'], limit ? 'ok' : 'todo');
+      else out.length = make(['No limit'], ['no limit, runs until you stop it'], 'plain');
+    }
+    // Driver swaps (an Endurance Race): when the drivers of a team swap
+    {
+      const u = inOr(s.swapUnit, ['minutes', 'laps', 'distance'], 'minutes'), m = inOr(s.swapMode, ['every', 'moments', 'free'], 'every');
+      let w, ok = true;
+      if (m === 'moments') w = 'at fixed moments'; else if (m === 'free') w = 'when the team chooses';
+      else if (u === 'distance') { const d = pos(s.swapEveryDist); ok = !!d; w = d ? `every ${c.dist(d)}` : 'every so often'; } else { const n = pos(s.swapEvery); ok = !!n; w = n ? `every ${u === 'laps' ? plural(n, 'lap', 'laps') : plural(n, 'minute', 'minutes')}` : 'every so often'; }
+      out.endurance = swaps ? make([`Swap ${w}`], [`teams swap ${w}`], ok ? 'ok' : 'todo') : make([], [], 'plain');
+    }
+    // Start: the wait before the lights go out
+    {
+      const lo = pos(s.lightsMin), hi = pos(s.lightsMax), ch = changed(START_KEYS);
+      const span = lo && hi ? (lo === hi ? `${lo}` : `${lo} to ${hi}`) : lo ? `${lo}` : hi ? `${hi}` : '';
+      out.start = make([span ? `Lights, ${span} s` : 'Lights'], [span ? `lights out after ${span} seconds` : 'lights out after a random wait'], ch.length ? 'ok' : 'plain');
+    }
+    // Rules and systems: the systems that are on
+    {
+      const on = SYSTEMS.filter(x => shown(x[0]) && text(s[x[0]]) !== '').map(x => [x[1], x[2]]);
+      if (shown('bop') && s.bop === 'on') on.push(['Balance of Power', 'Balance of Power']);
+      if (changed(['pitHold']).length) on.push(['Pit stop sensor', 'pit stop sensor']);
+      out.rules = on.length ? make(on.map(x => x[0]), on.map(x => x[1]), 'ok') : make(['No systems'], ['no systems chosen'], 'plain');
+    }
+    // Screens and sound: the layouts and the audio set that are chosen
+    {
+      const on = [['layout', 'Main screen', 'main screen layout'], ['layout2', 'Second screen', 'second screen layout'], ['audioSet', 'Audio', 'audio set']].filter(x => shown(x[0]) && text(s[x[0]]) !== '');
+      out.screens = on.length ? make(on.map(x => x[1]), on.map(x => x[2]), 'ok') : make(['Default layout', 'no audio'], ['default layout', 'no audio'], 'plain');
+    }
+    // Advanced: yellow flag, the Adjust pads, Trackmate and the SlotForge box (only the ones that have something to show now)
+    {
+      const here = ADVANCED.filter(a => a[3].some(shown)), did = here.filter(a => changed(a[3]).length);
+      out.advanced = { rail: (did.length ? did : here).map(a => a[1]).join(' · '), row: cap(here.map(a => a[2]).join(', ') + '. ' + (did.length ? `Changed: ${did.map(a => a[2]).join(', ')}.` : 'Nothing changed.')), state: did.length ? 'ok' : 'plain' };
+    }
+    return out;
+  }
+
+  const api = { KINDS, PICKER, kindOf, describe, plain, parts, pick, rail };
   root.SetupWords = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

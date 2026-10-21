@@ -194,6 +194,7 @@ async function mountManager(box, e) {
   if (run !== subRun) return;
   state.custom[e] = custom;
   for (const f of s.fields) if (f.type === 'ref' || f.type === 'members') state.refs[f.ref] = await api.list(f.ref);
+  if (e === 'racesetups') state.refs.championships = await api.list('championships'); // (1.71.0: the box Used by in the form of a race setup names the championships that use it)
   if (run !== subRun) return;
   const cols = s.list
     ? s.list.map(k => columnOf(s, k)).map(f => ({ label: fl(f), get: i => columnCell(f, i) }))
@@ -518,9 +519,19 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
   // a schema with groups: the fields in collapsible sections with a coloured header, in the order of the groups (fields without a group of their own, such as your own fields, go last)
   const defs = Array.isArray(s.groups) && s.groups.length ? s.groups : null;
   const groups = defs ? [...defs.map(g => ({ ...g, fields: fields.filter(f => f.group === g.id) })), { id: '_more', title: 'More', note: '', fields: fields.filter(f => !defs.some(g => g.id === f.group)) }].filter(g => g.fields.length) : null;
-  const opened = defs ? (formOpen[e] = formOpen[e] || new Set(defs.filter(g => g.open).map(g => g.id))) : null;
-  dlg.innerHTML = `<form id="frm"${setupToneClass(e) ? ` class="${setupToneClass(e).trim()}"` : ''}><h3>${item ? 'Edit' : 'Add'} ${esc(s.label.toLowerCase())}</h3>
-    ${e === 'racesetups' ? '<div class="rssay" id="rssay" aria-live="polite"></div>' : ''}
+  // Race Setups (1.71.0): the form has a rail, and its sections are made of the groups (Advanced holds four of them); see schema.js, rail
+  const railDefs = e === 'racesetups' && groups && Array.isArray(s.rail) && s.rail.length ? s.rail : null;
+  const sections = railDefs ? railDefs.map(r => ({ ...r, groups: r.groups.map(id => groups.find(g => g.id === id)).filter(Boolean) })).filter(r => r.groups.length) : null;
+  if (sections) { const left = groups.filter(g => !sections.some(x => x.groups.includes(g))); if (left.length) sections.push({ id: '_more', title: 'More', ask: 'Other settings.', icon: 'sliders', optional: true, groups: left }); } // (a setting that is in no section is not lost)
+  const opened = defs ? (formOpen[e] = formOpen[e] || new Set((railDefs || defs).filter(g => g.open).map(g => g.id))) : null;
+  const nameField = sections ? fieldOf('name') : null; // (in a form with a rail the name is in the header, not in the first section)
+  const usedBy = sections && item && Array.isArray(state.refs.championships) ? state.refs.championships.filter(c => (c.rounds || []).some(r => (r.sessions || []).some(x => x.setup === item.id))).map(c => String(c.name || '').trim() || '(unnamed)') : null;
+  let railCurrent = sections ? (sections.find(x => opened.has(x.id)) || sections[0]).id : ''; // (the section that the rail points at: the one that was opened last)
+  const sectionBody = x => (x.groups.length === 1 && x.groups[0].id === x.id ? RailForm.grid(x.groups[0].fields.filter(f => f !== nameField).map(one).join('')) : x.groups.map(g => RailForm.sub(g.id, g.title, g.note, g.fields.map(one).join(''))).join(''));
+  dlg.innerHTML = sections ? RailForm.shell({ eyebrow: `${item ? 'Edit' : 'Add'} ${s.label.toLowerCase()}`, cls: setupToneClass(e).trim(), icon: n => Icons.svg(n, { size: 20, stroke: 1.7 }), used: usedBy,
+      tile: Icons.svg(SETUP_KIND_ICON[val(fieldOf('sessionType'))] || 'racesetups', { size: 26, stroke: 1.6 }), name: one(nameField),
+      sections: sections.map(x => ({ id: x.id, title: x.title, ask: x.ask, icon: x.icon, open: opened.has(x.id), optional: !!x.optional, body: sectionBody(x) })) })
+    : `<form id="frm"${setupToneClass(e) ? ` class="${setupToneClass(e).trim()}"` : ''}><h3>${item ? 'Edit' : 'Add'} ${esc(s.label.toLowerCase())}</h3>
     ${groups ? `<div class="formgrid grouped"><div class="fgtools"><button type="button" class="btn" data-fgall="1">Open all</button><button type="button" class="btn" data-fgall="0">Close all</button></div>${groups.map(g =>
       `<details class="fgroup" data-fg="${esc(g.id)}"${opened.has(g.id) ? ' open' : ''}><summary><strong>${esc(g.title)}</strong>${g.note ? ` <span class="muted">${esc(g.note)}</span>` : ''}</summary><div class="fgrid">${g.fields.map(one).join('')}</div></details>`).join('')}</div>`
       : `<div class="formgrid">${fields.map(one).join('')}</div>`}
@@ -533,12 +544,26 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
     fields.forEach(f => { if (f.custom) return; const el = byId('f-' + f.id); if (el) v[f.key] = el.dataset && el.dataset.du === 'ft' ? keptValue(f, el) : el.value; });
     return v;
   };
+  // the notes and the dots of the rail (1.71.0): worked out in setupwords.js from the values of the form, drawn by railform.js
+  const defaultsOf = {}; fields.forEach(f => { if (!f.custom) defaultsOf[f.key] = f.default; });
+  const railDraw = (v, rctx) => {
+    if (!sections) return;
+    const info = SetupWords.rail(v, { ...rctx, defaults: defaultsOf, shown: k => { const f = fieldOf(k); return !!f && isShown(f, getValue); } });
+    const visible = {}; sections.forEach(x => { visible[x.id] = x.groups.some(g => g.fields.some(f => isShown(f, getValue))); });
+    RailForm.sync(byId, info, visible, railCurrent);
+  };
+  // the header (the picture of the kind, the pills, Ready to race), the sentence "In plain words" and the rail follow what is typed and chosen
   const sayDraw = () => {
     const box = byId('rssay'); if (!box) return;
     const v = formValues();
-    const d = SetupWords.describe(v, { track: (state.refs.tracks || []).find(t => t.id === v.track) || null, rotation: ((state.refs.rotationsetups || []).find(r => r.id === v.rotation) || {}).name || '', dist: n => Distance.text(n, dUnit()) });
-    box.innerHTML = `<div class="rspills">${d.pills.map(p => `<span class="rspill${p.tone ? ' ' + p.tone : ''}">${esc(p.text)}</span>`).join('')}<span class="rsready${d.ready.ok ? ' ok' : ''}">${Icons.svg(d.ready.ok ? 'check' : 'penalty', { size: 15, stroke: 2 })}${esc(d.ready.text)}</span></div>
-      <div class="rssaytext"><span class="rseye">In plain words</span><p>${d.say.map(p => (p.b ? `<b>${esc(p.t)}</b>` : esc(p.t))).join('')}</p></div>`;
+    const rctx = { track: (state.refs.tracks || []).find(t => t.id === v.track) || null, rotation: ((state.refs.rotationsetups || []).find(r => r.id === v.rotation) || {}).name || '', dist: n => Distance.text(n, dUnit()) };
+    const d = SetupWords.describe(v, rctx);
+    const pills = byId('rspills'), ready = byId('rsready'), tile = byId('rstile');
+    if (pills) pills.innerHTML = d.pills.map(p => `<span class="rspill${p.tone ? ' ' + p.tone : ''}">${esc(p.text)}</span>`).join('');
+    if (ready) { ready.className = 'rsready' + (d.ready.ok ? ' ok' : ''); ready.innerHTML = `${Icons.svg(d.ready.ok ? 'check' : 'penalty', { size: 15, stroke: 2 })}${esc(d.ready.text)}`; }
+    if (tile) tile.innerHTML = Icons.svg(SETUP_KIND_ICON[v.sessionType] || 'racesetups', { size: 26, stroke: 1.6 });
+    box.innerHTML = `<span class="rsic rssayic">${Icons.svg('say', { size: 20, stroke: 1.7 })}</span><div class="rssaytext"><span class="rseye">In plain words</span><p>${d.say.map(p => (p.b ? `<b>${esc(p.t)}</b>` : esc(p.t))).join('')}</p></div>`;
+    railDraw(v, rctx);
   };
   // the buttons, the switches and the cards show what the form holds (1.70.0: they are only a face for the settings, which are kept as before)
   const syncControls = () => {
@@ -552,6 +577,7 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
     syncControls();
     fields.forEach(f => { const w = dlg.querySelector(`[data-key="${f.id}"]`); if (w) w.hidden = !isShown(f, getValue); });
     if (groups) groups.forEach(g => { const el = dlg.querySelector(`[data-fg="${g.id}"]`); if (el) el.hidden = !g.fields.some(f => isShown(f, getValue)); }); // a group with nothing to show is not shown
+    if (sections) sections.forEach(x => { const el = dlg.querySelector(`[data-fg="${x.id}"]`); if (el) el.hidden = !x.groups.some(g => g.fields.some(f => isShown(f, getValue))); }); // (1.71.0: nor is a section whose groups have nothing to show)
   };
   const drawGallery = () => {
     const box = byId('gal-box'); if (!box) return;
@@ -574,12 +600,20 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
     if (!item) fill(CarStats.details({}, [], [], []));
     else { CAR_STATS.forEach(f => { byId('f-' + f.key).value = 'Calculating…'; }); loadCarStats(item).then(fill).catch(() => { CAR_STATS.forEach(f => { byId('f-' + f.key).value = '–'; }); byId('f-_byTrack').textContent = '–'; }); }
   }
-  if (groups) dlg.querySelectorAll('.fgroup').forEach(el => { el.ontoggle = () => { const g = el.dataset.fg; if (el.open) opened.add(g); else opened.delete(g); }; }); // remembered for the next time the form opens
+  if (groups) dlg.querySelectorAll('.fgroup').forEach(el => { el.ontoggle = () => { const g = el.dataset.fg; if (el.open) { const fresh = !opened.has(g); opened.add(g); if (sections && fresh) { railCurrent = g; sayDraw(); } } else opened.delete(g); }; }); // remembered for the next time the form opens (1.71.0: the rail points at the section that was opened last)
   attachFrames(dlg, k => frames[k], (k, f) => { frames[k] = f; });
   dlg.onclick = ev => {
     const b = ev.target.closest('button'); if (!b) return;
     if (b.id === 'cancel') dlg.close();
     const d = b.dataset || {};
+    if (d.rail !== undefined && sections) { // a row of the rail: open that section and go to it (1.71.0)
+      const el = dlg.querySelector(`[data-fg="${d.rail}"]`); if (!el) return;
+      el.open = true; opened.add(d.rail); railCurrent = d.rail; sayDraw();
+      const calm = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'start', behavior: calm ? 'auto' : 'smooth' });
+      const head = el.querySelector && el.querySelector('summary'); if (head && typeof head.focus === 'function') head.focus({ preventScroll: true });
+      return;
+    }
     if (d.pick) { setValues({ [d.pick]: d.on !== undefined ? (getValue(d.pick) === d.on ? d.off : d.on) : d.val }); return; } // (a button of a segmented choice or of cards, or a switch: 1.70.0)
     if (d.kind !== undefined || d.format !== undefined || d.swaps !== undefined) { // the picker of a race setup: another kind, format or swaps
       const now = SetupWords.parts(formValues()); if (now.kind === 'race') raceMemory = { format: now.format, swaps: now.swaps };

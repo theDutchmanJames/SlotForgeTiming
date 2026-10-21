@@ -204,8 +204,8 @@ details .fields{margin:10px 0}
 .gcard h3{margin:4px 0 2px}.gd{font-size:14px}.gcard .row{margin-top:auto}
 
 /* ---- Race Setups (1.69.0): the row of kinds, the cards, and the pills and the sentence "In plain words" at the top of the form (the look of docs/ui-reference/race-setups) ---- */
-.rssay,.rscard{--rs-ok:#2fb86a;--rs-warn:#f2b705}
-[data-theme="light"] :is(.rssay,.rscard),[data-theme="ocean"] :is(.rssay,.rscard){--rs-ok:#1e8a4c;--rs-warn:#9a7400}
+.rssay,.rscard,.rsform{--rs-ok:#2fb86a;--rs-warn:#f2b705}
+[data-theme="light"] :is(.rssay,.rscard,.rsform),[data-theme="ocean"] :is(.rssay,.rscard,.rsform){--rs-ok:#1e8a4c;--rs-warn:#9a7400}
 .rsfilter{margin-left:0}
 .rscards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:stretch;margin-bottom:16px}
 .rscard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px 14px;display:flex;flex-direction:column;gap:12px}
@@ -378,6 +378,71 @@ dialog:has(.formgrid) form{display:flex;flex-direction:column;max-height:calc(90
 .formgrid .field[hidden]{display:none}
 .hint{font-size:12px}
 @media (max-width:760px){.formgrid,.fgrid{grid-template-columns:1fr}}
+
+/* ---- the form of a race setup with a rail (1.71.0, renderer/railform.js; the look of docs/ui-reference/race-setups/1 and 2): a header, a rail with the sections, the sections as cards, a bar with Save ---- */
+dialog:has(.rsform){width:min(1240px,96vw);padding:0;overflow:hidden;max-height:94vh}
+.rsform{display:flex;flex-direction:column;max-height:94vh;min-height:0}
+.rshd{display:flex;align-items:center;gap:16px;padding:18px 24px 14px;border-top:3px solid var(--accent);border-bottom:1px solid var(--line);flex:none}
+.rshd .rstile{width:52px;height:52px;border-radius:12px}
+.rshd .rstitle{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.rshd .rseye{margin:0}
+.rshd .field{margin:0}
+.rshd .field label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.rshd .field input{font-size:22px;font-weight:700;background:none;border:0;border-bottom:1px dashed var(--muted);border-radius:0;padding:2px 0 4px;max-width:520px}
+.rshd .field input:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-bottom-style:solid}
+.rsform .rsready{margin-left:0;flex:none;border:1px solid color-mix(in srgb,currentColor 45%,transparent);background:color-mix(in srgb,currentColor 12%,transparent);border-radius:999px;padding:6px 14px}
+.rsbody{display:grid;grid-template-columns:236px minmax(0,1fr);flex:1 1 auto;min-height:0;overflow:hidden}
+.rsrail{display:flex;flex-direction:column;gap:4px;padding:14px 12px;border-right:1px solid var(--line);overflow-y:auto;min-height:0;background:color-mix(in srgb,var(--bg) 45%,var(--panel))}
+.rsrl{margin:8px 8px 4px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.rsrl2{margin-top:18px}
+.rsri{position:relative;display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid transparent;border-radius:10px;background:none;color:var(--ink);padding:9px 10px;font:inherit;cursor:pointer}
+.rsri:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.rsri.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--panel))}
+.rsri:focus-visible{outline:3px solid #4c9aff;outline-offset:2px}
+.rsri[hidden],.rsrl[hidden]{display:none}
+.rsrt{display:flex;flex-direction:column;min-width:0;flex:1}
+.rsrt b{font-size:14.5px}
+.rsrt small{color:var(--muted);font-size:12.5px;line-height:1.35;overflow-wrap:anywhere}
+.rsic{display:inline-flex;flex:none;align-items:center;justify-content:center;width:28px;height:28px;color:var(--muted)}
+.rsri.on .rsic{color:var(--accent)}
+.rsdot.todo{background:var(--rs-warn)}
+.rssr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.rsused{margin-top:auto;border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:3px;font-size:13.5px}
+.rsused .rsrl{margin:0 0 2px}
+.rsmain{overflow-y:auto;min-height:0;padding:18px 24px 24px;scroll-padding-top:12px}
+.rsform .rssay{flex-direction:row;align-items:flex-start;gap:14px;max-height:none;overflow:visible;margin:0 0 14px;padding:14px 16px}
+.rssayic{width:36px;height:36px;border-radius:10px;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
+.rssaytext{min-width:0}
+.fgroup.rssec{border-left:1px solid var(--line);border-radius:12px;margin:0 0 12px}
+.fgroup.rssec>summary{display:flex;flex-wrap:nowrap;align-items:center;gap:12px;padding:12px 44px 12px 16px;background:none;border-radius:12px}
+.fgroup.rssec[open]>summary{background:color-mix(in srgb,var(--ink) 5%,var(--panel));border-radius:12px 12px 0 0;border-bottom:1px solid var(--line)}
+.fgroup.rssec>summary::before{left:auto;right:18px;transform:rotate(-45deg)}
+.fgroup.rssec[open]>summary::before{margin-top:-4px;transform:rotate(-135deg)}
+.fgroup.rssec>summary .rsic{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--bg)}
+.fgroup.rssec[open]>summary .rsic{color:var(--accent);border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.rssx{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 14px;flex:1;min-width:0}
+.rssx strong{font-size:16px}
+.rssec:not([open]) .rsq,.rssec[open] .rsrow{display:none}
+.rssec .fgrid{padding:16px 18px 4px}
+.rssub{border-top:1px solid var(--line);padding:2px 0 6px}
+.rssub:first-child{border-top:0}
+.rssub[hidden]{display:none}
+.rssubt{margin:14px 18px 2px;font-size:14.5px}
+.rssubn{margin:0 18px 2px}
+.rsfoot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 24px;border-top:1px solid var(--line);background:var(--panel);flex:none}
+.rsfoot .error{margin:0}
+.rsfoot .error:empty{display:none}
+.rsfoot .rsdef{margin-right:auto;font-size:13px}
+@media (max-width:860px){
+  dialog:has(.rsform){width:100vw;max-width:100vw}
+  .rsbody{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+  .rsrail{flex-direction:row;gap:6px;padding:8px 10px;border-right:0;border-bottom:1px solid var(--line);overflow-x:auto;overflow-y:hidden}
+  .rsrail .rsrl,.rsused,.rsrt small{display:none}
+  .rsri{width:auto;flex:none;padding:7px 12px}
+  .rshd{flex-wrap:wrap;padding:14px 16px}
+  .rsmain{padding:14px 14px 20px}
+  .rsfoot{padding:10px 14px}
+}
 .ed-pal,.ed-side{position:sticky;top:8px;max-height:calc(100vh - 16px);overflow-y:auto}
 
 /* app name and home header */
