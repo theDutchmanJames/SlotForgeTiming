@@ -256,7 +256,9 @@
 
   // a race that was interrupted (a crash, a power cut) and carried on says so under its result (1.9.0)
   const resumeText = session => (session && Number(session.resumed) > 0 ? `This race was interrupted and carried on${Number(session.resumed) > 1 ? ' ' + Number(session.resumed) + ' times' : ''}. The first lap of every car after it is not counted for records.` : '');
-  const api = { failureText, tyreStintsHtml, tyreStintsNote, tyreStints, tyreLetter, resumeText, heated, clockOf, enduranceText, stintLines, driversText, ownLaps, SESSION_COLUMNS, STINT_COLUMNS, RECORD_COLUMNS, FIGURE_KEYS, WINNER_TYPES, isWinner, isHeatWinner, heatTimeText, adjustedText, bopText, tyreText, damageText, outText, notesText, weatherText, figures, forSession, lapSpeed, lapLength, valueOf, text, hasAny, sessionColumns, notes, fmtSpeed, fmtScale, fmtDist, fmtSpread, fmtMs };
+  // a race limited by a time whose cars were ranked by the distance they drove says so under its result (1.64.0)
+  const compareText = session => (session && session.compareBy === 'distance' ? 'The places go to the car that drove the furthest (the laps times the length of its lane). With the same distance, the shortest time wins.' : '');
+  const api = { failureText, tyreStintsHtml, tyreStintsNote, tyreStints, tyreLetter, resumeText, compareText, heated, clockOf, enduranceText, stintLines, driversText, ownLaps, SESSION_COLUMNS, STINT_COLUMNS, RECORD_COLUMNS, FIGURE_KEYS, WINNER_TYPES, isWinner, isHeatWinner, heatTimeText, adjustedText, bopText, tyreText, damageText, outText, notesText, weatherText, figures, forSession, lapSpeed, lapLength, valueOf, text, hasAny, sessionColumns, notes, fmtSpeed, fmtScale, fmtDist, fmtSpread, fmtMs };
   root.Stats = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

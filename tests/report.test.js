@@ -20,6 +20,8 @@ ok('no points column in a normal race', !h.includes('<th>Points</th>'));
 ok('file name is safe and readable', fileName(session) === 'Friday -Sprint- 2026-10-11.pdf');
 ok('the day in the file name is the day the page shows (local time): a race at 00:30 on 2 October in Amsterdam is on the 2nd, not on the 1st (the UTC date)', fileName({ setupName: 'Club race', date: '2026-10-01T22:30:00Z' }) === 'Club race 2026-10-02.pdf' && sessionHtml({ session: { ...session, date: '2026-10-01T22:30:00Z' }, laps }).includes('2 October 2026'));
 ok('...a date that cannot be read keeps its first ten characters', fileName({ setupName: 'X', date: 'garbage-text-here' }) === 'X garbage-te.pdf' && fileName({ setupName: 'X' }) === 'X .pdf');
+ok('1.64.0: a result of a time race that was ranked by distance says so under the table (the furthest wins; the same distance: the shortest time), and a result ranked by laps does not', sessionHtml({ session: { ...session, sessionType: 'timed', compareBy: 'distance' }, laps }).includes('The places go to the car that drove the furthest')
+  && !sessionHtml({ session: { ...session, sessionType: 'timed' }, laps }).includes('drove the furthest') && !h.includes('drove the furthest'));
 ok('session without laps still makes a report', sessionHtml({ session, laps: [] }).includes('No laps were recorded.'));
 
 // heats with points

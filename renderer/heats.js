@@ -296,6 +296,7 @@
     let head = `${heatWord(st.heats)}, each ${each}`;
     if (o.by === 'time' && o.minutes) head += ` (${Math.round(st.heats * o.minutes * 1000) / 1000} minutes of racing in total)`;
     lines.push(head + '.');
+    if (o.by === 'time' && setup.compareBy === 'distance') lines.push('The cars of a heat are compared by the distance they drive (the laps times the length of the lane). With the same distance the shortest time wins.'); // (1.64.0)
     if (st.equal) lines.push(st.count > 1 ? `Every driver races ${heatWord(st.maxHeats)}.` : '');
     else if (sc.countBy === 'average') lines.push(`The drivers race ${st.minHeats} to ${st.maxHeats} heats. The result is the average per heat, so that is fair.`);
     else if (countedHeats(st.minHeats, sc) === countedHeats(st.maxHeats, sc)) lines.push(`The drivers race ${st.minHeats} to ${st.maxHeats} heats, but the same number of heats counts for everyone, so that is fair.`);

@@ -158,7 +158,7 @@ async function renderHome() {
   const typeLabel = rawSetup ? (state.schema.racesetups.fields.find(f => f.key === 'sessionType').options.find(o => o[0] === rawSetup.sessionType) || [, ''])[1] : '';
   // 1.58.0: the facts of the race setup as little pills under its name: the kind, how long (laps or minutes, where that is one number), the track and the number of lanes
   const lenText = !setup ? '' : setup.sessionType === 'race' && (!setup.raceBy || setup.raceBy === 'laps') && Number(setup.laps) > 0 ? `${Number(setup.laps)} lap${Number(setup.laps) === 1 ? '' : 's'}`
-    : (setup.sessionType === 'qualifying' || setup.sessionType === 'timed') && Number(setup.duration) > 0 ? `${Number(setup.duration)} min` : '';
+    : (setup.sessionType === 'qualifying' || setup.sessionType === 'timed') && Number(setup.duration) > 0 ? `${Number(setup.duration)} min${Distance.compareOn(setup) ? ' · by distance' : ''}` : ''; // (1.64.0: a time race whose cars are ranked by distance says so)
   const typeShort = typeLabel.replace(/ by laps or distance$/, ''); // ("Race by laps or distance" is "Race" here: the next pill says how long)
   const chipsHtml = [typeShort ? `<span class="hs-chip hs-type"><b>${esc(typeShort)}</b></span>` : '', lenText ? `<span class="hs-chip">${esc(lenText)}</span>` : '', track ? `<span class="hs-chip">${Icons.svg('pin', { size: 14 })}${esc(track.name)}</span>` : '',
     lanes ? `<span class="hs-chip">${lanes} lane${lanes === 1 ? '' : 's'}</span>` : ''].join('');

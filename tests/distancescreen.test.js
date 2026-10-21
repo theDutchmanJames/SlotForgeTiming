@@ -275,6 +275,70 @@ const view = () => run('Damage.view(live.engine(), [0, 1], performance.now(), li
     run('state.race = null; live = null'); timers.forEach(clearInterval);
   }
 
+  // ---------- 1.64.0: a race limited by a time, compared by distance ----------
+  {
+    const tsetup = over => ({ id: 'rc1', name: 'Clock', sessionType: 'race', raceBy: 'time', duration: 5, compareBy: 'distance', layout: 'DL', ...over });
+    const home = async (setup, track) => {
+      store.racesetups = [{ track: track.id, ...setup }]; store.tracks[0] = meas;
+      run("state.settings.lastSetupId = '" + setup.id + "'; state.settings.assignments = " + JSON.stringify({ [setup.id]: [{ driverId: 'd1', carId: 'c1' }, { driverId: 'd2', carId: 'c2' }] }) + "; state.tab = 'home'; state.race = null; live = null");
+      await run('render()'); await wait(30); return E('view').innerHTML.replace(/&quot;/g, '"');
+    };
+    let hh = await home(tsetup(), meas);
+    say('Home: a time race compared by distance on a track with lane lengths has no problem, can be started, and its pill says "by distance"', !hh.includes('has no length') && hh.includes('id="start"') && !/id="start"[^>]*disabled/.test(hh) && hh.includes('<span class="hs-chip">5 min · by distance</span>'));
+    hh = await home(tsetup({ compareBy: 'laps' }), meas);
+    say('...compared by laps it says nothing of it', hh.includes('<span class="hs-chip">5 min</span>') && !hh.includes('by distance'));
+    hh = await home(tsetup(), store.tracks[1]);
+    say('on a track without a length the distance cannot be worked out: Home says so, with the way out, and the race can not start', hh.includes('The cars are compared by distance, so the lane lengths are needed. The track has no length. Add the track length in the Database.') && /id="start"[^>]*disabled/.test(hh));
+    store.tracks[1] = { id: 'dn', name: 'No length', lanes: 2, laneModifier: 'measured', laneLengths: ', 10' };
+    hh = await home(tsetup(), store.tracks[1]);
+    say('...a lane without a length is named', hh.includes('The cars are compared by distance, so the lane lengths are needed. Lane 1 has no length. Add the lane lengths in the Database.') && !hh.includes('driver swaps are counted'));
+    store.tracks[1] = { id: 'dn', name: 'No length', lanes: 2 };
+    hh = await home(tsetup({ compareBy: 'laps' }), store.tracks[1]);
+    say('a time race compared by laps on a track without a length is no problem (as before), and neither is an old setup without the setting', !hh.includes('has no length') && !/id="start"[^>]*disabled/.test(hh)
+      && !(await home((({ compareBy, ...rest }) => rest)(tsetup()), store.tracks[1])).includes('has no length'));
+    hh = await home({ id: 'rc1', name: 'Heats', sessionType: 'heats', heatBy: 'time', duration: 4, compareBy: 'distance', heatPlan: 'manual', heats: 2, layout: 'DL' }, meas);
+    say('heats of a time compared by distance: the plan on Home says so', hh.includes('2 heats, each 4 minutes') && hh.includes('compared by the distance they drive'));
+    hh = await home({ id: 'rc1', name: 'Heats', sessionType: 'heats', heatBy: 'time', duration: 4, heatPlan: 'manual', heats: 2, layout: 'DL' }, meas);
+    say('...compared by laps it does not', hh.includes('2 heats, each 4 minutes') && !hh.includes('compared by the distance'));
+    hh = await home({ id: 'rc1', name: 'Heats', sessionType: 'heats', heatBy: 'time', duration: 4, compareBy: 'laps', heatPlan: 'manual', heats: 2, layout: 'DL' }, meas);
+    say('...also when the setting says laps', hh.includes('2 heats, each 4 minutes') && !hh.includes('compared by the distance'));
+    run('state.race = null; live = null');
+
+    // the race: lane 1 is 10 m, lane 2 is 10.5 m; both drive the same laps, lane 1 crosses the line first every time
+    const drive = async () => {
+      key(' '); await until(() => phase() === 'running', 5000); await wait(60);
+      await lapOn(0); await lapOn(1); await lapOn(0); await lapOn(1);
+      await until(() => eng().timeUp, 8000);
+      await lapOn(0); await lapOn(1);
+      await until(() => phase() === 'finished', 6000); await wait(150); await until(() => saved.length > 0, 5000);
+    };
+    saved.length = 0;
+    await openRace({ id: 'rc1', name: 'Clock', sessionType: 'race', raceBy: 'time', duration: 0.05, compareBy: 'distance', layout: 'DL' }, meas, rows(1, 2));
+    say('a time race compared by distance: the engine knows the lane lengths (10 m and 10.5 m), and the race header says it', !!eng().compare && eng().compare.by === 'distance' && eng().compare.lanes.map(l => l.length).join() === '10,10.5' && html().includes('compared by distance'));
+    await drive();
+    const ss = saved[0] && saved[0][0];
+    say('...three laps each (30 m and 31.5 m): lane 2 wins although lane 1 crossed the line first every time, and the session is saved as a Timed race compared by distance', !!ss && ss.sessionType === 'timed' && ss.compareBy === 'distance'
+      && ss.standings.map(x => x.driverId + ':' + x.laps).join() === 'd2:3,d1:3' && ss.standings[0].pos === 1);
+    run('state.race = null; live = null'); timers.forEach(clearInterval);
+
+    saved.length = 0;
+    await openRace({ id: 'rc1', name: 'Clock', sessionType: 'race', raceBy: 'time', duration: 0.05, layout: 'DL' }, meas, rows(1, 2));
+    say('the same race without the setting (an old setup) is compared by laps: no lane lengths in the engine, no note in the header', eng().compare === null && !html().includes('compared by distance'));
+    await drive();
+    const sl = saved[0] && saved[0][0];
+    say('...with equal laps the lowest time wins: lane 1 crossed first every time (Alex first), and the session has no compare note', !!sl && sl.standings.map(x => x.driverId + ':' + x.laps).join() === 'd1:3,d2:3' && !('compareBy' in sl));
+    run('state.race = null; live = null'); timers.forEach(clearInterval);
+
+    saved.length = 0;
+    await openRace({ id: 'rc1', name: 'Clock', sessionType: 'heats', heatBy: 'time', duration: 0.05, compareBy: 'distance', heatPlan: 'manual', heats: 1, layout: 'DL' }, meas, rows(1, 2));
+    say('heats of a time compared by distance: the engine of the heat knows the lane lengths, and the header says it', !!eng().compare && eng().compare.lanes.map(l => l.length).join() === '10,10.5' && html().includes('compared by distance'));
+    await drive();
+    const sh = saved[0] && saved[0][0];
+    say('...the heat is won by distance (lane 2), its row has the metres, and the saved session says it was compared by distance', !!sh && sh.compareBy === 'distance' && sh.heatResults[0].rows.map(r => r.pos + ':' + r.dist).join() === '1:31.5,2:30');
+    run('state.race = null; live = null'); timers.forEach(clearInterval);
+    store.tracks[0] = meas;
+  }
+
   reachedEnd = true;
   console.log(fails ? fails + ' DISTANCE SCREEN TESTS FAILED' : 'ALL DISTANCE SCREEN TESTS PASSED'); process.exit(fails ? 1 : 0);
 })();

@@ -55,9 +55,30 @@
     return { mode, round, distance: main, max: pos(setup.distanceMax), lanes: out };
   }
 
+  // Cars compared by distance (1.64.0): a race, a heat or an Endurance Race that is limited by a TIME can rank its cars by the distance they drove (the laps times the length of their lane) instead of by laps.
+  // The race still ends when the time is up; only the order changes. Works for a saved setup (race and raceBy 'time', heats and heatBy 'time', endurance by time or heat-based by time) and for the setup the race screen works with ('timed').
+  function timeLimited(s) {
+    const t = s && s.sessionType;
+    return t === 'timed' || (t === 'race' && s.raceBy === 'time') || (t === 'heats' && s.heatBy === 'time') || (t === 'endurance' && (s.enduranceBy === 'time' || (s.enduranceBy === 'heats' && s.heatBy === 'time')));
+  }
+  const compareOn = s => !!s && s.compareBy === 'distance' && timeLimited(s);
+  // -> null when the cars are compared by laps. Otherwise { by: 'distance', lanes: [{ lane, length }] }, one entry for every lane (length 0 when it is not known; the engine then compares by laps).
+  function compare(setup, track, lanes) {
+    if (!compareOn(setup)) return null;
+    const n = Math.max(1, Math.floor(Number(lanes)) || 1);
+    return { by: 'distance', lanes: Array.from({ length: n }, (_, l) => ({ lane: l, length: pos(Sp.laneLength(track || {}, l)) })) };
+  }
+  // Every lane needs a length for it, as a sentence for the Home tab ('no length' is in every sentence, as in swapProblem); '' when nothing is missing.
+  function compareProblem(setup, track, lanes) {
+    if (!compareOn(setup) || !track) return '';
+    const n = Math.max(1, Math.floor(Number(lanes)) || 1), missing = []; for (let l = 0; l < n; l++) if (!pos(Sp.laneLength(track, l))) missing.push(l + 1);
+    if (!missing.length) return '';
+    return `The cars are compared by distance, so the lane lengths are needed. ${missing.length === n ? 'The track has no length' : missing.length === 1 ? 'Lane ' + missing[0] + ' has no length' : 'Lanes ' + missing.join(', ') + ' have no length'}. Add ${missing.length === n ? 'the track length' : 'the lane lengths'} in the Database.`;
+  }
+
   // What keeps a distance race from being raced on this track, as a sentence for the Home tab; '' when nothing does.
   function problem(setup, track, lanes) {
-    if (!isOn(setup)) return '';
+    if (!isOn(setup)) return compareProblem(setup, track, lanes); // (a race by time that is compared by distance needs the lane lengths too)
     const n = Math.max(1, Math.floor(Number(lanes)) || 1), mode = modeOf(setup);
     if (!pos(setup.distance)) return 'This race setup has no distance. Add it in Race Setup.';
     if (!track) return '';
@@ -126,7 +147,7 @@
   const unitOf = (opt, setting) => (opt && (opt.unit === 'm' || opt.unit === 'ft') ? opt.unit : setting === 'ft' ? 'ft' : 'm');
   const smoothOn = opt => !(opt && opt.update === 'exact');
 
-  const api = { MODES, ROUNDS, isOn, modeOf, roundOf, reference, lapsFor, config, problem, swapProblem, lapsOfLane, expectedLap, look, text, lengthText,
+  const api = { MODES, ROUNDS, isOn, modeOf, roundOf, reference, lapsFor, config, problem, swapProblem, timeLimited, compareOn, compare, compareProblem, lapsOfLane, expectedLap, look, text, lengthText,
     DISTANCE_OPTIONS, DISTLEFT_OPTIONS, LAPSTOGO_OPTIONS, unitOf, smoothOn };
   root.Distance = api;
   if (typeof module !== 'undefined') module.exports = api;

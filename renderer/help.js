@@ -75,7 +75,7 @@ const Help = (() => {
         <ul>
           <li><b>Free practice</b>: no finish. It runs until you stop it and ranks the drivers by their best lap.</li>
           <li><b>Qualifying</b>: a timed session ranked by best lap. Two drivers with the same best lap: the one who set it first ranks higher. Its winner picks their lane first in the next race on the same track.</li>
-          <li><b>Race</b>: limited by a number of laps, a distance or a time (the setting <i>The race is limited by</i>). Laps or distance: the first to reach them wins. The race ends when the lead car finishes, or when every car has finished (see Distance races, below). A time: when the time is up every car finishes on its next crossing of the line (that lap still counts), and the most laps in the time wins; with the same number of laps the lowest total time wins. (Before 1.62.0 this was the session type <i>Timed race</i>: those setups are now a Race limited by a time.)</li>
+          <li><b>Race</b>: limited by a number of laps, a distance or a time (the setting <i>The race is limited by</i>). Laps or distance: the first to reach them wins. The race ends when the lead car finishes, or when every car has finished (see Distance races, below). A time: when the time is up every car finishes on its next crossing of the line (that lap still counts), and the most laps in the time wins; with the same number of laps the lowest total time wins (or <i>Cars are compared by</i> Distance, see Time races by distance). (Before 1.62.0 this was the session type <i>Timed race</i>: those setups are now a Race limited by a time.)</li>
           <li><b>Heat-based race</b>: several heats, each limited by laps or by time; the overall result adds the heats up. How the heats are planned and counted, and the finals, are explained in Heat races, below.</li>
           <li><b>Endurance Race</b>: a long race for teams, where the drivers of a team swap at the wheel in the pits (see Endurance Race, below).</li>
           <li><b>Time Token Session</b>: not a race. You sell track time per lane (see Time Token Sessions below).</li>
@@ -87,6 +87,13 @@ const Help = (() => {
           <li>The first car to drive its distance wins. The others rank by the distance they drove, and a gap is the time between two cars at the same distance. <i>The race may take at most</i> is a safety net.</li>
           <li><b>Driver swaps by distance</b>: in an Endurance Race choose <i>Distance</i> for the swaps. A swap is due after so many metres (or feet), <i>at the line</i> or <i>anywhere on the track</i> (worked out between two crossings). <b>Driver Swap Timer</b> shows "Swap in 12 m"; <b>Driver Swap Signal</b> flashes "Alex → Sam" until the swap is made. The results give every driver's distance.</li>
           <li>The Layout Editor folder <b>Position and Progress</b> has Distance Driven, Distance To Go and Laps To Go. <i>Smoothly</i> counts between two crossings from the lap time; <i>exact</i> changes at the line. They work in any race with laps. The text widgets know {distance}, {distleft}, {lapstogo} and {racedistance}.</li>
+        </ul>` },
+      { id: 'comparedist', title: 'Time races by distance', note: 'Rank a race or heat of a set time by the distance driven', body: `
+        <ul>
+          <li>A race or a heat limited by a <b>time</b> has the setting <b>Cars are compared by</b>: <i>Laps</i> (the standard) or <i>Distance</i>.</li>
+          <li>By distance the car that drove the furthest wins: the laps times the length of its lane (Database, Tracks). A shorter lane takes more laps for the same distance, so this is fairer when the lanes differ. With the same distance, or with laps the same laps, the shortest time wins.</li>
+          <li>The time ends the race as before: when it is up, every car finishes on its next crossing of the line, and that lap counts.</li>
+          <li>Every lane needs a length: Home says when one has none, and the race can not start. The heat results keep the metres of every car, and a saved result says it was ranked by distance.</li>
         </ul>` },
       { id: 'heatraces', title: 'Heat races', note: 'How the heats are planned', body: `
         <ul>

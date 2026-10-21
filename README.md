@@ -3193,3 +3193,21 @@ Good to know:
 - The saved heat results now hold the time of every driver in every heat (without and with penalties). An older version ignores them.
 - **Not done yet** (next releases, one at a time): a time race compared by distance (C), the scoring choices for heats (D), sectors for the order of cars that did not finish (E). The Driver stats grid has no Total time cell yet.
 - Tested: `tests/totaltime.test.js` (new) and new checks in `tests/live.test.js`. The code was broken on purpose 86 times: 82 caught, the other 4 cannot change the result. The first pass caught 65 of the 86; the others showed real gaps (a car that retired or is disqualified, times that are not numbers, a final after the heats, the settings the widget starts with, the dash for an engine that cannot tell the time) and got tests.
+
+## What to try (1.64.0): a race of a set time, compared by distance
+
+What changed: a **Race** limited by a **time** (and heats limited by a time) has a new setting, **Cars are compared by**, in the Length folder of the Race Setup, right under *Duration*. **Laps** is how it always was. **Distance** ranks the cars by the distance they drove: the laps times the length of their lane. With the same distance, the shortest time wins.
+
+How to try it:
+1. In the Database, give a track lane lengths (Tracks: the track length, and lane lengths such as 10, 10.5). Make a race setup: **Race**, **The race is limited by: A time**, a short **Duration**, and **Cars are compared by: Distance**.
+2. Open Home: the pill says *5 min · by distance*. Remove a lane length and Home says *The cars are compared by distance, so the lane lengths are needed* and the race cannot start; put it back.
+3. Start the race with **Simulated cars** off and count laps with the number keys (1 and 2): give lane 1 and lane 2 the same laps, lane 1 always first over the line. Lane 2 (10.5 m) wins: its laps are longer. Switch the setting to **Laps** and lane 1 wins on time.
+4. Look at the leaderboard and the gaps: a gap is the time between two cars at the same distance. After the time is up every car still finishes on its next crossing of the line, and that lap counts.
+5. Make a **heat-based race** with *Each heat is limited by: A time* and **Cars are compared by: Distance**: the heat plan on Home says that the cars of a heat are compared by distance. Each heat is won by distance.
+6. Open Database > Results and Records: the saved race says under its table that the furthest car wins, and so does the PDF.
+
+Good to know:
+- It needs the length of every lane. With one missing the race cannot start from Home (and if it does start, it compares by laps).
+- The overall result of heats still adds up **laps**: the scoring choices for heats of a time (laps or distance first, then time) are the next release (D). The heat rows already hold the metres of each car.
+- An older setup has no value for the setting and means **Laps**: nothing changes for it. It is not for qualifying, a race by laps or a race by a distance (they have their own ways to rank).
+- Tested: `tests/comparedist.test.js` (new) and new checks in `tests/distancescreen.test.js`, `tests/report.test.js` and `tests/screens.test.js`. The code was broken on purpose 39 times: 38 caught, the other one cannot change the result (a lane length that is not a number is already left out by the lane-length sum). The first pass caught 36 of the 39; the two others showed real gaps (the last decimals of a multiplication: 3 laps of 8.7 m and 1 lap of 26.1 m are the same distance, and the heat-plan sentence for a setup that says Laps) and got tests.

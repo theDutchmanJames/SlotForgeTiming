@@ -109,7 +109,11 @@
     // Distance Racing (cfg.distance, see distance.js): a race by laps whose lanes drive the laps that make up a distance, so a lane may have to drive more laps than another. Only in a race.
     // DS.lanes[lane] = { length (metres), laps }. The longest time the race may take (DS.max, minutes; 0 = no limit) ends it like the time of a timed race: every car finishes on its next crossing.
     const DS = cfg.distance && type === 'race' && Array.isArray(cfg.distance.lanes) && cfg.distance.lanes.length ? cfg.distance : null;
-    const dsLane = c => (DS ? DS.lanes[Math.max(0, Math.min(DS.lanes.length - 1, c.lane | 0))] : null);
+    // 1.64.0: a timed race (a race, a heat or an Endurance Race limited by a time) whose cars are compared by the distance they drove (cfg.compare = { by: 'distance', lanes: [{ lane, length }] }, see distance.js):
+    // the laps times the length of the lane decide the order, and with the same distance the lowest time. It needs the length of every lane: without, the cars are compared by laps. The race itself ends as before (when the time is up).
+    const TDS = type === 'timed' && cfg.compare && cfg.compare.by === 'distance' && Array.isArray(cfg.compare.lanes) && cfg.compare.lanes.length && cfg.compare.lanes.every(l => Number(l && l.length) > 0) ? cfg.compare : null;
+    const LS = DS || TDS; // the lanes with a length: a Distance Race, or a timed race compared by distance
+    const dsLane = c => (LS ? LS.lanes[Math.max(0, Math.min(LS.lanes.length - 1, c.lane | 0))] : null);
     const lenOf = c => { const d = dsLane(c); return d ? Number(d.length) || 0 : 0; };
     const lapLimit = type === 'race' ? (DS ? Math.max(0, ...DS.lanes.map(l => Number(l.laps) || 0)) || Number(cfg.laps) || 0 : Number(cfg.laps) || 0) : 0;
     const limitOf = c => { const d = dsLane(c); return d && Number(d.laps) > 0 ? Number(d.laps) : lapLimit; }; // the laps this car has to drive (0: no limit)
@@ -989,6 +993,7 @@
     // (a car that is out keeps the time of its last lap), and a car that is still racing when the race is stopped has the time the race lasted. t: the moment to read it at.
     // penalties: plus the time penalties and the corrections of the review (the time the results count); without them it is the time on the clock.
     R.spentOf = (c, t, penalties) => (c.done ? c.total : R.elapsed(t)) + (penalties ? addOf(c) : 0);
+    R.compare = TDS; R.distOf = c => (TDS ? prog(c) : null); // (1.64.0: the settings of a timed race that is compared by distance, or null; the metres a car has driven in it, laps times the length of its lane)
     R.lapLimit = lapLimit; R.limitOf = limitOf; R.distance = DS; // (limitOf: the laps this car has to drive; distance: the settings of a Distance Race, or null)
     // Did the car finish a race by laps? It drove all the laps, and was not retired or disqualified.
     R.finishedLaps = c => limitOf(c) > 0 && c.done && !c.retired && !c.dq && c.laps.length - (c.swapLost || 0) >= limitOf(c);
@@ -1072,7 +1077,7 @@
     // Distance Racing: the lanes differ in length, so the laps of two cars do not say who is ahead. A car that has driven its distance ranks first (the first to finish first); the others rank by the
     // distance they have driven (the laps times the length of their lane). A gap is the time between the two cars at the same distance, worked out between the crossings of the line.
     const reached = c => limitOf(c) > 0 && lapsOf(c) >= limitOf(c) && !c.dq;
-    const prog = c => lapsOf(c) * lenOf(c);
+    const prog = c => Math.round(lapsOf(c) * lenOf(c) * 1e6) / 1e6; // (rounded to a millionth of a metre: 5 laps of 8.2 m and 4 laps of 10.25 m are the same distance)
     const timeAt = (x, d) => { // the time (ms) at which car x had driven distance d, from the laps it has; null when it has not driven that far
       const L = lenOf(x); if (!(L > 0) || !(d >= 0)) return null;
       const full = Math.floor(d / L + 1e-9);
@@ -1092,7 +1097,7 @@
       const order = R.cars.map((_, i) => i).sort((x, y) => {
         const a = R.cars[x], b = R.cars[y];
         if (a.retired !== b.retired) return a.retired ? 1 : -1; // retired cars rank behind the rest
-        if (DS) { const ra = reached(a), rb = reached(b); if (ra !== rb) return ra ? -1 : 1; if (ra) return eff(a) - eff(b) || a.place - b.place || x - y; return prog(b) - prog(a) || eff(a) - eff(b) || x - y; }
+        if (LS) { const ra = reached(a), rb = reached(b); if (ra !== rb) return ra ? -1 : 1; if (ra) return eff(a) - eff(b) || a.place - b.place || x - y; return prog(b) - prog(a) || eff(a) - eff(b) || x - y; }
         if (type === 'race' && (a.adjLaps || b.adjLaps) && lapsOf(a) !== lapsOf(b)) return lapsOf(b) - lapsOf(a); // (laps added or taken off in the review count before who finished first)
         if (type === 'race' && a.done !== b.done) return a.done ? -1 : 1;
         if (type === 'race' && a.done && b.done) return lapsOf(b) - lapsOf(a) || eff(a) - eff(b) || a.place - b.place; // (a car that lost a lap in the review, or that retired early, ranks behind the cars that drove more laps: the time only decides between equal laps)
@@ -1107,7 +1112,7 @@
         else if (p > 0) {
           if (type === 'practice' || type === 'qualifying') gap = c.best === null ? '' : '+' + fmtTime(c.best - lead.best);
           // always a time: how long after the leader this car reached the lap it has completed (a lapped car is compared at its own lap count)
-          else if (DS) { const g = c.laps.length ? distGap(c, lead) : null; if (g !== null) gap = '+' + fmtTime(g); }
+          else if (LS) { const g = c.laps.length ? distGap(c, lead) : null; if (g !== null) gap = '+' + fmtTime(g); }
           else if (c.laps.length) gap = '+' + fmtTime(Math.max(0, cum(c, c.laps.length) + startOf(c) + addOf(c) - cum(lead, c.laps.length) - startOf(lead) - addOf(lead)));
         }
         return { pos: p + 1, index: i, car: c, gap };
@@ -1124,7 +1129,7 @@
         if (p > 0) {
           const L = st[0].car, A = st[p - 1].car;
           if (byBest) { if (c.best !== null && L.best !== null) lead = Math.max(0, c.best - L.best); if (c.best !== null && A.best !== null) ahead = Math.max(0, c.best - A.best); }
-          else if (DS) { if (c.laps.length) { lead = distGap(c, L); ahead = distGap(c, A); down = lenOf(L) > 0 ? Math.max(0, Math.floor((prog(L) - prog(c)) / lenOf(L) + 1e-9)) : 0; } }
+          else if (LS) { if (c.laps.length) { lead = distGap(c, L); ahead = distGap(c, A); down = lenOf(L) > 0 ? Math.max(0, Math.floor((prog(L) - prog(c)) / lenOf(L) + 1e-9)) : 0; } }
           else if (c.laps.length) {
             const n = c.laps.length, mine = val(c, n);
             lead = Math.max(0, mine - val(L, n)); ahead = Math.max(0, mine - val(A, n));
@@ -1307,6 +1312,7 @@
         const tm = fin ? (race.timeOf ? race.timeOf(r.car) : r.car.total + a.ms) : est;
         return { participant: r.car.participant, pos: r.pos, laps: race.lapsOf ? race.lapsOf(r.car) : r.car.laps.length, total: race.timeOf && Number.isFinite(race.timeOf(r.car)) ? race.timeOf(r.car) : a.ms && Number.isFinite(r.car.total) ? r.car.total + a.ms : r.car.total, best: r.car.best, points: (points[r.pos - 1] || 0) + (byPoints ? a.points : 0),
           ...(race.spentOf && Number.isFinite(race.spentOf(r.car, race.endAt, false)) ? { spent: race.spentOf(r.car, race.endAt, false), spentPen: race.spentOf(r.car, race.endAt, true) } : {}), // (1.63.0: the time the car raced in this heat, without and with penalties: the Total Time widget adds up the heats)
+          ...(race.compare && race.distOf && Number.isFinite(race.distOf(r.car)) ? { dist: race.distOf(r.car) } : {}), // (1.64.0: heats compared by distance: the metres the car drove in this heat)
           ...(byTime ? { fin, tm: Number.isFinite(tm) ? tm : null, ...(est !== null && Number.isFinite(est) ? { est: true } : {}) } : {}),
           ...(a.ms ? { adjMs: a.ms } : {}), ...(a.laps ? { adjLaps: a.laps } : {}), ...(byPoints && a.points ? { adjPoints: a.points } : {}), ...(note ? { bopNote: note } : {}), ...(tyres ? { tyreNote: tyres } : {}),
           ...(dnote ? { damageNote: dnote, damagePoints: r.car.dmgTotal || 0, repairs: (r.car.repairs || []).filter(q => !q.out).length, repairMs: r.car.repairMs || 0, ...(r.car.dmgOut ? { damageOut: r.car.dmgOut } : {}) } : {}),
