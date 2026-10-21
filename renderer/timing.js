@@ -122,10 +122,12 @@
   const finiteMin = (a, b) => { const x = Number.isFinite(a) ? a : Infinity, y = Number.isFinite(b) ? b : Infinity, m = Math.min(x, y); return m === Infinity ? null : m; };
   function overallState(S) {
     if (S.__over !== undefined) return S.__over;
-    const h = S.heat, ro = S.roster, pr = Array.isArray(S.prior) ? S.prior : [];
+    const se = S.season && Array.isArray(S.season.order) && S.season.order.length ? S.season : null, h = se || S.heat, ro = S.roster, pr = Array.isArray(S.prior) ? S.prior : [], pa = Array.isArray(S.past) ? S.past : []; // (1.68.0: in a race of a championship the order is that of the standings of the championship, if the race ended now)
     let res = null;
     if (h && Array.isArray(h.order) && h.order.length && Array.isArray(ro) && ro.length) {
       const kind = h.ovBy || 'laps', lead = h.order[0] ? h.order[0][1] : null, real = new Map(S.eng.cars.map(c => [c.participant, c])), cars = new Map();
+      // once the last heat is recorded (or the event was stopped after a heat) the engine on the screen is that heat and its laps are in what the heats left behind already: they are not counted a second time (1.68.0; 1.67.0 counted them twice)
+      const recorded = !!S.heat && S.phase === 'finished';
       const gapOf = score => { // how far behind the leader of the overall result, in what the result counts
         if (!Number.isFinite(score) || !Number.isFinite(lead)) return '';
         const d = kind === 'time' ? score - lead : lead - score;
@@ -133,12 +135,12 @@
         return kind === 'time' ? '+' + E.fmtTime(d) : kind === 'points' ? '−' + Math.round(d * 100) / 100 : kind === 'distance' ? '+' + Ds.text(d, S.distUnit === 'ft' ? 'ft' : 'm') : '+' + d + (d === 1 ? ' lap' : ' laps');
       };
       const rows = h.order.map(([p, score], i) => {
-        const id = ro[p] || {}, rc = real.get(p) || null, pri = pr.find(x => x && x.p === p) || null, pv = pri && Array.isArray(pri.valid) ? pri.valid : [], k = pv.length, shift = a => (Array.isArray(a) ? a.map(n => n + k) : []);
-        const vc = { virtual: true, real: rc, participant: p, lane: rc ? rc.lane : 1000 + p, prior: pri,
+        const id = ro[p] || {}, rc = real.get(p) || null, rl = rc && !recorded ? rc : null, pri = pr.find(x => x && x.p === p) || null, pst = pa.find(x => x && x.p === p) || null, pv = (pst && Array.isArray(pst.valid) ? pst.valid : []).concat(pri && Array.isArray(pri.valid) ? pri.valid : []), k = pv.length, shift = a => (Array.isArray(a) ? a.map(n => n + k) : []); // (the lap times of the earlier rounds, then those of the earlier heats)
+        const vc = { virtual: true, real: rc, participant: p, lane: rc ? rc.lane : 1000 + p, prior: pri, past: pst,
           driverId: id.driverId || '', carId: id.carId || '', driverName: id.driverName || '', nickname: id.nickname || '', callsign: id.callsign || '', flag: id.flag || '', avatar: id.avatar || '', carName: id.carName || '', carPicture: id.carPicture || '', carScale: id.carScale || '',
           teamId: id.teamId || '', teamName: id.teamName || '', teamPicture: id.teamPicture || '', asTeam: !!id.asTeam,
-          laps: pv.concat(rc ? rc.laps : []), bad: pv.map(() => false).concat(rc ? rc.bad || [] : []), invalid: rc ? shift(rc.invalid) : [], removed: rc ? shift(rc.removed) : [], pitLaps: rc ? shift(rc.pitLaps) : [],
-          best: finiteMin(pri && pri.best, rc && rc.best), lapsAll: (pri ? Number(pri.laps) || 0 : 0) + (rc ? (S.eng.lapsOf ? S.eng.lapsOf(rc) : rc.laps.length) : 0),
+          recorded, laps: pv.concat(rl ? rl.laps : []), bad: pv.map(() => false).concat(rl ? rl.bad || [] : []), invalid: rl ? shift(rl.invalid) : [], removed: rl ? shift(rl.removed) : [], pitLaps: rl ? shift(rl.pitLaps) : [],
+          best: finiteMin(finiteMin(pst && pst.best, pri && pri.best), rl && rl.best), lapsAll: (pst ? Number(pst.laps) || 0 : 0) + (pri ? Number(pri.laps) || 0 : 0) + (rl ? (S.eng.lapsOf ? S.eng.lapsOf(rl) : rl.laps.length) : 0),
           retired: !!(rc && rc.retired), dq: !!(rc && rc.dq), outOfFuel: !!(rc && rc.outOfFuel), blockAt: rc ? rc.blockAt : null, pending: rc ? rc.pending : [] };
         cars.set(vc.lane, vc);
         return { pos: i + 1, index: i, car: vc, gap: i === 0 ? '' : gapOf(score) };
@@ -150,12 +152,17 @@
   }
   // the time a participant has raced in all heats so far (and in this one): { heat, all }, the same as totalTimes; a driver who is not racing now has only the heats that are done
   function overallTotals(c, S0, t, penalties) {
-    if (c.real) return totalTimes(c.real, S0, t, penalties);
+    const add = c.past ? Number(penalties ? c.past.t0 : c.past.t1) || 0 : 0; // (1.68.0: the time of the earlier rounds of the championship)
+    if (c.real) { const v = totalTimes(c.real, S0, t, penalties); return { heat: v.heat, all: Number.isFinite(v.all) ? v.all + add : v.all }; }
     const h = S0.heat, mine = h && Array.isArray(h.before) ? h.before.find(x => x && x[0] === c.participant) : null, v = mine ? Number(penalties ? mine[1] : mine[2]) : NaN;
-    return { heat: NaN, all: Number.isFinite(v) ? v : NaN };
+    return { heat: NaN, all: Number.isFinite(v) ? v + add : add > 0 ? add : NaN };
   }
   // the championship points of a participant as the widget shows them: the heats that are done, and what the place of the car in the race that is racing now is worth
   function overallPoints(c, S0, live) {
+    if (S0.season && Array.isArray(S0.season.pts)) { // (1.68.0: a race of a championship: the points of the championship, with this race counted as if it ended now; without the live part: before this race)
+      const x = S0.season.pts.find(q => q && q[0] === c.participant), v = x ? x[live === false ? 2 : 1] : null;
+      return Number.isFinite(v) ? v : null;
+    }
     const ch = S0.champ; if (!ch || !ch.on) return null;
     let pts = ch.done.get(c.asTeam ? c.teamId : c.driverId) || 0;
     if (live !== false && c.real && ['running', 'paused', 'review'].includes(S0.phase) && S0.eng.cars.some(x => x.laps.length)) pts += ch.list[S0.rowOf(c.real).pos - 1] || 0;
@@ -170,9 +177,9 @@
       case 'totaltime': return { html: Wd.totalTimeHtml(overallTotals(c, S0, t, Wd.ttPenalties(opt)), Wd.ttScope(opt) === 'heat' ? { ...opt, scope: 'all' } : opt) }; // (in this board a total is a total: "this race or heat" counts as all heats; "both" shows both)
       case 'champpoints': { const v = overallPoints(c, S0, opt.live); return { html: v === null ? '–' : String(v) }; }
       case 'distance': {
-        const pri = c.prior, cur = c.real ? distLook(S0, c.real, Ds.smoothOn(opt)).driven : 0;
-        if ((pri && !Number.isFinite(pri.dist)) || cur === null || (!pri && !c.real)) return { html: '–' }; // (a heat without metres: the total cannot be added up)
-        return { html: esc(Ds.text((pri ? pri.dist : 0) + cur, distUnit(S0, opt), opt.decimals)) };
+        const pri = c.prior, pst = c.past, cur = c.real && !c.recorded ? distLook(S0, c.real, Ds.smoothOn(opt)).driven : 0;
+        if ((pri && !Number.isFinite(pri.dist)) || (pst && !Number.isFinite(pst.dist)) || cur === null || (!pri && !pst && !c.real)) return { html: '–' }; // (a heat or a round without metres: the total cannot be added up)
+        return { html: esc(Ds.text((pri ? pri.dist : 0) + (pst ? pst.dist : 0) + cur, distUnit(S0, opt), opt.decimals)) };
       }
       default: return c.real ? widgetContent({ ...w, lane: c.real.lane }, S0) : { html: '–' }; // (the car that is racing now; a driver who is not on track has nothing)
     }

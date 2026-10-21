@@ -17,7 +17,7 @@ const LiveShare = (() => {
     const { eng, layout, base } = ctx;
     const st = eng.standings(), tk = ctx.tokens ? Tk.view(ctx.tokens) : null;
     const champ = ctx.champ ? { on: !!ctx.champ.on, list: ctx.champ.list || [], done: new Map(ctx.champ.done || []) } : { on: false, list: [], done: new Map() };
-    return { champ, roster: ctx.roster || null, prior: ctx.prior || null, rowDesigns: ctx.rowDesigns || [], imageSets: ctx.imageSets || [], teams: ctx.teams || [], clubLogo: ctx.clubLogo || '', distUnit: ctx.distUnit === 'ft' ? 'ft' : 'm', eng, track: ctx.track, now: ctx.now, phase: ctx.phase, calling: !!ctx.calling, lights: ctx.lights, setup: ctx.setup, heat: ctx.heat,
+    return { champ, roster: ctx.roster || null, prior: ctx.prior || null, past: ctx.past || null, season: ctx.season || null, rowDesigns: ctx.rowDesigns || [], imageSets: ctx.imageSets || [], teams: ctx.teams || [], clubLogo: ctx.clubLogo || '', distUnit: ctx.distUnit === 'ft' ? 'ft' : 'm', eng, track: ctx.track, now: ctx.now, phase: ctx.phase, calling: !!ctx.calling, lights: ctx.lights, setup: ctx.setup, heat: ctx.heat,
       carByLane: l => eng.cars.find(c => c.lane === l) || null, rowOf: c => st.find(x => x.car === c),
       flashOf: c => ctx.flash.get(c), standings: () => st, tokens: tk,
       laneColorsOf: lane => { // (a lane whose time is up is the colour for that, whatever colour the lane has)
@@ -32,7 +32,7 @@ const LiveShare = (() => {
   const sendable = cfg => Object.fromEntries(Object.entries(cfg || {}).filter(([, v]) => typeof v !== 'function'));
   // sent once per engine (a new heat has new cars): c = { raceId, title, eng, setup, layout, track, lanes, base }
   function packStatic(c) {
-    return { raceId: c.raceId, title: c.title, cfg: sendable(c.eng.cfg), setup: c.setup, layout: c.layout, track: c.track, lanes: c.lanes, rowDesigns: c.rowDesigns || [], imageSets: c.imageSets || [], teams: c.teams || [], clubLogo: c.clubLogo || '', distUnit: c.distUnit === 'ft' ? 'ft' : 'm', tokenUi: c.tokenUi || null, roster: c.roster || null, prior: c.prior || null, // (roster and prior: a heat race, for a leaderboard that counts over all heats; 1.67.0)
+    return { raceId: c.raceId, title: c.title, cfg: sendable(c.eng.cfg), setup: c.setup, layout: c.layout, track: c.track, lanes: c.lanes, rowDesigns: c.rowDesigns || [], imageSets: c.imageSets || [], teams: c.teams || [], clubLogo: c.clubLogo || '', distUnit: c.distUnit === 'ft' ? 'ft' : 'm', tokenUi: c.tokenUi || null, roster: c.roster || null, prior: c.prior || null, past: c.past || null, // (roster and prior: a heat race, for a leaderboard that counts over all heats, 1.67.0; past: what the earlier rounds of a championship left behind, 1.68.0)
       base: { personal: [...c.base.personal], track: fin(c.base.track), trackName: c.base.trackName } };
   }
 
@@ -43,7 +43,7 @@ const LiveShare = (() => {
   const cap = v => { if (typeof v !== 'number' || !Number.isFinite(v)) return v; const r = Math.round(v * 1000) / 1000; return r === v || shown(r) === shown(v) ? r : v; };
   // everything of the dynamic data that is not a list that grows: c = { raceId, eng, phase, calling, lights, heat, flash, bestAll, bestAllName, bestBy, now }
   function core(c) {
-    const e = c.eng, d = { raceId: c.raceId, sentNow: cap(c.now), phase: c.phase, calling: !!c.calling, lights: c.lights, heat: c.heat, bestAll: cap(fin(c.bestAll)), bestAllName: c.bestAllName, bestBy: [...c.bestBy].map(([k, v]) => [k, cap(v)]), champ: c.champ || null, tokens: c.tokens ? { ...c.tokens, ends: c.tokens.ends.map(cap) } : null,
+    const e = c.eng, d = { raceId: c.raceId, sentNow: cap(c.now), phase: c.phase, calling: !!c.calling, lights: c.lights, heat: c.heat, season: c.season || null, bestAll: cap(fin(c.bestAll)), bestAllName: c.bestAllName, bestBy: [...c.bestBy].map(([k, v]) => [k, cap(v)]), champ: c.champ || null, tokens: c.tokens ? { ...c.tokens, ends: c.tokens.ends.map(cap) } : null,
       flash: [...c.flash].map(([car, f]) => [e.cars.indexOf(car), cap(f.at), cap(f.time), f.kind]).filter(x => x[0] >= 0) };
     ENG.forEach(k => { d[k] = cap(e[k]); });
     return d;
@@ -146,7 +146,7 @@ const LiveShare = (() => {
       shared(localNow) {
         const d = dyn, t = v.clock(localNow), flash = new Map();
         d.flash.forEach(([i, at, time, kind]) => { if (eng.cars[i]) flash.set(eng.cars[i], { at, time, kind }); });
-        return makeShared({ eng, track: stat.track, now: t, phase: d.phase, calling: !!d.calling, lights: d.lights, setup: stat.setup, heat: d.heat, flash, layout: stat.layout, rowDesigns: stat.rowDesigns, imageSets: stat.imageSets, teams: stat.teams, clubLogo: stat.clubLogo, distUnit: stat.distUnit, roster: stat.roster || null, prior: stat.prior || null,
+        return makeShared({ eng, track: stat.track, now: t, phase: d.phase, calling: !!d.calling, lights: d.lights, setup: stat.setup, heat: d.heat, flash, layout: stat.layout, rowDesigns: stat.rowDesigns, imageSets: stat.imageSets, teams: stat.teams, clubLogo: stat.clubLogo, distUnit: stat.distUnit, roster: stat.roster || null, prior: stat.prior || null, past: stat.past || null, season: d.season || null,
           champ: d.champ, tokens: d.tokens || null, bestAll: d.bestAll === null ? Infinity : d.bestAll, bestAllName: d.bestAllName, bestBy: new Map(d.bestBy),
           base: { personal, track: stat.base.track === null ? Infinity : stat.base.track, trackName: stat.base.trackName } });
       }

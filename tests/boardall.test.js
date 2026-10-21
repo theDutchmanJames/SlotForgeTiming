@@ -142,7 +142,7 @@ ok('the order everybody stands in: Sam 4 laps, Kim 3 (2 in the heats before and 
 
 // ---- the setting ----
 { const d = Wd.def('leaderboard'), o = d.options.find(x => x.key === 'countOver');
-  ok('the Leaderboard widget has "Count over": this race or heat (the standard, so a layout from before looks as it did) or all heats so far', !!o && o.type === 'select' && o.default === 'heat' && o.choices.map(c => c[0]).join() === 'heat,all' && o.choices[0][1] === 'This race or heat' && o.choices[1][1] === 'All heats so far');
+  ok('the Leaderboard widget has "Count over": this race or heat (the standard, so a layout from before looks as it did) or all heats and rounds so far', !!o && o.type === 'select' && o.default === 'heat' && o.choices.map(c => c[0]).join() === 'heat,all' && o.choices[0][1] === 'This race or heat' && o.choices[1][1] === 'All heats and rounds so far');
   ok('...with a hint that says what it remembers and what it does not', o.hint.includes('total time') && o.hint.includes('best lap') && o.hint.includes('average') && o.hint.includes('points') && o.hint.includes('dash'));
   ok('...it is not a setting of the classic table only: it shows for a row design and for the classic table alike', !o.classic && !o.rowsOnly);
   ok('...and the widget starts with it at the standard', Wd.newWidget('leaderboard', null, 0, 0).opt === undefined || (Wd.newWidget('leaderboard', null, 0, 0).opt || {}).countOver === undefined);
@@ -195,6 +195,12 @@ ok('the order everybody stands in: Sam 4 laps, Kim 3 (2 in the heats before and 
   // Distance: the metres of the heats before, added to the metres of the car on track
   const dprior = f => priorOf(H).map(x => (x.p === 1 ? f(x) : x));
   ok('Distance of a driver who is not on track: a dash when he has not raced, a dash when his heats had no metres, the total when they had', show(mkS(q3, { prior: priorOf(H).filter(x => x.p !== 1) }), 'distance', 'Sam') === '–' && show(mkS(q3), 'distance', 'Sam') === '–' && /^25(\.0+)? m$/.test(show(mkS(q3, { prior: dprior(x => ({ ...x, dist: 25 })) }), 'distance', 'Sam')));
+  // 1.68.0: what the rounds of a championship left behind (past) is added to what the heats left behind
+  const pastS = { p: 1, laps: 5, best: 5000, valid: [5000, 5100], t0: 10500, t1: 10100, dist: 40 }, { dist: _d, ...pastNoDist } = pastS, noBefore = heatInfo({ before: H.spentBy().filter(x => x[0] !== 1) });
+  ok('Total time of a driver who is not on track: the heats before and the rounds (26.500 + 10.500 with the penalties and the extra time of the rounds, 26.500 + 10.100 without), the heats alone when he took part in no round', show(mkS(q3, { past: [pastS] }), 'totaltime', 'Sam') === '37.000' && show(mkS(q3, { past: [pastS] }), 'totaltime', 'Sam', { penalties: 'without' }) === '36.600' && show(mkS(q3, { past: [] }), 'totaltime', 'Sam') === '26.500');
+  ok('...a driver who raced in no heat yet but in the rounds has the time of the rounds, one who raced in neither has a dash', show(mkS(q3, { past: [pastS], heat: noBefore }), 'totaltime', 'Sam') === '10.500' && show(mkS(q3, { heat: noBefore }), 'totaltime', 'Sam') === '–');
+  ok('Distance of a driver who is not on track adds up the heats and the rounds (25 m + 40 m), the rounds alone when he raced in no heat; a dash when the heats or the rounds have no metres', /^65(\.0+)? m$/.test(show(mkS(q3, { prior: dprior(x => ({ ...x, dist: 25 })), past: [pastS] }), 'distance', 'Sam')) && /^40(\.0+)? m$/.test(show(mkS(q3, { prior: priorOf(H).filter(x => x.p !== 1), past: [pastS] }), 'distance', 'Sam'))
+    && show(mkS(q3, { prior: dprior(x => ({ ...x, dist: 25 })), past: [pastNoDist] }), 'distance', 'Sam') === '–' && show(mkS(q3, { prior: dprior(x => ({ ...x })), past: [pastS] }), 'distance', 'Sam') === '–');
   // the Tyre life column of the classic table: the car on track has its tyres, a driver who is not on track has a dash
   const TW = require('../renderer/tyrewear.js');
   const qt = (() => { const q = E.createRace({ type: 'race', laps: 2, endRule: 'all', tyrewear: TW.clean({}), entries: H.entries().map(e => ({ ...e, tyre: 'S' })) }); q.start(100000); finish(q, [[0, 4000]]); return q; })();

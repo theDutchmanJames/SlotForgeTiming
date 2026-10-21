@@ -70,6 +70,8 @@
   const averageLaps = c => c.laps.filter((_, n) => !(c.bad || [])[n] && !(c.invalid || []).includes(n) && !(c.pitLaps || []).includes(n) && !(c.removed || []).includes(n));
   // 1.67.0: what a leaderboard that counts over all heats remembers of a participant after a heat: the lap times that count (the average and the median are made of them, in ms rounded to 3 decimals),
   // the metres (m: of this heat, or not a number when the heat does not know them; dn counts the heats that did, n all heats, so the total is only told when every heat knew its metres)
+  // 1.68.0: a short text that changes whenever something that is in the result of a race changes (laps, a finish, penalties, corrections, sectors, the other damage that puts a car out): a leaderboard that counts over the rounds makes its order again only then
+  const stampOf = race => race.cars.map(c => [c.laps.length, c.done ? 1 : 0, c.total, c.dq ? 1 : 0, c.retired ? 1 : 0, c.dmgOut ? 1 : 0, c.failOut ? 1 : 0, c.points, c.adjMs, c.adjLaps, c.adjPoints, c.removed.length, c.invalid.length, c.extraMs, c.sector, c.secOrder, c.best].join(':')).join('|');
   const memoStep = (a, c, m) => { const p = a || { laps: [], dist: 0, dn: 0, n: 0 }; return { laps: p.laps.concat(averageLaps(c).map(t => Math.round(t * 1000) / 1000)), dist: p.dist + (Number.isFinite(m) ? m : 0), dn: p.dn + (Number.isFinite(m) ? 1 : 0), n: p.n + 1 }; };
 
   // cfg: { type: practice|qualifying|race|timed, laps, duration (minutes), endRule: all|leader, minLap, fuel: fuelConfig(...), entries: [...] }
@@ -1388,7 +1390,7 @@
     // 1.67.0, for a leaderboard that counts over all heats: what the overall result counts (to tell the gap in it: time, points, metres or laps; metres only when the heats really counted them),
     // and a short text that changes whenever something that is in the result of the race that is racing now changes (laps, a finish, penalties, corrections, sectors), to see when the order has to be made again
     H.kind = rows => (byTime ? 'time' : byPoints ? 'points' : rows && rows.some(o => o.measure === 'distance') ? 'distance' : 'laps');
-    H.stamp = race => H.results.length + ':' + (race ? race.cars.map(c => [c.laps.length, c.done ? 1 : 0, c.total, c.dq ? 1 : 0, c.retired ? 1 : 0, c.points, c.adjMs, c.adjLaps, c.adjPoints, c.removed.length, c.invalid.length, c.extraMs, c.sector, c.secOrder, c.best].join(':')).join('|') : '-');
+    H.stamp = race => H.results.length + ':' + (race ? stampOf(race) : '-');
     H.record = race => {
       const result = build(race);
       H.results.push(result); H.idx++;
@@ -1463,7 +1465,7 @@
     return H;
   }
 
-  const api = { fuelUse, goodLaps, averageLaps, memoStep, penaltyConfig, penaltyMs, fuelConfig, yellowConfig, createRace, createHeatRace, scoringOf, finalsOf, finalSizes, buildSchedule, fmtTime, MIN_LAP };
+  const api = { fuelUse, goodLaps, averageLaps, memoStep, stampOf, penaltyConfig, penaltyMs, fuelConfig, yellowConfig, createRace, createHeatRace, scoringOf, finalsOf, finalSizes, buildSchedule, fmtTime, MIN_LAP };
   root.RaceEngine = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

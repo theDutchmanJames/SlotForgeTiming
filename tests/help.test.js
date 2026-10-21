@@ -329,8 +329,9 @@ const folders = Help.folders();
   say('...and the folder is still short enough', g.length < 1400); }
 // ---- 1.67.0: a leaderboard that counts over all heats ----
 { const fo = folders.find(x => x.id === 'live'), g = fo ? plain(fo.body) : '';
-  say('1.67.0: the Live Race folder says that Count over: All heats so far makes a board of a heat race remember the heats before (all drivers in the overall order, time, laps, best and average lap and points added up)', !!fo && g.includes('Count over') && g.includes('All heats so far') && g.includes('heat race') && g.includes('overall order') && g.includes('points added up'));
-  say('...the words are the ones of the board settings in the app (the name of the setting and its choice)', read('renderer/widgets.js').includes("label: 'Count over'") && read('renderer/widgets.js').includes("'All heats so far'"));
+  say('1.67.0: the Live Race folder says that Count over makes a board of a heat race show all drivers in the overall order, with time, laps, best and average lap and points added up', !!fo && g.includes('Count over') && g.includes('heat race') && g.includes('overall order') && g.includes('points added up'));
+  say('1.68.0: ...and that it counts over the heats and the rounds of a championship too (the choice is named All heats and rounds so far)', !!fo && g.includes('All heats and rounds so far') && g.includes('championship board'));
+  say('...the words are the ones of the board settings in the app (the name of the setting and its choice)', read('renderer/widgets.js').includes("label: 'Count over'") && read('renderer/widgets.js').includes("'All heats and rounds so far'"));
   say('...and the folder is still short enough', g.length < 1400); }
 
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);
