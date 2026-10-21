@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Race Setup editor, heats</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./rs.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="win" style="width: 1240px; height: 2030px; font-family: Inter, system-ui, sans-serif; color: #e8e6e1">
+
+<div class="top">
+<div class="tile"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></div>
+<div class="grow">
+<div class="eyebrow">Race setup</div>
+<h1 class="name">Saturday heats</h1>
+<div class="pills">
+<span class="pill red">Race</span>
+<span class="pill red">Heats</span>
+<span class="pill">6 heats of 3 minutes</span>
+<span class="pill">Living room</span>
+<span class="pill">4 lanes</span>
+</div>
+</div>
+<span class="status"><span class="dot"></span>Ready to race</span>
+</div>
+
+<div class="body">
+
+<div class="rail">
+<div class="cap">This setup</div>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg><span><span class="t">Session</span><span class="s">Race · heats</span></span><span class="dot sp"></span></button>
+<button class="ri on"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg><span><span class="t">Heats</span><span class="s">3 each · mixed by qualifying</span></span><span class="dot sp"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3"/></svg><span><span class="t">Ends and winner</span><span class="s">Most points · best 2 count</span></span><span class="dot sp"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6.5" cy="12" r="2.5"/><circle cx="12" cy="12" r="2.5"/><circle cx="17.5" cy="12" r="2.5"/></svg><span><span class="t">Start</span><span class="s">Lights, 3 to 5 s</span></span><span class="dot sp off"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg><span><span class="t">Rules and systems</span><span class="s">Penalty · Fuel</span></span><span class="dot sp"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg><span><span class="t">Screens and sound</span><span class="s">Main and second screen</span></span><span class="dot sp off"></span></button>
+<div class="cap" style="margin-top: 14px">Only if you need it</div>
+<button class="ri off"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg><span><span class="t">Advanced</span><span class="s">Yellow flag · pads · Trackmate · box</span></span><span class="dot sp off"></span></button>
+<div style="flex: 1"></div>
+<div class="note info" style="flex-direction: column; gap: 4px">
+<span class="eyebrow mute">Used by</span>
+<span>Saturday series</span>
+</div>
+</div>
+
+<div class="main">
+
+<div class="say">
+<div class="tile"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg></div>
+<div>
+<div class="eyebrow mute">In plain words</div>
+<p>A <b>race in heats</b> on <b>Living room</b>. Every driver races <b>3 heats</b>, <b>6 heats</b> in all, each over after <b>3 minutes</b>. Drivers are mixed fast and slow by the latest qualifying. A heat scores points by position, the <b>best 2 heats</b> of every driver are added up and <b>the most points wins</b>.</p>
+</div>
+</div>
+
+<div class="sec">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg></span>
+<span class="st">Session</span><span class="sv" style="margin-left: 14px">Race, heats, no driver swaps, on Living room</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></span>
+<span class="st">Heats</span><span class="sn">Who races, and when?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="q">
+<div class="l">The heats are raced by</div>
+<span class="seg" style="align-self: flex-start"><button class="on">Drivers</button><button>Teams</button></span>
+<span class="hint">Teams are made under Database, Teams.</span>
+</div>
+
+<div class="q">
+<div class="l">How the heats are planned</div>
+<div class="cards c4">
+<button class="kc"><span class="kt">A number I choose</span><span class="kd">You set how many heats there are.</span></button>
+<button class="kc on"><span class="kt">Same for every driver</span><span class="kd">You set how many heats each driver races.</span></button>
+<button class="kc"><span class="kt">Everyone meets everyone</span><span class="kd">Round robin: every pair races together.</span></button>
+<button class="kc"><span class="kt">Every lane once</span><span class="kd">Every driver races once in every lane.</span></button>
+</div>
+</div>
+
+<div class="row" style="gap: 22px">
+<div class="q"><div class="l">Heats per driver</div><span class="in"><strong>3</strong><span>heats</span></span></div>
+<div class="q"><div class="l">Break between heats</div><span class="in"><strong>60</strong><span>seconds</span></span></div>
+<span class="pill green" style="align-self: flex-end; margin-bottom: 9px">8 drivers on 4 lanes: 6 heats</span>
+</div>
+
+<div class="sw">
+<button class="tg" aria-label="The start lights begin by themselves when the break is over"></button>
+<span><b>The start lights begin by themselves when the break is over</b><br><span class="hint">Off: you press Start for the next heat.</span></span>
+</div>
+
+<div class="q">
+<div class="l">Who races together</div>
+<span class="seg" style="align-self: flex-start"><button>Shuffled</button><button class="on">Mixed fast and slow</button><button>Fastest together, best heat last</button></span>
+<span class="hint">Uses the latest qualifying.</span>
+</div>
+
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3"/></svg></span>
+<span class="st">Ends and winner</span><span class="sn">How does a heat end, and who wins overall?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="q">
+<div class="l">Each heat is over after</div>
+<div class="row">
+<span class="seg"><button>Laps</button><button class="on">Time</button><button>Distance</button></span>
+<span class="in"><strong>3</strong><span>minutes</span></span>
+</div>
+</div>
+
+<div class="q">
+<div class="l">The overall winner is</div>
+<div class="cards c3">
+<button class="kc on"><span class="kt">Most points</span><span class="kd">Points for the position in every heat.</span></button>
+<button class="kc"><span class="kt">Most laps</span><span class="kd">The total laps over the heats that count.</span></button>
+<button class="kc"><span class="kt">Lowest total time</span><span class="kd">The shortest time over the heats that count.</span></button>
+</div>
+</div>
+
+<div class="q">
+<div class="l">Points<small>Per position in a heat, 1st first</small></div>
+<div class="row" style="gap: 10px">
+<span class="in" style="min-width: 0; padding: 0 12px"><span>1st</span><strong>6</strong></span>
+<span class="in" style="min-width: 0; padding: 0 12px"><span>2nd</span><strong>4</strong></span>
+<span class="in" style="min-width: 0; padding: 0 12px"><span>3rd</span><strong>2</strong></span>
+<span class="in" style="min-width: 0; padding: 0 12px"><span>4th</span><strong>1</strong></span>
+<span class="in" style="min-width: 0; padding: 0 12px; margin-left: 18px"><span>Fastest lap of a heat</span><strong>1</strong><span>bonus</span></span>
+</div>
+</div>
+
+<div class="q">
+<div class="l">The heats are added up</div>
+<div class="row">
+<span class="seg"><button>Total</button><button>Average</button><button class="on">Best heats</button></span>
+<span class="in"><strong>2</strong><span>heats count</span></span>
+</div>
+</div>
+
+<div class="sw">
+<button class="tg" aria-label="Drop the worst heat of every driver"></button>
+<span><b>Drop the worst heat of every driver</b></span>
+</div>
+
+<div class="cols">
+<div class="q"><div class="l">A tie is decided by</div><span class="in sel"><strong style="min-width: 0">The other measure, then the fastest lap</strong><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></div>
+<div class="q"><div class="l">Finals after the heats</div><span class="seg" style="align-self: flex-start"><button class="on">None</button><button>A final</button><button>A and B final</button></span></div>
+</div>
+
+<div class="note good">
+<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+<span><b>This is the one place you choose the winner.</b> In a single race the winner follows from how it ends, so the editor only tells you. With heats the result can be points, laps or time, so you decide.</span>
+</div>
+
+</div>
+</div>
+
+<div class="sec">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6.5" cy="12" r="2.5"/><circle cx="12" cy="12" r="2.5"/><circle cx="17.5" cy="12" r="2.5"/></svg></span>
+<span class="st">Start</span><span class="sv" style="margin-left: 14px">Lights out after 3 to 5 seconds</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+</div>
+</div>
+
+<div class="sec">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg></span>
+<span class="st">Rules and systems</span><span class="sv" style="margin-left: 14px">Penalty system, Fuel system</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+</div>
+</div>
+
+<div class="sec">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></span>
+<span class="st">Screens and sound</span><span class="sv" style="margin-left: 14px">Main screen and second screen layouts, audio set</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+</div>
+</div>
+
+<div class="sec">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></span>
+<span class="st">Advanced</span><span class="sv" style="margin-left: 14px">Yellow flag, adjust pads, Trackmate, SlotForge box. Nothing changed.</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="foot">
+<span class="hint">Everything else keeps its default.</span>
+<span class="grow"></span>
+<button class="btn ghost">Cancel</button>
+<button class="btn red">Save race setup</button>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":2030}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

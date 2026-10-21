@@ -76,3 +76,17 @@ Dutch asked for a look at the **Start a race** card and a small re-design in the
 | `7-start-race-driver-twice.png` | A problem that is not about one row (a driver on two lanes): it stays in the list under the rows |
 
 Option **B (not built)**: the lanes as a starting grid (a card per lane, side by side) with the driver and the car under the lane number; `source/B-*.dc.html`. How it is made: `renderer/landing.js` (`rowHtml`, `chipsHtml`, `lightsHtml`) and the block "Start a race (1.58.0)" in `renderer/styles.css`; the colours are the ones of the lanes on the race screen and the accent, green and amber of the theme.
+
+## race-setups/ (21 Oct 2026, design of the Race Setups editor and list; Stage 1 is built next, Stage 2 later)
+
+Dutch asked why the Race Setup form feels cluttered: "Session type" is one dropdown that answers three questions (what kind of session, one race or heats, do teams swap drivers), and laps / time / distance come back as a second question further down. The design says what a session is, how it ends and who wins, in short words. He said the pictures stay in this reference set, because **all the Systems and Setups pages will get this look later** (the plain-words sentence, the header pills, the section rail, cards on the list page). The PNGs are renders of the boards in `source/` (Inter font, 1x); `source/rs.css` is the shared stylesheet of the boards and holds the exact sizes and colours.
+
+| Picture | What it shows |
+|---|---|
+| `1-editor-one-race.png` | The editor of a single race: header with name, pills and "Ready to race"; the **section rail** (Option B of race-setup-tabs: every section with its value and a status dot, "Advanced" at the bottom, a "Used by" note); the **In plain words** sentence; **Session** (Kind cards, Format cards, swaps switch, Track); **Ends and winner** (Laps / Time / Distance with the number, how the race ends, who wins said in words); the other sections folded with their value on the row |
+| `2-editor-heats.png` | The same editor for a race in heats: the **Heats** section (who races, how the heats are planned, heats per driver, break, who races together) and **Ends and winner** with the overall winner (Most points / Most laps / Lowest total time), the points boxes, how the heats are added up, drop the worst heat, tie rule, finals |
+| `3-one-dropdown-three-questions.png` | Why: today's one dropdown against the questions one by one, the stored values that stay the same (nothing to migrate), and who wins for each way a race can end |
+| `4-wording-before-after.png` | The wording: today's label, the proposed one and why, for 14 settings, and the four rules for every label |
+| `5-race-setups-cards.png` | The Race Setups page as cards: kind eyebrow, pills, **Ends** and **Wins** in words, Edit / Delete, a kind filter, List / Cards, and "Start from a kind" |
+
+The stored values do not change: Kind x Format x Swaps maps one to one onto `sessionType` (practice, qualifying, race, heats, endurance, tokens) and `enduranceBy`, so old setups open unchanged. The sample numbers in the pictures (start lights 3 to 5 s, "Used by", 8 drivers on 4 lanes) are placeholders. Stage 1 (wording, merged sections, the plain-words sentence, header pills, cards on the list page) keeps today's folding sections; Stage 2 (the rail and the Kind / Format / Swaps picker) is not built yet.

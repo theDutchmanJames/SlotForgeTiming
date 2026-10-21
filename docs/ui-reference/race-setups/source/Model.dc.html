@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>One dropdown, three questions</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./rs.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="sheet" style="width: 1240px; height: 1120px; padding: 40px 44px; display: flex; flex-direction: column; gap: 22px; font-family: Inter, system-ui, sans-serif; color: #e8e6e1">
+
+<div>
+<span class="tag red">Why it feels unclear</span>
+<h1 style="margin-top: 12px">One dropdown answers three questions at once</h1>
+<p class="lead">Your reading is right. Session type is a shortcut, and Heat-based is the odd one out because it is a format, not a kind. Today the dropdown mixes what kind of session it is, whether it is one race or a series of heats, and whether teams swap drivers. Laps, time and distance then come back as a separate question further down.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+
+<div style="background: #1b2027; border: 1px solid #343b47; border-radius: 12px; padding: 20px 22px">
+<div class="eyebrow mute">Today: one dropdown</div>
+<div class="row" style="margin: 12px 0 14px">
+<span class="in sel" style="flex: 1"><span>Session type</span><strong style="min-width: 0">Heat-based race</strong><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span>
+</div>
+<table class="tab">
+<thead><tr><th>Option in the dropdown</th><th>What it really is</th></tr></thead>
+<tbody>
+<tr><td class="a">Free practice</td><td><span class="tag">Kind</span></td></tr>
+<tr><td class="a">Qualifying</td><td><span class="tag">Kind</span></td></tr>
+<tr><td class="a">Race</td><td><span class="tag">Kind</span> <span class="tag green">One race</span></td></tr>
+<tr><td class="a">Heat-based race</td><td><span class="tag green">Format: heats</span></td></tr>
+<tr><td class="a">Endurance Race</td><td><span class="tag red">Swaps</span> <span class="hint">and a second dropdown picks time, laps, distance or heats</span></td></tr>
+<tr><td class="a">Time Token Session</td><td><span class="tag">Kind</span> <span class="hint">not a race at all</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<div style="background: #1b2027; border: 1px solid #343b47; border-radius: 12px; padding: 20px 22px; display: flex; flex-direction: column; gap: 14px">
+<div class="eyebrow">Proposed: the questions, one by one</div>
+
+<div style="display: flex; gap: 14px; align-items: flex-start">
+<span style="width: 26px; height: 26px; border-radius: 50%; background: rgba(229,72,77,.18); color: #ff9a9d; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none">1</span>
+<div class="q" style="flex: 1"><div class="l">What kind of session is it?</div>
+<div class="row" style="gap: 8px"><span class="pill">Free practice</span><span class="pill">Qualifying</span><span class="pill red">Race</span><span class="pill">Time tokens</span></div></div>
+</div>
+
+<div style="display: flex; gap: 14px; align-items: flex-start">
+<span style="width: 26px; height: 26px; border-radius: 50%; background: rgba(229,72,77,.18); color: #ff9a9d; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none">2</span>
+<div class="q" style="flex: 1"><div class="l">One race or heats?<small>Races only</small></div>
+<div class="row" style="gap: 8px"><span class="pill red">One race</span><span class="pill">Heats</span></div></div>
+</div>
+
+<div style="display: flex; gap: 14px; align-items: flex-start">
+<span style="width: 26px; height: 26px; border-radius: 50%; background: rgba(229,72,77,.18); color: #ff9a9d; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none">3</span>
+<div class="q" style="flex: 1"><div class="l">Do teams swap drivers?<small>Races only</small></div>
+<div class="row" style="gap: 8px"><span class="pill red">No</span><span class="pill">Yes, in the pits</span></div></div>
+</div>
+
+<div style="display: flex; gap: 14px; align-items: flex-start">
+<span style="width: 26px; height: 26px; border-radius: 50%; background: rgba(229,72,77,.18); color: #ff9a9d; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none">4</span>
+<div class="q" style="flex: 1"><div class="l">How does it end?<small>Races only</small></div>
+<div class="row" style="gap: 8px"><span class="pill red">Laps</span><span class="pill">Time</span><span class="pill">Distance</span><span class="hint">and the number</span></div></div>
+</div>
+
+<div style="display: flex; gap: 14px; align-items: flex-start">
+<span style="width: 26px; height: 26px; border-radius: 50%; background: rgba(62,207,142,.16); color: #6fe0ae; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none">5</span>
+<div class="q" style="flex: 1"><div class="l">Who wins?</div>
+<span class="hint">One race: it follows from question 4, so it is only asked for a time race. Heats: you choose how the heats are added up.</span></div>
+</div>
+</div>
+
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+
+<div>
+<h2 style="margin-bottom: 4px">Nothing to migrate</h2>
+<div class="hint" style="margin-bottom: 10px">The new questions write the same stored values as today, so existing setups open unchanged.</div>
+<table class="tab">
+<thead><tr><th>Kind</th><th>Format</th><th>Swaps</th><th>Stored as</th></tr></thead>
+<tbody>
+<tr><td class="a">Free practice</td><td class="b">-</td><td class="b">-</td><td class="mono">practice</td></tr>
+<tr><td class="a">Qualifying</td><td class="b">-</td><td class="b">-</td><td class="mono">qualifying</td></tr>
+<tr><td class="a">Race</td><td>One race</td><td class="b">No</td><td class="mono">race</td></tr>
+<tr><td class="a">Race</td><td>Heats</td><td class="b">No</td><td class="mono">heats</td></tr>
+<tr><td class="a">Race</td><td>One race</td><td>Yes</td><td class="mono">endurance (time, laps or distance)</td></tr>
+<tr><td class="a">Race</td><td>Heats</td><td>Yes</td><td class="mono">endurance (heats)</td></tr>
+<tr><td class="a">Time tokens</td><td class="b">-</td><td class="b">-</td><td class="mono">tokens</td></tr>
+</tbody>
+</table>
+</div>
+
+<div>
+<h2 style="margin-bottom: 4px">Who wins</h2>
+<div class="hint" style="margin-bottom: 10px">Most of it is decided by how the race ends, so the editor says it in words instead of asking.</div>
+<table class="tab">
+<thead><tr><th>Ends after</th><th>One race</th><th>Heats</th></tr></thead>
+<tbody>
+<tr><td class="a">Laps</td><td class="w">Most laps, then the shortest time. Nothing to set.</td><td class="w" rowspan="3">You choose how the heats are added up: points, laps or total time.</td></tr>
+<tr><td class="a">Time</td><td class="w">You choose how cars are compared: by laps or by distance.</td></tr>
+<tr><td class="a">Distance</td><td class="w">Most laps, then the shortest time. Everyone drives the same distance.</td></tr>
+</tbody>
+</table>
+</div>
+
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":1120}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
