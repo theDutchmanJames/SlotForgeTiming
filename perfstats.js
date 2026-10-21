@@ -5,7 +5,8 @@ const STEP = 100;          // the core looks at the clock every 100 ms to see wh
 const KEEP = 60000;        // ...and remembers it for a minute
 const IDLE_STOP = 30000;   // nobody asked for 30 seconds: it stops looking (nothing runs when the Performance line is not shown)
 const STALL_MIN = 100;     // a stall of 100 ms or more is written down with its clock time (1.60.1)
-const STALLS_KEEP = 10, MARKS_KEEP = 10; // (the last ten of each are kept and given)
+const STALLS_KEEP = 10, MARKS_KEEP = 20; // (the last ten stalls and the last twenty notes are kept and given; 1.61.1: twenty notes, the saves and the lists sent add to them)
+const WATCH_MIN = 20;     // a full save of the database, or a list sent to the window, that takes 20 ms or more is written down as a note (1.61.1)
 
 function createCollector(d) {
   const now = d.now || Date.now, setI = d.setInterval || setInterval, clearI = d.clearInterval || clearInterval;
@@ -75,4 +76,28 @@ function createCollector(d) {
   return { collect, touch, stop, mark, running: () => st.timer !== null, sample, size: () => st.lags.length };
 }
 
-module.exports = { createCollector, STEP, KEEP, IDLE_STOP, STALL_MIN, STALLS_KEEP, MARKS_KEEP };
+// 1.61.1: what keeps the core busy and is not named by the stall figures alone: a full save of the database, and a list that is sent to the window (a list of slotcars holds all their
+// pictures; the copy to the window is made by Electron after the handler has answered, in the same turn of the core). Each one of WATCH_MIN ms or more becomes a note with the clock time
+// (the moment it was done), which the report prints under 'What happened', next to the stalls. A save tells its own time. For a list the time is taken from the call to the next turn of the
+// core (setImmediate): that is how long the core was busy with it, a little more when something else was waiting. Given: mark(text), the clock in ms, the next turn, how to size a list.
+const sizeWords = n => (!(n >= 0) ? '?' : n < 1e6 ? `${Math.round(n / 100) / 10} KB` : `${Math.round(n / 1e5) / 10} MB`);
+function createWatcher(d) {
+  const mark = d.mark, hr = d.hr || (() => Number(process.hrtime.bigint()) / 1e6), soon = d.soon || setImmediate, sizeOf = d.sizeOf || (() => NaN), min = typeof d.min === 'number' ? d.min : WATCH_MIN;
+  const note = text => { try { mark(text); } catch { /* a note that cannot be made is left out */ } };
+  const whole = n => Math.round(Number(n) || 0);
+  return {
+    // a full save of the database (Database.onSave tells how long each part took)
+    saved(info) {
+      try { if (!info || !(info.ms >= min)) return; note(`Saved the whole database: ${whole(info.ms)} ms (making the text ${whole(info.textMs)}, writing the file ${whole(info.fileMs)}), ${sizeWords(info.bytes)}`); } catch { /* nothing to note */ }
+    },
+    // a list that is sent to the window: call it in the handler, with the list that is given back
+    sent(name, value) {
+      try {
+        const t0 = hr(), label = String(name).slice(0, 30);
+        soon(() => { try { const ms = hr() - t0; if (ms < min) return; let size = '?'; try { size = sizeWords(sizeOf(value)); } catch { /* the time is worth a note without the size */ } note(`Sent the list of ${label} to the window: ${size}, the core was busy ${whole(ms)} ms`); } catch { /* nothing to note */ } });
+      } catch { /* nothing to watch */ }
+    }
+  };
+}
+
+module.exports = { createCollector, createWatcher, sizeWords, STEP, KEEP, IDLE_STOP, STALL_MIN, STALLS_KEEP, MARKS_KEEP, WATCH_MIN };

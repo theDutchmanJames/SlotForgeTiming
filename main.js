@@ -103,10 +103,13 @@ app.whenReady().then(() => {
     dialog.showErrorBox('SlotForge Timing cannot open its data', String(x && x.message || x));
     app.exit(1); return;
   }
+  // what keeps the core busy and is worth a note in the Performance report (1.61.1): a full save of the database, a list sent to the window (each from 20 ms)
+  const watch = require('./perfstats').createWatcher({ mark: t => { if (perfCollector) perfCollector.mark(t); }, sizeOf: Database.approxSize });
+  db.onSave = info => watch.saved(info);
   ipcMain.handle('schema', () => schema);
   ipcMain.handle('voices:report', () => require('./voicereport').collect()); // what this computer offers for text to speech (Audio Settings > Voice report)
   ipcMain.handle('db:path', () => db.file);
-  ipcMain.handle('db:list', (_e, entity) => db.list(entity));
+  ipcMain.handle('db:list', (_e, entity) => { const rows = db.list(entity); watch.sent(entity, rows); return rows; });
   ipcMain.handle('db:add', (_e, entity, item) => db.add(entity, item));
   ipcMain.handle('db:update', (_e, entity, id, patch) => db.update(entity, id, patch));
   ipcMain.handle('db:remove', (_e, entity, id) => db.remove(entity, id));

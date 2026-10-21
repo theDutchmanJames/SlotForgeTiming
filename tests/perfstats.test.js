@@ -136,7 +136,7 @@ function deps(over = {}) {
       ok(`${n} stalls written down: all ten of them are given when there are ten, the last ten when there are eleven`, r.stalls.length === 10 && r.stalls[9].ms === 100 + n - 1 && r.stalls[0].ms === 100 + n - 10);
       const y = deps(), L = createCollector(y.d); for (let i = 0; i < n; i++) L.mark('m' + i);
       const c = await L.collect();
-      ok(`...and the same for ${n} marks`, c.marks.length === 10 && c.marks[9].text === 'm' + (n - 1) && c.marks[0].text === 'm' + (n - 10)); } }
+      ok(`...and the same for ${n} marks`, c.marks.length === Math.min(n, 20) && c.marks[c.marks.length - 1].text === 'm' + (n - 1) && c.marks[0].text === 'm' + (n - Math.min(n, 20))); } }
   { const x = deps(), K = createCollector(x.d);
     K.mark('Live Race window opened (1460 ms in the core)');
     ok('a mark is kept when nobody is looking (no timer is started for it)', K.running() === false && x.timers.length === 0);
@@ -147,10 +147,10 @@ function deps(over = {}) {
     ok('...a mark that is not text, or empty, is left out; a long one is cut at 100', b.marks.length === 2 && b.marks[1].text.length === 100);
     for (let i = 0; i < 50; i++) K.mark('m' + i);
     const c = await K.collect();
-    ok('...at most the last 10 are given', c.marks.length === 10 && c.marks[9].text === 'm49' && c.marks[0].text === 'm40');
+    ok('...at most the last 20 are given (1.61.1: the saves and the lists sent add to the notes)', c.marks.length === 20 && c.marks[19].text === 'm49' && c.marks[0].text === 'm30');
     c.marks[0].text = 'changed';
-    ok('...as copies', (await K.collect()).marks[0].text === 'm40');
-    ok('...and 10 are kept', require('../perfstats.js').MARKS_KEEP === 10); }
+    ok('...as copies', (await K.collect()).marks[0].text === 'm30');
+    ok('...and 20 are kept', require('../perfstats.js').MARKS_KEEP === 20); }
   { const { d } = deps(), C = createCollector(d), a = await C.collect();
     ok('the processes come with their number (so a window can be given its own figures)', a.metrics.every(m => typeof m.pid === 'number' || m.pid === undefined) && a.metrics.length === 3); }
   { const calls = [];
@@ -176,6 +176,61 @@ function deps(over = {}) {
     ok('...tells it when the Live Race window opened and how long that took in the core, and when it closed', /const opened = Date\.now\(\);/.test(main) && /perfCollector\.mark\(`Live Race window opened \(\$\{Date\.now\(\) - opened\} ms in the core\)`\)/.test(main) && /perfCollector\.mark\('Live Race window closed'\)/.test(main));
     ok('...the collector is the one that answers "perf:stats" and is the one the window opening tells', /const perf = perfCollector = require\('\.\/perfstats'\)\.createCollector\(/.test(main) && /let perfCollector = null;/.test(main));
     ok('...the time is taken before the window is made and the mark is written after it is there', main.indexOf('const opened = Date.now();') < main.indexOf('liveWin = new BrowserWindow(') && main.indexOf('liveWin = new BrowserWindow(') < main.indexOf('perfCollector.mark(`Live Race window opened')); }
+
+  // ---- 1.61.1: the full saves and the lists sent to the window, as notes ----
+  { const { createWatcher, sizeWords, WATCH_MIN } = require('../perfstats.js');
+    ok('1.61.1: a save or a list sent counts from 20 ms', WATCH_MIN === 20);
+    ok('...sizes in words: under a million in KB, from a million in MB (one decimal, no ".0"), anything else a question mark', sizeWords(5000) === '5 KB' && sizeWords(412000) === '412 KB' && sizeWords(999000) === '999 KB' && sizeWords(1e6) === '1 MB' && sizeWords(154700000) === '154.7 MB' && sizeWords(66400000) === '66.4 MB' && sizeWords(0) === '0 KB' && sizeWords(NaN) === '?' && sizeWords(-1) === '?' && sizeWords(undefined) === '?' && sizeWords('x') === '?');
+    const notes = [], W = createWatcher({ mark: t => notes.push(t) });
+    W.saved({ ms: 349.3, textMs: 182.8, fileMs: 166.5, bytes: 154700000 });
+    ok('a full save of 20 ms or more is a note: the time, the part that made the text, the part that wrote the file, the size of the file', notes.length === 1 && notes[0] === 'Saved the whole database: 349 ms (making the text 183, writing the file 167), 154.7 MB');
+    W.saved({ ms: 19.9, textMs: 10, fileMs: 9, bytes: 5000 }); W.saved({ ms: 20, textMs: 12, fileMs: 8, bytes: 5000 });
+    ok('...under 20 ms is left out, exactly 20 is a note', notes.length === 2 && notes[1] === 'Saved the whole database: 20 ms (making the text 12, writing the file 8), 5 KB');
+    const before = notes.length; W.saved(); W.saved(null); W.saved({}); W.saved({ ms: 'x' }); W.saved({ ms: NaN }); W.saved('slow'); W.saved(42);
+    ok('...nothing, nonsense or a time that is not a number gives no note and no error', notes.length === before);
+    W.saved({ ms: 500 });
+    ok('...a save without the parts or the size still gives a note (parts as 0, size as a question mark)', notes[notes.length - 1] === 'Saved the whole database: 500 ms (making the text 0, writing the file 0), ?');
+    let threw = false; try { createWatcher({ mark: () => { throw new Error('no'); } }).saved({ ms: 99 }); createWatcher({}).saved({ ms: 99 }); createWatcher({ mark: () => { throw new Error('no'); } }).sent('x', []); } catch { threw = true; }
+    ok('...a note that cannot be made (the collector fails, there is none) never raises an error in the save', threw === false);
+    ok('...the longest note a save can give is under the 100 characters that the core keeps of a note', 'Saved the whole database: 12345 ms (making the text 12345, writing the file 12345), 1234.5 MB'.length < 100 && (() => { const n = []; createWatcher({ mark: t => n.push(t) }).saved({ ms: 12345, textMs: 12345, fileMs: 12345, bytes: 1234500000 }); return n[0].length < 100; })());
+
+    // a list that is sent: the time is from the call to the next turn of the core
+    let t = 0; const turns = [], N = [], S = createWatcher({ mark: x => N.push(x), hr: () => t, soon: f => turns.push(f), sizeOf: v => v.length * 1000 });
+    S.sent('slotcars', [1, 2, 3, 4, 5, 6]);
+    ok('a list sent: nothing is written down until the core has had its next turn (the copy for the window is made before that)', N.length === 0 && turns.length === 1);
+    t += 112.4; turns.shift()();
+    ok('...then, when it took 20 ms or more, it is a note: the list, its size, how long the core was busy', N.length === 1 && N[0] === 'Sent the list of slotcars to the window: 6 KB, the core was busy 112 ms');
+    S.sent('drivers', [1]); t += 19.9; turns.shift()(); S.sent('drivers', [1]); t += 20; turns.shift()();
+    ok('...under 20 ms is left out, exactly 20 is a note', N.length === 2 && N[1] === 'Sent the list of drivers to the window: 1 KB, the core was busy 20 ms');
+    S.sent('x'.repeat(80), [1]); t += 50; turns.shift()();
+    ok('...a long name is cut at 30 characters', N[2] === 'Sent the list of ' + 'x'.repeat(30) + ' to the window: 1 KB, the core was busy 50 ms');
+    const big = Array.from({ length: 66000 }, () => 0), N2 = [], S2 = createWatcher({ mark: x => N2.push(x), hr: () => t, soon: f => turns.push(f), sizeOf: v => { throw new Error('no'); } });
+    S2.sent('laps', big); t += 30; turns.shift()();
+    ok('...when the size cannot be found the time is still a note, with a question mark', N2.length === 1 && N2[0] === 'Sent the list of laps to the window: ?, the core was busy 30 ms');
+    const N3 = [], S3 = createWatcher({ mark: x => N3.push(x), hr: () => t, soon: f => turns.push(f) }); S3.sent('laps', []); t += 30; turns.shift()();
+    ok('...with no way to find the size it is a question mark too', N3[0] === 'Sent the list of laps to the window: ?, the core was busy 30 ms');
+    let ok1 = true; try { createWatcher({ mark: x => N3.push(x), hr: () => { throw new Error('clock'); } }).sent('a', []); createWatcher({ mark: x => N3.push(x), soon: () => { throw new Error('turn'); } }).sent('a', []); } catch { ok1 = false; }
+    ok('...a clock or a turn that fails is never an error in the handler', ok1);
+    const M = []; const Z = createWatcher({ mark: x => M.push(x), min: 0, hr: () => t, soon: f => turns.push(f) }); Z.saved({ ms: 0.4, textMs: 0, fileMs: 0, bytes: 1 }); Z.sent('a', []); turns.shift()();
+    ok('...the limit can be given (here 0: every save and every list is a note)', M.length === 2);
+    // with the real clock and the real next turn
+    const R = [], RW = createWatcher({ mark: x => R.push(x), sizeOf: v => v.length }); const t0 = Date.now(); RW.sent('slotcars', 'x'.repeat(2500)); while (Date.now() - t0 < 60) { /* the core is busy */ }
+    await new Promise(r => setImmediate(r)); await new Promise(r => setImmediate(r));
+    ok('...with the real clock and the real next turn: the time the core was busy is the note', R.length === 1 && /^Sent the list of slotcars to the window: 2\.5 KB, the core was busy \d+ ms$/.test(R[0]) && Number(R[0].match(/busy (\d+) ms/)[1]) >= 55 && Number(R[0].match(/busy (\d+) ms/)[1]) < 1000, R[0]);
+    const Q = [], QW = createWatcher({ mark: x => Q.push(x) }); QW.sent('drivers', []); await new Promise(r => setImmediate(r)); await new Promise(r => setImmediate(r));
+    ok('...a list sent at once is no note', Q.length === 0);
+    // the default "next turn" is the very next one (a note is made before anything that was scheduled after it)
+    const V = [], VW = createWatcher({ mark: x => V.push(x), min: 0, sizeOf: () => 10 }); VW.sent('cars', []); await new Promise(r => setImmediate(r));
+    ok('...without a turn given the callback runs in the very next turn of the core (not later)', V.length === 1 && /^Sent the list of cars to the window: 0 KB, the core was busy \d+ ms$/.test(V[0]), V.join('|'));
+    // the watcher and the collector together: the note has the clock time of the collector
+    const x = deps(), K = createCollector(x.d), KW = createWatcher({ mark: K.mark }); x.clock.t = 5000000; KW.saved({ ms: 349, textMs: 183, fileMs: 166, bytes: 154700000 });
+    const c = await K.collect();
+    ok('...given to the collector it comes back in the notes with the clock time of the moment', c.marks.length === 1 && c.marks[0].at === 5000000 && c.marks[0].text === 'Saved the whole database: 349 ms (making the text 183, writing the file 166), 154.7 MB'); }
+  { // main.js: the watcher is made before the handlers, the database tells it about its saves, the list handler tells it about the lists
+    const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
+    ok('1.61.1: main.js makes the watcher (its notes go to the collector, the size of a list is found with Database.approxSize) and the database tells it about every full save', /const watch = require\('\.\/perfstats'\)\.createWatcher\(\{ mark: t => \{ if \(perfCollector\) perfCollector\.mark\(t\); \}, sizeOf: Database\.approxSize \}\);/.test(main) && /db\.onSave = info => watch\.saved\(info\);/.test(main));
+    ok('...the list handler gives the list back unchanged and tells the watcher what was sent', /ipcMain\.handle\('db:list', \(_e, entity\) => \{ const rows = db\.list\(entity\); watch\.sent\(entity, rows\); return rows; \}\);/.test(main));
+    ok('...the watcher is made before any handler (the first list can be asked at once)', main.indexOf('const watch = ') > 0 && main.indexOf('const watch = ') < main.indexOf("ipcMain.handle('db:list'") && main.indexOf('db.onSave = ') < main.indexOf("ipcMain.handle('schema'")); }
 
   console.log(fails ? fails + ' PERFSTATS TESTS FAILED' : 'ALL PERFSTATS TESTS PASSED'); process.exit(fails ? 1 : 0);
 })();

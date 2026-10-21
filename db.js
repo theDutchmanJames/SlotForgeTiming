@@ -80,6 +80,7 @@ class Database {
     this.sw = new LatestWriter(this.settingsPath);
     this.stats = { saves: 0, lastMs: 0, maxMs: 0, textMs: 0, fileMs: 0, bytes: 0, failed: 0 }; // the full saves of the database file (the Performance report shows them)
     this.sizes = { at: 0, list: [] };
+    this.onSave = null; // (1.61.1: the program may ask to be told about every full save: how long it took; main.js uses it for the Performance report)
     this.data = this.load();
     this.loadSettingsFile();
     this.ensure();
@@ -140,6 +141,7 @@ class Database {
     try { writeAtomic(this.file, text); } catch (x) { st.failed++; throw x; }
     const t2 = process.hrtime.bigint(), ms = d => Math.round(Number(d) / 1e5) / 10;
     st.saves++; st.textMs = ms(t1 - t0); st.fileMs = ms(t2 - t1); st.lastMs = ms(t2 - t0); st.maxMs = Math.max(st.maxMs, st.lastMs); st.bytes = text.length;
+    if (this.onSave) { try { this.onSave({ ms: st.lastMs, textMs: st.textMs, fileMs: st.fileMs, bytes: st.bytes }); } catch { /* a note for the report must never stop a save */ } }
   }
   check(entity) {
     if (!schema[entity]) throw new Error('Unknown item type: ' + entity);

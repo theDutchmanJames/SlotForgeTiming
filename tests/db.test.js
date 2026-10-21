@@ -307,6 +307,33 @@ const asyncTests = async () => {
     const ratio = Database.approxSize(big) / JSON.stringify(big, null, 2).length;
     ok('...and on a database with pictures it comes within a few percent of the size of the file (' + ratio.toFixed(2) + ')', ratio > 0.85 && ratio < 1.15);
   }
+  { // 1.61.1: a full save tells how long it took (the Performance report makes a note of the slow ones)
+    const t = tmpDb('db.json', {}), d = new Database(t.f), got = [];
+    ok('1.61.1: no one is told about a save unless the program asks (the hook is empty)', d.onSave === null);
+    d.onSave = info => got.push(info);
+    const row = d.add('drivers', { name: 'A' }); d.update('drivers', row.id, { name: 'B' });
+    ok('...every full save tells the time, the part that made the text, the part that wrote the file and the size of the file', got.length === 2 && got.every(g => g.ms >= 0 && g.textMs >= 0 && g.fileMs >= 0 && g.ms >= g.textMs && g.bytes === read(t.f).length));
+    const n = got.length; d.setSettings({ a: 1 }); await d.setSettingsAsync({ a: 2 });
+    ok('...a change of a setting is not a full save and tells nothing', got.length === n);
+    const realH = process.hrtime.bigint, seq = [0n, 100000000n, 300000000n]; let k = 0; process.hrtime.bigint = () => seq[k++];
+    try { d.save(); } finally { process.hrtime.bigint = realH; }
+    const g = got[got.length - 1];
+    ok('...the figures are those of the clock: 300 ms in all, 100 of them for the text and 200 for the file', g.ms === 300 && g.textMs === 100 && g.fileMs === 200 && g.bytes === d.stats.bytes);
+    const realRename = fs.renameSync, m = got.length; fs.renameSync = () => { throw new Error('locked'); }; let e = null; try { d.save(); } catch (x) { e = x; } finally { fs.renameSync = realRename; }
+    ok('...a save that fails tells nothing (and the error is still raised)', e && e.message === 'locked' && got.length === m);
+    d.onSave = () => { throw new Error('the note failed'); }; let e2 = null; try { d.add('drivers', { name: 'C' }); } catch (x) { e2 = x; }
+    ok('...a hook that fails never stops a save: the file has the new driver and no error is raised', e2 === null && readJ(t.f).drivers.some(x => x.name === 'C'));
+    const t2 = tmpDb('db.json', {}); let told = 0; const d2 = new Database(t2.f); d2.onSave = () => told++;
+    ok('...the save at the start of the program is made before anyone can ask, so it tells nothing', told === 0 && d2.stats.saves >= 1);
+    // together with the collector of the Performance report, as main.js puts them
+    const { createCollector, createWatcher } = require('../perfstats.js'), clock = { t: 7000000 };
+    const K = createCollector({ app: { getAppMetrics: () => [], getGPUFeatureStatus: () => ({}), getGPUInfo: async () => ({}) }, screen: { getPrimaryDisplay: () => ({ size: { width: 1, height: 1 }, scaleFactor: 1 }), getAllDisplays: () => [] }, os: { platform: () => 'win32', arch: () => 'x64', release: () => '1', cpus: () => [], totalmem: () => 1, freemem: () => 1, loadavg: () => [0, 0, 0] }, process: { env: {}, argv: [], versions: {} }, db: d2, version: 'x', readText: async () => { throw new Error('x'); }, now: () => clock.t, setInterval: () => ({ unref() {} }), clearInterval: () => {} });
+    d2.onSave = i => createWatcher({ mark: K.mark, sizeOf: Database.approxSize }).saved(i);
+    const h = process.hrtime.bigint, sq = [0n, 183000000n, 349000000n, 0n, 1000000n, 2000000n]; let q = 0; process.hrtime.bigint = () => sq[q++];
+    try { d2.add('drivers', { name: 'Slow' }); clock.t += 50; d2.add('drivers', { name: 'Quick' }); } finally { process.hrtime.bigint = h; }
+    const marks = (await K.collect()).marks;
+    ok('...the slow save is in the notes of the report with its clock time, the quick one is not', marks.length === 1 && marks[0].at === 7000000 && /^Saved the whole database: 349 ms \(making the text 183, writing the file 166\), \d+(\.\d)? KB$/.test(marks[0].text), JSON.stringify(marks));
+  }
   { // main.js: the handler waits for the settings file, closing waits for what is on its way, and the core tells the figures
     const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8'), ps = fs.readFileSync(path.join(__dirname, '..', 'perfstats.js'), 'utf8');
     ok('1.61.0: main.js writes a setting with setSettingsAsync (not the synchronous one), and closing waits for the settings file as well as the race save', /ipcMain\.handle\('settings:set', async \(_e, patch\) => \{ const s = await db\.setSettingsAsync\(patch\);/.test(main) && !/db\.setSettings\(/.test(main) && /db\.writesPending\(\)/.test(main) && /db\.writesIdle\(\)/.test(main));

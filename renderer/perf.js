@@ -342,7 +342,7 @@
       m.windows.forEach(w => L.push(`  ${w.title || 'untitled'}${w.live && !/live race/i.test(w.title) ? ' [Live Race]' : ''}: ${w.cpu === null ? 'CPU unknown' : 'CPU ' + f0(w.cpu) + '%'}, ${w.memMB === null ? 'memory unknown' : w.memMB + ' MB'}${w.shares ? ' (one process for both windows)' : ''}${w.visible ? '' : ', hidden'}${w.minimized ? ', minimized' : ''}${w.focused ? ', in front' : ''}`));
     }
     if (m && m.stalls.length) L.push('', 'The core of the app was stuck for over 100 ms at: ' + m.stalls.map(s => `${clockText(s.at)} (${s.ms} ms)`).join(', '));
-    const ev = ((r && r.marks) || []).concat((m && m.marks) || []).sort((a, b) => a.at - b.at).slice(-14);
+    const ev = ((r && r.marks) || []).concat((m && m.marks) || []).sort((a, b) => a.at - b.at).slice(-24);
     if (ev.length) { L.push('', 'What happened (clock time):'); ev.forEach(x => L.push(`  ${clockText(x.at)}  ${x.text}`)); }
     return L;
   }

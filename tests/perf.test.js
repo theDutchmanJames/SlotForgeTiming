@@ -410,9 +410,11 @@ const fillUpdates = (M, n, f) => { for (let i = 0; i < n; i++) f(i * 100); }; //
   const m = Perf.cleanMain({ marks: [{ at: 1, text: 'from the core' }, { at: 5e12, text: 'late' }] });
   const rep = Perf.report(r, m, {}), ev = rep.split('\n').filter(x => /^ {2}\d\d:\d\d:\d\d {2}/.test(x));
   ok('what happened: the marks of the window and of the core are put in the order of the clock', ev.length === 3 && ev[0].includes('from the core') && ev[1].includes(' a') && ev[2].includes('late'));
-  const many = Perf.cleanMain({ marks: Array.from({ length: 20 }, (_, i) => ({ at: i + 1, text: 'e' + i })) });
+  const many = Perf.cleanMain({ marks: Array.from({ length: 30 }, (_, i) => ({ at: i + 1, text: 'e' + i })) });
   const rep2 = Perf.report(null, many, {}).split('\n').filter(x => /^ {2}\d\d:\d\d:\d\d {2}/.test(x));
-  ok('...at most the last 14 are in the report', rep2.length === 14 && rep2[13].includes('e19') && rep2[0].includes('e6')); }
+  ok('...at most the last 24 are in the report (1.61.1: room for the saves and the lists sent), and the core is given at most 20 of them', rep2.length === 20 && rep2[19].includes('e29') && rep2[0].includes('e10'));
+  const mixed = Perf.report({ marks: Array.from({ length: 10 }, (_, i) => ({ at: 100 + i * 2, text: 'w' + i })) }, Perf.cleanMain({ marks: Array.from({ length: 20 }, (_, i) => ({ at: 101 + i * 2, text: 'c' + i })) }), {}).split('\n').filter(x => /^ {2}\d\d:\d\d:\d\d {2}/.test(x));
+  ok('...with the notes of the window and of the core together the last 24 are in the report, in the order of the clock', mixed.length === 24 && mixed[23].includes('c19') && mixed[0].includes('w3') && mixed[1].includes('c3') && mixed[2].includes('w4')); }
 
 { const rep = Perf.report(null, Perf.cleanMain({ windows: [{ title: 'Race', pid: 11 }, { title: 'Live Race', pid: 12, live: true, visible: false, minimized: true }, { title: 'Other', pid: 13, live: true }, { title: '', pid: 14 }], metrics: [{ type: 'Tab', pid: 12, cpu: 5, memMB: 50 }] }), {});
   ok('a window with no title is untitled; a Live Race window whose title does not say so is marked; hidden and minimized are said; no process figures say unknown', rep.includes('  Race: CPU unknown, memory unknown') && rep.includes('  Live Race: CPU 5%, 50 MB, hidden, minimized') && rep.includes('  Other [Live Race]: CPU unknown') && rep.includes('  untitled: CPU unknown'));
