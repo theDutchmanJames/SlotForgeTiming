@@ -151,6 +151,13 @@ const Help = (() => {
           <li><b>What the finals decide</b>: the final places (the heat result only decides who races in which final), or the result of the final is <b>added to the heat result</b>. It is not averaged or dropped. Either way the A final drivers stay above the B final drivers.</li>
           <li><b>Before a final</b> the race screen asks the drivers to choose their lanes, the best-placed driver first. The last driver gets the last free lane. <b>Pick the rest at random</b> and <b>Clear choices</b> help. The final does not start, also not by itself after a break, before every lane is chosen.</li>
           <li>The audio sets have two more calls, <b>next final</b> and <b>final finished</b>, and a <b>{final}</b> word.</li>
+        </ul>` },
+      { id: 'totaltime', title: 'Total time', note: 'How long a driver has been racing', body: `
+        <ul>
+          <li>The <b>Total Time</b> widget (Layout Editor, folder <b>Lap Times and Records</b>) shows how long a driver has been racing. It counts up from the start and stops when the car has finished: all its laps or its distance driven, or the time is up and the car has crossed the line. A car that is out keeps the time of its last lap, and a car that is still racing when the race is stopped has the time the race lasted.</li>
+          <li><i>Time of</i> chooses this race or heat, all heats so far (the heats that are done plus the one that is racing, whatever lane the driver raced in) or both.</li>
+          <li><i>Penalties</i> chooses the time the results count (with the time penalties and the corrections of the review) or the time on the clock.</li>
+          <li>In a leaderboard row design it is a column like any other. The leaderboard's <b>Order by</b> has <i>Total time</i> for this race or heat and for all heats so far: the shortest time is on top, and the cars that are still racing, or are out, stay below the cars that finished.</li>
         </ul>` }
     ]],
     ['Racing', [

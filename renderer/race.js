@@ -210,7 +210,9 @@ async function renderRace() {
   const finalAt = () => { const i = Math.min(heat.idx, heat.total - 1); return i >= heat.count ? heat.raceName(i).slice(6) : ''; };
   // the heat list for the other screens, made again only when a heat is finished or the lanes of a final change
   const heatListLite = () => { const k = heat.results.length + ':' + heat.idx + ':' + Object.values(heat.picks).reduce((n, x) => n + x.length, 0); if (live.hlKey !== k) { live.hlKey = k; live.hlLite = Heats.listLite(Heats.listOf(heat, people, { labels: r.labels })); } return live.hlLite; };
-  const heatInfo = () => (heats ? { idx: heat.idx, count: heat.count, by: byPts ? 'points' : heat.scoring.byTime ? 'time' : 'laps', list: heatListLite(), ...(finalsOn ? { total: heat.total } : {}), ...(finalsOn && finalAt() ? { final: finalAt() } : {}),
+  // the time every driver has raced in the heats that are done (the Total Time widget, 1.63.0), made again only when a heat is finished
+  const heatBefore = () => { const k = heat.results.length; if (live.tbKey !== k) { live.tbKey = k; live.tbList = heat.spentBy(); } return live.tbList; };
+  const heatInfo = () => (heats ? { idx: heat.idx, count: heat.count, by: byPts ? 'points' : heat.scoring.byTime ? 'time' : 'laps', list: heatListLite(), ...(heat.results.length ? { before: heatBefore() } : {}), ...(finalsOn ? { total: heat.total } : {}), ...(finalsOn && finalAt() ? { final: finalAt() } : {}),
     ...(live.phase === 'between' && !heat.picksDone() ? { picking: true } : {}), ...(live.breakLeft > 0 ? { breakLeft: live.breakLeft } : {}) } : null);
   // the drivers of the heat that is next, for the announcer to read out (with the lanes they race in)
   const lineupNow = () => (heats && heat.hasNext() ? heat.entries().map(e => ({ lane: heat.isFinal() && !heat.picksDone() ? -1 : e.lane, name: e.asTeam && e.teamName ? `${e.teamName}${e.driverName ? ' with ' + e.driverName : ''}` : e.driverName || '', nickname: e.nickname || '', callsign: e.callsign || '' })).sort((a, b) => a.lane - b.lane) : []);

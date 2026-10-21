@@ -3174,3 +3174,22 @@ Good to know:
 - The words on the race screen and in the history for a race by laps are now *Race* (it was *Race by laps or distance*).
 - **Not done yet** (next releases, one at a time): the Total Time widget and *Total time* in the leaderboard's *Order by* (B), a time race compared by distance (C), the scoring choices for heats (D), sectors for the order of cars that did not finish (E).
 - Tested: `tests/racelimit.test.js` (new), and new checks in `tests/distancescreen.test.js` (a race by a time on the race screen), `tests/live.test.js` and `tests/timing.test.js` (the Next Heat widget, and the live pages that get the setup as it was saved) and `tests/screens.test.js` (the setup form, the list and the history). The code was broken on purpose 110 times: 105 caught, the other 5 cannot change the result. The first pass caught 90 of the first 105; the others showed real gaps (a leftover time in a race by laps, the edges of the break countdown, a lane that is not picked yet, the number of heats shown, the labels) and got tests.
+
+## What to try (1.63.0): The Total Time widget, and Total time in the order of a leaderboard
+
+What changed: there is a new widget, **Total Time** (Layout Editor, folder *Lap Times and Records*). It shows how long a driver has been racing. It counts up from the start and stops when the car has finished. In a heat race it can add up the heats. The leaderboard's **Order by** has **Total time** now, for this race or heat and for all heats so far.
+
+How to try it:
+1. Open the **Layout Editor**, make a layout and add the **Total Time** widget for lane 1 (twice, if you like). In the settings of the second one choose **Time of: All heats so far**; a third one can show **Both**. **Penalties** chooses the time the results count (with the time penalties, the default) or the time on the clock.
+2. Start a race with that layout. The time counts up for every driver. When a driver has driven his laps (or his distance), his time stops while the others go on. A paused race does not count the pause.
+3. Make a heat race with three heats and a layout with the Total Time widgets for all lanes. Start heat 1: *This heat* and *All heats so far* show the same. When the heat is done and the break runs, *This heat* is 0:00.0 and *All heats so far* shows what each driver of the next heat raced before, whatever lane he was in. In heat 2 it counts on from there. After the last heat it shows the sum, and does not add the last heat a second time.
+4. Give a driver penalty points in a race with a Penalty System in which points become seconds (or use **Add time** or **Adjust** in the review after the race) and look at *With penalties* and *Without penalties*: the first has the seconds in it, the second is the time on the clock.
+5. Put the Total Time widget in a **row design** of the Leaderboard Editor as a column, and in the leaderboard's settings choose **Order by: Total time (all heats so far)**. The driver with the shortest total time is on top. A car that is still racing, or is out, stays below the cars that finished. *Worst first* turns the finished cars round.
+
+Good to know:
+- In a race limited by a time a car keeps counting after the time is up until it crosses the line, and its time stops at that crossing (that lap counts), so it is the time the results show.
+- A car that is out (retired, disqualified) keeps the time of its last lap. A car that is still racing when the race is stopped (the lead car finished, or the Race Director stopped it) has the time the race lasted.
+- *Total time* orders by time only. For a race by laps or by a distance the first car home is first; for a race by a time you will want the laps first, and that comes with a later release (C).
+- The saved heat results now hold the time of every driver in every heat (without and with penalties). An older version ignores them.
+- **Not done yet** (next releases, one at a time): a time race compared by distance (C), the scoring choices for heats (D), sectors for the order of cars that did not finish (E). The Driver stats grid has no Total time cell yet.
+- Tested: `tests/totaltime.test.js` (new) and new checks in `tests/live.test.js`. The code was broken on purpose 86 times: 82 caught, the other 4 cannot change the result. The first pass caught 65 of the 86; the others showed real gaps (a car that retired or is disqualified, times that are not numbers, a final after the heats, the settings the widget starts with, the dash for an engine that cannot tell the time) and got tests.

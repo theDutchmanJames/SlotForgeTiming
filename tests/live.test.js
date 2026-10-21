@@ -183,6 +183,50 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     say('the Result column on the race screen shows times', /\d:\d\d\.\d\d\d|\d+\.\d\d\d/.test(E('overall').innerHTML));
   }
 
+  // 1.63.0: the Total Time widget over the heats: on the race screen, in the data for the other screens, in the saved result, and as the order of a leaderboard
+  { saved.length = 0; const layoutsWere = store.layouts;
+    const TW = (lane, y, opt) => ({ ...W('totaltime', lane, 0, y), id: 'tt' + lane + y, opt });
+    store.layouts = [...layoutsWere, { id: 'TT', name: 'Total time', ratioW: 16, ratioH: 9, widgets: [TW(0, 0, {}), TW(0, 100, { scope: 'all' }), TW(0, 200, { scope: 'both' }), TW(1, 300, { scope: 'all', penalties: 'without' }), { ...W('leaderboard', null, 300, 0), w: 500, h: 300, opt: { orderBy: 'totaltimeall' } }] }];
+    await openRace({ name: 'Heats', sessionType: 'heats', heatBy: 'laps', laps: 2, endRule: 'all', heatPlan: 'roundrobin', resultBy: 'laps', layout: 'TT' }, store.tracks[0], rows(1, 2, 3));
+    const tt = () => run("live.nodes.filter(n => n.w.type === 'totaltime')").map(n => n.val.innerHTML), dh = () => (sent.dyn && sent.dyn.heat) || null, fmt = ms => run(`RaceEngine.fmtTime(${ms})`);
+    say('the race screen has the Total Time widgets, and before the start every driver has raced 0 seconds', tt().length === 4 && tt().join('|') === '0.000|0.000|0.000<small class="rn">0.000 in all</small>|0.000');
+    E('sim').checked = true; key(' '); await until(() => phase() === 'running');
+    await until(() => phase() !== 'running' || tt()[0] !== '0.000', 3000);
+    say('...while the heat races the time counts up (this heat, and all heats are the same in the first heat)', (() => { const t = tt(); return phase() === 'running' ? (t[0] !== '0.000' && t[0] === t[1] && t[2].startsWith(t[0] + '<small') && !isNaN(parseFloat(t[0]))) : true; })());
+    await until(() => ['between', 'finished'].includes(phase())); await until(() => dh() && dh().before && dh().before.length === 2);
+    const b1 = dh().before, eg = () => run('live.engine()'), car0 = () => eg().cars.find(c => c.lane === 0), car1 = () => eg().cars.find(c => c.lane === 1), ent = (b, p) => b.find(x => x[0] === p);
+    say('when the first heat is done the data for the other screens has the time of its two drivers: [participant, with penalties, without]', b1.length === 2 && b1.every(x => x.length === 3 && Number.isFinite(x[1]) && Number.isFinite(x[2]) && x[1] >= x[2] && x[2] > 0) && b1[0][0] !== b1[1][0]);
+    say('...the next heat waits: this heat is 0 for everybody, and the sum is what a driver raced before (or 0 for the driver who did not race yet)', phase() === 'between' && tt()[0] === '0.000' && tt()[1] === (ent(b1, car0().participant) ? fmt(ent(b1, car0().participant)[1]) : '0.000') && tt()[3] === (ent(b1, car1().participant) ? fmt(ent(b1, car1().participant)[2]) : '0.000'));
+    let n = 1; while (phase() !== 'finished' && n++ < 6) { key(' '); await until(() => ['between', 'finished'].includes(phase())); }
+    await until(() => dh() && dh().before && dh().before.length === 3 && dh().idx === 3); await wait(300);
+    const b3 = dh().before;
+    say('after the last heat all three drivers have raced two heats: the time of a driver who raced before is more than it was after his first heat', phase() === 'finished' && b3.length === 3 && b3.every(x => x[2] > 0) && b1.every(x => ent(b3, x[0])[1] > x[1] && ent(b3, x[0])[2] > x[2]));
+    say('...the widget does not add the last heat a second time: it shows the figures of the data, and this heat alone is shorter than the sum', tt()[1] === fmt(ent(b3, car0().participant)[1]) && tt()[3] === fmt(ent(b3, car1().participant)[2]) && tt()[0] !== tt()[1] && tt()[2] === tt()[0] + '<small class="rn">' + tt()[1] + ' in all</small>');
+    say('the saved result keeps the time of every driver in every heat, without and with penalties (the figures the Total Time widget adds up)', saved.length === 1 && saved[0][0].heatResults.length === 3 && saved[0][0].heatResults.every(h => h.rows.every(r => Number.isFinite(r.spent) && Number.isFinite(r.spentPen) && r.spentPen >= r.spent && r.spent > 0)));
+    say('...and the figures of the data for the other screens are the sums of those of the saved result', b3.every(x => { const rs = saved[0][0].heatResults.flatMap(h => h.rows).filter(r => r.participant === x[0]); return rs.length === 2 && Math.abs(rs.reduce((t, r) => t + r.spentPen, 0) - x[1]) < 0.01 && Math.abs(rs.reduce((t, r) => t + r.spent, 0) - x[2]) < 0.01; }));
+    ctx.__sent = sent; // (the data the race window shared, for the window that draws it from far away)
+    const viewer = body => run(`(() => { const V = LiveShare.viewer(); V.feedStatic(__sent.stat); V.feedDynamic(__sent.dyn, performance.now()); const S = V.shared(performance.now()); return ${body}; })()`);
+    say('a window that shows the race from far away (a phone, the second screen) draws the same times as the race screen', viewer(`JSON.stringify([[0, {}], [0, { scope: 'all' }], [0, { scope: 'both' }], [1, { scope: 'all', penalties: 'without' }]].map(([l, o]) => Timing.content({ type: 'totaltime', lane: l, opt: o }, S).html))`) === JSON.stringify(tt()));
+    const names = html => eg().cars.map(c => c.driverName).sort((a, b) => html.indexOf(a) - html.indexOf(b)), want = eg().cars.map(c => c).sort((a, b) => ent(b3, a.participant)[1] === ent(b3, b.participant)[1] ? 0 : ent(b3, a.participant)[1] - ent(b3, b.participant)[1]).map(c => c.driverName);
+    const board = (o) => viewer(`Timing.content({ type: 'leaderboard', opt: ${JSON.stringify(o)} }, S).html`);
+    say('a leaderboard ordered by the total time of all heats has the shortest sum on top (and the longest with Worst first)', names(board({ orderBy: 'totaltimeall' })).join() === want.join() && names(board({ orderBy: 'totaltimeall', orderDir: 'worst' })).join() === want.slice().reverse().join() && want.length === 2);
+    say('...the one of the layout on the race screen has it too', names(node('leaderboard').val.innerHTML).join() === want.join());
+    // a race that is not simulated: the clock counts up by itself, and stops for a car that has finished
+    E('sim').checked = false; await openRace({ name: 'Sprint', sessionType: 'race', laps: 2, endRule: 'all', layout: 'TT' }, store.tracks[0], rows(1, 2));
+    const secs = html => parseFloat(html);
+    key(' '); await until(() => phase() === 'running'); await wait(250);
+    const a = tt(); await wait(250); const b = tt();
+    say('in a race that is not a heat race the time counts up for every driver while the cars are racing, and "all heats" is this race', secs(a[0]) > 0 && secs(b[0]) > secs(a[0]) && a[0] === a[1] && b[0] === b[1] && b[2] === b[0] + '<small class="rn">' + b[0] + ' in all</small>' && secs(b[3]) > secs(a[3]));
+    key('1'); await wait(100); key('1'); await wait(100);
+    const c = tt(); await wait(250); const d = tt();
+    say('...a driver who has driven his laps stops counting (his time stays), while the other car goes on', run('live.engine().cars.find(c => c.lane === 0).done') === true && c[0] === d[0] && c[1] === d[1] && secs(d[3]) > secs(c[3]) && secs(d[0]) > 0);
+    key('2'); await wait(100); key('2'); await until(() => ['review', 'finished', 'between'].includes(phase()));
+    await wait(150);
+    const e = tt(); await wait(250);
+    say('...and when the race is over all the clocks stand still', JSON.stringify(e) === JSON.stringify(tt()) && e.every(h => secs(h) > 0));
+    store.layouts = layoutsWere;
+  }
+
   // 1.7.0: the heat list on the race screen, in the data for the other screens and as a widget
   { saved.length = 0; const layoutsWere = store.layouts;
     store.layouts = [...layoutsWere, { id: 'HL', name: 'Heat list', ratioW: 16, ratioH: 9, widgets: [{ ...W('heatlist', null, 0, 0), w: 600, h: 300 }, { ...W('heatlist', null, 0, 320), w: 600, h: 100, opt: { show: 'near', detail: 'all', lanes: false } }, { ...W('nextheat', null, 0, 440), w: 400, h: 200 }] }];

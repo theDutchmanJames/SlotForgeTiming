@@ -200,7 +200,7 @@ ok('...more drivers than there are sample names still show something in every ce
     ok('the other cells keep their own values in an ordered board: Kim\'s best lap is still 3.000 and Alex has the gap of the race, not a gap in the order of the board', !!alexGap && board({ orderBy: 'lane' }).includes('>3.000<') && board({ orderBy: 'lane' }).includes('>' + alexGap + '<') && board({ design: 'R1', orderBy: 'lane' }).includes('>3.000<')); }
   ok('the Leaderboard widget has "Order by" (a choice of values, the race position as the standard) and "Best or worst on top" that only shows when a value is chosen', (() => {
     const o = Wd.def('leaderboard').options, by = o.find(x => x.key === 'orderBy'), dir = o.find(x => x.key === 'orderDir');
-    return by && dir && by.type === 'select' && by.default === 'position' && by.rerender === true && by.choices[0][0] === 'position' && by.choices.length === 16 && typeof by.hintOf === 'function' && by.hintOf('best').includes('fastest lap')
+    return by && dir && by.type === 'select' && by.default === 'position' && by.rerender === true && by.choices[0][0] === 'position' && by.choices.length === 18 && by.choices.some(c => c[0] === 'totaltime') && by.choices.some(c => c[0] === 'totaltimeall') && typeof by.hintOf === 'function' && by.hintOf('best').includes('fastest lap')
       && dir.type === 'select' && dir.default === 'best' && dir.choices.map(c => c[0]).join() === 'best,worst' && dir.show({}) === false && dir.show({ orderBy: 'position' }) === false && dir.show({ orderBy: 'best' }) === true && !by.classic && !by.rowsOnly && !dir.classic && !dir.rowsOnly;
   })());
 }

@@ -283,6 +283,21 @@
     });
     return `<div class="nhw">${blocks.join('')}</div>`;
   }
+  // The Total Time widget (1.63.0): how long a driver has been racing. It counts up from the start and stops when the car has finished (all its laps or its distance driven, or the time is up and
+  // it has crossed the line). Over the heats of a heat race it can add up the heats that are done and the one that is racing. scope: this race or heat / all heats so far / both. penalties: with
+  // the time penalties and the corrections of the review (the time the results count) or without them (the time on the clock).
+  const TOTALTIME_OPTIONS = [
+    { key: 'scope', label: 'Time of', type: 'select', default: 'heat', choices: [['heat', 'This race or heat'], ['all', 'All heats so far (the heats that are done, plus this one)'], ['both', 'Both: this heat, with all heats so far beside it']] },
+    { key: 'penalties', label: 'Penalties', type: 'select', default: 'with', choices: [['with', 'With penalties: the time the results count'], ['without', 'Without penalties: the time on the clock']] }
+  ];
+  const ttScope = o => (o && (o.scope === 'all' || o.scope === 'both') ? o.scope : 'heat'), ttPenalties = o => !(o && o.penalties === 'without');
+  // v: { heat, all } in milliseconds (a missing or not finite one is a dash)
+  function totalTimeHtml(v, opt) {
+    const sc = ttScope(opt), text = x => Re.fmtTime(x); // (a time that is not a number is a dash)
+    return sc === 'all' ? text(v && v.all) : sc === 'both' ? `${text(v && v.heat)}<small class="rn">${text(v && v.all)} in all</small>` : text(v && v.heat);
+  }
+  // what the layout editor shows: three heats of about a minute and a half, for the lane
+  const totalTimeSample = (l, w) => { const o = (w && w.opt) || {}, heat = 94000 + (l % 6) * 3700 + 123, all = heat + 2 * (95000 + (l % 6) * 2100); return totalTimeHtml({ heat, all }, o); };
   const HEATLIST_SAMPLE = { idx: 1, by: 'points', list: [
     { name: 'Heat 1', drivers: [{ lane: 0, name: 'Alex' }, { lane: 1, name: 'Sam' }, { lane: 2, name: 'Kim' }], rows: [{ pos: 1, name: 'Sam', points: 10, laps: 10 }, { pos: 2, name: 'Alex', points: 8, laps: 10 }, { pos: 3, name: 'Kim', points: 6, laps: 9 }] },
     { name: 'Heat 2', drivers: [{ lane: 0, name: 'Kim' }, { lane: 1, name: 'Alex' }, { lane: 2, name: 'Sam' }], rows: [] },
@@ -506,6 +521,7 @@
     T('champpoints', 'Championship Points', 'Position and Progress', { title: 'Points', perLane: true, w: 150, options: CHAMP_OPTIONS, sample: l => String([10, 8, 6, 5, 4, 3, 2, 1][l % 8] + (l === 0 ? 8 : 0)) }),
     // ---- Lap Times and Records ----
     T('laptime', 'Current Lap Time', 'Lap Times and Records', { title: 'Lap time', perLane: true, w: 150, sample: l => `3.${42 + l}1`, options: TIME_OPTIONS }),
+    T('totaltime', 'Total Time', 'Lap Times and Records', { title: 'Total time', perLane: true, w: 200, options: TOTALTIME_OPTIONS, sample: (l, w) => totalTimeSample(l, w) }), // (1.63.0: how long the driver has been racing, see totalTimeHtml)
     T('lastlap', 'Lap Times List', 'Lap Times and Records', { title: 'Last lap', perLane: true, options: LAST_OPTIONS, sample: (l, w) => { const o = (w && w.opt) || {}; return lapListHtml(Array.from({ length: 90 }, (_, i) => ({ n: 90 - i, t: `5.${20 + l * 7 + (i % 9)}3` })), o.lapsPerColumn, o.columns, o.lapNumbers !== false); } }),
     T('bestlap', 'Best Lap (this session)', 'Lap Times and Records', { title: 'Best lap', perLane: true, sample: l => `5.${10 + l * 6}4` }),
     T('avglap', 'Average Lap', 'Lap Times and Records', { title: 'Average lap', perLane: true, sample: l => `5.${40 + l * 5}8` }),
@@ -751,7 +767,7 @@
   }
 
   const picSites = { av: SITE_AV, img: SITE_IMG, flag: SITE_FLAG, fuel: SITE_FUEL, lights: SITE_LIGHTS }; // (where the text of the pictures is kept: for the tests)
-  const api = { lightPictures, lightSetPictures, prepareLights, picSites, heatListHtml, HEATLIST_OPTIONS, nextHeatHtml, NEXTHEAT_OPTIONS, tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, flagImgHtml, avatarHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, MAG, LANES, bbox, colorsOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, ALIGNS, titleAlignOf, valueAlignOf, alignClassOf, lapCountOf, lapTotalOn, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, resolveOpt, heightOf, withoutControls, moveWidget, resizeWidget, snapLines, tidy, alignRects, distributeRects, mirrorRects, mirrorSettings, MIRROR_KEYS, scaleGroup, newWidget, defaultLayout };
+  const api = { lightPictures, lightSetPictures, prepareLights, picSites, heatListHtml, HEATLIST_OPTIONS, nextHeatHtml, NEXTHEAT_OPTIONS, totalTimeHtml, TOTALTIME_OPTIONS, ttScope, ttPenalties, tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, flagImgHtml, avatarHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, MAG, LANES, bbox, colorsOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, ALIGNS, titleAlignOf, valueAlignOf, alignClassOf, lapCountOf, lapTotalOn, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, resolveOpt, heightOf, withoutControls, moveWidget, resizeWidget, snapLines, tidy, alignRects, distributeRects, mirrorRects, mirrorSettings, MIRROR_KEYS, scaleGroup, newWidget, defaultLayout };
   root.Widgets = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -10,7 +10,7 @@ const by = (vals, opt) => B.order(rows(), opt, x => vals[x.car.n]);
 
 // ---- the values ----
 ok('the list starts with the race position (the standard) and has the values of the race: laps, lap times, points, penalty, damage, fuel, pits, speed, lane, name',
-  B.KEYS[0].key === 'position' && ['best', 'last', 'avg', 'median', 'record', 'laps', 'speed', 'champ', 'penpoints', 'pentime', 'damage', 'pits', 'fuel', 'lane', 'name'].every(k => B.KEYS.some(x => x.key === k)) && B.KEYS.length === 16);
+  B.KEYS[0].key === 'position' && ['best', 'last', 'avg', 'median', 'record', 'laps', 'totaltime', 'totaltimeall', 'speed', 'champ', 'penpoints', 'pentime', 'damage', 'pits', 'fuel', 'lane', 'name'].every(k => B.KEYS.some(x => x.key === k)) && B.KEYS.length === 18);
 ok('every value has a label and a hint line for what comes on top, and a key is used once', B.KEYS.every(k => k.label && k.top) && new Set(B.KEYS.map(k => k.key)).size === B.KEYS.length && B.CHOICES.length === B.KEYS.length && B.CHOICES.every(c => c.length === 2));
 ok('the choice for the end on top is Best first (the standard) or Worst first', B.DIRECTIONS.map(d => d[0]).join() === 'best,worst' && B.DIRECTIONS.map(d => d[1]).join() === 'Best first,Worst first');
 ok('a setting that is not one of the values is the race position, and any direction but "worst" is "best" (a damaged or imported file never breaks a board)',

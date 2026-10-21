@@ -985,6 +985,10 @@
     R.lapsOf = lapsOf; R.adjOf = c => ({ ms: c.adjMs || 0, laps: c.adjLaps || 0, points: c.adjPoints || 0 });
     // The race time of a car: the time of its last crossing, plus time penalties and the adjustment of the review (what the standings call the effective time).
     R.timeOf = c => c.total + addOf(c);
+    // The time a car has been racing (the Total Time widget, 1.63.0). Before the car has finished it is the race clock, so it counts up; once the car is done it is the time of its last crossing
+    // (a car that is out keeps the time of its last lap), and a car that is still racing when the race is stopped has the time the race lasted. t: the moment to read it at.
+    // penalties: plus the time penalties and the corrections of the review (the time the results count); without them it is the time on the clock.
+    R.spentOf = (c, t, penalties) => (c.done ? c.total : R.elapsed(t)) + (penalties ? addOf(c) : 0);
     R.lapLimit = lapLimit; R.limitOf = limitOf; R.distance = DS; // (limitOf: the laps this car has to drive; distance: the settings of a Distance Race, or null)
     // Did the car finish a race by laps? It drove all the laps, and was not retired or disqualified.
     R.finishedLaps = c => limitOf(c) > 0 && c.done && !c.retired && !c.dq && c.laps.length - (c.swapLost || 0) >= limitOf(c);
@@ -1302,6 +1306,7 @@
         const fin = byTime && race.finishedLaps ? race.finishedLaps(r.car) : false, est = byTime && !fin && sc.unfinished === 'estimate' && race.estimateOf ? race.estimateOf(r.car) : null;
         const tm = fin ? (race.timeOf ? race.timeOf(r.car) : r.car.total + a.ms) : est;
         return { participant: r.car.participant, pos: r.pos, laps: race.lapsOf ? race.lapsOf(r.car) : r.car.laps.length, total: race.timeOf && Number.isFinite(race.timeOf(r.car)) ? race.timeOf(r.car) : a.ms && Number.isFinite(r.car.total) ? r.car.total + a.ms : r.car.total, best: r.car.best, points: (points[r.pos - 1] || 0) + (byPoints ? a.points : 0),
+          ...(race.spentOf && Number.isFinite(race.spentOf(r.car, race.endAt, false)) ? { spent: race.spentOf(r.car, race.endAt, false), spentPen: race.spentOf(r.car, race.endAt, true) } : {}), // (1.63.0: the time the car raced in this heat, without and with penalties: the Total Time widget adds up the heats)
           ...(byTime ? { fin, tm: Number.isFinite(tm) ? tm : null, ...(est !== null && Number.isFinite(est) ? { est: true } : {}) } : {}),
           ...(a.ms ? { adjMs: a.ms } : {}), ...(a.laps ? { adjLaps: a.laps } : {}), ...(byPoints && a.points ? { adjPoints: a.points } : {}), ...(note ? { bopNote: note } : {}), ...(tyres ? { tyreNote: tyres } : {}),
           ...(dnote ? { damageNote: dnote, damagePoints: r.car.dmgTotal || 0, repairs: (r.car.repairs || []).filter(q => !q.out).length, repairMs: r.car.repairMs || 0, ...(r.car.dmgOut ? { damageOut: r.car.dmgOut } : {}) } : {}),
@@ -1316,6 +1321,17 @@
       H.results.push(result); H.idx++;
       if (H.idx === H.count && names.length) H.finalPlan = planFinals();
       return result;
+    };
+    // The time every participant has raced in the races that are done, for the Total Time widget (1.63.0): [[participant, ms with penalties, ms without penalties]], in the order the participants first raced.
+    // A result from before 1.63.0 (a heat race that was interrupted and is picked up again) has no such figures: its race time counts, without the correction of the review for the "without" figure.
+    H.spentBy = () => {
+      const by = new Map();
+      for (const hr of H.results) for (const r of hr.rows) {
+        const pen = Number.isFinite(r.spentPen) ? r.spentPen : r.total, clock = Number.isFinite(r.spent) ? r.spent : Number.isFinite(r.total) ? r.total - (r.adjMs || 0) : NaN;
+        if (!Number.isFinite(pen) || !Number.isFinite(clock)) continue;
+        const a = by.get(r.participant) || [0, 0]; a[0] += pen; a[1] += clock; by.set(r.participant, a);
+      }
+      return [...by].map(([p, a]) => [p, a[0], a[1]]);
     };
     H.overall = () => {
       const heatsOf = participants.map(() => []), finalOf = participants.map(() => null), groupOf = participants.map(() => null), added = fin.finalMode === 'added';

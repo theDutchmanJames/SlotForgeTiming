@@ -104,6 +104,15 @@
        sessionrecord: rec(sr), sessionrecordby: by(sr), trackrecord: rec(tr), trackrecordby: by(tr), yellowtarget: S.eng.yellow && S.eng.yellow.target > 0 ? E.fmtTime(S.eng.yellow.target) : '', ...Ww.raceVars(S.eng, t) };
   }
 
+  // Total Time (1.63.0): how long the car has been racing, in milliseconds: { heat: in this race or heat, all: in all heats so far }, with the time penalties and the corrections of the review (penalties)
+  // or without. t: the moment to read it at. The heats that are done come with the heat info (before: [[participant, ms with penalties, ms without]], see the engine's spentBy). Once the last heat is
+  // recorded, or the event was stopped after a heat, the engine on the screen is that heat and it is in those figures already, so it is not added a second time. A race that is not a heat race has no heats before it.
+  function totalTimes(c, S, t, penalties) {
+    const E_ = S.eng, h = S.heat, now = E_.spentOf ? E_.spentOf(c, t, penalties) : NaN;
+    const mine = h && Array.isArray(h.before) && c.participant !== undefined ? h.before.find(x => x && x[0] === c.participant) : null, prior = mine ? Number(penalties ? mine[1] : mine[2]) || 0 : 0;
+    const recorded = !!h && !!mine && (S.phase === 'finished' || h.idx >= (h.total || h.count || 0));
+    return { heat: now, all: recorded ? prior : prior + now };
+  }
   // The value a leaderboard is ordered by (see boardorder.js), as a number (or the name as text); null when the car has none yet: no lap, or the race has no such rule.
   // Times are in milliseconds. t: the moment the values are read at.
   function orderValue(key, c, S, t) {
@@ -116,6 +125,11 @@
       case 'median': return good().length ? median(good()) : null;
       case 'record': { const b = S.personalBest(c.driverId); return Number.isFinite(b) ? b : null; }
       case 'laps': return n;
+      case 'totaltime': case 'totaltimeall': { // (1.63.0) the shortest time is the best; a car that is still racing, or is out of the race, has none yet and stays below the cars that finished
+        if (!c.done || c.retired || c.dq) return null;
+        const v = totalTimes(c, S, t, true)[key === 'totaltime' ? 'heat' : 'all'];
+        return Number.isFinite(v) ? v : null;
+      }
       case 'speed': { // the speed of the last lap, as the Speed widget shows it by default (scaled)
         const track = S.track || {}, base = n ? Sp.kmh(Sp.laneLength(track, c.lane), c.laps[n - 1]) : null, f = Sp.scaleFactor(c.carScale) || Sp.scaleFactor(track.scale);
         return base === null || !f ? null : base * f;
@@ -238,6 +252,7 @@
         if (opt.show === 'number') return { html: String(n) };
         return { html: n === 0 ? 'Finished' : n === 1 && opt.lastLap !== false ? 'Last lap' : `${n} ${n === 1 ? 'lap' : 'laps'} to go` };
       }
+      case 'totaltime': return { html: Wd.totalTimeHtml(totalTimes(c, S, t, Wd.ttPenalties(opt)), opt) }; // (1.63.0)
       case 'laptime': {
         const f = S.flashOf(c);
         if (f && S.now - f.at < (opt.holdSeconds ?? 3) * 1000) {
