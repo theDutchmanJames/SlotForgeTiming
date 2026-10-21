@@ -1497,6 +1497,135 @@ p.chlead{margin:0 0 10px;font-size:15px}
    Only the live pages (.lw.live), never the Layout Editor or a row design inside a widget; App Settings > General > Performance switches it off (html[data-layers="off"]). */
 html[data-layers="on"] .lw.live .lw-val{will-change:transform}
 
+/* The lane cards (1.72.0): the Race Director as one card for each lane (lanecards.js). Mouse sizes (36px); on a narrow screen (a phone: the box is narrower than 760px) one lane at a time, with 44px controls. All colours come from the theme, the colours of the pads from adjustpad.js. */
+.lc{container:lc / inline-size;display:flex;flex-direction:column;gap:12px;--lc-h:36px}
+.lc button:disabled{opacity:.38;cursor:not-allowed}
+.lc button:focus-visible,.lc input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.lc-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;box-sizing:border-box;min-height:52px;padding:8px 14px;background:color-mix(in srgb,var(--ink) 6%,var(--panel));border:1px solid var(--line);border-radius:10px}
+.lc-title{font-size:16px}
+.dirfolder .lc-title{display:none} /* the folder has the name already */
+.lc-last{font-size:12px;min-width:0}
+.lc-sp{flex:1}
+.lc-undo{height:32px;padding:0 14px;font-weight:600}
+.lc-wx{display:flex;align-items:center;gap:8px}
+.lc-wx[hidden]{display:none}
+.lc-wxl{font-size:11px;font-weight:700;letter-spacing:.08em;color:#4c9aff}
+.lc-seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;height:32px}
+.lc-segb{flex:none;min-width:60px;border:0;background:transparent;color:var(--ink);font:inherit;font-size:13px;padding:0 12px;cursor:pointer}
+.lc-segb:not(:disabled):hover{background:color-mix(in srgb,var(--ink) 10%,transparent)}
+.lc-segb[hidden]{display:none}
+.lc-segb[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);font-weight:700}
+.lc-wx .lc-segb[aria-pressed="true"]{background:#4c9aff;color:#0d1620}
+.lc-main{position:relative;display:grid;gap:12px;align-items:start;grid-template-columns:var(--lc-cols)}
+.lc[data-log="docked"] .lc-main{--lc-cols:minmax(0,calc(var(--n) * 460px + (var(--n) - 1) * 12px)) minmax(240px,1fr)}
+.lc[data-log="drawer"] .lc-main{--lc-cols:minmax(0,1fr)}
+.lc-cards{display:grid;gap:12px;grid-template-columns:repeat(var(--n),minmax(0,1fr))}
+.lc-card{position:relative;box-sizing:border-box;min-width:0;display:flex;flex-direction:column;gap:10px;padding:14px;background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--line);border-radius:10px}
+.lc-card[hidden]{display:none}
+.lc-card[data-kind="amber"]{border-top-color:#f2b705}
+.lc-card[data-kind="red"]{border-top-color:#e5484d}
+.lc-card[data-pop="true"]{z-index:7}
+.lc-head{display:flex;align-items:center;gap:10px;min-height:36px}
+.lc-num{flex:none;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;background:color-mix(in srgb,var(--ink) 14%,var(--panel))}
+.lc-who{font-size:17px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lc-car{flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lc-tyre{flex:none;margin-left:auto;display:flex;align-items:center;gap:6px;height:32px;padding:0 10px;border:1px solid var(--line);border-radius:6px;background:color-mix(in srgb,var(--ink) 6%,var(--panel));color:var(--ink);font:inherit;cursor:pointer}
+.lc-tyre[hidden]{display:none}
+.lc-ring{box-sizing:border-box;width:20px;height:20px;border-radius:50%;border:2px solid var(--muted);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;font-style:normal}
+.lc-tpct{font-size:13px;font-variant-numeric:tabular-nums}
+.lc-caret{font-size:10px}
+.lc-chips{display:flex;flex-wrap:wrap;gap:6px;min-height:24px}
+.lc-chip{font-size:12px;font-weight:600;padding:3px 10px;border-radius:12px;border:1px solid transparent}
+.lc-chip-ok{background:rgba(62,207,142,.16);border-color:rgba(62,207,142,.45)}
+.lc-chip-amber{background:rgba(242,183,5,.2);border-color:rgba(242,183,5,.55)}
+.lc-chip-red{background:rgba(229,72,77,.2);border-color:rgba(229,72,77,.55)}
+.lc-pads{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px}
+.lc-pad{position:relative;min-width:0}
+.lc-pad[hidden]{display:none}
+.lc-padl{font-size:11px;font-weight:700;letter-spacing:.08em;margin-bottom:4px;color:var(--pc,var(--muted))}
+[data-theme="light"] .lc-padl,[data-theme="ocean"] .lc-padl{color:color-mix(in srgb,var(--pc,var(--muted)) 62%,#000)}
+.lc-padrow{display:flex;align-items:center;gap:4px}
+.lc-pm,.lc-pp,.lc-val{height:var(--lc-h);box-sizing:border-box;border-radius:6px;font:inherit;font-weight:700;cursor:pointer}
+.lc-pm,.lc-pp{flex:none;width:var(--lc-h);padding:0;border:1px solid transparent;font-size:20px;line-height:1}
+.lc-pp{background:var(--pc);color:var(--pt)}
+.lc-pm{background:var(--mc);color:var(--mt)}
+.lc-pm:not(:disabled):hover,.lc-pp:not(:disabled):hover{filter:brightness(1.12)}
+.lc-val{flex:1;min-width:0;padding:0 4px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:19px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.lc-val[aria-expanded="true"]{border-color:var(--ink)}
+.lc-acts{position:relative;display:flex;gap:8px}
+.lc-acts[hidden],.lc-bop[hidden]{display:none}
+.lc-act{flex:1;min-width:0;height:var(--lc-h);border:1px solid var(--line);border-bottom:3px solid var(--bc,var(--line));border-radius:6px;background:color-mix(in srgb,var(--ink) 6%,var(--panel));color:var(--ink);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.lc-act[hidden]{display:none}
+.lc-act-pen{--bc:#f2b705}
+.lc-act-dmg{--bc:#e5484d}
+.lc-act-fail{--bc:#ff8f94}
+.lc-act[aria-expanded="true"]{border-color:var(--ink);border-bottom-color:var(--bc)}
+.lc-bop .lc-padl{color:var(--ink)}
+.lc-bopsub{font-weight:500;letter-spacing:0}
+.lc-bop .lc-seg{height:var(--lc-h)}
+.lc-bop .lc-segb{flex:1;min-width:0;padding:0 4px;font-size:12px}
+.lc-bop .lc-segb[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+/* the pop-ups: the amounts of a pad, the named penalties, the damage incidents, the failures */
+.lc-pop{position:absolute;z-index:8;top:calc(100% + 6px);left:0;box-sizing:border-box;width:292px;max-width:calc(100cqw - 24px);display:flex;flex-direction:column;gap:8px;padding:12px;background:var(--panel);border:1px solid var(--muted);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.45)}
+.lc-pop[hidden]{display:none}
+.lc-pad:nth-child(even) .lc-pop{left:auto;right:0}
+.lc-acts-pop{left:0;right:0;width:auto;max-width:none}
+.lc-pophead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:13px}
+.lc-popnow{font-size:12px;font-variant-numeric:tabular-nums;text-align:right}
+.lc-popnote{margin:0;font-size:12px}
+.lc-popnote:empty{display:none}
+.lc-poprow,.lc-poplist{display:flex;gap:6px;align-items:center}
+.lc-poplist{flex-wrap:wrap}
+.lc-pb{flex:1 1 0;width:auto;min-width:0;height:var(--lc-h);padding:0 8px;border:1px solid transparent;border-radius:6px;font:inherit;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;cursor:pointer}
+.lc-poplist .lc-pb{flex:1 1 auto}
+.lc-pb.lc-pm,.lc-pb.lc-pp{width:auto;font-size:15px}
+.lc-other{flex:1;min-width:0;height:var(--lc-h);box-sizing:border-box;padding:0 10px;border:1px solid var(--muted);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit;font-size:15px;font-weight:600}
+.lc-popother .lc-pb{flex:none}
+.lc-give{width:56px}
+.lc-take{width:84px}
+.lc-penb{background:#f2b705;color:#111418}
+.lc-incb{background:#e5484d;color:#111418}
+.lc-failgive{flex:none;width:100%;background:var(--ink);color:var(--bg)}
+.lc-radios{flex-direction:column;align-items:stretch;gap:2px}
+.lc-radio{display:flex;align-items:center;gap:8px;min-height:32px;padding:2px 6px;border-radius:6px;cursor:pointer;font-size:14px}
+.lc-radio:hover{background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.lc-radio i{margin-left:auto;font-style:normal;font-size:12px}
+/* the log: next to the cards with 1 or 2 lanes, a drawer with more */
+.lc-log{box-sizing:border-box;min-width:0;padding:14px;background:color-mix(in srgb,var(--ink) 4%,var(--bg));border:1px solid var(--line);border-top:4px solid var(--muted);border-radius:10px}
+.lc-loghead{display:flex;align-items:center;justify-content:space-between;min-height:28px;margin-bottom:6px}
+.lc-loghead .lc-padl{margin:0;color:var(--muted)}
+.lc .lc-loglist{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px;font-size:13px}
+.lc-loglist li{padding:5px 8px;border-radius:6px}
+.lc-loglist li:first-child{background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.lc[data-log="docked"] .lc-logbtn{display:none}
+.lc[data-log="drawer"] .lc-log{display:none;position:absolute;top:0;right:0;z-index:6;width:min(360px,100%);box-shadow:0 10px 28px rgba(0,0,0,.45);background:var(--panel)}
+.lc[data-log="drawer"][data-logopen="true"] .lc-log{display:block}
+.lc-strip{display:none;gap:8px}
+.lc-stripb{flex:1;min-width:0;display:flex;align-items:center;gap:8px;height:48px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font:inherit;cursor:pointer}
+.lc-stripb[hidden]{display:none}
+.lc-stripb[aria-pressed="true"]{border-color:var(--ink);background:color-mix(in srgb,var(--ink) 10%,var(--panel))}
+.lc-stripw{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+.lc-dot{flex:none;width:10px;height:10px;border-radius:50%;background:#3ecf8e}
+.lc-dot[data-kind="amber"]{background:#f2b705}
+.lc-dot[data-kind="red"]{background:#e5484d}
+/* a narrow box (a phone): the lane that is picked, 44px controls, the log under it, Undo stays in reach at the bottom */
+@container lc (max-width:759px){
+  .lc-bar,.lc-strip,.lc-main{--lc-h:44px} /* (a container query can not style the container itself, so the size is set on its parts) */
+  .lc-strip{display:flex;order:1}
+  .lc[data-n="1"] .lc-strip{display:none}
+  .lc-main{order:2}
+  .lc-bar{order:3;position:sticky;bottom:8px;z-index:5;background:var(--panel)}
+  .lc .lc-title{display:none}
+  .lc[data-log] .lc-main{--lc-cols:minmax(0,1fr)}
+  .lc-cards{grid-template-columns:minmax(0,1fr)}
+  .lc-card:not([data-sel="true"]){display:none}
+  .lc-tyre{height:40px}
+  .lc[data-log] .lc-logbtn{display:none}
+  .lc[data-log] .lc-log,.lc[data-log][data-logopen] .lc-log{display:block;position:static;width:auto;box-shadow:none;background:color-mix(in srgb,var(--ink) 4%,var(--bg))}
+  .lc-seg,.lc-undo{height:40px}
+}
+.padview .btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+
 /* ---- Soft lift (1.46.0): a slight depth for the whole app. Design: docs/ui-reference/depth ----
    Cards, folders, bars, dialogs and the widgets of a layout stand up a little like thick cards, buttons look a little shallow, and what is meant to be pressed in (the canvas of a race screen, the lane cards,
    the entry fields) is pressed in a little. The light comes from above: a thin light edge on top, a lip (the thickness) underneath, a short soft shadow. A pressed or switched on button moves down and sits in.

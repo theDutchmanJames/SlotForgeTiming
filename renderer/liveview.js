@@ -40,7 +40,7 @@ const LiveView = (() => {
     el.textContent = live() ? `${V.stat().title} · ${PHASE[d.phase] || ''}${left ? ` · next ${d.heat.final ? 'final ' + d.heat.final : 'heat'} in ` + left : ''}` : 'No race is running.';
   }
 
-  function go(p) { page = p; dgOpen = false; dgSel = ''; nodes = null; tkPanel = null; bopPanel = null; wxPanel = null; tyPanel = null; psPanel = null; enPanel = null; dmPanel = null; flPanel = null; adjPanel = null; shell(); draw(true); }
+  function go(p) { page = p; dgOpen = false; dgSel = ''; nodes = null; tkPanel = null; bopPanel = null; wxPanel = null; tyPanel = null; psPanel = null; enPanel = null; dmPanel = null; flPanel = null; adjPanel = null; if (cardsPanel) cardsPanel.off(); cardsPanel = null; shell(); draw(true); }
 
   // ---- the pages ----
   function draw(fresh) {
@@ -175,12 +175,13 @@ const LiveView = (() => {
   // The Adjust folder (1.12.0): pick a lane, then use the pads (penalty points, time, laps, championship points) for that lane. Nothing is picked to begin with, so a press never lands on the wrong lane.
   // What a pad did is kept to show the last action and to undo it (an undo is the same pad command with the opposite amount).
   // (the lane that is picked and what the pads did are kept here, so they stay when the page is drawn again; the panel itself is in adjustui.js)
-  let adjPanel = null, rvShown = '';
-  const adjMem = { lane: null, hist: AdjustPad.history(), key: undefined };
+  let adjPanel = null, cardsPanel = null, rvShown = '';
+  const adjMem = { lane: null, hist: AdjustPad.history(), key: undefined }, cardsMem = { hist: AdjustPad.history(), key: undefined }; // (cardsMem: the lane cards of 1.72.0 keep the picked lane, the open pop-up and what was done here)
   const padSettings = () => { let st = null; try { st = V && V.stat(); } catch (e) { st = null; } return AdjustPad.forSetup(state.settings, st && st.setup); }; // (this device's settings, with the pad values that the race setup of the race on the track has of its own)
   function drawDirector(body, fresh) {
     const st = V.stat(), pen = !!(st.cfg.penalty && st.cfg.penalty.on);
     if (fresh || !$('lv-dir')) {
+      const useCards = !st.tokenUi && typeof LaneCards !== 'undefined' && LaneCards.on(state.settings); // (1.72.0: a card for each lane instead of the folders Adjust, Penalties, Balance of Power, Damage and Car Failures)
       body.innerHTML = `<div id="lv-dir"><div class="lv-ctl">
           <button class="btn primary" data-cmd="start">Start</button><button class="btn" data-cmd="pause" id="dir-pause">Pause</button>
           <button class="btn" data-cmd="yellow" id="dir-yellow">Yellow flag</button><button class="btn" data-cmd="red" id="dir-red">Red flag</button>
@@ -188,33 +189,39 @@ const LiveView = (() => {
         <div class="card"><h3>Calls</h3>
           <div class="lv-ctl">${st.cfg.entries.map(e => `<button class="btn" data-cmd="call" data-lane="${e.lane}" title="A call from this lane: raises the yellow flag, like a call button">Call lane ${e.lane + 1}</button>`).join('')}</div>
           <ul id="dir-calls" class="lv-calls"></ul></div>
-        ${st.tokenUi ? '' : folder('adjust', 'Adjust', 'Penalty points, damage points, time, laps and championship points for one lane', 'plain', '<div id="dir-adj"></div>')}
-        ${folder('penalties', 'Penalties', 'Points and penalties for each lane', 'yellow', pen ? PenaltyPanel.tableHtml(st.cfg.entries, st.cfg.penalty.types) : PenaltyPanel.NONE)}
-        ${st.cfg.bop ? folder('bop', 'Balance of Power', 'Even out fast and slow cars', 'white', '<div id="dir-bop" class="boppanel"></div>') : ''}
-        ${st.cfg.damage ? folder('damage', 'Damage', 'Incidents and repairs', 'red', '<div id="dir-dm" class="boppanel"></div>') : ''}
-        ${st.cfg.damage && st.cfg.damage.failures ? folder('failures', 'Car Failures', 'Give a car a failure, or clear it', 'red', '<div id="dir-fl" class="boppanel"></div>') : ''}
+        ${st.tokenUi ? '' : useCards ? folder('director', 'Race Director', 'Penalties, points, time, laps, damage and Balance of Power for each lane', 'plain', '<div id="dir-cards"></div>') : folder('adjust', 'Adjust', 'Penalty points, damage points, time, laps and championship points for one lane', 'plain', '<div id="dir-adj"></div>')}
+        ${useCards ? '' : folder('penalties', 'Penalties', 'Points and penalties for each lane', 'yellow', pen ? PenaltyPanel.tableHtml(st.cfg.entries, st.cfg.penalty.types) : PenaltyPanel.NONE)}
+        ${st.cfg.bop && !useCards ? folder('bop', 'Balance of Power', 'Even out fast and slow cars', 'white', '<div id="dir-bop" class="boppanel"></div>') : ''}
+        ${st.cfg.damage && !useCards ? folder('damage', 'Damage', 'Incidents and repairs', 'red', '<div id="dir-dm" class="boppanel"></div>') : ''}
+        ${st.cfg.damage && st.cfg.damage.failures && !useCards ? folder('failures', 'Car Failures', 'Give a car a failure, or clear it', 'red', '<div id="dir-fl" class="boppanel"></div>') : ''}
         ${st.cfg.weather ? folder('weather', 'Weather', 'Rain, tyres and pit stops', 'blue', '<div id="dir-wx" class="boppanel"></div>') : ''}
         ${st.tokenUi ? '' : folder('tyre', 'Tyre Change', 'Give a car another tyre', 'purple', '<div id="dir-ty" class="boppanel"></div>')}
         ${st.cfg.pushsave ? folder('pushsave', 'Push and Save', 'How hard each driver drives, and what it costs in tyres and fuel', 'lime', '<div id="dir-ps" class="boppanel"></div>') : ''}
         ${st.cfg.endurance ? folder('endurance', 'Endurance', 'Driver swaps', 'brown', '<div id="dir-en" class="boppanel"></div>') : ''}
         <details class="card" id="dir-lapsbox" hidden><summary>Review laps</summary><div id="dir-laps" class="rv"></div></details>
         <div id="dir-review" class="card rv" hidden></div></div>`;
-      adjPanel = st.tokenUi ? null : AdjustPanel.build($('dir-adj'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane), phase: () => V.dyn().phase, now: () => V.clock(performance.now()), settings: padSettings,
+      adjPanel = st.tokenUi || useCards ? null : AdjustPanel.build($('dir-adj'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane), phase: () => V.dyn().phase, now: () => V.clock(performance.now()), settings: padSettings,
         penalty: () => { const c = V.stat().cfg; return !!(c.penalty && c.penalty.on); }, damage: () => !!V.stat().cfg.damage, champ: () => { const c = V.dyn().champ; return !!(c && c.on); },
         send: (group, lane, amount) => send({ type: 'pad', group, lane, amount }), refresh: () => drawDirector($('lv-body'), false), raceKey: () => V.stat().raceId, memory: adjMem, bind: false }); // the Adjust folder: the same pads as on the Race tab
-      lapsHtml = ''; rvShown = ''; bopPanel = st.cfg.bop ? BopPanel.build($('dir-bop'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, send: (l, how) => send({ type: 'bop', lane: l, how }) }) : null; // Balance of Power: the same lane controls as on the main computer
-      wxPanel = st.cfg.weather ? WeatherPanel.build($('dir-wx'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, now: () => V.clock(performance.now()), send: state => send({ type: 'weather', state }) }) : null; // the weather: the same controls as on the main computer
+      lapsHtml = ''; rvShown = ''; bopPanel = st.cfg.bop && !useCards ? BopPanel.build($('dir-bop'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, send: (l, how) => send({ type: 'bop', lane: l, how }) }) : null; // Balance of Power: the same lane controls as on the main computer
+      wxPanel = st.cfg.weather ? WeatherPanel.build($('dir-wx'), { buttons: !useCards, eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, now: () => V.clock(performance.now()), send: state => send({ type: 'weather', state }) }) : null; // the weather: the same controls as on the main computer
       tyPanel = st.tokenUi ? null : TyrePanel.build($('dir-ty'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, now: () => V.clock(performance.now()), wear: !!(st.cfg.tyrewear && st.cfg.tyrewear.on), sets: !!(st.cfg.tyrewear && st.cfg.tyrewear.sets && st.cfg.tyrewear.sets.mode !== 'none'), weather: !!st.cfg.weather, setTyre: (l, code, save) => send({ type: 'tyre', lane: l, tyre: code, ...(save ? { save: true } : {}) }), queue: (l, code) => send({ type: 'tyrenext', lane: l, tyre: code }) }); // Tyre Change: the same choice as on the main computer (every race)
       psPanel = st.cfg.pushsave ? PushSavePanel.build($('dir-ps'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase }) : null;
       enPanel = st.cfg.endurance ? EndurancePanel.build($('dir-en'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, now: () => V.clock(performance.now()), send: (l, what, id) => send(what === 'swap' ? { type: 'swap', lane: l, ...(id ? { to: id } : {}) } : { type: 'swapnext', lane: l, id }) }) : null; // an Endurance Race: the swaps, the same controls as on the main computer
-      dmPanel = st.cfg.damage ? DamagePanel.build($('dir-dm'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), incidents: st.cfg.damage.incidents, phase: () => V.dyn().phase, now: () => V.clock(performance.now()), send: (l, n) => send({ type: 'damage', lane: l, n }) }) : null; // the damage of the cars, the same controls as on the main computer
-      flPanel = st.cfg.damage && st.cfg.damage.failures ? FailurePanel.build($('dir-fl'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), failures: st.cfg.damage.failures.list.map((f, k) => ({ k, name: f.name, chance: f.chance })), phase: () => V.dyn().phase, now: () => V.clock(performance.now()), send: (l, k) => send({ type: 'failure', lane: l, k }), clear: l => send({ type: 'failureclear', lane: l }) }) : null; // Car Failures: the same controls as on the main computer (1.44.0)
+      dmPanel = st.cfg.damage && !useCards ? DamagePanel.build($('dir-dm'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), incidents: st.cfg.damage.incidents, phase: () => V.dyn().phase, now: () => V.clock(performance.now()), send: (l, n) => send({ type: 'damage', lane: l, n }) }) : null; // the damage of the cars, the same controls as on the main computer
+      flPanel = st.cfg.damage && st.cfg.damage.failures && !useCards ? FailurePanel.build($('dir-fl'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), failures: st.cfg.damage.failures.list.map((f, k) => ({ k, name: f.name, chance: f.chance })), phase: () => V.dyn().phase, now: () => V.clock(performance.now()), send: (l, k) => send({ type: 'failure', lane: l, k }), clear: l => send({ type: 'failureclear', lane: l }) }) : null; // Car Failures: the same controls as on the main computer (1.44.0)
+      if (cardsPanel) cardsPanel.off();
+      cardsPanel = useCards ? LaneCards.build($('dir-cards'), { eng: () => V.engine(), lanes: st.cfg.entries.map(e => e.lane).sort((a, b) => a - b), phase: () => V.dyn().phase, now: () => V.clock(performance.now()), settings: padSettings,
+        penalty: () => { const c = V.stat().cfg; return !!(c.penalty && c.penalty.on); }, penaltyTypes: () => { const c = V.stat().cfg; return (c.penalty && c.penalty.types) || []; }, champ: () => { const c = V.dyn().champ; return !!(c && c.on); },
+        send: { pad: (group, lane, amount) => send({ type: 'pad', group, lane, amount }), assign: (lane, typeIndex) => send({ type: 'assign', lane, typeIndex }), damage: (lane, n) => send({ type: 'damage', lane, n }), failure: (lane, k) => send({ type: 'failure', lane, k }),
+          failureClear: lane => send({ type: 'failureclear', lane }), bop: (lane, how) => send({ type: 'bop', lane, how }), weather: state => send({ type: 'weather', state }) },
+        refresh: () => drawDirector($('lv-body'), false), raceKey: () => V.stat().raceId, memory: cardsMem, bind: false }) : null; // the lane cards: the same commands as the folders they replace
       DirFolder.bind(body);
       Review.bind($('dir-review'), c => send({ type: 'review', ...c }), () => drawDirector($('lv-body'), false));
       Review.bind($('dir-laps'), c => send({ type: 'review', ...c }), () => drawDirector($('lv-body'), false));
       body.onclick = e => {
         const b = e.target.closest('[data-cmd]');
-        if (!b) return adjPanel && adjPanel.click(e.target); // (not a button of the race: maybe one of the Adjust folder)
+        if (!b) return cardsPanel ? cardsPanel.click(e.target) : adjPanel && adjPanel.click(e.target); // (not a button of the race: maybe one of the lane cards or of the Adjust folder)
         if (b.disabled) return;
         if (b.dataset.cmd === 'stop' && !confirm('Stop the race now? The laps so far are saved.')) return;
         send({ type: b.dataset.cmd, lane: b.dataset.lane === undefined ? undefined : Number(b.dataset.lane), n: b.dataset.n === undefined ? undefined : Number(b.dataset.n), typeIndex: b.dataset.type === undefined ? undefined : Number(b.dataset.type), id: b.dataset.id === undefined ? undefined : Number(b.dataset.id), how: b.dataset.how });
@@ -237,6 +244,7 @@ const LiveView = (() => {
     }
     set('[data-cmd="callresolve"]', b => { b.disabled = !on; });
     if (adjPanel) adjPanel.update();
+    if (cardsPanel) { cardsPanel.update(); const cv = cardsPanel.view(), fd = body.querySelector('[data-dirf="director"]'); if (fd) fd.hidden = !(cv && cv.usable); }
     if (bopPanel) bopPanel.update();
     if (wxPanel) wxPanel.update();
     if (tyPanel) tyPanel.update();
@@ -252,7 +260,7 @@ const LiveView = (() => {
       const h = st.tokenUi ? '<h3>Session review</h3><p class="muted">The session is over. The stints are checked on the main computer, where Finalize is pressed.</p>' : Review.html(eng, { champ: d.champ, settings: padSettings() });
       rv.hidden = false; if (h !== rvShown) { rvShown = h; rv.innerHTML = h; }
     } else if (!rv.hidden) { rv.hidden = true; rv.innerHTML = ''; rvShown = ''; }
-    if (!pen) return;
+    if (!pen || cardsPanel) return; // (the lane cards have the log themselves)
     PenaltyPanel.refresh(body, eng, st.cfg.entries, st.cfg.penalty.types, on);
     $('dir-log').innerHTML = PenaltyPanel.logHtml(eng); // (the log is made in penaltyui.js, as on the Race tab)
   }
@@ -367,7 +375,7 @@ const LiveView = (() => {
   function repaint() { status(); if (page !== 'tiles' && page !== 'rules' && page !== 'database') draw(false); }
   async function mount(el, opts = {}) {
     unmount();
-    host = el; second = !!opts.second; V = LiveShare.viewer(); page = 'tiles'; nodes = null; tkPanel = null; bopPanel = null; wxPanel = null; tyPanel = null; psPanel = null; enPanel = null; dmPanel = null; flPanel = null; adjPanel = null; lane = null;
+    host = el; second = !!opts.second; V = LiveShare.viewer(); page = 'tiles'; nodes = null; tkPanel = null; bopPanel = null; wxPanel = null; tyPanel = null; psPanel = null; enPanel = null; dmPanel = null; flPanel = null; adjPanel = null; if (cardsPanel) cardsPanel.off(); cardsPanel = null; lane = null;
     try { state.settings = await api.getSettings(); } catch { /* keep what we have */ }
     let got = null; try { got = await api.liveGet(); } catch { /* no race data yet: the pages open empty and fill in from the live messages */ }
     if (got && got.stat) { V.feedStatic(got.stat); if (got.dyn) V.feedDynamic(got.dyn, performance.now()); }
@@ -394,6 +402,6 @@ const LiveView = (() => {
     host.onpointermove = reveal; host.onpointerdown = reveal;
     shell(); draw(true);
   }
-  function unmount() { if (host) { host.onpointermove = null; host.onpointerdown = null; if (host.classList) { host.classList.remove('lv-clean'); host.classList.remove('lv-show'); } } clearTimeout(revealT); if (keyOff) { document.removeEventListener('keydown', keyOff); keyOff = null; } offs.forEach(f => f()); offs = []; clearInterval(ticker); ticker = null; host = null; V = null; nodes = null; tkPanel = null; }
+  function unmount() { if (host) { host.onpointermove = null; host.onpointerdown = null; if (host.classList) { host.classList.remove('lv-clean'); host.classList.remove('lv-show'); } } clearTimeout(revealT); if (keyOff) { document.removeEventListener('keydown', keyOff); keyOff = null; } offs.forEach(f => f()); offs = []; clearInterval(ticker); ticker = null; host = null; V = null; nodes = null; tkPanel = null; if (cardsPanel) cardsPanel.off(); cardsPanel = null; }
   return { mount, unmount, go, nodes: () => nodes };
 })();

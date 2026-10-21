@@ -88,7 +88,7 @@ async function renderRace() {
   } else if (tokenSession) eng = mk(Array.from({ length: lanes }, (_, i) => ({ lane: i, ...(people[i] || { driverId: '', carId: '', driverName: 'Guest', carName: '', carPicture: '', carScale: '', nickname: '', callsign: '', flag: '', avatar: '' }) }))); // every lane of the track can be sold, with or without a driver
   else eng = mk(people.map((p, i) => ({ lane: i, ...(season ? { participant: i } : {}), ...p }))); // (a race of a championship: the car knows who it is, as in a heat race, for a leaderboard that counts over the rounds)
 
-  if (live) { if (live.perfStop) live.perfStop(); if (live.fsView) live.fsView.close(); document.removeEventListener('keydown', live.fsKey); live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); if (live.offTm) live.offTm(); if (live.box) { live.box.off(); live.box = null; } if (live.offTmStatus) live.offTmStatus(); if (live.offCmd) live.offCmd(); if (live.offResync) live.offResync(); clearTimeout(live.shareTimer); clearInterval(live.timers); clearInterval(live.breakTimer); (live.sim || []).forEach(clearTimeout); if (live.flushTokens) live.flushTokens(); document.removeEventListener('keydown', live.key); }
+  if (live) { if (live.perfStop) live.perfStop(); if (live.fsView) live.fsView.close(); if (live.cardsOff) live.cardsOff(); document.removeEventListener('keydown', live.fsKey); live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); if (live.offTm) live.offTm(); if (live.box) { live.box.off(); live.box = null; } if (live.offTmStatus) live.offTmStatus(); if (live.offCmd) live.offCmd(); if (live.offResync) live.offResync(); clearTimeout(live.shareTimer); clearInterval(live.timers); clearInterval(live.breakTimer); (live.sim || []).forEach(clearTimeout); if (live.flushTokens) live.flushTokens(); document.removeEventListener('keydown', live.key); }
   // earlier laps on this track, for personal best / track record highlights and the record lap widget
   const base = { personal: new Map(), track: Infinity, trackName: '' };
   // laps removed from the records (but kept in their session) do not count here
@@ -120,6 +120,7 @@ async function renderRace() {
   const planHtml = !heats ? '' : `<details class="card" id="heatlistcard" style="margin-top:12px" open><summary>Heat list (${heat.count} ${heat.count === 1 ? 'heat' : 'heats'}${finalsOn ? (heat.total - heat.count === 2 ? ' and 2 finals' : ' and a final') : ''})</summary>
     <div class="wrap" id="heatlist"></div><div class="row"><button class="btn" id="heatprint" type="button" title="Make a PDF of the heat list, to print or pin up">Print the heat list</button> <span id="heatprintmsg" class="muted" role="status"></span></div></details>`;
   const host = raceHost();
+  const cardsOn = !tokenSession && typeof LaneCards !== 'undefined' && LaneCards.on(state.settings); // (1.72.0: the Race Director as a card for each lane; App Settings > Race Director brings the folders back)
   const folderHtml = (id, title, note, tone, inner) => DirFolder.html(id, title, note, tone, inner, { id: 'fd-' + id }); // (1.15.0: the folders of the Race Director page, with the same colours and order)
   host.innerHTML = `<p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.ofType || setup.sessionType])} on ${esc(r.track.name)} · ${esc(limitFull)}${r.champ ? ` · <span class="chtag" id="chtag" title="This race is saved as part of the championship">${esc(Champ.tagText(r.champ))}</span>` : ''}</p>
     <div class="rt-stage"><div class="canvas live" id="canvas"></div></div>
@@ -131,11 +132,11 @@ async function renderRace() {
     <div id="teampick" class="card" hidden></div>
     <div class="rt-folders">
       ${folderHtml('track', 'Track actions', 'Lap, pit and call buttons for each lane', 'green', '<p class="trk-hint muted" id="trkhint" role="status" hidden></p><div id="trackgrid" class="trk-grid"></div>')}
-      ${tokenSession ? folderHtml('tokens', 'Time tokens', 'Add time to a lane to switch it on', 'teal', '<div id="tokenpanel" class="tkpanel"></div>') : folderHtml('adjust', 'Adjust', 'Penalty points, damage points, time, laps and championship points for one lane', 'plain', '<div id="adjpanel" class="boppanel adjpanel"></div>')}
-      ${penCfg.on ? folderHtml('penalties', 'Penalties', 'Points and penalties for each lane', 'yellow', '<div id="penpanel"></div>') : ''}
-      ${bopCfg ? folderHtml('bop', 'Balance of Power', 'Even out fast and slow cars', 'white', '<div id="boppanel" class="boppanel"></div>') : ''}
-      ${eng.damage ? folderHtml('damage', 'Damage', 'Incidents and repairs', 'red', '<div id="dmpanel" class="boppanel"></div>') : ''}
-      ${eng.failures ? folderHtml('failures', 'Car Failures', 'Give a car a failure, or clear it', 'red', '<div id="flpanel" class="boppanel"></div>') : ''}
+      ${tokenSession ? folderHtml('tokens', 'Time tokens', 'Add time to a lane to switch it on', 'teal', '<div id="tokenpanel" class="tkpanel"></div>') : cardsOn ? folderHtml('director', 'Race Director', 'Penalties, points, time, laps, damage and Balance of Power for each lane', 'plain', '<div id="lcpanel"></div>') : folderHtml('adjust', 'Adjust', 'Penalty points, damage points, time, laps and championship points for one lane', 'plain', '<div id="adjpanel" class="boppanel adjpanel"></div>')}
+      ${penCfg.on && !cardsOn ? folderHtml('penalties', 'Penalties', 'Points and penalties for each lane', 'yellow', '<div id="penpanel"></div>') : ''}
+      ${bopCfg && !cardsOn ? folderHtml('bop', 'Balance of Power', 'Even out fast and slow cars', 'white', '<div id="boppanel" class="boppanel"></div>') : ''}
+      ${eng.damage && !cardsOn ? folderHtml('damage', 'Damage', 'Incidents and repairs', 'red', '<div id="dmpanel" class="boppanel"></div>') : ''}
+      ${eng.failures && !cardsOn ? folderHtml('failures', 'Car Failures', 'Give a car a failure, or clear it', 'red', '<div id="flpanel" class="boppanel"></div>') : ''}
       ${eng.weather ? folderHtml('weather', 'Weather', 'Rain, tyres and pit stops', 'blue', '<div id="wxpanel" class="boppanel"></div>') : ''}
       ${tokenSession ? '' : folderHtml('tyre', 'Tyre Change', 'Give a car another tyre', 'purple', '<div id="typanel" class="boppanel"></div>')}
       ${eng.pushSave ? folderHtml('pushsave', 'Push and Save', 'How hard each driver drives, and what it costs in tyres and fuel', 'lime', '<div id="pspanel" class="boppanel"></div>') : ''}
@@ -366,6 +367,7 @@ async function renderRace() {
     ph('lane buttons');
     drawCalls(); ph('calls');
     drawAdjust(); ph('adjust pad');
+    drawCards(); ph('lane cards');
     if (live.penPanel) live.penPanel.update();
     if (live.tkPanel) live.tkPanel.update();
     if (live.bopPanel) live.bopPanel.update();
@@ -394,6 +396,11 @@ async function renderRace() {
     const p = live.adjPanel, f = ui('fd-adjust'); if (!p || !f) return;
     const show = ['ready', 'running', 'paused', 'between'].includes(live.phase) && p.usable();
     f.hidden = !show; if (show) p.update();
+  };
+  // the lane cards (1.72.0): the folder is there when the race has something to adjust (pads, Balance of Power, failures or weather)
+  const drawCards = () => {
+    const p = live.lcPanel, f = ui('fd-director'); if (!p || !f) return;
+    p.update(); const v = p.view(); f.hidden = !(v && v.usable);
   };
   // the folders of the panels that decide themselves whether they have anything to show (Balance of Power, Damage, Weather, Endurance): when the panel is hidden, its folder goes too
   const syncFolders = () => [['bop', 'boppanel'], ['damage', 'dmpanel'], ['failures', 'flpanel'], ['weather', 'wxpanel'], ['endurance', 'enpanel']].forEach(([f, pn]) => { const fd = ui('fd-' + f), pb = ui(pn); if (fd && pb) fd.hidden = !!pb.hidden; });
@@ -1115,17 +1122,24 @@ async function renderRace() {
     }
     if (!(kept && kept.data)) ui('msg').textContent = 'Press Start to open the session, then add time to a lane.';
   }
-  if (bopCfg) live.bopPanel = BopPanel.build(ui('boppanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, send: (lane, how) => actions.bop(lane, how) }); // the Balance of Power lane controls
+  if (bopCfg && !cardsOn) live.bopPanel = BopPanel.build(ui('boppanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, send: (lane, how) => actions.bop(lane, how) }); // the Balance of Power lane controls
   if (setup.endurance) live.enPanel = EndurancePanel.build(ui('enpanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, now, send: (lane, what, id) => (what === 'swap' ? actions.swap(lane, id) : actions.swapNext(lane, id)) }); // the swaps of an Endurance Race
-  if (eng.damage) live.dmPanel = DamagePanel.build(ui('dmpanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), incidents: eng.damage.incidents, phase: () => live.phase, now, send: (lane, n) => actions.damage(lane, n) }); // the damage of the cars (the Damage System)
-  if (eng.failures) live.flPanel = FailurePanel.build(ui('flpanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), failures: eng.failures.list.map((f, k) => ({ k, name: f.name, chance: f.chance })), phase: () => live.phase, now, send: (lane, k) => actions.failure(lane, k), clear: lane => actions.failureClear(lane) }); // Car Failures: give a car a failure or clear it (1.44.0)
-  if (!tokens) live.adjPanel = AdjustPanel.build(ui('adjpanel'), { id: 'radj', find: ui, eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, now, settings: () => AdjustPad.forSetup(state.settings, setup), // (the values of this race setup, else the ones from App Settings)
+  if (eng.damage && !cardsOn) live.dmPanel = DamagePanel.build(ui('dmpanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), incidents: eng.damage.incidents, phase: () => live.phase, now, send: (lane, n) => actions.damage(lane, n) }); // the damage of the cars (the Damage System)
+  if (eng.failures && !cardsOn) live.flPanel = FailurePanel.build(ui('flpanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), failures: eng.failures.list.map((f, k) => ({ k, name: f.name, chance: f.chance })), phase: () => live.phase, now, send: (lane, k) => actions.failure(lane, k), clear: lane => actions.failureClear(lane) }); // Car Failures: give a car a failure or clear it (1.44.0)
+  if (!tokens && !cardsOn) live.adjPanel = AdjustPanel.build(ui('adjpanel'), { id: 'radj', find: ui, eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, now, settings: () => AdjustPad.forSetup(state.settings, setup), // (the values of this race setup, else the ones from App Settings)
     penalty: () => !!(eng.penalty && eng.penalty.on), damage: () => !!eng.damage, champ: () => !!(heats && setup.resultBy === 'points'), send: (group, lane, amount) => actions.pad(group, lane, amount), refresh: () => update(), raceKey: () => eng }); // the Adjust pads: the same as on the Race Director page, but they adjust the race directly
-  if (eng.weather) live.wxPanel = WeatherPanel.build(ui('wxpanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, now, send: state => actions.weather(state) }); // the weather controls
+  if (eng.weather) live.wxPanel = WeatherPanel.build(ui('wxpanel'), { buttons: !cardsOn, eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, now, send: state => actions.weather(state) }); // the weather controls
   if (!tokenSession) live.tyPanel = TyrePanel.build(ui('typanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase, now, wear: !!eng.tyrewear, sets: !!(eng.tyrewear && eng.tyrewear.sets && eng.tyrewear.sets.mode !== 'none'), weather: !!eng.weather, setTyre: (lane, code, save) => actions.tyre(lane, code, save), queue: (lane, code) => actions.tyreNext(lane, code) }); // Tyre Change: the tyre of each car (every race)
   if (eng.pushSave) live.psPanel = PushSavePanel.build(ui('pspanel'), { eng: () => eng, lanes: Array.from({ length: lanes }, (_, l) => l), phase: () => live.phase });
-  if (penCfg.on) live.penPanel = PenaltyPanel.build(ui('penpanel'), { eng: () => eng, entries: () => eng.cars.map(c => ({ lane: c.lane, driverName: c.driverName })).sort((a, b) => a.lane - b.lane), cfg: () => penCfg, phase: () => live.phase,
+  if (penCfg.on && !cardsOn) live.penPanel = PenaltyPanel.build(ui('penpanel'), { eng: () => eng, entries: () => eng.cars.map(c => ({ lane: c.lane, driverName: c.driverName })).sort((a, b) => a.lane - b.lane), cfg: () => penCfg, phase: () => live.phase,
     send: cmd => (cmd.type === 'penalty' ? actions.penalty(cmd.lane, cmd.n) : actions.assign(cmd.lane, cmd.typeIndex)) }); // the Penalties folder: the same table as on the Race Director page, but the penalties are given right here
+  if (cardsOn) { // the lane cards (1.72.0): what the Adjust, Penalties, Balance of Power, Damage and Car Failures folders did, as one card for each lane; they go through the same actions
+    const allLanes = Array.from({ length: lanes }, (_, l) => l);
+    live.lcPanel = LaneCards.build(ui('lcpanel'), { eng: () => eng, lanes: allLanes, phase: () => live.phase, now, settings: () => AdjustPad.forSetup(state.settings, setup),
+      penalty: () => !!(eng.penalty && eng.penalty.on), penaltyTypes: () => (penCfg && penCfg.types) || [], champ: () => !!(heats && setup.resultBy === 'points'), refresh: () => update(), raceKey: () => eng,
+      send: { pad: (g, l, a) => actions.pad(g, l, a), assign: (l, ti) => actions.assign(l, ti), damage: (l, n) => actions.damage(l, n), failure: (l, k) => actions.failure(l, k), failureClear: l => actions.failureClear(l), bop: (l, how) => actions.bop(l, how), weather: st => actions.weather(st) } });
+    live.cardsOff = live.lcPanel.off;
+  }
   DirFolder.bind(host); // (a folder that is closed stays closed, also when the next race is shown)
 
   // ---- a race that was interrupted can be carried on (1.9.0) ----

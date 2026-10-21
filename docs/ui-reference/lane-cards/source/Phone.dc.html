@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Race Director, phone</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0;background:#171b21}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid #e8e6e1;outline-offset:2px}
+.tnum{font-variant-numeric:tabular-nums}
+</style>
+</helmet>
+<div style="position:relative;width:390px;height:900px;overflow:hidden;box-sizing:border-box;background:#171b21;color:#e8e6e1;font-family:Inter,system-ui,sans-serif">
+
+  <div style="box-sizing:border-box;padding:8px 16px 0;display:flex;flex-direction:column;gap:8px">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;height:44px">
+      <div>
+        <div style="font-size:11px;color:#98a0ab">Saturday club night, heat 2</div>
+        <div style="font-size:17px;font-weight:700">Race Director</div>
+      </div>
+      <div style="text-align:right">
+        <div class="tnum" style="font-size:13px;font-weight:600">Lap 9 of 20</div>
+        <div style="font-size:12px;color:#7fb7ff;font-weight:600">Dry</div>
+      </div>
+    </div>
+
+    <div role="group" aria-label="Pick a lane" style="display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:6px">
+      <sc-for list="{{lanes}}" as="lane" hint-placeholder-count="4">
+      <button type="button" aria-pressed="{{lane.sel}}" aria-label="{{lane.aria}}" style="box-sizing:border-box;height:60px;border-radius:10px;padding:6px 4px;color:#e8e6e1;display:flex;flex-direction:column;align-items:center;justify-content:space-between;{{lane.btn}}">
+        <span style="display:flex;align-items:center;gap:6px;max-width:100%">
+          <span class="tnum" style="width:20px;height:20px;border-radius:6px;background:{{lane.badgeBg}};color:{{lane.badgeFg}};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:none">{{lane.n}}</span>
+          <span style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{lane.name}}</span>
+        </span>
+        <span style="display:flex;gap:4px;height:10px;align-items:center">
+          <sc-for list="{{lane.dots}}" as="d" hint-placeholder-count="3">
+            <span style="width:8px;height:8px;border-radius:50%;background:{{d}}"></span>
+          </sc-for>
+          <sc-if value="{{lane.clear}}" hint-placeholder-val="{{ false }}">
+            <span style="font-size:10px;font-weight:600;color:#6fe0ae;line-height:1">clear</span>
+          </sc-if>
+        </span>
+      </button>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;align-items:baseline;justify-content:space-between;height:24px;padding:0 2px">
+      <span style="font-size:18px;font-weight:700">Bjornie</span>
+      <span style="font-size:12px;color:#98a0ab">Lane 2 · Porsche 956</span>
+    </div>
+
+    <sc-for list="{{groups}}" as="g" hint-placeholder-count="4">
+    <div style="box-sizing:border-box;background:#222831;border:1px solid #343b47;border-left:4px solid {{g.color}};border-radius:10px;padding:8px 10px 10px;display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;align-items:center;justify-content:space-between;height:44px">
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:{{g.label}}">{{g.title}}</div>
+          <div style="display:flex;align-items:baseline;gap:6px"><span class="tnum" style="font-size:22px;font-weight:700;line-height:1.1">{{g.value}}</span><span style="font-size:12px;color:#98a0ab">{{g.unit}}</span></div>
+        </div>
+        <button type="button" style="width:88px;height:44px;border-radius:8px;border:1px solid #4a5260;background:#2b323d;color:#e8e6e1;font-size:13px;font-weight:600">{{g.more}}</button>
+      </div>
+      <div style="display:flex;gap:6px">
+        <sc-for list="{{g.plus}}" as="b" hint-placeholder-count="3">
+          <button type="button" aria-label="{{g.addWord}} {{b}}" class="tnum" style="flex:1;height:44px;border-radius:8px;border:1px solid transparent;background:{{g.color}};color:#111418;font-size:16px;font-weight:700">{{b}}</button>
+        </sc-for>
+      </div>
+      <div style="display:flex;gap:6px">
+        <sc-for list="{{g.minus}}" as="b" hint-placeholder-count="3">
+          <button type="button" aria-label="{{g.takeWord}} {{b}}" class="tnum" style="flex:1;height:44px;border-radius:8px;border:1px solid {{g.minusLine}};background:{{g.minusBg}};color:#fff;font-size:16px;font-weight:700">{{b}}</button>
+        </sc-for>
+      </div>
+    </div>
+    </sc-for>
+
+    <div style="box-sizing:border-box;background:#222831;border:1px solid #343b47;border-left:4px solid #ff8f94;border-radius:10px;padding:8px 10px 10px;display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#ff8f94">CAR FAILURE</span>
+        <span style="font-size:12px;font-weight:600;color:#ffc9cb">Slow puncture</span>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button type="button" style="flex:1;height:44px;border-radius:8px;border:1px solid #4a5260;background:#2b323d;color:#e8e6e1;font-size:13px;font-weight:600;text-align:left;padding:0 10px">At random ▾</button>
+        <button type="button" style="width:64px;height:44px;border-radius:8px;border:1px solid transparent;background:#ff8f94;color:#111418;font-size:14px;font-weight:700">Give</button>
+        <button type="button" style="width:64px;height:44px;border-radius:8px;border:1px solid #7a3639;background:#512426;color:#fff;font-size:14px;font-weight:700">Clear</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="position:absolute;left:0;right:0;bottom:0;height:68px;box-sizing:border-box;padding:12px 16px;background:#2b323d;border-top:1px solid #4a5260;display:flex;align-items:center;gap:12px">
+    <button type="button" style="height:44px;padding:0 20px;border-radius:8px;border:1px solid #6a7382;background:#222831;color:#e8e6e1;font-size:14px;font-weight:700;flex:none">Undo</button>
+    <div style="min-width:0">
+      <div style="font-size:11px;color:#98a0ab">Last</div>
+      <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Bjornie +5 s race time</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const pen = '#f2b705', dmg = '#e5484d', fal = '#ff8f94', tim = '#f08a24', lap = '#9b7bff';
+    const rows = [
+      { n: 1, name: 'James', dots: [], clear: true, say: 'all clear' },
+      { n: 2, name: 'Bjornie', dots: [pen, tim, dmg, fal], clear: false, sel: true, say: '3 penalty points, plus 5 seconds, 2 damage, slow puncture' },
+      { n: 3, name: 'Maria', dots: [pen], clear: false, say: '1 penalty point' },
+      { n: 4, name: 'Sam', dots: [lap, dmg], clear: false, say: 'plus 1 lap, 1 damage' }
+    ];
+    const lanes = rows.map(r => ({
+      ...r,
+      sel: !!r.sel,
+      aria: 'Lane ' + r.n + ', ' + r.name + ': ' + r.say,
+      btn: r.sel ? 'border:2px solid #e8e6e1;background:#2b323d;' : 'border:1px solid #343b47;background:#222831;',
+      badgeBg: r.sel ? '#e8e6e1' : '#343b47',
+      badgeFg: r.sel ? '#171b21' : '#e8e6e1'
+    }));
+    const groups = [
+      { title: 'PENALTY POINTS', label: '#f2b705', color: '#f2b705', minusBg: '#4a3d12', minusLine: '#6b5a1a', value: '3', unit: 'points', more: 'Named ▾', addWord: 'Give Bjornie penalty points', takeWord: 'Take back penalty points', plus: ['+1', '+2', '+5'], minus: ['−1', '−2', '−5'] },
+      { title: 'RACE TIME', label: '#f5a04a', color: '#f08a24', minusBg: '#4a3214', minusLine: '#6b4a1c', value: '+5', unit: 'seconds', more: 'Other…', addWord: 'Add seconds to the race time of Bjornie', takeWord: 'Take seconds off the race time', plus: ['+5', '+10', '+30'], minus: ['−5', '−10', '−30'] },
+      { title: 'LAPS', label: '#b8a3ff', color: '#9b7bff', minusBg: '#352f55', minusLine: '#4a4272', value: '0', unit: 'laps', more: 'Other…', addWord: 'Give Bjornie laps', takeWord: 'Take laps off Bjornie', plus: ['+1', '+2'], minus: ['−1', '−2'] },
+      { title: 'DAMAGE', label: '#ff7b80', color: '#e5484d', minusBg: '#512426', minusLine: '#7a3639', value: '2', unit: 'points', more: 'Incidents ▾', addWord: 'Give Bjornie damage points', takeWord: 'Take back damage points', plus: ['+1', '+2', '+4'], minus: ['−1', '−2', '−4'] }
+    ];
+    return { lanes, groups };
+  }
+}
+</script>
+</body>
+</html>

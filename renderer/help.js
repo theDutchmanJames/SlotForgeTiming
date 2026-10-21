@@ -193,7 +193,7 @@ const Help = (() => {
           <li><b>Full screen widgets</b> (or <b>F</b>) shows only the widgets, as large as the window allows. <b>Esc</b>, <b>F</b> or the <b>Exit full screen</b> button goes back.</li>
           <li>A race keeps running when you open another tab. A <b>Race</b> tab with a green dot takes you back to it. The keys above only work on the Race tab. Only one race can run at a time.</li>
           <li><b>Review laps</b> marks a lap invalid or deletes it during the race.</li>
-          <li>Below are the coloured folders of the Race Director page: <b>Track actions</b> (green: a card for each lane with big <b>Lap</b> (counts a lap by hand, while the race runs), <b>Pit</b> and <b>Call</b> buttons), <b>Adjust</b> (pads for penalty points, damage points, time, laps and championship points), <b>Penalties</b>, <b>Balance of Power</b>, <b>Damage</b>, <b>Car Failures</b>, <b>Weather</b>, <b>Tyre Change</b> and <b>Endurance</b>, when the race uses them.</li>
+          <li>Below are the coloured folders of the Race Director page: <b>Track actions</b> (green: a card for each lane with big <b>Lap</b> (counts a lap by hand, while the race runs), <b>Pit</b> and <b>Call</b> buttons), <b>Race Director</b> (lane cards: pads for penalty points, damage points, time, laps and championship points, and more), <b>Weather</b>, <b>Tyre Change</b> and <b>Endurance</b>, when the race uses them.</li>
           <li>When a race (or a heat) ends, a <b>review</b> opens before anything is saved: check the order, clear penalty points, disqualify or reinstate, correct laps, or <b>Adjust</b> the race time, the laps and (in a heat race decided on points) the championship points of a driver. <b>Finalize results</b> saves them.</li>
         </ul>` },
       { id: 'sectors', title: 'Sectors', note: 'Where a car that did not finish was last seen', body: `
@@ -207,12 +207,19 @@ const Help = (() => {
       { id: 'director', title: 'Race Director, flags and penalties', note: 'Control the race from anywhere', body: `
         <ul>
           <li>The <b>Race Director</b> page (Live Race tab) has Start, Pause, Yellow, Red and Stop, the calls and folders. It also works on a phone or tablet, behind a password.</li>
-          <li><b>Adjust</b>: pick a lane, then press the pads, <b>[+] value [−]</b>: penalty points, damage points, time, laps, championship points, also during the race. Undo takes the last one back. Values and layout: App Settings, Race Director. A race setup can have pad values of its own (its Adjust pads folder).</li>
+          <li>The standard view is the <b>lane cards</b> (see Lane cards). With the <b>Folders</b> view (App Settings, Race Director) the <b>Adjust</b> folder is back: pick a lane, then press the pads, <b>[+] value [−]</b>: penalty points, damage points, time, laps, championship points, also during the race. Undo takes the last one back. Values and layout: App Settings, Race Director. A race setup can have pad values of its own (its Adjust pads folder).</li>
           <li><b>Penalty points</b> turn into seconds added to the driver's time (the penalty system sets how, and can disqualify at a limit).</li>
           <li><b>Special penalties</b> take points off and must be served: a Drivethrough when the next pit stop starts, a Stop-and-Go by standing still on the sensor.</li>
           <li>A <b>call from a lane</b> raises the yellow flag and waits for the Race Director, who dismisses it or gives a penalty point.</li>
           <li><b>Yellow flag target lap time</b> (race setup, Advanced, Yellow flag): while the flag is up the race says the target. A full lap under yellow that is faster is called out, marked in the lap review and costs the penalty points you set (a penalty system is needed).</li>
           <li>The Trackmate <b>Trackcall</b> button can raise the flags and switch the track power. You choose how in the race setup.</li>
+        </ul>` },
+      { id: 'lanecards', title: 'Lane cards', note: 'The Race Director, a card for each lane', body: `
+        <ul>
+          <li>The Race Director (race screen and Race Director page) has a <b>card for each lane</b>: the driver and the car, a chip that says how the car is doing (<i>All clear</i>, <i>+5 s</i>, damage, a failure, <i>Disqualified</i>) and a pad for each of penalty points, time, laps, damage points and championship points that the race has. Two lanes: two cards with the log next to them. Three or four lanes: the log is a drawer (<b>Log</b>). A phone shows one lane: pick it above the card.</li>
+          <li><b>[&minus;]</b> and <b>[+]</b> take off or add the <b>first (smallest) value</b> of the list of the pad: 1 point, 5 s, 1 lap, 1 damage point and 1 championship point as the standard. Click the number for the other values and a field for any other amount (<b>Give</b>, <b>Take back</b> or Enter). The lists: App Settings, Race Director (a race setup can have its own).</li>
+          <li><b>Undo</b> takes the last press back. <b>Penalty</b> gives a special penalty (it costs points), <b>Damage</b> an incident, <b>Failure</b> a failure (chosen or <b>At random</b>, then <b>Give</b>; <b>Clear</b> takes it away). <b>Hinder</b>, <b>Off</b>, <b>Auto</b> and <b>Help</b> are Balance of Power; the tyre opens Tyre Change. The weather buttons are in the bar above.</li>
+          <li>Everything works while the race runs or is paused, with the rules of the old folders. App Settings, Race Director, <b>Race Director view</b> brings the old folders back: <b>Adjust</b>, <b>Penalties</b>, <b>Balance of Power</b>, <b>Damage</b> and <b>Car Failures</b>.</li>
         </ul>` },
       { id: 'fuel', title: 'Fuel and pit stops', note: 'Tanks, refuelling and pit time', body: `
         <ul>
@@ -378,7 +385,7 @@ const Help = (() => {
           <li>The <b>Race timing</b> page shows only the widget layout. Move the mouse or touch the screen to bring back the bar.</li>
           <li>The <b>Leaderboard</b> page is a grid: under <b>Customize</b> pick the number of columns and rows with the little squares, and choose a leaderboard for every cell (a row design or the classic table). A board can cover more cells and show only some places (5 to 8). <b>Order by</b> sorts a board by a value (best lap for a fastest laps board, laps, points, penalties), best or worst first. <b>Count over</b> set to <i>All heats and rounds so far</i> lets a heat race or championship board show all drivers in the overall order, with time, laps, best and average lap, points added up.</li>
           <li>The <b>Live Race</b> button in the top bar has its red light on while a race is on, and is greyed out with the light off when no race is running. It opens the pages either way.</li>
-          <li>Only the Race Director and Tokens pages change anything, so they look different. On the Race Director page the Calls come first, then coloured folders: Adjust, Penalties, Balance of Power, Damage, Car Failures, Weather and Tyre Change, and Endurance (brown) in an Endurance Race.</li>
+          <li>Only the Race Director and Tokens pages change anything, so they look different. On the Race Director page the Calls come first, then the lane cards (see Lane cards), Weather, Tyre Change and Endurance (brown) in an Endurance Race.</li>
         </ul>` },
       { id: 'driverstats', title: 'Driver stats', note: 'One driver, in a grid of your own', body: `
         <ul>
