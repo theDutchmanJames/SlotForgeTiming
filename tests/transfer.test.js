@@ -62,7 +62,7 @@ const e = tmp(); T.apply(e, JSON.parse(JSON.stringify(b1))); const reread = new 
   ok('...and the same file without the broken item imports fine', (delete bad.items.layouts, T.apply(f, bad), f.data.tracks.length === 2 && f.data.drivers.length === 1 && f.data.customFields.drivers.length === 2));
   const g = tmp();
   ok('empty entries in the custom field list are skipped', (T.apply(g, { format: T.FORMAT, fileVersion: 1, customFields: { drivers: [null, 5] }, items: { drivers: [{ id: 'd1', name: 'A' }] } }), g.data.drivers.length === 1 && g.data.customFields.drivers.length === 0));
-  const h = tmp(); h.save = () => { throw new Error('disk full'); };
+  const h = tmp(); h.saveSync = () => { throw new Error('disk full'); };
   let m2 = ''; try { T.apply(h, { format: T.FORMAT, fileVersion: 1, items: { tracks: [{ id: 't', name: 'X' }] } }); } catch (x) { m2 = x.message; }
   ok('if saving fails the import is undone and the real reason is reported', m2 === 'disk full' && h.data.tracks.length === 0);
 }

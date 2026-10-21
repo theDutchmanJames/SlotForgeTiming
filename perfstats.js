@@ -88,7 +88,12 @@ function createWatcher(d) {
   return {
     // a full save of the database (Database.onSave tells how long each part took)
     saved(info) {
-      try { if (!info || !(info.ms >= min)) return; note(`Saved the whole database: ${whole(info.ms)} ms (making the text ${whole(info.textMs)}, writing the file ${whole(info.fileMs)}), ${sizeWords(info.bytes)}`); } catch { /* nothing to note */ }
+      try {
+        if (!info || !(info.ms >= min)) return;
+        // (1.61.2: in the background only the making of the text keeps the core busy; the file is written by the helper threads)
+        if (info.background) note(`Saved the whole database in the background: the core was busy ${whole(info.ms)} ms making the text, the file took ${whole(info.fileMs)} ms, ${sizeWords(info.bytes)}`);
+        else note(`Saved the whole database: ${whole(info.ms)} ms (making the text ${whole(info.textMs)}, writing the file ${whole(info.fileMs)}), ${sizeWords(info.bytes)}`);
+      } catch { /* nothing to note */ }
     },
     // a list that is sent to the window: call it in the handler, with the list that is given back
     sent(name, value) {

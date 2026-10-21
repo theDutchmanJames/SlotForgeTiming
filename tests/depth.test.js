@@ -113,5 +113,10 @@ ok('the Live Race page and the phone page load the same style sheet and the same
   const readme = fs.readFileSync(path.join(__dirname, '..', 'docs', 'ui-reference', 'README.md'), 'utf8');
   ok('...and the reference README names the set, with every picture', /## depth\//.test(readme) && pics.every(f => readme.includes('`' + f + '`')) && /Soft lift/.test(readme)); }
 
+// 1.61.2: the tickbox that switches the background save of the database off
+ok('1.61.2: the tickbox "Save changes to the database in the background" is in App Settings > General > Performance, ticked unless backgroundSave is false, before the switch of the Performance line', /<input id="bgsave" type="checkbox"\$\{S\.backgroundSave === false \? '' : ' checked'\}> Save changes to the database in the background/.test(app) && app.indexOf('id="bgsave"') > app.indexOf('id="layerswitch"') && app.indexOf('id="bgsave"') < app.indexOf('id="perfswitch"'));
+ok('...it is saved as backgroundSave (true or false) and the program reads it from the settings at once', /\$\('bgsave'\)\.onchange = async ev => \{ state\.settings = await api\.setSettings\(\{ backgroundSave: !!ev\.target\.checked \}\); \}/.test(app));
+ok('...it says what it does and how to go back to the old way', /the whole database file is written again/.test(app) && /the program goes on while the file is written/.test(app) && /Switch this off to go back to the old way/.test(app));
+
 if (fails) { console.log('\n' + fails + ' FAILED'); process.exit(1); }
 console.log('ALL DEPTH TESTS PASSED');

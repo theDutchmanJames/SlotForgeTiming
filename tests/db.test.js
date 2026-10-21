@@ -37,10 +37,10 @@ ok('penalty systems can be added and removed', db.list('penaltysystems').length 
 // 1.39.1: a failed save of a finished race leaves nothing half done (saving it again must not make two copies)
 { const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'slt-fail-')), 'db.json'), d = new Database(f);
   const car = d.add('slotcars', { name: 'Red' });
-  const lap = { carId: car.id, driverId: 'x', lapNo: 1, time: 5000 }, real = d.save;
-  d.save = () => { throw new Error('disk full'); };
+  const lap = { carId: car.id, driverId: 'x', lapNo: 1, time: 5000 }, real = d.saveSync;
+  d.saveSync = () => { throw new Error('disk full'); }; // (1.61.2: the one place that writes in the program's own time)
   let err = null; try { d.saveSession({ date: '2026-10-18', standings: [] }, [lap, { ...lap, lapNo: 2 }]); } catch (x) { err = x; }
-  d.save = real;
+  d.saveSync = real;
   ok('when the disk refuses the session it is taken out again and the error reaches the caller', err && err.message === 'disk full' && d.list('sessions').length === 0 && d.data.laps.length === 0);
   ok('...and the lap counter of the car is as before', !d.list('slotcars')[0].lapsDriven);
   d.saveSession({ date: '2026-10-18', standings: [] }, [lap, { ...lap, lapNo: 2 }]);
@@ -246,8 +246,8 @@ const asyncTests = async () => {
     ok('1.61.0: restoring a backup writes the settings of the backup to the settings file (the old settings file would otherwise win at the next start)', readJ(t.sf).rules === 'restored' && readJ(t.sf).keep === undefined && new Database(t.f).getSettings().rules === 'restored' && new Database(t.f).list('drivers')[0].name === 'Back');
     d.setSettings({ liveGrid: { z: 1 } }); d.add('drivers', { name: 'New' });
     ok('...a full save writes the settings as they are into the database file too', readJ(t.f).settings.liveGrid.z === 1 && readJ(t.f).drivers.length === 2);
-    const t2 = tmpDb('db.json', {}), d2 = new Database(t2.f), realSave = d2.save; d2.save = () => { throw new Error('disk full'); };
-    let e = null; try { d2.replaceAll({ settings: { rules: 'x' } }); } catch (x) { e = x; } d2.save = realSave;
+    const t2 = tmpDb('db.json', {}), d2 = new Database(t2.f), realSave = d2.saveSync; d2.saveSync = () => { throw new Error('disk full'); };
+    let e = null; try { d2.replaceAll({ settings: { rules: 'x' } }); } catch (x) { e = x; } d2.saveSync = realSave;
     ok('...a restore that cannot be saved changes nothing: not the settings in memory and not the settings file', e && e.message === 'disk full' && d2.getSettings().rules === undefined && readJ(t2.sf).rules === undefined);
   }
   { // closing waits for what is on its way
@@ -336,8 +336,260 @@ const asyncTests = async () => {
   }
   { // main.js: the handler waits for the settings file, closing waits for what is on its way, and the core tells the figures
     const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8'), ps = fs.readFileSync(path.join(__dirname, '..', 'perfstats.js'), 'utf8');
-    ok('1.61.0: main.js writes a setting with setSettingsAsync (not the synchronous one), and closing waits for the settings file as well as the race save', /ipcMain\.handle\('settings:set', async \(_e, patch\) => \{ const s = await db\.setSettingsAsync\(patch\);/.test(main) && !/db\.setSettings\(/.test(main) && /db\.writesPending\(\)/.test(main) && /db\.writesIdle\(\)/.test(main));
+    ok('1.61.0: main.js writes a setting with setSettingsAsync (not the synchronous one), and closing waits for the settings file as well as the race save', /ipcMain\.handle\('settings:set', async \(_e, patch\) => \{ const p = db\.setSettingsAsync\(patch\); db\.bg = backgroundOn\(db\.getSettings\(\)\); const s = await p;/.test(main) && !/db\.setSettings\(/.test(main) && /db\.writesPending\(\)/.test(main) && /db\.writesIdle\(\)/.test(main));
     ok('...the core tells the report about the database (dbStats)', /out\.database = d\.db && d\.db\.dbStats \? d\.db\.dbStats\(\) : \{\}/.test(ps));
+  }
+  // ===== 1.61.2: the whole database is written in the background, and only the items that changed are made into text again =====
+  const BIG = 'data:image/png;base64,' + 'A'.repeat(1200000), JS = d => JSON.stringify(d.data, null, 2);
+  const odd = 'Zoë "quoted" \\ back\nline\ttab   \u0007 😀 \ud800 lone';
+  const fixture = () => ({ version: 1, settings: { theme: 'dark', big: { deep: [1, 2, { x: null }] } }, customFields: { drivers: [] }, notes: ['a', null, 5, { x: 1 }, [], {}], emptyThing: {}, zero: 0,
+    drivers: [{ id: 'd1', name: odd, custom: {}, n: [0, -0, 1e21, 5.5], nothing: null, e: [], o: {} }, { id: 'd2', name: 'Plain', custom: {} }], slotcars: [{ id: 'c1', name: 'Red', picture: BIG, custom: {} }, { id: 'c2', name: 'Blue', custom: {} }],
+    tracks: [{ id: 't1', name: 'Oval', custom: {} }], racesetups: [{ id: 'r1', name: 'Race', track: 't1', custom: {} }], teams: [{ id: 'tm1', name: 'Team', drivers: ['d1', 'd2'], custom: {} }],
+    laps: Array.from({ length: 3000 }, (_, i) => ({ id: 'l' + i, sessionId: 'old', carId: 'c2', driverId: 'd2', time: 10000 + i, note: 'x'.repeat(120) })), sessions: [{ id: 'old', date: '2026-01-01', standings: [] }] });
+  const chunksText = d => d.fileChunks().chunks.join('');
+  // 1. the pieces put together are exactly JSON.stringify(data, null, 2): odd values, empty things, a picture of 1.2 million characters, thousands of small items
+  {
+    const t = tmpDb('db.json', fixture()), d = new Database(t.f), atStart = read(t.f) === JS(d);
+    d.data.drivers[1].gone = undefined; d.data.notes.push(undefined, () => 1, Symbol('s')); d.data.ghost = undefined; d.data.fn = () => 2; d.data.sparse = new Array(3);
+    d.touchAll();
+    ok('1.61.2: the pieces of the file put together are exactly JSON.stringify(data, null, 2) (odd characters, undefined, empty lists and objects, a picture of 1.2 million characters, 3000 small items)', chunksText(d) === JS(d) && d.fileChunks().chars === JS(d).length);
+    ok('...the file written at the start of the program is that text too (the first save makes every text)', atStart && read(t.f).length > 1200000);
+    const e = tmpDb('e.json'), de = new Database(e.f);
+    ok('...a database with nothing in it (only the empty tables) too', chunksText(de) === JS(de) && read(e.f) === JS(de));
+    const z = tmpDb('z.json'), dz = new Database(z.f); dz.data = {}; dz.touchAll();
+    ok('...and the data with nothing at all is {}', chunksText(dz) === '{}' && JSON.stringify({}, null, 2) === '{}');
+    const big = new Array(1500).fill(0).map((_, i) => ({ id: 'x' + i, v: 'y'.repeat(700) })), dx = new Database(tmpDb('x.json').f); dx.data.many = big; dx.touchAll();
+    ok('...a table that is many items of 700 characters (written in groups) and one item of 300 000 characters (written alone)', (dx.data.one = [{ id: 'q', v: 'z'.repeat(300000) }], dx.touchAll(), chunksText(dx) === JS(dx)));
+  }
+  // 2. the text of an item that was not touched is not made again; a touched one is; an item changed in place and not touched keeps its old text (the rule for whoever changes an item)
+  {
+    const d = new Database(tmpDb('db.json', fixture()).f); let looks = 0;
+    Object.defineProperty(d.data.drivers[1], 'watch', { enumerable: true, configurable: true, get() { looks++; return 'w'; } });
+    d.touchAll(); chunksText(d); const first = looks;
+    chunksText(d); chunksText(d);
+    ok('1.61.2: an item that was not touched is not made into text again (saved three times, looked at once)', first === 1 && looks === 1);
+    d.touch(d.data.drivers[1]); chunksText(d);
+    ok('...touch(item) makes that one again, once', looks === 2);
+    d.touch(d.data.drivers[0]); chunksText(d);
+    ok('...touching another item does not', looks === 2);
+    d.touchAll(); chunksText(d);
+    ok('...touchAll makes every item again', looks === 3);
+    d.data.drivers[0].name = 'Changed in place'; const stale = chunksText(d) !== JS(d); d.touch(d.data.drivers[0]);
+    ok('...an item changed in place and not touched keeps its old text in the file (so whoever changes an item must touch it); touched, the text is right', stale && chunksText(d) === JS(d));
+    ok('...touch ignores things that are not items', (d.touch(null), d.touch(undefined), d.touch('x'), d.touch(5), true));
+  }
+  // 3. after every kind of change the file is exactly the data, in the program's own time (bg = false) and in the background (bg = true)
+  const scenario = async mode => {
+    const t = tmpDb('db.json', fixture()), d = new Database(t.f), bad = [], bg = mode === 'bg'; d.bg = bg;
+    const check = async label => { if (bg) await d.saved(); if (read(t.f) !== JS(d) || chunksText(d) !== JS(d)) bad.push(label); };
+    const drv = d.add('drivers', { name: 'Anna "A" 😀', picture: BIG }); await check('add a driver');
+    const car = d.add('slotcars', { name: 'Green', picture: BIG + 'B' }); await check('add a slotcar');
+    d.update('drivers', drv.id, { name: 'Anna B', nick: 'ab' }); await check('update a driver');
+    d.update('slotcars', car.id, { name: 'Green 2', picture: 'small' }); await check('update a slotcar');
+    d.update('slotcars', 'c1', { name: 'Red 2' }); await check('update a slotcar that has a big picture');
+    d.add('tracks', { name: 'Track 2' }); d.add('racesetups', { name: 'Race 2', track: 't1' }); await check('add a track and a race setup');
+    const sid = d.saveSession({ date: '2026-10-20', standings: [{ driverId: drv.id, carId: car.id }] }, [{ carId: car.id, driverId: drv.id, lapNo: 1, time: 5000 }, { carId: 'c1', driverId: drv.id, lapNo: 2, time: 5100 }]); await check('save a finished race');
+    d.update('slotcars', car.id, { note: 'after the race' }); await check('update the car whose counters the race changed');
+    d.removeSession(sid); await check('remove a session (the counters of the cars follow)');
+    const f1 = d.addCustomField('drivers', { label: 'Shoe', type: 'text' }); d.update('drivers', drv.id, { custom: { [f1.id]: '44' } }); await check('add an extra field and use it');
+    d.setCustomFieldGroup('drivers', f1.id, ''); await check('move an extra field to another group');
+    d.removeCustomField('drivers', f1.id); await check('remove an extra field (the items lose their value)');
+    d.remove('tracks', 't1'); await check('remove a track (its race setups lose it)');
+    d.remove('drivers', 'd2'); await check('remove a driver (teams, laps and races follow)');
+    d.remove('slotcars', car.id); await check('remove a slotcar');
+    d.setSettings({ zoom: 3 }); d.add('drivers', { name: 'After settings' }); await check('a change of the settings is in the file at the next save');
+    d.replaceAll({ drivers: [{ id: 'z1', name: 'Restored', custom: {} }], settings: { theme: 'light' } }); await check('restore a backup');
+    d.add('drivers', { name: 'After restore' }); await check('add after a restore');
+    d.data.drivers.push({ id: 'direct', name: 'Pushed straight into the data', custom: {} }); d.data.drivers[0].name = 'Changed in place'; d.save(); await check('save() after changes made straight in the data (every text is made again)');
+    d.data.drivers[0].name = 'Again'; d.saveNow(); await check('saveNow() the same, at once');
+    return { bad, d, t };
+  };
+  for (const mode of ['sync', 'bg']) {
+    const r = await scenario(mode);
+    if (r.bad.length) console.log('   not the same as the data after: ' + r.bad.join(' | '));
+    ok(`1.61.2: after every kind of change (add, update, remove with its follow-ups, a race, a removed race, extra fields, settings, a restore, save, saveNow) the file is exactly the data, ${mode === 'bg' ? 'written in the background' : 'in the program\'s own time'}`, r.bad.length === 0);
+    ok('...and no temporary file is left behind', leftovers(r.t.dir).length === 0);
+    ok('...and a new Database reads the same data back', JSON.stringify(new Database(r.t.f).data) === JSON.stringify(r.d.data));
+  }
+  // 4. in the background: the change is in memory at once and in the file when saved() is kept; changes that come while one is written are written together
+  {
+    const t = tmpDb('db.json', fixture()), d = new Database(t.f); d.bg = true; const before = read(t.f);
+    const row = d.add('drivers', { name: 'Quick' });
+    ok('1.61.2: in the background the change is in memory at once and the file still has the old state until the write is done', d.list('drivers').some(x => x.id === row.id) && read(t.f) === before && d.writesPending() === true);
+    await d.saved();
+    ok('...saved() is kept when the file has it', read(t.f) === JS(d) && read(t.f).includes('"Quick"') && d.writesPending() === false);
+    const w0 = d.stats.bgSaves;
+    for (let i = 0; i < 10; i++) d.update('drivers', row.id, { name: 'Quick ' + i });
+    await d.saved();
+    ok('...ten quick changes are written by two writes (the first, then one with all the rest), and the file has the last', d.stats.bgSaves - w0 === 2 && read(t.f).includes('"Quick 9"') && read(t.f) === JS(d));
+    ok('...saved() when nothing is on its way is kept at once', (await Promise.race([d.saved().then(() => 'kept'), new Promise(r => setTimeout(() => r('late'), 500))])) === 'kept');
+    d.add('drivers', { name: 'Third' }); let midTmp = false, whole = true; const t0 = Date.now();
+    while (d.writesPending() && Date.now() - t0 < 5000) { if (fs.existsSync(t.f + '.bg.tmp')) midTmp = true; try { JSON.parse(read(t.f)); } catch { whole = false; } await new Promise(r => setImmediate(r)); }
+    ok('...while it is written the file has a name of its own and the real file is always a whole database (never half written)', midTmp && whole);
+    await d.writesIdle();
+    ok('...writesPending/writesIdle (closing) include the database file', d.writesPending() === false && read(t.f) === JS(d) && !fs.existsSync(t.f + '.bg.tmp'));
+    ok('...the numbers: saves counted, the last one was in the background, the core was busy only for the text', d.stats.background === true && d.stats.bgSaves >= 3 && d.stats.lastMs === d.stats.textMs && d.stats.fileMs > 0 && d.dbStats().file.on === true && d.stats.bgMaxMs >= d.stats.textMs);
+    d.bg = false; d.add('drivers', { name: 'Own time' });
+    ok('...with the background off the change is in the file before add returns, and saved() is kept', read(t.f).includes('"Own time"') && d.stats.background === false && d.dbStats().file.on === false && (await d.saved()) === true);
+  }
+  // 5. a save in the program's own time (an import, a restore) while a write in the background is on its way: the older text never replaces the newer
+  {
+    const t = tmpDb('db.json', fixture()), d = new Database(t.f); d.bg = true;
+    d.add('drivers', { name: 'A (in the background)' });
+    d.data.tracks.push({ id: 'tB', name: 'B (straight in, saved at once)', custom: {} }); d.saveNow();
+    await d.writesIdle();
+    ok('1.61.2: a save in the program\'s own time while a background write is on its way is not replaced by the older text of that write', read(t.f) === JS(d) && read(t.f).includes('B (straight in, saved at once)') && read(t.f).includes('A (in the background)') && !fs.existsSync(t.f + '.bg.tmp') && !fs.existsSync(t.f + '.tmp'));
+    d.add('drivers', { name: 'C' }); d.bg = false; d.add('drivers', { name: 'D (own time, switched off meanwhile)' }); await d.writesIdle();
+    ok('...switching the background off while a write is on its way is the same', read(t.f) === JS(d) && read(t.f).includes('"D (own time, switched off meanwhile)"') && read(t.f).includes('"C"'));
+  }
+  // 5b. the same, when the save in the program's own time comes while the background write is just renaming (the rename is slowed down here to be sure to hit that moment)
+  {
+    const realRename = fs.promises.rename; let renames = 0;
+    fs.promises.rename = async (...a) => { renames++; await new Promise(r => setTimeout(r, 150)); return realRename.apply(fs.promises, a); };
+    try {
+      const t = tmpDb('db.json', fixture()), d = new Database(t.f); d.bg = true; const b0 = d.stats.bgSaves;
+      d.add('drivers', { name: 'A (older text, being renamed over the file)' });
+      const t0 = Date.now(); while (!d.fsave.renaming && Date.now() - t0 < 5000) await new Promise(r => setImmediate(r));
+      const sawRenaming = d.fsave.renaming === true;
+      d.data.tracks.push({ id: 'tC', name: 'C (straight in, saved at once while the rename is on its way)', custom: {} }); d.saveNow();
+      const againSet = d.fsave.again === true;
+      await d.writesIdle();
+      ok('1.61.2: a save in the program\'s own time while the background write is renaming its older text: the newest state is written once more right after, so the file ends right', sawRenaming && againSet && read(t.f) === JS(d) && read(t.f).includes('C (straight in') && d.stats.bgSaves - b0 === 2 && renames === 2 && !fs.existsSync(t.f + '.bg.tmp') && d.fsave.renaming === false);
+      const u = tmpDb('u.json', fixture()), du = new Database(u.f); du.bg = true; du.add('drivers', { name: 'plain' }); await du.saved();
+      ok('...a save in the program\'s own time when nothing is being renamed does not start another write', du.fsave.renaming === false && (du.saveNow(), du.fsave.again === false && du.writesPending() === false));
+    } finally { fs.promises.rename = realRename; }
+  }
+  // 6. a write in the background that fails: the error reaches whoever waits, the numbers count it, and the next write brings everything
+  {
+    const t = tmpDb('db.json', fixture()), d = new Database(t.f); d.bg = true; const good = d.file; d.file = path.join(t.dir, 'nodir', 'db.json'); const msgs = []; const logged = console.error; console.error = (...a) => msgs.push(a.join(' '));
+    let err = null; try { d.add('drivers', { name: 'Not written' }); await d.saved(); } catch (x) { err = x; } console.error = logged;
+    ok('1.61.2: a background write that fails: saved() is broken with the reason, the failed count goes up, the change stays in memory and nothing is left running', !!err && d.stats.failed === 1 && d.list('drivers').some(x => x.name === 'Not written') && d.writesPending() === false && msgs.some(m => m.includes('[database]')));
+    d.file = good; d.add('drivers', { name: 'Written' }); await d.saved();
+    ok('...the next write brings the change that failed too', read(t.f).includes('"Not written"') && read(t.f).includes('"Written"') && read(t.f) === JS(d));
+    ok('...a failure nobody waits for is no unhandled error (the process is still here)', (d.file = path.join(t.dir, 'nodir', 'db.json'), console.error = () => {}, d.add('drivers', { name: 'Nobody waits' }), await new Promise(r => setTimeout(r, 100)), console.error = logged, d.file = good, true));
+    await d.writesIdle();
+  }
+  // 7. a finished race in the background: written, or taken out again when the write fails
+  {
+    const t = tmpDb('db.json', fixture()), d = new Database(t.f); d.bg = true; const car = d.list('slotcars')[1], good = d.file;
+    const id = await d.saveSessionAsync({ date: '2026-10-21', standings: [] }, [{ carId: car.id, driverId: 'd1', lapNo: 1, time: 5000 }, { carId: car.id, driverId: 'd1', lapNo: 2, time: 5100 }]);
+    ok('1.61.2: saveSessionAsync answers the id when the file has the race', typeof id === 'string' && d.list('sessions').some(s => s.id === id) && JSON.parse(read(t.f)).sessions.some(s => s.id === id) && car.lapsDriven === 2 && d.undo.size === 0);
+    d.file = path.join(t.dir, 'nodir', 'db.json'); const logged = console.error; console.error = () => {};
+    let err = null; const sessionsBefore = d.list('sessions').length, lapsBefore = d.data.laps.length;
+    try { await d.saveSessionAsync({ date: '2026-10-22', standings: [] }, [{ carId: car.id, driverId: 'd1', lapNo: 1, time: 4000 }]); } catch (x) { err = x; } console.error = logged;
+    ok('...when the write fails the race is taken out again, the counters are as before and the error reaches the caller', !!err && d.list('sessions').length === sessionsBefore && d.data.laps.length === lapsBefore && car.lapsDriven === 2 && d.undo.size === 0);
+    d.file = good; await d.saveSessionAsync({ date: '2026-10-22', standings: [] }, [{ carId: car.id, driverId: 'd1', lapNo: 1, time: 4000 }]);
+    ok('...and trying again gives one more race and one more lap, not two', d.list('sessions').length === sessionsBefore + 1 && d.data.laps.length === lapsBefore + 1 && car.lapsDriven === 3 && read(t.f) === JS(d));
+    const s2 = tmpDb('s.json', fixture()), ds = new Database(s2.f); const id2 = await ds.saveSessionAsync({ date: '2026-10-23', standings: [] }, [{ carId: 'c2', driverId: 'd1', lapNo: 1, time: 1 }]);
+    ok('...with the background off it is the same call (written before it answers)', JSON.parse(read(s2.f)).sessions.some(s => s.id === id2) && ds.undo.size === 0);
+  }
+  // 8. the slices of a big text never cut a character that is made of two (an emoji) in half, and the file is right when an emoji sits at the cut
+  {
+    const sl = Database.slicesOf, join = a => [...a].join('');
+    ok('1.61.2: slices put together give the text back', join(sl('abcdefghij', 3)) === 'abcdefghij' && [...sl('abcdefghij', 3)].length === 4 && [...sl('', 3)].length === 0 && [...sl('ab', 5)].length === 1);
+    const e = 'ab😀cd', parts = [...sl(e, 3)];
+    ok('...a slice does not end between the two halves of an emoji (it takes both)', parts.length === 2 && parts[0] === 'ab😀' && parts[1] === 'cd' && parts.every(x => !/[\ud800-\udbff]$/.test(x)));
+    ok('...also at every position of an emoji around the cut', [0, 1, 2, 3, 4, 5, 6].every(k => { const s = 'x'.repeat(k) + '😀' + 'y'.repeat(6 - k) + '😀' + 'z'.repeat(4); const ps = [...sl(s, 4)]; return ps.join('') === s && ps.every(x => !/[\ud800-\udbff]$/.test(x)); }));
+    for (const mode of ['sync', 'bg']) {
+      const t = tmpDb('db.json', fixture()), d = new Database(t.f); d.bg = mode === 'bg';
+      // the name sits in an item at 4 spaces + '"id": "e1",' + ... : find the offset so that an emoji starts at the last character of the first slice of that item
+      for (let pad = 0; pad < 4; pad++) { d.add('drivers', { name: 'a'.repeat(999960 + pad) + '😀' + 'b'.repeat(50) }); if (d.bg) await d.saved(); }
+      ok(`1.61.2: ${mode === 'bg' ? 'in the background' : 'in the program\'s own time'} the file is right when an emoji sits at the cut of a slice (four positions)`, read(t.f) === JS(d) && !read(t.f).includes('�'));
+    }
+  }
+  // 9. a stopped program may have left a file of the background write: the next start removes it
+  {
+    const t = tmpDb('db.json', fixture()); fs.writeFileSync(t.f + '.bg.tmp', 'half a file'); new Database(t.f);
+    ok('1.61.2: a half written file of the background write that a stopped program left is removed at the start', !fs.existsSync(t.f + '.bg.tmp'));
+  }
+  // 10. the figures that are told: in the program's own time the core is busy for all of it, in the background for the text only
+  {
+    const t = tmpDb('db.json', fixture()), d = new Database(t.f), seen = []; d.onSave = i => seen.push(i);
+    d.add('drivers', { name: 'Own' }); d.bg = true; d.add('drivers', { name: 'Back' }); await d.saved();
+    ok('1.61.2: onSave tells in the program\'s own time ms = text + file (background false), in the background ms = the text only (background true) and the time of the file apart', seen.length === 2 && seen[0].background === false && Math.abs(seen[0].ms - (seen[0].textMs + seen[0].fileMs)) < 0.2 && seen[1].background === true && seen[1].ms === seen[1].textMs && seen[1].fileMs > 0 && seen[1].bytes === JS(d).length);
+  }
+  // 11. what the check with deliberate breaks found (1.61.2): the edges of the slices, how the pieces are cut, what a failed write leaves behind, and the small bookkeeping
+  {
+    const sl = Database.slicesOf, ends = ps => ps.every(x => !/[\ud800-\udbff]$/.test(x));
+    const lo = [...sl('abc𐀀de', 4)], hi = [...sl('abc􏿿de', 4)];
+    ok('1.61.2: a slice also keeps the two halves together at the very first and the very last character that is made of two (U+10000 and U+10FFFF)', lo.length === 2 && lo[0] === 'abc𐀀' && ends(lo) && hi.length === 2 && hi[0] === 'abc􏿿' && ends(hi));
+    // how the pieces are cut: items over 200000 characters alone, the others together until the group passes 500000
+    const t = tmpDb('db.json', fixture()), d = new Database(t.f);
+    d.data.tracks = Array.from({ length: 10 }, (_, i) => ({ id: 'T' + i, name: 'n'.repeat(120000), custom: {} })); d.touchAll();
+    const grp = d.fileChunks().chunks.filter(c => c.includes('"id": "T')), count = c => (c.match(/"id": "T\d"/g) || []).length;
+    ok('...small items are grouped until the group is over 500000 characters (ten items of 120000 make two groups of five)', grp.length === 2 && grp.every(c => count(c) === 5) && chunksText(d) === JS(d));
+    d.data.tracks = [{ id: 's1', name: 'small', custom: {} }, { id: 's2', name: 'small', custom: {} }, { id: 'bigone', name: 'n'.repeat(300000), custom: {} }, { id: 's3', name: 'small', custom: {} }]; d.touchAll();
+    const ch = d.fileChunks().chunks, withBig = ch.find(c => c.includes('"bigone"'));
+    ok('...an item of over 200000 characters is a piece of its own, and the items before and after it keep their places', !!withBig && !/"id": "s[123]"/.test(withBig) && ch.join('') === JS(d) && ch.some(c => c.includes('"s1"') && c.includes('"s2"')) && ch.some(c => c.includes('"s3"')));
+    // what is written, and how: no more than a slice at a time, every file closed, flushed once, and nothing left behind by a write that fails
+    const seen = { sync: 0, async: 0, opens: 0, closes: 0, syncs: 0, calls: 0 }, realWriteSync = fs.writeSync, realOpen = fs.promises.open; let failAt = 0;
+    const sy = { opens: [], closes: 0, fsyncs: 0, calls: 0 }, realOpenSync = fs.openSync, realCloseSync = fs.closeSync, realFsyncSync = fs.fsyncSync; let failSyncAt = 0;
+    fs.openSync = (p, ...r) => { sy.opens.push(String(p)); return realOpenSync.call(fs, p, ...r); };
+    fs.closeSync = fd => { sy.closes++; return realCloseSync.call(fs, fd); };
+    fs.fsyncSync = fd => { sy.fsyncs++; return realFsyncSync.call(fs, fd); };
+    fs.writeSync = (fd, str, ...r) => { sy.calls++; if (failSyncAt && sy.calls >= failSyncAt) throw new Error('disk says no (own time)'); if (typeof str === 'string') seen.sync = Math.max(seen.sync, str.length); return realWriteSync.call(fs, fd, str, ...r); };
+    fs.promises.open = async (...a) => {
+      const fh = await realOpen.apply(fs.promises, a); seen.opens++; const w = fh.writeFile.bind(fh), c = fh.close.bind(fh), y = fh.sync.bind(fh);
+      fh.writeFile = s => { seen.calls++; if (failAt && seen.calls >= failAt) return Promise.reject(new Error('disk says no')); if (typeof s === 'string') seen.async = Math.max(seen.async, s.length); return w(s); };
+      fh.close = () => { seen.closes++; return c(); }; fh.sync = () => { seen.syncs++; return y(); }; return fh;
+    };
+    const logged = console.error; console.error = () => {};
+    try {
+      const u = tmpDb('u.json', fixture()), du = new Database(u.f), o1 = sy.opens.length, c1 = sy.closes, f1 = sy.fsyncs; du.add('drivers', { name: 'a'.repeat(2500000) });
+      ok('1.61.2: in the program\'s own time no piece of more than a million characters is handed to the disk at once, the file has a name of its own while it is written, and it is flushed and closed', seen.sync > 100000 && seen.sync <= 1000001 && sy.opens.length - o1 === 1 && sy.opens[o1] === u.f + '.tmp' && sy.closes - c1 === 1 && sy.fsyncs - f1 === 1);
+      const before = read(u.f), o2 = sy.opens.length, c2 = sy.closes; failSyncAt = sy.calls + 2; let e3 = null; try { du.add('drivers', { name: 'fails in the program\'s own time' }); } catch (x) { e3 = x; } failSyncAt = 0;
+      ok('...a write in the program\'s own time that fails halfway: an error, the file is closed, the failure is counted and the real file is exactly as it was', !!e3 && /disk says no/.test(e3.message) && read(u.f) === before && sy.opens.length - o2 === 1 && sy.closes - c2 === 1 && du.stats.failed === 1);
+      du.bg = true; du.add('drivers', { name: 'b'.repeat(2500000) }); await du.saved();
+      ok('...in the background the same, every file is closed and flushed, and nothing is left behind', seen.async > 100000 && seen.async <= 1000001 && seen.opens >= 1 && seen.closes === seen.opens && seen.syncs === seen.opens && !fs.existsSync(u.f + '.bg.tmp') && read(u.f) === JS(du));
+      const o0 = seen.opens, c0 = seen.closes; failAt = seen.calls + 3; du.add('drivers', { name: 'c' }); let err = null; try { await du.saved(); } catch (x) { err = x; }
+      ok('...a write that fails halfway: the error reaches the caller, the file is closed, the half written file is removed and the real file is untouched', !!err && /disk says no/.test(err.message) && seen.opens - o0 === 1 && seen.closes - c0 === 1 && !fs.existsSync(u.f + '.bg.tmp') && JSON.parse(read(u.f)).drivers.every(x => x.name !== 'c'));
+      failAt = 0; fs.promises.open = async () => { throw undefined; }; du.add('drivers', { name: 'd' }); let err2 = null; try { await du.saved(); } catch (x) { err2 = x; }
+      ok('...a failure that comes without a reason still reaches the caller as an error', err2 instanceof Error && /could not be written/.test(err2.message));
+    } finally { fs.writeSync = realWriteSync; fs.openSync = realOpenSync; fs.closeSync = realCloseSync; fs.fsyncSync = realFsyncSync; fs.promises.open = realOpen; console.error = logged; }
+  }
+  {
+    // save() gives the answer of the write; the answer of an older failed write is gone once the program writes in its own time again
+    const t = tmpDb('db.json', fixture()), d = new Database(t.f); d.bg = true; const p = d.save(), good = d.file;
+    ok('1.61.2: save() in the background gives the answer of the write (kept when the file has it), in the program\'s own time it has written before it returns', !!p && typeof p.then === 'function' && (await p) === true && read(t.f) === JS(d) && (d.bg = false, d.save() === null));
+    d.bg = true; d.file = path.join(t.dir, 'nodir', 'db.json'); const logged = console.error; console.error = () => {};
+    d.add('drivers', { name: 'fails' }); try { await d.saved(); } catch { /* the failure is the point */ } console.error = logged;
+    d.file = good; d.bg = false; d.add('drivers', { name: 'written in the program\'s own time' });
+    ok('...and after a failed write in the background, a change written in the program\'s own time is answered as kept (the old failure does not come back)', (await d.saved().then(() => 'kept', () => 'broken')) === 'kept' && read(t.f) === JS(d));
+    d.saveSession({ date: '2026-10-24', standings: [] }, [{ carId: 'c2', driverId: 'd1', lapNo: 1, time: 1 }]);
+    ok('...a race saved in the program\'s own time leaves nothing to take it out again', d.undo.size === 0);
+  }
+  {
+    // a write in the background that a save in the program's own time has replaced is not counted, and starts no second write
+    const t = tmpDb('db.json', fixture()), d = new Database(t.f); d.bg = true; const s0 = d.stats.saves, b0 = d.stats.bgSaves;
+    d.add('drivers', { name: 'A' }); d.data.tracks.push({ id: 'tZ', name: 'Z', custom: {} }); d.saveNow(); await d.writesIdle();
+    ok('1.61.2: a background write that was replaced by a save in the program\'s own time is not counted as a save and starts no second write', d.stats.saves === s0 + 1 && d.stats.bgSaves === b0 && d.fsave.again === false && read(t.f) === JS(d));
+    // the waiters of a finished write are gone
+    d.add('drivers', { name: 'B' }); const idle = d.fileIdle(); await d.saved(); await idle;
+    ok('...whoever waited for a write is let go of afterwards (no list that only grows)', d.fsave.waiters.length === 0 && d.fsave.idle.length === 0 && d.filePending() === false);
+    // the figures: the slowest time the core was busy in the background is the text, and it stays when a quicker one follows
+    const b1 = d.stats.bgSaves; d.noteSave({ text: 50000000n, file: 900000000n, chars: 10, background: true }); d.noteSave({ text: 10000000n, file: 20000000n, chars: 10, background: true });
+    ok('...the slowest background save is kept as the text time (not the file time) and the last one is shown as it was', d.stats.bgSaves === b1 + 2 && d.stats.bgMaxMs === 50 && d.stats.lastMs === 10 && d.stats.textMs === 10 && d.stats.fileMs === 20);
+  }
+  {
+    // the pieces that follow a direct call of removeLapsWhere, the undo of a race that could not be written, and a restore that fails in the background mode
+    const t = tmpDb('db.json', fixture()), d = new Database(t.f); d.update('slotcars', 'c2', { lapsDriven: 7 }); d.removeLapsWhere(l => l.id === 'l0'); d.commit();
+    ok('1.61.2: removeLapsWhere says by itself that the cars changed (the file has the new counter although nothing else was touched)', d.list('slotcars')[1].lapsDriven === 6 && read(t.f) === JS(d) && read(t.f).includes('"lapsDriven": 6'));
+    const u = tmpDb('u.json', fixture()), du = new Database(u.f); du.bg = true; const good = du.file, car = du.list('slotcars')[1]; du.update('slotcars', 'c2', { lapsDriven: 2 }); await du.saved();
+    du.file = path.join(u.dir, 'nodir', 'db.json'); const logged = console.error; console.error = () => {};
+    try { await du.saveSessionAsync({ date: '2026-10-22', standings: [] }, [{ carId: 'c2', driverId: 'd1', lapNo: 1, time: 4000 }]); } catch { /* taken out again */ } console.error = logged;
+    du.file = good; du.add('tracks', { name: 'after the undo' }); await du.saved();
+    ok('...a race that could not be written is taken out again so completely that the next write has the old counters (not the text made for the race)', car.lapsDriven === 2 && read(u.f) === JS(du) && read(u.f).includes('"lapsDriven": 2') && !read(u.f).includes('"lapsDriven": 3'));
+    const v = tmpDb('v.json', fixture()), dv = new Database(v.f); dv.bg = true; const old = dv.data; dv.file = path.join(v.dir, 'nodir', 'db.json'); let threw = false; const lg = console.error; console.error = () => {};
+    try { dv.replaceAll({ drivers: [{ id: 'new', name: 'New', custom: {} }] }); } catch { threw = true; } console.error = lg;
+    ok('1.61.2: a restore with the background save on is written at once: when the disk will not take it, it is an error and what was there is still there', threw && dv.data === old && dv.writesPending() === false);
+    dv.file = v.f; dv.replaceAll({ drivers: [{ id: 'new', name: 'New', custom: {} }] });
+    ok('...and when it can, the file has it before the call returns', dv.writesPending() === false && read(v.f) === JS(dv) && read(v.f).includes('"New"') && dv.data.drivers.length === 1);
+  }
+  { // main.js: the background save is switched on from the settings, every change waits for the file, the restore waits for what is on its way, the setting switches it
+    const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8'), tr = fs.readFileSync(path.join(__dirname, '..', 'transfer.js'), 'utf8');
+    ok('1.61.2: main.js switches the background save on from the settings (on unless backgroundSave is false) and the tickbox switches it at once', /const backgroundOn = s => !\(s && typeof s === 'object' && s\.backgroundSave === false\);\s*db\.bg = backgroundOn\(db\.getSettings\(\)\);/.test(main) && /db\.bg = backgroundOn\(db\.getSettings\(\)\); const s = await p;/.test(main));
+    ok('...every change to the database answers when the file has it (add, update, remove, race, remove race, extra fields)', /'db:add', async \(_e, entity, item\) => \{ const row = db\.add\(entity, item\); await db\.saved\(\); return row; \}/.test(main) && /'db:update', async [^\n]*await db\.saved\(\); return row;/.test(main) && /'db:remove', async [^\n]*await db\.saved\(\);/.test(main) && /'session:save', \(_e, session, laps\) => db\.saveSessionAsync\(session, laps\)/.test(main) && /'session:remove', async [^\n]*await db\.saved\(\);/.test(main) && /'custom:add', async [^\n]*await db\.saved\(\);/.test(main) && /'custom:remove', async [^\n]*await db\.saved\(\);/.test(main) && /'custom:group', async [^\n]*await db\.saved\(\);/.test(main) && !/db\.saveSession\(/.test(main));
+    ok('...a restore waits for a write that is on its way before it copies the file, and an import is saved at once (all or nothing)', /'backup:restore', async \(\) => \{[^]*?await db\.fileIdle\(\);[^]*?db\.replaceAll\(/.test(main) && /\(db\.saveNow \|\| db\.save\)\.call\(db\)/.test(tr) && /'transfer:apply', async \(\) => \{[^\n]*await db\.fileIdle\(\); if \(!pendingImport\) throw new Error\('No file chosen\.'\); const counts = transfer\.apply\(db, pendingImport\)/.test(main));
   }
   console.log(fails ? fails + ' DB TESTS FAILED' : 'ALL DB TESTS PASSED'); process.exit(fails ? 1 : 0);
 };

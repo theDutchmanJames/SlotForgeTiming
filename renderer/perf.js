@@ -176,7 +176,7 @@
     const db = raw && typeof raw === 'object' ? raw : {}, f = db.file && typeof db.file === 'object' ? db.file : null, s = db.settings && typeof db.settings === 'object' ? db.settings : {};
     return {
       has: !!f,
-      file: { bytes: num(f && f.bytes, 0, 1e12, 0), saves: num(f && f.saves, 0, 1e9, 0), lastMs: num(f && f.lastMs, 0, 1e7, 0), maxMs: num(f && f.maxMs, 0, 1e7, 0), textMs: num(f && f.textMs, 0, 1e7, 0), fileMs: num(f && f.fileMs, 0, 1e7, 0), failed: num(f && f.failed, 0, 1e9, 0) },
+      file: { bytes: num(f && f.bytes, 0, 1e12, 0), saves: num(f && f.saves, 0, 1e9, 0), lastMs: num(f && f.lastMs, 0, 1e7, 0), maxMs: num(f && f.maxMs, 0, 1e7, 0), textMs: num(f && f.textMs, 0, 1e7, 0), fileMs: num(f && f.fileMs, 0, 1e7, 0), failed: num(f && f.failed, 0, 1e9, 0), background: !!(f && f.background), on: !!(f && f.on), bgSaves: num(f && f.bgSaves, 0, 1e9, 0), bgMaxMs: num(f && f.bgMaxMs, 0, 1e7, 0) },
       settings: { bytes: num(s.bytes, 0, 1e12, 0), writes: num(s.writes, 0, 1e9, 0), lastMs: num(s.lastMs, 0, 1e7, 0), maxMs: num(s.maxMs, 0, 1e7, 0), failed: num(s.failed, 0, 1e9, 0) },
       tables: (Array.isArray(db.tables) ? db.tables : []).filter(x => x && typeof x === 'object' && isNum(x.bytes) && text(x.name, 40)).slice(0, 5).map(x => ({ name: text(x.name, 40), bytes: num(x.bytes, 0, 1e12, 0) })),
       total: num(db.total, 0, 1e12, 0)
@@ -280,7 +280,9 @@
       if (m.save.maxMs >= 150) n.push(`Saving the race took up to ${f0(m.save.maxMs)} ms. That goes on in the background, but a slow disk (an SD card) can be the cause of other waits.`);
       if (m.save.failed) n.push(`${m.save.failed} race save(s) could not be written.`);
       if (m.database && m.database.has) {
-        if (m.database.file.maxMs >= 150) n.push(`Saving the whole database (${sizeText(m.database.file.bytes)}) took up to ${f0(m.database.file.maxMs)} ms, and the core waits for it. Settings are written apart and in the background; a change to a driver, a car, a race setup or a finished race still writes the whole file.`);
+        const dfn = m.database.file;
+        if (!dfn.on && dfn.maxMs >= 150) n.push(`Saving the whole database (${sizeText(dfn.bytes)}) took up to ${f0(dfn.maxMs)} ms, and the core waits for it. Settings are written apart and in the background; a change to a driver, a car, a race setup or a finished race writes the whole file. Switch on 'Save changes to the database in the background' (App Settings > General > Performance) and the core can go on while the file is written.`);
+        if (dfn.on && dfn.bgMaxMs >= 100) n.push(`Making the text of a save in the background took the core up to ${f0(dfn.bgMaxMs)} ms. That happens when everything has to be made again (after removing something, a restore or an import); the next saves are quick.`);
         if (m.database.file.failed) n.push(`${m.database.file.failed} save(s) of the database could not be written.`);
         if (m.database.settings.failed) n.push(`${m.database.settings.failed} write(s) of the settings file could not be done.`);
       }
@@ -380,7 +382,9 @@
       L.push(`Race save: ${m.save.writes} written, last ${f1(m.save.lastMs)} ms, slowest ${f1(m.save.maxMs)} ms, ${m.save.failed} failed`);
       if (m.database && m.database.has) {
         const df = m.database.file, ds = m.database.settings, tb = m.database.tables;
-        L.push(`Database file (1.61.0): ${sizeText(df.bytes)}, ${f0(df.saves)} saved since the app started, last ${f1(df.lastMs)} ms (making the text ${f1(df.textMs)}, writing the file ${f1(df.fileMs)}), slowest ${f1(df.maxMs)} ms, ${f0(df.failed)} failed`);
+        // (1.61.2: a save in the background keeps the core busy only for making the text; the file is written by the system's helper threads)
+        const dfTail = df.background ? `last ${f1(df.lastMs)} ms in the core (making the text ${f1(df.textMs)}; the file was written in the background in ${f1(df.fileMs)} ms)` : `last ${f1(df.lastMs)} ms (making the text ${f1(df.textMs)}, writing the file ${f1(df.fileMs)})`;
+        L.push(`Database file (1.61.0): ${sizeText(df.bytes)}, ${f0(df.saves)} saved since the app started${df.bgSaves ? `, ${f0(df.bgSaves)} of them in the background` : (df.on ? ' (saving in the background is on)' : ' (saving in the background is off)')}, ${dfTail}, slowest ${f1(df.maxMs)} ms in the core, ${f0(df.failed)} failed`);
         L.push(`Settings file: ${sizeText(ds.bytes)}, ${f0(ds.writes)} written, last ${f1(ds.lastMs)} ms, slowest ${f1(ds.maxMs)} ms, ${f0(ds.failed)} failed`);
         if (tb.length) L.push(`Biggest parts of the database (counted, about): ${tb.map(x => `${x.name} ${sizeText(x.bytes)}`).join(', ')}`);
       }

@@ -112,7 +112,7 @@ function apply(db, bundle) {
       }
     }
   } catch { rollback(); throw new Error('Nothing was imported: the file is damaged.'); }
-  try { db.save(); } catch (x) { rollback(); throw x; }
+  try { (db.saveNow || db.save).call(db); } catch (x) { rollback(); throw x; } // (1.61.2: written at once even when the database writes its changes in the background: all or nothing)
   if (counts.laps === undefined) delete counts.laps;
   return counts;
 }

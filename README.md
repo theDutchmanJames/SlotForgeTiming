@@ -3126,7 +3126,7 @@ Good to know:
 What changed: in your 1.61.0 report from Windows you edited a slotcar and a driver and saved, and thought the small stalls of 135, 125 and 109 ms might come from that. A full save of your file takes about 349 ms, so those are not full saves; the other candidate is the list that is sent to the window (the slotcars hold 66 MB of pictures). The report could not tell them apart, so 1.61.1 adds the missing lines. **Nothing in the program itself changes**; it only looks at the clock.
 
 How to try it:
-1. Start the new version with the Performance line on. Do what you did before: edit a driver and a slotcar and save, open the screens that show lists (Drivers, Slotcars, the race setups, the picture sets and sound sets), and come back to them.
+1. Start the new version and open App Settings > General > Performance (that starts the measuring; the report is in that folder). Do what you did before: edit a driver and a slotcar and save, open the screens that show lists (Drivers, Slotcars, the race setups, the picture sets and sound sets), and come back to them.
 2. About a minute later copy the report and send all of it.
 3. What I look at, in **What happened (clock time)**: lines that start with *Saved the whole database:* (how long, split into making the text and writing the file, and how big the file is) and *Sent the list of ... to the window:* (the size, and how long the core was busy). Next to them are the lines *Core of the app stalled: stuck for over 100 ms at ...*. If a 135 or 125 ms stall has a *Sent the list of slotcars* line at the same clock time, we found it. If it has nothing next to it, that is also an answer.
 
@@ -3137,3 +3137,23 @@ Good to know:
 - The cost of the extra lines is tiny: about 0.1 microsecond per list in my test, and a note is only made for something slow.
 - **Still not done:** the full save in the background (1.61.2), and the pictures and sounds as files of their own. They wait for your go.
 - Tested: new checks in `tests/perfstats.test.js`, `tests/db.test.js` and `tests/perf.test.js`. The code was broken on purpose 53 times: 51 caught, the other 2 cannot change the result.
+
+## What to try (1.61.2): Changes to the database are written in the background
+
+What changed: in your two 1.61.1 reports from Windows every stall of the core over 100 ms was a full save of the database (278 to 346 ms for a file of 154.9 MB). With 1.61.2 a change to a driver, a slotcar, a race setup or a finished race no longer makes the core wait for the disk. Two things happen: only the items that changed are made into text again (the others keep the text they had), and the file is written by the system's helper threads while the program goes on. The file on the disk is the same as before, so older versions read it.
+
+How to try it:
+1. Start the new version. Open **App Settings > General > Performance**: there is a new tickbox, **Save changes to the database in the background**, and it is on. The report in that folder is what I need (you do not need the Performance line on the race screen).
+2. Do what you did before: edit a driver and a slotcar and save, finish a race if you like, open the screens that show lists, and go back to the Performance folder.
+3. Press **Copy report** and send all of it.
+4. What I look at: the line **Database file**: it should now say *N of them in the background* and *last X ms in the core (making the text X; the file was written in the background in Y ms)*, with X a few milliseconds. In **What happened (clock time)** there should be no *Saved the whole database* line (a note only appears for 20 ms or more), and *Core of the app stalled* should no longer show 280 to 390 ms at the moments you saved.
+
+Good to know:
+- The screen says "saved" when the file has the change, so it takes a fraction of a second after you press Save (about as long as before, but the program is not standing still in between). If the file cannot be written, you get the error as before.
+- **Removing** something (a driver, a slotcar, a race, an extra field) still makes the text of everything again, so the core is busy for about 190 ms for your file (560 to 600 ms in my test setup); the file part is in the background. A **restore** and an **import** are written at once in the core, as before. The report notes the slow ones with *Making the text of a save in the background took the core up to X ms*.
+- The program keeps the text of every item in memory: about the size of your data again (roughly +155 MB for your file). Closing may wait for the write for up to 3 seconds.
+- The tickbox is the way back: switch it off and the program writes in the core and waits for the disk, as in 1.61.1.
+- **What I could not test:** I have not tried it in Electron, on Windows or on the Pi. In my test setup (a made-up database of 150 MB, about 3.5 times slower than your PC for this work) the core stood still for 14 to 23 ms where it stood still for 1385 to 1612 ms before, so I expect a few milliseconds on your PC; I have not seen it there.
+- A side fix: the 1.61.1 text told you to start "with the Performance line on". That line only exists on the race screen; the report is in App Settings > General > Performance. Corrected there.
+- **Not done:** the report tidy-up, pictures and sounds as files of their own. We stop here unless you ask.
+- Tested: new checks in `tests/db.test.js`, `tests/perf.test.js`, `tests/perfstats.test.js`, `tests/depth.test.js`, `tests/transfer.test.js` and `tests/package.test.js`. The code was broken on purpose 197 times: 193 caught, the other 4 cannot change the result. The first pass caught 160 of 196; the ones that got through showed real gaps (a write that fails halfway, a half written file, the edges of the slices, the undo of a race) and got tests.

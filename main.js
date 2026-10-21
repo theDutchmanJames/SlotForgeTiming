@@ -106,16 +106,20 @@ app.whenReady().then(() => {
   // what keeps the core busy and is worth a note in the Performance report (1.61.1): a full save of the database, a list sent to the window (each from 20 ms)
   const watch = require('./perfstats').createWatcher({ mark: t => { if (perfCollector) perfCollector.mark(t); }, sizeOf: Database.approxSize });
   db.onSave = info => watch.saved(info);
+  // since 1.61.2 a change to the database is written to its file in the background: the core goes on while the disk is busy, and the answer to the window comes when the file has the
+  // change. The tickbox 'Save changes to the database in the background' (App Settings > General > Performance) switches it off: then the core waits for the disk, as before.
+  const backgroundOn = s => !(s && typeof s === 'object' && s.backgroundSave === false);
+  db.bg = backgroundOn(db.getSettings());
   ipcMain.handle('schema', () => schema);
   ipcMain.handle('voices:report', () => require('./voicereport').collect()); // what this computer offers for text to speech (Audio Settings > Voice report)
   ipcMain.handle('db:path', () => db.file);
   ipcMain.handle('db:list', (_e, entity) => { const rows = db.list(entity); watch.sent(entity, rows); return rows; });
-  ipcMain.handle('db:add', (_e, entity, item) => db.add(entity, item));
-  ipcMain.handle('db:update', (_e, entity, id, patch) => db.update(entity, id, patch));
-  ipcMain.handle('db:remove', (_e, entity, id) => db.remove(entity, id));
+  ipcMain.handle('db:add', async (_e, entity, item) => { const row = db.add(entity, item); await db.saved(); return row; });
+  ipcMain.handle('db:update', async (_e, entity, id, patch) => { const row = db.update(entity, id, patch); await db.saved(); return row; });
+  ipcMain.handle('db:remove', async (_e, entity, id) => { db.remove(entity, id); await db.saved(); });
   ipcMain.handle('db:linked', (_e, entity, id) => db.linkedLaps(entity, id));
-  ipcMain.handle('session:save', (_e, session, laps) => db.saveSession(session, laps));
-  ipcMain.handle('session:remove', (_e, id) => db.removeSession(id));
+  ipcMain.handle('session:save', (_e, session, laps) => db.saveSessionAsync(session, laps));
+  ipcMain.handle('session:remove', async (_e, id) => { db.removeSession(id); await db.saved(); });
   // Turns a report (HTML) into a PDF: print it in a hidden window, then ask where to save it.
   ipcMain.handle('pdf:export', async (event, html, name) => {
     const tmp = path.join(app.getPath('temp'), `slotforge-timing-${Date.now()}.html`);
@@ -156,7 +160,7 @@ app.whenReady().then(() => {
       return { ...c, file: path.basename(filePaths[0]) };
     } catch { return { ok: false, error: 'The file could not be read: it is not an export file from this app.' }; }
   });
-  ipcMain.handle('transfer:apply', () => { if (!pendingImport) throw new Error('No file chosen.'); const counts = transfer.apply(db, pendingImport); pendingImport = null; return counts; });
+  ipcMain.handle('transfer:apply', async () => { if (!pendingImport) throw new Error('No file chosen.'); await db.fileIdle(); if (!pendingImport) throw new Error('No file chosen.'); const counts = transfer.apply(db, pendingImport); pendingImport = null; return counts; }); // (1.61.2: nothing is being written to the database file while the import is saved)
   ipcMain.handle('transfer:cancel', () => { pendingImport = null; });
   // Complete backup: the whole database in one file, and restoring it
   ipcMain.handle('backup:save', async e => {
@@ -176,7 +180,9 @@ app.whenReady().then(() => {
       return { ...c, file: path.basename(filePaths[0]) };
     } catch { return { ok: false, error: 'The file could not be read: it is not a backup file from this app.' }; }
   });
-  ipcMain.handle('backup:restore', () => {
+  ipcMain.handle('backup:restore', async () => {
+    if (!pendingRestore) throw new Error('No backup file chosen.');
+    await db.fileIdle(); // (1.61.2: a change that is still on its way to the file is in the safety copy too)
     if (!pendingRestore) throw new Error('No backup file chosen.');
     const safety = path.join(path.dirname(db.file), `slotforge-timing.before-restore-${localDate()}-${new Date().toTimeString().slice(0, 8).replace(/:/g, '')}.json`); // (a second restore does not overwrite the copy of the first)
     try { fs.copyFileSync(db.file, safety); } catch { /* nothing to copy yet */ } // the data as it was, in case the restore was a mistake
@@ -186,9 +192,9 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('backup:cancel', () => { pendingRestore = null; });
   ipcMain.handle('custom:list', (_e, entity) => db.listCustomFields(entity));
-  ipcMain.handle('custom:add', (_e, entity, field) => db.addCustomField(entity, field));
-  ipcMain.handle('custom:remove', (_e, entity, id) => db.removeCustomField(entity, id));
-  ipcMain.handle('custom:group', (_e, entity, id, group) => db.setCustomFieldGroup(entity, id, group));
+  ipcMain.handle('custom:add', async (_e, entity, field) => { const f = db.addCustomField(entity, field); await db.saved(); return f; });
+  ipcMain.handle('custom:remove', async (_e, entity, id) => { db.removeCustomField(entity, id); await db.saved(); });
+  ipcMain.handle('custom:group', async (_e, entity, id, group) => { const f = db.setCustomFieldGroup(entity, id, group); await db.saved(); return f; });
   // how the computer and the app are doing (the Performance line, 1.60.0): it only looks while somebody asks
   const perf = perfCollector = require('./perfstats').createCollector({ app, screen, os, process, db, version: app.getVersion(), readText: p => fs.promises.readFile(p, 'utf8'),
     windows: () => BrowserWindow.getAllWindows().filter(w => !w.isDestroyed()).map(w => { try { return { title: w.getTitle(), pid: w.webContents.getOSProcessId(), visible: w.isVisible(), minimized: w.isMinimized(), focused: w.isFocused(), live: w === liveWin }; } catch { return null; } }).filter(Boolean) });
@@ -212,7 +218,7 @@ app.whenReady().then(() => {
   ipcMain.handle('live:fullscreen', (_e, on) => { if (!liveWin || liveWin.isDestroyed()) return false; liveWin.setFullScreen(on === undefined ? !liveWin.isFullScreen() : !!on); return liveWin.isFullScreen(); });
   ipcMain.handle('live:open', () => ({ second: openLiveWindow() }));
   // a setting is written to the settings file in the background (1.61.0): the core does not wait for the disk, the answer comes when the file is written
-  ipcMain.handle('settings:set', async (_e, patch) => { const s = await db.setSettingsAsync(patch); if (Object.keys(patch || {}).some(k => k.startsWith('net'))) await applyNet(); return s; });
+  ipcMain.handle('settings:set', async (_e, patch) => { const p = db.setSettingsAsync(patch); db.bg = backgroundOn(db.getSettings()); const s = await p; if (Object.keys(patch || {}).some(k => k.startsWith('net'))) await applyNet(); return s; });
   ipcMain.handle('net:status', () => netStatus());
   applyNet().finally(createWindow);
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });

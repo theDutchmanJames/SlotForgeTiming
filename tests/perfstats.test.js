@@ -213,6 +213,9 @@ function deps(over = {}) {
     ok('...a clock or a turn that fails is never an error in the handler', ok1);
     const M = []; const Z = createWatcher({ mark: x => M.push(x), min: 0, hr: () => t, soon: f => turns.push(f) }); Z.saved({ ms: 0.4, textMs: 0, fileMs: 0, bytes: 1 }); Z.sent('a', []); turns.shift()();
     ok('...the limit can be given (here 0: every save and every list is a note)', M.length === 2);
+    // 1.61.2: a save in the background keeps the core busy only for making the text
+    const BG = [], BW = createWatcher({ mark: x => BG.push(x) }); BW.saved({ ms: 24, textMs: 24, fileMs: 480, bytes: 154900000, background: true }); BW.saved({ ms: 19.9, textMs: 19.9, fileMs: 900, bytes: 1, background: true }); BW.saved({ ms: 20, textMs: 20, fileMs: 3, bytes: 1500, background: true }); BW.saved({ ms: 349, textMs: 183, fileMs: 166, bytes: 154700000, background: false });
+    ok('1.61.2: a save in the background is a note when the core was busy 20 ms or more (the text), and says the file took the time it took; a quick text is no note however long the file took', BG.length === 3 && BG[0] === 'Saved the whole database in the background: the core was busy 24 ms making the text, the file took 480 ms, 154.9 MB' && BG[1] === 'Saved the whole database in the background: the core was busy 20 ms making the text, the file took 3 ms, 1.5 KB' && BG[2] === 'Saved the whole database: 349 ms (making the text 183, writing the file 166), 154.7 MB');
     // with the real clock and the real next turn
     const R = [], RW = createWatcher({ mark: x => R.push(x), sizeOf: v => v.length }); const t0 = Date.now(); RW.sent('slotcars', 'x'.repeat(2500)); while (Date.now() - t0 < 60) { /* the core is busy */ }
     await new Promise(r => setImmediate(r)); await new Promise(r => setImmediate(r));
