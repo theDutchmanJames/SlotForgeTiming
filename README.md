@@ -3211,3 +3211,21 @@ Good to know:
 - The overall result of heats still adds up **laps**: the scoring choices for heats of a time (laps or distance first, then time) are the next release (D). The heat rows already hold the metres of each car.
 - An older setup has no value for the setting and means **Laps**: nothing changes for it. It is not for qualifying, a race by laps or a race by a distance (they have their own ways to rank).
 - Tested: `tests/comparedist.test.js` (new) and new checks in `tests/distancescreen.test.js`, `tests/report.test.js` and `tests/screens.test.js`. The code was broken on purpose 39 times: 38 caught, the other one cannot change the result (a lane length that is not a number is already left out by the lane-length sum). The first pass caught 36 of the 39; the two others showed real gaps (the last decimals of a multiplication: 3 laps of 8.7 m and 1 lap of 26.1 m are the same distance, and the heat-plan sentence for a setup that says Laps) and got tests.
+
+## What to try (1.65.0): scoring heats of a time by laps or distance, then time
+
+What changed: *Overall result counted by* now follows how the heats are limited. For heats limited by **a time** the standard is **Most laps (or the furthest distance), then the lowest total time**. For heats limited by laps or a distance it is still **Total time, then laps**. **Points** is there for both, and **Total laps** is still there.
+
+How to try it:
+1. Make a race setup: **Heats**, **Each heat is limited by: A time** (say 1 minute), **Cars are compared by: Distance**, and look at the Length folder: *Overall result counted by* shows *Most laps (or the furthest distance), then the lowest total time*. Change *Each heat is limited by* to laps: the choice changes to *Total time, then laps* and the others of that kind. Change it back.
+2. Home says under the heat plan: *the furthest total distance wins; with the same distance the lowest total time wins* (with **Laps** under *Cars are compared by* it says *the most laps wins; with the same laps the lowest total time wins*).
+3. Race two or three heats with the number keys (lane 1 is 10 m, lane 2 is 10.5 m): give both cars the same laps. The driver of the longer lane wins on distance. Look at the overall table: *31.5 m · 3.087* (time behind it). In App Settings change the distance unit to feet and the table says *103.3 ft*.
+4. Give both cars the same laps and the same lane: the driver with the lowest total time wins. Try *Drop the worst heat* and *Only the best heats of every driver count*: the heat that is dropped is the worst in laps (or metres), then the slowest.
+5. Set *Finals after the heats* to a final A and *What the finals decide* to *The result of the final is added to the heat result*: the final comes on top of the heats (*x m + y m final = z m*).
+6. Open Database > Results and Records and the PDF: the Result column and the line under the table say the same.
+7. Old setups: a setup of heats of a time from before this version still counts what it counted (Points or Total laps). Its choice in the Race Setup is the one it had.
+
+Good to know:
+- Points stay points: nothing counts by laps first. Heats of laps or a distance do not get the choice of a time (everybody drives the same laps or distance, so the time decides).
+- If one heat holds no metres for a driver (a lane length was missing), the laps count for the whole result.
+- Tested: `tests/heatscoring.test.js` (new) and new checks in `tests/distancescreen.test.js`, `tests/screens.test.js`, `tests/report.test.js`, `tests/help.test.js`, `tests/scoring.test.js`. The code was broken on purpose 75 times: 71 caught. The other 4 cannot change a result: two orderings that are the same because laps first and points never go together, a scoring-column test that only differs for that same combination, and the last tie (same measure, same total time) that the sort already keeps in the order of the heats. The first pass caught 59 of the 75; the gaps showed real holes (the unit of the distance on the race screen, the heat that is the worst by metres, points together with laps first, a heat without a time or without metres, a final that only decides the places, the faster of two equal heats raced later, one decimal in the distance, the words of a value that is no choice) and got tests.

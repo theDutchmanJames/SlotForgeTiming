@@ -154,7 +154,8 @@ const folders = Help.folders();
 // ---- 1.7.0 ----
 { const f = id => plain(folders.find(x => x.id === id).body);
   say('the heat plan help names the Heat list on the Race tab, the Heat List widget, the printed sheet and the line-up call', ['Heat list', 'Heat List</b> widget'.replace('</b>', ''), 'Print the heat list', 'line-up', 'winner'].every(t => f('heatplan').includes(t)));
-  say('the heat results help tells about the total race time and what happens with a heat that is not finished', /Total race time/.test(f('heatresults')) && /lowest total wins/.test(f('heatresults')) && /not finished/.test(f('heatresults')) && /estimate/.test(f('heatresults')));
+  say('the heat results help tells about the total time (then laps) and what happens with a heat that is not finished', /total time, then laps/.test(f('heatresults')) && /lowest total of the finish times wins/.test(f('heatresults')) && /not finished/.test(f('heatresults')) && /estimate/.test(f('heatresults')));
+  say('1.65.0: ...and that heats of a time count the most laps (or the furthest distance), then the lowest total time, that points are there for every heat, and that older setups count what they counted', /Heats of a time/.test(f('heatresults')) && /most laps wins, then the lowest total time/.test(f('heatresults')) && /furthest total distance/.test(f('heatresults')) && /Points are there for every kind of heat/.test(f('heatresults')) && /before 1\.65\.0/.test(f('heatresults')));
   say('...and every folder is still short enough', folders.every(x => plain(x.body).length < 1400)); }
 
 // ---- 1.8.0 ----

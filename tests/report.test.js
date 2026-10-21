@@ -45,6 +45,15 @@ ok('heats counted the standard way (a result of before): no Result column, no li
   const plain = sessionHtml({ session: { ...hs2, sessionType: 'race', standings: hs2.standings }, laps: hl });
   ok('only heat races get the column and the line', !plain.includes('<th>Result</th>') && !plain.includes('Overall result:'));
 }
+{ // 1.65.0: heats of a time counted by the furthest distance, then the lowest total time: the Result column holds the distance in the unit of the app, and the line says how it was counted
+  const sc = { countBy: 'total', bestHeats: 2, dropWorst: false, fastestBonus: 0, tieBreak: 'default', byTime: false, unfinished: 'below', lapsFirst: true, byDistance: true };
+  const hd = { ...hs, resultBy: 'laps', scoring: sc, standings: hs.standings.map((x, i) => ({ ...x, score: [31.5, 30][i], counted: 1, heats: 1, measure: 'distance', timeAll: [3087, 3026][i] })) };
+  const hm = sessionHtml({ session: hd, laps: hl, distUnit: 'm' }), hf = sessionHtml({ session: hd, laps: hl, distUnit: 'ft' });
+  ok('heats counted by the furthest distance: the Result column says the metres and the total time, in feet when the app counts in feet', hm.includes('<th>Result</th>') && hm.includes('31.5 m · 3.087') && hm.includes('30.0 m · 3.026') && hf.includes('103.3 ft · 3.087') && hf.includes('98.4 ft · 3.026') && !hf.includes('31.5 m'));
+  ok('...and the line under the results says the furthest total distance wins, with the lowest total time for the same distance', hm.includes('the furthest total distance wins; with the same distance the lowest total time wins'));
+  const hl2 = sessionHtml({ session: { ...hd, scoring: { ...sc, byDistance: false }, standings: hd.standings.map((x, i) => ({ ...x, score: [9, 8][i], measure: undefined })) }, laps: hl });
+  ok('...or the most laps: the laps and the total time', hl2.includes('9 laps · 3.087') && hl2.includes('8 laps · 3.026') && hl2.includes('the most laps wins; with the same laps the lowest total time wins'));
+}
 { // 0.96.0: a heat race with finals
   const fin = mode => ({ ...hs, finals: { finals: 'ab', finalMode: mode },
     standings: [{ ...hs.standings[0], finalName: 'A', finalPos: 1, ...(mode === 'added' ? { score: 28, counted: 2, heats: 2, heatScore: 18, finalPoints: 10, finalLaps: 4 } : {}) }, { ...hs.standings[1], finalName: 'B', finalPos: 2 }],

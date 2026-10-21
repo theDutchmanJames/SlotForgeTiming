@@ -11,7 +11,7 @@
   };
   const newSeed = () => Math.floor(Math.random() * 4294967295) + 1;
 
-  const distText = (m, unit) => (typeof module !== 'undefined' ? require('./distance.js') : root.Distance).text(m, unit); // (a distance in words: 100 m; distance.js is loaded after this file in the page, so it is looked up when needed)
+  const distText = (m, unit, dec) => (typeof module !== 'undefined' ? require('./distance.js') : root.Distance).text(m, unit, dec); // (a distance in words: 100 m; distance.js is loaded after this file in the page, so it is looked up when needed)
   const whole = (v, d, lo, hi) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
   // The heat settings of a race setup, with a default for everything that is missing (a setup from an older version has no such field).
   const PLANS = ['manual', 'perdriver', 'roundrobin', 'rotation'];
@@ -239,6 +239,7 @@
   const plural = (n, w) => (n === 1 ? `1 ${w}` : `${n} ${w}s`);
   function scoringText(sc, byPoints) {
     const parts = [];
+    if (sc.lapsFirst && !sc.byTime && !byPoints) parts.push(sc.byDistance ? 'the furthest total distance wins; with the same distance the lowest total time wins' : 'the most laps wins; with the same laps the lowest total time wins'); // (1.65.0: heats of a time)
     if (sc.byTime) parts.push(sc.unfinished === 'estimate' ? 'the lowest total race time wins; the finish time of a driver who did not finish a heat is estimated from their own average lap' : 'the lowest total race time wins; a driver who did not finish a heat ranks below the drivers who did, by laps');
     if (sc.countBy === 'average') parts.push('the average per heat');
     else if (sc.countBy === 'best') parts.push(`only the best ${plural(sc.bestHeats, 'heat')} of every driver count${sc.bestHeats === 1 ? 's' : ''}`);
@@ -259,8 +260,14 @@
       return t(added ? row.heatScore : row.score) + (sc.countBy === 'average' ? ' avg' : '') + (row.estimated ? ' (estimated)' : '') + (row.incomplete ? ` (${row.incomplete} not finished)` : '') + (row.counted < row.heats ? ` (${row.counted} of ${row.heats} heats)` : '')
         + (added ? ` + ${t(row.finalTime)} final = ${t(row.score)}` : '');
     }
-    return num(added ? row.heatScore : row.score) + (sc && sc.countBy === 'average' ? ' avg' : '') + (row.counted < row.heats ? ` (${row.counted} of ${row.heats} heats)` : '')
-      + (added ? ` + ${num(fin.byPoints ? row.finalPoints : row.finalLaps)} final = ${num(row.score)}` : '');
+    // 1.65.0: heats of a time counted by the most laps (or the furthest distance, the metres in the unit of the app) first, then the lowest total time: the time is said behind it
+    const lf = !!sc && sc.lapsFirst && !sc.byTime && row.timeAll !== undefined, tm = lf && row.timeAll !== null ? ' · ' + E.fmtTime(row.timeAll) : '';
+    if (row.measure === 'distance') {
+      const d = x => distText(x, fin && fin.unit, 1);
+      return d(added ? row.heatScore : row.score) + (sc && sc.countBy === 'average' ? ' avg' : '') + (row.counted < row.heats ? ` (${row.counted} of ${row.heats} heats)` : '') + (added ? ` + ${d(row.finalDist)} final = ${d(row.score)}` : '') + tm;
+    }
+    return num(added ? row.heatScore : row.score) + (lf ? ' laps' : '') + (sc && sc.countBy === 'average' ? ' avg' : '') + (row.counted < row.heats ? ` (${row.counted} of ${row.heats} heats)` : '')
+      + (added ? ` + ${num(fin.byPoints ? row.finalPoints : row.finalLaps)} final = ${num(row.score)}` : '') + tm;
   };
   const ordinal = n => { const t = n % 100, u = n % 10; return n + (t >= 11 && t <= 13 ? 'th' : u === 1 ? 'st' : u === 2 ? 'nd' : u === 3 ? 'rd' : 'th'); };
   // The Final column of the overall result: "Final A: 1st", or "Final A" while that final has not been raced, or nothing for a driver who is in no final.

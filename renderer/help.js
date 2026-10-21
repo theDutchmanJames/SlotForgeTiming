@@ -149,7 +149,8 @@ const Help = (() => {
       { id: 'heatresults', title: 'Heat results', note: 'How the heats add up', body: `
         <ul>
           <li><b>How the heats are added up</b> can be all heats, the <b>average per heat</b> (fair when drivers race a different number of heats) or <b>only the best heats</b> of every driver. <b>Drop the worst heat</b> takes away each driver's worst heat. With points you can give <b>bonus points for the fastest lap</b> of a heat. <b>A tie is decided by</b> chooses between the other measure, the fastest lap, the most heat wins and the lowest total time.</li>
-          <li><b>Total race time</b> (for heats limited by laps) adds up each driver's finish times; the lowest total wins. A driver who did not finish a heat ranks below those who did, by laps, or, with <b>A heat that is not finished</b> on estimate, gets a finish time worked out from their own average lap.</li>
+          <li><b>Overall result counted by</b> follows how the heats are limited. <b>Heats of a time</b>: the most laps wins, then the lowest total time (when the cars are compared by distance: the furthest total distance, then the lowest total time). <b>Heats of laps or a distance</b>: <b>total time, then laps</b>: the lowest total of the finish times wins. Points are there for every kind of heat.</li>
+          <li>A driver who did not finish a heat ranks below those who did, by laps, or, with <b>A heat that is not finished</b> on estimate, gets a finish time worked out from their own average lap. Setups from before 1.65.0 count what they counted.</li>
           <li>When something other than the standard is chosen, the race screen, the saved results and the PDF report say how the result was counted and show a <b>Result</b> column.</li>
         </ul>` },
       { id: 'heatfinals', title: 'Finals', note: 'A final A and a final B after the heats', body: `

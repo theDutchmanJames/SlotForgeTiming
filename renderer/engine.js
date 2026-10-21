@@ -1216,7 +1216,10 @@
       // the result by total race time (the lowest time wins) needs heats that are limited by laps: with heats limited by time everybody drives the same time, so the laps count
       byTime: typeof s.byTime === 'boolean' ? s.byTime : s.resultBy === 'time' && s.heatBy !== 'time', // (a settled answer is kept: the heat race is made from the answer of the setup, which knows heatBy)
       // a heat that was not finished: the driver ranks below the finishers ('below', by laps), or the finish time is estimated from the average lap of the driver ('estimate')
-      unfinished: s.unfinished === 'estimate' ? 'estimate' : 'below'
+      unfinished: s.unfinished === 'estimate' ? 'estimate' : 'below',
+      // 1.65.0: heats limited by a time counted by the most laps first, then the lowest total time (lapsFirst); byDistance: the furthest distance first instead of the most laps (the cars are compared by distance)
+      lapsFirst: typeof s.lapsFirst === 'boolean' ? s.lapsFirst : s.heatBy === 'time' && s.resultByTime === 'lapstime' && s.resultBy !== 'points',
+      byDistance: typeof s.byDistance === 'boolean' ? s.byDistance : s.heatBy === 'time' && s.resultByTime === 'lapstime' && s.resultBy !== 'points' && s.compareBy === 'distance'
     };
   }
 
@@ -1350,7 +1353,9 @@
       // (by total race time the better heat is the faster one: a heat that was not finished ranks after the finished ones, by laps, or by its estimated time when the setup estimates)
       const missing = h => h.tm === null || h.tm === undefined;
       const betterTime = (a, b) => (sc.unfinished === 'estimate' ? (missing(a) - missing(b)) || (missing(a) ? 0 : a.tm - b.tm) : (!a.fin - !b.fin) || (a.fin ? a.tm - b.tm : 0)) || b.laps - a.laps || a.heat - b.heat;
-      const better = byTime ? betterTime : (a, b) => (byPoints ? b.points - a.points || b.laps - a.laps : b.laps - a.laps || b.points - a.points) || (a.total ?? Infinity) - (b.total ?? Infinity) || a.heat - b.heat;
+      // 1.65.0, heats limited by a time (lapsFirst): the most laps, or the furthest distance when the cars are compared by distance (every heat holds its metres), then the lowest total time. Without the metres of every heat the laps count.
+      const lf = sc.lapsFirst && !byTime && !byPoints, useDist = lf && sc.byDistance && H.results.length > 0 && H.results.every(hr => hr.rows.every(r => Number.isFinite(r.dist))), msr = h => (useDist ? h.dist : h.laps);
+      const better = byTime ? betterTime : lf ? (a, b) => msr(b) - msr(a) || (a.total ?? Infinity) - (b.total ?? Infinity) || a.heat - b.heat : (a, b) => (byPoints ? b.points - a.points || b.laps - a.laps : b.laps - a.laps || b.points - a.points) || (a.total ?? Infinity) - (b.total ?? Infinity) || a.heat - b.heat;
       const acc = participants.map((p, i) => {
         const hs = heatsOf[i], ranked = hs.slice().sort(better), f = finalOf[i];
         let counted = ranked;
@@ -1358,7 +1363,7 @@
         if (sc.countBy === 'best') counted = counted.slice(0, sc.bestHeats);
         const sum = (list, k) => list.reduce((t, h) => t + h[k], 0), div = sc.countBy === 'average' && counted.length ? counted.length : 1;
         const all = f ? hs.concat([f]) : hs, best = all.reduce((m, h) => (Number.isFinite(h.best) && (m === null || h.best < m) ? h.best : m), null);
-        const heatLaps = sum(counted, 'laps') / div, heatPoints = sum(counted, 'points') / div; // (what the heats count; a final that is added comes on top of it, and is not averaged, dropped or limited to the best heats)
+        const heatLaps = sum(counted, 'laps') / div, heatPoints = sum(counted, 'points') / div, heatM = counted.reduce((t, h) => t + msr(h), 0) / div; // (what the heats count; a final that is added comes on top of it, and is not averaged, dropped or limited to the best heats)
         // by total race time: the time of the heats that count (a heat without a time counts as not finished), and the final when it is added
         const timed = counted.filter(h => !missing(h)), notFin = counted.length - timed.length, heatTime = timed.length ? sum(timed, 'tm') / (sc.countBy === 'average' ? timed.length : 1) : null;
         const finalMs = f && !missing(f) ? f.tm : null, addFinal = added && f, timeScore = heatTime === null && !(addFinal && finalMs !== null) ? null : (heatTime || 0) + (addFinal && finalMs !== null ? finalMs : 0);
@@ -1369,17 +1374,18 @@
           ...(dmNote ? { damageNote: dmNote, damagePoints: all.reduce((t, h) => t + (h.damagePoints || 0), 0), repairs: all.reduce((t, h) => t + (h.repairs || 0), 0), repairMs: all.reduce((t, h) => t + (h.repairMs || 0), 0) } : {}),
           ...(flNote ? { failureNote: flNote, failures: all.reduce((t, h) => t + (h.failures || 0), 0), failureRepairs: all.reduce((t, h) => t + (h.failureRepairs || 0), 0), failureMs: all.reduce((t, h) => t + (h.failureMs || 0), 0) } : {}),
           counted: counted.length, dropped: hs.filter(h => !counted.includes(h)).map(h => h.heat).sort((x, y) => x - y),
-          heatScore: byTime ? heatTime : byPoints ? heatPoints : heatLaps, scoreLaps: heatLaps + (added && f ? f.laps : 0), scorePoints: heatPoints + (added && f ? f.points : 0),
+          heatScore: byTime ? heatTime : byPoints ? heatPoints : lf ? heatM : heatLaps, scoreLaps: heatLaps + (added && f ? f.laps : 0), scorePoints: heatPoints + (added && f ? f.points : 0), scoreM: heatM + (added && f ? msr(f) : 0),
+          ...(useDist ? { measure: 'distance', finalDist: f ? f.dist : null } : {}), ...(lf ? { timeAll: counted.length && counted.every(h => Number.isFinite(h.total)) ? counted.reduce((t, h) => t + h.total, 0) / div : null } : {}),
           ...(byTime ? { timeScore, incomplete: notFin + (addFinal && finalMs === null ? 1 : 0), estimated: counted.filter(h => h.est).length + (addFinal && f.est ? 1 : 0), finalTime: f ? finalMs : null } : {}),
           finalName: groupOf[i], finalPos: f ? f.pos : null, finalLaps: f ? f.laps : null, finalPoints: f ? f.points : null,
           wins: counted.filter(h => h.pos === 1).length, time: counted.reduce((t, h) => t + (h.total ?? Infinity), 0) };
       });
       const desc = k => (a, b) => b[k] - a[k], bestAsc = (a, b) => (a.best ?? 1e12) - (b.best ?? 1e12), timeAsc = (a, b) => (a.time === b.time ? 0 : a.time - b.time);
-      const main = byPoints ? 'scorePoints' : 'scoreLaps', other = desc(byPoints ? 'scoreLaps' : 'scorePoints');
+      const main = byPoints ? 'scorePoints' : lf ? 'scoreM' : 'scoreLaps', other = desc(byPoints ? 'scoreLaps' : 'scorePoints');
       // by total race time: those who finished all the heats that count rank by their time, the lowest first; those with a heat that was not finished come after them (by laps, then fewer heats not finished, then time)
       const done = a => a.incomplete === 0 && a.timeScore !== null;
       const byTimeScore = (a, b) => (done(a) && done(b) ? a.timeScore - b.timeScore : done(a) !== done(b) ? (done(a) ? -1 : 1) : (b.scoreLaps - a.scoreLaps) || (a.incomplete - b.incomplete) || (a.time - b.time)) || 0;
-      const chain = [byTime ? byTimeScore : desc(main), ...({ default: [other, bestAsc], bestlap: [bestAsc, other], wins: [desc('wins'), other, bestAsc], time: [timeAsc, other, bestAsc] })[sc.tieBreak]];
+      const chain = [byTime ? byTimeScore : desc(main), ...(lf ? [timeAsc] : []), ...({ default: [other, bestAsc], bestlap: [bestAsc, other], wins: [desc('wins'), other, bestAsc], time: [timeAsc, other, bestAsc] })[sc.tieBreak]];
       // the A final drivers are placed above the B final drivers, and these above everybody else. In a final that is driven, 'places' puts its drivers in the order of that final.
       const tier = a => (a.finalName === 'A' ? 0 : a.finalName === 'B' ? 1 : 2);
       acc.sort((a, b) => {
@@ -1388,7 +1394,7 @@
         for (const f of chain) { const v = f(a, b); if (v) return v; }
         return a.participant - b.participant;
       });
-      return acc.map(({ time, ...a }, i) => ({ ...a, pos: i + 1, score: byTime ? a.timeScore : byPoints ? a.scorePoints : a.scoreLaps }));
+      return acc.map(({ time, ...a }, i) => ({ ...a, pos: i + 1, score: byTime ? a.timeScore : byPoints ? a.scorePoints : lf ? a.scoreM : a.scoreLaps }));
     };
     return H;
   }

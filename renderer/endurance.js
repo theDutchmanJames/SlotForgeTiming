@@ -50,9 +50,9 @@
   // with the rules of the swaps in setup.endurance; setup.ofType keeps what it really is. Any other setup is given back as it is.
   function effective(setup) {
     if (setup && setup.sessionType === 'race' && setup.raceBy === 'time') return RaceLimit.effective(setup); // (1.62.0: a Race limited by a time is raced as a Timed race)
-    if (!setup || setup.sessionType !== 'endurance') return setup;
+    if (!setup || setup.sessionType !== 'endurance') return RaceLimit.scoring(setup); // (1.65.0: heats limited by a time have their own scoring choice)
     const by = setup.enduranceBy === 'laps' || setup.enduranceBy === 'distance' ? 'race' : setup.enduranceBy === 'heats' ? 'heats' : 'timed';
-    return { ...setup, sessionType: by, ofType: 'endurance', endurance: clean(setup), raceBy: setup.enduranceBy === 'distance' ? 'distance' : 'laps', ...(by === 'heats' && !setup.rotation ? { participants: 'teams' } : {}) }; // (raceBy: a long race by distance is a race by distance)
+    return RaceLimit.scoring({ ...setup, sessionType: by, ofType: 'endurance', endurance: clean(setup), raceBy: setup.enduranceBy === 'distance' ? 'distance' : 'laps', ...(by === 'heats' && !setup.rotation ? { participants: 'teams' } : {}) }); // (raceBy: a long race by distance is a race by distance)
   }
 
   const cur = st => st.stints[st.stints.length - 1];

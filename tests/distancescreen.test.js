@@ -339,6 +339,78 @@ const view = () => run('Damage.view(live.engine(), [0, 1], performance.now(), li
     store.tracks[0] = meas;
   }
 
+  // ---------- 1.65.0: the scoring of heats of a time ----------
+  {
+    const hsetup = over => ({ id: 'hs1', name: 'Time heats', sessionType: 'heats', heatBy: 'time', duration: 0.05, compareBy: 'distance', resultByTime: 'lapstime', resultBy: 'laps', heatPlan: 'manual', heats: 1, layout: 'DL', ...over });
+    const home = async setup => {
+      store.racesetups = [{ track: 'dt', ...setup }]; store.tracks[0] = meas;
+      run("state.settings.lastSetupId = '" + setup.id + "'; state.settings.assignments = " + JSON.stringify({ [setup.id]: [{ driverId: 'd1', carId: 'c1' }, { driverId: 'd2', carId: 'c2' }] }) + "; state.tab = 'home'; state.race = null; live = null");
+      await run('render()'); await wait(30); return E('view').innerHTML.replace(/&quot;/g, '"');
+    };
+    let hh = await home(hsetup());
+    say('Home: heats of a time counted by the most laps or the furthest distance, then the lowest total time say so (by distance when the cars are compared by distance)', hh.includes('the furthest total distance wins; with the same distance the lowest total time wins'));
+    hh = await home(hsetup({ compareBy: 'laps' }));
+    say('...by laps when they are compared by laps', hh.includes('the most laps wins; with the same laps the lowest total time wins') && !hh.includes('furthest total distance'));
+    hh = await home(hsetup({ resultByTime: 'laps' }));
+    say('...total laps (the old way) and points say nothing of it', !hh.includes('lowest total time wins') && !(await home(hsetup({ resultByTime: 'points', resultBy: 'points' }))).includes('lowest total time wins'));
+    hh = await home((({ resultByTime, ...rest }) => ({ ...rest, resultBy: 'points' }))(hsetup()));
+    say('...a setup from before 1.65.0 (no choice, points) is counted by points as it was: no sentence about laps and time', !hh.includes('lowest total time wins') && hh.includes('<'));
+    run('state.race = null; live = null');
+
+    const drive = async () => {
+      key(' '); await until(() => phase() === 'running', 5000); await wait(60);
+      await lapOn(0); await lapOn(1); await lapOn(0); await lapOn(1);
+      await until(() => eng().timeUp, 8000);
+      await lapOn(0); await lapOn(1);
+      await until(() => phase() === 'finished', 6000); await wait(150); await until(() => saved.length > 0, 5000);
+    };
+    saved.length = 0;
+    await openRace(hsetup(), meas, rows(1, 2));
+    say('a heat of a time counted by distance on the race screen says above the result how it counts', html().includes('the furthest total distance wins; with the same distance the lowest total time wins'));
+    const inLane = n => eng().cars.find(c => c.lane === n).driverId; // (who races in which lane of the heat is shuffled)
+    const l1 = inLane(0), l2 = inLane(1);
+    await drive();
+    const ss = saved[0] && saved[0][0], o = ss && ss.standings;
+    say('...both drove 3 laps (30 m on lane 1, 31.5 m on lane 2): the driver of lane 2 wins on the distance, the result is in metres with the total time, and it is saved with the result of the heats', !!ss && o.map(x => x.driverId + ':' + x.laps).join() === l2 + ':3,' + l1 + ':3' && o[0].measure === 'distance' && o[0].score === 31.5 && o[1].score === 30 && Number.isFinite(o[0].timeAll) && ss.resultBy === 'laps' && ss.scoring.lapsFirst === true && ss.scoring.byDistance === true);
+    say('...and the overall table of the race screen shows it: 31.5 m and the time', /31\.5 m · \d/.test(E('overall').innerHTML) && /30\.0 m · \d/.test(E('overall').innerHTML));
+    run('state.race = null; live = null'); timers.forEach(clearInterval);
+
+    // the same in feet: the table of the race screen follows the unit of App Settings
+    run('state.settings.distanceUnit = "ft"'); saved.length = 0;
+    await openRace(hsetup(), meas, rows(1, 2));
+    await drive();
+    say('...and in feet when App Settings say so (103.3 ft and 98.4 ft)', /103\.3 ft · \d/.test(E('overall').innerHTML) && /98\.4 ft · \d/.test(E('overall').innerHTML) && !/ m · \d/.test(E('overall').innerHTML));
+    run('state.settings.distanceUnit = "m"; state.race = null; live = null'); timers.forEach(clearInterval);
+
+    saved.length = 0;
+    await openRace(hsetup({ compareBy: 'laps' }), meas, rows(1, 2));
+    const m1 = eng().cars.find(c => c.lane === 0).driverId, m2 = eng().cars.find(c => c.lane === 1).driverId;
+    await drive();
+    const sl = saved[0] && saved[0][0], ol = sl && sl.standings;
+    say('compared by laps the same heat is won by the lowest time with the same laps: lane 1 crossed first every time, and the result says laps and time', !!sl && ol.map(x => x.driverId + ':' + x.laps).join() === m1 + ':3,' + m2 + ':3' && ol[0].score === 3 && !ol[0].measure && /3 laps · \d/.test(E('overall').innerHTML));
+    run('state.race = null; live = null'); timers.forEach(clearInterval);
+
+    // a final that is added to the heats: the metres of the final are saved with the result
+    saved.length = 0;
+    await openRace(hsetup({ finals: 'a', finalMode: 'added' }), meas, rows(1, 2));
+    key(' '); await until(() => phase() === 'running', 5000); await wait(60);
+    await lapOn(0); await lapOn(1); await until(() => eng().timeUp, 8000); await lapOn(0); await lapOn(1);
+    await until(() => phase() === 'between', 6000);
+    run("live.pickAction('random')"); key(' '); await until(() => phase() === 'running', 5000); await wait(60);
+    await lapOn(0); await lapOn(1); await lapOn(0); await until(() => eng().timeUp, 8000); await lapOn(0); await lapOn(1);
+    await until(() => phase() === 'finished', 6000); await wait(150); await until(() => saved.length > 0, 5000);
+    const sf = saved[0] && saved[0][0], of = sf && sf.standings;
+    say('a final A that is added to heats of a time counted by distance: each driver is saved with the metres of the heat and of the final, and the result is the sum', !!sf && of.length === 2 && of.every(x => x.measure === 'distance' && x.finalName === 'A' && Number.isFinite(x.finalDist) && x.finalDist > 0 && Number.isFinite(x.heatScore) && Math.abs(x.score - (x.heatScore + x.finalDist)) < 1e-9));
+    say('...and the overall table shows the heat, the final and the total (x m + y m final = z m, then the time)', / m \+ [\d.]+ m final = [\d.]+ m · \d/.test(E('overall').innerHTML));
+    run('state.race = null; live = null'); timers.forEach(clearInterval);
+
+    saved.length = 0;
+    await openRace(hsetup({ resultByTime: 'laps', compareBy: 'laps' }), meas, rows(1, 2));
+    say('total laps (the old way): nothing is said about the lowest total time', !html().includes('lowest total time wins'));
+    run('state.race = null; live = null'); timers.forEach(clearInterval);
+    store.tracks[0] = meas;
+  }
+
   reachedEnd = true;
   console.log(fails ? fails + ' DISTANCE SCREEN TESTS FAILED' : 'ALL DISTANCE SCREEN TESTS PASSED'); process.exit(fails ? 1 : 0);
 })();

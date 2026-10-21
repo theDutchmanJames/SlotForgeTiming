@@ -176,6 +176,7 @@ class Database {
       }
       if (r.firstLap === undefined) r.firstLap = 'skip'; // new in 0.32: the lap from the grid is not counted
       RaceLimit.upgrade(r); // new in 1.62.0: the session type Timed race is a Race limited by a time
+      RaceLimit.upgradeScoring(r); // new in 1.65.0: heats limited by a time keep what they counted by (laps or points) in their own setting
       ['fuel', 'fuelTank', 'fuelPerLap', 'fuelEmpty', 'fuelRate'].forEach(k => { delete r[k]; });
     }
     // new in 1.30.0: the laps since the last service. A car from before that has had no service yet, so every lap it has driven counts.

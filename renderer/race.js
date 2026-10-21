@@ -106,7 +106,7 @@ async function renderRace() {
   const finalsOn = heats && heat.total > heat.count, fmode = heats ? RaceEngine.finalsOf(setup) : null, byPts = setup.resultBy === 'points';
   const finalsSaid = !finalsOn ? '' : Heats.finalsSaid(fmode);
   const scoreNote = heats ? [Heats.scoringText(heat.scoring, byPts), finalsSaid].filter(Boolean).join(' ') : ''; // how the overall result is counted, when it is not the standard
-  const scoreCol = heats && (heat.scoring.countBy !== 'total' || heat.scoring.dropWorst || heat.scoring.byTime || (finalsOn && fmode.finalMode === 'added')); // a column with the result that counts (average, best heats, worst heat dropped, a final that is added)
+  const scoreCol = heats && (heat.scoring.countBy !== 'total' || heat.scoring.dropWorst || heat.scoring.byTime || (heat.scoring.lapsFirst && !byPts) || (finalsOn && fmode.finalMode === 'added')); // a column with the result that counts (average, best heats, worst heat dropped, a final that is added)
   const dUnit = Speed.distUnitOf(state.settings); // (the unit of a distance on the screen: metres or feet)
   const finalsNote = !finalsOn ? '' : `, then ${heat.total - heat.count === 2 ? 'finals B and A' : 'a final A'}${setup.heatBy === 'time' ? (Number(setup.finalDuration) > 0 ? ` of ${setup.finalDuration} minutes` : '') : setup.heatBy === 'distance' ? (Number(setup.finalDistance) > 0 ? ` of ${Distance.text(Number(setup.finalDistance), dUnit)}` : '') : (Number(setup.finalLaps) > 0 ? ` of ${setup.finalLaps} laps` : '')}`;
   const byDist = Distance.compareOn(setup) ? ', compared by distance' : ''; // (1.64.0: a time race whose cars are ranked by the distance they drove)
@@ -355,7 +355,7 @@ async function renderRace() {
     if (!heats) return;
     drawHeatList();
     ui('overall').innerHTML = heat.overall().map(o => `<tr><td>${o.pos}</td><td>${esc(o.asTeam ? o.teamName : o.driverName)}</td><td class="num">${o.heats}</td><td class="num">${o.laps}</td>
-      <td class="num">${setup.resultBy === 'points' ? o.points : ''}</td>${scoreCol ? `<td class="num">${esc(Heats.scoreText(o, heat.scoring, { finalMode: fmode.finalMode, byPoints: byPts }))}</td>` : ''}${finalsOn ? `<td>${esc(Heats.finalCell(o))}</td>` : ''}<td class="num">${RaceEngine.fmtTime(o.best)}</td></tr>`).join('');
+      <td class="num">${setup.resultBy === 'points' ? o.points : ''}</td>${scoreCol ? `<td class="num">${esc(Heats.scoreText(o, heat.scoring, { finalMode: fmode.finalMode, byPoints: byPts, unit: dUnit }))}</td>` : ''}${finalsOn ? `<td>${esc(Heats.finalCell(o))}</td>` : ''}<td class="num">${RaceEngine.fmtTime(o.best)}</td></tr>`).join('');
   };
 
   // the heat list: every heat with its drivers by lane, how it went and what it gave. The heat that is racing (or is next) is marked. Only drawn again when something in it changed.
@@ -611,10 +611,10 @@ async function renderRace() {
         ...(live.extraBy.has(o.participant) && live.extraBy.get(o.participant).has ? { pits: live.extraBy.get(o.participant).pits, pitTime: live.extraBy.get(o.participant).pitTime } : {}),
         ...(penCfg.on && live.extraBy.has(o.participant) ? { penaltyPoints: live.extraBy.get(o.participant).pen } : {}),
         ...(live.tyreBy.has(o.participant) ? { tyres: live.tyreBy.get(o.participant) } : {}),
-        ...(scoreCol ? { score: o.score, counted: o.counted, heats: o.heats, dropped: o.dropped.length ? o.dropped : undefined } : {}),
+        ...(scoreCol ? { score: o.score, counted: o.counted, heats: o.heats, dropped: o.dropped.length ? o.dropped : undefined, ...(o.measure ? { measure: o.measure } : {}), ...(o.timeAll !== undefined ? { timeAll: o.timeAll } : {}) } : {}),
         ...(heat.scoring.byTime ? { incomplete: o.incomplete, estimated: o.estimated } : {}),
         ...(finalsOn && o.finalName ? { finalName: o.finalName, ...(o.finalPos !== null ? { finalPos: o.finalPos } : {}) } : {}),
-        ...(finalsOn && fmode.finalMode === 'added' && o.finalPos !== null ? { heatScore: o.heatScore, finalPoints: o.finalPoints, finalLaps: o.finalLaps, ...(heat.scoring.byTime ? { finalTime: o.finalTime } : {}) } : {}) }));
+        ...(finalsOn && fmode.finalMode === 'added' && o.finalPos !== null ? { heatScore: o.heatScore, finalPoints: o.finalPoints, finalLaps: o.finalLaps, ...(o.measure ? { finalDist: o.finalDist } : {}), ...(heat.scoring.byTime ? { finalTime: o.finalTime } : {}) } : {}) }));
     } else {
       const teamRow = c => { // an Endurance Race: the team is the row, with the drivers who drove for it (their laps and time at the wheel) and the stints
         const mine = lapRows(c, date, {});

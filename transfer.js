@@ -102,7 +102,7 @@ function apply(db, bundle) {
       for (const src of bundle.items[e] || []) {
         const row = clone(src); const oldId = row.id; row.id = crypto.randomUUID(); map[e][oldId] = row.id;
         refsOf(e, row).forEach(r => r.set(map[r.entity] && map[r.entity][r.get()] !== undefined ? map[r.entity][r.get()] : ''));
-        if (e === 'racesetups') RaceLimit.upgrade(row); // (a file made before 1.62.0 may hold a Timed race: that is a Race limited by a time now)
+        if (e === 'racesetups') { RaceLimit.upgrade(row); RaceLimit.upgradeScoring(row); } // (a file made before 1.62.0 may hold a Timed race: that is a Race limited by a time now; one from before 1.65.0 has heats of a time that count laps or points)
         if (e === 'teams') row.drivers = (Array.isArray(row.drivers) ? row.drivers : []).filter(Boolean);
         if (e === 'championships') row.roster = (Array.isArray(row.roster) ? row.roster : []).filter(x => x && x.driver); // (a driver that did not come along is not in the roster)
         if (e === 'sessions' && row.champ) { const m = map.championships[row.champ.id]; if (m) row.champ.id = m; else delete row.champ; } // (a race that counted for a championship that did not come along is a normal race)
