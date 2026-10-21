@@ -411,6 +411,54 @@ const view = () => run('Damage.view(live.engine(), [0, 1], performance.now(), li
     store.tracks[0] = meas;
   }
 
+  // ---------- 1.66.0: sectors ----------
+  {
+    const stk = { id: 'sx', name: 'Sector track', lanes: 3, length: 10, sectors: 4, sectorNames: 'Start,Hairpin,,Back' };
+    const ssetup = over => ({ id: 'sec1', name: 'Sectors', sessionType: 'race', raceBy: 'laps', laps: 3, endRule: 'leader', layout: 'DL', ...over });
+    const review = () => E('review').innerHTML;
+    const choose = (car, value) => E('review').onchange({ target: { closest: () => ({ dataset: { rvs: String(car) }, value: String(value) }) } });
+    const click = (rv, dataset) => E('review').onclick({ target: { closest: () => ({ disabled: false, dataset: { rv, ...dataset } }) } });
+    saved.length = 0;
+    await openRace(ssetup(), stk, rows(1, 2, 3));
+    say('a race on a track with sectors gets them in its settings (the track has 4, the third without a name)', eng().sectors && eng().sectors.count === 4 && eng().sectors.names.join() === 'Start,Hairpin,,Back');
+    run('state.autoFinalize = false');
+    key(' '); await until(() => phase() === 'running', 5000); await wait(60);
+    await lapOn(0); await lapOn(1); await lapOn(2); await lapOn(0); await lapOn(1); await lapOn(2); await lapOn(0);
+    await until(() => phase() === 'review', 6000); await wait(100);
+    const who = i => eng().cars[i].driverName;
+    say('the lead car finished the 3 laps and the others did not: the review is open, and only the cars that did not finish have the choice of a sector', phase() === 'review' && eng().cars[0].done && !eng().cars[1].done && !eng().cars[2].done && !review().includes('data-rvs="0"') && review().includes('data-rvs="1"') && review().includes('data-rvs="2"') && review().includes('Sector 2 \u00b7 Hairpin'));
+    say('...with no sector chosen the second car to cross the line (lane 2) is second, as it always was', eng().standings().map(x => x.index).join() === '0,1,2');
+    choose(2, 3);
+    say('choosing a sector for the third car in the review puts it ahead of the second car, which has the same laps and no sector', eng().cars[2].sector === 3 && eng().standings().map(x => x.index).join() === '0,2,1' && /<option value="3" selected>/.test(review().split('data-rvs="2"')[1].split('</tr>')[0]));
+    say('...and the review shows the new order: the third car is in place 2', (review().split('<tr><td>2</td>')[1] || '').split('</tr>')[0].includes(who(2)));
+    choose(1, 3);
+    say('...both in sector 3: arrows appear', review().includes('data-rv="sectormove"') && eng().sectorGroup(1).length === 2);
+    say('...in the same order as they crossed the line to begin with (the second car first)', eng().standings().map(x => x.index).join() === '0,1,2');
+    click('sectormove', { car: '2', dir: '-1' });
+    say('...the arrow of the third car puts it ahead', eng().standings().map(x => x.index).join() === '0,2,1' && eng().cars[2].secOrder === 1);
+    click('sectormove', { car: '2', dir: '1' });
+    say('...and its arrow down puts it back', eng().standings().map(x => x.index).join() === '0,1,2');
+    choose(1, 1);
+    say('...a car that is moved to an earlier sector goes behind the car in the later one', eng().standings().map(x => x.index).join() === '0,2,1' && eng().cars[1].sector === 1);
+    click('finalize', {});
+    await until(() => saved.length > 0, 5000); await wait(100);
+    const ss = saved[0] && saved[0][0], o = ss && ss.standings;
+    say('Finalize saves the sector of the cars that did not finish with the result (the name of the sector when it has one), and the car that finished has none', !!ss && o.length === 3 && o[0].sector === undefined && o[1].driverId === 'd3' && o[1].sector === 3 && o[1].sectorName === undefined && o[2].driverId === 'd2' && o[2].sector === 1 && o[2].sectorName === 'Start');
+    run('state.race = null; live = null'); timers.forEach(clearInterval);
+
+    saved.length = 0;
+    await openRace(ssetup(), { ...stk, sectors: 0 }, rows(1, 2, 3));
+    run('state.autoFinalize = false');
+    key(' '); await until(() => phase() === 'running', 5000); await wait(60);
+    await lapOn(0); await lapOn(1); await lapOn(2); await lapOn(0); await lapOn(1); await lapOn(2); await lapOn(0);
+    await until(() => phase() === 'review', 6000); await wait(100);
+    say('a track without sectors: no choice in the review, nothing in the saved result', eng().sectors === null && !review().includes('data-rvs') && !review().includes('rv-secnote'));
+    click('finalize', {}); await until(() => saved.length > 0, 5000); await wait(100);
+    say('...and the saved result has no sector', saved[0][0].standings.every(x => x.sector === undefined && x.sectorName === undefined));
+    run('state.race = null; live = null'); timers.forEach(clearInterval);
+    store.tracks[0] = meas;
+  }
+
   reachedEnd = true;
   console.log(fails ? fails + ' DISTANCE SCREEN TESTS FAILED' : 'ALL DISTANCE SCREEN TESTS PASSED'); process.exit(fails ? 1 : 0);
 })();

@@ -38,7 +38,7 @@
         case 'driver': return (ST.isWinner(session, x) ? cup + ' ' : '') + esc(x.driverName) + (ST.outText(x) ? ` (${ST.outText(x)})` : '') + (ST.adjustedText(x) ? ` (adjusted: ${esc(ST.adjustedText(x))})` : '') + (ST.notesText(x) ? ` (${esc(ST.notesText(x))})` : '') + (ST.driversText(x, distUnit) ? ` (drivers: ${esc(ST.driversText(x, distUnit))})` : '') + (ST.enduranceText(x, distUnit) ? ` (${esc(ST.enduranceText(x, distUnit))})` : '');
         case 'team': return esc(x.teamName || '');
         case 'car': return esc(x.carName);
-        case 'laps': return esc(x.laps);
+        case 'laps': return esc(x.laps) + (ST.sectorText(x) ? ` + ${esc(ST.sectorText(x))}` : '');
         case 'points': return esc(x.points);
         case 'result': return esc(HT.scoreText(x, session.scoring, finArg));
         case 'final': return esc(HT.finalCell(x));
@@ -52,7 +52,7 @@
       (ST.notes(cols.map(c => c.key)).length ? `<p class="sub">${ST.notes(cols.map(c => c.key)).map(esc).join(' ')}</p>` : '') +
       (isHeats && session.scoring && HT.scoringText(session.scoring, pts) ? `<p class="sub">${esc(HT.scoringText(session.scoring, pts))}</p>` : '') + (fin ? `<p class="sub">${esc(HT.finalsSaid(session.finals))}</p>` : '') + (ST.weatherText(session) ? `<p class="sub">${esc(ST.weatherText(session))}</p>` : '') + (ST.resumeText(session) ? `<p class="sub">${esc(ST.resumeText(session))}</p>` : '') + (ST.compareText(session) ? `<p class="sub">${esc(ST.compareText(session))}</p>` : '');
     const heatSummary = !opt.heats || !session.heatResults ? '' : `<h2>${session.finals ? 'Heats and finals' : 'Heats'}</h2>` + session.heatResults.map(h =>
-      `<p><b>${esc(HT.raceName(h))}</b>${ST.weatherText(h) ? ` (${esc(ST.weatherText(h))})` : ''}: ${h.rows.map(r => `${esc(r.pos)}. ${ST.isHeatWinner(session, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${esc(ST.heatTimeText(session, r))}${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${ST.adjustedText(r) ? ', adjusted: ' + esc(ST.adjustedText(r)) : ''}${ST.notesText(r) ? ', ' + esc(ST.notesText(r)) : ''})`).join(' &middot; ')}</p>`).join('');
+      `<p><b>${esc(HT.raceName(h))}</b>${ST.weatherText(h) ? ` (${esc(ST.weatherText(h))})` : ''}: ${h.rows.map(r => `${esc(r.pos)}. ${ST.isHeatWinner(session, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${ST.sectorText(r) ? ' + ' + esc(ST.sectorText(r)) : ''}${esc(ST.heatTimeText(session, r))}${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${ST.adjustedText(r) ? ', adjusted: ' + esc(ST.adjustedText(r)) : ''}${ST.notesText(r) ? ', ' + esc(ST.notesText(r)) : ''})`).join(' &middot; ')}</p>`).join('');
     const stintSheet = !opt.results || !ST.stintLines(session, distUnit).length ? '' : '<h2>Driver swaps</h2>' + ST.stintLines(session, distUnit).map(g => `<p><b>${esc(g.team)}</b>: ${g.stints.map(q => `${esc(q.n)}. ${esc(q.text)}`).join('; ')}</p>`).join('');
     const tyreSheet = !opt.tyres || !ST.tyreStints(session, distUnit).length ? '' : '<h2>Tyre stints</h2>' + ST.tyreStintsHtml(session, { distUnit, worn: !!opt.tyreWorn }) + `<p class="sub">${esc(ST.tyreStintsNote(session))}</p>`;
     const groups = lapGroups(session, laps);

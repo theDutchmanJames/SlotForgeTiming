@@ -187,6 +187,14 @@ const Help = (() => {
           <li>Below are the coloured folders of the Race Director page: <b>Track actions</b> (green: a card for each lane with big <b>Lap</b> (counts a lap by hand, while the race runs), <b>Pit</b> and <b>Call</b> buttons), <b>Adjust</b> (pads for penalty points, damage points, time, laps and championship points), <b>Penalties</b>, <b>Balance of Power</b>, <b>Damage</b>, <b>Car Failures</b>, <b>Weather</b>, <b>Tyre Change</b> and <b>Endurance</b>, when the race uses them.</li>
           <li>When a race (or a heat) ends, a <b>review</b> opens before anything is saved: check the order, clear penalty points, disqualify or reinstate, correct laps, or <b>Adjust</b> the race time, the laps and (in a heat race decided on points) the championship points of a driver. <b>Finalize results</b> saves them.</li>
         </ul>` },
+      { id: 'sectors', title: 'Sectors', note: 'Where a car that did not finish was last seen', body: `
+        <ul>
+          <li>When the lead car finishes and the race stops, or you stop the race, the cars that did not finish have driven different laps. With the same laps only the order they crossed the line is known. <b>Sectors</b> say more.</li>
+          <li>Database, Tracks, the group <b>Sectors</b>: the <b>number of sectors</b> and, if you like, a name for each (separated by commas). <b>Sector 1 starts at the timing line</b>, and they follow in the order the cars drive them.</li>
+          <li>In the review, before <b>Finalize results</b>, every car that did not finish has <b>Last seen in</b>: choose its sector. Of two cars with the same laps the one in the <b>later sector</b> ranks higher, but never above a car with more laps (in a race by distance: more distance).</li>
+          <li>Two cars in the same sector: the small <b>arrows</b> put one ahead of the other. A car with no sector ranks behind those with one; with no sector chosen the order is as it was: who crossed the line first.</li>
+          <li>The result keeps it: <i>11 + sector 3</i> in Results and Records and on the PDF.</li>
+        </ul>` },
       { id: 'director', title: 'Race Director, flags and penalties', note: 'Control the race from anywhere', body: `
         <ul>
           <li>The <b>Race Director</b> page (Live Race tab) has Start, Pause, Yellow, Red and Stop, the calls and folders. It also works on a phone or tablet, behind a password.</li>

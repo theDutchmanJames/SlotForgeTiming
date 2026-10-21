@@ -45,6 +45,13 @@ ok('heats counted the standard way (a result of before): no Result column, no li
   const plain = sessionHtml({ session: { ...hs2, sessionType: 'race', standings: hs2.standings }, laps: hl });
   ok('only heat races get the column and the line', !plain.includes('<th>Result</th>') && !plain.includes('Overall result:'));
 }
+{ // 1.66.0: the sector a car that did not finish was last seen in
+  const sd = { ...session, sessionType: 'race', endedBy: 'The lead car finished', standings: [{ ...st[0], laps: 5 }, { ...st[1], laps: 4, sector: 3 }, { ...st[1], pos: 3, driverId: 'd3', driverName: 'Kim', laps: 4, sector: 2, sectorName: 'Hairpin' }] };
+  const hd = sessionHtml({ session: sd, laps });
+  ok('the PDF says the sector behind the laps of a car that did not finish ("4 + sector 3", "4 + sector 2 (Hairpin)"), and nothing for a car that finished', hd.includes('<td>4 + sector 3</td>') && hd.includes('<td>4 + sector 2 (Hairpin)</td>') && hd.includes('<td>5</td>') && !hd.includes('5 + sector'));
+  const hh = sessionHtml({ session: { ...hs, heatResults: [{ heat: 1, rows: [{ pos: 1, driverName: 'Alex', laps: 5, points: 10 }, { pos: 2, driverName: 'Sam', laps: 4, points: 8, sector: 2, sectorName: 'Hairpin' }] }] }, laps: hl });
+  ok('...and the summary of a heat says it too', hh.includes('Sam (4 laps + sector 2 (Hairpin), 8 pts)') && hh.includes('Alex (5 laps, 10 pts)'));
+  ok('a race without sectors reads as before', !sessionHtml({ session: { ...session, standings: st }, laps }).includes('sector')); }
 { // 1.65.0: heats of a time counted by the furthest distance, then the lowest total time: the Result column holds the distance in the unit of the app, and the line says how it was counted
   const sc = { countBy: 'total', bestHeats: 2, dropWorst: false, fastestBonus: 0, tieBreak: 'default', byTime: false, unfinished: 'below', lapsFirst: true, byDistance: true };
   const hd = { ...hs, resultBy: 'laps', scoring: sc, standings: hs.standings.map((x, i) => ({ ...x, score: [31.5, 30][i], counted: 1, heats: 1, measure: 'distance', timeAll: [3087, 3026][i] })) };

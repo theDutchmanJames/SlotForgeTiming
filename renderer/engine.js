@@ -77,6 +77,11 @@
     // What the Race Director corrects in the review (R.adjust): race time (ms), laps and championship points, added to or taken off what the race gave. They are signed amounts, kept apart from the penalties.
     const addOf = c => penOf(c) + (c.adjMs || 0); // everything that is added to the time of the car: the penalty and the adjustment
     const lapsOf = c => c.laps.length + (c.adjLaps || 0) - (c.swapLost || 0); // the laps that count: the laps driven, plus or minus the adjustment, and not the laps of an Endurance Race that a swap that was refused took away
+    // Sectors (1.66.0, cfg.sectors = { count, names }, from the track): in the review after a race or a heat a car that did not finish gets the sector of the track it was last seen in (car.sector, 1 = the sector that starts at the timing line).
+    // Among cars that did not finish and have the same laps (the same distance in a race by distance) the later sector ranks higher; two cars in the same sector are put in order by the Race Director (car.secOrder, valid
+    // while the laps and the sector are still the ones it was set for: car.secAt); a car without a sector ranks behind those with one, and with no sector at all the order is how it was: who crossed the line first. Only races (laps, distance, time).
+    const SEC = (type === 'race' || type === 'timed') && cfg.sectors && Math.floor(Number(cfg.sectors.count)) >= 2
+      ? { count: Math.min(12, Math.floor(Number(cfg.sectors.count))), names: (Array.isArray(cfg.sectors.names) ? cfg.sectors.names : []).map(x => String(x === null || x === undefined ? '' : x).trim()) } : null;
     const F = { on: false, tank: 0, perLap: 0, rate: 0, target: 0, extra: 0, saving: 0, empty: 'retire', pitHold: 2000, ...(cfg.fuel || {}) };
     // Balance of Power (cfg.bop, see bop.js): only in a race or a timed race that has fuel, because it works through the fuel rules. Every car has its own percentage (car.bop: negative = hindered, positive = helped).
     const BP = cfg.bop && F.on && (type === 'race' || type === 'timed') ? B.clean(cfg.bop) : null, ONE = { use: 1, rate: 1, tank: 1 };
@@ -121,7 +126,7 @@
     const R = {
       cfg, fuel: F, penalty: P, type, status: 'ready', t0: 0, pausedAt: 0, endAt: 0, timeUp: false, finished: 0, endedBy: '',
       yellow: Y, yellowAt: null, // yellowAt: when the yellow flag that is up now went up (a lap that started before that is not a lap under yellow)
-      cars: cfg.entries.map(e => ({ ...e, laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, adjMs: 0, adjLaps: 0, adjPoints: 0, invalid: [], removed: [], yellowFast: [], ps: [], psNow: null, pitLaps: [], servedNow: false, last: 0, total: 0, best: null, done: false, place: 0, retired: false, fuel: F.on ? F.tank : 0, outOfFuel: false, bop: 0, bopHold: false, bopTo: null, tyreOwn: W.cleanTyre(e.tyre), tyre: W.cleanTyre(e.tyre), wx: 0, wxDue: null, twLife: 100, tw: 0, twStops: 0, twDoneAt: null,
+      cars: cfg.entries.map(e => ({ ...e, laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, adjMs: 0, adjLaps: 0, adjPoints: 0, invalid: [], removed: [], yellowFast: [], ps: [], psNow: null, pitLaps: [], servedNow: false, last: 0, total: 0, best: null, done: false, place: 0, retired: false, sector: null, secOrder: null, secAt: '', fuel: F.on ? F.tank : 0, outOfFuel: false, bop: 0, bopHold: false, bopTo: null, tyreOwn: W.cleanTyre(e.tyre), tyre: W.cleanTyre(e.tyre), wx: 0, wxDue: null, twLife: 100, tw: 0, twStops: 0, twDoneAt: null,
         blockAt: null, pit: null, pits: [], lastPit: null, outlap: false, started: !skipFirst, swapLost: 0, swapLaps: [], dmg: 0, dmgTotal: 0, dmgLvl: -1, dmgDue: null, dmgOut: '', repairs: [], repairMs: 0, repairedAt: null, ...(FL ? { fail: null, failN: 0, failures: [], failMs: 0, failOut: '', flPlan: null } : {}), en: EN && Array.isArray(e.roster) && e.roster.length >= 2 ? En.newCar(EN, e.roster, e.driverId) : null })),
       events: [], // what happened, in order: { type, car, t } (outoffuel, retired, pitstart, fuelfull, pitend, call, callend...)
       calls: [] // calls from a lane to the Race Director: { id, car, t, open, how }; how a call ended: 'penalty' or 'dismiss'
@@ -1090,6 +1095,51 @@
       const theirs = reached(c) && reached(ref) ? cum(ref, ref.laps.length) : timeAt(ref, Math.min(n * lenOf(c), ref.laps.length * lenOf(ref)));
       return theirs === null ? null : Math.max(0, mine - (theirs + startOf(ref) + addOf(ref)));
     };
+    // ---- Sectors (1.66.0) ----
+    // The places a group of cars (all that did not finish, are still in the race and have the same laps, or the same distance) take stay the same; the cars in them are put in order of the sector they were last seen in
+    // (the later sector first), then the order the Race Director gave, then how they were (who crossed the line first). A total order, so the sort of the standings stays right.
+    R.sectors = SEC;
+    const secLive = c => !c.done && !c.retired && !c.dq; // a car that did not finish and is still in the race
+    const secGroupKey = c => (LS ? prog(c) : lapsOf(c)) + ':' + (c.sector || 0);
+    const secValid = c => Number.isFinite(c.secOrder) && c.secAt === secGroupKey(c);
+    const secRefine = order => {
+      const same = (a, b) => (LS ? prog(a) === prog(b) : lapsOf(a) === lapsOf(b));
+      let i = 0;
+      while (i < order.length) {
+        let j = i; while (j + 1 < order.length && same(R.cars[order[j + 1]], R.cars[order[i]])) j++;
+        const slots = [], list = [];
+        for (let k = i; k <= j; k++) if (secLive(R.cars[order[k]])) { slots.push(k); list.push(order[k]); }
+        if (list.length > 1) {
+          const at = new Map(list.map((x, n) => [x, n]));
+          list.sort((x, y) => { const a = R.cars[x], b = R.cars[y]; return (b.sector || 0) - (a.sector || 0) || (secValid(a) ? a.secOrder : 1e9) - (secValid(b) ? b.secOrder : 1e9) || at.get(x) - at.get(y); });
+          slots.forEach((k, n) => { order[k] = list[n]; });
+        }
+        i = j + 1;
+      }
+    };
+    R.sectorName = n => (SEC && n >= 1 && n <= SEC.count ? SEC.names[n - 1] || '' : '');
+    // the sector a car was last seen in (a whole number from 1, or null for none): only in the review of a race, and only for a car that did not finish
+    R.setSector = (i, n) => {
+      const c = R.cars[i]; if (!SEC || !c || R.status !== 'finished' || !secLive(c)) return false;
+      const v = n === null || n === undefined || n === '' || Number(n) === 0 ? null : Math.floor(Number(n));
+      if (v !== null && !(v >= 1 && v <= SEC.count)) return false;
+      if ((c.sector || null) === v) return false;
+      c.sector = v; c.secOrder = null; c.secAt = '';
+      return true;
+    };
+    // the cars that are in the same sector with the same laps as this car, in the order of the standings (the Race Director can put one ahead of the other); [] for a car with no sector
+    R.sectorGroup = i => {
+      const c = R.cars[i]; if (!SEC || !c || !c.sector || !secLive(c)) return [];
+      return R.standings().map(x => x.index).filter(k => { const o = R.cars[k]; return secLive(o) && secGroupKey(o) === secGroupKey(c); });
+    };
+    // dir -1: one place up in its group, 1: one place down
+    R.moveSector = (i, dir) => {
+      const g = R.sectorGroup(i), p = g.indexOf(i), q = p + dir;
+      if (R.status !== 'finished' || (dir !== -1 && dir !== 1) || p < 0 || q < 0 || q >= g.length) return false;
+      [g[p], g[q]] = [g[q], g[p]];
+      g.forEach((k, n) => { const o = R.cars[k]; o.secOrder = n + 1; o.secAt = secGroupKey(o); });
+      return true;
+    };
     R.standings = () => {
       const byBest = (a, b) => (a.best ?? 1e12) - (b.best ?? 1e12) || (a.best !== null && b.best !== null ? bestAt(a) - bestAt(b) : 0);
       const eff = c => c.total + addOf(c); // total time including time penalties and the adjustment
@@ -1103,6 +1153,7 @@
         if (type === 'race' && a.done && b.done) return lapsOf(b) - lapsOf(a) || eff(a) - eff(b) || a.place - b.place; // (a car that lost a lap in the review, or that retired early, ranks behind the cars that drove more laps: the time only decides between equal laps)
         return ((type === 'practice' || type === 'qualifying') ? byBest(a, b) : byLaps(a, b)) || x - y;
       });
+      if (SEC && R.cars.some(c => c.sector)) secRefine(order); // (1.66.0: the cars that did not finish, with the same laps, by the sector they were last seen in; nothing changes until a sector is given)
       const lead = R.cars[order[0]];
       return order.map((i, p) => {
         const c = R.cars[i];
@@ -1316,6 +1367,7 @@
         return { participant: r.car.participant, pos: r.pos, laps: race.lapsOf ? race.lapsOf(r.car) : r.car.laps.length, total: race.timeOf && Number.isFinite(race.timeOf(r.car)) ? race.timeOf(r.car) : a.ms && Number.isFinite(r.car.total) ? r.car.total + a.ms : r.car.total, best: r.car.best, points: (points[r.pos - 1] || 0) + (byPoints ? a.points : 0),
           ...(race.spentOf && Number.isFinite(race.spentOf(r.car, race.endAt, false)) ? { spent: race.spentOf(r.car, race.endAt, false), spentPen: race.spentOf(r.car, race.endAt, true) } : {}), // (1.63.0: the time the car raced in this heat, without and with penalties: the Total Time widget adds up the heats)
           ...(race.compare && race.distOf && Number.isFinite(race.distOf(r.car)) ? { dist: race.distOf(r.car) } : {}), // (1.64.0: heats compared by distance: the metres the car drove in this heat)
+          ...(r.car.sector && race.sectorName ? { sector: r.car.sector, ...(race.sectorName(r.car.sector) ? { sectorName: race.sectorName(r.car.sector) } : {}) } : {}), // (1.66.0: the sector the car was last seen in, when the Race Director gave one in the review)
           ...(byTime ? { fin, tm: Number.isFinite(tm) ? tm : null, ...(est !== null && Number.isFinite(est) ? { est: true } : {}) } : {}),
           ...(a.ms ? { adjMs: a.ms } : {}), ...(a.laps ? { adjLaps: a.laps } : {}), ...(byPoints && a.points ? { adjPoints: a.points } : {}), ...(note ? { bopNote: note } : {}), ...(tyres ? { tyreNote: tyres } : {}),
           ...(dnote ? { damageNote: dnote, damagePoints: r.car.dmgTotal || 0, repairs: (r.car.repairs || []).filter(q => !q.out).length, repairMs: r.car.repairMs || 0, ...(r.car.dmgOut ? { damageOut: r.car.dmgOut } : {}) } : {}),

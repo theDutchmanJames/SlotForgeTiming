@@ -76,6 +76,18 @@
     return `The cars are compared by distance, so the lane lengths are needed. ${missing.length === n ? 'The track has no length' : missing.length === 1 ? 'Lane ' + missing[0] + ' has no length' : 'Lanes ' + missing.join(', ') + ' have no length'}. Add ${missing.length === n ? 'the track length' : 'the lane lengths'} in the Database.`;
   }
 
+  // Sectors (1.66.0): the track says how many sectors it has (a whole number from 2; empty, 0 or 1 = none) and, if it wants, a name for each, separated by commas, in driving order. Sector 1 starts at the timing line.
+  // -> null (no sectors) or { count, names: [one name for every sector, '' for a sector without one] }
+  const MAX_SECTORS = 12;
+  function sectors(track) {
+    const n = Math.floor(Number(track && track.sectors));
+    if (!(n >= 2)) return null;
+    const count = Math.min(MAX_SECTORS, n), given = String((track && track.sectorNames) || '').split(',').map(x => x.trim());
+    return { count, names: Array.from({ length: count }, (_, i) => given[i] || '') };
+  }
+  // "Sector 3" or "Sector 3 · Hairpin" (a name that was given): how a sector is called in the review
+  const sectorLabel = (sec, n) => `Sector ${n}${sec && sec.names && sec.names[n - 1] ? ` \u00b7 ${sec.names[n - 1]}` : ''}`;
+
   // What keeps a distance race from being raced on this track, as a sentence for the Home tab; '' when nothing does.
   function problem(setup, track, lanes) {
     if (!isOn(setup)) return compareProblem(setup, track, lanes); // (a race by time that is compared by distance needs the lane lengths too)
@@ -147,7 +159,7 @@
   const unitOf = (opt, setting) => (opt && (opt.unit === 'm' || opt.unit === 'ft') ? opt.unit : setting === 'ft' ? 'ft' : 'm');
   const smoothOn = opt => !(opt && opt.update === 'exact');
 
-  const api = { MODES, ROUNDS, isOn, modeOf, roundOf, reference, lapsFor, config, problem, swapProblem, timeLimited, compareOn, compare, compareProblem, lapsOfLane, expectedLap, look, text, lengthText,
+  const api = { MODES, ROUNDS, isOn, modeOf, roundOf, reference, lapsFor, config, problem, swapProblem, timeLimited, compareOn, compare, compareProblem, sectors, sectorLabel, MAX_SECTORS, lapsOfLane, expectedLap, look, text, lengthText,
     DISTANCE_OPTIONS, DISTLEFT_OPTIONS, LAPSTOGO_OPTIONS, unitOf, smoothOn };
   root.Distance = api;
   if (typeof module !== 'undefined') module.exports = api;

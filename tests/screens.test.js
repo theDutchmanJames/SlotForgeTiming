@@ -1682,11 +1682,11 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   {
     const sch=run('state.schema.tracks'), parts=h=>h.split('<details class="fgroup"').slice(1), openForm_=()=>run("openForm('tracks', null)"), openState=h=>parts(h).map(x=>/^ data-fg="\w+"( open)?>/.exec(x)[1]?1:0).join('');
     run('delete formOpen.tracks'); openForm_(); const f=E('dlg').innerHTML, ps=parts(f);
-    say('the Track form has its fields in groups, in this order: basics, length and lanes, lap time limits, picture and notes', ps.map(x=>/data-fg="(\w+)"/.exec(x)[1]).join()==='basics,length,laps,extras' && sch.groups.length===4);
-    say('the fields are grouped as designed: Basics (name, lanes, scale, surface), Length and lanes (the length and everything about the lane lengths), Lap time limits, Picture and notes', sch.fields.map(f=>f.group+':'+f.key).join()==='basics:name,basics:lanes,basics:scale,basics:surface,length:length,length:laneModifier,length:outsideLane,length:laneSpacing,length:netTurns,length:laneLengths,laps:minLap,laps:maxLap,laps:deslotTime,extras:picture,extras:notes');
-    say('every field is in its own group, once, and nowhere else (the 15 fields of a track)', sch.fields.length===15 && sch.fields.every(k=>ps.filter(x=>x.includes('data-key="'+k.key+'"')).length===1 && /data-fg="(\w+)"/.exec(ps.find(x=>x.includes('data-key="'+k.key+'"')))[1]===k.group && (f.match(new RegExp('id="f-'+k.key+'"','g'))||[]).length===1));
-    say('each group has a header with its title and a line that says what is in it', sch.groups.every(g=>f.includes('<strong>'+g.title+'</strong>') && g.note && f.includes(g.note)) && sch.groups.map(g=>g.title).join('|')==='Basics|Length and lanes|Lap time limits|Picture and notes' && sch.groups.map(g=>g.note).join('|')==='Name, number of lanes, scale and surface|How long the track is, and how the lanes differ in length|Ignore faulty triggers and very slow laps|A picture for the lists and cards, and your own notes');
-    say('Basics and Length and lanes are open to begin with, the lap time limits and the picture and notes are closed', openState(f)==='1100');
+    say('the Track form has its fields in groups, in this order: basics, length and lanes, sectors, lap time limits, picture and notes', ps.map(x=>/data-fg="(\w+)"/.exec(x)[1]).join()==='basics,length,sectors,laps,extras' && sch.groups.length===5);
+    say('the fields are grouped as designed: Basics (name, lanes, scale, surface), Length and lanes (the length and everything about the lane lengths), Lap time limits, Picture and notes', sch.fields.map(f=>f.group+':'+f.key).join()==='basics:name,basics:lanes,basics:scale,basics:surface,length:length,length:laneModifier,length:outsideLane,length:laneSpacing,length:netTurns,length:laneLengths,sectors:sectors,sectors:sectorNames,laps:minLap,laps:maxLap,laps:deslotTime,extras:picture,extras:notes');
+    say('every field is in its own group, once, and nowhere else (the 17 fields of a track)', sch.fields.length===17 && sch.fields.every(k=>ps.filter(x=>x.includes('data-key="'+k.key+'"')).length===1 && /data-fg="(\w+)"/.exec(ps.find(x=>x.includes('data-key="'+k.key+'"')))[1]===k.group && (f.match(new RegExp('id="f-'+k.key+'"','g'))||[]).length===1));
+    say('each group has a header with its title and a line that says what is in it', sch.groups.every(g=>f.includes('<strong>'+g.title+'</strong>') && g.note && f.includes(g.note)) && sch.groups.map(g=>g.title).join('|')==='Basics|Length and lanes|Sectors|Lap time limits|Picture and notes' && sch.groups.map(g=>g.note).join('|')==='Name, number of lanes, scale and surface|How long the track is, and how the lanes differ in length|Parts of the track, to say where a car that did not finish was last seen|Ignore faulty triggers and very slow laps|A picture for the lists and cards, and your own notes');
+    say('Basics and Length and lanes are open to begin with, the sectors, the lap time limits and the picture and notes are closed', openState(f)==='11000');
     say('the buttons of the form are outside the groups, and Open all / Close all come first', f.indexOf('type="submit"')>f.lastIndexOf('</details>') && f.indexOf('data-fgall')<f.indexOf('<details class="fgroup"') && f.includes('class="formgrid grouped"'));
     say('the surface is with the other basics now (it was the last but two)', f.indexOf('data-key="surface"')>f.indexOf('data-key="scale"') && f.indexOf('data-key="surface"')<f.indexOf('data-key="length"'));
     // the lane fields still come and go with the Lane length modifier, inside their group, which stays
@@ -1696,17 +1696,17 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     pick('none'); say('with None the lane fields are hidden, and the group that holds them is not', lanes.every(k=>hid(k)===true) && reg['[data-fg="length"]'].hidden===false);
     pick('bends'); say('Calculated from the bends shows the outside lane, the spacing and the full turns', hid('outsideLane')===false && hid('laneSpacing')===false && hid('netTurns')===false && hid('laneLengths')===true);
     pick('measured'); say('Measured shows the list of lane lengths', hid('laneLengths')===false && hid('laneSpacing')===true && reg['[data-fg="length"]'].hidden===false);
-    say('no group of the track form is ever hidden', ['basics','length','laps','extras'].every(g=>!reg['[data-fg="'+g+'"]'] || reg['[data-fg="'+g+'"]'].hidden===false));
+    say('no group of the track form is ever hidden', ['basics','length','sectors','laps','extras'].every(g=>!reg['[data-fg="'+g+'"]'] || reg['[data-fg="'+g+'"]'].hidden===false));
     pick('none'); // (the stand-in for the window keeps the value of a field, so put it back)
     E('dlg').querySelector=()=>mk(); E('dlg').querySelectorAll=()=>[mk(),mk(),mk()];
     // the first field gets the cursor
     ctx.__focus=[]; E('f-name').focus=()=>{ ctx.__focus.push('name'); }; openForm_();
     say('the first field gets the cursor when the form opens', ctx.__focus.join()==='name'); delete E('f-name').focus;
     // opening a group is remembered, for tracks only
-    const mine=['basics','length','laps','extras'].map(id=>({dataset:{fg:id},open:id==='basics'||id==='length',hidden:false}));
+    const mine=['basics','length','sectors','laps','extras'].map(id=>({dataset:{fg:id},open:id==='basics'||id==='length',hidden:false}));
     E('dlg').querySelectorAll=sel=>sel==='.fgroup'?mine:[];
-    run('delete formOpen.tracks'); openForm_(); mine[2].open=true; mine[2].ontoggle(); openForm_();
-    say('a group you opened stays open the next time the track form opens', openState(E('dlg').innerHTML)==='1110');
+    run('delete formOpen.tracks'); openForm_(); mine[3].open=true; mine[3].ontoggle(); openForm_();
+    say('a group you opened stays open the next time the track form opens', openState(E('dlg').innerHTML)==='11010');
     run("openForm('racesetups', null)"); say('...but it is not the memory of the Race Setup form', openState(E('dlg').innerHTML)==='110000' || run('Array.from(formOpen.racesetups).join()')==='session,length');
     // saving reads the fields in closed groups too
     run('delete formOpen.tracks'); E('dlg').querySelectorAll=()=>[mk(),mk(),mk()]; openForm_();
@@ -1896,7 +1896,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     say('a field without a name is still refused, and nothing is added', E('err').textContent==='Please enter a name for the field.' && log.length===nlog);
     await run("openExtra('drivers')"); const dopts=options(E('dlg').innerHTML,'<select id="xg"');
     say('another kind of item shows its own groups (Basics, Personal details, Avatar, More for drivers)', dopts.map(o=>o.t).join()==='Basics,Personal details,Avatar,More');
-    await run("openExtra('tracks')"); say('...and tracks theirs', options(E('dlg').innerHTML,'<select id="xg"').map(o=>o.t).join()==='Basics,Length and lanes,Lap time limits,Picture and notes,More');
+    await run("openExtra('tracks')"); say('...and tracks theirs', options(E('dlg').innerHTML,'<select id="xg"').map(o=>o.t).join()==='Basics,Length and lanes,Sectors,Lap time limits,Picture and notes,More');
 
     // changing the group of a field that is there
     await run("openExtra('slotcars')"); const sel={id:'',dataset:{grp:'x2'},value:'pictures'}; const nl=log.length;
@@ -2159,7 +2159,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     const sv=E('subview'), th=h=>(h.match(/<tr>.*?<\/tr>/s)||[''])[0].match(/<th>(.*?)<\/th>/g)?.map(x=>x.replace(/<\/?th>/g,''))||[];
     let h=sv.innerHTML;
     say('Tracks: View settings sits after Extra fields and before the List / Grid choice', /id="extra">Extra fields…<\/button><button class="btn vsbtn" type="button" data-viewbar="mgr:tracks"[^>]*>View settings<\/button><span class="seg"/.test(h));
-    say('...the list shows every field to start, as it always did', th(h).join()==='Name,Number of lanes,Scale,Track Surface,Track length (metres),Lane length modifier,The track length is that of,Distance between the lanes (millimetres, centre to centre),Full turns the track makes (left bends minus right bends),Length of every lane (metres), lane 1 first,Minimum lap time (seconds),Maximum lap time (seconds),Deslot time (seconds),Picture,Notes,');
+    say('...the list shows every field to start, as it always did', th(h).join()==='Name,Number of lanes,Scale,Track Surface,Track length (metres),Lane length modifier,The track length is that of,Distance between the lanes (millimetres, centre to centre),Full turns the track makes (left bends minus right bends),Length of every lane (metres), lane 1 first,Number of sectors,Names of the sectors (optional),Minimum lap time (seconds),Maximum lap time (seconds),Deslot time (seconds),Picture,Notes,');
     const click=(el,attrs)=>el.onclick({target:{closest:sel=>sel==='button'?{dataset:attrs}:null}});
     await click(sv,{viewbar:'mgr:tracks'}); h=sv.innerHTML;
     say('the button opens a bar with a check box for every column of the list, all checked', h.includes('class="viewbar"') && h.includes('<legend>Columns in the track list</legend>') && h.includes('data-vs="tracks/list" data-key="surface" checked') && h.includes('data-vs="tracks/list" data-key="notes" checked') && h.includes('turn columns'.replace('turn','Turn')));
@@ -2236,6 +2236,13 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
       run('state.settings.distanceUnit = "ft"'); const rb4 = mk(); await run('renderResultsPool')(rb4, 'racing'); run('delete state.settings.distanceUnit');
       say('...and in feet when App Settings say so', rb4.innerHTML.includes('103.3 ft · 3.087') && rb4.innerHTML.includes('98.4 ft · 3.026')); }
     store.sessions.pop(); // (s4)
+    store.sessions.push({id:'s5',setupName:'R',sessionType:'race',trackId:'t1',trackName:'Living room',date:'2026-01-05T10:00:00Z',endedBy:'The lead car finished',
+      standings:[{pos:1,driverId:'d1',driverName:'Alex',carName:'c',laps:5,best:5000,total:25000},{pos:2,driverId:'d2',driverName:'Sam',carName:'c',laps:4,best:5100,total:20400,sector:3},{pos:3,driverId:'d3',driverName:'Kim',carName:'c',laps:4,best:5200,total:20800,sector:2,sectorName:'Hairpin'}],
+      heatResults:[{heat:1,rows:[{pos:1,driverName:'Alex',laps:5,points:10},{pos:2,driverName:'Sam',laps:4,points:8,sector:2,sectorName:'Hairpin'}]}]});
+    { const rb5 = mk(); await run('renderResultsPool')(rb5, 'racing');
+      say('1.66.0: Results and Records say the sector behind the laps of a car that did not finish ("4 + sector 3", "4 + sector 2 (Hairpin)") and nothing behind the car that finished', rb5.innerHTML.includes('<td>4 <span class="muted">+ sector 3</span></td>') && rb5.innerHTML.includes('<td>4 <span class="muted">+ sector 2 (Hairpin)</span></td>') && rb5.innerHTML.includes('<td>5</td>') && !rb5.innerHTML.includes('5 <span class="muted">+'));
+      say('...and the heat summary says it too', rb5.innerHTML.includes('Sam (4 laps + sector 2 (Hairpin), 8 pts)') || rb5.innerHTML.includes('Sam (4 laps + sector 2 (Hairpin)')); }
+    store.sessions.pop(); // (s5)
     store.sessions.pop();
     const all_ = v => rb.onclick({ target: { closest: sel => sel === '[data-folderall]' ? { dataset: { folderall: v } } : null } });
     await all_('0'); say('Close all closes the three folders', opens() === 0 && (rb.innerHTML.match(/<details class="dbfolder"/g) || []).length === 3);

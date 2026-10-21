@@ -37,6 +37,19 @@ const Review = (() => {
       ${now ? `<button class="btn" data-rv="adjustreset" data-car="${i}">Reset adjustments</button>` : ''}</div>`;
   };
 
+  // Sectors (1.66.0): a car that did not finish says in which sector of the track it was last seen (a dropdown), and two cars in the same sector with the same laps can be put in order (the small arrows).
+  // eng.sectors is { count, names } when the track has sectors; with none chosen the order is how it was: who crossed the line first.
+  const secLive = c => !c.done && !c.retired && !c.dq;
+  function sectorRowHtml(eng, c, i, cols) {
+    const sec = eng.sectors; if (!sec || !secLive(c)) return '';
+    const name = esc(c.driverName), group = eng.sectorGroup ? eng.sectorGroup(i) : [], at = group.indexOf(i);
+    const options = Array.from({ length: sec.count }, (_, k) => `<option value="${k + 1}"${c.sector === k + 1 ? ' selected' : ''}>${esc(Distance.sectorLabel(sec, k + 1))}</option>`).join('');
+    const arrow = (dir, label, off) => `<button class="btn rv-arrow" data-rv="sectormove" data-car="${i}" data-dir="${dir}" aria-label="${label}" title="${label}"${off ? ' disabled' : ''}>${dir < 0 ? '\u25b2' : '\u25bc'}</button>`;
+    const other = k => (k >= 0 && k < group.length ? esc(eng.cars[group[k]].driverName) : '');
+    const arrows = group.length < 2 ? '' : ` <span class="rv-order">${arrow(-1, at > 0 ? `Put ${name} ahead of ${other(at - 1)}` : `${name} is first of the cars in this sector`, at <= 0)}${arrow(1, at < group.length - 1 ? `Put ${name} behind ${other(at + 1)}` : `${name} is last of the cars in this sector`, at >= group.length - 1)}</span> <small class="muted">${group.length} cars in this sector with ${eng.lapsOf(c)} laps</small>`;
+    return `<tr class="rv-sub rv-sector"><td></td><td colspan="${cols - 1}"><label>Last seen in <select data-rvs="${i}" aria-label="Sector where ${name} was last seen"><option value="">not set: the car that crossed the line first</option>${options}</select></label>${arrows}</td></tr>`;
+  }
+
   // o.champ: { on, list } when the race gives championship points (a heat race decided on points): they can be adjusted, and the points of the place are shown
   function html(eng, o = {}) {
     const st = eng.standings(), on = eng.penalty && eng.penalty.on, canAdjust = eng.type === 'race' || eng.type === 'timed', champ = canAdjust && !!o.champ && !!o.champ.on, cols = 6 + (champ ? 1 : 0);
@@ -50,6 +63,7 @@ const Review = (() => {
           <button class="btn" data-rv="addtime" data-car="${i}" data-k="${k}">Add time</button>
           ${c.dq ? '' : `<button class="btn danger" data-rv="dq" data-car="${i}" data-k="${k}">Disqualify</button>`}
           <button class="btn" data-rv="forgive" data-car="${i}" data-k="${k}">Forgive</button></td></tr>`).join('');
+      const secRow = sectorRowHtml(eng, c, i, cols);
       const open = ui.open.has(i);
       const laps = !open ? '' : `<tr class="rv-sub"><td></td><td colspan="${cols - 1}">${lapListHtml(c, i, false, null, !!eng.safetyCar)}</td></tr>`;
       const adjOpen = canAdjust && ui.adjust.has(i), adjRow = !adjOpen ? '' : `<tr class="rv-sub"><td></td><td colspan="${cols - 1}">${adjustHtml(c, i, { champ, settings: o.settings })}</td></tr>`;
@@ -58,9 +72,10 @@ const Review = (() => {
       return `<tr><td>${x.pos}</td><td>${wins(x) ? cup + ' ' : ''}${name}${c.dq ? ' <span class="muted">(disqualified)</span>' : c.retired ? ` <span class="muted">(${c.dmgOut ? 'out by damage' : c.failOut ? 'out by a failure' : 'out'})</span>` : ''}${adjText ? `<br><small class="muted">adjusted: ${esc(adjText)}</small>` : ''}${bopNote ? `<br><small class="muted">Balance of Power: ${esc(bopNote)}</small>` : ''}${tyreNote ? `<br><small class="muted">Tyres: ${esc(tyreNote)}</small>` : ''}${damageNote ? `<br><small class="muted">Damage: ${esc(damageNote)}</small>` : ''}${failureNote ? `<br><small class="muted">Failures: ${esc(failureNote)}</small>` : ''}</td><td class="num">${lapsCell}</td>
         <td class="num">${timeCell}</td>${pointsCell}<td>${on ? `${c.points} pts${pen ? ` · ${secs(pen)}` : ''}${c.pending.length ? ` · ${c.pending.length} not served` : ''}` : ''}</td>
         <td class="actions">${on && c.points ? `<button class="btn" data-rv="nullify" data-car="${i}">Clear points</button> ` : ''}${on && c.undoPoints ? `<button class="btn" data-rv="restorepoints" data-car="${i}">Restore (${c.undoPoints} pts)</button> ` : ''}${c.dq ? `<button class="btn" data-rv="undq" data-car="${i}">Reinstate</button>` : `<button class="btn" data-rv="dq" data-car="${i}">Disqualify</button>`}
-        ${canAdjust ? `<button class="btn" data-rv="adjopen" data-car="${i}" aria-expanded="${adjOpen}" title="Add or take off race time, laps${champ ? ' or championship points' : ''}">${adjOpen ? 'Hide adjust' : 'Adjust'}</button> ` : ''}<button class="btn" data-rv="laps" data-car="${i}" aria-expanded="${open}">${open ? 'Hide laps' : 'Laps'}</button></td></tr>${pending}${adjRow}${laps}`;
+        ${canAdjust ? `<button class="btn" data-rv="adjopen" data-car="${i}" aria-expanded="${adjOpen}" title="Add or take off race time, laps${champ ? ' or championship points' : ''}">${adjOpen ? 'Hide adjust' : 'Adjust'}</button> ` : ''}<button class="btn" data-rv="laps" data-car="${i}" aria-expanded="${open}">${open ? 'Hide laps' : 'Laps'}</button></td></tr>${secRow}${pending}${adjRow}${laps}`;
     }).join('');
-    return `<h3>Race review</h3><p class="muted">The race is over. Check the result and fix it if needed, then press Finalize to save it. Nothing is saved before that.</p>
+    const secNote = eng.sectors && eng.cars.some(secLive) ? `<p class="muted rv-secnote">Sectors: for every car that did not finish, choose the sector of the track where it was last seen. Of two cars with the same laps the one in the later sector ranks higher, and with the same sector you can put one ahead with the arrows. A car with no sector ranks behind the others with the same laps, in the order they crossed the line.</p>` : '';
+    return `<h3>Race review</h3><p class="muted">The race is over. Check the result and fix it if needed, then press Finalize to save it. Nothing is saved before that.</p>${secNote}
       <div class="wrap"><table class="fields rv-table"><thead><tr><th>Pos</th><th>Driver</th><th>Laps</th><th>Time</th>${champ ? '<th class="rv-champ">Points</th>' : ''}<th>${on ? 'Penalties' : ''}</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
       <div class="row"><button class="btn primary" data-rv="finalize">Finalize results</button> <button class="btn danger" data-rv="discard" title="Nothing from this race is saved in the database">Delete all data</button></div>`;
   }
@@ -111,6 +126,10 @@ const Review = (() => {
 
   // Clicks on a review panel. Corrections go to send({op, ...}); unfolding things is only on screen, so redraw() does that.
   function bind(root, send, redraw) {
+    root.onchange = ev => { // (1.66.0) the sector where a car that did not finish was last seen
+      const sel = ev.target && ev.target.closest ? ev.target.closest('[data-rvs]') : null; if (!sel) return;
+      send({ op: 'sector', car: Number(sel.dataset.rvs), sector: sel.value === '' ? null : Number(sel.value) });
+    };
     root.onclick = ev => {
       const b = ev.target && ev.target.closest ? ev.target.closest('[data-rv]') : null; if (!b || b.disabled) return;
       const d = b.dataset, op = d.rv, car = d.car === undefined ? undefined : Number(d.car), sid = d.sid === undefined ? undefined : Number(d.sid);
@@ -131,7 +150,7 @@ const Review = (() => {
         return send({ op: 'forgive', car, k: Number(d.k) }); // the penalty is settled
       }
       if (op === 'removelap' || op === 'tkremove') ui.del = null;
-      send({ op, car, sid, k: d.k === undefined ? undefined : Number(d.k), lap: d.lap === undefined ? undefined : Number(d.lap), on: d.on === '1', recalc: d.recalc === '1' });
+      send({ op, car, sid, k: d.k === undefined ? undefined : Number(d.k), lap: d.lap === undefined ? undefined : Number(d.lap), on: d.on === '1', recalc: d.recalc === '1', ...(d.dir === undefined ? {} : { dir: Number(d.dir) }) });
     };
   }
 
@@ -151,6 +170,8 @@ const Review = (() => {
       case 'undq': return eng.setDq(c.car, false);
       case 'invalid': return eng.setInvalid(c.car, c.lap, !!c.on);
       case 'removelap': return eng.removeLap(c.car, c.lap, !!c.recalc);
+      case 'sector': return Number.isInteger(c.car) && eng.setSector(c.car, c.sector);
+      case 'sectormove': return Number.isInteger(c.car) && eng.moveSector(c.car, c.dir);
     }
     return false;
   }
