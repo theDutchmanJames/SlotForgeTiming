@@ -351,7 +351,8 @@ const twTable = (tyres, unit, sel) => `<div class="twbtns row"><span class="twbl
   <p class="muted">Standard is in between, Sprint wears the tyres quickly (short races, many stops) and Endurance wears them slowly.</p>
   <div class="twtable" id="tw-table">${twHead(unit)}${twRows(tyres, unit, sel)}</div><div id="tw-curve">${twCurve(tyres, sel)}</div>`;
 // the ready-made push and save systems (field type 'pspresets', 1.54.0): a button for each that fills in the four wear numbers
-const psPresets = () => `<div class="twbtns row"><span class="muted">Start from a ready-made system (you can change every number):</span> ${PushSave.PRESET_KEYS.map(k => `<button type="button" class="btn" data-pspreset="${k}" title="${esc(PushSave.PRESETS[k].note)}">${esc(PushSave.PRESETS[k].name)}</button>`).join(' ')}</div><p class="muted">Standard is in between, Gentle changes the wear a little and Strong makes pushing expensive and saving worth it. They set the four wear numbers below.</p>`;
+const psNote = k => { const n = PushSave.PRESETS[k].note; return /[.!?]$/.test(n) ? n : n + '.'; };
+const psPresets = key => `<div class="fu-cards" role="group" aria-label="Ready-made systems">${PushSave.PRESET_KEYS.map(k => { const on = key === k; return `<button type="button" class="fu-card${on ? ' on' : ''}" aria-pressed="${on}" data-pspreset="${k}"><span class="fu-ct"><b>${esc(PushSave.PRESETS[k].name)}</b></span><span class="fu-cd">${esc(psNote(k))}</span><span class="fu-ck" aria-hidden="true">${Icons.svg('check', { size: 18, stroke: 1.8 })}</span></button>`; }).join('')}</div>`; // (1.76.0: cards, as in the design; the one whose four numbers the form holds is marked)
 // the weather table of a tyre wear system (field type 'wxmult'): how much more or less every kind of tyre wears in every weather
 const twMult = mult => `<div class="twtable twmult"><div class="twrow twhead muted"><span>Weather</span><span>Dry tyres (Hard, Medium, Soft, Supersoft)</span><span>Intermediate</span><span>Wet</span></div>`
   + Wx.STATES.map(([st, name]) => `<div class="twrow"><span class="twname"><strong>${esc(name)}</strong></span>` + Wx.CLASSES.map(c => `<label class="twx"><small>${c === 'dry' ? 'Dry tyres' : c === 'inter' ? 'Intermediate' : 'Wet'}</small><input type="number" step="any" min="0" max="20" data-twm="${st}" data-twmc="${c}" value="${esc(mult[st] && mult[st][c] !== undefined ? mult[st][c] : '')}" aria-label="${esc(name)} weather, ${c === 'dry' ? 'dry' : c === 'inter' ? 'Intermediate' : 'Wet'} tyres: times the wear"><span>&times;</span></label>`).join('') + '</div>').join('') + '</div>'
@@ -368,6 +369,7 @@ const calcHtml = pieces => `<p class="muted">Number of pieces &times; length of 
 
 // The weather system (1.74.0): the bar of the weather over the race (field type 'wxtimeline': the sentence code draws the bar into rs-strip), the table of how much the wrong tyres hinder a car (type 'wxhinder', 12 numbers)
 // and the table of the conditions on the track (type 'wxcond', 16 numbers). The numbers are ordinary settings (ui 'cell', ids f-<setting>) that the table draws, so the form reads and saves them as before.
+const BAR_TYPES = ['wxtimeline', 'pstimeline', 'sctimeline']; // (a bar that the form draws from the numbers: the weather over the race, the pace of a lap, the part of the race where a flag can come; none of them is a setting)
 const wxTyreName = c => (c === 'dry' ? 'Dry tyres' : c === 'inter' ? 'Intermediate' : 'Wet');
 const wxHinderTable = vals => `<div class="wxtab"><div class="wxrow wxhead muted"><span>Weather</span>${Wx.CLASSES.map(c => `<span>${wxTyreName(c)} (% hindered)</span>`).join('')}</div>`
   + Wx.STATES.map(([st, name]) => `<div class="wxrow"><span class="wxname">${esc(name)}</span>${Wx.CLASSES.map(c => { const k = Wx.HKEYS[st + '/' + c];
@@ -390,9 +392,9 @@ const memRows = (ids, all) => `<ol class="memlist">${ids.length ? ids.map((id, i
 function fieldHtml(f, v, extra) {
   if (f.ui && FormUI.has(f.ui)) return FormUI.field(f, v, { label: f.ask || fl(f), hint: fh(f), icon: n => Icons.svg(n, { size: 18, stroke: 1.8 }), picker: SetupWords.PICKER, parts: extra && extra.parts, partner: extra && extra.partner, unitWord: extra && extra.words && extra.words.unit }); // (switches, buttons, cards and boxes for a setting: 1.70.0, formui.js; a sentence with two numbers: 1.73.0)
   const id = 'f-' + f.id;
-  if (f.type === 'wxtimeline' || f.type === 'wxhinder' || f.type === 'wxcond') { // (the weather system's bar and tables, 1.74.0: a question with a small note, then the bar or the table)
-    const body = f.type === 'wxtimeline' ? '<div id="rs-strip"></div>' : f.type === 'wxhinder' ? wxHinderTable((extra && extra.value) || (() => '')) : wxCondTable((extra && extra.value) || (() => ''), (extra && extra.words) || { temp: '°C', speed: 'km/h' });
-    return `<div class="field full fu wxfield" data-key="${f.id}"><span class="fu-q">${esc(fl(f))}${f.type === 'wxtimeline' && fh(f) ? `<small class="muted">${esc(fh(f))}</small>` : ''}</span>${body}</div>`;
+  if (BAR_TYPES.includes(f.type) || f.type === 'wxhinder' || f.type === 'wxcond') { // (the weather system's bar and tables, 1.74.0: a question with a small note, then the bar or the table; the pace bar of a push and save system and the flags bar of a safety car system, 1.76.0)
+    const body = BAR_TYPES.includes(f.type) ? '<div id="rs-strip"></div>' : f.type === 'wxhinder' ? wxHinderTable((extra && extra.value) || (() => '')) : wxCondTable((extra && extra.value) || (() => ''), (extra && extra.words) || { temp: '°C', speed: 'km/h' });
+    return `<div class="field full fu wxfield" data-key="${f.id}"><span class="fu-q">${esc(fl(f))}${BAR_TYPES.includes(f.type) && fh(f) ? `<small class="muted">${esc(fh(f))}</small>` : ''}</span>${body}</div>`;
   }
   const lab = `<label for="${id}">${esc(fl(f))}${f.optional ? ' <span class="muted">(optional)</span>' : ''}</label>`;
   let inp;
@@ -414,7 +416,7 @@ function fieldHtml(f, v, extra) {
     case 'tyretable': inp = `<div id="tw-box">${twTable((extra && extra.twt) || {}, (extra && extra.twunit) || 'lap', (extra && extra.twsel) || 'S')}</div>`; break; // (1.40.0)
     case 'wxmult': inp = `<div id="tw-mult">${twMult((extra && extra.twm) || {})}</div>`; break;
     case 'tyresets': inp = twSets((extra && extra.tws) || {}); break; // (1.41.0)
-    case 'pspresets': inp = psPresets(); break; // (1.54.0)
+    case 'pspresets': inp = psPresets((extra && extra.psKey) || ''); break; // (1.54.0)
     case 'carstat': inp = `<input id="${id}" type="text" value="${esc(v ?? '')}" disabled>`; break; // (1.30.0: a figure worked out for the form, such as the Mileage of a slotcar; the screen fills it in)
     case 'cartracks': inp = `<div id="${id}" class="svc-tracks-box"></div>`; break; // (1.33.0: the table of the tracks of a slotcar; the screen fills it in)
     case 'members': inp = `<div id="mem-box">${memRows((extra && extra.members) || [], state.refs[f.ref] || [])}</div>`; break;
@@ -540,7 +542,8 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
   const wxWords = get => (e === 'weathersystems' ? { unit: get('unit') === 'time' ? 'minutes' : 'laps', temp: get('units') === 'imperial' ? '°F' : '°C', speed: get('units') === 'imperial' ? 'mph' : 'km/h' } : null);
   const startWords = wxWords(k => { const g = fieldOf(k); return g ? val(g) : undefined; });
   const valueOf = k => { const g = fieldOf(k); const x = g ? val(g) : ''; return x === undefined || x === null ? '' : x; };
-  const one = f => fieldHtml(f, f.ui === 'boxes' ? FormUI.joinList(places[f.id]) : val(f), { pieces, types, members, dlevels, dincs, cfails, twt, twm, tws, twsel, twunit: (item && item.unit) || TyreWear.DEFAULTS.unit, parts: startParts, words: startWords, value: valueOf, partner: f.with && fieldOf(f.with) ? { f: fieldOf(f.with), v: val(fieldOf(f.with)) } : null }) + frameBlock(f);
+  const psNow = get => PushSave.presetOf(Object.fromEntries(['tyreExtra', 'tyreSave', 'fuelExtra', 'fuelSave'].map(k => [k, get(k)]))); // (a push and save system: the ready-made system whose four wear numbers the form holds, '' = its own numbers)
+  const one = f => fieldHtml(f, f.ui === 'boxes' ? FormUI.joinList(places[f.id]) : val(f), { psKey: e === 'pushsavesystems' ? psNow(valueOf) : '', pieces, types, members, dlevels, dincs, cfails, twt, twm, tws, twsel, twunit: (item && item.unit) || TyreWear.DEFAULTS.unit, parts: startParts, words: startWords, value: valueOf, partner: f.with && fieldOf(f.with) ? { f: fieldOf(f.with), v: val(fieldOf(f.with)) } : null }) + frameBlock(f);
   // a schema with groups: the fields in collapsible sections with a coloured header, in the order of the groups (fields without a group of their own, such as your own fields, go last)
   const defs = Array.isArray(s.groups) && s.groups.length ? s.groups : null;
   const groups = defs ? [...defs.map(g => ({ ...g, fields: fields.filter(f => f.group === g.id) })), { id: '_more', title: 'More', note: '', fields: fields.filter(f => !defs.some(g => g.id === f.group)) }].filter(g => g.fields.length) : null;
@@ -555,7 +558,7 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
   const tileName = v => (e === 'racesetups' ? SETUP_KIND_ICON[v.sessionType] || 'racesetups' : (SETUP_LOOK[e] || [])[0] || 'racesetups'); // (the picture in the header: the kind of a race setup, the picture of a system)
   const frameWords = e === 'racesetups' ? {} : { navLabel: `The sections of this ${s.label.toLowerCase()}`, caption: 'This system', save: `Save ${s.label.toLowerCase()}`, usedNone: 'Not used yet. Choose it under Rules and systems in a race setup.', usedIcon: 'racesetups' };
   let railCurrent = sections ? (sections.find(x => opened.has(x.id)) || sections[0]).id : ''; // (the section that the rail points at: the one that was opened last)
-  const sectionBody = x => (x.groups.length === 1 && x.groups[0].id === x.id ? RailForm.grid(x.groups[0].fields.filter(f => f !== nameField).map(one).join(''), x.cols) : x.groups.map(g => RailForm.sub(g.id, g.title, g.note, g.fields.map(one).join(''))).join(''));
+  const sectionBody = x => (x.groups.length === 1 && x.groups[0].id === x.id ? RailForm.grid(x.groups[0].fields.filter(f => f !== nameField).map(one).join(''), x.cols) : x.groups.map(g => RailForm.sub(g.id, g.bare ? '' : g.title, g.bare ? '' : g.note, g.fields.filter(f => f !== nameField).map(one).join(''), x.cols)).join(''));
   dlg.innerHTML = sections ? RailForm.shell({ eyebrow: `${item ? 'Edit' : 'Add'} ${s.label.toLowerCase()}`, cls: setupToneClass(e).trim(), icon: n => Icons.svg(n, { size: 20, stroke: 1.7 }), used: usedBy,
       ...frameWords, tile: Icons.svg(tileName(e === 'racesetups' ? { sessionType: val(fieldOf('sessionType')) } : {}), { size: 26, stroke: 1.6 }), name: one(nameField),
       sections: sections.map(x => ({ id: x.id, title: x.title, ask: x.ask, icon: x.icon, open: opened.has(x.id), optional: !!x.optional, live: !!x.live, body: sectionBody(x) })) })
@@ -566,6 +569,8 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
     <p class="error" id="err" role="alert"></p>
     <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" id="cancel">Cancel</button></div></form>`;
   const getValue = k => byId('f-' + k)?.value;
+  // the ready-made push and save system whose four wear numbers the form holds is marked (1.76.0)
+  const markPs = () => { if (e !== 'pushsavesystems') return; const k = psNow(getValue); dlg.querySelectorAll('[data-pspreset]').forEach(b => { const on = (b.dataset || {}).pspreset === k; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); }); };
   // Race Setups (1.69.0): the pills and the sentence "In plain words" at the top of the form follow what is typed (the words are made in setupwords.js)
   const formValues = () => { // what the form holds now, by setting
     const v = {};
@@ -588,6 +593,7 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
   // the header (the picture of the kind, the pills, Ready to race), the sentence "In plain words" and the rail follow what is typed and chosen
   const sayDraw = () => {
     const box = byId('rssay'); if (!box) return;
+    markPs();
     const v = formValues();
     const rctx = e === 'racesetups' ? { track: (state.refs.tracks || []).find(t => t.id === v.track) || null, rotation: ((state.refs.rotationsetups || []).find(r => r.id === v.rotation) || {}).name || '', dist: n => Distance.text(n, dUnit()) } : {};
     const d = e === 'racesetups' ? SetupWords.describe(v, rctx) : SystemWords.describe(e, v);
@@ -763,7 +769,7 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
     const built = {}, custom = { ...(item?.custom || {}) };
     for (const f of fields) {
       if (f.automatic) { if (!item) built[f.key] = f.type === 'datetime' ? '' : 0; continue; }
-      if (f.type === 'carstat' || f.type === 'cartracks' || f.type === 'pspresets' || f.type === 'wxtimeline' || f.type === 'wxhinder' || f.type === 'wxcond') continue; // (worked out or drawn for the form, not kept)
+      if (f.type === 'carstat' || f.type === 'cartracks' || f.type === 'pspresets' || BAR_TYPES.includes(f.type) || f.type === 'wxhinder' || f.type === 'wxcond') continue; // (worked out or drawn for the form, not kept)
       if (f.type === 'gallery') { built[f.key] = [...gal]; continue; }
       if (f.type === 'members') { built[f.key] = members.filter(id => (state.refs[f.ref] || []).some(x => x.id === id)); continue; }
       if (f.type === 'damagelevels') { built[f.key] = dlevels.filter(l => String(l.name || '').trim() || Number(l.from) > 0).map(l => ({ name: String(l.name || '').trim(), from: Math.max(0, Math.floor(Number(l.from)) || 0), seconds: Math.max(0, Number(l.seconds) || 0), urgency: l.urgency === 'asap' ? 'asap' : 'whenever', within: Math.max(0, Math.floor(Number(l.within)) || 0), action: Damage.ACTIONS.includes(l.action) ? l.action : 'repair' })); continue; }

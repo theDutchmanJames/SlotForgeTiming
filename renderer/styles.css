@@ -1722,6 +1722,14 @@ html[data-layers="on"] .lw.live .lw-val{will-change:transform}
 .rsform #tw-box p.muted,.rsform #tw-mult p.muted{margin:0 0 14px;font-size:12.5px;line-height:1.45}
 .rsform #tw-mult p.muted{margin:12px 0 0}
 
+/* ---- the forms of the Safety car, Push and save and Fuel systems (1.76.0): in the colour of the system (orange, lime, green). Design: docs/ui-reference/race-systems. The ready-made systems of Push and save are
+   cards (fu-card), the bars (the part of the race where a flag can come, the pace of a lap) are the bar of the other systems (rsstrip), and a note can be good news ("A full tank lasts 60 laps"). ---- */
+.rsnote.good .rsnic{color:var(--rs-ok)}
+.rsform .rssub .fu-cardfield,.rsform .field.full>.fu-cards{margin-top:2px}
+.rsform .rssub:not(:has(.rssubt)) .fgrid{padding-top:12px}
+/* a number without a unit (Number of flags) is as wide as the boxes with a unit, not as the whole column */
+.rsform.ss-sc .field>input[type=number],.rsform.ss-ps .field>input[type=number],.rsform.ss-fuel .field>input[type=number]{width:auto;max-width:150px}
+
 /* ---- Soft lift (1.46.0): a slight depth for the whole app. Design: docs/ui-reference/depth ----
    Cards, folders, bars, dialogs and the widgets of a layout stand up a little like thick cards, buttons look a little shallow, and what is meant to be pressed in (the canvas of a race screen, the lane cards,
    the entry fields) is pressed in a little. The light comes from above: a thin light edge on top, a lip (the thickness) underneath, a short soft shadow. A pressed or switched on button moves down and sits in.

@@ -76,7 +76,7 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
   run("openForm('safetycarsystems', null)"); await wait(30);
   { const h = E('dlg').innerHTML;
     say('the form of a new system has the name and the three numbers, starting at 15 seconds, 1 point and 50 percent', ['f-name', 'f-target', 'f-points', 'f-pitPercent'].every(id => h.includes(`id="${id}"`)) && /id="f-target"[^>]*value="15"/.test(h) && /id="f-points"[^>]*value="1"/.test(h) && /id="f-pitPercent"[^>]*value="50"/.test(h));
-    say('...in three folders: Basics, Lap times and Pit stops, with the labels that say what the numbers do', ['Basics', 'Lap times', 'Pit stops'].every(x => h.includes(x)) && h.includes('Laps must be slower than (seconds, 0 = no limit)') && h.includes('Penalty points for a lap that is too fast') && h.includes('The work in a pit stop takes less time by (percent)')); }
+    say('...in one section, Behind the Safety Car (1.76.0: it was three folders, Basics, Lap times and Pit stops), with the labels that say what the numbers do and the unit next to the box', h.includes('Behind the Safety Car') && !h.includes('<strong>Lap times</strong>') && !h.includes('<strong>Pit stops</strong>') && h.includes('Laps must be slower than (0 = no limit)') && h.includes('Penalty points for a lap that is too fast') && h.includes('The work in a pit stop takes less time by') && /id="f-target"[^>]*>\s*<span[^>]*>seconds<\/span>/.test(h) && /id="f-pitPercent"[^>]*>\s*<span[^>]*>percent<\/span>/.test(h)); }
   { const set = (k, v) => { E('f-' + k).value = v; };
     set('name', 'Club GP'); set('target', '20'); set('points', '3'); set('pitPercent', '30');
     await E('frm').onsubmit({ preventDefault() {} }); await wait(20);

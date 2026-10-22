@@ -108,4 +108,18 @@ ok('a form that has no rail (or only some of the elements, or nothing at all) is
   ok('...names, the unit and the note are escaped', (x => !x.includes('<b>') && x.includes('&lt;b&gt;'))(R.strip({ tone: 'weather', parts: [{ name: '<b>x</b>', kind: 'wet', left: 0, width: 100 }], ticks: [{ at: 0, label: '<b>', show: true }], unit: '<b>u</b>', note: '<b>n</b>', text: '<b>t</b>' })));
 }
 
+// ---- the Safety car, Push and save and Fuel systems (1.76.0): a part with no title, three to a row, a good note, the end of a bar ----
+{
+  const bare = R.sub('random', '', '', '<i></i>', 3);
+  ok('a part of a section without a title or a line is only a block with its settings (the section already says what it is); three to a row when it is asked', bare === '<section class="rssub" data-fg="random"><div class="fgrid c3"><i></i></div></section>' && !bare.includes('<h4') && !bare.includes('<p'));
+  ok('...a title and a line are drawn as before, two columns are the standard, and the title and the line are escaped', R.sub('a', 'T', 'N', '<i></i>') === '<section class="rssub" data-fg="a"><h4 class="rssubt">T</h4><p class="muted hint rssubn">N</p><div class="fgrid"><i></i></div></section>' && R.sub('a', 'T', 'N', '<i></i>', 2).includes('<div class="fgrid">') && R.sub('a', 'T', '', '<i></i>', 3).includes('<div class="fgrid c3">') && (x => !x.includes('<b>') && x.includes('&lt;b&gt;'))(R.sub('a', '<b>', '<b>', '', 3)));
+  ok('...only 3 gives three columns (2 and 4 give two), with or without a title', R.sub('r', '', '', '<i></i>', 4) === '<section class="rssub" data-fg="r"><div class="fgrid"><i></i></div></section>' && R.sub('r', '', '', '<i></i>', 2).includes('<div class="fgrid">') && R.sub('r', 'T', 'N', '<i></i>', 3).includes('<div class="fgrid c3">') && !R.sub('r', 'T', 'N', '<i></i>', 4).includes('c3'));
+  const els = {}; const byId = id => (els[id] = els[id] || { hidden: true, className: '', innerHTML: '' });
+  R.live(byId, { basics: {} }, { basics: { tone: 'good', parts: [{ t: 'A full tank lasts 60 laps', b: true }, { t: ' at the target lap time.' }] } }, n => '<svg data-icon="' + n + '"></svg>');
+  ok('a good note (a full tank lasts 60 laps) has the picture of a check and its own class (the style sheet colours it green)', els['rs-live-basics'].hidden === false && els['rs-live-basics'].className === 'rsnote good' && els['rs-live-basics'].innerHTML.includes('data-icon="check"') && els['rs-live-basics'].innerHTML.includes('<b>A full tank lasts 60 laps</b>') && !els['rs-live-basics'].innerHTML.includes('data-icon="info"'));
+  const e = R.strip({ parts: [{ name: 'a', left: 0, width: 100, kind: 'flags', step: 1, of: 2 }], ticks: [{ at: 0, label: '0%', show: true }, { at: 100, label: '100%', show: true, end: true }], text: 't' });
+  ok('the last number of a bar (100%) can be told to stand at the edge: it ends at the right edge instead of running out of the bar, the first stays at the left', e.includes('<span style="right:0">100%</span>') && e.includes('<span style="left:0%">0%</span>') && !e.includes('left:100%'));
+  ok('...a number far to the right of a bar without the end mark keeps its place (the tick of 1.73.0)', !R.strip({ parts: [{ name: 'a', left: 0, width: 100, step: 1, of: 3 }], ticks: [{ at: 70, label: '70%', show: true }], text: 't' }).includes('right:0">70%<'));
+}
+
 if (fails) { console.log(fails + ' RAIL FORM TESTS FAILED'); process.exit(1); } else console.log('ALL RAIL FORM TESTS PASSED');

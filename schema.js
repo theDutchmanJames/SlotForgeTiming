@@ -369,16 +369,23 @@ module.exports = {
       { id: 'empty', title: 'Empty tank and refuelling', note: 'What happens when the fuel runs out, and the refuelling speed', open: true },
       { id: 'fast', title: 'Fast and slow laps', note: 'How much more fuel a fast lap uses, and how much a slow lap saves' }
     ],
+    // The form of a fuel system has a rail (1.76.0), as the forms of the other systems do; see penaltysystems.rail. cols: 3 puts three settings on a row (the tank, the use and the target lap time of Basics).
+    rail: [
+      { id: 'basics', title: 'Basics', ask: 'How big is the tank, and how much does a lap use?', icon: 'drop', open: true, live: true, cols: 3, groups: ['basics'] },
+      { id: 'empty', title: 'Empty tank and refuelling', ask: 'What happens when the fuel runs out, and how fast is the pump?', icon: 'fuel', open: true, groups: ['empty'] },
+      { id: 'fast', title: 'Fast and slow laps', ask: 'How much does the lap time change the fuel use?', icon: 'gauge', optional: true, groups: ['fast'] }
+    ],
+    used: { entity: 'racesetups', key: 'fuelRules' },
     fields: [
-      { key: 'name', group: 'basics', label: 'Name', type: 'text' },
-      { key: 'tank', group: 'basics', label: 'Tank size (litres)', type: 'number', default: 120 },
-      { key: 'perLap', group: 'basics', label: 'Fuel used per lap at the target lap time (litres)', type: 'number', default: 2 },
-      { key: 'targetLap', group: 'basics', label: 'Target lap time (seconds)', type: 'number', optional: true, hint: 'A lap at the target time uses the amount above. Faster laps use more, slower laps less. Empty = every lap uses the same. Not used in a race that has a Push and save system: that uses the pace against the driver\'s best lap instead.' },
-      { key: 'empty', group: 'empty', label: 'When the fuel runs out', type: 'select', default: 'retire',
-        options: [['retire', 'The car retires from the race'], ['stop', 'Laps stop counting until it has refuelled'], ['warn', 'The car carries on (a penalty system can add points for it)']] },
-      { key: 'rate', group: 'empty', label: 'Refuelling speed in the pits (litres per second)', type: 'number', default: 10 },
-      { key: 'maxExtra', group: 'fast', label: 'Most extra fuel a fast lap can use (%)', type: 'number', default: 25, hint: 'Fuel used = litres per lap x target time / lap time, never more than this many percent above the litres per lap.' },
-      { key: 'maxSaving', group: 'fast', label: 'Most fuel a slow lap can save (%)', type: 'number', default: 30, hint: '...and never more than this many percent below it.' }
+      { key: 'name', group: 'basics', label: 'Name', type: 'text', placeholder: 'Name this fuel system' },
+      { key: 'tank', group: 'basics', label: 'Tank size', type: 'number', suffix: 'litres', default: 120 },
+      { key: 'perLap', group: 'basics', label: 'Fuel used per lap at the target lap time', type: 'number', suffix: 'litres', default: 2 },
+      { key: 'targetLap', group: 'basics', label: 'Target lap time', type: 'number', suffix: 'seconds', optional: true, hint: 'A lap at the target time uses the amount above. Faster laps use more, slower laps less. Empty = every lap uses the same. Not used in a race that has a Push and save system: that uses the pace against the driver\'s best lap instead.' },
+      { key: 'empty', group: 'empty', label: 'When the fuel runs out', ui: 'cards', type: 'select', default: 'retire', icons: { retire: 'ban', stop: 'clock', warn: 'arrow' },
+        options: [['retire', 'The car retires from the race'], ['stop', 'Laps stop counting until it has refuelled'], ['warn', 'The car carries on', 'A penalty system can add points for it.']] },
+      { key: 'rate', group: 'empty', label: 'Refuelling speed in the pits', type: 'number', suffix: 'litres per second', default: 10 },
+      { key: 'maxExtra', group: 'fast', label: 'Most extra fuel a fast lap can use', type: 'number', suffix: '%', default: 25, hint: 'Fuel used = litres per lap x target time / lap time, never more than this many percent above the litres per lap.' },
+      { key: 'maxSaving', group: 'fast', label: 'Most fuel a slow lap can save', type: 'number', suffix: '%', default: 30, hint: '...and never more than this many percent below it.' }
     ]
   },
   // Penalty systems: how penalty points turn into time penalties. Chosen per race setup.
@@ -528,43 +535,51 @@ module.exports = {
   // Safety car systems (1.53.0): a few settings bundled in one record, chosen per race setup (Rules and systems). The Safety Car is out while the yellow flag is up (see safetycar.js).
   safetycarsystems: {
     label: 'Safety car system', plural: 'Safety car systems', title: ['name'], extra: false, linked: false, list: ['name', 'target', 'pitPercent'], card: ['target', 'pitPercent'],
+    // 1.76.0: Basics, Lap times and Pit stops are one group, Behind the Safety Car (the board has them in one card); the random flags are three groups in one section (bare: the group has no heading of its own)
     groups: [
-      { id: 'basics', title: 'Basics', note: 'Name. The Safety Car is out while the yellow flag is up', open: true },
-      { id: 'laps', title: 'Lap times', note: 'How slowly the cars must drive behind the Safety Car', open: true },
-      { id: 'pit', title: 'Pit stops', note: 'Work in the pits goes faster behind the Safety Car', open: true },
-      { id: 'random', title: 'Random flags', note: 'Yellow flags (the Safety Car) at random moments, as if other cars on the track caused them', open: false }
+      { id: 'behind', title: 'Behind the Safety Car', note: 'Name. The Safety Car is out while the yellow flag is up: how slowly the cars must drive, and how much faster the work in the pits goes', open: true },
+      { id: 'random', title: 'Random flags', note: 'Yellow flags (the Safety Car) at random moments, as if other cars on the track caused them', open: false, bare: true },
+      { id: 'when', title: 'When', note: 'Between which moments in the race a flag can come, and how far apart', bare: false },
+      { id: 'ends', title: 'How long', note: 'How a flag ends, how long it lasts and a warning before it comes', bare: true }
     ],
+    // The form of a safety car system has a rail (1.76.0), as the forms of the other systems do; see penaltysystems.rail. cols: 3 puts three settings on a row.
+    rail: [
+      { id: 'behind', title: 'Behind the Safety Car', ask: 'How slowly must the cars drive, and what do the pits do?', icon: 'safetycar', open: true, live: true, cols: 3, groups: ['behind'] },
+      { id: 'flags', title: 'Random flags', ask: 'Should yellow flags come at random moments?', icon: 'dice', optional: true, cols: 3, groups: ['random', 'when', 'ends'] }
+    ],
+    used: { entity: 'racesetups', key: 'safetyCar' },
     fields: [
-      { key: 'name', group: 'basics', label: 'Name', type: 'text' },
-      { key: 'target', group: 'laps', label: 'Laps must be slower than (seconds, 0 = no limit)', type: 'number', min: 0, max: 3600, default: Sc.DEFAULTS.target,
+      { key: 'name', group: 'behind', label: 'Name', type: 'text', placeholder: 'Name this safety car system' },
+      { key: 'target', group: 'behind', label: 'Laps must be slower than (0 = no limit)', type: 'number', suffix: 'seconds', min: 0, max: 3600, default: Sc.DEFAULTS.target,
         hint: 'While the Safety Car is out (the yellow flag is up) a lap must take longer than this. Say your normal lap is 7.500 and you set 15.000: a full lap under the Safety Car that is faster than 15.000 was too fast, and it is called out. A lap that was partly before the Safety Car came out does not count. 0 means no limit.' },
-      { key: 'points', group: 'laps', label: 'Penalty points for a lap that is too fast', type: 'number', min: 0, max: 100, default: Sc.DEFAULTS.points,
+      { key: 'points', group: 'behind', label: 'Penalty points for a lap that is too fast', type: 'number', suffix: 'points', min: 0, max: 100, default: Sc.DEFAULTS.points,
         hint: 'Given to the driver for every full lap behind the Safety Car that is faster than the limit. It needs a penalty system (Rules and systems of the race setup); without one the lap is only called out and marked in the lap review. 0 gives no points. Not used without a limit above.' },
-      { key: 'pitPercent', group: 'pit', label: 'The work in a pit stop takes less time by (percent)', type: 'number', min: 0, max: Sc.MAX_PIT, default: Sc.DEFAULTS.pitPercent,
+      { key: 'pitPercent', group: 'behind', label: 'The work in a pit stop takes less time by', type: 'number', suffix: 'percent', min: 0, max: Sc.MAX_PIT, default: Sc.DEFAULTS.pitPercent,
         hint: 'Refuelling, a repair and changing tyres take this many percent less time when the car comes into the pits while the Safety Car is out. 50 makes a 10 second tyre change 5 seconds. Fixed when the car comes in, so a Safety Car that goes in while the car is in the pits changes nothing for that stop. Driver swaps, a penalty that is served in the pits and the pit hold time are not shortened. 0 changes nothing.' },
-      { key: 'rndOn', group: 'random', label: 'Random yellow flags', type: 'select', default: Sc.RND_DEFAULTS.on, options: [['off', 'Off'], ['on', 'On']],
+      { key: 'rndOn', group: 'random', label: 'Random yellow flags', ask: 'Random yellow flags', ui: 'switch', on: 'on', type: 'select', default: Sc.RND_DEFAULTS.on, options: [['off', 'Off'], ['on', 'On']],
         hint: 'On: the yellow flag, which is the Safety Car with the rules above, goes up at random moments in a race, whatever the drivers do, as if one of the other cars on the track caused it. The moments are drawn when the race starts and are not shown while it runs (the race log lists them afterwards). A race setup with this Safety car system has them in practice, qualifying, races, timed races, heats and Endurance Races. The Race Director can lift a yellow flag whenever he wants.' },
-      { key: 'rndChance', group: 'random', label: 'Chance that a race has random flags (percent)', type: 'number', min: 0, max: 100, default: Sc.RND_DEFAULTS.chance, showIf: [{ rndOn: ['on'] }],
-        hint: '100 = every race has them. 60 = six races in ten do; the other four are drawn without any (with a heat race, every heat is drawn for itself).' },
-      { key: 'rndMode', group: 'random', label: 'How many flags', type: 'select', default: Sc.RND_DEFAULTS.mode, options: Sc.RND_MODES, showIf: [{ rndOn: ['on'] }],
+      { key: 'rndLine', group: 'random', label: 'Where in the race a flag can come', type: 'sctimeline', hint: 'It follows the numbers below', showIf: [{ rndOn: ['on'] }] }, // (the bar: drawn by the form, not a setting)
+      { key: 'rndMode', group: 'random', label: 'How many flags', ui: 'cards', type: 'select', default: Sc.RND_DEFAULTS.mode, options: Sc.RND_MODES, showIf: [{ rndOn: ['on'] }],
         hint: 'Exactly N, a number from N to M (any number in between is as likely), or at least N: after the N each further flag has the chance below, one after the other. More than 20 in a race is never drawn.' },
       { key: 'rndMin', group: 'random', label: 'Number of flags (N)', type: 'number', min: 0, max: Sc.MAX_FLAGS, default: Sc.RND_DEFAULTS.min, showIf: [{ rndOn: ['on'] }], hint: '0 to 20. When the flags do not fit in the race (see the earliest and latest moment and the time between), there are fewer.' },
       { key: 'rndMax', group: 'random', label: 'Up to (M)', type: 'number', min: 0, max: Sc.MAX_FLAGS, default: Sc.RND_DEFAULTS.max, showIf: [{ rndOn: ['on'], rndMode: ['range'] }], hint: 'Never less than N.' },
-      { key: 'rndMore', group: 'random', label: 'Chance of one more flag (percent)', type: 'number', min: 0, max: 100, default: Sc.RND_DEFAULTS.more, showIf: [{ rndOn: ['on'], rndMode: ['atleast'] }],
+      { key: 'rndMore', group: 'random', label: 'Chance of one more flag', type: 'number', suffix: 'percent', min: 0, max: 100, default: Sc.RND_DEFAULTS.more, showIf: [{ rndOn: ['on'], rndMode: ['atleast'] }],
         hint: 'After the N flags: 30 means that three races in ten get an extra flag, and then three in ten of those get one more, and so on. 0 = exactly N.' },
-      { key: 'rndEnd', group: 'random', label: 'A flag ends', type: 'select', default: Sc.RND_DEFAULTS.end, options: Sc.RND_ENDS, showIf: [{ rndOn: ['on'] }],
-        hint: 'By itself: the flag comes down when its time is up (and the Race Director can lift it earlier). Only when the Race Director lifts it: it stays up until he presses the yellow flag button, like a flag he raised himself.' },
-      { key: 'rndLenMode', group: 'random', label: 'How long a flag lasts', type: 'select', default: Sc.RND_DEFAULTS.lenMode, options: Sc.RND_LENGTHS, showIf: [{ rndOn: ['on'], rndEnd: ['timer'] }], hint: 'Every flag lasts the same time, or a time between two limits that is drawn for each flag when the race starts.' },
-      { key: 'rndLen', group: 'random', label: 'Seconds', type: 'number', min: 5, max: 600, default: Sc.RND_DEFAULTS.len, showIf: [{ rndOn: ['on'], rndEnd: ['timer'] }], hint: '5 to 600. With two times, the shortest.' },
-      { key: 'rndLenMax', group: 'random', label: 'Up to (seconds)', type: 'number', min: 5, max: 600, default: Sc.RND_DEFAULTS.lenMax, showIf: [{ rndOn: ['on'], rndEnd: ['timer'], rndLenMode: ['range'] }], hint: 'Every flag gets a time between the two, drawn when the race starts.' },
-      { key: 'rndFrom', group: 'random', label: 'Earliest moment (percent of the race)', type: 'number', min: 0, max: 100, default: Sc.RND_DEFAULTS.from, showIf: [{ rndOn: ['on'] }],
+      { key: 'rndChance', group: 'random', label: 'Chance that a race has random flags', type: 'number', suffix: 'percent', min: 0, max: 100, default: Sc.RND_DEFAULTS.chance, showIf: [{ rndOn: ['on'] }],
+        hint: '100 = every race has them. 60 = six races in ten do; the other four are drawn without any (with a heat race, every heat is drawn for itself).' },
+      { key: 'rndFrom', group: 'when', label: 'Earliest moment', type: 'number', suffix: '% of the race', min: 0, max: 100, default: Sc.RND_DEFAULTS.from, showIf: [{ rndOn: ['on'] }],
         hint: 'No flag before this part of the race has been driven (the laps of the leader, or the time on the clock). In a race by laps never in the first lap or the last. If the two moments are typed the other way round, they swap.' },
-      { key: 'rndTo', group: 'random', label: 'Latest moment (percent of the race)', type: 'number', min: 0, max: 100, default: Sc.RND_DEFAULTS.to, showIf: [{ rndOn: ['on'] }], hint: 'No flag comes up after this part of the race (one that has come up may last longer).' },
-      { key: 'rndGap', group: 'random', label: 'At least this long between two flags (seconds)', type: 'number', min: 0, max: 600, default: Sc.RND_DEFAULTS.gap, showIf: [{ rndOn: ['on'] }],
+      { key: 'rndTo', group: 'when', label: 'Latest moment', type: 'number', suffix: '% of the race', min: 0, max: 100, default: Sc.RND_DEFAULTS.to, showIf: [{ rndOn: ['on'] }], hint: 'No flag comes up after this part of the race (one that has come up may last longer).' },
+      { key: 'rndGap', group: 'when', label: 'At least this long between two flags', type: 'number', suffix: 'seconds', min: 0, max: 600, default: Sc.RND_DEFAULTS.gap, showIf: [{ rndOn: ['on'] }],
         hint: 'From the end of one flag to the start of the next. A flag that is due while another flag is up (one a marshal or the Race Director raised, or a red flag) waits for it to end and for this time to pass.' },
-      { key: 'rndFree', group: 'random', label: 'Free practice: spread the flags over (minutes)', type: 'number', min: 1, max: 240, default: Sc.RND_DEFAULTS.free, showIf: [{ rndOn: ['on'] }],
+      { key: 'rndFree', group: 'when', label: 'Free practice: spread the flags over', type: 'number', suffix: 'minutes', min: 1, max: 240, default: Sc.RND_DEFAULTS.free, showIf: [{ rndOn: ['on'] }],
         hint: 'A free practice has no end, so there is no part of it to take a percentage of. The flags are drawn in this many minutes from the start; the earliest and latest moment count in them too.' },
-      { key: 'rndWarn', group: 'random', label: 'Warn before a flag comes (seconds, 0 = no warning)', type: 'number', min: 0, max: 60, default: Sc.RND_DEFAULTS.warn, showIf: [{ rndOn: ['on'] }],
+      { key: 'rndEnd', group: 'ends', label: 'How a flag ends', ui: 'seg', full: true, type: 'select', default: Sc.RND_DEFAULTS.end, options: Sc.RND_ENDS, showIf: [{ rndOn: ['on'] }],
+        hint: 'By itself: the flag comes down when its time is up (and the Race Director can lift it earlier). Only when the Race Director lifts it: it stays up until he presses the yellow flag button, like a flag he raised himself.' },
+      { key: 'rndLenMode', group: 'ends', label: 'How long a flag lasts', ui: 'seg', full: true, type: 'select', default: Sc.RND_DEFAULTS.lenMode, options: Sc.RND_LENGTHS, showIf: [{ rndOn: ['on'], rndEnd: ['timer'] }], hint: 'Every flag lasts the same time, or a time between two limits that is drawn for each flag when the race starts.' },
+      { key: 'rndLen', group: 'ends', label: 'Seconds', type: 'number', suffix: 'seconds', min: 5, max: 600, default: Sc.RND_DEFAULTS.len, showIf: [{ rndOn: ['on'], rndEnd: ['timer'] }], hint: '5 to 600. With two times, the shortest.' },
+      { key: 'rndLenMax', group: 'ends', label: 'Up to', type: 'number', suffix: 'seconds', min: 5, max: 600, default: Sc.RND_DEFAULTS.lenMax, showIf: [{ rndOn: ['on'], rndEnd: ['timer'], rndLenMode: ['range'] }], hint: 'Every flag gets a time between the two, drawn when the race starts.' },
+      { key: 'rndWarn', group: 'ends', label: 'Warn before a flag comes (0 = no warning)', type: 'number', suffix: 'seconds', min: 0, max: 60, default: Sc.RND_DEFAULTS.warn, showIf: [{ rndOn: ['on'] }],
         hint: 'A heads-up: the Race Flag widget flashes the yellow flag, and the call "Yellow flag soon" is said (Audio Settings). In a race by laps it needs a lap of the leader to know how long a lap takes. 0 = the flag just comes.' }
     ]
   },
@@ -577,28 +592,37 @@ module.exports = {
       { id: 'wear', title: 'Wear', note: 'How much more or less the tyres and the fuel are used up when pushing and when saving', open: true },
       { id: 'laps', title: 'Which laps count', note: 'The start of the race, very slow laps and the yellow flag' }
     ],
+    // The form of a push and save system has a rail (1.76.0), as the forms of the other systems do; see penaltysystems.rail. cols: 3 puts three settings on a row (a switch and its two numbers in Wear).
+    rail: [
+      { id: 'basics', title: 'Basics', ask: 'Which ready-made system do you start from?', icon: 'sliders', open: true, groups: ['basics'] },
+      { id: 'pace', title: 'Pace', ask: 'What counts as normal pace, and as the most saving?', icon: 'pushsave', open: true, live: true, groups: ['pace'] },
+      { id: 'wear', title: 'Wear', ask: 'How much more or less are the tyres and the fuel used up?', icon: 'tyre', open: true, cols: 3, groups: ['wear'] },
+      { id: 'laps', title: 'Which laps count', ask: 'The start of the race, very slow laps and the yellow flag', icon: 'flag', optional: true, groups: ['laps'] }
+    ],
+    used: { entity: 'racesetups', key: 'pushSave' },
     fields: [
-      { key: 'name', group: 'basics', label: 'Name', type: 'text' },
+      { key: 'name', group: 'basics', label: 'Name', type: 'text', placeholder: 'Name this push and save system' },
       { key: 'presets', group: 'basics', label: 'Start from', type: 'pspresets' },
-      { key: 'normal', group: 'pace', label: 'Normal pace: the best lap plus (%)', type: 'number', min: 0, max: 50, default: Ps.DEFAULTS.normal,
+      { key: 'paceLine', group: 'pace', label: 'The pace of a lap', type: 'pstimeline', hint: 'Percent over the best lap' }, // (the bar: drawn by the form, not a setting)
+      { key: 'normal', group: 'pace', label: 'Normal pace: the best lap plus', type: 'number', suffix: '%', min: 0, max: 50, default: Ps.DEFAULTS.normal,
         hint: 'A lap this much slower than the driver\'s best lap is a normal race lap: the usual wear. Faster is pushing, slower is saving. Driving at the best lap itself (flat out) wears the most. 3 means a driver with a best lap of 10.000 is at normal pace on 10.300.' },
-      { key: 'saveAt', group: 'pace', label: 'Most saving pace: the best lap plus (%)', type: 'number', min: 1, max: 100, default: Ps.DEFAULTS.saveAt,
+      { key: 'saveAt', group: 'pace', label: 'Most saving pace: the best lap plus', type: 'number', suffix: '%', min: 1, max: 100, default: Ps.DEFAULTS.saveAt,
         hint: 'From this pace on (and for slower laps) the wear is as low as it gets. In between normal pace and this pace the wear goes down in a straight line. Must be more than the normal pace (otherwise it is made 1 more).' },
-      { key: 'tyres', group: 'wear', label: 'The pace changes the tyre wear', type: 'select', default: Ps.DEFAULTS.tyres, options: [['on', 'Yes'], ['off', 'No: the tyres wear as usual']] },
-      { key: 'tyreExtra', group: 'wear', label: 'Tyres: wear when flat out is more by (%)', type: 'number', min: 0, max: 500, default: Ps.DEFAULTS.tyreExtra, showIf: [{ tyres: ['on'] }],
+      { key: 'tyres', group: 'wear', label: 'The pace changes the tyre wear', ask: 'The pace changes the tyre wear', ui: 'switch', on: 'on', third: true, type: 'select', default: Ps.DEFAULTS.tyres, options: [['on', 'Yes'], ['off', 'No: the tyres wear as usual']] },
+      { key: 'tyreExtra', group: 'wear', label: 'Tyres: wear when flat out is more by', type: 'number', suffix: '%', min: 0, max: 500, default: Ps.DEFAULTS.tyreExtra,
         hint: 'A lap at the best lap wears the tyres this many percent more than the Tyre wear system says. 40 makes 4.5% a lap 6.3% a lap. It needs a Tyre wear system in the race setup.' },
-      { key: 'tyreSave', group: 'wear', label: 'Tyres: wear at the most saving pace is less by (%)', type: 'number', min: 0, max: 90, default: Ps.DEFAULTS.tyreSave, showIf: [{ tyres: ['on'] }],
+      { key: 'tyreSave', group: 'wear', label: 'Tyres: wear at the most saving pace is less by', type: 'number', suffix: '%', min: 0, max: 90, default: Ps.DEFAULTS.tyreSave,
         hint: 'A lap at the most saving pace (or slower) wears the tyres this many percent less.' },
-      { key: 'fuel', group: 'wear', label: 'The pace changes the fuel use', type: 'select', default: Ps.DEFAULTS.fuel, options: [['on', 'Yes'], ['off', 'No: the fuel is used as usual']] },
-      { key: 'fuelExtra', group: 'wear', label: 'Fuel: use when flat out is more by (%)', type: 'number', min: 0, max: 500, default: Ps.DEFAULTS.fuelExtra, showIf: [{ fuel: ['on'] }],
+      { key: 'fuel', group: 'wear', label: 'The pace changes the fuel use', ask: 'The pace changes the fuel use', ui: 'switch', on: 'on', third: true, type: 'select', default: Ps.DEFAULTS.fuel, options: [['on', 'Yes'], ['off', 'No: the fuel is used as usual']] },
+      { key: 'fuelExtra', group: 'wear', label: 'Fuel: use when flat out is more by', type: 'number', suffix: '%', min: 0, max: 500, default: Ps.DEFAULTS.fuelExtra,
         hint: 'A lap at the best lap uses this many percent more than the litres per lap of the Fuel system. It needs a Fuel system in the race setup, which then uses this instead of its own target lap time, most extra and most saving.' },
-      { key: 'fuelSave', group: 'wear', label: 'Fuel: use at the most saving pace is less by (%)', type: 'number', min: 0, max: 90, default: Ps.DEFAULTS.fuelSave, showIf: [{ fuel: ['on'] }],
+      { key: 'fuelSave', group: 'wear', label: 'Fuel: use at the most saving pace is less by', type: 'number', suffix: '%', min: 0, max: 90, default: Ps.DEFAULTS.fuelSave,
         hint: 'A lap at the most saving pace (or slower) uses this many percent less.' },
-      { key: 'from', group: 'laps', label: 'The effect starts at lap', type: 'number', min: 1, max: 100, default: Ps.DEFAULTS.from,
+      { key: 'from', group: 'laps', label: 'The effect starts at lap', type: 'number', suffix: 'lap', min: 1, max: 100, default: Ps.DEFAULTS.from,
         hint: 'The first laps of a race are not typical (the cars are bunched up, and without a record there is no best lap yet). Laps before this one wear as usual.' },
-      { key: 'slow', group: 'laps', label: 'A lap slower than this is not pace (% of the best lap)', type: 'number', min: 101, max: 1000, default: Ps.DEFAULTS.slow,
+      { key: 'slow', group: 'laps', label: 'A lap slower than this is not pace', type: 'number', suffix: '% of the best lap', min: 101, max: 1000, default: Ps.DEFAULTS.slow,
         hint: 'A lap like a deslot, a long stop or a car that was picked up takes much longer than a driver\'s pace: it wears as usual. 150 means slower than 1.5 times the best lap.' },
-      { key: 'yellowSave', group: 'laps', label: 'Laps under the yellow flag or the Safety Car', type: 'select', default: Ps.DEFAULTS.yellowSave, options: [['on', 'Count as saving (a slow lap there is saving)'], ['off', 'Count like any other lap']],
+      { key: 'yellowSave', group: 'laps', label: 'Laps under the yellow flag or the Safety Car', ui: 'cards', type: 'select', default: Ps.DEFAULTS.yellowSave, options: [['on', 'Count as saving', 'A slow lap there is saving.'], ['off', 'Count like any other lap']],
         hint: 'Behind the Safety Car the cars drive slowly on purpose. As saving, that wears less, and the very slow lap limit above does not apply to a full lap under the yellow flag.' }
     ]
   },

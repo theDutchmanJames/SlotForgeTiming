@@ -1,10 +1,11 @@
-// The words of the system forms with a rail (1.73.0): a Penalty system and a Damage system, and (1.74.0) a Weather system, and (1.75.0) a Tyre wear system. The form of a system has a header (the picture of the system, its name, a few pills and "Ready to use"),
+// The words of the system forms with a rail (1.73.0): a Penalty system and a Damage system, and (1.74.0) a Weather system, and (1.75.0) a Tyre wear system, and (1.76.0) a Safety car system, a Push and save system and a Fuel system. The form of a system has a header (the picture of the system, its name, a few pills and "Ready to use"),
 // a sentence "In plain words" that reads the whole system back, and a rail with a short note and a dot for every section; this file works out those words from the values of the form and nothing
 // else (no screen, no storage), so they can be tested on their own. It is the same idea as setupwords.js for a race setup, and the numbers come from the rules of the race itself: the time of a
 // penalty from engine.js (penaltyConfig, penaltyMs) and the levels of damage from damage.js (clean), so the words say what the race will do, also for a setting that is empty or wrong.
 //   v: the values of the form, by setting (every value may be text), and the lists as the form holds them while they are edited:
 //      penaltysystems: types (the special penalties)   damagesystems: levels, incidents, failures (the rows of the three tables)   weathersystems: no lists (its tables are plain numbers: the 12 of the hindrance table and the 16 conditions)
 //      tyrewearsystems: tyres, mult, sets (the three tables as the form holds them while they are edited) and disp ('m' or 'ft': the distance unit of the app)
+//      safetycarsystems, pushsavesystems, fuelrules (1.76.0): no lists, only the settings of the form
 //   ctx: { lists: { types, levels, incidents, failures: the rows a new system starts with } } (only to see what has been changed from the standard)
 //   describe -> { pills: [{ text, tone: 'hi' | '' }], say: [{ t, b }], ready: { ok, text }, notes: { section: { tone, parts } }, strip }
 //   rail     -> { section: { rail (the short note), row (the line of a section that is closed), state: 'ok' | 'todo' | 'plain' } }
@@ -26,7 +27,7 @@
   const names = list => list.map(x => x.name);
   const joinAnd = (list, word) => (list.length < 2 ? list.join('') : `${list.slice(0, -1).join(', ')} ${word} ${list[list.length - 1]}`);
   const entry = (rail, row, state) => ({ rail, row: cap(row), state });
-  const READY = { ok: { ok: true, text: 'Ready to use' }, name: { ok: false, text: 'Give it a name' }, levels: { ok: false, text: 'Red must be at or below amber' } };
+  const READY = { ok: { ok: true, text: 'Ready to use' }, name: { ok: false, text: 'Give it a name' }, levels: { ok: false, text: 'Red must be at or below amber' }, pace: { ok: false, text: 'Saving pace must be above normal' } };
 
   // what the form holds in its tables, as the form saves it (a row without a name does not count)
   const typesOf = list => (Array.isArray(list) ? list : []).filter(t => t && text(t.name).trim()).map(t => ({ name: text(t.name).trim(), kind: t.kind === 'drivethrough' ? 'drivethrough' : 'stopgo', seconds: num(t.seconds, 0), cost: num(t.cost, 0), extra: num(t.extra, 0), unserved: num(t.unserved, 0) }));
@@ -398,7 +399,161 @@
     return out;
   }
 
-  const ENTITIES = { penaltysystems: [describePenalty, railPenalty], damagesystems: [describeDamage, railDamage], weathersystems: [describeWeather, railWeather], tyrewearsystems: [describeTyreWear, railTyreWear] };
+  // ---------------------------------------------------------------- Safety car system (1.76.0)
+  // The numbers are the ones the race uses (safetycar.js, clean), so the words say what the race will do, also for a box that is empty or wrong.
+  const scar = () => (typeof module !== 'undefined' ? require('./safetycar.js') : root.SafetyCar);
+  const flagsNone = rn => (rn.mode === 'range' ? rn.max === 0 : rn.min === 0 && !(rn.mode === 'atleast' && rn.more > 0)); // (the chance is there, but no flag is drawn)
+  const FLAG_COUNT = rn => (rn.mode === 'range' ? [B(`${rn.min} to ${rn.max} flags`)] : rn.mode === 'atleast' && rn.more > 0 ? [B(`at least ${plural(rn.min, 'flag', 'flags')}`)] : [T('exactly '), B(plural(rn.min, 'flag', 'flags'))]); // (no flag at all is told before this, by flagsNone)
+  // the bar "Where in the race a flag can come": a part without flags, the part with them, a part without flags (the ticks are left out where they would run into each other)
+  function stripSafetyCar(rn) {
+    if (!rn) return null;
+    const a = round(rn.from), b = round(rn.to);
+    if (rn.chance <= 0 || flagsNone(rn)) return { parts: [], ticks: [], text: 'No race gets a flag', message: 'No race gets a flag.' }; // (on, but the chance or the number is 0)
+    if (!(b > a)) return { parts: [], ticks: [], text: `A flag can only come at ${a}% of the race`, message: `A flag can only come at ${a}% of the race.` };
+    const parts = [];
+    if (a > 0) parts.push({ name: 'No flags', left: 0, width: a, kind: 'none', step: 1, of: 2 });
+    parts.push({ name: 'Random flags can come here', left: a, width: round(b - a), kind: 'flags', step: 2, of: 2 });
+    if (b < 100) parts.push({ name: 'No flags', left: b, width: round(100 - b), kind: 'none', step: 1, of: 2 });
+    const want = [0, 100, a, b].filter((x, i, l) => l.indexOf(x) === i), keep = [];
+    want.forEach(at => { if (keep.every(k => Math.abs(k - at) >= 8)) keep.push(at); }); // (a number that would run into another one is left out)
+    return { parts, ticks: [0, a, b, 100].filter((x, i, l) => l.indexOf(x) === i).map(at => ({ at, label: `${at}%`, show: keep.includes(at), end: at === 100 })), text: `Random flags can come between ${a}% and ${b}% of the race` };
+  }
+  function describeSafetyCar(v) {
+    const SC = scar(), C = SC.clean(v), rn = C.rnd;
+    const pills = [{ text: C.target > 0 ? `Laps slower than ${SC.secText(C.target)}` : 'No limit on lap times', tone: 'hi' }, { text: C.pit > 0 ? `Pit work ${C.pit}% shorter` : 'Pit work as usual', tone: '' }];
+    if (rn) pills.push({ text: 'Random flags on', tone: '' });
+    const say = [T('The Safety Car is out while the yellow flag is up.')];
+    if (C.target > 0) say.push(T(' Cars must drive laps '), B(`slower than ${secs(C.target / 1000)}`), T(C.points > 0 ? ', and a lap that is too fast gives ' : ', and a lap that is too fast is '), B(C.points > 0 ? ppts(C.points) : 'only called out'), T('.'));
+    else say.push(T(' There is '), B('no limit'), T(' on the lap time.'));
+    say.push(T(' The work in a pit stop takes '), B(C.pit > 0 ? `${C.pit}% less time` : 'as long as usual'), T('.'));
+    if (rn && (rn.chance <= 0 || flagsNone(rn))) say.push(T(' Random yellow flags are '), B('on'), T(rn.chance <= 0 ? ', but the chance is ' : ', but the number of flags is '), B(rn.chance <= 0 ? '0%' : '0'), T(', so no race gets any.'));
+    else if (rn) {
+      const most = rn.mode === 'range' ? rn.max : rn.min, several = most > 1 || (rn.mode === 'atleast' && rn.more > 0);
+      say.push(T(' Random yellow flags are '), B('on'), T(rn.chance < 100 ? ': ' : ': every race gets '));
+      if (rn.chance < 100) say.push(B(`${round(rn.chance)}%`), T(' of the races get '));
+      say.push(...FLAG_COUNT(rn));
+      if (rn.from === rn.to) say.push(T(', at '), B(pctN(rn.from)), T(' of the race'));
+      else say.push(T(', somewhere between '), B(pctN(rn.from)), T(' and '), B(pctN(rn.to)), T(' of the race'));
+      if (several && rn.gap > 0) say.push(T(' and at least '), B(secs(rn.gap / 1000)), T(' apart'));
+      say.push(T('.'));
+      if (rn.mode === 'atleast' && rn.more > 0) say.push(T(' After that each further flag has a '), B(`${round(rn.more)}% chance`), T(', one after the other.'));
+      if (rn.end === 'director') say.push(T(' A flag stays up '), B('until the Race Director lifts it'), T('.'));
+      else say.push(T(' Each flag lasts '), B(rn.lenMax > rn.lenMin ? `between ${round(rn.lenMin / 1000)} and ${secs(rn.lenMax / 1000)}` : secs(rn.lenMin / 1000)), T(' and '), B('ends by itself'), T('.'));
+      if (rn.warn > 0) say.push(T(' A warning comes '), B(secs(rn.warn / 1000)), T(' before a flag.'));
+    }
+    const parts = [T('The Safety Car is out while the yellow flag is up. Work in the pits goes faster behind it.')];
+    if (C.target <= 0) parts.push(T(' With no limit on the lap time no lap is too fast, so no penalty points are given.'));
+    else if (C.points > 0) parts.push(T(' Penalty points need a penalty system in the race setup.'));
+    return { pills, say, ready: text(v.name).trim() ? READY.ok : READY.name, notes: { behind: { tone: 'info', parts } }, strip: stripSafetyCar(rn) };
+  }
+  const pctN = n => `${round(n)}%`;
+
+  function railSafetyCar(v, ctx) {
+    const SC = scar(), C = SC.clean(v), rn = C.rnd, out = {}, named = text(v.name).trim() !== '';
+    const d = ctx.defaults || {}, d0 = SC.DEFAULTS;
+    // a setting that is typed and is not the standard one (an empty box counts as the standard, as the race does)
+    const changed = keys => keys.some(k => { const a = text(v[k]).trim(), b = text(d[k] !== undefined ? d[k] : d0[k]).trim(); return a !== '' && num(a, a) !== num(b, b); });
+    out.behind = entry(C.target > 0 ? `Slower than ${SC.secText(C.target)}${C.points > 0 ? ` · ${pts(C.points)}` : ''}` : 'No lap limit',
+      `${C.target > 0 ? `laps slower than ${SC.secText(C.target)}${C.points > 0 ? ` (${ppts(C.points)} for a faster lap)` : ''}` : 'no limit on the lap time'}, ${C.pit > 0 ? `pit work ${C.pit}% shorter` : 'pit work as usual'}`, !named ? 'todo' : changed(['target', 'points', 'pitPercent']) ? 'ok' : 'plain');
+    if (!rn) out.flags = entry('Off', 'random yellow flags are off', 'plain');
+    else if (rn.chance <= 0 || flagsNone(rn)) out.flags = entry('On · no flag will come', `random yellow flags are on, but ${rn.chance <= 0 ? 'the chance is 0%' : 'the number of flags is 0'}, so no race gets any`, 'ok');
+    else {
+      const count = rn.mode === 'range' ? `${rn.min} to ${rn.max} flags` : rn.mode === 'atleast' && rn.more > 0 ? `At least ${rn.min}` : plural(rn.min, 'flag', 'flags');
+      const len = rn.end === 'director' ? 'until the Race Director lifts them' : rn.lenMax > rn.lenMin ? `${SC.secText(rn.lenMin)} to ${SC.secText(rn.lenMax)} each` : `${SC.secText(rn.lenMin)} each`;
+      out.flags = entry(`${count} · ${rn.from === rn.to ? `at ${pctN(rn.from)}` : `${pctN(rn.from)} to ${pctN(rn.to)}`}`, `random yellow flags: ${count.charAt(0).toLowerCase() + count.slice(1)}${rn.chance < 100 ? ` (${round(rn.chance)}% chance in a race)` : ''}, ${len}, ${rn.from === rn.to ? `at ${pctN(rn.from)}` : `between ${pctN(rn.from)} and ${pctN(rn.to)}`} of the race`, 'ok');
+    }
+    return out;
+  }
+
+  // ---------------------------------------------------------------- Push and save system (1.76.0)
+  // The numbers are the ones the race uses (pushsave.js, clean). A saving pace that is not more than the normal pace is refused by the form when it is saved (the race would make it 1 more).
+  const psv = () => (typeof module !== 'undefined' ? require('./pushsave.js') : root.PushSave);
+  const sign = n => `${round(n)}%`;
+  function pushSaveOf(v) {
+    const PS = psv(), C = PS.clean(v), a = text(v.normal).trim(), b = text(v.saveAt).trim();
+    const bad = a !== '' && b !== '' && Number.isFinite(num(a, NaN)) && Number.isFinite(num(b, NaN)) && num(b, NaN) <= num(a, NaN); // (what the form refuses when it is saved)
+    return { PS, C, bad, key: PS.presetOf(v) };
+  }
+  // the bar "The pace of a lap": from the best lap (flat out) to the normal pace (the usual wear), to the most saving pace and beyond (the wear stays as low as it gets)
+  function stripPushSave(C) {
+    const max = Math.max(C.saveAt * 1.35, C.saveAt + 2), at = n => round(n / max * 100), a = at(C.normal), b = at(C.saveAt);
+    const parts = [];
+    if (a > 0) parts.push({ name: 'Pushing', left: 0, width: a, kind: 'push', step: 1, of: 4 });
+    parts.push({ name: 'Saving more and more', left: a, width: round(b - a), kind: 'save', step: 2, of: 4 }, { name: 'Most saving', left: b, width: round(100 - b), kind: 'most', step: 3, of: 4 }); // (of is the number of coloured parts plus 1, as in the bar of the damage levels: the colour of the last part is the strongest, never more)
+    return { parts, ticks: [{ at: 0, label: 'Flat out · the best lap', show: true }, { at: a, label: `Normal · +${sign(C.normal)}`, show: a >= 24 && a <= 60 }, { at: b, label: `Most saving · +${sign(C.saveAt)}`, show: b >= 30 && (!(a >= 24 && a <= 60) || b - a >= 30) }], text: `Flat out is the best lap, normal pace is the best lap plus ${sign(C.normal)} and the most saving pace is the best lap plus ${sign(C.saveAt)}` };
+  }
+  function describePushSave(v) {
+    const { PS, C, bad } = pushSaveOf(v), t = C.tyres, f = C.fuel;
+    const pills = [{ text: `Normal: best lap + ${sign(C.normal)}`, tone: 'hi' }, { text: `Most saving: best lap + ${sign(C.saveAt)}`, tone: '' }, { text: t.on && f.on ? 'Tyres and fuel' : t.on ? 'Tyres only' : f.on ? 'Fuel only' : 'No wear changed', tone: '' }];
+    const say = [T('A car at its best lap is flat out, '), B(sign(C.normal)), T(' over it is '), B('normal pace'), T(' and '), B(sign(C.saveAt)), T(' over it is the '), B('most saving pace'), T('.')];
+    if (t.on && f.on) say.push(T(' Flat out wears the tyres '), B(`${sign(t.extra)} more`), T(' and uses '), B(`${sign(f.extra)} more fuel`), T('. The most saving pace wears them '), B(`${sign(t.save)} less`), T(' and uses '), B(`${sign(f.save)} less`), T('.'));
+    else if (t.on) say.push(T(' Flat out wears the tyres '), B(`${sign(t.extra)} more`), T(' and the most saving pace '), B(`${sign(t.save)} less`), T('. The fuel is used '), B('as usual'), T('.'));
+    else if (f.on) say.push(T(' Flat out uses '), B(`${sign(f.extra)} more fuel`), T(' and the most saving pace '), B(`${sign(f.save)} less`), T('. The tyres wear '), B('as usual'), T('.'));
+    else say.push(T(' The pace changes '), B('nothing'), T(': the tyres wear and the fuel is used as usual.'));
+    say.push(T(' The effect starts at lap '), B(String(C.from)), T(', and a lap under the yellow flag or the Safety Car '), B(C.yellowSave ? 'counts as saving' : 'counts like any other lap'), T('. A lap slower than '), B(sign(C.slow)), T(' of the best lap is no pace and wears as usual.'));
+    const notes = {};
+    if (bad) notes.pace = { tone: 'warn', parts: [T('The most saving pace, '), B(sign(num(v.saveAt, 0))), T(', has to be more than the normal pace, '), B(sign(C.normal)), T(', or the system cannot be saved.')] };
+    return { pills, say, ready: !text(v.name).trim() ? READY.name : bad ? READY.pace : READY.ok, notes, strip: stripPushSave(C) };
+  }
+  function railPushSave(v, ctx) {
+    const { PS, C, bad, key } = pushSaveOf(v), out = {}, t = C.tyres, f = C.fuel, named = text(v.name).trim() !== '';
+    const d = ctx.defaults || {}, d0 = PS.DEFAULTS;
+    const changed = keys => keys.some(k => { const a = text(v[k]).trim(), b = text(d[k] !== undefined ? d[k] : d0[k]).trim(); return a !== '' && num(a, a) !== num(b, b); });
+    out.basics = entry(key ? PS.PRESETS[key].name : 'Own numbers', key ? `the ${PS.PRESETS[key].name} numbers for the wear` : 'your own numbers for the wear', !named ? 'todo' : key === 'standard' ? 'plain' : 'ok');
+    out.pace = entry(`Normal +${sign(C.normal)} · saving +${sign(C.saveAt)}`, `normal pace is the best lap plus ${sign(C.normal)}, the most saving pace the best lap plus ${sign(C.saveAt)}`, bad ? 'todo' : changed(['normal', 'saveAt']) ? 'ok' : 'plain');
+    const side = (name, s) => (s.on ? `${name} +${sign(s.extra)} / −${sign(s.save)}` : `${name} off`);
+    out.wear = entry(`${side('Tyres', t)} · ${side('fuel', f)}`, `${t.on ? `flat out wears the tyres ${sign(t.extra)} more, the most saving pace ${sign(t.save)} less` : 'the tyres wear as usual'}; ${f.on ? `the fuel use is ${sign(f.extra)} more and ${sign(f.save)} less` : 'the fuel is used as usual'}`,
+      changed(['tyres', 'tyreExtra', 'tyreSave', 'fuel', 'fuelExtra', 'fuelSave']) ? 'ok' : 'plain');
+    out.laps = entry(`From lap ${C.from} · yellow is ${C.yellowSave ? 'saving' : 'a normal lap'}`, `the effect starts at lap ${C.from}; a lap slower than ${sign(C.slow)} of the best lap is no pace; a lap under the yellow flag or the Safety Car ${C.yellowSave ? 'counts as saving' : 'counts like any other lap'}`, changed(['from', 'slow', 'yellowSave']) ? 'ok' : 'plain');
+    return out;
+  }
+
+  // ---------------------------------------------------------------- Fuel system (1.76.0)
+  // The numbers are the ones the race uses (engine.js, fuelConfig), so the words say what the race will do, also for a box that is empty or wrong.
+  const litres = n => plural(round(n), 'litre', 'litres');
+  const EMPTY_SHORT = { retire: 'Retires', stop: 'Laps stop', warn: 'Carries on' };
+  function fuelOf(v) {
+    const F = eng().fuelConfig({}, v), laps = F.perLap > 0 ? Math.floor(F.tank / F.perLap + 1e-9) : null;
+    return { F, laps, extra: round(F.extra * 100), saving: round(F.saving * 100) };
+  }
+  function describeFuel(v) {
+    const { F, laps, extra, saving } = fuelOf(v);
+    const pills = [{ text: `${round(F.tank)} litre tank`, tone: 'hi' }, { text: F.perLap > 0 ? `${litres(F.perLap)} a lap` : 'No fuel used', tone: '' }, { text: F.perLap > 0 ? `${EMPTY_SHORT[F.empty]} when empty` : 'Never runs empty', tone: '' }];
+    const say = [T('The tank holds '), B(litres(F.tank))];
+    if (F.perLap > 0) {
+      if (F.target > 0) say.push(T(' and a car uses '), B(`${litres(F.perLap)} a lap`), T(' at the target lap time of '), B(secs(F.target / 1000)), T(', so a full tank lasts '), B(plural(laps, 'lap', 'laps')), T('.'));
+      else say.push(T(' and every lap uses '), B(litres(F.perLap)), T(', so a full tank lasts '), B(plural(laps, 'lap', 'laps')), T('.'));
+      if (F.empty === 'retire') say.push(T(' When the fuel runs out, '), B('the car retires from the race'), T('.'));
+      else if (F.empty === 'stop') say.push(T(' When the fuel runs out, '), B('laps stop counting'), T(' until the car has refuelled.'));
+      else say.push(T(' When the fuel runs out, '), B('the car carries on'), T('; a penalty system can add points for it.'));
+    } else say.push(T(', but a lap uses '), B('no fuel'), T(', so the tank never runs empty.'));
+    if (F.rate > 0) say.push(T(' Refuelling in the pits runs at '), B(`${litres(F.rate)} a second`), T('.'));
+    else say.push(T(' The pump does '), B('not run'), T(' (the speed is 0), so a stop adds no fuel.'));
+    if (F.perLap > 0) {
+      if (F.target <= 0) say.push(T(' Every lap uses the same fuel, '), B('fast or slow'), T('.'));
+      else if (extra > 0 && saving > 0) say.push(T(' A fast lap can use up to '), B(`${extra}% more`), T(' fuel and a slow lap can save up to '), B(`${saving}%`), T('.'));
+      else if (extra > 0) say.push(T(' A fast lap can use up to '), B(`${extra}% more`), T(' fuel, and a slow lap '), B('saves nothing'), T('.'));
+      else if (saving > 0) say.push(T(' A fast lap uses '), B('no more'), T(' fuel, and a slow lap can save up to '), B(`${saving}%`), T('.'));
+      else say.push(T(' Fast and slow laps make '), B('no difference'), T('.'));
+    }
+    const notes = {};
+    if (F.perLap <= 0) notes.basics = { tone: 'info', parts: [T('A lap uses no fuel, so the tank never runs empty.')] };
+    else if (laps < 1) notes.basics = { tone: 'warn', parts: [T('A full tank ('), B(litres(F.tank)), T(') holds less than one lap of fuel ('), B(litres(F.perLap)), T(').')] };
+    else notes.basics = { tone: 'good', parts: [B(`A full tank lasts ${plural(laps, 'lap', 'laps')}`), T(F.target > 0 ? ' at the target lap time.' : ', every lap uses the same.')] };
+    return { pills, say, ready: text(v.name).trim() ? READY.ok : READY.name, notes, strip: null };
+  }
+  const FUEL_STANDARD = { tank: 120, perLap: 2, targetLap: '', empty: 'retire', rate: 10, maxExtra: 25, maxSaving: 30 };
+  function railFuel(v, ctx) {
+    const { F, extra, saving } = fuelOf(v), out = {}, named = text(v.name).trim() !== '';
+    const d = { ...FUEL_STANDARD, ...(ctx.defaults || {}) }; // (the standard fuel system, when the form does not say)
+    const changed = keys => keys.some(k => { const a = text(v[k]).trim(), b = text(d[k]).trim(); return a !== '' && num(a, a) !== num(b, b); });
+    out.basics = entry(`${round(F.tank)} L · ${round(F.perLap)} L a lap`, `a tank of ${litres(F.tank)}, ${litres(F.perLap)} a lap${F.target > 0 ? ` at the target lap time of ${secs(F.target / 1000)}` : ''}`, named ? 'ok' : 'todo');
+    out.empty = entry(`${EMPTY_SHORT[F.empty]} · ${round(F.rate)} L a second`, `when the fuel runs out ${F.empty === 'retire' ? 'the car retires' : F.empty === 'stop' ? 'laps stop counting until it has refuelled' : 'the car carries on'}; refuelling runs at ${litres(F.rate)} a second`, changed(['empty', 'rate']) ? 'ok' : 'plain');
+    out.fast = entry(F.target > 0 ? `Up to +${extra}% · saves up to ${saving}%` : 'Needs a target lap time', F.target > 0 ? `a fast lap can use up to ${extra}% more fuel, a slow lap can save up to ${saving}%` : 'no target lap time, so every lap uses the same fuel', changed(['maxExtra', 'maxSaving']) ? 'ok' : 'plain');
+    return out;
+  }
+
+  const ENTITIES = { penaltysystems: [describePenalty, railPenalty], damagesystems: [describeDamage, railDamage], weathersystems: [describeWeather, railWeather], tyrewearsystems: [describeTyreWear, railTyreWear], safetycarsystems: [describeSafetyCar, railSafetyCar], pushsavesystems: [describePushSave, railPushSave], fuelrules: [describeFuel, railFuel] };
   const has = entity => Object.prototype.hasOwnProperty.call(ENTITIES, entity);
   const describe = (entity, v) => (has(entity) ? ENTITIES[entity][0](v || {}) : { pills: [], say: [], ready: READY.name, notes: {}, strip: null });
   const rail = (entity, v, ctx) => (has(entity) ? ENTITIES[entity][1](v || {}, ctx || {}) : {});

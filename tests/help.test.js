@@ -351,4 +351,10 @@ const folders = Help.folders();
   say('...and the words of the form: In plain words, Ready to use, Give it a name, Used by, the dots, the colours, and that the systems stay separate and nothing stored changes', ['In plain words', 'Ready to use', 'Give it a name', 'Used by', 'green', 'amber', 'open ring', 'yellow', 'red', 'blue', 'purple', 'Tyre Wear System', 'stay separate systems', 'does not change'].every(t => g.includes(t)));
   say('...and every folder is still short enough', folders.every(x => plain(x.body).length < 1400)); }
 
+{ const fo = folders.find(x => x.id === 'systemformsmore'), g = fo ? plain(fo.body) : '', at = id => folders.findIndex(x => x.id === id), rails = e => schema[e].rail;
+  say('1.76.0: a folder Safety car, Push and save and Fuel systems in words comes right after the folder of the other four systems, and is short', !!fo && at('systemformsmore') === at('systemforms') + 1 && g.length < 1400 && fo.title === 'Safety car, Push and save and Fuel systems in words');
+  say('...it names every section of the three forms as they are in the rail (by title), and says which ones are under Only if you need it', rails('safetycarsystems').concat(rails('pushsavesystems'), rails('fuelrules')).every(r => g.includes(r.title)) && g.includes('Only if you need it') && rails('safetycarsystems').concat(rails('pushsavesystems'), rails('fuelrules')).filter(r => r.optional).every(r => g.includes(r.title)));
+  say('...and the colours, the bars, that the systems stay separate and nothing stored changes, and the pace that cannot be saved', ['orange', 'lime', 'green', 'stay separate systems', 'does not change', 'bar', 'ready-made systems', 'cannot be saved'].every(t => g.includes(t)));
+  say('...and every folder is still short enough', folders.every(x => plain(x.body).length < 1400)); }
+
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

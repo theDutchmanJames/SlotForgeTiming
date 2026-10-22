@@ -39,6 +39,13 @@
       tyres: side(x.tyres, [DEFAULTS.tyreExtra, DEFAULTS.tyreSave]), fuel: side(x.fuel, [DEFAULTS.fuelExtra, DEFAULTS.fuelSave]) };
   }
 
+  // The ready-made system whose four wear numbers a system has ('' = its own numbers), from a record or the values of the form (1.76.0: the form marks the button of that system). An empty or unreadable
+  // box counts as the number a new system starts with, as the race does, so a system with empty boxes is the Standard one.
+  function presetOf(rec) {
+    const c = clean(rec && typeof rec === 'object' ? rec : {});
+    return PRESET_KEYS.find(k => { const p = PRESETS[k].values; return c.tyres.extra === p.tyreExtra && c.tyres.save === p.tyreSave && c.fuel.extra === p.fuelExtra && c.fuel.save === p.fuelSave; }) || '';
+  }
+
   // how many percent a lap is slower than the reference lap (0 for a lap that is as fast or faster; null when there is nothing to compare)
   const paceOf = (lapMs, refMs) => (lapMs > 0 && refMs > 0 ? Math.max(0, Math.round((lapMs / refMs - 1) * 100 * 1000) / 1000) : null);
   // the number the wear is multiplied by at a pace p (percent over the reference), for 'tyres' or 'fuel': 1 + extra at p = 0 (flat out), 1 at normal pace, 1 - saving from the most saving pace on
@@ -87,7 +94,7 @@
   const whyText = w => WHY_TEXT[w] || '';
   const sourceText = s => (s === 'record' ? 'record' : s === 'race' ? 'this race' : '');
 
-  const api = { DEFAULTS, PRESETS, PRESET_KEYS, BAND, defaults, clean, fromConfig, paceOf, mult, kind, lapEffect, kindText, pctText, multText, rangeText, rulesText, whyText, sourceText };
+  const api = { DEFAULTS, PRESETS, PRESET_KEYS, BAND, defaults, clean, fromConfig, presetOf, paceOf, mult, kind, lapEffect, kindText, pctText, multText, rangeText, rulesText, whyText, sourceText };
   root.PushSave = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
