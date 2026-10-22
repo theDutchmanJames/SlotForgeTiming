@@ -366,19 +366,39 @@ const calcHtml = pieces => `<p class="muted">Number of pieces &times; length of 
   <div class="row"><button type="button" class="btn" data-calcadd="1">Add another piece type</button> <strong id="calc-total">${Speed.lengthText(Speed.lengthFromPieces(pieces), dUnit())}</strong>
   <button type="button" class="btn primary" data-calcuse="1">Use this length</button></div>`;
 
+// The weather system (1.74.0): the bar of the weather over the race (field type 'wxtimeline': the sentence code draws the bar into rs-strip), the table of how much the wrong tyres hinder a car (type 'wxhinder', 12 numbers)
+// and the table of the conditions on the track (type 'wxcond', 16 numbers). The numbers are ordinary settings (ui 'cell', ids f-<setting>) that the table draws, so the form reads and saves them as before.
+const wxTyreName = c => (c === 'dry' ? 'Dry tyres' : c === 'inter' ? 'Intermediate' : 'Wet');
+const wxHinderTable = vals => `<div class="wxtab"><div class="wxrow wxhead muted"><span>Weather</span>${Wx.CLASSES.map(c => `<span>${wxTyreName(c)} (% hindered)</span>`).join('')}</div>`
+  + Wx.STATES.map(([st, name]) => `<div class="wxrow"><span class="wxname">${esc(name)}</span>${Wx.CLASSES.map(c => { const k = Wx.HKEYS[st + '/' + c];
+    return `<input class="wxin" id="f-${k}" type="number" step="any" min="0" max="${Wx.MAXP}" value="${esc(vals(k))}" aria-label="${esc(name)} weather, ${esc(wxTyreName(c).toLowerCase())}, percent hindered">`; }).join('')}</div>`).join('')
+  + `</div><p class="muted hint">The percentage a car on that kind of tyre is hindered in that weather: 0 is not at all, and never more than ${Wx.MAXP}%.</p>`;
+const wxCondTable = (vals, words) => {
+  // the heading of a column, with the units (they follow the choice of units: data-condunit); on a narrow screen the heading row is hidden and every number has its own small heading (wxcl)
+  const heads = { track: `Track temperature (<span data-condunit="temp">${esc(words.temp)}</span>)`, air: `Air temperature (<span data-condunit="temp">${esc(words.temp)}</span>)`, wind: `Wind speed (<span data-condunit="speed">${esc(words.speed)}</span>)`, dir: 'Wind from (degrees)' };
+  return `<div class="wxtab wxcond"><div class="wxrow wxhead muted"><span>Weather</span>${Wx.COND_ITEMS.map(([item]) => `<span>${heads[item]}</span>`).join('')}</div>`
+    + Wx.STATES.map(([st, name]) => `<div class="wxrow"><span class="wxname">${esc(name)}</span>${Wx.COND_ITEMS.map(([item, , itemName]) => { const k = Wx.CKEYS[st + '/' + item];
+      return `<label class="wxcell"><small class="wxcl">${heads[item]}</small><input class="wxin" id="f-${k}" type="number" step="any"${item === 'wind' ? ' min="0"' : item === 'dir' ? ' min="0" max="359"' : ''} value="${esc(vals(k))}" aria-label="${esc(name)}: ${esc(itemName.toLowerCase())}"></label>`; }).join('')}</div>`).join('')
+    + `</div><p class="muted hint">Where the wind comes from: 0 is north, 90 east, 180 south, 270 west.</p>`;
+};
+
 // the drivers of a team (field type 'members'): in the order they take their turn, with a list to add one more from
 const memRows = (ids, all) => `<ol class="memlist">${ids.length ? ids.map((id, i) => { const d = all.find(x => x.id === id);
   return `<li><span class="memname">${esc(d ? titleOf('drivers', d) : '(deleted)')}</span> <button type="button" class="btn" data-memup="${i}" aria-label="Move up"${i ? '' : ' disabled'}>&uarr;</button><button type="button" class="btn" data-memdown="${i}" aria-label="Move down"${i < ids.length - 1 ? '' : ' disabled'}>&darr;</button><button type="button" class="btn danger" data-memdel="${i}">Remove</button></li>`; }).join('') : '<li class="muted">No drivers in this team yet.</li>'}</ol>
   <div class="row"><select id="mem-pick" aria-label="Driver to add"><option value="">${all.some(d => !ids.includes(d.id)) ? 'Choose a driver…' : 'Every driver is in the team'}</option>${all.filter(d => !ids.includes(d.id)).map(d => `<option value="${esc(d.id)}">${esc(titleOf('drivers', d))}</option>`).join('')}</select> <button type="button" class="btn" data-memadd="1">Add to the team</button></div>`;
 
 function fieldHtml(f, v, extra) {
-  if (f.ui && FormUI.has(f.ui)) return FormUI.field(f, v, { label: f.ask || fl(f), hint: fh(f), icon: n => Icons.svg(n, { size: 18, stroke: 1.8 }), picker: SetupWords.PICKER, parts: extra && extra.parts, partner: extra && extra.partner }); // (switches, buttons, cards and boxes for a setting: 1.70.0, formui.js; a sentence with two numbers: 1.73.0)
+  if (f.ui && FormUI.has(f.ui)) return FormUI.field(f, v, { label: f.ask || fl(f), hint: fh(f), icon: n => Icons.svg(n, { size: 18, stroke: 1.8 }), picker: SetupWords.PICKER, parts: extra && extra.parts, partner: extra && extra.partner, unitWord: extra && extra.words && extra.words.unit }); // (switches, buttons, cards and boxes for a setting: 1.70.0, formui.js; a sentence with two numbers: 1.73.0)
   const id = 'f-' + f.id;
+  if (f.type === 'wxtimeline' || f.type === 'wxhinder' || f.type === 'wxcond') { // (the weather system's bar and tables, 1.74.0: a question with a small note, then the bar or the table)
+    const body = f.type === 'wxtimeline' ? '<div id="rs-strip"></div>' : f.type === 'wxhinder' ? wxHinderTable((extra && extra.value) || (() => '')) : wxCondTable((extra && extra.value) || (() => ''), (extra && extra.words) || { temp: '°C', speed: 'km/h' });
+    return `<div class="field full fu wxfield" data-key="${f.id}"><span class="fu-q">${esc(fl(f))}${f.type === 'wxtimeline' && fh(f) ? `<small class="muted">${esc(fh(f))}</small>` : ''}</span>${body}</div>`;
+  }
   const lab = `<label for="${id}">${esc(fl(f))}${f.optional ? ' <span class="muted">(optional)</span>' : ''}</label>`;
   let inp;
   switch (f.type) {
     case 'longtext': inp = `<textarea id="${id}" rows="3">${esc(v)}</textarea>`; break;
-    case 'number': inp = `<input id="${id}" type="number" step="${f.step || 'any'}"${f.min !== undefined ? ` min="${f.min}"` : ''} value="${esc(typedText(f, v) ?? v)}"${unitAttrs(f, v)}>`; if (f.suffix) inp = `<span class="inunit">${inp}<span>${esc(f.suffix)}</span></span>`; break; // (suffix: the unit in the box, 1.73.0)
+    case 'number': inp = `<input id="${id}" type="number" step="${f.step || 'any'}"${f.min !== undefined ? ` min="${f.min}"` : ''} value="${esc(typedText(f, v) ?? v)}"${unitAttrs(f, v)}>`; if (f.suffix) inp = `<span class="inunit">${inp}${FormUI.unitSpan(f.suffix, { unitWord: extra && extra.words && extra.words.unit })}</span>`; break; // (suffix: the unit in the box, 1.73.0)
     case 'date': inp = `<input id="${id}" type="date" value="${esc(v)}">`; break;
     case 'choice': inp = `<input id="${id}" list="${id}-l" value="${esc(v)}"><datalist id="${id}-l">${f.options.map(o => `<option value="${esc(o)}">`).join('')}</datalist>`; break;
     case 'list': inp = `<select id="${id}"><option value=""></option>${f.options.map(o => `<option${o === v ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select>`; break;
@@ -406,7 +426,7 @@ function fieldHtml(f, v, extra) {
     inp = f.type === 'datetime' ? `<input id="${id}" type="text" value="${esc(v ? plainDate(v) : 'Never')}" disabled>` : `<input id="${id}" type="number" value="${esc(v ?? 0)}" disabled>`;
     if (f.reset) inp = `<div class="imgrow">${inp}<button type="button" class="btn" data-svcreset="1">Reset</button></div>`;
   }
-  const wide = (['longtext', 'gallery', 'tracklength', 'image', 'penaltytypes', 'damagelevels', 'damageincidents', 'carfailures', 'tyretable', 'wxmult', 'tyresets', 'pspresets', 'members', 'cartracks'].includes(f.type) ? ' full' : '') + (['penaltytypes', 'damagelevels', 'damageincidents', 'carfailures'].includes(f.type) ? ' listfield' : ''); // (listfield: a table of rows that has a section of its own; in the rail form the section says what it is, so its name is not repeated, 1.73.0)
+  const wide = (f.full ? ' full' : '') + (['longtext', 'gallery', 'tracklength', 'image', 'penaltytypes', 'damagelevels', 'damageincidents', 'carfailures', 'tyretable', 'wxmult', 'tyresets', 'pspresets', 'members', 'cartracks'].includes(f.type) ? ' full' : '') + (['penaltytypes', 'damagelevels', 'damageincidents', 'carfailures'].includes(f.type) ? ' listfield' : ''); // (listfield: a table of rows that has a section of its own; in the rail form the section says what it is, so its name is not repeated, 1.73.0)
   return `<div class="field${wide}" data-key="${f.id}">${lab}${inp}${fh(f) ? `<span class="muted hint">${esc(fh(f))}</span>` : ''}${f.reset ? '<span class="muted hint svc-note" id="svc-note"></span>' : ''}</div>`;
 }
 
@@ -516,7 +536,11 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
   let raceMemory = startParts && startParts.kind === 'race' ? { format: startParts.format, swaps: startParts.swaps } : { format: 'one', swaps: false }; // (what the race was before another kind was chosen, so Race comes back as it was)
   const places = {}; // the numbers of a list that is shown in boxes, by setting
   fields.filter(f => f.ui === 'boxes').forEach(f => { const l = FormUI.listOf(val(f)); places[f.id] = l.length ? l : FormUI.listOf(f.default); }); // (a setup that has no list yet counts the standard one, as the race does: its boxes show it)
-  const one = f => fieldHtml(f, f.ui === 'boxes' ? FormUI.joinList(places[f.id]) : val(f), { pieces, types, members, dlevels, dincs, cfails, twt, twm, tws, twsel, twunit: (item && item.unit) || TyreWear.DEFAULTS.unit, parts: startParts, partner: f.with && fieldOf(f.with) ? { f: fieldOf(f.with), v: val(fieldOf(f.with)) } : null }) + frameBlock(f);
+  // A weather system (1.74.0): the words of the units follow the form (laps or minutes; Celsius and km/h or Fahrenheit and mph), and its two tables are drawn from the values of the numbers they hold
+  const wxWords = get => (e === 'weathersystems' ? { unit: get('unit') === 'time' ? 'minutes' : 'laps', temp: get('units') === 'imperial' ? '°F' : '°C', speed: get('units') === 'imperial' ? 'mph' : 'km/h' } : null);
+  const startWords = wxWords(k => { const g = fieldOf(k); return g ? val(g) : undefined; });
+  const valueOf = k => { const g = fieldOf(k); const x = g ? val(g) : ''; return x === undefined || x === null ? '' : x; };
+  const one = f => fieldHtml(f, f.ui === 'boxes' ? FormUI.joinList(places[f.id]) : val(f), { pieces, types, members, dlevels, dincs, cfails, twt, twm, tws, twsel, twunit: (item && item.unit) || TyreWear.DEFAULTS.unit, parts: startParts, words: startWords, value: valueOf, partner: f.with && fieldOf(f.with) ? { f: fieldOf(f.with), v: val(fieldOf(f.with)) } : null }) + frameBlock(f);
   // a schema with groups: the fields in collapsible sections with a coloured header, in the order of the groups (fields without a group of their own, such as your own fields, go last)
   const defs = Array.isArray(s.groups) && s.groups.length ? s.groups : null;
   const groups = defs ? [...defs.map(g => ({ ...g, fields: fields.filter(f => f.group === g.id) })), { id: '_more', title: 'More', note: '', fields: fields.filter(f => !defs.some(g => g.id === f.group)) }].filter(g => g.fields.length) : null;
@@ -531,7 +555,7 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
   const tileName = v => (e === 'racesetups' ? SETUP_KIND_ICON[v.sessionType] || 'racesetups' : (SETUP_LOOK[e] || [])[0] || 'racesetups'); // (the picture in the header: the kind of a race setup, the picture of a system)
   const frameWords = e === 'racesetups' ? {} : { navLabel: `The sections of this ${s.label.toLowerCase()}`, caption: 'This system', save: `Save ${s.label.toLowerCase()}`, usedNone: 'Not used yet. Choose it under Rules and systems in a race setup.', usedIcon: 'racesetups' };
   let railCurrent = sections ? (sections.find(x => opened.has(x.id)) || sections[0]).id : ''; // (the section that the rail points at: the one that was opened last)
-  const sectionBody = x => (x.groups.length === 1 && x.groups[0].id === x.id ? RailForm.grid(x.groups[0].fields.filter(f => f !== nameField).map(one).join('')) : x.groups.map(g => RailForm.sub(g.id, g.title, g.note, g.fields.map(one).join(''))).join(''));
+  const sectionBody = x => (x.groups.length === 1 && x.groups[0].id === x.id ? RailForm.grid(x.groups[0].fields.filter(f => f !== nameField).map(one).join(''), x.cols) : x.groups.map(g => RailForm.sub(g.id, g.title, g.note, g.fields.map(one).join(''))).join(''));
   dlg.innerHTML = sections ? RailForm.shell({ eyebrow: `${item ? 'Edit' : 'Add'} ${s.label.toLowerCase()}`, cls: setupToneClass(e).trim(), icon: n => Icons.svg(n, { size: 20, stroke: 1.7 }), used: usedBy,
       ...frameWords, tile: Icons.svg(tileName(e === 'racesetups' ? { sessionType: val(fieldOf('sessionType')) } : {}), { size: 26, stroke: 1.6 }), name: one(nameField),
       sections: sections.map(x => ({ id: x.id, title: x.title, ask: x.ask, icon: x.icon, open: opened.has(x.id), optional: !!x.optional, live: !!x.live, body: sectionBody(x) })) })
@@ -584,6 +608,7 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
   const refreshShown = () => {
     sayDraw();
     syncControls();
+    if (e === 'weathersystems') FormUI.syncUnits(dlg, wxWords(getValue)); // (laps or minutes, the units of the conditions)
     fields.forEach(f => { const w = dlg.querySelector(`[data-key="${f.id}"]`); if (w) w.hidden = !isShown(f, getValue); });
     if (groups) groups.forEach(g => { const el = dlg.querySelector(`[data-fg="${g.id}"]`); if (el) el.hidden = !g.fields.some(f => isShown(f, getValue)); }); // a group with nothing to show is not shown
     if (sections) sections.forEach(x => { const el = dlg.querySelector(`[data-fg="${x.id}"]`); if (el) el.hidden = !x.groups.some(g => g.fields.some(f => isShown(f, getValue))); }); // (1.71.0: nor is a section whose groups have nothing to show)
@@ -734,7 +759,7 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
     const built = {}, custom = { ...(item?.custom || {}) };
     for (const f of fields) {
       if (f.automatic) { if (!item) built[f.key] = f.type === 'datetime' ? '' : 0; continue; }
-      if (f.type === 'carstat' || f.type === 'cartracks' || f.type === 'pspresets') continue; // (worked out for the form, not kept)
+      if (f.type === 'carstat' || f.type === 'cartracks' || f.type === 'pspresets' || f.type === 'wxtimeline' || f.type === 'wxhinder' || f.type === 'wxcond') continue; // (worked out or drawn for the form, not kept)
       if (f.type === 'gallery') { built[f.key] = [...gal]; continue; }
       if (f.type === 'members') { built[f.key] = members.filter(id => (state.refs[f.ref] || []).some(x => x.id === id)); continue; }
       if (f.type === 'damagelevels') { built[f.key] = dlevels.filter(l => String(l.name || '').trim() || Number(l.from) > 0).map(l => ({ name: String(l.name || '').trim(), from: Math.max(0, Math.floor(Number(l.from)) || 0), seconds: Math.max(0, Number(l.seconds) || 0), urgency: l.urgency === 'asap' ? 'asap' : 'whenever', within: Math.max(0, Math.floor(Number(l.within)) || 0), action: Damage.ACTIONS.includes(l.action) ? l.action : 'repair' })); continue; }

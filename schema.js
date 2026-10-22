@@ -16,12 +16,12 @@ const Sc = require('./renderer/safetycar.js'); // the standard numbers of a safe
 const Ps = require('./renderer/pushsave.js'); // the standard numbers and the ready-made systems of a push and save system (one place for them)
 // the 12 numbers of the hindrance table of a weather system: the weather state by the kind of tyre
 const WX_TABLE = [];
-Wx.STATES.forEach(([state, stateName]) => Wx.CLASSES.forEach(cls => WX_TABLE.push({ key: Wx.HKEYS[state + '/' + cls], group: 'hinder', type: 'number', min: 0, default: Wx.TABLE[state][cls],
+Wx.STATES.forEach(([state, stateName]) => Wx.CLASSES.forEach(cls => WX_TABLE.push({ key: Wx.HKEYS[state + '/' + cls], group: 'hinder', ui: 'cell', type: 'number', min: 0, default: Wx.TABLE[state][cls],
   label: `${stateName} weather, ${cls === 'dry' ? 'dry' : cls === 'inter' ? 'Intermediate' : 'Wet'} tyres (% hindered)`, showIf: [{ hinder: ['on'] }] })));
 // The conditions on the track for every weather state (track temperature, air temperature, wind speed, wind direction): the Track Conditions widget shows them and the audio says them
-const WX_COND = [{ key: 'units', group: 'conditions', label: 'Units', type: 'select', default: Wx.DEFAULTS.units, options: [['metric', 'Degrees Celsius and kilometres per hour'], ['imperial', 'Degrees Fahrenheit and miles per hour']],
+const WX_COND = [{ key: 'units', group: 'conditions', label: 'Units', ui: 'seg', type: 'select', default: Wx.DEFAULTS.units, options: [['metric', 'Celsius and km/h'], ['imperial', 'Fahrenheit and mph']],
   hint: 'The numbers below are in these units (changing the units does not convert them). A Track Conditions widget can show the other units.' }];
-Wx.STATES.forEach(([state, stateName]) => Wx.COND_ITEMS.forEach(([item, , itemName]) => WX_COND.push({ key: Wx.CKEYS[state + '/' + item], group: 'conditions', type: 'number', ...(item === 'wind' ? { min: 0 } : item === 'dir' ? { min: 0, max: 359 } : {}), default: Wx.COND[state][item],
+Wx.STATES.forEach(([state, stateName]) => Wx.COND_ITEMS.forEach(([item, , itemName]) => WX_COND.push({ key: Wx.CKEYS[state + '/' + item], group: 'conditions', ui: 'cell', type: 'number', ...(item === 'wind' ? { min: 0 } : item === 'dir' ? { min: 0, max: 359 } : {}), default: Wx.COND[state][item],
   label: `${stateName}: ${itemName.toLowerCase()}${item === 'dir' ? ' (degrees, where the wind comes from)' : ''}`, ...(item === 'dir' && state === 'dry' ? { hint: 'Where the wind comes from: 0 is north, 90 east, 180 south, 270 west.' } : {}) })));
 module.exports = {
   tracks: {
@@ -594,44 +594,58 @@ module.exports = {
     groups: [
       { id: 'basics', title: 'Basics', note: 'Name, and whether the weather is counted in laps or in minutes', open: true },
       { id: 'forecast', title: 'The rain', note: 'When it starts and how long it lasts, with the clouds before and the drying after', open: true },
-      { id: 'tyres', title: 'Tyres and penalties', note: 'Which tyres a pit stop gives, and the points for staying on the wrong tyres', open: true },
-      { id: 'hinder', title: 'Hindering the cars', note: 'How much slower the wrong tyres make a car (through its fuel use, refuelling and tank)' },
+      { id: 'tyres', title: 'Tyres and penalties', note: 'Which tyres a pit stop gives, and the points for staying on the wrong tyres' },
+      { id: 'hinder', title: 'Hindering the cars', note: 'How much slower the wrong tyres make a car (through its fuel use, refuelling and tank)', open: true },
       { id: 'conditions', title: 'Track conditions', note: 'Track and air temperature, wind speed and direction for every weather state (shown by the Track Conditions widget, said by the audio)' }
     ],
+    // The form of a weather system has a rail (1.74.0), as the forms of the Penalty and Damage systems do; see penaltysystems.rail. cols: 3 puts three settings on a row (the three switches of Hindering the cars).
+    rail: [
+      { id: 'basics', title: 'Basics', ask: 'Is the weather counted in laps or in minutes?', icon: 'clock', open: true, groups: ['basics'] },
+      { id: 'forecast', title: 'The rain', ask: 'When does it start, and how long does it last?', icon: 'weather', open: true, groups: ['forecast'] },
+      { id: 'tyres', title: 'Tyres and penalties', ask: 'Which tyres does a pit stop give, and what does staying on the wrong ones cost?', icon: 'tyre', groups: ['tyres'] },
+      { id: 'hinder', title: 'Hindering the cars', ask: 'How much slower do the wrong tyres make a car?', icon: 'wind', optional: true, open: true, cols: 3, groups: ['hinder'] },
+      { id: 'conditions', title: 'Track conditions', ask: 'How warm and how windy is it in each kind of weather?', icon: 'thermo', optional: true, groups: ['conditions'] }
+    ],
+    used: { entity: 'racesetups', key: 'weather' },
     fields: [
-      { key: 'name', group: 'basics', label: 'Name', type: 'text' },
-      { key: 'unit', group: 'basics', label: 'Counted in', type: 'select', default: 'laps', options: [['laps', 'Laps of the leader'], ['time', 'Minutes of racing']],
-        hint: 'Laps: the weather changes when the leading car has driven that many laps. Minutes: it changes at that time in the race (a paused race does not count). Every number below is in laps or in minutes, as chosen here.' },
-      { key: 'startMode', group: 'forecast', label: 'The rain starts', type: 'select', default: 'point', options: [['point', 'At a set moment'], ['random', 'At a random moment (between two limits)'], ['director', 'Only when the Race Director says so']],
+      { key: 'name', group: 'basics', label: 'Name', type: 'text', placeholder: 'Name this weather system' },
+      { key: 'unit', group: 'basics', label: 'Counted in', ui: 'seg', type: 'select', default: 'laps', options: [['laps', 'Laps of the leader'], ['time', 'Minutes of racing']],
+        hint: 'Laps: the weather changes when the leading car has driven that many laps. Minutes: it changes at that time in the race (a paused race does not count). Every number below that says laps or minutes follows this choice.' },
+      { key: 'wxLine', group: 'forecast', label: 'The weather of this race', type: 'wxtimeline', hint: 'It follows the numbers you type' }, // (the bar: drawn by the form, not a setting)
+      { key: 'startMode', group: 'forecast', label: 'The rain starts', ui: 'cards', type: 'select', default: 'point', icons: { point: 'clock', random: 'dice', director: 'racesetups' },
+        options: [['point', 'At a set moment', 'You choose the moment. It is the same every race.'], ['random', 'At a random moment', 'Somewhere between two limits you choose.'], ['director', 'Only when the Race Director says so', 'Nobody knows when it comes.']],
         hint: 'A set or random moment: the forecast decides, and the Race Director only watches. Only when the Race Director says so: nothing happens by itself, he sets Dry, Cloudy, Wet or Clearing with the buttons on the Director page.' },
-      { key: 'startAt', group: 'forecast', label: 'The rain starts after (laps or minutes)', type: 'number', min: 0, default: Wx.DEFAULTS.startAt, showIf: [{ startMode: ['point'] }],
+      { key: 'startAt', group: 'forecast', label: 'The rain starts after', ui: 'sentence', sentence: ['The rain starts after', '{unit}', '', ''], type: 'number', min: 0, default: Wx.DEFAULTS.startAt, showIf: [{ startMode: ['point'] }],
         hint: 'Rain after 8 laps means after the leading car has completed 8 laps. 0 is rain from the start.' },
-      { key: 'startFrom', group: 'forecast', label: 'The rain starts at the earliest after (laps or minutes)', type: 'number', min: 0, default: Wx.DEFAULTS.startFrom, showIf: [{ startMode: ['random'] }] },
-      { key: 'startTo', group: 'forecast', label: 'The rain starts at the latest after (laps or minutes)', type: 'number', min: 0, default: Wx.DEFAULTS.startTo, showIf: [{ startMode: ['random'] }] },
-      { key: 'rainMode', group: 'forecast', label: 'The rain lasts', type: 'select', default: 'fixed', options: [['fixed', 'A set time'], ['random', 'A random time (between two limits)']], showIf: [{ startMode: ['point', 'random'] }] },
-      { key: 'rainFor', group: 'forecast', label: 'The rain lasts (laps or minutes)', type: 'number', min: 1, default: Wx.DEFAULTS.rainFor, showIf: [{ startMode: ['point', 'random'], rainMode: ['fixed'] }] },
-      { key: 'rainMin', group: 'forecast', label: 'The rain lasts at least (laps or minutes)', type: 'number', min: 1, default: Wx.DEFAULTS.rainMin, showIf: [{ startMode: ['point', 'random'], rainMode: ['random'] }] },
-      { key: 'rainMax', group: 'forecast', label: 'The rain lasts at most (laps or minutes)', type: 'number', min: 1, default: Wx.DEFAULTS.rainMax, showIf: [{ startMode: ['point', 'random'], rainMode: ['random'] }] },
-      { key: 'cloudyFor', group: 'forecast', label: 'Cloudy before the rain (laps or minutes, 0 = none)', type: 'number', min: 0, default: Wx.DEFAULTS.cloudyFor, showIf: [{ startMode: ['point', 'random'] }],
+      { key: 'startFrom', group: 'forecast', label: 'The rain starts at the earliest after', ui: 'sentence', sentence: ['The rain starts at the earliest after', '{unit}', 'and at the latest after', '{unit}'], with: 'startTo', type: 'number', min: 0, default: Wx.DEFAULTS.startFrom, showIf: [{ startMode: ['random'] }] },
+      { key: 'startTo', group: 'forecast', label: 'The rain starts at the latest after', ui: 'with', type: 'number', min: 0, default: Wx.DEFAULTS.startTo, showIf: [{ startMode: ['random'] }] },
+      { key: 'rainMode', group: 'forecast', label: 'The rain lasts', ui: 'seg', type: 'select', default: 'fixed', options: [['fixed', 'A set time'], ['random', 'A random time (between two limits)']], showIf: [{ startMode: ['point', 'random'] }] },
+      { key: 'rainFor', group: 'forecast', label: 'The rain lasts', ui: 'sentence', sentence: ['The rain lasts', '{unit}', '', ''], type: 'number', min: 1, default: Wx.DEFAULTS.rainFor, showIf: [{ startMode: ['point', 'random'], rainMode: ['fixed'] }] },
+      { key: 'rainMin', group: 'forecast', label: 'The rain lasts at least', ui: 'sentence', sentence: ['The rain lasts at least', '{unit}', 'and at most', '{unit}'], with: 'rainMax', type: 'number', min: 1, default: Wx.DEFAULTS.rainMin, showIf: [{ startMode: ['point', 'random'], rainMode: ['random'] }] },
+      { key: 'rainMax', group: 'forecast', label: 'The rain lasts at most', ui: 'with', type: 'number', min: 1, default: Wx.DEFAULTS.rainMax, showIf: [{ startMode: ['point', 'random'], rainMode: ['random'] }] },
+      { key: 'cloudyFor', group: 'forecast', label: 'Cloudy before the rain (0 = none)', type: 'number', min: 0, suffix: '{unit}', default: Wx.DEFAULTS.cloudyFor, showIf: [{ startMode: ['point', 'random'] }],
         hint: 'The warning: the sky clouds over before the rain starts. A pit stop in Cloudy puts Wet (or Intermediate) tyres on the car. If the rain starts sooner than this, it is cloudy from the start.' },
-      { key: 'clearingFor', group: 'forecast', label: 'Clearing after the rain (laps or minutes, 0 = none)', type: 'number', min: 0, default: Wx.DEFAULTS.clearingFor, showIf: [{ startMode: ['point', 'random'] }],
+      { key: 'clearingFor', group: 'forecast', label: 'Clearing after the rain (0 = none)', type: 'number', min: 0, suffix: '{unit}', default: Wx.DEFAULTS.clearingFor, showIf: [{ startMode: ['point', 'random'] }],
         hint: 'The rain has stopped and the track is drying. A pit stop in Clearing puts the dry tyres back (or Intermediate). Cars do not have to change yet.' },
-      { key: 'sameInHeats', group: 'forecast', label: 'In every heat', type: 'select', default: 'same', options: [['same', 'The same weather in every heat'], ['new', 'New random weather in every heat']], showIf: [{ startMode: ['random'] }, { startMode: ['point'], rainMode: ['random'] }],
+      { key: 'sameInHeats', group: 'forecast', label: 'In every heat', ui: 'seg', type: 'select', default: 'same', options: [['same', 'The same weather in every heat'], ['new', 'New random weather in every heat']], showIf: [{ startMode: ['random'] }, { startMode: ['point'], rainMode: ['random'] }],
         hint: 'Only used when something is random. The same weather keeps the heats fair.' },
-      { key: 'cloudyTyre', group: 'tyres', label: 'A pit stop in Cloudy gives', type: 'select', default: 'wet', options: [['wet', 'Wet tyres'], ['inter', 'Intermediate tyres']] },
-      { key: 'clearingTyre', group: 'tyres', label: 'A pit stop in Clearing gives', type: 'select', default: 'dry', options: [['dry', 'The tyres of the car (dry)'], ['inter', 'Intermediate tyres']] },
-      { key: 'react', group: 'tyres', label: 'Laps to change tyres when the weather asks for it', type: 'number', min: 0, default: Wx.DEFAULTS.react,
+      { key: 'cloudyTyre', group: 'tyres', label: 'A pit stop in Cloudy gives', ui: 'seg', type: 'select', default: 'wet', options: [['wet', 'Wet tyres'], ['inter', 'Intermediate tyres']] },
+      { key: 'clearingTyre', group: 'tyres', label: 'A pit stop in Clearing gives', ui: 'seg', type: 'select', default: 'dry', options: [['dry', 'The tyres of the car (dry)'], ['inter', 'Intermediate tyres']] },
+      { key: 'react', group: 'tyres', label: 'Laps to change tyres when the weather asks for it', full: true, type: 'number', min: 0, suffix: 'laps', default: Wx.DEFAULTS.react,
         hint: 'When it rains a car on dry tyres has to come into the pits within this many laps; when it is dry again a car on Wet or Intermediate tyres has to. A car that does not is given the points below. Cloudy and Clearing ask for nothing.' },
-      { key: 'wetPoints', group: 'tyres', label: 'Penalty points for not switching to Wet tyres', type: 'number', min: 0, default: Wx.DEFAULTS.wetPoints, hint: 'Needs a penalty system in the race setup. Without one the car is only called out and hindered. 0 = no points.' },
-      { key: 'dryPoints', group: 'tyres', label: 'Penalty points for not switching back to dry tyres', type: 'number', min: 0, default: Wx.DEFAULTS.dryPoints },
-      { key: 'repeat', group: 'tyres', label: 'The points are given', type: 'select', default: 'once', options: [['once', 'Once'], ['every', 'For every lap until the car has changed tyres']] },
-      { key: 'hinder', group: 'hinder', label: 'Hinder cars on the wrong tyres', type: 'select', default: 'on', options: [['on', 'Yes: they use more fuel and refuel slower (needs a Fuel system)'], ['off', 'No']],
-        hint: 'Works like Balance of Power: a hindered car uses more fuel a lap and refuels slower, and together with Balance of Power the percentages are added (never more than 90%). It stops when the car has the right tyres. Cars that are hindered are shown on the Director page.' },
-      { key: 'hUse', group: 'hinder', label: 'Hinder the fuel use', type: 'select', default: 'on', options: [['on', 'Yes'], ['off', 'No']], showIf: [{ hinder: ['on'] }] },
-      { key: 'hRate', group: 'hinder', label: 'Hinder the refuelling speed', type: 'select', default: 'on', options: [['on', 'Yes'], ['off', 'No']], showIf: [{ hinder: ['on'] }] },
-      { key: 'hTank', group: 'hinder', label: 'Make the tank smaller', type: 'select', default: 'off', options: [['off', 'No'], ['on', 'Yes']], showIf: [{ hinder: ['on'] }] },
+      { key: 'wetPoints', group: 'tyres', label: 'Penalty points for not switching to Wet tyres', type: 'number', min: 0, suffix: 'points', default: Wx.DEFAULTS.wetPoints, hint: 'Needs a penalty system in the race setup. Without one the car is only called out and hindered. 0 = no points.' },
+      { key: 'dryPoints', group: 'tyres', label: 'Penalty points for not switching back to dry tyres', type: 'number', min: 0, suffix: 'points', default: Wx.DEFAULTS.dryPoints },
+      { key: 'repeat', group: 'tyres', label: 'The points are given', full: true, ui: 'seg', type: 'select', default: 'once', options: [['once', 'Once'], ['every', 'For every lap until the car has changed tyres']] },
+      { key: 'hinder', group: 'hinder', label: 'Hinder cars on the wrong tyres', ask: 'Hinder cars on the wrong tyres', ui: 'switch', on: 'on', type: 'select', default: 'on', options: [['on', 'Yes: they use more fuel and refuel slower (needs a Fuel system)'], ['off', 'No']],
+        hint: 'They use more fuel and refuel slower (needs a Fuel system). It works like Balance of Power: together with Balance of Power the percentages are added (never more than 90%). It stops when the car has the right tyres. Cars that are hindered are shown on the Director page.' },
+      { key: 'hUse', group: 'hinder', label: 'Hinder the fuel use', ask: 'Hinder the fuel use', ui: 'switch', on: 'on', third: true, type: 'select', default: 'on', options: [['on', 'Yes'], ['off', 'No']], showIf: [{ hinder: ['on'] }] },
+      { key: 'hRate', group: 'hinder', label: 'Hinder the refuelling speed', ask: 'Hinder the refuelling speed', ui: 'switch', on: 'on', third: true, type: 'select', default: 'on', options: [['on', 'Yes'], ['off', 'No']], showIf: [{ hinder: ['on'] }] },
+      { key: 'hTank', group: 'hinder', label: 'Make the tank smaller', ask: 'Make the tank smaller', ui: 'switch', on: 'on', third: true, type: 'select', default: 'off', options: [['off', 'No'], ['on', 'Yes']], showIf: [{ hinder: ['on'] }] },
+      { key: 'wxHinder', group: 'hinder', label: 'How much the wrong tyres hinder a car', type: 'wxhinder', showIf: [{ hinder: ['on'] }] }, // (the table of the 12 numbers: drawn by the form, the numbers are the settings below)
       ...WX_TABLE,
-      ...WX_COND
+      WX_COND[0],
+      { key: 'wxCond', group: 'conditions', label: 'The conditions in every kind of weather', type: 'wxcond' }, // (the table of the 16 numbers: drawn by the form)
+      ...WX_COND.slice(1)
     ]
   },
   // Timing page layouts, built in the layout editor (Customization > Layout Editor).

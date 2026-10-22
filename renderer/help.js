@@ -155,12 +155,12 @@ const Help = (() => {
           <li>On the race screen and the Race Director page the folder <b>Car Failures</b> can <b>Give</b> a car a failure (chosen, or at random) or <b>Clear</b> it; clearing also brings back a car a failure retired.</li>
           <li>The widget <b>Car Failure</b> (folder <b>Slotcar</b>), <b>{failure}</b> in texts, the audio folder <b>Car Failures</b>, the log and the results show it.</li>
         </ul>` },
-      { id: 'systemforms', title: 'Penalty and Damage systems in words', note: 'The form with a rail, in the colour of the system', body: `
+      { id: 'systemforms', title: 'Penalty, Damage and Weather systems in words', note: 'The form with a rail, in the colour of the system', body: `
         <ul>
-          <li>The form of a <b>Penalty System</b> and of a <b>Damage System</b> looks like the form of a race setup, in the colour the system has on its tab: yellow for penalties, red for damage. They stay two separate systems.</li>
+          <li>The form of a <b>Penalty System</b>, a <b>Damage System</b> and a <b>Weather System</b> looks like the form of a race setup, in the colour the system has on its tab: yellow for penalties, red for damage, blue for weather. They stay separate systems.</li>
           <li>At the top: the name (type it there), pills with the main facts, and <b>Ready to use</b> (green) or <b>Give it a name</b> (amber). <b>In plain words</b> reads the whole system back to you and changes while you type.</li>
-          <li>The <b>rail</b> has a row for each section with a short note and a dot: green is filled in or changed from the standard, amber is something missing, an open ring is nothing changed. Penalty: Basics, Special penalties, and Disqualification and fuel. Damage: Basics, Levels, Incidents, and under <b>Only if you need it</b> Car failures and Penalty points.</li>
-          <li><b>Used by</b> (under the rail) lists the race setups that use the system. The Penalty form says what 12 points come to in seconds; the Damage form draws the levels as a bar.</li>
+          <li>The <b>rail</b> has a row for each section with a short note and a dot: green is filled in or changed from the standard, amber is something missing, an open ring is nothing changed. Penalty: Basics, Special penalties, Disqualification and fuel. Damage: Basics, Levels, Incidents, and under <b>Only if you need it</b> Car failures and Penalty points. Weather: Basics, The rain, Tyres and penalties, and under <b>Only if you need it</b> Hindering the cars and Track conditions.</li>
+          <li><b>Used by</b> lists the race setups that use the system. The Penalty form says what 12 points come to in seconds, the Damage form draws the levels as a bar, the Weather form draws the weather over the race (Dry, Cloudy, Wet, Clearing) in laps or minutes.</li>
           <li>What is stored does not change, so every system opens as it was.</li>
         </ul>` },
       { id: 'heatresults', title: 'Heat results', note: 'How the heats add up', body: `

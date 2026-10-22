@@ -1,9 +1,9 @@
-// The words of the system forms with a rail (1.73.0): a Penalty system and a Damage system. The form of a system has a header (the picture of the system, its name, a few pills and "Ready to use"),
+// The words of the system forms with a rail (1.73.0): a Penalty system and a Damage system, and (1.74.0) a Weather system. The form of a system has a header (the picture of the system, its name, a few pills and "Ready to use"),
 // a sentence "In plain words" that reads the whole system back, and a rail with a short note and a dot for every section; this file works out those words from the values of the form and nothing
 // else (no screen, no storage), so they can be tested on their own. It is the same idea as setupwords.js for a race setup, and the numbers come from the rules of the race itself: the time of a
 // penalty from engine.js (penaltyConfig, penaltyMs) and the levels of damage from damage.js (clean), so the words say what the race will do, also for a setting that is empty or wrong.
 //   v: the values of the form, by setting (every value may be text), and the lists as the form holds them while they are edited:
-//      penaltysystems: types (the special penalties)   damagesystems: levels, incidents, failures (the rows of the three tables)
+//      penaltysystems: types (the special penalties)   damagesystems: levels, incidents, failures (the rows of the three tables)   weathersystems: no lists (its tables are plain numbers: the 12 of the hindrance table and the 16 conditions)
 //   ctx: { lists: { types, levels, incidents, failures: the rows a new system starts with } } (only to see what has been changed from the standard)
 //   describe -> { pills: [{ text, tone: 'hi' | '' }], say: [{ t, b }], ready: { ok, text }, notes: { section: { tone, parts } }, strip }
 //   rail     -> { section: { rail (the short note), row (the line of a section that is closed), state: 'ok' | 'todo' | 'plain' } }
@@ -11,6 +11,7 @@
 (function (root) {
   const eng = () => (typeof module !== 'undefined' ? require('./engine.js') : root.RaceEngine);
   const dmg = () => (typeof module !== 'undefined' ? require('./damage.js') : root.Damage);
+  const wx = () => (typeof module !== 'undefined' ? require('./weather.js') : root.Wx);
 
   const text = v => (typeof v === 'string' ? v : typeof v === 'number' && Number.isFinite(v) ? String(v) : ''); // (anything that is not text or a number is nothing)
   const round = n => Math.round(n * 100) / 100;
@@ -18,6 +19,7 @@
   const cap = s => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
   const secs = n => plural(round(n), 'second', 'seconds');
   const pts = n => plural(n, 'point', 'points');
+  const ppts = n => plural(n, 'penalty point', 'penalty points');
   const T = t => ({ t: String(t) }), B = t => ({ t: String(t), b: true });
   const num = (v, d) => { const s = text(v).trim().replace(',', '.'); return s !== '' && Number.isFinite(Number(s)) ? Number(s) : d; };
   const names = list => list.map(x => x.name);
@@ -185,7 +187,112 @@
     return out;
   }
 
-  const ENTITIES = { penaltysystems: [describePenalty, railPenalty], damagesystems: [describeDamage, railDamage] };
+  // ---------------------------------------------------------------- Weather system (1.74.0)
+  // The numbers are the ones the race uses (weather.js, clean), so the words say what the race will do, also for a setting that is empty or wrong.
+  const UNITS = { laps: ['lap', 'laps'], time: ['minute', 'minutes'] };
+  function weatherOf(v) {
+    const W = wx().clean(v, 0), u = UNITS[W.unit], laps = W.unit === 'laps';
+    const amount = n => plural(round(n), u[0], u[1]); // 8 laps, 1 lap, 1.5 minutes
+    const span = (a, b) => (a === b ? amount(a) : `${round(a)}–${amount(b)}`); // 5–12 laps
+    const between = (a, b) => (a === b ? amount(a) : `${round(a)} and ${amount(b)}`); // 5 and 12 laps
+    // a range with the same number at both ends is not random (the race draws that number every time)
+    const rs = W.start.mode === 'random' && W.start.from !== W.start.to, rr = W.rain.mode === 'random' && W.rain.min !== W.rain.max, director = W.start.mode === 'director';
+    return { W, laps, amount, span, between, random: rs || rr, rs, rr, director };
+  }
+  // the bar of the weather over the race: Dry, Cloudy, Wet, Clearing, Dry, as long as the numbers say (a random moment or length is drawn in the middle)
+  function stripWeather(o) {
+    const { W, laps, random } = o;
+    if (o.director) return { parts: [], ticks: [], message: 'No forecast: the Race Director sets the weather with the buttons.', text: 'The Race Director sets the weather.' };
+    const S = W.start, R = W.rain, mid = (a, b) => (a + b) / 2;
+    const plan = wx().plan({ ...W, start: { mode: 'point', at: S.mode === 'random' ? mid(S.from, S.to) : S.at }, rain: { mode: 'fixed', for: R.mode === 'random' ? mid(R.min, R.max) : R.for } }, 0);
+    const inUnit = a => (laps ? a : Math.round(a / 600) / 100); // (the minutes of a plan are milliseconds)
+    const stages = plan.stages.map(s => ({ state: s.state, from: inUnit(s.at) }));
+    if (stages[0].from > 0) stages.unshift({ state: 'dry', from: 0 });
+    const lastAt = stages[stages.length - 1].from, tail = laps ? Math.max(1, Math.round(lastAt / 4)) : Math.max(0.5, round(lastAt / 4)), total = lastAt + tail;
+    const parts = stages.map((s, i) => ({ name: wx().stateName(s.state), kind: s.state, from: s.from, left: round(s.from / total * 100), width: round(((i < stages.length - 1 ? stages[i + 1].from : total) - s.from) / total * 100) }));
+    const ticks = parts.map(p => ({ at: p.left, label: String(round(p.from)), show: true }));
+    let shown = -100; ticks.forEach(t => { if (t.at - shown >= 5) shown = t.at; else t.show = false; });
+    return { parts, ticks, tone: 'weather', center: true, unit: laps ? 'laps of the leader' : 'minutes of racing', note: random ? 'A random moment or length is drawn in the middle here. Every race draws its own.' : '',
+      text: `The weather over the race, in ${laps ? 'laps of the leader' : 'minutes of racing'}: ${parts.map(p => `${p.name} from ${round(p.from)}`).join(', ')}.` };
+  }
+
+  function describeWeather(v) {
+    const o = weatherOf(v), { W, laps, amount, span, between, random, rs, rr, director } = o, S = W.start, R = W.rain;
+    const pills = [{ text: director ? 'The Race Director decides' : S.mode === 'random' ? `Rain after ${span(S.from, S.to)}` : S.at > 0 ? `Rain after ${amount(S.at)}` : 'Rain from the start', tone: 'hi' }];
+    if (!director) pills.push({ text: R.mode === 'random' ? `Lasts ${span(R.min, R.max)}` : `Lasts ${amount(R.for)}`, tone: '' });
+    if (!director) pills.push({ text: `Counted in ${laps ? 'laps' : 'minutes'}`, tone: '' });
+    if (!director) pills.push({ text: random && !W.same ? 'New weather in every heat' : 'Same in every heat', tone: '' });
+    const say = [];
+    if (director) say.push(T('The weather changes '), B('only when the Race Director says so'), T(': he sets Dry, Cloudy, Wet or Clearing with the buttons on the Director page, so the numbers for a forecast are not used.'));
+    else {
+      say.push(T('The weather is counted in '), B(laps ? 'laps' : 'minutes'), T(laps ? ' of the leader. ' : ' of racing. '));
+      if (rs) say.push(T('The rain starts at a random moment between '), B(between(S.from, S.to)));
+      else if (S.mode === 'random') say.push(T('The rain starts after '), B(amount(S.from)));
+      else if (S.at > 0) say.push(T('The rain starts after '), B(amount(S.at)));
+      else say.push(T('The rain starts '), B('at the start of the race'));
+      if (rr) say.push(T(' and lasts a random time between '), B(between(R.min, R.max)));
+      else say.push(T(' and lasts '), B(amount(R.mode === 'random' ? R.min : R.for)));
+      if (W.cloudy > 0 && W.clearing > 0) say.push(T(', with '), B(amount(W.cloudy)), T(' of cloud before it and '), B(amount(W.clearing)), T(' of clearing after it.'));
+      else if (W.cloudy > 0) say.push(T(', with '), B(amount(W.cloudy)), T(' of cloud before it and no clearing after it.'));
+      else if (W.clearing > 0) say.push(T(', with no cloud before it and '), B(amount(W.clearing)), T(' of clearing after it.'));
+      else say.push(T(', with no cloud before it and no clearing after it.'));
+      say.push(T(' Every heat '), ...(random && !W.same ? [T('gets '), B('new random weather')] : [T('has '), B('the same weather')]), T('.'));
+    }
+    // the tyres: how long a car has to change, and what staying on the wrong ones costs
+    say.push(T(W.react === 0 ? ' A car has to change tyres ' : ' A car has '), B(W.react === 0 ? 'at once' : plural(W.react, 'lap', 'laps')), T(W.react === 0 ? ' when the weather asks for it' : ' to change tyres when the weather asks for it'));
+    const rep = W.repeat === 'every' ? 'every lap' : 'once', wp = W.wetPoints, dp = W.dryPoints, onDry = ' for staying on dry tyres in the rain', onWet = ' for staying on wet tyres when the track is dry again';
+    if (wp === 0 && dp === 0) say.push(T(', but staying on the wrong ones costs '), B('no points'), T('.'));
+    else if (wp === dp) say.push(T(', and gets '), B(ppts(wp)), T(', '), B(rep), T(', for staying on the wrong ones.'));
+    else if (wp > 0 && dp > 0) say.push(T(', and gets '), B(ppts(wp)), T(onDry + ' and '), B(ppts(dp)), T(onWet + ', '), B(rep), T('.'));
+    else say.push(T(', and gets '), B(ppts(wp > 0 ? wp : dp)), T(wp > 0 ? onDry : onWet), T(', '), B(rep), T(' (the other costs no points).'));
+    // the hindrance
+    if (!W.hinder) say.push(T(' The wrong tyres '), B('do not hinder'), T(' the cars.'));
+    else {
+      const lv = [W.levers.use && 'use more fuel', W.levers.rate && 'refuel slower', W.levers.tank && 'have a smaller tank'].filter(Boolean);
+      if (!lv.length) say.push(T(' The wrong tyres hinder '), B('nothing'), T(' (all three ways are off).'));
+      else { say.push(T(' The wrong tyres also make a car ')); lv.forEach((x, i) => { if (i) say.push(T(i === lv.length - 1 ? ' and ' : ', ')); say.push(B(x)); }); say.push(T('.')); }
+    }
+    return { pills, say, ready: text(v.name).trim() ? READY.ok : READY.name, notes: {}, strip: stripWeather(o) };
+  }
+
+  function railWeather(v, ctx) {
+    const o = weatherOf(v), { W, laps, amount, span, director } = o, S = W.start, R = W.rain, out = {}, named = text(v.name).trim() !== '';
+    const d = ctx.defaults || wx().DEFAULTS, X = wx();
+    // a setting that is typed and is not the standard one (an empty box counts as the standard, as the race does)
+    const changed = keys => keys.some(k => { const a = text(v[k]).trim(), b = text(d[k]).trim(); return a !== '' && num(a, a) !== num(b, b); });
+    // Basics
+    out.basics = entry(`Counted in ${laps ? 'laps' : 'minutes'}`, `counted in ${laps ? 'laps of the leader' : 'minutes of racing'}`, named ? 'ok' : 'todo');
+    // The rain
+    {
+      const first = director ? '' : S.mode === 'random' ? `after ${span(S.from, S.to)}` : S.at > 0 ? `after ${amount(S.at)}` : 'from the start';
+      const len = director ? '' : R.mode === 'random' ? `lasts ${span(R.min, R.max)}` : `lasts ${amount(R.for)}`;
+      out.forecast = entry(director ? 'Race Director decides' : `${cap(first)} · ${len}`, director ? 'the Race Director sets the weather with the buttons' : `${first === 'from the start' ? 'the rain is there from the start' : `the rain starts ${first}`} and ${len}, ${W.cloudy > 0 ? amount(W.cloudy) : 'no'} of cloud before and ${W.clearing > 0 ? amount(W.clearing) : 'no'} of clearing after`,
+        changed(['startMode', 'startAt', 'startFrom', 'startTo', 'rainMode', 'rainFor', 'rainMin', 'rainMax', 'cloudyFor', 'clearingFor', 'sameInHeats']) ? 'ok' : 'plain');
+    }
+    // Tyres and penalties
+    {
+      const tyreOf = k => (k === 'inter' ? 'Intermediate' : 'Wet'), pen = W.wetPoints === W.dryPoints ? (W.wetPoints > 0 ? `${ppts(W.wetPoints)}, ${W.repeat === 'every' ? 'every lap' : 'once'}` : 'no penalty points') : `${ppts(W.wetPoints)} for Wet, ${ppts(W.dryPoints)} for dry, ${W.repeat === 'every' ? 'every lap' : 'once'}`;
+      const rail = W.wetPoints === W.dryPoints ? (W.wetPoints > 0 ? `Wet ${pts(W.wetPoints)} · dry ${pts(W.dryPoints)}` : 'No penalty points') : `Wet ${pts(W.wetPoints)} · dry ${pts(W.dryPoints)}`;
+      out.tyres = entry(rail, `${W.cloudyTyre === 'inter' && W.clearingTyre === 'inter' ? 'a pit stop in Cloudy or Clearing gives Intermediate tyres' : `a pit stop in Cloudy gives ${tyreOf(W.cloudyTyre)} tyres, in Clearing ${W.clearingTyre === 'inter' ? 'Intermediate tyres' : 'the dry tyres'}`}. ${W.react === 0 ? 'Change at once' : `${plural(W.react, 'lap', 'laps')} to change`}. ${cap(pen)}.`,
+        changed(['cloudyTyre', 'clearingTyre', 'react', 'wetPoints', 'dryPoints', 'repeat']) ? 'ok' : 'plain');
+    }
+    // Hindering the cars
+    {
+      const table = Object.values(X.HKEYS), lv = [W.levers.use && 'use more fuel', W.levers.rate && 'refuel slower', W.levers.tank && 'have a smaller tank'].filter(Boolean);
+      const worst = Math.max(0, ...X.STATES.map(([s]) => Math.max(...X.CLASSES.map(c => W.table[s][c]))));
+      out.hinder = entry(W.hinder ? 'Wrong tyres hinder: yes' : 'Wrong tyres hinder: no', W.hinder ? (lv.length ? `the wrong tyres make a car ${joinAnd(lv, 'and')} (up to ${worst}% hindered)` : 'switched on, but all three ways are off') : 'the wrong tyres do not hinder a car',
+        changed(['hinder', 'hUse', 'hRate', 'hTank', ...table]) ? 'ok' : 'plain');
+    }
+    // Track conditions
+    {
+      const imp = W.cond.units === 'imperial', c = W.cond.dry;
+      out.conditions = entry(imp ? 'Fahrenheit · mph' : 'Celsius · km/h', `${imp ? 'degrees Fahrenheit and miles per hour' : 'degrees Celsius and km/h'}. Dry: track ${c.track}°, air ${c.air}°, wind ${c.wind} ${imp ? 'mph' : 'km/h'}`,
+        changed(['units', ...Object.values(X.CKEYS)]) ? 'ok' : 'plain');
+    }
+    return out;
+  }
+
+  const ENTITIES = { penaltysystems: [describePenalty, railPenalty], damagesystems: [describeDamage, railDamage], weathersystems: [describeWeather, railWeather] };
   const has = entity => Object.prototype.hasOwnProperty.call(ENTITIES, entity);
   const describe = (entity, v) => (has(entity) ? ENTITIES[entity][0](v || {}) : { pills: [], say: [], ready: READY.name, notes: {}, strip: null });
   const rail = (entity, v, ctx) => (has(entity) ? ENTITIES[entity][1](v || {}, ctx || {}) : {});

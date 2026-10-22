@@ -116,11 +116,11 @@ Dutch asked for a Race Director that is nicer to look at and fits more on the sc
 Colours of the pads are the ones of the Pad values: penalty points yellow `#f2b705`, race time orange `#f08a24`, laps purple `#9b7bff`, damage red `#e5484d`, championship points green `#3fb950`; the minus button is the same colour, darker. A card is green, amber or red at the top (the worst chip).
 
 
-## race-systems/ (22 Oct 2026, the window of Race Setups for the seven systems; Penalty and Damage built in 1.73.0, the rest NOT built yet)
+## race-systems/ (22 Oct 2026, the window of Race Setups for the seven systems; Penalty and Damage built in 1.73.0, Weather in 1.74.0, the rest NOT built yet)
 
-Dutch asked to give the other setup windows the look of the Race Setups window (header with pills, the sentence *In plain words*, a side rail with notes and dots, folding section cards, *Used by*). The design (*Race systems with the side rail*, a Claude Design canvas) has an overview board and one board for each system, in the colour the system already has (Penalty yellow `#f2b705`, Damage red `#e5484d`, Weather blue `#4c9aff`, Tyre wear purple `#9b4dff`, Safety car orange `#ff7a1a`, Push and save lime `#a6d23c`, Fuel green `#2fb86a`). **Penalty and Damage stay two separate systems** (Dutch, 22 Oct). The order of building: release 1 Penalty and Damage (1.73.0), release 2 Weather, release 3 Tyre wear, release 4 Safety car, Push and save and Fuel together; each release waits for Dutch's go.
+Dutch asked to give the other setup windows the look of the Race Setups window (header with pills, the sentence *In plain words*, a side rail with notes and dots, folding section cards, *Used by*). The design (*Race systems with the side rail*, a Claude Design canvas) has an overview board and one board for each system, in the colour the system already has (Penalty yellow `#f2b705`, Damage red `#e5484d`, Weather blue `#4c9aff`, Tyre wear purple `#9b4dff`, Safety car orange `#ff7a1a`, Push and save lime `#a6d23c`, Fuel green `#2fb86a`). **Penalty and Damage stay two separate systems** (Dutch, 22 Oct). The order of building: release 1 Penalty and Damage (1.73.0), release 2 Weather (1.74.0), release 3 Tyre wear, release 4 Safety car, Push and save and Fuel together; each release waits for Dutch's go.
 
-The boards are in `source/` (`Main` overview, `Penalty`, `Damage`, `Weather`, `Tyres`, `SafetyCar`, `PushSave`, `Fuel`, the shared `sys.css` and `canvas.json`). **The PNGs of the design boards were not exported** (the canvas is private and has no export): open the `*.dc.html` files on a canvas to see them. The pictures here are **screenshots of the built app** (1.73.0), drawn in Chromium with a stand-in for the app.
+The boards are in `source/` (`Main` overview, `Penalty`, `Damage`, `Weather`, `Tyres`, `SafetyCar`, `PushSave`, `Fuel`, the shared `sys.css` and `canvas.json`). **The PNGs of the design boards were not exported** (the canvas is private and has no export): open the `*.dc.html` files on a canvas to see them. The pictures here are **screenshots of the built app** (1.73.0 and 1.74.0), drawn in Chromium with a stand-in for the app.
 
 | Picture | What it shows |
 |---|---|
@@ -134,3 +134,14 @@ The boards are in `source/` (`Main` overview, `Penalty`, `Damage`, `Weather`, `T
 | `8-built-1.73.0-damage-failures-on.png` | *Car failures* switched on (the switch in the red of the system), *Penalty points* folded under it |
 | `9-built-1.73.0-damage-ocean.png` | The Ocean theme |
 | `10-built-1.73.0-damage-phone.png` | A narrow window (420 px): the rail becomes a row of chips, the sections follow |
+| `11-built-1.74.0-weather.png` | Weather system, dark theme: the blue header with the weather picture, the pills (*Rain after 8 laps*, *Lasts 6 laps*), the rail with its five sections, *In plain words*, *Counted in* as two buttons, and the bar of the weather over the race (Dry, Cloudy, Wet, Clearing, Dry, in laps of the leader) |
+| `12-built-1.74.0-weather-tyres.png` | *Tyres and penalties*: which tyres a pit stop gives in Cloudy and in Clearing, the laps to change, the penalty points, and how often they are given |
+| `13-built-1.74.0-weather-random.png` | Rain at a random moment (in minutes): the sentence *The rain starts at the earliest after [5] minutes and at the latest after [12] minutes*, the pill *Rain after 5–12 minutes* and the bar that draws the middle |
+| `14-built-1.74.0-weather-director.png` | *Only when the Race Director says so*: one pill, no bar, a line of words instead, and the numbers of a forecast are hidden |
+| `15-built-1.74.0-weather-hinder.png` | *Hindering the cars* (under *Only if you need it*): the switch and the three ways as three switches on one row |
+| `16-built-1.74.0-weather-hinder-table.png` | The table of 12 percentages: the state of the weather against the kind of tyre |
+| `17-built-1.74.0-weather-conditions.png` | *Track conditions*: the units as two buttons, the table of the track and air temperature, the wind speed and the wind direction for every state of the weather |
+| `18-built-1.74.0-weather-conditions-imperial-light.png` | The light theme, with Fahrenheit and mph chosen: the heads of the table say °F and mph |
+| `19-built-1.74.0-weather-ocean.png` | The Ocean theme |
+| `20-built-1.74.0-weather-phone.png` | A narrow window (420 px) |
+| `21-built-1.74.0-weather-phone-conditions.png` | The conditions on a phone: every number has its own small heading and two sit side by side |

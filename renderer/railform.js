@@ -16,7 +16,7 @@
     + `<span class="muted rsq">${esc(sec.ask)}</span><span class="muted rsrow" id="rs-row-${esc(sec.id)}"></span></span></summary>${sec.body}${sec.live ? `<div class="rsnote" id="rs-live-${esc(sec.id)}" role="status" hidden></div>` : ''}</details>`;
   // a part inside a section (the parts of Advanced): a small heading, what it is for, and its settings
   const sub = (id, title, note, fields) => `<section class="rssub" data-fg="${esc(id)}"><h4 class="rssubt">${esc(title)}</h4>${note ? `<p class="muted hint rssubn">${esc(note)}</p>` : ''}<div class="fgrid">${fields}</div></section>`;
-  const grid = fields => `<div class="fgrid">${fields}</div>`;
+  const grid = (fields, cols) => `<div class="fgrid${cols === 3 ? ' c3' : ''}">${fields}</div>`; // (cols: 3 puts three settings on a row, the weather system does that for its three switches, 1.74.0)
   // a row of the rail
   const item = (sec, o) => `<button type="button" class="rsri" id="rs-rail-${esc(sec.id)}" data-rail="${esc(sec.id)}"><span class="rsic">${ico(o, sec.icon)}</span>`
     + `<span class="rsrt"><b>${esc(sec.title)}</b><small id="rs-note-${esc(sec.id)}"></small></span><i class="rsdot off" id="rs-dot-${esc(sec.id)}" aria-hidden="true"></i><span class="rssr" id="rs-state-${esc(sec.id)}"></span></button>`;
@@ -75,11 +75,16 @@
   }
   // The bar of the levels of a damage system (systemwords.js, strip): a part for every level, as wide as its stretch of damage points, with the numbers under it. d: the strip, or null (nothing to show).
   // The parts are coloured from the colour of the form, a little stronger for every level.
+  // The bar of a weather system (1.74.0) has d.tone 'weather': a part is Dry, Cloudy, Wet or Clearing (its kind), coloured by the style sheet; the numbers sit on the start of a part (d.center), and d.unit says
+  // what they count ("laps of the leader"). d.message (a strip without parts) is a line of words instead of the bar.
   function strip(d) {
-    if (!d || !Array.isArray(d.parts) || !d.parts.length) return '';
+    if (!d) return '';
+    if ((!Array.isArray(d.parts) || !d.parts.length)) return d.message ? `<p class="muted hint rsstripmsg">${esc(d.message)}</p>` : '';
+    const wx = d.tone === 'weather';
     const bg = p => (p.kind === 'none' ? 'var(--line)' : `color-mix(in srgb,var(--accent) ${Math.round(14 + 46 * (p.step - 1) / Math.max(1, p.of - 2))}%,var(--panel))`);
-    return `<div class="rsstrip" role="img" aria-label="${esc(d.text)}"><div class="rsbar">${d.parts.map(p => `<span class="rsseg" style="left:${p.left}%;width:${p.width}%;background:${bg(p)}" title="${esc(p.name)}">${esc(p.name)}</span>`).join('')}</div>`
-      + `<div class="rsticks" aria-hidden="true">${d.ticks.filter(t => t.show).map(t => `<span style="${t.at > 60 && String(t.label).length > 4 ? 'right:0' : `left:${t.at}%`}">${esc(t.label)}</span>`).join('')}</div></div>`;
+    const tick = t => `<span style="${d.center ? (t.at > 0 ? `left:${t.at}%;transform:translateX(-50%)` : 'left:0') : t.at > 60 && String(t.label).length > 4 ? 'right:0' : `left:${t.at}%`}">${esc(t.label)}</span>`;
+    return `<div class="rsstrip${wx ? ' wxstrip' : ''}" role="img" aria-label="${esc(d.text)}"><div class="rsbar">${d.parts.map(p => `<span class="rsseg${wx ? ' wx-' + esc(p.kind) : ''}" style="left:${p.left}%;width:${p.width}%;${wx ? '' : `background:${bg(p)}`}" title="${esc(p.name)}">${esc(p.name)}</span>`).join('')}</div>`
+      + `<div class="rsticks" aria-hidden="true">${d.ticks.filter(t => t.show).map(tick).join('')}${d.unit ? `<span class="rsunit">${esc(d.unit)}</span>` : ''}</div>${d.note ? `<p class="muted hint rsstripmsg">${esc(d.note)}</p>` : ''}</div>`;
   }
 
   const api = { section, sub, grid, item, used, shell, sync, live, strip, stateOf, STATES };

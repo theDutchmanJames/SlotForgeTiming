@@ -6,6 +6,8 @@
 //   'boxes' (a list of numbers, 1st, 2nd, 3rd and so on)   'kind' (the picker of a race setup)
 //   'sentence' (1.73.0: two numbers in one line of words, "Every [5] points add [5] seconds": `sentence` = [the word before the first number, its unit, the word between, the unit of the second number],
 //   `with` = the setting of the second number, which has `ui: 'with'` and is drawn by the first)
+//   'cell' (1.74.0: a number that sits in a table of the form, which draws it itself: this control draws nothing)   `third: true` on a switch (three switches share one row)
+//   `{unit}` (1.74.0) as the unit of a sentence, or as the `suffix` of a number: the word that the form has chosen, laps or minutes (syncUnits writes it again when that choice changes)
 // The text of a switch is the label of the setting. A card has a line under its name: the third part of its option ([value, name, line]).
 (function (root) {
   const esc = s => String(s === undefined || s === null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -37,7 +39,7 @@
   const offOf = f => (f.options.find(o => o[0] !== f.on) || [''])[0];
   function switchField(f, v, ctx) {
     const on = v === f.on;
-    return wrap(f, 'fu-switchfield full', `<button type="button" role="switch" class="fu-sw${on ? ' on' : ''}" aria-checked="${on}" aria-labelledby="ql-${esc(f.id)}"${ctx.hint ? ` aria-describedby="hn-${esc(f.id)}"` : ''} data-pick="${esc(f.id)}" data-on="${esc(f.on)}" data-off="${esc(offOf(f))}">`
+    return wrap(f, f.third ? 'fu-switchfield' : 'fu-switchfield full',`<button type="button" role="switch" class="fu-sw${on ? ' on' : ''}" aria-checked="${on}" aria-labelledby="ql-${esc(f.id)}"${ctx.hint ? ` aria-describedby="hn-${esc(f.id)}"` : ''} data-pick="${esc(f.id)}" data-on="${esc(f.on)}" data-off="${esc(offOf(f))}">`
       + `<span class="fu-tg" aria-hidden="true"></span><span class="fu-swt"><b id="ql-${esc(f.id)}">${esc(ctx.label)}</b>${hint(f, ctx.hint)}</span></button>${hiddenSelect(f, v)}`);
   }
   // the numbers of a list as text ("10, 8, 6") -> the numbers as text, in order (a comma or a space or a semicolon between them)
@@ -61,15 +63,19 @@
   }
 
   // two numbers in a line of words. ctx.partner: { f (the second setting), v (its value) }. Both numbers are ordinary number fields, with the ids that every setting has, so the form reads and saves them as before.
+  // The unit of a number can follow another setting (1.74.0): "{unit}" as the unit of a sentence, or as the `suffix` of a number, is the word that the form has chosen (laps or minutes); the form
+  // writes it again when that choice changes (syncUnits). ctx.unitWord: the word now.
+  const UNIT = '{unit}';
+  const unitSpan = (unit, ctx) => (unit === UNIT ? `<span data-unitword="1">${esc((ctx && ctx.unitWord) || 'laps')}</span>` : `<span>${esc(unit)}</span>`);
   function sentence(f, v, ctx) {
     const p = ctx.partner, w = Array.isArray(f.sentence) ? f.sentence : ['', '', '', ''];
-    const box = (g, val, unit) => `<span class="inunit"><input id="f-${esc(g.id)}" type="number" step="any"${g.min !== undefined ? ` min="${esc(g.min)}"` : ''} value="${esc(val)}" aria-label="${esc(g.label)}"><span>${esc(unit)}</span></span>`;
+    const box = (g, val, unit) => `<span class="inunit"><input id="f-${esc(g.id)}" type="number" step="any"${g.min !== undefined ? ` min="${esc(g.min)}"` : ''} value="${esc(val)}" aria-label="${esc(g.label)}">${unitSpan(unit, ctx)}</span>`;
     return wrap(f, 'fu-sentfield full', `<div class="fu-sent"><span>${esc(w[0])}</span>${box(f, v, w[1])}<span>${esc(w[2])}</span>${p ? box(p.f, p.v, w[3]) : ''}</div>${hint(f, ctx.hint)}`);
   }
-  // the second number of a sentence is drawn by the first one
+  // the second number of a sentence is drawn by the first one, and so is a number that sits in a table (`ui: 'cell'`, 1.74.0: the table draws it, see database.js)
   const partOf = () => '';
 
-  const CONTROLS = { seg, cards, switch: switchField, boxes, kind, sentence, with: partOf };
+  const CONTROLS = { seg, cards, switch: switchField, boxes, kind, sentence, with: partOf, cell: partOf };
   const has = ui => Object.prototype.hasOwnProperty.call(CONTROLS, ui);
   // the whole field: f the setting (with id), v its value, ctx { label, hint, icon(name) -> svg text, picker, parts }
   // a select that has no value (a setting from before the setting existed) holds its first option, as the form always did: the buttons show that one
@@ -84,6 +90,12 @@
     if (f.ui === 'switch') { Array.from(rootEl.querySelectorAll(`[data-pick="${f.id}"]`)).forEach(b => setOn(b, v === f.on, 'aria-checked')); return; }
     if (f.ui === 'seg' || f.ui === 'cards') Array.from(rootEl.querySelectorAll(`[data-pick="${f.id}"]`)).forEach(b => setOn(b, (b.dataset || {}).val === v));
   }
+  // the words of the units, written again after the choice changed: words = { unit: 'laps' | 'minutes', temp: '°C' | '°F', speed: 'km/h' | 'mph' }
+  function syncUnits(rootEl, words) {
+    if (!rootEl || typeof rootEl.querySelectorAll !== 'function' || !words) return;
+    Array.from(rootEl.querySelectorAll('[data-unitword]')).forEach(el => { if (words.unit !== undefined) el.textContent = words.unit; });
+    Array.from(rootEl.querySelectorAll('[data-condunit]')).forEach(el => { const w = words[(el.dataset || {}).condunit]; if (w !== undefined) el.textContent = w; });
+  }
   // the picker: now = { kind, format, swaps }
   function syncKind(rootEl, byId, now) {
     if (!rootEl || typeof rootEl.querySelectorAll !== 'function') return;
@@ -97,7 +109,7 @@
   const addPlace = list => { const last = Number(String(list[list.length - 1] === undefined ? '' : list[list.length - 1]).replace(',', '.')); return [...list, String(Number.isFinite(last) && last > 0 ? Math.max(0, last - 1) : 0)]; };
   const dropPlace = list => (list.length > 1 ? list.slice(0, -1) : list);
 
-  const api = { field, has, sync, syncKind, boxRows, listOf, joinList, addPlace, dropPlace, nth, MAX_BOXES };
+  const api = { field, has, sync, syncKind, syncUnits, unitSpan, UNIT, boxRows, listOf, joinList, addPlace, dropPlace, nth, MAX_BOXES };
   root.FormUI = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
