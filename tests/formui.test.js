@@ -25,7 +25,13 @@ ok('the switches are the yes or no questions: the same number of heats for every
 ok('...a short choice is a row of buttons and a choice that needs a line is cards, and the points are boxes', ui.filter(f => f.ui === 'seg').map(f => f.key).join() === 'participants,teamDriver,heatSeeding,raceBy,enduranceBy,heatBy,compareBy,endRule,countBy,finals,swapUnit'
   && ui.filter(f => f.ui === 'cards').map(f => f.key).join() === 'heatPlan,resultBy,resultByTime' && ui.filter(f => f.ui === 'boxes').map(f => f.key).join() === 'points');
 ok('every card has a line under its name, and the buttons are short (no option of a row of buttons is longer than 40 characters)', ui.filter(f => f.ui === 'cards').every(f => (f.offer || f.options.map(o => o[0])).every(k => f.options.find(o => o[0] === k)[2])) && ui.filter(f => f.ui === 'seg').every(f => (f.offer || f.options.map(o => o[0])).every(k => f.options.find(o => o[0] === k)[1].length <= 40)));
-ok('every other kind of item has no such control (they are only for the Race Setup form)', Object.keys(schema).filter(e => e !== 'racesetups').every(e => schema[e].fields.every(f => !f.ui)));
+ok('every other kind of item has no such control: only the Race Setup form (1.70.0) and the forms of the penalty and damage systems (1.73.0) use them', Object.keys(schema).filter(e => !['racesetups', 'penaltysystems', 'damagesystems'].includes(e)).every(e => schema[e].fields.every(f => !f.ui)));
+{ // 1.73.0: the two system forms
+  const pu = schema.penaltysystems.fields.filter(f => f.ui), du = schema.damagesystems.fields.filter(f => f.ui);
+  ok('the penalty system has cards for the time rule, a sentence of two numbers and the second number of it; the damage system has cards for the stop and a switch for the car failures', pu.map(f => f.ui + ':' + f.key).join() === 'cards:timeRule,sentence:everyPoints,with:everySeconds' && du.map(f => f.ui + ':' + f.key).join() === 'cards:stop,switch:failuresOn');
+  ok('...every control is one the form knows, a sentence names the setting of its second number, and that setting is drawn by the sentence', [...pu, ...du].every(f => F.has(f.ui)) && schema.penaltysystems.fields.find(f => f.key === 'everyPoints').with === 'everySeconds' && schema.penaltysystems.fields.find(f => f.key === 'everySeconds').ui === 'with');
+  ok('...the cards of both forms have a line under every name and a picture for every choice', [schema.penaltysystems.fields.find(f => f.key === 'timeRule'), schema.damagesystems.fields.find(f => f.key === 'stop')].every(f => f.options.every(o => o[2] && f.icons[o[0]])));
+}
 
 // ---- a row of buttons ----
 { const h = html('raceBy', 'time');
@@ -58,6 +64,17 @@ ok('every other kind of item has no such control (they are only for the Race Set
   ok('a place can be added (it goes on counting down from the last, never below 0) and taken away (the last one, never the only one)', F.addPlace(['10', '8', '1']).join() === '10,8,1,0' && F.addPlace(['10', '8']).join() === '10,8,7' && F.addPlace(['0']).join() === '0,0' && F.addPlace(['0.5']).join() === '0.5,0' && F.addPlace(['2,5']).join() === '2,5,1.5' && F.addPlace([]).join() === '0' && F.dropPlace(['10', '8']).join() === '10' && F.dropPlace(['10']).join() === '10');
   ok('...at most 12 places can be added (the buttons say so), and a list that has more is shown whole', /id="pb-add-points"[^>]*disabled/.test(html('points', '1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12')) && !/id="pb-add-points"[^>]*disabled/.test(h) && (html('points', '1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14').match(/<input type="number"/g) || []).length === 14 && /id="pb-drop-points"[^>]*disabled/.test(html('points', '5')) && !/id="pb-drop-points"[^>]*disabled/.test(h));
   ok('the boxes of the list can be drawn again after a place is added', F.boxRows('points', ['3', '2']).includes('data-pbf="points" data-pb="1" value="2"'));
+}
+// ---- a sentence of two numbers (1.73.0) ----
+{ const pf = schema.penaltysystems.fields, a = { ...pf.find(f => f.key === 'everyPoints'), id: 'everyPoints' }, b = { ...pf.find(f => f.key === 'everySeconds'), id: 'everySeconds' };
+  const h = F.field(a, 5, { label: a.label, hint: 'A hint', icon, partner: { f: b, v: 12 } });
+  ok('a sentence is one line of words with two number boxes, each with its unit, in the order "Every [5] points add [12] seconds"', (h.match(/<input /g) || []).length === 2 && /<span>Every<\/span><span class="inunit"><input id="f-everyPoints" type="number"[^>]*value="5"[^>]*><span>points<\/span><\/span><span>add<\/span><span class="inunit"><input id="f-everySeconds" type="number"[^>]*value="12"[^>]*><span>seconds<\/span><\/span>/.test(h));
+  ok('...both numbers are ordinary number fields with the ids of the settings, so the form reads and saves them as before; each has its name as a label for a screen reader, and the hint is under the line', /id="f-everyPoints" type="number" step="any"/.test(h) && /aria-label="Every how many points"/.test(h) && /aria-label="adds how many seconds"/.test(h) && h.includes('id="hn-everyPoints"') && h.indexOf('class="fu-sent"') < h.indexOf('A hint'));
+  ok('...the second number is drawn by the first one: its own control draws nothing', F.field(b, 12, { label: b.label }) === '');
+  ok('...a sentence without a partner is still a sentence with one box, and words are escaped', (() => { const x = F.field({ ...a, sentence: ['<b>x</b>', 'p', 'q', 'r'] }, 5, { label: 'l' }); return (x.match(/<input /g) || []).length === 1 && !x.includes('<b>x</b>'); })());
+  ok('...a value that is empty or odd is shown as it is, never as "undefined" or "null"', !/undefined|null|NaN/.test(F.field(a, undefined, { label: 'l', partner: { f: b, v: null } })) && /value=""/.test(F.field(a, undefined, { label: 'l' })));
+  const sw = { ...schema.damagesystems.fields.find(f => f.key === 'failuresOn'), id: 'failuresOn' }, sh = F.field(sw, 'on', { label: sw.ask, hint: 'h', icon });
+  ok('a switch of the damage system: Car Failures is on when it stores "on", and says what it asks in a sentence', /class="fu-sw on" aria-checked="true"[^>]*data-on="on" data-off="off"/.test(sh) && sh.includes('Cars get failures at random during a race') && /<option value="off">/.test(sh));
 }
 // ---- the picker ----
 { const race = html('sessionType', 'race'), heatsSwaps = F.field(one('sessionType'), 'endurance', { label: 'Kind of session', hint: 'h', icon, picker: W.PICKER, parts: W.parts({ sessionType: 'endurance', enduranceBy: 'heats' }) }), practice = html('sessionType', 'practice');

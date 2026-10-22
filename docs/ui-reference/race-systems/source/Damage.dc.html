@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Damage system editor</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./sys.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="win ss-dmg" style="width: 1240px;font-family: Inter, system-ui, sans-serif; color: #e8e6e1">
+
+<div class="top">
+<div class="tile"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+<div class="grow">
+<div class="eyebrow">Damage system</div>
+<h1 class="name">Club damage</h1>
+<div class="pills">
+<span class="pill hi">Repair from 3 points</span>
+<span class="pill">4 levels</span>
+<span class="pill">3 incidents</span>
+<span class="pill">Car failures off</span>
+</div>
+</div>
+<span class="status"><span class="dot"></span>Ready to use</span>
+</div>
+
+<div class="body">
+
+<div class="rail">
+<div class="cap">This system</div>
+<button class="ri on"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V9l7-5 7 5v12"/><path d="M10 21v-6h4v6"/></svg><span><span class="t">Basics</span><span class="s">The stop · a deslot is 1 point</span></span><span class="dot sp" role="img" aria-label="Filled in"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h4v-4h4v-4h4V6h4"/></svg><span><span class="t">Levels</span><span class="s">4 levels from 3 points</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg><span><span class="t">Incidents</span><span class="s">Deslot · Contact · Hard crash</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<div class="cap" style="margin-top: 14px">Only if you need it</div>
+<button class="ri opt"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg><span><span class="t">Car failures</span><span class="s">Off</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<button class="ri opt"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span><span class="t">Penalty points</span><span class="s">Late 1 · too early 1</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<div style="flex: 1"></div>
+<div class="used">
+<span class="eyebrow mute">Used by</span>
+<span class="u"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg>Club race 10 laps</span>
+<span class="u"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg>Endurance 2 hours</span>
+<span class="u"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg>Friday night sprint</span>
+</div>
+</div>
+
+<div class="main">
+
+<div class="say">
+<div class="tile"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg></div>
+<div>
+<div class="eyebrow mute">In plain words</div>
+<p>A deslot gives a car <b>1 damage point</b>. From <b>3 points</b> the car needs a <b>Light damage</b> repair: it stands still on the sensor in the pits for <b>10 seconds</b>. At <b>10 points</b>, <b>Critical damage</b> <b>retires</b> the car. The repair and the other work in the stop happen <b>at the same time</b>, so the longest job counts. Car failures are <b>off</b>.</p>
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V9l7-5 7 5v12"/><path d="M10 21v-6h4v6"/></svg></span>
+<span class="st">Basics</span><span class="sn">How does the stop work, and what does a deslot cost?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="q">
+<div class="l">Repair and the other work in the stop</div>
+<div class="cards c2">
+<button class="kc on"><span class="kt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16M4 16h16"/></svg>At the same time</span><span class="kd">The longest job counts: a repair of 15 seconds and refuelling for 8 seconds is 15 seconds.</span></button>
+<button class="kc"><span class="kt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M14 6l6 6-6 6"/></svg>One after the other</span><span class="kd">The repair starts when the other work in the stop is done.</span></button>
+</div>
+</div>
+
+<div class="fld" style="max-width: 300px">
+<label for="deslot">Damage points for a deslot</label>
+<span class="in" style="min-width: 0"><input id="deslot" type="number" value="1"><span>points</span></span>
+</div>
+
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h4v-4h4v-4h4V6h4"/></svg></span>
+<span class="st">Levels</span><span class="sn">How much damage asks for which stop in the pits?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="hint">The highest level a car has reached counts. A car must stand still on the sensor in the pits for the seconds of its level: that repairs the damage (the points go back to 0), or retires or disqualifies the car. Leave a gap between the levels, so a hit does not skip one.</div>
+
+<div>
+<div class="tl">
+<span style="flex: 3; background: #2f3743">No stop</span>
+<span style="flex: 3; background: #4a4426">Light</span>
+<span style="flex: 3; background: #5e4322">Medium</span>
+<span style="flex: 1; background: #6d3b2a">Heavy</span>
+<span style="flex: 1; background: #7a2f33">Critical</span>
+</div>
+<div class="ticks"><span>0</span><span>3</span><span>6</span><span>9</span><span>10 damage points</span></div>
+</div>
+
+<div class="tb" style="--cols: 1.5fr .9fr .9fr 1.5fr 1.2fr 1.5fr 36px">
+<div class="th"><span>Name</span><span>From (damage points)</span><span>Stand still (s)</span><span>Pit</span><span>Within (laps, 0 = no deadline)</span><span>The stop</span><span></span></div>
+<div class="tr">
+<input class="fi" type="text" value="Light damage" aria-label="Name of level 1">
+<input class="fi num" type="number" value="3" aria-label="From how many damage points, level 1">
+<input class="fi num" type="number" value="10" aria-label="Seconds to stand still, level 1">
+<select class="fi" aria-label="Pit, level 1"><option selected="selected">Whenever you can</option><option>As fast as you can</option></select>
+<input class="fi num" type="number" value="0" aria-label="Laps within which the car must pit, level 1">
+<select class="fi" aria-label="What the stop does, level 1"><option selected="selected">Repairs the car</option><option>Retires the car</option><option>Disqualifies the car</option></select>
+<button class="ib" aria-label="Remove Light damage"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+</div>
+<div class="tr">
+<input class="fi" type="text" value="Medium damage" aria-label="Name of level 2">
+<input class="fi num" type="number" value="6" aria-label="From how many damage points, level 2">
+<input class="fi num" type="number" value="15" aria-label="Seconds to stand still, level 2">
+<select class="fi" aria-label="Pit, level 2"><option selected="selected">Whenever you can</option><option>As fast as you can</option></select>
+<input class="fi num" type="number" value="0" aria-label="Laps within which the car must pit, level 2">
+<select class="fi" aria-label="What the stop does, level 2"><option selected="selected">Repairs the car</option><option>Retires the car</option><option>Disqualifies the car</option></select>
+<button class="ib" aria-label="Remove Medium damage"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+</div>
+<div class="tr">
+<input class="fi" type="text" value="Heavy damage" aria-label="Name of level 3">
+<input class="fi num" type="number" value="9" aria-label="From how many damage points, level 3">
+<input class="fi num" type="number" value="20" aria-label="Seconds to stand still, level 3">
+<select class="fi" aria-label="Pit, level 3"><option>Whenever you can</option><option selected="selected">As fast as you can</option></select>
+<input class="fi num" type="number" value="3" aria-label="Laps within which the car must pit, level 3">
+<select class="fi" aria-label="What the stop does, level 3"><option selected="selected">Repairs the car</option><option>Retires the car</option><option>Disqualifies the car</option></select>
+<button class="ib" aria-label="Remove Heavy damage"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+</div>
+<div class="tr">
+<input class="fi" type="text" value="Critical damage" aria-label="Name of level 4">
+<input class="fi num" type="number" value="10" aria-label="From how many damage points, level 4">
+<input class="fi num" type="number" value="0" aria-label="Seconds to stand still, level 4">
+<select class="fi" aria-label="Pit, level 4"><option>Whenever you can</option><option selected="selected">As fast as you can</option></select>
+<input class="fi num" type="number" value="1" aria-label="Laps within which the car must pit, level 4">
+<select class="fi" aria-label="What the stop does, level 4"><option>Repairs the car</option><option selected="selected">Retires the car</option><option>Disqualifies the car</option></select>
+<button class="ib" aria-label="Remove Critical damage"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+</div>
+</div>
+
+<div><button class="btn sm"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Add a level</button></div>
+
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></span>
+<span class="st">Incidents</span><span class="sn">What buttons does the Race Director get?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="hint">Buttons for the Race Director (on the race screen, the Race Director page and the phones): each gives a car these damage points. A deslot is counted by itself when the track has a deslot time.</div>
+
+<div class="tb" style="--cols: 2fr 1fr 36px; max-width: 620px">
+<div class="th"><span>Name</span><span>Damage points</span><span></span></div>
+<div class="tr">
+<input class="fi" type="text" value="Deslot" aria-label="Name of incident 1">
+<input class="fi num" type="number" value="1" aria-label="Damage points of incident 1">
+<button class="ib" aria-label="Remove Deslot"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+</div>
+<div class="tr">
+<input class="fi" type="text" value="Contact" aria-label="Name of incident 2">
+<input class="fi num" type="number" value="2" aria-label="Damage points of incident 2">
+<button class="ib" aria-label="Remove Contact"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+</div>
+<div class="tr">
+<input class="fi" type="text" value="Hard crash" aria-label="Name of incident 3">
+<input class="fi num" type="number" value="4" aria-label="Damage points of incident 3">
+<button class="ib" aria-label="Remove Hard crash"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+</div>
+</div>
+
+<div><button class="btn sm"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Add an incident</button></div>
+
+</div>
+</div>
+
+<div class="sec">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg></span>
+<span class="st">Car failures</span><span class="sv">Off. Failures that strike a car at random during a race.</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+</div>
+</div>
+
+<div class="sec">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+<span class="st">Penalty points</span><span class="sv">1 point for every lap after the deadline of a level. 1 point for leaving before the repair is done.</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="foot">
+<span class="hint">Everything else keeps its default.</span>
+<span class="grow"></span>
+<button class="btn ghost">Cancel</button>
+<button class="btn hi">Save damage system</button>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":1800}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

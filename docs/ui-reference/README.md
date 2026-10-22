@@ -115,3 +115,22 @@ Dutch asked for a Race Director that is nicer to look at and fits more on the sc
 
 Colours of the pads are the ones of the Pad values: penalty points yellow `#f2b705`, race time orange `#f08a24`, laps purple `#9b7bff`, damage red `#e5484d`, championship points green `#3fb950`; the minus button is the same colour, darker. A card is green, amber or red at the top (the worst chip).
 
+
+## race-systems/ (22 Oct 2026, the window of Race Setups for the seven systems; Penalty and Damage built in 1.73.0, the rest NOT built yet)
+
+Dutch asked to give the other setup windows the look of the Race Setups window (header with pills, the sentence *In plain words*, a side rail with notes and dots, folding section cards, *Used by*). The design (*Race systems with the side rail*, a Claude Design canvas) has an overview board and one board for each system, in the colour the system already has (Penalty yellow `#f2b705`, Damage red `#e5484d`, Weather blue `#4c9aff`, Tyre wear purple `#9b4dff`, Safety car orange `#ff7a1a`, Push and save lime `#a6d23c`, Fuel green `#2fb86a`). **Penalty and Damage stay two separate systems** (Dutch, 22 Oct). The order of building: release 1 Penalty and Damage (1.73.0), release 2 Weather, release 3 Tyre wear, release 4 Safety car, Push and save and Fuel together; each release waits for Dutch's go.
+
+The boards are in `source/` (`Main` overview, `Penalty`, `Damage`, `Weather`, `Tyres`, `SafetyCar`, `PushSave`, `Fuel`, the shared `sys.css` and `canvas.json`). **The PNGs of the design boards were not exported** (the canvas is private and has no export): open the `*.dc.html` files on a canvas to see them. The pictures here are **screenshots of the built app** (1.73.0), drawn in Chromium with a stand-in for the app.
+
+| Picture | What it shows |
+|---|---|
+| `1-built-1.73.0-penalty.png` | Penalty system, dark theme: the yellow header with the system's picture, the pills, *Ready to use*, the rail, *In plain words*, the time rule as two cards, the sentence *Every [5] points add [5] seconds* and the note under it, *Used by* |
+| `2-built-1.73.0-penalty-special-and-limits.png` | The same form scrolled: the table of special penalties and *Disqualification and fuel* (under *Only if you need it*) |
+| `3-built-1.73.0-penalty-steps.png` | *Steps I define*: the cards, the steps typed as before (`5=5, 10=12, 15=30`) and the note for the steps |
+| `4-built-1.73.0-penalty-new-and-unused.png` | A penalty system that no race setup uses (*Used by* says where to choose it), with the focus in the name |
+| `5-built-1.73.0-penalty-light.png` | The light theme |
+| `6-built-1.73.0-damage.png` | Damage system, dark theme: the red header, the rail with its five sections, *In plain words*, the stop as two cards, the bar of the levels |
+| `7-built-1.73.0-damage-levels.png` | The table of levels (36 px rows, the columns of the design), the incidents below it |
+| `8-built-1.73.0-damage-failures-on.png` | *Car failures* switched on (the switch in the red of the system), *Penalty points* folded under it |
+| `9-built-1.73.0-damage-ocean.png` | The Ocean theme |
+| `10-built-1.73.0-damage-phone.png` | A narrow window (420 px): the rail becomes a row of chips, the sections follow |

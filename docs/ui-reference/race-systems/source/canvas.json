@@ -1,0 +1,42 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-22T05:50:00Z"
+  },
+  "title": "Race systems with the side rail",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 1240, "h": 1400, "title": "1. Overview: one frame, seven systems" },
+    "Penalty.dc.html": { "x": 0, "y": 1520, "w": 1240, "h": 1360, "title": "2. Penalty system (release 1)" },
+    "Damage.dc.html": { "x": 1320, "y": 1520, "w": 1240, "h": 1800, "title": "3. Damage system (release 1)" },
+    "Weather.dc.html": { "x": 0, "y": 3440, "w": 1240, "h": 2200, "title": "4. Weather system (release 2)" },
+    "Tyres.dc.html": { "x": 1320, "y": 3440, "w": 1240, "h": 2350, "title": "5. Tyre wear system (release 3)" },
+    "SafetyCar.dc.html": { "x": 0, "y": 5910, "w": 1240, "h": 1500, "title": "6. Safety car system (release 4)" },
+    "PushSave.dc.html": { "x": 1320, "y": 5910, "w": 1240, "h": 1650, "title": "7. Push and save system (release 4)" },
+    "Fuel.dc.html": { "x": 0, "y": 7680, "w": 1240, "h": 1400, "title": "8. Fuel system (release 4)" }
+  },
+  "order": [
+    "Main.dc.html",
+    "Penalty.dc.html",
+    "Damage.dc.html",
+    "Weather.dc.html",
+    "Tyres.dc.html",
+    "SafetyCar.dc.html",
+    "PushSave.dc.html",
+    "Fuel.dc.html"
+  ],
+  "notes": {
+    "title": {
+      "x": 0,
+      "y": -280,
+      "text": "Race systems: the Race Setups side rail on every system page",
+      "kind": "title1",
+      "maxW": 2560
+    }
+  },
+  "designSystems": []
+}

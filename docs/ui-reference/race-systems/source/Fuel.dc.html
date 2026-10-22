@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fuel system editor</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./sys.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="win ss-fuel" style="width: 1240px;font-family: Inter, system-ui, sans-serif; color: #e8e6e1">
+
+<div class="top">
+<div class="tile"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 22h12M4 9h10"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2 2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></svg></div>
+<div class="grow">
+<div class="eyebrow">Fuel system</div>
+<h1 class="name">Club fuel</h1>
+<div class="pills">
+<span class="pill hi">120 litre tank</span>
+<span class="pill">2 litres a lap</span>
+<span class="pill">Retires when empty</span>
+</div>
+</div>
+<span class="status"><span class="dot"></span>Ready to use</span>
+</div>
+
+<div class="body">
+
+<div class="rail">
+<div class="cap">This system</div>
+<button class="ri on"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.500 6 11a6 6 0 0 1-12 0c0-4.500 6-11 6-11z"/></svg><span><span class="t">Basics</span><span class="s">120 L · 2 L a lap</span></span><span class="dot sp" role="img" aria-label="Filled in"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 22h12M4 9h10"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2 2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></svg><span><span class="t">Empty tank and refuelling</span><span class="s">Retires · 10 L a second</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<div class="cap" style="margin-top: 14px">Only if you need it</div>
+<button class="ri opt"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-6"/></svg><span><span class="t">Fast and slow laps</span><span class="s">Up to +25% · saves up to 30%</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<div style="flex: 1"></div>
+<div class="used">
+<span class="eyebrow mute">Used by</span>
+<span class="none">Not used yet. Choose it under Rules and systems in a race setup.</span>
+</div>
+</div>
+
+<div class="main">
+
+<div class="say">
+<div class="tile"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg></div>
+<div>
+<div class="eyebrow mute">In plain words</div>
+<p>The tank holds <b>120 litres</b> and a car uses <b>2 litres a lap</b> at the target lap time of <b>9.5 seconds</b>, so a full tank lasts <b>60 laps</b>. When the fuel runs out, <b>the car retires from the race</b>. Refuelling in the pits runs at <b>10 litres a second</b>. A fast lap can use up to <b>25% more</b> fuel and a slow lap can save up to <b>30%</b>.</p>
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.500 6 11a6 6 0 0 1-12 0c0-4.500 6-11 6-11z"/></svg></span>
+<span class="st">Basics</span><span class="sn">How big is the tank, and how much does a lap use?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="cols3">
+<div class="fld">
+<label for="f1">Tank size</label>
+<span class="in" style="min-width: 0; align-self: flex-start"><input id="f1" type="number" value="120"><span>litres</span></span>
+</div>
+<div class="fld">
+<label for="f2">Fuel used per lap at the target lap time</label>
+<span class="in" style="min-width: 0; align-self: flex-start"><input id="f2" type="number" value="2"><span>litres</span></span>
+</div>
+<div class="fld">
+<label for="f3">Target lap time</label>
+<span class="in" style="min-width: 0; align-self: flex-start"><input id="f3" type="number" value="9.5"><span>seconds</span></span>
+</div>
+</div>
+
+<div class="note good">
+<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.500l4.500 4.500L19 7"/></svg>
+<span><b>A full tank lasts 60 laps</b> at the target lap time.</span>
+</div>
+
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 22h12M4 9h10"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2 2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></svg></span>
+<span class="st">Empty tank and refuelling</span><span class="sn">What happens when the fuel runs out, and how fast is the pump?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="q">
+<div class="l">When the fuel runs out</div>
+<div class="cards c3">
+<button class="kc on"><span class="kt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.600 5.600l12.800 12.800"/></svg>The car retires from the race</span></button>
+<button class="kc"><span class="kt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></svg>Laps stop counting until it has refuelled</span></button>
+<button class="kc"><span class="kt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M14 6l6 6-6 6"/></svg>The car carries on</span><span class="kd">A penalty system can add points for it.</span></button>
+</div>
+</div>
+
+<div class="fld" style="max-width: 360px">
+<label for="rf">Refuelling speed in the pits</label>
+<span class="in" style="min-width: 0; align-self: flex-start"><input id="rf" type="number" value="10"><span>litres per second</span></span>
+</div>
+
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-6"/></svg></span>
+<span class="st">Fast and slow laps</span><span class="sn">How much does the lap time change the fuel use?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="cols">
+<div class="fld">
+<label for="fa">Most extra fuel a fast lap can use</label>
+<span class="in" style="min-width: 0; align-self: flex-start"><input id="fa" type="number" value="25"><span>%</span></span>
+</div>
+<div class="fld">
+<label for="fb">Most fuel a slow lap can save</label>
+<span class="in" style="min-width: 0; align-self: flex-start"><input id="fb" type="number" value="30"><span>%</span></span>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="foot">
+<span class="hint">Everything else keeps its default.</span>
+<span class="grow"></span>
+<button class="btn ghost">Cancel</button>
+<button class="btn hi">Save fuel system</button>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":1400}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

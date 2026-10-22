@@ -195,6 +195,7 @@ async function mountManager(box, e) {
   state.custom[e] = custom;
   for (const f of s.fields) if (f.type === 'ref' || f.type === 'members') state.refs[f.ref] = await api.list(f.ref);
   if (e === 'racesetups') state.refs.championships = await api.list('championships'); // (1.71.0: the box Used by in the form of a race setup names the championships that use it)
+  if (s.used) state.refs[s.used.entity] = await api.list(s.used.entity); // (1.73.0: the box Used by in the form of a system names the race setups that choose it)
   if (run !== subRun) return;
   const cols = s.list
     ? s.list.map(k => columnOf(s, k)).map(f => ({ label: fl(f), get: i => columnCell(f, i) }))
@@ -307,7 +308,7 @@ const ptRows = types => types.length ? `<div class="ptrow pthead muted"><span>Na
   <select data-pt="${i}" data-ptk="kind" aria-label="Kind"><option value="drivethrough"${t.kind === 'drivethrough' ? ' selected' : ''}>Drivethrough</option><option value="stopgo"${t.kind === 'stopgo' ? ' selected' : ''}>Stop-and-Go</option></select>
   <input type="number" min="0" step="any" data-pt="${i}" data-ptk="seconds" value="${esc(t.seconds)}" aria-label="Seconds to stand still (Stop-and-Go)" title="Stop-and-Go: how long the car must stand on the sensor. A Drivethrough is served by the pit stop starting (the pit hold time of the race setup).">
   <input type="number" min="0" step="1" data-pt="${i}" data-ptk="cost" value="${esc(t.cost)}" aria-label="Points it costs"><input type="number" min="0" step="1" data-pt="${i}" data-ptk="extra" value="${esc(t.extra)}" aria-label="Points added for leaving early">
-  <input type="number" min="0" step="any" data-pt="${i}" data-ptk="unserved" value="${esc(t.unserved)}" aria-label="Seconds added if never served"><button type="button" class="btn" data-ptdel="${i}">Remove</button></div>`).join('')
+  <input type="number" min="0" step="any" data-pt="${i}" data-ptk="unserved" value="${esc(t.unserved)}" aria-label="Seconds added if never served"><button type="button" class="btn ib" data-ptdel="${i}" aria-label="Remove ${esc(t.name || 'this special penalty')}" title="Remove">${Icons.svg('trash', { size: 16 })}</button></div>`).join('')
   : '<p class="muted">No special penalties yet.</p>';
 // the levels of a damage system: one row each (a name, from how many damage points, how long to stand still, how urgent, the deadline in laps, what the stop does)
 const dlRows = levels => levels.length ? `<div class="ptrow dlrow pthead muted"><span>Name</span><span>From (damage points)</span><span>Stand still (s)</span><span>Pit</span><span>Within (laps, 0 = no deadline)</span><span>The stop</span><span></span></div>` +
@@ -317,12 +318,12 @@ const dlRows = levels => levels.length ? `<div class="ptrow dlrow pthead muted">
   <select data-dl="${i}" data-dlk="urgency" aria-label="Pit whenever you can, or as fast as you can"><option value="whenever"${l.urgency !== 'asap' ? ' selected' : ''}>Whenever you can</option><option value="asap"${l.urgency === 'asap' ? ' selected' : ''}>As fast as you can</option></select>
   <input type="number" min="0" step="1" data-dl="${i}" data-dlk="within" value="${esc(l.within)}" aria-label="Laps within which the car must be in the pits" title="After this many laps the car gets penalty points for every lap (see Penalty points below). 0 = no deadline.">
   <select data-dl="${i}" data-dlk="action" aria-label="What the stop does"><option value="repair"${l.action !== 'retire' && l.action !== 'dq' ? ' selected' : ''}>Repairs the car</option><option value="retire"${l.action === 'retire' ? ' selected' : ''}>Retires the car</option><option value="dq"${l.action === 'dq' ? ' selected' : ''}>Disqualifies the car</option></select>
-  <button type="button" class="btn" data-dldel="${i}">Remove</button></div>`).join('')
+  <button type="button" class="btn ib" data-dldel="${i}" aria-label="Remove ${esc(l.name || 'this level')}" title="Remove">${Icons.svg('trash', { size: 16 })}</button></div>`).join('')
   : '<p class="muted">No levels yet: damage points are counted, but no stop repairs or ends anything.</p>';
 // the incidents of a damage system: a name and the damage points it gives (the buttons of the Race Director)
 const diRows = incs => incs.length ? `<div class="ptrow dirow pthead muted"><span>Name</span><span>Damage points</span><span></span></div>` +
   incs.map((x, i) => `<div class="ptrow dirow"><input type="text" data-di="${i}" data-dik="name" value="${esc(x.name)}" aria-label="Name" maxlength="40">
-  <input type="number" min="1" step="1" data-di="${i}" data-dik="points" value="${esc(x.points)}" aria-label="Damage points it gives"><button type="button" class="btn" data-didel="${i}">Remove</button></div>`).join('')
+  <input type="number" min="1" step="1" data-di="${i}" data-dik="points" value="${esc(x.points)}" aria-label="Damage points it gives"><button type="button" class="btn ib" data-didel="${i}" aria-label="Remove ${esc(x.name || 'this incident')}" title="Remove">${Icons.svg('trash', { size: 16 })}</button></div>`).join('')
   : '<p class="muted">No incidents yet: the Race Director then has only the plus and minus buttons.</p>';
 // the Car Failures of a damage system (1.43.0): one row each (a name, the level whose rules it borrows, the chance in percent, the seconds to stand still)
 const cfRows = (list, levels) => list.length ? `<div class="ptrow cfrow pthead muted"><span>Name</span><span>Level (its rules)</span><span>Chance (%)</span><span>Stand still (s)</span><span></span></div>` +
@@ -332,7 +333,7 @@ const cfRows = (list, levels) => list.length ? `<div class="ptrow cfrow pthead m
   <select data-cf="${i}" data-cfk="level" aria-label="The level whose rules the failure takes" title="The pit rules of this level (whenever you can or as fast as you can, the deadline in laps, and what the stop does: repair, retire or disqualify) are the rules of the failure."><option value="">None: pit whenever you can, no deadline, a repair</option>${names.map(n => `<option value="${esc(n)}"${String(x.level || '').trim().toLowerCase() === n.toLowerCase() ? ' selected' : ''}>${esc(n)}</option>`).join('')}${lost ? `<option value="${esc(x.level)}" selected>${esc(x.level)} (no such level)</option>` : ''}</select>
   <input type="number" min="0" max="100" step="any" data-cf="${i}" data-cfk="chance" value="${esc(x.chance)}" aria-label="Chance in percent that a car gets this failure in a race" title="The chance in percent that a car gets this failure at some point in the race (before the Failure factor of the slot car).">
   <input type="number" min="0" step="any" data-cf="${i}" data-cfk="seconds" value="${esc(x.seconds)}" aria-label="Seconds to stand still on the sensor" title="How long the car must stand on the sensor in the pits to clear the failure. For a failure that retires or disqualifies the car: how long before that happens (0 = as soon as the pit stop starts).">
-  <button type="button" class="btn" data-cfdel="${i}">Remove</button></div>`; }).join('')
+  <button type="button" class="btn ib" data-cfdel="${i}" aria-label="Remove ${esc(x.name || 'this failure')}" title="Remove">${Icons.svg('trash', { size: 16 })}</button></div>`; }).join('')
   : '<p class="muted">No failures yet. Add the standard failures, or make your own.</p>';
 // the tyres of a tyre wear system (field type 'tyretable'): the four numbers of every tyre, what a new set lasts, and the grip curve of the tyre that is selected
 const twWearLabel = unit => (unit === 'distance' ? `Wear per 100 ${dUnit() === 'ft' ? 'ft' : 'm'} (%)` : 'Wear per lap (%)');
@@ -371,13 +372,13 @@ const memRows = (ids, all) => `<ol class="memlist">${ids.length ? ids.map((id, i
   <div class="row"><select id="mem-pick" aria-label="Driver to add"><option value="">${all.some(d => !ids.includes(d.id)) ? 'Choose a driver…' : 'Every driver is in the team'}</option>${all.filter(d => !ids.includes(d.id)).map(d => `<option value="${esc(d.id)}">${esc(titleOf('drivers', d))}</option>`).join('')}</select> <button type="button" class="btn" data-memadd="1">Add to the team</button></div>`;
 
 function fieldHtml(f, v, extra) {
-  if (f.ui && FormUI.has(f.ui)) return FormUI.field(f, v, { label: f.ask || fl(f), hint: fh(f), icon: n => Icons.svg(n, { size: 18, stroke: 1.8 }), picker: SetupWords.PICKER, parts: extra && extra.parts }); // (switches, buttons, cards and boxes for a setting: 1.70.0, formui.js)
+  if (f.ui && FormUI.has(f.ui)) return FormUI.field(f, v, { label: f.ask || fl(f), hint: fh(f), icon: n => Icons.svg(n, { size: 18, stroke: 1.8 }), picker: SetupWords.PICKER, parts: extra && extra.parts, partner: extra && extra.partner }); // (switches, buttons, cards and boxes for a setting: 1.70.0, formui.js; a sentence with two numbers: 1.73.0)
   const id = 'f-' + f.id;
   const lab = `<label for="${id}">${esc(fl(f))}${f.optional ? ' <span class="muted">(optional)</span>' : ''}</label>`;
   let inp;
   switch (f.type) {
     case 'longtext': inp = `<textarea id="${id}" rows="3">${esc(v)}</textarea>`; break;
-    case 'number': inp = `<input id="${id}" type="number" step="${f.step || 'any'}"${f.min !== undefined ? ` min="${f.min}"` : ''} value="${esc(typedText(f, v) ?? v)}"${unitAttrs(f, v)}>`; break;
+    case 'number': inp = `<input id="${id}" type="number" step="${f.step || 'any'}"${f.min !== undefined ? ` min="${f.min}"` : ''} value="${esc(typedText(f, v) ?? v)}"${unitAttrs(f, v)}>`; if (f.suffix) inp = `<span class="inunit">${inp}<span>${esc(f.suffix)}</span></span>`; break; // (suffix: the unit in the box, 1.73.0)
     case 'date': inp = `<input id="${id}" type="date" value="${esc(v)}">`; break;
     case 'choice': inp = `<input id="${id}" list="${id}-l" value="${esc(v)}"><datalist id="${id}-l">${f.options.map(o => `<option value="${esc(o)}">`).join('')}</datalist>`; break;
     case 'list': inp = `<select id="${id}"><option value=""></option>${f.options.map(o => `<option${o === v ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select>`; break;
@@ -386,10 +387,10 @@ function fieldHtml(f, v, extra) {
     case 'country': inp = `<select id="${id}"><option value=""></option>${COUNTRIES.map(([c, n]) => `<option value="${c}"${c === v ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select><span id="${id}-flag">${flagHtml(v)}</span>`; break;
     case 'tracklength': inp = `<div class="imgrow"><input id="${id}" type="number" min="0" step="any" value="${esc(typedText(f, v) ?? Speed.parseLength(v))}"${unitAttrs(f, v)}> <span>${dUnit() === 'ft' ? 'feet' : 'metres'}</span>
       <button type="button" class="btn" data-calcopen="1">Calculate from track pieces…</button></div><div id="calc" class="card" hidden>${calcHtml((extra && extra.pieces) || [])}</div>`; break;
-    case 'penaltytypes': inp = `<p class="muted">Penalties the Race Director can give instead of leaving points to turn into time. One costs points, and must be served by stopping on the sensor in the pits. A Stop-and-Go needs the car to stand still for its seconds; a Drivethrough is served when the pit stop starts.</p><div id="pt-box">${ptRows((extra && extra.types) || [])}</div><button type="button" class="btn" data-ptadd="1">Add a special penalty</button>`; break;
-    case 'damagelevels': inp = `<p class="muted">The highest level a car has reached counts. A car must stand still on the sensor in the pits for the seconds of its level: that repairs the damage (the points go back to 0), or retires or disqualifies the car. Leave a gap between the levels, so a hit does not skip one.</p><div id="dl-box">${dlRows((extra && extra.dlevels) || [])}</div><button type="button" class="btn" data-dladd="1">Add a level</button>`; break;
-    case 'damageincidents': inp = `<p class="muted">Buttons for the Race Director (on the race screen, the Race Director page and the phones): each gives a car these damage points. A deslot is counted by itself when the track has a deslot time.</p><div id="di-box">${diRows((extra && extra.dincs) || [])}</div><button type="button" class="btn" data-diadd="1">Add an incident</button>`; break;
-    case 'carfailures': inp = `<p class="muted">Each failure has a chance (in percent) that a car gets it, at a random moment of the race. It borrows the rules of a level: pit whenever you can or as fast as you can, the deadline in laps, and what the stop does (repair, retire or disqualify the car). Stand still is the time the car must stand on the sensor in the pits to clear it. A failure adds no damage points.</p><div id="cf-box">${cfRows((extra && extra.cfails) || [], (extra && extra.dlevels) || [])}</div><button type="button" class="btn" data-cfadd="1">Add a failure</button> <button type="button" class="btn" data-cfstd="1">Add the standard failures</button>`; break; // (1.43.0)
+    case 'penaltytypes': inp = `<p class="muted hint">Penalties the Race Director can give instead of leaving points to turn into time. One costs points, and must be served by stopping on the sensor in the pits. A Stop-and-Go needs the car to stand still for its seconds; a Drivethrough is served when the pit stop starts.</p><div id="pt-box">${ptRows((extra && extra.types) || [])}</div><button type="button" class="btn" data-ptadd="1">Add a special penalty</button>`; break;
+    case 'damagelevels': inp = `<p class="muted hint">The highest level a car has reached counts. A car must stand still on the sensor in the pits for the seconds of its level: that repairs the damage (the points go back to 0), or retires or disqualifies the car. Leave a gap between the levels, so a hit does not skip one.</p><div id="rs-strip"></div><div id="dl-box">${dlRows((extra && extra.dlevels) || [])}</div><button type="button" class="btn" data-dladd="1">Add a level</button>`; break;
+    case 'damageincidents': inp = `<p class="muted hint">Buttons for the Race Director (on the race screen, the Race Director page and the phones): each gives a car these damage points. A deslot is counted by itself when the track has a deslot time.</p><div id="di-box">${diRows((extra && extra.dincs) || [])}</div><button type="button" class="btn" data-diadd="1">Add an incident</button>`; break;
+    case 'carfailures': inp = `<p class="muted hint">Each failure has a chance (in percent) that a car gets it, at a random moment of the race. It borrows the rules of a level: pit whenever you can or as fast as you can, the deadline in laps, and what the stop does (repair, retire or disqualify the car). Stand still is the time the car must stand on the sensor in the pits to clear it. A failure adds no damage points.</p><div id="cf-box">${cfRows((extra && extra.cfails) || [], (extra && extra.dlevels) || [])}</div><button type="button" class="btn" data-cfadd="1">Add a failure</button> <button type="button" class="btn" data-cfstd="1">Add the standard failures</button>`; break; // (1.43.0)
     case 'tyretable': inp = `<div id="tw-box">${twTable((extra && extra.twt) || {}, (extra && extra.twunit) || 'lap', (extra && extra.twsel) || 'S')}</div>`; break; // (1.40.0)
     case 'wxmult': inp = `<div id="tw-mult">${twMult((extra && extra.twm) || {})}</div>`; break;
     case 'tyresets': inp = twSets((extra && extra.tws) || {}); break; // (1.41.0)
@@ -405,7 +406,7 @@ function fieldHtml(f, v, extra) {
     inp = f.type === 'datetime' ? `<input id="${id}" type="text" value="${esc(v ? plainDate(v) : 'Never')}" disabled>` : `<input id="${id}" type="number" value="${esc(v ?? 0)}" disabled>`;
     if (f.reset) inp = `<div class="imgrow">${inp}<button type="button" class="btn" data-svcreset="1">Reset</button></div>`;
   }
-  const wide = ['longtext', 'gallery', 'tracklength', 'image', 'penaltytypes', 'damagelevels', 'damageincidents', 'carfailures', 'tyretable', 'wxmult', 'tyresets', 'pspresets', 'members', 'cartracks'].includes(f.type) ? ' full' : '';
+  const wide = (['longtext', 'gallery', 'tracklength', 'image', 'penaltytypes', 'damagelevels', 'damageincidents', 'carfailures', 'tyretable', 'wxmult', 'tyresets', 'pspresets', 'members', 'cartracks'].includes(f.type) ? ' full' : '') + (['penaltytypes', 'damagelevels', 'damageincidents', 'carfailures'].includes(f.type) ? ' listfield' : ''); // (listfield: a table of rows that has a section of its own; in the rail form the section says what it is, so its name is not repeated, 1.73.0)
   return `<div class="field${wide}" data-key="${f.id}">${lab}${inp}${fh(f) ? `<span class="muted hint">${esc(fh(f))}</span>` : ''}${f.reset ? '<span class="muted hint svc-note" id="svc-note"></span>' : ''}</div>`;
 }
 
@@ -515,22 +516,25 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
   let raceMemory = startParts && startParts.kind === 'race' ? { format: startParts.format, swaps: startParts.swaps } : { format: 'one', swaps: false }; // (what the race was before another kind was chosen, so Race comes back as it was)
   const places = {}; // the numbers of a list that is shown in boxes, by setting
   fields.filter(f => f.ui === 'boxes').forEach(f => { const l = FormUI.listOf(val(f)); places[f.id] = l.length ? l : FormUI.listOf(f.default); }); // (a setup that has no list yet counts the standard one, as the race does: its boxes show it)
-  const one = f => fieldHtml(f, f.ui === 'boxes' ? FormUI.joinList(places[f.id]) : val(f), { pieces, types, members, dlevels, dincs, cfails, twt, twm, tws, twsel, twunit: (item && item.unit) || TyreWear.DEFAULTS.unit, parts: startParts }) + frameBlock(f);
+  const one = f => fieldHtml(f, f.ui === 'boxes' ? FormUI.joinList(places[f.id]) : val(f), { pieces, types, members, dlevels, dincs, cfails, twt, twm, tws, twsel, twunit: (item && item.unit) || TyreWear.DEFAULTS.unit, parts: startParts, partner: f.with && fieldOf(f.with) ? { f: fieldOf(f.with), v: val(fieldOf(f.with)) } : null }) + frameBlock(f);
   // a schema with groups: the fields in collapsible sections with a coloured header, in the order of the groups (fields without a group of their own, such as your own fields, go last)
   const defs = Array.isArray(s.groups) && s.groups.length ? s.groups : null;
   const groups = defs ? [...defs.map(g => ({ ...g, fields: fields.filter(f => f.group === g.id) })), { id: '_more', title: 'More', note: '', fields: fields.filter(f => !defs.some(g => g.id === f.group)) }].filter(g => g.fields.length) : null;
-  // Race Setups (1.71.0): the form has a rail, and its sections are made of the groups (Advanced holds four of them); see schema.js, rail
-  const railDefs = e === 'racesetups' && groups && Array.isArray(s.rail) && s.rail.length ? s.rail : null;
+  // Race Setups (1.71.0) and the Penalty and Damage systems (1.73.0): the form has a rail, and its sections are made of the groups (Advanced holds four of them); see schema.js, rail
+  const railDefs = groups && Array.isArray(s.rail) && s.rail.length ? s.rail : null;
   const sections = railDefs ? railDefs.map(r => ({ ...r, groups: r.groups.map(id => groups.find(g => g.id === id)).filter(Boolean) })).filter(r => r.groups.length) : null;
   if (sections) { const left = groups.filter(g => !sections.some(x => x.groups.includes(g))); if (left.length) sections.push({ id: '_more', title: 'More', ask: 'Other settings.', icon: 'sliders', optional: true, groups: left }); } // (a setting that is in no section is not lost)
   const opened = defs ? (formOpen[e] = formOpen[e] || new Set((railDefs || defs).filter(g => g.open).map(g => g.id))) : null;
   const nameField = sections ? fieldOf('name') : null; // (in a form with a rail the name is in the header, not in the first section)
-  const usedBy = sections && item && Array.isArray(state.refs.championships) ? state.refs.championships.filter(c => (c.rounds || []).some(r => (r.sessions || []).some(x => x.setup === item.id))).map(c => String(c.name || '').trim() || '(unnamed)') : null;
+  const usedBy = !sections ? null : e === 'racesetups' ? (item && Array.isArray(state.refs.championships) ? state.refs.championships.filter(c => (c.rounds || []).some(r => (r.sessions || []).some(x => x.setup === item.id))).map(c => String(c.name || '').trim() || '(unnamed)') : null)
+    : s.used && Array.isArray(state.refs[s.used.entity]) ? state.refs[s.used.entity].filter(r => item && r[s.used.key] === item.id).map(r => String(r.name || '').trim() || '(unnamed)') : null; // (a system: the race setups that choose it)
+  const tileName = v => (e === 'racesetups' ? SETUP_KIND_ICON[v.sessionType] || 'racesetups' : (SETUP_LOOK[e] || [])[0] || 'racesetups'); // (the picture in the header: the kind of a race setup, the picture of a system)
+  const frameWords = e === 'racesetups' ? {} : { navLabel: `The sections of this ${s.label.toLowerCase()}`, caption: 'This system', save: `Save ${s.label.toLowerCase()}`, usedNone: 'Not used yet. Choose it under Rules and systems in a race setup.', usedIcon: 'racesetups' };
   let railCurrent = sections ? (sections.find(x => opened.has(x.id)) || sections[0]).id : ''; // (the section that the rail points at: the one that was opened last)
   const sectionBody = x => (x.groups.length === 1 && x.groups[0].id === x.id ? RailForm.grid(x.groups[0].fields.filter(f => f !== nameField).map(one).join('')) : x.groups.map(g => RailForm.sub(g.id, g.title, g.note, g.fields.map(one).join(''))).join(''));
   dlg.innerHTML = sections ? RailForm.shell({ eyebrow: `${item ? 'Edit' : 'Add'} ${s.label.toLowerCase()}`, cls: setupToneClass(e).trim(), icon: n => Icons.svg(n, { size: 20, stroke: 1.7 }), used: usedBy,
-      tile: Icons.svg(SETUP_KIND_ICON[val(fieldOf('sessionType'))] || 'racesetups', { size: 26, stroke: 1.6 }), name: one(nameField),
-      sections: sections.map(x => ({ id: x.id, title: x.title, ask: x.ask, icon: x.icon, open: opened.has(x.id), optional: !!x.optional, body: sectionBody(x) })) })
+      ...frameWords, tile: Icons.svg(tileName(e === 'racesetups' ? { sessionType: val(fieldOf('sessionType')) } : {}), { size: 26, stroke: 1.6 }), name: one(nameField),
+      sections: sections.map(x => ({ id: x.id, title: x.title, ask: x.ask, icon: x.icon, open: opened.has(x.id), optional: !!x.optional, live: !!x.live, body: sectionBody(x) })) })
     : `<form id="frm"${setupToneClass(e) ? ` class="${setupToneClass(e).trim()}"` : ''}><h3>${item ? 'Edit' : 'Add'} ${esc(s.label.toLowerCase())}</h3>
     ${groups ? `<div class="formgrid grouped"><div class="fgtools"><button type="button" class="btn" data-fgall="1">Open all</button><button type="button" class="btn" data-fgall="0">Close all</button></div>${groups.map(g =>
       `<details class="fgroup" data-fg="${esc(g.id)}"${opened.has(g.id) ? ' open' : ''}><summary><strong>${esc(g.title)}</strong>${g.note ? ` <span class="muted">${esc(g.note)}</span>` : ''}</summary><div class="fgrid">${g.fields.map(one).join('')}</div></details>`).join('')}</div>`
@@ -542,28 +546,33 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
   const formValues = () => { // what the form holds now, by setting
     const v = {};
     fields.forEach(f => { if (f.custom) return; const el = byId('f-' + f.id); if (el) v[f.key] = el.dataset && el.dataset.du === 'ft' ? keptValue(f, el) : el.value; });
+    if (e === 'penaltysystems') v.types = types; // (1.73.0: the tables of a system are not fields: the words read the rows as they are edited)
+    if (e === 'damagesystems') { v.levels = dlevels; v.incidents = dincs; v.failures = cfails; }
     return v;
   };
   // the notes and the dots of the rail (1.71.0): worked out in setupwords.js from the values of the form, drawn by railform.js
   const defaultsOf = {}; fields.forEach(f => { if (!f.custom) defaultsOf[f.key] = f.default; });
-  const railDraw = (v, rctx) => {
+  const railDraw = (v, rctx, notes) => {
     if (!sections) return;
-    const info = SetupWords.rail(v, { ...rctx, defaults: defaultsOf, shown: k => { const f = fieldOf(k); return !!f && isShown(f, getValue); } });
+    const info = e === 'racesetups' ? SetupWords.rail(v, { ...rctx, defaults: defaultsOf, shown: k => { const f = fieldOf(k); return !!f && isShown(f, getValue); } })
+      : SystemWords.rail(e, v, { defaults: defaultsOf, lists: { types: PT_DEFAULTS, levels: dmDef.levels, incidents: dmDef.incidents, failures: dmDef.failures } });
     const visible = {}; sections.forEach(x => { visible[x.id] = x.groups.some(g => g.fields.some(f => isShown(f, getValue))); });
     RailForm.sync(byId, info, visible, railCurrent);
+    RailForm.live(byId, info, notes, n => Icons.svg(n, { size: 18, stroke: 1.8 })); // (1.73.0: the note under the settings of a section that has one)
   };
   // the header (the picture of the kind, the pills, Ready to race), the sentence "In plain words" and the rail follow what is typed and chosen
   const sayDraw = () => {
     const box = byId('rssay'); if (!box) return;
     const v = formValues();
-    const rctx = { track: (state.refs.tracks || []).find(t => t.id === v.track) || null, rotation: ((state.refs.rotationsetups || []).find(r => r.id === v.rotation) || {}).name || '', dist: n => Distance.text(n, dUnit()) };
-    const d = SetupWords.describe(v, rctx);
+    const rctx = e === 'racesetups' ? { track: (state.refs.tracks || []).find(t => t.id === v.track) || null, rotation: ((state.refs.rotationsetups || []).find(r => r.id === v.rotation) || {}).name || '', dist: n => Distance.text(n, dUnit()) } : {};
+    const d = e === 'racesetups' ? SetupWords.describe(v, rctx) : SystemWords.describe(e, v);
     const pills = byId('rspills'), ready = byId('rsready'), tile = byId('rstile');
     if (pills) pills.innerHTML = d.pills.map(p => `<span class="rspill${p.tone ? ' ' + p.tone : ''}">${esc(p.text)}</span>`).join('');
     if (ready) { ready.className = 'rsready' + (d.ready.ok ? ' ok' : ''); ready.innerHTML = `${Icons.svg(d.ready.ok ? 'check' : 'penalty', { size: 15, stroke: 2 })}${esc(d.ready.text)}`; }
-    if (tile) tile.innerHTML = Icons.svg(SETUP_KIND_ICON[v.sessionType] || 'racesetups', { size: 26, stroke: 1.6 });
+    if (tile) tile.innerHTML = Icons.svg(tileName(v), { size: 26, stroke: 1.6 });
+    const bar = byId('rs-strip'); if (bar) bar.innerHTML = RailForm.strip(d.strip); // (the bar of the levels of a damage system)
     box.innerHTML = `<span class="rsic rssayic">${Icons.svg('say', { size: 20, stroke: 1.7 })}</span><div class="rssaytext"><span class="rseye">In plain words</span><p>${d.say.map(p => (p.b ? `<b>${esc(p.t)}</b>` : esc(p.t))).join('')}</p></div>`;
-    railDraw(v, rctx);
+    railDraw(v, rctx, d.notes);
   };
   // the buttons, the switches and the cards show what the form holds (1.70.0: they are only a face for the settings, which are kept as before)
   const syncControls = () => {
@@ -602,7 +611,7 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
   }
   if (groups) dlg.querySelectorAll('.fgroup').forEach(el => { el.ontoggle = () => { const g = el.dataset.fg; if (el.open) { const fresh = !opened.has(g); opened.add(g); if (sections && fresh) { railCurrent = g; sayDraw(); } } else opened.delete(g); }; }); // remembered for the next time the form opens (1.71.0: the rail points at the section that was opened last)
   attachFrames(dlg, k => frames[k], (k, f) => { frames[k] = f; });
-  dlg.onclick = ev => {
+  const onClick = ev => {
     const b = ev.target.closest('button'); if (!b) return;
     if (b.id === 'cancel') dlg.close();
     const d = b.dataset || {};
@@ -665,7 +674,8 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
     }
     if (b.dataset.clear) { imgs[b.dataset.clear] = ''; frames[b.dataset.clear] = Widgets.frameOf(null); byId('f-' + b.dataset.clear + '-img').hidden = true; byId('f-' + b.dataset.clear).value = ''; redrawFrame(b.dataset.clear); }
   };
-  dlg.oninput = ev => {
+  dlg.onclick = ev => { onClick(ev); if (sections && e !== 'racesetups') sayDraw(); }; // (1.73.0: a system's words follow a row that is added or taken away; the table is changed first)
+  const onInput = ev => {
     const t = ev.target;
     if (e === 'racesetups') sayDraw(); // (the sentence follows every key that is typed)
     if (t && t.dataset && t.dataset.pbf !== undefined) { // a box of a list of numbers: the list is kept as text, as it always was ("10, 8, 6")
@@ -695,6 +705,7 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
     if (t.className.includes('calc-count')) p.count = t.value; else if (t.className.includes('calc-mm')) p.mm = dUnit() === 'ft' && t.value !== '' ? Speed.smallKept(t.value, 'ft') : t.value;
     byId('calc-total').textContent = Speed.lengthText(Speed.lengthFromPieces(pieces), dUnit());
   };
+  dlg.oninput = ev => { onInput(ev); if (sections && e !== 'racesetups') sayDraw(); }; // (and a system's words follow every key that is typed, also in a table: the row is changed first)
   dlg.onchange = async ev => {
     const t = ev.target;
     refreshShown();

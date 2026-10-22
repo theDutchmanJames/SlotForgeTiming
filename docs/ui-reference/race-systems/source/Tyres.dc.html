@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tyre wear system editor</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./sys.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="win ss-tyre" style="width: 1240px;font-family: Inter, system-ui, sans-serif; color: #e8e6e1">
+
+<div class="top">
+<div class="tile"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5M12 15.5V21M3 12h5.5M15.5 12H21"/></svg></div>
+<div class="grow">
+<div class="eyebrow">Tyre wear system</div>
+<h1 class="name">Club tyres</h1>
+<div class="pills">
+<span class="pill hi">Wear per lap</span>
+<span class="pill">6 tyres</span>
+<span class="pill">Change takes 4 s</span>
+<span class="pill">At 0%: 2 points a lap</span>
+</div>
+</div>
+<span class="status"><span class="dot"></span>Ready to use</span>
+</div>
+
+<div class="body">
+
+<div class="rail">
+<div class="cap">This system</div>
+<button class="ri on"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span><span class="t">Basics</span><span class="s">Per lap · race only</span></span><span class="dot sp" role="img" aria-label="Filled in"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5M12 15.5V21M3 12h5.5M15.5 12H21"/></svg><span><span class="t">The tyres</span><span class="s">Standard · 6 tyres</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-6"/></svg><span><span class="t">What worn tyres do</span><span class="s">Fuel rules · 0%: 2 points</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V9l7-5 7 5v12"/><path d="M10 21v-6h4v6"/></svg><span><span class="t">Pit stops</span><span class="s">4 s · with other work</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<div class="cap" style="margin-top: 14px">Only if you need it</div>
+<button class="ri opt"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="M16 14v6M8 14v6M12 16v6"/></svg><span><span class="t">Wear in the weather</span><span class="s">Standard numbers</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<button class="ri opt"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg><span><span class="t">Mandatory stops</span><span class="s">None</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<button class="ri opt"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg><span><span class="t">Sets of tyres</span><span class="s">Each car has its own</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<button class="ri opt"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/></svg><span><span class="t">Warnings</span><span class="s">Amber 25% · red 10%</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<div style="flex: 1"></div>
+<div class="used">
+<span class="eyebrow mute">Used by</span>
+<span class="u"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg>Endurance 2 hours</span>
+<span class="u"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg>Club race 10 laps</span>
+</div>
+</div>
+
+<div class="main">
+
+<div class="say">
+<div class="tile"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg></div>
+<div>
+<div class="eyebrow mute">In plain words</div>
+<p>Wear is counted <b>per lap</b>, in races only. A new <b>Hard</b> tyre lasts about <b>50 laps</b>, a <b>Soft</b> about <b>22</b> and a <b>Supersoft</b> about <b>14</b>. Worn tyres hinder the car through <b>the fuel use</b> and <b>the refuelling speed</b>, and at <b>0%</b> a car gets <b>2 penalty points</b> every lap. Changing tyres takes <b>4 seconds</b>, <b>at the same time</b> as the other work in the stop. The widgets turn amber at <b>25%</b> life left and red at <b>10%</b>.</p>
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+<span class="st">Basics</span><span class="sn">Per lap or per distance, and where does it count?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="q">
+<div class="l">Wear is counted per</div>
+<span class="seg" style="align-self: flex-start"><button class="on">Lap</button><button>Distance</button></span>
+<div class="hint">Distance counts the wear per 100 m, or per 100 ft when the app counts in feet.</div>
+</div>
+
+<div class="q">
+<div class="l">Tyres also wear in</div>
+<div class="cols">
+<div class="sw"><button class="tg" role="switch" aria-checked="false" aria-label="Tyre wear in practice"></button><span><b>Practice</b></span></div>
+<div class="sw"><button class="tg" role="switch" aria-checked="false" aria-label="Tyre wear in qualifying"></button><span><b>Qualifying</b></span></div>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5M12 15.5V21M3 12h5.5M15.5 12H21"/></svg></span>
+<span class="st">The tyres</span><span class="sn">How fast does each tyre wear, and what does a new tyre give?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="q">
+<div class="l">Start from a ready-made system<small>You can change every number</small></div>
+<span class="seg" style="align-self: flex-start"><button class="on">Standard</button><button>Sprint</button><button>Endurance</button></span>
+<div class="hint">Standard is in between, Sprint wears the tyres quickly (short races, many stops) and Endurance wears them slowly.</div>
+</div>
+
+<div class="tb" style="--cols: 1.7fr .9fr .9fr 1.1fr 1.1fr .8fr 84px">
+<div class="th"><span>Tyre</span><span>Wear per lap (%)</span><span>Fresh bonus (%)</span><span>Grip drops from (% life left)</span><span>Hindrance at 0% (%)</span><span>Lasts about</span><span></span></div>
+
+<div class="tr"><span class="tname"><b class="chip" style="color: #f4f4f4">H</b>Hard</span>
+<input class="fi num" type="number" value="2" aria-label="Hard: wear per lap">
+<input class="fi num" type="number" value="0" aria-label="Hard: fresh bonus">
+<input class="fi num" type="number" value="20" aria-label="Hard: grip drops from">
+<input class="fi num" type="number" value="25" aria-label="Hard: hindrance at 0%">
+<span class="lasts">50 laps</span>
+<button class="btn sm" aria-label="Show the grip curve of the Hard tyre">Curve</button></div>
+
+<div class="tr"><span class="tname"><b class="chip" style="color: #ffd12e">M</b>Medium</span>
+<input class="fi num" type="number" value="3" aria-label="Medium: wear per lap">
+<input class="fi num" type="number" value="2" aria-label="Medium: fresh bonus">
+<input class="fi num" type="number" value="25" aria-label="Medium: grip drops from">
+<input class="fi num" type="number" value="25" aria-label="Medium: hindrance at 0%">
+<span class="lasts">33 laps</span>
+<button class="btn sm" aria-label="Show the grip curve of the Medium tyre">Curve</button></div>
+
+<div class="tr"><span class="tname"><b class="chip" style="color: #ff3b5c">S</b>Soft</span>
+<input class="fi num" type="number" value="4.5" aria-label="Soft: wear per lap">
+<input class="fi num" type="number" value="5" aria-label="Soft: fresh bonus">
+<input class="fi num" type="number" value="30" aria-label="Soft: grip drops from">
+<input class="fi num" type="number" value="30" aria-label="Soft: hindrance at 0%">
+<span class="lasts">22 laps</span>
+<button class="btn sm" disabled="disabled" aria-label="The grip curve of the Soft tyre is shown">Curve</button></div>
+
+<div class="tr"><span class="tname"><b class="chip" style="color: #b57cff">SS</b>Supersoft</span>
+<input class="fi num" type="number" value="7" aria-label="Supersoft: wear per lap">
+<input class="fi num" type="number" value="8" aria-label="Supersoft: fresh bonus">
+<input class="fi num" type="number" value="35" aria-label="Supersoft: grip drops from">
+<input class="fi num" type="number" value="35" aria-label="Supersoft: hindrance at 0%">
+<span class="lasts">14 laps</span>
+<button class="btn sm" aria-label="Show the grip curve of the Supersoft tyre">Curve</button></div>
+
+<div class="tr"><span class="tname"><b class="chip" style="color: #43b02a">I</b>Intermediate</span>
+<input class="fi num" type="number" value="3" aria-label="Intermediate: wear per lap">
+<input class="fi num" type="number" value="0" aria-label="Intermediate: fresh bonus">
+<input class="fi num" type="number" value="25" aria-label="Intermediate: grip drops from">
+<input class="fi num" type="number" value="25" aria-label="Intermediate: hindrance at 0%">
+<span class="lasts">33 laps</span>
+<button class="btn sm" aria-label="Show the grip curve of the Intermediate tyre">Curve</button></div>
+
+<div class="tr"><span class="tname"><b class="chip" style="color: #4c8dff">W</b>Wet</span>
+<input class="fi num" type="number" value="2.5" aria-label="Wet: wear per lap">
+<input class="fi num" type="number" value="0" aria-label="Wet: fresh bonus">
+<input class="fi num" type="number" value="25" aria-label="Wet: grip drops from">
+<input class="fi num" type="number" value="25" aria-label="Wet: hindrance at 0%">
+<span class="lasts">40 laps</span>
+<button class="btn sm" aria-label="Show the grip curve of the Wet tyre">Curve</button></div>
+</div>
+
+<div class="note info">
+<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+<span><b>Soft.</b> New tyres give the fresh bonus (+5%), and the bonus fades while the tyre wears. At 30% life left it is gone. Below that the tyre starts to hinder the car, and at 0% the hindrance is at its worst (−30%). A plus helps (less fuel used, faster refuelling), a minus hinders. Lap times are never changed. The grip curve of the tyre you picked is drawn under the table, as it is today.</span>
+</div>
+
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-6"/></svg></span>
+<span class="st">What worn tyres do</span><span class="sn">Do they change the car, and what happens at 0%?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="sw">
+<button class="tg on" role="switch" aria-checked="true" aria-label="Hinder or help the car through the fuel rules"></button>
+<span><b>Hinder or help the car through the fuel rules</b><br><span class="hint">Needs a Fuel system in the race setup.</span></span>
+</div>
+
+<div class="cols3">
+<div class="sw"><button class="tg on" role="switch" aria-checked="true" aria-label="The fuel used in a lap"></button><span><b>The fuel used in a lap</b></span></div>
+<div class="sw"><button class="tg on" role="switch" aria-checked="true" aria-label="The refuelling speed"></button><span><b>The refuelling speed</b></span></div>
+<div class="sw"><button class="tg" role="switch" aria-checked="false" aria-label="The size of the tank"></button><span><b>The size of the tank</b></span></div>
+</div>
+
+<div class="q">
+<div class="l">When the tyres reach 0%</div>
+<div class="cards c4">
+<button class="kc"><span class="kt">Nothing, only show it</span></button>
+<button class="kc on"><span class="kt">Penalty points every lap</span></button>
+<button class="kc"><span class="kt">The lap does not count until the car pits</span></button>
+<button class="kc"><span class="kt">The car retires</span></button>
+</div>
+</div>
+
+<div class="fld" style="max-width: 300px">
+<label for="zp">Penalty points every lap</label>
+<span class="in" style="min-width: 0"><input id="zp" type="number" value="2"><span>points</span></span>
+</div>
+
+</div>
+</div>
+
+<div class="sec">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V9l7-5 7 5v12"/><path d="M10 21v-6h4v6"/></svg></span>
+<span class="st">Pit stops</span><span class="sv">Changing tyres takes 4 seconds, at the same time as the other work in the stop.</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+</div>
+</div>
+
+<div class="sec">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="M16 14v6M8 14v6M12 16v6"/></svg></span>
+<span class="st">Wear in the weather</span><span class="sv">How much faster or slower a tyre wears in dry, cloudy, wet and clearing weather. Standard numbers.</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+</div>
+</div>
+
+<div class="sec">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg></span>
+<span class="st">Mandatory stops</span><span class="sv">None. No stop for tyres is needed to finish.</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+</div>
+</div>
+
+<div class="sec">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></span>
+<span class="st">Sets of tyres</span><span class="sv">Each car has its own sets of every tyre.</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+</div>
+</div>
+
+<div class="sec">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/></svg></span>
+<span class="st">Warnings</span><span class="sv">Amber at 25% life left, red at 10%. The audio set speaks at 50%, 25% and 10%.</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="foot">
+<span class="hint">Everything else keeps its default.</span>
+<span class="grow"></span>
+<button class="btn ghost">Cancel</button>
+<button class="btn hi">Save tyre wear system</button>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":2350}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

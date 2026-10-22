@@ -344,4 +344,11 @@ const folders = Help.folders();
   say('...the words are the ones of the board settings in the app (the name of the setting and its choice)', read('renderer/widgets.js').includes("label: 'Count over'") && read('renderer/widgets.js').includes("'All heats and rounds so far'"));
   say('...and the folder is still short enough', g.length < 1400); }
 
+// ---- 1.73.0: the forms of the Penalty and Damage systems ----
+{ const fo = folders.find(x => x.id === 'systemforms'), g = fo ? plain(fo.body) : '', at = id => folders.findIndex(x => x.id === id), rails = e => schema[e].rail;
+  say('1.73.0: a folder Penalty and Damage systems in words comes after Car Failures, and is short', !!fo && at('systemforms') === at('carfailures') + 1 && g.length < 1400);
+  say('...it names every section of the two forms as they are in the rail (by title), and says which ones are under Only if you need it', rails('penaltysystems').concat(rails('damagesystems')).every(r => g.includes(r.title)) && g.includes('Only if you need it') && rails('damagesystems').filter(r => r.optional).every(r => g.includes(r.title)));
+  say('...and the words of the form: In plain words, Ready to use, Give it a name, Used by, the dots, the colours, and that the systems stay two and nothing stored changes', ['In plain words', 'Ready to use', 'Give it a name', 'Used by', 'green', 'amber', 'open ring', 'yellow', 'red', 'two separate systems', 'does not change'].every(t => g.includes(t)));
+  say('...and every folder is still short enough', folders.every(x => plain(x.body).length < 1400)); }
+
 console.log(fails ? fails + ' HELP TESTS FAILED' : 'ALL HELP TESTS PASSED'); process.exit(fails ? 1 : 0);

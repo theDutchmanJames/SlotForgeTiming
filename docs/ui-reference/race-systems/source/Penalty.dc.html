@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Penalty system editor</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./sys.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="win ss-pen" style="width: 1240px;font-family: Inter, system-ui, sans-serif; color: #e8e6e1">
+
+<div class="top">
+<div class="tile"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div>
+<div class="grow">
+<div class="eyebrow">Penalty system</div>
+<h1 class="name">Club penalties</h1>
+<div class="pills">
+<span class="pill hi">Every 5 points add 5 s</span>
+<span class="pill">3 special penalties</span>
+<span class="pill">Disqualified at 20 points</span>
+</div>
+</div>
+<span class="status"><span class="dot"></span>Ready to use</span>
+</div>
+
+<div class="body">
+
+<div class="rail">
+<div class="cap">This system</div>
+<button class="ri on"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span><span class="t">Basics</span><span class="s">Every 5 points add 5 s</span></span><span class="dot sp" role="img" aria-label="Filled in"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg><span><span class="t">Special penalties</span><span class="s">Drivethrough · 2 Stop-and-Go</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<div class="cap" style="margin-top: 14px">Only if you need it</div>
+<button class="ri opt"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg><span><span class="t">Disqualification and fuel</span><span class="s">Out at 20 points · empty tank 2</span></span><span class="dot sp" role="img" aria-label="Changed from the standard"></span></button>
+<div style="flex: 1"></div>
+<div class="used">
+<span class="eyebrow mute">Used by</span>
+<span class="u"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg>Club race 10 laps</span>
+<span class="u"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg>Endurance 2 hours</span>
+</div>
+</div>
+
+<div class="main">
+
+<div class="say">
+<div class="tile"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg></div>
+<div>
+<div class="eyebrow mute">In plain words</div>
+<p>Every <b>5 penalty points</b> add <b>5 seconds</b> to the race time, so 12 points are 10 seconds. The Race Director can also give a <b>Drivethrough</b> or a <b>Stop-and-Go</b> (3 special penalties). A driver is <b>disqualified at 20 points</b>, and every lap driven on an empty tank gives <b>2 points</b>.</p>
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+<span class="st">Basics</span><span class="sn">How do penalty points turn into time?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="q">
+<div class="l">Points turn into time</div>
+<div class="cards c2">
+<button class="kc on"><span class="kt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>Every X points add Y seconds</span><span class="kd">The same number of seconds for every full block of points.</span></button>
+<button class="kc"><span class="kt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h4v-4h4v-4h4V6h4"/></svg>Steps I define (a table)</span><span class="kd">You choose the seconds for each step, such as 5 points = 5 s and 10 points = 12 s. The highest step reached counts.</span></button>
+</div>
+</div>
+
+<div class="q">
+<div class="sent">
+<span>Every</span>
+<span class="in" style="min-width: 0"><input type="number" value="5" aria-label="Every how many points"><span>points</span></span>
+<span>add</span>
+<span class="in" style="min-width: 0"><input type="number" value="5" aria-label="Adds how many seconds"><span>seconds</span></span>
+</div>
+<div class="hint">Choose Steps and a field appears for them: points=seconds, separated by commas (5=5, 10=12, 15=30).</div>
+</div>
+
+<div class="note info">
+<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+<span><b>12 points are 10 seconds.</b> Only full blocks of 5 points count, so 4 points are no time at all and 5 points are 5 seconds.</span>
+</div>
+
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg></span>
+<span class="st">Special penalties</span><span class="sn">What can the Race Director give besides points?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="hint">Penalties the Race Director can give instead of leaving points to turn into time. One costs points, and must be served by stopping on the sensor in the pits. A Stop-and-Go needs the car to stand still for its seconds; a Drivethrough is served when the pit stop starts.</div>
+
+<div class="tb" style="--cols: 1.7fr 1.3fr .9fr .9fr 1.1fr 1.1fr 36px">
+<div class="th"><span>Name</span><span>Kind</span><span>Stand still (s)</span><span>Costs (points)</span><span>Leaving early adds (points)</span><span>Never served adds (s)</span><span></span></div>
+<div class="tr">
+<input class="fi" type="text" value="Drivethrough" aria-label="Name of penalty 1">
+<select class="fi" aria-label="Kind of penalty 1"><option selected="selected">Drivethrough</option><option>Stop-and-Go</option></select>
+<input class="fi num" type="number" value="0" aria-label="Seconds to stand still, penalty 1">
+<input class="fi num" type="number" value="5" aria-label="Points it costs, penalty 1">
+<input class="fi num" type="number" value="1" aria-label="Points added for leaving early, penalty 1">
+<input class="fi num" type="number" value="10" aria-label="Seconds added if never served, penalty 1">
+<button class="ib" aria-label="Remove Drivethrough"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+</div>
+<div class="tr">
+<input class="fi" type="text" value="Stop-and-Go 5 s" aria-label="Name of penalty 2">
+<select class="fi" aria-label="Kind of penalty 2"><option>Drivethrough</option><option selected="selected">Stop-and-Go</option></select>
+<input class="fi num" type="number" value="5" aria-label="Seconds to stand still, penalty 2">
+<input class="fi num" type="number" value="5" aria-label="Points it costs, penalty 2">
+<input class="fi num" type="number" value="1" aria-label="Points added for leaving early, penalty 2">
+<input class="fi num" type="number" value="10" aria-label="Seconds added if never served, penalty 2">
+<button class="ib" aria-label="Remove Stop-and-Go 5 s"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+</div>
+<div class="tr">
+<input class="fi" type="text" value="Stop-and-Go 10 s" aria-label="Name of penalty 3">
+<select class="fi" aria-label="Kind of penalty 3"><option>Drivethrough</option><option selected="selected">Stop-and-Go</option></select>
+<input class="fi num" type="number" value="10" aria-label="Seconds to stand still, penalty 3">
+<input class="fi num" type="number" value="10" aria-label="Points it costs, penalty 3">
+<input class="fi num" type="number" value="1" aria-label="Points added for leaving early, penalty 3">
+<input class="fi num" type="number" value="15" aria-label="Seconds added if never served, penalty 3">
+<button class="ib" aria-label="Remove Stop-and-Go 10 s"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+</div>
+</div>
+
+<div><button class="btn sm"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Add a special penalty</button></div>
+
+</div>
+</div>
+
+<div class="sec">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg></span>
+<span class="st">Disqualification and fuel</span><span class="sv">Disqualified at 20 points. An empty tank gives 2 points a lap.</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="foot">
+<span class="hint">Everything else keeps its default.</span>
+<span class="grow"></span>
+<button class="btn ghost">Cancel</button>
+<button class="btn hi">Save penalty system</button>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":1360}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

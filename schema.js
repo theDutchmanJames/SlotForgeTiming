@@ -390,15 +390,24 @@ module.exports = {
       { id: 'special', title: 'Special penalties', note: 'Penalties the Race Director can give, such as a Stop-and-Go or a Drivethrough', open: true },
       { id: 'limits', title: 'Disqualification and fuel', note: 'When a driver is disqualified, and points for an empty tank' }
     ],
+    // The form of a penalty system has a rail, as the form of a race setup has (1.73.0, renderer/railform.js, words in renderer/systemwords.js): a section for every group, in the colour of the system.
+    // See racesetups.rail for what the parts mean; live: the section has a note under its settings that follows what is typed. used: where this system is chosen (the race setups that use it).
+    rail: [
+      { id: 'basics', title: 'Basics', ask: 'How do penalty points turn into time?', icon: 'clock', open: true, live: true, groups: ['basics'] },
+      { id: 'special', title: 'Special penalties', ask: 'What can the Race Director give besides points?', icon: 'racesetups', open: true, groups: ['special'] },
+      { id: 'limits', title: 'Disqualification and fuel', ask: 'When is a driver out, and what does an empty tank cost?', icon: 'ban', optional: true, groups: ['limits'] }
+    ],
+    used: { entity: 'racesetups', key: 'penaltySystem' },
     fields: [
-      { key: 'name', group: 'basics', label: 'Name', type: 'text' },
-      { key: 'timeRule', group: 'basics', label: 'Points turn into time', type: 'select', default: 'every', options: [['every', 'Every X points add Y seconds'], ['steps', 'Steps I define (a table)']] },
-      { key: 'everyPoints', group: 'basics', label: 'Every how many points', type: 'number', default: 5, showIf: [{ timeRule: ['every'] }] },
-      { key: 'everySeconds', group: 'basics', label: 'adds how many seconds', type: 'number', default: 5, showIf: [{ timeRule: ['every'] }] },
+      { key: 'name', group: 'basics', label: 'Name', type: 'text', placeholder: 'Name this penalty system' },
+      { key: 'timeRule', group: 'basics', label: 'Points turn into time', ui: 'cards', type: 'select', default: 'every', icons: { every: 'lines', steps: 'stairs' },
+        options: [['every', 'Every X points add Y seconds', 'The same number of seconds for every full block of points.'], ['steps', 'Steps I define (a table)', 'You choose the seconds for each step, such as 5 points = 5 s and 10 points = 12 s. The highest step reached counts.']] },
+      { key: 'everyPoints', group: 'basics', label: 'Every how many points', ui: 'sentence', sentence: ['Every', 'points', 'add', 'seconds'], with: 'everySeconds', type: 'number', default: 5, showIf: [{ timeRule: ['every'] }] },
+      { key: 'everySeconds', group: 'basics', label: 'adds how many seconds', ui: 'with', type: 'number', default: 5, showIf: [{ timeRule: ['every'] }] },
       { key: 'steps', group: 'basics', label: 'Steps: points=seconds, separated by commas (5=5, 10=12, 15=30). The highest step reached counts.', type: 'text', default: '5=5, 10=12, 15=30', showIf: [{ timeRule: ['steps'] }] },
       { key: 'types', group: 'special', label: 'Special penalties', type: 'penaltytypes', optional: true },
-      { key: 'dqPoints', group: 'limits', label: 'Disqualify at this many points (empty = never)', type: 'number', optional: true },
-      { key: 'fuelPoints', group: 'limits', label: 'Penalty points for every lap driven on an empty tank', type: 'number', optional: true, hint: 'Only for fuel systems where the car carries on when the fuel runs out. Empty or 0 = no points.' }
+      { key: 'dqPoints', group: 'limits', label: 'Disqualify at this many points (empty = never)', type: 'number', suffix: 'points', optional: true },
+      { key: 'fuelPoints', group: 'limits', label: 'Penalty points for every lap driven on an empty tank', type: 'number', suffix: 'points', optional: true, hint: 'Only for fuel systems where the car carries on when the fuel runs out. Empty or 0 = no points.' }
     ]
   },
   // Damage systems: the levels of damage a car can have, what each level asks of the pit stop, and the incidents the Race Director can give. Chosen per race setup.
@@ -412,16 +421,25 @@ module.exports = {
       { id: 'failures', title: 'Car Failures', note: 'Failures that strike a car at random during a race (off to begin with)' },
       { id: 'fines', title: 'Penalty points', note: 'For a stop that is late, and for leaving too early' }
     ],
+    // The form of a damage system has a rail (1.73.0), as the form of a penalty system does; see there.
+    rail: [
+      { id: 'basics', title: 'Basics', ask: 'How does the stop work, and what does a deslot cost?', icon: 'garage', open: true, groups: ['basics'] },
+      { id: 'levels', title: 'Levels', ask: 'How much damage asks for which stop in the pits?', icon: 'stairs', open: true, groups: ['levels'] },
+      { id: 'incidents', title: 'Incidents', ask: 'What buttons does the Race Director get?', icon: 'bolt', open: true, groups: ['incidents'] },
+      { id: 'failures', title: 'Car failures', ask: 'Should cars have failures at random moments?', icon: 'cog', optional: true, groups: ['failures'] },
+      { id: 'fines', title: 'Penalty points', ask: 'What do a late stop and leaving early cost?', icon: 'penalty', optional: true, groups: ['fines'] }
+    ],
+    used: { entity: 'racesetups', key: 'damageSystem' },
     fields: [
-      { key: 'name', group: 'basics', label: 'Name', type: 'text' },
-      { key: 'stop', group: 'basics', label: 'Repair and the other work in the stop', type: 'select', default: 'overlap',
-        options: [['overlap', 'At the same time: the longest job counts (a repair of 15 seconds and refuelling for 8 seconds is 15 seconds)'], ['add', 'One after the other: the repair starts when the other work in the stop is done']],
+      { key: 'name', group: 'basics', label: 'Name', type: 'text', placeholder: 'Name this damage system' },
+      { key: 'stop', group: 'basics', label: 'Repair and the other work in the stop', ui: 'cards', type: 'select', default: 'overlap', icons: { overlap: 'parallel', add: 'arrow' },
+        options: [['overlap', 'At the same time', 'The longest job counts: a repair of 15 seconds and refuelling for 8 seconds is 15 seconds.'], ['add', 'One after the other', 'The repair starts when the other work in the stop is done.']],
         hint: 'The other work is refuelling and a driver swap by the sensor. Changing tyres takes no time.' },
-      { key: 'deslotPoints', group: 'basics', label: 'Damage points for a deslot', type: 'number', min: 0, default: 1,
+      { key: 'deslotPoints', group: 'basics', label: 'Damage points for a deslot', type: 'number', suffix: 'points', min: 0, default: 1,
         hint: 'A lap slower than the deslot time of the track (Tracks > Lap time limits) gives this many damage points. 0 = none.' },
       { key: 'levels', group: 'levels', label: 'Levels', type: 'damagelevels', optional: true },
       { key: 'incidents', group: 'incidents', label: 'Incidents', type: 'damageincidents', optional: true },
-      { key: 'failuresOn', group: 'failures', label: 'Car Failures', type: 'select', default: 'off', options: [['off', 'Off'], ['on', 'On: cars get failures at random during a race']],
+      { key: 'failuresOn', group: 'failures', label: 'Car Failures', ask: 'Cars get failures at random during a race', ui: 'switch', on: 'on', type: 'select', default: 'off', options: [['off', 'Off'], ['on', 'On: cars get failures at random during a race']],
         hint: 'A failure (a slow puncture, brakes that do not work, an engine that gives up) strikes a car at a random moment, without a hit. It asks a stop in the pits, like a level of damage, and adds no damage points. Cars are rolled when the race starts, every heat again.' },
       { key: 'failures', group: 'failures', label: 'The failures', type: 'carfailures', optional: true, showIf: [{ failuresOn: ['on'] }] },
       { key: 'failFrom', group: 'failures', label: 'Earliest moment of a failure (% of the race)', type: 'number', min: 0, max: 100, default: 10, showIf: [{ failuresOn: ['on'] }],
@@ -430,9 +448,9 @@ module.exports = {
         hint: 'A failure never comes after this part of the race. A failure never comes in the first lap or the last one.' },
       { key: 'failMax', group: 'failures', label: 'Failures for a car in a race, at most', type: 'number', min: 1, default: 1, showIf: [{ failuresOn: ['on'] }],
         hint: 'When more failures come up for a car than this, a few are kept at random. A car has one failure at a time: the next comes after the stop that cleared the first.' },
-      { key: 'latePoints', group: 'fines', label: 'Penalty points for every lap after the deadline of a level', type: 'number', min: 0, default: 1,
+      { key: 'latePoints', group: 'fines', label: 'Penalty points for every lap after the deadline of a level', type: 'number', suffix: 'points', min: 0, default: 1,
         hint: 'A level can say the car must be in the pits within some laps. It needs a penalty system in the race setup; without one the late lap is only called out. 0 = none.' },
-      { key: 'earlyPoints', group: 'fines', label: 'Penalty points for leaving before the repair is done', type: 'number', min: 0, default: 1,
+      { key: 'earlyPoints', group: 'fines', label: 'Penalty points for leaving before the repair is done', type: 'number', suffix: 'points', min: 0, default: 1,
         hint: 'The damage stays. It needs a penalty system in the race setup. 0 = none.' }
     ]
   },

@@ -4,6 +4,8 @@
 // reads, shows and saves that one value. So the stored values of a setting do not change and an old setting opens as it was. A setting says which control it has with `ui`:
 //   'switch' (+ `on`: the stored value of On, the other option is Off)   'seg' / 'cards' (+ `offer`: the values that are offered, in this order; `full`: use the whole width)
 //   'boxes' (a list of numbers, 1st, 2nd, 3rd and so on)   'kind' (the picker of a race setup)
+//   'sentence' (1.73.0: two numbers in one line of words, "Every [5] points add [5] seconds": `sentence` = [the word before the first number, its unit, the word between, the unit of the second number],
+//   `with` = the setting of the second number, which has `ui: 'with'` and is drawn by the first)
 // The text of a switch is the label of the setting. A card has a line under its name: the third part of its option ([value, name, line]).
 (function (root) {
   const esc = s => String(s === undefined || s === null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -58,7 +60,16 @@
       + `<button type="button" role="switch" class="fu-sw${now.swaps ? ' on' : ''}" aria-checked="${now.swaps}" aria-labelledby="ql-swaps" aria-describedby="hn-swaps" data-swaps="1"><span class="fu-tg" aria-hidden="true"></span><span class="fu-swt"><b id="ql-swaps">${esc(p.swaps[0])}</b><span class="muted hint" id="hn-swaps">${esc(p.swaps[1])}</span></span></button></div>${hiddenSelect(f, v)}`);
   }
 
-  const CONTROLS = { seg, cards, switch: switchField, boxes, kind };
+  // two numbers in a line of words. ctx.partner: { f (the second setting), v (its value) }. Both numbers are ordinary number fields, with the ids that every setting has, so the form reads and saves them as before.
+  function sentence(f, v, ctx) {
+    const p = ctx.partner, w = Array.isArray(f.sentence) ? f.sentence : ['', '', '', ''];
+    const box = (g, val, unit) => `<span class="inunit"><input id="f-${esc(g.id)}" type="number" step="any"${g.min !== undefined ? ` min="${esc(g.min)}"` : ''} value="${esc(val)}" aria-label="${esc(g.label)}"><span>${esc(unit)}</span></span>`;
+    return wrap(f, 'fu-sentfield full', `<div class="fu-sent"><span>${esc(w[0])}</span>${box(f, v, w[1])}<span>${esc(w[2])}</span>${p ? box(p.f, p.v, w[3]) : ''}</div>${hint(f, ctx.hint)}`);
+  }
+  // the second number of a sentence is drawn by the first one
+  const partOf = () => '';
+
+  const CONTROLS = { seg, cards, switch: switchField, boxes, kind, sentence, with: partOf };
   const has = ui => Object.prototype.hasOwnProperty.call(CONTROLS, ui);
   // the whole field: f the setting (with id), v its value, ctx { label, hint, icon(name) -> svg text, picker, parts }
   // a select that has no value (a setting from before the setting existed) holds its first option, as the form always did: the buttons show that one

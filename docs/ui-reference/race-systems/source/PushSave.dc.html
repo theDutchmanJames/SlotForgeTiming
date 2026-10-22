@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Push and save system editor</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./sys.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="win ss-ps" style="width: 1240px;font-family: Inter, system-ui, sans-serif; color: #e8e6e1">
+
+<div class="top">
+<div class="tile"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 17a8.5 8.5 0 1 1 15 0"/><path d="M12 17l4-6"/><circle cx="12" cy="17" r="1.2"/><path d="M7 9.5l.9.9M12 6.5v1.3M17 9.5l-.9.9"/></svg></div>
+<div class="grow">
+<div class="eyebrow">Push and save system</div>
+<h1 class="name">Club push and save</h1>
+<div class="pills">
+<span class="pill hi">Normal: best lap + 3%</span>
+<span class="pill">Most saving: best lap + 8%</span>
+<span class="pill">Tyres and fuel</span>
+</div>
+</div>
+<span class="status"><span class="dot"></span>Ready to use</span>
+</div>
+
+<div class="body">
+
+<div class="rail">
+<div class="cap">This system</div>
+<button class="ri on"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg><span><span class="t">Basics</span><span class="s">Standard</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 17a8.5 8.5 0 1 1 15 0"/><path d="M12 17l4-6"/><circle cx="12" cy="17" r="1.2"/><path d="M7 9.5l.9.9M12 6.5v1.3M17 9.5l-.9.9"/></svg><span><span class="t">Pace</span><span class="s">Normal +3% · saving +8%</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5M12 15.5V21M3 12h5.5M15.5 12H21"/></svg><span><span class="t">Wear</span><span class="s">Tyres +40% / −30% · fuel +25% / −20%</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<div class="cap" style="margin-top: 14px">Only if you need it</div>
+<button class="ri opt"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg><span><span class="t">Which laps count</span><span class="s">From lap 3 · yellow is saving</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<div style="flex: 1"></div>
+<div class="used">
+<span class="eyebrow mute">Used by</span>
+<span class="u"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg>Endurance 2 hours</span>
+</div>
+</div>
+
+<div class="main">
+
+<div class="say">
+<div class="tile"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg></div>
+<div>
+<div class="eyebrow mute">In plain words</div>
+<p>A car at its best lap is flat out, <b>3%</b> over it is <b>normal pace</b> and <b>8%</b> over it is the <b>most saving pace</b>. Flat out wears the tyres <b>40% more</b> and uses <b>25% more fuel</b>. The most saving pace wears them <b>30% less</b> and uses <b>20% less</b>. The effect starts at lap <b>3</b>, and a lap under the yellow flag or the Safety Car <b>counts as saving</b>.</p>
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></span>
+<span class="st">Basics</span><span class="sn">Which ready-made system do you start from?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+<div class="q">
+<div class="l">Start from<small>They set the four wear numbers below. You can change every number.</small></div>
+<div class="cards c3">
+<button class="kc on"><span class="kt">Standard</span><span class="kd">In between: flat out wears 40% more tyres and 25% more fuel, the most saving wears 30% and 20% less.</span></button>
+<button class="kc"><span class="kt">Gentle</span><span class="kd">Changes the wear a little.</span></button>
+<button class="kc"><span class="kt">Strong</span><span class="kd">Pushing is expensive and saving is worth it.</span></button>
+</div>
+</div>
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 17a8.5 8.5 0 1 1 15 0"/><path d="M12 17l4-6"/><circle cx="12" cy="17" r="1.2"/><path d="M7 9.5l.9.9M12 6.5v1.3M17 9.5l-.9.9"/></svg></span>
+<span class="st">Pace</span><span class="sn">What counts as normal pace, and as the most saving?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="q">
+<div class="l">The pace of a lap<small>Percent over the best lap</small></div>
+<div>
+<div class="sc">
+<i style="left: 5%"></i>
+<i style="left: 35%"></i>
+<i style="left: 85%"></i>
+</div>
+<div class="scl">
+<span style="left: 5%; transform: none">Flat out · the best lap</span>
+<span style="left: 35%">Normal · +3%</span>
+<span style="left: 85%">Most saving · +8%</span>
+</div>
+</div>
+</div>
+
+<div class="cols">
+<div class="fld">
+<label for="p1">Normal pace: the best lap plus</label>
+<span class="in" style="min-width: 0; align-self: flex-start"><input id="p1" type="number" value="3"><span>%</span></span>
+</div>
+<div class="fld">
+<label for="p2">Most saving pace: the best lap plus</label>
+<span class="in" style="min-width: 0; align-self: flex-start"><input id="p2" type="number" value="8"><span>%</span></span>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5M12 15.5V21M3 12h5.5M15.5 12H21"/></svg></span>
+<span class="st">Wear</span><span class="sn">How much more or less are the tyres and the fuel used up?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="tb" style="--cols: 2.2fr 1fr 1fr">
+<div class="th"><span>The pace changes</span><span>Flat out: more by (%)</span><span>Most saving: less by (%)</span></div>
+<div class="tr">
+<div class="sw"><button class="tg on" role="switch" aria-checked="true" aria-label="The pace changes the tyre wear"></button><span><b>The tyre wear</b></span></div>
+<input class="fi num" type="number" value="40" aria-label="Tyres: wear when flat out is more by, percent">
+<input class="fi num" type="number" value="30" aria-label="Tyres: wear at the most saving pace is less by, percent">
+</div>
+<div class="tr">
+<div class="sw"><button class="tg on" role="switch" aria-checked="true" aria-label="The pace changes the fuel use"></button><span><b>The fuel use</b></span></div>
+<input class="fi num" type="number" value="25" aria-label="Fuel: use when flat out is more by, percent">
+<input class="fi num" type="number" value="20" aria-label="Fuel: use at the most saving pace is less by, percent">
+</div>
+</div>
+<div class="hint">Switched off, the tyres wear or the fuel is used as usual.</div>
+
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg></span>
+<span class="st">Which laps count</span><span class="sn">The start of the race, very slow laps and the yellow flag</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="cols">
+<div class="fld">
+<label for="l1">The effect starts at lap</label>
+<span class="in" style="min-width: 0; align-self: flex-start"><input id="l1" type="number" value="3"><span>lap</span></span>
+</div>
+<div class="fld">
+<label for="l2">A lap slower than this is not pace</label>
+<span class="in" style="min-width: 0; align-self: flex-start"><input id="l2" type="number" value="150"><span>% of the best lap</span></span>
+</div>
+</div>
+
+<div class="q">
+<div class="l">Laps under the yellow flag or the Safety Car</div>
+<div class="cards c2">
+<button class="kc on"><span class="kt">Count as saving</span><span class="kd">A slow lap there is saving.</span></button>
+<button class="kc"><span class="kt">Count like any other lap</span></button>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="foot">
+<span class="hint">Everything else keeps its default.</span>
+<span class="grow"></span>
+<button class="btn ghost">Cancel</button>
+<button class="btn hi">Save push and save system</button>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":1650}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
