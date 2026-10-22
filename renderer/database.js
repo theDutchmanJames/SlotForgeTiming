@@ -347,7 +347,7 @@ const twCurve = (tyres, sel) => { const ty = Wx.tyreOf(sel) || Wx.TYRES[0], t = 
   return `<div class="twcurve"><div class="twsvg">${TyreWear.curveSvg(t)}</div><div class="twtext"><p><strong>${esc(ty.name)}.</strong> New tyres give the fresh bonus (${TyreWear.effectText(t.bonus)}). The bonus fades while the tyre wears.</p>
     <p><strong>At ${t.cliff}% life left</strong> the bonus is gone. Below that the tyre starts to hinder the car.</p><p><strong>At 0%</strong> the hindrance is at its worst (${TyreWear.effectText(-t.hind)}).</p>
     <p class="muted">A plus helps (less fuel used, faster refuelling), a minus hinders. Lap times are never changed.</p></div></div>`; };
-const twTable = (tyres, unit, sel) => `<div class="twbtns row"><span class="muted">Start from a ready-made system (you can change every number):</span> ${TyreWear.PRESET_KEYS.map(k => `<button type="button" class="btn" data-twpreset="${k}" title="${esc(TyreWear.PRESETS[k].note)}">${esc(TyreWear.PRESETS[k].name)}</button>`).join(' ')}</div>
+const twTable = (tyres, unit, sel) => `<div class="twbtns row"><span class="twbl"><b>Start from a ready-made system</b><span class="muted">You can change every number.</span></span><span class="twseg" role="group" aria-label="Ready-made systems">${TyreWear.PRESET_KEYS.map(k => { const on = TyreWear.presetOf(tyres) === k; return `<button type="button" class="btn${on ? ' on' : ''}" aria-pressed="${on}" data-twpreset="${k}" title="${esc(TyreWear.PRESETS[k].note)}">${esc(TyreWear.PRESETS[k].name)}</button>`; }).join('')}</span></div>
   <p class="muted">Standard is in between, Sprint wears the tyres quickly (short races, many stops) and Endurance wears them slowly.</p>
   <div class="twtable" id="tw-table">${twHead(unit)}${twRows(tyres, unit, sel)}</div><div id="tw-curve">${twCurve(tyres, sel)}</div>`;
 // the ready-made push and save systems (field type 'pspresets', 1.54.0): a button for each that fills in the four wear numbers
@@ -426,7 +426,7 @@ function fieldHtml(f, v, extra) {
     inp = f.type === 'datetime' ? `<input id="${id}" type="text" value="${esc(v ? plainDate(v) : 'Never')}" disabled>` : `<input id="${id}" type="number" value="${esc(v ?? 0)}" disabled>`;
     if (f.reset) inp = `<div class="imgrow">${inp}<button type="button" class="btn" data-svcreset="1">Reset</button></div>`;
   }
-  const wide = (f.full ? ' full' : '') + (['longtext', 'gallery', 'tracklength', 'image', 'penaltytypes', 'damagelevels', 'damageincidents', 'carfailures', 'tyretable', 'wxmult', 'tyresets', 'pspresets', 'members', 'cartracks'].includes(f.type) ? ' full' : '') + (['penaltytypes', 'damagelevels', 'damageincidents', 'carfailures'].includes(f.type) ? ' listfield' : ''); // (listfield: a table of rows that has a section of its own; in the rail form the section says what it is, so its name is not repeated, 1.73.0)
+  const wide = (f.full ? ' full' : '') + (['longtext', 'gallery', 'tracklength', 'image', 'penaltytypes', 'damagelevels', 'damageincidents', 'carfailures', 'tyretable', 'wxmult', 'tyresets', 'pspresets', 'members', 'cartracks'].includes(f.type) ? ' full' : '') + (['penaltytypes', 'damagelevels', 'damageincidents', 'carfailures', 'tyretable', 'wxmult', 'tyresets'].includes(f.type) ? ' listfield' : ''); // (listfield: a table of rows that has a section of its own; in the rail form the section says what it is, so its name is not repeated, 1.73.0)
   return `<div class="field${wide}" data-key="${f.id}">${lab}${inp}${fh(f) ? `<span class="muted hint">${esc(fh(f))}</span>` : ''}${f.reset ? '<span class="muted hint svc-note" id="svc-note"></span>' : ''}</div>`;
 }
 
@@ -524,7 +524,7 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
   let types = Array.isArray(item && item.types) ? item.types.map(t => ({ ...t })) : (item ? [] : PT_DEFAULTS.map(t => ({ ...t })));
   const dmDef = Damage.defaults(); // (a new damage system starts with the examples: light, medium, heavy and critical damage)
   let dlevels = Array.isArray(item && item.levels) ? item.levels.map(x => ({ ...x })) : (item ? [] : dmDef.levels), dincs = Array.isArray(item && item.incidents) ? item.incidents.map(x => ({ ...x })) : (item ? [] : dmDef.incidents), cfails = Array.isArray(item && item.failures) ? item.failures.map(x => ({ ...x })) : (item ? [] : dmDef.failures);
-  let twt = TyreWear.cleanTyres(item && item.tyres), twm = TyreWear.cleanMult(item && item.mult), tws = TyreWear.cleanSets(item && item.sets), twsel = 'S'; // (a tyre wear system: the tyre table, the weather table and the tyre whose grip curve is shown; a new one starts as the Standard system)
+  let twt = TyreWear.cleanTyres(item && item.tyres), twm = TyreWear.cleanMult(item && item.mult), tws = TyreWear.cleanSets(item && item.sets), twsel = 'S', twShownUnit = (item && item.unit) || TyreWear.DEFAULTS.unit; // (a tyre wear system: the tyre table, the weather table and the tyre whose grip curve is shown; a new one starts as the Standard system)
   let gal = Array.isArray(item && item[s.gallery]) ? [...item[s.gallery]] : [], galSel = null;
   const memF = fields.find(f => f.type === 'members'); let members = memF && item && Array.isArray(item[memF.key]) ? item[memF.key].filter(Boolean) : []; // (the drivers of a team, in order)
   fields.filter(f => f.type === 'image').forEach(f => { imgs[f.id] = val(f) || ''; if (!f.custom) frames[f.id] = Widgets.frameOf(item && item[f.key + 'Frame']); });
@@ -572,6 +572,7 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
     fields.forEach(f => { if (f.custom) return; const el = byId('f-' + f.id); if (el) v[f.key] = el.dataset && el.dataset.du === 'ft' ? keptValue(f, el) : el.value; });
     if (e === 'penaltysystems') v.types = types; // (1.73.0: the tables of a system are not fields: the words read the rows as they are edited)
     if (e === 'damagesystems') { v.levels = dlevels; v.incidents = dincs; v.failures = cfails; }
+    if (e === 'tyrewearsystems') { v.tyres = twt; v.mult = twm; v.sets = tws; v.disp = dUnit(); } // (1.75.0: the three tables as they are edited, and the distance unit of the app for the words)
     return v;
   };
   // the notes and the dots of the rail (1.71.0): worked out in setupwords.js from the values of the form, drawn by railform.js
@@ -609,6 +610,7 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
     sayDraw();
     syncControls();
     if (e === 'weathersystems') FormUI.syncUnits(dlg, wxWords(getValue)); // (laps or minutes, the units of the conditions)
+    if (e === 'tyrewearsystems' && byId('tw-box') && getValue('unit') && getValue('unit') !== twShownUnit) { twShownUnit = getValue('unit'); byId('tw-box').innerHTML = twTable(twt, twShownUnit, twsel); } // (1.75.0: per lap or per distance changes the heading of the table and its Lasts about)
     fields.forEach(f => { const w = dlg.querySelector(`[data-key="${f.id}"]`); if (w) w.hidden = !isShown(f, getValue); });
     if (groups) groups.forEach(g => { const el = dlg.querySelector(`[data-fg="${g.id}"]`); if (el) el.hidden = !g.fields.some(f => isShown(f, getValue)); }); // a group with nothing to show is not shown
     if (sections) sections.forEach(x => { const el = dlg.querySelector(`[data-fg="${x.id}"]`); if (el) el.hidden = !x.groups.some(g => g.fields.some(f => isShown(f, getValue))); }); // (1.71.0: nor is a section whose groups have nothing to show)
@@ -700,6 +702,8 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
     if (b.dataset.clear) { imgs[b.dataset.clear] = ''; frames[b.dataset.clear] = Widgets.frameOf(null); byId('f-' + b.dataset.clear + '-img').hidden = true; byId('f-' + b.dataset.clear).value = ''; redrawFrame(b.dataset.clear); }
   };
   dlg.onclick = ev => { onClick(ev); if (sections && e !== 'racesetups') sayDraw(); }; // (1.73.0: a system's words follow a row that is added or taken away; the table is changed first)
+  // the ready-made system whose numbers the table holds is marked (1.75.0)
+  const markPreset = () => { const k = TyreWear.presetOf(twt); dlg.querySelectorAll('[data-twpreset]').forEach(b => { const on = !!k && (b.dataset || {}).twpreset === k; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); }); };
   const onInput = ev => {
     const t = ev.target;
     if (e === 'racesetups') sayDraw(); // (the sentence follows every key that is typed)
@@ -712,7 +716,7 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
       const code = t.dataset.tw; if (twt[code]) twt[code][t.dataset.twk] = t.value;
       const lastsEl = dlg.querySelector(`[data-twlast="${code}"]`); if (lastsEl) lastsEl.textContent = TyreWear.lastsText(getValue('unit') || 'lap', dUnit(), Number(String(twt[code].wear ?? '').replace(',', '.')));
       if (twsel !== code) { twsel = code; dlg.querySelectorAll('[data-twrow]').forEach(r => { r.classList.toggle('sel', r.dataset.twrow === twsel); const bt = r.querySelector('[data-twsel]'); if (bt) bt.disabled = r.dataset.twrow === twsel; }); }
-      byId('tw-curve').innerHTML = twCurve(twt, twsel); return;
+      byId('tw-curve').innerHTML = twCurve(twt, twsel); markPreset(); return;
     }
     if (t && t.dataset && t.dataset.tws !== undefined) { if (tws[t.dataset.tws] !== undefined) tws[t.dataset.tws] = t.value; return; }
     if (t && t.dataset && t.dataset.twm !== undefined) { if (twm[t.dataset.twm]) twm[t.dataset.twm][t.dataset.twmc] = t.value; return; }

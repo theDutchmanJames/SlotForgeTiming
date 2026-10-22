@@ -1,9 +1,10 @@
-// The words of the system forms with a rail (1.73.0): a Penalty system and a Damage system, and (1.74.0) a Weather system. The form of a system has a header (the picture of the system, its name, a few pills and "Ready to use"),
+// The words of the system forms with a rail (1.73.0): a Penalty system and a Damage system, and (1.74.0) a Weather system, and (1.75.0) a Tyre wear system. The form of a system has a header (the picture of the system, its name, a few pills and "Ready to use"),
 // a sentence "In plain words" that reads the whole system back, and a rail with a short note and a dot for every section; this file works out those words from the values of the form and nothing
 // else (no screen, no storage), so they can be tested on their own. It is the same idea as setupwords.js for a race setup, and the numbers come from the rules of the race itself: the time of a
 // penalty from engine.js (penaltyConfig, penaltyMs) and the levels of damage from damage.js (clean), so the words say what the race will do, also for a setting that is empty or wrong.
 //   v: the values of the form, by setting (every value may be text), and the lists as the form holds them while they are edited:
 //      penaltysystems: types (the special penalties)   damagesystems: levels, incidents, failures (the rows of the three tables)   weathersystems: no lists (its tables are plain numbers: the 12 of the hindrance table and the 16 conditions)
+//      tyrewearsystems: tyres, mult, sets (the three tables as the form holds them while they are edited) and disp ('m' or 'ft': the distance unit of the app)
 //   ctx: { lists: { types, levels, incidents, failures: the rows a new system starts with } } (only to see what has been changed from the standard)
 //   describe -> { pills: [{ text, tone: 'hi' | '' }], say: [{ t, b }], ready: { ok, text }, notes: { section: { tone, parts } }, strip }
 //   rail     -> { section: { rail (the short note), row (the line of a section that is closed), state: 'ok' | 'todo' | 'plain' } }
@@ -25,7 +26,7 @@
   const names = list => list.map(x => x.name);
   const joinAnd = (list, word) => (list.length < 2 ? list.join('') : `${list.slice(0, -1).join(', ')} ${word} ${list[list.length - 1]}`);
   const entry = (rail, row, state) => ({ rail, row: cap(row), state });
-  const READY = { ok: { ok: true, text: 'Ready to use' }, name: { ok: false, text: 'Give it a name' } };
+  const READY = { ok: { ok: true, text: 'Ready to use' }, name: { ok: false, text: 'Give it a name' }, levels: { ok: false, text: 'Red must be at or below amber' } };
 
   // what the form holds in its tables, as the form saves it (a row without a name does not count)
   const typesOf = list => (Array.isArray(list) ? list : []).filter(t => t && text(t.name).trim()).map(t => ({ name: text(t.name).trim(), kind: t.kind === 'drivethrough' ? 'drivethrough' : 'stopgo', seconds: num(t.seconds, 0), cost: num(t.cost, 0), extra: num(t.extra, 0), unserved: num(t.unserved, 0) }));
@@ -292,7 +293,112 @@
     return out;
   }
 
-  const ENTITIES = { penaltysystems: [describePenalty, railPenalty], damagesystems: [describeDamage, railDamage], weathersystems: [describeWeather, railWeather] };
+  // ---------------------------------------------------------------- Tyre wear system (1.75.0)
+  // The numbers are the ones the race uses (tyrewear.js, clean), so the words say what the race will do, also for a box that is empty or wrong. v holds the settings of the form and the three tables as the form
+  // holds them while they are edited (tyres, mult, sets), and disp: 'm' or 'ft' (the distance unit of the app, which a system that counts per distance speaks in).
+  const tw = () => (typeof module !== 'undefined' ? require('./tyrewear.js') : root.TyreWear);
+  const SLICKS = ['H', 'S', 'SS']; // (the tyres that the sentence names: Hard, Soft and Supersoft; the others are in the table)
+  function tyreWearOf(v) {
+    const TW = tw(), X = wx(), disp = v.disp === 'ft' ? 'ft' : 'm', C = TW.clean(v, { disp }), dist = C.unit === 'distance';
+    const allowed = TW.CODES.filter(c => C.sets.mode === 'none' || C.sets.n[c] > 0), nameOf = c => X.tyreOf(c).name;
+    const named = SLICKS.filter(c => allowed.includes(c)), shown = named.length ? named : allowed.slice(0, 3);
+    const lasts = c => (C.tyres[c].wear > 0 ? TW.lastsText(C.unit, disp, C.tyres[c].wear) : ''); // ('' = this tyre does not wear)
+    const calls = C.calls, where = C.practice && C.qualifying ? 'races, practice and qualifying' : C.practice ? 'races and practice' : C.qualifying ? 'races and qualifying' : 'races only';
+    return { TW, X, C, disp, dist, allowed, shown, nameOf, lasts, calls, where, per: dist ? `per 100 ${disp}` : 'per lap' };
+  }
+    // bold words in a list: a, b and c
+  const boldList = (list, word) => { const out = []; list.forEach((x, i) => { if (i) out.push(T(i === list.length - 1 ? ` ${word || 'and'} ` : ', ')); out.push(B(x)); }); return out; };
+  const zeroPill = C => (C.zero === 'points' ? (C.zeroPoints > 0 ? `At 0%: ${plural(C.zeroPoints, 'point', 'points')} a lap` : 'At 0%: no points') : C.zero === 'lap' ? 'At 0%: lap does not count' : C.zero === 'retire' ? 'At 0%: car retires' : 'At 0%: nothing happens');
+
+  function describeTyreWear(v) {
+    const o = tyreWearOf(v), { TW, C, allowed, shown, nameOf, lasts } = o, m = C.mand;
+    const pills = [{ text: `Wear ${o.per}`, tone: 'hi' }, { text: plural(allowed.length, 'tyre', 'tyres'), tone: '' }, { text: C.changeMs > 0 ? `Change takes ${round(C.changeMs / 1000)} s` : 'Change takes no time', tone: '' }, { text: zeroPill(C), tone: '' }];
+    if (m) pills.push({ text: [m.stops > 0 && plural(m.stops, 'mandatory stop', 'mandatory stops'), m.two && 'Two dry tyres'].filter(Boolean).join(' · '), tone: '' });
+    const say = [T('Wear is counted '), B(o.per), T(`, in ${o.where}.`)];
+    // what a new set lasts, for the tyres that are named
+    if (shown.length) {
+      shown.forEach((c, i) => {
+        const l = lasts(c);
+        if (i === 0) say.push(T(' A new '), B(nameOf(c)), T(l ? ' tyre lasts about ' : ' tyre '), B(l || 'does not wear'));
+        else say.push(T(i === shown.length - 1 ? ' and a ' : ', a '), B(nameOf(c)), T(l ? ' about ' : ' '), B(l || 'does not wear'));
+      });
+      say.push(T('.'));
+    }
+    // what worn tyres do: the fuel levers, and what happens at 0%
+    const lv = [C.levers.use && 'the fuel use', C.levers.rate && 'the refuelling speed', C.levers.tank && 'the size of the tank'].filter(Boolean);
+    const zero = C.zero === 'points' ? (C.zeroPoints > 0 ? [T('a car gets '), B(ppts(C.zeroPoints)), T(' every lap')] : [T('a car gets '), B('no penalty points')])
+      : C.zero === 'lap' ? [T('the lap '), B('does not count'), T(' until the car has been in the pits for new tyres')] : C.zero === 'retire' ? [T('the car '), B('retires')] : [B('nothing'), T(' happens, the tyres are only shown as worn out')];
+    if (!C.effect) say.push(T(' Worn tyres '), B('do not change'), T(' the car, and at '), B('0%'), T(' '), ...zero, T('.'));
+    else if (!lv.length) say.push(T(' Worn tyres hinder '), B('nothing'), T(' (all three ways are off), and at '), B('0%'), T(' '), ...zero, T('.'));
+    else say.push(T(' Worn tyres hinder the car through '), ...boldList(lv), T(', and at '), B('0%'), T(' '), ...zero, T('.'));
+    // the pit stop
+    if (C.changeMs > 0) say.push(T(' Changing tyres takes '), B(secs(C.changeMs / 1000)), T(', '), B(C.stop === 'add' ? 'one after the other' : 'at the same time'), T(C.stop === 'add' ? ' with the other work in the stop.' : ' as the other work in the stop.'));
+    else say.push(T(' Changing tyres takes '), B('no time'), T(': the new set is on when the stop starts.'));
+    // the mandatory stops, when there are any
+    if (m) {
+      const what = [m.stops > 0 && plural(m.stops, 'stop', 'stops') + ' for tyres', m.two && 'two different dry tyres'].filter(Boolean);
+      const pen = m.penalty === 'time' ? [T('gets '), B(secs(m.seconds)), T(' added to its race time')] : m.penalty === 'points' ? [T('gets '), B(ppts(m.points))] : m.penalty === 'dq' ? [T('is '), B('disqualified')] : [T('is '), B('only noted'), T(' in the results')];
+      say.push(T(' Every car must make '), ...boldList(what), T(' by the finish; one that does not '), ...pen, T('.'));
+    }
+    // the sets, when they are not the standard ones (as in the design, a system with the standard sets does not say so: the rail says it)
+    if (C.sets.mode === 'none') say.push(T(' The sets are '), B('not limited'), T(': every stop gives a fresh set of the same tyre.'));
+    else if (!(C.sets.mode === 'car' && same(C.sets.n, TW.DEFAULT_SETS))) {
+      const have = allowed.map(c => `${C.sets.n[c]} ${nameOf(c)}`), out = TW.CODES.filter(c => !allowed.includes(c)).map(nameOf);
+      say.push(T(C.sets.mode === 'team' ? ' The team shares its sets of tyres: ' : ' Each car has its own sets of tyres: '), ...(have.length ? boldList(have) : [B('none')]), T(out.length ? `. ${joinAnd(out, 'and')} ${out.length === 1 ? 'is' : 'are'} not allowed in the race.` : '.'));
+    }
+    // the warnings
+    say.push(T(' The widgets turn amber at '), B(`${C.warn}%`), T(' life left and red at '), B(`${C.crit}%`), T('.'));
+    const notes = { basics: { tone: 'info', parts: [T('A race, a timed race, heats and an Endurance Race always have tyre wear when the race setup has this system. A Time Token Session never does.')] } };
+    if (C.crit > C.warn) notes.warn = { tone: 'warn', parts: [T('The critical (red) level, '), B(`${C.crit}%`), T(', is higher than the warning (amber) level, '), B(`${C.warn}%`), T('. Red has to be at or below amber, or the system cannot be saved.')] };
+    return { pills, say, ready: !text(v.name).trim() ? READY.name : C.crit > C.warn ? READY.levels : READY.ok, notes, strip: null }; // (the form does not save a red level above the amber one)
+  }
+
+  function railTyreWear(v, ctx) {
+    const o = tyreWearOf(v), { TW, C, allowed, shown, nameOf, lasts } = o, out = {}, named = text(v.name).trim() !== '';
+    const d = ctx.defaults || {}, d0 = TW.DEFAULTS;
+    // a setting that is typed and is not the standard one (an empty box counts as the standard, as the race does)
+    const changed = keys => keys.some(k => { const a = text(v[k]).trim(), b = text(d[k] !== undefined ? d[k] : d0[k]).trim(); return a !== '' && num(a, a) !== num(b, b); });
+    // Basics
+    out.basics = entry(`${o.dist ? 'Per distance' : 'Per lap'} · ${C.practice || C.qualifying ? (C.practice && C.qualifying ? 'race, practice, qualifying' : C.practice ? 'race and practice' : 'race and qualifying') : 'race only'}`,
+      `wear is counted ${o.per}, in ${o.where}`, named ? 'ok' : 'todo');
+    // The tyres
+    {
+      const pk = TW.presetOf(v.tyres), nm = pk ? TW.PRESETS[pk].name : 'Own numbers', bits = shown.map(c => (lasts(c) ? `${nameOf(c)} lasts about ${lasts(c)}` : `${nameOf(c)} does not wear`));
+      out.tyres = entry(`${nm} · ${plural(allowed.length, 'tyre', 'tyres')}`, `${pk ? `${nm} numbers` : 'your own numbers'} for ${plural(allowed.length, 'tyre', 'tyres')}${bits.length ? ': ' + bits.join(', ') : ''}`, pk === 'standard' ? 'plain' : 'ok');
+    }
+    // What worn tyres do
+    {
+      const lv = [C.levers.use && 'fuel use', C.levers.rate && 'refuelling', C.levers.tank && 'tank'].filter(Boolean), z = C.zero === 'points' ? (C.zeroPoints > 0 ? plural(C.zeroPoints, 'point', 'points') : 'no points') : C.zero === 'lap' ? 'lap lost' : C.zero === 'retire' ? 'retires' : 'nothing';
+      out.effect = entry(`${C.effect ? 'Fuel rules' : 'No fuel rules'} · 0%: ${z}`, `${C.effect ? (lv.length ? `worn tyres hinder the car through ${joinAnd(lv, 'and')}` : 'switched on, but all three ways are off') : 'worn tyres do not change the car'}. At 0%: ${C.zero === 'points' ? (C.zeroPoints > 0 ? `${ppts(C.zeroPoints)} every lap` : 'no penalty points') : C.zero === 'lap' ? 'the lap does not count until the car pits' : C.zero === 'retire' ? 'the car retires' : 'nothing happens'}`,
+        changed(['effect', 'eUse', 'eRate', 'eTank', 'zero', 'zeroPoints']) ? 'ok' : 'plain');
+    }
+    // Pit stops
+    out.pit = entry(C.changeMs > 0 ? `${round(C.changeMs / 1000)} s · ${C.stop === 'add' ? 'one after the other' : 'with other work'}` : 'No time to change', C.changeMs > 0 ? `changing tyres takes ${secs(C.changeMs / 1000)}, ${C.stop === 'add' ? 'one after the other with' : 'at the same time as'} the other work in the stop` : 'changing tyres takes no time',
+      changed(['changeSeconds', 'stop']) ? 'ok' : 'plain');
+    // Wear in the weather
+    {
+      const std = same(TW.cleanMult(v.mult), TW.cleanMult(TW.MULT));
+      out.weather = entry(std ? 'Standard numbers' : 'Own numbers', `${std ? 'the standard numbers' : 'your own numbers'} for how much faster or slower a tyre wears in dry, cloudy, wet and clearing weather (only used in a race with a weather system)`, std ? 'plain' : 'ok');
+    }
+    // Mandatory stops
+    {
+      const m = C.mand, what = m ? [m.stops > 0 && plural(m.stops, 'stop', 'stops'), m.two && 'two tyres'].filter(Boolean).join(' · ') : '';
+      out.mand = entry(m ? what : 'None', m ? TW.mandText(m).replace(/^Mandatory: /, '') : 'none: no stop for tyres is needed to finish', m ? 'ok' : 'plain');
+    }
+    // Sets of tyres
+    {
+      const mode = C.sets.mode, std = mode === d0.setsMode && same(TW.cleanSets(v.sets), TW.DEFAULT_SETS);
+      out.sets = entry(mode === 'car' ? 'Each car has its own' : mode === 'team' ? 'The team shares them' : 'No limit', mode === 'none' ? 'no limit: every stop gives a fresh set of the same tyre' : `${mode === 'team' ? 'the team shares' : 'each car has its own'} sets of tyres (${allowed.map(c => `${C.sets.n[c]} ${nameOf(c)}`).join(', ') || 'none'})`, std ? 'plain' : 'ok');
+    }
+    // Warnings
+    {
+      const std = C.warn === d0.warn && C.crit === d0.crit && same(C.calls, TW.cleanCalls(null)), cl = C.calls.map(n => `${n}%`);
+      out.warn = entry(`Amber ${C.warn}% · red ${C.crit}%`, `amber at ${C.warn}% life left, red at ${C.crit}%. ${cl.length ? `The audio set speaks at ${joinAnd(cl, 'and')}` : 'The audio set says nothing about the tyres'}`, C.crit > C.warn ? 'todo' : std ? 'plain' : 'ok');
+    }
+    return out;
+  }
+
+  const ENTITIES = { penaltysystems: [describePenalty, railPenalty], damagesystems: [describeDamage, railDamage], weathersystems: [describeWeather, railWeather], tyrewearsystems: [describeTyreWear, railTyreWear] };
   const has = entity => Object.prototype.hasOwnProperty.call(ENTITIES, entity);
   const describe = (entity, v) => (has(entity) ? ENTITIES[entity][0](v || {}) : { pills: [], say: [], ready: READY.name, notes: {}, strip: null });
   const rail = (entity, v, ctx) => (has(entity) ? ENTITIES[entity][1](v || {}, ctx || {}) : {});

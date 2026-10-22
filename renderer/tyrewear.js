@@ -31,6 +31,7 @@
     endurance: { name: 'Endurance', note: 'wears the tyres slowly', tyres: { H: row(1, 0, 20, 25), M: row(1.5, 2, 25, 25), S: row(2.2, 5, 30, 30), SS: row(3.5, 8, 35, 35), INT: row(1.5, 0, 25, 25), W: row(1.2, 0, 25, 25) } }
   };
   const PRESET_KEYS = Object.keys(PRESETS);
+  const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const DEFAULT_TYRES = PRESETS.standard.tyres;
   // how much more or less a tyre wears in a weather (x1 = normal): the weather state by the kind of tyre. Slicks in the rain wear fast, Intermediate and Wet tyres wear slower there.
   const MULT = { dry: { dry: 1, inter: 2, wet: 3 }, cloudy: { dry: 1, inter: 1.5, wet: 2 }, wet: { dry: 2.5, inter: 0.7, wet: 0.5 }, clearing: { dry: 1.5, inter: 0.8, wet: 1.5 } };
@@ -60,6 +61,8 @@
     });
     return out;
   }
+  // The ready-made system whose numbers a table of tyres holds (1.75.0): its key (standard, sprint, endurance), or '' when the numbers are the ones of none of them
+  const presetOf = tyres => { const c = cleanTyres(tyres); return PRESET_KEYS.find(k => sameJson(cleanTyres(PRESETS[k].tyres), c)) || ''; };
   // the sets of a record, cleaned: every tyre has a whole number from 0 to 99 (missing: the default)
   function cleanSets(sets) {
     const out = {};
@@ -305,7 +308,7 @@
     return { on: true, cfg, rows };
   }
 
-  const api = { MAND_PENALTIES, cleanMand, mandCheck, mandText, mandNote, mandStateText, cleanCalls, nextChoices, nextNote, DEFAULT_SETS, SETS_MODES, cleanSets, pickFit, setsTotal, setsText, CODES, NUMS, LIMITS, MAXP, PRESETS, PRESET_KEYS, DEFAULT_TYRES, MULT, ZERO, DEFAULTS, defaults, cleanTyres, cleanMult, clean, wearPerLap, effectPct, effectLever, levelOf, left, lasts, effectText, shownLife, leftText, zeroText, rulesText, view, unitM, lastsText, curveSvg, stateOf };
+  const api = { presetOf, MAND_PENALTIES, cleanMand, mandCheck, mandText, mandNote, mandStateText, cleanCalls, nextChoices, nextNote, DEFAULT_SETS, SETS_MODES, cleanSets, pickFit, setsTotal, setsText, CODES, NUMS, LIMITS, MAXP, PRESETS, PRESET_KEYS, DEFAULT_TYRES, MULT, ZERO, DEFAULTS, defaults, cleanTyres, cleanMult, clean, wearPerLap, effectPct, effectLever, levelOf, left, lasts, effectText, shownLife, leftText, zeroText, rulesText, view, unitM, lastsText, curveSvg, stateOf };
   root.TyreWear = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

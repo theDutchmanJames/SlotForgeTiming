@@ -1690,6 +1690,38 @@ html[data-layers="on"] .lw.live .lw-val{will-change:transform}
 }
 .padview .btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 
+/* ---- the form of a tyre wear system (1.75.0): the tyre table with its ready-made systems and the grip curve, the table of the weather, the sets, in the colour of the system (purple). Design: docs/ui-reference/race-systems. ---- */
+.rsform .twbtns{display:flex;align-items:center;justify-content:space-between;gap:12px 18px;margin:0 0 10px}
+.rsform .twbl{display:flex;flex-direction:column;gap:2px;font-size:14px}
+.rsform .twbl .muted{font-size:12.5px}
+.rsform .twseg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg)}
+.rsform .twseg .btn{border:0;border-right:1px solid var(--line);border-radius:0;background:none;box-shadow:none;color:var(--muted);padding:8px 16px;font-size:14.5px;font-weight:600}
+.rsform .twseg .btn:last-child{border-right:0}
+.rsform .twseg .btn:hover{color:var(--ink)}
+.rsform .twseg .btn.on{background:var(--accent);color:var(--on-accent)}
+.rsform .twtable{margin:0 0 12px;gap:0}
+.rsform .twrow{grid-template-columns:1.9fr repeat(4,minmax(0,1fr)) .9fr;gap:10px;padding:5px 8px;min-height:46px;border-bottom:1px solid var(--line);border-radius:0}
+.rsform .twrow:last-child{border-bottom:0}
+.rsform .twrow.sel{background:color-mix(in srgb,var(--accent) 12%,transparent);border-radius:8px;border-bottom-color:transparent}
+.rsform .twrow.twhead{min-height:0;align-items:end;padding:0 8px 6px;border-bottom:1px solid var(--line);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1.3}
+.rsform .twrow input{box-sizing:border-box;height:36px;padding:0 10px;border-radius:8px;font-size:14px;font-weight:650}
+.rsform .twname{font-size:14px;gap:10px}
+.rsform .twname .btn{padding:3px 10px;font-size:12.5px;border-radius:8px}
+.rsform .twlasts{font-size:14px;font-weight:650;color:var(--ink)}
+.rsform .twmult .twrow{grid-template-columns:1fr 1.4fr 1fr 1fr;max-width:820px}
+.rsform .twx{flex-wrap:nowrap}
+.rsform .twx>span{color:var(--muted);font-size:13px}
+.rsform .twcurve{margin:6px 0 0;padding:14px;border-radius:12px;background:var(--bg);gap:18px}
+.rsform .twtext{font-size:13.5px;line-height:1.5}
+.rsform .twsets{grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:0}
+.rsform .twsetx>input{box-sizing:border-box;height:36px;padding:0 10px;border-radius:8px;font-size:14px;font-weight:650}
+.rsform .field.listfield .twsets+.hint{margin:12px 0 0}
+@media (max-width:1100px){.rsform .twsets{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:900px){.rsform .twrow,.rsform .twmult .twrow{grid-template-columns:1fr 1fr;gap:8px}.rsform .twrow .twname{grid-column:1 / -1}}
+@media (max-width:560px){.rsform .twsets{grid-template-columns:repeat(2,minmax(0,1fr))}.rsform .twseg .btn{padding:8px 12px}}
+.rsform #tw-box p.muted,.rsform #tw-mult p.muted{margin:0 0 14px;font-size:12.5px;line-height:1.45}
+.rsform #tw-mult p.muted{margin:12px 0 0}
+
 /* ---- Soft lift (1.46.0): a slight depth for the whole app. Design: docs/ui-reference/depth ----
    Cards, folders, bars, dialogs and the widgets of a layout stand up a little like thick cards, buttons look a little shallow, and what is meant to be pressed in (the canvas of a race screen, the lane cards,
    the entry fields) is pressed in a little. The light comes from above: a thin light edge on top, a lip (the thickness) underneath, a short soft shadow. A pressed or switched on button moves down and sits in.

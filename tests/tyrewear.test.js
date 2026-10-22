@@ -75,5 +75,11 @@ ok('the lane lengths and the unit are kept (a length that is not a number is 0)'
   ok('the rules in a line', /lap/.test(T.rulesText(C)) && /2 penalty points a lap at 0%/.test(T.rulesText(C)) && /4 s/.test(T.rulesText(C)) && T.rulesText(null) === ''
     && /no time/.test(T.rulesText(T.clean({ changeSeconds: 0 }))) && /100 m/.test(T.rulesText(D)) && /100 ft/.test(T.rulesText(F)) && /retires/.test(T.zeroText(T.clean({ zero: 'retire' }))) && /does not count/.test(T.zeroText(T.clean({ zero: 'lap' }))) && /nothing/.test(T.zeroText(T.clean({ zero: 'none' }))) && /1 penalty point a lap/.test(T.zeroText(T.clean({ zeroPoints: 1 })))); }
 
+// ---- 1.75.0: which ready-made system the table is (the form marks it) ----
+ok('1.75.0: presetOf names the ready-made system the table is: the standard, Sprint, Endurance; own numbers are no preset; nothing at all is the standard', T.presetOf(T.defaults().tyres) === 'standard' && T.presetOf(T.PRESETS.sprint.tyres) === 'sprint' && T.presetOf(T.PRESETS.endurance.tyres) === 'endurance'
+  && T.presetOf({ ...T.defaults().tyres, S: { ...T.defaults().tyres.S, wear: 10 } }) === '' && T.presetOf(undefined) === 'standard' && T.presetOf({}) === 'standard');
+ok('...it reads the table as the form shows it (numbers as text; a number that is not one counts as the standard number), and never breaks', T.presetOf(JSON.parse(JSON.stringify(T.PRESETS.sprint.tyres).replace(/:(\d+(?:\.\d+)?)/g, ':"$1"'))) === 'sprint' && T.presetOf({ H: { wear: 'x' } }) === 'standard' && T.presetOf(null) === 'standard' && T.presetOf('junk') === 'standard' && T.presetOf(5) === 'standard');
+ok('...and it changes nothing it is given', (() => { const t = JSON.parse(JSON.stringify(T.PRESETS.sprint.tyres)), b = JSON.stringify(t); T.presetOf(t); return JSON.stringify(t) === b; })());
+
 console.log(fails ? `${fails} FAILED` : 'ALL OK');
 process.exit(fails ? 1 : 0);
