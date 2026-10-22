@@ -10,14 +10,83 @@
   },
   "pages": [],
   "boards": {
-    "Main.dc.html": { "x": 0, "y": 0, "w": 1240, "h": 1400, "title": "1. Overview: one frame, seven systems" },
-    "Penalty.dc.html": { "x": 0, "y": 1520, "w": 1240, "h": 1360, "title": "2. Penalty system (release 1)" },
-    "Damage.dc.html": { "x": 1320, "y": 1520, "w": 1240, "h": 1800, "title": "3. Damage system (release 1)" },
-    "Weather.dc.html": { "x": 0, "y": 3440, "w": 1240, "h": 2200, "title": "4. Weather system (release 2)" },
-    "Tyres.dc.html": { "x": 1320, "y": 3440, "w": 1240, "h": 2350, "title": "5. Tyre wear system (release 3)" },
-    "SafetyCar.dc.html": { "x": 0, "y": 5910, "w": 1240, "h": 1500, "title": "6. Safety car system (release 4)" },
-    "PushSave.dc.html": { "x": 1320, "y": 5910, "w": 1240, "h": 1650, "title": "7. Push and save system (release 4)" },
-    "Fuel.dc.html": { "x": 0, "y": 7680, "w": 1240, "h": 1400, "title": "8. Fuel system (release 4)" }
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1240,
+      "h": 1400,
+      "title": "1. Overview: one frame, seven systems"
+    },
+    "Penalty.dc.html": {
+      "x": 0,
+      "y": 1520,
+      "w": 1240,
+      "h": 1360,
+      "title": "2. Penalty system (release 1)"
+    },
+    "Damage.dc.html": {
+      "x": 1320,
+      "y": 1520,
+      "w": 1240,
+      "h": 1800,
+      "title": "3. Damage system (release 1)"
+    },
+    "Weather.dc.html": {
+      "x": 0,
+      "y": 3440,
+      "w": 1240,
+      "h": 2200,
+      "title": "4. Weather system (release 2)"
+    },
+    "Tyres.dc.html": {
+      "x": 1320,
+      "y": 3440,
+      "w": 1240,
+      "h": 2350,
+      "title": "5. Tyre wear system (release 3)"
+    },
+    "SafetyCar.dc.html": {
+      "x": 0,
+      "y": 5910,
+      "w": 1240,
+      "h": 1500,
+      "title": "6. Safety car system (release 4)"
+    },
+    "PushSave.dc.html": {
+      "x": 1320,
+      "y": 5910,
+      "w": 1240,
+      "h": 1650,
+      "title": "7. Push and save system (release 4)"
+    },
+    "Fuel.dc.html": {
+      "x": 0,
+      "y": 7680,
+      "w": 1240,
+      "h": 1400,
+      "title": "8. Fuel system (release 4)"
+    },
+    "Rotation.dc.html": {
+      "x": 0,
+      "y": 9480,
+      "w": 1240,
+      "h": 4000,
+      "title": "9. Rotation setup (design, not built yet)"
+    },
+    "Championship.dc.html": {
+      "x": 1320,
+      "y": 9480,
+      "w": 1240,
+      "h": 4600,
+      "title": "10. Championship (design, not built yet)"
+    },
+    "BalanceOfPower.dc.html": {
+      "x": 0,
+      "y": 13600,
+      "w": 1240,
+      "h": 3100,
+      "title": "11. Balance of Power (design, not built yet)"
+    }
   },
   "order": [
     "Main.dc.html",
@@ -27,13 +96,23 @@
     "Tyres.dc.html",
     "SafetyCar.dc.html",
     "PushSave.dc.html",
-    "Fuel.dc.html"
+    "Fuel.dc.html",
+    "Rotation.dc.html",
+    "Championship.dc.html",
+    "BalanceOfPower.dc.html"
   ],
   "notes": {
     "title": {
       "x": 0,
       "y": -280,
       "text": "Race systems: the Race Setups side rail on every system page",
+      "kind": "title1",
+      "maxW": 2560
+    },
+    "last3": {
+      "x": 0,
+      "y": 9200,
+      "text": "The last three screens: rotation setups, championships, Balance of Power",
       "kind": "title1",
       "maxW": 2560
     }

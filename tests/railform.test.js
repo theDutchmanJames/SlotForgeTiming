@@ -122,4 +122,16 @@ ok('a form that has no rail (or only some of the elements, or nothing at all) is
   ok('...a number far to the right of a bar without the end mark keeps its place (the tick of 1.73.0)', !R.strip({ parts: [{ name: 'a', left: 0, width: 100, step: 1, of: 3 }], ticks: [{ at: 70, label: '70%', show: true }], text: 't' }).includes('right:0">70%<'));
 }
 
+// ---- a frame for a page (1.77.0: the rotation setup editor) ----
+{ const page = R.shell({ ...base, page: true, tag: 'div', formId: 'ro-form', tools: '<button id="t1">Undo</button>', foot: '<span id="ro-msg"></span><button id="ro-save">Save</button>', cls: 'setupform ss-rot' });
+  ok('a page frame is a div with the id it is given and the class rspage, and it has no form at all (Enter in a box does not send anything)', page.startsWith('<div id="ro-form" class="rsform rspage setupform ss-rot">') && page.endsWith('</div>') && !page.includes('<form') && !page.includes('</form>') && !page.includes('type="submit"'));
+  ok('...the tools are in the header between the title and the status, in a box of their own', page.indexOf('id="rspills"') < page.indexOf('<span class="rstools"><button id="t1">Undo</button></span>') && page.indexOf('<span class="rstools">') < page.indexOf('id="rsready"'));
+  ok('...the footer holds what it is given and nothing else: no error line, no Cancel, no "keeps its default"', (() => { const f = page.slice(page.indexOf('<footer'), page.indexOf('</footer>')); return f === '<footer class="rsfoot"><span id="ro-msg"></span><button id="ro-save">Save</button>' && !page.includes('id="err"') && !page.includes('id="cancel"') && !page.includes('keeps its default'); })());
+  ok('...an empty footer is allowed (a footer of "" is nothing, not the standard one)', (() => { const h = R.shell({ ...base, foot: '' }); return h.includes('<footer class="rsfoot"></footer>'); })());
+  ok('...a frame with none of these is the window it always was: a form, id frm, no rspage, no tools box, the standard footer', !html.includes('rspage') && !html.includes('rstools') && html.startsWith('<form id="frm" class="rsform ') && html.includes('id="cancel"'));
+  ok('...the id of the form is made safe', R.shell({ ...base, tag: 'div', formId: 'a"b' }).startsWith('<div id="a&quot;b" class="rsform ')); 
+  ok('...any tag but div is a form (nothing else can be asked for)', R.shell({ ...base, tag: 'script' }).startsWith('<form id="frm"'));
+  ok('a section can have an id of its own on the card (made safe), next to its data-fg; without one there is none', R.section({ id: 'plan', domId: 'ro-genbox', title: 'T', ask: 'Q', icon: 'rules', open: true, body: '' }, { icon }).startsWith('<details class="fgroup rssec" data-fg="plan" id="ro-genbox" open>')
+    && R.section({ id: 'x', domId: 'a"b', title: 'T', ask: 'Q', icon: 'rules', body: '' }, { icon }).includes('id="a&quot;b"') && R.section({ id: 'x', title: 'T', ask: 'Q', icon: 'rules', body: '' }, { icon }).startsWith('<details class="fgroup rssec" data-fg="x"><summary>')); }
+
 if (fails) { console.log(fails + ' RAIL FORM TESTS FAILED'); process.exit(1); } else console.log('ALL RAIL FORM TESTS PASSED');

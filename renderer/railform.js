@@ -11,8 +11,8 @@
   const STATES = { ok: ['ok', 'Filled in or changed'], todo: ['todo', 'Something is missing'], plain: ['off', 'Nothing changed from the standard'] };
   const stateOf = s => STATES[s] || STATES.plain;
 
-  // a section: a card that folds. sec: { id, title, ask (what it answers, shown while it is open), icon, open, body (HTML) }
-  const section = (sec, o) => `<details class="fgroup rssec" data-fg="${esc(sec.id)}"${sec.open ? ' open' : ''}><summary><span class="rsic">${ico(o, sec.icon)}</span><span class="rssx"><strong>${esc(sec.title)}</strong>`
+  // a section: a card that folds. sec: { id, title, ask (what it answers, shown while it is open), icon, open, body (HTML), domId (an id for the card itself, 1.77.0) }
+  const section = (sec, o) => `<details class="fgroup rssec" data-fg="${esc(sec.id)}"${sec.domId ? ` id="${esc(sec.domId)}"` : ''}${sec.open ? ' open' : ''}><summary><span class="rsic">${ico(o, sec.icon)}</span><span class="rssx"><strong>${esc(sec.title)}</strong>`
     + `<span class="muted rsq">${esc(sec.ask)}</span><span class="muted rsrow" id="rs-row-${esc(sec.id)}"></span></span></summary>${sec.body}${sec.live ? `<div class="rsnote" id="rs-live-${esc(sec.id)}" role="status" hidden></div>` : ''}</details>`;
   // a part inside a section (the parts of Advanced): a small heading, what it is for, and its settings
   // (1.76.0: a part without a title has no heading, and cols: 3 puts three settings on a row)
@@ -32,15 +32,18 @@
   // The whole form. o: { eyebrow (Edit race setup), tile (the picture of the kind, as HTML), name (the field of the name, as HTML), sections: [{ id, title, ask, icon, open, optional, body }],
   // icon (name -> picture), used (names or null), say (the box In plain words, as HTML), cls (the classes of the form), error (the text of a problem),
   // and the words of the frame (1.73.0, so a system can have its own): navLabel (what a screen reader hears for the rail), caption (the small heading of the rail), save (the text of the Save button),
-  // usedNone and usedIcon (see used) }
+  // usedNone and usedIcon (see used),
+  // and (1.77.0, for an editor that is a page and not a window: a rotation setup) page (the frame grows with the page and the rail stays in view), tag ('div' instead of a form, with the id formId),
+  // tools (HTML in the header, before the status: Undo and Redo) and foot (HTML that takes the place of everything in the bar at the bottom) }
   function shell(o) {
     const main = o.sections.filter(s => !s.optional), extra = o.sections.filter(s => s.optional);
-    return `<form id="frm" class="rsform${o.cls ? ' ' + esc(o.cls) : ''}">`
-      + `<header class="rshd"><span class="rstile" id="rstile">${o.tile || ''}</span><div class="rstitle"><h3 class="rseye" id="rshead">${esc(o.eyebrow)}</h3>${o.name}<div class="rspills" id="rspills"></div></div><span class="rsready" id="rsready"></span></header>`
+    const tag = o.tag === 'div' ? 'div' : 'form';
+    return `<${tag} id="${esc(o.formId || 'frm')}" class="rsform${o.page ? ' rspage' : ''}${o.cls ? ' ' + esc(o.cls) : ''}">`
+      + `<header class="rshd"><span class="rstile" id="rstile">${o.tile || ''}</span><div class="rstitle"><h3 class="rseye" id="rshead">${esc(o.eyebrow)}</h3>${o.name}<div class="rspills" id="rspills"></div></div>${o.tools ? `<span class="rstools">${o.tools}</span>` : ''}<span class="rsready" id="rsready"></span></header>`
       + `<div class="rsbody"><nav class="rsrail" aria-label="${esc(o.navLabel || 'The sections of this race setup')}"><p class="rsrl">${esc(o.caption || 'This setup')}</p>${main.map(s => item(s, o)).join('')}`
       + (extra.length ? `<p class="rsrl rsrl2" id="rs-optional">Only if you need it</p>${extra.map(s => item(s, o)).join('')}` : '') + `${used(o.used, o)}</nav>`
       + `<div class="rsmain"><div class="rssay" id="rssay" aria-live="polite">${o.say || ''}</div>${o.sections.map(s => section(s, o)).join('')}</div></div>`
-      + `<footer class="rsfoot"><p class="error" id="err" role="alert"></p><span class="muted rsdef">Everything else keeps its default.</span><button class="btn" type="button" id="cancel">Cancel</button><button class="btn primary" type="submit">${esc(o.save || 'Save race setup')}</button></footer></form>`;
+      + `<footer class="rsfoot">${o.foot !== undefined ? o.foot : `<p class="error" id="err" role="alert"></p><span class="muted rsdef">Everything else keeps its default.</span><button class="btn" type="button" id="cancel">Cancel</button><button class="btn primary" type="submit">${esc(o.save || 'Save race setup')}</button>`}</footer></${tag}>`;
   }
 
   // a number stays with its short unit on a narrow row of the rail ("5 s", "10 L", "25 %" are never split over two lines)

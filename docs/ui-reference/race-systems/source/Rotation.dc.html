@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rotation setup editor</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./sys.css">
+<link rel="stylesheet" href="./sys2.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="win ss-rot" style="width: 1240px;font-family: Inter, system-ui, sans-serif; color: #e8e6e1">
+
+<div class="top">
+<div class="tile"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg></div>
+<div class="grow">
+<div class="eyebrow">Rotation setup</div>
+<h1 class="name">Thursday club night</h1>
+<div class="pills">
+<span class="pill hi">8 drivers</span>
+<span class="pill">4 lanes</span>
+<span class="pill">6 heats</span>
+<span class="pill">3 heats each</span>
+</div>
+</div>
+<button class="ib" aria-label="Undo" title="Undo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+<button class="ib" aria-label="Redo" title="Redo" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
+<span class="status"><span class="dot"></span>Ready to use</span>
+</div>
+<div class="body">
+
+<div class="rail">
+<div class="cap">This rotation</div>
+<button class="ri on"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span><span class="t">Size</span><span class="s">8 drivers · 4 lanes</span></span><span class="dot sp" role="img" aria-label="Filled in"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19L16 8"/><path d="M14 6l4 4"/><path d="M18 3v3M16.5 4.5h3M6 5v2M5 6h2M20 14v2M19 15h2"/></svg><span><span class="t">Start from a plan</span><span class="s">Shuffled · 6 heats</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2A5 5 0 0 1 21 19"/></svg><span><span class="t">Participants</span><span class="s">4 of 8 have a name</span></span><span class="dot sp" role="img" aria-label="Filled in"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg><span><span class="t">Heats</span><span class="s">6 heats · 1 locked</span></span><span class="dot sp" role="img" aria-label="Filled in"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5 21h14M5 7h14"/><path d="m5 7-3 8a4 4 0 0 0 6 0z"/><path d="m19 7-3 8a4 4 0 0 0 6 0z"/></svg><span><span class="t">How often</span><span class="s">3 each · lanes uneven</span></span><span class="dot sp" role="img" aria-label="Filled in"></span></button>
+<div class="cap" style="margin-top: 14px">Only if you need it</div>
+<button class="ri opt"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l9 5-9 5-9-5z"/><path d="M3 13.5l9 5 9-5"/></svg><span><span class="t">Groups</span><span class="s">1 group: Juniors</span></span><span class="dot sp" role="img" aria-label="Filled in"></span></button>
+<div style="flex: 1"></div>
+<div class="used">
+<span class="eyebrow mute">Used by</span>
+<span class="u"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg>Thursday club race</span>
+<span class="u"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg>Sunday heats</span>
+</div>
+</div>
+
+<div class="main">
+
+<div class="say">
+<div class="tile"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg></div>
+<div>
+<div class="eyebrow mute">In plain words</div>
+<p><b>8 drivers</b> race in <b>6 heats</b> on <b>4 lanes</b>, with up to <b>4 cars</b> in a heat. Everybody races <b>3 heats</b>. The lanes are not quite even: <b>P7</b> races lane 3 twice and <b>P8</b> races lane 4 twice. <b>Heat 1</b> is locked, so a shuffle leaves it where it is. <b>Juniors</b> (P5 to P8) can be put in a heat in one go.</p>
+</div>
+</div>
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></span>
+<span class="st">Size</span><span class="sn">How many participants and lanes?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="row" style="gap:28px;align-items:flex-end">
+<div class="fld"><label for="n">Participants</label><span class="in" style="min-width:0"><input id="n" type="number" value="8"><span>2 to 64</span></span></div>
+<div class="fld"><label for="ln">Lanes</label><span class="in" style="min-width:0"><input id="ln" type="number" value="4"><span>1 to 8</span></span></div>
+</div>
+<div class="q">
+<div class="l">The participants are<small>It changes how you choose them on the Home tab.</small></div>
+<div class="cards c2" style="max-width:720px">
+<button class="kc on"><span class="kt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 15.5a8.5 8.5 0 0 1 17 0v2.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1zM11 11.5h9.5"/><path d="M7 19v1.5M17 19v1.5"/></svg> Drivers</span><span class="kd">Drivers are chosen one by one on Home.</span></button>
+<button class="kc"><span class="kt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2A5 5 0 0 1 21 19"/></svg> Teams</span><span class="kd">Teams are chosen on Home too, and the drivers of a team take turns in the heats.</span></button>
+</div>
+</div>
+<div class="fld"><label for="note">Note<small style="font-weight:400;color:#98a0ab;font-size:12.5px;margin-left:8px">Optional · 200 letters at most</small></label>
+<input id="note" class="fi" style="height:40px" value="Thursday club night: everybody races three heats"></div>
+
+</div>
+</div>
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19L16 8"/><path d="M14 6l4 4"/><path d="M18 3v3M16.5 4.5h3M6 5v2M5 6h2M20 14v2M19 15h2"/></svg></span>
+<span class="st">Start from a plan</span><span class="sn">Fill the heats from one of the plans a race setup can make</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="note info"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>It replaces <b>all</b> the heats you have now, locked ones too. Undo brings them back. A new rotation with no heats opens this section first.</span></div>
+<div class="cards c4">
+<button class="kc on"><span class="kt">Shuffled</span><span class="kd">Mixes everybody over a number of heats that you choose.</span></button>
+<button class="kc"><span class="kt">Same number each</span><span class="kd">Everybody races the same number of heats.</span></button>
+<button class="kc"><span class="kt">Round robin</span><span class="kd">Everybody meets everybody.</span></button>
+<button class="kc"><span class="kt">Lane rotation</span><span class="kd">Everybody races once in every lane.</span></button>
+</div>
+<div class="row" style="gap:18px">
+<div class="fld"><label for="gh">Heats</label><span class="in" style="min-width:0"><input id="gh" type="number" value="6"><span>heats</span></span></div>
+<button class="btn" style="margin-top:22px"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19L16 8"/><path d="M14 6l4 4"/><path d="M18 3v3M16.5 4.5h3M6 5v2M5 6h2M20 14v2M19 15h2"/></svg> Make the heats</button>
+</div>
+
+</div>
+</div>
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2A5 5 0 0 1 21 19"/></svg></span>
+<span class="st">Participants</span><span class="sn">Names are optional. Take one out, or add one</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="sech"><span class="cnt">8 in all · 4 have a name</span><button class="btn sm"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> Add a participant</button></div>
+<div class="names">
+<div class="nm" style="--pc:#4c9aff"><span class="nl"><i></i>P1</span><input class="fi" value="Jan" placeholder="Participant 1" aria-label="Name of participant 1"><button class="ib" aria-label="Take participant 1 out" title="Take participant 1 out of the rotation"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<div class="nm" style="--pc:#ff7a3d"><span class="nl"><i></i>P2</span><input class="fi" value="Eva" placeholder="Participant 2" aria-label="Name of participant 2"><button class="ib" aria-label="Take participant 2 out" title="Take participant 2 out of the rotation"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<div class="nm" style="--pc:#3ecf8e"><span class="nl"><i></i>P3</span><input class="fi" value="Tom" placeholder="Participant 3" aria-label="Name of participant 3"><button class="ib" aria-label="Take participant 3 out" title="Take participant 3 out of the rotation"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<div class="nm" style="--pc:#f2b705"><span class="nl"><i></i>P4</span><input class="fi" value="Sara" placeholder="Participant 4" aria-label="Name of participant 4"><button class="ib" aria-label="Take participant 4 out" title="Take participant 4 out of the rotation"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<div class="nm" style="--pc:#a46bff"><span class="nl"><i></i>P5</span><input class="fi" value="" placeholder="Participant 5" aria-label="Name of participant 5"><button class="ib" aria-label="Take participant 5 out" title="Take participant 5 out of the rotation"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<div class="nm" style="--pc:#e5484d"><span class="nl"><i></i>P6</span><input class="fi" value="" placeholder="Participant 6" aria-label="Name of participant 6"><button class="ib" aria-label="Take participant 6 out" title="Take participant 6 out of the rotation"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<div class="nm" style="--pc:#1fb5ad"><span class="nl"><i></i>P7</span><input class="fi" value="" placeholder="Participant 7" aria-label="Name of participant 7"><button class="ib" aria-label="Take participant 7 out" title="Take participant 7 out of the rotation"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<div class="nm" style="--pc:#ff6fb5"><span class="nl"><i></i>P8</span><input class="fi" value="" placeholder="Participant 8" aria-label="Name of participant 8"><button class="ib" aria-label="Take participant 8 out" title="Take participant 8 out of the rotation"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+</div>
+<div class="hint">A name only helps you here and on the Home tab, where one button picks the drivers who have these names. It does not have to be the name of a driver. The × takes a participant out of the rotation and out of its heats; the ones after it move up one number.</div>
+
+</div>
+</div>
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></span>
+<span class="st">Heats</span><span class="sn">Who races in which heat and lane?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="sech"><h4>Participants<small>Drag one to a place, or click it to pick it up. The small number is how many heats that participant races.</small></h4></div>
+<div class="pool">
+<span class="pchip" style="--pc:#4c9aff"><i></i>Jan <small>3</small></span>
+<span class="pchip sel" style="--pc:#ff7a3d"><i></i>Eva <small>3</small></span>
+<span class="pchip" style="--pc:#3ecf8e"><i></i>Tom <small>3</small></span>
+<span class="pchip" style="--pc:#f2b705"><i></i>Sara <small>3</small></span>
+<span class="pchip" style="--pc:#a46bff"><i></i>P5 <small>3</small></span>
+<span class="pchip" style="--pc:#e5484d"><i></i>P6 <small>3</small></span>
+<span class="pchip" style="--pc:#1fb5ad"><i></i>P7 <small>3</small></span>
+<span class="pchip" style="--pc:#ff6fb5"><i></i>P8 <small>3</small></span>
+</div>
+<div class="hold">
+<p><b>Eva</b> is picked. Her places are marked below. Click a place to put her there; whoever stood there leaves the heat.</p>
+<div class="row"><label for="pn" style="font-weight:650">Name</label><input id="pn" class="fi" style="width:220px" value="Eva"><span class="hint">Optional: it shows on the chip and on the Home tab.</span><span class="grow"></span><button class="btn sm ghost">Let go</button></div>
+</div>
+<hr class="hr2">
+<div class="sech"><h4>Heats<small>Drag a participant or a place onto a place, or click a place to fill it or swap it with another.</small></h4>
+<div class="row"><button class="btn sm"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> Add a heat</button><button class="btn sm"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8"/></svg> Tools <svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></button></div></div>
+<div class="hg hl">
+<div class="hr hh"><span>Heat</span><span>Label</span><span>Lane 1</span><span>Lane 2</span><span>Lane 3</span><span>Lane 4</span><span>Group</span><span style="text-align:right">This heat</span></div>
+<div class="hr locked">
+<div class="hn"><span class="grip"></span>1 <svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
+<input class="fi" placeholder="Label" value="Warm-up" aria-label="Label of heat 1">
+<div class="cell" style="--pc:#4c9aff">Jan</div>
+<div class="cell mine" style="--pc:#ff7a3d">Eva</div>
+<div class="cell" style="--pc:#3ecf8e">Tom</div>
+<div class="cell" style="--pc:#f2b705">Sara</div>
+<div class="sel2"><span>Put a group here</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div>
+<div class="hacts"><button class="ib sm2" disabled aria-label="Move heat 1 up" title="Move up"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button><button class="ib sm2" aria-label="Move heat 1 down" title="Move down"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button><button class="ib sm2 on" aria-label="Unlock heat 1" title="A locked heat stays where it is when you shuffle, and its places cannot be changed until you unlock it"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></button><button class="ib sm2" aria-label="More for heat 1" title="Copy, empty or delete this heat"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg></button></div>
+</div>
+<div class="hr">
+<div class="hn"><span class="grip"></span>2</div>
+<input class="fi" placeholder="Label" value="" aria-label="Label of heat 2">
+<div class="cell" style="--pc:#a46bff">P5</div>
+<div class="cell" style="--pc:#e5484d">P6</div>
+<div class="cell" style="--pc:#1fb5ad">P7</div>
+<div class="cell" style="--pc:#ff6fb5">P8</div>
+<div class="sel2"><span>Put a group here</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div>
+<div class="hacts"><button class="ib sm2" aria-label="Move heat 2 up" title="Move up"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button><button class="ib sm2" aria-label="Move heat 2 down" title="Move down"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button><button class="ib sm2" aria-label="Lock heat 2" title="A locked heat stays where it is when you shuffle, and its places cannot be changed until you unlock it"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></button><button class="ib sm2" aria-label="More for heat 2" title="Copy, empty or delete this heat"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg></button></div>
+</div>
+<div class="hr">
+<div class="hn"><span class="grip"></span>3</div>
+<input class="fi" placeholder="Label" value="" aria-label="Label of heat 3">
+<div class="cell mine" style="--pc:#ff7a3d">Eva</div>
+<div class="cell" style="--pc:#4c9aff">Jan</div>
+<div class="cell" style="--pc:#e5484d">P6</div>
+<div class="cell" style="--pc:#a46bff">P5</div>
+<div class="sel2"><span>Put a group here</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div>
+<div class="hacts"><button class="ib sm2" aria-label="Move heat 3 up" title="Move up"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button><button class="ib sm2" aria-label="Move heat 3 down" title="Move down"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button><button class="ib sm2" aria-label="Lock heat 3" title="A locked heat stays where it is when you shuffle, and its places cannot be changed until you unlock it"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></button><button class="ib sm2" aria-label="More for heat 3" title="Copy, empty or delete this heat"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg></button></div>
+</div>
+<div class="hr">
+<div class="hn"><span class="grip"></span>4</div>
+<input class="fi" placeholder="Label" value="" aria-label="Label of heat 4">
+<div class="cell" style="--pc:#3ecf8e">Tom</div>
+<div class="cell" style="--pc:#f2b705">Sara</div>
+<div class="cell" style="--pc:#1fb5ad">P7</div>
+<div class="cell" style="--pc:#ff6fb5">P8</div>
+<div class="sel2"><span>Put a group here</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div>
+<div class="hacts"><button class="ib sm2" aria-label="Move heat 4 up" title="Move up"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button><button class="ib sm2" aria-label="Move heat 4 down" title="Move down"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button><button class="ib sm2" aria-label="Lock heat 4" title="A locked heat stays where it is when you shuffle, and its places cannot be changed until you unlock it"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></button><button class="ib sm2" aria-label="More for heat 4" title="Copy, empty or delete this heat"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg></button></div>
+</div>
+<div class="hr">
+<div class="hn"><span class="grip"></span>5</div>
+<input class="fi" placeholder="Label" value="" aria-label="Label of heat 5">
+<div class="cell" style="--pc:#f2b705">Sara</div>
+<div class="cell" style="--pc:#3ecf8e">Tom</div>
+<div class="cell" style="--pc:#ff6fb5">P8</div>
+<div class="cell" style="--pc:#1fb5ad">P7</div>
+<div class="sel2"><span>Put a group here</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div>
+<div class="hacts"><button class="ib sm2" aria-label="Move heat 5 up" title="Move up"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button><button class="ib sm2" aria-label="Move heat 5 down" title="Move down"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button><button class="ib sm2" aria-label="Lock heat 5" title="A locked heat stays where it is when you shuffle, and its places cannot be changed until you unlock it"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></button><button class="ib sm2" aria-label="More for heat 5" title="Copy, empty or delete this heat"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg></button></div>
+</div>
+<div class="hr">
+<div class="hn"><span class="grip"></span>6</div>
+<input class="fi" placeholder="Label" value="Last heat" aria-label="Label of heat 6">
+<div class="cell" style="--pc:#e5484d">P6</div>
+<div class="cell" style="--pc:#a46bff">P5</div>
+<div class="cell mine" style="--pc:#ff7a3d">Eva</div>
+<div class="cell" style="--pc:#4c9aff">Jan</div>
+<div class="sel2"><span>Put a group here</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div>
+<div class="hacts"><button class="ib sm2" aria-label="Move heat 6 up" title="Move up"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button><button class="ib sm2" disabled aria-label="Move heat 6 down" title="Move down"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button><button class="ib sm2" aria-label="Lock heat 6" title="A locked heat stays where it is when you shuffle, and its places cannot be changed until you unlock it"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></button><button class="ib sm2" aria-label="More for heat 6" title="Copy, empty or delete this heat"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg></button></div>
+</div>
+</div>
+
+<div class="lg2"><span class="li"><span class="cell" style="--pc:#4c9aff">Jan</span>a place with a participant</span><span class="li"><span class="cell empty">empty</span>an empty place</span><span class="li"><span class="grip"></span>drag a heat by its grip</span><span class="li"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg> a locked heat stays where it is</span></div>
+<div class="chk">
+<div class="note info"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>Every participant races <b>3 heats</b>.</span></div>
+<div class="note info"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>The lanes are not shared evenly: some participants race more often in one lane than in another. <b>Even out the lanes</b> fixes that.</span></div>
+</div>
+
+</div>
+</div>
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5 21h14M5 7h14"/><path d="m5 7-3 8a4 4 0 0 0 6 0z"/><path d="m19 7-3 8a4 4 0 0 0 6 0z"/></svg></span>
+<span class="st">How often everybody races</span><span class="sn">Heats for each participant, and in which lane</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="hint">Only shows the numbers. Change the heats above and it follows. An amber number is a lane that a participant races twice or more.</div>
+<table class="tab2"><thead><tr><th>Participant</th><th>Heats</th><th>Lane 1</th><th>Lane 2</th><th>Lane 3</th><th>Lane 4</th></tr></thead><tbody>
+<tr><td class="n"><span class="nl" style="display:inline-flex;align-items:center;gap:8px"><i style="width:8px;height:8px;border-radius:50%;background:#4c9aff;display:inline-block"></i>Jan</span></td><td>3</td><td style="">1</td><td style="">1</td><td style="color:#6b7381">0</td><td style="">1</td></tr>
+<tr><td class="n"><span class="nl" style="display:inline-flex;align-items:center;gap:8px"><i style="width:8px;height:8px;border-radius:50%;background:#ff7a3d;display:inline-block"></i>Eva</span></td><td>3</td><td style="">1</td><td style="">1</td><td style="">1</td><td style="color:#6b7381">0</td></tr>
+<tr><td class="n"><span class="nl" style="display:inline-flex;align-items:center;gap:8px"><i style="width:8px;height:8px;border-radius:50%;background:#3ecf8e;display:inline-block"></i>Tom</span></td><td>3</td><td style="">1</td><td style="">1</td><td style="">1</td><td style="color:#6b7381">0</td></tr>
+<tr><td class="n"><span class="nl" style="display:inline-flex;align-items:center;gap:8px"><i style="width:8px;height:8px;border-radius:50%;background:#f2b705;display:inline-block"></i>Sara</span></td><td>3</td><td style="">1</td><td style="">1</td><td style="color:#6b7381">0</td><td style="">1</td></tr>
+<tr><td class="n"><span class="nl" style="display:inline-flex;align-items:center;gap:8px"><i style="width:8px;height:8px;border-radius:50%;background:#a46bff;display:inline-block"></i>Participant 5</span></td><td>3</td><td style="">1</td><td style="">1</td><td style="color:#6b7381">0</td><td style="">1</td></tr>
+<tr><td class="n"><span class="nl" style="display:inline-flex;align-items:center;gap:8px"><i style="width:8px;height:8px;border-radius:50%;background:#e5484d;display:inline-block"></i>Participant 6</span></td><td>3</td><td style="">1</td><td style="">1</td><td style="">1</td><td style="color:#6b7381">0</td></tr>
+<tr><td class="n"><span class="nl" style="display:inline-flex;align-items:center;gap:8px"><i style="width:8px;height:8px;border-radius:50%;background:#1fb5ad;display:inline-block"></i>Participant 7</span></td><td>3</td><td style="color:#6b7381">0</td><td style="color:#6b7381">0</td><td style="color:#ffcb7d;font-weight:700">2</td><td style="">1</td></tr>
+<tr><td class="n"><span class="nl" style="display:inline-flex;align-items:center;gap:8px"><i style="width:8px;height:8px;border-radius:50%;background:#ff6fb5;display:inline-block"></i>Participant 8</span></td><td>3</td><td style="color:#6b7381">0</td><td style="color:#6b7381">0</td><td style="">1</td><td style="color:#ffcb7d;font-weight:700">2</td></tr>
+</tbody></table>
+
+</div>
+</div>
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l9 5-9 5-9-5z"/><path d="M3 13.5l9 5 9-5"/></svg></span>
+<span class="st">Groups</span><span class="sn">Some participants who belong together, such as the juniors</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="hint">Put a group in a heat with the choice in the row of that heat: it takes the lanes in the order of the numbers.</div>
+<div class="rc" style="padding:14px;display:flex;flex-direction:column;gap:12px">
+<div class="row"><input class="fi" style="width:260px;font-weight:650" value="Juniors" aria-label="Name of group 1"><span class="grow"></span><button class="btn sm danger"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg> Remove this group</button></div>
+<div class="pool">
+<span class="pchip dim" style="--pc:#4c9aff"><i></i>Jan</span>
+<span class="pchip dim" style="--pc:#ff7a3d"><i></i>Eva</span>
+<span class="pchip dim" style="--pc:#3ecf8e"><i></i>Tom</span>
+<span class="pchip dim" style="--pc:#f2b705"><i></i>Sara</span>
+<span class="pchip sel" style="--pc:#a46bff"><i></i>P5</span>
+<span class="pchip sel" style="--pc:#e5484d"><i></i>P6</span>
+<span class="pchip sel" style="--pc:#1fb5ad"><i></i>P7</span>
+<span class="pchip sel" style="--pc:#ff6fb5"><i></i>P8</span>
+</div>
+</div>
+<div><button class="btn sm"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> Add a group</button></div>
+
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="foot">
+<span class="hint">Nothing is written until you press Save. Back asks first if something is not saved.</span>
+<span class="grow"></span>
+<button class="btn ghost">Back</button>
+<button class="btn hi">Save rotation setup</button>
+</div>
+
+</div>
+<div style="width:1240px;font-family: Inter, system-ui, sans-serif; color: #e8e6e1" class="ss-rot">
+<div class="parts">
+<h2>The small parts</h2>
+<p class="lead">The menus, and what the page says when something is not right. Same colours, same dots: green is filled in, open ring is nothing changed, amber needs a look.</p>
+<div class="pcols">
+<div class="col"><div class="cap2">Tools (the button above the heats)</div>
+<div class="menu">
+<div class="mi"><b>Shuffle the heat order</b><small>Puts the heats in another order. Locked heats stay where they are.</small></div>
+<div class="mi"><b>Reverse the order</b><small>Turns the order of the heats round. Locked heats stay where they are.</small></div>
+<div class="mi"><b>Shuffle the lanes</b><small>Puts the participants of every heat in other lanes.</small></div>
+<div class="mi on"><b>Even out the lanes</b><small>Gives out the lanes again so that everybody drives in every lane about equally often. Who races in which heat stays as it is.</small></div>
+</div></div>
+<div class="col"><div class="cap2">The three dots in a heat row</div>
+<div class="menu">
+<div class="mi"><b>Copy this heat</b><small>Copies it right below itself.</small></div>
+<div class="mi"><b>Empty this heat</b><small>Takes everybody out of this heat.</small></div>
+<div class="mi danger"><b>Delete this heat</b></div>
+</div>
+<div class="cap2" style="margin-top:12px">A picked place</div>
+<div class="hold"><p>Heat 3, lane 2 (<b>Jan</b>) is picked. Click another place to swap the two.</p><div class="row"><button class="btn sm">Empty this place</button><button class="btn sm ghost">Let go</button></div></div>
+</div>
+<div class="col"><div class="cap2">When something is not right</div>
+<span class="status warn" style="width:max-content"><span class="dot"></span>2 things to look at</span>
+<div class="note"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.4v.1"/></svg><span>This participant races no heat: <b>P8</b>. <button class="btn sm" style="margin-left:6px">Add a heat for this participant</button></span></div>
+<div class="note"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.4v.1"/></svg><span>Heat <b>7</b> is empty and will be left out of the race.</span></div>
+<div class="note info"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>Heat <b>5</b> has fewer cars than the 4 lanes.</span></div>
+
+<div class="hint">The status in the header and the amber dot in the rail follow these remarks. A remark that is only information stays blue.</div>
+</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":4000}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

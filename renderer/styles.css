@@ -951,14 +951,8 @@ dialog:has(.rsform){width:min(1240px,96vw);padding:0;overflow:hidden;max-height:
 .rodel{padding:2px 8px;line-height:1.2}
 .ro-count{margin-right:6px}
 /* the Rotation Editor (1.14.0): plan buttons, real places in the grid, menus instead of rows full of buttons */
-.ed-bar.ro-size strong{margin-right:4px}
 .ro-sub{font-size:13px;font-weight:400;margin-left:8px}
 .ro-help{border-left:3px solid var(--accent);padding:6px 10px;background:var(--panel);border-radius:0 6px 6px 0}
-.roplans{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:8px 0}
-.roplan{font:inherit;color:inherit;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px}
-.roplan small{color:var(--muted)}
-.roplan:hover,.roplan:focus-visible{border-color:var(--accent)}
-.roplan.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
 .ro-heatshead{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
 .rogrid .hpcell{min-width:3.6em;text-align:center;background:var(--panel);border:1px solid var(--line);padding:6px 10px}
 .rogrid .hpcell:hover,.rogrid .hpcell:focus-visible{border-color:var(--accent)}
@@ -1729,6 +1723,54 @@ html[data-layers="on"] .lw.live .lw-val{will-change:transform}
 .rsform .rssub:not(:has(.rssubt)) .fgrid{padding-top:12px}
 /* a number without a unit (Number of flags) is as wide as the boxes with a unit, not as the whole column */
 .rsform.ss-sc .field>input[type=number],.rsform.ss-ps .field>input[type=number],.rsform.ss-fuel .field>input[type=number]{width:auto;max-width:150px}
+
+/* ---- The rotation setup editor with a rail (1.77.0, board 9 in docs/ui-reference/race-systems) ----
+   It is a page and not a window: the frame grows with the page, the rail and the bar at the bottom stay in view while the page scrolls. The rest (header, rail, sections, cards, notes) is the frame of
+   the system forms (railform.js); this block only has what is particular to a rotation. */
+.rsform.rspage{max-height:none;min-height:0;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+.rspage .rshd{border-radius:14px 14px 0 0}
+.rspage .rsbody{overflow:visible;align-items:start;background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 45%,var(--panel)) 0 236px,var(--line) 236px 237px,transparent 237px)}
+.rspage .rsrail{position:sticky;top:8px;max-height:calc(100vh - 80px);align-self:start;background:none;border-right:0}
+.rspage .rsmain{overflow:visible}
+.rspage .rsfoot{position:sticky;bottom:0;z-index:6;border-radius:0 0 14px 14px}
+.rstools{display:inline-flex;align-items:center;gap:6px;flex:none}
+.rsform .ib{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;cursor:pointer;list-style:none}
+.rsform .ib:hover{border-color:var(--muted)}
+.rsform .ib:focus-visible{outline:3px solid #4c9aff;outline-offset:2px}
+.rsform .ib:disabled{opacity:.4;cursor:default}
+.rsform .ib.on{color:var(--accent);border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--panel))}
+.rsform summary.ib::-webkit-details-marker{display:none}
+.rspage .rsfoot .ro-msg{min-height:1.2em;font-size:13px}
+.rspage .rsfoot .rsdef{margin-right:auto}
+.rspage .rsnote{margin:0 0 10px}
+.rspage #ro-remarks{margin-top:10px}
+.rspage #ro-remarks:empty{display:none}
+.rspage .rsnote .btn{margin-left:8px;padding:3px 10px;font-size:13px}
+.rspage .ro-genrow{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:12px 18px}
+.rspage .ro-genrow label{display:inline-flex;align-items:center;gap:8px}
+.rspage .ro-genrow input[type=number]{width:6em}
+.rspage .ro-nameshead{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.rspage .ro-nameshead .btn,.rspage .ro-heatshead .btn{display:inline-flex;align-items:center;gap:6px}
+.rspage .ro-heatshead h4{margin:0}
+.rspage .ro-help{margin:6px 0 0}
+.rspage .rogrid .ib{width:30px;height:30px;border-radius:7px}
+.rspage .rogrid .actions{display:flex;align-items:center;gap:4px;white-space:nowrap}
+.rspage .rolockic{display:inline-flex;vertical-align:middle;color:var(--accent);margin-left:2px}
+.rspage .romenu-row{position:relative}
+.rspage .romenu-row>.romenu-list{position:absolute;right:0;z-index:30;flex-direction:column;flex-wrap:nowrap;min-width:180px;padding:8px;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.rspage .romenu-row>.romenu-list .btn{text-align:left}
+.rspage .ronames .ib{width:26px;height:26px;border-radius:7px}
+.rspage .rohow td.num,.rspage .rohow th:not(:first-child){text-align:right}
+.rspage .rogroup{background:var(--bg)}
+/* (a wide table in a section scrolls by itself and does not widen the page: the columns of a grid may shrink) */
+.rspage .rsmain{min-width:0}
+.rspage .fgrid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.rspage .fgrid .field{min-width:0}
+@media (max-width:760px){.rspage .fgrid{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:860px){
+  .rspage .rsbody{background:none}
+  .rspage .rsrail{position:static;max-height:none;background:color-mix(in srgb,var(--bg) 45%,var(--panel))}
+}
 
 /* ---- Soft lift (1.46.0): a slight depth for the whole app. Design: docs/ui-reference/depth ----
    Cards, folders, bars, dialogs and the widgets of a layout stand up a little like thick cards, buttons look a little shallow, and what is meant to be pressed in (the canvas of a race screen, the lane cards,

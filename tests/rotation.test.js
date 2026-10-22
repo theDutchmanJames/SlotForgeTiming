@@ -194,7 +194,7 @@ const err = r => (r && r.error) || '';
 
 // ---- what the editor says ----
 { const text = rec => R.check(rec).map(c => c.text), level = (rec, re) => (R.check(rec).find(c => re.test(c.text)) || {}).level;
-  ok('no heats: say so, and nothing else', same(R.check(R.clean({})), [{ level: 'warn', text: 'There are no heats yet. Add a heat, or start from a plan.' }]));
+  ok('no heats: say so, and nothing else', same(R.check(R.clean({})), [{ level: 'warn', kind: 'none', text: 'There are no heats yet. Add a heat, or start from a plan.' }]));
   const base = R.blank(8, 4);
   ok('a plain rotation: everybody races once; the lanes are not mentioned (one heat each)', same(text(base), ['Every participant races 1 heat.']));
   const three = R.generate(R.clean({ participants: 8, lanes: 4 }), { plan: 'perdriver', each: 3 }, 3).rec;

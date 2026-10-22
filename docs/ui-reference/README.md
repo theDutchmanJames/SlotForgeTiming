@@ -116,11 +116,11 @@ Dutch asked for a Race Director that is nicer to look at and fits more on the sc
 Colours of the pads are the ones of the Pad values: penalty points yellow `#f2b705`, race time orange `#f08a24`, laps purple `#9b7bff`, damage red `#e5484d`, championship points green `#3fb950`; the minus button is the same colour, darker. A card is green, amber or red at the top (the worst chip).
 
 
-## race-systems/ (22 Oct 2026, the window of Race Setups for the seven systems; Penalty and Damage built in 1.73.0, Weather in 1.74.0, Tyre wear in 1.75.0, Safety car, Push and save and Fuel in 1.76.0: all seven are built)
+## race-systems/ (22 Oct 2026, the window of Race Setups for the seven systems; Penalty and Damage built in 1.73.0, Weather in 1.74.0, Tyre wear in 1.75.0, Safety car, Push and save and Fuel in 1.76.0: all seven are built; then the last three screens: the rotation setup editor, board 9, built in 1.77.0; the Championship, board 10, and Balance of Power, board 11, are approved and not built yet)
 
 Dutch asked to give the other setup windows the look of the Race Setups window (header with pills, the sentence *In plain words*, a side rail with notes and dots, folding section cards, *Used by*). The design (*Race systems with the side rail*, a Claude Design canvas) has an overview board and one board for each system, in the colour the system already has (Penalty yellow `#f2b705`, Damage red `#e5484d`, Weather blue `#4c9aff`, Tyre wear purple `#9b4dff`, Safety car orange `#ff7a1a`, Push and save lime `#a6d23c`, Fuel green `#2fb86a`). **Penalty and Damage stay two separate systems** (Dutch, 22 Oct). The order of building: release 1 Penalty and Damage (1.73.0), release 2 Weather (1.74.0), release 3 Tyre wear (1.75.0), release 4 Safety car, Push and save and Fuel together (1.76.0); each release waited for Dutch's go.
 
-The boards are in `source/` (`Main` overview, `Penalty`, `Damage`, `Weather`, `Tyres`, `SafetyCar`, `PushSave`, `Fuel`, the shared `sys.css` and `canvas.json`). **The PNGs of the design boards were not exported** (the canvas is private and has no export): open the `*.dc.html` files on a canvas to see them. The pictures here are **screenshots of the built app** (1.73.0 to 1.76.0), drawn in Chromium with a stand-in for the app.
+The boards are in `source/` (`Main` overview, `Penalty`, `Damage`, `Weather`, `Tyres`, `SafetyCar`, `PushSave`, `Fuel`, the shared `sys.css` and `canvas.json`; **1.77.0 added** `Rotation` (board 9), `Championship` (board 10) and `BalanceOfPower` (board 11), approved by Dutch on 22 Oct at 13:43, and `sys2.css` that they use; `canvas.json` has all eleven boards). **The PNGs of the design boards were not exported** (the canvas is private and has no export): open the `*.dc.html` files on a canvas to see them. The pictures here are **screenshots of the built app** (1.73.0 to 1.77.0), drawn in Chromium with a stand-in for the app.
 
 | Picture | What it shows |
 |---|---|
@@ -169,3 +169,13 @@ The boards are in `source/` (`Main` overview, `Penalty`, `Damage`, `Weather`, `T
 | `43-built-1.76.0-fuel-fast-and-slow.png` | *Fast and slow laps* (under *Only if you need it*) with a target lap time of 8 seconds, the two limits (25% and 30%) and the card *The car retires from the race* marked |
 | `44-built-1.76.0-fuel-tank-too-small-light.png` | A tank of 1 litre with a lap of 2 litres, light theme: the amber note *A full tank (1 litre) holds less than one lap of fuel (2 litres)* |
 | `45-built-1.76.0-fuel-phone.png` | A narrow window: *The car carries on* chosen (with its line about a penalty system) and the three cards one under the other |
+| `46-built-1.77.0-rotation.png` | Rotation setup editor, dark theme: the brown header with the rotation picture, the pills (*8 drivers*, *4 lanes*, *6 heats*, *3 heats each*), Undo and Redo, *Ready to use*, the rail with its six rows (*Groups* under *Only if you need it*) and *Used by*, *In plain words*, *Size* with the two cards *Drivers* and *Teams*, the bar *Back* and *Save rotation setup* at the bottom |
+| `47-built-1.77.0-rotation-heats.png` | *Heats*: the participants with a colour and their number of heats, the grid of heats (the grip, the label, the places, the group choice, the arrows, the lock and the three dots), a locked heat marked, the notes under the grid |
+| `48-built-1.77.0-rotation-dragging.png` | A participant (Alex) dragged with the real mouse: the chip follows the pointer, the places of that participant are marked, the other places are dimmed, and the place under the pointer is outlined |
+| `49-built-1.77.0-rotation-heat-menu.png` | The three dots of a heat: *Copy this heat*, *Empty this heat*, *Delete this heat*; the rail has scrolled with the page and says *6 heats · 2 locked* |
+| `50-built-1.77.0-rotation-tools.png` | The *Tools* menu: shuffle the order, reverse it, shuffle the lanes, even out the lanes |
+| `51-built-1.77.0-rotation-no-heats.png` | A rotation without heats: *Add a heat* in amber in the header, the sentence *no heats yet*, the amber dots of *Start from a plan* and *Heats*, *Used by* says that no race setup uses it yet |
+| `52-built-1.77.0-rotation-light.png` | The light theme |
+| `53-built-1.77.0-rotation-ocean.png` | The Ocean theme |
+| `54-built-1.77.0-rotation-phone.png` | A narrow window (420 px): the rail becomes a row of chips |
+| `55-built-1.77.0-rotation-phone-heats.png` | The heats on a phone: the participants wrap, the table of heats scrolls sideways by itself |

@@ -7,7 +7,7 @@ let fails = 0, reachedEnd = false;
 process.on('exit', code => { if (code === 0 && !reachedEnd) { console.log('FAIL the test stopped before its end (something waited for ever)'); process.exitCode = 1; } });
 process.on('unhandledRejection', e => { console.log('UNHANDLED:', e.stack || e.message); process.exit(1); });
 // (the stand-in does not read html: when the whole editor is drawn again, the parts inside it are given the html that the real page would have, as the real page does)
-const parts = ['ro-pool', 'ro-hold', 'ro-grid', 'ro-remarks', 'ro-names', 'ro-groups', 'ro-how', 'ro-plans', 'ro-genopts', 'ro-msg'];
+const parts = ['ro-pool', 'ro-hold', 'ro-grid', 'ro-remarks', 'ro-names', 'ro-groups', 'ro-how', 'ro-plans', 'ro-genopts', 'ro-count', 'ro-msg'];
 const syncParts = html => parts.forEach(id => {
   const open = html.indexOf(`id="${id}"`); if (open < 0) return;
   const start = html.indexOf('>', open) + 1, tag = /<(\w+)/.exec(html.slice(html.lastIndexOf('<', open)))[1], re = new RegExp(`<(/?)${tag}\\b`, 'g'); re.lastIndex = start;
@@ -43,7 +43,7 @@ const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if
 for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function') api[k] = (...x) => { x.forEach(v => { if (typeof v !== 'function') structuredClone(v); }); return f(...x); }; }
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['listnum.js', 'bop.js', 'weather.js', 'tyrewear.js', 'safetycar.js', 'pushsave.js', 'racelimit.js', 'endurance.js', 'failures.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'championship.js', 'champpoints.js', 'season.js', 'tokens.js', 'speed.js', 'distance.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','depth.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'picmemo.js', 'weatherwidgets.js', 'tyrewidgets.js', 'pacewidgets.js', 'boardorder.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'report.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'drivergrid.js', 'homecards.js', 'liveview.js', 'setupwords.js', 'systemwords.js', 'formui.js', 'railform.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'tyreui.js', 'pushsaveui.js', 'rotationui.js', 'championshipui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['listnum.js', 'bop.js', 'weather.js', 'tyrewear.js', 'safetycar.js', 'pushsave.js', 'racelimit.js', 'endurance.js', 'failures.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'championship.js', 'champpoints.js', 'season.js', 'tokens.js', 'speed.js', 'distance.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','depth.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'picmemo.js', 'weatherwidgets.js', 'tyrewidgets.js', 'pacewidgets.js', 'boardorder.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'report.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationwords.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'drivergrid.js', 'homecards.js', 'liveview.js', 'setupwords.js', 'systemwords.js', 'formui.js', 'railform.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'weatherui.js', 'tyreui.js', 'pushsaveui.js', 'rotationui.js', 'championshipui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -70,6 +70,8 @@ const Rot = require(R + 'renderer/rotation.js');
   const cell = (i, l) => press({ dataset: { cell: `${i}:${l}` } }), chip = p => press({ dataset: { pp: String(p) } }), btn = id => press({ id });
   const draft = () => JSON.parse(run('JSON.stringify(rotEd.draft)')), hist = () => run('rotEd.history.stats()');
   const msg = () => E('ro-msg').textContent;
+  const secIs = (dom, open) => { const m = new RegExp(`<details class="fgroup rssec" data-fg="\\w+" id="${dom}"( open)?>`).exec(html()); return !!m && (!!m[1] === open); }; // (1.77.0: a section of the page is a folding card; open or shut)
+  const noteTone = txt => ((E('ro-remarks').innerHTML.split('<p class="rsnote ').find(x => x.includes(txt)) || '').split('"')[0]); // (the remarks are notes: info or warn)
   const places = (rec, i) => rec.heats[i].places.map(e => e.p + '@' + e.lane).join(' ');
   const labels = () => draft().heats.map(h => h.label).join('');
   const cellsHtml = () => (html().match(/data-cell="/g) || []).length;
@@ -93,13 +95,13 @@ const Rot = require(R + 'renderer/rotation.js');
   say('...the grid has a row per heat and a column per lane, and the participants are P1 to P8 with the number of heats they race', html().includes('<th>Lane 1</th>') && html().includes('<th>Lane 4</th>') && !html().includes('<th>Lane 5</th>') && (html().match(/data-pp="/g) || []).length === 8 && html().includes('>P1 <small>1</small>') && html().includes('>P8 <small>1</small>'));
   say('...it says that everybody races 1 heat, and how to fill a place', html().includes('Every participant races 1 heat.') && html().includes('To fill a place: drag a participant onto it, or click a participant and then a place.'));
   say('...Undo and Redo are there and both off', html().includes('id="ro-undo"') && html().includes('id="ro-redo"') && E('ro-undo').disabled === true && E('ro-redo').disabled === true);
-  say('...the plan options are shut when there are heats', html().includes('<details class="hplanes" id="ro-genbox">') && !html().includes('id="ro-genbox" open'));
+  say('...the plan options are shut when there are heats', secIs('ro-genbox', false));
   await chip(0);
   say('a participant is picked: the page says so and the chip is pressed', E('ro-hold').innerHTML.includes('Participant 1 is picked. Click a place to put them there') && /data-pp="0" aria-pressed="true"/.test(E('ro-pool').innerHTML) && /class="rochip sel/.test(E('ro-pool').innerHTML));
   await chip(0); say('...picking the same participant again lets go', !E('ro-hold').innerHTML.includes('is picked') && run('rotEd.hold') === null);
   await chip(0); await cell(1, 3);
   say('a participant picked and a place clicked: P1 stands there (heat 2, lane 4) and P8, who was there, leaves that heat; one step to undo', places(draft(), 1) === '4@0 5@1 6@2 0@3' && run('rotEd.hold') === null && hist().undo === 1);
-  say('...the counts follow: P1 races 2 heats and P8 none, and the page warns about P8', E('ro-pool').innerHTML.includes('>P1 <small>2</small>') && E('ro-pool').innerHTML.includes('>P8 <small>0</small>') && /class="rochip none"/.test(E('ro-pool').innerHTML) && E('ro-remarks').innerHTML.includes('This participant races no heat: P8.') && E('ro-remarks').innerHTML.includes('hpwarn'));
+  say('...the counts follow: P1 races 2 heats and P8 none, and the page warns about P8', E('ro-pool').innerHTML.includes('>P1 <small>2</small>') && E('ro-pool').innerHTML.includes('>P8 <small>0</small>') && /class="rochip none"/.test(E('ro-pool').innerHTML) && E('ro-remarks').innerHTML.includes('This participant races no heat: P8.') && noteTone('This participant races no heat: P8.') === 'warn');
   await cell(0, 0);
   say('a place is picked: the page names the place and who is in it', E('ro-hold').innerHTML.includes('Heat 1, lane 1 (Participant 1) is picked') && E('ro-hold').innerHTML.includes('id="ro-empty">') && /data-cell="0:0"[^>]* aria-pressed="true"/.test(E('ro-grid').innerHTML));
   await cell(0, 0); say('...clicking it again lets go, and that is no step', run('rotEd.hold') === null && hist().undo === 1);
@@ -141,7 +143,7 @@ const Rot = require(R + 'renderer/rotation.js');
     btn('ro-addgrp'); await wait(10); press({ dataset: { gm: '0:0' } }); press({ dataset: { gm: '0:1' } });
     const before = draft(), n0 = before.participants, u0 = hist().undo, delBtns = () => (html().match(/data-delp="/g) || []).length;
     say('(set-up: Alex and Sam are named and in the group "Group 1")', draft().names[1] === 'Sam' && draft().groups.length === 1 && draft().groups[0].members.join() === '0,1');
-    say('the participants have an Add button above the pool and an × for each one in the list of names; the list is open to begin with', html().includes('data-addp="1"') && delBtns() === n0 && html().includes('id="ro-namesbox" open') && html().includes('aria-label="Take participant 3 out"'));
+    say('the participants have an Add button above the pool and an × for each one in the list of names; the section is shut to begin with, as nobody has a name yet', html().includes('data-addp="1"') && delBtns() === n0 && secIs('ro-namesbox', false) && html().includes('aria-label="Take participant 3 out"'));
     say('the × of participant 3 is the one with number 2 (the numbers in the page start at 0), and it says so for a screen reader', html().includes('data-delp="2" aria-label="Take participant 3 out"') && html().includes(`data-delp="${n0 - 1}" aria-label="Take participant ${n0} out"`) && !html().includes(`data-delp="${n0}"`));
     let focused = ''; box().querySelector = sel => ({ focus() { focused = sel; } });
     press({ dataset: { addp: '1' } }); await wait(20); delete box().querySelector;
@@ -181,13 +183,13 @@ const Rot = require(R + 'renderer/rotation.js');
   }
 
   // ---------- 1.8.0: the participants are drivers or teams ----------
-  say('the editor asks what the participants are: Drivers (chosen), or Teams', html().includes('id="ro-kind"') && html().includes('Participants are') && html().includes('<option value="drivers" selected>Drivers</option>') && html().includes('<option value="teams">Teams</option>') && !('participantsAre' in draft()));
-  E('ro-kind').onchange({ target: { value: 'teams' } }); await wait(20);
-  say('Teams changes the words (Team 1, 8 teams...), the names box and the pick-by-name help, and is one step to undo', draft().participantsAre === 'teams' && html().includes('<option value="teams" selected>Teams</option>') && html().includes('title="Team 1: races') && html().includes('placeholder="Team 1"') && html().includes('picks the teams that have these names') && !html().includes('picks the drivers who have these names') && hist().undo === 1);
+  say('the editor asks what the participants are: Drivers (chosen), or Teams', html().includes('id="ro-kind"') && html().includes('The participants are') && /class="fu-card on" data-pk="drivers" aria-pressed="true"/.test(html()) && /class="fu-card" data-pk="teams" aria-pressed="false"/.test(html()) && !('participantsAre' in draft()));
+  await press({ dataset: { pk: 'teams' } }); await wait(20);
+  say('Teams changes the words (Team 1, 8 teams...), the names box and the pick-by-name help, and is one step to undo', draft().participantsAre === 'teams' && /class="fu-card on" data-pk="teams" aria-pressed="true"/.test(html()) && html().includes('title="Team 1: races') && html().includes('placeholder="Team 1"') && html().includes('picks the teams that have these names') && !html().includes('picks the drivers who have these names') && hist().undo === 1);
   say('...the places in the heats are not touched', places(draft(), 0) === '0@0 1@1 2@2 3@3' && cellsHtml() === 8);
   E('ro-undo').onclick(); await wait(20);
-  say('Undo makes the participants drivers again', !('participantsAre' in draft()) && html().includes('<option value="drivers" selected>Drivers</option>') && html().includes('title="Participant 1: races') && html().includes('placeholder="Participant 1"'));
-  E('ro-kind').onchange({ target: { value: 'teams' } }); await wait(20); E('ro-save').onclick(); await wait(30);
+  say('Undo makes the participants drivers again', !('participantsAre' in draft()) && /class="fu-card on" data-pk="drivers" aria-pressed="true"/.test(html()) && html().includes('title="Participant 1: races') && html().includes('placeholder="Participant 1"'));
+  press({ dataset: { pk: 'teams' } }); await wait(20); E('ro-save').onclick(); await wait(30);
   say('Save keeps the choice in the rotation setup', writes.filter(w => w[1] === 'rotationsetups').pop()[2].participantsAre === 'teams');
   E('ro-back').onclick(); await wait(30);
   say('...and the list tells it in words (8 teams)', html().includes('8 teams, 4 lanes, 2 heats'));
@@ -220,7 +222,7 @@ const Rot = require(R + 'renderer/rotation.js');
   say('Back goes to the list, which shows the rotation with its size and the race setups that use it', html().includes('Club night') && html().includes('8 participants, 4 lanes, 3 heats') && html().includes('Club heats') && run('rotEd') === null);
   await press({ dataset: { edit: 'r1' } });
   say('Edit opens the saved rotation: the heats and labels as saved, the names on the chips, the group in the heat rows, saved (nothing to save yet)', labels() === 'ABC' && html().includes('value="A"') && html().includes('value="C"') && E('ro-pool').innerHTML.includes('>Alex <small>2</small>') && E('ro-pool').innerHTML.includes('>Sam <small>1</small>') && E('ro-pool').innerHTML.includes('>P3 <small>2</small>') && html().includes('Pros (2)') && run('rotEd.dirty') === false && run('rotEd.id') === 'r1');
-  say('...the names are in the list of names (open, because there are names) and the group is shown with its participants ticked', html().includes('<details class="hplanes" id="ro-namesbox" open>') && html().includes('value="Alex"') && html().includes('placeholder="Participant 3"') && html().includes('<details class="hplanes" id="ro-groupsbox" open>') && /data-gm="0:0" aria-pressed="true"/.test(html()) && /data-gm="0:2" aria-pressed="false"/.test(html()));
+  say('...the names are in the list of names (open, because there are names) and the group is shown with its participants ticked', secIs('ro-namesbox', true) && html().includes('value="Alex"') && html().includes('placeholder="Participant 3"') && secIs('ro-groupsbox', true) && /data-gm="0:0" aria-pressed="true"/.test(html()) && /data-gm="0:2" aria-pressed="false"/.test(html()));
   say('...the remarks say that the participants race 1 to 2 heats, with the advice about the average', E('ro-remarks').innerHTML.includes('The participants race 1 to 2 heats.') && E('ro-remarks').innerHTML.includes('count the average per heat'));
   say('...and a table says how often everybody races and in which lane (Alex: 2 heats, lane 1 twice)', /<td><i class="rodot" style="--pc:#[0-9a-f]{6}"><\/i>Alex<\/td><td class="num">2<\/td><td class="num">2<\/td>/.test(html()));
   { const g0 = E('ro-grid').innerHTML, pl = E('ro-pool').innerHTML;
@@ -232,11 +234,48 @@ const Rot = require(R + 'renderer/rotation.js');
     say('the names are labelled P1 to P8, and a name box says which participant it is for (placeholder and screen reader)', E('ro-names').innerHTML.includes('placeholder="Participant 1"') && E('ro-names').innerHTML.includes('aria-label="Name of participant 8"') && !E('ro-names').innerHTML.includes('participant 0') && !E('ro-names').innerHTML.includes('Participant 9') && E('ro-names').innerHTML.includes('</i>P1 ') && E('ro-names').innerHTML.includes('</i>P8 ') && !E('ro-names').innerHTML.includes('</i>P0 ') && !E('ro-names').innerHTML.includes('</i>P9 '));
     say('...the group is named for a screen reader (group 1 by number, its members by its name)', E('ro-groups').innerHTML.includes('aria-label="Name of group 1"') && E('ro-groups').innerHTML.includes('aria-label="Participants in Pros"'));
     say('...the table of how often everybody races has a column for every lane', html().includes('<th>Participant</th><th>Heats</th><th>Lane 1</th><th>Lane 2</th><th>Lane 3</th><th>Lane 4</th></tr>'));
-    say('...a remark that only informs is not drawn as a warning, and a warning is', /<p class="hint2">The participants race 1 to 2 heats/.test(E('ro-remarks').innerHTML) && !/hpwarn">The participants race/.test(E('ro-remarks').innerHTML));
-    say('...the plan to start from is the first one, the shuffled plan (a button for each of the four plans, with a line that says what it makes); the plans are closed because there are heats', /data-plan="manual" aria-pressed="true"/.test(html()) && /data-plan="perdriver" aria-pressed="false"/.test(html()) && (html().match(/data-plan="/g) || []).length === 4 && html().includes('Everybody races once in every lane.') && html().includes('<details class="hplanes" id="ro-genbox">'));
+    say('...a remark that only informs is not drawn as a warning, and a warning is', noteTone('The participants race 1 to 2 heats') === 'info' && noteTone('The participants race 1 to 2 heats') !== 'warn' );
+    say('...the plan to start from is the first one, the shuffled plan (a button for each of the four plans, with a line that says what it makes); the plans are closed because there are heats', /data-plan="manual" aria-pressed="true"/.test(html()) && /data-plan="perdriver" aria-pressed="false"/.test(html()) && (html().match(/data-plan="/g) || []).length === 4 && html().includes('Everybody races once in every lane.') && secIs('ro-genbox', false));
     box().onclick({ target: { closest: () => null } }); await press({ disabled: true, dataset: { cell: '0:0' } });
     say('a click on nothing, or on a button that is off, does nothing', run('rotEd.hold') === null && hist().undo === 0);
   }
+  // ---------- 1.77.0: the editor has the look of the system forms: a header, a rail, folding sections (board 9 in docs/ui-reference/race-systems) ----------
+  { const h = html();
+    say('1.77.0: the editor is a page in the frame of the system forms (a div and not a form, a page, in the brown of the rotations), with a header, a rail and a bar at the bottom', h.includes('<div id="ro-form" class="rsform rspage setupform ss-rot">') && !h.includes('<form') && h.includes('<header class="rshd">') && h.includes('<nav class="rsrail" aria-label="The sections of this rotation setup">') && h.includes('<footer class="rsfoot">'));
+    say('...the header says Edit rotation setup, holds the name (the field ro-name), Undo and Redo as icon buttons with a name for a screen reader, and the status', h.includes('>Edit rotation setup</h3>') && h.includes('id="ro-name" value="Club night"') && /id="ro-undo" title="Undo the last change \(Ctrl\+Z\)" aria-label="Undo" disabled><svg/.test(h) && /id="ro-redo" title="Redo \(Ctrl\+Y\)" aria-label="Redo" disabled><svg/.test(h) && h.includes('id="rsready"') && h.includes('id="rspills"'));
+    say('...the bar at the bottom says that nothing is written before Save, and has Back and Save (the buttons keep their ids)', h.includes('Nothing is written until you press Save. Back asks first if something is not saved.') && /id="ro-back">Back<\/button>/.test(h) && /id="ro-save">Save rotation setup<\/button>/.test(h) && h.indexOf('id="ro-msg"') < h.indexOf('id="ro-back"'));
+    say('the rail has a row for each of the six sections (Size, Start from a plan, Participants, Heats, How often, Groups), the groups under "Only if you need it"', ['size', 'plan', 'names', 'heats', 'how', 'groups'].every(k => h.includes(`id="rs-rail-${k}" data-rail="${k}"`)) && h.indexOf('id="rs-optional"') > h.indexOf('id="rs-rail-how"') && h.indexOf('id="rs-optional"') < h.indexOf('id="rs-rail-groups"'));
+    say('...and the sections are cards that fold, with the question they answer, in the same order', ['size', 'plan', 'names', 'heats', 'how', 'groups'].every(k => h.includes(`data-fg="${k}"`)) && h.includes('How many participants and lanes?') && h.includes('Who races in which heat and lane?') && h.indexOf('data-fg="size"') < h.indexOf('data-fg="plan"') && h.indexOf('data-fg="how"') < h.indexOf('data-fg="groups"'));
+    say('the rail has a short note and a dot for each section: Size says 8 drivers and 4 lanes, Heats 3 heats, How often 1 to 2 (the lanes are uneven), Participants 2 of 8 have a name, Groups 1 group', E('rs-note-size').textContent === '8 drivers · 4 lanes' && E('rs-note-heats').textContent === '3 heats' && E('rs-note-how').textContent.startsWith('1 to 2') && E('rs-note-names').textContent === '2 of 8 have a name' && E('rs-note-groups').textContent === '1 group');
+    say('...a dot is green when there is something filled in, amber when something needs a look, an open ring when there is nothing to say (and says so in words)', E('rs-dot-size').className === 'rsdot ok' && E('rs-dot-names').className === 'rsdot ok' && E('rs-state-heats').textContent !== '' && E('rs-dot-plan').className === 'rsdot off' && E('rs-state-plan').textContent === 'Nothing changed from the standard');
+    say('...the row of the section that was opened last is marked (the first one to begin with)', run('rotEd.rail') === 'size');
+    say('the sentence "In plain words" reads the rotation back', E('rssay').innerHTML.includes('<span class="rseye">In plain words</span>') && E('rssay').innerHTML.includes('<b>8 drivers</b>') && E('rssay').innerHTML.includes('<b>3 heats</b>') && E('rssay').innerHTML.includes('<b>4 lanes</b>'));
+    say('...the pills under the name say 8 drivers, 4 lanes, 3 heats and 1 to 2 heats each, and the status says Ready to use (every participant races, and the remarks only inform)', E('rspills').innerHTML.includes('rspill hi">8 drivers<') && E('rspills').innerHTML.includes('>4 lanes<') && E('rspills').innerHTML.includes('>3 heats<') && E('rspills').innerHTML.includes('>1 to 2 heats each<') && E('rsready').className === 'rsready ok' && E('rsready').innerHTML.includes('Ready to use'));
+    say('the box Used by in the rail names the race setups that use this rotation', /id="rs-used"[\s\S]*Club heats/.test(h));
+  }
+  await press({ dataset: { rail: 'names' } });
+  say('a row of the rail opens its section, marks the row and goes there', E('ro-namesbox').open === true && run('rotEd.rail') === 'names' && run('rotEd.open.has("names")') === true);
+  await press({ dataset: { rail: 'how' } });
+  say('...and another row does the same (what was opened stays open)', E('ro-howbox').open === true && run('rotEd.rail') === 'how' && run('rotEd.open.has("names")') === true && run('rotEd.open.has("how")') === true);
+  await planBtn('perdriver');
+  say('the plans are cards (four of them, one is on), and a card changes the options under it and the note on the rail', /class="fu-card on" data-plan="perdriver" aria-pressed="true"/.test(E('ro-plans').innerHTML) && (E('ro-plans').innerHTML.match(/class="fu-card/g) || []).length === 4 && E('ro-genopts').innerHTML.includes('id="ro-geach"') && E('rs-note-plan').textContent === 'Same number each · 2 heats');
+  box().oninput({ target: { id: 'ro-geach', value: '3' } });
+  say('...and a number typed there is on the rail too', E('rs-note-plan').textContent === 'Same number each · 3 heats');
+  await planBtn('manual');
+  { const nm = E('ro-name'); nm.value = ''; nm.oninput({ target: { value: '' } });
+    say('an empty name is said in the status ("Give it a name") and is not Ready', E('rsready').innerHTML.includes('Give it a name') && E('rsready').className === 'rsready');
+    nm.oninput({ target: { value: 'Club night' } }); say('...a name makes it ready again', E('rsready').className === 'rsready ok' && E('rsready').innerHTML.includes('Ready to use')); }
+  await cell(1, 3); await btn('ro-empty');
+  say('a change in the heats is on the page straight away: with P8 out of the only heat they race, the sentence says P8 races no heat, the status says what to look at, and the dot of Heats turns amber', draft().heats[1].places.length === 3 && E('rssay').innerHTML.includes('P8') && E('rssay').innerHTML.includes('races no heat') && E('rsready').className === 'rsready' && E('rsready').innerHTML.includes('1 thing to look at') && E('rs-dot-heats').className === 'rsdot todo');
+  E('ro-undo').onclick(); await wait(20);
+  say('...and Undo puts it back, and the words with it', draft().heats[1].places.length === 4 && E('rsready').className === 'rsready ok' && E('rs-dot-heats').className === 'rsdot ok' && hist().undo === 0);
+  say('the number of participants is counted over the names, and follows the size', E('ro-count').innerHTML.includes('8 in all'));
+  await btn('ro-addgrp'); await btn('ro-addgrp');
+  say('(the groups just added are taken away again by undoing them)', hist().undo === 2);
+  E('ro-undo').onclick(); E('ro-undo').onclick(); await wait(20);
+  say('...Undo and Redo (icon buttons in the header) work as before', hist().undo === 0 && E('ro-undo').disabled === true && E('ro-redo').disabled === false);
+  E('ro-redo').onclick(); E('ro-redo').onclick(); E('ro-undo').onclick(); E('ro-undo').onclick(); await wait(20);
+  say('...and go back and forth', hist().undo === 0 && draft().groups.length === 1);
   box().onchange({ target: { dataset: { grp: '2' }, value: '0' } });
   say('a group goes into a heat with its choice: heat C is Alex and Sam in lanes 1 and 2, the other places empty; the choice goes back to "Put a group here"', places(draft(), 2) === '0@0 1@1' && cellsHtml() === 12 && E('ro-grid').innerHTML.includes('<option value="">Put a group here</option>') && hist().undo === 1);
   box().onchange({ target: { dataset: { grp: '0' }, value: '' } }); say('...choosing nothing does nothing', hist().undo === 1);
@@ -256,7 +295,7 @@ const Rot = require(R + 'renderer/rotation.js');
   say('(everything undone: back to the rotation as it was saved)', labels() === 'ABC' && places(draft(), 2) === '0@0 2@1 4@2 6@3' && draft().groups.length === 1 && run('rotEd.dirty') === false);
 
   await press({ dataset: { lock: '1' } });
-  say('a heat is locked: the row says so, the button becomes Unlock', draft().heats[1].locked === true && /data-lock="1" aria-pressed="true"[^>]*>Unlock</.test(E('ro-grid').innerHTML) && E('ro-grid').innerHTML.includes('aria-hidden="true">🔒') && E('ro-grid').innerHTML.includes('class="rolocked"') && /data-grp="1"[^>]* disabled/.test(E('ro-grid').innerHTML));
+  say('a heat is locked: the row says so, the button is pressed and becomes Unlock', draft().heats[1].locked === true && /class="ib on" data-lock="1" aria-pressed="true" aria-label="Unlock heat 2"/.test(E('ro-grid').innerHTML) && E('ro-grid').innerHTML.includes('class="rolockic"') && E('ro-grid').innerHTML.includes('class="rolocked"') && /data-grp="1"[^>]* disabled/.test(E('ro-grid').innerHTML));
   await cell(1, 0); await cell(0, 0); say('a place in a locked heat cannot be swapped: the page says which heat is locked', msg() === 'Heat 2 is locked. Unlock it first to change it.' && places(draft(), 0) === '0@0 1@1 2@2 3@3'); await btn('ro-drop');
   await press({ dataset: { del: '1' } }); say('...nor can the heat be deleted', msg() === 'Heat 2 is locked. Unlock it first to change it.' && draft().heats.length === 3);
   await btn('ro-rev'); say('reversing the order turns the heats round, and the locked heat stays where it is (A B C becomes C B A)', labels() === 'CBA' && draft().heats[1].locked === true);
@@ -306,20 +345,20 @@ const Rot = require(R + 'renderer/rotation.js');
   // ---------- a rotation without heats, and the plan to start from ----------
   store.rotationsetups = [{ id: 'r9', name: 'Twenty', note: '', participants: 20, lanes: 4, names: [], groups: [], heats: [] }];
   await edit('r9');
-  say('a rotation without heats says so, and its plan options are open', html().includes('No heats yet. Add a heat, or start from a plan.') && html().includes('<details class="hplanes" id="ro-genbox" open>') && !html().includes('<th>Lane 1</th><th>Lane 2</th><th>Lane 3</th><th>Lane 4</th><th>Group</th>'));
+  say('a rotation without heats says so, and its plan options are open', html().includes('No heats yet. Add a heat, or start from a plan.') && secIs('ro-genbox', true) && !html().includes('<th>Lane 1</th><th>Lane 2</th><th>Lane 3</th><th>Lane 4</th><th>Group</th>'));
   say('...the plan starts as a shuffle over 5 heats (20 participants on 4 lanes), 2 heats for everybody, and not "the same number of heats" for a round robin', E('ro-genopts').innerHTML.includes('id="ro-gheats"') && E('ro-genopts').innerHTML.includes('value="5"') && run('rotEd.gen.each') === 2 && run('rotEd.gen.even') === false);
   await planBtn('roundrobin'); say('...the round robin box is not ticked', E('ro-genopts').innerHTML.includes('id="ro-geven"') && !E('ro-genopts').innerHTML.includes(' checked'));
   await planBtn('manual');
   await btn('ro-add'); setSize(20, 3); E('ro-lanes').onchange(); await wait(20);
-  say('with a heat the plan options are closed, until somebody opens them (and that is remembered when the editor is drawn again)', html().includes('<details class="hplanes" id="ro-genbox">') && !html().includes('id="ro-genbox" open'));
-  E('ro-genbox').open = true; E('ro-genbox').ontoggle(); say('...opening them is noted', run('rotEd.genOpen') === true);
-  setSize(20, 4); E('ro-lanes').onchange(); await wait(20); say('...and they stay open', html().includes('id="ro-genbox" open'));
-  E('ro-genbox').open = false; E('ro-genbox').ontoggle(); say('...closing them is noted too', run('rotEd.genOpen') === false);
+  say('a rotation without heats opens with the plan section open, and adding a heat does not shut it (what is open stays open while you edit)', secIs('ro-genbox', true));
+  E('ro-genbox').open = false; E('ro-genbox').ontoggle(); say('...shutting it is noted', run('rotEd.open.has("plan")') === false);
+  setSize(20, 4); E('ro-lanes').onchange(); await wait(20); say('...and it stays shut when the page is drawn again', secIs('ro-genbox', false));
+  E('ro-genbox').open = true; E('ro-genbox').ontoggle(); say('...opening it is noted, and the rail points at it', run('rotEd.open.has("plan")') === true && run('rotEd.rail') === 'plan' && E('rs-rail-plan').classList !== undefined);
   ctx.confirm = () => true; await E('ro-back').onclick(); await wait(20);
 
   // ---------- 1.14.0: the Rotation Editor made clearer ----------
   store.rotationsetups = []; await run('render()'); await wait(20); await btn('newrot');
-  say('1.14.0: a page in order: name and buttons, the size, the plans, the participants, the heats with their tools, the remarks, then names, groups and the table', (() => { const h = html(); const at = x => h.indexOf(x); return at('id="ro-name"') < at('class="ed-bar ro-size"') && at('class="ed-bar ro-size"') < at('id="ro-genbox"') && at('id="ro-genbox"') < at('id="ro-pool"') && at('id="ro-pool"') < at('id="ro-add"') && at('id="ro-add"') < at('id="ro-grid"') && at('id="ro-grid"') < at('id="ro-remarks"') && at('id="ro-remarks"') < at('id="ro-namesbox"') && at('id="ro-namesbox"') < at('id="ro-groupsbox"'); })() && html().includes('Drag one to a place, or click it to pick it up') && html().includes('click a place to fill it or to swap it with another place'));
+  say('1.14.0 (1.77.0: a rail form): a page in order: name and buttons, the rail, then the size, the plans, the participants, the heats with their tools and the remarks, how often, and the groups', (() => { const h = html(); const at = x => h.indexOf(x); return at('id="ro-name"') < at('id="rs-rail-size"') && at('id="rs-rail-size"') < at('id="ro-sizebox"') && at('id="ro-sizebox"') < at('id="ro-genbox"') && at('id="ro-genbox"') < at('id="ro-namesbox"') && at('id="ro-namesbox"') < at('id="ro-heatsbox"') && at('id="ro-heatsbox"') < at('id="ro-pool"') && at('id="ro-pool"') < at('id="ro-add"') && at('id="ro-add"') < at('id="ro-grid"') && at('id="ro-grid"') < at('id="ro-remarks"') && at('id="ro-remarks"') < at('id="ro-howbox"') && at('id="ro-howbox"') < at('id="ro-groupsbox"'); })() && html().includes('Drag one to a place, or click it to pick it up') && html().includes('click a place to fill it or to swap it with another place'));
   say('...the places are drawn as places: an empty one says "empty" (and is marked), a filled one has the participant', !html().includes('hpcell empty') && html().includes('class="hpcell" data-cell="0:0"'));
   setSize(10, 4); E('ro-n').onchange(); await wait(20);
   say('the number of heats of the plan follows the size until you choose one: 10 participants on 4 lanes is 3 heats (it was 2 for 8)', run('rotEd.gen.heats') === 3 && E('ro-genopts').innerHTML.includes('value="3"'));

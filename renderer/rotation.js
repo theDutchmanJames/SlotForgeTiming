@@ -296,28 +296,28 @@
 
   // ---- what a rotation means ----
   const list = (items, max = 8) => (items.length <= max ? items.join(', ') : items.slice(0, max).join(', ') + ` and ${items.length - max} more`);
-  // Remarks for the editor: [{ level: 'warn' | 'info', text }]
+  // Remarks for the editor: [{ level: 'warn' | 'info', kind (what it is about: none, empty, idle, lone, dup, range, equal, small, lanes, meet: 1.77.0, so the rail can tell which section it belongs to), text, fix? }]
   function check(rec) {
     const out = [], sched = rec.heats.filter(h => h.places.length).map(h => h.places);
-    if (!rec.heats.length) return [{ level: 'warn', text: 'There are no heats yet. Add a heat, or start from a plan.' }];
+    if (!rec.heats.length) return [{ level: 'warn', kind: 'none', text: 'There are no heats yet. Add a heat, or start from a plan.' }];
     const empty = rec.heats.map((h, i) => (h.places.length ? 0 : i + 1)).filter(Boolean);
-    if (empty.length) out.push({ level: 'warn', text: `${empty.length === 1 ? 'Heat ' : 'Heats '}${list(empty)} ${empty.length === 1 ? 'is' : 'are'} empty and will be left out of the race.` });
+    if (empty.length) out.push({ level: 'warn', kind: 'empty', text: `${empty.length === 1 ? 'Heat ' : 'Heats '}${list(empty)} ${empty.length === 1 ? 'is' : 'are'} empty and will be left out of the race.` });
     if (!sched.length) return out;
     const st = Heats.stats(sched, rec.participants, rec.lanes), idle = st.per.map((x, p) => (x.heats ? '' : shortOf(rec, p))).filter(Boolean);
     const idleP = st.per.map((x, p) => (x.heats ? -1 : p)).filter(p => p >= 0); // (their numbers: the editor offers a heat for them)
-    if (idle.length) out.push({ level: 'warn', text: `${idle.length === 1 ? 'This participant races' : 'These participants race'} no heat: ${list(idle)}.`, fix: { kind: 'idle', ps: idleP } });
+    if (idle.length) out.push({ level: 'warn', kind: 'idle', text: `${idle.length === 1 ? 'This participant races' : 'These participants race'} no heat: ${list(idle)}.`, fix: { kind: 'idle', ps: idleP } });
     const lone = rec.heats.map((h, i) => (h.places.length === 1 ? i + 1 : 0)).filter(Boolean);
-    if (lone.length) out.push({ level: 'warn', text: `${lone.length === 1 ? 'Heat ' : 'Heats '}${list(lone)} ${lone.length === 1 ? 'has' : 'have'} one car only.` });
+    if (lone.length) out.push({ level: 'warn', kind: 'lone', text: `${lone.length === 1 ? 'Heat ' : 'Heats '}${list(lone)} ${lone.length === 1 ? 'has' : 'have'} one car only.` });
     const first = new Set(); rec.names.forEach((nm, p) => { const k = nm.trim().toLowerCase(), at = rec.names.findIndex(x => x.trim().toLowerCase() === k); if (k && at !== p) first.add(at); }); // (the first one who has a name that is used again)
     const dup = [...first].sort((a, b) => a - b).map(i => rec.names[i].trim());
-    if (dup.length) out.push({ level: 'warn', text: `${dup.length === 1 ? 'The name' : 'The names'} ${list(dup.map(x => `"${x}"`))} ${dup.length === 1 ? 'is' : 'are'} used twice.` });
+    if (dup.length) out.push({ level: 'warn', kind: 'dup', text: `${dup.length === 1 ? 'The name' : 'The names'} ${list(dup.map(x => `"${x}"`))} ${dup.length === 1 ? 'is' : 'are'} used twice.` });
     const raced = st.per.filter(x => x.heats > 0);
-    if (raced.length && st.minHeats !== st.maxHeats && !idle.length) out.push({ level: 'info', text: `The participants race ${st.minHeats} to ${st.maxHeats} heats. If the overall result adds the heats up, that favours those with more heats: count the average per heat in the race setup to keep it fair.` });
-    else if (raced.length && st.equal) out.push({ level: 'info', text: `Every participant races ${st.maxHeats === 1 ? '1 heat' : st.maxHeats + ' heats'}.` });
+    if (raced.length && st.minHeats !== st.maxHeats && !idle.length) out.push({ level: 'info', kind: 'range', text: `The participants race ${st.minHeats} to ${st.maxHeats} heats. If the overall result adds the heats up, that favours those with more heats: count the average per heat in the race setup to keep it fair.` });
+    else if (raced.length && st.equal) out.push({ level: 'info', kind: 'equal', text: `Every participant races ${st.maxHeats === 1 ? '1 heat' : st.maxHeats + ' heats'}.` });
     const small = rec.heats.map((h, i) => (h.places.length > 1 && h.places.length < rec.lanes ? i + 1 : 0)).filter(Boolean);
-    if (small.length) out.push({ level: 'info', text: `${small.length === 1 ? 'Heat ' : 'Heats '}${list(small)} ${small.length === 1 ? 'has' : 'have'} fewer cars than the ${rec.lanes} lanes.` });
-    if (st.maxHeats >= 2 && rec.lanes > 1) out.push({ level: 'info', text: st.laneSpread >= 2 ? 'The lanes are not shared evenly: some participants race more often in one lane than in another. "Even out the lanes" fixes that.' : 'The lanes are shared evenly.' });
-    if (st.missingPairs === 0 && rec.participants > 1) out.push({ level: 'info', text: 'Every participant races against every other participant at least once.' });
+    if (small.length) out.push({ level: 'info', kind: 'small', text: `${small.length === 1 ? 'Heat ' : 'Heats '}${list(small)} ${small.length === 1 ? 'has' : 'have'} fewer cars than the ${rec.lanes} lanes.` });
+    if (st.maxHeats >= 2 && rec.lanes > 1) out.push({ level: 'info', kind: 'lanes', text: st.laneSpread >= 2 ? 'The lanes are not shared evenly: some participants race more often in one lane than in another. "Even out the lanes" fixes that.' : 'The lanes are shared evenly.' });
+    if (st.missingPairs === 0 && rec.participants > 1) out.push({ level: 'info', kind: 'meet', text: 'Every participant races against every other participant at least once.' });
     return out;
   }
   // The numbers per participant for the editor: how many heats each races and in which lanes.
