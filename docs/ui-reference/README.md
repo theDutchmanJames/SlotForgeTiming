@@ -116,11 +116,11 @@ Dutch asked for a Race Director that is nicer to look at and fits more on the sc
 Colours of the pads are the ones of the Pad values: penalty points yellow `#f2b705`, race time orange `#f08a24`, laps purple `#9b7bff`, damage red `#e5484d`, championship points green `#3fb950`; the minus button is the same colour, darker. A card is green, amber or red at the top (the worst chip).
 
 
-## race-systems/ (22 Oct 2026, the window of Race Setups for the seven systems; Penalty and Damage built in 1.73.0, Weather in 1.74.0, Tyre wear in 1.75.0, Safety car, Push and save and Fuel in 1.76.0: all seven are built; then the last three screens: the rotation setup editor, board 9, built in 1.77.0; the Championship, board 10, and Balance of Power, board 11, are approved and not built yet)
+## race-systems/ (22 Oct 2026, the window of Race Setups for the seven systems; Penalty and Damage built in 1.73.0, Weather in 1.74.0, Tyre wear in 1.75.0, Safety car, Push and save and Fuel in 1.76.0: all seven are built; then the last three screens: the rotation setup editor, board 9, built in 1.77.0; the Championship editor, board 10, built in 1.78.0; Balance of Power, board 11, is approved and not built yet)
 
 Dutch asked to give the other setup windows the look of the Race Setups window (header with pills, the sentence *In plain words*, a side rail with notes and dots, folding section cards, *Used by*). The design (*Race systems with the side rail*, a Claude Design canvas) has an overview board and one board for each system, in the colour the system already has (Penalty yellow `#f2b705`, Damage red `#e5484d`, Weather blue `#4c9aff`, Tyre wear purple `#9b4dff`, Safety car orange `#ff7a1a`, Push and save lime `#a6d23c`, Fuel green `#2fb86a`). **Penalty and Damage stay two separate systems** (Dutch, 22 Oct). The order of building: release 1 Penalty and Damage (1.73.0), release 2 Weather (1.74.0), release 3 Tyre wear (1.75.0), release 4 Safety car, Push and save and Fuel together (1.76.0); each release waited for Dutch's go.
 
-The boards are in `source/` (`Main` overview, `Penalty`, `Damage`, `Weather`, `Tyres`, `SafetyCar`, `PushSave`, `Fuel`, the shared `sys.css` and `canvas.json`; **1.77.0 added** `Rotation` (board 9), `Championship` (board 10) and `BalanceOfPower` (board 11), approved by Dutch on 22 Oct at 13:43, and `sys2.css` that they use; `canvas.json` has all eleven boards). **The PNGs of the design boards were not exported** (the canvas is private and has no export): open the `*.dc.html` files on a canvas to see them. The pictures here are **screenshots of the built app** (1.73.0 to 1.77.0), drawn in Chromium with a stand-in for the app.
+The boards are in `source/` (`Main` overview, `Penalty`, `Damage`, `Weather`, `Tyres`, `SafetyCar`, `PushSave`, `Fuel`, the shared `sys.css` and `canvas.json`; **1.77.0 added** `Rotation` (board 9), `Championship` (board 10) and `BalanceOfPower` (board 11), approved by Dutch on 22 Oct at 13:43, and `sys2.css` that they use; `canvas.json` has all eleven boards). **The PNGs of the design boards were not exported** (the canvas is private and has no export): open the `*.dc.html` files on a canvas to see them. The pictures here are **screenshots of the built app** (1.73.0 to 1.78.0), drawn in Chromium with a stand-in for the app.
 
 | Picture | What it shows |
 |---|---|
@@ -179,3 +179,16 @@ The boards are in `source/` (`Main` overview, `Penalty`, `Damage`, `Weather`, `T
 | `53-built-1.77.0-rotation-ocean.png` | The Ocean theme |
 | `54-built-1.77.0-rotation-phone.png` | A narrow window (420 px): the rail becomes a row of chips |
 | `55-built-1.77.0-rotation-phone-heats.png` | The heats on a phone: the participants wrap, the table of heats scrolls sideways by itself |
+| `56-built-1.78.0-championship.png` | Championship editor, dark theme: the pink header with the picture, the pills (*Round 3 is next*, *5 rounds*, *16 sessions*, *8 drivers*, *Best 4 of 5 count*), Undo and Redo, *Ready to use*, the rail with its six rows (the last three under *Only if you need it*), *In plain words*, the section *Rounds*, the bar *Back* and *Save championship* at the bottom |
+| `57-built-1.78.0-championship-scrolled.png` | Scrolled: the rail and the bar stay in view; the rows of the rounds with their pills (*Done*, *Next*, *To do*) and the round that is next open and outlined |
+| `58-built-1.78.0-championship-round-open.png` | A round opened with a click on its row: name, track, date and the sessions with the kind as a tag, the share and the icon buttons |
+| `59-built-1.78.0-championship-points.png` | *Points table* (the table that is chosen is marked), the places, *Roster* and the box *Driven so far* under the rail |
+| `60-built-1.78.0-championship-roster.png` | *Roster*: the initial of each driver in a circle, the team, *Joins in round*, the **×**, *Add a driver* and *Add a team* |
+| `61-built-1.78.0-championship-teams.png` | *Dropped results* and *Teams, ties and sprints*: the cards for the team points, for a race of teams and for a tie, the rounding of a sprint with its example |
+| `62-built-1.78.0-championship-beaten.png` | *One point per car beaten* chosen: the places give way to a line that explains it, and the note on the rail says so |
+| `63-built-1.78.0-championship-needs-a-look.png` | A round without sessions: the pill *Needs a look*, the amber dot of *Rounds*, the status *1 thing to look at* |
+| `64-built-1.78.0-championship-new.png` | A new championship: *Add championship*, no drivers yet (an open ring), *Driven so far* says *No sessions yet* |
+| `65-built-1.78.0-championship-light.png` | The light theme |
+| `66-built-1.78.0-championship-ocean.png` | The Ocean theme |
+| `67-built-1.78.0-championship-phone.png` | A narrow window (420 px): the rail becomes a row of chips and the name is no longer squeezed |
+| `68-built-1.78.0-championship-phone-round.png` | A round on a phone: the fields one under the other |

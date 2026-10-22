@@ -31,7 +31,7 @@ const appConsole = { ...console, expected: false, seen: 0, error: (...a) => { if
 for (const k of Object.keys(api)) { const f = api[k]; if (typeof f === 'function') api[k] = (...x) => { x.forEach(v => { if (typeof v !== 'function') structuredClone(v); }); return f(...x); }; }
 const ctx = vm.createContext({ document, api, console: appConsole, Intl, URL, Image: function () {}, confirm: () => true, alert() {}, setTimeout, clearTimeout, setInterval, clearInterval, performance });
 ctx.__ready = true; ctx.window = ctx; ctx.addEventListener = () => {}; ctx.removeEventListener = () => {};
-for (const f of ['listnum.js', 'bop.js', 'weather.js', 'tyrewear.js', 'safetycar.js', 'pushsave.js', 'racelimit.js', 'endurance.js', 'failures.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'championship.js', 'champpoints.js', 'season.js', 'tokens.js', 'speed.js', 'distance.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','depth.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'picmemo.js', 'weatherwidgets.js', 'tyrewidgets.js', 'pacewidgets.js', 'boardorder.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationwords.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'drivergrid.js', 'homecards.js', 'liveview.js', 'setupwords.js', 'systemwords.js', 'formui.js', 'railform.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'damageui.js', 'weatherui.js', 'tyreui.js', 'pushsaveui.js', 'rotationui.js', 'championshipui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
+for (const f of ['listnum.js', 'bop.js', 'weather.js', 'tyrewear.js', 'safetycar.js', 'pushsave.js', 'racelimit.js', 'endurance.js', 'failures.js', 'damage.js', 'engine.js', 'heats.js', 'rotation.js', 'championship.js', 'champpoints.js', 'season.js', 'tokens.js', 'speed.js', 'distance.js','stats.js','homestats.js','carstats.js','viewset.js','picture.js','uiscale.js','depth.js','theme.js','banner.js', 'icons.js', 'delta.js','avatars.js', 'picmemo.js', 'weatherwidgets.js', 'tyrewidgets.js', 'pacewidgets.js', 'boardorder.js', 'widgets.js', 'frame.js', 'backdrop.js','announcer.js','sound.js', 'timing.js', 'rows.js', 'richtext.js', 'canvas.js', 'liveshare.js', 'review.js', 'adjustpad.js', 'adjustui.js', 'dirfolder.js', 'penaltyui.js', 'rotationwords.js', 'championshipwords.js', 'rotationdrag.js','padui.js','livegrid.js', 'homegrid.js', 'drivergrid.js', 'homecards.js', 'liveview.js', 'setupwords.js', 'systemwords.js', 'formui.js', 'railform.js', 'database.js', 'landing.js', 'race.js', 'undo.js', 'editor.js','tokenui.js', 'bopui.js', 'damageui.js', 'weatherui.js', 'tyreui.js', 'pushsaveui.js', 'rotationui.js', 'championshipui.js', 'audioedit.js','widgetbuilder.js','transferui.js','themeui.js','hardware.js','trackmate.js','hardwareui.js', 'dsui.js', 'app.js']) vm.runInContext(fs.readFileSync(R + 'renderer/' + f, 'utf8'), ctx, { filename: f });
 const run = s => vm.runInContext(s, ctx), E = id => document.getElementById(id);
 const say = (m, c) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -79,7 +79,7 @@ const setup = async () => { run("state.tab = 'setup'; state.setupSub = 'champion
   // ---------- making one ----------
   await setup(); await click({ id: 'newch' });
   { const h = mgr().innerHTML;
-    say('New championship opens the editor: the name, Undo and Redo, Save and Back, one round that is open, the roster and a note on the race setups', h.includes('id="ch-name"') && /id="ch-name" value="New championship"/.test(h) && h.includes('id="ch-undo"') && h.includes('id="ch-save"') && h.includes('id="ch-back"') && h.includes('Round 1') && /<details class="chround( next)?" data-round="0" open>/.test(h) && h.includes('The roster is empty') && h.includes('A Time Token Session can not be part of a championship'));
+    say('New championship opens the editor: the name, Undo and Redo, Save and Back, one round that is open, the roster and a note on the race setups', h.includes('id="ch-name"') && /id="ch-name" value="New championship"/.test(h) && h.includes('id="ch-undo"') && h.includes('id="ch-save"') && h.includes('id="ch-back"') && h.includes('Round 1') && /<details class="chround( next)?( look)?" data-round="0" open>/.test(h) && h.includes('The roster is empty') && h.includes('A Time Token Session can not be part of a championship'));
     say('...a round has its name, its track (with "the track of the race setup" to begin with) and its date; no sessions yet', h.includes('id="ch-rn-0"') && h.includes('(the track of the race setup)') && h.includes('id="ch-rd-0"') && h.includes('No sessions yet.'));
   }
   await click({ sadd: '0' }); await click({ sadd: '0' }); await click({ sadd: '0' });
@@ -91,7 +91,7 @@ const setup = async () => { run("state.tab = 'setup'; state.setupSub = 'champion
   { const h = mgr().innerHTML;
     say('choosing the race setups gives every session its kind: Practice, Qualifying, Race (it comes from the race setup)', /chkind k-practice">Practice/.test(h) && /chkind k-qualifying">Qualifying/.test(h) && /chkind k-race">Race/.test(h));
     say('...only a race has the choice of the points it counts for (100% / 50% sprint / None), a qualifying says it sets the grid, a practice that it never gives points', h.includes('data-sf="0:2:share"') && !h.includes('data-sf="0:0:share"') && !h.includes('data-sf="0:1:share"') && h.includes('50% (a sprint)') && h.includes('sets the grid of the race') && h.includes('never gives points'));
-    say('...a control that was chosen keeps the cursor when the page is drawn again, and the open round stays open', /<details class="chround( next)?" data-round="0" open>/.test(h)); }
+    say('...a control that was chosen keeps the cursor when the page is drawn again, and the open round stays open', /<details class="chround( next)?( look)?" data-round="0" open>/.test(h)); }
   await click({ sadd: '0' }); await click({ sdel: '0:3' });
   say('a session that was added is taken out again with its cross', (mgr().innerHTML.match(/class="chses"/g) || []).length === 3);
   await click({ sdown: '0:0' }); await click({ sup: '0:1' });
@@ -317,6 +317,84 @@ const setup = async () => { run("state.tab = 'setup'; state.setupSub = 'champion
   for (let n = 0; n < 3; n++) { key('1'); await wait(80); key('2'); await wait(80); }
   await until(() => saved.length > 0, 8000); await wait(60);
   say('a race without a tag is saved without one, and the message is the old one', saved.length === 1 && !('champ' in saved[0][0]) && E('msg').textContent === `Saved ${saved[0][1].length} laps. See Database > Results and Records.` && !E('racehost').innerHTML.includes('id="chtag"'));
+
+  // ---------- 1.78.0: the editor with a rail (board 10 in docs/ui-reference/race-systems) ----------
+  { const keep = { champs: store.championships, sessions: store.sessions };
+    const SESS = (id, round, ses, over) => ({ id, date: '2026-10-0' + id.slice(-1), standings: [], champ: { id: 'chw', roundId: round, sessionId: ses, ...(over || {}) } });
+    store.championships = [JSON.parse(JSON.stringify(C.clean({ id: 'chw', name: 'Thursday Cup', rounds: [
+      { id: 'r1', name: 'Opener', track: 't4', sessions: [{ id: 'a1', setup: 's-prac' }, { id: 'a2', setup: 's-qual' }, { id: 'a3', setup: 's-race' }] },
+      { id: 'r2', name: 'Sprint night', track: 't4', sessions: [{ id: 'b1', setup: 's-prac' }, { id: 'b2', setup: 's-qual' }, { id: 'b3', setup: 's-race', share: 50 }] },
+      { id: 'r3', name: 'Final', track: 't1', sessions: [{ id: 'c1', setup: 's-race' }] }, { id: 'r4', name: 'Extra', sessions: [] }],
+      roster: [{ driver: 'd1', team: 'tm1' }, { driver: 'd2', team: 'tm1' }, { driver: 'd3', team: 'tm2' }, { driver: 'd4', team: '' }], bonusFast: 1, drops: 1 }, true)))];
+    store.sessions = [SESS('s1', 'r1', 'a1'), SESS('s2', 'r1', 'a2'), SESS('s3', 'r1', 'a3'), SESS('s4', 'r2', 'b1', { off: true })];
+    await setup(); await click({ edit: 'chw' });
+    const h = mgr().innerHTML, draft = () => run('chEd.draft'), open = id => new RegExp(`id="${id}" open>`).test(mgr().innerHTML);
+    say('the editor is a page with the look of the system forms: Edit championship, the name (ch-name), Undo and Redo as icon buttons, the pink form (ss-ch), and a bar with Back and Save championship', h.includes('>Edit championship</h3>') && /id="ch-name" value="Thursday Cup"/.test(h) && /id="ch-undo"[^>]*aria-label="Undo"/.test(h) && /id="ch-redo"[^>]*aria-label="Redo"/.test(h)
+      && h.includes('class="rsform rspage setupform ss-ch"') && h.includes('id="ch-form"') && h.includes('id="ch-back"') && h.includes('id="ch-save"') && h.includes('>Save championship</button>') && h.includes('id="ch-msg"') && h.includes('Nothing is written until you press Save.'));
+    say('...the name has its hint for a screen reader, and the picture of a championship is the tile', h.includes('aria-describedby="ch-namehint"') && h.includes('The name shows on the Home tab, on the race screen and in the results of every session of this championship.') && h.includes(run("Icons.PATHS['championship']")));
+    say('the rail has a row for each section (Rounds, Points table, Roster) and, under "Only if you need it", Bonus points, Dropped results and Teams and ties', ['rounds', 'points', 'roster', 'bonus', 'drops', 'teams'].every(k => h.includes(`id="rs-rail-${k}" data-rail="${k}"`)) && h.indexOf('id="rs-rail-roster"') < h.indexOf('id="rs-optional"') && h.indexOf('id="rs-optional"') < h.indexOf('id="rs-rail-bonus"')
+      && h.includes('<b>Teams and ties</b>') && h.includes('<b>Points table</b>') && h.includes('This championship</p>') && h.includes('Only if you need it'));
+    say('...and the sections follow in the same order, as cards that fold', ['ch-roundsbox', 'ch-pointsbox', 'ch-rosterbox', 'ch-bonusbox', 'ch-dropsbox', 'ch-teamsbox'].every((id, i, a) => h.includes(`id="${id}"`) && (!i || h.indexOf(`id="${a[i - 1]}"`) < h.indexOf(`id="${id}"`))) && (h.match(/<details class="fgroup rssec"/g) || []).length === 6);
+    say('the sections that are open: the rounds, the points and the roster; the bonus points and the dropped results are open as well (there is a fastest lap and a dropped result), the teams are shut (the standard)', open('ch-roundsbox') && open('ch-pointsbox') && open('ch-rosterbox') && open('ch-bonusbox') && open('ch-dropsbox') && !open('ch-teamsbox'));
+    say('the pills say what is next, and how big it is: Round 2 is next, 4 rounds, 7 sessions, 4 drivers, and what the dropped results leave', E('rspills').innerHTML.includes('rspill hi">Round 2 is next<') && E('rspills').innerHTML.includes('>4 rounds<') && E('rspills').innerHTML.includes('>7 sessions<') && E('rspills').innerHTML.includes('>4 drivers<') && E('rspills').innerHTML.includes('>Best 2 of 3 count<'));
+    say('...a round with no sessions needs a look: the status says "1 thing to look at", and it is not Ready', E('rsready').innerHTML.includes('1 thing to look at') && E('rsready').className === 'rsready');
+    say('the sentence "In plain words" reads the championship back', E('rssay').innerHTML.includes('<span class="rseye">In plain words</span>') && E('rssay').innerHTML.includes('<b>Thursday Cup</b>') && E('rssay').innerHTML.includes('<b>4 rounds</b>') && E('rssay').innerHTML.includes('<b>7 sessions</b>') && E('rssay').innerHTML.includes('<b>round 2</b>')
+      && E('rssay').innerHTML.includes('A sprint gives half the points, <b>rounded to the nearest</b>.') && E('rssay').innerHTML.includes('<b>Best 2 of 3 rounds</b> count.'));
+    say('the rail has a short note and a dot for each section: Rounds 4 rounds · 7 sessions (amber: Round 4 has no sessions), Points table, Roster 4 drivers · 2 teams, Bonus Fastest lap +1, Dropped Best 2 of 3 count, Teams and ties Standard (an open ring)',
+      E('rs-note-rounds').textContent === '4 rounds · 7 sessions' && E('rs-dot-rounds').className === 'rsdot todo' && E('rs-note-points').textContent === '25-18-15-12-10-8-6-4-2-1' && E('rs-dot-points').className === 'rsdot ok' && E('rs-note-roster').textContent === '4 drivers · 2 teams'
+      && E('rs-note-bonus').textContent === 'Fastest lap +1' && E('rs-note-drops').textContent === 'Best 2 of 3 count' && E('rs-note-teams').textContent === 'Standard' && E('rs-dot-teams').className === 'rsdot off');
+    say('the box under the rail says how far it has been driven: 3 of 7 sessions (a session that was set to "do not count" was not driven), the round that is next, and a bar', h.includes('id="rs-used"') && h.includes('Driven so far') && h.includes('id="ch-drivenhead">3 of 7 sessions<') && h.includes('Round 2 is next. It shows on the Home tab.') && h.includes('<i style="width:42.9%"></i>') && !h.includes('Used by'));
+    say('the rounds: Round 1 is Done, Round 2 is Next (and open), Round 3 is To do, Round 4 Needs a look; the remarks are above the rounds', /data-round="0"[^>]*>.*?chpill done">Done</s.test(h) && /<details class="chround next" data-round="1" open>/.test(h) && /data-round="2"[^>]*>.*?chpill todo">To do</s.test(h) && /<details class="chround look" data-round="3"[^>]*>.*?chpill warn">Needs a look</s.test(h)
+      && /id="ch-remarks" class="chremarks">[^]*Round 4 has no sessions\.[^]*id="ch-rounds"/.test(h));
+    say('...a round that is open has the header of the sessions (Race setup, Kind, Points), and buttons with a picture (Add a session, Move up, Move down, Delete this round)', /data-round="1" open>[^]*class="chses chh" aria-hidden="true"><span><\/span><span>Race setup<\/span><span>Kind<\/span><span>Points<\/span>/.test(h) && />\s*<svg[^>]*>.*?<\/svg> Add a session<\/button>/s.test(h) && h.includes('Delete this round</button>'));
+    // the rail and the sections
+    await click({ rail: 'teams' });
+    say('a row of the rail opens its section and marks the row', run('chEd.sections.has("teams")') && run('chEd.rail') === 'teams' && E('ch-teamsbox').open === true);
+    E('ch-dropsbox').open = false; E('ch-dropsbox').ontoggle(); say('shutting a section is noted, and the rail keeps pointing where it was', run('chEd.sections.has("drops")') === false && run('chEd.rail') === 'teams');
+    E('ch-dropsbox').open = true; E('ch-dropsbox').ontoggle(); say('...opening it is noted, and the rail points at it', run('chEd.sections.has("drops")') === true && run('chEd.rail') === 'drops');
+    E('ch-dropsbox').ontoggle(); say('...a section that was open already does not move the rail again', run('chEd.rail') === 'drops');
+    // the words follow what is done
+    await click({ pick: 'teamMode', val: 'all' });
+    say('a card of the teams changes the words at once: the note on the rail, the sentence, the box of how many count', E('rs-note-teams').textContent === 'All drivers count' && E('rs-dot-teams').className === 'rsdot ok' && E('rssay').innerHTML.includes('All the drivers of a team add points to the team.') && E('ch-p-teamBest').disabled === true && draft().teamMode === 'all');
+    await click({ pick: 'sprintRound', val: 'down' }); await click({ pick: 'tie', val: 'qual' });
+    say('...the sprint and the tie too (more than two changes: the rail says two and how many more)', E('rs-note-teams').textContent === 'All drivers count · Tie: qualifying · +1 more' && E('ch-sprinthint').textContent === '12.8 becomes 12' && E('rssay').innerHTML.includes('rounded down'));
+    E('ch-undo').onclick(); E('ch-undo').onclick(); E('ch-undo').onclick(); await wait(10);
+    say('Undo takes the three changes back, and the words go with them', draft().teamMode === 'best' && draft().tie === 'wins' && draft().sprintRound === 'nearest' && E('rs-note-teams').textContent === 'Standard' && E('rs-dot-teams').className === 'rsdot off' && E('rssay').innerHTML.includes('rounded to the nearest'));
+    await change({ pf: 'rule:bonusPole' }, '2'); await change({ pf: 'rule:drops' }, '2');
+    say('a number is on the page at once: the bonus on the rail, the dropped results on the rail and in the pill and the sentence', E('rs-note-bonus').textContent === 'Fastest lap +1 · Pole +2' && E('rs-note-drops').textContent === 'Best 1 of 3 count' && E('rspills').innerHTML.includes('>Best 1 of 3 count<') && E('rssay').innerHTML.includes('The pole position gives <b>2</b> more points.') && E('ch-dropsaid').textContent === 'Best 1 of 3 rounds count.');
+    await change({ pf: 'rule:bonusPole' }, '0'); await change({ pf: 'rule:drops' }, '1');
+    // the rounds
+    await click({ sadd: '3' });
+    say('a session added to the round with none: it needs a look no more than the race setup that is not chosen yet (the status counts it), and the round is open', draft().rounds[3].sessions.length === 1 && E('rsready').innerHTML.includes('1 thing to look at') && /id="ch-remarks" class="chremarks">[^]*Round 4, session 1 has no race setup\./.test(mgr().innerHTML) && run('chEd.open.has("r4")'));
+    await change({ sf: '3:0:setup' }, 's-race');
+    say('...a race setup is chosen: nothing to look at, the status is Ready to use, the dot of Rounds is green, and the count of sessions follows', E('rsready').className === 'rsready ok' && E('rsready').innerHTML.includes('Ready to use') && E('rs-dot-rounds').className === 'rsdot ok' && E('rs-note-rounds').textContent === '4 rounds · 8 sessions' && E('rspills').innerHTML.includes('>8 sessions<') && !/Round 4 has no sessions/.test(mgr().innerHTML.split('id="ch-rounds"')[0].split('id="ch-remarks"')[1] || ''));
+    { const nm = E('ch-name'); nm.oninput({ target: { value: '' } });
+      say('an empty name is said in the status ("Give it a name") and the sentence calls it "This championship"', E('rsready').innerHTML.includes('Give it a name') && E('rsready').className === 'rsready' && E('rssay').innerHTML.includes('<b>This championship</b>'));
+      nm.oninput({ target: { value: 'Thursday Cup' } }); say('...a name makes it ready again', E('rsready').className === 'rsready ok'); }
+    { const t = { dataset: { rf: '1:name' }, value: 'Night sprint', id: '' }; mgr().oninput({ target: t });
+      say('the name of a round is kept as it is typed, and shows in the row of the round without drawing the page again', draft().rounds[1].name === 'Night sprint' && run('chEd.dirty') === true); }
+    // the roster
+    await click({ xdel: 'd4' });
+    say('the roster: a driver out is on the rail and in the pill and the sentence', draft().roster.length === 3 && E('rs-note-roster').textContent === '3 drivers · 2 teams' && E('rspills').innerHTML.includes('>3 drivers<') && E('rssay').innerHTML.includes('<b>3 drivers</b>'));
+    for (const d of ['d1', 'd2', 'd3']) await click({ xdel: d });
+    say('...with nobody in it: "No drivers yet" with an open ring, a note in the roster section, and the sentence says so', draft().roster.length === 0 && E('rs-note-roster').textContent === 'No drivers yet' && E('rs-dot-roster').className === 'rsdot off' && mgr().innerHTML.includes('The roster is empty. Add the drivers who drive this championship.') && E('rssay').innerHTML.includes('no drivers in the roster yet'));
+    await click({ guest: '1' });
+    say('the guest rule is a switch: off, the page says so in the sentence, and the switch is not on', draft().guestRule === false && E('rssay').innerHTML.includes('<b>not a guest</b>') && /class="fu-sw" id="ch-guest" aria-checked="false"/.test(mgr().innerHTML));
+    await click({ guest: '1' });
+    // saving: a championship that is not saved yet says that it shows on Home once it is
+    await E('ch-back').onclick(); await wait(30);
+    await setup(); await click({ id: 'newch' });
+    say('a new championship: Add championship, "No sessions yet" in the box under the rail, the sections for the extras are shut, and the first pill is the rounds', mgr().innerHTML.includes('>Add championship</h3>') && E('rs-used').innerHTML.includes('No sessions yet') && E('rs-used').innerHTML.includes('Add a session to a round.') && !open('ch-bonusbox') && !open('ch-dropsbox') && !open('ch-teamsbox') && E('rspills').innerHTML.includes('rspill hi">1 round<'));
+    await click({ sadd: '0' }); await change({ sf: '0:0:setup' }, 's-race');
+    say('...with a session in the round it says that the round shows on Home once it is saved', E('rs-used').innerHTML.includes('0 of 1 sessions') && E('rs-used').innerHTML.includes('Round 1 is next. Save the championship and it shows on the Home tab.'));
+    await E('ch-save').onclick(); await wait(30);
+    say('...and after Save it says it shows on the Home tab', E('rs-used').innerHTML.includes('Round 1 is next. It shows on the Home tab.') && E('ch-msg').textContent === 'Saved.');
+    await E('ch-back').onclick(); await wait(30);
+    store.championships = keep.champs; store.sessions = keep.sessions; }
+  { const css = fs.readFileSync(R + 'renderer/styles.css', 'utf8'), at = css.indexOf('The championship editor with a rail (1.78.0');
+    say('1.78.0: the style sheet has the block of the championship editor, before Soft lift (the depth of the app comes last), with the cards in three columns, the rows of sessions and the box under the rail', at > 0 && at < css.indexOf('Soft lift (1.46.0)') && css.includes('.fu-cards.fu-c3{') && css.includes('.rspage .chses{grid-template-columns:30px') && css.includes('.rspbar i{') && css.includes('.rspage .chpill.warn{'));
+    { const src = fs.readFileSync(R + 'renderer/championshipui.js', 'utf8'), editor = src.slice(src.indexOf('function renderChampionshipEditor'), src.indexOf('// ---- the points after a race'));
+      say('...and the old page is gone: the editor has no sections with a heading of their own (chsec) and no bar with the name (ed-bar) any more', editor.length > 5000 && !editor.includes('chsec') && !editor.includes('ed-bar') && !editor.includes('undoButtons')); } }
 
   // ---------- coming back after a crash, and the results ----------
   { const tag = C.tagOf(C.clean(store.championships[0], true), 0, 0, { setups: store.racesetups });

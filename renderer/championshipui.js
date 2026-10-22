@@ -1,6 +1,6 @@
 // Championships on screen (1.55.0): the list and the editor in Race Setup > Championships. What a championship is and every change to it is in championship.js;
 // this file draws it and passes on what is clicked. The next session of a championship waits on the Home tab (landing.js).
-let chEd = null; // the championship being edited: { id, draft, dirty, open (the ids of the rounds that are open), lists, msg, history }
+let chEd = null; // the championship being edited: { id, draft, dirty, open (the ids of the rounds that are open), sections (the sections that are open), rail (the row of the rail that is marked), lists, msg, history }
 
 // the lists the page needs (race setups for the sessions, tracks for the rounds, drivers and teams for the roster, saved sessions for what was driven)
 async function champLists() {
@@ -38,14 +38,35 @@ async function renderChampionships(box) {
   box.onchange = box.oninput = box.onpointerdown = null;
 }
 
+// 1.78.0: the editor has the look of the system forms: a header, a rail and sections that fold (the design is board 10 in docs/ui-reference/race-systems). id: the section and its row in the rail;
+// dom: the id of the card. The words (the sentence, the pills, the notes of the rail) are made in championshipwords.js.
+const CH_SECTIONS = [
+  { id: 'rounds', dom: 'ch-roundsbox', title: 'Rounds', ask: 'The rounds, and the sessions you drive in each', icon: 'flag' },
+  { id: 'points', dom: 'ch-pointsbox', title: 'Points table', ask: 'How many points does each finishing place get?', icon: 'star' },
+  { id: 'roster', dom: 'ch-rosterbox', title: 'Roster', ask: 'Who drives this championship?', icon: 'driver' },
+  { id: 'bonus', dom: 'ch-bonusbox', title: 'Bonus points', ask: 'Extra points for the fastest lap, the pole and the start', icon: 'bolt', optional: true },
+  { id: 'drops', dom: 'ch-dropsbox', title: 'Dropped results', ask: 'The worst round results that do not count', icon: 'trash', optional: true },
+  { id: 'teams', dom: 'ch-teamsbox', title: 'Teams, ties and sprints', railTitle: 'Teams and ties', ask: 'Team points, who wins a tie, and what a sprint is worth', icon: 'users', optional: true }];
+// the sections that are open when the editor opens: the rounds, the points and the roster, and the others when something in them is not the standard
+const chOpenAtStart = d => {
+  const s = new Set(['rounds', 'points', 'roster']);
+  if (ChampWords.bonusBits(d).length) s.add('bonus'); if (d.drops) s.add('drops'); if (ChampWords.teamBits(d).length) s.add('teams'); return s;
+};
+const CH_SPRINT_HINT = { nearest: '12.5 becomes 13', up: '12.2 becomes 13', down: '12.8 becomes 12', none: '12.5 stays 12.5' };
+
 function renderChampionshipEditor(box) {
   const d = chEd.draft, L = chEd.lists, $ = id => document.getElementById(id);
+  if (!chEd.sections) chEd.sections = chOpenAtStart(d); // (the sections that are open; what you open or close is kept while you edit)
+  if (!chEd.rail) chEd.rail = 'rounds'; // (the row of the rail that is marked: the section that was opened last)
+  const I = (name, size) => Icons.svg(name, { size: size || 16, stroke: 2 });
   const kindWord = Champ.KIND_LABEL;
   const setupOf = id => L.setups.find(s => s.id === id) || null;
+  const wctx = () => ({ setups: L.setups, tracks: L.tracks, sessions: L.sessions, id: chEd.id, saved: !!chEd.id });
   const prog = () => Champ.progress({ ...d, id: chEd.id }, L.sessions);
   const nameOf = (list, e, id) => { const x = list.find(r => r.id === id); return x ? titleOf(e, x) || '(unnamed)' : ''; };
+  const note = (tone, html) => `<div class="rsnote ${tone}"><span class="rsnic">${Icons.svg(tone === 'warn' ? 'alert' : tone === 'good' ? 'check' : 'info', { size: 18, stroke: 1.8 })}</span><span>${html}</span></div>`;
 
-  // ---- the parts of the page ----
+  // ---- the rounds, the sessions and the roster ----
   const setupOptions = s => {
     const ok = L.setups.filter(x => Champ.kindOf(x)), cur = s.setup && !ok.some(x => x.id === s.setup) ? setupOf(s.setup) : null;
     return `<option value="">(choose a race setup)</option>` + ok.map(x => `<option value="${esc(x.id)}"${x.id === s.setup ? ' selected' : ''}>${esc(x.name || '(unnamed)')}</option>`).join('')
@@ -58,85 +79,104 @@ function renderChampionshipEditor(box) {
     return `<div class="chses" data-ses="${i}:${k}"><span class="chnum">${k + 1}</span>
       <select data-sf="${i}:${k}:setup" aria-label="Race setup of session ${k + 1} of round ${i + 1}">${setupOptions(s)}</select>
       <span class="chkind${kind ? ' k-' + kind : ''}">${kind ? esc(kindWord[kind]) : '–'}</span><span class="chpts">${pts}</span>
-      <span class="chbtns"><button type="button" class="btn" data-sup="${i}:${k}" aria-label="Move session ${k + 1} of round ${i + 1} up" title="Move up"${k === 0 ? ' disabled' : ''}>↑</button><button type="button" class="btn" data-sdown="${i}:${k}" aria-label="Move session ${k + 1} of round ${i + 1} down" title="Move down"${k === last ? ' disabled' : ''}>↓</button><button type="button" class="btn" data-sdel="${i}:${k}" aria-label="Remove session ${k + 1} of round ${i + 1}" title="Remove this session">×</button></span></div>`;
+      <span class="chbtns"><button type="button" class="ib" data-sup="${i}:${k}" aria-label="Move session ${k + 1} of round ${i + 1} up" title="Move up"${k === 0 ? ' disabled' : ''}>${I('up')}</button><button type="button" class="ib" data-sdown="${i}:${k}" aria-label="Move session ${k + 1} of round ${i + 1} down" title="Move down"${k === last ? ' disabled' : ''}>${I('down')}</button><button type="button" class="ib" data-sdel="${i}:${k}" aria-label="Remove session ${k + 1} of round ${i + 1}" title="Remove this session">${I('x')}</button></span></div>`;
   };
-  const roundHtml = (r, i, p) => {
-    const st = p.rounds[i], pill = st.state === 'done' ? 'Done' : st.state === 'next' ? 'Next' : st.state === 'todo' ? 'To do' : '', open = chEd.open.has(r.id);
+  const roundHtml = (r, i, p, looks) => {
+    const st = p.rounds[i], pill = ChampWords.roundPill(st.state, looks[i]), open = chEd.open.has(r.id);
     const track = nameOf(L.tracks, 'tracks', r.track);
-    return `<details class="chround${st.state === 'next' ? ' next' : ''}" data-round="${i}"${open ? ' open' : ''}><summary><span class="chrn">Round ${i + 1}</span><span class="chrname">${esc(r.name)}</span><span class="chrtrack muted">${esc(track || (r.track ? '(deleted track)' : 'track of the race setup'))}</span>`
-      + `<span class="muted">${r.sessions.length} ${r.sessions.length === 1 ? 'session' : 'sessions'}${st.driven ? ` · ${st.driven} driven` : ''}</span>${pill ? `<span class="chpill ${st.state}">${pill}</span>` : ''}</summary>
-      <div class="chrbody"><div class="chfields">
+    return `<details class="chround${st.state === 'next' ? ' next' : ''}${looks[i] ? ' look' : ''}" data-round="${i}"${open ? ' open' : ''}><summary><span class="chrn">Round ${i + 1}</span><span class="chrname">${esc(r.name)}</span><span class="chrtrack muted">${esc(track || (r.track ? '(deleted track)' : 'track of the race setup'))}</span>`
+      + `<span class="muted">${r.sessions.length} ${r.sessions.length === 1 ? 'session' : 'sessions'}${st.driven ? ` · ${st.driven} driven` : ''}</span>${pill ? `<span class="chpill ${pill.tone}">${esc(pill.text)}</span>` : ''}</summary>
+      <div class="chrbody"><div class="fgrid c3">
         <div class="field"><label for="ch-rn-${i}">Round name</label><input type="text" id="ch-rn-${i}" data-rf="${i}:name" value="${esc(r.name)}" maxlength="${Champ.LIMITS.roundName}" placeholder="Round ${i + 1}"></div>
         <div class="field"><label for="ch-rt-${i}">Track</label><select id="ch-rt-${i}" data-rf="${i}:track"><option value="">(the track of the race setup)</option>${L.tracks.map(t => `<option value="${esc(t.id)}"${t.id === r.track ? ' selected' : ''}>${esc(t.name || '(unnamed)')}</option>`).join('')}</select></div>
         <div class="field"><label for="ch-rd-${i}">Date (optional)</label><input type="text" id="ch-rd-${i}" data-rf="${i}:date" value="${esc(r.date)}" maxlength="${Champ.LIMITS.date}" placeholder="Sat 24 Oct 2026"></div></div>
         <h4>Sessions of this round, in the order you drive them</h4>
-        ${r.sessions.length ? r.sessions.map((s, k) => sessionHtml(r, i, s, k)).join('') : '<p class="muted">No sessions yet. Add a practice, a qualifying or a race.</p>'}
-        <div class="row"><button type="button" class="btn" data-sadd="${i}"${r.sessions.length >= Champ.LIMITS.sessions ? ' disabled' : ''}>Add a session</button>
-          <button type="button" class="btn" data-rup="${i}"${i === 0 ? ' disabled' : ''}>Move this round up</button><button type="button" class="btn" data-rdown="${i}"${i === d.rounds.length - 1 ? ' disabled' : ''}>Move this round down</button>
-          <button type="button" class="btn danger" data-rdel="${i}">Delete this round</button></div></div></details>`;
+        ${r.sessions.length ? `<div class="chses chh" aria-hidden="true"><span></span><span>Race setup</span><span>Kind</span><span>Points</span><span></span></div>${r.sessions.map((s, k) => sessionHtml(r, i, s, k)).join('')}` : '<p class="muted">No sessions yet. Add a practice, a qualifying or a race.</p>'}
+        <div class="row"><button type="button" class="btn" data-sadd="${i}"${r.sessions.length >= Champ.LIMITS.sessions ? ' disabled' : ''}>${I('plus')} Add a session</button>
+          <button type="button" class="btn" data-rup="${i}"${i === 0 ? ' disabled' : ''}>${I('up')} Move this round up</button><button type="button" class="btn" data-rdown="${i}"${i === d.rounds.length - 1 ? ' disabled' : ''}>${I('down')} Move this round down</button>
+          <span class="chgrow"></span><button type="button" class="btn danger" data-rdel="${i}">${I('trash')} Delete this round</button></div></div></details>`;
   };
-  const roundsHtml = () => { const p = prog(); return d.rounds.length ? d.rounds.map((r, i) => roundHtml(r, i, p)).join('') : '<p class="muted">No rounds yet. Add the first round.</p>'; };
+  const roundsHtml = () => { const p = prog(), looks = ChampWords.looks(d, wctx()); return d.rounds.length ? d.rounds.map((r, i) => roundHtml(r, i, p, looks)).join('') : '<p class="muted">No rounds yet. Add the first round.</p>'; };
+  const remarksHtml = () => ChampWords.remarks(d, wctx()).map(t => note('warn', esc(t))).join('');
   const rosterHtml = () => {
     const have = new Set(d.roster.map(x => x.driver)), free = L.drivers.filter(x => !have.has(x.id));
     return (d.roster.length ? `<div class="wrap"><table class="fields chroster"><thead><tr><th>Driver</th><th>Team</th><th>Joins in round</th><th></th></tr></thead><tbody>${d.roster.map(x => {
       const nm = nameOf(L.drivers, 'drivers', x.driver) || '(deleted driver)';
-      return `<tr data-xrow="${esc(x.driver)}"><td><strong>${esc(nm)}</strong></td>
+      return `<tr data-xrow="${esc(x.driver)}"><td><span class="chav" aria-hidden="true">${esc(nm.charAt(0).toUpperCase())}</span><strong>${esc(nm)}</strong></td>
         <td><select data-xf="${esc(x.driver)}:team" aria-label="Team of ${esc(nm)}"><option value="">(no team)</option>${L.teams.map(t => `<option value="${esc(t.id)}"${t.id === x.team ? ' selected' : ''}>${esc(titleOf('teams', t) || '(unnamed)')}</option>`).join('')}</select></td>
         <td><input type="number" min="1" max="${Champ.LIMITS.rounds}" data-xf="${esc(x.driver)}:from" value="${x.from}" aria-label="Round that ${esc(nm)} joins in"></td>
-        <td><button type="button" class="btn" data-xdel="${esc(x.driver)}" aria-label="Remove ${esc(nm)} from the roster" title="Remove from the roster">×</button></td></tr>`; }).join('')}</tbody></table></div>`
-      : '<p class="muted">The roster is empty. Add the drivers who drive this championship.</p>')
+        <td><button type="button" class="ib" data-xdel="${esc(x.driver)}" aria-label="Remove ${esc(nm)} from the roster" title="Remove from the roster">${I('x')}</button></td></tr>`; }).join('')}</tbody></table></div>`
+      : note('info', 'The roster is empty. Add the drivers who drive this championship.'))
       + `<div class="row"><select id="ch-adddriver" aria-label="Add a driver to the roster"${free.length && d.roster.length < Champ.LIMITS.roster ? '' : ' disabled'}><option value="">Add a driver...</option>${free.map(x => `<option value="${esc(x.id)}">${esc(titleOf('drivers', x) || '(unnamed)')}</option>`).join('')}</select>
         <select id="ch-addteam" aria-label="Add all drivers of a team to the roster"${L.teams.length ? '' : ' disabled'}><option value="">Add all drivers of a team...</option>${L.teams.map(t => `<option value="${esc(t.id)}">${esc(titleOf('teams', t) || '(unnamed)')}</option>`).join('')}</select></div>`;
   };
 
   // ---- the points: the table, the bonuses, the dropped results, the teams and the ties ----
   const ordinal = n => { const m = n % 100, k = n % 10; return n + (m >= 11 && m <= 13 ? 'th' : k === 1 ? 'st' : k === 2 ? 'nd' : k === 3 ? 'rd' : 'th'); };
-  const raceRounds = () => d.rounds.filter(r => r.sessions.some(s => s.share > 0 && Champ.kindOf(setupOf(s.setup)) === 'race')).length;
-  const dropSaid = () => { const n = raceRounds(); return d.drops ? (n ? `Best ${Math.max(1, n - d.drops)} of ${n} rounds count.` : 'The best results count (there is no race in the rounds yet).') : 'Every round counts.'; };
   const numIn = (key, id) => `<input type="number" step="any" min="0" id="${id}" data-pf="rule:${key}" value="${d[key]}">`;
-  const choose = (key, id, list, label) => `<select id="${id}" data-pf="rule:${key}" aria-label="${esc(label)}">${list.map(([v, t]) => `<option value="${v}"${v === d[key] ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>`;
-  const pointsHtml = () => {
+  const question = (id, text, small) => `<span class="fu-q" id="${id}">${esc(text)}${small ? ` <small class="muted">${esc(small)}</small>` : ''}</span>`;
+  const cards = (key, list) => `<div class="fu-cards fu-c3" role="group" aria-labelledby="ch-q-${key}">${list.map(([v, title, line]) => `<button type="button" class="fu-card${d[key] === v ? ' on' : ''}" aria-pressed="${d[key] === v}" data-pick="${key}" data-val="${v}"><span class="fu-ct"><b>${esc(title)}</b></span>${line ? `<span class="fu-cd">${esc(line)}</span>` : ''}<span class="fu-ck" aria-hidden="true">${Icons.svg('check', { size: 14, stroke: 3 })}</span></button>`).join('')}</div>`;
+
+  const roundsBody = () => `<div class="fgrid"><div class="field full">${note('info', 'Every session uses one of your race setups, so a championship can mix a short sprint with a long final. <b>The kind comes from the race setup</b>: Race, Qualifying or Practice. A round with no track of its own uses the track of the race setup. A round that is driven keeps its results: changing its sessions afterwards does not change races that were saved. A Time Token Session can not be part of a championship.')}
+      <div class="row"><button type="button" class="btn" id="ch-addround"${d.rounds.length >= Champ.LIMITS.rounds ? ' disabled' : ''} title="A new round starts with the sessions of the round before it">${I('plus')} Add a round</button>
+        <button type="button" class="btn" id="ch-copyfirst"${d.rounds.length < 2 ? ' disabled' : ''} title="Gives every other round the sessions of round 1">${I('layers')} Copy the sessions of round 1 to all rounds</button><span class="muted hint">A new round starts with the sessions of the round before it.</span></div>
+      <div id="ch-remarks" class="chremarks">${remarksHtml()}</div>
+      <div id="ch-rounds">${roundsHtml()}</div></div></div>`;
+  const pointsBody = () => {
     const pre = Champ.presetOf(d), table = d.pointsMode === 'table', n = d.points.length;
     const presets = Champ.PRESETS.map(p => `<button type="button" class="btn${pre === p.id ? ' on' : ''}" data-preset="${p.id}">${esc(p.label)}</button>`).join('') + `<button type="button" class="btn${pre === 'own' ? ' on' : ''}" data-preset="own">My own</button>`;
-    const places = table ? `<div class="chplaces">${d.points.map((v, i) => `<div class="field"><label for="ch-pl-${i}">${ordinal(i + 1)}</label><input type="number" step="any" min="0" max="${Champ.LIMITS.points}" id="ch-pl-${i}" data-pf="place:${i}" value="${v}"></div>`).join('')}</div>
-      <div class="row"><button type="button" class="btn" data-padd="1"${n >= Champ.LIMITS.places ? ' disabled' : ''}>Add a place</button><button type="button" class="btn" data-prem="1"${n <= 1 ? ' disabled' : ''}>Remove the last place</button></div>
-      <div class="chfields"><div class="field"><label for="ch-p-pointsRest">Every finisher after ${ordinal(n)} gets (points)</label>${numIn('pointsRest', 'ch-p-pointsRest')}</div></div>`
-      : '<p class="muted">A finisher gets one point for every car that finished behind him or is out. With 4 cars the winner gets 3 points, the second 2, the third 1 and the last 0.</p>';
-    return `<div class="field"><label>Points for the finishing places: start from a ready-made table (you can change every number)</label><div class="row" id="ch-presets">${presets}</div></div>${places}
-      <p class="hint2">A car that was disqualified or did not finish gets no points for its place. A car that finished, even many laps down, counts as a finisher.</p>
-      <h4>Bonus points</h4>
-      <div class="chfields"><div class="field"><label for="ch-p-bonusFast">Fastest lap of the race (points)</label>${numIn('bonusFast', 'ch-p-bonusFast')}</div>
-        <div class="field"><label for="ch-p-bonusFastTop">Only when the driver finishes in the first (places)</label>${numIn('bonusFastTop', 'ch-p-bonusFastTop')}</div>
-        <div class="field"><label for="ch-p-bonusPole">Pole position, fastest in qualifying (points)</label>${numIn('bonusPole', 'ch-p-bonusPole')}</div>
-        <div class="field"><label for="ch-p-bonusStart">Starting the race (points for every driver)</label>${numIn('bonusStart', 'ch-p-bonusStart')}</div></div>
-      <p class="hint2">Bonus points are added to the points of the race. The fastest lap is the best lap of a car that finished; the pole bonus goes to the driver who was fastest in the qualifying of the same round, if he starts the race.</p>
-      <h4>Dropped results</h4>
-      <div class="chfields"><div class="field"><label for="ch-p-drops">The worst round results that do not count (per driver and per team)</label>${numIn('drops', 'ch-p-drops')}</div></div>
-      <p class="hint2"><span id="ch-dropsaid">${esc(dropSaid())}</span> A dropped result is crossed out in the standings. Drivers and teams are dropped on their own: a team can drop a round that none of its drivers dropped.</p>
-      <h4>Teams, ties and sprints</h4>
-      <div class="chfields"><div class="field"><label for="ch-p-teamMode">Team points in a race</label>${choose('teamMode', 'ch-p-teamMode', [['best', 'The best drivers of the team'], ['all', 'All drivers of the team'], ['none', 'No team standings']], 'Team points in a race')}</div>
-        <div class="field"><label for="ch-p-teamBest">How many drivers of a team count</label><input type="number" step="1" min="1" max="${Champ.LIMITS.teamBest}" id="ch-p-teamBest" data-pf="rule:teamBest" value="${d.teamBest}"${d.teamMode === 'best' ? '' : ' disabled'}></div>
-        <div class="field"><label for="ch-p-teamRace">A race of teams (an Endurance Race, a heat race for teams) gives the drivers who drove for a team</label>${choose('teamRace', 'ch-p-teamRace', [['every', 'The points of the team: every driver who drove gets them'], ['split', 'A share of the points, by the laps each one drove'], ['team', 'Nothing: only the team gets points']], 'What a race of teams gives the drivers')}</div>
-        <div class="field"><label for="ch-p-teamMin">A driver needs at least this share of the laps of his team (percent, 0 = no minimum)</label><input type="number" step="1" min="0" max="${Champ.LIMITS.teamMin}" id="ch-p-teamMin" data-pf="rule:teamMin" value="${d.teamMin}"${d.teamRace === 'team' ? ' disabled' : ''}></div>
-        <div class="field"><label for="ch-p-tie">A tie in the standings is decided by</label>${choose('tie', 'ch-p-tie', [['wins', 'Most wins, then most 2nd places, and so on'], ['last', 'The best result of the last round'], ['qual', 'The best qualifying results (most poles, then most 2nd places, and so on)']], 'A tie in the standings is decided by')}</div>
-        <div class="field"><label for="ch-p-sprintRound">A race at 50% (a sprint) gives half of the points, rounded</label>${choose('sprintRound', 'ch-p-sprintRound', [['nearest', 'To the nearest point (12.5 becomes 13)'], ['up', 'Up (12.2 becomes 13)'], ['down', 'Down (12.8 becomes 12)'], ['none', 'Not rounded (12.5 stays 12.5)']], 'Rounding of a sprint')}</div></div>
-      <p class="hint2">A team that races as a team always gets the points of its place once, in the Teams standings. Fastest lap: the team and the driver who set the lap. Pole: the team of the pole sitter, and him if he drove. Starting the race: the team and every driver who drove. When two drivers or teams are still level, the order of the roster decides.</p>`;
+    return `<div class="fgrid"><div class="field full">${note('info', 'Only a race gives points. They are worked out from the saved result of the race, and you award them after the race (a panel on the race screen and in Results and Records). The standings are in Database &gt; Results and Records &gt; Championships.')}
+      ${question('ch-q-preset', 'Start from a ready-made table', 'You can change every number.')}<div class="row" id="ch-presets" role="group" aria-labelledby="ch-q-preset">${presets}</div></div>
+      ${table ? `<div class="field full"><div class="chplaces">${d.points.map((v, i) => `<div class="field"><label for="ch-pl-${i}">${ordinal(i + 1)}</label><input type="number" step="any" min="0" max="${Champ.LIMITS.points}" id="ch-pl-${i}" data-pf="place:${i}" value="${v}"></div>`).join('')}</div>
+        <div class="row"><button type="button" class="btn" data-padd="1"${n >= Champ.LIMITS.places ? ' disabled' : ''}>${I('plus')} Add a place</button><button type="button" class="btn" data-prem="1"${n <= 1 ? ' disabled' : ''}>Remove the last place</button></div></div>
+        <div class="field"><label for="ch-p-pointsRest">Every finisher after ${ordinal(n)} gets (points)</label>${numIn('pointsRest', 'ch-p-pointsRest')}</div>`
+      : `<div class="field full"><p class="muted">A finisher gets one point for every car that finished behind him or is out. With 4 cars the winner gets 3 points, the second 2, the third 1 and the last 0.</p></div>`}
+      <div class="field full"><span class="muted hint">A car that was disqualified or did not finish gets no points for its place. A car that finished, even many laps down, counts as a finisher.</span></div></div>`;
   };
+  const rosterBody = () => `<div class="fgrid"><div class="field full"><div id="ch-roster">${rosterHtml()}</div></div>
+      <div class="field full"><button type="button" role="switch" class="fu-sw${d.guestRule ? ' on' : ''}" id="ch-guest" aria-checked="${!!d.guestRule}" data-guest="1"><span class="fu-tg" aria-hidden="true"></span><span class="fu-swt"><b>A driver who is not in the roster drives as a guest.</b><span class="muted hint">He gets no points, and the drivers behind him move up one place. Switched off: the places stay as they are, and nobody moves up.</span></span></button></div>
+      <div class="field full"><span class="muted hint">The drivers come from Database &gt; Drivers and Teams. On the Home tab they are listed first in the driver boxes of a session of this championship; another driver drives as a guest. A driver who joins later (the Joins in round column) is in the roster from that round.</span></div></div>`;
+  const bonusBody = () => `<div class="fgrid"><div class="field"><label for="ch-p-bonusFast">Fastest lap of the race (points)</label>${numIn('bonusFast', 'ch-p-bonusFast')}</div>
+      <div class="field"><label for="ch-p-bonusFastTop">Only when the driver finishes in the first (places)</label>${numIn('bonusFastTop', 'ch-p-bonusFastTop')}</div>
+      <div class="field"><label for="ch-p-bonusPole">Pole position, fastest in qualifying (points)</label>${numIn('bonusPole', 'ch-p-bonusPole')}</div>
+      <div class="field"><label for="ch-p-bonusStart">Starting the race (points for every driver)</label>${numIn('bonusStart', 'ch-p-bonusStart')}</div>
+      <div class="field full"><span class="muted hint">Bonus points are added to the points of the race. The fastest lap is the best lap of a car that finished; the pole bonus goes to the driver who was fastest in the qualifying of the same round, if he starts the race.</span></div></div>`;
+  const dropsBody = () => `<div class="fgrid"><div class="field"><label for="ch-p-drops">The worst round results that do not count (per driver and per team)</label>${numIn('drops', 'ch-p-drops')}</div>
+      <div class="field">${note('good', `<b id="ch-dropsaid">${esc(ChampWords.dropSaid(d, wctx()))}</b> A dropped result is crossed out in the standings.`)}</div>
+      <div class="field full"><span class="muted hint">Drivers and teams are dropped on their own: a team can drop a round that none of its drivers dropped.</span></div></div>`;
+  const teamsBody = () => `<div class="fgrid"><div class="field full">${question('ch-q-teamMode', 'Team points in a race')}${cards('teamMode', [['best', 'The best drivers of the team', 'The best finishers of the team count. How many: below.'], ['all', 'All drivers of the team', 'Everybody who drives adds points.'], ['none', 'No team standings', 'Only the drivers get points.']])}</div>
+      <div class="field chbottom"><label for="ch-p-teamBest">How many drivers of a team count</label><input type="number" step="1" min="1" max="${Champ.LIMITS.teamBest}" id="ch-p-teamBest" data-pf="rule:teamBest" value="${d.teamBest}"${d.teamMode === 'best' ? '' : ' disabled'}></div>
+      <div class="field chbottom"><label for="ch-p-teamMin">A driver needs at least this share of the laps of his team (percent, 0 = no minimum)</label><input type="number" step="1" min="0" max="${Champ.LIMITS.teamMin}" id="ch-p-teamMin" data-pf="rule:teamMin" value="${d.teamMin}"${d.teamRace === 'team' ? ' disabled' : ''}></div>
+      <div class="field full">${question('ch-q-teamRace', 'A race of teams gives the drivers who drove for a team', 'An Endurance Race, or a heat race for teams')}${cards('teamRace', [['every', 'The points of the team', 'Every driver who drove gets them.'], ['split', 'A share of the points', 'By the laps each one drove.'], ['team', 'Nothing', 'Only the team gets points.']])}</div>
+      <div class="field full">${question('ch-q-tie', 'A tie in the standings is decided by')}${cards('tie', [['wins', 'Most wins', 'Then most 2nd places, and so on.'], ['last', 'The best result of the last round', ''], ['qual', 'The best qualifying results', 'Most poles, then most 2nd places, and so on.']])}</div>
+      <div class="field full">${question('ch-q-sprintRound', 'A race at 50% (a sprint) gives half of the points, rounded')}<div class="fu-seg" role="group" aria-labelledby="ch-q-sprintRound">${[['nearest', 'To the nearest'], ['up', 'Up'], ['down', 'Down'], ['none', 'Not rounded']].map(([v, t]) => `<button type="button" class="fu-b${d.sprintRound === v ? ' on' : ''}" aria-pressed="${d.sprintRound === v}" data-pick="sprintRound" data-val="${v}">${t}</button>`).join('')}</div>
+        <span class="muted hint" id="ch-sprinthint">${esc(CH_SPRINT_HINT[d.sprintRound] || '')}</span></div>
+      <div class="field full"><span class="muted hint">A team that races as a team always gets the points of its place once, in the Teams standings. Fastest lap: the team and the driver who set the lap. Pole: the team of the pole sitter, and him if he drove. Starting the race: the team and every driver who drove. When two drivers or teams are still level, the order of the roster decides.</span></div></div>`;
+  const BODY = { rounds: roundsBody, points: pointsBody, roster: rosterBody, bonus: bonusBody, drops: dropsBody, teams: teamsBody };
+  const sayHtml = parts => `<span class="rsic rssayic">${Icons.svg('say', { size: 20, stroke: 1.7 })}</span><div class="rssaytext"><span class="rseye">In plain words</span><p>${parts.map(p => (p.b ? `<b>${esc(p.t)}</b>` : esc(p.t))).join('')}</p></div>`;
+  const drivenHtml = w => `<span class="rsrl">Driven so far</span><span class="rsun"><span class="rsunic">${Icons.svg('check', { size: 15, stroke: 2.2 })}</span><b id="ch-drivenhead">${esc(w.head)}</b></span><div class="rspbar" role="img" aria-label="${esc(w.head)}"><i style="width:${w.pct}%"></i></div><span class="muted" id="ch-drivennote">${esc(w.note)}</span>`;
+  const words = ChampWords.describe(d, wctx());
 
-  box.innerHTML = `<div class="ed-bar ch-top"><label>Name <input type="text" id="ch-name" value="${esc(d.name)}" maxlength="${Champ.LIMITS.name}"></label>
-      ${undoButtons('ch')}<button class="btn primary" id="ch-save">Save championship</button><button class="btn" id="ch-back">Back</button><span id="ch-msg" class="muted" role="status"></span></div>
-    <p class="hint2">The name shows on the Home tab, on the race screen and in the results of every session of this championship.</p>
-    <section class="chsec"><h3>Rounds</h3><p class="hint2">Every session uses one of your race setups, so a championship can mix a short sprint with a long final. The kind (Practice, Qualifying or Race) comes from the race setup. A round with no track of its own uses the track of the race setup. A round that is driven keeps its results: changing its sessions afterwards does not change races that were saved.</p>
-      <div class="row"><button type="button" class="btn" id="ch-addround"${d.rounds.length >= Champ.LIMITS.rounds ? ' disabled' : ''} title="A new round starts with the sessions of the round before it">Add a round</button>
-        <button type="button" class="btn" id="ch-copyfirst"${d.rounds.length < 2 ? ' disabled' : ''} title="Gives every other round the sessions of round 1">Copy the sessions of round 1 to all rounds</button></div>
-      <div id="ch-rounds">${roundsHtml()}</div></section>
-    <section class="chsec" id="ch-points"><h3>Points</h3><p class="hint2">Only a race gives points. They are worked out from the saved result of the race, and you award them after the race (a panel on the race screen and in Results and Records). The standings are in Database > Results and Records > Championships.</p>
-      <div id="ch-pointsbody">${pointsHtml()}</div></section>
-    <section class="chsec"><h3>Roster</h3><p class="hint2">The drivers of this championship, from Database > Drivers and Teams. On the Home tab they are listed first in the driver boxes of a session of this championship; another driver drives as a guest. A driver who joins later (the Joins in round column) is in the roster from that round.</p>
-      <div id="ch-roster">${rosterHtml()}</div>
-      <label class="inline chguest"><input type="checkbox" id="ch-guest" data-pf="rule:guestRule"${d.guestRule ? ' checked' : ''}> <span>A driver who is not in the roster drives as a guest: he gets no points, and the drivers behind him move up one place. <span class="muted">Switched off: the places stay as they are, and nobody moves up.</span></span></label></section>
-    <section class="chsec"><h3>What the sessions need from the race setups</h3>
-      <p class="hint2"><b>Race:</b> a race, a timed race, a heat race or an Endurance Race. <b>Qualifying:</b> sets the order for the next race of the round, as it does today. <b>Practice:</b> never gives points. A Time Token Session can not be part of a championship.</p></section>`;
+  box.innerHTML = RailForm.shell({ page: true, tag: 'div', formId: 'ch-form', eyebrow: `${chEd.id ? 'Edit' : 'Add'} championship`, cls: 'setupform ss-ch', icon: n => Icons.svg(n, { size: 20, stroke: 1.7 }),
+    tile: Icons.svg('championship', { size: 26, stroke: 1.6 }), navLabel: 'The sections of this championship', caption: 'This championship',
+    usedHtml: `<div class="rsused rsdriven" id="rs-used">${drivenHtml(words.driven)}</div>`,
+    name: `<div class="field"><label for="ch-name">Name</label><input type="text" id="ch-name" value="${esc(d.name)}" maxlength="${Champ.LIMITS.name}" aria-describedby="ch-namehint"><span class="muted hint rsnamehint" id="ch-namehint">The name shows on the Home tab, on the race screen and in the results of every session of this championship.</span></div>`,
+    tools: `<button type="button" class="ib" id="ch-undo" title="Undo the last change (Ctrl+Z)" aria-label="Undo" disabled>${I('undo', 18)}</button><button type="button" class="ib" id="ch-redo" title="Redo (Ctrl+Y)" aria-label="Redo" disabled>${I('redo', 18)}</button>`,
+    say: sayHtml(words.say),
+    sections: CH_SECTIONS.map(x => ({ id: x.id, domId: x.dom, title: x.title, railTitle: x.railTitle, ask: x.ask, icon: x.icon, optional: !!x.optional, open: chEd.sections.has(x.id), body: BODY[x.id]() })),
+    foot: '<span class="muted rsdef">Nothing is written until you press Save. Back asks first if something is not saved.</span><span id="ch-msg" class="muted rsmsg" role="status"></span><button class="btn" type="button" id="ch-back">Back</button><button class="btn primary" type="button" id="ch-save">Save championship</button>' });
+  // the header, the sentence, the rail and the box under it follow what is done (the words are made in championshipwords.js)
+  const frame = () => {
+    const w = ChampWords.describe(d, wctx()), info = ChampWords.rail(d, wctx());
+    const pills = $('rspills'), ready = $('rsready'), sayBox = $('rssay'), used = $('rs-used'), remarks = $('ch-remarks');
+    if (pills) pills.innerHTML = w.pills.map(p => `<span class="rspill${p.tone ? ' ' + p.tone : ''}">${esc(p.text)}</span>`).join('');
+    if (ready) { ready.className = 'rsready' + (w.ready.ok ? ' ok' : ''); ready.innerHTML = `${Icons.svg(w.ready.ok ? 'check' : 'penalty', { size: 15, stroke: 2 })}${esc(w.ready.text)}`; }
+    if (sayBox) sayBox.innerHTML = sayHtml(w.say);
+    if (used) used.innerHTML = drivenHtml(w.driven);
+    if (remarks) remarks.innerHTML = remarksHtml();
+    RailForm.sync(id => document.getElementById(id), info, null, chEd.rail);
+  };
+  frame();
   if (chEd.msg) { $('ch-msg').textContent = chEd.msg; chEd.msg = ''; }
 
   // ---- undo and redo, and the helpers that change the draft ----
@@ -152,14 +192,14 @@ function renderChampionshipEditor(box) {
   // a change from championship.js: { rec } goes into the draft (one step to undo), { error } is said. quiet: the page is not drawn again (a number or a team that was typed or chosen: nothing else on the page depends on it)
   const apply = (res, quiet) => {
     if (res.error) { say(res.error); return false; }
-    Object.keys(d).forEach(k => delete d[k]); Object.assign(d, res.rec); step(); if (!quiet) redraw(); return true;
+    Object.keys(d).forEach(k => delete d[k]); Object.assign(d, res.rec); step(); if (!quiet) redraw(); else frame(); return true;
   };
   // how many saved sessions were driven in a round or a session (they stay in the results, but are no longer part of the championship when it goes)
   const drivenIn = (r, s) => r.sessions.filter(x => (!s || x.id === s.id) && prog().done.has(Champ.keyOf(r.id, x.id))).length;
   const idx = v => String(v).split(':').map(Number);
 
-  // ---- the bar ----
-  $('ch-name').oninput = e => { d.name = e.target.value; mark(); };
+  // ---- the header and the bar ----
+  $('ch-name').oninput = e => { d.name = e.target.value; mark(); frame(); };
   let saving = false; // (a second click while the first is being written would add the championship twice)
   $('ch-save').onclick = async () => {
     if (saving) return;
@@ -169,7 +209,7 @@ function renderChampionshipEditor(box) {
       U.hist.touch(); const token = U.hist.commit(); // (the state that is written is the one the steps call saved)
       const data = clone(Champ.clean(d));
       if (chEd.id) await api.update('championships', chEd.id, data); else { const row = await api.add('championships', data); chEd.id = row.id; }
-      U.hist.markSaved(token); chEd.dirty = !U.hist.isClean(); say('Saved.');
+      U.hist.markSaved(token); chEd.dirty = !U.hist.isClean(); say('Saved.'); frame(); // (a championship that is saved shows on the Home tab)
     } finally { saving = false; }
   };
   $('ch-back').onclick = () => { if (chEd.dirty && !confirm('Discard your unsaved changes to this championship?')) return; draftUndoEnd(chEd); chEd = null; renderChampionships(box); };
@@ -179,12 +219,28 @@ function renderChampionshipEditor(box) {
     apply(Champ.copyFirstToAll(d));
   };
 
-  // ---- the rounds, the sessions and the roster ----
+  // ---- the sections: what is open is kept while you edit, and the rail points at the section that was opened last ----
+  CH_SECTIONS.forEach(x => {
+    const el = $(x.dom); if (!el) return;
+    el.ontoggle = () => { if (el.open === true) { const fresh = !chEd.sections.has(x.id); chEd.sections.add(x.id); if (fresh) { chEd.rail = x.id; frame(); } } else chEd.sections.delete(x.id); };
+  });
+
+  // ---- the clicks: the rail, the rounds, the sessions, the roster and the choices ----
   box.onclick = ev => {
     const t = ev.target, sum = t.closest && t.closest('summary');
-    if (sum) { const dt = sum.parentElement, r = d.rounds[Number(dt.dataset.round)]; if (r) { if (dt.open) chEd.open.delete(r.id); else chEd.open.add(r.id); } return; } // (the click comes before the page opens or closes the round)
-    const b = t.closest && t.closest('button'); if (!b || !b.dataset) return;
+    if (sum) { const dt = sum.parentElement, r = d.rounds[Number(dt.dataset && dt.dataset.round)]; if (r) { if (dt.open) chEd.open.delete(r.id); else chEd.open.add(r.id); } return; } // (the click comes before the page opens or closes the round)
+    const b = t.closest && t.closest('button'); if (!b || !b.dataset || b.disabled) return;
     const ds = b.dataset;
+    if (ds.rail !== undefined) { // a row of the rail: open that section and go to it
+      const sec = CH_SECTIONS.find(x => x.id === ds.rail), el = sec && $(sec.dom); if (!el) return;
+      el.open = true; chEd.sections.add(ds.rail); chEd.rail = ds.rail; frame();
+      const calm = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'start', behavior: calm ? 'auto' : 'smooth' });
+      const head = el.querySelector && el.querySelector('summary'); if (head && typeof head.focus === 'function') head.focus({ preventScroll: true });
+      return;
+    }
+    if (ds.pick !== undefined) { apply(Champ.setRule(d, ds.pick, ds.val), true); pointsChanged(); return; } // (a card or a button of a choice: the team points, the tie, the sprint)
+    if (ds.guest !== undefined) { apply(Champ.setRule(d, 'guestRule', !d.guestRule)); return; }
     if (ds.sadd !== undefined) { const i = Number(ds.sadd); if (d.rounds[i]) chEd.open.add(d.rounds[i].id); apply(Champ.addSession(d, i, '')); return; }
     if (ds.sdel !== undefined) { const [i, k] = idx(ds.sdel), r = d.rounds[i], s = r && r.sessions[k]; if (!s) return; if (drivenIn(r, s) && !confirm(`Session ${k + 1} of round ${i + 1} was driven, and its race is saved. The race stays in the results, but is no longer part of the championship.\n\nRemove the session?`)) return; apply(Champ.removeSession(d, i, k)); return; }
     if (ds.sup !== undefined) { const [i, k] = idx(ds.sup); apply(Champ.moveSession(d, i, k, -1)); return; }
@@ -201,22 +257,23 @@ function renderChampionshipEditor(box) {
     const t = e.target, ds = t.dataset || {};
     if (ds.rf !== undefined) {
       const [i, key] = String(ds.rf).split(':'), res = key === 'name' || key === 'date' ? Champ.setRound(d, Number(i), { [key]: t.value }) : null;
-      if (res && !res.error) { d.rounds[Number(i)][key] = res.rec.rounds[Number(i)][key]; mark(); if (key === 'name') { const n = box.querySelector(`[data-round="${i}"] .chrname`); if (n) n.textContent = d.rounds[Number(i)].name; } }
+      if (res && !res.error) { d.rounds[Number(i)][key] = res.rec.rounds[Number(i)][key]; mark(); if (key === 'name') { const n = box.querySelector(`[data-round="${i}"] .chrname`); if (n) n.textContent = d.rounds[Number(i)].name; } frame(); }
     }
   };
   // the points: a place, a bonus, a rule. It is kept as soon as it is changed (the page is not drawn again; what depends on it is changed where it is)
-  const pointsChanged = () => {
-    const pre = Champ.presetOf(d), dr = $('ch-dropsaid'), tb = $('ch-p-teamBest'), tm = $('ch-p-teamMin');
+  function pointsChanged() {
+    const pre = Champ.presetOf(d), dr = $('ch-dropsaid'), tb = $('ch-p-teamBest'), tm = $('ch-p-teamMin'), sh = $('ch-sprinthint');
     box.querySelectorAll('[data-preset]').forEach(b => { if (b.classList) b.classList.toggle('on', b.dataset.preset === pre); });
-    if (dr) dr.textContent = dropSaid(); if (tb) tb.disabled = d.teamMode !== 'best'; if (tm) tm.disabled = d.teamRace === 'team';
-  };
+    box.querySelectorAll('[data-pick]').forEach(b => { const on = d[b.dataset.pick] === b.dataset.val; if (b.classList) b.classList.toggle('on', on); if (typeof b.setAttribute === 'function') b.setAttribute('aria-pressed', String(on)); });
+    if (dr) dr.textContent = ChampWords.dropSaid(d, wctx()); if (tb) tb.disabled = d.teamMode !== 'best'; if (tm) tm.disabled = d.teamRace === 'team'; if (sh) sh.textContent = CH_SPRINT_HINT[d.sprintRound] || '';
+  }
   box.onchange = e => {
     const t = e.target, ds = t.dataset || {};
     if (ds.pf !== undefined) {
-      const at = String(ds.pf).indexOf(':'), kind = ds.pf.slice(0, at), key = ds.pf.slice(at + 1), isBox = t.type === 'checkbox';
-      const res = kind === 'place' ? Champ.setPlace(d, Number(key), t.value) : Champ.setRule(d, key, isBox ? !!t.checked : t.value);
-      if (res.error) { say(res.error); if (!isBox) t.value = kind === 'place' ? d.points[Number(key)] : d[key]; return; }
-      apply(res, true); if (!isBox) t.value = kind === 'place' ? d.points[Number(key)] : d[key]; // (the number as it was kept: two decimals, in range)
+      const at = String(ds.pf).indexOf(':'), kind = ds.pf.slice(0, at), key = ds.pf.slice(at + 1);
+      const res = kind === 'place' ? Champ.setPlace(d, Number(key), t.value) : Champ.setRule(d, key, t.value);
+      if (res.error) { say(res.error); t.value = kind === 'place' ? d.points[Number(key)] : d[key]; return; }
+      apply(res, true); t.value = kind === 'place' ? d.points[Number(key)] : d[key]; // (the number as it was kept: two decimals, in range)
       pointsChanged(); return;
     }
     if (ds.rf !== undefined) { const [i, key] = String(ds.rf).split(':'); if (key === 'track') apply(Champ.setRound(d, Number(i), { track: t.value })); else step(); return; }

@@ -134,4 +134,12 @@ ok('a form that has no rail (or only some of the elements, or nothing at all) is
   ok('a section can have an id of its own on the card (made safe), next to its data-fg; without one there is none', R.section({ id: 'plan', domId: 'ro-genbox', title: 'T', ask: 'Q', icon: 'rules', open: true, body: '' }, { icon }).startsWith('<details class="fgroup rssec" data-fg="plan" id="ro-genbox" open>')
     && R.section({ id: 'x', domId: 'a"b', title: 'T', ask: 'Q', icon: 'rules', body: '' }, { icon }).includes('id="a&quot;b"') && R.section({ id: 'x', title: 'T', ask: 'Q', icon: 'rules', body: '' }, { icon }).startsWith('<details class="fgroup rssec" data-fg="x"><summary>')); }
 
+// ---- the rail of a championship (1.78.0): the box under the rail is its own, and a row can have a shorter name ----
+{ const secs = [{ id: 'a', title: 'First', ask: 'Q', icon: 'rules', open: true, body: '' }, { id: 'b', title: 'Teams, ties and sprints', railTitle: 'Teams and ties', ask: 'Q', icon: 'rules', optional: true, body: '' }];
+  const mine = R.shell({ ...base, sections: secs, usedHtml: '<div class="rsused" id="rs-used">Driven so far</div>', used: ['A race setup'] });
+  ok('usedHtml takes the place of the box Used by under the rail (also when names are given): the box is the one that is passed in, and the rail ends with it', mine.includes('<div class="rsused" id="rs-used">Driven so far</div></nav>') && !mine.includes('Used by') && !mine.includes('A race setup'));
+  ok('...an empty usedHtml is nothing at all (not the standard box)', R.shell({ ...base, sections: secs, usedHtml: '', used: ['A race setup'] }).includes('</p></nav>') === false && !R.shell({ ...base, sections: secs, usedHtml: '', used: ['A race setup'] }).includes('A race setup'));
+  ok('...without it the box Used by is as it was', R.shell({ ...base, sections: secs, used: ['A race setup'] }).includes('id="rs-used"><span class="rsrl">Used by</span>') && R.shell({ ...base, sections: secs }).includes('rs-used') === false);
+  ok('a row of the rail can have a shorter name than its card (railTitle); the card keeps the whole one, and without railTitle both have the same name', mine.includes('<span class="rsrt"><b>Teams and ties</b><small id="rs-note-b">') && mine.includes('<strong>Teams, ties and sprints</strong>') && mine.includes('<span class="rsrt"><b>First</b>') && mine.includes('<strong>First</strong>')); }
+
 if (fails) { console.log(fails + ' RAIL FORM TESTS FAILED'); process.exit(1); } else console.log('ALL RAIL FORM TESTS PASSED');

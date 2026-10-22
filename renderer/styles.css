@@ -1445,7 +1445,6 @@ dialog:has(.vcard){width:min(640px,96vw)}
 .chpill.todo{background:var(--panel);color:var(--muted);border-color:var(--line)}
 .chrbody{padding:0 14px 14px}
 .chrbody h4{margin:14px 0 4px;font-size:14px}
-.chfields{display:flex;flex-wrap:wrap;gap:12px 20px}.chfields .field{flex:1 1 200px;max-width:300px}
 .chses{display:grid;grid-template-columns:28px minmax(160px,1.5fr) 100px minmax(150px,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
 .chses select{width:100%}
 .chnum{font-weight:700;color:var(--muted);text-align:center}
@@ -1770,6 +1769,65 @@ html[data-layers="on"] .lw.live .lw-val{will-change:transform}
 @media (max-width:860px){
   .rspage .rsbody{background:none}
   .rspage .rsrail{position:static;max-height:none;background:color-mix(in srgb,var(--bg) 45%,var(--panel))}
+}
+
+/* ---- The championship editor with a rail (1.78.0, board 10 in docs/ui-reference/race-systems) ----
+   The same page frame as the rotation editor (.rspage, above). This block has what is particular to a championship: the cards of the rounds with their rows of sessions, the places of the points, the
+   roster and the box "Driven so far" under the rail. The pink of the championship comes from .ss-ch (--accent). */
+.rspage .row{flex-wrap:wrap}
+.rspage .rsfoot .rsmsg{min-height:1.2em;font-size:13px}
+.rspage .rsnamehint{display:block;font-size:12px;margin-top:2px;max-width:46ch}
+.rsdriven{gap:6px}
+.rsdriven .rsun b{font-weight:650}
+.rsdriven>.muted{font-size:12.5px;line-height:1.4}
+.rspbar{height:6px;border-radius:999px;background:var(--line);overflow:hidden}
+.rspbar i{display:block;height:100%;background:var(--accent)}
+.rspage .chremarks{margin:10px 0 0}
+.rspage .chremarks:empty{display:none}
+.rspage .chremarks .rsnote{margin:0 0 8px}
+.rspage .chround{border:1px solid var(--line);border-radius:12px;margin:0 0 10px;background:var(--bg);overflow:hidden}
+.rspage .chround.next{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 7%,var(--bg))}
+.rspage .chround.look:not(.next){border-color:color-mix(in srgb,var(--rs-warn) 55%,var(--line))}
+.rspage .chround>summary{position:relative;gap:12px;padding:12px 40px 12px 14px}
+.rspage .chround>summary::before{display:none}
+.rspage .chround>summary::after{content:"";position:absolute;right:18px;top:50%;width:8px;height:8px;margin-top:-6px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg)}
+.rspage .chround[open]>summary::after{margin-top:-2px;transform:rotate(-135deg)}
+.rspage .chrn{min-width:64px;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--accent)}
+.rspage .chrname{flex:1 1 140px;font-weight:700;font-size:14.5px}
+.rspage .chround>summary .muted{flex:none;font-size:12.5px}
+.rspage .chpill{margin-left:auto;padding:3px 11px;border-radius:999px;font-size:12px}
+.rspage .chpill.next{background:color-mix(in srgb,var(--accent) 16%,transparent);border-color:var(--accent);color:var(--ink)}
+.rspage .chpill.warn{background:color-mix(in srgb,var(--rs-warn) 14%,transparent);border-color:color-mix(in srgb,var(--rs-warn) 55%,var(--line));color:var(--ink)}
+.rspage .chrbody{padding:0 14px 14px;display:flex;flex-direction:column;gap:6px}
+.rspage .chrbody h4{margin:10px 0 2px;font-size:13.5px}
+.rspage .chrbody .fgrid{padding:6px 0 0}
+.rspage .chrbody .row .btn,.rspage .roundsbtns .btn,#ch-roundsbox .row .btn{display:inline-flex;align-items:center;gap:6px}
+.rspage .chgrow{flex:1 1 0}
+.rspage .chses{grid-template-columns:30px minmax(0,1.6fr) 104px minmax(150px,1fr) 108px;gap:10px;padding:4px 0;border-top:0}
+.rspage .chses.chh span{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.rspage .chnum{width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:var(--panel);display:flex;align-items:center;justify-content:center;font-size:12.5px}
+.rspage .chkind{--k:var(--muted);border-radius:999px;padding:3px 11px;font-weight:650;background:color-mix(in srgb,var(--k) 14%,var(--panel));border:1px solid color-mix(in srgb,var(--k) 55%,var(--line));color:var(--ink)}
+.rspage .chkind.k-race{--k:var(--c-dmg,#e5484d)}.rspage .chkind.k-qualifying{--k:var(--c-pen,#f2b705)}.rspage .chkind.k-practice{--k:var(--c-wx,#4c9aff)}
+.rspage .chbtns{justify-content:flex-end}
+.rspage .chbtns .ib{width:32px;height:32px}
+.rspage #ch-presets .btn.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--ink)}
+.rspage .field.chbottom{justify-content:flex-end}
+.rspage .chplaces{grid-template-columns:repeat(auto-fill,minmax(88px,1fr));margin:2px 0 8px}
+.rspage .chroster{width:100%}
+.rspage .chroster td{vertical-align:middle}
+.rspage .chroster .ib{width:30px;height:30px}
+.rspage .chav{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;margin-right:10px;border-radius:50%;border:1.5px solid var(--accent);background:color-mix(in srgb,var(--accent) 18%,var(--panel));font-size:11.5px;font-weight:700;vertical-align:middle}
+.fu-cards.fu-c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.rspage .fgrid.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.rspage .fu-sw{margin:2px 0}
+@media (max-width:760px){
+  .rspage .fgrid.c3,.fu-cards.fu-c3{grid-template-columns:minmax(0,1fr)}
+  .rspage .chses.chh{display:none}
+  .rspage .chround>summary{padding-right:36px}
+  .rspage .chpill{margin-left:0}
+  /* the header of a page on a phone: the picture and the name share the first row, Undo, Redo and the status come under them (found in 1.78.0: the rotation editor had the name squeezed to a few letters) */
+  .rspage .rshd .rstitle{flex:1 1 calc(100% - 72px)}
+  .rspage .rsnamehint{max-width:none}
 }
 
 /* ---- Soft lift (1.46.0): a slight depth for the whole app. Design: docs/ui-reference/depth ----

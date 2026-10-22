@@ -74,6 +74,9 @@
     x: '<path d="M6 6l12 12M18 6L6 18"/>',
     undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
     redo: '<path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/>',
+    // the championship editor with a rail (1.78.0): a star (the points) and some people (the teams)
+    star: '<path d="M12 4l2.4 5 5.4.7-4 3.8 1 5.4-4.8-2.7-4.8 2.7 1-5.4-4-3.8 5.4-.7z"/>',
+    users: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2A5 5 0 0 1 21 19"/>',
     // a button: a page with a folded corner and an arrow going down (Export to PDF)
     pdf: '<path d="M6 3.5h8l4 4v13H6zM14 3.5v4h4M12 10.5v6M9.5 14l2.5 2.5 2.5-2.5"/>',
     settings: '<path d="M10.3 4.9 10.75 2.68h2.5L13.7 4.9A7.3 7.3 0 0 1 15.81 5.78L17.7 4.53 19.47 6.3 18.22 8.19A7.3 7.3 0 0 1 19.1 10.3L21.32 10.75v2.5L19.1 13.7A7.3 7.3 0 0 1 18.22 15.81L19.47 17.7 17.7 19.47 15.81 18.22A7.3 7.3 0 0 1 13.7 19.1L13.25 21.32h-2.5L10.3 19.1A7.3 7.3 0 0 1 8.19 18.22L6.3 19.47 4.53 17.7 5.78 15.81A7.3 7.3 0 0 1 4.9 13.7L2.68 13.25v-2.5L4.9 10.3A7.3 7.3 0 0 1 5.78 8.19L4.53 6.3 6.3 4.53 8.19 5.78A7.3 7.3 0 0 1 10.3 4.9z"/><circle cx="12" cy="12" r="3"/>'

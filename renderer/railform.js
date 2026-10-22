@@ -11,7 +11,7 @@
   const STATES = { ok: ['ok', 'Filled in or changed'], todo: ['todo', 'Something is missing'], plain: ['off', 'Nothing changed from the standard'] };
   const stateOf = s => STATES[s] || STATES.plain;
 
-  // a section: a card that folds. sec: { id, title, ask (what it answers, shown while it is open), icon, open, body (HTML), domId (an id for the card itself, 1.77.0) }
+  // a section: a card that folds. sec: { id, title, ask (what it answers, shown while it is open), icon, open, body (HTML), domId (an id for the card itself, 1.77.0), railTitle (a shorter name for its row in the rail, 1.78.0) }
   const section = (sec, o) => `<details class="fgroup rssec" data-fg="${esc(sec.id)}"${sec.domId ? ` id="${esc(sec.domId)}"` : ''}${sec.open ? ' open' : ''}><summary><span class="rsic">${ico(o, sec.icon)}</span><span class="rssx"><strong>${esc(sec.title)}</strong>`
     + `<span class="muted rsq">${esc(sec.ask)}</span><span class="muted rsrow" id="rs-row-${esc(sec.id)}"></span></span></summary>${sec.body}${sec.live ? `<div class="rsnote" id="rs-live-${esc(sec.id)}" role="status" hidden></div>` : ''}</details>`;
   // a part inside a section (the parts of Advanced): a small heading, what it is for, and its settings
@@ -20,7 +20,7 @@
   const grid = (fields, cols) => `<div class="fgrid${cols === 3 ? ' c3' : ''}">${fields}</div>`; // (cols: 3 puts three settings on a row, the weather system does that for its three switches, 1.74.0)
   // a row of the rail
   const item = (sec, o) => `<button type="button" class="rsri" id="rs-rail-${esc(sec.id)}" data-rail="${esc(sec.id)}"><span class="rsic">${ico(o, sec.icon)}</span>`
-    + `<span class="rsrt"><b>${esc(sec.title)}</b><small id="rs-note-${esc(sec.id)}"></small></span><i class="rsdot off" id="rs-dot-${esc(sec.id)}" aria-hidden="true"></i><span class="rssr" id="rs-state-${esc(sec.id)}"></span></button>`;
+    + `<span class="rsrt"><b>${esc(sec.railTitle || sec.title)}</b><small id="rs-note-${esc(sec.id)}"></small></span><i class="rsdot off" id="rs-dot-${esc(sec.id)}" aria-hidden="true"></i><span class="rssr" id="rs-state-${esc(sec.id)}"></span></button>`;
   // the box "Used by": the championships that drive this race setup, or the race setups that choose this system (1.73.0). names: a list of names, or null when it does not apply (a setup that is new, or the
   // list is not known). o (all of it may be left out): { usedNone: what it says when nothing uses it, usedIcon: the picture before every name, icon }
   const used = (names, o) => {
@@ -34,14 +34,15 @@
   // and the words of the frame (1.73.0, so a system can have its own): navLabel (what a screen reader hears for the rail), caption (the small heading of the rail), save (the text of the Save button),
   // usedNone and usedIcon (see used),
   // and (1.77.0, for an editor that is a page and not a window: a rotation setup) page (the frame grows with the page and the rail stays in view), tag ('div' instead of a form, with the id formId),
-  // tools (HTML in the header, before the status: Undo and Redo) and foot (HTML that takes the place of everything in the bar at the bottom) }
+  // tools (HTML in the header, before the status: Undo and Redo) and foot (HTML that takes the place of everything in the bar at the bottom),
+  // and (1.78.0) usedHtml (HTML that takes the place of the box Used by under the rail: a championship says how far it has been driven) }
   function shell(o) {
     const main = o.sections.filter(s => !s.optional), extra = o.sections.filter(s => s.optional);
     const tag = o.tag === 'div' ? 'div' : 'form';
     return `<${tag} id="${esc(o.formId || 'frm')}" class="rsform${o.page ? ' rspage' : ''}${o.cls ? ' ' + esc(o.cls) : ''}">`
       + `<header class="rshd"><span class="rstile" id="rstile">${o.tile || ''}</span><div class="rstitle"><h3 class="rseye" id="rshead">${esc(o.eyebrow)}</h3>${o.name}<div class="rspills" id="rspills"></div></div>${o.tools ? `<span class="rstools">${o.tools}</span>` : ''}<span class="rsready" id="rsready"></span></header>`
       + `<div class="rsbody"><nav class="rsrail" aria-label="${esc(o.navLabel || 'The sections of this race setup')}"><p class="rsrl">${esc(o.caption || 'This setup')}</p>${main.map(s => item(s, o)).join('')}`
-      + (extra.length ? `<p class="rsrl rsrl2" id="rs-optional">Only if you need it</p>${extra.map(s => item(s, o)).join('')}` : '') + `${used(o.used, o)}</nav>`
+      + (extra.length ? `<p class="rsrl rsrl2" id="rs-optional">Only if you need it</p>${extra.map(s => item(s, o)).join('')}` : '') + `${o.usedHtml !== undefined ? o.usedHtml : used(o.used, o)}</nav>`
       + `<div class="rsmain"><div class="rssay" id="rssay" aria-live="polite">${o.say || ''}</div>${o.sections.map(s => section(s, o)).join('')}</div></div>`
       + `<footer class="rsfoot">${o.foot !== undefined ? o.foot : `<p class="error" id="err" role="alert"></p><span class="muted rsdef">Everything else keeps its default.</span><button class="btn" type="button" id="cancel">Cancel</button><button class="btn primary" type="submit">${esc(o.save || 'Save race setup')}</button>`}</footer></${tag}>`;
   }
