@@ -116,7 +116,10 @@
     if (!S || !c || ['practice', 'qualifying'].includes(S.setup && S.setup.sessionType) || !S.eng || typeof S.eng.gapInfo !== 'function') return '';
     const rows = S.standings() || [], row = S.rowOf(c), leader = rows[0] && rows[0].car, index = S.eng.cars.indexOf(c);
     if (!row || row.pos <= 1 || !leader) return '';
-    const info = Number.isFinite(row.gapMs)?{lead:row.gapMs}:index>=0&&!leader.virtualRival?S.eng.gapInfo()[index]:null, laps = lapStats(S,leader).laps, pace = laps.length ? lapStats(S,leader).median : NaN;
+    const info = Number.isFinite(row.gapMs)?{lead:row.gapMs}:index>=0&&!leader.virtualRival?S.eng.gapInfo()[index]:null, laps = lapStats(S,leader).laps;
+    const Ps = typeof module !== 'undefined' ? require('./pushsave.js') : globalThis.PushSave;
+    const policy = Ps?.estimatePolicy(S.eng.cfg?.calculations?.estimates || {});
+    const pace = policy ? Ps.benchmark(policy.gapMethod, laps, 0, {window:policy.gapWindow,minimum:1}) : laps.length ? lapStats(S,leader).median : NaN;
     if (!info || !Number.isFinite(info.lead) || !(pace > 0)) return '';
     const value = Math.round(info.lead / pace * 10) / 10;
     if (!(value > 0)) return '';

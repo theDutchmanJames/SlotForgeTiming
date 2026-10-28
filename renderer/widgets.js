@@ -434,8 +434,13 @@
   const FUEL_OPTIONS = [
     SET_OPTION('fuel'),
     { key: 'mode', label: 'Show fuel as', type: 'select', default: 'both', rerender: true, choices: [['number', 'Number'], ['bar', 'Bar'], ['both', 'Bar and number'], ['images', 'Pictures from the picture set']] },
+    { key: 'barStyle', label: 'Fuel Bar style', type: 'select', default: 'original', rerender: true, choices: [['original', 'Original'], ['digital', 'Digital Segments'], ['scale', 'Reserve Scale']], show: o => fuelIsBar(o) },
     { key: 'dir', label: 'Bar direction', type: 'select', default: 'horizontal', choices: [['horizontal', 'Horizontal (empties to the left)'], ['vertical', 'Vertical (empties downwards)']], show: o => fuelIsBar(o) }, // (1.39.3)
     { key: 'thick', label: 'Bar thickness (% of the widget)', type: 'number', default: 60, min: 10, max: 100, step: 5, show: o => fuelIsBar(o) },
+    { key: 'segments', label: 'Digital segments', type: 'number', default: 12, min: 8, max: 20, step: 1, show: o => fuelIsBar(o) && fuelOpt(o, 'barStyle') === 'digital' },
+    { key: 'glow', label: 'Soft digital glow (no animation)', type: 'checkbox', default: true, show: o => fuelIsBar(o) && fuelOpt(o, 'barStyle') === 'digital' },
+    { key: 'barValues', label: 'Fuel values', type: 'select', default: 'auto', choices: [['auto', 'Style default'], ['litres', 'Litres'], ['percent', 'Percentage'], ['both', 'Percentage and litres / capacity']], show: o => fuelOpt(o, 'mode') === 'both', hint: 'Original defaults to litres; Digital Segments and Reserve Scale show percentage and litres / capacity. Choose Bar instead of Bar and number to hide values.' },
+    { key: 'warningText', label: 'Low / critical warning text', type: 'select', default: 'auto', choices: [['auto', 'Style default'], ['show', 'Show'], ['hide', 'Hide']], show: o => fuelIsBar(o), hint: 'Shown by default on Digital Segments and Reserve Scale. Original keeps its existing display. Warnings use the thresholds below; Reserve Scale marks the warning threshold.' },
     { key: 'lowAt', label: 'Warning colour below (% of tank)', type: 'number', default: 25, min: 0, max: 100, step: 1 },
     { key: 'lowColor', label: 'Warning colour', type: 'color', default: '#ffd400' },
     { key: 'critAt', label: 'Critical colour below (% of tank)', type: 'number', default: 10, min: 0, max: 100, step: 1 },
@@ -487,7 +492,26 @@
     if (mode === 'number' || mode === 'images') return num;
     // 1.39.3: the bar can stand up (it empties downwards) and its thickness is a share of the widget (the style sheet sizes it with the widget: `.fbar` in styles.css)
     const vert = fuelOpt(opt, 'dir') === 'vertical', th = clampInt(fuelOpt(opt, 'thick'), 10, 100, 60), size = Math.round(pct * 10) / 10;
-    return `<span class="fbar${vert ? ' fv' : ''}" style="--th:${th}"><span class="ffill" style="${vert ? 'height' : 'width'}:${size}%;background:${fuelBarColour(pct, opt)}"></span>${mode === 'both' ? `<span class="ftxt">${txt}</span>` : ''}</span>`;
+    const style = ['digital', 'scale'].includes(fuelOpt(opt, 'barStyle')) ? fuelOpt(opt, 'barStyle') : 'original';
+    const chosen = fuelOpt(opt, 'barValues'), format = ['litres', 'percent', 'both'].includes(chosen) ? chosen : style === 'original' ? 'litres' : 'both';
+    const capacity = `${Math.floor(tank * 10 + 1e-9) / 10} L`, percent = `${size}%`;
+    const main = format === 'litres' ? txt : percent, detail = format === 'both' ? `${Math.floor(litres * 10 + 1e-9) / 10} / ${capacity}` : '';
+    const limit = (k, d) => { const n = Number(fuelOpt(opt, k)); return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : d; };
+    const critical = limit('critAt', 10), warning = Math.max(critical, limit('lowAt', 25));
+    const warnings = fuelOpt(opt, 'warningText') === 'show' || (fuelOpt(opt, 'warningText') !== 'hide' && style !== 'original');
+    const message = warnings ? pct <= 0 ? 'EMPTY' : pct <= critical ? 'CRITICAL' : pct <= warning ? 'LOW FUEL' : '' : '';
+    const colour = fuelBarColour(pct, opt);
+    // Preserve the original markup and dimensions for existing layouts.
+    if (style === 'original' && !warnings && format !== 'both') return `<span class="fbar${vert ? ' fv' : ''}" style="--th:${th}"><span class="ffill" style="${vert ? 'height' : 'width'}:${size}%;background:${colour}"></span>${mode === 'both' ? `<span class="ftxt">${main}</span>` : ''}</span>`;
+    let meter;
+    if (style === 'digital') {
+      const count = clampInt(fuelOpt(opt, 'segments'), 8, 20, 12);
+      meter = `<span class="fg-meter fg-digital${fuelOpt(opt, 'glow') === true ? ' fg-glow' : ''}">${Array.from({length:count}, (_, i) => {
+        const lit = Math.round(Math.max(0, Math.min(100, pct * count - i * 100)) * 1000) / 1000;
+        return `<i class="fg-segment${lit > 0 ? ' fg-lit' : ''}">${lit > 0 ? `<b style="--lit:${lit}%"></b>` : ''}</i>`;
+      }).join('')}</span>`;
+    } else meter = `<span class="fg-meter fg-solid"><i class="fg-fill"></i>${style === 'scale' ? '<span class="fg-ticks"><i></i><i></i><i></i></span><i class="fg-reserve"></i>' : ''}</span>`;
+    return `<span class="fuel-gauge fg-${style}${vert ? ' fg-vertical' : ''}" style="--th:${th};--fuel:${colour};--amount:${size}%;--reserve:${warning}%" role="img" aria-label="Fuel ${percent}${message ? ', ' + message : ''}">${message ? `<span class="fg-warning">${message}</span>` : ''}<span class="fg-meter-space">${meter}${style === 'scale' ? '<span class="fg-scale-labels"><span>E</span><span>½</span><span>F</span></span>' : ''}</span>${mode === 'both' ? `<span class="fg-values"><strong class="fg-value">${main}</strong>${detail ? `<span class="fg-detail">${detail}</span>` : ''}</span>` : ''}</span>`;
   }
 
   // Speed: average speed over a lap from the track length. Real = the car's actual speed; scaled = as if the car were full size (1:1).

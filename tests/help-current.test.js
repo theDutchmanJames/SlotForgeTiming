@@ -17,7 +17,7 @@ assert(folders.every(x => plain(x.body).length < 1400), 'every Help folder stays
 assert(words('results').includes('red flag') && words('results').includes('Track Record'), 'records explain invalid and red-flag laps');
 assert(words('charteditor').includes('Charts → Race Chart') && words('charteditor').includes('Layout Editor') && words('charteditor').includes('Delta Trend'), 'Chart Editor explains the separate editor and widget workflow');
 assert(words('chartoptions').includes('red-flag') && words('chartoptions').includes('second display') && words('chartoptions').includes('display-only'), 'chart Help explains eligibility, shared designs and display-only behavior');
-assert(words('calculations').includes('Median lap') && words('calculations').includes('Track target'), 'Calculations explains the selectable benchmark');
+assert(/median/i.test(words('calculations')) && /track target/i.test(words('calculations')) && /weighted/i.test(words('calculations')) && /trimmed/i.test(words('calculations')), 'Calculations explains the selectable benchmarks, including new average methods');
 assert(words('servicestop').includes('Penalty time always adds afterward') && words('servicestop').includes('Release car'), 'Service Stop explains its timer and release flow');
 assert(words('setups').includes('Race Settings') && words('setups').includes('Start Lights Off Timer') && words('setups').includes('Race UI and Audio'), 'Race Setup Help follows the current page structure');
 assert(words('setupwords').includes('In plain words') && words('setupwords').includes('Service Stop') && words('setupwords').includes('Used by'), 'the setup rail and its summary are explained');

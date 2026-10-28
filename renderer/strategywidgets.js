@@ -6,7 +6,7 @@
   const detail = { key: 'details', label: 'Show supporting detail', type: 'checkbox', default: true };
   const DEFINITIONS = [
     ['servicestop', 'Service Stop', 'Pit Stops', [{ ...detail }, { key: 'progress', label: 'Show stop progress', type: 'checkbox', default: true }]],
-    ['fuelrange', 'Fuel Range', 'Slotcar', [{ ...detail }, { key: 'sampleLaps', label: 'Recent clean laps to average (at least 3 needed)', type: 'number', min: 3, max: 20, step: 1, default: 5 }]],
+    ['fuelrange', 'Fuel Range', 'Slotcar', [{ ...detail }, { key: 'sampleLaps', label: 'Recent clean laps for estimate (Calculations can override)', type: 'number', min: 3, max: 20, step: 1, default: 5 }]],
     ['gapnext', 'Gap to Next Driver', 'Position and Progress', [{ ...detail }]],
     ['penaltyserve', 'Penalty to Serve', 'Pit Stops', [{ ...detail }]],
     ['lapvalidity', 'Lap Validity', 'Lap Times and Records', [{ ...detail }, { key: 'lap', label: 'Check', type: 'select', default: 'current', choices: [['current', 'Current lap (last lap after finishing)'], ['last', 'Last completed lap']] }]],
@@ -42,10 +42,12 @@
     }
     if (type === 'fuelrange') {
       if (!e.fuel || !e.fuel.on) return unavailable('Fuel system off');
-      const count = Math.max(3, Math.min(20, Math.round(Number(opt.sampleLaps) || 5)));
+      const Ps = typeof module !== 'undefined' ? require('./pushsave.js') : root.PushSave;
+      const policy = Ps?.estimatePolicy(e.cfg?.calculations?.estimates || {});
+      const count = Math.max(3, Math.min(20, Math.round(policy?.fuelWindow || Number(opt.sampleLaps) || 5)));
       const samples = (c.fuelSamples || []).filter(x => x && Number.isFinite(x.used) && x.used > 0 && x.lap < c.laps.length && !(c.invalid || []).includes(x.lap) && !(c.removed || []).includes(x.lap) && !(c.bad || [])[x.lap] && !(c.pitLaps || []).includes(x.lap)).slice(-count);
       if (samples.length < 3) return unavailable(`Learning · ${samples.length}/3 clean laps`);
-      const remaining = e.fuelOf(i, t), used = samples.reduce((n, x) => n + x.used, 0) / samples.length;
+      const remaining = e.fuelOf(i, t), used = policy?.fuelMethod === 'median' ? Ps.benchmark('median', samples.map(x=>x.used), 0, {minimum:3}) : samples.reduce((n, x) => n + x.used, 0) / samples.length;
       if (!Number.isFinite(remaining)) return unavailable('Fuel unavailable');
       const laps = Math.max(0, remaining) / used;
       return model(`≈ ${laps.toFixed(1)} laps`, `Estimated · last ${samples.length} laps`, laps < 2 ? 'warn' : '');

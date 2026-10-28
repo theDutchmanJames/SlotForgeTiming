@@ -341,6 +341,44 @@ button.rspill:hover,button.rspill:focus-visible{border-color:var(--accent)}
 .fuelimg{max-width:100%;max-height:100%;object-fit:contain}
 .lw-val:has(.fbar){padding:0 6px;container-type:size;min-height:0}
 .lw-val:has(.fbar.fv){padding:4px 6px}
+/* Fuel styles share the widget's surface, fonts and layout; only quantity colours
+   belong to the gauge. No timer, blinking or perpetual animation is involved. */
+.lw-val:has(.fuel-gauge){container-type:size;min-height:0}
+.fuel-gauge{display:flex;flex-direction:column;gap:clamp(3px,2cqmin,10px);width:100%;height:100%;min-width:0;min-height:0;line-height:1.2}
+.fg-meter-space{position:relative;display:flex;align-items:center;justify-content:center;flex:1;min-width:0;min-height:12px;container-type:size}
+.fg-meter{position:relative;display:block;width:100%;height:calc(var(--th,60) * 1cqmin);max-height:100%;min-height:3px}
+.fg-vertical .fg-meter{width:calc(var(--th,60) * 1cqmin);height:100%;max-width:100%;min-width:3px;min-height:0}
+.fg-digital{display:flex;gap:clamp(1px,1cqmin,4px)}
+.fg-segment{position:relative;flex:1;min-width:0;min-height:0;border-radius:clamp(1px,1cqmin,4px);overflow:hidden;background:color-mix(in srgb,currentColor 16%,transparent);box-shadow:inset 0 1px 2px #0002}
+.fg-segment>b{position:absolute;inset:0 auto 0 0;width:var(--lit);background:linear-gradient(100deg,color-mix(in srgb,var(--fuel) 72%,#fff),var(--fuel) 45%,color-mix(in srgb,var(--fuel) 80%,#000));border-radius:inherit}
+.fg-glow .fg-lit{box-shadow:0 0 5px color-mix(in srgb,var(--fuel) 24%,transparent)}
+.fg-vertical .fg-digital{flex-direction:column-reverse}
+.fg-vertical .fg-segment>b{inset:auto 0 0;width:auto;height:var(--lit);background:linear-gradient(0deg,color-mix(in srgb,var(--fuel) 80%,#000),var(--fuel) 55%,color-mix(in srgb,var(--fuel) 72%,#fff))}
+.fg-solid{background:color-mix(in srgb,currentColor 16%,transparent);border-radius:clamp(2px,2cqmin,8px)}
+.fg-fill{position:absolute;inset:0 auto 0 0;width:var(--amount);border-radius:inherit;background:var(--fuel)}
+.fg-vertical .fg-fill{inset:auto 0 0;height:var(--amount);width:auto}
+.fg-ticks{position:absolute;inset:0;display:flex;justify-content:space-evenly;pointer-events:none}
+.fg-ticks>i{width:2px;height:35%;background:currentColor;opacity:.45}
+.fg-reserve{position:absolute;left:var(--reserve);top:-2px;bottom:-2px;width:2px;transform:translateX(-50%);background:currentColor;opacity:.8}
+.fg-vertical .fg-ticks{flex-direction:column-reverse;align-items:flex-end}
+.fg-vertical .fg-ticks>i{width:35%;height:2px}
+.fg-vertical .fg-reserve{left:-2px;right:-2px;top:auto;bottom:var(--reserve);width:auto;height:2px;transform:translateY(50%)}
+.fg-scale .fg-meter-space{padding-bottom:18px}
+.fg-scale-labels{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:space-between;font-size:11px;line-height:1.5;opacity:.85}
+.fg-scale.fg-vertical .fg-meter-space{padding:0 22px 0 0}
+.fg-vertical .fg-scale-labels{left:auto;top:0;right:0;bottom:0;flex-direction:column-reverse;align-items:center}
+.fg-warning{display:block;flex-shrink:0;font-size:.5em;font-weight:750;line-height:1.2;text-align:center;color:var(--fuel);white-space:nowrap}
+.fg-values{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:4px;flex-shrink:0;min-width:0;font-variant-numeric:tabular-nums}
+.fg-value{display:block;font-size:1em;font-weight:750;min-width:0;white-space:nowrap}
+.fg-detail{display:block;font-size:.48em;white-space:nowrap;min-width:0;opacity:.85}
+.fg-vertical .fg-values{display:flex;flex-direction:column;align-items:stretch;text-align:center;gap:2px}
+.fuel-gauge [hidden]{display:none!important}
+.fg-compact:not(.fg-vertical){display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr);gap:2px 6px}
+.fg-compact:not(.fg-vertical) .fg-warning{grid-column:1;grid-row:1;text-align:left;align-self:center}
+.fg-compact:not(.fg-vertical) .fg-meter-space{grid-column:1/-1;grid-row:2;height:100%;min-height:3px}
+.fg-compact:not(.fg-vertical) .fg-values{grid-column:2;grid-row:1;align-self:center}
+.fg-compact.fg-scale .fg-meter-space{padding:0}
+.fg-compact .fg-scale-labels{display:none}
 .optlist{display:flex;flex-direction:column;gap:4px}
 .optlist .inline{gap:6px}
 
@@ -2034,6 +2072,8 @@ html[data-layers="on"] .lw.live .lw-val{will-change:transform}
 /* App Settings > Calculations: same saved rules, explicit examples. */
 .eyebrow{margin:0;color:var(--accent);font-size:11px;letter-spacing:.1em;font-weight:800}
 .calc-page{display:grid;gap:18px;max-width:1400px;margin:auto}
+.calc-lab{padding:20px;border:1px solid var(--line);border-left:3px solid var(--calc-accent);border-radius:14px;background:color-mix(in srgb,var(--calc-accent) 5%,var(--panel));min-width:0}
+.calc-lab>summary{font-size:18px;font-weight:700;cursor:pointer}.calc-lab output{display:flex;gap:14px;flex-wrap:wrap;overflow-wrap:anywhere}.calc-lab output>span{display:grid;gap:8px;flex:1 1 150px;min-width:0}.calc-lab output strong{font-size:20px}.calc-lab output>p,.calc-job{flex:1 0 100%;min-width:0}.calc-job>div{height:15px;background:var(--line);border-radius:5px;margin-top:6px;overflow:hidden}.calc-job i{display:block;height:100%;border-radius:5px}.calc-content input:disabled{opacity:.55}
 .calc-head{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:22px;padding:24px;border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:14px;background:linear-gradient(125deg,color-mix(in srgb,var(--accent) 12%,var(--panel)),var(--panel) 65%)}
 .calc-head h3{font-size:26px;margin:6px 0 12px}.calc-head p{line-height:1.5;margin-bottom:0}.calc-head aside{display:grid;align-content:center;gap:9px;padding:16px;background:var(--bg);border-radius:10px}.calc-head aside span{font-size:13px;color:var(--muted);line-height:1.5}
 .calc-shell{display:grid;grid-template-columns:240px minmax(0,1fr);gap:20px;align-items:start}.calc-rail{display:grid;gap:8px;position:sticky;top:16px}.calc-rail button{text-align:left;display:grid;gap:6px;border-left:4px solid var(--calc-accent);border-radius:10px;padding:16px;background:var(--panel);white-space:normal}.calc-rail small{color:var(--muted);font-size:12px}.calc-rail button[aria-current=page]{background:color-mix(in srgb,var(--calc-accent) 12%,var(--panel));outline:1px solid var(--calc-accent)}

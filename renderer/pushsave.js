@@ -1,9 +1,9 @@
-// Push and Save System (1.54.0): how hard a driver drives changes how fast his tyres and his fuel are used up.
-// Every lap is compared with a reference: the selected Fuel System's Track or Manual
-// reference when there is one, otherwise the driver's best lap on the track (or, without
-// one, his best lap so far in the race).
-// Driving at the reference is flat out (it wears the most). A normal race lap is a bit slower (normal pace, the best lap plus 3% to begin with): the wear is the usual wear there.
-// Slower than that saves: the wear goes down until the most saving pace (the best lap plus 8% to begin with), and stays there for slower laps.
+// Push & Save changes tyre and fuel consumption, never measured lap time.
+// Current systems use the independently configured driver benchmark as normal pace;
+// faster laps push and slower laps save. Historical records without a mode retain
+// the legacy model: the Fuel System reference (or personal/race best) is flat out,
+// with normal and saving thresholds above it. Full-yellow saving is an explicit
+// exception; yellow laps never teach either model its normal driving pace.
 // The wear of a lap is the usual wear of the Tyre Wear System (and the usual litres of the Fuel System) times a number between 1 + extra and 1 - saving. Lap times and grip are never touched.
 // This file holds the rules and the words and nothing else (no screen, no clock), so they can be tested on their own; engine.js uses it.
 (function (root) {
@@ -28,12 +28,28 @@
   const BENCHMARKS = [
     ['median', 'Median of recent valid laps', 'The middle pace. One unusually quick or slow lap cannot pull it far.'],
     ['average', 'Average of recent valid laps', 'Every valid lap has equal influence.'],
+    ['weighted', 'Recent-weighted average', 'Oldest to newest samples have weights 1, 2, 3 and so on.'],
+    ['trimmed', 'Trimmed average', 'Discard the fastest and slowest 10% (rounded down), then average the rest.'],
     ['last', 'Previous valid lap', 'Each lap responds to the driver’s most recent clean pace.'],
     ['best', 'Best valid lap in this race', 'The quickest clean lap sets a demanding reference.'],
     ['track', 'Track target lap time', 'Uses the active track’s saved target time.']
   ];
   const benchmarkOf = v => BENCHMARKS.some(x => x[0] === v) ? v : 'median';
   const benchmarkInfo = v => BENCHMARKS.find(x => x[0] === benchmarkOf(v));
+  const responsePolicy = (s = {}) => ({
+    custom: s.custom === true,
+    strength: num(s.strength, 1, 0, 3),
+    minimum: num(s.minimum, 0.5, 0.1, 1),
+    maximum: num(s.maximum, 1.5, 1, 3),
+    combine: ['both', 'tyres', 'pushsave'].includes(s.combine) ? s.combine : 'both'
+  });
+  const estimatePolicy = (s = {}) => ({
+    gapMethod: s.gapMethod === 'average' ? 'average' : 'median',
+    gapWindow: Math.round(num(s.gapWindow, 0, 0, 1000)),
+    fuelMethod: s.fuelMethod === 'median' ? 'median' : 'average',
+    fuelWindow: num(s.fuelWindow, 0, 0, 20) > 0 ? Math.max(3, Math.round(num(s.fuelWindow, 0, 0, 20))) : 0
+  });
+  const calculationSettings = (s = {}) => ({ response: responsePolicy(s.tyreResponse || {}), estimates: estimatePolicy(s.raceEstimates || {}) });
   const average = xs => xs.length ? xs.reduce((sum, n) => sum + n, 0) / xs.length : 0;
   // A zero window means all eligible history; zero minimum keeps method defaults.
   const pacePolicy = (value = {}) => {
@@ -56,7 +72,9 @@
     if (k === 'last') return list.length ? list[list.length - 1] : 0;
     if (k === 'best') return list.length ? Math.min(...list) : 0;
     if (k === 'average') return average(list);
+    if (k === 'weighted') return list.reduce((s, n, i) => s + n * (i + 1), 0) / (list.length * (list.length + 1) / 2);
     const sorted = list.slice().sort((a, b) => a - b), middle = Math.floor(sorted.length / 2);
+    if (k === 'trimmed') { const trim = Math.floor(sorted.length / 10); return average(trim ? sorted.slice(trim, -trim) : sorted); }
     return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
   };
 
@@ -120,8 +138,11 @@
     if (o.pit) return usual('pit');
     if (o.resumed) return usual('resumed');
     if (cfg.mode === 'median' && o.red) return usual('red');
-    if (cfg.mode === 'median' && o.yellow) return usual('yellow');
-    if (!(o.ref > 0) || !(o.lapMs > 0)) return usual(cfg.mode === 'median' && ['median', 'average'].includes(benchmarkOf(cfg.benchmark)) ? 'median' : 'noref');
+    if (cfg.mode === 'median' && o.yellow) {
+      if (!cfg.yellowSave || o.lapNo < cfg.from) return usual('yellow');
+      return { p: null, kind: 'save', tyres: cfg.tyres.on ? 1 - cfg.tyres.save / 100 : 1, fuel: cfg.fuel.on ? 1 - cfg.fuel.save / 100 : 1, why: 'yellowSave' };
+    }
+    if (!(o.ref > 0) || !(o.lapMs > 0)) return usual(cfg.mode === 'median' && ['median', 'average', 'weighted', 'trimmed'].includes(benchmarkOf(cfg.benchmark)) ? 'median' : 'noref');
     if (!(o.lapNo >= cfg.from)) return usual('early');
     if (cfg.mode === 'median') {
       const p = Math.round((o.lapMs / o.ref - 1) * 100 * 1000) / 1000;
@@ -150,11 +171,11 @@
     return pace + (parts.length ? '; ' + parts.join(', ') : '; no wear is changed');
   }
   // why a lap wears as usual (the lap review and the folder)
-  const WHY_TEXT = { pit: 'a lap with a stop', resumed: 'the first lap after a pause', red: 'a red-flag interrupted lap', yellow: 'a yellow-flag lap', noref: 'no reference lap yet', median: 'more eligible laps are needed for the selected pace benchmark', early: 'the effect has not started yet', slow: 'a very slow lap' };
+  const WHY_TEXT = { pit: 'a lap with a stop', resumed: 'the first lap after a pause', red: 'a red-flag interrupted lap', yellow: 'a yellow-flag lap', yellowSave: 'full saving under yellow', noref: 'no reference lap yet', median: 'more eligible laps are needed for the selected pace benchmark', early: 'the effect has not started yet', slow: 'a very slow lap' };
   const whyText = w => WHY_TEXT[w] || '';
-  const sourceText = s => (s === 'record' ? 'record' : s === 'race' ? 'this race' : s === 'track' ? 'track target' : s === 'manual' ? 'manual target' : s === 'median' ? 'median' : s === 'average' ? 'average' : s === 'last' ? 'previous lap' : s === 'best' ? 'best race lap' : '');
+  const sourceText = s => (s === 'record' ? 'record' : s === 'race' ? 'this race' : s === 'track' ? 'track target' : s === 'manual' ? 'manual target' : s === 'median' ? 'median' : s === 'average' ? 'average' : s === 'weighted' ? 'weighted average' : s === 'trimmed' ? 'trimmed average' : s === 'last' ? 'previous lap' : s === 'best' ? 'best race lap' : '');
 
-  const api = { DEFAULTS, PRESETS, PRESET_KEYS, BENCHMARKS, BAND, defaults, pacePolicy, policyFromSettings, benchmarkOf, benchmarkInfo, benchmark, clean, fromConfig, presetOf, paceOf, mult, medianMult, kind, medianKind, lapEffect, kindText, pctText, multText, rangeText, rulesText, whyText, sourceText };
+  const api = { responsePolicy, estimatePolicy, calculationSettings, DEFAULTS, PRESETS, PRESET_KEYS, BENCHMARKS, BAND, defaults, pacePolicy, policyFromSettings, benchmarkOf, benchmarkInfo, benchmark, clean, fromConfig, presetOf, paceOf, mult, medianMult, kind, medianKind, lapEffect, kindText, pctText, multText, rangeText, rulesText, whyText, sourceText };
   root.PushSave = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

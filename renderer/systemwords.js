@@ -520,7 +520,7 @@
       if (t.on) say.push(T(' Full push wears tyres '), B(`${sign(t.extra)} more`), T(' and full save wears them '), B(`${sign(t.save)} less`), T('.'));
       if (f.on) say.push(T(' Full push uses '), B(`${sign(f.extra)} more fuel`), T(' and full save uses '), B(`${sign(f.save)} less`), T('.'));
       if (!t.on && !f.on) say.push(T(' Both tyre and fuel effects are '), B('off'), T('.'));
-      say.push(T(' Pit laps, yellow-flag laps, red-flag interruptions and very slow laps are ignored.'));
+      say.push(T(' Pit laps, red-flag interruptions and very slow laps have no pace effect. Yellow laps never teach the benchmark; a full-yellow lap '), B(C.yellowSave ? 'uses full saving' : 'uses normal amounts'), T(` from lap ${C.from}.`));
       const strip = { parts: [{ name: 'Full push', left: 0, width: 42, kind: 'push', step: 1, of: 3 }, { name: 'Benchmark', left: 42, width: 16, kind: 'normal', step: 2, of: 3 }, { name: 'Full save', left: 58, width: 42, kind: 'save', step: 3, of: 3 }], ticks: [{ at: 42, label: `Push · ${sign(C.pushAt)} faster`, show: true }, { at: 50, label: 'Benchmark · normal use', show: true }, { at: 58, label: `Save · ${sign(C.saveAt)} slower`, show: true }], text: `The selected pace benchmark is normal. Full push is ${sign(C.pushAt)} faster and full save is ${sign(C.saveAt)} slower.` };
       return { pills, say, ready: !text(v.name).trim() ? READY.name : READY.ok, notes: {}, strip };
     }
@@ -544,7 +544,7 @@
     const side = (name, s) => (s.on ? `${name} +${sign(s.extra)} / −${sign(s.save)}` : `${name} off`);
     out.wear = entry(`${side('Tyres', t)} · ${side('fuel', f)}`, `${t.on ? `flat out wears the tyres ${sign(t.extra)} more, the most saving pace ${sign(t.save)} less` : 'the tyres wear as usual'}; ${f.on ? `the fuel use is ${sign(f.extra)} more and ${sign(f.save)} less` : 'the fuel is used as usual'}`,
       changed(['tyres', 'tyreExtra', 'tyreSave', 'fuel', 'fuelExtra', 'fuelSave']) ? 'ok' : 'plain');
-    out.laps = entry(`From lap ${C.from} · yellow is ${C.yellowSave ? 'saving' : 'a normal lap'}`, `the effect starts at lap ${C.from}; a lap slower than ${sign(C.slow)} of the best lap is no pace; a lap under the yellow flag or the Safety Car ${C.yellowSave ? 'counts as saving' : 'counts like any other lap'}`, changed(['from', 'slow', 'yellowSave']) ? 'ok' : 'plain');
+    out.laps = entry(`From lap ${C.from} · yellow is ${C.yellowSave ? 'saving' : 'a normal lap'}`, `the effect starts at lap ${C.from}; a lap slower than ${sign(C.slow)} of ${C.mode === 'median' ? 'the selected benchmark' : 'the best lap'} is no pace; a lap under the yellow flag or the Safety Car ${C.yellowSave ? 'counts as saving' : C.mode === 'median' ? 'uses normal amounts' : 'counts like any other lap'}`, changed(['from', 'slow', 'yellowSave']) ? 'ok' : 'plain');
     return out;
   }
 
@@ -571,9 +571,9 @@
     if (F.rate > 0) say.push(T(' Refuelling in the pits runs at '), B(`${litres(F.rate)} a second`), T(', so an empty tank fills in about '), B(`${rounded(fill)} ${fill === 1 ? 'second' : 'seconds'}`), T('.'));
     else say.push(T(' The pump does '), B('not run'), T(' (the speed is 0), so a stop adds no fuel.'));
     if (F.legacyPace) say.push(T(' This existing Fuel System keeps its earlier '), B('fast and slow lap fuel behaviour'), T('.'));
-    else if (F.paceSource === 'constant') say.push(T(' Fuel use stays the same every lap. '), B('Push & Save falls back to each driver\'s best lap'), T(' when it is on.'));
-    else if (F.paceTarget > 0) say.push(T(' Push & Save uses '), B(`${paceName(F, track)} at ${secs(F.paceTarget / 1000)}`), T(' as its pace reference.'));
-    else say.push(T(' The selected '), B(paceName(F, track)), T(' has no reference time yet, so Push & Save falls back to each driver\'s best lap.'));
+    else if (F.paceSource === 'constant') say.push(T(' Fuel use stays the same every lap. '), B('Legacy Push & Save falls back to each driver\'s best lap'), T(' when it is on.'));
+    else if (F.paceTarget > 0) say.push(T(' Legacy Push & Save uses '), B(`${paceName(F, track)} at ${secs(F.paceTarget / 1000)}`), T(' as its pace reference.'));
+    else say.push(T(' The selected '), B(paceName(F, track)), T(' has no reference time yet, so legacy Push & Save falls back to each driver\'s best lap.'));
     const notes = {};
     if (F.perLap <= 0) notes.basics = { tone: 'info', parts: [T('A lap uses no fuel, so the tank never runs empty.')] };
     else if (laps < 1) notes.basics = { tone: 'warn', parts: [T('A full tank ('), B(litres(F.tank)), T(') holds less than one lap of fuel ('), B(litres(F.perLap)), T(').')] };
@@ -581,7 +581,7 @@
     if (F.legacyPace) notes.pace = { tone: 'info', parts: [T('This saved Fuel System keeps its original pace-based fuel behaviour.')] };
     else if (F.paceSource === 'track' && F.paceTarget <= 0) notes.pace = { tone: 'warn', parts: [T('Set a Fuel reference lap time on the selected Track.')] };
     else if (F.paceSource === 'manual' && F.paceTarget <= 0) notes.pace = { tone: 'warn', parts: [T('Enter a manual reference lap time.')] };
-    else notes.pace = { tone: F.paceSource === 'constant' ? 'plain' : 'good', parts: [T(F.paceSource === 'constant' ? 'Fuel use is fixed per lap; Push & Save uses each driver\'s best lap.' : `Push & Save uses ${paceName(F, track)} at ${secs(F.paceTarget / 1000)}.`)] };
+    else notes.pace = { tone: F.paceSource === 'constant' ? 'plain' : 'good', parts: [T(F.paceSource === 'constant' ? 'Fuel use is fixed per lap; legacy Push & Save uses each driver\'s best lap.' : `Legacy Push & Save uses ${paceName(F, track)} at ${secs(F.paceTarget / 1000)}.`)] };
     return { pills, say, ready: text(v.name).trim() ? READY.ok : READY.name, notes, strip: null };
   }
   const FUEL_STANDARD = { tank: 120, perLap: 2, rate: 10, paceSource: 'constant', paceTrack: '', paceManual: '', empty: 'retire' };
@@ -591,7 +591,7 @@
     const changed = keys => keys.some(k => { const a = text(v[k]).trim(), b = text(d[k]).trim(); return a !== '' && num(a, a) !== num(b, b); });
     out.basics = entry(`${round(F.tank)} L · ${round(F.perLap)} L a lap · ${round(F.rate)} L/s`, `a tank of ${litres(F.tank)}, ${litres(F.perLap)} a lap and refuelling at ${litres(F.rate)} a second`, named ? 'ok' : 'todo');
     const pace = F.legacyPace ? `Legacy pace · ${secs(F.paceTarget / 1000)}` : F.paceSource === 'track' ? (F.paceTarget > 0 ? `${track && text(track.name).trim() ? text(track.name).trim() : 'Track'} · ${secs(F.paceTarget / 1000)}` : 'Track needs a reference') : F.paceSource === 'manual' ? (F.paceTarget > 0 ? `Manual · ${secs(F.paceTarget / 1000)}` : 'Manual time needed') : 'Same every lap';
-    out.pace = entry(pace, F.legacyPace ? 'this existing Fuel System keeps its original pace-based fuel behaviour' : F.paceSource === 'constant' ? 'fuel use stays the same each lap; Push & Save uses each driver\'s best lap' : F.paceTarget > 0 ? `Push & Save uses ${paceName(F, track)} at ${secs(F.paceTarget / 1000)}` : `set a reference lap time on ${paceName(F, track)}`, F.legacyPace ? 'ok' : F.paceSource === 'constant' ? 'plain' : F.paceTarget > 0 ? 'ok' : 'todo');
+    out.pace = entry(pace, F.legacyPace ? 'this existing Fuel System keeps its original pace-based fuel behaviour' : F.paceSource === 'constant' ? 'fuel use stays the same each lap; legacy Push & Save uses each driver\'s best lap' : F.paceTarget > 0 ? `Legacy Push & Save uses ${paceName(F, track)} at ${secs(F.paceTarget / 1000)}` : `set a reference lap time on ${paceName(F, track)}`, F.legacyPace ? 'ok' : F.paceSource === 'constant' ? 'plain' : F.paceTarget > 0 ? 'ok' : 'todo');
     out.empty = entry(EMPTY_SHORT[F.empty], `when the fuel runs out ${F.empty === 'retire' ? 'the car retires' : F.empty === 'stop' ? 'laps stop counting until it has refuelled' : 'the car carries on'}`, changed(['empty']) ? 'ok' : 'plain');
     return out;
   }

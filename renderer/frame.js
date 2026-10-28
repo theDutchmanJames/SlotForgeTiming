@@ -252,7 +252,9 @@
     el.classList.add('wf-fitted');
     Object.assign(v.style,{left:pad+'px',right:pad+'px',bottom:pad+'px',top:pad+'px',padding:'0px',width:'auto',height:'auto'});
     // List-style overviews reserve the actual title height, including manual sizing.
-    if(pitcontrol){const title=el.querySelector(':scope > .lw-title');if(title)v.style.top=Math.max(pad,title.offsetTop+title.offsetHeight+6)+'px';}
+    const fuelGauge=v.querySelector(':scope > .fuel-gauge');
+    if(pitcontrol||fuelGauge){const title=el.querySelector(':scope > .lw-title');if(title)v.style.top=Math.max(pad,title.offsetTop+title.offsetHeight+6)+'px';}
+    if(fuelGauge){const compact=v.clientHeight<68||(fuelGauge.classList.contains('fg-vertical')&&v.clientWidth<90);fuelGauge.classList.toggle('fg-compact',compact);const detail=fuelGauge.querySelector('.fg-detail');if(detail)detail.hidden=compact;}
     let ok=true;
     if(composition){root.WidgetCompose?.fit(el,w);ok=!el.classList.contains('wc-crowded');}
     else if(simple||richText||list||stock||strategy){
@@ -296,23 +298,23 @@
         const hasPicture=!!v.querySelector('.twbox2,.psbox-gauge');
         v.style.fontSize=Math.max(t.minSize,Math.min(v.clientHeight*(hasPicture?.2:.35),v.clientWidth*.18))+'px';
       }
-      const selector=aio?'.aio-fact b,.aio-who>strong,.aio-who>span,.aio-laprow strong,.aio-system strong':'.twlf,.twgr,.twnm,.twpct,.twtemp,.twvalue,.twn>small,.twbar-details,.ftxt,.fnum,.pspill>span,.pssmall,.psp,.psbox>small,.psw>b,.psw>small';
-      const targets=[...v.querySelectorAll(selector)];
-      targets.forEach(n=>{n.style.removeProperty('font-size');n.style.lineHeight='1.35';});
+      const selector=aio?'.aio-fact b,.aio-who>strong,.aio-who>span,.aio-laprow strong,.aio-system strong':'.twlf,.twgr,.twnm,.twpct,.twtemp,.twvalue,.twn>small,.twbar-details,.ftxt,.fnum,.fg-value,.fg-detail,.fg-warning,.pspill>span,.pssmall,.psp,.psbox>small,.psw>b,.psw>small';
+      const targets=[...v.querySelectorAll(selector)].filter(n=>!n.hidden);
+      targets.forEach(n=>{n.style.removeProperty('font-size');n.style.lineHeight=fuelGauge?'1.5':'1.35';});
       const mediaFloor=Math.min(40,v.clientHeight*.25);
       if(gauge){
         const media=v.querySelector('.twbox2,.psbox-gauge');
         if(media){const rows=[...media.children].filter(n=>!n.matches('svg,.twpic,.twringw,.psgauge')).length;media.style.gridTemplateRows=`minmax(${mediaFloor}px,1fr)${' auto'.repeat(rows)}`;media.style.height='100%';}
       }
       for(const n of targets){
-        const primary=n.matches('.aio-fact b,.aio-laprow strong,.psp,.twpct,.twvalue,.psw>b,.fnum'),min=primary?t.minSize:11;
+        const primary=n.matches('.aio-fact b,.aio-laprow strong,.psp,.twpct,.twvalue,.psw>b,.fnum,.fg-value'),min=primary?t.minSize:11;
         const max=Math.max(min,parseFloat(root.getComputedStyle(n).fontSize)||min);
         // A local box constrains each label, then the final check covers siblings.
         ok=fitText(n,{min,max,box:n,shrink:t.mode==='auto'||t.shrink,vertical:false})&&ok;
       }
       if(!textFits(v)&&(t.mode==='auto'||t.shrink)){
         const sizes=targets.map(n=>parseFloat(root.getComputedStyle(n).fontSize));
-        fitSize(1,100,p=>targets.forEach((n,i)=>{const min=n.matches('.aio-fact b,.aio-laprow strong,.psp,.twpct,.twvalue,.psw>b,.fnum')?t.minSize:11;n.style.fontSize=Math.max(min,sizes[i]*p/100)+'px';}),()=>textFits(v));
+        fitSize(1,100,p=>targets.forEach((n,i)=>{const min=n.matches('.aio-fact b,.aio-laprow strong,.psp,.twpct,.twvalue,.psw>b,.fnum,.fg-value')?t.minSize:11;n.style.fontSize=Math.max(min,sizes[i]*p/100)+'px';}),()=>textFits(v));
       }
       if(gauge){
         const media=v.querySelector('.twbox2,.psbox-gauge');

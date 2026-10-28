@@ -228,9 +228,10 @@
   function paceMultiplier(cfg, history, lapMs) {
     const reference = paceReference(cfg, history);
     if (!cfg || !cfg.pace || !cfg.pace.on || !Number.isFinite(Number(lapMs)) || Number(lapMs) <= 0 || !(reference > 0)) return { multiplier: 1, median: reference || median(history), ready: false };
-    const med = reference, strength = cfg.pace.strength === 'gentle' ? 0.5 : cfg.pace.strength === 'strong' ? 1.5 : 1;
+    const Ps = typeof module !== 'undefined' ? require('./pushsave.js') : root.PushSave, response = Ps.responsePolicy(cfg.pace.response || {});
+    const med = reference, strength = response.custom ? response.strength : cfg.pace.strength === 'gentle' ? 0.5 : cfg.pace.strength === 'strong' ? 1.5 : 1;
     const raw = med > 0 ? med / Number(lapMs) : 1;
-    return { multiplier: Math.max(0.5, Math.min(1.5, 1 + (raw - 1) * strength)), median: med, ready: med > 0 };
+    return { multiplier: Math.max(response.custom ? response.minimum : 0.5, Math.min(response.custom ? response.maximum : 1.5, 1 + (raw - 1) * strength)), median: med, ready: med > 0 };
   }
 
   // what a new set lasts, in words (the "Lasts about" column of the form): "50 laps", or "333 m" ("1094 ft") when the system counts per distance (the wear is then per 100 m / 100 ft: 100 / wear of them)

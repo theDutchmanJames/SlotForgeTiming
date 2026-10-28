@@ -404,11 +404,15 @@ const psNote = k => { const n = PushSave.PRESETS[k].note; return /[.!?]$/.test(n
 const psPresets = key => `<div class="fu-cards" role="group" aria-label="Ready-made systems">${PushSave.PRESET_KEYS.map(k => { const on = key === k; return `<button type="button" class="fu-card${on ? ' on' : ''}" aria-pressed="${on}" data-pspreset="${k}"><span class="fu-ct"><b>${esc(PushSave.PRESETS[k].name)}</b></span><span class="fu-cd">${esc(psNote(k))}</span><span class="fu-ck" aria-hidden="true">${Icons.svg('check', { size: 18, stroke: 1.8 })}</span></button>`; }).join('')}</div>`; // (1.76.0: cards, as in the design; the one whose four numbers the form holds is marked)
 // Native range controls keep the Pace markers genuinely draggable (mouse, touch and keyboard).
 const psCurveNumber = (v, d) => { const n = Number(String(v === undefined || v === null ? '' : v).replace(',', '.')); return Number.isFinite(n) ? Math.max(0.1, Math.min(100, n)) : d; };
+const psCurveData = get => {
+  const push = Math.min(50, psCurveNumber(get('pushAt'), PushSave.DEFAULTS.pushAt)), save = psCurveNumber(get('saveAt'), PushSave.DEFAULTS.saveAt), tr = (state.refs.tracks || []).find(x => x.id === get('previewTrack')), target = Number(tr && tr.targetLap) > 0 ? Number(tr.targetLap) * 1000 : 0;
+  const time = pct => target ? `${(target * (1 + pct / 100) / 1000).toFixed(3)} s` : `${pct < 0 ? '' : '+'}${pct}%`;
+  return { push, save, target, time };
+};
 const psCurve = get => {
   if (get('mode') === 'legacy') return '<div class="pscurve legacy"><b>Best-lap reference</b><span class="muted">This saved system keeps its earlier pace model. Choose the driver pace benchmark model to use App Settings > Calculations.</span></div>';
-  const push = psCurveNumber(get('pushAt'), PushSave.DEFAULTS.pushAt), save = psCurveNumber(get('saveAt'), PushSave.DEFAULTS.saveAt), tr = (state.refs.tracks || []).find(x => x.id === get('previewTrack')), target = Number(tr && tr.targetLap) > 0 ? Number(tr.targetLap) * 1000 : 0;
-  const time = pct => target ? `${(target * (1 + pct / 100) / 1000).toFixed(3)} s` : `${pct < 0 ? '' : '+'}${pct}%`;
-  return `<div class="pscurve" id="ps-curve"><div class="pscurve-labels"><span>Faster</span><strong>${esc(time(-push))}</strong><b>${esc(target ? time(0) : 'Driver benchmark')}</b><strong>${esc(time(save))}</strong><span>Slower</span></div><div class="pscurve-track"><i class="pscurve-fast"></i><i class="pscurve-mid"></i><i class="pscurve-save"></i><input type="range" min="0.1" max="20" step="0.1" value="${push}" data-pscurve="pushAt" aria-label="Full push: percent faster than the benchmark"><input type="range" min="0.1" max="40" step="0.1" value="${save}" data-pscurve="saveAt" aria-label="Full save: percent slower than the benchmark"></div><p><b>Full push</b> at ${esc(time(-push))} · the App Settings <b>benchmark</b> is normal use and wear · <b>full save</b> at ${esc(time(save))}. Drag either marker or type the exact value below.</p></div>`;
+  const { push, save, target, time } = psCurveData(get);
+  return `<div class="pscurve" id="ps-curve"><div class="pscurve-labels"><span>Faster</span><strong>${esc(time(-push))}</strong><b>${esc(target ? time(0) : 'Driver benchmark')}</b><strong>${esc(time(save))}</strong><span>Slower</span></div><div class="pscurve-track"><i class="pscurve-fast"></i><i class="pscurve-mid"></i><i class="pscurve-save"></i><input type="range" min="0.1" max="50" step="0.1" value="${push}" data-pscurve="pushAt" aria-label="Full push: percent faster than the benchmark"><input type="range" min="0.1" max="100" step="0.1" value="${save}" data-pscurve="saveAt" aria-label="Full save: percent slower than the benchmark"></div><p><b>Full push</b> at ${esc(time(-push))} · the App Settings <b>benchmark</b> is normal use and wear · <b>full save</b> at ${esc(time(save))}. Drag either marker or type the exact value below.</p></div>`;
 };
 // the weather table of a tyre wear system (field type 'wxmult'): how much more or less every kind of tyre wears in every weather
 const twWeatherGraph = mult => { const n = (state, kind) => { const v = Number(mult && mult[state] && mult[state][kind]); return Number.isFinite(v) ? Math.max(0, Math.min(20, v)) : 1; };
@@ -746,9 +750,9 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
     const lapEl = byId('fuel-math-laps'), fillEl = byId('fuel-math-fill'), note = byId('fuel-math-note');
     if (lapEl) lapEl.textContent = laps === null ? 'No fuel used' : `${text(laps)} ${laps === 1 ? 'lap' : 'laps'}`;
     if (fillEl) fillEl.textContent = fill === null ? 'Does not refuel' : `${text(fill)} ${fill === 1 ? 'second' : 'seconds'}`;
-    if (note) note.textContent = F.paceSource === 'track' ? (F.paceTarget > 0 ? `Push & Save reference: ${text(F.paceTarget / 1000)} seconds from ${track && track.name ? track.name : 'this track'}.` : 'Set a Fuel reference lap time on this Track to complete the reference.')
-      : F.paceSource === 'manual' ? (F.paceTarget > 0 ? `Push & Save reference: manual ${text(F.paceTarget / 1000)} seconds.` : 'Enter a manual reference time to complete the reference.')
-        : 'Fuel consumption is the same on every lap; Push & Save falls back to each driver\'s best lap.';
+    if (note) note.textContent = F.paceSource === 'track' ? (F.paceTarget > 0 ? `Legacy Push & Save reference: ${text(F.paceTarget / 1000)} seconds from ${track && track.name ? track.name : 'this track'}.` : 'Set a Fuel reference lap time on this Track to complete the reference.')
+      : F.paceSource === 'manual' ? (F.paceTarget > 0 ? `Legacy Push & Save reference: manual ${text(F.paceTarget / 1000)} seconds.` : 'Enter a manual reference time to complete the reference.')
+        : 'Base fuel use is fixed per lap. Legacy Push & Save uses each driver\'s best lap; current Push & Save uses App Settings > Calculations. Enabled racing effects can still change consumption.';
   };
   const drawTrackCallSummary = () => {
     if (e !== 'racesetups') return;
@@ -960,8 +964,17 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
     if (e === 'racesetups') sayDraw(); // (the sentence follows every key that is typed)
     if (e === 'pushsavesystems' && t && t.dataset && t.dataset.pscurve) {
       const field = byId('f-' + t.dataset.pscurve); if (field) field.value = t.value;
-      const curve = byId('ps-curve-box'); if (curve) curve.innerHTML = psCurve(getValue);
+      // Keep the active range node connected so pointer capture survives a drag.
+      const curve = byId('ps-curve'), {push, save, time} = psCurveData(getValue);
+      if (curve) {
+        const labels = curve.querySelectorAll('.pscurve-labels strong');
+        labels[0].textContent = time(-push); labels[1].textContent = time(save);
+        curve.querySelector('p').innerHTML = `<b>Full push</b> at ${esc(time(-push))} · the App Settings <b>benchmark</b> is normal use and wear · <b>full save</b> at ${esc(time(save))}. Drag either marker or type the exact value below.`;
+      }
       return;
+    }
+    if (e === 'pushsavesystems' && ['f-pushAt', 'f-saveAt'].includes(t?.id)) {
+      const curve = byId('ps-curve-box'); if (curve) curve.innerHTML = psCurve(getValue);
     }
     if (t && t.dataset && t.dataset.pbf !== undefined) { // a box of a list of numbers: the list is kept as text, as it always was ("10, 8, 6")
       const id = t.dataset.pbf, list = places[id]; if (list) { list[Number(t.dataset.pb)] = t.value; byId('f-' + id).value = FormUI.joinList(list); sayDraw(); }

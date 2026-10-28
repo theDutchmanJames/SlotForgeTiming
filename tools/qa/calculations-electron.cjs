@@ -1,7 +1,7 @@
 // Real settings persistence and editor integration in an isolated Electron profile.
 const {app}=require('electron'),fs=require('fs'),path=require('path');
-const out=path.resolve(__dirname,'../../../outputs/code-audit'),data=path.resolve(__dirname,'../../.tmp-test/calculations-'+process.pid);
-fs.mkdirSync(data,{recursive:true});app.setPath('appData',data);app.disableHardwareAcceleration();
+const out=path.resolve(__dirname,'../../../outputs/system-clarity'),data=path.resolve(__dirname,'../../.tmp-test/calculations-'+process.pid);
+fs.mkdirSync(out,{recursive:true});fs.mkdirSync(data,{recursive:true});app.setPath('appData',data);app.disableHardwareAcceleration();
 const wait=ms=>new Promise(r=>setTimeout(r,ms));let done=false;
 const timeout=setTimeout(()=>app.exit(1),55000);timeout.unref();
 app.on('browser-window-created',(_,win)=>{win.hide();win.webContents.on('did-finish-load',async()=>{
@@ -13,6 +13,9 @@ app.on('browser-window-created',(_,win)=>{win.hide();win.webContents.on('did-fin
   await run(`window.qaErrors=[];addEventListener('error',e=>qaErrors.push(e.message));addEventListener('unhandledrejection',e=>qaErrors.push(String(e.reason)));window.ck=(v,m)=>{if(!v)throw Error(m)};window.input=(q,v)=>{const el=document.querySelector(q);ck(el,'Missing '+q);el.value=v;el.dispatchEvent(new Event('input',{bubbles:true}));};
    window.fuel=await api.add('fuelrules',{name:'Club fuel',tank:120,perLap:2,rate:10,paceSource:'constant'});
    window.legacy=await api.add('pushsavesystems',{name:'Legacy pace',mode:'legacy',normal:3,saveAt:8});
+   await api.add('tyrewearsystems',{name:'Club tyres',...TyreWear.defaults()});
+   await api.add('safetycarsystems',{name:'Club Safety Car',target:15,points:2,pitPercent:50});
+   await api.add('penaltysystems',{name:'Club penalties',ruleMode:'custom',rules:[{from:3,time:5,laps:0,pit:10},{from:5,time:10,laps:1,pit:20}]});
    await api.add('championships',Champ.blank());
    await api.add('rotationsetups',Rot.blank(4,4,'Club rotation'));
    state.tab='settings';state.settingsSub='calculations';await render();
@@ -41,10 +44,34 @@ app.on('browser-window-created',(_,win)=>{win.hide();win.webContents.on('did-fin
   await run(`input('[data-entity="fuelrules"] [data-record-field="tank"]',150);ck(document.querySelector('#calc-fuel-example').textContent.includes('75.0 laps'),'Live fuel preview');await document.querySelector('.calc-record-form').onsubmit({preventDefault(){}});ck((await api.list('fuelrules')).find(r=>r.id===fuel.id).tank===150,'Same fuel record updated');
    document.querySelector('[data-entity="fuelrules"] [data-edit-record]').click();ck(document.getElementById('f-tank').value==='150','Full editor sees freshly saved value');document.getElementById('cancel').click();`);await wait(200);
   await capture('calculations-fuel-600.png');
-  for(const section of ['effects','pits','estimates','results']){
+  for(const section of ['effects','pits','estimates','results','resources']){
    await run(`document.querySelector('[data-calc-section="${section}"]').click();`);await wait(150);
    await run(`ck(document.querySelector('.calc-content h3').textContent.length>0,'Section content');ck(document.documentElement.scrollWidth<=innerWidth+1,'No page overflow');`);
   }
+  await run(`document.querySelector('[data-calc-section="pace"]').click();`);await wait(150);
+  await run(`input('[data-prefix="pushSave"] [data-policy="Benchmark"]','weighted');ck(document.querySelector('[data-preview="pushSave"]').textContent.includes('10.780'),'Weighted example uses production function');input('[data-prefix="pushSave"] [data-policy="Benchmark"]','average');
+   input('[data-extra="response"] [name="custom"]','custom');input('[name="strength"]',2);input('[name="minimum"]',.75);input('[name="maximum"]',1.3);input('[name="combine"]','pushsave');
+   await document.querySelector('[data-extra="response"]').onsubmit({preventDefault(){}});ck((await api.getSettings()).tyreResponse.combine==='pushsave','Response saved');
+   document.querySelector('[data-calc-section="estimates"]').click();`);await wait(150);
+  await run(`input('[name="fuelWindow"]',2);await document.querySelector('[data-extra="estimates"]').onsubmit({preventDefault(){}});ck(document.querySelector('[data-extra="estimates"] .calc-save').textContent.includes('at least 3'),'Reject insufficient fuel history');input('[name="fuelWindow"]',8);input('[name="fuelMethod"]','median');input('[name="gapMethod"]','average');input('[name="gapWindow"]',5);await document.querySelector('[data-extra="estimates"]').onsubmit({preventDefault(){}});ck((await api.getSettings()).raceEstimates.fuelWindow===8,'Estimate persistence');`);
+  win.setContentSize(1200,950);
+  for(const theme of ['dark','light','midnight','forest','sunset','violet','carbon','ocean','custom']){
+   await run(`state.settings.theme='${theme}';applyTheme();document.querySelector('[data-calc-section="pits"]').click();`);await wait(100);
+   await run(`input('[data-lab="service"] [name="fixed"]','on');input('[data-lab="service"] [name="order"]','add');ck(document.querySelector('[data-lab="service"] output').textContent.includes('35 s'),'Fixed service plus penalty');ck(document.querySelector('[data-lab="penalty"] output').textContent.includes('20 s in pits'),'Real ladder');ck(document.documentElement.scrollWidth<=innerWidth+1,'Theme width');document.querySelector('[data-lab="service"]').scrollIntoView({block:'start'});`);
+   await capture('service-'+theme+'.png');
+  }
+  for(const section of ['pace','fuel','effects','resources','results','estimates']){
+   await run(`document.querySelector('[data-calc-section="${section}"]').click();`);await wait(100);
+   await run(`ck(!document.querySelector('.calc-content').textContent.includes('NaN'),'Finite previews');document.querySelector('.calc-content').scrollIntoView({block:'start'});
+    const read=k=>document.querySelector('[data-lab="'+k+'"] output')?.textContent||'';
+    if('${section}'==='fuel')ck(read('combined').includes('2.2 L')&&read('combined').includes('9 L/s')&&read('combined').includes('90 L'),'Combined fuel effects use additive signed contributions');
+    if('${section}'==='effects')ck(read('safety').includes('Too fast')&&read('safety').includes('Penalty points2')&&read('safety').includes('5 s'),'Safety Car target, points and reduction');
+    if('${section}'==='resources')ck(read('resources').includes('Unused tyre sets1')&&read('resources').includes('Repair credits left1')&&read('resources').includes('Components left0'),'Resource charging example');
+    if('${section}'==='results'){ck(read('scoring').includes('Overall points16')&&read('scoring').includes('Class points26'),'Class and overall scores stay separate');ck(read('drops').includes('Kept total18'),'Dropped results example');input('[data-lab="drops"] [name="scores"]','10, 10, 8');ck(document.querySelector('[data-lab="drops"] output s').textContent==='8','Drop lowest');input('[data-lab="drops"] [name="scores"]','10, 6, 8');}`);
+   await capture('expanded-'+section+'.png');
+  }
+  win.setContentSize(600,950);await run(`document.querySelector('[data-calc-section="pits"]').click();`);await wait(100);await run(`document.querySelector('[data-lab="service"]').scrollIntoView({block:'start'});`);await capture('service-600.png');
+  await run(`for(const el of document.querySelectorAll('.calc-content input,.calc-content select')){const b=el.getBoundingClientRect();ck(b.width>70&&b.left>=0&&b.right<=innerWidth,'Expanded fields fit at 600px');}document.querySelector('[data-calc-section="results"]').click();`);await wait(100);
   await run(`document.querySelector('[data-entity="championships"] [data-edit-record]').click();`);await wait(350);
   await run(`ck(!!document.getElementById('ch-back'),'Real championship editor');document.getElementById('ch-back').click();state.tab='settings';state.settingsSub='calculations';await render();document.querySelector('[data-entity="rotationsetups"] [data-edit-record]').click();`);await wait(250);
   await run(`ck(!!document.getElementById('ro-back'),'Real rotation editor');document.getElementById('ro-back').click();state.tab='settings';await render();document.querySelector('[data-calc-section="effects"]').click();`);await wait(150);
@@ -53,18 +80,22 @@ app.on('browser-window-created',(_,win)=>{win.hide();win.webContents.on('did-fin
   win.setContentSize(420,950);await run(`document.querySelector('.calc-head').scrollIntoView({block:'start'});`);
   await capture('calculations-light-420.png');
   await run(`ck(document.documentElement.scrollWidth<=innerWidth+1,'420px no horizontal overflow');ck(qaErrors.length===0,qaErrors.join(';'));`);
+  win.setContentSize(1200,950);
+  await run(`await openForm('pushsavesystems',{name:'Pace limits',...PushSave.defaults()});input('#f-pushAt',50);input('#f-saveAt',100);ck(document.querySelector('[data-pscurve="pushAt"]').value==='50'&&document.querySelector('[data-pscurve="saveAt"]').value==='100','Numeric maximum matches slider maximum');const slider=document.querySelector('[data-pscurve="pushAt"]');input('[data-pscurve="pushAt"]',25);ck(document.getElementById('f-pushAt').value==='25'&&slider.isConnected,'Slider writes numeric value without replacing dragged node');document.getElementById('ps-curve').scrollIntoView({block:'center'});`);
+  await capture('pushsave-limits.png');await run(`document.getElementById('cancel').click();`);
   await run(`const track=await api.add('tracks',{name:'Calculation circuit',lanes:1,targetLap:10});
    const ps=await api.add('pushsavesystems',{name:'Calculation push',...PushSave.defaults()});
    const tw=await api.add('tyrewearsystems',{name:'Calculation tyres',...TyreWear.defaults(),paceWear:'on'});
    const setup={name:'Calculation race',sessionType:'race',track:track.id,laps:10,firstLap:'count',lightsMin:0,lightsMax:0,fuelRules:fuel.id,pushSave:ps.id,tyreWear:tw.id};
    state.tab='race';state.race={track,setup,rows:[{}]};await render();
-   const e=live.engine();ck(e.cfg.pushsave.benchmark==='average'&&e.cfg.pushsave.pacePolicy.window===5,'App prepares selected Push & Save policy');ck(e.cfg.tyrewear.pace.benchmark==='last','App prepares separate tyre policy');
+   const e=live.engine();ck(e.cfg.pushsave.benchmark==='average'&&e.cfg.pushsave.pacePolicy.window===5,'App prepares selected Push & Save policy');ck(e.cfg.tyrewear.pace.benchmark==='last','App prepares separate tyre policy');ck(e.cfg.tyrewear.pace.response.combine==='pushsave'&&e.cfg.calculations.estimates.fuelMethod==='median','New options reach actual engine');
    e.start(0);e.cars[0].started=true;e.cross(0,10000);const snap=e.snapshot(10000);
-   state.settings=await api.setSettings({pushSaveBenchmark:'best',tyreWearBenchmark:'track'});
+   state.settings=await api.setSettings({pushSaveBenchmark:'best',tyreWearBenchmark:'track',tyreResponse:PushSave.responsePolicy(),raceEstimates:PushSave.estimatePolicy()});
    ck(e.cfg.pushsave.benchmark==='average'&&e.cfg.tyrewear.pace.benchmark==='last','Existing race retains policies after settings edit');
    live.leave();live.alive=false;state.race={track,setup,rows:[{}],resume:{eng:snap,phase:'running'}};await render();
    ck(live.engine().cfg.pushsave.benchmark==='average'&&live.engine().cfg.tyrewear.pace.benchmark==='last','Interrupted race resumes original policies');
+   ck(live.engine().cfg.tyrewear.pace.response.combine==='pushsave'&&live.engine().cfg.calculations.estimates.fuelMethod==='median','Recovery keeps saved response and estimates');
    live.leave();live.alive=false;state.race=null;ck(qaErrors.length===0,qaErrors.join(';'));`);
-  console.log('CALCULATIONS ELECTRON PASSED: save/reopen, previews, shared fuel and BoP edits, championship/rotation links, 1200/600/420px, actual race preparation/freeze/resume');clearTimeout(timeout);app.quit();
+  console.log('CALCULATIONS ELECTRON PASSED: save/reopen, numerical previews, slider limits, nine themes, shared fuel and BoP edits, championship/rotation links, 1200/600/420px, actual race preparation/freeze/resume');clearTimeout(timeout);app.quit();
  }catch(e){console.error(e);await capture('calculations-failure.png');app.exit(1);}
 });});require('../../main');

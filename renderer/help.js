@@ -6,7 +6,7 @@ const Help = (() => {
   const opened = new Set();
   // Help follows the same visual language as Race Setup and the Audio editor.
   // Mixed-topic folders intentionally stay neutral rather than pretending to be one system.
-  const SYSTEM_TONE = {resources:'resources',resourcerecovery:'resources', servicestop: 'fuel', penaltytiers: 'penalty', endurance: 'endurance', damage: 'damage', carfailures: 'damage', fuel: 'fuel', bop: 'bop', weather: 'weather', wxwidgets: 'weather', tyrewear: 'tyrewear', customtyres: 'tyrewear', tyretemperature: 'tyrewear', safetycar: 'safetycar', pushsave: 'pushsave', tokens: 'tokens' };
+  const SYSTEM_TONE = {resources:'resources',resourcerecovery:'resources', servicestop: 'fuel', penaltytiers: 'penalty', endurance: 'endurance', damage: 'damage', carfailures: 'damage', fuel: 'fuel', fuelwidgets: 'fuel', bop: 'bop', weather: 'weather', wxwidgets: 'weather', tyrewear: 'tyrewear', customtyres: 'tyrewear', tyretemperature: 'tyrewear', safetycar: 'safetycar', pushsave: 'pushsave', tokens: 'tokens' };
 
   // The first thing under the Help tab (the quick start).
   const WELCOME = `<section class="helpwelcome" aria-labelledby="hw-title">
@@ -75,13 +75,14 @@ const Help = (() => {
           <li><b>View settings</b> chooses table columns. <b>Export to PDF</b> chooses the results, heats, laps and columns to print.</li>
           <li>A trophy marks a race winner (not in practice or qualifying); an adjusted result says so beside the driver. <i>Total time</i> is also available as a Leaderboard sort.</li>
         </ul>` },
-      { id: 'calculations', title: 'Calculations', note: 'Choose the benchmark behind pace-based systems', body: `
+      { id: 'calculations', title: 'Calculations', note: 'Understand and choose the rules behind the numbers', body: `
         <ul>
-          <li>App Settings, <b>Calculations</b> explains the formulas SlotForge uses and lets you choose the pace benchmark for systems that need one.</li>
-          <li><b>Median lap</b> is the standard: it ignores one unusually fast or slow lap better than an average. You can instead choose average, last valid lap, best lap or a saved Track target.</li>
-          <li>Choose <b>Push &amp; Save</b> and <b>Tyre Wear</b> independently. Each can use a recent eligible-lap window (0 means all) and a minimum sample count. Automatic needs three laps for median/average and one for previous/best; Track target needs no history. The new lap is never included in its own reference. Pace-sensitive tyre wear must also be switched on in its Tyre Wear System.</li>
-          <li>The six coloured sections explain pace, fuel and tyres, race effects, pit service, estimates and scoring, with worked examples. Save Fuel values and Balance of Power calculations here, or use <b>Edit all rules</b> to change the original saved system. Example inputs are previews, not race settings. Result cards, database Statistics and reports share population consistency, excluding invalid, removed, slow and pit laps. Two eligible laps are required. Comparison bars have a numerical axis with seconds, laps or points; their lengths represent actual values.</li>
-          <li>Changing this calculation affects future races. New saved race results include their starting engine rules; earlier results are not backfilled.</li>
+          <li><b>App Settings → Calculations</b> offers seven coloured sections with formulas, saved-system controls and interactive examples. Preview inputs never change a race.</li>
+          <li>Choose independent Push &amp; Save and Tyre Wear benchmarks: median, average, recent-weighted, trimmed average, previous, best or Track target. Set history and minimum samples. The current lap never becomes its own reference.</li>
+          <li>Weighted averages favour newer laps. Trimmed averages remove 10% at each end, rounded down; fewer than ten samples use an ordinary average. Automatic sampling requires three laps for averages/median, one for previous/best; Track target needs none.</li>
+          <li><b>Tyre pace response</b> can use system strength or bounded custom limits. Choose both pace contributors or one; this does not enable a disabled system. Fuel remains independent.</li>
+          <li><b>Estimates</b> chooses median/average and history for lap gaps and Fuel Range. Fuel needs three samples. Zero history keeps all gap laps or each fuel widget’s setting.</li>
+          <li>Save applies to new races. Running and recovered races keep their starting rules. Restore defaults fills the form; Save confirms it. Full-yellow saving never teaches the normal benchmark.</li>
         </ul>` },
       { id: 'servicestop', title: 'Service Stop', note: 'Remove the car while its pit stop stays active', body: `
         <ul>
@@ -265,12 +266,19 @@ const Help = (() => {
         </ul>` },
       { id: 'fuel', title: 'Fuel and pit stops', note: 'Tanks, refuelling and pit time', body: `
         <ul>
-          <li>Choose a <b>Fuel System</b> in the race setup. Set the tank, fuel per lap and refuel speed; the form estimates the empty-to-full refuel time. A system can take its pace reference from a track target, the app calculation or a manual value.</li>
+          <li>Choose a <b>Fuel System</b> in the race setup. Set the tank, fuel per lap and refuel speed; the form estimates the empty-to-full refuel time. New systems use fixed fuel per lap before race effects. App Settings chooses the current Push & Save benchmark; a Fuel System’s Track/Manual reference is for legacy Push & Save only.</li>
           <li>Choose what an empty tank does: warn, stop counting until refuelled or retire. It can also award penalty points.</li>
           <li>A <b>pit stop</b> starts after the Pit Stop sensor block time in Race Settings. The tank fills while the car is there. Fuel is optional: pit stops work without it.</li>
           <li>Fuel use itself is steady. Push &amp; Save is the optional system that makes faster laps use more and slower laps use less.</li>
           <li>The <b>Fuel</b> and <b>Pitstop time</b> widgets show the state; the Leaderboard has a Fuel left column. Fuel bars start green when full and gradually turn yellow, then red as fuel runs low, independently of the app theme. The widget's warning and critical thresholds and colours set the transition points (25% yellow and 10% red by default). Number and picture modes keep their own presentation.</li>
         </ul>` },
+      { id: 'fuelwidgets', title: 'Fuel Bar styles', note: 'Original, Digital Segments and Reserve Scale', body: `<ul>
+        <li>In Layout Editor, select <b>Fuel Level</b> and open <b>Content</b>. Choose Bar or Bar and number, then the Fuel Bar style. Saved layouts keep <b>Original</b>.</li>
+        <li><b>Digital Segments</b> offers 8–20 blocks and an optional soft, static glow. The last lit block can be partially filled. <b>Reserve Scale</b> adds empty/full markings and a line at your warning threshold.</li>
+        <li>All three work horizontally or vertically. Horizontal bars empty toward the left; vertical bars empty downwards. Values can show litres, percentage, or percentage with litres/capacity. Bar hides the values.</li>
+        <li>Warning text can be shown or hidden; Style default shows it on the new styles. LOW FUEL, CRITICAL and EMPTY use your thresholds. Colours remain independent of the theme.</li>
+        <li>Small widgets keep the main value readable and omit secondary capacity text and scale labels. Increase the widget size to restore them. Existing fonts, backgrounds, borders and accents still apply.</li>
+      </ul>` },
       { id: 'bop', title: 'Balance of Power', note: 'Even out fast and slow cars', body: `
         <ul>
           <li><b>Balance of Power</b> (BoP) hinders a car that is too fast and helps a car that is too slow. It works through the fuel rules, so the race setup needs a <b>fuel system</b> and Balance of Power set to On (races, timed races and heat races).</li>

@@ -143,6 +143,7 @@
     // Push and Save: new systems compare a lap with this driver's rolling median;
     // records without mode retain the former reference-lap behaviour.
     const PSC = Ps.fromConfig(cfg.pushsave);
+    const tyreCombination = Ps.responsePolicy(TWC?.pace?.response || {}).combine;
     const Y = SCC ? { target: SCC.target, points: SCC.points } : { target: 0, points: 0, ...(cfg.yellow || {}) }; // the yellow flag target lap time (ms; 0 = none) and the penalty points for a full lap under yellow that is faster
     // Endurance Race (cfg.endurance, see endurance.js): only in a race or a timed race. A car whose entry has a roster of two drivers or more swaps drivers; the state of its swaps is car.en.
     const EN = cfg.endurance && cfg.endurance.on && (type === 'race' || type === 'timed') ? { ...cfg.endurance } : null, enRnd = cfg.rnd || Math.random;
@@ -640,14 +641,16 @@
     function psLap(c, lapMs, lapStart) {
       const slowLap = maxLap > 0 && lapMs > maxLap;
       const ref = psRef(c, slowLap ? 0 : lapMs);
-      return Ps.lapEffect(PSC, { lapMs, ref: ref.ms, lapNo: c.laps.length + 1, pit: !!c.outlap, resumed: !!c.resumed, red: !!c.redInterrupted, yellow: R.flag === 'yellow' && R.yellowAt !== null && lapStart >= R.yellowAt });
+      const effect = Ps.lapEffect(PSC, { lapMs, ref: ref.ms, lapNo: c.laps.length + 1, pit: !!c.outlap, resumed: !!c.resumed, red: !!c.redInterrupted, yellow: R.flag === 'yellow' && R.yellowAt !== null && lapStart >= R.yellowAt });
+      if (tyreCombination === 'tyres') effect.tyres = 1;
+      return effect;
     }
     // after a lap that counted: the penalty points of a car that drove it on worn out tyres, then the wear of the lap
     function twLap(c, i, t, gone, lapMs, paceValid) {
       if (gone && TWC.zero === 'points' && TWC.zeroPoints > 0) R.addPoints(i, TWC.zeroPoints, t, 'tyres');
       const st = twStint(c); st.laps++; st.m += TWC.laneLen[c.lane] || 0; if (gone) st.worn++;
       if (MAND && !(c.msUsed || (c.msUsed = [])).includes(st.tyre)) c.msUsed.push(st.tyre); // (the tyres that laps were driven on, for the mandatory stop rule)
-      const pace = paceValid ? Tw.paceMultiplier(TWC, c.twPace || [], lapMs) : { multiplier: 1, median: Tw.paceReference(TWC, c.twPace || []), ready: false };
+      const pace = paceValid && tyreCombination !== 'pushsave' ? Tw.paceMultiplier(TWC, c.twPace || [], lapMs) : { multiplier: 1, median: Tw.paceReference(TWC, c.twPace || []), ready: false };
       c.twPaceNow = { ...pace, valid: !!paceValid, lap: lapMs };
       let thermalWear=1;
       if(TWC.temperature){
@@ -1796,7 +1799,7 @@
     return H;
   }
 
-  const api = { fuelUse, goodLaps, averageLaps, memoStep, stampOf, penaltyConfig, penaltyMs, fuelConfig, yellowConfig, createRace, createHeatRace, scoringOf, finalsOf, finalSizes, buildSchedule, fmtTime, MIN_LAP };
+  const api = { penaltyEffects, fuelUse, goodLaps, averageLaps, memoStep, stampOf, penaltyConfig, penaltyMs, fuelConfig, yellowConfig, createRace, createHeatRace, scoringOf, finalsOf, finalSizes, buildSchedule, fmtTime, MIN_LAP };
   root.RaceEngine = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
