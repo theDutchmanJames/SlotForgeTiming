@@ -12,6 +12,10 @@ SlotForge Timing brings your track, drivers, cars and race rules together in a d
 
 **On this page:** [Features and Race Systems](#what-you-can-do-with-slotforge) · [Timing hardware](#timing-hardware) · [Install and run](#install-and-run) · [First race](#first-race) · [Development](#development-and-testing)
 
+[![SlotForge Timing Home tab: four-lane race setup, record to beat and previous race](docs/screenshots/home.png)](docs/screenshots/home.png)
+
+*Home with sample club-race data. Select any screenshot to open its full-size image.*
+
 ## What you can do with SlotForge
 
 Use SlotForge for a few laps on your home track or a complete club race meeting. Start with basic timing, then choose the extra rules, displays and announcements that suit your event.
@@ -52,6 +56,12 @@ Make reusable setups under **Race Setup**, then select the systems you want in a
 
 Tyres, fuel, damage, weather and related effects are race simulations. Their interaction is handled by SlotForge's rules; direct hardware actions depend on the interface and relays connected to your track.
 
+| Fuel Systems | Tyre Wear Systems | Weather Systems |
+| :---: | :---: | :---: |
+| [![Fuel System editor with tank capacity, consumption, refuelling and live estimates](docs/screenshots/fuel.png)](docs/screenshots/fuel.png) | [![Tyre Wear editor showing compounds, lifespan and wear per lap](docs/screenshots/tyre-wear.png)](docs/screenshots/tyre-wear.png) | [![Weather System editor showing the rain timeline and conditions](docs/screenshots/weather.png)](docs/screenshots/weather.png) |
+
+*Reusable Race System setups, each with its own colour and section rail. Open a preview to inspect the settings.*
+
 ### Completely freely customisable Race Screens
 
 Build your own Race Screens in **Customization → Layout Editor**. Place, move, resize and layer widgets freely instead of being limited to a fixed dashboard. Create separate layouts for the **main screen** and **second display**, from a clean two-lane timing page to a large TV display with race statistics and graphics.
@@ -69,6 +79,18 @@ Create reusable widgets in **Customization → Widget Builder**, starting with a
 
 Drag and resize individual elements in the live preview. Arrange them freely or use rows, columns, grids and groups. Browse grouped variables, format values and add rules that change an element when its data changes. Save the result, then place it in a Race Screen using the same appearance controls as the built-in widgets.
 
+### Custom Audio Sets
+
+Create different Audio Sets for different race nights or tracks. Configure spoken commentary, custom messages, recorded clips, sound effects and ambient sounds in **Customization → Audio Settings**.
+
+Calls are grouped by race activity and Race System. Insert supported values such as driver names, lap times, positions, gaps and system status into messages. Choose playback modes, conditions, repeat limits, voice/mix options and which calls are enabled. Link the Audio Set to a Race Setup so the right announcements load with the event.
+
+| Widget Builder | Custom Audio Sets |
+| :---: | :---: |
+| [![Widget Builder with a live driver-card preview and draggable values](docs/screenshots/widget-builder.png)](docs/screenshots/widget-builder.png) | [![Audio Settings with grouped calls, editable messages and playback settings](docs/screenshots/audio-calls.png)](docs/screenshots/audio-calls.png) |
+
+*Create your own widget contents and race commentary. Both previews link to full-size screenshots.*
+
 ### Leaderboard Editor
 
 Design the rows of your leaderboard: choose which values to show, their order, widths, labels, colours and presentation. Reuse a saved design in **Leaderboard widgets**, the **Live Race leaderboard** and the **Race Results list**. Configure overall, class-specific or grouped class views where supported.
@@ -78,12 +100,6 @@ Design the rows of your leaderboard: choose which values to show, their order, w
 Create a saved chart design in **Customization → Chart Editor**, then place a Race Chart widget in a layout or use it as a supported Widget Builder component. Choose drivers, values, lap history, references, legends and display options.
 
 Chart styles include **Lap Trend, Driver Comparison, Delta Trend, Lap Time Spread (box plot), Lap Time Distribution (histogram), Position History, Lap Heatmap and Live Track**. Live Track shows estimated progress from lap timing; it is not a physical position sensor. It uses the shared, throttled display-update path rather than adding an unrestricted animation loop per chart.
-
-### Custom Audio Sets
-
-Create different Audio Sets for different race nights or tracks. Configure spoken commentary, custom messages, recorded clips, sound effects and ambient sounds in **Customization → Audio Settings**.
-
-Calls are grouped by race activity and Race System. Insert supported values such as driver names, lap times, positions, gaps and system status into messages. Choose playback modes, conditions, repeat limits, voice/mix options and which calls are enabled. Link the Audio Set to a Race Setup so the right announcements load with the event.
 
 ### Custom Image Sets
 
@@ -112,6 +128,10 @@ For moving a complete installation's data, create a **Complete backup**. It incl
 The in-app **Help** has grouped, expandable sections covering race preparation, Race Systems, hardware, editors, results and day-to-day workflows. Setup pages also provide **IN PLAIN WORDS** summaries, explanations, tooltips and previews.
 
 **App Settings → Calculations** explains the documented formulas and worked examples behind pace benchmarks, fuel, tyres, race effects, resource allocation, pit service, penalties, timing estimates and scoring. Explore available choices such as median or average pace and save supported calculation settings. The page distinguishes examples from settings that actually change race behaviour; it is not an unrestricted code editor.
+
+[![SlotForge Help page with numbered first-race guidance and expandable topic folders](docs/screenshots/help.png)](docs/screenshots/help.png)
+
+*Getting-started guidance and expandable Help topics are available inside the app.*
 
 ### Second screens, local-network viewing and race control
 
