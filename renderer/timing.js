@@ -4,6 +4,7 @@
   const Cw = typeof module !== 'undefined' ? require('./chartwidgets.js') : root.ChartWidgets;
   const Aio = typeof module !== 'undefined' ? require('./allinone.js') : root.AllInOne;
   const Stw = typeof module !== 'undefined' ? require('./strategywidgets.js') : root.StrategyWidgets;
+  const Pcw = typeof module !== 'undefined' ? require('./pitwidgets.js') : root.PitWidgets;
   const E = typeof module !== 'undefined' ? require('./engine.js') : root.RaceEngine;
   const Bp = typeof module !== 'undefined' ? require('./bop.js') : root.Bop; // Balance of Power (bop.js)
   const Sp = typeof module !== 'undefined' ? require('./speed.js') : root.Speed;
@@ -372,6 +373,7 @@
     }
     if (c && c.virtual) { const v = overallContent(w, type, opt, c, S, t); if (v) return v; } // (a leaderboard that counts over all heats, 1.67.0)
     if (Aio.TYPES.has(type)) return allInOneContent(w, S, c, opt, t);
+    if (Pcw.TYPES.has(type)) return Pcw.content(type,S,opt);
     if (Stw.TYPES.has(type)) return { html: Stw.html(Stw.read(type, c, S, opt), opt) };
     if (type === 'racechart') return Cw.content(w, S);
     switch (type) {

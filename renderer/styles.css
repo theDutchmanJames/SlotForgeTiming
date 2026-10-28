@@ -331,7 +331,7 @@ button.rspill:hover,button.rspill:focus-visible{border-color:var(--accent)}
 .ed-side .framebox{max-width:200px}
 
 /* ---- batch E: fuel ---- */
-.fbar{position:relative;display:block;width:100%;height:calc(var(--th,60) * 1cqmin);min-height:.9em;background:var(--line);border-radius:clamp(3px,12cqmin,16px);overflow:hidden} /* 1.39.3: sized by the box of the widget (the .lw-val below is a size container): the thickness is a share of its smaller side, the corners grow with it */
+.fbar{position:relative;display:block;width:100%;height:calc(var(--th,60) * 1cqmin);min-height:.9em;background:color-mix(in srgb,currentColor 12%,transparent);border-radius:clamp(3px,12cqmin,16px);overflow:hidden} /* Size and empty track follow the widget; fuel fill has its own quantity colours. */
 .ffill{position:absolute;left:0;top:0;bottom:0;transition:width .3s}
 .ftxt{position:relative;display:flex;height:100%;align-items:center;justify-content:center;font-size:min(.7em,calc(var(--th,60) * .55cqmin),27cqw);font-weight:700;mix-blend-mode:normal;text-shadow:0 0 3px var(--bg)} /* (never taller than the bar, never wider than the widget) */
 .fbar.fv{width:calc(var(--th,60) * 1cqmin);height:100%;min-height:0;min-width:.9em}

@@ -244,13 +244,15 @@
     fitTitle(el,w);
     const kind=w.layoutKind||root.Widgets?.layoutOfWidget(w)||'text';
     const simple=!v.children.length,list=kind==='list'&&v.querySelector(':scope > .ll'),stock=kind==='stock'&&v.querySelector(':scope > .twav'),strategy=kind==='strategy'&&v.querySelector(':scope > .strategy-widget'),composition=kind==='composition'&&v.querySelector(':scope > .wc-root');
-    const gauge=kind==='gauge',aio=kind==='aio',richText=kind==='text'||kind==='flow';
+    const pitcontrol=kind==='pitcontrol',gauge=kind==='gauge',aio=kind==='aio',richText=kind==='text'||kind==='flow'||pitcontrol;
     const handled=simple||richText||list||stock||strategy||composition||gauge||aio;
     if(!handled)return false;
     // Explicit spacing wins. Otherwise use a modest screen-pixel safety margin.
     const pad=el.classList.contains('rcell')?2:el.classList.contains('ws-spacing')?parseFloat(el.style.getPropertyValue('--ws-padding'))||0:Math.min(10,el.clientWidth*.06,el.clientHeight*.06);
     el.classList.add('wf-fitted');
     Object.assign(v.style,{left:pad+'px',right:pad+'px',bottom:pad+'px',top:pad+'px',padding:'0px',width:'auto',height:'auto'});
+    // List-style overviews reserve the actual title height, including manual sizing.
+    if(pitcontrol){const title=el.querySelector(':scope > .lw-title');if(title)v.style.top=Math.max(pad,title.offsetTop+title.offsetHeight+6)+'px';}
     let ok=true;
     if(composition){root.WidgetCompose?.fit(el,w);ok=!el.classList.contains('wc-crowded');}
     else if(simple||richText||list||stock||strategy){
@@ -258,6 +260,7 @@
       v.style.whiteSpace=(simple||richText)&&t.longText==='wrap'&&!numeric?'normal':'nowrap';
       v.style.overflowWrap='normal';
       let initial=t.mode==='manual'?t.valueSize*scale:Math.min(512,Math.max(v.clientWidth,v.clientHeight));
+      if(pitcontrol&&t.mode!=='manual')initial=Math.min(initial,24);
       // Fit the whole grid uniformly, including lap numbers and column gaps.
       if(list){list.style.maxWidth='none';list.style.flexShrink='0';list.style.setProperty('--lap-number-ch',String(Math.max(1,...[...list.querySelectorAll('.lln')].map(n=>n.textContent.trim().length))));}
       if(stock){
@@ -268,9 +271,9 @@
         stock.querySelectorAll('.twav-team,.twav-next').forEach(n=>n.style.fontSize='11px');
         if(t.mode==='auto')initial=Math.min(initial,28,Math.max(t.minSize,v.clientWidth/(icons.length+2)));
       }
-      const min=list?t.minSize/.8:strategy?Math.max(t.minSize,11/.48):t.minSize;
+      const min=list?t.minSize/.8:strategy?Math.max(t.minSize,11/.48):pitcontrol?Math.max(t.minSize,14):t.minSize;
       const computed=root.getComputedStyle(v),tabular=/^(?:"?SF (?:Inter|Roboto Mono|Barlow Condensed)|"?Segoe UI)/.test(computed.fontFamily);
-      const key=JSON.stringify([v.clientWidth,v.clientHeight,initial,min,t.mode,t.shrink,t.longText,tabular?v.textContent.replace(/\d/g,'0'):v.textContent,w.opt,w.fonts,el.style.getPropertyValue('--wf-support-font'),computed.fontFamily,computed.fontWeight,computed.fontStyle,computed.letterSpacing,fontEpoch]);
+      const key=JSON.stringify([v.clientWidth,v.clientHeight,initial,min,t.mode,t.shrink,t.longText,tabular?v.textContent.replace(/\d/g,'0'):v.textContent,w.opt,w.fonts,el.style.getPropertyValue('--wf-support-font'),computed.fontFamily,computed.fontWeight,computed.fontStyle,computed.letterSpacing,fontEpoch,pitcontrol?[...v.querySelectorAll('.pcw-row')].filter(n=>!n.hidden).length:null]);
       const cached=fitCache.get(v);
       if(simple&&t.longText==='ellipsis'&&!numeric){
         // Shortening a description is an explicit user choice, not a fitting failure.
@@ -278,7 +281,15 @@
         Object.assign(v.style,{display:'block',alignContent:'center',textOverflow:'ellipsis',whiteSpace:'nowrap'});
         ok=v.clientHeight>=min*1.35;
       }else if(cached?.key===key){v.style.fontSize=cached.size;ok=cached.ok;}
-      else {ok=fitText(v,{min,max:initial,shrink:t.mode==='auto'||t.shrink});fitCache.set(v,{key,size:v.style.fontSize,ok});}
+      else {
+        if(pitcontrol){
+          // Include row padding/backgrounds; glyphs fitting alone can still clip the last card.
+          const fits=()=>textFits(v)&&v.querySelector('.pcw').getBoundingClientRect().bottom<=v.getBoundingClientRect().bottom+.75;
+          if(t.mode==='auto'||t.shrink)ok=fitSize(min,initial,size=>{v.style.fontSize=size+'px';},fits).fits;
+          else {v.style.fontSize=initial+'px';ok=fits();}
+        }else ok=fitText(v,{min,max:initial,shrink:t.mode==='auto'||t.shrink});
+        fitCache.set(v,{key,size:v.style.fontSize,ok});
+      }
     }else{
       if(aio)root.AllInOne?.fit(v);
       if(gauge&&t.mode==='auto'){

@@ -7,7 +7,7 @@
 // Every message has a number (seq); a receiver that misses one asks for the whole state again instead of guessing.
 const LiveShare = (() => {
   const Tk = typeof module !== 'undefined' ? require('./tokens.js') : Tokens; // the token clocks of a Time Token Session
-  const CAR = ['resourceStarted','resourceBlocked', 'laps', 'bad', 'last', 'total', 'best', 'done', 'place', 'retired', 'fuel', 'outOfFuel', 'blockAt', 'pit', 'pits', 'lastPit', 'outlap', 'points', 'undoPoints', 'dq', 'pending', 'served', 'extraMs', 'specialLaps', 'penaltyPitTiers', 'adjMs', 'adjLaps', 'adjPoints', 'invalid', 'removed', 'bop', 'bopHold', 'bopTo', 'tyre', 'tyreOwn', 'wx', 'wxDue', 'twLife', 'twTemp', 'twTempAt', 'twTempWear', 'tw', 'twStops', 'twDoneAt', 'twSets', 'twNext', 'msUsed', 'msDone', 'scf', 'rndPitExit', 'ps', 'psNow', 'sector', 'secOrder', 'secAt'];
+  const CAR = ['resourceStarted','resourceBlocked','resourceBlocks', 'laps', 'bad', 'last', 'total', 'best', 'done', 'place', 'retired', 'fuel', 'outOfFuel', 'blockAt', 'pit', 'pits', 'lastPit', 'outlap', 'points', 'undoPoints', 'dq', 'pending', 'served', 'extraMs', 'specialLaps', 'penaltyPitTiers', 'adjMs', 'adjLaps', 'adjPoints', 'invalid', 'removed', 'bop', 'bopHold', 'bopTo', 'tyre', 'tyreOwn', 'wx', 'wxDue', 'twLife', 'twTemp', 'twTempAt', 'twTempWear', 'tw', 'twStops', 'twDoneAt', 'twSets', 'twNext', 'msUsed', 'msDone', 'scf', 'rndPitExit', 'ps', 'psNow', 'sector', 'secOrder', 'secAt'];
   const ENG = ['temperatureRecovered', 'status', 't0', 'pausedAt', 'endAt', 'timeUp', 'finished', 'endedBy', 'flag', 'calls', 'bopActive', 'bopSpread', 'wxState', 'wxStage', 'twTeams', 'rndSoon', 'yellowAt'];
   const fin = v => (Number.isFinite(v) ? v : null); // Infinity does not survive being sent as text
 

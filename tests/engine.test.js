@@ -243,7 +243,7 @@ R = fr();
 ok('the tank starts full and every lap uses fuel', R.cars[0].fuel === 3 && (R.cross(0, 1000), R.cars[0].fuel === 2) && R.fuelOf(0, 1000) === 2);
 R.cross(0, 2000); R.cross(0, 3000);
 ok('a car with an empty tank cannot complete another lap: it retires', R.cross(0, 4000) === false && R.cars[0].retired && R.cars[0].done && R.cars[0].laps.length === 3 && R.cars[0].outOfFuel);
-ok('...and the events say so', R.events.map(e => e.type).join() === 'outoffuel,retired');
+ok('...and the events record the fuel warning, empty tank and retirement', R.events.map(e => e.type).join() === 'fuelwarning,outoffuel,retired');
 R.cross(1, 1500);
 const st = R.standings();
 ok('retired cars rank behind the others, with gap "Out"', st[0].index === 1 && st[1].index === 0 && st[1].gap === 'Out');

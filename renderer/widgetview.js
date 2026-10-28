@@ -88,6 +88,7 @@
     list: (n) => get("Frame").fit(n.el, { ...n.w, layoutKind: "list" }),
     stock: (n) => get("Frame").fit(n.el, { ...n.w, layoutKind: "stock" }),
     strategy: (n) => get("Frame").fit(n.el, { ...n.w, layoutKind: "strategy" }),
+    pitcontrol: (n) => get("PitWidgets").fit(n),
     gauge: (n) => get("Frame").fit(n.el, { ...n.w, layoutKind: "gauge" }),
     aio: (n) => get("Frame").fit(n.el, { ...n.w, layoutKind: "aio" }),
     composition: (n) =>

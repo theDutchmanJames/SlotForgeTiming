@@ -5,7 +5,7 @@ const W = Wd.U, H = 562;
 const box = (x, y, w, h) => ({ x, y, w, h });
 
 // registry
-ok('92 widgets in the register (1.63.0: Total Time; 1.62.0: Next Heat; 1.54.0: Pace meter; 1.43.0: Car Failure; 1.41.0: Available Tyres; 1.40.0: Tyre Degradation; 1.35.1: Swap Signal; 1.35.0: Distance Driven, Distance To Go, Laps To Go; 1.29.0: Lap to Lap Delta; 1.10.0: Damage, Repair Timer; 1.3.0: Balance of Power; 1.5.0: Tyres, Weather Forecast, Track Conditions; 1.7.0: Heat List; 1.8.0: Team Name, Team Picture; 1.9.0: Current Driver, Next Driver, Swap Timer)', Wd.REGISTRY.length === 92 && new Set(Wd.REGISTRY.map(d => d.type)).size === 92);
+ok('94 widgets in the register (1.63.0: Total Time; 1.62.0: Next Heat; 1.54.0: Pace meter; 1.43.0: Car Failure; 1.41.0: Available Tyres; 1.40.0: Tyre Degradation; 1.35.1: Swap Signal; 1.35.0: Distance Driven, Distance To Go, Laps To Go; 1.29.0: Lap to Lap Delta; 1.10.0: Damage, Repair Timer; 1.3.0: Balance of Power; 1.5.0: Tyres, Weather Forecast, Track Conditions; 1.7.0: Heat List; 1.8.0: Team Name, Team Picture; 1.9.0: Current Driver, Next Driver, Swap Timer)', Wd.REGISTRY.length === 94 && new Set(Wd.REGISTRY.map(d => d.type)).size === 94);
 ok('every widget has sample content', Wd.REGISTRY.every(d => ['gap','logo','lanecolor','carpicture','teampicture','imagelane','imagerace'].includes(d.type) ? true : String(Wd.sampleOf(d, 0)).length > 0));
 ok('lane widgets are marked per lane', Wd.def('bestlap').perLane && !Wd.def('clock').perLane && !Wd.def('start').perLane);
 ok('lap time widget has hold time and highlight colours', Wd.def('laptime').options.map(o => o.key).join() === 'holdSeconds,pbColor,recordColor');
@@ -241,7 +241,7 @@ ok('widget names and folders as chosen (11 folders, the Slotcar folder holds the
   'Position and Progress': ['Position in Race', 'Gap to Leader', 'Lap Number', 'Laps To Go', 'Distance Driven', 'Distance To Go', 'Championship Points', 'Gap to Next Driver'],
   'Multi-Class': ['Class', 'Class position', 'Gap to class leader', 'Class points', 'Class best lap'],
   'Lap Times and Records': ['Current Lap Time', 'Total Time', 'Lap Times List', 'Best Lap (this session)', 'Average Lap', 'Median Lap', 'Pitstop Time', 'Personal Best Lap', 'Session Record Lap', 'Track Record', 'Lap Validity'],
-  'Pit Stops': ['Service Stop', 'Penalty to Serve'],
+  'Pit Stops': ['Service Stop', 'Penalty to Serve', 'Needs Attention', 'Recent Events'],
   'Delta Timers': ['Lap Time Delta', 'Lap to Lap Delta', 'Average Lap Delta', 'Median Lap Delta', 'Best Lap Delta', 'Personal Best Delta', 'Pitstop Time Delta', 'Session Record Delta', 'Track Record Delta'],
   Tyres: ['Current Tyres', 'Tyre Wear', 'Available Tyres'],
   'Push & Save': ['Push & Save'],
@@ -253,11 +253,11 @@ ok('1.42.1: the 19 widgets with a new name show the title they showed before (so
   const want = { nickname: 'Nickname', name: 'Name', callsign: 'Callsign', avatar: 'Avatar', swaptimer: 'Swap timer', swapsignal: 'Swap signal', carname: 'Slotcar', lap: 'Lap', laptime: 'Lap time', lastlap: 'Last lap', recordlap: 'Record lap time', dlaptime: 'Laptime delta', racelaps: 'Race laps', tyre: 'Tyres', start: 'Start', pause: 'Pause / Resume', stop: 'Stop', yellow: 'Yellow flag', red: 'Red flag' };
   return Object.keys(want).every(t => Wd.titleOf({ type: t, title: '' }) === want[t]) && Object.keys(want).length === 19;
 })());
-ok('1.42.1: every folder of the Add widget list is in the fixed order of the palette (none lands at the end), and there are 92 widgets', (() => {
+ok('1.42.1: every folder of the Add widget list is in the fixed order of the palette (none lands at the end), and there are 94 widgets', (() => {
   const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'renderer', 'editor.js'), 'utf8');
   const order = (src.match(/const GROUP_ORDER = \[([^\]]*)\]/) || [, ''])[1].split(',').map(x => x.trim().replace(/^'|'$/g, '')).filter(Boolean);
   const groups = [...new Set(Wd.REGISTRY.map(d => d.group))];
-  return Wd.REGISTRY.length === 92 && groups.every(g => order.includes(g)) && order.join() === 'All-in-One,Race,Driver,Slotcar,Team and Swaps,Position and Progress,Multi-Class,Lap Times and Records,Pit Stops,Delta Timers,Tyres,Push & Save,Weather,Charts,Custom,Controls'
+  return Wd.REGISTRY.length === 94 && groups.every(g => order.includes(g)) && order.join() === 'All-in-One,Race,Driver,Slotcar,Team and Swaps,Position and Progress,Multi-Class,Lap Times and Records,Pit Stops,Delta Timers,Tyres,Push & Save,Weather,Charts,Custom,Controls'
     && groups.join() === order.filter(g => groups.includes(g)).join();
 })());
 // groups
@@ -385,13 +385,28 @@ ok('...while a normal colour is still used', Wd.fuelHtml(5, 100, { critColor: '#
   ok('1.39.3: the Fuel bar stands up with Vertical: it is filled in height from the bottom (class fv), the number stays in it', /class="fbar fv"/.test(up) && /class="ffill" style="height:25%/.test(up) && /class="ftxt">30 L/.test(up));
   ok('...and by default, or with a direction that does not exist, it is the horizontal bar of before, filled in width', /class="fbar"/.test(flat) && /class="ffill" style="width:25%/.test(flat) && /class="fbar"/.test(Wd.fuelHtml(30, 120, { dir: 'sideways' })) && !/fv/.test(Wd.fuelHtml(30, 120, { dir: null })));
   ok('...the thickness is a share of the widget from 10 to 100, 60 when it is not set or not a number', th({}) === '60' && th({ thick: 35 }) === '35' && th({ thick: '35' }) === '35' && th({ thick: -5 }) === '10' && th({ thick: 900 }) === '100' && th({ thick: 'abc' }) === '60');
-  ok('...the colours still work in a vertical bar (low and critical)', /background:#d62828/.test(Wd.fuelHtml(5, 100, { dir: 'vertical' })) && /background:#ffd400/.test(Wd.fuelHtml(20, 100, { dir: 'vertical' })));
+  ok('...vertical bars use yellow at the warning threshold and red at critical', /background:#d62828/.test(Wd.fuelHtml(5, 100, { dir: 'vertical' })) && /background:#ffd400/.test(Wd.fuelHtml(25, 100, { dir: 'vertical' })));
   ok('...a number or a picture has no bar, so no direction and no thickness', !/fbar/.test(Wd.fuelHtml(30, 120, { mode: 'number', dir: 'vertical' })) && !/fbar/.test(Wd.fuelHtml(30, 120, { mode: 'images', dir: 'vertical' })));
   const opts = Wd.def('fuel').options, keys = o => opts.filter(x => !x.show || x.show(o)).map(x => x.key);
   ok('...the side panel offers the direction and the thickness for Bar and for Bar and number (and when nothing is chosen yet), not for Number or Pictures', ['bar', 'both'].every(m => keys({ mode: m }).includes('dir') && keys({ mode: m }).includes('thick')) && keys(undefined).includes('dir') && ['number', 'images'].every(m => !keys({ mode: m }).includes('dir') && !keys({ mode: m }).includes('thick')) && opts.find(o => o.key === 'mode').rerender === true);
   ok('...the sample in the Layout Editor follows the direction', /class="fbar fv"/.test(Wd.sampleOf(Wd.def('fuel'), 0, { opt: { dir: 'vertical' } })));
   const css = require('fs').readFileSync(require('path').join(__dirname, '..', 'renderer', 'styles.css'), 'utf8');
   ok('...the style sheet: the bar is sized by the box of the widget (a size container, a share of its smaller side), the corners and the text grow with it, a vertical bar fills from the bottom', /\.lw-val:has\(\.fbar\)\{[^}]*container-type:size/.test(css) && /\.fbar\{[^}]*height:calc\(var\(--th,60\) \* 1cqmin\)[^}]*border-radius:clamp\(/.test(css) && /\.fbar\.fv\{width:calc\(var\(--th,60\) \* 1cqmin\);height:100%/.test(css) && /\.fbar\.fv \.ffill\{[^}]*bottom:0/.test(css) && /\.ftxt\{[^}]*font-size:min\(/.test(css));
+}
+
+{ // Fuel colour represents the remaining quantity in every theme.
+  const colour = (pct, opt = {}) => Wd.fuelHtml(pct, 100, opt).match(/background:([^;\"]+)/)?.[1];
+  ok('full tanks use fixed green, without depending on a theme token', colour(100) === '#2fb86a' && !Wd.fuelHtml(100, 100).includes('var(--accent)'));
+  ok('warning and critical thresholds are exact colour anchors', colour(25) === '#ffd400' && colour(10) === '#d62828' && colour(0) === '#d62828');
+  const rgb = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)), mid = rgb(colour(60)), low = rgb(colour(18));
+  ok('between full and warning, colour gradually blends green into yellow', mid[0] > 47 && mid[0] < 255 && mid[1] > 184 && mid[1] < 212 && mid[2] > 0 && mid[2] < 106);
+  ok('between warning and critical, colour gradually blends yellow into red', low[0] > 214 && low[0] < 255 && low[1] > 40 && low[1] < 212 && low[2] > 0 && low[2] < 40);
+  ok('refill reverses the same scale, independently of bar direction or number overlay', [5, 18, 25, 60, 100].every(pct => ['bar', 'both'].every(mode => colour(pct, { mode, dir: 'vertical' }) === colour(pct))));
+  ok('saved warning colours and thresholds remain effective', colour(40, { lowAt: 40, lowColor: '#aabbcc' }) === '#aabbcc' && colour(15, { critAt: 15, critColor: '#123456' }) === '#123456');
+  ok('short hex colours interpolate and imported named colours remain supported', /^#[\da-f]{6}$/.test(colour(60, { lowColor: '#ff0' })) && colour(60, { lowColor: 'yellow' }).startsWith('color-mix(in srgb,'));
+  ok('bad, inverted and identical thresholds never produce invalid blend arithmetic', [{ lowAt: 'bad', critAt: NaN }, { lowAt: 5, critAt: 40 }, { lowAt: 10, critAt: 10 }, { lowAt: 100, critAt: 100 }].every(opt => [0, 10, 40, 60, 100].every(pct => /^#[\da-f]{6}$/i.test(colour(pct, opt)))));
+  ok('out-of-range tank values retain bounded bar fills and endpoint colours', colour(150) === '#2fb86a' && colour(-10) === '#d62828' && /width:100%/.test(Wd.fuelHtml(150, 100)) && /width:0%/.test(Wd.fuelHtml(-10, 100)));
+  ok('number mode retains existing warning styling and invalid tank data stays unavailable', !Wd.fuelHtml(100, 100, { mode: 'number' }).includes('style=') && /color:#ffd400/.test(Wd.fuelHtml(20, 100, { mode: 'number' })) && Wd.fuelHtml(null, 100) === '–' && Wd.fuelHtml(10, 0) === '–');
 }
 
 console.log(fails ? fails + ' WIDGET TESTS FAILED' : 'ALL WIDGET TESTS PASSED'); process.exit(fails ? 1 : 0);

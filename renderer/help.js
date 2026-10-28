@@ -269,7 +269,7 @@ const Help = (() => {
           <li>Choose what an empty tank does: warn, stop counting until refuelled or retire. It can also award penalty points.</li>
           <li>A <b>pit stop</b> starts after the Pit Stop sensor block time in Race Settings. The tank fills while the car is there. Fuel is optional: pit stops work without it.</li>
           <li>Fuel use itself is steady. Push &amp; Save is the optional system that makes faster laps use more and slower laps use less.</li>
-          <li>The <b>Fuel</b> and <b>Pitstop time</b> widgets show the state; the Leaderboard has a Fuel left column.</li>
+          <li>The <b>Fuel</b> and <b>Pitstop time</b> widgets show the state; the Leaderboard has a Fuel left column. Fuel bars start green when full and gradually turn yellow, then red as fuel runs low, independently of the app theme. The widget's warning and critical thresholds and colours set the transition points (25% yellow and 10% red by default). Number and picture modes keep their own presentation.</li>
         </ul>` },
       { id: 'bop', title: 'Balance of Power', note: 'Even out fast and slow cars', body: `
         <ul>
@@ -393,6 +393,12 @@ const Help = (() => {
           <li><b>Position and Progress → Gap to Next Driver</b> compares the driver immediately ahead using the race's scoring rules.</li>
           <li><b>Lap Times and Records → Lap Validity</b> checks the current or last lap. Current laps are provisional; red-flag laps are invalid for records.</li>
           <li><b>Race → Safety Car Target</b> shows the minimum lap time and last full yellow lap's difference. <b>Team and Swaps → Stint Time</b> shows time at the wheel in driver-rotation races.</li>
+        </ul>` },
+      { id: 'pitwidgets', title: 'Pit Stops overview widgets', note: 'Needs Attention and Recent Events', body: `
+        <ul>
+          <li><b>Layout Editor → Pit Stops → Needs Attention</b> shows damage, failures, pit penalties, low fuel, worn or hot tyres, weather tyre changes, mandatory stops, driver swaps, blocked resources, release conditions and track calls. Resolved issues disappear. Finished and virtual drivers have no service alerts. Fuel warns at 25%, critical at 10%; tyre warnings follow the system.</li>
+          <li><b>Recent Events</b> keeps history even with audio off: flags, penalties, fuel, damage, tyres, pit stops, swaps, weather, resource shortages and system switches. Times and driver names stay fixed across pauses and swaps. Older events without elapsed time show a dash. Active alerts use engine rules; ordinary pace and classification changes do not flood history.</li>
+          <li>Each widget has independent lane/category filters, row limits, details and lane labels, plus shared appearance settings and second-display support. Small frames show fewer rows and a more indicator. Up to 50 records per category/lane are retained in the display index; a widget shows up to 20. The full race log is unchanged.</li>
         </ul>` },
       { id: 'charteditor', title: 'Chart Editor and chart widgets', note: 'Compare completed laps as the race unfolds', body: `
         <ul>

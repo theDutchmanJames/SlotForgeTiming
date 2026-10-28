@@ -63,7 +63,10 @@
       const ok=spend(s,c,heat,cost,job.startsWith('tyre:')?'Fit '+job.slice(5)+' tyres':job==='failure'?'Repair failure':'Repair damage',t);
       c.resourceBlocks=c.resourceBlocks||{};
       if(!ok){
-        if(c.resourceBlocks[job]!==c.blockAt)R.events.push({type:'resourceblocked',car:R.cars.indexOf(c),t,job,owner:account(s,c,heat).name,missing:Object.keys(cost).filter(k=>available(s,c,heat,k)<cost[k])});
+        if(c.resourceBlocks[job]!==c.blockAt){
+          const data={job,owner:account(s,c,heat).name,missing:Object.keys(cost).filter(k=>available(s,c,heat,k)<cost[k])};
+          R.logEvent('resourceblocked',R.cars.indexOf(c),t,data);
+        }
         c.resourceBlocks[job]=c.blockAt;c.resourceBlocked=job;
       }else {if(job.startsWith('tyre:')&&p.tyresOn)c.resourceTyreAccount=key(s,c,heat);delete c.resourceBlocks[job];c.resourceBlocked=Object.keys(c.resourceBlocks)[0]||'';}
       return ok;

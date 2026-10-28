@@ -82,7 +82,7 @@ ok('the log says which flag it is, how long it lasts, when it is about to come, 
 const entries = n => Array.from({ length: n }, (_, i) => ({ lane: i, driverId: 'd' + i, carId: 'c' + i, driverName: 'D' + i, carName: 'car' + i }));
 const mk = (rec, o = {}) => E.createRace({ type: o.type || 'race', laps: o.laps === undefined ? 20 : o.laps, duration: o.duration || 30, endRule: 'all', entries: entries(2), safetycar: o.sc === null ? undefined : Sc.clean({ target: 15, ...rec }), rnd: o.rnd || (() => 0) });
 const started = (rec, o) => { const R = mk(rec, o); R.start(0); R.cars.forEach(c => { c.started = true; }); return R; };
-const of = (R, ty) => R.events.filter(e => e.type === ty);
+const of = (R, ty) => R.events.filter(e => e.type === ty).map(({raceMs,lane,driverName,...payload})=>payload); // Shared journal metadata has its own Pit Stops tests.
 // the leader drives laps of 7 seconds; the clock ticks every 100 ms. Returns the time at the end.
 const drive = (R, from, to, lapMs = 7000, car = 0) => { let t = from; while (t < to) { t += 100; R.tick(t); if (t % lapMs === 0) R.cross(car, t); } return t; };
 const two = { rndOn: 'on', rndMode: 'exact', rndMin: 2, rndLen: 20, rndGap: 5, rndFrom: 10, rndTo: 90 }; // two flags at laps 2 and 3 (with rolls of 0), 20 s each

@@ -19,6 +19,7 @@
   const Ds = typeof module !== 'undefined' ? require('./distance.js') : root.Distance; // Distance Racing: the distance widgets (the options, the words)
   const Aio = typeof module !== 'undefined' ? require('./allinone.js') : root.AllInOne;
   const Stw = typeof module !== 'undefined' ? require('./strategywidgets.js') : root.StrategyWidgets;
+  const Pcw = typeof module !== 'undefined' ? require('./pitwidgets.js') : root.PitWidgets;
   const T = (type, label, group, o) => ({ type, label, group, perLane: false, w: 150, h: 60, textSize: 30, options: [], button: false, ...o, ...(o.button ? {} : {sample:runtimeSample(type)}) });
   const TIME_OPTIONS = [
     { key: 'holdSeconds', label: 'Show finished lap for (seconds)', type: 'number', default: 3 },
@@ -444,8 +445,36 @@
   function fuelIsBar(o) { const m = fuelOpt(o, 'mode'); return m === 'bar' || m === 'both'; } // (the direction and the thickness only matter for a bar)
   // which of n pictures (0 = full ... n-1 = empty) belongs to a fraction of the tank
   const fuelStep = (frac, n) => Math.max(0, Math.min(n - 1, n - Math.ceil(Math.max(0, Math.min(1, frac)) * n - 1e-9)));
+  // Fuel is a quantity, not a theme accent: blend full -> warning -> critical.
+  // Keep saved warning colours/thresholds; number and picture modes retain theirs.
+  function fuelBarColour(pct, opt) {
+    const threshold = (key, fallback) => {
+      const n = Number(fuelOpt(opt, key));
+      return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : fallback;
+    };
+    const critical = threshold('critAt', 10), warning = Math.max(critical, threshold('lowAt', 25));
+    const green = '#2fb86a', yellow = cssVal(fuelOpt(opt, 'lowColor')) || '#ffd400', red = cssVal(fuelOpt(opt, 'critColor')) || '#d62828';
+    const blend = (from, to, amount) => {
+      if (amount <= 0) return from;
+      if (amount >= 1) return to;
+      const rgb = colour => {
+        const hex = /^#([\da-f]{3}|[\da-f]{6})$/i.exec(colour);
+        if (!hex) return null;
+        const full = hex[1].length === 3 ? hex[1].split('').map(c => c + c).join('') : hex[1];
+        return [0, 2, 4].map(i => parseInt(full.slice(i, i + 2), 16));
+      };
+      const a = rgb(from), b = rgb(to);
+      if (a && b) return '#' + a.map((v, i) => Math.round(v + (b[i] - v) * amount).toString(16).padStart(2, '0')).join('');
+      // Imported layouts may contain named/rgb colours rather than colour-picker hex.
+      return `color-mix(in srgb, ${from} ${(1 - amount) * 100}%, ${to})`;
+    };
+    if (pct >= 100) return green;
+    if (pct <= critical) return red;
+    if (pct >= warning) return blend(yellow, green, (pct - warning) / (100 - warning));
+    return blend(red, yellow, (pct - critical) / (warning - critical));
+  }
   function fuelHtml(litres, tank, opt) {
-    if (litres === null || litres === undefined || !(tank > 0)) return '–';
+    if (!Number.isFinite(litres) || !Number.isFinite(tank) || !(tank > 0)) return '–';
     const frac = Math.max(0, Math.min(1, litres / tank)), pct = frac * 100;
     const col = cssVal(pct < fuelOpt(opt, 'critAt') ? fuelOpt(opt, 'critColor') : pct < fuelOpt(opt, 'lowAt') ? fuelOpt(opt, 'lowColor') : '');
     const txt = `${(Math.floor(litres * 10 + 1e-9) / 10).toFixed(1).replace(/\.0$/, '')} L`, mode = fuelOpt(opt, 'mode');
@@ -458,7 +487,7 @@
     if (mode === 'number' || mode === 'images') return num;
     // 1.39.3: the bar can stand up (it empties downwards) and its thickness is a share of the widget (the style sheet sizes it with the widget: `.fbar` in styles.css)
     const vert = fuelOpt(opt, 'dir') === 'vertical', th = clampInt(fuelOpt(opt, 'thick'), 10, 100, 60), size = Math.round(pct * 10) / 10;
-    return `<span class="fbar${vert ? ' fv' : ''}" style="--th:${th}"><span class="ffill" style="${vert ? 'height' : 'width'}:${size}%;background:${col || 'var(--accent)'}"></span>${mode === 'both' ? `<span class="ftxt">${txt}</span>` : ''}</span>`;
+    return `<span class="fbar${vert ? ' fv' : ''}" style="--th:${th}"><span class="ffill" style="${vert ? 'height' : 'width'}:${size}%;background:${fuelBarColour(pct, opt)}"></span>${mode === 'both' ? `<span class="ftxt">${txt}</span>` : ''}</span>`;
   }
 
   // Speed: average speed over a lap from the track length. Real = the car's actual speed; scaled = as if the car were full size (1:1).
@@ -586,6 +615,7 @@
   });
   REGISTRY.splice(REGISTRY.map(x=>x.group).lastIndexOf('Position and Progress')+1,0,...[['classname','Class'],['classposition','Class position'],['classgap','Gap to class leader'],['classpoints','Class points'],['classbest','Class best lap']].map(([type,label])=>T(type,label,'Multi-Class',{perLane:true,w:180,h:85,textSize:32})));
   REGISTRY.unshift(...Aio.DEFINITIONS.map(([type,label,w,h]) => T(type,label,'All-in-One',{perLane:type!=='aiorace',layoutOnly:true,w,h,noTitle:true,textSize:30,options:Aio.options(type)})));
+  REGISTRY.splice(REGISTRY.map(x=>x.group).lastIndexOf('Pit Stops')+1,0,...[['needsattention','Needs Attention'],['recentevents','Recent Events']].map(([type,label])=>T(type,label,'Pit Stops',{w:460,h:360,textSize:22,options:Pcw.options(type),layoutOnly:true})));
   const def = type => REGISTRY.find(d => d.type === type);
   // All content previews use the same formatter as the live race. Controls keep
   // their static labels; they have no simulated hardware action.
@@ -738,7 +768,7 @@
     rows:['leaderboard'], weather:['tyre','wxforecast','wxconditions'],
     delta:['dlaptime','dlaplap','davglap','dmedlap','dbestlap','drecordlap','dpitstop','dsessionrecord','dtrackrecord'],
     media:['lights','flag','logo','avatar','driverflag','lanecolor','carpicture','teampicture','imagelane','imagerace'],
-    chart:['racechart'], flow:['heatlist','nextheat','sessionrecord','trackrecord','classname']
+    chart:['racechart'], flow:['heatlist','nextheat','sessionrecord','trackrecord','classname'], pitcontrol:['needsattention','recentevents']
   };
   for (const d of REGISTRY) {
     d.layout = Object.entries(LAYOUT_GROUPS).find(([,types])=>types.includes(d.type))?.[0]
@@ -789,7 +819,7 @@
   // The Leaderboard has no text alignment (its columns come from the layout you make); a Leaderboard still has a title. A header cell of a row design follows its column.
   const ALIGNS = [['left', 'Left'], ['center', 'Center'], ['right', 'Right']];
   const alignOf = (v, standard) => (ALIGNS.some(a => a[0] === v) ? v : standard);
-  const titleAlignOf = w => alignOf(w && w.titleAlign, 'left'), valueAlignOf = w => (w && w.type === 'leaderboard' ? 'center' : alignOf(w && w.valueAlign, 'center'));
+  const titleAlignOf = w => alignOf(w && w.titleAlign, 'left'), valueAlignOf = w => (w && w.type === 'leaderboard' ? 'center' : alignOf(w && w.valueAlign, Pcw.TYPES.has(w?.type)?'left':'center'));
   const alignClassOf = w => (titleAlignOf(w) === 'left' ? '' : titleAlignOf(w) === 'center' ? ' ta-c' : ' ta-r') + (valueAlignOf(w) === 'center' ? '' : valueAlignOf(w) === 'left' ? ' va-l' : ' va-r');
   const titleOf = w => ((w.title && w.title.trim()) || def(w.type).title || def(w.type).label);
   const showTitleOf = w => w.showTitle !== false && !def(w.type).button;

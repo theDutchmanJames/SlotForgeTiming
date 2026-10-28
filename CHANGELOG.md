@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Added independent Needs Attention and Recent Events widgets under Pit Stops, with lane/category filters, shared styling, readable compact layouts and second-display support. Flag changes and fuel warning transitions are logged independently of audio, with pause-safe race timestamps.
+- Fuel Bar widgets now blend from green when full through yellow to red as fuel runs low, independently of the app theme. Saved warning and critical colours and thresholds remain supported.
+- Audited the new overviews: added weather tyre deadlines, mandatory stops, overheating, endurance swaps, resource shortages and Service Stop release states; completed the event mappings and second-screen data. Fixed repeated resource warnings after pauses, missed fuel recovery on sensor exit, warning state on lane restart, duplicate tyre-fit history, oversized-title overlap and clipped row backgrounds. Shared history sorting now runs only when the journal changes.
+
 ## 1.99.1 — 2026-10-28
 
 Initial source snapshot for this repository's fresh Git history.
