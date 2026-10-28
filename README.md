@@ -8,6 +8,8 @@ SlotForge Timing brings your track, drivers, cars and race rules together in a d
 
 **Current version: 1.99.1.** This repository contains the application source, build scripts, firmware sources and automated tests. See the [changelog](CHANGELOG.md) for this release.
 
+**Ready to try it?** Download the Windows 64-bit [Portable executable](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.1/SlotForge%20Timing-1.99.1-Portable.exe), double-click it and explore the app. If you like it and want SlotForge for regular, long-term use, download the [Setup installer](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.1/SlotForge%20Timing-1.99.1-Setup.exe). Both are available in the [1.99.1 release downloads](https://github.com/theDutchmanJames/SlotForgeTiming/releases/tag/v1.99.1); neither needs Node.js.
+
 **On this page:** [Features and Race Systems](#what-you-can-do-with-slotforge) · [Timing hardware](#timing-hardware) · [Install and run](#install-and-run) · [First race](#first-race) · [Development](#development-and-testing)
 
 ## What you can do with SlotForge
@@ -150,7 +152,12 @@ Parallel Port and Phidget support have been tested in software with simulated in
 
 ### Ready-made Windows programs
 
-Check the [Releases page](https://github.com/theDutchmanJames/SlotForgeTiming/releases) for ready-made **Portable.exe** and **Setup.exe** files. If a release only offers source code, use the source-build guide below.
+Version **1.99.1** includes both ready-made Windows 64-bit executables in its [release downloads](https://github.com/theDutchmanJames/SlotForgeTiming/releases/tag/v1.99.1):
+
+- **[Download Portable.exe](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.1/SlotForge%20Timing-1.99.1-Portable.exe)** — ready to use. Double-click it to test the app without installing it.
+- **[Download Setup.exe](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.1/SlotForge%20Timing-1.99.1-Setup.exe)** — use the installer if you liked the app and want to keep using it long term.
+
+Choose one of those executable files under **Assets**. The separate source ZIP and GitHub's automatic **Source code** downloads are for building the app yourself.
 
 **To try SlotForge:**
 
