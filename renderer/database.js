@@ -387,13 +387,13 @@ const twRows = (tyres, unit, sel) => Wx.withTyres(twDraftTyres(tyres)).TYRES.map
   return `<div class="twrow twprimary${ty.code === sel ? ' sel' : ''}" data-twrow="${ty.code}"><span class="twname"><b class="twchip" style="border-color:${c};color:${c}">${esc(twIconLetter(ty))}</b> ${esc(ty.name)}</span>
     <label class="twf"><small>Lasts about at benchmark pace</small><span class="twlifeinput"><input type="number" step="0.1" min="0" data-twlife="${ty.code}" value="${esc(life > 0 ? Math.round(life * 10) / 10 : '')}" aria-label="${esc(ty.name)}: lasts about at benchmark pace"><em>${twLifeLabel(unit)}</em></span></label>
     <span class="twlasts" data-twwear="${ty.code}">${esc(twWearLabel(unit) + ': ' + (Number(t.wear) > 0 ? Number(t.wear).toLocaleString() + '%' : 'no wear'))}</span>
-    <button type="button" class="btn small" data-twsel="${ty.code}" aria-label="Tune the profile of the ${esc(ty.name)} tyre"${ty.code === sel ? ' disabled' : ''}>Tune profile</button></div>${ty.custom ? twCustomFields({...ty,name:t.name??ty.name}) : ''}`; }).join('');
+    <button type="button" class="btn small" data-twsel="${ty.code}" aria-label="Open Tyre Performance for ${esc(ty.name)}">Tyre Performance</button></div>${ty.custom ? twCustomFields({...ty,name:t.name??ty.name}) : ''}`; }).join('');
 const twCurve = (tyres, sel) => { const ty = Wx.withTyres(twDraftTyres(tyres)).tyreOf(sel) || Wx.TYRES[0], t = TyreWear.cleanTyres(twDraftTyres(tyres))[ty.code];
   return `<div class="twcurve"><div class="twsvg">${TyreWear.curveSvg(t)}</div><div class="twtext"><p><strong>${esc(ty.name)}.</strong> New tyres give the fresh bonus (${TyreWear.effectText(t.bonus)}). The bonus fades while the tyre wears.</p>
-    <p><strong>At ${t.cliff}% life left</strong> the bonus is gone. Below that the tyre starts to hinder the car.</p><p><strong>At 0%</strong> the hindrance is at its worst (${TyreWear.effectText(-t.hind)}).</p>
-    <p class="muted">A plus helps (less fuel used, faster refuelling), a minus hinders. Lap times are never changed.</p></div></div>`; };
+    <p>${t.cliff > 0 ? `<strong>At ${t.cliff}% life left</strong> the bonus reaches zero. Below that, hindrance gradually increases.` : '<strong>With the threshold at 0%</strong> the bonus fades until the tyre is empty, then the full hindrance applies.'}</p><p><strong>At 0%</strong> the hindrance is at its worst (${TyreWear.effectText(-t.hind)}).</p>
+    <p class="muted">Above zero on the graph means a bonus; below zero means hindrance. Only the fuel effects you enable are applied.</p></div></div>`; };
 const twProfile = (tyres, unit, sel) => { const ty = Wx.withTyres(twDraftTyres(tyres)).tyreOf(sel) || Wx.TYRES[0], t = tyres[ty.code] || {};
-  return `<details class="twadvanced"><summary>Tune the selected tyre’s performance profile <span class="muted">(optional)</span></summary><p class="muted">This does not change how long the tyre lasts. It changes the small fuel and refuelling advantage or hindrance as the tyre wears.</p><div class="twrow twprofile"><span class="twname"><b class="twchip" style="border-color:${ty.color};color:${ty.color}">${esc(twIconLetter(ty))}</b> ${esc(ty.name)}</span>`
+  return `<details class="twadvanced"><summary>Tyre Performance — ${esc(ty.name)} <span class="muted">(optional)</span></summary><p>Choose how this tyre helps or hinders the car as its remaining life falls from 100% to 0%. The graph updates as you change the three values below.</p><p class="muted">A bonus can reduce fuel use, speed up refuelling or increase tank capacity; hindrance does the reverse. This needs an active Fuel System and the effects enabled under <strong>What worn tyres do</strong>, where you choose which fuel settings are affected.</p><p class="muted">To change tyre lifespan, use <strong>Lasts about</strong> in the tyre table. Tyre Performance does not change measured lap times or physical track power.</p><div class="twrow twprofile"><span class="twname"><b class="twchip" style="border-color:${ty.color};color:${ty.color}">${esc(twIconLetter(ty))}</b> ${esc(ty.name)}</span>`
     + TyreWear.NUMS.filter(([k]) => k !== 'wear').map(([k, label]) => `<label class="twf"><small>${esc(label)}</small><input type="number" step="any" min="${TyreWear.LIMITS[k][0]}" max="${TyreWear.LIMITS[k][1]}" data-tw="${ty.code}" data-twk="${k}" value="${esc(t[k] ?? '')}" aria-label="${esc(ty.name)}: ${esc(label)}"></label>`).join('')
     + `</div><div id="tw-curve">${twCurve(tyres, sel)}</div></details>`; };
 const twTable = (tyres, unit, sel) => `<div class="twbtns row"><span class="twbl"><b>Start from a ready-made system</b><span class="muted">You can change every number.</span></span><span class="twseg" role="group" aria-label="Ready-made systems">${TyreWear.PRESET_KEYS.map(k => { const on = TyreWear.presetOf(tyres) === k; return `<button type="button" class="btn${on ? ' on' : ''}" aria-pressed="${on}" data-twpreset="${k}" title="${esc(TyreWear.PRESETS[k].note)}">${esc(TyreWear.PRESETS[k].name)}</button>`; }).join('')}</span></div>
@@ -902,7 +902,17 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
       else if (d.twremove.startsWith('C_')) { delete twt[d.twremove];delete tws[d.twremove];if(twsel===d.twremove)twsel='S'; }
       byId('tw-box').innerHTML=twTable(twt,getValue('unit')||'lap',twsel);if(byId('tw-sets'))byId('tw-sets').outerHTML=twSets(tws,twt);tt=TyreWear.Temperature.clean(tt,Wx.withTyres(twt).TYRES.map(x=>x.code));if(byId('tt-box'))byId('tt-box').innerHTML=TemperatureEditor.html(tt,twt,ttSelected);sayDraw();return;
     }
-    if (d.twsel) { twsel = d.twsel; byId('tw-box').innerHTML=twTable(twt,getValue('unit')||'lap',twsel);const profile=dlg.querySelector('.twadvanced');if(profile)profile.open=true;return; }
+    if (d.twsel) {
+      twsel = d.twsel;
+      byId('tw-box').innerHTML = twTable(twt, getValue('unit') || 'lap', twsel);
+      const profile = dlg.querySelector('.twadvanced');
+      if (profile) {
+        profile.open = true;
+        profile.querySelector('summary')?.focus({ preventScroll: true });
+        profile.scrollIntoView({ block: 'start' });
+      }
+      return;
+    }
     if (d.cfadd) { cfails.push({ name: '', level: dlevels.length ? String(dlevels[0].name || '') : '', chance: 5, seconds: 10 }); byId('cf-box').innerHTML = cfRows(cfails, dlevels); return; }
     if (d.cfdel !== undefined) { cfails.splice(Number(d.cfdel), 1); byId('cf-box').innerHTML = cfRows(cfails, dlevels); return; }
     if (d.cfstd) { Failures.DEFAULT_FAILURES.forEach(x => { if (!cfails.some(y => String(y.name || '').trim().toLowerCase() === x.name.toLowerCase())) cfails.push({ ...x }); }); byId('cf-box').innerHTML = cfRows(cfails, dlevels); return; }

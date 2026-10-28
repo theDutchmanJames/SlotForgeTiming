@@ -638,6 +638,7 @@ dialog:has(.rsform){width:min(1240px,96vw);padding:0;overflow:hidden;max-height:
 .twf,.twx{display:flex;flex-direction:column;gap:2px;min-width:0}
 .twx{flex-direction:row;align-items:center;gap:6px;flex-wrap:wrap}
 .twf>small,.twx>small{display:none;flex:1 0 100%;font-size:11px;color:var(--muted)}
+.twprofile .twf>small{display:block;flex:none;line-height:1.35}
 .twsets{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin:6px 0}
 .twsetx{flex-direction:column;align-items:stretch;gap:4px}.twsetx>small{display:flex;flex:none;align-items:center;gap:6px;color:var(--text);font-size:12px}.twsetx>small .twchip{width:22px;height:22px;font-size:10px}.twsetx>input{width:100%}
 .twbtns{flex-wrap:wrap;align-items:center;gap:8px}

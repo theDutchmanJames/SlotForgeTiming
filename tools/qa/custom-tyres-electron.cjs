@@ -9,6 +9,22 @@ app.on('browser-window-created',(_,win)=>{win.hide();win.webContents.on('did-fin
  const run=s=>win.webContents.executeJavaScript('(async()=>{'+s+'})()');
  try{
   await wait(500);win.setMinimumSize(0,0);win.setContentSize(1200,950);win.showInactive();
+  fs.mkdirSync(out,{recursive:true});
+  await run(`openForm('tyrewearsystems',null);
+   const button=document.querySelector('[data-twsel="S"]');
+   if(button.disabled||button.textContent!=='Tyre Performance')throw Error('Selected tyre button must remain available');
+   button.click();if(!document.querySelector('.twadvanced').open)throw Error('Default tyre must open');
+   document.querySelector('.twadvanced').open=false;document.querySelector('[data-twsel="S"]').click();
+   if(!document.querySelector('.twadvanced').open)throw Error('Selected tyre must reopen');`);
+  for(const width of [1200,600]){
+   win.setContentSize(width,950);
+   await run(`document.querySelector('[data-twsel="S"]').click();`);await wait(250);
+   await run(`const panel=document.querySelector('.twadvanced'),head=panel.querySelector('summary').getBoundingClientRect(),graph=panel.querySelector('svg').getBoundingClientRect();
+    if(head.top<0||head.bottom>innerHeight||graph.top>=innerHeight||graph.left<0||graph.right>innerWidth)throw Error('Performance folder/graph not visible at '+innerWidth);
+    for(const el of panel.querySelectorAll('input')){const b=el.getBoundingClientRect();if(b.width<40||b.left<0||b.right>innerWidth)throw Error('Performance field clipped');if(getComputedStyle(el.previousElementSibling).display==='none')throw Error('Performance label hidden');}`);
+   fs.writeFileSync(path.join(out,'tyre-performance-'+width+'.png'),(await win.webContents.capturePage()).toPNG());
+  }
+  await run(`document.getElementById('cancel').click();`);win.setContentSize(1200,950);
   await run(`window.qaErrors=[];addEventListener('error',e=>qaErrors.push(e.message));window.ck=(v,m)=>{if(!v)throw Error(m)};window.input=(q,v)=>{const el=document.querySelector(q);ck(el,'Missing '+q);el.value=v;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));};
    openForm('tyrewearsystems',null);input('#f-name','Club compounds QA');document.querySelector('[data-twsel="SS"]').click();ck(document.querySelector('.twprofile [data-twk="bonus"]').dataset.tw==='SS'&&document.querySelector('#tw-curve').textContent.includes('Supersoft'),'Tune selects matching fields and curve');input('[data-twlife="S"]',10);ck(document.querySelector('.twprofile [data-twk="bonus"]').dataset.tw==='SS','Lifetime editing must not switch profile silently');document.querySelector('[data-twadd]').click();window.customCode=document.querySelector('[data-twmeta]').dataset.twmeta;
    input('[data-twmeta][data-twkey="name"]','Club slick');input('[data-twmeta][data-twkey="icon"]','S');input('[data-twlife="'+customCode+'"]',800);
