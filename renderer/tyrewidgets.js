@@ -1,6 +1,6 @@
 // The Tyre Degradation widget (1.40.0): how much life the tyres of a lane's car have left. Pure: what it shows is worked out from the race (tyrewear.js view rows) and the settings of the widget, and drawn as small pictures (SVG)
 // or as the bar of the Fuel widget. The register of the widgets (widgets.js) takes the options and the sample from here, the page that draws the widgets (timing.js) takes the content, and the Driver stats grid and the
-// Leaderboard take cellHtml. Looks: the tyre wears away (the tread gets shorter), your own tyre picture with a ring that empties, a bar (horizontal or vertical, the one of the Fuel widget), or a number.
+// Leaderboard take cellHtml. Looks: a flat compound icon with a life indicator, your own tyre picture with a ring that empties, a horizontal or vertical bar, or a number.
 // 1.41.0: the Available Tyres widget (setsRowHtml, SETS_OPTIONS): how many sets of every tyre are left in the box of the car (or the team), with a ring on the tyre that is on the car and NEXT on the tyre that goes on at the next stop.
 (function (root) {
   const Wx = typeof module !== 'undefined' ? require('./weather.js') : root.Wx;
@@ -12,12 +12,19 @@
   const clampInt = (v, lo, hi, d) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
   const MINUS = '−';
 
-  const LOOKS = [['wear', 'The tyre wears away (the tread gets shorter)'], ['ring', 'The tyre picture with a ring that empties'], ['bar', 'A bar'], ['number', 'A number only']];
+  const LOOKS = [['wear', 'Tyre with a life indicator'], ['ring', 'The tyre picture with a ring that empties'], ['bar', 'A bar'], ['number', 'A number only']];
   const isBar = o => (o && o.look) === 'bar';
+  // Resolve older saved options without rewriting them or changing their geometry.
+  const barStyleOf = (o={}) => ['legacy','original','digital','scale'].includes(o.barStyle)?o.barStyle:['showIcon','barWarning','imageSet'].some(k=>Object.hasOwn(o,k))?'original':'legacy';
+  const modernBar = o => isBar(o)&&barStyleOf(o)!=='legacy';
   const hasPicture = o => ['wear', 'ring'].includes((o && o.look) || 'wear');
   const OPTIONS = [
-    { key: 'imageSet', label: 'Picture set (made under Customization > Image Settings)', type: 'imageset', kind: 'tyres', noneLabel: 'None (the tyres are drawn)', default: '', show: o => o.look === 'ring' },
+    { key: 'imageSet', label: 'Picture set (made under Customization > Image Settings)', type: 'imageset', kind: 'tyres', noneLabel: 'None (the tyres are drawn)', default: '', show: o => o.look==='ring'||modernBar(o) },
     { key: 'look', label: 'Show the tyre life as', type: 'select', default: 'wear', rerender: true, choices: LOOKS },
+    { key: 'barStyle', label: 'Tyre Wear bar style', type: 'select', default: 'legacy', defaultOf: barStyleOf, rerender: true, choices: [['legacy','Classic (saved layouts)'],['original','Original'],['digital','Digital Segments'],['scale','Wear Scale']], show: isBar, hintOf: v=>v==='legacy'?'Preserves the older bar layout. Choose another style to use the compound icon and low-life warning controls.':'' },
+    { key: 'segments', label: 'Digital segments', type: 'number', default: 12, min: 8, max: 20, step: 1, show: o => isBar(o)&&o.barStyle==='digital' },
+    { key: 'showIcon', label: 'Show the compound icon', type: 'checkbox', default: true, show: modernBar },
+    { key: 'barWarning', label: 'Show low-life warning text', type: 'checkbox', default: true, show: modernBar },
     { key: 'pictureScale', label: 'Tyre picture size', type: 'range', default: 55, min: 20, max: 80, step: 1, unit: '%', show: hasPicture, hint: 'The picture may shrink below this share when the text needs room. The words keep their chosen widget size.' },
     { key: 'dir', label: 'Bar direction', type: 'select', default: 'horizontal', choices: [['horizontal', 'Horizontal (empties to the left)'], ['vertical', 'Vertical (empties downwards)']], show: isBar },
     { key: 'thick', label: 'Bar thickness (% of the widget)', type: 'number', default: 60, min: 10, max: 100, step: 5, show: isBar },
@@ -39,14 +46,12 @@
   const letterOf = code => (code === 'INT' ? 'I' : code);
 
   // ---- the pictures ----
-  // the tyre that wears away: black rubber with a tread of blocks that gets shorter as the life goes down (the whole tread is gone at 0%), the ring in the colour of the compound and the letter
+  // Flat compound artwork with a separate outer life indicator; the compound markings stay intact.
   function wearSvg(code, life, cls) {
-    const t = Wx.tyreOf(code) || Wx.tyreOf(Wx.DEFAULT_TYRE), L = Math.max(0, Math.min(1, (Number(life) || 0) / 100)), letter = letterOf(t.code);
-    const tread = L > 0.01 ? `<circle cx="50" cy="50" r="${(47 - 6 * L).toFixed(2)}" fill="none" stroke="#5b616c" stroke-width="${(12 * L).toFixed(2)}" pathLength="16" stroke-dasharray="0.45 0.55"/>` : '';
-    return `<svg class="${cls || 'twpic'}" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${esc(t.name)} tyres, ${Math.round(L * 100)}% life"><circle cx="50" cy="50" r="47" fill="#1b1d22" stroke="#000" stroke-width="2"/>${tread}`
-      + `<circle cx="50" cy="50" r="31" fill="#2a2d34"/><circle cx="50" cy="50" r="31" fill="none" stroke="${t.color}" stroke-width="8"/>`
-      + `<text x="50" y="51" text-anchor="middle" dominant-baseline="central" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="${letter.length > 1 ? 24 : 30}" fill="${t.color}">${esc(letter)}</text></svg>`;
+    const L=Math.max(0,Math.min(100,Number(life)||0));
+    return Ww.tyreSvg(code,cls||'twpic').replace(' tyres"',` tyres, ${Math.round(L)}% life"`).replace('</svg>',`<circle class="tyre-life-ring" cx="50" cy="50" r="47" fill="none" stroke="#5b616c" stroke-width="3" pathLength="100" stroke-dasharray="${L.toFixed(2)} 100" transform="rotate(-90 50 50)"/></svg>`);
   }
+
   // a life ring round something: the ring empties clockwise from the top as the life goes down (r=46 and pathLength=100, so the dash is the life in %)
   function ringSvg(life, color) {
     const L = Math.max(0, Math.min(100, Number(life) || 0));
@@ -85,6 +90,8 @@
       const sub = [temperatureHtml(r,opt), optOf(opt, 'showName') === true ? esc(r.tyre) : '', optOf(opt, 'showGrip') !== false && r.effect !== null && r.effect !== undefined ? `grip ${esc(r.effectText)}` : ''].filter(Boolean).join(' · ');
       return { html: `<span class="twn" style="color:${colour}">${parts.length ? `<span class="twvalue">${esc(parts.join(' · '))}</span>` : ''}${sub ? `<small>${sub}</small>` : ''}</span>`, ...out };
     }
+    // Classic is an explicit compatibility style; older options resolve to it without mutation.
+    if (lk === 'bar' && barStyleOf(opt)!=='legacy') return {html:styledBar(r,opt),...out};
     if (lk === 'bar') {
       const vert = optOf(opt, 'dir') === 'vertical', th = clampInt(optOf(opt, 'thick'), 10, 100, 60), size = Math.round(Math.max(0, Math.min(100, r.life)) * 10) / 10;
       const box = r.level === 'out' && optOf(opt, 'showBox') !== false, pct = optOf(opt, 'showPct') !== false ? `${r.shown}%` : '', left = optOf(opt, 'showLeft') !== false && !box ? r.leftText : '';
@@ -98,11 +105,24 @@
         optOf(opt, 'showGrip') !== false && r.effect !== null && r.effect !== undefined ? `grip ${esc(r.effectText)}` : '',
         temperatureHtml(r,opt)
       ].filter(Boolean).join('<br>');
-      const content=vert ? bar : `<span class="twbarw"><span class="twchip2" style="border-color:${r.color};color:${r.color}">${esc(letterOf(r.icon || r.code))}</span>${bar}</span>`;
+      const content=vert ? bar : `<span class="twbarw"><span class="twchip2 tyre-flat">${Ww.tyreSvg(r.icon||r.code,'')}</span>${bar}</span>`;
       return {html:extra?`<span class="tt-widgetbar">${content}<small class="twbar-details">${extra}</small></span>`:content,...out};
     }
     const pic = lk === 'ring' ? `<span class="twringw">${ringSvg(r.life, colour)}<span class="twinner">${inner(r.icon || r.code, opt)}</span></span>` : wearSvg(r.icon || r.code, r.life, 'twpic');
     return { html: `<span class="twbox2" style="--tw-media:${pictureScale(opt)}%">${pic}${lines(r, opt, true)}</span>`, ...out };
+  }
+
+  function styledBar(r,opt) {
+    const W=typeof module!=='undefined'?require('./widgets'):root.Widgets;
+    const colour=colorOf(opt,r.level==='out'?'crit':r.level),vert=optOf(opt,'dir')==='vertical';
+    const fitting=r.fitting?Tw.stateOf(r).text:'',box=r.level==='out'&&optOf(opt,'showBox')!==false;
+    const message=fitting||(box?'BOX NOW':optOf(opt,'barWarning')!==false&&['warn','crit'].includes(r.level)?(r.level==='crit'?'Change tyres':'Tyres wearing low'):'');
+    const left=optOf(opt,'showLeft')!==false&&!box&&!fitting?r.leftText+(r.leftText==='no wear'?'':' left'):'';
+    const primary=optOf(opt,'showPct')!==false?`${r.shown}%`:left;
+    const detail=[optOf(opt,'showPct')!==false?left:'',optOf(opt,'showGrip')!==false&&r.effect!=null?'grip '+r.effectText:'',temperatureText(r,opt)].filter(Boolean).map(esc).join('<br>');
+    const icon=optOf(opt,'showIcon')!==false?Ww.icon('tyre',r.icon||r.code,opt.tyreImages,0,false):'';
+    const name=optOf(opt,'showName')===true?`<span class="tg-name">${esc(r.tyre)}</span>`:'';
+    return W.quantityBarHtml({style:['digital','scale'].includes(opt.barStyle)?opt.barStyle:'original',vert,th:clampInt(optOf(opt,'thick'),10,100,60),size:Math.round(Math.max(0,Math.min(100,Number(r.life)||0))*10)/10,colour,warning:25,message:esc(message),main:esc(primary),detail,segments:optOf(opt,'segments'),label:`${r.tyre}, ${r.shown}% tyre life`,tyre:true,reserve:false,scaleLabels:['0%','50%','100%'],header:icon||name?`<span class="tg-head">${icon}${name}</span>`:''});
   }
 
   // the content for the car of a lane: c is the car of the race, S the race the widgets are drawn from (S.eng), t the clock
@@ -176,7 +196,7 @@
   function cellHtml(r) {
     if (!r) return '–';
     const col = colorOf(null, r.level === 'out' ? 'crit' : r.level);
-    return `<span class="twcell tw-${esc(r.level)}"><span class="twchip2" style="border-color:${r.color};color:${r.color}">${esc(letterOf(r.icon || r.code))}</span><b style="color:${col}">${r.shown}%</b><span class="twmini"><i style="width:${Math.max(0, Math.min(100, r.life)).toFixed(1)}%;background:${col}"></i></span></span>`;
+    return `<span class="twcell tw-${esc(r.level)}"><span class="twchip2 tyre-flat">${Ww.tyreSvg(r.icon||r.code,'')}</span><b style="color:${col}">${r.shown}%</b><span class="twmini"><i style="width:${Math.max(0, Math.min(100, r.life)).toFixed(1)}%;background:${col}"></i></span></span>`;
   }
   // the text of the cell for a place that wants plain text (a PDF, a text widget): "S 62%", "–" when the race has no tyre wear
   const cellText = r => (r ? `${letterOf(r.icon || r.code)} ${r.shown}%` : '–');

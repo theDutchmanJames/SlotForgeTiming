@@ -373,12 +373,33 @@ button.rspill:hover,button.rspill:focus-visible{border-color:var(--accent)}
 .fg-detail{display:block;font-size:.48em;white-space:nowrap;min-width:0;opacity:.85}
 .fg-vertical .fg-values{display:flex;flex-direction:column;align-items:stretch;text-align:center;gap:2px}
 .fuel-gauge [hidden]{display:none!important}
-.fg-compact:not(.fg-vertical){display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr);gap:2px 6px}
+.fg-compact:not(.fg-vertical){display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(6px,1fr);gap:2px 8px}
+.fg-compact:not(.fg-vertical):has(.fg-values){grid-template-columns:minmax(0,1fr) minmax(0,35%)}
 .fg-compact:not(.fg-vertical) .fg-warning{grid-column:1;grid-row:1;text-align:left;align-self:center}
-.fg-compact:not(.fg-vertical) .fg-meter-space{grid-column:1/-1;grid-row:2;height:100%;min-height:3px}
-.fg-compact:not(.fg-vertical) .fg-values{grid-column:2;grid-row:1;align-self:center}
+.fg-compact:not(.fg-vertical) .fg-meter-space{grid-column:1;grid-row:1/-1;height:100%;min-height:6px}
+.fg-compact:not(.fg-vertical):has(.fg-warning) .fg-meter-space{grid-row:2}
+.fg-compact:not(.fg-vertical) .fg-meter{height:max(6px,calc(var(--th,60) * 1cqmin))}
+.fg-compact:not(.fg-vertical) .fg-values{grid-column:2;grid-row:1/-1;align-self:center;text-align:right;display:block}
 .fg-compact.fg-scale .fg-meter-space{padding:0}
 .fg-compact .fg-scale-labels{display:none}
+.tyre-gauge .tg-head{display:flex;align-items:center;justify-content:center;gap:8px;min-width:0;flex:none}
+.tyre-gauge .tg-head :is(svg,img){width:clamp(24px,25cqmin,54px);height:clamp(24px,25cqmin,54px);object-fit:contain;flex:none}
+.tyre-gauge .tg-name{font-size:.6em;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.tyre-gauge .fg-detail{white-space:normal;text-align:right;line-height:1.5}
+.tyre-gauge .fg-values{grid-template-columns:minmax(0,1fr) minmax(0,1.4fr)}
+.fuel-gauge .fg-values.fg-single{grid-template-columns:minmax(0,1fr)}
+.tyre-gauge.fg-vertical .tg-head{flex-direction:column;gap:2px}
+.tyre-gauge.fg-vertical .fg-detail{text-align:center}
+.tyre-gauge .fg-warning{white-space:normal}
+.tyre-gauge.fg-compact:not(.fg-vertical):has(.tg-head svg,.tg-head img){grid-template-columns:auto minmax(0,1fr)}
+.tyre-gauge.fg-compact:not(.fg-vertical):has(.tg-head svg,.tg-head img):has(.fg-values){grid-template-columns:auto minmax(0,1fr) minmax(0,30%)}
+.tyre-gauge.fg-compact:not(.fg-vertical) .tg-head{grid-column:1;grid-row:1/-1}
+.tyre-gauge.fg-compact .tg-name{display:none}
+.tyre-gauge.fg-compact .tg-head:not(:has(svg,img)){display:none}
+.tyre-gauge.fg-compact .tg-head :is(svg,img){width:24px;height:24px}
+.tyre-gauge.fg-compact:not(.fg-vertical):has(.tg-head svg,.tg-head img) .fg-warning,.tyre-gauge.fg-compact:not(.fg-vertical):has(.tg-head svg,.tg-head img) .fg-meter-space{grid-column:2}
+.tyre-gauge.fg-compact:not(.fg-vertical):has(.tg-head svg,.tg-head img) .fg-values{grid-column:3}
+.twchip2.tyre-flat{border:0;width:1.8em;height:1.8em}.twchip2.tyre-flat svg{width:100%;height:100%}
 .optlist{display:flex;flex-direction:column;gap:4px}
 .optlist .inline{gap:6px}
 

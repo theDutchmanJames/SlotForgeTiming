@@ -9,7 +9,7 @@ for(const dir of ['vertical','horizontal']){
  const out=html({look:'bar',dir,showName:true,showGrip:true,showTemperature:true});
  for(const text of ['Medium','grip','Simulated:','laps'])check(out.includes(text),'Bar '+dir+' displays selected '+text);
  const hidden=html({look:'bar',dir,showName:false,showGrip:false,showTemperature:false,showLeft:false});
- for(const text of ['Medium','grip','Simulated:','laps'])check(!hidden.includes(text),'Bar '+dir+' hides '+text);
+ for(const text of ['Medium','grip','Simulated:','laps'])check(!hidden.replace(/<[^>]*>/g,'').includes(text),'Bar '+dir+' hides '+text);
 }
 for(const option of Pw.OPTIONS.filter(o=>['showPct','showWear','showRef','pushColor','normalColor','saveColor'].includes(o.key))){
  check(!option.show({look:'wear'})&&option.show({look:'gauge'}),'Only applicable pace controls: '+option.key);

@@ -503,15 +503,21 @@
     const colour = fuelBarColour(pct, opt);
     // Preserve the original markup and dimensions for existing layouts.
     if (style === 'original' && !warnings && format !== 'both') return `<span class="fbar${vert ? ' fv' : ''}" style="--th:${th}"><span class="ffill" style="${vert ? 'height' : 'width'}:${size}%;background:${colour}"></span>${mode === 'both' ? `<span class="ftxt">${main}</span>` : ''}</span>`;
+    return quantityBarHtml({style,vert,th,size,colour,warning,message,main:mode==='both'?main:'',detail:mode==='both'?detail:'',segments:fuelOpt(opt,'segments'),glow:fuelOpt(opt,'glow'),label:`Fuel ${percent}${message?', '+message:''}`});
+  }
+  // Shared quantity geometry; callers supply their own units, colours and race state.
+  function quantityBarHtml({style='original',vert=false,th=60,size=0,colour,warning=25,message='',main='',detail='',segments=12,glow=false,label='',header='',tyre=false,scaleLabels=['E','½','F'],reserve=true}) {
+    // A selected supporting fact becomes the primary fact when it is the only content.
+    if (!main && detail) { main=detail; detail=''; }
     let meter;
     if (style === 'digital') {
-      const count = clampInt(fuelOpt(opt, 'segments'), 8, 20, 12);
-      meter = `<span class="fg-meter fg-digital${fuelOpt(opt, 'glow') === true ? ' fg-glow' : ''}">${Array.from({length:count}, (_, i) => {
-        const lit = Math.round(Math.max(0, Math.min(100, pct * count - i * 100)) * 1000) / 1000;
+      const count = clampInt(segments, 8, 20, 12);
+      meter = `<span class="fg-meter fg-digital${glow === true ? ' fg-glow' : ''}">${Array.from({length:count}, (_, i) => {
+        const lit = Math.round(Math.max(0, Math.min(100, size * count - i * 100)) * 1000) / 1000;
         return `<i class="fg-segment${lit > 0 ? ' fg-lit' : ''}">${lit > 0 ? `<b style="--lit:${lit}%"></b>` : ''}</i>`;
       }).join('')}</span>`;
-    } else meter = `<span class="fg-meter fg-solid"><i class="fg-fill"></i>${style === 'scale' ? '<span class="fg-ticks"><i></i><i></i><i></i></span><i class="fg-reserve"></i>' : ''}</span>`;
-    return `<span class="fuel-gauge fg-${style}${vert ? ' fg-vertical' : ''}" style="--th:${th};--fuel:${colour};--amount:${size}%;--reserve:${warning}%" role="img" aria-label="Fuel ${percent}${message ? ', ' + message : ''}">${message ? `<span class="fg-warning">${message}</span>` : ''}<span class="fg-meter-space">${meter}${style === 'scale' ? '<span class="fg-scale-labels"><span>E</span><span>½</span><span>F</span></span>' : ''}</span>${mode === 'both' ? `<span class="fg-values"><strong class="fg-value">${main}</strong>${detail ? `<span class="fg-detail">${detail}</span>` : ''}</span>` : ''}</span>`;
+    } else meter = `<span class="fg-meter fg-solid"><i class="fg-fill"></i>${style === 'scale' ? '<span class="fg-ticks"><i></i><i></i><i></i></span>'+(reserve?'<i class="fg-reserve"></i>':'') : ''}</span>`;
+    return `<span class="${tyre?'tyre-gauge ':''}fuel-gauge fg-${style}${vert ? ' fg-vertical' : ''}" style="--th:${th};--fuel:${colour};--amount:${size}%;--reserve:${warning}%" role="img" aria-label="${esc(label)}">${header}${message ? `<span class="fg-warning">${message}</span>` : ''}<span class="fg-meter-space">${meter}${style === 'scale' ? `<span class="fg-scale-labels">${scaleLabels.map(x=>`<span>${esc(x)}</span>`).join('')}</span>` : ''}</span>${main ? `<span class="fg-values${detail?'':' fg-single'}"><strong class="fg-value">${main}</strong>${detail ? `<span class="fg-detail">${detail}</span>` : ''}</span>` : ''}</span>`;
   }
 
   // Speed: average speed over a lap from the track length. Real = the car's actual speed; scaled = as if the car were full size (1:1).
@@ -807,7 +813,7 @@
 
   const newWidget = (type, lane, x, y) => {
     const d = def(type);
-    return { id: uid(), type, lane: d.perLane ? lane || 0 : null, x, y, w: d.w, h: d.h, textSize: '', textColor: '', bgColor: '', title: '', showTitle: !d.noTitle, titleSize: '', titleBold: false, valueBold: true, valueItalic: false, opt: {} };
+    return { id: uid(), type, lane: d.perLane ? lane || 0 : null, x, y, w: d.w, h: d.h, textSize: '', textColor: '', bgColor: '', title: '', showTitle: !d.noTitle, titleSize: '', titleBold: false, valueBold: true, valueItalic: false, opt: type==='tyrelife'?{barStyle:'original'}:{} };
   };
 
   // ---- groups, titles, colours, guidelines, duplicating ----
@@ -904,7 +910,7 @@
   }
 
   const picSites = { av: SITE_AV, img: SITE_IMG, flag: SITE_FLAG, fuel: SITE_FUEL, lights: SITE_LIGHTS }; // (where the text of the pictures is kept: for the tests)
-  const api = { layoutOfWidget, clockHtml, fitClock, lightPictures, lightSetPictures, prepareLights, picSites, heatListHtml, HEATLIST_OPTIONS, nextHeatHtml, NEXTHEAT_OPTIONS, totalTimeHtml, TOTALTIME_OPTIONS, ttScope, ttPenalties, tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, flagImgHtml, avatarHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, MAG, LANES, bbox, colorsOf, laneBackgroundOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stackWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, ALIGNS, titleAlignOf, valueAlignOf, alignClassOf, lapCountOf, lapTotalOn, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, CLOCK_STYLES, clockStyleOf, clockClassOf, GAP_OPTIONS, resolveOpt, heightOf, withoutControls, moveWidget, resizeWidget, snapLines, tidy, alignRects, distributeRects, mirrorRects, mirrorSettings, MIRROR_KEYS, scaleGroup, newWidget, defaultLayout };
+  const api = { layoutOfWidget, clockHtml, fitClock, lightPictures, lightSetPictures, prepareLights, picSites, heatListHtml, HEATLIST_OPTIONS, nextHeatHtml, NEXTHEAT_OPTIONS, totalTimeHtml, TOTALTIME_OPTIONS, ttScope, ttPenalties, tokenLayout, cssVal, lightsHtml, flagHtml, ledHtml, flagStyleOf, FLAG_STYLES, FLAG_COLORS, lightColor, lightCount, LIGHT_ROWS, LIGHT_COLS, lightKey, lightKeys, lightPic, lightBehind, IMG_OPS, ruleHolds, pickImage, imageHtml, flagImgHtml, avatarHtml, fillText, TEXT_LANE_VARS, TEXT_RACE_VARS, TEXT_LANE_DEFAULT, TEXT_RACE_DEFAULT, U, GRID, MIN, MAG, LANES, bbox, colorsOf, laneBackgroundOf, titleOf, showTitleOf, guidesFor, duplicateWidgets, stackWidgets, stepFrom, REGISTRY, def, valueStyleOf, titleStyleOf, ALIGNS, titleAlignOf, valueAlignOf, alignClassOf, lapCountOf, lapTotalOn, sampleOf, fuelHtml, frameOf, frameTransform, panFrame, zoomFrame, lapListHtml, leaderHtml, clampInt, FLAG_STATES, CLOCK_STYLES, clockStyleOf, clockClassOf, GAP_OPTIONS, resolveOpt, quantityBarHtml, heightOf, withoutControls, moveWidget, resizeWidget, snapLines, tidy, alignRects, distributeRects, mirrorRects, mirrorSettings, MIRROR_KEYS, scaleGroup, newWidget, defaultLayout };
   root.Widgets = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

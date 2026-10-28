@@ -13,6 +13,10 @@
 .lw[data-wf-value-font]>.lw-val{font-family:var(--wf-value-font);font-variant-numeric:tabular-nums;font-optical-sizing:auto}
 .lw[data-wf-value-weight]>.lw-val{font-weight:var(--wf-value-weight)!important}
 .lw[data-wf-title-weight]>.lw-title{font-weight:var(--wf-title-weight)!important}
+.lw[data-wf-value-font] .fg-value{font-family:var(--wf-value-font)}
+.lw[data-wf-value-weight] .fg-value{font-weight:var(--wf-value-weight)}
+.lw[data-wf-support-font] :is(.fg-detail,.fg-warning,.tg-name){font-family:var(--wf-support-font)}
+.lw[data-wf-support-weight] :is(.fg-detail,.fg-warning,.tg-name){font-weight:var(--wf-support-weight)}
 .lw[data-wf-value-font] :is(.aio-who>strong,.aio-position,.aio-laprow strong,.aio-fact b,.aio-system strong,.aio-session strong,.wc-role-value>.wc-text,.rc-pw-whole strong,.rc-pw-fraction strong,.pspill>span,.psp,.twpct,.psw b){font-family:var(--wf-value-font);font-variant-numeric:tabular-nums}
 .lw[data-wf-value-weight] :is(.aio-who>strong,.aio-position,.aio-laprow strong,.aio-fact b,.aio-system strong,.aio-session strong,.wc-role-value>.wc-text,.rc-pw-whole strong,.rc-pw-fraction strong,.pspill>span,.psp,.twpct,.psw b){font-weight:var(--wf-value-weight)}
 .lw[data-wf-support-font] :is(.aio-who>span,.aio-heading,.aio-foot,.aio-line,.aio-note,.aio-service p,.aio-status,.aio-fact small,.aio-laprow small,.aio-laprow em,.aio-system small,.aio-system>span:not(.aio-meter),.aio-session span,.wc-role-support>.wc-text,.wc-role-label>.wc-text,.wc-label,.pssmall,.twlf,.twgr,.psw small,.rc-pw-head,.rc-pw-foot,.rc-pw-display small){font-family:var(--wf-support-font);font-variant-numeric:tabular-nums}

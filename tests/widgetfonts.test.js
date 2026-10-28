@@ -19,6 +19,6 @@ assert.match(Fonts.rowStyle({fonts:{value:'local:A & B'}},{}),/&amp;/);assert.do
 // Every bundled binary has an independently recorded hash and a packaged license.
 const root=path.resolve(__dirname,'../renderer/fonts'),manifest=JSON.parse(fs.readFileSync(path.join(root,'sources.json'),'utf8').replace(/^\uFEFF/,''));
 for(const item of manifest){const data=fs.readFileSync(path.join(root,item.file));assert.equal(crypto.createHash('sha256').update(data).digest('hex'),item.sha256,item.file);if(item.file.endsWith('.ttf'))assert.equal(data.readUInt32BE(0),0x10000,item.file);}
-for(const family of ['inter','barlowcondensed','robotomono'])assert.match(fs.readFileSync(path.join(root,family,'OFL.txt'),'utf8'),/SIL OPEN FONT LICENSE/);
-assert.equal(manifest.filter(x=>x.file.endsWith('.ttf')).length,10);
-console.log('WIDGET FONTS PASSED: sanitization, inheritance, weights, reset, save/copy isolation, safe HTML and 10 licensed font binaries');
+for(const family of ['inter','barlowcondensed','robotomono','russoone'])assert.match(fs.readFileSync(path.join(root,family,'OFL.txt'),'utf8'),/SIL OPEN FONT LICENSE/);
+assert.equal(manifest.filter(x=>x.file.endsWith('.ttf')).length,11);
+console.log('WIDGET FONTS PASSED: sanitization, inheritance, weights, reset, save/copy isolation, safe HTML and 11 licensed font binaries');

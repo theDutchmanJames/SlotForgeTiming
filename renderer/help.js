@@ -6,7 +6,7 @@ const Help = (() => {
   const opened = new Set();
   // Help follows the same visual language as Race Setup and the Audio editor.
   // Mixed-topic folders intentionally stay neutral rather than pretending to be one system.
-  const SYSTEM_TONE = {resources:'resources',resourcerecovery:'resources', servicestop: 'fuel', penaltytiers: 'penalty', endurance: 'endurance', damage: 'damage', carfailures: 'damage', fuel: 'fuel', fuelwidgets: 'fuel', bop: 'bop', weather: 'weather', wxwidgets: 'weather', tyrewear: 'tyrewear', customtyres: 'tyrewear', tyretemperature: 'tyrewear', safetycar: 'safetycar', pushsave: 'pushsave', tokens: 'tokens' };
+  const SYSTEM_TONE = {resources:'resources',resourcerecovery:'resources', servicestop: 'fuel', penaltytiers: 'penalty', endurance: 'endurance', damage: 'damage', carfailures: 'damage', fuel: 'fuel', fuelwidgets: 'fuel', bop: 'bop', weather: 'weather', wxwidgets: 'weather', tyrewear: 'tyrewear', tyrebarstyles: 'tyrewear', customtyres: 'tyrewear', tyretemperature: 'tyrewear', safetycar: 'safetycar', pushsave: 'pushsave', tokens: 'tokens' };
 
   // The first thing under the Help tab (the quick start).
   const WELCOME = `<section class="helpwelcome" aria-labelledby="hw-title">
@@ -462,10 +462,15 @@ const Help = (() => {
           <li><b>Advanced</b> contains shape, depth, spacing and appearance copying. Depth can follow App Settings or have a widget override. Text stays visible when the background fades. Accents follow the widget's corners.</li>
         </ul>` },
       { id: 'widgetoptionviews', title: 'Widget options and previews', note: 'Display styles, readable text and conditional settings', body: `<ul>
-          <li>Content controls depend on the chosen display style. Push &amp; Save’s wear-only view shows the enabled fuel and tyre multipliers; badge and reference controls return when you choose a state view. Tyre picture sets apply to the picture-with-ring style.</li>
+          <li>Content controls depend on the chosen display style. Push &amp; Save’s wear-only view shows the enabled fuel and tyre multipliers; badge and reference controls return when you choose a state view. Tyre picture sets apply to picture-with-ring and bar styles.</li>
           <li>Tyre Wear honours selected percentage, laps left, name, grip and temperature details. A vertical bar places extra facts below it. Turning facts off does not secretly restore the percentage.</li>
           <li>Automatic sizing fits the available space. Manual sizing adds an optional <b>Shrink to fit</b> switch. Text has a readable minimum; pictures yield space to words but retain a usable size. Enlarge a crowded widget or show fewer fields.</li>
           <li>Layout, row, chart and Builder previews use an isolated sample race and the same display calculations as live timing. They never change your current race. State-dependent choices only appear in the relevant situation: a low-fuel warning colour needs low fuel, and a swap warning needs an approaching swap. Saved chart and leaderboard designs control their content, including sorting and displayed places. Select a design or picture before expecting its content to appear.</li>
+        </ul>` },
+      { id: 'tyrebarstyles', title: 'Tyre Wear bar styles', note: 'Three bar styles and flat compound icons', body: `<ul>
+          <li>For <b>Tyre Wear</b>, choose <b>A bar</b>, then <b>Original</b>, <b>Digital Segments</b> (8–20 blocks), or <b>Wear Scale</b> (quarter marks). All work horizontally and vertically. The bar shows remaining life; its warning colours follow the Tyre Wear System thresholds, independently of the app theme.</li>
+          <li>Show or hide the compound icon, name and low-life warning. Compact bars keep the main value and omit secondary facts and scale labels; if only one fact is selected, that becomes the main value. Enlarge the widget to show secondary facts again. Standard tyre icons are flat, including all historical compounds. The tyre view has a separate outer life indicator. Custom picture sets still work with the picture-ring and bar views.</li>
+          <li><b>Classic (saved layouts)</b> preserves the older bar geometry. Select Original, Digital Segments or Wear Scale to use the compound icon and low-life warning controls. New widgets start with Original. The standard widget font, manual text size and picture size controls apply to the new bars.</li>
         </ul>` },
       { id: 'widgetstatecolours', title: 'Widget race-state colours', note: 'Choose where warnings and event flashes appear', body: `<ul>
           <li>Open <b>Race-state colours → Apply state colours to</b>. Choose <b>Background</b>, <b>Text</b> or <b>Text + Border</b>. Background keeps the original behaviour.</li>

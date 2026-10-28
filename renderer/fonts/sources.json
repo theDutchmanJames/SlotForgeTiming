@@ -63,5 +63,15 @@
     "file": "robotomono/RobotoMono[wght].ttf",
     "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/robotomono/RobotoMono%5Bwght%5D.ttf",
     "sha256": "66a80e79d17e4c7cabd162e2916578a4cc08fd19eef6e2a643305eae9c567b2b"
+  },
+  {
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/russoone/RussoOne-Regular.ttf",
+    "file": "russoone/RussoOne-Regular.ttf",
+    "sha256": "bc0abcc660bd8b7ad3000ecb2898a27c58a29a50f7ec81652fa12e75148d09df"
+  },
+  {
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/russoone/OFL.txt",
+    "file": "russoone/OFL.txt",
+    "sha256": "3ac1301549523d9861fedca12871f24e575fbd26d520632fc00ba849b471d275"
   }
 ]

@@ -21,12 +21,9 @@ const html = (r, opt) => Tyw.rowHtml(r, opt).html;
 
 // ---- the tyre that wears away ----
 { const a = Tyw.wearSvg('S', 100), b = Tyw.wearSvg('S', 50), c = Tyw.wearSvg('S', 0), d = Tyw.wearSvg('S', 12);
-  const tread = s => { const m = /<circle cx="50" cy="50" r="([\d.]+)" fill="none" stroke="#5b616c" stroke-width="([\d.]+)" pathLength="16" stroke-dasharray="0.45 0.55"\/>/.exec(s); return m ? { r: Number(m[1]), w: Number(m[2]) } : null; };
-  ok('a new tyre has the full tread: r = 41, width 12 (the outside stays at 47)', tread(a) && near(tread(a).r, 41) && near(tread(a).w, 12) && near(tread(a).r + tread(a).w / 2, 47));
-  ok('...at 50% the tread is half as deep: r = 44, width 6, the outside still at 47', tread(b) && near(tread(b).r, 44) && near(tread(b).w, 6) && near(tread(b).r + tread(b).w / 2, 47));
-  ok('...at 0% there is no tread at all (a bald tyre)', tread(c) === null && c.includes('r="47"') && c.includes('r="31"'));
-  ok('...the ring and the letter keep the colour of the compound whatever the life is', [a, b, c, d].every(s => s.includes('stroke="#e8002d" stroke-width="8"') && s.includes('>S</text>')));
-  ok('...a Wet tyre has its own colour and an Intermediate shows an I', Tyw.wearSvg('W', 60).includes('#0067ff') && Tyw.wearSvg('INT', 60).includes('>I</text>'));
+  ok('life indicator shows full, half and empty life without changing the compound', a.includes('stroke-dasharray="100.00 100"') && b.includes('stroke-dasharray="50.00 100"') && c.includes('stroke-dasharray="0.00 100"'));
+  ok('flat rubber and compound bands remain at every life level', [a,b,c,d].every(s=>s.includes('fill="#121619"')&&s.includes('class="tyre-bands"')&&s.includes('fill="#e8002d"')&&s.includes('data-tyre-letter="S"')));
+  ok('Wet and Intermediate keep their own colour and lettering', Tyw.wearSvg('W',60).includes('#0067ff')&&Tyw.wearSvg('INT',60).includes('data-tyre-letter="I"'));
   ok('...it says what it is for a screen reader', b.includes('aria-label="Soft tyres, 50% life"')); }
 
 // ---- the ring ----

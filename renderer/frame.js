@@ -296,11 +296,14 @@
       if(aio)root.AllInOne?.fit(v);
       if(gauge&&t.mode==='auto'){
         const hasPicture=!!v.querySelector('.twbox2,.psbox-gauge');
-        v.style.fontSize=Math.max(t.minSize,Math.min(v.clientHeight*(hasPicture?.2:.35),v.clientWidth*.18))+'px';
+        const compactFuel=fuelGauge?.classList.contains('fg-compact')&&!fuelGauge.classList.contains('fg-vertical');
+        v.style.fontSize=Math.max(t.minSize,Math.min(v.clientHeight*(compactFuel?.65:hasPicture?.2:.35),v.clientWidth*.18))+'px';
       }
-      const selector=aio?'.aio-fact b,.aio-who>strong,.aio-who>span,.aio-laprow strong,.aio-system strong':'.twlf,.twgr,.twnm,.twpct,.twtemp,.twvalue,.twn>small,.twbar-details,.ftxt,.fnum,.fg-value,.fg-detail,.fg-warning,.pspill>span,.pssmall,.psp,.psbox>small,.psw>b,.psw>small';
-      const targets=[...v.querySelectorAll(selector)].filter(n=>!n.hidden);
+      const selector=aio?'.aio-fact b,.aio-who>strong,.aio-who>span,.aio-laprow strong,.aio-system strong':'.twlf,.twgr,.twnm,.twpct,.twtemp,.twvalue,.twn>small,.twbar-details,.ftxt,.fnum,.fg-value,.fg-detail,.fg-warning,.tg-name,.pspill>span,.pssmall,.psp,.psbox>small,.psw>b,.psw>small';
+      const targets=[...v.querySelectorAll(selector)].filter(n=>!n.hidden&&root.getComputedStyle(n).display!=='none');
       targets.forEach(n=>{n.style.removeProperty('font-size');n.style.lineHeight=fuelGauge?'1.5':'1.35';});
+      // Text can fit while flex/grid has squeezed the quantity bar out of view.
+      const layoutFits=()=>{if(!textFits(v))return false;if(!fuelGauge)return true;const b=v.getBoundingClientRect(),m=fuelGauge.querySelector('.fg-meter').getBoundingClientRect();return m.width>=6&&m.height>=6&&m.left>=b.left-.75&&m.right<=b.right+.75&&m.top>=b.top-.75&&m.bottom<=b.bottom+.75;};
       const mediaFloor=Math.min(40,v.clientHeight*.25);
       if(gauge){
         const media=v.querySelector('.twbox2,.psbox-gauge');
@@ -312,9 +315,9 @@
         // A local box constrains each label, then the final check covers siblings.
         ok=fitText(n,{min,max,box:n,shrink:t.mode==='auto'||t.shrink,vertical:false})&&ok;
       }
-      if(!textFits(v)&&(t.mode==='auto'||t.shrink)){
+      if(!layoutFits()&&(t.mode==='auto'||t.shrink)){
         const sizes=targets.map(n=>parseFloat(root.getComputedStyle(n).fontSize));
-        fitSize(1,100,p=>targets.forEach((n,i)=>{const min=n.matches('.aio-fact b,.aio-laprow strong,.psp,.twpct,.twvalue,.psw>b,.fnum,.fg-value')?t.minSize:11;n.style.fontSize=Math.max(min,sizes[i]*p/100)+'px';}),()=>textFits(v));
+        fitSize(1,100,p=>targets.forEach((n,i)=>{const min=n.matches('.aio-fact b,.aio-laprow strong,.psp,.twpct,.twvalue,.psw>b,.fnum,.fg-value')?t.minSize:11;n.style.fontSize=Math.max(min,sizes[i]*p/100)+'px';}),layoutFits);
       }
       if(gauge){
         const media=v.querySelector('.twbox2,.psbox-gauge');
@@ -327,7 +330,7 @@
       // The final supporting-text layout can change the bar's available width.
       // Recheck its own clipping box, not only the outer widget boundary.
       for(const n of v.querySelectorAll('.ftxt'))ok=fitText(n,{min:11,max:parseFloat(root.getComputedStyle(n).fontSize)||11,box:n,shrink:t.mode==='auto'||t.shrink})&&ok;
-      ok=textFits(v)&&ok;
+      ok=layoutFits()&&(fuelGauge?targets.every(n=>textFits(n,n,false)):ok);
     }
     el.classList.toggle('wf-crowded',!ok);el.dataset.fitStatus=ok?'fits':'too-small';
     return true;

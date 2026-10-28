@@ -17,6 +17,7 @@ await run(`
  setComponent('avatar');change('[data-component-option="imageSet"]','none');change('[data-component-frame="frame"][data-frame-part="zoom"]','2');
  check(wbEd.draft.composition.root.children[0].options.imageSet==='none','avatar selection');check(wbEd.draft.composition.root.children[0].options.frame.zoom===2,'picture zoom');
  setComponent('pace');change('[data-component-option="look"]','gauge');change('[data-component-option="gaugeScale"]','65');check(wbEd.draft.composition.root.children[0].options.gaugeScale===65,'numeric range');
+ change('[data-cw="component"]','tyrelife');check(wbEd.draft.composition.root.children[0].options.barStyle==='original','new tyre component uses new bar defaults');change('[data-component-option="look"]','bar');check(box.querySelector('[data-component-option="barStyle"]').value==='original','new component style control');
  wbEd.draft.composition=WidgetCompose.clean({root:{kind:'column',children:[{id:'points',kind:'value',key:'champ',rules:[{conditions:[{key:'champ',op:'gt',value:'20'}],action:'text',text:'POINTS'}]}]}});wbEd.composerUI.selected='points';WidgetStudio.edit(box);
  check(WidgetStudio.validate(wbEd.draft).length===0,'numeric championship rule');
  for(let i=0;i<13;i++)document.getElementById('wc-add-rule').click();check(wbEd.draft.composition.root.children[0].rules.length===12,'rule limit');check(document.getElementById('wc-status').textContent.includes('12 rules'),'visible rule limit feedback');

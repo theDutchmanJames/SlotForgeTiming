@@ -20,6 +20,9 @@
 .lw.ws-type[data-ws-icon] .psgauge{max-height:var(--ws-icon);width:auto;max-width:100%}
 .lw.ws-type[data-ws-sizing=manual] :is(.twlf,.twgr,.twnm,.twtemp,.twn>small,.twbar-details,.psw>small,.pssmall,.psbox>small){font-size:var(--ws-support)}
 .lw.ws-type[data-ws-sizing=manual] :is(.psp,.twpct,.twvalue,.psw>b,.fnum){font-size:var(--ws-value)}
+.lw.ws-type[data-ws-sizing=manual] .fg-value{font-size:var(--ws-value)}
+.lw.ws-type[data-ws-sizing=manual] :is(.fg-detail,.fg-warning,.tg-name){font-size:var(--ws-support)}
+.lw.ws-type[data-ws-icon] .tyre-gauge .tg-head :is(svg,img){width:var(--ws-icon);height:var(--ws-icon);max-width:100%;object-fit:contain}
 .lw.ws-type[data-ws-long=ellipsis] :is(.aio-who>strong,.aio-who>span){white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lw.ws-type[data-ws-long=fit] :is(.aio-who>strong,.aio-who>span){white-space:nowrap;overflow-wrap:normal}
 .lw.ws-type[data-ws-icon]:not(.aio-widget)>.lw-val>:is(img,.avframe){max-width:min(100%,var(--ws-icon));max-height:min(100%,var(--ws-icon));object-fit:contain}

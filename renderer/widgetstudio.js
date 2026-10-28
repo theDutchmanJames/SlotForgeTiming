@@ -676,7 +676,7 @@ const WidgetStudio = (() => {
                   ? null
                   : Number(el.value)
                 : el.value;
-        if (k === "component") n.options = {};
+        if (k === "component") n.options = { ...Widgets.newWidget(n.component).opt };
         changed(["component", "key"].includes(k));
       }
       if (el.dataset.componentOption) {
