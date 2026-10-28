@@ -1,0 +1,27 @@
+/* Charts retain readable pixel labels; tiny widgets ask for more room. */
+.chart-widget .lw-val{inset:8px!important;transform:none!important;font-size:12px!important;line-height:1.35;white-space:normal;display:block!important;padding:0!important;text-align:left;pointer-events:auto}
+.chart-widget .lw-title{font-size:12px!important;line-height:18px;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis}
+.race-chart{width:100%;height:100%;min-width:0;overflow:hidden;font:12px/1.35 "Segoe UI",sans-serif;color:var(--ink)}
+.race-chart svg{display:block;max-width:100%;overflow:hidden}
+.chart-widget .race-chart{color:inherit}.race-chart text{font:11px "Segoe UI",sans-serif;fill:currentColor;font-variant-numeric:tabular-nums}
+.race-chart .chart-value{font-size:12px;font-weight:700}.race-chart .chart-axis{font-size:11px}
+.race-chart .chart-grid{stroke:var(--line);stroke-width:1}.race-chart .chart-reference{stroke:var(--muted);stroke-dasharray:5 5;stroke-width:1.5}
+.chart-legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:0 8px;line-height:22px}
+.chart-legend span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:11px}.chart-legend i{display:inline-block;width:15px;height:3px;margin:0 5px 3px 0}
+.chart-note{font-size:11px;line-height:22px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.race-chart-empty{width:100%;height:100%;display:grid;place-items:center;text-align:center;padding:12px;white-space:normal;font:13px/1.5 "Segoe UI",sans-serif;color:var(--muted)}
+.chart-editor{max-width:1500px}.chart-editor-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}.chart-editor-head span{font-size:11px;letter-spacing:.08em}.chart-editor-head h3{font-size:23px;margin:4px 0}
+.chart-style-choices{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 18px}.chart-style-choices .btn{padding:10px 16px}
+.chart-editor-grid{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:20px;align-items:start}.chart-editor-grid>div{min-width:0}
+.chart-preview-head{display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap;margin-bottom:12px;color:var(--muted);font-size:12px}.chart-preview-head label{display:flex;align-items:center;gap:5px}
+.chart-preview-frame{border:1px dashed var(--line);border-radius:14px;padding:14px;background:var(--bg)}
+.chart-preview{height:340px;width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:14px;padding:12px;overflow:hidden}.chart-preview>.race-chart{width:100%;height:100%}.chart-preview.narrow{max-width:360px;margin:0 auto}
+.chart-settings{border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}.chart-settings details+details{border-top:1px solid var(--line)}.chart-settings summary{padding:14px;font-weight:700;cursor:pointer;font-size:14px}.chart-fields{display:grid;gap:14px;padding:0 14px 14px}.chart-fields .field{margin:0;display:grid;gap:6px;font-size:13px}.chart-fields input,.chart-fields select{min-width:0;width:100%}.chart-fields .chart-switch input,.chart-lanes input{width:auto}.chart-fields p{font-size:12px;margin:0;line-height:1.5}.chart-switch{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px}.chart-lanes{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px}.chart-fields [hidden]{display:none!important}.chart-fields #chart-lines{display:grid;gap:14px}.chart-words{padding:18px 0;color:var(--muted);font-size:13px}.chart-words b{display:block;color:var(--ink);font-size:11px;letter-spacing:.08em}.chart-words p{margin:6px 0;line-height:1.5}
+@media(max-width:850px){.chart-editor-grid{grid-template-columns:1fr}.chart-preview-frame{padding:8px}.chart-settings{width:100%}}
+
+/* Distinguish the expanded chart controls while retaining theme colours. */
+.chart-settings details:nth-child(3n+1){background:color-mix(in srgb,var(--panel) 96%,#35a8cf 4%)}
+.chart-settings details:nth-child(3n+2){background:color-mix(in srgb,var(--panel) 96%,#ae8ce6 4%)}
+.chart-settings details:nth-child(3n){background:color-mix(in srgb,var(--panel) 96%,#80b354 4%)}
+.chart-fields [id$="-options"]{display:grid;gap:14px}
+.chart-extra .chart-legend b{font-weight:400}

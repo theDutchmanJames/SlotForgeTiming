@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Depth, parts and states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.rs,.rs *{box-sizing:border-box}
+.rs button{font-family:inherit;color:inherit;cursor:pointer;text-align:center}
+.rs p,.rs h3{margin:0}
+.muted{color:var(--muted)}
+
+/* The depth recipe, the same as on the race screen boards. --d (0 to 1) scales the sizes, --s the shadow strength, --hl and --sh are the light and the shadow colour, --lip the colour of the edge underneath. */
+.rs{--lip:color-mix(in srgb,var(--panel) var(--lipk),rgb(var(--sh)))}
+.lift{isolation:isolate;box-shadow:inset 0 1px 0 rgba(var(--hl),calc(.18*var(--d))),inset 0 -1px 0 rgba(var(--sh),calc(.22*var(--s))),0 calc(4px*var(--d)) 0 var(--lip),0 calc(3px + 10px*var(--d)) calc(6px + 16px*var(--d)) -4px rgba(var(--sh),calc(.6*var(--s)))}
+.lift::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;background:linear-gradient(180deg,rgba(var(--hl),calc(.10*var(--d))) 0%,rgba(var(--hl),0) 45%,rgba(var(--sh),calc(.14*var(--s))) 100%)}
+.well{box-shadow:inset 0 calc(2px + 3px*var(--d)) calc(6px + 8px*var(--d)) rgba(var(--sh),calc(.5*var(--s))),inset 0 -1px 0 rgba(var(--hl),calc(.06*var(--d)))}
+
+.sec{margin:0 0 12px;font-size:12px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.cv{position:relative;background:var(--bg);box-shadow:0 0 0 1px var(--line),inset 0 calc(2px + 3px*var(--d)) calc(6px + 8px*var(--d)) rgba(var(--sh),calc(.5*var(--s))),inset 0 -1px 0 rgba(var(--hl),calc(.06*var(--d)))}
+.lw{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--ink);text-align:center;line-height:1.1}
+.lw-title{position:absolute;left:8px;top:5px;font-size:11px;opacity:.7;white-space:nowrap}
+.lw-val{font-size:30px;font-weight:600;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:8px}
+.badge{position:absolute;z-index:3;width:22px;height:22px;border-radius:50%;background:#fff;color:#111418;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px rgba(0,0,0,.35)}
+.part{display:flex;gap:12px;align-items:flex-start}
+.part .badge{position:static;flex:none}
+.part strong{display:block;font-size:15px;line-height:1.3}
+.part span{display:block;font-size:13.5px;line-height:1.35;color:var(--muted)}
+
+.panel{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.cap{margin-top:12px;font-size:12.5px;line-height:1.3;color:var(--muted);text-align:center}
+
+.fold{position:relative;border:1px solid var(--line);border-left:4px solid var(--fc);border-radius:8px;background:var(--panel)}
+.fh{position:relative;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;padding:10px 12px 10px 30px;border-radius:7px;background:color-mix(in srgb,var(--fc) 16%,var(--panel))}
+.fh::before{content:"";position:absolute;left:12px;top:50%;width:7px;height:7px;border:solid var(--fc);border-width:0 2px 2px 0;transform:translateY(-60%) rotate(-45deg)}
+.fh strong{font-size:16px}
+.fh span{font-size:13.5px;color:var(--muted)}
+.tcard{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.tsub{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px}
+
+.key{--tc:#2fb86a;position:relative;isolation:isolate;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:6px 8px;font-weight:700;font-size:15px;line-height:1.1;border-radius:9px;border:2px solid var(--tc);color:color-mix(in srgb,var(--tc) 60%,var(--ink));background:color-mix(in srgb,var(--tc) 16%,var(--panel));box-shadow:inset 0 1px 0 rgba(var(--hl),calc(.26*var(--d))),inset 0 -2px 0 rgba(var(--sh),calc(.22*var(--s))),0 calc(3px*var(--d)) 0 color-mix(in srgb,var(--tc) 40%,rgb(var(--sh))),0 calc(3px + 6px*var(--d)) calc(4px + 8px*var(--d)) -2px rgba(var(--sh),calc(.55*var(--s)))}
+.key::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;background:linear-gradient(180deg,rgba(var(--hl),calc(.20*var(--d))) 0%,rgba(var(--hl),0) 55%,rgba(var(--sh),calc(.10*var(--s))) 100%)}
+.key:hover,.key.hov{filter:brightness(1.1)}
+.key.down,.key.on{transform:translateY(calc(3px*var(--d)));box-shadow:inset 0 calc(2px + 2px*var(--d)) calc(4px + 4px*var(--d)) rgba(var(--sh),calc(.5*var(--s)))}
+.key.on{background:var(--tc);color:#1c1204}
+.key:disabled{opacity:.38;cursor:not-allowed;filter:none}
+.tsub .key{flex-direction:column;gap:3px;min-height:60px;padding:6px 4px}
+.sw .key{width:100%}
+</style>
+</helmet>
+<div class="rs" style="width:1000px;height:980px;padding:24px;background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,sans-serif;font-size:16px;line-height:1.45;--bg:#171b21;--panel:#222831;--ink:#e8e6e1;--muted:#98a0ab;--line:#343b47;--accent:#e5484d;{{vars}}">
+
+  <h3 class="sec">The parts of the effect (shown on one widget)</h3>
+  <div style="display:flex;gap:28px;align-items:center;margin-bottom:28px">
+    <div class="cv" style="width:520px;height:230px;flex:none">
+      <span class="badge" style="left:12px;top:12px">5</span>
+      <div class="lw lift" style="left:80px;top:45px;width:300px;height:130px"><span class="lw-title">Lap</span><span class="lw-val" style="font-size:40px">7 / 12</span></div>
+      <span class="badge" style="left:109px;top:34px">1</span>
+      <span class="badge" style="left:349px;top:99px">2</span>
+      <span class="badge" style="left:109px;top:166px">3</span>
+      <span class="badge" style="left:229px;top:192px">4</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:11px;flex:1;min-width:0">
+      <sc-for list="{{parts}}" as="p" hint-placeholder-count="5">
+        <div class="part"><span class="badge">{{p.n}}</span><div><strong>{{p.title}}</strong><span>{{p.text}}</span></div></div>
+      </sc-for>
+    </div>
+  </div>
+
+  <h3 class="sec">One button, every state</h3>
+  <div class="panel lift" style="padding:18px 16px 16px;margin-bottom:28px">
+    <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px">
+      <sc-for list="{{states}}" as="s" hint-placeholder-count="5">
+        <div class="sw"><button type="button" class="{{s.cls}}" style="--tc:#f08a24" disabled="{{s.off}}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Pit</button><p class="cap">{{s.label}}</p></div>
+      </sc-for>
+    </div>
+  </div>
+
+  <h3 class="sec">The same recipe in a light and a very dark theme</h3>
+  <div style="display:flex;gap:24px">
+    <sc-for list="{{themes}}" as="t" hint-placeholder-count="2">
+      <div class="rs" style="{{t.style}}">
+        <p style="margin-bottom:10px;font-size:12px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)">{{t.name}}</p>
+        <div class="cv" style="height:130px">
+          <div class="lw lift" style="left:10px;top:10px;width:200px;height:110px"><span class="lw-title">Time left</span><span class="lw-val">08:42</span></div>
+          <div class="lw lift" style="left:222px;top:10px;width:200px;height:110px"><span class="lw-title">Lap</span><span class="lw-val">7 / 12</span></div>
+        </div>
+        <div class="fold lift" style="--fc:#2fb86a;margin-top:14px"><div class="fh"><strong>Track actions</strong><span>Lap, pit and call</span></div></div>
+        <div class="tcard well" style="margin-top:12px">
+          <div class="tsub">
+            <button type="button" class="key"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="8"/><path d="M12 9.5v4l2.5 1.5"/><path d="M9.5 2h5"/></svg>Lap</button>
+            <button type="button" class="key on" style="--tc:#f08a24"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Pit</button>
+            <button type="button" class="key" style="--tc:#c99a00"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>Call</button>
+          </div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"depth":{"editor":"range","default":0.35,"min":0,"max":1,"step":0.05,"section":"Depth"},"$preview":{"width":1000,"height":980}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const d = Math.max(0, Math.min(1, Number(this.props.depth ?? 0.35)));
+    const mk = (extra, k, lipk) => '--d:' + d + ';--s:' + (d * k).toFixed(3) + ';' + extra + ';--lipk:' + lipk;
+    const vars = mk('--hl:255,255,255;--sh:0,0,0', 1, '45%');
+    const box = 'width:464px;padding:16px;border-radius:12px;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,sans-serif;font-size:16px;line-height:1.45;';
+    const themes = [
+      { name: 'Light theme', style: box + mk('--bg:#f1efea;--panel:#ffffff;--ink:#1d2229;--muted:#656c76;--line:#d9d6cf;--accent:#d62828;--hl:255,255,255;--sh:29,34,41', 0.6, '78%') },
+      { name: 'Carbon theme', style: box + mk('--bg:#121212;--panel:#1e1e1e;--ink:#eaeaea;--muted:#9a9a9a;--line:#333333;--accent:#ffd400;--hl:255,255,255;--sh:0,0,0', 1, '55%') }
+    ];
+    const parts = [
+      { n: 1, title: 'Light edge', text: 'A thin line of light along the top. The light comes from above.' },
+      { n: 2, title: 'Face', text: 'A little lighter at the top, a little darker at the bottom. The colours you set on a widget stay as they are.' },
+      { n: 3, title: 'Lip', text: 'The thickness: a strip under the widget. About 1 px when slight, 3 px when thick.' },
+      { n: 4, title: 'Shadow', text: 'Soft and short, so the widget seems to sit just above the canvas.' },
+      { n: 5, title: 'Tray', text: 'The canvas and the lane cards are pressed in a little, so what is raised stands out.' }
+    ];
+    const states = [
+      { label: 'Rest', cls: 'key' },
+      { label: 'Mouse over: a bit brighter', cls: 'key hov' },
+      { label: 'Pressed: moves down', cls: 'key down' },
+      { label: 'On: stays pressed in', cls: 'key on' },
+      { label: 'Not available: faded', cls: 'key', off: true }
+    ];
+    return { vars, themes, parts, states };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+/* The clock changes text colour with the flag; its surface remains user-controlled. */
+html{--clock-green:#4bd17d;--clock-yellow:#ffd400;--clock-red:#ff626b}
+[data-theme=light],[data-theme=ocean],[data-tone=light]{--clock-green:#147a3e;--clock-yellow:#936000;--clock-red:#c32332}
+.lw:is(.clock-digital,.clock-pitwall)>.lw-val{display:block;inset:0;width:auto;height:auto;padding:0;min-width:0;min-height:0;white-space:normal;transform:none!important;line-height:1.1}
+.rc-digital{width:100%;height:100%;display:flex;align-items:center;justify-content:center;gap:calc(var(--rc-digit-height,40px)*.08);padding:4px 8px}
+.rc-digit{position:relative;width:calc(var(--rc-digit-height,40px)*.57);height:var(--rc-digit-height,40px);flex:none;transform:skewX(-4deg)}
+.rc-digit i{position:absolute;background:currentColor;opacity:.055}.rc-digit i.on{opacity:1}
+.rc-seg-a,.rc-seg-g,.rc-seg-d{left:12%;width:76%;height:9%;clip-path:polygon(12% 0,88% 0,100% 50%,88% 100%,12% 100%,0 50%)}
+.rc-seg-a{top:0}.rc-seg-g{top:45.5%}.rc-seg-d{bottom:0}
+.rc-seg-b,.rc-seg-c,.rc-seg-e,.rc-seg-f{width:16%;height:40%;clip-path:polygon(50% 0,100% 10%,100% 90%,50% 100%,0 90%,0 10%)}
+.rc-seg-b{right:0;top:5%}.rc-seg-c{right:0;bottom:5%}.rc-seg-f{left:0;top:5%}.rc-seg-e{left:0;bottom:5%}
+.rc-punct{position:relative;width:calc(var(--rc-digit-height,40px)*.11);height:var(--rc-digit-height,40px);flex:none}
+.rc-punct:after,.rc-colon:before{content:'';position:absolute;width:100%;aspect-ratio:1;background:currentColor;border-radius:1px;bottom:0}.rc-colon:before{top:28%}.rc-colon:after{bottom:28%}
+.clock-pitwall:not(.lcstripe-top):before{content:'';position:absolute;inset:0;border-top:2px solid currentColor;border-radius:inherit;pointer-events:none}
+.rc-pitwall{display:flex;flex-direction:column;justify-content:center;width:100%;height:100%;padding:10px 16px;gap:10px}
+.rc-pw-head{display:flex;justify-content:flex-end;font-size:11px;font-weight:650;letter-spacing:.07em}.rc-pw-head b{padding:4px 8px;border-radius:4px;background:color-mix(in srgb,currentColor 10%,transparent)}
+.rc-pw-display{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;flex:1;min-height:0}
+.rc-pw-whole,.rc-pw-fraction{display:grid;gap:7px;text-align:center;min-width:0}.rc-pw-whole strong{font:600 var(--rc-number,32px)/1 Bahnschrift,'Segoe UI',sans-serif;letter-spacing:-.03em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rc-pw-fraction{border-left:1px solid color-mix(in srgb,currentColor 22%,transparent);padding-left:16px;align-self:stretch;align-content:center}.rc-pw-fraction strong{font:500 calc(var(--rc-number,32px)*.67)/1 Bahnschrift,'Segoe UI',sans-serif;font-variant-numeric:tabular-nums}
+.rc-pw-display small{font-size:11px;opacity:.8;letter-spacing:.04em}.rc-pw-foot{display:flex;justify-content:space-between;gap:10px;padding-top:8px;border-top:1px solid color-mix(in srgb,currentColor 22%,transparent);font-size:11px;font-weight:600;letter-spacing:.05em}
+.lw:is(.clock-digital,.clock-pitwall)>.lw-title,.rc-pw-display small,.rc-pw-foot>span:first-child{color:var(--muted);opacity:1}
+.rc-compact .rc-pitwall{padding:3px 8px;gap:0}.rc-compact :is(.rc-pw-head,.rc-pw-foot,.rc-pw-display small){display:none}.rc-compact .rc-pw-display{gap:8px}.rc-compact .rc-pw-fraction{padding-left:8px}

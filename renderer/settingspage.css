@@ -1,0 +1,25 @@
+/* Uses the same .tm frame as Trackmate/Arduino/DS; only page-specific content
+   constraints and accents live here. */
+.settings-page{margin:0 0 20px;--tm-accent:#93a9be}
+.settings-page[data-settings-page="theme"]{--tm-accent:#a68ccd}
+.settings-page[data-settings-page="director"]{--tm-accent:#d4838c}
+.settings-page[data-settings-page="network"]{--tm-accent:#63b4a0}
+.settings-page[data-settings-page="transfer"]{--tm-accent:#6baebc}
+.settings-page .tm-section{border:1px solid var(--line);margin:0;border-radius:10px;box-shadow:none}
+.settings-page .tm-section>summary{align-items:center;padding:12px 14px;gap:10px;border-radius:0}
+.settings-page .tm-section>summary::before{content:none}
+.settings-page .tm-content{padding:16px;min-width:0;gap:14px}
+.settings-page .tm-content p{margin:0}
+.settings-page .tm-content .field{max-width:100%;min-width:0}
+.settings-page .tm-content .row{flex-wrap:wrap;gap:10px 14px;min-width:0}
+.settings-page .tm-content :is(input,select,button){max-width:100%}
+.settings-page .tm-content input[type="file"]{min-width:0;width:100%}
+.settings-page .tm-main>.fgtools{margin:0;display:flex;flex-wrap:wrap;gap:8px}
+.settings-page .themegrid{grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr));margin:0}
+.settings-page .themecolors{grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))}
+.settings-page .settings-pad-preview{overflow-x:auto;max-width:100%;padding:3px}
+.settings-page .netlist{min-width:0}.settings-page .netaddr{max-width:100%;flex-wrap:wrap;min-width:0}
+.settings-page code,.settings-page .trlist label{overflow-wrap:anywhere;min-width:0}
+.settings-page .tm-content>.settings-network-fields{display:grid;grid-template-columns:minmax(0,480px);gap:14px}
+.settings-page .settings-network-fields .field{margin:0}
+@media(max-width:780px){.settings-page .tm-headerstate{max-width:none}.settings-page .tm-main{padding:12px}.settings-page .tm-content{padding:12px}.settings-page .tm-section>summary{flex-wrap:wrap}.settings-page .tm-section>summary>span{flex-basis:100%;order:3;margin-left:28px;text-align:left}.settings-page .tm-section>summary>b{margin-left:auto}}

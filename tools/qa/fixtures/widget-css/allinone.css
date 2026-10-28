@@ -1,0 +1,33 @@
+/* The outer card, including its stripe and radius, is the existing widget frame. */
+.lw.aio-widget .lw-val,.lw.live.aio-widget .lw-val{display:block;inset:0;padding:0;white-space:normal;text-align:left;transform:none!important;container-type:size;font-size:14px;line-height:1.3}
+.aio-box{width:100%;height:100%;min-width:0;min-height:0;container-type:size;font-weight:400;font-style:normal;text-align:left}
+.aio-content{padding:clamp(12px,4cqw,22px);width:100%;min-width:0;display:flex;flex-direction:column;gap:clamp(10px,3cqw,18px)}
+.aio-heading{display:flex;justify-content:space-between;gap:10px;font-size:11px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;opacity:.8}
+.aio-heading>span{overflow-wrap:anywhere}.aio-identity{display:flex;gap:12px;align-items:center;min-width:0}
+.aio-position{flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:8px;background:color-mix(in srgb,currentColor 10%,transparent);font-size:22px;font-weight:750}
+.aio-avatar{width:44px;height:44px;flex:none;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:color-mix(in srgb,currentColor 12%,transparent)}
+.aio-avatar>.avframe,.aio-avatar>img{width:100%;height:100%}.aio-avatar .av{font-size:24px;width:100%;height:100%}
+.aio-who{flex:1;min-width:0;display:grid;gap:5px}.aio-who>strong{font-size:clamp(20px,6cqw,30px);line-height:1.15;overflow-wrap:anywhere}.aio-who>span{font-size:12px;opacity:.8;overflow-wrap:anywhere}
+.aio-laprow{display:flex;justify-content:space-between;align-items:end;gap:10px}.aio-laprow small,.aio-fact small,.aio-system small{display:block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-bottom:5px;opacity:.8;overflow-wrap:anywhere}
+.aio-laprow strong{font-size:clamp(26px,8cqw,40px);font-variant-numeric:tabular-nums;line-height:1}.aio-laprow em{font-size:14px;font-style:normal;opacity:.8;font-weight:400}
+.aio-status{font-size:12px;padding:5px 8px;border-radius:6px;background:color-mix(in srgb,currentColor 10%,transparent)}
+.aio-rule{height:1px;flex:none;background:currentColor;opacity:.15}.aio-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;min-width:0}
+.aio-fact{min-width:0}.aio-fact b{display:block;font-size:clamp(20px,6.2cqw,36px);font-weight:750;line-height:1.15;white-space:nowrap;font-variant-numeric:tabular-nums}
+.aio-fact.aio-primary b{font-size:clamp(26px,8cqw,44px)}.aio-fact b small{font-size:12px;display:inline;letter-spacing:0;text-transform:none}
+.aio-systems{display:grid;grid-template-columns:repeat(auto-fit,minmax(68px,1fr));gap:12px;padding-top:12px;border-top:1px solid color-mix(in srgb,currentColor 18%,transparent)}
+.aio-system{min-width:0}.aio-system strong{display:block;font-size:18px;font-weight:750;overflow-wrap:anywhere}.aio-system>span:not(.aio-meter){display:block;font-size:12px;opacity:.8;margin-top:6px;overflow-wrap:anywhere}
+.aio-meter{display:block;height:5px;margin-top:9px;border-radius:6px;overflow:hidden;background:color-mix(in srgb,currentColor 14%,transparent)}.aio-meter i{display:block;height:100%;background:var(--aio-meter,currentColor);border-radius:inherit}
+.aio-foot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:12px}.aio-foot>span{overflow-wrap:anywhere}.aio-lines{display:grid;gap:10px}.aio-line{display:flex;justify-content:space-between;gap:12px;font-size:13px;min-width:0}.aio-line>*{overflow-wrap:anywhere}.aio-line>strong{text-align:right}.aio-note,.aio-service p{font-size:12px;opacity:.8;margin:0;overflow-wrap:anywhere}.aio-service p{margin-top:8px}
+.aio-range{grid-template-columns:repeat(2,minmax(0,1fr))}.aio-range .aio-fact b{font-size:clamp(22px,6cqw,34px)}.aio-session{display:grid;gap:5px}.aio-session strong{font-size:18px;overflow-wrap:anywhere}.aio-session span{font-size:12px;opacity:.8;overflow-wrap:anywhere}
+.aio-sizehint{display:none;text-align:center;font-size:14px;line-height:1.5}.aio-sizehint small{font-size:11px;opacity:.8}.aio-small .aio-content{visibility:hidden}.aio-small .aio-sizehint{display:block;position:absolute;inset:0;padding:6px;align-content:center;background:var(--panel);color:var(--ink)}
+.aio-tight .aio-content{padding:10px;gap:8px}.aio-tight .aio-avatar{width:30px;height:30px}.aio-tight .aio-who>strong{font-size:20px}.aio-tight .aio-fact b{font-size:22px}.aio-tight .aio-fact.aio-primary b{font-size:28px}.aio-tight .aio-systems{padding-top:8px;gap:8px}
+.aio-stacked .aio-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.aio-stacked .aio-primary{grid-column:1/-1}
+@container (max-width:360px){.aio-auto .aio-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.aio-auto .aio-primary{grid-column:1/-1}.aio-identity{gap:9px}.aio-avatar{width:36px;height:36px}.aio-fact b{font-size:25px}.aio-range .aio-fact b{font-size:24px}.aio-fact.aio-primary b{font-size:32px}}
+@container (max-width:250px){.aio-heading{font-size:11px}.aio-identity{gap:6px}.aio-position{width:26px;height:26px;font-size:18px}.aio-avatar{width:28px;height:28px}}
+
+.aio-fuel{--aio-meter:#4bc597}
+.aio-pace>strong{display:inline-block;border-radius:5px;padding:4px 9px;font-size:13px;white-space:nowrap}
+.aio-push>strong{background:#ff6672;color:#161b22}.aio-normal>strong{background:#c7cfd8;color:#161b22}.aio-save>strong{background:#65d6a3;color:#161b22}
+
+.aio-box[data-medal]{background:linear-gradient(120deg,color-mix(in srgb,var(--aio-medal) 22%,transparent),transparent 78%)}
+.aio-box[data-medal=gold]{--aio-medal:#e4b636}.aio-box[data-medal=silver]{--aio-medal:#aab8cb}.aio-box[data-medal=bronze]{--aio-medal:#c98851}

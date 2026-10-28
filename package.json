@@ -1,0 +1,149 @@
+{
+  "name": "slotforge-timing",
+  "version": "1.99.1",
+  "description": "Slot car lap timer and lap counter for Windows, macOS and Linux",
+  "author": {
+    "name": "theDutchmanJames",
+    "url": "https://github.com/theDutchmanJames"
+  },
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "homepage": "https://github.com/theDutchmanJames/SlotForgeTiming",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/theDutchmanJames/SlotForgeTiming.git"
+  },
+  "bugs": {
+    "url": "https://github.com/theDutchmanJames/SlotForgeTiming/issues"
+  },
+  "main": "main.js",
+  "scripts": {
+    "test:database-actions": "node tests/databaseactions.test.js",
+    "test:database-actions:electron": "electron tools/qa/database-actions-electron.cjs",
+    "test:tabs:electron": "electron tools/qa/tabstyle-electron.cjs",
+    "test:strategy-widgets": "node tests/strategywidgets.test.js",
+    "pretest": "node tests/postreviewrepairs.test.js && node tests/databaseactions.test.js && node tests/widgetfree.test.js && node tests/chartextras.test.js && node tests/virtuallanes.test.js && node tests/widgetsurface.test.js && node tests/editorperformance.test.js && node tests/widgetview.test.js && node tests/raceclassdelete.test.js && node tests/widgetfit.test.js && node tests/systemsaudit.test.js && node tests/tyretemperature.test.js && node tests/resources.test.js && node tests/multiclass.test.js && node tests/virtualrival.test.js && node tests/phidget.test.js && node tests/phidgetbackend.test.js && node tests/phidgetaudit.test.js && node tests/parallelaudit.test.js && node tests/widgetfonts.test.js && node tests/widgetcompose.test.js && node tests/audioredesign.test.js && node tests/widgetsettings.test.js && node tests/allinone.test.js && node tests/auditrepairs.test.js && node tests/customtyres.test.js && node tests/widgetpolish.test.js && node tests/racesetuprewrite.test.js && node tests/chartwidgets.test.js && node tests/strategywidgets.test.js && node tests/resultsview.test.js && node tests/help-current.test.js && node tests/fuelrewrite.test.js && node tests/penaltyrewrite.test.js && node tests/safetyrewrite.test.js && node tests/calculations.test.js",
+    "sketch": "node tools/pack-sketch.js",
+    "fwtest": "node tools/fwhost/run.js --strict",
+    "start": "electron .",
+    "dist": "electron-builder --win",
+    "dist:linux": "electron-builder --linux",
+    "dist:mac": "electron-builder --mac",
+    "test": "node tests/quiet.test.js && node tests/picmemo.test.js && node tests/resumeasync.test.js && node tests/perf.test.js && node tests/perfstats.test.js && node tests/perfscreen.test.js && node tests/speed.test.js && node tests/stats.test.js && node tests/homestats.test.js && node tests/carstats.test.js && node tests/distance.test.js && node tests/racelimit.test.js && node tests/totaltime.test.js && node tests/comparedist.test.js && node tests/heatscoring.test.js && node tests/setupwords.test.js && node tests/systemwords.test.js && node tests/formui.test.js && node tests/railform.test.js && node tests/sectors.test.js && node tests/boardall.test.js && node tests/season.test.js && node tests/seasonscreen.test.js && node tests/distanceswap.test.js && node tests/homegrid.test.js && node tests/startcard.test.js && node tests/homecards.test.js && node tests/boardorder.test.js && node tests/viewset.test.js && node tests/picture.test.js && node tests/avatars.test.js && node tests/uiscale.test.js && node tests/adjust.test.js && node tests/theme.test.js && node tests/banner.test.js && node tests/icons.test.js && node tests/undo.test.js && node tests/frame.test.js && node tests/backdrop.test.js && node tests/db.test.js && node tests/engine.test.js && node tests/bop.test.js && node tests/weather.test.js && node tests/weatherwidgets.test.js && node tests/heats.test.js && node tests/scoring.test.js && node tests/heattime.test.js && node tests/heatlist.test.js && node tests/finals.test.js && node tests/tokens.test.js && node tests/audio.test.js && node tests/ambient.test.js && node tests/hardware.test.js && node tests/trackmate.test.js && node tests/arduinobox.test.js && node tests/arduinosim.test.js && node tests/arduinorace.test.js && node tests/arduinosketch.test.js && node tests/boxscreen.test.js && node tests/transfer.test.js && node tests/backup.test.js && node tests/package.test.js && node tests/linux.test.js && node tests/mac.test.js && node tests/widgets.test.js && node tests/timing.test.js && node tests/delta.test.js && node tests/rows.test.js && node tests/richtext.test.js && node tests/report.test.js && node tests/screens.test.js && node tests/server.test.js && node tests/web.test.js && node tests/adjustpad.test.js && node tests/adjustui.test.js && node tests/lanecards.test.js && node tests/lanecardsscreen.test.js && node tests/penaltyui.test.js && node tests/livegrid.test.js && node tests/drivergrid.test.js && node tests/live.test.js && node tests/tokenrace.test.js && node tests/bopscreen.test.js && node tests/weatherscreen.test.js && node tests/tyrewear.test.js && node tests/tyrewearengine.test.js && node tests/tyresets.test.js && node tests/tyrewidgets.test.js && node tests/tyrecalls.test.js && node tests/tyrewearscreen.test.js && node tests/mandatory.test.js && node tests/safetycar.test.js && node tests/safetycarscreen.test.js && node tests/randomflags.test.js && node tests/randomflagsscreen.test.js && node tests/pushsave.test.js && node tests/pushsavescreen.test.js && node tests/pacewidgets.test.js && node tests/rotation.test.js && node tests/rotationwords.test.js && node tests/voicereport.test.js && node tests/rotationdrag.test.js && node tests/rotationscreen.test.js && node tests/championship.test.js && node tests/championshipwords.test.js && node tests/championshipscreen.test.js && node tests/champpoints.test.js && node tests/champpointsscreen.test.js && node tests/teamraces.test.js && node tests/teams.test.js && node tests/teamsscreen.test.js && node tests/damage.test.js && node tests/damageengine.test.js && node tests/carfailures.test.js && node tests/carfailures2.test.js && node tests/carfailuresscreen.test.js && node tests/endurance.test.js && node tests/enduranceengine.test.js && node tests/endurancewidgets.test.js && node tests/damagewidgets.test.js && node tests/endurancescreen.test.js && node tests/distancescreen.test.js && node tests/damagescreen.test.js && node tests/racefolders.test.js && node tests/resume.test.js && node tests/heatresume.test.js && node tests/setupstrip.test.js && node tests/help.test.js && node tests/audit.test.js && node tests/depth.test.js && node tests/parallel.test.js && node tests/parallelrace.test.js && node tests/parallelbackend.test.js && node tests/parallelclient.test.js && node tests/lanestyle.test.js && node tests/pithold.test.js && node tests/pitsensors.test.js && node tests/racesystems.test.js && node tests/raceupdates.test.js && node tests/widgetoptions.test.js && node tests/widgetpreview.test.js",
+    "parallel:build": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-parallel.ps1",
+    "test:parallel:electron": "electron tools/qa/parallel-electron.cjs",
+    "test:results": "node tests/resultsview.test.js",
+    "test:racesetuprewrite": "node tests/racesetuprewrite.test.js",
+    "test:fuel-rewrite": "node tests/fuelrewrite.test.js",
+    "test:penalty-rewrite": "node tests/penaltyrewrite.test.js",
+    "test:safety-rewrite": "node tests/safetyrewrite.test.js",
+    "test:calculations": "node tests/calculations.test.js",
+    "test:widget-polish": "node tests/widgetpolish.test.js",
+    "test:lane-style:electron": "electron tools/qa/lane-styles-electron.cjs",
+    "test:pit-stop:electron": "electron tools/qa/pit-stop-electron.cjs",
+    "test:race-updates:electron": "electron tools/qa/race-updates-electron.cjs",
+    "test:results:electron": "electron tools/qa/race-results-electron.cjs",
+    "test:charts": "node tests/chartwidgets.test.js",
+    "test:charts:electron": "electron tools/qa/chart-editor-electron.cjs",
+    "test:audit-repairs": "node tests/auditrepairs.test.js && node tests/customtyres.test.js && node tests/penaltyrewrite.test.js",
+    "test:custom-tyres:electron": "electron tools/qa/custom-tyres-electron.cjs",
+    "test:widget-audit:electron": "electron tools/qa/widget-audit-electron.cjs",
+    "test:release:electron": "electron tools/qa/lane-styles-electron.cjs && electron tools/qa/widget-audit-electron.cjs && electron tools/qa/custom-tyres-electron.cjs && electron tools/qa/pit-stop-electron.cjs && electron tools/qa/race-updates-electron.cjs && electron tools/qa/race-results-electron.cjs && electron tools/qa/chart-editor-electron.cjs && electron tools/qa/strategy-widgets-electron.cjs && electron tools/qa/calculations-electron.cjs && electron tools/qa/results-followup-electron.cjs && electron tools/qa/all-in-one-electron.cjs && electron tools/qa/widget-settings-electron.cjs && electron tools/qa/race-clock-electron.cjs && electron tools/qa/state-colours-electron.cjs && electron tools/qa/audio-editor-electron.cjs && electron tools/qa/phidget-electron.cjs",
+    "test:all-in-one": "node tests/allinone.test.js",
+    "test:audio": "node tests/audioredesign.test.js && node tests/audio.test.js && node tests/ambient.test.js && node tests/tyrecalls.test.js && node tests/voicereport.test.js",
+    "test:audio:electron": "electron tools/qa/audio-editor-electron.cjs && electron tools/qa/audio-race-electron.cjs",
+    "test:widget-composer": "node tests/widgetcompose.test.js",
+    "test:widget-composer:electron": "electron tools/qa/widget-composer-electron.cjs",
+    "phidget:build": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-phidget.ps1",
+    "test:phidget": "node tests/phidget.test.js && node tests/phidgetbackend.test.js && node tests/phidgetaudit.test.js",
+    "test:phidget:electron": "electron tools/qa/phidget-electron.cjs",
+    "test:virtual-rival": "node tests/virtualrival.test.js",
+    "test:virtual-rival:electron": "electron tools/qa/virtual-rival-electron.cjs",
+    "test:multiclass": "node tests/multiclass.test.js",
+    "test:multiclass:electron": "electron tools/qa/multiclass-electron.cjs",
+    "test:resources": "node tests/resources.test.js",
+    "test:resources:electron": "electron tools/qa/resources-electron.cjs",
+    "test:temperature": "node tests/tyretemperature.test.js",
+    "test:temperature:electron": "electron tools/qa/temperature-electron.cjs",
+    "test:systems-audit": "node tests/systemsaudit.test.js",
+    "test:multiclass-roster:electron": "electron tools/qa/multiclass-roster-electron.cjs",
+    "test:widget-scaling:electron": "electron tools/qa/widget-scaling-electron.cjs",
+    "test:interfaces:electron": "electron tools/qa/interface-pages-electron.cjs",
+    "test:settings-pages:electron": "electron tools/qa/settings-pages-electron.cjs",
+    "test:postreview:electron": "electron tools/qa/post-review-repairs.cjs",
+    "test:widget-preview:electron": "electron tools/qa/widget-preview-electron.cjs && electron tools/qa/widget-surface-electron.cjs"
+  },
+  "build": {
+    "appId": "io.github.thedutchmanjames.slotforgetiming",
+    "productName": "SlotForge Timing",
+    "copyright": "Copyright \u00a9 2026 theDutchmanJames",
+    "files": [
+      "*.js",
+      "LICENSE",
+      "vendor/**",
+      "renderer/**",
+      "node_modules/flag-icons/**",
+      "native/parallel/**",
+      "native/phidget/**"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "artifactName": "${productName}-${version}-Setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-Portable.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility",
+      "synopsis": "Slot car lap timer and lap counter",
+      "maintainer": "James <thedutchmanjames@gmail.com>",
+      "artifactName": "SlotForgeTiming-${version}.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "category": "public.app-category.utilities",
+      "icon": "build/icon.png",
+      "artifactName": "SlotForgeTiming-${version}-mac.${ext}"
+    },
+    "asarUnpack": [
+      "native/parallel/*.exe",
+      "native/phidget/*.exe"
+    ]
+  },
+  "devDependencies": {
+    "electron": "^45.0.0",
+    "electron-builder": "^26.18.0"
+  },
+  "dependencies": {
+    "flag-icons": "^7.6.0"
+  }
+}

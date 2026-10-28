@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Race Setup, option A states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.sf,.sf *{box-sizing:border-box}
+.sf button{font-family:inherit;color:inherit;cursor:pointer;text-align:left}
+.sf h2,.sf p{margin:0}
+.vig{border-radius:12px;padding:20px;background:var(--bg);color:var(--ink);border:1px solid #2a313c}
+.cap{font-size:13px;color:#98a0ab;margin:0 0 8px 2px}
+.sf .hero{display:flex;align-items:center;gap:14px;width:214px;flex:none;padding:14px 16px;border-radius:12px;border:1px solid var(--accent-solid);background:var(--accent-solid);color:#fff}
+.hero:hover{filter:brightness(1.08)}
+.hero[aria-selected="true"]{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--ink),0 8px 22px color-mix(in srgb,var(--accent-solid) 45%,transparent)}
+.hero .hico{width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;flex:none}
+.hero strong{display:block;font-size:17px;line-height:1.2}
+.hero small{display:block;font-size:12px;line-height:1.3;color:#fff;margin-top:3px}
+.glabel{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:7px 13px 7px 11px;border-radius:8px;font-size:13.5px;line-height:1.2;color:var(--ink);background:color-mix(in srgb,var(--c) 13%,var(--panel));border:1px solid color-mix(in srgb,var(--c) 42%,var(--line))}
+.chip svg{color:var(--c);flex:none}
+.chip:hover{background:color-mix(in srgb,var(--c) 24%,var(--panel))}
+.chip[aria-selected="true"]{background:color-mix(in srgb,var(--c) 32%,var(--panel));border-color:var(--c);box-shadow:inset 0 -3px 0 var(--c);font-weight:700}
+.bar{border-radius:6px;background:var(--line)}
+</style>
+</helmet>
+<div class="sf" style="width:1000px;height:1220px;padding:24px;background:#0f1217;font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;line-height:1.45;display:flex;flex-direction:column;gap:26px">
+
+  <!-- 1. The hero button is open (dark) -->
+  <div>
+    <p class="cap">1 · Race Setups open (dark theme). The big button gets a ring and the page below takes the theme's accent colour.</p>
+    <div class="vig" style="--bg:#171b21;--panel:#222831;--ink:#e8e6e1;--muted:#98a0ab;--line:#343b47;--accent-solid:#c8363c;--c-rot:#c4803f;--c-fuel:#2fb86a;--c-pen:#f2b705;--c-dmg:#e5484d;--c-tyre:#9b4dff;--c-wx:#4c9aff;--c-bop:#e8e6e1;--c-tok:#1fb5ad">
+      <div role="tablist" aria-label="Race Setup sections" style="display:flex;gap:18px;align-items:stretch;padding:4px">
+        <button type="button" role="tab" aria-selected="true" class="hero">
+          <span class="hico"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4"></path><path d="M4 4h14l-2.5 4.5L18 13H4"></path></svg></span>
+          <span><strong>Race Setups</strong><small>Where it all comes together</small></span>
+        </button>
+        <div style="display:flex;flex-direction:column;gap:12px;flex:1;min-width:0">
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <span class="glabel">Systems</span>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-pen)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>Penalty Systems</button>
+              <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-dmg)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>Damage Systems</button>
+              <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-tyre)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="3.5"></circle><path d="M12 3v5.5"></path><path d="M12 15.5V21"></path><path d="M3 12h5.5"></path><path d="M15.5 12H21"></path></svg>Tyre Wear Systems</button>
+              <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-wx)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"></path><path d="M16 14v6"></path><path d="M8 14v6"></path><path d="M12 16v6"></path></svg>Weather Systems</button>
+            </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:12px 24px">
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <span class="glabel">Setups</span>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-rot)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path><path d="M16 16h5v5"></path></svg>Rotation Setups</button>
+                <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-fuel)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 22h12"></path><path d="M4 9h10"></path><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"></path><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2 2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"></path></svg>Fuel Setups</button>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <span class="glabel">Extras</span>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-bop)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"></path><path d="M5 21h14"></path><path d="M5 7h14"></path><path d="m5 7-3 8a4 4 0 0 0 6 0z"></path><path d="m19 7-3 8a4 4 0 0 0 6 0z"></path></svg>Balance of Power</button>
+                <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-tok)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2 2"></path><path d="M9 2h6"></path></svg>Time Tokens</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:18px;background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--accent-solid);border-radius:10px;padding:16px 20px">
+        <h2 style="font-size:20px;font-weight:700">Race Setups</h2>
+        <div aria-hidden="true" style="margin-top:14px;display:flex;align-items:center;gap:16px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg)"><div class="bar" style="width:160px;height:14px"></div><div class="bar" style="width:240px;height:10px;opacity:.6"></div><div style="flex:1"></div><div class="bar" style="width:64px;height:26px;border-radius:8px"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Light theme -->
+  <div>
+    <p class="cap">2 · Light theme, Fuel Setups open. The same colours, a little darker so they still read on white.</p>
+    <div class="vig" style="--bg:#f1efea;--panel:#ffffff;--ink:#1d2229;--muted:#656c76;--line:#d9d6cf;--accent-solid:#d62828;--c-rot:#8a5124;--c-fuel:#1e8a4c;--c-pen:#9a7400;--c-dmg:#d62828;--c-tyre:#7c3aed;--c-wx:#0f6fd6;--c-bop:#5b6470;--c-tok:#0e8a84;border-color:#d9d6cf">
+      <div role="tablist" aria-label="Race Setup sections" style="display:flex;gap:18px;align-items:stretch;padding:4px">
+        <button type="button" role="tab" aria-selected="false" class="hero">
+          <span class="hico"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4"></path><path d="M4 4h14l-2.5 4.5L18 13H4"></path></svg></span>
+          <span><strong>Race Setups</strong><small>Where it all comes together</small></span>
+        </button>
+        <div style="display:flex;flex-direction:column;gap:12px;flex:1;min-width:0">
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <span class="glabel">Systems</span>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-pen)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>Penalty Systems</button>
+              <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-dmg)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>Damage Systems</button>
+              <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-tyre)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="3.5"></circle><path d="M12 3v5.5"></path><path d="M12 15.5V21"></path><path d="M3 12h5.5"></path><path d="M15.5 12H21"></path></svg>Tyre Wear Systems</button>
+              <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-wx)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"></path><path d="M16 14v6"></path><path d="M8 14v6"></path><path d="M12 16v6"></path></svg>Weather Systems</button>
+            </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:12px 24px">
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <span class="glabel">Setups</span>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-rot)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path><path d="M16 16h5v5"></path></svg>Rotation Setups</button>
+                <button type="button" role="tab" aria-selected="true" class="chip" style="--c:var(--c-fuel)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 22h12"></path><path d="M4 9h10"></path><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"></path><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2 2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"></path></svg>Fuel Setups</button>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <span class="glabel">Extras</span>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-bop)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"></path><path d="M5 21h14"></path><path d="M5 7h14"></path><path d="m5 7-3 8a4 4 0 0 0 6 0z"></path><path d="m19 7-3 8a4 4 0 0 0 6 0z"></path></svg>Balance of Power</button>
+                <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-tok)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2 2"></path><path d="M9 2h6"></path></svg>Time Tokens</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:18px;background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--c-fuel);border-radius:10px;padding:16px 20px">
+        <h2 style="font-size:20px;font-weight:700">Fuel Setups</h2>
+        <div aria-hidden="true" style="margin-top:14px;display:flex;align-items:center;gap:16px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg)"><div class="bar" style="width:160px;height:14px"></div><div class="bar" style="width:240px;height:10px;opacity:.6"></div><div style="flex:1"></div><div class="bar" style="width:64px;height:26px;border-radius:8px"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Narrow window -->
+  <div>
+    <p class="cap">3 · Narrow window (or a tablet). The big button goes full width and the groups wrap.</p>
+    <div class="vig" style="width:420px;padding:16px;--bg:#171b21;--panel:#222831;--ink:#e8e6e1;--muted:#98a0ab;--line:#343b47;--accent-solid:#c8363c;--c-rot:#c4803f;--c-fuel:#2fb86a;--c-pen:#f2b705;--c-dmg:#e5484d;--c-tyre:#9b4dff;--c-wx:#4c9aff;--c-bop:#e8e6e1;--c-tok:#1fb5ad">
+      <div role="tablist" aria-label="Race Setup sections" style="display:flex;flex-direction:column;gap:14px">
+        <button type="button" role="tab" aria-selected="false" class="hero" style="width:100%">
+          <span class="hico"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4"></path><path d="M4 4h14l-2.5 4.5L18 13H4"></path></svg></span>
+          <span><strong>Race Setups</strong><small>Where it all comes together</small></span>
+        </button>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <span class="glabel">Systems</span>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-pen)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>Penalty Systems</button>
+            <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-dmg)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>Damage Systems</button>
+            <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-tyre)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="3.5"></circle><path d="M12 3v5.5"></path><path d="M12 15.5V21"></path><path d="M3 12h5.5"></path><path d="M15.5 12H21"></path></svg>Tyre Wear Systems</button>
+            <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-wx)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"></path><path d="M16 14v6"></path><path d="M8 14v6"></path><path d="M12 16v6"></path></svg>Weather Systems</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <span class="glabel">Setups</span>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-rot)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path><path d="M16 16h5v5"></path></svg>Rotation Setups</button>
+            <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-fuel)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 22h12"></path><path d="M4 9h10"></path><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"></path><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2 2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"></path></svg>Fuel Setups</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <span class="glabel">Extras</span>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-bop)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"></path><path d="M5 21h14"></path><path d="M5 7h14"></path><path d="m5 7-3 8a4 4 0 0 0 6 0z"></path><path d="m19 7-3 8a4 4 0 0 0 6 0z"></path></svg>Balance of Power</button>
+            <button type="button" role="tab" aria-selected="false" class="chip" style="--c:var(--c-tok)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2 2"></path><path d="M9 2h6"></path></svg>Time Tokens</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1000,"height":1220}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

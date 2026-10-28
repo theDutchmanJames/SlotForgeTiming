@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Weather system editor</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./sys.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="win ss-wx" style="width: 1240px;font-family: Inter, system-ui, sans-serif; color: #e8e6e1">
+
+<div class="top">
+<div class="tile"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="M16 14v6M8 14v6M12 16v6"/></svg></div>
+<div class="grow">
+<div class="eyebrow">Weather system</div>
+<h1 class="name">Club weather</h1>
+<div class="pills">
+<span class="pill hi">Rain from lap 8</span>
+<span class="pill">Lasts 6 laps</span>
+<span class="pill">Counted in laps</span>
+<span class="pill">Same in every heat</span>
+</div>
+</div>
+<span class="status"><span class="dot"></span>Ready to use</span>
+</div>
+
+<div class="body">
+
+<div class="rail">
+<div class="cap">This system</div>
+<button class="ri on"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span><span class="t">Basics</span><span class="s">Counted in laps</span></span><span class="dot sp" role="img" aria-label="Filled in"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="M16 14v6M8 14v6M12 16v6"/></svg><span><span class="t">The rain</span><span class="s">From lap 8 · lasts 6 laps</span></span><span class="dot sp" role="img" aria-label="Changed from the standard"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5M12 15.5V21M3 12h5.5M15.5 12H21"/></svg><span><span class="t">Tyres and penalties</span><span class="s">Wet 2 points · dry 2 points</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<div class="cap" style="margin-top: 14px">Only if you need it</div>
+<button class="ri opt"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h11a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h8"/></svg><span><span class="t">Hindering the cars</span><span class="s">Wrong tyres hinder: yes</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<button class="ri opt"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/></svg><span><span class="t">Track conditions</span><span class="s">Celsius · km/h</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<div style="flex: 1"></div>
+<div class="used">
+<span class="eyebrow mute">Used by</span>
+<span class="u"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg>Endurance 2 hours</span>
+<span class="u"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg>Club race 10 laps</span>
+</div>
+</div>
+
+<div class="main">
+
+<div class="say">
+<div class="tile"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg></div>
+<div>
+<div class="eyebrow mute">In plain words</div>
+<p>The weather is counted in <b>laps</b> of the leader. The rain starts after <b>8 laps</b> and lasts <b>6 laps</b>, with <b>2 laps</b> of cloud before it and <b>2 laps</b> of clearing after it. Every heat has <b>the same weather</b>. A car has <b>2 laps</b> to change tyres when the weather asks for it, and gets <b>2 penalty points</b>, <b>once</b>, for staying on the wrong ones. The wrong tyres also make it <b>use more fuel</b> and <b>refuel slower</b>.</p>
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+<span class="st">Basics</span><span class="sn">Is the weather counted in laps or in minutes?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+<div class="q">
+<div class="l">Counted in</div>
+<span class="seg" style="align-self: flex-start"><button class="on">Laps of the leader</button><button>Minutes of racing</button></span>
+<div class="hint">Every number below that says laps or minutes follows this choice.</div>
+</div>
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="M16 14v6M8 14v6M12 16v6"/></svg></span>
+<span class="st">The rain</span><span class="sn">When does it start, and how long does it last?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="q">
+<div class="l">The weather of this race<small>It follows the numbers you type</small></div>
+<div>
+<div class="tl">
+<span style="flex: 6; background: #2f3743">Dry</span>
+<span style="flex: 2; background: #3b4658">Cloudy</span>
+<span style="flex: 6; background: #24508f">Wet</span>
+<span style="flex: 2; background: #2a5c63">Clearing</span>
+<span style="flex: 4; background: #2f3743">Dry</span>
+</div>
+<div style="position: relative; height: 20px; margin-top: 4px; font-size: 11.5px; color: #98a0ab">
+<span style="position: absolute; left: 0">0</span>
+<span style="position: absolute; left: 30%; transform: translateX(-50%)">6</span>
+<span style="position: absolute; left: 40%; transform: translateX(-50%)">8</span>
+<span style="position: absolute; left: 70%; transform: translateX(-50%)">14</span>
+<span style="position: absolute; left: 80%; transform: translateX(-50%)">16</span>
+<span style="position: absolute; right: 0">laps of the leader</span>
+</div>
+</div>
+</div>
+
+<div class="q">
+<div class="l">The rain starts</div>
+<div class="cards c3">
+<button class="kc on"><span class="kt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>At a set moment</span><span class="kd">You choose the lap. It is the same every race.</span></button>
+<button class="kc"><span class="kt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="15" r="1"/><circle cx="15" cy="9" r="1"/><circle cx="9" cy="15" r="1"/></svg>At a random moment</span><span class="kd">Somewhere between two limits you choose.</span></button>
+<button class="kc"><span class="kt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg>Only when the Race Director says so</span><span class="kd">Nobody knows when it comes.</span></button>
+</div>
+<div class="sent" style="margin-top: 4px">
+<span>The rain starts after</span>
+<span class="in" style="min-width: 0"><input type="number" value="8" aria-label="The rain starts after how many laps"><span>laps</span></span>
+</div>
+</div>
+
+<div class="q">
+<div class="l">The rain lasts</div>
+<span class="seg" style="align-self: flex-start"><button class="on">A set time</button><button>A random time (between two limits)</button></span>
+<div class="sent" style="margin-top: 4px">
+<span>The rain lasts</span>
+<span class="in" style="min-width: 0"><input type="number" value="6" aria-label="The rain lasts how many laps"><span>laps</span></span>
+</div>
+</div>
+
+<div class="cols">
+<div class="fld">
+<label for="cloudy">Cloudy before the rain <span class="hint">(0 = none)</span></label>
+<span class="in" style="min-width: 0; align-self: flex-start"><input id="cloudy" type="number" value="2"><span>laps</span></span>
+</div>
+<div class="fld">
+<label for="clearing">Clearing after the rain <span class="hint">(0 = none)</span></label>
+<span class="in" style="min-width: 0; align-self: flex-start"><input id="clearing" type="number" value="2"><span>laps</span></span>
+</div>
+</div>
+
+<div class="q">
+<div class="l">In every heat</div>
+<span class="seg" style="align-self: flex-start"><button class="on">The same weather in every heat</button><button>New random weather in every heat</button></span>
+</div>
+
+</div>
+</div>
+
+<div class="sec">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5M12 15.5V21M3 12h5.5M15.5 12H21"/></svg></span>
+<span class="st">Tyres and penalties</span><span class="sv">A pit stop in Cloudy gives Wet tyres, in Clearing the dry tyres. 2 laps to change. 2 penalty points, once.</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h11a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h8"/></svg></span>
+<span class="st">Hindering the cars</span><span class="sn">How much slower do the wrong tyres make a car?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="sw">
+<button class="tg on" role="switch" aria-checked="true" aria-label="Hinder cars on the wrong tyres"></button>
+<span><b>Hinder cars on the wrong tyres</b><br><span class="hint">They use more fuel and refuel slower (needs a Fuel system).</span></span>
+</div>
+
+<div class="cols3">
+<div class="sw"><button class="tg on" role="switch" aria-checked="true" aria-label="Hinder the fuel use"></button><span><b>Hinder the fuel use</b></span></div>
+<div class="sw"><button class="tg on" role="switch" aria-checked="true" aria-label="Hinder the refuelling speed"></button><span><b>Hinder the refuelling speed</b></span></div>
+<div class="sw"><button class="tg" role="switch" aria-checked="false" aria-label="Make the tank smaller"></button><span><b>Make the tank smaller</b></span></div>
+</div>
+
+<div class="tb" style="--cols: 1.2fr 1fr 1fr 1fr">
+<div class="th"><span>Weather</span><span>Dry tyres (% hindered)</span><span>Intermediate (% hindered)</span><span>Wet (% hindered)</span></div>
+<div class="tr"><span class="tname">Dry</span>
+<input class="fi num" type="number" value="0" aria-label="Dry weather, dry tyres, percent hindered">
+<input class="fi num" type="number" value="10" aria-label="Dry weather, Intermediate tyres, percent hindered">
+<input class="fi num" type="number" value="20" aria-label="Dry weather, Wet tyres, percent hindered"></div>
+<div class="tr"><span class="tname">Cloudy</span>
+<input class="fi num" type="number" value="0" aria-label="Cloudy weather, dry tyres, percent hindered">
+<input class="fi num" type="number" value="5" aria-label="Cloudy weather, Intermediate tyres, percent hindered">
+<input class="fi num" type="number" value="10" aria-label="Cloudy weather, Wet tyres, percent hindered"></div>
+<div class="tr"><span class="tname">Wet</span>
+<input class="fi num" type="number" value="25" aria-label="Wet weather, dry tyres, percent hindered">
+<input class="fi num" type="number" value="10" aria-label="Wet weather, Intermediate tyres, percent hindered">
+<input class="fi num" type="number" value="0" aria-label="Wet weather, Wet tyres, percent hindered"></div>
+<div class="tr"><span class="tname">Clearing</span>
+<input class="fi num" type="number" value="10" aria-label="Clearing weather, dry tyres, percent hindered">
+<input class="fi num" type="number" value="0" aria-label="Clearing weather, Intermediate tyres, percent hindered">
+<input class="fi num" type="number" value="10" aria-label="Clearing weather, Wet tyres, percent hindered"></div>
+</div>
+
+</div>
+</div>
+
+<div class="sec">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/></svg></span>
+<span class="st">Track conditions</span><span class="sv">Degrees Celsius and km/h. Dry: track 30°, air 24°, wind 10 km/h.</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="foot">
+<span class="hint">Everything else keeps its default.</span>
+<span class="grow"></span>
+<button class="btn ghost">Cancel</button>
+<button class="btn hi">Save weather system</button>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":2200}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

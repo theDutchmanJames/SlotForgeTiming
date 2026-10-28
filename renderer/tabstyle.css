@@ -1,0 +1,59 @@
+/* Approved subtab design: a quiet tint, colour edge and selected underline.
+   Explicitly scoped to navigation and settings choices, never live race actions.
+   Race System controls inherit --c / --accent from their existing system palette. */
+:is(.sub[role="tablist"] .tab,.sstab,.seg > .btn,.fu-seg > .fu-b,.twseg > .btn,.audio-tabs > .btn,.audio-choices > .btn,.parallel-setup .pp-seg > button){
+  --tab-tone:var(--tab-colour,var(--c,var(--accent)));
+  color:var(--ink);background:color-mix(in srgb,var(--tab-tone) 8%,var(--panel));
+  border:1px solid color-mix(in srgb,var(--tab-tone) 30%,var(--line));
+  border-left:3px solid var(--tab-tone);border-radius:8px;
+  box-shadow:none;outline:none;transform:none;max-width:100%;white-space:normal;
+}
+:is(.sub[role="tablist"] .tab,.sstab,.seg > .btn,.fu-seg > .fu-b,.twseg > .btn,.audio-tabs > .btn,.audio-choices > .btn,.parallel-setup .pp-seg > button):hover:where(:not(:disabled)){
+  color:var(--ink);background:color-mix(in srgb,var(--tab-tone) 13%,var(--panel));
+}
+:is(.sub[role="tablist"] .tab,.sstab,.seg > .btn,.fu-seg > .fu-b,.twseg > .btn,.audio-tabs > .btn,.audio-choices > .btn,.parallel-setup .pp-seg > button):is([aria-selected="true"],[aria-pressed="true"],.on){
+  color:var(--ink);background:color-mix(in srgb,var(--tab-tone) 18%,var(--panel));
+  border-color:var(--tab-tone);box-shadow:inset 0 -3px 0 var(--tab-tone);font-weight:700;transform:none;
+}
+:is(.sub[role="tablist"] .tab,.sstab,.seg > .btn,.fu-seg > .fu-b,.twseg > .btn,.audio-tabs > .btn,.audio-choices > .btn,.parallel-setup .pp-seg > button):focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+:is(.sub[role="tablist"] .tab,.sstab,.seg > .btn,.fu-seg > .fu-b,.twseg > .btn,.audio-tabs > .btn,.audio-choices > .btn,.parallel-setup .pp-seg > button):disabled{opacity:.5;cursor:not-allowed}
+/* Separate choices can wrap without clipping their focus ring. */
+.seg,.fu-seg,.rsform .twseg,.parallel-setup .pp-seg{display:inline-flex;flex-wrap:wrap;gap:6px;border:0;background:none;overflow:visible;max-width:100%}
+.sub .tab .tabico{color:var(--tab-tone)}
+
+/* Stable semantic colours, independent of position or selection. */
+#customtabs [data-id="layouts"]{--tab-colour:#66a9d7}
+#customtabs [data-id="rows"]{--tab-colour:#63b5a9}
+#customtabs [data-id="charts"]{--tab-colour:#91b867}
+#customtabs [data-id="results"]{--tab-colour:#d2af63}
+#customtabs [data-id="audio"]{--tab-colour:#cd8e9f}
+#customtabs [data-id="images"]{--tab-colour:#999cda}
+#customtabs [data-id="widgets"]{--tab-colour:#b896ec}
+#settingstabs [data-id="general"]{--tab-colour:#93a9be}
+#settingstabs [data-id="theme"]{--tab-colour:#a68ccd}
+#settingstabs [data-id="director"]{--tab-colour:#d4838c}
+#settingstabs [data-id="calculations"]{--tab-colour:#70a9d1}
+#settingstabs [data-id="network"]{--tab-colour:#63b4a0}
+#settingstabs [data-id="hardware"]{--tab-colour:#cfaa6e}
+#settingstabs [data-id="transfer"]{--tab-colour:#6baebc}
+#settingstabs [data-id="help"]{--tab-colour:#9bbd7d}
+#subtabs [data-id="tracks"]{--tab-colour:#91b867}
+#subtabs [data-id="drivers"],#chs-which [data-id="drivers"]{--tab-colour:#66a9d7}
+#subtabs [data-id="teams"],#chs-which [data-id="teams"]{--tab-colour:#b896ec}
+#subtabs [data-id="slotcars"]{--tab-colour:#cd8e9f}
+#subtabs [data-id="results"]{--tab-colour:#d2af63}
+#chs-which [data-id="rounds"]{--tab-colour:var(--c-ch,#ec5f9a)}
+#respool [data-id="racing"]{--tab-colour:var(--accent)}
+#respool [data-id="tokens"]{--tab-colour:#1fb5ad}
+#respool [data-id="champs"]{--tab-colour:#ec5f9a}
+#hwtabs [data-id="trackmate"]{--tab-colour:#70a9d1}
+#hwtabs [data-id="arduino"]{--tab-colour:#63b5a9}
+#hwtabs [data-id="parallel"]{--tab-colour:#cfaa6e}
+#hwtabs [data-id="phidget"]{--tab-colour:#91b867}
+#hwtabs [data-id="ds"]{--tab-colour:#b896ec}
+#hwtabs [data-id="oxigen"]{--tab-colour:#cd8e9f}
+#hwtabs [data-id="other"]{--tab-colour:#93a9be}
+[data-audio-tab="calls"]{--tab-colour:#cd8e9f}
+[data-audio-tab="mix"]{--tab-colour:#999cda}
+[data-audio-tab="ambient"]{--tab-colour:#63b5a9}
+.parallel-setup .pp-seg{--tab-colour:var(--pp-accent)}

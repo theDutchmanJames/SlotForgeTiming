@@ -1,0 +1,1381 @@
+// Lists, add, edit, delete and extra fields for any kind of item. Everything is driven by schema.js,
+// so the Database tab and the Race Setup tab share this code.
+const SUBS = [['tracks', 'Tracks'], ['drivers', 'Drivers'], ['teams', 'Teams'], ['slotcars', 'Slotcars'], ['results', 'Results and Records']];
+const XTYPES = { text: 'Text', number: 'Number', date: 'Date', list: 'Pick-list' };
+const dlg = document.getElementById('dlg');
+const byId = id => document.getElementById(id);
+let manager = null; // the list currently on screen: { box, e }
+let subRun = 0; // numbers the drawings of the lists and of the results: an answer that comes in late never paints over the page that was asked for after it
+
+// Copy saved configurations, never results or live state. Other system editors
+// own their copy action because they also rebuild round IDs or clean their drafts.
+const COPY_SETUP_ENTITIES = new Set(['racesetups', 'fuelrules', 'penaltysystems', 'damagesystems', 'tyrewearsystems', 'weathersystems', 'safetycarsystems', 'pushsavesystems']);
+const databaseNameOrder = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true });
+const databaseOrdered = (entity, items) => ['tracks', 'drivers', 'slotcars'].includes(entity)
+  ? [...items].sort((a, b) => databaseNameOrder.compare(titleOf(entity, a).trim(), titleOf(entity, b).trim())) : items;
+function setupCopyData(source, siblings) {
+  const data = JSON.parse(JSON.stringify(source));
+  delete data.id;
+  const base = String(source.name || 'Untitled setup').trim();
+  let n = 1, name;
+  do { name = base + (n === 1 ? ' (copy)' : ` (copy ${n})`); n++; }
+  while (siblings.some(x => databaseNameOrder.compare(String(x.name || '').trim(), name) === 0));
+  data.name = name;
+  return data;
+}
+
+// All countries, named by the system's own region data; flags come from the flag-icons package.
+// Codes that are obsolete duplicates or not countries are left out of the picker.
+const NOT_COUNTRIES = new Set('AC AN BU CP CS DD DG EA EU EZ FX IC QO SU TA TP UN XA XB YD YU ZR ZZ'.split(' '));
+const COUNTRIES = (() => {
+  const dn = new Intl.DisplayNames(['en'], { type: 'region' });
+  const out = [];
+  for (let a = 65; a <= 90; a++) for (let b = 65; b <= 90; b++) {
+    const c = String.fromCharCode(a, b);
+    try { const n = dn.of(c); if (n && n !== c && !NOT_COUNTRIES.has(c)) out.push([c, n]); } catch { /* not a region */ }
+  }
+  return out.sort((x, y) => x[1].localeCompare(y[1]));
+})();
+const countryName = c => (COUNTRIES.find(x => x[0] === c) || [, c])[1];
+const flagHtml = c => c ? `<span class="fi fi-${esc(c.toLowerCase())}"></span>` : '';
+
+dlg.onclose = () => { dlg.oninput = null; dlg.oncancel = null; if (manager && document.body.contains(manager.box)) mountManager(manager.box, manager.e); };
+
+async function renderDatabase(target = view) {
+  target.innerHTML = '<h2>Database</h2><div class="sub" id="subtabs" role="tablist"></div><div id="subview"></div>';
+  await drawSub();
+}
+
+async function drawSub() {
+  renderTabs(byId('subtabs'), SUBS, state.sub, id => { state.sub = id; drawSub(); });
+  const box = byId('subview');
+  box.onclick = null; box.onchange = null; // (the page that was here before left its click handlers on this element; Results and Records draws in a box inside it and would get them too)
+  if (state.sub === 'results') {
+    manager = null;
+    await renderResults(box);
+    return;
+  }
+  await mountManager(box, state.sub);
+}
+
+// 1.27.0: the distance unit (App Settings, General, Display). A field with a unit in the schema is typed in feet or inches when the unit is feet and miles; what is kept stays in metres or millimetres.
+const dUnit = () => Speed.distUnitOf(state.settings);
+const fl = f => (f.labelFt && dUnit() === 'ft' ? f.labelFt : f.label), fh = f => (f.hintFt && dUnit() === 'ft' ? f.hintFt : f.hint);
+// the text of the value of a field with a unit as it is shown and typed in feet or inches; null when the field is shown as it is kept
+function typedText(f, v) {
+  if (!f.unit || dUnit() !== 'ft') return null;
+  const one = x => (f.unit === 'mm' ? Speed.smallTyped(x, 'ft') : Speed.lengthTyped(x, 'ft'));
+  if (f.type === 'numberlist') return String(v ?? '').split(',').map(x => x.trim()).map(x => (x !== '' && Number.isFinite(Number(x)) ? String(one(x)) : x)).join(', ');
+  if (f.type === 'tracklength' || f.type === 'number') { const p = f.type === 'tracklength' ? Speed.parseLength(v) : v; return p === '' || p === undefined || p === null ? '' : String(one(p)); }
+  return null;
+}
+// the attributes that let the form give back exactly what was kept when the text was not touched (feet are rounded, so the metres would drift at every save)
+const unitAttrs = (f, v) => { const t = typedText(f, v); return t === null ? '' : ` data-du="ft" data-shown="${esc(t)}" data-keep="${esc(f.type === 'tracklength' ? Speed.parseLength(v) : v ?? '')}"`; };
+// the value to keep for a field that was typed in feet or inches: the text that was not changed gives back what was saved, the rest is converted (a lane length one at a time)
+function keptValue(f, el) {
+  const txt = String(el.value).trim(), shown = String(el.dataset.shown ?? '').trim(), keep = el.dataset.keep ?? '';
+  if (f.type === 'numberlist') {
+    if (txt === shown) return String(keep);
+    const was = shown.split(',').map(x => x.trim()), kept = String(keep).split(',').map(x => x.trim());
+    return ListNum.tidy(txt).split(',').map((x, i) => { x = x.trim(); if (x === '' || !Number.isFinite(Number(x))) return x; return x === was[i] && kept[i] !== undefined && kept[i] !== '' ? kept[i] : String(Speed.lengthKept(x, 'ft')); }).join(', ');
+  }
+  if (txt === '') return '';
+  if (txt === shown) return Number(keep);
+  return f.unit === 'mm' ? Speed.smallKept(txt, 'ft') : Speed.lengthKept(txt, 'ft');
+}
+
+const plainDate = iso => { const d = iso ? new Date(iso) : null; return d && !isNaN(d) ? d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) : ''; }; // (a day, as in the Last Serviced of a slotcar)
+function cell(f, v) {
+  if (f.blank && (v === undefined || v === null || v === '')) return `<span class="muted">${esc(f.blank)}</span>`;
+  if (v === undefined || v === null || v === '') return '';
+  if (f.type === 'image') return `<img class="thumb" src="${esc(v)}" alt="">`;
+  if (f.type === 'tracklength') return typeof v === 'number' ? esc(Speed.lengthText(v, dUnit())) : Speed.parseLength(v) === '' ? `${esc(v)} m` : esc(v);
+  { const t = typedText(f, v); if (t !== null) return esc(t); }
+  if (f.type === 'gallery') return Array.isArray(v) && v.length ? `${v.length} more` : '';
+  if (f.type === 'country') return flagHtml(v) + ' ' + esc(countryName(v));
+  if (f.type === 'longtext') return esc(String(v).slice(0, 60));
+  if (f.type === 'datetime') return esc(plainDate(v));
+  if (f.type === 'select') return esc((f.options.find(o => o[0] === v) || [, v])[1]);
+  if (f.type === 'ref') { const r = (state.refs[f.ref] || []).find(x => x.id === v); return r ? esc(titleOf(f.ref, r)) : '<span class="muted">(deleted)</span>'; }
+  if (f.type === 'members') return Array.isArray(v) && v.length ? v.map(id => { const r = (state.refs[f.ref] || []).find(x => x.id === id); return r ? esc(titleOf(f.ref, r)) : '<span class="muted">(deleted)</span>'; }).join(', ') : '';
+  return esc(v);
+}
+
+// ---- picture framing (used by the item forms here and by the Avatar widget's settings in the layout editor) ----
+const frameInner = (src, frame, aspect, round) => {
+  const f = Widgets.frameOf(frame);
+  return `<div class="framebox${round ? ' round' : ''}" style="aspect-ratio:${aspect}">${src ? `<img src="${esc(src)}" alt="" style="transform:${Widgets.frameTransform(f)}">` : '<span class="muted">Pick a picture to adjust it</span>'}</div>
+    <label class="inline">Zoom <input class="framezoom" type="range" min="1" max="4" step="0.05" value="${f.zoom}" aria-label="Zoom"></label>
+    <button type="button" class="btn framereset">Reset</button><span class="muted"> Drag the picture to move it.</span>`;
+};
+// Wires every .frame inside root. get(key) / set(key, frame) read and store the frame; the preview picture follows live.
+function attachFrames(root, get, set) {
+  root.querySelectorAll('.frame').forEach(box => {
+    const key = box.dataset && box.dataset.frame; if (!key) return;
+    const pic = box.querySelector('.framebox'), img = box.querySelector('.framebox img'), zoom = box.querySelector('.framezoom'), reset = box.querySelector('.framereset');
+    const show = f => { if (img) img.style.transform = Widgets.frameTransform(f); if (zoom) zoom.value = f.zoom; };
+    if (zoom) zoom.oninput = () => { const f = Widgets.zoomFrame(get(key), Number(zoom.value)); set(key, f); show(f); };
+    if (reset) reset.onclick = () => { const f = Widgets.frameOf(null); set(key, f); show(f); };
+    if (pic) pic.onpointerdown = ev => {
+      const r = pic.getBoundingClientRect(); if (!r.width || !r.height) return;
+      let lx = ev.clientX, ly = ev.clientY;
+      const move = m => { const f = Widgets.panFrame(get(key), (m.clientX - lx) / r.width, (m.clientY - ly) / r.height); lx = m.clientX; ly = m.clientY; set(key, f); show(f); };
+      const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+      window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+      ev.preventDefault();
+    };
+  });
+}
+
+// What a list/card column shows: a schema field, or a worked-out one written '@name'.
+const limitText = i => {
+  const laps = n => `${n} ${Number(n) === 1 ? 'lap' : 'laps'}`, mins = n => `${n} min`, dist = () => (i.distance === '' || i.distance === undefined ? '' : Distance.text(Number(i.distance), Speed.distUnitOf(state.settings))); // (1.35.0: a distance, in metres or feet)
+  switch (i.sessionType) {
+    case 'race': return i.raceBy === 'time' ? (i.duration === '' || i.duration === undefined ? '' : mins(i.duration)) : i.raceBy === 'distance' ? dist() : i.laps === '' || i.laps === undefined ? '' : laps(i.laps);
+    case 'timed': case 'qualifying': return i.duration === '' || i.duration === undefined ? '' : mins(i.duration);
+    case 'heats': return i.heatBy === 'time' ? `${mins(i.duration)} per heat` : i.heatBy === 'distance' ? `${dist()} per heat` : `${laps(i.laps)} per heat`;
+    case 'endurance': return i.enduranceBy === 'heats' ? (i.heatBy === 'time' ? `${mins(i.duration)} per heat` : i.heatBy === 'distance' ? `${dist()} per heat` : `${laps(i.laps)} per heat`) : i.enduranceBy === 'laps' ? (i.laps === '' || i.laps === undefined ? '' : laps(i.laps)) : i.enduranceBy === 'distance' ? dist() : (i.duration === '' || i.duration === undefined ? '' : mins(i.duration));
+    case 'tokens': return 'Paid time per lane';
+    default: return 'No limit';
+  }
+};
+const VIEW_ENTITIES = ['tracks', 'drivers', 'teams', 'slotcars']; // the pages with View settings (and with the view card: click a row or a card)
+const hue = t => { let n = 0; for (const ch of t) n = (n * 31 + ch.charCodeAt(0)) % 360; return `hsl(${n} 45% 40%)`; }; // (the colour of a picture's placeholder, from the name)
+// The picture of a card that has none. On the Race Setup pages it is the icon of the system or setup, in the colour of its sub-tab (1.47.1: the same icon and colour as its button
+// in the strip: see SETUP_GROUPS in editor.js); on every other page it is the first letter of the name on a colour made from the name.
+const SETUP_LOOK = { racesetups: ['racesetups', 'race'], penaltysystems: ['penalty', 'pen'], damagesystems: ['damage', 'dmg'], tyrewearsystems: ['tyre', 'tyre'], safetycarsystems: ['safetycar', 'sc'], pushsavesystems: ['pushsave', 'ps'], weathersystems: ['weather', 'wx'], fuelrules: ['fuel', 'fuel'] };
+const noPicture = (e, t) => { const l = SETUP_LOOK[e]; return l ? `<span class="ph phicon ss-${l[1]}">${Icons.svg(l[0], { size: 72, stroke: 1.4 })}</span>` : `<span class="ph" style="background:${hue(t)}">${esc((t.trim()[0] || '?').toUpperCase())}</span>`; };
+// The windows that open from a Race Setup page (the form, the extra fields) have the colour of that sub-tab too (1.47.2): the class puts the colour on the folders, the Save button and the options in it (styles.css, .setupform).
+const setupToneClass = e => (SETUP_LOOK[e] ? ` setupform ss-${SETUP_LOOK[e][1]}` : '');
+const VIRTUAL = { limit: { label: 'Laps / time', get: limitText } };
+const columnOf = (s, k) => k[0] === '@' ? { key: k, label: VIRTUAL[k.slice(1)].label, virtual: VIRTUAL[k.slice(1)] } : s.fields.find(f => f.key === k);
+const columnCell = (f, i) => f.virtual ? esc(f.virtual.get(i)) : cell(f, i[f.key]);
+
+// ---- folders: the pages that list things in folders (Results and Records) look like the groups of the forms ----
+// A folder is open unless the person closed it; that is remembered while the app runs (key: page + folder), also when the page is drawn again.
+// Race Setups (1.69.0): the kind that the page shows ('all' or a session type), the picture of each kind on a card, and the kinds of the row above the cards
+let setupFilter = 'all';
+const SETUP_FILTERS = [['all', 'All'], ['practice', 'Practice'], ['qualifying', 'Qualifying'], ['race', 'Race'], ['heats', 'Heats'], ['endurance', 'Endurance'], ['tokens', 'Time tokens']];
+// the kinds of the row "Start from a kind": the short names of the kinds, with the session type each one starts
+const SETUP_START = [['practice', 'Free practice'], ['qualifying', 'Qualifying'], ['race', 'Race'], ['heats', 'Heats'], ['endurance', 'Endurance'], ['tokens', 'Time tokens']];
+const SETUP_KIND_ICON = { practice: 'car', qualifying: 'timing', race: 'racesetups', heats: 'layers', endurance: 'rotation', tokens: 'tokens' };
+const folderClosed = new Set();
+const folderKey = (page, id) => page + ':' + id;
+const folderHtml = (page, id, title, note, body) => `<details class="dbfolder" data-folder="${esc(folderKey(page, id))}"${folderClosed.has(folderKey(page, id)) ? '' : ' open'}><summary><strong>${esc(title)}</strong> <span class="muted">${esc(note)}</span></summary>${body}</details>`;
+const folderToolsWith = extra => `<div class="fgtools"><button class="btn" type="button" data-folderall="1">Open all</button><button class="btn" type="button" data-folderall="0">Close all</button>${extra || ''}</div>`;
+const folderTools = folderToolsWith('');
+
+// ---- View settings: which columns of a table (or which rows of a grid) are shown. The choice is kept in the settings (viewSettings), for every table and view on its own. ----
+const viewBars = new Set(); // the bars that are open (kept while the app runs, also when the page is drawn again)
+const viewButton = id => `<button class="btn vsbtn${viewBars.has(id) ? ' on' : ''}" type="button" data-viewbar="${esc(id)}" aria-expanded="${viewBars.has(id)}" title="Choose which information is shown">View settings</button>`;
+const viewSaved = path => ViewSet.get(state.settings.viewSettings, path);
+// one group of check boxes: where the choice is kept (path) and the columns [{ key, label, on, note }]
+const viewGroup = (title, path, cols) => {
+  const shown = ViewSet.keys(cols, viewSaved(path));
+  return `<fieldset class="vsgroup"><legend>${esc(title)}</legend>${cols.map(c => {
+    const on = shown.includes(c.key), last = on && shown.length === 1;
+    return `<label class="vschip"${c.note ? ` title="${esc('Shown ' + c.note)}"` : ''}><input type="checkbox" data-vs="${esc(path.join('/'))}" data-key="${esc(c.key)}"${on ? ' checked' : ''}${last ? ' disabled title="At least one stays on"' : ''}> ${esc(c.label)}</label>`;
+  }).join('')}</fieldset>`;
+};
+const viewBar = (id, hint, groups) => `<div class="viewbar" role="group" aria-label="View settings"><p class="muted">${esc(hint)}</p>${groups.join('')}<div class="row"><button class="btn" type="button" data-vsreset="${esc(id)}">Back to the standard view</button></div></div>`;
+// A click on a check box of a bar: the column goes on or off. colsOf(path) gives the columns of that table. Returns true when it was one of ours.
+async function viewToggle(cb, colsOf) {
+  if (!cb || !cb.dataset || cb.dataset.vs === undefined) return false;
+  const path = cb.dataset.vs.split('/'), cols = colsOf(cb.dataset.vs); if (!cols) return false;
+  const next = ViewSet.set(viewSaved(path), cols, cb.dataset.key, !!cb.checked);
+  state.settings = await api.setSettings({ viewSettings: ViewSet.put(state.settings.viewSettings, path, next) });
+  return true;
+}
+async function viewReset(paths) {
+  let all = state.settings.viewSettings;
+  paths.forEach(p => { all = ViewSet.put(all, p, {}); });
+  state.settings = await api.setSettings({ viewSettings: all });
+}
+// after the page was drawn again: the check box that was used gets the focus back, so the keyboard keeps its place
+function viewFocus(box, cb) {
+  if (!cb || !cb.dataset || typeof box.querySelectorAll !== 'function') return;
+  const all = box.querySelectorAll('[data-vs]'), hit = Array.from(all || []).find(x => x.dataset && x.dataset.vs === cb.dataset.vs && x.dataset.key === cb.dataset.key);
+  if (hit && typeof hit.focus === 'function') hit.focus();
+}
+const folderWire = (box, after) => typeof box.querySelectorAll === 'function' && box.querySelectorAll('details.dbfolder').forEach(el => { el.ontoggle = () => { if (el.open) folderClosed.delete(el.dataset.folder); else folderClosed.add(el.dataset.folder); if (after) after(el); }; });
+const folderAll = (page, ids, open) => ids.forEach(id => { if (open) folderClosed.delete(folderKey(page, id)); else folderClosed.add(folderKey(page, id)); });
+// The Export to PDF button: it fills with the accent colour and has a picture of a page, so it is the first thing the eye finds (Results and Records, Racing Rules)
+const pdfButton = attrs => `<button class="btn primary pdfbtn" type="button" ${attrs}>${Icons.svg('pdf', { size: 18 })}<span>Export to PDF</span></button>`;
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+async function mountManager(box, e) {
+  const run = ++subRun;
+  manager = { box, e };
+  const s = state.schema[e];
+  const [storedItems, custom] = await Promise.all([api.list(e), s.extra === false ? [] : api.customFields(e)]);
+  const items = databaseOrdered(e, storedItems);
+  if (run !== subRun) return;
+  state.custom[e] = custom;
+  for (const f of s.fields) if (f.type === 'ref' || f.type === 'members') state.refs[f.ref] = await api.list(f.ref);
+  if (e === 'slotcars') state.refs.tyrewearsystems = await api.list('tyrewearsystems');
+  if (e === 'racesetups') state.refs.championships = await api.list('championships'); // (1.71.0: the box Used by in the form of a race setup names the championships that use it)
+  if (s.used) state.refs[s.used.entity] = await api.list(s.used.entity); // (1.73.0: the box Used by in the form of a system names the race setups that choose it)
+  if (run !== subRun) return;
+  const cols = s.list
+    ? s.list.map(k => columnOf(s, k)).map(f => ({ label: fl(f), get: i => columnCell(f, i) }))
+    : [
+      ...s.fields.map(f => ({ label: fl(f), get: i => cell(f, i[f.key]) })),
+      ...custom.map(f => ({ label: f.label, get: i => esc((i.custom || {})[f.id] ?? '') }))
+    ];
+  const viewKey = e === 'racesetups' ? 'setupView' : 'dbView'; // Race Setups remembers its own list / grid choice
+  const mode = s.card ? (state.settings[viewKey] || (e === 'racesetups' ? 'grid' : 'list')) : 'list'; // (1.69.0: the Race Setups page starts as cards)
+  // View settings (Tracks, Drivers, Slotcars): the columns of the list and the rows of the cards can be turned on and off. The list starts with every field, a card with the fields of the schema's card.
+  const viewable = VIEW_ENTITIES.includes(e) && !!s.card && !s.list, cardKeys = s.card || [];
+  const canView = VIEW_ENTITIES.includes(e); // a row or a card can be clicked to see everything of it (the view card)
+  const customCand = f => ({ key: 'custom:' + f.id, label: f.label, custom: f });
+  const listCands = !viewable ? null : [...s.fields.map(f => ({ key: f.key, label: fl(f), on: true, field: f })), ...custom.map(f => ({ ...customCand(f), on: true }))];
+  const gridCands = !viewable ? null : [...cardKeys.map(k => s.fields.find(f => f.key === k)).filter(Boolean).map(f => ({ key: f.key, label: fl(f), on: true, field: f })),
+    ...s.fields.filter(f => !['image', 'gallery'].includes(f.type) && !(s.title || []).includes(f.key) && !cardKeys.includes(f.key)).map(f => ({ key: f.key, label: fl(f), on: false, field: f })),
+    ...custom.map(f => ({ ...customCand(f), on: false }))];
+  const modeCands = mode === 'grid' ? gridCands : listCands, shownKeys = viewable ? ViewSet.keys(modeCands, viewSaved([e, mode])) : [];
+  const candValue = (c, i) => (c.field ? i[c.field.key] : (i.custom || {})[c.custom.id]);
+  const candHtml = (c, v) => (c.field ? cell(c.field, v) : esc(v ?? ''));
+  const viewCols = !viewable || mode === 'grid' ? null : listCands.filter(c => shownKeys.includes(c.key)).map(c => ({ label: c.label, get: i => candHtml(c, candValue(c, i)) }));
+  const viewId = 'mgr:' + e;
+  const viewBtn = viewable ? viewButton(viewId) : '';
+  const bar = !viewable || !viewBars.has(viewId) ? '' : viewBar(viewId, mode === 'grid' ? 'Turn rows of information on or off for the cards. This is remembered for the Grid view of this page.' : 'Turn columns of information on or off for the list. This is remembered for the List view of this page.',
+    [viewGroup(mode === 'grid' ? `Rows on the ${s.label.toLowerCase()} cards` : `Columns in the ${s.label.toLowerCase()} list`, [e, mode], modeCands)]);
+  const toggle = !s.card ? '' : `<span class="seg" role="group" aria-label="View"><button class="btn${mode === 'list' ? ' on' : ''}" id="vlist" aria-pressed="${mode === 'list'}">List</button><button class="btn${mode === 'grid' ? ' on' : ''}" id="vgrid" aria-pressed="${mode === 'grid'}">${e === 'racesetups' ? 'Cards' : 'Grid'}</button></span>`;
+  const copyButton = i => COPY_SETUP_ENTITIES.has(e) ? `<button class="btn" type="button" data-copy="${esc(i.id)}" title="Create an independent copy of ${esc(titleOf(e, i))}">Copy</button>` : '';
+  const gridHtml = (items, skip) => `<div class="cards">${items.map(i => {
+    // the picture: the item's own, or (race setups) the picture of the track it uses; each with its own framing
+    let img = s.image && i[s.image], frame = s.image && i[s.image + 'Frame'];
+    if (s.imageFrom) {
+      const rf = s.fields.find(x => x.key === s.imageFrom), tr = (state.refs[rf.ref] || []).find(x => x.id === i[rf.key]), re = state.schema[rf.ref];
+      img = tr && re.image && tr[re.image]; frame = tr && re.image && tr[re.image + 'Frame'];
+    }
+    const t = titleOf(e, i);
+    const details = (viewable ? gridCands.filter(c => shownKeys.includes(c.key)).map(c => {
+      const v = candValue(c, i);
+      return v === undefined || v === null || v === '' ? '' : `<div class="gd"><span class="muted">${esc(c.label)}</span> ${candHtml(c, v)}</div>`;
+    }) : s.card.filter(k => k !== skip).map(k => {
+      const f = columnOf(s, k), v = f.virtual ? f.virtual.get(i) : i[k];
+      return v === undefined || v === null || v === '' ? '' : `<div class="gd"><span class="muted">${esc(fl(f))}</span> ${columnCell(f, i)}</div>`;
+    })).join('') + (s.gallery && Array.isArray(i[s.gallery]) && i[s.gallery].length ? `<div class="gd muted">+${i[s.gallery].length} more ${i[s.gallery].length === 1 ? 'picture' : 'pictures'}</div>` : '');
+    return `<article class="gcard${canView ? ' clickable' : ''}"${canView ? ` data-view="${esc(i.id)}" tabindex="0" aria-label="View ${esc(t)}"` : ''}><div class="gimg">${img ? `<img src="${esc(img)}" alt="" style="transform:${Widgets.frameTransform(frame)}">` : noPicture(e, t)}</div>
+      <h3>${esc(t)}</h3>${rowMark(e, i)}${details}${typeof RaceSystems !== 'undefined' && i.sessionType !== 'tokens' ? RaceSystems.setupHtml(i, { compact: true, id: i.id }) : ''}<div class="row"><button class="btn" data-edit="${esc(i.id)}">Edit</button>${copyButton(i)}<button class="btn danger" data-del="${esc(i.id)}">Delete</button></div></article>`;
+  }).join('')}</div>`;
+  const tableHtml = (items, cols) => `<div class="wrap"><table class="fields"><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}<th></th></tr>` +
+    items.map(i => `<tr${canView ? ` class="clickable" data-view="${esc(i.id)}" tabindex="0" aria-label="View ${esc(titleOf(e, i))}"` : ''}>${cols.map((c, n) => `<td>${c.get(i)}${n === 0 ? rowMark(e, i) : ''}</td>`).join('')}<td class="actions">
+      <button class="btn" data-edit="${esc(i.id)}">Edit</button> ${copyButton(i)} <button class="btn danger" data-del="${esc(i.id)}">Delete</button></td></tr>`).join('') + '</table></div>';
+  // Race setups (1.69.0): a row of kinds to filter on, and each setup as a card that says in words how it ends and who wins (setupwords.js). The folders per session type are gone.
+  const rsShown = e !== 'racesetups' ? items : setupFilter === 'all' ? items : items.filter(i => i.sessionType === setupFilter);
+  const rsCtx = i => ({ track: (state.refs.tracks || []).find(t => t.id === i.track) || null, rotation: ((state.refs.rotationsetups || []).find(r => r.id === i.rotation) || {}).name || '', dist: n => Distance.text(n, dUnit()) });
+  const rsCard = i => {
+    const d = SetupWords.describe(i, rsCtx(i)), t = titleOf(e, i);
+    return `<article class="rscard"><div class="rshead"><span class="rstile">${Icons.svg(SETUP_KIND_ICON[i.sessionType] || 'racesetups', { size: 22 })}</span><div class="rstitle"><div class="rseye">${esc(d.kind)}</div><div class="rsname">${esc(t)}</div></div>
+      <span class="rsdot${d.ready.ok ? '' : ' off'}" role="img" title="${esc(d.ready.text)}" aria-label="${esc(d.ready.text)}"></span></div>
+      <div class="rspills">${d.cardPills.map(p => `<span class="rspill${p.tone ? ' ' + p.tone : ''}">${esc(p.text)}</span>`).join('')}</div>
+      <div class="rslv"><span class="k">Ends</span><span>${esc(d.ends)}</span></div><div class="rslv"><span class="k">Wins</span><span>${esc(d.wins)}</span></div>
+      ${typeof RaceSystems !== 'undefined' && i.sessionType !== 'tokens' ? RaceSystems.setupHtml(i, { compact: true, id: i.id }) : ''}<div class="row"><button class="btn" data-edit="${esc(i.id)}">Edit</button>${copyButton(i)}<button class="btn danger" data-del="${esc(i.id)}">Delete</button></div></article>`;
+  };
+  const rsFilter = e !== 'racesetups' ? '' : `<span class="seg rsfilter" role="group" aria-label="Show">${SETUP_FILTERS.map(([id, label]) => `<button class="btn${setupFilter === id ? ' on' : ''}" data-rsf="${id}" aria-pressed="${setupFilter === id}">${esc(label)}</button>`).join('')}</span>`;
+  const rsStart = e !== 'racesetups' ? '' : `<div class="rscard rsstart"><span class="rstile">${Icons.svg('plus', { size: 22 })}</span><div class="rstitle"><div class="rsname">Start from a kind</div><span class="hint">A new setup opens with the right kind already chosen.</span></div>
+    <div class="rskinds">${SETUP_START.map(([id, label]) => `<button class="rspill" type="button" data-rskind="${id}">${esc(label)}</button>`).join('')}</div></div>`;
+  const rsEmpty = !items.length ? 'No race setups yet. Use the button above, or start from a kind below.' : `Nothing under ${SETUP_FILTERS.find(f => f[0] === setupFilter)[1]} yet. Start one below.`;
+  const rsBody = e !== 'racesetups' ? '' : (rsShown.length ? (mode === 'grid' ? `<div class="rscards">${rsShown.map(rsCard).join('')}</div>` : tableHtml(rsShown, cols)) : `<p class="muted">${esc(rsEmpty)}</p>`) + rsStart;
+  box.innerHTML = `<div class="row"><button class="btn primary" id="add">Add ${esc(s.label.toLowerCase())}</button>
+      ${s.extra === false ? '' : '<button class="btn" id="extra">Extra fields…</button>'}${rsFilter}${viewBtn}${toggle}</div>${bar}` +
+    (e === 'racesetups' ? rsBody
+      : items.length && mode === 'grid' ? gridHtml(items)
+      : items.length ? tableHtml(items, viewCols || cols)
+      : `<p class="muted">No ${esc(s.plural.toLowerCase())} yet. Use the button above to add one.</p>`);
+  box.onchange = !viewable ? null : async ev => { // a check box of the View settings bar
+    const cb = ev.target;
+    if (await viewToggle(cb, path => (path === e + '/' + mode ? modeCands : null))) { await mountManager(box, e); viewFocus(box, cb); }
+  };
+  box.onkeydown = !canView ? null : ev => { // Enter or Space on a focused row or card opens it
+    const v = ev.target && ev.target.dataset && ev.target.dataset.view;
+    if (v && (ev.key === 'Enter' || ev.key === ' ') && items.some(i => i.id === v)) { ev.preventDefault(); openView(e, items.find(i => i.id === v)); }
+  };
+  box.onclick = async ev => {
+    const b = ev.target.closest('button');
+    if (!b) { // not on a button: a click on a row or a card shows it
+      const v = canView && ev.target.closest('[data-view]'), it = v && items.find(i => i.id === v.dataset.view);
+      if (it) openView(e, it);
+      return;
+    }
+    if (e === 'racesetups' && b.dataset.systemSetup && typeof RaceSystems !== 'undefined') { const row = items.find(x => x.id === b.dataset.systemSetup); if (row) { await api.update(e, row.id, { disabledSystems: RaceSystems.toggle(row.disabledSystems, b.dataset.systemKey, b.dataset.systemOn === '1') }); await mountManager(box, e); } return; }
+    if (b.dataset.rsf) { setupFilter = b.dataset.rsf; return mountManager(box, e); } // (Race Setups: the kind to show)
+    if (b.dataset.rskind) return openForm(e, null, { sessionType: b.dataset.rskind }); // (Race Setups: Start from a kind)
+    if (b.dataset.viewbar) { if (viewBars.has(b.dataset.viewbar)) viewBars.delete(b.dataset.viewbar); else viewBars.add(b.dataset.viewbar); return mountManager(box, e); }
+    if (b.dataset.vsreset) { await viewReset([[e, mode]]); return mountManager(box, e); }
+    if (b.id === 'add') return openForm(e, null);
+    if (b.id === 'extra') return openExtra(e);
+    if (b.id === 'vgrid' || b.id === 'vlist') { state.settings = await api.setSettings({ [viewKey]: b.id === 'vgrid' ? 'grid' : 'list' }); return mountManager(box, e); }
+    if (b.dataset.copy && COPY_SETUP_ENTITIES.has(e)) {
+      if (b.disabled) return;
+      b.disabled = true;
+      try {
+        const latest = await api.list(e), source = latest.find(x => x.id === b.dataset.copy);
+        if (!source) throw new Error('This setup no longer exists. Reopen the list and try again.');
+        await api.add(e, setupCopyData(source, latest));
+        if (manager?.box === box && manager.e === e && box.isConnected !== false) await mountManager(box, e);
+      } catch (err) { alert('Could not copy setup: ' + err.message); }
+      finally { b.disabled = false; }
+      return;
+    }
+    const it = items.find(i => i.id === (b.dataset.edit || b.dataset.del));
+    if (b.dataset.edit) openForm(e, it);
+    else if (b.dataset.del) {
+      const n = s.linked === false ? 0 : await api.linkedLaps(e, it.id);
+      const extra = s.linked === false ? '' : `\n\nThis also deletes ${n} saved ${n === 1 ? 'lap' : 'laps'} and the records they hold${e === 'drivers' || e === 'slotcars' ? ', and takes them out of the results of past races' : ''}.`;
+      if (!confirm(`Delete "${titleOf(e, it)}"?${extra}\n\nThis can't be undone.`)) return;
+      await api.remove(e, it.id);
+      mountManager(box, e);
+    }
+  };
+  if (e === 'slotcars' && state.focusCar) { const it = items.find(i => i.id === state.focusCar); state.focusCar = null; if (it) openView(e, it); } // (a car clicked on Home, in the Service Due card: its card opens)
+}
+
+// The modern penalty editor deliberately does not start with pre-filled penalties:
+// every named button is an explicit rule chosen by the Race Director.
+const PT_DEFAULTS = [];
+const ptRows = types => types.length ? `<div class="ptrow pthead muted"><span>Name</span><span>Adds points</span><span>Immediate result</span><span>Amount</span><span></span></div>` +
+  types.map((t, i) => t.effect === undefined ? `<div class="ptrow"><input type="text" data-pt="${i}" data-ptk="name" value="${esc(t.name)}" aria-label="Name" maxlength="40"><span class="muted">Legacy pit penalty</span><span class="muted">Costs ${esc(t.cost)} points</span><span class="muted">${esc(t.kind === 'drivethrough' ? 'Drivethrough' : `Stop ${t.seconds} s`)}</span><button type="button" class="btn ib" data-ptdel="${i}" aria-label="Remove ${esc(t.name || 'this special penalty')}" title="Remove">${Icons.svg('trash', { size: 16 })}</button></div>` : `<div class="ptrow"><input type="text" data-pt="${i}" data-ptk="name" value="${esc(t.name)}" aria-label="Name" maxlength="40">
+  <input type="number" min="0" step="1" data-pt="${i}" data-ptk="points" value="${esc(t.points)}" aria-label="Penalty points to add">
+  <select data-pt="${i}" data-ptk="effect" aria-label="Immediate result"><option value="none"${t.effect === 'none' ? ' selected' : ''}>No immediate result</option><option value="time"${t.effect === 'time' ? ' selected' : ''}>Add time</option><option value="laps"${t.effect === 'laps' ? ' selected' : ''}>Deduct scoring laps</option><option value="pit"${t.effect === 'pit' ? ' selected' : ''}>Force pit stop</option></select>
+  <input type="number" min="0" step="any" data-pt="${i}" data-ptk="amount" value="${esc(t.amount)}" aria-label="Amount (seconds or scoring laps)" title="Seconds for time or a pit stop; scoring laps for a lap deduction."><button type="button" class="btn ib" data-ptdel="${i}" aria-label="Remove ${esc(t.name || 'this special penalty')}" title="Remove">${Icons.svg('trash', { size: 16 })}</button></div>`).join('')
+  : '<p class="muted">No special penalties yet. Add a named button for the Race Director when you need one.</p>';
+const prRows = rules => rules.length ? `<div class="ptrow prrow pthead muted"><span>From total points</span><span>Total time (s)</span><span>Scoring laps lost</span><span>Mandatory pit stop (s)</span><span></span></div>` +
+  rules.map((r, i) => `<div class="ptrow prrow"><input type="number" min="1" step="1" data-pr="${i}" data-prk="from" value="${esc(r.from)}" aria-label="From total points"><input type="number" min="0" step="any" data-pr="${i}" data-prk="time" value="${esc(r.time)}" aria-label="Total time in seconds"><input type="number" min="0" step="1" data-pr="${i}" data-prk="laps" value="${esc(r.laps)}" aria-label="Scoring laps lost"><input type="number" min="0" step="any" data-pr="${i}" data-prk="pit" value="${esc(r.pit)}" aria-label="Mandatory pit stop seconds"><button type="button" class="btn ib" data-prdel="${i}" aria-label="Remove this level" title="Remove">${Icons.svg('trash', { size: 16 })}</button></div>`).join('')
+  : '<p class="muted">No point consequences yet. Penalty points are recorded, but do not change the result until you add a level.</p>';
+// the levels of a damage system: one row each (a name, from how many damage points, how long to stand still, how urgent, the deadline in laps, what the stop does)
+const dlRows = levels => levels.length ? `<div class="ptrow dlrow pthead muted"><span>Name</span><span>From (damage points)</span><span>Stand still (s)</span><span>Pit</span><span>Within (laps, 0 = no deadline)</span><span>The stop</span><span></span></div>` +
+  levels.map((l, i) => `<div class="ptrow dlrow"><input type="text" data-dl="${i}" data-dlk="name" value="${esc(l.name)}" aria-label="Name" maxlength="40">
+  <input type="number" min="1" step="1" data-dl="${i}" data-dlk="from" value="${esc(l.from)}" aria-label="From how many damage points">
+  <input type="number" min="0" step="any" data-dl="${i}" data-dlk="seconds" value="${esc(l.seconds)}" aria-label="Seconds to stand still on the sensor" title="How long the car must stand on the sensor in the pits. For a car that is retired or disqualified: how long before that happens (0 = as soon as the pit stop starts).">
+  <select data-dl="${i}" data-dlk="urgency" aria-label="Pit whenever you can, or as fast as you can"><option value="whenever"${l.urgency !== 'asap' ? ' selected' : ''}>Whenever you can</option><option value="asap"${l.urgency === 'asap' ? ' selected' : ''}>As fast as you can</option></select>
+  <input type="number" min="0" step="1" data-dl="${i}" data-dlk="within" value="${esc(l.within)}" aria-label="Laps within which the car must be in the pits" title="After this many laps the car gets penalty points for every lap (see Penalty points below). 0 = no deadline.">
+  <select data-dl="${i}" data-dlk="action" aria-label="What the stop does"><option value="repair"${l.action !== 'retire' && l.action !== 'dq' ? ' selected' : ''}>Repairs the car</option><option value="retire"${l.action === 'retire' ? ' selected' : ''}>Retires the car</option><option value="dq"${l.action === 'dq' ? ' selected' : ''}>Disqualifies the car</option></select>
+  <button type="button" class="btn ib" data-dldel="${i}" aria-label="Remove ${esc(l.name || 'this level')}" title="Remove">${Icons.svg('trash', { size: 16 })}</button></div>`).join('')
+  : '<p class="muted">No levels yet: damage points are counted, but no stop repairs or ends anything.</p>';
+// the incidents of a damage system: a name and the damage points it gives (the buttons of the Race Director)
+const diRows = incs => incs.length ? `<div class="ptrow dirow pthead muted"><span>Name</span><span>Damage points</span><span></span></div>` +
+  incs.map((x, i) => `<div class="ptrow dirow"><input type="text" data-di="${i}" data-dik="name" value="${esc(x.name)}" aria-label="Name" maxlength="40">
+  <input type="number" min="1" step="1" data-di="${i}" data-dik="points" value="${esc(x.points)}" aria-label="Damage points it gives"><button type="button" class="btn ib" data-didel="${i}" aria-label="Remove ${esc(x.name || 'this incident')}" title="Remove">${Icons.svg('trash', { size: 16 })}</button></div>`).join('')
+  : '<p class="muted">No incidents yet: the Race Director then has only the plus and minus buttons.</p>';
+// the Car Failures of a damage system (1.43.0): one row each (a name, the level whose rules it borrows, the chance in percent, the seconds to stand still)
+const cfRows = (list, levels) => list.length ? `<div class="ptrow cfrow pthead muted"><span>Name</span><span>Level (its rules)</span><span>Chance (%)</span><span>Stand still (s)</span><span></span></div>` +
+  list.map((x, i) => {
+    const names = levels.map(l => String(l.name || '').trim()).filter(Boolean), lost = String(x.level || '').trim() && !names.some(n => n.toLowerCase() === String(x.level).trim().toLowerCase());
+    return `<div class="ptrow cfrow"><input type="text" data-cf="${i}" data-cfk="name" value="${esc(x.name)}" aria-label="Name" maxlength="40">
+  <select data-cf="${i}" data-cfk="level" aria-label="The level whose rules the failure takes" title="The pit rules of this level (whenever you can or as fast as you can, the deadline in laps, and what the stop does: repair, retire or disqualify) are the rules of the failure."><option value="">None: pit whenever you can, no deadline, a repair</option>${names.map(n => `<option value="${esc(n)}"${String(x.level || '').trim().toLowerCase() === n.toLowerCase() ? ' selected' : ''}>${esc(n)}</option>`).join('')}${lost ? `<option value="${esc(x.level)}" selected>${esc(x.level)} (no such level)</option>` : ''}</select>
+  <input type="number" min="0" max="100" step="any" data-cf="${i}" data-cfk="chance" value="${esc(x.chance)}" aria-label="Chance in percent that a car gets this failure in a race" title="The chance in percent that a car gets this failure at some point in the race (before the Failure factor of the slot car).">
+  <input type="number" min="0" step="any" data-cf="${i}" data-cfk="seconds" value="${esc(x.seconds)}" aria-label="Seconds to stand still on the sensor" title="How long the car must stand on the sensor in the pits to clear the failure. For a failure that retires or disqualifies the car: how long before that happens (0 = as soon as the pit stop starts).">
+  <button type="button" class="btn ib" data-cfdel="${i}" aria-label="Remove ${esc(x.name || 'this failure')}" title="Remove">${Icons.svg('trash', { size: 16 })}</button></div>`; }).join('')
+  : '<p class="muted">No failures yet. Add the standard failures, or make your own.</p>';
+// the tyres of a tyre wear system (field type 'tyretable'): setup starts with the useful
+// answer (how long a set lasts at benchmark pace). The detailed grip profile remains available
+// without making the primary setup look like four unrelated percentages per compound.
+const twWearLabel = unit => (unit === 'distance' ? `Wear per 100 ${dUnit() === 'ft' ? 'ft' : 'm'} (%)` : 'Wear per lap (%)');
+const twLifeLabel = unit => unit === 'distance' ? (dUnit() === 'ft' ? 'ft' : 'm') : 'laps';
+const twLife = (t, unit) => TyreWear.lifeForWear(unit, dUnit(), Number(String(t && t.wear !== undefined ? t.wear : '').replace(',', '.')));
+const twLifeText = (t, unit) => { const n = twLife(t, unit); return n > 0 ? (Math.round(n * 10) / 10).toLocaleString() : 'Does not wear'; };
+const twHead = unit => `<div class="twrow twprimary twhead muted"><span>Tyre</span><span>Lasts about at benchmark pace</span><span>${twWearLabel(unit)} at benchmark pace</span><span></span></div>`;
+const twIconLetter = ty => (ty.icon || ty.code) === 'INT' ? 'I' : (ty.icon || ty.code);
+// Keep unfinished names visible while editing; saving still requires a nonblank name.
+const twDraftTyres = tyres => Object.fromEntries(Object.entries(tyres||{}).map(([k,v])=>[k,k.startsWith('C_')?{...v,name:String(v.name||'').trim()||'Unnamed tyre'}:v]));
+const twCustomFields = ty => `<div class="twcustom formgrid"><label class="field">Name<input data-twmeta="${ty.code}" data-twkey="name" value="${esc(ty.name)}" maxlength="60" required></label><label class="field">Icon and colour<select data-twmeta="${ty.code}" data-twkey="icon">${Wx.TYRES.map(t => `<option value="${t.code}"${t.code === ty.icon ? ' selected' : ''}>${esc(t.name)} (${t.code})</option>`).join('')}</select></label><label class="field">Weather category<select data-twmeta="${ty.code}" data-twkey="cls">${[['dry','Dry / slick'],['inter','Intermediate'],['wet','Wet']].map(([v,n])=>`<option value="${v}"${v===ty.cls?' selected':''}>${n}</option>`).join('')}</select></label><div class="field"><button type="button" class="btn danger" data-twremove="${ty.code}">Remove custom tyre</button></div><p class="muted full">Icon controls appearance. Weather category controls weather effects and mandatory compound rules. Choose this tyre in Race Director → Tyre Change.</p></div>`;
+const twRows = (tyres, unit, sel) => Wx.withTyres(twDraftTyres(tyres)).TYRES.map(ty => { const t = tyres[ty.code] || {}, c = ty.color;
+  const life = twLife(t, unit);
+  return `<div class="twrow twprimary${ty.code === sel ? ' sel' : ''}" data-twrow="${ty.code}"><span class="twname"><b class="twchip" style="border-color:${c};color:${c}">${esc(twIconLetter(ty))}</b> ${esc(ty.name)}</span>
+    <label class="twf"><small>Lasts about at benchmark pace</small><span class="twlifeinput"><input type="number" step="0.1" min="0" data-twlife="${ty.code}" value="${esc(life > 0 ? Math.round(life * 10) / 10 : '')}" aria-label="${esc(ty.name)}: lasts about at benchmark pace"><em>${twLifeLabel(unit)}</em></span></label>
+    <span class="twlasts" data-twwear="${ty.code}">${esc(twWearLabel(unit) + ': ' + (Number(t.wear) > 0 ? Number(t.wear).toLocaleString() + '%' : 'no wear'))}</span>
+    <button type="button" class="btn small" data-twsel="${ty.code}" aria-label="Tune the profile of the ${esc(ty.name)} tyre"${ty.code === sel ? ' disabled' : ''}>Tune profile</button></div>${ty.custom ? twCustomFields({...ty,name:t.name??ty.name}) : ''}`; }).join('');
+const twCurve = (tyres, sel) => { const ty = Wx.withTyres(twDraftTyres(tyres)).tyreOf(sel) || Wx.TYRES[0], t = TyreWear.cleanTyres(twDraftTyres(tyres))[ty.code];
+  return `<div class="twcurve"><div class="twsvg">${TyreWear.curveSvg(t)}</div><div class="twtext"><p><strong>${esc(ty.name)}.</strong> New tyres give the fresh bonus (${TyreWear.effectText(t.bonus)}). The bonus fades while the tyre wears.</p>
+    <p><strong>At ${t.cliff}% life left</strong> the bonus is gone. Below that the tyre starts to hinder the car.</p><p><strong>At 0%</strong> the hindrance is at its worst (${TyreWear.effectText(-t.hind)}).</p>
+    <p class="muted">A plus helps (less fuel used, faster refuelling), a minus hinders. Lap times are never changed.</p></div></div>`; };
+const twProfile = (tyres, unit, sel) => { const ty = Wx.withTyres(twDraftTyres(tyres)).tyreOf(sel) || Wx.TYRES[0], t = tyres[ty.code] || {};
+  return `<details class="twadvanced"><summary>Tune the selected tyre’s performance profile <span class="muted">(optional)</span></summary><p class="muted">This does not change how long the tyre lasts. It changes the small fuel and refuelling advantage or hindrance as the tyre wears.</p><div class="twrow twprofile"><span class="twname"><b class="twchip" style="border-color:${ty.color};color:${ty.color}">${esc(twIconLetter(ty))}</b> ${esc(ty.name)}</span>`
+    + TyreWear.NUMS.filter(([k]) => k !== 'wear').map(([k, label]) => `<label class="twf"><small>${esc(label)}</small><input type="number" step="any" min="${TyreWear.LIMITS[k][0]}" max="${TyreWear.LIMITS[k][1]}" data-tw="${ty.code}" data-twk="${k}" value="${esc(t[k] ?? '')}" aria-label="${esc(ty.name)}: ${esc(label)}"></label>`).join('')
+    + `</div><div id="tw-curve">${twCurve(tyres, sel)}</div></details>`; };
+const twTable = (tyres, unit, sel) => `<div class="twbtns row"><span class="twbl"><b>Start from a ready-made system</b><span class="muted">You can change every number.</span></span><span class="twseg" role="group" aria-label="Ready-made systems">${TyreWear.PRESET_KEYS.map(k => { const on = TyreWear.presetOf(tyres) === k; return `<button type="button" class="btn${on ? ' on' : ''}" aria-pressed="${on}" data-twpreset="${k}" title="${esc(TyreWear.PRESETS[k].note)}">${esc(TyreWear.PRESETS[k].name)}</button>`; }).join('')}</span></div>
+  <p class="muted">Set the life you want at the selected benchmark pace. Standard is in between, Sprint wears quickly (short races, many stops), and Endurance wears slowly.</p>
+  <div class="twtable" id="tw-table">${twHead(unit)}${twRows(tyres, unit, sel)}</div><p><button type="button" class="btn" data-twadd="1"${Object.keys(tyres).filter(k=>k.startsWith('C_')).length>=32?' disabled':''}>Add custom tyre</button></p>${twProfile(tyres, unit, sel)}`;
+// the ready-made push and save systems (field type 'pspresets', 1.54.0): a button for each that fills in the four wear numbers
+const psNote = k => { const n = PushSave.PRESETS[k].note; return /[.!?]$/.test(n) ? n : n + '.'; };
+const psPresets = key => `<div class="fu-cards" role="group" aria-label="Ready-made systems">${PushSave.PRESET_KEYS.map(k => { const on = key === k; return `<button type="button" class="fu-card${on ? ' on' : ''}" aria-pressed="${on}" data-pspreset="${k}"><span class="fu-ct"><b>${esc(PushSave.PRESETS[k].name)}</b></span><span class="fu-cd">${esc(psNote(k))}</span><span class="fu-ck" aria-hidden="true">${Icons.svg('check', { size: 18, stroke: 1.8 })}</span></button>`; }).join('')}</div>`; // (1.76.0: cards, as in the design; the one whose four numbers the form holds is marked)
+// Native range controls keep the Pace markers genuinely draggable (mouse, touch and keyboard).
+const psCurveNumber = (v, d) => { const n = Number(String(v === undefined || v === null ? '' : v).replace(',', '.')); return Number.isFinite(n) ? Math.max(0.1, Math.min(100, n)) : d; };
+const psCurve = get => {
+  if (get('mode') === 'legacy') return '<div class="pscurve legacy"><b>Best-lap reference</b><span class="muted">This saved system keeps its earlier pace model. Choose the driver pace benchmark model to use App Settings > Calculations.</span></div>';
+  const push = psCurveNumber(get('pushAt'), PushSave.DEFAULTS.pushAt), save = psCurveNumber(get('saveAt'), PushSave.DEFAULTS.saveAt), tr = (state.refs.tracks || []).find(x => x.id === get('previewTrack')), target = Number(tr && tr.targetLap) > 0 ? Number(tr.targetLap) * 1000 : 0;
+  const time = pct => target ? `${(target * (1 + pct / 100) / 1000).toFixed(3)} s` : `${pct < 0 ? '' : '+'}${pct}%`;
+  return `<div class="pscurve" id="ps-curve"><div class="pscurve-labels"><span>Faster</span><strong>${esc(time(-push))}</strong><b>${esc(target ? time(0) : 'Driver benchmark')}</b><strong>${esc(time(save))}</strong><span>Slower</span></div><div class="pscurve-track"><i class="pscurve-fast"></i><i class="pscurve-mid"></i><i class="pscurve-save"></i><input type="range" min="0.1" max="20" step="0.1" value="${push}" data-pscurve="pushAt" aria-label="Full push: percent faster than the benchmark"><input type="range" min="0.1" max="40" step="0.1" value="${save}" data-pscurve="saveAt" aria-label="Full save: percent slower than the benchmark"></div><p><b>Full push</b> at ${esc(time(-push))} · the App Settings <b>benchmark</b> is normal use and wear · <b>full save</b> at ${esc(time(save))}. Drag either marker or type the exact value below.</p></div>`;
+};
+// the weather table of a tyre wear system (field type 'wxmult'): how much more or less every kind of tyre wears in every weather
+const twWeatherGraph = mult => { const n = (state, kind) => { const v = Number(mult && mult[state] && mult[state][kind]); return Number.isFinite(v) ? Math.max(0, Math.min(20, v)) : 1; };
+  const all = Wx.CLASSES.flatMap(kind => Wx.STATES.map(([state]) => n(state, kind))), hi = Math.max(2, ...all), w = 540, h = 180, l = 38, r = 12, top = 18, bottom = 30;
+  const point = (v, i) => `${l + i * (w - l - r) / (Wx.STATES.length - 1)},${top + (hi - v) * (h - top - bottom) / hi}`;
+  const line = (kind, color, label) => `<polyline fill="none" stroke="${color}" stroke-width="3" points="${Wx.STATES.map(([state], i) => point(n(state, kind), i)).join(' ')}"/><text x="${l + 6}" y="${top + (kind === 'dry' ? 14 : kind === 'inter' ? 30 : 46)}" fill="${color}" font-size="12" font-weight="700">${label}</text>`;
+  return `<div class="twweathercurve"><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Tyre wear multiplier by weather: lower preserves a tyre and higher wears it faster"><line x1="${l}" x2="${w - r}" y1="${top + (hi - 1) * (h - top - bottom) / hi}" y2="${top + (hi - 1) * (h - top - bottom) / hi}" stroke="currentColor" opacity=".35" stroke-dasharray="4 4"/>${line('dry', '#f0b400', 'Dry tyres')}${line('inter', '#59be84', 'Intermediate')}${line('wet', '#54a7ec', 'Wet')}${Wx.STATES.map(([state, name], i) => `<text x="${l + i * (w - l - r) / (Wx.STATES.length - 1)}" y="${h - 9}" text-anchor="middle" fill="currentColor" opacity=".72" font-size="11">${esc(name)}</text>`).join('')}<text x="4" y="${top + 4}" fill="currentColor" opacity=".72" font-size="11">${hi}&times;</text><text x="8" y="${top + (hi - 1) * (h - top - bottom) / hi + 4}" fill="currentColor" opacity=".72" font-size="11">1&times;</text></svg><p class="muted">The dashed line is normal wear (1.0×). A line below it preserves a tyre; a line above it wears the tyre faster. The right tyre for the conditions follows the lower line.</p></div>`; };
+const twMult = mult => `<div class="twtable twmult"><div class="twrow twhead muted"><span>Weather</span><span>Dry tyres (Hard, Medium, Soft, Supersoft)</span><span>Intermediate</span><span>Wet</span></div>`
+  + Wx.STATES.map(([st, name]) => `<div class="twrow"><span class="twname"><strong>${esc(name)}</strong></span>` + Wx.CLASSES.map(c => `<label class="twx"><small>${c === 'dry' ? 'Dry tyres' : c === 'inter' ? 'Intermediate' : 'Wet'}</small><input type="number" step="any" min="0" max="20" data-twm="${st}" data-twmc="${c}" value="${esc(mult[st] && mult[st][c] !== undefined ? mult[st][c] : '')}" aria-label="${esc(name)} weather, ${c === 'dry' ? 'dry' : c === 'inter' ? 'Intermediate' : 'Wet'} tyres: times the wear"><span>&times;</span></label>`).join('') + '</div>').join('') + '</div>'
+  + twWeatherGraph(mult)
+  + `  <p class="muted">The numbers multiply the wear above: 1.0 is normal, 0.5 is half the wear, 3.0 is three times. Intermediate and Wet tyres wear slower in the rain and slicks wear faster on a wet track. Only used in a race with a Weather System.</p>`;
+// the sets of a tyre wear system (field type 'tyresets'): how many sets of every tyre a car, or a team, has (1.41.0)
+const twSets = (sets, tyres) => `<div class="twtable twsets" id="tw-sets">` + TyreWear.withTyres(tyres).CODES.map(code => { const ty = Wx.withTyres(tyres).tyreOf(code), c = ty.color;
+  return `<label class="twx twsetx"><small><b class="twchip" style="border-color:${c};color:${c}">${esc(twIconLetter(ty))}</b> ${esc(ty.name)}</small><input type="number" step="1" min="0" max="99" data-tws="${code}" value="${esc(sets && sets[code] !== undefined ? sets[code] : '')}" aria-label="Sets of ${esc(ty.name)} tyres"></label>`; }).join('')
+  + `</div>`;
+const calcRows = pieces => pieces.map((p, i) => `<div class="calcrow"><input type="number" min="0" step="1" class="calc-count" data-i="${i}" value="${esc(p.count)}" aria-label="Number of pieces"> &times;
+  <input type="number" min="0" step="any" class="calc-mm" data-i="${i}" value="${esc(Speed.smallTyped(p.mm, dUnit()))}" aria-label="Length of one piece in ${dUnit() === 'ft' ? 'inches' : 'millimetres'}"> ${dUnit() === 'ft' ? 'in' : 'mm'} <button type="button" class="btn" data-calcdel="${i}">Remove</button></div>`).join('');
+const calcHtml = pieces => `<p class="muted">Number of pieces &times; length of one piece. Add a row for every kind of piece.</p><div id="calc-rows">${calcRows(pieces)}</div>
+  <div class="row"><button type="button" class="btn" data-calcadd="1">Add another piece type</button> <strong id="calc-total">${Speed.lengthText(Speed.lengthFromPieces(pieces), dUnit())}</strong>
+  <button type="button" class="btn primary" data-calcuse="1">Use this length</button></div>`;
+
+// The weather system (1.74.0): the bar of the weather over the race (field type 'wxtimeline': the sentence code draws the bar into rs-strip), the table of how much the wrong tyres hinder a car (type 'wxhinder', 12 numbers)
+// and the table of the conditions on the track (type 'wxcond', 16 numbers). The numbers are ordinary settings (ui 'cell', ids f-<setting>) that the table draws, so the form reads and saves them as before.
+const BAR_TYPES = ['wxtimeline', 'pstimeline', 'sctimeline']; // (a bar that the form draws from the numbers: the weather over the race, the pace of a lap, the part of the race where a flag can come; none of them is a setting)
+const wxTyreName = c => (c === 'dry' ? 'Dry tyres' : c === 'inter' ? 'Intermediate' : 'Wet');
+// Weather has four discrete states, so a heat map says more than a pretend line
+// chart: every cell is both the editable rule and a proportional visual bar.
+const wxHinderNumber = (v, fallback = 0) => {
+  const raw = String(v === undefined || v === null ? '' : v).trim();
+  if (!raw) return fallback;
+  const n = Number(raw.replace(',', '.'));
+  return Number.isFinite(n) ? Math.max(0, Math.min(Wx.MAXP, n)) : fallback;
+};
+// An older saved Weather System can omit these fields. Its engine still uses the
+// standard table, so the map must visualise those effective values, not twelve
+// misleading zeroes in otherwise blank legacy boxes.
+const wxHinderValue = (get, state, cls) => { const key = Wx.HKEYS[state + '/' + cls]; return wxHinderNumber(get(key), Wx.DEFAULTS[key]); };
+const wxHinderPresetOf = get => (Wx.HINDER_PRESET_KEYS || []).find(id => {
+  const table = Wx.HINDER_PRESETS[id].table;
+  return Wx.STATES.every(([state]) => Wx.CLASSES.every(cls => wxHinderValue(get, state, cls) === table[state][cls]));
+}) || '';
+const wxHinderPreview = (get, focus) => {
+  const state = focus && Wx.STATES.some(x => x[0] === focus.state) ? focus.state : 'wet';
+  const cls = focus && Wx.CLASSES.includes(focus.cls) ? focus.cls : 'dry';
+  const pct = wxHinderValue(get, state, cls), factor = n => (Math.round(n * 100) / 100).toFixed(2).replace(/\.00$/, '');
+  const effects = [];
+  if (get('hUse') !== 'off') effects.push(`<span><b>${pct}%</b> more fuel per lap <small>×${factor(1 + pct / 100)}</small></span>`);
+  if (get('hRate') !== 'off') effects.push(`<span><b>${pct}%</b> slower refuelling <small>×${factor(1 - pct / 100)}</small></span>`);
+  if (get('hTank') === 'on') effects.push(`<span><b>${pct}%</b> smaller tank <small>×${factor(1 - pct / 100)}</small></span>`);
+  return `<div class="wxhpreview-head"><span class="wxhstate wx-${state}">${esc(Wx.stateName(state))}</span><b>${esc(wxTyreName(cls))}</b><strong>${pct}% fuel handicap</strong></div>
+    <div class="wxhpreview-effects">${effects.length ? effects.join('') : '<span>No fuel effect is enabled.</span>'}</div>
+    <p>It changes fuel strategy, never the measured lap time. Weather, Balance of Power and Tyre Wear add per enabled effect, up to 90%.</p>`;
+};
+const wxHinderMap = (get, focus) => {
+  const preset = wxHinderPresetOf(get);
+  const profiles = (Wx.HINDER_PRESET_KEYS || []).map(id => { const p = Wx.HINDER_PRESETS[id], on = preset === id; return `<button type="button" class="btn small${on ? ' on' : ''}" aria-pressed="${on}" data-wxhprofile="${id}" title="${esc(p.note)}">${esc(p.name)}</button>`; }).join('');
+  const table = `<div class="wxtab wxhmap"><div class="wxrow wxhead muted"><span>Weather</span>${Wx.CLASSES.map(c => `<span>${wxTyreName(c)}<small>fuel handicap</small></span>`).join('')}</div>`
+    + Wx.STATES.map(([state, name]) => `<div class="wxrow"><span class="wxname wxhstate wx-${state}">${esc(name)}</span>${Wx.CLASSES.map(cls => { const key = Wx.HKEYS[state + '/' + cls], pct = wxHinderValue(get, state, cls), selected = focus && focus.state === state && focus.cls === cls;
+      return `<label class="wxcell wxhcell${selected ? ' selected' : ''}" data-wxhcell="1" data-wxhstate="${state}" data-wxhclass="${cls}" style="--wxh:${pct}%"><span class="wxhbar" aria-hidden="true"><i></i></span><span class="wxhinput"><input class="wxin" id="f-${key}" data-wxh="1" type="number" step="any" min="0" max="${Wx.MAXP}" value="${esc(get(key))}" aria-label="${esc(name)} weather, ${esc(wxTyreName(cls).toLowerCase())}, percent fuel handicap"><b>%</b></span></label>`; }).join('')}</div>`).join('') + `</div>`;
+  return `<div class="wxhprofiles"><span><b>Start from a profile</b><small>You can still tune every cell.</small></span><div role="group" aria-label="Wrong-tyre fuel handicap profiles">${profiles}</div></div>${table}
+    <div class="wxhpreview" id="wx-hinder-preview">${wxHinderPreview(get, focus)}</div>
+    <p class="muted hint">The percentage is a fuel handicap for that tyre in that weather: 0 means no handicap; the combined effect never exceeds ${Wx.MAXP}%.</p>`;
+};
+const wxCondTable = (vals, words) => {
+  // the heading of a column, with the units (they follow the choice of units: data-condunit); on a narrow screen the heading row is hidden and every number has its own small heading (wxcl)
+  const heads = { track: `Track temperature (<span data-condunit="temp">${esc(words.temp)}</span>)`, air: `Air temperature (<span data-condunit="temp">${esc(words.temp)}</span>)`, wind: `Wind speed (<span data-condunit="speed">${esc(words.speed)}</span>)`, dir: 'Wind from (degrees)' };
+  return `<div class="wxtab wxcond"><div class="wxrow wxhead muted"><span>Weather</span>${Wx.COND_ITEMS.map(([item]) => `<span>${heads[item]}</span>`).join('')}</div>`
+    + Wx.STATES.map(([st, name]) => `<div class="wxrow"><span class="wxname">${esc(name)}</span>${Wx.COND_ITEMS.map(([item, , itemName]) => { const k = Wx.CKEYS[st + '/' + item];
+      return `<label class="wxcell"><small class="wxcl">${heads[item]}</small><input class="wxin" id="f-${k}" type="number" step="any"${item === 'wind' ? ' min="0"' : item === 'dir' ? ' min="0" max="359"' : ''} value="${esc(vals(k))}" aria-label="${esc(name)}: ${esc(itemName.toLowerCase())}"></label>`; }).join('')}</div>`).join('')
+    + `</div><p class="muted hint">Where the wind comes from: 0 is north, 90 east, 180 south, 270 west.</p>`;
+};
+
+// the drivers of a team (field type 'members'): in the order they take their turn, with a list to add one more from
+const memRows = (ids, all) => `<ol class="memlist">${ids.length ? ids.map((id, i) => { const d = all.find(x => x.id === id);
+  return `<li><span class="memname">${esc(d ? titleOf('drivers', d) : '(deleted)')}</span> <button type="button" class="btn" data-memup="${i}" aria-label="Move up"${i ? '' : ' disabled'}>&uarr;</button><button type="button" class="btn" data-memdown="${i}" aria-label="Move down"${i < ids.length - 1 ? '' : ' disabled'}>&darr;</button><button type="button" class="btn danger" data-memdel="${i}">Remove</button></li>`; }).join('') : '<li class="muted">No drivers in this team yet.</li>'}</ol>
+  <div class="row"><select id="mem-pick" aria-label="Driver to add"><option value="">${all.some(d => !ids.includes(d.id)) ? 'Choose a driver…' : 'Every driver is in the team'}</option>${all.filter(d => !ids.includes(d.id)).map(d => `<option value="${esc(d.id)}">${esc(titleOf('drivers', d))}</option>`).join('')}</select> <button type="button" class="btn" data-memadd="1">Add to the team</button></div>`;
+
+function fieldHtml(f, v, extra) {
+  if (f.ui && FormUI.has(f.ui)) return FormUI.field(f, v, { label: f.ask || fl(f), hint: fh(f), icon: n => Icons.svg(n, { size: 18, stroke: 1.8 }), picker: SetupWords.PICKER, parts: extra && extra.parts, partner: extra && extra.partner, unitWord: extra && extra.words && extra.words.unit }); // (switches, buttons, cards and boxes for a setting: 1.70.0, formui.js; a sentence with two numbers: 1.73.0)
+  const id = 'f-' + f.id;
+  if (BAR_TYPES.includes(f.type) || f.type === 'wxhinder' || f.type === 'wxcond') { // visual/transient fields
+    const body = f.type === 'pstimeline' ? `<div id="ps-curve-box">${psCurve((extra && extra.value) || (() => ''))}</div>` : BAR_TYPES.includes(f.type) ? '<div id="rs-strip"></div>' : f.type === 'wxhinder' ? `<div id="wx-hinder-map">${wxHinderMap((extra && extra.value) || (() => ''), extra && extra.wxhFocus)}</div>` : wxCondTable((extra && extra.value) || (() => ''), (extra && extra.words) || { temp: '°C', speed: 'km/h' });
+    return `<div class="field full fu wxfield" data-key="${f.id}"><span class="fu-q">${esc(fl(f))}${BAR_TYPES.includes(f.type) && fh(f) ? `<small class="muted">${esc(fh(f))}</small>` : ''}</span>${body}</div>`;
+  }
+  const lab = `<label for="${id}">${f.icon ? `<span class="field-label-icon" aria-hidden="true">${Icons.svg(f.icon, { size: 16, stroke: 1.8 })}</span>` : ''}${esc(fl(f))}${f.optional ? ' <span class="muted">(optional)</span>' : ''}</label>`;
+  let inp;
+  switch (f.type) {
+    case 'longtext': inp = `<textarea id="${id}" rows="3">${esc(v)}</textarea>`; break;
+    case 'number': inp = `<input id="${id}" type="number" step="${f.step || 'any'}"${f.min !== undefined ? ` min="${f.min}"` : ''} value="${esc(typedText(f, v) ?? v)}"${unitAttrs(f, v)}>`; if (f.suffix) inp = `<span class="inunit">${inp}${FormUI.unitSpan(f.suffix, { unitWord: extra && extra.words && extra.words.unit })}</span>`; break; // (suffix: the unit in the box, 1.73.0)
+    case 'date': inp = `<input id="${id}" type="date" value="${esc(v)}">`; break;
+    case 'choice': inp = `<input id="${id}" list="${id}-l" value="${esc(v)}"><datalist id="${id}-l">${f.options.map(o => `<option value="${esc(o)}">`).join('')}</datalist>`; break;
+    case 'list': inp = `<select id="${id}"><option value=""></option>${f.options.map(o => `<option${o === v ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select>`; break;
+    case 'select': inp = `<select id="${id}">${f.options.map(([k, l]) => `<option value="${esc(k)}"${k === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`; break;
+    case 'ref': {
+      const pick = `<select id="${id}"><option value="">${esc(f.blank || '(none)')}</option>${(state.refs[f.ref] || []).map(r => `<option value="${esc(r.id)}"${r.id === v ? ' selected' : ''}>${esc(titleOf(f.ref, r))}</option>`).join('')}</select>`;
+      inp = f.createClass ? pick + `<div class="row class-create"><input id="${id}-new" maxlength="60" placeholder="New class, e.g. GT3 or Prototype" aria-label="New Race Class name"><button type="button" class="btn" data-class-create="${f.id}">Create class</button></div>` : f.featured ? `<div class="rs-track-pick">${pick}<div class="rs-track-preview" id="${id}-preview"></div></div>` : f.preview === 'fueltrack' || f.preview === 'safetytrack' ? `<div class="fuel-track-pick">${pick}<div class="fuel-track-preview" id="${id}-preview"></div></div>` : pick;
+      break;
+    }
+    case 'fuelmath': inp = `<div class="fuel-math" id="fuel-math"><div class="fuel-math-meter" aria-hidden="true"><i></i></div><div class="fuel-math-stat"><b id="fuel-math-laps">–</b><small>from a full tank</small></div><div class="fuel-math-stat"><b id="fuel-math-fill">–</b><small>empty → full</small></div><p class="muted hint" id="fuel-math-note"></p></div>`; break;
+    case 'trackcallsummary': inp = `<div class="rs-trackcall-summary" id="${id}-summary"></div>`; break;
+    case 'country': inp = `<select id="${id}"><option value=""></option>${COUNTRIES.map(([c, n]) => `<option value="${c}"${c === v ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select><span id="${id}-flag">${flagHtml(v)}</span>`; break;
+    case 'tracklength': inp = `<div class="imgrow"><input id="${id}" type="number" min="0" step="any" value="${esc(typedText(f, v) ?? Speed.parseLength(v))}"${unitAttrs(f, v)}> <span>${dUnit() === 'ft' ? 'feet' : 'metres'}</span>
+      <button type="button" class="btn" data-calcopen="1">Calculate from track pieces…</button></div><div id="calc" class="card" hidden>${calcHtml((extra && extra.pieces) || [])}</div>`; break;
+    case 'penaltytypes': inp = `<p class="muted hint">A named button for the Race Director. It can add penalty points and/or immediately add time, deduct scoring laps or queue a mandatory pit stop. Older saved pit penalties remain available unchanged.</p><div id="pt-box">${ptRows((extra && extra.types) || [])}</div><button type="button" class="btn" data-ptadd="1">Add a special penalty</button>`; break;
+    case 'penaltyrules': inp = `<p class="muted hint">The highest level reached is the total result. For example: 3 points = 5 seconds, then 5 points = 10 seconds means 5 points is +10 seconds, not +15.</p><div id="pr-box">${prRows((extra && extra.prules) || [])}</div><button type="button" class="btn" data-pradd="1">Add a point level</button>`; break;
+    case 'damagelevels': inp = `<p class="muted hint">The highest level a car has reached counts. A car must stand still on the sensor in the pits for the seconds of its level: that repairs the damage (the points go back to 0), or retires or disqualifies the car. Leave a gap between the levels, so a hit does not skip one.</p><div id="rs-strip"></div><div id="dl-box">${dlRows((extra && extra.dlevels) || [])}</div><button type="button" class="btn" data-dladd="1">Add a level</button>`; break;
+    case 'damageincidents': inp = `<p class="muted hint">Buttons for the Race Director (on the race screen, the Race Director page and the phones): each gives a car these damage points. A deslot is counted by itself when the track has a deslot time.</p><div id="di-box">${diRows((extra && extra.dincs) || [])}</div><button type="button" class="btn" data-diadd="1">Add an incident</button>`; break;
+    case 'carfailures': inp = `<p class="muted hint">Each failure has a chance (in percent) that a car gets it, at a random moment of the race. It borrows the rules of a level: pit whenever you can or as fast as you can, the deadline in laps, and what the stop does (repair, retire or disqualify the car). Stand still is the time the car must stand on the sensor in the pits to clear it. A failure adds no damage points.</p><div id="cf-box">${cfRows((extra && extra.cfails) || [], (extra && extra.dlevels) || [])}</div><button type="button" class="btn" data-cfadd="1">Add a failure</button> <button type="button" class="btn" data-cfstd="1">Add the standard failures</button>`; break; // (1.43.0)
+    case 'tyretemperature': inp = `<div id="tt-box">${TemperatureEditor.html(extra?.tt || {},extra?.twt || {})}</div>`; break;
+    case 'tyretable': inp = `<div id="tw-box">${twTable((extra && extra.twt) || {}, (extra && extra.twunit) || 'lap', (extra && extra.twsel) || 'S')}</div>`; break; // (1.40.0)
+    case 'wxmult': inp = `<div id="tw-mult">${twMult((extra && extra.twm) || {})}</div>`; break;
+    case 'tyresets': inp = twSets((extra && extra.tws) || {}, extra && extra.twt); break; // (1.41.0)
+    case 'pspresets': inp = psPresets((extra && extra.psKey) || ''); break; // (1.54.0)
+    case 'carstat': inp = `<input id="${id}" type="text" value="${esc(v ?? '')}" disabled>`; break; // (1.30.0: a figure worked out for the form, such as the Mileage of a slotcar; the screen fills it in)
+    case 'cartracks': inp = `<div id="${id}" class="svc-tracks-box"></div>`; break; // (1.33.0: the table of the tracks of a slotcar; the screen fills it in)
+    case 'members': inp = `<div id="mem-box">${memRows((extra && extra.members) || [], state.refs[f.ref] || [])}</div>`; break;
+    case 'gallery': inp = `<div id="gal-box" class="gallery"></div><input id="${id}" type="file" accept="image/*" multiple data-gallery="1"><p class="muted">Up to ${GALLERY_MAX} extra pictures. A screenshot of a parts list is fine.</p>`; break;
+    case 'image': inp = `<div class="imgrow"><img id="${id}-img" class="thumb" ${v ? `src="${esc(v)}"` : 'hidden'} alt=""><input id="${id}" type="file" accept="image/*"><button type="button" class="btn" data-clear="${f.id}">Remove</button></div>`; break;
+    default: inp = `<input id="${id}" type="text"${f.maxLength ? ` maxlength="${f.maxLength}"` : ''}${f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : ''} value="${esc(typedText(f, v) ?? v)}"${unitAttrs(f, v)}>`;
+  }
+  if (f.automatic) { // (a number or a day that the database keeps by itself; Laps Since Last Interval has the button that starts the count again, 1.30.0)
+    inp = f.type === 'datetime' ? `<input id="${id}" type="text" value="${esc(v ? plainDate(v) : 'Never')}" disabled>` : `<input id="${id}" type="number" value="${esc(v ?? 0)}" disabled>`;
+    if (f.reset) inp = `<div class="imgrow">${inp}<button type="button" class="btn" data-svcreset="1">Reset</button></div>`;
+  }
+  const wide = (f.full ? ' full' : '') + (['longtext', 'gallery', 'tracklength', 'image', 'penaltytypes', 'penaltyrules', 'damagelevels', 'damageincidents', 'carfailures', 'tyretable', 'wxmult', 'tyresets', 'pspresets', 'members', 'cartracks', 'trackcallsummary', 'fuelmath'].includes(f.type) ? ' full' : '') + (['penaltytypes', 'penaltyrules', 'damagelevels', 'damageincidents', 'carfailures', 'tyretable', 'wxmult', 'tyresets'].includes(f.type) ? ' listfield' : '') + (f.tone ? ` rs-system-field rs-system-${esc(f.tone)}` : ''); // (listfield: a table of rows that has a section of its own; in the rail form the section says what it is, so its name is not repeated, 1.73.0)
+  return `<div class="field${wide}" data-key="${f.id}">${lab}${inp}${fh(f) ? `<span class="muted hint">${esc(fh(f))}</span>` : ''}${f.reset ? '<span class="muted hint svc-note" id="svc-note"></span>' : ''}</div>`;
+}
+
+// A field with showIf is shown when any one of its conditions matches the current form values.
+const isShown = (f, get) => !f.showIf || f.showIf.some(c => Object.entries(c).every(([k, vs]) => vs.includes(get(k) ?? ''))); // (a setting that has no value yet is empty: a race setup from before the setting existed)
+
+// A picture file as the address to keep in the database. How much it is shrunk depends on the picture quality setting (picture.js, App Settings > General > Pictures):
+// by default it is kept as it was uploaded. `max` is the size the place was made for (used by the standard quality); `png` is not needed any more: a picture is kept in the kind it came in.
+const fileAsDataUrl = file => new Promise((resolve, reject) => {
+  const r = new FileReader();
+  r.onload = () => resolve(String(r.result)); r.onerror = () => reject(new Error('That file could not be read.'));
+  r.readAsDataURL(file);
+});
+function resizeImage(file, max = 256, png = false) { // eslint-disable-line no-unused-vars
+  return Picture.load(file, max, Picture.levelOf(state.settings && state.settings.pictureQuality), {
+    url: { create: f => URL.createObjectURL(f), revoke: u => URL.revokeObjectURL(u) }, newImage: () => new Image(), read: fileAsDataUrl,
+    newCanvas: (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+  });
+}
+
+const GALLERY_MAX = 12;
+
+// the groups of fields that are open in the form of each kind of item (kept while the app is open); a kind of item without groups has one flat list
+const formOpen = {};
+
+// The view card of a slotcar, a track or a driver (click its row or card): everything that is filled in, to look at, with nothing to change here.
+// The main picture is on top, then the details, then (slotcars) the other pictures as small ones to click. A click on a picture shows it large; a click on that, or Escape, closes it.
+function openView(e, item) {
+  const s = state.schema[e];
+  const getv = k => (e === 'tracks' && k === 'laneModifier' ? Speed.modifier(item) : e === 'slotcars' && k === 'servicesDone' ? CarStats.servicesOf(item) : item[k]); // (a track saved before the lane length modifier shows what it always did)
+  const filled = v => v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && !v.length);
+  const named = (s.title || []).length === 1; // (a name is the title of the card already; brand, manufacturer and model are three facts, so they stay in the list)
+  const rows = [
+    ...s.fields.filter(f => !['image', 'gallery'].includes(f.type) && !(named && s.title.includes(f.key)) && isShown(f, getv) && filled(getv(f.key)))
+      .map(f => ({ label: fl(f), html: f.type === 'longtext' ? esc(getv(f.key)).replace(/\n/g, '<br>') : cell(f, getv(f.key)), wide: f.type === 'longtext' })),
+    ...(e === 'slotcars' ? [{ label: 'Next Service', html: `<span id="vc-service"></span>` }, ...CAR_STATS.map(f => ({ label: f.label, html: `<span id="vc${f.key}">Calculating…</span>` })), { label: CAR_TRACKS.label, html: '<div id="vc_byTrack">Calculating…</div>', wide: true }] : []), // (1.30.0 the mileage, 1.33.0 the rest: worked out from the laps when the card is open)
+    ...(state.custom[e] || []).filter(f => filled((item.custom || {})[f.id])).map(f => ({ label: f.label, html: esc(item.custom[f.id]) }))
+  ];
+  const t = titleOf(e, item), main = s.image && item[s.image], frame = s.image && item[s.image + 'Frame'];
+  const gal = s.gallery && Array.isArray(item[s.gallery]) ? item[s.gallery].filter(Boolean) : [];
+  const pics = [main, ...gal].filter(Boolean); // (what a click can show large: the main picture first)
+  dlg.oninput = null; dlg.onchange = null;
+  dlg.innerHTML = `<div class="vcard"><button type="button" class="vcpic gimg${main ? '' : ' nopic'}"${main ? ' data-big="0" aria-label="Show the picture large"' : ' tabindex="-1" aria-hidden="true"'}>${main ? `<img src="${esc(main)}" alt="" style="transform:${Widgets.frameTransform(frame)}">` : `<span class="ph" style="background:${hue(t)}">${esc((t.trim()[0] || '?').toUpperCase())}</span>`}</button>
+    <h3 class="vctitle">${esc(t)}</h3>
+    ${rows.length ? `<dl class="vcfields">${rows.map(r => `<div${r.wide ? ' class="wide"' : ''}><dt>${esc(r.label)}</dt><dd>${r.html}</dd></div>`).join('')}</dl>` : '<p class="muted">Nothing more is filled in.</p>'}
+    ${gal.length ? `<h4 class="vcgaltitle">${gal.length === 1 ? 'Another picture' : gal.length + ' more pictures'}</h4><div class="vcgal">${gal.map((src, i) => `<button type="button" class="vcthumb" data-big="${i + (main ? 1 : 0)}" aria-label="Show picture ${i + 1} large"><img class="galthumb" src="${esc(src)}" alt="Picture ${i + 1}"></button>`).join('')}</div>` : ''}
+    <div class="row"><button class="btn" type="button" id="vcclose">Close</button><button class="btn primary" type="button" id="vcedit">Edit</button></div>
+    <div class="vcbig" id="vcbig" hidden role="dialog" aria-label="Large picture"><img id="vcbigimg" alt=""><p>Click the picture or press Escape to close it</p></div></div>`;
+  let large = false; // is a picture shown large at the moment? (it covers the card, so any click while it is shown is a click on it)
+  const showLarge = on => { large = on; byId('vcbig').hidden = !on; };
+  dlg.oncancel = ev => { if (large) { ev.preventDefault(); showLarge(false); } }; // (Escape closes the large picture first, then the card)
+  dlg.onclick = ev => {
+    if (large) return showLarge(false);
+    const b = ev.target.closest('button'); if (!b) return;
+    if (b.id === 'vcclose') return dlg.close();
+    if (b.id === 'vcedit') return openForm(e, item);
+    if (b.dataset && b.dataset.big !== undefined && pics[Number(b.dataset.big)]) { byId('vcbigimg').src = pics[Number(b.dataset.big)]; showLarge(true); }
+  };
+  if (!dlg.open) dlg.showModal();
+  if (e === 'slotcars') { // the statistics of the car, as in its form
+    const svc = byId('vc-service'), st = CarStats.status(item); svc.textContent = CarStats.note(st); svc.className = st.due ? 'svc-note due' : '';
+    loadCarStats(item).then(d => { const t = carStatTexts(d); CAR_STATS.forEach(f => { byId('vc' + f.key).textContent = t[f.key]; }); byId('vc_byTrack').innerHTML = carTracksHtml(d); })
+      .catch(() => { CAR_STATS.forEach(f => { byId('vc' + f.key).textContent = '–'; }); byId('vc_byTrack').textContent = '–'; });
+  }
+  byId('vcclose').focus({ preventScroll: true }); // (so the card opens at its top)
+}
+
+// The statistics of a slotcar that are worked out when the form (or the card) opens, from the laps, the sessions and the tracks of the database (1.30.0 the Mileage, 1.33.0 the others). They are not saved.
+const CAR_STATS = [
+  { key: '_mileage', label: 'Mileage', hint: 'The distance this car has driven, worked out as the Car Mileage card on Home does: every lap that counts, times the length of its lane. Laps on a track without a length are left out.' },
+  { key: '_mileageSince', label: 'Mileage Since Last Service', hint: 'The same distance, counted from the day of the last Reset (all of it until the car is serviced for the first time).' },
+  { key: '_lastDriven', label: 'Last Driven', hint: 'The day of the last lap saved with this car (Never until it has driven).' },
+  { key: '_sessions', label: 'Sessions Driven', hint: 'The sessions this car has laps in: races, qualifyings and practices. Time Token Sessions are counted apart and not here.' },
+  { key: '_wins', label: 'Wins', hint: 'The races this car won: first place, not retired or disqualified. A practice or a qualifying has no winner.' },
+  { key: '_deslots', label: 'Deslots', hint: 'The laps slower than the deslot time of their track (Tracks, Lap time limits), laps with a pit stop left out. A track without a deslot time has none.' },
+  { key: '_fastest', label: 'Fastest Lap Ever', hint: 'The fastest valid lap of this car on any track, and the track. A lap that is invalid, too slow, late or with a pit stop does not count.' }
+].map(f => ({ ...f, id: f.key, group: 'stats', type: 'carstat', custom: false }));
+const CAR_TRACKS = { key: '_byTrack', id: '_byTrack', group: 'stats', label: 'Best Lap per Track', type: 'cartracks', custom: false, hint: 'The valid laps of this car on each track: how many, the best lap and the average.' };
+// what the statistics say, in words: [id of the field] = text; the table of the tracks; and the loader (the laps, the sessions and the tracks of the database)
+const carStatTexts = d => ({ _mileage: Stats.fmtDist(d.mileage.distance, dUnit()), _mileageSince: Stats.fmtDist(d.mileageSince.distance, dUnit()), _lastDriven: d.lastDriven ? plainDate(d.lastDriven) : 'Never',
+  _sessions: String(d.sessions), _wins: String(d.wins), _deslots: String(d.deslots), _fastest: d.fastest ? `${Stats.fmtMs(d.fastest.time)}${d.fastest.trackName ? ' on ' + d.fastest.trackName : ''}` : '–' });
+const carTracksHtml = d => !d.tracks.length ? '<span class="muted">No valid laps yet.</span>'
+  : `<table class="fields svc-tracks"><thead><tr><th>Track</th><th>Laps</th><th>Best</th><th>Average</th></tr></thead><tbody>${d.tracks.map(t => `<tr><td>${esc(t.name || '–')}</td><td>${t.laps}</td><td>${esc(Stats.fmtMs(t.best))}</td><td>${esc(Stats.fmtMs(t.avg))}</td></tr>`).join('')}</tbody></table>`;
+const loadCarStats = item => Promise.all([api.list('laps'), api.list('sessions'), api.list('tracks')]).then(([laps, sessions, tracks]) => CarStats.details(item, laps, sessions, tracks));
+// a mark for the list and the cards of the slotcars that need servicing
+const rowMark = (e, i) => (e === 'slotcars' && CarStats.status(i).due ? '<span class="svc-due" title="The laps since the last service have reached the service interval">Service due</span>' : '');
+function openForm(e, item, preset) { // preset: values a new item starts with (Race Setups: Start from a kind)
+  const s = state.schema[e];
+  const fields = [...s.fields.map(f => ({ ...f, id: f.key, custom: false })), ...(e === 'slotcars' ? [...CAR_STATS, CAR_TRACKS] : []), ...(state.custom[e] || []).map(f => ({ ...f, custom: true }))];
+  if (e === 'slotcars') {
+    const f=fields.find(f=>f.key==='tyreCompound');
+    if(f){ const choices=new Map(f.options);
+      for(const system of state.refs.tyrewearsystems||[]) for(const tyre of Wx.withTyres(system.tyres).TYRES.filter(t=>t.custom)) choices.set(tyre.code,`${tyre.name} — ${system.name}`);
+      if(item?.tyreCompound&&!choices.has(item.tyreCompound)) choices.set(item.tyreCompound,'Previously selected custom tyre (system unavailable)');
+      f.options=[...choices];
+    }
+  }
+  // a track saved before the lane length modifier shows what it always did: calculated as a loop (or what version 0.60.0's track shape said)
+  const legacyTrackCall = item && item.trackCallAction === undefined ? ({
+    yellowred: ['yellowred', 'on', 'on'], yellowredcut: ['yellowred', 'on', 'off'], yellow: ['yellow', 'on', 'on'], yellowcut: ['yellow', 'off', 'on'],
+    red: ['red', 'on', 'on'], redcut: ['red', 'on', 'off'], power: ['power', 'on', 'on'], none: ['none', 'on', 'on']
+  }[item.trackcall || 'yellowred'] || ['yellowred', 'on', 'on']) : null;
+  const val = f => f.custom ? (item?.custom || {})[f.id] : item ? (e === 'pushsavesystems' && f.key === 'mode' && item.mode === undefined ? 'legacy' : e === 'racesetups' && legacyTrackCall && f.key === 'trackCallAction' ? legacyTrackCall[0] : e === 'racesetups' && legacyTrackCall && f.key === 'trackCallYellowPower' ? legacyTrackCall[1] : e === 'racesetups' && legacyTrackCall && f.key === 'trackCallRedPower' ? legacyTrackCall[2] : e === 'slotcars' && f.key === 'lapsSinceService' ? CarStats.sinceOf(item) : e === 'slotcars' && f.key === 'lapsDriven' ? CarStats.lapsDriven(item) : e === 'slotcars' && f.key === 'servicesDone' ? CarStats.servicesOf(item) : e === 'tracks' && f.key === 'laneModifier' ? Speed.modifier(item) : e === 'tracks' && f.key === 'netTurns' && item.netTurns === undefined ? f.default : item[f.key]) : preset && !f.custom && preset[f.key] !== undefined ? preset[f.key] : f.default;
+  const imgs = {}, frames = {}, mainKey = s.image;
+  let pieces = ((item && item.lengthPieces) || []).map(p => ({ count: p.count, mm: p.mm }));
+  if (!pieces.length) pieces = [{ count: '', mm: 200 }];
+  let types = Array.isArray(item && item.types) ? item.types.map(t => ({ ...t })) : (item ? [] : PT_DEFAULTS.map(t => ({ ...t })));
+  // A record from before the ladder keeps its old rule until the user deliberately adds a level.
+  let prules = Array.isArray(item && item.rules) ? item.rules.map(r => ({ ...r })) : (item ? null : []);
+  const dmDef = Damage.defaults(); // (a new damage system starts with the examples: light, medium, heavy and critical damage)
+  let dlevels = Array.isArray(item && item.levels) ? item.levels.map(x => ({ ...x })) : (item ? [] : dmDef.levels), dincs = Array.isArray(item && item.incidents) ? item.incidents.map(x => ({ ...x })) : (item ? [] : dmDef.incidents), cfails = Array.isArray(item && item.failures) ? item.failures.map(x => ({ ...x })) : (item ? [] : dmDef.failures);
+  let tt = TyreWear.Temperature.clean(item?.temperature,Wx.withTyres(item?.tyres).TYRES.map(x=>x.code)), ttSelected='M';
+  let twt = TyreWear.cleanTyres(item && item.tyres), twm = TyreWear.cleanMult(item && item.mult), tws = TyreWear.withTyres(twt).cleanSets(item && item.sets), twsel = 'S', twShownUnit = (item && item.unit) || TyreWear.DEFAULTS.unit; // (a tyre wear system: the tyre table, the weather table and the tyre whose grip curve is shown; a new one starts as the Standard system)
+  let wxhFocus = { state: 'wet', cls: 'dry' }; // the cell whose real fuel consequence is explained below the weather effect map
+  let gal = Array.isArray(item && item[s.gallery]) ? [...item[s.gallery]] : [], galSel = null;
+  const memF = fields.find(f => f.type === 'members'); let members = memF && item && Array.isArray(item[memF.key]) ? item[memF.key].filter(Boolean) : []; // (the drivers of a team, in order)
+  fields.filter(f => f.type === 'image').forEach(f => { imgs[f.id] = val(f) || ''; if (!f.custom) frames[f.id] = Widgets.frameOf(item && item[f.key + 'Frame']); });
+  const frameBlock = f => f.type === 'image' && !f.custom ? `<div class="field frame full" id="frame-${f.id}" data-frame="${f.id}">${frameInner(imgs[f.id], frames[f.id], '4 / 3', false)}</div>` : '';
+  const redrawFrame = key => { byId('frame-' + key).innerHTML = frameInner(imgs[key], frames[key], '4 / 3', false); attachFrames(dlg, k => frames[k], (k, f) => { frames[k] = f; }); };
+  // Race Setups (1.70.0): the three answers that the Session type used to give at once (kind, format, swaps) and the list of the points in boxes
+  const fieldOf = k => fields.find(f => !f.custom && f.key === k);
+  const startParts = e === 'racesetups' && fieldOf('sessionType') ? SetupWords.parts({ sessionType: val(fieldOf('sessionType')), enduranceBy: fieldOf('enduranceBy') ? val(fieldOf('enduranceBy')) : '' }) : null;
+  let raceMemory = startParts && startParts.kind === 'race' ? { format: startParts.format, swaps: startParts.swaps } : { format: 'one', swaps: false }; // (what the race was before another kind was chosen, so Race comes back as it was)
+  const places = {}; // the numbers of a list that is shown in boxes, by setting
+  fields.filter(f => f.ui === 'boxes').forEach(f => { const l = FormUI.listOf(val(f)); places[f.id] = l.length ? l : FormUI.listOf(f.default); }); // (a setup that has no list yet counts the standard one, as the race does: its boxes show it)
+  // A weather system (1.74.0): the words of the units follow the form (laps or minutes; Celsius and km/h or Fahrenheit and mph), and its two tables are drawn from the values of the numbers they hold
+  const wxWords = get => (e === 'weathersystems' ? { unit: get('unit') === 'time' ? 'minutes' : 'laps', temp: get('units') === 'imperial' ? '°F' : '°C', speed: get('units') === 'imperial' ? 'mph' : 'km/h' } : null);
+  const startWords = wxWords(k => { const g = fieldOf(k); return g ? val(g) : undefined; });
+  const valueOf = k => { const g = fieldOf(k); const x = g ? val(g) : ''; return x === undefined || x === null ? '' : x; };
+  const psNow = get => PushSave.presetOf(Object.fromEntries(['tyreExtra', 'tyreSave', 'fuelExtra', 'fuelSave'].map(k => [k, get(k)]))); // (a push and save system: the ready-made system whose four wear numbers the form holds, '' = its own numbers)
+  const one = f => (e === 'racesetups' && f.key === 'disabledSystems' ? `<div class="field full" data-key="disabledSystems"><label>${esc(f.label)}</label><input type="hidden" id="f-disabledSystems" value="${esc(val(f) || '')}"><div id="f-system-switches"></div><small class="muted">${esc(f.hint)}</small></div>` : fieldHtml(f, f.ui === 'boxes' ? FormUI.joinList(places[f.id]) : val(f), { psKey: e === 'pushsavesystems' ? psNow(valueOf) : '', pieces, types, prules, members, dlevels, dincs, cfails, tt, twt, twm, tws, twsel, twunit: (item && item.unit) || TyreWear.DEFAULTS.unit, wxhFocus, parts: startParts, words: startWords, value: valueOf, partner: f.with && fieldOf(f.with) ? { f: fieldOf(f.with), v: val(fieldOf(f.with)) } : null })) + frameBlock(f);
+  // a schema with groups: the fields in collapsible sections with a coloured header, in the order of the groups (fields without a group of their own, such as your own fields, go last)
+  const defs = Array.isArray(s.groups) && s.groups.length ? s.groups : null;
+  const groups = defs ? [...defs.map(g => ({ ...g, fields: fields.filter(f => f.group === g.id) })), { id: '_more', title: 'More', note: '', fields: fields.filter(f => !defs.some(g => g.id === f.group)) }].filter(g => g.fields.length) : null;
+  // Race Setups (1.71.0) and the Penalty and Damage systems (1.73.0): the form has a rail, and its sections are made of the groups (Advanced holds four of them); see schema.js, rail
+  const railDefs = groups && Array.isArray(s.rail) && s.rail.length ? s.rail : null;
+  const sections = railDefs ? railDefs.map(r => ({ ...r, groups: r.groups.map(id => groups.find(g => g.id === id)).filter(Boolean) })).filter(r => r.groups.length) : null;
+  if (sections) { const left = groups.filter(g => !sections.some(x => x.groups.includes(g))); if (left.length) sections.push({ id: '_more', title: 'More', ask: 'Other settings.', icon: 'sliders', optional: true, groups: left }); } // (a setting that is in no section is not lost)
+  const opened = defs ? (formOpen[e] = formOpen[e] || new Set((railDefs || defs).filter(g => g.open).map(g => g.id))) : null;
+  const nameField = sections ? fieldOf('name') : null; // (in a form with a rail the name is in the header, not in the first section)
+  const usedBy = !sections ? null : e === 'racesetups' ? (item && Array.isArray(state.refs.championships) ? state.refs.championships.filter(c => (c.rounds || []).some(r => (r.sessions || []).some(x => x.setup === item.id))).map(c => String(c.name || '').trim() || '(unnamed)') : null)
+    : s.used && Array.isArray(state.refs[s.used.entity]) ? state.refs[s.used.entity].filter(r => item && r[s.used.key] === item.id).map(r => String(r.name || '').trim() || '(unnamed)') : null; // (a system: the race setups that choose it)
+  const tileName = v => (e === 'racesetups' ? SETUP_KIND_ICON[v.sessionType] || 'racesetups' : (SETUP_LOOK[e] || [])[0] || 'racesetups'); // (the picture in the header: the kind of a race setup, the picture of a system)
+  const frameWords = e === 'racesetups' ? {} : { navLabel: `The sections of this ${s.label.toLowerCase()}`, caption: 'This system', save: `Save ${s.label.toLowerCase()}`, usedNone: 'Not used yet. Choose it under Rules and systems in a race setup.', usedIcon: 'racesetups' };
+  let railCurrent = sections ? (sections.find(x => opened.has(x.id)) || sections[0]).id : ''; // (the section that the rail points at: the one that was opened last)
+  const sectionBody = x => (x.groups.length === 1 && x.groups[0].id === x.id ? RailForm.grid(x.groups[0].fields.filter(f => f !== nameField).map(one).join(''), x.cols) : x.groups.map(g => RailForm.sub(g.id, g.bare ? '' : g.title, g.bare ? '' : g.note, g.fields.filter(f => f !== nameField).map(one).join(''), x.cols)).join(''));
+  dlg.innerHTML = sections ? RailForm.shell({ eyebrow: `${item ? 'Edit' : 'Add'} ${s.label.toLowerCase()}`, cls: setupToneClass(e).trim(), icon: n => Icons.svg(n, { size: 20, stroke: 1.7 }), used: usedBy,
+      ...frameWords, tile: Icons.svg(tileName(e === 'racesetups' ? { sessionType: val(fieldOf('sessionType')) } : {}), { size: 26, stroke: 1.6 }), name: one(nameField),
+      sections: sections.map(x => ({ id: x.id, title: x.title, ask: x.ask, icon: x.icon, open: opened.has(x.id), optional: !!x.optional, live: !!x.live, body: sectionBody(x) })) })
+    : `<form id="frm"${setupToneClass(e) ? ` class="${setupToneClass(e).trim()}"` : ''}><h3>${item ? 'Edit' : 'Add'} ${esc(s.label.toLowerCase())}</h3>
+    ${groups ? `<div class="formgrid grouped"><div class="fgtools"><button type="button" class="btn" data-fgall="1">Open all</button><button type="button" class="btn" data-fgall="0">Close all</button></div>${groups.map(g =>
+      `<details class="fgroup" data-fg="${esc(g.id)}"${opened.has(g.id) ? ' open' : ''}><summary><strong>${esc(g.title)}</strong>${g.note ? ` <span class="muted">${esc(g.note)}</span>` : ''}</summary><div class="fgrid">${g.fields.map(one).join('')}</div></details>`).join('')}</div>`
+      : `<div class="formgrid">${fields.map(one).join('')}</div>`}
+    <p class="error" id="err" role="alert"></p>
+    <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" id="cancel">Cancel</button></div></form>`;
+  const getValue = k => byId('f-' + k)?.value;
+  const markWxHinderProfile = () => {
+    if (e !== 'weathersystems') return;
+    const now = wxHinderPresetOf(getValue);
+    dlg.querySelectorAll('[data-wxhprofile]').forEach(b => { const on = b.dataset && b.dataset.wxhprofile === now; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+  };
+  const drawWxHinderPreview = () => {
+    if (e !== 'weathersystems') return;
+    const box = byId('wx-hinder-preview'); if (box) box.innerHTML = wxHinderPreview(getValue, wxhFocus);
+    markWxHinderProfile();
+  };
+  const drawSystemSwitches = () => {
+    if (e !== 'racesetups' || typeof RaceSystems === 'undefined') return;
+    const el = byId('f-system-switches'); if (!el) return;
+    const draft = { disabledSystems: getValue('disabledSystems') }; RaceSystems.ITEMS.forEach(x => { draft[x.setup] = getValue(x.setup); });
+    el.innerHTML = RaceSystems.setupHtml(draft);
+  };
+  const drawTrackPreview = () => {
+    if (e !== 'racesetups') return;
+    const box = byId('f-track-preview'); if (!box) return;
+    const track = (state.refs.tracks || []).find(x => x.id === getValue('track'));
+    if (!track) { box.innerHTML = `<span>${Icons.svg('racesetups', { size: 18, stroke: 1.8 })}</span><p><b>Choose a track</b><small>The lane count and track picture will appear here.</small></p>`; return; }
+    const lanes = Number(track.lanes) > 0 ? `${track.lanes} ${Number(track.lanes) === 1 ? 'lane' : 'lanes'}` : 'Lane count not set';
+    const pic = track.image ? `<img src="${esc(track.image)}" alt="">` : `<span>${Icons.svg('racesetups', { size: 18, stroke: 1.8 })}</span>`;
+    box.innerHTML = `${pic}<p><b>${esc(track.name || 'Unnamed track')}</b><small>${esc(lanes)}${track.length ? ` · ${esc(Distance.text(track.length, dUnit()))}` : ''}</small></p>`;
+  };
+  // Fuel Systems can borrow the deliberately entered reference lap from a Track. Keep the
+  // selected Track and its current value visible together so a missing reference is obvious.
+  const drawFuelTrackPreview = () => {
+    if (e !== 'fuelrules') return;
+    const box = byId('f-paceTrack-preview'); if (!box) return;
+    const track = (state.refs.tracks || []).find(x => x.id === getValue('paceTrack'));
+    if (!track) { box.innerHTML = `<span>${Icons.svg('racesetups', { size: 18, stroke: 1.8 })}</span><p><b>Choose a track</b><small>Its Fuel reference lap time will appear here.</small></p>`; return; }
+    const target = Number(track.targetLap);
+    const lap = Number.isFinite(target) && target > 0 ? `${target} seconds` : 'No Fuel reference lap time yet';
+    box.innerHTML = `<span>${Icons.svg('racesetups', { size: 18, stroke: 1.8 })}</span><p><b>${esc(track.name || 'Unnamed track')}</b><small${target > 0 ? '' : ' class="warn"'}>${esc(lap)}</small></p>`;
+  };
+  // Safety Car Systems may show a Track as a visual reference only. The explicit
+  // button copies its saved target into the draft; merely selecting a Track never
+  // changes a race rule.
+  const drawSafetyTrackPreview = () => {
+    if (e !== 'safetycarsystems') return;
+    const box = byId('f-safetyTrack-preview'); if (!box) return;
+    const track = (state.refs.tracks || []).find(x => x.id === getValue('safetyTrack'));
+    if (!track) { box.innerHTML = `<span>${Icons.svg('safetycar', { size: 18, stroke: 1.8 })}</span><p><b>Choose a reference Track</b><small>Its saved Fuel reference lap will appear here.</small></p>`; return; }
+    const target = Number(track.targetLap), has = Number.isFinite(target) && target > 0;
+    box.innerHTML = `<span>${Icons.svg('safetycar', { size: 18, stroke: 1.8 })}</span><p><b>${esc(track.name || 'Unnamed track')}</b><small${has ? '' : ' class="warn"'}>${esc(has ? `Reference lap: ${target} seconds` : 'No Fuel reference lap time yet')}</small></p>${has ? `<button type="button" class="btn" data-sctarget="${target}">Use ${esc(String(target))} s</button>` : ''}`;
+  };
+  const drawFuelMath = v => {
+    if (e !== 'fuelrules') return;
+    const box = byId('fuel-math'); if (!box) return;
+    const track = (state.refs.tracks || []).find(x => x.id === v.paceTrack) || null;
+    const F = RaceEngine.fuelConfig({}, v, track), laps = F.perLap > 0 ? F.tank / F.perLap : null, fill = F.rate > 0 ? F.tank / F.rate : null;
+    const text = n => Number.isInteger(n) ? String(n) : (Math.round(n * 10) / 10).toFixed(1).replace(/\.0$/, '');
+    const lapEl = byId('fuel-math-laps'), fillEl = byId('fuel-math-fill'), note = byId('fuel-math-note');
+    if (lapEl) lapEl.textContent = laps === null ? 'No fuel used' : `${text(laps)} ${laps === 1 ? 'lap' : 'laps'}`;
+    if (fillEl) fillEl.textContent = fill === null ? 'Does not refuel' : `${text(fill)} ${fill === 1 ? 'second' : 'seconds'}`;
+    if (note) note.textContent = F.paceSource === 'track' ? (F.paceTarget > 0 ? `Push & Save reference: ${text(F.paceTarget / 1000)} seconds from ${track && track.name ? track.name : 'this track'}.` : 'Set a Fuel reference lap time on this Track to complete the reference.')
+      : F.paceSource === 'manual' ? (F.paceTarget > 0 ? `Push & Save reference: manual ${text(F.paceTarget / 1000)} seconds.` : 'Enter a manual reference time to complete the reference.')
+        : 'Fuel consumption is the same on every lap; Push & Save falls back to each driver\'s best lap.';
+  };
+  const drawTrackCallSummary = () => {
+    if (e !== 'racesetups') return;
+    const box = byId('f-trackCallSummary-summary'); if (!box) return;
+    const action = getValue('trackCallAction') || 'yellowred';
+    const words = { yellowred: 'Yellow on one press; Red on a second quick press', yellow: 'Toggle the Yellow flag', red: 'Toggle the Red flag', power: 'Toggle track power', none: 'Do nothing' };
+    const power = action === 'yellowred' ? `Yellow power ${getValue('trackCallYellowPower') === 'off' ? 'off' : 'on'} · Red power ${getValue('trackCallRedPower') === 'off' ? 'off' : 'on'}` : '';
+    box.innerHTML = `<b>${esc(words[action] || words.yellowred)}</b>${power ? `<small>${esc(power)}</small>` : ''}`;
+  };
+  // the ready-made push and save system whose four wear numbers the form holds is marked (1.76.0)
+  const markPs = () => { if (e !== 'pushsavesystems') return; const k = psNow(getValue); dlg.querySelectorAll('[data-pspreset]').forEach(b => { const on = (b.dataset || {}).pspreset === k; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); }); };
+  // Race Setups (1.69.0): the pills and the sentence "In plain words" at the top of the form follow what is typed (the words are made in setupwords.js)
+  const formValues = () => { // what the form holds now, by setting
+    const v = {};
+    fields.forEach(f => { if (f.custom) return; const el = byId('f-' + f.id); if (el) v[f.key] = el.dataset && el.dataset.du === 'ft' ? keptValue(f, el) : el.value; });
+    if (e === 'penaltysystems') { v.types = types; if (Array.isArray(prules)) v.rules = prules; } // the tables of a system are not fields: the words read their live rows
+    if (e === 'damagesystems') { v.levels = dlevels; v.incidents = dincs; v.failures = cfails; }
+    if (e === 'tyrewearsystems') { v.temperature=tt; v.tyres = twt; v.mult = twm; v.sets = tws; v.disp = dUnit(); } // (1.75.0: the three tables as they are edited, and the distance unit of the app for the words)
+    return v;
+  };
+  // the notes and the dots of the rail (1.71.0): worked out in setupwords.js from the values of the form, drawn by railform.js
+  const defaultsOf = {}; fields.forEach(f => { if (!f.custom) defaultsOf[f.key] = f.default; });
+  const railDraw = (v, rctx, notes) => {
+    if (!sections) return;
+    const info = e === 'racesetups' ? SetupWords.rail(v, { ...rctx, defaults: defaultsOf, shown: k => { const f = fieldOf(k); return !!f && isShown(f, getValue); } })
+      : SystemWords.rail(e, v, { ...rctx, defaults: defaultsOf, lists: { types: PT_DEFAULTS, rules: [], levels: dmDef.levels, incidents: dmDef.incidents, failures: dmDef.failures } });
+    const visible = {}; sections.forEach(x => { visible[x.id] = x.groups.some(g => g.fields.some(f => isShown(f, getValue))); });
+    RailForm.sync(byId, info, visible, railCurrent);
+    RailForm.live(byId, info, notes, n => Icons.svg(n, { size: 18, stroke: 1.8 })); // (1.73.0: the note under the settings of a section that has one)
+  };
+  // the header (the picture of the kind, the pills, Ready to race), the sentence "In plain words" and the rail follow what is typed and chosen
+  const sayDraw = () => {
+    drawSystemSwitches();
+    drawTrackPreview();
+    drawTrackCallSummary();
+    drawFuelTrackPreview();
+    drawSafetyTrackPreview();
+    const box = byId('rssay'); if (!box) return;
+    markPs();
+    const v = formValues();
+    const rctx = e === 'racesetups' ? { track: (state.refs.tracks || []).find(t => t.id === v.track) || null, rotation: ((state.refs.rotationsetups || []).find(r => r.id === v.rotation) || {}).name || '', dist: n => Distance.text(n, dUnit()) } : e === 'fuelrules' ? { track: (state.refs.tracks || []).find(t => t.id === v.paceTrack) || null } : e === 'safetycarsystems' ? { track: (state.refs.tracks || []).find(t => t.id === v.safetyTrack) || null } : {};
+    const d = e === 'racesetups' ? SetupWords.describe(v, rctx) : SystemWords.describe(e, v, rctx);
+    const pills = byId('rspills'), ready = byId('rsready'), tile = byId('rstile');
+    if (pills) pills.innerHTML = d.pills.map(p => `<span class="rspill${p.tone ? ' ' + p.tone : ''}">${esc(p.text)}</span>`).join('');
+    if (ready) { ready.className = 'rsready' + (d.ready.ok ? ' ok' : ''); ready.innerHTML = `${Icons.svg(d.ready.ok ? 'check' : 'penalty', { size: 15, stroke: 2 })}${esc(d.ready.text)}`; }
+    if (tile) tile.innerHTML = Icons.svg(tileName(v), { size: 26, stroke: 1.6 });
+    const bar = byId('rs-strip'); if (bar) bar.innerHTML = RailForm.strip(d.strip); // (the bar of the levels of a damage system)
+    box.innerHTML = `<span class="rsic rssayic">${Icons.svg('say', { size: 20, stroke: 1.7 })}</span><div class="rssaytext"><span class="rseye">In plain words</span><p>${d.say.map(p => (p.b ? `<b>${esc(p.t)}</b>` : esc(p.t))).join('')}</p></div>`;
+    drawFuelMath(v);
+    railDraw(v, rctx, d.notes);
+  };
+  // the buttons, the switches and the cards show what the form holds (1.70.0: they are only a face for the settings, which are kept as before)
+  const syncControls = () => {
+    fields.forEach(f => { if (f.ui === 'switch' || f.ui === 'seg' || f.ui === 'cards') FormUI.sync(dlg, f, getValue(f.key)); });
+    if (fields.some(f => f.ui === 'kind')) FormUI.syncKind(dlg, byId, SetupWords.parts({ sessionType: getValue('sessionType'), enduranceBy: getValue('enduranceBy') }));
+  };
+  // a button was pressed: the setting takes its value, and everything that follows from it (what is shown, the words, the buttons) is drawn again
+  const setValues = out => { let changed = false; Object.entries(out).forEach(([k, v]) => { const el = byId('f-' + k); if (el && el.value !== v) { el.value = v; changed = true; } }); if (changed) refreshShown(); };
+  const refreshShown = () => {
+    sayDraw();
+    syncControls();
+    if(e==='drivers' && typeof VirtualRival!=='undefined') {
+      const field=dlg.querySelector('[data-key="virtualRivalSystem"]');
+      if(field) {
+        let preview=field.querySelector('.vr-info');
+        if(!preview){preview=document.createElement('div');preview.className='vr-info';field.appendChild(preview);}
+        const profile=(state.refs.virtualrivalsystems||[]).find(p=>p.id===getValue('virtualRivalSystem'));
+        preview.textContent=profile?`${profile.trackName} · ${VirtualRival.sequence(profile).length} replay laps · ${profile.speed}% speed · ${profile.mode==='competitor'?'Race competitor':'Comparison only'}`:'Choose a linked system before this virtual driver can race.';
+      }
+    }
+    if (e === 'weathersystems') FormUI.syncUnits(dlg, wxWords(getValue)); // (laps or minutes, the units of the conditions)
+    if (e === 'tyrewearsystems' && byId('tw-box') && getValue('unit') && getValue('unit') !== twShownUnit) { twShownUnit = getValue('unit'); byId('tw-box').innerHTML = twTable(twt, twShownUnit, twsel); } // (1.75.0: per lap or per distance changes the heading of the table and its Lasts about)
+    fields.forEach(f => { const w = dlg.querySelector(`[data-key="${f.id}"]`); if (w) w.hidden = !isShown(f, getValue); });
+    if (groups) groups.forEach(g => { const el = dlg.querySelector(`[data-fg="${g.id}"]`); if (el) el.hidden = !g.fields.some(f => isShown(f, getValue)); }); // a group with nothing to show is not shown
+    if (sections) sections.forEach(x => { const el = dlg.querySelector(`[data-fg="${x.id}"]`); if (el) el.hidden = !x.groups.some(g => g.fields.some(f => isShown(f, getValue))); }); // (1.71.0: nor is a section whose groups have nothing to show)
+  };
+  const drawGallery = () => {
+    const box = byId('gal-box'); if (!box) return;
+    box.innerHTML = gal.map((src, i) => `<figure class="galitem${i === galSel ? ' sel' : ''}"><img class="galthumb" src="${esc(src)}" alt="Picture ${i + 1}" data-galview="${i}">
+      <figcaption><button type="button" class="btn" data-galmain="${i}">Make main</button> <button type="button" class="btn danger" data-galdel="${i}">Remove</button></figcaption></figure>`).join('')
+      + (galSel !== null && gal[galSel] ? `<img class="galbig" src="${esc(gal[galSel])}" alt="Selected picture">` : '');
+  };
+  drawGallery();
+  refreshShown();
+  // the statistics of a slotcar (1.30.0): what the form says about the service interval, the button that starts the count again, and the mileage
+  let serviceReset = false;
+  const syncService = () => {
+    const el = byId('svc-note'); if (!el) return;
+    const st = CarStats.status({ serviceInterval: (byId('f-serviceInterval') || {}).value }, serviceReset ? 0 : item ? CarStats.sinceOf(item) : 0);
+    el.textContent = CarStats.note(st) + (serviceReset ? ' The count starts again at 0 when you save.' : ''); el.classList.toggle('due', st.due);
+  };
+  syncService();
+  if (e === 'slotcars' && byId('f-_mileage')) { // the statistics that are worked out from the database (1.30.0 the mileage, 1.33.0 the others)
+    const fill = d => { const t = carStatTexts(d); CAR_STATS.forEach(f => { byId('f-' + f.key).value = t[f.key]; }); byId('f-_byTrack').innerHTML = carTracksHtml(d); if (serviceReset) byId('f-_mileageSince').value = Stats.fmtDist(0, dUnit()); }; // (after Reset the distance since the service starts again at 0) // (a distance that is not known is a dash)
+    if (!item) fill(CarStats.details({}, [], [], []));
+    else { CAR_STATS.forEach(f => { byId('f-' + f.key).value = 'Calculating…'; }); loadCarStats(item).then(fill).catch(() => { CAR_STATS.forEach(f => { byId('f-' + f.key).value = '–'; }); byId('f-_byTrack').textContent = '–'; }); }
+  }
+  if (groups) dlg.querySelectorAll('.fgroup').forEach(el => { el.ontoggle = () => { const g = el.dataset.fg; if (el.open) { const fresh = !opened.has(g); opened.add(g); if (sections && fresh) { railCurrent = g; sayDraw(); } } else opened.delete(g); }; }); // remembered for the next time the form opens (1.71.0: the rail points at the section that was opened last)
+  attachFrames(dlg, k => frames[k], (k, f) => { frames[k] = f; });
+  const onClick = ev => {
+    const wxh = ev.target && typeof ev.target.closest === 'function' ? ev.target.closest('[data-wxhcell]') : null;
+    if (wxh && wxh.dataset && wxh.dataset.wxhstate && wxh.dataset.wxhclass) { wxhFocus = { state: wxh.dataset.wxhstate, cls: wxh.dataset.wxhclass }; drawWxHinderPreview(); }
+    const b = ev.target.closest('button'); if (!b) return;
+    if (b.id === 'cancel') dlg.close();
+    const d = b.dataset || {};
+    if (d.rail !== undefined && sections) { // a row of the rail: open that section and go to it (1.71.0)
+      const el = dlg.querySelector(`[data-fg="${d.rail}"]`); if (!el) return;
+      el.open = true; opened.add(d.rail); railCurrent = d.rail; sayDraw();
+      const calm = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'start', behavior: calm ? 'auto' : 'smooth' });
+      const head = el.querySelector && el.querySelector('summary'); if (head && typeof head.focus === 'function') head.focus({ preventScroll: true });
+      return;
+    }
+    if (d.systemKey && typeof RaceSystems !== 'undefined') { setValues({ disabledSystems: RaceSystems.toggle(getValue('disabledSystems'), d.systemKey, d.systemOn === '1') }); return; }
+    if (d.pick) { setValues({ [d.pick]: d.on !== undefined ? (getValue(d.pick) === d.on ? d.off : d.on) : d.val }); return; } // (a button of a segmented choice or of cards, or a switch: 1.70.0)
+    if (d.kind !== undefined || d.format !== undefined || d.swaps !== undefined) { // the picker of a race setup: another kind, format or swaps
+      const now = SetupWords.parts(formValues()); if (now.kind === 'race') raceMemory = { format: now.format, swaps: now.swaps };
+      setValues(SetupWords.pick(formValues(), d.kind !== undefined ? { kind: d.kind } : d.format !== undefined ? { format: d.format } : { swaps: !now.swaps }, raceMemory)); return;
+    }
+    if (d.pbadd !== undefined || d.pbdrop !== undefined) { // the points of a list in boxes: one place more, or one less
+      const id = d.pbadd !== undefined ? d.pbadd : d.pbdrop, list = places[id]; if (!list) return;
+      places[id] = d.pbadd !== undefined ? (list.length >= FormUI.MAX_BOXES ? list : FormUI.addPlace(list)) : FormUI.dropPlace(list);
+      byId('pb-' + id).innerHTML = FormUI.boxRows(id, places[id]); byId('f-' + id).value = FormUI.joinList(places[id]);
+      byId('pb-add-' + id).disabled = places[id].length >= FormUI.MAX_BOXES; byId('pb-drop-' + id).disabled = places[id].length <= 1;
+      refreshShown(); return;
+    }
+    if (d.svcreset) { // the car was serviced: the count starts again at 0 (kept when the form is saved), and the day is today
+      serviceReset = true; byId('f-lapsSinceService').value = 0; byId('f-serviceDate').value = plainDate(new Date().toISOString()); byId('f-servicesDone').value = CarStats.servicesOf(item) + 1; byId('f-_mileageSince').value = Stats.fmtDist(0, dUnit()); syncService(); return;
+    }
+    if (d.fgall !== undefined && groups) { // open or close every group
+      opened.clear(); if (d.fgall === '1') groups.forEach(g => opened.add(g.id));
+      dlg.querySelectorAll('.fgroup').forEach(el => { el.open = d.fgall === '1'; }); return;
+    }
+    if (memF && (d.memadd || d.memup !== undefined || d.memdown !== undefined || d.memdel !== undefined)) { // the drivers of a team: add, move, remove
+      if (d.memadd) { const pick = byId('mem-pick').value; if (pick && !members.includes(pick)) members.push(pick); }
+      else if (d.memdel !== undefined) members.splice(Number(d.memdel), 1);
+      else { const i = Number(d.memup !== undefined ? d.memup : d.memdown), j = d.memup !== undefined ? i - 1 : i + 1; if (j >= 0 && j < members.length && i >= 0 && i < members.length) [members[i], members[j]] = [members[j], members[i]]; }
+      byId('mem-box').innerHTML = memRows(members, state.refs[memF.ref] || []); return;
+    }
+    if (d.pspreset) { const pr = PushSave.PRESETS[d.pspreset]; if (pr) Object.keys(pr.values).forEach(k => { const el = byId('f-' + k); if (el) el.value = pr.values[k]; }); return; } // (1.54.0: a ready-made push and save system changes the four wear numbers)
+    if (d.wxhprofile) { // a profile is only a quick way to fill the twelve ordinary, independently saved weather values
+      const profile = Wx.HINDER_PRESETS && Wx.HINDER_PRESETS[d.wxhprofile]; if (!profile) return;
+      Wx.STATES.forEach(([state]) => Wx.CLASSES.forEach(cls => { const el = byId('f-' + Wx.HKEYS[state + '/' + cls]); if (el) el.value = profile.table[state][cls]; }));
+      const map = byId('wx-hinder-map'); if (map) map.innerHTML = wxHinderMap(getValue, wxhFocus); return;
+    }
+    if (d.sctarget !== undefined) { const el = byId('f-target'); if (el) { el.value = d.sctarget; const on = byId('f-targetOn'); if (on) on.value = 'on'; refreshShown(); } return; }
+    if (d.ttReset) { tt.tyres[d.ttReset]={...TyreWear.Temperature.DEFAULT};byId('tt-box').innerHTML=TemperatureEditor.html(tt,twt,ttSelected);sayDraw();return; }
+    if (d.twpreset) { const pr = TyreWear.PRESETS[d.twpreset]; if (pr) { twt = { ...twt, ...JSON.parse(JSON.stringify(pr.tyres)) }; byId('tw-box').innerHTML = twTable(twt, getValue('unit') || 'lap', twsel); } return; }
+    if (d.twadd || d.twremove) {
+      if (d.twadd) { if (Object.keys(twt).filter(k=>k.startsWith('C_')).length>=32) return; const code='C_'+crypto.randomUUID().replace(/-/g,'').toUpperCase(); twt[code]={...TyreWear.DEFAULT_TYRES.M,name:'Custom tyre '+(Object.keys(twt).filter(k=>k.startsWith('C_')).length+1),icon:'M',cls:'dry'};tws[code]=2;twsel=code; }
+      else if (d.twremove.startsWith('C_')) { delete twt[d.twremove];delete tws[d.twremove];if(twsel===d.twremove)twsel='S'; }
+      byId('tw-box').innerHTML=twTable(twt,getValue('unit')||'lap',twsel);if(byId('tw-sets'))byId('tw-sets').outerHTML=twSets(tws,twt);tt=TyreWear.Temperature.clean(tt,Wx.withTyres(twt).TYRES.map(x=>x.code));if(byId('tt-box'))byId('tt-box').innerHTML=TemperatureEditor.html(tt,twt,ttSelected);sayDraw();return;
+    }
+    if (d.twsel) { twsel = d.twsel; byId('tw-box').innerHTML=twTable(twt,getValue('unit')||'lap',twsel);const profile=dlg.querySelector('.twadvanced');if(profile)profile.open=true;return; }
+    if (d.cfadd) { cfails.push({ name: '', level: dlevels.length ? String(dlevels[0].name || '') : '', chance: 5, seconds: 10 }); byId('cf-box').innerHTML = cfRows(cfails, dlevels); return; }
+    if (d.cfdel !== undefined) { cfails.splice(Number(d.cfdel), 1); byId('cf-box').innerHTML = cfRows(cfails, dlevels); return; }
+    if (d.cfstd) { Failures.DEFAULT_FAILURES.forEach(x => { if (!cfails.some(y => String(y.name || '').trim().toLowerCase() === x.name.toLowerCase())) cfails.push({ ...x }); }); byId('cf-box').innerHTML = cfRows(cfails, dlevels); return; }
+    if (d.dladd) { dlevels.push({ name: '', from: dlevels.length ? (Number(dlevels[dlevels.length - 1].from) || 0) + 3 : 3, seconds: 10, urgency: 'whenever', within: 0, action: 'repair' }); byId('dl-box').innerHTML = dlRows(dlevels); if (byId('cf-box')) byId('cf-box').innerHTML = cfRows(cfails, dlevels); return; }
+    if (d.dldel !== undefined) { dlevels.splice(Number(d.dldel), 1); byId('dl-box').innerHTML = dlRows(dlevels); if (byId('cf-box')) byId('cf-box').innerHTML = cfRows(cfails, dlevels); return; }
+    if (d.diadd) { dincs.push({ name: '', points: 1 }); byId('di-box').innerHTML = diRows(dincs); return; }
+    if (d.didel !== undefined) { dincs.splice(Number(d.didel), 1); byId('di-box').innerHTML = diRows(dincs); return; }
+    if (d.ptadd) { types.push({ name: '', points: 0, effect: 'none', amount: 0 }); byId('pt-box').innerHTML = ptRows(types); return; }
+    if (d.ptdel !== undefined) { types.splice(Number(d.ptdel), 1); byId('pt-box').innerHTML = ptRows(types); return; }
+    if (d.pradd) { if (!Array.isArray(prules)) prules = []; prules.push({ from: prules.length ? Math.max(...prules.map(r => Number(r.from) || 0)) + 1 : 1, time: 0, laps: 0, pit: 0 }); byId('pr-box').innerHTML = prRows(prules); return; }
+    if (d.prdel !== undefined && Array.isArray(prules)) { prules.splice(Number(d.prdel), 1); byId('pr-box').innerHTML = prRows(prules); return; }
+    if (d.calcopen) { byId('calc').hidden = !byId('calc').hidden; return; }
+    if (d.calcadd) { pieces.push({ count: '', mm: pieces.length ? pieces[pieces.length - 1].mm : 200 }); byId('calc-rows').innerHTML = calcRows(pieces); byId('calc-total').textContent = Speed.lengthText(Speed.lengthFromPieces(pieces), dUnit()); return; }
+    if (d.calcdel !== undefined) { pieces.splice(Number(d.calcdel), 1); if (!pieces.length) pieces.push({ count: '', mm: 200 }); byId('calc-rows').innerHTML = calcRows(pieces); byId('calc-total').textContent = Speed.lengthText(Speed.lengthFromPieces(pieces), dUnit()); return; }
+    if (d.calcuse) { const t = Speed.lengthFromPieces(pieces); if (t > 0) { const el = byId('f-length'); el.value = Speed.lengthTyped(t, dUnit()); if (dUnit() === 'ft' && el.dataset) { el.dataset.du = 'ft'; el.dataset.shown = String(el.value); el.dataset.keep = String(t); } } return; }
+    if (d.galview !== undefined) { galSel = galSel === Number(d.galview) ? null : Number(d.galview); drawGallery(); return; }
+    if (d.galdel !== undefined) { gal.splice(Number(d.galdel), 1); galSel = null; drawGallery(); return; }
+    if (d.galmain !== undefined) { // this picture becomes the main one; the old main picture goes into the gallery
+      const i = Number(d.galmain), old = imgs[mainKey];
+      imgs[mainKey] = gal[i]; frames[mainKey] = Widgets.frameOf(null);
+      if (old) gal[i] = old; else gal.splice(i, 1);
+      galSel = null; const im = byId('f-' + mainKey + '-img'); im.src = imgs[mainKey]; im.hidden = false; redrawFrame(mainKey); drawGallery(); return;
+    }
+    if (b.dataset.clear) { imgs[b.dataset.clear] = ''; frames[b.dataset.clear] = Widgets.frameOf(null); byId('f-' + b.dataset.clear + '-img').hidden = true; byId('f-' + b.dataset.clear).value = ''; redrawFrame(b.dataset.clear); }
+  };
+  let classSaving=false;
+  dlg.onclick = async ev => {
+    const button=ev.target.closest('[data-class-create]');
+    if(button?.dataset?.classCreate){
+      if(classSaving)return;const key=button.dataset.classCreate,input=byId('f-'+key+'-new'),label=input.value.trim();
+      if(!label){byId('err').textContent='Enter a Race Class name, such as GT3 or Prototype.';input.focus();return;}
+      classSaving=true;button.disabled=true;
+      try{const list=await api.list('raceclasses');let cls=list.find(c=>c.name.trim().toLocaleLowerCase()===label.toLocaleLowerCase());
+        if(!cls){cls=await api.add('raceclasses',{name:label,color:'#63b9db',icon:'car'});list.push(cls);}
+        state.refs.raceclasses=list;const select=byId('f-'+key);
+        select.innerHTML='<option value="">No class selected</option>'+list.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');select.value=cls.id;input.value='';onInput({target:select});byId('err').textContent='';
+      }catch(x){byId('err').textContent='Could not create the Race Class: '+x.message;}finally{classSaving=false;button.disabled=false;}return;
+    }
+    onClick(ev); if (sections && e !== 'racesetups') sayDraw();
+  }; // (1.73.0: a system's words follow a row that is added or taken away; the table is changed first)
+  // the ready-made system whose numbers the table holds is marked (1.75.0)
+  const markPreset = () => { const k = TyreWear.presetOf(twt); dlg.querySelectorAll('[data-twpreset]').forEach(b => { const on = !!k && (b.dataset || {}).twpreset === k; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); }); };
+  const onInput = ev => {
+    const t = ev.target;
+    if (e === 'racesetups') sayDraw(); // (the sentence follows every key that is typed)
+    if (e === 'pushsavesystems' && t && t.dataset && t.dataset.pscurve) {
+      const field = byId('f-' + t.dataset.pscurve); if (field) field.value = t.value;
+      const curve = byId('ps-curve-box'); if (curve) curve.innerHTML = psCurve(getValue);
+      return;
+    }
+    if (t && t.dataset && t.dataset.pbf !== undefined) { // a box of a list of numbers: the list is kept as text, as it always was ("10, 8, 6")
+      const id = t.dataset.pbf, list = places[id]; if (list) { list[Number(t.dataset.pb)] = t.value; byId('f-' + id).value = FormUI.joinList(list); sayDraw(); }
+      return;
+    }
+    if (t && t.id === 'f-serviceInterval') { syncService(); return; }
+    if (t && t.dataset && t.dataset.wxh !== undefined) { // keep the map and its concrete fuel consequence live while the number is typed
+      const cell = typeof t.closest === 'function' ? t.closest('[data-wxhcell]') : null;
+      if (cell && cell.dataset) { cell.style.setProperty('--wxh', wxHinderNumber(t.value, Wx.DEFAULTS[t.id.slice(2)]) + '%'); if (cell.dataset.wxhstate && cell.dataset.wxhclass) wxhFocus = { state: cell.dataset.wxhstate, cls: cell.dataset.wxhclass }; }
+      drawWxHinderPreview(); return;
+    }
+    if(t?.dataset?.ttSource!==undefined){tt.ambientSource=t.value;sayDraw();return;}
+    if(t?.dataset?.ttSelect!==undefined){ttSelected=t.value;byId('tt-box').innerHTML=TemperatureEditor.html(tt,twt,ttSelected);return;}
+    if(t?.dataset?.ttAmbient || t?.dataset?.ttKey){if(t.dataset.ttAmbient)tt.ambient[t.dataset.ttAmbient]=t.value;else tt.tyres[t.dataset.ttCode][t.dataset.ttKey]=t.value;byId('tt-chart').innerHTML=TemperatureEditor.chart(tt,ttSelected);sayDraw();return;}
+    if (t?.dataset?.twmeta && twt[t.dataset.twmeta] && ['name','icon','cls'].includes(t.dataset.twkey)) {
+      const code=t.dataset.twmeta;twt[code][t.dataset.twkey]=t.value;
+      if(t.dataset.twkey==='name') {
+        dlg.querySelectorAll(`[data-twrow="${code}"] .twname,.twprofile:has([data-tw="${code}"]) .twname`).forEach(label=>{if(label.lastChild?.nodeType===3)label.lastChild.textContent=' '+t.value;});
+        const curve=byId('tw-curve');if(curve&&twsel===code)curve.innerHTML=twCurve(twt,twsel);
+      }
+      return;
+    }
+    if (t && t.dataset && t.dataset.twlife !== undefined) { // the human-friendly tyre-life input stores the established percentage-wear value
+      const code = t.dataset.twlife, life = Number(String(t.value || '').replace(',', '.'));
+      if (twt[code]) twt[code].wear = TyreWear.wearForLife(getValue('unit') || 'lap', dUnit(), life);
+      const wearEl = dlg.querySelector(`[data-twwear="${code}"]`);
+      if (wearEl) { const w = Number(twt[code].wear); wearEl.textContent = twWearLabel(getValue('unit') || 'lap') + ': ' + (w > 0 ? w.toLocaleString() + '%' : 'no wear'); }
+      // Editing lifespan does not silently switch the selected performance profile.
+      const curve = byId('tw-curve'); if (curve && twsel === code) curve.innerHTML = twCurve(twt, twsel); markPreset(); return;
+    }
+    if (t && t.dataset && t.dataset.tw !== undefined) { // a number of a tyre: the "lasts about" and the grip curve follow
+      const code = t.dataset.tw; if (twt[code]) twt[code][t.dataset.twk] = t.value;
+      // Editing lifespan does not silently switch the selected performance profile.
+      const curve = byId('tw-curve'); if (curve && twsel === code) curve.innerHTML = twCurve(twt, twsel); markPreset(); return;
+    }
+    if (t && t.dataset && t.dataset.tws !== undefined) { if (tws[t.dataset.tws] !== undefined) tws[t.dataset.tws] = t.value; return; }
+    if (t && t.dataset && t.dataset.twm !== undefined) { if (twm[t.dataset.twm]) twm[t.dataset.twm][t.dataset.twmc] = t.value; return; }
+    if (t && t.dataset && t.dataset.dl !== undefined) {
+      const lv = dlevels[Number(t.dataset.dl)];
+      if (lv) { const was = lv[t.dataset.dlk]; lv[t.dataset.dlk] = t.value; if (t.dataset.dlk === 'name' && byId('cf-box')) { cfails.forEach(x => { if (String(x.level || '') === String(was || '')) x.level = t.value; }); byId('cf-box').innerHTML = cfRows(cfails, dlevels); } } // (a failure follows its level when the level is renamed)
+      return;
+    }
+    if (t && t.dataset && t.dataset.cf !== undefined) { const fl = cfails[Number(t.dataset.cf)]; if (fl) fl[t.dataset.cfk] = t.value; return; }
+    if (t && t.dataset && t.dataset.di !== undefined) { const ic = dincs[Number(t.dataset.di)]; if (ic) ic[t.dataset.dik] = t.value; return; }
+    if (t && t.dataset && t.dataset.pt !== undefined) { const ty = types[Number(t.dataset.pt)]; if (ty) ty[t.dataset.ptk] = t.value; return; }
+    if (t && t.dataset && t.dataset.pr !== undefined) { const rule = Array.isArray(prules) && prules[Number(t.dataset.pr)]; if (rule) rule[t.dataset.prk] = t.value; return; }
+    const c = t && t.classList && t.dataset && t.dataset.i !== undefined;
+    if (!c) return;
+    const p = pieces[Number(t.dataset.i)]; if (!p) return;
+    if (t.className.includes('calc-count')) p.count = t.value; else if (t.className.includes('calc-mm')) p.mm = dUnit() === 'ft' && t.value !== '' ? Speed.smallKept(t.value, 'ft') : t.value;
+    byId('calc-total').textContent = Speed.lengthText(Speed.lengthFromPieces(pieces), dUnit());
+  };
+  dlg.oninput = ev => { onInput(ev); if (sections && e !== 'racesetups') sayDraw(); }; // (and a system's words follow every key that is typed, also in a table: the row is changed first)
+  dlg.onchange = async ev => {
+    const t = ev.target;
+    refreshShown();
+    if (t?.dataset?.twmeta) { onInput(ev);if(t.dataset.twkey!=='name'&&twt[t.dataset.twmeta]?.name.trim()){byId('tw-box').innerHTML=twTable(twt,getValue('unit')||'lap',twsel);if(byId('tw-sets'))byId('tw-sets').outerHTML=twSets(tws,twt);}sayDraw();return; }
+    if (e === 'pushsavesystems' && ['f-mode', 'f-previewTrack', 'f-pushAt', 'f-saveAt'].includes(t.id || '')) { const curve = byId('ps-curve-box'); if (curve) curve.innerHTML = psCurve(getValue); }
+    if (t && t.id === 'f-unit' && byId('tw-box')) { byId('tw-box').innerHTML = twTable(twt, t.value, twsel); return; } // (per lap or per distance: the heading and the lasts about change)
+    if (t && t.dataset && t.dataset.twm !== undefined && byId('tw-mult')) { byId('tw-mult').innerHTML = twMult(twm); return; } // update the weather-life comparison after a finished edit without interrupting typing
+    if (t.dataset && t.dataset.gallery && t.files) { // more pictures for the gallery
+      const room = GALLERY_MAX - gal.length;
+      try { for (const file of [...t.files].slice(0, Math.max(0, room))) gal.push(await resizeImage(file, 1024)); byId('err').textContent = t.files.length > room ? `Only ${GALLERY_MAX} extra pictures fit; the rest were skipped.` : ''; }
+      catch (x) { byId('err').textContent = x.message; }
+      t.value = ''; drawGallery(); return;
+    }
+    if (t.type === 'file' && t.files[0]) {
+      const key = t.id.slice(2);
+      try {
+        imgs[key] = await resizeImage(t.files[0], 512);
+        frames[key] = Widgets.frameOf(null); // a new picture starts centred
+        const im = byId(t.id + '-img'); im.src = imgs[key]; im.hidden = false; redrawFrame(key);
+        byId('err').textContent = '';
+      } catch (x) { byId('err').textContent = x.message; }
+    }
+    if (t.tagName === 'SELECT' && byId(t.id + '-flag')) byId(t.id + '-flag').innerHTML = flagHtml(t.value);
+  };
+  let saving = false;
+  byId('frm').onsubmit = async ev => {
+    ev.preventDefault();
+    if (saving || classSaving) return;
+    if(e==='tyrewearsystems' && Object.values(tt.tyres).some(v=>Number(v.high)<=Number(v.low))){byId('err').textContent='Each temperature working range must end above its starting value.';return;}
+    if (e === 'tyrewearsystems' && Object.entries(twt).some(([k,v])=>k.startsWith('C_')&&!String(v.name||'').trim())) { byId('err').textContent='Give every custom tyre a name before saving.'; return; }
+    const built = {}, custom = { ...(item?.custom || {}) };
+    for (const f of fields) {
+      if (f.automatic) { if (!item) built[f.key] = f.type === 'datetime' ? '' : 0; continue; }
+      if (f.transient || f.type === 'carstat' || f.type === 'cartracks' || f.type === 'pspresets' || BAR_TYPES.includes(f.type) || f.type === 'wxhinder' || f.type === 'wxcond') continue; // (worked out or drawn for the form, not kept)
+      if (f.type === 'gallery') { built[f.key] = [...gal]; continue; }
+      if (f.type === 'members') { built[f.key] = members.filter(id => (state.refs[f.ref] || []).some(x => x.id === id)); continue; }
+      if (f.type === 'damagelevels') { built[f.key] = dlevels.filter(l => String(l.name || '').trim() || Number(l.from) > 0).map(l => ({ name: String(l.name || '').trim(), from: Math.max(0, Math.floor(Number(l.from)) || 0), seconds: Math.max(0, Number(l.seconds) || 0), urgency: l.urgency === 'asap' ? 'asap' : 'whenever', within: Math.max(0, Math.floor(Number(l.within)) || 0), action: Damage.ACTIONS.includes(l.action) ? l.action : 'repair' })); continue; }
+      if (f.type === 'tyretemperature') { built[f.key]=TyreWear.Temperature.clean(tt,Wx.withTyres(twt).TYRES.map(x=>x.code));continue; }
+      if (f.type === 'tyretable') { built[f.key] = TyreWear.cleanTyres(twt); continue; }
+      if (f.type === 'wxmult') { built[f.key] = TyreWear.cleanMult(twm); continue; }
+      if (f.type === 'tyresets') { built[f.key] = TyreWear.withTyres(twt).cleanSets(tws); continue; }
+      if (f.type === 'carfailures') { built[f.key] = cfails.filter(x => String(x.name || '').trim()).map(x => ({ name: String(x.name).trim(), level: String(x.level || '').trim(), chance: Math.min(100, Math.max(0, Math.round((Number(x.chance) || 0) * 100) / 100)), seconds: Math.max(0, Math.round((Number(x.seconds) || 0) * 100) / 100) })); continue; }
+      if (f.type === 'damageincidents') { built[f.key] = dincs.filter(x => String(x.name || '').trim()).map(x => ({ name: String(x.name).trim(), points: Math.max(1, Math.floor(Number(x.points)) || 1) })); continue; }
+      if (f.type === 'penaltytypes') { built[f.key] = types.filter(t => String(t.name || '').trim()).map(t => t.effect === undefined ? { name: String(t.name).trim(), kind: t.kind === 'drivethrough' ? 'drivethrough' : 'stopgo', seconds: Number(t.seconds) || 0, cost: Number(t.cost) || 0, extra: Number(t.extra) || 0, unserved: Number(t.unserved) || 0 } : { name: String(t.name).trim(), points: Math.max(0, Math.floor(Number(t.points) || 0)), effect: ['time', 'laps', 'pit'].includes(t.effect) ? t.effect : 'none', amount: Math.max(0, Number(t.amount) || 0) }); continue; }
+      if (f.type === 'penaltyrules') { if (Array.isArray(prules)) built[f.key] = prules.map(r => ({ from: Math.max(1, Math.floor(Number(r.from) || 1)), time: Math.max(0, Number(r.time) || 0), laps: Math.max(0, Math.floor(Number(r.laps) || 0)), pit: Math.max(0, Number(r.pit) || 0) })).sort((a, b) => a.from - b.from); continue; }
+      const el = byId('f-' + f.id);
+      let v;
+      if (f.type === 'image') { v = imgs[f.id]; if (!f.custom) built[f.key + 'Frame'] = v ? frames[f.id] : null; }
+      else if (f.type === 'number' || f.type === 'tracklength') v = el.value === '' ? '' : el.dataset && el.dataset.du === 'ft' ? keptValue(f, el) : Number(el.value);
+      else { v = el.dataset && el.dataset.du === 'ft' ? keptValue(f, el) : el.value.trim(); if (f.uppercase) v = v.toUpperCase(); }
+      if (f.type === 'padlist' && v !== '' && isShown(f, getValue)) { // (the values of an Adjust pad: tidied up - smallest first, no doubles, at most six - or the field is empty, which means the App Settings values)
+        const own = AdjustPad.ownOf({ [AdjustPad.byId(f.pad).key]: v }, f.pad);
+        if (!own) { byId('err').textContent = 'Please enter numbers above zero, separated by commas, for example 1, 3, 10. Leave the field empty to use the values from App Settings.'; return; }
+        v = AdjustPad.listText(own);
+      }
+      if (f.type === 'numberlist' && isShown(f, getValue)) {
+        v = ListNum.tidy(v); // (a decimal comma is made a dot: 15,4 is 15.4 metres)
+        if (!(f.optional && v === '') && !/^\s*\d+(\.\d+)?(\s*,\s*\d+(\.\d+)?)*\s*$/.test(v)) { // (an optional list may stay empty)
+          byId('err').textContent = 'Please enter numbers separated by commas, for example 10, 8, 6.';
+          return;
+        }
+      }
+      if (f.type === 'tracklength') { // keep the pieces only while they still add up to the length
+        const used = pieces.filter(p => Number(p.count) > 0 && Number(p.mm) > 0).map(p => ({ count: Number(p.count), mm: Number(p.mm) }));
+        built.lengthPieces = used.length && Speed.lengthFromPieces(used) === v ? used : [];
+      }
+      if (f.custom) custom[f.id] = v; else built[f.key] = v;
+    }
+    if (e === 'slotcars') { // the service interval is a whole number of laps (empty = none); Reset starts the count again today
+      // Laps Driven (1.51.0) can be typed: a whole number from 0. It is only sent when it was changed (a race that is saved while the form is open keeps its laps), and an empty box leaves it as it is (a new car starts at 0).
+      const typedLaps = built.lapsDriven;
+      if (typedLaps !== '' && typedLaps !== undefined && !(Number.isInteger(typedLaps) && typedLaps >= 0)) { byId('err').textContent = 'Please enter Laps Driven as a whole number, 0 or more.'; return; }
+      if (item && (typedLaps === '' || typedLaps === undefined || typedLaps === CarStats.lapsDriven(item))) delete built.lapsDriven; else if (typedLaps === '' || typedLaps === undefined) built.lapsDriven = 0;
+      if (built.serviceInterval !== '' && built.serviceInterval !== undefined) built.serviceInterval = Math.max(1, Math.floor(Number(built.serviceInterval)) || 1);
+      if (serviceReset) { built.lapsSinceService = 0; built.serviceDate = new Date().toISOString(); built.servicesDone = CarStats.servicesOf(item) + 1; }
+    }
+    if (e === 'tracks' && built.laneModifier === 'measured') { // one length for every lane
+      const list = String(built.laneLengths || '').split(',').map(x => x.trim()).filter((x, i, a) => x !== '' || i < a.length - 1), n = Number(built.lanes);
+      if (list.length !== n || list.some(x => !(Number(x) > 0))) {
+        byId('err').textContent = `Please enter the length of every lane: ${n} numbers above 0, separated by commas (you entered ${list.filter(x => Number(x) > 0).length}).`;
+        return;
+      }
+    }
+    if (e === 'pushsavesystems' && built.mode !== 'median' && built.normal !== '' && built.saveAt !== '' && Number(built.saveAt) <= Number(built.normal)) { // the most saving pace must be slower than normal pace (1.54.0)
+      byId('err').textContent = 'The most saving pace must be more than the normal pace (the saving needs some room to grow in).';
+      return;
+    }
+    if (e === 'tyrewearsystems' && Number(built.crit) > Number(built.warn)) { // the red level must be at or below the amber level
+      byId('err').textContent = 'The critical (red) level must be at or below the warning (amber) level.';
+      return;
+    }
+    if (!s.title.some(k => String(built[k] ?? '').length)) {
+      byId('err').textContent = 'Please fill in ' + s.title.map(k => s.fields.find(f => f.key === k).label).join(' or ') + '.';
+      return;
+    }
+    saving = true; // (a second click while the first is being written would add the row twice)
+    try {
+      await (item ? api.update(e, item.id, { ...built, custom }) : api.add(e, { ...built, custom }));
+      dlg.close();
+    } catch (x) { byId('err').textContent = 'It could not be saved: ' + (x && x.message ? x.message : x); } // (the form stays open: nothing is lost)
+    finally { saving = false; }
+  };
+  if (!dlg.open) dlg.showModal(); // (it is already open when Edit was pressed in the view card)
+  if (groups) { const first = byId('f-' + fields[0].id); if (first && first.focus) first.focus(); } // the first field, as before, not the Open all button above the groups
+}
+
+// The groups an extra field can be put in: the groups of the form, then More (the default, and where a field goes whose group is not known)
+const groupChoices = (e, current) => {
+  const known = (state.schema[e].groups || []).some(g => g.id === current);
+  return [...(state.schema[e].groups || []).map(g => [g.id, g.title]), ['', 'More']]
+    .map(([id, title]) => `<option value="${esc(id)}"${id === (known ? current : '') ? ' selected' : ''}>${esc(title)}</option>`).join('');
+};
+
+async function openExtra(e) {
+  const s = state.schema[e];
+  const list = await api.customFields(e);
+  state.custom[e] = list;
+  const grouped = (s.groups || []).length > 0;
+  dlg.innerHTML = `<div${setupToneClass(e) ? ` class="${setupToneClass(e).trim()}"` : ''}><h3>Extra fields for ${esc(s.plural.toLowerCase())}</h3>
+    <p class="muted">Extra fields are for your own information. They don't affect lap times or records.</p>` +
+    (list.length ? `<ul class="xf">${list.map(f => `<li><span>${esc(f.label)} <span class="muted">(${XTYPES[f.type]})</span></span>${grouped ? `<select data-grp="${esc(f.id)}" aria-label="Group of ${esc(f.label)}" title="Where this field appears in the form">${groupChoices(e, f.group)}</select>` : ''}<button class="btn danger" data-rm="${esc(f.id)}">Delete</button></li>`).join('')}</ul>`
+      : '<p class="muted">No extra fields yet.</p>') +
+    `<div class="field"><label for="xl">New field name</label><input id="xl" type="text"></div>
+     <div class="field"><label for="xt">Type</label><select id="xt">${Object.entries(XTYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></div>
+     <div class="field" id="xow" hidden><label for="xo">Options (separate with commas)</label><input id="xo" type="text"></div>
+     ${grouped ? `<div class="field"><label for="xg">Group in the form</label><select id="xg">${groupChoices(e, '')}</select><span class="muted hint">Where the field appears. You can change it later in the list above.</span></div>` : ''}
+     <p class="error" id="err" role="alert"></p>
+     <div class="row"><button class="btn primary" id="xadd">Add field</button><button class="btn" id="xclose">Close</button></div></div>`;
+  dlg.onchange = async ev => {
+    const t = ev.target;
+    if (t.id === 'xt') byId('xow').hidden = t.value !== 'list';
+    if (t.dataset && t.dataset.grp) {
+      const f = list.find(x => x.id === t.dataset.grp); if (!f) return;
+      const before = f.group || '';
+      try { const saved = await api.setCustomFieldGroup(e, f.id, t.value); f.group = saved && typeof saved.group === 'string' ? saved.group : t.value; }
+      catch (x) { t.value = before; byId('err').textContent = 'The group could not be changed: ' + x.message; }
+    }
+  };
+  dlg.onclick = async ev => {
+    const b = ev.target.closest('button'); if (!b) return;
+    if (b.id === 'xclose') return dlg.close();
+    if (b.dataset.rm && confirm('Delete this extra field? Its values are removed from every item.')) {
+      await api.removeCustomField(e, b.dataset.rm);
+      return openExtra(e);
+    }
+    if (b.id === 'xadd') {
+      const label = byId('xl').value.trim(), type = byId('xt').value;
+      const options = byId('xo').value.split(',').map(x => x.trim()).filter(Boolean);
+      if (!label) return void (byId('err').textContent = 'Please enter a name for the field.');
+      if (type === 'list' && !options.length) return void (byId('err').textContent = 'Please enter at least one option.');
+      await api.addCustomField(e, { label, type, options: type === 'list' ? options : [], group: grouped ? byId('xg').value : '' });
+      openExtra(e);
+    }
+  };
+  if (!dlg.open) dlg.showModal();
+}
+
+// ---- Results and Records ----
+const dateText = iso => iso ? new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '';
+const SESSION_LABEL = { practice: 'Free practice', qualifying: 'Qualifying', race: 'Race', timed: 'Timed race', heats: 'Heat-based race', endurance: 'Endurance Race', tokens: 'Time Token Session' };
+
+// The page has two pools that never mix: Racing Records (everything raced) and Token Records (the stints of Time Token Sessions, with their own records).
+async function renderResults(box) {
+  manager = null;
+  const pool = state.resultsSub === 'tokens' ? 'tokens' : state.resultsSub === 'champs' ? 'champs' : 'racing';
+  box.innerHTML = '<div class="sub" id="respool" role="tablist"></div><div id="resbody"></div>';
+  renderTabs(byId('respool'), [['racing', 'Racing Records'], ['tokens', 'Token Records'], ['champs', 'Championships']], pool, id => { state.resultsSub = id; renderResults(box); });
+  if (pool === 'champs') { await renderChampStandings(byId('resbody')); return; } // (1.56.0: the standings of the championships)
+  await renderResultsPool(byId('resbody'), pool);
+}
+// the lines that tell how the figures of a table are counted, as one small paragraph under it
+const statNote = keys => { const n = Stats.notes(keys); return n.length ? `<p class="muted statnote">${n.map(esc).join(' ')}</p>` : ''; };
+// time bought for a stint: "10 min", "1 min 30 s", "45 s"
+const boughtText = ms => { const sec = Math.round(Number(ms) / 1000); if (!Number.isFinite(sec)) return ''; const m = Math.floor(sec / 60), s = sec % 60; return !s ? `${m} min` : m ? `${m} min ${s} s` : `${s} s`; };
+
+// The tyre stints of a session that had Tyre Wear (1.42.0): a heading with its two switches (kept in the settings), and the bars under it. Nothing for a session without tyre wear.
+const tyreStintsSection = s => {
+  if (!Stats.tyreStints(s, dUnit()).length) return '';
+  const on = state.settings.tyreStints !== false, worn = state.settings.tyreWornRed === true;
+  return `<h4>Tyre stints</h4><div class="tysopt"><label class="inline"><input type="checkbox" data-tyshow="${esc(s.id)}"${on ? ' checked' : ''}> Show the tyre stints under the results</label>
+    <label class="inline"><input type="checkbox" data-tyworn="${esc(s.id)}"${worn ? ' checked' : ''}> Show the laps on worn tyres (0%) in red</label></div>${on ? Stats.tyreStintsHtml(s, { distUnit: dUnit(), worn }) + `<p class="muted statnote">${esc(Stats.tyreStintsNote(s))}</p>` : ''}`;
+};
+
+// The dialog of Export to PDF: what goes in the PDF. Resolves with the options for Report.sessionHtml, or null when it was cancelled.
+// The columns start as the View settings have them; the pages (results table, heats, lap times) start as they were picked the last time.
+function pdfChoice(session, figs) {
+  const cols = Stats.sessionColumns(session, figs), screen = ViewSet.keys(Stats.SESSION_COLUMNS, viewSaved(['results', 'sessions']));
+  const pages = { results: true, heats: true, tyres: true, laps: true, ...(state.settings.pdfPages || {}) };
+  const picked = new Set(cols.filter(c => screen.includes(c.key)).map(c => c.key));
+  const items = [['results', 'Results table'], ...(session.heatResults ? [['heats', session.finals ? 'Heats and finals' : 'Heats']] : []), ...(Stats.tyreStints(session, 'm').length ? [['tyres', 'Tyre stints']] : []), ['laps', 'Every lap time (page 2 onwards)']];
+  dlg.innerHTML = `<h3>Export to PDF</h3><p class="muted">Choose what goes in the PDF.</p>
+    <fieldset class="vsgroup"><legend>Include</legend>${items.map(([k, t]) => `<label class="vschip"><input type="checkbox" data-pdfpage="${k}"${pages[k] ? ' checked' : ''}> ${esc(t)}</label>`).join('')}</fieldset>
+    <fieldset class="vsgroup"><legend>Columns of the results table</legend>${cols.map(c => `<label class="vschip"><input type="checkbox" data-pdfcol="${esc(c.key)}"${picked.has(c.key) ? ' checked' : ''}> ${esc(c.label)}</label>`).join('')}</fieldset>
+    <div class="row"><button class="btn" type="button" data-pdfall="1">All columns</button><button class="btn" type="button" data-pdfall="0">No columns</button></div>
+    <p class="muted">The columns start as your View settings have them. The choice of pages is remembered for the next time.</p>
+    <p class="error" id="pdferr" role="alert"></p>
+    <div class="row"><button class="btn primary pdfbtn" type="button" id="pdfgo">${Icons.svg('pdf', { size: 18 })}<span>Export to PDF</span></button><button class="btn" type="button" id="pdfcancel">Cancel</button></div>`;
+  return new Promise(resolve => {
+    let done = false;
+    const finish = v => { if (done) return; done = true; if (dlg.open) dlg.close(); resolve(v); };
+    dlg.addEventListener('close', () => finish(null), { once: true }); // (Escape closes it too)
+    dlg.oninput = null;
+    dlg.onchange = ev => {
+      const t = ev.target || {}, d = t.dataset || {};
+      if (d.pdfpage) pages[d.pdfpage] = !!t.checked;
+      if (d.pdfcol) { if (t.checked) picked.add(d.pdfcol); else picked.delete(d.pdfcol); }
+    };
+    dlg.onclick = async ev => {
+      const b = ev.target && ev.target.closest ? ev.target.closest('button') : null; if (!b) return;
+      if (b.dataset && b.dataset.pdfall !== undefined) {
+        const on = b.dataset.pdfall === '1'; picked.clear(); if (on) cols.forEach(c => picked.add(c.key));
+        if (typeof dlg.querySelectorAll === 'function') Array.from(dlg.querySelectorAll('[data-pdfcol]') || []).forEach(x => { x.checked = on; });
+        return;
+      }
+      if (b.id === 'pdfcancel') return finish(null);
+      if (b.id !== 'pdfgo') return;
+      const err = byId('pdferr'), has = items.some(([k]) => pages[k]);
+      if (!has) { err.textContent = 'Pick at least one thing to include.'; return; }
+      if (pages.results && !picked.size) { err.textContent = 'Pick at least one column, or leave the results table out.'; return; }
+      const chosen = { results: !!pages.results, heats: !!pages.heats, tyres: !!pages.tyres, laps: !!pages.laps };
+      try { state.settings = await api.setSettings({ pdfPages: chosen }); } catch { /* remembering the choice is not needed for the PDF */ }
+      finish({ ...chosen, columns: cols.filter(c => picked.has(c.key)).map(c => c.key) });
+    };
+    if (!dlg.open) dlg.showModal();
+  });
+}
+
+async function renderResultsPool(box, pool) {
+  const tokenPool = pool === 'tokens';
+  const run = ++subRun;
+  const [allSessions, allLaps, drivers, cars, tracks] = await Promise.all(['sessions', 'laps', 'drivers', 'slotcars', 'tracks'].map(x => api.list(x)));
+  if (run !== subRun) return;
+  const sessions = allSessions.filter(x => (x.sessionType === 'tokens') === tokenPool).map(x => Array.isArray(x.standings) ? x : { ...x, standings: [] }); // (a session from a hand-made file may have no list of results: it shows with an empty table)
+  const laps = allLaps.filter(l => !!l.token === tokenPool); // (the two pools never mix)
+  if (!sessions.length) { box.innerHTML = tokenPool ? '<p class="muted">No token results yet. Open a Time Token Session from the Home tab: every stint (one driver on one lane for one paid time) is saved here when it ends.</p>' : '<p class="muted">No results yet. Run a race from the Home tab and every lap is saved here.</p>'; return; }
+  const name = (list, id, ent) => { const x = list.find(r => r.id === id); return x ? titleOf(ent, x) : tokenPool && !id ? 'Guest' : '(deleted)'; };
+  const folderPage = tokenPool ? 'tresults' : 'results';
+
+  // fastest lap per track overall, and per driver on each track
+  // a lap removed from the records stays in its session; the next fastest lap takes over
+  const best = (keyFn, skip) => {
+    const m = new Map();
+    for (const l of laps) {
+      if (l[skip] || (tokenPool && skip === 'noPersonalBest' && !l.driverId)) continue; const k = keyFn(l); if (!m.has(k) || l.time < m.get(k).time) m.set(k, l); }
+    return [...m.values()];
+  };
+  // the columns of the record tables (View settings decides which are shown)
+  const sessionOf = new Map(sessions.map(x => [x.id, x]));
+  const speedOf = l => Stats.lapSpeed(l, tracks, cars);
+  const lapText = l => `${l.heat ? (l.final ? 'F' + l.final : 'H' + l.heat) + ' ' : ''}${l.lapNumber}`;
+  const RECCELL = {
+    track: l => esc(name(tracks, l.trackId, 'tracks')), driver: l => esc(name(drivers, l.driverId, 'drivers')), time: l => `<strong>${esc(RaceEngine.fmtTime(l.time))}</strong>`,
+    car: l => esc(name(cars, l.carId, 'slotcars')), speed: l => esc(Stats.fmtSpeed(speedOf(l).speed, Speed.unitOf(state.settings))), scalespeed: l => esc(Stats.fmtScale(speedOf(l).scalespeed, Speed.unitOf(state.settings))),
+    session: l => (sessionOf.get(l.sessionId) ? esc(sessionOf.get(l.sessionId).setupName) : '<span class="muted">–</span>'), lane: l => (l.lane ? esc(l.lane) : '<span class="muted">–</span>'),
+    lapno: l => esc(lapText(l)), date: l => esc(dateText(l.date))
+  };
+  const recKeys = Stats.RECORD_COLUMNS.filter(c => ViewSet.keys(Stats.RECORD_COLUMNS, viewSaved(['results', 'records'])).includes(c.key));
+  const recRow = kind => l => `<tr>${recKeys.map(c => `<td>${RECCELL[c.key](l)}</td>`).join('')}
+    <td class="actions"><button class="btn danger" data-delrec="${kind}" data-lap="${esc(l.id)}">Remove</button></td></tr>`;
+  const head = `<tr>${recKeys.map(c => `<th>${esc(c.label)}</th>`).join('')}<th></th></tr>`;
+  const byTrack = (a, b) => name(tracks, a.trackId, 'tracks').localeCompare(name(tracks, b.trackId, 'tracks')) || a.time - b.time;
+  const trackRecords = best(l => l.trackId, 'noTrackRecord').sort(byTrack);
+  const personal = best(l => l.trackId + '|' + l.driverId, 'noPersonalBest').sort(byTrack);
+
+  const recTable = (list, kind) => list.length ? `<div class="wrap"><table class="fields">${head}${list.map(recRow(kind)).join('')}</table></div>` : '<p class="muted">None yet.</p>';
+  // The end of the summary line of a session: who won a race (the first place; a driver who was deleted takes the place with them, so the runner-up is not called the winner), and who was fastest in a practice or a qualifying
+  const headline = (s, win, cup) => {
+    if (!win) return '';
+    if (Stats.WINNER_TYPES.includes(s.sessionType)) return Number(win.pos) === 1 ? ' · Winner: ' + (Stats.isWinner(s, win) ? cup + ' ' : '') + esc(win.driverName) : '';
+    return Number(win.best) > 0 ? ' · Fastest: ' + esc(win.driverName) : '';
+  };
+  const sessionCards = [...sessions].reverse().map(s => {
+    const win = typeof VirtualRival!=='undefined' ? VirtualRival.savedStandings(s).find(x=>x.pos===1) || s.standings[0] : s.standings[0];
+    if (tokenPool) { // a stint: one driver, one lane, one paid time
+      const x = win || {}, t = s.token || {}, mine = laps.filter(l => l.sessionId === s.id).sort((a, b) => a.lapNumber - b.lapNumber);
+      const figs = Stats.forSession(s, mine, tracks, cars), stintKeys = ViewSet.keys(Stats.STINT_COLUMNS, viewSaved(['results', 'stints']));
+      const STCELL = { driver: esc(x.driverName), car: esc(x.carName), lane: esc(t.lane), bought: esc(boughtText(t.bought)), laps: esc(x.laps), late: esc(x.lateLaps || 0), best: esc(RaceEngine.fmtTime(x.best)), total: esc(RaceEngine.fmtTime(x.total)) };
+      const stCols = Stats.STINT_COLUMNS.filter(c => stintKeys.includes(c.key) && (c.key in STCELL || Stats.hasAny(c.key, figs)));
+      const body = `<table class="fields"><tr>${stCols.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr>
+        <tr>${stCols.map(c => `<td>${c.key in STCELL ? STCELL[c.key] : esc(Stats.text(c.key, figs[0], Speed.unitOf(state.settings), Speed.distUnitOf(state.settings)))}</td>`).join('')}</tr></table>${stCols.length ? '' : '<p class="muted">No columns are on. Turn some on in View settings.</p>'}${statNote(stCols.map(c => c.key))}
+        <p class="muted">${esc(s.endedBy || '')}${t.carried ? ` · ${esc(boughtText(t.carried))} came over from the driver before` : ''}${t.left ? ` · ${esc(boughtText(t.left))} was not used` : ''}</p>
+        <h4>All lap times</h4><p><span class="muted">${mine.map(l => { const tx = esc(`${l.lapNumber}: ${RaceEngine.fmtTime(l.time)}`); return l.late || l.invalid || l.tooSlow ? `<s class="lapbad" title="${l.late ? 'Late lap: driven after the time was up' : l.invalid ? 'Invalid lap' : 'Too slow: not counted for records'}">${tx}</s>` : tx; }).join(' · ') || 'no laps'}</span></p>
+        <div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}<button class="btn danger" data-delsession="${esc(s.id)}">Delete this stint</button><span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
+      return `<details class="card sess"><summary>${esc(dateText(s.date))} · Lane ${esc(t.lane)} · ${esc(x.driverName)} · ${esc(boughtText(t.bought))} · ${esc(x.laps)} ${Number(x.laps) === 1 ? 'lap' : 'laps'} · ${esc(s.trackName || '')}</summary><div class="sessbody">${body}</div></details>`;
+    }
+    const pts = s.resultBy === 'points';
+    const fin = Stats.heated(s) && !!s.finals, finArg = { finalMode: fin ? s.finals.finalMode : 'places', byPoints: pts, unit: Speed.distUnitOf(state.settings) };
+    const figs = Stats.forSession(s, laps.filter(l => l.sessionId === s.id), tracks, cars), shownKeys = ViewSet.keys(Stats.SESSION_COLUMNS, viewSaved(['results', 'sessions']));
+    const cols = Stats.sessionColumns(s, figs).filter(c => shownKeys.includes(c.key));
+    const cup = Icons.trophy({ size: 16 }), hasDriver = cols.some(c => c.key === 'driver'); // (the winner's cup goes next to the name; without the Driver column next to the position)
+    const cellOf = (key, x, i) => {
+      switch (key) {
+        case 'pos': return esc(x.pos) + (!hasDriver && Stats.isWinner(s, x) ? ' ' + cup : '');
+        case 'driver': return (Stats.isWinner(s, x) ? cup + ' ' : '') + esc(x.driverName) + (Stats.outText(x) ? ` <span class="muted">(${Stats.outText(x)})</span>` : '') + (Stats.adjustedText(x) ? ` <span class="muted">(adjusted: ${esc(Stats.adjustedText(x))})</span>` : '') + (Stats.notesText(x) ? ` <span class="muted">(${esc(Stats.notesText(x))})</span>` : '') + (Stats.driversText(x, dUnit()) ? ` <span class="muted">(drivers: ${esc(Stats.driversText(x, dUnit()))})</span>` : '') + (Stats.enduranceText(x, dUnit()) ? ` <span class="muted">(${esc(Stats.enduranceText(x, dUnit()))})</span>` : '');
+        case 'team': return esc(x.teamName || '');
+        case 'car': return esc(x.carName);
+        case 'laps': return esc(x.laps) + (Stats.sectorText(x) ? ` <span class="muted">+ ${esc(Stats.sectorText(x))}</span>` : '');
+        case 'points': return esc(x.points);
+        case 'result': return esc(Heats.scoreText(x, s.scoring, finArg));
+        case 'final': return esc(Heats.finalCell(x));
+        case 'best': return esc(RaceEngine.fmtTime(x.best));
+        case 'total': return esc(RaceEngine.fmtTime(x.total + (x.penalty || 0) + (x.adjMs || 0))) + (x.penalty ? ` <span class="muted">(includes +${esc(RaceEngine.fmtTime(x.penalty))} penalty, ${esc(x.penaltyPoints)} points)</span>` : '');
+        default: return esc(Stats.text(key, figs[i], Speed.unitOf(state.settings), Speed.distUnitOf(state.settings)));
+      }
+    };
+    const body = (s.champ && typeof s.champ === 'object' && s.champ.id ? `<div class="chpanelbox" data-cpbox="${esc(s.id)}"></div>` : '') + (s.virtualRivals?.length?'<h4>Physical-field standings</h4>':'') + `<table class="fields"><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr>` +
+      s.standings.map((x, i) => `<tr>${cols.map(c => `<td>${cellOf(c.key, x, i)}</td>`).join('')}</tr>`).join('') + '</table>' + (cols.length ? '' : '<p class="muted">No columns are on for this session. Turn some on in View settings.</p>') +
+      (typeof resourceHistoryHtml==='function'?resourceHistoryHtml(s):'')+(typeof VirtualRival !== 'undefined' ? VirtualRival.historyHtml(s) : '') + (typeof MultiClass!=='undefined'?MultiClass.resultsHtml(s.classStandings||[],s.multiclass):'') +
+      statNote(cols.map(c => c.key)) +
+      (Stats.heated(s) && s.scoring && Heats.scoringText(s.scoring, pts) ? `<p class="muted">${esc(Heats.scoringText(s.scoring, pts))}</p>` : '') + (fin ? `<p class="muted">${esc(Heats.finalsSaid(s.finals))}</p>` : '') + (Stats.weatherText(s) ? `<p class="muted">${esc(Stats.weatherText(s))}</p>` : '') + (Stats.resumeText(s) ? `<p class="muted">${esc(Stats.resumeText(s))}</p>` : '') + (Stats.compareText(s) ? `<p class="muted">${esc(Stats.compareText(s))}</p>` : '') +
+      (Stats.stintLines(s, dUnit()).length ? '<h4>Driver swaps</h4>' + Stats.stintLines(s, dUnit()).map(g => `<p><strong>${esc(g.team)}</strong><br><span class="muted">${g.stints.map(q => `${esc(q.n)}. ${esc(q.text)}`).join(' · ')}</span></p>`).join('') : '') +
+      (s.heatResults ? `<h4>${s.finals ? 'Heats and finals' : 'Heats'}</h4>` + s.heatResults.map(h => `<p><strong>${esc(Heats.raceName(h))}</strong>${Stats.weatherText(h) ? ` <span class="muted">· ${esc(Stats.weatherText(h))}</span>` : ''}<br><span class="muted">${h.rows.map(r => `${esc(r.pos)}. ${Stats.isHeatWinner(s, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${Stats.sectorText(r) ? ' + ' + esc(Stats.sectorText(r)) : ''}${esc(Stats.heatTimeText(s, r))}${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${Stats.adjustedText(r) ? ', adjusted: ' + esc(Stats.adjustedText(r)) : ''}${Stats.notesText(r) ? ', ' + esc(Stats.notesText(r)) : ''})`).join(' · ')}</span></p>`).join('') : '') +
+      tyreStintsSection(s) +
+      '<h4>All lap times</h4>' + s.standings.map(x => {
+        const mine = Stats.ownLaps(x, laps).filter(l => l.sessionId === s.id).sort((a, b) => (a.heat || 0) - (b.heat || 0) || a.lapNumber - b.lapNumber);
+        return `<p><strong>${esc(x.driverName)}</strong><br><span class="muted">${mine.map(l => { const t = esc(`${l.heat ? (l.final ? 'F' + l.final : 'H' + l.heat) + ' ' : ''}${l.lapNumber}: ${RaceEngine.fmtTime(l.time)}`); return l.invalid || l.tooSlow ? `<s class="lapbad" title="${l.invalid ? 'Invalid lap' : 'Too slow: not counted for records'}">${t}</s>` : l.pit ? `<em title="Lap with a pit stop">${t}</em>` : t; }).join(' · ') || 'no laps'}</span></p>`;
+      }).join('') + `<div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}<button class="btn danger" data-delsession="${esc(s.id)}">Delete this session</button><span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
+    return `<details class="card sess" data-sid="${esc(s.id)}"><summary>${esc(dateText(s.date))} · ${esc(s.setupName)} · ${esc(SESSION_LABEL[s.sessionType] || '')} · ${esc(s.trackName || '')}${s.champ && typeof s.champ === 'object' ? ` <span class="chtag" title="This race is part of a championship">${esc(Champ.tagText(s.champ))}</span>${Champ.awardText(s.champ) ? ` <span class="chaward${s.champ.awarded && !s.champ.off ? ' done' : ''}">${esc(Champ.awardText(s.champ))}</span>` : ''}` : ''}${headline(s, win, cup)}</summary><div class="sessbody">${body}</div></details>`;
+  }).join('');
+  const RES_FOLDERS = ['tracks', 'pb', 'sessions'];
+  const sessCols = tokenPool ? Stats.STINT_COLUMNS : Stats.SESSION_COLUMNS, sessPath = ['results', tokenPool ? 'stints' : 'sessions'];
+  const colsOf = path => (path === 'results/records' ? Stats.RECORD_COLUMNS : path === sessPath.join('/') ? sessCols : null);
+  const bar = !viewBars.has('results') ? '' : viewBar('results', 'Turn columns on or off. This changes the tables on this page and is remembered. A column that has nothing to show for a session is left out of its table.',
+    [viewGroup('Track records and personal bests', ['results', 'records'], Stats.RECORD_COLUMNS), viewGroup(tokenPool ? 'Stints' : 'Sessions', sessPath, sessCols)]);
+  if (state.focusSession && !tokenPool) folderClosed.delete(folderKey(folderPage, 'sessions')); // (1.25.0: a race clicked on Home opens here: its folder is open)
+  box.innerHTML = folderToolsWith(viewButton('results')) + bar + folderHtml(folderPage, 'tracks', 'Track records', plural(trackRecords.length, 'record', 'records'), recTable(trackRecords, 'track'))
+    + folderHtml(folderPage, 'pb', 'Personal bests', plural(personal.length, 'personal best', 'personal bests'), recTable(personal, 'pb'))
+    + folderHtml(folderPage, 'sessions', tokenPool ? 'Stints' : 'Sessions', tokenPool ? plural(sessions.length, 'stint', 'stints') : plural(sessions.length, 'session', 'sessions'), sessionCards);
+  folderWire(box);
+  if (!tokenPool && String(box.innerHTML).includes('data-cpbox')) champPanelsIn(box, async s => { state.focusSession = s.id; await renderResultsPool(box, pool); }); // (1.56.0: the points of a race of a championship, and what to do with them)
+  if (state.focusSession && !tokenPool) { // the race that was clicked on Home: its card is open and in view
+    const id = state.focusSession; state.focusSession = null;
+    const d = [...box.querySelectorAll('details.sess')].find(x => x.dataset && x.dataset.sid === id);
+    if (d) { d.open = true; if (d.scrollIntoView) d.scrollIntoView({ block: 'center' }); }
+  }
+  box.onclick = async ev => {
+    const fa = ev.target.closest('[data-folderall]');
+    if (fa) { folderAll(folderPage, RES_FOLDERS, fa.dataset.folderall === '1'); return renderResultsPool(box, pool); }
+    const vb = ev.target.closest('[data-viewbar]');
+    if (vb) { if (viewBars.has(vb.dataset.viewbar)) viewBars.delete(vb.dataset.viewbar); else viewBars.add(vb.dataset.viewbar); return renderResultsPool(box, pool); }
+    const vr = ev.target.closest('[data-vsreset]');
+    if (vr) { await viewReset([['results', 'records'], sessPath]); return renderResultsPool(box, pool); }
+    const p = ev.target.closest('[data-pdf]');
+    if (p) {
+      const s = sessions.find(x => x.id === p.dataset.pdf), mine = laps.filter(l => l.sessionId === s.id), msg = byId('pdfmsg-' + s.id);
+      const options = await pdfChoice(s, Stats.forSession(s, mine, tracks, cars));
+      if (!options) return;
+      msg.textContent = 'Making the PDF...';
+      try {
+        const res = await api.exportPdf(Report.sessionHtml({ session: s, laps: mine, tracks, cars, options: { ...options, tyreWorn: state.settings.tyreWornRed === true }, unit: Speed.unitOf(state.settings), distUnit: Speed.distUnitOf(state.settings) }), Report.fileName(s));
+        msg.textContent = res.saved ? 'Saved to ' + res.path : 'Export cancelled.';
+      } catch (x) { msg.textContent = 'Could not make the PDF: ' + x.message; }
+      return;
+    }
+    const rec = ev.target.closest('[data-delrec]');
+    if (rec) {
+      const isTrack = rec.dataset.delrec === 'track';
+      if (confirm(`Remove this ${isTrack ? 'track record' : 'personal best'}?\n\nOnly the record is removed. The lap stays in its session, and the next fastest lap takes over.`)) {
+        await api.update('laps', rec.dataset.lap, isTrack ? { noTrackRecord: true } : { noPersonalBest: true }); renderResultsPool(box, pool);
+      }
+      return;
+    }
+    const b = ev.target.closest('[data-delsession]'); if (!b) return;
+    if (confirm(tokenPool ? 'Delete this stint and all of its laps?\n\nThis can\'t be undone.' : 'Delete this session and all of its laps?\n\nThis can\'t be undone.')) { await api.removeSession(b.dataset.delsession); renderResultsPool(box, pool); }
+  };  box.onchange = async ev => { // a check box of the View settings bar
+    const cb = ev.target;
+    if (cb && cb.dataset && (cb.dataset.tyshow !== undefined || cb.dataset.tyworn !== undefined)) { // the tyre stints: shown or not, and the laps on worn out tyres in red (kept for every session)
+      const id = cb.dataset.tyshow !== undefined ? cb.dataset.tyshow : cb.dataset.tyworn;
+      try { state.settings = await api.setSettings(cb.dataset.tyshow !== undefined ? { tyreStints: !!cb.checked } : { tyreWornRed: !!cb.checked }); } catch { /* the choice is only a look */ }
+      state.focusSession = id; return renderResultsPool(box, pool); // (the race stays open where it was)
+    }
+    if (await viewToggle(cb, colsOf)) { await renderResultsPool(box, pool); viewFocus(box, cb); }
+  };
+}

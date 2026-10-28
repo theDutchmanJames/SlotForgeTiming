@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Race screen: the Tyre Change folder</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{font-family:inherit}
+.fold{flex:none;display:flex;align-items:center;gap:12px;height:40px;box-sizing:border-box;padding:0 14px;border-radius:8px;font-size:14px;font-weight:700}
+.fsub{font-size:12px;font-weight:400;color:#98a0ab}
+.gr{display:grid;grid-template-columns:110px 286px 70px 260px 165px 80px;align-items:center;column-gap:10px;padding:10px 14px;border-bottom:1px solid #2b323d}
+.gh{font-size:12px;font-weight:600;color:#98a0ab;padding:8px 14px;border-bottom:1px solid #343b47}
+.chip{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;box-sizing:border-box;border-radius:50%;background:#2a2d34;border:3px solid #ffd12e;font-size:10px;font-weight:800;flex:none}
+.mc{display:inline-flex;align-items:center;gap:3px;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.mini{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;box-sizing:border-box;border-radius:50%;background:#2a2d34;border:2px solid #ffd12e;font-size:8px;font-weight:800}
+.bar{height:8px;border-radius:4px;background:#343b47;overflow:hidden;width:150px}
+.sel{height:34px;box-sizing:border-box;background:#171b21;border:1px solid #343b47;border-radius:6px;color:#e8e6e1;font-family:inherit;font-size:13px;padding:0 8px;width:100%}
+.badge{display:inline-block;font-size:12px;font-weight:700;border-radius:4px;padding:3px 8px;white-space:nowrap}
+.dim{color:#98a0ab}
+.n{font-variant-numeric:tabular-nums}
+</style>
+</helmet>
+<div style="width:1100px;height:830px;box-sizing:border-box;background:#171b21;color:#e8e6e1;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;padding:24px;display:flex;flex-direction:column;gap:12px;overflow:hidden">
+
+  <div style="flex:none;display:flex;justify-content:space-between;align-items:flex-end">
+    <div>
+      <div style="font-size:13px;color:#98a0ab">Race screen &rsaquo; folders under the Race Director</div>
+      <div style="font-size:24px;font-weight:700;line-height:1.2">Race: Saturday club night, heat 2</div>
+    </div>
+    <div style="font-size:13px;color:#98a0ab">Lap 9 of 20 &middot; Weather: <b style="color:#5b9bff">Wet</b></div>
+  </div>
+
+  <div class="fold" style="background:#1d2d24;border:1px solid #2f5a3f"><span style="color:#3ecf8e">&#9656;</span>Track actions<span class="fsub">Lap, pit and call buttons for each lane</span></div>
+  <div class="fold" style="background:#1d2740;border:1px solid #2f4a80"><span style="color:#5b9bff">&#9656;</span>Weather<span class="fsub">Rain, tyres and pit stops</span></div>
+
+  <div style="flex:none;background:#222831;border:1px solid #4a3a6b;border-radius:8px;overflow:hidden">
+    <div class="fold" style="border-radius:0;background:#2d2440;border-bottom:1px solid #4a3a6b;height:44px"><span style="color:#c79bff">&#9662;</span>Tyre Change<span class="fsub">Tyres, sets and the next stop</span></div>
+
+    <div style="padding:10px 14px;display:flex;gap:10px;align-items:center;background:#1d2740;border-bottom:1px solid #2f4a80;font-size:13px">
+      <span class="badge" style="background:#2f4a80;color:#ffffff">Wet</span>
+      <span>The weather asks for <b>Intermediate or Wet</b> tyres: cars on dry tyres change at the next stop, from those sets. A tyre queued below goes on after that.</span>
+    </div>
+
+    <div class="gr gh" style="padding-top:8px;padding-bottom:8px"><span>Driver</span><span>Tyres now</span><span>Grip effect</span><span>Sets left</span><span>Next stop</span><span>State</span></div>
+
+    <div class="gr">
+      <div><div style="font-weight:700">Dutch</div><div class="dim" style="font-size:12px">Lane 1</div></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="chip" style="border-color:#e8002d;color:#ff4d6a">S</span>
+        <div><div class="n" style="font-size:15px;font-weight:700">Soft &middot; 62%</div><div class="bar" style="margin-top:4px"><div style="width:62%;height:8px;background:#3ecf8e"></div></div></div>
+        <span class="dim n" style="font-size:12px">14 laps left</span>
+      </div>
+      <div class="n" style="font-weight:700;color:#6fe0ae">+2%</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="mc"><span class="mini" style="border-color:#f4f4f4;color:#f4f4f4">H</span>2</span>
+        <span class="mc"><span class="mini" style="border-color:#ffd12e;color:#ffd12e">M</span>2</span>
+        <span class="mc"><span class="mini" style="border-color:#e8002d;color:#ff4d6a">S</span>1</span>
+        <span class="mc"><span class="mini" style="border-color:#9b4dff;color:#c79bff">SS</span>1</span>
+        <span class="mc"><span class="mini" style="border-color:#43b02a;color:#6fd653">I</span>2</span>
+        <span class="mc"><span class="mini" style="border-color:#0067ff;color:#5b9bff">W</span>2</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <select class="sel" aria-label="Dutch next stop"><option>Hard (2 sets)</option><option>Medium (2 sets)</option><option selected>Soft (1 set)</option><option>Supersoft (1 set)</option></select>
+        <span style="font-size:11px;color:#c79bff">Queued by the Race Director</span>
+      </div>
+      <div><span class="badge" style="background:#1d3a2c;color:#6fe0ae">Driving</span></div>
+    </div>
+
+    <div class="gr">
+      <div><div style="font-weight:700">Maria</div><div class="dim" style="font-size:12px">Lane 2</div></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="chip" style="border-color:#ffd12e;color:#ffd12e">M</span>
+        <div><div class="n" style="font-size:15px;font-weight:700">Medium &middot; 24%</div><div class="bar" style="margin-top:4px"><div style="width:24%;height:8px;background:#ffb84d"></div></div></div>
+        <span class="dim n" style="font-size:12px">8 laps left</span>
+      </div>
+      <div class="n" style="font-weight:700;color:#ffc870">-1%</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="mc"><span class="mini" style="border-color:#f4f4f4;color:#f4f4f4">H</span>2</span>
+        <span class="mc"><span class="mini" style="border-color:#ffd12e;color:#ffd12e">M</span>1</span>
+        <span class="mc"><span class="mini" style="border-color:#e8002d;color:#ff4d6a">S</span>2</span>
+        <span class="mc"><span class="mini" style="border-color:#9b4dff;color:#c79bff">SS</span>1</span>
+        <span class="mc"><span class="mini" style="border-color:#43b02a;color:#6fd653">I</span>2</span>
+        <span class="mc"><span class="mini" style="border-color:#0067ff;color:#5b9bff">W</span>2</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <select class="sel" aria-label="Maria next stop"><option selected>Same (Medium)</option><option>Hard (2 sets)</option><option>Soft (2 sets)</option><option>Supersoft (1 set)</option></select>
+        <span style="font-size:11px;color:#98a0ab">Nothing queued</span>
+      </div>
+      <div><span class="badge" style="background:#1d3a2c;color:#6fe0ae">Driving</span></div>
+    </div>
+
+    <div class="gr">
+      <div><div style="font-weight:700">Sam</div><div class="dim" style="font-size:12px">Lane 3</div></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="chip" style="border-color:#9b4dff;color:#c79bff">SS</span>
+        <div><div class="n" style="font-size:15px;font-weight:700">Supersoft &middot; 8%</div><div class="bar" style="margin-top:4px"><div style="width:8%;height:8px;background:#e5484d"></div></div></div>
+        <span class="dim n" style="font-size:12px">1 lap left</span>
+      </div>
+      <div class="n" style="font-weight:700;color:#ff8a8e">-27%</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="mc"><span class="mini" style="border-color:#f4f4f4;color:#f4f4f4">H</span>2</span>
+        <span class="mc"><span class="mini" style="border-color:#ffd12e;color:#ffd12e">M</span>2</span>
+        <span class="mc"><span class="mini" style="border-color:#e8002d;color:#ff4d6a">S</span>2</span>
+        <span class="mc dim"><span class="mini" style="border-color:#5a616c;color:#5a616c">SS</span>0</span>
+        <span class="mc"><span class="mini" style="border-color:#43b02a;color:#6fd653">I</span>2</span>
+        <span class="mc"><span class="mini" style="border-color:#0067ff;color:#5b9bff">W</span>2</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <select class="sel" disabled aria-label="Sam next stop"><option selected>Wet (weather)</option></select>
+        <span style="font-size:11px;color:#5b9bff">Set by the weather</span>
+      </div>
+      <div><span class="badge" style="background:#5a1d20;color:#ffb3b5">Box now</span></div>
+    </div>
+
+    <div class="gr" style="border-bottom:0;background:#272037">
+      <div><div style="font-weight:700">Eli</div><div class="dim" style="font-size:12px">Lane 4</div></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="chip" style="border-color:#43b02a;color:#6fd653">I</span>
+        <div><div class="n" style="font-size:15px;font-weight:700">Fitting Intermediate</div><div class="bar" style="margin-top:4px;background:#4a3a6b"><div style="width:40%;height:8px;background:#c79bff"></div></div></div>
+        <span class="dim n" style="font-size:12px">2.4 s left</span>
+      </div>
+      <div class="n dim">&ndash;</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="mc"><span class="mini" style="border-color:#f4f4f4;color:#f4f4f4">H</span>2</span>
+        <span class="mc"><span class="mini" style="border-color:#ffd12e;color:#ffd12e">M</span>2</span>
+        <span class="mc"><span class="mini" style="border-color:#e8002d;color:#ff4d6a">S</span>2</span>
+        <span class="mc"><span class="mini" style="border-color:#9b4dff;color:#c79bff">SS</span>1</span>
+        <span class="mc"><span class="mini" style="border-color:#43b02a;color:#6fd653">I</span>1</span>
+        <span class="mc"><span class="mini" style="border-color:#0067ff;color:#5b9bff">W</span>2</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <select class="sel" disabled aria-label="Eli next stop"><option selected>After this stop</option></select>
+        <span style="font-size:11px;color:#98a0ab">A car that leaves early keeps its old tyres</span>
+      </div>
+      <div><span class="badge" style="background:#3b2d5a;color:#d9bfff">In the pit</span></div>
+    </div>
+  </div>
+
+  <div style="flex:none;display:flex;gap:12px;align-items:stretch">
+    <div style="flex:1;background:#222831;border:1px solid #343b47;border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:14px;font-weight:700">Correct the tyres now <span class="fsub">(the instant change of 1.31 and 1.32, kept as a correction)</span></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px">
+        <select class="sel" style="width:110px" aria-label="Lane to correct"><option>Lane 1</option></select>
+        <select class="sel" style="width:150px" aria-label="Tyre to correct to"><option>Medium</option></select>
+        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox"> Also change the tyre choice of the Slotcar in the Database</label>
+        <button type="button" style="height:34px;padding:0 14px;font-size:13px;color:#e8e6e1;background:#171b21;border:1px solid #343b47;border-radius:6px">Change</button>
+      </div>
+      <div class="fsub">The car keeps the life of the tyre it has. For a real change with new tyres use the next stop above.</div>
+    </div>
+    <div style="flex:1;background:#222831;border:1px solid #343b47;border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:14px;font-weight:700">In a Distance Race</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="chip" style="border-color:#e8002d;color:#ff4d6a">S</span>
+        <div><div class="n" style="font-size:15px;font-weight:700">Soft &middot; 62%</div><div class="bar" style="margin-top:4px"><div style="width:62%;height:8px;background:#3ecf8e"></div></div></div>
+        <span class="dim n" style="font-size:12px">about 205 m left</span>
+      </div>
+      <div class="fsub">The same table, counted in metres (feet) when the System is counted per distance. Wear per 100 m, the pit stop and the sets work the same.</div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":830}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

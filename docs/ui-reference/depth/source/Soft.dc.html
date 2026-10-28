@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Race screen, soft lift</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.rs,.rs *{box-sizing:border-box}
+.rs button{font-family:inherit;color:inherit;cursor:pointer;text-align:center}
+.rs p{margin:0}
+.muted{color:var(--muted)}
+
+/* The depth recipe. --d (0 to 1) scales the sizes, --s the shadow strength, --hl and --sh are the light and the shadow colour, --lip the colour of the edge underneath. At 0 nothing is drawn: that is the screen as it is today. */
+.rs{--lip:color-mix(in srgb,var(--panel) var(--lipk),rgb(var(--sh)))}
+.lift{isolation:isolate;box-shadow:inset 0 1px 0 rgba(var(--hl),calc(.18*var(--d))),inset 0 -1px 0 rgba(var(--sh),calc(.22*var(--s))),0 calc(4px*var(--d)) 0 var(--lip),0 calc(3px + 10px*var(--d)) calc(6px + 16px*var(--d)) -4px rgba(var(--sh),calc(.6*var(--s)))}
+.lift::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;background:linear-gradient(180deg,rgba(var(--hl),calc(.10*var(--d))) 0%,rgba(var(--hl),0) 45%,rgba(var(--sh),calc(.14*var(--s))) 100%)}
+.well{box-shadow:inset 0 calc(2px + 3px*var(--d)) calc(6px + 8px*var(--d)) rgba(var(--sh),calc(.5*var(--s))),inset 0 -1px 0 rgba(var(--hl),calc(.06*var(--d)))}
+
+.title{margin-bottom:8px}
+.cv{position:relative;height:304px;background:var(--bg);box-shadow:0 0 0 1px var(--line),inset 0 calc(2px + 3px*var(--d)) calc(6px + 8px*var(--d)) rgba(var(--sh),calc(.5*var(--s))),inset 0 -1px 0 rgba(var(--hl),calc(.06*var(--d)))}
+.lw{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--ink);text-align:center;line-height:1.1}
+.lw-title{position:absolute;left:8px;top:5px;font-size:11px;opacity:.7;white-space:nowrap}
+.lw-val{font-size:30px;font-weight:600;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:8px}
+.dot{width:12px;height:12px;border-radius:50%;flex:none}
+.lb{align-items:stretch;justify-content:flex-start;padding:10px 12px;text-align:left}
+.lbh,.lbr{display:grid;grid-template-columns:34px 1fr 48px 72px 70px;align-items:center;gap:6px;font-variant-numeric:tabular-nums}
+.lbh{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:6px 8px}
+.lbr{padding:0 8px;height:46px;font-size:16px;border-top:1px solid var(--line)}
+.lbr b{font-size:18px}
+.lbr .who{display:flex;align-items:center;gap:8px;font-weight:600}
+.n{text-align:right}
+
+.bar{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:12px;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:8px}
+.sbtn{position:relative;isolation:isolate;font-size:15px;line-height:1.3;padding:4px 14px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);box-shadow:inset 0 1px 0 rgba(var(--hl),calc(.2*var(--d))),inset 0 -2px 0 rgba(var(--sh),calc(.2*var(--s))),0 calc(2px*var(--d)) 0 var(--lip),0 calc(2px + 4px*var(--d)) calc(3px + 5px*var(--d)) -2px rgba(var(--sh),calc(.5*var(--s)))}
+.sbtn::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;background:linear-gradient(180deg,rgba(var(--hl),calc(.16*var(--d))) 0%,rgba(var(--hl),0) 55%,rgba(var(--sh),calc(.10*var(--s))) 100%)}
+.sbtn.go{--lip:color-mix(in srgb,#2f9e44 45%,rgb(var(--sh)));background:#2f9e44;border-color:#2f9e44;color:#fff}
+.sbtn.stop{margin-left:auto;color:var(--accent)}
+
+.fold{position:relative;margin-top:10px;border:1px solid var(--line);border-left:4px solid var(--fc);border-radius:8px;background:var(--panel)}
+.fold.open{margin-top:12px}
+.fh{position:relative;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;padding:10px 12px 10px 30px;border-radius:7px;background:color-mix(in srgb,var(--fc) 16%,var(--panel))}
+.fold.open>.fh{border-radius:7px 7px 0 0}
+.fh::before{content:"";position:absolute;left:12px;top:50%;width:7px;height:7px;border:solid var(--fc);border-width:0 2px 2px 0;transform:translateY(-60%) rotate(-45deg)}
+.fold.open>.fh::before{transform:translateY(-75%) rotate(45deg)}
+.fh strong{font-size:16px}
+.fh span{font-size:13.5px;color:var(--muted)}
+.df{padding:8px 16px 12px}
+.tgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.tcard{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.thead{display:flex;align-items:center;gap:8px;min-width:0}
+.lane{flex:none;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--fc);color:#08170e;font-weight:800;font-size:14px}
+.tcard .who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.tsub{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px}
+
+.key{--tc:#2fb86a;position:relative;isolation:isolate;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:6px 8px;font-weight:700;font-size:15px;line-height:1.1;border-radius:9px;border:2px solid var(--tc);color:color-mix(in srgb,var(--tc) 60%,var(--ink));background:color-mix(in srgb,var(--tc) 16%,var(--panel));box-shadow:inset 0 1px 0 rgba(var(--hl),calc(.26*var(--d))),inset 0 -2px 0 rgba(var(--sh),calc(.22*var(--s))),0 calc(3px*var(--d)) 0 color-mix(in srgb,var(--tc) 40%,rgb(var(--sh))),0 calc(3px + 6px*var(--d)) calc(4px + 8px*var(--d)) -2px rgba(var(--sh),calc(.55*var(--s)))}
+.key::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;background:linear-gradient(180deg,rgba(var(--hl),calc(.20*var(--d))) 0%,rgba(var(--hl),0) 55%,rgba(var(--sh),calc(.10*var(--s))) 100%)}
+.key:hover{filter:brightness(1.1)}
+.key.down,.key.on{transform:translateY(calc(3px*var(--d)));box-shadow:inset 0 calc(2px + 2px*var(--d)) calc(4px + 4px*var(--d)) rgba(var(--sh),calc(.5*var(--s)))}
+.key.on{background:var(--tc);color:#1c1204}
+.key:disabled{opacity:.38;cursor:not-allowed;filter:none}
+.key .kb{font-size:11px;font-weight:600;opacity:.85;border:1px solid currentColor;border-radius:5px;padding:1px 6px}
+.tsub .key{flex-direction:column;gap:3px;min-height:60px;padding:6px 4px}
+.tcard>.key{width:100%}
+</style>
+</helmet>
+<div class="rs" style="width:1000px;height:900px;padding:24px;background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,sans-serif;font-size:16px;line-height:1.45;--bg:#171b21;--panel:#222831;--ink:#e8e6e1;--muted:#98a0ab;--line:#343b47;--accent:#e5484d;{{vars}}">
+
+  <p class="muted title"><strong>Club Night, heat 2</strong> · Race on Brands Hatch · 12 laps</p>
+
+  <div class="cv">
+    <div class="lw lb lift" style="left:12px;top:12px;width:456px;height:280px">
+      <div class="lbh"><span>Pos</span><span>Driver</span><span class="n">Laps</span><span class="n">Best</span><span class="n">Gap</span></div>
+      <sc-for list="{{board}}" as="r" hint-placeholder-count="5">
+        <div class="lbr"><b>{{r.pos}}</b><span class="who"><i class="dot" style="{{r.dot}}"></i>{{r.name}}</span><span class="n">{{r.laps}}</span><span class="n">{{r.best}}</span><span class="n">{{r.gap}}</span></div>
+      </sc-for>
+    </div>
+
+    <div class="lw lift" style="left:480px;top:12px;width:222px;height:88px"><span class="lw-title">Time left</span><span class="lw-val" style="font-size:36px">08:42</span></div>
+    <div class="lw lift" style="left:714px;top:12px;width:226px;height:88px"><span class="lw-title">Lap</span><span class="lw-val" style="font-size:36px">7 / 12</span></div>
+
+    <sc-for list="{{lanes}}" as="t" hint-placeholder-count="3">
+      <div class="lw lift" style="{{t.pos}}"><span class="lw-title">{{t.title}}</span><span class="lw-val"><i class="dot" style="{{t.dot}}"></i>{{t.val}}</span></div>
+    </sc-for>
+
+    <button type="button" class="lw key lift" style="left:714px;top:208px;width:226px;height:84px;--tc:#f08a24;font-size:20px;border-radius:8px">Pause race</button>
+  </div>
+
+  <div class="bar lift">
+    <label><input type="checkbox"> Simulated cars</label>
+    <span class="muted">Ready</span>
+    <button type="button" class="sbtn go">Start</button>
+    <button type="button" class="sbtn">Pause</button>
+    <button type="button" class="sbtn stop">Stop race</button>
+  </div>
+
+  <div class="fold lift open" style="--fc:#2fb86a">
+    <div class="fh"><strong>Track actions</strong><span>Lap, pit and call buttons for each lane</span></div>
+    <div class="df">
+      <div class="tgrid">
+        <sc-for list="{{cards}}" as="c" hint-placeholder-count="4">
+          <div class="tcard well">
+            <div class="thead"><span class="lane">{{c.n}}</span><span class="who">{{c.name}}</span></div>
+            <button type="button" class="key" disabled="{{c.out}}"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="8"/><path d="M12 9.5v4l2.5 1.5"/><path d="M9.5 2h5"/></svg>Lap<span class="kb">{{c.n}}</span></button>
+            <div class="tsub">
+              <button type="button" class="{{c.pit}}" style="--tc:#f08a24" disabled="{{c.out}}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Pit</button>
+              <button type="button" class="{{c.call}}" style="--tc:#f2c500" disabled="{{c.out}}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>Call</button>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <sc-for list="{{folders}}" as="f" hint-placeholder-count="3">
+    <div class="fold lift" style="{{f.style}}"><div class="fh"><strong>{{f.name}}</strong><span>{{f.note}}</span></div></div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"depth":{"editor":"range","default":0.35,"min":0,"max":1,"step":0.05,"section":"Depth"},"$preview":{"width":1000,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const d = Math.max(0, Math.min(1, Number(this.props.depth ?? 0.35)));
+    const vars = '--d:' + d + ';--s:' + d + ';--hl:255,255,255;--sh:0,0,0;--lipk:45%';
+    const dots = ['#e5484d', '#4c9aff', '#f2b705', '#3ecf8e', '#9b4dff'];
+    const rows = [['Mila', 7, '11.842', '—'], ['Jorrit', 7, '11.907', '+1.204'], ['Sanne', 6, '12.130', '+1 lap'], ['Bram', 6, '12.466', '+1 lap'], ['Noor', 5, '12.801', '+2 laps']];
+    const board = rows.map((r, i) => ({ pos: i + 1, name: r[0], laps: r[1], best: r[2], gap: r[3], dot: 'background:' + dots[i] }));
+    const tiles = [['Lane 1 · last lap', '11.842', dots[0], 'left:480px;top:112px;width:222px;height:84px'], ['Lane 2 · last lap', '11.907', dots[1], 'left:714px;top:112px;width:226px;height:84px'], ['Lane 3 · last lap', '12.130', dots[2], 'left:480px;top:208px;width:222px;height:84px']];
+    const lanes = tiles.map(t => ({ title: t[0], val: t[1], dot: 'background:' + t[2], pos: t[3] }));
+    const who = ['Mila', 'Jorrit', 'Sanne', 'Bram'];
+    const cards = who.map((name, i) => ({
+      n: i + 1, name,
+      out: i === 3,
+      pit: i === 1 ? 'key on' : 'key',
+      call: i === 2 ? 'key on' : 'key'
+    }));
+    const folders = [
+      { name: 'Penalties', note: 'Points and penalties for each lane', style: '--fc:#f2b705' },
+      { name: 'Damage', note: 'Incidents and repairs', style: '--fc:#e5484d' },
+      { name: 'Weather', note: 'Rain, tyres and pit stops', style: '--fc:#4c9aff' }
+    ];
+    return { vars, board, lanes, cards, folders };
+  }
+}
+</script>
+</body>
+</html>

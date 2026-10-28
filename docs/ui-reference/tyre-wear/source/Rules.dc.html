@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tyre Wear System: rules, pit stops and sets</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{font-family:inherit}
+.sec{flex:none;background:#222831;border:1px solid #343b47;border-radius:8px;overflow:hidden}
+.sech{padding:10px 14px;font-size:14px;font-weight:700;background:#2b323d;border-bottom:1px solid #343b47;color:#e8e6e1}
+.secb{padding:14px}
+.lbl{font-size:13px;color:#98a0ab;line-height:1.4}
+.inp{height:36px;box-sizing:border-box;background:#171b21;border:1px solid #343b47;border-radius:6px;color:#e8e6e1;font-family:inherit;font-size:14px;padding:0 10px;font-variant-numeric:tabular-nums}
+.chip{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;box-sizing:border-box;border-radius:50%;background:#2a2d34;border:3px solid #ffd12e;font-size:11px;font-weight:800;flex:none}
+.row{display:flex;align-items:center;gap:10px;font-size:14px}
+.note{font-size:13px;color:#98a0ab;line-height:1.4}
+.box{background:#1c2129;border:1px solid #343b47;border-radius:8px;padding:12px 14px}
+</style>
+</helmet>
+<div style="width:1000px;height:1580px;box-sizing:border-box;background:#171b21;color:#e8e6e1;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;padding:24px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+
+  <div>
+    <div style="font-size:13px;color:#98a0ab">Race Setup &rsaquo; Tyre Wear Systems &rsaquo; Standard</div>
+    <div style="font-size:26px;font-weight:700;line-height:1.2">Rules, pit stops and sets</div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">In a race setup, folder Rule sets (where a race picks its Tyre Wear System)</div>
+    <div class="secb" style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label class="lbl" for="tw">Tyre Wear System</label>
+        <select id="tw" class="inp" style="width:260px"><option selected>Standard</option><option>Sprint</option><option>Endurance</option><option>None (no tyre wear, as now)</option></select>
+      </div>
+      <span class="note" style="max-width:520px;padding-bottom:8px">Like the Damage System and the Weather System: a race picks one. None keeps every race the way it is today.</span>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">Where it applies</div>
+    <div class="secb" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;gap:26px;flex-wrap:wrap">
+        <label class="row"><input type="checkbox" checked> Race</label>
+        <label class="row"><input type="checkbox" checked> Timed race</label>
+        <label class="row"><input type="checkbox" checked> Heats</label>
+        <label class="row"><input type="checkbox" checked> Endurance</label>
+        <label class="row"><input type="checkbox"> Practice</label>
+        <label class="row"><input type="checkbox"> Qualifying</label>
+      </div>
+      <span class="note">Never in a Time Token Session. Every race and every heat starts on fresh tyres: the tyre of the slotcar (Database), or the one the Race Director picks before the start in the Tyre Change folder.</span>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">What worn tyres do (use either one, or both)</div>
+    <div class="secb" style="display:flex;gap:16px;align-items:stretch">
+      <div class="box" style="flex:1;display:flex;flex-direction:column;gap:10px">
+        <label class="row" style="font-weight:700"><input type="checkbox" checked> Hinder or help the car through the fuel rules</label>
+        <div style="display:flex;flex-direction:column;gap:8px;padding-left:26px">
+          <label class="row"><input type="checkbox" checked> Fuel used per lap</label>
+          <label class="row"><input type="checkbox" checked> Refuelling speed</label>
+          <label class="row"><input type="checkbox"> Tank size</label>
+        </div>
+        <span class="note">The grip curve of each tyre (previous board) decides how much. Needs Fuel on in the race. It adds up with Balance of Power and the weather, together at most 90%. Lap times and records are never changed.</span>
+      </div>
+      <div class="box" style="flex:1;display:flex;flex-direction:column;gap:10px">
+        <label class="row" style="font-weight:700" for="zero">When the tyres reach 0%</label>
+        <select id="zero" class="inp" style="width:100%"><option>Nothing, only show it</option><option selected>Penalty points every lap</option><option>The lap does not count until the car pits</option><option>The car retires</option></select>
+        <div class="row"><label for="zp">Points every lap</label><input id="zp" class="inp" type="number" value="2" style="width:76px"></div>
+        <span class="note">Works without Fuel too, with the penalty system of the race. Choose Nothing to simulate and show the wear without any penalty.</span>
+      </div>
+    </div>
+    <div class="secb" style="border-top:1px solid #343b47"><span class="note">Without Fuel in the race the wear is still counted and shown, and the 0% rule still works; only the fuel levers are left out.</span></div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">Pit stops</div>
+    <div class="secb" style="display:flex;flex-direction:column;gap:12px">
+      <div class="row"><label for="chg">Changing tyres takes</label><input id="chg" class="inp" type="number" value="4" style="width:76px"><span>seconds <span style="color:#98a0ab">(0 = no time, as the weather's tyre change today)</span></span></div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span class="lbl">Together with other pit work (refuelling, repair, driver swap)</span>
+        <div style="display:flex;gap:32px">
+          <label class="row"><input type="radio" name="tog" checked> At the same time (the longest job counts)</label>
+          <label class="row"><input type="radio" name="tog"> One after the other</label>
+        </div>
+      </div>
+      <span class="note">A car that leaves before the change is done keeps its worn tyres, like a repair that is not finished. The stop is the car standing on the pit sensor (or the Pit button), with or without Fuel.</span>
+      <span class="note">Rain: when the Weather System asks for Intermediate or Wet tyres they are fitted at the next stop, from the Intermediate and Wet sets, and they go before a tyre that the Race Director had queued.</span>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">Sets of tyres</div>
+    <div class="secb" style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span class="lbl">The sets belong to</span>
+        <div style="display:flex;gap:32px">
+          <label class="row"><input type="radio" name="own" checked> Each car</label>
+          <label class="row"><input type="radio" name="own"> The team (shared by all the cars of the team)</label>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <div class="row" style="gap:8px"><span class="chip" style="border-color:#f4f4f4;color:#f4f4f4">H</span><input class="inp" type="number" value="2" style="width:64px" aria-label="Hard sets"></div>
+        <div class="row" style="gap:8px"><span class="chip" style="border-color:#ffd12e;color:#ffd12e">M</span><input class="inp" type="number" value="2" style="width:64px" aria-label="Medium sets"></div>
+        <div class="row" style="gap:8px"><span class="chip" style="border-color:#e8002d;color:#ff4d6a">S</span><input class="inp" type="number" value="2" style="width:64px" aria-label="Soft sets"></div>
+        <div class="row" style="gap:8px"><span class="chip" style="border-color:#9b4dff;color:#c79bff">SS</span><input class="inp" type="number" value="1" style="width:64px" aria-label="Supersoft sets"></div>
+        <div class="row" style="gap:8px"><span class="chip" style="border-color:#43b02a;color:#6fd653">I</span><input class="inp" type="number" value="2" style="width:64px" aria-label="Intermediate sets"></div>
+        <div class="row" style="gap:8px"><span class="chip" style="border-color:#0067ff;color:#5b9bff">W</span><input class="inp" type="number" value="2" style="width:64px" aria-label="Wet sets"></div>
+      </div>
+      <span class="note">Sets per tyre. 0 means that tyre is not allowed in this race. The set a car starts on counts as one. A tyre with no sets left cannot be fitted or queued, and a set that has been taken off is not used again.</span>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">Warnings (colours in the widgets, and when the audio speaks)</div>
+    <div class="secb" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;gap:30px;flex-wrap:wrap">
+        <div class="row"><span style="width:18px;height:18px;border-radius:4px;background:#ffb84d;display:inline-block"></span><label for="wl">Warning colour below</label><input id="wl" class="inp" type="number" value="25" style="width:64px"><span>% life left</span></div>
+        <div class="row"><span style="width:18px;height:18px;border-radius:4px;background:#e5484d;display:inline-block"></span><label for="cl">Critical colour below</label><input id="cl" class="inp" type="number" value="10" style="width:64px"><span>% life left</span></div>
+      </div>
+      <div class="row"><span>Audio calls when the tyres reach</span><input class="inp" type="number" value="50" style="width:64px" aria-label="First call at"><input class="inp" type="number" value="25" style="width:64px" aria-label="Second call at"><input class="inp" type="number" value="10" style="width:64px" aria-label="Third call at"><span>% (empty = no call)</span></div>
+    </div>
+  </div>
+
+  <div style="flex:none;background:#1c2129;border:1px solid #00c2c7;border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:6px">
+    <div style="font-size:14px;font-weight:700;color:#4fe3e8">Distance Racing</div>
+    <div style="font-size:14px;line-height:1.5">Counted per distance, everything above that is counted in laps is counted in metres (feet) instead: the wear is per 100 m, the widgets say how many metres of tyre are left, and the audio says them. A car on a longer lane then wears its tyres faster per lap, as it should. A Distance Race and a System counted per lap can be mixed too: the laps are simply turned into metres with the lane length.</div>
+    <div class="note">Example: Soft at 30% per 100 m on a lane of 15.4 m wears 4.6% a lap, so a set lasts about 22 laps (330 m).</div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1000,"height":1580}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+  188.939  <-    5 B  31 37 30 0a 0d  tick 170 ms  |170..|
+  188.940  <-    1 B  41  lane 1 sensor  |A|
+  189.131  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  191.260  <-    5 B  31 32 32 0a 0d  tick 122 ms  |122..|
+  191.261  <-    1 B  42  lane 2 sensor  |B|
+  191.452  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  199.856  ->    3 B  41 32 0a  command  |A2.|
+  199.926  ->    3 B  43 31 0a  command  |C1.|
+  199.998  ->    3 B  44 31 0a  command  |D1.|
+  200.061  ->    3 B  49 30 0a  command  |I0.|
+  200.127  ->    2 B  53 0a  command  |S.|
+  200.192  ->    2 B  52 0a  command  |R.|
+  208.297  ->    2 B  52 0a  command  |R.|
+  217.466  ->    2 B  45 0a  command  |E.|
+  219.479  <-    5 B  31 33 30 0a 0d  tick 130 ms  |130..|
+  219.479  <-    1 B  41  lane 1 sensor  |A|
+  219.786  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  219.786  <-    4 B  39 32 0a 0d  tick 92 ms  |92..|
+  219.786  <-    1 B  42  lane 2 sensor  |B|
+  219.786  <-    4 B  36 36 0a 0d  tick 66 ms  |66..|
+  219.786  <-    1 B  42  lane 2 sensor  |B|
+  220.011  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  227.309  <-    1 B  57  Trackcall button  |W|
+  227.318  <-    5 B  31 33 30 0a 0d  tick 130 ms  |130..|
+  227.318  <-    1 B  42  lane 2 sensor  |B|
+  227.318  ->    2 B  52 0a  command  |R.|
+  227.557  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  227.619  <-    5 B  31 34 30 0a 0d  tick 140 ms  |140..|
+  227.619  <-    1 B  41  lane 1 sensor  |A|
+  227.841  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  227.917  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  227.917  <-    1 B  41  lane 1 sensor  |A|
+  228.123  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  229.709  <-    1 B  57  Trackcall button (2.40 s after the previous press)  |W|
+  239.180  ->    2 B  45 0a  command  |E.|
+  239.660  <-    4 B  37 38 0a 0d  tick 78 ms  |78..|
+  239.660  <-    1 B  42  lane 2 sensor  |B|
+  239.792  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  239.881  <-    5 B  31 32 31 0a 0d  tick 121 ms  |121..|
+  240.192  <-    1 B  41  lane 1 sensor  |A|
+  240.192  <-    5 B  31 34 35 0a 0d  tick 145 ms  |145..|
+  240.192  <-    1 B  41  lane 1 sensor  |A|
+  240.277  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  247.052  <-    4 B  39 32 0a 0d  tick 92 ms  |92..|
+  247.053  <-    1 B  42  lane 2 sensor  |B|
+  247.182  <-    5 B  31 36 34 0a 0d  tick 164 ms  |164..|
+  247.183  <-    1 B  42  lane 2 sensor  |B|
+  247.436  <-    5 B  31 34 39 0a 0d  tick 149 ms  |149..|
+  247.436  <-    1 B  41  lane 1 sensor  |A|
+  247.437  <-    5 B  31 36 31 0a 0d  tick 161 ms  |161..|
+  247.437  <-    1 B  41  lane 1 sensor  |A|
+  247.630  <-    5 B  31 38 38 0a 0d  tick 188 ms  |188..|
+  247.630  <-    1 B  41  lane 1 sensor  |A|
+  247.821  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  264.483  <-    4 B  38 38 0a 0d  tick 88 ms  |88..|
+  264.483  <-    1 B  41  lane 1 sensor  |A|
+  264.483  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  264.630  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  264.631  <-    1 B  41  lane 1 sensor  |A|
+  264.745  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  264.861  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  264.861  <-    1 B  41  lane 1 sensor  |A|
+  264.982  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  265.115  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  265.115  <-    1 B  41  lane 1 sensor  |A|
+  265.242  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  265.374  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  265.374  <-    1 B  41  lane 1 sensor  |A|
+  265.491  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  265.581  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  265.581  <-    1 B  41  lane 1 sensor  |A|
+  265.781  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  265.878  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  265.878  <-    1 B  41  lane 1 sensor  |A|
+  266.215  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  266.215  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  266.215  <-    1 B  41  lane 1 sensor  |A|
+  266.300  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  266.388  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  266.389  <-    1 B  41  lane 1 sensor  |A|
+  266.622  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  266.622  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  266.622  <-    1 B  41  lane 1 sensor  |A|
+  266.830  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  266.830  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  266.830  <-    1 B  41  lane 1 sensor  |A|
+  267.046  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  267.163  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  267.163  <-    1 B  41  lane 1 sensor  |A|
+  267.383  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  267.384  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  267.384  <-    1 B  41  lane 1 sensor  |A|
+  267.628  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  267.628  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  267.629  <-    1 B  41  lane 1 sensor  |A|
+  267.854  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  267.854  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  267.854  <-    1 B  41  lane 1 sensor  |A|
+  268.072  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  268.188  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  268.188  <-    1 B  41  lane 1 sensor  |A|
+  268.396  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  268.396  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  268.396  <-    1 B  41  lane 1 sensor  |A|
+  268.629  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  268.629  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  268.629  <-    1 B  41  lane 1 sensor  |A|
+  268.870  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  271.929  <-    5 B  31 32 37 0a 0d  tick 127 ms  |127..|
+  271.929  <-    1 B  42  lane 2 sensor  |B|
+  272.051  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  272.051  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  272.051  <-    1 B  42  lane 2 sensor  |B|
+  272.305  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  272.305  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  272.305  <-    1 B  42  lane 2 sensor  |B|
+  272.520  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  272.520  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  272.520  <-    1 B  42  lane 2 sensor  |B|
+  272.743  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  272.859  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  272.859  <-    1 B  42  lane 2 sensor  |B|
+  272.984  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  273.098  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  273.098  <-    1 B  42  lane 2 sensor  |B|
+  273.298  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  273.298  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  273.298  <-    1 B  42  lane 2 sensor  |B|
+  273.583  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  273.583  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  273.583  <-    1 B  42  lane 2 sensor  |B|
+  273.793  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|
+  273.793  <-    4 B  35 36 0a 0d  tick 56 ms  |56..|
+  273.793  <-    1 B  42  lane 2 sensor  |B|
+  274.000  <-    5 B  32 30 30 0a 0d  tick 200 ms  |200..|

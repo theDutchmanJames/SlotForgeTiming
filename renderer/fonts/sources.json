@@ -1,0 +1,67 @@
+[
+  {
+    "file": "inter/Inter-Italic[opsz,wght].ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/inter/Inter-Italic%5Bopsz%2Cwght%5D.ttf",
+    "sha256": "acd98e64795781b2058f07b18475e0ecee2a0fe2b42a49e2f9e37d0d6bf66ce6"
+  },
+  {
+    "file": "inter/Inter[opsz,wght].ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf",
+    "sha256": "29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031"
+  },
+  {
+    "file": "inter/OFL.txt",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/inter/OFL.txt",
+    "sha256": "5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57"
+  },
+  {
+    "file": "barlowcondensed/BarlowCondensed-Black.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/barlowcondensed/BarlowCondensed-Black.ttf",
+    "sha256": "e74b750df582c608f35db467b711b2b60d2217618e85e60b72b42dfd00446cab"
+  },
+  {
+    "file": "barlowcondensed/BarlowCondensed-BlackItalic.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/barlowcondensed/BarlowCondensed-BlackItalic.ttf",
+    "sha256": "e1ed5d7e50c6a4498454d40509ce2362384a2c7870df3418fdbd010f81dffad3"
+  },
+  {
+    "file": "barlowcondensed/BarlowCondensed-Bold.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/barlowcondensed/BarlowCondensed-Bold.ttf",
+    "sha256": "e476562ec9c1e16cf16475895b511f08c804f438cc9a9f80a44ea50a0eeb5b65"
+  },
+  {
+    "file": "barlowcondensed/BarlowCondensed-BoldItalic.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/barlowcondensed/BarlowCondensed-BoldItalic.ttf",
+    "sha256": "d8694f65cd70c3e5e600ead37657aab0adb5f63b275d0c1f6f4a7046de222145"
+  },
+  {
+    "file": "barlowcondensed/BarlowCondensed-Italic.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/barlowcondensed/BarlowCondensed-Italic.ttf",
+    "sha256": "063615da0a64f318397de2afac330dfbfbbf4cdb562a9987cb72bfdcbd37ba7c"
+  },
+  {
+    "file": "barlowcondensed/BarlowCondensed-Regular.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/barlowcondensed/BarlowCondensed-Regular.ttf",
+    "sha256": "583cec5da3b84bc4dc7c9c72e2a565c94d34e431518b19d7e250b7830ad5f996"
+  },
+  {
+    "file": "barlowcondensed/OFL.txt",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/barlowcondensed/OFL.txt",
+    "sha256": "186d750eb496a4c17a76385f82be6aea2ac1cf2de074a811d63786cf374ea73f"
+  },
+  {
+    "file": "robotomono/OFL.txt",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/robotomono/OFL.txt",
+    "sha256": "50ab8dd54680d3473f649c9db86fece88434d097c7834475c1c72d2f8c429215"
+  },
+  {
+    "file": "robotomono/RobotoMono-Italic[wght].ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/robotomono/RobotoMono-Italic%5Bwght%5D.ttf",
+    "sha256": "49ac343bb7b070071e53f0a8a501d68d140ed98ebd0a43b6b8fb96cf22f09ff7"
+  },
+  {
+    "file": "robotomono/RobotoMono[wght].ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/robotomono/RobotoMono%5Bwght%5D.ttf",
+    "sha256": "66a80e79d17e4c7cabd162e2916578a4cc08fd19eef6e2a643305eae9c567b2b"
+  }
+]

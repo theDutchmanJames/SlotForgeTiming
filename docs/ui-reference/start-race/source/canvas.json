@@ -1,0 +1,25 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-20T07:55:00Z" },
+  "title": "Start a race redesign",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 771, "h": 448, "title": "Today: the real card, no championship" },
+    "TodayChamp.dc.html": { "x": 851, "y": 0, "w": 771, "h": 709, "title": "Today: the real card, championship picked" },
+    "A-Dark.dc.html": { "x": 0, "y": 1090, "w": 771, "h": 477, "title": "A: all lanes ready" },
+    "A-Champ.dc.html": { "x": 851, "y": 1090, "w": 771, "h": 749, "title": "A: championship picked, a lane needs a driver" },
+    "A-Light.dc.html": { "x": 0, "y": 1959, "w": 771, "h": 478, "title": "A: light theme" },
+    "A-Narrow.dc.html": { "x": 851, "y": 1959, "w": 416, "h": 685, "title": "A: narrow window" },
+    "B-Dark.dc.html": { "x": 0, "y": 3024, "w": 771, "h": 464, "title": "B: all lanes ready" },
+    "B-Four.dc.html": { "x": 851, "y": 3024, "w": 771, "h": 615, "title": "B: four lanes" },
+    "B-Light.dc.html": { "x": 0, "y": 3759, "w": 771, "h": 465, "title": "B: light theme" }
+  },
+  "order": ["Main.dc.html", "TodayChamp.dc.html", "A-Dark.dc.html", "A-Champ.dc.html", "A-Light.dc.html", "A-Narrow.dc.html", "B-Dark.dc.html", "B-Four.dc.html", "B-Light.dc.html"],
+  "notes": {
+    "t0": { "x": 0, "y": -260, "text": "Today", "kind": "title1", "maxW": 1622 },
+    "ta": { "x": 0, "y": 830, "text": "Option A: lanes as rows", "kind": "title1", "maxW": 1622 },
+    "tb": { "x": 0, "y": 2764, "text": "Option B: a starting grid", "kind": "title1", "maxW": 1622 }
+  },
+  "designSystems": []
+}

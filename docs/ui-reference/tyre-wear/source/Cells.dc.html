@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Widget: Available Tyres, and the Tyre life cells</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.tile{position:relative;box-sizing:border-box;background:#222831;border:1px solid #5a616c;border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;flex:none;text-align:center}
+.tt{position:absolute;left:6px;top:3px;font-size:11px;color:#98a0ab;line-height:1.2}
+.grp{font-size:15px;font-weight:700;margin:0 0 2px 0}
+.gsub{font-size:13px;color:#98a0ab;line-height:1.4;margin-bottom:8px}
+.cap{font-size:12px;color:#98a0ab;line-height:1.3}
+.chips{display:flex;gap:12px;align-items:flex-start}
+.tc{display:flex;flex-direction:column;align-items:center;gap:3px;width:50px;position:relative}
+.tc.off{opacity:.35}
+.ch{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;box-sizing:border-box;border-radius:50%;background:#2a2d34;border:4px solid #fff;font-size:12px;font-weight:800;flex:none}
+.cnt{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+.pips{display:flex;gap:3px;height:8px}
+.pip{width:8px;height:8px;border-radius:50%;background:#e8e6e1}
+.pip.u{background:transparent;border:1.5px solid #5a616c;box-sizing:border-box}
+.on{outline:2px solid #e8e6e1;outline-offset:3px}
+.nx{position:absolute;top:-9px;right:-2px;font-size:9px;font-weight:700;background:#4a3a6b;color:#c79bff;border-radius:6px;padding:1px 4px;line-height:1.2}
+.inp{height:34px;box-sizing:border-box;background:#171b21;border:1px solid #343b47;border-radius:6px;color:#e8e6e1;font-family:inherit;font-size:13px;padding:0 8px;width:100%}
+.opt{font-size:13px;display:flex;align-items:center;gap:8px}
+.lb{font-size:12px;color:#98a0ab}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{font-size:11px;font-weight:600;color:#98a0ab;text-align:left;padding:6px 8px;background:#2b323d;border-bottom:1px solid #343b47}
+td{padding:7px 8px;border-bottom:1px solid #2b323d;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tl{display:flex;align-items:center;gap:6px}
+.mb{width:46px;height:8px;border-radius:4px;background:#343b47;overflow:hidden;flex:none}
+.mb i{display:block;height:8px}
+.sc{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;box-sizing:border-box;border-radius:50%;background:#2a2d34;border:3px solid #fff;font-size:8px;font-weight:800;flex:none}
+.H{border-color:#f4f4f4;color:#f4f4f4}.M{border-color:#ffd12e;color:#ffd12e}.S{border-color:#e8002d;color:#ff4d6a}.SS{border-color:#9b4dff;color:#c79bff}.I{border-color:#43b02a;color:#6fd653}.W{border-color:#0067ff;color:#5b9bff}
+</style>
+</helmet>
+<div style="width:1000px;height:880px;box-sizing:border-box;background:#171b21;color:#e8e6e1;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;padding:24px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+
+  <div>
+    <div style="font-size:13px;color:#98a0ab">Layout Editor &rsaquo; Timing group</div>
+    <div style="font-size:24px;font-weight:700;line-height:1.2">Available Tyres, and the Tyre life cells</div>
+  </div>
+
+  <div style="display:flex;gap:24px">
+    <div style="flex:none;width:610px;display:flex;flex-direction:column;gap:14px">
+      <div>
+        <div class="grp">A. Available Tyres: how many sets are left of each tyre</div>
+        <div class="gsub">For the lane's car, or for the team when the sets are shared. A tyre with no sets left is dimmed. The tyre on the car has a ring, the tyre the Race Director queued has a purple NEXT.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <div class="tile" style="width:380px;height:112px"><span class="tt">Available Tyres</span>
+            <div class="chips" style="margin-top:12px">
+              <div class="tc"><span class="ch H">H</span><span class="cnt">2</span></div>
+              <div class="tc"><span class="ch M">M</span><span class="cnt">1</span></div>
+              <div class="tc"><span class="ch S on">S</span><span class="cnt">1</span></div>
+              <div class="tc"><span class="ch SS">SS</span><span class="cnt">1</span><span class="nx">NEXT</span></div>
+              <div class="tc"><span class="ch I">I</span><span class="cnt">2</span></div>
+              <div class="tc off"><span class="ch W">W</span><span class="cnt">0</span></div>
+            </div>
+          </div>
+          <div class="tile" style="width:200px;height:112px"><span class="tt">Available Tyres</span>
+            <div style="font-size:30px;font-weight:700;margin-top:10px;font-variant-numeric:tabular-nums">7 <span style="font-size:14px;font-weight:400;color:#98a0ab">sets left</span></div>
+            <span class="cap">number only</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div class="cap">With dots for each set (full = still in the box)</div>
+          <div class="tile" style="width:380px;height:112px"><span class="tt">Available Tyres</span>
+            <div class="chips" style="margin-top:12px">
+              <div class="tc"><span class="ch H">H</span><span class="pips"><i class="pip"></i><i class="pip"></i></span></div>
+              <div class="tc"><span class="ch M">M</span><span class="pips"><i class="pip"></i><i class="pip u"></i></span></div>
+              <div class="tc"><span class="ch S on">S</span><span class="pips"><i class="pip"></i><i class="pip u"></i></span></div>
+              <div class="tc"><span class="ch SS">SS</span><span class="pips"><i class="pip"></i></span><span class="nx">NEXT</span></div>
+              <div class="tc"><span class="ch I">I</span><span class="pips"><i class="pip"></i><i class="pip"></i></span></div>
+              <div class="tc off"><span class="ch W">W</span><span class="pips"><i class="pip u"></i><i class="pip u"></i></span></div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div class="cap">Narrow, as a list</div>
+          <div class="tile" style="width:200px;height:112px;align-items:stretch;padding:20px 14px 6px 14px;gap:2px;justify-content:flex-start"><span class="tt">Available Tyres</span>
+            <div style="display:flex;flex-direction:column;gap:3px;font-size:12px;font-variant-numeric:tabular-nums">
+              <div style="display:flex;align-items:center;gap:8px"><span class="sc M">M</span><span>Medium</span><b style="margin-left:auto">1</b></div>
+              <div style="display:flex;align-items:center;gap:8px"><span class="sc S">S</span><span>Soft</span><b style="margin-left:auto">1</b></div>
+              <div style="display:flex;align-items:center;gap:8px"><span class="sc I">I</span><span>Intermediate</span><b style="margin-left:auto">2</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="cap" style="margin-bottom:6px">When the team shares the sets: one pool for all the cars of the team</div>
+        <div class="tile" style="width:610px;height:118px;align-items:flex-start;padding-left:16px"><span class="tt">Available Tyres</span>
+          <div style="display:flex;align-items:center;gap:18px;margin-top:12px">
+            <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;color:#98a0ab">Shared by</span><span style="font-size:15px;font-weight:700">Team Red</span><span style="font-size:12px;color:#98a0ab">Dutch and Maria</span></div>
+            <div class="chips">
+              <div class="tc"><span class="ch H">H</span><span class="cnt">3</span></div>
+              <div class="tc"><span class="ch M">M</span><span class="cnt">2</span></div>
+              <div class="tc"><span class="ch S">S</span><span class="cnt">1</span></div>
+              <div class="tc"><span class="ch SS">SS</span><span class="cnt">1</span></div>
+              <div class="tc"><span class="ch I">I</span><span class="cnt">2</span></div>
+              <div class="tc"><span class="ch W">W</span><span class="cnt">2</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:1;min-width:0;background:#222831;border:1px solid #343b47;border-radius:8px;overflow:hidden;align-self:flex-start">
+      <div style="padding:10px 14px;font-size:14px;font-weight:700;background:#2b323d;border-bottom:1px solid #343b47">Widget settings: Available Tyres</div>
+      <div style="padding:14px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;flex-direction:column;gap:5px"><label class="lb" for="sh">Show the sets as</label>
+          <select id="sh" class="inp"><option selected>Tyres with a number</option><option>Tyres with dots</option><option>List</option><option>Number only</option></select></div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label class="opt"><input type="checkbox" checked> Ring on the tyre that is on the car</label>
+          <label class="opt"><input type="checkbox" checked> NEXT on the tyre the Race Director queued</label>
+          <label class="opt"><input type="checkbox" checked> Dim a tyre with no sets left</label>
+          <label class="opt"><input type="checkbox"> Hide the tyres this race does not allow (0 sets)</label>
+          <label class="opt"><input type="checkbox" checked> Show the team name when the sets are shared</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="grp">B. The Tyre life cell in the grids</div>
+    <div class="gsub">One more cell, the same look everywhere: the tyre, the life and a small bar. Amber and red follow the warning levels of the Tyre Wear System. In a Distance Race the number is the metres left.</div>
+    <div style="display:flex;gap:16px;align-items:flex-start">
+      <div style="flex:none;width:290px;background:#222831;border:1px solid #343b47;border-radius:8px;overflow:hidden">
+        <div style="padding:8px 12px;font-size:13px;font-weight:700;background:#2b323d;border-bottom:1px solid #343b47">Driver stats (Dutch)</div>
+        <table>
+          <tbody>
+            <tr><td style="color:#98a0ab">Best lap</td><td style="text-align:right">5.842</td></tr>
+            <tr><td style="color:#98a0ab">Fuel</td><td style="text-align:right">68%</td></tr>
+            <tr style="background:#1c2129"><td style="color:#98a0ab">Tyres</td><td style="text-align:right"><span class="tl" style="justify-content:flex-end"><span class="sc S">S</span><b style="color:#6fe0ae">62%</b><span class="mb"><i style="width:62%;background:#3ecf8e"></i></span></span></td></tr>
+            <tr><td style="color:#98a0ab">Tyre laps left</td><td style="text-align:right">14</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="flex:1;min-width:0;background:#222831;border:1px solid #343b47;border-radius:8px;overflow:hidden">
+        <div style="padding:8px 12px;font-size:13px;font-weight:700;background:#2b323d;border-bottom:1px solid #343b47">Leaderboard</div>
+        <table>
+          <thead><tr><th>Pos</th><th>Driver</th><th>Laps</th><th>Best</th><th>Fuel</th><th>Tyres</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Dutch</td><td>18</td><td>5.842</td><td>68%</td><td><span class="tl"><span class="sc S">S</span><b style="color:#6fe0ae">62%</b><span class="mb"><i style="width:62%;background:#3ecf8e"></i></span></span></td></tr>
+            <tr><td>2</td><td>Maria</td><td>18</td><td>5.911</td><td>41%</td><td><span class="tl"><span class="sc M">M</span><b style="color:#ffc870">24%</b><span class="mb"><i style="width:24%;background:#ffb84d"></i></span></span></td></tr>
+            <tr><td>3</td><td>Sam</td><td>17</td><td>6.020</td><td>22%</td><td><span class="tl"><span class="sc SS">SS</span><b style="color:#ff8a8e">8%</b><span class="mb"><i style="width:8%;background:#e5484d"></i></span></span></td></tr>
+            <tr><td>4</td><td>Eli</td><td>16</td><td>6.134</td><td>90%</td><td><span class="tl"><span class="sc I">I</span><b style="color:#98a0ab">fitting</b></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1000,"height":880}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

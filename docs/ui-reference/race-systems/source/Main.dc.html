@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Overview of the systems</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./sys.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="sheet" style="width: 1240px; padding: 40px 44px; display: flex; flex-direction: column; gap: 26px; font-family: Inter, system-ui, sans-serif; color: #e8e6e1">
+
+<div>
+<div class="eyebrow">Race systems</div>
+<h1 style="margin-top: 6px">Seven systems, one window</h1>
+<p class="lead">Every system page gets the window of Race Setups: the name and the main facts at the top, a side rail with a row for every section, one sentence in plain words, and sections that fold. Nothing about what a system does changes. The same settings are kept in the same way, so every system you have opens as it was.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 36px">
+
+<div style="display: flex; flex-direction: column; gap: 14px">
+<h2>The frame, the same on every page</h2>
+<table class="tab">
+<tbody>
+<tr><td class="a" style="width: 130px">Colour</td><td class="w">Each system keeps the colour it has today: the one on its tab in Race Setup and on its folder on the race screen. It takes the place of the red of Race Setups: the bar at the top, the picture, the small capitals, the open section, the chosen cards, the switches and the Save button. The picture is the one of its tab too.</td></tr>
+<tr><td class="a">Header</td><td class="w">The picture of the system, its kind in small capitals, the name you type (the dashed line says you can), and pills with the main facts. Green <b>Ready to use</b> when it has a name, amber <b>Give it a name</b> when it has not.</td></tr>
+<tr><td class="a">Side rail</td><td class="w">A row for every section: its picture, its name, a short note of what it holds now, and a dot. Sections you rarely change sit under <b>Only if you need it</b>.</td></tr>
+<tr><td class="a">Used by</td><td class="w">At the bottom of the rail: the race setups that use this system. When there are none, it says where to choose it.</td></tr>
+<tr><td class="a">In plain words</td><td class="w">One sentence that reads the whole system back to you, with the numbers in bold. It changes while you type.</td></tr>
+<tr><td class="a">Sections</td><td class="w">Open or closed. A closed section shows one line of what is inside. The tables you add rows to (levels, incidents, failures, special penalties, tyres) keep every column they have now.</td></tr>
+<tr><td class="a">Footer</td><td class="w">Cancel, and Save with the name of the system, so you always know what you are saving.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 14px">
+<h2>The dot on a rail row</h2>
+<div class="note" style="flex-direction: column; gap: 12px; padding: 16px 18px">
+<div class="row" style="gap: 12px; flex-wrap: nowrap"><span class="dot" role="img" aria-label="Green dot"></span><span><b>Green:</b> filled in, or changed from the standard.</span></div>
+<div class="row" style="gap: 12px; flex-wrap: nowrap"><span class="dot todo" role="img" aria-label="Amber dot"></span><span><b>Amber:</b> something that is needed is missing, such as the name.</span></div>
+<div class="row" style="gap: 12px; flex-wrap: nowrap"><span class="dot off" role="img" aria-label="Open ring"></span><span><b>Open ring:</b> nothing changed from the standard.</span></div>
+</div>
+<h2 style="margin-top: 6px">What I chose without asking</h2>
+<div class="note info" style="flex-direction: column; gap: 9px; padding: 16px 18px">
+<span><b>The name</b> is typed in the header, as in Race Setups.</span>
+<span><b>Sections</b> follow the groups the forms have now. Two places are joined: in Tyre wear, <i>Where it applies</i> (practice and qualifying) goes into Basics; in the Safety car system, <i>Lap times</i> and <i>Pit stops</i> become one section, because pit stops holds a single number.</span>
+<span><b>Used by</b> is a list for now, not links.</span>
+<span><b>Penalty and Damage</b> stay two separate systems.</span>
+</div>
+</div>
+
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2>The seven rails</h2>
+<table class="tab">
+<thead><tr><th style="width: 180px">System</th><th>In the rail</th><th>Only if you need it</th><th style="width: 90px">Release</th></tr></thead>
+<tbody>
+<tr><td class="a"><span class="cdot" style="background: #f2b705"></span>Penalty system</td><td class="w">Basics · Special penalties</td><td class="w">Disqualification and fuel</td><td><span class="tag">1</span></td></tr>
+<tr><td class="a"><span class="cdot" style="background: #e5484d"></span>Damage system</td><td class="w">Basics · Levels · Incidents</td><td class="w">Car failures · Penalty points</td><td><span class="tag">1</span></td></tr>
+<tr><td class="a"><span class="cdot" style="background: #4c9aff"></span>Weather system</td><td class="w">Basics · The rain · Tyres and penalties</td><td class="w">Hindering the cars · Track conditions</td><td><span class="tag">2</span></td></tr>
+<tr><td class="a"><span class="cdot" style="background: #9b4dff"></span>Tyre wear system</td><td class="w">Basics · The tyres · What worn tyres do · Pit stops</td><td class="w">Wear in the weather · Mandatory stops · Sets of tyres · Warnings</td><td><span class="tag">3</span></td></tr>
+<tr><td class="a"><span class="cdot" style="background: #ff7a1a"></span>Safety car system</td><td class="w">Behind the Safety Car</td><td class="w">Random flags</td><td><span class="tag">4</span></td></tr>
+<tr><td class="a"><span class="cdot" style="background: #a6d23c"></span>Push and save system</td><td class="w">Basics · Pace · Wear</td><td class="w">Which laps count</td><td><span class="tag">4</span></td></tr>
+<tr><td class="a"><span class="cdot" style="background: #2fb86a"></span>Fuel system</td><td class="w">Basics · Empty tank and refuelling</td><td class="w">Fast and slow laps</td><td><span class="tag">4</span></td></tr>
+</tbody>
+</table>
+<p class="hint">Colours in the dark theme, as on the tabs: Penalty yellow, Damage red, Weather blue, Tyre wear purple, Safety car orange, Push and save lime, Fuel green. The light and ocean themes use their darker shades of the same colours, as the tabs do.</p>
+<p class="hint">Release is the order I would build them in: the number is one release, and Safety car, Push and save and Fuel go together because they are small. Balance of Power, the rotation setups and the championships have their own screens and come later.</p>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":1400}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

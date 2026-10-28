@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Balance of Power settings</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./sys.css">
+<link rel="stylesheet" href="./sys2.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="win ss-bop" style="width: 1240px;font-family: Inter, system-ui, sans-serif; color: #e8e6e1">
+
+<div class="top">
+<div class="tile"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5 21h14M5 7h14"/><path d="m5 7-3 8a4 4 0 0 0 6 0z"/><path d="m19 7-3 8a4 4 0 0 0 6 0z"/></svg></div>
+<div class="grow">
+<div class="eyebrow">Settings for every race</div>
+<h1 class="name" style="border-bottom:0;padding-right:0">Balance of Power</h1>
+<div class="pills">
+<span class="pill hi">Suggest</span>
+<span class="pill">Hinder the fastest, help the slowest</span>
+<span class="pill">20%</span>
+<span class="pill">Fuel use and refuelling</span>
+</div>
+</div>
+<span class="status"><span class="dot"></span> Saved as you change it</span>
+</div>
+<div class="body">
+
+<div class="rail">
+<div class="cap">Balance of Power</div>
+<button class="ri on"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2A5 5 0 0 1 21 19"/></svg><span><span class="t">Who decides</span><span class="s">Suggest · hinder and help</span></span><span class="dot sp" role="img" aria-label="Filled in"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-6"/></svg><span><span class="t">How much</span><span class="s">20% · always the same</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 22h12M4 9h10"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2 2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></svg><span><span class="t">What changes</span><span class="s">Fuel use · refuelling</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19L16 8"/><path d="M14 6l4 4"/><path d="M18 3v3M16.5 4.5h3M6 5v2M5 6h2M20 14v2M19 15h2"/></svg><span><span class="t">Suggest and Automatic</span><span class="s">Median · 5 laps · 0.3 s</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<div style="flex: 1"></div>
+<div class="used"><span class="eyebrow mute">To use it</span><span class="none">Turn Balance of Power on in a race setup (Race Setups &gt; Balance of Power). It needs a Fuel System, because it works through the fuel rules.</span></div>
+</div>
+
+<div class="main">
+
+<div class="say">
+<div class="tile"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg></div>
+<div>
+<div class="eyebrow mute">In plain words</div>
+<p><b>Suggest</b>: the app watches the lap times and proposes, and the Race Director accepts. It <b>hinders the fastest car</b> and <b>helps the slowest car</b>, only those two, by <b>20%</b>. A hindered car <b>uses 20% more fuel per lap</b> and <b>refuels 20% slower</b>; a helped car gets the opposite. The pace of a car is its <b>median lap</b> over the last <b>5</b> laps (at least <b>3</b>). It comes on at a difference of <b>0.3 s</b> per lap and goes off below <b>0.15 s</b>, and it is corrected for the length of the lanes.</p>
+</div>
+</div>
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2A5 5 0 0 1 21 19"/></svg></span>
+<span class="st">Who decides</span><span class="sn">Does the Race Director decide, or the app?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="q"><div class="l">Mode</div>
+<div class="cards c3"><button class="kc"><span class="kt">Manual</span><span class="kd">The Race Director presses Hinder or Help for a lane.</span></button>
+<button class="kc on"><span class="kt">Suggest</span><span class="kd">The app watches the lap times and proposes, the Race Director accepts.</span></button>
+<button class="kc"><span class="kt">Automatic</span><span class="kd">The app applies and removes it by itself. The Race Director can still overrule a lane.</span></button>
+</div></div>
+<div class="q"><div class="l">Who gets it</div>
+<div class="cards c3"><button class="kc on"><span class="kt">Hinder the fastest, help the slowest</span><span class="kd">Both.</span></button>
+<button class="kc"><span class="kt">Only hinder the fastest car</span></button>
+<button class="kc"><span class="kt">Only help the slowest car</span></button>
+</div></div>
+<div class="q"><div class="l">How many cars</div>
+<div class="cards c2"><button class="kc on"><span class="kt">Only the fastest and the slowest car</span><span class="kd">Everybody in between is left alone.</span></button>
+<button class="kc"><span class="kt">Every car</span><span class="kd">By how far it is from the middle of the field.</span></button>
+</div>
+<div class="hint">Graded: the fastest car is hindered by the whole percentage, a car close to the middle hardly at all, and the slowest car is helped by the whole percentage.</div></div>
+
+</div>
+</div>
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-6"/></svg></span>
+<span class="st">How much</span><span class="sn">How hard is a car hindered or helped?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="q"><div class="l">Percentage<small>A car never gets more than 90%</small></div>
+<div class="row" style="gap:22px;align-items:center;flex-wrap:nowrap"><div class="pctbig" style="width:90px">20%</div>
+<div style="flex:1"><div class="rng"><div class="trk"></div><div class="fil" style="width:21.3%"></div><div class="kn" style="left:21.3%"></div></div>
+<div class="rngl"><span>1%</span><span>30%</span><span>60%</span><span>90%</span></div></div></div></div>
+<div class="q"><div class="l">Strength</div>
+<div class="cards c2"><button class="kc on"><span class="kt">Always the percentage above</span></button>
+<button class="kc"><span class="kt">Less when the difference is small</span><span class="kd">It grows with the difference, up to the percentage above.</span></button>
+</div></div>
+<div class="two">
+<div class="car hin"><div class="ch"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg> A hindered car, at 20%</div><ul><li>uses 20% more fuel per lap</li><li>refuels 20% slower</li></ul></div>
+<div class="car hlp"><div class="ch"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg> A helped car, at 20%</div><ul><li>uses 20% less fuel per lap</li><li>refuels 20% faster</li></ul></div>
+</div>
+
+</div>
+</div>
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 22h12M4 9h10"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2 2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></svg></span>
+<span class="st">What changes on the car</span><span class="sn">Which of the fuel rules are changed?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="eff">
+<div class="effc on"><div class="et"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 22h12M4 9h10"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2 2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></svg><span>The fuel a lap uses</span><button class="tg on sp" role="switch" aria-checked="true" aria-label="The fuel a lap uses"></button></div><div class="ed">Hindered: more fuel per lap. Helped: less. The car has to pit sooner, or drive slower.</div></div>
+<div class="effc on"><div class="et"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>How fast it refuels in the pits</span><button class="tg on sp" role="switch" aria-checked="true" aria-label="How fast it refuels in the pits"></button></div><div class="ed">Hindered: slower stops. Helped: quicker stops.</div></div>
+<div class="effc"><div class="et"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="16" rx="3.5"/><path d="M5 9.5h14M9.5 14h5"/></svg><span>The size of the tank</span><button class="tg sp" role="switch" aria-checked="false" aria-label="The size of the tank"></button></div><div class="ed">Hindered: a smaller tank. Helped: a bigger one. Fuel in the tank that no longer fits is lost.</div></div>
+</div>
+<div class="hint">It only changes the fuel use, the refuelling and the tank of a car, so it fine-tunes: a car that is several seconds a lap faster will not be caught by it alone. Where a long race or a short tank makes the cars pit, it bites the most. It needs a Fuel System.</div>
+
+</div>
+</div>
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19L16 8"/><path d="M14 6l4 4"/><path d="M18 3v3M16.5 4.5h3M6 5v2M5 6h2M20 14v2M19 15h2"/></svg></span>
+<span class="st">Suggest and Automatic</span><span class="sn">When does the app step in?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="q"><div class="l">The pace of a car is its</div>
+<div class="cards c2"><button class="kc on"><span class="kt">Median lap</span><span class="kd">One slow lap hardly counts.</span></button>
+<button class="kc"><span class="kt">Average lap</span></button>
+</div></div>
+<div class="cols"><div class="fld"><label for="w1">Last laps that count</label><span class="in" style="min-width:0;align-self:flex-start"><input id="w1" type="number" value="5"><span>laps</span></span></div><div class="fld"><label for="w2">Laps needed before it can apply</label><span class="in" style="min-width:0;align-self:flex-start"><input id="w2" type="number" value="3"><span>laps</span></span></div></div>
+<div class="q"><div class="l">The difference between the fastest and the slowest car<small>seconds per lap</small></div>
+<div class="cols"><div class="fld"><label for="a1">Apply at a difference of</label><span class="in" style="min-width:0;align-self:flex-start"><input id="a1" type="number" value="0.3"><span>seconds</span></span></div><div class="fld"><label for="a2">Remove below a difference of</label><span class="in" style="min-width:0;align-self:flex-start"><input id="a2" type="number" value="0.15"><span>seconds</span></span></div></div>
+<div><div class="hysb"><span style="width:25%;background:#2b323d">Off</span><span style="width:25%;background:#3a4150">Stays as it is</span><span style="width:50%;background:color-mix(in srgb,var(--c) 26%,#222831)">On</span></div>
+<div class="scl" style="height:26px"><span style="left:0;transform:none">0 s</span><span style="left:25%">0.15 s: goes off below</span><span style="left:50%">0.3 s: comes on</span></div></div>
+<div class="hint">It comes on at the first number and goes off at the second, a little lower, so it does not flicker on and off. Laps with a pit stop, invalid laps and laps taken out do not count.</div></div>
+<div class="sw"><button class="tg on" role="switch" aria-checked="true" aria-label="Correct for the length of the lanes"></button><span><b>Correct for the length of the lanes</b><br><span class="hint">A car on a longer lane is not held back for being on it. Needs the lane lengths of the track (Database &gt; Tracks).</span></span></div>
+
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="foot">
+<span class="hint">Nothing to save: every change is kept as you make it.</span>
+<span class="grow"></span>
+<button class="btn ghost"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg> Back to the standard settings</button>
+</div>
+
+</div>
+<div style="width:1240px;font-family: Inter, system-ui, sans-serif; color: #e8e6e1" class="ss-bop">
+<div class="parts">
+<h2>The small parts</h2>
+<p class="lead">There is no name and no Save button here: every change is kept the moment you make it, as today. These are the two places where the page looks different.</p>
+<div class="pcols">
+<div class="col"><div class="cap2">In Manual mode</div>
+<div class="pill hi" style="width:max-content">Manual</div>
+<div class="sec dimsec"><div class="sh"><span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19L16 8"/><path d="M14 6l4 4"/><path d="M18 3v3M16.5 4.5h3M6 5v2M5 6h2M20 14v2M19 15h2"/></svg></span><span class="st">Suggest and Automatic</span><span class="sn">Not used in Manual mode</span><span class="chev sp"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></span></div></div>
+<div class="hint">The section stays, so you can set it up before you switch mode. It is only dimmed, and the rail item says "Not used in Manual mode".</div>
+</div>
+<div class="col"><div class="cap2">When Strength is "Less when the difference is small"</div>
+<div class="fld"><label for="fl">Full percentage at a difference of</label><span class="in" style="min-width:0;align-self:flex-start"><input id="fl" type="number" value="1"><span>seconds per lap</span></span></div>
+<div class="hint">At half of that difference the car gets half of the percentage.</div>
+</div>
+<div class="col"><div class="cap2">When you go back to the standard</div>
+<button class="btn" style="width:max-content">Back to the standard settings</button>
+<div class="note good"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg><span>Back to the standard settings.</span></div>
+
+<div class="hint">The button is in the footer. It puts every setting of this page back, so a short message says that it did.</div>
+</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":3100}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

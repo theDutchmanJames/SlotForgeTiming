@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Audio calls</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{font-family:inherit}
+.sec{flex:none;background:#222831;border:1px solid #343b47;border-radius:8px;overflow:hidden}
+.sech{padding:10px 14px;font-size:14px;font-weight:700;background:#2b323d;border-bottom:1px solid #343b47}
+.secb{padding:14px}
+.note{font-size:13px;color:#98a0ab;line-height:1.4}
+.card{background:#1c2129;border:1px solid #343b47;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.cl{display:flex;gap:8px;align-items:flex-start;font-size:13px;font-weight:700;line-height:1.35}
+.cl input{margin-top:2px;flex:none}
+.vs{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.lb{font-size:12px;color:#98a0ab}
+.vc{font-size:11px;color:#c79bff;background:#2d2440;border:1px solid #4a3a6b;border-radius:10px;padding:1px 7px;font-family:ui-monospace,Menlo,Consolas,monospace}
+.ln{display:flex;gap:6px}
+.inp{flex:1;min-width:0;height:34px;box-sizing:border-box;background:#171b21;border:1px solid #343b47;border-radius:6px;color:#e8e6e1;font-family:inherit;font-size:13px;padding:0 10px}
+.pl{flex:none;width:34px;height:34px;border-radius:6px;border:1px solid #343b47;background:#2b323d;color:#e8e6e1;font-size:11px;cursor:pointer}
+.tin{height:34px;width:64px;box-sizing:border-box;background:#171b21;border:1px solid #343b47;border-radius:6px;color:#e8e6e1;font-family:inherit;font-size:13px;padding:0 8px}
+.row{display:flex;align-items:center;gap:10px;font-size:13px;flex-wrap:wrap}
+</style>
+</helmet>
+<div style="width:1000px;height:900px;box-sizing:border-box;background:#171b21;color:#e8e6e1;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;padding:24px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+
+  <div>
+    <div style="font-size:13px;color:#98a0ab">Customization &rsaquo; Audio Settings &rsaquo; Audio sets &rsaquo; Announcer</div>
+    <div style="font-size:24px;font-weight:700;line-height:1.2">Audio calls: the group &ldquo;Tyre wear&rdquo;</div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">Tyre wear (six calls, each can be switched off, each has two lines that take turns)</div>
+    <div class="secb" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="card"><label class="cl"><input type="checkbox" checked> <span>A car's tyres reach a wear level (the levels are set in the Tyre Wear System: 50, 25 and 10%)</span></label><div class="vs"><span class="lb">You can use</span><span class="vc">{driver}</span><span class="vc">{tyre}</span><span class="vc">{percent}</span><span class="vc">{left}</span></div><div class="ln"><input class="inp" value="{driver}, tyres at {percent} percent" aria-label="Line"><button class="pl" aria-label="Play">&#9654;</button></div><div class="ln"><input class="inp" value="{driver} has {left} of tyre left" aria-label="Line"><button class="pl" aria-label="Play">&#9654;</button></div></div>
+      <div class="card"><label class="cl"><input type="checkbox" checked> <span>A car's tyres are worn out (0% life left)</span></label><div class="vs"><span class="lb">You can use</span><span class="vc">{driver}</span><span class="vc">{tyre}</span></div><div class="ln"><input class="inp" value="{driver}'s tyres are gone, box box" aria-label="Line"><button class="pl" aria-label="Play">&#9654;</button></div><div class="ln"><input class="inp" value="{driver} has no tyres left" aria-label="Line"><button class="pl" aria-label="Play">&#9654;</button></div></div>
+      <div class="card"><label class="cl"><input type="checkbox" checked> <span>A car has new tyres (said when the tyre change is done)</span></label><div class="vs"><span class="lb">You can use</span><span class="vc">{driver}</span><span class="vc">{tyre}</span><span class="vc">{sets}</span></div><div class="ln"><input class="inp" value="{driver} is out on fresh {tyre} tyres" aria-label="Line"><button class="pl" aria-label="Play">&#9654;</button></div><div class="ln"><input class="inp" value="{driver} has new {tyre} tyres" aria-label="Line"><button class="pl" aria-label="Play">&#9654;</button></div></div>
+      <div class="card"><label class="cl"><input type="checkbox" checked> <span>A car fits the last set of a tyre</span></label><div class="vs"><span class="lb">You can use</span><span class="vc">{driver}</span><span class="vc">{tyre}</span></div><div class="ln"><input class="inp" value="{driver} is on the last set of {tyre}" aria-label="Line"><button class="pl" aria-label="Play">&#9654;</button></div><div class="ln"><input class="inp" value="Last {tyre} set for {driver}" aria-label="Line"><button class="pl" aria-label="Play">&#9654;</button></div></div>
+      <div class="card"><label class="cl"><input type="checkbox" checked> <span>The Race Director queued a tyre for the next pit stop</span></label><div class="vs"><span class="lb">You can use</span><span class="vc">{driver}</span><span class="vc">{tyre}</span></div><div class="ln"><input class="inp" value="{driver}, {tyre} tyres for the next stop" aria-label="Line"><button class="pl" aria-label="Play">&#9654;</button></div><div class="ln"><input class="inp" value="{tyre} tyres are waiting for {driver}" aria-label="Line"><button class="pl" aria-label="Play">&#9654;</button></div></div>
+      <div class="card"><label class="cl"><input type="checkbox" checked> <span>A car left the pits before the tyre change was done</span></label><div class="vs"><span class="lb">You can use</span><span class="vc">{driver}</span><span class="vc">{tyre}</span><span class="vc">{percent}</span></div><div class="ln"><input class="inp" value="{driver} left too early, still on the old tyres" aria-label="Line"><button class="pl" aria-label="Play">&#9654;</button></div><div class="ln"><input class="inp" value="{driver} is out on worn tyres" aria-label="Line"><button class="pl" aria-label="Play">&#9654;</button></div></div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:16px;align-items:stretch">
+    <div class="sec" style="flex:1">
+      <div class="sech">When the wear levels are called</div>
+      <div class="secb" style="display:flex;flex-direction:column;gap:10px">
+        <div class="row"><span>Calls at</span><input class="tin" value="50" aria-label="First level"><input class="tin" value="25" aria-label="Second level"><input class="tin" value="10" aria-label="Third level"><span>% life left</span></div>
+        <span class="note">These are the same levels as in the Tyre Wear System (Rules board), so every race system can have its own. Every level is said once per set of tyres, not again after the same level.</span>
+      </div>
+    </div>
+    <div class="sec" style="flex:1">
+      <div class="sech">Words that fill in by themselves</div>
+      <div class="secb" style="display:flex;flex-direction:column;gap:8px">
+        <span class="note"><b style="color:#e8e6e1">{left}</b> says &ldquo;14 laps&rdquo; in a lap race and &ldquo;205 metres&rdquo; (or feet) in a Distance Race.</span>
+        <span class="note"><b style="color:#e8e6e1">{tyre}</b> is the name of the tyre, like Soft or Intermediate. <b style="color:#e8e6e1">{sets}</b> is how many sets that tyre has left.</span>
+        <span class="note">Time Token Sessions have no tyre wear, so these calls are never said there.</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1000,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

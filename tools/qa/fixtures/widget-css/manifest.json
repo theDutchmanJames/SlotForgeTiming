@@ -1,0 +1,19 @@
+{
+  "reviewed": "2026-10-28",
+  "files": {
+    "styles.css": "63930188946a7d4e3e1b56070ed0e7b4d07c794c361d022d7d313d3491f0d907",
+    "widgetsettings.css": "fee1312fce78fdaa148f37f21c2df16d8b348dbc549681cae49840a99deaf3de",
+    "allinone.css": "eb426aaa8030a72a955b177a07d5df07ec3106854c92ecb28ad3bbb06afc6c08"
+  },
+  "intentionalChanges": [
+    "Independent title overlay with 12px alignment and lane labels outside content",
+    "Record value centered independently from holder name",
+    "No title-dependent content offset on All-in-One widgets",
+    "Equivalent consolidated tyre, Push & Save and All-in-One selectors",
+    "Removed obsolete separate Virtual Rival row styling",
+    "Custom light-theme system colours and wrapping database actions",
+    "Arduino/DS page frames and Arduino race-lock notice"
+  ],
+  "verification": "Retain widget-surface-electron.cjs and widget-options-probe.js as independent layout/behaviour gates. CSS equivalence alone is not proof of correctness.",
+  "hashNormalization": "UTF-8 text with LF newlines"
+}

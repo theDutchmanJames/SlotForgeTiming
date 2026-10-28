@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Championship: points, drops and roster</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{font-family:inherit}
+.sec{flex:none;background:#222831;border:1px solid #343b47;border-radius:8px;overflow:hidden}
+.sech{padding:10px 14px;font-size:14px;font-weight:700;background:#2b323d;border-bottom:1px solid #343b47;color:#e8e6e1;display:flex;justify-content:space-between;align-items:baseline}
+.sech span{font-weight:400;font-size:12px;color:#98a0ab}
+.secb{padding:14px}
+.lbl{font-size:13px;color:#98a0ab;line-height:1.35}
+.inp,.sel{height:36px;width:100%;box-sizing:border-box;background:#171b21;border:1px solid #343b47;border-radius:6px;color:#e8e6e1;font-family:inherit;font-size:14px;padding:0 10px;font-variant-numeric:tabular-nums}
+.fld{display:flex;flex-direction:column;gap:6px;min-width:0}
+.note{font-size:13px;color:#98a0ab;line-height:1.45}
+.note b{color:#e8e6e1}
+.btn{height:36px;padding:0 14px;font-size:13.5px;color:#e8e6e1;background:#171b21;border:1px solid #343b47;border-radius:6px}
+.btn.on{background:#ec5f9a;border-color:#ec5f9a;color:#1a0a12;font-weight:700}
+.chk{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:#e8e6e1;line-height:1.4}
+.chk input{margin-top:3px;width:16px;height:16px;accent-color:#ec5f9a}
+table{border-collapse:collapse;width:100%}
+th{text-align:left;font-size:12px;font-weight:600;color:#98a0ab;padding:8px 10px;border-bottom:1px solid #343b47}
+td{padding:8px 10px;border-bottom:1px solid #2b323d;font-size:14px;color:#e8e6e1}
+.pl{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px 16px}
+.dotc{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px}
+</style>
+</helmet>
+<div style="width:1000px;height:1640px;box-sizing:border-box;background:#171b21;color:#e8e6e1;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;padding:24px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;flex:none;border-top:3px solid #ec5f9a;padding-top:14px">
+    <div>
+      <div style="font-size:13px;color:#98a0ab">Race Setup &rsaquo; Championships &rsaquo; Club Cup 2026</div>
+      <div style="font-size:26px;font-weight:700;line-height:1.2">Points, drops and roster</div>
+    </div>
+    <div style="display:flex;gap:10px"><button type="button" class="btn" style="height:40px;padding:0 18px;background:#222831">Cancel</button><button type="button" class="btn on" style="height:40px;padding:0 22px">Save</button></div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">Points for the finishing places <span>Races only</span></div>
+    <div class="secb" style="display:flex;flex-direction:column;gap:14px">
+      <div class="fld"><span class="lbl">Start from a ready-made table (you can change every number)</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn on">25-18-15-12-10-8-6-4-2-1</button><button type="button" class="btn">10-8-6-5-4-3-2-1</button><button type="button" class="btn">One point per car beaten</button><button type="button" class="btn">My own</button></div>
+      </div>
+      <div class="pl">
+        <label class="fld"><span class="lbl">1st</span><input class="inp" value="25"></label>
+        <label class="fld"><span class="lbl">2nd</span><input class="inp" value="18"></label>
+        <label class="fld"><span class="lbl">3rd</span><input class="inp" value="15"></label>
+        <label class="fld"><span class="lbl">4th</span><input class="inp" value="12"></label>
+        <label class="fld"><span class="lbl">5th</span><input class="inp" value="10"></label>
+        <label class="fld"><span class="lbl">6th</span><input class="inp" value="8"></label>
+        <label class="fld"><span class="lbl">7th</span><input class="inp" value="6"></label>
+        <label class="fld"><span class="lbl">8th</span><input class="inp" value="4"></label>
+        <label class="fld"><span class="lbl">9th</span><input class="inp" value="2"></label>
+        <label class="fld"><span class="lbl">10th</span><input class="inp" value="1"></label>
+      </div>
+      <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end">
+        <label class="fld" style="width:250px"><span class="lbl">Every finisher after 10th gets</span><input class="inp" value="0"></label>
+        <div class="note" style="flex:1;min-width:300px">A car that was disqualified or did not finish gets no points for the race. A car that finished, even many laps down, counts as a finisher.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">Bonus points</div>
+    <div class="secb" style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end">
+        <label class="fld" style="width:230px"><span class="lbl">Fastest lap of the race (points)</span><input class="inp" value="1"></label>
+        <label class="fld" style="width:310px"><span class="lbl">Only when the driver finishes in the first (places)</span><input class="inp" value="10"></label>
+      </div>
+      <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end">
+        <label class="fld" style="width:230px"><span class="lbl">Pole position, fastest in qualifying (points)</span><input class="inp" value="0"></label>
+        <label class="fld" style="width:310px"><span class="lbl">Starting the race (points for every driver)</span><input class="inp" value="0"></label>
+      </div>
+      <div class="note">Bonus points are added to the points of the race of the same round. The fastest lap is the best valid lap of the race session; a lap with a penalty that took it away does not count.</div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">Dropped results</div>
+    <div class="secb" style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end">
+      <label class="fld" style="width:310px"><span class="lbl">The worst round results that do not count (per driver)</span><input class="inp" value="1"></label>
+      <div class="note" style="flex:1;min-width:300px">Best 5 of 6 rounds count. A dropped result is shown crossed out in the standings. Drivers and teams are dropped on their own: a team can drop a round that none of its drivers dropped.</div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">Teams and ties</div>
+    <div class="secb" style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+      <label class="fld" style="width:300px"><span class="lbl">Team points in a race</span><select class="sel"><option>The 2 best drivers of the team</option><option>All drivers of the team</option><option>No team standings</option></select></label>
+      <label class="fld" style="width:380px"><span class="lbl">A tie in the standings is decided by</span><select class="sel"><option>Most wins, then most 2nd places, and so on</option><option>The best result of the last round</option><option>The best qualifying result</option></select></label>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">Roster <span>The drivers of this championship</span></div>
+    <table>
+      <thead><tr><th>Driver</th><th>Team</th><th>Joins in round</th><th></th></tr></thead>
+      <tbody>
+        <tr><td><b>Maria</b></td><td><select class="sel" style="width:210px"><option>Orange Foxes</option></select></td><td><input class="inp" style="width:90px" value="1"></td><td><button type="button" class="btn" aria-label="Remove Maria from the roster" style="width:36px;padding:0">&times;</button></td></tr>
+        <tr><td><b>Dutch</b></td><td><select class="sel" style="width:210px"><option>Blue Arrows</option></select></td><td><input class="inp" style="width:90px" value="1"></td><td><button type="button" class="btn" aria-label="Remove Dutch from the roster" style="width:36px;padding:0">&times;</button></td></tr>
+        <tr><td><b>Sam</b></td><td><select class="sel" style="width:210px"><option>Orange Foxes</option></select></td><td><input class="inp" style="width:90px" value="1"></td><td><button type="button" class="btn" aria-label="Remove Sam from the roster" style="width:36px;padding:0">&times;</button></td></tr>
+        <tr><td><b>Eli</b></td><td><select class="sel" style="width:210px"><option>Blue Arrows</option></select></td><td><input class="inp" style="width:90px" value="1"></td><td><button type="button" class="btn" aria-label="Remove Eli from the roster" style="width:36px;padding:0">&times;</button></td></tr>
+        <tr><td><b>Noa</b></td><td><select class="sel" style="width:210px"><option>Green Hornets</option></select></td><td><input class="inp" style="width:90px" value="1"></td><td><button type="button" class="btn" aria-label="Remove Noa from the roster" style="width:36px;padding:0">&times;</button></td></tr>
+        <tr><td style="border-bottom:0"><b>Jens</b></td><td style="border-bottom:0"><select class="sel" style="width:210px"><option>Green Hornets</option></select></td><td style="border-bottom:0"><input class="inp" style="width:90px" value="1"></td><td style="border-bottom:0"><button type="button" class="btn" aria-label="Remove Jens from the roster" style="width:36px;padding:0">&times;</button></td></tr>
+      </tbody>
+    </table>
+    <div class="secb" style="display:flex;flex-direction:column;gap:12px;border-top:1px solid #343b47">
+      <div style="display:flex;gap:10px"><button type="button" class="btn">Add a driver</button><button type="button" class="btn">Add all drivers of a team</button></div>
+      <label class="chk"><input type="checkbox" checked><span>A driver who is not in the roster drives as a guest: he gets no points, and the drivers behind him move up one place<br><span class="note">Switched off: the places stay as they are, and nobody moves up.</span></span></label>
+      <div class="note">Drivers and teams come from Database &rsaquo; Drivers and Teams. A driver who joins later (the Joins in round column) has no points before that round and is not counted as a guest after it.</div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1000,"height":1640}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+/* Offline, unmodified OFL fonts. Sources, hashes and licenses are in fonts/. */
+@font-face{font-family:'SF Inter';src:url('fonts/inter/Inter[opsz,wght].ttf') format('truetype');font-weight:100 900;font-style:normal;font-display:swap}
+@font-face{font-family:'SF Inter';src:url('fonts/inter/Inter-Italic[opsz,wght].ttf') format('truetype');font-weight:100 900;font-style:italic;font-display:swap}
+@font-face{font-family:'SF Roboto Mono';src:url('fonts/robotomono/RobotoMono[wght].ttf') format('truetype');font-weight:100 700;font-style:normal;font-display:swap}
+@font-face{font-family:'SF Roboto Mono';src:url('fonts/robotomono/RobotoMono-Italic[wght].ttf') format('truetype');font-weight:100 700;font-style:italic;font-display:swap}
+@font-face{font-family:'SF Barlow Condensed';src:url('fonts/barlowcondensed/BarlowCondensed-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'SF Barlow Condensed';src:url('fonts/barlowcondensed/BarlowCondensed-Italic.ttf') format('truetype');font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:'SF Barlow Condensed';src:url('fonts/barlowcondensed/BarlowCondensed-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:'SF Barlow Condensed';src:url('fonts/barlowcondensed/BarlowCondensed-BoldItalic.ttf') format('truetype');font-weight:700;font-style:italic;font-display:swap}
+@font-face{font-family:'SF Barlow Condensed';src:url('fonts/barlowcondensed/BarlowCondensed-Black.ttf') format('truetype');font-weight:900;font-style:normal;font-display:swap}
+@font-face{font-family:'SF Barlow Condensed';src:url('fonts/barlowcondensed/BarlowCondensed-BlackItalic.ttf') format('truetype');font-weight:900;font-style:italic;font-display:swap}
+.lw[data-wf-title-font]>.lw-title{font-family:var(--wf-title-font)}
+.lw[data-wf-value-font]>.lw-val{font-family:var(--wf-value-font);font-variant-numeric:tabular-nums;font-optical-sizing:auto}
+.lw[data-wf-value-weight]>.lw-val{font-weight:var(--wf-value-weight)!important}
+.lw[data-wf-title-weight]>.lw-title{font-weight:var(--wf-title-weight)!important}
+.lw[data-wf-value-font] :is(.aio-who>strong,.aio-position,.aio-laprow strong,.aio-fact b,.aio-system strong,.aio-session strong,.wc-role-value>.wc-text,.rc-pw-whole strong,.rc-pw-fraction strong,.pspill>span,.psp,.twpct,.psw b){font-family:var(--wf-value-font);font-variant-numeric:tabular-nums}
+.lw[data-wf-value-weight] :is(.aio-who>strong,.aio-position,.aio-laprow strong,.aio-fact b,.aio-system strong,.aio-session strong,.wc-role-value>.wc-text,.rc-pw-whole strong,.rc-pw-fraction strong,.pspill>span,.psp,.twpct,.psw b){font-weight:var(--wf-value-weight)}
+.lw[data-wf-support-font] :is(.aio-who>span,.aio-heading,.aio-foot,.aio-line,.aio-note,.aio-service p,.aio-status,.aio-fact small,.aio-laprow small,.aio-laprow em,.aio-system small,.aio-system>span:not(.aio-meter),.aio-session span,.wc-role-support>.wc-text,.wc-role-label>.wc-text,.wc-label,.pssmall,.twlf,.twgr,.psw small,.rc-pw-head,.rc-pw-foot,.rc-pw-display small){font-family:var(--wf-support-font);font-variant-numeric:tabular-nums}
+.lw[data-wf-support-weight] :is(.aio-who>span,.aio-heading,.aio-foot,.aio-line,.aio-note,.aio-service p,.aio-status,.aio-fact small,.aio-laprow small,.aio-laprow em,.aio-system small,.aio-system>span:not(.aio-meter),.aio-session span,.wc-role-support>.wc-text,.wc-role-label>.wc-text,.wc-label,.pssmall,.twlf,.twgr,.psw small,.rc-pw-head,.rc-pw-foot,.rc-pw-display small){font-weight:var(--wf-support-weight)}
+.ws-section[data-ws-group=fonts]{--ws-box:var(--ws-violet,#a5a0e7)}
+.wf-preview{display:grid;gap:8px;padding:14px;margin:12px 0;border:1px solid var(--line);border-radius:8px;overflow:hidden;text-align:center;background:var(--panel)}
+.wf-preview small{font:var(--wf-title-weight,700) 12px/1.3 var(--wf-title-font,system-ui)}
+.wf-preview strong{font:var(--wf-value-weight,700) 26px/1.3 var(--wf-value-font,system-ui);font-variant-numeric:tabular-nums}
+.wf-preview span{font:var(--wf-support-weight,500) 13px/1.3 var(--wf-support-font,system-ui)}
+.wf-status{display:block;color:var(--muted);font-size:12px;margin:8px 0;overflow-wrap:anywhere}
+.ws-section[data-ws-group=fonts]>.row{flex-wrap:wrap}
+.ws-section[data-ws-group=fonts]>.row>.btn{font-size:12px;white-space:normal}
+.lw[data-wf-header][data-wf-title-font]>.lw-val{font-family:var(--wf-title-font)}
+.lw[data-wf-header][data-wf-title-weight]>.lw-val{font-weight:var(--wf-title-weight)!important}

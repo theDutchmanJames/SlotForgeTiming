@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Race Setup: the Championships sub-tab</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{font-family:inherit}
+.chip{--c:#98a0ab;display:inline-flex;align-items:center;gap:8px;padding:7px 13px 7px 11px;border-radius:8px;font-size:13.5px;line-height:1.2;color:#e8e6e1;cursor:default;background:color-mix(in srgb,var(--c) 13%,#222831);border:1px solid color-mix(in srgb,var(--c) 42%,#222831)}
+.chip svg{color:var(--c);flex:none}
+.chip.on{background:color-mix(in srgb,var(--c) 32%,#222831);border-color:var(--c);box-shadow:inset 0 -3px 0 var(--c);font-weight:700}
+.glabel{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:#98a0ab;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.grp{display:flex;flex-direction:column;gap:5px}
+.note{font-size:13px;color:#98a0ab;line-height:1.45}
+.note b{color:#e8e6e1}
+.card{background:#171b21;border:1px solid #343b47;border-radius:10px;padding:16px 18px;display:flex;gap:20px;align-items:center}
+.pill{display:inline-block;padding:2px 10px;border-radius:5px;font-size:12px;font-weight:700}
+.btn{height:34px;padding:0 14px;font-size:13.5px;color:#e8e6e1;background:#222831;border:1px solid #343b47;border-radius:6px}
+.dot{width:14px;height:14px;border-radius:50%;box-sizing:border-box;flex:none}
+.dot.done{background:#ec5f9a}
+.dot.now{border:3px solid #ec5f9a;background:#171b21}
+.dot.todo{border:2px solid #4a5260}
+</style>
+</helmet>
+<div style="width:1000px;height:900px;box-sizing:border-box;background:#171b21;color:#e8e6e1;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;padding:24px;display:flex;flex-direction:column;gap:18px;overflow:hidden">
+
+  <div style="display:flex;gap:18px;align-items:flex-start;flex:none">
+    <div style="flex:0 0 176px;display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:#c8363c;color:#fff">
+      <span style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;flex:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21V4M6 4h11l-2 4 2 4H6"/></svg></span>
+      <span><b style="display:block;font-size:15px;line-height:1.2">Race Setups</b><span style="display:block;font-size:11px;line-height:1.25;margin-top:2px">Where it all comes together</span></span>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:12px 24px;flex:1;min-width:0">
+      <div class="grp"><span class="glabel">Systems</span>
+        <div class="chips">
+          <button type="button" class="chip" style="--c:#f2b705"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2.5 20h19z"/><path d="M12 10v4M12 17v.5"/></svg>Penalty Systems</button>
+          <button type="button" class="chip" style="--c:#e5484d"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 6a4 4 0 0 0 5 5l-9 9a2.1 2.1 0 0 1-3-3l9-9a4 4 0 0 0-2-2z"/></svg>Damage Systems</button>
+          <button type="button" class="chip" style="--c:#9b4dff"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>Tyre Wear Systems</button>
+          <button type="button" class="chip" style="--c:#4c9aff"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 16a4 4 0 0 1 0-8 5 5 0 0 1 9.6 1A3.5 3.5 0 0 1 17 16z"/><path d="M9 19v2M13 19v2"/></svg>Weather Systems</button>
+          <button type="button" class="chip" style="--c:#ff7a1a"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>Safety Car Systems</button>
+        </div>
+      </div>
+      <div class="grp"><span class="glabel">Setups</span>
+        <div class="chips">
+          <button type="button" class="chip" style="--c:#c4803f"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 0 1-14 5M4 12a8 8 0 0 1 14-5"/><path d="M18 3v4h-4M6 21v-4h4"/></svg>Rotation Setups</button>
+          <button type="button" class="chip" style="--c:#2fb86a"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="9" height="18" rx="1.5"/><path d="M14 9h2.5a1.5 1.5 0 0 1 1.5 1.5V16a1.5 1.5 0 0 0 3 0V8l-3-3M7.5 8h4"/></svg>Fuel Setups</button>
+          <button type="button" class="chip on" style="--c:#ec5f9a"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v6a4 4 0 0 1-8 0zM8 6H4v1a3 3 0 0 0 4 3M16 6h4v1a3 3 0 0 1-4 3M12 14v4M8 21h8"/></svg>Championships</button>
+        </div>
+      </div>
+      <div class="grp"><span class="glabel">Extras</span>
+        <div class="chips">
+          <button type="button" class="chip" style="--c:#e8e6e1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M6 20h12M5 7h14M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/></svg>Balance of Power</button>
+          <button type="button" class="chip" style="--c:#1fb5ad"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>Time Tokens</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#222831;border:1px solid #343b47;border-top:3px solid #ec5f9a;border-radius:10px;padding:22px 24px;display:flex;flex-direction:column;gap:18px;flex:none">
+    <div style="display:flex;gap:14px;align-items:flex-start;justify-content:space-between">
+      <div style="display:flex;gap:14px;align-items:flex-start">
+        <span style="width:34px;height:34px;border-radius:8px;background:color-mix(in srgb,#ec5f9a 20%,#222831);color:#ec5f9a;display:flex;align-items:center;justify-content:center;flex:none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v6a4 4 0 0 1-8 0zM8 6H4v1a3 3 0 0 0 4 3M16 6h4v1a3 3 0 0 1-4 3M12 14v4M8 21h8"/></svg></span>
+        <div style="max-width:620px">
+          <div style="font-size:22px;font-weight:700">Championships</div>
+          <div class="note" style="margin-top:6px">A championship is a season: a list of rounds, and in every round a list of sessions (practice, qualifying, a race), each with its own race setup. The points of the races add up in standings for the drivers and the teams.</div>
+        </div>
+      </div>
+      <button type="button" class="btn" style="height:40px;padding:0 18px;background:#ec5f9a;border-color:#ec5f9a;color:#1a0a12;font-weight:700;flex:none">New championship</button>
+    </div>
+
+    <div class="card">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:10px"><b style="font-size:17px">Club Cup 2026</b><span class="pill" style="background:color-mix(in srgb,#ec5f9a 25%,#171b21);color:#ffb3d1">Running</span></div>
+        <div class="note" style="margin-top:4px">6 rounds &middot; 3 sessions a round &middot; 6 drivers &middot; 3 teams</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:12px"><span class="dot done"></span><span class="dot done"></span><span class="dot done"></span><span class="dot done"></span><span class="dot done"></span><span class="dot now"></span><span class="note" style="margin-left:6px">5 of 6 rounds driven</span></div>
+        <div class="note" style="margin-top:10px"><b>Next:</b> Round 6 (final), Qualifying on Brands Hatch &nbsp;&middot;&nbsp; <b>Leads:</b> Maria, 89 points (Dutch 84)</div>
+      </div>
+      <div style="display:flex;gap:8px;flex:none"><button type="button" class="btn">Standings</button><button type="button" class="btn">Edit</button><button type="button" class="btn">Copy</button></div>
+    </div>
+
+    <div class="card">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:10px"><b style="font-size:17px">Winter Series 2025</b><span class="pill" style="background:#2f3540;color:#c9ced6">Finished</span></div>
+        <div class="note" style="margin-top:4px">4 rounds &middot; 2 sessions a round &middot; 5 drivers &middot; 2 teams</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:12px"><span class="dot done"></span><span class="dot done"></span><span class="dot done"></span><span class="dot done"></span><span class="note" style="margin-left:6px">4 of 4 rounds driven</span></div>
+        <div class="note" style="margin-top:10px"><b>Champion:</b> Dutch, 120 points &nbsp;&middot;&nbsp; <b>Team champion:</b> Blue Arrows</div>
+      </div>
+      <div style="display:flex;gap:8px;flex:none"><button type="button" class="btn">Standings</button><button type="button" class="btn">Edit</button><button type="button" class="btn">Copy</button></div>
+    </div>
+
+    <div class="card">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:10px"><b style="font-size:17px">Summer Sprint</b><span class="pill" style="background:#2b323d;color:#98a0ab;border:1px solid #4a5260">Not started</span></div>
+        <div class="note" style="margin-top:4px">4 rounds &middot; 2 sessions a round &middot; 4 drivers &middot; no teams</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:12px"><span class="dot todo"></span><span class="dot todo"></span><span class="dot todo"></span><span class="dot todo"></span><span class="note" style="margin-left:6px">0 of 4 rounds driven</span></div>
+      </div>
+      <div style="display:flex;gap:8px;flex:none"><button type="button" class="btn">Edit</button><button type="button" class="btn">Copy</button></div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1000,"height":900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-19T20:00:00Z" },
+  "title": "Championship mock-up",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 1000, "h": 900, "title": "1. Race Setup: the Championships sub-tab" },
+    "Rounds.dc.html": { "x": 1080, "y": 0, "w": 1000, "h": 1500, "title": "2. Championship: name, rounds and sessions" },
+    "Points.dc.html": { "x": 2160, "y": 0, "w": 1000, "h": 1640, "title": "3. Championship: points, drops and roster" },
+    "Home.dc.html": { "x": 0, "y": 2000, "w": 1100, "h": 920, "title": "4. Home: the next session" },
+    "Standings.dc.html": { "x": 1180, "y": 2000, "w": 1100, "h": 1060, "title": "5. Results and Records: the standings" },
+    "After.dc.html": { "x": 2360, "y": 2000, "w": 1000, "h": 1000, "title": "6. After the race: awarding the points" }
+  },
+  "order": ["Main.dc.html", "Rounds.dc.html", "Points.dc.html", "Home.dc.html", "Standings.dc.html", "After.dc.html"],
+  "notes": {
+    "t1": { "x": 0, "y": -300, "text": "Championship: setting it up (Race Setup tab)", "kind": "title1", "maxW": 3160 },
+    "t2": { "x": 0, "y": 1700, "text": "Championship: racing it, and the standings", "kind": "title1", "maxW": 3360 }
+  },
+  "designSystems": []
+}

@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Race Director, 2 lanes</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0;background:#171b21}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid #e8e6e1;outline-offset:2px}
+.tnum{font-variant-numeric:tabular-nums}
+</style>
+</helmet>
+<div style="width:1440px;height:580px;box-sizing:border-box;padding:24px;background:#171b21;color:#e8e6e1;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;gap:12px">
+
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;flex:none">
+    <div>
+      <div style="font-size:12px;color:#98a0ab">Race screen</div>
+      <div style="font-size:22px;font-weight:700;margin-top:2px">Race: Saturday club night, heat 2</div>
+    </div>
+    <div style="font-size:13px;color:#98a0ab">Lap 9 of 20 · Weather: <span style="color:#7fb7ff;font-weight:600">Dry</span></div>
+  </div>
+
+  <div style="height:40px;flex:none;box-sizing:border-box;display:flex;align-items:center;gap:10px;padding:0 14px;background:#16352a;border:1px solid #2a5a47;border-left:4px solid #3ecf8e;border-radius:8px">
+    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4" fill="none" stroke="#3ecf8e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <strong style="font-size:14px">Track actions</strong>
+    <span style="font-size:12px;color:#98a0ab">Lap, pit and call buttons for each lane</span>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:24px;height:52px;flex:none;box-sizing:border-box;padding:0 16px;background:#2b323d;border:1px solid #343b47;border-radius:10px">
+    <div style="display:flex;align-items:center;gap:14px">
+      <div style="font-size:16px;font-weight:700">Race Director</div>
+      <span style="font-size:12px;color:#98a0ab">Last: <span style="color:#e8e6e1">Bjornie +5 s race time</span></span>
+      <button type="button" style="height:32px;padding:0 14px;border-radius:6px;border:1px solid #4a5260;background:#222831;color:#e8e6e1;font-size:13px;font-weight:600">Undo</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#7fb7ff">WEATHER</span>
+      <div role="group" aria-label="Weather" style="display:flex;border:1px solid #3b4350;border-radius:6px;overflow:hidden;height:32px">
+        <button type="button" aria-pressed="true" style="width:68px;border:0;font-size:13px;background:#4c9aff;color:#0d1620;font-weight:700">Dry</button>
+        <button type="button" aria-pressed="false" style="width:68px;border:0;font-size:13px;background:transparent;color:#c9ced6">Cloudy</button>
+        <button type="button" aria-pressed="false" style="width:68px;border:0;font-size:13px;background:transparent;color:#c9ced6">Wet</button>
+        <button type="button" aria-pressed="false" style="width:76px;border:0;font-size:13px;background:transparent;color:#c9ced6">Clearing</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:460px 460px minmax(0, 1fr);gap:12px;flex:1;min-height:0">
+
+    <sc-for list="{{lanes}}" as="lane" hint-placeholder-count="2">
+    <div style="position:relative;box-sizing:border-box;background:#222831;border:1px solid #343b47;border-top:4px solid {{lane.top}};border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px">
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;height:36px">
+        <div style="display:flex;align-items:center;gap:10px;min-width:0">
+          <span class="tnum" style="width:32px;height:32px;border-radius:8px;background:#343b47;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex:none">{{lane.n}}</span>
+          <span style="font-size:17px;font-weight:600">{{lane.name}}</span>
+          <span style="font-size:12px;color:#98a0ab;white-space:nowrap">{{lane.car}}</span>
+        </div>
+        <button type="button" aria-label="Change the tyres of {{lane.name}}" style="width:104px;height:32px;border-radius:6px;border:1px solid #4a5260;background:#2b323d;color:#e8e6e1;display:flex;align-items:center;justify-content:space-between;padding:0 10px;flex:none">
+          <span style="width:20px;height:20px;border-radius:50%;box-sizing:border-box;border:2px solid {{lane.ring}};font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center">{{lane.tyre}}</span>
+          <span class="tnum" style="font-size:13px;font-weight:600">{{lane.tyrePct}}</span>
+          <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5l3.5 3.5 3.5-3.5" fill="none" stroke="#e8e6e1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:6px;min-height:24px">
+        <sc-if value="{{lane.clear}}" hint-placeholder-val="{{ false }}">
+          <span style="font-size:12px;font-weight:600;padding:3px 10px;border-radius:12px;background:#173a2b;color:#6fe0ae">All clear</span>
+        </sc-if>
+        <sc-if value="{{lane.hasPen}}" hint-placeholder-val="{{ false }}">
+          <span style="font-size:12px;font-weight:600;padding:3px 10px;border-radius:12px;background:#4a3d12;color:#ffd466">{{lane.penText}}</span>
+        </sc-if>
+        <sc-if value="{{lane.hasDmg}}" hint-placeholder-val="{{ false }}">
+          <span style="font-size:12px;font-weight:600;padding:3px 10px;border-radius:12px;background:#512426;color:#ffb3b6">{{lane.dmgText}}</span>
+        </sc-if>
+        <sc-if value="{{lane.hasFail}}" hint-placeholder-val="{{ false }}">
+          <span style="font-size:12px;font-weight:600;padding:3px 10px;border-radius:12px;background:#5c2b30;color:#ffc9cb">{{lane.failText}}</span>
+        </sc-if>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:10px 12px">
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#f2b705;margin-bottom:4px">PENALTY POINTS</div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <button type="button" aria-label="Take a penalty point back from {{lane.name}}" style="width:36px;height:36px;border-radius:6px;border:1px solid #6b5a1a;background:#4a3d12;color:#fff;font-size:20px;font-weight:700;line-height:1">−</button>
+            <button type="button" aria-label="Pick an amount of penalty points for {{lane.name}}" class="tnum" style="flex:1;min-width:0;height:36px;border-radius:6px;border:1px solid {{lane.valLine}};background:#1c2128;color:#e8e6e1;font-size:19px;font-weight:700">{{lane.pts}}</button>
+            <button type="button" aria-label="Give {{lane.name}} a penalty point" style="width:36px;height:36px;border-radius:6px;border:1px solid transparent;background:#f2b705;color:#111418;font-size:20px;font-weight:700;line-height:1">+</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#f5a04a;margin-bottom:4px">RACE TIME</div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <button type="button" aria-label="Take 5 seconds off the race time of {{lane.name}}" style="width:36px;height:36px;border-radius:6px;border:1px solid #6b4a1c;background:#4a3214;color:#fff;font-size:20px;font-weight:700;line-height:1">−</button>
+            <button type="button" aria-label="Pick an amount of seconds for {{lane.name}}" class="tnum" style="flex:1;min-width:0;height:36px;border-radius:6px;border:1px solid #343b47;background:#1c2128;color:#e8e6e1;font-size:19px;font-weight:700;white-space:nowrap">{{lane.time}}</button>
+            <button type="button" aria-label="Add 5 seconds to the race time of {{lane.name}}" style="width:36px;height:36px;border-radius:6px;border:1px solid transparent;background:#f08a24;color:#111418;font-size:20px;font-weight:700;line-height:1">+</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#b8a3ff;margin-bottom:4px">LAPS</div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <button type="button" aria-label="Take a lap off {{lane.name}}" style="width:36px;height:36px;border-radius:6px;border:1px solid #4a4272;background:#352f55;color:#fff;font-size:20px;font-weight:700;line-height:1">−</button>
+            <button type="button" aria-label="Pick an amount of laps for {{lane.name}}" class="tnum" style="flex:1;min-width:0;height:36px;border-radius:6px;border:1px solid #343b47;background:#1c2128;color:#e8e6e1;font-size:19px;font-weight:700">{{lane.laps}}</button>
+            <button type="button" aria-label="Give {{lane.name}} a lap" style="width:36px;height:36px;border-radius:6px;border:1px solid transparent;background:#9b7bff;color:#111418;font-size:20px;font-weight:700;line-height:1">+</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#ff7b80;margin-bottom:4px">DAMAGE</div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <button type="button" aria-label="Take a damage point back from {{lane.name}}" style="width:36px;height:36px;border-radius:6px;border:1px solid #7a3639;background:#512426;color:#fff;font-size:20px;font-weight:700;line-height:1">−</button>
+            <button type="button" aria-label="Pick an amount of damage points for {{lane.name}}" class="tnum" style="flex:1;min-width:0;height:36px;border-radius:6px;border:1px solid #343b47;background:#1c2128;color:#e8e6e1;font-size:19px;font-weight:700">{{lane.dmg}}</button>
+            <button type="button" aria-label="Give {{lane.name}} a damage point" style="width:36px;height:36px;border-radius:6px;border:1px solid transparent;background:#e5484d;color:#111418;font-size:20px;font-weight:700;line-height:1">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:8px">
+        <button type="button" aria-label="Named penalties for {{lane.name}}" style="height:36px;border-radius:6px;border:1px solid #4a5260;border-bottom:3px solid #f2b705;background:#2b323d;color:#e8e6e1;font-size:13px;font-weight:600">Penalty ▾</button>
+        <button type="button" aria-label="Damage incidents for {{lane.name}}" style="height:36px;border-radius:6px;border:1px solid #4a5260;border-bottom:3px solid #e5484d;background:#2b323d;color:#e8e6e1;font-size:13px;font-weight:600">Damage ▾</button>
+        <button type="button" aria-label="Failure for {{lane.name}}" style="height:36px;border-radius:6px;border:1px solid #4a5260;border-bottom:3px solid #ff8f94;background:#2b323d;color:#e8e6e1;font-size:13px;font-weight:600">{{lane.failBtn}}</button>
+      </div>
+
+      <div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#e8e6e1;margin-bottom:4px">BALANCE OF POWER <span style="font-weight:500;letter-spacing:0;color:#98a0ab">{{lane.bopSub}}</span></div>
+        <div role="group" aria-label="Balance of Power for {{lane.name}}" style="display:flex;border:1px solid #3b4350;border-radius:6px;overflow:hidden;height:36px">
+          <button type="button" aria-pressed="{{lane.bopHp}}" style="flex:1;border:0;font-size:12px;{{lane.bopH}}">Hinder</button>
+          <button type="button" aria-pressed="{{lane.bopOp}}" style="flex:1;border:0;font-size:12px;{{lane.bopO}}">Off</button>
+          <button type="button" aria-pressed="{{lane.bopAp}}" style="flex:1;border:0;font-size:12px;{{lane.bopA}}">Auto</button>
+          <button type="button" aria-pressed="{{lane.bopEp}}" style="flex:1;border:0;font-size:12px;{{lane.bopE}}">Help</button>
+        </div>
+      </div>
+
+      <sc-if value="{{lane.pop}}" hint-placeholder-val="{{ false }}">
+        <div role="dialog" aria-label="Penalty points for {{lane.name}}" style="position:absolute;top:158px;left:14px;width:292px;box-sizing:border-box;background:#2b323d;border:1px solid #4a5260;border-radius:10px;padding:12px;box-shadow:0 10px 28px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:8px;z-index:2">
+          <span aria-hidden="true" style="position:absolute;top:-6px;left:96px;width:10px;height:10px;background:#2b323d;border-left:1px solid #4a5260;border-top:1px solid #4a5260;transform:rotate(45deg)"></span>
+          <div style="display:flex;align-items:baseline;justify-content:space-between">
+            <span style="font-size:13px;font-weight:600">Penalty points · {{lane.name}}</span>
+            <span class="tnum" style="font-size:12px;color:#98a0ab">{{lane.pts}} now</span>
+          </div>
+          <div style="display:flex;gap:6px">
+            <sc-for list="{{plusRow}}" as="b" hint-placeholder-count="3">
+              <button type="button" class="tnum" style="flex:1;height:36px;border-radius:6px;border:1px solid transparent;background:#f2b705;color:#111418;font-size:15px;font-weight:700">{{b}}</button>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:6px">
+            <sc-for list="{{minusRow}}" as="b" hint-placeholder-count="3">
+              <button type="button" class="tnum" style="flex:1;height:36px;border-radius:6px;border:1px solid #6b5a1a;background:#4a3d12;color:#fff;font-size:15px;font-weight:700">{{b}}</button>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="text" inputmode="numeric" value="4" aria-label="Other amount" class="tnum" style="flex:1;min-width:0;height:36px;box-sizing:border-box;border-radius:6px;border:1px solid #6a7382;background:#171b21;color:#e8e6e1;font-family:inherit;font-size:15px;font-weight:600;padding:0 10px">
+            <button type="button" style="width:52px;height:36px;border-radius:6px;border:1px solid transparent;background:#f2b705;color:#111418;font-size:13px;font-weight:700">Give</button>
+            <button type="button" style="width:76px;height:36px;border-radius:6px;border:1px solid #6b5a1a;background:#4a3d12;color:#fff;font-size:13px;font-weight:700">Take back</button>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+    </sc-for>
+
+    <div style="box-sizing:border-box;background:#1c2128;border:1px solid #343b47;border-top:4px solid #4a5260;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0">
+      <div style="display:flex;align-items:center;justify-content:space-between;height:36px">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#98a0ab">LOG</span>
+        <span class="tnum" style="font-size:12px;color:#98a0ab">7 entries</span>
+      </div>
+      <div role="group" aria-label="Filter the log by lane" style="display:flex;gap:6px">
+        <sc-for list="{{filters}}" as="c" hint-placeholder-count="3">
+          <button type="button" aria-pressed="{{c.sel}}" style="height:28px;padding:0 12px;border-radius:14px;font-size:12px;font-weight:600;{{c.st}}">{{c.t}}</button>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px;overflow:hidden">
+        <sc-for list="{{log}}" as="e" hint-placeholder-count="7">
+          <div style="display:grid;grid-template-columns:62px 22px minmax(0, 1fr) 10px;align-items:center;gap:10px;height:30px;padding:0 8px;border-radius:6px;{{e.st}}">
+            <span class="tnum" style="font-size:12px;color:#98a0ab">{{e.at}}</span>
+            <span class="tnum" style="width:22px;height:22px;border-radius:6px;background:#343b47;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">{{e.n}}</span>
+            <span style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{e.t}}</span>
+            <span style="width:10px;height:10px;border-radius:50%;background:{{e.c}}"></span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":580}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const sel = 'background:#e8e6e1;color:#171b21;font-weight:700;';
+    const idle = 'background:transparent;color:#c9ced6;font-weight:500;';
+    const ringOf = { S: '#e5484d', M: '#f2b705', H: '#e8e6e1', I: '#3ecf8e', W: '#4c9aff' };
+    const rows = [
+      { n: 1, name: 'James', car: 'Ford GT40', pts: '0', time: '0 s', laps: '0', dmg: '0', pen: '', dmgText: '', fail: '', bop: 'off', bopSub: 'off', tyre: 'S', tyrePct: '62%' },
+      { n: 2, name: 'Bjornie', car: 'Porsche 956', pts: '3', time: '+5 s', laps: '0', dmg: '2', pen: '+5 s · Drivethrough to serve', dmgText: 'Medium Deslot', fail: 'Slow Puncture', bop: 'auto', bopSub: 'auto, hinder 12%', tyre: 'M', tyrePct: '24%', attn: true, pop: true }
+    ];
+    const lanes = rows.map(r => ({
+      ...r,
+      pop: !!r.pop,
+      top: r.attn ? '#f2b705' : '#343b47',
+      valLine: r.pop ? '#e8e6e1' : '#343b47',
+      clear: !r.pen && !r.dmgText && !r.fail,
+      hasPen: !!r.pen, penText: r.pen,
+      hasDmg: !!r.dmgText,
+      hasFail: !!r.fail, failText: r.fail,
+      failBtn: r.fail ? 'Clear ✕' : 'Failure ▾',
+      bopH: r.bop === 'hinder' ? sel : idle, bopO: r.bop === 'off' ? sel : idle, bopA: r.bop === 'auto' ? sel : idle, bopE: r.bop === 'help' ? sel : idle,
+      bopHp: r.bop === 'hinder', bopOp: r.bop === 'off', bopAp: r.bop === 'auto', bopEp: r.bop === 'help',
+      ring: ringOf[r.tyre]
+    }));
+    const filterRows = [{ t: 'All lanes', sel: true }, { t: '1 James' }, { t: '2 Bjornie' }];
+    const filters = filterRows.map(c => ({
+      t: c.t, sel: !!c.sel,
+      st: c.sel ? 'border:1px solid #e8e6e1;background:#e8e6e1;color:#171b21;' : 'border:1px solid #4a5260;background:transparent;color:#e8e6e1;'
+    }));
+    const pen = '#f2b705', tim = '#f08a24', dmg = '#e5484d', fal = '#ff8f94', none = '#4a5260';
+    const logRows = [
+      { at: '21:04:12', n: 2, t: 'Bjornie +5 s race time', c: tim, latest: true },
+      { at: '20:58:03', n: 2, t: 'Bjornie Slow Puncture given', c: fal },
+      { at: '20:55:31', n: 2, t: 'Bjornie Medium Deslot +2', c: dmg },
+      { at: '20:49:47', n: 2, t: 'Bjornie penalty point +3 (now 3)', c: pen },
+      { at: '20:47:02', n: 1, t: 'James penalty point +1 (now 1)', c: pen },
+      { at: '20:46:15', n: 1, t: 'James penalty point −1 (now 0)', c: pen },
+      { at: '20:40:00', n: '·', t: 'Race started', c: none }
+    ];
+    const log = logRows.map(e => ({ ...e, st: e.latest ? 'background:#2b323d;' : '' }));
+    return { lanes, filters, log, plusRow: ['+1', '+2', '+5'], minusRow: ['−1', '−2', '−5'] };
+  }
+}
+</script>
+</body>
+</html>

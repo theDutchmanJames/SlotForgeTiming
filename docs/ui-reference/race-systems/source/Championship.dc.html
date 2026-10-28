@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Championship editor</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./sys.css">
+<link rel="stylesheet" href="./sys2.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="win ss-ch" style="width: 1240px;font-family: Inter, system-ui, sans-serif; color: #e8e6e1">
+
+<div class="top">
+<div class="tile"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v5.5a5 5 0 0 1-10 0zM7 6H4v1.5A3 3 0 0 0 7 10.5M17 6h3v1.5a3 3 0 0 1-3 3M12 14.5v3M8 20.5h8M9.5 17.5h5"/><path d="M12 6.2l.8 1.6 1.7.2-1.3 1.2.3 1.7-1.5-.8-1.5.8.3-1.7-1.3-1.2 1.7-.2z"/></svg></div>
+<div class="grow">
+<div class="eyebrow">Championship</div>
+<h1 class="name">Thursday Cup 2026</h1>
+<div class="pills">
+<span class="pill hi">Round 3 is next</span>
+<span class="pill">5 rounds</span>
+<span class="pill">16 sessions</span>
+<span class="pill">8 drivers</span>
+<span class="pill">Best 4 of 5 count</span>
+</div>
+</div>
+<button class="ib" aria-label="Undo" title="Undo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+<button class="ib" aria-label="Redo" title="Redo" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
+<span class="status"><span class="dot"></span>Ready to use</span>
+</div>
+<div class="body">
+
+<div class="rail">
+<div class="cap">This championship</div>
+<button class="ri on"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg><span><span class="t">Rounds</span><span class="s">5 rounds · 16 sessions</span></span><span class="dot sp" role="img" aria-label="Filled in"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l2.4 5 5.4.7-4 3.8 1 5.4-4.8-2.7-4.8 2.7 1-5.4-4-3.8 5.4-.7z"/></svg><span><span class="t">Points table</span><span class="s">25-18-15-12-10-8-6-4-2-1</span></span><span class="dot sp" role="img" aria-label="Filled in"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 15.5a8.5 8.5 0 0 1 17 0v2.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1zM11 11.5h9.5"/><path d="M7 19v1.5M17 19v1.5"/></svg><span><span class="t">Roster</span><span class="s">8 drivers · 3 teams</span></span><span class="dot sp" role="img" aria-label="Filled in"></span></button>
+<div class="cap" style="margin-top: 14px">Only if you need it</div>
+<button class="ri opt"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3L5 14h6l-1 7 8-11h-6z"/></svg><span><span class="t">Bonus points</span><span class="s">Fastest lap +1</span></span><span class="dot sp" role="img" aria-label="Filled in"></span></button>
+<button class="ri opt"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg><span><span class="t">Dropped results</span><span class="s">Best 4 of 5 count</span></span><span class="dot sp" role="img" aria-label="Filled in"></span></button>
+<button class="ri opt"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2A5 5 0 0 1 21 19"/></svg><span><span class="t">Teams, ties, sprints</span><span class="s">Standard</span></span><span class="dot off sp" role="img" aria-label="Nothing changed from the standard"></span></button>
+<div style="flex: 1"></div>
+<div class="used"><span class="eyebrow mute">Driven so far</span><span class="u"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>6 of 16 sessions</span><div class="pbar"><i style="width:37.5%"></i></div><span class="none">Round 3 is next. It shows on the Home tab.</span></div>
+</div>
+
+<div class="main">
+
+<div class="say">
+<div class="tile"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg></div>
+<div>
+<div class="eyebrow mute">In plain words</div>
+<p><b>Thursday Cup 2026</b> has <b>5 rounds</b> with <b>16 sessions</b>, and <b>8 drivers</b> in the roster. <b>6</b> sessions are driven; <b>round 3</b> is next. Only a race gives points: <b>25, 18, 15, 12, 10, 8, 6, 4, 2 and 1</b> for the first ten, and <b>1</b> more for the fastest lap of a driver who finishes in the first <b>10</b>. The <b>best 4 of 5</b> rounds count. A sprint gives half the points, rounded to the nearest. A tie goes to the driver with the most wins.</p>
+</div>
+</div>
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg></span>
+<span class="st">Rounds</span><span class="sn">The rounds, and the sessions you drive in each</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="note info"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>Every session uses one of your race setups, so a championship can mix a short sprint with a long final. <b>The kind comes from the race setup</b>: Race, Qualifying or Practice. A round with no track of its own uses the track of the race setup. A round that is driven keeps its results: changing its sessions afterwards does not change races that were saved. A Time Token Session can not be part of a championship.</span></div>
+<div class="row"><button class="btn sm"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> Add a round</button><button class="btn sm ghost" title="Gives every other round the sessions of round 1"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l9 5-9 5-9-5z"/><path d="M3 13.5l9 5 9-5"/></svg> Copy the sessions of round 1 to all rounds</button><span class="hint">A new round starts with the sessions of the round before it.</span></div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div class="rc"><div class="rch"><span class="rn">Round 1</span><div class="grow2"><span class="rname">Season opener</span><span class="rmeta">Zandvoort</span><span class="rmeta">3 sessions · 3 driven</span></div><span class="chpill done">Done</span><span class="chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></span></div></div>
+<div class="rc"><div class="rch"><span class="rn">Round 2</span><div class="grow2"><span class="rname">Night race</span><span class="rmeta">Monza</span><span class="rmeta">3 sessions · 3 driven</span></div><span class="chpill done">Done</span><span class="chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></span></div></div>
+<div class="rc next"><div class="rch"><span class="rn">Round 3</span><div class="grow2"><span class="rname">Sprint night</span><span class="rmeta">Spa</span><span class="rmeta">4 sessions</span></div><span class="chpill next">Next</span><span class="chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span></div><div class="rcb">
+<div class="cols3">
+<div class="fld"><label for="rn2">Round name</label><input id="rn2" class="fi" style="height:40px" value="Sprint night"></div>
+<div class="fld"><label>Track</label><div class="sel3" style="height:40px"><span>Spa</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div></div>
+<div class="fld"><label for="rd2">Date<small style="font-weight:400;color:#98a0ab;margin-left:6px">optional</small></label><input id="rd2" class="fi" style="height:40px" value="Thu 5 Nov 2026"></div>
+</div>
+<div class="q"><div class="l">Sessions of this round<small>in the order you drive them</small></div>
+<div class="ses h"><span></span><span>Race setup</span><span>Kind</span><span>Points</span><span></span></div>
+<div class="ses"><span class="sn2">1</span><div class="sel3"><span>Practice 10 minutes</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div><span class="tagk prac">Practice</span><span class="mute2">never gives points</span><div class="hacts"><button class="ib sm2" disabled aria-label="Move session 1 up" title="Move up"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button><button class="ib sm2" aria-label="Move session 1 down" title="Move down"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button><button class="ib sm2" aria-label="Remove session 1" title="Remove this session"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>
+<div class="ses"><span class="sn2">2</span><div class="sel3"><span>Qualifying 5 minutes</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div><span class="tagk qual">Qualifying</span><span class="mute2">sets the grid of the race</span><div class="hacts"><button class="ib sm2" aria-label="Move session 2 up" title="Move up"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button><button class="ib sm2" aria-label="Move session 2 down" title="Move down"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button><button class="ib sm2" aria-label="Remove session 2" title="Remove this session"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>
+<div class="ses"><span class="sn2">3</span><div class="sel3"><span>Sprint 8 laps</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div><span class="tagk race">Race</span><div class="sel3"><span>50% (a sprint)</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div><div class="hacts"><button class="ib sm2" aria-label="Move session 3 up" title="Move up"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button><button class="ib sm2" aria-label="Move session 3 down" title="Move down"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button><button class="ib sm2" aria-label="Remove session 3" title="Remove this session"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>
+<div class="ses"><span class="sn2">4</span><div class="sel3"><span>Feature race 20 laps</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div><span class="tagk race">Race</span><div class="sel3"><span>100% (full points)</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div><div class="hacts"><button class="ib sm2" aria-label="Move session 4 up" title="Move up"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button><button class="ib sm2" disabled aria-label="Move session 4 down" title="Move down"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button><button class="ib sm2" aria-label="Remove session 4" title="Remove this session"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>
+</div>
+<div class="row"><button class="btn sm"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> Add a session</button><button class="btn sm ghost"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg> Move this round up</button><button class="btn sm ghost"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg> Move this round down</button><span class="grow"></span><button class="btn sm danger"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg> Delete this round</button></div>
+</div>
+</div>
+<div class="rc"><div class="rch"><span class="rn">Round 4</span><div class="grow2"><span class="rname">Mountain loop</span><span class="rmeta">Brands Hatch</span><span class="rmeta">3 sessions</span></div><span class="chpill todo">To do</span><span class="chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></span></div></div>
+<div class="rc"><div class="rch"><span class="rn">Round 5</span><div class="grow2"><span class="rname">Final</span><span class="rmeta">Zandvoort</span><span class="rmeta">3 sessions</span></div><span class="chpill todo">To do</span><span class="chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></span></div></div>
+</div>
+
+</div>
+</div>
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l2.4 5 5.4.7-4 3.8 1 5.4-4.8-2.7-4.8 2.7 1-5.4-4-3.8 5.4-.7z"/></svg></span>
+<span class="st">Points table</span><span class="sn">How many points does each finishing place get?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="note info"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>Only a race gives points. They are worked out from the saved result of the race, and you award them after the race (a panel on the race screen and in Results and Records).</span></div>
+<div class="q"><div class="l">Start from a ready-made table<small>You can change every number.</small></div>
+<div class="presets"><button class="pre on">25-18-15-12-10-8-6-4-2-1</button><button class="pre">10-8-6-5-4-3-2-1</button><button class="pre">One point per car beaten</button><button class="pre">My own</button></div></div>
+<div class="pt">
+<div class="fld"><label for="pl0">1st</label><input id="pl0" class="fi num" type="number" value="25"></div>
+<div class="fld"><label for="pl1">2nd</label><input id="pl1" class="fi num" type="number" value="18"></div>
+<div class="fld"><label for="pl2">3rd</label><input id="pl2" class="fi num" type="number" value="15"></div>
+<div class="fld"><label for="pl3">4th</label><input id="pl3" class="fi num" type="number" value="12"></div>
+<div class="fld"><label for="pl4">5th</label><input id="pl4" class="fi num" type="number" value="10"></div>
+<div class="fld"><label for="pl5">6th</label><input id="pl5" class="fi num" type="number" value="8"></div>
+<div class="fld"><label for="pl6">7th</label><input id="pl6" class="fi num" type="number" value="6"></div>
+<div class="fld"><label for="pl7">8th</label><input id="pl7" class="fi num" type="number" value="4"></div>
+<div class="fld"><label for="pl8">9th</label><input id="pl8" class="fi num" type="number" value="2"></div>
+<div class="fld"><label for="pl9">10th</label><input id="pl9" class="fi num" type="number" value="1"></div>
+</div>
+<div class="row"><button class="btn sm"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> Add a place</button><button class="btn sm ghost">Remove the last place</button><span class="grow"></span>
+<div class="fld" style="flex-direction:row;align-items:center;gap:12px"><label for="rest">Every finisher after 10th gets</label><span class="in" style="min-width:0"><input id="rest" type="number" value="0"><span>points</span></span></div></div>
+<div class="hint">A car that was disqualified or did not finish gets no points for its place. A car that finished, even many laps down, counts as a finisher.</div>
+
+</div>
+</div>
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 15.5a8.5 8.5 0 0 1 17 0v2.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1zM11 11.5h9.5"/><path d="M7 19v1.5M17 19v1.5"/></svg></span>
+<span class="st">Roster</span><span class="sn">Who drives this championship?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="tb" style="--cols: 1.6fr 1.6fr 150px 36px">
+<div class="th"><span>Driver</span><span>Team</span><span>Joins in round</span><span></span></div>
+<div class="tr"><div class="tname"><span class="avs" style="--pc:#4c9aff">J</span>Jan</div><div class="sel3"><span>Red Fox</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div><span class="in" style="min-width:0;height:36px"><input type="number" value="1" style="width:50px"><span>round</span></span><button class="ib" aria-label="Remove Jan from the roster" title="Remove from the roster"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<div class="tr"><div class="tname"><span class="avs" style="--pc:#ff7a3d">E</span>Eva</div><div class="sel3"><span>Red Fox</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div><span class="in" style="min-width:0;height:36px"><input type="number" value="1" style="width:50px"><span>round</span></span><button class="ib" aria-label="Remove Eva from the roster" title="Remove from the roster"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<div class="tr"><div class="tname"><span class="avs" style="--pc:#3ecf8e">T</span>Tom</div><div class="sel3"><span>Blue Wave</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div><span class="in" style="min-width:0;height:36px"><input type="number" value="1" style="width:50px"><span>round</span></span><button class="ib" aria-label="Remove Tom from the roster" title="Remove from the roster"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<div class="tr"><div class="tname"><span class="avs" style="--pc:#f2b705">S</span>Sara</div><div class="sel3"><span>Blue Wave</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div><span class="in" style="min-width:0;height:36px"><input type="number" value="1" style="width:50px"><span>round</span></span><button class="ib" aria-label="Remove Sara from the roster" title="Remove from the roster"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<div class="tr"><div class="tname"><span class="avs" style="--pc:#a46bff">P</span>Pim</div><div class="sel3"><span>Green Hat</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div><span class="in" style="min-width:0;height:36px"><input type="number" value="1" style="width:50px"><span>round</span></span><button class="ib" aria-label="Remove Pim from the roster" title="Remove from the roster"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<div class="tr"><div class="tname"><span class="avs" style="--pc:#e5484d">N</span>Noor</div><div class="sel3"><span>Green Hat</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div><span class="in" style="min-width:0;height:36px"><input type="number" value="1" style="width:50px"><span>round</span></span><button class="ib" aria-label="Remove Noor from the roster" title="Remove from the roster"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<div class="tr"><div class="tname"><span class="avs" style="--pc:#1fb5ad">B</span>Bram</div><div class="sel3"><span>(no team)</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div><span class="in" style="min-width:0;height:36px"><input type="number" value="1" style="width:50px"><span>round</span></span><button class="ib" aria-label="Remove Bram from the roster" title="Remove from the roster"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<div class="tr"><div class="tname"><span class="avs" style="--pc:#ff6fb5">L</span>Lotte</div><div class="sel3"><span>Green Hat</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div><span class="in" style="min-width:0;height:36px"><input type="number" value="3" style="width:50px"><span>round</span></span><button class="ib" aria-label="Remove Lotte from the roster" title="Remove from the roster"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+</div>
+<div class="row" style="gap:12px"><div class="sel3" style="width:260px;color:#98a0ab"><span>Add a driver...</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div><div class="sel3" style="width:300px;color:#98a0ab"><span>Add all drivers of a team...</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div></div>
+<div class="sw"><button class="tg on" role="switch" aria-checked="true" aria-label="A driver who is not in the roster drives as a guest"></button><span><b>A driver who is not in the roster drives as a guest.</b> He gets no points, and the drivers behind him move up one place.<br><span class="hint">Switched off: the places stay as they are, and nobody moves up.</span></span></div>
+<div class="hint">The drivers come from Database &gt; Drivers and Teams. On the Home tab they are listed first in the driver boxes of a session of this championship; another driver drives as a guest. A driver who joins later is in the roster from that round.</div>
+
+</div>
+</div>
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3L5 14h6l-1 7 8-11h-6z"/></svg></span>
+<span class="st">Bonus points</span><span class="sn">Extra points for the fastest lap, the pole and the start</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="cols">
+<div class="fld"><label for="b1">Fastest lap of the race</label><span class="in" style="min-width:0;align-self:flex-start"><input id="b1" type="number" value="1"><span>points</span></span></div><div class="fld"><label for="b2">Only when the driver finishes in the first</label><span class="in" style="min-width:0;align-self:flex-start"><input id="b2" type="number" value="10"><span>places</span></span></div><div class="fld"><label for="b3">Pole position, fastest in qualifying</label><span class="in" style="min-width:0;align-self:flex-start"><input id="b3" type="number" value="0"><span>points</span></span></div><div class="fld"><label for="b4">Starting the race (every driver)</label><span class="in" style="min-width:0;align-self:flex-start"><input id="b4" type="number" value="0"><span>points</span></span></div></div>
+<div class="hint">Bonus points are added to the points of the race. The fastest lap is the best lap of a car that finished; the pole bonus goes to the driver who was fastest in the qualifying of the same round, if he starts the race.</div>
+
+</div>
+</div>
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></span>
+<span class="st">Dropped results</span><span class="sn">The worst round results that do not count</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="row" style="gap:28px;align-items:flex-end">
+<div class="fld"><label for="dr">Results that do not count, per driver and per team</label><span class="in" style="min-width:0;align-self:flex-start"><input id="dr" type="number" value="1"><span>worst</span></span></div>
+<div class="note good" style="flex:1"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg><span><b>Best 4 of 5 rounds count.</b> A dropped result is crossed out in the standings.</span></div></div>
+<div class="hint">Drivers and teams are dropped on their own: a team can drop a round that none of its drivers dropped.</div>
+
+</div>
+</div>
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2A5 5 0 0 1 21 19"/></svg></span>
+<span class="st">Teams, ties and sprints</span><span class="sn">Team points, who wins a tie, and what a sprint is worth</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="q"><div class="l">Team points in a race</div>
+<div class="cards c3"><button class="kc on"><span class="kt">The best drivers of the team</span><span class="kd">The two best finishers of the team count.</span></button>
+<button class="kc"><span class="kt">All drivers of the team</span><span class="kd">Everybody who drives adds points.</span></button>
+<button class="kc"><span class="kt">No team standings</span><span class="kd">Only the drivers get points.</span></button>
+</div></div>
+<div class="cols"><div class="fld"><label for="tb">How many drivers of a team count</label><span class="in" style="min-width:0;align-self:flex-start"><input id="tb" type="number" value="2"><span>drivers</span></span></div><div class="fld"><label for="tm">A driver needs at least this share of the laps of his team</label><span class="in" style="min-width:0;align-self:flex-start"><input id="tm" type="number" value="0"><span>% (0 = no minimum)</span></span></div></div>
+<div class="q"><div class="l">A race of teams gives the drivers who drove for a team<small>An Endurance Race, or a heat race for teams</small></div>
+<div class="cards c3"><button class="kc on"><span class="kt">The points of the team</span><span class="kd">Every driver who drove gets them.</span></button>
+<button class="kc"><span class="kt">A share of the points</span><span class="kd">By the laps each one drove.</span></button>
+<button class="kc"><span class="kt">Nothing</span><span class="kd">Only the team gets points.</span></button>
+</div></div>
+<div class="q"><div class="l">A tie in the standings is decided by</div>
+<div class="cards c3"><button class="kc on"><span class="kt">Most wins</span><span class="kd">Then most 2nd places, and so on.</span></button>
+<button class="kc"><span class="kt">The best result of the last round</span><span class="kd"></span></button>
+<button class="kc"><span class="kt">The best qualifying results</span><span class="kd">Most poles, then most 2nd places, and so on.</span></button>
+</div></div>
+<div class="q"><div class="l">A race at 50% (a sprint) gives half of the points, rounded<small>12.5 becomes 13</small></div>
+<div class="seg" style="align-self:flex-start"><button class="on">To the nearest</button><button>Up</button><button>Down</button><button>Not rounded</button></div></div>
+<div class="hint">A team that races as a team always gets the points of its place once, in the Teams standings. When two drivers or teams are still level, the order of the roster decides.</div>
+
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="foot">
+<span class="hint">Nothing is written until you press Save. Back asks first if something is not saved.</span>
+<span class="grow"></span>
+<button class="btn ghost">Back</button>
+<button class="btn hi">Save championship</button>
+</div>
+
+</div>
+<div style="width:1240px;font-family: Inter, system-ui, sans-serif; color: #e8e6e1" class="ss-ch">
+<div class="parts">
+<h2>The small parts</h2>
+<p class="lead">The states of a round, and what the page says when something is not right. Same dots as the other windows: green is filled in, open ring is nothing changed, amber needs a look.</p>
+<div class="pcols">
+<div class="col"><div class="cap2">A round is</div>
+<div class="rc"><div class="rch"><span class="rn">Round 1</span><div class="grow2"><span class="rname">Season opener</span><span class="rmeta">3 sessions · 3 driven</span></div><span class="chpill done">Done</span></div></div>
+<div class="rc next"><div class="rch"><span class="rn">Round 3</span><div class="grow2"><span class="rname">Sprint night</span><span class="rmeta">4 sessions</span></div><span class="chpill next">Next</span></div></div>
+<div class="rc"><div class="rch"><span class="rn">Round 4</span><div class="grow2"><span class="rname">Mountain loop</span><span class="rmeta">3 sessions</span></div><span class="chpill">To do</span></div></div>
+<div class="rc"><div class="rch"><span class="rn">Round 5</span><div class="grow2"><span class="rname">Final</span><span class="rmeta">no sessions</span></div><span class="chpill warn">Needs a look</span></div></div>
+</div>
+<div class="col"><div class="cap2">The kind of a session</div>
+<div class="row"><span class="tagk prac">Practice</span><span class="mute2">never gives points</span></div>
+<div class="row"><span class="tagk qual">Qualifying</span><span class="mute2">sets the grid of the race</span></div>
+<div class="row"><span class="tagk race">Race</span><span class="mute2">100% full points · 50% a sprint · None</span></div>
+<div class="cap2" style="margin-top:12px">A race setup that is not allowed</div>
+<div class="sel3" style="border-color:#8a6a2c;color:#ffcb7d"><span>Club night heat (a Time Token Session: not allowed)</span><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg></div>
+</div>
+<div class="col"><div class="cap2">When something is not right</div>
+<span class="status warn" style="width:max-content"><span class="dot"></span>3 things to look at</span>
+<div class="note"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.4v.1"/></svg><span>Round 5 has no sessions.</span></div>
+<div class="note"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.4v.1"/></svg><span>Round 4, session 3 has no race setup. Choose one in Race Setup &gt; Championships.</span></div>
+<div class="note"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.4v.1"/></svg><span>Round 2: its track was deleted, so the track of the race setup is used.</span></div>
+
+<div class="hint">The status in the header and the amber dot of Rounds in the rail follow these remarks. They are the same remarks the list of championships shows today.</div>
+</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":4600}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

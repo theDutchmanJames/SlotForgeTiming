@@ -1,0 +1,46 @@
+const assert=require('assert/strict'),T=require('../renderer/tyrewear'),Temp=require('../renderer/tyretemperature'),E=require('../renderer/engine'),W=require('../renderer/weather'),Ps=require('../renderer/pushsave'),LS=require('../renderer/liveshare'),Widgets=require('../renderer/tyrewidgets'),Res=require('../renderer/resources');
+const near=(a,b)=>assert(Math.abs(a-b)<1e-6,`${a} != ${b}`);
+const base={tempOn:'on',paceWear:'off',effect:'off',setsMode:'none',changeSeconds:2,tyres:{M:{wear:2}},temperature:{tyres:{M:{...Temp.DEFAULT}}}};
+const config=(rec={},other={})=>({type:'race',laps:1000,entries:[{lane:0,tyre:'M',driverId:'d',carId:'c',driverName:'Alex'}],fuel:{on:true,tank:10000,perLap:.1,rate:10,pitHold:1000},tyrewear:T.clean({...base,...rec}),...other});
+const race=(rec={},other={})=>{const r=E.createRace(config(rec,other));r.start(0);return r;};
+let n=0;function test(name,fn){fn();console.log('ok '+name);n++;}
+test('off by default and old records have identical wear',()=>{assert.equal(T.defaults().tempOn,'off');assert.equal(T.clean({}).temperature,null);const r=race({tempOn:'off'});r.cross(0,10000);near(r.cars[0].twLife,98);assert.equal(r.twOf(0,10000).temperature,null);});
+test('sanitization bounds every coefficient and enforces a nonempty range',()=>{const c=Temp.clean({ambient:{dry:Infinity},tyres:{M:{low:149,high:20,warm:-1,coldWear:999,start:NaN}}},['M']);assert.equal(c.tyres.M.high,150);assert.equal(c.tyres.M.warm,0);assert.equal(c.tyres.M.coldWear,200);assert.equal(c.tyres.M.start,20);assert.equal(c.ambient.dry,20);for(const junk of [null,[],false,42,'oops']){assert.deepEqual(Temp.clean({tyres:{M:junk}},['M']).tyres.M,Temp.DEFAULT);}});
+test('warmup reaches working range; sustained push gets hot; saving cools',()=>{const cfg=Temp.clean({},['M']);let t=20;for(let i=0;i<20;i++)t=Temp.lap(cfg,'M',t);near(t,75);for(let i=0;i<10;i++)t=Temp.lap(cfg,'M',t,'push');assert.equal(Temp.view(cfg,'M',t).state,'hot');for(let i=0;i<10;i++)t=Temp.lap(cfg,'M',t,'save');assert.equal(Temp.view(cfg,'M',t).state,'cold');assert.equal(Temp.view(cfg,'M',75).multiplier,1);});
+test('cooling is time based and cannot overshoot ambient',()=>{const cfg=Temp.clean({},['M']);near(Temp.cool(cfg,'M',90,60,'wet'),70);near(Temp.cool(cfg,'M',90,1e6,'wet'),15);near(Temp.cool(cfg,'M',10,60,'dry'),20);});
+test('heat intensity scales with the configured pace thresholds instead of jumping at tiny deviations',()=>{const cfg={mode:'median',pushAt:5,saveAt:10};near(Temp.intensity(cfg,{p:-.05,w:''}),.01);near(Temp.intensity(cfg,{p:5,w:''}),-.5);near(Temp.intensity(cfg,{p:-50,w:''}),1);near(Temp.intensity(cfg,{p:-5,w:'pit'}),0);near(Temp.lap(Temp.clean({},['M']),'M',75,.01),75.225);near(Temp.intensity({mode:'legacy',normal:4,saveAt:12},{p:2,w:''}),.5);});
+test('temperature wear is applied exactly once without altering measured laps',()=>{const r=race();r.cross(0,10000);near(r.cars[0].twTemp,32);near(r.cars[0].twLife,100-2*Temp.view(r.tyrewear.temperature,'M',26).multiplier);assert.equal(r.cars[0].laps[0],10000);assert.equal(r.cars[0].best,10000);});
+test('real Push & Save data changes the heat target and disabled Push & Save does not',()=>{const ps=Ps.clean({mode:'median',tyres:'on',fuel:'on',from:1,benchmark:'track',trackTarget:10});const r=race({}, {pushsave:ps});let t=0;for(let i=0;i<15;i++)r.cross(0,t+=9000);assert.equal(r.cars[0].psNow.k,'push');assert(r.cars[0].twTemp>90);r.setSystem('pushsave',false,t);for(let i=0;i<10;i++)r.cross(0,t+=9000);near(r.cars[0].twTemp,75);});
+test('yellow cooling is independent of tick frequency and yellow laps do not warm tyres',()=>{for(const step of [1000,60000]){const r=race();r.cars[0].twTemp=90;r.setFlag('yellow',0);for(let t=step;t<=60000;t+=step)r.tick(t);near(r.cars[0].twTemp,70);r.cross(0,60000);near(r.cars[0].twTemp,70);r.setFlag('yellow',60000);r.cross(0,70000);near(r.cars[0].twTemp,75);}});
+test('red pause cools without advancing lap clock; view is read-only',()=>{const r=race();r.cars[0].twTemp=90;r.setFlag('red',1000);const before=r.cars[0].twTemp;near(r.twOf(0,61000).temperature.value,70);near(r.cars[0].twTemp,before);r.resume(61000);near(r.cars[0].twTemp,70);assert.equal(r.elapsed(61000),1000);});
+test('stopping during a red pause preserves cooling and freezes the final temperature',()=>{const r=race();r.cars[0].twTemp=90;r.setFlag('red',1000);r.stop(61000);near(r.twOf(0,121000).temperature.value,70);assert.equal(r.elapsed(121000),1000);});
+test('recovery freezes offline time and resumes from the saved temperature',()=>{const r=race();r.cars[0].twTemp=90;r.pause(1000);const snap=r.snapshot(31000),next=E.createRace(config());assert(next.restore(snap));near(next.cars[0].twTemp,80);near(next.twOf(0,1000000).temperature.value,80);next.resume(1000000);near(next.cars[0].twTemp,80);});
+test('system off freezes thermal state and on does not apply missed cooling',()=>{const r=race();r.cars[0].twTemp=90;r.setSystem('tyrewear',false,0);r.setFlag('yellow',0);r.tick(60000);r.setSystem('tyrewear',true,60000);near(r.cars[0].twTemp,90);r.tick(90000);near(r.cars[0].twTemp,80);});
+test('completed pit changes reset temperature once; exhausted sets do not',()=>{
+ const r=race();r.cars[0].twTemp=90;r.block(0,10000);r.tick(12500);near(r.cars[0].twTemp,20);r.cars[0].twTemp=60;r.tick(13000);assert(r.cars[0].twTemp>59);
+ const s=Res.prepare({id:'r',...Res.clean({owner:'car',tyres:{M:1}})},{runId:'r'}),limited=race({}, {resources:s});limited.cars[0].twTemp=90;limited.block(0,10000);limited.tick(12500);assert(limited.cars[0].twTemp>70);assert.equal(limited.cars[0].twStops,0);
+});
+test('early pit exit cools but does not reset to a fresh-set temperature',()=>{const r=race({changeSeconds:20});r.cars[0].twTemp=90;r.block(0,10000);r.tick(11500);const hot=r.cars[0].twTemp;r.unblock(0,11500);assert(hot>70);assert.equal(r.cars[0].twStops,0);});
+test('custom compounds have separate parameters and runtime state',()=>{const code='C_1234567890ABCDEF',rec={tyres:{[code]:{name:'Club slick',icon:'M',cls:'dry',wear:1}},temperature:{tyres:{[code]:{...Temp.DEFAULT,start:50,warm:5}}}};const r=race(rec,{entries:[{lane:0,tyre:code}]});r.cross(0,10000);near(r.cars[0].twTemp,55);});
+test('weather ambient only applies with an active weather system',()=>{const r=race({}, {weather:W.clean({startMode:'manual',airTempWet:15})});r.cars[0].twTemp=90;r.wxSet('wet',0,'director');r.setFlag('yellow',0);r.tick(600000);near(r.cars[0].twTemp,15);r.setSystem('weather',false,600000);r.tick(660000);near(r.cars[0].twTemp,20);});
+test('widget view exposes simulation state and optional text',()=>{const r=race(),row=T.view(r,[0],0).rows[0];assert.equal(row.temperature.label,'Cold');assert(Widgets.rowHtml(row,{showTemperature:true}).html.includes('Simulated: Cold'));assert(!Widgets.rowHtml(row,{showTemperature:false}).html.includes('Simulated:'));});
+test('all selectable tyre widget styles honour the temperature toggle',()=>{const r=race(),row=T.view(r,[0],0).rows[0];for(const look of ['wear','ring','number','bar'])for(const dir of ['horizontal','vertical']){assert(Widgets.rowHtml(row,{look,dir,showTemperature:true}).html.includes('Simulated: Cold'));assert(!Widgets.rowHtml(row,{look,dir,showTemperature:false}).html.includes('Simulated:'));}});
+test('shared display remains read-only, agrees during pauses and keeps the frozen thermal profile',()=>{
+ const r=race();r.cars[0].twTemp=90;r.pause(1000);
+ const ctx={raceId:'thermal',eng:r,setup:{sessionType:'race'},layout:{widgets:[]},track:{},lanes:1,phase:'paused',now:31000,base:{personal:new Map(),track:Infinity},flash:new Map(),bestBy:new Map(),bestAll:Infinity};
+ const v=LS.viewer();v.feedStatic(JSON.parse(JSON.stringify(LS.packStatic(ctx))));v.feedDynamic(JSON.parse(JSON.stringify(LS.sender().pack(ctx,31000))),41000);
+ const e=v.shared(41000).eng;near(e.twOf(0,v.clock(41000)).temperature.value,80);near(e.cars[0].twTemp,90);assert.equal(e.tyrewear.temperature.tyres.M.warm,12);
+});
+test('zero-time service and fixed Service Stop use the same fresh-set reset',()=>{
+ const quick=race({changeSeconds:0});quick.cars[0].twTemp=90;quick.block(0,10000);quick.tick(11000);assert.equal(quick.cars[0].twStops,1);near(quick.cars[0].twTemp,20);
+ const fixed=race({changeSeconds:20},{pitControl:{mode:'manual',seconds:2,waitReturn:false}});fixed.cars[0].twTemp=90;fixed.block(0,10000);fixed.tick(11000);assert.equal(fixed.cars[0].twStops,0);fixed.tick(13000);assert.equal(fixed.cars[0].twStops,1);near(fixed.cars[0].twTemp,20);
+});
+test('a late zero-time pit tick cools from the actual fitting time, not the processing time',()=>{
+ const r=race({changeSeconds:0,temperature:{tyres:{M:{...Temp.DEFAULT,start:45}}}});r.block(0,10000);r.tick(41000);near(r.cars[0].twTemp,35);
+});
+test('weather air temperatures convert Fahrenheit and manual ambient overrides them',()=>{
+ const weather=W.clean({startMode:'manual',units:'imperial',airTempWet:50});
+ for(const source of ['weather','manual']){const r=race({temperature:{ambientSource:source,ambient:{wet:5}}},{weather});r.cars[0].twTemp=90;r.wxSet('wet',0,'director');r.setFlag('yellow',0);r.tick(600000);near(r.cars[0].twTemp,source==='weather'?10:5);}
+});
+console.log(`${n} tyre temperature integration groups passed`);
+

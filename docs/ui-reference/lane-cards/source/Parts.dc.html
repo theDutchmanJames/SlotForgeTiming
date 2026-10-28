@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Race Director, parts and states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0;background:#171b21}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid #e8e6e1;outline-offset:2px}
+.tnum{font-variant-numeric:tabular-nums}
+</style>
+</helmet>
+<div style="width:1440px;height:820px;box-sizing:border-box;padding:24px;background:#171b21;color:#e8e6e1;font-family:Inter,system-ui,sans-serif;display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));grid-template-rows:360px 1fr;gap:12px">
+
+  <div style="box-sizing:border-box;background:#1c2128;border:1px solid #343b47;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#98a0ab">STEPPER, ALL STATES</div>
+    <sc-for list="{{states}}" as="s" hint-placeholder-count="6">
+    <div style="display:flex;align-items:center;gap:0;height:36px">
+      <span style="width:108px;font-size:12px;color:#98a0ab;flex:none">{{s.label}}</span>
+      <button type="button" aria-disabled="{{s.minusOff}}" aria-label="Take back one" style="width:36px;height:36px;border-radius:6px;font-size:20px;font-weight:700;line-height:1;flex:none;{{s.minus}}">−</button>
+      <span class="tnum" style="width:52px;height:36px;box-sizing:border-box;margin:0 4px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:19px;font-weight:700;flex:none;{{s.valSt}}">{{s.value}}</span>
+      <button type="button" aria-disabled="{{s.plusOff}}" aria-label="Give one" style="width:36px;height:36px;border-radius:6px;font-size:20px;font-weight:700;line-height:1;flex:none;{{s.plus}}">+</button>
+      <sc-if value="{{s.hasTag}}" hint-placeholder-val="{{ false }}">
+        <span class="tnum" style="margin-left:10px;font-size:12px;font-weight:700;padding:3px 8px;border-radius:11px;{{s.tagSt}}">{{s.tag}}</span>
+      </sc-if>
+    </div>
+    </sc-for>
+  </div>
+
+  <div style="box-sizing:border-box;background:#1c2128;border:1px solid #343b47;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#98a0ab">AMOUNTS POP-UP (CLICK THE NUMBER)</div>
+    <div style="display:flex;align-items:center;gap:4px;height:36px">
+      <button type="button" aria-label="Take back" style="width:36px;height:36px;border-radius:6px;border:1px solid #6b5a1a;background:#4a3d12;color:#fff;font-size:20px;font-weight:700;line-height:1">−</button>
+      <button type="button" aria-label="Pick an amount for Bjornie, pop-up open" aria-expanded="true" class="tnum" style="width:84px;height:36px;border-radius:6px;border:1px solid #e8e6e1;background:#1c2128;color:#e8e6e1;font-size:19px;font-weight:700">3</button>
+      <button type="button" aria-label="Give one" style="width:36px;height:36px;border-radius:6px;border:1px solid transparent;background:#f2b705;color:#111418;font-size:20px;font-weight:700;line-height:1">+</button>
+    </div>
+    <div style="position:relative;margin-top:6px;box-sizing:border-box;background:#2b323d;border:1px solid #4a5260;border-radius:10px;padding:12px;box-shadow:0 10px 28px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:8px">
+      <span aria-hidden="true" style="position:absolute;top:-6px;left:82px;width:10px;height:10px;background:#2b323d;border-left:1px solid #4a5260;border-top:1px solid #4a5260;transform:rotate(45deg)"></span>
+      <div style="display:flex;align-items:baseline;justify-content:space-between">
+        <span style="font-size:13px;font-weight:600">Penalty points · Bjornie</span>
+        <span class="tnum" style="font-size:12px;color:#98a0ab">3 now</span>
+      </div>
+      <div style="display:flex;gap:6px">
+        <sc-for list="{{plusRow}}" as="b" hint-placeholder-count="3">
+          <button type="button" class="tnum" style="flex:1;height:36px;border-radius:6px;border:1px solid transparent;background:#f2b705;color:#111418;font-size:15px;font-weight:700">{{b}}</button>
+        </sc-for>
+      </div>
+      <div style="display:flex;gap:6px">
+        <sc-for list="{{minusRow}}" as="b" hint-placeholder-count="3">
+          <button type="button" class="tnum" style="flex:1;height:36px;border-radius:6px;border:1px solid #6b5a1a;background:#4a3d12;color:#fff;font-size:15px;font-weight:700">{{b}}</button>
+        </sc-for>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="text" inputmode="numeric" value="4" aria-label="Other amount" class="tnum" style="flex:1;min-width:0;height:36px;box-sizing:border-box;border-radius:6px;border:1px solid #6a7382;background:#171b21;color:#e8e6e1;font-family:inherit;font-size:15px;font-weight:600;padding:0 10px">
+        <button type="button" style="width:50px;height:36px;border-radius:6px;border:1px solid transparent;background:#f2b705;color:#111418;font-size:13px;font-weight:700">Give</button>
+        <button type="button" style="width:76px;height:36px;border-radius:6px;border:1px solid #6b5a1a;background:#4a3d12;color:#fff;font-size:13px;font-weight:700">Take back</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="box-sizing:border-box;background:#1c2128;border:1px solid #343b47;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#98a0ab">NAMED PENALTIES POP-UP</div>
+    <button type="button" aria-expanded="true" style="width:120px;height:36px;border-radius:6px;border:1px solid #e8e6e1;border-bottom:3px solid #f2b705;background:#2b323d;color:#e8e6e1;font-size:13px;font-weight:600">Penalty ▾</button>
+    <div style="position:relative;margin-top:6px;box-sizing:border-box;background:#2b323d;border:1px solid #4a5260;border-radius:10px;padding:12px;box-shadow:0 10px 28px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:6px">
+      <span aria-hidden="true" style="position:absolute;top:-6px;left:54px;width:10px;height:10px;background:#2b323d;border-left:1px solid #4a5260;border-top:1px solid #4a5260;transform:rotate(45deg)"></span>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:2px">
+        <span style="font-size:13px;font-weight:600">Serve in the pits · Bjornie</span>
+        <span class="tnum" style="font-size:12px;color:#98a0ab">3 points</span>
+      </div>
+      <sc-for list="{{named}}" as="n" hint-placeholder-count="3">
+        <button type="button" aria-disabled="{{n.off}}" style="box-sizing:border-box;height:48px;border-radius:6px;border:1px solid #4a5260;background:#222831;color:#e8e6e1;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px;text-align:left;{{n.st}}">
+          <span style="min-width:0">
+            <span style="display:block;font-size:14px;font-weight:600">{{n.name}}</span>
+            <span style="display:block;font-size:11px;color:#b3bac4">{{n.sub}}</span>
+          </span>
+          <span class="tnum" style="font-size:13px;font-weight:700;padding:3px 9px;border-radius:12px;background:#4a3d12;color:#ffd466;flex:none">{{n.cost}}</span>
+        </button>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="box-sizing:border-box;background:#1c2128;border:1px solid #343b47;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#98a0ab">CAR FAILURE POP-UP</div>
+    <div style="box-sizing:border-box;background:#2b323d;border:1px solid #4a5260;border-radius:10px;padding:10px;box-shadow:0 10px 28px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:3px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 2px 4px">
+        <span style="font-size:13px;font-weight:600">Give a failure to Bjornie</span>
+        <span style="font-size:11px;color:#98a0ab">Chance</span>
+      </div>
+      <sc-for list="{{fails}}" as="f" hint-placeholder-count="5">
+        <button type="button" role="radio" aria-checked="{{f.sel}}" style="box-sizing:border-box;height:36px;border-radius:6px;color:#e8e6e1;display:flex;align-items:center;gap:10px;padding:0 10px;text-align:left;{{f.st}}">
+          <span style="width:16px;height:16px;border-radius:50%;box-sizing:border-box;border:2px solid {{f.ring}};display:flex;align-items:center;justify-content:center;flex:none"><span style="width:6px;height:6px;border-radius:50%;background:{{f.dot}}"></span></span>
+          <span style="flex:1;min-width:0;font-size:13px;font-weight:{{f.w}};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{f.name}}</span>
+          <span class="tnum" style="font-size:13px;color:#b3bac4;flex:none">{{f.chance}}</span>
+        </button>
+      </sc-for>
+      <button type="button" style="margin-top:6px;height:36px;border-radius:6px;border:1px solid transparent;background:#ff8f94;color:#111418;font-size:13px;font-weight:700">Give failure</button>
+    </div>
+  </div>
+
+  <div style="grid-column:1 / span 2;box-sizing:border-box;background:#1c2128;border:1px solid #343b47;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;min-height:0">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#98a0ab">LOG (DOCKED AT THE RIGHT WITH 2 LANES, A DRAWER WITH 4)</div>
+      <button type="button" style="height:32px;padding:0 16px;border-radius:6px;border:1px solid #6a7382;background:#222831;color:#e8e6e1;font-size:13px;font-weight:700">Undo last</button>
+    </div>
+    <div role="group" aria-label="Filter the log by lane" style="display:flex;gap:6px">
+      <sc-for list="{{filters}}" as="c" hint-placeholder-count="5">
+        <button type="button" aria-pressed="{{c.sel}}" style="height:28px;padding:0 14px;border-radius:14px;font-size:12px;font-weight:600;{{c.st}}">{{c.t}}</button>
+      </sc-for>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;overflow:hidden">
+      <sc-for list="{{log}}" as="e" hint-placeholder-count="6">
+        <div style="display:grid;grid-template-columns:72px 24px minmax(0, 1fr) 10px;align-items:center;gap:12px;height:32px;padding:0 10px;border-radius:6px;{{e.st}}">
+          <span class="tnum" style="font-size:12px;color:#98a0ab">{{e.at}}</span>
+          <span class="tnum" style="width:22px;height:22px;border-radius:6px;background:#343b47;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">{{e.n}}</span>
+          <span style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{e.t}}</span>
+          <span style="width:10px;height:10px;border-radius:50%;background:{{e.c}}"></span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="grid-column:3 / span 2;box-sizing:border-box;background:#1c2128;border:1px solid #343b47;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px;min-height:0">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#98a0ab">COLOUR KEY</div>
+    <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:10px 24px">
+      <sc-for list="{{key}}" as="k" hint-placeholder-count="8">
+      <div style="display:flex;align-items:center;gap:12px;height:52px">
+        <span style="display:flex;gap:4px;flex:none">
+          <span style="width:44px;height:36px;border-radius:6px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;{{k.a}}">{{k.at}}</span>
+          <span style="width:44px;height:36px;border-radius:6px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;{{k.b}}">{{k.bt}}</span>
+        </span>
+        <span style="min-width:0">
+          <span style="display:block;font-size:14px;font-weight:600">{{k.name}}</span>
+          <span style="display:block;font-size:12px;color:#98a0ab">{{k.sub}}</span>
+        </span>
+      </div>
+      </sc-for>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const mBase = 'background:#4a3d12;border:1px solid #6b5a1a;color:#fff;';
+    const pBase = 'background:#f2b705;border:1px solid transparent;color:#111418;';
+    const dim = 'opacity:.35;cursor:not-allowed;';
+    const field = 'background:#1c2128;border:1px solid #343b47;color:#e8e6e1;';
+    const tagPen = 'background:#4a3d12;color:#ffd466;';
+    const tagTip = 'background:#0e1116;color:#e8e6e1;border:1px solid #4a5260;font-weight:600;';
+    const states = [
+      { label: 'Normal', value: '3', valSt: field, minus: mBase, plus: pBase, minusOff: false, plusOff: false, hasTag: false, tag: '', tagSt: '' },
+      { label: 'Mouse over +', value: '3', valSt: field, minus: mBase, plus: 'background:#ffc933;border:1px solid transparent;color:#111418;box-shadow:0 0 0 3px rgba(242,183,5,.35);', minusOff: false, plusOff: false, hasTag: true, tag: 'Give 1', tagSt: tagTip },
+      { label: 'Just changed', value: '4', valSt: 'background:#1c2128;border:1px solid #f2b705;color:#e8e6e1;', minus: mBase, plus: pBase, minusOff: false, plusOff: false, hasTag: true, tag: '+1', tagSt: tagPen },
+      { label: 'At the minimum', value: '0', valSt: field, minus: mBase + dim + 'border-style:dashed;', plus: pBase, minusOff: true, plusOff: false, hasTag: false, tag: '', tagSt: '' },
+      { label: 'Race not running', value: '3', valSt: 'background:#1c2128;border:1px solid #343b47;color:#98a0ab;', minus: mBase + dim, plus: pBase + dim, minusOff: true, plusOff: true, hasTag: false, tag: '', tagSt: '' },
+      { label: 'Keyboard focus', value: '3', valSt: field, minus: mBase, plus: pBase + 'outline:2px solid #e8e6e1;outline-offset:2px;', minusOff: false, plusOff: false, hasTag: false, tag: '', tagSt: '' }
+    ];
+    const named = [
+      { name: 'Drivethrough', sub: 'Costs 3 points, served in the pits', cost: '−3', off: false, st: '' },
+      { name: 'Stop-and-Go 5 s', sub: 'Needs 5 points, Bjornie has 3', cost: '−5', off: true, st: 'opacity:.5;cursor:not-allowed;' },
+      { name: 'Stop-and-Go 10 s', sub: 'Needs 10 points, Bjornie has 3', cost: '−10', off: true, st: 'opacity:.5;cursor:not-allowed;' }
+    ];
+    const failRows = [
+      { name: 'At random', chance: '', sel: true },
+      { name: 'Lift and Coast', chance: '10%', sel: false },
+      { name: 'Slow Puncture', chance: '5%', sel: false },
+      { name: 'Brakes not working', chance: '4%', sel: false },
+      { name: 'Engine Failure, Box to Retire', chance: '2%', sel: false }
+    ];
+    const fails = failRows.map(f => ({
+      ...f,
+      st: f.sel ? 'border:1px solid #ff8f94;background:#222831;' : 'border:1px solid transparent;background:transparent;',
+      ring: f.sel ? '#ff8f94' : '#98a0ab',
+      dot: f.sel ? '#ff8f94' : 'transparent',
+      w: f.sel ? '700' : '500'
+    }));
+    const filterRows = [
+      { t: 'All lanes', sel: true }, { t: '1 James' }, { t: '2 Bjornie' }, { t: '3 Maria' }, { t: '4 Sam' }
+    ];
+    const filters = filterRows.map(c => ({
+      t: c.t, sel: !!c.sel,
+      st: c.sel ? 'border:1px solid #e8e6e1;background:#e8e6e1;color:#171b21;' : 'border:1px solid #4a5260;background:transparent;color:#e8e6e1;'
+    }));
+    const pen = '#f2b705', tim = '#f08a24', lap = '#9b7bff', dmg = '#e5484d', fal = '#ff8f94';
+    const logRows = [
+      { at: '21:04:12', n: 2, t: 'Bjornie +5 s race time', c: tim, latest: true },
+      { at: '21:02:40', n: 4, t: 'Sam +1 lap', c: lap },
+      { at: '20:58:03', n: 2, t: 'Bjornie Slow Puncture given', c: fal },
+      { at: '20:55:31', n: 2, t: 'Bjornie Medium Deslot +2', c: dmg },
+      { at: '20:51:09', n: 3, t: 'Maria penalty point +1 (now 1)', c: pen },
+      { at: '20:49:47', n: 2, t: 'Bjornie penalty point +3 (now 3)', c: pen }
+    ];
+    const log = logRows.map(e => ({ ...e, st: e.latest ? 'background:#2b323d;' : '' }));
+    const fill = (bg, fg) => 'background:' + bg + ';color:' + fg + ';border:1px solid transparent;';
+    const dark = (bg, line) => 'background:' + bg + ';color:#fff;border:1px solid ' + line + ';';
+    const key = [
+      { a: fill('#f2b705', '#111418'), at: '+', b: dark('#4a3d12', '#6b5a1a'), bt: '−', name: 'Penalty points', sub: 'Yellow gives, dark takes back' },
+      { a: fill('#f08a24', '#111418'), at: '+', b: dark('#4a3214', '#6b4a1c'), bt: '−', name: 'Race time', sub: 'Orange adds seconds' },
+      { a: fill('#9b7bff', '#111418'), at: '+', b: dark('#352f55', '#4a4272'), bt: '−', name: 'Laps', sub: 'Purple gives a lap' },
+      { a: fill('#e5484d', '#111418'), at: '+', b: dark('#512426', '#7a3639'), bt: '−', name: 'Damage', sub: 'Red gives damage points' },
+      { a: fill('#ff8f94', '#111418'), at: 'Give', b: dark('#512426', '#7a3639'), bt: 'Clear', name: 'Car failure', sub: 'Light red gives, dark clears' },
+      { a: fill('#e8e6e1', '#171b21'), at: 'Auto', b: 'background:transparent;color:#c9ced6;border:1px solid #3b4350;', bt: 'Off', name: 'Balance of Power', sub: 'White marks the chosen setting' },
+      { a: fill('#9b4dff', '#ffffff'), at: 'Tyre', b: 'background:#2b323d;color:#e8e6e1;border:1px solid #4a5260;', bt: '▾', name: 'Tyres', sub: 'Purple changes the tyres' },
+      { a: 'background:#2b323d;color:#e8e6e1;border:2px solid #e8e6e1;', at: '2', b: 'background:#222831;color:#e8e6e1;border:1px solid #343b47;border-left:4px solid #f2b705;', bt: '2', name: 'Selected and attention', sub: 'Outline: picked. Amber bar: look here' }
+    ];
+    return { states, plusRow: ['+1', '+2', '+5'], minusRow: ['−1', '−2', '−5'], named, fails, filters, log, key };
+  }
+}
+</script>
+</body>
+</html>

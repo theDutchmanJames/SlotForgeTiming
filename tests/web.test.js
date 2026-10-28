@@ -1,0 +1,117 @@
+// The browser side of network access (renderer/webapi.js) against a real server on this computer.
+const vm = require('vm'), fs = require('fs'), http = require('http'), path = require('path');
+const { createServer } = require('../server.js');
+let fails = 0;
+const ok = (name, cond) => { console.log((cond ? 'ok   ' : 'FAIL ') + name); if (!cond) fails++; };
+const R = path.join(__dirname, '..');
+const settings = { theme: 'forest', netPassword: 'pw', rules: 'Rules!' }, cmds = [], live = { stat: { raceId: 'r1' }, dyn: { raceId: 'r1', n: 0 } };
+const srv = createServer({ root: path.join(R, 'renderer'), appRoot: R, schema: { tracks: {} }, getSettings: () => settings, list: e => [{ id: 1, e }], customFields: () => [], getLive: () => live, onCommand: c => cmds.push(c), failDelay: 5 });
+
+(async () => {
+  const port = await srv.listen(0, '127.0.0.1'), origin = `http://127.0.0.1:${port}`;
+  const mem = () => { const m = new Map(); return { getItem: k => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: k => m.delete(k) }; };
+  class EventSource { // just enough of the browser's EventSource
+    constructor(url) { this.h = {}; this.req = http.get(origin + url, res => { let buf = ''; res.on('data', c => { buf += c; let i; while ((i = buf.indexOf('\n\n')) >= 0) { const blk = buf.slice(0, i); buf = buf.slice(i + 2); const ev = /event: (.*)/.exec(blk), d = /data: (.*)/.exec(blk); if (ev && d && this.h[ev[1]]) this.h[ev[1]]({ data: d[1] }); } }); }); }
+    addEventListener(n, f) { this.h[n] = f; } close() { this.req.destroy(); }
+  }
+  const win = { location: { hash: '' } }, sandbox = { fetch: (u, o) => fetch(origin + u, o), EventSource, sessionStorage: mem(), localStorage: mem(), document: { fullscreenElement: null }, console };
+  Object.assign(win, sandbox); win.window = win; vm.createContext(win);
+  vm.runInContext(fs.readFileSync(R + '/renderer/webapi.js', 'utf8'), win, { filename: 'webapi.js' });
+  const api = win.api;
+  ok('a browser gets the api and opens on the Live Race pages', !!api && api.web === true && win.location.hash === '#live');
+  const app = { api: { x: 1 } }; const w2 = { api: app.api, location: { hash: '' } }; w2.window = w2; vm.createContext(w2); vm.runInContext(fs.readFileSync(R + '/renderer/webapi.js', 'utf8'), w2);
+  ok('in the app itself it does nothing', w2.api === app.api && w2.location.hash === '');
+  const s = await api.getSettings(); ok('settings come from the app without the password', s.theme === 'forest' && s.rules === 'Rules!' && !('netPassword' in s));
+  const s2 = await api.setSettings({ liveBoard: { design: 'R1' }, theme: 'light' });
+  ok('a choice made on this device stays on this device', s2.liveBoard.design === 'R1' && s2.theme === 'light' && settings.theme === 'forest' && !('liveBoard' in settings) && (await api.getSettings()).liveBoard.design === 'R1');
+  ok('the database can be read', (await api.list('drivers'))[0].e === 'drivers' && (await api.schema()).tracks !== undefined);
+  let failed = false; try { await api.add('drivers', {}); } catch { failed = true; } ok('...but not written', failed);
+  { const refused = []; for (const f of ['addCustomField', 'removeCustomField', 'setCustomFieldGroup']) { try { await api[f]('slotcars', 'x', 'basics'); refused.push(false); } catch { refused.push(true); } } ok('...and the extra fields (adding, deleting, moving to another group) cannot be changed from a browser either', refused.every(x => x)); }
+  const g = await api.liveGet(); ok('the running race is fetched', g.stat.raceId === 'r1' && g.dyn.n === 0);
+  const seen = []; const off = api.onLive(d => seen.push(d)); const offS = api.onLiveStatic(d => seen.push({ s: d }));
+  await new Promise(r => setTimeout(r, 100)); srv.broadcast('static', { raceId: 'r2' }); srv.broadcast('push', { raceId: 'r2', n: 5 }); await new Promise(r => setTimeout(r, 150));
+  ok('live messages arrive in the browser', seen.some(x => x.s && x.s.raceId === 'r2') && seen.some(x => x.n === 5));
+  off(); offS();
+  ok('the Race Director asks for a login first', api.directorAuthed() === false && (await api.directorInfo()).passwordSet === true);
+  await api.liveCommand({ type: 'start' }); ok('commands are refused before logging in', cmds.length === 0);
+  let code = ''; try { await api.directorLogin('wrong'); } catch (e) { code = e.code; } ok('a wrong password is refused', code === 'wrong' && !api.directorAuthed());
+  await api.directorLogin('pw'); ok('the right password logs in', api.directorAuthed() === true);
+  await api.liveCommand({ type: 'pause' }); await api.liveCommand({ type: 'penalty', lane: 0, n: 1 }); await new Promise(r => setTimeout(r, 50));
+  ok('commands reach the race', cmds.length === 2 && cmds[0].type === 'pause' && cmds[1].lane === 0);
+  { // the Tokens page (Time Token Sessions) uses the same login and the same way to the race
+    const before = cmds.length, send = async c => { await api.liveCommand(c); await new Promise(r => setTimeout(r, 15)); };
+    for (const c of [{ type: 'addtime', lane: 1, minutes: 10 }, { type: 'addtime', lane: 0, minutes: 7.5 }, { type: 'reducetime', lane: 1, minutes: 2 }, { type: 'undotime', lane: 1 }, { type: 'endtime', lane: 1 }, { type: 'cleartime', lane: 1 }, { type: 'setdriver', lane: 2, driverId: 'd3' }, { type: 'setdriver', lane: 2, driverId: '' }]) await send(c);
+    ok('the Tokens page commands (add time, take time off, undo, end now, clear, driver) reach the race after the login', cmds.slice(before).map(c => c.type).join() === 'addtime,addtime,reducetime,undotime,endtime,cleartime,setdriver,setdriver' && cmds[before].minutes === 10 && cmds[before + 1].minutes === 7.5 && cmds[before + 2].minutes === 2 && cmds[before + 6].driverId === 'd3' && cmds[before + 7].driverId === '');
+    const n = cmds.length;
+    for (const bad of [{ type: 'addtime', lane: 1, minutes: 0 }, { type: 'addtime', lane: 1, minutes: -5 }, { type: 'addtime', lane: 1, minutes: 1441 }, { type: 'addtime', lane: 1, minutes: '10' }, { type: 'addtime', lane: 1 }, { type: 'addtime', lane: 1, minutes: null }, { type: 'addtime', lane: -1, minutes: 5 }, { type: 'addtime', lane: 16, minutes: 5 }, { type: 'addtime', lane: 1.5, minutes: 5 }, { type: 'addtime', lane: '1', minutes: 5 }, { type: 'addtime', minutes: 5 }, { type: 'reducetime', lane: 1, minutes: 0 }, { type: 'reducetime', lane: 1, minutes: -1 }, { type: 'reducetime', lane: 1, minutes: 1441 }, { type: 'reducetime', lane: 1, minutes: '5' }, { type: 'reducetime', lane: 16, minutes: 5 }, { type: 'reducetime', minutes: 5 },
+      { type: 'undotime' }, { type: 'endtime', lane: 'x' }, { type: 'cleartime', lane: null }, { type: 'setdriver', lane: 1, driverId: 5 }, { type: 'setdriver', lane: 1 }, { type: 'setdriver', lane: 1, driverId: 'x'.repeat(81) }, { type: 'settime', lane: 1, minutes: 5 }]) await send(bad);
+    ok('...a lane or a number that makes no sense is refused by the server and never reaches the race (24 tries)', cmds.length === n);
+    const T = require('../server.js').tokenCommand;
+    ok('...the check itself: only the Tokens page commands are looked at, the others pass as before', T({ type: 'start' }) && T({ type: 'penalty', lane: 'x', n: 1 }) && T({ type: 'addtime', lane: 15, minutes: 1440 }) && T({ type: 'reducetime', lane: 3, minutes: 1 }) && !T({ type: 'reducetime', lane: 3, minutes: Infinity }) && T({ type: 'addtime', lane: 0, minutes: 0.5 }) && !T({ type: 'addtime', lane: 0, minutes: Infinity }) && !T({ type: 'addtime', lane: 0, minutes: NaN }));
+  }
+  { // Balance of Power (the lane controls of the Race Director page) uses the same login and the same way to the race
+    const before = cmds.length, send = async c => { await api.liveCommand(c); await new Promise(r => setTimeout(r, 15)); };
+    for (const c of [{ type: 'bop', lane: 0, how: 'hinder' }, { type: 'bop', lane: 1, how: 'help' }, { type: 'bop', lane: 1, how: 'off' }, { type: 'bop', lane: 0, how: 'auto' }, { type: 'bop', lane: 15, how: 'accept' }]) await send(c);
+    ok('the Balance of Power commands (Hinder, Help, Off, Auto, Accept for a lane) reach the race after the login', cmds.slice(before).map(c => c.how).join() === 'hinder,help,off,auto,accept' && cmds.slice(before).every(c => c.type === 'bop') && cmds[before + 4].lane === 15);
+    const n = cmds.length;
+    for (const bad of [{ type: 'bop', lane: 1, how: 'dance' }, { type: 'bop', lane: 1 }, { type: 'bop', lane: 1, how: 5 }, { type: 'bop', lane: 1, how: null }, { type: 'bop', how: 'off' }, { type: 'bop', lane: -1, how: 'off' }, { type: 'bop', lane: 16, how: 'off' }, { type: 'bop', lane: 1.5, how: 'off' }, { type: 'bop', lane: '1', how: 'off' }, { type: 'bop', lane: null, how: 'off' }]) await send(bad);
+    ok('...a lane or a button that makes no sense is refused by the server and never reaches the race (10 tries)', cmds.length === n); }
+  { // the weather (the buttons of the Race Director page)
+    const before = cmds.length, send = async c => { await api.liveCommand(c); await new Promise(r => setTimeout(r, 15)); };
+    for (const c of [{ type: 'weather', state: 'dry' }, { type: 'weather', state: 'cloudy' }, { type: 'weather', state: 'wet' }, { type: 'weather', state: 'clearing' }]) await send(c);
+    ok('the weather commands (Dry, Cloudy, Wet, Clearing) reach the race after the login', cmds.slice(before).map(c => c.state).join() === 'dry,cloudy,wet,clearing' && cmds.slice(before).every(c => c.type === 'weather'));
+    const n = cmds.length;
+    for (const bad of [{ type: 'weather' }, { type: 'weather', state: 'sunny' }, { type: 'weather', state: 5 }, { type: 'weather', state: null }, { type: 'weather', state: ['wet'] }, { type: 'weather', state: 'WET' }, { type: 'weather', state: '' }]) await send(bad);
+    ok('...a weather that is not one is refused by the server and never reaches the race (7 tries)', cmds.length === n);
+    ok('...the check itself is exported, and looks only at the weather command', require('../server.js').weatherCommand({ type: 'weather', state: 'wet' }) && !require('../server.js').weatherCommand({ type: 'weather', state: 'hail' }) && require('../server.js').weatherCommand({ type: 'start' })); }
+  { // 1.31.0 / 1.32.0: the Race Director gives a car another tyre (a lane, one of the six tyres, and whether the Slotcar in the Database changes too)
+    const before = cmds.length, send = async c => { await api.liveCommand(c); await new Promise(r => setTimeout(r, 15)); };
+    for (const c of [{ type: 'tyre', lane: 0, tyre: 'H' }, { type: 'tyre', lane: 3, tyre: 'SS', save: true }, { type: 'tyre', lane: 15, tyre: 'M', save: false }, { type: 'tyre', lane: 1, tyre: 'S' }, { type: 'tyre', lane: 2, tyre: 'INT' }, { type: 'tyre', lane: 4, tyre: 'W', save: true }]) await send(c);
+    ok('the tyre commands (Hard, Supersoft with the Database too, Medium without it, Soft, Intermediate, Wet with the Database) reach the race after the login', cmds.slice(before).map(c => c.tyre + (c.save === true ? '+' : '')).join() === 'H,SS+,M,S,INT,W+' && cmds.slice(before).every(c => c.type === 'tyre') && cmds[before + 2].lane === 15);
+    const n = cmds.length;
+    for (const bad of [{ type: 'tyre' }, { type: 'tyre', lane: 0 }, { type: 'tyre', tyre: 'H' }, { type: 'tyre', lane: 0, tyre: 'I' }, { type: 'tyre', lane: 0, tyre: 'Wet' }, { type: 'tyre', lane: 0, tyre: 'int' }, { type: 'tyre', lane: 0, tyre: 'h' }, { type: 'tyre', lane: 0, tyre: '' }, { type: 'tyre', lane: 0, tyre: 5 }, { type: 'tyre', lane: 0, tyre: ['H'] }, { type: 'tyre', lane: -1, tyre: 'H' }, { type: 'tyre', lane: 16, tyre: 'H' }, { type: 'tyre', lane: 1.5, tyre: 'H' }, { type: 'tyre', lane: '1', tyre: 'H' }, { type: 'tyre', lane: 0, tyre: 'H', save: 'yes' }, { type: 'tyre', lane: 0, tyre: 'H', save: 1 }, { type: 'tyre', lane: 0, tyre: 'H', save: null }]) await send(bad);
+    ok('...a lane that is not a whole number from 0 to 15, a tyre that is not one of the six (I, Wet, int, h, another letter, a number), or a save that is not true or false is refused by the server and never reaches the race (16 tries)', cmds.length === n);
+    const S = require('../server.js');
+    ok('...the check itself is exported, and looks only at the tyre command', S.tyreCommand({ type: 'tyre', lane: 2, tyre: 'SS', save: true }) && S.tyreCommand({ type: 'tyre', lane: 0, tyre: 'M' }) && S.tyreCommand({ type: 'tyre', lane: 0, tyre: 'W' }) && S.tyreCommand({ type: 'tyre', lane: 0, tyre: 'INT' }) && !S.tyreCommand({ type: 'tyre', lane: 2, tyre: 'I' }) && !S.tyreCommand({ type: 'tyre', lane: 16, tyre: 'H' }) && !S.tyreCommand({ type: 'tyre', lane: 0, tyre: 'H', save: 'true' }) && S.tyreCommand({ type: 'start' }) && S.tyreCommand({ type: 'weather', state: 'hail' })); }
+  { // 1.41.0: the Race Director queues a tyre for the next stop (Tyre Wear): a lane and one of the six tyres, or an empty tyre for "the same"
+    const before = cmds.length, send = async c => { await api.liveCommand(c); await new Promise(r => setTimeout(r, 15)); };
+    for (const c of [{ type: 'tyrenext', lane: 0, tyre: 'H' }, { type: 'tyrenext', lane: 3, tyre: 'SS' }, { type: 'tyrenext', lane: 15, tyre: 'INT' }, { type: 'tyrenext', lane: 1, tyre: '' }]) await send(c);
+    ok('the next-stop commands (a tyre, or the same) reach the race after the login', cmds.slice(before).map(c => c.lane + c.tyre).join() === '0H,3SS,15INT,1' && cmds.slice(before).every(c => c.type === 'tyrenext'));
+    const n = cmds.length;
+    for (const bad of [{ type: 'tyrenext' }, { type: 'tyrenext', lane: 0 }, { type: 'tyrenext', tyre: 'H' }, { type: 'tyrenext', lane: 16, tyre: 'H' }, { type: 'tyrenext', lane: -1, tyre: 'H' }, { type: 'tyrenext', lane: 1.5, tyre: 'H' }, { type: 'tyrenext', lane: '1', tyre: 'H' }, { type: 'tyrenext', lane: 0, tyre: 'I' }, { type: 'tyrenext', lane: 0, tyre: 'h' }, { type: 'tyrenext', lane: 0, tyre: 5 }, { type: 'tyrenext', lane: 0, tyre: null }, { type: 'tyrenext', lane: 0, tyre: ['H'] }]) await send(bad);
+    ok('...a lane that is not a whole number from 0 to 15, or a tyre that is not one of the six (or empty), is refused by the server and never reaches the race (12 tries)', cmds.length === n);
+    const S = require('../server.js');
+    ok('...the check itself is exported, and looks only at the next-stop command', S.tyreNextCommand({ type: 'tyrenext', lane: 2, tyre: 'SS' }) && S.tyreNextCommand({ type: 'tyrenext', lane: 0, tyre: '' }) && !S.tyreNextCommand({ type: 'tyrenext', lane: 0, tyre: 'X' }) && !S.tyreNextCommand({ type: 'tyrenext', lane: 0 }) && S.tyreNextCommand({ type: 'tyre', lane: 99 }) && S.tyreNextCommand({ type: 'pause' }));
+    ok('...it is one of the commands the Race Director page may send, and the tyre command does not accept an empty tyre (that is only for the next stop)', typeof S.createServer === 'function' && !S.tyreCommand({ type: 'tyre', lane: 0, tyre: '' })); }
+  { // 1.9.0: the swaps of an Endurance Race can be pressed on the Race Director page (a lane, and for the driver who steps in the id of a driver)
+    const before = cmds.length, send = async c => { await api.liveCommand(c); await new Promise(r => setTimeout(r, 15)); };
+    for (const c of [{ type: 'swap', lane: 0 }, { type: 'swap', lane: 3, to: 'd2' }, { type: 'swapnext', lane: 1, id: 'd3' }]) await send(c);
+    ok('the swap commands (Swap done with or without the driver who steps in, and the choice of the next driver) reach the race after the login', cmds.slice(before).map(c => c.type + (c.to || c.id || '')).join() === 'swap,swapd2,swapnextd3');
+    const n = cmds.length;
+    for (const bad of [{ type: 'swap' }, { type: 'swap', lane: -1 }, { type: 'swap', lane: 16 }, { type: 'swap', lane: 1.5 }, { type: 'swap', lane: '1' }, { type: 'swap', lane: 0, to: 5 }, { type: 'swap', lane: 0, to: 'x'.repeat(81) }, { type: 'swapnext', lane: 0 }, { type: 'swapnext', lane: 0, id: '' }, { type: 'swapnext', lane: 0, id: 7 }, { type: 'swapnext', id: 'd1' }, { type: 'swapnext', lane: 99, id: 'd1' }]) await send(bad);
+    ok('...a lane that is not a whole number from 0 to 15, a driver that is not an id, or a missing choice is refused by the server and never reaches the race (12 tries)', cmds.length === n);
+    const S = require('../server.js');
+    ok('...the check itself is exported, and looks only at the swap commands', S.swapCommand({ type: 'swap', lane: 2 }) && S.swapCommand({ type: 'swapnext', lane: 2, id: 'a' }) && !S.swapCommand({ type: 'swap', lane: 99 }) && !S.swapCommand({ type: 'swapnext', lane: 0 }) && S.swapCommand({ type: 'start' }) && S.swapCommand({ type: 'penalty', lane: 99 })); }
+  { // 1.10.0: damage points of the Damage System can be given on the Race Director page (a lane, and a whole number of points; negative takes points back)
+    const before = cmds.length, send = async c => { await api.liveCommand(c); await new Promise(r => setTimeout(r, 15)); };
+    for (const c of [{ type: 'damage', lane: 0, n: 2 }, { type: 'damage', lane: 3, n: -1 }, { type: 'damage', lane: 15, n: 20 }]) await send(c);
+    ok('the damage commands (points given or taken back) reach the race after the login', cmds.slice(before).map(c => c.type + c.lane + ':' + c.n).join() === 'damage0:2,damage3:-1,damage15:20');
+    const n = cmds.length;
+    for (const bad of [{ type: 'damage' }, { type: 'damage', lane: 0 }, { type: 'damage', lane: 0, n: 0 }, { type: 'damage', lane: 0, n: 21 }, { type: 'damage', lane: 0, n: -21 }, { type: 'damage', lane: 0, n: 1.5 }, { type: 'damage', lane: 0, n: '2' }, { type: 'damage', lane: -1, n: 1 }, { type: 'damage', lane: 16, n: 1 }, { type: 'damage', lane: '1', n: 1 }, { type: 'damage', n: 1 }]) await send(bad);
+    ok('...a lane that is not a whole number from 0 to 15, or points that are not a whole number from -20 to 20 (not 0), are refused by the server and never reach the race (11 tries)', cmds.length === n);
+    const S = require('../server.js');
+    ok('...the check itself is exported, and looks only at the damage command', S.damageCommand({ type: 'damage', lane: 2, n: 3 }) && !S.damageCommand({ type: 'damage', lane: 2, n: 0 }) && !S.damageCommand({ type: 'damage', lane: 99, n: 1 }) && S.damageCommand({ type: 'start' }) && S.damageCommand({ type: 'penalty', lane: 99 })); }
+  { // 1.12.0: the adjust pads of the Race Director page (a group, a lane and an amount that is not 0)
+    const before = cmds.length, send = async c => { await api.liveCommand(c); await new Promise(r => setTimeout(r, 15)); };
+    for (const c of [{ type: 'pad', group: 'time', lane: 1, amount: 10 }, { type: 'pad', group: 'laps', lane: 0, amount: -2 }, { type: 'pad', group: 'champ', lane: 15, amount: 2.5 }, { type: 'pad', group: 'points', lane: 3, amount: -1 }, { type: 'pad', group: 'damage', lane: 2, amount: 4 }, { type: 'pad', group: 'damage', lane: 2, amount: -20 }]) await send(c);
+    ok('the pad commands (time, laps, championship points, penalty points and damage points, added or taken off) reach the race after the login', cmds.slice(before).map(c => c.group + c.lane + ':' + c.amount).join() === 'time1:10,laps0:-2,champ15:2.5,points3:-1,damage2:4,damage2:-20');
+    const n = cmds.length;
+    for (const bad of [{ type: 'pad' }, { type: 'pad', group: 'time', lane: 0 }, { type: 'pad', group: 'time', lane: 0, amount: 0 }, { type: 'pad', group: 'x', lane: 0, amount: 1 }, { type: 'pad', lane: 0, amount: 1 }, { type: 'pad', group: 'time', lane: -1, amount: 1 }, { type: 'pad', group: 'time', lane: 16, amount: 1 }, { type: 'pad', group: 'time', lane: 1.5, amount: 1 }, { type: 'pad', group: 'time', lane: '1', amount: 1 }, { type: 'pad', group: 'time', lane: 1, amount: '5' }, { type: 'pad', group: 'time', lane: 1, amount: 100001 }, { type: 'pad', group: 'time', lane: 1, amount: -100001 }, { type: 'pad', group: 'time', lane: 1, amount: null }, { type: 'pad', group: ['time'], lane: 1, amount: 1 }, { type: 'pad', group: 'damage', lane: 1, amount: 21 }, { type: 'pad', group: 'damage', lane: 1, amount: -21 }, { type: 'pad', group: 'damage', lane: 1, amount: 1.5 }]) await send(bad);
+    ok('...a group that is not one of the four, a lane that is not a whole number from 0 to 15, or an amount that is not a number, zero or enormous is refused by the server and never reaches the race (17 tries, damage points as the damage command: a whole number from -20 to 20)', cmds.length === n);
+    const S = require('../server.js');
+    ok('...the check itself is exported, and looks only at the pad command', S.padCommand({ type: 'pad', group: 'laps', lane: 2, amount: 1 }) && !S.padCommand({ type: 'pad', group: 'laps', lane: 99, amount: 1 }) && S.padCommand({ type: 'start' }) && S.padCommand({ type: 'damage', lane: 99 })); }
+  settings.netPassword = 'new'; await api.liveCommand({ type: 'stop' });
+  ok('after the password changes the login is gone', cmds.length === 2 + 8 + 5 + 4 + 6 + 4 + 3 + 3 + 6 && api.directorAuthed() === false);
+  await srv.close();
+  console.log(fails ? fails + ' WEB TESTS FAILED' : 'ALL WEB TESTS PASSED'); process.exit(fails ? 1 : 0);
+})().catch(e => { console.log('ERROR', e.stack); process.exit(1); });

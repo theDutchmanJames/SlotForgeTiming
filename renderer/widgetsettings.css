@@ -1,0 +1,59 @@
+/* Opt-in styles. Original layouts retain their original sizing and surfaces. */
+/* Frame.fit owns text geometry; the outer editor handles may still overflow. */
+.lw.wf-fitted>.lw-val{overflow:hidden}
+.lw.wf-crowded::before{content:'Enlarge widget or show fewer fields';position:absolute;inset:24px 4px 4px;z-index:8;font:11px/1.3 sans-serif;background:var(--panel);color:var(--ink);padding:3px;border-radius:3px;pointer-events:none;align-content:center;text-align:center}
+.lw.wf-crowded>.lw-val{visibility:hidden}
+.lw.wf-fitted .ll{line-height:1.12;column-gap:.55em}
+.lw.wf-fitted .lln{min-width:calc(var(--lap-number-ch,2)*1ch);margin-right:.35em}
+.lw.wf-fitted .wc-text{overflow-wrap:normal}
+.ws-control{display:grid;gap:6px;margin:12px 0;font-size:13px;min-width:0}.ws-control>small{font-weight:400;color:var(--muted);line-height:1.45}.ws-control select,.ws-control input{min-width:0;max-width:100%}.ws-control input[type=checkbox]{justify-self:start}.ws-control input[type=color]{height:32px;width:100%}
+.lw.ws-spacing:not(.aio-widget)>.lw-val{padding:var(--ws-padding)}
+.lw.ws-spacing.aio-widget .aio-content{padding:var(--ws-padding)}
+.lw.ws-type[data-ws-sizing=manual] .aio-fact b,.lw.ws-type[data-ws-sizing=manual] .aio-laprow strong{font-size:var(--ws-value)}
+.lw.ws-type[data-ws-sizing=manual] .aio-who>strong{font-size:calc(var(--ws-value)*.7)}
+.lw.ws-type[data-ws-sizing=manual] :is(.aio-who>span,.aio-laprow em,.aio-status,.aio-foot,.aio-line,.aio-note,.aio-service p,.aio-session span,.aio-system>span:not(.aio-meter)){font-size:var(--ws-support)}
+.lw.ws-type[data-ws-sizing=manual] :is(.aio-heading,.aio-fact small,.aio-laprow small,.aio-system small){font-size:var(--ws-label)}
+.lw.ws-type[data-ws-sizing=manual] .aio-system strong{font-size:calc(var(--ws-value)*.6)}
+.lw.ws-type[data-ws-icon] .aio-avatar{width:var(--ws-icon);height:var(--ws-icon)}
+.lw.ws-type[data-ws-icon] .twbox2{grid-template-rows:minmax(0,var(--ws-icon)) auto}
+.lw.ws-type[data-ws-icon] .psbox-gauge{grid-template-rows:minmax(0,var(--ws-icon)) auto auto}
+.lw.ws-type[data-ws-icon] .psgauge{max-height:var(--ws-icon);width:auto;max-width:100%}
+.lw.ws-type[data-ws-sizing=manual] :is(.twlf,.twgr,.twnm,.twtemp,.twn>small,.twbar-details,.psw>small,.pssmall,.psbox>small){font-size:var(--ws-support)}
+.lw.ws-type[data-ws-sizing=manual] :is(.psp,.twpct,.twvalue,.psw>b,.fnum){font-size:var(--ws-value)}
+.lw.ws-type[data-ws-long=ellipsis] :is(.aio-who>strong,.aio-who>span){white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lw.ws-type[data-ws-long=fit] :is(.aio-who>strong,.aio-who>span){white-space:nowrap;overflow-wrap:normal}
+.lw.ws-type[data-ws-icon]:not(.aio-widget)>.lw-val>:is(img,.avframe){max-width:min(100%,var(--ws-icon));max-height:min(100%,var(--ws-icon));object-fit:contain}
+.lw.ws-appearance[data-ws-depth="0"] .lw-val{box-shadow:none}
+.sidegroup>.ws-control{margin:12px 10px}.sidegroup>.ws-control>*{min-width:0;white-space:normal;overflow-wrap:anywhere}.sidegroup .ws-inherit{margin:0 10px;font-size:11px;white-space:normal}.sidegroup>.row{margin:10px;flex-wrap:wrap}.ws-defaults{max-width:640px}.ws-defaults details{padding:10px}
+
+/* Quiet category colours belong to the controls, never to a lane or race state. */
+#side,.ws-defaults{--ws-blue:#79afe5;--ws-violet:#b49adf;--ws-teal:#75b9b0;--ws-grey:#a4b3c5;--ws-amber:#d6b16e;container:widget-options / inline-size}
+[data-theme=light] :is(#side,.ws-defaults),[data-theme=ocean] :is(#side,.ws-defaults),[data-tone=light] :is(#side,.ws-defaults){--ws-blue:#397bbb;--ws-violet:#8260bc;--ws-teal:#288078;--ws-grey:#6e7e90;--ws-amber:#9d7026}
+:is(#side,.ws-defaults) .sidegroup{--ws-group:var(--ws-grey);background:var(--panel);border-radius:9px;overflow:hidden;margin:10px 0}
+:is(#side,.ws-defaults) .sidegroup[data-side=opts]{--ws-group:var(--ws-teal)}
+:is(#side,.ws-defaults) .sidegroup:is([data-side=title],[data-side=text]){--ws-group:var(--ws-violet)}
+:is(#side,.ws-defaults) .sidegroup[data-side=frame]{--ws-group:var(--ws-blue)}
+:is(#side,.ws-defaults) .sidegroup[data-side=status]{--ws-group:var(--ws-amber)}
+:is(#side,.ws-defaults) .sidegroup>summary{display:flex;align-items:center;gap:9px;list-style:none;padding:11px 10px;border-left:3px solid var(--ws-group);background:color-mix(in srgb,var(--ws-group) 6%,var(--panel));color:var(--ink)}
+:is(#side,.ws-defaults) .sidegroup>summary::-webkit-details-marker{display:none}
+:is(#side,.ws-defaults) .sidegroup>summary:after{content:'›';margin-left:auto;color:var(--muted);font-size:20px;line-height:1}
+:is(#side,.ws-defaults) .sidegroup[open]>summary:after{transform:rotate(90deg)}
+:is(#side,.ws-defaults) .sidegroup>summary>svg{color:var(--ws-group);flex:none}
+.ws-section{--ws-box:var(--ws-group,var(--ws-grey));margin:10px;padding:12px;border:1px solid color-mix(in srgb,var(--ws-box) 38%,var(--line));background:color-mix(in srgb,var(--ws-box) 7%,var(--panel));border-radius:9px;min-width:0}
+.ws-section[data-ws-group=background]{--ws-box:var(--ws-blue)}.ws-section[data-ws-group=border]{--ws-box:var(--ws-violet)}.ws-section[data-ws-group=accent]{--ws-box:var(--ws-teal)}
+.ws-section>h4{display:flex;gap:8px;align-items:center;font-size:14px;font-weight:600;margin:0 0 12px;color:var(--ink)}.ws-section>h4>svg{color:var(--ws-box);flex:none}
+.ws-fields{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}.ws-fields>*{min-width:0;grid-column:1/-1;max-width:100%}
+.ws-fields>.ws-control,.ws-fields>.field,.ws-fields>p{margin:0}.ws-fields>.row{flex-wrap:wrap;margin:0}.ws-fields>.ws-inherit{margin:0;justify-self:start}
+.ws-fields .ws-control>*{min-width:0;white-space:normal;overflow-wrap:anywhere}.ws-fields select,.ws-fields input:not([type=checkbox]):not([type=radio]){width:100%;min-width:0;max-width:100%}
+.ws-fields .inline{flex-wrap:wrap}.ws-fields .btn{white-space:normal;overflow-wrap:anywhere}
+.ws-section>.ws-group-reset{margin:12px 0 0;padding:0;border:0;background:transparent;box-shadow:none;color:var(--muted);font-size:12px;text-decoration:underline;text-underline-offset:3px;text-align:left;white-space:normal}
+.ws-section>.ws-group-reset:disabled{opacity:.6;text-decoration:none}
+.ws-defaults{width:min(640px,78vw);max-width:100%}.ws-defaults details.sidegroup{padding:0}.ws-defaults>.row{flex-wrap:wrap}
+@container widget-options (min-width:390px){.ws-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.ws-fields>.ws-control.ws-compact{grid-column:auto}}
+@media(pointer:coarse){.ws-section>.ws-group-reset{min-height:44px}:is(#side,.ws-defaults) .sidegroup>summary{min-height:44px}}
+/* Only text is recoloured: tyre icons, gauges, badges and chart series retain
+   their own meaning. Removing the attribute restores inline/theme colours. */
+.lw[data-ws-state-text]>:is(.lw-val,.lw-title,.lw-lane),.lw[data-ws-state-text] .lw-val :is(.twn,.twpct,.twlf,.twgr,.psp,.pssmall,.rc-pw-whole strong,.rc-pw-fraction strong){color:var(--ws-state-ink)!important}
+
+.lw.widget-error>.lw-val{visibility:hidden}
+.lw.widget-error::before{content:attr(data-widget-error);position:absolute;inset:24px 4px 4px;z-index:9;background:var(--panel);color:var(--ink);font:12px/1.4 sans-serif;text-align:center;align-content:center;border-radius:4px}

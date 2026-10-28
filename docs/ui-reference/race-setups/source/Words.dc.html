@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Wording before and after</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./rs.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="sheet" style="width: 1240px; height: 1230px; padding: 40px 44px; display: flex; flex-direction: column; gap: 16px; font-family: Inter, system-ui, sans-serif; color: #e8e6e1">
+
+<div>
+<span class="tag red">Wording</span>
+<h1 style="margin-top: 12px">Say it the way a driver would</h1>
+<p class="lead" style="margin-top: 6px">Short labels that read like a question, answers that read like the answer, and the explaining moves into one line of hint. The stored values do not change.</p>
+</div>
+
+<table class="tab" style="table-layout: fixed; font-size: 13px">
+<colgroup><col style="width: 92px"><col style="width: 360px"><col style="width: 370px"><col></colgroup>
+<thead><tr><th>Where</th><th>Today</th><th>Proposed</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td><span class="tag">Session</span></td><td class="b">"Session type": a dropdown with six options</td><td class="a">Kind, Format and Swaps: three short questions</td><td class="w">The dropdown mixed three questions.</td></tr>
+<tr><td><span class="tag">Session</span></td><td class="b">"Track (sets the number of lanes)"</td><td class="a">"Track" and a pill that says 4 lanes</td><td class="w">The label no longer carries a hint.</td></tr>
+<tr><td><span class="tag">Length</span></td><td class="b">"The race is limited by": a number of laps, a distance, a time</td><td class="a">"The race is over after": Laps, Time, Distance, and the number next to it</td><td class="w">The options are the units. Three separate number fields become one.</td></tr>
+<tr><td><span class="tag">Length</span></td><td class="b">"Cars are compared by": Laps (the most laps wins; with equal laps the shortest time) or Distance (the furthest wins: laps times the length of the lane...)</td><td class="a">"Cars are compared by": Laps or Distance, only for a time race</td><td class="w">The long answers move into the plain-words sentence at the top.</td></tr>
+<tr><td><span class="tag">Length</span></td><td class="b">"The race ends": "When the lead car finishes"</td><td class="a">"The race ends": When every car has finished, or when the leader has finished</td><td class="w">Same question, the words a driver uses.</td></tr>
+<tr><td><span class="tag red">Swaps</span></td><td class="b">"The Endurance Race is": one long race of a set time, of laps, of distance, or heat-based: a series of heats, planned by a rotation setup or by the settings below</td><td class="a">A switch: "Teams swap drivers in the pits"</td><td class="w">It no longer repeats the length question.</td></tr>
+<tr><td><span class="tag green">Heats</span></td><td class="b">"Each heat is limited by"</td><td class="a">"Each heat is over after"</td><td class="w">The same words as a race.</td></tr>
+<tr><td><span class="tag green">Heats</span></td><td class="b">"The participants of the heats are": Drivers, Teams (made under Database > Teams)</td><td class="a">"The heats are raced by": Drivers or Teams</td><td class="w">The database path moves into a hint.</td></tr>
+<tr><td><span class="tag green">Heats</span></td><td class="b">"How the heats are planned": "Round robin: every driver meets every other driver", "Lane rotation: every driver races once in every lane"...</td><td class="a">"How the heats are planned": A number I choose, Same for every driver, Everyone meets everyone, Every lane once</td><td class="w">One idea per option. The explaining goes in a hint under the choice.</td></tr>
+<tr><td><span class="tag green">Heats</span></td><td class="b">"Same number of heats for everyone": No: the fewest heats that make every pair meet / Yes: add a few heats until everyone has raced as many as the busiest driver</td><td class="a">A switch: "Give everyone the same number of heats"</td><td class="w">A yes or no question is a switch.</td></tr>
+<tr><td><span class="tag green">Result</span></td><td class="b">Two fields with the same name, "Overall result counted by", that show one at a time</td><td class="a">One question: "The overall winner is": Most points, Most laps, Lowest total time</td><td class="w">One question. The options follow the length of the heat.</td></tr>
+<tr><td><span class="tag green">Result</span></td><td class="b">"Points per position (1st first, separated by commas)"</td><td class="a">"Points": a row of boxes, 1st, 2nd, 3rd and so on</td><td class="w">No comma lists to type.</td></tr>
+<tr><td><span class="tag green">Result</span></td><td class="b">"How the heats are added up", "Heats that count", "Drop the worst heat": Yes or No</td><td class="a">"Heats are added up": Total, Average or Best heats, and a switch "Drop the worst heat"</td><td class="w">Related settings sit together and only show when they apply.</td></tr>
+<tr><td><span class="tag">Sections</span></td><td class="b">"Length and result", "Racing Systems", "Endurance: driver swaps", "SlotForge box (Arduino)"</td><td class="a">"Ends and winner", "Rules and systems", "Driver swaps", and the box under Advanced</td><td class="w">A section is named after what you decide in it.</td></tr>
+</tbody>
+</table>
+
+<div class="note info" style="margin-top: auto">
+<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+<span><b>Four rules for every label.</b> A label is a short question or noun. An answer says what happens. A hint is at most one line. A path to another screen belongs in the hint, never in the label.</span>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":1230}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

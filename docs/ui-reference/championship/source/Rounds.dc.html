@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Championship: name, rounds and sessions</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{font-family:inherit}
+.sec{flex:none;background:#222831;border:1px solid #343b47;border-radius:8px;overflow:hidden}
+.sech{padding:10px 14px;font-size:14px;font-weight:700;background:#2b323d;border-bottom:1px solid #343b47;color:#e8e6e1;display:flex;justify-content:space-between;align-items:baseline}
+.sech span{font-weight:400;font-size:12px;color:#98a0ab}
+.secb{padding:14px}
+.lbl{font-size:13px;color:#98a0ab;line-height:1.35}
+.inp,.sel{height:36px;width:100%;box-sizing:border-box;background:#171b21;border:1px solid #343b47;border-radius:6px;color:#e8e6e1;font-family:inherit;font-size:14px;padding:0 10px}
+.fld{display:flex;flex-direction:column;gap:6px;min-width:0}
+.note{font-size:13px;color:#98a0ab;line-height:1.45}
+.note b{color:#e8e6e1}
+.btn{height:36px;padding:0 14px;font-size:13.5px;color:#e8e6e1;background:#222831;border:1px solid #343b47;border-radius:6px}
+.round{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #2b323d;font-size:14px}
+.grip{color:#6c7480;font-size:16px;letter-spacing:-2px;flex:none;width:18px}
+.rn{flex:0 0 70px;font-weight:700}
+.pill{display:inline-block;padding:2px 10px;border-radius:5px;font-size:12px;font-weight:700;flex:none}
+.done{background:#1d3a2d;color:#5fe0a0}
+.next{background:color-mix(in srgb,#ec5f9a 25%,#171b21);color:#ffb3d1}
+.todo{background:#2b323d;color:#98a0ab;border:1px solid #4a5260}
+.ses{display:grid;grid-template-columns:28px minmax(0,1.5fr) 150px 170px 36px;gap:12px;align-items:end;padding:10px 0;border-bottom:1px solid #2b323d}
+.typ{display:inline-block;padding:2px 9px;border-radius:5px;font-size:12px;font-weight:700;background:#2f3540;color:#c9ced6}
+</style>
+</helmet>
+<div style="width:1000px;height:1500px;box-sizing:border-box;background:#171b21;color:#e8e6e1;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;padding:24px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;flex:none;border-top:3px solid #ec5f9a;padding-top:14px">
+    <div>
+      <div style="font-size:13px;color:#98a0ab">Race Setup &rsaquo; Championships</div>
+      <div style="font-size:26px;font-weight:700;line-height:1.2">Championship: Club Cup 2026</div>
+    </div>
+    <div style="display:flex;gap:10px"><button type="button" class="btn" style="height:40px;padding:0 18px">Cancel</button><button type="button" class="btn" style="height:40px;padding:0 22px;background:#ec5f9a;border-color:#ec5f9a;color:#1a0a12;font-weight:700">Save</button></div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">Name</div>
+    <div class="secb" style="display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap">
+      <label class="fld" style="width:340px"><span class="lbl">Name</span><input class="inp" value="Club Cup 2026"></label>
+      <div class="note" style="flex:1;min-width:300px">The name is shown on the Home tab, in the race log and on the results of every session of this championship.</div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">Rounds <span>Drag the handle to change the order</span></div>
+    <div style="padding:10px 14px;display:flex;gap:10px;border-bottom:1px solid #2b323d"><button type="button" class="btn">Add a round</button><button type="button" class="btn">Copy the sessions of round 1 to all rounds</button></div>
+
+    <div class="round"><span class="grip">&#8942;&#8942;</span><span class="rn">Round 1</span><span style="flex:1">Season opener</span><span style="flex:0 0 150px;color:#98a0ab">Brands Hatch</span><span style="flex:0 0 90px;color:#98a0ab">3 sessions</span><span class="pill done">Done</span><span style="color:#98a0ab;width:14px">&#9654;</span></div>
+    <div class="round"><span class="grip">&#8942;&#8942;</span><span class="rn">Round 2</span><span style="flex:1">Night race</span><span style="flex:0 0 150px;color:#98a0ab">Kidney Bean</span><span style="flex:0 0 90px;color:#98a0ab">3 sessions</span><span class="pill done">Done</span><span style="color:#98a0ab;width:14px">&#9654;</span></div>
+    <div class="round"><span class="grip">&#8942;&#8942;</span><span class="rn">Round 3</span><span style="flex:1">Oval special</span><span style="flex:0 0 150px;color:#98a0ab">Oval Speedway</span><span style="flex:0 0 90px;color:#98a0ab">3 sessions</span><span class="pill done">Done</span><span style="color:#98a0ab;width:14px">&#9654;</span></div>
+    <div class="round"><span class="grip">&#8942;&#8942;</span><span class="rn">Round 4</span><span style="flex:1">Crossing</span><span style="flex:0 0 150px;color:#98a0ab">Figure Eight</span><span style="flex:0 0 90px;color:#98a0ab">3 sessions</span><span class="pill done">Done</span><span style="color:#98a0ab;width:14px">&#9654;</span></div>
+    <div class="round"><span class="grip">&#8942;&#8942;</span><span class="rn">Round 5</span><span style="flex:1">Hill climb</span><span style="flex:0 0 150px;color:#98a0ab">Hairpin Hill</span><span style="flex:0 0 90px;color:#98a0ab">3 sessions</span><span class="pill done">Done</span><span style="color:#98a0ab;width:14px">&#9654;</span></div>
+
+    <div style="background:color-mix(in srgb,#ec5f9a 7%,#222831);border-top:1px solid color-mix(in srgb,#ec5f9a 35%,#222831);border-bottom:1px solid color-mix(in srgb,#ec5f9a 35%,#222831)">
+      <div class="round" style="border-bottom:0"><span class="grip">&#8942;&#8942;</span><span class="rn">Round 6</span><span style="flex:1;font-weight:700">Final round</span><span style="flex:0 0 150px;color:#98a0ab">Brands Hatch</span><span style="flex:0 0 90px;color:#98a0ab">3 sessions</span><span class="pill next">Next</span><span style="color:#ec5f9a;width:14px">&#9660;</span></div>
+      <div style="padding:0 14px 16px 44px">
+        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:6px">
+          <label class="fld" style="width:260px"><span class="lbl">Round name</span><input class="inp" value="Final round"></label>
+          <label class="fld" style="width:260px"><span class="lbl">Track</span><select class="sel"><option>Brands Hatch</option></select></label>
+          <label class="fld" style="width:200px"><span class="lbl">Date (optional)</span><input class="inp" value="Sat 24 Oct 2026"></label>
+        </div>
+        <div style="font-size:13px;font-weight:700;margin:14px 0 2px">Sessions of this round, in the order you drive them</div>
+        <div class="ses" style="border-top:1px solid #2b323d"><span class="grip" style="padding-bottom:8px">&#8942;&#8942;</span><label class="fld"><span class="lbl">1. Race setup</span><select class="sel"><option>Practice 5 min</option></select></label><div class="fld"><span class="lbl">Kind</span><span class="typ" style="align-self:flex-start;margin-bottom:7px">Practice</span></div><div class="fld"><span class="lbl">Points</span><span class="note" style="margin-bottom:7px">none (practice)</span></div><button type="button" class="btn" aria-label="Remove session 1" style="padding:0;width:36px">&times;</button></div>
+        <div class="ses"><span class="grip" style="padding-bottom:8px">&#8942;&#8942;</span><label class="fld"><span class="lbl">2. Race setup</span><select class="sel"><option>Qualifying 5 min</option></select></label><div class="fld"><span class="lbl">Kind</span><span class="typ" style="align-self:flex-start;margin-bottom:7px">Qualifying</span></div><div class="fld"><span class="lbl">Points</span><span class="note" style="margin-bottom:7px">pole bonus (see Points)</span></div><button type="button" class="btn" aria-label="Remove session 2" style="padding:0;width:36px">&times;</button></div>
+        <div class="ses"><span class="grip" style="padding-bottom:8px">&#8942;&#8942;</span><label class="fld"><span class="lbl">3. Race setup</span><select class="sel"><option>Club Night heat (20 laps)</option></select></label><div class="fld"><span class="lbl">Kind</span><span class="typ" style="align-self:flex-start;margin-bottom:7px">Race</span></div><label class="fld"><span class="lbl">Points count</span><select class="sel"><option>100% (full points)</option><option>50% (sprint)</option><option>None</option></select></label><button type="button" class="btn" aria-label="Remove session 3" style="padding:0;width:36px">&times;</button></div>
+        <div style="margin-top:12px"><button type="button" class="btn">Add a session</button></div>
+      </div>
+    </div>
+
+    <div class="secb note">Every session uses one of your race setups, so a championship can mix a short sprint with a long final. The kind (Practice, Qualifying or Race) comes from the race setup. The track of the round is chosen for you when you load the session on the Home tab. A round that is driven keeps its results: changing its sessions afterwards does not change points that were already awarded.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sech">What the championship needs from the race setups</div>
+    <div class="secb" style="display:flex;flex-direction:column;gap:8px">
+      <div class="note"><b>Race:</b> a race, a timed race or a heat race. Points come from the final result. In an Endurance Race the heats count as one race.</div>
+      <div class="note"><b>Qualifying:</b> sets the order for the next race of the round (as today) and gives the pole bonus, if you set one.</div>
+      <div class="note"><b>Practice:</b> never gives points.</div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1000,"height":1500}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

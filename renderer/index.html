@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SlotForge Timing</title>
+<link rel="stylesheet" href="../node_modules/flag-icons/css/flag-icons.min.css">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="resources.css">
+<link rel="stylesheet" href="allinone.css">
+<link rel="stylesheet" href="widgetsettings.css">
+<link rel="stylesheet" href="raceclock.css">
+<link rel="stylesheet" href="parallel.css">
+<link rel="stylesheet" href="charts.css">
+<link rel="stylesheet" href="audiostudio.css">
+<link rel="stylesheet" href="widgetstudio.css">
+<link rel="stylesheet" href="widgetfonts.css">
+<link rel="stylesheet" href="tabstyle.css">
+<link rel="stylesheet" href="settingspage.css">
+</head>
+<body>
+<header>
+  <h1>SlotForge Timing</h1>
+  <nav id="tabs" role="tablist" aria-label="Main"></nav>
+</header>
+<main id="view"></main>
+<main id="racehost" class="parked" aria-label="Race"></main>
+<dialog id="dlg"></dialog>
+<script src="webapi.js"></script>
+<script src="quiet.js"></script>
+<script src="listnum.js"></script>
+<script src="bop.js"></script>
+<script src="weather.js"></script>
+<script src="tyretemperature.js"></script>
+<script src="tyrewear.js"></script>
+<script src="safetycar.js"></script>
+<script src="pushsave.js"></script>
+<script src="racelimit.js"></script>
+<script src="endurance.js"></script>
+<script src="failures.js"></script>
+<script src="damage.js"></script>
+<script src="pithold.js"></script>
+<script src="racesystems.js"></script>
+<script src="pitsensors.js"></script>
+<script src="pitholdui.js"></script>
+<script src="resources.js"></script>
+<script src="resourceui.js"></script>
+<script src="multiclass.js"></script>
+<script src="multiclassui.js"></script>
+<script src="virtualrival.js"></script>
+<script src="engine.js"></script>
+<script src="heats.js"></script>
+<script src="rotation.js"></script>
+<script src="championship.js"></script>
+<script src="champpoints.js"></script>
+<script src="tokens.js"></script>
+<script src="speed.js"></script>
+<script src="season.js"></script>
+<script src="distance.js"></script>
+<script src="stats.js"></script>
+<script src="homestats.js"></script>
+<script src="carstats.js"></script>
+<script src="viewset.js"></script>
+<script src="picture.js"></script>
+<script src="uiscale.js"></script>
+<script src="depth.js"></script>
+<script src="theme.js"></script>
+<script src="banner.js"></script>
+<script src="icons.js"></script>
+<script src="delta.js"></script>
+<script src="avatars.js"></script>
+<script src="picmemo.js"></script>
+<script src="weatherwidgets.js"></script>
+<script src="tyrewidgets.js"></script>
+<script src="pacewidgets.js"></script>
+<script src="boardorder.js"></script>
+<script src="strategywidgets.js"></script>
+<script src="allinone.js"></script>
+<script src="chartextras.js"></script>
+<script src="chartwidgets.js"></script>
+<script src="widgets.js"></script>
+<script src="widgetfree.js"></script>
+<script src="widgetcompose.js"></script>
+<script src="widgetfonts.js"></script>
+<script src="frame.js"></script>
+<script src="widgetview.js"></script>
+<script src="widgetsettings.js"></script>
+<script src="backdrop.js"></script>
+<script src="audiocalls.js"></script>
+<script src="announcer.js"></script>
+<script src="sound.js"></script>
+<script src="timing.js"></script>
+<script src="rows.js"></script>
+<script src="richtext.js"></script>
+<script src="canvas.js"></script>
+<script src="liveshare.js"></script>
+<script src="widgetpreview.js"></script>
+<script src="adjustpad.js"></script>
+<script src="adjustui.js"></script>
+<script src="lanecards.js"></script>
+<script src="dirfolder.js"></script>
+<script src="penaltyui.js"></script>
+<script src="review.js"></script>
+<script src="resultsview.js"></script>
+<script src="livegrid.js"></script>
+<script src="homegrid.js"></script>
+<script src="drivergrid.js"></script>
+<script src="homecards.js"></script>
+<script src="liveview.js"></script>
+<script src="report.js"></script>
+<script src="setupwords.js"></script>
+<script src="systemwords.js"></script>
+<script src="formui.js"></script>
+<script src="railform.js"></script>
+<script src="temperatureeditor.js"></script>
+<script src="database.js"></script>
+<script src="landing.js"></script>
+<script src="perf.js"></script>
+<script src="perfui.js"></script>
+<script src="race.js"></script>
+<script src="undo.js"></script>
+<script src="editorcanvas.js"></script>
+<script src="editor.js"></script>
+<script src="charteditor.js"></script>
+<script src="tokenui.js"></script>
+<script src="bopui.js"></script>
+<script src="enduranceui.js"></script>
+<script src="damageui.js"></script>
+<script src="weatherui.js"></script>
+<script src="tyreui.js"></script>
+<script src="pushsaveui.js"></script>
+<script src="rotationwords.js"></script>
+<script src="championshipwords.js"></script>
+<script src="rotationdrag.js"></script>
+<script src="rotationui.js"></script>
+<script src="virtualrivalui.js"></script>
+<script src="championshipui.js"></script>
+<script src="audiostudio.js"></script>
+<script src="audioedit.js"></script>
+<script src="widgetbuilder.js"></script>
+<script src="widgetstudio.js"></script>
+<script src="hardware.js"></script>
+<script src="trackmate.js"></script>
+<script src="hardwareui.js"></script>
+<script src="settingspage.js"></script>
+<script src="zipfile.js"></script>
+<script src="arduinosketch.js"></script>
+<script src="arduinobox.js"></script>
+<script src="arduinosim.js"></script>
+<script src="arduinorace.js"></script>
+<script src="arduinoui.js"></script>
+<script src="parallel.js"></script>
+<script src="parallelclient.js"></script>
+<script src="parallelrace.js"></script>
+<script src="parallelpage.js"></script>
+<script src="parallelui.js"></script>
+<script src="phidget.js"></script>
+<script src="phidgetclient.js"></script>
+<script src="phidgetui.js"></script>
+<script src="dsui.js"></script>
+<script src="transferui.js"></script>
+<script src="themeui.js"></script>
+<script src="padui.js"></script>
+<script src="help.js"></script>
+<script src="calculationsui.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

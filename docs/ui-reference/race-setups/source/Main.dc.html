@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Race Setup editor</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./rs.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="win" style="width: 1240px; height: 1500px; font-family: Inter, system-ui, sans-serif; color: #e8e6e1">
+
+<div class="top">
+<div class="tile"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg></div>
+<div class="grow">
+<div class="eyebrow">Race setup</div>
+<h1 class="name">Club race 10 laps</h1>
+<div class="pills">
+<span class="pill red">Race</span>
+<span class="pill">One race</span>
+<span class="pill">10 laps</span>
+<span class="pill">Living room</span>
+<span class="pill">4 lanes</span>
+</div>
+</div>
+<span class="status"><span class="dot"></span>Ready to race</span>
+</div>
+
+<div class="body">
+
+<div class="rail">
+<div class="cap">This setup</div>
+<button class="ri on"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg><span><span class="t">Session</span><span class="s">Race · one race</span></span><span class="dot sp"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3"/></svg><span><span class="t">Ends and winner</span><span class="s">10 laps · first to finish wins</span></span><span class="dot sp"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6.5" cy="12" r="2.5"/><circle cx="12" cy="12" r="2.5"/><circle cx="17.5" cy="12" r="2.5"/></svg><span><span class="t">Start</span><span class="s">Lights, 3 to 5 s</span></span><span class="dot sp off"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.500 8-8 9-4.500-1-8-4-8-9V6z"/></svg><span><span class="t">Rules and systems</span><span class="s">Penalty · Fuel</span></span><span class="dot sp"></span></button>
+<button class="ri"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg><span><span class="t">Screens and sound</span><span class="s">Main and second screen</span></span><span class="dot sp off"></span></button>
+<div class="cap" style="margin-top: 14px">Only if you need it</div>
+<button class="ri off"><svg class="ic ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg><span><span class="t">Advanced</span><span class="s">Yellow flag · pads · Trackmate · box</span></span><span class="dot sp off"></span></button>
+<div style="flex: 1"></div>
+<div class="note info" style="flex-direction: column; gap: 4px">
+<span class="eyebrow mute">Used by</span>
+<span>Club night 2026<br>Saturday series</span>
+</div>
+</div>
+
+<div class="main">
+
+<div class="say">
+<div class="tile"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg></div>
+<div>
+<div class="eyebrow mute">In plain words</div>
+<p>A <b>race</b> of <b>10 laps</b> on <b>Living room</b>. It ends when every car has finished. The first car to finish the 10 laps wins.</p>
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg></span>
+<span class="st">Session</span><span class="sn">What are you setting up?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="q">
+<div class="l">Kind of session</div>
+<div class="cards c4">
+<button class="kc"><span class="kt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.500 2M9 2h6"/></svg>Free practice</span><span class="kd">Everyone drives. Ranked by fastest lap.</span></button>
+<button class="kc"><span class="kt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-6"/></svg>Qualifying</span><span class="kd">Ranked by fastest lap. The result can seed the heats.</span></button>
+<button class="kc on"><span class="kt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.500 4L17 12H5"/></svg>Race</span><span class="kd">Laps and time decide the winner.</span></button>
+<button class="kc"><span class="kt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Time tokens</span><span class="kd">Not a race. You sell track time per lane.</span></button>
+</div>
+</div>
+
+<div class="q">
+<div class="l">Format<small>Races only</small></div>
+<div class="cards c2">
+<button class="kc on"><span class="kt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M14 6l6 6-6 6"/></svg>One race</span><span class="kd">All cars start together and there is one result.</span></button>
+<button class="kc"><span class="kt"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg>Heats</span><span class="kd">A series of races. Drivers take turns and the heats are added up.</span></button>
+</div>
+</div>
+
+<div class="q">
+<div class="sw">
+<button class="tg" aria-label="Teams swap drivers in the pits"></button>
+<span><b>Teams swap drivers in the pits</b><br><span class="hint">An endurance race: the drivers of a team take turns in the same car.</span></span>
+</div>
+</div>
+
+<div class="q">
+<div class="l">Track</div>
+<div class="row">
+<span class="in sel"><strong style="min-width: 190px">Living room</strong><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span>
+<span class="pill">4 lanes</span>
+<span class="hint">The track decides how many lanes there are.</span>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="sec open">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3"/></svg></span>
+<span class="st">Ends and winner</span><span class="sn">How long does it last, and who wins?</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+</div>
+<div class="sb">
+
+<div class="q">
+<div class="l">The race is over after</div>
+<div class="row">
+<span class="seg"><button class="on">Laps</button><button>Time</button><button>Distance</button></span>
+<span class="in"><strong>10</strong><span>laps</span></span>
+</div>
+</div>
+
+<div class="q">
+<div class="l">The race ends</div>
+<span class="seg" style="align-self: flex-start"><button class="on">When every car has finished</button><button>When the leader has finished</button></span>
+</div>
+
+<div class="note good">
+<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.500l4.500 4.500L19 7"/></svg>
+<span><b>Winner: the first car to finish the laps.</b> A race of laps is decided by who finishes first, so there is nothing to set here. Choose <b>Time</b> and the most laps wins, then the shortest total time; choose <b>Distance</b> and the first car to drive it wins.</span>
+</div>
+
+</div>
+</div>
+
+<div class="sec">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6.500" cy="12" r="2.500"/><circle cx="12" cy="12" r="2.500"/><circle cx="17.500" cy="12" r="2.500"/></svg></span>
+<span class="st">Start</span><span class="sv" style="margin-left: 14px">Lights out after 3 to 5 seconds</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+</div>
+</div>
+
+<div class="sec">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.500 8-8 9-4.500-1-8-4-8-9V6z"/></svg></span>
+<span class="st">Rules and systems</span><span class="sv" style="margin-left: 14px">Penalty system, Fuel system</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+</div>
+</div>
+
+<div class="sec">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></span>
+<span class="st">Screens and sound</span><span class="sv" style="margin-left: 14px">Main screen and second screen layouts, audio set</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+</div>
+</div>
+
+<div class="sec">
+<div class="sh">
+<span class="sic"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></span>
+<span class="st">Advanced</span><span class="sv" style="margin-left: 14px">Yellow flag, adjust pads, Trackmate, SlotForge box. Nothing changed.</span>
+<span class="sp chev"><svg class="ic sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+</div>
+</div>
+
+</div>
+</div>
+
+<div class="foot">
+<span class="hint">Everything else keeps its default.</span>
+<span class="grow"></span>
+<button class="btn ghost">Cancel</button>
+<button class="btn red">Save race setup</button>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":1500}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

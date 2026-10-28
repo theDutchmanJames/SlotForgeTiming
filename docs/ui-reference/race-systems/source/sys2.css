@@ -1,0 +1,156 @@
+/* Rotation setup, Championship and Balance of Power boards: what these three need on top of sys.css (sys.css itself is not changed).
+   Colours: the colours of the tabs of Race Setup in the dark theme (styles.css: --c-rot, --c-ch, --c-bop). */
+.ss-rot{--c:#c4803f;--on:#10151b}
+.ss-ch{--c:#ec5f9a;--on:#10151b}
+.ss-bop{--c:#e8e6e1;--on:#10151b}
+.status.warn{border-color:#8a6a2c;background:rgba(255,184,77,.1);color:#ffcb7d}
+.status.warn .dot{background:#ffb84d}
+.foot .hint b{color:#ffcb7d}
+.sec .sh .sv.sp{margin-left:auto;margin-right:6px}
+.sech{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sech h4{margin:0;font-size:14px;font-weight:700}
+.sech h4 small{font-weight:400;color:#98a0ab;font-size:12.5px;margin-left:8px}
+.sech .row{gap:10px}
+.cnt{font-size:12.5px;color:#98a0ab}
+.hr2{border:0;border-top:1px solid #343b47;margin:2px 0}
+
+/* participants of a rotation: a button in the colour of the participant */
+.pool{display:flex;flex-wrap:wrap;gap:8px}
+.pchip{--pc:#4c9aff;display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 13px;border-radius:9px;border:1.5px solid var(--pc);background:color-mix(in srgb,var(--pc) 16%,#171b21);font-weight:650;font-size:13px;color:#e8e6e1;cursor:grab}
+.pchip i{width:8px;height:8px;border-radius:50%;background:var(--pc);flex:none}
+.pchip.sel{box-shadow:0 0 0 2px #222831,0 0 0 4px var(--pc)}
+
+/* the heats: one row for each, a cell for each lane */
+.hg{display:flex;flex-direction:column;gap:7px;overflow-x:auto}
+.hg .hr{display:grid;grid-template-columns:54px 118px repeat(4,minmax(84px,1fr)) 150px 150px;gap:8px;align-items:center;min-width:840px}
+.hg .hh{padding-bottom:6px;border-bottom:1px solid #343b47}
+.hg .hh span{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#98a0ab;font-weight:700}
+.hn{display:flex;align-items:center;gap:7px;font-weight:700;color:#c9ccd1}
+.grip{width:10px;height:16px;flex:none;background:radial-gradient(circle,#7b8493 1.3px,transparent 1.7px) 0 0/5px 5px}
+.hn .ic{color:#ffb84d}
+.cell{--pc:#4c9aff;height:36px;border-radius:8px;border:1.5px solid var(--pc);background:color-mix(in srgb,var(--pc) 16%,#171b21);font-weight:650;font-size:13.5px;color:#e8e6e1;display:flex;align-items:center;justify-content:center}
+.cell.empty{border:1.5px dashed #4a5361;background:none;color:#7b8493;font-weight:500;font-size:12.5px}
+.hg .hr.locked .cell{opacity:.85}
+.hg .hr.locked .fi,.hg .hr.locked .sel2{opacity:.6}
+.sel2{height:36px;border-radius:8px;border:1px solid #3d4552;background:#171b21;color:#98a0ab;font-size:13px;padding:0 10px;display:flex;align-items:center;justify-content:space-between}
+.hacts{display:flex;gap:6px;justify-content:flex-end}
+.ib.sm2{width:32px;height:32px}
+.ib.on{background:color-mix(in srgb,var(--c) 18%,#2b323d);border-color:color-mix(in srgb,var(--c) 55%,#3d4552);color:var(--ct)}
+.ib[disabled]{opacity:.4}
+
+/* names of the participants */
+.names{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 16px}
+.nm{display:flex;align-items:center;gap:8px}
+.nm .nl{display:flex;align-items:center;gap:6px;font-weight:700;font-size:12.5px;color:#c9ccd1;width:36px;flex:none}
+.nm .nl i{width:8px;height:8px;border-radius:50%;background:var(--pc);flex:none}
+.nm .fi{flex:1}
+.nm .ib{width:30px;height:36px;flex:none}
+
+/* a small table that only shows (how often everybody races, which lane) */
+.tab2{width:100%;border-collapse:collapse;font-size:13.5px}
+.tab2 th{text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#98a0ab;font-weight:700;padding:0 14px 8px 0;border-bottom:1px solid #343b47}
+.tab2 td{padding:8px 14px 8px 0;border-bottom:1px solid #2b323d}
+.tab2 td.n{font-weight:700}
+
+/* the fields of a championship, a slider */
+.rc{border:1px solid #343b47;border-radius:12px;background:#1b2027;overflow:hidden}
+.rc.next{border-color:var(--c);background:color-mix(in srgb,var(--c) 7%,#1b2027)}
+.rch{display:flex;align-items:center;gap:12px;padding:12px 14px}
+.rch .rn{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--ct);width:64px;flex:none}
+.rch .rname{font-weight:700;font-size:14.5px}
+.rch .rmeta{color:#98a0ab;font-size:12.5px;margin-left:10px}
+.rcb{padding:0 14px 14px;display:flex;flex-direction:column;gap:12px}
+.ses{display:grid;grid-template-columns:30px minmax(0,1.6fr) 104px minmax(150px,1fr) 112px;gap:10px;align-items:center}
+.ses.h span{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#98a0ab;font-weight:700}
+.ses .sn2{width:28px;height:28px;border-radius:50%;background:#2b323d;border:1px solid #3d4552;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px;color:#c9ccd1}
+.tagk{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 11px;font-size:12px;font-weight:650;border:1px solid #3d4552;background:#171b21;color:#c9ccd1;width:max-content}
+.tagk.race{border-color:#8a2f33;color:#ff9a9d}
+.tagk.qual{border-color:#6b5a1d;color:#f2cf5b}
+.tagk.prac{border-color:#3d4f6b;color:#8fb8ff}
+.pt{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:10px}
+.pt .fld label{font-weight:600;font-size:12px;color:#98a0ab}
+.presets{display:flex;gap:10px;flex-wrap:wrap}
+.pre{border:1px solid #343b47;background:#1b2027;border-radius:10px;padding:9px 14px;font-weight:650;font-size:13px;color:#c9ccd1;cursor:pointer}
+.pre.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 12%,transparent);color:#e8e6e1}
+.roster{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 18px}
+.rrow{display:flex;align-items:center;gap:12px;border:1px solid #343b47;background:#1b2027;border-radius:10px;padding:8px 12px}
+.rrow .av{width:30px;height:30px;border-radius:50%;background:#2b323d;border:1px solid #3d4552;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#c9ccd1;flex:none}
+.rrow .rt{font-weight:650}
+.rrow .rs{color:#98a0ab;font-size:12.5px}
+.rrow .ib{width:30px;height:30px;margin-left:auto}
+.chk{display:flex;flex-direction:column;gap:8px}
+.chk .ci{display:flex;align-items:center;gap:10px;font-size:13.5px}
+.chk .ci .ic{flex:none}
+.chk .ci.okc .ic{color:#3ecf8e}
+.chk .ci.badc .ic{color:#ffb84d}
+
+/* Balance of Power */
+.rng{position:relative;height:34px}
+.rng .trk{position:absolute;left:0;right:0;top:14px;height:6px;border-radius:999px;background:#343b47}
+.rng .fil{position:absolute;left:0;top:14px;height:6px;border-radius:999px;background:var(--c)}
+.rng .kn{position:absolute;top:6px;width:22px;height:22px;border-radius:50%;background:var(--c);border:3px solid #222831;box-shadow:0 0 0 1px var(--c);margin-left:-11px}
+.rngl{display:flex;justify-content:space-between;font-size:11.5px;color:#98a0ab;margin-top:2px}
+.eff{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.effc{display:flex;flex-direction:column;gap:6px;border:1px solid #343b47;background:#1b2027;border-radius:12px;padding:13px 14px}
+.effc.on{border-color:color-mix(in srgb,var(--c) 70%,#343b47);background:color-mix(in srgb,var(--c) 7%,#1b2027)}
+.effc .et{display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px}
+.effc .et .ic{color:#98a0ab}
+.effc.on .et .ic{color:var(--ct)}
+.effc .ed{font-size:12.5px;color:#98a0ab;line-height:1.4}
+.effc .tg{margin-left:auto}
+.dis{opacity:.45}
+
+.pchip small{font-size:11px;font-weight:700;color:#c9ccd1;background:rgba(0,0,0,.28);border-radius:999px;padding:1px 7px}
+.pchip.dim{opacity:.5;background:#171b21}
+.hg.hl .cell:not(.mine){opacity:.35}
+.cell.mine{box-shadow:0 0 0 2px #222831,0 0 0 4px var(--pc)}
+.btn.danger{color:#ff9a9d;border-color:#8a2f33}
+.hold{display:flex;flex-direction:column;gap:10px;border:1px solid #343b47;background:#1b2027;border-radius:10px;padding:12px 14px;font-size:13px}
+.hold p{margin:0}
+.hold .row{gap:10px}
+.menu{border:1px solid #3d4552;background:#222831;border-radius:12px;padding:6px;box-shadow:0 10px 30px rgba(0,0,0,.4);display:flex;flex-direction:column;gap:2px}
+.menu .mi{padding:9px 12px;border-radius:8px;display:flex;flex-direction:column;gap:2px}
+.menu .mi.on{background:#2b323d}
+.menu .mi b{font-size:13.5px}
+.menu .mi small{color:#98a0ab;font-size:12.5px;line-height:1.4}
+.menu .mi.danger b{color:#ff9a9d}
+.parts{border:1px dashed #4a5361;border-radius:14px;padding:22px 28px 26px;margin-top:24px;background:#1b2027}
+.parts h2{margin:0 0 4px;font-size:16px}
+.parts .lead{margin:0 0 18px}
+.pcols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;align-items:start}
+.pcols .cap2{font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:#98a0ab;margin-bottom:10px}
+.pcols .col{display:flex;flex-direction:column;gap:10px}
+.lg2{display:flex;gap:18px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:#98a0ab}
+.lg2 .li{display:flex;align-items:center;gap:8px}
+.lg2 .cell{width:64px;height:28px;font-size:12px}
+
+.pbar{height:6px;border-radius:999px;background:#343b47;overflow:hidden}
+.pbar i{display:block;height:100%;background:var(--c)}
+.chpill{display:inline-flex;align-items:center;border-radius:999px;padding:3px 11px;font-size:12px;font-weight:700;border:1px solid #3d4552;background:#171b21;color:#98a0ab;margin-left:auto}
+.chpill.done{border-color:#2c6f55;background:rgba(62,207,142,.1);color:#6fe0ae}
+.chpill.next{border-color:var(--c);background:color-mix(in srgb,var(--c) 16%,transparent);color:var(--ct)}
+.chpill.warn{border-color:#8a6a2c;background:rgba(255,184,77,.1);color:#ffcb7d}
+.rch .chev{color:#98a0ab}
+.rch .rmeta{margin-left:0}
+.rch .grow2{flex:1;min-width:0;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.sel3{height:36px;border-radius:8px;border:1px solid #3d4552;background:#171b21;color:#e8e6e1;font-size:13.5px;padding:0 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.sel3 span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sel3 .ic{color:#98a0ab}
+.mute2{color:#98a0ab;font-size:13px}
+.rtab .th,.rtab .tr{display:grid;grid-template-columns:var(--cols);gap:10px;align-items:center}
+.avs{width:28px;height:28px;border-radius:50%;background:color-mix(in srgb,var(--pc,#98a0ab) 22%,#171b21);border:1.5px solid var(--pc,#98a0ab);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11.5px;flex:none}
+
+/* Balance of Power */
+.pctbig{font-size:26px;font-weight:700;color:var(--ct);letter-spacing:-.01em}
+.pctbig small{font-size:14px;font-weight:600;color:#98a0ab;margin-left:6px}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.car{display:flex;flex-direction:column;gap:6px;border:1px solid #343b47;background:#1b2027;border-radius:12px;padding:12px 14px}
+.car .ch{display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px}
+.car .ch .ic{flex:none}
+.car.hin .ch .ic{color:#ff9a9d}
+.car.hlp .ch .ic{color:#6fe0ae}
+.car ul{margin:0;padding-left:18px;font-size:13.5px;color:#c9ccd1;line-height:1.55}
+.hysb{display:flex;height:34px;border-radius:9px;overflow:hidden;border:1px solid #3d4552}
+.hysb span{display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:650;color:#e8e6e1;border-right:1px solid #171b21}
+.hysb span:last-child{border-right:0}
+.dimsec{opacity:.55}

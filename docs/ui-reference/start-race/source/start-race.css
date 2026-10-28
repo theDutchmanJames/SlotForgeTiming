@@ -1,0 +1,131 @@
+/* Start a race redesign: the rules of the app that these boards use (styles.css), then options A and B */
+[data-theme="dark"]{--bg:#171b21;--panel:#222831;--ink:#e8e6e1;--muted:#98a0ab;--line:#343b47;--accent:#e5484d;--on-accent:#fff}
+[data-theme="light"]{--bg:#f1efea;--panel:#ffffff;--ink:#1d2229;--muted:#656c76;--line:#d9d6cf;--accent:#d62828;--on-accent:#fff}
+*{box-sizing:border-box}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.muted{color:var(--muted)}
+.row{display:flex;align-items:center;gap:12px;margin:10px 0}
+select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px 10px}
+.btn{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 14px;cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.big{font-size:18px;padding:11px 30px}
+html{--depth:.35;--d:var(--depth);--k:1;--hl:255,255,255;--sh:0,0,0;--lipa:.5}
+[data-theme="light"],[data-theme="ocean"],[data-tone="light"]{--k:.6;--sh:29,34,41;--lipa:.18}
+.champband{--c-ch:#ec5f9a;--on-ch:#10151b}
+[data-theme="light"] .champband,[data-theme="ocean"] .champband{--c-ch:#b8326f;--on-ch:#fff}
+.chpill{display:inline-block;padding:2px 10px;border-radius:5px;font-size:12px;font-weight:700;border:1px solid transparent}
+.chpill.next{background:var(--c-ch,#ec5f9a);color:var(--on-ch,#10151b)}
+.champband{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--c-ch);border-radius:10px;padding:16px 18px;margin:0 0 16px;display:flex;flex-direction:column;gap:10px}
+.champband .chhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.champband .chlabel{font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--c-ch)}
+.champband .chname{font-size:20px;font-weight:700;margin:2px 0}
+.champband .chsteps{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.champband .chstep{display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg)}
+.champband .chstep.next{border-color:var(--c-ch);background:color-mix(in srgb,var(--c-ch) 12%,var(--bg))}
+.champband .chstep.next .si{background:var(--c-ch);border-color:var(--c-ch);color:var(--on-ch)}
+.champband .chstep .si{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex:none;border:2px solid var(--line);color:var(--muted)}
+.champband .chstep.done .si{background:color-mix(in srgb,#3ecf8e 25%,var(--panel));border-color:transparent;color:var(--ink)}
+.champband .btn.chload{background:var(--c-ch);border-color:var(--c-ch);color:var(--on-ch);font-weight:700}
+.champband .chtags{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.champband .chstep .grow{flex:1}
+.hm-start .champband{background:color-mix(in srgb,var(--c-ch) 7%,var(--bg));border:1px solid color-mix(in srgb,var(--c-ch) 50%,var(--line));border-top:3px solid var(--c-ch);border-radius:8px;padding:12px 14px;margin:2px 0 12px}
+.hm-start{container-type:inline-size}
+.hm-start .champband .btn.chload{white-space:nowrap;flex:none}
+.hm-start .champband .row{align-items:center}
+body{margin:0;font:16px/1.45 "Segoe UI",system-ui,sans-serif}
+.card ul{margin:0;padding-left:18px}
+.card{
+  box-shadow:inset 0 1px 0 rgba(var(--hl),calc(.16*var(--d))),inset 0 12px 14px -10px rgba(var(--hl),calc(.10*var(--d))),inset 0 -12px 14px -10px rgba(var(--sh),calc(.16*var(--d)*var(--k))),
+    0 calc(4px*var(--d)) 0 rgba(var(--sh),var(--lipa)),0 calc(3px + 10px*var(--d)) calc(6px + 16px*var(--d)) -4px rgba(var(--sh),calc(.6*var(--d)*var(--k)))}
+.btn:not(:disabled){
+  box-shadow:inset 0 1px 0 rgba(var(--hl),calc(.20*var(--d))),inset 0 7px 8px -6px rgba(var(--hl),calc(.10*var(--d))),inset 0 -2px 0 rgba(var(--sh),calc(.20*var(--d)*var(--k))),
+    0 calc(2px*var(--d)) 0 rgba(var(--sh),var(--lipa)),0 calc(2px + 4px*var(--d)) calc(3px + 5px*var(--d)) -2px rgba(var(--sh),calc(.5*var(--d)*var(--k)))}
+/* ---- Start a race redesign: options A (lanes as rows) and B (lanes as a starting grid). Uses only the variables of the app. ---- */
+.rd-stage{background:var(--bg);padding:18px;border-radius:14px;margin:0 0 22px;box-sizing:content-box;color:var(--ink);--ok:#3ecf8e;--warn:#ffb84d}
+[data-theme="light"] .rd-stage,[data-theme="ocean"] .rd-stage{--ok:#1e8a4c;--warn:#9a6a00}
+.rd-h{color:#98a0ab;font:700 12px/1 system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;margin:22px 0 8px}
+.rd{--c-ch:#ec5f9a;--on-ch:#10151b;display:flex;flex-direction:column;gap:12px;padding:16px 18px 18px;border-top:3px solid var(--accent);border-radius:10px;container-type:inline-size}
+[data-theme="light"] .rd{--c-ch:#b8326f;--on-ch:#fff}
+.rd-grow{flex:1 1 0}
+.rd-label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--accent)}
+.rd-label.muted{color:var(--muted)}
+
+/* header: icon tile, small caps label, the setup as the title, facts as chips */
+.rd-head{display:flex;gap:14px;align-items:flex-start}
+.rd-tile{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--accent) 20%,var(--panel));color:var(--accent);flex:none}
+.rd-ht{min-width:0;flex:1}
+.rd-title{position:relative;display:inline-flex;align-items:center;margin:1px 0 7px;max-width:100%}
+.rd-title select{appearance:none;-webkit-appearance:none;font:inherit;font-size:21px;font-weight:700;line-height:1.25;color:var(--ink);background:transparent;border:0;border-bottom:1px dashed var(--line);border-radius:0;padding:1px 30px 2px 0;cursor:pointer;min-width:0;max-width:100%;text-overflow:ellipsis}
+.rd-title:hover select{border-bottom-color:var(--muted)}
+.rd-title .rd-chev{position:absolute;right:4px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--muted);display:flex}
+.rd-chips{display:flex;flex-wrap:wrap;gap:6px}
+.rd-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 11px;border-radius:999px;background:var(--bg);border:1px solid var(--line);font-size:13px;color:var(--muted);line-height:1.4}
+.rd-chip b{color:var(--ink);font-weight:700}
+.rd-chip:first-child{background:color-mix(in srgb,var(--accent) 14%,var(--bg));border-color:color-mix(in srgb,var(--accent) 45%,var(--line));color:var(--ink)}
+.rd-chip svg{flex:none}
+
+/* the championship choice: one quiet row, the pink card opens under it */
+.rd-champ{display:flex;align-items:center;gap:10px;padding:7px 8px 7px 8px;background:var(--bg);border:1px solid var(--line);border-left:4px solid var(--c-ch);border-radius:8px}
+.rd-ctile{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--c-ch) 20%,var(--panel));color:var(--c-ch);flex:none}
+.rd-clabel{font-weight:600;font-size:14px;white-space:nowrap}
+.rd-cgrow{flex:1;min-width:0}
+.rd .champband{margin:0}
+.rd .champband .chpill{white-space:nowrap}
+
+/* selects with a little picture in front */
+.rd-sel{position:relative;display:block;min-width:0}
+.rd-sel select{appearance:none;-webkit-appearance:none;width:100%;min-width:0;font:inherit;font-size:15px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 32px 7px 38px;text-overflow:ellipsis;cursor:pointer}
+.rd-sel.rd-plain select{padding-left:12px;background:var(--panel)}
+.rd-sel:hover select{border-color:var(--muted)}
+.rd-sico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);display:flex;pointer-events:none}
+.rd-sel .rd-chev{position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--muted);display:flex}
+.rd-champ .rd-sel select{background:var(--panel)}
+
+.rd-sub{display:flex;align-items:baseline;gap:10px;margin:4px 0 -4px;flex-wrap:wrap;font-size:14px}
+
+/* the tick of a lane: done circle like the steps of the championship card */
+.rd-tick{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.rd-tick.ok{background:color-mix(in srgb,var(--ok) 25%,var(--panel));color:var(--ok)}
+.rd-tick.warn{background:color-mix(in srgb,var(--warn) 22%,var(--panel));color:var(--warn)}
+.rd-why{color:var(--warn);font-size:13px;font-weight:600}
+
+/* option A: a lane is a dark inset row with its lane colour */
+.rd-lanes{display:flex;flex-direction:column;gap:8px}
+.rd-lane{display:grid;grid-template-columns:32px minmax(0,1fr) minmax(0,1fr) 24px;grid-template-areas:"n d c t" ". w w w";column-gap:10px;row-gap:4px;align-items:center;padding:9px 12px 9px 9px;border:1px solid color-mix(in srgb,var(--c) 38%,var(--line));border-radius:10px;background:color-mix(in srgb,var(--c) 7%,var(--bg))}
+.rd-lane .rd-num{grid-area:n}.rd-lane>.rd-sel:nth-of-type(1){grid-area:d}.rd-lane>.rd-sel:nth-of-type(2){grid-area:c}.rd-lane .rd-tick{grid-area:t}.rd-lane .rd-why{grid-area:w}
+.rd-num{width:32px;height:32px;border-radius:50%;background:var(--c);color:var(--on);font-weight:800;font-size:15px;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 22%,transparent)}
+.rd-lane.need{border-color:color-mix(in srgb,var(--warn) 60%,var(--line));background:color-mix(in srgb,var(--warn) 7%,var(--bg))}
+
+/* the bottom: what is ready, and Start */
+.rd-go{display:flex;align-items:center;gap:14px;margin-top:2px;padding-top:14px;border-top:1px solid var(--line);flex-wrap:wrap}
+.rd-status{display:inline-flex;align-items:center;gap:10px;padding:6px 14px 6px 12px;border-radius:999px;background:var(--bg);border:1px solid var(--line);font-size:14px;font-weight:600}
+.rd-status.ok{border-color:color-mix(in srgb,var(--ok) 50%,var(--line))}
+.rd-status.warn{border-color:color-mix(in srgb,var(--warn) 55%,var(--line));color:var(--ink)}
+.rd-lamps{display:inline-flex;gap:5px}
+.rd-lamps i{width:11px;height:11px;border-radius:50%;background:var(--line);display:block}
+.rd-lamps i.on{background:var(--c);box-shadow:0 0 7px color-mix(in srgb,var(--c) 75%,transparent)}
+.btn.rd-start{display:inline-flex;align-items:center;gap:10px;font-size:18px;font-weight:700;padding:11px 28px 11px 22px;border-radius:10px;box-shadow:0 8px 20px color-mix(in srgb,var(--accent) 38%,transparent)}
+.btn.rd-start[disabled]{opacity:.4;cursor:not-allowed;box-shadow:none;filter:grayscale(.4)}
+
+/* option B: lanes as a starting grid */
+.rd-grid{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:10px}
+.rd-lc{border:1px solid color-mix(in srgb,var(--c) 38%,var(--line));border-top:4px solid var(--c);border-radius:10px;background:color-mix(in srgb,var(--c) 7%,var(--bg));padding:10px 12px 12px;display:flex;flex-direction:column;gap:9px}
+.rd-lh{display:flex;justify-content:space-between;align-items:center}
+.rd-lnum{font-size:12px;letter-spacing:.09em;text-transform:uppercase;font-weight:800;color:color-mix(in srgb,var(--c) 72%,var(--ink))}
+.rd-who{display:flex;gap:11px;align-items:flex-start}
+.rd-av{width:46px;height:46px;border-radius:50%;background:var(--c);color:var(--on);font-weight:800;font-size:19px;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 22%,transparent)}
+.rd-whoc{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1}
+.rd-lc.need{border-color:color-mix(in srgb,var(--warn) 60%,var(--line));border-top-color:var(--c);background:color-mix(in srgb,var(--warn) 7%,var(--bg))}
+.rd-startbar{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:10px;background:color-mix(in srgb,var(--accent) 9%,var(--bg));border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line));flex-wrap:wrap}
+.rd-startbar.warn{background:var(--bg);border-color:var(--line)}
+.rd-startbar .rd-status{background:transparent;border-color:transparent;padding:0}
+
+@container (max-width:560px){
+  .rd{padding:14px 14px 16px}
+  .rd-lane{grid-template-columns:32px minmax(0,1fr) 24px;grid-template-areas:"n d t" "n c t" ". w w"}
+  .rd-grid{grid-template-columns:minmax(0,1fr)}
+  .rd-go .rd-start,.rd-startbar .rd-start{width:100%;justify-content:center}
+  .rd-champ{flex-wrap:wrap}
+  .rd-title select{font-size:19px}
+}

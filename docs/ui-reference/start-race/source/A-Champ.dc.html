@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Start a race, option A, championship, a lane needs a driver</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="/_blob/e285aa66d35a36cac4a2fae0df4452ac">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.ic{fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.ic.b{stroke-width:2.6}
+.ic.m{stroke-width:2}
+</style>
+</helmet>
+<div class="rd-stage" data-theme="dark" style="width: 771px; height: 749px; box-sizing: border-box; margin: 0; border-radius: 0">
+<svg width="0" height="0" style="position: absolute" aria-hidden="true"><defs>
+<symbol id="i-driver" viewBox="0 0 24 24"><path d="M3.5 15.5a8.5 8.5 0 0 1 17 0v2.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1zM11 11.5h9.5"></path><path d="M7 19v1.5M17 19v1.5"></path></symbol>
+<symbol id="i-car" viewBox="0 0 32 18"><path d="M2.5 12.5v-2.2c0-1 .7-1.8 1.7-2l5.3-1.2 3.6-3.3c.4-.4 1-.6 1.5-.6h4.4c.7 0 1.3.3 1.7.8l2.8 3.3 4.2.8c1 .2 1.8 1.1 1.8 2.2v2.2z"></path><circle cx="9" cy="13.2" r="2.6"></circle><circle cx="24" cy="13.2" r="2.6"></circle></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"></path></symbol>
+<symbol id="i-bang" viewBox="0 0 24 24"><path d="M12 6v8M12 18.2v.1"></path></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6"></path></symbol>
+<symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 22V4"></path><path d="M4 4h14l-2.5 4.5L18 13H4"></path></symbol>
+<symbol id="i-cup" viewBox="0 0 24 24"><path d="M7 4h10v5.5a5 5 0 0 1-10 0zM7 6H4v1.5A3 3 0 0 0 7 10.5M17 6h3v1.5a3 3 0 0 1-3 3M12 14.5v3M8 20.5h8M9.5 17.5h5"></path><path d="M12 6.2l.8 1.6 1.7.2-1.3 1.2.3 1.7-1.5-.8-1.5.8.3-1.7-1.3-1.2 1.7-.2z"></path></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></symbol>
+</defs></svg>
+<section class="card hm-start rd rd-a">
+<div class="rd-head">
+<span class="rd-tile"><svg class="ic" width="24" height="24"><use href="#i-flag"></use></svg></span>
+<div class="rd-ht">
+<div class="rd-label">Start a race</div>
+<label class="rd-title"><select aria-label="Race setup"><option>James' GP Sprint</option></select><span class="rd-chev"><svg class="ic m" width="16" height="16"><use href="#i-chev"></use></svg></span></label>
+<div class="rd-chips"><span class="rd-chip"><b>Race</b></span><span class="rd-chip">20 laps</span><span class="rd-chip"><svg class="ic" width="14" height="14"><use href="#i-pin"></use></svg>Slotrace Circuit</span><span class="rd-chip">2 lanes</span></div>
+</div>
+</div>
+<div class="rd-champ"><span class="rd-ctile"><svg class="ic" width="18" height="18"><use href="#i-cup"></use></svg></span><span class="rd-clabel">Championship</span><label class="rd-sel rd-plain rd-cgrow"><select aria-label="Championship"><option>Club Cup 2026</option></select><span class="rd-chev"><svg class="ic m" width="16" height="16"><use href="#i-chev"></use></svg></span></label></div>
+<div class="champband" id="champband">
+<div class="chhead"><div><div class="chlabel">Championship</div><div class="chname" style="font-size: 17px">Club Cup 2026</div><div class="muted" style="font-size: 13px">Round 1 of 2 · Opener · Slotrace Circuit · Sat 24 Oct</div></div><div class="chtags"><span class="chpill next">1 of 3 sessions driven</span></div></div>
+<ul class="chsteps">
+<li class="chstep done"><span class="si"><svg class="ic b" width="12" height="12"><use href="#i-check"></use></svg></span><span>Qualifying: Qualifying</span><span class="grow"></span><span class="muted">done</span></li>
+<li class="chstep next"><span class="si">2</span><span>Race: James' GP Sprint</span><span class="grow"></span><span class="muted">next</span></li>
+</ul>
+<div class="row" style="margin: 2px 0 0"><button class="btn chload">Load Race</button><label class="rd-sel rd-plain"><select aria-label="Another session"><option>Another session…</option></select><span class="rd-chev"><svg class="ic m" width="16" height="16"><use href="#i-chev"></use></svg></span></label></div>
+</div>
+<div class="rd-sub"><span class="rd-label muted">Lanes</span><span class="muted">2 lanes on Slotrace Circuit. Pick who drives what.</span></div>
+<div class="rd-lanes">
+<div class="rd-lane" style="--c: #e5484d; --on: #fff">
+<span class="rd-num">1</span>
+<label class="rd-sel"><span class="rd-sico"><svg class="ic" width="17" height="17"><use href="#i-driver"></use></svg></span><select aria-label="Driver, lane 1"><option>James</option></select><span class="rd-chev"><svg class="ic m" width="16" height="16"><use href="#i-chev"></use></svg></span></label>
+<label class="rd-sel"><span class="rd-sico"><svg class="ic" width="22" height="12"><use href="#i-car"></use></svg></span><select aria-label="Car, lane 1"><option>NSR Mosler MT900R</option></select><span class="rd-chev"><svg class="ic m" width="16" height="16"><use href="#i-chev"></use></svg></span></label>
+<span class="rd-tick ok" title="Ready"><svg class="ic b" width="13" height="13"><use href="#i-check"></use></svg></span>
+</div>
+<div class="rd-lane need" style="--c: #3b82f6; --on: #fff">
+<span class="rd-num">2</span>
+<label class="rd-sel"><span class="rd-sico"><svg class="ic" width="17" height="17"><use href="#i-driver"></use></svg></span><select aria-label="Driver, lane 2"><option>Choose a driver…</option></select><span class="rd-chev"><svg class="ic m" width="16" height="16"><use href="#i-chev"></use></svg></span></label>
+<label class="rd-sel"><span class="rd-sico"><svg class="ic" width="22" height="12"><use href="#i-car"></use></svg></span><select aria-label="Car, lane 2"><option>NSR Corvette C.08R</option></select><span class="rd-chev"><svg class="ic m" width="16" height="16"><use href="#i-chev"></use></svg></span></label>
+<span class="rd-tick warn" title="This lane needs a driver"><svg class="ic b" width="13" height="13"><use href="#i-bang"></use></svg></span>
+<span class="rd-why">This lane needs a driver</span>
+</div>
+</div>
+<div class="rd-go">
+<div class="rd-status warn" role="status"><span class="rd-lamps" aria-hidden="true"><i class="on" style="--c: #e5484d"></i><i style="--c: #3b82f6"></i></span><span>1 of 2 lanes ready</span></div>
+<span class="rd-grow"></span>
+<button class="btn primary big rd-start" disabled><svg class="ic" width="20" height="20"><use href="#i-flag"></use></svg><span>Start race</span></button>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":771,"height":749}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
