@@ -45,7 +45,7 @@ const el=()=>({style:{setProperty(){}},classList:{add(){},remove(){}},setAttribu
 const ctx=vm.createContext({console:{error(){}},performance:{now:()=>now},
  requestAnimationFrame:fn=>{callbacks.set(++nextRAF,fn);return nextRAF;},cancelAnimationFrame:id=>callbacks.delete(id),
  ResizeObserver:class{constructor(fn){created++;this.fn=fn;}observe(){}disconnect(){disconnected++;}},
- Backdrop:{node:()=>null},Frame:{themeKey:()=>'',style:()=>({}),solidity:()=>1},Widgets:{def:()=>({})},
+ LapHighlights:require('../renderer/laphighlights'),Backdrop:{node:()=>null},Frame:{themeKey:()=>'',style:()=>({}),solidity:()=>1},Widgets:{def:()=>({})},
  Timing:{beginFrame:s=>s,content:w=>{calls++;if(formatError&&w.id===1)throw Error('formatter');return {html:text,color:colour};}},
  WidgetView:{kind:()=> 'text',mount:(_,w,l)=>{let html='',writes=0;const val={style:{},get innerHTML(){return html;},set innerHTML(s){html=s;writes++;},get writes(){return writes;}};return {w,el:el(),val,layout:l,base:{},last:null};},fit:n=>{fits++;if(fitError&&n.w.id===1)throw Error('fit');}}
 });

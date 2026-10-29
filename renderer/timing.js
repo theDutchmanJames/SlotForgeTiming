@@ -327,9 +327,17 @@
     });
     return {html:Aio.html(w.type,model,opt)};
   }
+  const designValueFrames=new WeakMap();
   function content(w, S) {
-    const out = widgetContent(w, S), d = Wd.def(w.type);
-    if (S.tokens && d && d.perLane && S.carByLane(w.lane) && S.tokens.stateOf(w.lane, S.eng.elapsed(S.now)) === 'out') return { ...out, bg: S.tokens.outColor, color: contrast(S.tokens.outColor) };
+    let out = widgetContent(w, S); const d = Wd.def(w.type);
+    if(w.designRules?.length){const design=typeof module!=='undefined'?require('./widgetdesign.js'):root.WidgetDesign;
+      const car=d?.perLane?S.carByLane(w.lane):null;
+      let cache=S[FRAME]?designValueFrames.get(S):null;if(!cache){cache=new Map();if(S[FRAME])designValueFrames.set(S,cache);}
+      let values=cache.get(car);if(!values){values=composeValues(S,car,S.eng.endAt&&S.eng.status==='finished'?S.eng.endAt:S.now);values.pending=car&&!car.virtualRival?(car.pending||[]).length:null;if(car&&!car.dq&&!car.retired&&(S.eng.status==='finished'||S.phase==='finished'||S.phase==='review'))values.driverstatus='Finished';if(S.phase==='countdown')values.flag='Countdown';cache.set(car,values);}
+
+      out={...out,designRule:design.evaluate(w.designRules,values)};
+    }
+    if (S.tokens && d && d.perLane && S.carByLane(w.lane) && S.tokens.stateOf(w.lane, S.eng.elapsed(S.now)) === 'out') return { ...out, designRule:null, bg: S.tokens.outColor, color: contrast(S.tokens.outColor) };
     return out;
   }
   function composedContent(C, composition, w, S, values, scope) {
@@ -399,9 +407,8 @@
           return { html: Dl.wrap(v.html, res, opt, left.blank ? '' : left.who) };
         }
         if (Dl.KINDS[type].steady) { // Lap to Lap Delta: the last lap that was set stays on the left for the whole lap (the Laptime widget runs a clock instead), in the colour of a personal best or a record for a moment
-          const f = S.flashOf(c), last = c.laps.length ? c.laps[c.laps.length - 1] : null, fresh = f && S.now - f.at < (opt.holdSeconds ?? 3) * 1000;
-          const bg = fresh ? (f.kind === 'record' ? (opt.recordColor || '#ffc400') : f.kind === 'pb' ? (opt.pbColor || '#a45cff') : null) : null;
-          return { html: Dl.wrap(Number.isFinite(last) ? E.fmtTime(last) : '–', res, opt), ...(bg ? { bg, color: contrast(bg) } : {}) };
+          const last = c.laps.length ? c.laps[c.laps.length - 1] : null;
+          return { html: Dl.wrap(Number.isFinite(last) ? E.fmtTime(last) : '–', res, opt) };
         }
         const base = widgetContent({ ...w, type: Dl.baseOf(type) }, S);
         return { ...base, html: Dl.wrap(base.html, res, opt) };
@@ -464,8 +471,7 @@
       case 'laptime': {
         const f = S.flashOf(c);
         if (f && S.now - f.at < (opt.holdSeconds ?? 3) * 1000) {
-          const bg = f.kind === 'record' ? (opt.recordColor || '#ffc400') : f.kind === 'pb' ? (opt.pbColor || '#a45cff') : null;
-          return bg ? { html: E.fmtTime(f.time), bg, color: contrast(bg) } : { html: E.fmtTime(f.time) };
+          return { html: E.fmtTime(f.time) };
         }
         return { html: c.done ? '–' : E.fmtTime(S.eng.lapElapsed(S.eng.cars.indexOf(c), S.now)) };
       }
@@ -496,7 +502,7 @@
         const rows = RowsM.range(ordered(SS.standings(), opt, SS), opt).map(x => { // (orderBy: the board in the order of a value; from and to: only some of the places, for a board that shows part of the field)
           const car = x.car, rc = car.virtualRival ? null : car.virtual ? car.real : car, lc = SS.laneColorsOf ? SS.laneColorsOf(car.lane) : {}, ri = rc ? ES.cars.indexOf(rc) : -1;
           const raw = S.layout ? (S.layout.laneColors || [])[car.lane]?.bg || '' : lc.bg || '', expired = SS.tokens && SS.tokens.stateOf(car.lane, SS.eng.elapsed(SS.now)) === 'out';
-          return { pos: x.pos, flag: car.flag, name: car.driverName, nickname: car.nickname || car.driverName, callsign: car.callsign || '',
+          return { lane:car.virtual?car.real?.lane:car.lane, pos: x.pos, flag: car.flag, name: car.driverName, nickname: car.nickname || car.driverName, callsign: car.callsign || '',
             laps: String(car.virtual ? car.lapsAll : car.laps.length), best: car.best === null ? '–' : E.fmtTime(car.best), last: car.laps.length ? E.fmtTime(car.laps[car.laps.length - 1]) : '–',
             current: car.virtualRival ? (car.done ? '–' : E.fmtTime(Math.max(0,ES.elapsed(SS.now)-car.total))) : !rc || rc.done ? '–' : E.fmtTime(ES.lapElapsed(ri, SS.now)), fuel: rc && ES.fuel && ES.fuel.on ? `${(Math.floor(ES.fuelOf(ri, SS.now) * 10 + 1e-9) / 10).toFixed(1).replace(/\.0$/, '')} L` : '–', tyres: rc && opt.colTyres === true && ES.tyrewear ? Tyw.cellHtml(Tw.view(ES, [rc.lane], SS.now).rows[0]) : '–', pace: rc && opt.colPace === true && ES.pushSave ? Pw.rowHtml(ES.psInfo(rc), ES.pushSave, { look: 'cell' }).html : '–', gap: x.gap, color: lc.color, bg: lc.bg, ...(laneMode !== 'full' ? { color: expired ? lc.color : '', bg: expired ? lc.bg : '', laneBg: raw, laneColorStyle: laneMode, laneTransparency } : {}) };
         });

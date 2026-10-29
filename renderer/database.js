@@ -240,7 +240,7 @@ async function mountManager(box, e) {
   const viewBtn = viewable ? viewButton(viewId) : '';
   const bar = !viewable || !viewBars.has(viewId) ? '' : viewBar(viewId, mode === 'grid' ? 'Turn rows of information on or off for the cards. This is remembered for the Grid view of this page.' : 'Turn columns of information on or off for the list. This is remembered for the List view of this page.',
     [viewGroup(mode === 'grid' ? `Rows on the ${s.label.toLowerCase()} cards` : `Columns in the ${s.label.toLowerCase()} list`, [e, mode], modeCands)]);
-  const toggle = !s.card ? '' : `<span class="seg" role="group" aria-label="View"><button class="btn${mode === 'list' ? ' on' : ''}" id="vlist" aria-pressed="${mode === 'list'}">List</button><button class="btn${mode === 'grid' ? ' on' : ''}" id="vgrid" aria-pressed="${mode === 'grid'}">${e === 'racesetups' ? 'Cards' : 'Grid'}</button></span>`;
+  const toggle = !s.card ? '' : `<span class="seg" role="group" aria-label="View"><button class="btn${mode === 'list' ? ' on' : ''}" id="vlist" aria-pressed="${mode === 'list'}">${e === 'racesetups' ? 'Table' : 'List'}</button><button class="btn${mode === 'grid' ? ' on' : ''}" id="vgrid" aria-pressed="${mode === 'grid'}">${e === 'racesetups' ? 'Comparison rows' : 'Grid'}</button></span>`;
   const copyButton = i => COPY_SETUP_ENTITIES.has(e) ? `<button class="btn" type="button" data-copy="${esc(i.id)}" title="Create an independent copy of ${esc(titleOf(e, i))}">Copy</button>` : '';
   const gridHtml = (items, skip) => `<div class="cards">${items.map(i => {
     // the picture: the item's own, or (race setups) the picture of the track it uses; each with its own framing
@@ -264,22 +264,26 @@ async function mountManager(box, e) {
     items.map(i => `<tr${canView ? ` class="clickable" data-view="${esc(i.id)}" tabindex="0" aria-label="View ${esc(titleOf(e, i))}"` : ''}>${cols.map((c, n) => `<td>${c.get(i)}${n === 0 ? rowMark(e, i) : ''}</td>`).join('')}<td class="actions">
       <button class="btn" data-edit="${esc(i.id)}">Edit</button> ${copyButton(i)} <button class="btn danger" data-del="${esc(i.id)}">Delete</button></td></tr>`).join('') + '</table></div>';
   // Race setups (1.69.0): a row of kinds to filter on, and each setup as a card that says in words how it ends and who wins (setupwords.js). The folders per session type are gone.
-  const rsShown = e !== 'racesetups' ? items : setupFilter === 'all' ? items : items.filter(i => i.sessionType === setupFilter);
+  const setupRank = i => { const rank = SETUP_START.findIndex(([kind]) => kind === i.sessionType); return rank < 0 ? SETUP_START.length : rank; };
+  const rsShown = e !== 'racesetups' ? items : items.filter(i => setupFilter === 'all' || i.sessionType === setupFilter).sort((a,b) => setupRank(a) - setupRank(b));
   const rsCtx = i => ({ track: (state.refs.tracks || []).find(t => t.id === i.track) || null, rotation: ((state.refs.rotationsetups || []).find(r => r.id === i.rotation) || {}).name || '', dist: n => Distance.text(n, dUnit()) });
   const rsCard = i => {
     const d = SetupWords.describe(i, rsCtx(i)), t = titleOf(e, i);
-    return `<article class="rscard"><div class="rshead"><span class="rstile">${Icons.svg(SETUP_KIND_ICON[i.sessionType] || 'racesetups', { size: 22 })}</span><div class="rstitle"><div class="rseye">${esc(d.kind)}</div><div class="rsname">${esc(t)}</div></div>
+    const linked = typeof RaceSystems !== 'undefined' && i.sessionType !== 'tokens' ? RaceSystems.ITEMS.filter(x=>RaceSystems.configured(i,x)) : [];
+    const off = typeof RaceSystems !== 'undefined' ? RaceSystems.clean(i.disabledSystems) : [];
+    const enabled = linked.filter(x=>!off.includes(x.key)).length;
+    return `<article class="rscard"><div class="rsidentity" data-kind="${esc(i.sessionType)}"><div class="rshead"><span class="rstile">${Icons.svg(SETUP_KIND_ICON[i.sessionType] || 'racesetups', { size: 22 })}</span><div class="rstitle"><div class="rseye">${esc(d.kind)}</div><div class="rsname">${esc(t)}</div></div>
       <span class="rsdot${d.ready.ok ? '' : ' off'}" role="img" title="${esc(d.ready.text)}" aria-label="${esc(d.ready.text)}"></span></div>
       <div class="rspills">${d.cardPills.map(p => `<span class="rspill${p.tone ? ' ' + p.tone : ''}">${esc(p.text)}</span>`).join('')}</div>
-      <div class="rslv"><span class="k">Ends</span><span>${esc(d.ends)}</span></div><div class="rslv"><span class="k">Wins</span><span>${esc(d.wins)}</span></div>
-      ${typeof RaceSystems !== 'undefined' && i.sessionType !== 'tokens' ? RaceSystems.setupHtml(i, { compact: true, id: i.id }) : ''}<div class="row"><button class="btn" data-edit="${esc(i.id)}">Edit</button>${copyButton(i)}<button class="btn danger" data-del="${esc(i.id)}">Delete</button></div></article>`;
+      <div class="rsfacts"><div class="rslv"><span class="k">Ends</span><span>${esc(d.ends)}</span></div><div class="rslv"><span class="k">Wins</span><span>${esc(d.wins)}</span></div></div></div>
+      <section class="rslinked" aria-label="Systems for ${esc(t)}"><div class="rslinked-head"><strong>Race Systems</strong><span>${linked.length ? `${enabled} on${linked.length>enabled ? ` · ${linked.length-enabled} off` : ''}` : 'None linked'}</span></div>${linked.length ? RaceSystems.setupHtml(i, { compact: true, overview:true, id: i.id }) : `<p class="rslinked-empty">${i.sessionType==='tokens'?'This session uses Time Tokens instead of Race Systems.':'A simple session without extra systems.'}</p>`}</section><div class="row rsactions"><button class="btn" data-edit="${esc(i.id)}">Edit setup</button>${copyButton(i)}<button class="btn danger" data-del="${esc(i.id)}">Delete</button></div></article>`;
   };
   const rsFilter = e !== 'racesetups' ? '' : `<span class="seg rsfilter" role="group" aria-label="Show">${SETUP_FILTERS.map(([id, label]) => `<button class="btn${setupFilter === id ? ' on' : ''}" data-rsf="${id}" aria-pressed="${setupFilter === id}">${esc(label)}</button>`).join('')}</span>`;
   const rsStart = e !== 'racesetups' ? '' : `<div class="rscard rsstart"><span class="rstile">${Icons.svg('plus', { size: 22 })}</span><div class="rstitle"><div class="rsname">Start from a kind</div><span class="hint">A new setup opens with the right kind already chosen.</span></div>
     <div class="rskinds">${SETUP_START.map(([id, label]) => `<button class="rspill" type="button" data-rskind="${id}">${esc(label)}</button>`).join('')}</div></div>`;
   const rsEmpty = !items.length ? 'No race setups yet. Use the button above, or start from a kind below.' : `Nothing under ${SETUP_FILTERS.find(f => f[0] === setupFilter)[1]} yet. Start one below.`;
   const rsBody = e !== 'racesetups' ? '' : (rsShown.length ? (mode === 'grid' ? `<div class="rscards">${rsShown.map(rsCard).join('')}</div>` : tableHtml(rsShown, cols)) : `<p class="muted">${esc(rsEmpty)}</p>`) + rsStart;
-  box.innerHTML = `<div class="row"><button class="btn primary" id="add">Add ${esc(s.label.toLowerCase())}</button>
+  box.innerHTML = `<div class="row${e==='racesetups'?' rstoolbar':''}"><button class="btn primary" id="add">Add ${esc(s.label.toLowerCase())}</button>
       ${s.extra === false ? '' : '<button class="btn" id="extra">Extra fields…</button>'}${rsFilter}${viewBtn}${toggle}</div>${bar}` +
     (e === 'racesetups' ? rsBody
       : items.length && mode === 'grid' ? gridHtml(items)
@@ -793,6 +797,7 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
     const box = byId('rssay'); if (!box) return;
     markPs();
     const v = formValues();
+    if (e === 'racesetups') { const form = byId('frm'); if (form) form.dataset.sessionKind = v.sessionType || 'race'; }
     const rctx = e === 'racesetups' ? { track: (state.refs.tracks || []).find(t => t.id === v.track) || null, rotation: ((state.refs.rotationsetups || []).find(r => r.id === v.rotation) || {}).name || '', dist: n => Distance.text(n, dUnit()) } : e === 'fuelrules' ? { track: (state.refs.tracks || []).find(t => t.id === v.paceTrack) || null } : e === 'safetycarsystems' ? { track: (state.refs.tracks || []).find(t => t.id === v.safetyTrack) || null } : {};
     const d = e === 'racesetups' ? SetupWords.describe(v, rctx) : SystemWords.describe(e, v, rctx);
     const pills = byId('rspills'), ready = byId('rsready'), tile = byId('rstile');

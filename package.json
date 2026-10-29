@@ -1,6 +1,6 @@
 {
   "name": "slotforge-timing",
-  "version": "1.99.1",
+  "version": "1.99.2",
   "description": "Slot car lap timer and lap counter for Windows, macOS and Linux",
   "author": {
     "name": "theDutchmanJames",
@@ -17,13 +17,18 @@
   },
   "main": "main.js",
   "scripts": {
+    "test:comparison-rows:electron": "electron tools/qa/comparison-rows-electron.cjs",
     "test:database-actions": "node tests/databaseactions.test.js",
     "test:database-actions:electron": "electron tools/qa/database-actions-electron.cjs",
     "test:tabs:electron": "electron tools/qa/tabstyle-electron.cjs",
     "test:strategy-widgets": "node tests/strategywidgets.test.js",
     "test:fuel-styles": "node tests/fuelstyles.test.js",
     "test:fuel-styles:electron": "electron tools/qa/fuel-styles-electron.cjs && electron tools/qa/fuel-compact-electron.cjs",
-    "pretest": "node tests/tyrerepairs.test.js && node tests/tyrestyles.test.js && node tests/fuelstyles.test.js && node tests/postreviewrepairs.test.js && node tests/databaseactions.test.js && node tests/widgetfree.test.js && node tests/chartextras.test.js && node tests/virtuallanes.test.js && node tests/widgetsurface.test.js && node tests/editorperformance.test.js && node tests/widgetview.test.js && node tests/raceclassdelete.test.js && node tests/widgetfit.test.js && node tests/systemsaudit.test.js && node tests/tyretemperature.test.js && node tests/resources.test.js && node tests/multiclass.test.js && node tests/virtualrival.test.js && node tests/phidget.test.js && node tests/phidgetbackend.test.js && node tests/phidgetaudit.test.js && node tests/parallelaudit.test.js && node tests/widgetfonts.test.js && node tests/widgetcompose.test.js && node tests/audioredesign.test.js && node tests/widgetsettings.test.js && node tests/allinone.test.js && node tests/auditrepairs.test.js && node tests/customtyres.test.js && node tests/widgetpolish.test.js && node tests/racesetuprewrite.test.js && node tests/chartwidgets.test.js && node tests/strategywidgets.test.js && node tests/resultsview.test.js && node tests/help-current.test.js && node tests/fuelrewrite.test.js && node tests/penaltyrewrite.test.js && node tests/safetyrewrite.test.js && node tests/calculations.test.js",
+    "test:lap-highlights": "node tests/laphighlights.test.js",
+    "test:lap-highlights:electron": "electron tools/qa/lap-highlights-electron.cjs",
+    "test:widget-design": "node tests/widgetdesign.test.js",
+    "test:widget-design:electron": "electron tools/qa/widget-design-electron.cjs",
+    "pretest": "node tests/widgetdesign.test.js && node tests/helpview.test.js && node tests/laphighlights.test.js && node tests/tyrerepairs.test.js && node tests/tyrestyles.test.js && node tests/fuelstyles.test.js && node tests/postreviewrepairs.test.js && node tests/databaseactions.test.js && node tests/widgetfree.test.js && node tests/chartextras.test.js && node tests/virtuallanes.test.js && node tests/widgetsurface.test.js && node tests/editorperformance.test.js && node tests/widgetview.test.js && node tests/raceclassdelete.test.js && node tests/widgetfit.test.js && node tests/systemsaudit.test.js && node tests/tyretemperature.test.js && node tests/resources.test.js && node tests/multiclass.test.js && node tests/virtualrival.test.js && node tests/phidget.test.js && node tests/phidgetbackend.test.js && node tests/phidgetaudit.test.js && node tests/parallelaudit.test.js && node tests/widgetfonts.test.js && node tests/widgetcompose.test.js && node tests/audioredesign.test.js && node tests/widgetsettings.test.js && node tests/allinone.test.js && node tests/auditrepairs.test.js && node tests/customtyres.test.js && node tests/widgetpolish.test.js && node tests/racesetuprewrite.test.js && node tests/chartwidgets.test.js && node tests/strategywidgets.test.js && node tests/resultsview.test.js && node tests/help-current.test.js && node tests/fuelrewrite.test.js && node tests/penaltyrewrite.test.js && node tests/safetyrewrite.test.js && node tests/calculations.test.js",
     "sketch": "node tools/pack-sketch.js",
     "fwtest": "node tools/fwhost/run.js --strict",
     "start": "electron .",
@@ -54,7 +59,8 @@
     "test:pit-control:electron": "electron tools/qa/pit-widgets-electron.cjs",
     "test:all-in-one": "node tests/allinone.test.js",
     "test:audio": "node tests/audioredesign.test.js && node tests/audio.test.js && node tests/ambient.test.js && node tests/tyrecalls.test.js && node tests/voicereport.test.js",
-    "test:audio:electron": "electron tools/qa/audio-editor-electron.cjs && electron tools/qa/audio-race-electron.cjs",
+    "test:audio:electron": "electron tools/qa/audio-editor-electron.cjs && electron tools/qa/audio-navigation-electron.cjs && electron tools/qa/audio-race-electron.cjs",
+    "test:audio-navigation:electron": "electron tools/qa/audio-navigation-electron.cjs",
     "test:widget-composer": "node tests/widgetcompose.test.js",
     "test:widget-composer:electron": "electron tools/qa/widget-composer-electron.cjs",
     "phidget:build": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-phidget.ps1",
@@ -77,7 +83,8 @@
     "test:widget-preview:electron": "electron tools/qa/widget-preview-electron.cjs && electron tools/qa/widget-surface-electron.cjs",
     "test:tyre-styles": "node tests/tyrestyles.test.js",
     "test:tyre-repairs:electron": "electron tools/qa/tyre-repairs-electron.cjs",
-    "test:tyre-styles:electron": "electron tools/qa/tyre-styles-electron.cjs"
+    "test:tyre-styles:electron": "electron tools/qa/tyre-styles-electron.cjs",
+    "test:help-view": "node tests/helpview.test.js"
   },
   "build": {
     "appId": "io.github.thedutchmanjames.slotforgetiming",

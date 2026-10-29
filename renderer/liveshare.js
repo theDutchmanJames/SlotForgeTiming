@@ -41,12 +41,15 @@ const LiveShare = (() => {
   // it is sent as it is, so that every screen shows exactly what the race window shows.
   const shown = ms => Math.floor(ms / 60000) + ':' + ((ms % 60000) / 1000).toFixed(3); // the digits of a time on a screen (the same as RaceEngine.fmtTime)
   const cap = v => { if (typeof v !== 'number' || !Number.isFinite(v)) return v; const r = Math.round(v * 1000) / 1000; return r === v || shown(r) === shown(v) ? r : v; };
+  // Threshold rules use raw numbers, not rounded display strings. Preserve
+  // precision for these layouts while retaining compact legacy snapshots.
+  const wireNumber = c => c.layout?.widgets?.some(w => w.designRules?.length) ? v => v : cap;
   // everything of the dynamic data that is not a list that grows: c = { raceId, eng, phase, calling, lights, heat, flash, bestAll, bestAllName, bestBy, now }
   function core(c) {
-    const e = c.eng, d = { raceId: c.raceId, sentNow: cap(c.now), phase: c.phase, calling: !!c.calling, lights: c.lights, heat: c.heat, season: c.season || null, bestAll: cap(fin(c.bestAll)), bestAllName: c.bestAllName, bestBy: [...c.bestBy].map(([k, v]) => [k, cap(v)]), champ: c.champ || null, tokens: c.tokens ? { ...c.tokens, ends: c.tokens.ends.map(cap) } : null,
-      flash: [...c.flash].map(([car, f]) => [e.cars.indexOf(car), cap(f.at), cap(f.time), f.kind]).filter(x => x[0] >= 0) };
-    ENG.forEach(k => { d[k] = cap(e[k]); });
-    if(e.resources)d.resources={accounts:cap(e.resources.accounts),revision:e.resources.revision};
+    const e = c.eng, number = wireNumber(c), d = { raceId: c.raceId, sentNow: number(c.now), phase: c.phase, calling: !!c.calling, lights: c.lights, heat: c.heat, season: c.season || null, bestAll: number(fin(c.bestAll)), bestAllName: c.bestAllName, bestBy: [...c.bestBy].map(([k, v]) => [k, number(v)]), champ: c.champ || null, tokens: c.tokens ? { ...c.tokens, ends: c.tokens.ends.map(number) } : null,
+      flash: [...c.flash].map(([car, f]) => [e.cars.indexOf(car), number(f.at), number(f.time), f.kind, f.index]).filter(x => x[0] >= 0) };
+    ENG.forEach(k => { d[k] = number(e[k]); });
+    if(e.resources)d.resources={accounts:number(e.resources.accounts),revision:e.resources.revision};
     d.pitExitHeld = e.pitExitHeld ? e.pitExitHeld() : false;
     if (e.systemState) d.systemState = JSON.parse(JSON.stringify(e.systemState));
     return d;
@@ -56,13 +59,13 @@ const LiveShare = (() => {
   const SWAP_KEYS = ['en', 'swapLost', 'swapLaps', 'enSwapAt', 'driverId', 'driverName', 'nickname', 'callsign', 'flag', 'avatar', 'enSwapDoneAt'];
   // the Damage System: the damage of a car, once it has had any (a race without damage sends none of this)
   const DMG_KEYS = ['dmg', 'dmgTotal', 'dmgLvl', 'dmgDue', 'dmgOut', 'repairs', 'repairMs', 'repairedAt', 'damageFactor', 'fail', 'failN', 'failures', 'failMs', 'failOut']; // (Car Failures, 1.43.0: the failure a car has now, how many it had, which were cleared)
-  const carCore = (car, eng) => { const o = {}; if (eng?.pushSave?.mode === 'median') o.paceReference = eng.psRef(car); CAR.forEach(k => { if (!GROWING.includes(k)) o[k] = cap(car[k]); }); ['pitHold', 'pitSensor', 'pitRearm', 'redInterrupted', 'redLaps', 'pitLaps', 'resumed', 'started', 'fuelSamples'].forEach(k => { if (k in car) o[k] = cap(car[k]); }); if (car.en) SWAP_KEYS.forEach(k => { o[k] = cap(car[k]); }); if (car.dmgTotal > 0 || car.dmgOut || car.failN > 0 || car.failOut) DMG_KEYS.forEach(k => { o[k] = cap(car[k]); }); return o; };
+  const carCore = (car, eng, number=cap) => { const o = {}; if (eng?.pushSave?.mode === 'median') o.paceReference = eng.psRef(car); CAR.forEach(k => { if (!GROWING.includes(k)) o[k] = number(car[k]); }); ['pitHold', 'pitSensor', 'pitRearm', 'redInterrupted', 'redLaps', 'pitLaps', 'resumed', 'started', 'fuelSamples'].forEach(k => { if (k in car) o[k] = number(car[k]); }); if (car.en) SWAP_KEYS.forEach(k => { o[k] = number(car[k]); }); if (car.dmgTotal > 0 || car.dmgOut || car.failN > 0 || car.failOut) DMG_KEYS.forEach(k => { o[k] = number(car[k]); }); return o; };
 
   // the whole state in one go (what a window that opens late is given; also what the tests compare with)
   function packDynamic(c) {
-    const e = c.eng, d = core(c);
+    const e = c.eng, d = core(c), number = wireNumber(c);
     d.events = (e.events || []).slice();
-    d.cars = e.cars.map(car => ({ ...carCore(car, e), laps: car.laps.map(cap), bad: car.bad.slice() }));
+    d.cars = e.cars.map(car => ({ ...carCore(car, e, number), laps: car.laps.map(number), bad: car.bad.slice() }));
     return d;
   }
 
@@ -80,11 +83,11 @@ const LiveShare = (() => {
         const e = c.eng, t = nowMs === undefined ? c.now : nowMs;
         if (last && (last.raceId !== c.raceId || last.cars.length !== e.cars.length)) last = null;
         const first = !last, base = last || { raceId: c.raceId, events: [], cars: e.cars.map(() => ({ laps: [], bad: [] })) };
-        const d = core(c), cars = e.cars.map(car => carCore(car, e)), { sentNow, ...rest } = d;
+        const number = wireNumber(c), d = core(c), cars = e.cars.map(car => carCore(car, e, number)), { sentNow, ...rest } = d;
         const key = JSON.stringify([rest, cars]);
         let changed = first || key !== lastKey;
         const part = (prev, cur, map) => { const from = prefix(prev, cur), raw = cur.slice(from); if (raw.length || from < prev.length) changed = true; return { from, raw, tail: raw.map(map) }; };
-        const lapParts = e.cars.map((car, i) => ({ laps: part(base.cars[i].laps, car.laps, cap), bad: part(base.cars[i].bad, car.bad, same) }));
+        const lapParts = e.cars.map((car, i) => ({ laps: part(base.cars[i].laps, car.laps, number), bad: part(base.cars[i].bad, car.bad, same) }));
         const evStr = (e.events || []).map(x => JSON.stringify(x)), evFrom = prefix(base.events, evStr);
         if (evStr.length > evFrom || evFrom < base.events.length) changed = true;
         if (!changed && t - lastAt < heartbeat) return null;
@@ -158,7 +161,7 @@ const LiveShare = (() => {
       engine: () => eng,
       shared(localNow) {
         const d = dyn, t = v.clock(localNow), flash = new Map();
-        d.flash.forEach(([i, at, time, kind]) => { if (eng.cars[i]) flash.set(eng.cars[i], { at, time, kind }); });
+        d.flash.forEach(([i, at, time, kind, index]) => { if (eng.cars[i]) flash.set(eng.cars[i], { at, time, kind, index }); });
         return makeShared({ eng, track: stat.track, now: t, phase: d.phase, calling: !!d.calling, lights: d.lights, setup: stat.setup, heat: d.heat, flash, layout: stat.layout, rowDesigns: stat.rowDesigns, chartDesigns: stat.chartDesigns, imageSets: stat.imageSets, teams: stat.teams, clubLogo: stat.clubLogo, distUnit: stat.distUnit, roster: stat.roster || null, prior: stat.prior || null, past: stat.past || null, season: d.season || null,
           champ: d.champ, tokens: d.tokens || null, bestAll: d.bestAll === null ? Infinity : d.bestAll, bestAllName: d.bestAllName, bestBy: new Map(d.bestBy),
           base: { personal, track: stat.base.track === null ? Infinity : stat.base.track, trackName: stat.base.trackName } });

@@ -22,9 +22,7 @@
   const Pcw = typeof module !== 'undefined' ? require('./pitwidgets.js') : root.PitWidgets;
   const T = (type, label, group, o) => ({ type, label, group, perLane: false, w: 150, h: 60, textSize: 30, options: [], button: false, ...o, ...(o.button ? {} : {sample:runtimeSample(type)}) });
   const TIME_OPTIONS = [
-    { key: 'holdSeconds', label: 'Show finished lap for (seconds)', type: 'number', default: 3 },
-    { key: 'pbColor', label: 'Personal best colour', type: 'color', default: '#a45cff' },
-    { key: 'recordColor', label: 'Track record colour', type: 'color', default: '#ffc400' }
+    { key: 'holdSeconds', label: 'Show finished lap for (seconds)', type: 'number', default: 3 }
   ];
 
   const esc = x => String(x ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -208,7 +206,7 @@
   function fitClock(el,w){
     if(w?.type!=='clock'||clockStyleOf(w)==='classic'||!el?.querySelector)return;
     const v=el.querySelector('.lw-val');if(!v)return;
-    v.style.transform='';v.style.top='0px';v.style.bottom='0px';
+    v.style.transform='';if(!el.hasAttribute?.('data-wd-padding')){v.style.top='0px';v.style.bottom='0px';}
     const padding=root.getComputedStyle?.(v),p=k=>parseFloat(padding?.[k])||0;
     const width=v.clientWidth-p('paddingLeft')-p('paddingRight'),height=v.clientHeight-p('paddingTop')-p('paddingBottom');if(width<=0||height<=0)return;
     const F=frameModule(),manual=w.typography?.mode==='manual'||(!w.typography?.mode&&!!w.textSize),requested=F?.typography(w).valueSize*(el.clientWidth/(w.w||1000));
@@ -259,8 +257,8 @@
     return `<table class="lb">${rows.map(r => {
       const F = frameModule(), stripe = F ? F.laneStripe({ laneColorStyle: r.laneColorStyle, w: 1000, h: 70, transparency: r.laneTransparency }, null, cssVal(r.laneBg)) : { cls: '', css: '' }, style = `${cssVal(r.bg) ? 'background:' + cssVal(r.bg) + ';' : ''}${cssVal(r.color) ? 'color:' + cssVal(r.color) + ';' : ''}${stripe.css}`;
       // Keep the classic markup byte-for-byte when no stripe was requested.
-      if (!stripe.cls) return `<tr${cssVal(r.bg) || cssVal(r.color) ? ` style="${cssVal(r.bg) ? 'background:' + cssVal(r.bg) + ';' : ''}${cssVal(r.color) ? 'color:' + cssVal(r.color) : ''}"` : ''}>${cols.map(c => `<td class="lb-${c[1]}">${cell(r, c[1])}</td>`).join('')}</tr>`;
-      return `<tr class="${stripe.cls.trim()}" style="${style}">${cols.map(c => `<td class="lb-${c[1]}">${cell(r, c[1])}</td>`).join('')}</tr>`;
+      if (!stripe.cls) return `<tr${Number.isInteger(r.lane)?` data-lap-lane="${r.lane}"`:''}${cssVal(r.bg) || cssVal(r.color) ? ` style="${cssVal(r.bg) ? 'background:' + cssVal(r.bg) + ';' : ''}${cssVal(r.color) ? 'color:' + cssVal(r.color) : ''}"` : ''}>${cols.map(c => `<td class="lb-${c[1]}">${cell(r, c[1])}</td>`).join('')}</tr>`;
+      return `<tr${Number.isInteger(r.lane)?` data-lap-lane="${r.lane}"`:''} class="${stripe.cls.trim()}" style="${style}">${cols.map(c => `<td class="lb-${c[1]}">${cell(r, c[1])}</td>`).join('')}</tr>`;
     }).join('')}</table>`;
   }
 
@@ -614,7 +612,7 @@
     // ---- Delta Timers ----
     // Delta Timers: the ordinary widget's time on the left and, on the right, a green (faster) or red (slower) badge with the difference (see delta.js)
     ...Object.keys(Dl.KINDS).map(type => { const k = Dl.KINDS[type];
-      return T(type, k.label, 'Delta Timers', { title: k.title, perLane: true, w: k.record ? 340 : 290, options: [...Dl.optionsFor(type), ...(type === 'dlaptime' || k.steady ? TIME_OPTIONS : k.record ? RECORD_OPTIONS : [])],
+      return T(type, k.label, 'Delta Timers', { title: k.title, perLane: true, w: k.record ? 340 : 290, options: [...Dl.optionsFor(type), ...(type === 'dlaptime' ? TIME_OPTIONS : k.record ? RECORD_OPTIONS : [])],
       }); }),
     // ---- Tyres ----
     T('tyre', 'Current Tyres', 'Tyres', { title: 'Tyres', perLane: true, w: 140, h: 80, textSize: 22, options: Ww.TYRE_OPTIONS }),

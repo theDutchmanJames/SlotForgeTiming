@@ -29,21 +29,12 @@ assert(words('pushsave').includes('Full push') && words('pushsave').includes('Fu
 assert(words('custom').includes('Victory Spotlight') && words('custom').includes('Championship points'), 'Customization explains Race Results configuration');
 assert(words('parallel').includes('InpOut driver') && words('parallel').includes('polling gaps'), 'Parallel Port Help retains its installation and diagnostics caveats');
 
-const all = plain(Help.html());
+const all = plain(Help.WELCOME+folders.map(f=>f.body).join(''));
 for (const tab of ['Calculations', 'Race Results', 'Parallel Port', 'Timing Hardware', 'Layout Editor']) assert(all.includes(tab), `Help names ${tab}`);
 for (const [name, file] of [['Calculations', 'renderer/app.js'], ['Race Results', 'renderer/editor.js'], ['Parallel Port', 'renderer/parallelpage.js']]) assert(source(file).includes(name), `${name} Help points to a current application screen`);
 
 const html = Help.html();
 assert(html.includes('data-system="fuel"') && html.includes('data-system="weather"') && html.includes('data-system="tyrewear"'), 'race-system Help folders retain their colour identity');
-assert((html.match(/<details class="dbfolder helpfolder"/g) || []).length === folders.length, 'every folder renders in the shared folder style');
-
-const kids = folders.map(f => ({ dataset: { help: f.id }, open: false, ontoggle: null }));
-const box = { innerHTML: '', onclick: null, querySelectorAll: selector => /helpfolder/.test(selector) ? kids : [] };
-Help.render(box);
-assert(box.innerHTML.includes('helpwelcome') && kids.every(k => typeof k.ontoggle === 'function'), 'Help renders its welcome and remembers folder interactions');
-kids[0].open = true; kids[0].ontoggle();
-assert(Help.opened.has(folders[0].id), 'opening a folder is remembered');
-box.onclick({ target: { closest: () => ({ dataset: { helpall: '0' } }) } });
-assert.equal(Help.opened.size, 0, 'Close all clears opened Help folders');
-
+assert(folders.every(f=>html.includes('data-help-topic="'+f.id+'"')), 'every existing topic is reachable in the navigation');
+assert(html.includes('data-help-search') && html.includes('Your first race'), 'Help opens its searchable first-race guide');
 console.log('Current Help: passed.');

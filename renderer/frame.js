@@ -85,29 +85,30 @@
   };
 
   // what a layout keeps of the frame settings
-  const pickLayout = l => ({ radius: cornerPct(l && l.radius) ?? '', widgetTransparency: layoutTransparency(l), ...(layoutLaneStyle(l) !== 'full' ? { laneColorStyle: layoutLaneStyle(l) } : {}), ...(l?.widgetAppearance ? {widgetAppearance: cleanAppearance(l.widgetAppearance)} : {}), ...(l?.widgetFonts ? {widgetFonts: (root.WidgetFonts || (typeof require!=="undefined" ? require("./widgetfonts.js") : null))?.clean(l.widgetFonts) || {}} : {}) });
+  const pickLayout = l => ({ ...(l?.widgetStyles ? {widgetStyles:(root.WidgetDesign || (typeof require!=="undefined" ? require("./widgetdesign.js") : null))?.cleanStyles(l.widgetStyles)||[]} : {}), radius: cornerPct(l && l.radius) ?? '', widgetTransparency: layoutTransparency(l), ...(layoutLaneStyle(l) !== 'full' ? { laneColorStyle: layoutLaneStyle(l) } : {}), ...(l?.widgetAppearance ? {widgetAppearance: cleanAppearance(l.widgetAppearance)} : {}), ...(l?.widgetFonts ? {widgetFonts: (root.WidgetFonts || (typeof require!=="undefined" ? require("./widgetfonts.js") : null))?.clean(l.widgetFonts) || {}} : {}) });
 
   // New settings are opt-in. Missing properties continue to resolve from the
   // original layout/widget settings, so opening an old layout never migrates it.
   const PALETTE = ['#2f9fc5','#76a747','#e64d59','#f0c329','#ae82e8','#f39436','#e882b0','#c4ccd8'];
-  const APP_CHOICES = {fill:['solid','gradient','none'],source:['theme','lane','custom'],gradientSource:['theme','lane','custom'],strength:['subtle','medium','strong'],border:['theme','shade','lane','custom','none'],accent:['shade','lane','custom','none'],edge:['top','left','right'],depth:['follow','0','35','55','75'],spacing:['legacy','compact','comfortable','custom'],highlightTarget:['background','text','text-border']};
-  const APP_NUMBERS = {gradientOpacity:[0,100,1],angle:[0,359,1],borderShade:[-100,100,1],accentShade:[-100,100,1],borderWidth:[0,40,.5],accentWidth:[1,20,.5],radiusPixels:[0,250,.5],surfaceOpacity:[0,100,1],borderOpacity:[0,100,1],accentOpacity:[0,100,1],padding:[0,60,1]};
+  const APP_CHOICES = {lapAppearance:['both','surface','glow'],lapSource:['event','lane'],fill:['solid','gradient','none'],source:['theme','lane','custom'],gradientSource:['theme','lane','custom'],strength:['subtle','medium','strong'],border:['theme','shade','lane','custom','none'],accent:['shade','lane','custom','none'],edge:['top','left','right'],depth:['follow','0','35','55','75'],spacing:['legacy','compact','comfortable','custom'],highlightTarget:['background','text','text-border']};
+  const APP_NUMBERS = {paddingTop:[0,60,1],paddingRight:[0,60,1],paddingBottom:[0,60,1],paddingLeft:[0,60,1],contentGap:[0,40,1],lapIntensity:[5,70,1],lapDuration:[200,1500,50],gradientOpacity:[0,100,1],angle:[0,359,1],borderShade:[-100,100,1],accentShade:[-100,100,1],borderWidth:[0,40,.5],accentWidth:[1,20,.5],radiusPixels:[0,250,.5],surfaceOpacity:[0,100,1],borderOpacity:[0,100,1],accentOpacity:[0,100,1],padding:[0,60,1]};
   function cleanAppearance(raw) {
     const a = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}, out = {};
     for (const [k, choices] of Object.entries(APP_CHOICES)) if (choices.includes(String(a[k]))) out[k] = String(a[k]);
     for (const [k, [lo, hi, step]] of Object.entries(APP_NUMBERS)) { const v = number(a[k],lo,hi,null,step); if(v !== null) out[k]=v; }
-    for(const k of ['baseColor','gradientColor','borderColor','accentColor']) if(hex(a[k])) out[k]=hex(a[k]);
-    if(typeof a.highlights==='boolean')out.highlights=a.highlights;
+    for(const k of ['baseColor','gradientColor','borderColor','accentColor','lapColor','lapPbColor','lapRecordColor']) if(hex(a[k])) out[k]=hex(a[k]);
+    for(const k of ['separatePadding','highlights','lapEnabled','lapKeepRecords'])if(typeof a[k]==='boolean')out[k]=a[k];
     return out;
   }
-  const modern = (w,l) => !!(Object.keys(cleanAppearance(l?.widgetAppearance)).length || Object.keys(cleanAppearance(w?.appearance)).length);
+  const modern = (w,l) => !!(Object.keys(cleanAppearance(l?.widgetAppearance)).some(k=>!k.startsWith('lap')) || Object.keys(cleanAppearance(w?.appearance)).some(k=>!k.startsWith('lap')));
   function appearance(w={},l={}) {
     const oldLane=laneStyle(w,l),oldOpacity=100-transparency(w,l),bound=Number.isInteger(w.lane)&&w.lane>=0&&w.lane<8;
     return {fill:'solid',source:hex(w.bgColor)?'custom':oldLane==='full'&&bound?'lane':'theme',baseColor:hex(w.bgColor)||'#299ec3',strength:'medium',angle:135,
       border:mode(w)==='off'?'none':mode(w)||'theme',borderColor:colorOf(w),borderShade:(50-shade(w))*2,borderWidth:widthOf(w)??1,
       accent:['top','side','right'].includes(oldLane)?'lane':'none',accentColor:'#299ec3',accentShade:40,edge:oldLane==='top'?'top':oldLane==='right'?'right':'left',accentWidth:4,
-      radiusPixels:null,depth:'follow',surfaceOpacity:oldOpacity,borderOpacity:oldOpacity,accentOpacity:oldOpacity,spacing:'legacy',padding:22,highlights:true,highlightTarget:'background',
+      radiusPixels:null,depth:'follow',surfaceOpacity:oldOpacity,borderOpacity:oldOpacity,accentOpacity:oldOpacity,spacing:'legacy',padding:22,separatePadding:false,paddingTop:10,paddingRight:10,paddingBottom:10,paddingLeft:10,contentGap:12,highlights:true,highlightTarget:'background',
       gradientSource:bound?'lane':'theme',gradientColor:'#299ec3',gradientOpacity:100,
+      lapEnabled:true,lapAppearance:'both',lapSource:'event',lapKeepRecords:true,lapIntensity:30,lapDuration:500,lapColor:'#ffffff',lapPbColor:'#38d27a',lapRecordColor:'#b575ff',
       ...gradientDefaults(l?.widgetAppearance),...cleanAppearance(l?.widgetAppearance),...gradientDefaults(w?.appearance),...cleanAppearance(w?.appearance)};
   }
   // Retain a saved strength as opacity until the user changes the new control.
@@ -130,12 +131,13 @@
     const border=sourceColour(a.border,a.borderColor,a.borderShade,w,l)||'transparent';
     return {background:bg,borderColor:fade(border,100-a.borderOpacity),backgroundClip:'padding-box',borderWidth:`${a.border==='none'?0:a.borderWidth/(U||1000)*100}cqw`};
   }
-  const TYPE_NUMBERS={titleSize:[11,60],valueSize:[14,200],supportSize:[11,40],labelSize:[11,32],minSize:[11,60],iconSize:[16,400]};
+  const TYPE_NUMBERS={outline:[0,3,.25],titleSize:[11,60],valueSize:[14,200],supportSize:[11,40],labelSize:[11,32],minSize:[11,60],iconSize:[16,400]};
   function typography(w={}) {const raw=w.typography||{},out={mode:w.textSize?'manual':'auto',titleSize:w.titleSize||12,valueSize:w.textSize||30,supportSize:13,labelSize:11,minSize:14,iconSize:44,shrink:true,longText:'wrap',textSource:w.textColor?'custom':'auto'};
     if(['pace','tyrelife'].includes(w.type)&&Number(w.h)>0)out.iconSize=Math.max(16,Math.min(400,Math.round(w.h*(Number(w.opt?.[w.type==='pace'?'gaugeScale':'pictureScale'])||55)/100)));
     for(const [k,choices] of Object.entries({mode:['auto','manual'],longText:['wrap','fit','ellipsis'],textSource:['auto','theme','custom']}))if(choices.includes(raw[k]))out[k]=raw[k];
     for(const [k,[lo,hi]] of Object.entries(TYPE_NUMBERS))out[k]=number(raw[k],lo,hi,out[k],1);
     if(typeof raw.shrink==='boolean')out.shrink=raw.shrink;
+    out.shadow=['soft','strong'].includes(raw.shadow)?raw.shadow:'none';out.effectColor=hex(raw.effectColor)||'#101820';out.outline=number(raw.outline,0,3,0,.25);
     return out;
   }
   const rgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
@@ -191,6 +193,19 @@
     if(stateColour){el.dataset.wsStateText='';el.style.setProperty('--ws-state-ink',stateColour);el.style.color=stateColour;
       if(a.highlightTarget==='text-border'){el.style.borderColor=stateColour;el.style.borderWidth=`max(1px, ${Math.max(1,a.borderWidth)/10}cqw)`;}
     }else {delete el.dataset.wsStateText;el.style.removeProperty('--ws-state-ink');}
+    const split=a.separatePadding,hadSplit=el.dataset.wdPadding!==undefined;
+    el.toggleAttribute('data-wd-padding',split);
+    for(const side of ['Top','Right','Bottom','Left'])el.style.setProperty('--wd-pad-'+side.toLowerCase(),a['padding'+side]*scale+'px');
+    // Every adapter shares these bounds, including media, charts and clocks
+    // whose SVG fitting does not pass through Frame.fit's text search.
+    const content=el.querySelector(':scope > .lw-val');
+    if(content&&split){for(const side of ['top','right','bottom','left'])content.style[side]=el.style.getPropertyValue('--wd-pad-'+side);Object.assign(content.style,{padding:'0px',width:'auto',height:'auto'});}
+    else if(content&&hadSplit){for(const key of ['top','right','bottom','left','padding','width','height'])content.style.removeProperty(key);}
+    const customGap=Object.hasOwn(w.appearance||{},'contentGap')||Object.hasOwn(l?.widgetAppearance||{},'contentGap');
+    el.toggleAttribute('data-wd-gap',customGap);el.style.setProperty('--wd-gap',a.contentGap*scale+'px');
+    // Rules may change even when the displayed number does not. Restore the base first.
+    if(w.designRules?.length&&!enhanced){Object.assign(el.style,style(out.bg||baseColour(w,l),w,'var(--line)',l,1000));if(!type)el.style.color=stateColour||out.color||root.Widgets?.colorsOf(w,l)?.color||w.textColor||'var(--ink)';const stripe=laneStripe(w,l,laneColour(w,l));el.classList.remove('lcstripe-top','lcstripe-side','lcstripe-right');if(stripe.cls)el.classList.add(stripe.cls.trim());el.style.setProperty('--lane-stripe',stripe.color||'transparent');el.style.setProperty('--lane-size',stripe.size||'0px');}
+    root.WidgetDesign?.decorate(el,w,out,l);
     if(!type)return;
     if(t.mode==='auto'&&root.Widgets?.def)el.style.fontSize=((root.Widgets.def(w.type)?.textSize||30)/10)+'cqw';
     el.classList.add('ws-type');el.dataset.wsSizing=t.mode;el.dataset.wsLong=t.longText;
@@ -251,9 +266,10 @@
     const pad=el.classList.contains('rcell')?2:el.classList.contains('ws-spacing')?parseFloat(el.style.getPropertyValue('--ws-padding'))||0:Math.min(10,el.clientWidth*.06,el.clientHeight*.06);
     el.classList.add('wf-fitted');
     Object.assign(v.style,{left:pad+'px',right:pad+'px',bottom:pad+'px',top:pad+'px',padding:'0px',width:'auto',height:'auto'});
+    if(el.hasAttribute?.('data-wd-padding'))for(const side of ['top','right','bottom','left'])v.style[side]=el.style.getPropertyValue('--wd-pad-'+side);
     // List-style overviews reserve the actual title height, including manual sizing.
     const fuelGauge=v.querySelector(':scope > .fuel-gauge');
-    if(pitcontrol||fuelGauge){const title=el.querySelector(':scope > .lw-title');if(title)v.style.top=Math.max(pad,title.offsetTop+title.offsetHeight+6)+'px';}
+    if(pitcontrol||fuelGauge){const title=el.querySelector(':scope > .lw-title');if(title)v.style.top=Math.max(parseFloat(v.style.top)||pad,title.offsetTop+title.offsetHeight+6)+'px';}
     if(fuelGauge){const compact=v.clientHeight<68||(fuelGauge.classList.contains('fg-vertical')&&v.clientWidth<90);fuelGauge.classList.toggle('fg-compact',compact);const detail=fuelGauge.querySelector('.fg-detail');if(detail)detail.hidden=compact;}
     let ok=true;
     if(composition){root.WidgetCompose?.fit(el,w);ok=!el.classList.contains('wc-crowded');}
@@ -275,7 +291,7 @@
       }
       const min=list?t.minSize/.8:strategy?Math.max(t.minSize,11/.48):pitcontrol?Math.max(t.minSize,14):t.minSize;
       const computed=root.getComputedStyle(v),tabular=/^(?:"?SF (?:Inter|Roboto Mono|Barlow Condensed)|"?Segoe UI)/.test(computed.fontFamily);
-      const key=JSON.stringify([v.clientWidth,v.clientHeight,initial,min,t.mode,t.shrink,t.longText,tabular?v.textContent.replace(/\d/g,'0'):v.textContent,w.opt,w.fonts,el.style.getPropertyValue('--wf-support-font'),computed.fontFamily,computed.fontWeight,computed.fontStyle,computed.letterSpacing,fontEpoch,pitcontrol?[...v.querySelectorAll('.pcw-row')].filter(n=>!n.hidden).length:null]);
+      const key=JSON.stringify([v.clientWidth,v.clientHeight,initial,min,t.mode,t.shrink,t.longText,w.numberFormat,tabular?v.textContent.replace(/\d/g,'0'):v.textContent,w.opt,w.fonts,el.style.getPropertyValue('--wf-support-font'),computed.fontFamily,computed.fontWeight,computed.fontStyle,computed.letterSpacing,fontEpoch,pitcontrol?[...v.querySelectorAll('.pcw-row')].filter(n=>!n.hidden).length:null]);
       const cached=fitCache.get(v);
       if(simple&&t.longText==='ellipsis'&&!numeric){
         // Shortening a description is an explicit user choice, not a fitting failure.

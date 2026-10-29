@@ -32,21 +32,30 @@ nav{display:flex;gap:4px;flex-wrap:wrap}
 .sub{margin-bottom:16px}
 /* The sub-tabs of the Race Setup tab (1.45.0): a big Race Setups button and the other sub-tabs as coloured buttons in three groups. Design: docs/ui-reference/race-setup-tabs.
    Each sub-tab has the colour of its folder on the race screen. The light themes get darker colours (like the folders do). */
-.setupstrip,.setuppage,.setupform{--c-resource:#56bfaa;--on-resource:#10241f;--c-mc:#c6a5f0;--on-mc:#10151b;--c-vr:#62cbd5;--on-vr:#16242a;--c-rot:#c4803f;--c-fuel:#2fb86a;--c-pen:#f2b705;--c-dmg:#e5484d;--c-tyre:#9b4dff;--c-wx:#4c9aff;--c-bop:#e8e6e1;--c-tok:#1fb5ad;--c-sc:#ff7a1a;--c-ps:#a6d23c;--c-ch:#ec5f9a;--c-race:var(--accent);--on-rot:#10151b;--on-fuel:#10151b;--on-pen:#10151b;--on-dmg:#fff;--on-tyre:#fff;--on-wx:#10151b;--on-bop:#10151b;--on-tok:#10151b;--on-sc:#10151b;--on-ps:#10151b;--on-ch:#10151b;--on-race:var(--on-accent)}
-[data-theme="light"] :is(.setupstrip,.setuppage,.setupform),[data-theme="ocean"] :is(.setupstrip,.setuppage,.setupform),[data-tone="light"] :is(.setupstrip,.setuppage,.setupform){--c-resource:#147563;--on-resource:#fff;--c-mc:#7951b3;--on-mc:#fff;--c-vr:#137a84;--on-vr:#fff;--c-rot:#8a5124;--c-fuel:#1e8a4c;--c-pen:#9a7400;--c-dmg:#d62828;--c-tyre:#7c3aed;--c-wx:#0f6fd6;--c-bop:#5b6470;--c-tok:#0e8a84;--c-sc:#c2570c;--c-ps:#5f7d10;--c-ch:#b8326f;--on-rot:#fff;--on-fuel:#fff;--on-pen:#fff;--on-dmg:#fff;--on-tyre:#fff;--on-wx:#fff;--on-bop:#fff;--on-tok:#fff;--on-sc:#fff;--on-ps:#fff;--on-ch:#fff}
+.setupstrip,.setuppage,.setupform,.help-hub{--c-resource:#56bfaa;--on-resource:#10241f;--c-mc:#c6a5f0;--on-mc:#10151b;--c-vr:#62cbd5;--on-vr:#16242a;--c-rot:#c4803f;--c-fuel:#2fb86a;--c-pen:#f2b705;--c-dmg:#e5484d;--c-tyre:#9b4dff;--c-wx:#4c9aff;--c-bop:#e8e6e1;--c-tok:#1fb5ad;--c-sc:#ff7a1a;--c-ps:#a6d23c;--c-ch:#ec5f9a;--c-race:var(--accent);--on-rot:#10151b;--on-fuel:#10151b;--on-pen:#10151b;--on-dmg:#fff;--on-tyre:#fff;--on-wx:#10151b;--on-bop:#10151b;--on-tok:#10151b;--on-sc:#10151b;--on-ps:#10151b;--on-ch:#10151b;--on-race:var(--on-accent)}
+[data-theme="light"] :is(.setupstrip,.setuppage,.setupform),[data-theme="ocean"] :is(.setupstrip,.setuppage,.setupform),[data-tone="light"] :is(.setupstrip,.setuppage,.setupform,.help-hub){--c-resource:#147563;--on-resource:#fff;--c-mc:#7951b3;--on-mc:#fff;--c-vr:#137a84;--on-vr:#fff;--c-rot:#8a5124;--c-fuel:#1e8a4c;--c-pen:#9a7400;--c-dmg:#d62828;--c-tyre:#7c3aed;--c-wx:#0f6fd6;--c-bop:#5b6470;--c-tok:#0e8a84;--c-sc:#c2570c;--c-ps:#5f7d10;--c-ch:#b8326f;--on-rot:#fff;--on-fuel:#fff;--on-pen:#fff;--on-dmg:#fff;--on-tyre:#fff;--on-wx:#fff;--on-bop:#fff;--on-tok:#fff;--on-sc:#fff;--on-ps:#fff;--on-ch:#fff}
 .ss-resource{--c:var(--c-resource);--on:var(--on-resource)}.ss-mc{--c:var(--c-mc);--on:var(--on-mc)}.ss-vr{--c:var(--c-vr);--on:var(--on-vr)}.ss-rot{--c:var(--c-rot);--on:var(--on-rot)}.ss-fuel{--c:var(--c-fuel);--on:var(--on-fuel)}.ss-pen{--c:var(--c-pen);--on:var(--on-pen)}.ss-dmg{--c:var(--c-dmg);--on:var(--on-dmg)}.ss-tyre{--c:var(--c-tyre);--on:var(--on-tyre)}.ss-wx{--c:var(--c-wx);--on:var(--on-wx)}.ss-bop{--c:var(--c-bop);--on:var(--on-bop)}.ss-tok{--c:var(--c-tok);--on:var(--on-tok)}.ss-sc{--c:var(--c-sc);--on:var(--on-sc)}.ss-ps{--c:var(--c-ps);--on:var(--on-ps)}.ss-ch{--c:var(--c-ch);--on:var(--on-ch)}.ss-race{--c:var(--c-race);--on:var(--on-race)}
-.setupstrip{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:stretch;margin-bottom:18px}
-.ssbig{display:flex;align-items:center;gap:10px;flex:0 0 176px;align-self:flex-start;padding:9px 12px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);font:inherit;text-align:left;cursor:pointer}
+.setupstrip{position:relative;display:flex;flex-wrap:wrap;gap:8px;align-items:start;margin-bottom:18px}
+.ssbig{display:flex;align-items:center;gap:8px;flex:0 0 auto;align-self:flex-start;min-height:40px;padding:7px 12px;border-radius:8px;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--panel));color:var(--ink);font:inherit;text-align:left;cursor:pointer}
 .ssbig:hover{filter:brightness(1.08)}
-.ssbig[aria-selected="true"]{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--ink),0 8px 22px color-mix(in srgb,var(--accent) 45%,transparent)}
+.ssbig[aria-selected="true"]{box-shadow:inset 0 -2px 0 var(--accent)}
 .ssbig:focus-visible,.sstab:focus-visible{outline:3px solid #4c9aff;outline-offset:3px}
-.ssbigico{width:34px;height:34px;border-radius:50%;background:color-mix(in srgb,var(--on-accent) 18%,transparent);display:flex;align-items:center;justify-content:center;flex:none}
+.ssbigico{width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex:none;color:var(--accent)}
 .ssbig strong{display:block;font-size:15px;line-height:1.2}
-.ssbig small{display:block;font-size:11px;line-height:1.25;margin-top:2px}
-.ssgroups{display:flex;flex-wrap:wrap;gap:12px 24px;flex:1 1 420px;min-width:0;align-content:flex-start}
+.ssbig small{display:none}
+.ssgroups{display:flex;flex-wrap:wrap;gap:8px;flex:1 1 auto;min-width:0;align-content:flex-start}
 .ssgroup{display:flex;flex-direction:column;gap:5px}
 .sslabel{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
 .sschips{display:flex;flex-wrap:wrap;gap:6px}
+.ssdropdown{display:block;min-width:0;max-width:100%}
+.ssdropdown>summary{display:flex;align-items:center;gap:16px;min-height:40px;padding:8px 12px;list-style:none;border:1px solid var(--line);border-radius:8px;background:var(--panel);font-size:14px;cursor:pointer;overflow-wrap:anywhere}
+.ssdropdown>summary::after{content:'⌄';margin-left:auto}
+.ssdropdown>summary.sscurrent{border-color:var(--c);background:color-mix(in srgb,var(--c) 12%,var(--panel));font-weight:650}
+.ssdropdown>summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.ssdropdown:not([open])>.sschips{display:none}
+.ssdropdown[open]>.sschips{position:absolute;left:0;top:calc(100% + 6px);z-index:30;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:min(620px,100%);padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:0 8px 24px #0003}
+.ssdropdown .sstab{text-align:left;min-height:42px;white-space:normal}
+.setupstrip>.sstab{min-height:40px;align-self:flex-start}
 .sstab{display:inline-flex;align-items:center;gap:8px;padding:7px 13px 7px 11px;border-radius:8px;font:inherit;font-size:13.5px;line-height:1.2;color:var(--ink);cursor:pointer;background:color-mix(in srgb,var(--c) 13%,var(--panel));border:1px solid color-mix(in srgb,var(--c) 42%,var(--line))}
 .sstab .ssico{color:var(--c);flex:none}
 .sstab:hover{background:color-mix(in srgb,var(--c) 24%,var(--panel))}
@@ -56,7 +65,7 @@ nav{display:flex;gap:4px;flex-wrap:wrap}
 .setupform:not(.ss-race){--accent:var(--c);--on-accent:var(--on)}
 .ph.phicon{background:color-mix(in srgb,var(--c) 20%,var(--panel));color:var(--c)}
 .ph.phicon svg{width:30%;height:auto;max-height:60%}
-@media (max-width:700px){.setupstrip{flex-direction:column}.ssbig{flex:none;width:100%}.ssgroups{flex:none;flex-direction:column}}
+@media (max-width:500px){.ssgroups{flex-basis:100%}.ssdropdown[open]>.sschips{grid-template-columns:1fr}}
 /* The sub-tabs of the other main tabs (1.51.0: Database, Customization, App Settings, and the pages inside them): the same buttons as the Race Setup sub-tabs (.sstab above), without a colour of their own.
    --c is the text colour of the theme, a little softer, where a Race Setup sub-tab has its colour. The rules are the ones of .sstab. */
 .sub[role="tablist"]{--c:color-mix(in srgb,var(--ink) 85%,var(--panel));display:flex;flex-wrap:wrap;gap:6px}
@@ -217,9 +226,44 @@ details .fields{margin:10px 0}
 .rssay,.rscard,.rsform{--rs-ok:#2fb86a;--rs-warn:#f2b705}
 [data-theme="light"] :is(.rssay,.rscard,.rsform),[data-theme="ocean"] :is(.rssay,.rscard,.rsform){--rs-ok:#1e8a4c;--rs-warn:#9a7400}
 .rsfilter{margin-left:0}
-.rscards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:stretch;margin-bottom:16px}
+.rscards{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:stretch;margin-bottom:16px}
+@media(min-width:1200px){.rscards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:1800px){.rscards{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(min-width:2400px){.rscards{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .rscard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px 14px;display:flex;flex-direction:column;gap:12px}
 .rscard .row{margin:auto 0 0;flex-wrap:wrap;gap:8px}
+.rscards>.rscard{container-type:inline-size;display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.5fr);grid-template-rows:auto 1fr auto;gap:18px 24px;padding:20px;border-top:3px solid var(--accent);min-width:0}
+.rscards>.rscard>.rsidentity,.rscards>.rscard>.rslinked{grid-column:1/-1}
+.rscards>.rscard:has([data-kind=practice]){border-top-color:var(--c-wx)}
+.rscards>.rscard:has([data-kind=qualifying]){border-top-color:var(--c-pen)}
+.rsidentity{display:flex;flex-direction:column;gap:14px;min-width:0}
+.rsidentity[data-kind=practice] .rstile,.rsidentity[data-kind=practice] .rseye{color:var(--c-wx)}
+.rsidentity[data-kind=qualifying] .rstile,.rsidentity[data-kind=qualifying] .rseye{color:var(--c-pen)}
+.rsidentity[data-kind=practice] .rstile{border-color:var(--c-wx);background:color-mix(in srgb,var(--c-wx) 14%,transparent)}
+.rsidentity[data-kind=qualifying] .rstile{border-color:var(--c-pen);background:color-mix(in srgb,var(--c-pen) 14%,transparent)}
+/* The session picker updates the tone without rebuilding or losing form input. */
+.rsform.ss-race[data-session-kind=practice]{--accent:var(--c-wx);--on-accent:var(--on-wx);--c:var(--c-wx)}
+.rsform.ss-race[data-session-kind=qualifying]{--accent:var(--c-pen);--on-accent:var(--on-pen);--c:var(--c-pen)}
+.rsfacts{display:grid;gap:10px;padding-top:14px;border-top:1px solid var(--line)}
+.rslinked{min-width:0}
+.rslinked-head{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;margin-bottom:10px}
+.rslinked-head>span,.rslinked-empty{color:var(--muted);font-size:13px}
+.rslinked-empty{padding:12px 0;margin:0}
+.rslinked .system-switches.compact{grid-template-columns:repeat(2,minmax(0,1fr));margin:0}
+.rslinked .system-switch{height:52px;padding:7px 10px;gap:8px;font-size:14px;border-left-width:3px;border-left-color:var(--sys);background:color-mix(in srgb,var(--sys) 5%,var(--panel))}
+.rslinked .system-switch>span{min-width:0;line-height:1.2}
+.rslinked .system-switch>b{flex:none;min-width:26px;font-size:12px;text-align:right}
+.rslinked .system-switch:not(.on){border-left-color:color-mix(in srgb,var(--sys) 45%,var(--line));background:var(--bg)}
+.rscard .rsactions{grid-column:1/-1;width:100%;padding-top:14px;border-top:1px solid var(--line)}
+.rscards>.rscard>.rsactions{grid-row:3}
+.rsactions [data-del]{margin-left:auto}
+.rstoolbar{flex-wrap:wrap;gap:12px;margin-bottom:18px}
+.rstoolbar #add{order:0;margin-left:0}.rstoolbar .rsfilter{order:1;flex-wrap:wrap}.rstoolbar>.seg{margin-left:0}.rstoolbar>.seg:not(.rsfilter){order:2}
+/* Adapt the contents to the card, not the width of the whole application. */
+@container(min-width:640px){.rscards>.rscard>.rsidentity{grid-column:1}.rscards>.rscard>.rslinked{grid-column:2}}
+@container(min-width:1000px){.rslinked .system-switches.compact{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@container(max-width:320px){.rslinked .system-switches.compact{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:700px){.rscards>.rscard{padding:16px;gap:18px}}
 .rshead{display:flex;align-items:center;gap:12px}
 .rstile{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none;color:var(--accent);border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
 .rstitle{flex:1;min-width:0}
@@ -982,9 +1026,6 @@ dialog:has(.rsform){width:min(1240px,96vw);padding:0;overflow:hidden;max-height:
 .lv-tile .lv-badge{position:absolute;top:14px;right:14px}
 .lv-head.special{padding:8px 12px;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;background:color-mix(in srgb,var(--accent) 12%,var(--panel))}
 
-/* 0.85.0: App Settings > Help */
-.helppage{max-width:920px}
-.helpwelcome{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;margin:0 0 16px;background:var(--panel)}
 /* the folders of the Race Director page (1.11.1): the look of the Help folders, each with a colour of its own (--fc; without one, the accent) */
 .dirfolder{--fc:var(--accent);border-left-color:var(--fc)}
 .dbfolder.dirfolder>summary{background:color-mix(in srgb,var(--fc) 16%,var(--panel))}
@@ -1039,22 +1080,6 @@ dialog:has(.rsform){width:min(1240px,96vw);padding:0;overflow:hidden;max-height:
 .trk-call[data-active="true"]{animation:trkpulse 1.1s ease-in-out infinite}
 @keyframes trkpulse{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--tc) 20%,transparent)}}
 @media (prefers-reduced-motion:reduce){.trk-call[data-active="true"]{animation:none}.trk-btn{transition:none}}
-.hw-head{padding:10px 16px;border-radius:7px 7px 0 0;background:color-mix(in srgb,var(--accent) 16%,var(--panel))}
-.hw-head h3{margin:0;font-size:19px}
-.hw-body{padding:4px 16px 14px}
-.hw-body p{line-height:1.5}
-.hw-lead{font-size:16px;margin:12px 0 2px}
-.hw-body h4{margin:16px 0 6px;font-size:16px;color:var(--ink)}
-.hw-steps{list-style:none;counter-reset:hw;padding:0;margin:12px 0 8px}
-.hw-steps li{counter-increment:hw;position:relative;padding:3px 0 12px 42px;line-height:1.5;min-height:28px}
-.hw-steps li::before{content:counter(hw);position:absolute;left:0;top:1px;width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-weight:700;display:flex;align-items:center;justify-content:center}
-.hw-tip{padding:8px 12px;border-radius:6px;border:1px dashed var(--line);background:color-mix(in srgb,var(--accent) 8%,var(--panel));margin:12px 0 0}
-.helphead{margin:22px 0 8px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.helpfolder>summary .muted{font-size:12px}
-.helpfolder .hf-body{padding:6px 16px 10px 30px}
-.helpfolder .hf-body ul{margin:6px 0;padding-left:18px}
-.helpfolder .hf-body li{margin:7px 0;line-height:1.5}
-@media (max-width:700px){.hw-body,.helpfolder .hf-body{padding-left:12px;padding-right:12px}}
 
 /* 0.86.0: the picture grid of a Start lights set (Customization > Image Settings) */
 .lgrid th{text-align:left;white-space:nowrap}
@@ -2082,6 +2107,15 @@ html[data-layers="on"] .lw.live .lw-val{will-change:transform}
 .system-fuel,.rs-system-fuel{--sys:#3fb950}.system-penalty,.rs-system-penalty{--sys:#f2b705}.system-damage,.rs-system-damage{--sys:#ef4b55}.system-safetycar,.rs-system-safetycar{--sys:#f0b429}.system-tyrewear,.rs-system-tyrewear{--sys:#9b7bff}.system-weather,.rs-system-weather{--sys:#4d98f7}.system-pushsave,.rs-system-pushsave{--sys:#ec75b8}.system-bop,.rs-system-bop{--sys:#30c7a2}
 .rs-system-field{border-left:3px solid var(--sys);padding-left:10px;border-radius:8px;background:linear-gradient(90deg,color-mix(in srgb,var(--sys) 9%,transparent),transparent 68%)}
 .rs-system-field select:focus{outline-color:var(--sys)}
+/* Setup controls share the navigation palette, including light/custom-light themes. */
+:is(.setuppage,.setupform) :is(.system-fuel,.rs-system-fuel){--sys:var(--c-fuel)}
+:is(.setuppage,.setupform) :is(.system-penalty,.rs-system-penalty){--sys:var(--c-pen)}
+:is(.setuppage,.setupform) :is(.system-damage,.rs-system-damage){--sys:var(--c-dmg)}
+:is(.setuppage,.setupform) :is(.system-safetycar,.rs-system-safetycar){--sys:var(--c-sc)}
+:is(.setuppage,.setupform) :is(.system-tyrewear,.rs-system-tyrewear){--sys:var(--c-tyre)}
+:is(.setuppage,.setupform) :is(.system-weather,.rs-system-weather){--sys:var(--c-wx)}
+:is(.setuppage,.setupform) :is(.system-pushsave,.rs-system-pushsave){--sys:var(--c-ps)}
+:is(.setuppage,.setupform) :is(.system-bop,.rs-system-bop){--sys:var(--c-bop)}
 .rs-track-pick{display:grid;gap:8px}.rs-track-preview{display:flex;align-items:center;gap:10px;min-height:48px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:color-mix(in srgb,var(--accent) 7%,var(--bg))}.rs-track-preview>span{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;color:var(--accent);border-radius:8px;background:color-mix(in srgb,var(--accent) 13%,transparent)}.rs-track-preview img{width:54px;height:34px;object-fit:cover;border-radius:6px}.rs-track-preview p{display:grid;gap:2px;margin:0}.rs-track-preview small,.rs-trackcall-summary small{color:var(--muted)}
 .rs-trackcall-summary{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;padding:11px 13px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:9px;background:color-mix(in srgb,var(--accent) 7%,var(--panel))}.rs-trackcall-summary small{font-size:12px}
 /* Push & Save: a median centred pace curve. The range thumbs are the draggable
@@ -2279,3 +2313,11 @@ header{box-shadow:0 calc(1px + 3px*var(--d)) calc(4px + 8px*var(--d)) -3px rgba(
 .interface-setup .wrap{min-width:0;overflow-x:auto}.ab-setup .fields{min-width:670px}.ab-setup .ab-barcell{min-width:160px}
 .ab-bar{position:relative;height:14px;background:var(--bg);border:1px solid var(--line);border-radius:4px;overflow:hidden}.ab-bar.off{opacity:.3}.ab-fill{height:100%;background:#4c9aff;width:0}.ab-bar.covered .ab-fill{background:#2ecc40}.ab-arm,.ab-trig{position:absolute;top:0;bottom:0;width:2px;background:#ffd400}.ab-trig{background:#d62828}
 @media(max-width:780px){.interface-setup .tm-main{padding:12px}.interface-setup .tm-content{padding:12px}.interface-setup .tm-section>summary{flex-wrap:wrap}.interface-setup .tm-section>summary>span{order:3;flex-basis:100%;margin-left:28px;text-align:left}.interface-setup .tm-section>summary>b{margin-left:auto}.interface-fields{grid-template-columns:minmax(0,1fr)}}
+
+/* Lap Highlights: compositor opacity only; existing backgrounds and accents stay intact. */
+.lap-highlight{position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:8;opacity:0;box-sizing:border-box}
+.lap-highlight-surface{background:var(--lap-flash)}
+.lap-highlight-glow{box-shadow:inset 0 0 18px var(--lap-flash),inset 0 0 0 2px var(--lap-flash)}
+.lb tr[data-lap-lane]>td{position:relative}
+.ws-section[data-ws-group="lap-highlights"]{--ws-box:var(--ws-violet)}
+.lap-preview-controls{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}

@@ -118,7 +118,7 @@
   const cellStyle = (w, s, L) => `left:${L.map(w.x) / L.W * 100}%;top:${w.y / s.rowH * 100}%;width:${w.w / L.W * 100}%;height:${w.h / s.rowH * 100}%;font-size:${(w.textSize || Wd.def(w.type).textSize) / 10 * L.k}cqw`;
   const colourStyle = (color, bg) => `${Wd.cssVal(color) ? 'color:' + Wd.cssVal(color) + ';' : ''}${Wd.cssVal(bg) ? 'background:' + Wd.cssVal(bg) : ''}`;
   // the colour sits on a layer behind the cells so its corners can be rounded (radius = % of the row height; cqw is the row's own width)
-  const rowWrap = (s, cls, color, bg, inner, L, stripe) => `<div class="rrow ${cls}" style="aspect-ratio:${L.W} / ${s.rowH};margin-top:${s.gap / L.W * 100}%;${Wd.cssVal(color) ? 'color:' + Wd.cssVal(color) : ''}"><i class="rrow-bg${stripe?.cls || ''}" style="background:${Wd.cssVal(bg) || 'var(--panel)'};border-radius:${Math.round(s.radius * s.rowH * L.k / 10) / 100}cqw${stripe?.css ? ';' + stripe.css : ''}"></i>${inner}</div>`;
+  const rowWrap = (s, cls, color, bg, inner, L, stripe, lane) => `<div class="rrow ${cls}"${Number.isInteger(lane)?` data-lap-lane="${lane}"`:''} style="aspect-ratio:${L.W} / ${s.rowH};margin-top:${s.gap / L.W * 100}%;${Wd.cssVal(color) ? 'color:' + Wd.cssVal(color) : ''}"><i class="rrow-bg${stripe?.cls || ''}" style="background:${Wd.cssVal(bg) || 'var(--panel)'};border-radius:${Math.round(s.radius * s.rowH * L.k / 10) / 100}cqw${stripe?.css ? ';' + stripe.css : ''}"></i>${inner}</div>`;
   const rowStripe = (lane, layout, s, o) => { const F = frameModule(); return F ? F.laneStripe({ lane, laneColorStyle: o && o.laneColorStyle, transparency: o && o.laneTransparency, w: 1000, h: s.rowH }, layout, (layout?.laneColors || [])[lane]?.bg || '') : null; };
 
   function headerHtml(d, s, L) {
@@ -157,7 +157,7 @@
         const color = w.textColor || out.color || '', bg = w.bgColor || out.bg || '';
         return `<div class="lw live rcell${Wd.alignClassOf(w)}" ${root.WidgetView?root.WidgetView.attributes(w):''}${fontModule()?.attributes(w,d)||""} style="${cellStyle(w, s, L)}${fontStyle(w,d)};${colourStyle(color, bg)}"><span class="lw-val"${Wd.valueStyleOf ? ` style="${Wd.valueStyleOf(w)}"` : ''}>${out.html}</span></div>`;
       }).join('');
-      return (mode==='grouped'&&(!i||list[i-1].className!==x.className)?`<div class="mc-group-heading">${esc(x.className||'Comparisons')}</div>`:'')+rowWrap(s, 'rrow-' + (st || 'plain'), base.color, base.bg, cells, L, rowStripe(car.lane, S.layout, s, o));
+      return (mode==='grouped'&&(!i||list[i-1].className!==x.className)?`<div class="mc-group-heading">${esc(x.className||'Comparisons')}</div>`:'')+rowWrap(s, 'rrow-' + (st || 'plain'), base.color, base.bg, cells, L, rowStripe(car.lane, S.layout, s, o), car.virtual ? car.real?.lane : car.lane);
     }).join('');
     return `<div class="rrows"${fillAttr(o)} style="${fitStyle(d, list.length + (mode==='grouped'?new Set(list.map(x=>x.className)).size:0), o)}">${s.header ? headerHtml(d, s, L) : ''}${rows}</div>`;
   }

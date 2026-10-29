@@ -116,7 +116,7 @@ function renderAudioSetEditor(box) {
   const U = draftUndo(audEd, 'au', () => renderAudioSetEditor(box)), mark = U.mark, step = U.step;
   const $ = id => document.getElementById(id), msg = t => { $('au-msg').textContent = t; };
   const ref = s => { const [id, n] = s.split(':'); return d.calls[id].lines[Number(n)]; };
-  $('au-name').oninput = e => { d.name = e.target.value; mark(); };
+  $('au-name').oninput = e => { d.name = e.target.value; const heading=box.querySelector('[data-audio-heading]');if(heading)heading.textContent=d.name||'New audio set';mark(); };
   $('au-voice').onchange = e => { d.voice = e.target.value; step(); };
   if ($('au-dist')) $('au-dist').onchange = e => { d.distances = e.target.value.trim(); step(); };
   if ($('au-lapsgo')) $('au-lapsgo').onchange = e => { d.lapsToGo = e.target.value.trim(); step(); };
@@ -155,6 +155,8 @@ function renderAudioSetEditor(box) {
   box.onclick = ev => {
     const b = ev.target.closest('button'); if (!b) return;
     const q = b.dataset;
+    if (q.audioVoicePreview !== undefined) { Sound.stop(); Sound.say({...d,calls:{prerace:{on:true,lines:[{text:'Welcome to SlotForge. Drivers, get ready for the race.',mode:'text'}]}}},'prerace',{}); return; }
+    if (q.audioInsertSelected) { const select=box.querySelector(`[data-audio-value="${q.audioInsertSelected}"]`),input=box.querySelector(`[data-text="${q.audioInsertSelected}"]`); if(!select?.value||!input)return;input.setRangeText('{'+select.value+'}',input.selectionStart,input.selectionEnd,'end');ref(q.audioInsertSelected).text=input.value;input.focus();mark();audioPreview(box,d);return; }
     if (q.audioTab) { audioView.tab = q.audioTab; audioView.category = ''; audioView.search = ''; return renderAudioSetEditor(box); }
     if (q.audioCategory) { audioView.category = q.audioCategory; audioView.search = ''; return renderAudioSetEditor(box); }
     if (q.audioCall) { audioView.call = q.audioCall; return renderAudioSetEditor(box); }
@@ -165,7 +167,7 @@ function renderAudioSetEditor(box) {
     if (q.audioProfile) { const actions=box.querySelector('.audio-profile-actions'); if(q.audioProfile==='preview'){ audioView.profile=$('au-profile').value; const proposed=Sound.profile(d,audioView.profile),changed=Announcer.CALLS.filter(c=>proposed.calls[c.id].on!==d.calls[c.id].on); $('au-profile-preview').textContent=changed.length+' call switches would change: '+changed.map(AudioCalls.title).join(', ')+'. Messages and sound files are kept.';actions.hidden=false; } else if(q.audioProfile==='apply'){Object.assign(d,Sound.profile(d,audioView.profile));step();return renderAudioSetEditor(box);}else{actions.hidden=true;$('au-profile-preview').textContent='';}return; }
 
     if (q.openall) { audOpen = q.openall === '1' ? new Set([...groups.map(x => x[0]), Announcer.AMBIENT_GROUP]) : new Set(); audSecOpen = q.openall === '1' ? new Set(Announcer.AMBIENT.map(d => d.section)) : new Set(); return renderAudioSetEditor(box); }
-    if (q.addline) { d.calls[q.addline].lines.push({ text: '', file: '' }); step(); return renderAudioSetEditor(box); }
+    if (q.addline) { d.calls[q.addline].lines.push({ text: '', file: '' }); (audioView.variations||(audioView.variations={}))[q.addline]=d.calls[q.addline].lines.length-1;step(); return renderAudioSetEditor(box); }
     if (q.delline) { const [id, n] = q.delline.split(':'); d.calls[id].lines.splice(Number(n), 1); [...audCond].filter(k => k.startsWith(id + ':')).forEach(k => audCond.delete(k)); step(); return renderAudioSetEditor(box); }
     if (q.nofile) { ref(q.nofile).file = ''; step(); return renderAudioSetEditor(box); }
     if (q.ambtest) { Sound.stop(); msg(Sound.ambientTest(d, q.ambtest.split(':')[0], ref(q.ambtest).file) ? '' : 'Add a sound file first.'); return; } // (an ambient file plays as it will in the race: with the volume of the set and of the sound)
@@ -174,6 +176,11 @@ function renderAudioSetEditor(box) {
   };
   box.onchange = async ev => {
     const t = ev.target;
+    if(t.dataset.audioCategorySelect!==undefined){audioView.category=t.value;audioView.search='';box.querySelector('[data-audio-search]').value='';return audioSelect(box,d);}
+    if(t.dataset.audioCallSelect!==undefined){audioView.call=t.value;return audioSelect(box,d);}
+    if(t.dataset.audioVariation){(audioView.variations||(audioView.variations={}))[t.dataset.audioVariation]=Number(t.value);return audioVariations(box,t.dataset.audioVariation);}
+    if(t.dataset.audioValue){return audioValueExample(box,t);}
+    if(['au-vol','au-ambvol','au-ambdlvl','au-ambduck'].includes(t.id))audioBalance(box,d);
     if(t.dataset.audioFilter!==undefined){audioView.filter=t.value;return audioSelect(box,d);}
     if(t.dataset.audioMode){ref(t.dataset.audioMode).mode=t.value;step();return renderAudioSetEditor(box);}
     if(t.dataset.audioSetting){const k=t.dataset.audioSetting;if(k==='serviceCountdown')d[k]=t.value.split(/[,;\s]+/).map(Number).filter(n=>Number.isFinite(n)&&n>0&&n<=300).join(',');else if(k==='summaryMode')d[k]=t.value==='time'?'time':'laps';else{const spec=AudioCalls.SETTINGS[k]||[1,0.1,30];d[k]=Sound.bounded(t.value,...spec);if(k==='spokenDecimals')d[k]=Math.round(d[k]);if(k==='fuelLow'||k==='fuelReset')d.fuelReset=Math.max(d.fuelLow+1,d.fuelReset);}step();return renderAudioSetEditor(box);}

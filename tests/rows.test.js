@@ -50,7 +50,7 @@ ok('row colours and every second row', col.includes('background:#101010') && col
 ok('your own state colours', Rows.html({ ...D, leaderBg: '#00ff00', leaderText: '#000000' }, S()).includes('background:#00ff00'));
 const own = { ...D, states: false, widgets: [{ ...D.widgets[2], bgColor: '#abcdef', textColor: '#123456' }] };
 ok('a widget\'s own colour is used in its cell', Rows.html(own, S()).includes('color:#123456;background:#abcdef'));
-ok('a lap-time flash colours its cell', Rows.html({ ...D, widgets: [Wd.newWidget('laptime', 0, 0, 0)] }, S({ flashOf: c => (c === eng.cars[0] ? { at: 11000, time: 5200, kind: 'record' } : null) })).includes('background:#ffc400'));
+ok('row cell keeps its surface while the shared row highlight pulses', !Rows.html({ ...D, widgets: [Wd.newWidget('laptime', 0, 0, 0)] }, S({ flashOf: c => (c === eng.cars[0] ? { at: 11000, time: 5200, kind: 'record' } : null) })).includes('background:#ffc400'));
 
 // widgets that are not per driver are left out
 ok('only driver widgets can be cells', !Rows.html({ ...D, widgets: [Wd.newWidget('clock', null, 0, 0), D.widgets[0]] }, S()).includes('00:'));
@@ -194,8 +194,8 @@ ok('...more drivers than there are sample names still show something in every ce
     ok('the Position cell of an ordered board counts its rows (1, 2, 3), the board of the race shows the places of the race', lane.map(pos).join() === '1,2,3' && race.map(pos).join() === '1,2,3' && rowsOf(board({ design: 'R1', orderBy: 'lane', orderDir: 'worst' })).map(pos).join() === '1,2,3');
     ok('...so in the lane order Alex is first (position 1) though Kim leads the race, and Kim is third', lane[0].includes('>Alex<') && pos(lane[0]) === '1' && lane[2].includes('>Kim<') && pos(lane[2]) === '3');
     ok('the first row of an ordered board has the leader look (the leader of that order), the race leader does not keep it', cls(lane[0]).includes('rrow-leader') && !cls(lane[2]).includes('rrow-leader') && cls(race[0]).includes('rrow-leader') && race[0].includes('>Kim<'));
-    const cl = board({ orderBy: 'lane' }).split('<tr>').slice(1), posOf = r => (/lb-pos">(\d+)</.exec(r) || [])[1];
-    ok('the classic table counts its rows too: Pos 1 for Alex, 2 for Sam, 3 for Kim (Kim leads the race)', cl.length === 3 && cl.map(posOf).join() === '1,2,3' && cl[0].includes('>Alex<') && cl[2].includes('>Kim<') && board({}).split('<tr>').slice(1)[0].includes('>Kim<')); }
+    const cl = board({ orderBy: 'lane' }).split(/<tr(?:\s[^>]*)?>/).slice(1), posOf = r => (/lb-pos">(\d+)</.exec(r) || [])[1];
+    ok('the classic table counts its rows too: Pos 1 for Alex, 2 for Sam, 3 for Kim (Kim leads the race)', cl.length === 3 && cl.map(posOf).join() === '1,2,3' && cl[0].includes('>Alex<') && cl[2].includes('>Kim<') && board({}).split(/<tr(?:\s[^>]*)?>/).slice(1)[0].includes('>Kim<')); }
   { const alexGap = e2.standings().find(x => x.car.driverName === 'Alex').gap;
     ok('the other cells keep their own values in an ordered board: Kim\'s best lap is still 3.000 and Alex has the gap of the race, not a gap in the order of the board', !!alexGap && board({ orderBy: 'lane' }).includes('>3.000<') && board({ orderBy: 'lane' }).includes('>' + alexGap + '<') && board({ design: 'R1', orderBy: 'lane' }).includes('>3.000<')); }
   ok('the Leaderboard widget has "Order by" (a choice of values, the race position as the standard) and "Best or worst on top" that only shows when a value is chosen', (() => {

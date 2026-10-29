@@ -230,7 +230,7 @@ async function renderRace() {
     if (t - (live.lastShare || -1e9) < 80) { if (!live.shareTimer) { const L = live; L.shareTimer = setTimeout(() => { L.shareTimer = null; if (live === L) share(); }, 90); } return; }
     live.lastShare = t;
     if (!live.sender) live.sender = LiveShare.sender();
-    const msg = live.sender.pack({ champ: champOf(), raceId: live.raceId, eng, phase: live.phase, calling: live.calling, lights: live.lights, heat: heatInfo(), season: seasonInfo(), flash: live.flash, bestAll: live.bestAll, bestAllName: live.bestAllName, bestBy: live.bestBy, tokens: tokens ? tokens.snapshot() : null, now: t }, t);
+    const msg = live.sender.pack({ layout: find(layouts, setup.layout2) || layout, champ: champOf(), raceId: live.raceId, eng, phase: live.phase, calling: live.calling, lights: live.lights, heat: heatInfo(), season: seasonInfo(), flash: live.flash, bestAll: live.bestAll, bestAllName: live.bestAllName, bestBy: live.bestBy, tokens: tokens ? tokens.snapshot() : null, now: t }, t);
     if (msg) api.livePush(msg);
   };
   // announcements: only on this computer, and only when the race setup has an audio set
@@ -500,22 +500,18 @@ async function renderRace() {
   // held: the crossing of a Trackmate sensor, which is also where a car stops for the pits: the tyres that are due are judged when it is known whether the car stays (engine.js, wxFlush)
   const crossCar = (i, at, held) => {
     if (live.phase !== 'running') return;
-    const c = eng.cars[i], d = c.driverId, tAt = at !== undefined ? at : now();
+    const c = eng.cars[i], tAt = at !== undefined ? at : now();
     const tokenT = tokens ? eng.elapsed(tAt) : 0, lateLap = !!tokens && tokens.stateOf(c.lane, tokenT) === 'out'; // after the paid time is up a lap is kept, but does not count
     if (tokens && tokens.stateOf(c.lane, tokenT) === 'idle') return; // a lane nobody paid for: the crossing is ignored
-    const prevPersonal = d ? Math.min(base.personal.get(d) ?? Infinity, live.bestBy.get(d) ?? Infinity) : Infinity, prevTrack = Math.min(base.track, live.bestAll);
+    const before = c.laps.length;
     if (!eng.cross(i, tAt, held ? { holdDue: true } : undefined)) { if (eng.status === 'finished') engineFinished(); else update(); return; } // a car out of fuel may retire or not count
     const time = c.laps[c.laps.length - 1], slow = c.bad[c.bad.length - 1];
     if (tokens) { tokens.lap(c.lane, time, tokenT, slow); if (lateLap) eng.setInvalid(i, c.laps.length - 1, true); if (!lateLap && c.invalid.includes(c.laps.length - 1)) tokens.fixLap(c.lane, c.laps.length - 1, { invalid: true }); persistTokens(false); }
-    if (!slow && !lateLap) { // a lap over the track's maximum lap time never counts as a best lap or record
-      live.flash.set(c, { at: now(), time, kind: Timing.classifyLap(time, prevPersonal, prevTrack) });
-      if (d) live.bestBy.set(d, Math.min(live.bestBy.get(d) ?? Infinity, time)); // (a Guest has no personal best: the Guests are not one driver)
-      if (time < live.bestAll) { live.bestAll = time; live.bestAllName = c.driverName; }
-    }
+    LapHighlights.record(c,before,live,base,now());
     if (eng.status === 'finished') engineFinished(); else update();
   };
   // a car stops over the sensor (crossing counts as a lap), and later drives off
-  const blockCar = i => { if (live.phase === 'running') { eng.block(i, now()); if (eng.status === 'finished') engineFinished(); else update(); } };
+  const blockCar = i => { if (live.phase === 'running') { const car=eng.cars[i],before=car?.laps.length;eng.block(i, now());if(car)LapHighlights.record(car,before,live,base,now()); if (eng.status === 'finished') engineFinished(); else update(); } };
   const unblockCar = (i, at) => { eng.unblock(i, at !== undefined ? Math.min(at, now()) : now()); update(); }; // (at: when a sensor says the car has gone, which is a little earlier than now)
   // a Trackmate sensor has been covered for the pit hold time: the car stands in the pits. Its crossing was counted when it arrived (at); only the stop starts, counted from then.
   const holdCar = (i, at) => { if (live.phase === 'running') { eng.block(i, Math.min(at, now()), true); if (eng.status === 'finished') engineFinished(); else update(); } };

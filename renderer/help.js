@@ -1,30 +1,21 @@
-// App Settings > Help: a welcome with the first steps, then a folder for every part of the app.
-// The text is written here once (SECTIONS); html() draws it and render() makes it work on screen.
-// Pure apart from render(), so tests/help.test.js can read all of it without a screen.
+// Help article content. HelpView supplies navigation, search and learning examples.
+// Stable article ids keep all existing subjects addressable.
 const Help = (() => {
-  // Folders are closed until the person opens one; what was opened stays open while the app runs.
-  const opened = new Set();
   // Help follows the same visual language as Race Setup and the Audio editor.
   // Mixed-topic folders intentionally stay neutral rather than pretending to be one system.
   const SYSTEM_TONE = {resources:'resources',resourcerecovery:'resources', servicestop: 'fuel', penaltytiers: 'penalty', endurance: 'endurance', damage: 'damage', carfailures: 'damage', fuel: 'fuel', fuelwidgets: 'fuel', bop: 'bop', weather: 'weather', wxwidgets: 'weather', tyrewear: 'tyrewear', tyrebarstyles: 'tyrewear', customtyres: 'tyrewear', tyretemperature: 'tyrewear', safetycar: 'safetycar', pushsave: 'pushsave', tokens: 'tokens' };
 
-  // The first thing under the Help tab (the quick start).
-  const WELCOME = `<section class="helpwelcome" aria-labelledby="hw-title">
-    <div class="hw-head"><h3 id="hw-title">Welcome to SlotForge Timing</h3></div>
-    <div class="hw-body">
-      <p class="hw-lead">To get racing with your own track, driver and cars, follow these quick steps:</p>
-      <h4>How do I get started?</h4>
-      <p>There are default settings for everything, so you can dive right in. As soon as you have a race setup, click <b>Start race</b> on the Home tab (a Time Token Session says <b>Open the session</b>). Make sure to set up your Trackmate interface first, under the <b>App Settings</b> tab, in <b>Timing Hardware</b>.</p>
-      <p>Approach the App like you would a physical track. You start out with a track, so add one on the Database tab under Tracks.</p>
-      <ol class="hw-steps">
-        <li><b>Add a track</b> under Database, Tracks. You are presented with a bunch of options you can skip for now: a name and the number of lanes are all you really need. The track length might be useful.</li>
-        <li>Then <b>add a driver and a slot car</b>. Skip all other options for now.</li>
-        <li><b>Set up a race</b> under Race Setup. Give it a name, pick the Kind of session and your track, and hit Save.</li>
-        <li>Go back to <b>Home</b>, pick your race, choose a driver and a car for every lane and hit <b>Start race</b> (<b>Open the session</b> for a Time Token Session).</li>
-      </ol>
-      <p>This sets up a basic race. For more in-depth explanations of the possibilities, read the information below.</p>
-      <p class="hw-tip"><b>No Trackmate yet?</b> You can still try everything: tick <b>Simulated cars</b> on the race screen, or press the number keys 1 to 8 to count a lap for a lane.</p>
-    </div>
+  const WELCOME = `<section class="help-welcome">
+    <h3 tabindex="-1">Your first race, step by step</h3>
+    <p class="help-lead">Start with a basic race. Add fuel, tyres and other systems when you’re ready.</p>
+    <div class="help-plain"><b>In plain words</b><p>Create your track, add the people and cars, then choose a race setup. You can try it with simulated cars before connecting hardware.</p></div>
+    <ol class="help-steps">
+      <li><div><b>Add your track</b><small>Database → Tracks. A name and the number of lanes are all you need to begin. Track length is useful for distance and speed.</small></div></li>
+      <li><div><b>Add a driver and a slotcar</b><small>Database → Drivers / Slotcars. The extra details can wait.</small></div></li>
+      <li><div><b>Create a race setup</b><small>Race Setup → Race Setups. Choose the Kind of session, your track and when the race ends, then Save.</small></div></li>
+      <li><div><b>Pick who drives and start</b><small>Home → Start a Race. Select the setup, drivers and cars, then Start race. A Time Token Session uses Open the session instead.</small></div></li>
+    </ol>
+    <details class="help-more"><summary>Can I try it without timing hardware?</summary><p>Yes. Choose None under App Settings → Timing Hardware. Use Simulated cars on the race screen, or the number keys 1–8 to count laps. When connecting a real track, select and configure the interface you actually use.</p></details>
   </section>`;
 
   // [group heading, [folders]]; a folder is { id, title, note, body }
@@ -104,7 +95,7 @@ const Help = (() => {
       { id: 'setupwords', title: 'Race Setups in words', note: 'Cards, kinds and the sentence in the form', body: `
         <ul>
           <li>Every setup has an <b>In plain words</b> sentence that changes with the settings. The status dot is green when it can start, amber when something essential is missing and an open ring when nothing was changed.</li>
-          <li><b>List</b> and <b>Cards</b> change the overview. <b>Start from a kind</b> makes a setup with Practice, Qualifying, Race or Time Tokens already chosen.</li>
+          <li><b>Table</b> and <b>Comparison rows</b> change the overview. Each comparison row shows how the session ends, who wins and equal-sized switches for its linked Race Systems. Switching a system changes the saved setup, not an active race. The grouped menus above open the system editors. <b>Start from a kind</b> makes a setup with Practice, Qualifying, Race or Time Tokens already chosen.</li>
           <li>The left rail opens each section: Session, Heats, Race Settings, Driver swaps, Rules and Systems, Service Stop, Race UI and Audio and Advanced. The note beside each row is a quick summary; click it to jump there.</li>
           <li>Buttons and cards choose a small set of options; switches turn one rule on or off. <b>Used by</b>, below the rail, lists championships that use the setup. Older setups stay compatible.</li>
         </ul>` },
@@ -472,10 +463,19 @@ const Help = (() => {
           <li>Show or hide the compound icon, name and low-life warning. Compact bars keep the main value and omit secondary facts and scale labels; if only one fact is selected, that becomes the main value. Enlarge the widget to show secondary facts again. Standard tyre icons are flat, including all historical compounds. The tyre view has a separate outer life indicator. Custom picture sets still work with the picture-ring and bar views.</li>
           <li><b>Classic (saved layouts)</b> preserves the older bar geometry. Select Original, Digital Segments or Wear Scale to use the compound icon and low-life warning controls. New widgets start with Original. The standard widget font, manual text size and picture size controls apply to the new bars.</li>
         </ul>` },
-      { id: 'widgetstatecolours', title: 'Widget race-state colours', note: 'Choose where warnings and event flashes appear', body: `<ul>
-          <li>Open <b>Race-state colours → Apply state colours to</b>. Choose <b>Background</b>, <b>Text</b> or <b>Text + Border</b>. Background keeps the original behaviour.</li>
+      { id: 'laphighlights', title: 'Lap Highlights', note: 'A short inward glow when a lap registers', body: `<ul>
+          <li>In the Layout Editor, open <b>Widget appearance → Race states &amp; Lap Highlights</b> to set layout defaults. Select a widget and open the same folder in its options to override them. <b>Use layout / original Lap Highlights</b> clears just this group of overrides.</li>
+          <li>Enabled by default: white for a recorded lap, green for a personal best, purple for a track record. A track record wins over a personal best, so one lap gives one pulse. Personal bests use the driver's earlier eligible laps on this track, including saved records; virtual replays receive ordinary confirmation only.</li>
+          <li>Choose surface illumination, inward border glow, or both; adjust intensity and duration. Lane colour can replace the ordinary pulse while retaining special colours for best laps and records. Preview buttons demonstrate the effect without creating a lap.</li>
+        </ul>` },
+      { id: 'laphighlightbehaviour', title: 'Which widgets and laps highlight?', note: 'Lane scope, records and saved layouts', body: `<ul>
+          <li>Lane widgets, All-in-One cards and Builder widgets highlight together. Leaderboards highlight only the affected row; race-wide clocks and charts stay steady. Backgrounds, gradients, accent stripes, text sizing and fuel/tyre colours remain intact.</li>
+          <li>A formation crossing or rejected sensor trigger does not flash. An accepted invalid or too-slow lap gets only ordinary confirmation, never a record highlight. Opening a display does not replay past highlights. Existing explicitly saved Lap Time record colours are retained until replaced here. The finished-lap value hold is still controlled separately under Content.</li>
+        </ul>` },
+      { id: 'widgetstatecolours', title: 'Widget race-state colours', note: 'Choose where ongoing warnings appear', body: `<ul>
+          <li>Open <b>Race states &amp; Lap Highlights → Apply state colours to</b>. Choose <b>Background</b>, <b>Text</b> or <b>Text + Border</b>. Background keeps the original behaviour.</li>
           <li>The text choices preserve your background and gradient. The event colour temporarily overrides your custom text colour, with a lightness adjustment where needed for contrast. Text + Border also shows a visible state border, even if the normal border is off. Normal text and border styling return when the event ends.</li>
-          <li>These choices use each widget's existing warnings and flashes, such as record laps and Time Token expiry; they do not create new alerts. Tyre icons, gauges, badges and chart series keep their own meaning.</li>
+          <li>These choices use each widget's ongoing states, such as Time Token expiry; they do not create new alerts. Lap Highlights are controlled separately above. Tyre icons, gauges, badges and chart series keep their own meaning.</li>
           <li>Turn <b>Show race-state colours</b> off to disable these highlights. State badges, warning symbols and values remain visible. The Race Clock's separate Follow flags option still controls its digits. Set layout defaults in the toolbar's Widget appearance dialog or override individual widgets.</li>
         </ul>` },
       { id: 'widgettext', title: 'Widget text and sizing', note: 'Automatic or manual sizes, pictures and readable text', body: `<ul>
@@ -488,6 +488,9 @@ const Help = (() => {
           <li><b>Copy appearance</b> and <b>Paste appearance</b> transfer the surface, border, accent, depth and spacing. They do not change lane, content, position or typography. Select several widgets to apply a change together. Undo and Redo restore settings.</li>
           <li>Existing layouts retain their original styling until you change it. New Lane colour controls use the standard lane palette if no colour is saved. A global widget has no lane accent. Leaderboard row designs keep their own row controls; outer widget appearance is separate.</li>
         </ul>` },
+      { id: 'widgetstyles', title: 'Saved widget styles', note: 'Reusable looks with independent copies or linked updates', body: `<ul>          <li><b>Saved appearance styles</b> (Advanced) save colours, fonts, spacing and text effects. Apply a copy for independent editing, or Apply &amp; link to update several widgets together. <b>Update linked widgets</b> replaces their appearance with the selected widget's appearance. Unlink keeps the current look. Styles belong to the layout and travel with its export; export/import a style separately to reuse it in another layout. Content, lane, position, number formatting and rules are never changed by a style.</li></ul>` },
+      { id: 'widgetformat', title: 'Number formatting and spacing', note: 'Visible precision, text effects and content arrangements', body: `<ul>          <li><b>Number formatting</b> (Title &amp; text) changes visible decimal places, fractional digit size, signs and unit placement. Original clocks also offer leading minutes. Numeric fields in All-in-One cards and lists can use it; driver names and chart axes are untouched. Digital and Pit Wall clocks retain their own formatting. Recorded timing precision and race calculations never change.</li>          <li><b>Text outline &amp; shadow</b> adds a thin outline or soft shadow to help lettering stand out. Choose its colour to suit the background. Advanced spacing can set each edge separately and adjust the gaps within All-in-One cards. Their Content options include compact arrangements and avatar beside/above the name or text only.</li></ul>` },
+      { id: 'widgetrules', title: 'Custom appearance rules', note: 'Conditional colours and their priority', body: `<ul>          <li><b>Custom appearance rules</b> (Race states &amp; Lap Highlights) apply a colour to text, border, both, accent or background when a value matches. The first enabled matching rule wins: put critical fuel below 10% above the warning below 20%. Missing values do not match. A rule overrides ongoing state styling; Lap Highlights still pulse above it. Preview colour shows the selected effect without changing race data. Removing a rule restores the saved appearance. An expired Time Token retains its mandatory out colour.</li></ul>` },
       { id: 'layouteditor', title: 'Placing widgets', note: 'Snapping, the pink lines and Tidy to grid in the Layout Editor', body: `
         <ul>
           <li>A widget you drag <b>snaps</b> to the grid (5 units), to the edges of other widgets and to your guidelines. The magnet is small: it pulls from 3 units away. A <b>pink line</b> shows where an edge lines up exactly.</li>
@@ -524,17 +527,17 @@ const Help = (() => {
       { id: 'audio', title: 'Audio calls', note: 'Choose, preview and tune race commentary', body: `
         <ul>
           <li>Create an <b>audio set</b> in Customization, Audio Settings, then select it in Race Setup, Race UI and Audio. No audio keeps the race silent. Sound plays on the computer running the race.</li>
-          <li><b>Calls</b> has a coloured category rail, search and Enabled, Disabled, Modified and New filters. Select a call to edit it, even while it is off. The switch controls playback, not access to its settings.</li>
+          <li>The side rail separates <b>Race Calls</b>, <b>Ambient Sounds</b> and <b>Voice &amp; Playback</b>. Race Calls has search, category and call selectors, plus Enabled, Disabled, Modified and New filters. Disabled calls remain editable.</li>
           <li><b>When to announce</b> contains thresholds. Low fuel has a warning level and a higher reset level. Push &amp; Save waits for consecutive laps outside the normal pace band. Selected lap times and summaries can be spaced out to avoid constant chatter.</li>
-          <li><b>What to play</b> offers Spoken message, Sound file or Sound, then speech. Attach your own recordings, up to 10 MB each. Existing recordings remain file-only unless changed. Several variations are selected at random from those that qualify.</li>
+          <li><b>Message &amp; sound</b> offers Spoken message, Sound file or Sound, then speech. Choose a variation to edit its message, recording and conditions. Attach recordings up to 10 MB each. Existing recordings remain file-only unless changed. Eligible variations are chosen at random.</li>
           <li><b>Insert a value</b> lists compatible placeholders with definitions and examples. {pointsadded} means new penalty points; {pointstotal} means the total. {fuellaps} is an estimate from at least three recent clean fuel samples. Missing facts skip that variation; keep a simpler fallback.</li>
         </ul>` },
       { id: 'audioconditions', title: 'Audio conditions and playback', note: 'Fallbacks, profiles and repeat limits', body: `
         <ul>
-          <li><b>Conditions</b> can select a driver, top places, lap time or gap. All conditions must match. Matching conditional variations take precedence over unconditional fallbacks. Preview message plays example text; Test conditions checks a labelled example event, not the live race.</li>
-          <li><b>Minimum time between calls</b> applies per driver or to the whole call. Voice &amp; mix sets the voice, volume, rate, two/three lap-time decimals and commentary expiry. Flags, start and session-end calls interrupt. Important service, penalty and result calls do not expire behind ordinary commentary. Playback diagnostics explains skipped messages.</li>
+          <li><b>Conditions</b> can select a driver, top places, lap time or gap. All conditions must match. Matching conditional variations take precedence over unconditional fallbacks. Preview call plays example text; Check conditions checks a labelled example event, not the live race.</li>
+          <li><b>Minimum time between calls</b> applies per driver or to the whole call. Voice &amp; Playback sets the voice, volume, rate, two/three lap-time decimals and commentary expiry. Flags, start and session-end calls interrupt. Important service, penalty and result calls do not expire behind ordinary commentary. Playback diagnostics explains skipped messages.</li>
           <li>Essential, Club and Broadcast profiles preview which switches change before applying. Messages and recordings are kept. Optional new calls are off in existing sets until enabled; profiles are never applied automatically.</li>
-          <li>Drivers can be called by name, nickname or callsign. Voice &amp; mix includes <b>Voice report</b>, which lists voices available to the app. It can be copied for troubleshooting.</li>
+          <li>Drivers can be called by name, nickname or callsign. Voice &amp; Playback includes <b>Voice report</b>, which lists voices available to the app. It can be copied for troubleshooting.</li>
         </ul>` },
       { id: 'audiocategories', title: 'Audio categories and values', note: 'Find announcements by their race purpose', body: `
         <ul>
@@ -551,7 +554,7 @@ const Help = (() => {
       { id: 'ambient', title: 'Ambient race sounds', note: 'Engines, pit crews and a crowd', body: `
         <ul>
           <li>The <b>Ambient sounds</b> tab contains effects for laps, pits, flags, results, weather and more. Add your own sound files: no sounds are bundled, and a sound without a file stays silent.</li>
-          <li>Ambient sounds use a separate channel. Voice &amp; mix controls their master volume, maximum simultaneous effects and lowering them while speech plays.</li>
+          <li>Ambient sounds use a separate channel. Voice &amp; Playback controls their master volume, maximum simultaneous effects and lowering them while a call plays. Retaining 35% of an 80% ambient volume gives 28% during calls; the volume example shows this.</li>
           <li>Each sound has Volume, Start after, optional conditions and multiple random files. Repeated effects can have a minimum interval. Service Stop ready and Confirmed winner have their own optional completion tone and podium sting.</li>
           <li>Background loops have Fade in and Fade out. Optionally fade a loop to silence under red and resume it on green. Otherwise its existing start/end events apply. Pit crew effects can stop at actual pit exit.</li>
         </ul>` },
@@ -596,9 +599,9 @@ const Help = (() => {
           <li>Those two need the <b>password</b> you type in the same place. With no password they stay closed to other devices.</li>
           <li>The first time, Windows may ask whether the app may use the network: allow it on private networks. On a Mac the question is whether the app may accept incoming network connections: choose Allow.</li>
         </ul>` },
-      { id: 'hardware', title: 'Timing hardware', note: 'Trackmate, Arduino, Parallel Port, DS Electronics, oXigen Digital or no hardware', body: `
+      { id: 'hardware', title: 'Timing hardware', note: 'Trackmate, Arduino, Parallel Port, Phidget and hardware status', body: `
         <ul>
-          <li>App Settings, <b>Timing Hardware</b>: at the top you choose the <b>Timing hardware in use</b>: <b>None</b> (keys or simulated cars), the <b>Trackmate Interface</b>, the <b>Arduino box</b> or <b>Parallel Port</b>. One at a time: only the one in use connects by itself, counts the laps of a race and is shown on Home and on the race screen (green when it is connected, red when it is not). If you press Start race while it is not connected, the app asks whether to start anyway. Ticking <b>Use the virtual box</b> makes the Arduino box the one in use.</li>
+          <li>App Settings, <b>Timing Hardware</b>: at the top you choose the <b>Timing hardware in use</b>: <b>None</b> (keys or simulated cars), the <b>Trackmate Interface</b>, the <b>Arduino box</b>, <b>Parallel Port</b> or <b>Phidget</b>. One at a time: only the one in use connects by itself, counts the laps of a race and is shown on Home and on the race screen (green when it is connected, red when it is not). If you press Start race while it is not connected, the app asks whether to start anyway. Ticking <b>Use the virtual box</b> makes the Arduino box the one in use.</li>
           <li>Below that, Timing Hardware has a page per kind of hardware. On <b>Trackmate Interface</b> you connect the box by USB and check the sensors; the check lights show which sensor is seen. You choose which lane each sensor counts for.</li>
           <li>The Trackmate can also switch the <b>track power</b> (relay) and has a <b>Trackcall</b> button. What they do is set in the race setup.</li>
           <li>The <b>Arduino</b> page is for a box you build yourself (next folder). <b>DS Electronics</b> is a listening version for now. <b>oXigen Digital</b> is a place held for it: there is nothing to set up there yet.</li>
@@ -655,22 +658,10 @@ const Help = (() => {
   ];
 
   const folders = () => SECTIONS.reduce((all, [, list]) => all.concat(list), []);
-  const folderHtml = f => { const tone = SYSTEM_TONE[f.id] || ''; return `<details class="dbfolder helpfolder" data-help="${f.id}"${tone ? ` data-system="${tone}"` : ''}${opened.has(f.id) ? ' open' : ''}><summary><strong>${f.title}</strong> <span class="muted">${f.note}</span></summary><div class="hf-body">${f.body}</div></details>`; };
-  const html = () => '<div class="helppage">' + WELCOME + `<div class="fgtools"><button class="btn" type="button" data-helpall="1">Open all</button><button class="btn" type="button" data-helpall="0">Close all</button></div>`
-    + SECTIONS.map(([head, list]) => `<h4 class="helphead">${head}</h4>` + list.map(folderHtml).join('')).join('') + '</div>';
-
-  // draws the Help page into a box and makes the folders and the two buttons work
-  function render(box) {
-    box.innerHTML = html();
-    if (typeof box.querySelectorAll === 'function') box.querySelectorAll('details.helpfolder').forEach(el => { el.ontoggle = () => { if (el.open) opened.add(el.dataset.help); else opened.delete(el.dataset.help); }; });
-    box.onclick = e => {
-      const b = e.target.closest && e.target.closest('[data-helpall]'); if (!b) return;
-      const open = b.dataset.helpall === '1';
-      folders().forEach(f => { if (open) opened.add(f.id); else opened.delete(f.id); });
-      render(box);
-    };
-  }
-
-  return { html, render, folders, SECTIONS, WELCOME, opened };
+  let guide;
+  const view = () => guide ||= (typeof module !== 'undefined' ? require('./helpview.js') : HelpView).create({folders,WELCOME,tones:SYSTEM_TONE});
+  const html = () => view().html();
+  const render = (box, options) => view().render(box, options);
+  return { html, render, folders, SECTIONS, WELCOME, view };
 })();
 if (typeof module !== 'undefined') module.exports = Help;

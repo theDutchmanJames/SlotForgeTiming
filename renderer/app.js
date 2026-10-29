@@ -69,7 +69,7 @@ async function renderSettings() {
   if (typeof ppPageDispose === 'function') ppPageDispose();
   view.innerHTML = '<h2>App Settings</h2><div class="sub" id="settingstabs" role="tablist"></div><div id="settingsbox"></div>';
   renderTabs(document.getElementById('settingstabs'), [['general', 'General'], ['theme', 'App Theme'], ['director', 'Race Director'], ['calculations', 'Calculations'], ['network', 'Network'], ['hardware', 'Timing Hardware'], ['transfer', 'Import and Export'], ['help', 'Help']], state.settingsSub, id => { state.settingsSub = id; renderSettings(); });
-  if (state.settingsSub === 'help') return Help.render(document.getElementById('settingsbox'));
+  if (state.settingsSub === 'help') return Help.render(document.getElementById('settingsbox'), {onNavigate: destination => { Object.assign(state, destination); return render(); }});
   if (state.settingsSub === 'transfer') return renderTransferSettings(document.getElementById('settingsbox'));
   if (state.settingsSub === 'theme') return renderThemeSettings(document.getElementById('settingsbox'));
   if (state.settingsSub === 'director') return renderPadSettings(document.getElementById('settingsbox'));

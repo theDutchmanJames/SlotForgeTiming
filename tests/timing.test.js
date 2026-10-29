@@ -90,10 +90,10 @@ ok('widgets without laps show a dash', T.content(w('lastlap', 0), { ...mkS(1000)
 // flash on a finished lap
 const c0 = eng.cars[0]; flash.set(c0, { at: 15300, time: 5100, kind: 'pb' });
 let f = C('laptime', 0, 16000);
-ok('finished lap flashes in the personal best colour', f.html === '5.100' && f.bg === '#a45cff' && f.color === '#fff');
+ok('finished lap is held without replacing the widget surface', f.html === '5.100' && f.bg === undefined && f.color === undefined);
 f = C('laptime', 0, 16000, null, { recordColor: '#00ff00' }); flash.set(c0, { at: 15300, time: 4900, kind: 'record' });
 f = C('laptime', 0, 16000, null, { recordColor: '#00ff00' });
-ok('track record uses its own (adjustable) colour', f.bg === '#00ff00');
+ok('record colour belongs to shared Lap Highlights, not the value renderer', f.bg === undefined);
 ok('flash ends after the hold time', C('laptime', 0, 15300 + 3001).html !== '4.900' && C('laptime', 0, 15300 + 3001).bg === undefined);
 ok('hold time is adjustable', C('laptime', 0, 15300 + 3001, null, { holdSeconds: 10 }).html === '4.900');
 

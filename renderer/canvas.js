@@ -3,6 +3,7 @@
 const LiveCanvas = (() => {
   const mounted=new WeakMap();
   const clock=()=>typeof performance!=='undefined'?performance.now():Date.now();
+  const lap=()=>typeof LapHighlights!=='undefined'?LapHighlights:require('./laphighlights.js');
   const view=()=>typeof WidgetView!=='undefined'?WidgetView:require('./widgetview.js');
   function fail(n,error) {
     if(n.disposed)return;
@@ -30,7 +31,7 @@ const LiveCanvas = (() => {
   function dispose(nodes) {
     if(!nodes||nodes.disposed)return;
     nodes.disposed=true;
-    for(const n of nodes){n.disposed=true;n.observer?.disconnect();if(n.raf!=null&&typeof cancelAnimationFrame!=='undefined')cancelAnimationFrame(n.raf);n.raf=null;}
+    for(const n of nodes){n.disposed=true;lap().dispose(n);n.observer?.disconnect();if(n.raf!=null&&typeof cancelAnimationFrame!=='undefined')cancelAnimationFrame(n.raf);n.raf=null;}
   }
   function build(canvas,layout,lanes,o={}) {
     dispose(mounted.get(canvas));
@@ -55,15 +56,15 @@ const LiveCanvas = (() => {
   }
   function drawNode(n,S,tm) {
     const t0=tm?tm.now():0,L=n.last;
-    const inputKey=Timing.contentKey?.(n.w,S);
+    const inputKey=n.w.designRules?.length?null:Timing.contentKey?.(n.w,S);
     const out=inputKey!=null&&inputKey===n.inputKey&&n.out?n.out:Timing.content(n.w.type==='racechart'?{...n.w,chartSize:{width:n.val.clientWidth,height:n.val.clientHeight}}:n.w,S);
     const themeKey=Frame.themeKey?.()||'';
     const contentChanged=!L||L[0]!==out.html;
-    const appearanceChanged=!L||L[1]!==out.color||L[2]!==out.bg||n.themeKey!==themeKey;
+    const appearanceChanged=!L||L[1]!==out.color||L[2]!==out.bg||n.themeKey!==themeKey||L[4]!==JSON.stringify(out.designRule);
     const disabledChanged=!L||L[3]!==out.disabled;
     if(out.chartTrack&&typeof ChartWidgets!=='undefined')ChartWidgets.updateTrack(n,out,S);
     if(!contentChanged)view().updateComponents?.(n,out);
-    if(!contentChanged&&!appearanceChanged&&!disabledChanged&&!n.error){if(tm)tm.add(n.w.type,tm.now()-t0,0,0);return;}
+    if(!contentChanged&&!appearanceChanged&&!disabledChanged&&!n.error){lap().update(n,S);if(tm)tm.add(n.w.type,tm.now()-t0,0,0);return;}
     const t1=tm?tm.now():0;
     if(contentChanged){n.val.innerHTML=out.html;if(out.chartTrack&&typeof ChartWidgets!=='undefined'){n.chartTrackFrame=null;ChartWidgets.updateTrack(n,out,S);}}
     if(out.button)n.val.disabled=!!out.disabled;
@@ -76,7 +77,8 @@ const LiveCanvas = (() => {
     // Colours/control state do not rebuild SVG, images or compound child nodes.
     if(contentChanged||appearanceChanged||n.error)fitValue(n,out,tm);
     // Only a fully successful update becomes the unchanged-output baseline.
-    n.last=[out.html,out.color,out.bg,out.disabled];n.out=out;n.inputKey=inputKey;n.themeKey=themeKey;
+    lap().update(n,S);
+    n.last=[out.html,out.color,out.bg,out.disabled,JSON.stringify(out.designRule)];n.out=out;n.inputKey=inputKey;n.themeKey=themeKey;
     if(tm)tm.add(n.w.type,t1-t0,t2-t1,tm.now()-t2);
   }
   function paint(nodes,S,tm) {

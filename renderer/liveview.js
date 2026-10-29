@@ -41,7 +41,7 @@ const LiveView = (() => {
     el.textContent = live() ? `${V.stat().title} · ${PHASE[d.phase] || ''}${left ? ` · next ${d.heat.final ? 'final ' + d.heat.final : 'heat'} in ` + left : ''}` : 'No race is running.';
   }
 
-  function go(p) { page = p; dgOpen = false; dgSel = ''; LiveCanvas.dispose(nodes); nodes = null; tkPanel = null; bopPanel = null; wxPanel = null; tyPanel = null; psPanel = null; enPanel = null; pitPanel = null; systemPanel = null; dmPanel = null; flPanel = null; adjPanel = null; if (cardsPanel) cardsPanel.off(); cardsPanel = null; shell(); draw(true); }
+  function go(p) { boardHighlights.forEach(n=>LapHighlights.dispose(n));boardHighlights=[];page = p; dgOpen = false; dgSel = ''; LiveCanvas.dispose(nodes); nodes = null; tkPanel = null; bopPanel = null; wxPanel = null; tyPanel = null; psPanel = null; enPanel = null; pitPanel = null; systemPanel = null; dmPanel = null; flPanel = null; adjPanel = null; if (cardsPanel) cardsPanel.off(); cardsPanel = null; shell(); draw(true); }
 
   // ---- the pages ----
   function draw(fresh) {
@@ -127,7 +127,7 @@ const LiveView = (() => {
   // Customization > Leaderboard Editor, the classic table, or nothing. A board can cover more cells (wider, taller) and show only some places (from .. to).
   // The grid is saved for this page, on this device (the setting liveGrid; the old one or two boards are read as a grid until a grid is saved). The rules are in livegrid.js.
   const CLASSIC = '~classic'; // (the value of "Classic table" in the lists; a row design has an id of its own)
-  let boardSel = 0, boardsOpen = false;
+  let boardSel = 0, boardsOpen = false, boardHighlights = [];
   const gridTool = (g, designs, sel) => {
     const G = LiveGrid, b = g.boards[sel], same = (n, one, many) => `${n} ${n === 1 ? one : many}`;
     const choice = cur => `<option value=""${cur === undefined ? ' selected' : ''}>(empty)</option><option value="${CLASSIC}"${cur === '' ? ' selected' : ''}>Classic table</option>${designs.map(r => `<option value="${esc(r.id)}"${cur === r.id ? ' selected' : ''}>${esc(r.name)}</option>`).join('')}`;
@@ -184,12 +184,14 @@ const LiveView = (() => {
       };
     }
     const g = G.gridOf(state.settings);
-    const outputs=g.boards.map(b=>Timing.content({type:'leaderboard',opt:b.opt},S()));
+    const boardState=S();
+    if(fresh){boardHighlights.forEach(n=>LapHighlights.dispose(n));boardHighlights=[];}
+    const outputs=g.boards.map(b=>Timing.content({type:'leaderboard',opt:b.opt},boardState));
     $('lv-board').innerHTML = g.boards.length
       ? `<div class="lv-grid" style="grid-template-columns:repeat(${g.cols},minmax(0,1fr))">${g.boards.map((b,i) => `<div class="lv-board" style="grid-column:${b.c} / span ${b.w};grid-row:${b.r} / span ${b.h}">${outputs[i].html}</div>`).join('')}</div>`
       : '<p class="muted lv-empty">No leaderboard in the grid yet. Open Customize and pick one for a cell.</p>';
     if ($('lv-board').querySelectorAll) Rows.fitText($('lv-board')); // row designs: no text wider than its cell
-    $('lv-board').querySelectorAll?.('.lv-board').forEach((val,i)=>WidgetView.updateComponents({val},outputs[i]));
+    $('lv-board').querySelectorAll?.('.lv-board').forEach((val,i)=>{WidgetView.updateComponents({val},outputs[i]);const n=boardHighlights[i]||(boardHighlights[i]={w:{type:'leaderboard'},layout:boardState.layout});n.el=val;n.val=val;LapHighlights.update(n,boardState);});
     if ($('lv-board').querySelectorAll && typeof Delta !== 'undefined') Delta.fit($('lv-board')); // a Delta Timer in a row design: the arrow and the number inside the badge
   }
 
@@ -436,6 +438,6 @@ const LiveView = (() => {
     host.onpointermove = reveal; host.onpointerdown = reveal;
     shell(); if (!followResults()) draw(true); // A second display can open after the race has already ended: use the state we just fetched, not only a later live message.
   }
-  function unmount() { if (host) { host.onpointermove = null; host.onpointerdown = null; if (host.classList) { host.classList.remove('lv-clean'); host.classList.remove('lv-show'); } } clearTimeout(revealT); if (keyOff) { document.removeEventListener('keydown', keyOff); keyOff = null; } offs.forEach(f => f()); offs = []; clearInterval(ticker); ticker = null; host = null; V = null; LiveCanvas.dispose(nodes); nodes = null; tkPanel = null; if (cardsPanel) cardsPanel.off(); cardsPanel = null; }
+  function unmount() { boardHighlights.forEach(n=>LapHighlights.dispose(n));boardHighlights=[];if (host) { host.onpointermove = null; host.onpointerdown = null; if (host.classList) { host.classList.remove('lv-clean'); host.classList.remove('lv-show'); } } clearTimeout(revealT); if (keyOff) { document.removeEventListener('keydown', keyOff); keyOff = null; } offs.forEach(f => f()); offs = []; clearInterval(ticker); ticker = null; host = null; V = null; LiveCanvas.dispose(nodes); nodes = null; tkPanel = null; if (cardsPanel) cardsPanel.off(); cardsPanel = null; }
   return { mount, unmount, go, nodes: () => nodes };
 })();

@@ -198,7 +198,7 @@ ok('the arrow turns round whatever the number: -200 degrees is 340, 90.4 is 270 
 // the pages that draw the widgets call it: the live page after the content changed (and when the widget gets its size), the layout editor after it drew the canvas
 { const vm = require('vm'), fs = require('fs'), path = require('path'), src = f => fs.readFileSync(path.join(__dirname, '../renderer/' + f), 'utf8');
   const fitted = []; let html = '<span class="wxw"><svg></svg><span class="wxt">Cloudy<small>Rain in 1 lap</small></span></span>';
-  const ctx = vm.createContext({ Timing: { content: () => ({ html }) }, Frame: { style: () => ({}), present(){}, fit(){} }, WxW: { fit: v => fitted.push(v) }, Widgets: {layoutOfWidget:w=>w.type==='wxforecast'?'weather':'text'}, Backdrop: {}, document: {}, console });
+  const ctx = vm.createContext({ LapHighlights:require('../renderer/laphighlights'), Timing: { content: () => ({ html }) }, Frame: { style: () => ({}), present(){}, fit(){} }, WxW: { fit: v => fitted.push(v) }, Widgets: {layoutOfWidget:w=>w.type==='wxforecast'?'weather':'text'}, Backdrop: {}, document: {}, console });
   vm.runInContext(src('widgetview.js'),ctx);
   const LC = vm.runInContext(src('canvas.js') + '\n;LiveCanvas', ctx), node = () => ({ w: { type: 'wxforecast' }, el: { style: {}, classList:{add(){},remove(){}} }, val: { innerHTML: '',style:{} }, base: {}, layout: {}, last: null });
   const n = node(); LC.paint([n], {});

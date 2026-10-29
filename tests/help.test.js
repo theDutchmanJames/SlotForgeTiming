@@ -9,21 +9,15 @@ const read = f => fs.readFileSync(R + f, 'utf8');
 const plain = h => h.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const src = ['renderer/app.js', 'renderer/editor.js', 'renderer/database.js', 'renderer/landing.js', 'renderer/race.js', 'renderer/liveview.js', 'renderer/hardwareui.js', 'renderer/dsui.js', 'renderer/arduinoui.js', 'renderer/arduinobox.js', 'renderer/transferui.js', 'renderer/themeui.js', 'renderer/audioedit.js', 'renderer/audiostudio.js', 'renderer/tokenui.js', 'renderer/bopui.js', 'renderer/weatherui.js', 'renderer/review.js', 'renderer/widgets.js', 'renderer/rotationui.js'].map(read).join('\n') + '\n' + read('schema.js');
 const folders = Help.folders();
-const allHelp = plain(Help.html());
+const allContent = Help.WELCOME + folders.map(f => f.title+' '+f.note+' '+f.body).join('');
+const allHelp = plain(allContent);
 const helpHas = (...terms) => terms.every(t => allHelp.toLowerCase().includes(t.toLowerCase()));
 
-// ---- the welcome ----
-{ const w = plain(Help.WELCOME);
-  say('the welcome opens with "Welcome to SlotForge Timing" and the line about racing with your own track, driver and cars', w.startsWith('Welcome to SlotForge Timing') && w.includes('To get racing with your own track, driver and cars, follow these quick steps:'));
-  say('...then "How do I get started?", the default settings, the Trackmate interface under App Settings, and the physical track', w.includes('How do I get started?') && w.includes('There are default settings for everything, so you can dive right in.') && w.includes('Make sure to set up your Trackmate interface first, under the App Settings tab') && w.includes('Approach the App like you would a physical track. You start out with a track, so add one on the Database tab under Tracks.'));
-  const steps = [...Help.WELCOME.matchAll(/<li>([\s\S]*?)<\/li>/g)].map(m => plain(m[1]));
-  say('...four numbered steps: a track, a driver and a slot car, a race setup, and Home', steps.length === 4 && /^Add a track under Database, Tracks\./.test(steps[0]) && /^Then add a driver and a slot car\./.test(steps[1]) && /^Set up a race under Race Setup\./.test(steps[2]) && /^Go back to Home, pick your race/.test(steps[3]) && /<ol class="hw-steps">/.test(Help.WELCOME));
-  say('...step 1 says that only a name and the number of lanes are needed (the track form wants a name), and that the length may be useful', steps[0].includes('a name and the number of lanes are all you really need') && steps[0].includes('The track length might be useful.'));
-  say('...step 3 names the session type and the track (a race setup without a track cannot start) and Save', steps[2].includes('pick the Kind of session') && steps[2].includes('your track') && steps[2].includes('hit Save'));
-  say('...it ends with "This sets up a basic race. For more in-depth explanations of the possibilities, read the information below."', w.includes('This sets up a basic race. For more in-depth explanations of the possibilities, read the information below.'));
-  const landing = read('renderer/landing.js');
-  say('...the button names in the steps are the real ones on the Home tab: "Start race", and "Open the session" for a Time Token Session', w.includes('Start race') && w.includes('Open the session') && /tokens \? 'Open the session' : 'Start race'/.test(landing));
-  say('...the welcome says Time Token Session where the app does, and the Trackmate page is under Timing Hardware', /'Timing Hardware'/.test(src) && w.includes('Timing Hardware'));
+// ---- the getting-started guide ----
+{ const w=plain(Help.WELCOME);
+  say('the first-race guide explains track, drivers, cars and race setup', ['Your first race','Database','Tracks','Drivers','Slotcars','Kind of session','Save','Home'].every(t=>w.includes(t)));
+  say('the guide offers simulation and the real timing hardware choice without assuming Trackmate', w.includes('Simulated cars')&&w.includes('None')&&w.includes('Timing Hardware')&&!w.includes('Trackmate'));
+  say('the guide uses four numbered steps and the actual start actions', (Help.WELCOME.match(/<li>/g)||[]).length===4&&w.includes('Start race')&&w.includes('Open the session'));
 }
 
 // ---- 1.40.0: Tyre wear ----
@@ -45,39 +39,19 @@ const helpHas = (...terms) => terms.every(t => allHelp.toLowerCase().includes(t.
     say('...the other folders point to it: Race Setup lists the tab, and Heat races says the settings that plan the heats are not used with a rotation', f('setups').includes('Rotation Setups') && f('heatraces').includes('Rotation setup') && f('heatraces').includes('not used'));
   }
   say('every folder is short enough to read at a glance (under 1,400 characters of text)', folders.every(f => plain(f.body).length < 1400));
-  const h = Help.html();
-  say('all folders are drawn in the folder style of the app, and they are closed until someone opens them', (h.match(/<details class="dbfolder helpfolder"/g) || []).length === folders.length && !/<details[^>]* open/.test(h));
-  const systemHelp = { fuel: 'fuel', bop: 'bop', weather: 'weather', tyrewear: 'tyrewear', safetycar: 'safetycar', pushsave: 'pushsave', tokens: 'tokens', damage: 'damage', carfailures: 'damage', endurance: 'endurance' };
-  say('Race System help folders carry the same colour identity as their system', Object.entries(systemHelp).every(([id, tone]) => new RegExp(`data-help="${id}" data-system="${tone}"`).test(h)));
-  const audioSource = read('renderer/audioedit.js'), css = read('renderer/styles.css'), systemAudio = { 'Pit and fuel': 'fuel', 'Balance of Power': 'bop', Endurance: 'endurance', Damage: 'damage', 'Car Failures': 'damage', Weather: 'weather', 'Tyre wear': 'tyrewear', Penalties: 'penalty', Flags: 'safetycar', 'Time tokens': 'tokens' };
-  say('Race System audio folders and their Help counterparts use the shared system colours', Object.entries(systemAudio).every(([name, tone]) => audioSource.includes(`'${name}': '${tone}'`) && css.includes(`[data-system="${tone}"]`)) && css.includes('.helpfolder'));
-  say('...in four headed groups, with Open all and Close all above them', ['Setting things up', 'Racing', 'Making it yours', 'Connecting and sharing'].every(g => h.includes('class="helphead">' + g)) && h.includes('data-helpall="1"') && h.includes('data-helpall="0"'));
-  say('...and the welcome comes first', h.indexOf('helpwelcome') < h.indexOf('data-helpall') && h.indexOf('data-helpall') < h.indexOf('helpfolder'));
+  const h = Help.html(), v = Help.view();
+  say('all topics appear in the eight-group navigation', v.groups.length===8 && folders.every(f=>h.includes('data-help-topic="'+f.id+'"')));
+  const systemHelp = {fuel:'fuel',weather:'weather',tyrewear:'tyrewear',safetycar:'safetycar',pushsave:'pushsave',tokens:'tokens',damage:'damage'};
+  say('Race System topics retain their colour identity',Object.entries(systemHelp).every(([id,tone])=>new RegExp('data-help-topic="'+id+'" data-system="'+tone+'"').test(h)));
+  say('the page has search and starts with a focused first-race guide',h.includes('data-help-search')&&h.includes('Your first race, step by step')&&!h.includes('data-helpall'));
   const bad = folders.filter(f => /\{\{|undefined|\[object/.test(f.body + f.title + f.note));
   say('no folder shows a stray placeholder', bad.length === 0);
 }
 
-// ---- opening and closing, with a stand-in for the screen ----
-{ const kids = Help.folders().map(f => ({ dataset: { help: f.id }, open: false, ontoggle: null }));
-  const box = { innerHTML: '', onclick: null, querySelectorAll: sel => (/helpfolder/.test(sel) ? kids : []) };
-  Help.render(box);
-  say('render draws the page into the box and watches every folder', box.innerHTML.includes('helpwelcome') && kids.every(k => typeof k.ontoggle === 'function') && typeof box.onclick === 'function');
-  kids[2].open = true; kids[2].ontoggle();
-  say('opening a folder is remembered (it is still open when the page is drawn again)', Help.opened.has(folders[2].id) && (Help.html().match(/<details[^>]* open/g) || []).length === 1 && new RegExp(`data-help="${folders[2].id}" open`).test(Help.html()));
-  kids[2].open = false; kids[2].ontoggle();
-  say('...and closing it forgets it again', !Help.opened.has(folders[2].id) && !/<details[^>]* open/.test(Help.html()));
-  box.onclick({ target: { closest: () => ({ dataset: { helpall: '1' } }) } });
-  say('Open all opens every folder', folders.every(f => Help.opened.has(f.id)) && (box.innerHTML.match(/<details[^>]* open/g) || []).length === folders.length);
-  box.onclick({ target: { closest: () => ({ dataset: { helpall: '0' } }) } });
-  say('Close all closes them again', Help.opened.size === 0 && !/<details[^>]* open/.test(box.innerHTML));
-  let threw = false; try { box.onclick({ target: { closest: () => null } }); box.onclick({ target: {} }); } catch { threw = true; }
-  say('a click on something else does nothing', !threw);
-  Help.render({ innerHTML: '', onclick: null });
-  say('a box without a way to look for folders is fine too', true);
-}
+// Navigation and interactions are exercised in helpview.test.js and Electron.
 
 // ---- what the text names exists in the app (so the Help cannot drift away from the screens) ----
-{ const text = plain(Help.html());
+{ const text = plain(allContent);
   const has = names => names.filter(n => !text.includes(n));
   const real = names => names.filter(n => !src.includes(n));
   const PK = require(R + 'renderer/setupwords.js').PICKER, sessionLabels = [...PK.kinds.map(k => k[1]), ...PK.formats.map(k => k[1]), PK.swaps[0]]; // (1.70.0: the answers of the picker, not the six names of the old Session type list)
@@ -91,9 +65,9 @@ const helpHas = (...terms) => terms.every(t => allHelp.toLowerCase().includes(t.
     say('1.37.0: the Arduino folder is right after Timing hardware, and names the buttons and choices of the Arduino page, which all exist there', folders.findIndex(x => x.id === 'arduino') === folders.findIndex(x => x.id === 'hardware') + 1 && has(names).length === 0 && real(names).length === 0 && f('hardware').includes('Arduino'));
     say('...and the race setup folder it points to, and the 3 seconds and the lap rule are the real ones', f('arduino').includes(schema.racesetups.groups.find(g => g.id === 'box').title) && /3 seconds/.test(f('arduino')) && /KEEPALIVE_TIMEOUT_MS\s+3000/.test(read('firmware/SlotForgeBox/settings.h')) && /BLACKOUT[^\n]*300/i.test(read('firmware/SlotForgeBox/settings.h')) && f('arduino').includes('0.3 seconds')); }
   say('the Live Race tiles the text names are the real ones, and it names all of them', real(tiles).length === 0 && has(tiles).length === 0);
-  const buttons = ['Extra fields…', 'Export to PDF', 'Open on a second screen', 'Full screen', 'Review laps', 'Finalize results', 'Delete all data', 'Simulated cars', 'Share on my network', 'End time now', 'Undo', 'Clear', 'Open all', 'Close all', 'Shuffle the heat order', 'Shuffle the lanes', 'Even out the lanes', 'Start from a plan', 'Not here today', 'Pick the drivers by name'];
-  say('the text names these buttons, and each exists on a screen', has(buttons).length === 0 && real(buttons.filter(b => !['Open all', 'Close all', 'Finalize results'].includes(b))).length === 0 && src.includes('Finalize') && Help.html().includes('>Open all<') && Help.html().includes('>Close all<'), has(buttons).concat(real(buttons)).join());
-  say('the steps name the Home button the way the Home tab does', /Go back to Home, pick your race, choose a driver and a car for every lane and hit Start race \(Open the session for a Time Token Session\)\./.test(plain(Help.WELCOME)));
+  const buttons = ['Extra fields…', 'Export to PDF', 'Open on a second screen', 'Full screen', 'Review laps', 'Finalize results', 'Delete all data', 'Simulated cars', 'Share on my network', 'End time now', 'Undo', 'Clear', 'Shuffle the heat order', 'Shuffle the lanes', 'Even out the lanes', 'Start from a plan', 'Not here today', 'Pick the drivers by name'];
+  say('the text names these buttons, and each exists on a screen', has(buttons).length === 0 && real(buttons.filter(b => !['Finalize results'].includes(b))).length === 0 && src.includes('Finalize'), has(buttons).concat(real(buttons)).join());
+  say('the steps name the Home actions correctly',plain(Help.WELCOME).includes('Start race')&&plain(Help.WELCOME).includes('Open the session'));
   say('the audio, fuel and penalty words are the app\'s own', ['Pitstop time', 'Token Clock', 'Slotcar Speed', 'Drivethrough', 'Stop-and-Go', 'Trackcall'].every(w => !text.includes(w) || src.includes(w) || read('renderer/timing.js').includes(w) || read('renderer/announcer.js').includes(w)));
   { const A = require(R + 'renderer/announcer.js'), groups = [...new Set(A.CALLS.map(A.catalogue.category))], audioText = JSON.stringify(Help.SECTIONS).split("id\":\"audio\"")[1].split("id\":\"look\"")[0];
     const named = ['Progress & milestones','Positions & battles','Laps & records','Fuel Systems','Penalty Systems','Flags & Safety Car','Time Tokens'];
@@ -105,7 +79,7 @@ const helpHas = (...terms) => terms.every(t => allHelp.toLowerCase().includes(t.
       say('1.48.0: the Help folder of the Ambient Race Sounds comes right after the audio folder, and names the real folder, say that no sounds are included, and that they play on a separate channel', !!amb && ids.indexOf('ambient') > ids.indexOf('audio') && ambText.includes('Ambient sounds') && /no sounds are bundled/.test(ambText) && /separate channel/.test(ambText) && amb.body.length < 3000);
       say('...and (1.49.0) names the kinds of sounds the folder has: the pit lane, the winner and the podium, trouble, driver swaps and time tokens', ['laps','pits','flags','results','weather','podium sting'].every(w => ambText.includes(w)) && ['Pit lane', 'Race moments', 'Trouble', 'Driver swaps and time tokens'].every(sec => A.AMBIENT.some(d => d.section === sec)));
       say('...and (1.50.0) that the sections are folders closed to start, and that the background sounds keep playing with a fade in and a fade out, which are in the editor', /Background loops/.test(ambText) && /resume it on green/.test(ambText) && ambText.includes('Fade in') && ambText.includes('Fade out') && ed.includes('Fade in (seconds)') && ed.includes('Fade out (seconds)') && ed.includes('class="ambsection"') && A.AMBIENT.some(d => d.section === 'Background sounds') && A.AMBIENT.some(d => d.section === 'Weather'));
-      say('...and the options it names are in the editor: the volume, start after, which cars, lower while a call is spoken, only if, not again within, test', ['Volume', 'Start after', 'conditions'].every(w => ambText.toLowerCase().includes(w.toLowerCase()) && ed.toLowerCase().includes(w.toLowerCase())) && /lowering them while speech plays/i.test(ambText) && /lower them while a call is spoken/i.test(ed)); } }
+      say('Ambient help matches the editor controls and explains lowering during any call', ['Volume', 'Start after', 'conditions'].every(w => ambText.toLowerCase().includes(w.toLowerCase()) && ed.toLowerCase().includes(w.toLowerCase())) && /lowering them while a call plays/i.test(ambText) && read('renderer/audiostudio.js').includes('Lower ambient sounds while a call plays') && ambText.includes('28%')); } }
   { const Dl = require(R + 'renderer/delta.js'), W = require(R + 'renderer/widgets.js');
     const folder = W.REGISTRY ? Object.values(W.REGISTRY).filter(d => d.group === 'Delta Timers') : [];
     say('the Delta Timers the Help describes exist: a folder of that name in the Layout Editor, nine widgets, and the ways of comparing it names', text.includes('Delta Timers') && folder.length === 9 && Object.keys(Dl.KINDS).length === 9
@@ -140,7 +114,7 @@ const helpHas = (...terms) => terms.every(t => allHelp.toLowerCase().includes(t.
   say('...and so do the race setup options: start lights, the red flag restart, the first crossing, the pit hold time, penalties, fuel, layouts and audio', ['lightsMin', 'lightsMax', 'restartAfterRed', 'firstLap', 'pitHold', 'penaltySystem', 'fuelRules', 'layout', 'layout2', 'audioSet', 'startPower', 'trackCallAction', 'heatBy', 'heatPlan', 'resultBy', 'endRule'].every(k => setup.includes(k)));
   say('Safety Car owns yellow target enforcement; retired setup fields are absent', !keys('racesetups').includes('yellowTarget') && keys('safetycarsystems').includes('target') && keys('safetycarsystems').includes('points') && helpHas('Safety Car target lap time','retired Yellow flag setup fields are ignored') && ['yellowtarget','yellowfast'].every(id => read('renderer/announcer.js').includes("id: '" + id + "'")));
   const index = read('renderer/index.html');
-  say('help.js is loaded by the page, before app.js (which draws it)', index.includes('<script src="help.js">') && index.indexOf('help.js') < index.indexOf('app.js') && read('renderer/app.js').includes("Help.render(document.getElementById('settingsbox'))"));
+  say('help.js is loaded by the page, before app.js (which draws it)', index.includes('<script src="help.js">') && index.indexOf('help.js') < index.indexOf('app.js') && read('renderer/app.js').includes("Help.render(document.getElementById('settingsbox'),"));
 }
 
 // ---- 1.2.0 ----
@@ -149,7 +123,7 @@ const helpHas = (...terms) => terms.every(t => allHelp.toLowerCase().includes(t.
   say('the Results help tells about the trophy and about adjusted results', /trophy/.test(f('results')) && /not in practice or qualifying/.test(f('results')) && /adjusted/.test(f('results')));
   say('Final Check help explains adjusting time, laps and championship points', f('screen').includes("Director's Final Check") && f('screen').includes('adjust race time, laps and championship points'));
   say('Look and feel says what Display does (the whole app, 100% to 200%, not the widgets)', /Display makes the whole app bigger \(100% to 200%\)/.test(f('look')) && /does not change the widgets/.test(f('look')));
-  say('Look and feel explains Depth (the four levels, the whole app and the widgets, Flat for a slow computer)', /Depth<\/b>|<b>Depth/.test(Help.html()) && /Depth sets how much cards, buttons, folders and widgets stand up/.test(f('look')) && /Flat \(the plain look\), Soft lift \(the standard\), Medium or Thick card/.test(f('look')) && /see-through widget stays flat/.test(f('look')) && /slow computer such as a Raspberry Pi/.test(f('look')));
+  say('Look and feel explains Depth (the four levels, the whole app and the widgets, Flat for a slow computer)', /Depth<\/b>|<b>Depth/.test(allContent) && /Depth sets how much cards, buttons, folders and widgets stand up/.test(f('look')) && /Flat \(the plain look\), Soft lift \(the standard\), Medium or Thick card/.test(f('look')) && /see-through widget stays flat/.test(f('look')) && /slow computer such as a Raspberry Pi/.test(f('look')));
   say('...and the border of a widget (a colour of your own, the thickness, several widgets at once)', /Colour of your own/.test(f('look')) && /Border thickness/.test(f('look')) && /Select several widgets/.test(f('look')));
   say('the session types help says what happens with the same best lap', /same best lap: the one who set it first ranks higher/.test(f('types')));
   say('Customization names the timing layout and describes its widgets', f('custom').includes('Layout Editor') && f('custom').includes('widgets for lap times, flags, fuel, speed') && require('../renderer/widgets').REGISTRY.some(w => w.label === 'Race Lap Counter'));
@@ -200,7 +174,7 @@ const helpHas = (...terms) => terms.every(t => allHelp.toLowerCase().includes(t.
   { const folders2 = Help.folders(), at = id => folders2.findIndex(x => x.id === id), sw = plain(folders2.find(x => x.id === 'setupwords').body), db = read('renderer/database.js');
     say('1.69.0: a folder Race Setups in words comes after Race Setup and before Session types, and is short', at('setupwords') === at('setups') + 1 && at('types') === at('setupwords') + 1 && sw.length < 1400);
     say('Help names every Race Setup rail section', schema.racesetups.rail.every(r => sw.includes(r.title)));
-    say('Help names the setup overview and its plain-language explanation', ['List','Cards','Start from a kind','In plain words'].every(k => sw.includes(k)) && ['Practice','Qualifying','Race','Time Tokens'].every(k => sw.includes(k)));
+    say('Help names the setup overview and its plain-language explanation', ['Table','Comparison rows','Start from a kind','In plain words'].every(k => sw.includes(k)) && ['Practice','Qualifying','Race','Time Tokens'].every(k => sw.includes(k)));
   }
   { const sw2 = plain(Help.folders().find(x => x.id === 'setupwords').body), rail = schema.racesetups.rail;
     say('Setup help explains section notes, status dots, navigation and Used by', ['rail','green','amber','open ring','quick summary','click it to jump','Used by','below the rail'].every(w => sw2.includes(w)));

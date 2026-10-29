@@ -8,7 +8,7 @@ const box = (x, y, w, h) => ({ x, y, w, h });
 ok('94 widgets in the register (1.63.0: Total Time; 1.62.0: Next Heat; 1.54.0: Pace meter; 1.43.0: Car Failure; 1.41.0: Available Tyres; 1.40.0: Tyre Degradation; 1.35.1: Swap Signal; 1.35.0: Distance Driven, Distance To Go, Laps To Go; 1.29.0: Lap to Lap Delta; 1.10.0: Damage, Repair Timer; 1.3.0: Balance of Power; 1.5.0: Tyres, Weather Forecast, Track Conditions; 1.7.0: Heat List; 1.8.0: Team Name, Team Picture; 1.9.0: Current Driver, Next Driver, Swap Timer)', Wd.REGISTRY.length === 94 && new Set(Wd.REGISTRY.map(d => d.type)).size === 94);
 ok('every widget has sample content', Wd.REGISTRY.every(d => ['gap','logo','lanecolor','carpicture','teampicture','imagelane','imagerace'].includes(d.type) ? true : String(Wd.sampleOf(d, 0)).length > 0));
 ok('lane widgets are marked per lane', Wd.def('bestlap').perLane && !Wd.def('clock').perLane && !Wd.def('start').perLane);
-ok('lap time widget has hold time and highlight colours', Wd.def('laptime').options.map(o => o.key).join() === 'holdSeconds,pbColor,recordColor');
+ok('lap time retains its value hold; colours belong to shared Lap Highlights', Wd.def('laptime').options.map(o => o.key).join() === 'holdSeconds');
 
 // moving
 let w = box(100, 100, 100, 50);
