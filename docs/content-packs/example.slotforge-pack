@@ -1,0 +1,94 @@
+{
+  "format": "slotforge-content-pack",
+  "apiVersion": 1,
+  "manifest": {
+    "id": "example.club-night",
+    "name": "Club Night Collection",
+    "version": "1.0.0",
+    "author": "SlotForge example",
+    "description": "An editable timing layout, comparison chart and teal app palette.",
+    "license": "CC0-1.0",
+    "minAppVersion": "1.99.2"
+  },
+  "items": {
+    "chartdesigns": [
+      {
+        "id": "lap-chart",
+        "name": "Club lap comparison",
+        "style": "bars",
+        "drivers": "selected",
+        "lanes": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "reference": "none"
+      }
+    ],
+    "layouts": [
+      {
+        "id": "club-layout",
+        "name": "Club timing screen",
+        "ratioW": 16,
+        "ratioH": 9,
+        "widgets": [
+          {
+            "id": "aoa6jg5d",
+            "type": "name",
+            "lane": 0,
+            "x": 20,
+            "y": 20,
+            "w": 200,
+            "h": 60,
+            "textSize": "",
+            "textColor": "",
+            "bgColor": "",
+            "title": "",
+            "showTitle": true,
+            "titleSize": "",
+            "titleBold": false,
+            "valueBold": true,
+            "valueItalic": false,
+            "opt": {}
+          },
+          {
+            "id": "8muzspas",
+            "type": "racechart",
+            "lane": null,
+            "x": 20,
+            "y": 180,
+            "w": 900,
+            "h": 350,
+            "textSize": "",
+            "textColor": "",
+            "bgColor": "",
+            "title": "",
+            "showTitle": true,
+            "titleSize": "",
+            "titleBold": false,
+            "valueBold": true,
+            "valueItalic": false,
+            "opt": {
+              "chartDesign": "lap-chart"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "themes": [
+    {
+      "id": "teal",
+      "name": "Club Teal",
+      "colors": {
+        "bg": "#171b21",
+        "panel": "#222831",
+        "ink": "#e8e6e1",
+        "muted": "#98a0ab",
+        "line": "#343b47",
+        "accent": "#43c9b0"
+      }
+    }
+  ]
+}

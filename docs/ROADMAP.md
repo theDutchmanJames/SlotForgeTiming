@@ -1,5 +1,15 @@
 # Development handoff — 26 October 2026
 
+## Update — 29 October 2026: plugin direction
+
+The user clarified that third-party plugins may execute code; they remain separately installed and maintained rather than being merged into SlotForge's source or standard build. The earlier content-only interpretation is superseded. See [the revised plugin plan](PLUGIN-PLAN.md).
+
+Content Packs are a versioned collection-sharing workflow built on the existing importer. They now belong under **App Settings → Import and Export**, alongside individual exports/imports and backups. **App Settings → Plugins** now provides stage 1: a supervised executable runtime, generated settings, commands, local storage, manual update/rollback, crash recovery and startup with plugins disabled. [Runtime API 1](PLUGIN-RUNTIME.md) documents its limits. Stage 2 adds [Timing API 1](PLUGIN-TIMING.md): generated driver settings, lane mapping, shared race input handling, acknowledged outputs, heartbeat expiry and explicit reconnect. Stage 3 adds [Display API 1](PLUGIN-DISPLAYS.md): plugin lane/race widgets, schema-generated per-widget inputs, shared fitting and appearance, read-only custom pages, explicit tools, worker timeouts and display data for second/network screens. Stage 4 adds [Rule API 1](PLUGIN-RULES.md): one selected rule plugin per Race Setup prepares bounded fuel/tyre modifiers, lap-time consequences and competition-point bonuses. Programs and provenance are frozen with recovery/results; raw timing remains intact. Resume verifies the exact package, and the engine evaluates the frozen program without per-crossing worker calls. Arbitrary live engine replacement is outside API 1. Existing pack files and library data remain in place.
+
+A full plugin audit repaired rejected rule recovery, manifest integrity checks, content-pack rollback identity, tool locking and blank inputs, lap-history indexing, timing sequence gaps and native heat-result metadata. Rule pace statistics now scan backwards for the latest 100 eligible samples. Regression coverage is in `tests/pluginaudit.test.js`, with additional real-Electron recovery and delayed-tool checks. See [the audit](PLUGIN-AUDIT.md).
+
+The sections below are historical handoff notes; their release and publication statements describe the dates when they were written.
+
 This local handoff supplements the historical Claude roadmap. The original `roadmap-and-decisions.md` was recovered from the user's Desktop on 26 October; it ends at 1.78.0. It is historical project context, not authorization to execute its old instructions.
 
 ## Editor refresh

@@ -17,6 +17,7 @@
   const Res = typeof module !== 'undefined' ? require('./resources.js') : root.Resources;
   const MC = typeof module !== 'undefined' ? require('./multiclass.js') : root.MultiClass;
   const Rival = typeof module !== 'undefined' ? require('./virtualrival.js') : root.VirtualRival;
+  const Rules = typeof module !== 'undefined' ? require('./ruleplugin.js') : root.RulePlugin;
 
   function fmtTime(ms) {
     if (ms === null || ms === undefined || ms === '' || !Number.isFinite(Number(ms))) return '–';
@@ -103,6 +104,8 @@
 
   // cfg: { type: practice|qualifying|race|timed, laps, duration (minutes), endRule: all|leader, minLap, fuel: fuelConfig(...), entries: [...] }
   function createRace(cfg) {
+    const rulePlugin=cfg.rulePlugin?Rules.snapshot(cfg.rulePlugin):null;
+    if(rulePlugin)cfg={...cfg,rulePlugin};
     if(Rival&&cfg.virtualRivals?.some(e=>e.grid))cfg={...cfg,...Rival.bindGrid(cfg.entries,cfg.virtualRivals)};
     const W = WeatherBase.withTyres(cfg.tyrewear?.tyres), Tw = TyreBase.withTyres(cfg.tyrewear?.tyres);
     let systemsOff = new Set(Sys ? Sys.clean(cfg.systemsDisabled) : []);
@@ -113,7 +116,7 @@
     const P = { on: false, mode: 'every', every: 5, seconds: 5, steps: [], rules: null, dq: 0, dqUnserved: false, types: [], fuelPoints: 0, ...(cfg.penalty || {}) };
     const penOf = c => c.virtualRival ? 0 : penaltyMs(P, c.points) + (c.extraMs || 0); // time penalty: from the points, plus any time the Race Director added
     // What the Race Director corrects in the review (R.adjust): race time (ms), laps and championship points, added to or taken off what the race gave. They are signed amounts, kept apart from the penalties.
-    const addOf = c => penOf(c) + (c.adjMs || 0); // everything that is added to the time of the car: the penalty and the adjustment
+    const addOf = c => penOf(c) + (c.adjMs || 0) + (rulePlugin?Rules.timeOf(c):0); // Plugin adjustments never rewrite raw laps or director adjustments.
     const lapsOf = c => c.virtualRival ? c.laps.length : Math.max(0, c.laps.length + (c.adjLaps || 0) - (c.swapLost || 0) - penaltyEffects(P, c.points).laps - (c.specialLaps || 0)); // scoring laps: driven, review adjustment, endurance loss and penalty deductions; never below zero
     // Sectors (1.66.0, cfg.sectors = { count, names }, from the track): in the review after a race or a heat a car that did not finish gets the sector of the track it was last seen in (car.sector, 1 = the sector that starts at the timing line).
     // Among cars that did not finish and have the same laps (the same distance in a race by distance) the later sector ranks higher; two cars in the same sector are put in order by the Race Director (car.secOrder, valid
@@ -337,9 +340,12 @@
       if (!c.started) { c.started = true; c.last = t; return false; } // the car starts just behind the line: its first crossing only starts the timing
       const dt = t - c.last, lapStart = c.last;
       if (dt < minLap) return false;
+      const ruleInput=rulePlugin?Rules.context(c,dt,{lap:c.laps.length+1,totalMs:t-R.t0,wet:+(R.wxState==='wet'),yellow:+(R.flag==='yellow'),pit:+!!c.outlap,valid:+(!c.outlap&&!c.resumed&&!c.redInterrupted&&!(maxLap>0&&dt>maxLap))}):null;
+      const ruleFuel=rulePlugin?Rules.multiplier(rulePlugin,'fuelMultiplier',ruleInput):1,ruleTyres=rulePlugin?Rules.multiplier(rulePlugin,'tyreMultiplier',ruleInput):1;
       R.tick(t);
       const pse = PSC && systemOn('pushsave') ? psLap(c, dt, lapStart) : null; // (what the pace of this lap does to the wear)
-      const use = fx(c).use, need = !fuelOn ? 0 : PSC ? Math.round(F.perLap * (pse ? pse.fuel : 1) * use * 1e6) / 1e6 : (use === 1 ? fuelUse(F, dt) : Math.round(fuelUse(F, dt) * use * 1e6) / 1e6); // litres this lap took (a car with Balance of Power uses more or less)
+      const use = fx(c).use, baseNeed = !fuelOn ? 0 : PSC ? Math.round(F.perLap * (pse ? pse.fuel : 1) * use * 1e6) / 1e6 : (use === 1 ? fuelUse(F, dt) : Math.round(fuelUse(F, dt) * use * 1e6) / 1e6);
+      const need=rulePlugin?Math.round(baseNeed*ruleFuel*1e6)/1e6:baseNeed;
       const fuelShort = fuelOn && c.fuel < need - 1e-9; // the tank did not hold enough for this lap
       if (fuelShort) { // not enough fuel to have driven this lap
         if (!c.outOfFuel) { c.outOfFuel = true; log('outoffuel', R.cars.indexOf(c), t); }
@@ -367,6 +373,7 @@
       const paceClean = !pitLap && !slow && !wasRedInterrupted && !(R.flag === 'yellow' && R.yellowAt !== null && lapStart >= R.yellowAt);
       c.paceEligibility.push({ ps: !!PSC && PSC.mode === 'median' && paceClean, tw: !!TWC && systemOn('tyrewear') && paceClean });
       c.laps.push(dt); c.bad.push(slow); c.last = t; c.total = t - R.t0;
+      if(rulePlugin){const timeMs=ruleInput.valid?Math.round(Math.max(0,Math.min(3600000,Rules.evaluate(rulePlugin.plan.lapTimeMs,ruleInput)))):0;(c.pluginLaps||(c.pluginLaps=[])).push({timeMs,fuelMultiplier:ruleFuel,tyreMultiplier:ruleTyres});if(timeMs)log('pluginrule',i,t,{plugin:rulePlugin.id,lap:c.laps.length,timeMs});}
       if (pse) { c.psNow = { p: pse.p, k: pse.kind, t: pse.tyres, f: pse.fuel, w: pse.why }; (c.ps || (c.ps = [])).push(c.psNow); } // (kept for every lap: the lap review and the folder)
       if (PSC && !pse) { c.psNow = null; c.ps.push(null); }
       // The current lap never moves its own pace benchmark. Only clean green laps are kept.
@@ -396,7 +403,7 @@
     R.restartCar = (i, t, who) => {
       const c = R.cars[i]; if (!c) return false;
       if (c.redInterrupted !== undefined) c.redInterrupted = false; if (c.redLaps) c.redLaps = []; if (c.resumed !== undefined) c.resumed = false;
-      Object.assign(c, who || {}, { laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, specialLaps: 0, penaltyPitTiers: [], adjMs: 0, adjLaps: 0, adjPoints: 0, invalid: [], removed: [], yellowFast: [], ps: [], psNow: null, fuelSamples: [], pitLaps: [], servedNow: false, last: t, total: 0, best: null, done: false, place: 0, retired: false,
+      Object.assign(c, who || {}, { ...(rulePlugin?{pluginLaps:[]}:{}), laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, specialLaps: 0, penaltyPitTiers: [], adjMs: 0, adjLaps: 0, adjPoints: 0, invalid: [], removed: [], yellowFast: [], ps: [], psNow: null, fuelSamples: [], pitLaps: [], servedNow: false, last: t, total: 0, best: null, done: false, place: 0, retired: false,
         fuel: F.on ? F.tank : 0, pitFuelLevel: 0, outOfFuel: false, blockAt: null, pit: null, pits: [], lastPit: null, outlap: false, rndPitExit: false, twPace: [], twPaceNow: null, psPace: [], paceEligibility: [], started: false });
       return true;
     };
@@ -662,7 +669,7 @@
       }
       if (c.twLife > 0) {
         const base = Tw.wearPerLap(TWC, c.tyre, systemOn('weather') ? R.wxState : 'dry', TWC.laneLen[c.lane] || 0);
-        c.twLife = Math.max(0, Math.round((c.twLife - base * pace.multiplier * (PSC && c.psNow ? c.psNow.t : 1) * thermalWear) * 1e6) / 1e6);
+        c.twLife = Math.max(0, Math.round((c.twLife - base * pace.multiplier * (PSC && c.psNow ? c.psNow.t : 1) * thermalWear * (rulePlugin?c.pluginLaps?.[c.laps.length-1]?.tyreMultiplier??1:1)) * 1e6) / 1e6);
         if (c.twLife <= 0) log('tyreworn', i, t, { tyre: c.tyre, lap: c.laps.length, rule: TWC.zero });
         twLevels(c, i, t);
       }
@@ -1284,6 +1291,8 @@
     R.lapsOf = lapsOf; R.adjOf = c => ({ ms: c.adjMs || 0, laps: c.adjLaps || 0, points: c.adjPoints || 0 });
     // The race time of a car: the time of its last crossing, plus time penalties and the adjustment of the review (what the standings call the effective time).
     R.timeOf = c => c.total + addOf(c);
+    R.pluginTimeOf = c => rulePlugin?Rules.timeOf(c):0;
+    R.pluginPointsOf = (c,pos) => Rules?Rules.points(rulePlugin,c,pos):0;
     // The time a car has been racing (the Total Time widget, 1.63.0). Before the car has finished it is the race clock, so it counts up; once the car is done it is the time of its last crossing
     // (a car that is out keeps the time of its last lap), and a car that is still racing when the race is stopped has the time the race lasted. t: the moment to read it at.
     // penalties: plus the time penalties and the corrections of the review (the time the results count); without them it is the time on the clock.
@@ -1345,6 +1354,7 @@
       ensurePaceEligibility(c);
       if (!recalc) { if (!c.removed.includes(n)) c.removed = [...c.removed, n].sort((a, b) => a - b); rebuildPace(c); return true; }
       const gone = c.laps[n]; c.laps.splice(n, 1); c.bad.splice(n, 1); c.paceEligibility.splice(n, 1); if (c.ps) c.ps.splice(n, 1);
+      if(c.pluginLaps)c.pluginLaps.splice(n,1);
       const shift = list => list.filter(x => x !== n).map(x => (x > n ? x - 1 : x));
       c.invalid = shift(c.invalid); c.removed = shift(c.removed); c.yellowFast = shift(c.yellowFast || []); c.pitLaps = shift(c.pitLaps || []);
       if (c.redLaps) c.redLaps = shift(c.redLaps);
@@ -1387,6 +1397,8 @@
     R.restore = snap => {
       if (!snap || snap.v !== 1 || !Array.isArray(snap.cars) || snap.cars.length !== R.cars.length || !['running', 'paused', 'finished', ...(R.resources?['ready']:[])].includes(snap.status)) return false;
       const x = JSON.parse(JSON.stringify(snap));
+      if(JSON.stringify(x.rulesSnapshot?.config?.rulePlugin||null)!==JSON.stringify(rulePlugin))return false;
+      if(rulePlugin&&x.cars.some(c=>!Array.isArray(c.laps)||!Array.isArray(c.pluginLaps||[])||(c.pluginLaps||[]).length!==c.laps.length||(c.pluginLaps||[]).some(v=>!v||!Number.isInteger(v.timeMs)||v.timeMs<0||v.timeMs>3600000||!['fuelMultiplier','tyreMultiplier'].every(k=>Number.isFinite(v[k])&&v[k]>=0&&v[k]<=10))))return false;
       if(R.resources&&x.resources)Object.assign(R.resources,x.resources);
       if (x.rulesSnapshot?.version === 1 && x.rulesSnapshot.config && typeof x.rulesSnapshot.config === 'object') startingRules = x.rulesSnapshot.config;
       STATE.forEach(k => { if (x[k] !== undefined) R[k] = x[k]; });
@@ -1697,7 +1709,7 @@
         // result by total race time: did the car finish its laps, and the time of the heat (the finish time, or an estimate for a car that did not finish when the setup asks for one)
         const fin = byTime && race.finishedLaps ? race.finishedLaps(r.car) : false, est = byTime && !fin && sc.unfinished === 'estimate' && race.estimateOf ? race.estimateOf(r.car) : null;
         const tm = fin ? (race.timeOf ? race.timeOf(r.car) : r.car.total + a.ms) : est;
-        return { raceClass:r.car.raceClass||'', dq:!!r.car.dq, retired:!!r.car.retired, outOfFuel:!!r.car.outOfFuel, participant: r.car.participant, pos: r.pos, laps: race.lapsOf ? race.lapsOf(r.car) : r.car.laps.length, total: race.timeOf && Number.isFinite(race.timeOf(r.car)) ? race.timeOf(r.car) : a.ms && Number.isFinite(r.car.total) ? r.car.total + a.ms : r.car.total, best: r.car.best, points: r.car.dq ? 0 : (points[r.pos - 1] || 0) + (byPoints ? a.points : 0),
+        return { raceClass:r.car.raceClass||'', dq:!!r.car.dq, retired:!!r.car.retired, outOfFuel:!!r.car.outOfFuel, participant: r.car.participant, pos: r.pos, laps: race.lapsOf ? race.lapsOf(r.car) : r.car.laps.length, total: race.timeOf && Number.isFinite(race.timeOf(r.car)) ? race.timeOf(r.car) : a.ms && Number.isFinite(r.car.total) ? r.car.total + a.ms : r.car.total, best: r.car.best, ...(race.cfg?.rulePlugin?{pluginPoints:race.pluginPointsOf(r.car,r.pos),pluginTimeMs:race.pluginTimeOf(r.car)}:{}),points: r.car.dq ? 0 : (points[r.pos - 1] || 0) + (byPoints ? a.points + (race.pluginPointsOf?.(r.car,r.pos)||0) : 0),
           ...(race.spentOf && Number.isFinite(race.spentOf(r.car, race.endAt, false)) ? { spent: race.spentOf(r.car, race.endAt, false), spentPen: race.spentOf(r.car, race.endAt, true) } : {}), // (1.63.0: the time the car raced in this heat, without and with penalties: the Total Time widget adds up the heats)
           ...(race.compare && race.distOf && Number.isFinite(race.distOf(r.car)) ? { dist: race.distOf(r.car) } : {}), // (1.64.0: heats compared by distance: the metres the car drove in this heat)
           ...(r.car.sector && race.sectorName ? { sector: r.car.sector, ...(race.sectorName(r.car.sector) ? { sectorName: race.sectorName(r.car.sector) } : {}) } : {}), // (1.66.0: the sector the car was last seen in, when the Race Director gave one in the review)
@@ -1711,7 +1723,7 @@
         if (top) { top.bonus = sc.fastestBonus; top.points += sc.fastestBonus; }
       }
       const wnote = race.weatherNote ? race.weatherNote() : ''; // what the weather did in this heat, in words
-      const result = { heat: H.idx + 1, ...(H.idx >= H.count ? { final: names[H.idx - H.count] } : {}), ...(wnote ? { weatherNote: wnote } : {}), rows };
+      const result = { ...(race.cfg?.rulePlugin?{rulePlugin:race.cfg.rulePlugin}:{}),heat: H.idx + 1, ...(H.idx >= H.count ? { final: names[H.idx - H.count] } : {}), ...(wnote ? { weatherNote: wnote } : {}), rows };
       return result;
     };
     H.preview = build;
@@ -1753,7 +1765,7 @@
       const acc = participants.map((p, i) => {
         // A DQ heat remains a zero/worst result for dropping and averages, but
         // cannot contribute laps, times, records, adjustments or bonuses.
-        const exclude = h => h?.dq ? {...h,laps:0,points:0,best:null,total:null,tm:null,fin:false,est:false,dist:0,adjMs:0,adjLaps:0,adjPoints:0} : h;
+        const exclude = h => h?.dq ? {...h,laps:0,points:0,...(h.pluginPoints!==undefined?{pluginPoints:0}:{}),best:null,total:null,tm:null,fin:false,est:false,dist:0,adjMs:0,adjLaps:0,adjPoints:0} : h;
         const raw = heatsOf[i], hs = raw.map(exclude), ranked = hs.slice().sort((a,b)=>Number(!!a.dq)-Number(!!b.dq)||better(a,b)), f = exclude(finalOf[i]);
         const attempts=raw.concat(finalOf[i]?[finalOf[i]]:[]), disqualified=(!added&&!!finalOf[i]?.dq)||(attempts.length>0&&attempts.every(h=>h.dq));
         let counted = ranked;
@@ -1768,7 +1780,7 @@
         const adj = k => all.reduce((t, h) => t + (h[k] || 0), 0), am = adj('adjMs'), al = adj('adjLaps'), ap = Math.round(adj('adjPoints') * 100) / 100; // (what was adjusted in the reviews of its races, added up)
         const dmNote = Dm.totalNote(hs, f); // what the damage did to the driver in all its heats and the final, in words
         const flNote = Fl.totalNote(hs, f); // what the failures did to the driver in all its heats and the final, in words
-        return { participant: i, ...p, ...(disqualified?{dq:true}:{}), laps: sum(all, 'laps'), points: sum(all, 'points'), best, heats: hs.length, ...(am ? { adjMs: am } : {}), ...(al ? { adjLaps: al } : {}), ...(ap ? { adjPoints: ap } : {}),
+        return { participant: i, ...p, ...(all.some(h=>h.pluginPoints!==undefined)?{pluginPoints:(!added&&f)?(f.pluginPoints||0):counted.reduce((n,h)=>n+(h.pluginPoints||0),0)/div+(added&&f?(f.pluginPoints||0):0)}:{}),...(disqualified?{dq:true}:{}), laps: sum(all, 'laps'), points: sum(all, 'points'), best, heats: hs.length, ...(am ? { adjMs: am } : {}), ...(al ? { adjLaps: al } : {}), ...(ap ? { adjPoints: ap } : {}),
           ...(dmNote ? { damageNote: dmNote, damagePoints: all.reduce((t, h) => t + (h.damagePoints || 0), 0), repairs: all.reduce((t, h) => t + (h.repairs || 0), 0), repairMs: all.reduce((t, h) => t + (h.repairMs || 0), 0) } : {}),
           ...(flNote ? { failureNote: flNote, failures: all.reduce((t, h) => t + (h.failures || 0), 0), failureRepairs: all.reduce((t, h) => t + (h.failureRepairs || 0), 0), failureMs: all.reduce((t, h) => t + (h.failureMs || 0), 0) } : {}),
           counted: counted.length, dropped: hs.filter(h => !counted.includes(h)).map(h => h.heat).sort((x, y) => x - y),

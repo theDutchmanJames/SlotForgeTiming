@@ -1,0 +1,22 @@
+// Bounded, data-only race programs. No eval, plugin callbacks or asynchronous work
+// runs in the timing engine. The executable plugin prepares this plan before racing.
+(function(root){
+ const ok=(v,m)=>{if(!v)throw Error(m);},obj=v=>v&&typeof v==='object'&&!Array.isArray(v);
+ const keys=(v,ks)=>{ok(obj(v),'Invalid rule object.');for(const k of Object.keys(v))ok(ks.includes(k),'Unknown rule field: '+k);};
+ const VARS=['base','lane','lap','lapMs','medianMs','averageMs','bestMs','totalMs','fuel','tyreLife','penaltyPoints','position','wet','yellow','pit','valid'];
+ const OPS={add:2,sub:2,mul:2,div:2,min:2,max:2,lt:2,gt:2,eq:2,and:2,or:2,if:3,abs:1,floor:1,round:1};
+ const cap=n=>Number.isFinite(n)?Math.max(-1e9,Math.min(1e9,n)):0;
+ const copy=v=>JSON.parse(JSON.stringify(v));
+ function descriptor(v){keys(v,['api','label','description']);ok(v.api===1,'Unsupported rule API.');ok(typeof v.label==='string'&&v.label.trim()&&v.label.length<=80,'Invalid rule label.');ok(v.description===undefined||typeof v.description==='string'&&v.description.length<=500,'Invalid rule description.');return {api:1,label:v.label.trim(),description:v.description||''};}
+ function expression(v,depth=0,count={n:0}){ok(depth<=8&&++count.n<=96,'Rule expression is too complex.');if(typeof v==='number'){ok(Number.isFinite(v)&&Math.abs(v)<=1e9,'Invalid rule number.');return v;}ok(obj(v),'Invalid rule expression.');if(Object.hasOwn(v,'var')){keys(v,['var']);ok(VARS.includes(v.var),'Unknown rule variable.');return {var:v.var};}keys(v,['op','args']);ok(Object.hasOwn(OPS,v.op)&&Array.isArray(v.args)&&v.args.length===OPS[v.op],'Invalid rule operator.');return {op:v.op,args:v.args.map(x=>expression(x,depth+1,count))};}
+ function plan(v){keys(v,['fuelMultiplier','tyreMultiplier','lapTimeMs','points']);return Object.fromEntries(Object.entries({fuelMultiplier:1,tyreMultiplier:1,lapTimeMs:0,points:0}).map(([k,d])=>[k,expression(v[k]===undefined?d:v[k])]));}
+ function evaluate(v,ctx){if(typeof v==='number')return v;if(v.var)return cap(Number(ctx[v.var])||0);const a=evaluate(v.args[0],ctx);if(v.op==='if')return evaluate(v.args[a?1:2],ctx);const b=v.args.length>1?evaluate(v.args[1],ctx):0;return cap(({add:()=>a+b,sub:()=>a-b,mul:()=>a*b,div:()=>b?a/b:0,min:()=>Math.min(a,b),max:()=>Math.max(a,b),lt:()=>+(a<b),gt:()=>+(a>b),eq:()=>+(a===b),and:()=>+(!!a&&!!b),or:()=>+(!!a||!!b),abs:()=>Math.abs(a),floor:()=>Math.floor(a),round:()=>Math.round(a)})[v.op]());}
+ function frozen(v){if(v&&typeof v==='object'){Object.values(v).forEach(frozen);Object.freeze(v);}return v;}
+ function snapshot(v){keys(v,['api','id','name','version','digest','settings','plan']);ok(v.api===1&&typeof v.id==='string'&&/^[a-z0-9]+(?:[.-][a-z0-9]+)+$/.test(v.id)&&v.id.length<=80,'Invalid rule plugin identity.');ok(typeof v.name==='string'&&v.name.length<=100&&/^\d+\.\d+\.\d+$/.test(v.version)&&/^[a-f0-9]{64}$/.test(v.digest),'Invalid rule provenance.');ok(obj(v.settings)&&JSON.stringify(v.settings).length<=32000,'Invalid rule settings snapshot.');return frozen({...copy(v),plan:plan(v.plan)});}
+ function context(c,lapMs=0,extra={}){const laps=c.laps||[],bad=c.bad||[],invalid=new Set(c.invalid||[]),removed=new Set(c.removed||[]),pits=new Set(c.pitLaps||[]),a=[];for(let i=laps.length-1;i>=0&&a.length<100;i--)if(!bad[i]&&!invalid.has(i)&&!removed.has(i)&&!pits.has(i))a.push(laps[i]);a.sort((a,b)=>a-b);const n=a.length;return {base:1,lane:(c.lane||0)+1,lap:laps.length,lapMs,medianMs:n?(a[(n-1)>>1]+a[n>>1])/2:0,averageMs:n?a.reduce((x,y)=>x+y,0)/n:0,bestMs:a[0]||0,totalMs:c.total||0,fuel:c.fuel||0,tyreLife:c.twLife??100,penaltyPoints:c.points||0,position:0,wet:0,yellow:0,pit:0,valid:1,...extra};}
+ const multiplier=(p,key,ctx)=>Math.max(0,Math.min(10,evaluate(p.plan[key],ctx)));
+ // Read-only viewers receive the authoritative aggregate, not another growing lap ledger.
+ function timeOf(c){if(!Array.isArray(c.pluginLaps))return Number.isFinite(c.pluginTimeMs)?Math.max(0,c.pluginTimeMs):0;const skip=new Set([...(c.invalid||[]),...(c.removed||[])]);return c.pluginLaps.reduce((n,x,i)=>n+(skip.has(i)?0:x?.timeMs||0),0);}
+ function points(p,c,position){if(!p||c.virtualRival||c.dq||c.retired||!c.laps?.length)return 0;return Math.round(Math.max(-10000,Math.min(10000,evaluate(p.plan.points,context(c,0,{position}))))*100)/100;}
+ const api={VARS,OPS,descriptor,expression,plan,evaluate,snapshot,context,multiplier,timeOf,points};root.RulePlugin=api;if(typeof module!=='undefined')module.exports=api;
+})(typeof window!=='undefined'?window:globalThis);

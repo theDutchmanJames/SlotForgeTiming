@@ -66,11 +66,13 @@ function showRace(on) { // on: the Race tab is shown; otherwise the race (if the
 
 // App Settings: General and Network
 async function renderSettings() {
+  if (typeof ptPageDispose === 'function') ptPageDispose();
   if (typeof ppPageDispose === 'function') ppPageDispose();
   view.innerHTML = '<h2>App Settings</h2><div class="sub" id="settingstabs" role="tablist"></div><div id="settingsbox"></div>';
-  renderTabs(document.getElementById('settingstabs'), [['general', 'General'], ['theme', 'App Theme'], ['director', 'Race Director'], ['calculations', 'Calculations'], ['network', 'Network'], ['hardware', 'Timing Hardware'], ['transfer', 'Import and Export'], ['help', 'Help']], state.settingsSub, id => { state.settingsSub = id; renderSettings(); });
+  renderTabs(document.getElementById('settingstabs'), [['general', 'General'], ['theme', 'App Theme'], ['director', 'Race Director'], ['calculations', 'Calculations'], ['network', 'Network'], ['hardware', 'Timing Hardware'], ['transfer', 'Import and Export'], ['plugins', 'Plugins'], ['help', 'Help']], state.settingsSub, id => { state.settingsSub = id; renderSettings(); });
+  if (state.settingsSub === 'plugins') return PluginsPage.render(document.getElementById('settingsbox'));
   if (state.settingsSub === 'help') return Help.render(document.getElementById('settingsbox'), {onNavigate: destination => { Object.assign(state, destination); return render(); }});
-  if (state.settingsSub === 'transfer') return renderTransferSettings(document.getElementById('settingsbox'));
+  if (state.settingsSub === 'transfer') return TransferViews.render(document.getElementById('settingsbox'));
   if (state.settingsSub === 'theme') return renderThemeSettings(document.getElementById('settingsbox'));
   if (state.settingsSub === 'director') return renderPadSettings(document.getElementById('settingsbox'));
   if (state.settingsSub === 'calculations') return renderCalculationSettings(document.getElementById('settingsbox'));
@@ -100,19 +102,21 @@ async function setTimingHw(id) { // saves the choice and lets go of the hardware
     try { if (old === 'trackmate' && typeof hw !== 'undefined' && hw.open && typeof tmClose === 'function') await tmClose(); } catch (x) { /* already gone */ }
     try { if (old === 'arduino' && typeof ab !== 'undefined' && ab.open && typeof abClose === 'function') await abClose(); } catch (x) { /* already gone */ }
     if (old === 'parallel' && typeof ppClose === 'function') await ppClose();
+    if (old === 'plugin' && typeof ptClose === 'function') await ptClose();
     if (old === 'phidget' && typeof phClose === 'function') await phClose();
   }
 }
 function renderHardwareArea(box) {
+  if (typeof ptPageDispose === 'function') ptPageDispose();
   if (typeof ppPageDispose === 'function') ppPageDispose();
-  const chosen = Hardware.timingChosen(state.settings), names = { trackmate: 'the Trackmate Interface', arduino: 'the Arduino box', parallel: 'the Parallel Port', phidget: 'the Phidget Interface', none: 'no timing hardware' };
-  const onPage = ['trackmate', 'arduino', 'parallel', 'phidget'].includes(state.hwSub);
+  const chosen = Hardware.timingChosen(state.settings), names = { trackmate: 'the Trackmate Interface', arduino: 'the Arduino box', parallel: 'the Parallel Port', phidget: 'the Phidget Interface', plugin: 'the plugin interface', none: 'no timing hardware' };
+  const onPage = ['trackmate', 'arduino', 'parallel', 'phidget', 'plugin'].includes(state.hwSub);
   box.innerHTML = `<div class="row" id="hwuse"><label><strong>Timing hardware in use</strong> <select id="hw-use">${Hardware.TIMING.map(([id, name]) => `<option value="${id}"${id === chosen ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select></label>
-      <span class="muted">One at a time. Only this one connects by itself, counts the laps of a race and shows on Home and on the race screen.</span></div>
+      <span class="muted">One at a time. Only this interface counts race laps and shows on Home and the race screen. Its settings control how it connects.</span></div>
     <div class="sub" id="hwtabs" role="tablist"></div>
     <p class="muted" id="hwnote"${onPage && state.hwSub !== chosen ? '' : ' hidden'}>${onPage && state.hwSub !== chosen ? `This page is not in use for races: the app uses ${esc(names[chosen])}. <button class="btn" id="hw-usethis">Use this one</button>` : ''}</p>
     <div id="hwbox"></div>`;
-  renderTabs(document.getElementById('hwtabs'), [['trackmate', 'Trackmate Interface'], ['arduino', 'Arduino'], ['parallel', 'Parallel Port'], ['phidget', 'Phidget'], ['ds', 'DS Electronics'], ['oxigen', 'oXigen Digital'], ['other', 'Other']], state.hwSub, id => { state.hwSub = id; renderHardwareArea(box); });
+  renderTabs(document.getElementById('hwtabs'), [['trackmate', 'Trackmate Interface'], ['arduino', 'Arduino'], ['parallel', 'Parallel Port'], ['phidget', 'Phidget'], ['plugin', 'Plugin Interface'], ['ds', 'DS Electronics'], ['oxigen', 'oXigen Digital'], ['other', 'Other']], state.hwSub, id => { state.hwSub = id; renderHardwareArea(box); });
   const use = async id => { // the choice changed: the hardware that was in use is let go, the new one connects by itself when it can
     if (await setTimingHw(id) === false) return;
     if (id === 'trackmate' && typeof tmAutoConnect === 'function') tmAutoConnect();
@@ -128,6 +132,7 @@ function renderHardwareArea(box) {
   if (again) again.disabled = raceKept();
   if (state.hwSub === 'other') return;
   if (state.hwSub === 'arduino') return renderArduinoSettings(document.getElementById('hwbox'));
+  if (state.hwSub === 'plugin') return renderPluginTimingSettings(document.getElementById('hwbox'));
   if (state.hwSub === 'phidget') return renderPhidgetSettings(document.getElementById('hwbox'));
   if (state.hwSub === 'parallel') return renderParallelSettings(document.getElementById('hwbox'));
   if (state.hwSub === 'ds') return renderDsSettings(document.getElementById('hwbox'));
@@ -361,6 +366,7 @@ async function renderRules() {
 }
 
 async function render() {
+  if (typeof ptPageDispose === 'function') ptPageDispose();
   if (typeof ppPageDispose === 'function') ppPageDispose();
   view.onclick = null; view.onchange = null; // each screen sets up its own handlers
   LiveView.unmount();
@@ -423,6 +429,8 @@ function bootFailed(e) {
   }
   if (typeof ppInit === 'function') ppInit();
   if (typeof phInit === 'function') phInit();
+  if (typeof ptInit === 'function') ptInit();
+  if(typeof PluginDisplayClient!=='undefined')PluginDisplayClient.init();
   applyUiScale();
   render();
   if (api.onHwChoose && typeof tmAutoConnect === 'function') tmAutoConnect(); // the remembered Trackmate, if it is plugged in

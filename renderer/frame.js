@@ -291,7 +291,7 @@
       }
       const min=list?t.minSize/.8:strategy?Math.max(t.minSize,11/.48):pitcontrol?Math.max(t.minSize,14):t.minSize;
       const computed=root.getComputedStyle(v),tabular=/^(?:"?SF (?:Inter|Roboto Mono|Barlow Condensed)|"?Segoe UI)/.test(computed.fontFamily);
-      const key=JSON.stringify([v.clientWidth,v.clientHeight,initial,min,t.mode,t.shrink,t.longText,w.numberFormat,tabular?v.textContent.replace(/\d/g,'0'):v.textContent,w.opt,w.fonts,el.style.getPropertyValue('--wf-support-font'),computed.fontFamily,computed.fontWeight,computed.fontStyle,computed.letterSpacing,fontEpoch,pitcontrol?[...v.querySelectorAll('.pcw-row')].filter(n=>!n.hidden).length:null]);
+      const key=JSON.stringify([v.clientWidth,v.clientHeight,initial,min,t.mode,t.shrink,t.longText,w.numberFormat,tabular?v.textContent.replace(/\d/g,'0'):v.textContent,w.opt,w.fonts,el.style.getPropertyValue('--wf-support-font'),computed.fontFamily,computed.fontWeight,computed.fontStyle,computed.letterSpacing,fontEpoch,v.querySelector(':scope > .plugin-view')?.innerHTML,pitcontrol?[...v.querySelectorAll('.pcw-row')].filter(n=>!n.hidden).length:null]);
       const cached=fitCache.get(v);
       if(simple&&t.longText==='ellipsis'&&!numeric){
         // Shortening a description is an explicit user choice, not a fitting failure.
@@ -300,7 +300,12 @@
         ok=v.clientHeight>=min*1.35;
       }else if(cached?.key===key){v.style.fontSize=cached.size;ok=cached.ok;}
       else {
-        if(pitcontrol){
+        if(v.querySelector(':scope > .plugin-view')){
+          // A metric must fit its own column, not merely the outer widget.
+          const fits=()=>textFits(v)&&[...v.querySelectorAll('.pd-metric>span')].every(n=>textFits(n,n.parentElement,false));
+          if(t.mode==='auto'||t.shrink)ok=fitSize(min,initial,size=>{v.style.fontSize=size+'px';},fits).fits;
+          else {v.style.fontSize=initial+'px';ok=fits();}
+        }else if(pitcontrol){
           // Include row padding/backgrounds; glyphs fitting alone can still clip the last card.
           const fits=()=>textFits(v)&&v.querySelector('.pcw').getBoundingClientRect().bottom<=v.getBoundingClientRect().bottom+.75;
           if(t.mode==='auto'||t.shrink)ok=fitSize(min,initial,size=>{v.style.fontSize=size+'px';},fits).fits;

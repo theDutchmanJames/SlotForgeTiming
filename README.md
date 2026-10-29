@@ -6,9 +6,9 @@
 
 SlotForge Timing brings your track, drivers, cars and race rules together in a desktop app. Run practice sessions, qualifying, club races, heats, championships and team endurance events, then review and publish the results. Build a simple timing screen or a complete race-day dashboard for a second monitor or TV.
 
-**Current version: 1.99.2.** This repository contains the application source, build scripts, firmware sources and automated tests. See the [changelog](CHANGELOG.md) for this release.
+**Current version: 1.99.3.** This repository contains the application source, build scripts, firmware sources and automated tests. See the [changelog](CHANGELOG.md) for this release.
 
-**Ready to try it?** Download the Windows 64-bit [Portable executable](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.2/SlotForge.Timing-1.99.2-Portable.exe), double-click it and explore the app. If you like it and want SlotForge for regular, long-term use, download the [Setup installer](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.2/SlotForge.Timing-1.99.2-Setup.exe). Both are available in the [1.99.2 release downloads](https://github.com/theDutchmanJames/SlotForgeTiming/releases/tag/v1.99.2); neither needs Node.js.
+**Ready to try it?** Download the Windows 64-bit [Portable executable](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.3/SlotForge.Timing-1.99.3-Portable.exe), double-click it and explore the app. If you like it and want SlotForge for regular, long-term use, download the [Setup installer](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.3/SlotForge.Timing-1.99.3-Setup.exe). Both are available in the [1.99.3 release downloads](https://github.com/theDutchmanJames/SlotForgeTiming/releases/tag/v1.99.3); neither needs Node.js.
 
 **On this page:** [Features and Race Systems](#what-you-can-do-with-slotforge) · [Timing hardware](#timing-hardware) · [Install and run](#install-and-run) · [First race](#first-race) · [Development](#development-and-testing)
 
@@ -123,6 +123,12 @@ You can also export drivers, slotcars, tracks, teams, Race System setups, champi
 
 For moving a complete installation's data, create a **Complete backup**. It includes the database, layouts, pictures, sounds, settings, past races and laps. **Restoring a complete backup replaces the current database**, so use an individual export when your aim is simply to add another user's designs. Complete backups also include settings such as the Race Director password; individual design exports are the appropriate files for sharing publicly.
 
+### Content Packs and code plugins
+
+**App Settings → Import and Export → Content Packs** lets you install and share collections of layouts, Widget Builder designs, leaderboard and chart designs, Image Sets, Audio Sets, colour themes and supported Race System presets. Review a pack, then add editable copies to your normal editors or explicitly apply its theme. Updates and removal preserve your existing copies. Create packs from your saved content without writing code.
+
+Content Packs are a versioned collection-sharing workflow built on the existing importer, with compatibility checks, manual updates and library rollback. They do not add new app capabilities. **App Settings → Plugins** provides the first executable runtime: separately installed background JavaScript, generated settings, command buttons, logs, local storage and recovery. Installation does not run a plugin: start it explicitly only if you trust its code and author, as it has your operating-system access. Timing plugins can now supply lap/pit sensors, track calls and optional power/light outputs through **Timing Hardware → Plugin Interface**. See the [timing-driver guide](docs/PLUGIN-TIMING.md). Plugins can also contribute lane/race widgets, custom pages and tools. Add their widgets through the Layout Editor’s **Plugins** folder, and open **Customization → Plugin Pages & Tools** for their pages and explicit actions. Shared layouts keep plugin references but do not bundle executable code. See [Display API 1](docs/PLUGIN-DISPLAYS.md). Race Setups can also select a rule plugin for frozen fuel/tyre modifiers, lap-time consequences and competition-point bonuses. See [Rule API 1](docs/PLUGIN-RULES.md). Third-party code stays separate from SlotForge’s source and standard build. See [runtime API 1](docs/PLUGIN-RUNTIME.md). See the [plugin architecture plan](docs/PLUGIN-PLAN.md). Back up installed packs separately from the database; copied content is included in normal database backups. See the [content-pack guide and example](docs/content-packs.md).
+
 ### Expansive Help and a Calculations reference
 
 The in-app **Help** has grouped, expandable sections covering race preparation, Race Systems, hardware, editors, results and day-to-day workflows. Setup pages also provide **IN PLAIN WORDS** summaries, explanations, tooltips and previews.
@@ -172,22 +178,22 @@ Parallel Port and Phidget support have been tested in software with simulated in
 
 ### Ready-made Windows programs
 
-Version **1.99.2** includes both ready-made Windows 64-bit executables in its [release downloads](https://github.com/theDutchmanJames/SlotForgeTiming/releases/tag/v1.99.2):
+Version **1.99.3** includes both ready-made Windows 64-bit executables in its [release downloads](https://github.com/theDutchmanJames/SlotForgeTiming/releases/tag/v1.99.3):
 
-- **[Download Portable.exe](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.2/SlotForge.Timing-1.99.2-Portable.exe)** — ready to use. Double-click it to test the app without installing it.
-- **[Download Setup.exe](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.2/SlotForge.Timing-1.99.2-Setup.exe)** — use the installer if you liked the app and want to keep using it long term.
+- **[Download Portable.exe](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.3/SlotForge.Timing-1.99.3-Portable.exe)** — ready to use. Double-click it to test the app without installing it.
+- **[Download Setup.exe](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.3/SlotForge.Timing-1.99.3-Setup.exe)** — use the installer if you liked the app and want to keep using it long term.
 
 Choose one of those executable files under **Assets**. The separate source ZIP and GitHub's automatic **Source code** downloads are for building the app yourself.
 
 **To try SlotForge:**
 
 1. Download the Portable program. Extract it first if it comes in a ZIP.
-2. Double-click the downloaded **SlotForge.Timing-1.99.2-Portable.exe** file.
+2. Double-click the downloaded **SlotForge.Timing-1.99.3-Portable.exe** file.
 3. Explore with **No hardware**, manual controls or the Arduino virtual box before configuring your real timing interface.
 
 **To keep using SlotForge:**
 
-1. Download **SlotForge.Timing-1.99.2-Setup.exe**.
+1. Download **SlotForge.Timing-1.99.3-Setup.exe**.
 2. Double-click it and follow the installation steps.
 3. Open SlotForge Timing using its shortcut. Use **Import and Export** for backups or moving your data to another PC.
 
@@ -203,7 +209,7 @@ For new or inexperienced users, **Quick Build is the recommended way to make a p
 4. **Find the app folder.** Open the extracted folders until you can see **package.json**, **build-windows.bat** and **build-windows-quick.bat** together. GitHub downloads usually name this folder **SlotForgeTiming-main**; a separate source ZIP may contain **SlotForgeTiming**.
 5. **Double-click build-windows-quick.bat.** Keep the build window open. The first run needs an internet connection to download dependencies; it can take several minutes. Quick Build skips the automated checks. If a filename's extension is hidden, Windows may show it as **build-windows-quick** with type **Windows Batch File**.
 6. **Open the dist folder.** A successful build opens it automatically. You can also open **dist** yourself inside the app folder.
-7. **Try Portable first.** In **dist**, double-click **SlotForge Timing-1.99.2-Portable.exe**. If you are happy and want to use the app long term, run **SlotForge Timing-1.99.2-Setup.exe**.
+7. **Try Portable first.** In **dist**, double-click **SlotForge Timing-1.99.3-Portable.exe**. If you are happy and want to use the app long term, run **SlotForge Timing-1.99.3-Setup.exe**.
 
 **What does Quick Build skip?** It skips `npm test`, the automated test suite. It still installs missing build dependencies and compiles/packages the app. The normal **build-windows.bat** runs the checks before building; developers and anyone validating changes can use that file instead.
 
@@ -441,7 +447,7 @@ Use the self-contained **Windows: run checks before building** guide above for a
 
 On Windows, use `npm.cmd` in place of `npm` when working in PowerShell.
 
-Additional focused checks are listed in `package.json`. Electron checks use isolated profiles and simulated race data where supported. The complete regression chain (184 commands) and focused Electron visual and interaction checks passed for the 1.99.2 release. Software tests do not replace physical sensor and relay validation.
+Additional focused checks are listed in `package.json`. Electron checks use isolated profiles and simulated race data where supported. The complete regression chain (196 commands) and focused Electron visual and interaction checks passed for the 1.99.3 release. Software tests do not replace physical sensor and relay validation.
 
 | Folder | Contents |
 | --- | --- |

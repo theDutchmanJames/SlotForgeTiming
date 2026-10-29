@@ -89,9 +89,9 @@ const onDisk = db => { try { return JSON.parse(fs.readFileSync(db.resumeFile(), 
 
   { // closing the program (the real lines of main.js, with a stand-in for the app and the database)
     const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8'), code = main.slice(main.indexOf('let quitFlushed = false;'));
-    const setup = (pending, idle) => {
+    const setup = (pending, idle, pluginHost = null) => {
       const handlers = {}, calls = { quit: 0, prevented: 0, closed: 0 }, timers = [];
-      vm.runInNewContext(code, { phidget: { shutdown() {} }, app: { on: (ev, f) => { handlers[ev] = f; }, quit: () => { calls.quit++; } }, net: { server: { close: () => { calls.closed++; } } }, db: { writesPending: pending, writesIdle: idle }, Promise, setTimeout: (f, ms) => { timers.push({ f, ms }); return timers.length; } });
+      vm.runInNewContext(code, { pluginHost, phidget: { shutdown() {} }, app: { on: (ev, f) => { handlers[ev] = f; }, quit: () => { calls.quit++; } }, net: { server: { close: () => { calls.closed++; } } }, db: { writesPending: pending, writesIdle: idle }, Promise, setTimeout: (f, ms) => { timers.push({ f, ms }); return timers.length; } });
       return { calls, timers, fire() { handlers['before-quit']({ preventDefault: () => { calls.prevented++; } }); } };
     };
     const a = setup(() => false, () => Promise.resolve()); a.fire(); await wait(5);
@@ -105,7 +105,12 @@ const onDisk = db => { try { return JSON.parse(fs.readFileSync(db.resumeFile(), 
     const c = setup(() => true, () => new Promise(() => {})); c.fire(); await wait(5);
     ok('a save that never finishes holds the closing back for three seconds only', c.calls.quit === 0 && (c.timers[0].f(), await wait(5), c.calls.quit === 1));
     const d = setup(() => true, () => Promise.reject(new Error('disk'))); d.fire(); await wait(5);
-    ok('a wait that fails still lets the program close', d.calls.prevented === 1 && d.calls.quit === 1); }
+    ok('a wait that fails still lets the program close', d.calls.prevented === 1 && d.calls.quit === 1);
+    let pluginsStopped; const e = setup(() => false, () => Promise.resolve(), {shutdown:()=>new Promise(r=>{pluginsStopped=r;})}); e.fire(); await wait(5);
+    ok('plugin shutdown is awaited even with no pending database writes', e.calls.prevented === 1 && e.calls.quit === 0);
+    e.fire(); await wait(5); ok('a second close request cannot bypass plugin shutdown', e.calls.prevented === 2 && e.calls.quit === 0);
+    pluginsStopped(); await wait(5); ok('clean plugin shutdown permits closing', e.calls.quit === 1); }
+
 
   console.log(fails ? fails + ' RESUME-ASYNC TESTS FAILED' : 'ALL RESUME-ASYNC TESTS PASSED'); process.exit(fails ? 1 : 0);
 })();

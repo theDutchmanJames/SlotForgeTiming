@@ -8,13 +8,13 @@
     ['systems','Race Systems',['fuel','tyrewear','tyretemperature','customtyres','weather','pushsave','safetycar','damage','carfailures','penaltytiers','bop','servicestop','resources','resourcerecovery','multiclass','classlabels','classpoints','virtualrivals','rivalracing','tokens','championships','championshippoints','systemforms','systemformsmore']],
     ['widgets','Race screens & widgets',[]],
     ['audio','Audio & appearance',['audio','ambient','audioconditions','audiocategories','audioevents','look']],
-    ['hardware','Timing hardware',['hardware','arduino','arduinoracelock','interfacepages','parallel','phidget']],
+    ['hardware','Timing hardware',['hardware','arduino','arduinoracelock','interfacepages','parallel','phidget','timingplugins']],
     ['results','Results & race control',['results','start','screen','sectors','director','lanecards']],
-    ['settings','Database & app settings',['database','settingsnavigation','copyandorder','calculations','performance','transfer']],
+    ['settings','Database & app settings',['database','settingsnavigation','copyandorder','calculations','performance','contentpacks','transfer']],
     ['network','Screens & network',['live','driverstats','network']]
   ];
   // Only these known destinations can navigate out of Help; articles never supply commands.
-  const ROUTES={setups:{tab:'setup',setupSub:'setups'},fuel:{tab:'setup',setupSub:'fuel'},hardware:{tab:'settings',settingsSub:'hardware'},layouts:{tab:'custom',customSub:'layouts'},calculations:{tab:'settings',settingsSub:'calculations'}};
+  const ROUTES={pluginrules:{tab:'setup',setupSub:'setups'},plugindisplays:{tab:'custom',customSub:'pluginpages'},setups:{tab:'setup',setupSub:'setups'},fuel:{tab:'setup',setupSub:'fuel'},hardware:{tab:'settings',settingsSub:'hardware'},layouts:{tab:'custom',customSub:'layouts'},calculations:{tab:'settings',settingsSub:'calculations'}};
   const RELATED={fuel:['servicestop','pushsave','calculations'],laphighlights:['laphighlightbehaviour','widgetstatecolours','widgetappearance'],tyrewear:['customtyres','tyretemperature','servicestop'],hardware:['parallel','phidget','arduino'],widgetcomposer:['widgetfreecanvas','widgetcomposeroptions','widgetappearance']};
   function fuelExample(tank,burn,rate){
     const v=[tank,burn,rate].map(x=>typeof x==='string'&&x.trim()===''?NaN:Number(x));

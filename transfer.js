@@ -156,4 +156,4 @@ function apply(db, bundle) {
   return counts;
 }
 
-module.exports = { FORMAT, collect, dependencies, check, apply, titleOf };
+module.exports = { FORMAT, collect, dependencies, check, apply, titleOf, refsOf };

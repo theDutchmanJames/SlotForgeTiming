@@ -211,6 +211,7 @@ async function mountManager(box, e) {
   const items = databaseOrdered(e, storedItems);
   if (run !== subRun) return;
   state.custom[e] = custom;
+  if(e==='racesetups')state.rulePlugins=api.pluginRuleCatalog?await api.pluginRuleCatalog():[];
   for (const f of s.fields) if (f.type === 'ref' || f.type === 'members') state.refs[f.ref] = await api.list(f.ref);
   if (e === 'slotcars') state.refs.tyrewearsystems = await api.list('tyrewearsystems');
   if (e === 'racesetups') state.refs.championships = await api.list('championships'); // (1.71.0: the box Used by in the form of a race setup names the championships that use it)
@@ -631,6 +632,10 @@ const rowMark = (e, i) => (e === 'slotcars' && CarStats.status(i).due ? '<span c
 function openForm(e, item, preset) { // preset: values a new item starts with (Race Setups: Start from a kind)
   const s = state.schema[e];
   const fields = [...s.fields.map(f => ({ ...f, id: f.key, custom: false })), ...(e === 'slotcars' ? [...CAR_STATS, CAR_TRACKS] : []), ...(state.custom[e] || []).map(f => ({ ...f, custom: true }))];
+  if(e==='racesetups'){
+    const f=fields.find(f=>f.key==='rulePlugin');
+    if(f){f.options=[['','None — built-in race rules'],...(state.rulePlugins||[]).map(p=>[p.id,`${p.label} · ${p.state}`])];const id=item?.rulePlugin||preset?.rulePlugin;if(id&&!f.options.some(x=>x[0]===id))f.options.push([id,id+' — unavailable']);}
+  }
   if (e === 'slotcars') {
     const f=fields.find(f=>f.key==='tyreCompound');
     if(f){ const choices=new Map(f.options);

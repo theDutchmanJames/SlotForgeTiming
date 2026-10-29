@@ -143,3 +143,6 @@
 @media(pointer:coarse){.parallel-setup input,.parallel-setup select{font-size:16px!important}.parallel-setup .pp-button,.parallel-setup .pp-nav,.parallel-setup .pp-seg button{min-height:44px}}
 
 .parallel-setup .pp-frame{margin:14px 0 0}.parallel-setup .pp-lock{margin:0 0 12px;padding:10px 14px;border:1px solid var(--pp-line);border-radius:8px;background:var(--pp-inset)}
+.plugin-timing-setup .pp-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.plugin-timing-setup [data-levels]{display:block;overflow-wrap:anywhere}
+.plugin-timing-setup [data-sim-buttons]{margin:12px 0}

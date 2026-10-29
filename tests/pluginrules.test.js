@@ -1,0 +1,58 @@
+const assert=require('node:assert/strict'),path=require('node:path'),{fork}=require('node:child_process');
+const Rules=require('../renderer/ruleplugin'),P=require('../pluginpackage'),E=require('../renderer/engine'),Tw=require('../renderer/tyrewear'),{Store}=require('../pluginstore'),{Runtime}=require('../pluginruntime'),{RuleHost}=require('../pluginrulehost'),{make}=require('../tools/fixtures/rule-plugin.cjs');
+const pack=P.validate(make());assert.deepEqual(P.validate(pack),pack);
+const old=make();delete old.manifest.rules;assert(!Object.hasOwn(P.validate(old).manifest,'rules'));
+for(const v of [{x:1},{points:{var:'constructor'}},{fuelMultiplier:NaN},{points:{op:'eval',args:[]}},{points:{op:'add',args:[1]}}])assert.throws(()=>Rules.plan(v));
+let deep=1;for(let i=0;i<10;i++)deep={op:'add',args:[deep,1]};assert.throws(()=>Rules.plan({points:deep}));
+assert.equal(Rules.evaluate(Rules.expression({op:'div',args:[1,0]}),{}),0);
+assert.equal(Rules.evaluate(Rules.expression({op:'mul',args:[1e9,1e9]}),{}),1e9);
+const snap=plan=>Rules.snapshot({api:1,id:pack.manifest.id,name:'Test rules',version:'1.0.0',digest:'a'.repeat(64),settings:{},plan});
+const cfg={type:'race',laps:20,entries:[{lane:0,driverId:'a',driverName:'James'},{lane:1,driverId:'b',driverName:'Sam'}],fuel:E.fuelConfig({}, {tank:100,perLap:2,rate:10,empty:'warn'}),tyrewear:Tw.clean({practice:'on',paceOn:'off',tyres:{S:{wear:2}}},{laneLen:[10,10]})};
+const rules=snap({fuelMultiplier:2,tyreMultiplier:2,lapTimeMs:{op:'if',args:[{op:'lt',args:[{var:'lapMs'},10000]},3000,0]},points:{op:'mul',args:[{var:'lap'},2]}});
+const r=E.createRace({...cfg,rulePlugin:rules}),base=E.createRace(cfg);r.start(0);base.start(0);
+assert(r.cross(0,9000));assert(base.cross(0,9000));assert(r.cross(1,10000));assert.equal(r.cars[0].laps[0],9000);assert.equal(r.cars[0].best,9000);assert.equal(r.pluginTimeOf(r.cars[0]),3000);assert.equal(r.timeOf(r.cars[0]),12000);assert.equal(r.standings()[0].car.driverId,'b');
+const consumedFuel=r.cars[0].fuel;assert(Math.abs((100-consumedFuel)-2*(100-base.cars[0].fuel))<1e-5);assert(Math.abs((100-r.cars[0].twLife)-2*(100-base.cars[0].twLife))<1e-5);
+assert.equal(r.cross(0,9050),false);assert.equal(r.cars[0].pluginLaps.length,1,'Rejected double trigger does not apply rules');
+const saved=r.snapshot(10000),restored=E.createRace({...cfg,rulePlugin:rules});assert(restored.restore(saved));assert.equal(restored.pluginTimeOf(restored.cars[0]),3000);assert(!E.createRace(cfg).restore(saved));assert(!E.createRace({...cfg,rulePlugin:snap({})}).restore(saved));
+const malformed=structuredClone(saved);malformed.cars[0].pluginLaps[0].timeMs=-99;assert(!E.createRace({...cfg,rulePlugin:rules}).restore(malformed));
+// Second screens and network viewers receive the authoritative aggregate through both wire modes.
+global.RaceEngine=E;const Share=require('../renderer/liveshare'),viewer=Share.viewer(),sender=Share.sender();
+const wire={raceId:'rules-wire',eng:r,now:10000,phase:'running',layout:{},track:{},setup:{},flash:new Map(),bestBy:new Map(),base:{personal:new Map(),track:Infinity}};
+viewer.feedStatic(JSON.parse(JSON.stringify(Share.packStatic(wire))));
+assert(viewer.feedDynamic(JSON.parse(JSON.stringify(sender.pack(wire))),10000));
+assert.equal(viewer.engine().timeOf(viewer.engine().cars[0]),r.timeOf(r.cars[0]));
+assert.equal(viewer.engine().standings()[0].car.driverId,'b');
+assert.equal(viewer.engine().pluginPointsOf(viewer.engine().cars[0],2),2);
+assert(!Object.hasOwn(Share.packDynamic(wire).cars[0],'pluginLaps'),'Do not resend the per-lap ledger');
+// Review keeps consumed resources historical; derived time responds to lap validity.
+r.setInvalid(0,0,true);assert.equal(r.pluginTimeOf(r.cars[0]),0);assert.equal(r.cars[0].fuel,consumedFuel);
+assert(viewer.feedDynamic(JSON.parse(JSON.stringify(sender.pack(wire))),10000));
+assert.equal(viewer.engine().timeOf(viewer.engine().cars[0]),9000);
+assert.equal(viewer.engine().standings()[0].car.driverId,'a');
+const late=Share.viewer();late.feedStatic(JSON.parse(JSON.stringify(Share.packStatic(wire))));assert(late.feedDynamic(JSON.parse(JSON.stringify(Share.packDynamic(wire))),10000));assert.equal(late.engine().timeOf(late.engine().cars[0]),9000);
+r.removeLap(0,0,true);assert.equal(r.cars[0].pluginLaps.length,0);assert.equal(r.pluginPointsOf(r.cars[0],1),0);
+const formation=E.createRace({...cfg,skipFirst:true,rulePlugin:rules});formation.start(0);assert(!formation.cross(0,2000));assert.equal(formation.cars[0].pluginLaps,undefined);formation.cross(0,10000);assert.equal(formation.pluginTimeOf(formation.cars[0]),3000);
+const red=E.createRace({...cfg,rulePlugin:rules});red.start(0);red.setFlag('red',2000);red.resume(3000);red.cross(0,9000);assert.equal(red.pluginTimeOf(red.cars[0]),0);assert.equal(red.cars[0].invalid.length,1);
+// A running worker is not involved once the immutable plan has been prepared.
+assert(Object.isFrozen(rules.plan));assert.equal(Rules.points(rules,{...r.cars[1],dq:true},1),0);assert.equal(Rules.points(rules,{...r.cars[1],virtualRival:true},1),0);
+const heat=E.createHeatRace({participants:cfg.entries,schedule:[[{p:0,lane:0},{p:1,lane:1}]],lanes:2,resultBy:'points',points:[10,8]});
+const hr=E.createRace({...cfg,entries:heat.entries(),rulePlugin:rules});hr.start(0);hr.cross(0,9000);hr.cross(1,10000);hr.stop(10000);const preview=heat.preview(hr);assert.equal(preview.rows[0].points,12);assert.equal(preview.rows[0].pluginPoints,2);heat.record(hr);assert.equal(heat.overall()[0].pluginPoints,2);
+const MC=require('../renderer/multiclass');const classes={classes:[{id:'gt',points:[25,18]}]};const classScores=MC.scoreHeat(preview.rows.map(x=>({...x,raceClass:'gt'})),classes,[]);assert.equal(classScores[0].points,27,'Class score gets the bonus once, not twice');
+const Champ=require('../renderer/championship'),CP=require('../renderer/champpoints');
+const championship=Champ.clean({id:'cup',name:'Cup',rounds:[{name:'Round 1',track:'track',sessions:[{setup:'race'}]}],roster:[{driver:'a'},{driver:'b'}]},true);
+const tag=Champ.tagOf(championship,0,0,{setups:[{id:'race',sessionType:'race'}],tracks:[{id:'track'}]});
+const championshipResult=CP.sessionResult(championship,{champ:tag,standings:preview.rows.map(x=>({...x,driverId:cfg.entries[x.participant].driverId}))});assert(championshipResult.ok);assert.equal(championshipResult.rows[0].pts,27);
+const noFuel=E.createRace({...cfg,fuel:{on:false},tyrewear:null,rulePlugin:rules});noFuel.start(0);noFuel.cross(0,9000);assert.equal(noFuel.cars[0].fuel,0,'Plugin does not activate a disabled fuel system');
+const disabled=E.createRace({...cfg,systemsDisabled:['fuel','tyrewear'],rulePlugin:rules});disabled.start(0);const oldFuel=disabled.cars[0].fuel;disabled.cross(0,9000);assert.equal(disabled.cars[0].fuel,oldFuel);assert.equal(disabled.cars[0].twLife,100);
+const DB=require('../db'),Transfer=require('../transfer');const root=path.resolve(__dirname,'../.tmp-test/plugin-rules-'+process.pid);require('node:fs').mkdirSync(root,{recursive:true});const db=new DB(path.join(root,'source.json')),dest=new DB(path.join(root,'dest.json'));
+const setup=db.add('racesetups',{name:'Rules race',rulePlugin:pack.manifest.id});Transfer.apply(dest,Transfer.collect(db.data,{racesetups:[setup.id]}));assert.equal(dest.data.racesetups.at(-1).rulePlugin,pack.manifest.id);
+const launch=init=>{const c=fork(path.resolve(__dirname,'../pluginworker.js'),[],{cwd:init.dataDir,stdio:['ignore','pipe','pipe','ipc']});c.postMessage=m=>c.send(m);return c;};
+(async()=>{const store=new Store(path.join(root,'plugins'),'1.99.2'),runtime=new Runtime(store,launch),host=new RuleHost(runtime);try{
+ store.install(pack);assert.equal(host.catalog()[0].state,'stopped');await assert.rejects(()=>host.prepare(pack.manifest.id),/Start/);await runtime.start(pack.manifest.id);
+ const frozen=await host.prepare(pack.manifest.id);assert.equal(frozen.plan.fuelMultiplier,1.2);assert.equal(frozen.settings.target,10);await runtime.stop(pack.manifest.id);
+ assert.deepEqual(await host.prepare(pack.manifest.id,frozen),frozen,'Stopped worker is not required to replay frozen rules');
+ const update=make();update.manifest.version='1.0.1';store.install(update);await assert.rejects(()=>host.prepare(pack.manifest.id,frozen),/exact original/);store.rollback(pack.manifest.id);assert.deepEqual(await host.prepare(pack.manifest.id,frozen),frozen);
+ const bad=make();bad.manifest.id='test.invalid-rules';bad.files['main.cjs']=Buffer.from('exports.rules=()=>({points:{var:"unknown"}});').toString('base64');store.install(bad);await runtime.start(bad.manifest.id);await assert.rejects(()=>host.prepare(bad.manifest.id),/variable/);
+ const hang=make();hang.manifest.id='test.hanging-rules';hang.files['main.cjs']=Buffer.from('exports.rules=()=>new Promise(()=>{});').toString('base64');store.install(hang);await runtime.start(hang.manifest.id);await assert.rejects(()=>host.prepare(hang.manifest.id),/timed out/);
+ console.log('PLUGIN RULES PASSED: bounded programs, raw timing, consumption, review, restore, heat points, transfer, worker preflight, dependency checks and deadlines.');
+}finally{await runtime.shutdown();}})().catch(e=>{console.error(e);process.exitCode=1;});

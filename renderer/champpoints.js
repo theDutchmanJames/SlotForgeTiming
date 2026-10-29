@@ -103,13 +103,13 @@
       const team = !!r.asTeam, guest = !counts(r), out = outOf(r), place = out ? 0 : placeOf.get(r);
       let base = 0, fastest = 0, pole = 0, start = 0;
       if (!guest) {
-        if (!out) base = c.pointsMode === 'beaten' ? list.length - 1 - i : place <= c.points.length ? c.points[place - 1] : c.pointsRest;
+        if (!out) base = (c.pointsMode === 'beaten' ? list.length - 1 - i : place <= c.points.length ? c.points[place - 1] : c.pointsRest) + (Number.isFinite(r.pluginPoints)?r.pluginPoints:0);
         if (fastGets && r === fastRow) fastest = c.bonusFast;
         if (poleGets && r === poleRow) pole = c.bonusPole;
         if (!r.dq) start = c.bonusStart;
       }
       const raw = round2(base + fastest + pole + start);
-      const row = { kind: team ? 'team' : 'driver', driverId: team ? '' : r.driverId, teamId: team ? r.teamId || '' : '', name: entrantName(r), shown: i + 1, place, out, outText: OUT_TEXT(r), guest, best: Number(r.best) > 0 ? Number(r.best) : 0, base, fastest, pole, start, raw, pts: guest ? 0 : scale(raw) };
+      const row = { ...(r.pluginPoints!==undefined?{pluginPoints:guest||out?0:r.pluginPoints}:{}),kind: team ? 'team' : 'driver', driverId: team ? '' : r.driverId, teamId: team ? r.teamId || '' : '', name: entrantName(r), shown: i + 1, place, out, outText: OUT_TEXT(r), guest, best: Number(r.best) > 0 ? Number(r.best) : 0, base, fastest, pole, start, raw, pts: guest ? 0 : scale(raw) };
       if (team) row.members = membersOf(r, row);
       return row;
     });

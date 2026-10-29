@@ -86,7 +86,7 @@
   // ---- which timing hardware the app uses: one at a time ----
   // The setting timingHw is the choice. Before anything was chosen it follows what was set up: before the Arduino box existed the only hardware was the Trackmate, so that stays the answer,
   // except when the virtual box is ticked, or a box is remembered and no Trackmate is.
-  const TIMING = [['none', 'None (keys or simulated cars)'], ['trackmate', 'Trackmate Interface'], ['arduino', 'Arduino box (SlotForge)'], ['parallel', 'Parallel Port'], ['phidget', 'Phidget Interface']];
+  const TIMING = [['none', 'None (keys or simulated cars)'], ['trackmate', 'Trackmate Interface'], ['arduino', 'Arduino box (SlotForge)'], ['parallel', 'Parallel Port'], ['phidget', 'Phidget Interface'], ['plugin', 'Plugin interface']];
   const timingChosen = s => {
     s = s || {};
     if (TIMING.some(t => t[0] === s.timingHw)) return s.timingHw;

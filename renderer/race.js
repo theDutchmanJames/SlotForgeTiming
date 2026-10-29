@@ -17,8 +17,17 @@ async function renderRace() {
   let scSystems = []; try { scSystems = (await api.list('safetycarsystems')) || []; } catch (x) { scSystems = []; } // (Safety Car Systems, 1.53.0)
   let psSystems = []; try { psSystems = (await api.list('pushsavesystems')) || []; } catch (x) { psSystems = []; } // (Push and Save Systems, 1.54.0)
   const find = (list, id) => list.find(x => x.id === id);
+  const timingPlugin = r.resume?.race?.timingPlugin || (r.setup?.sessionType==='tokens' ? state.settings.tokenSessions?.[r.setup.id]?.timingPlugin : null) || (Hardware.timingChosen(state.settings)==='plugin' && typeof pt!=='undefined' ? TimingPlugin.provenance(pt.identity) : null);
   const speed = state.speed || 1; // only changed by automated tests
   const setup = Endurance.effective(r.setup), heats = setup.sessionType === 'heats', tokenSession = setup.sessionType === 'tokens'; // (a Time Token Session: lanes are switched on with paid time, see tokens.js)
+  let rulePlan=null;
+  const savedRule=r.resume?.race?.rulePlugin||r.resume?.eng?.rulesSnapshot?.config?.rulePlugin||r.rulePlan;
+  if(setup.rulePlugin||savedRule){try{
+    if(tokenSession)throw Error('Rule plugins are not supported in Time Token Sessions.');
+    if(r.resume&&!savedRule)throw Error('This recovery has no frozen plugin rule plan. It cannot start with new rules.');
+    if(!api.pluginRulePrepare)throw Error('The plugin rule API is unavailable.');
+    rulePlan=await api.pluginRulePrepare(savedRule?.id||setup.rulePlugin,savedRule||null);r.rulePlan=rulePlan;
+  }catch(x){alert('Cannot prepare plugin race rules: '+x.message);state.race=null;state.tab='home';return render();}}
   const nameOf = (entity, list, id) => { const it = find(list, id); return it ? titleOf(entity, it) : ''; };
   const personOf = driverId => { const d = find(drivers, driverId); return { driverId: d ? d.id : '', driverName: d ? titleOf('drivers', d) : 'Guest', nickname: d ? d.nickname || '' : '', callsign: d ? d.callsign || '' : '', flag: d ? d.flag || '' : '', avatar: d ? d.avatar || '' : '' }; };
   const byTeam = heats && r.byTeam === true; // (1.8.0: the participants are teams; the driver of a team is chosen for every heat, see assignDrivers)
@@ -83,7 +92,7 @@ async function renderRace() {
   if(!tokenSession&&setup.resourceSystem&&!resourceState){try{resourceState=await api.resourceBegin(setup.resourceSystem,{runId:crypto.randomUUID(),champId:r.champ?.id||'',eventName:setup.name,champName:r.champ?.name||''});r.resources=resourceState;}catch(x){alert('Cannot prepare resources: '+x.message);state.race=null;state.tab='home';return render();}}
   const mc=tokenSession?null:(r.resume?.race?.multiclass||r.multiclass||null);
   if(mc){const errors=[...MultiClass.validate(mc,r.rows.filter(row=>!isRival(row)),setup),...(!r.resume?MultiClass.entryIssues(mc,r.rows.filter(row=>!isRival(row)),{cars,drivers,teams}):[])];if(errors.length){alert(errors.join(' '));state.race=null;state.tab='home';return render();}}
-  const mk = entries => RaceEngine.createRace({calculations:calculationRules,resources:resourceState,resourceHeat:heat?.idx||0, classPoints:heats?pointList:[],classFastestBonus:heats?Number(setup.fastestBonus)||0:0,multiclass:mc, virtualRivals: rivalEntries, ...(typeof RaceSystems !== 'undefined' ? RaceSystems.raceConfig(setup) : {}), ...(typeof PitHold !== 'undefined' ? PitHold.raceConfig(setup) : {}), redFlagSeconds: Number(setup.redFlagSeconds) || 0, penalty: penCfg, damage: damCfg, type: engineType, laps: lenNow().laps, duration: lenNow().duration, distance: engineType === 'race' ? Distance.config(setupNow(), r.track, lanes) : null, compare: engineType === 'timed' ? Distance.compare(setup, r.track, lanes) : null, sectors: Distance.sectors(r.track), endRule: setup.endRule, minLap: Math.max(RaceEngine.MIN_LAP, (Number(r.track.minLap) || 0) * 1000) / speed, maxLap: (Number(r.track.maxLap) || 0) * 1000 / speed, fuel: fuelCfg, bop: bopCfg, yellow: { target: 0, points: 0 }, weather: wxFor(), tyrewear: twCfg, safetycar: scCfg, pushsave: psCfg, skipFirst: tokenSession || setup.firstLap === 'skip', endurance: enduCfg, laneLengths: setup.endurance && setup.endurance.unit === 'distance' ? laneLens : null, rnd: state.rand || Math.random, entries: psEntries(entries) });
+  const mk = entries => RaceEngine.createRace({...(rulePlan?{rulePlugin:rulePlan}:{}),calculations:calculationRules,resources:resourceState,resourceHeat:heat?.idx||0, classPoints:heats?pointList:[],classFastestBonus:heats?Number(setup.fastestBonus)||0:0,multiclass:mc, virtualRivals: rivalEntries, ...(typeof RaceSystems !== 'undefined' ? RaceSystems.raceConfig(setup) : {}), ...(typeof PitHold !== 'undefined' ? PitHold.raceConfig(setup) : {}), redFlagSeconds: Number(setup.redFlagSeconds) || 0, penalty: penCfg, damage: damCfg, type: engineType, laps: lenNow().laps, duration: lenNow().duration, distance: engineType === 'race' ? Distance.config(setupNow(), r.track, lanes) : null, compare: engineType === 'timed' ? Distance.compare(setup, r.track, lanes) : null, sectors: Distance.sectors(r.track), endRule: setup.endRule, minLap: Math.max(RaceEngine.MIN_LAP, (Number(r.track.minLap) || 0) * 1000) / speed, maxLap: (Number(r.track.maxLap) || 0) * 1000 / speed, fuel: fuelCfg, bop: bopCfg, yellow: { target: 0, points: 0 }, weather: wxFor(), tyrewear: twCfg, safetycar: scCfg, pushsave: psCfg, skipFirst: tokenSession || setup.firstLap === 'skip', endurance: enduCfg, laneLengths: setup.endurance && setup.endurance.unit === 'distance' ? laneLens : null, rnd: state.rand || Math.random, entries: psEntries(entries) });
   const pointList = String(setup.points || '').split(',').filter(t => t.trim() !== '').map(Number).filter(n => !isNaN(n)); // '10, 8, 6' -> [10, 8, 6]; blank pieces are skipped (Number('') would make them 0)
 
   // 1.68.0: a race of a championship that gives points: what the earlier rounds left behind, and where everybody stands, for a leaderboard that counts over the rounds ("Count over: All heats and rounds so far")
@@ -112,7 +121,7 @@ async function renderRace() {
   } else if (tokenSession) eng = mk(Array.from({ length: lanes }, (_, i) => ({ lane: i, ...(people[i] || { driverId: '', carId: '', driverName: 'Guest', carName: '', carPicture: '', carScale: '', nickname: '', callsign: '', flag: '', avatar: '' }) }))); // every lane of the track can be sold, with or without a driver
   else eng = mk(people.map((p, i) => ({ lane: i, ...(season ? { participant: i } : {}), ...p }))); // (a race of a championship: the car knows who it is, as in a heat race, for a leaderboard that counts over the rounds)
 
-  if (live) { LiveCanvas.dispose(live.nodes); if (live.perfStop) live.perfStop(); if (live.fsView) live.fsView.close(); if (live.cardsOff) live.cardsOff(); document.removeEventListener('keydown', live.fsKey); live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); if (live.offTm) live.offTm(); if (live.pitSensors) live.pitSensors.off(); if (live.box) { live.box.off(); live.box = null; } if (live.parallel) { live.parallel.off(); live.parallel = null; } if (live.phidget) { live.phidget.off(); live.phidget = null; } if (live.offTmStatus) live.offTmStatus(); if (live.offCmd) live.offCmd(); if (live.offResync) live.offResync(); clearTimeout(live.shareTimer); clearInterval(live.timers); clearInterval(live.breakTimer); (live.sim || []).forEach(clearTimeout); if (live.flushTokens) live.flushTokens(); document.removeEventListener('keydown', live.key); }
+  if (live) { LiveCanvas.dispose(live.nodes); if (live.perfStop) live.perfStop(); if (live.fsView) live.fsView.close(); if (live.cardsOff) live.cardsOff(); document.removeEventListener('keydown', live.fsKey); live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); if (live.offTm) live.offTm(); if (live.pitSensors) live.pitSensors.off(); if (live.box) { live.box.off(); live.box = null; } if (live.parallel) { live.parallel.off(); live.parallel = null; } if (live.phidget) { live.phidget.off(); live.phidget = null; } if (live.plugin) { live.plugin.off(); live.plugin = null; } if (live.offTmStatus) live.offTmStatus(); if (live.offCmd) live.offCmd(); if (live.offResync) live.offResync(); clearTimeout(live.shareTimer); clearInterval(live.timers); clearInterval(live.breakTimer); (live.sim || []).forEach(clearTimeout); if (live.flushTokens) live.flushTokens(); document.removeEventListener('keydown', live.key); }
   // earlier laps on this track, for personal best / track record highlights and the record lap widget
   const base = { personal: new Map(), track: Infinity, trackName: '' };
   // laps removed from the records (but kept in their session) do not count here
@@ -148,6 +157,7 @@ async function renderRace() {
   const cardsOn = !tokenSession && typeof LaneCards !== 'undefined' && LaneCards.on(state.settings); // (1.72.0: the Race Director as a card for each lane; App Settings > Race Director brings the folders back)
   const folderHtml = (id, title, note, tone, inner) => DirFolder.html(id, title, note, tone, inner, { id: 'fd-' + id }); // (1.15.0: the folders of the Race Director page, with the same colours and order)
   host.innerHTML = `<section id="finishreview" class="race-finish" hidden><div id="review" class="rv"></div></section><div id="raceactive"><p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.ofType || setup.sessionType])} on ${esc(r.track.name)} · ${esc(limitFull)}${r.champ ? ` · <span class="chtag" id="chtag" title="This race is saved as part of the championship">${esc(Champ.tagText(r.champ))}</span>` : ''}</p>
+    ${rulePlan?`<p class="muted" id="race-rule-summary">Plugin rules: <strong>${esc(rulePlan.name)}</strong> · v${esc(rulePlan.version)} · frozen for this race. Raw lap timing is unchanged.</p>`:''}
     <div class="rt-stage"><div class="canvas live" id="canvas"></div></div>
     <div class="bar rt-tools"><label><input type="checkbox" id="sim"> Simulated cars</label><span id="tmstatus" class="muted" role="status"></span>
       <button class="btn" id="audio-summary" hidden>Announce summary</button><button class="btn" id="fsbtn" type="button" title="Show only the widgets, as large as the window allows (F). Esc closes it.">Full screen widgets</button><button class="btn" id="lapsbtn" aria-expanded="false" hidden title="Check the laps while the race goes on: mark a lap invalid or take it out of the records">Review laps</button><span id="msg" class="muted" role="status"></span><button class="btn danger stopbtn" id="stopbtn">Stop race</button><button class="btn" id="back">Back to Home</button></div>
@@ -214,8 +224,9 @@ async function renderRace() {
 
   // championship points of the heats finished so far: { on, list: points per position, done: [[driverId, points]] }
   const champOf = () => (heats && setup.resultBy === 'points' && mc?.pointsMode!=='class' ? { on: true, list: pointList, done: heat.overall().map(o => [o.asTeam ? o.teamId : o.driverId, o.points]) } : { on: false, list: [], done: [] });
-  const shared = () => LiveShare.makeShared({ rowDesigns, chartDesigns, imageSets, teams: teams.map(t => ({ id: t.id, name: t.name || '', picture: t.picture || '' })), clubLogo: state.settings.clubLogo, distUnit: dUnit, champ: champOf(), roster: overallBits() && overallBits().roster, prior: overallBits() && overallBits().prior, past: overallBits() && overallBits().past, season: seasonInfo(), eng, track: r.track, now: now(), phase: live.phase, calling: live.calling, lights: live.lights, setup: setupNow(), heat: heatInfo(),
+  const shared = () => LiveShare.makeShared({ raceId:live.raceId, rowDesigns, chartDesigns, imageSets, teams: teams.map(t => ({ id: t.id, name: t.name || '', picture: t.picture || '' })), clubLogo: state.settings.clubLogo, distUnit: dUnit, champ: champOf(), roster: overallBits() && overallBits().roster, prior: overallBits() && overallBits().prior, past: overallBits() && overallBits().past, season: seasonInfo(), eng, track: r.track, now: now(), phase: live.phase, calling: live.calling, lights: live.lights, setup: setupNow(), heat: heatInfo(),
     flash: live.flash, layout, bestAll: live.bestAll, bestAllName: live.bestAllName, bestBy: live.bestBy, base, tokens: tokens ? tokens.snapshot() : null });
+  live.pluginDisplayState=shared;
   // ---- share the race with the second-screen window (and later other devices) ----
   const shareTitle = `${setup.name} · ${SESSION_LABEL[setup.ofType || setup.sessionType]} on ${r.track.name} · ${limit}`;
   const tokenUi = () => (tokenSession ? { increments: tokenSet.increments.slice(), decrements: tokenSet.decrements.slice(), drivers: drivers.map(d => ({ id: d.id, name: titleOf('drivers', d) })) } : null); // what the Tokens page on other screens needs: the time buttons and the drivers to choose from
@@ -230,7 +241,8 @@ async function renderRace() {
     if (t - (live.lastShare || -1e9) < 80) { if (!live.shareTimer) { const L = live; L.shareTimer = setTimeout(() => { L.shareTimer = null; if (live === L) share(); }, 90); } return; }
     live.lastShare = t;
     if (!live.sender) live.sender = LiveShare.sender();
-    const msg = live.sender.pack({ layout: find(layouts, setup.layout2) || layout, champ: champOf(), raceId: live.raceId, eng, phase: live.phase, calling: live.calling, lights: live.lights, heat: heatInfo(), season: seasonInfo(), flash: live.flash, bestAll: live.bestAll, bestAllName: live.bestAllName, bestBy: live.bestBy, tokens: tokens ? tokens.snapshot() : null, now: t }, t);
+    if(typeof PluginDisplayClient!=='undefined'&&(find(layouts, setup.layout2)||layout)?.widgets?.some(w=>PluginDisplay.TYPES.has(w.type)))PluginDisplayClient.demandLayout(find(layouts, setup.layout2)||layout,shared());
+    const msg = live.sender.pack({ pluginViews:typeof PluginDisplayClient!=='undefined'?PluginDisplayClient.raceViews(live.raceId):{}, layout: find(layouts, setup.layout2) || layout, champ: champOf(), raceId: live.raceId, eng, phase: live.phase, calling: live.calling, lights: live.lights, heat: heatInfo(), season: seasonInfo(), flash: live.flash, bestAll: live.bestAll, bestAllName: live.bestAllName, bestBy: live.bestBy, tokens: tokens ? tokens.snapshot() : null, now: t }, t);
     if (msg) api.livePush(msg);
   };
   // announcements: only on this computer, and only when the race setup has an audio set
@@ -282,11 +294,11 @@ async function renderRace() {
     const racing = ['running', 'paused', 'review'].includes(live.phase), date = '';
     if (heats) {
       if (!heat.results.length && !(racing && eng.cars.some(c => c.laps.length))) return null;
-      return heat.overall(racing ? heat.preview(eng) : null).map(o => ({ raceClass:o.raceClass, pos: o.pos, driverId: o.driverId, driverName: o.driverName, laps: o.laps, best: o.best,
+      return heat.overall(racing ? heat.preview(eng) : null).map(o => ({ ...(rulePlan?{pluginPoints:o.pluginPoints||0}:{}),raceClass:o.raceClass, pos: o.pos, driverId: o.driverId, driverName: o.driverName, laps: o.laps, best: o.best,
         ...(o.asTeam ? { asTeam: true, driverId: '', driverName: o.teamName || '', teamId: o.teamId || '', teamName: o.teamName || '' } : o.teamId ? { teamId: o.teamId, teamName: o.teamName } : {}) })); // (a team that races as a team is the row of the team: the places of the championship do not need the drivers who drove for it)
     }
     if (!eng.cars.some(c => c.laps.length)) return null;
-    return eng.standings().map(x => ({ raceClass:x.car.raceClass, pos: x.pos, driverId: x.car.driverId, driverName: x.car.driverName, laps: eng.lapsOf(x.car), best: x.car.best, ...(x.car.teamId ? { teamId: x.car.teamId, teamName: x.car.teamName } : {}),
+    return eng.standings().map(x => ({ ...(rulePlan?{pluginPoints:eng.pluginPointsOf(x.car,x.pos)}:{}),raceClass:x.car.raceClass, pos: x.pos, driverId: x.car.driverId, driverName: x.car.driverName, laps: eng.lapsOf(x.car), best: x.car.best, ...(x.car.teamId ? { teamId: x.car.teamId, teamName: x.car.teamName } : {}),
       ...(x.car.retired && !x.car.dq ? { retired: true } : {}), ...(x.car.dq ? { dq: true } : {}), ...(x.car.dmgOut ? { damageOut: x.car.dmgOut } : {}), ...(x.car.failOut ? { failureOut: x.car.failOut } : {}),
       ...(x.car.en ? (() => { const mine = lapRows(x.car, date, {}); return { asTeam: true, driverId: '', driverName: x.car.teamName || '', bestBy: bestByOf(mine, x.car.best), drivers: driversOf(x.car, mine) }; })() : {}) }));
   };
@@ -304,7 +316,7 @@ async function renderRace() {
     ...(live.phase === 'between' && !heat.picksDone() ? { picking: true } : {}), ...(live.breakLeft > 0 ? { breakLeft: live.breakLeft } : {}) } : null);
   // the drivers of the heat that is next, for the announcer to read out (with the lanes they race in)
   const lineupNow = () => (heats && heat.hasNext() ? heat.entries().map(e => ({ lane: heat.isFinal() && !heat.picksDone() ? -1 : e.lane, name: e.asTeam && e.teamName ? `${e.teamName}${e.driverName ? ' with ' + e.driverName : ''}` : e.driverName || '', nickname: e.nickname || '', callsign: e.callsign || '' })).sort((a, b) => a.lane - b.lane) : []);
-  const audioHardware = () => { const id = Hardware.timingChosen(state.settings), link = id === 'phidget' ? (typeof Phidget !== 'undefined' ? Phidget.link : null) : id === 'parallel' ? (typeof ParallelPort !== 'undefined' ? ParallelPort.link : null) : id === 'arduino' ? (typeof ArduinoBox !== 'undefined' ? ArduinoBox.link : null) : id === 'trackmate' ? Trackmate.link : null; return link ? { id, name: {phidget:'Phidget',parallel:'Parallel Port',arduino:'SlotForge hardware',trackmate:'Trackmate'}[id], connected: !!link.connected } : null; };
+  const audioHardware = () => { const id = Hardware.timingChosen(state.settings), link = id === 'plugin' ? (typeof pt !== 'undefined' ? pt.link : null) : id === 'phidget' ? (typeof Phidget !== 'undefined' ? Phidget.link : null) : id === 'parallel' ? (typeof ParallelPort !== 'undefined' ? ParallelPort.link : null) : id === 'arduino' ? (typeof ArduinoBox !== 'undefined' ? ArduinoBox.link : null) : id === 'trackmate' ? Trackmate.link : null; return link ? { id, name: {plugin:'Plugin interface',phidget:'Phidget',parallel:'Parallel Port',arduino:'SlotForge hardware',trackmate:'Trackmate'}[id], connected: !!link.connected } : null; };
   const announce = () => {
     if (!audioSet || !live.ann) return;
     try { live.ann.observe(eng, { phase: live.phase, lights: live.lights, now: now(), heat: heatInfo(), hardware: audioHardware(), lineup: heats && live.phase === 'between' ? lineupNow() : undefined, trackmate: typeof Trackmate !== 'undefined' && Trackmate.link && Hardware.timingChosen(state.settings) === 'trackmate' ? !!Trackmate.link.connected : undefined /* (only when the Trackmate is the timing hardware: the box has no such call) */, idle: c => !!tokens && ['idle', 'out'].includes(tokens.stateOf(c.lane, raceT())) }).forEach(e => Sound.say(audioSet, e.call, e.vars, undefined, undefined, e.facts)); } catch (x) { /* a sound problem never stops the race */ }
@@ -385,7 +397,7 @@ async function renderRace() {
     const ph = (typeof PerfUI !== 'undefined' && PerfUI.phases()) || (() => {}); // (how long each part of an update takes: only while the Performance line or report is shown, 1.60.1)
     checkpoint(); ph('save point');
     if (live.box) live.box.sync();
-    for (const binding of [live.parallel, live.phidget]) {
+    for (const binding of [live.parallel, live.phidget, live.plugin]) {
       if (!binding) continue;
       if (live.hardwareRecoverPower && live.phase === 'running' && binding.ready()) {
         live.hardwareRecoverPower = false;
@@ -730,7 +742,7 @@ async function renderRace() {
         return { asTeam: true, driverId: '', driverName: o.teamName || '', teamId: o.teamId || '', teamName: o.teamName || '', bestBy: bestByOf(mine, o.best), drivers: ids.map(id => ({ driverId: id, driverName: nameOf('drivers', drivers, id), laps: mine.filter(l => l.driverId === id).length, ...(sts.length ? { ms: sts.filter(q => q.driverId === id).reduce((n, q) => n + q.ms, 0), ...(enDist ? { meters: Math.round(sts.filter(q => q.driverId === id).reduce((n, q) => n + (q.meters || 0), 0) * 100) / 100 } : {}) } : {}) })),
           ...(sts.length ? { stints: sts.map(q => ({ driverId: q.driverId, driverName: q.driverName, laps: q.laps, ms: q.ms, heat: q.heat, ...(enDist ? { meters: q.meters } : {}), ...(q.final ? { final: q.final } : {}) })) } : {}) };
       };
-      standings = heat.overall().map(o => ({ pos: o.pos, ...(o.dq?{dq:true}:{}), driverId: o.driverId, carId: o.carId, driverName: o.driverName, carName: o.carName, laps: o.laps, points: o.points, best: o.best, total: null,
+      standings = heat.overall().map(o => ({ ...(rulePlan?{pluginPoints:o.pluginPoints||0}:{}),pos: o.pos, ...(o.dq?{dq:true}:{}), driverId: o.driverId, carId: o.carId, driverName: o.driverName, carName: o.carName, laps: o.laps, points: o.points, best: o.best, total: null,
         ...(o.asTeam ? teamStanding(o) : o.teamId ? { teamId: o.teamId, teamName: o.teamName } : {}),
         ...(o.adjMs ? { adjMs: o.adjMs } : {}), ...(o.adjLaps ? { adjLaps: o.adjLaps } : {}), ...(o.adjPoints ? { adjPoints: o.adjPoints } : {}), ...(o.damageNote ? { damageNote: o.damageNote, damagePoints: o.damagePoints, repairs: o.repairs, repairMs: o.repairMs } : {}), ...(o.failureNote ? { failureNote: o.failureNote, failures: o.failures, failureRepairs: o.failureRepairs, failureMs: o.failureMs } : {}),
         ...(live.extraBy.has(o.participant) && live.extraBy.get(o.participant).has ? { pits: live.extraBy.get(o.participant).pits, pitTime: live.extraBy.get(o.participant).pitTime } : {}),
@@ -745,9 +757,9 @@ async function renderRace() {
         const mine = lapRows(c, date, {});
         return { asTeam: true, driverId: '', driverName: c.teamName || '', bestBy: bestByOf(mine, c.best), drivers: driversOf(c, mine), stints: stintsOf(c).map(q => ({ driverId: q.driverId, driverName: q.driverName, laps: q.laps, ms: q.ms, from: q.from, to: q.to, by: q.by, ...(enDist ? { meters: q.meters } : {}) })) };
       };
-      standings = eng.standings().map(x => ({ pos: x.pos, driverId: x.car.driverId, carId: x.car.carId, ...(x.car.teamId ? { teamId: x.car.teamId, teamName: x.car.teamName } : {}), driverName: x.car.driverName, carName: x.car.carName, laps: eng.lapsOf(x.car), best: x.car.best, total: x.car.total, dq: x.car.dq || undefined, retired: (x.car.retired && !x.car.dq) || undefined, ...(x.car.sector ? { sector: x.car.sector, ...(eng.sectorName(x.car.sector) ? { sectorName: eng.sectorName(x.car.sector) } : {}) } : {}),
+      standings = eng.standings().map(x => ({ ...(rulePlan?{pluginPoints:eng.pluginPointsOf(x.car,x.pos),pluginTimeMs:eng.pluginTimeOf(x.car),pluginLaps:x.car.pluginLaps||[]}:{}),pos: x.pos, driverId: x.car.driverId, carId: x.car.carId, ...(x.car.teamId ? { teamId: x.car.teamId, teamName: x.car.teamName } : {}), driverName: x.car.driverName, carName: x.car.carName, laps: eng.lapsOf(x.car), best: x.car.best, total: x.car.total, dq: x.car.dq || undefined, retired: (x.car.retired && !x.car.dq) || undefined, ...(x.car.sector ? { sector: x.car.sector, ...(eng.sectorName(x.car.sector) ? { sectorName: eng.sectorName(x.car.sector) } : {}) } : {}),
         ...(x.car.adjMs ? { adjMs: x.car.adjMs } : {}), ...(x.car.adjLaps ? { adjLaps: x.car.adjLaps } : {}), ...(eng.bopNoteOf(eng.cars.indexOf(x.car)) ? { bopNote: eng.bopNoteOf(eng.cars.indexOf(x.car)) } : {}), ...(eng.damageNoteOf(eng.cars.indexOf(x.car)) ? { damageNote: eng.damageNoteOf(eng.cars.indexOf(x.car)), damagePoints: x.car.dmgTotal, repairs: x.car.repairs.filter(q => !q.out).length, repairMs: x.car.repairMs, ...(x.car.dmgOut ? { damageOut: x.car.dmgOut } : {}) } : {}), ...(eng.failureNoteOf && eng.failureNoteOf(eng.cars.indexOf(x.car)) ? { failureNote: eng.failureNoteOf(eng.cars.indexOf(x.car)), failures: x.car.failN, failureRepairs: Failures.repairsOf(x.car), failureMs: x.car.failMs, ...(x.car.failOut ? { failureOut: x.car.failOut } : {}) } : {}), ...(eng.tyreNoteOf(eng.cars.indexOf(x.car)) ? { tyreNote: eng.tyreNoteOf(eng.cars.indexOf(x.car)) } : {}), // (what Balance of Power and the tyres did to the car, in words)
-        ...(hasPits(x.car) ? pitFigures(x.car) : {}), ...(penCfg.on ? { penaltyPoints: x.car.points, penalty: eng.penMs(x.car), dq: x.car.dq || undefined } : {}),
+        ...(hasPits(x.car) ? pitFigures(x.car) : {}), ...((penCfg.on||rulePlan) ? { penaltyPoints: x.car.points, penalty: eng.penMs(x.car)+eng.pluginTimeOf(x.car), dq: x.car.dq || undefined } : {}),
         ...(eng.twStintsOf && eng.twStintsOf(eng.cars.indexOf(x.car)) ? { tyres: eng.twStintsOf(eng.cars.indexOf(x.car)) } : {}),
         ...(x.car.en ? { ...teamRow(x.car), ...(x.car.swapLost ? { swapLost: x.car.swapLost } : {}), swaps: x.car.en.swaps } : {}) }));
       laps = [];
@@ -761,7 +773,7 @@ async function renderRace() {
       standings=[];
     }
     const changes = heats ? null : systemChanges();
-    const session = { ...(resourceState?{resourceRunId:resourceState.runId,resources:structuredClone(resourceState)}:{}), audioSetId: setup.audioSet || '', setupName: setup.name, sessionType: setup.ofType || setup.sessionType, trackId: r.track.id, trackName: r.track.name, date, ...(r.champ ? { champ: r.champ } : {}), endedBy: heats ? '' : eng.endedBy, ...(Distance.compareOn(setup) ? { compareBy: 'distance' } : {}), ...(!heats && eng.resumes ? { resumed: eng.resumes } : {}), ...(heats && live.resumeCount ? { resumed: live.resumeCount } : {}), ...(changes && changes.length ? { systemChanges: changes } : {}), standings, ...(!heats && eng.weatherNote() ? { weatherNote: eng.weatherNote() } : {}) };
+    const session = { ...(rulePlan?{rulePlugin:rulePlan}:{}),...(resourceState?{resourceRunId:resourceState.runId,resources:structuredClone(resourceState)}:{}), audioSetId: setup.audioSet || '', setupName: setup.name, sessionType: setup.ofType || setup.sessionType, trackId: r.track.id, trackName: r.track.name, date, ...(r.champ ? { champ: r.champ } : {}), endedBy: heats ? '' : eng.endedBy, ...(Distance.compareOn(setup) ? { compareBy: 'distance' } : {}), ...(!heats && eng.resumes ? { resumed: eng.resumes } : {}), ...(heats && live.resumeCount ? { resumed: live.resumeCount } : {}), ...(changes && changes.length ? { systemChanges: changes } : {}), standings, ...(!heats && eng.weatherNote() ? { weatherNote: eng.weatherNote() } : {}) };
     if(mc){
       session.multiclass=mc;
       const ranked=heats?heat.overall():eng.standings(),classRows=heats?heat.classOverall():eng.classStandings();
@@ -771,6 +783,7 @@ async function renderRace() {
         return base?{...base,classPos:x.classPos,className:x.className,classColor:x.classColor,classGap:x.classGap,...(heats?{classPoints:x.classPoints,score:x.score,counted:x.counted,dropped:x.dropped,points:x.points}:{} )}:null;
       }).filter(Boolean);
     }
+    if(timingPlugin) session.timingPlugin=timingPlugin;
     if (!heats) { session.rulesSnapshot = eng.rulesSnapshot(); if(eng.rivals?.length) { session.virtualRivals=VirtualRival.summary(eng); session.rivalClassification=eng.displayStandings().map(x=>({driverId:x.car.driverId,pos:x.pos,physicalPos:x.physicalPos,virtualRival:!!x.car.virtualRival,comparisonOnly:!!x.car.comparisonOnly})); } }
     if (heats) { session.resultBy = heat.scoring.byTime ? 'time' : mc?.pointsMode==='class'&&setup.resultBy==='points'?'laps':setup.resultBy;
       const wn = heat.results.map(h => h.weatherNote || ''), wxAll = wn.length > 0 && wn[0] !== '' && wn.every(n => n === wn[0]); // the weather of the heats: said once when it was the same in every heat, otherwise with every heat
@@ -853,10 +866,11 @@ async function renderRace() {
   function timingReady() {
     if(live.resourceFault){ui('msg').textContent='Resource saving failed. Open Resources and retry saving before resuming.';return false;}
     const hardware = Hardware.timingChosen(state.settings);
-    if (!['parallel', 'phidget'].includes(hardware)) return true;
-    const link = hardware === 'parallel' ? ParallelPort.link : Phidget.link;
+    if(timingPlugin && (hardware!=='plugin'||JSON.stringify(timingPlugin)!==JSON.stringify(TimingPlugin.provenance(pt.identity)))) { ui('msg').textContent='Reconnect the same timing plugin version, settings and lane configuration saved with this race.'; return false; }
+    if (!['parallel', 'phidget', 'plugin'].includes(hardware)) return true;
+    const link = hardware === 'plugin' ? pt.link : hardware === 'parallel' ? ParallelPort.link : Phidget.link;
     if (live[hardware] && live[hardware].ready() && link.connected) return true;
-    ui('msg').textContent = (hardware === 'parallel' ? 'Parallel Port' : 'Phidget') + ' is not ready. Reconnect in App Settings, then restart manually.'; return false;
+    ui('msg').textContent = (hardware === 'plugin' ? 'Plugin interface' : hardware === 'parallel' ? 'Parallel Port' : 'Phidget') + ' is not ready. Reconnect in App Settings, then restart manually.'; return false;
   }
   function timingFault(name, message) {
     live.hardwareRecoverPower = true;
@@ -865,6 +879,7 @@ async function renderRace() {
     if (live.phase === 'running') { if (eng.flag !== 'red') eng.setFlag('red', now()); syncPhase(); }
     if (live.parallel) live.parallel.power(false);
     if (live.phidget) live.phidget.power(false);
+    if (live.plugin) live.plugin.power(false);
     if (live.box) live.box.power(false);
     update(); ui('msg').textContent = name + ': ' + message;
   }
@@ -979,12 +994,12 @@ async function renderRace() {
   // ---- the Trackmate: sensor hits count laps, the Trackcall button flags the race ----
   // One timing hardware at a time: the one chosen in App Settings, Timing Hardware. Only it counts laps and is told about the lights and the power; the status line names it, red when it is not connected.
   const hwUse = Hardware.timingChosen(state.settings), abLinkNow = () => (typeof ArduinoBox !== 'undefined' ? ArduinoBox.link : null);
-  const tmWord = () => HomeStats.timing({ hardware: hwUse, trackmate: Trackmate.link.connected, arduino: !!(abLinkNow() && abLinkNow().connected), phidget: typeof Phidget !== 'undefined' && Phidget.link.connected, parallel: typeof ParallelPort !== 'undefined' && ParallelPort.link.connected, virtual: state.settings.abVirtual === true });
+  const tmWord = () => HomeStats.timing({ hardware: hwUse, trackmate: Trackmate.link.connected, arduino: !!(abLinkNow() && abLinkNow().connected), plugin: typeof pt !== 'undefined' && pt.link.connected, pluginName: typeof pt !== 'undefined' && pt.identity?.name, phidget: typeof Phidget !== 'undefined' && Phidget.link.connected, parallel: typeof ParallelPort !== 'undefined' && ParallelPort.link.connected, virtual: state.settings.abVirtual === true });
   const drawTm = () => { const e = ui('tmstatus'); if (e) { const st = tmWord(); e.textContent = ' · ' + st.text + (hwUse === 'trackmate' && Trackmate.link.connected && Trackmate.link.power !== null ? (Trackmate.link.power ? ', track power on' : ', track power off') : ''); if (e.classList) e.classList.toggle('hwwarn', st.state === 'warn'); } };
   drawTm();
-  { const offT = Trackmate.link.onStatus(drawTm), offA = abLinkNow() ? abLinkNow().onStatus(drawTm) : null, offP = typeof ParallelPort !== 'undefined' ? ParallelPort.link.onStatus(drawTm) : null; const offPh = typeof Phidget !== 'undefined' ? Phidget.link.onStatus(drawTm) : null; live.offTmStatus = () => { if (offPh) offPh(); offT(); if (offA) offA(); if (offP) offP(); }; }
+  { const offT = Trackmate.link.onStatus(drawTm), offA = abLinkNow() ? abLinkNow().onStatus(drawTm) : null, offP = typeof ParallelPort !== 'undefined' ? ParallelPort.link.onStatus(drawTm) : null; const offPh = typeof Phidget !== 'undefined' ? Phidget.link.onStatus(drawTm) : null; const offPt = typeof pt !== 'undefined' ? pt.link.onStatus(drawTm) : null; live.offTmStatus = () => { if (offPt) offPt(); if (offPh) offPh(); offT(); if (offA) offA(); if (offP) offP(); }; }
   // the track power (the Trackmate relay): only when it is connected
-  const power = on => { if (hwUse === 'trackmate' && Trackmate.link.connected && typeof tmPower === 'function') tmPower(on); if (live.box) live.box.power(on); if (live.parallel) live.parallel.power(on && (!live.hardwareRecoverPower || live.phase === 'running')); if (live.phidget) live.phidget.power(on && (!live.hardwareRecoverPower || live.phase === 'running')); };
+  const power = on => { if (hwUse === 'trackmate' && Trackmate.link.connected && typeof tmPower === 'function') tmPower(on); if (live.box) live.box.power(on); if (live.parallel) live.parallel.power(on && (!live.hardwareRecoverPower || live.phase === 'running')); if (live.phidget) live.phidget.power(on && (!live.hardwareRecoverPower || live.phase === 'running')); if (live.plugin) live.plugin.power(on && (!live.hardwareRecoverPower || live.phase === 'running')); };
   // Race Settings keeps the Track Call action and flag power separately. Older
   // imports can still carry the combined Trackmate value, so translate it here
   // as well as during database upgrade.
@@ -1002,7 +1017,7 @@ async function renderRace() {
   let callAt = 0; // when the last Trackcall press was
   const trackcall = () => {
     const mode = trackCall.action, t = now();
-    if (mode === 'power') { const l = hwUse === 'phidget' && typeof Phidget !== 'undefined' ? Phidget.link : hwUse === 'parallel' && typeof ParallelPort !== 'undefined' ? ParallelPort.link : hwUse === 'arduino' ? abLinkNow() : Trackmate.link; return power(!!l && l.power === false); } // switches the relay of the timing hardware in use, in any phase of the race screen
+    if (mode === 'power') { const l = hwUse === 'plugin' && typeof pt !== 'undefined' ? pt.link : hwUse === 'phidget' && typeof Phidget !== 'undefined' ? Phidget.link : hwUse === 'parallel' && typeof ParallelPort !== 'undefined' ? ParallelPort.link : hwUse === 'arduino' ? abLinkNow() : Trackmate.link; return power(!!l && l.power === false); } // switches the relay of the timing hardware in use, in any phase of the race screen
     if (!['running', 'paused'].includes(live.phase) || mode === 'none') return;
     if (mode === 'yellow') return actions.yellow();
     if (mode === 'red') return actions.red();
@@ -1016,7 +1031,7 @@ async function renderRace() {
   live.powerFollow = () => { if (live.hardwareRecoverPower && live.phase !== 'running') return; if (trackCall.action === 'power' || trackCall.action === 'none') return; const off = (eng.flag === 'yellow' && trackCall.yellow === 'off') || (eng.flag === 'red' && trackCall.red === 'off'); const want = !off; if (want !== live.pwWant) { live.pwWant = want; power(want); } };
   live.trackcall = trackcall;
   if (eng.cfg.pitControl && typeof PitSensors !== 'undefined') {
-    const link = hwUse === 'phidget' && typeof Phidget !== 'undefined' ? Phidget.link : hwUse === 'trackmate' ? Trackmate.link : hwUse === 'arduino' ? abLinkNow() : hwUse === 'parallel' && typeof ParallelPort !== 'undefined' ? ParallelPort.link : null;
+    const link = hwUse === 'plugin' && typeof pt !== 'undefined' ? pt.link : hwUse === 'phidget' && typeof Phidget !== 'undefined' ? Phidget.link : hwUse === 'trackmate' ? Trackmate.link : hwUse === 'arduino' ? abLinkNow() : hwUse === 'parallel' && typeof ParallelPort !== 'undefined' ? ParallelPort.link : null;
     if (link) live.pitSensors = PitSensors.bind({ eng: () => eng, now, link, hardware: hwUse, disabled: hwUse === 'arduino' && setup.boxPit === 'button', map: () => Trackmate.laneMap(state.settings.tmLaneMap) });
   }
   if (hwUse === 'trackmate') Trackmate.link.setHold(pitMs); // how long a car must stand on the sensor to be in the pits: the pit hold time of the race setup
@@ -1055,6 +1070,17 @@ async function renderRace() {
       resetInputsOnRun: true,
       acquire: previousLease => api.phidgetRace(true, lanes, previousLease), release: lease => api.phidgetRace(false, lanes, lease), outputs: (value, lease) => api.phidgetOutputs(value, lease),
       onDisconnected: () => timingFault('Phidget', 'Disconnected. Reconnect, then restart manually.'), onError: x => timingFault('Phidget', x.message) });
+  }
+  if (hwUse === 'plugin' && typeof pt !== 'undefined' && api.pluginTimingRace) {
+    live.hardwareRecoverPower = !!r.resume || !!(tokens && state.settings.tokenSessions?.[setup.id]?.data);
+    live.plugin = ParallelRace.bind({ link: pt.link, setup, lanes, pitMs, tokens: !!tokens, cars: () => eng.cars, crossCar, holdCar, unblockCar, trackcall,
+      blockCar: (i, at) => { if (live.phase === 'running') { eng.block(i, Math.min(at, now()), true); if (eng.status === 'finished') engineFinished(); else update(); } },
+      phase: () => live.phase, lights: () => live.lights, flag: () => eng.flag, enabled: () => Hardware.timingChosen(state.settings) === 'plugin',
+      laneAllowed: lane => !eng.cars.find(c=>c.lane===lane)?.virtualRival && (!tokens || !['idle', 'out'].includes(tokens.stateOf(lane, raceT()))),
+      powerAllowed: () => !live.hardwareRecoverPower,
+      resetInputsOnRun: true,
+      acquire: previousLease => { if(timingPlugin&&JSON.stringify(timingPlugin)!==JSON.stringify(TimingPlugin.provenance(pt.identity)))return Promise.reject(Error('Reconnect the timing plugin version and settings saved with this race.')); return api.pluginTimingRace(true, lanes, previousLease); }, release: lease => api.pluginTimingRace(false, lanes, lease), outputs: (value, lease) => api.pluginTimingOutputs(value, lease),
+      onDisconnected: () => timingFault('Plugin interface', 'Disconnected. Reconnect, then restart manually.'), onError: x => timingFault('Plugin interface', x.message) });
   }
   Review.bind(ui('review'), reviewCommand, () => update());
   Review.bind(ui('lapreview'), reviewCommand, () => update());
@@ -1131,7 +1157,7 @@ async function renderRace() {
   live.shown = () => { live.nodes.forEach(n => { n.last = null; }); syncPerfLine(); update(); }; // the Race tab is shown again: everything is drawn once more (a leaderboard fits its text to the size it has now)
   // leaving the race screen (before the start, or after the end): the keys, the Trackmate and the Race Director buttons stop working on the other pages
   live.offPitSensors = () => { if (live.pitSensors) { live.pitSensors.off(); live.pitSensors = null; } };
-  live.leave = () => { LiveCanvas.dispose(live.nodes); if (live.fsView) live.fsView.close(); document.removeEventListener('keydown', live.fsKey); if (live.calling) { live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); } document.removeEventListener('keydown', live.key); if (typeof tmUseLanes === 'function') tmUseLanes(0); ['offTm', 'offTmStatus', 'offCmd', 'offResync'].forEach(k => { if (live[k]) { live[k](); live[k] = null; } }); if (live.box) { live.box.off(); live.box = null; } if (live.parallel) { live.parallel.off(); live.parallel = null; } if (live.phidget) { live.phidget.off(); live.phidget = null; } live.offPitSensors(); clearTimeout(live.shareTimer); live.shareTimer = null; if (live.flushTokens) live.flushTokens(); clearTimeout(live.tkTimer); live.tkTimer = null; };
+  live.leave = () => { LiveCanvas.dispose(live.nodes); if (live.fsView) live.fsView.close(); document.removeEventListener('keydown', live.fsKey); if (live.calling) { live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); } document.removeEventListener('keydown', live.key); if (typeof tmUseLanes === 'function') tmUseLanes(0); ['offTm', 'offTmStatus', 'offCmd', 'offResync'].forEach(k => { if (live[k]) { live[k](); live[k] = null; } }); if (live.box) { live.box.off(); live.box = null; } if (live.parallel) { live.parallel.off(); live.parallel = null; } if (live.phidget) { live.phidget.off(); live.phidget = null; } if (live.plugin) { live.plugin.off(); live.plugin = null; } live.offPitSensors(); clearTimeout(live.shareTimer); live.shareTimer = null; if (live.flushTokens) live.flushTokens(); clearTimeout(live.tkTimer); live.tkTimer = null; };
 
   // ---- Time Token Session: the lane controls, saving every stint, keeping the session across a restart ----
   const raceT = () => eng.elapsed(now()); // the race clock: the token clocks run on it, so a pause stops them
@@ -1151,7 +1177,7 @@ async function renderRace() {
           ...(l.bad ? { noTrackRecord: true, noPersonalBest: true, tooSlow: true } : {}), ...(l.late || l.invalid ? { noTrackRecord: true, noPersonalBest: true, invalid: true } : {}), ...(l.late ? { late: true } : {}) }));
         if (!rows.length) continue;
         const session = { audioSetId: setup.audioSet || '', setupName: setup.name, sessionType: 'tokens', trackId: where.id, trackName: where.name, date, endedBy: STINT_END[st.closedBy] || '',
-          rulesSnapshot: eng.rulesSnapshot(), token: { stint: st.id, lane: st.lane + 1, bought: st.bought, carried: st.carried, left: st.left },
+          ...(timingPlugin?{timingPlugin}:{}), rulesSnapshot: eng.rulesSnapshot(), token: { stint: st.id, lane: st.lane + 1, bought: st.bought, carried: st.carried, left: st.left },
           standings: [{ pos: 1, driverId: who.driverId || '', carId: who.carId || '', driverName: who.driverName || 'Guest', carName: who.carName || '', laps: counted.length, lateLaps: st.laps.length - counted.length, best: st.best, total: counted.reduce((a, l) => a + l.t, 0), lane: st.lane + 1, bought: st.bought }] };
         try { await api.saveSession(session, rows); live.tkTotal++; } catch (x) { failed.push(st); }
       }
@@ -1167,7 +1193,7 @@ async function renderRace() {
     clearTimeout(live.tkTimer); live.tkTimer = null; live.tkAt = t;
     const all = { ...(state.settings.tokenSessions || {}) };
     const T = raceT(), nothing = !tokens.hasPending() && eng.cars.every(c => tokens.stateOf(c.lane, T) === 'idle'); // (no lane has time or laps: there is nothing to carry on with)
-    if ((live.phase === 'finished' || nothing) && !tokens.hasPending()) delete all[setup.id]; else all[setup.id] = { setupId: setup.id, trackId: r.track.id, savedAt: new Date().toISOString(), data: tokens.serialise(T), review: live.phase === 'review' }; // (review: the session had ended and its stints waited for the review)
+    if ((live.phase === 'finished' || nothing) && !tokens.hasPending()) delete all[setup.id]; else all[setup.id] = { setupId: setup.id, trackId: r.track.id, savedAt: new Date().toISOString(), ...(timingPlugin?{timingPlugin}:{}), data: tokens.serialise(T), review: live.phase === 'review' }; // (review: the session had ended and its stints waited for the review)
     state.settings = { ...state.settings, tokenSessions: all }; // (at once, so the next time the screen is opened it finds it)
     Promise.resolve(api.setSettings({ tokenSessions: all })).then(st => { if (st) state.settings = st; }).catch(() => {});
   };
@@ -1313,7 +1339,7 @@ async function renderRace() {
     if(resourceState)live.resourceSent=resourceState.revision;
     try { live.cpPromise=Promise.resolve(api.saveResume({ v: 1, savedAt: new Date().toISOString(), name: setup.name, kind: SESSION_LABEL[setup.ofType || setup.sessionType] || '', trackName: r.track.name, wxSeed, wxHeat: wxLast, elapsed: waiting ? 0 : eng.elapsed(t), phase: live.phase,
       ...(heats ? { where, heat: heatState() } : {}),
-      race: { resources:resourceState,multiclass:mc, virtualRivals: rivalEntries, setup: lean(r.setup), track: lean(r.track), rows: r.rows, ...(r.champ ? { champ: r.champ } : {}), ...(byTeam ? { byTeam: true } : {}), ...(heats ? { schedule: heat.schedule, ...(r.labels ? { labels: r.labels } : {}) } : {}) }, eng: waiting ? null : eng.snapshot(t) })).then(ok=>{if(resourceState&&!ok)throw Error('Database write failed');return true;}).catch(resourceSaveFailed);return live.cpPromise;}catch(x){return Promise.resolve(resourceSaveFailed(x));}
+      race: { ...(rulePlan?{rulePlugin:rulePlan}:{}),...(timingPlugin?{timingPlugin}:{}),resources:resourceState,multiclass:mc, virtualRivals: rivalEntries, setup: lean(r.setup), track: lean(r.track), rows: r.rows, ...(r.champ ? { champ: r.champ } : {}), ...(byTeam ? { byTeam: true } : {}), ...(heats ? { schedule: heat.schedule, ...(r.labels ? { labels: r.labels } : {}) } : {}) }, eng: waiting ? null : eng.snapshot(t) })).then(ok=>{if(resourceState&&!ok)throw Error('Database write failed');return true;}).catch(resourceSaveFailed);return live.cpPromise;}catch(x){return Promise.resolve(resourceSaveFailed(x));}
   }
   function resourceSaveFailed(x){if(!resourceState)return false;live.resourceFault=true;live.resourceSent=-1;if(eng.status==='running'){eng.setFlag('red',now());live.phase='paused';}else if(eng.status==='ready'){live.phase=heats&&heat.idx>0?'between':'ready';live.runId++;}power(false);ui('msg').textContent='Resource saving failed: '+x.message+'. Racing is paused. Open Resources and retry saving.';return false;}
   async function clearCheckpoint() {
@@ -1357,5 +1383,12 @@ async function renderRace() {
     ui('msg').textContent = 'The race was interrupted and is back, paused where it was at the last saving point. Check the laps, then press Space (Pause / Resume) to carry on.';
   }
   if (r.resume && !tokens) resumeRace(r.resume);
+  // A rejected rule ledger must never fall back to a fresh race. Keep the saved
+  // checkpoint intact so the director can recover it without changing its rules.
+  if (r.resume && rulePlan && live.cpOff && live.phase === 'ready') {
+    live.leave(); live.alive = false;
+    alert('Cannot restore this plugin race: its saved laps or heat state do not match the frozen rules. The recovery data has been kept.');
+    state.race = null; state.tab = 'home'; return render();
+  }
   shareStatic(); update(); drawOverall();
 }

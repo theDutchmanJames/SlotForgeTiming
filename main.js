@@ -18,7 +18,7 @@ const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) app.quit();
 else app.on('second-instance', () => { const w = BrowserWindow.getAllWindows()[0]; if (w) { if (w.isMinimized()) w.restore(); w.focus(); } });
 
-let db, mainWin, resourceStore;
+let db, mainWin, resourceStore, pluginHost;
 const parallel = require('./parallelport').createController({ onEvent: event => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('parallel:event', event); } });
 const phidget = require('./phidgetport').createController({ onEvent: event => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('phidget:event', event); } });
 let pendingRestore = null; // a backup file chosen for restoring, waiting for the user to confirm
@@ -36,8 +36,8 @@ function createWindow() {
     }
   });
   mainWin = win;
-  win.webContents.on('render-process-gone', () => { parallel.shutdown(); phidget.shutdown(); });
-  win.webContents.on('did-start-navigation', (_event, _url, inPlace, isMainFrame) => { if (isMainFrame && !inPlace) { parallel.shutdown(); phidget.shutdown(); } });
+  win.webContents.on('render-process-gone', () => { parallel.shutdown(); phidget.shutdown(); pluginHost?.timing?.reset().catch(()=>{}); });
+  win.webContents.on('did-start-navigation', (_event, _url, inPlace, isMainFrame) => { if (isMainFrame && !inPlace) { parallel.shutdown(); phidget.shutdown(); pluginHost?.timing?.reset().catch(()=>{}); } });
   // USB timing hardware: Electron lets the page use COM ports and HID devices once the app allows it and the user has chosen one
   let pick = null; // the callback waiting for the user's choice
   const ask = (kind, list, callback) => { if (pick) pick(''); pick = callback; win.webContents.send('hw:choose', kind, list); };
@@ -116,6 +116,8 @@ app.whenReady().then(() => {
   const backgroundOn = s => !(s && typeof s === 'object' && s.backgroundSave === false);
   db.bg = backgroundOn(db.getSettings());
   ipcMain.handle('schema', () => schema);
+  require('./packipc').register({ipcMain,dialog,BrowserWindow,db,getMain:()=>mainWin,isRacing:()=>!!live.dyn && ['countdown','running','paused','between','review'].includes(live.dyn.phase),appVersion:require('./package.json').version});
+  pluginHost = require('./pluginipc').register({ipcMain,dialog,BrowserWindow,app,utilityProcess:require('electron').utilityProcess,getMain:()=>mainWin,isRacing:()=>!!live.dyn && ['countdown','running','paused','between','review'].includes(live.dyn.phase),appVersion:require('./package.json').version,root:path.join(app.getPath('userData'),'plugins'),getSettings:()=>db.getSettings(),onTiming:event=>{if(mainWin&&!mainWin.isDestroyed())mainWin.webContents.send('plugins:timing-event',event);}});
   ipcMain.handle('voices:report', () => require('./voicereport').collect()); // what this computer offers for text to speech (Audio Settings > Voice report)
   ipcMain.handle('db:path', () => db.file);
   ipcMain.handle('db:list', (_e, entity) => { const rows = db.list(entity); watch.sent(entity, rows); return rows; });
@@ -191,6 +193,8 @@ app.whenReady().then(() => {
     } catch { return { ok: false, error: 'The file could not be read: it is not a backup file from this app.' }; }
   });
   ipcMain.handle('backup:restore', async () => {
+    if(pluginHost?.timing?.reservation)throw Error('Finish or leave the race before restoring a backup.');
+    await pluginHost?.timing?.reset();
     await resourceStore.idle();
     if(resourceStore.ledger().checkpoint)throw Error('Finish or discard the unfinished resource event before restoring a database backup.');
     if (!pendingRestore) throw new Error('No backup file chosen.');
@@ -251,7 +255,16 @@ app.whenReady().then(() => {
   ipcMain.handle('live:fullscreen', (_e, on) => { if (!liveWin || liveWin.isDestroyed()) return false; liveWin.setFullScreen(on === undefined ? !liveWin.isFullScreen() : !!on); return liveWin.isFullScreen(); });
   ipcMain.handle('live:open', () => ({ second: openLiveWindow() }));
   // a setting is written to the settings file in the background (1.61.0): the core does not wait for the disk, the answer comes when the file is written
-  ipcMain.handle('settings:set', async (_e, patch) => { if (Object.prototype.hasOwnProperty.call(patch || {}, 'phidget')) { phidgetOwner(_e); if (phidget.state().connected) throw Error('Disconnect before changing Phidget channel assignments.'); const P = require('./renderer/phidget'), errors = P.validate(P.config(patch.phidget)); if (errors.length) throw Error(errors[0]); } if (phidget.state().race && (Object.prototype.hasOwnProperty.call(patch || {}, 'phidget') || (Object.prototype.hasOwnProperty.call(patch || {}, 'timingHw') && patch.timingHw !== 'phidget'))) throw Error('Leave the race before changing its Phidget setup.'); if (Object.prototype.hasOwnProperty.call(patch || {}, 'parallelPort')) { parallelOwner(_e); if (parallel.state().connected) throw Error('Disconnect before changing parallel-port assignments.'); const P = require('./renderer/parallel'), errors = P.validate(P.config(patch.parallelPort)); if (errors.length) throw Error(errors[0].text); } if (parallel.state().race && (Object.prototype.hasOwnProperty.call(patch || {}, 'parallelPort') || (Object.prototype.hasOwnProperty.call(patch || {}, 'timingHw') && patch.timingHw !== 'parallel'))) throw Error('Finish or leave the race before changing its parallel-port setup.'); const p = db.setSettingsAsync(patch); db.bg = backgroundOn(db.getSettings()); const s = await p; if (Object.keys(patch || {}).some(k => k.startsWith('net'))) await applyNet(); return s; });
+  ipcMain.handle('settings:set', async (_e, patch) => {
+    if(patch&&('pluginTiming' in patch||'timingHw' in patch)){
+      if(!mainWin||_e.sender!==mainWin.webContents||_e.senderFrame!==mainWin.webContents.mainFrame)throw Error('Change timing settings in the main app window.');
+      const timing=pluginHost?.timing;
+      if(live.dyn&&['countdown','running','paused','between','review'].includes(live.dyn.phase)&&('pluginTiming' in patch||patch.timingHw&&patch.timingHw!==db.getSettings().timingHw))throw Error('Finish or leave the race before changing timing settings.');
+      if(timing?.reservation&&('pluginTiming' in patch||('timingHw' in patch&&patch.timingHw!=='plugin')))throw Error('Finish or leave the race before changing plugin timing.');
+      if('pluginTiming' in patch){if(timing?.connected||timing?.connection)throw Error('Disconnect before changing plugin lane assignments.');patch={...patch,pluginTiming:timing.validate(patch.pluginTiming)};}
+      if('timingHw' in patch&&patch.timingHw!=='plugin'&&timing?.connected)await timing.disconnect();
+    }
+     if (Object.prototype.hasOwnProperty.call(patch || {}, 'phidget')) { phidgetOwner(_e); if (phidget.state().connected) throw Error('Disconnect before changing Phidget channel assignments.'); const P = require('./renderer/phidget'), errors = P.validate(P.config(patch.phidget)); if (errors.length) throw Error(errors[0]); } if (phidget.state().race && (Object.prototype.hasOwnProperty.call(patch || {}, 'phidget') || (Object.prototype.hasOwnProperty.call(patch || {}, 'timingHw') && patch.timingHw !== 'phidget'))) throw Error('Leave the race before changing its Phidget setup.'); if (Object.prototype.hasOwnProperty.call(patch || {}, 'parallelPort')) { parallelOwner(_e); if (parallel.state().connected) throw Error('Disconnect before changing parallel-port assignments.'); const P = require('./renderer/parallel'), errors = P.validate(P.config(patch.parallelPort)); if (errors.length) throw Error(errors[0].text); } if (parallel.state().race && (Object.prototype.hasOwnProperty.call(patch || {}, 'parallelPort') || (Object.prototype.hasOwnProperty.call(patch || {}, 'timingHw') && patch.timingHw !== 'parallel'))) throw Error('Finish or leave the race before changing its parallel-port setup.'); const p = db.setSettingsAsync(patch); db.bg = backgroundOn(db.getSettings()); const s = await p; if (Object.keys(patch || {}).some(k => k.startsWith('net'))) await applyNet(); return s; });
   ipcMain.handle('net:status', () => netStatus());
   applyNet().finally(createWindow);
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
@@ -259,10 +272,20 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => app.quit());
 let quitFlushed = false;
+let quitWaiting = false;
 app.on('before-quit', e => {
+  if (quitWaiting) { e.preventDefault(); return; }
   if (typeof parallel !== 'undefined') parallel.shutdown();
   phidget.shutdown();
   if (net.server) net.server.close();
   // a race save or a setting that is on its way is written first (at most three seconds): the files then hold the last state, not the one before
-  if (!quitFlushed && db && (db.writesPending() || (typeof resourceStore!=='undefined'&&resourceStore?.pending))) { e.preventDefault(); quitFlushed = true; Promise.race([(typeof resourceStore!=='undefined'&&resourceStore?resourceStore.idle():Promise.resolve()).then(()=>db.writesIdle()), new Promise(r => setTimeout(r, 3000))]).catch(() => {}).then(() => app.quit()); }
+  if (!quitFlushed && db && (pluginHost || db.writesPending() || (typeof resourceStore!=='undefined'&&resourceStore?.pending))) {
+    e.preventDefault();
+    quitWaiting = true;
+    const saveDone = (typeof resourceStore!=='undefined'&&resourceStore ? resourceStore.idle() : Promise.resolve()).then(()=>db.writesIdle());
+    Promise.allSettled([
+      pluginHost?.shutdown(),
+      Promise.race([saveDone, new Promise(r => setTimeout(r, 3000))])
+    ]).then(() => { quitWaiting = false; quitFlushed = true; app.quit(); });
+  }
 });

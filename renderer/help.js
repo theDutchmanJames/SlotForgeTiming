@@ -648,11 +648,40 @@ const Help = (() => {
           <li>Outputs require suitable relay wiring, inactive at API FALSE. Tests last 1.2 seconds and are locked during races. Hardware failsafes are enabled where supported.</li>
           <li>Disconnect pauses racing and retains its lock. Reconnect, then resume manually. Restored races keep power off until resume. Power-off is best effort if hardware is unreachable. Timestamps are captured on the PC, not on the board. Hardware accuracy remains unverified. <b>Save log</b> exports diagnostics.</li>
         </ul>` },
+      { id: 'timingplugins', title: 'Timing plugins', note: 'Connect a separately installed timing driver', body: `<ul>
+        <li>Install a <b>.slotforge-plugin</b> in <b>App Settings → Plugins</b>. Review it and start it only if you trust its author. Third-party code has your operating-system access.</li>
+        <li>In <b>Timing Hardware</b>, choose <b>Plugin interface</b> as the hardware in use. Open <b>Plugin Interface</b>, select the installed driver, map its channels to your lanes, then <b>Save settings</b> and <b>Connect</b>. Connection is explicit.</li>
+        <li>Channels start at 0. Check covered and clear states in <b>Diagnostics</b>. Lap timing, minimum laps, shared/separate pit sensors, Service Stop and track calls use the existing Race Setup rules.</li>
+        <li>Driver settings are generated from the plugin. Disconnect and stop the plugin before editing them. Save, start it again in Plugins, then reconnect.</li>
+        <li>Disconnection pauses racing under red. Reconnect the same version, settings and lane assignments; restart manually. Output writes require acknowledgement and are renewed while connected. Physical outputs still need a device failsafe.</li>
+        <li><b>Simulation</b> is labelled clearly. Its test buttons affect a running race. Software tests do not establish real-device compatibility or timing accuracy.</li>
+      </ul>` },
+      { id: 'contentpacks', title: 'Content Packs and plugins', note: 'Share collections; manage trusted extensions', body: `<ul>
+        <li>Open <b>App Settings → Import and Export → Content Packs</b>. Choose a <b>.slotforge-pack</b>, review its author and contents, then install. Packs contain existing layouts, widget compositions, charts, leaderboards, image/audio sets, colour palettes and supported Race System presets. Scripts, CSS, HTML and remote assets are rejected.</li>
+        <li><b>Add to my content</b> imports editable copies with their dependencies. Find them in the usual editors. <b>Apply theme</b> changes your Custom palette only when you choose it.</li>
+        <li>Disable or remove a pack to stop using its library. Existing copies, edits and applied themes remain. An update refreshes the library only; one previous version is available for rollback.</li>
+        <li><b>Create and share</b> exports selected content and dependencies. Personal database links must be removed first. Export installed packs separately when backing them up; database backups contain your copied content, not the library. Pack changes are locked during a race and results review.</li>
+        <li><b>Plugins</b> runs separately installed trusted JavaScript with settings, commands, logs and storage. Install a <b>.slotforge-plugin</b>, then explicitly start it. Code has your operating-system access; only start trusted plugins. Stop disables future automatic startup. Updates and rollback stay disabled. Timing drivers are available under Timing Hardware. See <b>Plugin widgets, pages and tools</b> for display features. See <b>Plugin race rules</b>.</li>
+      </ul>` },
+      { id: 'plugindisplays', title: 'Plugin widgets, pages and tools', note: 'Extend displays with separately installed code', body: `<ul>
+        <li>Install and start a trusted <b>.slotforge-plugin</b> under <b>App Settings → Plugins</b>. Plugins are separate from the app and from data-only Content Packs.</li>
+        <li>In the Layout Editor, open <b>Plugins</b> and add a <b>Plugin lane widget</b> or <b>Plugin race widget</b>. Choose the contribution under Content. Its own inputs appear below; ordinary fonts, backgrounds, borders, accents and scaling still apply.</li>
+        <li>Previews use sample data. Main and second race screens use live data, refreshed at most twice a second. Network viewers receive display data only. A missing, disabled or failed plugin shows an explanation; saved layouts and inputs remain.</li>
+        <li><b>Customization → Plugin Pages &amp; Tools</b> lists contributed pages and tools. Apply inputs to refresh a page. Run tool is explicit and unavailable during a race or results review. With no race open, pages label their sample data.</li>
+        <li>Layout exports include the plugin reference and inputs, not executable code. Share and install the original plugin package separately. Display APIs do not change laps, scoring or race rules.</li>
+      </ul>` },
+      { id: 'pluginrules', title: 'Plugin race rules', note: 'Frozen calculations and competition bonuses', body: `<ul>
+        <li>Install, configure and start a trusted rule plugin in <b>App Settings → Plugins</b>. Select it in <b>Race Setup → Rules and Systems → Plugin race rules</b>. None keeps the built-in rules. Time Token Sessions do not support these plugins.</li>
+        <li>Before racing, SlotForge validates and freezes the plugin's rule plan and settings. It can modify fuel use and tyre wear, add time for valid laps and award competition-point bonuses. Existing system switches still apply. No plugin process is called at each sensor crossing.</li>
+        <li>Raw lap times and records remain unchanged. Rule time is separate; the finalize page shows it. Invalidating or removing a lap removes its rule-time consequence, but does not refund historical fuel or tyre use.</li>
+        <li>Bonuses add to heat/class or championship scoring, following eligibility and sprint/team rules. They do not replace the ordinary race winner rules.</li>
+        <li>Saved races keep the program, version and fingerprint. Resume requires that exact installed package, then uses the saved plan without running plugin code again. Missing or changed dependencies block resume. Viewing saved results needs no plugin.</li>
+      </ul>` },
       { id: 'transfer', title: 'Import, export and backup', note: 'Share items and keep a safe copy', body: `
         <ul>
           <li>App Settings, <b>Import and Export</b>. <b>Export</b> saves ticked items (a track, a layout, a whole group) in a file that another copy of the app can import. What an item depends on can come along.</li>
           <li><b>Import</b> adds copies and never changes what you have. A name you already have gets "(imported)" after it.</li>
-          <li>A <b>complete backup</b> is everything in one file: the database, layouts, pictures, sounds, settings and past races. <b>Restore</b> puts the app back exactly as it was.</li>
+          <li>A <b>complete backup</b> keeps the database, layouts, pictures, sounds, settings and past races in one file. <b>Restore</b> restores those items. The separate Content Pack and code-plugin libraries are not included; export content packs and keep original plugin packages separately. Copies already added from packs are included.</li>
         </ul>` }
     ]]
   ];

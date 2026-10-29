@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),Help=require('../renderer/help'),V=require('../renderer/helpview');
 const v=V.create({folders:Help.folders,WELCOME:Help.WELCOME}),topics=Help.folders(),ids=v.groups.flatMap(g=>g.ids);
-assert.equal(topics.length,97,'existing topics plus widget design guidance');assert.equal(new Set(ids).size,ids.length);assert.deepEqual([...ids].sort(),topics.map(t=>t.id).sort());
+assert.equal(topics.length,101,'existing topics plus timing, display and rule plugin guidance');assert.equal(new Set(ids).size,ids.length);assert.deepEqual([...ids].sort(),topics.map(t=>t.id).sort());
 for(const t of topics){assert(v.search(t.title).some(x=>x.id===t.id),'search reaches '+t.id);assert(v.select(t.id));assert(v.html().includes(t.body),'full article is available: '+t.id);}
 assert.equal(v.select('not-a-topic'),false);assert(v.select('start-guide'));assert(v.html().includes('Your first race'));
 assert.equal(v.search('Lap Highlights')[0].id,'laphighlights');assert(v.search('flash').some(t=>t.id==='laphighlights'));
@@ -15,4 +15,4 @@ assert.deepEqual(V.ROUTES.fuel,{tab:'setup',setupSub:'fuel'});assert.equal(V.ROU
 let dest;const box={innerHTML:'',querySelectorAll:()=>[]};v.render(box,{onNavigate:d=>{dest=d;}});box.onclick({target:{closest:()=>null}});box.onclick({target:{}});
 box.onclick({target:{closest:()=>({dataset:{helpRoute:'unknown'}})}});assert.equal(dest,undefined);
 box.onclick({target:{closest:()=>({dataset:{helpRoute:'fuel'}})}});
-Promise.resolve().then(()=>{assert.deepEqual(dest,V.ROUTES.fuel);dest.setupSub='wrong';assert.equal(V.ROUTES.fuel.setupSub,'fuel');console.log('Help view: all 97 topics, grouping, full-content search, escaping, example validation, state and navigation passed.');});
+Promise.resolve().then(()=>{assert.deepEqual(dest,V.ROUTES.fuel);dest.setupSub='wrong';assert.equal(V.ROUTES.fuel.setupSub,'fuel');console.log('Help view: all 100 topics, grouping, full-content search, escaping, example validation, state and navigation passed.');});

@@ -6,6 +6,7 @@ const trLabel = (e, r) => (e === 'sessions' ? [r.setupName, r.date].filter(Boole
 
 const TR_FOLDERS = ['backup', 'export', 'import'];
 async function renderTransferSettings(box) {
+  box.onclick=box.oninput=box.onchange=null;
   if (!api.exportData) { box.innerHTML = '<p class="muted">Export and import work in the Windows app.</p>'; return; }
   const lists = {}; for (const [, es] of TR_GROUPS) for (const e of es) lists[e] = await api.list(e);
   const chosen = {}; Object.entries(trState.picks).forEach(([e, set]) => { if (set.size) chosen[e] = [...set]; });
@@ -18,7 +19,7 @@ async function renderTransferSettings(box) {
   // three folders, as on the Results and Records page: each opens and closes, the choice is remembered while the app runs
   const tf = (id, title, note, body) => folderHtml('transfer', id, title, note, `<div class="fbody">${body}</div>`);
   box.innerHTML = folderTools
-    + tf('backup', 'Complete backup', bk ? 'a backup file is waiting' : 'everything in one file', `<p class="muted">A backup is everything in one file: the database, layouts, pictures, sounds, settings, past races and laps. Restoring it puts the app back exactly as it was when the backup was made. The file also holds your settings, including the Race Director password, so keep it somewhere safe.</p>
+    + tf('backup', 'Complete backup', bk ? 'a backup file is waiting' : 'everything in one file', `<p class="muted">A backup is everything in one file: the database, layouts, pictures, sounds, settings, past races and laps. Restoring it puts the app back exactly as it was when the backup was made. The file also holds your settings, including the Race Director password, so keep it somewhere safe. Installed Content Pack libraries are separate; export those packs separately. Copied content is included in the database backup.</p>
     <div class="row"><button class="btn primary" id="bk-save">Save a complete backup...</button><button class="btn" id="bk-open">Restore from a backup...</button></div>
     <p class="muted" id="bk-msg">${esc(trState.bkMsg)}</p>
     ${bk ? `<div class="card"><strong>${esc(bk.file || 'File')}</strong>${bk.date ? ` (made ${esc(new Date(bk.date).toLocaleString())}${bk.appVersion ? `, version ${esc(bk.appVersion)}` : ''})` : ''} contains:<ul>${Object.entries(bk.counts || {}).map(([e, n]) => `<li>${n} ${esc(((state.schema[e] && (n === 1 ? state.schema[e].label : state.schema[e].plural)) || e).toLowerCase())}</li>`).join('') || '<li>no items</li>'}${bk.laps ? `<li>${bk.laps} laps</li>` : ''}</ul>
@@ -35,6 +36,7 @@ async function renderTransferSettings(box) {
     ${pending ? `<div class="card"><strong>${esc(pending.file || 'File')}</strong> contains:<ul>${Object.entries(pending.summary).map(([e, s]) => `<li>${s.count} ${esc((s.count === 1 ? state.schema[e].label : state.schema[e].plural).toLowerCase())}${s.names.filter(Boolean).length ? ': ' + esc(s.names.filter(Boolean).join(', ')) + (s.count > s.names.length ? ', ...' : '') : ''}</li>`).join('')}</ul>
       <div class="row"><button class="btn primary" id="tr-apply">Add to my data</button><button class="btn" id="tr-cancel">Cancel</button></div></div>` : ''}`);
   if (typeof AppSettingsPage !== 'undefined') AppSettingsPage.enhance(box, 'transfer');
+  if (typeof TransferViews !== 'undefined') TransferViews.attach(box,'items');
   folderWire(box);
   box.onclick = ev => { const fa = ev.target && ev.target.closest ? ev.target.closest('[data-folderall]') : null; if (fa) { folderAll('transfer', TR_FOLDERS, fa.dataset.folderall === '1'); renderTransferSettings(box); } };
   const $ = id => document.getElementById(id), msg = t => { trState.msg = t; const m = $('tr-msg'); if (m) m.textContent = t; };

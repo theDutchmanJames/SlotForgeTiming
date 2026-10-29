@@ -351,6 +351,7 @@
     return {html,components};
   }
   function widgetContent(w, S) {
+    if(w.type==='pluginlane'||w.type==='pluginrace')return ((typeof module!=='undefined'?require('./plugindisplay'):root.PluginDisplay)?.content(w,S)||{html:'Plugin unavailable'});
     const type = w.type, opt = Wd.resolveOpt(w, S.imageSets, S.clubLogo); // the widget's own settings, with a chosen picture set (or the club logo) filled in
     const perLane = !!(Wd.def(type) && Wd.def(type).perLane); // a widget that shows one lane's car
     const c = perLane ? S.carByLane(w.lane) : null;

@@ -155,9 +155,10 @@ async function renderSetup() {
 
 // Customization tab: Layout Editor, Leaderboard Editor, Race Results, Audio Settings, Image Settings and Widget Builder
 async function renderCustom() {
+  if(typeof PluginDisplayClient!=='undefined')await PluginDisplayClient.refresh();
   if (state.editing) { state.editing.classDefs=await api.list('raceclasses'); state.editing.drivers = await api.list('drivers'); state.editing.cars = await api.list('slotcars'); state.editing.rowDesigns = await api.list('rowdesigns'); state.editing.chartDesigns = await api.list('chartdesigns'); state.editing.imageSets = await api.list('imagesets'); state.editing.teams = await api.list('teams'); state.editing.customWidgets = await api.list('customwidgets'); return renderEditor(); } // drivers' pictures are used to preview the Avatar framing
   view.innerHTML = '<h2>Customization</h2><div class="sub" id="customtabs" role="tablist"></div><div id="setupbox"></div>';
-  renderTabs(document.getElementById('customtabs'), [['layouts', 'Layout Editor'], ['rows', 'Leaderboard Editor'], ['charts', 'Chart Editor'], ['results', 'Race Results'], ['audio', 'Audio Settings'], ['images', 'Image Settings'], ['widgets', 'Widget Builder']], state.customSub, id => {
+  renderTabs(document.getElementById('customtabs'), [['layouts', 'Layout Editor'], ['rows', 'Leaderboard Editor'], ['charts', 'Chart Editor'], ['results', 'Race Results'], ['audio', 'Audio Settings'], ['images', 'Image Settings'], ['widgets', 'Widget Builder'], ['pluginpages','Plugin Pages & Tools']], state.customSub, id => {
     // the picture set and widget editors are closed by another tab: ask first when there are changes that are not saved
     if (imgEd && imgEd.dirty && !confirm('Discard your unsaved changes to this picture set?')) return;
     if (wbEd && wbEd.dirty && !confirm('Discard your unsaved changes to this widget?')) return;
@@ -166,6 +167,7 @@ async function renderCustom() {
     state.customSub = id; draftUndoEnd(imgEd); draftUndoEnd(wbEd); imgEd = null; wbEd = null; renderCustom();
   });
   const box = document.getElementById('setupbox');
+  if(state.customSub==='pluginpages')return renderPluginPages(box);
   if (state.customSub === 'audio') return renderAudioSets(box);
   if (state.customSub === 'charts') return renderChartEditor(box);
   if (state.customSub === 'rows') return renderRowList(box);
@@ -372,7 +374,7 @@ function sideHtml() {
   const size = common(w => w.textSize), tsize = common(w => w.titleSize), showT = common(w => w.showTitle !== false);
   const sameType = sel.every(w => w.type === w0.type), d0 = defs[0];
   const flagStyle = w0.type === 'flag' ? Widgets.flagStyleOf(w0.opt) : '';
-  const opts = w0.opt?.composition ? '<p class="muted">Composed widget · content is an independent copy from Widget Builder. The appearance controls below apply to this copy.</p>' : !sameType ? '' : d0.options.filter(o => !(d0.type==='clock'&&o.key==='style'&&typeof WidgetSettings!=='undefined') && !(o.classic && (w0.opt || {}).design) && !(o.rowsOnly && !(w0.opt || {}).design) && !(o.own && setIn((w0.opt || {}).imageSet, d0)) && !(o.when && !o.when.includes(flagStyle)) && !(o.show && !o.show(w0.opt || {}))).map(o => { // (show: a setting that only appears when it is of use, for instance the lane to compare with)
+  const opts = w0.opt?.composition ? '<p class="muted">Composed widget · content is an independent copy from Widget Builder. The appearance controls below apply to this copy.</p>' : !sameType ? '' : (typeof PluginDisplay!=='undefined'&&PluginDisplay.TYPES.has(w0.type)?PluginDisplayClient.options(w0).filter((_,i)=>i===0||sel.every(w=>w.opt?.pluginView===w0.opt?.pluginView)):d0.options).filter(o => !(d0.type==='clock'&&o.key==='style'&&typeof WidgetSettings!=='undefined') && !(o.classic && (w0.opt || {}).design) && !(o.rowsOnly && !(w0.opt || {}).design) && !(o.own && setIn((w0.opt || {}).imageSet, d0)) && !(o.when && !o.when.includes(flagStyle)) && !(o.show && !o.show(w0.opt || {}))).map(o => { // (show: a setting that only appears when it is of use, for instance the lane to compare with)
     const v = o.key === 'flagStyle' ? flagStyle : common(w => (w.opt || {})[o.key]) ?? (o.defaultOf ? o.defaultOf(w0.opt || {}) : o.default), id = `o-${o.key}`;
     if (o.type === 'imageset') return `<div class="field"><label for="${id}">${esc(o.label)}</label><select id="${id}" data-opt="${o.key}"><option value="">${ownPictures(w0) ? 'None: pictures of this widget' : d0.type === 'flag' ? 'None (shows the flag name as text)' : d0.type === 'lights' ? 'None (plain round lights)' : d0.type === 'avatar' ? 'Standard avatars (built in)' : o.noneLabel || 'None'}</option>${d0.type === 'avatar' ? `<option value="none"${v === 'none' ? ' selected' : ''}>No avatars (the first letter of the name)</option>` : ''}${(state.editing.imageSets || []).filter(r => r.kind === o.kind).map(r => `<option value="${esc(r.id)}"${r.id === v ? ' selected' : ''}>${esc(r.name)}</option>`).join('')}</select>${d0.type === 'avatar' || (state.editing.imageSets || []).some(r => r.kind === o.kind) ? '' : '<p class="muted">No sets yet. Make one under Customization > Image Settings.</p>'}${!setIn(v, d0) && sameType && ownPictures(w0) ? '<button class="btn" type="button" data-saveset="1">Save this widget\'s pictures as a set</button>' : ''}</div>`;
     if (o.type === 'team') return `<div class="field"><label for="${id}">${esc(o.label)}</label><select id="${id}" data-opt="${o.key}"><option value="">The team of the lane</option>${(state.editing.teams || []).map(t => `<option value="${esc(t.id)}"${t.id === v ? ' selected' : ''}>${esc(t.name || '(unnamed)')}</option>`).join('')}</select><span class="muted hint">A team of the lane is the team you chose on the Home tab. Choose a team from the database to always show that team.</span></div>`;
@@ -380,7 +382,7 @@ function sideHtml() {
     if (o.type === 'rowdesign') return `<div class="field"><label for="${id}">${esc(o.label)}</label><select id="${id}" data-opt="${o.key}"><option value="">Classic table (columns below)</option>${(state.editing.rowDesigns || []).map(r => `<option value="${esc(r.id)}"${r.id === v ? ' selected' : ''}>${esc(r.name)}</option>`).join('')}</select></div>`;
     if (o.type === 'checkbox') return `<div class="field"><label class="inline"><input id="${id}" type="checkbox" data-opt="${o.key}" ${v ? 'checked' : ''}> ${esc(o.label)}</label></div>`;
     if (o.type === 'range') return `<div class="field"><label for="${id}">${esc(o.label)} <output id="${id}-v">${esc(v)}${o.unit || ''}</output></label><input id="${id}" type="range" min="${o.min ?? 0}" max="${o.max ?? 100}" step="${o.step ?? 1}" data-opt="${o.key}" data-unit="${esc(o.unit || '')}" value="${esc(v)}">${o.hint ? `<span class="muted hint">${esc(o.hint)}</span>` : ''}</div>`;
-    if (o.type === 'select') return `<div class="field"><label for="${id}">${esc(o.label)}</label><select id="${id}" data-opt="${o.key}">${o.choices.map(([k, t]) => `<option value="${k}"${k === v ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>${(o.hintOf ? o.hintOf(v, (w0.opt || {})) : o.hint) ? `<span class="muted hint">${esc(o.hintOf ? o.hintOf(v, (w0.opt || {})) : o.hint)}</span>` : ''}</div>`;
+    if (o.type === 'select') return `<div class="field"><label for="${id}">${esc(o.label)}</label><select id="${id}" data-opt="${o.key}">${o.choices.map(([k, t]) => `<option value="${esc(k)}"${k === v ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select>${(o.hintOf ? o.hintOf(v, (w0.opt || {})) : o.hint) ? `<span class="muted hint">${esc(o.hintOf ? o.hintOf(v, (w0.opt || {})) : o.hint)}</span>` : ''}</div>`;
     if (o.type === 'imagelist') { // one picture per step, from full (first) to empty (last)
       const cnt = Widgets.clampInt((w0.opt || {})[o.count] ?? d0.options.find(x => x.key === o.count).default, 2, 20, 10), list = (w0.opt || {})[o.key] || [];
       return `<div class="field"><label>${esc(o.label)}</label><div class="optlist">${Array.from({ length: cnt }, (_, i) =>
@@ -453,7 +455,7 @@ function renderEditor() {
   if(!widgetEditorResizeWired && window.addEventListener){widgetEditorResizeWired=true;window.addEventListener('resize',()=>scheduleEditorFit());window.addEventListener('widget-fonts-ready',e=>scheduleEditorFit(e.detail?.elements));}
   const preset = PRESETS.find(p => p[1] === d.ratioW && p[2] === d.ratioH);
   const row = d.kind === 'row', REG = (row ? Widgets.REGISTRY.filter(x => x.perLane && !x.layoutOnly) : Widgets.REGISTRY).filter(x => !x.hidden); // the custom text kinds are made in the Widget Builder, not added from here
-  const GROUP_ORDER = ['All-in-One', 'Race', 'Driver', 'Slotcar', 'Team and Swaps', 'Position and Progress', 'Multi-Class', 'Lap Times and Records', 'Pit Stops', 'Delta Timers', 'Tyres', 'Push & Save', 'Weather', 'Charts', 'Custom', 'Controls']; // (every folder is in the list: the Layout Editor shows the folders in this order)
+  const GROUP_ORDER = ['All-in-One', 'Race', 'Driver', 'Slotcar', 'Team and Swaps', 'Position and Progress', 'Multi-Class', 'Lap Times and Records', 'Pit Stops', 'Delta Timers', 'Tyres', 'Push & Save', 'Weather', 'Charts', 'Plugins', 'Custom', 'Controls']; // (every folder is in the list: the Layout Editor shows the folders in this order)
   const groups = [...new Set(REG.map(x => x.group))].sort((a, b) => (GROUP_ORDER.indexOf(a) + 100) % 100 - (GROUP_ORDER.indexOf(b) + 100) % 100);
   const savedWidgets = (ed.customWidgets || []).filter(r => !row || /lane$/.test(r.type));
   // the widget list: each group is a folder that can be opened and closed (it stays as you left it)
@@ -864,7 +866,7 @@ function renderEditor() {
     else if (t.id === 's-radius') { const v = Frame.cornerPct(t.value); sel.forEach(w => { w.radius = v === null ? '' : v; }); }
     else if (t.id === 's-trans') { sel.forEach(w => { w.transparency = Number(t.value); }); const o = $('s-trans-v'); if (o) o.textContent = `${Frame.transparency(sel[0], d)}%`; }
     else if (t.dataset.color) { sel.forEach(w => { w[t.dataset.color] = t.value; }); const cb = side.querySelector(`[data-theme="${t.dataset.color}"]`); if (cb) cb.checked = false; }
-    else if (t.dataset.opt) sel.forEach(w => { w.opt = w.opt || {}; if (t.dataset.opt === 'preset' && AllInOne.TYPES.has(w.type)) w.opt = AllInOne.applyPreset(w.opt, t.value); w.opt[t.dataset.opt] = t.type === 'number' || t.type === 'range' ? Number(t.value) : t.type === 'checkbox' ? !!t.checked : t.value; });
+    else if (t.dataset.opt) sel.forEach(w => { w.opt = w.opt || {}; if(t.dataset.opt==='pluginView')Object.keys(w.opt).filter(k=>k.startsWith('plugin_')).forEach(k=>delete w.opt[k]); if (t.dataset.opt === 'preset' && AllInOne.TYPES.has(w.type)) w.opt = AllInOne.applyPreset(w.opt, t.value); w.opt[t.dataset.opt] = t.type === 'number' || t.type === 'range' ? Number(t.value) : t.type === 'checkbox' ? !!t.checked : t.value; });
     else return;
     if (t.dataset.opt && t.type === 'range' && t.id) { const out = $(t.id + '-v'); if (out) out.textContent = `${t.value}${t.dataset.unit || ''}`; } // (the figure beside a widget's own slider)
     mark(); drawCanvas(sel);
@@ -885,7 +887,7 @@ function renderEditor() {
       } catch (x) { $('e-msg').textContent = x.message; }
       return;
     }
-    if (t.dataset.opt === 'steps' || t.dataset.opt === 'design' || t.dataset.opt === 'imageSet' || t.dataset.opt === 'flagStyle' || (t.dataset.opt && ((Widgets.def(sel[0].type) || {}).options || []).some(o => o.rerender && o.key === t.dataset.opt))) { if (t.dataset.opt !== 'steps') { sel.forEach(w => { w.opt = w.opt || {}; w.opt[t.dataset.opt] = t.value; }); step(); } redraw(); return; } // the number of picture slots changed
+    if (t.dataset.opt === 'pluginView' || t.dataset.opt === 'steps' || t.dataset.opt === 'design' || t.dataset.opt === 'imageSet' || t.dataset.opt === 'flagStyle' || (t.dataset.opt && ((Widgets.def(sel[0].type) || {}).options || []).some(o => o.rerender && o.key === t.dataset.opt))) { if (t.dataset.opt !== 'steps') { sel.forEach(w => { w.opt = w.opt || {}; w.opt[t.dataset.opt] = t.value; }); step(); } redraw(); return; } // the number of picture slots changed
     if (t.dataset.optimg) { // a picture for one option: shrunk, transparency kept
       if (!t.files || !t.files[0]) return;
       try { const img = await resizeImage(t.files[0], 512, true); sel.forEach(w => { w.opt = w.opt || {}; w.opt[t.dataset.optimg] = img; }); step(); redraw(); }

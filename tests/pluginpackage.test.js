@@ -1,0 +1,26 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),P=require('../pluginpackage'),{Store}=require('../pluginstore'),DB=require('../db');
+const root=path.resolve(__dirname,'../.tmp-test/plugins-package-'+process.pid);fs.mkdirSync(root,{recursive:true});
+const make=(version='1.0.0')=>({format:P.FORMAT,apiVersion:1,manifest:{id:'test.example',name:'Example',version,author:'Tests',license:'MIT',minAppVersion:'1.99.2',runtime:'node',settings:[{id:'amount',label:'Amount',type:'number',min:1,max:10,default:3},{id:'on',label:'On',type:'boolean',default:true}],commands:[{id:'hello',label:'Hello'}]},entry:'index.cjs',files:{'index.cjs':Buffer.from('throw Error("Installation must never execute me");').toString('base64')}});
+const pack=make();assert.deepEqual(P.validate(P.validate(pack)),P.validate(pack));
+for(const file of ['../bad.cjs','/bad.cjs','C:/bad.cjs','a\\b.cjs','NUL.js','a/CON.txt','trailing./a.js','a.exe'])assert.throws(()=>P.validate({...pack,files:{[file]:pack.files['index.cjs']}}));
+assert.throws(()=>P.validate({...pack,files:{...pack.files,'INDEX.CJS':''}}),/duplicate/);
+assert.throws(()=>P.validate({...pack,files:{...pack.files,'a.js':'','a.js/b.js':''}}),/directory/);
+assert.throws(()=>P.validate({...pack,format:'slotforge-content-pack'}),/Content packs/);
+assert.throws(()=>P.validate({...pack,apiVersion:2}));
+assert.throws(()=>P.validate({...pack,manifest:{...pack.manifest,runtime:'shell'}}));
+assert.throws(()=>P.validate({...pack,manifest:{...pack.manifest,name:'<script>'}}));
+assert.throws(()=>P.validate(pack,'1.99.1'),/incompatible/);
+assert.throws(()=>P.validate({...pack,manifest:{...pack.manifest,settings:[{id:'constructor',label:'x',type:'text',default:''}]}}));
+const store=new Store(root,'1.99.2');store.install(pack);assert.equal(store.get('test.example').enabled,false);assert.equal(store.verify('test.example').settings.amount,3);
+assert.throws(()=>store.saveSettings('test.example',{amount:11}));assert.throws(()=>store.saveSettings('test.example',{extra:1}));
+store.saveSettings('test.example',{amount:8,on:false});store.enable('test.example',true);
+store.install(make('1.1.0'));assert.equal(store.get('test.example').enabled,false);store.rollback('test.example');assert.equal(store.get('test.example').current.settings.amount,8);assert.equal(store.get('test.example').enabled,false);
+store.install(make('1.1.0'));assert.equal(store.verify('test.example').manifest.version,'1.1.0');
+const dir=store.packageDir(store.get('test.example').current),entry=path.join(dir,'index.cjs');fs.writeFileSync(entry,'tampered');assert.throws(()=>store.verify('test.example'),/changed/);fs.writeFileSync(entry,Buffer.from(pack.files['index.cjs'],'base64'));
+fs.writeFileSync(path.join(dir,'extra.txt'),'unexpected');assert.throws(()=>store.verify('test.example'),/Unexpected/);fs.unlinkSync(path.join(dir,'extra.txt'));
+fs.unlinkSync(entry);assert.throws(()=>store.verify('test.example'),/missing/);fs.writeFileSync(entry,Buffer.from(pack.files['index.cjs'],'base64'));
+const before=JSON.stringify(store.state),atomic=DB.writeAtomic;DB.writeAtomic=()=>{throw Error('Simulated disk failure');};try{assert.throws(()=>store.enable('test.example',true),/disk/);assert.equal(JSON.stringify(store.state),before);}finally{DB.writeAtomic=atomic;}
+const reloaded=new Store(root,'1.99.2');assert.equal(reloaded.verify('test.example').manifest.version,'1.1.0');
+const data=reloaded.verify('test.example').dataDir;fs.writeFileSync(path.join(data,'kept.json'),'{}');reloaded.remove('test.example');assert.ok(fs.existsSync(path.join(data,'kept.json')));assert.equal(reloaded.state.plugins.length,0);
+fs.writeFileSync(reloaded.file,'broken');const broken=new Store(root,'1.99.2');assert.ok(broken.error);assert.throws(()=>broken.install(pack),/unavailable/);
+console.log('PLUGIN PACKAGE PASSED: strict package validation, no execution on install, settings, disabled update/rollback, file integrity, atomic failure and data retention.');

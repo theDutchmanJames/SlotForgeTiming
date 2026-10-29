@@ -73,7 +73,7 @@
     R.classStandings=()=>{
       const rows=decorate(R.standings(),R.multiclass,x=>({laps:R.lapsOf(x.car),time:R.timeOf(x.car),best:x.car.best,bestMode:R.type==='practice'||R.type==='qualifying'}));
       if(R.distance||R.compare)rows.forEach(x=>{if(x.classPos>1){const leader=rows.find(y=>y.raceClass===x.raceClass&&y.classPos===1);const v=leader?R.distanceGapTo(x.car,leader.car):null;x.classGap=Number.isFinite(v)?{kind:'time',value:v}:null;}});
-      const pts=scoreHeat(rows.map(x=>({...x.car,pos:x.pos,laps:R.lapsOf(x.car),adjPoints:R.adjOf(x.car).points})),R.multiclass,cfg.classPoints||[],cfg.classFastestBonus||0);
+      const pts=scoreHeat(rows.map(x=>({...x.car,pos:x.pos,laps:R.lapsOf(x.car),adjPoints:R.adjOf(x.car).points,pluginPoints:R.pluginPointsOf?.(x.car,x.pos)||0})),R.multiclass,cfg.classPoints||[],cfg.classFastestBonus||0);
       return rows.map(x=>{const times=rows.filter(y=>y.raceClass===x.raceClass&&!out(y.car)&&Number.isFinite(y.car.best)&&y.car.best>0).map(y=>y.car.best);return {...x,classBest:times.length?Math.min(...times):null,classPoints:R.multiclass.pointsMode==='overall'||!cfg.classPoints?.length?null:pts.find(y=>y.lane===x.car.lane)?.points??null};});
     };
     const display=R.displayStandings?.bind(R)||R.standings.bind(R);
@@ -81,7 +81,7 @@
   }
   function scoreHeat(rows,p,points,bonus=0){
     return p.classes.flatMap(cls=>{const pool=rows.filter(r=>r.raceClass===cls.id),eligible=pool.filter(r=>!out(r)),best=eligible.filter(r=>Number.isFinite(r.best)&&r.best>0).sort((a,b)=>a.best-b.best)[0],pt=cls.points.length?cls.points:points;
-      return pool.map(r=>{const pos=eligible.indexOf(r)+1;return {...r,overallPos:r.pos,pos:pos||pool.indexOf(r)+1,classPos:pos||null,points:pos?(pt[pos-1]||0)+(r.adjPoints||0)+(r===best?bonus:0):0,bonus:r===best?bonus:0};});});
+      return pool.map(r=>{const pos=eligible.indexOf(r)+1;return {...r,overallPos:r.pos,pos:pos||pool.indexOf(r)+1,classPos:pos||null,points:pos?(pt[pos-1]||0)+(r.adjPoints||0)+(r.pluginPoints||0)+(r===best?bonus:0):0,bonus:r===best?bonus:0};});});
   }
   function heatStandings(H,cfg,extra,create){
     const p=cfg.multiclass;if(!p)return [];

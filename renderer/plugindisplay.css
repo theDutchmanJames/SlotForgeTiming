@@ -1,0 +1,11 @@
+.plugin-view{width:100%;min-width:0;line-height:1.2;white-space:normal;font-size:1em}
+.plugin-pages>header{display:block;position:static;padding:20px}.plugin-pages>header h2{margin:0 0 8px}.plugin-pages>header p{margin:0}
+:is([data-theme="light"],[data-theme="ocean"]) .pd-page-output .pd-green{color:#14783d}:is([data-theme="light"],[data-theme="ocean"]) .pd-page-output .pd-blue{color:#1763bd}:is([data-theme="light"],[data-theme="ocean"]) .pd-page-output .pd-amber{color:#916200}
+.pd-block{min-width:0;max-width:100%;overflow-wrap:anywhere;box-sizing:border-box}
+.pd-block small{display:block;font-size:.45em;font-weight:500;opacity:.8;margin-bottom:.2em}
+.pd-row{display:flex;align-items:center;gap:.55em}.pd-row>.pd-block{flex:1;min-width:0}
+.pd-column{display:flex;flex-direction:column;gap:.45em}.pd-text{font-size:.65em}.pd-metric span{font-size:1em}.lw .pd-metric>span{white-space:nowrap}
+.pd-track{width:100%;height:.4em;min-height:3px;border-radius:.2em;background:color-mix(in srgb,currentColor 15%,transparent);overflow:hidden}.pd-track i{display:block;height:100%;background:currentColor}
+.pd-line svg{display:block;width:100%;max-height:4em}.pd-muted{opacity:.75}.pd-green{color:color-mix(in srgb,#29b96c 70%,currentColor)}.pd-amber{color:color-mix(in srgb,#d99910 70%,currentColor)}.pd-red{color:color-mix(in srgb,#f05460 70%,currentColor)}.pd-blue{color:color-mix(in srgb,#429cff 70%,currentColor)}.pd-purple{color:color-mix(in srgb,#ac80f5 70%,currentColor)}.pd-lane{color:var(--pd-lane,currentColor)}
+.pd-workspace{display:grid;grid-template-columns:230px minmax(0,1fr);gap:16px;margin-top:16px}.pd-workspace nav{display:flex;flex-direction:column;gap:8px}.pd-workspace nav .btn{white-space:normal;text-align:left}.pd-workspace nav small{display:block;opacity:.75;font-weight:400}.pd-workspace section{min-width:0}.pd-page-output{font-size:32px;padding:24px 0;max-width:100%}
+@media(max-width:750px){.pd-workspace{grid-template-columns:1fr}.pd-workspace nav{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}.pd-page-output{font-size:24px}}

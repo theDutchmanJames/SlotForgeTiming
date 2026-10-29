@@ -17,7 +17,7 @@ const LiveShare = (() => {
     const { eng, layout, base } = ctx;
     const st = eng.displayStandings ? eng.displayStandings() : eng.standings(), tk = ctx.tokens ? Tk.view(ctx.tokens) : null;
     const champ = ctx.champ ? { on: !!ctx.champ.on, list: ctx.champ.list || [], done: new Map(ctx.champ.done || []) } : { on: false, list: [], done: new Map() };
-    return { layout, champ, roster: ctx.roster || null, prior: ctx.prior || null, past: ctx.past || null, season: ctx.season || null, rowDesigns: ctx.rowDesigns || [], chartDesigns: ctx.chartDesigns || [], imageSets: ctx.imageSets || [], teams: ctx.teams || [], clubLogo: ctx.clubLogo || '', distUnit: ctx.distUnit === 'ft' ? 'ft' : 'm', eng, track: ctx.track, now: ctx.now, phase: ctx.phase, calling: !!ctx.calling, lights: ctx.lights, setup: ctx.setup, heat: ctx.heat,
+    return { raceId:ctx.raceId, ...(ctx.pluginViews!==undefined?{pluginViews:ctx.pluginViews}:{}), layout, champ, roster: ctx.roster || null, prior: ctx.prior || null, past: ctx.past || null, season: ctx.season || null, rowDesigns: ctx.rowDesigns || [], chartDesigns: ctx.chartDesigns || [], imageSets: ctx.imageSets || [], teams: ctx.teams || [], clubLogo: ctx.clubLogo || '', distUnit: ctx.distUnit === 'ft' ? 'ft' : 'm', eng, track: ctx.track, now: ctx.now, phase: ctx.phase, calling: !!ctx.calling, lights: ctx.lights, setup: ctx.setup, heat: ctx.heat,
       carByLane: l => eng.cars.find(c => c.lane === l) || (eng.rivals || []).find(c => c.lane === l) || null, rowOf: c => st.find(x => x.car === c),
       flashOf: c => ctx.flash.get(c), standings: () => st, tokens: tk,
       laneColorsOf: lane => { // (a lane whose time is up is the colour for that, whatever colour the lane has)
@@ -46,7 +46,7 @@ const LiveShare = (() => {
   const wireNumber = c => c.layout?.widgets?.some(w => w.designRules?.length) ? v => v : cap;
   // everything of the dynamic data that is not a list that grows: c = { raceId, eng, phase, calling, lights, heat, flash, bestAll, bestAllName, bestBy, now }
   function core(c) {
-    const e = c.eng, number = wireNumber(c), d = { raceId: c.raceId, sentNow: number(c.now), phase: c.phase, calling: !!c.calling, lights: c.lights, heat: c.heat, season: c.season || null, bestAll: number(fin(c.bestAll)), bestAllName: c.bestAllName, bestBy: [...c.bestBy].map(([k, v]) => [k, number(v)]), champ: c.champ || null, tokens: c.tokens ? { ...c.tokens, ends: c.tokens.ends.map(number) } : null,
+    const e = c.eng, number = wireNumber(c), d = { raceId: c.raceId, pluginViews:c.pluginViews||{}, sentNow: number(c.now), phase: c.phase, calling: !!c.calling, lights: c.lights, heat: c.heat, season: c.season || null, bestAll: number(fin(c.bestAll)), bestAllName: c.bestAllName, bestBy: [...c.bestBy].map(([k, v]) => [k, number(v)]), champ: c.champ || null, tokens: c.tokens ? { ...c.tokens, ends: c.tokens.ends.map(number) } : null,
       flash: [...c.flash].map(([car, f]) => [e.cars.indexOf(car), number(f.at), number(f.time), f.kind, f.index]).filter(x => x[0] >= 0) };
     ENG.forEach(k => { d[k] = number(e[k]); });
     if(e.resources)d.resources={accounts:number(e.resources.accounts),revision:e.resources.revision};
@@ -59,7 +59,7 @@ const LiveShare = (() => {
   const SWAP_KEYS = ['en', 'swapLost', 'swapLaps', 'enSwapAt', 'driverId', 'driverName', 'nickname', 'callsign', 'flag', 'avatar', 'enSwapDoneAt'];
   // the Damage System: the damage of a car, once it has had any (a race without damage sends none of this)
   const DMG_KEYS = ['dmg', 'dmgTotal', 'dmgLvl', 'dmgDue', 'dmgOut', 'repairs', 'repairMs', 'repairedAt', 'damageFactor', 'fail', 'failN', 'failures', 'failMs', 'failOut']; // (Car Failures, 1.43.0: the failure a car has now, how many it had, which were cleared)
-  const carCore = (car, eng, number=cap) => { const o = {}; if (eng?.pushSave?.mode === 'median') o.paceReference = eng.psRef(car); CAR.forEach(k => { if (!GROWING.includes(k)) o[k] = number(car[k]); }); ['pitHold', 'pitSensor', 'pitRearm', 'redInterrupted', 'redLaps', 'pitLaps', 'resumed', 'started', 'fuelSamples'].forEach(k => { if (k in car) o[k] = number(car[k]); }); if (car.en) SWAP_KEYS.forEach(k => { o[k] = number(car[k]); }); if (car.dmgTotal > 0 || car.dmgOut || car.failN > 0 || car.failOut) DMG_KEYS.forEach(k => { o[k] = number(car[k]); }); return o; };
+  const carCore = (car, eng, number=cap) => { const o = {}; if(eng?.cfg?.rulePlugin)o.pluginTimeMs=number(eng.pluginTimeOf(car)); if (eng?.pushSave?.mode === 'median') o.paceReference = eng.psRef(car); CAR.forEach(k => { if (!GROWING.includes(k)) o[k] = number(car[k]); }); ['pitHold', 'pitSensor', 'pitRearm', 'redInterrupted', 'redLaps', 'pitLaps', 'resumed', 'started', 'fuelSamples'].forEach(k => { if (k in car) o[k] = number(car[k]); }); if (car.en) SWAP_KEYS.forEach(k => { o[k] = number(car[k]); }); if (car.dmgTotal > 0 || car.dmgOut || car.failN > 0 || car.failOut) DMG_KEYS.forEach(k => { o[k] = number(car[k]); }); return o; };
 
   // the whole state in one go (what a window that opens late is given; also what the tests compare with)
   function packDynamic(c) {
@@ -162,7 +162,7 @@ const LiveShare = (() => {
       shared(localNow) {
         const d = dyn, t = v.clock(localNow), flash = new Map();
         d.flash.forEach(([i, at, time, kind, index]) => { if (eng.cars[i]) flash.set(eng.cars[i], { at, time, kind, index }); });
-        return makeShared({ eng, track: stat.track, now: t, phase: d.phase, calling: !!d.calling, lights: d.lights, setup: stat.setup, heat: d.heat, flash, layout: stat.layout, rowDesigns: stat.rowDesigns, chartDesigns: stat.chartDesigns, imageSets: stat.imageSets, teams: stat.teams, clubLogo: stat.clubLogo, distUnit: stat.distUnit, roster: stat.roster || null, prior: stat.prior || null, past: stat.past || null, season: d.season || null,
+        return makeShared({ raceId:stat.raceId, pluginViews:d.pluginViews||{}, eng, track: stat.track, now: t, phase: d.phase, calling: !!d.calling, lights: d.lights, setup: stat.setup, heat: d.heat, flash, layout: stat.layout, rowDesigns: stat.rowDesigns, chartDesigns: stat.chartDesigns, imageSets: stat.imageSets, teams: stat.teams, clubLogo: stat.clubLogo, distUnit: stat.distUnit, roster: stat.roster || null, prior: stat.prior || null, past: stat.past || null, season: d.season || null,
           champ: d.champ, tokens: d.tokens || null, bestAll: d.bestAll === null ? Infinity : d.bestAll, bestAllName: d.bestAllName, bestBy: new Map(d.bestBy),
           base: { personal, track: stat.base.track === null ? Infinity : stat.base.track, trackName: stat.base.trackName } });
       }

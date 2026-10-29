@@ -644,6 +644,7 @@
   REGISTRY.splice(REGISTRY.map(x=>x.group).lastIndexOf('Position and Progress')+1,0,...[['classname','Class'],['classposition','Class position'],['classgap','Gap to class leader'],['classpoints','Class points'],['classbest','Class best lap']].map(([type,label])=>T(type,label,'Multi-Class',{perLane:true,w:180,h:85,textSize:32})));
   REGISTRY.unshift(...Aio.DEFINITIONS.map(([type,label,w,h]) => T(type,label,'All-in-One',{perLane:type!=='aiorace',layoutOnly:true,w,h,noTitle:true,textSize:30,options:Aio.options(type)})));
   REGISTRY.splice(REGISTRY.map(x=>x.group).lastIndexOf('Pit Stops')+1,0,...[['needsattention','Needs Attention'],['recentevents','Recent Events']].map(([type,label])=>T(type,label,'Pit Stops',{w:460,h:360,textSize:22,options:Pcw.options(type),layoutOnly:true})));
+  REGISTRY.splice(REGISTRY.findIndex(d=>d.group==='Custom'),0,T('pluginlane','Plugin lane widget','Plugins',{perLane:true,layoutOnly:true,w:240,h:160,textSize:28,noTitle:true}),T('pluginrace','Plugin race widget','Plugins',{layoutOnly:true,w:400,h:220,textSize:28,noTitle:true}));
   const def = type => REGISTRY.find(d => d.type === type);
   // All content previews use the same formatter as the live race. Controls keep
   // their static labels; they have no simulated hardware action.

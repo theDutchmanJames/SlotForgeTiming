@@ -16,7 +16,7 @@ const remote = (eng, now) => { const c = context(eng, now), v = Share.viewer(); 
 
 test('all seven widgets have unique definitions, samples, per-lane rendering and missing-lane behavior', () => {
   const e = race();
-  assert.equal(W.REGISTRY.length, 94);
+  assert.equal(W.REGISTRY.length, 96);
   for (const [type, label, group] of St.DEFINITIONS) {
     const d = W.def(type); assert.equal(d.label, label); assert.equal(d.group, group); assert(d.perLane);
     assert(d.sample(0, {}).includes('strategy-value'));

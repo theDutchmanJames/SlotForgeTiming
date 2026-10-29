@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.99.3 — 2026-10-29
+
+### Plugins
+
+- Added separately installed JavaScript plugins with generated settings, commands, persistent data, supervised background processes, logs, safe startup, updates and rollback.
+- Added plugin timing interfaces with sensor assignments and acknowledged power/light controls through the shared timing path.
+- Added plugin widgets, pages and tools using app-rendered controls and existing widget styling, including shared race screens.
+- Added bounded race-rule contributions for fuel use, tyre wear, time consequences and competition points. Rules are frozen before racing and preserved with recovery and results; Time Token sessions are not supported by this API.
+- Improved the Plugins page with clearer feature groups, relevant navigation shortcuts and explanations of installation, settings resets, recovery and rollback.
+
+### Content Packs and integration repairs
+
+- Added versioned Content Packs under Import and Export for sharing reusable content and themes, with dependency handling, preview, updates and rollback. Content Packs remain separate from executable plugins.
+- Fixed plugin recovery validation, package-manifest integrity checks, missing timing-event detection, tool execution/re-entry handling and display sample indexes.
+- Fixed Content Pack rollback identity validation and native heat disqualification metadata; reduced race-rule lap-history processing.
+- Added developer API documentation, example fixtures and automated integration tests. Physical timing hardware was not available for validation.
+
 ## 1.99.2 — 2026-10-29
 
 ### Widget customization and live feedback

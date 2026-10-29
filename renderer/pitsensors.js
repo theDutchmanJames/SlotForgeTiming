@@ -2,7 +2,7 @@
 (function (root) {
   function bind(o) {
     const offs = [], link = o.link; let lastEngine = null, lastStatus = '';
-    const relevant = e => !o.disabled && (!['parallel', 'phidget'].includes(o.hardware) || (link.config.pitMode === 'shared' ? e.kind === 'lap' : link.config.pitMode === 'separate' && e.kind === 'pit'));
+    const relevant = e => !o.disabled && (!['parallel', 'phidget', 'plugin'].includes(o.hardware) || (link.config.pitMode === 'shared' ? e.kind === 'lap' : link.config.pitMode === 'separate' && e.kind === 'pit'));
     const observe = e => {
       const r = o.eng(), lane = o.hardware === 'trackmate' ? o.map()[e.lane] : e.lane;
       const i = r.cars.findIndex(c => c.lane === lane);
