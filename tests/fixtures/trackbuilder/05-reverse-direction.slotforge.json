@@ -1,0 +1,1154 @@
+{
+  "format": "slotforge.layout",
+  "version": 1,
+  "title": "2 lane oval",
+  "pieces": [
+    {
+      "id": "piece-00",
+      "definitionId": "test:straight",
+      "x": 750,
+      "y": -300,
+      "angle": 37,
+      "flip": true
+    },
+    {
+      "id": "piece-01",
+      "definitionId": "test:straight",
+      "x": 1025.5292509663159,
+      "y": -92.37381701254336,
+      "angle": 37,
+      "flip": true
+    },
+    {
+      "id": "piece-02",
+      "definitionId": "test:straight",
+      "x": 1301.058501932632,
+      "y": 115.25236597491329,
+      "angle": 37,
+      "flip": true
+    },
+    {
+      "id": "piece-03",
+      "definitionId": "test:curve",
+      "x": 1937.676766790177,
+      "y": -156.30275706600577,
+      "angle": 37,
+      "flip": true
+    },
+    {
+      "id": "piece-04",
+      "definitionId": "test:curve",
+      "x": 1937.676766725313,
+      "y": -156.3027569799284,
+      "angle": 7,
+      "flip": true
+    },
+    {
+      "id": "piece-05",
+      "definitionId": "test:curve",
+      "x": 1937.6767667121778,
+      "y": -156.30275687295114,
+      "angle": -23,
+      "flip": true
+    },
+    {
+      "id": "piece-06",
+      "definitionId": "test:curve",
+      "x": 1937.6767667542913,
+      "y": -156.3027567737385,
+      "angle": -53,
+      "flip": true
+    },
+    {
+      "id": "piece-07",
+      "definitionId": "test:curve",
+      "x": 1937.6767668403686,
+      "y": -156.3027567088747,
+      "angle": -83,
+      "flip": true
+    },
+    {
+      "id": "piece-08",
+      "definitionId": "test:curve",
+      "x": 1937.6767669473459,
+      "y": -156.3027566957394,
+      "angle": -113,
+      "flip": true
+    },
+    {
+      "id": "piece-09",
+      "definitionId": "test:straight",
+      "x": 2298.7657809377874,
+      "y": -635.4840627662284,
+      "angle": -143,
+      "flip": true
+    },
+    {
+      "id": "piece-10",
+      "definitionId": "test:straight",
+      "x": 2023.2365299714713,
+      "y": -843.110245753685,
+      "angle": -143,
+      "flip": true
+    },
+    {
+      "id": "piece-11",
+      "definitionId": "test:straight",
+      "x": 1747.7072790051552,
+      "y": -1050.7364287411417,
+      "angle": -143,
+      "flip": true
+    },
+    {
+      "id": "piece-12",
+      "definitionId": "test:curve",
+      "x": 1111.0890141476102,
+      "y": -779.1813057002225,
+      "angle": -143,
+      "flip": true
+    },
+    {
+      "id": "piece-13",
+      "definitionId": "test:curve",
+      "x": 1111.0890142124742,
+      "y": -779.1813057863001,
+      "angle": -173,
+      "flip": true
+    },
+    {
+      "id": "piece-14",
+      "definitionId": "test:curve",
+      "x": 1111.0890142256094,
+      "y": -779.1813058932773,
+      "angle": 157,
+      "flip": true
+    },
+    {
+      "id": "piece-15",
+      "definitionId": "test:curve",
+      "x": 1111.0890141834961,
+      "y": -779.1813059924898,
+      "angle": 127,
+      "flip": true
+    },
+    {
+      "id": "piece-16",
+      "definitionId": "test:curve",
+      "x": 1111.0890140974188,
+      "y": -779.1813060573538,
+      "angle": 97,
+      "flip": true
+    },
+    {
+      "id": "piece-17",
+      "definitionId": "test:curve",
+      "x": 1111.0890139904413,
+      "y": -779.181306070489,
+      "angle": 67,
+      "flip": true
+    }
+  ],
+  "definitions": [
+    {
+      "id": "test:curve",
+      "name": "Curve",
+      "sku": "",
+      "pack": "Custom",
+      "family": "test",
+      "parameters": {
+        "type": "curve",
+        "widthMm": 200,
+        "innerRadiusMm": 400,
+        "angleDeg": 30,
+        "laneCount": 2,
+        "laneSpacingMm": 100
+      },
+      "color": "#343a40",
+      "status": "user-defined",
+      "mirror": true
+    },
+    {
+      "id": "test:straight",
+      "name": "Straight",
+      "sku": "",
+      "pack": "Custom",
+      "family": "test",
+      "parameters": {
+        "type": "straight",
+        "widthMm": 200,
+        "lengthMm": 345,
+        "laneCount": 2,
+        "laneSpacingMm": 100
+      },
+      "color": "#343a40",
+      "status": "user-defined",
+      "mirror": true
+    }
+  ],
+  "profile": {
+    "speed": 1200,
+    "acceleration": 1300,
+    "brake": 2200,
+    "corner": 0.57,
+    "drift": 10
+  },
+  "units": "mm",
+  "precision": "Nominal or user-entered dimensions; not verified mould measurements.",
+  "timing": {
+    "version": 1,
+    "direction": -1,
+    "directionConvention": "canonical-route-distance",
+    "startFinish": {
+      "pieceId": "piece-05",
+      "fraction": 0.37
+    },
+    "routeLabels": {},
+    "routeMappingRevision": "14329e33027b35576fd9c668c94c32413a126fb454c465615e945713cdee849c",
+    "requiresLaneRemap": false,
+    "startFinishOffsets": [
+      {
+        "routeId": "route-996775d15819bd22a317d10ef2c2ee3f5f0d8ada9eb0c9724c4387d07d3d25b8",
+        "offsetMm": 1717.5110039923823
+      },
+      {
+        "routeId": "route-dd90679a823e780f91cb5cf265cdce99eef4a80ab751385ce0c34da7da82579d",
+        "offsetMm": 1593.4180941755858
+      }
+    ]
+  },
+  "design": {
+    "id": "fixture-2",
+    "revision": "16d16e564b1116f79ce7b56454e214a598c7ab9d862e89cff6be5511880f31df"
+  },
+  "producer": {
+    "name": "SlotForge Track Builder",
+    "version": "0.2.1"
+  },
+  "integration": {
+    "target": "SlotForge Timing",
+    "contractVersion": "1.0.0-draft.1",
+    "status": "draft-for-coordination",
+    "profilePurpose": "illustrative-animation",
+    "image": "optional-separate-png"
+  },
+  "compatibility": {
+    "liveTracker": "through-routes",
+    "components": 1,
+    "openEnds": 0,
+    "ambiguousEnds": 0,
+    "issues": [
+      {
+        "code": "elevation-order-unavailable",
+        "severity": "warning",
+        "message": "This is a flat drawing. Elevation, bridges and crossing order are not modelled."
+      }
+    ]
+  },
+  "track": {
+    "laneCount": 2,
+    "slotCountsInDrawing": [
+      2
+    ],
+    "validClosedRouteCount": 2,
+    "lanes": [
+      {
+        "id": "route-996775d15819bd22a317d10ef2c2ee3f5f0d8ada9eb0c9724c4387d07d3d25b8",
+        "label": "Lane 1",
+        "lengthMm": 5525.751918948771
+      },
+      {
+        "id": "route-dd90679a823e780f91cb5cf265cdce99eef4a80ab751385ce0c34da7da82579d",
+        "label": "Lane 2",
+        "lengthMm": 4897.433388230816
+      }
+    ]
+  },
+  "preparedGeometry": {
+    "closed": true,
+    "boundsMm": [
+      511.0890140875765,
+      -1379.1813057961422,
+      2026.5877527626342,
+      1822.878548826056
+    ],
+    "surfaces": [
+      {
+        "pieceId": "piece-00",
+        "outline": "M 0 0 H 345 V 200 H 0 Z",
+        "transform": {
+          "x": 750,
+          "y": -300,
+          "angleDeg": 37,
+          "reflectY": true
+        },
+        "kind": "straight"
+      },
+      {
+        "pieceId": "piece-01",
+        "outline": "M 0 0 H 345 V 200 H 0 Z",
+        "transform": {
+          "x": 1025.5292509663159,
+          "y": -92.37381701254336,
+          "angleDeg": 37,
+          "reflectY": true
+        },
+        "kind": "straight"
+      },
+      {
+        "pieceId": "piece-02",
+        "outline": "M 0 0 H 345 V 200 H 0 Z",
+        "transform": {
+          "x": 1301.058501932632,
+          "y": 115.25236597491329,
+          "angleDeg": 37,
+          "reflectY": true
+        },
+        "kind": "straight"
+      },
+      {
+        "pieceId": "piece-03",
+        "outline": "M 0 -600 A 600 600 0 0 1 300 -519.615242 L 200 -346.410162 A 400 400 0 0 0 0 -400 Z",
+        "transform": {
+          "x": 1937.676766790177,
+          "y": -156.30275706600577,
+          "angleDeg": 37,
+          "reflectY": true
+        },
+        "kind": "curve"
+      },
+      {
+        "pieceId": "piece-04",
+        "outline": "M 0 -600 A 600 600 0 0 1 300 -519.615242 L 200 -346.410162 A 400 400 0 0 0 0 -400 Z",
+        "transform": {
+          "x": 1937.676766725313,
+          "y": -156.3027569799284,
+          "angleDeg": 7,
+          "reflectY": true
+        },
+        "kind": "curve"
+      },
+      {
+        "pieceId": "piece-05",
+        "outline": "M 0 -600 A 600 600 0 0 1 300 -519.615242 L 200 -346.410162 A 400 400 0 0 0 0 -400 Z",
+        "transform": {
+          "x": 1937.6767667121778,
+          "y": -156.30275687295114,
+          "angleDeg": -23,
+          "reflectY": true
+        },
+        "kind": "curve"
+      },
+      {
+        "pieceId": "piece-06",
+        "outline": "M 0 -600 A 600 600 0 0 1 300 -519.615242 L 200 -346.410162 A 400 400 0 0 0 0 -400 Z",
+        "transform": {
+          "x": 1937.6767667542913,
+          "y": -156.3027567737385,
+          "angleDeg": -53,
+          "reflectY": true
+        },
+        "kind": "curve"
+      },
+      {
+        "pieceId": "piece-07",
+        "outline": "M 0 -600 A 600 600 0 0 1 300 -519.615242 L 200 -346.410162 A 400 400 0 0 0 0 -400 Z",
+        "transform": {
+          "x": 1937.6767668403686,
+          "y": -156.3027567088747,
+          "angleDeg": -83,
+          "reflectY": true
+        },
+        "kind": "curve"
+      },
+      {
+        "pieceId": "piece-08",
+        "outline": "M 0 -600 A 600 600 0 0 1 300 -519.615242 L 200 -346.410162 A 400 400 0 0 0 0 -400 Z",
+        "transform": {
+          "x": 1937.6767669473459,
+          "y": -156.3027566957394,
+          "angleDeg": -113,
+          "reflectY": true
+        },
+        "kind": "curve"
+      },
+      {
+        "pieceId": "piece-09",
+        "outline": "M 0 0 H 345 V 200 H 0 Z",
+        "transform": {
+          "x": 2298.7657809377874,
+          "y": -635.4840627662284,
+          "angleDeg": -143,
+          "reflectY": true
+        },
+        "kind": "straight"
+      },
+      {
+        "pieceId": "piece-10",
+        "outline": "M 0 0 H 345 V 200 H 0 Z",
+        "transform": {
+          "x": 2023.2365299714713,
+          "y": -843.110245753685,
+          "angleDeg": -143,
+          "reflectY": true
+        },
+        "kind": "straight"
+      },
+      {
+        "pieceId": "piece-11",
+        "outline": "M 0 0 H 345 V 200 H 0 Z",
+        "transform": {
+          "x": 1747.7072790051552,
+          "y": -1050.7364287411417,
+          "angleDeg": -143,
+          "reflectY": true
+        },
+        "kind": "straight"
+      },
+      {
+        "pieceId": "piece-12",
+        "outline": "M 0 -600 A 600 600 0 0 1 300 -519.615242 L 200 -346.410162 A 400 400 0 0 0 0 -400 Z",
+        "transform": {
+          "x": 1111.0890141476102,
+          "y": -779.1813057002225,
+          "angleDeg": -143,
+          "reflectY": true
+        },
+        "kind": "curve"
+      },
+      {
+        "pieceId": "piece-13",
+        "outline": "M 0 -600 A 600 600 0 0 1 300 -519.615242 L 200 -346.410162 A 400 400 0 0 0 0 -400 Z",
+        "transform": {
+          "x": 1111.0890142124742,
+          "y": -779.1813057863001,
+          "angleDeg": -173,
+          "reflectY": true
+        },
+        "kind": "curve"
+      },
+      {
+        "pieceId": "piece-14",
+        "outline": "M 0 -600 A 600 600 0 0 1 300 -519.615242 L 200 -346.410162 A 400 400 0 0 0 0 -400 Z",
+        "transform": {
+          "x": 1111.0890142256094,
+          "y": -779.1813058932773,
+          "angleDeg": 157,
+          "reflectY": true
+        },
+        "kind": "curve"
+      },
+      {
+        "pieceId": "piece-15",
+        "outline": "M 0 -600 A 600 600 0 0 1 300 -519.615242 L 200 -346.410162 A 400 400 0 0 0 0 -400 Z",
+        "transform": {
+          "x": 1111.0890141834961,
+          "y": -779.1813059924898,
+          "angleDeg": 127,
+          "reflectY": true
+        },
+        "kind": "curve"
+      },
+      {
+        "pieceId": "piece-16",
+        "outline": "M 0 -600 A 600 600 0 0 1 300 -519.615242 L 200 -346.410162 A 400 400 0 0 0 0 -400 Z",
+        "transform": {
+          "x": 1111.0890140974188,
+          "y": -779.1813060573538,
+          "angleDeg": 97,
+          "reflectY": true
+        },
+        "kind": "curve"
+      },
+      {
+        "pieceId": "piece-17",
+        "outline": "M 0 -600 A 600 600 0 0 1 300 -519.615242 L 200 -346.410162 A 400 400 0 0 0 0 -400 Z",
+        "transform": {
+          "x": 1111.0890139904413,
+          "y": -779.181306070489,
+          "angleDeg": 67,
+          "reflectY": true
+        },
+        "kind": "curve"
+      }
+    ],
+    "routes": [
+      {
+        "id": "route-996775d15819bd22a317d10ef2c2ee3f5f0d8ada9eb0c9724c4387d07d3d25b8",
+        "lengthMm": 5525.751918948771,
+        "segments": [
+          {
+            "type": "line",
+            "from": [
+              780.0907511576024,
+              -339.93177550236464
+            ],
+            "to": [
+              1055.6200021239183,
+              -132.305592514908
+            ],
+            "lengthMm": 345
+          },
+          {
+            "type": "line",
+            "from": [
+              1055.6200021239183,
+              -132.305592514908
+            ],
+            "to": [
+              1331.1492530902342,
+              75.32059047254864
+            ],
+            "lengthMm": 345
+          },
+          {
+            "type": "line",
+            "from": [
+              1331.1492530902344,
+              75.32059047254864
+            ],
+            "to": [
+              1606.6785040565505,
+              282.94677346000526
+            ],
+            "lengthMm": 345
+          },
+          {
+            "type": "arc",
+            "center": [
+              1937.676766790177,
+              -156.30275706600577
+            ],
+            "radiusMm": 550,
+            "startAngleDeg": 127,
+            "sweepDeg": -30,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "type": "arc",
+            "center": [
+              1937.676766725313,
+              -156.3027569799284
+            ],
+            "radiusMm": 550,
+            "startAngleDeg": 97,
+            "sweepDeg": -30,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "type": "arc",
+            "center": [
+              1937.6767667121778,
+              -156.30275687295114
+            ],
+            "radiusMm": 550,
+            "startAngleDeg": 67,
+            "sweepDeg": -30,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "type": "arc",
+            "center": [
+              1937.6767667542913,
+              -156.3027567737385
+            ],
+            "radiusMm": 550,
+            "startAngleDeg": 37,
+            "sweepDeg": -30,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "type": "arc",
+            "center": [
+              1937.6767668403686,
+              -156.3027567088747
+            ],
+            "radiusMm": 550,
+            "startAngleDeg": 7,
+            "sweepDeg": -30,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "type": "arc",
+            "center": [
+              1937.6767669473459,
+              -156.3027566957394
+            ],
+            "radiusMm": 550,
+            "startAngleDeg": -23,
+            "sweepDeg": -30,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "type": "line",
+            "from": [
+              2268.675029780185,
+              -595.5522872638637
+            ],
+            "to": [
+              1993.145778813869,
+              -803.1784702513203
+            ],
+            "lengthMm": 345
+          },
+          {
+            "type": "line",
+            "from": [
+              1993.145778813869,
+              -803.1784702513204
+            ],
+            "to": [
+              1717.6165278475528,
+              -1010.8046532387771
+            ],
+            "lengthMm": 345
+          },
+          {
+            "type": "line",
+            "from": [
+              1717.6165278475528,
+              -1010.8046532387771
+            ],
+            "to": [
+              1442.0872768812367,
+              -1218.4308362262336
+            ],
+            "lengthMm": 345
+          },
+          {
+            "type": "arc",
+            "center": [
+              1111.0890141476102,
+              -779.1813057002225
+            ],
+            "radiusMm": 550,
+            "startAngleDeg": -53,
+            "sweepDeg": -30,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "type": "arc",
+            "center": [
+              1111.0890142124742,
+              -779.1813057863001
+            ],
+            "radiusMm": 550,
+            "startAngleDeg": -83,
+            "sweepDeg": -30,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "type": "arc",
+            "center": [
+              1111.0890142256094,
+              -779.1813058932773
+            ],
+            "radiusMm": 550,
+            "startAngleDeg": -113,
+            "sweepDeg": -30,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "type": "arc",
+            "center": [
+              1111.0890141834961,
+              -779.1813059924898
+            ],
+            "radiusMm": 550,
+            "startAngleDeg": -143,
+            "sweepDeg": -30,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "type": "arc",
+            "center": [
+              1111.0890140974188,
+              -779.1813060573538
+            ],
+            "radiusMm": 550,
+            "startAngleDeg": -173,
+            "sweepDeg": -30,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "type": "arc",
+            "center": [
+              1111.0890139904413,
+              -779.181306070489
+            ],
+            "radiusMm": 550,
+            "startAngleDeg": 157,
+            "sweepDeg": -30,
+            "lengthMm": 287.9793265790643
+          }
+        ],
+        "sections": [
+          {
+            "pieceId": "piece-00",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 0,
+            "lengthMm": 345
+          },
+          {
+            "pieceId": "piece-01",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 345,
+            "lengthMm": 345
+          },
+          {
+            "pieceId": "piece-02",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 690,
+            "lengthMm": 345
+          },
+          {
+            "pieceId": "piece-03",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 1035,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "pieceId": "piece-04",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 1322.9793265790643,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "pieceId": "piece-05",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 1610.9586531581285,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "pieceId": "piece-06",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 1898.9379797371928,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "pieceId": "piece-07",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 2186.917306316257,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "pieceId": "piece-08",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 2474.8966328953215,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "pieceId": "piece-09",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 2762.875959474386,
+            "lengthMm": 345
+          },
+          {
+            "pieceId": "piece-10",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 3107.875959474386,
+            "lengthMm": 345
+          },
+          {
+            "pieceId": "piece-11",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 3452.875959474386,
+            "lengthMm": 345
+          },
+          {
+            "pieceId": "piece-12",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 3797.875959474386,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "pieceId": "piece-13",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 4085.8552860534505,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "pieceId": "piece-14",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 4373.834612632515,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "pieceId": "piece-15",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 4661.813939211579,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "pieceId": "piece-16",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 4949.793265790643,
+            "lengthMm": 287.9793265790643
+          },
+          {
+            "pieceId": "piece-17",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 5237.772592369707,
+            "lengthMm": 287.9793265790643
+          }
+        ]
+      },
+      {
+        "id": "route-dd90679a823e780f91cb5cf265cdce99eef4a80ab751385ce0c34da7da82579d",
+        "lengthMm": 4897.433388230816,
+        "segments": [
+          {
+            "type": "line",
+            "from": [
+              840.2722534728073,
+              -419.79532650709393
+            ],
+            "to": [
+              1115.8015044391232,
+              -212.16914351963726
+            ],
+            "lengthMm": 345
+          },
+          {
+            "type": "line",
+            "from": [
+              1115.8015044391232,
+              -212.16914351963726
+            ],
+            "to": [
+              1391.330755405439,
+              -4.542960532180629
+            ],
+            "lengthMm": 345
+          },
+          {
+            "type": "line",
+            "from": [
+              1391.3307554054393,
+              -4.542960532180629
+            ],
+            "to": [
+              1666.8600063717554,
+              203.08322245527597
+            ],
+            "lengthMm": 345
+          },
+          {
+            "type": "arc",
+            "center": [
+              1937.676766790177,
+              -156.30275706600577
+            ],
+            "radiusMm": 450,
+            "startAngleDeg": 127,
+            "sweepDeg": -30,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "type": "arc",
+            "center": [
+              1937.676766725313,
+              -156.3027569799284
+            ],
+            "radiusMm": 450,
+            "startAngleDeg": 97,
+            "sweepDeg": -30,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "type": "arc",
+            "center": [
+              1937.6767667121778,
+              -156.30275687295114
+            ],
+            "radiusMm": 450,
+            "startAngleDeg": 67,
+            "sweepDeg": -30,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "type": "arc",
+            "center": [
+              1937.6767667542913,
+              -156.3027567737385
+            ],
+            "radiusMm": 450,
+            "startAngleDeg": 37,
+            "sweepDeg": -30,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "type": "arc",
+            "center": [
+              1937.6767668403686,
+              -156.3027567088747
+            ],
+            "radiusMm": 450,
+            "startAngleDeg": 7,
+            "sweepDeg": -30,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "type": "arc",
+            "center": [
+              1937.6767669473459,
+              -156.3027566957394
+            ],
+            "radiusMm": 450,
+            "startAngleDeg": -23,
+            "sweepDeg": -30,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "type": "line",
+            "from": [
+              2208.49352746498,
+              -515.6887362591344
+            ],
+            "to": [
+              1932.964276498664,
+              -723.314919246591
+            ],
+            "lengthMm": 345
+          },
+          {
+            "type": "line",
+            "from": [
+              1932.964276498664,
+              -723.3149192465911
+            ],
+            "to": [
+              1657.435025532348,
+              -930.9411022340478
+            ],
+            "lengthMm": 345
+          },
+          {
+            "type": "line",
+            "from": [
+              1657.435025532348,
+              -930.9411022340478
+            ],
+            "to": [
+              1381.9057745660318,
+              -1138.5672852215043
+            ],
+            "lengthMm": 345
+          },
+          {
+            "type": "arc",
+            "center": [
+              1111.0890141476102,
+              -779.1813057002225
+            ],
+            "radiusMm": 450,
+            "startAngleDeg": -53,
+            "sweepDeg": -30,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "type": "arc",
+            "center": [
+              1111.0890142124742,
+              -779.1813057863001
+            ],
+            "radiusMm": 450,
+            "startAngleDeg": -83,
+            "sweepDeg": -30,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "type": "arc",
+            "center": [
+              1111.0890142256094,
+              -779.1813058932773
+            ],
+            "radiusMm": 450,
+            "startAngleDeg": -113,
+            "sweepDeg": -30,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "type": "arc",
+            "center": [
+              1111.0890141834961,
+              -779.1813059924898
+            ],
+            "radiusMm": 450,
+            "startAngleDeg": -143,
+            "sweepDeg": -30,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "type": "arc",
+            "center": [
+              1111.0890140974188,
+              -779.1813060573538
+            ],
+            "radiusMm": 450,
+            "startAngleDeg": -173,
+            "sweepDeg": -30,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "type": "arc",
+            "center": [
+              1111.0890139904413,
+              -779.181306070489
+            ],
+            "radiusMm": 450,
+            "startAngleDeg": 157,
+            "sweepDeg": -30,
+            "lengthMm": 235.61944901923448
+          }
+        ],
+        "sections": [
+          {
+            "pieceId": "piece-00",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 0,
+            "lengthMm": 345
+          },
+          {
+            "pieceId": "piece-01",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 345,
+            "lengthMm": 345
+          },
+          {
+            "pieceId": "piece-02",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 690,
+            "lengthMm": 345
+          },
+          {
+            "pieceId": "piece-03",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 1035,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "pieceId": "piece-04",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 1270.6194490192345,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "pieceId": "piece-05",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 1506.238898038469,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "pieceId": "piece-06",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 1741.8583470577034,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "pieceId": "piece-07",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 1977.477796076938,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "pieceId": "piece-08",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 2213.0972450961726,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "pieceId": "piece-09",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 2448.7166941154073,
+            "lengthMm": 345
+          },
+          {
+            "pieceId": "piece-10",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 2793.7166941154073,
+            "lengthMm": 345
+          },
+          {
+            "pieceId": "piece-11",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 3138.7166941154073,
+            "lengthMm": 345
+          },
+          {
+            "pieceId": "piece-12",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 3483.7166941154073,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "pieceId": "piece-13",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 3719.336143134642,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "pieceId": "piece-14",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 3954.9555921538768,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "pieceId": "piece-15",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 4190.5750411731115,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "pieceId": "piece-16",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 4426.194490192346,
+            "lengthMm": 235.61944901923448
+          },
+          {
+            "pieceId": "piece-17",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 4661.813939211581,
+            "lengthMm": 235.61944901923448
+          }
+        ]
+      }
+    ],
+    "alternateRoutes": []
+  }
+}

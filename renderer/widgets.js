@@ -622,7 +622,12 @@
     // ---- Weather ----
     T('wxforecast', 'Weather Forecast', 'Weather', { title: 'Weather', w: 240, h: 80, options: Ww.FORECAST_OPTIONS }),
     T('wxconditions', 'Track Conditions', 'Weather', { title: 'Track conditions', w: 500, h: 60, textSize: 20, options: Ww.COND_OPTIONS }),
-    T('racechart', 'Race Chart', 'Charts', { w: 480, h: 300, textSize: 16, options: [{ key: 'chartDesign', label: 'Saved chart design', type: 'chartdesign', default: '' }] }),
+    T('racechart', 'Race Chart', 'Charts', { w: 480, h: 300, textSize: 16, options: [
+      { key: 'chartDesign', label: 'Saved chart design', type: 'chartdesign', default: '', rerender: true },
+      { key: 'trackDrawing', label: 'Live Track appearance', type: 'select', default: 'inherit', liveTrackOnly: true,
+        choices: [['inherit','Use chart design'],['oval','Original · Coloured Lanes'],['design','Track Builder Artwork']],
+        hint: 'Both styles follow the race track’s imported layout. This overrides appearance for this widget only. Without a confirmed layout, the original oval is used. Preview imported tracks in Chart Editor.' }
+    ] }),
     // ---- Custom ----
     T('textlane', 'Custom text (per lane)', 'Custom', { hidden: true, perLane: true, w: 300, noTitle: true, options: textOpts(TEXT_LANE_VARS, TEXT_LANE_DEFAULT) }),
     T('textrace', 'Custom text (race)', 'Custom', { hidden: true, w: 300, noTitle: true, options: textOpts(TEXT_RACE_VARS, TEXT_RACE_DEFAULT) }),

@@ -7,6 +7,7 @@ const schema = require('./schema');
 const CarStats = require('./renderer/carstats.js'); // the slotcar statistics (1.30.0): which laps count since the last service
 const RaceLimit = require('./renderer/racelimit.js'); // what limits a race (1.62.0)
 
+const TrackDesign = require('./renderer/trackdesign.js');
 const VERSION = 1;
 
 // 1.86.0: Track Call used to combine its action and its power behaviour in one
@@ -319,6 +320,7 @@ class Database {
   list(entity) { this.check(entity); return this.data[entity]; }
   add(entity, item) {
     this.check(entity);
+    if(entity === 'tracks' && Object.hasOwn(item,'trackDesign')) item = {...item,trackDesign:TrackDesign.validateSaved(item.trackDesign)};
     const row = Object.assign({ custom: {} }, item, { id: crypto.randomUUID() });
     this.data[entity].push(row);
     this.commit();
@@ -326,6 +328,7 @@ class Database {
   }
   update(entity, id, patch) {
     this.check(entity);
+    if(entity === 'tracks' && Object.hasOwn(patch,'trackDesign')) patch = {...patch,trackDesign:TrackDesign.validateSaved(patch.trackDesign)};
     const row = this.data[entity].find(r => r.id === id);
     if (!row) throw new Error('Not found');
     Object.assign(row, patch, { id });

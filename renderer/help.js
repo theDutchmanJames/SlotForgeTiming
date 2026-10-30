@@ -48,6 +48,14 @@ const Help = (() => {
           <li><b>View settings</b> (on every page) opens a small bar where you turn the columns of the list, or the rows of the cards, on and off. It is kept for each page and view.</li>
           <li>Click a <b>row or a card</b> of Slotcars, Tracks or Drivers to see all of it in a window, like a trading card: the main picture, the details, the statistics and (slotcars) the other pictures, which you can click to see large. <b>Edit</b> opens the form.</li>
         </ul>` },
+      { id: 'trackbuilder', title: 'Track Builder designs', note: 'Import a circuit and map it to Live Track', body: `<ol>
+          <li>Export <b>.slotforge.json</b> from Track Builder. Open <b>Database → Tracks → Import from Track Builder</b>, or a track’s <b>Track design</b> button.</li>
+          <li>Create a track or choose an existing one. Copy its name, nominal lengths and transparent PNG if needed. Existing measured lengths and records stay unchanged by default.</li>
+          <li>Map each timing lane to a different route. Set the sensor piece, position and direction; check the arrows and confirm. Circuit or lane-count changes require confirmation again.</li>
+          <li><b>Chart Editor → Live Track → Appearance</b>: choose <b>Original · Coloured Lanes</b> or <b>Track Builder Artwork</b>. Both follow the imported circuit. Layout Editor offers per-widget overrides and a Preview track selector. Races use the track selected in Race Setup.</li>
+          <li><b>Estimate lap progress using → Imported tuning profile</b> uses calculated lap duration, acceleration, braking and cornering. Other benchmarks scale that movement. Positions are estimates; only crossings count laps. Pauses and pits stop movement.</li>
+          <li>Unavailable designs use the oval. Reference artwork is scenery; digital switching, pit branches and heights are unsupported. Designs travel with track exports and backups. Removing a design keeps records. Edits apply next race.</li>
+        </ol>` },
       { id: 'settingsnavigation', title: 'Finding your App Settings', note: 'Page rails and section folders', body: `<ul>
           <li>General, App Theme, Race Director, Network, and Import and Export use the same page frame as the timing interfaces. Pick a section in the side rail to open its folder. On narrow screens, those section buttons move above the folders.</li>
           <li>Folders keep their open state while you work, including when a setting redraws the page. General and Import and Export also offer <b>Open all</b> and <b>Close all</b>.</li>

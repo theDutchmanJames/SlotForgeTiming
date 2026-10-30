@@ -242,6 +242,7 @@ async function mountManager(box, e) {
   const bar = !viewable || !viewBars.has(viewId) ? '' : viewBar(viewId, mode === 'grid' ? 'Turn rows of information on or off for the cards. This is remembered for the Grid view of this page.' : 'Turn columns of information on or off for the list. This is remembered for the List view of this page.',
     [viewGroup(mode === 'grid' ? `Rows on the ${s.label.toLowerCase()} cards` : `Columns in the ${s.label.toLowerCase()} list`, [e, mode], modeCands)]);
   const toggle = !s.card ? '' : `<span class="seg" role="group" aria-label="View"><button class="btn${mode === 'list' ? ' on' : ''}" id="vlist" aria-pressed="${mode === 'list'}">${e === 'racesetups' ? 'Table' : 'List'}</button><button class="btn${mode === 'grid' ? ' on' : ''}" id="vgrid" aria-pressed="${mode === 'grid'}">${e === 'racesetups' ? 'Comparison rows' : 'Grid'}</button></span>`;
+  const designButton = i => e === 'tracks' ? `<button class="btn" data-track-design="${esc(i.id)}">Track design</button>` : '';
   const copyButton = i => COPY_SETUP_ENTITIES.has(e) ? `<button class="btn" type="button" data-copy="${esc(i.id)}" title="Create an independent copy of ${esc(titleOf(e, i))}">Copy</button>` : '';
   const gridHtml = (items, skip) => `<div class="cards">${items.map(i => {
     // the picture: the item's own, or (race setups) the picture of the track it uses; each with its own framing
@@ -259,11 +260,11 @@ async function mountManager(box, e) {
       return v === undefined || v === null || v === '' ? '' : `<div class="gd"><span class="muted">${esc(fl(f))}</span> ${columnCell(f, i)}</div>`;
     })).join('') + (s.gallery && Array.isArray(i[s.gallery]) && i[s.gallery].length ? `<div class="gd muted">+${i[s.gallery].length} more ${i[s.gallery].length === 1 ? 'picture' : 'pictures'}</div>` : '');
     return `<article class="gcard${canView ? ' clickable' : ''}"${canView ? ` data-view="${esc(i.id)}" tabindex="0" aria-label="View ${esc(t)}"` : ''}><div class="gimg">${img ? `<img src="${esc(img)}" alt="" style="transform:${Widgets.frameTransform(frame)}">` : noPicture(e, t)}</div>
-      <h3>${esc(t)}</h3>${rowMark(e, i)}${details}${typeof RaceSystems !== 'undefined' && i.sessionType !== 'tokens' ? RaceSystems.setupHtml(i, { compact: true, id: i.id }) : ''}<div class="row"><button class="btn" data-edit="${esc(i.id)}">Edit</button>${copyButton(i)}<button class="btn danger" data-del="${esc(i.id)}">Delete</button></div></article>`;
+      <h3>${esc(t)}</h3>${rowMark(e, i)}${details}${typeof RaceSystems !== 'undefined' && i.sessionType !== 'tokens' ? RaceSystems.setupHtml(i, { compact: true, id: i.id }) : ''}<div class="row"><button class="btn" data-edit="${esc(i.id)}">Edit</button>${copyButton(i)}${designButton(i)}<button class="btn danger" data-del="${esc(i.id)}">Delete</button></div></article>`;
   }).join('')}</div>`;
   const tableHtml = (items, cols) => `<div class="wrap"><table class="fields"><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}<th></th></tr>` +
     items.map(i => `<tr${canView ? ` class="clickable" data-view="${esc(i.id)}" tabindex="0" aria-label="View ${esc(titleOf(e, i))}"` : ''}>${cols.map((c, n) => `<td>${c.get(i)}${n === 0 ? rowMark(e, i) : ''}</td>`).join('')}<td class="actions">
-      <button class="btn" data-edit="${esc(i.id)}">Edit</button> ${copyButton(i)} <button class="btn danger" data-del="${esc(i.id)}">Delete</button></td></tr>`).join('') + '</table></div>';
+      <button class="btn" data-edit="${esc(i.id)}">Edit</button> ${copyButton(i)} ${designButton(i)} <button class="btn danger" data-del="${esc(i.id)}">Delete</button></td></tr>`).join('') + '</table></div>';
   // Race setups (1.69.0): a row of kinds to filter on, and each setup as a card that says in words how it ends and who wins (setupwords.js). The folders per session type are gone.
   const setupRank = i => { const rank = SETUP_START.findIndex(([kind]) => kind === i.sessionType); return rank < 0 ? SETUP_START.length : rank; };
   const rsShown = e !== 'racesetups' ? items : items.filter(i => setupFilter === 'all' || i.sessionType === setupFilter).sort((a,b) => setupRank(a) - setupRank(b));
@@ -277,7 +278,7 @@ async function mountManager(box, e) {
       <span class="rsdot${d.ready.ok ? '' : ' off'}" role="img" title="${esc(d.ready.text)}" aria-label="${esc(d.ready.text)}"></span></div>
       <div class="rspills">${d.cardPills.map(p => `<span class="rspill${p.tone ? ' ' + p.tone : ''}">${esc(p.text)}</span>`).join('')}</div>
       <div class="rsfacts"><div class="rslv"><span class="k">Ends</span><span>${esc(d.ends)}</span></div><div class="rslv"><span class="k">Wins</span><span>${esc(d.wins)}</span></div></div></div>
-      <section class="rslinked" aria-label="Systems for ${esc(t)}"><div class="rslinked-head"><strong>Race Systems</strong><span>${linked.length ? `${enabled} on${linked.length>enabled ? ` · ${linked.length-enabled} off` : ''}` : 'None linked'}</span></div>${linked.length ? RaceSystems.setupHtml(i, { compact: true, overview:true, id: i.id }) : `<p class="rslinked-empty">${i.sessionType==='tokens'?'This session uses Time Tokens instead of Race Systems.':'A simple session without extra systems.'}</p>`}</section><div class="row rsactions"><button class="btn" data-edit="${esc(i.id)}">Edit setup</button>${copyButton(i)}<button class="btn danger" data-del="${esc(i.id)}">Delete</button></div></article>`;
+      <section class="rslinked" aria-label="Systems for ${esc(t)}"><div class="rslinked-head"><strong>Race Systems</strong><span>${linked.length ? `${enabled} on${linked.length>enabled ? ` · ${linked.length-enabled} off` : ''}` : 'None linked'}</span></div>${linked.length ? RaceSystems.setupHtml(i, { compact: true, overview:true, id: i.id }) : `<p class="rslinked-empty">${i.sessionType==='tokens'?'This session uses Time Tokens instead of Race Systems.':'A simple session without extra systems.'}</p>`}</section><div class="row rsactions"><button class="btn" data-edit="${esc(i.id)}">Edit setup</button>${copyButton(i)}${designButton(i)}<button class="btn danger" data-del="${esc(i.id)}">Delete</button></div></article>`;
   };
   const rsFilter = e !== 'racesetups' ? '' : `<span class="seg rsfilter" role="group" aria-label="Show">${SETUP_FILTERS.map(([id, label]) => `<button class="btn${setupFilter === id ? ' on' : ''}" data-rsf="${id}" aria-pressed="${setupFilter === id}">${esc(label)}</button>`).join('')}</span>`;
   const rsStart = e !== 'racesetups' ? '' : `<div class="rscard rsstart"><span class="rstile">${Icons.svg('plus', { size: 22 })}</span><div class="rstitle"><div class="rsname">Start from a kind</div><span class="hint">A new setup opens with the right kind already chosen.</span></div>
@@ -285,7 +286,7 @@ async function mountManager(box, e) {
   const rsEmpty = !items.length ? 'No race setups yet. Use the button above, or start from a kind below.' : `Nothing under ${SETUP_FILTERS.find(f => f[0] === setupFilter)[1]} yet. Start one below.`;
   const rsBody = e !== 'racesetups' ? '' : (rsShown.length ? (mode === 'grid' ? `<div class="rscards">${rsShown.map(rsCard).join('')}</div>` : tableHtml(rsShown, cols)) : `<p class="muted">${esc(rsEmpty)}</p>`) + rsStart;
   box.innerHTML = `<div class="row${e==='racesetups'?' rstoolbar':''}"><button class="btn primary" id="add">Add ${esc(s.label.toLowerCase())}</button>
-      ${s.extra === false ? '' : '<button class="btn" id="extra">Extra fields…</button>'}${rsFilter}${viewBtn}${toggle}</div>${bar}` +
+      ${e === 'tracks' ? '<button class="btn" id="track-import">Import from Track Builder</button>' : ''}${s.extra === false ? '' : '<button class="btn" id="extra">Extra fields…</button>'}${rsFilter}${viewBtn}${toggle}</div>${bar}` +
     (e === 'racesetups' ? rsBody
       : items.length && mode === 'grid' ? gridHtml(items)
       : items.length ? tableHtml(items, viewCols || cols)
@@ -310,6 +311,7 @@ async function mountManager(box, e) {
     if (b.dataset.rskind) return openForm(e, null, { sessionType: b.dataset.rskind }); // (Race Setups: Start from a kind)
     if (b.dataset.viewbar) { if (viewBars.has(b.dataset.viewbar)) viewBars.delete(b.dataset.viewbar); else viewBars.add(b.dataset.viewbar); return mountManager(box, e); }
     if (b.dataset.vsreset) { await viewReset([[e, mode]]); return mountManager(box, e); }
+    if (e === 'tracks' && (b.id === 'track-import' || b.dataset.trackDesign)) return TrackDesignUI.open(api, items.find(i=>i.id===b.dataset.trackDesign), ()=>mountManager(box,e));
     if (b.id === 'add') return openForm(e, null);
     if (b.id === 'extra') return openExtra(e);
     if (b.id === 'vgrid' || b.id === 'vlist') { state.settings = await api.setSettings({ [viewKey]: b.id === 'vgrid' ? 'grid' : 'list' }); return mountManager(box, e); }

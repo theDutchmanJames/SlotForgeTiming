@@ -1,0 +1,9 @@
+SlotForge Track Builder 0.2.2 integration runtime, provided by the project owner
+in SlotForge-Timing-integration-v0.2.2-handoff.zip (29 October 2026).
+
+integration.js, core.js, geometry.js and geometry.cjs are the supplied runtime.
+The only local vendor change is core.js's CommonJS geometry path, adjusted to
+./geometry.cjs. Browser load order: geometry.js, core.js, integration.js.
+No npm runtime dependencies. Geometry is derived from bounded templates; files
+are data, not scripts. Contracts 1.0.0-draft.1 and 1.0.0-draft.2 are supported.
+Track Builder revisions remain separate from SlotForge Timing's track IDs.

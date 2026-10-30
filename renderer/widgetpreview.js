@@ -43,6 +43,12 @@
     if(!scenarios.has(scenario))scenarios.set(scenario,context(scenario));
     const base=scenarios.get(scenario),assets=w.previewContext||{},layout=options.layout||assets.layout||w.previewLayout||base.layout;
     const S={...base,...assets,...options,preview:true,layout,now:base.now+(options.offset||0),laneColorsOf:lane=>{const lc=layout.laneColors?.[lane]||{};return {bg:lc.bg||'',color:lc.text||''};}};
+    // A layout preview needs an explicit track and matching sample lanes; eight
+    // synthetic lanes would otherwise force a two-lane imported circuit back to the oval.
+    if(w.type==='racechart'&&assets.chartPreviewTrack&&(S.chartDesigns||[]).find(d=>d.id===w.opt?.chartDesign)?.style==='track'){
+      S.track=assets.chartPreviewTrack;
+      S.eng={...S.eng,cars:S.eng.cars.filter(c=>c.lane<Number(S.track.lanes)),rivals:[]};
+    }
     if(w.type==='tokenclock')S.tokens=dep('tokens','Tokens').view({ends:Array.from({length:8},(_,i)=>S.now+(i%3===2?45000:600000+i*60000)),warnMs:60000});
     if(w.type==='nextheat')S.phase='between';
     // Optional transient state belongs to the preview host, never to saved options.

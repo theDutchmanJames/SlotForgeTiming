@@ -1,5 +1,6 @@
 // Additional chart adapters. Pure statistics; live motion only changes marker attributes.
 (function(root){
+  const Track=typeof module!=='undefined'?require('./trackdesign.js'):root.TrackDesign;
   const styles=['track','box','hist','position','heat'];
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const quantile=(sorted,p)=>{if(!sorted.length)return null;const n=(sorted.length-1)*p,i=Math.floor(n);return sorted[i]+(sorted[Math.ceil(n)]-sorted[i])*(n-i);};
@@ -24,13 +25,17 @@
     if(d.style==='hist')return {histogram:histogram(samples,Number(d.bin))};
     if(d.style==='heat')return {baselines:samples.map((a,i)=>d.heatReference==='track'?(Number(S.track?.targetLap)>0?Number(S.track.targetLap):null):quantile(a.slice().sort((a,b)=>a-b),.5))};
     if(d.style==='position')return {positions:positions(cars,d.history)};
-    if(d.style==='track')return {track:cars.map(c=>{
+    if(d.style==='track'){
+      let design=Track.runtime(S.track?.trackDesign,S.track?.lanes);
+      const reason=(S.track?.trackDesign||d.trackDrawing==='design')?(!design?'No imported design on '+(S.track?.name||'the selected race track')+' — choose or import it in Database → Tracks':design.error||(!cars.every(c=>design.config.laneRoutes[c.lane])?'Some displayed drivers have no mapped design route':'')):'';
+      if(reason)design=null;
+      return {design,designNote:reason,track:cars.map(c=>{
       const a=eligible(c,d.pits).slice(-5),p=c.profile;
-      let ms=d.pace==='track'?Number(S.track?.targetLap)*1000:d.pace==='last'?a.at(-1):d.pace==='average'?a.reduce((s,v)=>s+v,0)/a.length:quantile(a.slice().sort((a,b)=>a-b),.5);
+      let ms=d.pace==='profile'?Track.lapDuration(design,c.lane):d.pace==='track'?Number(S.track?.targetLap)*1000:d.pace==='last'?a.at(-1):d.pace==='average'?a.reduce((s,v)=>s+v,0)/a.length:quantile(a.slice().sort((a,b)=>a-b),.5);
       if(c.virtualRival&&p){const V=typeof module!=='undefined'?require('./virtualrival.js'):root.VirtualRival;const seq=V.sequence(p),n=c.laps.length;ms=seq[n]?.time??(p.end==='repeat'?seq[n%seq.length]?.time:p.end==='reference'?p.reference*1000*100/p.speed:null);}
       const track={lane:c.lane,ms:Number.isFinite(ms)&&ms>0?ms:null};
       if(S.preview)track.preview=progress(track,c,S,d);return track;
-    })};
+    })};}
     return {};
   }
   // The engine's total contains the formation-lap offset; subtracting lap
@@ -91,9 +96,14 @@
     const axis=(lo,hi)=>{[0,.5,1].forEach(k=>{const x=L+k*P;parts.push(line(x,T,x,B),text(x,B+19,(lo+k*(hi-lo)).toFixed(2),'middle'));});};
     if(d.style==='track'){
       if(H<100+n*9||w<180+n*14)return empty('Enlarge Live Track or select fewer drivers');
-      series.forEach((s,i)=>{const g=geometry(w,H,i,n),q=point(g,m.track[i]?.preview?.p||0,d.direction);parts.push(`<path d="M${g.left} ${g.top}H${g.right}a${g.r} ${g.r} 0 0 1 0 ${g.r*2}H${g.left}a${g.r} ${g.r} 0 0 1 0 ${-g.r*2}" fill="none" stroke="${s.color}" stroke-opacity=".65" stroke-width="2"/>`);parts.push(`<g data-track-marker="${i}" transform="translate(${q.x} ${q.y}) rotate(${q.angle})"><rect x="-9" y="-5" width="18" height="10" rx="3" fill="${s.color}" stroke="var(--bg)" stroke-width="2"/><title>${esc(s.name)} · waiting</title></g>`);});
-      parts.push(line(w/2,geometry(w,H,0,n).top-5,w/2,geometry(w,H,n-1,n).top+8,'stroke="currentColor" stroke-width="3" stroke-dasharray="3 3"'),text(w/2,H/2-5,'START / FINISH','middle'),text(w/2,H/2+14,d.direction==='cw'?'Clockwise →':'← Counterclockwise','middle'));
-      note='Estimated positions · only crossings count laps';
+      if(m.design)parts.push(Track.drawing(m.design,w,H,d.trackDrawing==='design'?null:series));
+      series.forEach((s,i)=>{
+        const g=geometry(w,H,i,n),q=m.design?Track.point(m.design,s.lane,m.track[i]?.preview?.p||0,w,H):point(g,m.track[i]?.preview?.p||0,d.direction);
+        if(!m.design)parts.push(`<path d="M${g.left} ${g.top}H${g.right}a${g.r} ${g.r} 0 0 1 0 ${g.r*2}H${g.left}a${g.r} ${g.r} 0 0 1 0 ${-g.r*2}" fill="none" stroke="${s.color}" stroke-opacity=".65" stroke-width="2"/>`);
+        parts.push(`<g data-track-marker="${i}" transform="translate(${q.x} ${q.y}) rotate(${q.angle})">${m.design?`<g data-track-body><rect x="-15" y="-5" width="21" height="10" rx="3" fill="${s.color}" stroke="var(--bg)" stroke-width="2"/></g><circle r="1.8" fill="white"/>`:`<rect x="-9" y="-5" width="18" height="10" rx="3" fill="${s.color}" stroke="var(--bg)" stroke-width="2"/>`}<title>${esc(s.name)} · waiting</title></g>`);
+      });
+      if(!m.design)parts.push(line(w/2,geometry(w,H,0,n).top-5,w/2,geometry(w,H,n-1,n).top+8,'stroke="currentColor" stroke-width="3" stroke-dasharray="3 3"'),text(w/2,H/2-5,'START / FINISH','middle'),text(w/2,H/2+14,d.direction==='cw'?'Clockwise →':'← Counterclockwise','middle'));
+      note=(m.design?(d.trackDrawing==='design'?'Track Builder artwork · ':'Coloured lanes · imported layout · '):m.designNote?'Oval fallback: '+m.designNote+' · ':'')+(d.pace==='profile'?'Tuning-profile pace · ':'')+'Estimated positions · only crossings count laps';
     }else if(d.style==='box'){
       let lo=Infinity,hi=-Infinity;values.forEach(v=>{lo=Math.min(lo,v);hi=Math.max(hi,v);});const pad=Math.max(.05,(hi-lo)*.05);lo-=pad;hi+=pad;const x=v=>L+(v-lo)/(hi-lo)*P;axis(lo,hi);
       m.spreads.forEach((a,i)=>{const y=T+(i+.5)*(B-T)/n,s=series[i];parts.push(text(3,y+4,short(s.name,Math.floor(L/7))));if(!a){parts.push(text(L,y+4,'No eligible laps'));return;}
@@ -127,12 +137,13 @@
     const reduced=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches,d=reduced?{...m.d,motion:'0'}:m.d;
     const cars=[...(S.eng.cars||[]),...(S.eng.rivals||[])],now=typeof performance!=='undefined'?performance.now():Date.now();
     const stamp=m.track.map(t=>{const c=cars.find(c=>c.lane===t.lane);return [c?.laps.length,c?.done,c?.dq,c?.retired,c?.blockAt!=null,!!c?.pitHold,c?.started].join(':');}).join('|')+S.eng.status+S.eng.flag;
-    const old=node.chartTrackFrame;if(old&&old.model===m&&old.stamp===stamp&&(d.motion==='0'||S.eng.status!=='running'||now-old.at<1000/Number(d.motion)))return;
-    const rect=node.el.getBoundingClientRect();if(rect.bottom<0||rect.right<0||rect.top>innerHeight||rect.left>innerWidth)return;
     const svg=node.val.querySelector('svg');if(!svg)return;
-    const [,,w,h]=svg.getAttribute('viewBox').split(' ').map(Number);
-    m.track.forEach((t,i)=>{const marker=node.val.querySelector(`[data-track-marker="${i}"]`);if(!marker)return;const c=cars.find(c=>c.lane===t.lane),v=progress(t,c,S,d),q=point(geometry(w,h,i,m.track.length),v.p,d.direction);marker.setAttribute('transform',`translate(${q.x.toFixed(2)} ${q.y.toFixed(2)}) rotate(${q.angle.toFixed(1)})`);marker.querySelector('title').textContent=`${c?.driverName||'Driver'} · ${v.state} · ${Math.round(v.p*100)}%`;const label=node.val.querySelector(`[data-track-status="${i}"]`);if(label)label.textContent=v.state==='Estimated'||v.state==='Replay'?`${Math.round(v.p*100)}%`:v.state;});
-    node.chartTrackFrame={model:m,stamp,at:now};
+    const viewBox=svg.getAttribute('viewBox');
+    const old=node.chartTrackFrame;if(old&&old.svg===svg&&old.viewBox===viewBox&&old.motion===d.motion&&old.model===m&&old.stamp===stamp&&(d.motion==='0'||S.eng.status!=='running'||now-old.at<1000/Number(d.motion)))return;
+    const rect=node.el.getBoundingClientRect();if(rect.bottom<0||rect.right<0||rect.top>innerHeight||rect.left>innerWidth)return;
+    const [,,w,h]=viewBox.split(' ').map(Number);
+    m.track.forEach((t,i)=>{const marker=node.val.querySelector(`[data-track-marker="${i}"]`);if(!marker)return;const c=cars.find(c=>c.lane===t.lane),v=progress(t,c,S,d),q=m.design?Track.point(m.design,t.lane,v.p,w,h):point(geometry(w,h,i,m.track.length),v.p,d.direction);marker.setAttribute('transform',`translate(${q.x.toFixed(2)} ${q.y.toFixed(2)}) rotate(${q.angle.toFixed(1)})`);const body=marker.querySelector('[data-track-body]');if(body)body.setAttribute('transform',`rotate(${m.design?Math.max(-1,Math.min(1,(q.curvature||0)*350))*m.design.doc.profile.drift:0})`);marker.querySelector('title').textContent=`${c?.driverName||'Driver'} · ${v.state} · ${Math.round(v.p*100)}%`;const label=node.val.querySelector(`[data-track-status="${i}"]`);if(label)label.textContent=v.state==='Estimated'||v.state==='Replay'?`${Math.round(v.p*100)}%`:v.state;});
+    node.chartTrackFrame={model:m,stamp,at:now,svg,viewBox,motion:d.motion};
   }
   const api={styles,quantile,spread,histogram,model,positions,thinSteps,progress,geometry,point,html,update};
   if(typeof module!=='undefined')module.exports=api;else root.ChartExtras=api;

@@ -10,7 +10,7 @@
     ['audio','Audio & appearance',['audio','ambient','audioconditions','audiocategories','audioevents','look']],
     ['hardware','Timing hardware',['hardware','arduino','arduinoracelock','interfacepages','parallel','phidget','timingplugins']],
     ['results','Results & race control',['results','start','screen','sectors','director','lanecards']],
-    ['settings','Database & app settings',['database','settingsnavigation','copyandorder','calculations','performance','contentpacks','transfer']],
+    ['settings','Database & app settings',['database','trackbuilder','settingsnavigation','copyandorder','calculations','performance','contentpacks','transfer']],
     ['network','Screens & network',['live','driverstats','network']]
   ];
   // Only these known destinations can navigate out of Help; articles never supply commands.

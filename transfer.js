@@ -1,3 +1,4 @@
+const TrackDesign = require('./renderer/trackdesign');
 // Export and import of items as a file: pick items (and what they use), write them to a file, add them to another database as copies.
 // Pure functions over the database's data object, so they can be tested without Electron.
 const crypto = require('crypto');
@@ -137,7 +138,7 @@ function apply(db, bundle) {
     });
     for (const e of ORDER) {
       for (const src of bundle.items[e] || []) {
-        const row = clone(src); const oldId = row.id; row.id = crypto.randomUUID(); map[e][oldId] = row.id;
+        const row = clone(src); if(e==='tracks'&&Object.hasOwn(row,'trackDesign'))row.trackDesign=TrackDesign.validateSaved(row.trackDesign); const oldId = row.id; row.id = crypto.randomUUID(); map[e][oldId] = row.id;
         refsOf(e, row).forEach(r => r.set(map[r.entity] && map[r.entity][r.get()] !== undefined ? map[r.entity][r.get()] : ''));
         if (e === 'racesetups') { RaceLimit.upgrade(row); RaceLimit.upgradeScoring(row); } // (a file made before 1.62.0 may hold a Timed race: that is a Race limited by a time now; one from before 1.65.0 has heats of a time that count laps or points)
         if (e === 'teams') row.drivers = (Array.isArray(row.drivers) ? row.drivers : []).filter(Boolean);

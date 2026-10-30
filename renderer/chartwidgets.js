@@ -10,7 +10,8 @@
   function clean(raw = {}) {
     const d = raw || {}, style = choice(d.style, STYLES.map(x => x[0]), 'trend');
     return { name: String(d.name || 'New chart').slice(0, 100), note: String(d.note || '').slice(0, 500), style,
-      virtual: d.virtual !== false, direction: choice(d.direction,['cw','ccw'],'cw'), pace: choice(d.pace,['median','average','last','track'],'median'), motion: choice(String(d.motion),['10','4','0'],'10'),
+      // Retain the saved 'oval' key for the original lane styling; geometry comes from the race track.
+      trackDrawing: choice(d.trackDrawing,['oval','design'],'oval'), virtual: d.virtual !== false, direction: choice(d.direction,['cw','ccw'],'cw'), pace: choice(d.pace,['median','average','last','track','profile'],'median'), motion: choice(String(d.motion),['10','4','0'],'10'),
       whisker: choice(d.whisker,['range','iqr'],'range'), bin: choice(String(d.bin),['0.1','0.2','0.5'],'0.2'), frequency: choice(d.frequency,['count','percent'],'count'), heatReference: choice(d.heatReference,['track','median'],'track'), labels: d.labels !== false,
       metric: choice(d.metric, METRICS.map(x => x[0]), style === 'bars' ? 'best' : 'lap'),
       drivers: choice(d.drivers, ['all', 'selected', 'one'], 'all'), lanes: Array.isArray(d.lanes) ? [...new Set(d.lanes.filter(n => Number.isInteger(n) && n >= 0 && n < 8))] : [0, 1, 2, 3], lane: Math.round(num(d.lane, 0, 0, 7)),
@@ -131,10 +132,13 @@
   function content(w, S) {
     const raw = (S.chartDesigns || []).find(d => d.id === w.opt?.chartDesign);
     if (!raw) return { html: '<div class="race-chart-empty">Choose a saved design from Customization → Chart Editor</div>' };
+    // A widget can override appearance without changing shared geometry or its saved chart.
+    const appearance=raw.style==='track'&&['oval','design'].includes(w.opt?.trackDrawing)?w.opt.trackDrawing:'inherit';
+    const effective=appearance==='inherit'?raw:{...raw,trackDrawing:appearance};
     // Editor changes must be visible immediately; the live cache throttles only race updates.
-    if(S.preview)return {html:html(model(raw,S),w.chartSize?.width,w.chartSize?.height)};
+    if(S.preview)return {html:html(model(effective,S),w.chartSize?.width,w.chartSize?.height)};
     let items = cache.get(S.eng); if (!items) cache.set(S.eng, items = new Map());
-    const size = w.chartSize || {width:480,height:290}, key = raw.id+'|'+JSON.stringify(S.layout?.laneColors||[]), t = typeof performance !== 'undefined' ? performance.now() : Date.now(), old = items.get(key);
+    const size = w.chartSize || {width:480,height:290}, key = raw.id+'|'+appearance+'|'+JSON.stringify(S.layout?.laneColors||[]), t = typeof performance !== 'undefined' ? performance.now() : Date.now(), old = items.get(key);
     const cars = [...S.eng.cars,...(raw.virtual !== false ? S.eng.rivals || [] : [])];
     const count = cars.map(c => c.laps.length).join(',');
     // Check corrections at most four times per second; a clock tick alone never
@@ -142,10 +146,10 @@
     // same-length corrections and undo, without mutating engine-owned arrays.
     let current = old;
     if (!old || old.raw !== raw || old.count !== count || t - old.at >= 250) {
-      const meta=JSON.stringify([raw,S.track?.targetLap,S.layout?.laneColors,S.trackRecord?.()?.time,cars.map(c=>[c.lane,c.driverName,c.driverId,c.dq,c.invalid,c.removed,c.pitLaps,c.redLaps,c.total,S.personalBest?.(c.driverId)])]);
+      const meta=JSON.stringify([effective,S.track?.targetLap,S.track?.lanes,S.track?.trackDesign?.document?.design?.revision,S.track?.trackDesign?.laneRoutes,S.track?.trackDesign?.confirmedMappingRevision,S.layout?.laneColors,S.trackRecord?.()?.time,cars.map(c=>[c.lane,c.driverName,c.driverId,c.dq,c.invalid,c.removed,c.pitLaps,c.redLaps,c.total,S.personalBest?.(c.driverId)])]);
       const same=old&&old.meta===meta&&old.snapshot.length===cars.length&&old.snapshot.every((p,i)=>p.laps.length===cars[i].laps.length&&p.laps.every((v,n)=>v===cars[i].laps[n])&&p.bad.length===(cars[i].bad||[]).length&&p.bad.every((v,n)=>v===(cars[i].bad||[])[n]));
       if(same){current.at=t;current.raw=raw;}
-      else current={raw,count,at:t,meta,snapshot:cars.map(c=>({laps:c.laps.slice(),bad:(c.bad||[]).slice()})),model:model(raw,S)};
+      else current={raw,count,at:t,meta,snapshot:cars.map(c=>({laps:c.laps.slice(),bad:(c.bad||[]).slice()})),model:model(effective,S)};
     }
     // Reuse geometry when several differently sized widgets share one design.
     const sizeKey=Math.round(size.width)+':'+Math.round(size.height);
