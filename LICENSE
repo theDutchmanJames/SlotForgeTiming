@@ -1,75 +1,82 @@
-Required Notice: Copyright 2026 theDutchmanJames (https://github.com/theDutchmanJames/SlotForgeTiming)
+SlotForge Source-Available License 1.0
+No Software Sales or Paid Access
 
-# PolyForm Noncommercial License 1.0.0
+Copyright (c) 2026 theDutchmanJames and contributors.
 
-<https://polyformproject.org/licenses/noncommercial/1.0.0>
+1. Scope
 
-## Acceptance
+"Software" means the first-party SlotForge Timing source code,
+executables, original artwork and documentation offered under this license,
+including modified versions and substantial portions of those materials.
+"Licensors" means the respective copyright holders of that material. Each
+Licensor grants only rights that they are entitled to grant.
 
-In order to get any license under these terms, you must agree to them as both strict obligations and conditions to all your licenses.
+Third-party components are excluded from this license and remain governed by
+their own licenses. See the license and notice files supplied with those components.
 
-## Copyright License
+2. Permissions
 
-The licensor grants you a copyright license for the software to do everything you might do with the software that would otherwise infringe the licensor's copyright in it for any permitted purpose.  However, you may only distribute the software according to [Distribution License](#distribution-license) and make changes or new works based on the software according to [Changes and New Works License](#changes-and-new-works-license).
+Subject to the conditions below, the Licensors grant you a worldwide,
+non-exclusive, perpetual, royalty-free license to use, study, copy, modify and
+redistribute the Software. Personal, educational, club and internal business
+use are permitted without charge. You may share original or modified copies
+without charging recipients for the Software or access to it.
 
-## Distribution License
+3. No Software Sales or Paid Access
 
-The licensor grants you an additional copyright license to distribute copies of the software.  Your license to distribute covers distributing the software with changes and new works permitted by [Changes and New Works License](#changes-and-new-works-license).
+Without separate written permission from the relevant Licensors, you may not:
 
-## Notices
+a. Sell, rent, lease or otherwise distribute copies of the Software for a fee
+   or other compensation, including copies bundled into a paid offering.
+b. Charge a fee or require other compensation for access to or use of the
+   Software, including a hosted, online, subscription or network-accessible
+   version.
+c. Avoid these restrictions by renaming a payment or making another purchase
+   a condition of receiving the Software or access to it.
 
-You must ensure that anyone who gets a copy of any part of the software from you also gets a copy of these terms or the URL for them above, as well as copies of any plain-text lines beginning with `Required Notice:` that the licensor provided with the software.  For example:
+These restrictions apply to original and modified versions. Ordinary internal
+use in a business, including using the Software to perform paid work or run
+that business, is permitted. Voluntary donations are permitted when receiving,
+using and accessing the Software do not depend on making a donation.
 
-> Required Notice: Copyright Yoyodyne, Inc. (http://example.com)
+4. Redistribution and Notices
 
-## Changes and New Works License
+When you distribute the Software, include this complete license and retain
+applicable copyright and third-party notices. Identify your modifications and
+do not misrepresent a modified version as an official SlotForge release.
 
-The licensor grants you an additional copyright license to make changes and new works based on the software for any permitted purpose.
+Do not remove the restrictions in section 3 or grant recipients rights in the
+Software that conflict with this license. Compliant recipients receive the
+permissions in this license directly from the respective Licensors.
 
-## Patent License
+5. User-Created Content and Outputs
 
-The licensor grants you a patent license for the software that covers patent claims the licensor can license, or becomes able to license, that you would infringe by using the software.
+This license does not restrict the commercial use or sale of your own widgets,
+race-screen layouts, audio and image sets, track designs, measurements, race
+results, reports or other original content created using the Software. Normal track
+design exports may include the first-party piece drawings and definitions
+that the Software embeds as part of the design.
 
-## Noncommercial Purposes
+This exception does not allow selling the Software itself, a modified version,
+or copied stock catalogues merely by describing them as outputs or content.
+Rights in third-party material included in your content remain separate.
 
-Any noncommercial purpose is a permitted purpose.
+6. No Trademark Grant
 
-## Personal Uses
+This license grants no rights to another party's trademarks or branding,
+except as independently permitted by applicable law or separate permission.
 
-Personal use for research, experiment, and testing for the benefit of public knowledge, personal study, private entertainment, hobby projects, amateur pursuits, or religious observance, without any anticipated commercial application, is use for a permitted purpose.
+7. Warranty and Liability
 
-## Noncommercial Organizations
+The Software is provided as is, without warranties, including warranties of
+merchantability, fitness for a particular purpose, accuracy or noninfringement.
+To the extent permitted by applicable law, the Licensors are not liable for
+losses, claims or damages arising from the Software or its use, whether under
+contract, tort or another legal theory. Mandatory legal protections prevail.
 
-Use by any charitable organization, educational institution, public research organization, public safety or health organization, environmental protection organization, or government institution is use for a permitted purpose regardless of the source of funding or obligations resulting from the funding.
+8. Compliance and Separate Permission
 
-## Fair Use
-
-You may have "fair use" rights for the software under the law. These terms do not limit them.
-
-## No Other Rights
-
-These terms do not allow you to sublicense or transfer any of your licenses to anyone else, or prevent the licensor from granting licenses to anyone else.  These terms do not imply any other licenses.
-
-## Patent Defense
-
-If you make any written claim that the software infringes or contributes to infringement of any patent, your patent license for the software granted under these terms ends immediately. If your company makes such a claim, your patent license ends immediately for work on behalf of your company.
-
-## Violations
-
-The first time you are notified in writing that you have violated any of these terms, or done anything with the software not covered by your licenses, your licenses can nonetheless continue if you come into full compliance with these terms, and take practical steps to correct past violations, within 32 days of receiving notice.  Otherwise, all your licenses end immediately.
-
-## No Liability
-
-***As far as the law allows, the software comes as is, without any warranty or condition, and the licensor will not be liable to you for any damages arising out of these terms or the use or nature of the software, under any kind of legal claim.***
-
-## Definitions
-
-The **licensor** is the individual or entity offering these terms, and the **software** is the software the licensor makes available under these terms.
-
-**You** refers to the individual or entity agreeing to these terms.
-
-**Your company** is any legal entity, sole proprietorship, or other kind of organization that you work for, plus all organizations that have control over, are under the control of, or are under common control with that organization.  **Control** means ownership of substantially all the assets of an entity, or the power to direct its management and policies by vote, contract, or otherwise.  Control can be direct or indirect.
-
-**Your licenses** are all the licenses granted to you for the software under these terms.
-
-**Use** means anything you do with the software requiring one of your licenses.
+Your permissions under this license end if you violate its conditions. This
+does not end the permissions of recipients who remain in compliance.
+Licensors retain the right to offer their material under additional or
+different terms and to grant separate written permissions.

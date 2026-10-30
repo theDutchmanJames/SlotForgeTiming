@@ -466,4 +466,12 @@ Open an [issue](https://github.com/theDutchmanJames/SlotForgeTiming/issues) with
 
 SlotForge Timing is made by theDutchmanJames. Copyright 2026 theDutchmanJames.
 
-The source is provided under the **PolyForm Noncommercial License 1.0.0**. See [LICENSE](LICENSE) for the full terms, permissions and required notices. Third-party components retain their own licences.
+SlotForge Timing is provided under the **SlotForge Source-Available License 1.0 — No Software Sales or Paid Access**.
+
+- Personal, educational, club and internal business use are permitted without charge.
+- You may study, modify and share free copies, keeping the licence and notices and identifying your modifications.
+- Selling the app, including modified versions or copies bundled into paid offerings, or charging for access requires separate written permission.
+- You may use or sell your own original widgets, layouts, audio/image sets and race reports, subject to any rights in included third-party material. This does not permit selling the app itself.
+- Voluntary donations are allowed when access and use do not depend on payment.
+
+See [LICENSE](LICENSE) for the full terms. Third-party components retain their own licences. For an older release, check the licence included with that download.

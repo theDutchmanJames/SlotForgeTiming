@@ -140,14 +140,16 @@ ok('the new name is used everywhere and the old exports still import', pkg.build
 { // 1.35.2: who made the program, and on what terms it may be used
   const lic = fs.existsSync(path.join(root, 'LICENSE')) ? fs.readFileSync(path.join(root, 'LICENSE'), 'utf8') : '', linux = pkg.build.linux || {};
   ok('the package has an author, with his name and his page', pkg.author && pkg.author.name === 'theDutchmanJames' && pkg.author.url === 'https://github.com/theDutchmanJames');
-  ok('...a licence (PolyForm Noncommercial, which allows use and changes but no commercial use), and the places of the project (home page, repository, bugs)', pkg.license === 'PolyForm-Noncommercial-1.0.0' && pkg.homepage === 'https://github.com/theDutchmanJames/SlotForgeTiming'
+  ok('...a custom licence file reference and the project locations (home page, repository, bugs)', pkg.license === 'SEE LICENSE IN LICENSE' && pkg.homepage === 'https://github.com/theDutchmanJames/SlotForgeTiming'
     && pkg.repository && pkg.repository.type === 'git' && pkg.repository.url === 'git+https://github.com/theDutchmanJames/SlotForgeTiming.git' && pkg.bugs && pkg.bugs.url === 'https://github.com/theDutchmanJames/SlotForgeTiming/issues');
   ok('the installers carry no placeholder: the app id is his GitHub name, the maintainer of the Linux package is a real person with an address, and the copyright says whose the program is', pkg.build.appId === 'io.github.thedutchmanjames.slotforgetiming' && /^[a-z0-9.-]+$/.test(pkg.build.appId)
     && linux.maintainer === 'James <thedutchmanjames@gmail.com>' && pkg.build.copyright === 'Copyright © 2026 theDutchmanJames' && !/example\.|\.invalid|noreply/.test(JSON.stringify(pkg)));
-  ok('the file LICENSE is the PolyForm Noncommercial License 1.0.0, with the line "Required Notice" that goes with every copy', /^Required Notice: Copyright 2026 theDutchmanJames \(https:\/\/github\.com\/theDutchmanJames\/SlotForgeTiming\)\n/.test(lic)
-    && lic.includes('# PolyForm Noncommercial License 1.0.0') && lic.includes('<https://polyformproject.org/licenses/noncommercial/1.0.0>') && lic.includes('Any noncommercial purpose is a permitted purpose.') && lic.includes('## No Liability') && lic.includes('**Use** means anything you do with the software requiring one of your licenses.'));
+  ok('LICENSE uses the SlotForge terms for Timing, including internal business use and the no-sale restriction', lic.startsWith('SlotForge Source-Available License 1.0')
+    && lic.includes('first-party SlotForge Timing source code') && lic.includes('internal business') && lic.includes('3. No Software Sales or Paid Access') && lic.includes('7. Warranty and Liability') && lic.includes('8. Compliance and Separate Permission'));
+  const locked = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.json'), 'utf8'));
+  ok('package and lockfile agree on the custom licence', locked.packages[''].license === pkg.license);
   ok('...it is in the installer too, and the QR code library keeps the licence it came with', patterns.includes('LICENSE') && fs.existsSync(path.join(root, 'vendor', 'QRCode', 'LICENSE-qrcode-terminal.txt')));
   const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
-  ok('the README tells the licence and whose program it is', /## Licence and copyright/.test(readme) && readme.includes('PolyForm Noncommercial License 1.0.0') && readme.includes('SlotForge Timing is made by theDutchmanJames. Copyright 2026 theDutchmanJames.'));
+  ok('the README tells the licence and whose program it is', /## Licence and copyright/.test(readme) && readme.includes('SlotForge Source-Available License 1.0') && readme.includes('SlotForge Timing is made by theDutchmanJames. Copyright 2026 theDutchmanJames.'));
 }
 console.log(fails ? fails + ' PACKAGE TESTS FAILED' : 'ALL PACKAGE TESTS PASSED'); process.exit(fails ? 1 : 0);
