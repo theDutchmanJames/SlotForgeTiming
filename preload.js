@@ -9,6 +9,15 @@ ipcRenderer.on('live:resync', () => listeners.resync.forEach(f => f()));
 const call = (channel, ...args) => ipcRenderer.invoke(channel, ...args);
 
 contextBridge.exposeInMainWorld('api', {
+  paddockStatus: () => call('paddock:status'),
+  paddockDiscover: () => call('paddock:discover'),
+  paddockConnect: value => call('paddock:connect',value),
+  paddockDisconnect: forget => call('paddock:disconnect',forget),
+  paddockBrowse: () => call('paddock:browse'),
+  paddockLink: (id,localId) => call('paddock:link',id,localId),
+  paddockRefresh: () => call('paddock:refresh'),
+  paddockPrepare: ids => call('paddock:prepare',ids),
+  paddockRetry: () => call('paddock:retry'),
   pluginDisplayCatalog: () => call('plugins:displayCatalog'),
   pluginRuleCatalog: () => call('plugins:ruleCatalog'),
   pluginRulePrepare: (id,saved) => call('plugins:rulePrepare',id,saved),

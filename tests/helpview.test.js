@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),Help=require('../renderer/help'),V=require('../renderer/helpview');
 const v=V.create({folders:Help.folders,WELCOME:Help.WELCOME}),topics=Help.folders(),ids=v.groups.flatMap(g=>g.ids);
-assert.equal(topics.length,102,'existing topics plus Track Builder guidance');assert.equal(new Set(ids).size,ids.length);assert.deepEqual([...ids].sort(),topics.map(t=>t.id).sort());
+assert.equal(topics.length,103,'existing topics plus Track Builder and Paddock guidance');assert(ids.includes('paddock'));assert.equal(new Set(ids).size,ids.length);assert.deepEqual([...ids].sort(),topics.map(t=>t.id).sort());
 for(const t of topics){assert(v.search(t.title).some(x=>x.id===t.id),'search reaches '+t.id);assert(v.select(t.id));assert(v.html().includes(t.body),'full article is available: '+t.id);}
 assert.equal(v.select('not-a-topic'),false);assert(v.select('start-guide'));assert(v.html().includes('Your first race'));
 assert.equal(v.search('Lap Highlights')[0].id,'laphighlights');assert(v.search('flash').some(t=>t.id==='laphighlights'));

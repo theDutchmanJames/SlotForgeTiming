@@ -286,7 +286,7 @@ async function mountManager(box, e) {
   const rsEmpty = !items.length ? 'No race setups yet. Use the button above, or start from a kind below.' : `Nothing under ${SETUP_FILTERS.find(f => f[0] === setupFilter)[1]} yet. Start one below.`;
   const rsBody = e !== 'racesetups' ? '' : (rsShown.length ? (mode === 'grid' ? `<div class="rscards">${rsShown.map(rsCard).join('')}</div>` : tableHtml(rsShown, cols)) : `<p class="muted">${esc(rsEmpty)}</p>`) + rsStart;
   box.innerHTML = `<div class="row${e==='racesetups'?' rstoolbar':''}"><button class="btn primary" id="add">Add ${esc(s.label.toLowerCase())}</button>
-      ${e === 'tracks' ? '<button class="btn" id="track-import">Import from Track Builder</button>' : ''}${s.extra === false ? '' : '<button class="btn" id="extra">Extra fields…</button>'}${rsFilter}${viewBtn}${toggle}</div>${bar}` +
+      ${e === 'slotcars' ? '<button class="btn" id="paddock-open">Connect to Paddock</button>' : ''}${e === 'tracks' ? '<button class="btn" id="track-import">Import from Track Builder</button>' : ''}${s.extra === false ? '' : '<button class="btn" id="extra">Extra fields…</button>'}${rsFilter}${viewBtn}${toggle}</div>${bar}` +
     (e === 'racesetups' ? rsBody
       : items.length && mode === 'grid' ? gridHtml(items)
       : items.length ? tableHtml(items, viewCols || cols)
@@ -312,6 +312,7 @@ async function mountManager(box, e) {
     if (b.dataset.viewbar) { if (viewBars.has(b.dataset.viewbar)) viewBars.delete(b.dataset.viewbar); else viewBars.add(b.dataset.viewbar); return mountManager(box, e); }
     if (b.dataset.vsreset) { await viewReset([[e, mode]]); return mountManager(box, e); }
     if (e === 'tracks' && (b.id === 'track-import' || b.dataset.trackDesign)) return TrackDesignUI.open(api, items.find(i=>i.id===b.dataset.trackDesign), ()=>mountManager(box,e));
+    if (b.id === 'paddock-open') return PaddockUI.open(api,()=>mountManager(box,e));
     if (b.id === 'add') return openForm(e, null);
     if (b.id === 'extra') return openExtra(e);
     if (b.id === 'vgrid' || b.id === 'vlist') { state.settings = await api.setSettings({ [viewKey]: b.id === 'vgrid' ? 'grid' : 'list' }); return mountManager(box, e); }
@@ -630,7 +631,7 @@ const carTracksHtml = d => !d.tracks.length ? '<span class="muted">No valid laps
   : `<table class="fields svc-tracks"><thead><tr><th>Track</th><th>Laps</th><th>Best</th><th>Average</th></tr></thead><tbody>${d.tracks.map(t => `<tr><td>${esc(t.name || '–')}</td><td>${t.laps}</td><td>${esc(Stats.fmtMs(t.best))}</td><td>${esc(Stats.fmtMs(t.avg))}</td></tr>`).join('')}</tbody></table>`;
 const loadCarStats = item => Promise.all([api.list('laps'), api.list('sessions'), api.list('tracks')]).then(([laps, sessions, tracks]) => CarStats.details(item, laps, sessions, tracks));
 // a mark for the list and the cards of the slotcars that need servicing
-const rowMark = (e, i) => (e === 'slotcars' && CarStats.status(i).due ? '<span class="svc-due" title="The laps since the last service have reached the service interval">Service due</span>' : '');
+const rowMark = (e, i) => (e === 'slotcars' && i.paddock ? `<span class="badge paddock-source" title="Details managed in SlotForge Paddock">Paddock${i.paddock.archived?' · unavailable':''}</span>` : '')+(e === 'slotcars' && CarStats.status(i).due ? '<span class="svc-due" title="The laps since the last service have reached the service interval">Service due</span>' : '');
 function openForm(e, item, preset) { // preset: values a new item starts with (Race Setups: Start from a kind)
   const s = state.schema[e];
   const fields = [...s.fields.map(f => ({ ...f, id: f.key, custom: false })), ...(e === 'slotcars' ? [...CAR_STATS, CAR_TRACKS] : []), ...(state.custom[e] || []).map(f => ({ ...f, custom: true }))];
@@ -1143,6 +1144,7 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
     finally { saving = false; }
   };
   if (!dlg.open) dlg.showModal(); // (it is already open when Edit was pressed in the view card)
+  if(e==='slotcars'&&item?.paddock){for(const key of ['brand','manufacturer','model','scale','motor','gearing','tyres','weight','picture','raceClass'])dlg.querySelectorAll('[data-key="'+key+'"] input,[data-key="'+key+'"] select,[data-key="'+key+'"] button').forEach(el=>el.disabled=true);const note=document.createElement('p');note.className='muted';note.textContent='Linked to Paddock. Edit catalogue details there, then use Connect to Paddock → Refresh linked cars. Simulation settings and service history remain local.';byId('frm').prepend(note);}
   if (groups) { const first = byId('f-' + fields[0].id); if (first && first.focus) first.focus(); } // the first field, as before, not the Open all button above the groups
 }
 

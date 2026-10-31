@@ -86,7 +86,7 @@ function collect(data, picks, withDeps = true, info = {}) {
   const items = {}, customFields = {};
   ORDER.forEach(e => {
     if (!have[e]) return;
-    items[e] = [...have[e].values()].map(clone);
+    items[e] = [...have[e].values()].map(row=>{const out=clone(row);delete out.paddock;delete out.paddockJournal;delete out.paddockDelivery;return out;});
     const used = new Set(); items[e].forEach(r => Object.keys(r.custom || {}).forEach(k => used.add(k)));
     const defs = ((data.customFields || {})[e] || []).filter(f => used.has(f.id));
     if (defs.length) customFields[e] = clone(defs);
@@ -138,7 +138,7 @@ function apply(db, bundle) {
     });
     for (const e of ORDER) {
       for (const src of bundle.items[e] || []) {
-        const row = clone(src); if(e==='tracks'&&Object.hasOwn(row,'trackDesign'))row.trackDesign=TrackDesign.validateSaved(row.trackDesign); const oldId = row.id; row.id = crypto.randomUUID(); map[e][oldId] = row.id;
+        const row = clone(src); delete row.paddock;delete row.paddockJournal;delete row.paddockDelivery; if(e==='tracks'&&Object.hasOwn(row,'trackDesign'))row.trackDesign=TrackDesign.validateSaved(row.trackDesign); const oldId = row.id; row.id = crypto.randomUUID(); map[e][oldId] = row.id;
         refsOf(e, row).forEach(r => r.set(map[r.entity] && map[r.entity][r.get()] !== undefined ? map[r.entity][r.get()] : ''));
         if (e === 'racesetups') { RaceLimit.upgrade(row); RaceLimit.upgradeScoring(row); } // (a file made before 1.62.0 may hold a Timed race: that is a Race limited by a time now; one from before 1.65.0 has heats of a time that count laps or points)
         if (e === 'teams') row.drivers = (Array.isArray(row.drivers) ? row.drivers : []).filter(Boolean);

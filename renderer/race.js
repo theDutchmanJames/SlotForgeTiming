@@ -74,6 +74,14 @@ async function renderRace() {
   const setupNow = () => (heat && heat.isFinal() ? { ...setup, ...finalLen() } : setup);
   // 1.35.1: swaps counted in distance need the length of every lane (metres) and the unit to say it in (App Settings: metres or feet)
   const laneLens = Array.from({ length: lanes }, (_, l) => Number(Speed.laneLength(r.track || {}, l)) || 0);
+  // Freeze Paddock configurations before starting; reconnecting never replaces a raced capture.
+  let paddockJournal=r.resume?.race?.paddockJournal||null;
+  if(!r.resume&&!tokenSession&&api.paddockPrepare&&cars.some(c=>c.paddock&&r.rows.some(x=>x.carId===c.id))){
+    try{paddockJournal=await api.paddockPrepare(r.rows.filter(x=>!isRival(x)).map(x=>x.carId));}
+    catch(e){alert('Cannot prepare Paddock cars: '+e.message);state.race=null;state.tab='home';return render();}
+  }
+  if(paddockJournal)paddockJournal.lanes=laneLens;
+  const paddockEpoch=Date.now()-performance.now();
   // Tyre Wear (1.40.0): the system of the setup, with the lane lengths (for a system that counts the wear per distance) and the distance unit of the app; never in a Time Token Session. The engine decides by the kind of session if it is used (practice and qualifying: when the system says so)
   const savedCalculations = r.resume?.eng?.rulesSnapshot?.version === 1 ? r.resume.eng.rulesSnapshot.config : null;
   const calculationRules = savedCalculations ? savedCalculations.calculations || PushSave.calculationSettings() : PushSave.calculationSettings(state.settings);
@@ -92,7 +100,8 @@ async function renderRace() {
   if(!tokenSession&&setup.resourceSystem&&!resourceState){try{resourceState=await api.resourceBegin(setup.resourceSystem,{runId:crypto.randomUUID(),champId:r.champ?.id||'',eventName:setup.name,champName:r.champ?.name||''});r.resources=resourceState;}catch(x){alert('Cannot prepare resources: '+x.message);state.race=null;state.tab='home';return render();}}
   const mc=tokenSession?null:(r.resume?.race?.multiclass||r.multiclass||null);
   if(mc){const errors=[...MultiClass.validate(mc,r.rows.filter(row=>!isRival(row)),setup),...(!r.resume?MultiClass.entryIssues(mc,r.rows.filter(row=>!isRival(row)),{cars,drivers,teams}):[])];if(errors.length){alert(errors.join(' '));state.race=null;state.tab='home';return render();}}
-  const mk = entries => RaceEngine.createRace({...(rulePlan?{rulePlugin:rulePlan}:{}),calculations:calculationRules,resources:resourceState,resourceHeat:heat?.idx||0, classPoints:heats?pointList:[],classFastestBonus:heats?Number(setup.fastestBonus)||0:0,multiclass:mc, virtualRivals: rivalEntries, ...(typeof RaceSystems !== 'undefined' ? RaceSystems.raceConfig(setup) : {}), ...(typeof PitHold !== 'undefined' ? PitHold.raceConfig(setup) : {}), redFlagSeconds: Number(setup.redFlagSeconds) || 0, penalty: penCfg, damage: damCfg, type: engineType, laps: lenNow().laps, duration: lenNow().duration, distance: engineType === 'race' ? Distance.config(setupNow(), r.track, lanes) : null, compare: engineType === 'timed' ? Distance.compare(setup, r.track, lanes) : null, sectors: Distance.sectors(r.track), endRule: setup.endRule, minLap: Math.max(RaceEngine.MIN_LAP, (Number(r.track.minLap) || 0) * 1000) / speed, maxLap: (Number(r.track.maxLap) || 0) * 1000 / speed, fuel: fuelCfg, bop: bopCfg, yellow: { target: 0, points: 0 }, weather: wxFor(), tyrewear: twCfg, safetycar: scCfg, pushsave: psCfg, skipFirst: tokenSession || setup.firstLap === 'skip', endurance: enduCfg, laneLengths: setup.endurance && setup.endurance.unit === 'distance' ? laneLens : null, rnd: state.rand || Math.random, entries: psEntries(entries) });
+  const mkRaw = entries => RaceEngine.createRace({...(paddockJournal?{paddockClock:t=>paddockEpoch+t}:{}),...(rulePlan?{rulePlugin:rulePlan}:{}),calculations:calculationRules,resources:resourceState,resourceHeat:heat?.idx||0, classPoints:heats?pointList:[],classFastestBonus:heats?Number(setup.fastestBonus)||0:0,multiclass:mc, virtualRivals: rivalEntries, ...(typeof RaceSystems !== 'undefined' ? RaceSystems.raceConfig(setup) : {}), ...(typeof PitHold !== 'undefined' ? PitHold.raceConfig(setup) : {}), redFlagSeconds: Number(setup.redFlagSeconds) || 0, penalty: penCfg, damage: damCfg, type: engineType, laps: lenNow().laps, duration: lenNow().duration, distance: engineType === 'race' ? Distance.config(setupNow(), r.track, lanes) : null, compare: engineType === 'timed' ? Distance.compare(setup, r.track, lanes) : null, sectors: Distance.sectors(r.track), endRule: setup.endRule, minLap: Math.max(RaceEngine.MIN_LAP, (Number(r.track.minLap) || 0) * 1000) / speed, maxLap: (Number(r.track.maxLap) || 0) * 1000 / speed, fuel: fuelCfg, bop: bopCfg, yellow: { target: 0, points: 0 }, weather: wxFor(), tyrewear: twCfg, safetycar: scCfg, pushsave: psCfg, skipFirst: tokenSession || setup.firstLap === 'skip', endurance: enduCfg, laneLengths: setup.endurance && setup.endurance.unit === 'distance' ? laneLens : null, rnd: state.rand || Math.random, entries: psEntries(entries) });
+  const mk=entries=>paddockJournal?PaddockRace.attach(mkRaw(entries),paddockJournal,String((heat?.idx||0)+1),()=>paddockEpoch+performance.now(),t=>paddockEpoch+t):mkRaw(entries);
   const pointList = String(setup.points || '').split(',').filter(t => t.trim() !== '').map(Number).filter(n => !isNaN(n)); // '10, 8, 6' -> [10, 8, 6]; blank pieces are skipped (Number('') would make them 0)
 
   // 1.68.0: a race of a championship that gives points: what the earlier rounds left behind, and where everybody stands, for a leaderboard that counts over the rounds ("Count over: All heats and rounds so far")
@@ -188,6 +197,8 @@ async function renderRace() {
   if(mc){const p=document.createElement('section');p.id='mc-live';p.className='mc-live-summary';host.querySelector('#raceactive').prepend(p);}
   if(eng.rivals?.length) { const p=document.createElement('section');p.id='vr-live';p.className='card vr-live-summary';host.querySelector('#raceactive').prepend(p); }
   const now = () => performance.now();
+  if(paddockJournal){const banner=document.createElement('p');banner.className='muted';banner.textContent='Paddock cars: configurations captured. Results will be queued when finalized.'+(paddockJournal.warnings.length?' '+paddockJournal.warnings.join(' · '):'');host.prepend(banner);}
+
   const ui = id => { // (the race screen has a place of its own: its ids can not be mixed up with those of the screen that is shown)
     const el = typeof HTMLElement !== 'undefined' && host instanceof HTMLElement ? host.querySelector(`[id="${id}"]`) : null;
     return el || document.getElementById(id);
@@ -693,6 +704,7 @@ async function renderRace() {
         const a = live.tyreBy.get(c.participant) || { unit: t.unit, warn: t.warn, crit: t.crit, stints: [], stops: 0, ms: 0, worn: 0, last: '' };
         live.tyreBy.set(c.participant, { ...a, stints: [...a.stints, ...t.stints.map(q => ({ ...q, heat: raceNo, ...(fin ? { final: fin } : {}) }))], stops: a.stops + t.stops, ms: a.ms + t.ms, worn: a.worn + t.worn, last: t.last });
       });
+      eng.paddockReview?.((c,n)=>c.en?Endurance.driverAtLap(c.en,n):c.driverId);
       eng.cars.forEach(c => live.laps.push(...lapRows(c, date, { heat: raceNo, ...(fin ? { final: fin } : {}) })));
       eng.cars.forEach(c => { if (c.en) live.stintBy.set(c.participant, [...(live.stintBy.get(c.participant) || []), ...stintsOf(c).map(q => ({ ...q, heat: raceNo, ...(fin ? { final: fin } : {}) }))]); }); // (the stints of every heat, for the result)
       live.priorBy = new Map(live.bestBy); live.priorAll = live.bestAll; live.priorAllName = live.bestAllName; // (the next race starts from what this one has set)
@@ -762,6 +774,7 @@ async function renderRace() {
         ...(hasPits(x.car) ? pitFigures(x.car) : {}), ...((penCfg.on||rulePlan) ? { penaltyPoints: x.car.points, penalty: eng.penMs(x.car)+eng.pluginTimeOf(x.car), dq: x.car.dq || undefined } : {}),
         ...(eng.twStintsOf && eng.twStintsOf(eng.cars.indexOf(x.car)) ? { tyres: eng.twStintsOf(eng.cars.indexOf(x.car)) } : {}),
         ...(x.car.en ? { ...teamRow(x.car), ...(x.car.swapLost ? { swapLost: x.car.swapLost } : {}), swaps: x.car.en.swaps } : {}) }));
+      eng.paddockReview?.((c,n)=>c.en?Endurance.driverAtLap(c.en,n):c.driverId);
       laps = [];
       eng.cars.forEach(c => laps.push(...lapRows(c, date, {})));
     }
@@ -773,7 +786,7 @@ async function renderRace() {
       standings=[];
     }
     const changes = heats ? null : systemChanges();
-    const session = { ...(rulePlan?{rulePlugin:rulePlan}:{}),...(resourceState?{resourceRunId:resourceState.runId,resources:structuredClone(resourceState)}:{}), audioSetId: setup.audioSet || '', setupName: setup.name, sessionType: setup.ofType || setup.sessionType, trackId: r.track.id, trackName: r.track.name, date, ...(r.champ ? { champ: r.champ } : {}), endedBy: heats ? '' : eng.endedBy, ...(Distance.compareOn(setup) ? { compareBy: 'distance' } : {}), ...(!heats && eng.resumes ? { resumed: eng.resumes } : {}), ...(heats && live.resumeCount ? { resumed: live.resumeCount } : {}), ...(changes && changes.length ? { systemChanges: changes } : {}), standings, ...(!heats && eng.weatherNote() ? { weatherNote: eng.weatherNote() } : {}) };
+    const session = { ...(paddockJournal?{paddockJournal}:{}), ...(rulePlan?{rulePlugin:rulePlan}:{}),...(resourceState?{resourceRunId:resourceState.runId,resources:structuredClone(resourceState)}:{}), audioSetId: setup.audioSet || '', setupName: setup.name, sessionType: setup.ofType || setup.sessionType, trackId: r.track.id, trackName: r.track.name, date, ...(r.champ ? { champ: r.champ } : {}), endedBy: heats ? '' : eng.endedBy, ...(Distance.compareOn(setup) ? { compareBy: 'distance' } : {}), ...(!heats && eng.resumes ? { resumed: eng.resumes } : {}), ...(heats && live.resumeCount ? { resumed: live.resumeCount } : {}), ...(changes && changes.length ? { systemChanges: changes } : {}), standings, ...(!heats && eng.weatherNote() ? { weatherNote: eng.weatherNote() } : {}) };
     if(mc){
       session.multiclass=mc;
       const ranked=heats?heat.overall():eng.standings(),classRows=heats?heat.classOverall():eng.classStandings();
@@ -783,6 +796,7 @@ async function renderRace() {
         return base?{...base,classPos:x.classPos,className:x.className,classColor:x.classColor,classGap:x.classGap,...(heats?{classPoints:x.classPoints,score:x.score,counted:x.counted,dropped:x.dropped,points:x.points}:{} )}:null;
       }).filter(Boolean);
     }
+    if(paddockJournal){const totals=heats?new Map(heat.spentBy().map(x=>[people[x[0]]?.carId,x[1]])):new Map(eng.cars.map(c=>[c.carId,eng.spentOf(c,eng.endAt,true)]));paddockJournal.classifiedTimes=Object.fromEntries(totals);}
     if(timingPlugin) session.timingPlugin=timingPlugin;
     if (!heats) { session.rulesSnapshot = eng.rulesSnapshot(); if(eng.rivals?.length) { session.virtualRivals=VirtualRival.summary(eng); session.rivalClassification=eng.displayStandings().map(x=>({driverId:x.car.driverId,pos:x.pos,physicalPos:x.physicalPos,virtualRival:!!x.car.virtualRival,comparisonOnly:!!x.car.comparisonOnly})); } }
     if (heats) { session.resultBy = heat.scoring.byTime ? 'time' : mc?.pointsMode==='class'&&setup.resultBy==='points'?'laps':setup.resultBy;
@@ -1339,7 +1353,7 @@ async function renderRace() {
     if(resourceState)live.resourceSent=resourceState.revision;
     try { live.cpPromise=Promise.resolve(api.saveResume({ v: 1, savedAt: new Date().toISOString(), name: setup.name, kind: SESSION_LABEL[setup.ofType || setup.sessionType] || '', trackName: r.track.name, wxSeed, wxHeat: wxLast, elapsed: waiting ? 0 : eng.elapsed(t), phase: live.phase,
       ...(heats ? { where, heat: heatState() } : {}),
-      race: { ...(rulePlan?{rulePlugin:rulePlan}:{}),...(timingPlugin?{timingPlugin}:{}),resources:resourceState,multiclass:mc, virtualRivals: rivalEntries, setup: lean(r.setup), track: lean(r.track), rows: r.rows, ...(r.champ ? { champ: r.champ } : {}), ...(byTeam ? { byTeam: true } : {}), ...(heats ? { schedule: heat.schedule, ...(r.labels ? { labels: r.labels } : {}) } : {}) }, eng: waiting ? null : eng.snapshot(t) })).then(ok=>{if(resourceState&&!ok)throw Error('Database write failed');return true;}).catch(resourceSaveFailed);return live.cpPromise;}catch(x){return Promise.resolve(resourceSaveFailed(x));}
+      race: { ...(paddockJournal?{paddockJournal}:{}), ...(rulePlan?{rulePlugin:rulePlan}:{}),...(timingPlugin?{timingPlugin}:{}),resources:resourceState,multiclass:mc, virtualRivals: rivalEntries, setup: lean(r.setup), track: lean(r.track), rows: r.rows, ...(r.champ ? { champ: r.champ } : {}), ...(byTeam ? { byTeam: true } : {}), ...(heats ? { schedule: heat.schedule, ...(r.labels ? { labels: r.labels } : {}) } : {}) }, eng: waiting ? null : eng.snapshot(t) })).then(ok=>{if(resourceState&&!ok)throw Error('Database write failed');return true;}).catch(resourceSaveFailed);return live.cpPromise;}catch(x){return Promise.resolve(resourceSaveFailed(x));}
   }
   function resourceSaveFailed(x){if(!resourceState)return false;live.resourceFault=true;live.resourceSent=-1;if(eng.status==='running'){eng.setFlag('red',now());live.phase='paused';}else if(eng.status==='ready'){live.phase=heats&&heat.idx>0?'between':'ready';live.runId++;}power(false);ui('msg').textContent='Resource saving failed: '+x.message+'. Racing is paused. Open Resources and retry saving.';return false;}
   async function clearCheckpoint() {

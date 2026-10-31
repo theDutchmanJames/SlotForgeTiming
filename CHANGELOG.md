@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.99.4 — 2026-10-31
+
+### SlotForge Paddock integration
+
+- Added a local-network Paddock connection under Database → Slotcars, with discovery, pairing, car linking, catalogue refresh and delivery status. Requires Paddock's Timing v1 API.
+- Linked cars keep their Timing identity and race history. Paddock owns catalogue specifications and Race Class; Timing retains local simulation and service settings.
+- Capture signed car configurations before racing, use dated cached configurations offline, and queue finalized results with corrections and withdrawals. Virtual rivals do not contribute physical mileage.
+- Repaired lap timestamps and driver attribution after review deletion, fractional-clock boundaries, late sensor input, network retries, persistence failures, incomplete catalogues and error-state presentation.
+- Fixed local Endurance stint counts, distance boundaries and driver attribution after lap deletion while preserving actual swap times.
+- Added regression coverage and actual-app checks across all themes and at 600px. Physical two-computer LAN acceptance remains outstanding.
+
+### SlotForge Track Builder integration
+
+- Import track profiles, lane lengths, transparent artwork and supported route/tuning data into the Track Database.
+- Live Track follows imported layouts with either coloured lanes or the imported artwork, including profile-based estimated movement.
+- Repaired imported-track selection, validation, drawing and scrolling workflows.
+
+### Licence
+
+- Adopted the SlotForge source-available licence used by Track Builder. See LICENSE for the terms applying to this release.
+
 ## 1.99.3 — 2026-10-29
 
 ### Plugins

@@ -18,7 +18,7 @@ const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) app.quit();
 else app.on('second-instance', () => { const w = BrowserWindow.getAllWindows()[0]; if (w) { if (w.isMinimized()) w.restore(); w.focus(); } });
 
-let db, mainWin, resourceStore, pluginHost;
+let db, mainWin, resourceStore, pluginHost, paddock;
 const parallel = require('./parallelport').createController({ onEvent: event => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('parallel:event', event); } });
 const phidget = require('./phidgetport').createController({ onEvent: event => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('phidget:event', event); } });
 let pendingRestore = null; // a backup file chosen for restoring, waiting for the user to confirm
@@ -116,13 +116,26 @@ app.whenReady().then(() => {
   const backgroundOn = s => !(s && typeof s === 'object' && s.backgroundSave === false);
   db.bg = backgroundOn(db.getSettings());
   ipcMain.handle('schema', () => schema);
+  paddock = new (require('./paddock').Paddock)(db);
+  paddock.isRacing=()=>!!live.dyn&&['countdown','running','paused','between'].includes(live.dyn.phase);
+  const paddockOwner=e=>{if(!mainWin||e.sender!==mainWin.webContents||e.senderFrame!==mainWin.webContents.mainFrame)throw Error('Use the main Timing window.');};
+  const paddockIdle=e=>{paddockOwner(e);if(paddock.isRacing())throw Error('Finish the race before changing Paddock connections or cars.');};
+  ipcMain.handle('paddock:status',(e)=>{paddockOwner(e);return paddock.status();});
+  ipcMain.handle('paddock:discover',(e)=>{paddockIdle(e);return require('./paddock').discover();});
+  ipcMain.handle('paddock:connect',(e,input)=>{paddockIdle(e);return paddock.connect(input);});
+  ipcMain.handle('paddock:disconnect',(e,forget)=>{paddockIdle(e);return paddock.disconnect(forget);});
+  ipcMain.handle('paddock:browse',(e)=>{paddockIdle(e);return paddock.browse();});
+  ipcMain.handle('paddock:link',(e,id,local)=>{paddockIdle(e);return paddock.link(id,local);});
+  ipcMain.handle('paddock:refresh',(e)=>{paddockIdle(e);return paddock.refresh();});
+  ipcMain.handle('paddock:prepare',(e,ids)=>{paddockIdle(e);return paddock.prepare(ids);});
+  ipcMain.handle('paddock:retry',(e)=>{paddockIdle(e);return paddock.retry();});
   require('./packipc').register({ipcMain,dialog,BrowserWindow,db,getMain:()=>mainWin,isRacing:()=>!!live.dyn && ['countdown','running','paused','between','review'].includes(live.dyn.phase),appVersion:require('./package.json').version});
   pluginHost = require('./pluginipc').register({ipcMain,dialog,BrowserWindow,app,utilityProcess:require('electron').utilityProcess,getMain:()=>mainWin,isRacing:()=>!!live.dyn && ['countdown','running','paused','between','review'].includes(live.dyn.phase),appVersion:require('./package.json').version,root:path.join(app.getPath('userData'),'plugins'),getSettings:()=>db.getSettings(),onTiming:event=>{if(mainWin&&!mainWin.isDestroyed())mainWin.webContents.send('plugins:timing-event',event);}});
   ipcMain.handle('voices:report', () => require('./voicereport').collect()); // what this computer offers for text to speech (Audio Settings > Voice report)
   ipcMain.handle('db:path', () => db.file);
   ipcMain.handle('db:list', (_e, entity) => { const rows = db.list(entity); watch.sent(entity, rows); return rows; });
   ipcMain.handle('db:add', async (_e, entity, item) => { const row = db.add(entity, item); await db.saved(); return row; });
-  ipcMain.handle('db:update', async (_e, entity, id, patch) => { const row = db.update(entity, id, patch); await db.saved(); return row; });
+  ipcMain.handle('db:update', async (_e, entity, id, patch) => { if(entity==='slotcars'){patch={...patch};delete patch.paddock;if(db.data.slotcars.find(c=>c.id===id)?.paddock)for(const key of require('./paddock').COPY_FIELDS)delete patch[key];} const row = db.update(entity, id, patch); await db.saved(); return row; });
   ipcMain.handle('db:remove', async (_e, entity, id) => { db.remove(entity, id); await db.saved(); });
   ipcMain.handle('db:linked', (_e, entity, id) => db.linkedLaps(entity, id));
   resourceStore=new (require('./resource-store'))(db);
@@ -193,6 +206,7 @@ app.whenReady().then(() => {
     } catch { return { ok: false, error: 'The file could not be read: it is not a backup file from this app.' }; }
   });
   ipcMain.handle('backup:restore', async () => {
+    if(paddock?.busy)throw Error('Wait for the Paddock operation before restoring a backup.');
     if(pluginHost?.timing?.reservation)throw Error('Finish or leave the race before restoring a backup.');
     await pluginHost?.timing?.reset();
     await resourceStore.idle();
@@ -202,7 +216,10 @@ app.whenReady().then(() => {
     if (!pendingRestore) throw new Error('No backup file chosen.');
     const safety = path.join(path.dirname(db.file), `slotforge-timing.before-restore-${localDate()}-${new Date().toTimeString().slice(0, 8).replace(/:/g, '')}.json`); // (a second restore does not overwrite the copy of the first)
     try { fs.copyFileSync(db.file, safety); } catch { /* nothing to copy yet */ } // the data as it was, in case the restore was a mistake
-    db.replaceAll(pendingRestore.data); pendingRestore = null;
+    if(paddock?.busy)throw Error('Wait for the Paddock operation before restoring a backup.');
+    paddock.stop();
+    try{db.replaceAll(pendingRestore.data);pendingRestore=null;}
+    finally{paddock=new (require('./paddock').Paddock)(db);paddock.isRacing=()=>!!live.dyn&&['countdown','running','paused','between'].includes(live.dyn.phase);}
     applyNet().finally(() => BrowserWindow.getAllWindows().forEach(w => { if (!w.isDestroyed()) w.webContents.reload(); }));
     return { safety };
   });
@@ -271,6 +288,7 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => app.quit());
+app.on('before-quit',()=>paddock?.stop());
 let quitFlushed = false;
 let quitWaiting = false;
 app.on('before-quit', e => {

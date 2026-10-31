@@ -8,6 +8,7 @@ const CarStats = require('./renderer/carstats.js'); // the slotcar statistics (1
 const RaceLimit = require('./renderer/racelimit.js'); // what limits a race (1.62.0)
 
 const TrackDesign = require('./renderer/trackdesign.js');
+const PaddockRecords = require('./paddockrecords');
 const VERSION = 1;
 
 // 1.86.0: Track Call used to combine its action and its power behaviour in one
@@ -333,6 +334,7 @@ class Database {
     if (!row) throw new Error('Not found');
     Object.assign(row, patch, { id });
     this.touch(row);
+    if (entity === 'laps') { const session=this.data.sessions.find(s=>s.id===row.sessionId); if(session){PaddockRecords.revise(this.data,session);this.touch(session);} }
     this.commit();
     return row;
   }
@@ -356,6 +358,11 @@ class Database {
   remove(entity, id) {
     this.check(entity);
     const d = this.data;
+    if(['tracks','drivers','slotcars','laps'].includes(entity))for(const s of d.sessions){
+      const key=entity==='drivers'?'driverId':'carId';
+      const affected=entity==='tracks'?s.trackId===id:d.laps.some(l=>l.sessionId===s.id&&(entity==='laps'?l.id===id:l[key]===id))||(entity!=='laps'&&((s.standings||[]).some(row=>row[key]===id)||(s.paddockJournal?.heats||[]).some(h=>(h.entries||[]).some(e=>e[key]===id||(entity==='drivers'&&(e.changes||[]).some(change=>change.driverId===id))))));
+      if(affected)PaddockRecords.withdraw(d,s,'Timing records were removed from this session.');
+    }
     if (entity === 'raceclasses') {
       // Remove current catalogue links, never frozen race/heat/championship history.
       for (const table of ['slotcars', 'drivers', 'teams'])
@@ -400,6 +407,7 @@ class Database {
   // One finished session with all of its laps, saved in a single write.
   saveSession(session, laps) {
     const s = { ...session, id: crypto.randomUUID() }, before = new Map(), added = [];
+    PaddockRecords.prepare(this.data,s,laps);
     this.data.sessions.push(s);
     for (const l of laps) {
       const row = { ...l, id: crypto.randomUUID(), sessionId: s.id };
@@ -432,6 +440,7 @@ class Database {
     return id;
   }
   removeSession(id) {
+    const session=this.data.sessions.find(s=>s.id===id);if(session)PaddockRecords.withdraw(this.data,session,'Session deleted in Timing.');
     this.removeLapsWhere(l => l.sessionId === id);
     this.data.sessions = this.data.sessions.filter(s => s.id !== id);
     this.touchAll();

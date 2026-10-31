@@ -178,7 +178,7 @@
     R.twTeams = {}; // the sets that are left of a team that shares them (Tyre Wear): { teamId: { H: 2, M: 1, ... } }
     let callId = 0;
     const log = (type, i, t, data) => {
-      const event = { type, car: i, t, raceMs: Math.max(0, R.elapsed ? R.elapsed(t) : 0), lane: R.cars[i]?.lane ?? -1, driverName: R.cars[i]?.driverName || '', ...data };
+      const event = { type, car: i, t, ...(type==='swapdone'&&cfg.paddockClock?{paddockAt:cfg.paddockClock(t)}:{}), raceMs: Math.max(0, R.elapsed ? R.elapsed(t) : 0), lane: R.cars[i]?.lane ?? -1, driverName: R.cars[i]?.driverName || '', ...data };
       R.events.push(event); return event;
     };
     R.logEvent = log; // Attached systems use the same frozen driver identity and race clock.
@@ -1353,6 +1353,7 @@
       const c = R.cars[i]; if (!c || !(n >= 0 && n < c.laps.length)) return false;
       ensurePaceEligibility(c);
       if (!recalc) { if (!c.removed.includes(n)) c.removed = [...c.removed, n].sort((a, b) => a - b); rebuildPace(c); return true; }
+      if (c.en) En.removeLap(c.en, n, EN?.unit === 'distance' ? enLen(c) : 0);
       const gone = c.laps[n]; c.laps.splice(n, 1); c.bad.splice(n, 1); c.paceEligibility.splice(n, 1); if (c.ps) c.ps.splice(n, 1);
       if(c.pluginLaps)c.pluginLaps.splice(n,1);
       const shift = list => list.filter(x => x !== n).map(x => (x > n ? x - 1 : x));

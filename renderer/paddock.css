@@ -1,0 +1,11 @@
+.paddock-dialog{width:min(1100px,94vw);max-height:90vh;overflow:auto;padding:24px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:16px}
+.paddock-dialog input[type=password]{font:inherit;padding:8px 12px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;width:100%}
+.paddock-dialog>header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}.paddock-dialog header h2{margin:4px 0}.paddock-dialog header p{margin:4px 0 12px}
+.paddock-shell{display:grid;grid-template-columns:180px minmax(0,1fr);gap:20px}.paddock-shell nav{display:flex;flex-direction:column;gap:8px;align-items:stretch}.paddock-shell nav .btn{text-align:left;border-left:3px solid #54a6a2}.paddock-shell main{min-width:0}
+.paddock-shell section{margin:0 0 18px;padding:20px;background:var(--panel);border:1px solid var(--line);border-left:3px solid #54a6a2;border-radius:12px}.paddock-shell section:nth-of-type(2){border-left-color:#66a579}.paddock-shell section:nth-of-type(3){border-left-color:#9297cd}
+.paddock-shell h3{margin-top:0}.paddock-shell label{display:grid;gap:6px;margin:14px 0}.paddock-shell input,.paddock-shell select{max-width:100%;min-width:0;box-sizing:border-box}.paddock-shell .row{flex-wrap:wrap;gap:8px}.paddock-shell .row input{flex:1;min-width:150px}
+.paddock-car{display:grid;grid-template-columns:minmax(120px,1fr) minmax(130px,1fr) auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}.paddock-car p{margin:4px 0}.paddock-car b,.paddock-delivery b{overflow-wrap:anywhere}.paddock-shell details{margin-top:18px}.paddock-shell [data-error]{color:var(--danger,#df6565);overflow-wrap:anywhere}
+.paddock-delivery{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}.paddock-delivery p{flex-basis:100%;margin:0;overflow-wrap:anywhere}
+@media(max-width:760px){.paddock-shell{grid-template-columns:1fr}.paddock-shell nav{flex-direction:row;flex-wrap:wrap}.paddock-shell nav p{display:none}.paddock-dialog{padding:14px}.paddock-car{grid-template-columns:1fr}.paddock-shell section{padding:14px}}
+
+.paddock-source{margin-inline-start:6px}

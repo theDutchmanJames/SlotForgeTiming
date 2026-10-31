@@ -198,6 +198,22 @@
     for (let i = st.stints.length - 1; i > 0; i--) if (n >= st.stints[i].l0) return st.stints[i].d;
     return st.stints[0].d;
   }
+  // Remove a reviewed lap from the count/distance coordinates, preserving actual swap times.
+  function removeLap(st, n, length = 0) {
+    const lap = x => x > n ? x - 1 : x;
+    const meters = x => length > 0 ? x - Math.min(length, Math.max(0, x - n * length)) : x;
+    st.tot = {};
+    st.stints.forEach(s => {
+      s.l0 = lap(s.l0); s.m0 = meters(s.m0 || 0);
+      if (s.l1 !== undefined) s.l1 = lap(s.l1);
+      if (s.m1 !== undefined) s.m1 = meters(s.m1);
+      if (!isOpen(s)) {
+        const t = st.tot[s.d] || (st.tot[s.d] = { ms: 0, laps: 0, m: 0 });
+        t.ms += Math.max(0, s.ms1 - s.ms0); t.laps += Math.max(0, s.l1 - s.l0); t.m += Math.max(0, (s.m1 || 0) - s.m0);
+      }
+    });
+    if (st.due) st.due.laps = lap(st.due.laps);
+  }
   // Drivers of the roster who have driven less than the shortest total at the end of the race: [{ id, ms, laps }]. A driver who did not drive at all counts too.
   function short(cfg, st, roster, el, laps, m) {
     return totals(st, roster, el, laps, m).filter(x => (roster || []).some(r => r.id === x.id) && unitMs(cfg, x.ms, x.laps, x.m) + EPS < cfg.totalMin);
@@ -257,7 +273,7 @@
   const WHY = { interval: 'the stint is over', moment: 'it is time for the swap', max: 'the longest stint is over', total: 'the longest total of the driver is reached' };
   const whyText = why => WHY[why] || '';
 
-  const api = { clean, effective, parseMoments, newCar, look, step, choices, suggest, swap, close, pick, plan, stints, totals, driverAtLap, short, clock, leftText, spanText, spokenSpan, whyText, rulesText, chipOf, spentText, distText, view, cur, MODES, NEXT, CONFIRM };
+  const api = { clean, effective, parseMoments, newCar, look, step, choices, suggest, swap, close, pick, plan, stints, totals, driverAtLap, removeLap, short, clock, leftText, spanText, spokenSpan, whyText, rulesText, chipOf, spentText, distText, view, cur, MODES, NEXT, CONFIRM };
   root.Endurance = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
