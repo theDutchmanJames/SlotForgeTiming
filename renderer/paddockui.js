@@ -33,7 +33,7 @@
       finally{busy=false;dialog.querySelectorAll('button,input,select').forEach(x=>x.disabled=false);}
       if(failure)error(failure.message);
     }
-    q('[data-find]').onclick=()=>run(async()=>{const hosts=await api.paddockDiscover();q('[data-hosts]').innerHTML='<option value="">'+(hosts.length?'Choose a host':'No host found — enter address manually')+'</option>'+hosts.map(h=>`<option value="${esc(h.address)}">${esc(h.name)} · ${esc(h.address)}</option>`).join('');});
+    q('[data-find]').onclick=()=>run(async()=>{q('[data-find]').textContent='Searching… (about 4 seconds)';try{const hosts=await api.paddockDiscover();q('[data-hosts]').innerHTML='<option value="">'+(hosts.length?'Choose a host':'No host found — enter address manually')+'</option>'+hosts.map(h=>`<option value="${esc(h.address)}">${esc(h.name)} · ${esc(h.address)}</option>`).join('');if(!hosts.length)throw Error('No Paddock host replied after several attempts. Make sure sharing is active on the same local network. Discovery uses UDP port 47778 and may be blocked even when connecting by address works; you can enter the host address below.');}finally{q('[data-find]').textContent='Find Paddock on network';}});
     q('[data-hosts]').onchange=e=>{if(e.target.value)q('[data-address]').value=e.target.value;};
     q('[data-connect]').onclick=()=>run(async()=>{status=await api.paddockConnect({address:q('[data-address]').value,code:q('[data-code]').value});q('[data-code]').value='';catalog=await api.paddockBrowse();});
     q('[data-disconnect]').onclick=()=>run(()=>api.paddockDisconnect(false));

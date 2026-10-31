@@ -9,7 +9,8 @@
 - Capture signed car configurations before racing, use dated cached configurations offline, and queue finalized results with corrections and withdrawals. Virtual rivals do not contribute physical mileage.
 - Repaired lap timestamps and driver attribution after review deletion, fractional-clock boundaries, late sensor input, network retries, persistence failures, incomplete catalogues and error-state presentation.
 - Fixed local Endurance stint counts, distance boundaries and driver attribution after lap deletion while preserving actual swap times.
-- Added regression coverage and actual-app checks across all themes and at 600px. Physical two-computer LAN acceptance remains outstanding.
+- Improved automatic discovery with four attempts over about four seconds, per-adapter sockets, a local subnet broadcast fallback and clearer search/error messages.
+- Added regression coverage and actual-app checks across all themes and at 600px. Two-PC Windows LAN connection is user-verified; the discovery retry fix still needs confirmation on that setup.
 
 ### SlotForge Track Builder integration
 

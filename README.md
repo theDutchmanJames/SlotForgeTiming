@@ -455,7 +455,7 @@ Use the self-contained **Windows: run checks before building** guide above for a
 
 On Windows, use `npm.cmd` in place of `npm` when working in PowerShell.
 
-Additional focused checks are listed in `package.json`. Electron checks use isolated profiles and simulated race data where supported. The full regression suite, 34 focused Paddock tests and focused Electron visual and interaction checks passed for the 1.99.4 release. Paddock was tested with a real isolated host on the same computer; two-computer LAN discovery, firewall behaviour and reconnection still need physical acceptance testing. Software tests do not replace physical sensor and relay validation.
+Additional focused checks are listed in `package.json`. Electron checks use isolated profiles and simulated race data where supported. The full regression suite, 44 focused Paddock tests and focused Electron visual and interaction checks passed for the 1.99.4 release. Paddock was tested with a real isolated host, including multicast and broadcast discovery. A user confirmed connection between two Windows PCs; the revised discovery retries, reconnection and result delivery still need confirmation on that physical setup. Software tests do not replace physical sensor and relay validation.
 
 | Folder | Contents |
 | --- | --- |

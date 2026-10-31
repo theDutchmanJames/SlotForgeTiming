@@ -14,11 +14,47 @@ function request(base,route,code,databaseId,body,limit=16*1024*1024){return new 
     let size=0;const chunks=[];res.on('data',chunk=>{size+=chunk.length;if(size>limit)res.destroy(Error('Paddock response is too large.'));else chunks.push(chunk);});res.on('error',reject);res.on('end',()=>{try{const value=JSON.parse(Buffer.concat(chunks).toString('utf8'));if(res.statusCode!==200){const e=Error(value.error||'Paddock returned HTTP '+res.statusCode);e.code=value.code||'HTTP_'+res.statusCode;e.httpStatus=res.statusCode;throw e;}resolve(value);}catch(e){reject(e);}});
   });const timer=setTimeout(()=>req.destroy(Error('Paddock did not respond within 15 seconds.')),15000);req.on('close',()=>clearTimeout(timer));req.on('error',reject);if(raw)req.write(raw);req.end();
 });}
-function discover(){return new Promise(resolve=>{
-  const nonce=crypto.randomBytes(16).toString('hex'),found=new Map(),socket=dgram.createSocket('udp4');let done=false;
-  const finish=()=>{if(done)return;done=true;try{socket.close();}catch{}resolve([...found.values()]);};const timer=setTimeout(finish,1800);
-  socket.on('error',()=>{clearTimeout(timer);finish();});socket.on('message',(raw,remote)=>{try{if(raw.length>2048||!privateIP(remote.address))return;const v=JSON.parse(raw);if(v.type!=='slotforge-host'||v.version!==1||v.nonce!==nonce||!ID.test(v.id)||typeof v.name!=='string'||!v.name.length||v.name.length>200||!Number.isInteger(v.port)||v.port<1||v.port>65535)return;found.set(v.id+remote.address,{id:v.id,name:v.name,address:'http://'+remote.address+':'+v.port});}catch{}});
-  socket.bind(0,()=>{socket.setMulticastTTL(1);const packet=Buffer.from(JSON.stringify({type:'slotforge-discover',version:1,nonce}));for(const nic of Object.values(os.networkInterfaces()).flat().filter(x=>x.family==='IPv4'&&!x.internal&&privateIP(x.address))){try{socket.setMulticastInterface(nic.address);socket.send(packet,47778,'239.255.47.77');}catch{}}});
+// Each adapter owns a socket: asynchronous sends cannot inherit another adapter's routing.
+function discover({duration=4200,retryMs=1000}={}){return new Promise((resolve,reject)=>{
+  const adapters=[...new Map(Object.values(os.networkInterfaces()).flat().filter(n=>n.family==='IPv4'&&privateIP(n.address)).map(n=>[n.address,n])).values()];
+  if(!adapters.length)return reject(Error('No local IPv4 network adapter is available for Paddock discovery. Enter the host address manually.'));
+  const nonce=crypto.randomBytes(16).toString('hex'),packet=Buffer.from(JSON.stringify({type:'slotforge-discover',version:1,nonce})),found=new Map(),sockets=new Set(),timers=new Set();let done=false,sent=0;
+  const later=(fn,ms)=>{const timer=setTimeout(()=>{timers.delete(timer);fn();},ms);timers.add(timer);};
+  const close=socket=>{sockets.delete(socket);try{socket.close();}catch{}};
+  const finish=()=>{if(done)return;done=true;timers.forEach(clearTimeout);timers.clear();sockets.forEach(close);
+    if(!sent&&!found.size)reject(Error('Paddock discovery could not send on a local network adapter. Check the connection or enter the host address manually.'));
+    else resolve([...found.values()].sort((a,b)=>a.name.localeCompare(b.name)));
+  };
+  later(finish,duration);
+  for(const nic of adapters){
+    let socket;try{socket=dgram.createSocket('udp4');sockets.add(socket);}catch{continue;}
+    socket.on('error',()=>close(socket));
+    socket.on('message',(raw,remote)=>{try{
+      if(done||raw.length>2048||!privateIP(remote.address))return;const v=JSON.parse(raw);
+      if(v.type!=='slotforge-host'||v.version!==1||v.nonce!==nonce||typeof v.id!=='string'||!ID.test(v.id)||typeof v.name!=='string'||!v.name.trim()||v.name.length>200||!Number.isInteger(v.port)||v.port<1||v.port>65535)return;
+      const key=v.id+'@'+remote.address+':'+v.port;if(found.size<100||found.has(key))found.set(key,{id:v.id,name:v.name,address:'http://'+remote.address+':'+v.port});
+    }catch{}});
+    try{socket.bind(0,nic.address,()=>{
+      if(done||!sockets.has(socket))return;const destinations=[];
+      try{socket.setMulticastTTL(1);socket.setMulticastInterface(nic.address);destinations.push('239.255.47.77');}catch{}
+      // Paddock listens on this same UDP port for broadcast as well as multicast.
+      // Use only the adapter's own subnet, never probe ranges of host addresses.
+      if(!nic.internal&&net.isIP(nic.netmask)===4){
+        const mask=nic.netmask.split('.').map(Number),bits=mask.map(n=>n.toString(2).padStart(8,'0')).join('');
+        if(/^1+0{2,}$/.test(bits)){
+          const broadcast=nic.address.split('.').map((n,i)=>Number(n)|(~mask[i]&255)).join('.');
+          if(privateIP(broadcast))try{socket.setBroadcast(true);destinations.push(broadcast);}catch{}
+        }
+      }
+      if(!destinations.length){close(socket);return;}
+      const sendRound=round=>{
+        if(done||!sockets.has(socket))return;
+        for(const destination of destinations)try{socket.send(packet,47778,destination,e=>{if(!done&&!e)sent++;});}catch{}
+        if(round<3)later(()=>sendRound(round+1),retryMs);
+      };
+      sendRound(0);
+    });}catch{close(socket);}
+  }
 });}
 class Paddock {
   constructor(db){this.db=db;this.code='';this.connected=false;this.error='';this.catalog=[];this.busy=false;this.stopped=false;this.timer=null;Records.state(db.data);}
