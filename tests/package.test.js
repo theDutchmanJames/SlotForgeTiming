@@ -67,7 +67,7 @@ ok('build-windows.bat has the quick way: it skips the check of the app (npm test
 }
 ok('the flag icons (stylesheet and the flag pictures) are in the installer, and build-windows.bat installs them', /node_modules\/flag-icons\/css\//.test(html) && covered('node_modules/flag-icons/css/flag-icons.min.css') && covered('node_modules/flag-icons/flags/4x3/nl.svg') && /npm install flag-icons/.test(bat));
 ok('the app icon exists as a square picture of at least 256 pixels', (() => { const b = fs.existsSync(path.join(root, 'build', 'icon.png')) ? fs.readFileSync(path.join(root, 'build', 'icon.png')) : Buffer.alloc(0); return b.length > 24 && b.readUInt32BE(16) >= 256 && b.readUInt32BE(16) === b.readUInt32BE(20); })());
-{ // the icon is round: a square picture whose corners are see-through and whose circle is solid (the Windows icon holds the same picture in all its sizes)
+{ // The approved family icon is a rounded red tile with a white/charcoal flag.
   const zlib = require('zlib');
   const decode = b => { // an 8-bit picture with colour and see-through (RGBA), not interlaced: what the icon is made as
     if (b.length < 33 || b.readUInt32BE(0) !== 0x89504e47) return null;
@@ -84,27 +84,27 @@ ok('the app icon exists as a square picture of at least 256 pixels', (() => { co
     }
     return { w, h, alpha: (x, y) => out[y * stride + x * 4 + 3], colour: (x, y) => [...out.subarray(y * stride + x * 4, y * stride + x * 4 + 3)] };
   };
-  // round: every point well inside the circle is solid, every point well outside it is see-through (the soft edge, a pixel or two, is left alone)
-  const round = pic => {
+  // Check the rounded tile at every resolution, allowing for antialiased edges.
+  const roundedTile = pic => {
     if (!pic || pic.w !== pic.h) return false;
-    const n = pic.w, c = (n - 1) / 2, margin = Math.max(2, n * 0.02), step = Math.max(1, Math.floor(n / 64)); let inside = 0, outside = 0;
+    const n = pic.w, radius = n * 55 / 256, inner = n * 65 / 256;
+    const margin = Math.max(2, n * 0.02), step = Math.max(1, Math.floor(n / 64)); let inside = 0;
     for (let y = 0; y < n; y += step) for (let x = 0; x < n; x += step) {
-      const r = Math.hypot(x - c, y - c);
-      if (r < n / 2 - margin) { inside++; if (pic.alpha(x, y) < 250) return false; } else if (r > n / 2 + margin) { outside++; if (pic.alpha(x, y) > 5) return false; }
+      const qx = Math.abs(x + 0.5 - n / 2) - inner, qy = Math.abs(y + 0.5 - n / 2) - inner;
+      const distance = Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - radius;
+      if (distance < -margin) { inside++; if (pic.alpha(x, y) < 250) return false; }
+      else if (distance > margin) { if (pic.alpha(x, y) > 5) return false; }
     }
-    return inside > 50 && outside >= 4 && [[0, 0], [n - 1, 0], [0, n - 1], [n - 1, n - 1]].every(([x, y]) => pic.alpha(x, y) <= 5) && pic.alpha(n >> 1, n >> 1) >= 250;
+    return inside > 50 && [[0, 0], [n - 1, 0], [0, n - 1], [n - 1, n - 1]].every(([x, y]) => pic.alpha(x, y) <= 5);
   };
   const icon = decode(fs.readFileSync(path.join(root, 'build', 'icon.png')));
-  ok('the app icon is round: a square picture with see-through corners and a solid circle (not a square with the picture in it)', round(icon) && icon.w >= 256);
-  ok('...and the picture in the circle is the artwork, not an empty circle (the middle and the edge of the circle have different colours, and it is not all one colour)', (() => { const mid = icon.colour(icon.w >> 1, icon.h >> 1), top = icon.colour(icon.w >> 1, 4), l = icon.colour(4, icon.h >> 1); return mid.join() !== top.join() && top.join() === l.join() && new Set([[mid, top, icon.colour(icon.w >> 2, icon.h >> 2), icon.colour(icon.w >> 1, icon.h * 3 >> 2)].map(x => x.join())].flat()).size > 1; })());
-  { // the colours of the current picture: a near black car on a light grey circle, with red lanes in the road
-    const mid = icon.colour(icon.w >> 1, icon.h >> 1), top = icon.colour(icon.w >> 1, 6); let red = 0, solid = 0;
-    for (let y = 0; y < icon.h; y += 4) for (let x = 0; x < icon.w; x += 4) { if (icon.alpha(x, y) < 250) continue; solid++; const [r, g, b] = icon.colour(x, y); if (r > 110 && g < 70 && b < 80) red++; }
-    ok('the icon is the dark car on the light grey circle, with the red lanes of the road (the colours of the picture that was sent)', mid.every(c => c < 70) && top.every(c => c > 225) && red / solid > 0.01 && red / solid < 0.1);
-  }
+  ok('the app icon has a solid rounded tile and transparent outer corners', roundedTile(icon) && icon.w >= 256);
+  const sample = (x, y) => icon.colour(Math.floor(icon.w * x / 256), Math.floor(icon.h * y / 256));
+  ok('the flag has contrasting chequers and a white pole on the SlotForge red tile', sample(128, 40).join() === '233,67,73' && sample(84, 110).join() === '34,41,49' && sample(110, 110).every(c => c === 255) && sample(65, 180).every(c => c === 255));
+  ok('the window icon is included in the packaged application', covered('build/icon.png'));
   const ico = fs.readFileSync(path.join(root, 'build', 'icon.ico')), count = ico.readUInt16LE(4), entries = Array.from({ length: count }, (_, i) => { const o = 6 + i * 16; return { size: ico[o] || 256, bytes: ico.readUInt32LE(o + 8), at: ico.readUInt32LE(o + 12) }; });
   ok('the Windows icon holds the picture in the sizes Windows asks for (16, 32, 48, 256 and more)', ico.readUInt16LE(0) === 0 && ico.readUInt16LE(2) === 1 && [16, 32, 48, 256].every(n => entries.some(e => e.size === n)));
-  ok('...and it is round in every size that is stored as a picture (see-through corners, a solid circle)', (() => { const pics = entries.map(e => ({ e, pic: decode(ico.subarray(e.at, e.at + e.bytes)) })).filter(x => x.pic); return pics.length >= 4 && pics.some(x => x.e.size === 256) && pics.every(x => x.pic.w === x.e.size && round(x.pic)); })()); }
+  ok('...and every stored icon size preserves the rounded tile and transparent corners', (() => { const pics = entries.map(e => ({ e, pic: decode(ico.subarray(e.at, e.at + e.bytes)) })).filter(x => x.pic); return pics.length >= 4 && pics.some(x => x.e.size === 256) && pics.every(x => x.pic.w === x.e.size && roundedTile(x.pic)); })()); }
 const os = require('os'), M = require('../migrate'), T = require('../transfer');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mig-')), oldD = path.join(tmp, 'slot-lap-timer');
 ok('nothing to migrate when there is no old data', M.migrate(tmp) === false && !fs.existsSync(path.join(tmp, 'slotforge-timing')));
