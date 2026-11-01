@@ -1,0 +1,4 @@
+# Preserve the recorded bytes on every OS. Bundled vendor licences have verified
+# hashes, and existing source files intentionally contain mixed line endings.
+# This disables newline conversion, not normal text diffs.
+* -text
