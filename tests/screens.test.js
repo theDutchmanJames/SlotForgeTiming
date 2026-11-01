@@ -1606,9 +1606,13 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   await E('setupmgr').onclick({target:{closest:()=>({id:'vlist',dataset:{}})}}); await new Promise(r=>setTimeout(r,20));
   const sl=E('setupmgr').innerHTML;
   say('race setup list is short: name, track, session type, laps or time', sl.includes('<th>Name</th>') && sl.includes('<th>Laps / time</th>') && sl.includes('<th>Session type</th>') && sl.includes('10 laps') && !sl.includes('Timing page layout') && !sl.includes('<th>Number of laps</th>') && sl.includes('<table') && !sl.includes('dbfolder'));
+  const gridSaveStart = calls.length;
   await E('setupmgr').onclick({target:{closest:()=>({id:'vgrid',dataset:{}})}}); await new Promise(r=>setTimeout(r,20));
   const sg=E('setupmgr').innerHTML;
-  say('race setup cards remember their own choice', calls.filter(c=>c[0]==='settings').pop()[1].setupView==='grid');
+  // Other controls can finish a delayed settings save after this click. Verify
+  // this view's save and retained state, not whichever unrelated patch was last.
+  await api.setSettings({ dbView: 'list' });
+  say('race setup cards remember their own choice', calls.slice(gridSaveStart).some(c=>c[0]==='settings'&&c[1].setupView==='grid') && run('state.settings.setupView')==='grid');
   say('race setup cards show the name, the kind, the pills (format, limit, track and lanes), and what Ends and Wins say, in words', sg.includes('class="rscards"') && sg.includes('class="rscard"') && sg.includes('Friday') && sg.includes('<div class="rseye">Race</div>') && sg.includes('<span class="rspill">10 laps</span>') && sg.includes('Living room') && sg.includes('<span class="k">Ends</span><span>After 10 laps, when every car has finished.</span>') && sg.includes('<span class="k">Wins</span><span>The first car to finish the 10 laps wins.</span>') && sg.includes('data-edit=') && sg.includes('data-del='));
   say('...a card has no track picture (the design has none), and a dot that says whether the setup is ready (a track is chosen)', !sg.includes('base64,AAAA') && sg.includes('class="rsdot"'));
   say('...and under the cards, Start from a kind, with a button for each kind', sg.includes('Start from a kind') && ['practice','qualifying','race','heats','endurance','tokens'].every(k=>sg.includes('data-rskind="'+k+'"')));
