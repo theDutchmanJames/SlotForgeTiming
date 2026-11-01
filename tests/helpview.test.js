@@ -17,5 +17,5 @@ box.onclick({target:{closest:()=>({dataset:{helpRoute:'unknown'}})}});assert.equ
 box.onclick({target:{closest:()=>({dataset:{helpRoute:'fuel'}})}});
 Promise.resolve().then(()=>{assert.deepEqual(dest,V.ROUTES.fuel);dest.setupSub='wrong';assert.equal(V.ROUTES.fuel.setupSub,'fuel');console.log('Help view: all 107 topics, grouping, full-content search, escaping, example validation, state and navigation passed.');});
 
-for(const id of ['paddock','paddockpasswords','paddockfiles'])assert(v.groups.find(g=>g.id==='settings').ids.includes(id));
+for(const id of ['paddock','paddockcatalogue','paddockpasswords','paddockfiles','paddockwarnings'])assert(v.groups.find(g=>g.id==='settings').ids.includes(id));
 assert(v.search('cooldown').some(t=>t.id==='paddockpasswords'));assert(v.search('independent copies').some(t=>t.id==='paddockfiles'));

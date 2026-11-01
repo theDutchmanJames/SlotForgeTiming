@@ -1,6 +1,7 @@
 // Trusted LAN client. Network work runs in main, never in the lap timing path.
 const http=require('node:http'),net=require('node:net'),dgram=require('node:dgram'),os=require('node:os'),crypto=require('node:crypto');
 const Records=require('./paddockrecords');
+const RESPONSE_BYTES=Symbol('responseBytes');
 const ID=/^[a-zA-Z0-9_-]{1,100}$/;
 const TERMINAL_CODES=new Set(['INVALID_JSON','INVALID_PAYLOAD','SUMMARY_MISMATCH','DATABASE_REQUIRED','BROWSER_ORIGIN_FORBIDDEN','TIMING_PERMISSION_REQUIRED','CAR_NOT_FOUND','NOT_FOUND','DATABASE_MISMATCH','CONFIGURATION_MISMATCH','CONFIGURATION_INVALID','REVISION_CONFLICT','STALE_REVISION','PAYLOAD_TOO_LARGE','CONTENT_TYPE_REQUIRED','CONTENT_ENCODING_UNSUPPORTED','UNSUPPORTED_VERSION','CAPACITY_EXCEEDED','RECEIPT_MISMATCH']);
 const COPY_FIELDS=['brand','manufacturer','model','scale','motor','gearing','tyres','weight','picture','raceClass'];
@@ -26,7 +27,7 @@ function request(base,route,code,databaseId,body,limit=16*1024*1024){return new 
   const u=new URL(route,address(base));if(u.origin!==address(base))return reject(Error('Unexpected host address.'));
   const req=http.request(u,{method:raw?'POST':'GET',headers:{Authorization:'Bearer '+code,...(databaseId?{'X-SlotForge-Database':databaseId}:{}),'X-SlotForge-Pages':'1',...(raw?{'Content-Type':'application/json','Content-Length':Buffer.byteLength(raw)}:{})}},res=>{
     if(res.headers['content-encoding']&&res.headers['content-encoding']!=='identity'){res.destroy();return reject(Error('Compressed Paddock responses are unsupported.'));}
-    let size=0;const chunks=[];res.on('data',chunk=>{size+=chunk.length;if(size>limit)res.destroy(Error('Paddock response is too large.'));else chunks.push(chunk);});res.on('error',reject);res.on('end',()=>{try{if(res.statusCode===429){const e=Error('Paddock has temporarily limited connection attempts. Wait before retrying; saved results remain queued.');e.code='AUTH_RATE_LIMITED';e.httpStatus=429;e.retryAfterMs=retryDelay(res.headers['retry-after']);throw e;}const value=JSON.parse(Buffer.concat(chunks).toString('utf8'));if(res.statusCode!==200){const e=Error(value.error||'Paddock returned HTTP '+res.statusCode);e.code=value.code||'HTTP_'+res.statusCode;e.httpStatus=res.statusCode;throw e;}resolve(value);}catch(e){reject(e);}});
+    let size=0;const chunks=[];res.on('data',chunk=>{size+=chunk.length;if(size>limit)res.destroy(Error('Paddock response is too large.'));else chunks.push(chunk);});res.on('error',reject);res.on('end',()=>{try{if(res.statusCode===429){const e=Error('Paddock has temporarily limited connection attempts. Wait before retrying; saved results remain queued.');e.code='AUTH_RATE_LIMITED';e.httpStatus=429;e.retryAfterMs=retryDelay(res.headers['retry-after']);throw e;}const value=JSON.parse(Buffer.concat(chunks).toString('utf8'));if(res.statusCode!==200){const e=Error(value.error||'Paddock returned HTTP '+res.statusCode);e.code=value.code||'HTTP_'+res.statusCode;e.httpStatus=res.statusCode;throw e;}if(value&&typeof value==='object')Object.defineProperty(value,RESPONSE_BYTES,{value:size});resolve(value);}catch(e){reject(e);}});
   });const timer=setTimeout(()=>req.destroy(Error('Paddock did not respond within 15 seconds.')),15000);req.on('close',()=>clearTimeout(timer));req.on('error',reject);if(raw)req.write(raw);req.end();
 });}
 // Each adapter owns a socket: asynchronous sends cannot inherit another adapter's routing.
@@ -89,7 +90,10 @@ class Paddock {
   }
   state(){return Records.state(this.db.data);}
   async exclusive(task){if(this.busy)throw Error('Wait for the current Paddock operation.');this.busy=true;try{return await task();}finally{this.busy=false;}}
-  async commit(){this.db.touchAll();this.db.commit();await this.db.saved();}
+  // Top-level Paddock state is always serialized by Database. Only invalidate
+  // changed table rows; invalidating everything re-encodes every photo and lap.
+  async commit(rows=[]){for(const row of rows)this.db.touch(row);this.db.commit();await this.db.saved();}
+  deliveryRows(d){return this.db.data.sessions.filter(s=>s.paddockDelivery===d);}
   deliveries(){return [...this.db.data.sessions.map(s=>s.paddockDelivery).filter(d=>d&&d.status!=='withdrawn'),...this.state().withdrawals];}
   status(){const c=this.state().connection;return {connection:c,connected:this.connected,hasCode:!!this.code,error:this.error,busy:this.busy,cooldowns:this.cooldownsNow(),
     linked:this.db.data.slotcars.filter(c=>c.paddock).map(c=>({id:c.id,name:[c.brand,c.manufacturer,c.model].filter(Boolean).join(' '),databaseId:c.paddock.databaseId,carId:c.paddock.carId,archived:!!c.paddock.archived,capturedAt:c.paddock.configuration?.capturedAt})),
@@ -105,7 +109,8 @@ class Paddock {
     const before={receipt:d.receipt,receiptCheckedAt:d.receiptCheckedAt,receiptCheckError:d.receiptCheckError};
     if(r){d.receipt=r;d.receiptCheckedAt=new Date().toISOString();d.receiptCheckError='';}
     else d.receiptCheckError=failure?.code==='SESSION_NOT_FOUND'?'Paddock no longer has a receipt for this result. Verify the original database or restored backup before resending.':failure.message;
-    try{await this.commit();}catch(e){Object.assign(d,before);this.db.touchAll();throw e;}
+    const rows=this.deliveryRows(d);
+    try{await this.commit(rows);}catch(e){Object.assign(d,before);rows.forEach(row=>this.db.touch(row));throw e;}
     if(failure)throw failure;
     return this.status();
   });}
@@ -122,21 +127,33 @@ class Paddock {
   disconnect(forget=false){return this.exclusive(async()=>{this.code='';this.connected=false;this.catalog=[];clearTimeout(this.timer);const previous=this.state().connection;if(forget)this.state().connection=null;try{await this.commit();}catch(e){this.state().connection=previous;throw e;}this.error='';return this.status();});}
   async call(route,body,limit){const c=this.state().connection;if(!c||!this.code)throw Error('Connect with the current Paddock Timing code or password first.');return this.hostRequest(c.address,route,this.code,c.databaseId,body,limit);}
   browse(){return this.exclusive(()=>this.browseNow());}
-  catalogueView(){
+  catalogueView(includePictures=true){
     const c=this.state().connection,cache=this.state().catalogue;
     const same=!!c&&cache?.databaseId===c.databaseId;
     const links=new Map(this.db.data.slotcars.filter(x=>c&&x.paddock?.databaseId===c.databaseId).map(x=>[x.paddock.carId,x])),pictures=new Map(this.catalog.map(x=>[x.id,x.picture]));
     // Upgrades may already have linked profiles but no full catalogue cache yet.
     const rows=same?cache.cars:[...links.values()].filter(x=>!x.paddock.archived).map(x=>({id:x.paddock.carId,name:x.paddock.name||x.model||'Unnamed car',maker:x.brand||'',model:x.model||'',raceClass:this.db.data.raceclasses.find(k=>k.id===x.raceClass)?.name||''}));
+    if(this.images){const ids=new Set(rows.map(row=>row.id));for(const id of this.images.keys())if(!ids.has(id))this.images.delete(id);}
     return {connection:c,connected:this.connected&&!!this.code,lastUpdated:same?cache.updatedAt:null,
-      cars:rows.map(row=>{const linked=links.get(row.id),picture=pictures.get(row.id)||linked?.picture||'';return {...row,linked:linked?.id||'',picture:/^data:image\/(png|jpeg|webp);base64,[a-zA-Z0-9+/=\r\n]+$/.test(picture)?picture:'',capturedAt:linked?.paddock.configuration?.capturedAt||null};}),
+      cars:rows.map(row=>{const linked=links.get(row.id),picture=pictures.get(row.id)||linked?.picture||'',image=this.catalogueImage(row.id,picture,c.databaseId);return {...row,linked:linked?.id||'',picture:includePictures?image.picture:'',pictureKey:image.key,capturedAt:linked?.paddock.configuration?.capturedAt||null};}),
       error:this.catalogueError||'',nextCheckAt:this.nextCatalogueCheck||0};
   }
-  async catalogue(force=false){
+  catalogueImage(id,picture,databaseId){
+    this.images??=new Map();const old=this.images.get(id);
+    if(old?.source===picture&&old.databaseId===databaseId)return old;
+    const valid=/^data:image\/(png|jpeg|webp);base64,[a-zA-Z0-9+/=\r\n]+$/.test(picture);
+    const image={source:picture,picture:valid?picture:'',databaseId,key:valid?String(this.imageSequence=(this.imageSequence||0)+1):''};
+    this.images.set(id,image);return image;
+  }
+  picture(id,key){
+    const image=this.images?.get(id);
+    return image&&image.databaseId===this.state().connection?.databaseId&&image.key===key?image.picture:'';
+  }
+  async catalogue(force=false,includePictures=true){
     if(typeof force!=='boolean')throw Error('Invalid catalogue refresh.');
-    if(this.busy||this.isRacing?.())return this.catalogueView();
-    if(!this.code||!this.state().connection){this.catalogueError=this.state().connection?'Offline — reconnect to refresh. Previously selected cars remain available.':'Connect to Paddock to browse its cars.';return this.catalogueView();}
-    if(!force&&Date.now()<(this.nextCatalogueCheck||0))return this.catalogueView();
+    if(this.busy||this.isRacing?.())return this.catalogueView(includePictures);
+    if(!this.code||!this.state().connection){this.catalogueError=this.state().connection?'Offline — reconnect to refresh. Previously selected cars remain available.':'Connect to Paddock to browse its cars.';return this.catalogueView(includePictures);}
+    if(!force&&Date.now()<(this.nextCatalogueCheck||0))return this.catalogueView(includePictures);
     return this.exclusive(async()=>{
       try{
         const c=this.state().connection,s=await this.call('/v1/status');
@@ -153,7 +170,7 @@ class Paddock {
         this.catalogueFailures=(this.catalogueFailures||0)+1;
         this.nextCatalogueCheck=Math.max(this.retryAt(this.state().connection?.address),Date.now()+Math.min(300000,30000*2**Math.min(this.catalogueFailures,4)));
       }
-      return this.catalogueView();
+      return this.catalogueView(includePictures);
     });
   }
   async browseNow(attempt=0){const c=this.state().connection;if(!c)throw Error('Connect to Paddock first.');let out=[],offset=0,revision=null,catalogueRevision=null,total=0,complete=false;
@@ -164,7 +181,7 @@ class Paddock {
       const pageRevision=Number.isSafeInteger(v.catalogueRevision)&&v.catalogueRevision>=0?v.catalogueRevision:null;
       if(offset&&pageRevision!==catalogueRevision)throw Error('Paddock catalogue changed during the refresh.');
       catalogueRevision=pageRevision;
-      if(!Array.isArray(v.cars))throw Error('Invalid Paddock collection.');revision=v.revision;total+=Buffer.byteLength(JSON.stringify(v));if(total>200*1024*1024)throw Error('Paddock collection exceeds 200 MiB.');
+      if(!Array.isArray(v.cars))throw Error('Invalid Paddock collection.');revision=v.revision;total+=(v[RESPONSE_BYTES]??Buffer.byteLength(JSON.stringify(v)));if(total>200*1024*1024)throw Error('Paddock collection exceeds 200 MiB.');
       out.push(...v.cars);if(out.length>10000)throw Error('Too many Paddock cars.');if(v.nextOffset===null||v.nextOffset===undefined){complete=true;break;}if(!Number.isInteger(v.nextOffset)||v.nextOffset<=offset)throw Error('Invalid Paddock pagination.');offset=v.nextOffset;
     }
     if(!complete)throw Error('Paddock catalogue exceeded the pagination limit; no partial catalogue was loaded.');
@@ -176,15 +193,19 @@ class Paddock {
     const remoteById=new Map(out.map(x=>[x.id,x]));
     try{
       for(const row of this.db.data.slotcars.filter(x=>x.paddock?.databaseId===c.databaseId)){
-        const remote=remoteById.get(row.paddock.carId);changes.push({row,previous:copyData(row)});
-        if(remote){const patch=this.patch({car:remote,databaseId:c.databaseId,configuration:{technical:remote.technical}});if(row.paddock.configuration)patch.paddock.configuration=row.paddock.configuration;else delete patch.paddock.configuration;Object.assign(row,patch);}
-        else row.paddock={...row.paddock,archived:true};
+        const remote=remoteById.get(row.paddock.carId);
+        if(remote){
+          const patch=this.patch({car:remote,databaseId:c.databaseId,configuration:{technical:remote.technical}});
+          if(row.paddock.configuration)patch.paddock.configuration=row.paddock.configuration;else delete patch.paddock.configuration;
+          if(COPY_FIELDS.every(key=>row[key]===patch[key])&&Object.keys(patch.paddock).every(key=>row.paddock[key]===patch.paddock[key]))continue;
+          changes.push({row,previous:{...row}});Object.assign(row,patch);
+        }else if(!row.paddock.archived){changes.push({row,previous:{...row}});row.paddock={...row.paddock,archived:true};}
       }
       this.state().catalogue={databaseId:c.databaseId,revision,catalogueRevision,updatedAt:new Date().toISOString(),cars:summaries};
-      await this.commit();
-    }catch(e){this.state().catalogue=previous;changes.forEach(x=>{for(const key of [...COPY_FIELDS,'paddock']){if(Object.hasOwn(x.previous,key))x.row[key]=x.previous[key];else delete x.row[key];}});this.db.data.raceclasses=this.db.data.raceclasses.filter(x=>classes.has(x.id));this.db.touchAll();throw e;}
+      await this.commit(changes.map(x=>x.row));
+    }catch(e){this.state().catalogue=previous;changes.forEach(x=>{for(const key of [...COPY_FIELDS,'paddock']){if(Object.hasOwn(x.previous,key))x.row[key]=x.previous[key];else delete x.row[key];}this.db.touch(x.row);});this.db.data.raceclasses=this.db.data.raceclasses.filter(x=>classes.has(x.id));throw e;}
     this.catalog=out;this.catalogueError='';this.nextCatalogueCheck=Date.now()+30000;
-    return this.catalogueView().cars;
+    return this.catalogueView(false).cars;
   }
   async profile(carId){if(!ID.test(carId))throw Error('Invalid car ID.');const p=await this.call('/v1/timing/cars/'+encodeURIComponent(carId));
     if(p.integrationVersion!==1||p.databaseId!==this.state().connection.databaseId||p.car?.id!==carId||p.configuration?.carId!==carId||p.configuration.databaseId!==p.databaseId||!/^[a-f0-9]{64}$/.test(p.configuration.signature)||!Number.isFinite(Date.parse(p.configuration.capturedAt)))throw Error('Invalid Paddock car profile.');
@@ -195,12 +216,12 @@ class Paddock {
       paddock:{databaseId:profile.databaseId,carId:c.id,name:c.name,archived:!!c.archived,availability:c.availability||'',configuration:profile.configuration}};
   }
   link(carId,localId){return this.exclusive(()=>this.linkNow(carId,localId));}
-  async linkNow(carId,localId){if(!this.state().connection?.timing)throw Error('This Paddock host needs the Timing v1 update before cars can be linked.');const p=await this.profile(carId);if(p.car.archived)throw Error('This car is archived in Paddock.');const existing=this.db.data.slotcars.find(c=>c.paddock?.databaseId===p.databaseId&&c.paddock.carId===carId);
+  async linkNow(carId,localId){if(!this.state().connection?.timing)throw Error('This Paddock host needs the Timing v1 update before cars can be linked.');const p=await this.profile(carId);if(p.car.archived)throw Object.assign(Error('This car is archived in Paddock.'),{code:'CAR_ARCHIVED'});const existing=this.db.data.slotcars.find(c=>c.paddock?.databaseId===p.databaseId&&c.paddock.carId===carId);
     if(existing&&localId&&existing.id!==localId)throw Error('This Paddock car is already linked to another Timing car.');let row=existing||this.db.data.slotcars.find(c=>c.id===localId);if(localId&&!row)throw Error('Local car no longer exists.');if(row?.paddock&&(row.paddock.carId!==carId||row.paddock.databaseId!==p.databaseId))throw Error('This Timing car is already linked.');
-    const previous=row?copyData(row):null,classes=new Set(this.db.data.raceclasses.map(c=>c.id)),createdClasses=[];try{const patch=this.patch(p);createdClasses.push(...this.db.data.raceclasses.filter(c=>!classes.has(c.id)).map(c=>c.id));if(row)Object.assign(row,patch);else{row={id:crypto.randomUUID(),custom:{},lapsDriven:0,...patch};this.db.data.slotcars.push(row);}await this.commit();return row;}catch(e){if(previous){for(const key of [...COPY_FIELDS,'paddock']){if(Object.hasOwn(previous,key))row[key]=previous[key];else delete row[key];}}else this.db.data.slotcars=this.db.data.slotcars.filter(c=>c!==row);this.db.data.raceclasses=this.db.data.raceclasses.filter(c=>!createdClasses.includes(c.id));this.db.touchAll();throw e;}
+    const previous=row?{...row}:null,classes=new Set(this.db.data.raceclasses.map(c=>c.id)),createdClasses=[];try{const patch=this.patch(p);createdClasses.push(...this.db.data.raceclasses.filter(c=>!classes.has(c.id)).map(c=>c.id));if(row)Object.assign(row,patch);else{row={id:crypto.randomUUID(),custom:{},lapsDriven:0,...patch};this.db.data.slotcars.push(row);}await this.commit([row]);return row;}catch(e){if(previous){for(const key of [...COPY_FIELDS,'paddock']){if(Object.hasOwn(previous,key))row[key]=previous[key];else delete row[key];}}else this.db.data.slotcars=this.db.data.slotcars.filter(c=>c!==row);this.db.data.raceclasses=this.db.data.raceclasses.filter(c=>!createdClasses.includes(c.id));if(row)this.db.touch(row);throw e;}
   }
   refresh(){return this.exclusive(()=>this.refreshNow());}
-  async refreshNow(){const linked=this.db.data.slotcars.filter(c=>c.paddock?.databaseId===this.state().connection?.databaseId);for(const c of linked){try{await this.linkNow(c.paddock.carId,c.id);}catch(e){if(e.code==='CAR_NOT_FOUND'||e.message.includes('archived')){c.paddock.archived=true;await this.commit();}else throw e;}}return this.status();}
+  async refreshNow(){const linked=this.db.data.slotcars.filter(c=>c.paddock?.databaseId===this.state().connection?.databaseId);for(const c of linked){try{await this.linkNow(c.paddock.carId,c.id);}catch(e){if(['CAR_NOT_FOUND','CAR_ARCHIVED'].includes(e.code)){const before=c.paddock;c.paddock={...before,archived:true};try{await this.commit([c]);}catch(saveError){c.paddock=before;this.db.touch(c);throw saveError;}}else throw e;}}return this.status();}
   prepare(ids){return this.exclusive(()=>this.prepareNow(ids));}
   async prepareNow(ids){
     if(!Array.isArray(ids))throw Error('Choose the cars for this race.');
@@ -231,7 +252,7 @@ class Paddock {
     // Publish fresh captures together. A local disk failure must never masquerade as an offline cache hit.
     if(updates.length){
       updates.forEach(u=>{u.car.paddock.configuration=u.after;});
-      try{await this.commit();}catch(e){updates.forEach(u=>{u.car.paddock.configuration=u.before;});this.db.touchAll();throw e;}
+      try{await this.commit(updates.map(u=>u.car));}catch(e){updates.forEach(u=>{u.car.paddock.configuration=u.before;this.db.touch(u.car);});throw e;}
     }
     return {captures,warnings,heats:[]};
   }
@@ -240,18 +261,17 @@ class Paddock {
     try{await this.db.saved();const c=this.state().connection;if(!this.deliveries().some(d=>d.status==='pending'&&d.payload?.databaseId===c?.databaseId))return this.status();const s=await this.call('/v1/status');if(s.id!==c.databaseId)throw Object.assign(Error('Paddock database identity changed.'),{code:'DATABASE_MISMATCH'});if(!s.permissions?.timingResults)throw Error('Enable Allow Timing results and use the Timing connection code or password.');
       for(const d of this.deliveries().filter(d=>d.status==='pending'&&d.payload?.databaseId===c.databaseId)){
         if(this.isRacing?.())break;
-        try{const p=d.payload;await this.commit();if(this.stopped)return this.status();if(this.isRacing?.())break;const r=checkedReceipt(await this.call('/v1/timing/sessions',p),p);if(this.stopped)return this.status();
+        try{const p=d.payload;await this.commit(this.deliveryRows(d));if(this.stopped)return this.status();if(this.isRacing?.())break;const r=checkedReceipt(await this.call('/v1/timing/sessions',p),p);if(this.stopped)return this.status();
           // If the local result was corrected/deleted during upload, only acknowledge this exact object.
-          d.receipt=r;d.status='sent';d.error='';d.receiptCheckedAt=new Date().toISOString();d.receiptCheckError='';await this.commit();
-        }catch(e){d.error=e.message;d.status=TERMINAL_CODES.has(e.code)?'attention':'pending';await this.commit();throw e;}
+          d.receipt=r;d.status='sent';d.error='';d.receiptCheckedAt=new Date().toISOString();d.receiptCheckError='';await this.commit(this.deliveryRows(d));
+        }catch(e){d.error=e.message;d.status=TERMINAL_CODES.has(e.code)?'attention':'pending';await this.commit(this.deliveryRows(d));throw e;}
       }this.connected=true;this.error='';
     }catch(e){this.connected=false;this.error=e.message;retry=60000;if(['DATABASE_MISMATCH','UNAUTHENTICATED'].includes(e.code)){this.code='';}}
     finally{this.busy=false;this.schedule(retry);}return this.status();
   }
-  async retry(){await this.exclusive(async()=>{for(const d of this.deliveries())if(d.payload&&d.status==='attention')d.status='pending';await this.commit();});return this.flush();}
+  async retry(){await this.exclusive(async()=>{const rows=[];let changed=false;for(const d of this.deliveries())if(d.payload&&d.status==='attention'){d.status='pending';rows.push(...this.deliveryRows(d));changed=true;}if(changed)await this.commit(rows);});return this.flush();}
   stop(){this.stopped=true;clearTimeout(this.timer);this.code='';}
 }
-const copyData=x=>JSON.parse(JSON.stringify(x));
 function canonical(v){return Array.isArray(v)?'['+v.map(canonical).join(',')+']':v&&typeof v==='object'?'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}':JSON.stringify(v);}
 const hash=v=>crypto.createHash('sha256').update(canonical(v)).digest('hex');
 module.exports={Paddock,privateIP,address,request,discover,COPY_FIELDS,hash,credential,retryDelay};

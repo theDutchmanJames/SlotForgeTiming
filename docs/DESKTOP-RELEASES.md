@@ -1,6 +1,6 @@
 # Native desktop builds
 
-The **Desktop builds** GitHub Actions workflow builds on Windows, macOS and Ubuntu. Each job uses `npm ci`, runs the regression suite, creates packages and opens the packaged application in an isolated profile. Linux uses a virtual display for the smoke test. This verifies application startup and the widget/Paddock UI, not physical timing hardware.
+The **Desktop builds** GitHub Actions workflow builds on Windows, macOS and Ubuntu. Each job uses `npm ci`, runs the regression suite, creates packages and loads the packaged `app.asar` code using the installed Electron runtime in an isolated profile. Linux uses a virtual display for this smoke test. This verifies packaged application code, renderer assets and the widget/Paddock UI. It does not launch the installer, mounted DMG or AppImage, test operating-system installation prompts, or certify physical timing hardware. A universal Mac package is created, but the smoke test runs only on the runner's native architecture.
 
 | Platform | Downloads |
 | --- | --- |

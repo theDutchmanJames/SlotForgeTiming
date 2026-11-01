@@ -1,6 +1,6 @@
 # SlotForge Paddock integration
 
-Timing uses Paddock's Timing v1 API, available from Paddock 0.17.0. Paddock 0.18.0 is the tested release and includes custom passwords and Timing car exports. Its internal database schema 10 does not change Timing's API or database.
+Timing uses Paddock's Timing v1 API, available from Paddock 0.17.0. The bundled release references below remain pinned to 0.18.0, which includes custom passwords and Timing car exports. The local Paddock 0.19.0 source has also been tested for catalogue browsing, optional public catalogue revisions, discovery, captures and result delivery. Paddock's internal database schema is separate from Timing's API and database.
 
 ## Connect and race
 
@@ -10,7 +10,9 @@ Timing uses Paddock's Timing v1 API, available from Paddock 0.17.0. Paddock 0.18
 4. Switch to **Paddock Database** to browse public cars. Local cars remain under **Local Database**. On Home, **Browse Local / Paddock cars** selects a remote car directly and caches it automatically. The connection dialog retains optional tools to link an existing local car and preserve its history.
 5. Finalize reviewed race results to queue delivery. Previously selected cars with valid captures remain usable offline.
 
-While the Paddock browser is visible, a shared 30-second revision check refreshes only changed catalogues. Explicit Refresh now forces a reload. Failed checks back off to five minutes (or a longer authentication cooldown). Full pagination must succeed before a cache is replaced. Polling stops during racing; empty outboxes cause no network requests. An optional public `catalogueRevision` is supported, with fallback to the existing database revision. See [the Paddock handoff](PADDOCK-CATALOGUE-HANDOFF.md) for the proposed host-side addition.
+While the Paddock browser is visible, a shared 30-second revision check refreshes only changed catalogues. Explicit Refresh now forces a reload. Failed checks back off to five minutes (or a longer authentication cooldown). Full pagination must succeed before a cache is replaced. Polling stops during racing; empty outboxes cause no network requests. Paddock 0.19.0 supplies the optional public `catalogueRevision`; Timing falls back to the whole-database revision for older hosts. [The original handoff](PADDOCK-CATALOGUE-HANDOFF.md) records that additive contract. It remains a historical implementation brief, not an outstanding requirement for 0.19.0.
+
+The browser loads photographs only for its visible page, from Timing's existing catalogue cache. These local image requests do not increase network polling. See [the performance repair notes](PADDOCK-PERFORMANCE.md) for measurements and verification.
 
 Codes and passwords are held in memory, not saved in the database. Custom passwords require Paddock 0.18.0 or later and use 8–128 printable ASCII characters; preserve case and repeated internal spaces, with no spaces at either end. Generated codes remain supported. Restarting Paddock sharing resets custom passwords. Reconnect after restarting Timing or Paddock sharing; Paddock's code and port can change. A host's stable database identity prevents accidental delivery to another collection.
 

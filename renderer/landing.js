@@ -421,8 +421,7 @@ async function renderHome() {
       const i=Number(b.dataset.paddockPick);
       return PaddockBrowser.pick(api,async car=>{
         if(state.tab!=='home'||draw!==homeDraw)throw Error('Race setup changed. Reopen the car selector.');
-        const available=await api.list('slotcars');
-        if(!MultiClass.carsFor(rows[i],mc,{cars:available,drivers,teams}).some(c=>c.id===car.id))throw Error('This car does not match the driver’s assigned race class. Choose a matching car.');
+        if(!MultiClass.carsFor(rows[i],mc,{cars:[car],drivers,teams}).some(c=>c.id===car.id))throw Error('This car does not match the driver’s assigned race class. Choose a matching car.');
         rows[i].carId=car.id;await persist();
       },mc?.assignment==='roster'?{guidance:'Only cars matching this driver’s assigned race class are shown.',accept:(car,source)=>{
         const raceClass=source==='local'?car.raceClass:classDefs.find(c=>c.name.trim().toLocaleLowerCase()===car.raceClass.trim().toLocaleLowerCase())?.id;

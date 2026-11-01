@@ -68,6 +68,24 @@ test('configuration cache write failures are reported and restore the previous c
 test('pagination bounds never silently return a partial catalogue',async t=>{const {client}=clientFor(t);let n=0;client.call=async()=>({id:'paddock-demo',revision:1,cars:[{id:'car-'+n,name:'Car'}],nextOffset:++n});await assert.rejects(client.browse(),/catalogue|pagination/i);});
 
 test('failed host forgetting preserves the saved database identity',async t=>{const {db,client}=clientFor(t);db.commit=()=>{throw Error('disk full');};await assert.rejects(client.disconnect(true),/disk full/);assert.equal(client.state().connection?.databaseId,'paddock-demo');});
+
+test('failed archive persistence restores the linked car before a later successful save',async t=>{
+  const {db,client}=clientFor(t),car=db.add('slotcars',{model:'Car',paddock:{databaseId:'paddock-demo',carId:'a',archived:false}});
+  client.profile=async()=>{throw Object.assign(Error('Missing car'),{code:'CAR_NOT_FOUND'});};
+  const commit=db.commit.bind(db);db.commit=()=>{db.fileChunks();throw Error('disk full');};
+  await assert.rejects(client.refresh(),/disk full/);assert.equal(car.paddock.archived,false);
+  db.commit=commit;await client.commit();assert.equal(new Database(db.file).data.slotcars[0].paddock.archived,false);
+});
+test('ordinary errors mentioning archived files do not mark a car unavailable',async t=>{
+  const {db,client}=clientFor(t),car=db.add('slotcars',{model:'Car',paddock:{databaseId:'paddock-demo',carId:'a',archived:false}});
+  client.profile=async()=>{throw Error('Cannot read archived host file');};
+  await assert.rejects(client.refresh(),/Cannot read/);assert.equal(car.paddock.archived,false);
+});
+test('an explicitly archived profile is still persisted as unavailable',async t=>{
+  const {db,client}=clientFor(t),car=db.add('slotcars',{model:'Car',paddock:{databaseId:'paddock-demo',carId:'a',archived:false}});
+  client.profile=async()=>({car:{id:'a',archived:true}});
+  await client.refresh();assert.equal(car.paddock.archived,true);assert.equal(new Database(db.file).data.slotcars[0].paddock.archived,true);
+});
 test('deleting a classified car with no completed lap withdraws its session',t=>{const db=dbFor(t);const d=queued(db),s=db.data.sessions[0];s.standings.push({carId:'dns-car',driverId:'dns-driver',laps:0,pos:2});db.data.slotcars.push({id:'dns-car'});db.remove('slotcars','dns-car');assert.equal(d.payload.state,'active');assert.equal(db.data.paddock.withdrawals.length,1);});
 test('failed result conversion remains identifiable in delivery status',t=>{const {db,client}=clientFor(t);queued(db);const s=db.data.sessions[0];delete s.paddockJournal.heats[0].entries[0].laps[0].at;Records.revise(db.data,s);const status=client.status().deliveries[0];assert.equal(status.name,'Audit race');assert.equal(status.sessionId,s.id);});
 test('uploads stop when a race starts while the status request is in flight',async t=>{const {db,client}=clientFor(t);queued(db);let racing=false,posts=0;client.isRacing=()=>racing;client.call=async route=>{if(route==='/v1/status'){racing=true;return status;}posts++;};await client.flush();assert.equal(posts,0);});

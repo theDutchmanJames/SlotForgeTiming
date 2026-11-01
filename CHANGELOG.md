@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.99.6 — 2026-11-01
+
+- Reduce Paddock-related stalls by preserving serialization caches for unchanged photos, laps and sessions. Keep durable saves and rollback behaviour for links, captures and delivery receipts.
+- Send lightweight catalogue metadata to the window and load photographs one at a time for the visible page. Unchanged checks preserve cards and decoded images.
+- Avoid redundant photo copies during catalogue refresh, use measured response bytes for transfer limits, and keep connection-dialog car lists paginated with photo-free local selectors.
+- Add targeted persistence tests and a photo-heavy actual-app performance check covering search, pagination, changed pictures, narrow layouts and cleanup.
+- Restore local-car detail navigation after browsing Paddock; bypass local photo-table reads when entering the remote database view and validating a selected race car.
+- Preserve keyboard focus during background catalogue checks and finish a queued car-selection click using the refreshed data.
+- Restore linked-car state after a failed archive save, and use explicit missing/archived error codes rather than matching arbitrary error text.
+- Group catalogue Help under Database & app settings and clarify Paddock 0.19.0 compatibility and the exact limits of native release smoke tests.
+
 ## 1.99.5 — 2026-11-01
 
 - Add separate Local Database and connected Paddock Database views, with direct race-car selection and automatic profile caching.

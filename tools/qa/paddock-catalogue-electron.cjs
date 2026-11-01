@@ -1,5 +1,7 @@
 // Real Timing UI with an isolated Paddock host; never touches either user's database.
 const {app}=require('electron'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const Database=require('../../db'),originalList=Database.prototype.list;let slotcarReads=0;
+Database.prototype.list=function(entity){if(entity==='slotcars')slotcarReads++;return originalList.call(this,entity);};
 if(!process.env.PADDOCK_SOURCE)throw Error('Set PADDOCK_SOURCE.');
 const {Network}=require(path.join(process.env.PADDOCK_SOURCE,'src/network.cjs')),{Store,migrate}=require(path.join(process.env.PADDOCK_SOURCE,'src/store.cjs'));
 const store=new Store();store.data=migrate(JSON.parse(fs.readFileSync(path.join(__dirname,'../../tests/fixtures/paddock/fixtures/demo-database.json'))));
@@ -40,7 +42,12 @@ app.on('browser-window-created',(_,win)=>{win.hide();win.webContents.on('did-fin
     await run(`ck(!document.querySelector('dialog[open] [data-use="car-b"]'),'Mismatched remote class is filtered');document.querySelector('dialog[open] [data-use="car-a"]').click();`);
     await until(`return !document.querySelector('.paddock-dialog[open]');`);
     await run(`ck((await api.list('slotcars')).find(c=>c.id===document.querySelector('[data-row="0"] [data-k="carId"]').value).paddock.carId==='car-a','Matching class selects normally');ck(qaErrors.length===0,qaErrors.join('; '));`);
-    fs.writeFileSync(path.join(out,'results.json'),JSON.stringify({passed:true,themes:8,widths:[1280,600],checks:['Local/Paddock isolation','Direct race car selection','Stable cache identity','Rename refresh','Offline selection','Multi-Class filters after remote reclassification','No renderer errors']},null,2));
+    await run(`state.tab='database';state.sub='slotcars';slotcarSource='paddock';state.focusCar=null;`);
+    const readsBeforeRemote=slotcarReads;await run(`await render();`);
+    await until(`return !!document.querySelector('[data-paddock-browser] [data-use="car-a"]');`);
+    assert.equal(slotcarReads,readsBeforeRemote,'Remote database navigation does not fetch local car photos');
+    await run(`state.focusCar=(await api.list('slotcars')).find(c=>c.model==='Timing local car').id;await render();ck(dlg.open&&dlg.querySelector('.vctitle').textContent==='Timing local car','Home/statistics link opens the local car after browsing Paddock');ck(!!document.getElementById('paddock-view'),'Focused local car selects Local Database');dlg.close();`);
+    fs.writeFileSync(path.join(out,'results.json'),JSON.stringify({passed:true,themes:8,widths:[1280,600],checks:['Local/Paddock isolation','Direct race car selection','Stable cache identity','Rename refresh','Offline selection','Multi-Class filters after remote reclassification','Remote view avoids local photo reads','Local car deep-link after remote browsing','No renderer errors']},null,2));
     console.log('PADDOCK CATALOGUE ELECTRON PASS');await host.stop();app.quit();
   }catch(e){console.error(e);await shot('failure');await host.stop();app.exit(1);}
 });});require('../../main');

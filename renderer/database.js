@@ -208,6 +208,17 @@ async function mountManager(box, e) {
   const run = ++subRun;
   manager = { box, e };
   const s = state.schema[e];
+  const remoteView=()=>e==='slotcars'&&slotcarSource==='paddock'&&typeof PaddockBrowser!=='undefined';
+  const mountPaddock=()=>{
+    box.innerHTML='<div data-paddock-browser></div>';box.onclick=null;box.onchange=null;box.onkeydown=null;
+    PaddockBrowser.mount(box.querySelector('[data-paddock-browser]'),api,{openLocal:()=>{slotcarSource='local';mountManager(box,e);},view:async car=>{
+      const [custom,classes,tyres]=await Promise.all([api.customFields('slotcars'),api.list('raceclasses'),api.list('tyrewearsystems')]);
+      if(run!==subRun)return;state.custom.slotcars=custom;state.refs.raceclasses=classes;state.refs.tyrewearsystems=tyres;openView('slotcars',car);
+    }});
+  };
+  // A remote listing does not need the photo-heavy local slotcar table.
+  // Explicit "view this car" navigation is resolved below before choosing a view.
+  if(remoteView()&&!state.focusCar)return mountPaddock();
   const [storedItems, custom] = await Promise.all([api.list(e), s.extra === false ? [] : api.customFields(e)]);
   const items = databaseOrdered(e, e==='slotcars'?storedItems.filter(c=>!c.paddock):storedItems);
   if (run !== subRun) return;
@@ -219,11 +230,8 @@ async function mountManager(box, e) {
   if (s.used) state.refs[s.used.entity] = await api.list(s.used.entity); // (1.73.0: the box Used by in the form of a system names the race setups that choose it)
   if (run !== subRun) return;
   if(e==='slotcars'&&state.focusCar&&storedItems.find(c=>c.id===state.focusCar)?.paddock){const focused=storedItems.find(c=>c.id===state.focusCar);state.focusCar=null;openView(e,focused);}
-  if(e==='slotcars'&&slotcarSource==='paddock'&&typeof PaddockBrowser!=='undefined'){
-    if(run!==subRun)return;
-    box.innerHTML='<div data-paddock-browser></div>';box.onclick=null;box.onchange=null;box.onkeydown=null;
-    PaddockBrowser.mount(box.querySelector('[data-paddock-browser]'),api,{openLocal:()=>{slotcarSource='local';mountManager(box,e);},view:async car=>{state.refs.raceclasses=await api.list('raceclasses');if(run===subRun)openView('slotcars',car);}});return;
-  }
+  if(e==='slotcars'&&state.focusCar)slotcarSource='local';
+  if(remoteView())return mountPaddock();
   const cols = s.list
     ? s.list.map(k => columnOf(s, k)).map(f => ({ label: fl(f), get: i => columnCell(f, i) }))
     : [

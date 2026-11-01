@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('api', {
   paddockDisconnect: forget => call('paddock:disconnect',forget),
   paddockBrowse: () => call('paddock:browse'),
   paddockCatalogue: (force=false) => call('paddock:catalogue',force),
+  paddockPicture: (id,key) => call('paddock:picture',id,key),
+  paddockLocalCars: () => call('paddock:locals'),
   paddockLink: (id,localId) => call('paddock:link',id,localId),
   paddockRefresh: () => call('paddock:refresh'),
   paddockPrepare: ids => call('paddock:prepare',ids),
