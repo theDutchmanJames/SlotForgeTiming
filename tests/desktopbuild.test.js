@@ -1,7 +1,9 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),cp=require('node:child_process');
 const {names,digest,assetName,validate}=require('../tools/ci/desktop-artifacts.cjs');
 const publish=require('../tools/ci/publish-desktop.cjs'),version=require('../package.json').version;
-const commit=cp.execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
+// Source ZIP users have no .git directory (and may not have Git installed).
+// The publisher test supplies a fake checkout and API, including its commit ID.
+const commit='a'.repeat(40);
 test('desktop release names cover all configured targets and reject wrong versions',()=>{
   assert.equal(new Set(['win32','darwin','linux'].flatMap(p=>names(version,p))).size,6);
   validate(version,'v'+version);assert.throws(()=>validate(version,'v0.0.1'));
