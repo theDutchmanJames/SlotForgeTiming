@@ -1,0 +1,261 @@
+{
+  "format": "slotforge.layout",
+  "version": 1,
+  "title": "Four-lane tabletop circuit",
+  "pieces": [
+    {
+      "id": "tabletop-example-1",
+      "definitionId": "routed:tabletop-flow",
+      "x": 0,
+      "y": 0,
+      "angle": 0,
+      "flip": false
+    },
+    {
+      "id": "tabletop-example-2",
+      "definitionId": "routed:tabletop-flow",
+      "x": 240.41630560342614,
+      "y": 99.58369439657382,
+      "angle": 45,
+      "flip": false
+    },
+    {
+      "id": "tabletop-example-3",
+      "definitionId": "routed:tabletop-flow",
+      "x": 340,
+      "y": 339.99999999999994,
+      "angle": 90,
+      "flip": false
+    },
+    {
+      "id": "tabletop-example-4",
+      "definitionId": "routed:tabletop-flow",
+      "x": 240.41630560342617,
+      "y": 580.416305603426,
+      "angle": 135,
+      "flip": false
+    },
+    {
+      "id": "tabletop-example-5",
+      "definitionId": "routed:tabletop-flow",
+      "x": 4.263256414560601e-14,
+      "y": 679.9999999999999,
+      "angle": -180,
+      "flip": false
+    },
+    {
+      "id": "tabletop-example-6",
+      "definitionId": "routed:tabletop-flow",
+      "x": -240.4163056034261,
+      "y": 580.416305603426,
+      "angle": -135,
+      "flip": false
+    },
+    {
+      "id": "tabletop-example-7",
+      "definitionId": "routed:tabletop-flow",
+      "x": -339.9999999999999,
+      "y": 339.9999999999999,
+      "angle": -90,
+      "flip": false
+    },
+    {
+      "id": "tabletop-example-8",
+      "definitionId": "routed:tabletop-flow",
+      "x": -240.41630560342605,
+      "y": 99.58369439657375,
+      "angle": -45,
+      "flip": false
+    }
+  ],
+  "definitions": [
+    {
+      "id": "routed:tabletop-flow",
+      "name": "Tabletop flowing corner",
+      "sku": "",
+      "pack": "Routed wood",
+      "family": "slotforge.routed.v1",
+      "parameters": {
+        "type": "routed-spline",
+        "widthMm": 317,
+        "controlPointsMm": [
+          [
+            0,
+            0
+          ],
+          [
+            90.17360654544495,
+            0
+          ],
+          [
+            176.65393693109436,
+            35.82132572424205
+          ],
+          [
+            240.41630560342614,
+            99.58369439657382
+          ]
+        ],
+        "laneOffsetsMm": [
+          8.5,
+          108.5,
+          208.5,
+          308.5
+        ],
+        "routed": {
+          "constructionMode": "table",
+          "laneCount": 4,
+          "laneSpacingMm": 100,
+          "innerClearanceMm": 150,
+          "outerClearanceMm": 200,
+          "slotWidthMm": 3.2,
+          "slotDepthMm": 8,
+          "conductorWidthMm": 5.9,
+          "conductorGapMm": 1,
+          "conductorThicknessMm": 0.5,
+          "adhesiveThicknessMm": 0.1,
+          "recessDepthMm": 0.8,
+          "boardThicknessMm": 12,
+          "minRadiusMm": 100,
+          "allowancePct": 10,
+          "conductor": "braid"
+        }
+      },
+      "color": "#b59870",
+      "status": "user-defined",
+      "mirror": true
+    }
+  ],
+  "profile": {
+    "speed": 1200,
+    "acceleration": 1300,
+    "brake": 2200,
+    "corner": 0.57,
+    "drift": 10
+  },
+  "units": "mm",
+  "precision": "User-entered geometry; flowing normal offsets use adaptive samples (0.025 mm target); not verified construction measurements.",
+  "timing": {
+    "version": 1,
+    "direction": 1,
+    "directionConvention": "canonical-route-distance",
+    "startFinish": {
+      "pieceId": "tabletop-example-1",
+      "fraction": 0.5
+    },
+    "routeLabels": {},
+    "routeMappingRevision": "d8bfc4ac4cfab19a48685e64ed1a724432d3d722ce0baed549b27de9a32659a1",
+    "requiresLaneRemap": false,
+    "startFinishOffsets": [
+      {
+        "routeId": "route-9cbce58f07357c291df72628696287c084f2bf8255381f557041dfbd47bd0e1e",
+        "offsetMm": 192.42163402368277
+      },
+      {
+        "routeId": "route-7b863b1219265f311028856ce247cd2ced91a41c83f6219377dda8b1ce8bffcf",
+        "offsetMm": 153.1519722922735
+      },
+      {
+        "routeId": "route-07970f43eebe316499f20b559437afcf6001901528f64b801b17270941081b4a",
+        "offsetMm": 113.88231056086427
+      },
+      {
+        "routeId": "route-a06196ed09ca55a96e07287a4e67998c41611bf5b9efabffba479962f5272b0e",
+        "offsetMm": 74.61264882945547
+      }
+    ]
+  },
+  "workspace": {
+    "spaceGuide": {
+      "x": -748.5,
+      "y": -408.50000000000006,
+      "lengthMm": 1497,
+      "widthMm": 1497,
+      "locked": true,
+      "kind": "table"
+    },
+    "routed": {
+      "settings": {
+        "constructionMode": "table",
+        "laneCount": 4,
+        "laneSpacingMm": 100,
+        "innerClearanceMm": 150,
+        "outerClearanceMm": 200,
+        "slotWidthMm": 3.2,
+        "slotDepthMm": 8,
+        "conductorWidthMm": 5.9,
+        "conductorGapMm": 1,
+        "conductorThicknessMm": 0.5,
+        "adhesiveThicknessMm": 0.1,
+        "recessDepthMm": 0.8,
+        "boardThicknessMm": 12,
+        "minRadiusMm": 100,
+        "allowancePct": 10,
+        "conductor": "braid"
+      },
+      "display": "surface"
+    }
+  },
+  "design": {
+    "id": "four-lane-tabletop-example",
+    "revision": "7947d2493218b8ad55960c4e9e4e2593ac118790d3087990e48dd83c1640a1c1"
+  },
+  "producer": {
+    "name": "SlotForge Circuit",
+    "version": "0.3.16"
+  },
+  "integration": {
+    "target": "SlotForge Timing",
+    "contractVersion": "1.0.0-draft.5",
+    "status": "draft-for-coordination",
+    "profilePurpose": "illustrative-animation",
+    "image": "optional-separate-png"
+  },
+  "compatibility": {
+    "liveTracker": "through-routes",
+    "components": 1,
+    "openEnds": 0,
+    "ambiguousEnds": 0,
+    "issues": [
+      {
+        "code": "routed-runtime",
+        "severity": "warning",
+        "message": "Tabletop routing uses integration contract 1.0.0-draft.5. Timing needs the tabletop-aware runtime; wood clearances apply to the table boundary."
+      },
+      {
+        "code": "elevation-order-unavailable",
+        "severity": "warning",
+        "message": "This is a flat drawing. Elevation, bridges and crossing order are not modelled."
+      }
+    ]
+  },
+  "track": {
+    "laneCount": 4,
+    "slotCountsInDrawing": [
+      4
+    ],
+    "validClosedRouteCount": 4,
+    "lanes": [
+      {
+        "id": "route-9cbce58f07357c291df72628696287c084f2bf8255381f557041dfbd47bd0e1e",
+        "label": "Lane 1",
+        "lengthMm": 3078.7461443789257
+      },
+      {
+        "id": "route-7b863b1219265f311028856ce247cd2ced91a41c83f6219377dda8b1ce8bffcf",
+        "label": "Lane 2",
+        "lengthMm": 2450.431556676376
+      },
+      {
+        "id": "route-07970f43eebe316499f20b559437afcf6001901528f64b801b17270941081b4a",
+        "label": "Lane 3",
+        "lengthMm": 1822.1169689738288
+      },
+      {
+        "id": "route-a06196ed09ca55a96e07287a4e67998c41611bf5b9efabffba479962f5272b0e",
+        "label": "Lane 4",
+        "lengthMm": 1193.8023812712875
+      }
+    ]
+  }
+}

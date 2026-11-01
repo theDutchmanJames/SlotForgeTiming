@@ -251,7 +251,7 @@
   }
 
   // ---- the chips of the welcome band ----
-  // ctx: { hardware ('none', 'trackmate' or 'arduino': the timing hardware that was chosen; missing = trackmate), trackmate (connected), arduino (connected), virtual (the virtual box is the Arduino box),
+  // ctx: { hardware ('none', 'trackmate' or 'arduino': the timing hardware that was chosen; missing = trackmate), trackmate (connected), arduino (connected), virtual (the virtual box is the Arduino Sketch),
   //   netOn, netError, hasSetup, audioName (the audio set of the selected setup, '' = none), drivers, cars, tracks (how many) }
   // -> [{ key, text, state }]  state: 'on' (green light), 'off' (dim light), 'warn' (red light), '' (no light)
   // The first chip is the timing hardware that was chosen (one at a time): green when it is connected, red when it is chosen and not connected, dim when none is chosen.
@@ -259,7 +259,7 @@
   function timing(ctx) {
     const hw = ctx.hardware || 'trackmate';
     if (hw === 'none') return { key: 'tm', text: 'No timing hardware chosen', state: 'off' };
-    const name = hw === 'plugin' ? (ctx.pluginName || 'Plugin interface') : hw === 'phidget' ? 'Phidget' : hw === 'parallel' ? 'Parallel Port' : hw === 'arduino' ? (ctx.virtual ? 'Virtual Arduino box' : 'Arduino box') : 'Trackmate', on = hw === 'plugin' ? !!ctx.plugin : hw === 'phidget' ? !!ctx.phidget : hw === 'parallel' ? !!ctx.parallel : hw === 'arduino' ? !!ctx.arduino : !!ctx.trackmate;
+    const name = hw === 'plugin' ? (ctx.pluginName || 'Plugin interface') : hw === 'phidget' ? 'Phidget' : hw === 'parallel' ? 'Parallel Port' : hw === 'arduino' ? (ctx.virtual ? 'Virtual Arduino Sketch' : 'Arduino Sketch') : 'Trackmate', on = hw === 'plugin' ? !!ctx.plugin : hw === 'phidget' ? !!ctx.phidget : hw === 'parallel' ? !!ctx.parallel : hw === 'arduino' ? !!ctx.arduino : !!ctx.trackmate;
     return { key: 'tm', text: name + (on ? ' connected' : ' not connected'), state: on ? 'on' : 'warn' };
   }
   function chips(ctx) {

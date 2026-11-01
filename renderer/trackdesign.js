@@ -4,27 +4,35 @@
   const I=typeof module!=='undefined'?require('./trackbuilder/integration.js'):root.SlotForgeIntegration;
   const MAX_BYTES=5*1024*1024;
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  function normalize(raw){
+  // The shared exporter also reports receiver-development advice. This runtime
+  // already supports those contracts; only show actionable import guidance.
+  function importIssues(doc){
+    return (doc?.compatibility?.issues||[]).filter(w=>!['freeform-runtime','routed-runtime','elevation-order-unavailable'].includes(w.code));
+  }
+  function normalize(raw,withGeometry=false){
     const json=typeof raw==='string'?raw:JSON.stringify(raw);
-    if(typeof json!=='string'||new TextEncoder().encode(json).length>MAX_BYTES)throw Error('Choose a Track Builder JSON file no larger than 5 MiB.');
-    const doc=I.prepare(typeof raw==='string'?JSON.parse(raw):raw,undefined,false);
+    if(typeof json!=='string'||new TextEncoder().encode(json).length>MAX_BYTES)throw Error('Choose a SlotForge Circuit JSON file no larger than 5 MiB.');
+    const doc=I.prepare(typeof raw==='string'?JSON.parse(raw):raw,undefined,withGeometry);
     if(!doc.pieces.length)throw Error('The design contains no pieces.');
     // Check PNG dimensions before the browser allocates a decoder. Bad artwork is
     // replaced by the Builder reference placeholder; road geometry is unaffected.
-    let referencePixels=0;
+    let referencePixels=0,changed=false;
     for(const d of doc.definitions)if(d.referenceImage){
       try{
         const b=typeof atob==='function'?atob(d.referenceImage.split(',')[1]):Buffer.from(d.referenceImage.split(',')[1],'base64').toString('binary');
         const u=n=>((b.charCodeAt(n)*16777216)+(b.charCodeAt(n+1)<<16)+(b.charCodeAt(n+2)<<8)+b.charCodeAt(n+3));
         const w=u(16),h=u(20);
-        if(b.slice(12,16)!=='IHDR'||!(w>0&&h>0&&w<=4096&&h<=4096&&w*h<=8388608)||referencePixels+w*h>33554432)delete d.referenceImage;
+        if(b.slice(12,16)!=='IHDR'||!(w>0&&h>0&&w<=4096&&h<=4096&&w*h<=8388608)||referencePixels+w*h>33554432){delete d.referenceImage;changed=true;}
         else referencePixels+=w*h;
-      }catch{delete d.referenceImage;}
+      }catch{delete d.referenceImage;changed=true;}
     }
-    return I.prepare(doc,undefined,false);
+    return changed?I.prepare(doc,undefined,withGeometry):doc;
   }
   function configure(document,laneRoutes,confirmed=false){
-    const doc=normalize(document),ids=new Set(doc.track.lanes.map(l=>l.id));
+    return configured(normalize(document),laneRoutes,confirmed);
+  }
+  function configured(doc,laneRoutes,confirmed){
+    const ids=new Set(doc.track.lanes.map(l=>l.id));
     if(!Array.isArray(laneRoutes)||laneRoutes.length>8||laneRoutes.some(id=>typeof id!=='string'||id&&!ids.has(id)))throw Error('Choose a valid design route for each lane.');
     if(new Set(laneRoutes.filter(Boolean)).size!==laneRoutes.filter(Boolean).length)throw Error('Each timing lane must use a different design route.');
     if(confirmed&&(!doc.timing.startFinish||laneRoutes.some(id=>!id)||!laneRoutes.length||doc.compatibility.liveTracker!=='through-routes'||doc.timing.startFinishOffsets.length!==doc.track.lanes.length))throw Error('Confirm a closed circuit, timing line and every lane mapping before enabling Live Tracker.');
@@ -39,14 +47,12 @@
       laneRoutes.length===previous.laneRoutes.length&&laneRoutes.every(Boolean));
     return {laneRoutes,confirmed};
   }
-  function validateSaved(raw){
+  function validateSaved(raw,withGeometry=false){
     if(raw==null)return null;
     if(raw.version!==1)throw Error('Unsupported saved track design version.');
-    const next=configure(raw.document,raw.laneRoutes||[],false);
-    if(raw.confirmedMappingRevision===next.document.timing.routeMappingRevision&&raw.confirmedMappingRevision){
-      return configure(next.document,next.laneRoutes,true);
-    }
-    return next;
+    const doc=normalize(raw.document,withGeometry);
+    const confirmed=!!raw.confirmedMappingRevision&&raw.confirmedMappingRevision===doc.timing.routeMappingRevision;
+    return configured(doc,raw.laneRoutes||[],confirmed);
   }
   function patch(existing,saved,options={}){
     const design=validateSaved(saved),doc=design.document,out={trackDesign:design};
@@ -64,12 +70,27 @@
     return out;
   }
   const cache=new WeakMap();
+  function routeBounds(routes){
+    let x=Infinity,y=Infinity,right=-Infinity,bottom=-Infinity;
+    const add=p=>{x=Math.min(x,p[0]);y=Math.min(y,p[1]);right=Math.max(right,p[0]);bottom=Math.max(bottom,p[1]);};
+    const mod=n=>(n%360+360)%360;
+    for(const r of routes)for(const s of r.segments){
+      if(s.type==='polyline')s.points.forEach(add);
+      else if(s.type==='line'){add(s.from);add(s.to);}
+      else if(s.type==='arc'){
+        const angles=[s.startAngleDeg,s.startAngleDeg+s.sweepDeg];
+        for(const a of [0,90,180,270])if(mod((a-s.startAngleDeg)*Math.sign(s.sweepDeg))<=Math.abs(s.sweepDeg)+1e-8)angles.push(a);
+        for(const a of angles)add([s.center[0]+s.radiusMm*Math.cos(a*Math.PI/180),s.center[1]+s.radiusMm*Math.sin(a*Math.PI/180)]);
+      }
+    }
+    return [x,y,Math.max(1,right-x),Math.max(1,bottom-y)];
+  }
   function runtime(saved,laneCount){
     if(!saved||typeof saved!=='object')return null;
     let value=cache.get(saved);
     if(value===undefined){
       try{
-        const c=validateSaved(saved),doc=I.prepare(c.document),routes=doc.preparedGeometry.routes;
+        const c=validateSaved(saved,true),doc=c.document,routes=doc.preparedGeometry.routes;
         if(!c.confirmedMappingRevision)throw Error('Confirm lane mapping and timing line in Database → Tracks → Track design.');
         const plans=routes.map(r=>{
           const offset=doc.timing.startFinishOffsets.find(o=>o.routeId===r.id)?.offsetMm;
@@ -80,7 +101,7 @@
           const path=Array.from({length:count+1},(_,n)=>{const q=I.atTravel(r,n*step,offset,doc.timing.direction);return (n?'L':'M')+q.x.toFixed(3)+' '+q.y.toFixed(3);}).join('')+'Z';
           return {route:r,offset,times,step,total:times[count],path};
         });
-        value={config:c,doc,plans,picture:I.picture(doc,{maxDimension:1600})};
+        value={config:c,doc,plans,laneBounds:routeBounds(routes.filter(r=>c.laneRoutes.includes(r.id))),picture:I.picture(doc,{maxDimension:1600})};
       }catch(e){value={error:e.message};}
       cache.set(saved,value);
     }
@@ -100,14 +121,15 @@
     const q=I.atTravel(p.route,distance,p.offset,rt.doc.timing.direction);
     return {...q,angle:q.heading};
   }
-  function fit(rt,w,h){
-    // Picture viewBox already contains padding, borders and reference artwork.
-    const b=rt.picture.svg.match(/viewBox="([^"]+)"/)[1].split(' ').map(Number),scale=Math.min((w-24)/b[2],(h-24)/b[3]);
+  function fit(rt,w,h,coloured=false){
+    // Only artwork needs table/scenery bounds. Invisible scenery must not shrink
+    // the coloured lanes. Keep space for the fixed-pixel car bodies at the edges.
+    const b=coloured?rt.laneBounds:rt.picture.svg.match(/viewBox="([^"]+)"/)[1].split(' ').map(Number),margin=coloured?40:24,scale=Math.min((w-margin)/b[2],(h-margin)/b[3]);
     return {x:(w-b[2]*scale)/2-b[0]*scale,y:(h-b[3]*scale)/2-b[1]*scale,scale};
   }
-  function point(rt,lane,p,w,h){const q=pose(rt,lane,p);if(!q)return null;const f=fit(rt,w,h);return {...q,x:f.x+q.x*f.scale,y:f.y+q.y*f.scale};}
+  function point(rt,lane,p,w,h,coloured=false){const q=pose(rt,lane,p);if(!q)return null;const f=fit(rt,w,h,coloured);return {...q,x:f.x+q.x*f.scale,y:f.y+q.y*f.scale};}
   function drawing(rt,w,h,lanes){
-    const f=fit(rt,w,h),body=lanes ? lanes.map(s=>{
+    const f=fit(rt,w,h,!!lanes),body=lanes ? lanes.map(s=>{
       const p=rt.plans.find(p=>p.route.id===rt.config.laneRoutes[s.lane]);
       return p?`<path data-track-lane="${s.lane}" d="${p.path}" fill="none" stroke="${esc(s.color)}" stroke-opacity=".65" stroke-width="2" vector-effect="non-scaling-stroke"/>`:'';
     }).join('') : rt.picture.svg.replace(/^<svg[^>]*>/,'').replace(/<\/svg>$/,'');
@@ -121,6 +143,6 @@
     const picture=I.picture(doc,{maxDimension:1200}),url=URL.createObjectURL(new Blob([picture.svg],{type:'image/svg+xml'}));
     try{const img=await load(url),canvas=globalThis.document.createElement('canvas');canvas.width=picture.width;canvas.height=picture.height;canvas.getContext('2d').drawImage(img,0,0);return canvas.toDataURL('image/png');}finally{URL.revokeObjectURL(url);}
   }
-  const api={MAX_BYTES,normalize,configure,restoreMapping,validateSaved,patch,runtime,lapDuration,pose,point,drawing,thumbnail,esc};
+  const api={MAX_BYTES,normalize,configure,restoreMapping,validateSaved,patch,runtime,lapDuration,pose,point,drawing,thumbnail,importIssues,esc};
   if(typeof module!=='undefined')module.exports=api;else root.TrackDesign=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

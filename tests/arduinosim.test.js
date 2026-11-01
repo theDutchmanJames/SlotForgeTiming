@@ -7,6 +7,15 @@ function rig(cars) {
   const step = (ms, keep = true) => { for (let i = 0; i < ms; i += 10) { pc += 10; if (keep && pc % 1000 === 0) sim.write(B.C.keepalive()); sim.tick(); } };
   return { sim, link, out, step, now };
 }
+{
+  const r=rig([]);r.sim.write(B.C.version());
+  r.sim.write(B.cmd('M1'+' '.repeat(80)));ok('simulator discards oversized commands like the firmware',!r.sim.mainPower);
+  r.sim.write(B.C.mainPower(true));ok('simulator recovers after the oversized line',r.sim.mainPower);
+  r.sim.write(B.C.option('lights',2));r.sim.write(B.C.option('lanerelays',1));
+  ok('simulator refuses Nano shared output pins',r.sim.options.relay[1]===0);
+  r.sim.write(B.C.option('lights',0));r.sim.write(B.C.option('lanerelays',1));r.sim.write(B.C.option('lights',2));
+  ok('simulator also refuses lights on active relay pins',r.sim.options.lights[0]===0);
+}
 { // Trackmate mode: laps as letters with ticks, nothing bracketed until V
   const r = rig(); r.sim.start(); r.step(30000);
   const hits = r.out.filter(e => e.type === 'hit');
@@ -20,7 +29,7 @@ function rig(cars) {
 { // SlotForge mode: version, pits, traps, readings, calibration, settings, save
   const r = rig(); r.sim.start(); r.step(500);
   r.sim.write(B.C.version()); r.step(50);
-  ok('V answers with the version and switches the mode', r.link.slotforge && r.link.version.version === '1.0.5' && r.link.version.board === 'virtual');
+  ok('V answers with the version and switches the mode', r.link.slotforge && r.link.version.version === '1.0.6' && r.link.version.board === 'virtual');
   r.step(90000);
   ok('pit sensors report in and out', r.out.some(e => e.type === 'pit' && e.in) && r.out.some(e => e.type === 'pit' && !e.in));
   ok('every pass ends with a speed-trap figure', r.out.filter(e => e.type === 'trap').length >= 10 && r.out.filter(e => e.type === 'trap').every(t => t.ms >= 40 && t.ms <= 60));

@@ -16,7 +16,7 @@
     const cars = (o.cars || DEFAULT_CARS).map(c => ({ ...c, nextCross: null, coveredUntil: 0, laps: 0, inPitUntil: 0, pitOn: false }));
     const pins = Array.from({ length: 8 }, (_, i) => ({ role: i < 4 ? 'L' : 'P', index: i < 4 ? i + 1 : i - 3, kind: 0, arm: 700, trig: 500, base: 820 + Math.round(rnd() * 100) }));
     const S = { cars, pins, slotforge: false, lights: 'S', mainPower: false, lanePower: Array(8).fill(true), pixels: {}, readings: false, blackout: 300, options: { lights: [1, 8, 64, 0], relay: [0, 0, 0], buzzer: [1], safeoff: [1], ladder: [0] }, saved: 0, beeps: [], away: false, buffered: [], running: false, log: [], compatLanes: 8, calibUntil: 0 };
-    const subs = new Set(); let lastTick = clock(), lastLetters = 0, lastReadings = 0, lastFromPc = clock(), lineBuf = '';
+    const subs = new Set(); let lastTick = clock(), lastLetters = 0, lastReadings = 0, lastFromPc = clock(), lineBuf = '', lineOverflow = false;
     S.onData = f => { subs.add(f); return () => subs.delete(f); };
     const out = s => subs.forEach(f => f(text(s)));
     const tick = now => { out(String(Math.round(now - lastTick)) + '\n\r'); lastTick = now; };
@@ -30,7 +30,7 @@
       lastFromPc = now;
       if (S.away) { S.away = false; ev(now, 'S-'); S.buffered.forEach(b => ev(now, `B${b.lane} ${Math.round(now) - b.at}`)); S.buffered = []; } // (as the firmware since 1.0.5: ms ago)
       const c = line[0], rest = line.slice(1).trim(); S.log.push(line);
-      if (c === 'V') { S.slotforge = true; out('[V 1.0.5 virtual 8]'); }
+      if (c === 'V') { S.slotforge = true; out('[V 1.0.6 virtual 8]'); }
       else if (c === 'G') { S.slotforge = false; S.readings = false; }
       else if (c === 'A') S.compatLanes = Math.max(1, Math.min(8, Number(rest) || 8));
       else if (c === 'L') S.lights = rest[0] || '0';
@@ -43,6 +43,10 @@
       else if (c === 'H') { const [pin, arm, trig] = rest.split(/\s+/).map(Number); if (pins[pin]) { pins[pin].arm = arm; pins[pin].trig = trig; } }
       else if (c === 'P') { const [pin, spec, kind] = rest.split(/\s+/); const p = pins[Number(pin)]; if (p) { p.role = spec[0]; p.index = Number(spec.slice(1)) || 0; p.kind = Number(kind) || 0; } }
       else if (c === 'O') { const [key, ...vals] = rest.split(/\s+/); const v = Number(vals[0]);
+        if ((key === 'lights' && v === 2 && S.options.relay[1] > 0) ||
+            (key === 'lanerelays' && ((v > 0 && S.options.lights[0] === 2) || v < 0 || v > 7))) {
+          ev(now, 'E Nano output pin conflict or unsupported relay count'); return;
+        }
         if (key === 'blackout') S.blackout = v; else if (key === 'lights') S.options.lights[0] = v; else if (key === 'pixels') S.options.lights[1] = v; else if (key === 'bright') S.options.lights[2] = v; else if (key === 'lanepix') S.options.lights[3] = v;
         else if (key === 'relaync') S.options.relay[0] = v; else if (key === 'lanerelays') S.options.relay[1] = v; else if (key === 'lanerelaysnc') S.options.relay[2] = v; else if (key === 'buzzer') S.options.buzzer = [v]; else if (key === 'safeoff') S.options.safeoff = [v]; else if (key === 'ladder') S.options.ladder = [v]; }
       else if (c === 'W') { S.saved++; ev(now, 'E saved'); }
@@ -50,7 +54,7 @@
       else if (c === 'Z') S.readings = rest === '1';
       else if (c === '!') { if (S.slotforge) out('[!]'); }
     };
-    S.write = bytes => { Array.from(bytes).forEach(b => { const ch = String.fromCharCode(b); if (ch === '\n' || ch === '\r') { if (lineBuf) handle(lineBuf, clock()); lineBuf = ''; } else if (lineBuf.length < 64) lineBuf += ch; }); };
+    S.write = bytes => { Array.from(bytes).forEach(b => { const ch = String.fromCharCode(b); if (ch === '\n' || ch === '\r') { if (lineBuf && !lineOverflow) handle(lineBuf, clock()); lineBuf = ''; lineOverflow = false; } else if (!lineOverflow) { if (lineBuf.length < 63) lineBuf += ch; else { lineOverflow = true; lineBuf = ''; } } }); };
 
     // ---- the cars and the box live ----
     S.tick = () => {

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.99.8 — 2026-11-01
+
+- Rename the Arduino setup and hardware labels to Arduino Sketch. Verify the implementation against RCAI's Arduino reference while retaining SlotForge's existing protocol and saved settings.
+- Ship Arduino firmware 1.0.6: discard oversized serial commands, clear old sensor assignments, release disabled plain LEDs, and prevent shared Nano LED/relay pin configurations. Use explicit sensor release in Timing so short blackout settings do not merge separate laps; show board-specific pin labels and read back changed output settings. Add firmware, parser, simulator and actual-app regression checks; compile for Nano and Mega.
+
+- Review and repair Circuit integration: fit coloured lanes independently of invisible table/scenery bounds, prevent saving a previous design during file loading, and remove repeated geometry regeneration. Verify file-read failures, retry/cancel, animation projection and legacy import behaviour.
+
+- Update Live Tracker to accept SlotForge Circuit 0.3.16 exports, including routed tracks, flowing curves, FreeForm circuits and lane squeezes. Preserve older Track Builder exports and saved layouts.
+- Keep both coloured lanes and Circuit artwork following the same 2D paths with existing lap-time and imported tuning-profile pace choices.
+- Clarify FreeForm sensor positioning and refresh import, chart and Help labels for Circuit. Add legacy compatibility, new geometry, persistence, second-display and actual-app visual checks.
+
 ## 1.99.7 — 2026-11-01
 
 - Rename the Paddock connection field to Dealership password and accept 4–128 characters, preserving legacy Timing credentials and existing browsing/results behaviour. Update connection guidance for remembered Dealership passwords.

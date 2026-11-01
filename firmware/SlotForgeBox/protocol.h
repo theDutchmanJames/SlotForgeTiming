@@ -35,7 +35,7 @@ class Protocol {
 public:
   bool slotforge = false;
   uint32_t lastTickAt = 0;
-  char line[64]; uint8_t len = 0;
+  char line[64]; uint8_t len = 0; bool overflow = false;
 
   void begin(uint32_t now) { Serial.begin(9600); lastTickAt = now; }
 
@@ -61,8 +61,13 @@ public:
   bool read() {
     while (Serial.available()) {
       char c = (char)Serial.read();
-      if (c == '\n' || c == '\r') { if (len) { line[len] = 0; len = 0; return true; } continue; }
+      if (c == '\n' || c == '\r') {
+        if (overflow) { overflow = false; len = 0; continue; }
+        if (len) { line[len] = 0; len = 0; return true; } continue;
+      }
+      if (overflow) continue;
       if (len < sizeof(line) - 1) line[len++] = c;
+      else { overflow = true; len = 0; } // Never execute a truncated command.
     }
     return false;
   }

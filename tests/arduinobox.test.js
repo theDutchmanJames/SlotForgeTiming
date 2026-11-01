@@ -72,4 +72,12 @@ function rig(jitter) {
   const h5 = feed('1.0.5', 300); ok('1.0.5: [B1 300] after ticks adding up to 1000 ms is a lap 300 ms before that tick (box ms 700)', h5 && h5.buffered && Math.abs(h5.at - (10800 - 300)) <= 2, h5 && h5.at);
   const h4 = feed('1.0.4', 700); ok('1.0.4: [B1 700] is the absolute box time 700 (the same lap), as before', h4 && h4.buffered && Math.abs(h4.at - (10800 - 300)) <= 2, h4 && h4.at);
 }
+{
+  const r=rig();r.tick(1000);r.letter('A');r.letter('A');r.tick(30);r.ext('T1 30');r.tick(70);r.letter('A');
+  ok('confirmed release allows the next lap below QUIET without counting repeated covered letters',r.out.filter(e=>e.type==='hit').length===2);
+  r.ext('T99 10');ok('invalid release does not change the lane array',r.link.covered.length===8);
+  ok('Nano prevents both directions of shared LED/relay pins',!!B.outputConflict({lights:[2],relay:[0,0]},'lanerelays',1,'nano') && !!B.outputConflict({lights:[0],relay:[0,1]},'lights',2,'nano'));
+  ok('Mega has independent output pins and allows eight lane relays',!B.outputConflict({lights:[2],relay:[0,0]},'lanerelays',8,'mega') && B.lightChoices('mega')[2][1].includes('D30..D36'));
+  ok('Nano allows strip with relays but has only seven relay pins',!B.outputConflict({lights:[1],relay:[0,0]},'lanerelays',7,'nano') && !!B.outputConflict({lights:[1],relay:[0,0]},'lanerelays',8,'nano'));
+}
 console.log(fails ? `${fails} FAILED` : 'all passed'); process.exit(fails ? 1 : 0);

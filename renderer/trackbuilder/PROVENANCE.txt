@@ -1,9 +1,17 @@
-SlotForge Track Builder 0.2.2 integration runtime, provided by the project owner
-in SlotForge-Timing-integration-v0.2.2-handoff.zip (29 October 2026).
+SlotForge Circuit 0.3.16 integration runtime, supplied by the project owner
+from the local SlotForge Track Builder source tree (1 November 2026).
 
-integration.js, core.js, geometry.js and geometry.cjs are the supplied runtime.
-The only local vendor change is core.js's CommonJS geometry path, adjusted to
-./geometry.cjs. Browser load order: geometry.js, core.js, integration.js.
-No npm runtime dependencies. Geometry is derived from bounded templates; files
-are data, not scripts. Contracts 1.0.0-draft.1 and 1.0.0-draft.2 are supported.
-Track Builder revisions remain separate from SlotForge Timing's track IDs.
+integration.js, core.js, geometry.js, geometry.cjs, routed.js, routed-spline.js,
+freeform.js, elevation.js and table-shape.js are the supplied runtime.
+The only vendor changes are core.js and routed.js CommonJS geometry paths,
+adjusted to ./geometry.cjs. Browser order: geometry.js, table-shape.js,
+elevation.js, routed-spline.js, routed.js, freeform.js, core.js, integration.js.
+
+No external npm runtime dependencies. Contracts 1.0.0-draft.1 through draft.10
+and documented legacy v1 inputs are supported. Source geometry is validated
+and regenerated; supplied caches are not trusted. The elevation module is a
+required dependency of Circuit's geometry runtime, not a Timing 3D feature.
+Live Tracker uses 2D lane paths, with sensor crossings authoritative for laps.
+Circuit design identities remain separate from Timing's database track IDs.
+
+First-party code: SlotForge Source-Available License 1.0, as in LICENSE.

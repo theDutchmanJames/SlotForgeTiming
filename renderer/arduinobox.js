@@ -24,6 +24,14 @@
   const ROLES = [['N', 'Not used'], ['L', 'Lane sensor'], ['P', 'Pit sensor'], ['K', 'Call buttons (ladder)']];
   const KINDS = [[0, 'Light sensor'], [1, 'Contact (reed, dead strip)']];
   const LIGHTS = [[0, 'No lights'], [1, 'LED strip (WS2812) on D6'], [2, 'Plain LEDs on D7..D13']];
+  const lightChoices = board => LIGHTS.map(([v, label]) => [v, v === 2 && board === 'mega' ? 'Plain LEDs on D30..D36' : label]);
+  function outputConflict(options, key, value, board) {
+    if (board === 'mega') return '';
+    const n = Number(value), lights = (options.lights || [1])[0], relays = (options.relay || [0, 0])[1];
+    if (key === 'lanerelays' && (n < 0 || n > 7)) return 'A Nano supports up to 7 lane relays. Use a Mega for 8.';
+    if ((key === 'lights' && n === 2 && relays > 0) || (key === 'lanerelays' && n > 0 && lights === 2)) return 'On a Nano, plain LEDs and lane relays share D7–D13. Disable one before enabling the other, or use an LED strip.';
+    return '';
+  }
   const cmd = text => H.cmd(text); // text + LF, as the Trackmate commands are sent
 
   // Reads the byte stream (any pieces) and gives whole messages: { type: 'lane', lane 1..8 } for a letter, { type: 'call' } for W,
@@ -112,7 +120,11 @@
           if (e.tag === 'V') { L.slotforge = true; L.version = { version: e.args[0], board: e.args[1], pins: Number(e.args[2]) || 8 }; emit({ type: 'version', ...L.version }); }
           else if (e.tag === 'P' && e.n) { const pit = e.n - 1, on = e.sign === '+'; if (L.pitCovered[pit] !== on) { L.pitCovered[pit] = on; emit({ type: 'pit', pit, in: on, at: toPc(hwMs) }); } }
           else if (e.tag === 'K' && e.n) emit({ type: 'button', lane: L.map[e.n - 1], at: toPc(hwMs) });
-          else if (e.tag === 'T' && e.n) emit({ type: 'trap', lane: L.map[e.n - 1], ms: Number(e.args[0]) || 0, at: toPc(hwMs) });
+          else if (e.tag === 'T' && e.n >= 1 && e.n <= 8) {
+            // The sketch confirms release explicitly. QUIET remains the fallback for older streams.
+            L.covered[e.n - 1] = false;
+            emit({ type: 'trap', lane: L.map[e.n - 1], ms: Number(e.args[0]) || 0, at: toPc(hwMs) });
+          }
           else if (e.tag === 'Z' && e.n !== null) { L.readings[e.n] = Number(e.args[0]); emit({ type: 'reading', pin: e.n, raw: Number(e.args[0]) }); }
           else if (e.tag === 'C' && e.n !== null) { const r = { pin: e.n, base: Number(e.args[0]), arm: Number(e.args[1]), trig: Number(e.args[2]) }; L.pins[e.n] = { ...(L.pins[e.n] || {}), arm: r.arm, trig: r.trig }; emit({ type: 'calibrated', ...r }); }
           else if (e.tag === 'S') { L.safe = e.sign === '+'; emit({ type: 'safe', on: L.safe }); }
@@ -132,7 +144,7 @@
   // the check lights beside the sensors, as on the Trackmate page
   const ledsOn = (litAt, now, hold = 1000, count = 8) => TM.ledsOn(litAt, now, hold, count);
 
-  const api = { parser, parseExt, note, describeExt, C, cmd, createLink, ledsOn, ROLES, KINDS, LIGHTS, KEEPALIVE_MS, QUIET, laneMap: TM.laneMap, swapLane: TM.swapLane, link: createLink() };
+  const api = { parser, parseExt, note, describeExt, C, cmd, createLink, ledsOn, ROLES, KINDS, LIGHTS, lightChoices, outputConflict, KEEPALIVE_MS, QUIET, laneMap: TM.laneMap, swapLane: TM.swapLane, link: createLink() };
   root.ArduinoBox = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

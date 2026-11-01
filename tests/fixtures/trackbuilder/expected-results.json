@@ -1,0 +1,390 @@
+{
+  "contractVersion": "1.0.0-draft.1",
+  "files": {
+    "01-two-lane": {
+      "designId": "fixture-2",
+      "revision": "abcac2b279874fca9751d5a9c407bdb59fbbf3399d101df939bae90fa24ed4cb",
+      "routeMappingRevision": "14329e33027b35576fd9c668c94c32413a126fb454c465615e945713cdee849c",
+      "requiresLaneRemap": false,
+      "closed": true,
+      "routeIds": [
+        "route-996775d15819bd22a317d10ef2c2ee3f5f0d8ada9eb0c9724c4387d07d3d25b8",
+        "route-dd90679a823e780f91cb5cf265cdce99eef4a80ab751385ce0c34da7da82579d"
+      ],
+      "lengthsMm": [
+        5525.751918948771,
+        4897.433388230816
+      ],
+      "timingOffsets": [
+        {
+          "routeId": "route-996775d15819bd22a317d10ef2c2ee3f5f0d8ada9eb0c9724c4387d07d3d25b8",
+          "offsetMm": 1717.5110039923823
+        },
+        {
+          "routeId": "route-dd90679a823e780f91cb5cf265cdce99eef4a80ab751385ce0c34da7da82579d",
+          "offsetMm": 1593.4180941755858
+        }
+      ],
+      "compatibilityCodes": [
+        "elevation-order-unavailable"
+      ]
+    },
+    "02-four-lane": {
+      "designId": "fixture-4",
+      "revision": "29eadc0dad1262a819c0959030b0d3718004cff27c35d96ec610dc5995a2b873",
+      "routeMappingRevision": "8b9cbbcaf669eed6a9d88c0f2b81e9a9a3ce264386d49f7680caba08420ace11",
+      "requiresLaneRemap": false,
+      "closed": true,
+      "routeIds": [
+        "route-cdf96e11302611205f54be5b7addc368356ccc5ad47efdcf70b63e942085754e",
+        "route-6dc79a5093bf0b9e78268df1282a1082d75d2651f50cf44a1277bf360e1a4770",
+        "route-e15d5b8e43e0cce5050a1022bd75a21412d7caec53647cd55eeff1855f0d5fae",
+        "route-73a02c3510bea04a59eed860e5c1f23f1edb85561fa351d95413a976b394070a"
+      ],
+      "lengthsMm": [
+        6782.388980384691,
+        6154.070449666731,
+        5525.751918948771,
+        4897.433388230816
+      ],
+      "timingOffsets": [
+        {
+          "routeId": "route-cdf96e11302611205f54be5b7addc368356ccc5ad47efdcf70b63e942085754e",
+          "offsetMm": 1965.696823625976
+        },
+        {
+          "routeId": "route-6dc79a5093bf0b9e78268df1282a1082d75d2651f50cf44a1277bf360e1a4770",
+          "offsetMm": 1841.6039138091794
+        },
+        {
+          "routeId": "route-e15d5b8e43e0cce5050a1022bd75a21412d7caec53647cd55eeff1855f0d5fae",
+          "offsetMm": 1717.5110039923823
+        },
+        {
+          "routeId": "route-73a02c3510bea04a59eed860e5c1f23f1edb85561fa351d95413a976b394070a",
+          "offsetMm": 1593.4180941755858
+        }
+      ],
+      "compatibilityCodes": [
+        "elevation-order-unavailable"
+      ]
+    },
+    "03-eight-lane": {
+      "designId": "fixture-8",
+      "revision": "e5d026e4ed45fa36a9c330988696ae429dc4df0a19d571c80e0aa3272628ad55",
+      "routeMappingRevision": "e7e717b4c77e25859ed77794344d7d0e37762b9473ff3d46a85199cae5dea1bb",
+      "requiresLaneRemap": false,
+      "closed": true,
+      "routeIds": [
+        "route-248c939cafa5ef24c6ca877939b0892ea3160b354ded0a305fdcf9e982e31744",
+        "route-8fe668d7dd2842485bff773c62acd5ca83990829930696f366759f53e3ce67e9",
+        "route-de1506d103e1ed88ef9577e8b99aeedc5a5694089d6c15f4f0f00d071a735c0f",
+        "route-2a66ace24cc2db93568db382a692aae0dfe02b7086eb8d3d850f12cb397667db",
+        "route-4e116115e80886d1436b7386c241158e3e130ebe13e18dbc00b474f69a0f4f7d",
+        "route-67229235d4b5350e32b72e3fc014615e78a1c0fc5af5e06ba60c809038b1527c",
+        "route-84cbaf3311a749b8f4608cffe8decab51c0a34cf06d9c9d92bb1c9237d1bcbd1",
+        "route-91de5a892cb1e276e2f4abc6ab91dcca8e012cacfd1e09a633930f4ac70274bc"
+      ],
+      "lengthsMm": [
+        9295.663103256524,
+        8667.344572538565,
+        8039.026041820608,
+        7410.707511102646,
+        6782.388980384691,
+        6154.070449666731,
+        5525.751918948771,
+        4897.433388230816
+      ],
+      "timingOffsets": [
+        {
+          "routeId": "route-248c939cafa5ef24c6ca877939b0892ea3160b354ded0a305fdcf9e982e31744",
+          "offsetMm": 2462.0684628931635
+        },
+        {
+          "routeId": "route-8fe668d7dd2842485bff773c62acd5ca83990829930696f366759f53e3ce67e9",
+          "offsetMm": 2337.975553076367
+        },
+        {
+          "routeId": "route-de1506d103e1ed88ef9577e8b99aeedc5a5694089d6c15f4f0f00d071a735c0f",
+          "offsetMm": 2213.8826432595697
+        },
+        {
+          "routeId": "route-2a66ace24cc2db93568db382a692aae0dfe02b7086eb8d3d850f12cb397667db",
+          "offsetMm": 2089.789733442773
+        },
+        {
+          "routeId": "route-4e116115e80886d1436b7386c241158e3e130ebe13e18dbc00b474f69a0f4f7d",
+          "offsetMm": 1965.696823625976
+        },
+        {
+          "routeId": "route-67229235d4b5350e32b72e3fc014615e78a1c0fc5af5e06ba60c809038b1527c",
+          "offsetMm": 1841.6039138091794
+        },
+        {
+          "routeId": "route-84cbaf3311a749b8f4608cffe8decab51c0a34cf06d9c9d92bb1c9237d1bcbd1",
+          "offsetMm": 1717.5110039923823
+        },
+        {
+          "routeId": "route-91de5a892cb1e276e2f4abc6ab91dcca8e012cacfd1e09a633930f4ac70274bc",
+          "offsetMm": 1593.4180941755858
+        }
+      ],
+      "compatibilityCodes": [
+        "elevation-order-unavailable"
+      ]
+    },
+    "04-mirrored-rotated": {
+      "designId": "fixture-2",
+      "revision": "b7d963f7cfe5d5f1c6f1a66667331d702992f8f1f230908831fb09d127f29351",
+      "routeMappingRevision": "14329e33027b35576fd9c668c94c32413a126fb454c465615e945713cdee849c",
+      "requiresLaneRemap": false,
+      "closed": true,
+      "routeIds": [
+        "route-996775d15819bd22a317d10ef2c2ee3f5f0d8ada9eb0c9724c4387d07d3d25b8",
+        "route-dd90679a823e780f91cb5cf265cdce99eef4a80ab751385ce0c34da7da82579d"
+      ],
+      "lengthsMm": [
+        5525.751918948771,
+        4897.433388230816
+      ],
+      "timingOffsets": [
+        {
+          "routeId": "route-996775d15819bd22a317d10ef2c2ee3f5f0d8ada9eb0c9724c4387d07d3d25b8",
+          "offsetMm": 1717.5110039923823
+        },
+        {
+          "routeId": "route-dd90679a823e780f91cb5cf265cdce99eef4a80ab751385ce0c34da7da82579d",
+          "offsetMm": 1593.4180941755858
+        }
+      ],
+      "compatibilityCodes": [
+        "elevation-order-unavailable"
+      ]
+    },
+    "05-reverse-direction": {
+      "designId": "fixture-2",
+      "revision": "16d16e564b1116f79ce7b56454e214a598c7ab9d862e89cff6be5511880f31df",
+      "routeMappingRevision": "14329e33027b35576fd9c668c94c32413a126fb454c465615e945713cdee849c",
+      "requiresLaneRemap": false,
+      "closed": true,
+      "routeIds": [
+        "route-996775d15819bd22a317d10ef2c2ee3f5f0d8ada9eb0c9724c4387d07d3d25b8",
+        "route-dd90679a823e780f91cb5cf265cdce99eef4a80ab751385ce0c34da7da82579d"
+      ],
+      "lengthsMm": [
+        5525.751918948771,
+        4897.433388230816
+      ],
+      "timingOffsets": [
+        {
+          "routeId": "route-996775d15819bd22a317d10ef2c2ee3f5f0d8ada9eb0c9724c4387d07d3d25b8",
+          "offsetMm": 1717.5110039923823
+        },
+        {
+          "routeId": "route-dd90679a823e780f91cb5cf265cdce99eef4a80ab751385ce0c34da7da82579d",
+          "offsetMm": 1593.4180941755858
+        }
+      ],
+      "compatibilityCodes": [
+        "elevation-order-unavailable"
+      ]
+    },
+    "06-reordered": {
+      "designId": "fixture-2",
+      "revision": "ca4819c9c00073653f2c9243e6f9d1d9f9b6348f34b6a2d4f5acc643433dd1db",
+      "routeMappingRevision": "14329e33027b35576fd9c668c94c32413a126fb454c465615e945713cdee849c",
+      "requiresLaneRemap": false,
+      "closed": true,
+      "routeIds": [
+        "route-996775d15819bd22a317d10ef2c2ee3f5f0d8ada9eb0c9724c4387d07d3d25b8",
+        "route-dd90679a823e780f91cb5cf265cdce99eef4a80ab751385ce0c34da7da82579d"
+      ],
+      "lengthsMm": [
+        5525.751918948771,
+        4897.433388230816
+      ],
+      "timingOffsets": [
+        {
+          "routeId": "route-996775d15819bd22a317d10ef2c2ee3f5f0d8ada9eb0c9724c4387d07d3d25b8",
+          "offsetMm": 1717.5110039923823
+        },
+        {
+          "routeId": "route-dd90679a823e780f91cb5cf265cdce99eef4a80ab751385ce0c34da7da82579d",
+          "offsetMm": 1593.4180941755858
+        }
+      ],
+      "compatibilityCodes": [
+        "elevation-order-unavailable"
+      ]
+    },
+    "07-remap-required": {
+      "designId": "fixture-2",
+      "revision": "4b3adcadeb31d851438f31047fe6c72dde70a441b03ce3d1cb18a762a54e49c8",
+      "routeMappingRevision": "53ab96514bc5ebfb2795865e3a47a6cee30798f8f5b0630fd81f455add96099c",
+      "requiresLaneRemap": true,
+      "closed": true,
+      "routeIds": [
+        "route-dded5a2a92a63b71dd857fb6dfaea3c8d860364d452d5493e832c00d3b039d01",
+        "route-753345ae70517e74e15507a5ea97f4531c48baa3f6a2adec29dc96f0c6275550"
+      ],
+      "lengthsMm": [
+        5525.751918948771,
+        4897.433388230815
+      ],
+      "timingOffsets": [
+        {
+          "routeId": "route-dded5a2a92a63b71dd857fb6dfaea3c8d860364d452d5493e832c00d3b039d01",
+          "offsetMm": 1372.5110039923823
+        },
+        {
+          "routeId": "route-753345ae70517e74e15507a5ea97f4531c48baa3f6a2adec29dc96f0c6275550",
+          "offsetMm": 1248.4180941755858
+        }
+      ],
+      "compatibilityCodes": [
+        "elevation-order-unavailable"
+      ]
+    },
+    "08-open": {
+      "designId": "fixture-2",
+      "revision": "ecc67c116894b8af538d9aa407eec4e7b6a0b038f0518c548608fb62d5472b80",
+      "routeMappingRevision": "14329e33027b35576fd9c668c94c32413a126fb454c465615e945713cdee849c",
+      "requiresLaneRemap": false,
+      "closed": false,
+      "routeIds": [],
+      "lengthsMm": [],
+      "timingOffsets": [],
+      "compatibilityCodes": [
+        "open-circuit",
+        "elevation-order-unavailable"
+      ]
+    },
+    "09-disconnected": {
+      "designId": "fixture-2",
+      "revision": "063deb81d36b126866a50d882d9013c431bb45ea06c37a4dd1a8a1a5b8667b4f",
+      "routeMappingRevision": "14329e33027b35576fd9c668c94c32413a126fb454c465615e945713cdee849c",
+      "requiresLaneRemap": false,
+      "closed": false,
+      "routeIds": [],
+      "lengthsMm": [],
+      "timingOffsets": [],
+      "compatibilityCodes": [
+        "disconnected-circuits",
+        "elevation-order-unavailable"
+      ]
+    },
+    "10-lane-changer": {
+      "designId": "fixture-2",
+      "revision": "2167ae59c0bc70ace90a33df8aa4f6366ff47d7340b5df8ceaa7b1dc02b66774",
+      "routeMappingRevision": "14329e33027b35576fd9c668c94c32413a126fb454c465615e945713cdee849c",
+      "requiresLaneRemap": false,
+      "closed": true,
+      "routeIds": [
+        "route-996775d15819bd22a317d10ef2c2ee3f5f0d8ada9eb0c9724c4387d07d3d25b8",
+        "route-dd90679a823e780f91cb5cf265cdce99eef4a80ab751385ce0c34da7da82579d"
+      ],
+      "lengthsMm": [
+        5525.751918948771,
+        4897.433388230816
+      ],
+      "timingOffsets": [
+        {
+          "routeId": "route-996775d15819bd22a317d10ef2c2ee3f5f0d8ada9eb0c9724c4387d07d3d25b8",
+          "offsetMm": 1717.5110039923823
+        },
+        {
+          "routeId": "route-dd90679a823e780f91cb5cf265cdce99eef4a80ab751385ce0c34da7da82579d",
+          "offsetMm": 1593.4180941755858
+        }
+      ],
+      "compatibilityCodes": [
+        "lane-changing-branches",
+        "elevation-order-unavailable"
+      ]
+    },
+    "11-invalid-dimensions": {
+      "reject": true
+    },
+    "12-without-prepared-or-png": {
+      "designId": "fixture-2",
+      "revision": "abcac2b279874fca9751d5a9c407bdb59fbbf3399d101df939bae90fa24ed4cb",
+      "routeMappingRevision": "14329e33027b35576fd9c668c94c32413a126fb454c465615e945713cdee849c",
+      "requiresLaneRemap": false,
+      "closed": true,
+      "routeIds": [
+        "route-996775d15819bd22a317d10ef2c2ee3f5f0d8ada9eb0c9724c4387d07d3d25b8",
+        "route-dd90679a823e780f91cb5cf265cdce99eef4a80ab751385ce0c34da7da82579d"
+      ],
+      "lengthsMm": [
+        5525.751918948771,
+        4897.433388230816
+      ],
+      "timingOffsets": [
+        {
+          "routeId": "route-996775d15819bd22a317d10ef2c2ee3f5f0d8ada9eb0c9724c4387d07d3d25b8",
+          "offsetMm": 1717.5110039923823
+        },
+        {
+          "routeId": "route-dd90679a823e780f91cb5cf265cdce99eef4a80ab751385ce0c34da7da82579d",
+          "offsetMm": 1593.4180941755858
+        }
+      ],
+      "compatibilityCodes": [
+        "elevation-order-unavailable"
+      ]
+    },
+    "13-legacy-v1": {
+      "newDesignIdOnImport": true,
+      "closed": true,
+      "lengthsMm": [
+        5525.751918948771,
+        4897.433388230816
+      ],
+      "startFinish": null
+    },
+    "14-ambiguous": {
+      "designId": "fixture-2",
+      "revision": "0d1f75081a26d01ff54926ee2f9ebf373a17ed4f42152bcaa65a6e508b34aacb",
+      "routeMappingRevision": "14329e33027b35576fd9c668c94c32413a126fb454c465615e945713cdee849c",
+      "requiresLaneRemap": false,
+      "closed": false,
+      "routeIds": [],
+      "lengthsMm": [],
+      "timingOffsets": [],
+      "compatibilityCodes": [
+        "open-circuit",
+        "disconnected-circuits",
+        "ambiguous-connections",
+        "elevation-order-unavailable"
+      ]
+    },
+    "15-with-borders": {
+      "designId": "fixture-2",
+      "revision": "48b407c90104038ab0342531877d0fbf77faf06af1cc594828c9b1f15e921562",
+      "routeMappingRevision": "14329e33027b35576fd9c668c94c32413a126fb454c465615e945713cdee849c",
+      "requiresLaneRemap": false,
+      "closed": true,
+      "routeIds": [
+        "route-996775d15819bd22a317d10ef2c2ee3f5f0d8ada9eb0c9724c4387d07d3d25b8",
+        "route-dd90679a823e780f91cb5cf265cdce99eef4a80ab751385ce0c34da7da82579d"
+      ],
+      "lengthsMm": [
+        5525.751918948771,
+        4897.433388230816
+      ],
+      "timingOffsets": [
+        {
+          "routeId": "route-996775d15819bd22a317d10ef2c2ee3f5f0d8ada9eb0c9724c4387d07d3d25b8",
+          "offsetMm": 1717.5110039923823
+        },
+        {
+          "routeId": "route-dd90679a823e780f91cb5cf265cdce99eef4a80ab751385ce0c34da7da82579d",
+          "offsetMm": 1593.4180941755858
+        }
+      ],
+      "compatibilityCodes": [
+        "elevation-order-unavailable"
+      ]
+    }
+  }
+}

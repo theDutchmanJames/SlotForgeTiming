@@ -3,7 +3,7 @@
 // (the pass is armed, samples are counted), then below `trig` (the car is confirmed: this is the crossing, reported at once), then back above `arm`
 // (the pass is over: its duration is reported). A contact sensor reads 0 or 1023 and goes through the same logic.
 // Light sensors: a car over a reflective sensor makes the reading go UP, over a beam sensor DOWN. The box always works with "lower = car":
-// a reflective sensor is wired so that its output falls (or the app sets the kind to "light, inverted", which flips the reading here).
+// a reflective sensor must be wired so that its output falls. Software inversion is not supported.
 #pragma once
 #include "settings.h"
 
@@ -38,7 +38,15 @@ public:
 
   void begin(Settings *s) { S = s; for (uint8_t i = 0; i < SFB_ANALOG_PINS; i++) { st[i] = SensorState(); st[i].raw = 1023; st[i].base = 1023; } }
 
-  void calibrate(uint32_t now) { calibrating = true; calibUntil = now + CALIB_MS; for (uint8_t i = 0; i < SFB_ANALOG_PINS; i++) { st[i].calibSum = 0; st[i].calibN = 0; } }
+  void resetPin(uint8_t pin, uint32_t now) {
+    SensorState &x = st[pin];
+    if (x.covered && onFree) onFree(pin, now, now - x.confirmedAt);
+    x = SensorState(); x.raw = 1023; x.base = 1023; x.freeAt = now;
+  }
+  void calibrate(uint32_t now) {
+    for (uint8_t i = 0; i < SFB_ANALOG_PINS; i++) resetPin(i, now);
+    calibrating = true; calibUntil = now + CALIB_MS;
+  }
 
   // one reading of one pin; called round-robin from loop()
   void sample(uint8_t pin, uint32_t now) {

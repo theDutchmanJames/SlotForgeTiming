@@ -13,6 +13,7 @@ class Lights {
 public:
   Settings *S;
   char state = 0;
+  uint8_t activeKind = LIGHTS_NONE;
   uint32_t laneColor[MAX_LANES] = {};
 #ifndef SFB_NO_STRIP
   Adafruit_NeoPixel *strip = nullptr;
@@ -20,6 +21,10 @@ public:
   uint8_t plainPins[7] = SFB_PLAIN_LED_PINS;
 
   void begin(Settings *s) {
+    if (activeKind == LIGHTS_PINS && s->lightsKind != LIGHTS_PINS) {
+      for (uint8_t i = 0; i < 7; i++) { digitalWrite(plainPins[i], LOW); pinMode(plainPins[i], INPUT); }
+    }
+    activeKind = s->lightsKind;
     S = s;
     if (S->lightsKind == LIGHTS_PINS) { for (uint8_t i = 0; i < 7; i++) { pinMode(plainPins[i], OUTPUT); digitalWrite(plainPins[i], LOW); } }
 #ifndef SFB_NO_STRIP
@@ -40,7 +45,7 @@ public:
     if (strip) {
       for (uint8_t i = 0; i < 5; i++) strip->setPixelColor(i, red[i] ? strip->Color(255, 0, 0) : 0);
       strip->setPixelColor(5, go ? strip->Color(0, 255, 0) : 0); strip->setPixelColor(6, caution ? strip->Color(255, 180, 0) : 0);
-      if (S->lanePixels) for (uint8_t l = 0; l < MAX_LANES && 7 + l < strip->numPixels(); l++) strip->setPixelColor(7 + l, laneColor[l]);
+      if (S->lanePixels) for (uint8_t l = 0; l < MAX_LANES && (uint16_t)(7 + l) < strip->numPixels(); l++) strip->setPixelColor(7 + l, laneColor[l]);
       strip->show();
     }
 #endif

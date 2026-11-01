@@ -4,7 +4,7 @@ const dir=path.join(__dirname,'fixtures/trackbuilder'),read=n=>JSON.parse(fs.rea
 let checks=0;const test=(name,fn)=>{fn();console.log('ok '+name);checks++;};
 const doc=D.normalize(read('01-two-lane.slotforge.json')),ids=doc.track.lanes.map(l=>l.id),saved=D.configure(doc,ids,true);
 test('all supplied drawings regenerate; invalid dimensions fail; open circuits remain static',()=>{
-  for(const file of fs.readdirSync(dir)){
+  for(const file of fs.readdirSync(dir).filter(f=>f.endsWith(".slotforge.json"))){
     if(file.startsWith('11-')){assert.throws(()=>D.normalize(read(file)));continue;}
     const d=D.normalize(read(file));assert.equal(d.units,'mm');assert(!d.preparedGeometry);
     if(['08','09','14'].some(p=>file.startsWith(p)))assert.equal(d.compatibility.liveTracker,'unavailable');
@@ -59,7 +59,7 @@ test('profile uses cumulative travel time, wraps at the timing line, and reverse
 test('chart uses mapped routes, defaults old designs to coloured lanes, and safely falls back',()=>{
   const car={lane:0,driverName:'Test',laps:[10000],bad:[],started:true,total:10000,last:0},S={track:{lanes:2,trackDesign:saved},eng:{cars:[car],rivals:[],status:'running',lapElapsed:()=>5000},now:5000};
   assert.equal(C.clean({style:'track'}).trackDrawing,'oval');
-  const m=C.model({style:'track',trackDrawing:'design'},S);assert(m.design);assert.match(C.html(m,600,400),/Track Builder/);assert(!C.html(m,600,400).includes('NaN'));
+  const m=C.model({style:'track',trackDrawing:'design'},S);assert(m.design);assert.match(C.html(m,600,400),/Circuit/);assert(!C.html(m,600,400).includes('NaN'));
   assert(!C.model({style:'track',trackDrawing:'design'},{...S,track:{lanes:2}}).design);
   assert.match(C.html(C.model({style:'track',trackDrawing:'design'},{...S,track:{lanes:3,trackDesign:saved}}),600,400),/Oval fallback/);
   assert.equal(X.progress(m.track[0],car,S,m.d).p,.5);car.pitHold=true;assert.equal(X.progress(m.track[0],car,S,m.d).p,0);delete car.pitHold;S.eng.lapElapsed=()=>20000;assert.equal(X.progress(m.track[0],car,S,m.d).p,.96);
@@ -70,8 +70,8 @@ test('appearance changes artwork only: coloured lanes follow the same imported r
   assert.equal(plain.design,art.design);assert(plain.design);assert.deepEqual(plain.track,art.track);
   const a=C.html(plain,640,400),b=C.html(art,640,400);
   assert.match(a,/Coloured lanes · imported layout/);assert.match(a,/data-track-lane="0"/);assert.match(a,/data-track-lane="1"/);
-  assert(!b.includes('data-track-lane'));assert.match(b,/Track Builder artwork/);assert.notEqual(a,b);
-  assert.deepEqual([...a.matchAll(/data-track-marker="\d+" transform="([^"]+)"/g)].map(m=>m[1]),[...b.matchAll(/data-track-marker="\d+" transform="([^"]+)"/g)].map(m=>m[1]));
+  assert(!b.includes('data-track-lane'));assert.match(b,/Circuit artwork/);assert.notEqual(a,b);
+  sameWorldPositions(a,b);
   // Reversed lane mapping determines the coloured route, rather than array order.
   const rt=D.runtime(D.configure(doc,[ids[1],ids[0]],true),2),svg=D.drawing(rt,640,400,[{lane:0,color:'#ff1234'}]);
   assert(svg.includes(rt.plans.find(p=>p.route.id===ids[1]).path));assert(!svg.includes(rt.plans.find(p=>p.route.id===ids[0]).path));assert.match(svg,/#ff1234/);
@@ -103,7 +103,7 @@ test('Layout Editor previews imported artwork using real lane count without muta
   const P=require('../renderer/widgetpreview'),raw={id:'preview',style:'track',trackDrawing:'design',pace:'profile'},track={lanes:2,trackDesign:saved},assets={chartDesigns:[raw],chartPreviewTrack:track};
   const w={type:'racechart',opt:{chartDesign:raw.id},chartSize:{width:640,height:400},previewContext:assets};
   const count=P.context('history').eng.cars.length,S=P.state(w);assert.equal(S.track,track);assert.equal(S.eng.cars.length,2);assert.equal(P.context('history').eng.cars.length,count);
-  assert.match(P.content(w).html,/Track Builder artwork/);assert(!P.content(w).html.includes('Oval fallback'));
+  assert.match(P.content(w).html,/Circuit artwork/);assert(!P.content(w).html.includes('Oval fallback'));
   assert.match(P.content({...w,opt:{...w.opt,trackDrawing:'oval'}}).html,/Coloured lanes · imported layout/);
   assert.match(P.content({...w,previewContext:{chartDesigns:[raw]}}).html,/Oval fallback/);
   assert.equal(P.state({...w,opt:{chartDesign:'bars'},previewContext:{...assets,chartDesigns:[{id:'bars',style:'bars'}]}}).eng.cars.length,count);
@@ -159,3 +159,9 @@ test('remote viewer renders the same design and estimated poses as the paused ma
   }
 });
 console.log(checks+' Track Builder integration groups passed');
+
+function worldPositions(html){
+  const frame=html.match(/<g transform="translate\(([-\d.e]+) ([-\d.e]+)\) scale\(([-\d.e]+)\)">/).slice(1).map(Number);
+  return [...html.matchAll(/data-track-marker="\d+" transform="translate\(([-\d.e]+) ([-\d.e]+)\)/g)].map(m=>[(Number(m[1])-frame[0])/frame[2],(Number(m[2])-frame[1])/frame[2]]);
+}
+function sameWorldPositions(a,b){const x=worldPositions(a),y=worldPositions(b);assert.equal(x.length,y.length);x.forEach((p,i)=>assert(Math.hypot(p[0]-y[i][0],p[1]-y[i][1])<1e-5));}

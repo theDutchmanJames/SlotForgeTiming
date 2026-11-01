@@ -545,7 +545,7 @@ const upTo4 = () => { const r = race(REC); at(r, 0, 10000); at(r, 0, 20000); at(
   const q = race(null); at(q, 0, 10000);
   ok('...and without a weather system nothing is held either', q.cross(0, 20000, { holdDue: true }) === true && q.cars[0].wxHold === undefined && q.cars[0].laps.length === 2); }
 { const r = race(REC); at(r, 0, 10000); at(r, 0, 20000); r.cross(0, 30000, { holdDue: true });
-  ok('1.51.1: a crossing without holdDue (the keys, the Arduino box, the simulated cars) is judged at once, as before', upTo4().cross(0, 50000) === true);
+  ok('1.51.1: a crossing without holdDue (the keys, the Arduino Sketch, the simulated cars) is judged at once, as before', upTo4().cross(0, 50000) === true);
   const w = upTo4(); w.cross(0, 50000); ok('...the penalty is given at that crossing', w.cars[0].points === 2 && w.cars[0].wxHold === undefined && evs(w, 'tyredue').length === 1); }
 { const r = race(REC); at(r, 0, 10000); at(r, 0, 20000); at(r, 0, 30000);
   ok('1.51.1: before the lap the tyres are due nothing waits either (it is judged on lap 5, not before)', r.cars[0].wxDue && r.cars[0].wxDue.lap === 5 && r.cross(0, 40000, { holdDue: true }) === true && r.cars[0].wxHold === undefined && r.cars[0].laps.length === 4); }

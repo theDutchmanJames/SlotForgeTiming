@@ -80,7 +80,7 @@ const nowMs = () => run('performance.now()');
   await openRace(setup, store.tracks[0], rows(1, 2));
   const opened = sentNow();
   say('the race screen tells the box what it needs when it opens: the readings stream off, the track power on (the race setup says on) and the lights out', /\bZ0\b/.test(opened) && /\bM1\b/.test(opened) && /\bL0\b/.test(opened), opened);
-  say('...and the status line of the race says the Arduino box is connected', String(E('tmstatus').textContent || '').includes('Arduino box connected'), String(E('tmstatus').textContent));
+  say('...and the status line of the race says the Arduino Sketch is connected', String(E('tmstatus').textContent || '').includes('Arduino Sketch connected'), String(E('tmstatus').textContent));
   hit(0); await wait(20);
   say('a crossing before the start does nothing', eng().cars[0].laps.length === 0);
   key(' '); await until(() => phase() === 'countdown', 3000);
@@ -143,10 +143,10 @@ const nowMs = () => run('performance.now()');
   run("state.settings.timingHw = 'arduino'"); sentNow();
   const marks = []; E('tmstatus').classList = { add() {}, remove() {}, toggle: (c, on) => marks.push(c + ':' + on) }; // (the page of the test only records the class)
   await openRace(setup, store.tracks[0], rows(1, 2));
-  say('...and with the Arduino box chosen it is bound again', run('live.box') !== undefined && run('live.box') !== null);
+  say('...and with the Arduino Sketch chosen it is bound again', run('live.box') !== undefined && run('live.box') !== null);
   say('...its status line has no red mark while the box is connected', marks.length > 0 && marks[marks.length - 1] === 'hwwarn:false', marks.join());
   run("ArduinoBox.link.setConnected(false)"); await wait(10);
-  say('...and when the box goes away the status line says so, in red', String(E('tmstatus').textContent).includes('Arduino box not connected') && marks[marks.length - 1] === 'hwwarn:true', String(E('tmstatus').textContent) + ' ' + marks.join());
+  say('...and when the box goes away the status line says so, in red', String(E('tmstatus').textContent).includes('Arduino Sketch not connected') && marks[marks.length - 1] === 'hwwarn:true', String(E('tmstatus').textContent) + ' ' + marks.join());
   run('live.leave && live.leave()'); await wait(20);
 
   timers.forEach(t => clearInterval(t));

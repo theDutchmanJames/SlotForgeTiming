@@ -1,4 +1,8 @@
-# SlotForge Timing — the SlotForge box (Arduino) package
+# SlotForge Timing — Arduino Sketch
+
+Current firmware: **1.0.6**. The app calls this interface **Arduino Sketch**; the existing `SlotForgeBox` folder, sketch filename, protocol and stored setting keys are retained for compatibility. Download the sketch from Timing and upload it with the Arduino IDE to get firmware fixes; updating the desktop app alone does not flash your board.
+
+The November 2026 reference review compared this implementation with RCAI's sketch V2.1.0.0. They are not wire-compatible: see the reference review in INTEGRATION.md. The supplied firmware compiles and links with the official Arduino AVR toolchain for Nano and Mega. Sensor/serial simulations and app integration checks pass, but no physical board or track was available.
 
 An Arduino sensor-and-lights box for analog tracks, with SlotForge as the race master, written against SlotForge Timing 1.31.0, re-checked against 1.36.0 (the hooks are unchanged; the package's tests pass inside it), and in its style.
 Both halves are in here: the **firmware** (an Arduino sketch for Nano and Mega) and the **app side** (a link, a virtual box, race glue, the Timing Hardware
@@ -26,7 +30,7 @@ Read in this order: this file, INTEGRATION.md, then the top comment of each file
 ## The protocol in one paragraph
 
 The box talks at 9600 baud and starts as a Trackmate: `A`..`H` while a lane sensor is covered (every 50 ms), `W` for the buttons, and a tick (`<ms>` LF CR) every
-200 ms and right before every event, so events carry the box's clock and USB jitter never reaches a lap time. It understands the Trackmate commands (A<n>, C, D, I0,
+200 ms and right before every event, so timing uses the device clock rather than USB arrival time alone. It understands the Trackmate commands (A<n>, C, D, I0,
 S, E/R). When SlotForge sends `V`, the box switches to SlotForge mode and adds bracketed events: `[P2+]`/`[P2-]` pit sensor, `[K3]` call button, `[T1 48]` the car covered
 the sensor for 48 ms (the speed trap), `[Z0 512]` a reading, `[C0 851 723 511]` a calibration, `[S+]`/`[S-]` safe state, `[B2 4000]` a lap buffered while the PC was away, 4000 ms ago (the absolute box time up to firmware 1.0.4),
 `[O ...]` settings, `[E ...]` messages, `[!]` the answer to a keep-alive (when the answers stop while the ticks go on, the box has rebooted into Trackmate mode and the page sets it up again). Commands: `!` keep-alive (every second; 3 s without one = safe state: lights STOP, power to the safe position, laps buffered),

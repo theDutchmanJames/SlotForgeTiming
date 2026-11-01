@@ -198,7 +198,7 @@
   //   -> { id: { rail, row, state: 'ok' | 'todo' | 'plain' } } for the sections session, heats, length, endurance, rules, service, screens and advanced
   const SYSTEMS = [['fuelRules', 'Fuel', 'fuel system', 'fuel'], ['penaltySystem', 'Penalty', 'penalty system', 'penalty'], ['damageSystem', 'Damage', 'damage system', 'damage'],
     ['safetyCar', 'Safety car', 'safety car system', 'safetycar'], ['tyreWear', 'Tyre wear', 'tyre wear system', 'tyrewear'], ['weather', 'Weather', 'weather system', 'weather'], ['pushSave', 'Push & Save', 'push and save system', 'pushsave']];
-  const ADVANCED = [['trackmate', 'Timing hardware', 'timing hardware', ['startPower']], ['box', 'Box', 'SlotForge box', ['boxPit', 'boxLanePower', 'boxBeeps', 'boxLaneLights']]];
+  const ADVANCED = [['trackmate', 'Timing hardware', 'timing hardware', ['startPower']], ['box', 'Arduino Sketch', 'Arduino Sketch', ['boxPit', 'boxLanePower', 'boxBeeps', 'boxLaneLights']]];
   const text = v => (v === undefined || v === null ? '' : String(v));
   const cleanParts = list => list.filter(Boolean);
   function rail(s, ctx) {

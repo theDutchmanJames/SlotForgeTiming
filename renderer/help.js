@@ -53,13 +53,13 @@ const Help = (() => {
           <li><b>View settings</b> (on every page) opens a small bar where you turn the columns of the list, or the rows of the cards, on and off. It is kept for each page and view.</li>
           <li>Click a <b>row or a card</b> of Slotcars, Tracks or Drivers to see all of it in a window, like a trading card: the main picture, the details, the statistics and (slotcars) the other pictures, which you can click to see large. <b>Edit</b> opens the form.</li>
         </ul>` },
-      { id: 'trackbuilder', title: 'Track Builder designs', note: 'Import a circuit and map it to Live Track', body: `<ol>
-          <li>Export <b>.slotforge.json</b> from Track Builder. Open <b>Database → Tracks → Import from Track Builder</b>, or a track’s <b>Track design</b> button.</li>
-          <li>Create a track or choose an existing one. Copy its name, nominal lengths and transparent PNG if needed. Existing measured lengths and records stay unchanged by default.</li>
-          <li>Map each timing lane to a different route. Set the sensor piece, position and direction; check the arrows and confirm. Circuit or lane-count changes require confirmation again.</li>
-          <li><b>Chart Editor → Live Track → Appearance</b>: choose <b>Original · Coloured Lanes</b> or <b>Track Builder Artwork</b>. Both follow the imported circuit. Layout Editor offers per-widget overrides and a Preview track selector. Races use the track selected in Race Setup.</li>
-          <li><b>Estimate lap progress using → Imported tuning profile</b> uses calculated lap duration, acceleration, braking and cornering. Other benchmarks scale that movement. Positions are estimates; only crossings count laps. Pauses and pits stop movement.</li>
-          <li>Unavailable designs use the oval. Reference artwork is scenery; digital switching, pit branches and heights are unsupported. Designs travel with track exports and backups. Removing a design keeps records. Edits apply next race.</li>
+      { id: 'trackbuilder', title: 'Circuit designs', note: 'Import a circuit and map it to Live Track', body: `<ol>
+          <li>Export <b>.slotforge.json</b> from SlotForge Circuit (formerly Track Builder). Open <b>Database → Tracks → Import from Circuit</b>, or a track’s <b>Track design</b> button.</li>
+          <li>Create or update a track. Optionally copy its name, nominal lengths and picture. Existing measured lengths and race records stay unchanged by default.</li>
+          <li>Map each timing lane to a different route. Set the sensor section, position and direction, then confirm the preview arrows. For FreeForm, the percentage follows the reference lane around the whole drawing.</li>
+          <li><b>Chart Editor → Live Track → Appearance</b>: choose <b>Original · Coloured Lanes</b> or <b>Circuit Artwork</b>. Both follow the imported lanes. Layout Editor has per-widget overrides; races use the track selected in Race Setup.</li>
+          <li><b>Imported tuning profile</b> uses calculated lap duration, acceleration, braking and cornering. Other pace choices scale that motion to their lap benchmark. Only sensor crossings count laps.</li>
+          <li>Supports older exports, routed and flowing tracks, FreeForm and squeezes. Tracking is 2D; no bridge, height or digital switching simulation. Unavailable routes use the oval. Designs travel with track exports and backups. Edits apply next race.</li>
         </ol>` },
       { id: 'settingsnavigation', title: 'Finding your App Settings', note: 'Page rails and section folders', body: `<ul>
           <li>General, App Theme, Race Director, Network, and Import and Export use the same page frame as the timing interfaces. Pick a section in the side rail to open its folder. On narrow screens, those section buttons move above the folders.</li>
@@ -614,22 +614,23 @@ const Help = (() => {
         </ul>` },
       { id: 'hardware', title: 'Timing hardware', note: 'Trackmate, Arduino, Parallel Port, Phidget and hardware status', body: `
         <ul>
-          <li>App Settings, <b>Timing Hardware</b>: at the top you choose the <b>Timing hardware in use</b>: <b>None</b> (keys or simulated cars), the <b>Trackmate Interface</b>, the <b>Arduino box</b>, <b>Parallel Port</b> or <b>Phidget</b>. One at a time: only the one in use connects by itself, counts the laps of a race and is shown on Home and on the race screen (green when it is connected, red when it is not). If you press Start race while it is not connected, the app asks whether to start anyway. Ticking <b>Use the virtual box</b> makes the Arduino box the one in use.</li>
+          <li>App Settings, <b>Timing Hardware</b>: at the top you choose the <b>Timing hardware in use</b>: <b>None</b> (keys or simulated cars), the <b>Trackmate Interface</b>, the <b>Arduino Sketch</b>, <b>Parallel Port</b> or <b>Phidget</b>. One at a time: only the one in use connects by itself, counts the laps of a race and is shown on Home and on the race screen (green when it is connected, red when it is not). If you press Start race while it is not connected, the app asks whether to start anyway. Ticking <b>Use the virtual box</b> makes the Arduino Sketch the one in use.</li>
           <li>Below that, Timing Hardware has a page per kind of hardware. On <b>Trackmate Interface</b> you connect the box by USB and check the sensors; the check lights show which sensor is seen. You choose which lane each sensor counts for.</li>
           <li>The Trackmate can also switch the <b>track power</b> (relay) and has a <b>Trackcall</b> button. What they do is set in the race setup.</li>
           <li>The <b>Arduino</b> page is for a box you build yourself (next folder). <b>DS Electronics</b> is a listening version for now. <b>oXigen Digital</b> is a place held for it: there is nothing to set up there yet.</li>
           <li>The Monitor shows what the box sends, which helps when something does not count.</li>
           <li>No hardware? Use the number keys, or <b>Simulated cars</b>.</li>
         </ul>` },
-      { id: 'arduino', title: 'The Arduino box', note: 'Build your own timing box with an Arduino', body: `
+      { id: 'arduino', title: 'The Arduino Sketch', note: 'Build your own timing box with an Arduino', body: `
         <ul>
-          <li>The <b>SlotForge box</b> is an Arduino (Nano or Mega) with the SlotForge sketch: lane sensors, pit sensors, start lights, track power relays, a buzzer and two buttons. It is one of the choices for the timing hardware in use (Trackmate, Arduino box, Parallel Port or None): one at a time.</li>
-          <li>App Settings, Timing Hardware, <b>Arduino</b>. Open <b>Firmware and sketch</b>, <b>Download the Arduino sketch</b>, upload it with the Arduino IDE, then <b>Find the box</b> (the COM port) and <b>Connect</b>. No box yet? Tick <b>Use the virtual box</b>: four imaginary cars to try everything.</li>
+          <li>The <b>Arduino Sketch</b> connects a Nano or Mega with sensors, lights, relays and buttons. Choose Arduino Sketch as your timing hardware.</li>
+          <li>App Settings → Timing Hardware → <b>Arduino</b> → <b>Firmware and sketch</b>: <b>Download the Arduino sketch</b> and upload with the Arduino IDE. <b>Find the box</b>, then <b>Connect</b>. Without hardware, try <b>Use the virtual box</b>.</li>
           <li>Wire the sensors, press <b>Calibrate</b> with the track empty, then <b>Save to the box</b>. Pins that are not wired must be set to Not used, also the lanes a 2- or 3-lane track does not have.</li>
           <li><b>Test the lights</b>, <b>Power on</b>, <b>Power off</b> and <b>Beep</b> check the wiring.</li>
-          <li>In a race the start lights, the flags and the track power follow the race. The rest is set in the race setup, folder <b>SlotForge box (Arduino)</b>.</li>
-          <li>Without a word from the app for 3 seconds the box cuts the track power by itself (you can change that). Two cars less than 0.3 seconds apart on one lane count as one lap.</li>
-          <li>The box is new: so far it has only been tried with the virtual box and in a computer simulation.</li>
+          <li>In a race the start lights, the flags and the track power follow the race. The rest is set in the race setup, folder <b>Arduino Sketch</b>.</li>
+          <li>Without a word from the app for 3 seconds the box cuts the track power by itself (you can change that). <b>Blackout</b> prevents another lap for the chosen time after the sensor releases; the default is 300 ms. A confirmed sensor release lets the app recognise the next crossing when you choose a shorter blackout.</li>
+          <li>On a Nano, plain LEDs use D7–D13, the same pins as its seven lane relays: choose one, or use an LED strip on D6. A Mega has separate LED pins D30–D36 and eight lane relay pins D22–D29.</li>
+          <li>Use the supplied sketch; others may have incompatible protocols or wiring. Nano/Mega builds and simulation are checked; physical track verification is still needed.</li>
         </ul>` },
       { id: 'arduinoracelock', title: 'Arduino during a race', note: 'Race ownership, diagnostics and emergency power off', body: `<ul>
           <li>While a race is open, configuration and output tests are locked, including calibration and lane mapping. Finish or leave the race before changing them. Opening a race cancels a running light test.</li>

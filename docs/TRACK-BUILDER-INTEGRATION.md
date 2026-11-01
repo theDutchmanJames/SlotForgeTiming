@@ -1,15 +1,16 @@
-# Track Builder integration
+# SlotForge Circuit integration
 
-SlotForge Timing accepts SlotForge Track Builder layout exports, including the
-0.2.2 integration contract (`1.0.0-draft.2`), draft.1 and legacy v1 layouts.
+SlotForge Timing uses the Circuit 0.3.16 geometry runtime and accepts contracts
+`1.0.0-draft.1` through `1.0.0-draft.10`, plus documented legacy v1 layouts.
+Older SlotForge Track Builder exports remain supported.
 The importer accepts JSON data only, up to 5 MiB, with at most 500 pieces and
 500 embedded definitions. Existing charts keep the original coloured-lane appearance. Both appearances use
 the imported route geometry when available; the oval is a fallback only.
 
 ## User workflow
 
-1. Export `.slotforge.json` from Track Builder.
-2. Open **Database → Tracks → Import from Track Builder**. A track's **Track
+1. Export `.slotforge.json` from SlotForge Circuit.
+2. Open **Database → Tracks → Import from Circuit**. A track's **Track
    design** button reopens these settings.
 3. Choose a new track or explicitly select the existing destination. For an
    existing track, copying the name, lane count, nominal lengths and picture is
@@ -19,7 +20,7 @@ the imported route geometry when available; the oval is a fallback only.
    confirm the mapping. An unconfirmed/open design can be saved for its picture,
    but cannot drive the tracker. Disable nominal-length copying for open designs.
 5. In **Customization → Chart Editor → Live Track**, choose
-   **Original · Coloured Lanes** or **Track Builder Artwork**. Both follow the same
+   **Original · Coloured Lanes** or **Circuit Artwork**. Both follow the same
    imported routes, timing line, direction and movement profile. Appearance can
    also be overridden per widget in Layout Editor.
    The preview track selector is local to the editor. During racing, the selected
@@ -123,3 +124,34 @@ duration. Other pace choices scale the profile to the measured/target lap time.
 Virtual rivals retain replay durations. Missing or unconfirmed geometry cannot
 provide a profile duration. Cars wait near the line when overdue, and only actual
 sensor crossings create race laps. Pauses, pits and finish states still apply.
+
+## Circuit 0.3.16 geometry update
+
+Routed wood tracks, flowing curves, tabletop layouts, FreeForm circuits and both
+legacy and smooth-apex lane squeezes use the shared generated lane geometry.
+FreeForm circuits are one section: sensor position is reference-lane arc distance
+around the whole drawing. Flowing and squeezed sections use reference fractions
+for the common sensor cross-section; never multiply the fraction by lane length.
+
+This remains a 2D tracker. Height metadata is retained by the shared runtime so
+valid drawings can be imported, but Timing adds no height/bridge simulation.
+Nominal lane lengths are plan-view lengths. Both appearances and all existing
+pace choices follow the same lane paths; the tuning profile shapes movement and
+other pace choices scale that movement to their lap-time benchmark.
+
+New compatibility fixtures and receiving-side tests: tests/circuit.test.js.
+Production-renderer visual checks: tools/qa/circuit-electron.cjs.
+
+## Receiving-side audit repairs
+
+- Coloured Lanes fits the mapped lane bounds, excluding invisible tables and
+  reference scenery. Circuit Artwork still fits the complete imported drawing.
+  Car positions represent the same route distance in either coordinate frame.
+- Loading a file locks editing and saving until its preview is ready. Failed
+  reads preserve the prior document with an explanation; closed dialogs ignore
+  late completions.
+- Runtime validation and geometry generation share one normalized document.
+  Supplied geometry is still discarded, sanitized PNGs trigger regeneration,
+  and persisted configurations still exclude derived geometry.
+- Run `npm run test:circuit:electron` for file-read races, fitting, and Circuit
+  visual checks. The legacy import and appearance checks remain separate.

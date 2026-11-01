@@ -143,7 +143,7 @@ module.exports = {
       { id: 'rules', title: 'Rules and Systems', note: 'Choose the systems for this race, then turn each one on or off' },
       { id: 'screens', title: 'Race UI and Audio', note: 'Timing Page layouts and the Audio Set' },
       { id: 'trackmate', title: 'Timing hardware', note: 'Track power at the start; Track Call is set in Race Settings' },
-      { id: 'box', title: 'SlotForge box (Arduino)', note: 'Pit stops, lane power, beeps and lane lights, when a SlotForge box is connected' }
+      { id: 'box', title: 'Arduino Sketch', note: 'Pit stops, lane power, beeps and lane lights, when an Arduino running the SlotForge sketch is connected' }
     ],
     // The form of a race setup has a rail (1.71.0, renderer/railform.js): the sections that the person sees, in this order. A section is made of one or more of the groups above (Advanced holds four: the
     // timing hardware and the SlotForge box). ask: what the section answers, shown while it is open; icon: the picture on its row; open: open when the form opens;
@@ -156,7 +156,7 @@ module.exports = {
       { id: 'rules', title: 'Rules and Systems', ask: 'Which systems are selected and enabled?', icon: 'shield', groups: ['rules'] },
       { id: 'service', title: 'Service Stop', ask: 'Can the car be removed for service?', icon: 'sliders', groups: ['service'] },
       { id: 'screens', title: 'Race UI and Audio', ask: 'What do the race screens show and say?', icon: 'screen', groups: ['screens'] },
-      { id: 'advanced', title: 'Advanced', ask: 'Timing hardware and the SlotForge box.', icon: 'sliders', optional: true, groups: ['trackmate', 'box'] }
+      { id: 'advanced', title: 'Advanced', ask: 'Timing hardware and the Arduino Sketch.', icon: 'sliders', optional: true, groups: ['trackmate', 'box'] }
     ],
     // showIf: the field is shown when ANY listed condition matches (each condition: all its keys match).
     fields: [
@@ -316,7 +316,7 @@ module.exports = {
         hint: 'This prevents a passing car from being mistaken for a pit stop. It applies whether Service Stop is on or off.' },
       { key: 'trackCallAction', group: 'length', label: 'Track Call Button Behaviour', type: 'select', default: 'yellowred',
         options: [['yellowred', 'Yellow, then Red'], ['yellow', 'Yellow flag'], ['red', 'Red flag'], ['power', 'Track power'], ['none', 'Disabled']],
-        hint: 'This applies to the Trackmate, Parallel Port and SlotForge box Track Call buttons. Yellow, then Red uses a second press within the window below.' },
+        hint: 'This applies to the Trackmate, Parallel Port and Arduino Track Call buttons. Yellow, then Red uses a second press within the window below.' },
       { key: 'trackCallYellowPower', group: 'length', label: 'Track power during Yellow', ui: 'switch', on: 'on', type: 'select', default: 'on', options: [['on', 'On'], ['off', 'Off']], showIf: [{ trackCallAction: ['yellow', 'yellowred'] }] },
       { key: 'trackCallRedPower', group: 'length', label: 'Track power during Red', ui: 'switch', on: 'on', type: 'select', default: 'on', options: [['on', 'On'], ['off', 'Off']], showIf: [{ trackCallAction: ['red', 'yellowred'] }] },
       { key: 'trackcallWindow', group: 'length', label: 'Yellow then Red — second-press window (seconds)', type: 'number', default: 3, min: 0.1, showIf: [{ trackCallAction: ['yellowred'] }] },
@@ -353,8 +353,8 @@ module.exports = {
       { key: 'startPower', group: 'trackmate', label: 'Track power when a race starts (Trackmate relay)', ask: 'The track has power while the start lights count down', ui: 'switch', on: 'on', type: 'select', default: 'on',
         options: [['on', 'On'], ['off', 'Off']], hint: 'Off: the power comes on when the lights go out.' },
       { key: 'trackCallSummary', group: 'trackmate', label: 'Track Call Button', type: 'trackcallsummary', transient: true,
-        hint: 'Set its behaviour in Race Settings. The same setting is used by Trackmate, Parallel Port and the SlotForge box.' },
-      // the SlotForge box (Arduino): read by renderer/arduinorace.js. The track power at the start and the call buttons are the Trackmate choices above (they serve both).
+        hint: 'Set its behaviour in Race Settings. The same setting is used by Trackmate, Parallel Port and the Arduino Sketch.' },
+      // the Arduino Sketch: read by renderer/arduinorace.js. The track power at the start and the call buttons are the Trackmate choices above (they serve both).
       { key: 'boxPit', group: 'box', label: 'A pit stop starts when', type: 'select', default: 'both',
         options: [['both', 'The pit sensor sees the car, or the Pit button is pressed'], ['sensor', 'The pit sensor sees the car (the button does nothing)'], ['button', 'The Pit button is pressed (the sensor does nothing)']],
         hint: 'The pit sensor of a lane is set up on the Arduino page (Timing Hardware).', showIf: RACING },

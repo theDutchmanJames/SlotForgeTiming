@@ -13,7 +13,7 @@ const info = t => console.log('     ' + t);
 
 const dir = path.join(os.tmpdir(), 'sfb-fwhost-' + process.pid); fs.mkdirSync(dir, { recursive: true });
 const nano = build('nano', dir);
-if (!nano) { console.log('SKIPPED: no g++ on this machine (the firmware is not run). Install g++ (or build-essential / Xcode command line tools) to run this check.'); process.exit(0); }
+if (!nano) { console.log('SKIPPED: no g++ on this machine (the firmware is not run). Install g++ (or build-essential / Xcode command line tools) to run this check.'); process.exit(strict ? 1 : 0); }
 const mega = build('mega', dir);
 
 // ---- small helpers for the scripts ----
@@ -161,6 +161,45 @@ for (const [board, exe, nLanes, label] of [['nano', nano, 4, 'Nano with 8 sensor
   const truth = [12.0e6, 13.5e6, 14.4e6, 15.2e6, 17.0e6]; truth.forEach(t => s.pass(T(t), 0, 30e3)); s.end(T(30e6));
   const h = throughLink(runBox(late, s), { jitterMs: 1 }).events.filter(e => e.type === 'hit' && e.lane === 0);
   ok('a board that did not reset at the connection: the buffered laps still arrive with their own times (within 5 ms)', h.length === 5 && h.filter(e => e.buffered).length === 3 && h.every((e, i) => Math.abs((e.at - h[0].at) - (truth[i] - truth[0]) / 1000) < 5), h.map((e, i) => Math.round((e.at - h[0].at) - (truth[i] - truth[0]) / 1000) + ' ms off').join(', '));
+}
+
+// Reference-review regressions: run the actual sketch, including the serial transport.
+{
+  const s = new Scen(); track(s, 8); connect(s); keepAlive(s, 3.2e6, 8e6);
+  s.rx(3.4e6, 'O blackout 0\n');
+  [4e6, 4.15e6, 4.3e6].forEach(t => s.pass(t, 0, 30e3)); s.end(8e6);
+  const h = throughLink(runBox(nano, s), { jitterMs: 1 }).events.filter(e => e.type === 'hit' && e.lane === 0);
+  ok('a low blackout does not merge separate crossings after confirmed sensor release', h.length === 3, h.length + ' laps');
+}
+{
+  const s = new Scen(); track(s, 8); connect(s); keepAlive(s, 3.2e6, 8e6);
+  s.rx(4e6, 'M1' + ' '.repeat(80) + '\n').rx(4.5e6, 'V\n').end(8e6);
+  const out = runBox(nano, s);
+  ok('an oversized command is discarded, never executed as a truncated power command', !out.pins.some(p => p.pin === 4 && p.what === 'write' && p.v === 1));
+  ok('the serial parser recovers at the next newline', throughLink(out).events.filter(e => e.type === 'version').length === 2);
+}
+{
+  const s = new Scen(); track(s, 8); connect(s); keepAlive(s, 3.2e6, 10e6);
+  s.rx(3.4e6, 'P4 P1 0\n').pass(4e6, 4, 2e6).rx(5e6, 'P4 P2 0\n').pass(7e6, 4, 1e6).end(10e6);
+  const e = throughLink(runBox(nano, s)).events.filter(e => e.type === 'pit');
+  ok('reassigning an occupied pit closes the old pit and starts the new sensor cleanly', JSON.stringify(e.map(x => [x.pit,x.in])) === JSON.stringify([[0,true],[0,false],[1,true],[1,false],[1,true],[1,false]]), JSON.stringify(e.map(x => [x.pit,x.in])));
+}
+{
+  const s = new Scen(); track(s, 8); connect(s); keepAlive(s, 3.2e6, 8e6);
+  s.rx(3.4e6, 'O lights 2\n').rx(3.6e6, 'LG\n').rx(4e6, 'O lights 0\n').end(8e6);
+  const pins = runBox(nano, s).pins.filter(p => p.pin >= 7 && p.pin <= 13 && p.what === 'write');
+  ok('switching plain LEDs to no lights turns off every previous LED', Array.from({length:7},(_,i)=>pins.filter(p=>p.pin===7+i).pop()).every(p=>p && p.v===0));
+}
+
+for (const [board, exe] of [['nano', nano], ['mega', mega]]) {
+  const s = new Scen(); track(s, board === 'mega' ? 16 : 8); connect(s); keepAlive(s, 3.2e6, 9e6);
+  s.rx(3.4e6, 'O lights 2\n').rx(3.6e6, 'O lanerelays 1\n').rx(4e6, '?\n');
+  s.rx(5e6, 'O lights 0\n').rx(5.2e6, 'O lanerelays 1\n').rx(5.4e6, 'O lights 2\n').rx(6e6, '?\n');
+  s.rx(7e6, 'O lights 0\n').rx(7.2e6, 'O lanerelays 8\n').rx(7.5e6, '?\n').end(9e6);
+  const e = throughLink(runBox(exe, s)).events, vals = key => e.filter(x => x.type === 'option' && x.key === key).map(x => x.values.map(Number));
+  ok(board + ': LED/relay pin conflicts and relay count respect the board wiring',
+    JSON.stringify(vals('relay').map(x=>x[1])) === JSON.stringify(board==='mega' ? [1,1,8] : [0,1,1]) &&
+    JSON.stringify(vals('lights').map(x=>x[0])) === JSON.stringify(board==='mega' ? [2,2,0] : [2,0,0]));
 }
 
 console.log(fails ? `\n${fails} FAILED` : `\nall passed${knownOpen ? ` (${knownOpen} known issue${knownOpen > 1 ? 's' : ''} still open: run with --strict to fail on them)` : ''}`);

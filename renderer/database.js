@@ -301,7 +301,7 @@ async function mountManager(box, e) {
   const rsEmpty = !items.length ? 'No race setups yet. Use the button above, or start from a kind below.' : `Nothing under ${SETUP_FILTERS.find(f => f[0] === setupFilter)[1]} yet. Start one below.`;
   const rsBody = e !== 'racesetups' ? '' : (rsShown.length ? (mode === 'grid' ? `<div class="rscards">${rsShown.map(rsCard).join('')}</div>` : tableHtml(rsShown, cols)) : `<p class="muted">${esc(rsEmpty)}</p>`) + rsStart;
   box.innerHTML = (e==='slotcars'?'<div class="pb-toolbar"><div class="seg" role="group" aria-label="Car database"><button class="btn on" aria-pressed="true">Local Database</button><button class="btn" id="paddock-view" aria-pressed="false">Paddock Database</button></div></div>':'')+`<div class="row${e==='racesetups'?' rstoolbar':''}"><button class="btn primary" id="add">Add ${esc(s.label.toLowerCase())}</button>
-      ${e === 'slotcars' ? '<button class="btn" id="paddock-open">Connect to Paddock</button>' : ''}${e === 'tracks' ? '<button class="btn" id="track-import">Import from Track Builder</button>' : ''}${s.extra === false ? '' : '<button class="btn" id="extra">Extra fields…</button>'}${rsFilter}${viewBtn}${toggle}</div>${bar}` +
+      ${e === 'slotcars' ? '<button class="btn" id="paddock-open">Connect to Paddock</button>' : ''}${e === 'tracks' ? '<button class="btn" id="track-import">Import from Circuit</button>' : ''}${s.extra === false ? '' : '<button class="btn" id="extra">Extra fields…</button>'}${rsFilter}${viewBtn}${toggle}</div>${bar}` +
     (e === 'racesetups' ? rsBody
       : items.length && mode === 'grid' ? gridHtml(items)
       : items.length ? tableHtml(items, viewCols || cols)

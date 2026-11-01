@@ -625,7 +625,7 @@
     T('racechart', 'Race Chart', 'Charts', { w: 480, h: 300, textSize: 16, options: [
       { key: 'chartDesign', label: 'Saved chart design', type: 'chartdesign', default: '', rerender: true },
       { key: 'trackDrawing', label: 'Live Track appearance', type: 'select', default: 'inherit', liveTrackOnly: true,
-        choices: [['inherit','Use chart design'],['oval','Original · Coloured Lanes'],['design','Track Builder Artwork']],
+        choices: [['inherit','Use chart design'],['oval','Original · Coloured Lanes'],['design','Circuit Artwork']],
         hint: 'Both styles follow the race track’s imported layout. This overrides appearance for this widget only. Without a confirmed layout, the original oval is used. Preview imported tracks in Chart Editor.' }
     ] }),
     // ---- Custom ----

@@ -25,7 +25,7 @@ function timingReady(lanes) {
   if (hw === 'parallel' && typeof ParallelPort !== 'undefined' && ParallelPort.link.connected && Number(lanes) > ParallelPort.link.config.lanes) return typeof confirm !== 'function' || confirm(`Parallel Port is configured for ${ParallelPort.link.config.lanes} lanes, but this race uses ${lanes}.\n\nOK: start using keys or simulated cars.\nCancel: adjust the lane sensors in App Settings, Timing Hardware.`);
   const on = hw === 'parallel' ? typeof ParallelPort !== 'undefined' && !!ParallelPort.link.connected : hw === 'trackmate' ? typeof Trackmate !== 'undefined' && !!Trackmate.link.connected : typeof ArduinoBox !== 'undefined' && !!ArduinoBox.link.connected;
   if (on) return true;
-  const name = hw === 'parallel' ? 'The Parallel Port' : hw === 'trackmate' ? 'The Trackmate Interface' : state.settings.abVirtual === true ? 'The virtual Arduino box' : 'The Arduino box';
+  const name = hw === 'parallel' ? 'The Parallel Port' : hw === 'trackmate' ? 'The Trackmate Interface' : state.settings.abVirtual === true ? 'The virtual Arduino Sketch' : 'The Arduino Sketch';
   return typeof confirm !== 'function' || confirm(`${name} is the timing hardware you chose, and it is not connected.\n\nOK: start anyway (laps can still be counted with the keys or simulated cars).\nCancel: do not start, so you can connect it (App Settings, Timing Hardware).`);
 }
 async function renderHome() {

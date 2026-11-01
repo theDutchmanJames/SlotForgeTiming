@@ -48,6 +48,11 @@ void loadSettings() {
   EEPROM.get(0, S);
   freshSettings = S.magic != SETTINGS_MAGIC || S.version != SETTINGS_VERSION;
   if (freshSettings) defaultSettings(S);
+#if !defined(__AVR_ATmega2560__)
+  // Older settings could assign the same Nano pins to LEDs and lane relays.
+  if (S.laneRelays > 7) S.laneRelays = 7;
+  if (S.laneRelays && S.lightsKind == LIGHTS_PINS) S.lightsKind = LIGHTS_NONE;
+#endif
 }
 void saveSettings() { EEPROM.put(0, S); }
 
@@ -89,6 +94,7 @@ void onLaneButton(uint8_t lane1) { proto.lane1('K', lane1, loopNow); }
 long num(const char *s) { return atol(s); }
 void applyPinRole(uint8_t pin, const char *spec, uint8_t kind) { // spec: L1..L8, P1..P8, K, N
   if (pin >= SFB_ANALOG_PINS) return;
+  sensing.resetPin(pin, loopNow); // Close the old assignment before changing its role/index.
   PinSetting &p = S.pins[pin]; p.kind = kind;
   if (spec[0] == 'L') { p.role = ROLE_LANE; p.index = (uint8_t)num(spec + 1); }
   else if (spec[0] == 'P') { p.role = ROLE_PIT; p.index = (uint8_t)num(spec + 1); }
@@ -102,6 +108,13 @@ void listSettings() {
 }
 void setOption(const char *key, const char *val) {
   long v = num(val);
+#if !defined(__AVR_ATmega2560__)
+  if ((!strcmp(key, "lights") && v == LIGHTS_PINS && S.laneRelays) ||
+      (!strcmp(key, "lanerelays") && v > 0 && S.lightsKind == LIGHTS_PINS)) {
+    proto.msg("Nano: plain LEDs and lane relays share D7-D13; disable one first"); return;
+  }
+  if (!strcmp(key, "lanerelays") && (v < 0 || v > 7)) { proto.msg("Nano supports 0-7 lane relays"); return; }
+#endif
   if (!strcmp(key, "blackout")) S.blackoutMs = (uint16_t)v; else if (!strcmp(key, "lights")) S.lightsKind = (uint8_t)v; else if (!strcmp(key, "pixels")) S.pixels = (uint8_t)v;
   else if (!strcmp(key, "bright")) S.brightness = (uint8_t)v; else if (!strcmp(key, "lanepix")) S.lanePixels = (uint8_t)v; else if (!strcmp(key, "relaync")) S.relayNC = (uint8_t)v;
   else if (!strcmp(key, "lanerelays")) S.laneRelays = (uint8_t)v; else if (!strcmp(key, "lanerelaysnc")) S.laneRelaysNC = (uint8_t)v; else if (!strcmp(key, "buzzer")) S.buzzer = (uint8_t)v;

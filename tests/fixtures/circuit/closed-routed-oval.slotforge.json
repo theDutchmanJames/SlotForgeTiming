@@ -1,0 +1,559 @@
+{
+  "format": "slotforge.layout",
+  "version": 1,
+  "title": "Routed wood oval",
+  "pieces": [
+    {
+      "id": "routed-example-1",
+      "definitionId": "routed:example-straight",
+      "x": 700,
+      "y": 200.00000000000017,
+      "angle": 0,
+      "flip": false
+    },
+    {
+      "id": "routed-example-2",
+      "definitionId": "routed:example-corner",
+      "x": 1700,
+      "y": 700.0000000000002,
+      "angle": 0,
+      "flip": false
+    },
+    {
+      "id": "routed-example-3",
+      "definitionId": "routed:example-corner",
+      "x": 1700,
+      "y": 700.0000000000002,
+      "angle": 90,
+      "flip": false
+    },
+    {
+      "id": "routed-example-4",
+      "definitionId": "routed:example-straight",
+      "x": 1700,
+      "y": 1200.0000000000002,
+      "angle": -180,
+      "flip": false
+    },
+    {
+      "id": "routed-example-5",
+      "definitionId": "routed:example-corner",
+      "x": 700.0000000000001,
+      "y": 700,
+      "angle": -180,
+      "flip": false
+    },
+    {
+      "id": "routed-example-6",
+      "definitionId": "routed:example-corner",
+      "x": 700,
+      "y": 700,
+      "angle": -90,
+      "flip": false
+    }
+  ],
+  "definitions": [
+    {
+      "id": "routed:example-corner",
+      "name": "Routed corner · R300 / 90°",
+      "sku": "",
+      "pack": "Routed wood",
+      "family": "slotforge.routed.v1",
+      "parameters": {
+        "type": "curve",
+        "widthMm": 300,
+        "innerRadiusMm": 200,
+        "angleDeg": 90,
+        "laneOffsetsMm": [
+          100,
+          200
+        ],
+        "routed": {
+          "laneCount": 2,
+          "laneSpacingMm": 100,
+          "innerClearanceMm": 100,
+          "outerClearanceMm": 100,
+          "slotWidthMm": 3.2,
+          "slotDepthMm": 8,
+          "conductorWidthMm": 6,
+          "conductorGapMm": 1,
+          "conductorThicknessMm": 0.5,
+          "adhesiveThicknessMm": 0.1,
+          "recessDepthMm": 0.8,
+          "boardThicknessMm": 12,
+          "minRadiusMm": 250,
+          "allowancePct": 10,
+          "conductor": "braid"
+        }
+      },
+      "color": "#b59870",
+      "status": "user-defined",
+      "mirror": true
+    },
+    {
+      "id": "routed:example-straight",
+      "name": "Routed straight · 1000 mm",
+      "sku": "",
+      "pack": "Routed wood",
+      "family": "slotforge.routed.v1",
+      "parameters": {
+        "type": "straight",
+        "widthMm": 300,
+        "lengthMm": 1000,
+        "laneOffsetsMm": [
+          100,
+          200
+        ],
+        "routed": {
+          "laneCount": 2,
+          "laneSpacingMm": 100,
+          "innerClearanceMm": 100,
+          "outerClearanceMm": 100,
+          "slotWidthMm": 3.2,
+          "slotDepthMm": 8,
+          "conductorWidthMm": 6,
+          "conductorGapMm": 1,
+          "conductorThicknessMm": 0.5,
+          "adhesiveThicknessMm": 0.1,
+          "recessDepthMm": 0.8,
+          "boardThicknessMm": 12,
+          "minRadiusMm": 250,
+          "allowancePct": 10,
+          "conductor": "braid"
+        }
+      },
+      "color": "#b59870",
+      "status": "user-defined",
+      "mirror": true
+    }
+  ],
+  "profile": {
+    "speed": 1200,
+    "acceleration": 1300,
+    "brake": 2200,
+    "corner": 0.57,
+    "drift": 10
+  },
+  "units": "mm",
+  "precision": "Nominal or user-entered dimensions; not verified mould measurements.",
+  "timing": {
+    "version": 1,
+    "direction": 1,
+    "directionConvention": "canonical-route-distance",
+    "startFinish": {
+      "pieceId": "routed-example-1",
+      "fraction": 0.5
+    },
+    "routeLabels": {},
+    "routeMappingRevision": "3ea6107166e925e7795efb4882ff042ac7ac7cbe6392ce9a354ea1029bf498a6",
+    "requiresLaneRemap": false,
+    "startFinishOffsets": [
+      {
+        "routeId": "route-9db871015b74ac2207b3d615e2ef92bb10f2cd0b2722be19a2005c23ecd29b0d",
+        "offsetMm": 500
+      },
+      {
+        "routeId": "route-d04ee776208b437ae407a3ebb9633d7d1f5629a32decae546dfd40670bbae6d2",
+        "offsetMm": 500
+      }
+    ]
+  },
+  "workspace": {
+    "spaceGuide": {
+      "x": 0,
+      "y": 0,
+      "lengthMm": 2400,
+      "widthMm": 1400,
+      "locked": true,
+      "kind": "table"
+    },
+    "routed": {
+      "settings": {
+        "laneCount": 2,
+        "laneSpacingMm": 100,
+        "innerClearanceMm": 100,
+        "outerClearanceMm": 100,
+        "slotWidthMm": 3.2,
+        "slotDepthMm": 8,
+        "conductorWidthMm": 6,
+        "conductorGapMm": 1,
+        "conductorThicknessMm": 0.5,
+        "adhesiveThicknessMm": 0.1,
+        "recessDepthMm": 0.8,
+        "boardThicknessMm": 12,
+        "minRadiusMm": 250,
+        "allowancePct": 10,
+        "conductor": "braid"
+      },
+      "display": "surface"
+    }
+  },
+  "design": {
+    "id": "routed-wood-oval-example",
+    "revision": "5e4f253b863e49b91626a389c2beda56c80864ec3ab404035b32b1b54e3c6617"
+  },
+  "producer": {
+    "name": "SlotForge Circuit",
+    "version": "0.3.16"
+  },
+  "integration": {
+    "target": "SlotForge Timing",
+    "contractVersion": "1.0.0-draft.3",
+    "status": "draft-for-coordination",
+    "profilePurpose": "illustrative-animation",
+    "image": "optional-separate-png"
+  },
+  "compatibility": {
+    "liveTracker": "through-routes",
+    "components": 1,
+    "openEnds": 0,
+    "ambiguousEnds": 0,
+    "issues": [
+      {
+        "code": "routed-runtime",
+        "severity": "warning",
+        "message": "Routed layouts use integration contract 1.0.0-draft.3. Timing needs the routed-aware shared runtime; lengths follow user-entered geometry."
+      },
+      {
+        "code": "elevation-order-unavailable",
+        "severity": "warning",
+        "message": "This is a flat drawing. Elevation, bridges and crossing order are not modelled."
+      }
+    ]
+  },
+  "track": {
+    "laneCount": 2,
+    "slotCountsInDrawing": [
+      2
+    ],
+    "validClosedRouteCount": 2,
+    "lanes": [
+      {
+        "id": "route-9db871015b74ac2207b3d615e2ef92bb10f2cd0b2722be19a2005c23ecd29b0d",
+        "label": "Lane 1",
+        "lengthMm": 4513.274122871835
+      },
+      {
+        "id": "route-d04ee776208b437ae407a3ebb9633d7d1f5629a32decae546dfd40670bbae6d2",
+        "label": "Lane 2",
+        "lengthMm": 3884.955592153876
+      }
+    ]
+  },
+  "preparedGeometry": {
+    "closed": true,
+    "boundsMm": [
+      200,
+      200,
+      2000,
+      1000.0000000000002
+    ],
+    "surfaces": [
+      {
+        "pieceId": "routed-example-1",
+        "outline": "M 0 0 H 1000 V 300 H 0 Z",
+        "transform": {
+          "x": 700,
+          "y": 200.00000000000017,
+          "angleDeg": 0,
+          "reflectY": false
+        },
+        "kind": "straight"
+      },
+      {
+        "pieceId": "routed-example-2",
+        "outline": "M 0 -500 A 500 500 0 0 1 500 0 L 200 0 A 200 200 0 0 0 0 -200 Z",
+        "transform": {
+          "x": 1700,
+          "y": 700.0000000000002,
+          "angleDeg": 0,
+          "reflectY": false
+        },
+        "kind": "curve"
+      },
+      {
+        "pieceId": "routed-example-3",
+        "outline": "M 0 -500 A 500 500 0 0 1 500 0 L 200 0 A 200 200 0 0 0 0 -200 Z",
+        "transform": {
+          "x": 1700,
+          "y": 700.0000000000002,
+          "angleDeg": 90,
+          "reflectY": false
+        },
+        "kind": "curve"
+      },
+      {
+        "pieceId": "routed-example-4",
+        "outline": "M 0 0 H 1000 V 300 H 0 Z",
+        "transform": {
+          "x": 1700,
+          "y": 1200.0000000000002,
+          "angleDeg": -180,
+          "reflectY": false
+        },
+        "kind": "straight"
+      },
+      {
+        "pieceId": "routed-example-5",
+        "outline": "M 0 -500 A 500 500 0 0 1 500 0 L 200 0 A 200 200 0 0 0 0 -200 Z",
+        "transform": {
+          "x": 700.0000000000001,
+          "y": 700,
+          "angleDeg": -180,
+          "reflectY": false
+        },
+        "kind": "curve"
+      },
+      {
+        "pieceId": "routed-example-6",
+        "outline": "M 0 -500 A 500 500 0 0 1 500 0 L 200 0 A 200 200 0 0 0 0 -200 Z",
+        "transform": {
+          "x": 700,
+          "y": 700,
+          "angleDeg": -90,
+          "reflectY": false
+        },
+        "kind": "curve"
+      }
+    ],
+    "routes": [
+      {
+        "id": "route-9db871015b74ac2207b3d615e2ef92bb10f2cd0b2722be19a2005c23ecd29b0d",
+        "lengthMm": 4513.274122871835,
+        "segments": [
+          {
+            "type": "line",
+            "from": [
+              700,
+              300.00000000000017
+            ],
+            "to": [
+              1700,
+              300.00000000000017
+            ],
+            "lengthMm": 1000
+          },
+          {
+            "type": "arc",
+            "center": [
+              1700,
+              700.0000000000002
+            ],
+            "radiusMm": 400,
+            "startAngleDeg": -90,
+            "sweepDeg": 90,
+            "lengthMm": 628.3185307179587
+          },
+          {
+            "type": "arc",
+            "center": [
+              1700,
+              700.0000000000002
+            ],
+            "radiusMm": 400,
+            "startAngleDeg": 0,
+            "sweepDeg": 90,
+            "lengthMm": 628.3185307179587
+          },
+          {
+            "type": "line",
+            "from": [
+              1700,
+              1100.0000000000002
+            ],
+            "to": [
+              700,
+              1100
+            ],
+            "lengthMm": 1000
+          },
+          {
+            "type": "arc",
+            "center": [
+              700.0000000000001,
+              700
+            ],
+            "radiusMm": 400,
+            "startAngleDeg": 90,
+            "sweepDeg": 90,
+            "lengthMm": 628.3185307179587
+          },
+          {
+            "type": "arc",
+            "center": [
+              700,
+              700
+            ],
+            "radiusMm": 400,
+            "startAngleDeg": -180,
+            "sweepDeg": 90,
+            "lengthMm": 628.3185307179587
+          }
+        ],
+        "sections": [
+          {
+            "pieceId": "routed-example-1",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 0,
+            "lengthMm": 1000
+          },
+          {
+            "pieceId": "routed-example-2",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 1000,
+            "lengthMm": 628.3185307179587
+          },
+          {
+            "pieceId": "routed-example-3",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 1628.3185307179588,
+            "lengthMm": 628.3185307179587
+          },
+          {
+            "pieceId": "routed-example-4",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 2256.6370614359175,
+            "lengthMm": 1000
+          },
+          {
+            "pieceId": "routed-example-5",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 3256.6370614359175,
+            "lengthMm": 628.3185307179587
+          },
+          {
+            "pieceId": "routed-example-6",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 3884.9555921538763,
+            "lengthMm": 628.3185307179587
+          }
+        ]
+      },
+      {
+        "id": "route-d04ee776208b437ae407a3ebb9633d7d1f5629a32decae546dfd40670bbae6d2",
+        "lengthMm": 3884.955592153876,
+        "segments": [
+          {
+            "type": "line",
+            "from": [
+              700,
+              400.00000000000017
+            ],
+            "to": [
+              1700,
+              400.00000000000017
+            ],
+            "lengthMm": 1000
+          },
+          {
+            "type": "arc",
+            "center": [
+              1700,
+              700.0000000000002
+            ],
+            "radiusMm": 300,
+            "startAngleDeg": -90,
+            "sweepDeg": 90,
+            "lengthMm": 471.23889803846896
+          },
+          {
+            "type": "arc",
+            "center": [
+              1700,
+              700.0000000000002
+            ],
+            "radiusMm": 300,
+            "startAngleDeg": 0,
+            "sweepDeg": 90,
+            "lengthMm": 471.23889803846896
+          },
+          {
+            "type": "line",
+            "from": [
+              1700,
+              1000.0000000000002
+            ],
+            "to": [
+              700,
+              1000
+            ],
+            "lengthMm": 1000
+          },
+          {
+            "type": "arc",
+            "center": [
+              700.0000000000001,
+              700
+            ],
+            "radiusMm": 300,
+            "startAngleDeg": 90,
+            "sweepDeg": 90,
+            "lengthMm": 471.23889803846896
+          },
+          {
+            "type": "arc",
+            "center": [
+              700,
+              700
+            ],
+            "radiusMm": 300,
+            "startAngleDeg": -180,
+            "sweepDeg": 90,
+            "lengthMm": 471.23889803846896
+          }
+        ],
+        "sections": [
+          {
+            "pieceId": "routed-example-1",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 0,
+            "lengthMm": 1000
+          },
+          {
+            "pieceId": "routed-example-2",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 1000,
+            "lengthMm": 471.23889803846896
+          },
+          {
+            "pieceId": "routed-example-3",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 1471.238898038469,
+            "lengthMm": 471.23889803846896
+          },
+          {
+            "pieceId": "routed-example-4",
+            "laneIndex": 1,
+            "reverse": false,
+            "startMm": 1942.477796076938,
+            "lengthMm": 1000
+          },
+          {
+            "pieceId": "routed-example-5",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 2942.477796076938,
+            "lengthMm": 471.23889803846896
+          },
+          {
+            "pieceId": "routed-example-6",
+            "laneIndex": 0,
+            "reverse": false,
+            "startMm": 3413.716694115407,
+            "lengthMm": 471.23889803846896
+          }
+        ]
+      }
+    ],
+    "alternateRoutes": []
+  }
+}

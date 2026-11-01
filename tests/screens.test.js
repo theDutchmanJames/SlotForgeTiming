@@ -2891,14 +2891,14 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     const chipAfter = async patch => { run(`(p => Object.keys(p).forEach(k => { if (p[k] === null) delete state.settings[k]; else state.settings[k] = p[k]; }))(${JSON.stringify(patch)})`); const h = await home(); return h.match(/data-key="tm"[^>]*>(?:<i[^>]*><\/i>)?[^<]*/)[0].replace(/<i[^>]*><\/i>/, '|').replace(/data-key="tm" /, ''); };
     say('1.39.0: the Trackmate chosen (also when nothing was chosen yet): red and "not connected" until it is connected', (await chipAfter({ timingHw: 'trackmate' })) === 'data-state="warn">|Trackmate not connected' && (await chipAfter({ timingHw: null })) === 'data-state="warn">|Trackmate not connected');
     run('Trackmate.link.setConnected(true)'); say('...green when it is connected, and it follows the connection while Home is open', E('hm-chips').innerHTML.includes('data-state="on"><i aria-hidden="true"></i>Trackmate connected') && (run('Trackmate.link.setConnected(false)'), E('hm-chips').innerHTML.includes('data-state="warn"><i aria-hidden="true"></i>Trackmate not connected')));
-    say('...the virtual box ticked is the Arduino box in use (nothing chosen yet): "Virtual Arduino box not connected", red', (await chipAfter({ abVirtual: true })) === 'data-state="warn">|Virtual Arduino box not connected');
+    say('...the virtual box ticked is the Arduino Sketch in use (nothing chosen yet): "Virtual Arduino Sketch not connected", red', (await chipAfter({ abVirtual: true })) === 'data-state="warn">|Virtual Arduino Sketch not connected');
     run('ArduinoBox.link.setConnected(true)');
-    say('...it turns green when the virtual box connects while Home is open', E('hm-chips').innerHTML.includes('data-state="on"><i aria-hidden="true"></i>Virtual Arduino box connected'));
+    say('...it turns green when the virtual box connects while Home is open', E('hm-chips').innerHTML.includes('data-state="on"><i aria-hidden="true"></i>Virtual Arduino Sketch connected'));
     run('Trackmate.link.setConnected(true)');
     say('...one at a time: the Trackmate being connected as well changes nothing while the box is the one in use', !E('hm-chips').innerHTML.includes('Trackmate') );
     run('Trackmate.link.setConnected(false); ArduinoBox.link.setConnected(false)');
-    say('...and it turns red again when the box goes away', E('hm-chips').innerHTML.includes('data-state="warn"><i aria-hidden="true"></i>Virtual Arduino box not connected'));
-    say('...a remembered real box is "Arduino box"', (await chipAfter({ abVirtual: false, abDevice: { vid: 9025, pid: 67 } })) === 'data-state="warn">|Arduino box not connected');
+    say('...and it turns red again when the box goes away', E('hm-chips').innerHTML.includes('data-state="warn"><i aria-hidden="true"></i>Virtual Arduino Sketch not connected'));
+    say('...a remembered real box is "Arduino Sketch"', (await chipAfter({ abVirtual: false, abDevice: { vid: 9025, pid: 67 } })) === 'data-state="warn">|Arduino Sketch not connected');
     say('...a choice made beats what was set up: the Trackmate chosen with the virtual box ticked is the Trackmate', (await chipAfter({ abVirtual: true, timingHw: 'trackmate' })) === 'data-state="warn">|Trackmate not connected');
     say('...none chosen: "No timing hardware chosen", dim, and not red even though a box is ticked', (await chipAfter({ timingHw: 'none' })) === 'data-state="off">|No timing hardware chosen');
     run('delete state.settings.abVirtual; delete state.settings.abDevice; delete state.settings.timingHw');
@@ -2999,8 +2999,8 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
       run('Trackmate.link.setConnected(false); ArduinoBox.link.setConnected(false)');
       say('1.39.0: the Trackmate is chosen and not connected: Start race asks, and says which hardware', (await attempt({ timingHw: 'trackmate' }, false)) === 'not started' && asked.length === 1 && asked[0].includes('The Trackmate Interface is the timing hardware you chose, and it is not connected'));
       say('...OK starts the race anyway', (await attempt({ timingHw: 'trackmate' }, true)) === 'started' && asked.length === 1);
-      say('...the virtual box is named as such', (await attempt({ timingHw: 'arduino', abVirtual: true }, false)) === 'not started' && asked[0].includes('The virtual Arduino box is the timing hardware you chose'));
-      say('...a real box too', (await attempt({ timingHw: 'arduino', abVirtual: false }, false)) === 'not started' && asked[0].includes('The Arduino box is the timing hardware you chose'));
+      say('...the virtual box is named as such', (await attempt({ timingHw: 'arduino', abVirtual: true }, false)) === 'not started' && asked[0].includes('The virtual Arduino Sketch is the timing hardware you chose'));
+      say('...a real box too', (await attempt({ timingHw: 'arduino', abVirtual: false }, false)) === 'not started' && asked[0].includes('The Arduino Sketch is the timing hardware you chose'));
       run('Trackmate.link.setConnected(true)');
       say('...connected: no question, the race starts', (await attempt({ timingHw: 'trackmate' }, false)) === 'started' && asked.length === 0);
       say('...one at a time: only the other hardware connected still asks', (await attempt({ timingHw: 'arduino', abVirtual: true }, false)) === 'not started' && asked.length === 1);
@@ -3575,13 +3575,13 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   { const wait = ms => new Promise(r => setTimeout(r, ms)), page = () => E('settingsbox').innerHTML, setS = patch => run(`(p => Object.keys(p).forEach(k => { if (p[k] === null) delete state.settings[k]; else state.settings[k] = p[k]; }))(${JSON.stringify(patch)})`);
     ctx.ReadableStream = ReadableStream; ctx.WritableStream = WritableStream; const keepSet = api.setSettings; api.setSettings = async p => ({ ...run('state.settings'), ...p }); // (the real setSettings answers with all the settings; the stand-in of the window only with what was saved)
     setS({ timingHw: null, abVirtual: null, abDevice: null, tmDevice: null }); run("state.tab = 'settings'; state.settingsSub = 'hardware'; state.hwSub = 'trackmate'"); await run('render()');
-    say('1.39.0: the top of Timing Hardware has "Timing hardware in use" with None, Trackmate Interface and Arduino box', page().includes('Timing hardware in use') && page().includes('id="hw-use"') && ['none:None (keys or simulated cars)', 'trackmate:Trackmate Interface', 'arduino:Arduino box (SlotForge)'].every(o => page().includes(`<option value="${o.split(':')[0]}"`) && page().includes(o.split(':')[1])));
+    say('1.39.0: the top of Timing Hardware has "Timing hardware in use" with None, Trackmate Interface and Arduino Sketch', page().includes('Timing hardware in use') && page().includes('id="hw-use"') && ['none:None (keys or simulated cars)', 'trackmate:Trackmate Interface', 'arduino:Arduino Sketch'].every(o => page().includes(`<option value="${o.split(':')[0]}"`) && page().includes(o.split(':')[1])));
     say('...nothing chosen yet: the Trackmate is the one in use, and its page has no "not in use" note', page().includes('<option value="trackmate" selected>') && !page().includes('Use this one'));
-    // choosing the Arduino box
+    // choosing the Arduino Sketch
     await E('hw-use').onchange({ target: { value: 'arduino' } }); await wait(50);
-    say('...choosing the Arduino box saves the choice and shows its page', run('state.settings.timingHw') === 'arduino' && run('state.hwSub') === 'arduino' && page().includes('<option value="arduino" selected>'));
+    say('...choosing the Arduino Sketch saves the choice and shows its page', run('state.settings.timingHw') === 'arduino' && run('state.hwSub') === 'arduino' && page().includes('<option value="arduino" selected>'));
     await E('hwtabs').onclick({ target: { closest: () => ({ dataset: { id: 'trackmate' } }) } }); await wait(20);
-    say('...the Trackmate page now says it is not in use for races, names the one that is, and offers Use this one', page().includes('This page is not in use for races: the app uses the Arduino box.') && page().includes('id="hw-usethis"'));
+    say('...the Trackmate page now says it is not in use for races, names the one that is, and offers Use this one', page().includes('This page is not in use for races: the app uses the Arduino Sketch.') && page().includes('id="hw-usethis"'));
     await E('hw-usethis').onclick(); await wait(50);
     say('...Use this one makes it the one in use', run('state.settings.timingHw') === 'trackmate' && !page().includes('Use this one'));
     await E('hw-use').onchange({ target: { value: 'none' } }); await wait(50);
@@ -3590,16 +3590,16 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     setS({ timingHw: 'trackmate' }); run("hw.kind0 = hw.kind; hw.open = true; hw.kind = 'hid'; hw.dev = { close: async () => {} }; Trackmate.link.setConnected(true)"); await run('render()');
     await E('hw-use').onchange({ target: { value: 'arduino' } }); await wait(80);
     say('...changing the choice disconnects the one that was in use (one at a time)', run('hw.open') === false && run('Trackmate.link.connected') === false);
-    // ticking the virtual box means the Arduino box is the one in use
+    // ticking the virtual box means the Arduino Sketch is the one in use
     run('hw.dev = null; hw.kind = hw.kind0'); setS({ timingHw: 'trackmate', abVirtual: false }); run("state.hwSub = 'arduino'"); await run('render()');
     await E('ab-virtual').onchange({ target: { checked: true } }); await wait(150);
-    say('...ticking "Use the virtual box" makes the Arduino box the one in use, and it connects', run('state.settings.timingHw') === 'arduino' && run('abConnected()') === true);
+    say('...ticking "Use the virtual box" makes the Arduino Sketch the one in use, and it connects', run('state.settings.timingHw') === 'arduino' && run('abConnected()') === true);
     await E('ab-conn').onclick(); await wait(50); await E('ab-virtual').onchange({ target: { checked: false } }); await wait(50);
-    // 1.39.1: the same with nothing chosen yet (no timingHw saved: the tick alone already made the Arduino box the one in use): the choice is saved all the same and the list above follows
+    // 1.39.1: the same with nothing chosen yet (no timingHw saved: the tick alone already made the Arduino Sketch the one in use): the choice is saved all the same and the list above follows
     setS({ timingHw: null, abVirtual: false }); run('ab.dev = null'); run("state.hwSub = 'arduino'"); await run('render()');
     say('...nothing chosen yet: the Trackmate is the one in use, and the Arduino page says so', run('Hardware.timingChosen(state.settings)') === 'trackmate' && page().includes('This page is not in use for races: the app uses the Trackmate Interface.'));
     await E('ab-virtual').onchange({ target: { checked: true } }); await wait(150);
-    say('...ticking the virtual box saves the Arduino box as the choice (not only as a side effect of the tick), and the list above shows it', run('state.settings.timingHw') === 'arduino' && E('hw-use').value === 'arduino' && run('abConnected()') === true);
+    say('...ticking the virtual box saves the Arduino Sketch as the choice (not only as a side effect of the tick), and the list above shows it', run('state.settings.timingHw') === 'arduino' && E('hw-use').value === 'arduino' && run('abConnected()') === true);
     say('...and the note "not in use" is taken off the Arduino page', E('hwnote').hidden === true && E('hwnote').innerHTML === '');
     await E('ab-conn').onclick(); await wait(50); await E('ab-virtual').onchange({ target: { checked: false } }); await wait(50);
     // only the one in use connects by itself
@@ -3612,7 +3612,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     setS({ timingHw: 'arduino', tmDevice: { vid: 1, pid: 2 }, tmAuto: true }); run("hw.open = false");
     { const keepSerial = ctx.navigator.serial; let looked = 0; ctx.navigator.serial = { getPorts: async () => { looked++; return []; } };
       await run('tmAutoConnect()'); const whileOther = looked; setS({ timingHw: 'trackmate' }); await run('tmAutoConnect()'); ctx.navigator.serial = keepSerial;
-      say('...the Trackmate does not even look for its port by itself while the Arduino box is in use, and does when it is the one in use', whileOther === 0 && looked === 1); }
+      say('...the Trackmate does not even look for its port by itself while the Arduino Sketch is in use, and does when it is the one in use', whileOther === 0 && looked === 1); }
     setS({ timingHw: null, abVirtual: null, abAuto: null, tmDevice: null, tmAuto: null }); run("state.hwSub = 'trackmate'"); await run('render()');
     api.setSettings = keepSet; delete ctx.ReadableStream; delete ctx.WritableStream; }
   // ---- App Settings > Timing Hardware > DS Electronics: the listening version ----

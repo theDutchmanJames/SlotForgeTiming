@@ -62,7 +62,8 @@ function abReceive(bytes) {
   L.feed(bytes).forEach(m => {
     if (m.type === 'lane') { abLed(m.lane - 1); if (ab.hide !== false) return; }
     if (m.type === 'tick' && ab.hide !== false) { const t = document.getElementById('ab-ticks'); if (t) t.textContent = `ticks: ${L.ticks} (last ${m.ms} ms)`; return; }
-    if (m.type === 'ext') { const e = ArduinoBox.parseExt(m.text); if (e && (e.tag === 'Z' || e.tag === 'O') && ab.hide !== false) { abPinsRefresh(); return; } if (e && (e.tag === 'C' || e.tag === 'V' || e.tag === 'S')) setTimeout(abRedraw, 50); }
+    if (m.type === 'ext') { const e = ArduinoBox.parseExt(m.text); if(e?.tag === 'O' && e.args[0] === 'ladder') setTimeout(abRedraw, 50); // last option in the settings reply: show acknowledged values
+      if (e && (e.tag === 'Z' || e.tag === 'O') && ab.hide !== false) { abPinsRefresh(); return; } if (e && (e.tag === 'C' || e.tag === 'V' || e.tag === 'S')) setTimeout(abRedraw, 50); }
     abLog('<-', m.raw, ArduinoBox.note(m));
   });
 }
@@ -124,7 +125,7 @@ async function abAutoConnect() {
 // the zip of the sketch, handed out by the browser's download (the app's log save works the same way)
 function abDownloadSketch() {
   const files = Object.keys(ArduinoSketch.files).map(name => ({ name, text: ArduinoSketch.files[name] }));
-  files.push({ name: 'SlotForgeBox/README.txt', text: `SlotForge box firmware ${ArduinoSketch.version}\r\n\r\n1. Install the Arduino IDE (arduino.cc) and, for the LED strip lights, the library "Adafruit NeoPixel" (Sketch > Include Library > Manage Libraries).\r\n2. Unzip this file and open SlotForgeBox/SlotForgeBox.ino in the IDE.\r\n3. Tools > Board: Arduino Nano (Processor: ATmega328P, or "Old Bootloader" for most clones) or Arduino Mega 2560. Tools > Port: the board.\r\n4. Upload. The box starts in Trackmate mode; SlotForge switches it to its own mode when it connects.\r\n5. In SlotForge: App Settings > Timing Hardware > Arduino > Find the box, Connect. Set what each analog pin is, then Calibrate with the track empty, then Save to the box.\r\n\r\nWiring: see the Help in SlotForge (Timing Hardware > Arduino) and the pin maps at the top of settings.h.\r\n` });
+  files.push({ name: 'SlotForgeBox/README.txt', text: `Arduino Sketch firmware ${ArduinoSketch.version}\r\n\r\n1. Install the Arduino IDE (arduino.cc) and, for the LED strip lights, the library "Adafruit NeoPixel" (Sketch > Include Library > Manage Libraries).\r\n2. Unzip this file and open SlotForgeBox/SlotForgeBox.ino in the IDE.\r\n3. Tools > Board: Arduino Nano (Processor: ATmega328P, or "Old Bootloader" for most clones) or Arduino Mega 2560. Tools > Port: the board.\r\n4. Upload. The box starts in Trackmate mode; SlotForge switches it to its own mode when it connects.\r\n5. In SlotForge: App Settings > Timing Hardware > Arduino > Find the box, Connect. Set what each analog pin is, then Calibrate with the track empty, then Save to the box.\r\n\r\nWiring: see the Help in SlotForge (Timing Hardware > Arduino) and the pin maps at the top of settings.h.\r\n` });
   const bytes = ZipFile.make(files), a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/zip' })); a.download = `SlotForgeBox-${ArduinoSketch.version}.zip`; document.body.appendChild(a); a.click(); a.remove();
   abMsg(`Sketch ${ArduinoSketch.version} saved as SlotForgeBox-${ArduinoSketch.version}.zip (in your Downloads folder).`);
@@ -174,12 +175,12 @@ function renderArduinoSettings(box) {
       <label class="inline"><input type="checkbox" id="ab-virtual" ${t.virtual ? 'checked' : ''}> Use the virtual box (four imaginary cars, for trying the app without an Arduino)</label></div>`;
   const pinsBody = `<div class="row"><strong>Pins</strong><button class="btn" id="ab-calib" ${ab.open ? '' : 'disabled'}>Calibrate (track empty, 2 s)</button><label>Blackout (ms) <input type="number" id="ab-blackout" value="${esc((opt.blackout || [300])[0])}" min="0" max="5000" style="width:5em" ${ab.open ? '' : 'disabled'}></label><span id="ab-ticks" class="muted"></span></div>
     <div class="wrap"><table class="fields"><thead><tr><th>Pin</th><th>Use</th><th>Sensor</th><th>Reading</th><th></th><th>Arm / trigger</th></tr></thead><tbody>${pinRows}</tbody></table></div>
-    <p class="muted">A lane sensor counts laps, a pit sensor starts pit stops (pit sensor 1 belongs to lane 1), the call-button ladder is the pin with the drivers' buttons. The bar is the live reading; a car must bring it below the trigger line (the right mark) and the pass ends when it rises above the arm line again. <em>Calibrate</em> sets both from the empty track.</p>`;
+    <p class="muted">A lane sensor counts laps, a pit sensor starts pit stops (pit sensor 1 belongs to lane 1), the call-button ladder is the pin with the drivers' buttons. The bar is the live reading; a car must bring it below the trigger line (the lower threshold) and the pass ends when it rises above the arm line again. <em>Calibrate</em> sets both from the empty track.</p>`;
   const lanesBody = `<div class="row"><strong>Lanes</strong></div><div class="sensgrid">${sensors}</div>
     <p class="muted">Which lane each sensor letter counts for (swap two here instead of rewiring). The light turns green while a car is over the sensor.</p>`;
-  const lightsBody = `<div class="row"><strong>Lights</strong>${sel('ab-lights', ArduinoBox.LIGHTS, lights[0], ab.open ? '' : 'disabled')}<label>Pixels <input type="number" id="ab-pixels" value="${esc(lights[1])}" min="7" max="60" style="width:4em" ${ab.open ? '' : 'disabled'}></label><label>Brightness <input type="number" id="ab-bright" value="${esc(lights[2])}" min="1" max="255" style="width:4em" ${ab.open ? '' : 'disabled'}></label>
+  const lightsBody = `<div class="row"><strong>Lights</strong>${sel('ab-lights', ArduinoBox.lightChoices(v?.board), lights[0], ab.open ? '' : 'disabled')}<label>Pixels <input type="number" id="ab-pixels" value="${esc(lights[1])}" min="7" max="60" style="width:4em" ${ab.open ? '' : 'disabled'}></label><label>Brightness <input type="number" id="ab-bright" value="${esc(lights[2])}" min="1" max="255" style="width:4em" ${ab.open ? '' : 'disabled'}></label>
       <label class="inline"><input type="checkbox" id="ab-lanepix" ${lights[3] ? 'checked' : ''} ${ab.open ? '' : 'disabled'}> A status pixel per lane</label><button class="btn" id="ab-lighttest" ${ab.open ? '' : 'disabled'}>Test the lights</button></div>`;
-  const powerBody = `<div class="row"><strong>Power</strong><label>Main relay ${sel('ab-relaync', [[0, 'normally open'], [1, 'normally closed']], relay[0], ab.open ? '' : 'disabled')}</label><label>Lane relays <input type="number" id="ab-lanerelays" value="${esc(relay[1])}" min="0" max="8" style="width:4em" ${ab.open ? '' : 'disabled'}></label>${sel('ab-lanerelaysnc', [[0, 'normally open'], [1, 'normally closed']], relay[2], ab.open ? '' : 'disabled')}
+  const powerBody = `<div class="row"><strong>Power</strong><label>Main relay ${sel('ab-relaync', [[0, 'normally open'], [1, 'normally closed']], relay[0], ab.open ? '' : 'disabled')}</label><label>Lane relays <input type="number" id="ab-lanerelays" value="${esc(relay[1])}" min="0" max="${v?.board === 'mega' ? 8 : 7}" style="width:4em" ${ab.open ? '' : 'disabled'}></label>${sel('ab-lanerelaysnc', [[0, 'normally open'], [1, 'normally closed']], relay[2], ab.open ? '' : 'disabled')}
       <label>When the PC goes away ${sel('ab-safeoff', [[1, 'cut the track power'], [0, 'leave the power as it is']], (opt.safeoff || [1])[0], ab.open ? '' : 'disabled')}</label><button class="btn" id="ab-pon" ${ab.open ? '' : 'disabled'}>Power on</button><button class="btn" id="ab-poff" ${ab.open ? '' : 'disabled'}>Power off</button></div>`;
   const buttonsBody = `<div class="row"><strong>Buttons and buzzer</strong><label class="inline"><input type="checkbox" id="ab-buzzer" ${(opt.buzzer || [1])[0] ? 'checked' : ''} ${ab.open ? '' : 'disabled'}> Buzzer present</label><label class="inline"><input type="checkbox" id="ab-ladder" ${(opt.ladder || [0])[0] ? 'checked' : ''} ${ab.open ? '' : 'disabled'}> Call-button ladder present</label><button class="btn" id="ab-beep" ${ab.open ? '' : 'disabled'}>Beep</button>
       <span class="muted">The Start/Pause and Track call buttons of the box do what the race setup says the Trackcall button does.</span></div>`;
@@ -187,10 +188,10 @@ function renderArduinoSettings(box) {
   const monitorBody = `<div class="row"><label class="inline"><input type="checkbox" id="ab-hide" ${ab.hide === false ? '' : 'checked'}> Hide the steady ticks, letters and readings</label><button class="btn" id="ab-copy">Copy log</button><button class="btn" id="ab-save-log">Save log</button><button class="btn" id="ab-clear">Clear</button></div>
     <pre id="ab-log" class="hwlog tm-log" tabindex="0" aria-label="Data exchanged with the box"></pre>`;
   box.innerHTML = HardwarePage.html({
-    key: 'ab', title: 'Arduino Interface', icon: '⌁',
+    key: 'ab', title: 'Arduino Sketch', icon: '⌁',
     pills: [t.virtual ? 'Virtual box' : 'USB serial', v ? v.board : 'Nano / Mega', v ? 'Firmware ' + v.version : 'SlotForge sketch'],
     connected: ab.open, status: L.safe ? 'Safe state' : ab.open ? 'Connected' : 'Not connected',
-    description: 'Connect your SlotForge box, assign its pins, then calibrate with the track empty. Map the lane sensors and set up any lights, relays or buttons you have connected. Race Setup controls track calls and pit-stop behaviour.',
+    description: 'Connect your Arduino running the SlotForge sketch, assign its pins, then calibrate with the track empty. Map the lane sensors and set up any lights, relays or buttons you have connected. Race Setup controls track calls and pit-stop behaviour.',
     helpTitle: 'Where settings are kept', help: 'Connection preferences and lane mapping are saved in the app. Pin and output changes are sent to the connected box; Save to the box keeps them after power-off.',
     sections: [
       {id:'connection',title:'Connection',icon:'⌁',note:ab.open ? 'Connected · USB serial' : 'Choose a COM port or virtual box',ready:ab.open,open:true,body:connectionBody},
@@ -224,10 +225,10 @@ function renderArduinoSettings(box) {
   };
   $('ab-conn').onclick = async () => { if (ab.open) { if(!abMayConfigure())return;await abClose(); } else await abOpen(); renderArduinoSettings(box); };
   $('ab-auto').onchange = e => save({ abAuto: e.target.checked });
-  $('ab-virtual').onchange = async e => { await save({ abVirtual: e.target.checked }); if (e.target.checked && state.settings.timingHw !== 'arduino') await setTimingHw('arduino'); /* (ticking the virtual box means the Arduino box is the one in use: saved as the choice, also when nothing was chosen yet and the tick alone already made it the one in use, so the list above and the note follow) */ if (ab.open) await abClose(); if (e.target.checked) { ab.dev = ArduinoSim.createSim().asPort(); ab.info = ab.dev.getInfo(); await abOpen(); } else ab.dev = null; renderArduinoSettings(box); };
+  $('ab-virtual').onchange = async e => { await save({ abVirtual: e.target.checked }); if (e.target.checked && state.settings.timingHw !== 'arduino') await setTimingHw('arduino'); /* (ticking the virtual box means the Arduino Sketch is the one in use: saved as the choice, also when nothing was chosen yet and the tick alone already made it the one in use, so the list above and the note follow) */ if (ab.open) await abClose(); if (e.target.checked) { ab.dev = ArduinoSim.createSim().asPort(); ab.info = ab.dev.getInfo(); await abOpen(); } else ab.dev = null; renderArduinoSettings(box); };
   $('ab-download').onclick = abDownloadSketch;
   $('ab-calib').onclick = () => abDiagnostic(C.calibrate(), 'calibrate');
-  $('ab-blackout').onchange = e => abDiagnostic(C.option('blackout', Math.max(0, Math.min(5000, Number(e.target.value) || 0))), 'blackout');
+  $('ab-blackout').onchange = async e => { if(await abDiagnostic(C.option('blackout', Math.max(0, Math.min(5000, Number(e.target.value) || 0))), 'blackout'))await abSend(C.list()); };
   box.onchange = async ev => { // pins, thresholds, the lane map
     const el = ev.target; if (!el || !el.dataset) return; const d = el.dataset;
     if(!['pinrole','pinindex','pinkind','arm','trig','sensor'].some(k=>d[k]!==undefined)||!abMayConfigure())return;
@@ -244,7 +245,7 @@ function renderArduinoSettings(box) {
       const map = ArduinoBox.swapLane(abSettings().laneMap, Number(d.sensor), Number(el.value)); await save({ abLaneMap: map }); L.setMap(map); renderArduinoSettings(box);
     }
   };
-  const optChange = (id, key, read) => { const el = $(id); if (el) el.onchange = e => abDiagnostic(C.option(key, read(e.target)), key); };
+  const optChange = (id, key, read) => { const el = $(id); if (el) el.onchange = async e => { const value=read(e.target), conflict=ArduinoBox.outputConflict(L.options,key,value,L.version?.board); if(conflict){renderArduinoSettings(box);abMsg(conflict);return;}if(await abDiagnostic(C.option(key,value),key))await abSend(C.list()); }; };
   optChange('ab-lights', 'lights', e => e.value); optChange('ab-pixels', 'pixels', e => e.value); optChange('ab-bright', 'bright', e => e.value); optChange('ab-lanepix', 'lanepix', e => (e.checked ? 1 : 0));
   optChange('ab-relaync', 'relaync', e => e.value); optChange('ab-lanerelays', 'lanerelays', e => e.value); optChange('ab-lanerelaysnc', 'lanerelaysnc', e => e.value); optChange('ab-safeoff', 'safeoff', e => e.value);
   optChange('ab-buzzer', 'buzzer', e => (e.checked ? 1 : 0)); optChange('ab-ladder', 'ladder', e => (e.checked ? 1 : 0));

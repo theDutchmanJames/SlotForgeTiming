@@ -28,6 +28,6 @@ assert(RaceSystems.setupHtml({ fuelRules: 'fuel-1', disabledSystems: '' }).inclu
 const rail = Words.rail({ sessionType: 'race', raceBy: 'laps', laps: 10, lightsMin: 1, lightsMax: 5, trackCallAction: 'yellowred' }, { defaults: {}, shown: () => true });
 assert(rail.length.rail.includes('10 laps'));
 assert(!Object.prototype.hasOwnProperty.call(rail, 'start'));
-assert.equal(rail.advanced.rail, 'Timing hardware · Box');
+assert.equal(rail.advanced.rail, 'Timing hardware · Arduino Sketch');
 
 console.log('RACE SETUP REWRITE TESTS PASSED');

@@ -1,0 +1,302 @@
+{
+  "format": "slotforge.layout",
+  "version": 1,
+  "title": "FreeForm figure eight with bridge",
+  "pieces": [
+    {
+      "id": "figure-eight",
+      "definitionId": "freeform:height-demo",
+      "x": 0,
+      "y": 0,
+      "angle": 0,
+      "flip": false
+    }
+  ],
+  "definitions": [
+    {
+      "id": "freeform:height-demo",
+      "name": "FreeForm circuit",
+      "sku": "",
+      "pack": "Routed FreeForm",
+      "family": "slotforge.freeform.v1",
+      "parameters": {
+        "type": "freeform",
+        "widthMm": 117.19999999999999,
+        "laneOffsetsMm": [
+          8.6,
+          108.6
+        ],
+        "routed": {
+          "constructionMode": "table",
+          "laneCount": 2,
+          "laneSpacingMm": 100,
+          "innerClearanceMm": 100,
+          "outerClearanceMm": 100,
+          "slotWidthMm": 3.2,
+          "slotDepthMm": 8,
+          "conductorWidthMm": 6,
+          "conductorGapMm": 1,
+          "conductorThicknessMm": 0.5,
+          "adhesiveThicknessMm": 0.1,
+          "recessDepthMm": 0.8,
+          "boardThicknessMm": 12,
+          "minRadiusMm": 250,
+          "allowancePct": 10,
+          "conductor": "braid"
+        },
+        "freeform": {
+          "version": 1,
+          "id": "height-demo",
+          "closed": true,
+          "laneCount": 2,
+          "referenceLane": 1,
+          "side": 1,
+          "laneIds": [
+            "height-lane-one",
+            "height-lane-two"
+          ],
+          "nodes": [
+            {
+              "id": "n0",
+              "p": [
+                3500,
+                2300
+              ],
+              "in": [
+                -785.3981633974482,
+                -942.4777960769379
+              ],
+              "out": [
+                785.3981633974482,
+                942.4777960769379
+              ],
+              "mode": "smooth",
+              "locked": false,
+              "heightMm": 0
+            },
+            {
+              "id": "n1",
+              "p": [
+                5621.320343559642,
+                4100
+              ],
+              "in": [
+                -555.3603672697958,
+                -5.771012081165369e-14
+              ],
+              "out": [
+                555.3603672697958,
+                5.771012081165369e-14
+              ],
+              "mode": "smooth",
+              "locked": false,
+              "heightMm": 0
+            },
+            {
+              "id": "n2",
+              "p": [
+                6500,
+                2300
+              ],
+              "in": [
+                -4.8091767343044745e-14,
+                942.4777960769379
+              ],
+              "out": [
+                4.8091767343044745e-14,
+                -942.4777960769379
+              ],
+              "mode": "smooth",
+              "locked": false,
+              "heightMm": 0
+            },
+            {
+              "id": "n3",
+              "p": [
+                5621.320343559642,
+                500
+              ],
+              "in": [
+                555.3603672697957,
+                1.7313036243496108e-13
+              ],
+              "out": [
+                -555.3603672697957,
+                -1.7313036243496108e-13
+              ],
+              "mode": "smooth",
+              "locked": false,
+              "heightMm": 0
+            },
+            {
+              "id": "n4",
+              "p": [
+                3500.0000000000005,
+                2299.9999999999995
+              ],
+              "in": [
+                785.3981633974482,
+                -942.4777960769379
+              ],
+              "out": [
+                -785.3981633974482,
+                942.4777960769379
+              ],
+              "mode": "smooth",
+              "locked": false,
+              "heightMm": 150
+            },
+            {
+              "id": "n5",
+              "p": [
+                1378.6796564403576,
+                4100
+              ],
+              "in": [
+                555.3603672697958,
+                -2.885506040582685e-13
+              ],
+              "out": [
+                -555.3603672697958,
+                2.885506040582685e-13
+              ],
+              "mode": "smooth",
+              "locked": false,
+              "heightMm": 0
+            },
+            {
+              "id": "n6",
+              "p": [
+                500,
+                2300.0000000000005
+              ],
+              "in": [
+                1.4427530202913423e-13,
+                942.4777960769379
+              ],
+              "out": [
+                -1.4427530202913423e-13,
+                -942.4777960769379
+              ],
+              "mode": "smooth",
+              "locked": false,
+              "heightMm": 0
+            },
+            {
+              "id": "n7",
+              "p": [
+                1378.6796564403571,
+                500
+              ],
+              "in": [
+                -555.3603672697956,
+                4.0397084568157586e-13
+              ],
+              "out": [
+                555.3603672697956,
+                -4.0397084568157586e-13
+              ],
+              "mode": "smooth",
+              "locked": false,
+              "heightMm": 0
+            }
+          ]
+        }
+      },
+      "color": "#b59870",
+      "status": "user-defined",
+      "mirror": true
+    }
+  ],
+  "profile": {
+    "speed": 1200,
+    "acceleration": 1300,
+    "brake": 2200,
+    "corner": 0.57,
+    "drift": 10
+  },
+  "units": "mm",
+  "precision": "User-entered geometry; flowing normal offsets use adaptive samples (0.025 mm target); not verified construction measurements.",
+  "timing": {
+    "version": 1,
+    "direction": 1,
+    "directionConvention": "canonical-route-distance",
+    "startFinish": null,
+    "routeLabels": {},
+    "routeMappingRevision": "046bf4abcd62a80cc66cabef3f1b968784056aa36dc0c2158cd97021cb905dd9",
+    "requiresLaneRemap": false,
+    "startFinishOffsets": []
+  },
+  "workspace": {
+    "spaceGuide": {
+      "x": 0,
+      "y": 0,
+      "lengthMm": 7000,
+      "widthMm": 4600,
+      "locked": true,
+      "kind": "table"
+    }
+  },
+  "design": {
+    "id": "50777483-2d2f-4e02-b62d-f23f34170da9",
+    "revision": "f5591458db4ff025b7edee1c510c1555789fd73149d8e8d283161afce31c193e"
+  },
+  "producer": {
+    "name": "SlotForge Circuit",
+    "version": "0.3.16"
+  },
+  "integration": {
+    "target": "SlotForge Timing",
+    "contractVersion": "1.0.0-draft.9",
+    "status": "draft-for-coordination",
+    "profilePurpose": "illustrative-animation",
+    "image": "optional-separate-png"
+  },
+  "compatibility": {
+    "liveTracker": "through-routes",
+    "components": 1,
+    "openEnds": 0,
+    "ambiguousEnds": 0,
+    "issues": [
+      {
+        "code": "freeform-runtime",
+        "severity": "warning",
+        "message": "FreeForm uses draft.8. Timing needs the FreeForm-aware runtime; open or invalid drafts do not supply racing routes."
+      },
+      {
+        "code": "elevation-planning",
+        "severity": "warning",
+        "message": "Surface heights and sampled clearance checks are preserved. Lengths and CAD remain plan-view measurements; ramp buildability and car/support clearance are not verified."
+      },
+      {
+        "code": "overpass",
+        "severity": "warning",
+        "message": "Bridge crossing: 133.4 mm below the upper deck; 50 mm required. Plan-view lengths exclude ramp length."
+      },
+      {
+        "code": "start-finish-unset",
+        "severity": "warning",
+        "message": "Set or confirm a timing line before Live Tracker playback in Timing."
+      }
+    ]
+  },
+  "track": {
+    "laneCount": 2,
+    "slotCountsInDrawing": [
+      2
+    ],
+    "validClosedRouteCount": 2,
+    "lanes": [
+      {
+        "id": "route-ec814889e1779bbf8529cdc02d9924de7d3ffafac6872a64932a2ef2f401f570",
+        "label": "Lane 1",
+        "lengthMm": 20082.312090900425
+      },
+      {
+        "id": "route-74c5d17f382c7848367b1009e2026f39d653c1960d0aa36f09ba1c684ad8d81c",
+        "label": "Lane 2",
+        "lengthMm": 20082.312077065402
+      }
+    ]
+  }
+}

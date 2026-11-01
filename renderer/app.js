@@ -88,7 +88,7 @@ function renderCalculationSettings(box) {
   return CalculationPage.render(box);
 }
 
-// Timing Hardware has a page per kind of hardware: the Trackmate Interface, the Arduino box, DS Electronics (a listening version for now), oXigen Digital (a place held for it, nothing to set up yet) and Other (empty for now).
+// Timing Hardware has a page per kind of hardware: the Trackmate Interface, the Arduino Sketch, DS Electronics (a listening version for now), oXigen Digital (a place held for it, nothing to set up yet) and Other (empty for now).
 // At the top the person chooses the timing hardware IN USE, one at a time (Hardware.timingChosen): only that one connects by itself at the start, counts laps in a race and is shown on Home and on the race screen.
 // The other pages stay usable for setting up and testing; a page that is not the one in use says so and has a "Use this one" button.
 async function setTimingHw(id) { // saves the choice and lets go of the hardware that was in use; connecting the new one and drawing the page is up to the caller
@@ -109,7 +109,7 @@ async function setTimingHw(id) { // saves the choice and lets go of the hardware
 function renderHardwareArea(box) {
   if (typeof ptPageDispose === 'function') ptPageDispose();
   if (typeof ppPageDispose === 'function') ppPageDispose();
-  const chosen = Hardware.timingChosen(state.settings), names = { trackmate: 'the Trackmate Interface', arduino: 'the Arduino box', parallel: 'the Parallel Port', phidget: 'the Phidget Interface', plugin: 'the plugin interface', none: 'no timing hardware' };
+  const chosen = Hardware.timingChosen(state.settings), names = { trackmate: 'the Trackmate Interface', arduino: 'the Arduino Sketch', parallel: 'the Parallel Port', phidget: 'the Phidget Interface', plugin: 'the plugin interface', none: 'no timing hardware' };
   const onPage = ['trackmate', 'arduino', 'parallel', 'phidget', 'plugin'].includes(state.hwSub);
   box.innerHTML = `<div class="row" id="hwuse"><label><strong>Timing hardware in use</strong> <select id="hw-use">${Hardware.TIMING.map(([id, name]) => `<option value="${id}"${id === chosen ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select></label>
       <span class="muted">One at a time. Only this interface counts race laps and shows on Home and the race screen. Its settings control how it connects.</span></div>

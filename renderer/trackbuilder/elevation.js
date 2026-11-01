@@ -1,0 +1,32 @@
+(function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory();else root.TrackElevation=factory();})(typeof globalThis!=='undefined'?globalThis:this,function(){
+'use strict';
+const finite=(n,min,max)=>Number.isFinite(n)&&n>=min&&n<=max;
+function height(n){if(!finite(n,-5000,5000))throw Error('Track height must be between -5000 and 5000 mm.');return n;}
+function settings(raw,thickness=10){if(raw===undefined)return{version:1,startMm:0,endMm:0,thicknessMm:thickness,clearanceMm:50};if(!raw||Array.isArray(raw)||Object.keys(raw).some(k=>!['version','startMm','endMm','thicknessMm','clearanceMm'].includes(k))||raw.version!==1)throw Error('Unsupported elevation settings.');height(raw.startMm);height(raw.endMm);if(!finite(raw.thicknessMm,.1,500)||!finite(raw.clearanceMm,0,1000))throw Error('Enter a deck thickness of 0.1–500 mm and required clearance of 0–1000 mm.');return{version:1,startMm:raw.startMm,endMm:raw.endMm,thicknessMm:raw.thicknessMm,clearanceMm:raw.clearanceMm};}
+const at=(s,t)=>s.startMm+(s.endMm-s.startMm)*t;
+const active=(pieces,defs)=>pieces.some(p=>p.elevation!==undefined||defs[p.definitionId].parameters.freeform?.elevation!==undefined||defs[p.definitionId].parameters.freeform?.nodes.some(n=>n.heightMm!==undefined));
+const cross=(a,b,c)=>(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
+function overlap(a,b){let polygon=a.map(p=>p.slice(0,2));const sign=Math.sign(cross(...b));if(!sign)return[];for(let i=0;i<3&&polygon.length;i++){const u=b[i],v=b[(i+1)%3],next=[];for(let j=0;j<polygon.length;j++){const p=polygon[j],q=polygon[(j+1)%polygon.length],d=sign*cross(u,v,p),e=sign*cross(u,v,q);if(d>=0)next.push(p);if((d>=0)!==(e>=0)){const t=d/(d-e);next.push([p[0]+t*(q[0]-p[0]),p[1]+t*(q[1]-p[1])]);}}polygon=next;}let area=0;for(let i=0;i<polygon.length;i++){const a=polygon[i],b=polygon[(i+1)%polygon.length];area+=a[0]*b[1]-a[1]*b[0];}return Math.abs(area)>.02?polygon:[];}
+function z(triangle,p){const[a,b,c]=triangle,den=cross(a,b,c);return a[2]+cross(a,p,c)/den*(b[2]-a[2])+cross(a,b,p)/den*(c[2]-a[2]);}
+function clearance(a,b,polygon,sa,sb){const ds=polygon.map(p=>z(a,p)-z(b,p)),lo=Math.min(...ds),hi=Math.max(...ds);return lo>=0?lo-sa.thicknessMm:hi<=0?-hi-sb.thicknessMm:-Math.max(sa.thicknessMm,sb.thicknessMm);}
+function strips(p,d,F){const q=d.parameters,s=settings(p.elevation,q.routed?.boardThicknessMm||10),rows=[];
+ const put=(a,b,t)=>rows.push([a,b,t]);
+ if(q.type==='freeform')return[];
+ if(q.type==='routed-spline'){const outline=d.geometry.sampledOutline,n=outline.length/2;for(let i=0;i<n;i++)put(outline[i],outline[outline.length-1-i],d.geometry.parametersT[i]);}
+ else if(q.type.startsWith('curve')){const n=Math.max(2,Math.ceil(q.angleDeg/2));for(let i=0;i<=n;i++){const a=F.rad(q.angleDeg*i/n);put(F.G.pt(q.innerRadiusMm,a),F.G.pt(q.innerRadiusMm+q.widthMm,a),i/n);}}
+ else if(q.type==='reference'&&q.planning){const pts=d.geometry.sampledOutline;const b=d.geometry.boundsMm;/* Reference artwork is only a conservative display footprint. */put([b[0],b[1]],[b[0],b[1]+b[3]],0);put([b[0]+b[2],b[1]],[b[0]+b[2],b[1]+b[3]],1);}
+ else{put([0,0],[0,q.widthMm],0);put([q.lengthMm,0],[q.lengthMm,q.widthMm],1);}
+ const tris=[];for(let i=1;i<rows.length;i++){const prev=rows[i-1],next=rows[i],pt=(r,j)=>[...F.point(r[j],p),at(s,r[2])],a=pt(prev,0),b=pt(prev,1),c=pt(next,0),e=pt(next,1);for(const triangle of[[a,b,c],[b,e,c]])if(Math.abs(cross(...triangle))>.01)tris.push({p,triangle,s});}return tris;
+}
+const cache=new Map();
+function checks(pieces,defs,F){if(!active(pieces,defs))return[];const key=JSON.stringify(pieces.map(p=>[p,defs[p.definitionId].parameters]));if(cache.has(key))return structuredClone(cache.get(key));const issues=[],pairs=new Map(),grid=new Map(),cell=300;let comparisons=0,incomplete=false;
+ for(const p of pieces){const d=defs[p.definitionId];if(d.parameters.type==='freeform'){for(const issue of d.geometry.warnings||[])if(issue.code==='overpass')issues.push({...issue,pieceIds:[p.id],...(issue.point?{point:F.point(issue.point,p)}:{})});continue;}for(const rec of strips(p,d,F)){const t=rec.triangle,x0=Math.floor(Math.min(...t.map(p=>p[0]))/cell),x1=Math.floor(Math.max(...t.map(p=>p[0]))/cell),y0=Math.floor(Math.min(...t.map(p=>p[1]))/cell),y1=Math.floor(Math.max(...t.map(p=>p[1]))/cell),seen=new Set();if((x1-x0+1)*(y1-y0+1)>10000){incomplete=true;continue;}
+  for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++){const k=x+','+y;for(const other of grid.get(k)||[]){if(other.p.id===p.id||seen.has(other))continue;seen.add(other);if(++comparisons>1000000){incomplete=true;break;}const polygon=overlap(t,other.triangle);if(!polygon.length)continue;const gap=clearance(t,other.triangle,polygon,rec.s,other.s),required=Math.max(rec.s.clearanceMm,other.s.clearanceMm),id=[p.id,other.p.id].sort().join(':');if(!pairs.has(id)||gap<pairs.get(id).gapMm)pairs.set(id,{pieceIds:[p.id,other.p.id],gapMm:gap,requiredMm:required,point:polygon[0]});}if(comparisons>1000000)break;if(!grid.has(k))grid.set(k,[]);grid.get(k).push(rec);}if(comparisons>1000000)break;}if(comparisons>1000000)break;}
+ for(const pair of pairs.values()){const good=pair.gapMm>=pair.requiredMm-.05;issues.push({...pair,code:good?'overpass':'height-clearance',message:(good?'Bridge clearance':'Insufficient bridge clearance')+': '+pair.gapMm.toFixed(1)+' mm below the upper deck; '+pair.requiredMm+' mm required.'});}
+ const ports=pieces.flatMap(p=>F.ports(p,defs));for(let i=0;i<ports.length;i++)for(let j=0;j<i;j++){const a=ports[i],b=ports[j];if(a.pieceId!==b.pieceId&&F.dist(a.position,b.position)<.15&&Math.abs(Math.abs(F.wrap(a.angle-b.angle))-180)<.1&&F.compatible(a,b)&&F.slotsMatch(a,b)&&Math.abs(a.heightMm-b.heightMm)>.15)issues.push({code:'height-join',pieceIds:[a.pieceId,b.pieceId],point:a.position,message:'Joined ends differ in height by '+Math.abs(a.heightMm-b.heightMm).toFixed(1)+' mm. Match their surface heights.'});}
+ if(incomplete)issues.push({code:'height-budget',message:'Elevation checks are incomplete: this layout exceeds the overlap-check budget.'});
+ if(pieces.some(p=>defs[p.definitionId].parameters.type==='reference'))issues.push({code:'height-reference',message:'Reference-piece clearance uses approximate display footprints; verify against the actual pieces.'});
+ if(cache.size>=8)cache.delete(cache.keys().next().value);cache.set(key,issues);return structuredClone(issues);
+}
+return{height,settings,at,active,checks,overlap,clearance};
+});
