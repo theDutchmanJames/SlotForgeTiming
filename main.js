@@ -125,6 +125,7 @@ app.whenReady().then(() => {
   ipcMain.handle('paddock:connect',(e,input)=>{paddockIdle(e);return paddock.connect(input);});
   ipcMain.handle('paddock:disconnect',(e,forget)=>{paddockIdle(e);return paddock.disconnect(forget);});
   ipcMain.handle('paddock:browse',(e)=>{paddockIdle(e);return paddock.browse();});
+  ipcMain.handle('paddock:catalogue',(e,force)=>{paddockOwner(e);return paddock.catalogue(force);});
   ipcMain.handle('paddock:link',(e,id,local)=>{paddockIdle(e);return paddock.link(id,local);});
   ipcMain.handle('paddock:refresh',(e)=>{paddockIdle(e);return paddock.refresh();});
   ipcMain.handle('paddock:prepare',(e,ids)=>{paddockIdle(e);return paddock.prepare(ids);});

@@ -7,8 +7,10 @@ Timing uses Paddock's Timing v1 API, available from Paddock 0.17.0. Paddock 0.18
 1. Start sharing in Paddock and enable **Allow Timing results**.
 2. In Timing, open **Database → Slotcars → Connect to Paddock**.
 3. Find the host on the network, or enter the IPv4 address and port displayed by Paddock. Enter its separate **Timing connection code or password**.
-4. Load the catalogue. Choose **Use this car**, either creating a new Timing car or linking an existing car to preserve its local history.
-5. Select the linked car normally when starting a race. Finalize the reviewed race results to queue delivery.
+4. Switch to **Paddock Database** to browse public cars. Local cars remain under **Local Database**. On Home, **Browse Local / Paddock cars** selects a remote car directly and caches it automatically. The connection dialog retains optional tools to link an existing local car and preserve its history.
+5. Finalize reviewed race results to queue delivery. Previously selected cars with valid captures remain usable offline.
+
+While the Paddock browser is visible, a shared 30-second revision check refreshes only changed catalogues. Explicit Refresh now forces a reload. Failed checks back off to five minutes (or a longer authentication cooldown). Full pagination must succeed before a cache is replaced. Polling stops during racing; empty outboxes cause no network requests. An optional public `catalogueRevision` is supported, with fallback to the existing database revision. See [the Paddock handoff](PADDOCK-CATALOGUE-HANDOFF.md) for the proposed host-side addition.
 
 Codes and passwords are held in memory, not saved in the database. Custom passwords require Paddock 0.18.0 or later and use 8–128 printable ASCII characters; preserve case and repeated internal spaces, with no spaces at either end. Generated codes remain supported. Restarting Paddock sharing resets custom passwords. Reconnect after restarting Timing or Paddock sharing; Paddock's code and port can change. A host's stable database identity prevents accidental delivery to another collection.
 

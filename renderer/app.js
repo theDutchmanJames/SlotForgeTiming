@@ -8,7 +8,7 @@ const TAB_ICONS = { home: 'home', database: 'database', setup: 'setup', custom: 
 const state = { tab: 'home', sub: 'tracks', schema: {}, settings: { theme: 'dark' }, custom: {}, refs: {}, setupSub: 'setups', customSub: 'layouts', settingsSub: 'general', hwSub: 'trackmate', editing: null };
 
 const titleOf = (entity, item) =>
-  state.schema[entity].title.map(k => item[k]).filter(Boolean).join(' ') || '(unnamed)';
+  (entity==='slotcars'&&item.paddock?.name)||state.schema[entity].title.map(k => item[k]).filter(Boolean).join(' ') || '(unnamed)';
 
 const DEFAULT_NAME = 'SlotForge Timing';
 const DEFAULT_WELCOME = 'Welcome to the SlotForge Slotcar Timing App!';

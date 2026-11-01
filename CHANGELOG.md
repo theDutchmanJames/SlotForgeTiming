@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.99.5 — 2026-11-01
+
+- Add separate Local Database and connected Paddock Database views, with direct race-car selection and automatic profile caching.
+- Check catalogue revisions every 30 seconds while browsing; download only changed catalogues, retain complete caches after failures and back off retries. Empty result queues no longer poll the network.
+- Preserve linked car identities and race history across renames, refresh public specifications and race classes, and retain pinned configurations for recorded races.
+- Keep previously selected cars available offline, including upgrades without a full catalogue cache; prevent newly archived or reclassified cars from silently entering an unsuitable race.
+- Preserve Multi-Class car filtering and the existing reviewed-results, corrections and withdrawals workflow.
+- Add a Paddock host handoff for an optional public catalogue revision, with compatibility fallback to the current API.
+- Add regression tests, updated Help and actual-app verification across all themes and narrow layouts.
+
 ## 1.99.4 download refresh — 2026-11-01
 
 - Add native GitHub Actions desktop builds for Windows, universal macOS and Linux, with regression tests, packaged-app smoke checks and verified release uploads.

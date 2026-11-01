@@ -6,9 +6,9 @@
 
 SlotForge Timing brings your track, drivers, cars and race rules together in a desktop app. Run practice sessions, qualifying, club races, heats, championships and team endurance events, then review and publish the results. Build a simple timing screen or a complete race-day dashboard for a second monitor or TV.
 
-**Current version: 1.99.4.** This repository contains the application source, build scripts, firmware sources and automated tests. See the [changelog](CHANGELOG.md) for this release.
+**Current version: 1.99.5.** This repository contains the application source, build scripts, firmware sources and automated tests. See the [changelog](CHANGELOG.md) for this release.
 
-**Ready to try it?** Download the Windows 64-bit [Portable executable](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.4/SlotForge.Timing-1.99.4-Portable.exe), double-click it and explore the app. If you like it and want SlotForge for regular, long-term use, download the [Setup installer](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.4/SlotForge.Timing-1.99.4-Setup.exe). Both are available in the [1.99.4 release downloads](https://github.com/theDutchmanJames/SlotForgeTiming/releases/tag/v1.99.4); neither needs Node.js.
+**Ready to try it?** Download the Windows 64-bit [Portable executable](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.5/SlotForge.Timing-1.99.5-Portable.exe), double-click it and explore the app. If you like it and want SlotForge for regular, long-term use, download the [Setup installer](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.5/SlotForge.Timing-1.99.5-Setup.exe). Both are available in the [1.99.5 release downloads](https://github.com/theDutchmanJames/SlotForgeTiming/releases/tag/v1.99.5); neither needs Node.js.
 
 **macOS and Linux:** Native downloads are built by GitHub Actions and added to the same release after checks pass: a universal Mac DMG/ZIP for Intel and Apple Silicon, plus Linux x64 AppImage and Debian packages. See the release assets for completed builds. Open the Mac DMG and drag the app to Applications; on Linux use your package manager to open the `.deb`, or allow the AppImage to execute in its file properties. No Node.js or source build is needed. Mac downloads are ad-hoc signed, not Apple-notarized, and may require approval in System Settings → Privacy & Security. Parallel Port and Phidget USB support currently require Windows. [Build and release details](docs/DESKTOP-RELEASES.md).
 
@@ -190,22 +190,22 @@ Parallel Port and Phidget support have been tested in software with simulated in
 
 ### Ready-made Windows programs
 
-Version **1.99.4** includes both ready-made Windows 64-bit executables in its [release downloads](https://github.com/theDutchmanJames/SlotForgeTiming/releases/tag/v1.99.4):
+Version **1.99.5** includes both ready-made Windows 64-bit executables in its [release downloads](https://github.com/theDutchmanJames/SlotForgeTiming/releases/tag/v1.99.5):
 
-- **[Download Portable.exe](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.4/SlotForge.Timing-1.99.4-Portable.exe)** — ready to use. Double-click it to test the app without installing it.
-- **[Download Setup.exe](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.4/SlotForge.Timing-1.99.4-Setup.exe)** — use the installer if you liked the app and want to keep using it long term.
+- **[Download Portable.exe](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.5/SlotForge.Timing-1.99.5-Portable.exe)** — ready to use. Double-click it to test the app without installing it.
+- **[Download Setup.exe](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.5/SlotForge.Timing-1.99.5-Setup.exe)** — use the installer if you liked the app and want to keep using it long term.
 
 Choose one of those executable files under **Assets**. The separate source ZIP and GitHub's automatic **Source code** downloads are for building the app yourself.
 
 **To try SlotForge:**
 
 1. Download the Portable program. Extract it first if it comes in a ZIP.
-2. Double-click the downloaded **SlotForge.Timing-1.99.4-Portable.exe** file.
+2. Double-click the downloaded **SlotForge.Timing-1.99.5-Portable.exe** file.
 3. Explore with **No hardware**, manual controls or the Arduino virtual box before configuring your real timing interface.
 
 **To keep using SlotForge:**
 
-1. Download **SlotForge.Timing-1.99.4-Setup.exe**.
+1. Download **SlotForge.Timing-1.99.5-Setup.exe**.
 2. Double-click it and follow the installation steps.
 3. Open SlotForge Timing using its shortcut. Use **Import and Export** for backups or moving your data to another PC.
 
@@ -221,7 +221,7 @@ For new or inexperienced users, **Quick Build is the recommended way to make a p
 4. **Find the app folder.** Open the extracted folders until you can see **package.json**, **build-windows.bat** and **build-windows-quick.bat** together. GitHub downloads usually name this folder **SlotForgeTiming-main**; a separate source ZIP may contain **SlotForgeTiming**.
 5. **Double-click build-windows-quick.bat.** Keep the build window open. The first run needs an internet connection to download dependencies; it can take several minutes. Quick Build skips the automated checks. If a filename's extension is hidden, Windows may show it as **build-windows-quick** with type **Windows Batch File**.
 6. **Open the dist folder.** A successful build opens it automatically. You can also open **dist** yourself inside the app folder.
-7. **Try Portable first.** In **dist**, double-click **SlotForge Timing-1.99.4-Portable.exe**. If you are happy and want to use the app long term, run **SlotForge Timing-1.99.4-Setup.exe**.
+7. **Try Portable first.** In **dist**, double-click **SlotForge Timing-1.99.5-Portable.exe**. If you are happy and want to use the app long term, run **SlotForge Timing-1.99.5-Setup.exe**.
 
 **What does Quick Build skip?** It skips `npm test`, the automated test suite. It still installs missing build dependencies and compiles/packages the app. The normal **build-windows.bat** runs the checks before building; developers and anyone validating changes can use that file instead.
 
@@ -459,7 +459,7 @@ Use the self-contained **Windows: run checks before building** guide above for a
 
 On Windows, use `npm.cmd` in place of `npm` when working in PowerShell.
 
-Additional focused checks are listed in `package.json`. Electron checks use isolated profiles and simulated race data where supported. The full regression suite, 44 focused Paddock tests and focused Electron visual and interaction checks passed for the 1.99.4 release. Paddock was tested with a real isolated host, including multicast and broadcast discovery. A user confirmed connection between two Windows PCs; the revised discovery retries, reconnection and result delivery still need confirmation on that physical setup. Software tests do not replace physical sensor and relay validation.
+Additional focused checks are listed in `package.json`. Electron checks use isolated profiles and simulated race data where supported. The full regression suite, 68 focused Paddock tests and focused Electron visual and interaction checks passed for the 1.99.5 release. Paddock was tested with a real isolated host, including multicast and broadcast discovery. A user confirmed connection between two Windows PCs; the revised discovery retries, reconnection and result delivery still need confirmation on that physical setup. Software tests do not replace physical sensor and relay validation.
 
 | Folder | Contents |
 | --- | --- |

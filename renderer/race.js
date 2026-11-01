@@ -77,7 +77,8 @@ async function renderRace() {
   // Freeze Paddock configurations before starting; reconnecting never replaces a raced capture.
   let paddockJournal=r.resume?.race?.paddockJournal||null;
   if(!r.resume&&!tokenSession&&api.paddockPrepare&&cars.some(c=>c.paddock&&r.rows.some(x=>x.carId===c.id))){
-    try{paddockJournal=await api.paddockPrepare(r.rows.filter(x=>!isRival(x)).map(x=>x.carId));}
+    try{paddockJournal=await api.paddockPrepare(r.rows.filter(x=>!isRival(x)).map(x=>x.carId));
+      if(r.multiclass?.assignment==='roster'){const issues=MultiClass.entryIssues(r.multiclass,r.rows.filter(x=>!isRival(x)),{cars,drivers,teams});if(issues.length)throw Error(issues.join(' '));}}
     catch(e){alert('Cannot prepare Paddock cars: '+e.message);state.race=null;state.tab='home';return render();}
   }
   if(paddockJournal)paddockJournal.lanes=laneLens;

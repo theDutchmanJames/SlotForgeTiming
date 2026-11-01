@@ -203,12 +203,13 @@ const folderAll = (page, ids, open) => ids.forEach(id => { if (open) folderClose
 const pdfButton = attrs => `<button class="btn primary pdfbtn" type="button" ${attrs}>${Icons.svg('pdf', { size: 18 })}<span>Export to PDF</span></button>`;
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
+let slotcarSource='local';
 async function mountManager(box, e) {
   const run = ++subRun;
   manager = { box, e };
   const s = state.schema[e];
   const [storedItems, custom] = await Promise.all([api.list(e), s.extra === false ? [] : api.customFields(e)]);
-  const items = databaseOrdered(e, storedItems);
+  const items = databaseOrdered(e, e==='slotcars'?storedItems.filter(c=>!c.paddock):storedItems);
   if (run !== subRun) return;
   state.custom[e] = custom;
   if(e==='racesetups')state.rulePlugins=api.pluginRuleCatalog?await api.pluginRuleCatalog():[];
@@ -217,6 +218,12 @@ async function mountManager(box, e) {
   if (e === 'racesetups') state.refs.championships = await api.list('championships'); // (1.71.0: the box Used by in the form of a race setup names the championships that use it)
   if (s.used) state.refs[s.used.entity] = await api.list(s.used.entity); // (1.73.0: the box Used by in the form of a system names the race setups that choose it)
   if (run !== subRun) return;
+  if(e==='slotcars'&&state.focusCar&&storedItems.find(c=>c.id===state.focusCar)?.paddock){const focused=storedItems.find(c=>c.id===state.focusCar);state.focusCar=null;openView(e,focused);}
+  if(e==='slotcars'&&slotcarSource==='paddock'&&typeof PaddockBrowser!=='undefined'){
+    if(run!==subRun)return;
+    box.innerHTML='<div data-paddock-browser></div>';box.onclick=null;box.onchange=null;box.onkeydown=null;
+    PaddockBrowser.mount(box.querySelector('[data-paddock-browser]'),api,{openLocal:()=>{slotcarSource='local';mountManager(box,e);},view:async car=>{state.refs.raceclasses=await api.list('raceclasses');if(run===subRun)openView('slotcars',car);}});return;
+  }
   const cols = s.list
     ? s.list.map(k => columnOf(s, k)).map(f => ({ label: fl(f), get: i => columnCell(f, i) }))
     : [
@@ -285,7 +292,7 @@ async function mountManager(box, e) {
     <div class="rskinds">${SETUP_START.map(([id, label]) => `<button class="rspill" type="button" data-rskind="${id}">${esc(label)}</button>`).join('')}</div></div>`;
   const rsEmpty = !items.length ? 'No race setups yet. Use the button above, or start from a kind below.' : `Nothing under ${SETUP_FILTERS.find(f => f[0] === setupFilter)[1]} yet. Start one below.`;
   const rsBody = e !== 'racesetups' ? '' : (rsShown.length ? (mode === 'grid' ? `<div class="rscards">${rsShown.map(rsCard).join('')}</div>` : tableHtml(rsShown, cols)) : `<p class="muted">${esc(rsEmpty)}</p>`) + rsStart;
-  box.innerHTML = `<div class="row${e==='racesetups'?' rstoolbar':''}"><button class="btn primary" id="add">Add ${esc(s.label.toLowerCase())}</button>
+  box.innerHTML = (e==='slotcars'?'<div class="pb-toolbar"><div class="seg" role="group" aria-label="Car database"><button class="btn on" aria-pressed="true">Local Database</button><button class="btn" id="paddock-view" aria-pressed="false">Paddock Database</button></div></div>':'')+`<div class="row${e==='racesetups'?' rstoolbar':''}"><button class="btn primary" id="add">Add ${esc(s.label.toLowerCase())}</button>
       ${e === 'slotcars' ? '<button class="btn" id="paddock-open">Connect to Paddock</button>' : ''}${e === 'tracks' ? '<button class="btn" id="track-import">Import from Track Builder</button>' : ''}${s.extra === false ? '' : '<button class="btn" id="extra">Extra fields…</button>'}${rsFilter}${viewBtn}${toggle}</div>${bar}` +
     (e === 'racesetups' ? rsBody
       : items.length && mode === 'grid' ? gridHtml(items)
@@ -313,6 +320,7 @@ async function mountManager(box, e) {
     if (b.dataset.vsreset) { await viewReset([[e, mode]]); return mountManager(box, e); }
     if (e === 'tracks' && (b.id === 'track-import' || b.dataset.trackDesign)) return TrackDesignUI.open(api, items.find(i=>i.id===b.dataset.trackDesign), ()=>mountManager(box,e));
     if (b.id === 'paddock-open') return PaddockUI.open(api,()=>mountManager(box,e));
+    if (b.id === 'paddock-view') {slotcarSource='paddock';return mountManager(box,e);}
     if (b.id === 'add') return openForm(e, null);
     if (b.id === 'extra') return openExtra(e);
     if (b.id === 'vgrid' || b.id === 'vlist') { state.settings = await api.setSettings({ [viewKey]: b.id === 'vgrid' ? 'grid' : 'list' }); return mountManager(box, e); }

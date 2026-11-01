@@ -1,6 +1,6 @@
 // Home / landing page: pick a race setup, assign drivers and cars to its lanes, start the race.
 const optionsOf = (entity, list, chosen, blank = '(choose)') =>
-  `<option value="">${esc(blank)}</option>` + list.map(i => `<option value="${esc(i.id)}"${i.id === chosen ? ' selected' : ''}>${esc(titleOf(entity, i))}</option>`).join('');
+  `<option value="">${esc(blank)}</option>` + list.filter(i=>entity!=='slotcars'||!i.paddock?.archived||i.id===chosen).map(i => `<option value="${esc(i.id)}"${i.id === chosen ? ' selected' : ''}${entity==='slotcars'&&i.paddock?.archived?' disabled':''}>${esc(titleOf(entity, i))}${entity==='slotcars'&&i.paddock?(i.paddock.archived?' · unavailable':' · Paddock'):''}</option>`).join('');
 
 // 1.17.0: the cards on the right of the Home tab need every saved lap. The laps are fetched once and kept while you stay on the Home tab (a change on Home does not fetch them again);
 // app.js forgets them (resetHome) whenever another tab was shown, because a race may have been saved or a record removed since. homeRun numbers the pictures, so a late answer never lands in a newer one.
@@ -127,6 +127,7 @@ async function renderHome() {
     if (withTeam) { if (dup('teamId')) issues.push('A team is used more than once.'); }
     else if (dup('driverId')) issues.push('A driver is used more than once.');
     if (dup('carId')) issues.push('A car is used more than once.');
+    if(rows.some(r=>!isRival(r)&&cars.find(c=>c.id===r.carId)?.paddock?.archived))issues.push('A selected Paddock car is no longer available. Choose another car.');
   }
 
   // a heat-based race: the plan of the heats, made before the race so that it can be looked at (and shuffled again). The seed makes the shuffle repeatable: the plan shown here is the plan that is raced.
@@ -216,7 +217,7 @@ async function renderHome() {
     return `<div class="lane${rot ? ' rot' : ''}${gone ? ' away' : ''}${byTeam ? ' byteam' : ''}${withTeam && !byTeam ? ' threesel' : ''}${!ready ? ' need' : ''}" data-row="${i}" style="--c:${esc(laneHue(i))}">
       <strong class="hs-num" style="--on:${onLane(laneHue(i))}" title="${esc(who)}"><span class="hs-vh">${esc(who)}</span><span aria-hidden="true">${i + 1}</span></strong>
       <div class="hs-fields">${byTeam ? sel2('', teamSelect(r, i)) : `${withTeam ? sel2('', teamSelect(r, i)) : ''}${sel2('driver', `<select data-k="driverId" aria-label="${enduSingle ? 'Starting driver' : 'Driver'} for row ${i + 1}"${away(r) ? ' disabled' : ''}>${driverOpts(enduSingle && !r.teamId ? [] : driverList(r), r.driverId, tokens ? 'Guest (no driver)' : enduSingle ? (setup.endurance.next === 'random' ? '(starting driver: by lot)' : '(starting driver: the first of the team)') : undefined)}</select>`)}`}${isRival(r)&&allowRival?rivalSelect(r,i):sel2('car', `<select data-k="carId" aria-label="Car for row ${i + 1}"${away(r) ? ' disabled' : ''}>${optionsOf('slotcars', MultiClass.carsFor(r,mc,{cars,drivers,teams}), r.carId, mc?.assignment==='roster' ? (MultiClass.assignedClass(r,mc,{cars,drivers,teams})?'Choose a matching car':'Choose an assigned driver first') : tokens ? '(no car)' : undefined)}</select>`)}</div>
-      ${more ? `<div class="hs-more">${more}</div>` : ''}
+      ${more||!isRival(r)&&typeof PaddockBrowser!=='undefined' ? `<div class="hs-more">${more}${!isRival(r)&&typeof PaddockBrowser!=='undefined'?`<button type="button" class="btn hs-paddock-pick" data-paddock-pick="${i}"${away(r)||raceOn?' disabled':''}>Browse Local / Paddock cars</button>`:''}</div>` : ''}
       ${gone ? '<span class="hs-tick off" aria-hidden="true"></span>' : `<span class="hs-tick ${ready ? 'ok' : 'warn'}" role="img" aria-label="${ready ? 'Ready' : 'Not ready yet'}">${Icons.svg(ready ? 'check' : 'alert', { size: 13, stroke: 2.6 })}</span>`}
       ${note ? `<div class="hs-note">${note}</div>` : ''}</div>`;
   };
@@ -416,6 +417,18 @@ async function renderHome() {
   };
   view.onclick = ev => {
     const b = ev.target.closest('button'); if (!b) return;
+    if(b.dataset.paddockPick!==undefined){
+      const i=Number(b.dataset.paddockPick);
+      return PaddockBrowser.pick(api,async car=>{
+        if(state.tab!=='home'||draw!==homeDraw)throw Error('Race setup changed. Reopen the car selector.');
+        const available=await api.list('slotcars');
+        if(!MultiClass.carsFor(rows[i],mc,{cars:available,drivers,teams}).some(c=>c.id===car.id))throw Error('This car does not match the driver’s assigned race class. Choose a matching car.');
+        rows[i].carId=car.id;await persist();
+      },mc?.assignment==='roster'?{guidance:'Only cars matching this driver’s assigned race class are shown.',accept:(car,source)=>{
+        const raceClass=source==='local'?car.raceClass:classDefs.find(c=>c.name.trim().toLocaleLowerCase()===car.raceClass.trim().toLocaleLowerCase())?.id;
+        return MultiClass.carsFor(rows[i],mc,{cars:[{...car,raceClass}],drivers,teams}).length>0;
+      }}:{});
+    }
     if (b.id === 'hmcustom') { hc.open = !hc.open; renderHome(); return; }
     if (b.dataset.chst) { state.champHomeWhich = b.dataset.chst; renderHome(); return; }
     if (b.dataset.chall) { champView.id = b.dataset.chall; champView.which = state.champHomeWhich === 'teams' ? 'teams' : 'drivers'; state.resultsSub = 'champs'; state.tab = 'database'; state.sub = 'results'; render(); return; } // 1.56.0: the standings of the championship
