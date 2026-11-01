@@ -38,7 +38,7 @@ jobs:
           - os: ubuntu-22.04
             platform: linux
             command: npm run dist:linux -- --x64 --publish never
-          - os: macos-14
+          - os: macos-15
             platform: mac
             command: npm run dist:mac -- --publish never -c.mac.identity=-
     runs-on: ${{ matrix.os }}
