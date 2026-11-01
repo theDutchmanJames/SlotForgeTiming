@@ -7,7 +7,7 @@ const asar=path.join(root,'dist',relative);assert(fs.existsSync(asar),'Packaged 
 assert.equal(require(path.join(asar,'package.json')).version,require('../../package.json').version);
 let done=false;setTimeout(()=>app.exit(2),60000).unref();
 app.on('browser-window-created',(_,win)=>{
-  win.hide();const errors=[];
+  win.hide();win.webContents.setBackgroundThrottling(false);const errors=[];
   win.webContents.on('did-fail-load',(_,code,text)=>errors.push({code,text}));
   win.webContents.on('render-process-gone',(_,info)=>errors.push(info));
   win.webContents.on('did-finish-load',async()=>{
@@ -16,6 +16,8 @@ app.on('browser-window-created',(_,win)=>{
       await new Promise(r=>setTimeout(r,800));win.setContentSize(1250,950);
       const status=await win.webContents.executeJavaScript(`(async()=>{if(Widgets.REGISTRY.length<70)throw Error('Widget catalogue missing');if(typeof WidgetView.fit!=='function')throw Error('Widget renderer missing');state.tab='database';state.sub='slotcars';await render();const ed=await PaddockUI.open(api);if(!ed.dialog.textContent.includes('SlotForge Paddock'))throw Error('Paddock UI missing');const s=await api.paddockStatus();if(s.connected||s.linked.length)throw Error('Profile not isolated');return {widgets:Widgets.REGISTRY.length,paddock:true};})()`);
       assert.equal(errors.length,0);assert(app.getPath('userData').startsWith(out));
+      // DOM/IPC work can finish before Chromium presents the new dialog frame.
+      await new Promise(r=>setTimeout(r,350));
       fs.writeFileSync(path.join(out,'app.png'),(await win.webContents.capturePage()).toPNG());
       fs.writeFileSync(path.join(out,'result.json'),JSON.stringify({platform:process.platform,arch:process.arch,version:require('../../package.json').version,status,errors,packagedCode:true},null,2));
       console.log('PACKAGED DESKTOP SMOKE PASS');app.exit(0);

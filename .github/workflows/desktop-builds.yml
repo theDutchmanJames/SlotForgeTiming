@@ -85,7 +85,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: smoke-${{ matrix.platform }}
-          path: .tmp-test/desktop-smoke/
+          path: |
+            .tmp-test/desktop-smoke/app.png
+            .tmp-test/desktop-smoke/result.json
+          include-hidden-files: true
           if-no-files-found: ignore
 
   publish:
