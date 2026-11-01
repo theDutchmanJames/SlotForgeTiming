@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.99.7 — 2026-11-01
+
+- Rename the Paddock connection field to Dealership password and accept 4–128 characters, preserving legacy Timing credentials and existing browsing/results behaviour. Update connection guidance for remembered Dealership passwords.
+- Replace the application icon with the approved SlotForge red chequered-flag design, including Windows icon sizes and main/Live Race window icons.
+
 ## 1.99.6 — 2026-11-01
 
 - Reduce Paddock-related stalls by preserving serialization caches for unchanged photos, laps and sessions. Keep durable saves and rollback behaviour for links, captures and delivery receipts.

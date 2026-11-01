@@ -26,6 +26,7 @@ let pendingImport = null; // a file chosen for import, waiting for the user to c
 
 function createWindow() {
   const win = new BrowserWindow({
+    icon: path.join(__dirname, 'build', 'icon.png'),
     width: 1200, height: 800, minWidth: 760, minHeight: 520,
     autoHideMenuBar: true, // press Alt to show the menu (View > Toggle Full Screen)
     webPreferences: {
@@ -90,6 +91,7 @@ function openLiveWindow() {
   const other = displays.find(d => d.id !== primary.id);
   const b = (other || primary).workArea;
   liveWin = new BrowserWindow({
+    icon: path.join(__dirname, 'build', 'icon.png'),
     x: b.x + 40, y: b.y + 40, width: Math.min(1200, b.width - 80), height: Math.min(800, b.height - 80), minWidth: 600, minHeight: 400,
     title: 'Live Race', autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false }

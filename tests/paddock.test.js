@@ -65,8 +65,8 @@ test('an unsaved correction or withdrawal is never uploaded after a disk failure
 
 test('credentials preserve case and repeated spaces, reject invalid header text and support generated codes',()=>{
   const {credential}=require('../paddock');
-  for(const code of ['a'.repeat(24),'Club  Timing #42','A'.repeat(128),'12345678'])assert.equal(credential(code),code);
-  for(const code of [null,12345678,'short','x'.repeat(129),' password','password ','password\r\nHeader: injected','pass\tword','Café racing'])assert.throws(()=>credential(code),/8–128/);
+  for(const code of ['a'.repeat(24),'Club  Timing #42','A'.repeat(128),'12345678','Ab!4','five5','six!66','seven77','A  b'])assert.equal(credential(code),code);
+  for(const code of [null,12345678,'','a','ab','abc','x'.repeat(129),' password','password ','password\r\nHeader: injected','pass\tword','Café racing'])assert.throws(()=>credential(code),/4–128/);
 });
 
 test('Retry-After supports seconds and dates with a safe fallback for missing or malformed values',()=>{
@@ -124,4 +124,14 @@ test('actual Paddock JSON export imports independent cars, images and shared cla
   assert.deepEqual(db.data.slotcars[0].extraPictures,[image]);T.apply(db,bundle);await db.saved();
   const reopened=new Database(db.file);assert.equal(reopened.data.slotcars.length,4);assert.equal(new Set(reopened.data.slotcars.map(c=>c.id)).size,4);assert.deepEqual(reopened.data.slotcars.slice(0,2).map(c=>c.id),firstIds);
   assert.ok(reopened.data.slotcars.slice(2).every(c=>c.raceClass!==cl&&reopened.data.raceclasses.some(x=>x.id===c.raceClass)&&!c.paddock));
+});
+
+test('four-character Dealership password reaches HTTP pairing unchanged and is not persisted',async t=>{
+  const http=require('node:http');let authorization;
+  const host=http.createServer((req,res)=>{authorization=req.headers.authorization;res.setHeader('Content-Type','application/json');res.end(JSON.stringify({id:'dealership',name:'Club dealership',permissions:{browse:true,timingResults:true},capabilities:{timing:{versions:[1]},club:1}}));});
+  await new Promise(r=>host.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>host.close(r)));
+  const db=database(t),client=new Paddock(db);t.after(()=>client.stop());
+  await client.connect({address:'127.0.0.1:'+host.address().port,code:'A  b'});
+  assert.equal(authorization,'Bearer A  b');assert.equal(client.status().connection.results,true);assert.equal(client.status().connection.timing,true);
+  assert.ok(!JSON.stringify(client.status()).includes('A  b'));assert.ok(!fs.readFileSync(db.file,'utf8').includes('A  b'));
 });

@@ -1,6 +1,6 @@
 {
   "name": "slotforge-timing",
-  "version": "1.99.6",
+  "version": "1.99.7",
   "description": "Slot car lap timer and lap counter for Windows, macOS and Linux",
   "author": {
     "name": "theDutchmanJames",
@@ -101,6 +101,7 @@
       "package.json",
       "*.js",
       "LICENSE",
+      "build/icon.png",
       "vendor/**",
       "renderer/**",
       "node_modules/flag-icons/**",

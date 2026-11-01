@@ -11,7 +11,7 @@ function checkedReceipt(r,p){
 }
 function receiptWarnings(d){return d.status==='sent'&&Array.isArray(d.receipt?.warnings)?d.receipt.warnings.slice(0,512).filter(w=>w&&typeof w==='object').map(w=>({code:String(w.code||'').slice(0,100),carId:String(w.carId||'').slice(0,100),carName:d.payload?.participants?.find(p=>p.carId===w.carId)?.displayName||w.carId})):[];}
 function credential(value){
-  if(typeof value!=='string'||value.length<8||value.length>128||!(/^[\x20-\x7e]+$/).test(value)||value!==value.trim())throw Error('Enter the Timing code or password from Paddock: 8–128 English letters, numbers, spaces or symbols, with no spaces at either end.');
+  if(typeof value!=='string'||value.length<4||value.length>128||!(/^[\x20-\x7e]+$/).test(value)||value!==value.trim())throw Error('Enter the Dealership password from Paddock: 4–128 English letters, numbers, spaces or symbols, with no spaces at either end.');
   return value; // Opaque and case-sensitive, including repeated internal spaces.
 }
 function retryDelay(value,now=Date.now()){
@@ -125,7 +125,7 @@ class Paddock {
     }finally{this.busy=false;}
   }
   disconnect(forget=false){return this.exclusive(async()=>{this.code='';this.connected=false;this.catalog=[];clearTimeout(this.timer);const previous=this.state().connection;if(forget)this.state().connection=null;try{await this.commit();}catch(e){this.state().connection=previous;throw e;}this.error='';return this.status();});}
-  async call(route,body,limit){const c=this.state().connection;if(!c||!this.code)throw Error('Connect with the current Paddock Timing code or password first.');return this.hostRequest(c.address,route,this.code,c.databaseId,body,limit);}
+  async call(route,body,limit){const c=this.state().connection;if(!c||!this.code)throw Error('Connect with the current Paddock Dealership password first (or a Timing credential on a legacy host).');return this.hostRequest(c.address,route,this.code,c.databaseId,body,limit);}
   browse(){return this.exclusive(()=>this.browseNow());}
   catalogueView(includePictures=true){
     const c=this.state().connection,cache=this.state().catalogue;
@@ -258,7 +258,7 @@ class Paddock {
   }
   schedule(delay=30000){clearTimeout(this.timer);if(!this.stopped&&this.code)this.timer=setTimeout(()=>this.flush().catch(()=>{}),Math.max(delay,this.retryAt(this.state().connection?.address)-Date.now())).unref();}
   async flush(){if(this.busy||!this.code||this.stopped||this.isRacing?.()){this.schedule();return this.status();}this.busy=true;let retry=30000;
-    try{await this.db.saved();const c=this.state().connection;if(!this.deliveries().some(d=>d.status==='pending'&&d.payload?.databaseId===c?.databaseId))return this.status();const s=await this.call('/v1/status');if(s.id!==c.databaseId)throw Object.assign(Error('Paddock database identity changed.'),{code:'DATABASE_MISMATCH'});if(!s.permissions?.timingResults)throw Error('Enable Allow Timing results and use the Timing connection code or password.');
+    try{await this.db.saved();const c=this.state().connection;if(!this.deliveries().some(d=>d.status==='pending'&&d.payload?.databaseId===c?.databaseId))return this.status();const s=await this.call('/v1/status');if(s.id!==c.databaseId)throw Object.assign(Error('Paddock database identity changed.'),{code:'DATABASE_MISMATCH'});if(!s.permissions?.timingResults)throw Error('This connection cannot send results. Use the Dealership password. On a legacy Paddock host, enable Allow Timing results and use its dedicated Timing credential.');
       for(const d of this.deliveries().filter(d=>d.status==='pending'&&d.payload?.databaseId===c.databaseId)){
         if(this.isRacing?.())break;
         try{const p=d.payload;await this.commit(this.deliveryRows(d));if(this.stopped)return this.status();if(this.isRacing?.())break;const r=checkedReceipt(await this.call('/v1/timing/sessions',p),p);if(this.stopped)return this.status();

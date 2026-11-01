@@ -7,12 +7,12 @@
     dialog.innerHTML=`<header><div><p class="muted">DATABASE CONNECTION</p><h2>SlotForge Paddock</h2><p>Choose your cars here. Keep their technical history in Paddock.</p></div><button class="btn" data-close>Close</button></header>
       <div class="paddock-shell"><nav aria-label="Paddock sections"><button class="btn" data-jump="connection">Connection</button><button class="btn" data-jump="cars">Available cars</button><button class="btn" data-jump="results">Result delivery</button><p class="muted">Cars stay available offline. Racing never waits for a results upload.</p></nav><main>
       <p role="status" data-status></p><p role="alert" data-error></p>
-      <section id="paddock-connection"><h3>Connection</h3><p>Start sharing in Paddock, enable <b>Allow Timing results</b>, then use its separate <b>Timing connection code or password</b>. Browse-only and car-submission passwords do not allow result delivery.</p>
+      <section id="paddock-connection"><h3>Connection</h3><p>Start Dealership hosting in Paddock, then enter its <b>Dealership password</b> here to browse cars and send finalized results.</p>
       <div class="row"><button class="btn" data-find>Find Paddock on network</button><select aria-label="Nearby Paddock hosts" data-hosts><option value="">Or enter an address below</option></select></div>
       <label>Host address and port<input data-address placeholder="192.168.1.20:51234" value="${esc(status.connection?.address||'')}" autocomplete="off"></label>
-      <label>Timing connection code or password<input data-code type="password" autocomplete="off" spellcheck="false" placeholder="Generated code or custom Timing password"></label>
-      <p class="muted">Passwords are case-sensitive: 8–128 English letters, numbers, spaces or symbols. Internal spaces are kept exactly; leave no spaces at either end. Custom passwords are available in Paddock 0.18.0 and later; older builds use generated codes.</p>
-      <p class="muted">Your code or password stays in memory only. Restarting Paddock sharing resets custom passwords and generates new codes; the port can also change. Reconnect using its current Timing credential and address.</p>
+      <label>Dealership password<input data-code type="password" minlength="4" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Password set on the Paddock dealership"></label>
+      <p class="muted">Passwords are case-sensitive: 4–128 English letters, numbers, spaces or symbols. Internal spaces are kept exactly; leave no spaces at either end.</p>
+      <p class="muted">Timing keeps the password in memory only; reconnect after restarting Timing. Paddock remembers its Dealership password, but its host port can change after a restart. Legacy hosts still accept their dedicated Timing code or password and require Allow Timing results to be enabled.</p>
       <p data-cooldown role="status" hidden></p>
       <div class="row"><button class="btn primary" data-connect>Connect</button><button class="btn" data-disconnect>Disconnect</button><button class="btn" data-forget>Forget host</button></div></section>
       <section id="paddock-cars"><h3>Available cars</h3><p>For normal racing, use the Paddock Database view or Browse Local / Paddock cars on Home. Selection caches the car automatically. The tools below can also link an existing Timing car to preserve its previous race history. Specifications come from Paddock; simulation and service settings stay local.</p>
@@ -30,7 +30,7 @@
       q('[data-car-prev]').disabled=busy||carPage===0;q('[data-car-next]').disabled=busy||(carPage+1)*40>=carCount;
       if(seconds)cooldownTimer=setTimeout(cooldown,1000);
     }
-    function paint(){q('[data-status]').textContent=status.connected?'Connected to '+status.connection.name:status.connection?'Saved host: '+status.connection.name+' · '+(status.hasCode?'Offline':'Enter the current code or password to reconnect'):'No Paddock host connected';
+    function paint(){q('[data-status]').textContent=status.connected?'Connected to '+status.connection.name:status.connection?'Saved host: '+status.connection.name+' · '+(status.hasCode?'Offline':'Enter the Dealership password to reconnect'):'No Paddock host connected';
       if(status.error)error(status.error);
       q('[data-linked]').innerHTML=status.linked.length?status.linked.map(c=>`<p><b>${esc(c.name)}</b> · ${c.archived?'Unavailable in Paddock':'Available'}<br><small>Configuration captured ${esc(c.capturedAt?new Date(c.capturedAt).toLocaleString():'not yet')}</small></p>`).join(''):'<p class="muted">No linked cars yet.</p>';
       q('[data-deliveries]').innerHTML=status.deliveries.length?status.deliveries.map(d=>{
@@ -51,7 +51,7 @@
       finally{busy=false;dialog.querySelectorAll('button,input,select').forEach(x=>x.disabled=false);cooldown();}
       if(failure)error(failure.message);
     }
-    q('[data-find]').onclick=()=>run(async()=>{q('[data-find]').textContent='Searching… (about 4 seconds)';try{const hosts=await api.paddockDiscover();q('[data-hosts]').innerHTML='<option value="">'+(hosts.length?'Choose a host':'No host found — enter address manually')+'</option>'+hosts.map(h=>`<option value="${esc(h.address)}">${esc(h.name)} · ${esc(h.address)}</option>`).join('');if(!hosts.length)throw Error('No Paddock host replied after several attempts. Make sure sharing is active on the same local network. Discovery uses UDP port 47778 and may be blocked even when connecting by address works; you can enter the host address below.');}finally{q('[data-find]').textContent='Find Paddock on network';}});
+    q('[data-find]').onclick=()=>run(async()=>{q('[data-find]').textContent='Searching… (about 4 seconds)';try{const hosts=await api.paddockDiscover();q('[data-hosts]').innerHTML='<option value="">'+(hosts.length?'Choose a host':'No host found — enter address manually')+'</option>'+hosts.map(h=>`<option value="${esc(h.address)}">${esc(h.name)} · ${esc(h.address)}</option>`).join('');if(!hosts.length)throw Error('No Paddock host replied after several attempts. Make sure Paddock hosting is active on the same local network. Discovery uses UDP port 47778 and may be blocked even when connecting by address works; you can enter the host address below.');}finally{q('[data-find]').textContent='Find Paddock on network';}});
     q('[data-hosts]').onchange=e=>{if(e.target.value)q('[data-address]').value=e.target.value;cooldown();};q('[data-address]').oninput=cooldown;
     q('[data-connect]').onclick=()=>run(async()=>{status=await api.paddockConnect({address:q('[data-address]').value,code:q('[data-code]').value});q('[data-code]').value='';await loadCatalogue();});
     q('[data-disconnect]').onclick=()=>run(()=>api.paddockDisconnect(false));

@@ -4,9 +4,9 @@ Timing uses Paddock's Timing v1 API, available from Paddock 0.17.0. The bundled 
 
 ## Connect and race
 
-1. Start sharing in Paddock and enable **Allow Timing results**.
+1. Start Dealership hosting in Paddock.
 2. In Timing, open **Database → Slotcars → Connect to Paddock**.
-3. Find the host on the network, or enter the IPv4 address and port displayed by Paddock. Enter its separate **Timing connection code or password**.
+3. Find the host on the network, or enter the IPv4 address and port displayed by Paddock. Enter its **Dealership password**.
 4. Switch to **Paddock Database** to browse public cars. Local cars remain under **Local Database**. On Home, **Browse Local / Paddock cars** selects a remote car directly and caches it automatically. The connection dialog retains optional tools to link an existing local car and preserve its history.
 5. Finalize reviewed race results to queue delivery. Previously selected cars with valid captures remain usable offline.
 
@@ -14,7 +14,7 @@ While the Paddock browser is visible, a shared 30-second revision check refreshe
 
 The browser loads photographs only for its visible page, from Timing's existing catalogue cache. These local image requests do not increase network polling. See [the performance repair notes](PADDOCK-PERFORMANCE.md) for measurements and verification.
 
-Codes and passwords are held in memory, not saved in the database. Custom passwords require Paddock 0.18.0 or later and use 8–128 printable ASCII characters; preserve case and repeated internal spaces, with no spaces at either end. Generated codes remain supported. Restarting Paddock sharing resets custom passwords. Reconnect after restarting Timing or Paddock sharing; Paddock's code and port can change. A host's stable database identity prevents accidental delivery to another collection.
+Timing holds credentials in memory, not in its database. Dealership passwords use 4–128 printable ASCII characters; preserve case and repeated internal spaces, with no spaces at either end. Paddock remembers the Dealership password across host restarts; its port can change. Reconnect after restarting Timing or when the host details change. Legacy hosts remain supported: use their dedicated Timing credential and enable **Allow Timing results**. Their temporary credentials reset when sharing restarts. A host's stable database identity prevents accidental delivery to another collection.
 
 ## Data ownership
 
