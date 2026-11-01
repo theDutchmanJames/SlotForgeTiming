@@ -62,3 +62,66 @@ test('connection changes cannot interleave with an active catalogue or capture o
 test('one physical Paddock car cannot race as two entries at once',async t=>{const db=database(t);const car=db.add('slotcars',{model:'Linked',paddock:{databaseId:'host',carId:'remote'}}),client=new Paddock(db);t.after(()=>client.stop());await assert.rejects(client.prepare([car.id,car.id]),/one entry/);});
 
 test('an unsaved correction or withdrawal is never uploaded after a disk failure',async t=>{const db=database(t);await db.saveSessionAsync(sessionData(),[]);const client=new Paddock(db);t.after(()=>client.stop());client.state().connection={databaseId:'paddock-demo'};client.code='test';let posted=0;client.call=async(route)=>{if(route==='/v1/status')return {id:'paddock-demo',permissions:{timingResults:true}};posted++;throw Error('Should not upload');};db.commit=()=>{throw Error('disk full');};await client.flush();assert.equal(posted,0);assert.match(client.error,/disk full/);});
+
+test('credentials preserve case and repeated spaces, reject invalid header text and support generated codes',()=>{
+  const {credential}=require('../paddock');
+  for(const code of ['a'.repeat(24),'Club  Timing #42','A'.repeat(128),'12345678'])assert.equal(credential(code),code);
+  for(const code of [null,12345678,'short','x'.repeat(129),' password','password ','password\r\nHeader: injected','pass\tword','Café racing'])assert.throws(()=>credential(code),/8–128/);
+});
+
+test('Retry-After supports seconds and dates with a safe fallback for missing or malformed values',()=>{
+  const {retryDelay}=require('../paddock'),now=Date.parse('2026-10-31T12:00:00Z');
+  assert.equal(retryDelay('125',now),125000);assert.equal(retryDelay('Sat, 31 Oct 2026 12:02:00 GMT',now),120000);
+  for(const v of [undefined,'','nonsense','-1','1.5'])assert.equal(retryDelay(v,now),60000);
+  assert.equal(retryDelay('0',now),1000);assert.equal(retryDelay('999999999999',now),86400000);
+});
+
+test('HTTP 429 protects all client requests, survives disconnect and preserves queued results',async t=>{
+  const http=require('node:http');let hits=0,blocked=false;
+  const host=http.createServer((req,res)=>{hits++;res.setHeader('Content-Type','application/json');if(blocked){res.writeHead(429,{'Retry-After':'120'});res.end('temporarily unavailable');}else if(req.url==='/v1/status')res.end(JSON.stringify({id:'paddock-demo',name:'Test',permissions:{timingResults:true}}));else res.end(JSON.stringify({id:'paddock-demo',revision:1,cars:[]}));});
+  await new Promise(r=>host.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>host.close(r)));
+  const base='127.0.0.1:'+host.address().port,db=database(t),client=new Paddock(db);t.after(()=>client.stop());
+  await client.connect({address:base,code:'Club  Timing #42'});await db.saveSessionAsync(sessionData(),[]);
+  blocked=true;await client.flush();const count=hits;
+  assert.equal(db.data.sessions[0].paddockDelivery.status,'pending');assert.equal(client.status().cooldowns.length,1);assert.ok(client.timer._idleTimeout>115000);
+  await assert.rejects(client.browse(),/cooldown/);await client.retry();await assert.rejects(client.connect({address:base,code:'New password'}),/cooldown/);
+  await client.disconnect();await assert.rejects(client.connect({address:'localhost:9',code:'New password'}),/cooldown/);assert.equal(hits,count);
+  assert.ok(!JSON.stringify(client.status()).includes('Club  Timing #42'));assert.ok(!fs.readFileSync(db.file,'utf8').includes('Club  Timing #42'));
+  // Expire the same clock boundary without a two-minute test sleep.
+  client.cooldowns.set('127.0.0.1',Date.now()-1);blocked=false;await client.connect({address:base,code:'New password'});assert.equal(client.status().cooldowns.length,0);assert.equal(hits,count+1);
+});
+
+test('failed initial pairing records a cooldown even before any host is saved',async t=>{
+  const http=require('node:http');let hits=0;
+  const host=http.createServer((req,res)=>{hits++;res.writeHead(429,{'Content-Type':'application/json'});res.end(JSON.stringify({code:'AUTH_RATE_LIMITED',error:'Wait'}));});
+  await new Promise(r=>host.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>host.close(r)));
+  const client=new Paddock(database(t));t.after(()=>client.stop());const input={address:'127.0.0.1:'+host.address().port,code:'Club password'};
+  await assert.rejects(client.connect(input),e=>e.httpStatus===429);assert.ok(client.status().cooldowns[0].until>Date.now()+55000);assert.equal(client.status().connection,null);
+  await assert.rejects(client.connect(input),/cooldown/);assert.equal(hits,1);
+});
+
+test('actual Paddock accepts custom Timing passwords and retains results through authentication limits',{skip:!paddockSource},async t=>{
+  const {Network}=require(path.join(paddockSource,'src/network.cjs')),{Store}=require(path.join(paddockSource,'src/store.cjs'));
+  const host=new Network(new Store());await host.start();t.after(()=>host.stop());host.controls({allowTimingResults:true,access:'timing',password:'Timing  Club #42'});
+  const client=new Paddock(database(t));t.after(()=>client.stop());const base='127.0.0.1:'+host.port;
+  await client.connect({address:base,code:'Timing  Club #42'});assert.equal(client.status().connection.results,true);
+  await assert.rejects(client.connect({address:base,code:'timing  Club #42'}),e=>e.code==='UNAUTHENTICATED');
+  await assert.rejects(client.connect({address:base,code:'Timing Club #42'}),e=>e.code==='UNAUTHENTICATED');
+  for(let i=0;i<8;i++)await assert.rejects(request('http://'+base,'/v1/status','incorrect password'),e=>e.httpStatus===401);
+  await assert.rejects(client.connect({address:base,code:'Timing  Club #42'}),e=>e.httpStatus===429&&e.retryAfterMs>0);
+  assert.ok(client.status().cooldowns.length);host.controls({access:'timing',password:'Replacement password'});
+  client.cooldowns.set('127.0.0.1',Date.now()-1);await client.connect({address:base,code:'Replacement password'});assert.equal(client.status().connected,true);
+});
+
+test('actual Paddock JSON export imports independent cars, images and shared classes and survives reopening',{skip:!paddockSource},async t=>{
+  const {Store}=require(path.join(paddockSource,'src/store.cjs')),{timingExport}=require(path.join(paddockSource,'src/timing-export.cjs')),T=require('../transfer');
+  const store=new Store(),image='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
+  const ids=['First','Second'].map(name=>store.mutate('car.save',{data:{name,maker:'NSR',marque:'Aston Martin',model:name,raceClass:'GT3',picture:image,technical:{rearTyres:'Rear rubber',frontTyres:'Front foam',pinion:'9',gear:'27',motor:'King',weight:'84'}}}).result);
+  store.data.cars[0].photos=[{id:'photo',name:'Extra',data:image}];
+  const bundle=timingExport(store.data,ids,{photos:true}),db=database(t);assert.equal(T.check(bundle).ok,true);
+  T.apply(db,bundle);await db.saved();const firstIds=db.data.slotcars.map(c=>c.id),cl=db.data.raceclasses[0].id;
+  for(const c of db.data.slotcars){assert.equal(c.raceClass,cl);assert.equal(c.tyres,'Rear rubber');assert.equal(c.gearing,'9/27');assert.equal(c.picture,image);assert.equal(c.motor,'King');assert.equal(c.weight,'84');assert.equal(c.paddock,undefined);}
+  assert.deepEqual(db.data.slotcars[0].extraPictures,[image]);T.apply(db,bundle);await db.saved();
+  const reopened=new Database(db.file);assert.equal(reopened.data.slotcars.length,4);assert.equal(new Set(reopened.data.slotcars.map(c=>c.id)).size,4);assert.deepEqual(reopened.data.slotcars.slice(0,2).map(c=>c.id),firstIds);
+  assert.ok(reopened.data.slotcars.slice(2).every(c=>c.raceClass!==cl&&reopened.data.raceclasses.some(x=>x.id===c.raceClass)&&!c.paddock));
+});

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.99.4 download refresh — 2026-11-01
+
+- Add native GitHub Actions desktop builds for Windows, universal macOS and Linux, with regression tests, packaged-app smoke checks and verified release uploads.
+- Display Paddock receipt warnings and check previously delivered results on demand without resending them.
+- Refresh the bundled Paddock v0.18.0 handoff schema, fixtures and guidance.
+- Accept generated Paddock Timing codes and custom case-sensitive passwords without storing credentials.
+- Respect authentication cooldowns across connection attempts, catalogue requests and result delivery; show the remaining wait while preserving queued results.
+- Clarify independent Paddock JSON imports versus live links, with compatibility coverage for car specifications, photographs, race classes and repeat imports.
+
 ## 1.99.4 — 2026-10-31
 
 ### SlotForge Paddock integration

@@ -10,12 +10,12 @@
     ['audio','Audio & appearance',['audio','ambient','audioconditions','audiocategories','audioevents','look']],
     ['hardware','Timing hardware',['hardware','arduino','arduinoracelock','interfacepages','parallel','phidget','timingplugins']],
     ['results','Results & race control',['results','start','screen','sectors','director','lanecards']],
-    ['settings','Database & app settings',['database','trackbuilder','settingsnavigation','copyandorder','calculations','performance','contentpacks','transfer']],
+    ['settings','Database & app settings',['database','paddock','paddockpasswords','paddockfiles','paddockwarnings','trackbuilder','settingsnavigation','copyandorder','calculations','performance','contentpacks','transfer']],
     ['network','Screens & network',['live','driverstats','network']]
   ];
   // Only these known destinations can navigate out of Help; articles never supply commands.
   const ROUTES={pluginrules:{tab:'setup',setupSub:'setups'},plugindisplays:{tab:'custom',customSub:'pluginpages'},setups:{tab:'setup',setupSub:'setups'},fuel:{tab:'setup',setupSub:'fuel'},hardware:{tab:'settings',settingsSub:'hardware'},layouts:{tab:'custom',customSub:'layouts'},calculations:{tab:'settings',settingsSub:'calculations'}};
-  const RELATED={fuel:['servicestop','pushsave','calculations'],laphighlights:['laphighlightbehaviour','widgetstatecolours','widgetappearance'],tyrewear:['customtyres','tyretemperature','servicestop'],hardware:['parallel','phidget','arduino'],widgetcomposer:['widgetfreecanvas','widgetcomposeroptions','widgetappearance']};
+  const RELATED={paddock:['paddockpasswords','paddockfiles','paddockwarnings'],paddockwarnings:['paddock','results'],paddockpasswords:['paddock','paddockfiles'],paddockfiles:['paddock','transfer'],fuel:['servicestop','pushsave','calculations'],laphighlights:['laphighlightbehaviour','widgetstatecolours','widgetappearance'],tyrewear:['customtyres','tyretemperature','servicestop'],hardware:['parallel','phidget','arduino'],widgetcomposer:['widgetfreecanvas','widgetcomposeroptions','widgetappearance']};
   function fuelExample(tank,burn,rate){
     const v=[tank,burn,rate].map(x=>typeof x==='string'&&x.trim()===''?NaN:Number(x));
     if(v.some(x=>!Number.isFinite(x)||x<=0)||v[0]>10000||v[1]>1000||v[2]>1000)return null;

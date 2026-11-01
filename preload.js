@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('api', {
   paddockRefresh: () => call('paddock:refresh'),
   paddockPrepare: ids => call('paddock:prepare',ids),
   paddockRetry: () => call('paddock:retry'),
+  paddockCheckReceipt: id => call('paddock:receipt',id),
   pluginDisplayCatalog: () => call('plugins:displayCatalog'),
   pluginRuleCatalog: () => call('plugins:ruleCatalog'),
   pluginRulePrepare: (id,saved) => call('plugins:rulePrepare',id,saved),

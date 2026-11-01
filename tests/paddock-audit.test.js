@@ -7,6 +7,57 @@ function raceJournal(){let wall=100000;const j={captures:{a:{configuration:fixtu
 function queued(db){const {e,j,at}=raceJournal();e.start(0);at(10000);e.cross(0,10000);e.stop(10000);e.paddockReview();const sid=db.saveSession({setupName:'Audit race',trackId:'track',trackName:'Track',sessionType:'race',paddockJournal:j,standings:[{carId:'a',laps:1,pos:1,total:10000}]},[]);return db.data.sessions.find(s=>s.id===sid).paddockDelivery;}
 const status={id:'paddock-demo',permissions:{timingResults:true}};
 const receipt=p=>({ok:true,databaseId:p.databaseId,sourceId:p.source.id,sessionId:p.sessionId,revision:p.revision,state:p.state,contentHash:hash(p)});
+
+test('receipt warnings persist and refresh through GET without resending a delivered result',async t=>{
+  const {db,client}=clientFor(t),d=queued(db);let warns=[{code:'CAR_ARCHIVED',carId:'car-a'}],posts=0;
+  client.call=async(route,p)=>{if(route==='/v1/status')return status;if(p)posts++;return {...receipt(d.payload),warnings:warns};};
+  await client.flush();assert.equal(client.status().deliveries[0].warnings[0].code,'CAR_ARCHIVED');assert.equal(client.status().deliveries[0].warnings[0].carName,d.payload.participants[0].displayName);
+  warns=[{code:'SESSION_REQUIRES_CORRECTION',carId:'car-a'}];await client.checkReceipt(d.payload.sessionId);
+  assert.equal(posts,1);assert.equal(d.status,'sent');assert.equal(client.status().deliveries[0].warnings[0].code,'SESSION_REQUIRES_CORRECTION');assert.ok(d.receiptCheckedAt);
+  assert.equal(new Database(db.file).data.sessions[0].paddockDelivery.receipt.warnings[0].code,'SESSION_REQUIRES_CORRECTION');
+  await client.retry();assert.equal(posts,1,'warnings must not trigger an unchanged upload');
+});
+
+test('receipt checks reject mismatched identities, revisions and content while preserving accepted data',async t=>{
+  const {db,client}=clientFor(t),d=queued(db);d.status='sent';d.receipt=receipt(d.payload);const previous=structuredClone(d.receipt);
+  for(const patch of [{databaseId:'other'},{sourceId:'other'},{sessionId:'other'},{revision:99},{state:'withdrawn'},{contentHash:'bad'},{warnings:[{code:'BAD',carId:'bad/id'}]}]){
+    client.call=async()=>({...previous,...patch});await assert.rejects(client.checkReceipt(d.payload.sessionId),/does not match/);assert.deepEqual(d.receipt,previous);assert.equal(d.status,'sent');
+  }
+  client.call=async()=>{throw Object.assign(Error('missing'),{code:'SESSION_NOT_FOUND'});};await assert.rejects(client.checkReceipt(d.payload.sessionId));assert.match(d.receiptCheckError,/no longer has a receipt/);assert.deepEqual(d.receipt,previous);
+});
+
+test('receipt checking rejects other databases, pending results and racing without network work',async t=>{
+  const {db,client}=clientFor(t),d=queued(db);let calls=0;client.call=async()=>{calls++;};
+  await assert.rejects(client.checkReceipt(d.payload.sessionId),/delivered result/);d.status='sent';client.state().connection.databaseId='other';await assert.rejects(client.checkReceipt(d.payload.sessionId),/delivered result/);
+  client.state().connection.databaseId='paddock-demo';client.isRacing=()=>true;await assert.rejects(client.checkReceipt(d.payload.sessionId),/Finish the race/);assert.equal(calls,0);
+});
+
+test('in-flight receipt checks cannot overwrite local corrections or withdrawals',async t=>{
+  const {db,client}=clientFor(t),d=queued(db);d.status='sent';let release;client.call=()=>new Promise(r=>release=r);
+  const pending=client.checkReceipt(d.payload.sessionId);const session=db.data.sessions[0];Records.revise(db.data,session);release({...receipt(d.payload),warnings:[{code:'SESSION_REQUIRES_CORRECTION',carId:'car-a'}]});await pending;
+  assert.equal(session.paddockDelivery.status,'pending');assert.equal(session.paddockDelivery.payload.revision,2);assert.equal(session.paddockDelivery.receipt,null);
+  const next=session.paddockDelivery;next.status='sent';const checking=client.checkReceipt(next.payload.sessionId);db.removeSession(session.id);release(receipt(next.payload));await checking;
+  assert.equal(db.data.sessions.length,0);assert.equal(db.data.paddock.withdrawals[0].status,'pending');
+});
+
+test('receipt refresh rolls back cached warnings on failed local persistence',async t=>{
+  const {db,client}=clientFor(t),d=queued(db);d.status='sent';d.receipt=receipt(d.payload);const old=d.receipt;
+  client.call=async()=>({...old,warnings:[{code:'SESSION_REQUIRES_CORRECTION',carId:'car-a'}]});db.commit=()=>{throw Error('disk full');};await assert.rejects(client.checkReceipt(d.payload.sessionId),/disk full/);assert.equal(d.receipt,old);assert.equal(d.receiptCheckedAt,undefined);
+});
+
+test('actual Paddock reports historical overlap warnings and clears them after a deliberate correction',{skip:!process.env.PADDOCK_SOURCE},async t=>{
+  const root=process.env.PADDOCK_SOURCE,{Network}=require(path.join(root,'src/network.cjs')),{Store,migrate}=require(path.join(root,'src/store.cjs')),timing=require(path.join(root,'src/timing-integration.cjs'));
+  const store=new Store();store.data=migrate(fixture('demo-database'));timing.receive(store,fixture('normal'));
+  const old=store.snapshot(),record=old.timing.sessions[0],p=record.payload,entry=p.participants[0];
+  p.heats.push({...p.heats[0],id:'heat-2'});entry.stints[0].endedAtMs=10000;entry.stints.push({...entry.stints[0],id:'stint-2',heatId:'heat-2',startedAtMs:10000,endedAtMs:60000});
+  entry.laps=[entry.laps[0],{...entry.laps[1],number:1,stintId:'stint-2',durationMs:15000,endedAtMs:20000}];delete entry.summary;record.contentHash=timing.digest(p);store.data=migrate(old);
+  const host=new Network(store);await host.start();host.controls({allowTimingResults:true});t.after(()=>host.stop());const {db,client}=clientFor(t);client.state().connection=null;
+  await client.connect({address:'127.0.0.1:'+host.port,code:host.timingCode});
+  db.data.sessions.push({id:p.sessionId,paddockDelivery:{payload:structuredClone(p),status:'sent',receipt:{...receipt(p),warnings:[]}}});await client.commit();
+  await client.checkReceipt(p.sessionId);const d=db.data.sessions[0].paddockDelivery;assert.equal(d.receipt.warnings[0].code,'SESSION_REQUIRES_CORRECTION');assert.equal(d.receipt.summaries[0].included,false);
+  const fixed=structuredClone(p);fixed.revision++;fixed.participants[0].laps[1].durationMs=10000;db.data.sessions[0].paddockDelivery={payload:fixed,status:'pending'};await client.commit();await client.flush();
+  assert.equal(db.data.sessions[0].paddockDelivery.status,'sent');assert.deepEqual(client.status().deliveries[0].warnings,[]);assert.equal(store.data.timing.sessions.length,1);assert.equal(store.data.timing.sessions[0].payload.revision,2);
+});
 test('review deletion keeps the surviving lap timestamps and original drivers',()=>{const {e,j,at}=raceJournal();e.start(0);at(10000);e.cross(0,10000);at(12000);e.swap(0,12000);at(23000);e.cross(0,23000);at(33000);e.cross(0,33000);e.stop(33000);assert.equal(e.removeLap(0,0,true),true);e.paddockReview((c,n)=>En.driverAtLap(c.en,n));assert.deepEqual(j.heats[0].entries[0].laps.map(l=>l.at),[123000,133000]);assert.deepEqual(j.heats[0].entries[0].laps.map(l=>l.driverId),['second','second']);assert.doesNotThrow(()=>Records.build({paddock:{sourceId:'source'}},{id:'race',paddockJournal:j},[]));});
 test('sensor input after the finish does not extend the recorded heat',()=>{const {e,j,at}=raceJournal();e.start(0);at(10000);e.cross(0,10000);e.stop(10000);at(20000);e.cross(0,20000);assert.equal(j.heats[0].endedAt,110000);});
 test('fractional sensor clocks produce offsets inside UTC millisecond bounds',()=>{const {e,j,at}=raceJournal();e.start(0.2);at(10000.8);e.cross(0,10000.8);e.stop(10000.8);e.paddockReview();const p=Records.build({paddock:{sourceId:'source'}},{id:'fractional',paddockJournal:j},[]);assert.ok(p.heats[0].endedAtMs<=Date.parse(p.endedAt)-Date.parse(p.startedAt));});

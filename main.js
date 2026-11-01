@@ -129,6 +129,7 @@ app.whenReady().then(() => {
   ipcMain.handle('paddock:refresh',(e)=>{paddockIdle(e);return paddock.refresh();});
   ipcMain.handle('paddock:prepare',(e,ids)=>{paddockIdle(e);return paddock.prepare(ids);});
   ipcMain.handle('paddock:retry',(e)=>{paddockIdle(e);return paddock.retry();});
+  ipcMain.handle('paddock:receipt',(e,id)=>{paddockIdle(e);return paddock.checkReceipt(id);});
   require('./packipc').register({ipcMain,dialog,BrowserWindow,db,getMain:()=>mainWin,isRacing:()=>!!live.dyn && ['countdown','running','paused','between','review'].includes(live.dyn.phase),appVersion:require('./package.json').version});
   pluginHost = require('./pluginipc').register({ipcMain,dialog,BrowserWindow,app,utilityProcess:require('electron').utilityProcess,getMain:()=>mainWin,isRacing:()=>!!live.dyn && ['countdown','running','paused','between','review'].includes(live.dyn.phase),appVersion:require('./package.json').version,root:path.join(app.getPath('userData'),'plugins'),getSettings:()=>db.getSettings(),onTiming:event=>{if(mainWin&&!mainWin.isDestroyed())mainWin.webContents.send('plugins:timing-event',event);}});
   ipcMain.handle('voices:report', () => require('./voicereport').collect()); // what this computer offers for text to speech (Audio Settings > Voice report)

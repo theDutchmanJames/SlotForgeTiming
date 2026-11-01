@@ -1,0 +1,111 @@
+name: Desktop builds
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Existing release tag (leave blank for a test build)'
+        type: string
+        default: ''
+      upload_to_release:
+        description: 'Add missing downloads to that release after all checks pass'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.event.release.tag_name || inputs.release_tag || github.ref }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+  CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+jobs:
+  build:
+    name: Build and test ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            platform: windows
+            command: npm run dist -- --x64 --publish never
+          - os: ubuntu-22.04
+            platform: linux
+            command: npm run dist:linux -- --x64 --publish never
+          - os: macos-14
+            platform: mac
+            command: npm run dist:mac -- --publish never -c.mac.identity=-
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.release_tag || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Validate release version
+        run: node tools/ci/desktop-artifacts.cjs validate
+      - run: npm ci
+      - name: Regression tests
+        run: npm test
+      - name: Install Linux desktop test dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgtk-3-0 libnss3 libasound2 libgbm1
+      - name: Build native packages
+        run: ${{ matrix.command }}
+      - name: Smoke test packaged application (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a node_modules/.bin/electron --no-sandbox tools/qa/desktop-package.cjs
+      - name: Smoke test packaged application (Windows and macOS)
+        if: runner.os != 'Linux'
+        run: node_modules/.bin/electron tools/qa/desktop-package.cjs
+      - name: Collect downloads and checksums
+        run: node tools/ci/desktop-artifacts.cjs collect
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.platform }}
+          path: dist/downloads/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+      - name: Save smoke-test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-${{ matrix.platform }}
+          path: .tmp-test/desktop-smoke/
+          if-no-files-found: ignore
+
+  publish:
+    name: Add verified release downloads
+    needs: build
+    if: github.event_name == 'release' || (inputs.upload_to_release && inputs.release_tag != '')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.release_tag }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-*
+          path: native-downloads
+      - uses: actions/github-script@v8
+        with:
+          script: |
+            await require('./tools/ci/publish-desktop.cjs')({github, context, core});

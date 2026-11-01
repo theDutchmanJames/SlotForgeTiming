@@ -5,10 +5,11 @@ This document and `timing-v1.schema.json` define the implemented contract. HTTP 
 ## Transport, authentication and discovery
 
 - Local HTTP with UTF-8 JSON, no redirects or compression. This is a trusted-LAN service, not an Internet API. No browser CORS access is granted; **any Origin header is rejected**, including `null`. Use Electron main.
-- Every request requires `Authorization: Bearer <connection-code>`; a code is 24 hex characters. Codes are shared secrets, never advertised by discovery or returned by `/v1/status`.
+- Every request requires `Authorization: Bearer <connection-code>`; generated codes are 24 hex characters. In updated Paddock source, hosts can instead set an 8–128 printable-ASCII password (internal spaces allowed; leading/trailing spaces rejected). Treat the credential as opaque, case-sensitive text, not necessarily hexadecimal. Codes and passwords are shared secrets, never advertised by discovery or returned by `/v1/status`.
 - Three independent codes: browse (`browse: true`, `submit: false`, `timingResults: false`); car submissions (`browse: true`, `submit` follows host toggle, `timingResults: false`); Timing (`browse: true`, `submit: false`, `timingResults` follows its own host toggle).
 - Timing permission authorizes receipt lookup, session writes, corrections and withdrawals. It is not implicit in browsing or car-edit submissions. Permission and database identity are checked again after an upload completes. The code grants access to all Timing sources on this host; `source.id` is a namespace, **not a separate authentication identity**. Give the Timing code only to trusted race directors.
-- Sharing restart generates new codes and disables Timing results. Existing session records and capture signatures survive. Revoking codes rotates all three. Capture signatures are not authentication tokens; they remain valid across network code changes.
+- Ten failed authentication attempts from one source address block authentication from that address for the remainder of a one-minute window, returning HTTP 429 `AUTH_RATE_LIMITED`. Back off before retrying; keep local results queued. Successful reads do not reset failed attempts: a browse credential cannot bypass the limit when guessing a higher-permission password. The 429 response includes Retry-After in seconds.
+- Sharing restart discards custom passwords, generates new codes and disables Timing results. Existing session records and capture signatures survive. Revoking codes rotates all three. Capture signatures are not authentication tokens; they remain valid across network code changes.
 - Discovery: UDP IPv4 multicast **239.255.47.77:47778**, TTL 1. Send `{"type":"slotforge-discover","version":1,"nonce":"<32 lowercase hex characters>"}`. Hosts reply to the sender's UDP port with `type: "slotforge-host"`, `version: 1`, the same nonce, database `id`, `name` and **actual HTTP port**. Combine that port with the UDP reply's source IPv4 address. Never interpret 47778 as the HTTP port. See discovery fixtures.
 - Validate matching nonce/version, private source IPv4, port 1–65535, ID (1–100 ASCII letters/digits/underscore/hyphen), name (1–200 characters), and response size ≤2,048 bytes. Scan across suitable local interfaces; suggested discovery window 1.8 seconds. Firewall/VPN/client isolation may block discovery; manual connection remains supported.
 - All `/v1/timing/*` calls also require `X-SlotForge-Database: <paired-database-id>`. Writes additionally require matching body `databaseId`. Never silently re-pair if an address now serves another database. Port/address/name changes do not change identity.
@@ -78,13 +79,15 @@ Dates must be ISO 8601 **UTC with exactly millisecond precision**, e.g. `2026-10
 | `notes` | Reviewed session notes (maximum 4,000 characters). Not a technical modification or maintenance instruction. |
 | participant `summary` | Optional cross-check using `$defs.summary`. Paddock recomputes it; discrepancies >0.000001 for numbers or any other mismatch return `SUMMARY_MISMATCH`. See `normal-with-summary.json`. Omit if Timing cannot supply exactly these meanings. |
 
-Lap numbers must be unique and increasing within participant/heat when sorted by completion time. Measured lap intervals cannot overlap within participant/heat. A lap must finish within its referenced stint and its measured start must be inside that heat. A lap crossing a driver-change boundary is attributed to the stint/driver at completion; its measured interval is not split. Incomplete laps without a measured completion are omitted from `laps`; fractional classification belongs in standings. This version does not add fractional laps to physical mileage.
+Lap numbers must be unique and increasing within participant/heat when sorted by completion time. Measured lap intervals cannot overlap for the same participant, including across different heats. A lap must finish within its referenced stint and its measured start must be inside that heat. A lap crossing a driver-change boundary is attributed to the stint/driver at completion; its measured interval is not split. Incomplete laps without a measured completion are omitted from `laps`; fractional classification belongs in standings. This version does not add fractional laps to physical mileage.
 
 Invalid and pit laps require `recordEligible: false`. Valid non-pit laps may also be ineligible (for example, practice conditions unsuitable for official records). Paddock never promotes an ineligible lap. A Virtual Rival must use `kind: "virtual"`, `carId: null`, `configuration: null`. Virtual and unlinked entries are stored for context/classification but never contribute to physical-car statistics.
 
 ## Derived statistics: measured versus classified
 
 The receipt contains per-participant `summaries` and an `included` flag. Paddock recomputes these from the accepted latest active document; it never adds client-provided totals to existing counters. For virtual/unlinked/withdrawn entries the physical contribution is zero; withdrawn receipts have no summaries.
+
+An earlier host could accept overlapping measured laps across different heats for one participant. Such stored sessions remain readable, but the entire session contributes no statistics until corrected. Receipt lookup returns `SESSION_REQUIRES_CORRECTION` warnings for its linked cars, with `included: false` and zero physical contributions. The car UI labels the session **Needs correction** and retains its original results for inspection. Send a deliberate higher revision containing corrected results, or withdraw it. Retrying the original invalid payload returns `INVALID_PAYLOAD`; it does not restore its contributions. This compatibility safeguard does not permit new overlapping submissions.
 
 | Statistic | Exact meaning |
 | --- | --- |
@@ -126,7 +129,8 @@ Every Timing error body is `{ "error": "Human-readable explanation", "code": "MA
 | --- | --- | --- |
 | 400 | `INVALID_JSON`, `INVALID_PAYLOAD`, `SUMMARY_MISMATCH` | Keep local result; fix serialization/data before retrying. |
 | 400 | `DATABASE_REQUIRED` | Send paired database header. |
-| 401 | `UNAUTHENTICATED` | Ask for current code; do not discard local results. |
+| 401 | `UNAUTHENTICATED` | Ask for current code or password; do not discard local results. |
+| 429 | `AUTH_RATE_LIMITED` | Wait one minute before retrying authentication; retain queued results. |
 | 403 | `BROWSER_ORIGIN_FORBIDDEN` | Use Electron main; do not weaken Paddock protection. |
 | 403 | `TIMING_PERMISSION_REQUIRED` | Dedicated Timing code and host permission required. |
 | 404 | `CAR_NOT_FOUND` | Resolve missing identity; never attach by name. |

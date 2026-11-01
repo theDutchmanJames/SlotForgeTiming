@@ -10,6 +10,8 @@ SlotForge Timing brings your track, drivers, cars and race rules together in a d
 
 **Ready to try it?** Download the Windows 64-bit [Portable executable](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.4/SlotForge.Timing-1.99.4-Portable.exe), double-click it and explore the app. If you like it and want SlotForge for regular, long-term use, download the [Setup installer](https://github.com/theDutchmanJames/SlotForgeTiming/releases/download/v1.99.4/SlotForge.Timing-1.99.4-Setup.exe). Both are available in the [1.99.4 release downloads](https://github.com/theDutchmanJames/SlotForgeTiming/releases/tag/v1.99.4); neither needs Node.js.
 
+**macOS and Linux:** Native downloads are built by GitHub Actions and added to the same release after checks pass: a universal Mac DMG/ZIP for Intel and Apple Silicon, plus Linux x64 AppImage and Debian packages. See the release assets for completed builds. Open the Mac DMG and drag the app to Applications; on Linux use your package manager to open the `.deb`, or allow the AppImage to execute in its file properties. No Node.js or source build is needed. Mac downloads are ad-hoc signed, not Apple-notarized, and may require approval in System Settings → Privacy & Security. Parallel Port and Phidget USB support currently require Windows. [Build and release details](docs/DESKTOP-RELEASES.md).
+
 **On this page:** [Features and Race Systems](#what-you-can-do-with-slotforge) · [Timing hardware](#timing-hardware) · [Install and run](#install-and-run) · [First race](#first-race) · [Development](#development-and-testing)
 
 [![SlotForge Timing Home tab: four-lane race setup, record to beat and previous race](docs/screenshots/home.png)](docs/screenshots/home.png)
@@ -119,9 +121,11 @@ The **Slotcar Database** includes more than a car list. View laps driven, mileag
 
 Import a **SlotForge Track Builder** design into the Track Database, including its name, lane lengths, artwork and supported route/tuning data. The **Live Track** chart can follow that layout using either the original coloured-lane style or the imported artwork. Car movement remains an estimate based on lap timing and the supported tuning profile.
 
-Open **Database → Slotcars → Connect to Paddock** to link cars from a **SlotForge Paddock** host on your local network. Use its address and separate Timing connection code, then create linked cars or match them to existing Timing cars. Catalogue specifications and Race Class come from Paddock; Timing keeps its simulation settings and local race history.
+Open **Database → Slotcars → Connect to Paddock** to link cars from a **SlotForge Paddock** host on your local network. Use its address and separate Timing connection code or password, then create linked cars or match them to existing Timing cars. Catalogue specifications and Race Class come from Paddock; Timing keeps its simulation settings and local race history.
 
-Reviewed, finalized results are queued for Paddock, including measured laps, mileage and overall classification. Cached configurations allow offline racing; reconnect to deliver waiting results. Corrections and withdrawals prevent duplicate or stale statistics. This requires a Paddock build with the **Timing v1 API**; the older v0.16.3 executable is not compatible. See the [connection guide and v1 limits](docs/PADDOCK-INTEGRATION.md).
+To transfer independent car copies without a network connection, export from Paddock in **SlotForge Timing** format and use **App Settings → Import and Export → Import**. Supported specifications, race classes and pictures are included. Importing again creates more copies; use the live connection above for catalogue refresh and result delivery.
+
+Reviewed, finalized results are queued for Paddock, including measured laps, mileage and overall classification. Cached configurations allow offline racing; reconnect to deliver waiting results. Corrections and withdrawals prevent duplicate or stale statistics. This requires Paddock’s **Timing v1 API** (0.17.0 onward); **0.18.0** also includes custom passwords and Timing JSON exports. Use **Check Paddock result** in Result delivery to retrieve warnings for previously delivered sessions. See the [connection guide and v1 limits](docs/PADDOCK-INTEGRATION.md).
 
 ### Import, Export and sharing between users
 

@@ -4,6 +4,21 @@ const Records=require('./paddockrecords');
 const ID=/^[a-zA-Z0-9_-]{1,100}$/;
 const TERMINAL_CODES=new Set(['INVALID_JSON','INVALID_PAYLOAD','SUMMARY_MISMATCH','DATABASE_REQUIRED','BROWSER_ORIGIN_FORBIDDEN','TIMING_PERMISSION_REQUIRED','CAR_NOT_FOUND','NOT_FOUND','DATABASE_MISMATCH','CONFIGURATION_MISMATCH','CONFIGURATION_INVALID','REVISION_CONFLICT','STALE_REVISION','PAYLOAD_TOO_LARGE','CONTENT_TYPE_REQUIRED','CONTENT_ENCODING_UNSUPPORTED','UNSUPPORTED_VERSION','CAPACITY_EXCEEDED','RECEIPT_MISMATCH']);
 const COPY_FIELDS=['brand','manufacturer','model','scale','motor','gearing','tyres','weight','picture','raceClass'];
+function checkedReceipt(r,p){
+  if(!r?.ok||r.databaseId!==p.databaseId||r.sourceId!==p.source.id||r.sessionId!==p.sessionId||r.revision!==p.revision||r.state!==p.state||r.contentHash!==hash(p)||r.warnings!==undefined&&(!Array.isArray(r.warnings)||r.warnings.length>512||r.warnings.some(w=>!w||typeof w.code!=='string'||w.code.length>100||typeof w.carId!=='string'||!ID.test(w.carId))))throw Object.assign(Error('Paddock receipt does not match this result. Check the original database and result revision; no local result was replaced.'),{code:'RECEIPT_MISMATCH'});
+  return r;
+}
+function receiptWarnings(d){return d.status==='sent'&&Array.isArray(d.receipt?.warnings)?d.receipt.warnings.slice(0,512).filter(w=>w&&typeof w==='object').map(w=>({code:String(w.code||'').slice(0,100),carId:String(w.carId||'').slice(0,100),carName:d.payload?.participants?.find(p=>p.carId===w.carId)?.displayName||w.carId})):[];}
+function credential(value){
+  if(typeof value!=='string'||value.length<8||value.length>128||!(/^[\x20-\x7e]+$/).test(value)||value!==value.trim())throw Error('Enter the Timing code or password from Paddock: 8–128 English letters, numbers, spaces or symbols, with no spaces at either end.');
+  return value; // Opaque and case-sensitive, including repeated internal spaces.
+}
+function retryDelay(value,now=Date.now()){
+  const raw=String(value??'').trim(),seconds=/^\d+$/.test(raw)?Number(raw):NaN;
+  const ms=Number.isFinite(seconds)?seconds*1000:/^[A-Za-z]{3}, \d{2} [A-Za-z]{3} \d{4} \d{2}:\d{2}:\d{2} GMT$/.test(raw)?Date.parse(raw)-now:NaN;
+  return Number.isFinite(ms)?Math.min(86400000,Math.max(1000,ms)):60000;
+}
+const hostKey=base=>{const host=new URL(address(base)).hostname;return host==='localhost'?'127.0.0.1':host;};
 function privateIP(ip){if(net.isIP(ip)!==4)return false;const [a,b]=ip.split('.').map(Number);return a===127||a===10||a===192&&b===168||a===172&&b>=16&&b<=31;}
 function address(input){const u=new URL(String(input).includes('://')?input:'http://'+input);if(u.protocol!=='http:'||u.username||u.password||u.search||u.hash||u.pathname!=='/'||!(privateIP(u.hostname)||u.hostname==='localhost'))throw Error('Enter a local IPv4 address and port, for example 192.168.1.20:51234.');if(!u.port)throw Error('Include the port displayed by Paddock.');return u.origin;}
 function request(base,route,code,databaseId,body,limit=16*1024*1024){return new Promise((resolve,reject)=>{
@@ -11,7 +26,7 @@ function request(base,route,code,databaseId,body,limit=16*1024*1024){return new 
   const u=new URL(route,address(base));if(u.origin!==address(base))return reject(Error('Unexpected host address.'));
   const req=http.request(u,{method:raw?'POST':'GET',headers:{Authorization:'Bearer '+code,...(databaseId?{'X-SlotForge-Database':databaseId}:{}),'X-SlotForge-Pages':'1',...(raw?{'Content-Type':'application/json','Content-Length':Buffer.byteLength(raw)}:{})}},res=>{
     if(res.headers['content-encoding']&&res.headers['content-encoding']!=='identity'){res.destroy();return reject(Error('Compressed Paddock responses are unsupported.'));}
-    let size=0;const chunks=[];res.on('data',chunk=>{size+=chunk.length;if(size>limit)res.destroy(Error('Paddock response is too large.'));else chunks.push(chunk);});res.on('error',reject);res.on('end',()=>{try{const value=JSON.parse(Buffer.concat(chunks).toString('utf8'));if(res.statusCode!==200){const e=Error(value.error||'Paddock returned HTTP '+res.statusCode);e.code=value.code||'HTTP_'+res.statusCode;e.httpStatus=res.statusCode;throw e;}resolve(value);}catch(e){reject(e);}});
+    let size=0;const chunks=[];res.on('data',chunk=>{size+=chunk.length;if(size>limit)res.destroy(Error('Paddock response is too large.'));else chunks.push(chunk);});res.on('error',reject);res.on('end',()=>{try{if(res.statusCode===429){const e=Error('Paddock has temporarily limited connection attempts. Wait before retrying; saved results remain queued.');e.code='AUTH_RATE_LIMITED';e.httpStatus=429;e.retryAfterMs=retryDelay(res.headers['retry-after']);throw e;}const value=JSON.parse(Buffer.concat(chunks).toString('utf8'));if(res.statusCode!==200){const e=Error(value.error||'Paddock returned HTTP '+res.statusCode);e.code=value.code||'HTTP_'+res.statusCode;e.httpStatus=res.statusCode;throw e;}resolve(value);}catch(e){reject(e);}});
   });const timer=setTimeout(()=>req.destroy(Error('Paddock did not respond within 15 seconds.')),15000);req.on('close',()=>clearTimeout(timer));req.on('error',reject);if(raw)req.write(raw);req.end();
 });}
 // Each adapter owns a socket: asynchronous sends cannot inherit another adapter's routing.
@@ -57,18 +72,47 @@ function discover({duration=4200,retryMs=1000}={}){return new Promise((resolve,r
   }
 });}
 class Paddock {
-  constructor(db){this.db=db;this.code='';this.connected=false;this.error='';this.catalog=[];this.busy=false;this.stopped=false;this.timer=null;Records.state(db.data);}
+  constructor(db){this.db=db;this.code='';this.connected=false;this.error='';this.catalog=[];this.busy=false;this.stopped=false;this.timer=null;this.cooldowns=new Map();Records.state(db.data);}
+  cooldownsNow(){for(const [host,until] of this.cooldowns)if(until<=Date.now())this.cooldowns.delete(host);return [...this.cooldowns].map(([host,until])=>({host,until}));}
+  retryAt(base){this.cooldownsNow();return base?this.cooldowns.get(hostKey(base))||0:0;}
+  async hostRequest(base,route,code,databaseId,body,limit){
+    const until=this.retryAt(base);
+    if(until)throw Object.assign(Error('Paddock connection cooldown: try again in '+Math.ceil((until-Date.now())/1000)+' seconds. Saved results remain queued.'),{code:'AUTH_RATE_LIMITED',retryAt:until});
+    try{return await request(base,route,code,databaseId,body,limit);}catch(e){
+      if(e.httpStatus===429){
+        const host=hostKey(base);if(this.cooldowns.size>=100&&!this.cooldowns.has(host))this.cooldowns.delete(this.cooldowns.keys().next().value);
+        this.cooldowns.set(host,Date.now()+e.retryAfterMs);e.retryAt=this.cooldowns.get(host);
+        if(this.state().connection&&hostKey(this.state().connection.address)===host){this.connected=false;this.error=e.message;this.schedule();}
+      }
+      throw e;
+    }
+  }
   state(){return Records.state(this.db.data);}
   async exclusive(task){if(this.busy)throw Error('Wait for the current Paddock operation.');this.busy=true;try{return await task();}finally{this.busy=false;}}
   async commit(){this.db.touchAll();this.db.commit();await this.db.saved();}
   deliveries(){return [...this.db.data.sessions.map(s=>s.paddockDelivery).filter(d=>d&&d.status!=='withdrawn'),...this.state().withdrawals];}
-  status(){const c=this.state().connection;return {connection:c,connected:this.connected,hasCode:!!this.code,error:this.error,busy:this.busy,
+  status(){const c=this.state().connection;return {connection:c,connected:this.connected,hasCode:!!this.code,error:this.error,busy:this.busy,cooldowns:this.cooldownsNow(),
     linked:this.db.data.slotcars.filter(c=>c.paddock).map(c=>({id:c.id,name:[c.brand,c.manufacturer,c.model].filter(Boolean).join(' '),databaseId:c.paddock.databaseId,carId:c.paddock.carId,archived:!!c.paddock.archived,capturedAt:c.paddock.configuration?.capturedAt})),
-    deliveries:this.deliveries().map(d=>({sessionId:d.payload?.sessionId||d.sessionId||'',name:d.name||d.payload?.name||'Saved session',revision:d.payload?.revision,status:d.status,error:d.error||'',databaseId:d.payload?.databaseId||d.databaseId,receivedAt:d.receipt?.receivedAt}))};}
+    deliveries:this.deliveries().map(d=>({sessionId:d.payload?.sessionId||d.sessionId||'',name:d.name||d.payload?.name||'Saved session',revision:d.payload?.revision,status:d.status,error:d.error||'',databaseId:d.payload?.databaseId||d.databaseId,receivedAt:d.receipt?.receivedAt,warnings:receiptWarnings(d),receiptCheckedAt:d.receiptCheckedAt,receiptCheckError:d.receiptCheckError||''}))};}
+  checkReceipt(sessionId){return this.exclusive(async()=>{
+    if(this.isRacing?.())throw Error('Finish the race before checking Paddock results.');
+    const c=this.state().connection,d=this.deliveries().find(d=>d.status==='sent'&&d.payload?.sessionId===sessionId&&d.payload.databaseId===c?.databaseId);
+    if(!d||!ID.test(sessionId))throw Error('Choose a delivered result from the connected Paddock database.');
+    const p=d.payload;let r,failure;
+    try{r=checkedReceipt(await this.call('/v1/timing/sessions/'+encodeURIComponent(p.source.id)+'/'+encodeURIComponent(p.sessionId)),p);}catch(e){failure=e;}
+    // A local correction/deletion can replace a delivery while this GET is in flight.
+    if(this.stopped||this.isRacing?.()||!this.deliveries().includes(d)||d.payload!==p||d.status!=='sent')return this.status();
+    const before={receipt:d.receipt,receiptCheckedAt:d.receiptCheckedAt,receiptCheckError:d.receiptCheckError};
+    if(r){d.receipt=r;d.receiptCheckedAt=new Date().toISOString();d.receiptCheckError='';}
+    else d.receiptCheckError=failure?.code==='SESSION_NOT_FOUND'?'Paddock no longer has a receipt for this result. Verify the original database or restored backup before resending.':failure.message;
+    try{await this.commit();}catch(e){Object.assign(d,before);this.db.touchAll();throw e;}
+    if(failure)throw failure;
+    return this.status();
+  });}
   async connect(input){
     if(this.busy)throw Error('Wait for the current Paddock operation.');this.busy=true;
-    try{const base=address(input.address),code=String(input.code||'').trim();if(!/^[a-fA-F0-9]{24}$/.test(code))throw Error('Enter the 24-character connection code displayed by Paddock.');
-      const s=await request(base,'/v1/status',code);if(!ID.test(s.id)||typeof s.name!=='string')throw Error('Invalid Paddock host identity.');
+    try{const base=address(input.address),code=credential(input.code);
+      const s=await this.hostRequest(base,'/v1/status',code);if(!ID.test(s.id)||typeof s.name!=='string')throw Error('Invalid Paddock host identity.');
       const old=this.state().connection;if(old&&old.databaseId!==s.id)throw Error('This is a different Paddock database. Disconnect and forget the old host before pairing another.');
       const before=this.state().connection;this.state().connection={address:base,databaseId:s.id,name:s.name,results:!!s.permissions?.timingResults,timing:!!s.capabilities?.timing?.versions?.includes(1)};
       try{await this.commit();}catch(e){this.state().connection=before;throw e;}
@@ -76,7 +120,7 @@ class Paddock {
     }finally{this.busy=false;}
   }
   disconnect(forget=false){return this.exclusive(async()=>{this.code='';this.connected=false;this.catalog=[];clearTimeout(this.timer);const previous=this.state().connection;if(forget)this.state().connection=null;try{await this.commit();}catch(e){this.state().connection=previous;throw e;}this.error='';return this.status();});}
-  async call(route,body,limit){const c=this.state().connection;if(!c||!this.code)throw Error('Connect with the current Paddock code first.');return request(c.address,route,this.code,c.databaseId,body,limit);}
+  async call(route,body,limit){const c=this.state().connection;if(!c||!this.code)throw Error('Connect with the current Paddock Timing code or password first.');return this.hostRequest(c.address,route,this.code,c.databaseId,body,limit);}
   browse(){return this.exclusive(()=>this.browseNow());}
   async browseNow(){const c=this.state().connection;if(!c)throw Error('Connect to Paddock first.');let out=[],offset=0,revision=null,total=0,complete=false;
     for(let page=0;page<401;page++){
@@ -136,14 +180,14 @@ class Paddock {
     }
     return {captures,warnings,heats:[]};
   }
-  schedule(delay=30000){clearTimeout(this.timer);if(!this.stopped&&this.code)this.timer=setTimeout(()=>this.flush().catch(()=>{}),delay).unref();}
+  schedule(delay=30000){clearTimeout(this.timer);if(!this.stopped&&this.code)this.timer=setTimeout(()=>this.flush().catch(()=>{}),Math.max(delay,this.retryAt(this.state().connection?.address)-Date.now())).unref();}
   async flush(){if(this.busy||!this.code||this.stopped||this.isRacing?.()){this.schedule();return this.status();}this.busy=true;let retry=30000;
-    try{await this.db.saved();const c=this.state().connection,s=await this.call('/v1/status');if(s.id!==c.databaseId)throw Object.assign(Error('Paddock database identity changed.'),{code:'DATABASE_MISMATCH'});if(!s.permissions?.timingResults)throw Error('Enable Allow Timing results and use the Timing connection code.');
+    try{await this.db.saved();const c=this.state().connection,s=await this.call('/v1/status');if(s.id!==c.databaseId)throw Object.assign(Error('Paddock database identity changed.'),{code:'DATABASE_MISMATCH'});if(!s.permissions?.timingResults)throw Error('Enable Allow Timing results and use the Timing connection code or password.');
       for(const d of this.deliveries().filter(d=>d.status==='pending'&&d.payload?.databaseId===c.databaseId)){
         if(this.isRacing?.())break;
-        try{const p=d.payload;await this.commit();if(this.stopped)return this.status();if(this.isRacing?.())break;const r=await this.call('/v1/timing/sessions',p);if(this.stopped)return this.status();if(!r.ok||r.databaseId!==p.databaseId||r.sourceId!==p.source.id||r.sessionId!==p.sessionId||r.revision!==p.revision||r.state!==p.state||r.contentHash!==hash(p))throw Object.assign(Error('Paddock receipt does not match this result.'),{code:'RECEIPT_MISMATCH'});
+        try{const p=d.payload;await this.commit();if(this.stopped)return this.status();if(this.isRacing?.())break;const r=checkedReceipt(await this.call('/v1/timing/sessions',p),p);if(this.stopped)return this.status();
           // If the local result was corrected/deleted during upload, only acknowledge this exact object.
-          d.receipt=r;d.status='sent';d.error='';await this.commit();
+          d.receipt=r;d.status='sent';d.error='';d.receiptCheckedAt=new Date().toISOString();d.receiptCheckError='';await this.commit();
         }catch(e){d.error=e.message;d.status=TERMINAL_CODES.has(e.code)?'attention':'pending';await this.commit();throw e;}
       }this.connected=true;this.error='';
     }catch(e){this.connected=false;this.error=e.message;retry=60000;if(['DATABASE_MISMATCH','UNAUTHENTICATED'].includes(e.code)){this.code='';}}
@@ -155,4 +199,4 @@ class Paddock {
 const copyData=x=>JSON.parse(JSON.stringify(x));
 function canonical(v){return Array.isArray(v)?'['+v.map(canonical).join(',')+']':v&&typeof v==='object'?'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}':JSON.stringify(v);}
 const hash=v=>crypto.createHash('sha256').update(canonical(v)).digest('hex');
-module.exports={Paddock,privateIP,address,request,discover,COPY_FIELDS,hash};
+module.exports={Paddock,privateIP,address,request,discover,COPY_FIELDS,hash,credential,retryDelay};

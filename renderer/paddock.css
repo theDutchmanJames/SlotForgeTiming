@@ -9,3 +9,4 @@
 @media(max-width:760px){.paddock-shell{grid-template-columns:1fr}.paddock-shell nav{flex-direction:row;flex-wrap:wrap}.paddock-shell nav p{display:none}.paddock-dialog{padding:14px}.paddock-car{grid-template-columns:1fr}.paddock-shell section{padding:14px}}
 
 .paddock-source{margin-inline-start:6px}
+.paddock-delivery .paddock-warning{padding:10px 12px;border-left:3px solid #ca983e;background:color-mix(in srgb,#ca983e 10%,var(--panel));border-radius:4px;color:var(--ink)}
