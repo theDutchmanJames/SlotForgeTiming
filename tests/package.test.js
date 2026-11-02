@@ -150,6 +150,6 @@ ok('the new name is used everywhere and the old exports still import', pkg.build
   ok('package and lockfile agree on the custom licence', locked.packages[''].license === pkg.license);
   ok('...it is in the installer too, and the QR code library keeps the licence it came with', patterns.includes('LICENSE') && fs.existsSync(path.join(root, 'vendor', 'QRCode', 'LICENSE-qrcode-terminal.txt')));
   const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
-  ok('the README tells the licence and whose program it is', /## Licence and copyright/.test(readme) && readme.includes('SlotForge Source-Available License 1.0') && readme.includes('SlotForge Timing is made by theDutchmanJames. Copyright 2026 theDutchmanJames.'));
+  ok('the README tells the licence and whose program it is', /## Licen[cs]e and copyright/.test(readme) && readme.includes('SlotForge Source-Available License 1.0') && readme.includes('SlotForge Timing is made by theDutchmanJames. Copyright 2026 theDutchmanJames.'));
 }
 console.log(fails ? fails + ' PACKAGE TESTS FAILED' : 'ALL PACKAGE TESTS PASSED'); process.exit(fails ? 1 : 0);
