@@ -1,0 +1,117 @@
+name: Intel Mac release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Existing release tag, for example v2.0.0 (Intel-only Mac downloads)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: intel-mac-${{ inputs.release_tag }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ inputs.release_tag }}
+  CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+jobs:
+  build:
+    runs-on: macos-15-intel
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Validate tag
+        run: '[[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]'
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.release_tag }}
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: node tools/ci/desktop-artifacts.cjs validate
+      - run: npm ci
+      - run: npm test
+      - name: Configure Intel-only packaging of the exact release source
+        run: |
+          node <<'NODE'
+          const fs=require('fs'),build=require('./package.json').build;
+          fs.mkdirSync('.tmp-test',{recursive:true});
+          const mac={...build.mac,target:[{target:'dmg',arch:['x64']},{target:'zip',arch:['x64']}],artifactName:'SlotForgeTiming-${version}-mac-x64.${ext}',identity:'-'};
+          fs.writeFileSync('.tmp-test/mac-intel.json',JSON.stringify({...build,mac}));
+          NODE
+      - name: Build Intel DMG and ZIP
+        run: node_modules/.bin/electron-builder --mac --x64 --config .tmp-test/mac-intel.json --publish never
+      - name: Check architecture and signature
+        run: |
+          test "$(lipo -archs 'dist/mac/SlotForge Timing.app/Contents/MacOS/SlotForge Timing')" = x86_64
+          codesign --verify --deep --strict 'dist/mac/SlotForge Timing.app'
+      - name: Smoke test packaged Intel application
+        run: |
+          node <<'NODE'
+          const fs=require('fs'),file='tools/qa/desktop-package.cjs';
+          fs.writeFileSync(file,fs.readFileSync(file,'utf8').replace('mac-universal/SlotForge Timing.app','mac/SlotForge Timing.app'));
+          NODE
+          node_modules/.bin/electron tools/qa/desktop-package.cjs
+      - name: Collect exact-tag packages and checksums
+        run: |
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto'),cp=require('child_process'),version=require('./package.json').version;
+          const dir='dist/intel-downloads';fs.mkdirSync(dir,{recursive:true});
+          const assets=['dmg','zip'].map(ext=>{const name=`SlotForgeTiming-${version}-mac-x64.${ext}`,b=fs.readFileSync('dist/'+name);if(b.length<1000000)throw Error('Package too small');fs.writeFileSync(dir+'/'+name,b);return {name,size:b.length,sha256:crypto.createHash('sha256').update(b).digest('hex')};});
+          fs.writeFileSync(dir+'/SHA256SUMS-mac-x64.txt',assets.map(a=>`${a.sha256}  ${a.name}`).join('\n')+'\n');
+          fs.writeFileSync(dir+'/manifest.json',JSON.stringify({version,commit:cp.execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),assets}));
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: intel-mac
+          path: dist/intel-downloads/
+          if-no-files-found: error
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: intel-mac-smoke
+          path: .tmp-test/desktop-smoke/
+          include-hidden-files: true
+          if-no-files-found: ignore
+
+  publish:
+    needs: build
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: intel-mac
+          path: downloads
+      - uses: actions/github-script@v8
+        with:
+          script: |
+            const fs=require('fs'),crypto=require('crypto'),assert=require('assert/strict');
+            const m=JSON.parse(fs.readFileSync('downloads/manifest.json')),tag=process.env.RELEASE_TAG;
+            assert.equal(tag,'v'+m.version);
+            assert.equal((await github.rest.repos.getCommit({...context.repo,ref:tag})).data.sha,m.commit);
+            const r=(await github.rest.repos.getReleaseByTag({...context.repo,tag})).data;
+            assert(!r.draft&&!r.immutable,'Release must be published and mutable');
+            const existing=await github.paginate(github.rest.repos.listReleaseAssets,{...context.repo,release_id:r.id,per_page:100});
+            assert.deepEqual(m.assets.map(a=>a.name),['dmg','zip'].map(ext=>`SlotForgeTiming-${m.version}-mac-x64.${ext}`));
+            const digest=b=>crypto.createHash('sha256').update(b).digest('hex');
+            const assets=m.assets.map(a=>{const b=fs.readFileSync('downloads/'+a.name);assert.equal(b.length,a.size);assert.equal(digest(b),a.sha256);return {...a,data:b};});
+            const name='SHA256SUMS-mac-x64.txt',data=Buffer.from(m.assets.map(a=>`${a.sha256}  ${a.name}`).join('\n')+'\n');
+            assert(fs.readFileSync('downloads/'+name).equals(data));assets.push({name,data,sha256:digest(data),size:data.length});
+            for(const a of assets){
+              let remote=existing.find(x=>x.name===a.name);
+              if(!remote)remote=(await github.rest.repos.uploadReleaseAsset({...context.repo,release_id:r.id,name:a.name,data:a.data})).data;
+              assert.equal(remote.state,'uploaded');assert.equal(remote.size,a.size);assert.equal(remote.digest,'sha256:'+a.sha256);
+            }
+            core.info('Verified Intel-only Mac packages: '+r.html_url);

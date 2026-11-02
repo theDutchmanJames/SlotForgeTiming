@@ -212,7 +212,7 @@ Open the **[latest release](https://github.com/theDutchmanJames/SlotForgeTiming/
 | Your computer | Choose this download |
 | --- | --- |
 | **Windows · Intel/AMD 64-bit** | **Portable.exe** to try the app, or **Setup.exe** to install it for regular use. |
-| **macOS · Intel or Apple Silicon** | **mac.dmg**, containing a universal app for both processors. A ZIP is also available. |
+| **macOS · Intel 64-bit** | **mac-x64.dmg** or **mac-x64.zip**, when listed in the release assets. The 2.0.0 Mac build targets Intel only. |
 | **Linux · Debian/Ubuntu-based, Intel/AMD 64-bit** | **.deb**, opened with your package installer. |
 | **Linux · other compatible distributions, Intel/AMD 64-bit** | **.AppImage**, with permission to execute enabled. |
 
@@ -226,7 +226,7 @@ Windows downloads are unsigned. If Windows displays a security prompt, check tha
 
 ### macOS
 
-1. Download and open **mac.dmg**.
+1. Download and open **mac-x64.dmg** for an Intel Mac. Check the release assets for availability; a universal or native Apple Silicon package is not provided for 2.0.0.
 2. Drag **SlotForge Timing** into **Applications**.
 3. Open it from Applications, then eject the disk image.
 

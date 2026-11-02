@@ -1,5 +1,11 @@
 # Native desktop builds
 
+## Intel-only release recovery
+
+The manual **Intel Mac release** workflow builds an existing release tag on `macos-15-intel`, with x64-only DMG/ZIP targets. It runs regressions, verifies the binary contains only `x86_64`, checks the ad-hoc signature and smoke-tests the packaged code before publishing. Names include `mac-x64`; `SHA256SUMS-mac-x64.txt` covers these two packages. It neither moves the tag nor changes the release's application source.
+
+For **2.0.0**, the Apple Silicon runner was cancelled before producing logs. Windows and Linux passed and can be published independently with `SHA256SUMS-windows-linux.txt`; the Intel-only recovery does not wait for Apple Silicon. The standard universal workflow described below remains available for subsequent releases. An Intel-only package is not advertised as native Apple Silicon support.
+
 The **Desktop builds** GitHub Actions workflow builds on Windows, macOS and Ubuntu. Each job uses `npm ci`, runs the regression suite, creates packages and loads the packaged `app.asar` code using the installed Electron runtime in an isolated profile. Linux uses a virtual display for this smoke test. This verifies packaged application code, renderer assets and the widget/Paddock UI. It does not launch the installer, mounted DMG or AppImage, test operating-system installation prompts, or certify physical timing hardware. A universal Mac package is created, but the smoke test runs only on the runner's native architecture.
 
 | Platform | Downloads |
