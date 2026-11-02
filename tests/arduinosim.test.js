@@ -15,6 +15,8 @@ function rig(cars) {
   ok('simulator refuses Nano shared output pins',r.sim.options.relay[1]===0);
   r.sim.write(B.C.option('lights',0));r.sim.write(B.C.option('lanerelays',1));r.sim.write(B.C.option('lights',2));
   ok('simulator also refuses lights on active relay pins',r.sim.options.lights[0]===0);
+  for(const [key,value] of [['bright',256],['pixels',256],['blackout',-1],['safeoff',2],['lanerelays',1.5],['bright','20oops']])r.sim.write(B.C.option(key,value));
+  ok('virtual box rejects out-of-range settings without changing stored values',r.sim.options.lights[1]===8&&r.sim.options.lights[2]===64&&r.sim.blackout===300&&r.sim.options.safeoff[0]===1&&r.sim.options.relay[1]===1);
 }
 { // Trackmate mode: laps as letters with ticks, nothing bracketed until V
   const r = rig(); r.sim.start(); r.step(30000);
@@ -29,7 +31,7 @@ function rig(cars) {
 { // SlotForge mode: version, pits, traps, readings, calibration, settings, save
   const r = rig(); r.sim.start(); r.step(500);
   r.sim.write(B.C.version()); r.step(50);
-  ok('V answers with the version and switches the mode', r.link.slotforge && r.link.version.version === '1.0.6' && r.link.version.board === 'virtual');
+  ok('V answers with the version and switches the mode', r.link.slotforge && r.link.version.version === require('../renderer/arduinosketch').version && r.link.version.board === 'virtual');
   r.step(90000);
   ok('pit sensors report in and out', r.out.some(e => e.type === 'pit' && e.in) && r.out.some(e => e.type === 'pit' && !e.in));
   ok('every pass ends with a speed-trap figure', r.out.filter(e => e.type === 'trap').length >= 10 && r.out.filter(e => e.type === 'trap').every(t => t.ms >= 40 && t.ms <= 60));

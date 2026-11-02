@@ -10,6 +10,8 @@ public:
   bool laneOn[MAX_LANES];
   uint8_t lanePins[MAX_LANES] = SFB_LANE_RELAY_PINS;
   uint32_t secondBeepAt = 0;
+  uint8_t configuredRelays = 0;
+  bool configuredRelaysNC = false;
 
   void begin(Settings *s) {
     S = s; for (uint8_t i = 0; i < MAX_LANES; i++) laneOn[i] = true;
@@ -17,6 +19,12 @@ public:
   }
   // the pin modes after a settings change: the power stays as it is (a brightness change must never cut the track)
   void configure() {
+    // Removed relays still have physical wires attached: drive their OFF level
+    // using the old polarity. Retain that level until another output claims the pin.
+    for (uint8_t i = S->laneRelays; i < configuredRelays; i++)
+      if (lanePins[i] != 255) digitalWrite(lanePins[i], configuredRelaysNC ? HIGH : LOW);
+    configuredRelays = S->laneRelays > MAX_LANES ? MAX_LANES : S->laneRelays;
+    configuredRelaysNC = S->laneRelaysNC == 1;
     pinMode(PIN_RELAY, OUTPUT);
     for (uint8_t i = 0; i < MAX_LANES; i++) if (i < S->laneRelays && lanePins[i] != 255) pinMode(lanePins[i], OUTPUT);
     if (S->buzzer) pinMode(PIN_BUZZER, OUTPUT);

@@ -33,16 +33,24 @@
     return '';
   }
   const cmd = text => H.cmd(text); // text + LF, as the Trackmate commands are sent
+  function optionError(options,key,value,board) {
+    const range={blackout:[0,5000],lights:[0,2],pixels:[7,60],bright:[0,255],lanerelays:[0,board==='mega'?8:7],lanepix:[0,1],relaync:[0,1],lanerelaysnc:[0,1],buzzer:[0,1],safeoff:[0,1],ladder:[0,1]}[key];
+    const n=Number(value);
+    if(!range)return 'Unknown Arduino option.';
+    if(!/^[+-]?\d+$/.test(String(value))||!Number.isInteger(n)||n<range[0]||n>range[1])return `Use a whole number from ${range[0]} to ${range[1]}.`;
+    return outputConflict(options,key,n,board);
+  }
 
   // Reads the byte stream (any pieces) and gives whole messages: { type: 'lane', lane 1..8 } for a letter, { type: 'call' } for W,
   // { type: 'tick', ms } for "digits LF CR", { type: 'ext', text } for "[...]", { type: 'other' }. Each has raw: the bytes of that message.
   function parser() {
-    let cur = [], ext = null;
+    let cur = [], ext = null, discardExt = false;
     return {
       feed(bytes) {
         const out = [];
         Array.from(bytes).forEach(b => {
-          if (ext !== null) { if (b === 93) { out.push({ type: 'ext', text: String.fromCharCode(...ext), raw: [91].concat(ext, 93) }); ext = null; } else if (ext.length < 120) ext.push(b); else ext = null; return; }
+          if(discardExt){if(b===93)discardExt=false;return;}
+          if (ext !== null) { if (b === 93) { out.push({ type: 'ext', text: String.fromCharCode(...ext), raw: [91].concat(ext, 93) }); ext = null; } else if (ext.length < 120) ext.push(b); else {ext=null;discardExt=true;} return; }
           if (b === 91) { ext = []; return; }
           if (b >= 65 && b <= 72) out.push({ type: 'lane', lane: b - 64, raw: [b] });
           else if (b === 87) out.push({ type: 'call', raw: [b] });
@@ -120,7 +128,7 @@
           if (e.tag === 'V') { L.slotforge = true; L.version = { version: e.args[0], board: e.args[1], pins: Number(e.args[2]) || 8 }; emit({ type: 'version', ...L.version }); }
           else if (e.tag === 'P' && e.n) { const pit = e.n - 1, on = e.sign === '+'; if (L.pitCovered[pit] !== on) { L.pitCovered[pit] = on; emit({ type: 'pit', pit, in: on, at: toPc(hwMs) }); } }
           else if (e.tag === 'K' && e.n) emit({ type: 'button', lane: L.map[e.n - 1], at: toPc(hwMs) });
-          else if (e.tag === 'T' && e.n >= 1 && e.n <= 8) {
+          else if (e.tag === 'T' && e.n >= 1 && e.n <= 8 && e.args.length===1 && /^\d+$/.test(e.args[0]) && Number(e.args[0])<=4294967295) {
             // The sketch confirms release explicitly. QUIET remains the fallback for older streams.
             L.covered[e.n - 1] = false;
             emit({ type: 'trap', lane: L.map[e.n - 1], ms: Number(e.args[0]) || 0, at: toPc(hwMs) });
@@ -144,7 +152,7 @@
   // the check lights beside the sensors, as on the Trackmate page
   const ledsOn = (litAt, now, hold = 1000, count = 8) => TM.ledsOn(litAt, now, hold, count);
 
-  const api = { parser, parseExt, note, describeExt, C, cmd, createLink, ledsOn, ROLES, KINDS, LIGHTS, lightChoices, outputConflict, KEEPALIVE_MS, QUIET, laneMap: TM.laneMap, swapLane: TM.swapLane, link: createLink() };
+  const api = { parser, parseExt, note, describeExt, C, cmd, createLink, ledsOn, ROLES, KINDS, LIGHTS, lightChoices, outputConflict, optionError, KEEPALIVE_MS, QUIET, laneMap: TM.laneMap, swapLane: TM.swapLane, link: createLink() };
   root.ArduinoBox = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

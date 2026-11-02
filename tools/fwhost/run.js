@@ -202,6 +202,19 @@ for (const [board, exe] of [['nano', nano], ['mega', mega]]) {
     JSON.stringify(vals('lights').map(x=>x[0])) === JSON.stringify(board==='mega' ? [2,2,0] : [2,0,0]));
 }
 
+for (const [board, exe, firstPin] of [['nano', nano, 7], ['mega', mega, 22]]) {
+  for (const nc of [0,1]) {
+    const s=new Scen();track(s,board==='mega'?16:8);connect(s);keepAlive(s,3.2e6,8e6);
+    s.rx(3.4e6,`O lanerelaysnc ${nc}\n`).rx(3.6e6,'O lanerelays 2\n').rx(4e6,'M1\n').rx(4.5e6,'O lanerelays 1\n').rx(5e6,'O lanerelays 0\n').end(8e6);
+    const out=runBox(exe,s),last=pin=>out.pins.filter(p=>p.pin===pin&&p.what==='write').pop()?.v;
+    ok(board+': removing relays switches old outputs off with polarity '+nc,last(firstPin)===nc&&last(firstPin+1)===nc&&last(4)===1);
+  }
+  const s=new Scen();track(s,board==='mega'?16:8);connect(s);keepAlive(s,3.2e6,9e6);
+  s.rx(3.4e6,'O bright 256\n').rx(3.6e6,'O pixels 256\n').rx(3.8e6,'O blackout -1\n').rx(4e6,'O lights 258\n').rx(4.2e6,'O lanerelays 9\n').rx(4.4e6,'O safeoff 2\n').rx(4.6e6,'O bright 20oops\n').rx(5e6,'?\n').end(9e6);
+  const opts=throughLink(runBox(exe,s)).link.options;
+  ok(board+': invalid options do not wrap, truncate or disable configured safety',JSON.stringify(opts.lights)==='[1,8,64,0]'&&opts.blackout[0]===300&&opts.relay[1]===0&&opts.safeoff[0]===1,JSON.stringify(opts));
+}
+
 console.log(fails ? `\n${fails} FAILED` : `\nall passed${knownOpen ? ` (${knownOpen} known issue${knownOpen > 1 ? 's' : ''} still open: run with --strict to fail on them)` : ''}`);
 try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* the temp folder stays */ }
 process.exit(fails ? 1 : 0);

@@ -4,7 +4,7 @@
 #pragma once
 #include <Arduino.h>
 
-#define SFB_VERSION "1.0.6"
+#define SFB_VERSION "1.0.7"
 
 // ---- the board ----
 #if defined(__AVR_ATmega2560__)

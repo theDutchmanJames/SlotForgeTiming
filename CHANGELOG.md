@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.99.9 — 2026-11-02
+
+- Follow-up Arduino review: switch removed lane-relay outputs off using their previous polarity; reject out-of-range or malformed options before storage conversions; discard oversized diagnostic messages without interpreting their contents as race events; validate explicit release durations.
+- Include Arduino Sketch 1.0.7 with matching embedded download and virtual-device behavior. Validate numeric settings in the UI and widen output inputs so full values remain visible.
+- Run Nano/Mega firmware regression tests in the Linux desktop release job, in addition to application regressions and packaged-app checks.
+- Make the independent sketch ZIP test report unavailable Python as skipped and genuine extraction errors as failures.
+
 ## 1.99.8 — 2026-11-01
 
 - Rename the Arduino setup and hardware labels to Arduino Sketch. Verify the implementation against RCAI's Arduino reference while retaining SlotForge's existing protocol and saved settings.

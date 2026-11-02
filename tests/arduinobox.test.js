@@ -79,5 +79,14 @@ function rig(jitter) {
   ok('Nano prevents both directions of shared LED/relay pins',!!B.outputConflict({lights:[2],relay:[0,0]},'lanerelays',1,'nano') && !!B.outputConflict({lights:[0],relay:[0,1]},'lights',2,'nano'));
   ok('Mega has independent output pins and allows eight lane relays',!B.outputConflict({lights:[2],relay:[0,0]},'lanerelays',8,'mega') && B.lightChoices('mega')[2][1].includes('D30..D36'));
   ok('Nano allows strip with relays but has only seven relay pins',!B.outputConflict({lights:[1],relay:[0,0]},'lanerelays',7,'nano') && !!B.outputConflict({lights:[1],relay:[0,0]},'lanerelays',8,'nano'));
+  ok('option ranges reject blanks, fractional values, overflow and unknown keys',[['bright',256],['pixels',256],['blackout',-1],['blackout',''],['lanerelays',1.5],['safeoff',2],['unknown',0]].every(([k,v])=>B.optionError({},k,v,'mega')));
+  ok('valid range endpoints remain available',!B.optionError({},'blackout',0,'nano')&&!B.optionError({},'blackout',5000,'nano')&&!B.optionError({},'bright',255,'nano')&&!B.optionError({},'lanerelays',8,'mega'));
+}
+{
+  const r=rig();r.tick(1000);r.link.feed(bytes('[E '+'x'.repeat(121)+'AWH123\n\r]'));
+  ok('an oversized diagnostic cannot become phantom laps, track calls or ticks',r.out.length===0&&r.link.ticks===1);
+  r.letter('A');r.ext('T1 nope');r.letter('A');
+  ok('an invalid release duration cannot rearm an occupied lane',r.out.filter(e=>e.type==='hit').length===1);
+  r.ext('T1 20');r.letter('A');ok('valid events recover after malformed diagnostics',r.out.filter(e=>e.type==='hit').length===2);
 }
 console.log(fails ? `${fails} FAILED` : 'all passed'); process.exit(fails ? 1 : 0);

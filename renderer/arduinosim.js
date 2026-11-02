@@ -3,6 +3,7 @@
 // answers ? and takes P/H/O/W. The keep-alive rule applies: no line from the PC for 3 s in SlotForge mode = safe state, laps buffered, sent on return.
 // Pure apart from asPort(): the page drives it with tick(now) and write(bytes); what the box "sends" comes out of onData(cb).
 (function (root) {
+  const AB=typeof module!=='undefined'?require('./arduinobox.js'):root.ArduinoBox;
   const DEFAULT_CARS = [
     { lane: 1, lapMs: 5800, noise: 300, coverMs: 45, pitEvery: 11, pitMs: 4000 },
     { lane: 2, lapMs: 6100, noise: 350, coverMs: 50, pitEvery: 9, pitMs: 4500 },
@@ -30,7 +31,7 @@
       lastFromPc = now;
       if (S.away) { S.away = false; ev(now, 'S-'); S.buffered.forEach(b => ev(now, `B${b.lane} ${Math.round(now) - b.at}`)); S.buffered = []; } // (as the firmware since 1.0.5: ms ago)
       const c = line[0], rest = line.slice(1).trim(); S.log.push(line);
-      if (c === 'V') { S.slotforge = true; out('[V 1.0.6 virtual 8]'); }
+      if (c === 'V') { S.slotforge = true; out('[V 1.0.7 virtual 8]'); }
       else if (c === 'G') { S.slotforge = false; S.readings = false; }
       else if (c === 'A') S.compatLanes = Math.max(1, Math.min(8, Number(rest) || 8));
       else if (c === 'L') S.lights = rest[0] || '0';
@@ -43,10 +44,8 @@
       else if (c === 'H') { const [pin, arm, trig] = rest.split(/\s+/).map(Number); if (pins[pin]) { pins[pin].arm = arm; pins[pin].trig = trig; } }
       else if (c === 'P') { const [pin, spec, kind] = rest.split(/\s+/); const p = pins[Number(pin)]; if (p) { p.role = spec[0]; p.index = Number(spec.slice(1)) || 0; p.kind = Number(kind) || 0; } }
       else if (c === 'O') { const [key, ...vals] = rest.split(/\s+/); const v = Number(vals[0]);
-        if ((key === 'lights' && v === 2 && S.options.relay[1] > 0) ||
-            (key === 'lanerelays' && ((v > 0 && S.options.lights[0] === 2) || v < 0 || v > 7))) {
-          ev(now, 'E Nano output pin conflict or unsupported relay count'); return;
-        }
+        const invalid=AB.optionError(S.options,key,vals[0]??'','nano');
+        if(invalid||vals.length!==1){ev(now,'E '+(invalid||'Expected one option value'));return;}
         if (key === 'blackout') S.blackout = v; else if (key === 'lights') S.options.lights[0] = v; else if (key === 'pixels') S.options.lights[1] = v; else if (key === 'bright') S.options.lights[2] = v; else if (key === 'lanepix') S.options.lights[3] = v;
         else if (key === 'relaync') S.options.relay[0] = v; else if (key === 'lanerelays') S.options.relay[1] = v; else if (key === 'lanerelaysnc') S.options.relay[2] = v; else if (key === 'buzzer') S.options.buzzer = [v]; else if (key === 'safeoff') S.options.safeoff = [v]; else if (key === 'ladder') S.options.ladder = [v]; }
       else if (c === 'W') { S.saved++; ev(now, 'E saved'); }

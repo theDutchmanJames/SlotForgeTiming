@@ -48,6 +48,7 @@ void loadSettings() {
   EEPROM.get(0, S);
   freshSettings = S.magic != SETTINGS_MAGIC || S.version != SETTINGS_VERSION;
   if (freshSettings) defaultSettings(S);
+  if (S.laneRelays > MAX_LANES) S.laneRelays = MAX_LANES;
 #if !defined(__AVR_ATmega2560__)
   // Older settings could assign the same Nano pins to LEDs and lane relays.
   if (S.laneRelays > 7) S.laneRelays = 7;
@@ -107,7 +108,16 @@ void listSettings() {
   proto.option("relay", S.relayNC, S.laneRelays, S.laneRelaysNC); proto.option("buzzer", S.buzzer); proto.option("safeoff", S.safePowerOff); proto.option("ladder", S.ladderPresent);
 }
 void setOption(const char *key, const char *val) {
-  long v = num(val);
+  // Validate before narrowing to uint8_t/uint16_t: typed values must not wrap.
+  long lo = 0, hi = 1;
+  if (!strcmp(key, "blackout")) hi = 5000;
+  else if (!strcmp(key, "lights")) hi = LIGHTS_PINS;
+  else if (!strcmp(key, "pixels")) { lo = 7; hi = 60; }
+  else if (!strcmp(key, "bright")) hi = 255;
+  else if (!strcmp(key, "lanerelays")) hi = MAX_LANES;
+  else if (strcmp(key, "lanepix") && strcmp(key, "relaync") && strcmp(key, "lanerelaysnc") && strcmp(key, "buzzer") && strcmp(key, "safeoff") && strcmp(key, "ladder")) { proto.msg("unknown option"); return; }
+  char *end; long v = strtol(val, &end, 10);
+  if (end == val || *end || v < lo || v > hi) { proto.msg("option outside supported range"); return; }
 #if !defined(__AVR_ATmega2560__)
   if ((!strcmp(key, "lights") && v == LIGHTS_PINS && S.laneRelays) ||
       (!strcmp(key, "lanerelays") && v > 0 && S.lightsKind == LIGHTS_PINS)) {

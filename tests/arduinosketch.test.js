@@ -1,5 +1,5 @@
 // The embedded sketch (renderer/arduinosketch.js) must match firmware/SlotForgeBox exactly, and the zip the app hands out must be a zip that unzippers open.
-const fs = require('fs'), path = require('path'), { execFileSync } = require('child_process');
+const fs = require('fs'), path = require('path'), { execFileSync, spawnSync } = require('child_process');
 const Z = require('../renderer/zipfile.js'), S = require('../renderer/arduinosketch.js');
 let fails = 0; const ok = (n, c) => { console.log((c ? 'ok   ' : 'FAIL ') + n); if (!c) fails++; };
 const dir = path.join(__dirname, '..', 'firmware', 'SlotForgeBox');
@@ -19,11 +19,18 @@ const dir = path.join(__dirname, '..', 'firmware', 'SlotForgeBox');
   // (Python is only the independent second opinion on the zip: python3 on Mac and Linux, python or py on Windows; without any of them the two checks below are skipped)
   const prog = `import zipfile,sys; z=zipfile.ZipFile(sys.argv[1]); print(z.testzip()); print('\\n'.join(z.namelist())); print(z.read('SlotForgeBox/settings.h')==open(sys.argv[2],'rb').read())`;
   for (const cmd of [['python3'], ['python'], ['py', '-3']]) {
-    try { listed = execFileSync(cmd[0], cmd.slice(1).concat(['-I', '-c', prog, zp, path.join(dir, 'settings.h')]), { stdio: ['ignore', 'pipe', 'ignore'] }).toString().replace(/\r/g, ''); python = cmd.join(' '); break; } catch (x) { listed = ''; }
+    const probe=spawnSync(cmd[0],cmd.slice(1).concat(['-I','--version']),{encoding:'utf8',timeout:5000,windowsHide:true});
+    if(probe.status!==0||!/^Python 3\./.test((probe.stdout||'')+(probe.stderr||'')))continue;
+    python=cmd.join(' ');
+    try { listed = execFileSync(cmd[0], cmd.slice(1).concat(['-I', '-c', prog, zp, path.join(dir, 'settings.h')]), { stdio: ['ignore', 'pipe', 'ignore'],timeout:10000,windowsHide:true }).toString().replace(/\r/g, ''); } catch (x) { listed = ''; }
+    break; // A broken ZIP is a failure, not evidence that Python is missing.
   } // (Windows ends the lines of print with CR LF: the CR is taken out, so the check reads the same everywhere)
   extractedOk = /^None\n/.test(listed) && /True\s*$/.test(listed);
-  if (!python) { console.log('     (no Python found on this machine: the zip is not opened by a second program here)'); extractedOk = true; listed = Object.keys(S.files).concat(['SlotForgeBox/README.txt']).join('\n'); }
-  ok('Python opens it, every CRC checks, and a file reads back identical', extractedOk);
-  ok('all files are in the zip under SlotForgeBox/', Object.keys(S.files).every(n => listed.includes(n)) && listed.includes('SlotForgeBox/README.txt'));
+  if (!python) console.log('SKIP independent ZIP extraction: Python 3 is not available.');
+  else {
+    ok('Python opens it, every CRC checks, and a file reads back identical', extractedOk);
+    ok('all files are in the zip under SlotForgeBox/', Object.keys(S.files).every(n => listed.includes(n)) && listed.includes('SlotForgeBox/README.txt'));
+  }
+  fs.unlinkSync(zp);fs.rmdirSync(tmp);
 }
 console.log(fails ? `${fails} FAILED` : 'all passed'); process.exit(fails ? 1 : 0);

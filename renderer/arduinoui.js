@@ -178,9 +178,9 @@ function renderArduinoSettings(box) {
     <p class="muted">A lane sensor counts laps, a pit sensor starts pit stops (pit sensor 1 belongs to lane 1), the call-button ladder is the pin with the drivers' buttons. The bar is the live reading; a car must bring it below the trigger line (the lower threshold) and the pass ends when it rises above the arm line again. <em>Calibrate</em> sets both from the empty track.</p>`;
   const lanesBody = `<div class="row"><strong>Lanes</strong></div><div class="sensgrid">${sensors}</div>
     <p class="muted">Which lane each sensor letter counts for (swap two here instead of rewiring). The light turns green while a car is over the sensor.</p>`;
-  const lightsBody = `<div class="row"><strong>Lights</strong>${sel('ab-lights', ArduinoBox.lightChoices(v?.board), lights[0], ab.open ? '' : 'disabled')}<label>Pixels <input type="number" id="ab-pixels" value="${esc(lights[1])}" min="7" max="60" style="width:4em" ${ab.open ? '' : 'disabled'}></label><label>Brightness <input type="number" id="ab-bright" value="${esc(lights[2])}" min="1" max="255" style="width:4em" ${ab.open ? '' : 'disabled'}></label>
+  const lightsBody = `<div class="row"><strong>Lights</strong>${sel('ab-lights', ArduinoBox.lightChoices(v?.board), lights[0], ab.open ? '' : 'disabled')}<label>Pixels <input type="number" id="ab-pixels" value="${esc(lights[1])}" min="7" max="60" style="width:6em" ${ab.open ? '' : 'disabled'}></label><label>Brightness <input type="number" id="ab-bright" value="${esc(lights[2])}" min="1" max="255" style="width:6em" ${ab.open ? '' : 'disabled'}></label>
       <label class="inline"><input type="checkbox" id="ab-lanepix" ${lights[3] ? 'checked' : ''} ${ab.open ? '' : 'disabled'}> A status pixel per lane</label><button class="btn" id="ab-lighttest" ${ab.open ? '' : 'disabled'}>Test the lights</button></div>`;
-  const powerBody = `<div class="row"><strong>Power</strong><label>Main relay ${sel('ab-relaync', [[0, 'normally open'], [1, 'normally closed']], relay[0], ab.open ? '' : 'disabled')}</label><label>Lane relays <input type="number" id="ab-lanerelays" value="${esc(relay[1])}" min="0" max="${v?.board === 'mega' ? 8 : 7}" style="width:4em" ${ab.open ? '' : 'disabled'}></label>${sel('ab-lanerelaysnc', [[0, 'normally open'], [1, 'normally closed']], relay[2], ab.open ? '' : 'disabled')}
+  const powerBody = `<div class="row"><strong>Power</strong><label>Main relay ${sel('ab-relaync', [[0, 'normally open'], [1, 'normally closed']], relay[0], ab.open ? '' : 'disabled')}</label><label>Lane relays <input type="number" id="ab-lanerelays" value="${esc(relay[1])}" min="0" max="${v?.board === 'mega' ? 8 : 7}" style="width:6em" ${ab.open ? '' : 'disabled'}></label>${sel('ab-lanerelaysnc', [[0, 'normally open'], [1, 'normally closed']], relay[2], ab.open ? '' : 'disabled')}
       <label>When the PC goes away ${sel('ab-safeoff', [[1, 'cut the track power'], [0, 'leave the power as it is']], (opt.safeoff || [1])[0], ab.open ? '' : 'disabled')}</label><button class="btn" id="ab-pon" ${ab.open ? '' : 'disabled'}>Power on</button><button class="btn" id="ab-poff" ${ab.open ? '' : 'disabled'}>Power off</button></div>`;
   const buttonsBody = `<div class="row"><strong>Buttons and buzzer</strong><label class="inline"><input type="checkbox" id="ab-buzzer" ${(opt.buzzer || [1])[0] ? 'checked' : ''} ${ab.open ? '' : 'disabled'}> Buzzer present</label><label class="inline"><input type="checkbox" id="ab-ladder" ${(opt.ladder || [0])[0] ? 'checked' : ''} ${ab.open ? '' : 'disabled'}> Call-button ladder present</label><button class="btn" id="ab-beep" ${ab.open ? '' : 'disabled'}>Beep</button>
       <span class="muted">The Start/Pause and Track call buttons of the box do what the race setup says the Trackcall button does.</span></div>`;
@@ -228,7 +228,14 @@ function renderArduinoSettings(box) {
   $('ab-virtual').onchange = async e => { await save({ abVirtual: e.target.checked }); if (e.target.checked && state.settings.timingHw !== 'arduino') await setTimingHw('arduino'); /* (ticking the virtual box means the Arduino Sketch is the one in use: saved as the choice, also when nothing was chosen yet and the tick alone already made it the one in use, so the list above and the note follow) */ if (ab.open) await abClose(); if (e.target.checked) { ab.dev = ArduinoSim.createSim().asPort(); ab.info = ab.dev.getInfo(); await abOpen(); } else ab.dev = null; renderArduinoSettings(box); };
   $('ab-download').onclick = abDownloadSketch;
   $('ab-calib').onclick = () => abDiagnostic(C.calibrate(), 'calibrate');
-  $('ab-blackout').onchange = async e => { if(await abDiagnostic(C.option('blackout', Math.max(0, Math.min(5000, Number(e.target.value) || 0))), 'blackout'))await abSend(C.list()); };
+  async function setOptionFromControl(el,key,value){
+    if(el.type==='number' && (el.value==='' || !el.reportValidity())){abMsg('Enter a whole number within the shown limits.');return;}
+    if(el.type==='number')value=el.valueAsNumber; // Send decimal integers even when the browser accepts exponent notation.
+    const problem=ArduinoBox.optionError(L.options,key,value,L.version?.board);
+    if(problem){renderArduinoSettings(box);abMsg(problem);return;}
+    if(await abDiagnostic(C.option(key,value),key))await abSend(C.list());
+  }
+  $('ab-blackout').onchange = e => setOptionFromControl(e.target,'blackout',e.target.value);
   box.onchange = async ev => { // pins, thresholds, the lane map
     const el = ev.target; if (!el || !el.dataset) return; const d = el.dataset;
     if(!['pinrole','pinindex','pinkind','arm','trig','sensor'].some(k=>d[k]!==undefined)||!abMayConfigure())return;
@@ -245,7 +252,7 @@ function renderArduinoSettings(box) {
       const map = ArduinoBox.swapLane(abSettings().laneMap, Number(d.sensor), Number(el.value)); await save({ abLaneMap: map }); L.setMap(map); renderArduinoSettings(box);
     }
   };
-  const optChange = (id, key, read) => { const el = $(id); if (el) el.onchange = async e => { const value=read(e.target), conflict=ArduinoBox.outputConflict(L.options,key,value,L.version?.board); if(conflict){renderArduinoSettings(box);abMsg(conflict);return;}if(await abDiagnostic(C.option(key,value),key))await abSend(C.list()); }; };
+  const optChange = (id, key, read) => { const el = $(id); if (el) el.onchange = e => setOptionFromControl(e.target,key,read(e.target)); };
   optChange('ab-lights', 'lights', e => e.value); optChange('ab-pixels', 'pixels', e => e.value); optChange('ab-bright', 'bright', e => e.value); optChange('ab-lanepix', 'lanepix', e => (e.checked ? 1 : 0));
   optChange('ab-relaync', 'relaync', e => e.value); optChange('ab-lanerelays', 'lanerelays', e => e.value); optChange('ab-lanerelaysnc', 'lanerelaysnc', e => e.value); optChange('ab-safeoff', 'safeoff', e => e.value);
   optChange('ab-buzzer', 'buzzer', e => (e.checked ? 1 : 0)); optChange('ab-ladder', 'ladder', e => (e.checked ? 1 : 0));
