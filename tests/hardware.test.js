@@ -18,7 +18,7 @@ ok('notes: Trackcall, lane sensors, time digits', H.trackmateNote([87]) === '[Tr
   ok('parser: rubbish is reported as unknown', P.feed([0x7e]).map(e => e.type).join() === 'other');
 }
 // ---- DS Electronics (listening version) ----
-ok('the DS models are those of Race Coordinator\'s setup screen, in its order', H.DS_TYPES.map(t => t[1]).join() === 'DS-030,DS-200,DS-200b,DS-300,DS-300 RC' && new Set(H.DS_TYPES.map(t => t[0])).size === 5 && H.DS_TYPES.every(t => /^[a-z0-9]+$/.test(t[0])));
+ok('DS capture models include the original variants and DS-0045', H.DS_TYPES.map(t => t[1]).join() === 'DS-030,DS-200,DS-200b,DS-300,DS-300 RC,DS-0045' && new Set(H.DS_TYPES.map(t => t[0])).size === 6 && H.DS_TYPES.every(t => /^[a-z0-9]+$/.test(t[0])));
 ok('a model id gives its name, anything else gives nothing', H.dsTypeName('ds300') === 'DS-300' && H.dsTypeName('ds300rc') === 'DS-300 RC' && ['', 'ds999', undefined, null, 'constructor', '__proto__'].every(v => H.dsTypeName(v) === ''));
 ok('the speeds to choose from go up, and include 9600 and the speeds of old serial devices', H.BAUDS.every((b, i, a) => i === 0 || b > a[i - 1]) && H.BAUDS.includes(9600) && H.BAUDS.includes(1200) && H.BAUDS.includes(115200));
 ok('serial settings: 9600 baud, 8 data bits, no parity, 1 stop bit, DTR and RTS on when nothing is said', JSON.stringify(H.serialConfig()) === '{"baud":9600,"data":8,"parity":"none","stop":1,"dtr":true,"rts":true}' && JSON.stringify(H.serialConfig({})) === JSON.stringify(H.serialConfig(null)));
@@ -34,7 +34,7 @@ ok('...and nothing is made up when it is not there', ['Mozilla/5.0 Chrome/130 Sa
   ok('...without a known version the line has no version (and no question mark), without a model or port it says so', H.dsHeader({ when, type: 'ds300', info }).split('\r\n')[0] === 'SlotForge Timing - DS Electronics capture' && /Unit: not chosen/.test(H.dsHeader({ when })) && /Port: no port chosen/.test(H.dsHeader({ when })) && /Saved: \?/.test(H.dsHeader({})) && /Saved: \?/.test(H.dsHeader({ when: new Date('x') })) && H.dsHeader().includes('Unit: not chosen'));
   ok('...a model that does not exist is not named', /Unit: not chosen/.test(H.dsHeader({ type: 'ds999', when })) && !H.dsHeader({ type: '<b>', when }).includes('<b>'));
   const text = H.dsCapture({ version: '0.66.0', when, type: 'ds200b', info }, ['  1.000  <-    1 B  41  |A|', '          -- note --']);
-  ok('a saved capture is the top, an empty line, the log lines, all with Windows line ends, and ends with a line end', text.startsWith(H.dsHeader({ version: '0.66.0', when, type: 'ds200b', info }) + '\r\n\r\n  1.000  <-    1 B  41  |A|\r\n          -- note --') && text.endsWith('-- note --\r\n') && !/[^\r]\n/.test(text));
+  ok('a saved capture is the top, an empty line, the log lines, all with Windows line ends, and ends with a line end', text.startsWith(H.dsHeader({ version: '0.66.0', when, type: 'ds200b', info })) && text.includes('Omitted log lines: 0') && text.includes('  1.000  <-    1 B  41  |A|\r\n          -- note --') && text.endsWith('-- note --\r\n') && !/[^\r]\n/.test(text));
   ok('...an empty log still gives a readable file', H.dsCapture({ when }, []).endsWith('\r\n\r\n') && H.dsCapture({ when }).includes('DS Electronics capture'));
 }
 ok('the file name has the model in it, and nothing else can get in', H.dsFileName('ds200b') === 'ds-electronics-ds200b-log.txt' && H.dsFileName('ds300rc') === 'ds-electronics-ds300rc-log.txt' && ['', undefined, '../../x', 'ds999', 'ds300/..'].every(v => H.dsFileName(v) === 'ds-electronics-unit-log.txt'));

@@ -641,8 +641,14 @@ const Help = (() => {
           <li>The side rail opens the matching folder. Open folders stay open while connection or pin information refreshes. On a narrow screen, the rail becomes a compact row of section buttons.</li>
           <li>Arduino separates <b>Connection</b>, <b>Pins and calibration</b>, <b>Lane sensors</b> and <b>Live monitor</b>. Optional folders contain <b>Start lights</b>, <b>Track power</b>, <b>Buttons and buzzer</b> and <b>Firmware and sketch</b>.</li>
           <li>App preferences and lane mapping save automatically. Pin, threshold and output changes go to the connected Arduino; <b>Save to the box</b> stores them for the next power-on.</li>
-          <li>DS Electronics is <b>capture only</b>. Choose its model and COM port, then check <b>Serial settings</b>. Disconnect before changing baud, parity, data or stop bits. DTR and RTS control the serial signal lines.</li>
+          <li>DS Electronics is <b>capture only</b>. Choose its model and COM port, then check <b>Serial settings</b>. Disconnect before changing model, baud, parity, data or stop bits. DTR and RTS control the serial signal lines.</li>
           <li><b>How to make a capture</b> walks through the checks. In <b>Live capture</b>, add notes before sensor passes or button presses, then <b>Save log</b>. No DS lap timing or race control is available yet.</li>
+        </ul>` },
+      { id: 'dscapture', title: 'DS reference settings and capture checks', note: 'Model-specific speeds and offline diagnostics', body: `<ul>
+          <li>Model selection does not overwrite serial settings. Reference starting points are DS-030 / DS-200: <b>4800 baud</b>, DS-300: <b>56000 baud</b>. Some DS-200 / DS-300 units use the other speed; match your working configuration. <b>56000 and 57600 differ.</b> Other variants, including DS-0045, have no verified preset.</li>
+          <li>PC Lap Counter’s DS <b>Debug</b> window provides a separate reference capture. Only one app can open the same port at once. Record matching sensor passes, displayed times and button actions in both apps.</li>
+          <li><b>Check saved capture</b> checks a SlotForge log’s hex data and byte counts offline. It does not validate the protocol or replay race events. PC Lap Counter files use a different format.</li>
+          <li>Dots in the text column are normal for binary bytes. A connected port is not proof of DS synchronization. Logs identify the connected model and settings and report omitted lines. If closing the port fails, use <b>Retry disconnect</b> before connecting again.</li>
         </ul>` },
       { id: 'parallel', title: 'Parallel Port', note: 'Windows LPT sensors, pits, track call, relays and lights', body: `
         <ul>

@@ -3627,7 +3627,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     ctx.Blob = Blob; URL.createObjectURL = b => { blobs.push(b); return 'blob:x'; }; document.createElement = () => { const a = mk(); anchors.push(a); return a; }; document.body.appendChild = () => {};
     ctx.navigator = { userAgent: 'Mozilla/5.0 SlotForge-Timing/9.8.7 Electron/33.0.0 Safari/537.36', serial: undefined, clipboard: { writeText: async x => { copied.push(x); } } };
     run("state.hwSub='ds'; state.settings.dsType=undefined"); await run('render()');
-    say('the DS Electronics page says it is a listening version that sends nothing, with the five models to choose from', html().includes('Listening version') && html().includes('sends nothing to the unit') && ['ds030:DS-030', 'ds200:DS-200', 'ds200b:DS-200b', 'ds300:DS-300', 'ds300rc:DS-300 RC'].every(x => html().includes(`name="dstype" value="${x.split(':')[0]}"> ${x.split(':')[1]}</label>`)) && !/checked> DS/.test(html()) && E('hwtabs').innerHTML.includes('aria-selected="true" data-id="ds"'));
+    say('the DS Electronics page says it is a listening version that sends nothing, with all six capture models to choose from', html().includes('Listening version') && html().includes('sends nothing to the unit') && ['ds030:DS-030', 'ds200:DS-200', 'ds200b:DS-200b', 'ds300:DS-300', 'ds300rc:DS-300 RC', 'ds0045:DS-0045'].every(x => html().includes(`name="dstype" value="${x.split(':')[0]}"> ${x.split(':')[1]}</label>`)) && !/checked> DS/.test(html()) && E('hwtabs').innerHTML.includes('aria-selected="true" data-id="ds"'));
     say('...and the serial settings, the note field, the log with its buttons and the connection light', ['ds-find', 'ds-conn', 'ds-led', 'ds-baud', 'ds-data', 'ds-parity', 'ds-stop', 'ds-dtr', 'ds-rts', 'ds-note', 'ds-addnote', 'ds-copy', 'ds-save', 'ds-clear', 'ds-log', 'ds-stats'].every(i => html().includes(`id="${i}"`)) && html().includes('How to make a capture'));
     say('...the speed starts at 9600 with 8 data bits, no parity and 1 stop bit, DTR and RTS on, and the speeds to choose from are listed', html().includes('<option selected>9600</option>') && html().includes('<option>1200</option>') && html().includes('<option>115200</option>') && html().includes('id="ds-dtr" checked') && html().includes('id="ds-rts" checked'));
     say('without COM port support (a browser) there is nothing to find or connect, and it says why', html().includes('id="ds-find" disabled') && html().includes('id="ds-conn" disabled') && html().includes('COM ports can only be used in the desktop app.'));
@@ -3644,56 +3644,56 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     ctx.navigator.serial = { requestPort: async () => port };
     await run('render()'); say('with COM port support the find button works, Connect still waits', !/id="ds-find" disabled/.test(html()) && html().includes('id="ds-conn" disabled') && html().includes('No port chosen.'));
     await E('ds-find').onclick(); say('after Find the port is named (with its USB numbers), and the page asks for the model before connecting', html().includes('COM port (USB 0403:6001)') && html().includes('Choose the model above to connect.') && html().includes('id="ds-conn" disabled'));
-    { const n = calls.length; await withMerge(async () => { await box().onchange({ target: { name: 'dstype', value: 'ds999' } }); await box().onchange({ target: { name: 'other', value: 'ds300' } }); await wait(20); });
+    { const n = calls.length; await withMerge(async () => { await box().onchange({ target: { name: 'dstype', value: 'ds999' } }); await box().onchange({ target: { name: 'other', value: 'ds300' } }); await wait(120); });
       say('a model that does not exist, or a change of something else, is ignored', calls.slice(n).filter(c => c[0] === 'settings' && 'dsType' in c[1]).length === 0 && run('state.settings.dsType') === undefined);
-      await withMerge(async () => { await box().onchange({ target: { name: 'dstype', value: 'ds300' } }); await wait(30); });
+      await withMerge(async () => { await box().onchange({ target: { name: 'dstype', value: 'ds300' } }); await wait(120); });
       say('choosing a model saves it, and Connect is then ready', calls.slice(n).some(c => c[0] === 'settings' && c[1].dsType === 'ds300') && run('state.settings.dsType') === 'ds300' && /id="ds-conn" >/.test(html()) && html().includes('name="dstype" value="ds300" checked> DS-300</label>') && !html().includes('Choose the model above to connect.')); }
     await E('ds-baud').onchange({ target: { value: '19200' } }); await E('ds-parity').onchange({ target: { value: 'even' } }); await E('ds-rts').onchange({ target: { checked: false } });
     say('the serial settings are kept while the app runs', run('JSON.stringify(dsc.cfg)') === '{"baud":19200,"data":8,"parity":"even","stop":1,"dtr":true,"rts":false}');
-    await E('ds-conn').onclick(); await wait(20);
+    await E('ds-conn').onclick(); await wait(120);
     say('Connect opens the port with those settings and sets DTR and RTS as chosen', ds.opened.length === 1 && JSON.stringify(ds.opened[0]) === '{"baudRate":19200,"dataBits":8,"stopBits":1,"parity":"even","flowControl":"none"}' && JSON.stringify(ds.sig[0]) === '{"dataTerminalReady":true,"requestToSend":false}');
     say('...the light is on, the button says Disconnect, the speed cannot be changed while connected, the device is named with its model', html().includes('class="led on" id="ds-led"') && html().includes('Disconnect</button>') && /id="ds-baud" disabled/.test(html()) && html().includes('DS-300 on COM port (USB 0403:6001) is connected'));
-    say('...the log says what it connected to, and the page says that nothing has arrived yet', log().includes('-- connected to the COM port at 19200 baud, 8 data bits, parity even, 1 stop bit(s), DTR on, RTS off --') && E('ds-stats').textContent.startsWith('Connected. Nothing has arrived yet'));
+    say('...the log says what it connected to, and the page says that nothing has arrived yet', log().includes('-- connected to DS-300 / COM port (USB 0403:6001) at 19200 baud, 8 data bits, parity even, 1 stop bit(s), DTR on, RTS off --') && E('ds-stats').textContent.startsWith('Connected. Nothing has arrived yet'));
     say('...the control lines are written to the log when they change (once, not every time they are read)', (log().match(/LINES  CTS=0 DSR=1 DCD=0 RI=0/g) || []).length === 1);
     say('the Trackmate connection is a separate thing: it is not touched', run('hw.open') === false && run('hw.dev') === null && run('hw.lines.length') === run('hw.lines.length'));
     // data arrives
-    ds.ctl.enqueue(new Uint8Array([0x41, 0x0d, 0x0a])); ds.ctl.enqueue(new Uint8Array([0x4c, 0x31, 0x20, 0x30, 0x37, 0x2e, 0x33, 0x35, 0x0d, 0x0a])); await wait(30);
+    ds.ctl.enqueue(new Uint8Array([0x41, 0x0d, 0x0a])); ds.ctl.enqueue(new Uint8Array([0x4c, 0x31, 0x20, 0x30, 0x37, 0x2e, 0x33, 0x35, 0x0d, 0x0a])); await wait(120);
     say('what arrives is written to the log with the time, the number of bytes, the hex and the text', /\d\.\d{3}  <-    3 B  41 0d 0a  \|A\.\.\|/.test(log()) && /<-   10 B  4c 31 20 30 37 2e 33 35 0d 0a  \|L1 07\.35\.\.\|/.test(log()));
     say('...and the page counts the bytes and the pieces', E('ds-stats').textContent.startsWith('Received: 13 byte(s) in 2 piece(s). The last one came '));
     // notes
-    E('ds-note').value = 'lane 1: car over the sensor'; E('ds-addnote').onclick();
+    E('ds-note').value = 'lane 1: car over the sensor'; E('ds-addnote').onclick(); await wait(120);
     say('a note is written to the log with the time, and the field is emptied', /\d\.\d{3}  NOTE  lane 1: car over the sensor/.test(log()) && E('ds-note').value === '');
     E('ds-note').value = '   '; E('ds-addnote').onclick(); const lines0 = run('dsc.lines.length'); E('ds-note').value = 'with Enter'; let prevented = false; E('ds-note').onkeydown({ key: 'a', preventDefault() { prevented = true; } }); const lines1 = run('dsc.lines.length'); E('ds-note').onkeydown({ key: 'Enter', preventDefault() { prevented = true; } });
-    say('an empty note is not added; Enter adds the note (and does not submit anything), other keys do nothing', /NOTE  with Enter/.test(log()) && run('dsc.lines.length') === lines0 + 1 && lines1 === lines0 && prevented && E('ds-note').value === '' && !/NOTE  \s*$/m.test(log()));
-    // the model can be changed during a connection: it is written in the log
-    { const n = calls.length; await withMerge(async () => { await box().onchange({ target: { name: 'dstype', value: 'ds200' } }); await wait(30); });
-      say('the model can be changed while connected, and the log says so', calls.slice(n).some(c => c[0] === 'settings' && c[1].dsType === 'ds200') && log().includes('-- the unit was set to DS-200 --') && !/name="dstype"[^>]*disabled/.test(html()));
-      await withMerge(async () => { await box().onchange({ target: { name: 'dstype', value: 'ds300' } }); await wait(30); }); }
+    await wait(120); say('an empty note is not added; Enter adds the note (and does not submit anything), other keys do nothing', /NOTE  with Enter/.test(log()) && run('dsc.lines.length') === lines0 + 1 && lines1 === lines0 && prevented && E('ds-note').value === '' && !/NOTE  \s*$/m.test(log()));
+    // A connected capture keeps the same model identity.
+    { const n = calls.length; await withMerge(async () => { await box().onchange({ target: { name: 'dstype', value: 'ds200' } }); await wait(120); });
+      say('the model stays locked while connected and no model update is saved', !calls.slice(n).some(c => c[0] === 'settings' && c[1].dsType === 'ds200') && run('state.settings.dsType') === 'ds300' && /name="dstype"[^>]*disabled/.test(html()));
+      await withMerge(async () => { await box().onchange({ target: { name: 'dstype', value: 'ds300' } }); await wait(120); }); }
     // save and copy: the whole log with the top lines
     { const lines = run('dsc.lines.slice()');
       E('ds-save').onclick(); const text = await blobs[0].text(), a = anchors[anchors.length - 1];
       say('Save log makes a text file named after the model, with the top lines and then every line of the log', a.download === 'ds-electronics-ds300-log.txt' && text.startsWith('SlotForge Timing 9.8.7 - DS Electronics capture\r\n') && text.includes('\r\nUnit: DS-300\r\n') && text.includes('\r\nPort: COM port (USB 0403:6001)\r\n') && lines.every(l => text.includes(l)) && text.indexOf(lines[0]) > text.indexOf('Port:'));
       await E('ds-copy').onclick(); say('Copy log copies the same text (the time of saving apart)', copied.length === 1 && copied[0].replace(/Saved: [^\r]*/, '') === text.replace(/Saved: [^\r]*/, '') && msg() === 'Copied.'); }
     say('nothing was ever sent to the unit', ds.writes.length === 0);
-    E('ds-clear').onclick(); say('Clear empties the log (on the page and in the file)', log() === '' && run('dsc.lines.length') === 0);
+    E('ds-clear').onclick(); say('Clear removes old payload and records that the capture is incomplete', log().includes('log cleared by user') && !log().includes('41 0d 0a') && run('dsc.lines.length') === 1 && run('dsc.omitted') > 0);
     // disconnect
-    await E('ds-conn').onclick(); await wait(30);
+    await E('ds-conn').onclick(); await wait(120);
     say('Disconnect closes the port and the light goes out (the port is not left open and locked)', ds.closes === 1 && run('dsc.open') === false && /class="led" id="ds-led"/.test(html()) && html().includes('Connect</button>') && !msg().includes('Could not'));
     say('...the log says how much came in, and the page remembers it', log().includes('-- disconnected: 13 byte(s) received in 2 piece(s) --') && E('ds-stats').textContent === 'Last connection: 13 byte(s) received in 2 piece(s).');
     E('ds-note').value = 'not connected'; E('ds-addnote').onclick(); say('a note cannot be added without a connection', !log().includes('not connected  ') && !/NOTE  not connected/.test(log()));
     // connect again, then the unit goes away
-    await E('ds-conn').onclick(); await wait(20); ds.ctl.enqueue(new Uint8Array([0x42])); await wait(20);
+    await E('ds-conn').onclick(); await wait(120); ds.ctl.enqueue(new Uint8Array([0x42])); await wait(120);
     say('connecting again starts the counts again', ds.opened.length === 2 && E('ds-stats').textContent.startsWith('Received: 1 byte(s) in 1 piece(s)'));
-    port.readable = null; ds.ctl.error(new Error('gone')); await wait(30);
-    say('when the unit goes away the error and the loss are in the log, the light goes out and Connect is back', /ERROR  Error: gone/.test(log()) && log().includes('-- the device went away --') && run('dsc.open') === false && html().includes('Connect</button>'));
+    port.readable = null; ds.ctl.error(new Error('gone')); await wait(120);
+    say('when the unit goes away the error and the loss are in the log, the light goes out and Connect is back', /ERROR  Error: gone/.test(log()) && log().includes('-- receive stream ended --') && run('dsc.open') === false && html().includes('Connect</button>'));
     // a stream that simply ends (and no new one comes) also means the unit is gone: the reading must not start over and over
-    ctx.navigator.serial = { requestPort: async () => port }; await run('render()'); await E('ds-find').onclick(); await E('ds-conn').onclick(); await wait(20); ds.ctl.close(); await wait(50);
-    say('a stream that ends is treated as the unit going away (no endless reading)', log().includes('-- the device went away --') && run('dsc.open') === false && html().includes('Connect</button>'));
+    ctx.navigator.serial = { requestPort: async () => port }; await run('render()'); await E('ds-find').onclick(); await E('ds-conn').onclick(); await wait(120); ds.ctl.close(); await wait(120);
+    say('a stream that ends is treated as the unit going away (no endless reading)', log().includes('-- receive stream ended --') && run('dsc.open') === false && html().includes('Connect</button>'));
     // a wrong speed gives the same error over and over: one line with a count, not thousands of lines
     { let n = 0, cur = null; const mkBad = () => new ReadableStream({ start(c) { setTimeout(() => { c.error(Object.assign(new Error('Framing error.'), { name: 'FramingError' })); n++; cur = n < 5 ? mkBad() : null; }, 1); } });
       const bad = { ...port, open: async () => { cur = mkBad(); }, close: async () => {}, get readable() { return cur; } }; ctx.navigator.serial = { requestPort: async () => bad }; await run('render()'); await E('ds-find').onclick(); await E('ds-clear').onclick(); await E('ds-conn').onclick(); await wait(120);
       const errLines = log().split('\n').filter(l => l.includes('ERROR'));
-      say('five framing errors in a row make one ERROR line with the count, and the loss of the port after them is noted', errLines.length === 1 && errLines[0].includes('FramingError: Framing error.  (5 times)') && log().includes('-- the device went away --') && run('dsc.open') === false);
+      say('five framing errors in a row make one ERROR line with the count, and the loss of the port after them is noted', errLines.length === 1 && errLines[0].includes('FramingError: Framing error.  (5 times)') && log().includes('-- receive stream ended --') && run('dsc.open') === false);
       say('...the reading never spins: it stopped after those five errors', n === 5); }
     // a port that cannot be opened
     { const busy = { ...port, open: async () => { throw new Error('Failed to open serial port.'); } }; ctx.navigator.serial = { requestPort: async () => busy }; await run('render()'); await E('ds-find').onclick(); await E('ds-conn').onclick();

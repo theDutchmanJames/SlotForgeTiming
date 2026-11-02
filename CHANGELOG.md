@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0 — 2026-11-02
+
+- Improve DS Electronics capture diagnostics using PC Lap Counter's documented settings and installed DS interface: add 56000 baud, explicit model-specific starting points, DS-0045 capture selection and comparison guidance. DS remains capture-only; no unverified race decoder or control commands are enabled.
+- Preserve capture model/connection metadata, report omitted log lines, bound and throttle the monitor, retain connection errors and close ended read streams. Add an offline SlotForge log integrity check, Help guidance and serial lifecycle/UI regression tests.
+- Review DS diagnostics: distinguish payload text from capture metadata, validate long rows and omission counts, retain failed-close ownership with Retry disconnect, guard pending port/model changes and stale asynchronous results, and use 4800 as the DS-200 reference starting point. Update legacy screen tests for batched painting, locked models and explicit cleared-log markers. Protocol research remains outside the shipped app.
+
 ## 1.99.9 — 2026-11-02
 
 - Follow-up Arduino review: switch removed lane-relay outputs off using their previous polarity; reject out-of-range or malformed options before storage conversions; discard oversized diagnostic messages without interpreting their contents as race events; validate explicit release durations.
