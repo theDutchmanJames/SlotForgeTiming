@@ -1,3 +1,7 @@
+<p align="left">
+  <img src="docs/images/slotforge-brand.png" alt="SlotForge — Slotcar App Collection" width="400">
+</p>
+
 # SlotForge Timing
 
 <img src="build/icon.png" alt="SlotForge Timing icon" width="96" align="right">
