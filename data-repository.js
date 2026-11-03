@@ -10,6 +10,7 @@ class DataRepository {
   }
   list(entity) { return this.db.list(entity); }
   choices(entity) { return this.db.list(entity).map(r=>({id:r.id,name:r.name||'Untitled'})); }
+  transferChoices(entity) { const keys=entity==='sessions'?['setupName','date']:require('./schema')[entity]?.title;if(!keys)throw Error('Unknown item type.');return this.db.list(entity).map(r=>({id:r.id,...Object.fromEntries(keys.filter(k=>r[k]!==undefined).map(k=>[k,r[k]]))})); }
   homeStatistics(options) { return require('./dashboard-read').home(require('./dashboard-read').jsonSource(this.db),options); }
   homeSessions(options) { return require('./dashboard-read').navigation(require('./dashboard-read').jsonSource(this.db),options); }
   raceSeason(options) { const S=require('./season-read');return S.read(S.jsonSource(this.db),options); }

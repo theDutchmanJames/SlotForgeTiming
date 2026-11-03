@@ -12,7 +12,7 @@ function identity(value) { if (typeof value !== 'string') throw Error('Invalid r
 function page(store, table, options = {}) {
   entity(table);
   const {cursor = null, mode = 'full'} = options;
-  if (!['full','choices','cars'].includes(mode)) throw Error('Invalid compatibility projection.');
+  if (!['full','choices','cars','transfer'].includes(mode)) throw Error('Invalid compatibility projection.');
   if (mode==='cars' && table!=='slotcars')throw Error('Invalid car projection.');
   if (cursor && (cursor.entity !== table || cursor.mode !== mode || typeof cursor.revision !== 'string' || !Number.isSafeInteger(cursor.ordinal) || cursor.ordinal < 0)) throw Error('Invalid compatibility cursor.');
   return store.transaction(() => {
@@ -29,7 +29,8 @@ function page(store, table, options = {}) {
           (SELECT coalesce(sum(coalesce(length(CAST(original AS BLOB)),length(bytes)*2+100)),0) FROM assets WHERE entity=? AND id=?) n`).get(table,row.id,table,row.id,table,row.id).n;
         if (size > MAX_RECORD_BYTES) throw Error('This item is too large for a compatibility list. Open it through a targeted view.');
       }
-      const value = mode === 'cars' ? {id:row.id,...Object.fromEntries(['brand','manufacturer','model'].map(k=>[k,Catalogue.read(store,table,row.id,[k])])),paddock:Catalogue.read(store,table,row.id,['paddock','databaseId'])?{databaseId:Catalogue.read(store,table,row.id,['paddock','databaseId']),carId:Catalogue.read(store,table,row.id,['paddock','carId'])}:null} : mode === 'choices' ? {id:row.id,name:Catalogue.read(store,table,row.id,['name']) || 'Untitled'} : store.get(table,row.id,true).value;
+      const transferKeys=table==='sessions'?['setupName','date']:schema[table].title||[];
+      const value = mode==='transfer'?{id:row.id,...Object.fromEntries(transferKeys.map(k=>[k,Catalogue.read(store,table,row.id,[k])]).filter(([,v])=>v!==undefined))}:mode === 'cars' ? {id:row.id,...Object.fromEntries(['brand','manufacturer','model'].map(k=>[k,Catalogue.read(store,table,row.id,[k])])),paddock:Catalogue.read(store,table,row.id,['paddock','databaseId'])?{databaseId:Catalogue.read(store,table,row.id,['paddock','databaseId']),carId:Catalogue.read(store,table,row.id,['paddock','carId'])}:null} : mode === 'choices' ? {id:row.id,name:Catalogue.read(store,table,row.id,['name']) || 'Untitled'} : store.get(table,row.id,true).value;
       const size = Buffer.byteLength(JSON.stringify(value)) + 1;
       if (size > MAX_RECORD_BYTES) throw Error('This item is too large for a compatibility list. Open it through a targeted view.');
       if (items.length && bytes + size > PAGE_BYTES) break;

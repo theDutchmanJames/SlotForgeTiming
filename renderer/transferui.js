@@ -8,7 +8,7 @@ const TR_FOLDERS = ['backup', 'export', 'import'];
 async function renderTransferSettings(box) {
   box.onclick=box.oninput=box.onchange=null;
   if (!api.exportData) { box.innerHTML = '<p class="muted">Export and import work in the Windows app.</p>'; return; }
-  const lists = {}; for (const [, es] of TR_GROUPS) for (const e of es) lists[e] = await api.list(e);
+  const lists = api.transferChoices?await api.transferChoices():{}; for (const [, es] of TR_GROUPS) for (const e of es) {if(!api.transferChoices)lists[e]=await api.list(e);else lists[e]||=[];}
   const chosen = {}; Object.entries(trState.picks).forEach(([e, set]) => { if (set.size) chosen[e] = [...set]; });
   const deps = Object.keys(chosen).length ? await api.exportDeps(chosen) : {};
   const labelOf = (e, id) => { const r = (lists[e] || []).find(x => x.id === id); return r ? trLabel(e, r) : '(missing)'; };

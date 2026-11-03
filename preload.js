@@ -85,6 +85,7 @@ contextBridge.exposeInMainWorld('api', {
   saveSession: (session, laps) => call('session:save', session, laps),
   removeSession: id => call('session:remove', id),
   exportDeps: picks => call('transfer:deps', picks),
+  transferChoices: () => call('transfer:choices'),
   exportData: (picks, extras) => call('transfer:export', picks, extras),
   importOpen: () => call('transfer:open'),
   importApply: () => call('transfer:apply'),

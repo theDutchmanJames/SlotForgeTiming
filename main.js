@@ -212,6 +212,7 @@ app.whenReady().then(async () => {
   const bulkAccess = require('./bulk-access')({ipcMain,getMain:()=>mainWin,isRacing:()=>!!live.dyn && ['countdown','running','paused','between','review'].includes(live.dyn.phase)});
   // Export and import of items as a file
   bulkAccess.handle('transfer:deps', (_e, picks) => bulkStorage.dependencies(picks));
+  bulkAccess.handle('transfer:choices',async()=>{const items={};for(const entity of transfer.ORDER)if(entity!=='laps')items[entity]=await records.transferChoices(entity);return items;});
   bulkAccess.handle('transfer:export', async (e, picks, extras) => { // picks: the ticked items; extras: the ticked things they use
     const all = {}; [picks, extras].forEach(src => Object.entries(src || {}).forEach(([k, ids]) => { all[k] = [...new Set([...(all[k] || []), ...ids])]; }));
     const bundle = await bulkStorage.collect(all, false, { version: app.getVersion() });

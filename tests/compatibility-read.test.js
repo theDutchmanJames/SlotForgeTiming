@@ -39,6 +39,13 @@ test('Content Pack choices never reconstruct photo or audio objects',async t=>{
  const {client,work}=await fixture(t);await client.close();const store=new WorkingStore(work);
  try{store.get=()=>{throw Error('Full record read forbidden');};const page=store.compatibilityRead('page','imagesets',{mode:'choices'});assert.deepEqual(page.items,[{id:'images',name:'Artwork'}]);assert(!JSON.stringify(page).includes('base64'));}finally{store.close();}
 });
+
+test('Import and Export choices preserve titles without loading media or full sessions',async t=>{
+ const {client,work,json,sql}=await fixture(t);
+ for(const entity of ['drivers','imagesets','sessions','slotcars'])assert.deepEqual(await sql.transferChoices(entity),json.transferChoices(entity));
+ await client.close();const store=new WorkingStore(work);
+ try{store.get=()=>{throw Error('Full record read forbidden');};assert.deepEqual(store.compatibilityRead('page','imagesets',{mode:'transfer'}).items,[{id:'images',name:'Artwork'}]);}finally{store.close();}
+});
 test('oversized compatibility collection fails explicitly, never returning its partial rows',async()=>{
  const sql=new SqliteCompatibilityReads({compatibilityRead:async()=>({items:[{id:'x'}],bytes:MAX_BYTES+1,next:null})});await assert.rejects(sql.list('drivers'),/too large/);
 });

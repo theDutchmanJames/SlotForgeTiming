@@ -16,6 +16,7 @@ class SqliteCompatibilityReads {
   }
   list(entity) { return this.collect(entity,'full'); }
   choices(entity) { return this.collect(entity,'choices'); }
+  transferChoices(entity) { return this.collect(entity,'transfer'); }
   get(entity,id) { return this.client.compatibilityRead('get',entity,id); }
   customFields(entity) { return this.client.compatibilityRead('custom',entity); }
   linkedLaps(entity,id) { return this.client.compatibilityRead('linked',entity,id); }

@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-2022, ubuntu-22.04, macos-15]
+        os: [windows-2022, ubuntu-22.04, macos-15-intel]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 35
     defaults:
@@ -47,14 +47,15 @@ jobs:
           node tools/qa/run-activation.cjs
           node tools/qa/run-sqlite-app.cjs
           node tools/qa/sqlite-asar.cjs
+      - name: Collect small evidence files
+        if: always()
+        run: node tools/ci/sqlite-evidence.cjs
       - name: Save evidence, including failures
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: sqlite-${{ matrix.os }}
-          path: |
-            ../outputs/sqlite-conversion/**/result.json
-            ../outputs/sqlite-conversion/**/*.log
-            ../outputs/sqlite-conversion/**/*.png
+          path: .tmp-test/sqlite-evidence/
+          include-hidden-files: true
           if-no-files-found: warn
           retention-days: 7
