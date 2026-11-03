@@ -25,7 +25,7 @@ Generated 1,000,000 laps through twenty 50,000-lap finalizations, plus 128 uniqu
 
 Windows x64, Node 24.21.0, SQLite 3.53.4. Process RSS peaked at about 616 MiB. Maximum main-thread timer gap was 196 ms during bulk work; this includes fixture creation/serialization and is not a frame-rate or race-hardware latency guarantee. No percentile or universal performance claim is made from one run.
 
-Evidence: ../outputs/sqlite-conversion/volume-P2ah35/result.json and app-result.json, app-transfer.png. Source hashes at benchmark start are retained in result.json. Later repairs changed transfer choices, legacy limits and app backup orchestration; they do not retroactively change those benchmark measurements. The final app was reopened against this same large fixture and the repaired UI checked again. Initial Home aggregation still scans history in the worker and took several seconds at this size. Improving that aggregate is a separate performance opportunity; no claim of constant-time startup is made.
+Evidence: ../outputs/sqlite-conversion/volume-P2ah35/result.json and app-result.json, app-transfer.png. Source hashes at benchmark start are retained in result.json. Later repairs changed transfer choices, legacy limits and app backup orchestration; they do not retroactively change those benchmark measurements. The final app was reopened against this same large fixture and the repaired UI checked again. Warm transfer choices took 7 ms; the first call waited about eight seconds behind initial Home work. Initial Home aggregation still scans history in the worker and took several seconds at this size. Improving that aggregate is a separate performance opportunity; no claim of constant-time startup is made.
 
 ## Failure tests and review
 
@@ -39,7 +39,7 @@ SQLite documents the page cap and resulting full error at [max_page_count](https
 
 ## Native platform checks
 
-[Baseline qualification run](https://github.com/theDutchmanJames/SlotForgeTiming/actions/runs/41650457662) passed on Windows Server 2022, Ubuntu 22.04 and Intel macOS 15: storage regressions, 20,000-lap/approximately 2 MiB media workload, actual production activation/recovery, application reopen and an ASAR-packaged worker. The final backup-controls changes are sent through the same test-only workflow; use the latest successful run for the final source revision, not a prior run.
+[Baseline qualification run](https://github.com/theDutchmanJames/SlotForgeTiming/actions/runs/41650457662) passed on Windows Server 2022, Ubuntu 22.04 and Intel macOS 15: storage regressions, 20,000-lap/approximately 2 MiB media workload, actual production activation/recovery, application reopen and an ASAR-packaged worker. The [final qualification run](https://github.com/theDutchmanJames/SlotForgeTiming/actions/runs/41651974420) also passed on all three platforms at source revision d68ba7a126598e3ef8a4abd379f0523bcffe6dd0: 289 storage tests per OS, volume smoke, all six app launches including native restore, and ASAR execution. Native backup controls were visually inspected in the captured Windows, Linux and macOS app screens.
 
 [Qualification branch runs](https://github.com/theDutchmanJames/SlotForgeTiming/actions?query=branch%3Acodex%2Fsqlite-qualification). The workflow has read-only repository permissions, uploads small QA evidence for seven days, and has no release or publishing job. The first run had an artifact-path failure after tests passed and an unavailable Apple Silicon runner; the repaired workflow uses the established Intel runner. Apple Silicon is not qualified here.
 

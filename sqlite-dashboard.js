@@ -2,6 +2,7 @@
 const D=require('./dashboard-read'),Race=require('./race-read'),C=require('./sqlite-catalogue'),R=require('./sqlite-references'),H=require('./history-read');
 function source(s){return {
  revision:()=>C.revision(s),
+ homeSummary:(o,context)=>require('./sqlite-home').summary(s,o,context),
  meta(entity){return s.statement('SELECT id FROM records WHERE entity=? ORDER BY ordinal').all(entity).map(r=>R.project(s,entity,r.id));},
  get:(entity,id)=>s.get(entity,id,true)?.value??null,
  *sessions(){for(const {id} of s.statement('SELECT id FROM history_sessions ORDER BY ordinal').iterate())yield Object.fromEntries(D.SESSION.map(k=>[k,C.read(s,'sessions',id,[k])]).filter(([,v])=>v!==undefined));},
@@ -21,4 +22,4 @@ const season=(s,o)=>s.transaction(()=>{
   track:id=>H.selected(s,'tracks',id,require('./history-read').TRACK)
  },o);
 });
-module.exports={home,navigation,race,season,charts};
+module.exports={home,navigation,race,season,charts,source};

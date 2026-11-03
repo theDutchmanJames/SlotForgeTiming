@@ -15,10 +15,27 @@ function options(o={}){
 function home(source,value){const o=options(value),sessions=[...source.sessions()].map(session),now=new Date(o.now),last=Home.lastSession(sessions),dates=new Map(sessions.map(s=>[s.id,s.date]));
  const drivers=new Map(source.meta('drivers').filter(x=>x.driverType!=='virtual').map(x=>[x.id,x.name||'(unnamed)'])),cars=new Map(source.meta('slotcars').map(x=>[x.id,x.paddock?.name||[x.brand,x.manufacturer,x.model].filter(Boolean).join(' ')||'(unnamed)'])),tracks=new Map(source.meta('tracks').map(x=>[x.id,x]));
  const ctx={sessions,trackId:o.trackId,driverIds:o.driverIds,grid:o.grid,now,driverName:id=>drivers.get(id)||'',carName:id=>cars.get(id)||'',trackName:id=>tracks.has(id)?tracks.get(id).name||'(unnamed)':'(deleted)'};
+ const {rec,personal,weekly,mile,distances,trackOrder,lastLap,valid,compact}=source.homeSummary?source.homeSummary(o,{last,dates,tracks,cars,now}):summarize(source,o,{last,dates,tracks,cars,now});
+ const result={last:Home.lastRace({...ctx,laps:lastLap?[lastLap]:[]}),cards:{}};
+ for(const b of o.boards){let data={};const c={...ctx,count:b.count,scope:b.scope};
+  if(b.key==='record')data.rec=o.trackId?Home.recordCard({...c,laps:compact}):null;
+  if(b.key==='recent')data.recent=Home.recent(c);
+  if(b.key==='records')data.records=Home.allRecords({...c,laps:[...rec.values()].sort((a,b)=>trackOrder.get(a.trackId)-trackOrder.get(b.trackId))});
+  if(b.key==='bests')data.bests=Home.gridBests({...c,laps:[...personal.values()]});
+  if(b.key==='fastest'){data.fastestScope=b.scope;data.fastest=Home.fastestWeek({...c,laps:[...weekly.values()]});}
+  if(b.key==='top'){data.topPeriod=b.period;data.top=Home.winners({...c,since:b.period==='year'?Home.yearStart(now):null}).slice(0,b.count);}
+  if(b.key==='glance'){const top=Home.winners(c)[0];data.glance={races:sessions.filter(s=>s.sessionType!=='tokens'&&Stats.WINNER_TYPES.includes(s.sessionType)).length,laps:valid,distance:distances.size?[...trackOrder.keys()].reduce((sum,id)=>sum+(distances.get(id)||0),0):null,wins:top?{name:top.name,count:top.count}:null};}
+  if(b.key==='mileage')data.mileage=[...mile[b.period].values()].map(({dist,...m})=>({...m,distance:dist.size?[...dist.values()].reduce((a,b)=>a+b,0):null})).sort((a,b)=>b.laps-a.laps||(b.distance||0)-(a.distance||0)||(a.name<b.name?-1:a.name>b.name?1:0)).slice(0,b.count);
+  result.cards[b.key]=data;
+ }
+ return result;
+}
+function summarize(source,o,{last,dates,tracks,cars,now}){
  const needed=new Set(o.boards.map(x=>x.key)),rec=new Map(),personal=new Map(),weekly=new Map(),mile={all:new Map(),year:new Map()},distances=new Map(),trackOrder=new Map();let lastLap=null,valid=0;
  const week=Home.weekStart(now).getTime(),year=Home.yearStart(now).getTime();
- const best=(map,key,l)=>{if(!map.has(key)||Number(l.time)<Number(map.get(key).time))map.set(key,l);};
- for(const l of source.laps()){
+ const order=new WeakMap();let ordinal=0;
+ const best=(map,key,l)=>{if(!map.has(key)||Number(l.time)<Number(map.get(key).time)){map.set(key,l);order.set(l,ordinal);}};
+ for(const l of source.laps()){ordinal++;
   if(!l.token&&!trackOrder.has(l.trackId))trackOrder.set(l.trackId,trackOrder.size);
   if(l.token||!Number.isFinite(Number(l.time))||!(Number(l.time)>0))continue;
   if(!l.noTrackRecord&&(needed.has('records')||needed.has('record')&&l.trackId===o.trackId))best(rec,l.trackId,l);
@@ -35,19 +52,8 @@ function home(source,value){const o=options(value),sessions=[...source.sessions(
    }
   }
  }
- const compact=[...new Set([...rec.values(),...personal.values()])],result={last:Home.lastRace({...ctx,laps:lastLap?[lastLap]:[]}),cards:{}};
- for(const b of o.boards){let data={};const c={...ctx,count:b.count,scope:b.scope};
-  if(b.key==='record')data.rec=o.trackId?Home.recordCard({...c,laps:compact}):null;
-  if(b.key==='recent')data.recent=Home.recent(c);
-  if(b.key==='records')data.records=Home.allRecords({...c,laps:[...rec.values()].sort((a,b)=>trackOrder.get(a.trackId)-trackOrder.get(b.trackId))});
-  if(b.key==='bests')data.bests=Home.gridBests({...c,laps:[...personal.values()]});
-  if(b.key==='fastest'){data.fastestScope=b.scope;data.fastest=Home.fastestWeek({...c,laps:[...weekly.values()]});}
-  if(b.key==='top'){data.topPeriod=b.period;data.top=Home.winners({...c,since:b.period==='year'?Home.yearStart(now):null}).slice(0,b.count);}
-  if(b.key==='glance'){const top=Home.winners(c)[0];data.glance={races:sessions.filter(s=>s.sessionType!=='tokens'&&Stats.WINNER_TYPES.includes(s.sessionType)).length,laps:valid,distance:distances.size?[...trackOrder.keys()].reduce((sum,id)=>sum+(distances.get(id)||0),0):null,wins:top?{name:top.name,count:top.count}:null};}
-  if(b.key==='mileage')data.mileage=[...mile[b.period].values()].map(({dist,...m})=>({...m,distance:dist.size?[...dist.values()].reduce((a,b)=>a+b,0):null})).sort((a,b)=>b.laps-a.laps||(b.distance||0)-(a.distance||0)||(a.name<b.name?-1:a.name>b.name?1:0)).slice(0,b.count);
-  result.cards[b.key]=data;
- }
- return result;
+ const compact=[...new Set([...rec.values(),...personal.values()])].sort((a,b)=>order.get(a)-order.get(b));
+ return {rec,personal,weekly,mile,distances,trackOrder,lastLap,valid,compact};
 }
 function navigation(source,o){if(!o||typeof o.trackId!=='string'||typeof o.champId!=='string')throw Error('Invalid Home sessions request.');
  const out=[];let latest=null,latestWithRows=null;

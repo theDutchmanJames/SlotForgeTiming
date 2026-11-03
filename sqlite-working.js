@@ -94,7 +94,7 @@ class WorkingStore extends SqliteStore {
   constructor(directory, { checkpoint = () => {}, clock = Date.now } = {}) {
     super(path.join(directory, 'working.sqlite'), { writable: true });
     this.checkpoint = checkpoint; this.clock = clock;
-    try { Outbox.upgrade(this); Catalogue.upgrade(this); History.upgrade(this); require('./sqlite-finalization').upgrade(this); } catch (error) { this.close(); throw error; }
+    try { Outbox.upgrade(this); Catalogue.upgrade(this); History.upgrade(this); require('./sqlite-finalization').upgrade(this); require('./sqlite-home').upgrade(this); } catch (error) { this.close(); throw error; }
   }
   homeStatistics(options) { return require('./sqlite-dashboard').home(this,options); }
   homeSessions(options) { return require('./sqlite-dashboard').navigation(this,options); }
@@ -229,7 +229,7 @@ class WorkingStore extends SqliteStore {
           else throw Error('Unsupported storage command.');
       }
       Outbox.syncChanges(this);
-      Catalogue.sync(this); History.sync(this);
+      Catalogue.sync(this); History.sync(this); require('./sqlite-home').sync(this);
       this.checkpoint('domain-written');
       this.statement('INSERT INTO command_receipts VALUES(?,?,?)').run(input.id, fingerprint, JSON.stringify(result));
       // A large result must not turn a 200-entry journal page into millions of IDs.
@@ -241,6 +241,7 @@ class WorkingStore extends SqliteStore {
       }
       const changed = { records, counts, requiresRefresh: this.changed.size > records.length };
       this.statement('INSERT INTO changes(commandId,kind,changed) VALUES(?,?,?)').run(input.id, input.type, JSON.stringify(changed));
+      require('./sqlite-home').stamp(this);
       this.checkpoint('before-commit');
       return result;
     });

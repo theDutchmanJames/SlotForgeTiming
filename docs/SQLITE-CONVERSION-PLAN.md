@@ -12,8 +12,14 @@ SQLite backup restore similarly stages a new generation and retains the old one.
 See [the activation and abrupt-exit review](SQLITE-ACTIVATION-REVIEW.md).
 Production startup, conversion, race recovery, finalization, restore and reopening
 have passed on generated Windows profiles. The personal database was not opened
-or converted. Remaining gates are platform/large-volume qualification, disk-full
-and actual power-loss testing, and deciding any future rollout default.
+or converted. Volume, disk-full fault injection and native Windows/Linux/Intel macOS
+qualification are now covered in [the qualification review](SQLITE-QUALIFICATION-REVIEW.md).
+Home history now uses transactional projections and maintained totals; see
+[the Home performance review](SQLITE-HOME-PERFORMANCE-REVIEW.md) for the one-time
+index-build cost and measured subsequent loads.
+Native backup/restore folders support large SQLite collections; JSON compatibility
+uses a shared runtime limit (about 512 MiB). Physical power-loss testing and any
+future change to the rollout default remain separate decisions.
 
 Historical phase 1 checkpoint: the repository/IPC adapter is implemented on
 the existing JSON backend. Single-record reads, media-free local-car summaries,
