@@ -99,7 +99,7 @@ ok('heats counted the standard way (a result of before): no Result column, no li
   ok('the rules page has the title and the formatting', h.includes('<title>Club &lt;Rules&gt;</title>') && h.includes('<h2>Safety</h2>') && h.includes('<li><b>No</b> pushing</li>') && h.includes('size="5"'));
   ok('the printed rules have no credit at all (it is only on the screen)', !h.includes('credit') && !h.includes('theDutchmanJames') && !h.includes('Claude') && !h.includes('special thanks') && CREDIT.every(l => !h.includes(l.slice(0, 20))));
   ok('unsafe things in the rules never reach the printed page', !h.includes('<script'));
-  ok('the credit text on the screen is exactly as asked', CREDIT.join('\n') === ['This App has been made by Claude and theDutchmanJames.', 'For all Slotcar Enthusiasts and special thanks to:', 'Bjorn F. - For being my best mate!', 'RaceCoordinator, for the ideas, inspiration and their work on RCAI.', 'Kevan @Slotracer, the first person to say something, even though it was just smileys..', 'Dopamine @Slotforum, for his ideas on Audio Customization.', 'LMP & Superslab @Slotforum, for their BoP System.', 'Johnno @Slotracer, for the first constructive feedback'].join('\n')); }
+  ok('the credit text on the screen is exactly as asked', CREDIT.join('\n') === ["This App has been made by theDutchmanJames, Codex & Claude.","Special thanks to Bjorn and Joanne and the members of:","@SlotForum.com: Kevan, Roguejackal, Dangermouse, Dopamine, LMP & Superslab"].join('\n')); }
 // ---- 1.2.0: the winner's cup ----
 { const cups = html => (html.match(/<svg class="trophy"/g) || []).length;
   const row = html => html.split('<tbody>')[1].split('</tr>')[0];

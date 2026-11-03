@@ -6,6 +6,14 @@ function applyTheme() {
   root.dataset.theme = Theme.THEMES.some(x => x[0] === t) ? t : 'dark';
   Theme.COLORS.forEach(([k]) => root.style.setProperty('--' + k, custom ? c[k] : '')); // '' takes the colour away again
   root.style.setProperty('--on-accent', custom ? Theme.onAccent(c.accent) : '');
+  // Branding sits on the page background, not the panels. Compare the supplied
+  // artwork's lettering colours so mixed light/dark Custom themes stay readable.
+  root.dataset.brandInk = custom
+    ? (Theme.ratio(c.bg, '#f6f6f6') >= Theme.ratio(c.bg, '#363635') ? 'light' : 'dark')
+    : (['light', 'ocean'].includes(root.dataset.theme) ? 'dark' : 'light');
+  root.dataset.headerBrandInk = custom
+    ? (Theme.ratio(c.panel, '#f6f6f6') >= Theme.ratio(c.panel, '#363635') ? 'light' : 'dark')
+    : (['light', 'ocean'].includes(root.dataset.theme) ? 'dark' : 'light');
   if (custom && Theme.isLight(c.panel)) root.dataset.tone = 'light'; else delete root.dataset.tone; // (light panels get the softer shadows of the depth, styles.css; the ready-made light themes say it there)
 }
 // the depth of the cards, buttons and widgets (App Settings > General > Display): the style sheet works with one number

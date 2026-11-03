@@ -109,8 +109,8 @@ function createServer(o) {
         if (what === 'schema') return send(res, 200, o.schema);
         if (what === 'settings') { const s = { ...o.getSettings() }; delete s.netPassword; return send(res, 200, s); }
         if (what === 'live') return send(res, 200, o.getLive());
-        if (what === 'list' && READABLE.includes(arg)) return send(res, 200, o.list(arg));
-        if (what === 'custom' && READABLE.includes(arg)) return send(res, 200, o.customFields(arg));
+        if (what === 'list' && READABLE.includes(arg)) return send(res, 200, await o.list(arg));
+        if (what === 'custom' && READABLE.includes(arg)) return send(res, 200, await o.customFields(arg));
         if (what === 'director') return send(res, 200, { passwordSet: !!password() });
         return send(res, 404, { error: 'not found' });
       }

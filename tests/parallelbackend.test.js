@@ -9,7 +9,7 @@ assert(fs.existsSync(binary), 'The native helper must be included in the release
   const main = fs.readFileSync(path.join(__dirname, '../main.js'), 'utf8'), start = main.indexOf('  const parallelOwner ='), end = main.indexOf('  // the race save', start), handlers = {}, called = [];
   const frame = {}, contents = { mainFrame: frame }, mainWin = { webContents: contents, isDestroyed: () => false }, owner = { sender: contents, senderFrame: frame };
   const methods = ['state', 'check', 'open', 'close', 'armTests', 'test', 'setRace', 'outputs'], port = Object.fromEntries(methods.map(name => [name, (...args) => { called.push([name, ...args]); return {}; }]));
-  let choice = 'parallel'; new Function('ipcMain', 'mainWin', 'parallel', 'db', main.slice(start, end))({ handle: (name, fn) => { handlers[name] = fn; } }, mainWin, port, { getSettings: () => ({ timingHw: choice }) });
+  let choice = 'parallel'; new Function('ipcMain', 'mainWin', 'parallel', 'lifecycle', main.slice(start, end))({ handle: (name, fn) => { handlers[name] = fn; } }, mainWin, port, { settings: () => ({ timingHw: choice }) });
   for (const fn of Object.values(handlers)) { assert.throws(() => fn({ sender: {}, senderFrame: frame }), /main app window/); assert.throws(() => fn({ sender: contents, senderFrame: {} }), /main app window/); }
   assert.equal(called.length, 0); handlers['parallel:check'](owner, P.defaults()); assert.equal(called[0][0], 'check'); choice = 'arduino'; assert.throws(() => handlers['parallel:race'](owner, true, 4), /not the timing hardware/); assert.throws(() => handlers['parallel:outputs'](owner, {}), /not the timing hardware/);
   console.log('ok  production IPC refuses other windows, subframes and output writes for another timing source');

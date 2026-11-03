@@ -84,14 +84,14 @@ const onDisk = db => { try { return JSON.parse(fs.readFileSync(db.resumeFile(), 
 
   { // the files that use it
     const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
-    ok('main.js routes resource checkpoints atomically while retaining background saves for normal races', main.includes("return resourceStore.save(snap)") && main.includes("return db.saveResumeAsync(snap)") && main.includes("await resourceStore.clear();return db.clearResumeAsync()") && main.includes("await resourceStore.idle();await db.resumeIdle();return resourceStore.ledger().checkpoint||db.getResume()"));
-    ok('...and on closing, a save that is on its way (a race save, since 1.61.0 a settings file too) is written first (not for longer than three seconds)', /before-quit', e => \{[\s\S]*db\.writesPending\(\)[\s\S]*e\.preventDefault\(\)[\s\S]*3000[\s\S]*app\.quit\(\)/.test(main)); }
+    ok('main.js uses the shared lifecycle for ordinary/resource recovery', main.includes('return lifecycle.saveResume(snap)') && main.includes('return lifecycle.clearResume()') && main.includes("'resume:get', () => lifecycle.resume()"));
+    ok('...and on closing, a save that is on its way (a race save, since 1.61.0 a settings file too) is written first (not for longer than three seconds)', /before-quit', e => \{[\s\S]*lifecycle\.pending\(\)[\s\S]*e\.preventDefault\(\)[\s\S]*3000[\s\S]*app\.quit\(\)/.test(main)); }
 
   { // closing the program (the real lines of main.js, with a stand-in for the app and the database)
     const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8'), code = main.slice(main.indexOf('let quitFlushed = false;'));
-    const setup = (pending, idle, pluginHost = null) => {
+    const setup = (pending, idle, pluginHost = null, paddock = null) => {
       const handlers = {}, calls = { quit: 0, prevented: 0, closed: 0 }, timers = [];
-      vm.runInNewContext(code, { pluginHost, phidget: { shutdown() {} }, app: { on: (ev, f) => { handlers[ev] = f; }, quit: () => { calls.quit++; } }, net: { server: { close: () => { calls.closed++; } } }, db: { writesPending: pending, writesIdle: idle }, Promise, setTimeout: (f, ms) => { timers.push({ f, ms }); return timers.length; } });
+      vm.runInNewContext(code, { pluginHost, paddock, phidget: { shutdown() {} }, app: { on: (ev, f) => { handlers[ev] = f; }, quit: () => { calls.quit++; } }, net: { server: { close: () => { calls.closed++; } } }, db: {}, lifecycle: {pending, shutdown:idle}, Promise, setTimeout: (f, ms) => { timers.push({ f, ms }); return timers.length; } });
       return { calls, timers, fire() { handlers['before-quit']({ preventDefault: () => { calls.prevented++; } }); } };
     };
     const a = setup(() => false, () => Promise.resolve()); a.fire(); await wait(5);
@@ -109,7 +109,13 @@ const onDisk = db => { try { return JSON.parse(fs.readFileSync(db.resumeFile(), 
     let pluginsStopped; const e = setup(() => false, () => Promise.resolve(), {shutdown:()=>new Promise(r=>{pluginsStopped=r;})}); e.fire(); await wait(5);
     ok('plugin shutdown is awaited even with no pending database writes', e.calls.prevented === 1 && e.calls.quit === 0);
     e.fire(); await wait(5); ok('a second close request cannot bypass plugin shutdown', e.calls.prevented === 2 && e.calls.quit === 0);
-    pluginsStopped(); await wait(5); ok('clean plugin shutdown permits closing', e.calls.quit === 1); }
+    pluginsStopped(); await wait(5); ok('clean plugin shutdown permits closing', e.calls.quit === 1);
+    let delivered, diskWaited = false;
+    const f = setup(() => false, () => { diskWaited = true; return Promise.resolve(); }, null, {busy:true,idle:()=>new Promise(r=>{delivered=r;})});
+    f.fire(); await wait(5);
+    ok('an in-flight Paddock delivery delays closing before its acknowledgement is written', f.calls.prevented === 1 && f.calls.quit === 0 && !diskWaited);
+    delivered(); await wait(5);
+    ok('closing waits for the delivery and then the database writer', diskWaited && f.calls.quit === 1); }
 
 
   console.log(fails ? fails + ' RESUME-ASYNC TESTS FAILED' : 'ALL RESUME-ASYNC TESTS PASSED'); process.exit(fails ? 1 : 0);

@@ -7,6 +7,7 @@ ipcRenderer.on('live:static', (_e, s) => listeners.static.forEach(f => f(s)));
 ipcRenderer.on('live:push', (_e, d) => listeners.push.forEach(f => f(d)));
 ipcRenderer.on('live:resync', () => listeners.resync.forEach(f => f()));
 const call = (channel, ...args) => ipcRenderer.invoke(channel, ...args);
+const catalogueCall=async(channel,...args)=>{const value=await call(channel,...args);if(value?.catalogueStale)throw Object.assign(Error('The catalogue changed. Refresh the list before continuing.'),{code:'CATALOGUE_CHANGED'});return value;};
 
 contextBridge.exposeInMainWorld('api', {
   paddockStatus: () => call('paddock:status'),
@@ -64,6 +65,19 @@ contextBridge.exposeInMainWorld('api', {
   dbPath: () => call('db:path'),
   voiceReport: () => call('voices:report'), // the voice lists of Windows, as text lines (Audio Settings > Voice report)
   list: entity => call('db:list', entity),
+  getRecord: (entity, id) => call('db:get', entity, id),
+  homeStatistics: options=>catalogueCall('db:home-statistics',options),
+  homeSessions: options=>catalogueCall('db:home-sessions',options),
+  raceSeason: options=>catalogueCall('db:race-season',options),
+  raceCharts: ids=>catalogueCall('db:race-charts',ids),
+  raceInputs: options=>catalogueCall('db:race-inputs',options),
+  referencePage: (entity,options)=>catalogueCall('db:reference-page',entity,options),
+  referenceDetails: (entity,ids,revision)=>catalogueCall('db:reference-details',entity,ids,revision),
+  historyPage: (pool,options)=>catalogueCall('db:history-page',pool,options),
+  historySession: (pool,id,options)=>catalogueCall('db:history-session',pool,id,options),
+  carStatistics: id=>call('db:car-statistics',id),
+  catalogue: (entity, options) => catalogueCall('db:catalogue',entity,options),
+  cataloguePicture: (entity,id,revision) => catalogueCall('db:catalogue-picture',entity,id,revision),
   add: (entity, item) => call('db:add', entity, item),
   update: (entity, id, patch) => call('db:update', entity, id, patch),
   remove: (entity, id) => call('db:remove', entity, id),
@@ -75,6 +89,8 @@ contextBridge.exposeInMainWorld('api', {
   importOpen: () => call('transfer:open'),
   importApply: () => call('transfer:apply'),
   importCancel: () => call('transfer:cancel'),
+  storageStatus: () => call('storage:status'),
+  activateSqlite: () => call('storage:activate'),
   backupSave: () => call('backup:save'),
   backupOpen: () => call('backup:open'),
   backupRestore: () => call('backup:restore'),

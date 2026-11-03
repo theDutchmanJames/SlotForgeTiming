@@ -11,17 +11,22 @@ const backup = require('./backup');
 const LiveShare = require('./renderer/liveshare.js'); // puts the messages of the race window together (a window or phone that opens late is given the whole state)
 
 // One place for the data, whether the app is started from the folder, installed or run as the portable .exe
-require('./migrate').migrate(app.getPath('appData')); // data of the old name "Slot Lap Timer" is copied over once
-app.setPath('userData', path.join(app.getPath('appData'), 'slotforge-timing'));
+const normalProfile=path.join(app.getPath('appData'),'slotforge-timing');
+const testProfileArgs=process.argv.filter(a=>a.startsWith('--sqlite-test-profile='));
+let sqliteTestProfile=null,profileError=null;
+try{if(testProfileArgs.length>1)throw Error('Choose one SQLite test profile.');if(testProfileArgs.length)sqliteTestProfile=require('./sqlite-runtime').validateProfile(testProfileArgs[0].slice('--sqlite-test-profile='.length),normalProfile,app.isPackaged);}catch(error){profileError=error;}
+if(!testProfileArgs.length&&!fs.existsSync(path.join(normalProfile,'storage-backend.json'))&&!fs.existsSync(path.join(normalProfile,'sqlite-activation-request.json')))require('./migrate').migrate(app.getPath('appData'));
+app.setPath('userData',sqliteTestProfile||normalProfile);
 // Only one copy at a time: two copies would write to the same database file and fight over the network port
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) app.quit();
 else app.on('second-instance', () => { const w = BrowserWindow.getAllWindows()[0]; if (w) { if (w.isMinimized()) w.restore(); w.focus(); } });
 
-let db, mainWin, resourceStore, pluginHost, paddock;
+let db, sqliteRuntime, records, bulkStorage, lifecycle, mainWin, resourceStore, pluginHost, paddock;
 const parallel = require('./parallelport').createController({ onEvent: event => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('parallel:event', event); } });
 const phidget = require('./phidgetport').createController({ onEvent: event => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('phidget:event', event); } });
 let pendingRestore = null; // a backup file chosen for restoring, waiting for the user to confirm
+let pendingRestoreSource = null;
 let pendingImport = null; // a file chosen for import, waiting for the user to confirm
 
 function createWindow() {
@@ -70,10 +75,10 @@ function applyNet() { const run = netChain.then(applyNetNow, applyNetNow); netCh
 async function applyNetNow() {
   if (net.server) { await net.server.close(); net.server = null; }
   net.error = ''; net.port = 0;
-  const s = db.getSettings();
+  const s = lifecycle.settings();
   if (!s.netOn) return;
   const port = Math.max(1, Math.min(65535, Number(s.netPort) || 8787));
-  const server = createServer({ root: path.join(__dirname, 'renderer'), appRoot: __dirname, schema, getSettings: () => db.getSettings(), list: e => db.list(e), customFields: e => db.listCustomFields(e),
+  const server = createServer({ root: path.join(__dirname, 'renderer'), appRoot: __dirname, schema, getSettings: () => lifecycle.settings(), list: e => records.list(e), customFields: e => records.customFields(e),
     getLive: () => ({ stat: live.stat, dyn: live.dyn }), onCommand: c => relay('live:command', c, null) });
   try { net.port = await server.listen(port); net.server = server; }
   catch (e) { net.error = e.code === 'EADDRINUSE' ? `Port ${port} is already in use. Choose another port.` : `Could not start: ${e.message}`; }
@@ -81,7 +86,7 @@ async function applyNetNow() {
 function netStatus() {
   const addrs = [];
   Object.values(os.networkInterfaces()).forEach(list => (list || []).forEach(i => { if (i.family === 'IPv4' && !i.internal) addrs.push(i.address); }));
-  return { on: !!net.server, port: net.port, error: net.error, passwordSet: !!db.getSettings().netPassword,
+  return { on: !!net.server, port: net.port, error: net.error, passwordSet: !!lifecycle.settings().netPassword,
     urls: net.server ? addrs.map(ip => { const url = `http://${ip}:${net.port}/`; return { url, svg: QR.svg(url) }; }) : [] };
 }
 function openLiveWindow() {
@@ -103,22 +108,36 @@ function openLiveWindow() {
   return !!other;
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   if (!gotLock) return;
-  try { db = new Database(path.join(app.getPath('userData'), 'slotforge-timing.json')); } catch (x) {
+  try {
+    if(profileError)throw profileError;
+    const profile=app.getPath('userData'),selection=sqliteTestProfile?null:await require('./storage-activation').startup(profile);
+    if(sqliteTestProfile||selection){sqliteRuntime=await require('./sqlite-runtime').open(sqliteTestProfile||selection.directory,{profileRoot:profile});({records,bulk:bulkStorage,lifecycle,resources:resourceStore}=sqliteRuntime);}
+    else db = new Database(path.join(profile, 'slotforge-timing.json'));
+  } catch (x) {
     // (a database that cannot be read or kept is not started with an empty one: the next save would destroy it)
+    const activation=require('./storage-activation');
+    if(!testProfileArgs.length&&activation.canCancel(app.getPath('userData'))){
+      const answer=await dialog.showMessageBox({type:'error',title:'Storage conversion could not finish',message:String(x?.message||x),detail:'Your previously selected database and recovery copies are retained. Close to retry on the next launch, or cancel the pending conversion/restore and reopen the previous database.',buttons:['Close','Cancel pending change and reopen'],defaultId:0,cancelId:0});
+      if(answer.response===1){activation.cancel(app.getPath('userData'));app.relaunch();}app.exit(1);return;
+    }
     dialog.showErrorBox('SlotForge Timing cannot open its data', String(x && x.message || x));
     app.exit(1); return;
   }
   // what keeps the core busy and is worth a note in the Performance report (1.61.1): a full save of the database, a list sent to the window (each from 20 ms)
   const watch = require('./perfstats').createWatcher({ mark: t => { if (perfCollector) perfCollector.mark(t); }, sizeOf: Database.approxSize });
-  db.onSave = info => watch.saved(info);
+  if(db)db.onSave = info => watch.saved(info);
   // since 1.61.2 a change to the database is written to its file in the background: the core goes on while the disk is busy, and the answer to the window comes when the file has the
   // change. The tickbox 'Save changes to the database in the background' (App Settings > General > Performance) switches it off: then the core waits for the disk, as before.
   const backgroundOn = s => !(s && typeof s === 'object' && s.backgroundSave === false);
-  db.bg = backgroundOn(db.getSettings());
+  const Life=require('./storage-lifecycle');
+  if(!sqliteRuntime){lifecycle=new Life.StorageLifecycle(new Life.JsonLifecycleBackend(db));await lifecycle.initialize();
+  db.bg = backgroundOn(lifecycle.settings());
+  bulkStorage = new (require('./bulk-storage').JsonBulkStorage)(db);
+  records = new (require('./data-repository'))(db, { getResourceStore: () => resourceStore });}
   ipcMain.handle('schema', () => schema);
-  paddock = new (require('./paddock').Paddock)(db);
+  paddock = (sqliteRuntime?sqliteRuntime.createPaddock():new (require('./paddock').Paddock)(db));
   paddock.isRacing=()=>!!live.dyn&&['countdown','running','paused','between'].includes(live.dyn.phase);
   const paddockOwner=e=>{if(!mainWin||e.sender!==mainWin.webContents||e.senderFrame!==mainWin.webContents.mainFrame)throw Error('Use the main Timing window.');};
   const paddockIdle=e=>{paddockOwner(e);if(paddock.isRacing())throw Error('Finish the race before changing Paddock connections or cars.');};
@@ -129,27 +148,49 @@ app.whenReady().then(() => {
   ipcMain.handle('paddock:browse',(e)=>{paddockIdle(e);return paddock.browse();});
   ipcMain.handle('paddock:catalogue',(e,force)=>{paddockOwner(e);return paddock.catalogue(force,false);});
   ipcMain.handle('paddock:picture',(e,id,key)=>{paddockOwner(e);return paddock.picture(id,key);});
-  ipcMain.handle('paddock:locals',e=>{paddockOwner(e);return db.data.slotcars.map(c=>({id:c.id,brand:c.brand,manufacturer:c.manufacturer,model:c.model,paddock:c.paddock?{databaseId:c.paddock.databaseId,carId:c.paddock.carId}:null}));});
+  ipcMain.handle('paddock:locals',e=>{paddockOwner(e);return records.localCars();});
   ipcMain.handle('paddock:link',(e,id,local)=>{paddockIdle(e);return paddock.link(id,local);});
   ipcMain.handle('paddock:refresh',(e)=>{paddockIdle(e);return paddock.refresh();});
   ipcMain.handle('paddock:prepare',(e,ids)=>{paddockIdle(e);return paddock.prepare(ids);});
   ipcMain.handle('paddock:retry',(e)=>{paddockIdle(e);return paddock.retry();});
   ipcMain.handle('paddock:receipt',(e,id)=>{paddockIdle(e);return paddock.checkReceipt(id);});
-  require('./packipc').register({ipcMain,dialog,BrowserWindow,db,getMain:()=>mainWin,isRacing:()=>!!live.dyn && ['countdown','running','paused','between','review'].includes(live.dyn.phase),appVersion:require('./package.json').version});
-  pluginHost = require('./pluginipc').register({ipcMain,dialog,BrowserWindow,app,utilityProcess:require('electron').utilityProcess,getMain:()=>mainWin,isRacing:()=>!!live.dyn && ['countdown','running','paused','between','review'].includes(live.dyn.phase),appVersion:require('./package.json').version,root:path.join(app.getPath('userData'),'plugins'),getSettings:()=>db.getSettings(),onTiming:event=>{if(mainWin&&!mainWin.isDestroyed())mainWin.webContents.send('plugins:timing-event',event);}});
+  require('./packipc').register({ipcMain,dialog,BrowserWindow,db,lifecycle,records,bulk:bulkStorage,packFile:path.join(app.getPath('userData'),'slotforge-timing.packs.json'),waitStorage:()=>lifecycle.idle(),getMain:()=>mainWin,isRacing:()=>!!live.dyn && ['countdown','running','paused','between','review'].includes(live.dyn.phase),appVersion:require('./package.json').version});
+  pluginHost = require('./pluginipc').register({ipcMain,dialog,BrowserWindow,app,utilityProcess:require('electron').utilityProcess,getMain:()=>mainWin,isRacing:()=>!!live.dyn && ['countdown','running','paused','between','review'].includes(live.dyn.phase),appVersion:require('./package.json').version,root:path.join(app.getPath('userData'),'plugins'),getSettings:()=>lifecycle.settings(),onTiming:event=>{if(mainWin&&!mainWin.isDestroyed())mainWin.webContents.send('plugins:timing-event',event);}});
   ipcMain.handle('voices:report', () => require('./voicereport').collect()); // what this computer offers for text to speech (Audio Settings > Voice report)
-  ipcMain.handle('db:path', () => db.file);
-  ipcMain.handle('db:list', (_e, entity) => { const rows = db.list(entity); watch.sent(entity, rows); return rows; });
-  ipcMain.handle('db:add', async (_e, entity, item) => { const row = db.add(entity, item); await db.saved(); return row; });
-  ipcMain.handle('db:update', async (_e, entity, id, patch) => { if(entity==='slotcars'){patch={...patch};delete patch.paddock;if(db.data.slotcars.find(c=>c.id===id)?.paddock)for(const key of require('./paddock').COPY_FIELDS)delete patch[key];} const row = db.update(entity, id, patch); await db.saved(); return row; });
-  ipcMain.handle('db:remove', async (_e, entity, id) => { db.remove(entity, id); await db.saved(); });
-  ipcMain.handle('db:linked', (_e, entity, id) => db.linkedLaps(entity, id));
-  resourceStore=new (require('./resource-store'))(db);
+  ipcMain.handle('db:path', () => sqliteRuntime?.file||db.file);
+  ipcMain.handle('storage:status',()=>({backend:sqliteRuntime?'sqlite':'json',testProfile:!!sqliteTestProfile}));
+  ipcMain.handle('storage:activate',async e=>{
+    paddockOwner(e);
+    const idle=()=>{if(sqliteRuntime||live.dyn&&['countdown','running','paused','between','review'].includes(live.dyn.phase)||paddock?.busy||pluginHost?.timing?.reservation)throw Error('Finish the race and Paddock operations before changing storage.');};
+    idle();const answer=await dialog.showMessageBox(mainWin,{type:'question',title:'Switch to SQLite',message:'Convert a verified copy and restart Timing?',detail:'Your JSON database and recovery files will be kept. After conversion, new changes go to SQLite only. Older builds will not see them; export a current backup before downgrading. Conversion may take time and needs space for both copies.',buttons:['Cancel','Convert and restart'],defaultId:0,cancelId:0});
+    if(answer.response!==1)return {restarting:false};idle();await lifecycle.idle();idle();
+    require('./storage-activation').request(app.getPath('userData'));app.relaunch();app.quit();return {restarting:true};
+  });
+  ipcMain.handle('db:list', async (_e, entity) => { const rows = await records.list(entity); watch.sent(entity, rows); return rows; });
+  ipcMain.handle('db:get', (_e, entity, id) => records.get(entity, id));
+  const catalogueRead=async work=>{try{return await work();}catch(error){if(error.code==='CATALOGUE_CHANGED')return {catalogueStale:true};throw error;}};
+  ipcMain.handle('db:home-statistics', (_e,options)=>catalogueRead(()=>records.homeStatistics(options)));
+  ipcMain.handle('db:home-sessions', (_e,options)=>catalogueRead(()=>records.homeSessions(options)));
+  ipcMain.handle('db:race-season', (_e,options)=>catalogueRead(()=>records.raceSeason(options)));
+  ipcMain.handle('db:race-charts', (_e,ids)=>catalogueRead(()=>records.raceCharts(ids)));
+  ipcMain.handle('db:race-inputs', (_e,options)=>catalogueRead(()=>records.raceInputs(options)));
+  ipcMain.handle('db:reference-page', (_e,entity,options)=>catalogueRead(()=>records.referencePage(entity,options)));
+  ipcMain.handle('db:reference-details', (_e,entity,ids,revision)=>catalogueRead(()=>records.referenceDetails(entity,ids,revision)));
+  ipcMain.handle('db:history-page', (_e,pool,options)=>catalogueRead(()=>records.historyPage(pool,options)));
+  ipcMain.handle('db:history-session', (_e,pool,id,options)=>catalogueRead(()=>records.historySession(pool,id,options)));
+  ipcMain.handle('db:car-statistics', (_e,id)=>records.carStatistics(id));
+  ipcMain.handle('db:catalogue', (_e, entity, options) => catalogueRead(()=>records.catalogue(entity, options)));
+  ipcMain.handle('db:catalogue-picture', (_e, entity, id, revision) => catalogueRead(()=>records.cataloguePicture(entity,id,revision)));
+  ipcMain.handle('db:add', (_e, entity, item) => records.add(entity, item));
+  ipcMain.handle('db:update', (_e, entity, id, patch) => records.update(entity, id, patch));
+  ipcMain.handle('db:remove', (_e, entity, id) => records.remove(entity, id));
+  ipcMain.handle('db:linked', (_e, entity, id) => records.linkedLaps(entity, id));
+  if(!sqliteRuntime)resourceStore=new (require('./resource-store'))(db);lifecycle.resources=resourceStore;
   const resourceOwner=e=>{if(!mainWin||mainWin.isDestroyed()||e.sender!==mainWin.webContents||e.senderFrame!==e.sender.mainFrame)throw Error('Resource controls belong to the main app window.');};
   ipcMain.handle('resources:begin',(e,id,context)=>{resourceOwner(e);return resourceStore.begin(id,context);});
   ipcMain.handle('resources:ledger',e=>{resourceOwner(e);return resourceStore.read();});
-  ipcMain.handle('session:save', async (_e, session, laps) => {if(session.resourceRunId)return resourceStore.saveSession(session,laps);return db.saveSessionAsync(session, laps);});
-  ipcMain.handle('session:remove', async (_e, id) => { db.removeSession(id); await db.saved(); });
+  ipcMain.handle('session:save', async (_e, session, laps) => {const id=await records.saveSession(session,laps);paddock?.schedule(0);return id;});
+  ipcMain.handle('session:remove', (_e, id) => records.removeSession(id));
   // Turns a report (HTML) into a PDF: print it in a hidden window, then ask where to save it.
   ipcMain.handle('pdf:export', async (event, html, name) => {
     const tmp = path.join(app.getPath('temp'), `slotforge-timing-${Date.now()}.html`);
@@ -168,19 +209,23 @@ app.whenReady().then(() => {
       try { fs.unlinkSync(tmp); } catch { /* already gone */ }
     }
   });
+  const bulkAccess = require('./bulk-access')({ipcMain,getMain:()=>mainWin,isRacing:()=>!!live.dyn && ['countdown','running','paused','between','review'].includes(live.dyn.phase)});
   // Export and import of items as a file
-  ipcMain.handle('transfer:deps', (_e, picks) => transfer.dependencies(db.data, picks));
-  ipcMain.handle('transfer:export', async (e, picks, extras) => { // picks: the ticked items; extras: the ticked things they use
+  bulkAccess.handle('transfer:deps', (_e, picks) => bulkStorage.dependencies(picks));
+  bulkAccess.handle('transfer:export', async (e, picks, extras) => { // picks: the ticked items; extras: the ticked things they use
     const all = {}; [picks, extras].forEach(src => Object.entries(src || {}).forEach(([k, ids]) => { all[k] = [...new Set([...(all[k] || []), ...ids])]; }));
-    const bundle = transfer.collect(db.data, all, false, { version: app.getVersion() });
+    const bundle = await bulkStorage.collect(all, false, { version: app.getVersion() });
     const c = transfer.check(bundle); if (!c.ok) return { saved: false, error: c.error };
     const { canceled, filePath } = await dialog.showSaveDialog(BrowserWindow.fromWebContents(e.sender), { defaultPath: 'slotforge-timing-export.json', filters: [{ name: 'SlotForge Timing export', extensions: ['json'] }] });
     if (canceled || !filePath) return { saved: false };
+    bulkStorage.assertExportTarget(filePath);
     Database.writeAtomic(filePath, JSON.stringify(bundle));
     return { saved: true, path: filePath, counts: Object.fromEntries(Object.entries(c.summary).map(([k, v]) => [k, v.count])) };
   });
-  ipcMain.handle('transfer:open', async e => {
+  bulkAccess.handle('transfer:open', async e => {
+    pendingImport = null;
     const { canceled, filePaths } = await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender), { properties: ['openFile'], filters: [{ name: 'SlotForge Timing export', extensions: ['json'] }] });
+    bulkAccess.idle();
     if (canceled || !filePaths.length) return { canceled: true };
     pendingImport = null;
     try {
@@ -190,67 +235,79 @@ app.whenReady().then(() => {
       return { ...c, file: path.basename(filePaths[0]) };
     } catch { return { ok: false, error: 'The file could not be read: it is not an export file from this app.' }; }
   });
-  ipcMain.handle('transfer:apply', async () => { if (!pendingImport) throw new Error('No file chosen.'); await db.fileIdle(); if (!pendingImport) throw new Error('No file chosen.'); const counts = transfer.apply(db, pendingImport); pendingImport = null; return counts; }); // (1.61.2: nothing is being written to the database file while the import is saved)
-  ipcMain.handle('transfer:cancel', () => { pendingImport = null; });
+  bulkAccess.handle('transfer:apply', async () => { if (!pendingImport) throw new Error('No file chosen.'); await lifecycle.idle(); bulkAccess.idle(); if (!pendingImport) throw new Error('No file chosen.'); const counts = await bulkStorage.importItems(pendingImport); pendingImport = null; return counts; }); // (1.61.2: nothing is being written to the database file while the import is saved)
+  bulkAccess.handle('transfer:cancel', () => { pendingImport = null; });
   // Complete backup: the whole database in one file, and restoring it
-  ipcMain.handle('backup:save', async e => {
+  bulkAccess.handle('backup:save', async e => {
     const { canceled, filePath } = await dialog.showSaveDialog(BrowserWindow.fromWebContents(e.sender), { defaultPath: `slotforge-timing-backup-${localDate()}.json`, filters: [{ name: 'SlotForge Timing backup', extensions: ['json'] }] });
     if (canceled || !filePath) return { saved: false };
     await resourceStore.idle();
-    Database.writeAtomic(filePath, JSON.stringify(backup.make(db.data, { version: app.getVersion() })));
+    await lifecycle.idle();
+    await bulkStorage.backup(filePath, { version: app.getVersion() });
     return { saved: true, path: filePath };
   });
-  ipcMain.handle('backup:open', async e => {
+  bulkAccess.handle('backup:open', async e => {
+    pendingRestore = null;pendingRestoreSource=null;
     const { canceled, filePaths } = await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender), { properties: ['openFile'], filters: [{ name: 'SlotForge Timing backup', extensions: ['json'] }] });
+    bulkAccess.idle();
     if (canceled || !filePaths.length) return { canceled: true };
     pendingRestore = null;
     try {
       if (fs.statSync(filePaths[0]).size > 1024 * 1024 * 1024) return { ok: false, error: 'The file is too big.' };
-      const bundle = JSON.parse(fs.readFileSync(filePaths[0], 'utf8')), c = backup.check(bundle);
-      if (c.ok) pendingRestore = bundle;
+      const bytes=fs.readFileSync(filePaths[0]),bundle = JSON.parse(bytes.toString('utf8')), c = backup.check(bundle);
+      if (c.ok) {pendingRestore = bundle;pendingRestoreSource={file:filePaths[0],sha256:require('node:crypto').createHash('sha256').update(bytes).digest('hex')};}
       return { ...c, file: path.basename(filePaths[0]) };
     } catch { return { ok: false, error: 'The file could not be read: it is not a backup file from this app.' }; }
   });
-  ipcMain.handle('backup:restore', async () => {
+  bulkAccess.handle('backup:restore', async () => {
+    if(sqliteTestProfile)throw Error('Restore into a separate working copy with the SQLite tools for a test profile.');
     if(paddock?.busy)throw Error('Wait for the Paddock operation before restoring a backup.');
     if(pluginHost?.timing?.reservation)throw Error('Finish or leave the race before restoring a backup.');
     await pluginHost?.timing?.reset();
     await resourceStore.idle();
-    if(resourceStore.ledger().checkpoint)throw Error('Finish or discard the unfinished resource event before restoring a database backup.');
+    if((await resourceStore.read()).checkpoint)throw Error('Finish or discard the unfinished resource event before restoring a database backup.');
     if (!pendingRestore) throw new Error('No backup file chosen.');
-    await db.fileIdle(); // (1.61.2: a change that is still on its way to the file is in the safety copy too)
+    if(sqliteRuntime){
+      await lifecycle.idle();bulkAccess.idle();
+      if(!pendingRestoreSource||paddock?.busy)throw Error('Reopen the backup and wait for Paddock before restoring.');
+      const source=pendingRestoreSource;await require('./storage-activation').requestRestore(app.getPath('userData'),source.file,source.sha256,{beforePublish:()=>{bulkAccess.idle();if(pendingRestoreSource!==source||paddock?.busy||pluginHost?.timing?.reservation)throw Error('Restore was cancelled or Paddock or timing hardware became busy. Open the backup again.');}});
+      app.relaunch();app.quit();return {restarting:true};
+    }
+    await lifecycle.idle(); // (1.61.2: a change that is still on its way to the file is in the safety copy too)
     if (!pendingRestore) throw new Error('No backup file chosen.');
-    const safety = path.join(path.dirname(db.file), `slotforge-timing.before-restore-${localDate()}-${new Date().toTimeString().slice(0, 8).replace(/:/g, '')}.json`); // (a second restore does not overwrite the copy of the first)
-    try { fs.copyFileSync(db.file, safety); } catch { /* nothing to copy yet */ } // the data as it was, in case the restore was a mistake
+    await lifecycle.idle();
+    const safety = await bulkStorage.safetyCopy();
+    bulkAccess.idle();
+    if (!pendingRestore) throw Error('Backup restore was cancelled.');
     if(paddock?.busy)throw Error('Wait for the Paddock operation before restoring a backup.');
     paddock.stop();
-    try{db.replaceAll(pendingRestore.data);pendingRestore=null;}
-    finally{paddock=new (require('./paddock').Paddock)(db);paddock.isRacing=()=>!!live.dyn&&['countdown','running','paused','between'].includes(live.dyn.phase);}
+    try{await bulkStorage.restore(pendingRestore);await lifecycle.refreshSettings();pendingRestore=null;}
+    finally{paddock=(sqliteRuntime?sqliteRuntime.createPaddock():new (require('./paddock').Paddock)(db));paddock.isRacing=()=>!!live.dyn&&['countdown','running','paused','between'].includes(live.dyn.phase);}
     applyNet().finally(() => BrowserWindow.getAllWindows().forEach(w => { if (!w.isDestroyed()) w.webContents.reload(); }));
     return { safety };
   });
-  ipcMain.handle('backup:cancel', () => { pendingRestore = null; });
-  ipcMain.handle('custom:list', (_e, entity) => db.listCustomFields(entity));
-  ipcMain.handle('custom:add', async (_e, entity, field) => { const f = db.addCustomField(entity, field); await db.saved(); return f; });
-  ipcMain.handle('custom:remove', async (_e, entity, id) => { db.removeCustomField(entity, id); await db.saved(); });
-  ipcMain.handle('custom:group', async (_e, entity, id, group) => { const f = db.setCustomFieldGroup(entity, id, group); await db.saved(); return f; });
+  bulkAccess.handle('backup:cancel', () => { pendingRestore = null;pendingRestoreSource=null; });
+  ipcMain.handle('custom:list', (_e, entity) => records.customFields(entity));
+  ipcMain.handle('custom:add', (_e, entity, field) => records.addCustomField(entity, field));
+  ipcMain.handle('custom:remove', (_e, entity, id) => records.removeCustomField(entity, id));
+  ipcMain.handle('custom:group', (_e, entity, id, group) => records.setCustomFieldGroup(entity, id, group));
   // how the computer and the app are doing (the Performance line, 1.60.0): it only looks while somebody asks
-  const perf = perfCollector = require('./perfstats').createCollector({ app, screen, os, process, db, version: app.getVersion(), readText: p => fs.promises.readFile(p, 'utf8'),
+  const perf = perfCollector = require('./perfstats').createCollector({ app, screen, os, process, db, storage: lifecycle, version: app.getVersion(), readText: p => fs.promises.readFile(p, 'utf8'),
     windows: () => BrowserWindow.getAllWindows().filter(w => !w.isDestroyed()).map(w => { try { return { title: w.getTitle(), pid: w.webContents.getOSProcessId(), visible: w.isVisible(), minimized: w.isMinimized(), focused: w.isFocused(), live: w === liveWin }; } catch { return null; } }).filter(Boolean) });
   ipcMain.handle('perf:stats', () => perf.collect());
-  ipcMain.handle('settings:get', () => db.getSettings());
+  ipcMain.handle('settings:get', () => lifecycle.settings());
   // A Live Race window or a subframe cannot open a port or drive its pins.
   const parallelOwner = e => { if (!mainWin || mainWin.isDestroyed() || e.sender !== mainWin.webContents || e.senderFrame !== e.sender.mainFrame) throw Error('Parallel-port access belongs to the main app window.'); };
   const phidgetOwner = e => { if (!mainWin || mainWin.isDestroyed() || e.sender !== mainWin.webContents || e.senderFrame !== e.sender.mainFrame) throw Error('Phidget access belongs to the main app window.'); };
   ipcMain.handle('phidget:state', e => { phidgetOwner(e); return phidget.state(); });
   ipcMain.handle('phidget:scan', e => { phidgetOwner(e); return phidget.scan(); });
-  ipcMain.handle('phidget:open', (e, value) => { phidgetOwner(e); if (db.getSettings().timingHw !== 'phidget') throw Error('Choose Phidget as the timing hardware first.'); return phidget.open(value); });
+  ipcMain.handle('phidget:open', (e, value) => { phidgetOwner(e); if (lifecycle.settings().timingHw !== 'phidget') throw Error('Choose Phidget as the timing hardware first.'); return phidget.open(value); });
   ipcMain.handle('phidget:close', e => { phidgetOwner(e); return phidget.close(); });
   ipcMain.handle('phidget:alive', e => { phidgetOwner(e); return phidget.alive(); });
   ipcMain.handle('phidget:arm', (e, on) => { phidgetOwner(e); return phidget.armTests(on); });
   ipcMain.handle('phidget:test', (e, index) => { phidgetOwner(e); return phidget.test(index); });
-  ipcMain.handle('phidget:race', (e, on, lanes, lease) => { phidgetOwner(e); if (on && db.getSettings().timingHw !== 'phidget') throw Error('Phidget is not the timing hardware in use.'); return phidget.setRace(on, lanes, lease); });
-  ipcMain.handle('phidget:outputs', (e, wants, lease) => { phidgetOwner(e); if (db.getSettings().timingHw !== 'phidget') throw Error('Phidget is not the timing hardware in use.'); return phidget.outputs(wants, lease); });
+  ipcMain.handle('phidget:race', (e, on, lanes, lease) => { phidgetOwner(e); if (on && lifecycle.settings().timingHw !== 'phidget') throw Error('Phidget is not the timing hardware in use.'); return phidget.setRace(on, lanes, lease); });
+  ipcMain.handle('phidget:outputs', (e, wants, lease) => { phidgetOwner(e); if (lifecycle.settings().timingHw !== 'phidget') throw Error('Phidget is not the timing hardware in use.'); return phidget.outputs(wants, lease); });
   ipcMain.handle('parallel:alive', e => { parallelOwner(e); return parallel.alive(); });
   ipcMain.handle('parallel:state' , e => { parallelOwner(e); return parallel.state(); });
   ipcMain.handle('parallel:check', (e, value) => { parallelOwner(e); return parallel.check(value); });
@@ -258,12 +315,12 @@ app.whenReady().then(() => {
   ipcMain.handle('parallel:close', e => { parallelOwner(e); return parallel.close(); });
   ipcMain.handle('parallel:arm', (e, on) => { parallelOwner(e); return parallel.armTests(on); });
   ipcMain.handle('parallel:test', (e, pin, on) => { parallelOwner(e); return parallel.test(pin, on); });
-  ipcMain.handle('parallel:race', (e, on, lanes, lease) => { parallelOwner(e); if (on && db.getSettings().timingHw !== 'parallel') throw Error('Parallel Port is not the timing hardware in use.'); return parallel.setRace(on, lanes, lease); });
-  ipcMain.handle('parallel:outputs', (e, value, lease) => { parallelOwner(e); if (db.getSettings().timingHw !== 'parallel') throw Error('Parallel Port is not the timing hardware in use.'); return parallel.outputs(value, lease); });
+  ipcMain.handle('parallel:race', (e, on, lanes, lease) => { parallelOwner(e); if (on && lifecycle.settings().timingHw !== 'parallel') throw Error('Parallel Port is not the timing hardware in use.'); return parallel.setRace(on, lanes, lease); });
+  ipcMain.handle('parallel:outputs', (e, value, lease) => { parallelOwner(e); if (lifecycle.settings().timingHw !== 'parallel') throw Error('Parallel Port is not the timing hardware in use.'); return parallel.outputs(value, lease); });
   // the race save is written in the background (1.60.0): the program does not wait for the disk, a read waits for a save that is on its way
-  ipcMain.handle('resume:get', async () => { await resourceStore.idle();await db.resumeIdle();return resourceStore.ledger().checkpoint||db.getResume(); });
-  ipcMain.handle('resume:save', (e, snap) => {if(snap?.race?.resources){resourceOwner(e);return resourceStore.save(snap);}return db.saveResumeAsync(snap);});
-  ipcMain.handle('resume:clear', async e => {resourceOwner(e);await resourceStore.clear();return db.clearResumeAsync();});
+  ipcMain.handle('resume:get', () => lifecycle.resume());
+  ipcMain.handle('resume:save', (e, snap) => {resourceOwner(e);return lifecycle.saveResume(snap);});
+  ipcMain.handle('resume:clear', e => {resourceOwner(e);return lifecycle.clearResume();});
   ipcMain.on('live:static', safe('live:static', (e, s) => { live.stat = s; live.dyn = null; relay('live:static', s, null); if (net.server) net.server.broadcast('static', s); }));
   ipcMain.on('live:push', safe('live:push', (e, d) => {
     // the race window sends what changed; the whole state is kept here for a window or phone that opens late
@@ -282,12 +339,12 @@ app.whenReady().then(() => {
     if(patch&&('pluginTiming' in patch||'timingHw' in patch)){
       if(!mainWin||_e.sender!==mainWin.webContents||_e.senderFrame!==mainWin.webContents.mainFrame)throw Error('Change timing settings in the main app window.');
       const timing=pluginHost?.timing;
-      if(live.dyn&&['countdown','running','paused','between','review'].includes(live.dyn.phase)&&('pluginTiming' in patch||patch.timingHw&&patch.timingHw!==db.getSettings().timingHw))throw Error('Finish or leave the race before changing timing settings.');
+      if(live.dyn&&['countdown','running','paused','between','review'].includes(live.dyn.phase)&&('pluginTiming' in patch||patch.timingHw&&patch.timingHw!==lifecycle.settings().timingHw))throw Error('Finish or leave the race before changing timing settings.');
       if(timing?.reservation&&('pluginTiming' in patch||('timingHw' in patch&&patch.timingHw!=='plugin')))throw Error('Finish or leave the race before changing plugin timing.');
       if('pluginTiming' in patch){if(timing?.connected||timing?.connection)throw Error('Disconnect before changing plugin lane assignments.');patch={...patch,pluginTiming:timing.validate(patch.pluginTiming)};}
       if('timingHw' in patch&&patch.timingHw!=='plugin'&&timing?.connected)await timing.disconnect();
     }
-     if (Object.prototype.hasOwnProperty.call(patch || {}, 'phidget')) { phidgetOwner(_e); if (phidget.state().connected) throw Error('Disconnect before changing Phidget channel assignments.'); const P = require('./renderer/phidget'), errors = P.validate(P.config(patch.phidget)); if (errors.length) throw Error(errors[0]); } if (phidget.state().race && (Object.prototype.hasOwnProperty.call(patch || {}, 'phidget') || (Object.prototype.hasOwnProperty.call(patch || {}, 'timingHw') && patch.timingHw !== 'phidget'))) throw Error('Leave the race before changing its Phidget setup.'); if (Object.prototype.hasOwnProperty.call(patch || {}, 'parallelPort')) { parallelOwner(_e); if (parallel.state().connected) throw Error('Disconnect before changing parallel-port assignments.'); const P = require('./renderer/parallel'), errors = P.validate(P.config(patch.parallelPort)); if (errors.length) throw Error(errors[0].text); } if (parallel.state().race && (Object.prototype.hasOwnProperty.call(patch || {}, 'parallelPort') || (Object.prototype.hasOwnProperty.call(patch || {}, 'timingHw') && patch.timingHw !== 'parallel'))) throw Error('Finish or leave the race before changing its parallel-port setup.'); const p = db.setSettingsAsync(patch); db.bg = backgroundOn(db.getSettings()); const s = await p; if (Object.keys(patch || {}).some(k => k.startsWith('net'))) await applyNet(); return s; });
+     if (Object.prototype.hasOwnProperty.call(patch || {}, 'phidget')) { phidgetOwner(_e); if (phidget.state().connected) throw Error('Disconnect before changing Phidget channel assignments.'); const P = require('./renderer/phidget'), errors = P.validate(P.config(patch.phidget)); if (errors.length) throw Error(errors[0]); } if (phidget.state().race && (Object.prototype.hasOwnProperty.call(patch || {}, 'phidget') || (Object.prototype.hasOwnProperty.call(patch || {}, 'timingHw') && patch.timingHw !== 'phidget'))) throw Error('Leave the race before changing its Phidget setup.'); if (Object.prototype.hasOwnProperty.call(patch || {}, 'parallelPort')) { parallelOwner(_e); if (parallel.state().connected) throw Error('Disconnect before changing parallel-port assignments.'); const P = require('./renderer/parallel'), errors = P.validate(P.config(patch.parallelPort)); if (errors.length) throw Error(errors[0].text); } if (parallel.state().race && (Object.prototype.hasOwnProperty.call(patch || {}, 'parallelPort') || (Object.prototype.hasOwnProperty.call(patch || {}, 'timingHw') && patch.timingHw !== 'parallel'))) throw Error('Finish or leave the race before changing its parallel-port setup.'); const s = await lifecycle.updateSettings(patch); if(db)db.bg = backgroundOn(s); if (Object.keys(patch || {}).some(k => k.startsWith('net'))) await applyNet(); return s; });
   ipcMain.handle('net:status', () => netStatus());
   applyNet().finally(createWindow);
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
@@ -303,10 +360,10 @@ app.on('before-quit', e => {
   phidget.shutdown();
   if (net.server) net.server.close();
   // a race save or a setting that is on its way is written first (at most three seconds): the files then hold the last state, not the one before
-  if (!quitFlushed && db && (pluginHost || db.writesPending() || (typeof resourceStore!=='undefined'&&resourceStore?.pending))) {
+  if (!quitFlushed && (db || sqliteRuntime) && (pluginHost || paddock?.busy || lifecycle.pending() || (typeof resourceStore!=='undefined'&&resourceStore?.pending))) {
     e.preventDefault();
     quitWaiting = true;
-    const saveDone = (typeof resourceStore!=='undefined'&&resourceStore ? resourceStore.idle() : Promise.resolve()).then(()=>db.writesIdle());
+    const saveDone = Promise.all([paddock?.idle(),typeof resourceStore!=='undefined'&&resourceStore ? resourceStore.idle() : Promise.resolve()]).then(()=>lifecycle.shutdown());
     Promise.allSettled([
       pluginHost?.shutdown(),
       Promise.race([saveDone, new Promise(r => setTimeout(r, 3000))])

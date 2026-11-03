@@ -10,6 +10,25 @@ const state = { tab: 'home', sub: 'tracks', schema: {}, settings: { theme: 'dark
 const titleOf = (entity, item) =>
   (entity==='slotcars'&&item.paddock?.name)||state.schema[entity].title.map(k => item[k]).filter(Boolean).join(' ') || '(unnamed)';
 
+// Native selectors still offer every record. Fetch metadata in bounded pages,
+// restarting the complete read if a concurrent edit invalidates a cursor.
+const REFERENCE_ENTITIES=new Set(['tracks','drivers','slotcars','teams','layouts','audiosets','imagesets']);
+async function readReferenceSet(entity){
+  if(!api.referencePage||!REFERENCE_ENTITIES.has(entity))return {items:await api.list(entity),revision:null};
+  for(let attempt=0;attempt<3;attempt++){
+    try{const items=[];let cursor=null,revision;do{const page=await api.referencePage(entity,{cursor});items.push(...page.items);cursor=page.next;revision=page.revision;}while(cursor);return {items,revision};}
+    catch(error){if(attempt===2||!(error.code==='CATALOGUE_CHANGED'||/catalogue changed/i.test(error.message)))throw error;}
+  }
+}
+const referenceList=async entity=>(await readReferenceSet(entity)).items;
+async function readReferenceGroups(entities){
+  for(let attempt=0;attempt<3;attempt++){
+    const groups=await Promise.all(entities.map(readReferenceSet));
+    if(new Set(groups.map(g=>g.revision).filter(Boolean)).size<=1)return groups;
+  }
+  throw Error('The catalogue changed while loading choices. Please refresh the page.');
+}
+
 const DEFAULT_NAME = 'SlotForge Timing';
 const DEFAULT_WELCOME = 'Welcome to the SlotForge Slotcar Timing App!';
 // the welcome message at the top of the Home tab (changeable in App Settings); empty means the default
@@ -17,7 +36,13 @@ const welcomeOf = () => (state.settings.welcome || '').trim() || DEFAULT_WELCOME
 // the name shown in the app's header and window title (changeable in App Settings)
 function applyName() {
   const n = (state.settings.appName || '').trim() || DEFAULT_NAME, h = document.querySelector('h1');
-  if (h) h.textContent = n;
+  if (h) {
+    // Reserve the original word's width/baseline, as in Telemetry. Custom names
+    // without the collection name remain plain text and are always escaped.
+    h.innerHTML = /^SlotForge(?:\s|$)/i.test(n)
+      ? `<span class="header-wordmark" role="img" aria-label="SlotForge"><span class="header-wordmark-size" aria-hidden="true">SlotForge</span><img class="header-light-ink" src="assets/brand/slotforge-dark.png" alt="" width="664" height="124"><img class="header-dark-ink" src="assets/brand/slotforge-light.png" alt="" width="664" height="124"></span>${n.slice(9) ? ` <span class="app-product">${esc(n.slice(9).trim())}</span>` : ''}`
+      : esc(n);
+  }
   document.title = n;
 }
 
@@ -62,6 +87,12 @@ function showRace(on) { // on: the Race tab is shown; otherwise the race (if the
   const h = document.getElementById('racehost');
   if (h) h.classList.toggle('parked', !on);
   view.hidden = !!(h && on);
+  const footer = document.getElementById('app-footer'), credits = document.getElementById('app-credits');
+  if (footer) footer.hidden = !!on;
+  if (credits) {
+    credits.hidden = state.tab !== 'rules';
+    credits.innerHTML = state.tab === 'rules' ? Report.CREDIT.map(esc).join('<br>') : '';
+  }
 }
 
 // App Settings: General and Network
@@ -150,6 +181,7 @@ const GENERAL_FOLDERS = ['display', 'names', 'header', 'logo', 'pictures', 'perf
 const applyUiScale = () => { if (typeof api !== 'undefined' && api.setZoom) api.setZoom(UiScale.factorOf(state.settings && state.settings.uiScale)); };
 async function renderGeneralSettings(box) {
   const S = state.settings, path = await api.dbPath(), hh = Banner.height(S), pos = Banner.pos(S), lpos = Banner.logoPos(S);
+  const storage=api.storageStatus?await api.storageStatus():{backend:'json'};
   const us = UiScale.levelOf(S.uiScale), dp = Depth.levelOf(S.depth), su = Speed.unitOf(S), du = Speed.distUnitOf(S), pq = Picture.levelOf(S.pictureQuality), pic = !!S.homeHeader, logoOn = Banner.logoOn(S), hasLogo = !!S.clubLogo, side = Banner.logoSide(S), share = Banner.logoShare(S);
   // the page is made of folders, as the Results and Records page is: each opens and closes, the choice is remembered while the app runs
   const sf = (id, title, note, body) => folderHtml('general', id, title, note, `<div class="fbody">${body}</div>`);
@@ -201,11 +233,13 @@ async function renderGeneralSettings(box) {
       <pre id="perfout" class="perfout" tabindex="0">measuring...</pre>
       <div class="row"><button class="btn" id="perfcopy" type="button">Copy report</button><span id="perfmsg" class="muted" role="status"></span></div>
       <span class="muted hint">Open the race screen with a race running while you look at this, or leave the line on and look at it during a race. If the Raspberry Pi gets slow, copy the report and send it: it shows whether the window is drawn by the graphics card or by the processor, how hot the processor is, and what the app is busy with. Measuring costs a little itself.</span></div>`)
-    + sf('data', 'Database file', 'where everything is saved', `<div class="row"><span>Saved in:</span><code>${esc(path)}</code></div>`);
+    + sf('data', 'Database storage', 'where everything is saved', `<div class="row"><strong>${storage.backend==='sqlite'?'SQLite database':'JSON database'}</strong></div><p>Saved in: <code>${esc(path)}</code></p>${storage.backend==='sqlite'?'<p>Changes are saved by the SQLite worker. Your pre-conversion JSON files are retained, but no longer receive updates. Use Import and Export to make a current backup before moving to an older build.</p>':'<p>SQLite saves individual records without rewriting the whole collection. Timing will restart, convert and verify a separate copy, then switch storage. Your original files are kept. Allow enough disk space for the original files, recovery copy and SQLite database.</p><button class="btn" id="sqliteactivate">Convert to SQLite and restart…</button>'}<p id="storagemsg" role="status"></p>`);
   if (typeof AppSettingsPage !== 'undefined') AppSettingsPage.enhance(box, 'general');
   folderWire(box);
   box.onclick = ev => { const fa = ev.target && ev.target.closest ? ev.target.closest('[data-folderall]') : null; if (fa) { folderAll('general', GENERAL_FOLDERS, fa.dataset.folderall === '1'); renderGeneralSettings(box); } };
   const $ = id => document.getElementById(id);
+  if($('sqliteactivate'))$('sqliteactivate').onclick=async()=>{const button=$('sqliteactivate');button.disabled=true;try{const result=await api.activateSqlite();$('storagemsg').textContent=result.restarting?'Restarting to convert a verified copy…':'Conversion cancelled.';}catch(e){$('storagemsg').textContent=e.message;}finally{button.disabled=false;}};
+  if(storage.backend==='sqlite'){$('bgsave').disabled=true;$('bgsave').closest('.field').querySelector('.hint').textContent='SQLite always writes through a background worker. This legacy JSON setting does not apply.';}
   $('uiscale').onchange = async ev => { state.settings = await api.setSettings({ uiScale: UiScale.levelOf(ev.target.value) }); applyUiScale(); renderSettings(); };
   $('depthlevel').onchange = async ev => { state.settings = await api.setSettings({ depth: Depth.levelOf(ev.target.value) }); applyDepth(); renderSettings(); };
   $('speedunit').onchange = async ev => { state.settings = await api.setSettings({ speedUnit: Speed.unitOf({ speedUnit: ev.target.value }) }); renderSettings(); };
@@ -332,7 +366,6 @@ async function renderRules() {
       <button class="btn" type="button" data-cmd="heading" title="Heading">Heading</button><button class="btn" type="button" data-cmd="insertUnorderedList" title="Bulleted list">&bull; List</button>
       <button class="btn" type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button><button class="btn" type="button" data-cmd="removeFormat" title="Clear formatting">Clear formatting</button></div>
     <div id="rules" class="rules rte" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Racing rules" data-placeholder="Write your racing rules here...">${RichText.clean(state.settings.rules || '')}</div>
-    <p class="rules-credit">${Report.CREDIT.map(esc).join('<br>')}</p>
     <div class="row">${pdfButton('id="rules-pdf"')}<span id="rulesmsg" class="muted" role="status"></span></div>`;
   const box = document.getElementById('rules'), msg = document.getElementById('rulesmsg'), bar = document.getElementById('rte-bar');
   let timer = null, range = null;

@@ -1,5 +1,6 @@
 // The live timing page: your layout filled with the running race, plus saving every lap.
 // Keys: Space starts / pauses / resumes, Y yellow flag, R red flag, 1-6 cross the line on that lane.
+let raceDraw = 0;
 let live = null; // { phase, timers, sim, key, laps, stopping, flash, lights, nodes, ... }
 const raceActive = () => !!live && ['countdown', 'running', 'paused', 'between', 'review'].includes(live.phase);
 
@@ -11,15 +12,22 @@ async function renderRace() {
   const r = state.race;
   if (!r) { state.tab = 'home'; return render(); }
   if (live && live.alive && live.raceRef === r) { if (live.shown) live.shown(); return; } // the same race, still there: show it again
-  const [allDrivers, cars, layouts, allLaps, penSystems, fuelRules, weatherSystems, rowDesigns, chartDesigns, imageSets, audioSets, teams, damageSystems] = await Promise.all(['drivers', 'slotcars', 'layouts', 'laps', 'penaltysystems', 'fuelrules', 'weathersystems', 'rowdesigns', 'chartdesigns', 'imagesets', 'audiosets', 'teams', 'damagesystems'].map(e => api.list(e)));
-  const drivers = allDrivers.filter(d => d.driverType !== 'virtual');
-  let twSystems = []; try { twSystems = (await api.list('tyrewearsystems')) || []; } catch (x) { twSystems = []; } // (Tyre Wear Systems, 1.40.0)
-  let scSystems = []; try { scSystems = (await api.list('safetycarsystems')) || []; } catch (x) { scSystems = []; } // (Safety Car Systems, 1.53.0)
-  let psSystems = []; try { psSystems = (await api.list('pushsavesystems')) || []; } catch (x) { psSystems = []; } // (Push and Save Systems, 1.54.0)
+  const draw=++raceDraw,current=()=>draw===raceDraw&&state.race===r&&state.tab==='race';
+  let inputs=null;
+  try{if(api.raceInputs)inputs=await api.raceInputs({setup:r.setup,rows:r.rows,trackId:r.track.id,championship:!!r.champ,revision:r.catalogueRevision});}
+  catch(error){if(current()){alert('Could not prepare the race: '+error.message+' Reopen Home and try again.');state.race=null;state.tab='home';return render();}return;}
+  if(!current())return;
+  const entities=['drivers','slotcars','layouts','laps','penaltysystems','fuelrules','weathersystems','rowdesigns','chartdesigns','imagesets','audiosets','teams','damagesystems'];
+  const [allDrivers,cars,layouts,allLaps,penSystems,fuelRules,weatherSystems,rowDesigns,chartDesigns,imageSets,audioSets,teams,damageSystems]=inputs?entities.map(e=>inputs.collections[e]):await Promise.all(entities.map(e=>api.list(e)));
+  const drivers=allDrivers.filter(d=>d.driverType!=='virtual');
+  const optional=async e=>{if(inputs)return inputs.collections[e];try{return await api.list(e)||[];}catch{return [];}};
+  const [twSystems,scSystems,psSystems]=await Promise.all(['tyrewearsystems','safetycarsystems','pushsavesystems'].map(optional));
+  if(!current())return;
   const find = (list, id) => list.find(x => x.id === id);
   const timingPlugin = r.resume?.race?.timingPlugin || (r.setup?.sessionType==='tokens' ? state.settings.tokenSessions?.[r.setup.id]?.timingPlugin : null) || (Hardware.timingChosen(state.settings)==='plugin' && typeof pt!=='undefined' ? TimingPlugin.provenance(pt.identity) : null);
   const speed = state.speed || 1; // only changed by automated tests
   const setup = Endurance.effective(r.setup), heats = setup.sessionType === 'heats', tokenSession = setup.sessionType === 'tokens'; // (a Time Token Session: lanes are switched on with paid time, see tokens.js)
+  const storageRunId=r.resume?.race?.storageRunId||(tokenSession?state.settings.tokenSessions?.[setup.id]?.storageRunId:null)||globalThis.crypto?.randomUUID?.()||('race-'+Date.now()+'-'+Math.random().toString(36).slice(2));
   let rulePlan=null;
   const savedRule=r.resume?.race?.rulePlugin||r.resume?.eng?.rulesSnapshot?.config?.rulePlugin||r.rulePlan;
   if(setup.rulePlugin||savedRule){try{
@@ -28,6 +36,7 @@ async function renderRace() {
     if(!api.pluginRulePrepare)throw Error('The plugin rule API is unavailable.');
     rulePlan=await api.pluginRulePrepare(savedRule?.id||setup.rulePlugin,savedRule||null);r.rulePlan=rulePlan;
   }catch(x){alert('Cannot prepare plugin race rules: '+x.message);state.race=null;state.tab='home';return render();}}
+  if(!current())return;
   const nameOf = (entity, list, id) => { const it = find(list, id); return it ? titleOf(entity, it) : ''; };
   const personOf = driverId => { const d = find(drivers, driverId); return { driverId: d ? d.id : '', driverName: d ? titleOf('drivers', d) : 'Guest', nickname: d ? d.nickname || '' : '', callsign: d ? d.callsign || '' : '', flag: d ? d.flag || '' : '', avatar: d ? d.avatar || '' : '' }; };
   const byTeam = heats && r.byTeam === true; // (1.8.0: the participants are teams; the driver of a team is chosen for every heat, see assignDrivers)
@@ -81,6 +90,7 @@ async function renderRace() {
       if(r.multiclass?.assignment==='roster'){const issues=MultiClass.entryIssues(r.multiclass,r.rows.filter(x=>!isRival(x)),{cars,drivers,teams});if(issues.length)throw Error(issues.join(' '));}}
     catch(e){alert('Cannot prepare Paddock cars: '+e.message);state.race=null;state.tab='home';return render();}
   }
+  if(!current())return;
   if(paddockJournal)paddockJournal.lanes=laneLens;
   const paddockEpoch=Date.now()-performance.now();
   // Tyre Wear (1.40.0): the system of the setup, with the lane lengths (for a system that counts the wear per distance) and the distance unit of the app; never in a Time Token Session. The engine decides by the kind of session if it is used (practice and qualifying: when the system says so)
@@ -94,7 +104,7 @@ async function renderRace() {
   // calculation. Store both in the race config so a running race is reproducible.
   const psBase = tokenSession ? null : PushSave.clean(find(psSystems, setup.pushSave));
   const psCfg = savedCalculations ? savedCalculations.pushsave || null : psBase ? { ...psBase, ...PushSave.policyFromSettings(state.settings), trackTarget: Math.max(0, Number(r.track && r.track.targetLap) * 1000 || 0) } : null;
-  const psRecs = new Map(); if (psCfg) allLaps.filter(l => l.trackId === r.track.id && !l.token && !l.noPersonalBest && l.driverId && l.time > 0).forEach(l => psRecs.set(l.driverId, Math.min(psRecs.get(l.driverId) ?? Infinity, l.time / speed)));
+  const psRecs = new Map(); if(psCfg&&inputs)for(const [id,time] of inputs.records.pace)psRecs.set(id,time/speed); if (psCfg&&!inputs) allLaps.filter(l => l.trackId === r.track.id && !l.token && !l.noPersonalBest && l.driverId && l.time > 0).forEach(l => psRecs.set(l.driverId, Math.min(psRecs.get(l.driverId) ?? Infinity, l.time / speed)));
   const psEntries = entries => (psCfg ? entries.map(e => ({ ...e, psRec: psRecs.get(e.driverId) || 0 })) : entries);
   const enduCfg = setup.endurance && setup.endurance.unit === 'distance' ? { ...setup.endurance, disp: Speed.distUnitOf(state.settings) } : setup.endurance || null;
   let resourceState=tokenSession?null:(r.resume?.race?.resources||r.resources||null);
@@ -107,8 +117,16 @@ async function renderRace() {
 
   // 1.68.0: a race of a championship that gives points: what the earlier rounds left behind, and where everybody stands, for a leaderboard that counts over the rounds ("Count over: All heats and rounds so far")
   let season = null;
-  if (r.champ && !tokenSession) { try { const [champs, sessions, tracks] = await Promise.all(['championships', 'sessions', 'tracks'].map(e => api.list(e))), own = Season.of(champs.find(x => x.id === r.champ.id), r.champ); if (own) season = { ...own, sessions, past: Season.past(own.c, sessions, allLaps, own.tag, people, tracks) }; } catch (x) { season = null; } }
+  if (r.champ && !tokenSession) {
+    try {
+      if(api.raceSeason) season=await api.raceSeason({tag:r.champ,people:people.map(p=>({driverId:p.driverId||'',teamId:p.teamId||'',asTeam:!!p.asTeam,virtualRival:!!p.virtualRival}))});
+      else { const [champs,sessions,tracks]=await Promise.all(['championships','sessions','tracks'].map(e=>api.list(e))),own=Season.of(champs.find(x=>x.id===r.champ.id),r.champ);if(own)season={...own,sessions,past:Season.past(own.c,sessions,allLaps,own.tag,people,tracks)}; }
+    } catch(error) {
+      if(current()){alert('Could not load championship standings: '+error.message+' Reopen Home and try again.');state.race=null;state.tab='home';return render();}return;
+    }
+  }
 
+  if(!current())return;
   let heat = null, eng;
   // Teams as participants (1.8.0): the driver of a team in a heat comes from the roster of the team (Heats.driversForHeat). The drivers who have driven are remembered per participant.
   const teamHist = people.map(() => []), teamChosen = {}; let teamNote = '';
@@ -135,7 +153,8 @@ async function renderRace() {
   // earlier laps on this track, for personal best / track record highlights and the record lap widget
   const base = { personal: new Map(), track: Infinity, trackName: '' };
   // laps removed from the records (but kept in their session) do not count here
-  allLaps.filter(l => l.trackId === r.track.id && !!l.token === tokenSession).forEach(l => { // (Racing Records and Token Records are separate pools)
+  if(inputs){base.personal=new Map(inputs.records.personal);base.track=inputs.records.track;base.trackName=base.track<Infinity?(nameOf('drivers',drivers,inputs.records.driverId)||(inputs.records.driverId?'(deleted)':'Guest')):'';}
+  else allLaps.filter(l => l.trackId === r.track.id && !!l.token === tokenSession).forEach(l => { // (Racing Records and Token Records are separate pools)
     if (!l.noTrackRecord && l.time < base.track) { base.trackName = nameOf('drivers', drivers, l.driverId) || (l.driverId ? '(deleted)' : 'Guest'); base.track = l.time; } // (a Guest, who has no driver in the database, can hold the track record of the Token Records)
     if (!l.noPersonalBest && l.driverId) base.personal.set(l.driverId, Math.min(base.personal.get(l.driverId) ?? Infinity, l.time)); // (a Guest has no personal best)
   });
@@ -787,7 +806,7 @@ async function renderRace() {
       standings=[];
     }
     const changes = heats ? null : systemChanges();
-    const session = { ...(paddockJournal?{paddockJournal}:{}), ...(rulePlan?{rulePlugin:rulePlan}:{}),...(resourceState?{resourceRunId:resourceState.runId,resources:structuredClone(resourceState)}:{}), audioSetId: setup.audioSet || '', setupName: setup.name, sessionType: setup.ofType || setup.sessionType, trackId: r.track.id, trackName: r.track.name, date, ...(r.champ ? { champ: r.champ } : {}), endedBy: heats ? '' : eng.endedBy, ...(Distance.compareOn(setup) ? { compareBy: 'distance' } : {}), ...(!heats && eng.resumes ? { resumed: eng.resumes } : {}), ...(heats && live.resumeCount ? { resumed: live.resumeCount } : {}), ...(changes && changes.length ? { systemChanges: changes } : {}), standings, ...(!heats && eng.weatherNote() ? { weatherNote: eng.weatherNote() } : {}) };
+    const session = { saveKey:storageRunId, ...(paddockJournal?{paddockJournal}:{}), ...(rulePlan?{rulePlugin:rulePlan}:{}),...(resourceState?{resourceRunId:resourceState.runId,resources:structuredClone(resourceState)}:{}), audioSetId: setup.audioSet || '', setupName: setup.name, sessionType: setup.ofType || setup.sessionType, trackId: r.track.id, trackName: r.track.name, date, ...(r.champ ? { champ: r.champ } : {}), endedBy: heats ? '' : eng.endedBy, ...(Distance.compareOn(setup) ? { compareBy: 'distance' } : {}), ...(!heats && eng.resumes ? { resumed: eng.resumes } : {}), ...(heats && live.resumeCount ? { resumed: live.resumeCount } : {}), ...(changes && changes.length ? { systemChanges: changes } : {}), standings, ...(!heats && eng.weatherNote() ? { weatherNote: eng.weatherNote() } : {}) };
     if(mc){
       session.multiclass=mc;
       const ranked=heats?heat.overall():eng.standings(),classRows=heats?heat.classOverall():eng.classStandings();
@@ -806,12 +825,13 @@ async function renderRace() {
       if (rivalEntries.length) session.virtualRivals = live.rivalHeats || [];
       session.heatResults = heat.results.map(h => ({ heat: h.heat, ...(h.rulesSnapshot ? { rulesSnapshot: h.rulesSnapshot } : {}), ...(h.final ? { final: h.final } : {}), ...(h.weatherNote && !wxAll ? { weatherNote: h.weatherNote } : {}), ...(h.systemChanges && h.systemChanges.length ? { systemChanges: h.systemChanges } : {}), rows: h.rows })); if (scoreNote) session.scoring = heat.scoring; if (finalsOn) session.finals = { finals: fmode.finals, finalMode: fmode.finalMode }; }
     try {
-      if(resourceState&&!(await checkpoint(true)))throw Error('Resources could not be saved. Retry saving in the Resources folder, then retry finalizing.');
+      if(api.saveResume&&!(await checkpoint(true)))throw Error('Recovery could not be saved. Retry saving before finalizing.');
+      live.cpOff=true;
       const savedId = await api.saveSession(session, laps); live.audioSavedId = savedId; try { AudioCalls.resultCalls(session,audioSet||{}).forEach(e => Sound.say(audioSet,e.call,{...audioCommon(),...e.vars},undefined,undefined,e.facts)); } catch (audioError) { /* Saving succeeded even if a voice fails. */ } await clearCheckpoint(); ui('msg').textContent = `Saved ${laps.length} laps.${r.champ ? ' It is part of ' + (r.champ.name || 'the championship') + '.' : ''} See Database > Results and Records.`;
       if (r.champ && state.settings && state.settings.champTag) { try { state.settings = await api.setSettings({ champTag: null }); } catch (x) { /* the card on Home stays as it was */ } } // (the next race is a normal race until a session is loaded again)
       if (r.champ && typeof champPanelsFor === 'function') { const cp = ui('champpanel'); if (cp) { cp.hidden = false; cp.dataset.cpbox = savedId; champPanelsFor([cp]).catch(() => { cp.hidden = true; }); } } // (1.56.0: the points of this race, to award)
     }
-    catch (x) { ui('msg').textContent = 'Could not save the results: ' + x.message; const retry=document.createElement('button');retry.className='btn';retry.textContent='Retry saving results';retry.onclick=()=>finishAll();ui('msg').appendChild(retry); }
+    catch (x) { live.cpOff=false;ui('msg').textContent = 'Could not save the results: ' + x.message; const retry=document.createElement('button');retry.className='btn';retry.textContent='Retry saving results';retry.onclick=()=>finishAll();ui('msg').appendChild(retry); }
   }
 
   // ---- the controls (widgets and keys do the same things) ----
@@ -1168,7 +1188,13 @@ async function renderRace() {
   };
   document.addEventListener('keydown', live.fsKey);
   ui('fsbtn').onclick = ev => { if (ev && ev.currentTarget && ev.currentTarget.blur) ev.currentTarget.blur(); toggleFull(); };
-  live.reloadCharts = async () => { const fresh = await api.list('chartdesigns'); chartDesigns.splice(0, chartDesigns.length, ...fresh); shareStatic(); live.nodes.forEach(n => { n.last = null; }); update(); };
+  let chartReload=0;const chartOwner=live;
+  live.reloadCharts = async () => {
+    const request=++chartReload;
+    const fresh=api.raceCharts&&inputs?await api.raceCharts(inputs.chartIds):await api.list('chartdesigns');
+    if(live!==chartOwner||!chartOwner.alive||request!==chartReload)return;
+    chartDesigns.splice(0,chartDesigns.length,...fresh);shareStatic();live.nodes.forEach(n=>{n.last=null;});update();
+  };
   live.shown = () => { live.nodes.forEach(n => { n.last = null; }); syncPerfLine(); update(); }; // the Race tab is shown again: everything is drawn once more (a leaderboard fits its text to the size it has now)
   // leaving the race screen (before the start, or after the end): the keys, the Trackmate and the Race Director buttons stop working on the other pages
   live.offPitSensors = () => { if (live.pitSensors) { live.pitSensors.off(); live.pitSensors = null; } };
@@ -1184,6 +1210,7 @@ async function renderRace() {
   const saveStints = home => { // (home: the track the stints were driven on, when that is not the track of this race)
     live.tkChain = live.tkChain.then(async () => {
       const where = home || r.track;
+      await persistTokens(true);
       const list = tokens.takeClosed(), failed = [];
       for (const st of list) {
         if (!st.laps.length) continue;
@@ -1191,7 +1218,7 @@ async function renderRace() {
         const rows = st.laps.map((l, n) => ({ l, n })).filter(x => !x.l.removed).map(({ l, n }) => ({ driverId: who.driverId || '', carId: who.carId || '', trackId: where.id, token: true, stint: st.id, lane: st.lane + 1, lapNumber: n + 1, time: l.t, date, // (a lap taken out in the review is not saved)
           ...(l.bad ? { noTrackRecord: true, noPersonalBest: true, tooSlow: true } : {}), ...(l.late || l.invalid ? { noTrackRecord: true, noPersonalBest: true, invalid: true } : {}), ...(l.late ? { late: true } : {}) }));
         if (!rows.length) continue;
-        const session = { audioSetId: setup.audioSet || '', setupName: setup.name, sessionType: 'tokens', trackId: where.id, trackName: where.name, date, endedBy: STINT_END[st.closedBy] || '',
+        const session = { saveKey:storageRunId+':'+st.id, audioSetId: setup.audioSet || '', setupName: setup.name, sessionType: 'tokens', trackId: where.id, trackName: where.name, date, endedBy: STINT_END[st.closedBy] || '',
           ...(timingPlugin?{timingPlugin}:{}), rulesSnapshot: eng.rulesSnapshot(), token: { stint: st.id, lane: st.lane + 1, bought: st.bought, carried: st.carried, left: st.left },
           standings: [{ pos: 1, driverId: who.driverId || '', carId: who.carId || '', driverName: who.driverName || 'Guest', carName: who.carName || '', laps: counted.length, lateLaps: st.laps.length - counted.length, best: st.best, total: counted.reduce((a, l) => a + l.t, 0), lane: st.lane + 1, bought: st.bought }] };
         try { await api.saveSession(session, rows); live.tkTotal++; } catch (x) { failed.push(st); }
@@ -1208,9 +1235,10 @@ async function renderRace() {
     clearTimeout(live.tkTimer); live.tkTimer = null; live.tkAt = t;
     const all = { ...(state.settings.tokenSessions || {}) };
     const T = raceT(), nothing = !tokens.hasPending() && eng.cars.every(c => tokens.stateOf(c.lane, T) === 'idle'); // (no lane has time or laps: there is nothing to carry on with)
-    if ((live.phase === 'finished' || nothing) && !tokens.hasPending()) delete all[setup.id]; else all[setup.id] = { setupId: setup.id, trackId: r.track.id, savedAt: new Date().toISOString(), ...(timingPlugin?{timingPlugin}:{}), data: tokens.serialise(T), review: live.phase === 'review' }; // (review: the session had ended and its stints waited for the review)
+    if ((live.phase === 'finished' || nothing) && !tokens.hasPending()) delete all[setup.id]; else all[setup.id] = { storageRunId, setupId: setup.id, trackId: r.track.id, savedAt: new Date().toISOString(), ...(timingPlugin?{timingPlugin}:{}), data: tokens.serialise(T), review: live.phase === 'review' }; // (review: the session had ended and its stints waited for the review)
     state.settings = { ...state.settings, tokenSessions: all }; // (at once, so the next time the screen is opened it finds it)
-    Promise.resolve(api.setSettings({ tokenSessions: all })).then(st => { if (st) state.settings = st; }).catch(() => {});
+    const saved=Promise.resolve().then(()=>api.setSettings({ tokenSessions: all })).then(st => { if (st) state.settings = st; });
+    saved.catch(()=>{});return saved;
   };
   live.flushTokens = () => persistTokens(true);
   const afterTokenChange = () => { persistTokens(true); update(); }; // (a stint that ends is held for the review at the end of the session)
@@ -1272,7 +1300,7 @@ async function renderRace() {
   async function finalizeTokens() {
     if (live.phase !== 'review' || live.tkBusy) return;
     live.tkBusy = true; live.tkFailed = ''; ui('msg').textContent = 'Saving…';
-    try { await saveStints(); } finally { live.tkBusy = false; }
+    try { await saveStints(); } catch(x) { ui('msg').textContent='Could not save recovery data: '+x.message; } finally { live.tkBusy = false; }
     if (tokens.hasPending()) {
       live.tkFailed = 'Some stints could not be saved. Press Finalize to try again.'; ui('msg').textContent = 'Some results could not be saved. Press Finalize to try again.';
       persistTokens(true); update(); return;
@@ -1343,9 +1371,10 @@ async function renderRace() {
     ...(byTeam ? { drivers: people.map(p => p.driverId) } : {}), teamHist: teamHist.map(l => l.slice()) });
   function checkpoint(force=false) {
     const waiting = heats && !!live && live.phase === 'between'; // (a heat race also waits between two races)
+    const finalizedHeats = heats && live?.phase === 'finished'; // All completed heats are already in heatState; do not replay the last engine.
     if(!api.saveResume||tokens||!live||!live.alive||live.cpOff)return Promise.resolve(true);
     if(resourceState&&live.resourceFault&&!force)return Promise.resolve(false);
-    if(!(waiting||['running','paused','review'].includes(live.phase)||resourceState&&(force||live.phase==='ready')))return Promise.resolve(true);
+    if(!(force||waiting||['running','paused','review'].includes(live.phase)||resourceState&&(force||live.phase==='ready')))return Promise.resolve(true);
     const resourceChanged=resourceState&&live.resourceSent!==resourceState.revision;
     const t = now(), sig = [live.phase, eng.status, eng.flag, heats ? heat.idx + ':' + Object.values(heat.picks).reduce((n, x) => n + x.length, 0) : '', eng.cars.reduce((n, c) => n + c.laps.length + c.points + (c.en ? c.en.swaps : 0) + (c.blockAt !== null ? 1 : 0), 0)].join('|');
     if(!force&&!resourceChanged&&live.cpAt!==undefined&&(t-live.cpAt<2000/speed||(sig===live.cpSig&&t-live.cpAt<5000/speed)))return live.cpPromise||Promise.resolve(true);
@@ -1353,8 +1382,8 @@ async function renderRace() {
     const where = !heats ? '' : waiting ? `between ${lc(heat.raceName(heat.idx - 1))} and ${lc(heat.raceName(heat.idx))}` : `${Endurance.clock(eng.elapsed(t))} into ${lc(heat.raceName(heat.idx))}${heat.idx < heat.count ? ' of ' + heat.count : ''}`; // (for the note on the Home tab)
     if(resourceState)live.resourceSent=resourceState.revision;
     try { live.cpPromise=Promise.resolve(api.saveResume({ v: 1, savedAt: new Date().toISOString(), name: setup.name, kind: SESSION_LABEL[setup.ofType || setup.sessionType] || '', trackName: r.track.name, wxSeed, wxHeat: wxLast, elapsed: waiting ? 0 : eng.elapsed(t), phase: live.phase,
-      ...(heats ? { where, heat: heatState() } : {}),
-      race: { ...(paddockJournal?{paddockJournal}:{}), ...(rulePlan?{rulePlugin:rulePlan}:{}),...(timingPlugin?{timingPlugin}:{}),resources:resourceState,multiclass:mc, virtualRivals: rivalEntries, setup: lean(r.setup), track: lean(r.track), rows: r.rows, ...(r.champ ? { champ: r.champ } : {}), ...(byTeam ? { byTeam: true } : {}), ...(heats ? { schedule: heat.schedule, ...(r.labels ? { labels: r.labels } : {}) } : {}) }, eng: waiting ? null : eng.snapshot(t) })).then(ok=>{if(resourceState&&!ok)throw Error('Database write failed');return true;}).catch(resourceSaveFailed);return live.cpPromise;}catch(x){return Promise.resolve(resourceSaveFailed(x));}
+      ...(heats ? { where, heat: heatState(), ...(finalizedHeats?{stopNow:true}:{}) } : {}),
+      race: { storageRunId, ...(paddockJournal?{paddockJournal}:{}), ...(rulePlan?{rulePlugin:rulePlan}:{}),...(timingPlugin?{timingPlugin}:{}),resources:resourceState,multiclass:mc, virtualRivals: rivalEntries, setup: lean(r.setup), track: lean(r.track), rows: r.rows, ...(r.champ ? { champ: r.champ } : {}), ...(byTeam ? { byTeam: true } : {}), ...(heats ? { schedule: heat.schedule, ...(r.labels ? { labels: r.labels } : {}) } : {}) }, eng: waiting||finalizedHeats ? null : eng.snapshot(t) })).then(ok=>{if(!ok)throw Error('Database write failed');return true;}).catch(resourceSaveFailed);return live.cpPromise;}catch(x){return Promise.resolve(resourceSaveFailed(x));}
   }
   function resourceSaveFailed(x){if(!resourceState)return false;live.resourceFault=true;live.resourceSent=-1;if(eng.status==='running'){eng.setFlag('red',now());live.phase='paused';}else if(eng.status==='ready'){live.phase=heats&&heat.idx>0?'between':'ready';live.runId++;}power(false);ui('msg').textContent='Resource saving failed: '+x.message+'. Racing is paused. Open Resources and retry saving.';return false;}
   async function clearCheckpoint() {
@@ -1372,9 +1401,10 @@ async function renderRace() {
     live.laps = Array.isArray(hs.laps) ? hs.laps : []; live.extraBy = mapOf(hs.extraBy); live.tyreBy = mapOf(hs.tyreBy); live.stintBy = mapOf(hs.stintBy); live.priorBy = mapOf(hs.priorBy); live.memoBy = mapOf(hs.memoBy);
     live.priorAll = typeof hs.priorAll === 'number' && Number.isFinite(hs.priorAll) ? hs.priorAll : Infinity; live.priorAllName = String(hs.priorAllName || '');
     wxForce = snap.wxHeat !== undefined && snap.wxHeat !== null && Number.isFinite(Number(snap.wxHeat)) ? Number(snap.wxHeat) : null; // (the weather of the race that was interrupted goes on)
-    eng = mk(heat.entries()); live.ann = mkAnn(); live.flash = new Map(); live.fpKey = null; live.tpKey = null; live.breakLeft = 0;
     live.resumeCount = (Number(hs.resumes) || 0) + (snap.eng ? 1 : 0); // (how many times a race that was racing came back: the result says so; coming back between two races loses no lap)
     if (snap.stopNow) live.stopping = true; // ("Save what was recorded": the race ends with the race that was racing, it does not go on with the next one)
+    if(!snap.eng&&snap.stopNow){live.phase='between';recomputeBests();finishAll();return false;}
+    eng = mk(heat.entries()); live.ann = mkAnn(); live.flash = new Map(); live.fpKey = null; live.tpKey = null; live.breakLeft = 0;
     if (snap.eng) return true;
     live.phase = 'between'; recomputeBests();
     if (snap.stopNow) { finishAll(); return false; }

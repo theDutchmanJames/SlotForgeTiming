@@ -64,8 +64,9 @@ function createCollector(d) {
     } else out.thermal = {};
     out.versions = { app: d.version || '', electron: d.process.versions && d.process.versions.electron || '', chrome: d.process.versions && d.process.versions.chrome || '', node: d.process.versions && d.process.versions.node || '' };
     out.lag = { max10: lagOf(10000), max60: lagOf(KEEP), all: st.all };
-    out.save = d.db && d.db.resumeStats ? d.db.resumeStats() : {};
-    try { out.database = d.db && d.db.dbStats ? d.db.dbStats() : {}; } catch { out.database = {}; } // (1.61.0: the size of the database, how long its saves take, the settings file)
+    out.save = !d.storage && d.db && d.db.resumeStats ? d.db.resumeStats() : {};
+    try { out.database = !d.storage && d.db && d.db.dbStats ? d.db.dbStats() : {}; } catch { out.database = {}; } // (1.61.0: the size of the database, how long its saves take, the settings file)
+    if(d.storage){try{const storage=await d.storage.diagnostics();out.database=storage.database||{};out.save=storage.save||{};out.storageBackend=storage.backend;}catch{out.database={};out.save={};}}
     out.stalls = st.stalls.map(s => ({ at: s.at, ms: s.ms }));
     out.marks = st.marks.map(x => ({ at: x.at, text: x.text }));
     try { out.windows = d.windows ? d.windows().slice(0, 8) : []; } catch { out.windows = []; } // (the windows that are open: the race window and the Live Race window)

@@ -114,6 +114,8 @@ const pressSwap = (lane, over = {}) => E('enpanel').onclick({ target: { closest:
   say('Space carries on', phase() === 'running');
   await bothLaps(2); await until(() => phase() === 'between', 6000); await wait(150);
   say('heat 2 is done and heat 3 waits', phase() === 'between' && E('msg').textContent.includes('Heat 2 finished'));
+  const originalSave=api.saveSession;let finalCheckpoint;
+  api.saveSession=async(...args)=>{finalCheckpoint=JSON.parse(JSON.stringify(kept.snap));return originalSave(...args);};
   await startHeat(); await bothLaps(2);
   await until(() => phase() === 'finished', 8000); await wait(250);
   const s1 = saved[0] && saved[0][0], l1 = saved[0] && saved[0][1];
@@ -123,6 +125,11 @@ const pressSwap = (lane, over = {}) => E('enpanel').onclick({ target: { closest:
   say('...and the standings count all the heats (6 laps for each driver)', s1.standings.length === 2 && s1.standings.every(x => x.laps === 6));
   say('...it says that it was interrupted and carried on once (the first lap after it is not for the records)', s1.resumed === 1 && run(`Stats.resumeText(${JSON.stringify(s1)})`).startsWith('This race was interrupted and carried on.'));
   say('...the file is deleted once the result is saved, and nothing is written after that', kept.snap === null && kept.clears >= 1 && (await wait(250), kept.snap === null));
+  api.saveSession=originalSave;
+  say('the pre-finalization checkpoint contains all completed heats without an engine to replay',finalCheckpoint.stopNow===true&&finalCheckpoint.eng===null&&finalCheckpoint.heat.state.idx===3);
+  kept.snap=finalCheckpoint;saved.length=0;
+  await homeView();await click({id:'resumego'});await until(()=>saved.length===1,3000);
+  say('a crash before the final commit recovers the completed heat result once, with the same identity',saved.length===1&&saved[0][0].saveKey===s1.saveKey&&saved[0][0].heatResults.length===3&&saved[0][1].length===l1.length&&kept.snap===null);
   run('state.race = null; live = null');
 
   // ---------- the race comes back between two heats ----------

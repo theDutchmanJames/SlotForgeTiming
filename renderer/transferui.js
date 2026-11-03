@@ -44,13 +44,13 @@ async function renderTransferSettings(box) {
   const bmsg = t => { trState.bkMsg = t; const m = $('bk-msg'); if (m) m.textContent = t; };
   $('bk-save').onclick = async () => { try { const res = await api.backupSave(); bmsg(res && res.saved ? `Backup saved: ${res.path}` : 'Not saved.'); } catch (x) { bmsg('Could not save the backup: ' + x.message); } };
   $('bk-open').onclick = async () => {
-    try { const res = await api.backupOpen(); if (!res || res.canceled) return; if (!res.ok) { trState.bk = null; trState.bkMsg = res.error; return renderTransferSettings(box); } trState.bk = res; trState.bkMsg = ''; renderTransferSettings(box); } catch (x) { bmsg('Could not read the file: ' + x.message); }
+    try { const res = await api.backupOpen(); if (!res || res.canceled) { trState.bk=null; return renderTransferSettings(box); } if (!res.ok) { trState.bk = null; trState.bkMsg = res.error; return renderTransferSettings(box); } trState.bk = res; trState.bkMsg = ''; renderTransferSettings(box); } catch (x) { bmsg('Could not read the file: ' + x.message); }
   };
   if (bk) {
     $('bk-cancel').onclick = async () => { await api.backupCancel(); trState.bk = null; renderTransferSettings(box); };
     $('bk-apply').onclick = async () => {
       if (!confirm('Replace everything you have now with this backup? This cannot be undone from the app (a safety file is kept next to the database).')) return;
-      try { await api.backupRestore(); trState.bk = null; trState.bkMsg = 'The backup is restored.'; } catch (x) { bmsg('Could not restore the backup: ' + x.message); }
+      try { const result=await api.backupRestore(); trState.bk = null; bmsg(result?.restarting?'Restarting to verify and restore the backup.':'The backup is restored.'); } catch (x) { bmsg('Could not restore the backup: ' + x.message); }
     };
   }
   box.onchange = ev => {
@@ -71,7 +71,7 @@ async function renderTransferSettings(box) {
     try { const res = await api.exportData(chosen, extras); msg(res && res.saved ? `Saved ${Object.values(res.counts || {}).reduce((a, b) => a + b, 0)} items: ${res.path}` : 'Not saved.'); } catch (x) { msg('Could not export: ' + x.message); }
   };
   $('tr-open').onclick = async () => {
-    try { const res = await api.importOpen(); if (!res || res.canceled) return; if (!res.ok) { trState.pending = null; msg(res.error); return renderTransferSettings(box); } trState.pending = res; trState.msg = ''; renderTransferSettings(box); } catch (x) { msg('Could not read the file: ' + x.message); }
+    try { const res = await api.importOpen(); if (!res || res.canceled) { trState.pending=null; return renderTransferSettings(box); } if (!res.ok) { trState.pending = null; msg(res.error); return renderTransferSettings(box); } trState.pending = res; trState.msg = ''; renderTransferSettings(box); } catch (x) { msg('Could not read the file: ' + x.message); }
   };
   if (pending) {
     $('tr-cancel').onclick = async () => { await api.importCancel(); trState.pending = null; renderTransferSettings(box); };

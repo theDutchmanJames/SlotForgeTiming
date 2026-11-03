@@ -7,4 +7,4 @@ const measure=()=>{const start=performance.now();db.fileChunks();return +(perfor
 db.touchAll();const previousInvalidationMs=measure();let targetedInvalidationMs;
 db.commit=()=>{targetedInvalidationMs=measure();};db.saved=async()=>{};
 const client=new Paddock(db);
-client.commit().then(()=>console.log(JSON.stringify({imageMiB:80,laps:20000,previousInvalidationMs,targetedInvalidationMs}))).finally(()=>client.stop());
+client.storage.commit().then(()=>console.log(JSON.stringify({imageMiB:80,laps:20000,previousInvalidationMs,targetedInvalidationMs}))).finally(()=>client.stop());

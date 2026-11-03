@@ -37,8 +37,15 @@
   // t1: the time of the saved laps; t0: that time plus the penalty time and what the Race Director added or took off; dist: the metres, when the length of the lane is known for every lap.
   // people: the participants (driverId, teamId, asTeam); laps: the saved laps; tracks: the tracks (for the length of the lanes).
   function past(c, sessions, laps, tag, people, tracks) {
-    const list = counted(c, sessions, tag), byS = new Map(), trackOf = new Map((Array.isArray(tracks) ? tracks : []).map(t => [t.id, t]));
+    const byS = new Map(), trackOf = new Map((Array.isArray(tracks) ? tracks : []).map(t => [t.id, t]));
     (Array.isArray(laps) ? laps : []).forEach(l => { if (l && l.sessionId) { const a = byS.get(l.sessionId); if (a) a.push(l); else byS.set(l.sessionId, [l]); } });
+    return pastFrom(c, sessions, tag, people, (id, p) => (byS.get(id) || []).filter(l => p.asTeam ? l.teamId === p.teamId : l.driverId === p.driverId), id => trackOf.get(id));
+  }
+
+  // Repository readers stream only a counted session's matching laps. Preserve
+  // the exact valid-time sequence: medians cannot be recovered from an average.
+  function pastFrom(c, sessions, tag, people, lapsOf, trackOf) {
+    const list = counted(c, sessions, tag);
     const out = [];
     (Array.isArray(people) ? people : []).forEach((p, i) => {
       if(p.virtualRival)return;
@@ -46,15 +53,18 @@
       list.forEach(s => {
         const row = rowOf(s.standings, p); if (!row) return;
         any = true;
-        const mine = (byS.get(s.id) || []).filter(l => (p.asTeam ? l.teamId === p.teamId : l.driverId === p.driverId));
+        const mine = lapsOf(s.id, p);
         n += Number(row.laps) || 0;
         const b = Number(row.best); if (b > 0 && (best === null || b < best)) best = b;
-        mine.forEach(l => { if (!l.pit && !l.invalid && !l.tooSlow && l.time > 0) valid.push(r3(l.time)); });
-        const sum = mine.reduce((a, l) => a + (Number(l.time) || 0), 0);
+        let sum = 0, last = null;
+        const len = l => { const tr = trackOf(l.trackId || s.trackId); return tr ? Number(speed().laneLength(tr, (l.lane | 0) - 1)) || 0 : 0; };
+        for (const l of mine) {
+          last = l; sum += Number(l.time) || 0;
+          if (!l.pit && !l.invalid && !l.tooSlow && l.time > 0) valid.push(r3(l.time));
+          const m = len(l); if (m > 0) dist += m; else known = false;
+        }
         t1 += sum; t0 += sum + (Number(row.adjMs) || 0) + (Number(row.penalty) || 0);
-        const len = l => { const tr = trackOf.get(l.trackId || s.trackId); return tr ? Number(speed().laneLength(tr, (l.lane | 0) - 1)) || 0 : 0; };
-        mine.forEach(l => { const m = len(l); if (m > 0) dist += m; else known = false; });
-        if (row.adjLaps) { const last = mine[mine.length - 1], m = last ? len(last) : 0; if (m > 0) dist += row.adjLaps * m; else known = false; } // (the laps that the Race Director added or took off, in the lane of the last lap)
+        if (row.adjLaps) { const m = last ? len(last) : 0; if (m > 0) dist += row.adjLaps * m; else known = false; } // (the laps that the Race Director added or took off, in the lane of the last lap)
       });
       if (any) out.push({ p: i, laps: n, best: r3(best), valid, t0: r3(t0), t1: r3(t1), ...(known ? { dist: r3(dist) } : {}) });
     });
@@ -75,7 +85,7 @@
     return { order: list.map(x => [x.i, x.now]), pts: list.slice().sort((x, y) => x.i - y.i).map(x => [x.i, x.now, x.was]) };
   }
 
-  const api = { of, others, counted, rowOf, past, now };
+  const api = { of, others, counted, rowOf, past, pastFrom, now };
   root.Season = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

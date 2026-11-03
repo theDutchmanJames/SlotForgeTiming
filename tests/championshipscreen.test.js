@@ -56,7 +56,7 @@ const real = { add: async (e, rec) => { const row = { ...JSON.parse(JSON.stringi
   update: async (e, id, rec) => { const row = store[e].find(r => r.id === id); Object.assign(row, JSON.parse(JSON.stringify(rec)), { id }); updated.push([e, id, rec]); return row; },
   remove: async (e, id) => { store[e] = store[e].filter(r => r.id !== id); removed.push([e, id]); } };
 for (const k of Object.keys(real)) api[k] = (...x) => { x.forEach(v => structuredClone(v)); return real[k](...x); };
-api.saveResume = async s => { resumes.push(JSON.parse(JSON.stringify(s))); }; api.clearResume = async () => {}; api.getResume = async () => (ctx.__resume ? JSON.parse(JSON.stringify(ctx.__resume)) : null);
+api.saveResume = async s => { resumes.push(JSON.parse(JSON.stringify(s))); return true; }; api.clearResume = async () => {}; api.getResume = async () => (ctx.__resume ? JSON.parse(JSON.stringify(ctx.__resume)) : null);
 const mgr = () => E('setupmgr'), view = () => E('view');
 const btn = d => ({ target: { id: d.id || '', dataset: d, closest: sel => (sel === 'button' ? { id: d.id || '', dataset: d } : null) } });
 const click = d => mgr().onclick(btn(d)), change = (d, value, id = '') => mgr().onchange({ target: { dataset: d, value, id } });

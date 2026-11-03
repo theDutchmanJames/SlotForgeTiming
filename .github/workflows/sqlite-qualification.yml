@@ -1,0 +1,60 @@
+name: SQLite qualification
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/sqlite-qualification]
+
+permissions:
+  contents: read
+
+jobs:
+  qualify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, ubuntu-22.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Storage and failure regressions
+        run: npm run test:storage
+      - name: Bounded synthetic volume and native backup checks
+        run: node tools/qa/sqlite-volume.cjs
+      - name: Linux desktop dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgtk-3-0 libnss3 libasound2 libgbm1
+      - name: Actual application and ASAR worker (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          xvfb-run -a node tools/qa/run-activation.cjs
+          xvfb-run -a node tools/qa/run-sqlite-app.cjs
+          xvfb-run -a node tools/qa/sqlite-asar.cjs
+      - name: Actual application and ASAR worker (Windows and macOS)
+        if: runner.os != 'Linux'
+        run: |
+          node tools/qa/run-activation.cjs
+          node tools/qa/run-sqlite-app.cjs
+          node tools/qa/sqlite-asar.cjs
+      - name: Save evidence, including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlite-${{ matrix.os }}
+          path: |
+            ../outputs/sqlite-conversion/**/result.json
+            ../outputs/sqlite-conversion/**/*.log
+            ../outputs/sqlite-conversion/**/*.png
+          if-no-files-found: warn
+          retention-days: 7

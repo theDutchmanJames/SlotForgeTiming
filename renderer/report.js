@@ -59,9 +59,11 @@
     const groups = lapGroups(session, laps);
     const lapPages = groups.map(g => {
       const most = Math.max(...g.cols.map(c => c.laps.length));
+      const bad = x => x.invalid || x.tooSlow;
+      const bestByColumn = g.cols.map(c => c.laps.reduce((best,l) => bad(l) ? best : Math.min(best,l.time),Infinity));
       const rows = Array.from({ length: most }, (_, i) => `<tr><td>${i + 1}</td>${g.cols.map(c => {
         const l = c.laps[i]; if (!l) return '<td></td>';
-        const bad = x => x.invalid || x.tooSlow, best = Math.min(...c.laps.filter(x => !bad(x)).map(x => x.time));
+        const best = bestByColumn[g.cols.indexOf(c)];
         const tm = esc(E.fmtTime(l.time));
         return `<td>${bad(l) ? `<s title="${l.invalid ? 'invalid lap' : 'too slow'}">${tm}</s>` : l.time === best ? `<b>${tm}</b>` : l.pit ? `<i title="pit stop">${tm}</i>` : tm}</td>`;
       }).join('')}</tr>`).join('');
@@ -106,14 +108,9 @@
 
   // The credit under the racing rules on the screen (Racing Rules tab). It is not on the printed page: that is the club's own page.
   const CREDIT = [
-    'This App has been made by Claude and theDutchmanJames.',
-    'For all Slotcar Enthusiasts and special thanks to:',
-    'Bjorn F. - For being my best mate!',
-    'RaceCoordinator, for the ideas, inspiration and their work on RCAI.',
-    'Kevan @Slotracer, the first person to say something, even though it was just smileys..',
-    'Dopamine @Slotforum, for his ideas on Audio Customization.',
-    'LMP & Superslab @Slotforum, for their BoP System.',
-    'Johnno @Slotracer, for the first constructive feedback'
+    'This App has been made by theDutchmanJames, Codex & Claude.',
+    'Special thanks to Bjorn and Joanne and the members of:',
+    '@SlotForum.com: Kevan, Roguejackal, Dangermouse, Dopamine, LMP & Superslab'
   ];
   // The racing rules as a page to hand out: the club's own formatting and a clear title (no credit on it)
   function rulesHtml({ title, html }) {

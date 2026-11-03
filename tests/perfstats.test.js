@@ -25,6 +25,10 @@ function deps(over = {}) {
 }
 
 (async () => {
+  { const {d}=deps({db:{dbStats(){throw Error('Legacy read forbidden');},resumeStats(){throw Error('Legacy read forbidden');}},storage:{diagnostics:async()=>({backend:'sqlite',database:{physicalBytes:8192},save:{persistentRecovery:true}})}});
+    const c=createCollector(d),report=await c.collect();c.stop();ok('storage diagnostics are awaited without consulting legacy JSON',report.storageBackend==='sqlite'&&report.database.physicalBytes===8192&&report.save.persistentRecovery);
+    d.storage.diagnostics=async()=>{throw Error('Worker closed');};const failed=createCollector(d),safe=await failed.collect();failed.stop();ok('closed storage diagnostics preserve the rest of the report',Object.keys(safe.database).length===0&&Object.keys(safe.save).length===0&&safe.os.cpus===4); }
+
   { const { d, clock, timers } = deps(), C = createCollector(d);
     ok('before anybody asks nothing is running (no timer, nothing measured)', timers.length === 0 && C.running() === false);
     const a = await C.collect();
@@ -232,7 +236,7 @@ function deps(over = {}) {
   { // main.js: the watcher is made before the handlers, the database tells it about its saves, the list handler tells it about the lists
     const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
     ok('1.61.1: main.js makes the watcher (its notes go to the collector, the size of a list is found with Database.approxSize) and the database tells it about every full save', /const watch = require\('\.\/perfstats'\)\.createWatcher\(\{ mark: t => \{ if \(perfCollector\) perfCollector\.mark\(t\); \}, sizeOf: Database\.approxSize \}\);/.test(main) && /db\.onSave = info => watch\.saved\(info\);/.test(main));
-    ok('...the list handler gives the list back unchanged and tells the watcher what was sent', /ipcMain\.handle\('db:list', \(_e, entity\) => \{ const rows = db\.list\(entity\); watch\.sent\(entity, rows\); return rows; \}\);/.test(main));
+    ok('...the list handler gives the list back unchanged and tells the watcher what was sent', /ipcMain\.handle\('db:list', async \(_e, entity\) => \{ const rows = await records\.list\(entity\); watch\.sent\(entity, rows\); return rows; \}\);/.test(main));
     ok('...the watcher is made before any handler (the first list can be asked at once)', main.indexOf('const watch = ') > 0 && main.indexOf('const watch = ') < main.indexOf("ipcMain.handle('db:list'") && main.indexOf('db.onSave = ') < main.indexOf("ipcMain.handle('schema'")); }
 
   console.log(fails ? fails + ' PERFSTATS TESTS FAILED' : 'ALL PERFSTATS TESTS PASSED'); process.exit(fails ? 1 : 0);
