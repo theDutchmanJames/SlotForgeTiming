@@ -159,7 +159,7 @@ app.whenReady().then(async () => {
   pluginHost = require('./pluginipc').register({ipcMain,dialog,BrowserWindow,app,utilityProcess:require('electron').utilityProcess,getMain:()=>mainWin,isRacing:()=>!!live.dyn && ['countdown','running','paused','between','review'].includes(live.dyn.phase),appVersion:require('./package.json').version,root:path.join(app.getPath('userData'),'plugins'),getSettings:()=>lifecycle.settings(),onTiming:event=>{if(mainWin&&!mainWin.isDestroyed())mainWin.webContents.send('plugins:timing-event',event);}});
   ipcMain.handle('voices:report', () => require('./voicereport').collect()); // what this computer offers for text to speech (Audio Settings > Voice report)
   ipcMain.handle('db:path', () => sqliteRuntime?.file||db.file);
-  ipcMain.handle('storage:status',()=>({backend:sqliteRuntime?'sqlite':'json',testProfile:!!sqliteTestProfile}));
+  ipcMain.handle('storage:status',async()=>({backend:sqliteRuntime?'sqlite':'json',testProfile:!!sqliteTestProfile,usage:sqliteRuntime?await lifecycle.diagnostics().then(v=>v.database).catch(()=>null):null}));
   ipcMain.handle('storage:activate',async e=>{
     paddockOwner(e);
     const idle=()=>{if(sqliteRuntime||live.dyn&&['countdown','running','paused','between','review'].includes(live.dyn.phase)||paddock?.busy||pluginHost?.timing?.reservation)throw Error('Finish the race and Paddock operations before changing storage.');};

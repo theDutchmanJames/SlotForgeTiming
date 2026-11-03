@@ -22,7 +22,7 @@ function writeNew(file, value) { const fd = fs.openSync(file,'wx'); try { fs.wri
 function verify(file) {
   const store = new SqliteStore(file);
   try {
-    if (!['1','2','3','4','5'].includes(store.statement("SELECT value FROM info WHERE key='workingFormat'").get()?.value)) throw Error('Not a supported working snapshot.');
+    if (!['1','2','3','4','5','6'].includes(store.statement("SELECT value FROM info WHERE key='workingFormat'").get()?.value)) throw Error('Not a supported working snapshot.');
     if (store.statement('PRAGMA integrity_check').get().integrity_check !== 'ok' || store.statement('PRAGMA foreign_key_check').all().length) throw Error('Snapshot integrity check failed.');
     let records=0, assets=0;
     for (const row of store.statement('SELECT entity,id FROM records').iterate()) {
@@ -34,8 +34,12 @@ function verify(file) {
       }
       records++;
     }
-    for (const a of store.statement('SELECT bytes,digest,mime,original FROM assets').iterate()) {
-      if (hash(a.bytes)!==a.digest) throw Error('Snapshot media checksum failed.');
+    const shared=store.statement("SELECT value FROM info WHERE key='workingFormat'").get().value==='6';
+    // Hash each shared body once, including any unreferenced body; references are
+    // separately validated by foreign keys, paths and exact URI spelling.
+    if(shared)for(const a of store.statement('SELECT bytes,digest FROM media_blobs').iterate())if(hash(a.bytes)!==a.digest)throw Error('Snapshot media checksum failed.');
+    for (const a of store.statement(shared?'SELECT digest,mime,original FROM asset_refs':'SELECT bytes,digest,mime,original FROM assets').iterate()) {
+      if (!shared&&hash(a.bytes)!==a.digest) throw Error('Snapshot media checksum failed.');
       if(a.original!==null){const m=/^data:([^;,]+);base64,([A-Za-z0-9+/=\r\n]+)$/.exec(a.original);if(!m||m[1]!==a.mime||hash(Buffer.from(m[2],'base64'))!==a.digest)throw Error('Snapshot original media checksum failed.');}
       assets++;
     }
@@ -44,6 +48,7 @@ function verify(file) {
 }
 function snapshot(store, destination, info={}, checkpoint=()=>{}) {
   // Exclusive directory: errors or worker cancellation leave an unpublished staging copy.
+  require('./storage-space').check(destination,store.statement('PRAGMA page_count').get().page_count*store.statement('PRAGMA page_size').get().page_size*2,'SQLite backup');
   fs.mkdirSync(destination);
   const staging=path.join(destination,'snapshot.pending'), file=path.join(destination,'snapshot.sqlite');
   store.db.prepare('VACUUM INTO ?').run(staging); // Includes committed WAL contents, not just the main file.
@@ -59,6 +64,7 @@ function restore(source,destination,checkpoint=()=>{}) {
   const manifest=readJson(path.join(source,'manifest.json'),65536), file=path.join(source,'snapshot.sqlite');
   if (manifest.format!==FORMAT || manifest.version!==1 || manifest.state!=='verified' || !/^[a-f0-9]{64}$/.test(manifest.sha256||'')) throw Error('Unsupported or incomplete SQLite backup.');
   if (!fs.lstatSync(file).isFile() || fs.existsSync(file+'-wal') || fs.existsSync(file+'-journal')) throw Error('Backup is not a sealed snapshot.');
+  require('./storage-space').check(destination,fs.statSync(file).size*3,'SQLite restore');
   fs.mkdirSync(destination); const staging=path.join(destination,'restore.pending');
   fs.copyFileSync(file,staging,fs.constants.COPYFILE_EXCL); sync(staging);
   if (digest(staging)!==manifest.sha256) throw Error('Backup checksum mismatch. Nothing was restored.');
@@ -131,6 +137,7 @@ function restoreLegacy(file,destination) {
   // Apply the same legacy normalization as JSON restore, entirely in memory on copied data.
   const original=fs.readFileSync(file);if(hash(JSON.stringify(JSON.parse(original.toString('utf8').replace(/^\uFEFF/,''))))!==hash(JSON.stringify(bundle)))throw Error('Backup changed while reading.');
   const Database=require('./db'), facade={data:structuredClone(bundle.data)};Database.prototype.ensure.call(facade);
+  require('./storage-space').check(destination,original.length*8,'Legacy backup restore');
   fs.mkdirSync(destination);writeNew(path.join(destination,'original-backup.json'),original);
   const raw=path.join(destination,'normalized.json');writeNew(raw,JSON.stringify(facade.data));
   require('./sqlite-migration').migrateCopy({source:raw,destination:path.join(destination,'recovery')});

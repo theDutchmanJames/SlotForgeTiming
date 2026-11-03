@@ -4,6 +4,7 @@
   function mount(box,api,options={}){
     let data={cars:[]},source='paddock',busy=false,closed=false,timer,search='',page=0,local=[],markup='',loadingImages=false,refreshing=false,pendingRefresh=null;
     const imageCache=new Map(),names=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
+    const thumbnails=typeof CatalogueThumbnails!=='undefined'?CatalogueThumbnails.create():null;
     box.classList.add('paddock-browser');
     box.innerHTML=`<div class="pb-toolbar"><div class="seg" role="group" aria-label="Car database"><button class="btn" data-source="local">Local Database</button><button class="btn on" data-source="paddock">Paddock Database</button></div><button class="btn" data-connection>Connection &amp; results</button><button class="btn" data-refresh>Refresh now</button></div><p data-summary aria-live="polite"></p><p class="muted" data-guidance></p><p data-error role="status"></p><input type="search" data-search aria-label="Search cars" placeholder="Search by name, model or race class…"><div class="pb-cars" data-cars></div><div class="pb-pages"><button class="btn" data-prev>Previous</button><span data-count></span><button class="btn" data-next>Next</button></div>`;
     const q=s=>box.querySelector(s),active=()=>!closed&&box.isConnected;
@@ -18,10 +19,10 @@
         const img=q('img[data-picture]:not([data-loaded])');if(!img)break;
         img.dataset.loaded='true';const key=img.dataset.picture;
         let picture=imageCache.get(key);
-        try{if(picture===undefined)picture=img.dataset.origin==='local'?local.find(c=>c.id===img.dataset.id)?.picture||'':await api.paddockPicture(img.dataset.id,img.dataset.key);}
+        try{if(picture===undefined){const load=()=>img.dataset.origin==='local'?local.find(c=>c.id===img.dataset.id)?.picture||'':api.paddockPicture(img.dataset.id,img.dataset.key);picture=thumbnails?await thumbnails.get(key,load):await load();}}
         catch{picture='';}
         if(!active())break;
-        if(img.isConnected&&picture){imageCache.set(key,picture);img.src=picture;}
+        if(img.isConnected&&picture){if(!thumbnails)imageCache.set(key,picture);img.src=picture;}
         await new Promise(resolve=>setTimeout(resolve,16));
       }}finally{loadingImages=false;}
     }
@@ -40,8 +41,8 @@
         markup=html;q('[data-cars]').innerHTML=html;
         const keys=new Set([...box.querySelectorAll('[data-picture]')].map(img=>img.dataset.picture));
         for(const key of imageCache.keys())if(!keys.has(key))imageCache.delete(key);
-        loadImages();
       }
+      loadImages();
       box.querySelectorAll('[data-use]').forEach(b=>b.disabled=busy&&!refreshing||b.hasAttribute('data-unavailable'));
       q('[data-count]').textContent=list.length+' cars · Page '+(page+1)+' of '+Math.max(1,Math.ceil(list.length/40));q('[data-prev]').disabled=page===0;q('[data-next]').disabled=(page+1)*40>=list.length;
     }
@@ -51,7 +52,7 @@
       pendingRefresh=(async()=>{
         try{data=await api.paddockCatalogue(force);if(active())q('[data-error]').textContent=data.error||'';}
         catch(e){if(active())q('[data-error]').textContent=e.message;}
-        finally{busy=false;refreshing=false;paint();}
+        finally{busy=false;refreshing=false;box.querySelectorAll('img[data-picture][data-loaded]').forEach(img=>{if(!img.getAttribute('src'))delete img.dataset.loaded;});paint();}
       })();
       try{await pendingRefresh;}finally{pendingRefresh=null;}
     }

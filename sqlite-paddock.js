@@ -1,18 +1,13 @@
 'use strict';
 const crypto = require('node:crypto');
 const { object } = require('./sqlite-store');
-const { address, profilePatch } = require('./paddock');
+const { address, profilePatch, validateProfile:validate } = require('./paddock');
 const { setPath, patchRecord, expectMeta } = require('./sqlite-records');
 function ensure(s) {
   if (!s.get('@meta','paddock')) s.replace('@meta','paddock',{sourceId:crypto.randomUUID(),connection:null,withdrawals:[]});
 }
 function connected(s,databaseId) {
   if (!databaseId || s.field('@meta','paddock',['connection','databaseId']).value !== databaseId) throw Error('Paddock database identity changed.');
-}
-function validate(profile) {
-  const p = profile;
-  if (!object(p) || p.integrationVersion !== 1 || typeof p.databaseId !== 'string' || !p.databaseId || !object(p.car) || typeof p.car.id !== 'string' || !/^[a-zA-Z0-9_-]{1,100}$/.test(p.car.id) || p.configuration?.carId !== p.car.id || p.configuration.databaseId !== p.databaseId || !/^[a-f0-9]{64}$/.test(p.configuration.signature) || !Number.isFinite(Date.parse(p.configuration.capturedAt))) throw Error('Invalid Paddock car profile.');
-  if (p.car.picture && !/^data:image\/(png|jpeg|webp);base64,[a-zA-Z0-9+/=\r\n]+$/.test(p.car.picture)) throw Error('Unsupported Paddock picture.');
 }
 function setPaddockConnection(s,{connection,expectedRevision}) {
   expectMeta(s,'paddock',expectedRevision);
@@ -24,7 +19,7 @@ function setPaddockConnection(s,{connection,expectedRevision}) {
   setPath(s,'@meta','paddock',['connection'],value);
   return {revision:s.revision('@meta','paddock')};
 }
-function linkPaddockCar(s,{profile,localId,expectedRevision}) {
+function linkPaddockCar(s,{profile,localId,expectedRevision,preservePicture=false}) {
   validate(profile); connected(s,profile.databaseId);
   if (profile.car.archived) throw Error('This car is archived in Paddock.');
   const linked = s.statement(`SELECT a.id FROM fields a JOIN fields b ON a.entity=b.entity AND a.id=b.id
@@ -36,6 +31,15 @@ function linkPaddockCar(s,{profile,localId,expectedRevision}) {
   if (row?.paddock && (row.paddock.databaseId !== profile.databaseId || row.paddock.carId !== profile.car.id)) throw Error('This Timing car is already linked.');
   const classes = s.statement("SELECT id,json FROM fields WHERE entity='raceclasses' AND path='[\"name\"]'").all().map(c=>({id:c.id,name:JSON.parse(c.json)})), known = new Set(classes.map(c=>c.id));
   const patch = profilePatch(profile,classes);
+  if(preservePicture&&row){
+    delete patch.picture;patch.paddock.mediaHash=row.paddock?.mediaHash||'';
+    // One-time upgrade of a legacy inline-photo link. Hash in the worker, without
+    // returning its BLOB or rewriting it as part of the catalogue command.
+    if(!Object.hasOwn(row.paddock||{},'mediaHash')){
+      const a=s.statement('SELECT mime,bytes,original FROM assets WHERE entity=? AND id=? AND path=?').get('slotcars',id,'["picture"]');
+      if(a)patch.paddock.mediaHash=crypto.createHash('sha256').update(a.original??`data:${a.mime};base64,${Buffer.from(a.bytes).toString('base64')}`).digest('hex');
+    }
+  }
   for (const item of classes) if (!known.has(item.id)) s.insert('raceclasses',item);
   let recordId = id;
   if (row) patchRecord(s,'slotcars',id,patch);
@@ -55,7 +59,7 @@ function applyPaddockCatalogue(s,{databaseId,cache,updates,expectedRevision}) {
     if (s.field('slotcars',update.recordId,['paddock','databaseId']).value !== databaseId) throw Error('Linked car belongs to another Paddock database.');
     if (update.profile) {
       if (update.profile.databaseId !== databaseId) throw Error('Profile belongs to another Paddock database.');
-      linkPaddockCar(s,{profile:update.profile,localId:update.recordId,expectedRevision:update.expectedRevision});
+      linkPaddockCar(s,{profile:update.profile,localId:update.recordId,expectedRevision:update.expectedRevision,preservePicture:update.preservePicture===true});
     } else if (update.catalogueCar) {
       const car=update.catalogueCar,row=s.get('slotcars',update.recordId,true).value;
       if(car.id!==row.paddock.carId||typeof car.name!=='string'||['maker','marque','model','scale','raceClass','picture','availability'].some(k=>car[k]!=null&&typeof car[k]!=='string')||car.picture&&!/^data:image\/(png|jpeg|webp);base64,[a-zA-Z0-9+/=\r\n]+$/.test(car.picture))throw Error('Catalogue car identity changed.');

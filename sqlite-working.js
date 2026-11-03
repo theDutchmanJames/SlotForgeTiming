@@ -30,6 +30,7 @@ const WORKING_SCHEMA = `
 function forkCopy(source, destination) {
   const verified = openCopy(source); verified.close();
   // Only a fresh directory may receive a fork. Incomplete forks cannot be opened.
+  require('./storage-space').check(destination,fs.statSync(path.join(source,'timing.sqlite')).size*3,'SQLite working copy');
   fs.mkdirSync(destination);
   const staging = path.join(destination, 'staging.sqlite'), target = path.join(destination, 'working.sqlite');
   fs.copyFileSync(path.join(source, 'timing.sqlite'), staging, fs.constants.COPYFILE_EXCL);
@@ -94,7 +95,7 @@ class WorkingStore extends SqliteStore {
   constructor(directory, { checkpoint = () => {}, clock = Date.now } = {}) {
     super(path.join(directory, 'working.sqlite'), { writable: true });
     this.checkpoint = checkpoint; this.clock = clock;
-    try { Outbox.upgrade(this); Catalogue.upgrade(this); History.upgrade(this); require('./sqlite-finalization').upgrade(this); require('./sqlite-home').upgrade(this); } catch (error) { this.close(); throw error; }
+    try { Outbox.upgrade(this); Catalogue.upgrade(this); History.upgrade(this); require('./sqlite-finalization').upgrade(this); require('./sqlite-home').upgrade(this); require('./sqlite-media').upgrade(this); this.transaction(()=>require('./sqlite-media').prune(this)); } catch (error) { this.close(); throw error; }
   }
   homeStatistics(options) { return require('./sqlite-dashboard').home(this,options); }
   homeSessions(options) { return require('./sqlite-dashboard').navigation(this,options); }
@@ -136,6 +137,7 @@ class WorkingStore extends SqliteStore {
   receipt(id) { const row = this.statement('SELECT result FROM command_receipts WHERE id=?').get(identity(id)); return row ? JSON.parse(row.result) : null; }
   changes(after = 0, limit = 50) {
     if (!Number.isSafeInteger(after) || after < 0 || !Number.isInteger(limit) || limit < 1 || limit > 200) throw Error('Invalid change query.');
+    if(after<Number(this.statement("SELECT value FROM info WHERE key='changesFloor'").get()?.value||0))throw Error('Change cursor expired. Refresh the current data before continuing.');
     return this.statement('SELECT * FROM changes WHERE sequence>? ORDER BY sequence LIMIT ?').all(after, limit).map(r => ({ ...r, changed: JSON.parse(r.changed) }));
   }
   touch(entity, id) {
@@ -241,6 +243,7 @@ class WorkingStore extends SqliteStore {
       }
       const changed = { records, counts, requiresRefresh: this.changed.size > records.length };
       this.statement('INSERT INTO changes(commandId,kind,changed) VALUES(?,?,?)').run(input.id, input.type, JSON.stringify(changed));
+      if(Number(this.statement('SELECT last_insert_rowid() n').get().n)%128===0)require('./sqlite-media').prune(this);
       require('./sqlite-home').stamp(this);
       this.checkpoint('before-commit');
       return result;

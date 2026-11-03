@@ -25,7 +25,8 @@
 - Actual Electron: fresh startup, reopen, remind/deferred startup, keep/deferred startup, conversion and converted reopen passed on generated profiles. Settings screenshots captured and inspected.
 - Actual Electron: existing manual activation, abrupt race exit, recovery/finalization, JSON restore and native restore passed.
 - Packaging/legacy-folder migration tests and Help content/navigation checks passed (111 topics).
-- Native qualification workflow includes the rollout application checks alongside existing storage, volume, recovery and ASAR checks. Native CI results are reported separately; local results alone do not establish a Linux/macOS pass.
+- Native Windows, Linux and Intel macOS qualification all passed: 318 storage tests per OS, bounded volume/native-backup checks, first-launch/conversion choices, full app recovery/restore/reopen, and packaged ASAR worker checks. [Run 41661565396](https://github.com/theDutchmanJames/SlotForgeTiming/actions/runs/41661565396), test-branch snapshot `2a5e57d046ff7303eeb90900a4e23580f2451e7c`.
+- Existing renderer screens, JSON database operations and asynchronous shutdown tests passed. Actual JSON Home and race preparation passed across all nine themes after postponing conversion.
 
 Evidence is under `../outputs/sqlite-conversion/rollout-*.log`, `rollout-ui/` and `activation-ui/`. All profiles and race records were generated for testing. No release or personal database conversion was performed.
 

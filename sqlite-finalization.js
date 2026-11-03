@@ -2,7 +2,7 @@
 // Finalization identities outlive deleted results so stale recovery cannot re-create them.
 function upgrade(s){s.transaction(()=>{
   const version=s.statement("SELECT value FROM info WHERE key='workingFormat'").get().value;
-  if(version==='5'){s.statement('SELECT saveKey,sessionId FROM session_finalizations LIMIT 0').all();return;}
+  if(['5','6'].includes(version)){s.statement('SELECT saveKey,sessionId FROM session_finalizations LIMIT 0').all();return;}
   if(version!=='4')throw Error('Unsupported finalization format.');
   s.db.exec('CREATE TABLE session_finalizations(saveKey TEXT PRIMARY KEY,sessionId TEXT NOT NULL)');
   for(const row of s.statement("SELECT id,json FROM fields WHERE entity='sessions' AND path='[\"saveKey\"]'").all()){

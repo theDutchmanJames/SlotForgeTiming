@@ -45,7 +45,7 @@ test('all editable schema collections support add, patch, delete and durable ret
 
 test('small patches do not read or rewrite unrelated media; scalar versions cannot be bypassed', t=>{
   const s=fixture(t).store();
-  s.db.exec("CREATE TEMP TRIGGER protect_assets BEFORE DELETE ON assets BEGIN SELECT RAISE(ABORT,'asset rewritten'); END;");
+  s.db.exec("CREATE TEMP TRIGGER protect_assets BEFORE DELETE ON asset_refs BEGIN SELECT RAISE(ABORT,'asset rewritten'); END;");
   s.command({id:'name',type:'updateRecord',entity:'drivers',recordId:'d',expectedRevision:0,patch:{name:'Updated'}});
   s.command({id:'custom',type:'updateRecord',entity:'drivers',recordId:'d',expectedRevision:1,patch:{custom:{club:'B'}}});
   assert.throws(()=>s.command({id:'stale',type:'setCustomValue',entity:'drivers',recordId:'d',fieldId:'club',value:'C',expectedVersion:0}),/version conflict/);
@@ -217,7 +217,7 @@ test('connection writes never persist passwords and retain source and pending de
 test('working schema upgrades atomically from format 1 without touching recovery copies',t=>{
   const f=fixture(t),file=path.join(f.work,'working.sqlite');const db=new DatabaseSync(file);
   assert.equal(db.prepare("SELECT value FROM info WHERE key='workingFormat'").get().value,'1');db.close();
-  const s=f.store();assert.equal(s.statement("SELECT value FROM info WHERE key='workingFormat'").get().value,'5');
+  const s=f.store();assert.equal(s.statement("SELECT value FROM info WHERE key='workingFormat'").get().value,'6');
   const copy=openCopy(f.copy);try{assert.equal(copy.statement("SELECT value FROM info WHERE key='workingFormat'").get(),undefined);}finally{copy.close();}
 });
 

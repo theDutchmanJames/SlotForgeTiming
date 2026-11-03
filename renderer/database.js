@@ -213,7 +213,7 @@ function loadCataloguePictures(box,entity,revision,current) {
   const observer=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){observer.unobserve(entry.target);enqueue(entry.target);}},{rootMargin:'100px'});
   function enqueue(img){if(queued.has(img))return;queued.add(img);queue.push(img);pump();}
   function pump(){while(!stopped&&current()&&cataloguePictureActive<4&&queue.length){const img=queue.shift();cataloguePictureActive++;
-    api.cataloguePicture(entity,img.dataset.cataloguePicture,revision).then(src=>{if(!stopped&&current()&&img.isConnected&&src)img.src=src;}).catch(()=>{/* A stale page never paints a newer image into an older row. Refresh fetches the new revision. */}).finally(()=>{cataloguePictureActive--;cataloguePictureWake();});
+    (typeof CatalogueThumbnails==='undefined'?api.cataloguePicture(entity,img.dataset.cataloguePicture,revision):CatalogueThumbnails.get(JSON.stringify([entity,img.dataset.cataloguePicture,revision]),()=>api.cataloguePicture(entity,img.dataset.cataloguePicture,revision))).then(src=>{if(!stopped&&current()&&img.isConnected&&src)img.src=src;}).catch(()=>{/* A stale page never paints a newer image into an older row. Refresh fetches the new revision. */}).finally(()=>{cataloguePictureActive--;cataloguePictureWake();});
   }}
   cataloguePictureWake=pump;
   box.querySelectorAll('[data-catalogue-picture]').forEach(img=>observer.observe(img));
@@ -648,11 +648,13 @@ function openView(e, item) {
   dlg.oninput = null; dlg.onchange = null;
   dlg.innerHTML = `<div class="vcard"><button type="button" class="vcpic gimg${main ? '' : ' nopic'}"${main ? ' data-big="0" aria-label="Show the picture large"' : ' tabindex="-1" aria-hidden="true"'}>${main ? `<img src="${esc(main)}" alt="" style="transform:${Widgets.frameTransform(frame)}">` : `<span class="ph" style="background:${hue(t)}">${esc((t.trim()[0] || '?').toUpperCase())}</span>`}</button>
     <h3 class="vctitle">${esc(t)}</h3>
+    ${e==='slotcars'&&typeof PaddockSpecs!=='undefined'?PaddockSpecs.html(item):''}
     ${rows.length ? `<dl class="vcfields">${rows.map(r => `<div${r.wide ? ' class="wide"' : ''}><dt>${esc(r.label)}</dt><dd>${r.html}</dd></div>`).join('')}</dl>` : '<p class="muted">Nothing more is filled in.</p>'}
     ${gal.length ? `<h4 class="vcgaltitle">${gal.length === 1 ? 'Another picture' : gal.length + ' more pictures'}</h4><div class="vcgal">${gal.map((src, i) => `<button type="button" class="vcthumb" data-big="${i + (main ? 1 : 0)}" aria-label="Show picture ${i + 1} large"><img class="galthumb" src="${esc(src)}" alt="Picture ${i + 1}"></button>`).join('')}</div>` : ''}
-    <div class="row"><button class="btn" type="button" id="vcclose">Close</button><button class="btn primary" type="button" id="vcedit">Edit</button></div>
+    <div class="row"><button class="btn" type="button" id="vcclose">Close</button><button class="btn primary" type="button" id="vcedit">${e==='slotcars'&&item.paddock?'Edit Timing settings':'Edit'}</button></div>
     <div class="vcbig" id="vcbig" hidden role="dialog" aria-label="Large picture"><img id="vcbigimg" alt=""><p>Click the picture or press Escape to close it</p></div></div>`;
   let large = false; // is a picture shown large at the moment? (it covers the card, so any click while it is shown is a click on it)
+  if(e==='slotcars'&&typeof PaddockSpecs!=='undefined')PaddockSpecs.mount(dlg.querySelector('.paddock-specs'),item);
   const showLarge = on => { large = on; byId('vcbig').hidden = !on; };
   dlg.oncancel = ev => { if (large) { ev.preventDefault(); showLarge(false); } }; // (Escape closes the large picture first, then the card)
   dlg.onclick = ev => {
@@ -1205,6 +1207,7 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
   };
   if (!dlg.open) dlg.showModal(); // (it is already open when Edit was pressed in the view card)
   if(e==='slotcars'&&item?.paddock){for(const key of ['brand','manufacturer','model','scale','motor','gearing','tyres','weight','picture','raceClass'])dlg.querySelectorAll('[data-key="'+key+'"] input,[data-key="'+key+'"] select,[data-key="'+key+'"] button').forEach(el=>el.disabled=true);const note=document.createElement('p');note.className='muted';note.textContent='Linked to Paddock. Edit catalogue details there, then use Connect to Paddock → Refresh linked cars. Simulation settings and service history remain local.';byId('frm').prepend(note);}
+  if(e==='slotcars'&&item?.paddock&&typeof PaddockSpecs!=='undefined'){const holder=document.createElement('details');holder.className='full';holder.dataset.pcsEditor='';holder.style.gridColumn='1 / -1';holder.innerHTML='<summary>Paddock specifications · read only</summary>'+PaddockSpecs.html(item);byId('frm').querySelector('.formgrid').prepend(holder);PaddockSpecs.mount(holder.querySelector('.paddock-specs'),item);}
   if (groups) { const first = byId('f-' + fields[0].id); if (first && first.focus) first.focus(); } // the first field, as before, not the Open all button above the groups
 }
 

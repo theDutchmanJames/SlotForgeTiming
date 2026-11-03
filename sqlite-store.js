@@ -41,7 +41,7 @@ function encode(value, entity = '') {
 class SqliteStore {
   constructor(file, { create = false, writable = false } = {}) {
     if (create && writable) throw Error('Create a verified copy before forking a writable database.');
-    this.db = null;
+    this.file = file; this.db = null;
     this.statements = new Map();
     if (create) { const fd = fs.openSync(file, 'wx'); fs.closeSync(fd); }
     else if (!fs.statSync(file).isFile()) throw Error('SQLite file is missing.');
@@ -52,7 +52,7 @@ class SqliteStore {
         try {
           if (probe.prepare('PRAGMA application_id').get().application_id !== APP_ID ||
               probe.prepare('PRAGMA user_version').get().user_version !== FORMAT ||
-              !['1', '2', '3', '4', '5'].includes(probe.prepare("SELECT value FROM info WHERE key='workingFormat'").get()?.value))
+              !['1', '2', '3', '4', '5', '6'].includes(probe.prepare("SELECT value FROM info WHERE key='workingFormat'").get()?.value))
             throw Error('Not a supported SQLite working database.');
         } finally { probe.close(); }
       }

@@ -42,6 +42,7 @@ async function requestRestore(profile,file,sha256,{beforePublish=()=>{}}={}){
   const active=selected(profile);if(!active)throw Error('SQLite must be active before staging this restore.');
   const value={format:REQUEST,version:1,id:crypto.randomUUID(),kind:'restore',baseGeneration:active.generation,sha256};
   const target=path.join(profile,'sqlite','restore-input-'+value.id+'.json');
+  require('./storage-space').check(target,fs.statSync(file).size*8,'Stage database restore');
   await fs.promises.copyFile(file,target,fs.constants.COPYFILE_EXCL);
   if(await digest(target)!==sha256)throw Error('Backup changed after it was reviewed. Open it again before restoring.');
   const fd=fs.openSync(target,'r+');try{fs.fsyncSync(fd);}finally{fs.closeSync(fd);}
@@ -55,6 +56,7 @@ async function requestNativeRestore(profile,source,{beforePublish=()=>{}}={}){
   if(manifest.format!==require('./sqlite-bulk').FORMAT||manifest.version!==1||manifest.state!=='verified'||!/^[a-f0-9]{64}$/.test(manifest.sha256||''))throw Error('Unsupported or incomplete native backup.');
   const value={format:REQUEST,version:1,id:crypto.randomUUID(),kind:'restore-native',baseGeneration:active.generation,sha256:manifest.sha256};
   const target=path.join(profile,'sqlite','restore-input-'+value.id);fs.mkdirSync(target);
+  require('./storage-space').check(target,fs.statSync(snapshot).size*3,'Stage native restore');
   const staged=path.join(target,'snapshot.sqlite');await fs.promises.copyFile(snapshot,staged,fs.constants.COPYFILE_EXCL);
   if(await digest(staged)!==manifest.sha256)throw Error('Native backup checksum mismatch. Nothing was selected.');
   const fd=fs.openSync(staged,'r+');try{fs.fsyncSync(fd);}finally{fs.closeSync(fd);}

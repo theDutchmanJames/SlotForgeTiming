@@ -238,7 +238,7 @@ test('resource clear checks run identity and version, preserving stock after reo
 });
 
 test('database full rolls back data, receipts and change journal', t => {
-  const s = fixture(t).store(), pages = s.db.prepare('PRAGMA page_count').get().page_count;
+  const s = fixture(t).store(); s.db.exec('VACUUM'); const pages = s.db.prepare('PRAGMA page_count').get().page_count;
   s.db.exec(`PRAGMA max_page_count=${pages}`);
   const cmd = custom('full', 'club', 'x'.repeat(10000));
   assert.throws(() => s.command(cmd), /full/);
@@ -255,7 +255,7 @@ test('Paddock result writes do not load or rewrite catalogue cache and photo dat
     return get(entity, id, media);
   };
   s.db.exec(`CREATE TEMP TRIGGER protect_catalogue BEFORE UPDATE ON fields WHEN OLD.entity='@meta' AND OLD.id='paddock' AND OLD.path='["catalogue","cars"]' BEGIN SELECT RAISE(ABORT,'catalogue rewritten'); END;
-    CREATE TEMP TRIGGER protect_assets BEFORE DELETE ON assets BEGIN SELECT RAISE(ABORT,'asset deleted'); END;`);
+    CREATE TEMP TRIGGER protect_assets BEFORE DELETE ON asset_refs BEGIN SELECT RAISE(ABORT,'asset deleted'); END;`);
   const { sessionId } = s.command(finalize('paddock', { session: paddockSession() }));
   s.command({ id: 'delete', type: 'deleteSession', sessionId, expectedRevision: 1 });
   assert.deepEqual(get('@meta', 'paddock', true).value.catalogue, source.paddock.catalogue);

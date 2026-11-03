@@ -2,6 +2,13 @@
 const {app,dialog}=require('electron'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const out=path.resolve(__dirname,'../../../outputs/sqlite-conversion/bulk-ui');fs.mkdirSync(out,{recursive:true});
 const profile=fs.mkdtempSync(path.join(out,'profile-'));app.setPath('appData',profile);app.disableHardwareAcceleration();
+require('./qa-completion.cjs').preventRelaunch(app);
+// This harness tests JSON's in-process restore/reload. Fresh installs now default
+// to SQLite, whose restart path belongs to activation-electron.cjs instead.
+fs.mkdirSync(path.join(profile,'slotforge-timing'));
+const seed=new(require('../../db'))(path.join(profile,'slotforge-timing','slotforge-timing.json'));seed.saveNow();
+const originalMessageBox=dialog.showMessageBox.bind(dialog);
+dialog.showMessageBox=(...args)=>args.at(-1)?.title==='Upgrade database storage'?Promise.resolve({response:2}):originalMessageBox(...args);
 require('./file-diagnostics.cjs')(path.join(out,'diagnostics.log'),()=>app.exit(1));
 let saveFile=path.join(profile,'items.json'),openFile=saveFile,done=false;
 dialog.showSaveDialog=async()=>({filePath:saveFile,canceled:false});dialog.showOpenDialog=async()=>({filePaths:[openFile],canceled:false});
@@ -11,6 +18,7 @@ app.on('browser-window-created',(_,win)=>{win.hide();win.webContents.on('did-fin
  const run=code=>{console.log('QA '+code.slice(0,150));return win.webContents.executeJavaScript('(async()=>{try{'+code+'}catch(e){throw Error(e.stack||e.message||String(e));}})()');};
  try{
   await wait(400);win.setContentSize(1280,900);
+  assert.equal((await run('return api.storageStatus();')).backend,'json','Bulk JSON harness must not use the SQLite restart path');
   const driver=await run("return api.add('drivers',{name:'Bulk QA driver'});");
   const id=typeof driver==='string'?driver:driver.id;
   assert(id);assert.equal((await run(`return api.exportData({drivers:[${JSON.stringify(id)}]},{});`)).saved,true);
@@ -26,6 +34,9 @@ app.on('browser-window-created',(_,win)=>{win.hide();win.webContents.on('did-fin
   const safety=JSON.parse(fs.readFileSync(restored.safety));assert.equal(safety.data.drivers.length,3);assert.equal(safety.data.settings.bulkQa,'newer');
   assert.equal((await run("return api.list('drivers');")).length,2);assert.equal((await run('return api.getSettings();')).bulkQa,'sidecar');
   await new Promise(resolve=>{win.webContents.once('did-finish-load',resolve);reload();});await wait(300);
+  // A hidden window can lose its compositor surface on reload. Repaint without
+  // taking focus before capturing evidence; this is not a new app launch.
+  win.showInactive();await wait(200);
   await run("state.tab='settings';state.settingsSub='transfer';await render();document.querySelectorAll('#settingsbox details').forEach(d=>d.open=true);");
   assert(await run("return !!document.getElementById('bk-save') && !!document.getElementById('tr-open');"));
   for(const theme of ['light','dark']){await run(`state.settings.theme='${theme}';applyTheme();`);await wait(150);fs.writeFileSync(path.join(out,'backup-'+theme+'.png'),(await win.webContents.capturePage()).toPNG());}
@@ -40,6 +51,7 @@ app.on('browser-window-created',(_,win)=>{win.hide();win.webContents.on('did-fin
   await run('live.actions.stop(true);');await wait(150);await run('live.actions.finalize();');await wait(300);assert.equal(await run('return api.getResume();'),null);
   assert(await run("return (await api.list('sessions')).some(s=>s.setupName==='Ordinary recovery check');"));
   console.log('ORDINARY RECOVERY UI PASS: real engine lap, Home resume, paused restart and finalization clear.');
+  fs.writeFileSync(path.join(out,'completion.json'),JSON.stringify({passed:true,runId:process.env.SF_BULK_QA_RUN_ID,profile,backend:'json',checks:['export','import','backup','restore','reload','race recovery','finalization']}));
   console.log('BULK UI PASS: real export/import, backup, sidecar-aware recovery copy, restore and reload; light/dark controls.');app.exit(0);
  }catch(error){console.error(error);fs.writeFileSync(path.join(out,'failure.png'),(await win.webContents.capturePage()).toPNG());app.exit(1);}
- });});require('../../main');
+ });});seed.writesIdle().then(()=>require('../../main')).catch(error=>{console.error(error);app.exit(1);});

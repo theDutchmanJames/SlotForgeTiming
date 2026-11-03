@@ -42,7 +42,7 @@ test('cursors and selected session snapshots reject mutations, and indexes roll 
 });
 test('working format 3 upgrade is atomic and leaves the verified recovery copy untouched',t=>{
  const {store,dir,work}=fixture(t),file=path.join(dir,'copy','timing.sqlite'),before=fs.readFileSync(file);
- store.db.exec("DROP TABLE history_laps;DROP TABLE session_finalizations; DROP TABLE history_sessions;DROP TABLE history_wins;UPDATE info SET value='3' WHERE key='workingFormat'");store.close();
+ require('./fixtures/legacy-media.cjs')(store);store.db.exec("DROP TABLE history_laps;DROP TABLE session_finalizations; DROP TABLE history_sessions;DROP TABLE history_wins;UPDATE info SET value='3' WHERE key='workingFormat'");store.close();
  const reopened=new WorkingStore(work);try{assert.equal(reopened.historyPage('racing').sessions.items.length,12);assert.deepEqual(fs.readFileSync(file),before);}finally{reopened.close();}
 });
 test('worker and adapter expose history and catalogue reads without overriding Paddock writes',async t=>{

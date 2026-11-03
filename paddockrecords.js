@@ -3,6 +3,51 @@ const crypto=require('node:crypto');
 const id=x=>String(x||'').replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,100)||'unknown';
 const finite=x=>Number.isFinite(Number(x))?Number(x):0;
 function state(db){return db.paddock||(db.paddock={sourceId:crypto.randomUUID(),connection:null,withdrawals:[]});}
+// Explanatory metadata only: the receiving app must not reapply these amounts.
+// Read final reviewed totals, never sum events (which can have been undone).
+function resultContext(session,heats,mapping){
+  const adjustments=[];
+  const amount=(participantId,kind,value,reason)=>{
+    if(value===undefined||value===null||value===0)return;
+    if(typeof value!=='number'||!Number.isFinite(value)||Math.abs(value)>1e9)throw Error('A recorded result adjustment is outside Paddock’s supported range.');
+    const n=kind==='time'?Math.round(value):value;if(n)adjustments.push({participantId,kind,amount:n,reason});
+  };
+  for(const row of session.standings||[]){
+    const participant=mapping.get(row.carId);if(!participant)continue;
+    const entries=heats.flatMap(h=>h.entries.filter(e=>e.carId===row.carId));
+    const exact=entries.length&&entries.every(e=>e.resultEffects&&['reviewMs','penaltyMs','pluginMs'].every(k=>typeof e.resultEffects[k]==='number'&&Number.isFinite(e.resultEffects[k])));
+    const scope=heats.length>1?' across the recorded heats (elapsed-time total)':'';
+    const sum=k=>entries.reduce((n,e)=>n+e.resultEffects[k],0);
+    const plugin=exact?sum('pluginMs'):row.pluginTimeMs;
+    amount(participant.id,'time',exact?sum('reviewMs'):row.adjMs,'Race Director time adjustment'+scope+'. Already included in classification.');
+    // A single-race saved penalty includes plugin time; split it only when both
+    // values are present. Do not invent time penalties from penalty-point counts.
+    const penalty=exact?sum('penaltyMs'):typeof row.penalty==='number'?row.penalty-(typeof plugin==='number'?plugin:0):undefined;
+    amount(participant.id,'time',penalty,'Race-system time penalty'+scope+'. Already included in classification.');
+    amount(participant.id,'time',plugin,'Plugin race-rule time adjustment'+scope+'. Already included in classification.');
+    amount(participant.id,'laps',row.adjLaps,'Race Director lap adjustment. Changes the classified lap count, not measured laps or distance.');
+    if(row.swapLost)amount(participant.id,'laps',-row.swapLost,'Endurance driver-change lap deduction. Already included in the classified lap count.');
+    // Heat points are exported by Timing. Separate championship/class awards
+    // remain local and must not masquerade as points in the wire standings.
+    if(typeof row.points==='number')amount(participant.id,'points',row.adjPoints,'Race Director points adjustment. Already included in the exported overall points.');
+  }
+  if(adjustments.length>2000)throw Error('Too many recorded adjustments for Paddock.');
+  const lines=['Reviewed Timing result. Durations use whole milliseconds. Classification already includes race adjustments; do not apply them again.'];
+  const text=v=>typeof v==='string'?v.replace(/[\u0000-\u001f\u007f]+/g,' ').trim():'';
+  if(session.multiclass)lines.push('Class standings and class awards remain in Timing; Paddock v1 receives overall classification only.');
+  if(session.scoring||session.finals)lines.push('Heat/final scoring determines position in Timing. Exported laps, elapsed time and points are recorded overall totals, not a reconstruction of the scoring formula.');
+  if(session.endedBy)lines.push('Session ended: '+text(session.endedBy));
+  if(session.weatherNote)lines.push('Weather: '+text(session.weatherNote));
+  if(Number.isSafeInteger(session.resumed)&&session.resumed>0)lines.push('Session recovered/resumed '+session.resumed+' time(s).');
+  for(const h of heats){
+    if(h.endedBy&&(!session.endedBy||heats.length>1))lines.push(text(h.name)+': ended '+text(h.endedBy));
+    const legacy=(session.heatResults||[]).find(r=>String(r.heat)===String(h.id));
+    const weather=text(h.weatherNote||legacy?.weatherNote);
+    if(weather&&weather!==text(session.weatherNote))lines.push(text(h.name)+': weather '+weather);
+  }
+  let notes=lines.join('\n');if(notes.length>4000){const suffix='\n[Further session context omitted; full details remain in Timing.]';notes=notes.slice(0,4000-suffix.length).replace(/[\uD800-\uDBFF]$/,'')+suffix;}
+  return {adjustments,notes};
+}
 function build(db,session,rows){
   const j=session.paddockJournal;if(!j?.captures||!j.heats?.length)return null;
   const captures=Object.entries(j.captures).filter(([,c])=>c?.configuration);if(!captures.length)return null;
@@ -39,11 +84,11 @@ function build(db,session,rows){
     }
   }
   if(!participants.some(p=>p.carId))return null;
-  const standings=[],seen=new Set();
-  for(const s of session.standings||[]){const p=mapping.get(s.carId);if(!p)continue;if(seen.has(p.id))throw Error('This car has multiple classified entries. Paddock v1 requires one classification per physical car.');seen.add(p.id);const status=s.dq?'disqualified':s.retired?'dnf':finite(s.laps)>0?'finished':'dns';standings.push({participantId:p.id,position:status==='finished'&&s.pos>0?s.pos:null,status,classifiedLaps:Math.max(0,finite(s.laps)),classifiedElapsedMs:Math.max(0,Math.round(finite(j.classifiedTimes?.[s.carId]??s.total))),points:finite(s.points)});}
+  const context=resultContext(session,hs,mapping),standings=[],seen=new Set();
+  for(const s of session.standings||[]){const p=mapping.get(s.carId);if(!p)continue;if(seen.has(p.id))throw Error('This car has multiple classified entries. Paddock v1 requires one classification per physical car.');seen.add(p.id);const status=s.dq?'disqualified':s.retired?'dnf':finite(s.laps)>0?'finished':'dns';standings.push({participantId:p.id,position:status==='finished'&&s.pos>0?s.pos:null,status,classifiedLaps:Math.max(0,finite(s.laps)),classifiedElapsedMs:Math.max(0,Math.round(finite(j.classifiedTimes?.[s.carId]??(finite(s.total)+context.adjustments.filter(a=>a.participantId===p.id&&a.kind==='time').reduce((n,a)=>n+a.amount,0))))),points:finite(s.points)});}
   const type=session.sessionType==='practice'?'practice':session.sessionType==='qualifying'?'qualifying':session.sessionType==='endurance'?'endurance':'race';
   return {integrationVersion:1,databaseId,source:{id:state(db).sourceId,name:'SlotForge Timing',application:'SlotForge Timing'},sessionId:session.id,revision:1,state:'active',name:String(session.setupName||'Race session').slice(0,200),type,
-    startedAt:new Date(began).toISOString(),endedAt:new Date(ended).toISOString(),track:{id:id(session.trackId),name:String(session.trackName||'Track').slice(0,200),lanes},heats,participants,standings,adjustments:[],notes:'Reviewed Timing result. Durations use whole milliseconds. Classification already includes race adjustments.'+(session.multiclass?' Class standings and class awards remain in Timing; Paddock v1 receives overall classification only.':'')};
+    startedAt:new Date(began).toISOString(),endedAt:new Date(ended).toISOString(),track:{id:id(session.trackId),name:String(session.trackName||'Track').slice(0,200),lanes},heats,participants,standings,...context};
 }
 function prepare(db,s,rows){try{const payload=build(db,s,rows);if(payload)s.paddockDelivery={payload,status:'pending',error:'',receipt:null};}catch(e){s.paddockDelivery={name:s.setupName||'Saved session',sessionId:s.id,databaseId:Object.values(s.paddockJournal?.captures||{})[0]?.configuration?.databaseId,status:'attention',error:e.message,payload:null,receipt:null};}}
 function revise(db,s){if(!s.paddockDelivery||s.paddockDelivery.status==='withdrawn')return;const old=s.paddockDelivery;prepare(db,s,db.laps.filter(l=>l.sessionId===s.id));if(s.paddockDelivery?.payload){s.paddockDelivery.payload.revision=Math.max(old.payload?.revision||0,old.previousPayload?.revision||0,old.receipt?.revision||0)+1;}else{s.paddockDelivery.previousPayload=old.payload||old.previousPayload;s.paddockDelivery.receipt=old.receipt;}}

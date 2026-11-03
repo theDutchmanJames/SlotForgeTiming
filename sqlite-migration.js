@@ -45,6 +45,7 @@ function migrateCopy({ source, destination }, progress = () => {}, hooks = {}) {
     const resumePath = path.join(path.dirname(source), 'race-resume.json');
     const settings = read(settingsPath, true), resume = read(resumePath, true);
     const inputs = [['source.json', main], ['source.settings.json', settings], ['race-resume.json', resume]];
+    require('./storage-space').check(destination,inputs.reduce((n,[,v])=>n+(v?.bytes.length||0),0)*6,'JSON conversion');
     for (const [name, input] of inputs) if (input) writeNew(path.join(destination, name), input.bytes);
     const data = parse(main.bytes, 'Database');
     if (settings) data.settings = parse(settings.bytes, 'Settings');

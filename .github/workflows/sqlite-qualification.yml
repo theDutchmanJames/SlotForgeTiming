@@ -15,7 +15,7 @@ jobs:
       matrix:
         os: [windows-2022, ubuntu-22.04, macos-15-intel]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 35
+    timeout-minutes: 50
     defaults:
       run:
         shell: bash
@@ -28,8 +28,10 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Storage and failure regressions
-        run: npm run test:storage
+      - name: Full regression suite, including storage and Paddock
+        run: |
+          mkdir -p ../outputs/sqlite-conversion
+          npm test 2>&1 | tee ../outputs/sqlite-conversion/regressions.log
       - name: Bounded synthetic volume and native backup checks
         run: node tools/qa/sqlite-volume.cjs
       - name: Linux desktop dependencies
@@ -42,6 +44,10 @@ jobs:
           xvfb-run -a node tools/qa/run-rollout.cjs
           xvfb-run -a node tools/qa/run-sqlite-app.cjs
           xvfb-run -a node tools/qa/sqlite-asar.cjs
+          xvfb-run -a node tools/qa/run-catalogue.cjs
+          xvfb-run -a node tools/qa/run-paddock-specs.cjs
+          xvfb-run -a node tools/qa/run-delivery-integration.cjs
+          xvfb-run -a node tools/qa/run-bulk-storage.cjs
       - name: Actual application and ASAR worker (Windows and macOS)
         if: runner.os != 'Linux'
         run: |
@@ -49,6 +55,10 @@ jobs:
           node tools/qa/run-rollout.cjs
           node tools/qa/run-sqlite-app.cjs
           node tools/qa/sqlite-asar.cjs
+          node tools/qa/run-catalogue.cjs
+          node tools/qa/run-paddock-specs.cjs
+          node tools/qa/run-delivery-integration.cjs
+          node tools/qa/run-bulk-storage.cjs
       - name: Collect small evidence files
         if: always()
         run: node tools/ci/sqlite-evidence.cjs

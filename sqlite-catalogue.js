@@ -22,7 +22,7 @@ function index(s,entity,id) {
 function upgrade(s) {
   s.transaction(()=>{
     const format=s.statement("SELECT value FROM info WHERE key='workingFormat'").get().value;
-    if(['3','4','5'].includes(format)){s.statement('SELECT entity,id,sortKey,search,label,local FROM catalogue_index LIMIT 0').all();if(!s.statement("SELECT value FROM info WHERE key='catalogueIdentity'").get()?.value)throw Error('Missing catalogue identity.');return;}
+    if(['3','4','5','6'].includes(format)){s.statement('SELECT entity,id,sortKey,search,label,local FROM catalogue_index LIMIT 0').all();if(!s.statement("SELECT value FROM info WHERE key='catalogueIdentity'").get()?.value)throw Error('Missing catalogue identity.');return;}
     if(format!=='2')throw Error('Unsupported catalogue format.');
     s.db.exec(`CREATE TABLE catalogue_index(entity TEXT NOT NULL,id TEXT NOT NULL,sortKey TEXT NOT NULL,search TEXT NOT NULL,label TEXT NOT NULL,local INTEGER NOT NULL,PRIMARY KEY(entity,id));
       CREATE INDEX catalogue_order ON catalogue_index(entity,local,sortKey,id);`);

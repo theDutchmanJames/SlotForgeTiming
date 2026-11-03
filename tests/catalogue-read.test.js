@@ -79,7 +79,7 @@ test('legacy empty linked metadata remains excluded and frame summaries cannot m
 
 test('version 2 forks gain the catalogue index without changing the recovery copy',t=>{
   const {store,dir,work}=fixture(t),copy=path.join(dir,'copy','timing.sqlite'),before=fs.readFileSync(copy);
-  store.db.exec("DROP TABLE history_laps;DROP TABLE session_finalizations; DROP TABLE history_sessions;DROP TABLE history_wins;DROP TABLE catalogue_index;DELETE FROM info WHERE key='catalogueIdentity';UPDATE info SET value='2' WHERE key='workingFormat'");store.close();
+  require('./fixtures/legacy-media.cjs')(store);store.db.exec("DROP TABLE history_laps;DROP TABLE session_finalizations; DROP TABLE history_sessions;DROP TABLE history_wins;DROP TABLE catalogue_index;DELETE FROM info WHERE key='catalogueIdentity';UPDATE info SET value='2' WHERE key='workingFormat'");store.close();
   const reopened=new WorkingStore(work);try{assert.equal(reopened.catalogue('drivers').items.length,48);assert.deepEqual(fs.readFileSync(copy),before);}finally{reopened.close();}
 });
 

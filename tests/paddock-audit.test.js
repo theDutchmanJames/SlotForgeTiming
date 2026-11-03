@@ -101,7 +101,7 @@ test('real host accepts reviewed fractional-clock laps and retries a lost acknow
     const upstream=http.request({hostname:'127.0.0.1',port:host.port,path:req.url,method:req.method,headers:req.headers},reply=>{const parts=[];reply.on('data',p=>parts.push(p));reply.on('end',()=>{if(req.method==='POST'&&drop){drop=false;res.destroy();return;}res.writeHead(reply.statusCode,reply.headers);res.end(Buffer.concat(parts));});});upstream.on('error',()=>res.destroy());req.pipe(upstream);
   });await new Promise(r=>proxy.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>{proxy.close(r);proxy.closeAllConnections();}));client.storage.state().connection.address='http://127.0.0.1:'+proxy.address().port;
   await client.flush();const d=db.data.sessions.find(s=>s.id===sid).paddockDelivery;assert.equal(d.status,'pending');assert.equal(store.data.timing.sessions.length,1);
-  await client.flush();assert.equal(d.status,'sent',d.error);assert.equal(d.receipt.duplicate,true);assert.equal(store.data.timing.sessions.length,1);
+  assert(d.nextAttemptAt>Date.now());await client.retry();assert.equal(d.status,'sent',d.error);assert.equal(d.receipt.duplicate,true);assert.equal(store.data.timing.sessions.length,1);
   const p=store.data.timing.sessions[0].payload,entry=p.participants[0];assert.equal(entry.laps.length,2);assert.equal(entry.stints.find(s=>s.id===entry.laps[0].stintId).driverId,'second');assert.deepEqual(entry.laps.map(l=>l.endedAtMs),[23001,33001]);
 });
 

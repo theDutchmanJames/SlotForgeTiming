@@ -28,7 +28,7 @@ function index(s,entity,id){
 }
 function upgrade(s){s.transaction(()=>{
   const version=s.statement("SELECT value FROM info WHERE key='workingFormat'").get().value;
-  if(['4','5'].includes(version)){s.db.exec("CREATE INDEX IF NOT EXISTS history_track_start ON history_laps(trackId,ordinal); CREATE INDEX IF NOT EXISTS history_championship ON history_sessions(json_extract(summary,'$.champ.id'),ordinal)");s.statement('SELECT id,ordinal,token,summary FROM history_sessions LIMIT 0').all();s.statement('SELECT id,trackId,personal FROM history_laps LIMIT 0').all();s.statement('SELECT carId FROM history_wins LIMIT 0').all();return;}
+  if(['4','5','6'].includes(version)){s.db.exec("CREATE INDEX IF NOT EXISTS history_track_start ON history_laps(trackId,ordinal); CREATE INDEX IF NOT EXISTS history_championship ON history_sessions(json_extract(summary,'$.champ.id'),ordinal)");s.statement('SELECT id,ordinal,token,summary FROM history_sessions LIMIT 0').all();s.statement('SELECT id,trackId,personal FROM history_laps LIMIT 0').all();s.statement('SELECT carId FROM history_wins LIMIT 0').all();return;}
   if(version!=='3')throw Error('Unsupported history format.');
   s.db.exec(`CREATE TABLE history_sessions(id TEXT PRIMARY KEY,ordinal INTEGER NOT NULL,token INTEGER NOT NULL,summary TEXT NOT NULL);
     CREATE INDEX history_session_order ON history_sessions(token,ordinal DESC);

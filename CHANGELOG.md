@@ -2,38 +2,23 @@
 
 ## Unreleased
 
-- Default new installations to SQLite; offer existing JSON users a clear conversion, weekly reminder or keep-JSON choice. Retain originals, recover interrupted first setup, reject ambiguous storage markers, and document backup/downgrade behaviour. Add rollout and actual-app startup regressions.
+### Database and performance
 
+- New installations use SQLite. Existing users can convert from App Settings → General → Database storage, request a reminder, or keep JSON. Conversion verifies a separate copy before activation and preserves the original JSON files.
+- Read catalogue pages, selected records, race history and Home statistics through a background database worker. Prepare race screens from their referenced assets instead of loading whole collections. Maintain indexed lap summaries and Home totals as results change.
+- Store identical image/audio bodies once while preserving each reference's original representation. Bound catalogue thumbnail caches and retain full-quality originals for editing and export. Show database size, shared-media savings, reusable space and available disk space.
+- Add verified native SQLite backup and restore for larger collections, retain legacy export/import support, and check available space before staging storage operations. Restore into a separate generation before switching.
+- Make finalization, resource recovery and Paddock delivery durable across restarts. Keep correction and acknowledgement identities, reject stale writes, and preserve retry state without duplicating race results or resource spending.
 
-- Speed up SQLite Home statistics with transactional lap projections and maintained all-time totals. Query only requested records and aggregates, preserve eligibility and tie ordering, and rebuild derived indexes safely after older writers or interrupted upgrades. Verify a million-lap copy and actual-app reopening without touching existing profiles.
+### Paddock integration
 
-- Qualify SQLite with a million-lap, 2 GiB-media Windows fixture, disk-full/abrupt-exit regressions and native Windows/Linux/Intel macOS CI. Add native backup/restore folders for large collections, load only names and IDs in Import/Export choices, and reject legacy JSON larger than the runtime can read. Keep existing profiles untouched until explicit conversion.
+- Use incremental catalogue updates and lazy photo loading, preserving offline browsing, signed configuration data and local race settings.
+- Include reviewed race context and adjustment information in result delivery. Show Paddock's public technical specifications and installed components in a read-only, grouped view without replacing Timing's simpler local editor.
 
-- Add explicit SQLite conversion under App Settings > General > Database storage. Verify a separate copy before switching; retain original files and recovery copies, refuse stale JSON fallback, and restore SQLite backups through a verified new generation on restart. Add durable finalization identities to prevent duplicate results after an abrupt exit, including completed heats and Time Token stints. Test conversion, restore, transaction crashes, shutdown and real Windows app reopening on generated profiles. Existing databases are not automatically converted.
+### Appearance and reliability
 
-- Connect application-facing SQLite writes for records, custom fields, lap eligibility and championship awards, alongside session finalization, Paddock delivery and resource recovery. Verify complete app startup, race resume/finalization and reopening on marked isolated development profiles. Normal startup stays on JSON; no automatic migration or production activation.
-
-- Prepare legacy editor, network and Content Pack reads for the SQLite worker: await storage responses, preserve record/media shapes, reject stale or oversized compatibility reads, and load only names and IDs in Content Pack choices. Verify read-only SQLite copies through the actual app and packaged worker; production remains JSON.
-
-- Route settings, interrupted-race recovery, diagnostics and shutdown through a shared storage service. Keep failed settings edits out of the visible cache, report failed recovery deletion, include ordinary recovery in experimental SQLite snapshots, and verify save/resume/finalize on isolated app profiles. Production remains JSON; no personal database conversion or automatic activation.
-
-- Add SQLite working-copy import/export, verified WAL-consistent snapshots, restore into separate copies and streamed legacy backup export. Preserve existing transfer semantics, media and integration state; strip local resource-run identities from shared session copies. Strengthen production JSON restore safety copies, import/restore ownership and race guards, and active-file export protection. Production storage remains JSON; no automatic migration.
-
-- Move Paddock pairing, catalogue updates, linking, offline browsing, race captures and delivery status behind JSON/SQLite storage adapters. Preserve signed configuration structure and local car settings, reject stale captures, roll back failed catalogue batches, and load linked-car pictures on demand. Verify the controller on disposable SQLite copies and the actual app against synthetic hosts; production remains JSON.
-
-- Share Paddock result delivery and resource recovery between the existing JSON backend and experimental SQLite copies. Persist delivery claims and retry deadlines, protect corrected results from late acknowledgements, schedule delivery after durable finalization, and give in-flight acknowledgements the existing shutdown save window. Snapshot queued resource saves and verify recovery/finalization without duplicate spending. Production storage remains JSON.
-
-- Prepare championship leaderboards from targeted history summaries and load only the designs, image sets and team artwork referenced by the active race layouts. Keep exact lap statistics and live chart updates; discard stale refreshes and stop preparation if championship history cannot be read. Add parity, worker and actual-app checks for the staged SQLite conversion.
-
-- Query Home statistics and relevant qualifying/championship choices without sending the full lap/session history to Home. Prepare ordinary races with selected cars, layouts, audio and systems plus compact record seeds. Preserve team substitutes, Time Token driver choices and imported Circuit tracks; reject stale or cancelled startup reads. SQLite remains experimental on explicit copies.
-
-- Load lightweight metadata for Home and database reference choices instead of whole photo/audio/layout collections. Fetch selected Home artwork and visible car pictures separately, and load the complete Circuit track with a stale-data check before race startup. Add matching SQLite-copy queries; production storage remains JSON.
-
-- Page Results and Records, load session details on demand, and query selected-car statistics without transferring the full history. Keep complete-session figures and PDF exports. Add matching SQLite working-copy history indexes; production storage remains JSON during the staged conversion.
-
-- Match the collection header style with Timing's app icon, a baseline-aligned SlotForge wordmark, the app name and “EVERY LAP COUNTS”. Select header artwork against the panel colour, including mixed custom themes.
-
-- Add a 120 × 22 px SlotForge logo at the bottom right of main-menu pages, with artwork chosen for light, dark and custom page backgrounds. Update the Racing Rules credits; printed rules and live race layouts remain unchanged.
+- Add the collection-style header with Timing's icon, SlotForge wordmark and “EVERY LAP COUNTS”. Place a 120 × 22 px SlotForge footer on main-menu pages, selecting artwork for light, dark and custom backgrounds, and update the Racing Rules credits.
+- Add storage migration, disk-full, abrupt-exit, recovery, media, integration and UI regressions. Require explicit completion from single-process UI checks and block accidental test relaunches.
 
 ## 2.0.0 — 2026-11-02
 

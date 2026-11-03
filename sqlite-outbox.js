@@ -40,10 +40,10 @@ function syncWithdrawals(s) {
 }
 function upgrade(s) {
   const current = s.statement("SELECT value FROM info WHERE key='workingFormat'").get()?.value;
-  if (['2','3','4','5'].includes(current)) { s.statement('SELECT key,owner,payloadHash,current,attemptToken,leaseUntil,nextAttemptAt FROM delivery_outbox LIMIT 0').all(); return; }
+  if (['2','3','4','5','6'].includes(current)) { s.statement('SELECT key,owner,payloadHash,current,attemptToken,leaseUntil,nextAttemptAt FROM delivery_outbox LIMIT 0').all(); return; }
   if (current !== '1') throw Error('Unsupported SQLite working format.');
   s.transaction(() => {
-    if (['2','3','4','5'].includes(s.statement("SELECT value FROM info WHERE key='workingFormat'").get()?.value)) return;
+    if (['2','3','4','5','6'].includes(s.statement("SELECT value FROM info WHERE key='workingFormat'").get()?.value)) return;
     s.db.exec(SCHEMA);
     for (const row of s.statement("SELECT id FROM records WHERE entity='sessions' ORDER BY ordinal").all()) syncSession(s, row.id);
     syncWithdrawals(s);

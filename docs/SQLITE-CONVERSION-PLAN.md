@@ -4,6 +4,13 @@ Updated 3 November 2026. This is a staged conversion, not a completed migration.
 The reviewed isolated experiment remains under `../outputs/sqlite-prototype`.
 Its results measure a proposed architecture, not unchanged application startup.
 
+Paddock-inspired follow-up phases are implemented locally: incremental catalogue
+and photos, richer result context, read-only technical specifications, and shared
+media/storage management. The fourth phase uses working format 6, bounded previews,
+space preflights and refresh-journal retention while retaining durable replay
+identities. See [the phase 4 review](SQLITE-MEDIA-REVIEW.md) for tests, migration
+behavior, compatibility limits and the remaining native-platform qualification.
+
 Current checkpoint: new installations start on SQLite. Existing JSON users receive
 a conversion prompt with convert, remind-in-a-week and keep-JSON choices.
 Manual conversion remains under App Settings > General > Database storage.

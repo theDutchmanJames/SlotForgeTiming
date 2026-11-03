@@ -176,7 +176,7 @@
     const db = raw && typeof raw === 'object' ? raw : {}, f = db.file && typeof db.file === 'object' ? db.file : null, s = db.settings && typeof db.settings === 'object' ? db.settings : {};
     return {
       has: !!f,
-      sqlite: db.backend==='sqlite'?{bytes:num(db.physicalBytes,0,1e15,0),mediaBytes:num(db.media?.bytes,0,1e15,0),mediaCount:num(db.media?.count,0,1e12,0)}:null,
+      sqlite: db.backend==='sqlite'?{bytes:num(db.physicalBytes,0,1e15,0),mediaBytes:num(db.media?.bytes,0,1e15,0),mediaCount:num(db.media?.count,0,1e12,0),uniqueCount:num(db.media?.uniqueCount,0,1e12,0),savedBytes:num(db.media?.savedBytes,0,1e15,0),reusableBytes:num(db.reusableBytes,0,1e15,0),freeBytes:isNum(db.freeBytes)?num(db.freeBytes,0,1e15,0):null}:null,
       file: { bytes: num(f && f.bytes, 0, 1e12, 0), saves: num(f && f.saves, 0, 1e9, 0), lastMs: num(f && f.lastMs, 0, 1e7, 0), maxMs: num(f && f.maxMs, 0, 1e7, 0), textMs: num(f && f.textMs, 0, 1e7, 0), fileMs: num(f && f.fileMs, 0, 1e7, 0), failed: num(f && f.failed, 0, 1e9, 0), background: !!(f && f.background), on: !!(f && f.on), bgSaves: num(f && f.bgSaves, 0, 1e9, 0), bgMaxMs: num(f && f.bgMaxMs, 0, 1e7, 0) },
       settings: { bytes: num(s.bytes, 0, 1e12, 0), writes: num(s.writes, 0, 1e9, 0), lastMs: num(s.lastMs, 0, 1e7, 0), maxMs: num(s.maxMs, 0, 1e7, 0), failed: num(s.failed, 0, 1e9, 0) },
       tables: (Array.isArray(db.tables) ? db.tables : []).filter(x => x && typeof x === 'object' && isNum(x.bytes) && text(x.name, 40)).slice(0, 5).map(x => ({ name: text(x.name, 40), bytes: num(x.bytes, 0, 1e12, 0) })),
@@ -380,7 +380,7 @@
     if (m) {
       L.push(`CPU of the app (% of one core): total ${f0(m.procs.total)}, window ${f0(m.procs.window)}, graphics ${f0(m.procs.graphics)}, core ${f0(m.procs.core)}, other ${f0(m.procs.other)}; memory ${f0(m.procs.memoryMB)} MB`);
       L.push(`Core of the app stalled: up to ${m.lag.max10 === null ? '–' : m.lag.max10} ms (10 s), ${m.lag.max60 === null ? '–' : m.lag.max60} ms (60 s), ${m.lag.all === null ? '–' : m.lag.all} ms (since measuring began)`);
-      if(m.database?.sqlite){const sql=m.database.sqlite;L.push(`SQLite storage: ${sizeText(sql.bytes)} in database pages; ${f0(sql.mediaCount)} media items, ${sizeText(sql.mediaBytes)} stored media. Writes and recovery use the background SQLite worker. Storage totals refresh once a minute.`);}
+      if(m.database?.sqlite){const sql=m.database.sqlite;L.push(`SQLite storage: ${sizeText(sql.bytes)} in database pages; ${f0(sql.mediaCount)} media references sharing ${f0(sql.uniqueCount)} unique bodies (${sizeText(sql.mediaBytes)}). Sharing avoids ${sizeText(sql.savedBytes)} of duplicate media. ${sizeText(sql.reusableBytes)} of database pages can be reused; deleting media may not shrink the file. ${sql.freeBytes===null?'Available disk space could not be read.':sizeText(sql.freeBytes)+' free on the database volume.'} Writes and recovery use the background SQLite worker. Storage totals refresh once a minute.`);}
       else L.push(`Race save: ${m.save.writes} written, last ${f1(m.save.lastMs)} ms, slowest ${f1(m.save.maxMs)} ms, ${m.save.failed} failed`);
       if (m.database && m.database.has) {
         const df = m.database.file, ds = m.database.settings, tb = m.database.tables;

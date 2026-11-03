@@ -1,9 +1,10 @@
 // Actual app/preload/renderer, isolated profile; never opens the personal database.
 const {app,nativeImage}=require('electron'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+require('./qa-completion.cjs').preventRelaunch(app);
 const out=path.resolve(__dirname,'../../../outputs/sqlite-conversion/catalogue-ui');fs.mkdirSync(out,{recursive:true});
 const profile=fs.mkdtempSync(path.join(out,'profile-'));app.setPath('appData',profile);app.disableHardwareAcceleration();
 require('./file-diagnostics.cjs')(path.join(profile,'diagnostics.log'),()=>app.exit(1));
-const image=nativeImage.createFromPath(path.resolve(__dirname,'../../build/icon.png')).resize({width:64}).toDataURL();
+const image=nativeImage.createFromPath(path.resolve(__dirname,'../../build/icon.png')).resize({width:1024}).toDataURL();
 let done=false;const timer=setTimeout(()=>app.exit(2),90000),wait=ms=>new Promise(r=>setTimeout(r,ms));
 app.on('browser-window-created',(_,win)=>{win.hide();win.webContents.on('did-finish-load',async()=>{
   if(done||!win.webContents.getURL().endsWith('index.html'))return;done=true;
@@ -19,6 +20,8 @@ app.on('browser-window-created',(_,win)=>{win.hide();win.webContents.on('did-fin
       state.tab='database';state.sub='drivers';state.settings.dbView='grid';await render();`);
     assert.equal(await run("return document.querySelectorAll('#subview .gcard').length"),48);
     await until("document.querySelector('#subview [data-catalogue-picture]')?.naturalWidth>0");
+    assert(await run("return document.querySelector('#subview [data-catalogue-picture]').naturalWidth<=512"),'List uses bounded thumbnail');
+    assert(await run("return CatalogueThumbnails.stats().bytes<=12*1024*1024"),'Thumbnail cache stays bounded');
     const first=await run("return document.querySelector('#subview [data-edit]').dataset.edit");
     await run("document.querySelector('[data-catalogue-next]').click()");await until("document.querySelector('.catalogue-navigation').textContent.includes('Page 2')");
     assert.equal(await run("return document.querySelector('#subview .gcard h3').textContent"),'Driver 48');
@@ -55,8 +58,11 @@ app.on('browser-window-created',(_,win)=>{win.hide();win.webContents.on('did-fin
     assert.equal(await run('return innerWidth'),600);
     assert(await run("return [...document.querySelectorAll('.catalogue-navigation button,.catalogue-search button')].every(b=>b.getBoundingClientRect().right<=innerWidth)"));
     fs.writeFileSync(path.join(out,'narrow.png'),(await win.webContents.capturePage()).toPNG());
+    await run("state.tab='settings';state.settingsSub='general';await render();document.querySelector('#storagemsg').closest('details').open=true;document.querySelector('[data-storage-usage]').scrollIntoView({block:'center'});");await wait(100);
+    assert(await run("return !!document.querySelector('[data-storage-usage]')&&document.querySelector('[data-storage-usage]').getBoundingClientRect().right<=innerWidth"),'Storage usage fits');
+    fs.writeFileSync(path.join(out,'storage-600.png'),(await win.webContents.capturePage()).toPNG());
     assert.deepEqual(await run('return catalogueErrors'),[]);
     fs.writeFileSync(path.join(out,'result.json'),JSON.stringify({passed:true,themes,profile,checks:['48-row bound','natural order','next/previous','search','selected-record edit preserves media and unknown fields','stale cursor refresh','all four catalogues','full track details','visible pictures','600px controls','runtime errors']},null,2));
-    console.log('CATALOGUE ELECTRON PASS: '+out);clearTimeout(timer);app.exit(0);
+    console.log('CATALOGUE ELECTRON PASS: '+out);clearTimeout(timer);require('./qa-completion.cjs').complete();app.exit(0);
   }catch(error){console.error(error);fs.writeFileSync(path.join(out,'failure.png'),(await win.webContents.capturePage()).toPNG());clearTimeout(timer);app.exit(1);}
 });});require('../../main');

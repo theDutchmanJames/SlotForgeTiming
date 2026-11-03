@@ -89,7 +89,7 @@ test('export resolves frozen classes and custom tyre systems, while omitting unr
 });
 test('native verification rejects internally corrupted media even with an updated file checksum',async t=>{
  const {store,dir}=await fixture(t),target=path.join(dir,'backup');Bulk.snapshot(store,target);
- const file=path.join(target,'snapshot.sqlite'),sqlite=new (require('node:sqlite').DatabaseSync)(file);sqlite.exec("UPDATE assets SET digest='bad'");sqlite.close();
+ const file=path.join(target,'snapshot.sqlite'),sqlite=new (require('node:sqlite').DatabaseSync)(file);sqlite.exec("UPDATE media_blobs SET bytes=x'626164'");sqlite.close();
  const manifestFile=path.join(target,'manifest.json'),manifest=JSON.parse(fs.readFileSync(manifestFile));manifest.sha256=Bulk.digest(file);fs.writeFileSync(manifestFile,JSON.stringify(manifest));
  assert.throws(()=>Bulk.restore(target,path.join(dir,'invalid')),/checksum/);assert(!fs.existsSync(path.join(dir,'invalid','working.sqlite')));
 });
