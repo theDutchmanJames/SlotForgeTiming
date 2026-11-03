@@ -1,5 +1,9 @@
 # Timing SQLite conversion
 
+Current rollout: new installations use SQLite; existing JSON users choose whether
+to convert. The staged notes below describe the implementation history. See
+`SQLITE-RELEASE-PREPARATION.md` for final qualification and release gates.
+
 Updated 3 November 2026. This is a staged conversion, not a completed migration.
 The reviewed isolated experiment remains under `../outputs/sqlite-prototype`.
 Its results measure a proposed architecture, not unchanged application startup.

@@ -44,7 +44,9 @@ const tag=Champ.tagOf(championship,0,0,{setups:[{id:'race',sessionType:'race'}],
 const championshipResult=CP.sessionResult(championship,{champ:tag,standings:preview.rows.map(x=>({...x,driverId:cfg.entries[x.participant].driverId}))});assert(championshipResult.ok);assert.equal(championshipResult.rows[0].pts,27);
 const noFuel=E.createRace({...cfg,fuel:{on:false},tyrewear:null,rulePlugin:rules});noFuel.start(0);noFuel.cross(0,9000);assert.equal(noFuel.cars[0].fuel,0,'Plugin does not activate a disabled fuel system');
 const disabled=E.createRace({...cfg,systemsDisabled:['fuel','tyrewear'],rulePlugin:rules});disabled.start(0);const oldFuel=disabled.cars[0].fuel;disabled.cross(0,9000);assert.equal(disabled.cars[0].fuel,oldFuel);assert.equal(disabled.cars[0].twLife,100);
-const DB=require('../db'),Transfer=require('../transfer');const root=require('node:fs').mkdtempSync(path.join(require('node:os').tmpdir(),'sf-plugin-rules-'));const db=new DB(path.join(root,'source.json')),dest=new DB(path.join(root,'dest.json'));
+const DB=require('../db'),Transfer=require('../transfer');// macOS exposes its temporary directory through /var -> /private/var.
+// Use the physical fixture path without weakening plugin symlink protection.
+const root=require('node:fs').realpathSync(require('node:fs').mkdtempSync(path.join(require('node:os').tmpdir(),'sf-plugin-rules-')));const db=new DB(path.join(root,'source.json')),dest=new DB(path.join(root,'dest.json'));
 const setup=db.add('racesetups',{name:'Rules race',rulePlugin:pack.manifest.id});Transfer.apply(dest,Transfer.collect(db.data,{racesetups:[setup.id]}));assert.equal(dest.data.racesetups.at(-1).rulePlugin,pack.manifest.id);
 const launch=init=>{const c=fork(path.resolve(__dirname,'../pluginworker.js'),[],{cwd:init.dataDir,stdio:['ignore','pipe','pipe','ipc']});c.postMessage=m=>c.send(m);return c;};
 (async()=>{const store=new Store(path.join(root,'plugins'),'1.99.2'),runtime=new Runtime(store,launch),host=new RuleHost(runtime);try{
