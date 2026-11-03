@@ -31,7 +31,9 @@ function createController(o={}) {
     }
   }
   async function start(){if(platform!=='win32')throw Error('Phidget USB support currently requires the Windows desktop app.');const g=++generation;buffer='';error='';
-    const hello=new Promise((resolve,reject)=>{const timer=setTimeout(()=>{requests.delete(0);reject(Error('Phidget helper did not start.'));},4000);requests.set(0,{resolve,reject,timer});});
+    // Cold process startup can be delayed by Windows scanning/JIT. No device is
+    // opened yet; race heartbeat and output acknowledgement limits stay strict.
+    const hello=new Promise((resolve,reject)=>{const timer=setTimeout(()=>{requests.delete(0);reject(Error('Phidget helper did not start.'));},12000);requests.set(0,{resolve,reject,timer});});
     try{child=launch();}catch(x){rejectAll(x.message);await hello;return;}
     child.stdout.on('data',b=>{if(g!==generation||!child)return;buffer+=b.toString();try{if(buffer.length>1048576)throw Error('Phidget protocol buffer overflow.');let i;while((i=buffer.indexOf('\n'))>=0){const line=buffer.slice(0,i);buffer=buffer.slice(i+1);if(line.trim())packet(JSON.parse(line));}}catch(x){terminate(x.message);}});
     child.stderr.on('data',()=>{});child.stdin.on('error',e=>{if(g===generation)terminate(e.message);});child.on('error',e=>{if(g===generation)terminate('Cannot start Phidget helper: '+e.message);});child.on('exit',code=>{if(g===generation&&child)terminate('Phidget helper stopped ('+code+').');});await hello;

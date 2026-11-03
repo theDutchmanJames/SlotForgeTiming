@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.1.0 — 2026-11-03
+
+### Database and performance
+
+- New installations use SQLite. Existing users can convert from App Settings → General → Database storage, request a reminder, or keep JSON. Conversion verifies a separate copy before activation and preserves the original JSON files.
+- Read catalogue pages, selected records, race history and Home statistics through a background database worker. Prepare race screens from their referenced assets instead of loading whole collections. Maintain indexed lap summaries and Home totals as results change.
+- Store identical image/audio bodies once while preserving each reference's original representation. Bound catalogue thumbnail caches and retain full-quality originals for editing and export. Show database size, shared-media savings, reusable space and available disk space.
+- Add verified native SQLite backup and restore for larger collections, retain legacy export/import support, and check available space before staging storage operations. Restore into a separate generation before switching.
+- Make finalization, resource recovery and Paddock delivery durable across restarts. Keep correction and acknowledgement identities, reject stale writes, and preserve retry state without duplicating race results or resource spending.
+
+### Paddock integration
+
+- Use incremental catalogue updates and lazy photo loading, preserving offline browsing, signed configuration data and local race settings.
+- Include reviewed race context and adjustment information in result delivery. Show Paddock's public technical specifications and installed components in a read-only, grouped view without replacing Timing's simpler local editor.
+
+### Appearance and reliability
+
+- Add the collection-style header with Timing's icon, SlotForge wordmark and “EVERY LAP COUNTS”. Place a 120 × 22 px SlotForge footer on main-menu pages, selecting artwork for light, dark and custom backgrounds, and update the Racing Rules credits.
+- Add storage migration, disk-full, abrupt-exit, recovery, media, integration and UI regressions. Require explicit completion from single-process UI checks and block accidental test relaunches.
+- Allow a slower cold start of the Windows Phidget helper without relaxing race heartbeat or output-safety deadlines.
+
 ## 2.0.0 — 2026-11-02
 
 - Improve DS Electronics capture diagnostics using PC Lap Counter's documented settings and installed DS interface: add 56000 baud, explicit model-specific starting points, DS-0045 capture selection and comparison guidance. DS remains capture-only; no unverified race decoder or control commands are enabled.

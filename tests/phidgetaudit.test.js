@@ -57,4 +57,17 @@ async function backend(){
     await p.setRace(false,1,again.lease);assert(!p.state().race,'leaving while disconnected clears the reservation');
   }finally{p.shutdown();}
 }
-(async()=>{await inputs();await backend();console.log('PHIDGET AUDIT PASSED: test/race overlap, disconnect reservation, recovery leases, failed acquisition, start/resume sensor gating, existing pits, power interlock and VINT conflicts.');})().catch(e=>{console.error(e);process.exitCode=1;});
+async function startup(){
+ const {EventEmitter}=require('node:events'),timers=new Set(),module={exports:{}};let now=0;
+ const set=(fn,ms)=>{const t={fn,at:now+ms,unref(){}};timers.add(t);return t;};
+ const advance=ms=>{now+=ms;for(const t of [...timers])if(t.at<=now){timers.delete(t);t.fn();}};
+ require('node:vm').runInNewContext(require('node:fs').readFileSync(path.join(__dirname,'../phidgetport.js'),'utf8'),{module,exports:module.exports,__dirname:path.join(__dirname,'..'),process,require:n=>n==='./renderer/phidget'?P:require(n),setTimeout:set,clearTimeout:t=>timers.delete(t),setInterval:set,clearInterval:t=>timers.delete(t),Buffer});
+ let child,killed=false;const p=module.exports.createController({platform:'win32',spawn:()=>{
+  child=new EventEmitter();child.stdout=new EventEmitter();child.stderr=new EventEmitter();child.stdin=new EventEmitter();child.stdin.writable=true;child.kill=()=>{killed=true;};child.stdin.end=()=>{};
+  child.stdin.write=line=>{const m=JSON.parse(line);child.stdout.emit('data',Buffer.from(JSON.stringify({type:'reply',id:m.id,devices:[]})+'\n'));};return child;
+ }});
+ let settled=false;const scan=p.scan();scan.then(()=>{settled=true;},()=>{settled=true;});advance(6000);await turn();assert(!settled,'A cold helper can start after the former four-second deadline');
+ child.stdout.emit('data',Buffer.from('{"type":"hello","protocol":1}\n'));assert.equal((await scan).devices.length,0);advance(1000);assert(killed);
+ const hung=p.scan();const rejected=assert.rejects(hung,/did not start/);advance(12000);await rejected;advance(1000);assert(!p.state().connected);p.shutdown();
+}
+(async()=>{await inputs();await startup();await backend();console.log('PHIDGET AUDIT PASSED: bounded cold startup, test/race overlap, disconnect reservation, recovery leases, failed acquisition, start/resume sensor gating, existing pits, power interlock and VINT conflicts.');})().catch(e=>{console.error(e);process.exitCode=1;});

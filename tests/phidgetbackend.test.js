@@ -6,7 +6,7 @@ const c=P.defaults();c.lanes=1;c.lap[0].address={serial:123,channel:0,type:'digi
  const frame={},contents={mainFrame:frame},win={webContents:contents,isDestroyed:()=>false},owner={sender:contents,senderFrame:frame};
  const port=Object.fromEntries(['state','scan','open','close','alive','armTests','test','setRace','outputs'].map(k=>[k,(...args)=>calls.push([k,...args])]));
  let choice='phidget';
- new Function('ipcMain','mainWin','phidget','db',source.slice(start,end))({handle:(k,f)=>handlers[k]=f},win,port,{getSettings:()=>({timingHw:choice})});
+ new Function('ipcMain','mainWin','phidget','lifecycle',source.slice(start,end))({handle:(k,f)=>handlers[k]=f},win,port,{settings:()=>({timingHw:choice})});
  for(const fn of Object.values(handlers)){assert.throws(()=>fn({sender:{},senderFrame:frame}),/main app window/);assert.throws(()=>fn({sender:contents,senderFrame:{}}),/main app window/);}
  assert.equal(calls.length,0);handlers['phidget:scan'](owner);assert.equal(calls[0][0],'scan');
  choice='trackmate';for(const [k,args] of [['open',[c]],['race',[true,1]],['outputs',[{},1]]])assert.throws(()=>handlers['phidget:'+k](owner,...args),/timing hardware/);

@@ -1,11 +1,11 @@
 const {app}=require('electron'),fs=require('fs'),path=require('path'),assert=require('assert/strict');
-const Store=require('../../resource-store'),realWrite=Store.prototype.write;let failNextWrite=false;
-Store.prototype.write=function(next){if(failNextWrite){failNextWrite=false;return Promise.reject(Error('Simulated disk write failure'));}return realWrite.call(this,next);};
-const output=path.resolve(__dirname,'../../../outputs/resources');fs.mkdirSync(output,{recursive:true});app.setPath('appData',path.resolve(__dirname,'../../.tmp-test/resources-'+process.pid));app.disableHardwareAcceleration();
+const Store=require('../../resource-backends').JsonResources,realWrite=Store.prototype.write;let failNextWrite=false;
+Store.prototype.write=function(next,expectedRevision){if(failNextWrite){failNextWrite=false;return Promise.reject(Error('Simulated disk write failure'));}return realWrite.call(this,next,expectedRevision);};
+const output=path.resolve(__dirname,'../../../outputs/resources');fs.mkdirSync(output,{recursive:true});app.setPath('appData',path.resolve(__dirname,'../../.tmp-test/resources-'+process.pid));app.disableHardwareAcceleration();require('./file-diagnostics.cjs')(path.join(output,'diagnostics.log'),()=>app.exit(1));
 let done=false,step=0;const wait=ms=>new Promise(r=>setTimeout(r,ms));setTimeout(()=>{console.error('QA timeout step '+step);app.exit(1);},180000).unref();
 app.on('browser-window-created',(_,win)=>{win.hide();win.webContents.on('did-finish-load',async()=>{if(done||!win.webContents.getURL().endsWith('index.html'))return;done=true;const run=code=>{console.log('STEP '+(++step)+' '+code.slice(0,90));return win.webContents.executeJavaScript('(async()=>{'+code+'})()');},shot=async name=>{await wait(180);fs.writeFileSync(path.join(output,name+'.png'),(await win.webContents.capturePage()).toPNG());};
 try{
- await wait(650);win.setMinimumSize(0,0);win.setContentSize(1200,1000);win.showInactive();
+ await wait(650);win.setMinimumSize(0,0);win.setContentSize(1200,1000);
  await run(`window.qaErrors=[];window.confirm=()=>true;window.alert=message=>{throw Error('Unexpected alert: '+message);};addEventListener('error',e=>qaErrors.push(e.message));window.change=(s,v,type='input')=>{const el=document.querySelector(s);if(!el)throw Error('Missing '+s);if(el.type==='checkbox')el.checked=v;else el.value=v;el.dispatchEvent(new Event(type,{bubbles:true}));};state.settings=await api.setSettings({timingHw:'none'});state.tab='setup';state.setupSub='resources';await render();document.querySelector('#resource-new').click();`);await wait(200);
  await run(`change('[data-resource=name]','Club endurance supplies');change('[data-resource=owner]','car');change('[data-resource-tyre=M]',5);change('[data-resource=repairsOn]',true);change('[data-resource=componentsOn]',true);document.querySelector('#resource-form').requestSubmit();`);await wait(250);
  assert(await run(`window.profile=(await api.list('resourcesystems'))[0];return profile.name==='Club endurance supplies'&&profile.tyres.M===5&&profile.repairsOn&&profile.componentsOn;`),'editor saves the allocation');

@@ -731,5 +731,10 @@ const fillUpdates = (M, n, f) => { for (let i = 0; i < n; i++) f(i * 100); }; //
   ok('...nothing to print as undefined or NaN', !/undefined|NaN/.test(Perf.report(R0, mk({ background: true, on: true, bgSaves: 5 }), {})));
 }
 
+{
+ const stats=Perf.cleanMain({database:{backend:'sqlite',physicalBytes:4096,reusableBytes:1024,freeBytes:8192,media:{bytes:100,count:4,uniqueCount:1,savedBytes:300}}});
+ ok('SQLite report distinguishes shared bodies, references and reusable space',stats.database.sqlite.uniqueCount===1&&stats.database.sqlite.savedBytes===300&&/4 media references sharing 1 unique bodies/.test(Perf.report(R0,stats,{}))&&/deleting media may not shrink/.test(Perf.report(R0,stats,{})));
+ ok('unavailable SQLite free space is never presented as zero available',/could not be read/.test(Perf.report(R0,Perf.cleanMain({database:{backend:'sqlite'}}),{})));
+}
 console.log(fails ? `\n${fails} FAILED` : '\nperf PASSED');
 process.exit(fails ? 1 : 0);

@@ -33,8 +33,9 @@
     };
     for(const method of ['tick','stop']){const original=engine[method];engine[method]=function(...args){const before=engine.status,result=original.apply(this,args);if(before!=='finished'&&engine.status==='finished')ensure().endedAt=clock();return result;};}
     engine.paddockReview=(driverAtLap)=>{
-      const h=ensure();h.endedAt=h.endedAt||clock();
+      const h=ensure();h.endedAt=h.endedAt||clock();h.endedBy=engine.endedBy||'';h.weatherNote=engine.weatherNote?.()||'';
       h.entries=engine.cars.map(c=>({carId:c.carId||'',driverId:h.entries.find(e=>e.lane===c.lane+1)?.driverId||c.driverId||'guest',driverName:h.entries.find(e=>e.lane===c.lane+1)?.driverName||c.driverName||'Guest',lane:c.lane+1,
+        resultEffects:{reviewMs:c.adjMs||0,penaltyMs:engine.penMs?.(c)||0,pluginMs:engine.pluginTimeOf?.(c)||0},
         changes:engine.events.filter(e=>e.type==='swapdone'&&e.lane===c.lane&&Number.isFinite(e.paddockAt)).map(e=>({at:e.paddockAt,driverId:e.to,driverName:e.toName})),
         laps:c.laps.map((time,n)=>({number:n+1,time,at:h.crossings[String(c.lane)]?.[n]?.at,
           driverId:h.crossings[String(c.lane)]?.[n]?.driverId||driverAtLap?.(c,n)||c.driverId||'guest',driverName:h.crossings[String(c.lane)]?.[n]?.driverName||(c.roster||[]).find(d=>d.id===(driverAtLap?.(c,n)||c.driverId))?.name||c.driverName||'Guest',

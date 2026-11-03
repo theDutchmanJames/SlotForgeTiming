@@ -25,13 +25,21 @@
 <link rel="stylesheet" href="tabstyle.css">
 <link rel="stylesheet" href="settingspage.css">
 </head>
-<body>
+<body class="app-shell">
 <header>
-  <h1>SlotForge Timing</h1>
+  <div class="app-identity">
+    <img class="app-identity-icon" src="assets/brand/timing-icon.png" width="42" height="42" alt="" draggable="false">
+    <div class="app-identity-copy"><h1>SlotForge Timing</h1><small class="app-slogan">EVERY LAP COUNTS</small></div>
+  </div>
   <nav id="tabs" role="tablist" aria-label="Main"></nav>
 </header>
 <main id="view"></main>
 <main id="racehost" class="parked" aria-label="Race"></main>
+<footer id="app-footer" aria-label="SlotForge" hidden>
+  <img class="app-brand-logo brand-light-ink" src="assets/brand/slotforge-dark.png" width="120" height="22" alt="SlotForge" draggable="false">
+  <img class="app-brand-logo brand-dark-ink" src="assets/brand/slotforge-light.png" width="120" height="22" alt="SlotForge" draggable="false">
+  <p id="app-credits" class="rules-credit" hidden></p>
+</footer>
 <dialog id="dlg"></dialog>
 <script src="webapi.js"></script>
 <script src="quiet.js"></script>
@@ -136,6 +144,8 @@
 <script src="temperatureeditor.js"></script>
 <script src="trackdesignui.js"></script>
 <script src="database.js"></script>
+<script src="paddockspecs.js"></script>
+<script src="cataloguethumbnails.js"></script>
 <script src="paddockui.js"></script>
 <script src="paddockbrowser.js"></script>
 <script src="paddockrace.js"></script>

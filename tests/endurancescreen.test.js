@@ -404,7 +404,7 @@ const pressSwap = (lane, over = {}) => E('enpanel').onclick({ target: { closest:
       for (let n = 0; n < 12 && eng().cars[0].laps.length < 6; n++) await lapOn(0);
       for (let n = 0; n < 12 && eng().cars[1].laps.length < 6; n++) await lapOn(1);
       await until(() => phase() === 'finished', 5000); await wait(150);
-      say('when the snapshot can not be sent, the race still runs to the end and is saved (the failure is not an error of the race screen)', calls > 0 && saved.length === 1);
+      say('a failed recovery save keeps the completed race available and blocks finalization with a retry message', calls > 0 && saved.length === 0 && E('msg').textContent.includes('Recovery could not be saved'));
       api.saveResume = sv; saved.length = 0; kept.snap = null; }
     // the Home tab
     const homeView = async () => { run("state.tab = 'home'; state.race = null; live = null"); await run('render()'); await wait(40); return E('view').innerHTML.replace(/&quot;/g, '"'); };

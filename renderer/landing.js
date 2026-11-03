@@ -2,8 +2,9 @@
 const optionsOf = (entity, list, chosen, blank = '(choose)') =>
   `<option value="">${esc(blank)}</option>` + list.filter(i=>entity!=='slotcars'||!i.paddock?.archived||i.id===chosen).map(i => `<option value="${esc(i.id)}"${i.id === chosen ? ' selected' : ''}${entity==='slotcars'&&i.paddock?.archived?' disabled':''}>${esc(titleOf(entity, i))}${entity==='slotcars'&&i.paddock?(i.paddock.archived?' · unavailable':' · Paddock'):''}</option>`).join('');
 
-// 1.17.0: the cards on the right of the Home tab need every saved lap. The laps are fetched once and kept while you stay on the Home tab (a change on Home does not fetch them again);
-// app.js forgets them (resetHome) whenever another tab was shown, because a race may have been saved or a record removed since. homeRun numbers the pictures, so a late answer never lands in a newer one.
+// Current adapters return card statistics without sending lap history to Home.
+// homeLaps remains the compatibility cache for older adapters/tests without that API.
+// homeRun prevents late statistics or pictures from painting over a newer draw.
 let homeLaps = null, homeRun = 0, homeOffTm = null, homeOffAb = null, homeOffPp = null, homeOffPh = null, homeOffPt = null, homeDraw = 0; // (homeDraw numbers the drawings of Home: the one that is slow does not paint over another tab, or over a newer Home)
 // 1.26.0: a line of text or a number in Customize is saved when you leave the field. Home is drawn again a moment later (HOME_SOFT_MS), so that a click or a Tab that comes next
 // is not lost to a page that changes under it, and the control that has the cursor then keeps it. While you are typing in a field (an input without its change yet) nothing is drawn.
@@ -31,7 +32,12 @@ function timingReady(lanes) {
 async function renderHome() {
   const draw = ++homeDraw;
   if (state.homeCustom) clearTimeout(state.homeCustom.timer); // (a drawing that was waiting is this one)
-  const [allDrivers, cars, tracks, setups, sessions, rotations, teams, layouts, audiosets, imagesets, champRaw] = await Promise.all(['drivers', 'slotcars', 'tracks', 'racesetups', 'sessions', 'rotationsetups', 'teams', 'layouts', 'audiosets', 'imagesets', 'championships'].map(e => api.list(e)));
+  const entities=['drivers', 'slotcars', 'tracks', 'racesetups', 'sessions', 'rotationsetups', 'teams', 'layouts', 'audiosets', 'imagesets', 'championships'];
+  const readEntities=entities.filter(e=>e!=='sessions'||!api.homeSessions);
+  const referenceGroups=typeof readReferenceGroups==='function'?await readReferenceGroups(readEntities):await Promise.all(readEntities.map(async e=>({items:await api.list(e),revision:null})));
+  if(api.homeSessions)referenceGroups.splice(entities.indexOf('sessions'),0,{items:[],revision:null});
+  const [allDrivers, cars, tracks, setups, sessions, rotations, teams, layouts, audiosets, imagesets, champRaw] = referenceGroups.map(g=>g.items);
+  const referenceRevision=entity=>referenceGroups[entities.indexOf(entity)]?.revision;
   const drivers = allDrivers.filter(d => d.driverType !== 'virtual');
   const isRival = row => VirtualRival.isDriver(row,allDrivers);
   const [multiProfiles,classDefs]=await Promise.all(['multiclasssystems','raceclasses'].map(e=>api.list(e)));
@@ -49,6 +55,8 @@ async function renderHome() {
   const setup = Endurance.effective(rawSetup); // (1.9.0: an Endurance Race is a race, a timed race or heats, with the rules of the swaps in setup.endurance)
   const ch = Champ.active(saved.champTag, champs, setups, tracks, setupId); // 1.55.0: a session of a championship that was loaded with its card: the race counts for it. It is the track of the round, else that of the race setup
   const track = setup && tracks.find(t => t.id === (ch && ch.track ? ch.track : setup.track));
+  if(api.homeSessions)sessions.push(...await api.homeSessions({trackId:track?.id||'',champId:ch?.c?.id||saved.champId||''}));
+  if(draw!==homeDraw||state.tab!=='home')return;
   const layout = (setup && (layouts || []).find(x => x.id === setup.layout)) || null, laneHue = i => HomeStats.laneColor(layout, i); // (the colour of a lane on the race screen, else one of eight)
   const heats = setup?.sessionType === 'heats', tokens = setup?.sessionType === 'tokens';
   const endu = !!(setup && setup.endurance), enduSingle = endu && !heats; // (an Endurance Race in one go: every lane is a team, with the driver who starts) // (a Time Token Session: the driver and car of a lane are optional, a lane without a driver is a Guest)
@@ -502,7 +510,14 @@ async function renderHome() {
           return { ...r, driverId: d ? d.id : '' };
         });
       }
-      state.race = { multiclass:mc, setup: rawSetup, track, rows: go.map(row=>({...row,raceClass:MultiClass.resolve(row,mc,{cars,drivers,teams})})), virtualRivals: rivalSelection.entries, ...(byTeam ? { byTeam: true } : {}), ...(heatPlan ? { schedule: heatPlan.schedule, ...(heatPlan.labels ? { labels: heatPlan.labels } : {}) } : {}), ...(ch ? { champ: ch.tag } : {}) }; state.tab = 'race'; render(); // (a heat race is raced as planned above; with a rotation, only the participants who are here race)
+      const launch=fullTrack=>{if(draw!==homeDraw||state.tab!=='home'||typeof raceActive==='function'&&raceActive())return;
+        state.race = { ...(referenceRevision('tracks')?{catalogueRevision:referenceRevision('tracks')} : {}), multiclass:mc, setup: rawSetup, track:fullTrack, rows: go.map(row=>({...row,raceClass:MultiClass.resolve(row,mc,{cars,drivers,teams})})), virtualRivals: rivalSelection.entries, ...(byTeam ? { byTeam: true } : {}), ...(heatPlan ? { schedule: heatPlan.schedule, ...(heatPlan.labels ? { labels: heatPlan.labels } : {}) } : {}), ...(ch ? { champ: ch.tag } : {}) }; state.tab = 'race'; render();};
+      if(api.referenceDetails&&referenceRevision('tracks')){
+        if(b.disabled)return;b.disabled=true;
+        api.referenceDetails('tracks',[track.id],referenceRevision('tracks')).then(([full])=>{if(!full)throw Error('This track is no longer available.');launch(full);})
+          .catch(error=>{if(draw===homeDraw&&state.tab==='home'&&typeof alert==='function')alert('Could not prepare the track: '+error.message+' Reopen Home and try again.');})
+          .finally(()=>{if(b.isConnected)b.disabled=false;});
+      }else launch(track);
     }
   };
 
@@ -536,15 +551,17 @@ async function renderHome() {
   const dn = id => { const d = drivers.find(x => x.id === id); return d ? titleOf('drivers', d) : ''; }, cn = id => { const c = cars.find(x => x.id === id); return c ? titleOf('slotcars', c) : ''; };
   const trackNameOf = id => { const t = tracks.find(x => x.id === id); return t ? t.name || '(unnamed)' : ''; };
   const others = grid.boards.filter(b => HG.cardOf(b) !== 'start'), wants = key => others.some(b => HG.cardOf(b) === key);
-  const cardsHtml = (laps, lists) => {
-    const now = new Date(), last = HomeStats.lastRace({ sessions, laps, driverName: dn }), out = new Map();
+  const pictureCards=[];
+  const cardsHtml = (laps, lists, summary) => {
+    const now = new Date(), last = summary ? summary.last : HomeStats.lastRace({ sessions, laps, driverName: dn }), out = new Map();
     const d = { fmtDate: dateText, fmtShort: shortDate, fmtDist: m => Stats.fmtDist(m, Speed.distUnitOf(state.settings)), trackName: track ? track.name || '' : '', hasTrack: !!track, hasSetup: !!setup, setupName: setup ? setup.name || '' : '', last };
     const setImages = (kind, id) => { const r = id ? imageSets.find(x => x.id === id && x.kind === kind) : null; return r && r.images && typeof r.images === 'object' ? r.images : null; }; // (the pictures of a picture set; none when it was deleted)
     const nameIn = (list, id) => { const x = id && (list || []).find(r => r.id === id); return x ? x.name || '(unnamed)' : ''; };
     others.forEach(b => {
       const key = HG.cardOf(b), n = o => Number(HG.optionOf(b, o));
       if (HomeCards.NEEDS_RACES.includes(key) && !last) { out.set(key, ''); return; } // (nothing raced yet: one friendly card, below)
-      if (key === 'record') d.rec = track ? HomeStats.recordCard({ laps, sessions, trackId: track.id, driverIds: byTeam ? [] : rows.filter(r => !r.absent).map(r => r.driverId), driverName: dn, carName: cn }) : null;
+      if(summary&&Object.hasOwn(summary.cards,key))Object.assign(d,summary.cards[key]);
+      else if (key === 'record') d.rec = track ? HomeStats.recordCard({ laps, sessions, trackId: track.id, driverIds: byTeam ? [] : rows.filter(r => !r.absent).map(r => r.driverId), driverName: dn, carName: cn }) : null;
       else if (key === 'weather') d.images = { weather: setImages('weather', HG.optionOf(b, 'weatherSet')), conditions: setImages('conditions', HG.optionOf(b, 'condSet')) };
       else if (key === 'tyres') d.images = { tyres: setImages('tyres', HG.optionOf(b, 'tyreSet')) };
       else if (key === 'glance') d.glance = HomeStats.glance({ sessions, laps, tracks, driverName: dn });
@@ -563,17 +580,40 @@ async function renderHome() {
       } else if (key === 'rules') {
         d.rules = HomeStats.rules(rawSetup, { typeLabel, distUnit: Speed.distUnitOf(state.settings), rotation: rotRec ? rotRec.name || '' : '', penalty: nameIn(lists.penaltysystems, setup && setup.penaltySystem), damage: nameIn(lists.damagesystems, setup && setup.damageSystem), fuel: nameIn(lists.fuelrules, setup && setup.fuelRules), weather: nameIn(lists.weathersystems, setup && setup.weather), safetyCar: nameIn(lists.safetycarsystems, setup && setup.safetyCar), pushSave: nameIn(lists.pushsavesystems, setup && setup.pushSave), tyreWear: nameIn(lists.tyrewearsystems, setup && setup.tyreWear), tyreWearHere: ((lists.tyrewearsystems || []).find(x => setup && x.id === setup.tyreWear) || {})[setup && setup.sessionType] === 'on' });
       }
+      if(referenceRevision('slotcars')&&['mileage','service'].includes(key)&&HG.optionOf(b,'pics'))pictureCards.push({key,data:{...d},board:b});
       out.set(key, HomeCards.html(key, d, b));
     });
     if (!last) { const first = others.find(b => HomeCards.NEEDS_RACES.includes(HG.cardOf(b))); if (first) out.set(HG.cardOf(first), HomeCards.empty()); } // (the first of them says what will show up)
     return out;
   };
-  let allLaps;
-  try { homeLaps = homeLaps || Promise.resolve(api.list('laps')); allLaps = await homeLaps; } catch (x) { homeLaps = null; allLaps = []; }
+  let allLaps=[],summary=null;
+  if(api.homeStatistics&&!others.some(b=>HomeCards.NEEDS_RACES.includes(HG.cardOf(b))))summary={last:null,cards:{}};
+  else if(api.homeStatistics){
+    const grid2=[];rows.forEach((r,i)=>{if(!r.absent)(byTeam?membersOf(teamOf(r.teamId)).map(m=>m.id):[r.driverId]).forEach(id=>grid2.push({driverId:id||'',color:laneHue(i)}));});
+    try{summary=await api.homeStatistics({trackId:track?.id||'',driverIds:byTeam?[]:rows.filter(r=>!r.absent).map(r=>r.driverId||''),grid:grid2,now:new Date().toISOString(),boards:others.filter(b=>['record','glance','recent','fastest','records','top','mileage','bests'].includes(HG.cardOf(b))).map(b=>({key:HG.cardOf(b),count:Math.min(20,Math.max(1,Number(HG.optionOf(b,'count'))||5)),period:HG.optionOf(b,'period')==='year'?'year':'all',scope:HG.optionOf(b,'scope')==='all'?'all':'track'}))});}
+    catch(error){if(run===homeRun&&draw===homeDraw&&state.tab==='home')for(const b of others){const el=document.getElementById('hmc-'+HG.cardOf(b));if(el)el.innerHTML='<p class="muted">Could not load Home statistics. Reopen Home to retry.</p>';}return;}
+  }else try { homeLaps = homeLaps || Promise.resolve(api.list('laps')); allLaps = await homeLaps; } catch (x) { homeLaps = null; allLaps = []; }
   const lists = {};
+  if(api.referenceDetails&&referenceRevision('imagesets')){
+    const ids=[...new Set(others.flatMap(b=>HG.cardOf(b)==='weather'?[HG.optionOf(b,'weatherSet'),HG.optionOf(b,'condSet')]:HG.cardOf(b)==='tyres'?[HG.optionOf(b,'tyreSet')]:[]).filter(id=>imageSets.some(s=>s.id===id)))];
+    if(ids.length)try{const selected=await api.referenceDetails('imagesets',ids,referenceRevision('imagesets'));for(const row of selected.filter(Boolean)){const index=imageSets.findIndex(s=>s.id===row.id);imageSets[index]=row;}}catch{/* A changed/deleted optional image set keeps the drawn fallback until refreshed. */}
+  }
   if (wants('rules') && setup) await Promise.all(['penaltysystems', 'damagesystems', 'fuelrules', 'weathersystems', 'tyrewearsystems', 'safetycarsystems', 'pushsavesystems'].map(async e => { try { lists[e] = await api.list(e); } catch (x) { lists[e] = []; } }));
-  if (run !== homeRun) return; // (another picture of Home was drawn while the laps came in)
-  cardsHtml(Array.isArray(allLaps) ? allLaps : [], lists).forEach((html, key) => { const el = document.getElementById('hmc-' + key); if (el) el.innerHTML = html; });
+  if (run !== homeRun||draw!==homeDraw||state.tab!=='home') return;
+  cardsHtml(Array.isArray(allLaps) ? allLaps : [], lists, summary).forEach((html, key) => { const el = document.getElementById('hmc-' + key); if (el) el.innerHTML = html; });
+  if(pictureCards.length&&api.cataloguePicture){
+    const ids=[...new Set(pictureCards.flatMap(c=>(c.data[c.key]||[]).map(r=>r.carId)))],pictures=new Map();let next=0;
+    const current=()=>run===homeRun&&draw===homeDraw&&state.tab==='home';
+    await Promise.all(Array.from({length:Math.min(4,ids.length)},async()=>{
+      while(current()&&next<ids.length){
+        const id=ids[next++];
+        try{pictures.set(id,await api.cataloguePicture('slotcars',id,referenceRevision('slotcars')));}
+        catch{/* A missing/stale optional picture must not block Home. */}
+      }
+    }));
+    if(!current())return;
+    for(const c of pictureCards){for(const row of c.data[c.key]||[])row.picture=pictures.get(row.carId)||'';const el=document.getElementById('hmc-'+c.key);if(el)el.innerHTML=HomeCards.html(c.key,c.data,c.board);}
+  }
   if (state.settings.netOn && api.netStatus) { // a network that was switched on but could not start gets a red light
     try { const st = await api.netStatus(); if (run === homeRun && st && st.error) { netError = st.error; setChips({ netError }); } } catch (x) { /* the chip stays as the setting says */ }
   }

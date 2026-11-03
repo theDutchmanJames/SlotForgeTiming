@@ -212,7 +212,7 @@ Open the **[latest release](https://github.com/theDutchmanJames/SlotForgeTiming/
 | Your computer | Choose this download |
 | --- | --- |
 | **Windows · Intel/AMD 64-bit** | **Portable.exe** to try the app, or **Setup.exe** to install it for regular use. |
-| **macOS · Intel 64-bit** | **mac-x64.dmg** or **mac-x64.zip**, when listed in the release assets. The 2.0.0 Mac build targets Intel only. |
+| **macOS** | Use a Mac DMG or ZIP only when listed in that release's assets. **mac-x64** supports Intel; **universal** supports Intel and Apple Silicon. Check the release notes for the build provided. |
 | **Linux · Debian/Ubuntu-based, Intel/AMD 64-bit** | **.deb**, opened with your package installer. |
 | **Linux · other compatible distributions, Intel/AMD 64-bit** | **.AppImage**, with permission to execute enabled. |
 
@@ -226,7 +226,7 @@ Windows downloads are unsigned. If Windows displays a security prompt, check tha
 
 ### macOS
 
-1. Download and open **mac-x64.dmg** for an Intel Mac. Check the release assets for availability; a universal or native Apple Silicon package is not provided for 2.0.0.
+1. Check the release notes and assets for a Mac build compatible with your computer, then download and open its **.dmg**. If that release has no Mac download, keep your existing version until a compatible build is available.
 2. Drag **SlotForge Timing** into **Applications**.
 3. Open it from Applications, then eject the disk image.
 
@@ -262,8 +262,10 @@ Open **App Settings → Help** whenever you need an explanation. **App Settings 
 The app keeps its database in its user-data folder, separately from the source and installed program. On Windows this is normally:
 
 ```text
-%APPDATA%/slotforge-timing/slotforge-timing.json
+%APPDATA%/slotforge-timing/
 ```
+
+New installations use SQLite. Existing JSON users are offered **Convert and continue**, **Remind me in a week**, or **Keep using JSON**. Conversion verifies a separate copy and retains the original JSON files. After switching, new changes go only to SQLite; the retained JSON is a recovery copy, not a current backup. You can convert later under **App Settings → General → Database storage**, which also shows the active database path. Allow space for the originals, recovery copy and SQLite database.
 
 Before updating, create a complete backup through **App Settings → Import and Export**, close Timing, then install or open the new release. Make a backup before moving to another computer or replacing an existing database. The portable executable also uses the app's normal user-data folder; it does not make a separate database alongside the executable.
 

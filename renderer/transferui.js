@@ -8,7 +8,8 @@ const TR_FOLDERS = ['backup', 'export', 'import'];
 async function renderTransferSettings(box) {
   box.onclick=box.oninput=box.onchange=null;
   if (!api.exportData) { box.innerHTML = '<p class="muted">Export and import work in the Windows app.</p>'; return; }
-  const lists = {}; for (const [, es] of TR_GROUPS) for (const e of es) lists[e] = await api.list(e);
+  const sqlite=api.storageStatus&&(await api.storageStatus()).backend==='sqlite';
+  const lists = api.transferChoices?await api.transferChoices():{}; for (const [, es] of TR_GROUPS) for (const e of es) {if(!api.transferChoices)lists[e]=await api.list(e);else lists[e]||=[];}
   const chosen = {}; Object.entries(trState.picks).forEach(([e, set]) => { if (set.size) chosen[e] = [...set]; });
   const deps = Object.keys(chosen).length ? await api.exportDeps(chosen) : {};
   const labelOf = (e, id) => { const r = (lists[e] || []).find(x => x.id === id); return r ? trLabel(e, r) : '(missing)'; };
@@ -19,8 +20,9 @@ async function renderTransferSettings(box) {
   // three folders, as on the Results and Records page: each opens and closes, the choice is remembered while the app runs
   const tf = (id, title, note, body) => folderHtml('transfer', id, title, note, `<div class="fbody">${body}</div>`);
   box.innerHTML = folderTools
-    + tf('backup', 'Complete backup', bk ? 'a backup file is waiting' : 'everything in one file', `<p class="muted">A backup is everything in one file: the database, layouts, pictures, sounds, settings, past races and laps. Restoring it puts the app back exactly as it was when the backup was made. The file also holds your settings, including the Race Director password, so keep it somewhere safe. Installed Content Pack libraries are separate; export those packs separately. Copied content is included in the database backup.</p>
-    <div class="row"><button class="btn primary" id="bk-save">Save a complete backup...</button><button class="btn" id="bk-open">Restore from a backup...</button></div>
+    + tf('backup', 'Complete backup', bk ? 'a backup file is waiting' : 'keep a complete recovery copy', `<p class="muted">A complete backup contains the database, layouts, pictures, sounds, settings, past races and laps. Restoring it puts the app back exactly as it was when the backup was made. The backup also holds your settings, including the Race Director password, so keep it somewhere safe. Installed Content Pack libraries are separate; export those packs separately. Copied content is included in the database backup.</p>
+    ${sqlite?'<div class="card"><strong>Native SQLite backup — recommended for large collections</strong><p>Creates a verified backup folder without the JSON size limit. Keep the entire folder together. Restoring verifies a separate copy on restart and retains the previous database. Requires a SQLite-capable Timing build.</p><div class="row"><button class="btn primary" id="bk-native-save">Create native backup folder…</button><button class="btn" id="bk-native-restore">Restore native backup folder…</button></div></div><p class="muted">JSON compatibility backup: for older builds and smaller collections. Very large collections need the native format above.</p>':''}
+    <div class="row"><button class="btn${sqlite?'':' primary'}" id="bk-save">${sqlite?'Save JSON backup...':'Save a complete backup...'}</button><button class="btn" id="bk-open">${sqlite?'Restore JSON backup...':'Restore from a backup...'}</button></div>
     <p class="muted" id="bk-msg">${esc(trState.bkMsg)}</p>
     ${bk ? `<div class="card"><strong>${esc(bk.file || 'File')}</strong>${bk.date ? ` (made ${esc(new Date(bk.date).toLocaleString())}${bk.appVersion ? `, version ${esc(bk.appVersion)}` : ''})` : ''} contains:<ul>${Object.entries(bk.counts || {}).map(([e, n]) => `<li>${n} ${esc(((state.schema[e] && (n === 1 ? state.schema[e].label : state.schema[e].plural)) || e).toLowerCase())}</li>`).join('') || '<li>no items</li>'}${bk.laps ? `<li>${bk.laps} laps</li>` : ''}</ul>
       <p><strong>Restoring replaces everything you have now</strong> with the contents of this file. The data you have now is first kept in a safety file next to the database.</p>
@@ -42,15 +44,16 @@ async function renderTransferSettings(box) {
   box.onclick = ev => { const fa = ev.target && ev.target.closest ? ev.target.closest('[data-folderall]') : null; if (fa) { folderAll('transfer', TR_FOLDERS, fa.dataset.folderall === '1'); renderTransferSettings(box); } };
   const $ = id => document.getElementById(id), msg = t => { trState.msg = t; const m = $('tr-msg'); if (m) m.textContent = t; };
   const bmsg = t => { trState.bkMsg = t; const m = $('bk-msg'); if (m) m.textContent = t; };
+  if(sqlite)for(const [id,action] of [['bk-native-save','nativeBackup'],['bk-native-restore','nativeRestore']])$(id).onclick=async()=>{const b=$(id);b.disabled=true;bmsg('Copying and verifying. Large backups can take several minutes…');try{const result=await api[action]();bmsg(result.restarting?'Restarting to verify and restore the native backup.':result.saved?'Native backup saved: '+result.path:'Cancelled.');}catch(e){bmsg('Could not complete native backup operation: '+e.message);}finally{b.disabled=false;}};
   $('bk-save').onclick = async () => { try { const res = await api.backupSave(); bmsg(res && res.saved ? `Backup saved: ${res.path}` : 'Not saved.'); } catch (x) { bmsg('Could not save the backup: ' + x.message); } };
   $('bk-open').onclick = async () => {
-    try { const res = await api.backupOpen(); if (!res || res.canceled) return; if (!res.ok) { trState.bk = null; trState.bkMsg = res.error; return renderTransferSettings(box); } trState.bk = res; trState.bkMsg = ''; renderTransferSettings(box); } catch (x) { bmsg('Could not read the file: ' + x.message); }
+    try { const res = await api.backupOpen(); if (!res || res.canceled) { trState.bk=null; return renderTransferSettings(box); } if (!res.ok) { trState.bk = null; trState.bkMsg = res.error; return renderTransferSettings(box); } trState.bk = res; trState.bkMsg = ''; renderTransferSettings(box); } catch (x) { bmsg('Could not read the file: ' + x.message); }
   };
   if (bk) {
     $('bk-cancel').onclick = async () => { await api.backupCancel(); trState.bk = null; renderTransferSettings(box); };
     $('bk-apply').onclick = async () => {
       if (!confirm('Replace everything you have now with this backup? This cannot be undone from the app (a safety file is kept next to the database).')) return;
-      try { await api.backupRestore(); trState.bk = null; trState.bkMsg = 'The backup is restored.'; } catch (x) { bmsg('Could not restore the backup: ' + x.message); }
+      try { const result=await api.backupRestore(); trState.bk = null; bmsg(result?.restarting?'Restarting to verify and restore the backup.':'The backup is restored.'); } catch (x) { bmsg('Could not restore the backup: ' + x.message); }
     };
   }
   box.onchange = ev => {
@@ -71,7 +74,7 @@ async function renderTransferSettings(box) {
     try { const res = await api.exportData(chosen, extras); msg(res && res.saved ? `Saved ${Object.values(res.counts || {}).reduce((a, b) => a + b, 0)} items: ${res.path}` : 'Not saved.'); } catch (x) { msg('Could not export: ' + x.message); }
   };
   $('tr-open').onclick = async () => {
-    try { const res = await api.importOpen(); if (!res || res.canceled) return; if (!res.ok) { trState.pending = null; msg(res.error); return renderTransferSettings(box); } trState.pending = res; trState.msg = ''; renderTransferSettings(box); } catch (x) { msg('Could not read the file: ' + x.message); }
+    try { const res = await api.importOpen(); if (!res || res.canceled) { trState.pending=null; return renderTransferSettings(box); } if (!res.ok) { trState.pending = null; msg(res.error); return renderTransferSettings(box); } trState.pending = res; trState.msg = ''; renderTransferSettings(box); } catch (x) { msg('Could not read the file: ' + x.message); }
   };
   if (pending) {
     $('tr-cancel').onclick = async () => { await api.importCancel(); trState.pending = null; renderTransferSettings(box); };

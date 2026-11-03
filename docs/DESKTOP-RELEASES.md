@@ -20,6 +20,12 @@ For a test build, go to **Actions → Desktop builds → Run workflow**, choose 
 
 The build jobs have read-only repository access; only the final publication job can upload release assets. No personal token is required. Release events created using another workflow's `GITHUB_TOKEN` do not trigger another workflow automatically; use manual dispatch in that case.
 
+For a release assembled from a successful manual build before publication, the
+release body can contain `<!-- desktop-downloads-verified -->` after the downloads
+and checksums have been verified. The published event then skips rebuilding those
+assets. Never add this marker before verification. Failed optional Mac builds are
+omitted explicitly; they do not justify publishing unverified Mac downloads.
+
 ## Signing and hardware
 
 The Linux build also runs `npm run fwtest` with its desktop C++ compiler. This executes the actual Nano and Mega sketch against simulated ADC, serial and relay-pin behavior. Missing compiler support fails this strict check. It supplements the application suite; it is not an AVR compilation or physical hardware test. When changing firmware, also compile it for the supported boards with Arduino CLI/IDE and regenerate the embedded download using `npm run sketch`.

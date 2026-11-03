@@ -232,8 +232,8 @@ class Database {
     for (const c of d.slotcars) if (!Number.isFinite(c.lapsSinceService)) c.lapsSinceService = CarStats.sinceOf(c);
   }
   // 1.61.2: say that an item was changed in place (its text in the file has to be made again), or that anything may have been changed (every text is made again)
-  touch(item) { this.texts.delete(item); } // (a WeakMap says 'no' to anything that is not an object)
-  touchAll() { this.texts = new WeakMap(); }
+  touch(item) { this.catalogueEpoch=(this.catalogueEpoch||0)+1; this.texts.delete(item); } // (a WeakMap says 'no' to anything that is not an object)
+  touchAll() { this.catalogueEpoch=(this.catalogueEpoch||0)+1; this.texts = new WeakMap(); }
   // The file as a list of pieces of text, which put together are exactly JSON.stringify(this.data, null, 2): the same layout as before, so every older version reads it. A table (a list
   // of items) is written item by item and the text of an item that was not touched is taken from the last time; everything else (the settings, the extra fields, the version) is made
   // again every time. This takes the core a few milliseconds when little changed, and as long as the old way when everything has to be made again.
@@ -270,6 +270,7 @@ class Database {
   // A change is done in memory; now it has to get to the file. In the background (bg): the answer is a promise that is kept when the file has it, or broken with the reason; saved() gives
   // the newest of these. In the program's own time: it is written before this returns, and a disk that will not take it is an error here.
   commit() {
+    this.catalogueEpoch=(this.catalogueEpoch||0)+1;
     if (!this.bg) { this.lastSave = null; this.saveSync(); return null; }
     const p = this.saveBg(); p.catch(() => { /* whoever waits for saved() gets the reason; the others look at the failed count in the report */ }); this.lastSave = p; return p;
   }
@@ -316,9 +317,23 @@ class Database {
   // resolves when no change is on its way to the database file
   fileIdle() { return this.filePending() ? new Promise(r => this.fsave.idle.push(r)) : Promise.resolve(); }
   check(entity) {
-    if (!schema[entity]) throw new Error('Unknown item type: ' + entity);
+    if (!Object.hasOwn(schema, entity)) throw new Error('Unknown item type: ' + entity);
   }
   list(entity) { this.check(entity); return this.data[entity]; }
+  // Targeted read boundary. The JSON adapter still scans its in-memory table;
+  // a future indexed backend can replace it without sending a whole list to UI.
+  getRecord(entity, id) {
+    this.check(entity);
+    const row = this.data[entity].find(r => r.id === id);
+    return row === undefined ? null : structuredClone(row);
+  }
+  isPaddockLinkedCar(id) { return !!this.data.slotcars.find(row => row.id === id)?.paddock; }
+  localCarSummaries() {
+    return this.data.slotcars.map(row => ({
+      id: row.id, brand: row.brand, manufacturer: row.manufacturer, model: row.model,
+      paddock: row.paddock ? { databaseId: row.paddock.databaseId, carId: row.paddock.carId } : null
+    }));
+  }
   add(entity, item) {
     this.check(entity);
     if(entity === 'tracks' && Object.hasOwn(item,'trackDesign')) item = {...item,trackDesign:TrackDesign.validateSaved(item.trackDesign)};
@@ -357,50 +372,7 @@ class Database {
   }
   remove(entity, id) {
     this.check(entity);
-    const d = this.data;
-    if(['tracks','drivers','slotcars','laps'].includes(entity))for(const s of d.sessions){
-      const key=entity==='drivers'?'driverId':'carId';
-      const affected=entity==='tracks'?s.trackId===id:d.laps.some(l=>l.sessionId===s.id&&(entity==='laps'?l.id===id:l[key]===id))||(entity!=='laps'&&((s.standings||[]).some(row=>row[key]===id)||(s.paddockJournal?.heats||[]).some(h=>(h.entries||[]).some(e=>e[key]===id||(entity==='drivers'&&(e.changes||[]).some(change=>change.driverId===id))))));
-      if(affected)PaddockRecords.withdraw(d,s,'Timing records were removed from this session.');
-    }
-    if (entity === 'raceclasses') {
-      // Remove current catalogue links, never frozen race/heat/championship history.
-      for (const table of ['slotcars', 'drivers', 'teams'])
-        d[table].forEach(row => { if (row.raceClass === id) row.raceClass = ''; });
-      d.multiclasssystems.forEach(p => {
-        p.classes = (p.classes || []).filter(c => c.id !== id);
-        p.driverClasses = (p.driverClasses || []).filter(a => a.classId !== id);
-      });
-    }
-    if (entity === 'tracks') {
-      this.removeLapsWhere(l => l.trackId === id);
-      d.sessions = d.sessions.filter(s => s.trackId !== id);
-      d.racesetups.forEach(r => { if (r.track === id) r.track = ''; });
-      d.fuelrules.forEach(f => { if (f.paceTrack === id) { f.paceTrack = ''; f.paceSource = 'constant'; } });
-    }
-    if (entity === 'tracks') d.championships.forEach(c => (c.rounds || []).forEach(r => { if (r.track === id) r.track = ''; })); // (a round with no track uses the track of its race setup)
-    if (entity === 'teams') d.championships.forEach(c => (c.roster || []).forEach(x => { if (x.team === id) x.team = ''; }));
-    if (entity === 'drivers') d.championships.forEach(c => { if (Array.isArray(c.roster)) c.roster = c.roster.filter(x => x.driver !== id); });
-    if (entity === 'fuelrules') d.racesetups.forEach(r => { if (r.fuelRules === id) r.fuelRules = ''; });
-    if (entity === 'audiosets') d.racesetups.forEach(r => { if (r.audioSet === id) r.audioSet = ''; });
-    if (entity === 'weathersystems') d.racesetups.forEach(r => { if (r.weather === id) r.weather = ''; });
-    if (entity === 'tyrewearsystems') d.racesetups.forEach(r => { if (r.tyreWear === id) r.tyreWear = ''; });
-    if (entity === 'safetycarsystems') d.racesetups.forEach(r => { if (r.safetyCar === id) r.safetyCar = ''; });
-    if (entity === 'pushsavesystems') d.racesetups.forEach(r => { if (r.pushSave === id) r.pushSave = ''; });
-    if (entity === 'rotationsetups') d.racesetups.forEach(r => { if (r.rotation === id) r.rotation = ''; });
-    if (entity === 'penaltysystems') d.racesetups.forEach(r => { if (r.penaltySystem === id) r.penaltySystem = ''; });
-    if (entity === 'damagesystems') d.racesetups.forEach(r => { if (r.damageSystem === id) r.damageSystem = ''; });
-    if (entity === 'layouts') d.racesetups.forEach(r => { if (r.layout === id) r.layout = ''; if (r.layout2 === id) r.layout2 = ''; });
-    if (entity === 'drivers') {
-      d.teams.forEach(t => { if (Array.isArray(t.drivers)) t.drivers = t.drivers.filter(x => x !== id); });
-      this.removeLapsWhere(l => l.driverId === id);
-      d.sessions.forEach(s => { if (Array.isArray(s.standings)) s.standings = s.standings.filter(x => x.driverId !== id); });
-    }
-    if (entity === 'slotcars') {
-      this.removeLapsWhere(l => l.carId === id);
-      d.sessions.forEach(s => { if (Array.isArray(s.standings)) s.standings = s.standings.filter(x => x.carId !== id); });
-    }
-    d[entity] = d[entity].filter(r => r.id !== id);
+    require('./record-cascades').remove(this.data, entity, id, pred => this.removeLapsWhere(pred));
     this.touchAll(); // (a removal changes items of other tables too: every text is made again, as before 1.61.2)
     this.commit();
   }
@@ -529,9 +501,9 @@ class Database {
       const job = q.next; q.next = null; let ok = true; const t0 = process.hrtime.bigint();
       try {
         if (job.op === 'write') { await writeAtomicAsync(this.resumeFile(), job.text); q.stats.writes++; const ms = Number(process.hrtime.bigint() - t0) / 1e6; q.stats.lastMs = Math.round(ms * 10) / 10; q.stats.maxMs = Math.max(q.stats.maxMs, q.stats.lastMs); }
-        else { try { await fs.promises.unlink(this.resumeFile()); } catch { /* nothing was kept */ } }
+        else { try { await fs.promises.unlink(this.resumeFile()); } catch (error) { if(error.code!=='ENOENT')throw error; } }
       } catch (x) { ok = false; q.stats.failed++; console.error('[race save]', x && x.message || x); }
-      job.waiters.forEach(r => r(job.op === 'write' ? ok : true));
+      job.waiters.forEach(r => r(ok));
     }
     q.running = false;
     q.idle.splice(0).forEach(r => r());

@@ -62,31 +62,35 @@ function refsOf(entity, row) {
 
 // picks: { entity: [ids] }. withDeps: also take what the picked items use. Sessions always take theirs and their laps.
 function collect(data, picks, withDeps = true, info = {}) {
+  // Storage readers can resolve only the selected records, without loading the catalogue.
+  const find = (e,id) => typeof data.findRecord === 'function' ? data.findRecord(e,id) : (data[e] || []).find(r => r.id === id);
+  const laps = id => typeof data.lapsFor === 'function' ? data.lapsFor(id) : (data.laps || []).filter(l => l.sessionId === id);
+  const tyres = compound => typeof data.tyresFor === 'function' ? data.tyresFor(compound) : (data.tyrewearsystems || []).filter(s => s.tyres && s.tyres[compound]);
   const have = {}, queue = [];
   const take = (entity, row, deps) => { const s = have[entity] || (have[entity] = new Map()); if (s.has(row.id)) return; s.set(row.id, row); queue.push([entity, row, deps]); };
-  Object.entries(picks || {}).forEach(([entity, ids]) => { if (!schema[entity] || !data[entity]) return; (ids || []).forEach(id => { const row = data[entity].find(r => r.id === id); if (row) take(entity, row, withDeps || entity === 'sessions'); }); });
-  while (queue.length) {
-    const [entity, row, deps] = queue.shift();
-    if (entity === 'sessions') (data.laps || []).filter(l => l.sessionId === row.id).forEach(l => take('laps', l, true));
+  Object.entries(picks || {}).forEach(([entity, ids]) => { if (!Object.hasOwn(schema,entity)) return; (ids || []).forEach(id => { const row = find(entity,id); if (row) take(entity, row, withDeps || entity === 'sessions'); }); });
+  for (let cursor=0; cursor<queue.length; cursor++) {
+    const [entity, row, deps] = queue[cursor];
+    if (entity === 'sessions') for (const l of laps(row.id)) take('laps', l, true);
     if (!deps) continue;
     // Deleted catalogue labels still belong to historical results. Carry their
     // frozen definitions so importing a session can remap its class identities.
     if (entity === 'sessions') (row.multiclass?.classes || []).forEach(c => {
-      if (c.id && !(data.raceclasses || []).some(x => x.id === c.id))
+      if (c.id && !find('raceclasses',c.id))
         take('raceclasses', { id:c.id, name:c.name, color:c.color, icon:c.icon }, true);
     });
     // A custom compound is embedded in its Tyre Wear System rather than being
     // a database row. Bring matching systems with a car when dependencies are
     // requested, so importing the car does not silently lose its starting tyre.
     if (entity === 'slotcars' && /^C_[A-F0-9]{16,32}$/.test(row.tyreCompound || '')) {
-      (data.tyrewearsystems || []).filter(s => s.tyres && s.tyres[row.tyreCompound]).forEach(s => take('tyrewearsystems', s, true));
+      for (const s of tyres(row.tyreCompound)) take('tyrewearsystems', s, true);
     }
-    refsOf(entity, row).forEach(r => { const t = (data[r.entity] || []).find(x => x.id === r.get()); if (t) take(r.entity, t, true); });
+    refsOf(entity, row).forEach(r => { const t = find(r.entity,r.get()); if (t) take(r.entity, t, true); });
   }
   const items = {}, customFields = {};
   ORDER.forEach(e => {
     if (!have[e]) return;
-    items[e] = [...have[e].values()].map(row=>{const out=clone(row);delete out.paddock;delete out.paddockJournal;delete out.paddockDelivery;return out;});
+    items[e] = [...have[e].values()].map(row=>{const out=clone(row);delete out.paddock;delete out.paddockJournal;delete out.paddockDelivery;if(e==='sessions'){delete out.resourceRunId;delete out.saveKey;}return out;});
     const used = new Set(); items[e].forEach(r => Object.keys(r.custom || {}).forEach(k => used.add(k)));
     const defs = ((data.customFields || {})[e] || []).filter(f => used.has(f.id));
     if (defs.length) customFields[e] = clone(defs);
@@ -114,7 +118,7 @@ function check(bundle) {
   if (!(bundle.fileVersion <= FILE_VERSION)) return { ok: false, error: 'This file comes from a newer version of the app. Update the app first.' };
   if (!bundle.items || typeof bundle.items !== 'object') return { ok: false, error: 'The file is empty.' };
   const summary = {};
-  for (const e of ORDER) { const list = bundle.items[e]; if (list === undefined) continue; if (!Array.isArray(list) || list.some(r => !r || typeof r !== 'object' || !r.id)) return { ok: false, error: `The file is damaged (${e}).` }; if (e === 'sessions' && list.some(r => !Array.isArray(r.standings))) return { ok: false, error: 'The file is damaged (sessions without results).' }; if (list.length) summary[e] = { count: list.length, names: list.slice(0, 12).map(r => titleOf(e, r)) }; }
+  for (const e of ORDER) { const list = bundle.items[e]; if (list === undefined) continue; if (!Array.isArray(list) || list.some(r => !r || typeof r !== 'object' || Array.isArray(r) || typeof r.id !== 'string' || !r.id.trim())) return { ok: false, error: `The file is damaged (${e}).` }; if (new Set(list.map(r=>r.id)).size !== list.length) return {ok:false,error:`The file contains duplicate identities (${e}).`}; if (e === 'sessions' && list.some(r => !Array.isArray(r.standings))) return { ok: false, error: 'The file is damaged (sessions without results).' }; if (list.length) summary[e] = { count: list.length, names: list.slice(0, 12).map(r => titleOf(e, r)) }; }
   return Object.keys(summary).length ? { ok: true, summary } : { ok: false, error: 'The file has nothing to import.' };
 }
 
@@ -122,23 +126,23 @@ function check(bundle) {
 // All or nothing: a damaged file that fails halfway leaves the database as it was.
 function apply(db, bundle) {
   const c = check(bundle); if (!c.ok) throw new Error(c.error);
-  const d = db.data, map = {}, counts = {}, had = {};
-  ORDER.forEach(e => { map[e] = {}; had[e] = d[e].length; });
+  const d = db.data, map = Object.create(null), counts = {}, had = {};
+  ORDER.forEach(e => { map[e] = Object.create(null); had[e] = d[e].length; });
   const hadFields = Object.entries(d.customFields).map(([e, list]) => [e, list.length]);
   const rollback = () => { ORDER.forEach(e => { d[e].length = had[e]; }); hadFields.forEach(([e, n]) => { d.customFields[e].length = n; }); };
   try {
-    const fieldMap = {}; // custom field ids of the file -> ours
+    const fieldMap = Object.create(null); // custom field ids of the file -> ours
     Object.entries(bundle.customFields || {}).forEach(([e, defs]) => {
       if (!schema[e] || !Array.isArray(defs)) return;
       defs.forEach(f => {
         if (!f || typeof f !== 'object') return;
         const mine = d.customFields[e].find(x => x.label === f.label && x.type === f.type) || (d.customFields[e].push({ id: crypto.randomUUID().slice(0, 8), label: f.label, type: f.type, options: clone(f.options || []), group: groupOf(e, f.group) }), d.customFields[e][d.customFields[e].length - 1]);
-        (fieldMap[e] = fieldMap[e] || {})[f.id] = mine.id;
+        (fieldMap[e] = fieldMap[e] || Object.create(null))[f.id] = mine.id;
       });
     });
     for (const e of ORDER) {
       for (const src of bundle.items[e] || []) {
-        const row = clone(src); delete row.paddock;delete row.paddockJournal;delete row.paddockDelivery; if(e==='tracks'&&Object.hasOwn(row,'trackDesign'))row.trackDesign=TrackDesign.validateSaved(row.trackDesign); const oldId = row.id; row.id = crypto.randomUUID(); map[e][oldId] = row.id;
+        const row = clone(src); delete row.paddock;delete row.paddockJournal;delete row.paddockDelivery; if(e==='sessions'){delete row.resourceRunId;delete row.saveKey;} if(e==='tracks'&&Object.hasOwn(row,'trackDesign'))row.trackDesign=TrackDesign.validateSaved(row.trackDesign); const oldId = row.id; row.id = crypto.randomUUID(); map[e][oldId] = row.id;
         refsOf(e, row).forEach(r => r.set(map[r.entity] && map[r.entity][r.get()] !== undefined ? map[r.entity][r.get()] : ''));
         if (e === 'racesetups') { RaceLimit.upgrade(row); RaceLimit.upgradeScoring(row); } // (a file made before 1.62.0 may hold a Timed race: that is a Race limited by a time now; one from before 1.65.0 has heats of a time that count laps or points)
         if (e === 'teams') row.drivers = (Array.isArray(row.drivers) ? row.drivers : []).filter(Boolean);
@@ -157,4 +161,4 @@ function apply(db, bundle) {
   return counts;
 }
 
-module.exports = { FORMAT, collect, dependencies, check, apply, titleOf, refsOf };
+module.exports = { FORMAT, ORDER, collect, dependencies, check, apply, titleOf, refsOf };

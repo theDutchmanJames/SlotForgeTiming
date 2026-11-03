@@ -88,10 +88,10 @@ const plainDate = iso => { const d = iso ? new Date(iso) : null; return d && !is
 function cell(f, v) {
   if (f.blank && (v === undefined || v === null || v === '')) return `<span class="muted">${esc(f.blank)}</span>`;
   if (v === undefined || v === null || v === '') return '';
-  if (f.type === 'image') return `<img class="thumb" src="${esc(v)}" alt="">`;
+  if (f.type === 'image') return v?._cataloguePicture ? catalogueImage(v,'thumb') : `<img class="thumb" src="${esc(v)}" alt="">`;
   if (f.type === 'tracklength') return typeof v === 'number' ? esc(Speed.lengthText(v, dUnit())) : Speed.parseLength(v) === '' ? `${esc(v)} m` : esc(v);
   { const t = typedText(f, v); if (t !== null) return esc(t); }
-  if (f.type === 'gallery') return Array.isArray(v) && v.length ? `${v.length} more` : '';
+  if (f.type === 'gallery') { const count=v?._catalogueGallery || (Array.isArray(v)?v.length:0);return count?`${count} more`:''; }
   if (f.type === 'country') return flagHtml(v) + ' ' + esc(countryName(v));
   if (f.type === 'longtext') return esc(String(v).slice(0, 60));
   if (f.type === 'datetime') return esc(plainDate(v));
@@ -204,8 +204,24 @@ const pdfButton = attrs => `<button class="btn primary pdfbtn" type="button" ${a
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 let slotcarSource='local';
+const cataloguePages=new Map();
+let stopCataloguePictures=()=>{};
+let cataloguePictureActive=0,cataloguePictureWake=()=>{};
+const catalogueImage=(marker,cls='',frame=null)=>`<img class="${cls}" data-catalogue-picture="${esc(marker.id)}" alt=""${frame?` style="transform:${Widgets.frameTransform(frame)}"`:''}>`;
+function loadCataloguePictures(box,entity,revision,current) {
+  let stopped=false;const queue=[],queued=new Set();
+  const observer=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){observer.unobserve(entry.target);enqueue(entry.target);}},{rootMargin:'100px'});
+  function enqueue(img){if(queued.has(img))return;queued.add(img);queue.push(img);pump();}
+  function pump(){while(!stopped&&current()&&cataloguePictureActive<4&&queue.length){const img=queue.shift();cataloguePictureActive++;
+    (typeof CatalogueThumbnails==='undefined'?api.cataloguePicture(entity,img.dataset.cataloguePicture,revision):CatalogueThumbnails.get(JSON.stringify([entity,img.dataset.cataloguePicture,revision]),()=>api.cataloguePicture(entity,img.dataset.cataloguePicture,revision))).then(src=>{if(!stopped&&current()&&img.isConnected&&src)img.src=src;}).catch(()=>{/* A stale page never paints a newer image into an older row. Refresh fetches the new revision. */}).finally(()=>{cataloguePictureActive--;cataloguePictureWake();});
+  }}
+  cataloguePictureWake=pump;
+  box.querySelectorAll('[data-catalogue-picture]').forEach(img=>observer.observe(img));
+  return ()=>{stopped=true;queue.length=0;observer.disconnect();if(cataloguePictureWake===pump)cataloguePictureWake=()=>{};};
+}
 async function mountManager(box, e) {
   const run = ++subRun;
+  stopCataloguePictures();
   manager = { box, e };
   const s = state.schema[e];
   const remoteView=()=>e==='slotcars'&&slotcarSource==='paddock'&&typeof PaddockBrowser!=='undefined';
@@ -219,17 +235,29 @@ async function mountManager(box, e) {
   // A remote listing does not need the photo-heavy local slotcar table.
   // Explicit "view this car" navigation is resolved below before choosing a view.
   if(remoteView()&&!state.focusCar)return mountPaddock();
-  const [storedItems, custom] = await Promise.all([api.list(e), s.extra === false ? [] : api.customFields(e)]);
-  const items = databaseOrdered(e, e==='slotcars'?storedItems.filter(c=>!c.paddock):storedItems);
+  const paged=VIEW_ENTITIES.includes(e)&&typeof api.catalogue==='function';
+  if(!cataloguePages.has(e))cataloguePages.set(e,{search:'',cursors:[null],index:0});
+  const paging=cataloguePages.get(e);let page=null,pageNotice='';
+  async function fetchPage(){try{return await api.catalogue(e,{search:paging.search,limit:48,cursor:paging.cursors[paging.index]});}
+    catch(error){if(run!==subRun)return null;if(!/catalogue changed/i.test(error.message)||paging.index===0)throw error;paging.cursors=[null];paging.index=0;pageNotice='The catalogue changed. Showing the first page.';return api.catalogue(e,{search:paging.search,limit:48});}}
+  const [listed, custom] = await Promise.all([paged?fetchPage():api.list(e), s.extra === false ? [] : api.customFields(e)]);
+  if(run!==subRun||box.isConnected===false)return;
+  if(paged)page=listed;
+  const storedItems=paged?page.items.map(({record,hasPicture,galleryCount})=>({...record,...(hasPicture?{[s.image]:{_cataloguePicture:true,id:record.id}}:{}),...(s.gallery&&galleryCount?{[s.gallery]:{_catalogueGallery:galleryCount}}:{})})):listed;
+  const items = paged?storedItems:databaseOrdered(e, e==='slotcars'?storedItems.filter(c=>!c.paddock):storedItems);
   if (run !== subRun) return;
   state.custom[e] = custom;
   if(e==='racesetups')state.rulePlugins=api.pluginRuleCatalog?await api.pluginRuleCatalog():[];
-  for (const f of s.fields) if (f.type === 'ref' || f.type === 'members') state.refs[f.ref] = await api.list(f.ref);
+  for (const f of s.fields) if (f.type === 'ref' || f.type === 'members') state.refs[f.ref] = typeof referenceList==='function'&&s.imageFrom!==f.key?await referenceList(f.ref):await api.list(f.ref);
   if (e === 'slotcars') state.refs.tyrewearsystems = await api.list('tyrewearsystems');
   if (e === 'racesetups') state.refs.championships = await api.list('championships'); // (1.71.0: the box Used by in the form of a race setup names the championships that use it)
   if (s.used) state.refs[s.used.entity] = await api.list(s.used.entity); // (1.73.0: the box Used by in the form of a system names the race setups that choose it)
   if (run !== subRun) return;
-  if(e==='slotcars'&&state.focusCar&&storedItems.find(c=>c.id===state.focusCar)?.paddock){const focused=storedItems.find(c=>c.id===state.focusCar);state.focusCar=null;openView(e,focused);}
+  let detailRequest=0,pagingBusy=false;
+  const fullItem=async id=>{const request=++detailRequest,item=paged?await api.getRecord(e,id):storedItems.find(c=>c.id===id);if(request!==detailRequest||run!==subRun||box.isConnected===false)return null;return item;};
+  const viewItem=id=>{if(!paged){const item=storedItems.find(c=>c.id===id);if(item)openView(e,item);return;}return fullItem(id).then(item=>{if(item)openView(e,item);});};
+  const focused=paged&&e==='slotcars'&&state.focusCar?await fullItem(state.focusCar):storedItems.find(c=>c.id===state.focusCar);
+  if(e==='slotcars'&&state.focusCar&&focused?.paddock){state.focusCar=null;openView(e,focused);}
   if(e==='slotcars'&&state.focusCar)slotcarSource='local';
   if(remoteView())return mountPaddock();
   const cols = s.list
@@ -273,8 +301,8 @@ async function mountManager(box, e) {
     }) : s.card.filter(k => k !== skip).map(k => {
       const f = columnOf(s, k), v = f.virtual ? f.virtual.get(i) : i[k];
       return v === undefined || v === null || v === '' ? '' : `<div class="gd"><span class="muted">${esc(fl(f))}</span> ${columnCell(f, i)}</div>`;
-    })).join('') + (s.gallery && Array.isArray(i[s.gallery]) && i[s.gallery].length ? `<div class="gd muted">+${i[s.gallery].length} more ${i[s.gallery].length === 1 ? 'picture' : 'pictures'}</div>` : '');
-    return `<article class="gcard${canView ? ' clickable' : ''}"${canView ? ` data-view="${esc(i.id)}" tabindex="0" aria-label="View ${esc(t)}"` : ''}><div class="gimg">${img ? `<img src="${esc(img)}" alt="" style="transform:${Widgets.frameTransform(frame)}">` : noPicture(e, t)}</div>
+    })).join('') + (s.gallery && (i[s.gallery]?._catalogueGallery||i[s.gallery]?.length) ? `<div class="gd muted">+${i[s.gallery]._catalogueGallery||i[s.gallery].length} more pictures</div>` : '');
+    return `<article class="gcard${canView ? ' clickable' : ''}"${canView ? ` data-view="${esc(i.id)}" tabindex="0" aria-label="View ${esc(t)}"` : ''}><div class="gimg">${img?._cataloguePicture?catalogueImage(img,'',frame):img ? `<img src="${esc(img)}" alt="" style="transform:${Widgets.frameTransform(frame)}">` : noPicture(e, t)}</div>
       <h3>${esc(t)}</h3>${rowMark(e, i)}${details}${typeof RaceSystems !== 'undefined' && i.sessionType !== 'tokens' ? RaceSystems.setupHtml(i, { compact: true, id: i.id }) : ''}<div class="row"><button class="btn" data-edit="${esc(i.id)}">Edit</button>${copyButton(i)}${designButton(i)}<button class="btn danger" data-del="${esc(i.id)}">Delete</button></div></article>`;
   }).join('')}</div>`;
   const tableHtml = (items, cols) => `<div class="wrap"><table class="fields"><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}<th></th></tr>` +
@@ -305,28 +333,42 @@ async function mountManager(box, e) {
     (e === 'racesetups' ? rsBody
       : items.length && mode === 'grid' ? gridHtml(items)
       : items.length ? tableHtml(items, viewCols || cols)
-      : `<p class="muted">No ${esc(s.plural.toLowerCase())} yet. Use the button above to add one.</p>`);
+      : `<p class="muted">${paged&&paging.search?'No matching '+esc(s.plural.toLowerCase())+'.':`No ${esc(s.plural.toLowerCase())} yet. Use the button above to add one.`}</p>`);
+  if(paged){
+    const navigation=`<div class="row catalogue-navigation"><button class="btn" type="button" data-catalogue-prev${paging.index===0?' disabled':''}>Previous</button><span role="status">Page ${paging.index+1} · ${items.length} shown</span><button class="btn" type="button" data-catalogue-next${!page.next?' disabled':''}>Next</button><button class="btn" type="button" data-catalogue-refresh>Refresh</button></div>`;
+    box.insertAdjacentHTML('afterbegin',`<form class="row catalogue-search" data-catalogue-search><label>Find ${esc(s.plural.toLowerCase())} <input name="search" type="search" maxlength="200" value="${esc(paging.search)}" placeholder="Search by name" aria-label="Search ${esc(s.plural.toLowerCase())}"></label><button class="btn" type="submit">Search</button>${pageNotice?`<span role="status">${pageNotice}</span>`:''}</form>`+navigation);
+    if(items.length)box.insertAdjacentHTML('beforeend',navigation);
+    box.onsubmit=ev=>{if(!ev.target.matches('[data-catalogue-search]'))return;ev.preventDefault();paging.search=ev.target.elements.search.value;paging.index=0;paging.cursors=[null];mountManager(box,e);};
+    stopCataloguePictures=loadCataloguePictures(box,e,page.revision,()=>run===subRun&&box.isConnected!==false);
+  }else box.onsubmit=null;
   box.onchange = !viewable ? null : async ev => { // a check box of the View settings bar
     const cb = ev.target;
     if (await viewToggle(cb, path => (path === e + '/' + mode ? modeCands : null))) { await mountManager(box, e); viewFocus(box, cb); }
   };
   box.onkeydown = !canView ? null : ev => { // Enter or Space on a focused row or card opens it
     const v = ev.target && ev.target.dataset && ev.target.dataset.view;
-    if (v && (ev.key === 'Enter' || ev.key === ' ') && items.some(i => i.id === v)) { ev.preventDefault(); openView(e, items.find(i => i.id === v)); }
+    if (v && (ev.key === 'Enter' || ev.key === ' ') && items.some(i => i.id === v)) { ev.preventDefault(); viewItem(v); }
   };
   box.onclick = async ev => {
     const b = ev.target.closest('button');
     if (!b) { // not on a button: a click on a row or a card shows it
       const v = canView && ev.target.closest('[data-view]'), it = v && items.find(i => i.id === v.dataset.view);
-      if (it) openView(e, it);
+      if (it) await viewItem(it.id);
       return;
+    }
+    if(paged&&(b.hasAttribute('data-catalogue-next')||b.hasAttribute('data-catalogue-prev')||b.hasAttribute('data-catalogue-refresh'))){
+      if(pagingBusy||b.disabled)return;pagingBusy=true;
+      if(b.hasAttribute('data-catalogue-next')&&page.next){paging.cursors[++paging.index]=page.next;}
+      else if(b.hasAttribute('data-catalogue-prev')&&paging.index>0)paging.index--;
+      else if(b.hasAttribute('data-catalogue-refresh')){paging.index=0;paging.cursors=[null];}
+      try{return await mountManager(box,e);}finally{pagingBusy=false;}
     }
     if (e === 'racesetups' && b.dataset.systemSetup && typeof RaceSystems !== 'undefined') { const row = items.find(x => x.id === b.dataset.systemSetup); if (row) { await api.update(e, row.id, { disabledSystems: RaceSystems.toggle(row.disabledSystems, b.dataset.systemKey, b.dataset.systemOn === '1') }); await mountManager(box, e); } return; }
     if (b.dataset.rsf) { setupFilter = b.dataset.rsf; return mountManager(box, e); } // (Race Setups: the kind to show)
     if (b.dataset.rskind) return openForm(e, null, { sessionType: b.dataset.rskind }); // (Race Setups: Start from a kind)
     if (b.dataset.viewbar) { if (viewBars.has(b.dataset.viewbar)) viewBars.delete(b.dataset.viewbar); else viewBars.add(b.dataset.viewbar); return mountManager(box, e); }
     if (b.dataset.vsreset) { await viewReset([[e, mode]]); return mountManager(box, e); }
-    if (e === 'tracks' && (b.id === 'track-import' || b.dataset.trackDesign)) return TrackDesignUI.open(api, items.find(i=>i.id===b.dataset.trackDesign), ()=>mountManager(box,e));
+    if (e === 'tracks' && (b.id === 'track-import' || b.dataset.trackDesign)) {const track=b.dataset.trackDesign?await fullItem(b.dataset.trackDesign):null;if(run!==subRun)return;return TrackDesignUI.open(api,track,()=>mountManager(box,e));}
     if (b.id === 'paddock-open') return PaddockUI.open(api,()=>mountManager(box,e));
     if (b.id === 'paddock-view') {slotcarSource='paddock';return mountManager(box,e);}
     if (b.id === 'add') return openForm(e, null);
@@ -345,7 +387,7 @@ async function mountManager(box, e) {
       return;
     }
     const it = items.find(i => i.id === (b.dataset.edit || b.dataset.del));
-    if (b.dataset.edit) openForm(e, it);
+    if (b.dataset.edit) {const full=await fullItem(it.id);if(full)openForm(e, full);}
     else if (b.dataset.del) {
       const n = s.linked === false ? 0 : await api.linkedLaps(e, it.id);
       const extra = s.linked === false ? '' : `\n\nThis also deletes ${n} saved ${n === 1 ? 'lap' : 'laps'} and the records they hold${e === 'drivers' || e === 'slotcars' ? ', and takes them out of the results of past races' : ''}.`;
@@ -354,7 +396,7 @@ async function mountManager(box, e) {
       mountManager(box, e);
     }
   };
-  if (e === 'slotcars' && state.focusCar) { const it = items.find(i => i.id === state.focusCar); state.focusCar = null; if (it) openView(e, it); } // (a car clicked on Home, in the Service Due card: its card opens)
+  if (e === 'slotcars' && state.focusCar) { const id=state.focusCar;state.focusCar=null;await viewItem(id); } // Home may focus a car beyond the current page.
 }
 
 // The modern penalty editor deliberately does not start with pre-filled penalties:
@@ -606,11 +648,13 @@ function openView(e, item) {
   dlg.oninput = null; dlg.onchange = null;
   dlg.innerHTML = `<div class="vcard"><button type="button" class="vcpic gimg${main ? '' : ' nopic'}"${main ? ' data-big="0" aria-label="Show the picture large"' : ' tabindex="-1" aria-hidden="true"'}>${main ? `<img src="${esc(main)}" alt="" style="transform:${Widgets.frameTransform(frame)}">` : `<span class="ph" style="background:${hue(t)}">${esc((t.trim()[0] || '?').toUpperCase())}</span>`}</button>
     <h3 class="vctitle">${esc(t)}</h3>
+    ${e==='slotcars'&&typeof PaddockSpecs!=='undefined'?PaddockSpecs.html(item):''}
     ${rows.length ? `<dl class="vcfields">${rows.map(r => `<div${r.wide ? ' class="wide"' : ''}><dt>${esc(r.label)}</dt><dd>${r.html}</dd></div>`).join('')}</dl>` : '<p class="muted">Nothing more is filled in.</p>'}
     ${gal.length ? `<h4 class="vcgaltitle">${gal.length === 1 ? 'Another picture' : gal.length + ' more pictures'}</h4><div class="vcgal">${gal.map((src, i) => `<button type="button" class="vcthumb" data-big="${i + (main ? 1 : 0)}" aria-label="Show picture ${i + 1} large"><img class="galthumb" src="${esc(src)}" alt="Picture ${i + 1}"></button>`).join('')}</div>` : ''}
-    <div class="row"><button class="btn" type="button" id="vcclose">Close</button><button class="btn primary" type="button" id="vcedit">Edit</button></div>
+    <div class="row"><button class="btn" type="button" id="vcclose">Close</button><button class="btn primary" type="button" id="vcedit">${e==='slotcars'&&item.paddock?'Edit Timing settings':'Edit'}</button></div>
     <div class="vcbig" id="vcbig" hidden role="dialog" aria-label="Large picture"><img id="vcbigimg" alt=""><p>Click the picture or press Escape to close it</p></div></div>`;
   let large = false; // is a picture shown large at the moment? (it covers the card, so any click while it is shown is a click on it)
+  if(e==='slotcars'&&typeof PaddockSpecs!=='undefined')PaddockSpecs.mount(dlg.querySelector('.paddock-specs'),item);
   const showLarge = on => { large = on; byId('vcbig').hidden = !on; };
   dlg.oncancel = ev => { if (large) { ev.preventDefault(); showLarge(false); } }; // (Escape closes the large picture first, then the card)
   dlg.onclick = ev => {
@@ -623,8 +667,9 @@ function openView(e, item) {
   if (!dlg.open) dlg.showModal();
   if (e === 'slotcars') { // the statistics of the car, as in its form
     const svc = byId('vc-service'), st = CarStats.status(item); svc.textContent = CarStats.note(st); svc.className = st.due ? 'svc-note due' : '';
-    loadCarStats(item).then(d => { const t = carStatTexts(d); CAR_STATS.forEach(f => { byId('vc' + f.key).textContent = t[f.key]; }); byId('vc_byTrack').innerHTML = carTracksHtml(d); })
-      .catch(() => { CAR_STATS.forEach(f => { byId('vc' + f.key).textContent = '–'; }); byId('vc_byTrack').textContent = '–'; });
+    const target=byId('vc_byTrack'),current=()=>byId('vc_byTrack')===target;
+    loadCarStats(item).then(d => { if(!current())return;const t = carStatTexts(d); CAR_STATS.forEach(f => { byId('vc' + f.key).textContent = t[f.key]; }); target.innerHTML = carTracksHtml(d); })
+      .catch(() => { if(!current())return;CAR_STATS.forEach(f => { byId('vc' + f.key).textContent = '–'; }); target.textContent = '–'; });
   }
   byId('vcclose').focus({ preventScroll: true }); // (so the card opens at its top)
 }
@@ -645,7 +690,7 @@ const carStatTexts = d => ({ _mileage: Stats.fmtDist(d.mileage.distance, dUnit()
   _sessions: String(d.sessions), _wins: String(d.wins), _deslots: String(d.deslots), _fastest: d.fastest ? `${Stats.fmtMs(d.fastest.time)}${d.fastest.trackName ? ' on ' + d.fastest.trackName : ''}` : '–' });
 const carTracksHtml = d => !d.tracks.length ? '<span class="muted">No valid laps yet.</span>'
   : `<table class="fields svc-tracks"><thead><tr><th>Track</th><th>Laps</th><th>Best</th><th>Average</th></tr></thead><tbody>${d.tracks.map(t => `<tr><td>${esc(t.name || '–')}</td><td>${t.laps}</td><td>${esc(Stats.fmtMs(t.best))}</td><td>${esc(Stats.fmtMs(t.avg))}</td></tr>`).join('')}</tbody></table>`;
-const loadCarStats = item => Promise.all([api.list('laps'), api.list('sessions'), api.list('tracks')]).then(([laps, sessions, tracks]) => CarStats.details(item, laps, sessions, tracks));
+const loadCarStats = item => api.carStatistics ? api.carStatistics(item.id) : Promise.all([api.list('laps'), api.list('sessions'), api.list('tracks')]).then(([laps, sessions, tracks]) => CarStats.details(item, laps, sessions, tracks));
 // a mark for the list and the cards of the slotcars that need servicing
 const rowMark = (e, i) => (e === 'slotcars' && i.paddock ? `<span class="badge paddock-source" title="Details managed in SlotForge Paddock">Paddock${i.paddock.archived?' · unavailable':''}</span>` : '')+(e === 'slotcars' && CarStats.status(i).due ? '<span class="svc-due" title="The laps since the last service have reached the service interval">Service due</span>' : '');
 function openForm(e, item, preset) { // preset: values a new item starts with (Race Setups: Start from a kind)
@@ -875,9 +920,10 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
   };
   syncService();
   if (e === 'slotcars' && byId('f-_mileage')) { // the statistics that are worked out from the database (1.30.0 the mileage, 1.33.0 the others)
-    const fill = d => { const t = carStatTexts(d); CAR_STATS.forEach(f => { byId('f-' + f.key).value = t[f.key]; }); byId('f-_byTrack').innerHTML = carTracksHtml(d); if (serviceReset) byId('f-_mileageSince').value = Stats.fmtDist(0, dUnit()); }; // (after Reset the distance since the service starts again at 0) // (a distance that is not known is a dash)
+    const target=byId('f-_byTrack'),current=()=>byId('f-_byTrack')===target;
+    const fill = d => { if(!current())return;const t = carStatTexts(d); CAR_STATS.forEach(f => { byId('f-' + f.key).value = t[f.key]; }); target.innerHTML = carTracksHtml(d); if (serviceReset) byId('f-_mileageSince').value = Stats.fmtDist(0, dUnit()); }; // (after Reset the distance since the service starts again at 0)
     if (!item) fill(CarStats.details({}, [], [], []));
-    else { CAR_STATS.forEach(f => { byId('f-' + f.key).value = 'Calculating…'; }); loadCarStats(item).then(fill).catch(() => { CAR_STATS.forEach(f => { byId('f-' + f.key).value = '–'; }); byId('f-_byTrack').textContent = '–'; }); }
+    else { CAR_STATS.forEach(f => { byId('f-' + f.key).value = 'Calculating…'; }); loadCarStats(item).then(fill).catch(() => { if(!current())return;CAR_STATS.forEach(f => { byId('f-' + f.key).value = '–'; }); target.textContent = '–'; }); }
   }
   if (groups) dlg.querySelectorAll('.fgroup').forEach(el => { el.ontoggle = () => { const g = el.dataset.fg; if (el.open) { const fresh = !opened.has(g); opened.add(g); if (sections && fresh) { railCurrent = g; sayDraw(); } } else opened.delete(g); }; }); // remembered for the next time the form opens (1.71.0: the rail points at the section that was opened last)
   attachFrames(dlg, k => frames[k], (k, f) => { frames[k] = f; });
@@ -1161,6 +1207,7 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
   };
   if (!dlg.open) dlg.showModal(); // (it is already open when Edit was pressed in the view card)
   if(e==='slotcars'&&item?.paddock){for(const key of ['brand','manufacturer','model','scale','motor','gearing','tyres','weight','picture','raceClass'])dlg.querySelectorAll('[data-key="'+key+'"] input,[data-key="'+key+'"] select,[data-key="'+key+'"] button').forEach(el=>el.disabled=true);const note=document.createElement('p');note.className='muted';note.textContent='Linked to Paddock. Edit catalogue details there, then use Connect to Paddock → Refresh linked cars. Simulation settings and service history remain local.';byId('frm').prepend(note);}
+  if(e==='slotcars'&&item?.paddock&&typeof PaddockSpecs!=='undefined'){const holder=document.createElement('details');holder.className='full';holder.dataset.pcsEditor='';holder.style.gridColumn='1 / -1';holder.innerHTML='<summary>Paddock specifications · read only</summary>'+PaddockSpecs.html(item);byId('frm').querySelector('.formgrid').prepend(holder);PaddockSpecs.mount(holder.querySelector('.paddock-specs'),item);}
   if (groups) { const first = byId('f-' + fields[0].id); if (first && first.focus) first.focus(); } // the first field, as before, not the Open all button above the groups
 }
 
@@ -1285,10 +1332,56 @@ function pdfChoice(session, figs) {
   });
 }
 
-async function renderResultsPool(box, pool) {
+async function renderHistoryPool(box,pool) {
+  const cursors={sessions:[null],tracks:[null],personal:[null]},indices={sessions:0,tracks:0,personal:0};
+  let selected=state.focusSession||null,offset=0,notice='',staleRetries=0,reveal=!!state.focusSession;
+  async function load(){
+    const run=++subRun;let expected=run;
+    try{
+      const page=await api.historyPage(pool,Object.fromEntries(Object.keys(cursors).map(k=>[k,cursors[k][indices[k]]])));
+      if(run!==subRun)return;
+      if(state.focusSession){selected=state.focusSession;state.focusSession=null;offset=0;reveal=true;}
+      const detail=selected?await api.historySession(pool,selected,{offset,revision:page.revision}):null;
+      if(run!==subRun)return;
+      if(selected&&!detail){selected=null;notice='This session is no longer available.';}
+      staleRetries=0;
+      const refs={};for(const k of ['sessions','tracks','drivers','slotcars'])refs[k]=[...new Map([...(page.refs[k]||[]),...(detail?.refs[k]||[])].map(x=>[x.id,x])).values()];
+      let sessions=page.sessions.items.map(s=>s.id===detail?.session.id?detail.session:s);
+      if(detail&&!sessions.some(s=>s.id===detail.session.id))sessions.unshift(detail.session);
+      const reload=()=>load();
+      if(reveal&&detail)folderClosed.delete(folderKey(pool==='tokens'?'tresults':'results','sessions'));
+      expected=run+1;
+      await renderResultsPool(box,pool,{sessions:sessions.slice().reverse(),laps:detail?.laps||[],refs,page,detail,reload});
+      if(expected!==subRun)return;
+      reveal=false;
+      const rendered=subRun;
+      const nav=document.createElement('div');nav.className='history-navigation';
+      nav.innerHTML=`${notice?`<p role="status">${esc(notice)}</p>`:''}<div class="row">${Object.entries({sessions:pool==='tokens'?'Stints':'Sessions',tracks:'Track records',personal:'Personal bests'}).map(([key,label])=>`<div class="row"><strong>${label}</strong><button class="btn" data-history-prev="${key}" ${indices[key]?'':'disabled'}>Previous</button><span>Page ${indices[key]+1}</span><button class="btn" data-history-next="${key}" ${page[key].next?'':'disabled'}>Next</button></div>`).join('')}</div><p class="muted">Open a session to load its results. Lap times are shown 100 at a time; statistics and PDF exports use all laps.</p>`;
+      box.prepend(nav);
+      nav.onclick=ev=>{ev.stopPropagation();if(rendered!==subRun)return;const prev=ev.target.closest('[data-history-prev]'),next=ev.target.closest('[data-history-next]');if(prev){indices[prev.dataset.historyPrev]--;void load();}else if(next){const key=next.dataset.historyNext;cursors[key][++indices[key]]=page[key].next;void load();}};
+      for(const element of box.querySelectorAll('[data-history-open]'))element.onclick=ev=>{ev.preventDefault();ev.stopPropagation();if(rendered!==subRun)return;selected=element.dataset.historyOpen;offset=0;reveal=true;void load();};
+      if(detail){
+        const card=[...box.querySelectorAll('details.sess')].find(x=>x.dataset.sid===selected);
+        if(card){card.open=true;
+          const paging=document.createElement('div');paging.className='row history-laps';paging.innerHTML=`<span>Lap times ${detail.total?offset+1:0}–${Math.min(detail.total,offset+100)} of ${detail.total}</span><button class="btn" data-laps-prev ${offset?'':'disabled'}>Previous laps</button><button class="btn" data-laps-next ${offset+100<detail.total?'':'disabled'}>Next laps</button>`;
+          card.querySelector('.sessbody').prepend(paging);paging.onclick=ev=>{ev.stopPropagation();if(rendered!==subRun)return;if(ev.target.closest('[data-laps-prev]'))offset=Math.max(0,offset-100);else if(ev.target.closest('[data-laps-next]'))offset+=100;else return;void load();};
+        }
+      }
+    }catch(error){
+      if(expected!==subRun)return;
+      if((error.code==='CATALOGUE_CHANGED'||/catalogue changed/i.test(error.message))&&++staleRetries<=2){for(const key of Object.keys(cursors)){cursors[key]=[null];indices[key]=0;}offset=0;notice='Results changed. The pages have been refreshed.';return load();}
+      box.innerHTML=`<p role="alert">Could not load results: ${esc(error.message)}</p><button class="btn" data-history-retry>Try again</button>`;box.querySelector('[data-history-retry]').onclick=load;
+    }
+  }
+  return load();
+}
+
+async function renderResultsPool(box, pool, supplied=null) {
+  if(api.historyPage&&!supplied)return renderHistoryPool(box,pool);
+  const reload=()=>supplied?supplied.reload():renderResultsPool(box,pool);
   const tokenPool = pool === 'tokens';
   const run = ++subRun;
-  const [allSessions, allLaps, drivers, cars, tracks] = await Promise.all(['sessions', 'laps', 'drivers', 'slotcars', 'tracks'].map(x => api.list(x)));
+  const [allSessions, allLaps, drivers, cars, tracks] = supplied?[supplied.sessions,supplied.laps,supplied.refs.drivers,supplied.refs.slotcars,supplied.refs.tracks]:await Promise.all(['sessions', 'laps', 'drivers', 'slotcars', 'tracks'].map(x => api.list(x)));
   if (run !== subRun) return;
   const sessions = allSessions.filter(x => (x.sessionType === 'tokens') === tokenPool).map(x => Array.isArray(x.standings) ? x : { ...x, standings: [] }); // (a session from a hand-made file may have no list of results: it shows with an empty table)
   const laps = allLaps.filter(l => !!l.token === tokenPool); // (the two pools never mix)
@@ -1305,7 +1398,7 @@ async function renderResultsPool(box, pool) {
     return [...m.values()];
   };
   // the columns of the record tables (View settings decides which are shown)
-  const sessionOf = new Map(sessions.map(x => [x.id, x]));
+  const sessionOf = new Map([...(supplied?.refs.sessions||[]),...sessions].map(x => [x.id, x]));
   const speedOf = l => Stats.lapSpeed(l, tracks, cars);
   const lapText = l => `${l.heat ? (l.final ? 'F' + l.final : 'H' + l.heat) + ' ' : ''}${l.lapNumber}`;
   const RECCELL = {
@@ -1319,8 +1412,8 @@ async function renderResultsPool(box, pool) {
     <td class="actions"><button class="btn danger" data-delrec="${kind}" data-lap="${esc(l.id)}">Remove</button></td></tr>`;
   const head = `<tr>${recKeys.map(c => `<th>${esc(c.label)}</th>`).join('')}<th></th></tr>`;
   const byTrack = (a, b) => name(tracks, a.trackId, 'tracks').localeCompare(name(tracks, b.trackId, 'tracks')) || a.time - b.time;
-  const trackRecords = best(l => l.trackId, 'noTrackRecord').sort(byTrack);
-  const personal = best(l => l.trackId + '|' + l.driverId, 'noPersonalBest').sort(byTrack);
+  const trackRecords = supplied?supplied.page.tracks.items:best(l => l.trackId, 'noTrackRecord').sort(byTrack);
+  const personal = supplied?supplied.page.personal.items:best(l => l.trackId + '|' + l.driverId, 'noPersonalBest').sort(byTrack);
 
   const recTable = (list, kind) => list.length ? `<div class="wrap"><table class="fields">${head}${list.map(recRow(kind)).join('')}</table></div>` : '<p class="muted">None yet.</p>';
   // The end of the summary line of a session: who won a race (the first place; a driver who was deleted takes the place with them, so the runner-up is not called the winner), and who was fastest in a practice or a qualifying
@@ -1331,21 +1424,22 @@ async function renderResultsPool(box, pool) {
   };
   const sessionCards = [...sessions].reverse().map(s => {
     const win = typeof VirtualRival!=='undefined' ? VirtualRival.savedStandings(s).find(x=>x.pos===1) || s.standings[0] : s.standings[0];
+    if(s.historySummary)return `<details class="card sess" data-sid="${esc(s.id)}"><summary data-history-open="${esc(s.id)}">${esc(dateText(s.date))} · ${esc(s.setupName||'Time token stint')} · ${esc(SESSION_LABEL[s.sessionType]||'')} · ${esc(s.trackName||'')}${headline(s,win,Icons.trophy({size:16}))}</summary><div class="sessbody">Open to load results.</div></details>`;
     if (tokenPool) { // a stint: one driver, one lane, one paid time
       const x = win || {}, t = s.token || {}, mine = laps.filter(l => l.sessionId === s.id).sort((a, b) => a.lapNumber - b.lapNumber);
-      const figs = Stats.forSession(s, mine, tracks, cars), stintKeys = ViewSet.keys(Stats.STINT_COLUMNS, viewSaved(['results', 'stints']));
+      const figs = supplied?.detail?.figures || Stats.forSession(s, mine, tracks, cars), stintKeys = ViewSet.keys(Stats.STINT_COLUMNS, viewSaved(['results', 'stints']));
       const STCELL = { driver: esc(x.driverName), car: esc(x.carName), lane: esc(t.lane), bought: esc(boughtText(t.bought)), laps: esc(x.laps), late: esc(x.lateLaps || 0), best: esc(RaceEngine.fmtTime(x.best)), total: esc(RaceEngine.fmtTime(x.total)) };
       const stCols = Stats.STINT_COLUMNS.filter(c => stintKeys.includes(c.key) && (c.key in STCELL || Stats.hasAny(c.key, figs)));
       const body = `<table class="fields"><tr>${stCols.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr>
         <tr>${stCols.map(c => `<td>${c.key in STCELL ? STCELL[c.key] : esc(Stats.text(c.key, figs[0], Speed.unitOf(state.settings), Speed.distUnitOf(state.settings)))}</td>`).join('')}</tr></table>${stCols.length ? '' : '<p class="muted">No columns are on. Turn some on in View settings.</p>'}${statNote(stCols.map(c => c.key))}
         <p class="muted">${esc(s.endedBy || '')}${t.carried ? ` · ${esc(boughtText(t.carried))} came over from the driver before` : ''}${t.left ? ` · ${esc(boughtText(t.left))} was not used` : ''}</p>
-        <h4>All lap times</h4><p><span class="muted">${mine.map(l => { const tx = esc(`${l.lapNumber}: ${RaceEngine.fmtTime(l.time)}`); return l.late || l.invalid || l.tooSlow ? `<s class="lapbad" title="${l.late ? 'Late lap: driven after the time was up' : l.invalid ? 'Invalid lap' : 'Too slow: not counted for records'}">${tx}</s>` : tx; }).join(' · ') || 'no laps'}</span></p>
+        <h4>${supplied ? 'Lap times on this page' : 'All lap times'}</h4><p><span class="muted">${mine.map(l => { const tx = esc(`${l.lapNumber}: ${RaceEngine.fmtTime(l.time)}`); return l.late || l.invalid || l.tooSlow ? `<s class="lapbad" title="${l.late ? 'Late lap: driven after the time was up' : l.invalid ? 'Invalid lap' : 'Too slow: not counted for records'}">${tx}</s>` : tx; }).join(' · ') || 'no laps'}</span></p>
         <div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}<button class="btn danger" data-delsession="${esc(s.id)}">Delete this stint</button><span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
-      return `<details class="card sess"><summary>${esc(dateText(s.date))} · Lane ${esc(t.lane)} · ${esc(x.driverName)} · ${esc(boughtText(t.bought))} · ${esc(x.laps)} ${Number(x.laps) === 1 ? 'lap' : 'laps'} · ${esc(s.trackName || '')}</summary><div class="sessbody">${body}</div></details>`;
+      return `<details class="card sess" data-sid="${esc(s.id)}"><summary>${esc(dateText(s.date))} · Lane ${esc(t.lane)} · ${esc(x.driverName)} · ${esc(boughtText(t.bought))} · ${esc(x.laps)} ${Number(x.laps) === 1 ? 'lap' : 'laps'} · ${esc(s.trackName || '')}</summary><div class="sessbody">${body}</div></details>`;
     }
     const pts = s.resultBy === 'points';
     const fin = Stats.heated(s) && !!s.finals, finArg = { finalMode: fin ? s.finals.finalMode : 'places', byPoints: pts, unit: Speed.distUnitOf(state.settings) };
-    const figs = Stats.forSession(s, laps.filter(l => l.sessionId === s.id), tracks, cars), shownKeys = ViewSet.keys(Stats.SESSION_COLUMNS, viewSaved(['results', 'sessions']));
+    const figs = supplied?.detail?.figures || Stats.forSession(s, laps.filter(l => l.sessionId === s.id), tracks, cars), shownKeys = ViewSet.keys(Stats.SESSION_COLUMNS, viewSaved(['results', 'sessions']));
     const cols = Stats.sessionColumns(s, figs).filter(c => shownKeys.includes(c.key));
     const cup = Icons.trophy({ size: 16 }), hasDriver = cols.some(c => c.key === 'driver'); // (the winner's cup goes next to the name; without the Driver column next to the position)
     const cellOf = (key, x, i) => {
@@ -1371,7 +1465,7 @@ async function renderResultsPool(box, pool) {
       (Stats.stintLines(s, dUnit()).length ? '<h4>Driver swaps</h4>' + Stats.stintLines(s, dUnit()).map(g => `<p><strong>${esc(g.team)}</strong><br><span class="muted">${g.stints.map(q => `${esc(q.n)}. ${esc(q.text)}`).join(' · ')}</span></p>`).join('') : '') +
       (s.heatResults ? `<h4>${s.finals ? 'Heats and finals' : 'Heats'}</h4>` + s.heatResults.map(h => `<p><strong>${esc(Heats.raceName(h))}</strong>${Stats.weatherText(h) ? ` <span class="muted">· ${esc(Stats.weatherText(h))}</span>` : ''}<br><span class="muted">${h.rows.map(r => `${esc(r.pos)}. ${Stats.isHeatWinner(s, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${Stats.sectorText(r) ? ' + ' + esc(Stats.sectorText(r)) : ''}${esc(Stats.heatTimeText(s, r))}${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${Stats.adjustedText(r) ? ', adjusted: ' + esc(Stats.adjustedText(r)) : ''}${Stats.notesText(r) ? ', ' + esc(Stats.notesText(r)) : ''})`).join(' · ')}</span></p>`).join('') : '') +
       tyreStintsSection(s) +
-      '<h4>All lap times</h4>' + s.standings.map(x => {
+      (supplied?'<h4>Lap times on this page</h4>':'<h4>All lap times</h4>') + s.standings.map(x => {
         const mine = Stats.ownLaps(x, laps).filter(l => l.sessionId === s.id).sort((a, b) => (a.heat || 0) - (b.heat || 0) || a.lapNumber - b.lapNumber);
         return `<p><strong>${esc(x.driverName)}</strong><br><span class="muted">${mine.map(l => { const t = esc(`${l.heat ? (l.final ? 'F' + l.final : 'H' + l.heat) + ' ' : ''}${l.lapNumber}: ${RaceEngine.fmtTime(l.time)}`); return l.invalid || l.tooSlow ? `<s class="lapbad" title="${l.invalid ? 'Invalid lap' : 'Too slow: not counted for records'}">${t}</s>` : l.pit ? `<em title="Lap with a pit stop">${t}</em>` : t; }).join(' · ') || 'no laps'}</span></p>`;
       }).join('') + `<div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}<button class="btn danger" data-delsession="${esc(s.id)}">Delete this session</button><span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
@@ -1383,11 +1477,12 @@ async function renderResultsPool(box, pool) {
   const bar = !viewBars.has('results') ? '' : viewBar('results', 'Turn columns on or off. This changes the tables on this page and is remembered. A column that has nothing to show for a session is left out of its table.',
     [viewGroup('Track records and personal bests', ['results', 'records'], Stats.RECORD_COLUMNS), viewGroup(tokenPool ? 'Stints' : 'Sessions', sessPath, sessCols)]);
   if (state.focusSession && !tokenPool) folderClosed.delete(folderKey(folderPage, 'sessions')); // (1.25.0: a race clicked on Home opens here: its folder is open)
-  box.innerHTML = folderToolsWith(viewButton('results')) + bar + folderHtml(folderPage, 'tracks', 'Track records', plural(trackRecords.length, 'record', 'records'), recTable(trackRecords, 'track'))
-    + folderHtml(folderPage, 'pb', 'Personal bests', plural(personal.length, 'personal best', 'personal bests'), recTable(personal, 'pb'))
-    + folderHtml(folderPage, 'sessions', tokenPool ? 'Stints' : 'Sessions', tokenPool ? plural(sessions.length, 'stint', 'stints') : plural(sessions.length, 'session', 'sessions'), sessionCards);
+  const pageNote=supplied?' on this page':'';
+  box.innerHTML = folderToolsWith(viewButton('results')) + bar + folderHtml(folderPage, 'tracks', 'Track records', plural(trackRecords.length, 'record', 'records')+pageNote, recTable(trackRecords, 'track'))
+    + folderHtml(folderPage, 'pb', 'Personal bests', plural(personal.length, 'personal best', 'personal bests')+pageNote, recTable(personal, 'pb'))
+    + folderHtml(folderPage, 'sessions', tokenPool ? 'Stints' : 'Sessions', (tokenPool ? plural(sessions.length, 'stint', 'stints') : plural(sessions.length, 'session', 'sessions'))+pageNote, sessionCards);
   folderWire(box);
-  if (!tokenPool && String(box.innerHTML).includes('data-cpbox')) champPanelsIn(box, async s => { state.focusSession = s.id; await renderResultsPool(box, pool); }); // (1.56.0: the points of a race of a championship, and what to do with them)
+  if (!tokenPool && String(box.innerHTML).includes('data-cpbox')) champPanelsIn(box, async s => { state.focusSession = s.id; await reload(); }); // (1.56.0: the points of a race of a championship, and what to do with them)
   if (state.focusSession && !tokenPool) { // the race that was clicked on Home: its card is open and in view
     const id = state.focusSession; state.focusSession = null;
     const d = [...box.querySelectorAll('details.sess')].find(x => x.dataset && x.dataset.sid === id);
@@ -1395,19 +1490,21 @@ async function renderResultsPool(box, pool) {
   }
   box.onclick = async ev => {
     const fa = ev.target.closest('[data-folderall]');
-    if (fa) { folderAll(folderPage, RES_FOLDERS, fa.dataset.folderall === '1'); return renderResultsPool(box, pool); }
+    if (fa) { folderAll(folderPage, RES_FOLDERS, fa.dataset.folderall === '1'); return reload(); }
     const vb = ev.target.closest('[data-viewbar]');
-    if (vb) { if (viewBars.has(vb.dataset.viewbar)) viewBars.delete(vb.dataset.viewbar); else viewBars.add(vb.dataset.viewbar); return renderResultsPool(box, pool); }
+    if (vb) { if (viewBars.has(vb.dataset.viewbar)) viewBars.delete(vb.dataset.viewbar); else viewBars.add(vb.dataset.viewbar); return reload(); }
     const vr = ev.target.closest('[data-vsreset]');
-    if (vr) { await viewReset([['results', 'records'], sessPath]); return renderResultsPool(box, pool); }
+    if (vr) { await viewReset([['results', 'records'], sessPath]); return reload(); }
     const p = ev.target.closest('[data-pdf]');
     if (p) {
-      const s = sessions.find(x => x.id === p.dataset.pdf), mine = laps.filter(l => l.sessionId === s.id), msg = byId('pdfmsg-' + s.id);
-      const options = await pdfChoice(s, Stats.forSession(s, mine, tracks, cars));
+      let s = sessions.find(x => x.id === p.dataset.pdf), mine = laps.filter(l => l.sessionId === s.id), pdfTracks=tracks,pdfCars=cars;
+      const msg = byId('pdfmsg-' + s.id);
+      if(supplied){try{const full=await api.historySession(pool,s.id,{revision:supplied.page.revision,exportAll:true});if(!full)throw Error('Session no longer available.');s=full.session;mine=full.laps;pdfTracks=full.refs.tracks;pdfCars=full.refs.slotcars;}catch(error){msg.textContent='Could not load the complete session: '+error.message;return;}}
+      const options = await pdfChoice(s, Stats.forSession(s, mine, pdfTracks, pdfCars));
       if (!options) return;
       msg.textContent = 'Making the PDF...';
       try {
-        const res = await api.exportPdf(Report.sessionHtml({ session: s, laps: mine, tracks, cars, options: { ...options, tyreWorn: state.settings.tyreWornRed === true }, unit: Speed.unitOf(state.settings), distUnit: Speed.distUnitOf(state.settings) }), Report.fileName(s));
+        const res = await api.exportPdf(Report.sessionHtml({ session: s, laps: mine, tracks:pdfTracks, cars:pdfCars, options: { ...options, tyreWorn: state.settings.tyreWornRed === true }, unit: Speed.unitOf(state.settings), distUnit: Speed.distUnitOf(state.settings) }), Report.fileName(s));
         msg.textContent = res.saved ? 'Saved to ' + res.path : 'Export cancelled.';
       } catch (x) { msg.textContent = 'Could not make the PDF: ' + x.message; }
       return;
@@ -1416,19 +1513,19 @@ async function renderResultsPool(box, pool) {
     if (rec) {
       const isTrack = rec.dataset.delrec === 'track';
       if (confirm(`Remove this ${isTrack ? 'track record' : 'personal best'}?\n\nOnly the record is removed. The lap stays in its session, and the next fastest lap takes over.`)) {
-        await api.update('laps', rec.dataset.lap, isTrack ? { noTrackRecord: true } : { noPersonalBest: true }); renderResultsPool(box, pool);
+        await api.update('laps', rec.dataset.lap, isTrack ? { noTrackRecord: true } : { noPersonalBest: true }); reload();
       }
       return;
     }
     const b = ev.target.closest('[data-delsession]'); if (!b) return;
-    if (confirm(tokenPool ? 'Delete this stint and all of its laps?\n\nThis can\'t be undone.' : 'Delete this session and all of its laps?\n\nThis can\'t be undone.')) { await api.removeSession(b.dataset.delsession); renderResultsPool(box, pool); }
+    if (confirm(tokenPool ? 'Delete this stint and all of its laps?\n\nThis can\'t be undone.' : 'Delete this session and all of its laps?\n\nThis can\'t be undone.')) { await api.removeSession(b.dataset.delsession); reload(); }
   };  box.onchange = async ev => { // a check box of the View settings bar
     const cb = ev.target;
     if (cb && cb.dataset && (cb.dataset.tyshow !== undefined || cb.dataset.tyworn !== undefined)) { // the tyre stints: shown or not, and the laps on worn out tyres in red (kept for every session)
       const id = cb.dataset.tyshow !== undefined ? cb.dataset.tyshow : cb.dataset.tyworn;
       try { state.settings = await api.setSettings(cb.dataset.tyshow !== undefined ? { tyreStints: !!cb.checked } : { tyreWornRed: !!cb.checked }); } catch { /* the choice is only a look */ }
-      state.focusSession = id; return renderResultsPool(box, pool); // (the race stays open where it was)
+      state.focusSession = id; return reload(); // (the race stays open where it was)
     }
-    if (await viewToggle(cb, colsOf)) { await renderResultsPool(box, pool); viewFocus(box, cb); }
+    if (await viewToggle(cb, colsOf)) { await reload(); viewFocus(box, cb); }
   };
 }

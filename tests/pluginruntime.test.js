@@ -1,6 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),{fork}=require('node:child_process');
 const P=require('../pluginpackage'),{Store}=require('../pluginstore'),{Runtime}=require('../pluginruntime');
-const root=path.resolve(__dirname,'../.tmp-test/plugins-runtime-'+process.pid);const store=new Store(root,'1.99.2');
+const temp=path.resolve(__dirname,'../.tmp-test');fs.mkdirSync(temp,{recursive:true});
+const root=fs.mkdtempSync(path.join(temp,'plugins-runtime-'));const store=new Store(root,'1.99.2');
 const make=(id,code)=>({format:P.FORMAT,apiVersion:1,manifest:{id,name:id,version:'1.0.0',author:'Tests',license:'MIT',minAppVersion:'1.99.2',runtime:'node',commands:[{id:'run',label:'Run'}]},entry:'index.cjs',files:{'index.cjs':Buffer.from(code).toString('base64')}});
 const launch=init=>{const c=fork(path.resolve(__dirname,'../pluginworker.js'),[],{cwd:init.dataDir,stdio:['ignore','pipe','pipe','ipc']});c.postMessage=m=>c.send(m);return c;};
 const wait=ms=>new Promise(r=>setTimeout(r,ms));

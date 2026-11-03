@@ -27,6 +27,8 @@ env:
 
 jobs:
   build:
+    # Releases assembled from a verified manual run already have their downloads.
+    if: github.event_name != 'release' || !contains(github.event.release.body, '<!-- desktop-downloads-verified -->')
     name: Build and test ${{ matrix.platform }}
     strategy:
       fail-fast: false
