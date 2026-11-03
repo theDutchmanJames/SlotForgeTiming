@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Qualify SQLite with a million-lap, 2 GiB-media Windows fixture, disk-full/abrupt-exit regressions and native Windows/Linux/Intel macOS CI. Add native backup/restore folders for large collections, load only names and IDs in Import/Export choices, and reject legacy JSON larger than the runtime can read. Keep existing profiles untouched until explicit conversion.
+
 - Add explicit SQLite conversion under App Settings > General > Database storage. Verify a separate copy before switching; retain original files and recovery copies, refuse stale JSON fallback, and restore SQLite backups through a verified new generation on restart. Add durable finalization identities to prevent duplicate results after an abrupt exit, including completed heats and Time Token stints. Test conversion, restore, transaction crashes, shutdown and real Windows app reopening on generated profiles. Existing databases are not automatically converted.
 
 - Connect application-facing SQLite writes for records, custom fields, lap eligibility and championship awards, alongside session finalization, Paddock delivery and resource recovery. Verify complete app startup, race resume/finalization and reopening on marked isolated development profiles. Normal startup stays on JSON; no automatic migration or production activation.

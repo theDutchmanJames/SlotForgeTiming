@@ -86,6 +86,8 @@ contextBridge.exposeInMainWorld('api', {
   removeSession: id => call('session:remove', id),
   exportDeps: picks => call('transfer:deps', picks),
   transferChoices: () => call('transfer:choices'),
+  nativeBackup: () => call('backup:native-save'),
+  nativeRestore: () => call('backup:native-restore'),
   exportData: (picks, extras) => call('transfer:export', picks, extras),
   importOpen: () => call('transfer:open'),
   importApply: () => call('transfer:apply'),

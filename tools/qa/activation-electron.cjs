@@ -1,12 +1,12 @@
 const {app,dialog,ipcMain}=require('electron'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const base=process.env.SF_ACTIVATION_QA,stage=process.env.SF_ACTIVATION_STAGE;
-if(!base||!['activate','race','finalize','verify','restored'].includes(stage))throw Error('Use the isolated activation launcher.');
+if(!base||!['activate','race','finalize','verify','restored','native-restored'].includes(stage))throw Error('Use the isolated activation launcher.');
 app.setPath('appData',path.join(base,'appdata'));app.disableHardwareAcceleration();
 require('./file-diagnostics.cjs')(path.join(base,stage+'.log'),()=>app.exit(1));
 let done=false;const wait=ms=>new Promise(r=>setTimeout(r,ms)),timer=setTimeout(()=>app.exit(2),60000);
 const pass=()=>{clearTimeout(timer);console.log('ACTIVATION '+stage+' PASS');};
 app.relaunch=()=>pass();dialog.showMessageBox=async()=>({response:1});
-const backup=path.join(base,'backup.json');dialog.showSaveDialog=async()=>({filePath:backup,canceled:false});dialog.showOpenDialog=async()=>({filePaths:[backup],canceled:false});
+const backup=path.join(base,'backup.json'),native=path.join(base,'native.sqlite-backup');dialog.showSaveDialog=async(_win,options)=>({filePath:options?.title?.includes('native SQLite')?native:backup,canceled:false});dialog.showOpenDialog=async(_win,options)=>({filePaths:[options?.properties?.includes('openDirectory')?native:backup],canceled:false});
 app.on('browser-window-created',(_,win)=>{win.hide();win.webContents.on('did-finish-load',async()=>{
  if(done||!win.webContents.getURL().endsWith('index.html'))return;done=true;
  const run=code=>{console.log('STEP '+code.slice(0,90));return win.webContents.executeJavaScript('(async()=>{'+code+'})()');};
@@ -37,6 +37,12 @@ app.on('browser-window-created',(_,win)=>{win.hide();win.webContents.on('did-fin
   if(stage==='verify'){
    assert.equal((await run('return api.backupSave();')).saved,true);await run("await api.add('drivers',{name:'After backup'});");assert.equal((await run('return api.backupOpen();')).ok,true);await run('return api.backupRestore();');return;
   }
-  assert.equal((await run("return api.list('drivers');")).length,1);pass();app.quit();
+  assert.equal((await run("return api.list('drivers');")).length,1);
+  if(stage==='restored'){
+   await run("state.tab='settings';state.settingsSub='transfer';await render();document.querySelectorAll('#settingsbox details').forEach(d=>d.open=true);");
+   assert(await run("return !!document.getElementById('bk-native-save')&&!!document.getElementById('bk-native-restore');"));await run("document.getElementById('bk-native-save').scrollIntoView({block:'center'});");await wait(150);fs.writeFileSync(path.join(base,'native-controls.png'),(await win.webContents.capturePage()).toPNG());
+   assert.equal((await run('return api.nativeBackup();')).saved,true);assert(fs.existsSync(path.join(native,'manifest.json')));await run("await api.add('drivers',{name:'After native backup'});");await run('return api.nativeRestore();');return;
+  }
+  pass();app.quit();
  }catch(error){console.error(error);app.exit(1);}
  });});require('../../main');

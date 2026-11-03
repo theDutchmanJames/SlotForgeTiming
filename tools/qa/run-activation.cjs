@@ -3,7 +3,7 @@ const out=path.resolve(__dirname,'../../../outputs/sqlite-conversion/activation-
 const appData=path.join(base,'appdata'),profile=path.join(appData,'slotforge-timing');fs.mkdirSync(profile,{recursive:true});
 const D=require('../../db'),db=new D(path.join(profile,'slotforge-timing.json'));db.saveNow();const original=fs.readFileSync(db.file);
 const env={...process.env,SF_ACTIVATION_QA:base};delete env.ELECTRON_RUN_AS_NODE;
-for(const stage of ['activate','race','finalize','verify','restored']){
+for(const stage of ['activate','race','finalize','verify','restored','native-restored']){
  const fd=fs.openSync(path.join(base,stage+'-launcher.log'),'w');let result;
  try{result=spawnSync(require('electron'),[path.join(__dirname,'activation-electron.cjs'),...(process.platform==='linux'&&process.env.CI?['--no-sandbox']:[])],{env:{...env,SF_ACTIVATION_STAGE:stage},stdio:['ignore',fd,fd],windowsHide:true,timeout:75000});}finally{fs.closeSync(fd);}
  const expected=['race','finalize'].includes(stage)?73:0;

@@ -19,10 +19,11 @@ if(!process.versions.electron){
   const status=await run('return api.storageStatus();');assert.equal(status.backend,'sqlite');
   let fullLists=0;ipcMain.removeHandler('db:list');ipcMain.handle('db:list',()=>{fullLists++;throw Error('Full collection read forbidden in transfer UI');});
   const started=Date.now(),choices=await run('return api.transferChoices();');const bytes=Buffer.byteLength(JSON.stringify(choices));assert(bytes<100000);
+  const firstChoicesMs=Date.now()-started,warmStart=Date.now();await run('return api.transferChoices();');const warmChoicesMs=Date.now()-warmStart;
   await run("state.tab='settings';state.settingsSub='transfer';await render();document.querySelectorAll('#settingsbox details').forEach(d=>d.open=true);");
-  assert(await run("return !!document.getElementById('bk-save')&&!!document.getElementById('tr-open');"));assert.equal(fullLists,0);await wait(200);
+  assert(await run("return !!document.getElementById('bk-native-save')&&!!document.getElementById('bk-native-restore')&&!!document.getElementById('tr-open');"));assert.equal(fullLists,0);await run("document.getElementById('bk-native-save').scrollIntoView({block:'center'});");await wait(200);
   fs.writeFileSync(path.join(dir,'app-transfer.png'),(await win.webContents.capturePage()).toPNG());
-  const report={platform:process.platform,electron:process.versions.electron,choicesBytes:bytes,images:choices.imagesets.length,audio:choices.audiosets.length,sessions:choices.sessions.length,transferMs:Date.now()-started,startupAndCheckMs:Date.now()-start,fullCollectionReads:fullLists,status:'passed'};
+  const report={platform:process.platform,electron:process.versions.electron,choicesBytes:bytes,images:choices.imagesets.length,audio:choices.audiosets.length,sessions:choices.sessions.length,firstChoicesMs,warmChoicesMs,transferMs:Date.now()-started,startupAndCheckMs:Date.now()-start,fullCollectionReads:fullLists,status:'passed'};
   fs.writeFileSync(path.join(dir,'app-result.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));clearTimeout(timer);app.exit(0);
  }catch(e){console.error(e.stack||e);app.exit(1);}
  });});require('../../main');

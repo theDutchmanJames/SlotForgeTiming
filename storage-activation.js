@@ -37,16 +37,30 @@ async function requestRestore(profile,file,sha256,{beforePublish=()=>{}}={}){
   await fs.promises.copyFile(file,target,fs.constants.COPYFILE_EXCL);
   if(await digest(target)!==sha256)throw Error('Backup changed after it was reviewed. Open it again before restoring.');
   const fd=fs.openSync(target,'r+');try{fs.fsyncSync(fd);}finally{fs.closeSync(fd);}
-  beforePublish();publish(requestFile(profile),value);return value;
+  await beforePublish();publish(requestFile(profile),value);return value;
+}
+async function requestNativeRestore(profile,source,{beforePublish=()=>{}}={}){
+  const active=selected(profile);if(!active)throw Error('SQLite must be active before staging this restore.');
+  const manifestFile=path.join(source,'manifest.json'),snapshot=path.join(source,'snapshot.sqlite');
+  if(!fs.lstatSync(manifestFile).isFile()||fs.statSync(manifestFile).size>65536||!fs.lstatSync(snapshot).isFile()||fs.existsSync(snapshot+'-wal')||fs.existsSync(snapshot+'-journal'))throw Error('Choose a sealed native SQLite backup folder.');
+  const bytes=fs.readFileSync(manifestFile),manifest=JSON.parse(bytes);
+  if(manifest.format!==require('./sqlite-bulk').FORMAT||manifest.version!==1||manifest.state!=='verified'||!/^[a-f0-9]{64}$/.test(manifest.sha256||''))throw Error('Unsupported or incomplete native backup.');
+  const value={format:REQUEST,version:1,id:crypto.randomUUID(),kind:'restore-native',baseGeneration:active.generation,sha256:manifest.sha256};
+  const target=path.join(profile,'sqlite','restore-input-'+value.id);fs.mkdirSync(target);
+  const staged=path.join(target,'snapshot.sqlite');await fs.promises.copyFile(snapshot,staged,fs.constants.COPYFILE_EXCL);
+  if(await digest(staged)!==manifest.sha256)throw Error('Native backup checksum mismatch. Nothing was selected.');
+  const fd=fs.openSync(staged,'r+');try{fs.fsyncSync(fd);}finally{fs.closeSync(fd);}
+  publish(path.join(target,'manifest.json'),manifest);await beforePublish();publish(requestFile(profile),value);return value;
 }
 function canCancel(profile){try{const pending=read(requestFile(profile));if(!pending)return false;validateRequest(pending);const active=selected(profile);return active?.requestId!==pending.id;}catch{return false;}}
 function cancel(profile){if(!canCancel(profile))throw Error('No safely cancellable storage request.');fs.unlinkSync(requestFile(profile));}
 async function startup(profile,{checkpoint=()=>{}}={}){
   const active=selected(profile),pending=read(requestFile(profile));
-  if(active&&(!pending||active.requestId===pending.id||pending.kind!=='restore'))return active;
+  const restoring=pending&&['restore','restore-native'].includes(pending.kind);
+  if(active&&(!pending||active.requestId===pending.id||!restoring))return active;
   if(!pending)return null;validateRequest(pending);
-  if(pending.kind!==undefined&&pending.kind!=='restore')throw Error('Unknown storage request.');
-  if(pending.kind==='restore'&&(!active||pending.baseGeneration!==active.generation))throw Error('Restore request belongs to another database generation.');
+  if(pending.kind!==undefined&&!restoring)throw Error('Unknown storage request.');
+  if(restoring&&(!active||pending.baseGeneration!==active.generation))throw Error('Restore request belongs to another database generation.');
   const generation=crypto.randomUUID(),root=fs.realpathSync(profile),parent=path.join(root,'sqlite');
   fs.mkdirSync(parent,{recursive:true});if(fs.realpathSync(parent)!==parent)throw Error('SQLite directory must be inside the application profile.');
   const directory=path.join(parent,generation);fs.mkdirSync(directory);
@@ -54,19 +68,19 @@ async function startup(profile,{checkpoint=()=>{}}={}){
   try{
     checkpoint('before-copy');
     let sources=[];
-    if(pending.kind==='restore'){
-      const source=path.join(root,'sqlite','restore-input-'+pending.id+'.json');
-      if(!fs.lstatSync(source).isFile()||await digest(source)!==pending.sha256)throw Error('Staged restore checksum mismatch. The active database has not been changed.');
+    if(restoring){
+      const native=pending.kind==='restore-native',source=path.join(root,'sqlite','restore-input-'+pending.id+(native?'':'.json')),file=native?path.join(source,'snapshot.sqlite'):source;
+      if(!fs.lstatSync(file).isFile()||await digest(file)!==pending.sha256)throw Error('Staged restore checksum mismatch. The active database has not been changed.');
       await client.openWorking(path.join(active.directory,'working'));await client.backupSnapshot(path.join(directory,'before-restore'));await client.close();client=new Client();checkpoint('copy-verified');
-      const restored=await client.restoreLegacy(source,path.join(directory,'restore'));
-      fs.renameSync(restored.destination,path.join(directory,'working'));
+      if(native)await client.restoreSnapshot(source,path.join(directory,'working'));
+      else {const restored=await client.restoreLegacy(source,path.join(directory,'restore'));fs.renameSync(restored.destination,path.join(directory,'working'));}
     }else{
       const report=await client.migrate(path.join(root,'slotforge-timing.json'),path.join(directory,'copy'));sources=report.sources;checkpoint('copy-verified');
       await client.forkCopy(path.join(directory,'copy'),path.join(directory,'working'));
     }
     checkpoint('fork-created');
     await client.openWorking(path.join(directory,'working'));await client.lifecycleDiagnostics();await client.close();checkpoint('working-verified');
-    if(pending.kind!=='restore'){
+    if(!restoring){
       for(const [name,file] of [['source.json','slotforge-timing.json'],['source.settings.json','slotforge-timing.settings.json'],['race-resume.json','race-resume.json']]){
         const expected=sources.find(s=>s.name===name)?.sha256||null;let actual=null;try{actual=await digest(path.join(root,file));}catch(e){if(e.code!=='ENOENT')throw e;}if(actual!==expected)throw Error('Legacy files changed before activation. Nothing was selected; retry with the app closed.');
       }
@@ -76,4 +90,4 @@ async function startup(profile,{checkpoint=()=>{}}={}){
     fs.unlinkSync(requestFile(root));return selected(root);
   }finally{await client.close().catch(()=>{});}
 }
-module.exports={FORMAT,REQUEST,selected,request,requestRestore,startup,publish,digest,canCancel,cancel};
+module.exports={FORMAT,REQUEST,selected,request,requestRestore,requestNativeRestore,startup,publish,digest,canCancel,cancel};

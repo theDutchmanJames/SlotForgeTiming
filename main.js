@@ -288,6 +288,21 @@ app.whenReady().then(async () => {
     return { safety };
   });
   bulkAccess.handle('backup:cancel', () => { pendingRestore = null;pendingRestoreSource=null; });
+  bulkAccess.handle('backup:native-save',async e=>{
+    if(!sqliteRuntime)throw Error('Native backups require SQLite storage.');
+    const choice=await dialog.showSaveDialog(BrowserWindow.fromWebContents(e.sender),{title:'Create a new native SQLite backup folder',defaultPath:'SlotForge-Timing-'+localDate()+'.sqlite-backup'});
+    if(choice.canceled||!choice.filePath)return {canceled:true};bulkAccess.idle();bulkStorage.assertExportTarget(choice.filePath);await lifecycle.idle();bulkAccess.idle();
+    await sqliteRuntime.client.backupSnapshot(choice.filePath,{version:app.getVersion()});return {saved:true,path:choice.filePath};
+  });
+  bulkAccess.handle('backup:native-restore',async e=>{
+    if(!sqliteRuntime||sqliteTestProfile)throw Error('Use a production SQLite profile for native restore.');
+    const idle=()=>{bulkAccess.idle();if(paddock?.busy||pluginHost?.timing?.reservation)throw Error('Finish Paddock and timing operations before restoring.');};idle();
+    const choice=await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender),{title:'Choose a native SQLite backup folder',properties:['openDirectory']});
+    if(choice.canceled||!choice.filePaths?.length)return {canceled:true};idle();
+    const answer=await dialog.showMessageBox(BrowserWindow.fromWebContents(e.sender),{type:'question',title:'Restore native SQLite backup',message:'Replace the database with this backup on restart?',detail:'Timing will copy and verify the backup before switching. The current database and a before-restore snapshot are kept. Allow disk space for all copies. This backup is for SQLite-capable builds.',buttons:['Cancel','Restore and restart'],defaultId:0,cancelId:0});
+    if(answer.response!==1)return {canceled:true};await lifecycle.idle();idle();await resourceStore.idle();if((await resourceStore.read()).checkpoint)throw Error('Finish or discard the unfinished resource event before restoring.');
+    await require('./storage-activation').requestNativeRestore(app.getPath('userData'),choice.filePaths[0],{beforePublish:async()=>{idle();if((await resourceStore.read()).checkpoint)throw Error('An unfinished resource event appeared. Finish or discard it before restoring.');idle();}});app.relaunch();app.quit();return {restarting:true};
+  });
   ipcMain.handle('custom:list', (_e, entity) => records.customFields(entity));
   ipcMain.handle('custom:add', (_e, entity, field) => records.addCustomField(entity, field));
   ipcMain.handle('custom:remove', (_e, entity, id) => records.removeCustomField(entity, id));

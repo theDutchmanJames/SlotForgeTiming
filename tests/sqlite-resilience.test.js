@@ -68,3 +68,31 @@ test('SQLITE_FULL after domain writes rolls back recovery reconciliation and cou
  assert.equal(s.receipt('late'),null);assert.equal(s.get('@meta','raceResume').value.race.storageRunId,'full-late');assert.equal(s.statement('SELECT count(*) n FROM session_finalizations').get().n,0);assert.equal(s.field('slotcars','c',['lapsDriven']).value,0);
  const id=s.command(cmd).sessionId;assert.equal(s.command(cmd).sessionId,id);assert.equal(s.field('slotcars','c',['lapsDriven']).value,1);
 });
+
+for(const phase of ['before-publish','after-publish'])test('native restore recovers from an abrupt exit '+phase,async t=>{
+ const {dir}=fixture(t);Activation.request(dir);const old=await Activation.startup(dir),Runtime=require('../sqlite-runtime');let r=await Runtime.open(old.directory);const backup=path.join(dir,'native');
+ await r.client.backupSnapshot(backup);await r.records.update('drivers','d',{name:'Newer'});await r.lifecycle.shutdown();await Activation.requestNativeRestore(dir,backup);
+ const script="require(process.argv[1]).startup(process.argv[2],{checkpoint:p=>{if(p===process.argv[3])process.exit(73)}}).catch(()=>process.exit(1));";
+ const result=require('node:child_process').spawnSync(process.execPath,['-e',script,require.resolve('../storage-activation'),dir,phase],{stdio:'pipe',windowsHide:true,timeout:30000});assert.equal(result.status,73,String(result.stderr));
+ const restored=await Activation.startup(dir);assert.notEqual(restored.generation,old.generation);r=await Runtime.open(restored.directory);assert.equal((await r.records.get('drivers','d')).name,'Kept');await r.lifecycle.shutdown();
+ r=await Runtime.open(old.directory);assert.equal((await r.records.get('drivers','d')).name,'Newer');await r.lifecycle.shutdown();
+});
+
+test('corrupt native input and an asynchronous restore cancellation never select a replacement',async t=>{
+ const {dir}=fixture(t);Activation.request(dir);const old=await Activation.startup(dir),r=await require('../sqlite-runtime').open(old.directory),backup=path.join(dir,'native');await r.client.backupSnapshot(backup);await r.lifecycle.shutdown();
+ await assert.rejects(Activation.requestNativeRestore(dir,backup,{beforePublish:async()=>{throw Error('Race started');}}),/Race started/);assert.equal(Activation.canCancel(dir),false);
+ fs.appendFileSync(path.join(backup,'snapshot.sqlite'),'corrupt');await assert.rejects(Activation.requestNativeRestore(dir,backup),/checksum/);assert.equal(Activation.selected(dir).generation,old.generation);
+});
+
+test('disk-full native restore staging preserves the active generation and permits retry',async t=>{
+ const {dir}=fixture(t);Activation.request(dir);const old=await Activation.startup(dir),r=await require('../sqlite-runtime').open(old.directory),backup=path.join(dir,'native');await r.client.backupSnapshot(backup);await r.lifecycle.shutdown();
+ const cp=t.mock.method(fs.promises,'copyFile',async()=>{throw full();});await assert.rejects(Activation.requestNativeRestore(dir,backup),{code:'ENOSPC'});cp.mock.restore();
+ assert.equal(Activation.canCancel(dir),false);assert.equal(Activation.selected(dir).generation,old.generation);
+ await Activation.requestNativeRestore(dir,backup);assert.equal(Activation.canCancel(dir),true);const next=await Activation.startup(dir);assert.notEqual(next.generation,old.generation);
+});
+
+test('JSON restore awaits asynchronous final checks before publishing a request',async t=>{
+ const {dir}=fixture(t);Activation.request(dir);const old=await Activation.startup(dir),file=path.join(dir,'restore.json');fs.writeFileSync(file,'{}');
+ await assert.rejects(Activation.requestRestore(dir,file,await Activation.digest(file),{beforePublish:async()=>{throw Error('Race started');}}),/Race started/);
+ assert.equal(Activation.canCancel(dir),false);assert.equal(Activation.selected(dir).generation,old.generation);
+});
