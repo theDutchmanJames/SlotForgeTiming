@@ -37,6 +37,13 @@ The user-facing release notes are the Unreleased section of `CHANGELOG.md`.
    screenshots, avoiding a missing Chromium compositor surface.
 4. The Unreleased changelog contained intermediate claims that production still
    used JSON. It now describes the final conversion choices and storage behaviour.
+5. The temporary qualification index initially omitted executable bits on the four
+   desktop build scripts. The snapshot now retains their existing Git modes; the
+   native build-script regressions check them after checkout.
+6. A cold Windows Phidget helper exceeded its four-second handshake allowance.
+   Initial startup now allows twelve seconds, with a deterministic delayed-start
+   and no-start test. Race heartbeats, output acknowledgements and native watchdogs
+   retain their existing deadlines. The compiled simulator checks also run locally.
 
 ## Evidence and limits
 

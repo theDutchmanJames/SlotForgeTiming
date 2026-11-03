@@ -19,6 +19,7 @@
 
 - Add the collection-style header with Timing's icon, SlotForge wordmark and “EVERY LAP COUNTS”. Place a 120 × 22 px SlotForge footer on main-menu pages, selecting artwork for light, dark and custom backgrounds, and update the Racing Rules credits.
 - Add storage migration, disk-full, abrupt-exit, recovery, media, integration and UI regressions. Require explicit completion from single-process UI checks and block accidental test relaunches.
+- Allow a slower cold start of the Windows Phidget helper without relaxing race heartbeat or output-safety deadlines.
 
 ## 2.0.0 — 2026-11-02
 
