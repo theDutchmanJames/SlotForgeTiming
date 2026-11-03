@@ -28,6 +28,11 @@ function upgrade(s){
  const size=s.statement('SELECT coalesce(sum(length(bytes)+coalesce(length(CAST(original AS BLOB)),0)),0) n FROM assets').get().n;
  require('./storage-space').check(s.file,Math.ceil(size*2),'Shared media upgrade');
  s.transaction(()=>{
+   // Another worker may have upgraded while this connection waited for the
+   // write lock. Recheck inside BEGIN IMMEDIATE before changing any schema.
+   const lockedVersion=s.statement("SELECT value FROM info WHERE key='workingFormat'").get().value;
+   if(lockedVersion==='6'){s.statement('SELECT digest,length(bytes) FROM media_blobs LIMIT 0').all();return;}
+   if(lockedVersion!=='5')throw Error('Unsupported shared media format.');
    s.db.exec('ALTER TABLE assets RENAME TO legacy_assets');s.db.exec(SCHEMA);
    const insert=s.db.prepare('INSERT INTO assets VALUES(?,?,?,?,?,?,?)');
    for(const a of s.db.prepare('SELECT * FROM legacy_assets').iterate()){

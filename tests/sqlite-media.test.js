@@ -8,6 +8,17 @@ function fixture(t,data={version:1,drivers:[{id:'a',name:'A',picture:image},{id:
 }
 function counts(s){return s.statement('SELECT count(*) n,coalesce(sum(length(bytes)),0) bytes FROM media_blobs').get();}
 function patch(s,id,picture,command='patch-'+id){return s.command({id:command,type:'updateRecord',entity:'drivers',recordId:id,expectedRevision:s.revision('drivers',id),patch:{picture}});}
+
+test('media upgrade rechecks the format when another connection wins the write lock',t=>{
+ const f=fixture(t),s=f.open();require('./fixtures/legacy-media.cjs')(s);s.db.exec("UPDATE info SET value='5' WHERE key='workingFormat'");
+ const transaction=s.transaction.bind(s);let other;
+ s.transaction=fn=>{s.transaction=transaction;other=f.open();return transaction(fn);};
+ Media.upgrade(s);
+ assert.equal(s.statement("SELECT value FROM info WHERE key='workingFormat'").get().value,'6');
+ assert.equal(counts(s).n,1);assert.equal(counts(other).n,1);
+ for(const d of f.data.drivers)assert.deepEqual(s.get('drivers',d.id,true).value,d);
+ assert.deepEqual(s.statement('PRAGMA foreign_key_check').all(),[]);
+});
 test('upgrade deduplicates media bodies, preserves MIME and exact spelling and reopens',t=>{
  const data={version:1,settings:{},drivers:[{id:'a',picture:image},{id:'b',picture:'data:audio/wav;base64,YWJjZA=='},{id:'c',picture:'data:image/png;base64,YWJj\nZA=='}]};const f=fixture(t,data);let s=f.open();assert.deepEqual({...counts(s)},{n:1,bytes:4});for(const d of data.drivers)assert.deepEqual(s.get('drivers',d.id,true).value,d);s.close();s=f.open();assert.equal(counts(s).n,1);assert.equal(s.statement('PRAGMA foreign_key_check').all().length,0);
  const stats=s.lifecycleDiagnostics().database;assert.equal(stats.media.count,3);assert.equal(stats.media.savedBytes,8);assert.equal(stats.media.uniqueCount,1);assert(stats.freeBytes===null||stats.freeBytes>=0);
