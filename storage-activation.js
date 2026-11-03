@@ -5,7 +5,7 @@ const FORMAT='slotforge-storage-selection',REQUEST='slotforge-sqlite-activation'
 const selectionFile=p=>path.join(p,'storage-backend.json');
 const requestFile=p=>path.join(p,'sqlite-activation-request.json');
 const uuid=v=>typeof v==='string'&&/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(v);
-function read(file){try{return JSON.parse(fs.readFileSync(file,'utf8'));}catch(e){if(e.code==='ENOENT')return null;throw Error('Storage selection cannot be read. Keep the profile intact and recover from its verified backup.');}}
+function read(file){try{const value=JSON.parse(fs.readFileSync(file,'utf8'));if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid storage metadata.');return value;}catch(e){if(e.code==='ENOENT')return null;throw Error('Storage selection cannot be read. Keep the profile intact and recover from its verified backup.');}}
 function publish(file,value){
   const temp=file+'.'+crypto.randomUUID()+'.pending',fd=fs.openSync(temp,'wx');
   try{fs.writeFileSync(fd,JSON.stringify(value,null,2));fs.fsyncSync(fd);}finally{fs.closeSync(fd);}
@@ -29,6 +29,14 @@ function request(profile){
   const value={format:REQUEST,version:1,id:crypto.randomUUID(),createdAt:new Date().toISOString()};publish(requestFile(profile),value);return value;
 }
 function validateRequest(v){if(v.format!==REQUEST||v.version!==1||!uuid(v.id))throw Error('Invalid SQLite activation request. No database was selected.');}
+function requestNew(profile){
+  require('./storage-rollout').assertFresh(profile);
+  const value={format:REQUEST,version:1,id:crypto.randomUUID(),kind:'new',createdAt:new Date().toISOString()};
+  publish(requestFile(profile),value);return value;
+}
+function assertNoLegacy(profile){
+  if(fs.readdirSync(profile).some(name=>/^slotforge-timing(?:\.|$)|^race-resume(?:\.|$)/i.test(name)))throw Error('Legacy files appeared during new database creation. No empty database was selected.');
+}
 async function digest(file){const hash=crypto.createHash('sha256');for await(const block of fs.createReadStream(file))hash.update(block);return hash.digest('hex');}
 async function requestRestore(profile,file,sha256,{beforePublish=()=>{}}={}){
   const active=selected(profile);if(!active)throw Error('SQLite must be active before staging this restore.');
@@ -52,14 +60,16 @@ async function requestNativeRestore(profile,source,{beforePublish=()=>{}}={}){
   const fd=fs.openSync(staged,'r+');try{fs.fsyncSync(fd);}finally{fs.closeSync(fd);}
   publish(path.join(target,'manifest.json'),manifest);await beforePublish();publish(requestFile(profile),value);return value;
 }
-function canCancel(profile){try{const pending=read(requestFile(profile));if(!pending)return false;validateRequest(pending);const active=selected(profile);return active?.requestId!==pending.id;}catch{return false;}}
+function canCancel(profile){try{const pending=read(requestFile(profile));if(!pending||pending.kind==='new')return false;validateRequest(pending);const active=selected(profile);return active?.requestId!==pending.id;}catch{return false;}}
 function cancel(profile){if(!canCancel(profile))throw Error('No safely cancellable storage request.');fs.unlinkSync(requestFile(profile));}
 async function startup(profile,{checkpoint=()=>{}}={}){
   const active=selected(profile),pending=read(requestFile(profile));
   const restoring=pending&&['restore','restore-native'].includes(pending.kind);
   if(active&&(!pending||active.requestId===pending.id||!restoring))return active;
   if(!pending)return null;validateRequest(pending);
-  if(pending.kind!==undefined&&!restoring)throw Error('Unknown storage request.');
+  const fresh=pending.kind==='new';
+  if(pending.kind!==undefined&&!restoring&&!fresh)throw Error('Unknown storage request.');
+  if(fresh)assertNoLegacy(profile);
   if(restoring&&(!active||pending.baseGeneration!==active.generation))throw Error('Restore request belongs to another database generation.');
   const generation=crypto.randomUUID(),root=fs.realpathSync(profile),parent=path.join(root,'sqlite');
   fs.mkdirSync(parent,{recursive:true});if(fs.realpathSync(parent)!==parent)throw Error('SQLite directory must be inside the application profile.');
@@ -75,19 +85,26 @@ async function startup(profile,{checkpoint=()=>{}}={}){
       if(native)await client.restoreSnapshot(source,path.join(directory,'working'));
       else {const restored=await client.restoreLegacy(source,path.join(directory,'restore'));fs.renameSync(restored.destination,path.join(directory,'working'));}
     }else{
-      const report=await client.migrate(path.join(root,'slotforge-timing.json'),path.join(directory,'copy'));sources=report.sources;checkpoint('copy-verified');
+      let source=path.join(root,'slotforge-timing.json');
+      if(fresh){
+        // Default records are seeded only inside this unpublished generation, never in the user's JSON location.
+        const seed=path.join(directory,'seed');fs.mkdirSync(seed);source=path.join(seed,'slotforge-timing.json');
+        const db=new (require('./db'))(source);db.saveNow();
+      }
+      const report=await client.migrate(source,path.join(directory,'copy'));sources=report.sources;checkpoint('copy-verified');
       await client.forkCopy(path.join(directory,'copy'),path.join(directory,'working'));
     }
     checkpoint('fork-created');
     await client.openWorking(path.join(directory,'working'));await client.lifecycleDiagnostics();await client.close();checkpoint('working-verified');
-    if(!restoring){
+    if(fresh)assertNoLegacy(root);
+    if(!restoring&&!fresh){
       for(const [name,file] of [['source.json','slotforge-timing.json'],['source.settings.json','slotforge-timing.settings.json'],['race-resume.json','race-resume.json']]){
         const expected=sources.find(s=>s.name===name)?.sha256||null;let actual=null;try{actual=await digest(path.join(root,file));}catch(e){if(e.code!=='ENOENT')throw e;}if(actual!==expected)throw Error('Legacy files changed before activation. Nothing was selected; retry with the app closed.');
       }
     }
-    const value={format:FORMAT,version:1,backend:'sqlite',generation,requestId:pending.id,activatedAt:new Date().toISOString(),sources,...(active?{previousGeneration:active.generation}:{})};
+    const value={format:FORMAT,version:1,backend:'sqlite',generation,requestId:pending.id,activatedAt:new Date().toISOString(),sources,...(fresh?{origin:'new'}:{}),...(active?{previousGeneration:active.generation}:{})};
     checkpoint('before-publish');publish(selectionFile(root),value);checkpoint('after-publish');
     fs.unlinkSync(requestFile(root));return selected(root);
   }finally{await client.close().catch(()=>{});}
 }
-module.exports={FORMAT,REQUEST,selected,request,requestRestore,requestNativeRestore,startup,publish,digest,canCancel,cancel};
+module.exports={FORMAT,REQUEST,selected,request,requestNew,requestRestore,requestNativeRestore,startup,publish,digest,canCancel,cancel};

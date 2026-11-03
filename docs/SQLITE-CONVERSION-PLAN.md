@@ -4,9 +4,10 @@ Updated 3 November 2026. This is a staged conversion, not a completed migration.
 The reviewed isolated experiment remains under `../outputs/sqlite-prototype`.
 Its results measure a proposed architecture, not unchanged application startup.
 
-Current checkpoint: production SQLite activation is available explicitly under
-App Settings > General > Database storage. Existing profiles stay on JSON until
-the user selects conversion. Startup verifies a separate copy before publishing
+Current checkpoint: new installations start on SQLite. Existing JSON users receive
+a conversion prompt with convert, remind-in-a-week and keep-JSON choices.
+Manual conversion remains under App Settings > General > Database storage.
+Existing profiles stay on JSON until the user selects conversion. Startup verifies a separate copy before publishing
 the selected generation; it never falls back to stale JSON after activation.
 SQLite backup restore similarly stages a new generation and retains the old one.
 See [the activation and abrupt-exit review](SQLITE-ACTIVATION-REVIEW.md).
@@ -19,7 +20,7 @@ Home history now uses transactional projections and maintained totals; see
 index-build cost and measured subsequent loads.
 Native backup/restore folders support large SQLite collections; JSON compatibility
 uses a shared runtime limit (about 512 MiB). Physical power-loss testing and any
-future change to the rollout default remain separate decisions.
+release publication remain separate decisions. See [the rollout review](SQLITE-ROLLOUT-REVIEW.md).
 
 Historical phase 1 checkpoint: the repository/IPC adapter is implemented on
 the existing JSON backend. Single-record reads, media-free local-car summaries,

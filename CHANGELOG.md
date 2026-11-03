@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Default new installations to SQLite; offer existing JSON users a clear conversion, weekly reminder or keep-JSON choice. Retain originals, recover interrupted first setup, reject ambiguous storage markers, and document backup/downgrade behaviour. Add rollout and actual-app startup regressions.
+
+
 - Speed up SQLite Home statistics with transactional lap projections and maintained all-time totals. Query only requested records and aggregates, preserve eligibility and tie ordering, and rebuild derived indexes safely after older writers or interrupted upgrades. Verify a million-lap copy and actual-app reopening without touching existing profiles.
 
 - Qualify SQLite with a million-lap, 2 GiB-media Windows fixture, disk-full/abrupt-exit regressions and native Windows/Linux/Intel macOS CI. Add native backup/restore folders for large collections, load only names and IDs in Import/Export choices, and reject legacy JSON larger than the runtime can read. Keep existing profiles untouched until explicit conversion.

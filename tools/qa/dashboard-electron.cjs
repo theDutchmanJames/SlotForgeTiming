@@ -1,5 +1,5 @@
 // Actual app, generated profile; no personal database or timing hardware.
-const {app,nativeImage}=require('electron'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const {app,nativeImage,dialog}=require('electron'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const out=path.resolve(__dirname,'../../../outputs/sqlite-conversion/dashboard-ui');fs.mkdirSync(out,{recursive:true});
 const profile=fs.mkdtempSync(path.join(out,'profile-'));app.setPath('appData',profile);app.disableHardwareAcceleration();
 require('./file-diagnostics.cjs')(path.join(profile,'diagnostics.log'),()=>app.exit(1));
@@ -76,4 +76,5 @@ app.on('browser-window-created',(_,win)=>{win.hide();win.webContents.on('did-fin
   fs.writeFileSync(path.join(out,'race.png'),(await win.webContents.capturePage()).toPNG());
   fs.writeFileSync(path.join(out,'result.json'),JSON.stringify({passed:true,themes,profile,minimumViewport,checks:['all 205 driver choices','no full collection reads for reference entities on Home','only selected image set','visible card photos only','Paddock archived choice','team member selectors','stale launch rejected','late launch cancelled after navigation','full Circuit geometry at race startup','two-driver engine','no renderer full-history reads','saved record seed','every history card rendered','non-history layout skips statistics','race-read navigation cancellation','overlapping race reads keep newest engine']},null,2));clearTimeout(timer);app.exit(0);
  }catch(error){console.error(error);fs.writeFileSync(path.join(out,'failure.png'),(await win.webContents.capturePage()).toPNG());clearTimeout(timer);app.exit(1);}
-});});seed.writesIdle().then(()=>require('../../main')).catch(error=>{console.error(error);app.exit(1);});
+});});const originalDialog=dialog.showMessageBox.bind(dialog);dialog.showMessageBox=(...args)=>args.at(-1)?.title==='Upgrade database storage'?Promise.resolve({response:1}):originalDialog(...args);
+seed.writesIdle().then(()=>require('../../main')).catch(error=>{console.error(error);app.exit(1);});

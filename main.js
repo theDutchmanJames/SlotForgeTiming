@@ -15,7 +15,6 @@ const normalProfile=path.join(app.getPath('appData'),'slotforge-timing');
 const testProfileArgs=process.argv.filter(a=>a.startsWith('--sqlite-test-profile='));
 let sqliteTestProfile=null,profileError=null;
 try{if(testProfileArgs.length>1)throw Error('Choose one SQLite test profile.');if(testProfileArgs.length)sqliteTestProfile=require('./sqlite-runtime').validateProfile(testProfileArgs[0].slice('--sqlite-test-profile='.length),normalProfile,app.isPackaged);}catch(error){profileError=error;}
-if(!testProfileArgs.length&&!fs.existsSync(path.join(normalProfile,'storage-backend.json'))&&!fs.existsSync(path.join(normalProfile,'sqlite-activation-request.json')))require('./migrate').migrate(app.getPath('appData'));
 app.setPath('userData',sqliteTestProfile||normalProfile);
 // Only one copy at a time: two copies would write to the same database file and fight over the network port
 const gotLock = app.requestSingleInstanceLock();
@@ -112,7 +111,9 @@ app.whenReady().then(async () => {
   if (!gotLock) return;
   try {
     if(profileError)throw profileError;
-    const profile=app.getPath('userData'),selection=sqliteTestProfile?null:await require('./storage-activation').startup(profile);
+    const profile=app.getPath('userData');
+    if(!sqliteTestProfile&&!fs.existsSync(path.join(profile,'storage-backend.json'))&&!fs.existsSync(path.join(profile,'sqlite-activation-request.json')))require('./migrate').migrate(app.getPath('appData'),{strict:true});
+    const selection=sqliteTestProfile?null:await require('./storage-rollout').startup(profile,{ask:options=>dialog.showMessageBox(options)});
     if(sqliteTestProfile||selection){sqliteRuntime=await require('./sqlite-runtime').open(sqliteTestProfile||selection.directory,{profileRoot:profile});({records,bulk:bulkStorage,lifecycle,resources:resourceStore}=sqliteRuntime);}
     else db = new Database(path.join(profile, 'slotforge-timing.json'));
   } catch (x) {

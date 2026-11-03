@@ -262,8 +262,10 @@ Open **App Settings → Help** whenever you need an explanation. **App Settings 
 The app keeps its database in its user-data folder, separately from the source and installed program. On Windows this is normally:
 
 ```text
-%APPDATA%/slotforge-timing/slotforge-timing.json
+%APPDATA%/slotforge-timing/
 ```
+
+New installations use SQLite. Existing JSON users are offered **Convert and continue**, **Remind me in a week**, or **Keep using JSON**. Conversion verifies a separate copy and retains the original JSON files. After switching, new changes go only to SQLite; the retained JSON is a recovery copy, not a current backup. You can convert later under **App Settings → General → Database storage**, which also shows the active database path. Allow space for the originals, recovery copy and SQLite database.
 
 Before updating, create a complete backup through **App Settings → Import and Export**, close Timing, then install or open the new release. Make a backup before moving to another computer or replacing an existing database. The portable executable also uses the app's normal user-data folder; it does not make a separate database alongside the executable.
 

@@ -39,12 +39,14 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           xvfb-run -a node tools/qa/run-activation.cjs
+          xvfb-run -a node tools/qa/run-rollout.cjs
           xvfb-run -a node tools/qa/run-sqlite-app.cjs
           xvfb-run -a node tools/qa/sqlite-asar.cjs
       - name: Actual application and ASAR worker (Windows and macOS)
         if: runner.os != 'Linux'
         run: |
           node tools/qa/run-activation.cjs
+          node tools/qa/run-rollout.cjs
           node tools/qa/run-sqlite-app.cjs
           node tools/qa/sqlite-asar.cjs
       - name: Collect small evidence files
