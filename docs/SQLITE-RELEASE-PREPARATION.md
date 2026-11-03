@@ -47,12 +47,56 @@ The user-facing release notes are the Unreleased section of `CHANGELOG.md`.
 
 ## Evidence and limits
 
-Final qualification results are recorded after the native runs complete. The
-workflow covers full regressions, bounded volume and backup/restore, production
+The qualified application candidate is `91c08412c8fb9be0fcb8b2409253ba9141ecdfc7`.
+All three native jobs passed in [run 41685131810](https://github.com/theDutchmanJames/SlotForgeTiming/actions/runs/41685131810).
+
+| Native runner | Full regressions | Bounded volume/backup | Actual app and ASAR checks |
+| --- | --- | --- | --- |
+| Windows Server 2022 x64 | Passed | Passed | Passed |
+| Ubuntu 22.04 x64 | Passed | Passed | Passed |
+| macOS 15 Intel | Passed | Passed | Passed |
+
+There are no unresolved failures from this qualification. Evidence artifacts are
+attached to the run with seven-day retention. The Linux artifact was downloaded,
+its SHA-256 verified, and its 600 px storage and delivered-results views inspected.
+Any subsequent documentation-only qualification commit does not change the tested
+application candidate above.
+
+The workflow covers full regressions, bounded volume and backup/restore, production
 activation and abrupt exits, rollout choices, startup/reopen, the ASAR worker,
 catalogue thumbnails, specifications, Paddock delivery, and legacy JSON restore.
 Evidence uploads are limited to small logs, screenshots and result markers;
 database files and synthetic media collections are excluded.
+
+Local evidence under the parent workspace's `outputs/sqlite-conversion/`:
+
+- `phase5-regression.log`: complete `npm test` passed. The subsequent changed
+  storage tests passed all 336 cases in `phase5-storage-final.log`; the changed
+  plugin-rule fixture and Phidget audit/backend tests passed separately.
+- `phase5-paddock-contract.log`: all 110 Paddock tests passed, with no skips, using
+  the available Paddock source. Native CI skips source-dependent Paddock checks
+  because that separate local checkout is unavailable; loopback integration runs
+  on all platforms.
+- `phase5-volume.log` and `volume-2FZRZ2/result.json`: 1,000,000 laps and
+  2,147,923,328 bytes of unique media; restored database 3,409,293,312 bytes.
+  Backup verification took 136.3 seconds and restore verification 122.0 seconds.
+  Reopen took 75 ms; five small catalogue reads took 0.36–3.97 ms. These are fixture
+  observations, not general latency guarantees. Peak parent RSS was about 558 MiB,
+  and the largest parent timer gap was 360 ms during bulk work.
+  Original JSON bytes and selected media hashes remained unchanged. This volume
+  run began before the concurrency guard was added to `sqlite-media.js`; the
+  final guard is covered by the deterministic regression and native bounded runs.
+- `phase5-package.log` and `phase5-packaged-app.log`: unpublished Windows x64
+  directory package built successfully. Its actual packaged `app.asar` was loaded
+  through Electron in an isolated profile, created SQLite without JSON, preserved
+  record/settings writes across a second process, and rendered the database page.
+  This does not test installer execution or OS installation prompts.
+- `catalogue-ui/`, `delivery-ui/`, `bulk-ui/` and `outputs/paddock-specs/`:
+  completed app assertions and captured views. The local catalogue/specification
+  checks exercise all nine theme selections and 600 px layouts. Storage usage,
+  specifications and packaged database screenshots were visually inspected.
+
+The last local process check found no remaining Timing QA Electron process.
 
 All local runs use generated databases and disposable profiles. The personal
 Timing database and Paddock database are not opened or converted. Paddock source
