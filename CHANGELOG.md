@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.2.0 — 2026-11-10
+
+### Shared car library and racing history
+- Use a common same-computer car library with Paddock for car browsing, editing and race selection. Preserve Timing identities and race history when bringing existing collections together.
+- Save finalised results, corrections and withdrawals through durable operations with retry, acknowledgement and restore protection. Support resumable history uploads and explicit historical approval in compatible Paddock versions.
+- Respect car merges and source-specific simulation settings, reject stale or retired selections, and retain original raced identities and historical evidence.
+- Restore the original Results and Records presentation and track/personal-best grouping. Preserve recorded dates, totals, penalties and lap details without duplicate history panels.
+
+### Storage and reliability
+- Read paginated SQLite lap history and indexed per-car/session statistics without loading full histories. Repair disposable indexes and summaries while preserving authoritative records.
+- Retain editor-save identities across lost replies and reloads, fence stale writes after restore, and drain accepted writes safely when closing.
+- Fix Layout Editor opening failures caused by oversized unrelated records; load targeted choices and preview assets.
+
+### Interface and race systems
+- Compact Race Setup cards with system icons, expose frequently used system tabs, and improve Home lane/class spacing and Database navigation.
+- Make Push & Save the sole pace-related tyre-wear control for new races, preserve frozen legacy race rules, and clarify temperature wear modifiers.
+- Update theme-aware SlotForge header/footer branding and related Help guidance.
+
+### Distribution
+- Exclude local handoffs, audit reports and design previews from release source and desktop packages. Keep build tools, regression tests, licences and user guides.
+
 ## 2.1.0 — 2026-11-03
 
 ### Database and performance

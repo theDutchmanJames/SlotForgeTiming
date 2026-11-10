@@ -14,6 +14,20 @@ function subtree(s,entity,id,parts){
  }return value;
 }
 function read(s,kind,o={}){return s.transaction(()=>{
+ if(kind==='collectionMigration'){const M=require('./paddock-collection-store');return M.read(M.sqlAdapter(s),o);}
+ if(kind==='historicalReview'){const S=require('./paddock-historical-store');return S.read(S.sqlAdapter(s),o);}
+ if(kind==='historySync'){const S=require('./paddock-history-sync-store');return S.read(S.sqlAdapter(s),o);}
+ if(kind==='historyMatches'){
+  if(!Array.isArray(o.rows)||o.rows.length>50)throw Error('Invalid history identity page.');
+  return Object.fromEntries(o.rows.map(r=>{const read=tail=>C.read(s,'sessions',r.sessionId,['paddockDelivery',...tail]);
+   const payload={databaseId:read(['payload','databaseId']),source:{id:read(['payload','source','id'])},sessionId:read(['payload','sessionId']),revision:read(['payload','revision']),state:read(['payload','state'])};
+   const d={format:read(['payload','format'])||'timing-v1',key:require('./delivery-key').keyOf(payload),status:read(['status']),sessionId:r.sessionId};
+   return [JSON.stringify([r.sourceId,r.sessionId]),require('./paddock-history').matches(r,[d],o.databaseId)];
+  }));
+ }
+ if(kind==='historyCache'){if(!/^[a-f0-9]{64}$/.test(o.id))throw Error('Invalid history cache key.');return s.get('paddockHistoryCache',o.id,true)?.value||null;}
+ if(kind==='sharedOperations')return require('./paddock-shared-store').sqlRead(s,o);
+ if(kind==='localTransfers')return require('./paddock-local-transfers').sqlRead(s,o);
  const connection=C.read(s,'@meta','paddock',['connection'])||null;
  if(kind==='connection')return {connection,revision:s.revision('@meta','paddock')};
  if(kind==='cache')return C.read(s,'@meta','paddock',['catalogue']);
@@ -36,9 +50,9 @@ function read(s,kind,o={}){return s.transaction(()=>{
  }
  if(kind==='summary'){
   const linked=s.statement(`SELECT id FROM fields WHERE entity='slotcars' AND path='["paddock","databaseId"]'`).all().map(({id})=>{const p=C.read(s,'slotcars',id,['paddock']);return {id,name:['brand','manufacturer','model'].map(k=>C.read(s,'slotcars',id,[k])).filter(Boolean).join(' '),databaseId:p.databaseId,carId:p.carId,archived:!!p.archived,capturedAt:p.configuration?.capturedAt};});
-  const deliveries=s.statement(`SELECT DISTINCT id FROM fields WHERE entity='sessions' AND substr(path,1,19)='["paddockDelivery",'`).all().map(({id})=>C.read(s,'sessions',id,['paddockDelivery'])).filter(d=>d&&d.status!=='withdrawn');
+  const deliveries=s.statement(`SELECT DISTINCT id FROM fields WHERE entity='sessions' AND substr(path,1,19)='["paddockDelivery",'`).all().map(({id})=>{const get=path=>C.read(s,'sessions',id,['paddockDelivery',...path]);const d=Object.fromEntries(['name','sessionId','databaseId','status','error','receipt','receiptCheckedAt','receiptCheckError'].map(k=>[k,get([k])]));d.payload=Object.fromEntries(['format','databaseId','sessionId','name','revision','state'].map(k=>[k,get(['payload',k])]));d.payload.source={id:get(['payload','source','id'])};if(d.receipt?.warnings?.length)d.payload.participants=get(['payload','participants']);return d;}).filter(d=>d&&d.status!=='withdrawn');
   deliveries.push(...(C.read(s,'@meta','paddock',['withdrawals'])||[]));return {connection,linked,deliveries:deliveries.map(deliverySummary)};
  }
  throw Error('Unsupported Paddock read.');
 });}
-module.exports={read};
+module.exports={read,subtree};

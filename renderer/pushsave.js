@@ -49,7 +49,8 @@
     fuelMethod: s.fuelMethod === 'median' ? 'median' : 'average',
     fuelWindow: num(s.fuelWindow, 0, 0, 20) > 0 ? Math.max(3, Math.round(num(s.fuelWindow, 0, 0, 20))) : 0
   });
-  const calculationSettings = (s = {}) => ({ response: responsePolicy(s.tyreResponse || {}), estimates: estimatePolicy(s.raceEstimates || {}) });
+  // New races have one pace-wear owner. responsePolicy remains for frozen legacy races.
+  const calculationSettings = (s = {}) => ({ response: responsePolicy({combine:'pushsave'}), estimates: estimatePolicy(s.raceEstimates || {}) });
   const average = xs => xs.length ? xs.reduce((sum, n) => sum + n, 0) / xs.length : 0;
   // A zero window means all eligible history; zero minimum keeps method defaults.
   const pacePolicy = (value = {}) => {

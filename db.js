@@ -350,6 +350,7 @@ class Database {
     Object.assign(row, patch, { id });
     this.touch(row);
     if (entity === 'laps') { const session=this.data.sessions.find(s=>s.id===row.sessionId); if(session){PaddockRecords.revise(this.data,session);this.touch(session);} }
+    if(entity==='sessions'&&row.paddockDelivery?.transport==='engine'&&Object.hasOwn(patch,'champ'))PaddockRecords.revise(this.data,row);
     this.commit();
     return row;
   }
@@ -378,11 +379,13 @@ class Database {
   }
   // One finished session with all of its laps, saved in a single write.
   saveSession(session, laps) {
+    if(session.saveKey!==undefined){if(typeof session.saveKey!=='string'||!session.saveKey||session.saveKey.length>200)throw Error('Invalid finalization identity.');const prior=this.data.sessions.find(s=>s.saveKey===session.saveKey);if(prior)return prior.id;}
     const s = { ...session, id: crypto.randomUUID() }, before = new Map(), added = [];
-    PaddockRecords.prepare(this.data,s,laps);
+    const storedRows=laps.map(l=>({...l,id:crypto.randomUUID(),sessionId:s.id}));
+    PaddockRecords.prepare(this.data,s,storedRows);
     this.data.sessions.push(s);
-    for (const l of laps) {
-      const row = { ...l, id: crypto.randomUUID(), sessionId: s.id };
+    for (const l of storedRows) {
+      const row = l;
       this.data.laps.push(row); added.push(row);
       const car = this.data.slotcars.find(c => c.id === l.carId);
       if (car) {

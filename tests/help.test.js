@@ -22,7 +22,7 @@ const helpHas = (...terms) => terms.every(t => allHelp.toLowerCase().includes(t.
 
 // ---- 1.40.0: Tyre wear ----
 { const folders = Help.folders(), f = id => plain(folders.find(x => x.id === id).body), tw = f('tyrewear'), schema = require(R + 'schema.js'), W = require(R + 'renderer/widgets.js');
-  say('Tyre Wear help explains its scope, median benchmark and fresh tyres each heat', folders.findIndex(x => x.id === 'tyrewear') > folders.findIndex(x => x.id === 'weather') && ['Rules and Systems','median lap','practice and qualifying only when enabled','never in Time Tokens','Every heat starts on fresh tyres'].every(t => tw.includes(t)));
+  say('Tyre Wear help explains its scope, Push & Save ownership and fresh tyres each heat', folders.findIndex(x => x.id === 'tyrewear') > folders.findIndex(x => x.id === 'weather') && ['Rules and Systems','Push & Save controls all pace-related tyre','practice and qualifying only when enabled','never in Time Tokens','Every heat starts on fresh tyres'].every(t => tw.includes(t)));
   say('Tyre Wear explains lifetime, weather, zero life and combined service work', ['Lasts about','Wear per lap','Wrong tyres','lap times and records are never rewritten','At 0%','Service Stop','fuel and repairs'].every(t => tw.includes(t)));
   say('Tyre Wear and Available Tyres help refers to real widgets and the Tyre Change folder', ['Tyre Wear','Available Tyres','Tyre Change'].every(t => tw.includes(t)) && W.REGISTRY.some(d => d.label === 'Tyre Wear' && d.group === 'Tyres'));
   say('Tyre Wear retains mandatory stops and sets guidance and directs users to Tyre Change', tw.includes('Mandatory stops and tyre sets still apply') && tw.includes('Tyre Change') && schema.tyrewearsystems.fields.some(f => f.key === 'setsMode'));

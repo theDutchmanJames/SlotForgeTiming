@@ -49,3 +49,7 @@ test('reference groups cannot silently combine database revisions and retries ar
 test('legacy adapters and non-reference collections retain their complete data',async()=>{
  const c=helpers({list:async()=>[{id:'x',unknown:42}]});assert.equal(JSON.stringify(await vm.runInContext("referenceList('sessions')",c)),'[{"id":"x","unknown":42}]');
 });
+test('reference groups allow independent stores but still bind each store to one snapshot',async()=>{
+ const c=helpers({referencePage:async entity=>({items:[{id:entity}],revision:entity==='slotcars'?'canonical-7':'private-12',...(entity==='slotcars'?{scope:'shared-cars'}:{}),next:null})});
+ const groups=await vm.runInContext("readReferenceGroups(['tracks','drivers','slotcars'])",c);assert.equal(groups.length,3);assert.equal(groups[2].scope,'shared-cars');
+});

@@ -31,7 +31,7 @@ ok('a new record starts as the Standard system, and is a copy (changing it leave
   ok('...in the weather table too (no negative, the default for nonsense)', C.mult.wet.dry === 4 && C.mult.wet.inter === 0 && C.mult.wet.wet === 0.5 && C.mult.dry.dry === 1);
   ok('nonsense for the choices gives the defaults', (() => { const D = T.clean({ unit: 'x', zero: 'x', stop: 'x', effect: 'x', eUse: 'x', eRate: 'x', eTank: 'x', practice: 'x' }); return D.unit === 'lap' && D.zero === 'points' && D.stop === 'overlap' && D.effect === true && D.levers.use && D.levers.rate && !D.levers.tank && !D.practice; })()); }
 ok('the lane lengths and the unit are kept (a length that is not a number is 0)', (() => { const C = T.clean({}, { laneLen: [15.4, 'x', -2, 16], disp: 'ft' }); return same(C.laneLen, [15.4, 0, 0, 16]) && C.disp === 'ft' && T.clean({}, { disp: 'x' }).disp === 'm' && same(T.clean({}).laneLen, []); })());
-ok('new systems can opt in to median-lap wear, while old saved systems retain fixed wear until that switch is saved', !T.clean({}).pace.on && T.clean({ paceWear: 'on' }).pace.on && T.clean({ paceWear: 'on', paceStrength: 'gentle' }).pace.strength === 'gentle' && T.clean({ paceWear: 'on', paceStrength: 'nonsense' }).pace.strength === 'normal');
+ok('new races ignore obsolete pace settings without mutating the saved record', (()=>{const r={paceWear:'on',paceStrength:'strong'},cfg=T.clean(r);return !cfg.pace.on && cfg.pace.response.combine==='pushsave' && r.paceWear==='on';})());
 
 // ---- the wear of a lap ----
 { const C = T.clean({});
@@ -46,11 +46,12 @@ ok('new systems can opt in to median-lap wear, while old saved systems retain fi
   ok('in feet the wear is per 100 ft (30.48 m)', near(T.unitM(F), 30.48) && near(T.wearPerLap(F, 'S', 'dry', 30.48), 4.5) && near(T.unitM(D), 100)); }
 
 // ---- target lifetime and pace-sensitive wear ----
-{ const C = T.clean({ paceWear: 'on' });
+// Frozen legacy race configurations still support their original pace model.
+{ const C = {pace:{on:true,strength:'normal'}};
   ok('a target life gives the intuitive stored wear in both units: 1,000 laps is 0.1%, 50 laps is 2%, and distance uses 100 metres (or feet)', near(T.wearForLife('lap', 'm', 1000), 0.1) && near(T.wearForLife('lap', 'm', 50), 2) && near(T.wearForLife('distance', 'm', 1000), 10) && near(T.lifeForWear('lap', 'm', 2), 50) && near(T.lifeForWear('distance', 'ft', 10), 1000) && T.wearForLife('lap', 'm', 0) === 0);
   const base = [10000, 10000, 10000], fast = T.paceMultiplier(C, base, 9000), slow = T.paceMultiplier(C, base, 11000);
   ok('each driver’s median is the benchmark: faster laps wear more, slower laps wear less, and fewer than three valid laps stay at normal wear', fast.ready && fast.median === 10000 && near(fast.multiplier, 10 / 9) && slow.ready && near(slow.multiplier, 10 / 11) && T.paceMultiplier(C, [10000, 10000], 9000).multiplier === 1);
-  ok('the strength changes the response but the safety cap prevents an exceptional lap from consuming more than 1.5 times normal wear', near(T.paceMultiplier(T.clean({ paceWear: 'on', paceStrength: 'gentle' }), base, 9000).multiplier, 1 + (10 / 9 - 1) * 0.5) && T.paceMultiplier(T.clean({ paceWear: 'on', paceStrength: 'strong' }), base, 1000).multiplier === 1.5 && T.paceMultiplier(C, base, 100000).multiplier === 0.5); }
+  ok('the strength changes the response but the safety cap prevents an exceptional lap from consuming more than 1.5 times normal wear', near(T.paceMultiplier({pace:{on:true,strength:'gentle'}}, base, 9000).multiplier, 1 + (10 / 9 - 1) * 0.5) && T.paceMultiplier({pace:{on:true,strength:'strong'}}, base, 1000).multiplier === 1.5 && T.paceMultiplier(C, base, 100000).multiplier === 0.5); }
 
 // ---- the grip curve ----
 { const C = T.clean({}), S = 'S';

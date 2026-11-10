@@ -341,7 +341,7 @@ const asyncTests = async () => {
   }
   { // main.js: the handler waits for the settings file, closing waits for what is on its way, and the core tells the figures
     const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8'), ps = fs.readFileSync(path.join(__dirname, '..', 'perfstats.js'), 'utf8');
-    ok('settings and shutdown use the lifecycle storage boundary', main.includes('await lifecycle.updateSettings(patch)') && !/db\.setSettings\(/.test(main) && main.includes('lifecycle.pending()') && main.includes('lifecycle.shutdown()'));
+    ok('settings and shutdown use the lifecycle storage boundary', main.includes('await lifecycle.updateSettings(patch)') && !/db\.setSettings\(/.test(main) && main.includes('const storage=lifecycle||sqliteRuntime?.lifecycle') && main.includes('await storage.shutdown()'));
     ok('diagnostics use the lifecycle service when available', ps.includes('await d.storage.diagnostics()') && ps.includes('out.database=storage.database'));
   }
   // ===== 1.61.2: the whole database is written in the background, and only the items that changed are made into text again =====

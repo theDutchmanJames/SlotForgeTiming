@@ -1,6 +1,6 @@
 // Lists, add, edit, delete and extra fields for any kind of item. Everything is driven by schema.js,
 // so the Database tab and the Race Setup tab share this code.
-const SUBS = [['tracks', 'Tracks'], ['drivers', 'Drivers'], ['teams', 'Teams'], ['slotcars', 'Slotcars'], ['results', 'Results and Records']];
+const SUBS = [['slotcars', 'Slotcars'], ['drivers', 'Drivers'], ['tracks', 'Tracks'], ['teams', 'Teams'], ['results', 'Results and Records']];
 const XTYPES = { text: 'Text', number: 'Number', date: 'Date', list: 'Pick-list' };
 const dlg = document.getElementById('dlg');
 const byId = id => document.getElementById(id);
@@ -223,11 +223,15 @@ async function mountManager(box, e) {
   const run = ++subRun;
   stopCataloguePictures();
   manager = { box, e };
-  const s = state.schema[e];
-  const remoteView=()=>e==='slotcars'&&slotcarSource==='paddock'&&typeof PaddockBrowser!=='undefined';
+  let s = state.schema[e];
+  const direct=e==='slotcars'&&api.libraryStatus?(await api.libraryStatus()).available:false;
+  if(direct&&!s.fields.some(f=>f.key==='name'))s={...s,fields:[{key:'name',label:'Car name',type:'text'},...s.fields]};
+  const shared=!direct&&e==='slotcars'&&api.paddockStatus?(await api.paddockStatus()).connection?.mode==='local':false;
+  if(run!==subRun||box.isConnected===false)return;
+  const remoteView=()=>e==='slotcars'&&(slotcarSource==='paddock'||shared&&slotcarSource!=='timing-only')&&typeof PaddockBrowser!=='undefined';
   const mountPaddock=()=>{
     box.innerHTML='<div data-paddock-browser></div>';box.onclick=null;box.onchange=null;box.onkeydown=null;
-    PaddockBrowser.mount(box.querySelector('[data-paddock-browser]'),api,{openLocal:()=>{slotcarSource='local';mountManager(box,e);},view:async car=>{
+    PaddockBrowser.mount(box.querySelector('[data-paddock-browser]'),api,{shared,openLocal:()=>{slotcarSource=shared?'timing-only':'local';mountManager(box,e);},view:async car=>{
       const [custom,classes,tyres]=await Promise.all([api.customFields('slotcars'),api.list('raceclasses'),api.list('tyrewearsystems')]);
       if(run!==subRun)return;state.custom.slotcars=custom;state.refs.raceclasses=classes;state.refs.tyrewearsystems=tyres;openView('slotcars',car);
     }});
@@ -253,7 +257,7 @@ async function mountManager(box, e) {
   if (e === 'racesetups') state.refs.championships = await api.list('championships'); // (1.71.0: the box Used by in the form of a race setup names the championships that use it)
   if (s.used) state.refs[s.used.entity] = await api.list(s.used.entity); // (1.73.0: the box Used by in the form of a system names the race setups that choose it)
   if (run !== subRun) return;
-  let detailRequest=0,pagingBusy=false;
+  let detailRequest=0,pagingBusy=false,systemSaveBusy=false;
   const fullItem=async id=>{const request=++detailRequest,item=paged?await api.getRecord(e,id):storedItems.find(c=>c.id===id);if(request!==detailRequest||run!==subRun||box.isConnected===false)return null;return item;};
   const viewItem=id=>{if(!paged){const item=storedItems.find(c=>c.id===id);if(item)openView(e,item);return;}return fullItem(id).then(item=>{if(item)openView(e,item);});};
   const focused=paged&&e==='slotcars'&&state.focusCar?await fullItem(state.focusCar):storedItems.find(c=>c.id===state.focusCar);
@@ -303,11 +307,11 @@ async function mountManager(box, e) {
       return v === undefined || v === null || v === '' ? '' : `<div class="gd"><span class="muted">${esc(fl(f))}</span> ${columnCell(f, i)}</div>`;
     })).join('') + (s.gallery && (i[s.gallery]?._catalogueGallery||i[s.gallery]?.length) ? `<div class="gd muted">+${i[s.gallery]._catalogueGallery||i[s.gallery].length} more pictures</div>` : '');
     return `<article class="gcard${canView ? ' clickable' : ''}"${canView ? ` data-view="${esc(i.id)}" tabindex="0" aria-label="View ${esc(t)}"` : ''}><div class="gimg">${img?._cataloguePicture?catalogueImage(img,'',frame):img ? `<img src="${esc(img)}" alt="" style="transform:${Widgets.frameTransform(frame)}">` : noPicture(e, t)}</div>
-      <h3>${esc(t)}</h3>${rowMark(e, i)}${details}${typeof RaceSystems !== 'undefined' && i.sessionType !== 'tokens' ? RaceSystems.setupHtml(i, { compact: true, id: i.id }) : ''}<div class="row"><button class="btn" data-edit="${esc(i.id)}">Edit</button>${copyButton(i)}${designButton(i)}<button class="btn danger" data-del="${esc(i.id)}">Delete</button></div></article>`;
+      <h3>${esc(t)}</h3>${rowMark(e, i)}${details}${typeof RaceSystems !== 'undefined' && i.sessionType !== 'tokens' ? RaceSystems.setupHtml(i, { compact: true, id: i.id }) : ''}<div class="row"><button class="btn" data-edit="${esc(i.id)}">Edit</button>${copyButton(i)}${designButton(i)}<button class="btn danger" data-del="${esc(i.id)}">${direct?'Archive…':'Delete'}</button></div></article>`;
   }).join('')}</div>`;
   const tableHtml = (items, cols) => `<div class="wrap"><table class="fields"><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}<th></th></tr>` +
     items.map(i => `<tr${canView ? ` class="clickable" data-view="${esc(i.id)}" tabindex="0" aria-label="View ${esc(titleOf(e, i))}"` : ''}>${cols.map((c, n) => `<td>${c.get(i)}${n === 0 ? rowMark(e, i) : ''}</td>`).join('')}<td class="actions">
-      <button class="btn" data-edit="${esc(i.id)}">Edit</button> ${copyButton(i)} ${designButton(i)} <button class="btn danger" data-del="${esc(i.id)}">Delete</button></td></tr>`).join('') + '</table></div>';
+      <button class="btn" data-edit="${esc(i.id)}">Edit</button> ${copyButton(i)} ${designButton(i)} <button class="btn danger" data-del="${esc(i.id)}">${direct?'Archive…':'Delete'}</button></td></tr>`).join('') + '</table></div>';
   // Race setups (1.69.0): a row of kinds to filter on, and each setup as a card that says in words how it ends and who wins (setupwords.js). The folders per session type are gone.
   const setupRank = i => { const rank = SETUP_START.findIndex(([kind]) => kind === i.sessionType); return rank < 0 ? SETUP_START.length : rank; };
   const rsShown = e !== 'racesetups' ? items : items.filter(i => setupFilter === 'all' || i.sessionType === setupFilter).sort((a,b) => setupRank(a) - setupRank(b));
@@ -328,15 +332,16 @@ async function mountManager(box, e) {
     <div class="rskinds">${SETUP_START.map(([id, label]) => `<button class="rspill" type="button" data-rskind="${id}">${esc(label)}</button>`).join('')}</div></div>`;
   const rsEmpty = !items.length ? 'No race setups yet. Use the button above, or start from a kind below.' : `Nothing under ${SETUP_FILTERS.find(f => f[0] === setupFilter)[1]} yet. Start one below.`;
   const rsBody = e !== 'racesetups' ? '' : (rsShown.length ? (mode === 'grid' ? `<div class="rscards">${rsShown.map(rsCard).join('')}</div>` : tableHtml(rsShown, cols)) : `<p class="muted">${esc(rsEmpty)}</p>`) + rsStart;
-  box.innerHTML = (e==='slotcars'?'<div class="pb-toolbar"><div class="seg" role="group" aria-label="Car database"><button class="btn on" aria-pressed="true">Local Database</button><button class="btn" id="paddock-view" aria-pressed="false">Paddock Database</button></div></div>':'')+`<div class="row${e==='racesetups'?' rstoolbar':''}"><button class="btn primary" id="add">Add ${esc(s.label.toLowerCase())}</button>
-      ${e === 'slotcars' ? '<button class="btn" id="paddock-open">Connect to Paddock</button>' : ''}${e === 'tracks' ? '<button class="btn" id="track-import">Import from Circuit</button>' : ''}${s.extra === false ? '' : '<button class="btn" id="extra">Extra fields…</button>'}${rsFilter}${viewBtn}${toggle}</div>${bar}` +
+  box.innerHTML = (e==='slotcars'?'<div class="pb-toolbar"><div class="seg" role="group" aria-label="Car database"><button class="btn on" aria-pressed="true">'+(direct?'Slotcar library':'Local Database')+'</button><button class="btn" id="paddock-view" aria-pressed="false">'+(direct?'Network catalogue':'Paddock Database')+'</button></div></div>':'')+`<div class="row${e==='racesetups'?' rstoolbar':paged?' catalogue-toolbar':''}"><button class="btn primary" id="add">Add ${esc(s.label.toLowerCase())}</button>
+      ${e === 'slotcars' ? '<button class="btn" id="paddock-open">'+(direct?'Network connection':'Connect to Paddock')+'</button>' : ''}${e === 'tracks' ? '<button class="btn" id="track-import">Import from Circuit</button>' : ''}${s.extra === false ? '' : '<button class="btn" id="extra">Extra fields…</button>'}${rsFilter}${viewBtn}${paged?'<div class="catalogue-controls"><div class="catalogue-tools">':''}${toggle}${paged?'</div></div>':''}</div>${bar}` +
     (e === 'racesetups' ? rsBody
       : items.length && mode === 'grid' ? gridHtml(items)
       : items.length ? tableHtml(items, viewCols || cols)
       : `<p class="muted">${paged&&paging.search?'No matching '+esc(s.plural.toLowerCase())+'.':`No ${esc(s.plural.toLowerCase())} yet. Use the button above to add one.`}</p>`);
   if(paged){
     const navigation=`<div class="row catalogue-navigation"><button class="btn" type="button" data-catalogue-prev${paging.index===0?' disabled':''}>Previous</button><span role="status">Page ${paging.index+1} · ${items.length} shown</span><button class="btn" type="button" data-catalogue-next${!page.next?' disabled':''}>Next</button><button class="btn" type="button" data-catalogue-refresh>Refresh</button></div>`;
-    box.insertAdjacentHTML('afterbegin',`<form class="row catalogue-search" data-catalogue-search><label>Find ${esc(s.plural.toLowerCase())} <input name="search" type="search" maxlength="200" value="${esc(paging.search)}" placeholder="Search by name" aria-label="Search ${esc(s.plural.toLowerCase())}"></label><button class="btn" type="submit">Search</button>${pageNotice?`<span role="status">${pageNotice}</span>`:''}</form>`+navigation);
+    box.querySelector('.catalogue-tools').insertAdjacentHTML('afterbegin',`<form class="row catalogue-search" data-catalogue-search><label>Find ${esc(s.plural.toLowerCase())} <input name="search" type="search" maxlength="200" value="${esc(paging.search)}" placeholder="Search by name" aria-label="Search ${esc(s.plural.toLowerCase())}"></label><button class="btn" type="submit">Search</button>${pageNotice?`<span role="status">${pageNotice}</span>`:''}</form>`);
+    box.querySelector('.catalogue-controls').insertAdjacentHTML('beforeend',navigation);
     if(items.length)box.insertAdjacentHTML('beforeend',navigation);
     box.onsubmit=ev=>{if(!ev.target.matches('[data-catalogue-search]'))return;ev.preventDefault();paging.search=ev.target.elements.search.value;paging.index=0;paging.cursors=[null];mountManager(box,e);};
     stopCataloguePictures=loadCataloguePictures(box,e,page.revision,()=>run===subRun&&box.isConnected!==false);
@@ -363,7 +368,22 @@ async function mountManager(box, e) {
       else if(b.hasAttribute('data-catalogue-refresh')){paging.index=0;paging.cursors=[null];}
       try{return await mountManager(box,e);}finally{pagingBusy=false;}
     }
-    if (e === 'racesetups' && b.dataset.systemSetup && typeof RaceSystems !== 'undefined') { const row = items.find(x => x.id === b.dataset.systemSetup); if (row) { await api.update(e, row.id, { disabledSystems: RaceSystems.toggle(row.disabledSystems, b.dataset.systemKey, b.dataset.systemOn === '1') }); await mountManager(box, e); } return; }
+    if (e === 'racesetups' && b.dataset.systemSetup && typeof RaceSystems !== 'undefined') {
+      if (systemSaveBusy || b.disabled) return;
+      const row = items.find(x => x.id === b.dataset.systemSetup);
+      if (!row) return;
+      systemSaveBusy = true;
+      const switches = [...box.querySelectorAll('[data-system-setup]')].filter(button => !button.disabled);
+      switches.forEach(button => { button.disabled = true; });
+      try {
+        const disabledSystems = RaceSystems.toggle(row.disabledSystems, b.dataset.systemKey, b.dataset.systemOn === '1');
+        await api.update(e, row.id, { disabledSystems });
+        row.disabledSystems = disabledSystems;
+        if (run === subRun && manager?.box === box && manager.e === e && box.isConnected !== false) await mountManager(box, e);
+      } catch (err) { alert('Could not change race system: ' + err.message); }
+      finally { systemSaveBusy = false; switches.forEach(button => { button.disabled = false; }); }
+      return;
+    }
     if (b.dataset.rsf) { setupFilter = b.dataset.rsf; return mountManager(box, e); } // (Race Setups: the kind to show)
     if (b.dataset.rskind) return openForm(e, null, { sessionType: b.dataset.rskind }); // (Race Setups: Start from a kind)
     if (b.dataset.viewbar) { if (viewBars.has(b.dataset.viewbar)) viewBars.delete(b.dataset.viewbar); else viewBars.add(b.dataset.viewbar); return mountManager(box, e); }
@@ -371,7 +391,7 @@ async function mountManager(box, e) {
     if (e === 'tracks' && (b.id === 'track-import' || b.dataset.trackDesign)) {const track=b.dataset.trackDesign?await fullItem(b.dataset.trackDesign):null;if(run!==subRun)return;return TrackDesignUI.open(api,track,()=>mountManager(box,e));}
     if (b.id === 'paddock-open') return PaddockUI.open(api,()=>mountManager(box,e));
     if (b.id === 'paddock-view') {slotcarSource='paddock';return mountManager(box,e);}
-    if (b.id === 'add') return openForm(e, null);
+    if (b.id === 'add') return direct?PaddockShared.open(libraryEditorApi(),null,()=>mountManager(box,e)):openForm(e, null);
     if (b.id === 'extra') return openExtra(e);
     if (b.id === 'vgrid' || b.id === 'vlist') { state.settings = await api.setSettings({ [viewKey]: b.id === 'vgrid' ? 'grid' : 'list' }); return mountManager(box, e); }
     if (b.dataset.copy && COPY_SETUP_ENTITIES.has(e)) {
@@ -387,8 +407,9 @@ async function mountManager(box, e) {
       return;
     }
     const it = items.find(i => i.id === (b.dataset.edit || b.dataset.del));
-    if (b.dataset.edit) {const full=await fullItem(it.id);if(full)openForm(e, full);}
+    if (b.dataset.edit) {if(direct)return PaddockShared.open(libraryEditorApi(),it.id,()=>mountManager(box,e));const full=await fullItem(it.id);if(full)openForm(e, full);}
     else if (b.dataset.del) {
+      if(direct)return PaddockShared.open(libraryEditorApi(),it.id,()=>mountManager(box,e));
       const n = s.linked === false ? 0 : await api.linkedLaps(e, it.id);
       const extra = s.linked === false ? '' : `\n\nThis also deletes ${n} saved ${n === 1 ? 'lap' : 'laps'} and the records they hold${e === 'drivers' || e === 'slotcars' ? ', and takes them out of the results of past races' : ''}.`;
       if (!confirm(`Delete "${titleOf(e, it)}"?${extra}\n\nThis can't be undone.`)) return;
@@ -437,13 +458,13 @@ const cfRows = (list, levels) => list.length ? `<div class="ptrow cfrow pthead m
   <button type="button" class="btn ib" data-cfdel="${i}" aria-label="Remove ${esc(x.name || 'this failure')}" title="Remove">${Icons.svg('trash', { size: 16 })}</button></div>`; }).join('')
   : '<p class="muted">No failures yet. Add the standard failures, or make your own.</p>';
 // the tyres of a tyre wear system (field type 'tyretable'): setup starts with the useful
-// answer (how long a set lasts at benchmark pace). The detailed grip profile remains available
+// answer (how long a set lasts at normal pace). The detailed grip profile remains available
 // without making the primary setup look like four unrelated percentages per compound.
 const twWearLabel = unit => (unit === 'distance' ? `Wear per 100 ${dUnit() === 'ft' ? 'ft' : 'm'} (%)` : 'Wear per lap (%)');
 const twLifeLabel = unit => unit === 'distance' ? (dUnit() === 'ft' ? 'ft' : 'm') : 'laps';
 const twLife = (t, unit) => TyreWear.lifeForWear(unit, dUnit(), Number(String(t && t.wear !== undefined ? t.wear : '').replace(',', '.')));
 const twLifeText = (t, unit) => { const n = twLife(t, unit); return n > 0 ? (Math.round(n * 10) / 10).toLocaleString() : 'Does not wear'; };
-const twHead = unit => `<div class="twrow twprimary twhead muted"><span>Tyre</span><span>Lasts about at benchmark pace</span><span>${twWearLabel(unit)} at benchmark pace</span><span></span></div>`;
+const twHead = unit => `<div class="twrow twprimary twhead muted"><span>Tyre</span><span>Lasts about at normal pace</span><span>${twWearLabel(unit)} at normal pace</span><span></span></div>`;
 const twIconLetter = ty => (ty.icon || ty.code) === 'INT' ? 'I' : (ty.icon || ty.code);
 // Keep unfinished names visible while editing; saving still requires a nonblank name.
 const twDraftTyres = tyres => Object.fromEntries(Object.entries(tyres||{}).map(([k,v])=>[k,k.startsWith('C_')?{...v,name:String(v.name||'').trim()||'Unnamed tyre'}:v]));
@@ -451,7 +472,7 @@ const twCustomFields = ty => `<div class="twcustom formgrid"><label class="field
 const twRows = (tyres, unit, sel) => Wx.withTyres(twDraftTyres(tyres)).TYRES.map(ty => { const t = tyres[ty.code] || {}, c = ty.color;
   const life = twLife(t, unit);
   return `<div class="twrow twprimary${ty.code === sel ? ' sel' : ''}" data-twrow="${ty.code}"><span class="twname"><b class="twchip" style="border-color:${c};color:${c}">${esc(twIconLetter(ty))}</b> ${esc(ty.name)}</span>
-    <label class="twf"><small>Lasts about at benchmark pace</small><span class="twlifeinput"><input type="number" step="0.1" min="0" data-twlife="${ty.code}" value="${esc(life > 0 ? Math.round(life * 10) / 10 : '')}" aria-label="${esc(ty.name)}: lasts about at benchmark pace"><em>${twLifeLabel(unit)}</em></span></label>
+    <label class="twf"><small>Lasts about at normal pace</small><span class="twlifeinput"><input type="number" step="0.1" min="0" data-twlife="${ty.code}" value="${esc(life > 0 ? Math.round(life * 10) / 10 : '')}" aria-label="${esc(ty.name)}: lasts about at normal pace"><em>${twLifeLabel(unit)}</em></span></label>
     <span class="twlasts" data-twwear="${ty.code}">${esc(twWearLabel(unit) + ': ' + (Number(t.wear) > 0 ? Number(t.wear).toLocaleString() + '%' : 'no wear'))}</span>
     <button type="button" class="btn small" data-twsel="${ty.code}" aria-label="Open Tyre Performance for ${esc(ty.name)}">Tyre Performance</button></div>${ty.custom ? twCustomFields({...ty,name:t.name??ty.name}) : ''}`; }).join('');
 const twCurve = (tyres, sel) => { const ty = Wx.withTyres(twDraftTyres(tyres)).tyreOf(sel) || Wx.TYRES[0], t = TyreWear.cleanTyres(twDraftTyres(tyres))[ty.code];
@@ -463,7 +484,7 @@ const twProfile = (tyres, unit, sel) => { const ty = Wx.withTyres(twDraftTyres(t
     + TyreWear.NUMS.filter(([k]) => k !== 'wear').map(([k, label]) => `<label class="twf"><small>${esc(label)}</small><input type="number" step="any" min="${TyreWear.LIMITS[k][0]}" max="${TyreWear.LIMITS[k][1]}" data-tw="${ty.code}" data-twk="${k}" value="${esc(t[k] ?? '')}" aria-label="${esc(ty.name)}: ${esc(label)}"></label>`).join('')
     + `</div><div id="tw-curve">${twCurve(tyres, sel)}</div></details>`; };
 const twTable = (tyres, unit, sel) => `<div class="twbtns row"><span class="twbl"><b>Start from a ready-made system</b><span class="muted">You can change every number.</span></span><span class="twseg" role="group" aria-label="Ready-made systems">${TyreWear.PRESET_KEYS.map(k => { const on = TyreWear.presetOf(tyres) === k; return `<button type="button" class="btn${on ? ' on' : ''}" aria-pressed="${on}" data-twpreset="${k}" title="${esc(TyreWear.PRESETS[k].note)}">${esc(TyreWear.PRESETS[k].name)}</button>`; }).join('')}</span></div>
-  <p class="muted">Set the life you want at the selected benchmark pace. Standard is in between, Sprint wears quickly (short races, many stops), and Endurance wears slowly.</p>
+  <p class="muted">Set the life you want at normal pace, before weather, temperature and Push &amp; Save modifiers. Standard is in between, Sprint wears quickly (short races, many stops), and Endurance wears slowly.</p>
   <div class="twtable" id="tw-table">${twHead(unit)}${twRows(tyres, unit, sel)}</div><p><button type="button" class="btn" data-twadd="1"${Object.keys(tyres).filter(k=>k.startsWith('C_')).length>=32?' disabled':''}>Add custom tyre</button></p>${twProfile(tyres, unit, sel)}`;
 // the ready-made push and save systems (field type 'pspresets', 1.54.0): a button for each that fills in the four wear numbers
 const psNote = k => { const n = PushSave.PRESETS[k].note; return /[.!?]$/.test(n) ? n : n + '.'; };
@@ -674,7 +695,8 @@ function openView(e, item) {
   byId('vcclose').focus({ preventScroll: true }); // (so the card opens at its top)
 }
 
-// The statistics of a slotcar that are worked out when the form (or the card) opens, from the laps, the sessions and the tracks of the database (1.30.0 the Mileage, 1.33.0 the others). They are not saved.
+// Derived statistics from the repository. SQLite maintains rebuildable summaries;
+// the legacy JSON backend calculates the same figures when requested.
 const CAR_STATS = [
   { key: '_mileage', label: 'Mileage', hint: 'The distance this car has driven, worked out as the Car Mileage card on Home does: every lap that counts, times the length of its lane. Laps on a track without a length are left out.' },
   { key: '_mileageSince', label: 'Mileage Since Last Service', hint: 'The same distance, counted from the day of the last Reset (all of it until the car is serviced for the first time).' },
@@ -687,13 +709,15 @@ const CAR_STATS = [
 const CAR_TRACKS = { key: '_byTrack', id: '_byTrack', group: 'stats', label: 'Best Lap per Track', type: 'cartracks', custom: false, hint: 'The valid laps of this car on each track: how many, the best lap and the average.' };
 // what the statistics say, in words: [id of the field] = text; the table of the tracks; and the loader (the laps, the sessions and the tracks of the database)
 const carStatTexts = d => ({ _mileage: Stats.fmtDist(d.mileage.distance, dUnit()), _mileageSince: Stats.fmtDist(d.mileageSince.distance, dUnit()), _lastDriven: d.lastDriven ? plainDate(d.lastDriven) : 'Never',
-  _sessions: String(d.sessions), _wins: String(d.wins), _deslots: String(d.deslots), _fastest: d.fastest ? `${Stats.fmtMs(d.fastest.time)}${d.fastest.trackName ? ' on ' + d.fastest.trackName : ''}` : '–' });
+  _sessions: String(d.sessions), _wins: String(d.wins), _deslots: d.deslots===null?'Not available':String(d.deslots), _fastest: d.fastest ? `${Stats.fmtMs(d.fastest.time)}${d.fastest.trackName ? ' on ' + d.fastest.trackName : ''}` : '–' });
 const carTracksHtml = d => !d.tracks.length ? '<span class="muted">No valid laps yet.</span>'
   : `<table class="fields svc-tracks"><thead><tr><th>Track</th><th>Laps</th><th>Best</th><th>Average</th></tr></thead><tbody>${d.tracks.map(t => `<tr><td>${esc(t.name || '–')}</td><td>${t.laps}</td><td>${esc(Stats.fmtMs(t.best))}</td><td>${esc(Stats.fmtMs(t.avg))}</td></tr>`).join('')}</tbody></table>`;
 const loadCarStats = item => api.carStatistics ? api.carStatistics(item.id) : Promise.all([api.list('laps'), api.list('sessions'), api.list('tracks')]).then(([laps, sessions, tracks]) => CarStats.details(item, laps, sessions, tracks));
 // a mark for the list and the cards of the slotcars that need servicing
 const rowMark = (e, i) => (e === 'slotcars' && i.paddock ? `<span class="badge paddock-source" title="Details managed in SlotForge Paddock">Paddock${i.paddock.archived?' · unavailable':''}</span>` : '')+(e === 'slotcars' && CarStats.status(i).due ? '<span class="svc-due" title="The laps since the last service have reached the service interval">Service due</span>' : '');
+function libraryEditorApi(){return {...api,paddockSharedCar:api.libraryCar,paddockSharedSave:api.librarySave,paddockSharedSaves:api.librarySaves,paddockSharedRetry:api.libraryRetry,paddockSharedResolve:api.libraryResolve};}
 function openForm(e, item, preset) { // preset: values a new item starts with (Race Setups: Start from a kind)
+  if(e==='slotcars'&&item?.sharedLibrary)return PaddockShared.open(libraryEditorApi(),item.id,()=>manager?.e==='slotcars'?mountManager(manager.box,'slotcars'):render());
   const s = state.schema[e];
   const fields = [...s.fields.map(f => ({ ...f, id: f.key, custom: false })), ...(e === 'slotcars' ? [...CAR_STATS, CAR_TRACKS] : []), ...(state.custom[e] || []).map(f => ({ ...f, custom: true }))];
   if(e==='racesetups'){
@@ -955,7 +979,7 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
       refreshShown(); return;
     }
     if (d.svcreset) { // the car was serviced: the count starts again at 0 (kept when the form is saved), and the day is today
-      serviceReset = true; byId('f-lapsSinceService').value = 0; byId('f-serviceDate').value = plainDate(new Date().toISOString()); byId('f-servicesDone').value = CarStats.servicesOf(item) + 1; byId('f-_mileageSince').value = Stats.fmtDist(0, dUnit()); syncService(); return;
+      serviceReset ||= new Date().toISOString(); byId('f-lapsSinceService').value = 0; byId('f-serviceDate').value = plainDate(serviceReset); byId('f-servicesDone').value = CarStats.servicesOf(item) + 1; byId('f-_mileageSince').value = Stats.fmtDist(0, dUnit()); syncService(); return;
     }
     if (d.fgall !== undefined && groups) { // open or close every group
       opened.clear(); if (d.fgall === '1') groups.forEach(g => opened.add(g.id));
@@ -1177,7 +1201,7 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
       if (typedLaps !== '' && typedLaps !== undefined && !(Number.isInteger(typedLaps) && typedLaps >= 0)) { byId('err').textContent = 'Please enter Laps Driven as a whole number, 0 or more.'; return; }
       if (item && (typedLaps === '' || typedLaps === undefined || typedLaps === CarStats.lapsDriven(item))) delete built.lapsDriven; else if (typedLaps === '' || typedLaps === undefined) built.lapsDriven = 0;
       if (built.serviceInterval !== '' && built.serviceInterval !== undefined) built.serviceInterval = Math.max(1, Math.floor(Number(built.serviceInterval)) || 1);
-      if (serviceReset) { built.lapsSinceService = 0; built.serviceDate = new Date().toISOString(); built.servicesDone = CarStats.servicesOf(item) + 1; }
+      if (serviceReset) { built.lapsSinceService = 0; built.serviceDate = serviceReset; built.servicesDone = CarStats.servicesOf(item) + 1; }
     }
     if (e === 'tracks' && built.laneModifier === 'measured') { // one length for every lane
       const list = String(built.laneLengths || '').split(',').map(x => x.trim()).filter((x, i, a) => x !== '' || i < a.length - 1), n = Number(built.lanes);
@@ -1225,7 +1249,7 @@ async function openExtra(e) {
   const grouped = (s.groups || []).length > 0;
   dlg.innerHTML = `<div${setupToneClass(e) ? ` class="${setupToneClass(e).trim()}"` : ''}><h3>Extra fields for ${esc(s.plural.toLowerCase())}</h3>
     <p class="muted">Extra fields are for your own information. They don't affect lap times or records.</p>` +
-    (list.length ? `<ul class="xf">${list.map(f => `<li><span>${esc(f.label)} <span class="muted">(${XTYPES[f.type]})</span></span>${grouped ? `<select data-grp="${esc(f.id)}" aria-label="Group of ${esc(f.label)}" title="Where this field appears in the form">${groupChoices(e, f.group)}</select>` : ''}<button class="btn danger" data-rm="${esc(f.id)}">Delete</button></li>`).join('')}</ul>`
+    (list.length ? `<ul class="xf">${list.map(f => `<li><span>${esc(f.label)} <span class="muted">(${XTYPES[f.type]})</span></span>${grouped ? `<select data-grp="${esc(f.id)}" aria-label="Group of ${esc(f.label)}" title="Where this field appears in the form">${groupChoices(e, f.group)}</select>` : ''}${f.shared?'<span class="muted">Shared field</span>':`<button class="btn danger" data-rm="${esc(f.id)}">Delete</button>`}</li>`).join('')}</ul>`
       : '<p class="muted">No extra fields yet.</p>') +
     `<div class="field"><label for="xl">New field name</label><input id="xl" type="text"></div>
      <div class="field"><label for="xt">Type</label><select id="xt">${Object.entries(XTYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></div>
@@ -1273,7 +1297,8 @@ async function renderResults(box) {
   box.innerHTML = '<div class="sub" id="respool" role="tablist"></div><div id="resbody"></div>';
   renderTabs(byId('respool'), [['racing', 'Racing Records'], ['tokens', 'Token Records'], ['champs', 'Championships']], pool, id => { state.resultsSub = id; renderResults(box); });
   if (pool === 'champs') { await renderChampStandings(byId('resbody')); return; } // (1.56.0: the standings of the championships)
-  await renderResultsPool(byId('resbody'), pool);
+  const body=byId('resbody');
+  await renderResultsPool(body, pool);
 }
 // the lines that tell how the figures of a table are counted, as one small paragraph under it
 const statNote = keys => { const n = Stats.notes(keys); return n.length ? `<p class="muted statnote">${n.map(esc).join(' ')}</p>` : ''; };
@@ -1409,7 +1434,7 @@ async function renderResultsPool(box, pool, supplied=null) {
   };
   const recKeys = Stats.RECORD_COLUMNS.filter(c => ViewSet.keys(Stats.RECORD_COLUMNS, viewSaved(['results', 'records'])).includes(c.key));
   const recRow = kind => l => `<tr>${recKeys.map(c => `<td>${RECCELL[c.key](l)}</td>`).join('')}
-    <td class="actions"><button class="btn danger" data-delrec="${kind}" data-lap="${esc(l.id)}">Remove</button></td></tr>`;
+    <td class="actions">${l.readOnly?'<small>Recorded by another source</small>':`<button class="btn danger" data-delrec="${kind}" data-lap="${esc(l.id)}">Remove</button>`}</td></tr>`;
   const head = `<tr>${recKeys.map(c => `<th>${esc(c.label)}</th>`).join('')}<th></th></tr>`;
   const byTrack = (a, b) => name(tracks, a.trackId, 'tracks').localeCompare(name(tracks, b.trackId, 'tracks')) || a.time - b.time;
   const trackRecords = supplied?supplied.page.tracks.items:best(l => l.trackId, 'noTrackRecord').sort(byTrack);
@@ -1434,7 +1459,7 @@ async function renderResultsPool(box, pool, supplied=null) {
         <tr>${stCols.map(c => `<td>${c.key in STCELL ? STCELL[c.key] : esc(Stats.text(c.key, figs[0], Speed.unitOf(state.settings), Speed.distUnitOf(state.settings)))}</td>`).join('')}</tr></table>${stCols.length ? '' : '<p class="muted">No columns are on. Turn some on in View settings.</p>'}${statNote(stCols.map(c => c.key))}
         <p class="muted">${esc(s.endedBy || '')}${t.carried ? ` · ${esc(boughtText(t.carried))} came over from the driver before` : ''}${t.left ? ` · ${esc(boughtText(t.left))} was not used` : ''}</p>
         <h4>${supplied ? 'Lap times on this page' : 'All lap times'}</h4><p><span class="muted">${mine.map(l => { const tx = esc(`${l.lapNumber}: ${RaceEngine.fmtTime(l.time)}`); return l.late || l.invalid || l.tooSlow ? `<s class="lapbad" title="${l.late ? 'Late lap: driven after the time was up' : l.invalid ? 'Invalid lap' : 'Too slow: not counted for records'}">${tx}</s>` : tx; }).join(' · ') || 'no laps'}</span></p>
-        <div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}<button class="btn danger" data-delsession="${esc(s.id)}">Delete this stint</button><span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
+        <div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}${s.readOnly?'':`<button class="btn danger" data-delsession="${esc(s.id)}">Delete this stint</button>`}<span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
       return `<details class="card sess" data-sid="${esc(s.id)}"><summary>${esc(dateText(s.date))} · Lane ${esc(t.lane)} · ${esc(x.driverName)} · ${esc(boughtText(t.bought))} · ${esc(x.laps)} ${Number(x.laps) === 1 ? 'lap' : 'laps'} · ${esc(s.trackName || '')}</summary><div class="sessbody">${body}</div></details>`;
     }
     const pts = s.resultBy === 'points';
@@ -1453,11 +1478,11 @@ async function renderResultsPool(box, pool, supplied=null) {
         case 'result': return esc(Heats.scoreText(x, s.scoring, finArg));
         case 'final': return esc(Heats.finalCell(x));
         case 'best': return esc(RaceEngine.fmtTime(x.best));
-        case 'total': return esc(RaceEngine.fmtTime(x.total + (x.penalty || 0) + (x.adjMs || 0))) + (x.penalty ? ` <span class="muted">(includes +${esc(RaceEngine.fmtTime(x.penalty))} penalty, ${esc(x.penaltyPoints)} points)</span>` : '');
+        case 'total': return esc(RaceEngine.fmtTime(typeof x.total==='number'?x.total + (x.penalty || 0) + (x.adjMs || 0):null)) + (x.penalty ? ` <span class="muted">(includes +${esc(RaceEngine.fmtTime(x.penalty))} penalty, ${esc(x.penaltyPoints)} points)</span>` : '');
         default: return esc(Stats.text(key, figs[i], Speed.unitOf(state.settings), Speed.distUnitOf(state.settings)));
       }
     };
-    const body = (s.champ && typeof s.champ === 'object' && s.champ.id ? `<div class="chpanelbox" data-cpbox="${esc(s.id)}"></div>` : '') + (s.virtualRivals?.length?'<h4>Physical-field standings</h4>':'') + `<table class="fields"><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr>` +
+    const body = (!s.readOnly && s.champ && typeof s.champ === 'object' && s.champ.id ? `<div class="chpanelbox" data-cpbox="${esc(s.id)}"></div>` : '') + (s.virtualRivals?.length?'<h4>Physical-field standings</h4>':'') + `<table class="fields"><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr>` +
       s.standings.map((x, i) => `<tr>${cols.map(c => `<td>${cellOf(c.key, x, i)}</td>`).join('')}</tr>`).join('') + '</table>' + (cols.length ? '' : '<p class="muted">No columns are on for this session. Turn some on in View settings.</p>') +
       (typeof resourceHistoryHtml==='function'?resourceHistoryHtml(s):'')+(typeof VirtualRival !== 'undefined' ? VirtualRival.historyHtml(s) : '') + (typeof MultiClass!=='undefined'?MultiClass.resultsHtml(s.classStandings||[],s.multiclass):'') +
       statNote(cols.map(c => c.key)) +
@@ -1468,7 +1493,7 @@ async function renderResultsPool(box, pool, supplied=null) {
       (supplied?'<h4>Lap times on this page</h4>':'<h4>All lap times</h4>') + s.standings.map(x => {
         const mine = Stats.ownLaps(x, laps).filter(l => l.sessionId === s.id).sort((a, b) => (a.heat || 0) - (b.heat || 0) || a.lapNumber - b.lapNumber);
         return `<p><strong>${esc(x.driverName)}</strong><br><span class="muted">${mine.map(l => { const t = esc(`${l.heat ? (l.final ? 'F' + l.final : 'H' + l.heat) + ' ' : ''}${l.lapNumber}: ${RaceEngine.fmtTime(l.time)}`); return l.invalid || l.tooSlow ? `<s class="lapbad" title="${l.invalid ? 'Invalid lap' : 'Too slow: not counted for records'}">${t}</s>` : l.pit ? `<em title="Lap with a pit stop">${t}</em>` : t; }).join(' · ') || 'no laps'}</span></p>`;
-      }).join('') + `<div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}<button class="btn danger" data-delsession="${esc(s.id)}">Delete this session</button><span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
+      }).join('') + `<div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}${!s.readOnly&&api.paddockHistoricalReview?`<button class="btn" data-historical-session="${esc(s.id)}">Historical Review…</button>`:''}${s.readOnly?'':`<button class="btn danger" data-delsession="${esc(s.id)}">Delete this session</button>`}<span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
     return `<details class="card sess" data-sid="${esc(s.id)}"><summary>${esc(dateText(s.date))} · ${esc(s.setupName)} · ${esc(SESSION_LABEL[s.sessionType] || '')} · ${esc(s.trackName || '')}${s.champ && typeof s.champ === 'object' ? ` <span class="chtag" title="This race is part of a championship">${esc(Champ.tagText(s.champ))}</span>${Champ.awardText(s.champ) ? ` <span class="chaward${s.champ.awarded && !s.champ.off ? ' done' : ''}">${esc(Champ.awardText(s.champ))}</span>` : ''}` : ''}${headline(s, win, cup)}</summary><div class="sessbody">${body}</div></details>`;
   }).join('');
   const RES_FOLDERS = ['tracks', 'pb', 'sessions'];
@@ -1495,6 +1520,8 @@ async function renderResultsPool(box, pool, supplied=null) {
     if (vb) { if (viewBars.has(vb.dataset.viewbar)) viewBars.delete(vb.dataset.viewbar); else viewBars.add(vb.dataset.viewbar); return reload(); }
     const vr = ev.target.closest('[data-vsreset]');
     if (vr) { await viewReset([['results', 'records'], sessPath]); return reload(); }
+    const historical=ev.target.closest('[data-historical-session]');
+    if(historical&&typeof PaddockHistorical!=='undefined'){await PaddockHistorical.open(api,historical.dataset.historicalSession);return;}
     const p = ev.target.closest('[data-pdf]');
     if (p) {
       let s = sessions.find(x => x.id === p.dataset.pdf), mine = laps.filter(l => l.sessionId === s.id), pdfTracks=tracks,pdfCars=cars;

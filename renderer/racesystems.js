@@ -20,8 +20,9 @@
     if (!items.length) return '';
     return `<div class="system-switches${o.compact ? ' compact' : ''}" role="group" aria-label="Racing systems">${items.map(x => {
       const available = configured(s, x), on = available && !off.includes(x.key);
+      const icon={fuel:'fuel',penalty:'penalty',damage:'damage',safetycar:'safetycar',tyrewear:'tyre',weather:'weather',pushsave:'pushsave',bop:'balance'}[x.key];
       const label=o.overview?({damage:'Damage & failures',safetycar:'Safety Car',tyrewear:'Tyre Wear'}[x.key]||x.label):x.label;
-      return `<button type="button" class="btn system-switch system-${x.key}${on ? ' on' : ''}" role="switch" aria-checked="${on}" data-system-key="${x.key}"${o.id ? ` data-system-setup="${esc(o.id)}"` : ''} data-system-on="${on ? '0' : '1'}"${available ? '' : ' disabled'} title="${available ? 'Change the saved setup; an active race is unchanged' : 'Choose a system above first'}"><span>${esc(label)}</span><b>${on ? 'On' : 'Off'}</b></button>`;
+      return `<button type="button" class="btn system-switch system-${x.key}${o.overview ? ' system-icon' : ''}${on ? ' on' : ''}" role="switch" aria-label="${esc(label)}" aria-checked="${on}" data-system-key="${x.key}"${o.id ? ` data-system-setup="${esc(o.id)}"` : ''} data-system-on="${on ? '0' : '1'}"${available ? '' : ' disabled'} title="${esc(label)} · ${on ? 'On' : 'Off'}. ${available ? 'Change the saved setup; an active race is unchanged' : 'Choose a system above first'}">${o.overview ? (root.Icons || require('./icons')).svg(icon,{size:22}) : `<span>${esc(label)}</span><b>${on ? 'On' : 'Off'}</b>`}</button>`;
     }).join('')}</div>`;
   }
   function build(host, o) {

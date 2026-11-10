@@ -1,0 +1,5 @@
+'use strict';
+function matches(s,entity,id){const key=entity==='drivers'?'driverId':'carId';return entity==='tracks'?s.trackId===id:(s.standings||[]).some(x=>x[key]===id)||(s.paddockJournal?.heats||[]).some(h=>(h.entries||[]).some(e=>e[key]===id||entity==='drivers'&&(e.changes||[]).some(c=>c.driverId===id)));}
+function json(data,entity,id){if(!['tracks','drivers'].includes(entity))throw Error('Unsupported shared cascade.');const key=entity==='tracks'?'trackId':'driverId',ids=new Set(data.laps.filter(l=>l[key]===id).map(l=>l.sessionId));for(const s of data.sessions)if(matches(s,entity,id))ids.add(s.id);return [...ids];}
+function sql(s,entity,id){if(!['tracks','drivers'].includes(entity)||typeof id!=='string')throw Error('Unsupported shared cascade.');const column=entity==='tracks'?'trackId':'driverId',ids=new Set(s.statement(`SELECT DISTINCT sessionId FROM lap_index WHERE ${column}=?`).all(id).map(r=>r.sessionId));for(const row of s.statement("SELECT id FROM records WHERE entity='sessions'").iterate()){const value=s.get('sessions',row.id,true).value;if(matches(value,entity,id))ids.add(row.id);}return [...ids];}
+module.exports={json,sql};

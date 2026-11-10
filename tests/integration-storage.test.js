@@ -4,9 +4,22 @@ const Database=require('../db'),{Paddock,hash}=require('../paddock'),ResourceSto
 const Client=require('../sqlite-client'),Repository=require('../sqlite-repository'),Resources=require('../renderer/resources'),Engine=require('../renderer/engine');
 const {migrateCopy}=require('../sqlite-migration'),{forkCopy}=require('../sqlite-working');
 const receipt=p=>({ok:true,databaseId:p.databaseId,sourceId:p.source.id,sessionId:p.sessionId,revision:p.revision,state:p.state,contentHash:hash(p)});
-function fixture(t){const dir=fs.mkdtempSync(path.join(os.tmpdir(),'timing-integration-')),db=new Database(path.join(dir,'db.json'));t.after(async()=>{await db.writesIdle();fs.rmSync(dir,{recursive:true,force:true});});return {dir,db};}
+function fixture(t,beforeCleanup=async()=>{}){const dir=fs.mkdtempSync(path.join(os.tmpdir(),'timing-integration-')),db=new Database(path.join(dir,'db.json'));t.after(async()=>{await beforeCleanup();await db.writesIdle();fs.rmSync(dir,{recursive:true,force:true});});return {dir,db};}
 function queued(db,n='race'){db.data.paddock={sourceId:'timing',connection:{databaseId:'host'},withdrawals:[]};const d={status:'pending',payload:{databaseId:'host',source:{id:'timing'},sessionId:n,revision:1,state:'active',participants:[]}};db.data.sessions.push({id:n,paddockDelivery:d});db.commit();return d;}
 function client(t,db){const c=new Paddock(db);c.code='password';t.after(()=>c.stop());return c;}
+
+for(const kind of ['json','sqlite'])for(const lost of [false,true])test(kind+': closing drains '+(lost?'a lost delivery response into durable retry state':'an accepted delivery acknowledgement'),{timeout:10000},async t=>{
+ let worker,c,release;const {db,dir}=fixture(t,async()=>{release?.();c?.stop();await c?.idle();await worker?.close();});queued(db);await db.writesIdle();
+ if(kind==='sqlite'){
+  migrateCopy({source:db.file,destination:path.join(dir,'copy')});forkCopy(path.join(dir,'copy'),path.join(dir,'work'));worker=new Client();await worker.openWorking(path.join(dir,'work'));
+  c=new Paddock(null,{storage:new(require('../paddock-storage').SqlitePaddockStorage)(new Repository(worker)),deliveryStore:worker});
+ }else c=new Paddock(db);
+ c.code='password';let started;const ready=new Promise(r=>started=r),gate=new Promise(r=>release=r);
+ c.call=async(route,p)=>{if(!p)return {id:'host',permissions:{timingResults:true}};started();await gate;if(lost)throw Error('Reply lost');return receipt(p);};
+ const sending=c.flush();await ready;c.quiesce();let idle=false;const drain=c.idle().then(()=>idle=true);await new Promise(setImmediate);assert(!idle);assert.equal(c.code,'password');release();await sending;await drain;assert.equal(c.timer,null);
+ if(worker){const rows=await worker.outbox('host');assert.equal(rows[0].status,lost?'pending':'sent');if(lost)assert(rows[0].nextAttemptAt>Date.now());}
+ else {const saved=JSON.parse(fs.readFileSync(db.file)).sessions[0].paddockDelivery;assert.equal(saved.status,lost?'pending':'sent');if(lost)assert(saved.nextAttemptAt>Date.now());}
+});
 test('delivery claims are durable before upload and backoff survives restart',async t=>{const {db}=fixture(t),d=queued(db),c=client(t,db);let posts=0;c.call=async(route,p)=>{if(!p)return {id:'host',permissions:{timingResults:true}};posts++;const saved=JSON.parse(fs.readFileSync(db.file)).sessions[0].paddockDelivery;assert(saved.attemptToken);assert(saved.leaseUntil>Date.now());throw Error('Lost response');};await c.flush();assert.equal(posts,1);assert.equal(d.status,'pending');assert.equal(d.attemptToken,null);assert(d.nextAttemptAt>Date.now());
  const reopened=new Database(db.file),again=client(t,reopened);again.call=async(route,p)=>{if(p)posts++;return p?receipt(p):{id:'host',permissions:{timingResults:true}};};await again.flush();assert.equal(posts,1);reopened.data.sessions[0].paddockDelivery.nextAttemptAt=0;await again.flush();assert.equal(posts,2);assert.equal(reopened.data.sessions[0].paddockDelivery.status,'sent');await reopened.writesIdle();});
 test('an upload acknowledgement cannot mark a corrected result delivered',async t=>{const {db}=fixture(t),old=queued(db),c=client(t,db);let release,started;const ready=new Promise(r=>started=r);c.call=async(route,p)=>{if(!p)return {id:'host',permissions:{timingResults:true}};started();return new Promise(r=>release=()=>r(receipt(p)));};const sending=c.flush();await ready;const next={status:'pending',payload:{...old.payload,revision:2}};db.data.sessions[0].paddockDelivery=next;db.touch(db.data.sessions[0]);await db.commit();c.isRacing=()=>true;release();await sending;assert.equal(next.status,'pending');assert.equal(next.receipt,undefined);assert.equal(old.status,'pending');});

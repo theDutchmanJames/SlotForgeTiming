@@ -25,7 +25,7 @@ parentPort.on('message', ({ id, operation, args }) => {
       if (store) throw Error('A database is already open.');
       store = new WorkingStore(args[0]); value = true;
     } else {
-      const working = store instanceof WorkingStore && ['compatibilityRead','lifecycleBarrier','lifecycleDiagnostics','bulkCollect','bulkDependencies','bulkImport','backupSnapshot','exportLegacy','command', 'receipt', 'revision', 'fieldVersion', 'changes', 'outbox', 'deliveryPayload', 'deliverySnapshot', 'snapshot', 'resourceState', 'resourceBegin', 'catalogue', 'cataloguePicture', 'historyPage', 'historySession', 'carStatistics', 'referencePage', 'referenceDetails', 'homeStatistics', 'homeSessions', 'raceInputs', 'raceSeason', 'raceCharts', 'paddockRead'].includes(operation);
+      const working = store instanceof WorkingStore && ['affectedSharedSessions','compatibilityRead','lifecycleBarrier','lifecycleDiagnostics','bulkCollect','bulkDependencies','bulkImport','backupSnapshot','exportLegacy','command', 'editorScope', 'receipt', 'revision', 'fieldVersion', 'changes', 'outbox', 'deliveryPayload', 'deliverySnapshot', 'snapshot', 'resourceState', 'resourceBegin', 'catalogue', 'cataloguePicture', 'historyReferences', 'historyPage', 'historySession', 'carStatistics', 'editorRead', 'referencePage', 'referenceDetails', 'homeStatistics', 'homeSessions', 'raceInputs', 'raceSeason', 'raceCharts', 'paddockRead'].includes(operation);
       if (!reads.has(operation) && !working) throw Error('Unsupported SQLite worker operation.');
       if (!store) throw Error('No SQLite copy is open.');
       value = store[operation](...args);

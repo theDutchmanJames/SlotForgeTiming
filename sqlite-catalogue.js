@@ -22,13 +22,12 @@ function index(s,entity,id) {
 function upgrade(s) {
   s.transaction(()=>{
     const format=s.statement("SELECT value FROM info WHERE key='workingFormat'").get().value;
-    if(['3','4','5','6'].includes(format)){s.statement('SELECT entity,id,sortKey,search,label,local FROM catalogue_index LIMIT 0').all();if(!s.statement("SELECT value FROM info WHERE key='catalogueIdentity'").get()?.value)throw Error('Missing catalogue identity.');return;}
-    if(format!=='2')throw Error('Unsupported catalogue format.');
+    if(['3','4','5','6'].includes(format)){if(!s.statement("SELECT value FROM info WHERE key='catalogueIdentity'").get()?.value)throw Error('Missing catalogue identity.');if(require('./sqlite-derived').tables(s,['catalogue_index'])){s.db.exec('CREATE INDEX IF NOT EXISTS catalogue_order ON catalogue_index(entity,local,sortKey,id);');return;}}
+    if(!['2','3','4','5','6'].includes(format))throw Error('Unsupported catalogue format.');
     s.db.exec(`CREATE TABLE catalogue_index(entity TEXT NOT NULL,id TEXT NOT NULL,sortKey TEXT NOT NULL,search TEXT NOT NULL,label TEXT NOT NULL,local INTEGER NOT NULL,PRIMARY KEY(entity,id));
       CREATE INDEX catalogue_order ON catalogue_index(entity,local,sortKey,id);`);
     for(const entity of C.ENTITIES)for(const {id} of s.statement('SELECT id FROM records WHERE entity=?').all(entity))index(s,entity,id);
-    s.statement("INSERT INTO info(key,value) VALUES('catalogueIdentity',?)").run(randomUUID());
-    s.statement("UPDATE info SET value='3' WHERE key='workingFormat'").run();
+    if(format==='2'){s.statement("INSERT INTO info(key,value) VALUES('catalogueIdentity',?)").run(randomUUID());s.statement("UPDATE info SET value='3' WHERE key='workingFormat'").run();}
   });
 }
 function sync(s) {for(const {entity,id} of s.changed.values())if(C.ENTITIES.includes(entity))index(s,entity,id);}

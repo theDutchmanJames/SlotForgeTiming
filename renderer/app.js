@@ -8,7 +8,7 @@ const TAB_ICONS = { home: 'home', database: 'database', setup: 'setup', custom: 
 const state = { tab: 'home', sub: 'tracks', schema: {}, settings: { theme: 'dark' }, custom: {}, refs: {}, setupSub: 'setups', customSub: 'layouts', settingsSub: 'general', hwSub: 'trackmate', editing: null };
 
 const titleOf = (entity, item) =>
-  (entity==='slotcars'&&item.paddock?.name)||state.schema[entity].title.map(k => item[k]).filter(Boolean).join(' ') || '(unnamed)';
+  (entity==='slotcars'&&(item.sharedLibrary?item.name:item.paddock?.name))||state.schema[entity].title.map(k => item[k]).filter(Boolean).join(' ') || '(unnamed)';
 
 // Native selectors still offer every record. Fetch metadata in bounded pages,
 // restarting the complete read if a concurrent edit invalidates a cursor.
@@ -16,7 +16,7 @@ const REFERENCE_ENTITIES=new Set(['tracks','drivers','slotcars','teams','layouts
 async function readReferenceSet(entity){
   if(!api.referencePage||!REFERENCE_ENTITIES.has(entity))return {items:await api.list(entity),revision:null};
   for(let attempt=0;attempt<3;attempt++){
-    try{const items=[];let cursor=null,revision;do{const page=await api.referencePage(entity,{cursor});items.push(...page.items);cursor=page.next;revision=page.revision;}while(cursor);return {items,revision};}
+    try{const items=[];let cursor=null,revision,scope;do{const page=await api.referencePage(entity,{cursor});items.push(...page.items);cursor=page.next;revision=page.revision;scope=page.scope;}while(cursor);return {items,revision,...(scope?{scope}:{})};}
     catch(error){if(attempt===2||!(error.code==='CATALOGUE_CHANGED'||/catalogue changed/i.test(error.message)))throw error;}
   }
 }
@@ -24,7 +24,8 @@ const referenceList=async entity=>(await readReferenceSet(entity)).items;
 async function readReferenceGroups(entities){
   for(let attempt=0;attempt<3;attempt++){
     const groups=await Promise.all(entities.map(readReferenceSet));
-    if(new Set(groups.map(g=>g.revision).filter(Boolean)).size<=1)return groups;
+    const scopes=new Map();for(const g of groups)if(g.revision){const k=g.scope||'timing';if(!scopes.has(k))scopes.set(k,new Set());scopes.get(k).add(g.revision);}
+    if([...scopes.values()].every(revisions=>revisions.size<=1))return groups;
   }
   throw Error('The catalogue changed while loading choices. Please refresh the page.');
 }
@@ -35,12 +36,14 @@ const DEFAULT_WELCOME = 'Welcome to the SlotForge Slotcar Timing App!';
 const welcomeOf = () => (state.settings.welcome || '').trim() || DEFAULT_WELCOME;
 // the name shown in the app's header and window title (changeable in App Settings)
 function applyName() {
-  const n = (state.settings.appName || '').trim() || DEFAULT_NAME, h = document.querySelector('h1');
+  const n = (state.settings.appName || '').trim() || DEFAULT_NAME, h = document.querySelector('.app-identity h1');
   if (h) {
-    // Reserve the original word's width/baseline, as in Telemetry. Custom names
-    // without the collection name remain plain text and are always escaped.
-    h.innerHTML = /^SlotForge(?:\s|$)/i.test(n)
-      ? `<span class="header-wordmark" role="img" aria-label="SlotForge"><span class="header-wordmark-size" aria-hidden="true">SlotForge</span><img class="header-light-ink" src="assets/brand/slotforge-dark.png" alt="" width="664" height="124"><img class="header-dark-ink" src="assets/brand/slotforge-light.png" alt="" width="664" height="124"></span>${n.slice(9) ? ` <span class="app-product">${esc(n.slice(9).trim())}</span>` : ''}`
+    // As in Telemetry, the slogan sets the wordmark width beside the 42px icon.
+    // A user-defined app name remains readable text, rather than being replaced.
+    const branded=n.toLowerCase()===DEFAULT_NAME.toLowerCase();
+    h.parentElement.classList.toggle('is-brand',branded);
+    h.innerHTML = branded
+      ? `<span class="header-wordmark" role="img" aria-label="SlotForge Timing"><img class="header-light-ink" src="assets/brand/timing-wordmark-dark.svg" alt="" width="456.49" height="90.34" draggable="false"><img class="header-dark-ink" src="assets/brand/timing-wordmark-light.svg" alt="" width="456.49" height="90.34" draggable="false"></span>`
       : esc(n);
   }
   document.title = n;
@@ -466,8 +469,14 @@ function bootFailed(e) {
   if (typeof phInit === 'function') phInit();
   if (typeof ptInit === 'function') ptInit();
   if(typeof PluginDisplayClient!=='undefined')PluginDisplayClient.init();
+  const libraryState=api.libraryStatus?await api.libraryStatus():null;
+  if(typeof PaddockCollection!=='undefined'&&!libraryState?.available)PaddockCollection.init(api);
   applyUiScale();
-  render();
+  await render();
+  if(libraryState?.available&&typeof SharedLibraryWatch!=='undefined'){
+    const stop=SharedLibraryWatch.watch({initial:libraryState,read:()=>api.libraryStatus(),refresh:()=>render(),canRefresh:()=>!document.hidden&&['home','database'].includes(state.tab)&&!raceActive()&&!state.editing&&!document.querySelector('dialog[open],.central-session[open],details.sess[open]')&&!document.activeElement?.matches('input,select,textarea,[contenteditable="true"]')&&!state.homeCustom?.typing});
+    addEventListener('beforeunload',stop,{once:true});
+  }
   if (api.onHwChoose && typeof tmAutoConnect === 'function') tmAutoConnect(); // the remembered Trackmate, if it is plugged in
   if (typeof abAutoConnect === 'function') abAutoConnect(); // the remembered SlotForge box, or the virtual one when that is chosen
   if (typeof ppAutoConnect === 'function') ppAutoConnect();

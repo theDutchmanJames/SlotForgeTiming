@@ -95,15 +95,17 @@ class WorkingStore extends SqliteStore {
   constructor(directory, { checkpoint = () => {}, clock = Date.now } = {}) {
     super(path.join(directory, 'working.sqlite'), { writable: true });
     this.checkpoint = checkpoint; this.clock = clock;
-    try { Outbox.upgrade(this); Catalogue.upgrade(this); History.upgrade(this); require('./sqlite-finalization').upgrade(this); require('./sqlite-home').upgrade(this); require('./sqlite-media').upgrade(this); this.transaction(()=>require('./sqlite-media').prune(this)); } catch (error) { this.close(); throw error; }
+    try { Outbox.upgrade(this); Catalogue.upgrade(this); require('./sqlite-editor-generation').initialize(this); History.upgrade(this); require('./sqlite-finalization').upgrade(this); require('./sqlite-home').upgrade(this); require('./sqlite-media').upgrade(this); require('./sqlite-history-detail').upgrade(this); require('./sqlite-car-statistics').upgrade(this); require('./sqlite-lookup-indexes').ensure(this); this.transaction(()=>require('./sqlite-media').prune(this)); } catch (error) { this.close(); throw error; }
   }
   homeStatistics(options) { return require('./sqlite-dashboard').home(this,options); }
   homeSessions(options) { return require('./sqlite-dashboard').navigation(this,options); }
   raceSeason(options) { return require('./sqlite-dashboard').season(this,options); }
   raceCharts(ids) { return require('./sqlite-dashboard').charts(this,ids); }
   raceInputs(options) { return require('./sqlite-dashboard').race(this,options); }
+  editorRead(kind,entity,value) { return require('./sqlite-editor-read').read(this,kind,entity,value); }
   referencePage(entity,options) { return require('./sqlite-references').page(this,entity,options); }
   referenceDetails(entity,ids,revision) { return require('./sqlite-references').details(this,entity,ids,revision); }
+  historyReferences(rows) { return this.transaction(()=>require('./history-read').noMedia(require('./history-read').referenceRequest(rows).map(r=>History.selected(this,r.entity,r.id,r.entity==='tracks'?require('./history-read').TRACK:require('./history-read').CAR)))); }
   historyPage(pool,options) { return History.page(this,pool,options); }
   historySession(pool,id,options) { return History.session(this,pool,id,options); }
   carStatistics(id) { return History.car(this,id); }
@@ -111,7 +113,7 @@ class WorkingStore extends SqliteStore {
   cataloguePicture(entity,id,revision) { return Catalogue.picture(this,entity,id,revision); }
   outbox(databaseId, options) { return Outbox.page(this, databaseId, options); }
   deliveryPayload(key, token) { return Outbox.payload(this, key, token); }
-  deliverySnapshot(key) { return Outbox.snapshot(this,key); }
+  deliverySnapshot(key,options) { return Outbox.snapshot(this,key,options); }
   snapshot(entity, id, includeMedia = false) {
     return this.transaction(() => ({ record: this.get(entity, id, includeMedia), revision: this.revision(entity, id) }));
   }
@@ -135,6 +137,7 @@ class WorkingStore extends SqliteStore {
   revision(entity, id) { return this.statement('SELECT revision FROM revisions WHERE entity=? AND id=?').get(entity, id)?.revision ?? 0; }
   fieldVersion(entity, id, parts) { return this.statement('SELECT version FROM field_versions WHERE entity=? AND id=? AND path=?').get(entity, id, JSON.stringify(parts))?.version ?? 0; }
   receipt(id) { const row = this.statement('SELECT result FROM command_receipts WHERE id=?').get(identity(id)); return row ? JSON.parse(row.result) : null; }
+  editorScope() { return require('./sqlite-editor-generation').read(this); }
   changes(after = 0, limit = 50) {
     if (!Number.isSafeInteger(after) || after < 0 || !Number.isInteger(limit) || limit < 1 || limit > 200) throw Error('Invalid change query.');
     if(after<Number(this.statement("SELECT value FROM info WHERE key='changesFloor'").get()?.value||0))throw Error('Change cursor expired. Refresh the current data before continuing.');
@@ -161,6 +164,7 @@ class WorkingStore extends SqliteStore {
     this.statement('INSERT OR IGNORE INTO roots VALUES(?,(SELECT COALESCE(MAX(ordinal),-1)+1 FROM roots),?)').run(entity, kind);
   }
   insert(entity, row) {
+    if(entity==='laps')require('./sqlite-lap-effects').remember(this,row.id,true);
     this.root(entity); this.putRecord(entity, row.id, this.nextOrdinal(entity), row);
     if (entity === 'laps') this.indexLap(row);
     this.touch(entity, row.id);
@@ -170,6 +174,7 @@ class WorkingStore extends SqliteStore {
     this.statement('INSERT INTO lap_index VALUES(?,?,?,?,?,?,?,?,?)').run(row.id, 'laps', text(row.sessionId), text(row.carId), text(row.driverId), text(row.trackId), Number.isFinite(row.time) ? row.time : null, row.valid ? 1 : 0, row.pit ? 1 : 0);
   }
   erase(entity, id) {
+    if(entity==='laps')require('./sqlite-lap-effects').remember(this,id);
     if (entity === 'laps') this.statement('DELETE FROM lap_index WHERE id=?').run(id);
     for (const table of ['fields', 'assets', 'records']) this.statement(`DELETE FROM ${table} WHERE entity=? AND id=?`).run(entity, id);
     this.touch(entity, id); // Keep revision tombstones after deletion.
@@ -207,6 +212,9 @@ class WorkingStore extends SqliteStore {
     if (Buffer.byteLength(encoded) > 64 * 1024 * 1024) throw Error('Storage command exceeds the experimental 64 MiB bound.');
     const fingerprint = hash(encoded);
     return this.transaction(() => {
+      // Validate before receipt lookup too: a restored receipt is not authority
+      // to acknowledge a command submitted against a replaced generation.
+      if(input.type==='editorSave')require('./sqlite-editor-generation').check(this,input.scope);
       const old = this.statement('SELECT fingerprint,result FROM command_receipts WHERE id=?').get(input.id);
       if (old) {
         if (old.fingerprint !== fingerprint) throw Error('Command identity was already used with different content.');
@@ -215,6 +223,19 @@ class WorkingStore extends SqliteStore {
       this.changed = new Map();
       let result;
       switch (input.type) {
+        case 'importSharedPrepared': {
+          const T=require('./transfer'),data={customFields:this.get('@meta','customFields',true)?.value||{}};
+          for(const e of T.ORDER)data[e]=(input.items[e]||[]).map(r=>this.get(e,r.id,true)?.value).filter(Boolean);
+          require('./shared-library-import').applyPrivate(data,input.items);
+          for(const e of T.ORDER)if(e!=='slotcars')for(const row of data[e])if(!this.get(e,row.id))this.insert(e,row);
+          this.replace('@meta','customFields',data.customFields);result={imported:true};break;
+        }
+        case 'attachSharedHistory': {
+          const session=this.get('sessions',input.sessionId,true)?.value;
+          const next=require('./shared-library-adopted-history').attach(session,this.lapsFor(input.sessionId),input);
+          this.replace('sessions',input.sessionId,next);result={attached:true};break;
+        }
+        case 'editorSave': result = require('./sqlite-editor-save').apply(this,input); break;
         case 'setLapEligibility': result = this.lapEligibility(input); break;
         case 'setRaceResume': result = require('./sqlite-lifecycle').setResume(this,input); break;
         case 'importItems': result = require('./sqlite-bulk').importItems(this,input); break;
@@ -231,7 +252,7 @@ class WorkingStore extends SqliteStore {
           else throw Error('Unsupported storage command.');
       }
       Outbox.syncChanges(this);
-      Catalogue.sync(this); History.sync(this); require('./sqlite-home').sync(this);
+      Catalogue.sync(this); History.sync(this); require('./sqlite-history-detail').sync(this); require('./sqlite-home').sync(this); require('./sqlite-car-statistics').sync(this);
       this.checkpoint('domain-written');
       this.statement('INSERT INTO command_receipts VALUES(?,?,?)').run(input.id, fingerprint, JSON.stringify(result));
       // A large result must not turn a 200-entry journal page into millions of IDs.
@@ -245,10 +266,13 @@ class WorkingStore extends SqliteStore {
       this.statement('INSERT INTO changes(commandId,kind,changed) VALUES(?,?,?)').run(input.id, input.type, JSON.stringify(changed));
       if(Number(this.statement('SELECT last_insert_rowid() n').get().n)%128===0)require('./sqlite-media').prune(this);
       require('./sqlite-home').stamp(this);
+      require('./sqlite-history-detail').stamp(this);
+      require('./sqlite-car-statistics').stamp(this);
       this.checkpoint('before-commit');
       return result;
     });
   }
+  affectedSharedSessions(entity,id){return require('./shared-library-cascade').sql(this,entity,id);}
   custom({ entity, recordId, fieldId, expectedVersion, value }) {
     if (!Object.hasOwn(schema,entity) || ['sessions','laps'].includes(entity)) throw Error('Unsupported custom-value entity.');
     identity(recordId); identity(fieldId); version(expectedVersion);
@@ -291,7 +315,7 @@ class WorkingStore extends SqliteStore {
   paddockState() {
     const source = this.field('@meta', 'paddock', ['sourceId']);
     // Catalogue caches, connection settings and photos are not part of result writes.
-    return { paddock: source.present ? { sourceId: source.value, withdrawals: this.field('@meta', 'paddock', ['withdrawals']).value || [] } : undefined };
+    return { paddock: source.present ? { sourceId: source.value, connection: {mode:require('./sqlite-catalogue').read(this,'@meta','paddock',['connection','mode']),historyGuard:require('./sqlite-catalogue').read(this,'@meta','paddock',['connection','historyGuard'])}, withdrawals: this.field('@meta', 'paddock', ['withdrawals']).value || [] } : undefined };
   }
   savePaddock(state, before) {
     if (JSON.stringify(state.paddock) === before) return;

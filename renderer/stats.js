@@ -127,12 +127,20 @@
   const ownLaps = (x, laps) => (laps || []).filter(l => (x.asTeam ? !!x.teamId && l.teamId === x.teamId : l.driverId === x.driverId));
   function forSession(session, laps, tracks, cars) {
     const track = (tracks || []).find(t => t.id === session.trackId) || {};
+    // Group once in original lap order. A team row and an individual row can
+    // legitimately include the same lap; they use separate lookup maps.
+    const drivers=new Map(),teams=new Map(),cache=new Map();
+    const add=(map,key,lap)=>{let group=map.get(key);if(!group){group=[];map.set(key,group);}group.push(lap);};
+    for(const lap of laps||[]){if(lap.sessionId!==undefined&&lap.sessionId!==session.id)continue;add(drivers,lap.driverId,lap);if(lap.teamId)add(teams,lap.teamId,lap);}
+    const empty=[];
     return (session.standings || []).map(x => {
       const car = (cars || []).find(c => c.id === x.carId);
-      const mine = ownLaps(x, laps).filter(l => l.sessionId === undefined || l.sessionId === session.id);
+      const mine=(x.asTeam?teams.get(x.teamId):drivers.get(x.driverId))||empty;
+      let scales=cache.get(mine);if(!scales){scales=new Map();cache.set(mine,scales);}
+      const scale=car&&car.scale;if(!scales.has(scale))scales.set(scale,figures(mine,track,scale));
       const stint=x.tyres?.stints?.at(-1),rules=stint?.heat ? session.heatResults?.find(h=>h.heat===stint.heat)?.rulesSnapshot : session.rulesSnapshot;
       const tyre=Wx?.withTyres(rules?.config?.tyrewear?.tyres).tyreOf(x.tyres?.last);
-      return { ...figures(mine, track, car && car.scale), pits: x.pits, pitTime: x.pitTime, penalty: x.penaltyPoints, tyres: x.tyres && x.tyres.last ? x.tyres.last : undefined, ...(tyre?.custom ? {tyreName:tyre.name} : {}) };
+      return { ...scales.get(scale), pits: x.pits, pitTime: x.pitTime, penalty: x.penaltyPoints, tyres: x.tyres && x.tyres.last ? x.tyres.last : undefined, ...(tyre?.custom ? {tyreName:tyre.name} : {}) };
     });
   }
   // speed of a single lap (a record), real and at scale

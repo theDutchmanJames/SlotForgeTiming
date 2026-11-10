@@ -28,9 +28,10 @@ function index(s,entity,id){
 }
 function upgrade(s){s.transaction(()=>{
   const version=s.statement("SELECT value FROM info WHERE key='workingFormat'").get().value;
-  if(['4','5','6'].includes(version)){s.db.exec("CREATE INDEX IF NOT EXISTS history_track_start ON history_laps(trackId,ordinal); CREATE INDEX IF NOT EXISTS history_championship ON history_sessions(json_extract(summary,'$.champ.id'),ordinal)");s.statement('SELECT id,ordinal,token,summary FROM history_sessions LIMIT 0').all();s.statement('SELECT id,trackId,personal FROM history_laps LIMIT 0').all();s.statement('SELECT carId FROM history_wins LIMIT 0').all();return;}
-  if(version!=='3')throw Error('Unsupported history format.');
-  s.db.exec(`CREATE TABLE history_sessions(id TEXT PRIMARY KEY,ordinal INTEGER NOT NULL,token INTEGER NOT NULL,summary TEXT NOT NULL);
+  if(['4','5','6'].includes(version)&&require('./sqlite-derived').tables(s,['history_laps','history_sessions','history_wins'])){s.db.exec("CREATE INDEX IF NOT EXISTS history_track_start ON history_laps(trackId,ordinal); CREATE INDEX IF NOT EXISTS history_championship ON history_sessions(json_extract(summary,'$.champ.id'),ordinal); CREATE INDEX IF NOT EXISTS history_session_order ON history_sessions(token,ordinal DESC); CREATE INDEX IF NOT EXISTS history_track ON history_laps(token,track,trackId,time,ordinal); CREATE INDEX IF NOT EXISTS history_personal ON history_laps(token,personal,trackId,driverId,time,ordinal);");return;}
+  if(!['3','4','5','6'].includes(version))throw Error('Unsupported history format.');
+  s.db.exec(`DROP TABLE IF EXISTS history_sessions; DROP TABLE IF EXISTS history_wins; DROP TABLE IF EXISTS history_laps;
+    CREATE TABLE history_sessions(id TEXT PRIMARY KEY,ordinal INTEGER NOT NULL,token INTEGER NOT NULL,summary TEXT NOT NULL);
     CREATE INDEX history_session_order ON history_sessions(token,ordinal DESC);
     CREATE INDEX history_championship ON history_sessions(json_extract(summary,'$.champ.id'),ordinal);
     CREATE TABLE history_wins(carId TEXT NOT NULL,sessionId TEXT NOT NULL,PRIMARY KEY(carId,sessionId));
@@ -39,7 +40,8 @@ function upgrade(s){s.transaction(()=>{
     CREATE INDEX history_track_start ON history_laps(trackId,ordinal);
     CREATE INDEX history_personal ON history_laps(token,personal,trackId,driverId,time,ordinal);`);
   for(const entity of ['sessions','laps'])for(const {id} of s.statement('SELECT id FROM records WHERE entity=? ORDER BY ordinal').iterate(entity))index(s,entity,id);
-  s.statement("UPDATE info SET value='4' WHERE key='workingFormat'").run();
+  if(version==='3')s.statement("UPDATE info SET value='4' WHERE key='workingFormat'").run();
+  s.statement("DELETE FROM info WHERE key='historyDetailVersion'").run();
 });}
 function sync(s){for(const {entity,id} of s.changed.values())index(s,entity,id);}
 function page(s,pool,value){const opts=H.options(pool,value);return s.transaction(()=>{
@@ -60,15 +62,9 @@ function page(s,pool,value){const opts=H.options(pool,value);return s.transactio
 function session(s,pool,id,value){H.options(pool);const o=H.detailOptions(value);return s.transaction(()=>{
   const revision=C.revision(s);H.checkRevision(o.revision,revision);
   if(!s.statement('SELECT 1 FROM history_sessions WHERE id=? AND token=?').get(id,pool==='tokens'?1:0))return null;
-  const saved=sessionValue(s,id),laps=s.statement(`SELECT f.json FROM lap_index l JOIN history_laps h ON h.id=l.id JOIN fields f ON f.entity='laps' AND f.id=l.id AND f.path='[]' WHERE l.sessionId=? AND h.token=? ORDER BY h.heat,h.lap,h.ordinal`).all(id,pool==='tokens'?1:0).map(x=>JSON.parse(x.json));
-  const related=H.refs((...args)=>selected(s,...args),laps,[saved]);
-  return {revision,session:saved,laps:H.noMedia(o.exportAll?laps:laps.slice(o.offset,o.offset+100)),offset:o.offset,total:laps.length,figures:Stats.forSession(saved,laps,related.tracks,related.slotcars),refs:related};
+  if(o.summaryOnly)return {revision,session:JSON.parse(s.statement('SELECT summary FROM history_sessions WHERE id=?').get(id).summary),deliveryStatus:C.read(s,'sessions',id,['paddockDelivery','status'])||null};
+  const saved=sessionValue(s,id);
+  return {revision,session:saved,offset:o.offset,...require('./sqlite-history-detail').read(s,id,saved,o)};
 });}
-function car(s,id){return s.transaction(()=>{
-  const value=selected(s,'slotcars',id,H.CAR);if(!value)return null;
-  const tracks=new Map(),dates=new Map(),trackOf=tid=>{if(!tracks.has(tid))tracks.set(tid,selected(s,'tracks',tid,H.TRACK));return tracks.get(tid);},dateOf=sid=>{if(!dates.has(sid))dates.set(sid,typeof sid==='string'?C.read(s,'sessions',sid,['date']):undefined);return dates.get(sid);};
-  const rows=s.statement("SELECT f.json FROM lap_index l JOIN records r ON r.entity='laps' AND r.id=l.id JOIN fields f ON f.entity='laps' AND f.id=l.id AND f.path='[]' WHERE l.carId=? ORDER BY r.ordinal").iterate(id);
-  function* laps(){for(const row of rows)yield JSON.parse(row.json);}
-  return H.carDetails(value,laps(),trackOf,dateOf,s.statement('SELECT COUNT(*) AS n FROM history_wins WHERE carId=?').get(id).n);
-});}
+function car(s,id){return require('./sqlite-car-statistics').read(s,id);}
 module.exports={upgrade,sync,page,session,car,sessionValue,selected};

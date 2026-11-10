@@ -68,7 +68,7 @@ class StorageLifecycle {
   clearResume(){const id=randomUUID();return this.queue('resumeTail',async()=>{if(this.resources)await this.resources.clear();return this.backend.clearResume(id);});}
   pending(){return this.pendingCount>0||this.backend.pending()||!!this.resources?.pending;}
   async idle(){await Promise.all([this.settingsTail.catch(()=>{}),this.resumeTail.catch(()=>{}),this.resources?.idle()]);await this.backend.idle();}
-  shutdown(){this.stopping=true;return this.closing ||= (async()=>{await this.idle();await this.backend.close?.();})();}
+  shutdown(){this.stopping=true;return this.closing ||= (async()=>{try{await this.idle();await this.backend.close?.();}catch(error){this.closing=null;throw error;}})();}
   diagnostics(){return this.backend.diagnostics();}
 }
 module.exports={StorageLifecycle,JsonLifecycleBackend,SqliteLifecycleBackend,validResume};

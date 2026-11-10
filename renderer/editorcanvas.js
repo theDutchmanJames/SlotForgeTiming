@@ -48,6 +48,9 @@
       }
     };
     return {
+      // A selected preview asset can finish loading without changing the saved
+      // widget options. Rebuild once when that external content changes.
+      invalidate(){layoutKey=undefined;},
       sync(selected,changed){
         // Layout defaults affect every widget. Pictures stay in their existing
         // background element and do not invalidate widget content.

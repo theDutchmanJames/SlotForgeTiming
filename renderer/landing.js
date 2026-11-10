@@ -1,6 +1,6 @@
 // Home / landing page: pick a race setup, assign drivers and cars to its lanes, start the race.
 const optionsOf = (entity, list, chosen, blank = '(choose)') =>
-  `<option value="">${esc(blank)}</option>` + list.filter(i=>entity!=='slotcars'||!i.paddock?.archived||i.id===chosen).map(i => `<option value="${esc(i.id)}"${i.id === chosen ? ' selected' : ''}${entity==='slotcars'&&i.paddock?.archived?' disabled':''}>${esc(titleOf(entity, i))}${entity==='slotcars'&&i.paddock?(i.paddock.archived?' · unavailable':' · Paddock'):''}</option>`).join('');
+  `<option value="">${esc(blank)}</option>` + list.filter(i=>entity!=='slotcars'||!i.paddock?.archived||i.id===chosen).map(i => `<option value="${esc(i.id)}"${i.id === chosen ? ' selected' : ''}${entity==='slotcars'&&i.paddock?.archived?' disabled':''}>${esc(titleOf(entity, i))}${entity==='slotcars'&&i.paddock&&!i._sameComputerLibrary?(i.paddock.archived?' · unavailable':' · Paddock'):''}</option>`).join('');
 
 // Current adapters return card statistics without sending lap history to Home.
 // homeLaps remains the compatibility cache for older adapters/tests without that API.
@@ -41,6 +41,12 @@ async function renderHome() {
   const drivers = allDrivers.filter(d => d.driverType !== 'virtual');
   const isRival = row => VirtualRival.isDriver(row,allDrivers);
   const [multiProfiles,classDefs]=await Promise.all(['multiclasssystems','raceclasses'].map(e=>api.list(e)));
+  // Shared choices remain metadata only until selected; cache a signed racing profile before saving a local car ID.
+  if(api.paddockCatalogue){try{const shared=await api.paddockCatalogue(false);if(shared.connection?.mode==='local'){for(const c of cars)if(c.paddock?.databaseId===shared.connection.databaseId)c._sameComputerLibrary=true;for(const c of shared.cars){
+    if(c.archived||cars.some(x=>x.paddock?.databaseId===shared.connection.databaseId&&x.paddock.carId===c.id))continue;
+    if(!shared.connected)continue;
+    cars.push({id:'shared:'+c.id,model:c.name,brand:c.maker||'',_sharedCar:c.id,_sameComputerLibrary:true,raceClass:classDefs.find(x=>x.name.trim().toLocaleLowerCase()===(c.raceClass||'').trim().toLocaleLowerCase())?.id||'',paddock:{name:c.name,databaseId:shared.connection.databaseId,carId:c.id}});
+  }}}catch{/* Local cars and captured configurations remain usable. */}}
   const rivalProfiles = await api.list('virtualrivalsystems');
   const champs = (Array.isArray(champRaw) ? champRaw : []).map(c => Champ.clean(c, true)); // (1.55.0: the championships; 1.56.1: one of them is chosen in the Start a race card, and only then its card shows, inside Start a race)
   const imageSets = Array.isArray(imagesets) ? imagesets : []; // (1.26.0: the picture sets of Customization > Image Settings, for the Weather and Tyres Available cards)
@@ -94,8 +100,11 @@ async function renderHome() {
 
   const mc=(!tokens&&setup?.multiClass)?MultiClass.freeze(multiProfiles.find(p=>p.id===setup.multiClass),classDefs):null;
   const mcRows=rows.map(r=>({...r,raceClass:MultiClass.resolve(r,mc,{cars,drivers,teams})}));
-  const mcErrors=!tokens&&setup?.multiClass&&!mc?['The selected Multi-Class System is missing. Choose another in Race Setup.']:[...MultiClass.validate(mc,mcRows.filter(r=>!isRival(r)),setup),...MultiClass.entryIssues(mc,rows.filter(r=>!isRival(r)),{cars,drivers,teams})];
-  const mcHtml=mc?.assignment==='roster'?`<section class="mc-home"><h4>${esc(mc.name)} · Driver classes</h4><p class="muted">Classes are assigned in the Multi-Class setup. Car choices are restricted to matching Race Class labels.</p>${rows.map((r,i)=>r.absent||isRival(r)?'':`<p><b>${esc((withTeam?teams.find(t=>t.id===r.teamId)?.name:drivers.find(d=>d.id===r.driverId)?.name)||'Entry '+(i+1))}</b> · ${esc(mc.classes.find(c=>c.id===mcRows[i].raceClass)?.name||'Assign driver class in Multi-Class setup')}</p>`).join('')}</section>`:mc?`<section class="mc-home"><h4>${esc(mc.name)} · Entry classes</h4><p class="muted">Defaults come from the ${mc.assignment}. These assignments lock when the event starts.</p>${rows.map((r,i)=>r.absent||isRival(r)?'':`<label class="field">${esc((withTeam?teams.find(t=>t.id===r.teamId)?.name:drivers.find(d=>d.id===r.driverId)?.name)||'Entry '+(i+1))}<select data-mc-entry="${i}"><option value="">Use database default${mcRows[i].raceClass?' · '+esc(mc.classes.find(c=>c.id===mcRows[i].raceClass)?.name||'Unavailable'):''}</option>${mc.classes.map(c=>`<option value="${esc(c.id)}"${r.raceClass===c.id?' selected':''}>${esc(c.name)}</option>`).join('')}</select></label>`).join('')}</section>`:'';
+  const mcErrors=!tokens&&setup?.multiClass&&!mc?['The selected Multi-Class System is missing. Choose another in Race Setup.']:MultiClass.validate(mc,[],setup);
+  const mcRowErrors=rows.map((r,i)=>!mc||r.absent||isRival(r)?'':([...MultiClass.entryIssues(mc,[r],{cars,drivers,teams}),...MultiClass.validate(mc,[mcRows[i]])][0]||'').replace(/^(Entry|Team) 1/, (heats?(byTeam?'Team ':'Participant '):'Lane ')+(i+1)));
+  const mcHtml=mc?`<details class="mc-home"><summary>${esc(mc.name)} · Class assignments</summary><p class="muted">${mc.assignment==='roster'?'Drivers are assigned in the Multi-Class setup. Only cars with matching Race Class labels can be selected.':'Defaults come from the '+esc(mc.assignment)+'. Assignments lock when the event starts.'}</p></details>`:'';
+  const classChoice=(r,i)=>!mc||r.absent||isRival(r)?'':mc.assignment==='roster'?`<span class="hs-class">Class: <b>${esc(mc.classes.find(c=>c.id===mcRows[i].raceClass)?.name||'Assign this driver in Multi-Class setup')}</b></span>`:`<label class="hs-class">Race class <select data-mc-entry="${i}" aria-label="Race class for entry ${i+1}"><option value="">Database default${mcRows[i].raceClass?' · '+esc(mc.classes.find(c=>c.id===mcRows[i].raceClass)?.name||'Unavailable'):''}</option>${mc.classes.map(c=>`<option value="${esc(c.id)}"${r.raceClass===c.id?' selected':''}>${esc(c.name)}</option>`).join('')}</select></label>`;
+
   const rivalSelection = allowRival ? VirtualRival.gridEntries(rows,allDrivers,rivalProfiles,track?.id) : {entries:[],errors:[]};
   const rivalFor = r => rivalSelection.entries.find(e=>e.driverId===r.driverId);
   const rivalSelect = (r,i) => {
@@ -129,6 +138,7 @@ async function renderHome() {
       const st = rows.map(r => r.driverId).filter(Boolean); if (st.length !== new Set(st).size) issues.push('A driver starts for two teams. Choose another starting driver.');
     }
     else if (!tokens) rows.forEach((r,i)=>{if(rot&&r.absent)return;if(isRival(r)){if(!rivalFor(r))rowMsg(i,label(i)+' needs a valid Rival Setup for this track.');}else if(!r.driverId||!r.carId)rowMsg(i,label(i)+' needs a driver and a car.');});
+    mcRowErrors.forEach((message,i)=>{if(message&&!rowMsgs[i])rowMsg(i,message);});
     if(!allowRival&&rows.some(isRival))issues.push('Virtual drivers are available in individual races, not team or Time Token sessions.');
     if(allowRival&&!here.some(r=>r.driverId&&!isRival(r)))issues.push('Choose at least one human driver.');
     const dup = key => { const ids = here.map(r => r[key]).filter(Boolean); return ids.length !== new Set(ids).size; };
@@ -218,14 +228,14 @@ async function renderHome() {
   const rowHtml = (r, i) => {
     const gone = away(r), ready = rowOk.has(i) ? rowOk.get(i) : true, // (an away row is in no lamp, and has no message: it is never marked)
       who = (heats ? (byTeam ? 'Team ' : 'Participant ') : 'Lane ') + (i + 1) + (rot && rot.names[i] ? ' · ' + rot.names[i] : '');
-    const note = [isRival(r)?`<span class="muted">Virtual Rival · ${rivalFor(r)?esc(rivalFor(r).profile.name)+(mc?' · comparison only':''):'choose a saved replay'}</span>`:'',rowMsgs[i] ? `<span class="hs-why">${esc(rowMsgs[i])}</span>` : '',
+    const note = [classChoice(r,i),isRival(r)?`<span class="muted">Virtual Rival · ${rivalFor(r)?esc(rivalFor(r).profile.name)+(mc?' · comparison only':''):'choose a saved replay'}</span>`:'',rowMsgs[i] ? `<span class="hs-why">${esc(rowMsgs[i])}</span>` : '',
       withTeam && r.teamId ? `<span class="muted teamline">${membersOf(teamOf(r.teamId)).length ? 'Drivers: ' + esc(membersOf(teamOf(r.teamId)).map(d => titleOf('drivers', d)).join(', ')) : 'This team has no drivers yet.'}</span>` : ''].filter(Boolean).join(' ');
     const more = (rot && rot.names[i] ? `<span class="muted hs-rname">${esc(rot.names[i])}</span>` : '') + (rot ? `<label class="lane-away"><input type="checkbox" data-absent="${i}"${away(r) ? ' checked' : ''} aria-label="${byTeam ? 'Team' : 'Participant'} ${i + 1} is not here today"> Not here today</label>` : '')
       + (heats && (rot ? rows.length > rot.participants : rows.length > 2) ? `<button class="btn" data-remove="${i}">Remove</button>` : '');
     return `<div class="lane${rot ? ' rot' : ''}${gone ? ' away' : ''}${byTeam ? ' byteam' : ''}${withTeam && !byTeam ? ' threesel' : ''}${!ready ? ' need' : ''}" data-row="${i}" style="--c:${esc(laneHue(i))}">
       <strong class="hs-num" style="--on:${onLane(laneHue(i))}" title="${esc(who)}"><span class="hs-vh">${esc(who)}</span><span aria-hidden="true">${i + 1}</span></strong>
       <div class="hs-fields">${byTeam ? sel2('', teamSelect(r, i)) : `${withTeam ? sel2('', teamSelect(r, i)) : ''}${sel2('driver', `<select data-k="driverId" aria-label="${enduSingle ? 'Starting driver' : 'Driver'} for row ${i + 1}"${away(r) ? ' disabled' : ''}>${driverOpts(enduSingle && !r.teamId ? [] : driverList(r), r.driverId, tokens ? 'Guest (no driver)' : enduSingle ? (setup.endurance.next === 'random' ? '(starting driver: by lot)' : '(starting driver: the first of the team)') : undefined)}</select>`)}`}${isRival(r)&&allowRival?rivalSelect(r,i):sel2('car', `<select data-k="carId" aria-label="Car for row ${i + 1}"${away(r) ? ' disabled' : ''}>${optionsOf('slotcars', MultiClass.carsFor(r,mc,{cars,drivers,teams}), r.carId, mc?.assignment==='roster' ? (MultiClass.assignedClass(r,mc,{cars,drivers,teams})?'Choose a matching car':'Choose an assigned driver first') : tokens ? '(no car)' : undefined)}</select>`)}</div>
-      ${more||!isRival(r)&&typeof PaddockBrowser!=='undefined' ? `<div class="hs-more">${more}${!isRival(r)&&typeof PaddockBrowser!=='undefined'?`<button type="button" class="btn hs-paddock-pick" data-paddock-pick="${i}"${away(r)||raceOn?' disabled':''}>Browse Local / Paddock cars</button>`:''}</div>` : ''}
+      ${more||!isRival(r)&&typeof PaddockBrowser!=='undefined' ? `<div class="hs-more">${more}${!isRival(r)&&typeof PaddockBrowser!=='undefined'?`<button type="button" class="btn hs-paddock-pick" data-paddock-pick="${i}"${away(r)||raceOn?' disabled':''} title="Browse available slotcars">Browse cars</button>`:''}</div>` : ''}
       ${gone ? '<span class="hs-tick off" aria-hidden="true"></span>' : `<span class="hs-tick ${ready ? 'ok' : 'warn'}" role="img" aria-label="${ready ? 'Ready' : 'Not ready yet'}">${Icons.svg(ready ? 'check' : 'alert', { size: 13, stroke: 2.6 })}</span>`}
       ${note ? `<div class="hs-note">${note}</div>` : ''}</div>`;
   };
@@ -279,7 +289,7 @@ async function renderHome() {
     netOn: !!state.settings.netOn, netError: more && more.netError, hasSetup: !!setup, audioName, drivers: drivers.length, cars: cars.length, tracks: tracks.length });
   const chipHtml = c => `<span class="hm-chip" data-key="${c.key}"${c.state ? ` data-state="${c.state}"` : ''}>${c.state ? '<i aria-hidden="true"></i>' : ''}${esc(c.text)}</span>`;
   const today = new Date().toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
-  const lt = HomeStats.lights(rows, { byTeam, enduSingle, tokens, ready:r=>isRival(r)?allowRival&&!!rivalFor(r):null }, heats ? (byTeam ? 'team' : 'participant') : 'lane', issues.length > 0), shown = rows.map((r, i) => ({ r, i })).filter(x => !x.r.absent);
+  const lt = HomeStats.lights(rows, { byTeam, enduSingle, tokens, ready:r=>rowMsgs[rows.indexOf(r)]?false:isRival(r)?allowRival&&!!rivalFor(r):null }, heats ? (byTeam ? 'team' : 'participant') : 'lane', issues.length > 0), shown = rows.map((r, i) => ({ r, i })).filter(x => !x.r.absent);
   const laneSub = tokens ? 'A lane can have no driver (a Guest) and no car.' : heats ? `${rows.length} ${byTeam ? 'teams' : 'participants'} race on ${lanes} lanes. Pick who takes part.` : enduSingle ? 'Every lane is a team with its starting driver.' : 'Choose a human driver and car, or a Virtual Rival and its replay.';
   const rowSaid = new Set(Object.values(rowMsgs)), otherIssues = issues.filter(x => !rowSaid.has(x)); // (the list under the rows keeps what is not about one row)
   const rowOk = new Map(shown.map((x, k) => [x.i, lt.ok[k]])), allReady = !issues.length; // (1.58.0: a tick for every row, and one pill that says whether the race can start: nothing is wrong, and then every row is filled in, because what a row lacks is one of the issues)
@@ -390,7 +400,9 @@ async function renderHome() {
     clearTimeout(hc.timer); hc.timer = setTimeout(homeSoftDraw, HOME_SOFT_MS);
   };
   view.oninput = ev => { const c = state.homeCustom; if (c) c.typing = homeFocusId(ev.target) !== ''; }; // (typing in such a field: Home is left alone until the field is left)
-  view.onchange = ev => {
+  let sharedSelecting=false;
+  view.onchange = async ev => {
+    if(sharedSelecting)return;
     if(ev.target.dataset?.mcEntry!==undefined){rows[Number(ev.target.dataset.mcEntry)].raceClass=ev.target.value;persist();return;}
     state.rotMsg = null;
     const t = ev.target, dd = t.dataset || {};
@@ -412,6 +424,13 @@ async function renderHome() {
     const row = ev.target.closest('[data-row]');
     if (row && ev.target.dataset.k) {
       const i = Number(row.dataset.row), k = ev.target.dataset.k, v = ev.target.value, r = rows[i];
+      if(k==='carId'&&v.startsWith('shared:')){
+        sharedSelecting=true;const controls=[...view.querySelectorAll('button,select')].map(x=>[x,x.disabled]);controls.forEach(([x])=>x.disabled=true);
+        try{const car=await api.paddockLink(v.slice(7));if(state.tab!=='home'||draw!==homeDraw)return;
+          if(!MultiClass.carsFor(r,mc,{cars:[car],drivers,teams}).some(c=>c.id===car.id))throw Error('This car no longer matches the driver’s race class.');
+          rows[i].carId=car.id;await persist();
+        }catch(error){alert(error.message);ev.target.value=r.carId||'';}finally{sharedSelecting=false;controls.forEach(([x,disabled])=>x.disabled=disabled);}return;
+      }
       if (k === 'teamId') { // a team for the row (only in a session with teams): an Endurance Race row has its starting driver from the team too
         if (!v) delete r.teamId;
         else {
@@ -424,6 +443,7 @@ async function renderHome() {
     }
   };
   view.onclick = ev => {
+    if(sharedSelecting)return;
     const b = ev.target.closest('button'); if (!b) return;
     if(b.dataset.paddockPick!==undefined){
       const i=Number(b.dataset.paddockPick);
@@ -511,7 +531,7 @@ async function renderHome() {
         });
       }
       const launch=fullTrack=>{if(draw!==homeDraw||state.tab!=='home'||typeof raceActive==='function'&&raceActive())return;
-        state.race = { ...(referenceRevision('tracks')?{catalogueRevision:referenceRevision('tracks')} : {}), multiclass:mc, setup: rawSetup, track:fullTrack, rows: go.map(row=>({...row,raceClass:MultiClass.resolve(row,mc,{cars,drivers,teams})})), virtualRivals: rivalSelection.entries, ...(byTeam ? { byTeam: true } : {}), ...(heatPlan ? { schedule: heatPlan.schedule, ...(heatPlan.labels ? { labels: heatPlan.labels } : {}) } : {}), ...(ch ? { champ: ch.tag } : {}) }; state.tab = 'race'; render();};
+        state.race = { carRevision:referenceRevision('slotcars'), ...(referenceRevision('tracks')?{catalogueRevision:referenceRevision('tracks')} : {}), multiclass:mc, setup: rawSetup, track:fullTrack, rows: go.map(row=>({...row,raceClass:MultiClass.resolve(row,mc,{cars,drivers,teams})})), virtualRivals: rivalSelection.entries, ...(byTeam ? { byTeam: true } : {}), ...(heatPlan ? { schedule: heatPlan.schedule, ...(heatPlan.labels ? { labels: heatPlan.labels } : {}) } : {}), ...(ch ? { champ: ch.tag } : {}) }; state.tab = 'race'; render();};
       if(api.referenceDetails&&referenceRevision('tracks')){
         if(b.disabled)return;b.disabled=true;
         api.referenceDetails('tracks',[track.id],referenceRevision('tracks')).then(([full])=>{if(!full)throw Error('This track is no longer available.');launch(full);})

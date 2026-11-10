@@ -9,6 +9,10 @@
 @media(max-width:760px){.paddock-shell{grid-template-columns:1fr}.paddock-shell nav{flex-direction:row;flex-wrap:wrap}.paddock-shell nav p{display:none}.paddock-dialog{padding:14px}.paddock-car{grid-template-columns:1fr}.paddock-shell section{padding:14px}}
 
 .paddock-source{margin-inline-start:6px}
+.paddock-shell [hidden]{display:none!important}
+.pl-panel{padding:14px;margin:12px 0;border:1px solid color-mix(in srgb,#54a6a2 35%,var(--line));border-radius:9px;background:color-mix(in srgb,#54a6a2 6%,var(--panel))}
+.pl-panel h4{margin:0 0 8px}.pl-panel p{line-height:1.5}.pl-panel select{width:100%}.pl-panel .row select{flex:1;min-width:150px}.pl-modes{margin:12px 0}
+#paddock-transfers{border-left-color:#c7a662}.paddock-delivery>.row{flex-basis:100%}.paddock-shell small{overflow-wrap:anywhere}
 .paddock-specs{grid-column:1/-1;min-width:0;margin:12px 0 20px;padding:16px;border:1px solid var(--line);border-left:3px solid #6baab1;border-radius:10px;background:var(--panel);color:var(--ink)}
 .paddock-specs h3{margin:0 0 10px}.paddock-specs p{line-height:1.5;overflow-wrap:anywhere}.paddock-specs .badge{font-size:.72em;margin-left:6px}
 .paddock-specs .pcs-group{margin:10px 0;border:1px solid var(--line);border-left:3px solid var(--pcs-colour);border-radius:7px;background:color-mix(in srgb,var(--pcs-colour) 6%,var(--panel))}
@@ -19,3 +23,15 @@
 .paddock-browser input[type=search]{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:10px 12px;min-height:40px}.pb-toolbar .seg{margin-left:0!important}
 .pb-toolbar,.pb-pages{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}.pb-toolbar .seg{display:flex;flex-wrap:wrap;gap:6px;margin-right:auto}.paddock-browser [data-error]{color:var(--danger,#df6565);overflow-wrap:anywhere}.paddock-browser [data-search]{width:min(100%,520px);box-sizing:border-box;margin-bottom:18px}.pb-cars{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr));gap:14px;margin-bottom:18px}.pb-car{display:grid;grid-template-columns:72px minmax(0,1fr);gap:12px;padding:16px;border:1px solid var(--line);border-left:3px solid #54a6a2;border-radius:10px;background:var(--panel)}.pb-car img,.pb-car-placeholder{width:72px;height:68px;object-fit:contain;align-self:center}.pb-car-placeholder{display:grid;place-items:center;font-size:40px;color:var(--muted);background:color-mix(in srgb,#54a6a2 10%,var(--panel));border-radius:8px}.pb-car h3{margin:0 0 6px;overflow-wrap:anywhere}.pb-car p{margin:0 0 8px;overflow-wrap:anywhere}.pb-car small{color:var(--muted)}.pb-car .btn{grid-column:1/-1}.pb-pages [data-count]{margin-right:auto}.hs-paddock-pick{font-size:12px;margin-top:5px;max-width:100%}.pb-toolbar .btn{white-space:normal}.pb-toolbar+.row{margin-bottom:14px}
 .paddock-delivery .paddock-warning{padding:10px 12px;border-left:3px solid #ca983e;background:color-mix(in srgb,#ca983e 10%,var(--panel));border-radius:4px;color:var(--ink)}
+
+.shared-car-dialog{max-width:900px}.shared-car-group{border:1px solid var(--line,#555);border-radius:8px;padding:12px;margin:12px 0}.shared-car-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr));gap:12px;padding-top:12px}.shared-car-fields label{display:flex;flex-direction:column;gap:4px;min-width:0}.shared-car-fields input{width:100%;box-sizing:border-box}.shared-car-actions{flex-wrap:wrap}.pb-car.shared-local{border-style:dashed}
+
+.shared-car-group:nth-of-type(1){border-inline-start:3px solid #54a6a2}.shared-car-group:nth-of-type(2){border-inline-start:3px solid #9297cd}.shared-car-group:nth-of-type(3){border-inline-start:3px solid #b8a267}.shared-car-actions{position:sticky;bottom:-24px;padding:12px;background:var(--panel);border-top:1px solid var(--line);z-index:1}.shared-car-fields small:empty{display:none}
+
+.central-history{margin-bottom:24px;min-width:0}.central-history h3{margin:0 12px 0 0}.central-history .row{flex-wrap:wrap;gap:8px;margin:10px 0}.central-session{margin:10px 0}.central-session summary{overflow-wrap:anywhere}.central-history .wrap{max-width:100%;overflow:auto}.central-history table{min-width:540px}.central-notes{white-space:pre-wrap;overflow-wrap:anywhere}.central-history select{max-width:100%}
+
+/* Historical Review retains evidence without claiming accepted results. */
+[data-historical-review] .card{min-width:0;overflow-wrap:anywhere;}
+[data-historical-review] h4{margin:0;}
+.historical-dialog{max-height:85vh;overflow:auto;}
+.historical-dialog .card{overflow-wrap:anywhere;}

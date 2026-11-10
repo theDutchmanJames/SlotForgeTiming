@@ -89,7 +89,20 @@ app.whenReady().then(async () => {
     const activeProfile=path.join(dir,'activation-profile');fs.mkdirSync(activeProfile);fs.copyFileSync(source,path.join(activeProfile,'slotforge-timing.json'));
     const Activation=require(path.join(root,'storage-activation'));Activation.request(activeProfile);const selection=await Activation.startup(activeProfile);
     const activated=await require(path.join(root,'sqlite-runtime')).open(selection.directory,{profileRoot:activeProfile});
-    try{assert.equal((await activated.records.get('drivers','d')).name,'Runtime');await activated.records.update('drivers','d',{name:'Activated in ASAR'});}finally{await activated.lifecycle.shutdown();}
+    try{
+      assert.equal((await activated.records.get('drivers','d')).name,'Runtime');await activated.records.update('drivers','d',{name:'Activated in ASAR'});
+      const intent={id:'packaged-editor-retry',scope:await activated.records.editorScope(),operation:'add',args:['drivers',{name:'Packaged retry'}]};
+      const first=await activated.records.editorSave(intent),again=await activated.records.editorSave(intent);
+      assert.equal(first.value.id,again.value.id);assert.equal((await activated.records.list('drivers')).filter(d=>d.name==='Packaged retry').length,1);
+    }finally{await activated.lifecycle.shutdown();}
+    // Verify repair modules and schema preflight from the packaged dependency graph.
+    const {WorkingStore}=require(path.join(root,'sqlite-working'));
+    let repaired=new WorkingStore(path.join(selection.directory,'working'));
+    repaired.db.exec('DROP TABLE home_totals; DROP TABLE car_stat_totals; DROP TABLE history_details');repaired.close();
+    repaired=new WorkingStore(path.join(selection.directory,'working'));
+    assert.equal(repaired.statement('PRAGMA integrity_check').get().integrity_check,'ok');
+    repaired.db.exec('DROP TABLE field_versions');repaired.close();
+    assert.throws(()=>new WorkingStore(path.join(selection.directory,'working')),e=>e.code==='STORAGE_STRUCTURE_INVALID');
     fs.writeFileSync(path.join(dir, 'result.json'), JSON.stringify({ passed: true, root, versions: process.versions, report }, null, 2));
     console.log('SQLITE ELECTRON COPY, WRITE ADAPTERS AND DELIVERY ACKNOWLEDGEMENTS PASS: ' + root); app.exit(0);
   } catch (error) { console.error(error); await Promise.all([client.cancel(), writer.cancel(), reopened.cancel()]); app.exit(1); }

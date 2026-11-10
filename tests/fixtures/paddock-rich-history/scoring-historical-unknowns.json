@@ -1,0 +1,320 @@
+{
+  "name": "historical-unknowns",
+  "qualificationOnly": true,
+  "timingEvidence": {
+    "sessionType": "race",
+    "date": "unknown",
+    "standings": [],
+    "laps": [
+      {
+        "carId": "car-a",
+        "lapNumber": 1,
+        "time": 10000
+      }
+    ]
+  },
+  "operation": {
+    "version": 1,
+    "databaseId": "paddock-demo",
+    "recoveryId": "recovery-example-1",
+    "operationId": "fixture-historical-unknowns",
+    "editor": {
+      "installationId": "timing-editor-a",
+      "application": "SlotForge Timing",
+      "name": "Example race director"
+    },
+    "sourceId": "timing-demo",
+    "sessionId": "fixture-historical-unknowns",
+    "expected": null,
+    "reason": "Finalised by race director",
+    "action": "create",
+    "bundle": {
+      "format": "history-v1",
+      "provenance": {
+        "kind": "historical",
+        "evidence": "Synthetic older saved Timing laps; dates, boundaries and scoring were not recorded.",
+        "missing": [
+          "race-date",
+          "crossing-times",
+          "driver-boundaries",
+          "lane-lengths",
+          "classification",
+          "record-eligibility"
+        ]
+      },
+      "race": {
+        "name": "Qualification · historical-unknowns",
+        "type": "race",
+        "startedAt": null,
+        "endedAt": null,
+        "track": {
+          "id": "track-1",
+          "name": "Club circuit",
+          "lanes": [
+            {
+              "lane": 1,
+              "lengthM": null
+            },
+            {
+              "lane": 2,
+              "lengthM": null
+            }
+          ]
+        },
+        "heats": [
+          {
+            "id": "heat-1",
+            "name": "Heat 1",
+            "startedAtMs": null,
+            "endedAtMs": null
+          },
+          {
+            "id": "heat-2",
+            "name": "Heat 2",
+            "startedAtMs": null,
+            "endedAtMs": null
+          }
+        ],
+        "participants": [
+          {
+            "id": "entry-1",
+            "kind": "physical",
+            "carId": "car-a",
+            "configuration": {
+              "databaseId": "paddock-demo",
+              "carId": "car-a",
+              "kind": "current",
+              "configurationId": "b45e252a52522a0b267ac5b440533e42efb74f64796f06ca2e4b1578ca0ef13a",
+              "revision": "b45e252a52522a0b267ac5b440533e42efb74f64796f06ca2e4b1578ca0ef13a",
+              "carRevision": 1,
+              "capturedAt": "2026-10-31T10:00:00.000Z",
+              "technical": {
+                "motor": "21.5k",
+                "pinion": "9",
+                "gear": "27"
+              },
+              "components": [],
+              "signature": "a366a131cf225af3270996c907d8901c09b070435d11ee413e4f4325ed4a7e3a"
+            },
+            "displayName": "Example GT3",
+            "drivers": [
+              {
+                "id": "driver-1",
+                "name": "Alex Example"
+              }
+            ],
+            "stints": [],
+            "laps": [
+              {
+                "id": "entry-0-lap-1",
+                "stintId": null,
+                "number": 1,
+                "durationMs": 10000,
+                "endedAtMs": null,
+                "valid": true,
+                "pit": false,
+                "countsForDistance": true,
+                "distanceM": null,
+                "reason": "",
+                "originLapId": null,
+                "heatId": "heat-1",
+                "driverId": null,
+                "lane": null,
+                "personalRecordEligible": null,
+                "trackRecordEligible": null,
+                "flags": []
+              },
+              {
+                "id": "entry-0-lap-2",
+                "stintId": null,
+                "number": 2,
+                "durationMs": 11000,
+                "endedAtMs": null,
+                "valid": true,
+                "pit": false,
+                "countsForDistance": true,
+                "distanceM": null,
+                "reason": "",
+                "originLapId": null,
+                "heatId": "heat-1",
+                "driverId": null,
+                "lane": null,
+                "personalRecordEligible": null,
+                "trackRecordEligible": null,
+                "flags": []
+              },
+              {
+                "id": "entry-0-lap-3",
+                "stintId": null,
+                "number": 3,
+                "durationMs": 10000,
+                "endedAtMs": null,
+                "valid": true,
+                "pit": true,
+                "countsForDistance": true,
+                "distanceM": null,
+                "reason": "Pit lane",
+                "originLapId": null,
+                "heatId": "heat-1",
+                "driverId": null,
+                "lane": null,
+                "personalRecordEligible": null,
+                "trackRecordEligible": null,
+                "flags": []
+              },
+              {
+                "id": "heat2-0",
+                "stintId": null,
+                "number": 1,
+                "durationMs": 10000,
+                "endedAtMs": null,
+                "valid": true,
+                "pit": false,
+                "countsForDistance": true,
+                "distanceM": null,
+                "reason": "",
+                "originLapId": null,
+                "heatId": "heat-2",
+                "driverId": null,
+                "lane": null,
+                "personalRecordEligible": null,
+                "trackRecordEligible": null,
+                "flags": []
+              }
+            ],
+            "teamId": null
+          },
+          {
+            "id": "entry-2",
+            "kind": "physical",
+            "carId": "car-b",
+            "configuration": {
+              "databaseId": "paddock-demo",
+              "carId": "car-b",
+              "kind": "current",
+              "configurationId": "b21d3f3a9095261ab4a17bbb574cf96b41d52f85c0c2d9589b269fa56d0f6c77",
+              "revision": "b21d3f3a9095261ab4a17bbb574cf96b41d52f85c0c2d9589b269fa56d0f6c77",
+              "carRevision": 1,
+              "capturedAt": "2026-10-31T10:00:00.000Z",
+              "technical": {
+                "motor": "21.5k",
+                "pinion": "9",
+                "gear": "27"
+              },
+              "components": [],
+              "signature": "e5b2f20a1a81b44c1c15960e404c364cdea529bbd1b711673b99b8261c367235"
+            },
+            "displayName": "Example prototype",
+            "drivers": [
+              {
+                "id": "driver-1",
+                "name": "Alex Example"
+              }
+            ],
+            "stints": [],
+            "laps": [
+              {
+                "id": "entry-1-lap-1",
+                "stintId": null,
+                "number": 1,
+                "durationMs": 10000,
+                "endedAtMs": null,
+                "valid": true,
+                "pit": false,
+                "countsForDistance": true,
+                "distanceM": null,
+                "reason": "",
+                "originLapId": null,
+                "heatId": "heat-1",
+                "driverId": null,
+                "lane": null,
+                "personalRecordEligible": null,
+                "trackRecordEligible": null,
+                "flags": []
+              },
+              {
+                "id": "entry-1-lap-2",
+                "stintId": null,
+                "number": 2,
+                "durationMs": 11000,
+                "endedAtMs": null,
+                "valid": true,
+                "pit": false,
+                "countsForDistance": true,
+                "distanceM": null,
+                "reason": "",
+                "originLapId": null,
+                "heatId": "heat-1",
+                "driverId": null,
+                "lane": null,
+                "personalRecordEligible": null,
+                "trackRecordEligible": null,
+                "flags": []
+              },
+              {
+                "id": "entry-1-lap-3",
+                "stintId": null,
+                "number": 3,
+                "durationMs": 10000,
+                "endedAtMs": null,
+                "valid": true,
+                "pit": true,
+                "countsForDistance": true,
+                "distanceM": null,
+                "reason": "Pit lane",
+                "originLapId": null,
+                "heatId": "heat-1",
+                "driverId": null,
+                "lane": null,
+                "personalRecordEligible": null,
+                "trackRecordEligible": null,
+                "flags": []
+              },
+              {
+                "id": "heat2-1",
+                "stintId": null,
+                "number": 1,
+                "durationMs": 10000,
+                "endedAtMs": null,
+                "valid": true,
+                "pit": false,
+                "countsForDistance": true,
+                "distanceM": null,
+                "reason": "",
+                "originLapId": null,
+                "heatId": "heat-2",
+                "driverId": null,
+                "lane": null,
+                "personalRecordEligible": null,
+                "trackRecordEligible": null,
+                "flags": []
+              }
+            ],
+            "teamId": null
+          }
+        ]
+      },
+      "context": {
+        "savedAt": null,
+        "endedBy": "race completed",
+        "resumed": 0,
+        "weather": null,
+        "teams": [],
+        "classes": [],
+        "classification": [],
+        "systemChanges": [],
+        "scoringSnapshot": null,
+        "notes": "Reviewed by the Race Director."
+      }
+    }
+  },
+  "expected": {
+    "overallWins": 0,
+    "classWins": 0,
+    "historicalSessions": 1,
+    "distanceM": 0,
+    "unknownDistanceLaps": 4,
+    "personalRecordLaps": 0,
+    "trackRecordLaps": 0
+  }
+}

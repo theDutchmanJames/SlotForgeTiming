@@ -32,7 +32,14 @@ function stamp(s){s.statement("INSERT INTO info VALUES('homeIndexSequence',?) ON
 function upgrade(s){s.transaction(()=>{
  const zone=Intl.DateTimeFormat().resolvedOptions().timeZone;
  const revision=String(s.statement('SELECT coalesce(max(sequence),0) n FROM changes').get().n);
- if(s.statement("SELECT value FROM info WHERE key='homeIndexVersion'").get()?.value==='3'&&s.statement("SELECT value FROM info WHERE key='homeIndexZone'").get()?.value===zone&&s.statement("SELECT value FROM info WHERE key='homeIndexSequence'").get()?.value===revision){s.statement('SELECT id FROM home_laps LIMIT 0').all();return;}
+ const current=s.statement("SELECT value FROM info WHERE key='homeIndexVersion'").get()?.value==='3'&&s.statement("SELECT value FROM info WHERE key='homeIndexZone'").get()?.value===zone&&s.statement("SELECT value FROM info WHERE key='homeIndexSequence'").get()?.value===revision;
+ if(current&&require('./sqlite-derived').tables(s,['home_laps','home_dates'])){
+  if(!require('./sqlite-derived').tables(s,['home_totals'])){
+   s.db.exec('CREATE TABLE home_totals(trackId TEXT NOT NULL,carId TEXT NOT NULL,lane REAL NOT NULL,n INTEGER NOT NULL,first INTEGER NOT NULL,PRIMARY KEY(trackId,carId,lane)); INSERT INTO home_totals SELECT trackId,carId,lane,COUNT(*),MIN(ordinal) FROM home_laps GROUP BY trackId,carId,lane;');
+   s.checkpoint('home-totals-repaired');
+  }
+  s.db.exec('CREATE INDEX IF NOT EXISTS home_last ON home_laps(sessionId,time,ordinal); CREATE INDEX IF NOT EXISTS home_group ON home_laps(trackId,carId,lane,ordinal); CREATE INDEX IF NOT EXISTS home_week ON home_laps(trackId,driverId,time,ordinal);');return;
+ }
  s.db.exec(`DROP TABLE IF EXISTS home_totals; DROP TABLE IF EXISTS home_laps; DROP TABLE IF EXISTS home_dates;
  CREATE TABLE home_dates(id TEXT PRIMARY KEY,ms REAL);
  CREATE TABLE home_laps(id TEXT PRIMARY KEY,ordinal INTEGER NOT NULL,trackId TEXT NOT NULL,driverId TEXT NOT NULL,carId TEXT NOT NULL,sessionId TEXT NOT NULL,time REAL NOT NULL,lane REAL NOT NULL,ownDate REAL,fallback INTEGER NOT NULL);`);
@@ -47,7 +54,7 @@ function upgrade(s){s.transaction(()=>{
  s.statement("INSERT INTO info VALUES('homeIndexZone',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(zone);
  s.statement("INSERT INTO info VALUES('homeIndexVersion','3') ON CONFLICT(key) DO UPDATE SET value=excluded.value").run();stamp(s);
 });}
-function sync(s){for(const {entity,id} of s.changed.values())if(entity==='laps'||entity==='sessions')index(s,entity,id);}
+function sync(s){for(const {entity,id} of s.changed.values())if(entity==='sessions'||entity==='laps'&&require('./sqlite-lap-effects').changed(s,id,'home'))index(s,entity,id);}
 function summary(s,o,{last,cars,tracks,now}){
  const needed=new Set(o.boards.map(b=>b.key)),rec=new Map(),personal=new Map(),weekly=new Map(),mile={all:new Map(),year:new Map()},distances=new Map(),trackOrder=new Map();let valid=0,lastLap=null;
  const order=new WeakMap();const load=id=>{const l=C.read(s,'laps',id,[]);order.set(l,s.statement("SELECT ordinal FROM records WHERE entity='laps' AND id=?").get(id).ordinal);return l;};

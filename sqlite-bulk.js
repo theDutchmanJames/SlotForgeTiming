@@ -68,7 +68,10 @@ function restore(source,destination,checkpoint=()=>{}) {
   fs.mkdirSync(destination); const staging=path.join(destination,'restore.pending');
   fs.copyFileSync(file,staging,fs.constants.COPYFILE_EXCL); sync(staging);
   if (digest(staging)!==manifest.sha256) throw Error('Backup checksum mismatch. Nothing was restored.');
-  const counts=verify(staging); checkpoint('before-publish');
+  const counts=verify(staging);
+  const restored=new SqliteStore(staging,{writable:true});
+  try{require('./sqlite-editor-generation').reset(restored);}finally{restored.close();}
+  sync(staging);checkpoint('before-publish');
   writeNew(path.join(destination,'restore-info.json'),JSON.stringify({sourceSha256:manifest.sha256,...counts}));
   fs.renameSync(staging,path.join(destination,'working.sqlite'));
   return {destination,...counts};

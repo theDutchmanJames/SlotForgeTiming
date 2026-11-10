@@ -22,6 +22,8 @@ function refs(get,laps,sessions=[]){
   const keys={tracks:TRACK,slotcars:CAR,drivers:['id','name'],sessions:['id','setupName']};
   return Object.fromEntries(Object.entries(ids).map(([entity,set])=>[entity,[...set].filter(id=>typeof id==='string'&&id).map(id=>get(entity,id,keys[entity])).filter(Boolean)]));
 }
+function referenceRequest(rows){if(!Array.isArray(rows)||rows.length>100||rows.some(r=>!r||!['tracks','slotcars'].includes(r.entity)||typeof r.id!=='string'||r.id.length>500))throw Error('Invalid history references.');return rows;}
+function jsonReferences(db,rows){return noMedia(referenceRequest(rows).map(r=>jsonGet(db,r.entity,r.id,r.entity==='tracks'?TRACK:CAR)));}
 function carDetails(car,laps,trackOf,dateOf,wins){
   const tracks=new Map(),sessions=new Set(),mileage={laps:0,distance:null},since={laps:0,distance:null};let last=NaN,deslots=0;
   function distance(target,l,track){target.laps++;const len=Stats.lapLength(track,l);if(len>0)target.distance=(target.distance||0)+len;}
@@ -52,12 +54,13 @@ function jsonPage(db,pool,value){
   for(const kind of ['tracks','personal'])sections[kind]=page([...maps[kind].values()].sort(sort),opts[kind]?.offset||0,40,pool,kind,revision);
   const records=[...sections.tracks.items,...sections.personal.items];return noMedia({revision,...sections,refs:refs((...args)=>jsonGet(db,...args),records)});
 }
-function detailOptions(value={}){const {offset=0,revision,exportAll=false}=value;if(!Number.isSafeInteger(offset)||offset<0||typeof exportAll!=='boolean'||revision!==undefined&&typeof revision!=='string')throw Error('Invalid session query.');return {offset,revision,exportAll};}
+function detailOptions(value={}){const {offset=0,revision,exportAll=false,summaryOnly=false}=value;if(!Number.isSafeInteger(offset)||offset<0||typeof exportAll!=='boolean'||typeof summaryOnly!=='boolean'||revision!==undefined&&typeof revision!=='string')throw Error('Invalid session query.');return {offset,revision,exportAll,summaryOnly};}
 function lapOrder(a,b){return (Number(a.heat)||0)-(Number(b.heat)||0)||(Number(a.lapNumber)||0)-(Number(b.lapNumber)||0);}
 function sessionValue(s){return noMedia({...Object.fromEntries(Object.entries(s).filter(([k])=>!['paddockDelivery','paddockJournal','historySummary'].includes(k))),standings:Array.isArray(s.standings)?s.standings:[]});}
 function jsonSession(db,pool,id,value){
   options(pool);const o=detailOptions(value),revision=C.jsonRevision(db);checkRevision(o.revision,revision);
   const found=db.data.sessions.find(s=>s.id===id&&(s.sessionType==='tokens')===(pool==='tokens'));if(!found)return null;
+  if(o.summaryOnly)return {revision,session:summary(found),deliveryStatus:found.paddockDelivery?.status||null};
   const session=sessionValue(found),laps=db.data.laps.filter(l=>l.sessionId===id&&!!l.token===(pool==='tokens')).sort(lapOrder);
   const related=refs((...args)=>jsonGet(db,...args),laps,[session]);
   return {revision,session,laps:noMedia(o.exportAll?laps:laps.slice(o.offset,o.offset+100)),offset:o.offset,total:laps.length,figures:Stats.forSession(session,laps,related.tracks,related.slotcars),refs:related};
@@ -67,4 +70,4 @@ function jsonCar(db,id){const car=db.data.slotcars.find(c=>c.id===id);if(!car)re
   const wins=db.data.sessions.filter(s=>(s.standings||[]).some(r=>r.carId===id&&Stats.isWinner(s,r))).length;
   return carDetails(car,db.data.laps,tid=>tracks.get(tid),sid=>dates.get(sid),wins);
 }
-module.exports={TRACK,CAR,pick,noMedia,summary,options,checkRevision,refs,carDetails,detailOptions,lapOrder,sessionValue,jsonPage,jsonSession,jsonCar};
+module.exports={referenceRequest,jsonReferences,TRACK,CAR,pick,noMedia,summary,options,checkRevision,refs,carDetails,detailOptions,lapOrder,sessionValue,jsonPage,jsonSession,jsonCar};

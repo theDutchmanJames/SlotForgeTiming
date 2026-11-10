@@ -14,6 +14,20 @@ class SqliteAppRepository extends SqliteCompatibilityReads {
   idle(){return this.tail.catch(()=>{});}
   stop(){this.stopping=true;}
   version(entity,id){return this.client.revision(entity,id);}
+  editorScope(){return this.client.editorScope();}
+  editorSave(request){const input=json(request);return this.queue(async()=>{
+    let result;
+    try { result=await this.client.command({...input,type:'editorSave'}); }
+    catch(error){
+      if(error.code==='EDITOR_GENERATION_CHANGED')return {ok:false,error:error.message,code:error.code,retain:true};
+      // Only a readable, absent receipt proves this attempt did not commit.
+      // Worker loss, timeout and lost acknowledgements retain the caller's ID.
+      if(!await this.client.receipt(input.id))return {ok:false,error:String(error.message||error)};
+      throw error;
+    }
+    const value=['add','update'].includes(input.operation)?await this.get(input.args[0],result.recordId):result.field;
+    return {ok:true,value};
+  });}
   add(entity,value){const item=json(value),commandId=randomUUID();return this.queue(async()=>{const result=await this.commands.add(entity,item,{commandId});return this.get(entity,result.recordId);});}
   update(entity,id,value){const patch=json(value),commandId=randomUUID();return this.queue(async()=>{
     const expectedRevision=await this.version(entity,id);
@@ -26,6 +40,9 @@ class SqliteAppRepository extends SqliteCompatibilityReads {
   });}
   remove(entity,id){const commandId=randomUUID();return this.queue(async()=>{const before=await this.client.snapshot(entity,id);if(!before.record)return;await this.commands.remove(entity,id,{commandId,expectedRevision:before.revision});});}
   removeSession(id){return this.remove('sessions',id);}
+  affectedSharedSessions(entity,id){return this.client.request('affectedSharedSessions',entity,id);}
+  attachSharedHistory(input){return this.queue(()=>this.client.command({...json(input),id:randomUUID(),type:'attachSharedHistory'}));}
+  importSharedPrepared(input){return this.queue(()=>this.client.command({...json(input),type:'importSharedPrepared'}));}
   saveSession(value,rows){const session=json(value),laps=json(rows),commandId=randomUUID();return this.queue(async()=>{
     if(session.resourceRunId&&!this.resources)throw Error('Resource storage is not ready.');
     const id=session.resourceRunId?await this.resources.saveSession(session,laps):(await this.commands.saveSession(session,laps,{commandId})).sessionId;
@@ -36,5 +53,5 @@ class SqliteAppRepository extends SqliteCompatibilityReads {
   removeCustomField(entity,id){const commandId=randomUUID();return this.queue(async()=>{await this.commands.removeCustomField(entity,id,{commandId,expectedRevision:await this.version('@meta','customFields')});});}
   localCars(){return this.collect('slotcars','cars');}
 }
-for(const name of ['homeStatistics','homeSessions','raceSeason','raceCharts','raceInputs','referencePage','referenceDetails','historyPage','historySession','carStatistics','catalogue','cataloguePicture'])SqliteAppRepository.prototype[name]=function(...args){return this.client[name](...args);};
+for(const name of ['homeStatistics','homeSessions','raceSeason','raceCharts','raceInputs','editorRead','referencePage','referenceDetails','historyReferences','historyPage','historySession','carStatistics','catalogue','cataloguePicture'])SqliteAppRepository.prototype[name]=function(...args){return this.client[name](...args);};
 module.exports=SqliteAppRepository;

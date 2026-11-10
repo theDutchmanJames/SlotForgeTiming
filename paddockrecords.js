@@ -90,7 +90,23 @@ function build(db,session,rows){
   return {integrationVersion:1,databaseId,source:{id:state(db).sourceId,name:'SlotForge Timing',application:'SlotForge Timing'},sessionId:session.id,revision:1,state:'active',name:String(session.setupName||'Race session').slice(0,200),type,
     startedAt:new Date(began).toISOString(),endedAt:new Date(ended).toISOString(),track:{id:id(session.trackId),name:String(session.trackName||'Track').slice(0,200),lanes},heats,participants,standings,...context};
 }
-function prepare(db,s,rows){try{const payload=build(db,s,rows);if(payload)s.paddockDelivery={payload,status:'pending',error:'',receipt:null};}catch(e){s.paddockDelivery={name:s.setupName||'Saved session',sessionId:s.id,databaseId:Object.values(s.paddockJournal?.captures||{})[0]?.configuration?.databaseId,status:'attention',error:e.message,payload:null,receipt:null};}}
-function revise(db,s){if(!s.paddockDelivery||s.paddockDelivery.status==='withdrawn')return;const old=s.paddockDelivery;prepare(db,s,db.laps.filter(l=>l.sessionId===s.id));if(s.paddockDelivery?.payload){s.paddockDelivery.payload.revision=Math.max(old.payload?.revision||0,old.previousPayload?.revision||0,old.receipt?.revision||0)+1;}else{s.paddockDelivery.previousPayload=old.payload||old.previousPayload;s.paddockDelivery.receipt=old.receipt;}}
-function withdraw(db,s,reason){const d=s.paddockDelivery;if(!d||d.status==='withdrawn')return;const p=d.payload||d.previousPayload;if(!p)return;const next={integrationVersion:1,databaseId:p.databaseId,source:p.source,sessionId:p.sessionId,revision:p.revision+1,state:'withdrawn',reason};state(db).withdrawals.push({name:(p.name||'Saved session')+' (withdrawal)',payload:next,status:'pending',error:'',receipt:null});s.paddockDelivery={...d,payload:next,status:'withdrawn'};}
-module.exports={state,build,prepare,revise,withdraw};
+function prepare(db,s,rows,old){if(s.paddockJournal?.sharedLibrary)return require('./shared-library-history').prepare(s,rows,old);try{const rich=require('./paddock-rich-delivery');const payload=rich.select(db,old)?rich.build(db,s,rows,old):build(db,s,rows);if(payload){s.paddockDelivery={payload,status:'pending',error:'',receipt:null,...(rich.isRich(payload)?{name:s.setupName||'Saved session'}:{})};require('./paddock-history-write').attach(db,s.paddockDelivery);}}catch(e){s.paddockDelivery={name:s.setupName||'Saved session',sessionId:s.id,databaseId:Object.values(s.paddockJournal?.captures||{})[0]?.configuration?.databaseId||'',status:'attention',error:e.message,payload:null,receipt:null};}}
+function revise(db,s){
+ if(s.paddockDelivery?.transport==='engine'||s.paddockJournal?.sharedLibrary)return require('./shared-library-history').revise(db,s);
+ if(!s.paddockDelivery||s.paddockDelivery.status==='withdrawn')return;
+ const old=s.paddockDelivery,candidate={...s};delete candidate.paddockDelivery;
+ prepare(db,candidate,db.laps.filter(l=>l.sessionId===s.id),old);
+ s.paddockDelivery=candidate.paddockDelivery||{name:s.setupName||'Saved session',sessionId:s.id,databaseId:old.payload?.databaseId||old.databaseId||'',status:'attention',error:'The original captured timing evidence is missing. Keep this draft and compare the accepted result before sending.',payload:null,receipt:null};
+ if(s.paddockDelivery.payload){
+  s.paddockDelivery.payload.revision=Math.max(old.payload?.revision||0,old.previousPayload?.revision||0,old.receipt?.revision||0)+1;
+  delete s.paddockDelivery.guard;delete s.paddockDelivery.guardBlocked;
+  require('./paddock-history-write').attach(db,s.paddockDelivery,old);
+ }else{
+  s.paddockDelivery.previousPayload=old.payload||old.previousPayload||null;s.paddockDelivery.receipt=old.receipt||null;
+  if(old.guard){s.paddockDelivery.guard=old.guard;s.paddockDelivery.guardBlocked=s.paddockDelivery.error;}
+ }
+}
+function withdraw(db,s,reason){if(s.paddockDelivery?.transport==='engine')return require('./shared-library-history').withdraw(db,s,reason);const d=s.paddockDelivery;if(!d||d.status==='withdrawn')return;const p=d.payload||d.previousPayload;if(!p)return;const rich=require('./paddock-rich-delivery'),next=rich.isRich(p)?rich.withdrawal(p,reason):{integrationVersion:1,databaseId:p.databaseId,source:p.source,sessionId:p.sessionId,revision:p.revision+1,state:'withdrawn',reason};const withdrawal={name:(d.name||p.name||'Saved session')+' (withdrawal)',payload:next,status:'pending',error:'',receipt:null};require('./paddock-history-write').attach(db,withdrawal,d);state(db).withdrawals.push(withdrawal);s.paddockDelivery={...d,payload:next,status:'withdrawn'};}
+// Qualification candidate only: never attached to an outbox or sent automatically.
+function richCandidate(session,rows,databaseId){return require('./paddock-rich-mapper').measured(session,rows,databaseId);}
+module.exports={state,build,prepare,revise,withdraw,richCandidate};

@@ -24,7 +24,7 @@ assert(words('setupwords').includes('In plain words') && words('setupwords').inc
 assert(words('start').includes('Red Flag Restart Behaviour') && words('start').includes('First Lap Behaviour'), 'starting Help uses the current controls');
 assert(words('screen').includes("Director's Final Check") && words('screen').includes('Victory Spotlight'), 'the finished-race flow is explained');
 assert(words('fuel').includes('empty-to-full') && words('fuel').includes('Push & Save'), 'Fuel Help explains the revised pace hand-off');
-assert(words('tyrewear').includes('median lap') && words('tyrewear').includes('Lasts about'), 'Tyre Wear Help explains pace-based wear and the simpler tyre editor');
+assert(words('tyrewear').includes('Push & Save') && words('tyrewear').includes('no longer adds a second pace multiplier') && words('tyrewear').includes('Lasts about'), 'Tyre Wear Help explains pace-based wear and the simpler tyre editor');
 assert(words('pushsave').includes('Full push') && words('pushsave').includes('Full save') && words('pushsave').includes('Which Laps Count'), 'Push & Save Help explains the interactive pace curve');
 assert(words('custom').includes('Victory Spotlight') && words('custom').includes('Championship points'), 'Customization explains Race Results configuration');
 assert(words('parallel').includes('InpOut driver') && words('parallel').includes('polling gaps'), 'Parallel Port Help retains its installation and diagnostics caveats');

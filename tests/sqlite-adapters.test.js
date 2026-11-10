@@ -290,7 +290,7 @@ test('a receipt check in flight cannot update a corrected session',async t=>{
 
 test('malformed working format 2 fails closed before accepting writes',t=>{
   const f=fixture(t),s=f.store();s.close();const db=new DatabaseSync(path.join(f.work,'working.sqlite'));db.exec('DROP TABLE delivery_outbox');db.close();
-  assert.throws(()=>f.store(),/no such table/);
+  assert.throws(()=>f.store(),error=>error.code==='STORAGE_STRUCTURE_INVALID'&&error.message.includes('delivery_outbox'));
 });
 
 test('bulk history deletion writes counters once per car rather than once per lap',t=>{

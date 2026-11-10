@@ -52,9 +52,9 @@ const FAST = { tyres: { S: { wear: 50 }, M: { wear: 50 }, H: { wear: 50 }, W: { 
 { const r = race({ paceWear: 'on', tyres: { S: { wear: 10 } } }, { cars: 1, tyres: ['S'], noFuel: true, noPenalty: true });
   [10000, 20000, 30000, 39000].forEach(t => at(r, 0, t));
   const p = r.twOf(0, 39000).pace;
-  ok('after three valid laps, a faster-than-median lap wears proportionally more; the current lap is judged before it joins its own median', near(r.cars[0].twLife, 100 - 30 - 10 * (10 / 9)) && p.ready && p.samples === 4 && p.median === 10000 && near(p.multiplier, 10 / 9));
+  ok('obsolete pace settings no longer add wear to new races without Push & Save', near(r.cars[0].twLife, 60) && !p.ready && p.multiplier === 1);
   at(r, 0, 50000);
-  ok('a slower-than-median lap wears less, and the pace value is visible to the race screens without changing the measured lap time', r.cars[0].twLife > 100 - 40 - 10 * (10 / 9) && r.cars[0].laps[4] === 11000 && r.twOf(0, 50000).pace.multiplier < 1); }
+  ok('slower laps also use base wear without Push & Save; measured timing stays unchanged', near(r.cars[0].twLife,50) && r.cars[0].laps[4] === 11000 && r.twOf(0, 50000).pace.multiplier === 1); }
 
 // ---- per distance ----
 { const r = race({ unit: 'distance' }, { ctx: { laneLen: [15.4, 20] } }); at(r, 0, 10000); at(r, 1, 10000);

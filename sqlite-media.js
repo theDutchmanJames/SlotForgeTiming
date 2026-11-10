@@ -2,28 +2,41 @@
 const crypto=require('node:crypto');
 // Keep the legacy seven-column SQL interface for all readers and write adapters.
 // MIME and exact noncanonical data-URI spelling belong to each reference.
-const SCHEMA=`
+const TABLES=`
  CREATE TABLE media_blobs(digest TEXT PRIMARY KEY,bytes BLOB NOT NULL);
  CREATE TABLE asset_refs(entity TEXT NOT NULL,id TEXT NOT NULL,path TEXT NOT NULL,mime TEXT NOT NULL,digest TEXT NOT NULL,original TEXT,
    PRIMARY KEY(entity,id,path),FOREIGN KEY(entity,id) REFERENCES records(entity,id),FOREIGN KEY(digest) REFERENCES media_blobs(digest));
- CREATE INDEX asset_digest ON asset_refs(digest);
- CREATE VIEW assets AS SELECT r.entity,r.id,r.path,r.mime,b.bytes,r.digest,r.original FROM asset_refs r JOIN media_blobs b ON b.digest=r.digest;
- CREATE TRIGGER asset_insert INSTEAD OF INSERT ON assets BEGIN
+ CREATE INDEX asset_digest ON asset_refs(digest);`;
+const VIEW='CREATE VIEW assets AS SELECT r.entity,r.id,r.path,r.mime,b.bytes,r.digest,r.original FROM asset_refs r JOIN media_blobs b ON b.digest=r.digest;';
+const TRIGGERS={asset_insert:`CREATE TRIGGER asset_insert INSTEAD OF INSERT ON assets BEGIN
    SELECT CASE WHEN EXISTS(SELECT 1 FROM media_blobs WHERE digest=NEW.digest AND bytes!=NEW.bytes) THEN RAISE(ABORT,'Media digest collision') END;
    INSERT OR IGNORE INTO media_blobs VALUES(NEW.digest,NEW.bytes);
    INSERT INTO asset_refs VALUES(NEW.entity,NEW.id,NEW.path,NEW.mime,NEW.digest,NEW.original);
- END;
- CREATE TRIGGER asset_delete INSTEAD OF DELETE ON assets BEGIN
+ END;`,asset_delete:`CREATE TRIGGER asset_delete INSTEAD OF DELETE ON assets BEGIN
    DELETE FROM asset_refs WHERE entity=OLD.entity AND id=OLD.id AND path=OLD.path;
    DELETE FROM media_blobs WHERE digest=OLD.digest AND NOT EXISTS(SELECT 1 FROM asset_refs WHERE digest=OLD.digest);
- END;
- CREATE TRIGGER asset_update INSTEAD OF UPDATE ON assets BEGIN
+ END;`,asset_update:`CREATE TRIGGER asset_update INSTEAD OF UPDATE ON assets BEGIN
    DELETE FROM assets WHERE entity=OLD.entity AND id=OLD.id AND path=OLD.path;
    INSERT INTO assets VALUES(NEW.entity,NEW.id,NEW.path,NEW.mime,NEW.bytes,NEW.digest,NEW.original);
- END;`;
+ END;`};
+const SCHEMA=TABLES+VIEW+Object.values(TRIGGERS).join('\n');
+function ensureInterface(s){s.transaction(()=>{
+ const objects=new Map(s.statement('SELECT name,type FROM sqlite_master').all().map(r=>[r.name,r.type]));
+ for(const name of ['media_blobs','asset_refs'])if(objects.get(name)!=='table')throw Error('Required media storage is missing: '+name+'. Restore a verified backup; media data will not be recreated or discarded.');
+ s.statement('SELECT digest,bytes FROM media_blobs LIMIT 0').all();
+ s.statement('SELECT entity,id,path,mime,digest,original FROM asset_refs LIMIT 0').all();
+ if(objects.has('assets')&&objects.get('assets')!=='view')throw Error('Invalid shared media interface. Restore a verified backup.');
+ if(!objects.has('assets'))s.db.exec(VIEW);
+ for(const [name,sql] of Object.entries(TRIGGERS)){
+  if(objects.has(name)&&objects.get(name)!=='trigger')throw Error('Invalid media trigger: '+name);
+  if(!objects.has(name))s.db.exec(sql);
+ }
+ s.statement('SELECT entity,id,path,mime,bytes,digest,original FROM assets LIMIT 0').all();
+ s.checkpoint?.('media-interface-repaired');
+});}
 function upgrade(s){
  const version=s.statement("SELECT value FROM info WHERE key='workingFormat'").get().value;
- if(version==='6'){s.statement('SELECT digest,length(bytes) FROM media_blobs LIMIT 0').all();return;}
+ if(version==='6'){ensureInterface(s);return;}
  if(version!=='5')throw Error('Unsupported shared media format.');
  const size=s.statement('SELECT coalesce(sum(length(bytes)+coalesce(length(CAST(original AS BLOB)),0)),0) n FROM assets').get().n;
  require('./storage-space').check(s.file,Math.ceil(size*2),'Shared media upgrade');
@@ -31,7 +44,7 @@ function upgrade(s){
    // Another worker may have upgraded while this connection waited for the
    // write lock. Recheck inside BEGIN IMMEDIATE before changing any schema.
    const lockedVersion=s.statement("SELECT value FROM info WHERE key='workingFormat'").get().value;
-   if(lockedVersion==='6'){s.statement('SELECT digest,length(bytes) FROM media_blobs LIMIT 0').all();return;}
+   if(lockedVersion==='6')return;
    if(lockedVersion!=='5')throw Error('Unsupported shared media format.');
    s.db.exec('ALTER TABLE assets RENAME TO legacy_assets');s.db.exec(SCHEMA);
    const insert=s.db.prepare('INSERT INTO assets VALUES(?,?,?,?,?,?,?)');
@@ -46,6 +59,7 @@ function upgrade(s){
    s.checkpoint?.('media-upgraded');
  });
  s.statements.clear();
+ ensureInterface(s);
 }
 // Only the refresh journal expires. Receipts, result identities and deliveries do not.
 const KEEP_CHANGES=10000;

@@ -54,6 +54,7 @@ class SqliteClient {
   exportLegacy(file,info={}) { return this.request('exportLegacy',file,info); }
   restoreLegacy(file,destination) { return this.request('restoreLegacy',file,destination); }
   receipt(id) { return this.request('receipt', id); }
+  editorScope() { return this.request('editorScope'); }
   revision(entity, id) { return this.request('revision', entity, id); }
   fieldVersion(entity, id, parts) { return this.request('fieldVersion', entity, id, parts); }
   changes(after, limit) { return this.request('changes', after, limit); }
@@ -63,15 +64,17 @@ class SqliteClient {
   raceSeason(options) { return this.request('raceSeason',options); }
   raceCharts(ids) { return this.request('raceCharts',ids); }
   raceInputs(options) { return this.request('raceInputs',options); }
+  editorRead(kind,entity,value) { return this.request('editorRead',kind,entity,value); }
   referencePage(entity,options) { return this.request('referencePage',entity,options); }
   referenceDetails(entity,ids,revision) { return this.request('referenceDetails',entity,ids,revision); }
+  historyReferences(rows) { return this.request('historyReferences',rows); }
   historyPage(pool,options) { return this.request('historyPage',pool,options); }
   historySession(pool,id,options) { return this.request('historySession',pool,id,options); }
   carStatistics(id) { return this.request('carStatistics',id); }
   catalogue(entity, options) { return this.request('catalogue',entity,options); }
   cataloguePicture(entity,id,revision) { return this.request('cataloguePicture',entity,id,revision); }
   deliveryPayload(key, token) { return this.request('deliveryPayload', key, token); }
-  deliverySnapshot(key) { return this.request('deliverySnapshot', key); }
+  deliverySnapshot(key,options) { return this.request('deliverySnapshot', key,options); }
   snapshot(entity, id, includeMedia = false) { return this.request('snapshot', entity, id, includeMedia); }
   paddockRead(kind, options) { return this.request('paddockRead',kind,options); }
   resourceState() { return this.request('resourceState'); }
@@ -82,7 +85,7 @@ class SqliteClient {
   sessionLaps(id, after, limit) { return this.request('sessionLaps', id, after, limit); }
   asset(entity, id, parts) { return this.request('asset', entity, id, parts); }
   close() {
-    if (!this.closing) this.closing = this.request('close').finally(() => this.worker.terminate());
+    if (!this.closing) this.closing = this.request('close').then(async value=>{await this.worker.terminate();return value;},error=>{this.closing=null;throw error;});
     return this.closing;
   }
   cancel() { this.fail(Error('SQLite worker cancelled; its outcome is uncertain. Reopen and check the command receipt or migration manifest before retrying.')); return this.worker.terminate(); }

@@ -50,8 +50,9 @@ class SqliteStore {
         // Validate before opening for writes; never turn a recovery copy into a workspace.
         const probe = new DatabaseSync(file, { readOnly: true, timeout: 5000 });
         try {
-          if (probe.prepare('PRAGMA application_id').get().application_id !== APP_ID ||
-              probe.prepare('PRAGMA user_version').get().user_version !== FORMAT ||
+          if(probe.prepare('PRAGMA application_id').get().application_id!==APP_ID||probe.prepare('PRAGMA user_version').get().user_version!==FORMAT)throw Error('Not a supported SQLite working database.');
+          require('./sqlite-structure').check(probe);
+          if (
               !['1', '2', '3', '4', '5', '6'].includes(probe.prepare("SELECT value FROM info WHERE key='workingFormat'").get()?.value))
             throw Error('Not a supported SQLite working database.');
         } finally { probe.close(); }
@@ -79,6 +80,7 @@ class SqliteStore {
       } else {
         if (this.statement('PRAGMA application_id').get().application_id !== APP_ID ||
             this.statement('PRAGMA user_version').get().user_version !== FORMAT) throw Error('Unsupported Timing SQLite storage format.');
+        require('./sqlite-structure').check(this.db);
         if (this.statement("SELECT value FROM info WHERE key='verified'").get()?.value !== 'true') throw Error('SQLite migration is incomplete.');
         if (writable) this.db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA foreign_keys=ON; PRAGMA cache_size=-16384;');
       }
@@ -121,7 +123,9 @@ class SqliteStore {
     this.transaction(() => {
       let ordinal = 0, count = 0;
       for (const [key, value] of Object.entries(data)) {
-        const collection = Object.hasOwn(schema, key);
+        // Internal transfer journals are separate records too: receipt updates
+        // must not scan/rewrite the shape or photos of every previous transfer.
+        const collection = Object.hasOwn(schema, key) || ['localLibraryTransfers','paddockHistoricalImports','sharedCarOperations','paddockHistoryCache','paddockHistorySync','paddockHistoryStage'].includes(key);
         if (collection && !Array.isArray(value)) throw Error(`Invalid collection: ${key}`);
         this.statement('INSERT INTO roots VALUES(?,?,?)').run(key, ordinal++, collection ? 'collection' : 'meta');
         if (!collection) this.putRecord('@meta', key, ordinal, value);

@@ -44,7 +44,7 @@
         case 'result': return esc(HT.scoreText(x, session.scoring, finArg));
         case 'final': return esc(HT.finalCell(x));
         case 'best': return esc(E.fmtTime(x.best));
-        case 'total': return esc(E.fmtTime(x.total + (x.penalty || 0) + (x.adjMs || 0))) + (x.penalty ? ` (includes +${esc(E.fmtTime(x.penalty))} penalty, ${esc(x.penaltyPoints)} points)` : '');
+        case 'total': return esc(E.fmtTime(typeof x.total==='number'?x.total + (x.penalty || 0) + (x.adjMs || 0):null)) + (x.penalty ? ` (includes +${esc(E.fmtTime(x.penalty))} penalty, ${esc(x.penaltyPoints)} points)` : '');
         default: return esc(ST.text(key, figs[i], unit, distUnit));
       }
     };

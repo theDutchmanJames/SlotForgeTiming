@@ -9,9 +9,74 @@ ipcRenderer.on('live:resync', () => listeners.resync.forEach(f => f()));
 const call = (channel, ...args) => ipcRenderer.invoke(channel, ...args);
 const catalogueCall=async(channel,...args)=>{const value=await call(channel,...args);if(value?.catalogueStale)throw Object.assign(Error('The catalogue changed. Refresh the list before continuing.'),{code:'CATALOGUE_CHANGED'});return value;};
 
+// Sandboxed preload: Web Crypto and browser storage only. Persist identifiers,
+// never save payloads or media. An entry is removed only after an acknowledgement.
+const editorFlights=new Map(), editorPrefix='slotforge-editor-save-v1:';
+const editorCanonical=value=>Array.isArray(value)?'['+value.map(editorCanonical).join(',')+']':value&&typeof value==='object'?'{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+editorCanonical(value[k])).join(',')+'}':JSON.stringify(value);
+async function editorSave(operation,channel,...values){
+  const args=JSON.parse(JSON.stringify(values)); // Freeze the intent before any awaits.
+  const flight=editorCanonical({operation,args});
+  if(editorFlights.has(flight))return editorFlights.get(flight);
+  // Deferring the body lets the in-flight map be set before any write begins.
+  const job=Promise.resolve().then(async()=>{
+    const scope=await call('db:editor-scope');
+    if(!scope)return call(channel,...(channel==='session:remove'?[args[1]]:args)); // Existing JSON storage is unchanged.
+    const bytes=new TextEncoder().encode(editorCanonical({scope,operation,args}));
+    const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');
+    const key=editorPrefix+digest;
+    let id;
+    try{
+      id=localStorage.getItem(key);
+      if(id&&!/^[0-9a-f-]{36}$/.test(id))throw Error('Invalid pending save identity.');
+      if(!id){
+        let count=0;for(let n=0;n<localStorage.length;n++)if(localStorage.key(n)?.startsWith(editorPrefix))count++;
+        if(count>=128)throw Error('Too many unconfirmed saves.');
+        id=crypto.randomUUID();localStorage.setItem(key,id);
+      }
+    }catch(error){throw Error('Cannot safely remember this save. '+error.message+' No save was sent.');}
+    let reply;
+    try{reply=await call('db:editor-save',{id,scope,operation,args});}
+    catch(error){throw Error('The save could not be confirmed. Retry the same save to check it safely. '+error.message);}
+    if(!reply||typeof reply.ok!=='boolean')throw Error('Save acknowledgement was lost. Retry the same save to check it safely.');
+    if(!reply.ok&&reply.retain)throw Object.assign(Error(reply.error),{code:reply.code});
+    // Never silently treat a later identical action as a retry after cleanup
+    // fails. Explain the known outcome and retain the safe identity.
+    try{localStorage.removeItem(key);}catch{throw Error(reply.ok?'The save succeeded, but its retry tracking could not be cleared. Retry the same save to clear it safely.':'The save was rejected and its retry tracking could not be cleared. '+reply.error);}
+    if(!reply.ok)throw Error(reply.error||'The save was rejected.');
+    return reply.value;
+  }).finally(()=>editorFlights.delete(flight));
+  editorFlights.set(flight,job);return job;
+}
+
 contextBridge.exposeInMainWorld('api', {
   paddockStatus: () => call('paddock:status'),
+  libraryStatus:()=>call('library:status'),
+  libraryCar:id=>call('library:car',id),
+  librarySave:input=>call('library:save',input),
+  libraryService:input=>call('library:service',input),
+  librarySaves:()=>call('library:saves'),
+  libraryOriginalHistory:options=>call('library:original-history',options),
+  libraryRestore:()=>call('library:restore'),
+  libraryRetry:id=>call('library:retry',id),
+  libraryResolve:id=>call('library:resolve',id),
+  paddockCollectionMigration: options => call('paddock:collection-migration',options),
+  paddockHistoricalReview: options => call('paddock:historical-review',options),
+  paddockHistory: options => call('paddock:history',options),
   paddockDiscover: () => call('paddock:discover'),
+  paddockSharedCar:id=>call('paddock:shared-car',id),
+  paddockSharedSave:input=>call('paddock:shared-save',input),
+  paddockSharedSaves:()=>call('paddock:shared-saves'),
+  paddockSharedResolve:id=>call('paddock:shared-resolve',id),
+  paddockSharedRetry:id=>call('paddock:shared-retry',id),
+  paddockLocalStart:()=>call('paddock:local-start'),
+  paddockLocalDiscover: () => call('paddock:local-discover'),
+  paddockTransfers: () => call('paddock:transfers'),
+  paddockTransferCreate: items => call('paddock:transfer-create',items),
+  paddockTransferRefresh: id => call('paddock:transfer-refresh',id),
+  paddockTransferCancel: id => call('paddock:transfer-cancel',id),
+  paddockTransferPreview: id => call('paddock:transfer-preview',id),
+  paddockTransferOrigin: id => call('paddock:transfer-origin',id),
+  paddockTransferAccept: (id,expected) => call('paddock:transfer-accept',id,expected),
   paddockConnect: value => call('paddock:connect',value),
   paddockDisconnect: forget => call('paddock:disconnect',forget),
   paddockBrowse: () => call('paddock:browse'),
@@ -71,6 +136,7 @@ contextBridge.exposeInMainWorld('api', {
   raceSeason: options=>catalogueCall('db:race-season',options),
   raceCharts: ids=>catalogueCall('db:race-charts',ids),
   raceInputs: options=>catalogueCall('db:race-inputs',options),
+  editorRead: (kind,entity,value)=>catalogueCall('db:editor-read',kind,entity,value),
   referencePage: (entity,options)=>catalogueCall('db:reference-page',entity,options),
   referenceDetails: (entity,ids,revision)=>catalogueCall('db:reference-details',entity,ids,revision),
   historyPage: (pool,options)=>catalogueCall('db:history-page',pool,options),
@@ -78,12 +144,12 @@ contextBridge.exposeInMainWorld('api', {
   carStatistics: id=>call('db:car-statistics',id),
   catalogue: (entity, options) => catalogueCall('db:catalogue',entity,options),
   cataloguePicture: (entity,id,revision) => catalogueCall('db:catalogue-picture',entity,id,revision),
-  add: (entity, item) => call('db:add', entity, item),
-  update: (entity, id, patch) => call('db:update', entity, id, patch),
-  remove: (entity, id) => call('db:remove', entity, id),
+  add: (entity, item) => editorSave('add','db:add', entity, item),
+  update: (entity, id, patch) => editorSave('update','db:update', entity, id, patch),
+  remove: (entity, id) => editorSave('remove','db:remove', entity, id),
   linkedLaps: (entity, id) => call('db:linked', entity, id),
   saveSession: (session, laps) => call('session:save', session, laps),
-  removeSession: id => call('session:remove', id),
+  removeSession: id => editorSave('remove','session:remove','sessions', id),
   exportDeps: picks => call('transfer:deps', picks),
   transferChoices: () => call('transfer:choices'),
   nativeBackup: () => call('backup:native-save'),
@@ -100,9 +166,9 @@ contextBridge.exposeInMainWorld('api', {
   backupCancel: () => call('backup:cancel'),
   exportPdf: (html, name) => call('pdf:export', html, name),
   customFields: entity => call('custom:list', entity),
-  addCustomField: (entity, field) => call('custom:add', entity, field),
-  removeCustomField: (entity, id) => call('custom:remove', entity, id),
-  setCustomFieldGroup: (entity, id, group) => call('custom:group', entity, id, group),
+  addCustomField: (entity, field) => editorSave('addCustomField','custom:add', entity, field),
+  removeCustomField: (entity, id) => editorSave('removeCustomField','custom:remove', entity, id),
+  setCustomFieldGroup: (entity, id, group) => editorSave('setCustomFieldGroup','custom:group', entity, id, group),
   setZoom: factor => { const k = Number(factor); if (k >= 0.5 && k <= 3) webFrame.setZoomFactor(k); }, // the size of the interface of this window (App Settings > General > Display)
   getSettings: () => call('settings:get'),
   setSettings: patch => call('settings:set', patch),

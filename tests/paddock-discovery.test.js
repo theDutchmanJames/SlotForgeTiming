@@ -2,22 +2,26 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const source=path.resolve(__dirname,'../paddock.js'),realRequire=createRequire(source);
 const nic=(address,netmask='255.255.255.0',internal=false)=>({family:'IPv4',address,netmask,internal});
 function harness({interfaces={lan:[nic('192.168.1.5')]},respond=()=>true,broken,invalid=false}={}){
- const sockets=[],sent=[],timers=new Set();let replies=0;
+ const sockets=[],sent=[],timers=new Set(),queue=new Map();let replies=0,now=0,sequence=0;
+ // Advance simulated UDP callbacks and timers in deadline order. Real 15/60 ms
+ // deadlines made the retry test depend on machine load from unrelated suites.
+ const schedule=(fn,ms=0)=>{const id=++sequence;queue.set(id,{fn,at:now+ms});return id;};
+ const immediate=fn=>schedule(fn);
  class Socket extends EventEmitter {
   constructor(){super();sockets.push(this);this.closed=false;}
-  bind(...args){this.bound=typeof args[1]==='string'?args[1]:null;setImmediate(()=>{if(!this.closed)args.at(-1)();});}
+  bind(...args){this.bound=typeof args[1]==='string'?args[1]:null;immediate(()=>{if(!this.closed)args.at(-1)();});}
   setMulticastTTL(){} setBroadcast(){}
   setMulticastInterface(ip){this.adapter=ip;}
-  send(bytes,port,destination,callback){setImmediate(()=>{if(this.closed)return;const ip=this.bound||this.adapter,packet=JSON.parse(bytes);sent.push({ip,port,destination,packet});if(ip===broken){const e=Object.assign(Error('Adapter unavailable'),{code:'ENETUNREACH'});if(callback)callback(e);else this.emit('error',e);return;}callback?.();if(!respond({ip,destination,sent}))return;
+  send(bytes,port,destination,callback){immediate(()=>{if(this.closed)return;const ip=this.bound||this.adapter,packet=JSON.parse(bytes);sent.push({ip,port,destination,packet});if(ip===broken){const e=Object.assign(Error('Adapter unavailable'),{code:'ENETUNREACH'});if(callback)callback(e);else this.emit('error',e);return;}callback?.();if(!respond({ip,destination,sent}))return;
    const item={type:'slotforge-host',version:1,nonce:packet.nonce,id:'host',name:'Club',port:54321};const emit=(p,peer='192.168.1.20')=>this.emit('message',Buffer.from(JSON.stringify(p)),{address:peer,port:47778});
    if(invalid){emit({...item,nonce:'wrong'});emit({...item,id:42});emit({...item,name:' '});emit({...item,port:0});emit(item,'8.8.8.8');emit({...item,name:'x'.repeat(2100)});}
    emit(item);replies++;
   });}
   close(){this.closed=true;}
  }
- const mod={exports:{}};const timeout=(fn,ms)=>{const id=setTimeout(()=>{timers.delete(id);fn();},Math.min(ms,60));timers.add(id);return id;};const clear=id=>{timers.delete(id);clearTimeout(id);};
+ const mod={exports:{}};const timeout=(fn,ms)=>{const id=schedule(()=>{timers.delete(id);fn();},ms);timers.add(id);return id;};const clear=id=>{timers.delete(id);queue.delete(id);};
  vm.runInNewContext(fs.readFileSync(source,'utf8'),{module:mod,exports:mod.exports,require:id=>id==='node:dgram'?{createSocket:()=>new Socket()}:id==='node:os'?{networkInterfaces:()=>interfaces}:realRequire(id),Buffer,URL,setTimeout:timeout,clearTimeout:clear});
- return {scan:()=>mod.exports.discover({duration:60,retryMs:15}),sent,sockets,timers,get replies(){return replies;}};
+ return {scan:()=>{const result=mod.exports.discover({duration:60,retryMs:15});let steps=0;while(queue.size){assert(++steps<1000,'Discovery must finish within a bounded number of callbacks');const [id,event]=[...queue].sort((a,b)=>a[1].at-b[1].at||a[0]-b[0])[0];queue.delete(id);now=event.at;event.fn();}return result;},sent,sockets,timers,get replies(){return replies;}};
 }
 test('discovery keeps each adapter isolated while UDP sends are pending',async()=>{const h=harness({interfaces:{lan:[nic('192.168.1.5')],other:[nic('10.0.0.5')]},respond:x=>x.ip==='192.168.1.5'});const hosts=await h.scan();assert.equal(hosts.length,1);assert(h.sent.some(x=>x.ip==='192.168.1.5'));assert(h.sockets.every(s=>s.closed));assert.equal(h.timers.size,0);});
 test('one broken adapter does not cancel replies on a working adapter',async()=>{const h=harness({interfaces:{bad:[nic('10.0.0.5')],lan:[nic('192.168.1.5')]},broken:'10.0.0.5'});assert.equal((await h.scan()).length,1);assert(h.sockets.every(s=>s.closed));});

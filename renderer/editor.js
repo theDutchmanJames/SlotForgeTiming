@@ -105,12 +105,8 @@ const SETUP_GROUPS = [
 const setupColorOf = id => { const all = [SETUP_HERO, ...SETUP_GROUPS.flatMap(g => g[1])].find(t => t[0] === id); return all ? all[3] : 'race'; };
 const setupTabsHtml = current => {
   const [hid, hlabel, hicon] = SETUP_HERO;
-  const shortcuts = ['fuel', 'tyrewear', 'penalties'];
-  const all = SETUP_GROUPS.flatMap(([, items]) => items);
   const chip = ([id, label, icon, c]) => `<button type="button" class="sstab ss-${c}" role="tab" aria-selected="${id === current}" data-id="${id}">${Icons.svg(icon, { size: 16, stroke: 1.8, cls: 'ssico' })}${esc(label)}</button>`;
-  return `<button type="button" class="ssbig" role="tab" aria-selected="${hid === current}" data-id="${hid}"><span class="ssbigico">${Icons.svg(hicon, { size: 22, stroke: 1.8 })}</span><span><strong>${esc(hlabel)}</strong><small>Where it all comes together</small></span></button>`
-    + shortcuts.map(id => chip(all.find(item => item[0] === id))).join('')
-    + `<div class="ssgroups">${SETUP_GROUPS.map(([name, entries]) => {const items=entries.filter(item=>!shortcuts.includes(item[0])),active=items.find(x=>x[0]===current),label={Systems:'Race Systems',Setups:'Rotations & Championships',Extras:'More Systems'}[name];return `<details class="ssgroup ssdropdown${active?' ss-'+active[3]:''}"><summary${active?' class="sscurrent"':''}>${esc(active?active[1]:label)}</summary><div class="sschips" aria-label="${esc(label)}">${items.map(chip).join('')}</div></details>`;}).join('')}</div>`;
+  return `<button type="button" class="ssbig" role="tab" aria-selected="${hid === current}" data-id="${hid}"><span class="ssbigico">${Icons.svg(hicon, { size: 24, stroke: 1.8 })}</span><span><strong>${esc(hlabel)}</strong><small>Where it all comes together</small></span></button><div class="ssnav"><div class="sssystems">${SETUP_GROUPS[0][1].map(chip).join('')}</div><div class="ssgroups">${SETUP_GROUPS.slice(1).map(([name,items])=>{const active=items.find(x=>x[0]===current),label=name==='Setups'?'Rotations & Championships':'More Systems';return `<details class="ssgroup ssdropdown${active?' ss-'+active[3]:''}"><summary${active?' class="sscurrent"':''}>${esc(active?active[1]:label)}</summary><div class="sschips" aria-label="${esc(label)}">${items.map(chip).join('')}</div></details>`;}).join('')}</div></div>`;
 };
 
 // Race Setup tab: the race setups you can pick on the Home tab, and the penalty systems they can use
@@ -156,7 +152,7 @@ async function renderSetup() {
 // Customization tab: Layout Editor, Leaderboard Editor, Race Results, Audio Settings, Image Settings and Widget Builder
 async function renderCustom() {
   if(typeof PluginDisplayClient!=='undefined')await PluginDisplayClient.refresh();
-  if (state.editing) { state.editing.classDefs=await api.list('raceclasses'); state.editing.drivers = await api.list('drivers'); state.editing.cars = await api.list('slotcars'); state.editing.rowDesigns = await api.list('rowdesigns'); state.editing.chartDesigns = await api.list('chartdesigns'); state.editing.previewTracks = await api.list('tracks'); if(state.editing.previewTrackId===undefined)state.editing.previewTrackId=(state.editing.previewTracks.find(t=>t.id===state.race?.track?.id&&t.trackDesign)||state.editing.previewTracks.find(t=>t.trackDesign))?.id||''; state.editing.imageSets = await api.list('imagesets'); state.editing.teams = await api.list('teams'); state.editing.customWidgets = await api.list('customwidgets'); return renderEditor(); } // drivers' pictures are used to preview the Avatar framing
+  if (state.editing) { const ed=state.editing; await EditorData.load(api,ed,state.race?.track?.id); if(state.editing!==ed||state.tab!=='custom')return; return renderEditor(); }
   view.innerHTML = '<h2>Customization</h2><div class="sub" id="customtabs" role="tablist"></div><div id="setupbox"></div>';
   renderTabs(document.getElementById('customtabs'), [['layouts', 'Layout Editor'], ['rows', 'Leaderboard Editor'], ['charts', 'Chart Editor'], ['results', 'Race Results'], ['audio', 'Audio Settings'], ['images', 'Image Settings'], ['widgets', 'Widget Builder'], ['pluginpages','Plugin Pages & Tools']], state.customSub, id => {
     // the picture set and widget editors are closed by another tab: ask first when there are changes that are not saved
@@ -306,7 +302,7 @@ async function renderRowList(box) {
 
 async function renderLayoutList(box) {
   manager = null;
-  const layouts = await api.list('layouts');
+  const layouts = await EditorData.choices(api,'layouts');
   const prop = l => `${l.ratioW}:${l.ratioH}`;
   box.innerHTML = `<p class="muted">A layout is a timing page you design once and use in any race setup.</p>
     <div class="row"><button class="btn primary" id="newl">New layout</button></div>
@@ -315,7 +311,7 @@ async function renderLayoutList(box) {
       <td class="actions"><button class="btn" id="copydef">Copy to edit</button></td></tr>
     <tr><td>Default token layout</td><td class="muted">Built in, used by a Time Token Session when its race setup has none</td><td>16:9</td><td>${Widgets.tokenLayout().widgets.length}</td>
       <td class="actions"><button class="btn" id="copytok">Copy to edit</button></td></tr>` +
-    layouts.map(l => `<tr><td>${esc(l.name)}</td><td class="muted">${esc(l.note || '')}</td><td>${esc(prop(l))}</td><td>${(l.widgets || []).length}</td><td class="actions">
+    layouts.map(l => `<tr><td>${esc(l.name)}</td><td class="muted">${esc(l.note || '')}</td><td>${esc(prop(l))}</td><td>${l.widgetCount ?? (l.widgets || []).length}</td><td class="actions">
       <button class="btn" data-edit="${esc(l.id)}">Edit</button> <button class="btn" data-dup="${esc(l.id)}">Duplicate</button> <button class="btn danger" data-del="${esc(l.id)}">Delete</button></td></tr>`).join('') +
     '</table></div>';
   const open = (draft, id) => { state.editing = { id, draft: { guides: { v: [], h: [] }, laneColors: [], note: '', ...draft, widgets: knownWidgets(draft.widgets) }, sel: [], snap: true, dirty: id === null, dupStep: null, lastDup: null }; render(); };
@@ -324,8 +320,9 @@ async function renderLayoutList(box) {
     if (b.id === 'newl') return open({ name: 'New layout', ratioW: 16, ratioH: 9, widgets: [] }, null);
     if (b.id === 'copytok') { const d = Widgets.tokenLayout(); return open({ name: 'My token layout', ratioW: d.ratioW, ratioH: d.ratioH, widgets: d.widgets, guides: { v: [], h: [] }, laneColors: [] }, null); }
     if (b.id === 'copydef') { const d = Widgets.defaultLayout(); return open({ name: 'My layout', ratioW: d.ratioW, ratioH: d.ratioH, widgets: d.widgets, guides: { v: [], h: [] }, laneColors: [] }, null); }
-    const l = layouts.find(x => x.id === (b.dataset.edit || b.dataset.dup || b.dataset.del));
+    let l = layouts.find(x => x.id === (b.dataset.edit || b.dataset.dup || b.dataset.del));
     if (!l) return;
+    if (b.dataset.edit || b.dataset.dup) { try { l = api.getRecord ? await api.getRecord('layouts',l.id) : l; if(!l)throw Error('This layout is no longer available. Refresh the list.'); } catch(error) { alert(error.message); return; } }
     if (b.dataset.edit) open(clone({ name: l.name, note: l.note || '', ratioW: l.ratioW, ratioH: l.ratioH, widgets: l.widgets, guides: l.guides, laneColors: l.laneColors, ...Frame.pickLayout(l), ...Backdrop.pick(l) }), l.id);
     if (b.dataset.dup) { await api.add('layouts', clone({ name: l.name + ' (copy)', note: l.note || '', ratioW: l.ratioW, ratioH: l.ratioH, widgets: l.widgets, guides: l.guides, laneColors: l.laneColors, ...Frame.pickLayout(l), ...Backdrop.pick(l) })); renderLayoutList(box); }
     if (b.dataset.del && confirm(`Delete the layout "${l.name}"?\n\nRace setups that use it go back to the default layout (the default token layout for a Time Token Session).\n\nThis can't be undone.`)) { await api.remove('layouts', l.id); renderLayoutList(box); }
@@ -378,7 +375,7 @@ function sideHtml() {
     const v = o.key === 'flagStyle' ? flagStyle : common(w => (w.opt || {})[o.key]) ?? (o.defaultOf ? o.defaultOf(w0.opt || {}) : o.default), id = `o-${o.key}`;
     if (o.type === 'imageset') return `<div class="field"><label for="${id}">${esc(o.label)}</label><select id="${id}" data-opt="${o.key}"><option value="">${ownPictures(w0) ? 'None: pictures of this widget' : d0.type === 'flag' ? 'None (shows the flag name as text)' : d0.type === 'lights' ? 'None (plain round lights)' : d0.type === 'avatar' ? 'Standard avatars (built in)' : o.noneLabel || 'None'}</option>${d0.type === 'avatar' ? `<option value="none"${v === 'none' ? ' selected' : ''}>No avatars (the first letter of the name)</option>` : ''}${(state.editing.imageSets || []).filter(r => r.kind === o.kind).map(r => `<option value="${esc(r.id)}"${r.id === v ? ' selected' : ''}>${esc(r.name)}</option>`).join('')}</select>${d0.type === 'avatar' || (state.editing.imageSets || []).some(r => r.kind === o.kind) ? '' : '<p class="muted">No sets yet. Make one under Customization > Image Settings.</p>'}${!setIn(v, d0) && sameType && ownPictures(w0) ? '<button class="btn" type="button" data-saveset="1">Save this widget\'s pictures as a set</button>' : ''}</div>`;
     if (o.type === 'team') return `<div class="field"><label for="${id}">${esc(o.label)}</label><select id="${id}" data-opt="${o.key}"><option value="">The team of the lane</option>${(state.editing.teams || []).map(t => `<option value="${esc(t.id)}"${t.id === v ? ' selected' : ''}>${esc(t.name || '(unnamed)')}</option>`).join('')}</select><span class="muted hint">A team of the lane is the team you chose on the Home tab. Choose a team from the database to always show that team.</span></div>`;
-    if (o.type === 'chartdesign') return `<div class="field"><label for="${id}">${esc(o.label)}</label><select id="${id}" data-opt="${o.key}"><option value="">Choose a chart design</option>${v && !(state.editing.chartDesigns || []).some(r => r.id === v) ? `<option value="${esc(v)}" selected>Missing design — choose another</option>` : ''}${(state.editing.chartDesigns || []).map(r => `<option value="${esc(r.id)}"${r.id === v ? ' selected' : ''}>${esc(r.name)}</option>`).join('')}</select><p class="muted">Create and edit designs under Customization → Chart Editor. Shared designs update every widget using them.</p>${(state.editing.chartDesigns||[]).find(c=>c.id===v)?.style==='track'?`<label for="chart-preview-track">Preview track (editor only)</label><select id="chart-preview-track" data-chart-preview><option value="">Sample oval</option>${(state.editing.previewTracks||[]).map(t=>`<option value="${esc(t.id)}"${t.id===state.editing.previewTrackId?' selected':''}>${esc(t.name)}${t.trackDesign?'':' · no imported design'}</option>`).join('')}</select><p class="muted">Racing uses the track selected in Race Setup. This choice only previews the layout; it is not saved with the widget.</p>`:''}</div>`;
+    if (o.type === 'chartdesign') return `<div class="field"><label for="${id}">${esc(o.label)}</label><select id="${id}" data-opt="${o.key}"><option value="">Choose a chart design</option>${v && !(state.editing.chartDesigns || []).some(r => r.id === v) ? `<option value="${esc(v)}" selected>Missing design — choose another</option>` : ''}${(state.editing.chartDesigns || []).map(r => `<option value="${esc(r.id)}"${r.id === v ? ' selected' : ''}>${esc(r.name)}</option>`).join('')}</select><p class="muted">Create and edit designs under Customization → Chart Editor. Shared designs update every widget using them.</p>${(state.editing.chartDesigns||[]).find(c=>c.id===v)?.style==='track'?`<label for="chart-preview-track">Preview track (editor only)</label><select id="chart-preview-track" data-chart-preview><option value="">Sample oval</option>${(state.editing.previewTracks||[]).map(t=>`<option value="${esc(t.id)}"${t.id===state.editing.previewTrackId?' selected':''}>${esc(t.name)}${t.hasTrackDesign||t.trackDesign?'':' · no imported design'}</option>`).join('')}</select><p class="muted">Racing uses the track selected in Race Setup. This choice only previews the layout; it is not saved with the widget.</p>`:''}</div>`;
     if (o.type === 'rowdesign') return `<div class="field"><label for="${id}">${esc(o.label)}</label><select id="${id}" data-opt="${o.key}"><option value="">Classic table (columns below)</option>${(state.editing.rowDesigns || []).map(r => `<option value="${esc(r.id)}"${r.id === v ? ' selected' : ''}>${esc(r.name)}</option>`).join('')}</select></div>`;
     if (o.type === 'checkbox') return `<div class="field"><label class="inline"><input id="${id}" type="checkbox" data-opt="${o.key}" ${v ? 'checked' : ''}> ${esc(o.label)}</label></div>`;
     if (o.type === 'range') return `<div class="field"><label for="${id}">${esc(o.label)} <output id="${id}-v">${esc(v)}${o.unit || ''}</output></label><input id="${id}" type="range" min="${o.min ?? 0}" max="${o.max ?? 100}" step="${o.step ?? 1}" data-opt="${o.key}" data-unit="${esc(o.unit || '')}" value="${esc(v)}">${o.hint ? `<span class="muted hint">${esc(o.hint)}</span>` : ''}</div>`;
@@ -451,7 +448,7 @@ function sideHtml() {
 
 function renderEditor() {
   state.editing?.cancelGesture?.();
-  const ed = state.editing, d = ed.draft;
+  const ed = state.editing, d = ed.draft, paintVersion=ed.paintVersion=(ed.paintVersion||0)+1;
   if(!widgetEditorResizeWired && window.addEventListener){widgetEditorResizeWired=true;window.addEventListener('resize',()=>scheduleEditorFit());window.addEventListener('widget-fonts-ready',e=>scheduleEditorFit(e.detail?.elements));}
   const preset = PRESETS.find(p => p[1] === d.ratioW && p[2] === d.ratioH);
   const row = d.kind === 'row', REG = (row ? Widgets.REGISTRY.filter(x => x.perLane && !x.layoutOnly) : Widgets.REGISTRY).filter(x => !x.hidden); // the custom text kinds are made in the Widget Builder, not added from here
@@ -530,7 +527,8 @@ function renderEditor() {
 
     attachFrames($('side'), key => (ed.sel[0].opt || {})[key], (key, f) => { ed.sel.forEach(w => { w.opt = w.opt || {}; w.opt[key] = f; }); mark(); });
   };
-  const redraw = () => { drawCanvas(); drawSide(); };
+  const refreshAssets = () => { if(typeof EditorData==='undefined')return; EditorData.refresh(api,ed).then(changed=>{if(changed&&state.editing===ed&&ed.paintVersion===paintVersion&&$('canvas')){mounted?.invalidate();drawCanvas();drawSide();}}).catch(error=>{if(state.editing===ed&&ed.paintVersion===paintVersion&&$('e-msg'))$('e-msg').textContent='Preview could not be loaded: '+error.message;}); };
+  const redraw = () => { drawCanvas(); drawSide(); refreshAssets(); };
   redraw();
   if (!panelFitWired && window.addEventListener) { panelFitWired = true; window.addEventListener('resize', fitPanels); window.addEventListener('scroll', fitPanels, { passive: true }); } // (fitPanels does nothing when no editor is on the page)
 
@@ -874,7 +872,7 @@ function renderEditor() {
   };
   side.onchange = async e => {
     const sel = ed.sel, t = e.target; if (!sel.length) return;
-    if(t.dataset.chartPreview!==undefined){ed.previewTrackId=t.value;fitEditorWidgets([...$('canvas').querySelectorAll('.lw[data-i]')].filter(el=>d.widgets[Number(el.dataset.i)]?.type==='racechart'));return;}
+    if(t.dataset.chartPreview!==undefined){ed.previewTrackId=t.value;refreshAssets();fitEditorWidgets([...$('canvas').querySelectorAll('.lw[data-i]')].filter(el=>d.widgets[Number(el.dataset.i)]?.type==='racechart'));return;}
     if(t.dataset.wdImport!==undefined){try{const file=t.files?.[0];if(!file)return;if(file.size>100000)throw Error('Style file is too large.');const raw=JSON.parse(await file.text());if(raw.kind!=='slotforge-widget-style'||!raw.style)throw Error('Choose an exported SlotForge widget style.');const clean=WidgetDesign.cleanStyles([{id:'imported',name:raw.name,style:raw.style}])[0];if(!clean)throw Error('Invalid style file.');const saved=WidgetDesign.saveStyle(d,ed.sel[0],clean.name);if(!saved)throw Error('This layout already has 50 styles.');saved.style=clean.style;step();redraw();$('e-msg').textContent='Imported style: '+saved.name;}catch(err){$('e-msg').textContent=err.message;}return;}
     if(t.dataset.wdFormat||t.dataset.wdRule!==undefined){step();redraw();return;}
     if(t.dataset.ws){step();redraw();return;}
@@ -932,7 +930,7 @@ function renderEditor() {
       const w = ed.sel[0], o = w.opt || {}, fuel = w.type === 'fuel', n = (ed.imageSets || []).filter(r => r.kind === (fuel ? 'fuel' : 'flag')).length + 1;
       const set = fuel ? { name: `Fuel pictures ${n}`, kind: 'fuel', steps: Widgets.clampInt(o.steps ?? 10, 2, 20, 10), images: Array.from({ length: Widgets.clampInt(o.steps ?? 10, 2, 20, 10) }, (_, i) => (o.stepImages || [])[i] || '') }
         : { name: `Flag pictures ${n}`, kind: 'flag', images: Object.fromEntries(Widgets.FLAG_STATES.map(([k]) => [k, o['img_' + k] || ''])) };
-      api.add('imagesets', set).then(async row => { ed.imageSets = await api.list('imagesets'); ed.sel.forEach(x => { x.opt = x.opt || {}; x.opt.imageSet = row.id; }); step(); redraw(); $('e-msg').textContent = `Saved as the set "${set.name}". You can rename it under Customization > Image Settings.`; });
+      api.add('imagesets', set).then(async row => { ed.imageSets = await EditorData.choices(api,'imagesets'); ed.previewLoads=new Map(); ed.sel.forEach(x => { x.opt = x.opt || {}; x.opt.imageSet = row.id; }); step(); redraw(); $('e-msg').textContent = `Saved as the set "${set.name}". You can rename it under Customization > Image Settings.`; });
       return;
     }
     if (b.dataset && b.dataset.arr) { arrange(b.dataset.arr); return; }

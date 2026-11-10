@@ -7,3 +7,24 @@ Thumbs.db
 .electron-cache/
 .tmp-test/
 work/
+
+# Local handoffs, audit reports and design references are not release source.
+/START-HERE-LAPTOP.txt
+/docs/*.md
+!/docs/BUILDING-FROM-SOURCE.md
+!/docs/DESKTOP-RELEASES.md
+!/docs/content-packs.md
+!/docs/PADDOCK-INTEGRATION.md
+!/docs/PARALLEL-PORT.md
+!/docs/phidget-interface.md
+!/docs/PLUGIN-DISPLAYS.md
+!/docs/PLUGIN-RULES.md
+!/docs/PLUGIN-RUNTIME.md
+!/docs/PLUGIN-TIMING.md
+!/docs/SERVICE-STOP.md
+!/docs/TRACK-BUILDER-INTEGRATION.md
+!/docs/TYRE-TEMPERATURE.md
+!/docs/WIDGET-COMPOSER.md
+!/docs/WIDGET-FONTS.md
+/docs/ui-reference/
+/vendor/slotforge-library/merge-contract/*.md

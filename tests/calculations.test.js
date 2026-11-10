@@ -34,11 +34,14 @@ ok('history window excludes old outliers and minimum samples gates the reference
 ok('non-finite samples do not contaminate a rolling reference', Ps.benchmark('average', [NaN, Infinity, 0, -1, 10000, 12000], 0, { minimum: 2 }) === 11000 && Ps.benchmark('track', [], Infinity) === 0 && Ps.pacePolicy(null).window === 0);
 ok('cleaning and the shared config reader retain history policies',
   Ps.fromConfig(Ps.clean({ mode: 'median', pacePolicy: { window: 6, minimum: 4 } })).pacePolicy.minimum === 4);
-const tyreCfg = Tw.clean({ paceWear: 'on', effect: 'off' }, { pace: { benchmark: 'average', pacePolicy: { window: 2, minimum: 2 } } });
+// Model an already-frozen race from before the standalone pace control retired.
+// Recovery must preserve these rules; new-race cleaning is covered separately.
+const legacyTyres=(record,context)=>({...Tw.clean(record),pace:{on:record.paceWear==='on',strength:record.paceStrength||'normal',...context.pace}});
+const tyreCfg = legacyTyres({ paceWear: 'on', effect: 'off' }, { pace: { benchmark: 'average', pacePolicy: { window: 2, minimum: 2 } } });
 ok('tyre wear uses its independent selected policy and the actual production multiplier',
   Tw.paceReference(tyreCfg, [30000, 10000, 12000]) === 11000
   && near(Tw.paceMultiplier(tyreCfg, [30000, 10000, 12000], 10000).multiplier, 1.1));
-const trackTyres = Tw.clean({ paceWear: 'on' }, { pace: { benchmark: 'track', trackTarget: 10000 } });
+const trackTyres = legacyTyres({ paceWear: 'on' }, { pace: { benchmark: 'track', trackTarget: 10000 } });
 ok('track-based tyre wear needs no sample history and missing track target stays neutral',
   Tw.paceMultiplier(trackTyres, [], 8000).multiplier === 1.25
   && Tw.paceMultiplier({ ...trackTyres, pace: { ...trackTyres.pace, trackTarget: 0 } }, [8000, 8000, 8000], 8000).multiplier === 1);
@@ -81,13 +84,13 @@ ok('response and estimate choices clean invalid imported numbers and retain defa
   && Ps.responsePolicy({maximum:500}).maximum===3
   && Ps.estimatePolicy({gapMethod:'other',fuelWindow:999}).fuelWindow===20
   && Ps.estimatePolicy({fuelWindow:1}).fuelWindow===3
-  && Ps.calculationSettings().response.combine==='both');
+  && Ps.calculationSettings().response.combine==='pushsave');
 const Sc = require('../renderer/safetycar'), Strategy = require('../renderer/strategywidgets'), Timing = require('../renderer/timing');
 function responseRace(combine='both', custom=false) {
   const response=Ps.responsePolicy({combine,custom,strength:2,minimum:.75,maximum:1.3});
   const cfg={type:'race',laps:100,entries:[{lane:0,driverName:'A'}],fuel:{on:true,tank:100,perLap:2,rate:5},
     pushsave:{...Ps.clean({...Ps.defaults(),from:1}),benchmark:'track',trackTarget:10000},
-    tyrewear:Tw.clean({paceWear:'on',effect:'off',zero:'none',setsMode:'none'},{pace:{benchmark:'track',trackTarget:10000,response}})};
+    tyrewear:legacyTyres({paceWear:'on',effect:'off',zero:'none',setsMode:'none'},{pace:{benchmark:'track',trackTarget:10000,response}})};
   const e=RaceEngine.createRace(cfg);e.start(0);e.cars[0].started=true;return e;
 }
 for(const [mode,factor]of [['both',1.25*1.4],['tyres',1.25],['pushsave',1.4]]){

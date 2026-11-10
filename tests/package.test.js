@@ -29,10 +29,12 @@ ok('the Windows build makes an installer and a portable program', targets.includ
 const mainText = fs.readFileSync(path.join(root, 'main.js'), 'utf8');
 { // the screens ask the main program through the preload script: every channel it calls has a handler in main.js, and every handler is called by something
   const pre = fs.readFileSync(path.join(root, 'preload.js'), 'utf8'), asks = [...pre.matchAll(/(?:call|catalogueCall)\('([^']+)'/g)].map(m => m[1]), handles = [...mainText.matchAll(/(?:ipcMain|bulkAccess)\.handle\('([^']+)'/g)].map(m => m[1]);
+  // Retry-aware editor calls still declare their legacy JSON channel explicitly.
+  asks.push(...[...pre.matchAll(/editorSave\('[^']+','([^']+)'/g)].map(m=>m[1]));
   handles.push(...[...fs.readFileSync(path.join(root,'packipc.js'),'utf8').matchAll(/(?:^|\n)\s*handle\('([^']+)'/g)].map(m=>'packs:'+m[1]));
   handles.push(...[...fs.readFileSync(path.join(root,'pluginipc.js'),'utf8').matchAll(/(?:^|\n)\s*handle\('([^']+)'/g)].map(m=>'plugins:'+m[1]));
   ok('every call of the preload script has a registered main-process handler (' + asks.length + ' channels), and none is left without a caller', asks.length > 20 && asks.every(c => handles.includes(c)) && handles.every(c => asks.includes(c)) && new Set(asks).size === asks.length);
-  ok('the extra fields can be listed, added, deleted and moved to another group from a screen', ['custom:list', 'custom:add', 'custom:remove', 'custom:group'].every(c => asks.includes(c) && handles.includes(c)) && /setCustomFieldGroup: \(entity, id, group\) => call\('custom:group', entity, id, group\)/.test(pre) && mainText.includes("ipcMain.handle('custom:group', (_e, entity, id, group) => records.setCustomFieldGroup(entity, id, group))")); }
+  ok('the extra fields can be listed, added, deleted and moved to another group from a screen', ['custom:list', 'custom:add', 'custom:remove', 'custom:group'].every(c => asks.includes(c) && handles.includes(c)) && /setCustomFieldGroup: \(entity, id, group\) => editorSave\('setCustomFieldGroup','custom:group', entity, id, group\)/.test(pre) && mainText.includes("ipcMain.handle('custom:group', (_e, entity, id, group) => records.setCustomFieldGroup(entity, id, group))")); }
 ok('the data folder is fixed (the same for npm start, the installed app and the portable program) and only one copy can run', /setPath\('userData'/.test(mainText) && /requestSingleInstanceLock/.test(mainText));
 const bat = fs.existsSync(path.join(root, 'build-windows.bat')) ? fs.readFileSync(path.join(root, 'build-windows.bat'), 'utf8') : '';
 ok('build-windows.bat exists, uses Windows line endings and runs the build', /npm run dist/.test(bat) && /\r\n/.test(bat) && /npm install --save-dev electron electron-builder/.test(bat));

@@ -16,8 +16,10 @@ class DataRepository {
   raceSeason(options) { const S=require('./season-read');return S.read(S.jsonSource(this.db),options); }
   raceCharts(ids) { return require('./display-read').charts(require('./race-read').jsonSource(this.db),ids); }
   raceInputs(options) { return require('./race-read').read(require('./race-read').jsonSource(this.db),options); }
+  editorRead(kind,entity,value) { return require('./editor-read').read(require('./editor-read').jsonSource(this.db),kind,entity,value); }
   referencePage(entity,options) { return require('./reference-read').jsonPage(this.db,entity,options); }
   referenceDetails(entity,ids,revision) { return require('./reference-read').jsonDetails(this.db,entity,ids,revision); }
+  historyReferences(rows) { return require('./history-read').jsonReferences(this.db,rows); }
   historyPage(pool,options) { return require('./history-read').jsonPage(this.db,pool,options); }
   historySession(pool,id,options) { return require('./history-read').jsonSession(this.db,pool,id,options); }
   carStatistics(id) { return require('./history-read').jsonCar(this.db,id); }
@@ -27,6 +29,17 @@ class DataRepository {
   localCars() { return this.db.localCarSummaries(); }
   linkedLaps(entity, id) { return this.db.linkedLaps(entity, id); }
   customFields(entity) { return this.db.listCustomFields(entity); }
+  affectedSharedSessions(entity,id){return require('./shared-library-cascade').json(this.db.data,entity,id);}
+  async attachSharedHistory(input) {
+    const old=this.db.data.sessions.find(s=>s.id===input.sessionId),next=require('./shared-library-adopted-history').attach(old,this.db.data.laps.filter(l=>l.sessionId===input.sessionId),input);
+    const index=this.db.data.sessions.indexOf(old);this.db.data.sessions[index]=next;this.db.touch(next);
+    try{await this.db.commit();await this.db.saved();}catch(e){this.db.data.sessions[index]=old;this.db.touch(old);throw e;}
+  }
+  async importSharedPrepared({items}) {
+    const before=Object.fromEntries(require('./transfer').ORDER.map(e=>[e,this.db.data[e].length])),fields=this.db.data.customFields;
+    try{require('./shared-library-import').applyPrivate(this.db.data,items);await this.db.commit();await this.db.saved();}
+    catch(e){for(const [key,length] of Object.entries(before))this.db.data[key].length=length;this.db.data.customFields=fields;throw e;}
+  }
   async add(entity, item) {
     const row = this.db.add(entity, item);
     await this.db.saved();

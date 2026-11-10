@@ -1,10 +1,14 @@
 // Load the real packaged code on its native OS, with isolated data and no hardware.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {app}=require('electron'),root=path.resolve(__dirname,'../..'),out=path.join(root,'.tmp-test/desktop-smoke');
-fs.mkdirSync(out,{recursive:true});app.setPath('appData',path.join(out,'profile-'+process.pid));app.disableHardwareAcceleration();
+fs.mkdirSync(out,{recursive:true});const isolated=path.join(out,'profile-'+process.pid);app.setPath('appData',isolated);process.env.LOCALAPPDATA=path.join(isolated,'local-app-data');app.disableHardwareAcceleration();
 const relative=process.platform==='win32'?'win-unpacked/resources/app.asar':process.platform==='darwin'?'mac-universal/SlotForge Timing.app/Contents/Resources/app.asar':'linux-unpacked/resources/app.asar';
 const asar=path.join(root,'dist',relative);assert(fs.existsSync(asar),'Packaged application missing');
 assert.equal(require(path.join(asar,'package.json')).version,require('../../package.json').version);
+// The shared library also stays inside this disposable profile on every OS.
+const engine=require(path.join(asar,'vendor/slotforge-library/index.cjs')),open=engine.open;
+engine.open=options=>open({...options,sharedRoot:path.join(isolated,'shared-library')});
+require('./qa-completion.cjs').preventRelaunch(app);
 let done=false;setTimeout(()=>app.exit(2),60000).unref();
 app.on('browser-window-created',(_,win)=>{
   win.hide();win.webContents.setBackgroundThrottling(false);const errors=[];

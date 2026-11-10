@@ -16,6 +16,11 @@ function setPaddockConnection(s,{connection,expectedRevision}) {
   if (connection && old && old !== connection.databaseId) throw Error('Forget the old Paddock connection before choosing another database.');
   ensure(s);
   const value = connection && {address:address(connection.address),databaseId:connection.databaseId,name:connection.name,timing:connection.timing,results:connection.results};
+  if(connection?.mode==='local'){
+    if(!require('./paddock-local-discovery').KEY.test(connection.localKey)||!/^http:\/\/127\.0\.0\.1:\d+$/.test(value.address))throw Error('Invalid local library selection.');
+    Object.assign(value,{mode:'local',localKey:connection.localKey,automatic:connection.automatic!==false});
+    if(connection.historyGuard){const h=connection.historyGuard;if(h.version!==1||h.databaseId!==value.databaseId||typeof h.recoveryId!=='string'||!/^[A-Za-z0-9_-]{1,100}$/.test(h.recoveryId))throw Error('Invalid history recovery context.');value.historyGuard={version:1,databaseId:h.databaseId,recoveryId:h.recoveryId,reads:h.reads===true,statistics:h.statistics===true,...(h.richWrites===true?{richWrites:true}:{})};}
+  }
   setPath(s,'@meta','paddock',['connection'],value);
   return {revision:s.revision('@meta','paddock')};
 }
@@ -89,4 +94,7 @@ function cachePaddockConfigurations(s,{updates}) {
   return {updated:updates.map(u=>({recordId:u.recordId,revision:s.revision('slotcars',u.recordId)}))};
 }
 function archivePaddockCar(s,{recordId,expectedRevision}){s.expect('slotcars',recordId,expectedRevision);const id=s.field('slotcars',recordId,['paddock','databaseId']).value;connected(s,id);setPath(s,'slotcars',recordId,['paddock','archived'],true);return {revision:s.revision('slotcars',recordId)};}
-module.exports={commands:{setPaddockConnection,linkPaddockCar,applyPaddockCatalogue,cachePaddockConfigurations,archivePaddockCar}};
+module.exports={commands:{collectionMigration:(s,o)=>{const M=require('./paddock-collection-store');return M.change(M.sqlAdapter(s),o.input);},historicalReview:(s,o)=>{const H=require('./paddock-historical-store');return H.change(H.sqlAdapter(s),o.input);},syncPaddockHistory:(s,input)=>{const S=require('./paddock-history-sync-store');return S.apply(S.sqlAdapter(s),input);},cachePaddockHistory:(s,{row})=>{
+ const H=require('./paddock-history');if(!row||row.id!==H.key(row.databaseId,row.route)||Buffer.byteLength(JSON.stringify(row))>9*1024*1024)throw Error('Invalid history cache entry.');
+ connected(s,row.databaseId);if(s.get(H.CACHE,row.id))s.replace(H.CACHE,row.id,row);else s.insert(H.CACHE,row);return {cached:true};
+},sharedCarOperation:(s,input)=>require('./paddock-shared-store').sqlCommand(s,input),setPaddockConnection,linkPaddockCar,applyPaddockCatalogue,cachePaddockConfigurations,archivePaddockCar,localLibraryTransfer:(s,input)=>require('./paddock-local-transfers').sqlCommand(s,input)}};

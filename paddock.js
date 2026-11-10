@@ -3,7 +3,7 @@ const http=require('node:http'),net=require('node:net'),dgram=require('node:dgra
 const Records=require('./paddockrecords');
 const RESPONSE_BYTES=Symbol('responseBytes');
 const ID=/^[a-zA-Z0-9_-]{1,100}$/;
-const TERMINAL_CODES=new Set(['INVALID_JSON','INVALID_PAYLOAD','SUMMARY_MISMATCH','DATABASE_REQUIRED','BROWSER_ORIGIN_FORBIDDEN','TIMING_PERMISSION_REQUIRED','CAR_NOT_FOUND','NOT_FOUND','DATABASE_MISMATCH','CONFIGURATION_MISMATCH','CONFIGURATION_INVALID','REVISION_CONFLICT','STALE_REVISION','PAYLOAD_TOO_LARGE','CONTENT_TYPE_REQUIRED','CONTENT_ENCODING_UNSUPPORTED','UNSUPPORTED_VERSION','CAPACITY_EXCEEDED','RECEIPT_MISMATCH']);
+const TERMINAL_CODES=new Set(['INVALID_JSON','INVALID_PAYLOAD','SUMMARY_MISMATCH','DATABASE_REQUIRED','BROWSER_ORIGIN_FORBIDDEN','TIMING_PERMISSION_REQUIRED','CAR_NOT_FOUND','NOT_FOUND','DATABASE_MISMATCH','CONFIGURATION_MISMATCH','CONFIGURATION_INVALID','REVISION_CONFLICT','STALE_REVISION','PAYLOAD_TOO_LARGE','CONTENT_TYPE_REQUIRED','CONTENT_ENCODING_UNSUPPORTED','UNSUPPORTED_VERSION','CAPACITY_EXCEEDED','RECEIPT_MISMATCH','RECOVERY_CHANGED','OPERATION_CONFLICT','HISTORY_GUARD_REQUIRED','HISTORY_REVIEW_REQUIRED','UNSUPPORTED_COVERAGE','UPLOAD_CONFLICT','CHUNK_CONFLICT','HASH_MISMATCH']);
 const COPY_FIELDS=['brand','manufacturer','model','scale','motor','gearing','tyres','weight','picture','raceClass'];
 function validateProfile(p){
   if(!p||p.integrationVersion!==1||typeof p.databaseId!=='string'||!p.databaseId||!p.car||typeof p.car.id!=='string'||!ID.test(p.car.id)||p.configuration?.carId!==p.car.id||p.configuration.databaseId!==p.databaseId||!/^[a-f0-9]{64}$/.test(p.configuration.signature)||!Number.isFinite(Date.parse(p.configuration.capturedAt)))throw Error('Invalid Paddock car profile.');
@@ -14,7 +14,7 @@ function profilePatch(profile,classes){const c=profile.car,t=profile.configurati
       paddock:{databaseId:profile.databaseId,carId:c.id,name:c.name,archived:!!c.archived,availability:c.availability||'',configuration:profile.configuration,...(Object.hasOwn(profile,'media')?{mediaHash:profile.media?.hash||''}:{})}};
   }
 function checkedReceipt(r,p){
-  if(!r?.ok||r.databaseId!==p.databaseId||r.sourceId!==p.source.id||r.sessionId!==p.sessionId||r.revision!==p.revision||r.state!==p.state||r.contentHash!==hash(p)||r.warnings!==undefined&&(!Array.isArray(r.warnings)||r.warnings.length>512||r.warnings.some(w=>!w||typeof w.code!=='string'||w.code.length>100||typeof w.carId!=='string'||!ID.test(w.carId))))throw Object.assign(Error('Paddock receipt does not match this result. Check the original database and result revision; no local result was replaced.'),{code:'RECEIPT_MISMATCH'});
+  if(!r?.ok||r.databaseId!==p.databaseId||r.sourceId!==p.source.id||r.sessionId!==p.sessionId||r.revision!==p.revision||r.state!==p.state||r.contentHash!==(require('./paddock-rich-delivery').isRich(p)?require('./paddock-rich-delivery').tuple(p).contentHash:hash(p))||r.warnings!==undefined&&(!Array.isArray(r.warnings)||r.warnings.length>512||r.warnings.some(w=>!w||typeof w.code!=='string'||w.code.length>100||typeof w.carId!=='string'||!ID.test(w.carId))))throw Object.assign(Error('Paddock receipt does not match this result. Check the original database and result revision; no local result was replaced.'),{code:'RECEIPT_MISMATCH'});
   return r;
 }
 function receiptWarnings(d){return d.status==='sent'&&Array.isArray(d.receipt?.warnings)?d.receipt.warnings.slice(0,512).filter(w=>w&&typeof w==='object').map(w=>({code:String(w.code||'').slice(0,100),carId:String(w.carId||'').slice(0,100),carName:d.payload?.participants?.find(p=>p.carId===w.carId)?.displayName||w.carId})):[];}
@@ -30,12 +30,12 @@ function retryDelay(value,now=Date.now()){
 const hostKey=base=>{const host=new URL(address(base)).hostname;return host==='localhost'?'127.0.0.1':host;};
 function privateIP(ip){if(net.isIP(ip)!==4)return false;const [a,b]=ip.split('.').map(Number);return a===127||a===10||a===192&&b===168||a===172&&b>=16&&b<=31;}
 function address(input){const u=new URL(String(input).includes('://')?input:'http://'+input);if(u.protocol!=='http:'||u.username||u.password||u.search||u.hash||u.pathname!=='/'||!(privateIP(u.hostname)||u.hostname==='localhost'))throw Error('Enter a local IPv4 address and port, for example 192.168.1.20:51234.');if(!u.port)throw Error('Include the port displayed by Paddock.');return u.origin;}
-function request(base,route,code,databaseId,body,limit=16*1024*1024){return new Promise((resolve,reject)=>{
+function request(base,route,code,databaseId,body,limit=16*1024*1024,instanceId,recoveryId,extension='scalable-v1',method){return new Promise((resolve,reject)=>{
   const raw=body===undefined?null:JSON.stringify(body);if(raw&&Buffer.byteLength(raw)>8*1024*1024)return reject(Object.assign(Error('Session exceeds Paddock’s 8 MiB limit.'),{code:'PAYLOAD_TOO_LARGE'}));
   const u=new URL(route,address(base));if(u.origin!==address(base))return reject(Error('Unexpected host address.'));
-  const req=http.request(u,{method:raw?'POST':'GET',headers:{Authorization:'Bearer '+code,...(databaseId?{'X-SlotForge-Database':databaseId}:{}),'X-SlotForge-Pages':'1',...(route==='/v1/status'?{'X-SlotForge-Extensions':'scalable-v1'}:{}),...(raw?{'Content-Type':'application/json','Content-Length':Buffer.byteLength(raw)}:{})}},res=>{
+  const req=http.request(u,{method:method||(raw?'POST':'GET'),headers:{Authorization:'Bearer '+code,...(databaseId?{'X-SlotForge-Database':databaseId}:{}),...(instanceId?{'X-SlotForge-Instance':instanceId}:{}),...(recoveryId?{'X-SlotForge-Recovery':recoveryId}:{}),'X-SlotForge-Pages':'1',...(instanceId||route==='/v1/status'?{'X-SlotForge-Extensions':extension}:{}),...(raw?{'Content-Type':'application/json','Content-Length':Buffer.byteLength(raw)}:{})}},res=>{
     if(res.headers['content-encoding']&&res.headers['content-encoding']!=='identity'){res.destroy();return reject(Error('Compressed Paddock responses are unsupported.'));}
-    let size=0;const chunks=[];res.on('data',chunk=>{size+=chunk.length;if(size>limit)res.destroy(Error('Paddock response is too large.'));else chunks.push(chunk);});res.on('error',reject);res.on('end',()=>{try{if(res.statusCode===429){const e=Error('Paddock has temporarily limited connection attempts. Wait before retrying; saved results remain queued.');e.code='AUTH_RATE_LIMITED';e.httpStatus=429;e.retryAfterMs=retryDelay(res.headers['retry-after']);throw e;}const value=JSON.parse(Buffer.concat(chunks).toString('utf8'));if(res.statusCode!==200){const e=Error(value.error||'Paddock returned HTTP '+res.statusCode);e.code=value.code||'HTTP_'+res.statusCode;e.httpStatus=res.statusCode;throw e;}if(value&&typeof value==='object')Object.defineProperty(value,RESPONSE_BYTES,{value:size});resolve(value);}catch(e){reject(e);}});
+    let size=0;const chunks=[];res.on('data',chunk=>{size+=chunk.length;if(size>limit)res.destroy(Error('Paddock response is too large.'));else chunks.push(chunk);});res.on('error',reject);res.on('end',()=>{try{if(res.statusCode===429){const e=Error('Paddock has temporarily limited connection attempts. Wait before retrying; saved results remain queued.');e.code='AUTH_RATE_LIMITED';e.httpStatus=429;e.retryAfterMs=retryDelay(res.headers['retry-after']);throw e;}const value=JSON.parse(Buffer.concat(chunks).toString('utf8'));if(res.statusCode!==200){const e=Error(String(value.error||'Paddock returned HTTP '+res.statusCode).replaceAll(code||'\x00','[redacted]'));if(value.details&&Buffer.byteLength(JSON.stringify(value.details))<131072)e.details=value.details;for(const k of ['databaseId','recoveryId','current'])if(Object.hasOwn(value,k))e[k]=value[k];e.code=value.code||'HTTP_'+res.statusCode;e.httpStatus=res.statusCode;if(res.statusCode===503&&res.headers['retry-after'])e.retryAfterMs=retryDelay(res.headers['retry-after']);throw e;}if(value&&typeof value==='object')Object.defineProperty(value,RESPONSE_BYTES,{value:size});resolve(value);}catch(e){reject(e);}});
   });const timer=setTimeout(()=>req.destroy(Error('Paddock did not respond within 15 seconds.')),15000);req.on('close',()=>clearTimeout(timer));req.on('error',reject);if(raw)req.write(raw);req.end();
 });}
 // Each adapter owns a socket: asynchronous sends cannot inherit another adapter's routing.
@@ -81,15 +81,15 @@ function discover({duration=4200,retryMs=1000}={}){return new Promise((resolve,r
   }
 });}
 class Paddock {
-  constructor(db,{storage,deliveryStore}={}){this.storage=storage||new(require('./paddock-storage').JsonPaddockStorage)(db);this.code='';this.connected=false;this.error='';this.catalog=[];this.busy=false;this.stopped=false;this.timer=null;this.cooldowns=new Map();this.deliveryStore=deliveryStore||new(require('./json-delivery-store'))(db);this.delivery=new(require('./delivery-service'))(this.deliveryStore,{call:(...args)=>this.call(...args),isRacing:()=>!!this.isRacing?.(),isStopped:()=>this.stopped||!this.code});}
+  constructor(db,{storage,deliveryStore}={}){this.storage=storage||new(require('./paddock-storage').JsonPaddockStorage)(db);this.code='';this.connected=false;this.error='';this.catalog=[];this.busy=false;this.stopped=false;this.timer=null;this.cooldowns=new Map();this.deliveryStore=deliveryStore||new(require('./json-delivery-store'))(db);this.delivery=new(require('./delivery-service'))(this.deliveryStore,{call:(...args)=>this.call(...args),historyCapability:()=>this.historyCapability,isRacing:()=>!!this.isRacing?.(),isStopped:()=>this.stopped||this.quiescing||!this.code});}
   async connection(){const value=await this.storage.connection();this.lastConnection=value.connection;return value;}
   active(){if(this.stopped)throw Object.assign(Error('Paddock connection stopped.'),{code:'PADDOCK_STOPPED'});}
   cooldownsNow(){for(const [host,until] of this.cooldowns)if(until<=Date.now())this.cooldowns.delete(host);return [...this.cooldowns].map(([host,until])=>({host,until}));}
   retryAt(base){this.cooldownsNow();return base?this.cooldowns.get(hostKey(base))||0:0;}
-  async hostRequest(base,route,code,databaseId,body,limit){
+  async hostRequest(base,route,code,databaseId,body,limit,instanceId,recoveryId,extension,method){
     const until=this.retryAt(base);
     if(until)throw Object.assign(Error('Paddock connection cooldown: try again in '+Math.ceil((until-Date.now())/1000)+' seconds. Saved results remain queued.'),{code:'AUTH_RATE_LIMITED',retryAt:until});
-    try{return await request(base,route,code,databaseId,body,limit);}catch(e){
+    try{return await request(base,route,code,databaseId,body,limit,instanceId,recoveryId,extension,method);}catch(e){
       if(e.httpStatus===429){
         const host=hostKey(base);if(this.cooldowns.size>=100&&!this.cooldowns.has(host))this.cooldowns.delete(this.cooldowns.keys().next().value);
         this.cooldowns.set(host,Date.now()+e.retryAfterMs);e.retryAt=this.cooldowns.get(host);
@@ -99,7 +99,7 @@ class Paddock {
     }
   }
   async exclusive(task){if(this.busy)throw Error('Wait for the current Paddock operation.');this.busy=true;try{return await task();}finally{this.busy=false;}}
-  async status(){const data=await this.storage.summary();return {...data,connected:this.connected,hasCode:!!this.code,error:this.error,busy:this.busy,cooldowns:this.cooldownsNow()};}
+  async status(){const data=await this.storage.summary();return {...data,connected:this.connected,hasCode:!!this.code,error:this.error,busy:this.busy,sharedCars:!!this.localCapabilities?.sharedCars,localStartup:!!this.sharedStarting,cooldowns:this.cooldownsNow()};}
   checkReceipt(sessionId){return this.exclusive(async()=>{
     if(this.isRacing?.())throw Error('Finish the race before checking Paddock results.');
     const state=await this.storage.summary(),c=state.connection,d=state.deliveries.find(d=>d.status==='sent'&&d.sessionId===sessionId&&d.databaseId===c?.databaseId);
@@ -107,6 +107,8 @@ class Paddock {
     await this.delivery.checkReceipt(d.key);return this.status();
   });}
   async connect(input){
+    if(input?.mode==='local')return this.connectLocal(input);
+    if((await this.connection()).connection?.mode==='local')throw Error('Forget the local library before choosing a network connection.');
     if(this.busy)throw Error('Wait for the current Paddock operation.');this.busy=true;
     try{const base=address(input.address),code=credential(input.code);
       const s=await this.hostRequest(base,'/v1/status',code);if(!ID.test(s.id)||typeof s.name!=='string')throw Error('Invalid Paddock host identity.');
@@ -115,8 +117,8 @@ class Paddock {
       if(this.stopped)return this.status();this.negotiate(s);this.code=code;this.connected=true;this.error='';this.catalogueError='';this.nextCatalogueCheck=0;this.catalogueFailures=0;this.schedule();return this.status();
     }finally{this.busy=false;}
   }
-  disconnect(forget=false){return this.exclusive(async()=>{this.code='';this.connected=false;this.catalog=[];this.images?.clear();clearTimeout(this.timer);const before=await this.connection();if(forget)await this.storage.setConnection(null,before.revision);await this.connection();this.error='';return this.status();});}
-  async call(route,body,limit){this.active();const {connection:c}=await this.connection();if(!c||!this.code)throw Error('Connect with the current Paddock Dealership password first (or a Timing credential on a legacy host).');return this.hostRequest(c.address,route,this.code,c.databaseId,body,limit);}
+  disconnect(forget=false){return this.exclusive(async()=>{this.closeLocalEvents?.();this.localDescriptor=null;this.code='';this.connected=false;this.catalog=[];this.images?.clear();clearTimeout(this.timer);const before=await this.connection();if(forget){await this.storage.sharedChange({action:'policy',disabled:true});await this.storage.setConnection(null,before.revision);}else if(before.connection?.mode==='local')await this.storage.setConnection({...before.connection,automatic:false},before.revision);await this.connection();this.error='';return this.status();});}
+  async call(route,body,limit,recoveryId,method){this.active();const {connection:c}=await this.connection();if(c?.mode==='local')return this.localCall(c,route,body,limit,recoveryId,method);if(!c||!this.code)throw Error('Connect with the current Paddock Dealership password first (or a Timing credential on a legacy host).');return this.hostRequest(c.address,route,this.code,c.databaseId,body,limit);}
   negotiate(status){
     const supported=status.capabilities?.scalable?.version===1&&status.capabilities.scalable.root==='/v1/scalable';
     if(!supported)this.scalable=null;
@@ -144,7 +146,7 @@ class Paddock {
       else {if(image.localSource&&!picture)image.key='';delete image.localId;delete image.localKey;delete image.localSource;}
       cars.push({...row,linked:linked?.value.id||'',picture:includePictures?(image.localId?await this.storage.picture(image.localId,image.localKey):image.picture):'',pictureKey:image.key,capturedAt:linked?.value.paddock.configuration?.capturedAt||null});
     }
-    return {connection:c,connected:this.connected&&!!this.code,lastUpdated:same?cache.updatedAt:null,cars,error:this.catalogueError||'',nextCheckAt:this.nextCatalogueCheck||0};
+    return {connection:c,sharedCars:!!this.localCapabilities?.sharedCars,connected:this.connected&&!!this.code,lastUpdated:same?cache.updatedAt:null,cars,error:this.catalogueError||'',nextCheckAt:this.nextCatalogueCheck||0};
   }
   catalogueImage(id,picture,databaseId){
     this.images??=new Map();const old=this.images.get(id);
@@ -250,9 +252,16 @@ class Paddock {
     if(p.integrationVersion!==1||p.databaseId!==(await this.connection()).connection?.databaseId||p.car?.id!==carId||p.configuration?.carId!==carId||p.configuration.databaseId!==p.databaseId||!/^[a-f0-9]{64}$/.test(p.configuration.signature)||!Number.isFinite(Date.parse(p.configuration.capturedAt)))throw Error('Invalid Paddock car profile.');
     if(p.car.picture&&!/^data:image\/(png|jpeg|webp);base64,[a-zA-Z0-9+/=\r\n]+$/.test(p.car.picture))throw Error('Unsupported Paddock picture.');return p;
   }
-  link(carId,localId){return this.exclusive(()=>this.linkNow(carId,localId));}
+  link(carId,localId){return this.exclusive(async()=>{
+    if(localId&&(await this.connection()).connection?.mode==='local'){
+      const row=(await this.storage.cars({ids:[localId]}))[0];
+      if(row&&!row.value.paddock)throw Error('Use Share existing Timing cars to request this link through Paddock’s Review screen.');
+    }
+    return this.linkNow(carId,localId);
+  });}
   async linkNow(carId,localId){const {connection}=await this.connection();if(!connection?.timing)throw Error('This Paddock host needs the Timing v1 update before cars can be linked.');
     const rows=await this.storage.cars({databaseId:connection.databaseId,carId}),existing=rows.find(x=>x.value.paddock.carId===carId);
+    if(connection.mode==='local'&&!existing&&!localId){const transfers=await this.storage.localRead({kind:'list'});if(transfers.some(t=>t.databaseId===connection.databaseId&&t.targetId===carId&&!['rejected','cancelled'].includes(t.state)))throw Error('This car has an existing Timing transfer. Complete its review under Share existing Timing cars to preserve the original car and history.');}
     if(existing&&localId&&existing.value.id!==localId)throw Error('This Paddock car is already linked to another Timing car.');
     const target=localId?(await this.storage.cars({ids:[localId]}))[0]:existing;if(localId&&!target)throw Error('Local car no longer exists.');
     const p=await this.profile(carId);this.active();if(p.car.archived)throw Object.assign(Error('This car is archived in Paddock.'),{code:'CAR_ARCHIVED'});
@@ -293,9 +302,9 @@ class Paddock {
     this.active();if(updates.length)await this.storage.capture(updates);
     return {captures,warnings,heats:[]};
   }
-  schedule(delay=30000){clearTimeout(this.timer);if(!this.stopped&&this.code)this.timer=setTimeout(()=>this.flush().catch(()=>{}),Math.max(delay,this.retryAt(this.lastConnection?.address)-Date.now())).unref();}
+  schedule(delay=30000){clearTimeout(this.timer);if(!this.stopped&&!this.quiescing&&this.code)this.timer=setTimeout(()=>this.flush().catch(()=>{}),Math.max(delay,this.retryAt(this.lastConnection?.address)-Date.now())).unref();}
   async flush(){
-    if(this.busy||!this.code||this.stopped||this.isRacing?.()){this.schedule();return this.status();}
+    if(this.busy||!this.code||this.stopped||this.quiescing||this.isRacing?.()){this.schedule();return this.status();}
     this.busy=true;let retry=30000;
     try{const {connection:c}=await this.connection();if(c){const result=await this.delivery.flush(c.databaseId);if(result.verified&&!this.stopped){this.connected=true;this.error='';}}}
     catch(e){this.connected=false;this.error=e.message;retry=Math.max(60000,e.retryAfterMs||0);if(['DATABASE_MISMATCH','UNAUTHENTICATED'].includes(e.code))this.code='';}
@@ -303,8 +312,18 @@ class Paddock {
   }
   async retry(){await this.exclusive(async()=>{const {connection:c}=await this.connection();if(c)await this.delivery.retry(c.databaseId);});return this.flush();}
   async idle(){while(this.busy)await new Promise(resolve=>setTimeout(resolve,10));await this.deliveryStore.tail?.catch(()=>{});}
-  stop(){this.stopped=true;clearTimeout(this.timer);this.timer=null;this.code='';this.connected=false;}
+  quiesce(){this.quiescing=true;clearTimeout(this.timer);this.timer=null;clearTimeout(this.localTimer);this.closeLocalEvents?.();}
+  stop(){this.quiesce();this.stopped=true;this.code='';this.localDescriptor=null;this.connected=false;}
 }
 function canonical(v){return Array.isArray(v)?'['+v.map(canonical).join(',')+']':v&&typeof v==='object'?'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}':JSON.stringify(v);}
 const hash=v=>crypto.createHash('sha256').update(canonical(v)).digest('hex');
 module.exports={Paddock,privateIP,address,request,discover,COPY_FIELDS,hash,credential,retryDelay,checkedReceipt,TERMINAL_CODES,profilePatch,validateProfile,receiptWarnings};
+Object.assign(Paddock.prototype,require('./paddock-local'));
+
+Object.assign(Paddock.prototype,require('./paddock-shared'));
+
+Object.assign(Paddock.prototype,require('./paddock-shared-startup'));
+Object.assign(Paddock.prototype,require('./paddock-historical-review').methods);
+Object.assign(Paddock.prototype,require('./paddock-history').methods,require('./paddock-history-sync').methods);
+
+Object.assign(Paddock.prototype,require('./paddock-collection'));

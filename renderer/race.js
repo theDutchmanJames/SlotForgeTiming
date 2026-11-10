@@ -14,7 +14,7 @@ async function renderRace() {
   if (live && live.alive && live.raceRef === r) { if (live.shown) live.shown(); return; } // the same race, still there: show it again
   const draw=++raceDraw,current=()=>draw===raceDraw&&state.race===r&&state.tab==='race';
   let inputs=null;
-  try{if(api.raceInputs)inputs=await api.raceInputs({setup:r.setup,rows:r.rows,trackId:r.track.id,championship:!!r.champ,revision:r.catalogueRevision});}
+  try{if(api.raceInputs)inputs=await api.raceInputs({setup:r.setup,rows:r.rows,trackId:r.track.id,championship:!!r.champ,revision:r.catalogueRevision,carRevision:r.carRevision});}
   catch(error){if(current()){alert('Could not prepare the race: '+error.message+' Reopen Home and try again.');state.race=null;state.tab='home';return render();}return;}
   if(!current())return;
   const entities=['drivers','slotcars','layouts','laps','penaltysystems','fuelrules','weathersystems','rowdesigns','chartdesigns','imagesets','audiosets','teams','damagesystems'];
@@ -84,9 +84,10 @@ async function renderRace() {
   // 1.35.1: swaps counted in distance need the length of every lane (metres) and the unit to say it in (App Settings: metres or feet)
   const laneLens = Array.from({ length: lanes }, (_, l) => Number(Speed.laneLength(r.track || {}, l)) || 0);
   // Freeze Paddock configurations before starting; reconnecting never replaces a raced capture.
-  let paddockJournal=r.resume?.race?.paddockJournal||null;
-  if(!r.resume&&!tokenSession&&api.paddockPrepare&&cars.some(c=>c.paddock&&r.rows.some(x=>x.carId===c.id))){
+  let paddockJournal=r.resume?.race?.paddockJournal||(tokenSession?state.settings.tokenSessions?.[setup.id]?.paddockJournal:null)||null;
+  if(!r.resume&&!paddockJournal&&api.paddockPrepare&&cars.some(c=>(c.sharedLibrary||!tokenSession&&c.paddock)&&r.rows.some(x=>x.carId===c.id))){
     try{paddockJournal=await api.paddockPrepare(r.rows.filter(x=>!isRival(x)).map(x=>x.carId));
+      if(paddockJournal.timingSettings)for(const [id,binding] of Object.entries(paddockJournal.timingSettings)){const car=cars.find(c=>c.id===id),loaded=car?.sharedLibrary?.settingsBinding;if(!loaded||loaded.bindingToken!==binding.bindingToken||loaded.mergeRevision!==binding.mergeRevision||car.sharedLibrary.revision!==paddockJournal.captures[id]?.configuration.carRevision)throw Error('Car settings changed. Reload the race selection before starting.');}
       if(r.multiclass?.assignment==='roster'){const issues=MultiClass.entryIssues(r.multiclass,r.rows.filter(x=>!isRival(x)),{cars,drivers,teams});if(issues.length)throw Error(issues.join(' '));}}
     catch(e){alert('Cannot prepare Paddock cars: '+e.message);state.race=null;state.tab='home';return render();}
   }
@@ -96,7 +97,7 @@ async function renderRace() {
   // Tyre Wear (1.40.0): the system of the setup, with the lane lengths (for a system that counts the wear per distance) and the distance unit of the app; never in a Time Token Session. The engine decides by the kind of session if it is used (practice and qualifying: when the system says so)
   const savedCalculations = r.resume?.eng?.rulesSnapshot?.version === 1 ? r.resume.eng.rulesSnapshot.config : null;
   const calculationRules = savedCalculations ? savedCalculations.calculations || PushSave.calculationSettings() : PushSave.calculationSettings(state.settings);
-  const twCfg = savedCalculations ? savedCalculations.tyrewear || null : tokenSession ? null : TyreWear.clean(find(twSystems, setup.tyreWear), { laneLen: laneLens, disp: Speed.distUnitOf(state.settings), pace: { response: calculationRules.response, ...PushSave.policyFromSettings(state.settings, 'tyreWear'), trackTarget: Math.max(0, Number(r.track && r.track.targetLap) * 1000 || 0) } });
+  const twCfg = savedCalculations ? savedCalculations.tyrewear || null : tokenSession ? null : TyreWear.clean(find(twSystems, setup.tyreWear), { laneLen: laneLens, disp: Speed.distUnitOf(state.settings) });
   // Safety Car (1.53.0): the system of the setup (never in a Time Token Session); its lap target and points replace the Yellow flag fields of the setup
   const scCfg = tokenSession ? null : SafetyCar.clean(find(scSystems, setup.safetyCar));
   // Push and Save (1.54.0): the system of the setup (never in a Time Token Session) and the best lap of every driver on this track (the records), the reference lap of the pace; a lap that was removed from the records does not count
@@ -112,7 +113,7 @@ async function renderRace() {
   const mc=tokenSession?null:(r.resume?.race?.multiclass||r.multiclass||null);
   if(mc){const errors=[...MultiClass.validate(mc,r.rows.filter(row=>!isRival(row)),setup),...(!r.resume?MultiClass.entryIssues(mc,r.rows.filter(row=>!isRival(row)),{cars,drivers,teams}):[])];if(errors.length){alert(errors.join(' '));state.race=null;state.tab='home';return render();}}
   const mkRaw = entries => RaceEngine.createRace({...(paddockJournal?{paddockClock:t=>paddockEpoch+t}:{}),...(rulePlan?{rulePlugin:rulePlan}:{}),calculations:calculationRules,resources:resourceState,resourceHeat:heat?.idx||0, classPoints:heats?pointList:[],classFastestBonus:heats?Number(setup.fastestBonus)||0:0,multiclass:mc, virtualRivals: rivalEntries, ...(typeof RaceSystems !== 'undefined' ? RaceSystems.raceConfig(setup) : {}), ...(typeof PitHold !== 'undefined' ? PitHold.raceConfig(setup) : {}), redFlagSeconds: Number(setup.redFlagSeconds) || 0, penalty: penCfg, damage: damCfg, type: engineType, laps: lenNow().laps, duration: lenNow().duration, distance: engineType === 'race' ? Distance.config(setupNow(), r.track, lanes) : null, compare: engineType === 'timed' ? Distance.compare(setup, r.track, lanes) : null, sectors: Distance.sectors(r.track), endRule: setup.endRule, minLap: Math.max(RaceEngine.MIN_LAP, (Number(r.track.minLap) || 0) * 1000) / speed, maxLap: (Number(r.track.maxLap) || 0) * 1000 / speed, fuel: fuelCfg, bop: bopCfg, yellow: { target: 0, points: 0 }, weather: wxFor(), tyrewear: twCfg, safetycar: scCfg, pushsave: psCfg, skipFirst: tokenSession || setup.firstLap === 'skip', endurance: enduCfg, laneLengths: setup.endurance && setup.endurance.unit === 'distance' ? laneLens : null, rnd: state.rand || Math.random, entries: psEntries(entries) });
-  const mk=entries=>paddockJournal?PaddockRace.attach(mkRaw(entries),paddockJournal,String((heat?.idx||0)+1),()=>paddockEpoch+performance.now(),t=>paddockEpoch+t):mkRaw(entries);
+  const mk=entries=>paddockJournal&&!tokenSession?PaddockRace.attach(mkRaw(entries),paddockJournal,String((heat?.idx||0)+1),()=>paddockEpoch+performance.now(),t=>paddockEpoch+t):mkRaw(entries);
   const pointList = String(setup.points || '').split(',').filter(t => t.trim() !== '').map(Number).filter(n => !isNaN(n)); // '10, 8, 6' -> [10, 8, 6]; blank pieces are skipped (Number('') would make them 0)
 
   // 1.68.0: a race of a championship that gives points: what the earlier rounds left behind, and where everybody stands, for a leaderboard that counts over the rounds ("Count over: All heats and rounds so far")
@@ -217,7 +218,7 @@ async function renderRace() {
   if(mc){const p=document.createElement('section');p.id='mc-live';p.className='mc-live-summary';host.querySelector('#raceactive').prepend(p);}
   if(eng.rivals?.length) { const p=document.createElement('section');p.id='vr-live';p.className='card vr-live-summary';host.querySelector('#raceactive').prepend(p); }
   const now = () => performance.now();
-  if(paddockJournal){const banner=document.createElement('p');banner.className='muted';banner.textContent='Paddock cars: configurations captured. Results will be queued when finalized.'+(paddockJournal.warnings.length?' '+paddockJournal.warnings.join(' · '):'');host.prepend(banner);}
+  if(paddockJournal){const banner=document.createElement('p');banner.className='muted';banner.textContent=(paddockJournal.sharedLibrary?'Shared library: configurations captured. Finalised results are saved to the common database.':'Paddock cars: configurations captured. Results will be queued when finalized.')+(paddockJournal.warnings.length?' '+paddockJournal.warnings.join(' · '):'');host.prepend(banner);}
 
   const ui = id => { // (the race screen has a place of its own: its ids can not be mixed up with those of the screen that is shown)
     const el = typeof HTMLElement !== 'undefined' && host instanceof HTMLElement ? host.querySelector(`[id="${id}"]`) : null;
@@ -774,7 +775,7 @@ async function renderRace() {
         return { asTeam: true, driverId: '', driverName: o.teamName || '', teamId: o.teamId || '', teamName: o.teamName || '', bestBy: bestByOf(mine, o.best), drivers: ids.map(id => ({ driverId: id, driverName: nameOf('drivers', drivers, id), laps: mine.filter(l => l.driverId === id).length, ...(sts.length ? { ms: sts.filter(q => q.driverId === id).reduce((n, q) => n + q.ms, 0), ...(enDist ? { meters: Math.round(sts.filter(q => q.driverId === id).reduce((n, q) => n + (q.meters || 0), 0) * 100) / 100 } : {}) } : {}) })),
           ...(sts.length ? { stints: sts.map(q => ({ driverId: q.driverId, driverName: q.driverName, laps: q.laps, ms: q.ms, heat: q.heat, ...(enDist ? { meters: q.meters } : {}), ...(q.final ? { final: q.final } : {}) })) } : {}) };
       };
-      standings = heat.overall().map(o => ({ ...(rulePlan?{pluginPoints:o.pluginPoints||0}:{}),pos: o.pos, ...(o.dq?{dq:true}:{}), driverId: o.driverId, carId: o.carId, driverName: o.driverName, carName: o.carName, laps: o.laps, points: o.points, best: o.best, total: null,
+      standings = heat.overall().map(o => ({ ...(rulePlan?{pluginPoints:o.pluginPoints||0}:{}),participant:o.participant,pos: o.pos, ...(o.dq?{dq:true}:{}), driverId: o.driverId, carId: o.carId, driverName: o.driverName, carName: o.carName, laps: o.laps, points: o.points, best: o.best, total: null,
         ...(o.asTeam ? teamStanding(o) : o.teamId ? { teamId: o.teamId, teamName: o.teamName } : {}),
         ...(o.adjMs ? { adjMs: o.adjMs } : {}), ...(o.adjLaps ? { adjLaps: o.adjLaps } : {}), ...(o.adjPoints ? { adjPoints: o.adjPoints } : {}), ...(o.damageNote ? { damageNote: o.damageNote, damagePoints: o.damagePoints, repairs: o.repairs, repairMs: o.repairMs } : {}), ...(o.failureNote ? { failureNote: o.failureNote, failures: o.failures, failureRepairs: o.failureRepairs, failureMs: o.failureMs } : {}),
         ...(live.extraBy.has(o.participant) && live.extraBy.get(o.participant).has ? { pits: live.extraBy.get(o.participant).pits, pitTime: live.extraBy.get(o.participant).pitTime } : {}),
@@ -820,6 +821,7 @@ async function renderRace() {
     if(timingPlugin) session.timingPlugin=timingPlugin;
     if (!heats) { session.rulesSnapshot = eng.rulesSnapshot(); if(eng.rivals?.length) { session.virtualRivals=VirtualRival.summary(eng); session.rivalClassification=eng.displayStandings().map(x=>({driverId:x.car.driverId,pos:x.pos,physicalPos:x.physicalPos,virtualRival:!!x.car.virtualRival,comparisonOnly:!!x.car.comparisonOnly})); } }
     if (heats) { session.resultBy = heat.scoring.byTime ? 'time' : mc?.pointsMode==='class'&&setup.resultBy==='points'?'laps':setup.resultBy;
+      if(mc)session.classResultBy=heat.scoring.byTime?'time':setup.resultBy;
       const wn = heat.results.map(h => h.weatherNote || ''), wxAll = wn.length > 0 && wn[0] !== '' && wn.every(n => n === wn[0]); // the weather of the heats: said once when it was the same in every heat, otherwise with every heat
       if (wxAll) session.weatherNote = wn[0];
       if (rivalEntries.length) session.virtualRivals = live.rivalHeats || [];
@@ -1218,7 +1220,7 @@ async function renderRace() {
         const rows = st.laps.map((l, n) => ({ l, n })).filter(x => !x.l.removed).map(({ l, n }) => ({ driverId: who.driverId || '', carId: who.carId || '', trackId: where.id, token: true, stint: st.id, lane: st.lane + 1, lapNumber: n + 1, time: l.t, date, // (a lap taken out in the review is not saved)
           ...(l.bad ? { noTrackRecord: true, noPersonalBest: true, tooSlow: true } : {}), ...(l.late || l.invalid ? { noTrackRecord: true, noPersonalBest: true, invalid: true } : {}), ...(l.late ? { late: true } : {}) }));
         if (!rows.length) continue;
-        const session = { saveKey:storageRunId+':'+st.id, audioSetId: setup.audioSet || '', setupName: setup.name, sessionType: 'tokens', trackId: where.id, trackName: where.name, date, endedBy: STINT_END[st.closedBy] || '',
+        const session = { saveKey:storageRunId+':'+st.id, ...(paddockJournal?.sharedLibrary?{paddockJournal}:{}), audioSetId: setup.audioSet || '', setupName: setup.name, sessionType: 'tokens', trackId: where.id, trackName: where.name, date, endedBy: STINT_END[st.closedBy] || '',
           ...(timingPlugin?{timingPlugin}:{}), rulesSnapshot: eng.rulesSnapshot(), token: { stint: st.id, lane: st.lane + 1, bought: st.bought, carried: st.carried, left: st.left },
           standings: [{ pos: 1, driverId: who.driverId || '', carId: who.carId || '', driverName: who.driverName || 'Guest', carName: who.carName || '', laps: counted.length, lateLaps: st.laps.length - counted.length, best: st.best, total: counted.reduce((a, l) => a + l.t, 0), lane: st.lane + 1, bought: st.bought }] };
         try { await api.saveSession(session, rows); live.tkTotal++; } catch (x) { failed.push(st); }
@@ -1235,7 +1237,7 @@ async function renderRace() {
     clearTimeout(live.tkTimer); live.tkTimer = null; live.tkAt = t;
     const all = { ...(state.settings.tokenSessions || {}) };
     const T = raceT(), nothing = !tokens.hasPending() && eng.cars.every(c => tokens.stateOf(c.lane, T) === 'idle'); // (no lane has time or laps: there is nothing to carry on with)
-    if ((live.phase === 'finished' || nothing) && !tokens.hasPending()) delete all[setup.id]; else all[setup.id] = { storageRunId, setupId: setup.id, trackId: r.track.id, savedAt: new Date().toISOString(), ...(timingPlugin?{timingPlugin}:{}), data: tokens.serialise(T), review: live.phase === 'review' }; // (review: the session had ended and its stints waited for the review)
+    if ((live.phase === 'finished' || nothing) && !tokens.hasPending()) delete all[setup.id]; else all[setup.id] = { storageRunId, setupId: setup.id, trackId: r.track.id, savedAt: new Date().toISOString(), ...(paddockJournal?.sharedLibrary?{paddockJournal}:{}), ...(timingPlugin?{timingPlugin}:{}), data: tokens.serialise(T), review: live.phase === 'review' }; // (review: the session had ended and its stints waited for the review)
     state.settings = { ...state.settings, tokenSessions: all }; // (at once, so the next time the screen is opened it finds it)
     const saved=Promise.resolve().then(()=>api.setSettings({ tokenSessions: all })).then(st => { if (st) state.settings = st; });
     saved.catch(()=>{});return saved;

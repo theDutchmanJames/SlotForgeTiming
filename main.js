@@ -21,17 +21,24 @@ const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) app.quit();
 else app.on('second-instance', () => { const w = BrowserWindow.getAllWindows()[0]; if (w) { if (w.isMinimized()) w.restore(); w.focus(); } });
 
-let db, sqliteRuntime, records, bulkStorage, lifecycle, mainWin, resourceStore, pluginHost, paddock;
+let db, sqliteRuntime, records, bulkStorage, lifecycle, mainWin, resourceStore, pluginHost, paddock, sharedLibrary;
+let startupClosing=false,startupFeedback=null;
+const {WorkGate,Shutdown}=require('./work-gate'),appWork=new WorkGate();
+// Includes registrations made by feature modules; their existing ownership
+// checks and channel contracts remain inside the accepted operation.
+const registerIpc=ipcMain.handle.bind(ipcMain);
+ipcMain.handle=(channel,handler)=>registerIpc(channel,(...args)=>appWork.run(()=>handler(...args)));
 const parallel = require('./parallelport').createController({ onEvent: event => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('parallel:event', event); } });
 const phidget = require('./phidgetport').createController({ onEvent: event => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('phidget:event', event); } });
 let pendingRestore = null; // a backup file chosen for restoring, waiting for the user to confirm
 let pendingRestoreSource = null;
 let pendingImport = null; // a file chosen for import, waiting for the user to confirm
 
-function createWindow() {
+async function createWindow() {
   const win = new BrowserWindow({
     icon: path.join(__dirname, 'build', 'icon.png'),
     width: 1200, height: 800, minWidth: 760, minHeight: 520,
+    show: false,
     autoHideMenuBar: true, // press Alt to show the menu (View > Toggle Full Screen)
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -41,6 +48,7 @@ function createWindow() {
     }
   });
   mainWin = win;
+  win.on('close',event=>{if(!shutdown.ready){event.preventDefault();app.quit();}});
   win.webContents.on('render-process-gone', () => { parallel.shutdown(); phidget.shutdown(); pluginHost?.timing?.reset().catch(()=>{}); });
   win.webContents.on('did-start-navigation', (_event, _url, inPlace, isMainFrame) => { if (isMainFrame && !inPlace) { parallel.shutdown(); phidget.shutdown(); pluginHost?.timing?.reset().catch(()=>{}); } });
   // USB timing hardware: Electron lets the page use COM ports and HID devices once the app allows it and the user has chosen one
@@ -51,8 +59,19 @@ function createWindow() {
   win.webContents.session.on('select-serial-port', (event, list, _wc, callback) => { event.preventDefault(); ask('serial', list.map(p => ({ portId: p.portId, displayName: p.displayName, portName: p.portName, vendorId: p.vendorId ? Number(p.vendorId) : undefined, productId: p.productId ? Number(p.productId) : undefined })), callback); });
   win.webContents.on('select-hid-device', (event, details, callback) => { event.preventDefault(); ask('hid', details.deviceList.map(d => ({ deviceId: d.deviceId, name: d.name, vendorId: d.vendorId, productId: d.productId })), callback); });
   ipcMain.removeAllListeners('hw:chosen'); ipcMain.on('hw:chosen', (_e, id) => { if (pick) { const cb = pick; pick = null; cb(id || ''); } });
-  win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   win.on('closed', () => app.quit()); // closing the main window also closes the Live Race window
+  await win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  if(!startupClosing&&!win.isDestroyed()){
+    startupFeedback?.dispose();startupFeedback=null;win.show();
+  }
+}
+
+async function openingFailed(error){
+  const closing=startupClosing;startupClosing=true;
+  startupFeedback?.dispose();startupFeedback=null;
+  if(mainWin&&!mainWin.isDestroyed())mainWin.hide();
+  if(!closing)dialog.showErrorBox('SlotForge Timing could not finish opening',String(error?.message||error));
+  // The same shutdown coordinator drains accepted work after bootstrap settles.
 }
 
 // The Live Race pages in their own window, on a second screen when there is one.
@@ -66,7 +85,7 @@ function relay(channel, payload, from) {
 // the date of today on this computer, 2026-10-18 (toISOString is the date in London: after midnight in Amsterdam it is still yesterday)
 const localDate = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
 // a handler that throws must not become the dialog "A JavaScript error occurred in the main process": it is logged and the app goes on
-const safe = (name, f) => (...a) => { try { return f(...a); } catch (x) { console.error('[' + name + ']', x); } };
+const safe = (name, f) => (...a) => { if(appWork.closing)return;try { return f(...a); } catch (x) { console.error('[' + name + ']', x); } };
 // Network access: other devices on the wifi follow the race in a browser (App Settings > Network access)
 const net = { server: null, port: 0, error: '' };
 let netChain = Promise.resolve();
@@ -75,11 +94,11 @@ async function applyNetNow() {
   if (net.server) { await net.server.close(); net.server = null; }
   net.error = ''; net.port = 0;
   const s = lifecycle.settings();
-  if (!s.netOn) return;
+  if (!s.netOn||appWork.closing) return;
   const port = Math.max(1, Math.min(65535, Number(s.netPort) || 8787));
   const server = createServer({ root: path.join(__dirname, 'renderer'), appRoot: __dirname, schema, getSettings: () => lifecycle.settings(), list: e => records.list(e), customFields: e => records.customFields(e),
     getLive: () => ({ stat: live.stat, dyn: live.dyn }), onCommand: c => relay('live:command', c, null) });
-  try { net.port = await server.listen(port); net.server = server; }
+  try { net.port = await server.listen(port); net.server = server;if(appWork.closing)server.quiesce(); }
   catch (e) { net.error = e.code === 'EADDRINUSE' ? `Port ${port} is already in use. Choose another port.` : `Could not start: ${e.message}`; }
 }
 function netStatus() {
@@ -107,8 +126,10 @@ function openLiveWindow() {
   return !!other;
 }
 
-app.whenReady().then(async () => {
+const startupTask=app.whenReady().then(async () => {
   if (!gotLock) return;
+  try {
+  startupFeedback=require('./startup-feedback').create({BrowserWindow,quit:()=>app.quit()});
   try {
     if(profileError)throw profileError;
     const profile=app.getPath('userData');
@@ -126,6 +147,7 @@ app.whenReady().then(async () => {
     dialog.showErrorBox('SlotForge Timing cannot open its data', String(x && x.message || x));
     app.exit(1); return;
   }
+  if(startupClosing)return;
   // what keeps the core busy and is worth a note in the Performance report (1.61.1): a full save of the database, a list sent to the window (each from 20 ms)
   const watch = require('./perfstats').createWatcher({ mark: t => { if (perfCollector) perfCollector.mark(t); }, sizeOf: Database.approxSize });
   if(db)db.onSave = info => watch.saved(info);
@@ -140,10 +162,62 @@ app.whenReady().then(async () => {
   ipcMain.handle('schema', () => schema);
   paddock = (sqliteRuntime?sqliteRuntime.createPaddock():new (require('./paddock').Paddock)(db));
   paddock.isRacing=()=>!!live.dyn&&['countdown','running','paused','between'].includes(live.dyn.phase);
+  if(require('./shared-library-activation').enabled){
+    const descriptor=require('./integration/timing-legacy/index.cjs').describe(app.getPath('userData'));
+    const sourceId=await paddock.storage.localRead({kind:'source'});
+    if(!sourceId&&!descriptor?.originKey)throw Error('Cannot identify this Timing profile for shared library adoption.');
+    const libraryOptions={installationId:sourceId||('legacy-'+descriptor.originKey),storage:paddock.storage,appData:app.getPath('appData'),originKey:descriptor?.originKey};
+    sharedLibrary=await require('./shared-library-client').SharedLibraryClient.open(libraryOptions);
+    const recovery=require('./shared-library-restore');
+    const pendingLibraryRestore=recovery.read(app.getPath('userData'));
+    if(pendingLibraryRestore&&!['complete','held'].includes(pendingLibraryRestore.phase)){
+      let held=false;
+      try{await recovery.run(sharedLibrary,app.getPath('userData'));}
+      catch(error){
+        const answer=await dialog.showMessageBox({type:'warning',title:'Shared library restore needs attention',message:String(error.message),detail:'No request will be retried against a newer database revision. Close to retry the exact retained request next time, or keep the library currently on disk and hold this restore. Holding is not an undo: if a reply was lost, the restore may already have committed. The exact request, selected backup and before-restore safety copy remain available for reconciliation.',buttons:['Close and retain request','Keep current library and hold restore'],defaultId:0,cancelId:0});
+        if(answer.response!==1)throw error;recovery.hold(app.getPath('userData'),error);held=true;
+      }
+      libraryOptions.installationId=sharedLibrary.installationId;await sharedLibrary.close();
+      sharedLibrary=await require('./shared-library-client').SharedLibraryClient.open(libraryOptions);if(!held)await recovery.complete(sharedLibrary,app.getPath('userData'));
+    }
+    const imports=require('./shared-library-import');
+    if(imports.read(app.getPath('userData'))?.phase==='prepared')await imports.resume(sharedLibrary,records,app.getPath('userData'));
+    records=require('./shared-library-records').wrap(records,sharedLibrary);
+    bulkStorage=require('./shared-library-bulk').wrap(bulkStorage,records,sharedLibrary,app.getPath('userData'));
+    sharedLibrary.startDelivery(paddock.deliveryStore,()=>paddock.isRacing());
+  }
+  const selectedConnection=(await paddock.connection()).connection;
+  if(!sharedLibrary||selectedConnection&&selectedConnection.mode!=='local')paddock.startLocal();
   const paddockOwner=e=>{if(!mainWin||e.sender!==mainWin.webContents||e.senderFrame!==mainWin.webContents.mainFrame)throw Error('Use the main Timing window.');};
   const paddockIdle=e=>{paddockOwner(e);if(paddock.isRacing())throw Error('Finish the race before changing Paddock connections or cars.');};
+  const library=()=>{if(!sharedLibrary)throw Error('Shared database activation is not enabled.');return sharedLibrary;};
+  ipcMain.handle('library:status',e=>{paddockOwner(e);return sharedLibrary?sharedLibrary.status().then(s=>({available:true,...s,deliveryError:sharedLibrary.deliveryError||'',restoreRecovery:require('./shared-library-restore').read(app.getPath('userData'))?.phase==='held'?{held:true,folder:path.dirname(require('./shared-library-restore').read(app.getPath('userData')).request.source)}:null})):{available:false};});
+  ipcMain.handle('library:car',async(e,id)=>{paddockIdle(e);return library().editor(id,await records.list('tyrewearsystems'));});
+  ipcMain.handle('library:save',(e,input)=>{paddockIdle(e);return library().save(input);});
+  ipcMain.handle('library:service',(e,input)=>{paddockIdle(e);return library().stateSave('serviceWrite',input);});
+  ipcMain.handle('library:saves',e=>{paddockOwner(e);return library().operations();});
+  ipcMain.handle('library:original-history',(e,options)=>{paddockOwner(e);return library().originalHistory(options);});
+  ipcMain.handle('library:retry',(e,id)=>{paddockIdle(e);return library().retry(id);});
+  ipcMain.handle('library:resolve',async(e,id)=>{paddockIdle(e);const c=library();if(!(await c.operations()).some(r=>r.id===id))throw Error('Not a shared database save.');return c.storage.sharedChange({action:'resolve',operationId:id});});
+  ipcMain.handle('paddock:collection-migration',(e,options)=>{if(options?.action==='status')paddockOwner(e);else paddockIdle(e);return paddock.collectionMigration(options);});
+  ipcMain.handle('paddock:historical-review',(e,options)=>{if(options?.action==='list')paddockOwner(e);else paddockIdle(e);return paddock.historicalReview(options);});
+  ipcMain.handle('paddock:history',(e,options)=>{paddockOwner(e);return sharedLibrary?sharedLibrary.history(options):paddock.historyRead(options);});
   ipcMain.handle('paddock:status',(e)=>{paddockOwner(e);return paddock.status();});
   ipcMain.handle('paddock:discover',(e)=>{paddockIdle(e);return require('./paddock').discover();});
+  ipcMain.handle('paddock:shared-car',(e,id)=>{paddockIdle(e);return paddock.sharedCar(id);});
+  ipcMain.handle('paddock:shared-save',(e,input)=>{paddockIdle(e);return paddock.sharedSave(input);});
+  ipcMain.handle('paddock:shared-saves',e=>{paddockOwner(e);return paddock.sharedOperations();});
+  ipcMain.handle('paddock:shared-resolve',(e,id)=>{paddockIdle(e);return paddock.sharedResolve(id);});
+  ipcMain.handle('paddock:shared-retry',(e,id)=>{paddockIdle(e);return paddock.sharedRetry(id);});
+  ipcMain.handle('paddock:local-start',async e=>{paddockIdle(e);await paddock.startSharedLibrary(true);return paddock.status();});
+  ipcMain.handle('paddock:local-discover',e=>{paddockIdle(e);return paddock.discoverLocal();});
+  ipcMain.handle('paddock:transfers',e=>{paddockOwner(e);return paddock.localTransfers();});
+  ipcMain.handle('paddock:transfer-create',(e,items)=>{paddockIdle(e);return paddock.createLocalTransfers(items);});
+  ipcMain.handle('paddock:transfer-refresh',(e,id)=>{paddockIdle(e);return paddock.refreshLocalTransfer(id);});
+  ipcMain.handle('paddock:transfer-cancel',(e,id)=>{paddockIdle(e);return paddock.cancelLocalTransfer(id);});
+  ipcMain.handle('paddock:transfer-preview',(e,id)=>{paddockIdle(e);return paddock.previewLocalTransfer(id);});
+  ipcMain.handle('paddock:transfer-origin',(e,id)=>{paddockIdle(e);return paddock.findLocalOrigin(id);});
+  ipcMain.handle('paddock:transfer-accept',(e,id,expected)=>{paddockIdle(e);return paddock.acceptLocalTransfer(id,expected);});
   ipcMain.handle('paddock:connect',(e,input)=>{paddockIdle(e);return paddock.connect(input);});
   ipcMain.handle('paddock:disconnect',(e,forget)=>{paddockIdle(e);return paddock.disconnect(forget);});
   ipcMain.handle('paddock:browse',(e)=>{paddockIdle(e);return paddock.browse();});
@@ -152,7 +226,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('paddock:locals',e=>{paddockOwner(e);return records.localCars();});
   ipcMain.handle('paddock:link',(e,id,local)=>{paddockIdle(e);return paddock.link(id,local);});
   ipcMain.handle('paddock:refresh',(e)=>{paddockIdle(e);return paddock.refresh();});
-  ipcMain.handle('paddock:prepare',(e,ids)=>{paddockIdle(e);return paddock.prepare(ids);});
+  ipcMain.handle('paddock:prepare',(e,ids)=>{paddockIdle(e);return sharedLibrary?sharedLibrary.prepare(ids):paddock.prepare(ids);});
   ipcMain.handle('paddock:retry',(e)=>{paddockIdle(e);return paddock.retry();});
   ipcMain.handle('paddock:receipt',(e,id)=>{paddockIdle(e);return paddock.checkReceipt(id);});
   require('./packipc').register({ipcMain,dialog,BrowserWindow,db,lifecycle,records,bulk:bulkStorage,packFile:path.join(app.getPath('userData'),'slotforge-timing.packs.json'),waitStorage:()=>lifecycle.idle(),getMain:()=>mainWin,isRacing:()=>!!live.dyn && ['countdown','running','paused','between','review'].includes(live.dyn.phase),appVersion:require('./package.json').version});
@@ -175,6 +249,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('db:race-season', (_e,options)=>catalogueRead(()=>records.raceSeason(options)));
   ipcMain.handle('db:race-charts', (_e,ids)=>catalogueRead(()=>records.raceCharts(ids)));
   ipcMain.handle('db:race-inputs', (_e,options)=>catalogueRead(()=>records.raceInputs(options)));
+  ipcMain.handle('db:editor-read', (_e,kind,entity,value)=>catalogueRead(()=>records.editorRead(kind,entity,value)));
   ipcMain.handle('db:reference-page', (_e,entity,options)=>catalogueRead(()=>records.referencePage(entity,options)));
   ipcMain.handle('db:reference-details', (_e,entity,ids,revision)=>catalogueRead(()=>records.referenceDetails(entity,ids,revision)));
   ipcMain.handle('db:history-page', (_e,pool,options)=>catalogueRead(()=>records.historyPage(pool,options)));
@@ -183,6 +258,12 @@ app.whenReady().then(async () => {
   ipcMain.handle('db:catalogue', (_e, entity, options) => catalogueRead(()=>records.catalogue(entity, options)));
   ipcMain.handle('db:catalogue-picture', (_e, entity, id, revision) => catalogueRead(()=>records.cataloguePicture(entity,id,revision)));
   ipcMain.handle('db:add', (_e, entity, item) => records.add(entity, item));
+  ipcMain.handle('db:editor-scope', () => sqliteRuntime?records.editorScope():null);
+  ipcMain.handle('db:editor-save', (e,request) => {
+    if(!mainWin||e.sender!==mainWin.webContents||e.senderFrame!==e.sender.mainFrame)throw Error('Editor saves belong to the main app window.');
+    if(!sqliteRuntime)throw Error('The database backend changed. Reopen the editor before saving.');
+    return records.editorSave(request);
+  });
   ipcMain.handle('db:update', (_e, entity, id, patch) => records.update(entity, id, patch));
   ipcMain.handle('db:remove', (_e, entity, id) => records.remove(entity, id));
   ipcMain.handle('db:linked', (_e, entity, id) => records.linkedLaps(entity, id));
@@ -240,7 +321,26 @@ app.whenReady().then(async () => {
   bulkAccess.handle('transfer:apply', async () => { if (!pendingImport) throw new Error('No file chosen.'); await lifecycle.idle(); bulkAccess.idle(); if (!pendingImport) throw new Error('No file chosen.'); const counts = await bulkStorage.importItems(pendingImport); pendingImport = null; return counts; }); // (1.61.2: nothing is being written to the database file while the import is saved)
   bulkAccess.handle('transfer:cancel', () => { pendingImport = null; });
   // Complete backup: the whole database in one file, and restoring it
+  const sharedBackup=async e=>{
+    bulkAccess.idle();const choice=await dialog.showSaveDialog(BrowserWindow.fromWebContents(e.sender),{title:'Create a complete shared-library backup folder',defaultPath:`SlotForge-Timing-${localDate()}.slotforge-backup`});
+    if(choice.canceled||!choice.filePath)return {saved:false};bulkStorage.assertExportTarget(choice.filePath);await resourceStore.idle();await lifecycle.idle();bulkAccess.idle();
+    return require('./shared-library-backup').create({client:sharedLibrary,profile:app.getPath('userData'),destination:choice.filePath,backend:sqliteRuntime?'sqlite':'json',version:app.getVersion(),privateBackup:target=>sqliteRuntime?sqliteRuntime.client.backupSnapshot(target,{version:app.getVersion()}):bulkStorage.backup(target,{version:app.getVersion()})});
+  };
+  bulkAccess.handle('library:restore',async e=>{
+    paddockIdle(e);const client=library(),choice=await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender),{title:'Choose a complete shared-library backup folder',properties:['openDirectory']});
+    if(choice.canceled||!choice.filePaths?.length)return {canceled:true};bulkAccess.idle();
+    await require('./shared-library-backup').verify(choice.filePaths[0]);
+    const answer=await dialog.showMessageBox(BrowserWindow.fromWebContents(e.sender),{type:'warning',title:'Restore the shared car library',message:'Replace the car library and racing history used by both apps?',detail:'This restores all Paddock library data from this backup. Timing settings, drivers and current recovery data stay as they are. A complete before-restore backup is retained. Old pending saves will be held for review, never automatically replayed into the restored library. Timing will restart to perform the restore.',buttons:['Cancel','Restore shared library and restart'],defaultId:0,cancelId:0});
+    if(answer.response!==1)return {canceled:true};paddockIdle(e);if(appWork.jobs.size!==1)throw Error('Wait for the other Timing operations to finish before restoring.');
+    appWork.stop();net.server?.quiesce();paddock.quiesce();
+    try{await client.pause();await net.server?.close();await paddock.idle();await resourceStore.idle();await lifecycle.idle();
+      if((await resourceStore.read()).checkpoint)throw Error('Finish or discard the unfinished resource event before restoring.');
+      await require('./shared-library-restore').prepare({client,profile:app.getPath('userData'),directory:choice.filePaths[0],backend:sqliteRuntime?'sqlite':'json',privateBackup:target=>sqliteRuntime?sqliteRuntime.client.backupSnapshot(target,{version:app.getVersion()}):bulkStorage.backup(target,{version:app.getVersion()})});
+    }catch(error){dialog.showErrorBox('Shared-library restore was not scheduled',String(error.message)+'\nTiming will restart. Retained recovery files have not been deleted.');}
+    app.relaunch();app.quit();return {restarting:true};
+  });
   bulkAccess.handle('backup:save', async e => {
+    if(sharedLibrary)return sharedBackup(e);
     const { canceled, filePath } = await dialog.showSaveDialog(BrowserWindow.fromWebContents(e.sender), { defaultPath: `slotforge-timing-backup-${localDate()}.json`, filters: [{ name: 'SlotForge Timing backup', extensions: ['json'] }] });
     if (canceled || !filePath) return { saved: false };
     await resourceStore.idle();
@@ -262,6 +362,7 @@ app.whenReady().then(async () => {
     } catch { return { ok: false, error: 'The file could not be read: it is not a backup file from this app.' }; }
   });
   bulkAccess.handle('backup:restore', async () => {
+    if(sharedLibrary)throw Error('Use a coordinated shared-library backup restore. A Timing-only backup must not replace shared cars or history.');
     if(sqliteTestProfile)throw Error('Restore into a separate working copy with the SQLite tools for a test profile.');
     if(paddock?.busy)throw Error('Wait for the Paddock operation before restoring a backup.');
     if(pluginHost?.timing?.reservation)throw Error('Finish or leave the race before restoring a backup.');
@@ -284,18 +385,20 @@ app.whenReady().then(async () => {
     if(paddock?.busy)throw Error('Wait for the Paddock operation before restoring a backup.');
     paddock.stop();
     try{await bulkStorage.restore(pendingRestore);await lifecycle.refreshSettings();pendingRestore=null;}
-    finally{paddock=(sqliteRuntime?sqliteRuntime.createPaddock():new (require('./paddock').Paddock)(db));paddock.isRacing=()=>!!live.dyn&&['countdown','running','paused','between'].includes(live.dyn.phase);}
+    finally{paddock=(sqliteRuntime?sqliteRuntime.createPaddock():new (require('./paddock').Paddock)(db));paddock.isRacing=()=>!!live.dyn&&['countdown','running','paused','between'].includes(live.dyn.phase);paddock.startLocal();}
     applyNet().finally(() => BrowserWindow.getAllWindows().forEach(w => { if (!w.isDestroyed()) w.webContents.reload(); }));
     return { safety };
   });
   bulkAccess.handle('backup:cancel', () => { pendingRestore = null;pendingRestoreSource=null; });
   bulkAccess.handle('backup:native-save',async e=>{
+    if(sharedLibrary)return sharedBackup(e);
     if(!sqliteRuntime)throw Error('Native backups require SQLite storage.');
     const choice=await dialog.showSaveDialog(BrowserWindow.fromWebContents(e.sender),{title:'Create a new native SQLite backup folder',defaultPath:'SlotForge-Timing-'+localDate()+'.sqlite-backup'});
     if(choice.canceled||!choice.filePath)return {canceled:true};bulkAccess.idle();bulkStorage.assertExportTarget(choice.filePath);await lifecycle.idle();bulkAccess.idle();
     await sqliteRuntime.client.backupSnapshot(choice.filePath,{version:app.getVersion()});return {saved:true,path:choice.filePath};
   });
   bulkAccess.handle('backup:native-restore',async e=>{
+    if(sharedLibrary)throw Error('Use a coordinated shared-library backup restore. This older Timing-only restore cannot replace the common database.');
     if(!sqliteRuntime||sqliteTestProfile)throw Error('Use a production SQLite profile for native restore.');
     const idle=()=>{bulkAccess.idle();if(paddock?.busy||pluginHost?.timing?.reservation)throw Error('Finish Paddock and timing operations before restoring.');};idle();
     const choice=await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender),{title:'Choose a native SQLite backup folder',properties:['openDirectory']});
@@ -363,27 +466,48 @@ app.whenReady().then(async () => {
     }
      if (Object.prototype.hasOwnProperty.call(patch || {}, 'phidget')) { phidgetOwner(_e); if (phidget.state().connected) throw Error('Disconnect before changing Phidget channel assignments.'); const P = require('./renderer/phidget'), errors = P.validate(P.config(patch.phidget)); if (errors.length) throw Error(errors[0]); } if (phidget.state().race && (Object.prototype.hasOwnProperty.call(patch || {}, 'phidget') || (Object.prototype.hasOwnProperty.call(patch || {}, 'timingHw') && patch.timingHw !== 'phidget'))) throw Error('Leave the race before changing its Phidget setup.'); if (Object.prototype.hasOwnProperty.call(patch || {}, 'parallelPort')) { parallelOwner(_e); if (parallel.state().connected) throw Error('Disconnect before changing parallel-port assignments.'); const P = require('./renderer/parallel'), errors = P.validate(P.config(patch.parallelPort)); if (errors.length) throw Error(errors[0].text); } if (parallel.state().race && (Object.prototype.hasOwnProperty.call(patch || {}, 'parallelPort') || (Object.prototype.hasOwnProperty.call(patch || {}, 'timingHw') && patch.timingHw !== 'parallel'))) throw Error('Finish or leave the race before changing its parallel-port setup.'); const s = await lifecycle.updateSettings(patch); if(db)db.bg = backgroundOn(s); if (Object.keys(patch || {}).some(k => k.startsWith('net'))) await applyNet(); return s; });
   ipcMain.handle('net:status', () => netStatus());
-  applyNet().finally(createWindow);
-  app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+  await applyNet();
+  if(startupClosing)return;
+  // QA profiles never discover or launch a user's real library. Joint tests opt in with an isolated LOCALAPPDATA.
+  if(!sharedLibrary&&(!process.env.SF_UI_QA_RUN_ID||process.env.SF_UI_QA_LOCAL_LIBRARY==='1'))await paddock.startSharedLibrary();
+  await createWindow();
+  app.on('activate', () => { if (!startupClosing&&BrowserWindow.getAllWindows().length === 0) createWindow().catch(async error=>{await openingFailed(error);app.quit();}); });
+  } catch(error) {
+    await openingFailed(error);
+  } finally {
+    if(startupClosing){startupFeedback?.dispose();startupFeedback=null;app.quit();}
+  }
 });
 
 app.on('window-all-closed', () => app.quit());
-app.on('before-quit',()=>paddock?.stop());
-let quitFlushed = false;
-let quitWaiting = false;
-app.on('before-quit', e => {
-  if (quitWaiting) { e.preventDefault(); return; }
-  if (typeof parallel !== 'undefined') parallel.shutdown();
-  phidget.shutdown();
-  if (net.server) net.server.close();
-  // a race save or a setting that is on its way is written first (at most three seconds): the files then hold the last state, not the one before
-  if (!quitFlushed && (db || sqliteRuntime) && (pluginHost || paddock?.busy || lifecycle.pending() || (typeof resourceStore!=='undefined'&&resourceStore?.pending))) {
-    e.preventDefault();
-    quitWaiting = true;
-    const saveDone = Promise.all([paddock?.idle(),typeof resourceStore!=='undefined'&&resourceStore ? resourceStore.idle() : Promise.resolve()]).then(()=>lifecycle.shutdown());
-    Promise.allSettled([
-      pluginHost?.shutdown(),
-      Promise.race([saveDone, new Promise(r => setTimeout(r, 3000))])
-    ]).then(() => { quitWaiting = false; quitFlushed = true; app.quit(); });
+const shutdown=new Shutdown({gate:appWork,
+  quiesce(){paddock?.quiesce();net.server?.quiesce();},
+  async drain(){
+    await startupTask; // Preparation may still be constructing the storage worker.
+    paddock?.quiesce();net.server?.quiesce();
+    await pluginSafety;
+    await appWork.idle();await netChain;await net.server?.close();
+    parallel.shutdown();phidget.shutdown();
+    await paddock?.idle();paddock?.stop();
+    await sharedLibrary?.close();
+    await pluginHost?.shutdown();await resourceStore?.idle();
+    const storage=lifecycle||sqliteRuntime?.lifecycle;
+    if(storage)await storage.shutdown();else await db?.writesIdle();
+    startupFeedback?.dispose();startupFeedback=null;
   }
+});
+let quitWaiting=false,pluginSafety=Promise.resolve();
+app.on('before-quit',e=>{
+  if(shutdown.ready||!gotLock)return;
+  e.preventDefault();startupClosing=true;appWork.stop();
+  // Hardware safety is immediate, independent of potentially slow storage.
+  parallel.shutdown();phidget.shutdown();
+  if(quitWaiting)return;quitWaiting=true;
+  pluginSafety=Promise.resolve().then(()=>pluginHost?.timing?.reset());
+  pluginSafety.catch(()=>{}); // Report any failure through the shutdown coordinator.
+  shutdown.run().then(()=>{quitWaiting=false;app.quit();},error=>{
+    quitWaiting=false;
+    dialog.showErrorBox('SlotForge Timing could not finish closing',String(error?.message||error)+'\nPending work was not forcibly stopped. Close the window again to retry.');
+    if(mainWin&&!mainWin.isDestroyed())mainWin.show();
+  });
 });

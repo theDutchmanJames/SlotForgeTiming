@@ -81,6 +81,7 @@ function bopCommand(c) {
 
 // o: { root (the renderer folder), appRoot (holds node_modules), schema, getSettings(), list(entity), customFields(entity), getLive() -> {stat, dyn}, onCommand(cmd) }
 function createServer(o) {
+  const work=new(require('./work-gate').WorkGate)(),requests=new Set();let closing;
   const clients = new Set(), tokens = new Map(); // token -> the password it was given for (a changed password logs everyone out)
   const send = (res, code, body, type = 'application/json') => { res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-store' }); res.end(typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body)); };
   const password = () => String((o.getSettings() || {}).netPassword || '');
@@ -89,18 +90,21 @@ function createServer(o) {
     req.on('data', c => { n += c.length; if (n > 1e6) { reject(new Error('too big')); req.destroy(); } else parts.push(c); });
     req.on('end', () => { try { resolve(JSON.parse(Buffer.concat(parts).toString() || '{}')); } catch (e) { reject(e); } });
     req.on('error', reject);
+    req.on('aborted',()=>reject(Error('Request interrupted.')));
   });
   const same = (a, b) => { const x = crypto.createHash('sha256').update(a).digest(), y = crypto.createHash('sha256').update(b).digest(); return crypto.timingSafeEqual(x, y); };
 
   function serveFile(res, file) {
-    fs.readFile(file, (err, data) => err ? send(res, 404, { error: 'not found' }) : send(res, 200, data, MIME[path.extname(file).toLowerCase()] || 'application/octet-stream'));
+    return fs.promises.readFile(file).then(data=>send(res,200,data,MIME[path.extname(file).toLowerCase()]||'application/octet-stream'),()=>send(res,404,{error:'not found'}));
   }
   function inside(base, rel) { const f = path.resolve(base, '.' + path.sep + rel), b = path.resolve(base); return f === b || f.startsWith(b + path.sep) ? f : null; }
 
   async function handler(req, res) {
     try {
+      if(work.closing&&!req.complete)return send(res,503,{error:'Timing is closing',code:'APP_CLOSING'});
       const url = new URL(req.url, 'http://x'), p = decodeURIComponent(url.pathname);
       if (req.method === 'GET' && p === '/events') { // live updates (server-sent events)
+        if(work.closing)return send(res,503,{error:'Timing is closing',code:'APP_CLOSING'});
         res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
         res.write('retry: 2000\n\n'); clients.add(res); req.on('close', () => clients.delete(res)); return;
       }
@@ -126,7 +130,8 @@ function createServer(o) {
         if (!pw || typeof b.token !== 'string' || tokens.get(b.token) !== pw) return send(res, 401, { error: 'login' });
         if (!b.cmd || !COMMANDS.includes(b.cmd.type)) return send(res, 400, { error: 'unknown command' });
         if (!plainCommand(b.cmd) || !tokenCommand(b.cmd) || !bopCommand(b.cmd) || !weatherCommand(b.cmd) || !tyreCommand(b.cmd) || !tyreNextCommand(b.cmd) || !swapCommand(b.cmd) || !damageCommand(b.cmd) || !failureCommand(b.cmd) || !padCommand(b.cmd)) return send(res, 400, { error: 'bad command' });
-        o.onCommand(b.cmd); return send(res, 200, { ok: true });
+        if(work.closing)return send(res,503,{error:'Timing is closing',code:'APP_CLOSING'});
+        await o.onCommand(b.cmd); return send(res, 200, { ok: true });
       }
       if (req.method === 'GET') { // the app's own pages
         let rel = p === '/' ? 'index.html' : p.slice(1), file;
@@ -139,10 +144,17 @@ function createServer(o) {
     } catch (e) { send(res, 400, { error: String(e.message || e) }); }
   }
 
-  const server = http.createServer((req, res) => { handler(req, res); });
+  const server = http.createServer((req, res) => {
+    if(work.closing){res.setHeader('Retry-After','2');send(res,503,{error:'Timing is closing',code:'APP_CLOSING'});req.resume();return;}
+    requests.add(req);
+    // A disconnected reader does not release an in-flight storage operation.
+    work.run(()=>handler(req,res)).catch(()=>res.destroy()).finally(()=>requests.delete(req));
+  });
+  function quiesce(){work.stop();clients.forEach(c=>c.end());clients.clear();for(const req of requests)if(!req.complete)req.destroy();}
   return {
     listen: (port, host = '0.0.0.0') => new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, host, () => { server.removeListener('error', reject); resolve(server.address().port); }); }),
-    close: () => new Promise(resolve => { clients.forEach(c => { try { c.end(); } catch { /* gone */ } }); clients.clear(); server.close(() => resolve()); if (server.closeAllConnections) server.closeAllConnections(); }),
+    quiesce,
+    close: () => closing ||= (async()=>{quiesce();await work.idle();await new Promise(resolve=>{server.close(()=>resolve());server.closeAllConnections?.();});})(),
     // tell every connected browser: event 'static' or 'push'
     broadcast: (event, data) => { if (!clients.size) return; const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`; clients.forEach(c => { try { c.write(msg); } catch { clients.delete(c); } }); },
     clientCount: () => clients.size

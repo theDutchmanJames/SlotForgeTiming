@@ -111,6 +111,8 @@ function setChampionshipAwards(s, { edits }) {
     s.expect('sessions', edit.sessionId, edit.expectedRevision);
     if (!object(edit.champ)) throw Error('Invalid championship award.');
     setPath(s, 'sessions', edit.sessionId, ['champ'], edit.champ);
+    const session=s.get('sessions',edit.sessionId,true).value;
+    if(session.paddockDelivery?.transport==='engine'){require('./paddockrecords').revise({...s.paddockState(),laps:s.lapsFor(session.id)},session);s.replace('sessions',session.id,session);}
   }
   return { updated: edits.map(e => ({ sessionId: e.sessionId, revision: s.revision('sessions', e.sessionId) })) };
 }

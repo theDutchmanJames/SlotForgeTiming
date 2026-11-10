@@ -85,27 +85,28 @@ const onDisk = db => { try { return JSON.parse(fs.readFileSync(db.resumeFile(), 
   { // the files that use it
     const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
     ok('main.js uses the shared lifecycle for ordinary/resource recovery', main.includes('return lifecycle.saveResume(snap)') && main.includes('return lifecycle.clearResume()') && main.includes("'resume:get', () => lifecycle.resume()"));
-    ok('...and on closing, a save that is on its way (a race save, since 1.61.0 a settings file too) is written first (not for longer than three seconds)', /before-quit', e => \{[\s\S]*lifecycle\.pending\(\)[\s\S]*e\.preventDefault\(\)[\s\S]*3000[\s\S]*app\.quit\(\)/.test(main)); }
+  }
 
   { // closing the program (the real lines of main.js, with a stand-in for the app and the database)
-    const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8'), code = main.slice(main.indexOf('let quitFlushed = false;'));
+    const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8'), code = main.slice(main.indexOf('const shutdown=new Shutdown('));
     const setup = (pending, idle, pluginHost = null, paddock = null) => {
-      const handlers = {}, calls = { quit: 0, prevented: 0, closed: 0 }, timers = [];
-      vm.runInNewContext(code, { pluginHost, paddock, phidget: { shutdown() {} }, app: { on: (ev, f) => { handlers[ev] = f; }, quit: () => { calls.quit++; } }, net: { server: { close: () => { calls.closed++; } } }, db: {}, lifecycle: {pending, shutdown:idle}, Promise, setTimeout: (f, ms) => { timers.push({ f, ms }); return timers.length; } });
+      const handlers = {}, calls = { quit: 0, prevented: 0, closed: 0, errors:0 }, timers = [];
+      const {Shutdown,WorkGate}=require('../work-gate');
+      vm.runInNewContext(code, {Shutdown,appWork:new WorkGate(),startupTask:Promise.resolve(),startupClosing:false,startupFeedback:null,netChain:Promise.resolve(),gotLock:true,resourceStore:null,sqliteRuntime:null,mainWin:null,dialog:{showErrorBox:()=>calls.errors++},pluginHost,paddock:paddock?{quiesce(){},stop(){},...paddock}:null,parallel:{shutdown(){}},phidget: { shutdown() {} }, app: { on: (ev, f) => { handlers[ev] = f; }, quit: () => { calls.quit++; } }, net: { server: {quiesce(){}, close: () => { calls.closed++; } } }, db: {}, lifecycle: {pending, shutdown:idle}, Promise, setTimeout: (f, ms) => { timers.push({ f, ms }); return timers.length; } });
       return { calls, timers, fire() { handlers['before-quit']({ preventDefault: () => { calls.prevented++; } }); } };
     };
     const a = setup(() => false, () => Promise.resolve()); a.fire(); await wait(5);
-    ok('closing with nothing being saved: the program closes at once (it is not held back), and the network is closed', a.calls.prevented === 0 && a.calls.quit === 0 && a.calls.closed === 1);
+    ok('closing with nothing being saved drains immediately and closes the network', a.calls.prevented === 1 && a.calls.quit === 1 && a.calls.closed === 1);
     let release; const b = setup(() => true, () => new Promise(r => { release = r; })); b.fire(); await wait(5);
-    ok('closing while a save is on its way: the closing is held back, and a wait of at most three seconds is set', b.calls.prevented === 1 && b.calls.quit === 0 && b.timers.length === 1 && b.timers[0].ms === 3000);
+    ok('closing while a save is on its way waits without a forced timeout', b.calls.prevented === 1 && b.calls.quit === 0 && b.timers.length === 0);
     release(); await wait(5);
-    ok('...when the save is done the program closes (without waiting for the three seconds)', b.calls.quit === 1);
+    ok('...when the save is done the program closes', b.calls.quit === 1);
     b.fire(); await wait(5);
     ok('...and closing again (the program asks again as it closes) is not held back a second time', b.calls.prevented === 1 && b.calls.quit === 1);
     const c = setup(() => true, () => new Promise(() => {})); c.fire(); await wait(5);
-    ok('a save that never finishes holds the closing back for three seconds only', c.calls.quit === 0 && (c.timers[0].f(), await wait(5), c.calls.quit === 1));
+    ok('an unfinished save cannot be bypassed by another close request', c.calls.quit === 0 && (c.fire(),await wait(5),c.calls.quit === 0) && c.timers.length===0);
     const d = setup(() => true, () => Promise.reject(new Error('disk'))); d.fire(); await wait(5);
-    ok('a wait that fails still lets the program close', d.calls.prevented === 1 && d.calls.quit === 1);
+    ok('a failed drain reports the error and keeps the process open', d.calls.prevented === 1 && d.calls.quit === 0 && d.calls.errors === 1);
     let pluginsStopped; const e = setup(() => false, () => Promise.resolve(), {shutdown:()=>new Promise(r=>{pluginsStopped=r;})}); e.fire(); await wait(5);
     ok('plugin shutdown is awaited even with no pending database writes', e.calls.prevented === 1 && e.calls.quit === 0);
     e.fire(); await wait(5); ok('a second close request cannot bypass plugin shutdown', e.calls.prevented === 2 && e.calls.quit === 0);

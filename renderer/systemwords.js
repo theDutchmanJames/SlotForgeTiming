@@ -348,8 +348,7 @@
       });
       say.push(T('.'));
     }
-    if (C.pace && C.pace.on) say.push(T(' The Tyre Wear calculation selected in App Settings supplies the '), B('pace benchmark'), T(': a faster lap wears more, a slower lap wears less. The effect is '), B(C.pace.strength), T('.'));
-    else say.push(T(' Tyres wear the same amount on every valid lap; '), B('pace-sensitive wear is off'), T('.'));
+    say.push(T(' Pace-related tyre savings and extra wear are controlled by '), B('Push & Save'), T('. Weather and temperature apply separately.'));
     // what worn tyres do: the fuel levers, and what happens at 0%
     const lv = [C.levers.use && 'the fuel use', C.levers.rate && 'the refuelling speed', C.levers.tank && 'the size of the tank'].filter(Boolean);
     const zero = C.zero === 'points' ? (C.zeroPoints > 0 ? [T('a car gets '), B(ppts(C.zeroPoints)), T(' every lap')] : [T('a car gets '), B('no penalty points')])
@@ -393,7 +392,6 @@
       out.tyres = entry(`${nm} · ${plural(allowed.length, 'tyre', 'tyres')}`, `${pk ? `${nm} numbers` : 'your own numbers'} for ${plural(allowed.length, 'tyre', 'tyres')}${bits.length ? ': ' + bits.join(', ') : ''}`, pk === 'standard' ? 'plain' : 'ok');
     }
     out.temperature = entry(C.temperature ? 'Simulated temperature on' : 'Off', 'Cold or hot tyres add wear; pits and neutralisations cool tyres.', C.temperature ? 'ok' : 'plain');
-    out.pace = entry(C.pace && C.pace.on ? `Pace benchmark · ${cap(C.pace.strength)}` : 'Fixed wear', C.pace && C.pace.on ? `after the configured sample requirement, faster than the selected benchmark wears more and slower wears less (${C.pace.strength})` : 'every valid lap uses the same wear', changed(['paceWear', 'paceStrength']) ? 'ok' : 'plain');
     // What worn tyres do
     {
       const lv = [C.levers.use && 'fuel use', C.levers.rate && 'refuelling', C.levers.tank && 'tank'].filter(Boolean), z = C.zero === 'points' ? (C.zeroPoints > 0 ? plural(C.zeroPoints, 'point', 'points') : 'no points') : C.zero === 'lap' ? 'lap lost' : C.zero === 'retire' ? 'retires' : 'nothing';

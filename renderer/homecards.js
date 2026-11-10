@@ -27,7 +27,7 @@
   const last = d => {
     const l = d.last; if (!l) return card('hm-last', 'Last race', '', '<p class="muted">No race has been saved yet.</p>');
     return `<section class="card hm-last"><h3>${esc(l.label)}<span class="hm-tag">${esc(d.fmtDate(l.date))}</span></h3>${l.podium.length
-      ? `<ol class="hm-pod">${l.podium.map(p => `<li class="p${p.pos}"><span class="n">${p.pos}</span><strong>${esc(p.name)}</strong><small>${esc(p.detail)}</small></li>`).join('')}</ol>` : '<p class="muted">No car finished a lap.</p>'}
+      ? `<ol class="hm-pod">${l.podium.map(p => `<li class="p${p.pos}"><span class="n">${p.pos}</span><strong>${esc(p.name)}</strong><small>${esc(p.detail)}</small></li>`).join('')}</ol>` : `<p class="muted">${esc(l.emptyReason||'No car finished a lap.')}</p>`}
       <p class="hint2">${esc(l.setupName)}${l.trackName ? ' on ' + esc(l.trackName) : ''}${l.fastest ? ` · Fastest lap: ${esc(l.fastest.driver ? l.fastest.driver + ', ' : '')}${esc(l.fastest.text)}` : ''}</p></section>`;
   };
   const glance = d => {

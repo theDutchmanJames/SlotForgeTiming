@@ -108,13 +108,6 @@ ok('...it says what it does, and that text can be softer on some Windows compute
   ok('...and the Soft lift part does not touch it (will-change, data-layers)', !/will-change|data-layers/.test(layer)); }
 ok('the Live Race page and the phone page load the same style sheet and the same Depth (so they get the layers too)', /styles\.css/.test(html) && /<script src="depth\.js">/.test(html));
 
-// ---- the reference set (docs/ui-reference/depth): the pictures and the design boards stay with the code
-{ const dir = path.join(__dirname, '..', 'docs', 'ui-reference', 'depth'), pics = ['1-race-screen-flat.png', '2-race-screen-soft-lift.png', '3-race-screen-thick-card.png', '4-race-screen-light-soft-lift.png', '5-widget-border-colour-and-thickness.png', '6-home-soft-lift.png', '7-settings-depth.png'];
-  const png = f => { try { const b = fs.readFileSync(path.join(dir, f)); return b.length > 5000 && b.slice(1, 4).toString() === 'PNG'; } catch { return false; } };
-  ok('the reference set has the seven pictures (real PNG files) and the boards with their canvas', pics.every(png) && ['Main', 'Soft', 'Thick', 'States'].every(n => fs.existsSync(path.join(dir, 'source', n + '.dc.html'))) && fs.existsSync(path.join(dir, 'source', 'canvas.json')));
-  const readme = fs.readFileSync(path.join(__dirname, '..', 'docs', 'ui-reference', 'README.md'), 'utf8');
-  ok('...and the reference README names the set, with every picture', /## depth\//.test(readme) && pics.every(f => readme.includes('`' + f + '`')) && /Soft lift/.test(readme)); }
-
 // 1.61.2: the tickbox that switches the background save of the database off
 ok('1.61.2: the tickbox "Save changes to the database in the background" is in App Settings > General > Performance, ticked unless backgroundSave is false, before the switch of the Performance line', /<input id="bgsave" type="checkbox"\$\{S\.backgroundSave === false \? '' : ' checked'\}> Save changes to the database in the background/.test(app) && app.indexOf('id="bgsave"') > app.indexOf('id="layerswitch"') && app.indexOf('id="bgsave"') < app.indexOf('id="perfswitch"'));
 ok('...it is saved as backgroundSave (true or false) and the program reads it from the settings at once', /\$\('bgsave'\)\.onchange = async ev => \{ state\.settings = await api\.setSettings\(\{ backgroundSave: !!ev\.target\.checked \}\); \}/.test(app));

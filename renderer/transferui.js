@@ -9,6 +9,8 @@ async function renderTransferSettings(box) {
   box.onclick=box.oninput=box.onchange=null;
   if (!api.exportData) { box.innerHTML = '<p class="muted">Export and import work in the Windows app.</p>'; return; }
   const sqlite=api.storageStatus&&(await api.storageStatus()).backend==='sqlite';
+  const sharedStatus=api.libraryStatus?await api.libraryStatus():null,shared=sharedStatus?.available;
+  if(shared)trState.bk=null;
   const lists = api.transferChoices?await api.transferChoices():{}; for (const [, es] of TR_GROUPS) for (const e of es) {if(!api.transferChoices)lists[e]=await api.list(e);else lists[e]||=[];}
   const chosen = {}; Object.entries(trState.picks).forEach(([e, set]) => { if (set.size) chosen[e] = [...set]; });
   const deps = Object.keys(chosen).length ? await api.exportDeps(chosen) : {};
@@ -38,15 +40,17 @@ async function renderTransferSettings(box) {
     <div class="row"><button class="btn" id="tr-open">Choose a file to import...</button></div>
     ${pending ? `<div class="card"><strong>${esc(pending.file || 'File')}</strong> contains:<ul>${Object.entries(pending.summary).map(([e, s]) => `<li>${s.count} ${esc((s.count === 1 ? state.schema[e].label : state.schema[e].plural).toLowerCase())}${s.names.filter(Boolean).length ? ': ' + esc(s.names.filter(Boolean).join(', ')) + (s.count > s.names.length ? ', ...' : '') : ''}</li>`).join('')}</ul>
       <div class="row"><button class="btn primary" id="tr-apply">Add to my data</button><button class="btn" id="tr-cancel">Cancel</button></div></div>` : ''}`);
+  if(shared){box.querySelector('#bk-save').closest('.fbody').innerHTML=`<p>A complete backup folder contains the common car library and racing history, plus Timing settings and recovery data. Keep every file in this folder together.</p><p>Restoring the shared library affects both apps. Timing settings, drivers and local recovery data stay as they are. A before-restore backup is retained; old pending saves are held for review.</p><div class="row"><button class="btn primary" id="bk-save">Create complete backup folder…</button><button class="btn" id="bk-library-restore">Restore shared library…</button></div><p class="muted" role="status" id="bk-msg">${esc(trState.bkMsg)}</p>`;}
   if (typeof AppSettingsPage !== 'undefined') AppSettingsPage.enhance(box, 'transfer');
   if (typeof TransferViews !== 'undefined') TransferViews.attach(box,'items');
   folderWire(box);
   box.onclick = ev => { const fa = ev.target && ev.target.closest ? ev.target.closest('[data-folderall]') : null; if (fa) { folderAll('transfer', TR_FOLDERS, fa.dataset.folderall === '1'); renderTransferSettings(box); } };
   const $ = id => document.getElementById(id), msg = t => { trState.msg = t; const m = $('tr-msg'); if (m) m.textContent = t; };
   const bmsg = t => { trState.bkMsg = t; const m = $('bk-msg'); if (m) m.textContent = t; };
-  if(sqlite)for(const [id,action] of [['bk-native-save','nativeBackup'],['bk-native-restore','nativeRestore']])$(id).onclick=async()=>{const b=$(id);b.disabled=true;bmsg('Copying and verifying. Large backups can take several minutes…');try{const result=await api[action]();bmsg(result.restarting?'Restarting to verify and restore the native backup.':result.saved?'Native backup saved: '+result.path:'Cancelled.');}catch(e){bmsg('Could not complete native backup operation: '+e.message);}finally{b.disabled=false;}};
+  if(shared)$('bk-library-restore').onclick=async()=>{const button=$('bk-library-restore');button.disabled=true;try{const result=await api.libraryRestore();bmsg(result.restarting?'Restarting to restore the shared library.':'Cancelled.');}catch(e){bmsg(e.message);}finally{button.disabled=false;}};
+  if(sqlite&&!shared)for(const [id,action] of [['bk-native-save','nativeBackup'],['bk-native-restore','nativeRestore']])$(id).onclick=async()=>{const b=$(id);b.disabled=true;bmsg('Copying and verifying. Large backups can take several minutes…');try{const result=await api[action]();bmsg(result.restarting?'Restarting to verify and restore the native backup.':result.saved?'Native backup saved: '+result.path:'Cancelled.');}catch(e){bmsg('Could not complete native backup operation: '+e.message);}finally{b.disabled=false;}};
   $('bk-save').onclick = async () => { try { const res = await api.backupSave(); bmsg(res && res.saved ? `Backup saved: ${res.path}` : 'Not saved.'); } catch (x) { bmsg('Could not save the backup: ' + x.message); } };
-  $('bk-open').onclick = async () => {
+  if(!shared)$('bk-open').onclick = async () => {
     try { const res = await api.backupOpen(); if (!res || res.canceled) { trState.bk=null; return renderTransferSettings(box); } if (!res.ok) { trState.bk = null; trState.bkMsg = res.error; return renderTransferSettings(box); } trState.bk = res; trState.bkMsg = ''; renderTransferSettings(box); } catch (x) { bmsg('Could not read the file: ' + x.message); }
   };
   if (bk) {
@@ -68,6 +72,7 @@ async function renderTransferSettings(box) {
     box._trToggle = ev => { const d = ev.target; if (d && d.dataset && d.dataset.key) { if (d.open) trState.open.add(d.dataset.key); else trState.open.delete(d.dataset.key); } };
     box.addEventListener('toggle', box._trToggle, true);
   }
+  if(sharedStatus?.restoreRecovery?.held){const notice=document.createElement('p');notice.className='muted';notice.setAttribute('role','status');notice.textContent='A restore was held for reconciliation. Current library remains in use. Exact request and safety copies: '+sharedStatus.restoreRecovery.folder;box.prepend(notice);}
   $('tr-none').onclick = () => { trState.picks = {}; trState.msg = ''; renderTransferSettings(box); };
   $('tr-export').onclick = async () => {
     const extras = {}; Object.entries(deps).forEach(([e, list]) => { const ids = list.filter(d => d.required || !trState.skip.has(e + ':' + d.id)).map(d => d.id); if (ids.length) extras[e] = ids; });

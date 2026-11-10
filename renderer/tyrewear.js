@@ -49,7 +49,7 @@
   Wx.TYRES.filter(t => t.custom).forEach(t => { DEFAULT_SETS[t.code] = DEFAULT_SETS[t.icon]; });
   const SETS_MODES = [['none', 'No limit: every stop gives fresh tyres'], ['car', 'Each car has its own sets'], ['team', 'The team shares its sets']];
   const DEFAULTS = { setsMode: 'car', unit: 'lap', practice: 'off', qualifying: 'off', effect: 'on', eUse: 'on', eRate: 'on', eTank: 'off', zero: 'points', zeroPoints: 2, changeSeconds: 4, stop: 'overlap', warn: 25, crit: 10, call1: 50, call2: 25, call3: 10, mandStops: 0, mandTwo: 'off', mandPenalty: 'time', mandSeconds: 30, mandPoints: 3,
-    tempOn: 'off', paceWear: 'on', paceStrength: 'normal' };
+    tempOn: 'off' };
 
   const num = (v, d, lo, hi) => {
     const n = typeof v === 'string' && v.trim() !== '' ? Number(v.replace(',', '.')) : v;
@@ -111,8 +111,9 @@
       effect: rec.effect !== 'off', levers: { use: rec.eUse !== 'off', rate: rec.eRate !== 'off', tank: rec.eTank === 'on' },
       zero: pick(rec.zero, ZERO.map(z => z[0]), DEFAULTS.zero), zeroPoints: Math.round(num(rec.zeroPoints, DEFAULTS.zeroPoints, 0, 100)),
       changeMs: Math.round(num(rec.changeSeconds, DEFAULTS.changeSeconds, 0, 600) * 1000), stop: rec.stop === 'add' ? 'add' : 'overlap',
-      // Older saved systems keep their fixed wear. New systems explicitly save paceWear=on.
-      pace: { ...(c.pace || {}), on: rec.paceWear === 'on', strength: pick(rec.paceStrength, ['gentle', 'normal', 'strong'], DEFAULTS.paceStrength) },
+      // New races use Push & Save as the only pace-wear source. Frozen legacy
+      // race configurations retain their original factors when recovered by the engine.
+      pace: { on: false, response: { combine: 'pushsave' } },
       warn: Math.round(num(rec.warn, DEFAULTS.warn, 0, 100)), crit: Math.round(num(rec.crit, DEFAULTS.crit, 0, 100)), calls: cleanCalls(rec), mand: cleanMand(rec)
     };
   }
@@ -219,6 +220,7 @@
     if (!a.length) return 0;
     const mid = Math.floor(a.length / 2); return a.length % 2 ? a[mid] : (a[mid - 1] + a[mid]) / 2;
   };
+  // Legacy frozen-race support only; new race configurations disable this factor.
   // Faster laps (smaller times) wear more. The pace history deliberately excludes the
   // current lap, so the lap cannot move the benchmark before its own wear is judged.
   function paceReference(cfg, history) {
