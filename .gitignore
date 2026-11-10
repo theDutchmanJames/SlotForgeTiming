@@ -28,3 +28,5 @@ work/
 !/docs/WIDGET-FONTS.md
 /docs/ui-reference/
 /vendor/slotforge-library/merge-contract/*.md
+/vendor/slotforge-library/merge-contract/*-results.json
+/vendor/slotforge-library/merge-contract/audit-evidence.json

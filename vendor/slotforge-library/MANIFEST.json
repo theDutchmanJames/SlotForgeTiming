@@ -866,10 +866,6 @@
       "sha256": "2ea01674600aa2e3fb388d1a0347c3268fba581ddb6f15555f5a06be3d5e62d4"
     },
     {
-      "path": "merge-contract/audit-evidence.json",
-      "sha256": "6e263f3c0ee0206e7890d8a0db32a9aecd6bda98fc9fa868bb279d32510dc8ad"
-    },
-    {
       "path": "merge-contract/contributions.schema.json",
       "sha256": "62cfee32de9b2f75a7147c46a8163b7d7972c40bed64cb978baac53126597f80"
     },
@@ -894,20 +890,8 @@
       "sha256": "cea3489e57b21066452d688cbf6e4f5f6cd904523332e509d60587059a75d81e"
     },
     {
-      "path": "merge-contract/phase-three-results.json",
-      "sha256": "c2608a0b578d15cac698df61135574e7576e8eb773e52a4ab59f567643466b72"
-    },
-    {
-      "path": "merge-contract/phase-two-results.json",
-      "sha256": "f56cd1e5609474fc98c8dfcaaaf45af42607396adf458fe6a404681e8671f20c"
-    },
-    {
       "path": "merge-contract/timing-settings.schema.json",
       "sha256": "fd72116b4e9802a625ff16985c619ebc45235cedc71647ad4c7b501f939ee8f2"
-    },
-    {
-      "path": "merge-contract/validation-results.json",
-      "sha256": "da93e1830cfcb30907490382a67b76f358ee37a55f3a10f0f8aa480cf77743d6"
     },
     {
       "path": "package.json",

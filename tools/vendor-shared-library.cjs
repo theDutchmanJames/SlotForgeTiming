@@ -14,7 +14,7 @@ const seen=new Set(),files=manifest.files.map(entry=>{
 });
 // Human coordination reports are not runtime or regression fixtures. Verify
 // their upstream bytes above, but omit them from the distributable manifest.
-const coordination=name=>name.startsWith('merge-contract/')&&name.endsWith('.md');
+const coordination=name=>name.startsWith('merge-contract/')&&(name.endsWith('.md')||name.endsWith('-results.json')||name.endsWith('/audit-evidence.json'));
 for(const {name,bytes}of files){if(coordination(name))continue;const file=path.join(target,name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,bytes);}
 manifest.upstreamManifestSha256=crypto.createHash('sha256').update(sourceManifest).digest('hex');
 manifest.files=manifest.files.filter(entry=>!coordination(entry.path));
