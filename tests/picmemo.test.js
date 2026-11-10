@@ -182,7 +182,7 @@ const big1 = 'data:image/png;base64,' + b64(3000), big2 = 'data:image/jpeg;base6
 }
 { // the app turns it on, before it draws anything
   const app = fs.readFileSync(R + 'renderer/app.js', 'utf8'), wid = fs.readFileSync(R + 'renderer/widgets.js', 'utf8'), idx = fs.readFileSync(R + 'renderer/index.html', 'utf8');
-  const on = app.indexOf('PicMemo.setLinks(true)'), live = app.indexOf("location.hash === '#live'"), render = on + app.slice(on).search(/  render\(\);\r?\n/);
+  const on = app.indexOf('PicMemo.setLinks(true)'), live = app.indexOf("location.hash === '#live'"), render = on + app.slice(on).search(/  (?:await )?render\(\);\r?\n/);
   say('app.js switches the links on at the start, for the race window and for the second screen (before the #live branch and before anything is drawn)', on > 0 && live > on && render > live);
   say('the start lights ask for the link of each picture', /<image class="\$\{cls\}" href="\$\{esc\(link\(src\)\)\}"/.test(wid) && /const link = src => \(PM && typeof PM\.link === 'function' \? PM\.link\(src\) : src\)/.test(wid));
   say('picmemo.js is loaded before widgets.js', idx.indexOf('picmemo.js') > 0 && idx.indexOf('picmemo.js') < idx.indexOf('src="widgets.js"'));
