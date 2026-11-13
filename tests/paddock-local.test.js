@@ -71,7 +71,7 @@ for(const kind of ['json','sqlite']){
 test('discovery rejects non-loopback descriptors, extra fields and untrusted paths without exposing credentials',async t=>{
  const descriptor={format:'slotforge-local-library',version:1,instanceId:'x',pid:1,address:'http://127.0.0.1:51000',token:'x'.repeat(43),databaseId:'db',name:'Library'};
  assert.equal(D.descriptor(descriptor),descriptor);for(const bad of [{address:'http://192.168.1.2:51000'},{address:'http://localhost:51000'},{address:'http://127.0.0.1:51000/'},{token:'short'},{extra:true},{databaseId:null},{instanceId:123}])assert.throws(()=>D.descriptor({...descriptor,...bad}),/Invalid/);
- const dir=fs.mkdtempSync(path.join(os.tmpdir(),'timing-discovery-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));const file=path.join(dir,key);fs.writeFileSync(file,JSON.stringify(descriptor));fs.writeFileSync(path.join(dir,'ignored.tmp'),'not json');
+ const dir=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'timing-discovery-')));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));const file=path.join(dir,key);fs.writeFileSync(file,JSON.stringify(descriptor));fs.writeFileSync(path.join(dir,'ignored.tmp'),'not json');
  const entries=await D.scan({folder:dir,platform:'win32',checkWindows:async()=>{}});assert.equal(entries.length,1);
  await assert.rejects(D.scan({folder:dir,platform:'win32',checkWindows:async()=>{throw Error('Unprotected');}}),/Unprotected/);
  fs.writeFileSync(file,'x'.repeat(8193));assert.deepEqual(await D.scan({folder:dir,platform:'win32',checkWindows:async()=>{}}),[]);
