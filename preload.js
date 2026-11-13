@@ -1,6 +1,8 @@
 // The only bridge between the app window and the database.
 // It carries the database, the live race, the Trackmate permission list and the import, export and backup files.
 const { contextBridge, ipcRenderer, webFrame } = require('electron');
+const thumbnailListeners=new Set();
+ipcRenderer.on('library:thumbnail-job',(_e,job)=>thumbnailListeners.forEach(fn=>fn(job)));
 const listeners = { static: new Set(), push: new Set(), command: new Set(), resync: new Set() };
 ipcRenderer.on('live:command', (_e, c) => listeners.command.forEach(f => f(c)));
 ipcRenderer.on('live:static', (_e, s) => listeners.static.forEach(f => f(s)));
@@ -49,6 +51,9 @@ async function editorSave(operation,channel,...values){
 }
 
 contextBridge.exposeInMainWorld('api', {
+  onThumbnailJob:fn=>{thumbnailListeners.add(fn);},
+  thumbnailReady:()=>ipcRenderer.send('library:thumbnail-ready'),
+  thumbnailResult:(id,data)=>ipcRenderer.send('library:thumbnail-result',id,data),
   paddockStatus: () => call('paddock:status'),
   libraryStatus:()=>call('library:status'),
   libraryCar:id=>call('library:car',id),

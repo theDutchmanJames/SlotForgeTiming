@@ -17,6 +17,7 @@ function wrap(base,client){
  const Fields=require('./shared-library-fields'),classes=()=>Fields.classes(base,client);
  const Reads=require('./shared-library-reads');
  client.localMatches=async rows=>Object.fromEntries((await boundedMap(rows,async r=>r.sourceId===client.installationId&&await base.get('sessions',r.sessionId)?[JSON.stringify([r.sourceId,r.sessionId]),r.sessionId]:null)).filter(Boolean));
+ const catalogueFlights=new Map();
  const mapped=async(car,original,cl)=>{const binding=await client.currentSettings(car.id);const row=projection(car,{localId:binding?.localCarId||client.localId(car.id),original:{...original,...binding?.effective,...await Fields.hydrate(client,car)},classes:cl||await classes()});if(binding)row.sharedLibrary.settingsBinding={bindingToken:binding.bindingToken,revision:binding.revision,mergeRevision:binding.mergeRevision};return row;};
  const adapter={
   async customFields(entity){return entity==='slotcars'?Fields.definitions(client):base.customFields(entity);},
@@ -31,17 +32,29 @@ function wrap(base,client){
   async get(entity,id){if(entity==='raceclasses')return (await classes()).find(c=>c.id===id)||null;if(entity!=='slotcars')return base.get(entity,id);const [car,extra]=await Promise.all([client.currentCar(id,{includeMedia:true}),client.original(id,{omitMedia:true})]);const row=await mapped(car,extra?.value);return {...row,...(client.aliases.has(id)?{id}:{}),sharedLibrary:{...row.sharedLibrary,carId:car.id,revision:car.revision,archived:car.archived,databaseId:car.databaseId,recoveryId:car.recoveryId,extrasRevision:extra?.revision||0}};},
   async catalogue(entity,options={}){
    if(entity!=='slotcars')return base.catalogue(entity,options);
+   const key=JSON.stringify(options);if(catalogueFlights.has(key))return catalogueFlights.get(key);
+   const job=adapter.cataloguePage(entity,options);catalogueFlights.set(key,job);
+   try{return await job;}finally{catalogueFlights.delete(key);}
+  },
+  async cataloguePage(entity,options={}){
+   if(entity!=='slotcars')return base.catalogue(entity,options);
    const {query,limit,cursor}=C.options(entity,options);
    if(cursor&&(cursor.query!==query||!Number.isSafeInteger(cursor.offset)||cursor.offset<0))throw Error('Invalid shared catalogue cursor.');
-   let page;try{page=await client.catalogue({search:query,limit,offset:cursor?.offset||0,...(cursor?{token:decode(cursor.revision)}:{})});}catch(e){if(['QUERY_CHANGED','SNAPSHOT_CHANGED'].includes(e.code))throw C.stale();throw e;}
-   const cl=await classes(),items=await boundedMap(page.cars,async car=>{const original=await client.original(client.localId(car.id),{omitMedia:true});return {record:await mapped(car,original?.value,cl),hasPicture:!!car.hasPicture,galleryCount:car.galleryCount||0};});
+   let page;try{page=await client.handle.catalogueOverview({search:query,limit,offset:cursor?.offset||0,...(cursor?{token:decode(cursor.revision)}:{})});}catch(e){if(['QUERY_CHANGED','SNAPSHOT_CHANGED'].includes(e.code))throw C.stale();throw e;}
+   const cl=await classes(),definitions=new Map(page.definitions.map(f=>[f.id,f.legacy?.sourceId===client.installationId?f.legacy.fieldId:f.id]));
+   const items=page.cars.map(car=>{
+    const binding=require('./shared-library-merges').settings(car.binding,{databaseId:page.token.id,recoveryId:page.token.epoch,sourceId:client.installationId,carId:car.id});
+    const original={...car.original,...binding.effective,custom:Object.fromEntries(Object.entries(car.custom).map(([k,v])=>[definitions.get(k)||k,v])),serviceDate:car.service.lastServicedAt||'',servicesDone:car.service.servicesDone,lapsDriven:car.service.lapsDriven,lapsSinceService:car.service.lapsSinceService};
+    const record=projection(car,{localId:binding.localCarId,original,classes:cl});record.sharedLibrary.settingsBinding={bindingToken:binding.bindingToken,revision:binding.revision,mergeRevision:binding.mergeRevision};
+    return {record,hasPicture:car.hasPicture,galleryCount:car.galleryCount};
+   });
    await consistent(()=>client.catalogue({limit:1,token:page.token}));
    return {items,revision:encode(page.token),next:page.nextOffset===null?null:{entity,query,revision:encode(page.token),offset:page.nextOffset,key:'shared',id:page.cars.at(-1).id}};
   },
   async cataloguePicture(entity,id,revision){
    if(entity!=='slotcars')return base.cataloguePicture(entity,id,revision);
    // Validate the catalogue token on both sides of the media read.
-   try{const token=decode(revision);await client.catalogue({limit:1,token});const car=await client.car(id,{includeMedia:true});await client.catalogue({limit:1,token});return car.picture||null;}catch(e){if(['QUERY_CHANGED','SNAPSHOT_CHANGED'].includes(e.code))throw C.stale();throw e;}
+   try{const token=decode(revision);await client.catalogue({limit:1,token});const picture=await client.handle.thumbnail({carId:client.canonicalId(id),token});await client.catalogue({limit:1,token});return picture||null;}catch(e){if(['QUERY_CHANGED','SNAPSHOT_CHANGED'].includes(e.code))throw C.stale();throw e;}
   },
   async referencePage(entity,options={}){
    if(entity!=='slotcars')return base.referencePage(entity,options);

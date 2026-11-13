@@ -6,10 +6,6 @@
       "sha256": "826329847703bd31eae3fb19f2d581ecfe070f59ba3e2c18cdc382eb5c092ad1"
     },
     {
-      "path": "LICENSE",
-      "sha256": "8fd53d6f94e68acbbdab8552ecb9ef299230834d0e4a1671446dd879bff1ba5a"
-    },
-    {
       "path": "engine/renderer/app.js",
       "sha256": "cc7c632987ae1521c8d7c9c93f3bf759aed2a9f861f0bbd91a999adae84c3065"
     },
@@ -303,11 +299,11 @@
     },
     {
       "path": "engine/src/car-merge-settings-store.cjs",
-      "sha256": "d6ef82600b443ee81e3aa16d59991634e0808599e7e322acb18a0cf3487af32c"
+      "sha256": "74eac46df5b5b5541d1c2edbb5561db0565bf7c626678bfa55d1f1839dd33f91"
     },
     {
       "path": "engine/src/car-merge-settings.cjs",
-      "sha256": "d9fb88437e4397521818075a2a867cce0f4bd9a920b113eb595fda630167e47f"
+      "sha256": "0d2c3ee9e3fd91ceb0c97287fe391992fdd1fdd7428450a1d3a4b9d6bfec16d4"
     },
     {
       "path": "engine/src/car-merge-storage.cjs",
@@ -598,6 +594,10 @@
       "sha256": "fae9bd343de1a73d9018712e0a3372e76e7988d68d3cc7e64dbfeb1e209c1778"
     },
     {
+      "path": "engine/src/shared-catalogue.cjs",
+      "sha256": "9c427f916b9dd889c6157950bd5ba1f0a90839a6dcbd2eb969e8ef05a2562cc5"
+    },
+    {
       "path": "engine/src/shared-history-read.cjs",
       "sha256": "739c24a48d28704020043d3b3ba2a3538d350a56ad0d9d2831ccfba1fc72b459"
     },
@@ -623,11 +623,11 @@
     },
     {
       "path": "engine/src/shared-library-engine.cjs",
-      "sha256": "f4ef417f15b993bb5d95561c1be2cf8c51b03334d5fed15d400d08ccfe9ec76c"
+      "sha256": "acaa4ccd30d499eaa1fd0b718a9752a912d0d7934477fec06281b1a488c6077a"
     },
     {
       "path": "engine/src/shared-library-evidence.cjs",
-      "sha256": "c20f3e861c08984e126f114eddf5e148735820617516e32966f8ecfa23e145cb"
+      "sha256": "31565584296e9ed6a73b916c18dd771992a242dbaeba53007e851c98e98e6201"
     },
     {
       "path": "engine/src/shared-library-key.cjs",
@@ -663,7 +663,7 @@
     },
     {
       "path": "engine/src/shared-library-service.cjs",
-      "sha256": "21089e039cd83f7fc476c9cfb55e1fa911256d5c59743c72a7365e79fb1ee50d"
+      "sha256": "3bdc14b951e1b9a5a56a84f3e84d1f2880d9474c306fcecda552dc0a6aa5e5bf"
     },
     {
       "path": "engine/src/shared-library-timing-read.cjs",
@@ -671,7 +671,11 @@
     },
     {
       "path": "engine/src/shared-library-worker.cjs",
-      "sha256": "46d8e926f0dd5250b2d25cf6e034c55eeda4de64cb40a13648263495a0a0df2b"
+      "sha256": "e507b64704dcf4a3ee13287210aa0742099587a225a3fac9dd9bd24224d3c87e"
+    },
+    {
+      "path": "engine/src/shared-thumbnails.cjs",
+      "sha256": "319849c684b9928ad0bf26586a26d2b3c26c6379d7f53064845d12499f60d153"
     },
     {
       "path": "engine/src/snapshot-transfer.cjs",
@@ -806,6 +810,10 @@
       "sha256": "8ee4f90323d0e960a7793e6101a879799af3ed2be32128b5bdcf3c6a0354ae96"
     },
     {
+      "path": "engine/src/vendor/QRCode/index.js",
+      "sha256": "a0d045f8052da660ed9dd48f435292ea657c0f1fd201d1f3ac8288720c8974bd"
+    },
+    {
       "path": "engine/src/vendor/QRCode/QR8bitByte.js",
       "sha256": "3d395742d759e7629bb0f3bc2ed945613a4cebd0ab0fe45992280213ab7c7fbb"
     },
@@ -842,10 +850,6 @@
       "sha256": "1493a10d086658fc54156d11e1e93d4c796bacfe174676053927548a925ca324"
     },
     {
-      "path": "engine/src/vendor/QRCode/index.js",
-      "sha256": "a0d045f8052da660ed9dd48f435292ea657c0f1fd201d1f3ac8288720c8974bd"
-    },
-    {
       "path": "engine/src/view-context.cjs",
       "sha256": "db6ad2bc037bfecd146df8aec1fe66528d3ba89fddc3852e4c2367ac701eeecd"
     },
@@ -863,11 +867,19 @@
     },
     {
       "path": "index.cjs",
-      "sha256": "2ea01674600aa2e3fb388d1a0347c3268fba581ddb6f15555f5a06be3d5e62d4"
+      "sha256": "18d4c245eeb5c4a37c4c6ef7925f5b38a0c5a35b0901c067303458e44a1134f2"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "8fd53d6f94e68acbbdab8552ecb9ef299230834d0e4a1671446dd879bff1ba5a"
     },
     {
       "path": "merge-contract/contributions.schema.json",
       "sha256": "62cfee32de9b2f75a7147c46a8163b7d7972c40bed64cb978baac53126597f80"
+    },
+    {
+      "path": "merge-contract/fixtures.json",
+      "sha256": "db18920bfb5f877c129615adb7b55d93265be2e576044177b141d65a7676aa29"
     },
     {
       "path": "merge-contract/fixtures/legacy-optionals.json",
@@ -876,10 +888,6 @@
     {
       "path": "merge-contract/fixtures/timing-settings.json",
       "sha256": "7f06b579be610b716f9db47212e4d340ce6bcea24e6856998140a6fa66225996"
-    },
-    {
-      "path": "merge-contract/fixtures.json",
-      "sha256": "db18920bfb5f877c129615adb7b55d93265be2e576044177b141d65a7676aa29"
     },
     {
       "path": "merge-contract/identity.schema.json",
@@ -896,7 +904,17 @@
     {
       "path": "package.json",
       "sha256": "567cc51fa901205666a52ff7329cb0269933820fc109c4e1600ec5df6abaed77"
+    },
+    {
+      "path": "thumbnail-client.cjs",
+      "sha256": "6455299ee5558d28ea647cacd6135a97518c7c1c7229aef2829d3b72409c2613"
     }
   ],
-  "upstreamManifestSha256": "0e2d5af42b64fde61ac20b6ae19481a02ace08330c0e6bf0d04ef0ba36e3013c"
+  "upstreamManifestSha256": "0e2d5af42b64fde61ac20b6ae19481a02ace08330c0e6bf0d04ef0ba36e3013c",
+  "localExtensions": [
+    {
+      "id": "shared-thumbnails-v1",
+      "description": "Timing-reviewed stored preview cache, bounded worker scheduling and compact catalogue reads; Paddock adoption handoff supplied separately."
+    }
+  ]
 }

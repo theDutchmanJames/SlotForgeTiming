@@ -58,8 +58,7 @@
     };
   }
   // ---- DS Electronics lap counters ----
-  // DS200/300 protocol research is kept outside the app. This page remains capture-only
-  // until decoding, device lifecycle and race integration have been validated together.
+  // Only DS200/300 have a timing decoder. Other variants retain passive capture.
   // The models are those of Race Coordinator's DS setup screen.
   const DS_TYPES = [['ds030', 'DS-030'], ['ds200', 'DS-200'], ['ds200b', 'DS-200b'], ['ds300', 'DS-300'], ['ds300rc', 'DS-300 RC'], ['ds0045', 'DS-0045']];
   const dsTypeName = id => (DS_TYPES.find(t => t[0] === id) || ['', ''])[1];
@@ -131,7 +130,7 @@
   // ---- which timing hardware the app uses: one at a time ----
   // The setting timingHw is the choice. Before anything was chosen it follows what was set up: before the Arduino Sketch existed the only hardware was the Trackmate, so that stays the answer,
   // except when the virtual box is ticked, or a box is remembered and no Trackmate is.
-  const TIMING = [['none', 'None (keys or simulated cars)'], ['trackmate', 'Trackmate Interface'], ['arduino', 'Arduino Sketch'], ['parallel', 'Parallel Port'], ['phidget', 'Phidget Interface'], ['plugin', 'Plugin interface']];
+  const TIMING = [['none', 'None (keys or simulated cars)'], ['trackmate', 'Trackmate Interface'], ['arduino', 'Arduino Sketch'], ['parallel', 'Parallel Port'], ['phidget', 'Phidget Interface'], ['ds', 'DS Electronics (DS-200 / DS-300)'], ['plugin', 'Plugin interface']];
   const timingChosen = s => {
     s = s || {};
     if (TIMING.some(t => t[0] === s.timingHw)) return s.timingHw;

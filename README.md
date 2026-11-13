@@ -193,7 +193,7 @@ Choose the active interface in **App Settings → Timing Hardware**. One interfa
 | Arduino Sketch | SlotForge firmware for compatible Nano/Mega boards, sensors, pits, lights, relays and buttons. A virtual box is available for simulation. |
 | Parallel Port | Windows native LPT/compatible expansion hardware through a separately installed compatible InpOut driver. A USB printer adapter does not provide the required direct pin access. |
 | Phidget | Local USB on Windows 64-bit through the official Phidget22 libraries; digital, voltage and voltage-ratio sensor inputs, plus supported outputs. |
-| DS Electronics | Serial capture, model-specific settings guidance and saved-log diagnostics. Race timing is not implemented yet. |
+| DS Electronics | DS-200 (2 lanes) and DS-300 (up to 8 lanes) race timing, with capture diagnostics. Timing controls starts and resumes; no DS power control. Replay-tested; physical hardware verification is outstanding. Other DS models remain capture-only. |
 | oXigen Digital | Reserved interface page; not implemented yet. |
 | Plugin Interface | Separately installed timing drivers can provide sensors, track calls and supported power/light controls. |
 | No hardware | Keyboard/manual controls and simulated cars for trying the app. |

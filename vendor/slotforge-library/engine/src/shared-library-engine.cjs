@@ -108,6 +108,9 @@ async function call(store,options,method,input={}){
  if(method==='customDefinitionWrite')return execute(store,options,method,input,()=>require('./shared-library-custom.cjs').definition(store,input));
  if(method==='serviceRead')return require('./shared-library-service.cjs').read(store,input);
  if(method==='serviceWrite')return execute(store,options,method,input,()=>require('./shared-library-service.cjs').prepare(store,options,input));
+ if(method==='thumbnailRead')return require('./shared-thumbnails.cjs').read(store,options.thumbnailRoot,input);
+ if(method==='thumbnailStore')return require('./shared-thumbnails.cjs').storeResult(options.thumbnailRoot,input);
+ if(method==='catalogueOverview')return require('./shared-catalogue.cjs').read(store,options,input);
  if(method==='catalogue')return Q.read(store,input.token,r=>{if(input.offset&&!input.token)fail('SNAPSHOT_REQUIRED','Continue with the listing token.');const p=r.list('cars',{offset:input.offset||0,limit:input.limit||50,query:input.search||'',sort:input.sort||'name',archived:input.archived??false});return {...p,cars:p.rows.map(car=>({...C.project(car),hasPicture:!!(require('./lazy-assets.cjs').property(car,'picture')||car.picture),galleryCount:car.photos?.length||0})),rows:undefined};}).value;
  if(method==='car')return Q.read(store,null,r=>{const car=r.one('cars',input.id);if(!car)fail('CAR_NOT_FOUND','Car no longer exists.');return {databaseId:r.id,recoveryId:r.epoch,...C.project(car),...(input.includeMedia?{picture:car.picture||'',photos:car.photos||[]}:{})};}).value;
  if(method==='profile'){Q.read(store,null,r=>require('./car-merge-query.cjs').assertWritable(r,input.carId));return T.profile(store,input.carId,{includePicture:!!input.includePicture});}

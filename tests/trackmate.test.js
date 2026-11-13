@@ -115,7 +115,7 @@ function rig(jitter) {
 { // how the race screen listens to it (race.js): the pit hold time of the setup is the hold time of the link, a stop is a stop of the engine counted from the crossing, a token session has no pit
   const race = require('fs').readFileSync(require('path').join(__dirname, '..', 'renderer', 'race.js'), 'utf8');
   ok('1.51.1: the race gives the link the pit hold time of its setup when the Trackmate is the timing hardware', /if \(hwUse === 'trackmate'\) Trackmate\.link\.setHold\(pitMs\);/.test(race) && /pitMs = fuelCfg\.pitHold/.test(race));
-  ok('...a crossing of the Trackmate is counted at once, and the tyre penalty that may be due waits for the stop (held)', /if \(i >= 0\) crossCar\(i, e\.at, true\); \}/.test(race) && /eng\.cross\(i, tAt, held \? \{ holdDue: true \} : undefined\)/.test(race));
+  ok('...a crossing of the Trackmate is counted at once, and the tyre penalty that may be due waits for the stop (held)', /if \(i >= 0\) crossCar\(i, e\.at, true\); \}/.test(race) && race.includes('eng.cross(i, tAt, measurement || (held ? { holdDue: true } : undefined))'));
   ok('...a block starts the stop of the engine at the time of the crossing, without a second crossing (crossed), and never later than now', /eng\.block\(i, Math\.min\(at, now\(\)\), true\)/.test(race));
   ok('...a free ends it, at the time the sensor says (never later than now)', /eng\.unblock\(i, at !== undefined \? Math\.min\(at, now\(\)\) : now\(\)\)/.test(race));
   ok('...a token session has no pit: a stand on the sensor does nothing there', /e\.type === 'block' \|\| e\.type === 'free'\) \{[^}]*i >= 0 && !tokens\) \{ if \(e\.type === 'block'\) holdCar\(i, e\.at\); else unblockCar\(i, e\.at\); \}/.test(race));

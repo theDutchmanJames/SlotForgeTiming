@@ -166,7 +166,8 @@ const startupTask=app.whenReady().then(async () => {
     const descriptor=require('./integration/timing-legacy/index.cjs').describe(app.getPath('userData'));
     const sourceId=await paddock.storage.localRead({kind:'source'});
     if(!sourceId&&!descriptor?.originKey)throw Error('Cannot identify this Timing profile for shared library adoption.');
-    const libraryOptions={installationId:sourceId||('legacy-'+descriptor.originKey),storage:paddock.storage,appData:app.getPath('appData'),originKey:descriptor?.originKey};
+    const thumbnailEncoder=require('./shared-thumbnail-encoder')({ipcMain,getMain:()=>mainWin});
+    const libraryOptions={thumbnailEncoder,installationId:sourceId||('legacy-'+descriptor.originKey),storage:paddock.storage,appData:app.getPath('appData'),originKey:descriptor?.originKey};
     sharedLibrary=await require('./shared-library-client').SharedLibraryClient.open(libraryOptions);
     const recovery=require('./shared-library-restore');
     const pendingLibraryRestore=recovery.read(app.getPath('userData'));

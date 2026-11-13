@@ -337,8 +337,11 @@
       if (heldPits && (c.pitHold || c.pitRearm)) return false;
       const fuelOn = F.on && systemOn('fuel');
       wxFlush(i, t, true);
-      if (!c.started) { c.started = true; c.last = t; return false; } // the car starts just behind the line: its first crossing only starts the timing
-      const dt = t - c.last, lapStart = c.last;
+      if (!c.started || (o && o.startOnly === true)) { c.started = true; c.last = t; return false; } // the car starts just behind the line: its first crossing only starts the timing
+      // DS supplies a measured duration only for consecutive, uninterrupted crossings.
+      // Keep crossing timestamps on Timing's clock for flags, deadlines and pit services.
+      const measured = o && o.measuredMs;
+      const dt = Number.isFinite(measured) && measured > 0 ? measured : t - c.last, lapStart = c.last;
       if (dt < minLap) return false;
       const ruleInput=rulePlugin?Rules.context(c,dt,{lap:c.laps.length+1,totalMs:t-R.t0,wet:+(R.wxState==='wet'),yellow:+(R.flag==='yellow'),pit:+!!c.outlap,valid:+(!c.outlap&&!c.resumed&&!c.redInterrupted&&!(maxLap>0&&dt>maxLap))}):null;
       const ruleFuel=rulePlugin?Rules.multiplier(rulePlugin,'fuelMultiplier',ruleInput):1,ruleTyres=rulePlugin?Rules.multiplier(rulePlugin,'tyreMultiplier',ruleInput):1;

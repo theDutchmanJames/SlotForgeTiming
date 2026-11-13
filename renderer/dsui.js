@@ -1,6 +1,5 @@
-// App Settings > Timing Hardware > DS Electronics: the listening version.
-// Protocol research is separate from the app. This page only listens: it connects to the unit's COM port, writes down everything that arrives
-// (with the time) and saves that as a file, so the format can be worked out. It never sends anything to the unit, and a race does not use it yet.
+// DS-200/DS-300 race timing and passive capture diagnostics for other DS models.
+// No protocol commands are sent. Timing remains the race controller.
 // Setting kept: dsType (the model that was chosen). The serial settings are only kept while the app runs.
 let dsc = { dev: null, info: {}, open: false, lines: [], t0: 0, bytes: 0, pieces: 0, last: null, cfg: Hardware.serialConfig(), gen: 0, omitted: 0, message: '', capture: null };
 
@@ -16,8 +15,8 @@ const dscLog = bytes => { const ms = performance.now() - dsc.t0; for (let i = 0;
 const dscNote = text => dscPush('          ' + text);
 const dscMsg = t => { dsc.message = t; const m = document.getElementById('ds-msg'); if (m) m.textContent = t; };
 const dscStatsText = () => !dsc.open ? (dsc.pieces ? `Last connection: ${dsc.bytes} byte(s) received in ${dsc.pieces} piece(s).` : '')
-  : dsc.pieces ? `Received: ${dsc.bytes} byte(s) in ${dsc.pieces} piece(s). The last one came ${(dsc.last / 1000).toFixed(1)} s after connecting.` : 'Connected. Nothing has arrived yet: trigger a sensor of the unit, or press a button on it.';
-const dscStats = () => { const e = document.getElementById('ds-stats'); if (e) e.textContent = dscStatsText(); };
+  : dsc.pieces ? `Received: ${dsc.bytes} byte(s) in ${dsc.pieces} piece(s). The last one came ${(dsc.last / 1000).toFixed(1)} s after connecting.` : 'Connected. No data yet: check the serial settings and pass a car over a sensor.';
+const dscStats = () => { const e = document.getElementById('ds-stats'); if (e) e.textContent = dscStatsText() + (DsTiming.link.connected ? ' Decoded packets: ' + DsTiming.link.packets + '; rejected frames: ' + DsTiming.link.rejected + '.' : ''); };
 const dscRedraw = () => { const b = document.getElementById('hwbox'); if (b && document.getElementById('ds-log') && typeof renderDsSettings === 'function') renderDsSettings(b); };
 
 // A read error (a wrong speed gives framing errors, over and over): the same error in a row is one line with a count
@@ -26,7 +25,7 @@ function dscError(msg) {
   if (e && e.msg === msg && lastLine === e.text) { e.n++; e.text = `${e.at}  ERROR  ${msg}  (${e.n} times)`; dsc.lines[dsc.lines.length - 1] = e.text; dscRefresh(); return; }
   const at = dscSecs(); dsc.err = { msg, n: 1, at, text: `${at}  ERROR  ${msg}` }; dscPush(dsc.err.text);
 }
-function dscReceive(bytes) { dsc.bytes += bytes.length; dsc.pieces++; dsc.last = performance.now() - dsc.t0; dscLog(bytes); }
+function dscReceive(bytes) { dsc.bytes += bytes.length; dsc.pieces++; dsc.last = performance.now() - dsc.t0; dscLog(bytes); DsTiming.link.feed(bytes); }
 
 // the control lines (CTS, DSR, DCD, RI) are written to the log whenever one of them changes: some units signal with them
 async function dscPoll() {
@@ -55,7 +54,7 @@ async function dscOpenNow() {
   try {
     dsc.t0 = performance.now();
     await dev.open({ baudRate: c.baud, dataBits: c.data, stopBits: c.stop, parity: c.parity, flowControl: 'none' }); opened = true;
-    dsc.open = true; dsc.gen++; dsc.capture = { type, info, cfg: { ...c } }; dsc.err = null;
+    dsc.open = true; dsc.gen++; DsTiming.link.setConnected(true, type); dsc.capture = { type, info, cfg: { ...c } }; dsc.err = null;
     dscNote(`-- connected to ${Hardware.dsTypeName(type)} / ${Hardware.describe('serial', info)} at ${c.baud} baud, ${c.data} data bits, parity ${c.parity}, ${c.stop} stop bit(s), DTR ${c.dtr ? 'on' : 'off'}, RTS ${c.rts ? 'on' : 'off'} --`);
     try { await dev.setSignals({ dataTerminalReady: c.dtr, requestToSend: c.rts }); } catch (x) { dscError('Could not set DTR/RTS: ' + x.message); }
     dscPoll();
@@ -70,19 +69,19 @@ async function dscOpenNow() {
         }
       } catch (x) { dscError('Read failed: ' + x.message); }
       if (dsc.open) {
-        dsc.open = false; dsc.gen++; dscClosing = true;
+        dsc.open = false; dsc.gen++; DsTiming.link.setConnected(false); dscClosing = true;
         dscNote('-- receive stream ended --');
         try { if (await dscReleasePort(dev)) dscNote('-- connection closed --'); }
         finally { dscClosing = false; dscRedraw(); }
       }
     })();
     return true;
-  } catch (x) { dsc.open = false; dsc.gen++; if (opened) await dscReleasePort(dev); if (!dsc.needsClose) dscMsg('Could not connect: ' + x.message + ' (is another program using this port? Close PC Lap Counter, Race Coordinator and other timing programs first.)'); return false; }
+  } catch (x) { dsc.open = false; dsc.gen++; DsTiming.link.setConnected(false); if (opened) await dscReleasePort(dev); if (!dsc.needsClose) dscMsg('Could not connect: ' + x.message + ' (is another program using this port? Close PC Lap Counter, Race Coordinator and other timing programs first.)'); return false; }
 }
 async function dscClose() {
   if (dscOpening || dscClosing || (!dsc.open && !dsc.needsClose)) return;
   const dev = dsc.needsClose || dsc.dev;
-  dscClosing = true; dsc.open = false; dsc.gen++; dscRedraw();
+  dscClosing = true; dsc.open = false; dsc.gen++; DsTiming.link.setConnected(false); dscRedraw();
   try { if (dsc.reader) await dsc.reader.cancel().catch(() => {}); if (dsc.loop) await dsc.loop; if (await dscReleasePort(dev)) dscMsg(''); } catch (x) { dsc.needsClose = dev; dscMsg('Could not close the port: ' + x.message + '. Use Retry disconnect.'); }
   finally { dscClosing = false; dsc.reader = null; dsc.loop = null; }
   dscNote(`-- ${dsc.needsClose ? 'receive stopped; port close needs retry' : 'disconnected'}: ${dsc.bytes} byte(s) received in ${dsc.pieces} piece(s) --`);
@@ -118,14 +117,15 @@ function renderDsSettings(box) {
     <p class="muted">The page shows the last ${DSC_SHOWN} lines and saves up to ${DSC_KEPT}. Long reads are split into 64-byte display rows; rows are not protocol packets. Omitted lines are reported in the saved file.</p>`;
   const checkBody = `<p class="muted">Check a saved SlotForge DS log for valid hex data and byte counts without connecting hardware. This checks the capture file, not DS protocol compatibility. It does not replay a race or send data to a port. PC Lap Counter debug files must be reviewed separately.</p><label>Choose capture log <input id="ds-check" type="file" accept=".txt,text/plain" style="max-width:100%"></label><p id="ds-check-result" role="status" class="muted"></p>`;
   box.innerHTML = HardwarePage.html({
-    key:'ds',title:'DS Electronics',icon:'⌁',eyebrow:'Interface capture',
-    pills:[type ? H.dsTypeName(type) : 'Choose a model','USB / serial','Capture only'],
-    connected:dsc.open,status:dsc.open ? 'Listening' : dsc.needsClose ? 'Close needs retry' : 'Not connected',railTitle:'Connect and capture',
-    description:'<strong>Listening version.</strong> Capture what your DS lap counter sends so its data format can be identified. The app sends nothing to the unit as protocol commands, and a race does not use the unit yet. Connect its serial output directly or through a USB-to-serial adapter.',
-    helpTitle:'Not race timing yet',help:'Record sensor passes and button presses with notes. Save the capture so the protocol can be checked. No laps or race results are recorded from this interface.',
+    key:'ds',title:'DS Electronics',icon:'⌁',eyebrow:'Timing interface',
+    pills:[type ? H.dsTypeName(type) : 'Choose a model','USB / serial',DsTiming.supported(type) ? 'Race timing · physical verification pending' : 'Capture only'],
+    connected:dsc.open,status:dsc.open ? (DsTiming.supported(type) ? 'Connected for timing' : 'Listening') : dsc.needsClose ? 'Close needs retry' : 'Not connected',railTitle:'Connect and test',
+    description:'<strong>DS-200 and DS-300 race timing.</strong> Connect the serial output directly or through a USB-to-serial adapter, then select DS Electronics as the timing hardware in use. Other DS models remain capture-only. Protocol replay tests passed; physical hardware verification is still outstanding.',
+    helpTitle:'Timing controls the race',help:'Start and resume in Timing. DS stop, pause, abort or a connection fault pauses the race for review. Timing does not control DS track power. Use manual pit controls: DS packets do not report a held pit sensor.',
     sections:[
       {id:'connection',title:'Model and connection',icon:'⌁',note:type ? H.dsTypeName(type) + ' · choose its port' : 'Choose the unit and COM port',ready:dsc.open,open:true,body:connectionBody},
       {id:'serial',title:'Serial settings',icon:'⚙',note:c.baud + ' baud · ' + c.data + ' data bits · ' + c.parity + ' parity',body:serialBody},
+      {id:'racing',title:'Race timing',icon:'⚑',note:'DS-200: 2 lanes · DS-300: up to 8 lanes',open:true,body:'<ol class="muted"><li>Choose DS-200 or DS-300, set the serial speed to match the box and connect. Select DS Electronics in <em>Timing hardware in use</em>.</li><li>Before racing, check every lane using the live capture. Lane 1 on the DS is lane 1 in Timing, and so on. A connected port alone does not confirm valid packets.</li><li>Prepare the DS box to report crossings, then start the race in Timing. DS start/resume buttons never start Timing automatically.</li><li>First-crossing markers start lap measurement and never set a lap record. Consecutive laps use the DS measured duration. The first lap after a pause uses Timing’s pause-adjusted clock; race elapsed time stays on Timing’s clock.</li><li>A lost connection, counter reset or missing packet pauses Timing for review. No missing laps are invented. Check the results before resuming manually. Stop physical cars separately: Timing sends no DS power commands.</li></ol>'},
       {id:'guide',title:'How to make a capture',icon:'☷',note:'A guided check · about 5 minutes',body:guideBody},
       {id:'monitor',title:'Live capture',icon:'≋',note:'Add notes, inspect data and save a log',ready:dsc.open,body:monitorBody},
       {id:'check',title:'Check saved capture',icon:'✓',note:'Offline byte-count and format check',body:checkBody}

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.2.1 — 2026-11-13
+
+- Store and reuse shared car thumbnails for catalogue cards; load the full picture for car details.
+- Reduce catalogue loading work and avoid overlapping requests exhausting the shared-library queue.
+- Enable DS-200 and DS-300 timing through their serial interface. Timing controls starts, pauses, race systems and results; DS start signals never start a race automatically.
+- Protect DS lap handling against duplicate/conflicting packets, counter gaps, buffered rejected laps, partial packets across pauses, and inactive lanes.
+- Reset DS counter tracking for new Time Token stints and ignore unpaid lanes. Keep disconnect handling working if an observer fails.
+- Expand protocol, race-system, catalogue and desktop regression coverage. Physical DS hardware qualification remains outstanding.
+
+
 ## 2.2.0 — 2026-11-10
 
 ### Shared car library and racing history

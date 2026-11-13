@@ -2,7 +2,7 @@ const {test}=require('node:test'),assert=require('node:assert/strict'),vm=requir
 const H=require('../renderer/hardware');
 const ui=fs.readFileSync(require.resolve('../renderer/dsui'),'utf8');
 function harness(){
-  const timers=[],ctx=vm.createContext({Hardware:H,performance:{now:()=>1250},document:{getElementById:()=>null},setTimeout:fn=>{timers.push(fn);return timers.length;},state:{settings:{dsType:'ds300'}}});
+  const timers=[],ctx=vm.createContext({Hardware:H,DsTiming:require('../renderer/dstiming'),performance:{now:()=>1250},document:{getElementById:()=>null},setTimeout:fn=>{timers.push(fn);return timers.length;},state:{settings:{dsType:'ds300'}}});
   vm.runInContext(ui,ctx);
   return {ctx,timers,run:s=>vm.runInContext(s,ctx)};
 }
@@ -15,7 +15,7 @@ test('reference speeds preserve existing defaults and distinguish 56000 from 576
   assert.equal(H.dsGuidance('ds300').baud,56000);
   for(const id of ['ds0045','ds200b','ds300rc','unknown'])assert.equal(H.dsGuidance(id).baud,null);
   assert.equal(H.dsTypeName('ds0045'),'DS-0045');
-  assert(!H.TIMING.some(([id])=>id.startsWith('ds')),'capture additions do not enable an unverified race driver');
+  assert(H.TIMING.some(([id])=>id==='ds'),'DS-200 / DS-300 timing can be selected');
 });
 test('offline check accepts binary payloads and legacy captures without treating notes as bytes',()=>{
   const bytes=Array.from({length:256},(_,i)=>i),rows=[];

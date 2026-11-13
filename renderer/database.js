@@ -47,7 +47,7 @@ async function renderDatabase(target = view) {
 }
 
 async function drawSub() {
-  renderTabs(byId('subtabs'), SUBS, state.sub, id => { state.sub = id; drawSub(); });
+  renderTabs(byId('subtabs'), SUBS, state.sub, id => { if(state.sub===id)return;state.sub = id; drawSub(); });
   const box = byId('subview');
   box.onclick = null; box.onchange = null; // (the page that was here before left its click handlers on this element; Results and Records draws in a box inside it and would get them too)
   if (state.sub === 'results') {
@@ -219,10 +219,23 @@ function loadCataloguePictures(box,entity,revision,current) {
   box.querySelectorAll('[data-catalogue-picture]').forEach(img=>observer.observe(img));
   return ()=>{stopped=true;queue.length=0;observer.disconnect();if(cataloguePictureWake===pump)cataloguePictureWake=()=>{};};
 }
-async function mountManager(box, e) {
+const managerLoads=new WeakMap();
+function mountManager(box,e){
+ const prior=managerLoads.get(box);if(prior&&prior.entity===e&&prior.run===subRun)return prior.promise;
+ const entry={entity:e};const job=mountManagerPage(box,e);entry.run=subRun;
+ entry.promise=job.catch(error=>{
+  if(entry.run!==subRun||box.isConnected===false)return;
+  box.innerHTML='<p role="alert">'+esc(error.message||'The database could not be loaded.')+'</p><button class="btn" data-retry-catalogue>Retry</button>';
+  box.onclick=event=>{if(event.target.closest('[data-retry-catalogue]'))mountManager(box,e);};
+ }).finally(()=>{if(managerLoads.get(box)===entry)managerLoads.delete(box);});
+ managerLoads.set(box,entry);return entry.promise;
+}
+async function mountManagerPage(box, e) {
   const run = ++subRun;
   stopCataloguePictures();
   manager = { box, e };
+  box.onclick=null;box.onchange=null;box.onkeydown=null;
+  box.innerHTML='<p role="status" aria-live="polite">Loading '+esc(state.schema[e]?.plural||'database')+'…</p>';
   let s = state.schema[e];
   const direct=e==='slotcars'&&api.libraryStatus?(await api.libraryStatus()).available:false;
   if(direct&&!s.fields.some(f=>f.key==='name'))s={...s,fields:[{key:'name',label:'Car name',type:'text'},...s.fields]};
