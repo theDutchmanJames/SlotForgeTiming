@@ -150,7 +150,7 @@ async function renderRace() {
   } else if (tokenSession) eng = mk(Array.from({ length: lanes }, (_, i) => ({ lane: i, ...(people[i] || { driverId: '', carId: '', driverName: 'Guest', carName: '', carPicture: '', carScale: '', nickname: '', callsign: '', flag: '', avatar: '' }) }))); // every lane of the track can be sold, with or without a driver
   else eng = mk(people.map((p, i) => ({ lane: i, ...(season ? { participant: i } : {}), ...p }))); // (a race of a championship: the car knows who it is, as in a heat race, for a leaderboard that counts over the rounds)
 
-  if (live) { LiveCanvas.dispose(live.nodes); if (live.perfStop) live.perfStop(); if (live.fsView) live.fsView.close(); if (live.cardsOff) live.cardsOff(); document.removeEventListener('keydown', live.fsKey); live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); if (live.offTm) live.offTm(); if (live.pitSensors) live.pitSensors.off(); if (live.box) { live.box.off(); live.box = null; } if (live.ds) { live.ds.off(); live.ds = null; } if (live.parallel) { live.parallel.off(); live.parallel = null; } if (live.phidget) { live.phidget.off(); live.phidget = null; } if (live.plugin) { live.plugin.off(); live.plugin = null; } if (live.offTmStatus) live.offTmStatus(); if (live.offCmd) live.offCmd(); if (live.offResync) live.offResync(); clearTimeout(live.shareTimer); clearInterval(live.timers); clearInterval(live.breakTimer); (live.sim || []).forEach(clearTimeout); if (live.flushTokens) live.flushTokens(); document.removeEventListener('keydown', live.key); }
+  if (live) { LiveCanvas.dispose(live.nodes); if (live.perfStop) live.perfStop(); if (live.fsView) live.fsView.close(); if (live.cardsOff) live.cardsOff(); document.removeEventListener('keydown', live.fsKey); live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); if (live.offTm) live.offTm(); if (live.pitSensors) live.pitSensors.off(); if (live.box) { live.box.off(); live.box = null; } if (live.ds) { live.ds.off(); live.ds = null; } if (live.parallel) { live.parallel.off(); live.parallel = null; } if (live.plugin) { live.plugin.off(); live.plugin = null; } if (live.offTmStatus) live.offTmStatus(); if (live.offCmd) live.offCmd(); if (live.offResync) live.offResync(); clearTimeout(live.shareTimer); clearInterval(live.timers); clearInterval(live.breakTimer); (live.sim || []).forEach(clearTimeout); if (live.flushTokens) live.flushTokens(); document.removeEventListener('keydown', live.key); }
   // earlier laps on this track, for personal best / track record highlights and the record lap widget
   const base = { personal: new Map(), track: Infinity, trackName: '' };
   // laps removed from the records (but kept in their session) do not count here
@@ -348,7 +348,7 @@ async function renderRace() {
     ...(live.phase === 'between' && !heat.picksDone() ? { picking: true } : {}), ...(live.breakLeft > 0 ? { breakLeft: live.breakLeft } : {}) } : null);
   // the drivers of the heat that is next, for the announcer to read out (with the lanes they race in)
   const lineupNow = () => (heats && heat.hasNext() ? heat.entries().map(e => ({ lane: heat.isFinal() && !heat.picksDone() ? -1 : e.lane, name: e.asTeam && e.teamName ? `${e.teamName}${e.driverName ? ' with ' + e.driverName : ''}` : e.driverName || '', nickname: e.nickname || '', callsign: e.callsign || '' })).sort((a, b) => a.lane - b.lane) : []);
-  const audioHardware = () => { const id = Hardware.timingChosen(state.settings), link = id === 'ds' ? DsTiming.link : id === 'plugin' ? (typeof pt !== 'undefined' ? pt.link : null) : id === 'phidget' ? (typeof Phidget !== 'undefined' ? Phidget.link : null) : id === 'parallel' ? (typeof ParallelPort !== 'undefined' ? ParallelPort.link : null) : id === 'arduino' ? (typeof ArduinoBox !== 'undefined' ? ArduinoBox.link : null) : id === 'trackmate' ? Trackmate.link : null; return link ? { id, name: {ds:'DS Electronics',plugin:'Plugin interface',phidget:'Phidget',parallel:'Parallel Port',arduino:'SlotForge hardware',trackmate:'Trackmate'}[id], connected: !!link.connected } : null; };
+  const audioHardware = () => { const id = Hardware.timingChosen(state.settings), link = id === 'ds' ? DsTiming.link : id === 'plugin' ? (typeof pt !== 'undefined' ? pt.link : null) : id === 'parallel' ? (typeof ParallelPort !== 'undefined' ? ParallelPort.link : null) : id === 'arduino' ? (typeof ArduinoBox !== 'undefined' ? ArduinoBox.link : null) : id === 'trackmate' ? Trackmate.link : null; return link ? { id, name: {ds:'DS Electronics',plugin:'Plugin interface',parallel:'Parallel Port',arduino:'SlotForge hardware',trackmate:'Trackmate'}[id], connected: !!link.connected } : null; };
   const announce = () => {
     if (!audioSet || !live.ann) return;
     try { live.ann.observe(eng, { phase: live.phase, lights: live.lights, now: now(), heat: heatInfo(), hardware: audioHardware(), lineup: heats && live.phase === 'between' ? lineupNow() : undefined, trackmate: typeof Trackmate !== 'undefined' && Trackmate.link && Hardware.timingChosen(state.settings) === 'trackmate' ? !!Trackmate.link.connected : undefined /* (only when the Trackmate is the timing hardware: the box has no such call) */, idle: c => !!tokens && ['idle', 'out'].includes(tokens.stateOf(c.lane, raceT())) }).forEach(e => Sound.say(audioSet, e.call, e.vars, undefined, undefined, e.facts)); } catch (x) { /* a sound problem never stops the race */ }
@@ -430,7 +430,7 @@ async function renderRace() {
     checkpoint(); ph('save point');
     if (live.box) live.box.sync();
     if (live.ds) live.ds.sync();
-    for (const binding of [live.parallel, live.phidget, live.plugin]) {
+    for (const binding of [live.parallel, live.plugin]) {
       if (!binding) continue;
       if (live.hardwareRecoverPower && live.phase === 'running' && binding.ready()) {
         live.hardwareRecoverPower = false;
@@ -448,7 +448,7 @@ async function renderRace() {
       const found = S.carByLane(x.lane), c = found?.virtualRival ? null : found, blocked = !!c && c.blockAt !== null;
       const h = c && eng.pitHoldOf ? eng.pitHoldOf(eng.cars.indexOf(c), now()) : null;
       x.b.disabled = !(live.phase === 'running' && c && !c.done); x.b.hidden = !c; x.b.textContent = blocked ? `Leave pit ${x.lane + 1}` : `Pit ${x.lane + 1}`; x.b.setAttribute('aria-pressed', String(blocked)); // (the button stays lit while the car is in the pit)
-      if (h) { x.b.textContent = h.ready ? `Release car ${x.lane + 1}` : `Pit ${PitHoldPanel.clock(h.remaining)}`; x.b.disabled = x.b.disabled || !h.ready; x.b.title = h.text; }
+      if (h) { x.b.textContent = `Release car ${x.lane + 1}`; x.b.disabled = x.b.disabled || !h.canRelease; x.b.title = h.text; }
     }); ph('pit buttons');
     const finishPage = ui('finishreview'), activePage = ui('raceactive');
     if (live.phase === 'review') {
@@ -906,10 +906,10 @@ async function renderRace() {
     const hardware = Hardware.timingChosen(state.settings);
     if(timingPlugin && (hardware!=='plugin'||JSON.stringify(timingPlugin)!==JSON.stringify(TimingPlugin.provenance(pt.identity)))) { ui('msg').textContent='Reconnect the same timing plugin version, settings and lane configuration saved with this race.'; return false; }
     if (hardware === 'ds') { const ok = !!live.ds && live.ds.ready(); if (!ok) ui('msg').textContent = 'Reconnect the same DS-200 / DS-300 covering all race lanes before resuming manually.'; return ok; }
-    if (!['parallel', 'phidget', 'plugin'].includes(hardware)) return true;
-    const link = hardware === 'plugin' ? pt.link : hardware === 'parallel' ? ParallelPort.link : Phidget.link;
+    if (!['parallel', 'plugin'].includes(hardware)) return true;
+    const link = hardware === 'plugin' ? pt.link : ParallelPort.link;
     if (live[hardware] && live[hardware].ready() && link.connected) return true;
-    ui('msg').textContent = (hardware === 'plugin' ? 'Plugin interface' : hardware === 'parallel' ? 'Parallel Port' : 'Phidget') + ' is not ready. Reconnect in App Settings, then restart manually.'; return false;
+    ui('msg').textContent = (hardware === 'plugin' ? 'Plugin interface' : 'Parallel Port') + ' is not ready. Reconnect in App Settings, then restart manually.'; return false;
   }
   function timingFault(name, message) {
     live.hardwareRecoverPower = true;
@@ -917,7 +917,7 @@ async function renderRace() {
     if (live.phase === 'countdown') { live.runId++; live.lights = 0; live.phase = live.restarting ? 'paused' : 'ready'; live.restarting = false; }
     if (live.phase === 'running') { if (eng.flag !== 'red') eng.setFlag('red', now()); syncPhase(); }
     if (live.parallel) live.parallel.power(false);
-    if (live.phidget) live.phidget.power(false);
+
     if (live.plugin) live.plugin.power(false);
     if (live.box) live.box.power(false);
     update(); ui('msg').textContent = name + ': ' + message;
@@ -1033,12 +1033,12 @@ async function renderRace() {
   // ---- the Trackmate: sensor hits count laps, the Trackcall button flags the race ----
   // One timing hardware at a time: the one chosen in App Settings, Timing Hardware. Only it counts laps and is told about the lights and the power; the status line names it, red when it is not connected.
   const hwUse = Hardware.timingChosen(state.settings), abLinkNow = () => (typeof ArduinoBox !== 'undefined' ? ArduinoBox.link : null);
-  const tmWord = () => HomeStats.timing({ hardware: hwUse, ds: typeof DsTiming !== 'undefined' && DsTiming.link.connected, trackmate: Trackmate.link.connected, arduino: !!(abLinkNow() && abLinkNow().connected), plugin: typeof pt !== 'undefined' && pt.link.connected, pluginName: typeof pt !== 'undefined' && pt.identity?.name, phidget: typeof Phidget !== 'undefined' && Phidget.link.connected, parallel: typeof ParallelPort !== 'undefined' && ParallelPort.link.connected, virtual: state.settings.abVirtual === true });
+  const tmWord = () => HomeStats.timing({ hardware: hwUse, ds: typeof DsTiming !== 'undefined' && DsTiming.link.connected, trackmate: Trackmate.link.connected, arduino: !!(abLinkNow() && abLinkNow().connected), plugin: typeof pt !== 'undefined' && pt.link.connected, pluginName: typeof pt !== 'undefined' && pt.identity?.name, parallel: typeof ParallelPort !== 'undefined' && ParallelPort.link.connected, virtual: state.settings.abVirtual === true });
   const drawTm = () => { const e = ui('tmstatus'); if (e) { const st = tmWord(); e.textContent = ' · ' + st.text + (hwUse === 'trackmate' && Trackmate.link.connected && Trackmate.link.power !== null ? (Trackmate.link.power ? ', track power on' : ', track power off') : ''); if (e.classList) e.classList.toggle('hwwarn', st.state === 'warn'); } };
   drawTm();
-  { const offDs = typeof DsTiming !== 'undefined' ? DsTiming.link.onStatus(drawTm) : null, offT = Trackmate.link.onStatus(drawTm), offA = abLinkNow() ? abLinkNow().onStatus(drawTm) : null, offP = typeof ParallelPort !== 'undefined' ? ParallelPort.link.onStatus(drawTm) : null; const offPh = typeof Phidget !== 'undefined' ? Phidget.link.onStatus(drawTm) : null; const offPt = typeof pt !== 'undefined' ? pt.link.onStatus(drawTm) : null; live.offTmStatus = () => { if (offDs) offDs(); if (offPt) offPt(); if (offPh) offPh(); offT(); if (offA) offA(); if (offP) offP(); }; }
+  { const offDs = typeof DsTiming !== 'undefined' ? DsTiming.link.onStatus(drawTm) : null, offT = Trackmate.link.onStatus(drawTm), offA = abLinkNow() ? abLinkNow().onStatus(drawTm) : null, offP = typeof ParallelPort !== 'undefined' ? ParallelPort.link.onStatus(drawTm) : null; const offPt = typeof pt !== 'undefined' ? pt.link.onStatus(drawTm) : null; live.offTmStatus = () => { if (offDs) offDs(); if (offPt) offPt(); offT(); if (offA) offA(); if (offP) offP(); }; }
   // the track power (the Trackmate relay): only when it is connected
-  const power = on => { if (hwUse === 'trackmate' && Trackmate.link.connected && typeof tmPower === 'function') tmPower(on); if (live.box) live.box.power(on); if (live.parallel) live.parallel.power(on && (!live.hardwareRecoverPower || live.phase === 'running')); if (live.phidget) live.phidget.power(on && (!live.hardwareRecoverPower || live.phase === 'running')); if (live.plugin) live.plugin.power(on && (!live.hardwareRecoverPower || live.phase === 'running')); };
+  const power = on => { if (hwUse === 'trackmate' && Trackmate.link.connected && typeof tmPower === 'function') tmPower(on); if (live.box) live.box.power(on); if (live.parallel) live.parallel.power(on && (!live.hardwareRecoverPower || live.phase === 'running')); if (live.plugin) live.plugin.power(on && (!live.hardwareRecoverPower || live.phase === 'running')); };
   // Race Settings keeps the Track Call action and flag power separately. Older
   // imports can still carry the combined Trackmate value, so translate it here
   // as well as during database upgrade.
@@ -1056,7 +1056,7 @@ async function renderRace() {
   let callAt = 0; // when the last Trackcall press was
   const trackcall = () => {
     const mode = trackCall.action, t = now();
-    if (mode === 'power') { const l = hwUse === 'plugin' && typeof pt !== 'undefined' ? pt.link : hwUse === 'phidget' && typeof Phidget !== 'undefined' ? Phidget.link : hwUse === 'parallel' && typeof ParallelPort !== 'undefined' ? ParallelPort.link : hwUse === 'arduino' ? abLinkNow() : Trackmate.link; return power(!!l && l.power === false); } // switches the relay of the timing hardware in use, in any phase of the race screen
+    if (mode === 'power') { const l = hwUse === 'plugin' && typeof pt !== 'undefined' ? pt.link : hwUse === 'parallel' && typeof ParallelPort !== 'undefined' ? ParallelPort.link : hwUse === 'arduino' ? abLinkNow() : Trackmate.link; return power(!!l && l.power === false); } // switches the relay of the timing hardware in use, in any phase of the race screen
     if (!['running', 'paused'].includes(live.phase) || mode === 'none') return;
     if (mode === 'yellow') return actions.yellow();
     if (mode === 'red') return actions.red();
@@ -1070,7 +1070,7 @@ async function renderRace() {
   live.powerFollow = () => { if (live.hardwareRecoverPower && live.phase !== 'running') return; if (trackCall.action === 'power' || trackCall.action === 'none') return; const off = (eng.flag === 'yellow' && trackCall.yellow === 'off') || (eng.flag === 'red' && trackCall.red === 'off'); const want = !off; if (want !== live.pwWant) { live.pwWant = want; power(want); } };
   live.trackcall = trackcall;
   if (eng.cfg.pitControl && typeof PitSensors !== 'undefined') {
-    const link = hwUse === 'plugin' && typeof pt !== 'undefined' ? pt.link : hwUse === 'phidget' && typeof Phidget !== 'undefined' ? Phidget.link : hwUse === 'trackmate' ? Trackmate.link : hwUse === 'arduino' ? abLinkNow() : hwUse === 'parallel' && typeof ParallelPort !== 'undefined' ? ParallelPort.link : null;
+    const link = hwUse === 'plugin' && typeof pt !== 'undefined' ? pt.link : hwUse === 'trackmate' ? Trackmate.link : hwUse === 'arduino' ? abLinkNow() : hwUse === 'parallel' && typeof ParallelPort !== 'undefined' ? ParallelPort.link : null;
     if (link) live.pitSensors = PitSensors.bind({ eng: () => eng, now, link, hardware: hwUse, disabled: hwUse === 'arduino' && setup.boxPit === 'button', map: () => Trackmate.laneMap(state.settings.tmLaneMap) });
   }
   if (hwUse === 'trackmate') Trackmate.link.setHold(pitMs); // how long a car must stand on the sensor to be in the pits: the pit hold time of the race setup
@@ -1099,17 +1099,6 @@ async function renderRace() {
       powerAllowed: () => !live.hardwareRecoverPower, resetInputsOnRun: true,
       acquire: previousLease => api.parallelRace(true, lanes, previousLease), release: lease => api.parallelRace(false, lanes, lease), outputs: (value, lease) => api.parallelOutputs(value, lease),
       onDisconnected: () => timingFault('Parallel Port', 'Disconnected. Reconnect, then restart manually.'), onError: x => timingFault('Parallel Port', x.message) });
-  }
-  if (hwUse === 'phidget' && typeof Phidget !== 'undefined' && api.phidgetRace) {
-    live.hardwareRecoverPower = !!r.resume || !!(tokens && state.settings.tokenSessions?.[setup.id]?.data);
-    live.phidget = ParallelRace.bind({ link: Phidget.link, setup, lanes, pitMs, tokens: !!tokens, cars: () => eng.cars, crossCar, holdCar, unblockCar, trackcall,
-      blockCar: (i, at) => { if (live.phase === 'running') { eng.block(i, Math.min(at, now()), true); if (eng.status === 'finished') engineFinished(); else update(); } },
-      phase: () => live.phase, lights: () => live.lights, flag: () => eng.flag, enabled: () => Hardware.timingChosen(state.settings) === 'phidget',
-      laneAllowed: lane => !tokens || !['idle', 'out'].includes(tokens.stateOf(lane, raceT())),
-      powerAllowed: () => !live.hardwareRecoverPower,
-      resetInputsOnRun: true,
-      acquire: previousLease => api.phidgetRace(true, lanes, previousLease), release: lease => api.phidgetRace(false, lanes, lease), outputs: (value, lease) => api.phidgetOutputs(value, lease),
-      onDisconnected: () => timingFault('Phidget', 'Disconnected. Reconnect, then restart manually.'), onError: x => timingFault('Phidget', x.message) });
   }
   if (hwUse === 'plugin' && typeof pt !== 'undefined' && api.pluginTimingRace) {
     live.hardwareRecoverPower = !!r.resume || !!(tokens && state.settings.tokenSessions?.[setup.id]?.data);
@@ -1203,7 +1192,7 @@ async function renderRace() {
   live.shown = () => { live.nodes.forEach(n => { n.last = null; }); syncPerfLine(); update(); }; // the Race tab is shown again: everything is drawn once more (a leaderboard fits its text to the size it has now)
   // leaving the race screen (before the start, or after the end): the keys, the Trackmate and the Race Director buttons stop working on the other pages
   live.offPitSensors = () => { if (live.pitSensors) { live.pitSensors.off(); live.pitSensors = null; } };
-  live.leave = () => { LiveCanvas.dispose(live.nodes); if (live.fsView) live.fsView.close(); document.removeEventListener('keydown', live.fsKey); if (live.calling) { live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); } document.removeEventListener('keydown', live.key); if (typeof tmUseLanes === 'function') tmUseLanes(0); ['offTm', 'offTmStatus', 'offCmd', 'offResync'].forEach(k => { if (live[k]) { live[k](); live[k] = null; } }); if (live.box) { live.box.off(); live.box = null; } if (live.ds) { live.ds.off(); live.ds = null; } if (live.parallel) { live.parallel.off(); live.parallel = null; } if (live.phidget) { live.phidget.off(); live.phidget = null; } if (live.plugin) { live.plugin.off(); live.plugin = null; } live.offPitSensors(); clearTimeout(live.shareTimer); live.shareTimer = null; if (live.flushTokens) live.flushTokens(); clearTimeout(live.tkTimer); live.tkTimer = null; };
+  live.leave = () => { LiveCanvas.dispose(live.nodes); if (live.fsView) live.fsView.close(); document.removeEventListener('keydown', live.fsKey); if (live.calling) { live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop(); } document.removeEventListener('keydown', live.key); if (typeof tmUseLanes === 'function') tmUseLanes(0); ['offTm', 'offTmStatus', 'offCmd', 'offResync'].forEach(k => { if (live[k]) { live[k](); live[k] = null; } }); if (live.box) { live.box.off(); live.box = null; } if (live.ds) { live.ds.off(); live.ds = null; } if (live.parallel) { live.parallel.off(); live.parallel = null; } if (live.plugin) { live.plugin.off(); live.plugin = null; } live.offPitSensors(); clearTimeout(live.shareTimer); live.shareTimer = null; if (live.flushTokens) live.flushTokens(); clearTimeout(live.tkTimer); live.tkTimer = null; };
 
   // ---- Time Token Session: the lane controls, saving every stint, keeping the session across a restart ----
   const raceT = () => eng.elapsed(now()); // the race clock: the token clocks run on it, so a pause stops them

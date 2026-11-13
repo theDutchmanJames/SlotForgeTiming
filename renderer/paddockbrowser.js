@@ -2,14 +2,14 @@
 (function(root){
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function mount(box,api,options={}){
-    let data={cars:[]},source='paddock',busy=false,closed=false,timer,search='',page=0,local=[],markup='',loadingImages=false,refreshing=false,pendingRefresh=null;
+    let data={cars:[]},source='paddock',busy=false,closed=false,timer,search='',page=0,local=[],markup='',loadingImages=false,refreshing=false,pendingRefresh=null,connectionUI=null,connectionMount=null,connectionState;
     const imageCache=new Map(),names=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
     const thumbnails=typeof CatalogueThumbnails!=='undefined'?CatalogueThumbnails.create():null;
     box.classList.add('paddock-browser');
-    box.innerHTML=`<div class="pb-toolbar"><div class="seg" role="group" aria-label="Car database"><button class="btn" data-source="local">Local Database</button><button class="btn on" data-source="paddock">Paddock Database</button></div><button class="btn" data-connection>Connection &amp; results</button><button class="btn" data-refresh>Refresh now</button></div><p data-summary aria-live="polite"></p><p class="muted" data-guidance></p><p data-error role="status"></p><input type="search" data-search aria-label="Search cars" placeholder="Search by name, model or race class…"><div class="pb-cars" data-cars></div><div class="pb-pages"><button class="btn" data-prev>Previous</button><span data-count></span><button class="btn" data-next>Next</button></div>`;
+    box.innerHTML=`<div class="pb-toolbar"><div class="seg" role="group" aria-label="Car database"><button class="btn" data-source="local">Slotcar library</button><button class="btn on" data-source="paddock">Dealership Cars</button></div><button class="btn" data-connection>Connection settings</button><button class="btn" data-refresh>Refresh now</button></div><details class="dealership-inline" data-connection-panel hidden><summary>Connection settings</summary><div data-connection-form></div></details><p data-summary aria-live="polite"></p><p class="muted" data-guidance></p><p data-error role="status"></p><input type="search" data-search aria-label="Search cars" placeholder="Search by name, model or race class…"><div class="pb-cars" data-cars></div><div class="pb-pages"><button class="btn" data-prev>Previous</button><span data-count></span><button class="btn" data-next>Next</button></div>`;
     if(options.shared){box.querySelector('[aria-label="Car database"]').hidden=true;const tools=document.createElement('div');tools.className='row';tools.innerHTML='<button class="btn primary" data-shared-add>Add slotcar</button><button class="btn" data-shared-saves>Save history &amp; recovery</button><button class="btn" data-local-only>Unlinked cars</button>';box.querySelector('.pb-toolbar').prepend(tools);}
-    const q=s=>box.querySelector(s),active=()=>!closed&&box.isConnected;
-    function stop(){closed=true;clearTimeout(timer);observer.disconnect();imageCache.clear();}
+    const q=s=>[...box.querySelectorAll(s)].find(el=>!el.closest('[data-connection-form]')),active=()=>!closed&&box.isConnected;
+    function stop(){closed=true;clearTimeout(timer);observer.disconnect();imageCache.clear();connectionUI?.stop();}
     const observer=new MutationObserver(()=>{if(!box.isConnected)stop();});observer.observe(document.body,{childList:true,subtree:true});
     // Fetch one visible picture at a time. Keep base64 out of HTML parsing and
     // leave a turn for input/painting between pictures. Background checks do not
@@ -30,8 +30,12 @@
     function paint(){
       if(!active())return;
       box.querySelectorAll('[data-source]').forEach(b=>{b.classList.toggle('on',b.dataset.source===source);b.setAttribute('aria-pressed',String(b.dataset.source===source));});
-      q('[data-source="paddock"]').textContent='Paddock'+(data.connection?' · '+data.connection.name:' Database');
-      q('[data-summary]').textContent=source==='local'?'Your Timing cars':(data.connection?data.connection.name+' · '+(data.connected?'Connected':'Offline'):'No Paddock database connected')+(data.lastUpdated?' · Updated '+new Date(data.lastUpdated).toLocaleString():'');
+      q('[data-source="paddock"]').textContent='Dealership Cars';
+      const panel=q('[data-connection-panel]');panel.hidden=options.shared||source==='local';
+      q('[data-connection]').hidden=!options.shared;
+      const connectionKey=JSON.stringify([source,!!data.connected,data.connection?.databaseId]);
+      if(connectionState!==connectionKey){connectionState=connectionKey;panel.open=!data.connected;connectionUI?.refresh();if(!panel.hidden&&panel.open)ensureConnection();}
+      q('[data-summary]').textContent=source==='local'?'Your Timing cars':(data.connection?data.connection.name+' · '+(data.connected?'Connected':'Offline'):'No Dealership connected')+(data.lastUpdated?' · Updated '+new Date(data.lastUpdated).toLocaleString():'');
       q('[data-guidance]').textContent=options.shared?'Your slotcar collection. Unlinked cars keep their existing records until you finish linking them.':source==='local'?'Cars managed in SlotForge Timing.':'Car details are managed in Paddock. Checks every 30 seconds while this view is open; only changes reload the catalogue. Finalised race results are sent back automatically.';
       if(options.shared){q('[data-shared-add]').disabled=busy||!data.connected||!data.sharedCars;}
       q('[data-refresh]').hidden=source==='local';q('[data-refresh]').disabled=busy;
@@ -39,7 +43,7 @@
       const available=options.shared?[...data.cars,...local]:source==='local'?local:data.cars;
       const list=available.filter(c=>(!options.accept||options.accept(c,source))&&[c.name,c.maker,c.model,c.raceClassName||c.raceClass].join(' ').toLocaleLowerCase().includes(search.toLocaleLowerCase())).sort((a,b)=>names.compare(a.name,b.name));
       page=Math.min(page,Math.max(0,Math.ceil(list.length/40)-1));
-      const html=list.slice(page*40,page*40+40).map(c=>`<article class="pb-car">${(source==='local'?c.picture:c.pictureKey)?`<img data-picture="${esc(source+':'+c.id+':'+(c.pictureKey||''))}" data-id="${esc(c.id)}" data-key="${esc(c.pictureKey||'')}" data-origin="${source}" decoding="async" alt="">`:'<span class="pb-car-placeholder" aria-hidden="true">▱</span>'}<div><h3>${esc(c.name)}</h3><p>${esc([c.maker,c.raceClassName||c.raceClass].filter(Boolean).join(' · '))}</p><small>${c._timingOnly||source==='local'?'Not yet linked':c.capturedAt?'Available offline · captured '+esc(new Date(c.capturedAt).toLocaleString()):'Available when connected'}</small></div><button class="btn" data-use="${esc(c.id)}" data-local-car="${c._timingOnly?'1':''}" ${source==='paddock'&&!c._timingOnly&&!data.connected&&!c.capturedAt?'data-unavailable':''}>${options.choose?'Select car':'View car'}</button>${options.shared&&!c._timingOnly?`<button class="btn" data-shared-edit="${esc(c.id)}" ${!data.connected||!data.sharedCars?'disabled':''}>Edit car</button>`:''}</article>`).join('')||'<p class="muted">'+(search?'No matching cars.':source==='local'?'No local cars yet.':'Connect to Paddock to load its available cars. A saved catalogue remains visible offline.')+'</p>';
+      const html=list.slice(page*40,page*40+40).map(c=>`<article class="pb-car">${(source==='local'?c.picture:c.pictureKey)?`<img data-picture="${esc(source+':'+c.id+':'+(c.pictureKey||''))}" data-id="${esc(c.id)}" data-key="${esc(c.pictureKey||'')}" data-origin="${source}" decoding="async" alt="">`:'<span class="pb-car-placeholder" aria-hidden="true">▱</span>'}<div><h3>${esc(c.name)}</h3><p>${esc([c.maker,c.raceClassName||c.raceClass].filter(Boolean).join(' · '))}</p><small>${c._timingOnly||source==='local'?'Not yet linked':c.capturedAt?'Available offline · captured '+esc(new Date(c.capturedAt).toLocaleString()):'Available when connected'}</small></div><button class="btn" data-use="${esc(c.id)}" data-local-car="${c._timingOnly?'1':''}" ${source==='paddock'&&!c._timingOnly&&!data.connected&&!c.capturedAt?'data-unavailable':''}>${options.choose?'Select car':'View car'}</button>${options.shared&&!c._timingOnly?`<button class="btn" data-shared-edit="${esc(c.id)}" ${!data.connected||!data.sharedCars?'disabled':''}>Edit car</button>`:''}</article>`).join('')||'<p class="muted">'+(search?'No matching cars.':source==='local'?'No local cars yet.':'Connect to Dealership to load its available cars. A saved catalogue remains visible offline.')+'</p>';
       if(html!==markup){
         markup=html;q('[data-cars]').innerHTML=html;
         const keys=new Set([...box.querySelectorAll('[data-picture]')].map(img=>img.dataset.picture));
@@ -49,6 +53,15 @@
       box.querySelectorAll('[data-use]').forEach(b=>b.disabled=busy&&!refreshing||b.hasAttribute('data-unavailable'));
       q('[data-count]').textContent=list.length+' cars · Page '+(page+1)+' of '+Math.max(1,Math.ceil(list.length/40));q('[data-prev]').disabled=page===0;q('[data-next]').disabled=(page+1)*40>=list.length;
     }
+    function ensureConnection(){
+      if(connectionMount)return connectionMount;
+      const form=box.querySelector('[data-connection-form]');
+      // Embedded buttons keep their own handlers; never invoke browser actions.
+      form.onclick=e=>e.stopPropagation();
+      connectionMount=PaddockUI.mount(api,form,{compact:true,onChanged:async()=>{if(pendingRefresh)await pendingRefresh;return refresh();}}).then(ui=>{connectionUI=ui;if(!active())ui?.stop();return ui;});
+      return connectionMount;
+    }
+    q('[data-connection-panel]').ontoggle=()=>{const panel=q('[data-connection-panel]');if(panel.open&&!panel.hidden)ensureConnection();};
     async function refresh(force=false){
       if(!active()||busy)return;
       busy=true;refreshing=true;paint();

@@ -15,10 +15,13 @@ function cache(root,fn){
 }
 function read(store,root,input){
  if(!input||typeof input.carId!=='string'||!/^[\w-]{1,100}$/.test(input.carId))throw Error('Choose a car for its thumbnail.');
+ if(input.expectedHash!==undefined&&!/^[a-f0-9]{64}$/.test(input.expectedHash))throw Error('Invalid expected photograph hash.');
  return Q.read(store,input.token,r=>{
   const car=r.one('cars',input.carId);if(!car)throw Object.assign(Error('Car no longer exists.'),{code:'CAR_NOT_FOUND'});
   const asset=lazy.property(car,'picture'),source=asset?null:car.picture;if(!asset&&!source)return {data:null};
   const key=asset?.meta.hash||digest(source);
+  // Immutable media URLs must never receive a newer photograph's derivative.
+  if(input.expectedHash&&input.expectedHash!==key)return {data:null};
   const result=cache(root,db=>{
    db.exec('BEGIN IMMEDIATE');try{
     const row=db.prepare('SELECT * FROM thumbnails WHERE key=?').get(key);

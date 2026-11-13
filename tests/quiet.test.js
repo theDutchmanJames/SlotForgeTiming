@@ -151,7 +151,7 @@ for (const [name, K] of [['button', HTMLButtonElement_], ['input', HTMLInputElem
   const tm = { now: () => { nowCalls++; return T; }, adds: [], add: (...a) => tm.adds.push(a) };
   globalThis.Timing = { content: () => { T += 5; if (out.boom) throw new Error('x'); return out; } };
   globalThis.Widgets = { U: 1000, layoutOfWidget: require(R + 'renderer/widgets.js').layoutOfWidget };
-  globalThis.Frame = { present(){}, fit(){}, style: () => { T += 2; return {}; }, solidity: () => 1 };
+  globalThis.Frame = { present(){}, fit(el,w){if(w.layoutKind==="rows")globalThis.Rows.fitText(el);}, style: () => { T += 2; return {}; }, solidity: () => 1 };
   globalThis.Rows = { fitText: () => { T += 11; } };
   globalThis.WxW = { fit: () => { T += 13; } };
   const mkNode = type => { const style = new Proxy({}, { set: (t, k, v) => { t[k] = v; return true; }, get: (t, k) => (k === 'setProperty' ? (a, b) => { t[a] = b; } : t[k]) });

@@ -42,7 +42,7 @@ for(const kind of ['json','sqlite']){
   await f.tick();await f.tick();const c=await f.car();assert.equal(c.id,'old-car');assert.equal(c.damageFactor,1.3);assert.equal(c.custom.club,'keep');assert.equal(f.store.data.cars[0].picture,photo);
   const imports=await f.p.historicalReview({action:'list'});assert.equal(imports.length,1,JSON.stringify(await f.p.collectionMigration({action:'status'})));assert.equal(imports[0].state,'pending',imports[0].error);
   const frozen=await f.p.storage.historicalRead({kind:'get',id:imports[0].id,full:true}),participant=frozen.request.items[0].bundle.race.participants[0];
-  assert.equal(participant.carId,c.paddock.carId);assert.equal(participant.configuration,null);assert.equal(participant.laps[0].personalRecordEligible,false);assert.equal(participant.laps[0].trackRecordEligible,false);assert.equal(participant.laps[0].distanceM,null);assert.deepEqual(frozen.evidence,f.originals);
+  assert.equal(participant.carId,c.paddock.carId);assert.equal(participant.configuration,null);assert.equal(participant.laps[0].personalRecordEligible,false);assert.equal(participant.laps[0].trackRecordEligible,false);assert.equal(participant.laps[0].distanceM,null);assert.deepEqual(frozen.evidence,{session:f.originals.sessions[0],laps:f.originals.laps});
   assert.equal(f.store.data.timing.sessions.length,0);const pending=f.store.data.timing.imports[0];
   await approveCollection(f.store,'history');
   await f.p.historicalReview({action:'refresh',id:imports[0].id});await f.tick();await f.reopen();await f.tick();await f.tick();
@@ -54,7 +54,8 @@ for(const kind of ['json','sqlite']){
   const first=await f.p.storage.collectionChange({action:'start',revision:preview.revision});await f.reopen();assert.equal((await f.p.storage.collectionChange({action:'start',revision:'stale'})).id,first.id);
   await f.p.storage.collectionChange({action:'pause'});await f.p.syncCollectionMigration();assert.equal((await f.p.localTransfers()).length,0);
   const conn=await f.p.connection();await f.p.storage.setConnection({...conn.connection,historyGuard:{...conn.connection.historyGuard,recoveryId:'restored'}},conn.revision);
-  await assert.rejects(f.p.storage.collectionChange({action:'resume'}),/restored/);await f.unchanged();
+  await assert.rejects(f.p.storage.collectionChange({action:'resume'}),/restored/);
+  await f.p.storage.collectionChange({action:'block',error:'Restored library requires review'});await f.reopen();assert.equal((await f.p.storage.collectionRead({kind:'status'})).plan.state,'blocked');await f.unchanged();
  });
 }
 test('possible identical-model matches require an explicit physical-car decision',()=>{

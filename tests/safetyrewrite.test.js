@@ -56,7 +56,7 @@ ok('a Random Flag holds cars already in the pits until it ends, then returns to 
   assert.equal(r.pitRelease(0, 6000), false);
   r.setFlag('yellow', 10000); r.tick(10000);
   assert.equal(r.cars[0].rndPitExit, false);
-  assert.equal(r.pitHoldOf(0, 10000).text, 'Ready to release');
+  assert.equal(r.pitHoldOf(0, 10000).text, 'Waiting for Race Director — release at any time');
   assert.equal(r.pitRelease(0, 10000), true);
 });
 
@@ -75,6 +75,8 @@ ok('switching Safety Car off during a Random Flag clears a pit-exit hold instead
   assert.equal(r.cars[0].rndPitExit, false);
   assert.equal(r.pitHoldOf(0, 3000).randomHold, undefined);
 });
+
+ok('timer release after a Random Flag records the flag clearance, never an earlier deadline',()=>{const r=race({mode:'auto',seconds:5});r.block(0,0);r.tick(0);r.tick(8000);assert(r.cars[0].pitHold);r.setFlag('yellow',10000);r.tick(10000);assert.equal(r.cars[0].lastPit.duration,10000);assert.equal(r.events.find(x=>x.type==='pitrelease').t,10000);});
 
 console.log(fails ? `\n${fails} SAFETY REWRITE TESTS FAILED` : '\nALL SAFETY REWRITE TESTS PASSED');
 process.exitCode = fails ? 1 : 0;

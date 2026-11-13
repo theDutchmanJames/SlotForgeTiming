@@ -1,5 +1,4 @@
-// Shared, data-only timing-plugin contract. Sensor interpretation reuses Phidget's
-// tested digital-level state machine; it does not require a Phidget device.
+// Shared, data-only timing-plugin contract. DigitalInputs processes sensor levels.
 (function(root){
  const ok=(v,m)=>{if(!v)throw Error(m);},object=v=>v&&typeof v==='object'&&!Array.isArray(v);
  const roles=['master','power','go','yellow','red','buzzer',...Array.from({length:5},(_,i)=>'start'+(i+1)),...Array.from({length:8},(_,i)=>'relay'+(i+1))];
@@ -26,7 +25,7 @@
  }
  const channelKey=(kind,channel)=>kind+':'+channel;
  const channels=d=>d.inputs.flatMap(kind=>Array.from({length:kind==='call'?1:d.channels},(_,channel)=>({kind,channel})));
- const address=(kind,channel)=>({serial:1,hubPort:-1,hubDevice:false,type:'digital',channel:kind==='call'?16:channel+(kind==='pit'?8:0)});
+ const address=(kind,channel)=>channelKey(kind,channel);
  function sensorConfig(c){return {name:'Plugin interface',lanes:c.lanes,lap:c.lapMap.map(n=>({address:address('lap',n),active:true})),pit:c.pitMap.map(n=>({address:address('pit',n),active:true})),call:{address:address('call',0),active:true},pitMode:c.pitMode,pitAsLap:c.pitAsLap,trackcall:c.trackcall,outputsOn:c.outputsOn,outputs:[],rearm:c.rearm};}
  const provenance=i=>i?{id:i.id,version:i.version,digest:i.digest,settingsDigest:i.settingsDigest,configuration:JSON.parse(JSON.stringify(i.configuration))}:null;
  const api={roles,descriptor,config,validateConfig,channels,channelKey,address,sensorConfig,provenance};

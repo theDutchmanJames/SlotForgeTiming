@@ -126,11 +126,11 @@ ok('flag widget as text: racing, yellow, red', C('flag', null, 16000, undefined,
 eng.cars[0].callsign = 'ALX';
 ok('callsign widget', C('callsign', 0).html === 'ALX' && C('callsign', 1).html === '');
 const ll = C('lastlap', 0, 16000, undefined, { lapsPerColumn: 2, columns: 2 }).html;
-ok('last lap list: newest first (3 laps shown, 5.100 newest)', ll.indexOf('5.100') < ll.indexOf('5.200') && (ll.match(/class="lli"/g) || []).length === 3);
-ok('last lap list: 2 rows per column, 2 columns', ll.includes('repeat(2,auto)') && ll.includes('grid-template-columns:repeat(2,auto)'));
+ok('last lap list: newest first (3 laps shown, 5.100 newest)', ll.indexOf('5.100') < ll.indexOf('5.200') && (ll.match(/class="lli(?: ll-newest)?"/g) || []).length === 3);
+ok('last lap list: 2 rows per column, 2 columns', (ll.match(/class="llcol"/g)||[]).length===2 && ll.includes('--ll-cols:2'));
 const many = { lapsPerColumn: 10, columns: 2 };
 const big = require('../renderer/widgets.js').lapListHtml(Array.from({ length: 30 }, (_, i) => 'L' + i), 10, 2);
-ok('10 per column x 2 columns = 20 laps', (big.match(/class="lli"/g) || []).length === 20 && big.indexOf('L0') < big.indexOf('L1'));
+ok('10 per column x 2 columns = 20 laps', (big.match(/class="lli(?: ll-newest)?"/g) || []).length === 20 && big.indexOf('L0') < big.indexOf('L1'));
 ok('last lap default: just the newest lap as plain text', C('lastlap', 0).html === '5.100');
 const img = 'data:image/png;base64,AAA';
 ok('flag picture is used for its state', C('flag', null, 0, undefined, { img_running: img }).html.includes('flagimg'));

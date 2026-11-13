@@ -57,7 +57,7 @@
         for(const job of jobs)if((job==='damage'&&c.dmg>0)||(job==='failure'&&c.fail)||job.startsWith('tyre:'))add(c,'resources','Service blocked · resources exhausted',job.startsWith('tyre:')?'No available '+tyreName(e,job.slice(5))+' tyre set':job==='failure'?'Failure repair needs stock':'Damage repair needs stock',3);
         const hold=e.pitHoldOf?.(i,now);
         if(hold?.randomHold||c.rndPitExit&&(e.sharedPitExitHeld??e.pitExitHeld?.()))add(c,'pits','Pit exit held','Wait until the Random Flag ends',2);
-        else if(hold?.ready)add(c,'pits',e.status==='paused'?'Service complete · race paused':hold.mode==='manual'?'Ready for director release':'Service Stop ready',e.status==='paused'?'Wait for the race to resume':hold.text,2);
+        else if(hold&&(hold.ready||hold.mode==='driver'&&hold.returned))add(c,'pits',e.status==='paused'?'Pit timer complete · race paused':hold.mode==='manual'?'Ready for director release':'Service Stop ready',e.status==='paused'?'Wait for the race to resume':hold.text,2);
       }
       for(const call of e.calls||[])if(call.open&&call.car===i)add(c,'flags','Track call waiting','Awaiting the Race Director',2);
     }
@@ -105,7 +105,7 @@
       case 'callend': return ['flags','Track call resolved',x.how==='penalty'?'Penalty assigned':'Dismissed'];
       case 'pitstart': return ['pits','Entered the pits',''];
       case 'pitend': return ['pits','Left the pits',seconds(x.duration)+(x.refuelled>0?' · '+Number(x.refuelled).toFixed(1)+' L added':'')];
-      case 'pitrelease': return ['pits','Service Stop released',x.early?'Released early':'Service completed'];
+      case 'pitrelease': return ['pits','Service Stop released',x.by==='timer'?'Timer ended pit stop':x.early?'Released before timer ended':'Car released'];
       case 'swapdone': return ['pits','Driver swap completed',x.fromName+' → '+x.toName];
       case 'swapsoon': case 'swapdue': case 'swaplate': return ['pits',x.type==='swapsoon'?'Driver swap approaching':x.type==='swapdue'?'Driver swap due':'Driver swap overdue',x.stop?'Laps no longer count':x.nextName?'Next: '+x.nextName:''];
       case 'swapshort': return ['pits','Minimum driving requirement missed',x.points?x.points+' penalty points':''];

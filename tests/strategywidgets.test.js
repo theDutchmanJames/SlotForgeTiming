@@ -34,11 +34,11 @@ test('Service Stop uses total time plus penalties, freezes on pause, and never s
   assert.equal(read(e, 'servicestop', 117000).value, 'READY');
   e.pitRelease(0, 117000); assert.equal(read(e, 'servicestop', 117000).note, 'Not in pits');
 });
-test('automatic release respects return, disconnected sensor and Random Flag holds on both screens', () => {
-  const e = held('auto'); pit(e); e.pitSensor(0, false, 13000); e.tick(42000);
+test('driver release shows return and disconnected sensor states, with Random Flag holds on both screens', () => {
+  const e = held('driver'); pit(e); e.pitSensor(0, false, 13000); e.tick(42000);
   assert.equal(read(e, 'servicestop', 42000).value, 'RETURN');
   e.pitSensor(0, null, 43000); assert.equal(read(e, 'servicestop', 43000).value, 'HOLD');
-  e.pitSensor(0, true, 44000); assert.equal(read(e, 'servicestop', 44000).value, 'GO');
+  e.pitSensor(0,false,43500); e.pitSensor(0, true, 44000); assert.equal(read(e, 'servicestop', 44000).value, 'GO');
   const r = held('auto', { type: 'timed', duration: 2, pitControl: { mode: 'auto', seconds: 5, waitReturn: false }, safetycar: Sc.clean({ target: 12, rndOn: 'on', rndMode: 'exact', rndMin: 1, rndFrom: 0, rndTo: 0, rndLen: 60, rndPitExit: 'on' }) });
   r.block(0, 1000); r.tick(10000);
   assert.equal(read(r, 'servicestop', 10000).value, 'HOLD');

@@ -35,3 +35,11 @@
 [data-historical-review] h4{margin:0;}
 .historical-dialog{max-height:85vh;overflow:auto;}
 .historical-dialog .card{overflow-wrap:anywhere;}
+
+.paddock-advanced{padding:18px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.paddock-advanced>summary{cursor:pointer;font-weight:700}.paddock-advanced>p{line-height:1.5}.paddock-advanced #paddock-transfers{padding:14px;margin-top:16px}
+
+/* Shared Dealership controls, used by Connections and the car browser. */
+.dealership-settings{min-width:0;max-width:1200px}.dealership-settings>header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:18px}.dealership-settings>header h2{margin:4px 0}.dealership-settings>header p{margin:4px 0 12px}
+.dealership-settings [data-error]:empty{display:none}.dealership-compact .paddock-shell main{padding:0}
+.dealership-settings [hidden]{display:none!important}.dealership-settings input[type=password]{font:inherit;padding:8px 12px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;width:100%;box-sizing:border-box}
+.dealership-inline{margin:0 0 18px;border:1px solid var(--line);border-radius:10px;background:var(--panel);max-width:1000px}.dealership-inline>summary{padding:14px 18px;cursor:pointer;font-weight:600}.dealership-inline [data-connection-form]{padding:0 16px 16px}.dealership-compact .paddock-shell{display:block}.dealership-compact #paddock-connection{border:0;padding:0;margin-bottom:10px}.dealership-compact .paddock-advanced{padding:12px}.dealership-compact #paddock-connection h3{margin:8px 0}.connections-tabs{margin-bottom:18px}

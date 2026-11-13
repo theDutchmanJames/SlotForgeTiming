@@ -67,4 +67,17 @@ test('main and serialized shared screens agree for all seven cards, with no race
  for(const [type] of A.DEFINITIONS){const w=W.newWidget(type,0,0,0);assert.equal(T.content(w,Share.makeShared(ctx)).html,T.content(w,v.shared(ctx.now)).html,type);}
  assert.equal(JSON.stringify(e.cars),before);
 });
+test('driver release state reaches Pit Card and Builder on both screens',()=>{
+ const e=race({fuel,pitControl:{mode:'driver',seconds:30}});
+ e.pitSensor(0,true,60000);e.block(0,60000);e.tick(62000);
+ for(const [at,covered,want] of [[63000,false,'RETURN'],[64000,true,'GO']]) {
+  e.pitSensor(0,covered,at);e.tick(at);
+  const ctx=context(e,at),main=Share.makeShared(ctx),v=Share.viewer();
+  v.feedStatic(JSON.parse(JSON.stringify(Share.packStatic(ctx))));v.feedDynamic(JSON.parse(JSON.stringify(Share.packDynamic(ctx))),at);
+  const shared=v.shared(at),w=W.newWidget('aiopit',0,0,0),html=T.content(w,main).html;
+  assert(html.includes('Service stop'));assert(html.includes(want));assert.equal(html,T.content(w,shared).html);
+  assert.equal(T.composeValues(main,e.cars[0],at).service,want);
+  assert.equal(T.composeValues(shared,shared.carByLane(0),at).service,want);
+ }
+});
 console.log(`ALL-IN-ONE TESTS PASSED (${count} groups)`);

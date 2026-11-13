@@ -27,21 +27,33 @@ test('three-decimal time and record improvements preserve milliseconds',()=>{
  const r=race(),w=watch(r,{spokenDecimals:3,base:{track:10427}});r.cross(0,10421);const es=w(10421),record=has(es,'trackrecord')[0];
  assert.ok(record);assert.equal(record.vars.time,'10.421');assert.equal(record.vars.improved,'0.006 seconds');assert.equal(record.vars.best,'10.421');
 });
-test('service ready follows the real combined timer, sensor return and manual release rules',()=>{
+test('service ready follows timer penalties and manual release rules',()=>{
  const r=race({fuel:{on:true,tank:100,perLap:2,rate:1,pitHold:2000},pitControl:{mode:'auto',seconds:30,waitReturn:true},penalty:E.penaltyConfig({types:[{name:'Stop',kind:'stopgo',seconds:5}]})}),w=watch(r,opts('servicestart','servicecountdown','serviceready'));
  r.assign(0,0,9000);
  r.pitSensor(0,true,10000);r.block(0,10000);r.tick(12000);assert.equal(has(w(12000),'servicestart').length,1);
  r.tick(42000);assert.equal(has(w(42000),'serviceready').length,0);assert.equal(C.driverValues(r,r.cars[0],{}, {now:42000}).penaltyremaining,'5 seconds');
- r.pitSensor(0,null,43000);r.tick(47000);assert.equal(has(w(47000),'serviceready').length,0);
- r.pitSensor(0,true,48000);assert.equal(has(w(48000),'serviceready').length,1);assert.equal(has(w(49000),'serviceready').length,0);
+ r.pitSensor(0,null,43000);r.tick(47000);assert.equal(has(w(47000),'serviceready').length,1);
+ r.pitSensor(0,true,48000);assert.equal(has(w(48000),'serviceready').length,0);assert.equal(has(w(49000),'serviceready').length,0);
  const m=race({fuel:{on:false,pitHold:1000},pitControl:{mode:'manual',seconds:2}}),v=watch(m,opts('serviceready','serviceearly'));
  m.block(0,10000);m.tick(11000);v(11000);m.tick(20000);assert.equal(has(v(20000),'serviceready').length,0);
 });
 test('a sensor removal cannot produce a ready call before the car is returned',()=>{
- const r=race({fuel:{on:false,pitHold:1000},pitControl:{mode:'auto',seconds:3,waitReturn:true}}),w=watch(r,opts('serviceready'));
+ const r=race({fuel:{on:false,pitHold:1000},pitControl:{mode:'driver',seconds:3}}),w=watch(r,opts('serviceready'));
  r.pitSensor(0,true,10000);r.block(0,10000);r.tick(11000);w(11000);r.pitSensor(0,false,12000);r.tick(15000);
  assert.equal(has(w(15000),'serviceready').length,0);r.pitSensor(0,true,16000);assert.equal(has(w(16000),'serviceready').length,1);
 });
+test('ready announcements allow departure without claiming unfinished work is complete',()=>{
+ for(const mode of ['auto','driver']){
+  const r=race({fuel:{on:true,tank:100,perLap:2,rate:1,pitHold:1000},pitControl:{mode,seconds:2}}),c=r.cars[0],w=watch(r,opts('serviceready'));
+  c.fuel=50;r.pitSensor(0,true,10000);r.block(0,10000);r.tick(11000);w(11000);
+  if(mode==='driver'){r.pitSensor(0,false,11500);r.pitSensor(0,true,12000);}else r.tick(13000);
+  const es=has(w(mode==='driver'?12000:13000),'serviceready');assert.equal(es.length,1);assert.ok(c.fuel<100,'refuelling has not finished');
+  const d=S.defaultSet();d.calls.serviceready.on=true;assert.equal(S.choose(d,'serviceready',es[0].vars).text,'Alex, you may leave the pits.');
+  assert.equal(has(w(14000),'serviceready').length,0,'readiness is announced once');
+ }
+ const custom={calls:{serviceready:{on:true,lines:[{text:'Custom ready call'}]}}};assert.equal(S.normalize(custom).calls.serviceready.lines[0].text,'Custom ready call');
+});
+
 test('hardware connection calls are edges, named per interface, with no invented initial reconnect',()=>{
  const r=race(),w=watch(r,opts('hardwarelost','hardwareback')),hw=(id,connected)=>({hardware:{id,name:id,connected}});
  assert.equal(has(w(1,'running',hw('parallel',true)),'hardwareback').length,0);
@@ -98,7 +110,7 @@ test('final results and championship calls use saved classification and awarded 
 test('sound then speech completes in order; expired commentary cannot displace a service call',()=>{
  const d=S.defaultSet(),played=[],pending=[];let clock=0;S.state.now=()=>clock;S.state.backend={stop(){},file(u,o,done){played.push('file');pending.push(done);},speak(t,o,done){played.push(t);pending.push(done);}};
  d.calls.newleader.lines=[{text:'{driver}',file:'data:audio/wav;base64,AA',mode:'both'}];S.say(d,'newleader',{driver:'Alex'});assert.deepEqual(played,['file']);pending.shift()();assert.deepEqual(played,['file','Alex']);
- S.say(d,'overtake',{driver:'Sam',other:'Alex',position:'first'});d.calls.serviceready.on=true;S.say(d,'serviceready',{driver:'Alex'});clock=20000;pending.shift()();assert.match(played.at(-1),/stop is complete/);pending.shift()();assert.equal(played.length,3);assert.ok(S.diagnostics.some(x=>x.why==='Expired while waiting'));S.state.now=()=>Date.now();
+ S.say(d,'overtake',{driver:'Sam',other:'Alex',position:'first'});d.calls.serviceready.on=true;S.say(d,'serviceready',{driver:'Alex'});clock=20000;pending.shift()();assert.match(played.at(-1),/you may leave the pits/);pending.shift()();assert.equal(played.length,3);assert.ok(S.diagnostics.some(x=>x.why==='Expired while waiting'));S.state.now=()=>Date.now();
 });
 test('loop red-flag fade respects opt-in and resumes without starting duplicate players',()=>{
  const d=S.defaultSet();d.calls.ambcrowd={on:true,lines:[{file:'data:audio/wav;base64,AA'}],redPause:true,fadeIn:0,fadeOut:0};let players=0,vol;

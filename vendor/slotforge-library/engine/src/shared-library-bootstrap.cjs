@@ -64,4 +64,3 @@ async function adopt(file,root,options){
  return result;
 }
 module.exports={discover,paddockPath,adopt,appData};
-

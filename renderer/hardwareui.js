@@ -1,16 +1,18 @@
 // Timing Hardware: the connection to the Trackmate (kept while the app runs, used by the race) and the App Settings screen for it.
 // Settings kept: tmAuto (connect by itself), tmDevice ({ vid, pid } of the remembered USB device), tmNC (sensors normally closed), tmDeb (debounce 0-9), tmLanes (lanes used outside a race).
-let hw = { kind: '', dev: null, info: {}, lines: [], open: false, baud: 9600, data: 8, parity: 'none', stop: 1, dtr: true, rts: true, hide: true, t0: 0, lit: Array(8).fill(null), ledTimers: [] };
+let hw = { kind: '', dev: null, info: {}, lines: [], open: false, baud: 9600, data: 8, parity: 'none', stop: 1, dtr: true, rts: true, hide: true, t0: 0, lit: Array(9).fill(null), ledTimers: [] };
 
 const tmSettings = () => { const s = (typeof state !== 'undefined' && state.settings) || {}; return { auto: s.tmAuto !== false, nc: s.tmNC !== false, deb: s.tmDeb === undefined || s.tmDeb === '' ? 1 : Number(s.tmDeb), lanes: Number(s.tmLanes) || 2, device: s.tmDevice || null, relayNC: s.tmRelayNC === true }; };
 // the check lights beside the sensors: a light is green while its sensor sends letters (a car is over it) and for a moment after
 const LED_HOLD = 1000;
 const tmLeds = () => {
-  const on = Trackmate.ledsOn(hw.lit, performance.now(), LED_HOLD);
-  on.forEach((v, i) => { const el = document.getElementById('hw-led-' + i); if (el) { el.classList.toggle('on', v); el.setAttribute('aria-label', `Sensor ${i + 1}: ${v ? 'triggered' : 'not triggered'}`); } });
+  const on = Trackmate.ledsOn(hw.lit, performance.now(), LED_HOLD, 9);
+  on.forEach((v, i) => { const el = document.getElementById(i === 8 ? 'hw-led-call' : 'hw-led-' + i); if (el) { el.classList.toggle('on', v); el.setAttribute('aria-label', `${i === 8 ? 'Track Call' : 'Sensor ' + (i + 1)}: ${v ? 'triggered' : 'not triggered'}`); } });
   return on;
 };
 const tmLed = i => { hw.lit[i] = performance.now(); tmLeds(); clearTimeout(hw.ledTimers[i]); hw.ledTimers[i] = setTimeout(tmLeds, LED_HOLD + 30); };
+const tmClearLeds = () => { hw.ledTimers.forEach(clearTimeout); hw.ledTimers = []; hw.lit.fill(null); tmLeds(); };
+Trackmate.link.onStatus(connected => { if (!connected) tmClearLeds(); });
 const tmLog = (dir, bytes, note) => { hw.lines.push(Hardware.line(performance.now() - (hw.t0 || 0), dir, bytes, note)); if (hw.lines.length > 3000) hw.lines.splice(0, 500); tmShow(); };
 const tmNote = text => { hw.lines.push('          ' + text); tmShow(); };
 const tmShow = () => { const l = document.getElementById('hw-log'); if (l) { l.textContent = hw.lines.join('\n'); l.scrollTop = l.scrollHeight; } };
@@ -42,6 +44,7 @@ function tmReceive(bytes) {
       if (hw.hide !== false && steady) { const t = document.getElementById('hw-ticks'); if (t) t.textContent = `ticks received: ${Trackmate.link.ticks} (last ${e.ms} ms)`; return; }
       tmLog('<-', e.raw, `tick ${e.ms} ms`);
     } else if (e.type === 'call') {
+      tmLed(8);
       const n = performance.now(), gap = hw.prevCall === undefined ? '' : ` (${((n - hw.prevCall) / 1000).toFixed(2)} s after the previous press)`; hw.prevCall = n;
       tmLog('<-', e.raw, 'Trackcall button' + gap);
     } else tmLog('<-', e.raw, e.type === 'lane' ? `lane ${e.lane} sensor` : 'unknown');
@@ -60,7 +63,7 @@ async function tmPollSignals() {
 let tmOpening = false; // (one Connect at a time, as on the Arduino page)
 async function tmOpen(setup) { if (tmOpening) return false; tmOpening = true; try { return await tmOpenNow(setup); } finally { tmOpening = false; } }
 async function tmOpenNow(setup) {
-  hw.prevTick = undefined; Trackmate.link.reset();
+  hw.prevTick = undefined; hw.prevCall = undefined; tmClearLeds(); Trackmate.link.reset();
   try {
     hw.t0 = performance.now();
     if (hw.kind === 'serial') {
@@ -87,7 +90,7 @@ async function tmOpenNow(setup) {
   } catch (x) { hw.open = false; Trackmate.link.setConnected(false); tmMsg('Could not connect: ' + x.message + (hw.kind === 'serial' ? ' (is another program using this port?)' : '')); return false; }
 }
 async function tmClose() {
-  hw.open = false; Trackmate.link.setConnected(false);
+  hw.open = false; Trackmate.link.setConnected(false); tmClearLeds();
   try { if (hw.kind === 'serial') { if (hw.reader) await hw.reader.cancel().catch(() => {}); if (hw.writer) { hw.writer.releaseLock(); hw.writer = null; } await hw.dev.close(); } else { hw.dev.oninputreport = null; await hw.dev.close(); } } catch (x) { /* already closed */ }
   tmNote('-- disconnected --');
 }
@@ -106,7 +109,7 @@ async function tmAutoConnect() {
 function renderHardwareSettings(box) {
   const laneMap = Trackmate.laneMap(state.settings.tmLaneMap), H = Hardware, can = { serial: typeof navigator !== 'undefined' && !!navigator.serial, hid: typeof navigator !== 'undefined' && !!navigator.hid }, t = tmSettings();
   // one block per sensor (1 to 8): its check light, its name and the lane it counts for. Sensors beyond the number of lanes are switched off in the Trackmate, so they are dimmed.
-  const lanesOn = Math.max(1, Math.min(8, t.lanes)), litNow = Trackmate.ledsOn(hw.lit, performance.now(), LED_HOLD);
+  const lanesOn = Math.max(1, Math.min(8, t.lanes)), litNow = Trackmate.ledsOn(hw.lit, performance.now(), LED_HOLD, 9);
   const sensors = Array.from({ length: 8 }, (_, i) => {
     const on = i < lanesOn, last = on ? Math.max(lanesOn - 1, laneMap[i]) : laneMap[i];
     const opts = Array.from({ length: last + 1 }, (_, l) => l).filter(l => on || l === laneMap[i]).map(l => `<option value="${l}"${laneMap[i] === l ? ' selected' : ''}>Lane ${l + 1}</option>`).join('');
@@ -126,6 +129,8 @@ function renderHardwareSettings(box) {
       <button class="btn" id="hw-init" ${hw.open ? '' : 'disabled'}>Send setup now</button></div>
     <div class="row"><strong>Sensors</strong></div>
     <div class="tm-sensors">${sensors}</div>
+    <div class="tm-sensors"><div class="tm-sensor tm-call"><span class="led${litNow[8] ? ' on' : ''}" id="hw-led-call" role="img" aria-label="Track Call: ${litNow[8] ? 'triggered' : 'not triggered'}"></span><span><b>Track Call · W</b><small>Press the hardware Track Call button to test it</small></span></div></div>
+    <p class="muted">The Track Call light flashes green for one second when a press is received. During a race, the button follows the Trackcall behaviour selected in Race Setup.</p>
     <p class="muted">The light beside a sensor turns green while a car is over it, so you can test a sensor and its cable without starting a race. The lane choice says which lane the sensor counts for: use it when the sensor leads are plugged into the other lane, swapping two sensors here is quicker than changing the cables.</p>
     <p class="muted">All eight sensors (A to H) are supported. The Trackmate only reports as many sensors as <em>Lanes</em> above (a race uses the lanes of its track), so set it to the number of sensors you have connected; the others are dimmed.</p>
     <p class="muted">The setup is sent every time the app connects and when a race opens. Change the sensor type if laps do not register.</p></div></details>

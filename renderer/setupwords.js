@@ -257,7 +257,7 @@
       if (shown('bop') && s.bop === 'on') on.push([off.has('bop') ? 'Balance of Power off' : 'Balance of Power', off.has('bop') ? 'Balance of Power off by default' : 'Balance of Power']);
       out.rules = on.length ? make(on.map(x => x[0]), on.map(x => x[1]), 'ok') : make(['No systems'], ['no systems chosen'], 'plain');
     }
-    out.service = s.serviceStop === 'on' && t !== 'tokens' ? make([`${pos(s.pitHoldSeconds) || 30} s`, s.pitHoldMode === 'manual' ? 'manual release' : 'automatic release'], ['fixed service stop, penalties add time'], 'ok') : make(['Off', 'follow sensor'], ['service stop off; normal pit rules'], changed(['pitHold']).length ? 'ok' : 'plain');
+    out.service = s.serviceStop === 'on' && t !== 'tokens' ? make([`${pos(s.pitHoldSeconds) || 30} s`, s.pitHoldMode === 'manual' ? 'director release' : s.pitHoldMode === 'driver' ? 'driver release' : 'timer release'], ['fixed service stop, penalties add time'], 'ok') : make(['Off', 'follow sensor'], ['service stop off; normal pit rules'], changed(['pitHold']).length ? 'ok' : 'plain');
     // Screens and sound: the layouts and the audio set that are chosen
     {
       const on = [['layout', 'Main screen', 'main screen layout'], ['layout2', 'Second screen', 'second screen layout'], ['audioSet', 'Audio', 'audio set']].filter(x => shown(x[0]) && text(s[x[0]]) !== '');

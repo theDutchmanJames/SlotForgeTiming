@@ -24,7 +24,7 @@
     if (terminal && type !== 'lapvalidity' && type !== 'stinttime') return terminal;
     if (type === 'servicestop') {
       const ph = e.pitControl;
-      if (!ph || !['auto', 'manual'].includes(ph.mode)) return unavailable('Service Stop off');
+      if (!ph || !['auto', 'manual', 'driver'].includes(ph.mode)) return unavailable('Service Stop off');
       if (c.done || e.status === 'finished') return model('FINISHED', 'Stop timing has ended');
       const h = e.pitHoldOf(i, t);
       if (!h || !c.pitHold) return model('—', c.blockAt != null ? 'Waiting for pit entry' : 'Not in pits');
@@ -33,12 +33,10 @@
       const extra = c.pitHold.extraMs > 0 ? ` · +${c.pitHold.extraMs / 1000} s penalty` : '';
       if (e.status !== 'running') return model('PAUSED', `${clock(h.remaining)} remaining`, 'warn', progress);
       if (h.randomHold) return model('HOLD', 'Pit exit held by Random Flag', 'warn', progress);
+      if (h.mode === 'driver') return model(h.covered === null ? 'HOLD' : h.returned ? 'GO' : h.covered === false ? 'RETURN' : 'SERVICE', h.text + extra, h.returned ? 'good' : 'warn', progress);
       if (!h.ready) return model(clock(h.remaining), h.text + extra, 'warn', progress);
-      if (h.mode === 'manual') return model('READY', 'Awaiting director release', 'warn', 1);
-      // Timer completion alone is not permission to leave: the sensor may need the car back.
-      if (h.covered === null) return model('HOLD', 'Waiting for sensor', 'warn', 1);
-      if (ph.waitReturn !== false && !c.pitHold.returned && h.covered === false) return model('RETURN', 'Return car to sensor', 'warn', 1);
-      return model('GO', h.covered ? 'Drive off sensor' : 'Ready to release', 'good', 1);
+      if (h.mode === 'manual') return model('READY', h.text, 'warn', 1);
+      return model('GO', 'Timer complete', 'good', 1);
     }
     if (type === 'fuelrange') {
       if (!e.fuel || !e.fuel.on) return unavailable('Fuel system off');

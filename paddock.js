@@ -28,6 +28,7 @@ function retryDelay(value,now=Date.now()){
   return Number.isFinite(ms)?Math.min(86400000,Math.max(1000,ms)):60000;
 }
 const hostKey=base=>{const host=new URL(address(base)).hostname;return host==='localhost'?'127.0.0.1':host;};
+const listenerKey=base=>{const u=new URL(address(base));if(u.hostname==='localhost')u.hostname='127.0.0.1';return u.origin;};
 function privateIP(ip){if(net.isIP(ip)!==4)return false;const [a,b]=ip.split('.').map(Number);return a===127||a===10||a===192&&b===168||a===172&&b>=16&&b<=31;}
 function address(input){const u=new URL(String(input).includes('://')?input:'http://'+input);if(u.protocol!=='http:'||u.username||u.password||u.search||u.hash||u.pathname!=='/'||!(privateIP(u.hostname)||u.hostname==='localhost'))throw Error('Enter a local IPv4 address and port, for example 192.168.1.20:51234.');if(!u.port)throw Error('Include the port displayed by Paddock.');return u.origin;}
 function request(base,route,code,databaseId,body,limit=16*1024*1024,instanceId,recoveryId,extension='scalable-v1',method){return new Promise((resolve,reject)=>{
@@ -35,7 +36,7 @@ function request(base,route,code,databaseId,body,limit=16*1024*1024,instanceId,r
   const u=new URL(route,address(base));if(u.origin!==address(base))return reject(Error('Unexpected host address.'));
   const req=http.request(u,{method:method||(raw?'POST':'GET'),headers:{Authorization:'Bearer '+code,...(databaseId?{'X-SlotForge-Database':databaseId}:{}),...(instanceId?{'X-SlotForge-Instance':instanceId}:{}),...(recoveryId?{'X-SlotForge-Recovery':recoveryId}:{}),'X-SlotForge-Pages':'1',...(instanceId||route==='/v1/status'?{'X-SlotForge-Extensions':extension}:{}),...(raw?{'Content-Type':'application/json','Content-Length':Buffer.byteLength(raw)}:{})}},res=>{
     if(res.headers['content-encoding']&&res.headers['content-encoding']!=='identity'){res.destroy();return reject(Error('Compressed Paddock responses are unsupported.'));}
-    let size=0;const chunks=[];res.on('data',chunk=>{size+=chunk.length;if(size>limit)res.destroy(Error('Paddock response is too large.'));else chunks.push(chunk);});res.on('error',reject);res.on('end',()=>{try{if(res.statusCode===429){const e=Error('Paddock has temporarily limited connection attempts. Wait before retrying; saved results remain queued.');e.code='AUTH_RATE_LIMITED';e.httpStatus=429;e.retryAfterMs=retryDelay(res.headers['retry-after']);throw e;}const value=JSON.parse(Buffer.concat(chunks).toString('utf8'));if(res.statusCode!==200){const e=Error(String(value.error||'Paddock returned HTTP '+res.statusCode).replaceAll(code||'\x00','[redacted]'));if(value.details&&Buffer.byteLength(JSON.stringify(value.details))<131072)e.details=value.details;for(const k of ['databaseId','recoveryId','current'])if(Object.hasOwn(value,k))e[k]=value[k];e.code=value.code||'HTTP_'+res.statusCode;e.httpStatus=res.statusCode;if(res.statusCode===503&&res.headers['retry-after'])e.retryAfterMs=retryDelay(res.headers['retry-after']);throw e;}if(value&&typeof value==='object')Object.defineProperty(value,RESPONSE_BYTES,{value:size});resolve(value);}catch(e){reject(e);}});
+    let size=0;const chunks=[];res.on('data',chunk=>{size+=chunk.length;if(size>limit)res.destroy(Error('Paddock response is too large.'));else chunks.push(chunk);});res.on('error',reject);res.on('end',()=>{try{if(res.statusCode===429){const e=Error('Paddock has temporarily limited connection attempts. Wait before retrying; saved results remain queued.');e.code='AUTH_RATE_LIMITED';e.httpStatus=429;e.retryAfterMs=retryDelay(res.headers['retry-after']);throw e;}const value=JSON.parse(Buffer.concat(chunks).toString('utf8'));if(res.statusCode!==200){const e=Error(String(value.error||'Paddock returned HTTP '+res.statusCode).replaceAll(code||'\x00','[redacted]'));if(value.details&&Buffer.byteLength(JSON.stringify(value.details))<131072)e.details=value.details;for(const k of ['databaseId','recoveryId','current'])if(Object.hasOwn(value,k))e[k]=value[k];e.code=value.code||'HTTP_'+res.statusCode;e.httpStatus=res.statusCode;if(res.statusCode===503&&(res.headers['retry-after']||value.code==='HOST_MIGRATING'))e.retryAfterMs=retryDelay(res.headers['retry-after']);throw e;}if(value&&typeof value==='object')Object.defineProperty(value,RESPONSE_BYTES,{value:size});resolve(value);}catch(e){reject(e);}});
   });const timer=setTimeout(()=>req.destroy(Error('Paddock did not respond within 15 seconds.')),15000);req.on('close',()=>clearTimeout(timer));req.on('error',reject);if(raw)req.write(raw);req.end();
 });}
 // Each adapter owns a socket: asynchronous sends cannot inherit another adapter's routing.
@@ -81,19 +82,25 @@ function discover({duration=4200,retryMs=1000}={}){return new Promise((resolve,r
   }
 });}
 class Paddock {
-  constructor(db,{storage,deliveryStore}={}){this.storage=storage||new(require('./paddock-storage').JsonPaddockStorage)(db);this.code='';this.connected=false;this.error='';this.catalog=[];this.busy=false;this.stopped=false;this.timer=null;this.cooldowns=new Map();this.deliveryStore=deliveryStore||new(require('./json-delivery-store'))(db);this.delivery=new(require('./delivery-service'))(this.deliveryStore,{call:(...args)=>this.call(...args),historyCapability:()=>this.historyCapability,isRacing:()=>!!this.isRacing?.(),isStopped:()=>this.stopped||this.quiescing||!this.code});}
+  constructor(db,{storage,deliveryStore}={}){this.storage=storage||new(require('./paddock-storage').JsonPaddockStorage)(db);this.code='';this.connected=false;this.error='';this.catalog=[];this.busy=false;this.stopped=false;this.timer=null;this.cooldowns=new Map();this.migrationCooldowns=new Map();this.deliveryStore=deliveryStore||new(require('./json-delivery-store'))(db);this.delivery=new(require('./delivery-service'))(this.deliveryStore,{call:(...args)=>this.call(...args),historyCapability:()=>this.historyCapability,isRacing:()=>!!this.isRacing?.(),isStopped:()=>this.stopped||this.quiescing||!this.code});}
   async connection(){const value=await this.storage.connection();this.lastConnection=value.connection;return value;}
   active(){if(this.stopped)throw Object.assign(Error('Paddock connection stopped.'),{code:'PADDOCK_STOPPED'});}
-  cooldownsNow(){for(const [host,until] of this.cooldowns)if(until<=Date.now())this.cooldowns.delete(host);return [...this.cooldowns].map(([host,until])=>({host,until}));}
-  retryAt(base){this.cooldownsNow();return base?this.cooldowns.get(hostKey(base))||0:0;}
+  cooldownsNow(){
+    for(const map of [this.cooldowns,this.migrationCooldowns])for(const [key,until] of map)if(until<=Date.now())map.delete(key);
+    return [...this.cooldowns].map(([host,until])=>({host,until,code:'AUTH_RATE_LIMITED'})).concat([...this.migrationCooldowns].map(([base,until])=>({host:hostKey(base),address:base,until,code:'HOST_MIGRATING'})));
+  }
+  retryAt(base){this.cooldownsNow();return base?Math.max(this.cooldowns.get(hostKey(base))||0,this.migrationCooldowns.get(listenerKey(base))||0):0;}
   async hostRequest(base,route,code,databaseId,body,limit,instanceId,recoveryId,extension,method){
     const until=this.retryAt(base);
-    if(until)throw Object.assign(Error('Paddock connection cooldown: try again in '+Math.ceil((until-Date.now())/1000)+' seconds. Saved results remain queued.'),{code:'AUTH_RATE_LIMITED',retryAt:until});
+    if(until){const reason=this.migrationCooldowns.get(listenerKey(base))===until?'HOST_MIGRATING':'AUTH_RATE_LIMITED';throw Object.assign(Error((reason==='HOST_MIGRATING'?'Paddock is changing sharing mode. Connection cooldown: try again in ':'Paddock connection cooldown: try again in ')+Math.ceil((until-Date.now())/1000)+' seconds. Saved results remain queued.'),{code:reason,retryAt:until,retryAfterMs:until-Date.now()});}
     try{return await request(base,route,code,databaseId,body,limit,instanceId,recoveryId,extension,method);}catch(e){
-      if(e.httpStatus===429){
-        const host=hostKey(base);if(this.cooldowns.size>=100&&!this.cooldowns.has(host))this.cooldowns.delete(this.cooldowns.keys().next().value);
-        this.cooldowns.set(host,Date.now()+e.retryAfterMs);e.retryAt=this.cooldowns.get(host);
-        if(this.lastConnection&&hostKey(this.lastConnection.address)===host){this.connected=false;this.error=e.message;this.schedule();}
+      if(e.httpStatus===429||e.httpStatus===503&&e.code==='HOST_MIGRATING'){
+        // Authentication limits apply to the host; migration only stops its old listener.
+        // A separate trusted local service on the same computer remains usable.
+        const migration=e.code==='HOST_MIGRATING',key=migration?listenerKey(base):hostKey(base),map=migration?this.migrationCooldowns:this.cooldowns;
+        if(map.size>=100&&!map.has(key))map.delete(map.keys().next().value);
+        map.set(key,Date.now()+e.retryAfterMs);e.retryAt=map.get(key);
+        if(this.lastConnection&&(migration?listenerKey(this.lastConnection.address)===key:hostKey(this.lastConnection.address)===key)){this.connected=false;this.error=e.message;this.schedule();}
       }
       throw e;
     }

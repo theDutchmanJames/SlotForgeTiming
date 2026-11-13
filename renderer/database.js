@@ -345,8 +345,8 @@ async function mountManagerPage(box, e) {
     <div class="rskinds">${SETUP_START.map(([id, label]) => `<button class="rspill" type="button" data-rskind="${id}">${esc(label)}</button>`).join('')}</div></div>`;
   const rsEmpty = !items.length ? 'No race setups yet. Use the button above, or start from a kind below.' : `Nothing under ${SETUP_FILTERS.find(f => f[0] === setupFilter)[1]} yet. Start one below.`;
   const rsBody = e !== 'racesetups' ? '' : (rsShown.length ? (mode === 'grid' ? `<div class="rscards">${rsShown.map(rsCard).join('')}</div>` : tableHtml(rsShown, cols)) : `<p class="muted">${esc(rsEmpty)}</p>`) + rsStart;
-  box.innerHTML = (e==='slotcars'?'<div class="pb-toolbar"><div class="seg" role="group" aria-label="Car database"><button class="btn on" aria-pressed="true">'+(direct?'Slotcar library':'Local Database')+'</button><button class="btn" id="paddock-view" aria-pressed="false">'+(direct?'Network catalogue':'Paddock Database')+'</button></div></div>':'')+`<div class="row${e==='racesetups'?' rstoolbar':paged?' catalogue-toolbar':''}"><button class="btn primary" id="add">Add ${esc(s.label.toLowerCase())}</button>
-      ${e === 'slotcars' ? '<button class="btn" id="paddock-open">'+(direct?'Network connection':'Connect to Paddock')+'</button>' : ''}${e === 'tracks' ? '<button class="btn" id="track-import">Import from Circuit</button>' : ''}${s.extra === false ? '' : '<button class="btn" id="extra">Extra fields…</button>'}${rsFilter}${viewBtn}${paged?'<div class="catalogue-controls"><div class="catalogue-tools">':''}${toggle}${paged?'</div></div>':''}</div>${bar}` +
+  box.innerHTML = (e==='slotcars'?'<div class="pb-toolbar"><div class="seg" role="group" aria-label="Car database"><button class="btn on" aria-pressed="true">'+(direct?'Slotcar library':'Local Database')+'</button><button class="btn" id="paddock-view" aria-pressed="false">Dealership Cars</button></div></div>':'')+`<div class="row${e==='racesetups'?' rstoolbar':paged?' catalogue-toolbar':''}"><button class="btn primary" id="add">Add ${esc(s.label.toLowerCase())}</button>
+      ${e === 'tracks' ? '<button class="btn" id="track-import">Import from Circuit</button>' : ''}${s.extra === false ? '' : '<button class="btn" id="extra">Extra fields…</button>'}${rsFilter}${viewBtn}${paged?'<div class="catalogue-controls"><div class="catalogue-tools">':''}${toggle}${paged?'</div></div>':''}</div>${bar}` +
     (e === 'racesetups' ? rsBody
       : items.length && mode === 'grid' ? gridHtml(items)
       : items.length ? tableHtml(items, viewCols || cols)
@@ -402,7 +402,7 @@ async function mountManagerPage(box, e) {
     if (b.dataset.viewbar) { if (viewBars.has(b.dataset.viewbar)) viewBars.delete(b.dataset.viewbar); else viewBars.add(b.dataset.viewbar); return mountManager(box, e); }
     if (b.dataset.vsreset) { await viewReset([[e, mode]]); return mountManager(box, e); }
     if (e === 'tracks' && (b.id === 'track-import' || b.dataset.trackDesign)) {const track=b.dataset.trackDesign?await fullItem(b.dataset.trackDesign):null;if(run!==subRun)return;return TrackDesignUI.open(api,track,()=>mountManager(box,e));}
-    if (b.id === 'paddock-open') return PaddockUI.open(api,()=>mountManager(box,e));
+
     if (b.id === 'paddock-view') {slotcarSource='paddock';return mountManager(box,e);}
     if (b.id === 'add') return direct?PaddockShared.open(libraryEditorApi(),null,()=>mountManager(box,e)):openForm(e, null);
     if (b.id === 'extra') return openExtra(e);
@@ -1243,7 +1243,7 @@ function openForm(e, item, preset) { // preset: values a new item starts with (R
     finally { saving = false; }
   };
   if (!dlg.open) dlg.showModal(); // (it is already open when Edit was pressed in the view card)
-  if(e==='slotcars'&&item?.paddock){for(const key of ['brand','manufacturer','model','scale','motor','gearing','tyres','weight','picture','raceClass'])dlg.querySelectorAll('[data-key="'+key+'"] input,[data-key="'+key+'"] select,[data-key="'+key+'"] button').forEach(el=>el.disabled=true);const note=document.createElement('p');note.className='muted';note.textContent='Linked to Paddock. Edit catalogue details there, then use Connect to Paddock → Refresh linked cars. Simulation settings and service history remain local.';byId('frm').prepend(note);}
+  if(e==='slotcars'&&item?.paddock){for(const key of ['brand','manufacturer','model','scale','motor','gearing','tyres','weight','picture','raceClass'])dlg.querySelectorAll('[data-key="'+key+'"] input,[data-key="'+key+'"] select,[data-key="'+key+'"] button').forEach(el=>el.disabled=true);const note=document.createElement('p');note.className='muted';note.textContent='Linked to Paddock. Edit catalogue details there, then use App Settings → Connections → Dealership Mode → Available cars → Refresh linked cars. Simulation settings and service history remain local.';byId('frm').prepend(note);}
   if(e==='slotcars'&&item?.paddock&&typeof PaddockSpecs!=='undefined'){const holder=document.createElement('details');holder.className='full';holder.dataset.pcsEditor='';holder.style.gridColumn='1 / -1';holder.innerHTML='<summary>Paddock specifications · read only</summary>'+PaddockSpecs.html(item);byId('frm').querySelector('.formgrid').prepend(holder);PaddockSpecs.mount(holder.querySelector('.paddock-specs'),item);}
   if (groups) { const first = byId('f-' + fields[0].id); if (first && first.focus) first.focus(); } // the first field, as before, not the Open all button above the groups
 }
@@ -1393,10 +1393,19 @@ async function renderHistoryPool(box,pool) {
       if(expected!==subRun)return;
       reveal=false;
       const rendered=subRun;
-      const nav=document.createElement('div');nav.className='history-navigation';
-      nav.innerHTML=`${notice?`<p role="status">${esc(notice)}</p>`:''}<div class="row">${Object.entries({sessions:pool==='tokens'?'Stints':'Sessions',tracks:'Track records',personal:'Personal bests'}).map(([key,label])=>`<div class="row"><strong>${label}</strong><button class="btn" data-history-prev="${key}" ${indices[key]?'':'disabled'}>Previous</button><span>Page ${indices[key]+1}</span><button class="btn" data-history-next="${key}" ${page[key].next?'':'disabled'}>Next</button></div>`).join('')}</div><p class="muted">Open a session to load its results. Lap times are shown 100 at a time; statistics and PDF exports use all laps.</p>`;
-      box.prepend(nav);
-      nav.onclick=ev=>{ev.stopPropagation();if(rendered!==subRun)return;const prev=ev.target.closest('[data-history-prev]'),next=ev.target.closest('[data-history-next]');if(prev){indices[prev.dataset.historyPrev]--;void load();}else if(next){const key=next.dataset.historyNext;cursors[key][++indices[key]]=page[key].next;void load();}};
+      const info=document.createElement('div');info.className='history-guidance';
+      info.innerHTML=`${notice?`<p role="status">${esc(notice)}</p>`:''}<p class="muted">Open a session to load its results. Lap times are shown 100 at a time; statistics and PDF exports use all laps.</p>`;
+      box.prepend(info);
+      const folderPage=pool==='tokens'?'tresults':'results';
+      for(const [key,id,label] of [['tracks','tracks','Track records'],['personal','pb','Personal bests'],['sessions','sessions',pool==='tokens'?'Stints':'Sessions']]){
+        if(!indices[key]&&!page[key].next)continue;
+        const folder=[...box.querySelectorAll('details.dbfolder')].find(x=>x.dataset.folder===folderKey(folderPage,id));
+        if(!folder)continue;
+        const nav=document.createElement('nav');nav.className='history-navigation';nav.setAttribute('aria-label',label+' pages');
+        nav.innerHTML=`<button class="btn" type="button" data-history-prev="${key}"${indices[key]?'':' disabled'}>Previous</button><span role="status">Page ${indices[key]+1}</span><button class="btn" type="button" data-history-next="${key}"${page[key].next?'':' disabled'}>Next</button>`;
+        folder.querySelector('summary').after(nav);
+        nav.onclick=ev=>{ev.stopPropagation();if(rendered!==subRun)return;const prev=ev.target.closest('[data-history-prev]'),next=ev.target.closest('[data-history-next]');if(prev&&!prev.disabled&&indices[key]>0){indices[key]--;void load();}else if(next&&!next.disabled&&page[key].next){cursors[key][++indices[key]]=page[key].next;void load();}};
+      }
       for(const element of box.querySelectorAll('[data-history-open]'))element.onclick=ev=>{ev.preventDefault();ev.stopPropagation();if(rendered!==subRun)return;selected=element.dataset.historyOpen;offset=0;reveal=true;void load();};
       if(detail){
         const card=[...box.querySelectorAll('details.sess')].find(x=>x.dataset.sid===selected);

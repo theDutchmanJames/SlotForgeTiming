@@ -130,9 +130,11 @@
   // ---- which timing hardware the app uses: one at a time ----
   // The setting timingHw is the choice. Before anything was chosen it follows what was set up: before the Arduino Sketch existed the only hardware was the Trackmate, so that stays the answer,
   // except when the virtual box is ticked, or a box is remembered and no Trackmate is.
-  const TIMING = [['none', 'None (keys or simulated cars)'], ['trackmate', 'Trackmate Interface'], ['arduino', 'Arduino Sketch'], ['parallel', 'Parallel Port'], ['phidget', 'Phidget Interface'], ['ds', 'DS Electronics (DS-200 / DS-300)'], ['plugin', 'Plugin interface']];
+  const TIMING = [['none', 'None (keys or simulated cars)'], ['trackmate', 'Trackmate Interface'], ['arduino', 'Arduino Sketch'], ['parallel', 'Parallel Port'], ['ds', 'DS Electronics (DS-200 / DS-300)'], ['plugin', 'Plugin interface']];
   const timingChosen = s => {
     s = s || {};
+    // Removed hardware must not silently select another connected interface.
+    if (s.timingHw === 'phidget') return 'none';
     if (TIMING.some(t => t[0] === s.timingHw)) return s.timingHw;
     return s.abVirtual === true || (s.abDevice && !s.tmDevice) ? 'arduino' : 'trackmate';
   };

@@ -249,11 +249,11 @@ class Store {
     return {packed,currentAssets,currentRefs};
   }
   trimAssetCache(){this.assetHashes.clear();}
-  didPersist(db,currentAssets,stats,packed,currentRefs){lazyAssets.adopt(db,this.file,packed,stats.assetMetadata||[]);this.assetHashes.clear();const {assetMetadata,...counts}=stats;this.expectedIdentity=JSON.stringify([db.id,db.revision]);this.persistedData=db;this.persistedAssets=currentAssets;this.persistedManifest=packed.manifest;this.persistedReferences=currentRefs;this.lastWrite={...counts,submittedRecords:packed.records.length};this.trimAssetCache();}
+  didPersist(db,currentAssets,stats,packed,currentRefs){lazyAssets.adopt(db,this.file,packed,stats.assetMetadata||[]);this.assetHashes.clear();const {assetMetadata,...counts}=stats;this.expectedIdentity=JSON.stringify([db.id,db.revision]);this.persistedData=db;this.persistedAssets=currentAssets;this.persistedManifest=packed.manifest;this.persistedReferences=currentRefs;this.lastWrite={...counts,submittedRecords:packed.records.length};try{this.photoPreviewWrites={revision:db.revision,ids:require('./paddock-thumbnails.cjs').photoWrites(packed)};}catch{this.photoPreviewWrites=null;}this.trimAssetCache();}
   finishPersistence(db,scope,currentAssets,stats,packed,currentRefs){
     if(scope?.kind!=='scoped')return this.didPersist(db,currentAssets,stats,packed,currentRefs);
     this.deferredState=scope.state;this.expectedIdentity=packed.identity;this.persistedData=db;this.persistedManifest=packed.manifest;this.persistedReferences=currentRefs;this.persistedAssets=currentAssets;
-    const {assetMetadata,...counts}=stats;this.lastWrite={...counts,submittedRecords:packed.records.length};this.trimAssetCache();
+    const {assetMetadata,...counts}=stats;this.lastWrite={...counts,submittedRecords:packed.records.length};try{this.photoPreviewWrites={revision:db.revision,ids:require('./paddock-thumbnails.cjs').photoWrites(packed)};}catch{this.photoPreviewWrites=null;}this.trimAssetCache();
   }
   persist(db,scope){if(!this.file)return;try{const {packed,currentAssets,currentRefs}=this.preparePersistence(db,scope);const stats=sqlite.write(this.file,packed,this.expectedIdentity);this.finishPersistence(db,scope,currentAssets,stats,packed,currentRefs);}catch(error){this.trimAssetCache();throw error;}}
   async persistAsync(db,scope){if(!this.file)return;try{const {packed,currentAssets,currentRefs}=this.preparePersistence(db,scope);const stats=await sqlite.writeAsync(this.file,packed,this.expectedIdentity);this.finishPersistence(db,scope,currentAssets,stats,packed,currentRefs);}catch(error){this.trimAssetCache();throw error;}}

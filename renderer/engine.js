@@ -183,7 +183,7 @@
     };
     R.logEvent = log; // Attached systems use the same frozen driver identity and race clock.
 
-    const end = (t, why) => { R.cars.forEach(c=>tempUpdate(c,t)); R.cars.forEach((c, i) => { wxFlush(i, t, true); if (c.blockAt !== null) { pitCheck(i, t); serveCheck(i, t); repairCheck(i, t); twCheck(i, t); closePit(i, t); } if (MAND && why !== 'Stopped') msJudge(c, i, t); }); if (P.dqUnserved && why !== 'Stopped') R.cars.forEach((c, i) => { if (!c.dq && c.pending.some(p => p.mandatory)) { c.dq = true; c.dqWasDone = c.done; c.dqWasRetired = c.retired; c.done = true; c.retired = true; log('disqualified', i, t, { why: 'unserved' }); } }); R.status = 'finished'; R.endAt = t; R.endedBy = why; R.flag = ''; R.yellowAt = null; if (scWas) scEdge(t); R.calls.forEach(c => { c.open = false; }); enEnd(t, why); };
+    const end = (t, why) => { R.cars.forEach(c=>tempUpdate(c,t)); R.cars.forEach((c, i) => { wxFlush(i, t, true); if (c.blockAt !== null) { pitCheck(i, t); holdPenalty(c); const pitEnd = heldPits && c.pitHold && PH.mode === 'auto' && !(c.rndPitExit && randomPitExit()) ? Math.min(t, R.t0 + Math.max(Ph.due(c.pitHold, PH), c.pitHold.releaseNotBefore || 0)) : t; serveCheck(i, pitEnd); repairCheck(i, pitEnd); twCheck(i, pitEnd); closePit(i, pitEnd); } if (MAND && why !== 'Stopped') msJudge(c, i, t); }); if (P.dqUnserved && why !== 'Stopped') R.cars.forEach((c, i) => { if (!c.dq && c.pending.some(p => p.mandatory)) { c.dq = true; c.dqWasDone = c.done; c.dqWasRetired = c.retired; c.done = true; c.retired = true; log('disqualified', i, t, { why: 'unserved' }); } }); R.status = 'finished'; R.endAt = t; R.endedBy = why; R.flag = ''; R.yellowAt = null; if (scWas) scEdge(t); R.calls.forEach(c => { c.open = false; }); enEnd(t, why); };
     const checkEnd = t => {
       if (R.status !== 'running') return;
       if (type === 'race' && cfg.endRule === 'leader' && R.finished > 0) return end(t, 'The lead car finished');
@@ -244,10 +244,16 @@
       if (!TWC?.temperature) return null;
       const TC=TWC.temperature, s=Tw.Temperature.settings(TC,c.tyre), value=Number.isFinite(c.twTemp)?c.twTemp:s.start;
       const cooling=R.status==='paused'||(R.status==='running'&&(c.blockAt!==null||R.flag==='yellow'));
+      // Timer release is recorded at its deadline even when an update arrives
+      // late. Pit cooling must stop there too; yellow flags still cool on track.
+      if(R.status==='running' && heldPits && PH.mode==='auto' && c.blockAt!==null && R.flag!=='yellow' && !(c.rndPitExit && (R.sharedPitExitHeld??randomPitExit()))){
+        const start=c.pit?.start??(c.blockAt+F.pitHold), penalties=(c.pit?.penaltyMs||0)+c.pending.reduce((n,p)=>n+(p.kind==='stopgo'?p.seconds*1000:0),0);
+        t=Math.min(t,Math.max(start+PH.seconds*1000+penalties,R.t0+(c.pitHold?.releaseNotBefore||0)));
+      }
       return cooling && systemOn('tyrewear') && !c.done && !c.retired && !R.temperatureRecovered
         ? Tw.Temperature.cool(thermalConfig(),c.tyre,value,Math.max(0,t-(c.twTempAt??t))/1000,tempWeather()) : value;
     }
-    function tempUpdate(c,t) { if (!TWC?.temperature) return; c.twTemp=tempValue(c,t); c.twTempAt=t; }
+    function tempUpdate(c,t) { if (!TWC?.temperature) return; t=Math.max(t,c.twTempAt??t);c.twTemp=tempValue(c,t); c.twTempAt=t; }
     function tempReset(c,t) { if (!TWC?.temperature) return; c.twTemp=Tw.Temperature.settings(TWC.temperature,c.tyre).start;c.twTempAt=t;c.twTempWear=1; }
     R.start = t => { if(R.resourceStart&&!R.resourceStart())return false; R.status = 'running'; R.t0 = t; R.cars.forEach(c => { c.last = t; tempReset(c,t); twRefresh(c); if (F.on && hasFx(c)) c.fuel = tankOf(c); }); wxEval(t); flRoll(); rnRoll(); }; // (a car that has Balance of Power, or tyres that help or hinder it, before the start begins with a full tank of its own size)
     R.pause = t => { if (R.status === 'running') { if (heldPits) R.tick(t); if (R.status !== 'running') return;
@@ -287,7 +293,7 @@
     const scEdge = t => { const now = R.scOut(); if (now === scWas) return; scWas = now; log('safetycar', -1, t, { out: now, laps: R.cars.reduce((m, c) => Math.max(m, c.laps.length), 0) }); };
     // A Random Flag can keep a Service Stop open at the pit exit. It deliberately has no effect without the Service Stop system: a timing interface can observe a sensor, but cannot safely hold a real car on its own.
     const randomPitExit = () => !!(RN && RN.up && RNC && RNC.pitExit && heldPits && systemOn('safetycar'));
-    const clearRandomPitExit = t => R.cars.forEach((c, i) => { if (c.rndPitExit) { c.rndPitExit = false; if (c.pitHold && R.status === 'running') holdCheck(i, t); } });
+    const clearRandomPitExit = t => R.cars.forEach((c, i) => { if (c.rndPitExit) { c.rndPitExit = false; if (c.pitHold && R.status === 'running') { c.pitHold.releaseNotBefore = R.elapsed(t); holdCheck(i, t); } } });
     const scFactor = () => (R.scOut() ? Sc.factor(SCC) : 1); // how long the work of a stop that begins now takes, as a part of the usual time
     R.setFlag = (kind, t) => {
       if(['running','paused'].includes(R.status))R.cars.forEach(c=>tempUpdate(c,t));
@@ -427,11 +433,10 @@
       if ((c.scf || 1) !== 1) c.pit.rate = (c.pit.rate ?? F.rate) / c.scf; // (under the Safety Car the tank fills faster: the work takes less time)
       if (heldPits) {
         c.pitHold = Ph.begin(c.pit.start - R.t0, c.pitSensor);
-        const rate = c.pit.rate ?? F.rate, need = Math.max(0, (c.pit.tank ?? F.tank) - c.fuel), lv = dmgLevel(c), fj = flJob(c), duration = PH.seconds * 1000;
-        c.pit.work = Ph.servicePlan({ fuel: F.on && pitJob(c, 'fuel') && need > 0 ? (rate > 0 ? need / rate * 1000 : duration) : 0,
+        const rate = c.pit.rate ?? F.rate, need = Math.max(0, (c.pit.tank ?? F.tank) - c.fuel), lv = dmgLevel(c), fj = flJob(c);
+        c.pit.work = Ph.servicePlan({ fuel: F.on && pitJob(c, 'fuel') && need > 0 ? (rate > 0 ? need / rate * 1000 : Infinity) : 0,
           repair: pitJob(c, 'damage') ? Math.max(lv ? lv.ms : 0, fj ? fj.ms : 0) * (c.scf || 1) : 0, repairAdd: PH.work === 'add' || (PH.work === 'systems' && !!DM && DM.stop === 'add'),
-          tyres: TWC && pitJob(c, 'tyrewear') ? TWC.changeMs * (c.scf || 1) : 0, tyreAdd: PH.work === 'add' || (PH.work === 'systems' && !!TWC && TWC.stop === 'add') }, duration);
-        if (F.on && need > 0) c.pit.rate = need / Math.max(1, c.pit.work.fuel) * 1000;
+          tyres: TWC && pitJob(c, 'tyrewear') ? TWC.changeMs * (c.scf || 1) : 0, tyreAdd: PH.work === 'add' || (PH.work === 'systems' && !!TWC && TWC.stop === 'add') });
         holdPenalty(c);
       }
       log('pitstart', i, c.pit.start);
@@ -683,7 +688,7 @@
     // the moment the tyres of the car on the sensor are changed (null: no change is under way: no stop yet, the change is done, or it takes no time)
     function twAt(c) {
       if (!TWC || !pitJob(c, 'tyrewear') || TWC.changeMs <= 0 || c.blockAt === null || !c.pit || c.twDoneAt === c.blockAt) return null;
-      if (heldPits && c.pit.work) return c.pit.start + c.pit.work.tyres;
+      if (heldPits && c.pit.work) return c.pit.start + (c.pit.work.tyres ?? Infinity);
       let from = c.blockAt;
       if (TWC.stop === 'add') { // one after the other: after the refuelling and a driver swap, and after a repair of damage
         from = Math.max(from, otherDoneAt(c));
@@ -870,30 +875,28 @@
     // Only the race consumes these observations; hardware monitors and protocol event streams stay live.
     function holdPenalty(c) {
       if (!c.pitHold) return;
-      const old = c.pitHold.extraMs || 0;
       c.pitHold.extraMs = (c.pit && c.pit.penaltyMs || 0) + c.pending.reduce((n, p) => n + (p.kind === 'stopgo' ? p.seconds * 1000 : 0), 0);
-      if (c.pitHold.extraMs > old) c.pitHold.returned = false;
     }
     function holdCheck(i, t) {
       const c = R.cars[i]; if (!c.pitHold || c.done || R.status !== 'running') return;
       if (c.rndPitExit && randomPitExit()) return;
       holdPenalty(c);
       const at = Ph.advance(c.pitHold, PH, R.elapsed(t));
-      if (at !== null) R.pitRelease(i, R.t0 + at, false, 'sensor');
+      if (at !== null) R.pitRelease(i, R.t0 + at, PH.mode === 'driver', PH.mode === 'auto' ? 'timer' : 'sensor');
     }
     R.pitControl = PH;
     R.pitExitHeld = () => randomPitExit();
     R.pitHoldOf = (i, t) => {
       const c = R.cars[i]; if (!heldPits || !c) return null;
       const view = Ph.view(c.pitHold, PH, R.elapsed(t));
-      return c.rndPitExit && (R.sharedPitExitHeld ?? randomPitExit()) ? { ...view, ready: false, randomHold: true, text: 'Held at pit exit until the Random Flag ends' } : view;
+      return c.rndPitExit && (R.sharedPitExitHeld ?? randomPitExit()) ? { ...view, ready: false, canRelease: false, randomHold: true, text: 'Held at pit exit until the Random Flag ends' } : view;
     };
     R.pitSensor = (i, on, t) => {
       const c = R.cars[i]; if (!heldPits || !c || !['running', 'paused'].includes(R.status) || (on !== null && typeof on !== 'boolean') || !Number.isFinite(t)) return false;
       const at = R.elapsed(t); if (c.pitSensorAt !== undefined && at < c.pitSensorAt) return false;
       if (R.status === 'running') pitCheck(i, t);
       c.pitSensor = on; c.pitSensorAt = at;
-      if (c.pitHold) { holdPenalty(c); if (on === null) { c.pitHold.covered = null; c.pitHold.returned = false; } else Ph.observe(c.pitHold, PH, at, on); holdCheck(i, t); }
+      if (c.pitHold) { holdPenalty(c); if (on === null || R.status === 'paused') Ph.resetSensor(c.pitHold, on); else Ph.observe(c.pitHold, PH, at, on); holdCheck(i, t); }
       else if (on === false) c.pitRearm = false;
       return true;
     };
@@ -901,7 +904,7 @@
       const c = R.cars[i]; if (!heldPits || !c || c.done || R.status !== 'running' || !c.pitHold) return false;
       if (c.rndPitExit && randomPitExit()) return false;
       holdPenalty(c); const remaining = Ph.due(c.pitHold, PH) - R.elapsed(t);
-      if (!early && remaining > 1e-6) return false;
+      if (by !== 'button' && !early && remaining > 1e-6) return false;
       if (by === 'button' && c.pitSensor == null) c.pitSensor = false; // button-only pits: Release car is the director's confirmation
       if (!R.unblock(i, t, true)) return false;
       log('pitrelease', i, t, { mode: PH.mode, early: remaining > 1e-6, by });
@@ -1060,7 +1063,7 @@
     function repairAt(c) {
       if (!pitJob(c, 'damage')) return null;
       const lv = dmgLevel(c), fj = flJob(c);
-      if (heldPits && c.pit && c.pit.work && (lv || fj) && !c.dmgOut && !c.failOut) return c.pit.start + c.pit.work.repair;
+      if (heldPits && c.pit && c.pit.work && (lv || fj) && !c.dmgOut && !c.failOut) return c.pit.start + (c.pit.work.repair ?? Infinity);
       return (lv || fj) && c.blockAt !== null && !c.dmgOut && !c.failOut ? Dm.doneAt(DM, { ms: Math.round(Math.max(lv ? lv.ms : 0, fj ? fj.ms : 0) * (c.scf || 1)) }, c.blockAt, DM.stop === 'add' ? otherDoneAt(c) : undefined) : null;
     }
     // the car stands in the pits and the time has come: repair it, or retire or disqualify it
@@ -1418,7 +1421,7 @@
       callId = Number(x.callId) || 0; R.resumes = (Number(x.resumes) || 0) + 1;
       if (R.status === 'running') { R.status = 'paused'; R.pausedAt = Number.isFinite(x.at) ? x.at : R.pausedAt; } // (it was racing: it waits, with the clock where it was)
       if (R.systemState) R.syncSystems(R.systemState);
-      if (R.status !== 'finished') R.cars.forEach(c => { c.resumed = true; if (heldPits) { c.pitSensor = null; c.pitSensorAt = undefined; if (c.pitHold) { c.pitHold.covered = null; c.pitHold.returned = false; } else if (c.pitRearm) c.pitRearm = true; } });
+      if (R.status !== 'finished') R.cars.forEach(c => { c.resumed = true; if (heldPits) { c.pitSensor = null; c.pitSensorAt = undefined; if (c.pitHold) { Ph.resetSensor(c.pitHold); } else if (c.pitRearm) c.pitRearm = true; } });
       return true;
     };
     // Distance Racing: the lanes differ in length, so the laps of two cars do not say who is ahead. A car that has driven its distance ranks first (the first to finish first); the others rank by the

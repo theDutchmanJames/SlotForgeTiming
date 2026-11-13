@@ -11,7 +11,7 @@
     ['resourceblocked','Resource Systems','Service blocked by exhausted supplies',['driver','resourcejob','resource','resourceowner'],'{driver}, {resourcejob} is waiting. Not enough {resource} for {resourceowner}.'],
     ['servicestart','Pits & Service Stop','Service Stop started',['driver','servicetotal'],'{driver}, service stop started. {servicetotal}.'],
     ['servicecountdown','Pits & Service Stop','Service countdown',['driver','serviceremaining'],'{driver}, {serviceremaining} remaining.'],
-    ['serviceready','Pits & Service Stop','Ready to leave the pits',['driver'],'{driver}, your stop is complete. You may leave the pits.'],
+ ['serviceready','Pits & Service Stop','Ready to leave the pits',['driver'],'{driver}, you may leave the pits.'],
     ['serviceearly','Pits & Service Stop','Released early',['driver'],'{driver} was released before the stop timer finished.'],
     ['pitheld','Pits & Service Stop','Pit exit held',['driver','releasecondition'],'{driver}, hold in the pits. {releasecondition}.'],
     ['pitclear','Pits & Service Stop','Pit exit hold lifted',['driver'],'{driver}, the Safety Car pit exit hold has lifted.'],
@@ -123,6 +123,7 @@
         if(x.type==='reinstated')emit('reinstated',v());
         if(x.type==='pitstart'&&e.pitControl?.mode!=='follow'&&e.pitControl)emit('servicestart',v());
         if(x.type==='pitrelease'&&x.early)emit('serviceearly',v());
+        if(x.type==='pitrelease'&&x.by==='timer')emit('serviceready',v());
         if(x.type==='tyrenone')emit('tyreunavailable',{...v(),requestedtyre:tyreName(e,x.asked||x.tyre)});
         if(x.type==='tyrefresh'&&x.asked&&x.asked!==x.tyre)emit('tyrefallback',{...v(),requestedtyre:tyreName(e,x.asked),tyre:tyreName(e,x.tyre)});
         if(x.type==='mandatory'&&!x.ok)emit('mandatorymissed',{...v(),consequence:x.ms?span(x.ms)+' added':x.points?x.points+' penalty points':x.how==='dq'?'Disqualified':'No additional penalty'});
@@ -149,7 +150,7 @@
           if(exitHeld&&!m.held)emit('pitheld',{...v(),releasecondition:'Safety Car pit exit hold'});if(!exitHeld&&m.held)emit('pitclear',v());m.held=exitHeld;
         } else {m.pit=null;m.ready=false;m.held=false;}
         if(hold){
-          const ready=h?.ready&&!h.randomHold&&h.mode!=='manual'&&h.covered!==null&&!(e.pitControl.waitReturn!==false&&!hold.returned&&h.covered===false);
+          const ready=!h?.randomHold&&h?.mode==='driver'&&h.covered===true&&hold.returned;
           if(ready&&!m.ready)emit('serviceready',v());m.ready=!!ready;
           const counts=String(options.serviceCountdown??'10,5').split(/[,;\s]+/).map(Number).filter(n=>n>0&&n<=300).sort((a,b)=>a-b),hit=counts.filter(n=>h?.remaining>0&&h.remaining<=n*1000&&!m.counts.has(n));if(hit.length&&!h.randomHold){hit.forEach(n=>m.counts.add(n));emit('servicecountdown',{...v(),serviceremaining:span(h.remaining)});}
         }else {m.ready=false;}

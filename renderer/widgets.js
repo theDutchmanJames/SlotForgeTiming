@@ -35,15 +35,22 @@
   const LAST_OPTIONS = [
     { key: 'lapsPerColumn', label: 'Laps per column', type: 'number', default: 1, min: 1, max: 30, step: 1 },
     { key: 'columns', label: 'Columns (1 to 3)', type: 'number', default: 1, min: 1, max: 3, step: 1 },
-    { key: 'lapNumbers', label: 'Show lap numbers (when more than one lap is shown)', type: 'checkbox', default: true }
+    { key: 'lapNumbers', label: 'Show lap numbers (when more than one lap is shown)', type: 'checkbox', default: true },
+    { key: 'rowGap', label: 'Space between lap rows', type: 'number', default: 3, min: 0, max: 16, step: 1 },
+    { key: 'columnGap', label: 'Extra space between columns', type: 'number', default: 0, min: 0, max: 160, step: 1, hint: 'Adds space between lap columns. 0 keeps the standard spacing. Scales with the widget; automatic sizing still keeps the laps inside it.' },
+    { key: 'columnDivider', label: 'Divider between columns', type: 'checkbox', default: true },
+    { key: 'latestLap', label: 'Emphasise newest lap', type: 'select', default: 'row', choices: [['row', 'Highlight first row'], ['spotlight', 'Separate latest-lap header'], ['none', 'No highlight']] }
   ];
   // items: lap times as text, or { n: lap number, t: text }
-  function lapListHtml(items, perColumn, columns, numbers = true) {
-    const per = clampInt(perColumn, 1, 30, 1), cols = clampInt(columns, 1, 3, 1), shown = items.slice(0, per * cols);
-    if (!shown.length) return '–';
-    if (per * cols === 1) return esc(shown[0] && shown[0].t !== undefined ? shown[0].t : shown[0]); // one lap: plain text
-    const rows = Math.min(per, shown.length);
-    return `<span class="ll" style="grid-template-rows:repeat(${rows},auto);grid-template-columns:repeat(${Math.ceil(shown.length / rows)},auto)">${shown.map(it => `<span class="lli">${numbers && it.n !== undefined ? `<span class="lln">${esc(it.n)}</span>` : ''}${esc(it.t !== undefined ? it.t : it)}</span>`).join('')}</span>`;
+  function lapListHtml(items, perColumn, columns, numbers = true, opt = {}) {
+    const per=clampInt(perColumn,1,30,1),cols=clampInt(columns,1,3,1),shown=items.slice(0,per*cols);
+    if(!shown.length)return '–';
+    if(per*cols===1)return esc(shown[0]?.t!==undefined?shown[0].t:shown[0]);
+    const emphasis=['none','spotlight'].includes(opt.latestLap)?opt.latestLap:'row',gap=clampInt(opt.rowGap,0,16,3),columnGap=clampInt(opt.columnGap,0,160,0);
+    const row=(it,latest=false)=>`<span class="lli${latest?' ll-newest':''}">${numbers&&it.n!==undefined?`<span class="lln">${esc(it.n)}</span>`:''}<span class="llt">${esc(it.t!==undefined?it.t:it)}</span></span>`;
+    const spotlight=emphasis==='spotlight',rest=spotlight?shown.slice(1):shown,rows=Math.min(per,rest.length),chunks=[];
+    for(let i=0;i<rest.length;i+=rows)chunks.push(`<span class="llcol">${rest.slice(i,i+rows).map((it,j)=>row(it,!spotlight&&emphasis==='row'&&i+j===0)).join('')}</span>`);
+    return `<span class="ll ll-layout${opt.columnDivider===false?'':' ll-dividers'}" style="--ll-gap:${gap};--ll-column-gap:${columnGap};--ll-cols:${chunks.length||1}">${spotlight?`<span class="ll-latest"><small>Latest lap</small>${row(shown[0])}</span>`:''}<span class="ll-columns">${chunks.join('')}</span></span>`;
   }
 
   // Custom text widgets: a line of text with {variables}. Unknown {words} stay as typed so a typo is easy to see.
@@ -438,6 +445,7 @@
     { key: 'segments', label: 'Digital segments', type: 'number', default: 12, min: 8, max: 20, step: 1, show: o => fuelIsBar(o) && fuelOpt(o, 'barStyle') === 'digital' },
     { key: 'glow', label: 'Soft digital glow (no animation)', type: 'checkbox', default: true, show: o => fuelIsBar(o) && fuelOpt(o, 'barStyle') === 'digital' },
     { key: 'barValues', label: 'Fuel values', type: 'select', default: 'auto', choices: [['auto', 'Style default'], ['litres', 'Litres'], ['percent', 'Percentage'], ['both', 'Percentage and litres / capacity']], show: o => fuelOpt(o, 'mode') === 'both', hint: 'Original defaults to litres; Digital Segments and Reserve Scale show percentage and litres / capacity. Choose Bar instead of Bar and number to hide values.' },
+    { key: 'valuePlacement', label: 'Fuel value placement', type: 'select', default: 'overlay', choices: [['overlay', 'Over the bar'], ['above', 'Above the bar']], show: o => fuelOpt(o, 'mode') === 'both', hint: 'Both positions keep the full bar width available. Above places the values in their own heading row.' },
     { key: 'warningText', label: 'Low / critical warning text', type: 'select', default: 'auto', choices: [['auto', 'Style default'], ['show', 'Show'], ['hide', 'Hide']], show: o => fuelIsBar(o), hint: 'Shown by default on Digital Segments and Reserve Scale. Original keeps its existing display. Warnings use the thresholds below; Reserve Scale marks the warning threshold.' },
     { key: 'lowAt', label: 'Warning colour below (% of tank)', type: 'number', default: 25, min: 0, max: 100, step: 1 },
     { key: 'lowColor', label: 'Warning colour', type: 'color', default: '#ffd400' },
@@ -500,11 +508,11 @@
     const message = warnings ? pct <= 0 ? 'EMPTY' : pct <= critical ? 'CRITICAL' : pct <= warning ? 'LOW FUEL' : '' : '';
     const colour = fuelBarColour(pct, opt);
     // Preserve the original markup and dimensions for existing layouts.
-    if (style === 'original' && !warnings && format !== 'both') return `<span class="fbar${vert ? ' fv' : ''}" style="--th:${th}"><span class="ffill" style="${vert ? 'height' : 'width'}:${size}%;background:${colour}"></span>${mode === 'both' ? `<span class="ftxt">${main}</span>` : ''}</span>`;
-    return quantityBarHtml({style,vert,th,size,colour,warning,message,main:mode==='both'?main:'',detail:mode==='both'?detail:'',segments:fuelOpt(opt,'segments'),glow:fuelOpt(opt,'glow'),label:`Fuel ${percent}${message?', '+message:''}`});
+    if (style === 'original' && !warnings && format !== 'both' && fuelOpt(opt,'valuePlacement') !== 'above') return `<span class="fbar${vert ? ' fv' : ''}" style="--th:${th}"><span class="ffill" style="${vert ? 'height' : 'width'}:${size}%;background:${colour}"></span>${mode === 'both' ? `<span class="ftxt">${main}</span>` : ''}</span>`;
+    return quantityBarHtml({placement:fuelOpt(opt,'valuePlacement')==='above'?'above':'overlay',style,vert,th,size,colour,warning,message,main:mode==='both'?main:'',detail:mode==='both'?detail:'',segments:fuelOpt(opt,'segments'),glow:fuelOpt(opt,'glow'),label:`Fuel ${percent}${message?', '+message:''}`});
   }
   // Shared quantity geometry; callers supply their own units, colours and race state.
-  function quantityBarHtml({style='original',vert=false,th=60,size=0,colour,warning=25,message='',main='',detail='',segments=12,glow=false,label='',header='',tyre=false,scaleLabels=['E','½','F'],reserve=true}) {
+  function quantityBarHtml({style='original',vert=false,th=60,size=0,colour,warning=25,message='',main='',detail='',segments=12,glow=false,label='',header='',tyre=false,scaleLabels=['E','½','F'],reserve=true,placement=''}) {
     // A selected supporting fact becomes the primary fact when it is the only content.
     if (!main && detail) { main=detail; detail=''; }
     let meter;
@@ -515,7 +523,9 @@
         return `<i class="fg-segment${lit > 0 ? ' fg-lit' : ''}">${lit > 0 ? `<b style="--lit:${lit}%"></b>` : ''}</i>`;
       }).join('')}</span>`;
     } else meter = `<span class="fg-meter fg-solid"><i class="fg-fill"></i>${style === 'scale' ? '<span class="fg-ticks"><i></i><i></i><i></i></span>'+(reserve?'<i class="fg-reserve"></i>':'') : ''}</span>`;
-    return `<span class="${tyre?'tyre-gauge ':''}fuel-gauge fg-${style}${vert ? ' fg-vertical' : ''}" style="--th:${th};--fuel:${colour};--amount:${size}%;--reserve:${warning}%" role="img" aria-label="${esc(label)}">${header}${message ? `<span class="fg-warning">${message}</span>` : ''}<span class="fg-meter-space">${meter}${style === 'scale' ? `<span class="fg-scale-labels">${scaleLabels.map(x=>`<span>${esc(x)}</span>`).join('')}</span>` : ''}</span>${main ? `<span class="fg-values${detail?'':' fg-single'}"><strong class="fg-value">${main}</strong>${detail ? `<span class="fg-detail">${detail}</span>` : ''}</span>` : ''}</span>`;
+    const values=main?`<span class="fg-values${detail?'':' fg-single'}"><strong class="fg-value">${main}</strong>${detail?`<span class="fg-detail">${detail}</span>`:''}</span>`:'';
+    if(placement==='overlay')meter=meter.replace(/<\/span>$/,values+'</span>');
+    return `<span class="${tyre?'tyre-gauge ':''}fuel-gauge fg-${style}${vert ? ' fg-vertical' : ''}" ${placement?`data-fuel-placement="${placement}"`: ''} style="--th:${th};--fuel:${colour};--amount:${size}%;--reserve:${warning}%" role="img" aria-label="${esc(label)}">${placement==='above'?values:''}${header}${message ? `<span class="fg-warning">${message}</span>` : ''}<span class="fg-meter-space">${meter}${style === 'scale' ? `<span class="fg-scale-labels">${scaleLabels.map(x=>`<span>${esc(x)}</span>`).join('')}</span>` : ''}</span>${!placement?values:''}</span>`;
   }
 
   // Speed: average speed over a lap from the track length. Real = the car's actual speed; scaled = as if the car were full size (1:1).

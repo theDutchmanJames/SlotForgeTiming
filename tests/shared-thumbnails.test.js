@@ -9,6 +9,24 @@ function png(width,height,colour=37){
 }
 const original=png(1400,800),thumbnail=png(512,293);
 for(const backend of ['json','sqlite']){
+ test(backend+': expected photo hash rejects replaced images while unguarded Timing reads stay compatible',async t=>{
+  const {client,options}=await fixture(t,backend,d=>{d.slotcars[0].picture=original;});
+  const digest=s=>require('node:crypto').createHash('sha256').update(s).digest('hex');let encodes=0;
+  const a=await engine.open({application:'hash QA',installationId:'hash-test',sharedRoot:options.sharedRoot,legacyProfiles:[],thumbnailEncoder:async()=>{encodes++;return thumbnail;}}),carId=client.canonicalId('old-car');
+  try{
+   await assert.rejects(a.thumbnail({carId,expectedHash:'not-a-hash'}),/hash/);
+   assert.equal(await a.thumbnail({carId,expectedHash:'0'.repeat(64)}),null);assert.equal(encodes,0);
+   assert.equal(await a.thumbnail({carId,expectedHash:digest(original)}),thumbnail);assert.equal(encodes,1);
+   const car=await a.car(carId),replacement=png(1400,800,91);
+   const store=new(require('../vendor/slotforge-library/engine/src/store.cjs').Store)(client.bootstrap.file,{deferred:true});
+   store.mutate('car.save',{id:carId,revision:car.revision,data:{picture:replacement}},{snapshot:false});
+   assert.equal(await a.thumbnail({carId,expectedHash:digest(original)}),null);assert.equal(encodes,1);
+   assert.equal(await a.thumbnail({carId,expectedHash:digest(replacement)}),thumbnail);assert.equal(encodes,2);
+   assert.equal(await a.thumbnail({carId}),thumbnail);assert.equal(encodes,2);
+   assert.equal((await a.car(carId,{includeMedia:true})).picture,replacement);
+  }finally{await a.close();}
+  await assert.rejects(a.thumbnail({carId}),{code:'LIBRARY_CLOSED'});
+ });
  test(backend+': one overview read preserves fields and coalesces duplicate catalogue requests',async t=>{
   const {client,db,worker,peer}=await fixture(t,backend,d=>{d.slotcars[0].picture=original;d.slotcars[0].extraPictures=[original];for(let n=0;n<55;n++)d.slotcars.push({id:'car-'+n,brand:'NSR',model:'Car '+String(n).padStart(2,'0'),picture:original,tyreCompound:'H',damageFactor:1.2,custom:{keep:n}});});
   const base=worker?new(require('../sqlite-app-repository'))(worker):new(require('../data-repository'))(db),records=require('../shared-library-records').wrap(base,client);

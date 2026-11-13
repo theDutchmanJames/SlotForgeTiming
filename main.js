@@ -29,7 +29,6 @@ const {WorkGate,Shutdown}=require('./work-gate'),appWork=new WorkGate();
 const registerIpc=ipcMain.handle.bind(ipcMain);
 ipcMain.handle=(channel,handler)=>registerIpc(channel,(...args)=>appWork.run(()=>handler(...args)));
 const parallel = require('./parallelport').createController({ onEvent: event => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('parallel:event', event); } });
-const phidget = require('./phidgetport').createController({ onEvent: event => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('phidget:event', event); } });
 let pendingRestore = null; // a backup file chosen for restoring, waiting for the user to confirm
 let pendingRestoreSource = null;
 let pendingImport = null; // a file chosen for import, waiting for the user to confirm
@@ -49,8 +48,8 @@ async function createWindow() {
   });
   mainWin = win;
   win.on('close',event=>{if(!shutdown.ready){event.preventDefault();app.quit();}});
-  win.webContents.on('render-process-gone', () => { parallel.shutdown(); phidget.shutdown(); pluginHost?.timing?.reset().catch(()=>{}); });
-  win.webContents.on('did-start-navigation', (_event, _url, inPlace, isMainFrame) => { if (isMainFrame && !inPlace) { parallel.shutdown(); phidget.shutdown(); pluginHost?.timing?.reset().catch(()=>{}); } });
+  win.webContents.on('render-process-gone', () => { parallel.shutdown(); pluginHost?.timing?.reset().catch(()=>{}); });
+  win.webContents.on('did-start-navigation', (_event, _url, inPlace, isMainFrame) => { if (isMainFrame && !inPlace) { parallel.shutdown(); pluginHost?.timing?.reset().catch(()=>{}); } });
   // USB timing hardware: Electron lets the page use COM ports and HID devices once the app allows it and the user has chosen one
   let pick = null; // the callback waiting for the user's choice
   const ask = (kind, list, callback) => { if (pick) pick(''); pick = callback; win.webContents.send('hw:choose', kind, list); };
@@ -419,16 +418,6 @@ const startupTask=app.whenReady().then(async () => {
   ipcMain.handle('settings:get', () => lifecycle.settings());
   // A Live Race window or a subframe cannot open a port or drive its pins.
   const parallelOwner = e => { if (!mainWin || mainWin.isDestroyed() || e.sender !== mainWin.webContents || e.senderFrame !== e.sender.mainFrame) throw Error('Parallel-port access belongs to the main app window.'); };
-  const phidgetOwner = e => { if (!mainWin || mainWin.isDestroyed() || e.sender !== mainWin.webContents || e.senderFrame !== e.sender.mainFrame) throw Error('Phidget access belongs to the main app window.'); };
-  ipcMain.handle('phidget:state', e => { phidgetOwner(e); return phidget.state(); });
-  ipcMain.handle('phidget:scan', e => { phidgetOwner(e); return phidget.scan(); });
-  ipcMain.handle('phidget:open', (e, value) => { phidgetOwner(e); if (lifecycle.settings().timingHw !== 'phidget') throw Error('Choose Phidget as the timing hardware first.'); return phidget.open(value); });
-  ipcMain.handle('phidget:close', e => { phidgetOwner(e); return phidget.close(); });
-  ipcMain.handle('phidget:alive', e => { phidgetOwner(e); return phidget.alive(); });
-  ipcMain.handle('phidget:arm', (e, on) => { phidgetOwner(e); return phidget.armTests(on); });
-  ipcMain.handle('phidget:test', (e, index) => { phidgetOwner(e); return phidget.test(index); });
-  ipcMain.handle('phidget:race', (e, on, lanes, lease) => { phidgetOwner(e); if (on && lifecycle.settings().timingHw !== 'phidget') throw Error('Phidget is not the timing hardware in use.'); return phidget.setRace(on, lanes, lease); });
-  ipcMain.handle('phidget:outputs', (e, wants, lease) => { phidgetOwner(e); if (lifecycle.settings().timingHw !== 'phidget') throw Error('Phidget is not the timing hardware in use.'); return phidget.outputs(wants, lease); });
   ipcMain.handle('parallel:alive', e => { parallelOwner(e); return parallel.alive(); });
   ipcMain.handle('parallel:state' , e => { parallelOwner(e); return parallel.state(); });
   ipcMain.handle('parallel:check', (e, value) => { parallelOwner(e); return parallel.check(value); });
@@ -465,7 +454,7 @@ const startupTask=app.whenReady().then(async () => {
       if('pluginTiming' in patch){if(timing?.connected||timing?.connection)throw Error('Disconnect before changing plugin lane assignments.');patch={...patch,pluginTiming:timing.validate(patch.pluginTiming)};}
       if('timingHw' in patch&&patch.timingHw!=='plugin'&&timing?.connected)await timing.disconnect();
     }
-     if (Object.prototype.hasOwnProperty.call(patch || {}, 'phidget')) { phidgetOwner(_e); if (phidget.state().connected) throw Error('Disconnect before changing Phidget channel assignments.'); const P = require('./renderer/phidget'), errors = P.validate(P.config(patch.phidget)); if (errors.length) throw Error(errors[0]); } if (phidget.state().race && (Object.prototype.hasOwnProperty.call(patch || {}, 'phidget') || (Object.prototype.hasOwnProperty.call(patch || {}, 'timingHw') && patch.timingHw !== 'phidget'))) throw Error('Leave the race before changing its Phidget setup.'); if (Object.prototype.hasOwnProperty.call(patch || {}, 'parallelPort')) { parallelOwner(_e); if (parallel.state().connected) throw Error('Disconnect before changing parallel-port assignments.'); const P = require('./renderer/parallel'), errors = P.validate(P.config(patch.parallelPort)); if (errors.length) throw Error(errors[0].text); } if (parallel.state().race && (Object.prototype.hasOwnProperty.call(patch || {}, 'parallelPort') || (Object.prototype.hasOwnProperty.call(patch || {}, 'timingHw') && patch.timingHw !== 'parallel'))) throw Error('Finish or leave the race before changing its parallel-port setup.'); const s = await lifecycle.updateSettings(patch); if(db)db.bg = backgroundOn(s); if (Object.keys(patch || {}).some(k => k.startsWith('net'))) await applyNet(); return s; });
+     if (Object.prototype.hasOwnProperty.call(patch || {}, 'parallelPort')) { parallelOwner(_e); if (parallel.state().connected) throw Error('Disconnect before changing parallel-port assignments.'); const P = require('./renderer/parallel'), errors = P.validate(P.config(patch.parallelPort)); if (errors.length) throw Error(errors[0].text); } if (parallel.state().race && (Object.prototype.hasOwnProperty.call(patch || {}, 'parallelPort') || (Object.prototype.hasOwnProperty.call(patch || {}, 'timingHw') && patch.timingHw !== 'parallel'))) throw Error('Finish or leave the race before changing its parallel-port setup.'); const s = await lifecycle.updateSettings(patch); if(db)db.bg = backgroundOn(s); if (Object.keys(patch || {}).some(k => k.startsWith('net'))) await applyNet(); return s; });
   ipcMain.handle('net:status', () => netStatus());
   await applyNet();
   if(startupClosing)return;
@@ -488,7 +477,7 @@ const shutdown=new Shutdown({gate:appWork,
     paddock?.quiesce();net.server?.quiesce();
     await pluginSafety;
     await appWork.idle();await netChain;await net.server?.close();
-    parallel.shutdown();phidget.shutdown();
+    parallel.shutdown();
     await paddock?.idle();paddock?.stop();
     await sharedLibrary?.close();
     await pluginHost?.shutdown();await resourceStore?.idle();
@@ -502,7 +491,7 @@ app.on('before-quit',e=>{
   if(shutdown.ready||!gotLock)return;
   e.preventDefault();startupClosing=true;appWork.stop();
   // Hardware safety is immediate, independent of potentially slow storage.
-  parallel.shutdown();phidget.shutdown();
+  parallel.shutdown();
   if(quitWaiting)return;quitWaiting=true;
   pluginSafety=Promise.resolve().then(()=>pluginHost?.timing?.reset());
   pluginSafety.catch(()=>{}); // Report any failure through the shutdown coordinator.

@@ -28,7 +28,7 @@ app.on('browser-window-created',(_,win)=>{win.hide();win.webContents.on('did-fin
   // Select all lap pages for the PDF using the actual export options dialog.
   await run("for(const input of dlg.querySelectorAll('input[type=checkbox]'))input.checked=true;dlg.querySelector('#pdfgo').click()");
   for(let i=0;i<80&&!pdf;i++)await wait(50);assert(pdf.includes('<td>240</td>')&&pdf.includes('5.239'),'PDF includes last lap outside the visible page');
-  await run("await api.update('drivers',qaDriver.id,{name:'James updated'});document.querySelector('[data-history-next=sessions]').click()");await until("document.querySelector('.history-navigation')?.textContent.includes('Results changed')");
+  await run("await api.update('drivers',qaDriver.id,{name:'James updated'});document.querySelector('[data-history-next=sessions]').click()");await until("document.querySelector('.history-guidance')?.textContent.includes('Results changed')");
   assert(await run("return document.querySelector('.history-navigation').textContent.includes('Page 1')"));
   await run("document.querySelector('[data-folderall=\"0\"]').click()");await until("[...document.querySelectorAll('#resbody details.dbfolder')].every(x=>!x.open)");
   await run("document.querySelector('[data-folderall=\"1\"]').click()");await until("[...document.querySelectorAll('#resbody details.dbfolder')].every(x=>x.open)");

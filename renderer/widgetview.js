@@ -94,7 +94,7 @@
     composition: (n) =>
       get("Frame").fit(n.el, { ...n.w, layoutKind: "composition" }),
     clock: (n) => get("Widgets").fitClock(n.el, n.w),
-    rows: (n) => get("Rows")?.fitText(n.val),
+    rows: (n) => get("Frame").fit(n.el, { ...n.w, layoutKind: "rows" }),
     weather: (n) => {
       // The weather adapter adds an inner shrink factor. Remove the previous
       // factor before fitting the outer text after a resize (fresh DOM has none).
@@ -163,6 +163,8 @@
     const w = {
       type: el.dataset.wvType || "rowcell",
       w: el.clientWidth,
+      // Render-only size from the proportionally scaled row, never saved.
+      ...(!saved.typography&&!parent.typography&&el.closest('.rrow')?{rowTextSize:size}:{}),
       opt: saved.opt || {},
       typography: saved.typography ||
         parent.typography || {

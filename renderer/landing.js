@@ -5,7 +5,7 @@ const optionsOf = (entity, list, chosen, blank = '(choose)') =>
 // Current adapters return card statistics without sending lap history to Home.
 // homeLaps remains the compatibility cache for older adapters/tests without that API.
 // homeRun prevents late statistics or pictures from painting over a newer draw.
-let homeLaps = null, homeRun = 0, homeOffTm = null, homeOffAb = null, homeOffPp = null, homeOffPh = null, homeOffPt = null, homeOffDs = null, homeDraw = 0; // (homeDraw numbers the drawings of Home: the one that is slow does not paint over another tab, or over a newer Home)
+let homeLaps = null, homeRun = 0, homeOffTm = null, homeOffAb = null, homeOffPp = null, homeOffPt = null, homeOffDs = null, homeDraw = 0; // (homeDraw numbers the drawings of Home: the one that is slow does not paint over another tab, or over a newer Home)
 // 1.26.0: a line of text or a number in Customize is saved when you leave the field. Home is drawn again a moment later (HOME_SOFT_MS), so that a click or a Tab that comes next
 // is not lost to a page that changes under it, and the control that has the cursor then keeps it. While you are typing in a field (an input without its change yet) nothing is drawn.
 let HOME_SOFT_MS = 400;
@@ -23,7 +23,6 @@ function timingReady(lanes) {
   if (hw === 'none') return true;
   if (hw === 'ds') { const ok = typeof DsTiming !== 'undefined' && DsTiming.link.connected && lanes <= DsTiming.lanes(DsTiming.link.model); if (!ok && typeof alert === 'function') alert('Connect a DS-200 (up to 2 lanes) or DS-300 (up to 8 lanes) in App Settings first. Other DS models remain capture-only.'); return ok; }
   if (hw === 'plugin') { const ok = typeof pt !== 'undefined' && pt.link.connected && lanes <= pt.link.config.lanes; if (!ok && typeof alert === 'function') alert('Connect a timing plugin covering all race lanes in App Settings first, or choose None.'); return ok; }
-  if (hw === 'phidget') { const ok = typeof Phidget !== 'undefined' && Phidget.link.connected && lanes <= Phidget.link.config.lanes; if (!ok && typeof alert === 'function') alert('Connect a Phidget covering all race lanes first, or choose None to race with keys/simulated cars.'); return ok; }
   if (hw === 'parallel' && typeof ParallelPort !== 'undefined' && ParallelPort.link.connected && Number(lanes) > ParallelPort.link.config.lanes) return typeof confirm !== 'function' || confirm(`Parallel Port is configured for ${ParallelPort.link.config.lanes} lanes, but this race uses ${lanes}.\n\nOK: start using keys or simulated cars.\nCancel: adjust the lane sensors in App Settings, Timing Hardware.`);
   const on = hw === 'parallel' ? typeof ParallelPort !== 'undefined' && !!ParallelPort.link.connected : hw === 'trackmate' ? typeof Trackmate !== 'undefined' && !!Trackmate.link.connected : typeof ArduinoBox !== 'undefined' && !!ArduinoBox.link.connected;
   if (on) return true;
@@ -286,7 +285,7 @@ async function renderHome() {
   const audio = setup && (audiosets || []).find(x => x.id === setup.audioSet), audioName = audio ? audio.name || '(unnamed)' : '';
   // the timing hardware chip: the hardware that was chosen (App Settings, Timing Hardware), one at a time, and whether it is connected
   const abLink = typeof ArduinoBox !== 'undefined' && ArduinoBox.link ? ArduinoBox.link : null;
-  const chipsNow = more => HomeStats.chips({ hardware: Hardware.timingChosen(state.settings), ds: typeof DsTiming !== 'undefined' && DsTiming.link.connected, trackmate: typeof Trackmate !== 'undefined' && !!Trackmate.link.connected, arduino: !!(abLink && abLink.connected), plugin: typeof pt !== 'undefined' && pt.link.connected, pluginName: typeof pt !== 'undefined' && pt.identity?.name, phidget: typeof Phidget !== 'undefined' && Phidget.link.connected, parallel: typeof ParallelPort !== 'undefined' && ParallelPort.link.connected, virtual: state.settings.abVirtual === true,
+  const chipsNow = more => HomeStats.chips({ hardware: Hardware.timingChosen(state.settings), ds: typeof DsTiming !== 'undefined' && DsTiming.link.connected, trackmate: typeof Trackmate !== 'undefined' && !!Trackmate.link.connected, arduino: !!(abLink && abLink.connected), plugin: typeof pt !== 'undefined' && pt.link.connected, pluginName: typeof pt !== 'undefined' && pt.identity?.name, parallel: typeof ParallelPort !== 'undefined' && ParallelPort.link.connected, virtual: state.settings.abVirtual === true,
     netOn: !!state.settings.netOn, netError: more && more.netError, hasSetup: !!setup, audioName, drivers: drivers.length, cars: cars.length, tracks: tracks.length });
   const chipHtml = c => `<span class="hm-chip" data-key="${c.key}"${c.state ? ` data-state="${c.state}"` : ''}>${c.state ? '<i aria-hidden="true"></i>' : ''}${esc(c.text)}</span>`;
   const today = new Date().toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
@@ -559,10 +558,8 @@ async function renderHome() {
 
   if (homeOffDs) { homeOffDs(); homeOffDs=null; }
   if (typeof DsTiming !== 'undefined') { const off=DsTiming.link.onStatus(()=>{if(run!==homeRun||!setChips({netError})){off();if(homeOffDs===off)homeOffDs=null;}});homeOffDs=off; }
-  if (homeOffPh) { homeOffPh(); homeOffPh = null; }
   if(homeOffPt){homeOffPt();homeOffPt=null;}
   if (typeof pt !== 'undefined') { const off = pt.link.onStatus(() => { if (run !== homeRun || !setChips({ netError })) {off();if(homeOffPt===off)homeOffPt=null;} }); homeOffPt=off; }
-  if (typeof Phidget !== 'undefined') { const off = Phidget.link.onStatus(() => { if (run !== homeRun || !setChips({ netError })) { off(); if (homeOffPh === off) homeOffPh = null; } }); homeOffPh = off; }
   if (homeOffPp) { homeOffPp(); homeOffPp = null; }
   if (typeof ParallelPort !== 'undefined') {
     const off = ParallelPort.link.onStatus(() => { if (run !== homeRun || !setChips({ netError })) { off(); if (homeOffPp === off) homeOffPp = null; } });

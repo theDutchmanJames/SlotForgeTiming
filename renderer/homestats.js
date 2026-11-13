@@ -259,7 +259,7 @@
   function timing(ctx) {
     const hw = ctx.hardware || 'trackmate';
     if (hw === 'none') return { key: 'tm', text: 'No timing hardware chosen', state: 'off' };
-    const name = hw === 'ds' ? 'DS Electronics' : hw === 'plugin' ? (ctx.pluginName || 'Plugin interface') : hw === 'phidget' ? 'Phidget' : hw === 'parallel' ? 'Parallel Port' : hw === 'arduino' ? (ctx.virtual ? 'Virtual Arduino Sketch' : 'Arduino Sketch') : 'Trackmate', on = hw === 'ds' ? !!ctx.ds : hw === 'plugin' ? !!ctx.plugin : hw === 'phidget' ? !!ctx.phidget : hw === 'parallel' ? !!ctx.parallel : hw === 'arduino' ? !!ctx.arduino : !!ctx.trackmate;
+    const name = hw === 'ds' ? 'DS Electronics' : hw === 'plugin' ? (ctx.pluginName || 'Plugin interface') : hw === 'parallel' ? 'Parallel Port' : hw === 'arduino' ? (ctx.virtual ? 'Virtual Arduino Sketch' : 'Arduino Sketch') : 'Trackmate', on = hw === 'ds' ? !!ctx.ds : hw === 'plugin' ? !!ctx.plugin : hw === 'parallel' ? !!ctx.parallel : hw === 'arduino' ? !!ctx.arduino : !!ctx.trackmate;
     return { key: 'tm', text: name + (on ? ' connected' : ' not connected'), state: on ? 'on' : 'warn' };
   }
   function chips(ctx) {

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.2.2 — 2026-11-13
+
+- Put **Race Sharing** and **Dealership Mode** under **App Settings → Connections**. Connect directly from **Dealership Cars**, with cached cars still available offline and existing result queues retained.
+- Improve shared thumbnail reuse and recovery, including photo changes and catalogue refreshes.
+- Improve widget auto-scaling, smaller manual text/title sizes, All-in-One layouts, Last Laps spacing and latest-lap emphasis, Fuel Bar number placement, and leaderboard fitting.
+- Place Results and Records paging controls with their folders, keeping record grouping and calculations unchanged. Give the Race Setup toolbar quieter theme styling.
+- Rework Service Stop release modes: timer, Race Director, or a sensor-observed remove/return/drive-off sequence. Service jobs keep their real durations; early departure preserves fuel added and completed work. Fix recorded timer deadlines and tyre cooling on delayed updates.
+- Add Trackmate Track Call input feedback and remove unsupported Phidget hardware integration.
+- Update Help and fix issues found during the regression and visual reviews.
+
 ## 2.2.1 — 2026-11-13
 
 - Store and reuse shared car thumbnails for catalogue cards; load the full picture for car details.

@@ -90,12 +90,12 @@ const LiveView = (() => {
     WidgetView.updateComponents({val:body},{components});
   }
 
-  // On another device (a browser) the Race Director page asks for the password that was set in App Settings > Network access.
+  // On another device (a browser) the Race Director page asks for the password that was set in App Settings > Connections > Race Sharing.
   async function drawLogin(body, fresh) {
     if (!fresh && $('lv-login')) return;
     let info = { passwordSet: true };
     try { info = await api.directorInfo(); } catch { /* the host is not reachable: show the form anyway */ }
-    if (!info.passwordSet) { body.innerHTML = `<div id="lv-login" class="card"><p>${page === 'tokens' ? 'The Tokens page' : 'The Race Director'} can only be used on the main computer, because no password is set. Set one in App Settings > Network access.</p></div>`; return; }
+    if (!info.passwordSet) { body.innerHTML = `<div id="lv-login" class="card"><p>${page === 'tokens' ? 'The Tokens page' : 'The Race Director'} can only be used on the main computer, because no password is set. Set one in App Settings > Connections > Race Sharing.</p></div>`; return; }
     body.innerHTML = `<form id="lv-login" class="card" style="max-width:360px"><div class="field"><label for="lv-pass">${page === 'tokens' ? 'Password for the Tokens page (the same as for the Race Director)' : 'Password for the Race Director'}</label><input id="lv-pass" type="password" autocomplete="current-password"></div>
       <div class="row"><button class="btn primary" type="submit">Log in</button><span id="lv-loginmsg" class="error" role="alert"></span></div></form>`;
     $('lv-login').onsubmit = async ev => {

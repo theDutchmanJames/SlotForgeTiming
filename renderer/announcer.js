@@ -118,7 +118,7 @@
     { id: 'ambpitout', section: 'Pit lane', label: 'A car leaves the pits (pulls away)', on: ['pitout'], vars: ['driver'] },
     { id: 'ambrefuel', section: 'Pit lane', label: 'A car has been refuelled, as the stop ends (the pump stops, the fuel cap)', on: ['refuelled'], vars: ['driver'] },
     { id: 'ambtyres', section: 'Pit lane', label: 'New tyres have been fitted, during a stop (the last wheel nut)', on: ['tyrenew', 'tyrechange'], vars: ['driver'] },
-    { id: 'ambservice', section: 'Pit lane', label: 'Service Stop ready to leave (completion tone)', on: ['serviceready'], vars: ['driver'] },
+    { id: 'ambservice', section: 'Pit lane', label: 'Service Stop ready to leave (departure tone)', on: ['serviceready'], vars: ['driver'] },
     { id: 'ambrepair', section: 'Pit lane', label: 'A repair is done (a tool put down)', on: ['repaired', 'failurerepaired'], vars: ['driver'] },
     { id: 'ambprerace', section: 'The start', label: 'Start is pressed, before the lights (engines revving, the crowd)', on: ['prerace'], vars: [] },
     { id: 'ambbeep', section: 'The start', label: 'A start light comes on (a beep)', on: ['countdown5', 'countdown4', 'countdown3', 'countdown2', 'countdown1'], vars: [] },

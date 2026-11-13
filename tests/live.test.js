@@ -527,13 +527,16 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   store.layouts = [{ id: 'B1', name: 'B', ratioW: 16, ratioH: 9, laneColors: [{ text: '#ffffff', bg: '#aa0000' }], widgets: [WB('callsign', 0), WB('sessionrecord', null), WB('trackrecord', null), WB('leaderboard', null, { opt: { design: 'RD1', scale: 70, gaps: 0, fill: 'rows' } }), WB('lastlap', 0, { opt: { lapsPerColumn: 3, columns: 2 } })] }];
   store.rowdesigns = [{ ...vm.runInContext('Rows.defaultDesign()', ctx), id: 'RD1', name: 'Wide rows' }];
   ctx.__fits = 0; run('(() => { const f = Rows.fitText; Rows.fitText = (r, m) => { __fits++; return f(r, m); }; })()');
+  // This lightweight DOM has no measurable table geometry. Check that live widgets
+  // enter the shared frame fitter; native Electron tests verify the resulting fit.
+  ctx.__boardFits = 0; run('(() => { const f = Frame.fit; Frame.fit = (el, w) => { if(w.layoutKind === "rows") __boardFits++; return f(el, w); }; })()');
   await openRace({ name: 'B', sessionType: 'practice', layout: 'B1' }, store.tracks[0], rows(1, 2));
   say('callsign reaches the page', nodeOf('callsign', 0).val.innerHTML === 'ALX');
   say('track record from earlier laps shows time and who set it', node('trackrecord').val.innerHTML.includes('4.500') && node('trackrecord').val.innerHTML.includes('Sam'));
   say('no session record before any lap', node('sessionrecord').val.innerHTML === '–');
   say('a leaderboard widget with a row design shows the rows, sized to the widget frame, the size choice and the closed-up columns', node('leaderboard').val.innerHTML.includes('class="rrows"') && node('leaderboard').val.innerHTML.includes('--rtot:146;--rk:0.7;--rw:985') && node('leaderboard').val.innerHTML.includes('aspect-ratio:985 / 70'));
   say('...and the Fill the frame choice of the widget reaches it too (taller rows)', node('leaderboard').val.innerHTML.includes('<div class="rrows" data-fill="rows" style="--rtot:146;--rk:0.7;--rw:985">'));
-  say('...and the text of its cells is fitted to the cells when it is drawn', ctx.__fits > 0);
+  say('...and the leaderboard uses the shared frame fitter when it is drawn', ctx.__boardFits > 0);
   say('leaderboard lists both drivers with the lane colour', node('leaderboard').val.innerHTML.includes('Alex') && node('leaderboard').val.innerHTML.includes('Sam') && node('leaderboard').el.style.background !== undefined);
   key(' '); await until(() => phase() === 'running');
   await wait(60); key('1'); await wait(60); key('1');

@@ -137,9 +137,9 @@ The **Live Track** chart follows the imported lane shapes. Choose the original c
 
 ### Race cars from SlotForge Paddock
 
-Start **Dealership hosting** in Paddock, then open **Database → Slotcars → Connect to Paddock** in Timing. Find the host on your local network or enter its displayed address and port, and connect with its **Dealership password**.
+Start **Dealership hosting** in Paddock, then open **Database → Slotcars → Dealership Cars** in Timing. Find the host on your local network or enter its displayed address and port, and connect with its **Dealership password**. These controls and result delivery are also available in **App Settings → Connections → Dealership Mode**.
 
-- Switch between **Local Database** and **Paddock Database**. Browse Paddock cars directly when assigning entries on Home; selected cars are cached automatically.
+- Switch between **Slotcar library** and **Dealership Cars**. Browse Paddock cars directly when assigning entries on Home; selected cars are cached automatically.
 - Keep catalogue specifications, pictures and Race Class connected to Paddock while Timing retains its own simulation settings and local race history.
 - Finalize the Race Director's reviewed results to save the session and queue delivery back to Paddock. Failed connections leave results waiting for retry; delivered revisions and withdrawals prevent duplicate or stale statistics.
 - Race offline with previously cached configurations. Historical results retain the car configuration captured for that race.
@@ -192,16 +192,14 @@ Choose the active interface in **App Settings → Timing Hardware**. One interfa
 | Trackmate | Serial connection, lane mapping, track calls and supported relay control. |
 | Arduino Sketch | SlotForge firmware for compatible Nano/Mega boards, sensors, pits, lights, relays and buttons. A virtual box is available for simulation. |
 | Parallel Port | Windows native LPT/compatible expansion hardware through a separately installed compatible InpOut driver. A USB printer adapter does not provide the required direct pin access. |
-| Phidget | Local USB on Windows 64-bit through the official Phidget22 libraries; digital, voltage and voltage-ratio sensor inputs, plus supported outputs. |
 | DS Electronics | DS-200 (2 lanes) and DS-300 (up to 8 lanes) race timing, with capture diagnostics. Timing controls starts and resumes; no DS power control. Replay-tested; physical hardware verification is outstanding. Other DS models remain capture-only. |
 | oXigen Digital | Reserved interface page; not implemented yet. |
 | Plugin Interface | Separately installed timing drivers can provide sensors, track calls and supported power/light controls. |
 | No hardware | Keyboard/manual controls and simulated cars for trying the app. |
 
-Parallel Port and Phidget support have been tested in software with simulated inputs. Physical hardware compatibility and timing accuracy have not been verified for these implementations. Check the interface documentation before connecting a track:
+Parallel Port support has been tested in software with simulated inputs. Physical hardware compatibility and timing accuracy have not been verified for this implementation. Check the interface documentation before connecting a track:
 
 - [Parallel Port setup and requirements](docs/PARALLEL-PORT.md)
-- [Phidget setup and limitations](docs/phidget-interface.md)
 - [Arduino box documentation](docs/arduino-box/)
 - [Service Stop behaviour](docs/SERVICE-STOP.md)
 
@@ -238,7 +236,7 @@ The Mac app is ad-hoc signed, not Apple Developer ID signed or notarized. If mac
 
 **AppImage:** save the file, open **Properties → Permissions**, enable **Allow executing file as program** or your distribution's equivalent, then double-click it. AppImage support depends on your distribution and FUSE configuration; the DEB is an alternative on Debian-based systems.
 
-Parallel Port and the current Phidget USB helper require **Windows**. Other interfaces depend on suitable OS drivers and access to their serial/network hardware. See [native build and platform details](docs/DESKTOP-RELEASES.md).
+Parallel Port requires **Windows**. Other interfaces depend on suitable OS drivers and access to their serial/network hardware. See [native build and platform details](docs/DESKTOP-RELEASES.md).
 
 ### Run or build from source
 

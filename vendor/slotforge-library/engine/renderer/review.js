@@ -8,7 +8,7 @@ function captureReviewDraft(){
 function restoreReviewDraft(draft){
  if(draft?.timingCollection){const group=document.querySelector('[data-timing-collection]');if(group?.dataset.timingCollection===draft.timingCollection)group.querySelectorAll('[data-collection-item]:not(:disabled)').forEach(e=>e.checked=draft.keys.includes(e.dataset.collectionKey));return;}
  const card=document.querySelector('[data-review-submission]');if(!draft||!card||draft.database!==card.dataset.reviewDatabase||draft.id!==card.dataset.reviewSubmission||draft.carId!==card.dataset.reviewCar)return;
- $('#review-note').value=draft.note;for(const [key,checked] of draft.fields){const el=card.querySelector('[data-review-field="'+CSS.escape(key)+'"]');if(el)el.checked=checked;}for(const [key,checked] of draft.overrides){const el=card.querySelector('[data-stock-override="'+CSS.escape(key)+'"]');if(el)el.checked=checked;}if($('#review-setups'))$('#review-setups').checked=!!draft.setups;
+ $('#review-note').value=draft.note;for(const [key,checked] of draft.fields){const el=card.querySelector('[data-review-field="'+CSS.escape(key)+'"]');if(el)el.checked=checked;}for(const [key,checked] of draft.overrides){const el=card.querySelector('[data-stock-override="'+CSS.escape(key)+'"]');if(el)el.checked=checked;}if($('#review-setups'))$('#review-setups').checked=!!draft.setups;ReviewSelection.update(card);
 }
 function updateReviewIndicator(){const button=$('#review-button');if(!button||!db)return;const holder=document.createElement('div');holder.innerHTML=reviewButton();const next=holder.firstElementChild;button.innerHTML=next.innerHTML;for(const name of ['class','aria-label','aria-current','title'])button.setAttribute(name,next.getAttribute(name));}
 function openReview(tab){const raw=ReviewModel.summary(db),counts=db._view?.review,s=counts?{incoming:{length:counts.incoming},due:{length:counts.due},jobs:{length:counts.jobs}}:raw,already=page==='Review';switchCollection('local');page='Review';if(!already)reviewHistory=false;reviewTab=tab||(db._view?.timingCollection?.total?'Timing collection':clubCount()?'Club changes':already?reviewTab:s.incoming.length?'Incoming cars':db._view?.historyImports?.total?'Historical imports':db._view?.resultInbox?.total?'Race results':s.due.length?'Maintenance':s.jobs.length?'Workshop jobs':'Incoming cars');render();}
@@ -34,7 +34,7 @@ function renderReviewHub(){
 }
 async function reviewAction(action,id){
   if(await timingCollectionAction(action,id))return true;
-  if(action==='review-select-safe'||action==='review-select-none'){document.querySelectorAll('[data-review-field]').forEach(e=>{e.checked=action==='review-select-safe'&&!e.hasAttribute('data-stock-override');});return true;}
+  if(action==='review-select-safe'||action==='review-select-none'){const card=document.querySelector('[data-review-submission]');if(card)ReviewSelection.select(card,action==='review-select-safe');return true;}
   if(action==='open-review'){openReview();return true;}
   if(action==='review-tab'){if([...(mergeReviewAvailable?['Car merges']:[]),'Timing collection','Club changes','Incoming cars','Workshop jobs','Maintenance','Race results','Historical imports'].includes(id)){reviewTab=id;render();}return true;}
   if(action==='history-import-inspect'){await inspectHistoricalImport(id);return true;}

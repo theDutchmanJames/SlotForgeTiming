@@ -32,4 +32,4 @@ The Linux build also runs `npm run fwtest` with its desktop C++ compiler. This e
 
 The Mac app uses an ad-hoc signature so its universal binary has a valid local signature. It is **not Apple Developer ID signed or notarized**; macOS may require approval in System Settings → Privacy & Security. Do not describe it as notarized. Windows downloads are also unsigned. Developer certificates and notarization can be added later.
 
-Parallel Port and the current Phidget USB helper are **Windows-only**. Other timing interfaces depend on OS drivers, serial/network access and the device. A successful build and smoke test do not certify a physical interface on that OS. Linux AppImage support also depends on the distribution's AppImage/FUSE support; Debian/Ubuntu users can choose the `.deb` instead.
+Parallel Port is **Windows-only**. Other timing interfaces depend on OS drivers, serial/network access and the device. A successful build and smoke test do not certify a physical interface on that OS. Linux AppImage support also depends on the distribution's AppImage/FUSE support; Debian/Ubuntu users can choose the `.deb` instead.

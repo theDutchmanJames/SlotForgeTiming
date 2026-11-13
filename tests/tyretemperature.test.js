@@ -33,11 +33,30 @@ test('shared display remains read-only, agrees during pauses and keeps the froze
 });
 test('zero-time service and fixed Service Stop use the same fresh-set reset',()=>{
  const quick=race({changeSeconds:0});quick.cars[0].twTemp=90;quick.block(0,10000);quick.tick(11000);assert.equal(quick.cars[0].twStops,1);near(quick.cars[0].twTemp,20);
- const fixed=race({changeSeconds:20},{pitControl:{mode:'manual',seconds:2,waitReturn:false}});fixed.cars[0].twTemp=90;fixed.block(0,10000);fixed.tick(11000);assert.equal(fixed.cars[0].twStops,0);fixed.tick(13000);assert.equal(fixed.cars[0].twStops,1);near(fixed.cars[0].twTemp,20);
+ const fixed=race({changeSeconds:20},{pitControl:{mode:'manual',seconds:2,waitReturn:false}});fixed.cars[0].twTemp=90;fixed.block(0,10000);fixed.tick(11000);assert.equal(fixed.cars[0].twStops,0);fixed.tick(13000);assert.equal(fixed.cars[0].twStops,0);fixed.tick(31000);assert.equal(fixed.cars[0].twStops,1);near(fixed.cars[0].twTemp,20);
 });
 test('a late zero-time pit tick cools from the actual fitting time, not the processing time',()=>{
  const r=race({changeSeconds:0,temperature:{tyres:{M:{...Temp.DEFAULT,start:45}}}});r.block(0,10000);r.tick(41000);near(r.cars[0].twTemp,35);
 });
+test('late timer release cools only to the actual release, including stopping and yellow flags',()=>{
+ const scenario=(late,{stop=false,pause=false,yellow=false,penalty=false,quick=false,confirm=true}={})=>{
+  const r=race({changeSeconds:quick?0:120,temperature:{tyres:{M:{...Temp.DEFAULT,start:45}}}},{pitControl:{mode:'auto',seconds:2},penalty:E.penaltyConfig({types:[{name:'Stop',kind:'stopgo',seconds:5}]})});
+  r.cars[0].twTemp=90;if(penalty)r.assign(0,0,9000);if(yellow)r.setFlag('yellow',9000);r.block(0,10000);if(confirm)r.tick(11000);
+  if(!late)r.tick(penalty?18000:13000);if(stop)r.stop(43000);else if(pause)r.pause(43000);else r.tick(43000);
+  return {temperature:r.cars[0].twTemp,duration:r.cars[0].lastPit.duration,stops:r.cars[0].twStops};
+ };
+ for(const options of [{},{stop:true},{pause:true},{yellow:true},{penalty:true},{quick:true},{confirm:false},{stop:true,confirm:false},{stop:true,yellow:true}]){
+  const regular=scenario(false,options),late=scenario(true,options);near(late.temperature,regular.temperature);assert.equal(late.duration,regular.duration);assert.equal(late.stops,regular.stops);
+ }
+});
+
+test('shared pit-exit holds continue cooling and temperature reads do not mutate race state',()=>{
+ const r=race({changeSeconds:120},{pitControl:{mode:'auto',seconds:2}});r.cars[0].twTemp=90;r.block(0,10000);r.tick(11000);
+ r.cars[0].rndPitExit=true;r.sharedPitExitHeld=true;const before=JSON.stringify(r.cars[0]);
+ const held=r.temperatureOf(0,43000).value;assert.equal(JSON.stringify(r.cars[0]),before);
+ r.sharedPitExitHeld=false;assert(r.temperatureOf(0,43000).value>held,'a released timer stops pit cooling');
+});
+
 test('weather air temperatures convert Fahrenheit and manual ambient overrides them',()=>{
  const weather=W.clean({startMode:'manual',units:'imperial',airTempWet:50});
  for(const source of ['weather','manual']){const r=race({temperature:{ambientSource:source,ambient:{wet:5}}},{weather});r.cars[0].twTemp=90;r.wxSet('wet',0,'director');r.setFlag('yellow',0);r.tick(600000);near(r.cars[0].twTemp,source==='weather'?10:5);}

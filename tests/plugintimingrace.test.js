@@ -1,11 +1,11 @@
 // The plugin path uses the same level decoder and race actions as real hardware.
-const assert=require('node:assert/strict'),C=require('../renderer/timingplugin'),P=require('../renderer/phidget'),PR=require('../renderer/parallelrace'),PS=require('../renderer/pitsensors'),E=require('../renderer/engine');
+const assert=require('node:assert/strict'),C=require('../renderer/timingplugin'),P=require('../renderer/digitalinputs'),PR=require('../renderer/parallelrace'),PS=require('../renderer/pitsensors'),E=require('../renderer/engine');
 const tick=()=>new Promise(r=>setImmediate(r));
 function config(extra={}){return C.sensorConfig(C.config({id:'example.simulated-timing',...extra}));}
 (async()=>{
  for(const separate of [false,true]){
   const c=config({pitMode:separate?'separate':'shared'}),l=P.createLink({config:c});let at=0;
-  const r=E.createRace({type:'race',laps:50,entries:[{lane:0},{lane:1}],fuel:{pitHold:1000},pitControl:{mode:'auto',seconds:3,waitReturn:true}});r.start(0);l.setConnected(true);
+  const r=E.createRace({type:'race',laps:50,entries:[{lane:0},{lane:1}],fuel:{pitHold:1000},pitControl:{mode:'driver',seconds:3}});r.start(0);l.setConnected(true);
   const sensors=PS.bind({eng:()=>r,now:()=>at,hardware:'plugin',link:l});sensors.sync();let disconnected=0;
   const bind=PR.bind({link:l,pitMs:1000,setup:{},cars:()=>r.cars,phase:()=>r.status,lights:()=>0,flag:()=>r.flag,crossCar:(i,t)=>r.cross(i,t),holdCar:(i,t)=>r.block(i,t,true),blockCar:(i,t)=>r.block(i,t,true),unblockCar:(i,t)=>r.unblock(i,t),trackcall:()=>{},acquire:async()=>({lease:1}),release:async()=>{},outputs:async()=>{},onDisconnected:()=>{disconnected++;r.pause(at);}});await tick();
   const input=separate?c.pit[0]:c.lap[0];const f=(time,value)=>{at=time;l.feed({key:P.key(input.address),at,value});l.tick(at);r.tick(at);};

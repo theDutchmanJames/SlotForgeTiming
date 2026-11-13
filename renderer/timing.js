@@ -379,7 +379,7 @@
       if(type==='totaltime'){const heat=c.done?c.total:S.eng.elapsed(t);return {html:Wd.totalTimeHtml({heat,all:S.heat?NaN:heat},opt)};}
       if(type==='lastlap'){
         const count=Wd.clampInt(opt.lapsPerColumn,1,30,1)*Wd.clampInt(opt.columns,1,3,1),start=Math.max(0,c.laps.length-count);
-        return {html:Wd.lapListHtml(c.laps.slice(start).map((v,i)=>({n:start+i+1,t:E.fmtTime(v)})).reverse(),opt.lapsPerColumn,opt.columns,opt.lapNumbers!==false)};
+        return {html:Wd.lapListHtml(c.laps.slice(start).map((v,i)=>({n:start+i+1,t:E.fmtTime(v)})).reverse(),opt.lapsPerColumn,opt.columns,opt.lapNumbers!==false,opt)};
       }
       if(type==='textlane')return {html:Wd.fillText(opt.text||'',{name:values.name,car:values.carname,lane:c.lane>=0?String(c.lane+1):'Virtual',position:values.position,laps:c.laps.length,lap:c.laps.length,laptime:values.laptime,last:c.laps.length?E.fmtTime(c.laps.at(-1)):'–',best:values.bestlap,avg:values.avglap,median:values.medlap,gap:values.gap,nickname:values.nickname,callsign:values.callsign})};
       return {html:values[type]??'–'};
@@ -480,7 +480,7 @@
         const count=Wd.clampInt(opt.lapsPerColumn,1,30,1)*Wd.clampInt(opt.columns,1,3,1);
         const start=Math.max(0,c.laps.length-count);
         const shown=c.laps.slice(start).map((t,i)=>({n:start+i+1,t:E.fmtTime(t)})).reverse();
-        return {html:Wd.lapListHtml(shown,opt.lapsPerColumn,opt.columns,opt.lapNumbers!==false)};
+        return {html:Wd.lapListHtml(shown,opt.lapsPerColumn,opt.columns,opt.lapNumbers!==false,opt)};
       }
       case 'avglap': return { html: lapStats(S,c).laps.length ? E.fmtTime(lapStats(S,c).mean) : '–' };
       case 'medlap': return { html: lapStats(S,c).laps.length ? E.fmtTime(lapStats(S,c).median) : '–' };
@@ -666,7 +666,7 @@
     if(!c)return values;
     const i=e.cars.indexOf(c),physical=i>=0&&!c.virtual,good=lapStats(S,c).laps,enabled=(key,fallback)=>physical&&(e.systemEnabled?e.systemEnabled(key):!!fallback),fuel=enabled('fuel',e.fuel?.on),tyres=enabled('tyrewear',e.tyrewear),pace=enabled('pushsave',e.pushSave),p=pace?e.psInfo(c):null,tw=tyres?Tw.view(e,[c.lane],t).rows[0]:null,pit=physical?e.pitTime(i,t):null;
     const secs=v=>Number.isFinite(v)?v/1000:null,service=physical?Stw.read('servicestop',c,{...S,now:t}):null;
-    Object.assign(values,{lane:c.lane+1,position:S.rowOf(c)?.pos??null,lap:c.done?c.laps.length:c.laps.length+1,laps:e.lapsOf?e.lapsOf(c):c.laps.length,laptime:physical&&!c.done?secs(e.lapElapsed(i,t)):null,last:secs(c.laps.at(-1)),best:secs(c.best),avg:good.length?secs(lapStats(S,c).mean):null,median:good.length?secs(lapStats(S,c).median):null,record:secs(S.personalBest(c.driverId)),fuel:fuel?e.fuelOf(i,t):null,fuelpct:fuel?e.fuelOf(i,t)/(e.tankOf?e.tankOf(i):e.fuel.tank)*100:null,penpoints:c.points??0,pentime:e.penMs?secs(e.penMs(c)):0,pits:c.pits?.length||0,pit:pit?secs(pit.ms):null,tyrelife:tw?.shown??null,tyrelaps:tw?.lapsLeft??null,pace:p?PsKind(p.kind):null,pacedelta:Number.isFinite(p?.p)?p.p:null,fuelmult:p?.fuel??null,tyremult:p?.tyres??null,service:e.pitControl&&['auto','manual'].includes(e.pitControl.mode)?(['—','–'].includes(service?.value)?service.note:service?.value??null):null,serviceprogress:Number.isFinite(service?.progress)?service.progress*100:null,inpit:c.blockAt!=null||!!c.pitHold,driverstatus:c.dq?'Disqualified':c.retired?'Retired':c.done?'Finished':c.blockAt!=null||c.pitHold?'In pits':e.status==='ready'?'Ready':e.status==='paused'?'Paused':'On track',gaplaps:gapLaps(S,c)||null,total:secs(totalTimes(c,S,t,true).heat)});
+    Object.assign(values,{lane:c.lane+1,position:S.rowOf(c)?.pos??null,lap:c.done?c.laps.length:c.laps.length+1,laps:e.lapsOf?e.lapsOf(c):c.laps.length,laptime:physical&&!c.done?secs(e.lapElapsed(i,t)):null,last:secs(c.laps.at(-1)),best:secs(c.best),avg:good.length?secs(lapStats(S,c).mean):null,median:good.length?secs(lapStats(S,c).median):null,record:secs(S.personalBest(c.driverId)),fuel:fuel?e.fuelOf(i,t):null,fuelpct:fuel?e.fuelOf(i,t)/(e.tankOf?e.tankOf(i):e.fuel.tank)*100:null,penpoints:c.points??0,pentime:e.penMs?secs(e.penMs(c)):0,pits:c.pits?.length||0,pit:pit?secs(pit.ms):null,tyrelife:tw?.shown??null,tyrelaps:tw?.lapsLeft??null,pace:p?PsKind(p.kind):null,pacedelta:Number.isFinite(p?.p)?p.p:null,fuelmult:p?.fuel??null,tyremult:p?.tyres??null,service:e.pitControl&&['auto','manual','driver'].includes(e.pitControl.mode)?(['—','–'].includes(service?.value)?service.note:service?.value??null):null,serviceprogress:Number.isFinite(service?.progress)?service.progress*100:null,inpit:c.blockAt!=null||!!c.pitHold,driverstatus:c.dq?'Disqualified':c.retired?'Retired':c.done?'Finished':c.blockAt!=null||c.pitHold?'In pits':e.status==='ready'?'Ready':e.status==='paused'?'Paused':'On track',gaplaps:gapLaps(S,c)||null,total:secs(totalTimes(c,S,t,true).heat)});
     values.champ=overallPoints(c,S);
     return values;
   }

@@ -8,12 +8,7 @@
 .lw.wf-fitted .wc-text{overflow-wrap:normal}
 .ws-control{display:grid;gap:6px;margin:12px 0;font-size:13px;min-width:0}.ws-control>small{font-weight:400;color:var(--muted);line-height:1.45}.ws-control select,.ws-control input{min-width:0;max-width:100%}.ws-control input[type=checkbox]{justify-self:start}.ws-control input[type=color]{height:32px;width:100%}
 .lw.ws-spacing:not(.aio-widget)>.lw-val{padding:var(--ws-padding)}
-.lw.ws-spacing.aio-widget .aio-content{padding:var(--ws-padding)}
-.lw.ws-type[data-ws-sizing=manual] .aio-fact b,.lw.ws-type[data-ws-sizing=manual] .aio-laprow strong{font-size:var(--ws-value)}
-.lw.ws-type[data-ws-sizing=manual] .aio-who>strong{font-size:calc(var(--ws-value)*.7)}
-.lw.ws-type[data-ws-sizing=manual] :is(.aio-who>span,.aio-laprow em,.aio-status,.aio-foot,.aio-line,.aio-note,.aio-service p,.aio-session span,.aio-system>span:not(.aio-meter)){font-size:var(--ws-support)}
-.lw.ws-type[data-ws-sizing=manual] :is(.aio-heading,.aio-fact small,.aio-laprow small,.aio-system small){font-size:var(--ws-label)}
-.lw.ws-type[data-ws-sizing=manual] .aio-system strong{font-size:calc(var(--ws-value)*.6)}
+.lw.ws-spacing.aio-widget .aio-content{padding:0}
 .lw.ws-type[data-ws-icon] .aio-avatar{width:var(--ws-icon);height:var(--ws-icon)}
 .lw.ws-type[data-ws-icon] .twbox2{grid-template-rows:minmax(0,var(--ws-icon)) auto}
 .lw.ws-type[data-ws-icon] .psbox-gauge{grid-template-rows:minmax(0,var(--ws-icon)) auto auto}
@@ -77,7 +72,26 @@
 .lw[data-wd-gap] :is(.aio-content,.aio-identity,.aio-facts,.aio-foot,.aio-lines,.aio-line){gap:var(--wd-gap)}
 .aio-icon-above{flex-wrap:wrap;justify-content:center;text-align:center}
 .aio-icon-above>.aio-who{flex-basis:100%}
-.aio-compact .aio-content{gap:6px;padding:8px}
-.aio-compact .aio-facts{gap:8px}
-.aio-compact .aio-identity{gap:6px}.aio-compact .aio-avatar{width:30px;height:30px}
-.aio-compact .aio-heading{font-size:11px}
+
+/* Last Laps keeps column order, with a separate bounded title row in Frame. */
+.lw.wf-fitted .ll.ll-layout{display:flex;flex-direction:column;gap:calc(var(--ll-gap,3)*var(--ll-space,1px));line-height:1.14;font-size:.8em;text-align:left;max-width:100%;min-width:0}
+.ll-layout .ll-columns{display:grid;grid-template-columns:repeat(var(--ll-cols,2),minmax(0,1fr));gap:calc(.7em + var(--ll-column-gap,0)*var(--ll-space,1px));min-width:0}
+.ll-layout .llcol{display:flex;flex-direction:column;gap:calc(var(--ll-gap,3)*var(--ll-space,1px));min-width:0}
+.ll-layout.ll-dividers .llcol+.llcol{border-left:1px solid color-mix(in srgb,currentColor 24%,transparent);padding-left:.35em}
+.ll-layout .lli{display:flex;align-items:baseline;justify-content:space-between;gap:.25em;padding:.06em .12em;min-width:0;border-radius:3px;white-space:nowrap}
+.lw.wf-fitted .ll-layout .lln{margin-right:0;flex:none;opacity:.55;font-size:max(6px,.72em)}
+.ll-layout .llt{font-variant-numeric:tabular-nums;white-space:nowrap}
+.ll-layout .ll-newest,.ll-layout .ll-latest{background:color-mix(in srgb,currentColor 12%,transparent);box-shadow:inset 3px 0 var(--lane-stripe,currentColor)}
+.ll-layout .ll-newest .lln{opacity:1}.ll-layout .ll-latest{padding:.12em .25em;border-radius:4px}
+.ll-layout .ll-latest>small{display:block;font-size:max(6px,.45em);text-transform:uppercase;letter-spacing:.04em;opacity:.8}
+.ll-layout .ll-latest .lli{font-size:1.12em}
+/* Fuel values never take a column away from the bar. Tyre gauges keep their own layout. */
+.fuel-gauge[data-fuel-placement]{display:flex;flex-direction:column;gap:2px;position:relative}
+.fuel-gauge[data-fuel-placement] .fg-meter-space{width:100%;height:auto;flex:1;min-height:6px}
+.fuel-gauge[data-fuel-placement] .fg-values{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:0 .4em;min-width:0;text-align:center}
+.fuel-gauge[data-fuel-placement] .fg-value{line-height:1.5}
+.fuel-gauge[data-fuel-placement] .fg-detail{line-height:1.5}
+.fuel-gauge[data-fuel-placement=overlay] .fg-values{position:absolute;inset:0;padding:2px;z-index:1;color:#fff;text-shadow:0 1px 3px #000,0 0 2px #000;pointer-events:none;align-content:center}
+.fuel-gauge[data-fuel-placement=above]>.fg-values{position:static;flex:none;width:100%;align-self:stretch}
+.fuel-gauge[data-fuel-placement].fg-vertical .fg-values{flex-direction:column}
+.fuel-gauge[data-fuel-placement].fg-compact .fg-meter-space{grid-column:auto;grid-row:auto}

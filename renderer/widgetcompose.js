@@ -548,8 +548,8 @@
         n.style.removeProperty("font-size");
         const block = n.parentElement;
         const support = n.matches(".wc-label") || block.matches(".wc-role-support,.wc-role-label");
-        const min = support ? 11 : n.matches(".wc-icon") ? 16 : t.minSize;
-        const base = parseFloat(root.getComputedStyle(n).fontSize) || min;
+        const base = parseFloat(root.getComputedStyle(n).fontSize) || (support ? 11 : t.minSize);
+        const min = n.matches(".wc-icon") ? 16 : support ? (t.mode === "manual" ? 6 : Math.min(11,t.minSize)) : t.mode === "manual" ? Math.max(6,Math.min(t.minSize,base)) : t.minSize;
         const explicit = block.style.getPropertyValue("--wc-size");
         const max = t.mode === "auto" && !support && !explicit
           ? Math.min(256, Math.max(block.clientWidth, block.clientHeight)) : base;

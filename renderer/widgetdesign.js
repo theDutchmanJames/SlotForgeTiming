@@ -34,7 +34,7 @@
     if(w.type==='clock'&&w.opt?.style&&w.opt.style!=='classic')return;
     const val=el.querySelector(':scope > .lw-val');if(!val)return;
     if(w.numberFormat)for(const node of [val,...val.querySelectorAll('.lli,.aio-laprow strong')]){if(!node.children.length)continue;for(const child of [...node.childNodes])if(child.nodeType===3&&formatValue(child.textContent,w.numberFormat)!==null){const span=node.ownerDocument.createElement('span');span.className='wd-reading';span.textContent=child.textContent;child.replaceWith(span);}}
-    const targets=[val,...val.querySelectorAll('.wd-reading,.record-value,.lli,.aio-fact b,.aio-laprow strong,.aio-system strong,.aio-foot b:not([data-wd-identity]),.aio-foot .aio-line strong,.aio-line [data-wd-numeric],.ftxt,.fnum,.fg-value,.twpct,.twvalue,.psp')];
+    const targets=[val,...val.querySelectorAll('.wd-reading,.record-value,.lli,.llt,.aio-fact b,.aio-laprow strong,.aio-system strong,.aio-foot b:not([data-wd-identity]),.aio-foot .aio-line strong,.aio-line [data-wd-numeric],.ftxt,.fnum,.fg-value,.twpct,.twvalue,.psp')];
     for(const node of targets){
       const old=formatted.get(node),unchanged=old&&node.innerHTML===old.html;
       const source=unchanged?old.source:node.children.length?null:node.textContent;

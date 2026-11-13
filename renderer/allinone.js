@@ -46,7 +46,7 @@
     m.pace=ps?{value:Ps.kindText(ps.kind),kind:ps.kind,note:Number.isFinite(ps.p)?Ps.pctText(ps.p)+' pace':Ps.whyText(ps.why),fuel:ps.fuel,tyres:ps.tyres}:{value:'Off',kind:'off',note:''};
     m.range=physical&&available(e,'fuel',e.fuel?.on)?Sw.read('fuelrange',c,{...S,now:t}):{value:'Off',note:'Fuel system off'};
     if(type==='aiopit'){
-      const held=physical&&e.pitControl&&['auto','manual'].includes(e.pitControl.mode);
+      const held=physical&&e.pitControl&&['auto','manual','driver'].includes(e.pitControl.mode);
       const elapsed=physical?e.pitTime(i,t):null;
       m.service=held?Sw.read('servicestop',c,{...S,now:t}):{value:elapsed?Sw.clock(elapsed.ms):'—',note:c.blockAt!=null?'Pit time elapsed · sensor-controlled stop':'Not in pits'};
       m.serviceLabel=held?'Service stop':'Pit time elapsed';
@@ -66,16 +66,49 @@
     let body='';
     if(type==='aiolane')body=identity()+lap()+(o.gap?`<div class="aio-foot"><span>Gap to leader</span><b>${m.gap||'—'}</b></div>`:'');
     if(type==='aiotiming')body=timing();
-    if(type==='aiodriver')body=identity()+lap()+'<div class="aio-rule"></div>'+timing()+(o.fuel||o.tyres||o.pace?`<div class="aio-systems">${o.fuel?sys('Fuel',m.fuel.value,m.fuel.percent,'','aio-fuel'):''}${o.tyres?sys(m.tyres.name==='Tyres'?'Tyres':'Tyres · '+m.tyres.name,m.tyres.value,m.tyres.percent,'','aio-tyres',m.tyres.color):''}${o.pace?sys('Push & Save',m.pace.value,null,m.pace.note,'aio-pace aio-'+(['push','normal','save'].includes(m.pace.kind)?m.pace.kind:'off')):''}</div>`:'');
+    if(type==='aiodriver')body=identity()+lap()+'<div class="aio-rule"></div>'+timing()+(o.fuel||o.tyres||o.pace?`<div class="aio-systems" style="--aio-system-count:${[o.fuel,o.tyres,o.pace].filter(Boolean).length}">${o.fuel?sys('Fuel',m.fuel.value,m.fuel.percent,'','aio-fuel'):''}${o.tyres?sys(m.tyres.name==='Tyres'?'Tyres':'Tyres · '+m.tyres.name,m.tyres.value,m.tyres.percent,'','aio-tyres',m.tyres.color):''}${o.pace?sys('Push & Save',m.pace.value,null,m.pace.note,'aio-pace aio-'+(['push','normal','save'].includes(m.pace.kind)?m.pace.kind:'off')):''}</div>`:'');
     if(type==='aiopit')body=`<div class="aio-service">${fact(m.serviceLabel,m.service.value,true)}<p>${esc(m.service.note)}</p>${Number.isFinite(m.service.progress)?meter(m.service.progress*100):''}</div><div class="aio-lines">${line('Fuel',m.fuel.value,true)}${line('Tyres',m.tyres.note||m.tyres.value)}${o.repairs?`<div class="aio-line"><span>Repairs</span><strong>${m.repairs||'Off'}</strong></div>`:''}${o.penalties?line('Pit penalties',m.penalty.value,true)+`<p class="aio-note">${esc(m.penalty.note)}</p>`:''}${o.mandatory?line('Mandatory stops',m.mandatory):''}</div>`;
     if(type==='aiorace')body=`<div class="aio-session"><strong>${m.session||'Race Overview'}</strong>${o.track?`<span>${m.track||'—'}</span>`:''}</div><div class="aio-facts">${fact('Elapsed race time',m.clock,true,true)}${fact(m.remainingLabel,m.remaining,false,true)}${fact('Flag',m.flag,false,true)}</div><div class="aio-foot">${o.weather?`<span>Weather <b>${m.weather||'Off'}</b></span>`:''}${o.leader?`<span>Leader <b data-wd-identity>${m.leader||'—'}</b></span>`:''}</div>`;
     if(type==='aiostrategy')body=`<div class="aio-facts aio-range">${fact('Fuel range',m.range.value,true)}${fact('Tyre life',m.tyres.left)}</div><p class="aio-note">${esc(m.range.note)} · ${esc(m.tyres.name)}</p><div class="aio-rule"></div>${line('Push & Save',m.pace.value)}<p class="aio-note">${esc(m.pace.note)}</p>${o.multipliers?`<div class="aio-foot">${line('Fuel use',Number.isFinite(m.pace.fuel)?'×'+m.pace.fuel.toFixed(2):'Off')}${line('Tyre wear',Number.isFinite(m.pace.tyres)?'×'+m.pace.tyres.toFixed(2):'Off')}</div>`:''}`;
     if(type==='aioresults')body=identity()+'<div class="aio-rule"></div>'+`<div class="aio-facts">${fact('Laps driven',m.laps,true)}${fact('Best legal lap',m.best)}${fact('Gap to leader',m.gap,false,true)}</div><div class="aio-foot">${o.total?`<span>Total time <b>${m.total||'—'}</b></span>`:''}${o.points?`<span>Championship / heat points <b>${esc(m.points??'—')}</b></span>`:''}</div>`;
     const label=type==='aioresults'?(m.final?m.position===1&&!['Disqualified','Retired'].includes(m.status)?'Winner':'Results':'Provisional results'):type==='aiorace'?'Race Overview':m.virtualRival?'Virtual rival':`Lane ${m.lane}`;
-    return `<div class="aio-box aio-${o.arrangement}" data-aio="${type}"${type==='aioresults'&&m.final&&!['Disqualified','Retired'].includes(m.status)&&m.position>=1&&m.position<=3?` data-medal="${['gold','silver','bronze'][m.position-1]}"`:''}><div class="aio-content"><div class="aio-heading"><span>${esc(label)}</span>${type!=='aiorace'?`<span>${esc(m.status==='On track'?'Live':m.status)}</span>`:''}</div>${body}</div><span class="aio-sizehint">Enlarge widget<br><small>Selected fields need more room</small></span></div>`;
+    return `<div class="aio-box aio-${o.arrangement}" data-aio="${type}"${type==='aioresults'&&m.final&&!['Disqualified','Retired'].includes(m.status)&&m.position>=1&&m.position<=3?` data-medal="${['gold','silver','bronze'][m.position-1]}"`:''}><div class="aio-content"><div class="aio-heading"><span>${esc(label)}</span>${type!=='aiorace'?`<span>${esc(m.status==='On track'?'Live':m.status)}</span>`:''}</div>${body}</div></div>`;
   }
   function sample(type,lane,opt,avatarHtml='') {const n=lane%8;return html(type,{lane:n+1,name:['James','Bjornie','Maria','Sam'][n%4],car:['NSR Mosler MT900R','NSR Corvette C7.R'][n%2],position:n+1,status:type==='aioresults'?'Finished':'On track',final:type==='aioresults',avatarHtml,laps:24,limit:65,current:'9.142',gap:n?'+0.642':'Leader',ahead:n?'+0.642':'Leader',best:'8.402',last:'9.208',average:'9.364',fuel:{value:'62%',percent:62},tyres:{value:'74%',percent:74,name:'Soft',left:'23 laps',note:'Fitting Medium · 8.0 s'},pace:{value:'PUSH',kind:'push',note:'−2.4% pace',fuel:1.22,tyres:1.35},range:{value:'≈ 18.4 laps',note:'Estimated · last 5 clean laps'},service:{value:'00:18.0',note:'Service in progress · includes 5 s penalty',progress:.4},serviceLabel:'Service stop',penalty:{value:'00:05.0',note:'1 pit penalty'},repairs:'No damage',mandatory:'1 stop remaining',session:'Slotrace Circuit Grand Prix',track:'Slotrace Circuit',clock:'03:52.4',remainingLabel:'Laps remaining',remaining:'41',flag:'Green flag',weather:'Dry',leader:'James',total:'10:08.660',points:25},opt); }
-  // Never scale a whole composition into tiny text. Try denser spacing, then give a clear size hint.
-  function fit(rootEl) {if(!rootEl?.querySelectorAll)return;rootEl.querySelectorAll('.aio-box').forEach(el=>{const content=el.querySelector('.aio-content');if(!content||!el.clientWidth||!el.clientHeight)return;el.classList.remove('aio-small','aio-tight');const overflow=()=>content.scrollHeight>el.clientHeight+1||content.scrollWidth>el.clientWidth+1||[...content.querySelectorAll('.aio-fact b')].some(value=>value.scrollWidth>value.clientWidth+1);if(overflow())el.classList.add('aio-tight');if(overflow())el.classList.add('aio-small');});}
+  // One shared bounded fitter adjusts typography and spacing together, without
+  // transforming or hiding selected fields. Frame reports genuinely undersized cards.
+  const fitCache=new WeakMap();let fontEpoch=0;
+  root.document?.fonts?.addEventListener('loadingdone',()=>{fontEpoch++;});
+  function fit(rootEl,w={},context={}) {
+    if(!rootEl?.querySelectorAll||!root.Frame)return false;
+    const {t=root.Frame.typography(w),scale=1,valueMin=t.minSize,supportMin=Math.min(11,t.minSize)}=context;
+    let ok=true;
+    for(const el of rootEl.querySelectorAll('.aio-box')){
+      const content=el.querySelector('.aio-content');if(!content)continue;
+      const manual=t.mode==='manual',base=manual?t.valueSize*scale:36;
+      const apply=factor=>{
+        const set=(name,value)=>el.style.setProperty('--aio-'+name,value+'px');
+        set('primary',Math.max(valueMin,base*factor));set('value',Math.max(valueMin,base*.72*factor));
+        set('name',Math.max(valueMin,base*.72*factor));
+        set('support',Math.max(supportMin,(manual?t.supportSize*scale:12)*factor));
+        set('label',Math.max(supportMin,(manual?t.labelSize*scale:11)*factor));
+        set('gap',Math.max(2,(el.classList.contains('aio-compact')?5:8)*factor));
+        set('avatar',Math.max(14,36*factor));
+      };
+      const fits=()=>root.Frame.textFits(content,rootEl)&&content.getBoundingClientRect().bottom<=rootEl.getBoundingClientRect().bottom+.5&&[...content.querySelectorAll('.aio-fact b,.aio-system strong')].every(n=>root.Frame.textFits(n,n,false));
+      if(manual&&!t.shrink){apply(1);ok=fits()&&ok;}
+      else {
+        // Timer digits change often. Reuse a verified size for equal-shaped text;
+        // still measure it once, so proportional/custom fonts cannot overflow.
+        const style=root.getComputedStyle(rootEl),key=JSON.stringify([rootEl.clientWidth,rootEl.clientHeight,w.type,w.opt,w.appearance,w.fonts,w.numberFormat,t,scale,valueMin,supportMin,content.textContent.replace(/\d/g,'0'),style.fontFamily,style.fontWeight,style.fontStyle,style.letterSpacing,rootEl.closest('.lw')?.getAttribute('style'),fontEpoch]);
+        const cached=fitCache.get(rootEl);
+        if(cached?.key===key){apply(cached.factor);if(fits())continue;}
+        const result=root.Frame.fitSize(1,manual?100:300,p=>apply(p/100),fits);
+        if(result.fits)fitCache.set(rootEl,{key,factor:result.size/100});else fitCache.delete(rootEl);
+        ok=result.fits&&ok;
+      }
+    }
+    return ok;
+  }
   const api={TYPES,DEFINITIONS,options,clean,applyPreset,read,html,sample,fit};root.AllInOne=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

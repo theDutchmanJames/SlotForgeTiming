@@ -121,11 +121,11 @@ test('resource shortages remain distinct, frozen in history and clear after a su
  assert(!P.attention(shared(e,18000)).rows.some(r=>r.category==='resources'));assert(P.recent(shared(e,18000),{maxItems:20}).rows.some(r=>r.category==='resources'));parity(e,18000);
 });
 test('Service Stop shows manual release, return-to-sensor, pause and Random Flag holds',()=>{
- for(const mode of ['manual','auto']){
+ for(const mode of ['manual','driver']){
   const e=create({damage:null,tyrewear:null,pitControl:{mode,seconds:2,waitReturn:true}});
   e.pitSensor(0,true,1000);e.block(0,1000);e.tick(2000);e.pitSensor(0,false,2100);e.tick(4100);
   const row=P.attention(shared(e,4100)).rows.find(r=>r.category==='pits');assert(row);assert.match(row.title+row.detail,mode==='manual'?/director release/:/Return car to sensor/);parity(e,4100);
-  e.setFlag('red',4200);assert(P.attention(shared(e,50000)).rows.some(r=>r.title==='Service complete · race paused'));parity(e,50000);
+  e.setFlag('red',4200);assert(P.attention(shared(e,50000)).rows.some(r=>r.title==='Pit timer complete · race paused'));parity(e,50000);
   e.resume(52000);e.cars[0].rndPitExit=true;e.sharedPitExitHeld=true;
   assert(P.attention(shared(e,52000)).rows.some(r=>r.title==='Pit exit held'));
  }

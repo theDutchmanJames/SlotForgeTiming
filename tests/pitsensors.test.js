@@ -1,5 +1,5 @@
 const assert = require('assert/strict'), E = require('../renderer/engine'), PS = require('../renderer/pitsensors'), TM = require('../renderer/trackmate'), PP = require('../renderer/parallel'), AB = require('../renderer/arduinobox'), AR = require('../renderer/arduinorace'), PR = require('../renderer/parallelrace');
-const mk = () => { const r = E.createRace({ type: 'race', laps: 50, entries: [{ lane: 0 }, { lane: 1 }], fuel: { pitHold: 1000 }, pitControl: { mode: 'auto', seconds: 3, waitReturn: true } }); r.start(0); return r; };
+const mk = () => { const r = E.createRace({ type: 'race', laps: 50, entries: [{ lane: 0 }, { lane: 1 }], fuel: { pitHold: 1000 }, pitControl: { mode: 'driver', seconds: 3, waitReturn: true } }); r.start(0); return r; };
 let groups = 0;
 const test = async (name, fn) => { await fn(); groups++; console.log('ok   ' + name); };
 const tick = () => new Promise(r => setImmediate(r));
@@ -10,9 +10,9 @@ const tick = () => new Promise(r => setImmediate(r));
     link.on(e => { if (e.type === 'hit') r.cross(e.lane, e.at); if (e.type === 'block') r.block(e.lane, e.at, true); if (e.type === 'free') r.unblock(e.lane, e.at); });
     const feed = (ms, letters = '') => { at += ms; link.feed(Buffer.from(ms + '\n\r' + letters)); r.tick(at); };
     feed(1000, 'A'); feed(500, 'A'); feed(500, 'A'); assert.ok(r.cars[0].pitHold);
-    feed(800); assert.ok(r.cars[0].pitHold); feed(3200); assert.ok(r.cars[0].pitHold);
+    feed(800); assert.ok(r.cars[0].pitHold); feed(100); assert.ok(r.cars[0].pitHold);
     feed(100, 'A'); assert.equal(r.cars[0].laps.length, 1); feed(800);
-    assert.equal(r.cars[0].pits.length, 1); assert.equal(link.hits, 2); sensor.off();
+    assert.equal(r.cars[0].pits.length, 1); assert.equal(r.cars[0].lastPit.duration, 2128); assert.equal(r.events.find(e=>e.type==='pitrelease').early,true); assert.equal(link.hits, 2); sensor.off();
   });
   for (const separate of [false, true]) await test(`real Parallel Port link and race binding: ${separate ? 'separate' : 'shared'} pits, remove/return and disconnect`, async () => {
     let at = 0; const link = PP.createLink({ config: { lanes: 2, map: [10, 11], pitMode: separate ? 'separate' : 'shared', pitPins: [12, 13] } }), r = mk(); link.setConnected(true);
