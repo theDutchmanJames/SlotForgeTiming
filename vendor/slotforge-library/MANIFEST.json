@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "CONTRACT.md",
-      "sha256": "b237259123b8ce81a055e6edccdf7b77216f2abb091ab96586efdbf0e9ede799"
+      "sha256": "f7d66d103731a1fac3716e8324d34409575eebe46c3910a6ebc7e9c58f6ee6c4"
     },
     {
       "path": "LICENSE",
@@ -11,7 +11,11 @@
     },
     {
       "path": "engine/renderer/app.js",
-      "sha256": "515482d48743ab38f3116a070524cf9c4fae76f24f74de661b3b639aa6535c48"
+      "sha256": "0d09d79d8e40ca3c165b80628ce0c2254918537bd7d06d4c684f81bf2b777675"
+    },
+    {
+      "path": "engine/renderer/assembly-photo-worker.js",
+      "sha256": "a32f75a71eb86d989f1dc9e04209a3a2db1b4651087854920242e345d7e8db9b"
     },
     {
       "path": "engine/renderer/build-art.js",
@@ -31,7 +35,7 @@
     },
     {
       "path": "engine/renderer/car-merges.js",
-      "sha256": "3b79071eaaaaf9fd600777d7e1332e242a7feb2b8de2e8b594ca906aa6443c60"
+      "sha256": "23936d01bfcfaed22f0927831a0f8625f7ca6befbc42104d473bbf7ff6b29ecc"
     },
     {
       "path": "engine/renderer/car-sort.js",
@@ -39,7 +43,15 @@
     },
     {
       "path": "engine/renderer/catalogue-import.js",
-      "sha256": "b14c39705a5a249f996d55e8319c04856f6ba15fdb4f5c5916a28f64be6d840c"
+      "sha256": "caeb596548ad56021904485fd4e4f46a24af1defa2c8749a733c010fd03f448d"
+    },
+    {
+      "path": "engine/renderer/catalogue-picture-previews.js",
+      "sha256": "f10de1def5e0630c8863d8ca6eed3811e44d1a56baf8fa6d1faa2cb8acf3d469"
+    },
+    {
+      "path": "engine/renderer/catalogue-pictures.js",
+      "sha256": "8f6d60e254c77d7ccef00c28a16860bf56339ec8ae7c9e378d356447d67114fd"
     },
     {
       "path": "engine/renderer/catalogue.js",
@@ -47,15 +59,15 @@
     },
     {
       "path": "engine/renderer/club.js",
-      "sha256": "35587453f95209d5226b5434201e05c504d11dc35b06ac6a0daec7925c2c2923"
+      "sha256": "3ef7ba198046a11404f2ec741f823b0b494458b6ce1c243fa341ece5123f3429"
     },
     {
       "path": "engine/renderer/collection.js",
-      "sha256": "163adff8834e88582b2eb313ce7f3f357778ba590c9ba93af8ee125b717febb9"
+      "sha256": "67605f7947e6a62f1baa5b71ad58297af3d4477b45053410b57f7b8e4fbea03a"
     },
     {
       "path": "engine/renderer/connections.js",
-      "sha256": "ab44134f353234be28f63b2de7565f383142da6369d7fe20887a90ee125acaf3"
+      "sha256": "5054e8586a179ade499922863d02882dc9072b297d62f33c24b8633712dc6617"
     },
     {
       "path": "engine/renderer/display.js",
@@ -63,11 +75,11 @@
     },
     {
       "path": "engine/renderer/domain.js",
-      "sha256": "5b6abf39a1cd63183ca1a49d2d94b509562b8b82d5f2e026ef518e218ccc9b06"
+      "sha256": "084864e9c02e36f4cc6eb061b259b983f1ab16f2bd46761c08abb25d0bef645c"
     },
     {
       "path": "engine/renderer/enhancements.js",
-      "sha256": "e002a6ba835bbe35b84e136f0f04fd84d7b4d92bbe84727948c7bd5b929ad60b"
+      "sha256": "ad50211da23660aae71972ac793919d43470e619cdc7fc2d1fd3d6abef35de31"
     },
     {
       "path": "engine/renderer/file-progress.js",
@@ -111,11 +123,11 @@
     },
     {
       "path": "engine/renderer/interface.js",
-      "sha256": "623d9a93a08eebdb19ada19e4bcb8054c86549956046913c7ebd614befe78cd5"
+      "sha256": "7d0af0d2329b4afa580a1174de2a0b3d6dfd6605fa88b5def472b2adf82887cb"
     },
     {
       "path": "engine/renderer/inventory.js",
-      "sha256": "0e7694d6f99d858c9b90ac31abc0052209eaff5b0e5a09e6b0eaec8ceba98414"
+      "sha256": "52350ad5e0eff5dc4878b14badf85eb2cac8c3c6a3c85d4e59d41b32c2346f3c"
     },
     {
       "path": "engine/renderer/job-types.js",
@@ -123,15 +135,15 @@
     },
     {
       "path": "engine/renderer/jobs.js",
-      "sha256": "615d8d8784cdb72d148346ac7136a6335b3a60d2f74d6c58d85d63c593be92a3"
+      "sha256": "f203fd3ba7b73bbbd948189c3b3610582d92009b12417e7410706ad015647b8b"
     },
     {
       "path": "engine/renderer/media-lifecycle.js",
-      "sha256": "0c85b9cd5a7088f46e36f565e822f7d0e66f436d872d41cb9be74a4895f3955c"
+      "sha256": "fc03c50a2eceebcdb600abdc134c003d4b1ab33f37081b9d5d4e095bf6940ffb"
     },
     {
       "path": "engine/renderer/media-thumbnail-worker.js",
-      "sha256": "48151b62bedd9e427d7987a3c7506b0fb52d64882c53dd1a5b0b275db5a20ca2"
+      "sha256": "3df12fcfd6993fbe916646417287c53f845ea34853289941196f64ad5578a448"
     },
     {
       "path": "engine/renderer/overview-layout.js",
@@ -139,7 +151,7 @@
     },
     {
       "path": "engine/renderer/overview-panels.js",
-      "sha256": "1b68c2e6ef2493bd2f5bec8d15b2410c4f080a59b931769251fcfaddb06b1d12"
+      "sha256": "33d062ec171005ca6ee78caf2fcc04e9eb67877e8b88f50683dd8cd0a86e5ae3"
     },
     {
       "path": "engine/renderer/pace-model.js",
@@ -159,11 +171,15 @@
     },
     {
       "path": "engine/renderer/preferences.js",
-      "sha256": "2d5e3315d25a4449fde0b7664c2b9ea983dde574da964e3eb4a93b23ba93a56d"
+      "sha256": "2e50547348828d556b5a10a0ae1d39e06628ca122f0d86ed51e6a430bda3c14c"
     },
     {
       "path": "engine/renderer/query-view.js",
-      "sha256": "a4ffcd494229c4ad82613dfe5147f7ef4ac252eeb7aff509e3122593101cbba1"
+      "sha256": "4ab0a0ad02a6e4cddb4faeb0e950ae0b627d50198910cc39a17255012321260f"
+    },
+    {
+      "path": "engine/renderer/quick-links.js",
+      "sha256": "4772e8d2802d2d7edbde3e7d1f8757bfb0275c8fbcc52a2362ee406a28c88e36"
     },
     {
       "path": "engine/renderer/real-history.js",
@@ -175,7 +191,7 @@
     },
     {
       "path": "engine/renderer/review-model.js",
-      "sha256": "2b7a563b75d72d80efe2cea9775ef3a81d2e6f073ba8c6b1a69bb4ba09cfbcc3"
+      "sha256": "f6264f588b6e510defd79deedae711b1fff96e00b64d4e14f8e32fc133693fa1"
     },
     {
       "path": "engine/renderer/review-selection.js",
@@ -206,12 +222,24 @@
       "sha256": "4ee22463d33039d022cc7a245ffed658dcf95735f6ef04177178bda0de462bc3"
     },
     {
+      "path": "engine/renderer/shopping-orders.js",
+      "sha256": "fe6d32836ada7dfe55556f4cb47c4b52a5dbc8b6be8e646a77699222f1cb9a18"
+    },
+    {
+      "path": "engine/renderer/shopping.js",
+      "sha256": "4065d8e8c8fdc9785a678562016bfa5b248a295e3f9e2560c726d03954314f76"
+    },
+    {
       "path": "engine/renderer/showroom-domain.js",
-      "sha256": "14fb720af745c760e74cedffdf730c26efdda666a86b918c23301c2e3e14c531"
+      "sha256": "36ceae830ffe590af4ca4cfc4f1a72cfe7d85ad947c6d146739d3c9a895cf0c0"
+    },
+    {
+      "path": "engine/renderer/showroom-settings.js",
+      "sha256": "4032c9a71504a3c6925323a00c6c4e629419d3257a10bffe871d307a703946ba"
     },
     {
       "path": "engine/renderer/showroom.js",
-      "sha256": "15b77e2bd5c37275fa1500f505bc31aaad243793aafcea2a3042eb971b849498"
+      "sha256": "3f4ac702030f956ad935ea418dfae4e90d7d6fa74cc8f0b6ed66e20860e68000"
     },
     {
       "path": "engine/renderer/slotcar-research-model.js",
@@ -247,11 +275,19 @@
     },
     {
       "path": "engine/renderer/workshop-library.js",
-      "sha256": "60276b444b8ea11b357ccaa863e170fbf860556bfeae6291bdfcae07f962251f"
+      "sha256": "d15b179a824b9e291a8c945301f2f17b70522ea36a12bdeb8217203ad1394984"
     },
     {
       "path": "engine/renderer/workshop.js",
-      "sha256": "c8dc458247b4d842180480edb0b8ffce3e934a76dc0233f3ec52ca8a8e214479"
+      "sha256": "e9324650c6649bfef926880e2c4fb31cd4a9f5ec21fac796b620f40a4c5b42c2"
+    },
+    {
+      "path": "engine/src/assembly-photo-decoder.cjs",
+      "sha256": "8ec5ccd92893ce326db62abcaf2b5decd4bb101b40675ea39030c6c18b8a5f77"
+    },
+    {
+      "path": "engine/src/assembly-photo.cjs",
+      "sha256": "5687f31c01ed3027b342d192abfe83c9aa7b6abf36d0fe05b8cbcc5573587864"
     },
     {
       "path": "engine/src/background-mode.cjs",
@@ -267,11 +303,15 @@
     },
     {
       "path": "engine/src/build.cjs",
-      "sha256": "b285286ba2e2635433998a5d5e205e4b586476c434ca5f7fc763004eaf537e2b"
+      "sha256": "a51141c915ad9bcb698fd2f7ecfb4fc511d60a3a41d7f6a1d94b946ad3b72eeb"
     },
     {
       "path": "engine/src/car-comparison.cjs",
       "sha256": "153bfa33ac7688c33dd2048ba0893d69187fd58557dfe6376065d0b56d965984"
+    },
+    {
+      "path": "engine/src/car-membership.cjs",
+      "sha256": "4b274c989f0da1d30f95c58ceefa4a50dcf52a1ed888eec61cc649405357602e"
     },
     {
       "path": "engine/src/car-merge-activation.json",
@@ -291,7 +331,7 @@
     },
     {
       "path": "engine/src/car-merge-model.cjs",
-      "sha256": "60126781288a4e58b764368d7009cea26ad7a171d5c32aeef2878e48d93f8b3e"
+      "sha256": "3b9448200a26b8522fe1edd2522cc58dff933f7ceae67c4f800a6e114f250b0a"
     },
     {
       "path": "engine/src/car-merge-query.cjs",
@@ -327,15 +367,51 @@
     },
     {
       "path": "engine/src/car-removal.cjs",
-      "sha256": "50150f7ed64f0c21848bce3c3e66a5ed5b0b955986a8ad872250489adf37f2e7"
+      "sha256": "a638ee4ec708ef5a842b503f09bacc72bdc4f33ad925dab41ed83db0cf9652db"
+    },
+    {
+      "path": "engine/src/catalogue-batch.cjs",
+      "sha256": "81ca7283e6aa9384c1478252e543631ed86a891df3d6e28c917b5f27a6c90509"
     },
     {
       "path": "engine/src/catalogue-import.cjs",
-      "sha256": "2dd02d966afca1bab4a21356616163248a83180bc4c08a518bfd5401365ffbbf"
+      "sha256": "92030b73ad3f2d90f13daffeadeead6d63cb961f2efbb033b6d4dfc9c8e9e92b"
+    },
+    {
+      "path": "engine/src/catalogue-picture-application.cjs",
+      "sha256": "955a0a41e4b172c767818ce1edb5cf527ff93b731e24921995a18b964cceb5de"
+    },
+    {
+      "path": "engine/src/catalogue-picture-apply.cjs",
+      "sha256": "984d0a7020a73aa08a22fb33a4f42954e4616e024a4b4fad8b78d55f91dc2c45"
+    },
+    {
+      "path": "engine/src/catalogue-picture-batches.cjs",
+      "sha256": "38a5f36236297bb1459c24b309596ca5d02195ea7819b88232e006ee2cf436ff"
+    },
+    {
+      "path": "engine/src/catalogue-picture-download.cjs",
+      "sha256": "9a506bba29e9f4255d5f1ee4a30d9c31bc6db741fdc3f883875ee9b490f9eb50"
+    },
+    {
+      "path": "engine/src/catalogue-picture-previews.cjs",
+      "sha256": "9ae758b2c5bccb7f1e247e08c3c21a818b3d99a9e3af9454cb5f270aec495b8d"
+    },
+    {
+      "path": "engine/src/catalogue-picture-requests.cjs",
+      "sha256": "e7daec6bb7f39f914251211e0405c46e721fd541b66382fdea89e06c15c84fc6"
+    },
+    {
+      "path": "engine/src/catalogue-pictures-contract.cjs",
+      "sha256": "38786c4b71a9f63c9437551ab836a55d2164da1ff4b3431250fe4baccb707f7c"
+    },
+    {
+      "path": "engine/src/catalogue-research.cjs",
+      "sha256": "e53a40aa3914db5de9def80f32953881075b223c8d4a9d7e6603368bcbe6c133"
     },
     {
       "path": "engine/src/club-model.cjs",
-      "sha256": "22bc2f830e4c95db5e9efb8bb6cf53c60ace73ccbce6bb3adb0ad718ee0bd603"
+      "sha256": "7fb6213e9bda0a547327643f7ccd3c0b37518681ec8e11c7752fd09cccfac86a"
     },
     {
       "path": "engine/src/club-sync.cjs",
@@ -343,7 +419,7 @@
     },
     {
       "path": "engine/src/club.cjs",
-      "sha256": "a4fdd88e64204b10c9d1a65ccd2628df247121e564788e268bda8bd713a63461"
+      "sha256": "400370e370845b0217ba7e13b886347d7ff4b2b6b9bb2560c47cd98a8e642ec2"
     },
     {
       "path": "engine/src/collection-open-worker.cjs",
@@ -363,11 +439,11 @@
     },
     {
       "path": "engine/src/command-receipts.cjs",
-      "sha256": "96f604a6456e1a45d1776715161e5e328692f3185e4c760243eed2465387ed0b"
+      "sha256": "c1e7d5c692a69b234e0ec4007efe117d09a973ed4f0bf476e53eb710f53c0fc6"
     },
     {
       "path": "engine/src/dealership-policy.cjs",
-      "sha256": "b043e2bbe3eb1d26277304d3f59148a3e0c453bfb73c0016607d6e97c64a82a6"
+      "sha256": "523b150a6d6a073c9ace9dca13add3c67a19df0d90512b286245431496d1590a"
     },
     {
       "path": "engine/src/deferred-store.cjs",
@@ -442,12 +518,16 @@
       "sha256": "813dce87ab9b52a7e106942a50207068c05e4ba5b743c56f135883b461ec7efc"
     },
     {
+      "path": "engine/src/host-intake.cjs",
+      "sha256": "27eb6ef4327f091e47924f19aee72d4a38609652efbdb9a18af7a74f33cc14c0"
+    },
+    {
       "path": "engine/src/inventory.cjs",
       "sha256": "fb4a23aea6004ff89ea7c33fe069e6601cc03b33953c11ccdea427fd07548783"
     },
     {
       "path": "engine/src/jobs.cjs",
-      "sha256": "3613cf5f269979d7084fcbc9c9b35ba72f141e71d68c720cd90a73579900dcd6"
+      "sha256": "f4f68df0cccdcb293794c3027d6f8b02395765e57b0fcfdb07a0e0aa339cccdd"
     },
     {
       "path": "engine/src/json-data.cjs",
@@ -462,8 +542,12 @@
       "sha256": "ba562e32d4a64dd209df597a5dcdb525812439860e33b83dee3b2fbb3a1e4703"
     },
     {
+      "path": "engine/src/library-status.cjs",
+      "sha256": "c5f1f387e5944aee6ca1bf1e61100087245d9343de800697b4f4db79df4abfd2"
+    },
+    {
       "path": "engine/src/local-library-api.cjs",
-      "sha256": "a5874fd0eccfeccea9d2478b2787f31462112cb7b18eb12ef71893c4be7e8ce4"
+      "sha256": "a1af4e28cfa3b4ae06e018242c685b9cea5d284692e6cf097995f49fb2dbc8d5"
     },
     {
       "path": "engine/src/local-library-launcher.cjs",
@@ -471,7 +555,7 @@
     },
     {
       "path": "engine/src/local-library-model.cjs",
-      "sha256": "30dddcdc2e255813ba75d6b1c3ed2ab820db4b6d6d528dd89d6f3c0f4080e848"
+      "sha256": "8ef7b350411860ce5eb284b28d44373df13435942a79c4d5b74811e40a84f5d1"
     },
     {
       "path": "engine/src/local-library-security.cjs",
@@ -483,7 +567,7 @@
     },
     {
       "path": "engine/src/main.cjs",
-      "sha256": "a2990fc991ece4545f79676678808544ba2c723e2db508adc2cc89bdbe8a00fc"
+      "sha256": "b93b6a957608a2d7b234eabc3785fc2ff51e41b44bbf784b36021dffc0f10bd6"
     },
     {
       "path": "engine/src/media-reader.cjs",
@@ -495,7 +579,7 @@
     },
     {
       "path": "engine/src/network.cjs",
-      "sha256": "1fb5a350842270b258f2536008dc3ba8872d8fa15454287971cc1c9754c18d59"
+      "sha256": "a3665884af09694bc001bc5c47ab0c302b713bca5fd9f3bff8ebefb0376cf9ba"
     },
     {
       "path": "engine/src/paddock-portal.cjs",
@@ -511,7 +595,7 @@
     },
     {
       "path": "engine/src/planning.cjs",
-      "sha256": "5aabf3a4f3dcbfaf900412f04c66961269c4f3abe19ecd1bf9d1d23b6f2328a1"
+      "sha256": "3885a9675adf3678a7eaa2cafe5d01cee8dc52134b5bd1f78ac15b751146a8c2"
     },
     {
       "path": "engine/src/portable-backup.cjs",
@@ -523,7 +607,7 @@
     },
     {
       "path": "engine/src/portal-store.cjs",
-      "sha256": "ace047cb31e24ac1f1e899196b5fc39383c2b1a9d4589b352cbd5a39763528e1"
+      "sha256": "9467c515a5d6574fbf74635ed032613f860cd2d9f3ee0044ae01747877059344"
     },
     {
       "path": "engine/src/preferences.cjs",
@@ -531,11 +615,19 @@
     },
     {
       "path": "engine/src/preload.cjs",
-      "sha256": "fc09e2e4e9638eb009576eb41df25adb415f30c4f3bc0a9a499b33e1c048100f"
+      "sha256": "ce2a99acde8baeb1afd53ef848d8280f2dc38cd81330bd435f056b0ff8a64133"
     },
     {
       "path": "engine/src/public-invalidations.cjs",
       "sha256": "77864b6ec710979700113215b7378d75778bc2cd28fb6b33a169e6ae7d1ae0d2"
+    },
+    {
+      "path": "engine/src/purchase-orders.cjs",
+      "sha256": "c93a20700f0bf4661bb3be4f509f8c103feb0348eb7e3e48ead03c64f27c121d"
+    },
+    {
+      "path": "engine/src/purchasing.cjs",
+      "sha256": "7859ee011b6e04e92d4b4f1e7cfac6dbe968daf08e38dc308218ad388508af32"
     },
     {
       "path": "engine/src/query-index.cjs",
@@ -566,12 +658,16 @@
       "sha256": "a675f2bfa2a55807157b56e11b5a0b8a9f58ac9ab7b286b7ce55b6ce0df59137"
     },
     {
+      "path": "engine/src/quick-links.cjs",
+      "sha256": "92d5411258218cf6e60bdc96e40b18002e32f6a6c8bd2693bb245bdb31b6253e"
+    },
+    {
       "path": "engine/src/real-history.cjs",
       "sha256": "dcbf292808b5f2d7d37fb236abfb23a9668aab307baeec08c4a2ecb240680ad9"
     },
     {
       "path": "engine/src/rebuild.cjs",
-      "sha256": "36909945f93ff4a2f7ff834801db57b2a7e0f0f525234667e73a3611d2a6a4de"
+      "sha256": "a7b2c010d1c1e9ca38c95cb2136badfb0f8c1efdd11e8ae9da6ba5ad31a1bc3a"
     },
     {
       "path": "engine/src/record-draft.cjs",
@@ -603,11 +699,11 @@
     },
     {
       "path": "engine/src/rich-history.cjs",
-      "sha256": "380a36c3150cc601715a81bd25e4d804e55e92fa0ef9044eaf064731ff081aa7"
+      "sha256": "11fc533b6817347fb2ec515623f33147f19bd8f45d005e8dad468b3cc0001202"
     },
     {
       "path": "engine/src/scalable-api.cjs",
-      "sha256": "1c78cef64b6ea281903a85adfaf9717f5b447001115bdfec49b1c3cfefe995fb"
+      "sha256": "5bdbe58086a246aa75b25fe6a7b19973a54d3be99051720dbe78f0956225f52a"
     },
     {
       "path": "engine/src/scalable-schema.cjs",
@@ -615,15 +711,15 @@
     },
     {
       "path": "engine/src/scoped-write.cjs",
-      "sha256": "bc7bf20c654b8775fc0973ab40075230f3c34d015e1add2198f266f047aa7ec3"
+      "sha256": "f2de793697f15a52b86dfbc8454154b388eecf2f9f46b4f0b2808be325501910"
     },
     {
       "path": "engine/src/shared-car-library.cjs",
-      "sha256": "fae9bd343de1a73d9018712e0a3372e76e7988d68d3cc7e64dbfeb1e209c1778"
+      "sha256": "83a56e7b682b2776d99c60c10ce1ce67dafc18820f208d88500c47ba230c14d9"
     },
     {
       "path": "engine/src/shared-catalogue.cjs",
-      "sha256": "1661a4c9ae05b24b4a24f1f1a633bd4118925ea995f9a07960dc25e7ef0e6af4"
+      "sha256": "7fbd0c64c8af5a210c61952f85ccab9bcc23f34184a9a4224e5187d848c863f8"
     },
     {
       "path": "engine/src/shared-history-read.cjs",
@@ -651,7 +747,7 @@
     },
     {
       "path": "engine/src/shared-library-engine.cjs",
-      "sha256": "4818bc5953d2696329926be7c90708a872745cd931076e63552a99a43f87160c"
+      "sha256": "6e763930518610b9d9f549b2d31eae1e876cbc25b5ddd288d0d04a5be455e368"
     },
     {
       "path": "engine/src/shared-library-evidence.cjs",
@@ -695,7 +791,7 @@
     },
     {
       "path": "engine/src/shared-library-timing-read.cjs",
-      "sha256": "2ec55dac1a5396e523f31e8363cf4e370381cdcec02683572ff51de30ad80df3"
+      "sha256": "b72b2454f52d1eb016356418f85fd24afcd964838ec5c5d5de932e1326b1cf94"
     },
     {
       "path": "engine/src/shared-library-worker.cjs",
@@ -710,6 +806,18 @@
       "sha256": "41af5b49e02a2dd539663620b69db948e466ced3a50506e9a8256f956a249dd0"
     },
     {
+      "path": "engine/src/sharing-retirement.cjs",
+      "sha256": "36cfeb8622ba30fe620f0f6123582477187004a0c25d92208f647f05da2e7870"
+    },
+    {
+      "path": "engine/src/shopping-query.cjs",
+      "sha256": "3659e111656f1c51628a3637c7d43b3494235ba17f5ccd59bc91f34ffab6b08e"
+    },
+    {
+      "path": "engine/src/shopping-requirements.cjs",
+      "sha256": "3c3994d81d7d6fbc2f6c72524f0b9385f534b9243f58770f2b2af5071669ec3b"
+    },
+    {
       "path": "engine/src/snapshot-transfer.cjs",
       "sha256": "c304bbd1bbb10e818e6e929900f8ab478f6da753b20b5ab95cfb167a7a4736fc"
     },
@@ -719,7 +827,7 @@
     },
     {
       "path": "engine/src/sqlite-query.cjs",
-      "sha256": "0a13ad1ab97cbfd04e78724131d3de82f2f15d7039cbb3cd6705b3fb24ac527e"
+      "sha256": "04be13ca76b71ced704e3435299dbef9b5fe1fea0268afaa028072c92d0472df"
     },
     {
       "path": "engine/src/sqlite-records.cjs",
@@ -731,7 +839,7 @@
     },
     {
       "path": "engine/src/sqlite-storage.cjs",
-      "sha256": "7a7012e77a815346e3944aaf0d186663ec37931dbf44e8b55ba3e6fbe4996e69"
+      "sha256": "0eb6551e10f5f188688347746bbc6eaf8f0520a1f63d14ba44b9ad71464e8546"
     },
     {
       "path": "engine/src/sqlite-worker.cjs",
@@ -759,7 +867,7 @@
     },
     {
       "path": "engine/src/store.cjs",
-      "sha256": "223770a92d5bc3591e3b2dc7d86c83ac0ddd72d87804faf77fea31da598d3c2c"
+      "sha256": "c9a453f4e0d944ff295081b854cfdd55ef5fd773debe45643456953c21ffa97c"
     },
     {
       "path": "engine/src/strict-json.cjs",
@@ -768,6 +876,10 @@
     {
       "path": "engine/src/string-cache.cjs",
       "sha256": "a7484a2c73beb47897bc414aedd49f4e95a5839eedd44dcd42d0c2dc3ffd649f"
+    },
+    {
+      "path": "engine/src/submission-recovery.cjs",
+      "sha256": "22b97dbee2935313b9a1ea46fb6de410f5f23479ec6d753625641fbeb0eb114e"
     },
     {
       "path": "engine/src/telemetry-export.cjs",
@@ -791,7 +903,7 @@
     },
     {
       "path": "engine/src/timing-integration.cjs",
-      "sha256": "34a052b374eb6839a6553b88f44fb110efe81844771c9d27c3726d192e8d892f"
+      "sha256": "61cb658c89e6e48b3eb731933a011d6ba6333133893accef1e422924a21dbbd1"
     },
     {
       "path": "engine/src/timing-legacy/index.cjs",
@@ -835,7 +947,7 @@
     },
     {
       "path": "engine/src/toolbox.cjs",
-      "sha256": "3ebd8fef6fc765ccf936dde6ae2ca8487e836d0fa4cc3427723af5bf71c66fc3"
+      "sha256": "b6470a389609decae5c5ea19fbfc2de1a383c8a487def9870b3c4cbd7c09eaf2"
     },
     {
       "path": "engine/src/transaction.cjs",
@@ -883,11 +995,15 @@
     },
     {
       "path": "engine/src/view-context.cjs",
-      "sha256": "db6ad2bc037bfecd146df8aec1fe66528d3ba89fddc3852e4c2367ac701eeecd"
+      "sha256": "7617260b6695df1a6745742eef67b87e79f8183a0a49fe1bfdbc354588b9e1d2"
     },
     {
       "path": "engine/src/view-query.cjs",
-      "sha256": "d786b4e4a83bc00470697502f1353e1141f6dc4a43b8e24e22f964be77f28080"
+      "sha256": "76862572f1cecd196bbb3e1b953453733e8bbfc4016e790ef8ee24d3b5634b53"
+    },
+    {
+      "path": "engine/src/wishlist-activation.json",
+      "sha256": "4a30c9be3f878a9b2ecf59f5e0ada934c9d7e390f09c232597a46d5b4e929a50"
     },
     {
       "path": "engine/src/work-gate.cjs",
@@ -895,7 +1011,7 @@
     },
     {
       "path": "engine/src/workshop.cjs",
-      "sha256": "352eb69e5f720a4834271675db049bced4aa509d1818ffaad62c7ff1dcffb891"
+      "sha256": "2596ed9c0063aa2c740477766e9fbeac6c2eebe71ee1e488c2a9891cf7f25ca6"
     },
     {
       "path": "index.cjs",
@@ -938,5 +1054,5 @@
       "sha256": "2e91c84513b9973c92c0d9ffb02c3ee8cc697fce4eb3ffda783b8b557770cfdb"
     }
   ],
-  "upstreamManifestSha256": "42a184536c3c85ce884b6ef14c7966e2dc141328e61dab6e0c70d67bc6e701ba"
+  "upstreamManifestSha256": "349d3a22d9cb85863b45fd80350680edd8fb8e817ea45c8af48413d077de8974"
 }

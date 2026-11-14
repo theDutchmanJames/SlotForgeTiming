@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.2.3 — 2026-11-14
+
+- Support Paddock's Wishlist: unpurchased cars stay out of Timing's catalogue, editors and race selection. Purchasing a car makes the same record available without duplicating it or changing existing history.
+- Refresh older Dealership caches when Wishlist support is detected, even if the public catalogue revision has not changed. Preserve cached data on failed refreshes and prevent unverified older selections from racing offline.
+- Retain saves and results rejected for Wishlist cars for attention and deliberate retry after purchase or correction, instead of repeatedly retrying automatically.
+- Update the shared-library engine and verify purchase, pagination, restore recovery, thumbnails and result delivery with JSON and SQLite storage.
+- Add Slotranger to the Racing Rules thank-you message.
+
 ## 2.2.2 — 2026-11-13
 
 - Put **Race Sharing** and **Dealership Mode** under **App Settings → Connections**. Connect directly from **Dealership Cars**, with cached cars still available offline and existing result queues retained.

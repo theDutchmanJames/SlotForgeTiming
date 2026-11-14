@@ -1,5 +1,9 @@
 'use strict';
 (()=>{
+ let photoWorker=null,photoJob=null;
+ const stopPhoto=()=>{photoWorker?.terminate();photoWorker=null;photoJob=null;};
+ window.slotforge.onAssemblyPhoto(job=>{stopPhoto();photoJob=job.id;photoWorker=new Worker('assembly-photo-worker.js');photoWorker.onmessage=({data})=>{if(data.id!==photoJob)return;window.slotforge.assemblyPhotoResult(data.id,data.result);stopPhoto();};photoWorker.onerror=()=>{window.slotforge.assemblyPhotoResult(photoJob,{ok:false});stopPhoto();};photoWorker.postMessage(job);});
+ window.slotforge.onAssemblyPhotoCancel(id=>{if(id===photoJob)stopPhoto();});
  const worker=new Worker('media-thumbnail-worker.js');
  window.slotforge.onThumbnail(job=>worker.postMessage(job));
  worker.onmessage=({data})=>window.slotforge.thumbnailResult(data.id,data.result);

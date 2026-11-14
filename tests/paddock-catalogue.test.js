@@ -16,6 +16,12 @@ test('shared 30 second gate checks revisions and downloads only changed catalogu
   setRevision(2);client.nextCatalogueCheck=0;await client.catalogue();assert.equal(calls.length,5);
   await client.catalogue(true);assert.equal(calls.length,7);
 });
+
+test('legacy public listing is refreshed once on wishlist capability even with unchanged public revision',async t=>{
+ const {client,setCars}=setup(t);await client.catalogue();const call=client.call;
+ client.call=async route=>{const v=await call(route);return route==='/v1/status'?{...v,capabilities:{wishlist:1}}:v;};setCars([]);
+ client.nextCatalogueCheck=0;assert.equal((await client.catalogue()).cars.length,0);assert.equal((await client.storage.cache()).wishlistFiltering,1);
+});
 test('empty outbox and racing cause no background network calls',async t=>{
   const {client,calls}=setup(t);await client.flush();assert.equal(calls.length,0);
   client.isRacing=()=>true;await client.catalogue(true);assert.equal(calls.length,0);

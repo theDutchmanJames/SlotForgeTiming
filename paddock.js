@@ -5,6 +5,8 @@ const RESPONSE_BYTES=Symbol('responseBytes');
 const ID=/^[a-zA-Z0-9_-]{1,100}$/;
 const TERMINAL_CODES=new Set(['INVALID_JSON','INVALID_PAYLOAD','SUMMARY_MISMATCH','DATABASE_REQUIRED','BROWSER_ORIGIN_FORBIDDEN','TIMING_PERMISSION_REQUIRED','CAR_NOT_FOUND','NOT_FOUND','DATABASE_MISMATCH','CONFIGURATION_MISMATCH','CONFIGURATION_INVALID','REVISION_CONFLICT','STALE_REVISION','PAYLOAD_TOO_LARGE','CONTENT_TYPE_REQUIRED','CONTENT_ENCODING_UNSUPPORTED','UNSUPPORTED_VERSION','CAPACITY_EXCEEDED','RECEIPT_MISMATCH','RECOVERY_CHANGED','OPERATION_CONFLICT','HISTORY_GUARD_REQUIRED','HISTORY_REVIEW_REQUIRED','UNSUPPORTED_COVERAGE','UPLOAD_CONFLICT','CHUNK_CONFLICT','HASH_MISMATCH']);
 const COPY_FIELDS=['brand','manufacturer','model','scale','motor','gearing','tyres','weight','picture','raceClass'];
+// A planned purchase needs a deliberate correction/purchase, never a timer retry.
+TERMINAL_CODES.add('CAR_WISHLIST');
 function validateProfile(p){
   if(!p||p.integrationVersion!==1||typeof p.databaseId!=='string'||!p.databaseId||!p.car||typeof p.car.id!=='string'||!ID.test(p.car.id)||p.configuration?.carId!==p.car.id||p.configuration.databaseId!==p.databaseId||!/^[a-f0-9]{64}$/.test(p.configuration.signature)||!Number.isFinite(Date.parse(p.configuration.capturedAt)))throw Error('Invalid Paddock car profile.');
   if(p.car.picture&&!/^data:image\/(png|jpeg|webp);base64,[a-zA-Z0-9+/=\r\n]+$/.test(p.car.picture))throw Error('Unsupported Paddock picture.');
@@ -83,7 +85,7 @@ function discover({duration=4200,retryMs=1000}={}){return new Promise((resolve,r
 });}
 class Paddock {
   constructor(db,{storage,deliveryStore}={}){this.storage=storage||new(require('./paddock-storage').JsonPaddockStorage)(db);this.code='';this.connected=false;this.error='';this.catalog=[];this.busy=false;this.stopped=false;this.timer=null;this.cooldowns=new Map();this.migrationCooldowns=new Map();this.deliveryStore=deliveryStore||new(require('./json-delivery-store'))(db);this.delivery=new(require('./delivery-service'))(this.deliveryStore,{call:(...args)=>this.call(...args),historyCapability:()=>this.historyCapability,isRacing:()=>!!this.isRacing?.(),isStopped:()=>this.stopped||this.quiescing||!this.code});}
-  async connection(){const value=await this.storage.connection();this.lastConnection=value.connection;return value;}
+  async connection(){const value=await this.storage.connection();this.lastConnection=value.connection;this.wishlistFiltering=!!value.connection&&(value.connection.wishlistFiltering===1||this.wishlistDatabaseId===value.connection.databaseId);return value;}
   active(){if(this.stopped)throw Object.assign(Error('Paddock connection stopped.'),{code:'PADDOCK_STOPPED'});}
   cooldownsNow(){
     for(const map of [this.cooldowns,this.migrationCooldowns])for(const [key,until] of map)if(until<=Date.now())map.delete(key);
@@ -120,13 +122,15 @@ class Paddock {
     try{const base=address(input.address),code=credential(input.code);
       const s=await this.hostRequest(base,'/v1/status',code);if(!ID.test(s.id)||typeof s.name!=='string')throw Error('Invalid Paddock host identity.');
       this.active();const before=await this.connection(),old=before.connection;if(old&&old.databaseId!==s.id)throw Error('This is a different Paddock database. Disconnect and forget the old host before pairing another.');
-      await this.storage.setConnection({address:base,databaseId:s.id,name:s.name,results:!!s.permissions?.timingResults,timing:!!s.capabilities?.timing?.versions?.includes(1)},before.revision);await this.connection();
+      await this.storage.setConnection({address:base,databaseId:s.id,name:s.name,results:!!s.permissions?.timingResults,timing:!!s.capabilities?.timing?.versions?.includes(1),...(s.capabilities?.wishlist===1||old?.wishlistFiltering===1?{wishlistFiltering:1}:{})},before.revision);await this.connection();
       if(this.stopped)return this.status();this.negotiate(s);this.code=code;this.connected=true;this.error='';this.catalogueError='';this.nextCatalogueCheck=0;this.catalogueFailures=0;this.schedule();return this.status();
     }finally{this.busy=false;}
   }
   disconnect(forget=false){return this.exclusive(async()=>{this.closeLocalEvents?.();this.localDescriptor=null;this.code='';this.connected=false;this.catalog=[];this.images?.clear();clearTimeout(this.timer);const before=await this.connection();if(forget){await this.storage.sharedChange({action:'policy',disabled:true});await this.storage.setConnection(null,before.revision);}else if(before.connection?.mode==='local')await this.storage.setConnection({...before.connection,automatic:false},before.revision);await this.connection();this.error='';return this.status();});}
   async call(route,body,limit,recoveryId,method){this.active();const {connection:c}=await this.connection();if(c?.mode==='local')return this.localCall(c,route,body,limit,recoveryId,method);if(!c||!this.code)throw Error('Connect with the current Paddock Dealership password first (or a Timing credential on a legacy host).');return this.hostRequest(c.address,route,this.code,c.databaseId,body,limit);}
   negotiate(status){
+    if(status.capabilities?.wishlist===1)this.wishlistDatabaseId=status.id;
+    this.wishlistFiltering=this.wishlistDatabaseId===status.id||this.lastConnection?.databaseId===status.id&&this.lastConnection?.wishlistFiltering===1;
     const supported=status.capabilities?.scalable?.version===1&&status.capabilities.scalable.root==='/v1/scalable';
     if(!supported)this.scalable=null;
     else if(this.scalable?.databaseId!==status.id)this.scalable=new(require('./paddock-scalable').Scalable)(async(...args)=>{
@@ -135,11 +139,19 @@ class Paddock {
       return this.call(...args);
     },status.id);
   }
-  browse(){return this.exclusive(async()=>{if(this.scalable){const s=await this.call('/v1/status');if(s.id!==(await this.connection()).connection.databaseId)throw Error('Paddock database identity changed.');try{await this.browseScalable(s);return (await this.catalogueView(false)).cars;}catch(e){if(!['STORAGE_REQUIRED','NOT_FOUND','HTTP_404'].includes(e.code))throw e;this.scalable=null;}}return this.browseNow();});}
+  browse(){return this.exclusive(async()=>{
+    const s=await this.call('/v1/status'),current=await this.connection(),c=current.connection;
+    if(s.id!==c?.databaseId)throw Error('Paddock database identity changed.');
+    this.negotiate(s);
+    if(this.wishlistFiltering&&c.wishlistFiltering!==1)await this.storage.setConnection({...c,wishlistFiltering:1},current.revision);
+    if(this.scalable){try{await this.browseScalable(s);return (await this.catalogueView(false)).cars;}catch(e){if(!['STORAGE_REQUIRED','NOT_FOUND','HTTP_404'].includes(e.code))throw e;this.scalable=null;}}
+    return this.browseNow();
+  });}
   async catalogueView(includePictures=true){
     const {connection:c}=await this.connection(),cache=await this.storage.cache(),same=!!c&&cache?.databaseId===c.databaseId;
     const linked=c?await this.storage.cars({databaseId:c.databaseId}):[],links=new Map(linked.map(x=>[x.value.paddock.carId,x])),pictures=new Map(this.catalog.map(x=>[x.id,x.picture]));
-    const rows=same?cache.cars:linked.filter(x=>!x.value.paddock.archived).map(({value:x,raceClassName})=>({id:x.paddock.carId,name:x.paddock.name||x.model||'Unnamed car',maker:x.brand||'',model:x.model||'',raceClass:raceClassName}));
+    const needsMembershipRefresh=this.wishlistFiltering&&(!same||cache.wishlistFiltering!==1);
+    const rows=needsMembershipRefresh?[]:same?cache.cars:linked.filter(x=>!x.value.paddock.archived).map(({value:x,raceClassName})=>({id:x.paddock.carId,name:x.paddock.name||x.model||'Unnamed car',maker:x.brand||'',model:x.model||'',raceClass:raceClassName}));
     if(this.images){const ids=new Set(rows.map(row=>row.id));for(const id of this.images.keys())if(!ids.has(id))this.images.delete(id);}
     const cars=[];for(const row of rows){if(row.archived)continue;const linked=links.get(row.id);
       if(Object.hasOwn(row,'media')){
@@ -153,7 +165,7 @@ class Paddock {
       else {if(image.localSource&&!picture)image.key='';delete image.localId;delete image.localKey;delete image.localSource;}
       cars.push({...row,linked:linked?.value.id||'',picture:includePictures?(image.localId?await this.storage.picture(image.localId,image.localKey):image.picture):'',pictureKey:image.key,capturedAt:linked?.value.paddock.configuration?.capturedAt||null});
     }
-    return {connection:c,sharedCars:!!this.localCapabilities?.sharedCars,connected:this.connected&&!!this.code,lastUpdated:same?cache.updatedAt:null,cars,error:this.catalogueError||'',nextCheckAt:this.nextCatalogueCheck||0};
+    return {connection:c,sharedCars:!!this.localCapabilities?.sharedCars,connected:this.connected&&!!this.code,lastUpdated:same?cache.updatedAt:null,cars,error:this.catalogueError||(needsMembershipRefresh?'Refresh the Dealership catalogue to verify which cars are available for racing.':''),nextCheckAt:this.nextCatalogueCheck||0};
   }
   catalogueImage(id,picture,databaseId){
     this.images??=new Map();const old=this.images.get(id);
@@ -181,11 +193,13 @@ class Paddock {
         const {connection:c}=await this.connection(),s=await this.call('/v1/status');this.active();
         if(s.id!==c.databaseId)throw Object.assign(Error('Paddock database identity changed. Reconnect to the original database.'),{code:'DATABASE_MISMATCH'});
         if(!Number.isSafeInteger(s.revision)||s.revision<0)throw Error('Invalid Paddock database revision.');
-        this.negotiate(s);const cache=await this.storage.cache();
+        this.negotiate(s);
+        if(this.wishlistFiltering&&c.wishlistFiltering!==1){const current=await this.connection();await this.storage.setConnection({...c,wishlistFiltering:1},current.revision);}
+        const cache=await this.storage.cache();
         const publicRevision=Number.isSafeInteger(s.catalogueRevision)&&s.catalogueRevision>=0?s.catalogueRevision:null;
         const changed=publicRevision!==null&&Number.isSafeInteger(cache?.catalogueRevision)?cache.catalogueRevision!==publicRevision:cache?.revision!==s.revision;
         if(this.scalable){try{await this.browseScalable(s);}catch(e){if(!['STORAGE_REQUIRED','NOT_FOUND','HTTP_404'].includes(e.code))throw e;this.scalable=null;await this.browseNow();}}
-        else if(force||cache?.databaseId!==c.databaseId||changed)await this.browseNow();
+        else if(force||cache?.databaseId!==c.databaseId||changed||this.wishlistFiltering&&cache?.wishlistFiltering!==1)await this.browseNow();
         this.connected=true;this.catalogueError='';this.catalogueFailures=0;this.nextCatalogueCheck=Date.now()+30000;
       }catch(e){
         this.connected=false;this.catalogueError=e.message;
@@ -200,7 +214,9 @@ class Paddock {
     const connection=await this.connection(),databaseId=connection.connection.databaseId,cache=await this.storage.cache(),api=this.scalable;
     if(status.id!==databaseId||!Number.isSafeInteger(status.revision)||status.revision<0)throw Error('Invalid Paddock database status.');
     const linked=await this.storage.cars({databaseId}),profiles=new Map();let rows,cursor,affected;
-    if(cache?.databaseId===databaseId&&cache.scalableCursor){
+    // An old cursor can predate membership filtering even when the public
+    // revision is unchanged. Certify a complete listing once before using deltas.
+    if(cache?.databaseId===databaseId&&cache.scalableCursor&&(!this.wishlistFiltering||cache.wishlistFiltering===1)){
       const delta=await api.changes(cache.scalableCursor);
       if(!delta.reset){
         if(!delta.entries.size&&delta.cursor===cache.scalableCursor)return;
@@ -208,7 +224,7 @@ class Paddock {
         for(const [id,operation]of delta.entries){
           if(operation==='remove'){map.delete(id);continue;}
           try{const p=await api.profile(id);profiles.set(id,p);map.set(id,require('./paddock-scalable').car({...p.car,revision:p.configuration.carRevision,media:p.media}));}
-          catch(e){if(e.code==='CAR_NOT_FOUND')map.delete(id);else throw e;}
+          catch(e){if(['CAR_NOT_FOUND','CAR_WISHLIST'].includes(e.code))map.delete(id);else throw e;}
         }
         rows=[...map.values()];cursor=delta.cursor;
       }
@@ -219,7 +235,7 @@ class Paddock {
       const id=row.value.paddock.carId;if(!affected.has(id))continue;const remote=byId.get(id);
       if(!remote||remote.archived){if(!row.value.paddock.archived)updates.push({recordId:row.value.id,expectedRevision:row.revision,archived:true});continue;}
       let p=profiles.get(id);
-      if(!p){try{p=await api.profile(id);}catch(e){if(e.code!=='CAR_NOT_FOUND')throw e;byId.delete(id);updates.push({recordId:row.value.id,expectedRevision:row.revision,archived:true});continue;}}
+      if(!p){try{p=await api.profile(id);}catch(e){if(!['CAR_NOT_FOUND','CAR_WISHLIST'].includes(e.code))throw e;byId.delete(id);updates.push({recordId:row.value.id,expectedRevision:row.revision,archived:true});continue;}}
       // A profile can be newer than its listing. The older cursor is retained so
       // the next poll still observes that change (including a changed photo).
       byId.set(id,require('./paddock-scalable').car({...p.car,revision:p.configuration.carRevision,media:p.media}));
@@ -229,7 +245,7 @@ class Paddock {
       // visible cards can request the new hash independently in bounded chunks.
       updates.push({recordId:row.value.id,expectedRevision:row.revision,profile:p,preservePicture:true});
     }
-    this.active();if(this.isRacing?.())throw Error('Paddock refresh paused during racing.');await this.storage.catalogue(databaseId,{databaseId,revision:status.revision,catalogueRevision:status.catalogueRevision??null,scalableCursor:cursor,updatedAt:new Date().toISOString(),cars:[...byId.values()]},updates,connection.revision);
+    this.active();if(this.isRacing?.())throw Error('Paddock refresh paused during racing.');await this.storage.catalogue(databaseId,{databaseId,revision:status.revision,catalogueRevision:status.catalogueRevision??null,...(this.wishlistFiltering?{wishlistFiltering:1}:{}),scalableCursor:cursor,updatedAt:new Date().toISOString(),cars:[...byId.values()]},updates,connection.revision);
     this.active();this.catalog=[];
   }
   async browseNow(attempt=0){const connection=await this.connection(),c=connection.connection;if(!c)throw Error('Connect to Paddock first.');let out=[],offset=0,revision=null,catalogueRevision=null,total=0,complete=false;
@@ -249,7 +265,7 @@ class Paddock {
     const summaries=out.map(c=>({id:c.id,name:c.name,maker:c.maker||'',model:c.model||'',raceClass:c.raceClass||''}));
     this.active();const linked=await this.storage.cars({databaseId:c.databaseId}),remoteById=new Map(out.map(x=>[x.id,x])),updates=[];
     for(const {value:row,revision}of linked){const remote=remoteById.get(row.paddock.carId);if(remote)updates.push({recordId:row.id,expectedRevision:revision,catalogueCar:remote});else if(!row.paddock.archived)updates.push({recordId:row.id,expectedRevision:revision,archived:true});}
-    await this.storage.catalogue(c.databaseId,{databaseId:c.databaseId,revision,catalogueRevision,updatedAt:new Date().toISOString(),cars:summaries},updates,connection.revision);this.active();
+    await this.storage.catalogue(c.databaseId,{databaseId:c.databaseId,revision,catalogueRevision,...(this.wishlistFiltering?{wishlistFiltering:1}:{}),updatedAt:new Date().toISOString(),cars:summaries},updates,connection.revision);this.active();
     this.catalog=out;this.catalogueError='';this.nextCatalogueCheck=Date.now()+30000;
     return (await this.catalogueView(false)).cars;
   }
@@ -275,7 +291,7 @@ class Paddock {
     return this.storage.link(p,target?.value.id,target?.revision);
   }
   refresh(){return this.exclusive(()=>this.refreshNow());}
-  async refreshNow(){const {connection}=await this.connection();if(!connection)return this.status();const linked=await this.storage.cars({databaseId:connection.databaseId});for(const {value:c,revision}of linked){try{await this.linkNow(c.paddock.carId,c.id);}catch(e){if(['CAR_NOT_FOUND','CAR_ARCHIVED'].includes(e.code))await this.storage.archive(c.id,revision);else throw e;}}return this.status();}
+  async refreshNow(){const {connection}=await this.connection();if(!connection)return this.status();const linked=await this.storage.cars({databaseId:connection.databaseId});for(const {value:c,revision}of linked){try{await this.linkNow(c.paddock.carId,c.id);}catch(e){if(['CAR_NOT_FOUND','CAR_ARCHIVED','CAR_WISHLIST'].includes(e.code))await this.storage.archive(c.id,revision);else throw e;}}return this.status();}
   prepare(ids){return this.exclusive(()=>this.prepareNow(ids));}
   async prepareNow(ids){
     if(!Array.isArray(ids)||ids.length>32||ids.some(id=>typeof id!=='string'))throw Error('Choose the cars for this race.');
@@ -294,11 +310,12 @@ class Paddock {
           if(knownClass.trim().toLocaleLowerCase()!==(p.car.raceClass||'').trim().toLocaleLowerCase())throw Object.assign(Error(c.paddock.name+' changed race class in Paddock. Refresh the Paddock Database and check the car selection before starting.'),{code:'CAR_CLASS_CHANGED'});
           configuration=p.configuration;fresh=true;updates.push({recordId:c.id,expectedRevision:row.revision,profile:p});
         }catch(e){
-          if(['CAR_NOT_FOUND','CAR_CLASS_CHANGED','DATABASE_MISMATCH','PADDOCK_STOPPED'].includes(e.code)){if(e.code==='DATABASE_MISMATCH'){this.code='';this.connected=false;}throw e;}
+          if(['CAR_NOT_FOUND','CAR_WISHLIST','CAR_CLASS_CHANGED','DATABASE_MISMATCH','PADDOCK_STOPPED'].includes(e.code)){if(e.code==='DATABASE_MISMATCH'){this.code='';this.connected=false;}throw e;}
           offline=true;this.connected=false;this.error=e.message;if(e.code==='UNAUTHENTICATED')this.code='';
         }
       }
       if(!configuration)throw Error('Connect to capture a configuration for '+c.paddock.name);
+      if(!fresh&&this.wishlistFiltering&&connection?.databaseId===c.paddock.databaseId&&(await this.storage.cache())?.wishlistFiltering!==1)throw Error('Refresh the Dealership catalogue before racing with this older cached car. Its collection membership has not been verified.');
       if(!fresh)warnings.push(c.paddock.name+': using cached configuration from '+configuration.capturedAt);
       captures[localId]={name:c.paddock.name,configuration};
     }

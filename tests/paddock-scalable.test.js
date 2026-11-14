@@ -23,6 +23,24 @@ async function setup(t,kind){const dir=fs.mkdtempSync(path.join(os.tmpdir(),'tim
  return {client,r,db,worker,work,get:async id=>repo?(await repo.get('slotcars',id,true)).record.value:db.data.slotcars.find(c=>c.id===id)};
 }
 for(const kind of ['json','sqlite']){
+ test(kind+': wishlist capability forces a full legacy-cache refresh without a revision bump, then normal deltas resume',async t=>{
+  const {client,r,get}=await setup(t,kind);await client.catalogue(true,false);const linked=await client.link('car-a'),pinned=await client.prepare([linked.id]);
+  const old=await client.storage.cache(),call=r.call;let purchased=false,fail=true;
+  r.call=async route=>{const v=await call(route);if(route==='/v1/status')return {...v,capabilities:{...v.capabilities,wishlist:1}};if(route==='/v1/scalable/cars'){if(fail)throw Error('interrupted membership refresh');return {...v,cars:purchased?v.cars:[]};}return v;};
+  let v=await client.catalogue(true,false);assert.match(v.error,/interrupted/);assert.equal(v.cars.length,0);assert.deepEqual(await client.storage.cache(),old);assert.equal((await client.connection()).connection.wishlistFiltering,1);
+  const restarted=new Paddock(null,{storage:client.storage,deliveryStore:client.deliveryStore});
+  try{assert.equal((await restarted.catalogueView(false)).cars.length,0);await assert.rejects(restarted.prepare([linked.id]),/membership has not been verified/);}finally{restarted.stop();await restarted.idle();}
+  client.code='';await assert.rejects(client.prepare([linked.id]),/membership has not been verified/);client.code='test';fail=false;
+  const n=r.requests.length;v=await client.catalogue(true,false);assert.equal(v.error,'');assert.equal(v.cars.length,0);assert(r.requests.slice(n).includes('/v1/scalable/cars'));assert.equal((await client.storage.cache()).wishlistFiltering,1);assert.equal((await get(linked.id)).paddock.archived,true);assert(pinned.captures[linked.id]);
+  purchased=true;r.change();v=await client.catalogue(true,false);assert.equal(v.cars.length,1);assert.equal(v.cars[0].id,'car-a');assert.equal((await get(linked.id)).paddock.archived,false);
+  const before=r.requests.length;await client.catalogue(true,false);assert(!r.requests.slice(before).includes('/v1/scalable/cars'));
+  r.change('remove');v=await client.catalogue(true,false);assert.equal(v.cars.length,0);assert.equal((await get(linked.id)).paddock.archived,true);
+ });
+ test(kind+': explicit wishlist rejection cannot become an offline race capture',async t=>{
+  const {client,r}=await setup(t,kind);const linked=await client.link('car-a'),call=r.call;
+  r.call=route=>{if(route.endsWith('/profile'))throw Object.assign(Error('This car is on the Wishlist. Mark it purchased in Paddock.'),{code:'CAR_WISHLIST'});return call(route);};
+  await assert.rejects(client.prepare([linked.id]),e=>e.code==='CAR_WISHLIST');
+ });
  test(kind+': legacy linked photo survives extension upgrade without crossing the catalogue write boundary',async t=>{
   const {client,r,get}=await setup(t,kind);const old=client.scalable;client.scalable=null;const request=client.hostRequest;client.hostRequest=async(_b,route)=>route.startsWith('/v1/timing/cars/')?{...structuredClone(r.p),car:{...r.p.car,picture:r.pic.picture}}:r.call(route);
   const linked=await client.link('car-a');assert.equal((await get(linked.id)).paddock.mediaHash,undefined);client.scalable=old;client.hostRequest=request;
@@ -73,6 +91,12 @@ test('archive hides selection, unarchive restores it, and race-time refresh send
 test('old and unsaved hosts retain the original catalogue protocol',async t=>{
  const {client,r}=await setup(t,'json');const legacy={id:r.p.databaseId,revision:1,cars:[{...r.p.car,picture:r.pic.picture}],nextOffset:null};
  for(const advertised of [false,true]){client.hostRequest=async(_b,route)=>{if(route==='/v1/status'){const status=await r.call(route);if(!advertised)delete status.capabilities.scalable;return status;}if(route.startsWith('/v1/scalable'))throw Object.assign(Error('Save host first'),{code:'STORAGE_REQUIRED',httpStatus:409});if(route==='/v1/collection')return legacy;throw Error(route);};const view=await client.catalogue(true,false);assert.equal(view.error,'');assert.equal(view.cars.length,1);assert.equal(await client.picture('car-a',view.cars[0].pictureKey),r.pic.picture);}
+});
+
+test('explicit browse safely falls back when scalable support disappears and remembers wishlist filtering',async t=>{
+ const {client,r}=await setup(t,'json');const call=r.call;
+ r.call=async route=>{if(route==='/v1/status'){const s=await call(route);delete s.capabilities.scalable;s.capabilities.wishlist=1;return s;}if(route==='/v1/collection')return {id:r.p.databaseId,revision:1,cars:[],nextOffset:null};return call(route);};
+ assert.deepEqual(await client.browse(),[]);assert.equal(client.scalable,null);assert.equal((await client.connection()).connection.wishlistFiltering,1);assert.equal((await client.storage.cache()).wishlistFiltering,1);
 });
 test('database mismatch and malformed pages keep the last complete cache',async t=>{
  const {client,r}=await setup(t,'json');await client.catalogue(true,false);const before=await client.storage.cache(),call=r.call;r.call=async route=>route.includes('/changes')?{version:1,databaseId:'other'}:call(route);const view=await client.catalogue(true,false);assert.match(view.error,/identity changed/);assert.equal(client.code,'');assert.deepEqual(await client.storage.cache(),before);

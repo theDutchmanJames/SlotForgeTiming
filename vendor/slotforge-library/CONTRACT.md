@@ -102,4 +102,33 @@ History list and Timing record/recent-session rows add `savedAt`, `effectiveDate
 
 Both applications should use the same updated engine artifact. Existing network Historical Review and measured delivery retain their separate validation and approval rules.
 
+### Wishlist compatibility, version 1
+
+`status().capabilities.wishlistFiltering === 1` identifies an engine that excludes
+unpurchased Wishlist records from `catalogue`, `catalogueOverview`, `car`, and
+new racing profiles. The internal optional car field `collectionStatus` is
+`collection` or `wishlist`; missing means collection. Ownership text and usage
+labels are unrelated. Callers must not infer membership from either.
+
+Public car/editor response shapes are unchanged. Targeted editor reads and
+create/patch/archive/restore writes cannot address Wishlist records (`CAR_NOT_FOUND`).
+New profiles and accepted result writes reject Wishlist references with
+`CAR_WISHLIST`. Historical intake can remain pending, but acceptance cannot attach
+it until the car is purchased. Existing accepted history is not removed or
+reclassified. Class suggestions exclude Wishlist-only class labels.
+
+Paddock's purchase operation preserves the car ID and photographs. Once committed,
+the ordinary catalogue includes it and `changes({kind:'cars',after})` emits an
+`invalidate` for that ID. Wishlist-only edits may emit `remove` without advancing
+the public catalogue revision. Consumers must honour removals, restart pagination
+on `QUERY_CHANGED`, and rebuild cached catalogue state after `resetRequired` or a
+recovery-ID change. Removal from selectable cars must not delete recorded history
+or an in-progress race's captured configuration.
+
+An older independently bundled engine cannot be upgraded by a running Paddock.
+Timing must ship the qualified replacement bundle before Wishlist activation.
+Engine version `1.0.0` alone does not establish this capability. The capability is
+additive; no SQLite schema or existing public Timing/Telemetry shape is changed.
+Wishlist activation remains disabled pending client rollout and final qualification.
+
 Status: being implemented; this document is not a completion or activation claim.

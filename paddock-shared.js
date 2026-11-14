@@ -1,7 +1,7 @@
 'use strict';
 const {randomUUID}=require('node:crypto');
 const BASE='/v1/local-library',validId=v=>typeof v==='string'&&/^[A-Za-z0-9_-]{1,100}$/.test(v);
-const rejected=new Set(['INVALID_OPERATION','INVALID_FIELD','RECOVERY_REQUIRED','LOCAL_WRITES_DISABLED','DATABASE_MISMATCH','RECOVERY_CHANGED','REVISION_CONFLICT','CAR_ARCHIVED','CAR_REBUILT','INSTALLED_PART_CONFLICT','CAR_NOT_FOUND','OPERATION_CONFLICT','PAYLOAD_TOO_LARGE']);
+const rejected=new Set(['CAR_WISHLIST','INVALID_OPERATION','INVALID_FIELD','RECOVERY_REQUIRED','LOCAL_WRITES_DISABLED','DATABASE_MISMATCH','RECOVERY_CHANGED','REVISION_CONFLICT','CAR_ARCHIVED','CAR_REBUILT','INSTALLED_PART_CONFLICT','CAR_NOT_FOUND','OPERATION_CONFLICT','PAYLOAD_TOO_LARGE']);
 function projection(v){if(!v||!validId(v.id)||!Number.isSafeInteger(v.revision)||v.revision<1||typeof v.archived!=='boolean'||!v.fields||typeof v.fields!=='object'||Array.isArray(v.fields)||typeof v.fields.name!=='string'||v.fields.name.length>200||v.truncated!==undefined&&(!Array.isArray(v.truncated)||v.truncated.some(k=>typeof k!=='string'))||v.unparsed!==undefined&&(!v.unparsed||typeof v.unparsed!=='object'||Array.isArray(v.unparsed)))throw Object.assign(Error('Invalid shared car projection.'),{code:'RECEIPT_MISMATCH'});return v;}
 function receipt(r,request){
  if(!r||r.version!==1||['databaseId','recoveryId','sourceId','operationId','action'].some(k=>r[k]!==request[k])||r.requestHash!==require('./paddock').hash(request)||!Number.isFinite(Date.parse(r.committedAt)))throw Object.assign(Error('Shared car receipt does not match the saved request.'),{code:'RECEIPT_MISMATCH'});

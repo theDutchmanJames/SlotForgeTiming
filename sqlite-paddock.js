@@ -16,6 +16,7 @@ function setPaddockConnection(s,{connection,expectedRevision}) {
   if (connection && old && old !== connection.databaseId) throw Error('Forget the old Paddock connection before choosing another database.');
   ensure(s);
   const value = connection && {address:address(connection.address),databaseId:connection.databaseId,name:connection.name,timing:connection.timing,results:connection.results};
+  if(connection?.wishlistFiltering===1)value.wishlistFiltering=1;
   if(connection?.mode==='local'){
     if(!require('./paddock-local-discovery').KEY.test(connection.localKey)||!/^http:\/\/127\.0\.0\.1:\d+$/.test(value.address))throw Error('Invalid local library selection.');
     Object.assign(value,{mode:'local',localKey:connection.localKey,automatic:connection.automatic!==false});

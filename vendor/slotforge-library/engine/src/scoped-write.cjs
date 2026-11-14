@@ -10,11 +10,11 @@ function context(store,action,p={}){
  const {Store,validateDatabase}=require('./store.cjs'),s=new Store(),data=s.data,source=store.data,state=store.deferredState;
  for(const key of common)data[key]=source[key];
  const oneCar=id=>state.read(r=>r.record(JSON.stringify(['cars','id:'+id]),{assetHandle:true}));
- const simpleCar=['car.favourite','car.archive','work.add'].includes(action)||action==='car.save'&&p.id&&!Object.hasOwn(p.data||{},'picture')&&!Object.hasOwn(p.data||{},'photos')&&!Object.hasOwn(p.data||{},'technical');
- if(action==='car.delete'){for(const key of ['cars','parts','assemblies','installations','setups','tests','jobs','events','documents','planning','buildDrafts'])data[key]=source[key];}
+ const simpleCar=['car.purchase','car.favourite','car.archive','work.add'].includes(action)||action==='car.save'&&p.id&&!Object.hasOwn(p.data||{},'picture')&&!Object.hasOwn(p.data||{},'photos')&&!Object.hasOwn(p.data||{},'technical');
+ if(action==='car.delete'){for(const key of ['cars','parts','supplies','assemblies','installations','setups','tests','jobs','events','documents','planning','buildDrafts'])data[key]=source[key];}
  else if(simpleCar){
   data.cars=[oneCar(action==='work.add'?p.carId:p.id)];
- }else if(action.startsWith('supply.'))data.supplies=source.supplies;
+ }else if(action.startsWith('supply.')&&action!=='supply.delete')data.supplies=source.supplies;
  else if(['submission.add','submission.cancelLocal'].includes(action))data.submissions=source.submissions;
  else if(['settings.save','view.save','view.delete','custom.add','choice.add','columns.save'].includes(action)){
   if(p.showroomFeaturedId)data.cars=[oneCar(p.showroomFeaturedId)];
@@ -38,14 +38,14 @@ function context(store,action,p={}){
  else{
   // Workshop/stock/setup changes share invariants. Load the entire connected
   // stock group, including reservations and historic assembly references.
-  for(const key of ['cars','parts','assemblies','installations','setups','jobs','planning'])data[key]=source[key];
+  for(const key of ['cars','parts','supplies','assemblies','installations','setups','jobs','planning'])data[key]=source[key];
   // History is append-only except when checking whether stock may be deleted.
   if(['part.delete','part.deleteMany'].includes(action)){data.events=source.events;data.tests=source.tests;data.buildDrafts=source.buildDrafts;}
   if(action==='choice.rename')data.tests=source.tests;
   if(action.startsWith('document.')||action.startsWith('guide.'))data.documents=source.documents;
   if(action==='submission.review')data.submissions=source.submissions;
   if(action==='catalogue.apply')data.supplies=source.supplies;
-  if(action.startsWith('build.')||action.startsWith('rebuild.')||action.startsWith('job.'))data.buildDrafts=source.buildDrafts;
+  if(require('./shopping-requirements.cjs').affects(action)||action.startsWith('build.')||action.startsWith('rebuild.')||action.startsWith('job.')||['planning.receive','planning.shopping.reconcile','planning.order.place','planning.order.cancel','planning.delivery.receive','planning.receipt.correct'].includes(action))data.buildDrafts=source.buildDrafts;
  }
  s.data=validateDatabase(data);return s;
 }
@@ -86,7 +86,7 @@ function compact(store,action,p){
  const car=store.deferredState.read(r=>r.record(JSON.stringify(['cars','id:'+p.id]),{assetHandle:true}));
  return require('./club-model.cjs').compactPayload({cars:[car]},action,p);
 }
-function command(store,action,p){p=compact(store,action,p);const s=context(store,action,p),before=s.data;const result=s.mutate(action,p,{snapshot:false}).result;return prepare(store,before,s.data,result);}
+function command(store,action,p){if(action==='catalogue.picture')return require('./catalogue-picture-apply.cjs').prepare(store,p);if(action==='assembly.photo')return require('./assembly-photo.cjs').prepare(store,p);p=compact(store,action,p);const s=context(store,action,p),before=s.data;const result=s.mutate(action,p,{snapshot:false}).result;return prepare(store,before,s.data,result);}
 function clubChange(store,proposalId,fn,baseScope){
  const before=baseScope?.kind==='scoped'?baseScope.before:context(store,'@club').data;
  const base=baseScope?.kind==='scoped'?baseScope.after:before;

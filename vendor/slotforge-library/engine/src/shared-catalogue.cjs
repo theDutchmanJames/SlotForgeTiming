@@ -4,7 +4,7 @@ const Q=require('./sqlite-query.cjs'),C=require('./shared-car-library.cjs'),T=re
 function read(store,options,input={}){
  if(Object.keys(input).some(k=>!['search','limit','offset','token'].includes(k))||!Number.isSafeInteger(input.limit)||input.limit<1||input.limit>48||input.offset&&!input.token)throw Error('Invalid overview page.');
  return Q.read(store,input.token,r=>{
-  const page=r.list('cars',{offset:input.offset||0,limit:input.limit,query:input.search||'',sort:'name',archived:false});
+  const page=r.list('cars',{collectionStatus:'collection',offset:input.offset||0,limit:input.limit,query:input.search||'',sort:'name',archived:false});
   const definitions=store.data.customFields;
   const cars=page.rows.map(car=>{
    const binding=require('./car-merge-settings-store.cjs').load(r,{carId:car.id,sourceId:options.installationId}).value;

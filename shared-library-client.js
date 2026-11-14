@@ -4,6 +4,7 @@
 const {randomUUID}=require('node:crypto');
 const rejectCodes=new Set(['INVALID_OPERATION','INVALID_FIELD','FIELD_TYPE_CONFLICT','FIELD_LIMIT','INVALID_ORIGIN','RECOVERY_REQUIRED','DATABASE_MISMATCH','RECOVERY_CHANGED','REVISION_CONFLICT','CAR_ARCHIVED','CAR_REBUILT','INSTALLED_PART_CONFLICT','CAR_NOT_FOUND','OPERATION_CONFLICT','COMMAND_CONFLICT','PAYLOAD_TOO_LARGE','RECEIPT_MISMATCH']);
 const fail=(code,message)=>Object.assign(Error(message),{code});
+rejectCodes.add('CAR_WISHLIST');
 for(const code of ['CAR_MERGED','MERGE_SETTINGS_REQUIRED','MERGE_ENGINE_REQUIRED','MERGE_COMPATIBILITY_REQUIRED','MERGE_FENCE_INVALID','MERGE_LINEAGE_CONFLICT','SETTINGS_CONFLICT','SOURCE_MISMATCH'])rejectCodes.add(code);
 class SharedLibraryClient {
  static async open({installationId,storage,mergeCompatibility=true,engine=require('./vendor/slotforge-library/index.cjs'),...options}){
