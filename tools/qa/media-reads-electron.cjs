@@ -21,7 +21,7 @@ for(const Repository of [require('../../data-repository'),require('../../compati
  Repository.prototype.list=function(entity){if(guard&&['imagesets','audiosets','drivers'].includes(entity))throw Error('Unexpected broad read: '+entity);return list.call(this,entity);};
  Repository.prototype.get=function(entity,id){if(guard&&['imagesets','audiosets'].includes(entity))fullReads.push({entity,id});return delayRead?new Promise(resolve=>setTimeout(()=>resolve(get.call(this,entity,id)),150)):get.call(this,entity,id);};
 }
-const oldFile=file=>require('node:child_process').execFileSync('git',['show','HEAD:renderer/'+file],{cwd:path.resolve(__dirname,'../..'),encoding:'utf8'});
+const oldFile=file=>require('node:child_process').execFileSync('git',['show','v2.2.3:renderer/'+file],{cwd:path.resolve(__dirname,'../..'),encoding:'utf8'});
 const oldImage=oldFile('editor.js').split('async function renderImageSets(box) {')[1].split('// The grid of a Start lights set.')[0],oldAudio=oldFile('audioedit.js').split('async function renderAudioSets(box) {')[1].split('function renderAudioSetEditor(box)')[0];
 let done=false;const wait=ms=>new Promise(r=>setTimeout(r,ms)),timeout=setTimeout(()=>app.exit(2),110000);
 app.on('browser-window-created',(_,win)=>{win.hide();win.webContents.setBackgroundThrottling(false);win.webContents.on('did-finish-load',async()=>{

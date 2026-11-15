@@ -17,7 +17,7 @@ for(const Repo of [require('../../data-repository'),require('../../sqlite-app-re
  Repo.prototype.list=function(entity){if(guarded&&['sessions','laps','tracks','drivers','teams'].includes(entity))throw Error('Unexpected full collection: '+entity);return list.call(this,entity);};
  Repo.prototype.editorRead=function(kind,entity,value){if(guarded)reads.push({kind,id:value?.id});return delayed&&kind==='rival-laps'?new Promise(resolve=>setTimeout(()=>resolve(editorRead.call(this,kind,entity,value)),140)):editorRead.call(this,kind,entity,value);};
 }
-const source=file=>require('node:child_process').execFileSync('git',['show','HEAD:renderer/'+file],{cwd:path.resolve(__dirname,'../..'),encoding:'utf8'});
+const source=file=>require('node:child_process').execFileSync('git',['show','v2.2.3:renderer/'+file],{cwd:path.resolve(__dirname,'../..'),encoding:'utf8'});
 const oldRival=source('virtualrivalui.js'),oldChamp=source('championshipui.js');
 let done=false,startupReady=false;require('electron').ipcMain.on('startup:ready',()=>{startupReady=true;});
 const wait=ms=>new Promise(r=>setTimeout(r,ms)),timeout=setTimeout(()=>app.exit(2),110000);
