@@ -1,14 +1,8 @@
 const { app, BrowserWindow, ipcMain, dialog, screen } = require('electron');
 const fs = require('fs');
 const path = require('path');
-const Database = require('./db');
-const schema = require('./schema');
+let Database, schema, createServer, QR, transfer, backup, LiveShare, parallel;
 const os = require('os');
-const { createServer } = require('./server');
-const QR = require('./qr');
-const transfer = require('./transfer');
-const backup = require('./backup');
-const LiveShare = require('./renderer/liveshare.js'); // puts the messages of the race window together (a window or phone that opens late is given the whole state)
 
 // One place for the data, whether the app is started from the folder, installed or run as the portable .exe
 const normalProfile=path.join(app.getPath('appData'),'slotforge-timing');
@@ -28,7 +22,6 @@ const {WorkGate,Shutdown}=require('./work-gate'),appWork=new WorkGate();
 // checks and channel contracts remain inside the accepted operation.
 const registerIpc=ipcMain.handle.bind(ipcMain);
 ipcMain.handle=(channel,handler)=>registerIpc(channel,(...args)=>appWork.run(()=>handler(...args)));
-const parallel = require('./parallelport').createController({ onEvent: event => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('parallel:event', event); } });
 let pendingRestore = null; // a backup file chosen for restoring, waiting for the user to confirm
 let pendingRestoreSource = null;
 let pendingImport = null; // a file chosen for import, waiting for the user to confirm
@@ -59,9 +52,11 @@ async function createWindow() {
   win.webContents.on('select-hid-device', (event, details, callback) => { event.preventDefault(); ask('hid', details.deviceList.map(d => ({ deviceId: d.deviceId, name: d.name, vendorId: d.vendorId, productId: d.productId })), callback); });
   ipcMain.removeAllListeners('hw:chosen'); ipcMain.on('hw:chosen', (_e, id) => { if (pick) { const cb = pick; pick = null; cb(id || ''); } });
   win.on('closed', () => app.quit()); // closing the main window also closes the Live Race window
-  await win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  const screenReady=require('./startup-screen').waitForScreen({win,ipcMain,app});
+  try { await Promise.all([screenReady.ready,win.loadFile(path.join(__dirname, 'renderer', 'index.html'))]); }
+  finally { screenReady.cancel(); }
   if(!startupClosing&&!win.isDestroyed()){
-    startupFeedback?.dispose();startupFeedback=null;win.show();
+    win.show();startupFeedback?.dispose();startupFeedback=null;
   }
 }
 
@@ -129,6 +124,13 @@ const startupTask=app.whenReady().then(async () => {
   if (!gotLock) return;
   try {
   startupFeedback=require('./startup-feedback').create({BrowserWindow,quit:()=>app.quit()});
+  await startupFeedback.ready;
+  if(startupClosing)return;
+  // Load application modules only after the small startup window is visible.
+  Database=require('./db');schema=require('./schema');
+  ({createServer}=require('./server'));QR=require('./qr');
+  transfer=require('./transfer');backup=require('./backup');LiveShare=require('./renderer/liveshare.js');
+  parallel=require('./parallelport').createController({onEvent:event=>{if(mainWin&&!mainWin.isDestroyed())mainWin.webContents.send('parallel:event',event);}});
   try {
     if(profileError)throw profileError;
     const profile=app.getPath('userData');
@@ -477,7 +479,7 @@ const shutdown=new Shutdown({gate:appWork,
     paddock?.quiesce();net.server?.quiesce();
     await pluginSafety;
     await appWork.idle();await netChain;await net.server?.close();
-    parallel.shutdown();
+    parallel?.shutdown();
     await paddock?.idle();paddock?.stop();
     await sharedLibrary?.close();
     await pluginHost?.shutdown();await resourceStore?.idle();
@@ -491,7 +493,7 @@ app.on('before-quit',e=>{
   if(shutdown.ready||!gotLock)return;
   e.preventDefault();startupClosing=true;appWork.stop();
   // Hardware safety is immediate, independent of potentially slow storage.
-  parallel.shutdown();
+  parallel?.shutdown();
   if(quitWaiting)return;quitWaiting=true;
   pluginSafety=Promise.resolve().then(()=>pluginHost?.timing?.reset());
   pluginSafety.catch(()=>{}); // Report any failure through the shutdown coordinator.

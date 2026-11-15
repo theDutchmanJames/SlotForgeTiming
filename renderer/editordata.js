@@ -1,9 +1,9 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.EditorData=api;})(typeof globalThis!=='undefined'?globalThis:this,()=>{
  'use strict';
- async function choices(api,entity){
+ async function choices(api,entity,kind='page'){
   if(!api.editorRead)return api.list(entity);
   for(let attempt=0;attempt<3;attempt++){
-   try{const items=[];let cursor=null;do{const page=await api.editorRead('page',entity,{cursor});items.push(...page.items);cursor=page.next;}while(cursor);return items;}
+   try{const items=[];let cursor=null;do{const page=await api.editorRead(kind,entity,{cursor});items.push(...page.items);cursor=page.next;}while(cursor);return items;}
    catch(error){if(attempt===2||!(error.code==='CATALOGUE_CHANGED'||/catalogue changed/i.test(error.message)))throw error;}
   }
  }
@@ -38,5 +38,11 @@
   if(ed.previewTrackId===undefined)ed.previewTrackId=(ed.previewTracks.find(t=>t.id===raceTrackId&&(t.hasTrackDesign||t.trackDesign))||ed.previewTracks.find(t=>t.hasTrackDesign||t.trackDesign))?.id||'';
   ed.previewLoads=new Map();await refresh(api,ed);
  }
- return {choices,needed,refresh,load};
+ async function setupHistory(api,kind,options={}){
+  for(let attempt=0;attempt<3;attempt++){
+   try{let cursor=null,first;const items=[];do{const page=await api.editorRead(kind,kind==='rival-laps'?'laps':'sessions',{...options,cursor});first ||= page;items.push(...page.items);cursor=page.next;}while(cursor);return {...first,items,next:null};}
+   catch(error){if(attempt===2||!(error.code==='CATALOGUE_CHANGED'||/catalogue changed/i.test(error.message)))throw error;}
+  }
+ }
+ return {choices,needed,refresh,load,setupHistory};
 });

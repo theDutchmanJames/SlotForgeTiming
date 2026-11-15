@@ -16,7 +16,7 @@ class DataRepository {
   raceSeason(options) { const S=require('./season-read');return S.read(S.jsonSource(this.db),options); }
   raceCharts(ids) { return require('./display-read').charts(require('./race-read').jsonSource(this.db),ids); }
   raceInputs(options) { return require('./race-read').read(require('./race-read').jsonSource(this.db),options); }
-  editorRead(kind,entity,value) { return require('./editor-read').read(require('./editor-read').jsonSource(this.db),kind,entity,value); }
+  editorRead(kind,entity,value) { const history=require('./setup-history-read');return history.KINDS.includes(kind)?history.json(this.db,kind,entity,value):require('./editor-read').read(require('./editor-read').jsonSource(this.db),kind,entity,value); }
   referencePage(entity,options) { return require('./reference-read').jsonPage(this.db,entity,options); }
   referenceDetails(entity,ids,revision) { return require('./reference-read').jsonDetails(this.db,entity,ids,revision); }
   historyReferences(rows) { return require('./history-read').jsonReferences(this.db,rows); }

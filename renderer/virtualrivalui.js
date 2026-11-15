@@ -3,7 +3,20 @@
 let rivalEditor=null;
 async function renderVirtualRivals(box) {
   manager=null;
-  const [profiles,drivers,sessions,laps,tracks]=await Promise.all(['virtualrivalsystems','drivers','sessions','laps','tracks'].map(e=>api.list(e)));
+  const opening=rivalEditor;
+  const [profiles,drivers]=await Promise.all([api.list('virtualrivalsystems'),typeof referenceList==='function'?referenceList('drivers'):api.list('drivers')]);
+  if(rivalEditor!==opening||box.isConnected===false)return;
+  let sessions=[],laps=[],tracks=[];
+  const readSource=async id=>{
+    const detail=await EditorData.setupHistory(api,'rival-laps',{id});
+    return {session:detail.session,laps:detail.items,track:detail.track};
+  };
+  const applySource=detail=>{laps=detail.laps;tracks=detail.track?[detail.track]:[];if(detail.session)sessions=sessions.map(s=>s.id===detail.session.id?detail.session:s);};
+  if(opening){
+    if(api.editorRead){sessions=(await EditorData.setupHistory(api,'rival-sources')).items;if(sessions.some(s=>s.id===opening.draft.sourceId))applySource(await readSource(opening.draft.sourceId));}
+    else [sessions,laps,tracks]=await Promise.all(['sessions','laps','tracks'].map(e=>api.list(e)));
+    if(rivalEditor!==opening||box.isConnected===false)return;
+  }
   const V=VirtualRival, icon=n=>Icons.svg(n,{size:18}), used=id=>drivers.filter(d=>d.driverType==='virtual'&&d.virtualRivalSystem===id);
   if(!rivalEditor){
     box.innerHTML=`<p class="muted">Replay a saved lap sequence as a virtual opponent. Link a system to a virtual driver in Database, then select that driver in a lane on Home. Its car selector becomes the Rival Setup selector.</p><button class="btn primary" data-rival-new>New Virtual Rival System</button><div class="wrap"><table class="fields"><tr><th>System</th><th>Track / replay</th><th>Used by</th><th>Actions</th></tr>${profiles.map(p=>`<tr><td>${esc(p.name)}</td><td>${esc(p.trackName)} · ${V.sequence(p).length} laps</td><td>${used(p.id).map(d=>esc(d.name)).join(', ')||'No driver yet'}</td><td><button class="btn" data-rival-edit="${esc(p.id)}">Edit</button> <button class="btn" data-rival-copy="${esc(p.id)}">Duplicate</button> <button class="btn danger" data-rival-delete="${esc(p.id)}">Delete</button></td></tr>`).join('')||'<tr><td colspan="4">No systems yet. Start with a saved race or practice recording.</td></tr>'}</table></div>`;
@@ -21,7 +34,7 @@ async function renderVirtualRivals(box) {
   const select=(key,label,items)=>`<label class="field">${esc(label)}<select data-vr="${key}">${opts(items,d[key])}</select></label>`;
   const check=(key,label)=>`<label class="inline"><input type="checkbox" data-vr="${key}"${d[key]?' checked':''}> ${esc(label)}</label>`;
   const sourceIds=new Set(laps.filter(l=>!l.virtualRival&&!l.token).map(l=>l.sessionId));
-  const sources=sessions.filter(s=>sourceIds.has(s.id));
+  const sources=api.editorRead?sessions:sessions.filter(s=>sourceIds.has(s.id));
   const sourceBody=`<div class="fgrid"><label class="field full">Saved session<select id="vr-source"><option value="">Choose a recording…</option>${opts(sources.map(s=>[s.id,(s.setupName||'Session')+' · '+(s.date||'').slice(0,10)]),d.sourceId)}</select></label><label class="field">Recorded driver<select id="vr-person"></select></label><label class="field" id="vr-heat-field">Heat<select id="vr-heat"></select></label></div><div id="vr-source-card" class="vr-info"></div><p class="muted">The recording is copied into this system. Deleting its original session will not break the replay. Choosing another source replaces the copy.</p>`;
   const sections=[{id:'source',title:'Source recording',ask:'Whose recorded laps should the rival use?',icon:'timing',open:true,body:sourceBody},
     {id:'sequence',title:'Lap sequence',ask:'Which part of the recording should be replayed?',icon:'timing',open:true,body:`<div class="fgrid">${input('from','From recorded lap','number','min="1" step="1"')}${input('to','Through recorded lap','number','min="1" step="1"')}</div>${check('includePits','Include recorded pit laps')}<p class="muted">Invalid and red-flag-interrupted laps are excluded. Retained pit time is replayed once; new fuel, tyre, damage and Service Stop rules do not add work to the rival.</p><div class="vr-info"><b>Selected lap sequence</b><svg id="vr-chart" role="img" aria-label="Replay lap times"></svg><p id="vr-chart-detail" class="muted">Recorded times (dashed) and replay times (solid).</p><div class="vr-metrics" id="vr-metrics"></div></div>`},
@@ -50,7 +63,20 @@ async function renderVirtualRivals(box) {
   sourceOptions();refresh();
   if(ed.observer)ed.observer.disconnect();ed.observer=new ResizeObserver(chart);ed.observer.observe(q('#vr-chart'));
   box.oninput=e=>{const k=e.target.dataset.vr;if(!k&&e.target.id!=='vr-speed-slider')return;const key=k||'speed';d[key]=e.target.type==='checkbox'?e.target.checked:e.target.type==='number'||e.target.type==='range'?Number(e.target.value):e.target.value;ed.dirty=true;if(key==='speed'){d.speed=Math.min(120,Math.max(80,d.speed||100));q('[data-vr=speed]').value=d.speed;}refresh();};
-  box.onchange=e=>{if(e.target.id==='vr-source'){ed.sourcePending=true;sourceOptions();refresh();q('#vr-error').textContent='Choose a recorded driver to copy its laps.';}if(e.target.id==='vr-person'){heatOptions();loadSource();}if(e.target.id==='vr-heat')loadSource();};
+  let sourceRun=0;
+  box.onchange=async e=>{
+    if(e.target.id==='vr-source'){
+      const control=e.target,id=control.value,run=++sourceRun;ed.sourcePending=true;
+      if(api.editorRead){
+        laps=[];tracks=[];q('#vr-person').innerHTML='<option value="">Choose a driver…</option>';q('#vr-person').disabled=true;q('#vr-heat').disabled=true;refresh();
+        try{const detail=id?await readSource(id):{laps:[],track:null};if(run!==sourceRun||rivalEditor!==ed||box.isConnected===false||q('#vr-source')!==control)return;applySource(detail);if(id&&!detail.session)throw Error('This recording no longer exists. Reopen the editor and choose another recording.');}
+        catch(error){if(run===sourceRun&&rivalEditor===ed&&box.isConnected!==false&&q('#vr-source')===control){q('#vr-error').textContent=error.message;}return;}
+        q('#vr-person').disabled=false;q('#vr-heat').disabled=false;
+      }
+      sourceOptions();refresh();q('#vr-error').textContent='Choose a recorded driver to copy its laps.';
+    }
+    if(e.target.id==='vr-person'){heatOptions();loadSource();}if(e.target.id==='vr-heat')loadSource();
+  };
   box.onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.rail){ed.rail=b.dataset.rail;const sec=q(`[data-fg="${ed.rail}"]`);sec.open=true;sec.scrollIntoView({block:'nearest'});refresh();}if(b.dataset.vrMode){d.mode=b.dataset.vrMode;ed.dirty=true;refresh();}if(b.id==='vr-back'){if(ed.dirty&&!confirm('Discard unsaved Virtual Rival changes?'))return;ed.observer.disconnect();rivalEditor=null;renderVirtualRivals(box);}};
   q('#vr-form').onsubmit=async e=>{e.preventDefault();if(q('#vr-save').disabled)return;ed.saving=true;refresh();try{const data=V.clean(d);if(ed.id)await api.update('virtualrivalsystems',ed.id,data);else ed.id=(await api.add('virtualrivalsystems',data)).id;ed.dirty=false;ed.saving=false;refresh();}catch(x){ed.saving=false;refresh();q('#vr-error').textContent='Could not save: '+x.message;}};
 }

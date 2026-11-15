@@ -25,20 +25,30 @@ async function renderAudioSets(box) {
   if (audEd) return renderAudioSetEditor(box);
   box.classList?.remove("audio-editor");
   manager = null;
-  const sets = await api.list('audiosets');
+  const sets = await EditorData.choices(api, 'audiosets', 'media');
   box.innerHTML = `<p class="muted">An audio set holds everything the race says: the voice and, for each call (start, new leader, fastest lap, flags...), one or more sentences. Make a set here, then choose it in a Race Setup. A race setup with "No audio" stays silent. Sound is played on the computer that runs the race.</p>
     <div class="row"><button class="btn primary" id="newaud">New audio set</button></div>
     <div class="wrap"><table class="fields"><tr><th>Name</th><th>Voice</th><th>Calls on</th><th></th></tr>` +
     (sets.length ? sets.map(r => `<tr><td>${esc(r.name)}</td><td>${esc(r.voice || 'Default voice')}</td><td>${Announcer.CALLS.filter(c => (r.calls || {})[c.id] && r.calls[c.id].on !== false).length} of ${Announcer.CALLS.length}</td><td class="actions">
       <button class="btn" data-edit="${esc(r.id)}">Edit</button> <button class="btn" data-dup="${esc(r.id)}">Duplicate</button> <button class="btn danger" data-del="${esc(r.id)}">Delete</button></td></tr>`).join('') : '<tr><td colspan="4" class="muted">No audio sets yet.</td></tr>') + '</table></div>';
-  box.onclick = async ev => {
+  const onSetClick = box.onclick = async ev => {
     const b = ev.target.closest('button'); if (!b) return;
-    if (b.id === 'newaud') { audDrivers = await api.list('drivers'); audEd = { id: null, draft: Sound.defaultSet(), dirty: true }; audOpen = new Set(); audSecOpen = new Set(); audCond = new Set(); return renderAudioSets(box); }
-    const r = sets.find(x => x.id === (b.dataset.edit || b.dataset.dup || b.dataset.del)); if (!r) return;
+    if (b.disabled) return;
+    b.disabled = true;
+    try {
+    if (b.id === 'newaud') { audDrivers = await referenceList('drivers'); if(box.isConnected === false || box.onclick !== onSetClick)return; audEd = { id: null, draft: Sound.defaultSet(), dirty: true }; audOpen = new Set(); audSecOpen = new Set(); audCond = new Set(); return renderAudioSets(box); }
+    let r = sets.find(x => x.id === (b.dataset.edit || b.dataset.dup || b.dataset.del)); if (!r) return;
+    if (b.dataset.edit || b.dataset.dup) {
+      r = await api.getRecord('audiosets', r.id);
+      if(box.isConnected === false || box.onclick !== onSetClick)return;
+      if(!r)throw Error('This audio set no longer exists. Reopen the list and try again.');
+    }
     const own = () => Sound.normalize(r);
-    if (b.dataset.edit) { audDrivers = await api.list('drivers'); audEd = { id: r.id, draft: own(), dirty: false }; audOpen = new Set(); audSecOpen = new Set(); audCond = new Set(); return renderAudioSets(box); }
-    if (b.dataset.dup) { const d = own(); d.name = r.name + ' (copy)'; await api.add('audiosets', d); return renderAudioSets(box); }
-    if (b.dataset.del && confirm(`Delete the audio set "${r.name}"?\n\nRace setups that use it will be silent until you choose another set.\n\nThis can't be undone.`)) { await api.remove('audiosets', r.id); renderAudioSets(box); }
+    if (b.dataset.edit) { audDrivers = await referenceList('drivers'); if(box.isConnected === false || box.onclick !== onSetClick)return; audEd = { id: r.id, draft: own(), dirty: false }; audOpen = new Set(); audSecOpen = new Set(); audCond = new Set(); return renderAudioSets(box); }
+    if (b.dataset.dup) { const d = own(); d.name = r.name + ' (copy)'; await api.add('audiosets', d); if(box.isConnected !== false && box.onclick === onSetClick)return await renderAudioSets(box); }
+    if (b.dataset.del && confirm(`Delete the audio set "${r.name}"?\n\nRace setups that use it will be silent until you choose another set.\n\nThis can't be undone.`)) { await api.remove('audiosets', r.id); if(box.isConnected !== false && box.onclick === onSetClick)await renderAudioSets(box); }
+    } catch(error) { alert(error.message); }
+    finally { b.disabled = false; }
   };
 }
 

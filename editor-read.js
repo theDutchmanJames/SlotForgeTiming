@@ -6,6 +6,15 @@ const KEYS={layouts:['name','note','ratioW','ratioH'],tracks:['name'],teams:['na
 const PICTURES={drivers:'avatar',slotcars:'picture',teams:'picture'};
 const TRACK_KEYS=['name','lanes','length','laneLengths','laneModifier','targetLap','trackDesign'];
 function read(source,kind,entity,value={}){
+ if(kind==='media'){
+  require('./media-set-read').check(entity);
+  const {cursor=null}=value||{},revision=source.revision();
+  if(cursor&&(cursor.entity!==entity||cursor.kind!=='media'||typeof cursor.revision!=='string'||!Number.isSafeInteger(cursor.ordinal)||cursor.ordinal<0))throw Error('Invalid media set cursor.');
+  if(cursor&&cursor.revision!==revision)throw C.stale();
+  const rows=source.rows(entity,cursor?.ordinal??-1,101);
+  return {items:rows.slice(0,100).map(({id})=>source.mediaSummary(entity,id)),revision,
+   next:rows.length>100?{entity,kind:'media',revision,ordinal:rows[99].ordinal}:null};
+ }
  if(kind==='page'){
   if(!Object.hasOwn(KEYS,entity))throw Error('Unsupported editor choices.');
   const {cursor=null}=value||{},revision=source.revision();
@@ -33,6 +42,7 @@ function read(source,kind,entity,value={}){
 }
 function jsonSource(db){const row=(e,id)=>db.list(e).find(r=>r.id===id);return {
  revision:()=>C.jsonRevision(db),
+ mediaSummary:(e,id)=>require('./media-set-read').summary(e,row(e,id)),
  rows:(e,after,limit)=>db.list(e).map((r,ordinal)=>({id:r.id,ordinal})).slice(after+1,after+1+limit),
  exists:(e,id)=>!!row(e,id),
  field:(e,id,key)=>structuredClone(row(e,id)?.[key]),

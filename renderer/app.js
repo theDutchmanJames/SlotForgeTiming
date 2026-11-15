@@ -488,4 +488,4 @@ function bootFailed(e) {
   if (api.onHwChoose && typeof tmAutoConnect === 'function') tmAutoConnect(); // the remembered Trackmate, if it is plugged in
   if (typeof abAutoConnect === 'function') abAutoConnect(); // the remembered SlotForge box, or the virtual one when that is chosen
   if (typeof ppAutoConnect === 'function') ppAutoConnect();
-})().catch(bootFailed);
+})().catch(bootFailed).finally(()=>{if(api.startupReady&&location.hash!=='#live')api.startupReady();});

@@ -14,7 +14,8 @@ function field(s,e,id,key,media=false){
  }
  return result;
 }
-function read(s,kind,entity,value){return s.transaction(()=>E.read({
+function read(s,kind,entity,value){const history=require('./setup-history-read');if(history.KINDS.includes(kind))return history.sqlite(s,kind,entity,value);return s.transaction(()=>E.read({
+ mediaSummary:(e,id)=>require('./media-set-read').sqliteSummary(s,e,id),
  revision:()=>C.revision(s),rows:(e,after,limit)=>s.page(e,after,limit),
  exists:(e,id)=>!!s.statement('SELECT 1 FROM records WHERE entity=? AND id=?').get(e,id),field:(...args)=>field(s,...args),
  count:(e,id,key)=>s.statement("SELECT CASE WHEN json_type(json)='array' THEN json_array_length(json) ELSE 0 END n FROM fields WHERE entity=? AND id=? AND path=?").get(e,id,JSON.stringify([key]))?.n||0,

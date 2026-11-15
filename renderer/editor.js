@@ -206,19 +206,28 @@ const setCount = d => setSlots(d).filter(([k]) => (d.images || (d.kind === 'fuel
 async function renderImageSets(box) {
   if (imgEd) return renderImageSetEditor(box);
   manager = null;
-  const sets = await api.list('imagesets');
+  const sets = await EditorData.choices(api, 'imagesets', 'media');
   box.innerHTML = `<p class="muted">A picture set is a group of pictures for a widget: the Fuel widget (full to empty), the Race flag widget (one per state), the Start lights widget (a lit and an unlit light), the Tyres widget (one per tyre), the Weather Forecast widget (one per state of the weather) or the Track Conditions widget (an icon per item). Make a set once here, then choose it in the widget of any layout instead of uploading the pictures again.</p>
     <div class="row"><button class="btn primary" id="newset">New picture set</button></div>
     <div class="wrap"><table class="fields"><tr><th>Name</th><th>For</th><th>Pictures</th><th></th></tr>` +
     (sets.length ? sets.map(r => `<tr><td>${esc(r.name)}</td><td>${esc((SET_KINDS.find(k => k[0] === r.kind) || [0, r.kind])[1])}</td><td>${setCount(r)} of ${setSlots(r).length}</td><td class="actions">
       <button class="btn" data-edit="${esc(r.id)}">Edit</button> <button class="btn" data-dup="${esc(r.id)}">Duplicate</button> <button class="btn danger" data-del="${esc(r.id)}">Delete</button></td></tr>`).join('') : '<tr><td colspan="4" class="muted">No picture sets yet.</td></tr>') + '</table></div>';
-  box.onclick = async ev => {
+  const onSetClick = box.onclick = async ev => {
     const b = ev.target.closest('button'); if (!b) return;
     if (b.id === 'newset') { imgEd = { id: null, draft: { name: 'New picture set', kind: 'fuel', steps: 10, images: [] }, dirty: true }; return renderImageSets(box); }
-    const r = sets.find(x => x.id === (b.dataset.edit || b.dataset.dup || b.dataset.del)); if (!r) return;
+    let r = sets.find(x => x.id === (b.dataset.edit || b.dataset.dup || b.dataset.del)); if (!r || b.disabled) return;
+    b.disabled = true;
+    try {
+    if (b.dataset.edit || b.dataset.dup) {
+      r = await api.getRecord('imagesets', r.id);
+      if (box.isConnected === false || box.onclick !== onSetClick) return;
+      if (!r) throw Error('This picture set no longer exists. Reopen the list and try again.');
+    }
     if (b.dataset.edit) { imgEd = { id: r.id, draft: clone({ name: r.name, kind: r.kind, steps: r.steps || 10, images: r.images || (r.kind === 'fuel' ? [] : {}) }), dirty: false }; return renderImageSets(box); }
-    if (b.dataset.dup) { await api.add('imagesets', clone({ name: r.name + ' (copy)', kind: r.kind, steps: r.steps, images: r.images })); return renderImageSets(box); }
-    if (b.dataset.del && confirm(`Delete the picture set "${r.name}"?\n\nWidgets that use it show text or a number instead, until you choose another set.\n\nThis can't be undone.`)) { await api.remove('imagesets', r.id); renderImageSets(box); }
+    if (b.dataset.dup) { await api.add('imagesets', clone({ name: r.name + ' (copy)', kind: r.kind, steps: r.steps, images: r.images })); if(box.isConnected !== false && box.onclick === onSetClick)return await renderImageSets(box); }
+    if (b.dataset.del && confirm(`Delete the picture set "${r.name}"?\n\nWidgets that use it show text or a number instead, until you choose another set.\n\nThis can't be undone.`)) { await api.remove('imagesets', r.id); if(box.isConnected !== false && box.onclick === onSetClick)await renderImageSets(box); }
+    } catch (error) { alert(error.message); }
+    finally { b.disabled = false; }
   };
 }
 

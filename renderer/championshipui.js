@@ -3,16 +3,20 @@
 let chEd = null; // the championship being edited: { id, draft, dirty, open (the ids of the rounds that are open), sections (the sections that are open), rail (the row of the rail that is marked), lists, msg, history }
 
 // the lists the page needs (race setups for the sessions, tracks for the rounds, drivers and teams for the roster, saved sessions for what was driven)
-async function champLists() {
-  const [setups, tracks, drivers, teams, sessions] = await Promise.all(['racesetups', 'tracks', 'drivers', 'teams', 'sessions'].map(e => api.list(e)));
+async function champLists(champIds) {
+  const [setups, tracks, drivers, teams, sessions] = await Promise.all([
+    api.list('racesetups'),...['tracks','drivers','teams'].map(e=>typeof referenceList==='function'?referenceList(e):api.list(e)),
+    api.editorRead?EditorData.setupHistory(api,'champ-progress',{champIds}).then(p=>p.items):api.list('sessions')]);
   return { setups: setups || [], tracks: tracks || [], drivers: drivers || [], teams: teams || [], sessions: sessions || [] };
 }
 
 async function renderChampionships(box) {
   manager = null;
-  const L = await champLists();
-  if (chEd) { chEd.lists = L; return renderChampionshipEditor(box); }
+  const opening = chEd, request = {}; box.champListRequest = request;
   const list = (await api.list('championships')).map(r => ({ raw: r, c: Champ.clean(r, true) }));
+  const L = await champLists(opening?(opening.id?[opening.id]:[]):list.map(r=>r.raw.id));
+  if (box.champListRequest !== request || chEd !== opening || box.isConnected === false) return;
+  if (chEd) { chEd.lists = L; return renderChampionshipEditor(box); }
   const row = ({ raw, c }) => {
     const p = Champ.progress(c, L.sessions), bad = Champ.problems(c, L);
     return `<tr><td><strong>${esc(c.name || '(unnamed)')}</strong></td><td>${esc(Champ.describe(c))}</td>
@@ -287,8 +291,18 @@ function renderChampionshipEditor(box) {
 // ---- the points after a race, and the standings (1.56.0) ----
 // The pure parts are in champpoints.js (what a race gives, the standings, what the panel says); this is the screen.
 const champCtx = D => ({ drivers: D.drivers.map(x => ({ id: x.id, name: titleOf('drivers', x) })), teams: D.teams.map(x => ({ id: x.id, name: titleOf('teams', x) })), setups: D.setups });
-async function champData() {
-  const [champs, sessions, drivers, teams, setups] = await Promise.all(['championships', 'sessions', 'drivers', 'teams', 'racesetups'].map(e => api.list(e)));
+async function champData(selection={}) {
+  const [champs, drivers, teams, setups] = await Promise.all([api.list('championships'),...['drivers','teams'].map(e=>typeof referenceList==='function'?referenceList(e):api.list(e)),api.list('racesetups')]);
+  let sessions;
+  if(api.editorRead){
+    let filter=selection;
+    if(!selection.sessionIds){
+      let id=champs.find(c=>c.id===selection.champId)?.id;
+      if(!id){const recent=(await EditorData.setupHistory(api,'champ-progress',{champIds:champs.map(c=>c.id)})).items.sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0];id=recent?.champ?.id||champs[0]?.id;}
+      filter={champIds:id?[id]:[]};
+    }
+    sessions=(await EditorData.setupHistory(api,'champ-sessions',filter)).items;
+  }else sessions=await api.list('sessions');
   return { champs: (champs || []).map(r => Champ.clean(r, true)), sessions: (sessions || []).map(x => (Array.isArray(x.standings) ? x : { ...x, standings: [] })), drivers: drivers || [], teams: teams || [], setups: setups || [] };
 }
 let champView = { id: '', which: 'drivers' }; // the standings page: the championship that is shown, and Drivers, Teams or Rounds
@@ -342,7 +356,7 @@ function champPanelHtml(c, v, s) {
 // Fills the panels (boxes with data-cpbox = the id of a saved session) and wires their buttons. onDone: what to do after a button changed something (default: fill them again).
 async function champPanelsFor(boxes, onDone) {
   if (!boxes.length) return;
-  const D = await champData(), ctx = champCtx(D), msgOf = b => b.querySelector && b.querySelector('.chpmsg');
+  const D = await champData({sessionIds:boxes.map(b=>b.dataset.cpbox)}), ctx = champCtx(D), msgOf = b => b.querySelector && b.querySelector('.chpmsg');
   const fill = () => boxes.forEach(b => {
     const s = D.sessions.find(x => x.id === b.dataset.cpbox), c = s && s.champ && D.champs.find(x => x.id === s.champ.id);
     const classes=s?.multiclass?.pointsMode==='overall'?[]:s?.multiclass?.classes||[],scope=b.dataset.mcScope||(s?.multiclass?.pointsMode==='class'?classes[0]?.id:'')||'';
@@ -356,7 +370,7 @@ async function champPanelsFor(boxes, onDone) {
       if (act === 'off' && !confirm('Do not count this race for the championship?\n\nIt stays in the results as a normal race and gives no points, and the Home tab offers the session again. You can count it again later.')) return;
       try { for (const p of ChampPts.awardPatches(D.sessions, s, act, new Date().toISOString())) await api.update('sessions', p.id, { champ: p.champ }); }
       catch (x) { b.insertAdjacentHTML ? b.insertAdjacentHTML('beforeend', `<p class="chpmsg" role="alert">Could not save: ${esc(x.message)}</p>`) : null; return; }
-      if (act === 'award') { try { const sessions = await api.list('sessions'), saved = sessions.find(x=>x.id===s.id), setId = saved?.audioSetId; if (setId && typeof Sound !== 'undefined') { const sets = await api.list('audiosets'), set = sets.find(x=>x.id===setId); if (set) { const v = ChampPts.awardView(c,saved,sessions,ctx); AudioCalls.champCalls(v).forEach(e=>Sound.say(Sound.normalize(set),e.call,{track:saved.trackName||'',race:saved.setupName||'',session:saved.sessionType||'',round:v.round,...e.vars},undefined,undefined,e.facts)); } } } catch(audioError) { /* Awards remain saved if audio is unavailable. */ } }
+      if (act === 'award') { try { const sessions = api.editorRead?(await EditorData.setupHistory(api,'champ-sessions',{champIds:[s.champ.id]})).items:await api.list('sessions'), saved = sessions.find(x=>x.id===s.id), setId = saved?.audioSetId; if (setId && typeof Sound !== 'undefined') { const set = await api.getRecord('audiosets',setId); if (set) { const v = ChampPts.awardView(c,saved,sessions,ctx); AudioCalls.champCalls(v).forEach(e=>Sound.say(Sound.normalize(set),e.call,{track:saved.trackName||'',race:saved.setupName||'',session:saved.sessionType||'',round:v.round,...e.vars},undefined,undefined,e.facts)); } } } catch(audioError) { /* Awards remain saved if audio is unavailable. */ } }
       if (onDone) await onDone(s); else await champPanelsFor(boxes, onDone);
     };
   });
@@ -370,7 +384,9 @@ const champTableHtml = t => `<div class="wrap"><table class="fields chtable"><th
   + (t.legend && t.legend.length ? `<p class="muted chlegend">${t.legend.map(l => `<span class="${esc(l.cls)}">${esc(l.text)}</span>`).join(' &nbsp;&middot;&nbsp; ')}</p>` : '');
 
 async function renderChampStandings(box) {
-  const D = await champData();
+  const selectedId = champView.id, request = {}; box.champStandingsRequest = request;
+  const D = await champData({champId:selectedId});
+  if (box.champStandingsRequest !== request || champView.id !== selectedId || box.isConnected === false) return;
   if (!D.champs.length) { box.innerHTML = '<p class="muted">No championships yet. Make one in Race Setup > Championships. After a race of a championship, its points are awarded here.</p>'; return; }
   let c = D.champs.find(x => x.id === champView.id);
   if (!c) { // the championship that was raced last, else the first

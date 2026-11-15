@@ -51,6 +51,7 @@ async function editorSave(operation,channel,...values){
 }
 
 contextBridge.exposeInMainWorld('api', {
+  startupReady:()=>ipcRenderer.send('startup:ready'),
   onThumbnailJob:fn=>{thumbnailListeners.add(fn);},
   thumbnailReady:()=>ipcRenderer.send('library:thumbnail-ready'),
   thumbnailResult:(id,data)=>ipcRenderer.send('library:thumbnail-result',id,data),
