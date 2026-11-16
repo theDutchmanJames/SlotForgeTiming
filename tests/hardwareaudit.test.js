@@ -16,6 +16,13 @@ test('Trackmate: two ticks that arrive as one because a CR was lost count as two
   assert.deepEqual(ticks(P, '200\n200\n\r'), [200, 200]);
   assert.deepEqual(ticks(P, '\n92\n\r'), [92]); // (a stray LF before the digits)
 });
+test('Trackmate: three ticks merged by lost CRs still count, and the monitor sees the bytes as they came', () => {
+  const P = HW.trackmateParser();
+  assert.deepEqual(ticks(P, '200\n200\n200\n\r'), [200, 200, 200]);
+  const m = P.feed(enc('200\r\n56\n\r')); // (CR LF in the wrong order: still two ticks, the stray LF goes with the second)
+  assert.deepEqual(m.map(x => x.ms), [200, 56]); assert.deepEqual(m[1].raw, [10, 53, 54, 10, 13]);
+  const raw = P.feed(enc('\n\n92\n\r'))[0].raw; assert.deepEqual(raw, [10, 10, 57, 50, 10, 13]);
+});
 test('Trackmate: something that cannot be a clock step is no tick (the clock does not jump)', () => {
   const P = HW.trackmateParser();
   for (const s of ['200200\n\r', '99999\r', '\n\r', '6000\n\r']) assert.deepEqual(ticks(P, s), [], s);

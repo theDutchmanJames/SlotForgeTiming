@@ -52,11 +52,14 @@
       else if (e.type === 'call') { if (o.trackcall) o.trackcall(); }
       else if (e.type === 'button') { if (o.actions && o.actions.call) o.actions.call(e.lane); }
       else if (e.type === 'trap') { if (o.onTrap) o.onTrap(e.lane, e.ms); }
-      else if (e.type === 'safe' && e.on) { if (o.onSafe) o.onSafe(); } // (audit 2.2.5: the box lost us and cut the power: the race is told, as a timing fault)
+      else if (e.type === 'safe' && e.on) { if (o.onSafe) o.onSafe({ stalled: stalled() }); } // (audit 2.2.5: the box lost us and cut the power: the race is told, as a timing fault)
       else if (e.type === 'safe' && !e.on) { L.send(C.mainPower(wantPower)); L.setPower(wantPower); lastLights = null; sync(); } // the box is back from its safe state (it cut the track power when it lost us): tell it the lights and the track power again
     });
     // the keep-alive: every second while bound (the page sends one too while its tab is open; two are harmless)
-    if (typeof setInterval === 'function' && o.keepalive !== false) keep = setInterval(() => L.send(C.keepalive()), B.KEEPALIVE_MS);
+    // (2.2.5) When this window stood still (a dialog, a busy moment) the keep-alives were not sent: a safe state that follows is ours, not the connection's
+    let lastKeep = Date.now(), stallUntil = 0;
+    const stalled = () => Date.now() < stallUntil || (keep && Date.now() - lastKeep > 2 * B.KEEPALIVE_MS);
+    if (typeof setInterval === 'function' && o.keepalive !== false) keep = setInterval(() => { const now = Date.now(); if (now - lastKeep > 2.5 * B.KEEPALIVE_MS) stallUntil = now + 3 * B.KEEPALIVE_MS + 1000; lastKeep = now; L.send(C.keepalive()); }, B.KEEPALIVE_MS);
     L.send(C.readings(false)); // the live readings of the Arduino page cost serial time on the box: never during a race
     // the track power at the start, as the Trackmate setting says (on or off; race.js calls power(true) at lights out when it is its choice)
     let wantPower = setup.startPower !== 'off'; // the track power the race wants now (a box that comes back from its safe state is told)

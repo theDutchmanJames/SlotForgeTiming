@@ -430,6 +430,12 @@ async function renderRace() {
     checkpoint(); ph('save point');
     if (live.box) live.box.sync();
     if (live.ds) live.ds.sync();
+    // (2.2.5) After a Trackmate or box fault and a manual restart, the power follows the race again: it is switched on, and later flags switch it as usual
+    if (live.hardwareRecoverPower && live.linkFault && live.phase === 'running') {
+      live.hardwareRecoverPower = false; live.linkFault = null;
+      const on = !(eng.flag === 'yellow' && trackCall.yellow === 'off');
+      live.pwWant = on; power(on);
+    }
     for (const binding of [live.parallel, live.plugin]) {
       if (!binding) continue;
       if (live.hardwareRecoverPower && live.phase === 'running' && binding.ready()) {
@@ -906,6 +912,10 @@ async function renderRace() {
     const hardware = Hardware.timingChosen(state.settings);
     if(timingPlugin && (hardware!=='plugin'||JSON.stringify(timingPlugin)!==JSON.stringify(TimingPlugin.provenance(pt.identity)))) { ui('msg').textContent='Reconnect the same timing plugin version, settings and lane configuration saved with this race.'; return false; }
     if (hardware === 'ds') { const ok = !!live.ds && live.ds.ready(); if (!ok) ui('msg').textContent = 'Reconnect the same DS-200 / DS-300 covering all race lanes before resuming manually.'; return ok; }
+    if (live.linkFault && live.linkFault === hardware) { // (2.2.5: after a disconnect or the box's safe state, a restart waits until the same hardware is back)
+      const back = hardware === 'trackmate' ? Trackmate.link.connected : !!(abLinkNow() && abLinkNow().connected && !abLinkNow().safe);
+      if (!back) { ui('msg').textContent = (hardware === 'trackmate' ? 'Trackmate' : 'Arduino') + ' is not connected. Reconnect it in App Settings, then restart manually.'; return false; }
+    }
     if (!['parallel', 'plugin'].includes(hardware)) return true;
     const link = hardware === 'plugin' ? pt.link : ParallelPort.link;
     if (live[hardware] && live[hardware].ready() && link.connected) return true;
@@ -1042,8 +1052,8 @@ async function renderRace() {
     const tm = Trackmate.link.connected, ab = !!(abLinkNow() && abLinkNow().connected), busy = ['countdown', 'running', 'paused'].includes(live.phase);
     const tmLost = hwUse === 'trackmate' && tmWas && !tm && busy, abLost = hwUse === 'arduino' && abWas && !ab && busy;
     tmWas = tm; abWas = ab; // (first: switching the power off tells the status listeners again)
-    if (tmLost) timingFault('Trackmate', 'Disconnected. Reconnect, then restart manually.');
-    if (abLost) timingFault('Arduino', 'Disconnected. Reconnect, then restart manually.');
+    if (tmLost) { live.linkFault = 'trackmate'; timingFault('Trackmate', 'Disconnected. Reconnect, then restart manually.'); }
+    if (abLost) { live.linkFault = 'arduino'; timingFault('Arduino', 'Disconnected. Reconnect, then restart manually.'); }
   };
   { const offDs = typeof DsTiming !== 'undefined' ? DsTiming.link.onStatus(drawTm) : null, offT = Trackmate.link.onStatus(() => { drawTm(); linkLost(); }), offA = abLinkNow() ? abLinkNow().onStatus(() => { drawTm(); linkLost(); }) : null, offP = typeof ParallelPort !== 'undefined' ? ParallelPort.link.onStatus(drawTm) : null; const offPt = typeof pt !== 'undefined' ? pt.link.onStatus(drawTm) : null; live.offTmStatus = () => { if (offDs) offDs(); if (offPt) offPt(); offT(); if (offA) offA(); if (offP) offP(); }; }
   // the track power (the Trackmate relay): only when it is connected
@@ -1098,7 +1108,9 @@ async function renderRace() {
       setup: { ...setup, boxBeeps: setup.boxBeeps !== 'no', boxLaneLights: setup.boxLaneLights === 'yes' }, // (the race setup form has Yes/No choices, no tick boxes: the box wants true/false)
       onJump: (lane, at) => { /* a crossing during the countdown: the jump-start handling is not built yet */ },
       onTrap: (lane, ms) => { const i = eng.cars.findIndex(c => c.lane === lane); if (i >= 0) eng.cars[i].trapMs = ms; },
-      onSafe: () => { if (['countdown', 'running', 'paused'].includes(live.phase)) timingFault('Arduino', 'The box lost contact with Timing and switched the track power off. Restart manually.'); } });
+      // (the box lost contact. When this window itself stood still, for instance behind a dialog, the box gets its keep-alive again at once and switches back on as
+      // before; when the keep-alives were sent but did not arrive, the connection is the problem: a timing fault)
+      onSafe: ({ stalled } = {}) => { if (stalled || !['countdown', 'running', 'paused'].includes(live.phase)) return; live.linkFault = 'arduino'; timingFault('Arduino', 'The box lost contact with Timing (its safety switch-off). Reconnect if needed, then restart manually.'); } });
   }
   if (hwUse === 'parallel' && typeof ParallelRace !== 'undefined' && api.parallelRace) {
     live.hardwareRecoverPower = !!r.resume || !!(tokens && state.settings.tokenSessions?.[setup.id]?.data);

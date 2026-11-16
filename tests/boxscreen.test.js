@@ -163,10 +163,38 @@ const nowMs = () => run('performance.now()');
   const restarted = sentNow();
   say('...and the Race Director restarting the race switches it on again', /\bM1\b/.test(restarted), restarted);
   run('live.leave && live.leave()'); await wait(20);
+  await openRace({ ...setup, trackCallAction: 'yellowred', trackCallRedPower: 'off' }, store.tracks[0], rows(1, 2)); sentNow();
+  key(' '); await until(() => phase() === 'countdown', 3000); await until(() => phase() === 'running', 12000); await wait(40);
+  run("ArduinoBox.link.emit({ type: 'safe', on: true, at: performance.now() })"); await wait(30); run("ArduinoBox.link.emit({ type: 'safe', on: false, at: performance.now() })"); await wait(30);
+  run('live.actions.red()'); await until(() => phase() === 'running' && eng().flag !== 'red', 12000); await wait(80); sentNow();
+  run('live.actions.red()'); await wait(60);
+  const redAgain = sentNow();
+  say('...after that restart a red flag switches the power off again, as the race setup says', eng().flag === 'red' && /\bM0\b/.test(redAgain), redAgain);
+  run('live.leave && live.leave()'); await wait(20);
+  for (const mode of ['none', 'power']) { // (Track Call modes in which the flags do not switch the power: the restart still switches it on)
+    await openRace({ ...setup, trackCallAction: mode }, store.tracks[0], rows(1, 2)); sentNow();
+    key(' '); await until(() => phase() === 'countdown', 3000); await until(() => phase() === 'running', 12000); await wait(40); sentNow();
+    run("ArduinoBox.link.emit({ type: 'safe', on: true, at: performance.now() })"); await wait(30); run("ArduinoBox.link.emit({ type: 'safe', on: false, at: performance.now() })"); await wait(30); sentNow();
+    run('live.actions.red()'); await until(() => phase() === 'running' && eng().flag !== 'red', 12000); await wait(80);
+    const back = sentNow();
+    say(`2.2.5: with Track Call "${mode}" a restart after the fault switches the track power on again`, /\bM1\b/.test(back), back);
+    run('live.leave && live.leave()'); await wait(20);
+  }
+  // a window that stood still (a dialog): the box went safe because no keep-alive was sent, not because the connection failed
+  await openRace(setup, store.tracks[0], rows(1, 2)); sentNow();
+  key(' '); await until(() => phase() === 'countdown', 3000); await until(() => phase() === 'running', 12000); await wait(40);
+  run('(() => { const t = Date.now() + 3600; while (Date.now() < t) {} })()'); // (the window stands still for 3.6 s)
+  run("ArduinoBox.link.emit({ type: 'safe', on: true, at: performance.now() })"); await wait(30);
+  say('2.2.5: a safe state after this window stood still (no keep-alives were sent) is no timing fault', eng().flag !== 'red' && phase() === 'running', String(E('msg').textContent));
+  run('live.leave && live.leave()'); await wait(20);
   await openRace(setup, store.tracks[0], rows(1, 2)); sentNow();
   key(' '); await until(() => phase() === 'countdown', 3000); await until(() => phase() === 'running', 12000); await wait(40);
   run("ArduinoBox.link.setConnected(false)"); await wait(20);
   say('2.2.5: a box that disconnects mid-race red-flags the race and asks for a manual restart', eng().flag === 'red' && /Arduino: Disconnected/.test(String(E('msg').textContent)), String(E('msg').textContent));
+  run('live.actions.red()'); await wait(60);
+  say('...a restart waits until the box is connected again', eng().flag === 'red' && /Arduino is not connected/.test(String(E('msg').textContent)), String(E('msg').textContent));
+  run("ArduinoBox.link.setConnected(true)"); run('live.actions.red()'); await until(() => phase() === 'running' && eng().flag !== 'red', 12000); await wait(80);
+  say('...and goes when it is', phase() === 'running' && eng().flag !== 'red');
   run('live.leave && live.leave()'); await wait(20);
   run("ArduinoBox.link.setConnected(true)");
   await openRace(setup, store.tracks[0], rows(1, 2)); run("ArduinoBox.link.setConnected(false)"); await wait(20);

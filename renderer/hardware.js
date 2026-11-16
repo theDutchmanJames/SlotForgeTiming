@@ -41,9 +41,13 @@
   // each counts, so the clock stays right. Anything that cannot be a clock step (no digits, more than 4 digits, over 5 s) is not a tick: counting it would
   // jump the clock and make every sensor that is covered let go at once (a car on the pit sensor would leave and count a lap).
   function ticksOf(cur) {
-    const parts = String.fromCharCode(...cur).split('\n').filter(p => p !== '');
-    if (!parts.length || !parts.every(p => /^\d{1,4}$/.test(p) && Number(p) <= 5000)) return [{ type: 'other', raw: cur.concat(13) }];
-    return parts.map((p, k) => ({ type: 'tick', ms: Number(p), raw: [...p].map(ch => ch.charCodeAt(0)).concat(10, ...(k === parts.length - 1 ? [13] : [])) }));
+    const parts = []; let digits = [], raw = []; // (raw: the bytes as they came, for the monitor)
+    for (const b of cur) { raw.push(b); if (b === 10) { if (digits.length) { parts.push({ digits, raw }); digits = []; raw = []; } } else digits.push(b); }
+    if (digits.length) parts.push({ digits, raw }); else if (parts.length) parts[parts.length - 1].raw.push(...raw);
+    const text = p => String.fromCharCode(...p.digits);
+    if (!parts.length || !parts.every(p => /^\d{1,4}$/.test(text(p)) && Number(text(p)) <= 5000)) return [{ type: 'other', raw: cur.concat(13) }];
+    parts[parts.length - 1].raw.push(13);
+    return parts.map(p => ({ type: 'tick', ms: Number(text(p)), raw: p.raw }));
   }
   function trackmateParser() {
     let cur = [];
@@ -53,7 +57,7 @@
         Array.from(bytes).forEach(b => {
           if (b >= 65 && b <= 72) out.push({ type: 'lane', lane: b - 64, raw: [b] });
           else if (b === 87) out.push({ type: 'call', raw: [b] });
-          else if ((b >= 48 && b <= 57) || b === 10) { cur.push(b); if (cur.length > 8) { out.push({ type: 'other', raw: cur }); cur = []; } }
+          else if ((b >= 48 && b <= 57) || b === 10) { cur.push(b); if (cur.length > 15) { out.push({ type: 'other', raw: cur }); cur = []; } }
           else if (b === 13) {
             out.push(...ticksOf(cur));
             cur = [];
