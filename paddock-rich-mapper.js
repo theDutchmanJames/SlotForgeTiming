@@ -147,8 +147,20 @@ function measured(session,rows,databaseId){
  if(rows.some(r=>!matched.has(r)))fail('Some saved laps have no captured measured crossing. Keep them as historical evidence.');
  const c=context(s,participants,heatIds,warnings),ps=[...participants.values()];
  if(!ps.length)fail('No measured participants.');
+ // Crossing times are clock values of about 1.8e12 ms while lap times are measured and rounded on their own, so "end - lap time"
+ // can land a few nanoseconds before the previous crossing. Such an end moves forward by the smallest step (never by 1 ms or more:
+ // that is a real contradiction and stays refused), and the driver and heat boundaries follow it.
+ const bounds=new Map(heats.map(h=>[heatIds.get(String(h.id)),{start:offset(h.startedAt),end:offset(h.endedAt)}])),up=x=>x+Math.max(Math.abs(x)*Number.EPSILON,Number.MIN_VALUE);
+ for(const p of ps){let prior=null;
+  for(const l of p.laps){const h=bounds.get(l.heatId),floor=Math.max(prior??-Infinity,h.start),gap=floor-(l.endedAtMs-l.durationMs);
+   if(gap>0&&gap<1){let e=Math.max(l.endedAtMs,floor+l.durationMs);while(e-l.durationMs<floor)e=up(e);l.endedAtMs=e;}
+   const st=p.stints.find(x=>x.id===l.stintId);if(st&&l.endedAtMs>st.endedAtMs)st.endedAtMs=l.endedAtMs;if(l.endedAtMs>h.end)h.end=l.endedAtMs;prior=l.endedAtMs;}
+  for(let i=1;i<p.stints.length;i++)if(p.stints[i].heatId===p.stints[i-1].heatId&&p.stints[i].startedAtMs<p.stints[i-1].endedAtMs)p.stints[i].startedAtMs=p.stints[i-1].endedAtMs;
+ }
+ // The session times are whole milliseconds: the start rounds down, so the end rounds up and the session always covers its last crossing.
+ const last=Math.max(...[...bounds.values()].map(b=>b.end)),startIso=new Date(Math.floor(began)).toISOString(),endIso=new Date(Math.floor(began)+Math.ceil(last+began-Math.floor(began))).toISOString();
  const missing=[];if(ps.some(p=>!p.configuration))missing.push('configuration');if(ps.some(p=>p.laps.some(l=>l.personalRecordEligible===null||l.trackRecordEligible===null)))missing.push('record-eligibility');if(track.lanes.some(l=>l.lengthM===null))missing.push('lane-lengths');if(!c.classification.length)missing.push('classification');
- return {bundle:validate({format:'history-v1',provenance:{kind:'measured',evidence:'Original Timing crossing journal, captured configurations and saved reviewed classification.',missing},race:{name:text(s.setupName)||'Race session',type:['practice','qualifying','endurance'].includes(s.sessionType)?s.sessionType:'race',startedAt:new Date(began).toISOString(),endedAt:new Date(ended).toISOString(),track,heats:heats.map(h=>({id:heatIds.get(String(h.id)),name:text(h.name)||'Heat',startedAtMs:offset(h.startedAt),endedAtMs:offset(h.endedAt)})),participants:ps},context:c}),warnings:[...warnings],sourceSessionId:s.id};
+ return {bundle:validate({format:'history-v1',provenance:{kind:'measured',evidence:'Original Timing crossing journal, captured configurations and saved reviewed classification.',missing},race:{name:text(s.setupName)||'Race session',type:['practice','qualifying','endurance'].includes(s.sessionType)?s.sessionType:'race',startedAt:startIso,endedAt:endIso,track,heats:heats.map(h=>{const id=heatIds.get(String(h.id)),b=bounds.get(id);return {id,name:text(h.name)||'Heat',startedAtMs:b.start,endedAtMs:b.end};}),participants:ps},context:c}),warnings:[...warnings],sourceSessionId:s.id};
 }
 // New explicit historical submissions only. Existing frozen requests are never
 // rebuilt. Historical record eligibility stays false regardless of saved flags.

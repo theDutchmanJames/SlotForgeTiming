@@ -713,9 +713,11 @@ async function renderRace() {
       ${setup.teamDriver === 'chosen' ? `<p class="hint2">Choose the driver of every team. The one whose turn it is, is suggested. A driver who is in two teams can drive for one of them in a heat.</p>` + ps.map(p => `<p><label>${esc(laneOf(p))}${esc(people[p].teamName || 'Team')} <select data-tp="${p}" aria-label="Driver for ${esc(people[p].teamName || 'team ' + (p + 1))}">${people[p].teamDrivers.map(id => { const d = find(drivers, id); return `<option value="${esc(id)}"${id === people[p].driverId ? ' selected' : ''}${taken(id, p) ? ' disabled' : ''}>${esc(d ? titleOf('drivers', d) : '?')}${taken(id, p) ? ' (drives for another team)' : ''}</option>`; }).join('')}</select></label></p>`).join('') : ''}`;
   };
   ui('teampick').onchange = ev => { const t = ev.target; if (!t || !t.dataset || t.dataset.tp === undefined || !byTeam || !['between', 'ready'].includes(live.phase)) return; const p = Number(t.dataset.tp); if (!people[p] || !(people[p].teamDrivers || []).includes(t.value)) return; teamChosen[p] = t.value; assignDrivers(); regrid(); }; // (only a driver of the team can be chosen)
+  // Back from the director's final check to the race page, which says what was saved (resetting only the flag left that page hidden and the screen blank).
+  function closeReview() { ui('review').innerHTML = ''; ui('review').hidden = true; ui('finishreview').hidden = true; ui('raceactive').hidden = false; live.reviewShown = false; live.rvHtml = ''; }
   function finalize() {
     if (live.phase !== 'review') return;
-    ui('review').innerHTML = ''; live.reviewShown = false;
+    closeReview();
     if (heats) {
       const raceNo = heat.idx + 1, date = new Date().toISOString(), fin = heat.isFinal() ? heat.raceName(heat.idx).slice(6) : '';
       if(eng.rivals?.length) (live.rivalHeats || (live.rivalHeats=[])).push({heat:heat.idx+1,rivals:VirtualRival.summary(eng)});
@@ -759,7 +761,7 @@ async function renderRace() {
   // "Delete all data": the race ends and nothing is saved (in a heat race that includes the earlier heats)
   async function discardAll() {
     if (live.phase !== 'review') return;
-    ui('review').innerHTML = ''; live.reviewShown = false; live.laps = [];
+    closeReview(); live.laps = [];
     live.phase = 'finished'; clearInterval(live.timers); stopBreak(); live.sim.forEach(clearTimeout); document.removeEventListener('keydown', live.key);
     if(!(await clearCheckpoint()))return;
     ui('msg').textContent = resourceState?'Race results deleted. Consumed resources remain spent.':'The race was deleted. Nothing was saved.';
