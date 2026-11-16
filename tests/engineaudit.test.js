@@ -101,6 +101,30 @@ test('...a stop given by a point on the finishing lap itself cannot be served ei
   assert.equal(!!r.cars[0].dq, false);
 });
 
+const twoTiers = E.penaltyConfig({ dqUnserved: 'on', rules: [{ from: 2, time: 0, laps: 0, pit: 5 }, { from: 4, time: 0, laps: 0, pit: 10 }] });
+test('a higher penalty tier given after the flag does not wipe out a stop that was due before it: the car is still disqualified', () => {
+  const a = E.createRace({ type: 'race', laps: 3, endRule: 'all', entries: entries(2), penalty: twoTiers }); a.start(0);
+  a.addPoints(0, 2, 500); a.cross(0, 5000); a.cross(1, 5100); a.cross(0, 10000); a.cross(1, 10100);
+  a.addPoints(0, 2, 15000); a.cross(0, 15000); a.cross(1, 15100);
+  assert.equal(a.status, 'finished'); assert.equal(a.cars[0].dq, true);
+  const b = E.createRace({ type: 'race', laps: 3, endRule: 'all', entries: entries(2), penalty: twoTiers }); b.start(0);
+  b.addPoints(0, 2, 500); for (let k = 1; k <= 3; k++) b.cross(0, k * 5000);
+  b.addPoints(0, 2, 16000); for (let k = 1; k <= 3; k++) b.cross(1, k * 5100);
+  assert.equal(b.cars[0].dq, true); assert.equal(b.cars[0].pending[0].since, 500);
+});
+test('a stop given at the moment of a finishing crossing that is read a little later is beyond reach too', () => {
+  const sg = E.penaltyConfig({ dqUnserved: 'on', types: [{ name: 'SG', effect: 'pit', amount: 5, points: 0 }] });
+  const r = E.createRace({ type: 'race', laps: 3, endRule: 'all', entries: entries(2), penalty: sg }); r.start(0);
+  for (let k = 1; k <= 2; k++) { r.cross(0, k * 5000); r.cross(1, k * 5100); }
+  r.assign(0, 0, 15010); r.cross(0, 15005); r.cross(1, 15300);
+  assert.equal(r.status, 'finished'); assert.equal(!!r.cars[0].dq, false); assert.equal(r.cars[0].pending[0].afterFinish, true);
+});
+test('results show time added without a penalty system as added time, not as a penalty with empty points', () => {
+  for (const f of ['report.js', 'database.js']) {
+    const src = fs.readFileSync(path.join(__dirname, '..', 'renderer', f), 'utf8');
+    assert.ok(src.includes("x.penaltyPoints != null ?") && src.includes('added time)'), f);
+  }
+});
 test('after a crash restore in a new app session the tyre temperature cools in the pits again', () => {
   const base = { tempOn: 'on', paceWear: 'off', effect: 'off', setsMode: 'none', changeSeconds: 600, tyres: { M: { wear: 2 } }, temperature: { tyres: { M: { ...Temp.DEFAULT } } } };
   const cfg = () => ({ type: 'race', laps: 1000, entries: [{ lane: 0, tyre: 'M', driverId: 'd', carId: 'c', driverName: 'A' }], fuel: { on: true, tank: 10000, perLap: 0.1, rate: 10, pitHold: 1000 }, tyrewear: T.clean(base) });

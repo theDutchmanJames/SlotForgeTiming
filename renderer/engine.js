@@ -397,7 +397,7 @@
         c.yellowFast.push(c.laps.length - 1);
         if (Y.points > 0 && R.addPoints(i, Y.points, t)) e.points = Y.points;
       }
-      if (!c.dq && ((limitOf(c) && c.laps.length - c.swapLost >= limitOf(c)) || (timeLimit && t - R.t0 >= timeLimit))) { c.done = true; /* (audit 2.2.5: the time of the crossing decides, not whether the timer has already noticed time-up) */ c.place = ++R.finished; c.pending.forEach(p => { if (p.at === t) p.afterFinish = true; }); } // (a penalty stop given on the finishing lap can no longer be served) // a car disqualified on this lap (fuel points) has not finished
+      if (!c.dq && ((limitOf(c) && c.laps.length - c.swapLost >= limitOf(c)) || (timeLimit && t - R.t0 >= timeLimit))) { c.done = true; /* (audit 2.2.5: the time of the crossing decides, not whether the timer has already noticed time-up) */ c.place = ++R.finished; c.pending.forEach(p => { if ((p.since ?? p.at) >= t) p.afterFinish = true; }); } // (a penalty stop given on the finishing lap can no longer be served) // a car disqualified on this lap (fuel points) has not finished
       if (DM) { damageLap(c, R.cars.indexOf(c), t, deslot); flCheck(c, i, t); }
       if (TWC && systemOn('tyrewear')) twLap(c, i, t, twGone, dt, paceClean);
       if (TWC && !systemOn('tyrewear')) { const st = twStint(c); st.laps++; st.m += TWC.laneLen[c.lane] || 0; st.life = c.twLife; }
@@ -828,9 +828,11 @@
         if (R.status === 'running') serveCheck(i, t);
         const previousTier = p => p.ladderTier || (p.mandatory && /^Penalty points · (\d+) points$/.test(p.name) && R.events.some(e => e.type === 'assigned' && e.automatic && e.car === i && e.t === p.at && e.name === p.name) ? Number(/^Penalty points · (\d+) points$/.exec(p.name)[1]) : 0);
         const replaceAt = c.pending.findIndex(p => previousTier(p) > 0 && previousTier(p) < effect.from);
+        // (2.2.5: a higher tier takes the place of a lower one; it can be served from the moment the first of them was given, so it is only beyond reach when all of them came after the flag)
+        const replaced = c.pending.filter(p => previousTier(p) > 0 && previousTier(p) < effect.from), since = Math.min(t, ...replaced.map(p => p.since ?? p.at));
         c.pending = c.pending.filter(p => !(previousTier(p) > 0 && previousTier(p) < effect.from));
         c.penaltyPitTiers = c.penaltyPitTiers || []; c.penaltyPitTiers.push(effect.from);
-        c.pending.splice(replaceAt < 0 ? c.pending.length : replaceAt, 0, { name: `Penalty points · ${effect.from} points`, kind: 'stopgo', seconds: effect.pit, extra: 0, unserved: 0, mandatory: true, ladderTier: effect.from, at: t, ...(c.done ? { afterFinish: true } : {}) }); // (afterFinish: given after the car took the flag, so it cannot be served; it does not disqualify, and the review still shows it)
+        c.pending.splice(replaceAt < 0 ? c.pending.length : replaceAt, 0, { name: `Penalty points · ${effect.from} points`, kind: 'stopgo', seconds: effect.pit, extra: 0, unserved: 0, mandatory: true, ladderTier: effect.from, at: t, ...(since < t ? { since } : {}), ...(c.done && replaced.every(p => p.afterFinish) ? { afterFinish: true } : {}) }); // (afterFinish: given after the car took the flag, so it cannot be served; it does not disqualify, and the review still shows it)
         if (heldPits) holdPenalty(c);
         log('assigned', i, t, { name: `Penalty points · ${effect.from} points`, automatic: true });
       }

@@ -110,10 +110,10 @@ ok('what a car is told, from the events (nothing when it kept the rule)', T.mand
   ok('...a car that drove no lap is not judged', evs(r, 'mandatory').map(e => e.car).join() === '0' && r.cars[1].extraMs === 0); }
 { const r = race({ mandStops: 1 }); drive(r, 0, 2); r.cars[0].retired = true; r.cars[0].done = true; drive(r, 1, 6); // (the first car retired: it is out)
   ok('a car that retired is not judged', evs(r, 'mandatory').every(e => e.car !== 0)); }
-{ const r = race({ mandStops: 1 }, { type: 'timed', laps: 0, cfg: { duration: 1 } }); drive(r, 0, 3); r.tick(60001); lap(r, 0); lap(r, 1);
+{ const r = race({ mandStops: 1 }, { type: 'timed', laps: 0, cfg: { duration: 1 } }); drive(r, 0, 3); r.tick(60001); r.__t[0] = r.__t[1] = 60000; lap(r, 0); lap(r, 1); // (2.2.5: crossings stamped after the time is up; one stamped before it is not the finish, even when it is read after the timer tick)
   ok('a timed race: a car is judged on its crossing after the time is up', r.cars[0].done === true && evs(r, 'mandatory').length >= 1 && evs(r, 'mandatory')[0].car === 0 && evs(r, 'mandatory')[0].ok === false); }
 { const rec = { mandStops: 1, practice: 'on', qualifying: 'on' }, p = race(rec, { type: 'practice' }), q = race(rec, { type: 'qualifying', cfg: { duration: 1 } });
-  drive(p, 0, 8); drive(q, 0, 3); q.tick(60001); lap(q, 0); lap(q, 1); p.stop(100000);
+  drive(p, 0, 8); drive(q, 0, 3); q.tick(60001); q.__t[0] = q.__t[1] = 60000; lap(q, 0); lap(q, 1); p.stop(100000);
   ok('there is no rule in practice or qualifying, even when the system has tyre wear there (the tyres do wear)', p.tyrewear && q.tyrewear && p.cars[0].twLife < 100 && p.mandOf(0) === null && q.mandOf(0) === null && q.status === 'finished' && evs(p, 'mandatory').length === 0 && evs(q, 'mandatory').length === 0 && q.cars[0].extraMs === 0); }
 { const r = race({}); drive(r, 0, 6);
   ok('a system without a rule judges nothing and has no view', r.mandOf(0) === null && evs(r, 'mandatory').length === 0 && r.tyreNoteOf(0) === ''); }

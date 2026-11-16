@@ -1500,7 +1500,7 @@ async function renderResultsPool(box, pool, supplied=null) {
         case 'result': return esc(Heats.scoreText(x, s.scoring, finArg));
         case 'final': return esc(Heats.finalCell(x));
         case 'best': return esc(RaceEngine.fmtTime(x.best));
-        case 'total': return esc(RaceEngine.fmtTime(typeof x.total==='number'?x.total + (x.penalty || 0) + (x.adjMs || 0):null)) + (x.penalty ? ` <span class="muted">(includes +${esc(RaceEngine.fmtTime(x.penalty))} penalty, ${esc(x.penaltyPoints)} points)</span>` : '');
+        case 'total': return esc(RaceEngine.fmtTime(typeof x.total==='number'?x.total + (x.penalty || 0) + (x.adjMs || 0):null)) + (x.penalty ? (x.penaltyPoints != null ? ` <span class="muted">(includes +${esc(RaceEngine.fmtTime(x.penalty))} penalty, ${esc(x.penaltyPoints)} points)</span>` : ` <span class="muted">(includes +${esc(RaceEngine.fmtTime(x.penalty))} added time)</span>`) : ''); // (2.2.5: time added without a penalty system has no points)
         default: return esc(Stats.text(key, figs[i], Speed.unitOf(state.settings), Speed.distUnitOf(state.settings)));
       }
     };
