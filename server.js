@@ -78,19 +78,51 @@ function bopCommand(c) {
   if (c.type !== 'bop') return true;
   return Number.isInteger(c.lane) && c.lane >= 0 && c.lane <= 15 && typeof c.how === 'string' && BOP_HOW.includes(c.how);
 }
+// The corrections of the review (renderer/review.js apply, and the stints of a Time Token Session): only the known ones, each with only its own fields, all of the right kind.
+// A car, a lap, a penalty (k) and a stint (sid) are whole numbers from 0; time is in ms, above 0 and at most a day (an adjustment may also take off); the rest is left out.
+const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+const KEY = k => typeof k === 'string' && /^[A-Za-z][A-Za-z0-9_]{0,40}$/.test(k) && !['__proto__', 'constructor', 'prototype'].includes(k);
+const IDX = v => Number.isSafeInteger(v) && v >= 0, OPT = f => v => v === undefined || f(v), BOOL = OPT(v => typeof v === 'boolean'), NUM = max => v => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= max;
+const DAY_MS = 864e5, CAR = { car: IDX };
+const REVIEW_OPS = { finalize: {}, discard: {}, nullify: CAR, restorepoints: CAR, dq: CAR, undq: CAR, adjustreset: CAR, forgive: { car: IDX, k: IDX }, addtime: { car: IDX, ms: v => NUM(DAY_MS)(v) && v > 0 },
+  adjust: { car: IDX, ms: OPT(v => Number.isInteger(v) && NUM(DAY_MS)(v)), laps: OPT(NUM(100000)), points: OPT(NUM(100000)) }, invalid: { car: IDX, lap: IDX, on: BOOL }, removelap: { car: IDX, lap: IDX, recalc: BOOL },
+  sector: { car: IDX, sector: v => v === undefined || v === null || (Number.isInteger(v) && v >= 0 && v <= 1000) }, sectormove: { car: IDX, dir: v => v === -1 || v === 1 }, tkinvalid: { sid: IDX, lap: IDX, on: BOOL }, tkremove: { sid: IDX, lap: IDX, recalc: BOOL } };
+// the fields every command may carry; whatever else a browser sends is not passed on to the race
+const FIELDS = { penalty: ['lane', 'n'], assign: ['lane', 'typeIndex'], call: ['lane'], callresolve: ['id', 'how'], addtime: ['lane', 'minutes'], reducetime: ['lane', 'minutes'], undotime: ['lane'], endtime: ['lane'], cleartime: ['lane'], setdriver: ['lane', 'driverId'],
+  bop: ['lane', 'how'], weather: ['state'], tyre: ['lane', 'tyre', 'save'], tyrenext: ['lane', 'tyre'], swap: ['lane', 'to'], swapnext: ['lane', 'id'], damage: ['lane', 'n'], failure: ['lane', 'k'], failureclear: ['lane'], pad: ['group', 'lane', 'amount'], pitrelease: ['lane'], pitreleaseearly: ['lane'], system: ['key', 'enabled'] };
+// a clean copy of a command that may go to the race, or null
+function cleanCommand(c) {
+  if (!c || typeof c !== 'object' || Array.isArray(c) || !KEY(c.type) || !COMMANDS.includes(c.type)) return null;
+  const out = { type: c.type };
+  if (c.type === 'review') {
+    if (!KEY(c.op) || !own(REVIEW_OPS, c.op)) return null;
+    out.op = c.op; const spec = REVIEW_OPS[c.op];
+    for (const f of Object.keys(spec)) { const v = own(c, f) ? c[f] : undefined; if (!spec[f](v)) return null; if (v !== undefined) out[f] = v; }
+    if (c.op === 'adjust' && out.ms === undefined && out.laps === undefined && out.points === undefined) return null;
+    return out;
+  }
+  if (c.type === 'system' && !KEY(c.key)) return null;
+  for (const f of FIELDS[c.type] || []) if (own(c, f) && c[f] !== undefined) out[f] = c[f];
+  return out;
+}
 
 // o: { root (the renderer folder), appRoot (holds node_modules), schema, getSettings(), list(entity), customFields(entity), getLive() -> {stat, dyn}, onCommand(cmd) }
 // The live pages are for this computer and the local network. A browser must reach them by an IP address, localhost or a local name
-// (one word such as my-pc, or a name ending in .local, .lan, .home, .internal or .home.arpa); a public web address pointing here is refused.
+// (this computer's own name, alone or with a home-network suffix: .local, .lan, .home.arpa, .home, .internal, .localdomain or a FRITZ!Box router's .fritz.box); any other name could be a public web address pointing here, and is refused (DNS rebinding).
 function localHost(host) {
-  const h = String(host || '').trim().toLowerCase().replace(/:\d+$/, '').replace(/^\[(.*)\]$/, '$1').replace(/\.$/, '');
+  const net = require('net'); let h = String(host || '').trim().toLowerCase();
   if (!h) return true; // (an old client that sends no Host)
-  if (/^[0-9.]+$/.test(h) || h.includes(':')) return true; // an IPv4 or IPv6 address
-  if (h === 'localhost' || !h.includes('.')) return true;
-  const own = String(require('os').hostname() || '').toLowerCase().split('.')[0];
-  if (own && h.split('.')[0] === own) return true; // (this computer's own name, in whatever local domain the router gives it)
-  return /\.(local|lan|home|internal|home\.arpa|localhost|localdomain|fritz\.box|box|router|station|intranet|private|corp)$/.test(h);
+  const v6 = /^\[([^\]]+)\](?::\d{1,5})?$/.exec(h); if (v6) return net.isIPv6(v6[1]);
+  if (net.isIPv6(h)) return true; // (an IPv6 address without a port)
+  h = h.replace(/:\d{1,5}$/, '').replace(/\.$/, '');
+  if (net.isIPv4(h) || h === 'localhost') return true;
+  const full = String(require('os').hostname() || '').toLowerCase().replace(/\.$/, ''), me = full.split('.')[0];
+  return !!me && (h === me || h === full || ['.local', '.lan', '.home.arpa', '.home', '.internal', '.localdomain', '.fritz.box'].some(s => h === me + s));
 }
+// A POST must say it is JSON (a page on another site cannot send that without asking first), and a browser that names the page it comes from must come from this one.
+const jsonPost = req => /^application\/json\s*(;|$)/i.test(String(req.headers['content-type'] || ''));
+const sameOrigin = req => { const o = req.headers.origin; if (o === undefined) return true; try { return new URL(o).host === String(req.headers.host || '').toLowerCase(); } catch { return false; } };
+const loopback = a => /^(127\.|::1$|::ffff:127\.)/.test(String(a || ''));
 // what other devices see of a record: a driver's date of birth stays on this computer
 function publicList(entity, rows) {
   if (entity !== 'drivers' || !Array.isArray(rows)) return rows;
@@ -98,7 +130,15 @@ function publicList(entity, rows) {
 }
 function createServer(o) {
   const work=new(require('./work-gate').WorkGate)(),requests=new Set();let closing;
-  const clients = new Set(), tokens = new Map(); // token -> the password it was given for (a changed password logs everyone out)
+  const clients = new Set(), tokens = new Map(); // token -> { pw: the password it was given for (a changed password logs everyone out), at: when }
+  const TOKEN_MS = o.tokenMs ?? 12 * 3600e3, MAX_TOKENS = 32;
+  const tokenOk = (t, pw) => { const e = typeof t === 'string' && tokens.get(t); if (!e) return false; if (Date.now() - e.at > TOKEN_MS) { tokens.delete(t); return false; } return e.pw === pw; };
+  // Guessing the password: one try at a time (each wrong one waits failDelay), and after a few wrong ones from a device, or many from all devices together,
+  // nothing is tried for a while that doubles with every further wrong one (up to lockMaxMs). A right password resets it; a quiet hour forgets it.
+  const AUTH = { chain: Promise.resolve(), waiting: 0, all: { n: 0, until: 0, last: 0 }, by: new Map() }, LOCK_MS = o.lockMs ?? 2000, LOCK_MAX = o.lockMaxMs ?? 15 * 60e3, FORGET_MS = 3600e3;
+  const lockOf = (r, after) => { r.n++; r.last = Date.now(); if (r.n >= after) r.until = r.last + Math.min(LOCK_MAX, LOCK_MS * 2 ** Math.min(30, r.n - after)); };
+  const recOf = addr => { let r = AUTH.by.get(addr); if (r && Date.now() - r.last > FORGET_MS) r = null; if (!r) { r = { n: 0, until: 0, last: 0 }; AUTH.by.delete(addr); if (AUTH.by.size >= 1000) AUTH.by.delete(AUTH.by.keys().next().value); AUTH.by.set(addr, r); } return r; };
+  const MAX_PER_ADDR = o.maxPerAddress ?? 8;
   const send = (res, code, body, type = 'application/json') => { res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-store' }); res.end(typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body)); };
   const password = () => String((o.getSettings() || {}).netPassword || '');
   const body = req => new Promise((resolve, reject) => {
@@ -128,9 +168,11 @@ function createServer(o) {
       const url = new URL(req.url, 'http://x'), p = decodeURIComponent(url.pathname);
       if (req.method === 'GET' && p === '/events') { // live updates (server-sent events)
         if(work.closing)return send(res,503,{error:'Timing is closing',code:'APP_CLOSING'});
+        // (more browsers than a club needs, or more than a few from one device: the newest waits, so nobody can push the others off; this computer itself has no per-device limit)
+        const addr = req.socket.remoteAddress; let mine = 0; clients.forEach(c => { if (c.addr === addr) mine++; });
+        if (clients.size >= MAX_CLIENTS || ((o.limitLoopback || !loopback(addr)) && mine >= MAX_PER_ADDR)) { res.setHeader('Retry-After', '10'); return send(res, 503, { error: 'Too many live connections' }); }
         res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
-        if (clients.size >= MAX_CLIENTS) { const oldest = clients.values().next().value; clients.delete(oldest); try { oldest.destroy(); } catch {} } // (more browsers than a club needs: the oldest connection makes room)
-        res.write('retry: 2000\n\n'); clients.add(res); req.on('close', () => clients.delete(res)); return;
+        res.addr = addr; res.write('retry: 2000\n\n'); clients.add(res); req.on('close', () => clients.delete(res)); return;
       }
       if (req.method === 'GET' && p.startsWith('/api/')) {
         const [, , what, arg] = p.split('/');
@@ -142,20 +184,37 @@ function createServer(o) {
         if (what === 'director') return send(res, 200, { passwordSet: !!password() });
         return send(res, 404, { error: 'not found' });
       }
+      if (req.method === 'POST' && (p === '/api/auth' || p === '/api/command')) {
+        if (!jsonPost(req)) return send(res, 415, { error: 'Send JSON' });
+        if (!sameOrigin(req)) return send(res, 403, { error: 'Open this page by the address of the timing computer' });
+      }
       if (req.method === 'POST' && p === '/api/auth') { // log in to the Race Director page
-        const b = await body(req), pw = password();
+        const b = await body(req), pw = password(), addr = String(req.socket.remoteAddress || ''), mine = recOf(addr);
         if (!pw) return send(res, 403, { error: 'nopassword' });
-        if (typeof b.password !== 'string' || !same(b.password, pw)) { await new Promise(r => setTimeout(r, o.failDelay ?? 600)); return send(res, 401, { error: 'wrong' }); }
-        const token = crypto.randomBytes(24).toString('hex'); tokens.set(token, pw);
-        return send(res, 200, { token });
+        const locked = () => { const wait = Math.max(mine.until, AUTH.all.until) - Date.now(); if (wait <= 0) return false; res.setHeader('Retry-After', String(Math.ceil(wait / 1000))); send(res, 429, { error: `Too many wrong passwords. Try again in ${Math.ceil(wait / 1000)} s.` }); return true; };
+        if (locked()) return;
+        if (AUTH.waiting >= 8) { res.setHeader('Retry-After', '2'); return send(res, 429, { error: 'Busy. Try again in a moment.' }); }
+        AUTH.waiting++;
+        const turn = AUTH.chain.then(async () => { // (one at a time, however many arrive together)
+          if (locked()) return;
+          if (Date.now() - AUTH.all.last > FORGET_MS) AUTH.all.n = 0;
+          if (typeof b.password !== 'string' || !same(b.password, pw)) { lockOf(mine, 5); lockOf(AUTH.all, 20); await new Promise(r => setTimeout(r, o.failDelay ?? 600)); return send(res, 401, { error: 'wrong' }); }
+          mine.n = 0; mine.until = 0; AUTH.all.n = 0; AUTH.all.until = 0;
+          const token = crypto.randomBytes(24).toString('hex'); tokens.set(token, { pw, at: Date.now() });
+          for (const [t, e] of tokens) if (tokens.size > MAX_TOKENS || Date.now() - e.at > TOKEN_MS) tokens.delete(t); // (the oldest go first)
+          return send(res, 200, { token });
+        });
+        AUTH.chain = turn.catch(() => {}).finally(() => AUTH.waiting--);
+        return await turn;
       }
       if (req.method === 'POST' && p === '/api/command') {
         const b = await body(req), pw = password();
-        if (!pw || typeof b.token !== 'string' || tokens.get(b.token) !== pw) return send(res, 401, { error: 'login' });
-        if (!b.cmd || !COMMANDS.includes(b.cmd.type)) return send(res, 400, { error: 'unknown command' });
-        if (!plainCommand(b.cmd) || !tokenCommand(b.cmd) || !bopCommand(b.cmd) || !weatherCommand(b.cmd) || !tyreCommand(b.cmd) || !tyreNextCommand(b.cmd) || !swapCommand(b.cmd) || !damageCommand(b.cmd) || !failureCommand(b.cmd) || !padCommand(b.cmd)) return send(res, 400, { error: 'bad command' });
+        if (!pw || !b || !tokenOk(b.token, pw)) return send(res, 401, { error: 'login' });
+        if (!b.cmd || typeof b.cmd !== 'object' || !COMMANDS.includes(b.cmd.type)) return send(res, 400, { error: 'unknown command' });
+        const cmd = cleanCommand(b.cmd);
+        if (!cmd || !plainCommand(cmd) || !tokenCommand(cmd) || !bopCommand(cmd) || !weatherCommand(cmd) || !tyreCommand(cmd) || !tyreNextCommand(cmd) || !swapCommand(cmd) || !damageCommand(cmd) || !failureCommand(cmd) || !padCommand(cmd)) return send(res, 400, { error: 'bad command' });
         if(work.closing)return send(res,503,{error:'Timing is closing',code:'APP_CLOSING'});
-        await o.onCommand(b.cmd); return send(res, 200, { ok: true });
+        await o.onCommand(cmd); return send(res, 200, { ok: true });
       }
       if (req.method === 'GET') { // the app's own pages
         let rel = p === '/' ? 'index.html' : p.slice(1), file;
@@ -184,4 +243,4 @@ function createServer(o) {
     clientCount: () => clients.size
   };
 }
-module.exports = { createServer, localHost, publicList, tokenCommand, bopCommand, weatherCommand, tyreCommand, tyreNextCommand, swapCommand, damageCommand, failureCommand, padCommand };
+module.exports = { createServer, localHost, publicList, cleanCommand, tokenCommand, bopCommand, weatherCommand, tyreCommand, tyreNextCommand, swapCommand, damageCommand, failureCommand, padCommand };

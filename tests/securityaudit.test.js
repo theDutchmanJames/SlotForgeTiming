@@ -61,8 +61,9 @@ ok('...they deny new windows and navigation to any other page than the one they 
 }
 
 // ---- the network server ----
-ok('local addresses are accepted', ['192.168.1.20:8080', '10.0.0.5', 'localhost:3000', 'localhost.', '[::1]:80', 'fe80::1', 'pit-pc:8080', 'timing.local', 'timing.lan', 'box.home.arpa', 'racepc.fritz.box', 'racepc.localdomain', require('os').hostname() + '.example.com', '', undefined].every(localHost));
-ok('a public web address is refused (DNS rebinding)', !['evil.com', 'a.b.evil.com:8080', 'timing.example.org'].some(localHost));
+const me = require('os').hostname().split('.')[0];
+ok('local addresses are accepted', ['192.168.1.20:8080', '10.0.0.5', 'localhost:3000', 'localhost.', '[::1]:80', 'fe80::1', me, me + ':8080', me + '.local', me.toUpperCase() + '.LAN:8787', me + '.home.arpa', '', undefined].every(localHost));
+ok('a public web address is refused (DNS rebinding)', !['evil.com', 'a.b.evil.com:8080', 'timing.example.org', me + '.example.com', me + '.attacker.com:8787', 'racepc.fritz.box', 'timing.local', 'pit-pc', 'x.' + me + '.local'].some(localHost));
 ok("a driver's date of birth is left out of the list other devices read", JSON.stringify(publicList('drivers', [{ id: 'd', name: 'Ann', dateOfBirth: '2001-02-03', flag: 'nl' }])) === '[{"id":"d","name":"Ann","flag":"nl"}]');
 ok('...other lists are unchanged', JSON.stringify(publicList('tracks', [{ id: 't', dateOfBirth: 'x' }])) === '[{"id":"t","dateOfBirth":"x"}]' && publicList('drivers', null) === null);
 
@@ -98,10 +99,10 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   await wait(600); srv.broadcast('push', { n: 'last' }); await wait(200);
   ok('...also after a picture snapshot larger than the backlog limit', srv.clientCount() === 1 && got > 64 * 1024 * 1024);
   reader.destroy(); await wait(50);
-  // more browsers than the limit: the oldest connection makes room for the newest
-  const many = [], closed = new Set(); for (let i = 0; i < 65; i++) { const s = net.connect(port, '127.0.0.1', () => s.write('GET /events HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n')); s.on('error', () => {}); s.on('data', () => {}); s.on('close', () => closed.add(i)); many.push(s); await wait(8); }
+  // more browsers than the limit: the newest is refused, nobody already following is pushed off
+  const many = [], closed = new Set(), heads = []; for (let i = 0; i < 65; i++) { const s = net.connect(port, '127.0.0.1', () => s.write('GET /events HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n')); s.on('error', () => {}); s.on('data', d => { heads[i] = heads[i] || d.toString(); }); s.on('close', () => closed.add(i)); many.push(s); await wait(8); }
   await wait(200);
-  ok('at most 64 browsers follow at once; the oldest makes room for the newest', srv.clientCount() === 64 && closed.has(0) && closed.size === 1);
+  ok('at most 64 browsers follow at once; the newest is refused and the oldest stays', srv.clientCount() === 64 && !closed.has(0) && heads[0].startsWith('HTTP/1.1 200') && heads[64].startsWith('HTTP/1.1 503'));
   many.forEach(s => s.destroy()); await wait(50);
   await srv.close();
   console.log(fails ? `${fails} FAILED` : 'SECURITY AUDIT TESTS PASSED');
