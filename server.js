@@ -80,6 +80,22 @@ function bopCommand(c) {
 }
 
 // o: { root (the renderer folder), appRoot (holds node_modules), schema, getSettings(), list(entity), customFields(entity), getLive() -> {stat, dyn}, onCommand(cmd) }
+// The live pages are for this computer and the local network. A browser must reach them by an IP address, localhost or a local name
+// (one word such as my-pc, or a name ending in .local, .lan, .home, .internal or .home.arpa); a public web address pointing here is refused.
+function localHost(host) {
+  const h = String(host || '').trim().toLowerCase().replace(/:\d+$/, '').replace(/^\[(.*)\]$/, '$1').replace(/\.$/, '');
+  if (!h) return true; // (an old client that sends no Host)
+  if (/^[0-9.]+$/.test(h) || h.includes(':')) return true; // an IPv4 or IPv6 address
+  if (h === 'localhost' || !h.includes('.')) return true;
+  const own = String(require('os').hostname() || '').toLowerCase().split('.')[0];
+  if (own && h.split('.')[0] === own) return true; // (this computer's own name, in whatever local domain the router gives it)
+  return /\.(local|lan|home|internal|home\.arpa|localhost|localdomain|fritz\.box|box|router|station|intranet|private|corp)$/.test(h);
+}
+// what other devices see of a record: a driver's date of birth stays on this computer
+function publicList(entity, rows) {
+  if (entity !== 'drivers' || !Array.isArray(rows)) return rows;
+  return rows.map(r => { if (!r || typeof r !== 'object' || !('dateOfBirth' in r)) return r; const { dateOfBirth, ...rest } = r; return rest; });
+}
 function createServer(o) {
   const work=new(require('./work-gate').WorkGate)(),requests=new Set();let closing;
   const clients = new Set(), tokens = new Map(); // token -> the password it was given for (a changed password logs everyone out)
@@ -92,6 +108,12 @@ function createServer(o) {
     req.on('error', reject);
     req.on('aborted',()=>reject(Error('Request interrupted.')));
   });
+  // A browser that stops reading the live updates must not make Timing keep them all in memory: once more than MAX_BACKLOG waits for it for longer than
+  // maxLagMs it is dropped (its browser reconnects by itself and fetches the whole state again). A big picture snapshot that is still on its way is not a stall.
+  // A comment line every 25 s finds the connections of phones that went away, so they do not fill the places.
+  const MAX_CLIENTS = 64, MAX_BACKLOG = 16 * 1024 * 1024, maxLagMs = o.maxLagMs ?? 30000;
+  const deliver = (c, msg) => { try { if (c.writableLength > MAX_BACKLOG) { c.lagSince = c.lagSince || Date.now(); if (Date.now() - c.lagSince > maxLagMs) { clients.delete(c); c.destroy(); return; } } else c.lagSince = 0; c.write(msg); } catch { clients.delete(c); } };
+  const ping = setInterval(() => clients.forEach(c => deliver(c, ': ping\n\n')), o.pingMs ?? 25000); if (ping.unref) ping.unref();
   const same = (a, b) => { const x = crypto.createHash('sha256').update(a).digest(), y = crypto.createHash('sha256').update(b).digest(); return crypto.timingSafeEqual(x, y); };
 
   function serveFile(res, file) {
@@ -102,10 +124,12 @@ function createServer(o) {
   async function handler(req, res) {
     try {
       if(work.closing&&!req.complete)return send(res,503,{error:'Timing is closing',code:'APP_CLOSING'});
+      if (!localHost(req.headers.host)) return send(res, 421, { error: 'Open this page by the address of the timing computer' }); // (a page from an outside web address may not read the race: DNS rebinding)
       const url = new URL(req.url, 'http://x'), p = decodeURIComponent(url.pathname);
       if (req.method === 'GET' && p === '/events') { // live updates (server-sent events)
         if(work.closing)return send(res,503,{error:'Timing is closing',code:'APP_CLOSING'});
         res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
+        if (clients.size >= MAX_CLIENTS) { const oldest = clients.values().next().value; clients.delete(oldest); try { oldest.destroy(); } catch {} } // (more browsers than a club needs: the oldest connection makes room)
         res.write('retry: 2000\n\n'); clients.add(res); req.on('close', () => clients.delete(res)); return;
       }
       if (req.method === 'GET' && p.startsWith('/api/')) {
@@ -113,7 +137,7 @@ function createServer(o) {
         if (what === 'schema') return send(res, 200, o.schema);
         if (what === 'settings') { const s = { ...o.getSettings() }; delete s.netPassword; return send(res, 200, s); }
         if (what === 'live') return send(res, 200, o.getLive());
-        if (what === 'list' && READABLE.includes(arg)) return send(res, 200, await o.list(arg));
+        if (what === 'list' && READABLE.includes(arg)) return send(res, 200, publicList(arg, await o.list(arg)));
         if (what === 'custom' && READABLE.includes(arg)) return send(res, 200, await o.customFields(arg));
         if (what === 'director') return send(res, 200, { passwordSet: !!password() });
         return send(res, 404, { error: 'not found' });
@@ -154,10 +178,10 @@ function createServer(o) {
   return {
     listen: (port, host = '0.0.0.0') => new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, host, () => { server.removeListener('error', reject); resolve(server.address().port); }); }),
     quiesce,
-    close: () => closing ||= (async()=>{quiesce();await work.idle();await new Promise(resolve=>{server.close(()=>resolve());server.closeAllConnections?.();});})(),
+    close: () => closing ||= (async()=>{clearInterval(ping);quiesce();await work.idle();await new Promise(resolve=>{server.close(()=>resolve());server.closeAllConnections?.();});})(),
     // tell every connected browser: event 'static' or 'push'
-    broadcast: (event, data) => { if (!clients.size) return; const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`; clients.forEach(c => { try { c.write(msg); } catch { clients.delete(c); } }); },
+    broadcast: (event, data) => { if (!clients.size) return; const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`; clients.forEach(c => deliver(c, msg)); },
     clientCount: () => clients.size
   };
 }
-module.exports = { createServer, tokenCommand, bopCommand, weatherCommand, tyreCommand, tyreNextCommand, swapCommand, damageCommand, failureCommand, padCommand };
+module.exports = { createServer, localHost, publicList, tokenCommand, bopCommand, weatherCommand, tyreCommand, tyreNextCommand, swapCommand, damageCommand, failureCommand, padCommand };

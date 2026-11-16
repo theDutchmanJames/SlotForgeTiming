@@ -16,6 +16,10 @@
   const stream = () => {
     if (es || typeof EventSource === 'undefined') return;
     es = new EventSource('/events');
+    // (after the stream reconnects, for instance when the wifi dropped or Timing let go of a device that fell behind, the whole state is fetched again:
+    // a new picture snapshot of the same race may have been missed)
+    let opened = false;
+    es.addEventListener('open', () => { if (opened) getJson('/api/live').then(g => { if (g && g.stat) lists.static.forEach(f => f(g.stat)); }).catch(() => {}); opened = true; });
     es.addEventListener('static', e => { try { const s = JSON.parse(e.data); lists.static.forEach(f => f(s)); } catch { /* bad message */ } });
     es.addEventListener('push', e => { try { const d = JSON.parse(e.data); lists.push.forEach(f => f(d)); } catch { /* bad message */ } });
   };

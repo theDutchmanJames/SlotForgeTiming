@@ -26,6 +26,13 @@ let pendingRestore = null; // a backup file chosen for restoring, waiting for th
 let pendingRestoreSource = null;
 let pendingImport = null; // a file chosen for import, waiting for the user to confirm
 
+// The app windows only ever show index.html: a link, a dropped file or injected markup may not take a window to another page or open a new one
+function guardWindow(w) {
+  const page = u => String(u || '').split('#')[0].split('?')[0];
+  w.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  // (the page it was opened on is compared as Electron wrote its address, so the drive letter and characters such as % in the install folder need no decoding)
+  w.webContents.on('will-navigate', (event, url) => { if (page(url) !== page(w.webContents.getURL())) event.preventDefault(); });
+}
 async function createWindow() {
   const win = new BrowserWindow({
     icon: path.join(__dirname, 'build', 'icon.png'),
@@ -40,6 +47,7 @@ async function createWindow() {
     }
   });
   mainWin = win;
+  guardWindow(win);
   win.on('close',event=>{if(!shutdown.ready){event.preventDefault();app.quit();}});
   win.webContents.on('render-process-gone', () => { parallel.shutdown(); pluginHost?.timing?.reset().catch(()=>{}); });
   win.webContents.on('did-start-navigation', (_event, _url, inPlace, isMainFrame) => { if (isMainFrame && !inPlace) { parallel.shutdown(); pluginHost?.timing?.reset().catch(()=>{}); } });
@@ -113,6 +121,7 @@ function openLiveWindow() {
     title: 'Live Race', autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false }
   });
+  guardWindow(liveWin);
   if (other) liveWin.maximize(); // press F11 for full screen
   liveWin.loadFile(path.join(__dirname, 'renderer', 'index.html'), { hash: 'live' });
   liveWin.on('closed', () => { liveWin = null; if (perfCollector) perfCollector.mark('Live Race window closed'); });

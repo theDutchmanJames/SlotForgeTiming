@@ -125,10 +125,11 @@
     return `<span class="cdw cd-${layout}">${items.map(([k, t]) => `<span class="cdi">${icon('cond', k, imgs, c.dir, false)}<span class="cdt">${esc(t)}</span></span>`).join('')}</span>`;
   }
   // the {variables} of the custom text widgets and the rules of the custom image widgets (a dash when there is nothing)
-  function laneVars(c, eng) { return { tyre: c ? Wx.withTyres(eng?.cfg?.tyrewear?.tyres).tyreName(c.tyre) : '–' }; }
+  // (the values are HTML, like every other {variable} of the text widgets: a custom tyre name is the user's own text, so it is escaped here)
+  function laneVars(c, eng) { return { tyre: c ? esc(Wx.withTyres(eng?.cfg?.tyrewear?.tyres).tyreName(c.tyre)) : '–' }; }
   function raceVars(eng, t) {
     const o = eng.weather ? Wx.outlook(eng, t) : null, tx = Wx.condText(eng.weather ? Wx.conditionsFor(eng.weather, eng.wxState || 'dry', null, '') : null);
-    return { weather: o ? o.name : '–', nextweather: o && o.next ? o.next.text : '', tracktemp: tx.track, airtemp: tx.air, windspeed: tx.wind, winddir: tx.dir };
+    return { weather: o ? esc(o.name) : '–', nextweather: o && o.next ? esc(o.next.text) : '', tracktemp: esc(tx.track), airtemp: esc(tx.air), windspeed: esc(tx.wind), winddir: esc(tx.dir) };
   }
   // what the layout editor shows (the made-up values of a lane or of a race)
   const SAMPLE_TYRES = ['S', 'M', 'H', 'SS', 'INT', 'W'];

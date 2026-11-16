@@ -154,7 +154,7 @@
     const st = flagStateOf(S);
     const rec = r => (r && Number.isFinite(r.time) ? E.fmtTime(r.time) : '–'), by = r => (r && Number.isFinite(r.time) && r.name ? esc(r.name) : '');
     return { clock: clockText(S.eng.elapsed(t)), timeleft: time ? mmss(Math.max(0, time - S.eng.elapsed(t))) : '–', lapsleft: laps ? Math.max(0, laps - most) : '–', lapstotal: laps || '–', racedistance: S.eng.distance ? Ds.text(S.eng.distance.distance, distUnit(S, {})) : '–', leader: lead && lead.car ? esc(lead.car.driverName) : '–',
-      flag: st === 'red' ? 'Red flag' : st === 'yellow' ? (S.eng.safetyCar ? 'Safety Car' : 'Yellow flag') : flagText[st] || '', heat: S.heat ? heatLabel(S.heat) : '',
+      flag: st === 'red' ? 'Red flag' : st === 'yellow' ? (S.eng.safetyCar ? 'Safety Car' : 'Yellow flag') : flagText[st] || '', heat: S.heat ? esc(heatLabel(S.heat)) : '',
       track: esc((S.track && S.track.name) || ''), session: esc(S.setup.name || ''), type: esc(sessionLabel[S.setup.ofType || (S.setup.sessionType === 'race' && S.setup.raceBy === 'time' ? 'timed' : S.setup.sessionType)] || ''), // (1.62.0: a Race limited by a time is a Timed race, as the race screen says)
        sessionrecord: rec(sr), sessionrecordby: by(sr), trackrecord: rec(tr), trackrecordby: by(tr), yellowtarget: S.eng.yellow && S.eng.yellow.target > 0 ? E.fmtTime(S.eng.yellow.target) : '', ...Ww.raceVars(S.eng, t) };
   }
