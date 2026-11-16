@@ -8,7 +8,8 @@
 // Tests in SERIAL (they use fixed ports, files or a lot of processor time) run alone, after the parallel ones.
 const { spawn } = require('node:child_process'), os = require('node:os'), path = require('node:path');
 const root = path.resolve(__dirname, '..'), suite = require(path.join(root, 'tests', 'suite.cjs'));
-const SERIAL = new Set(['parallelaudit.test.js', 'parallel.test.js', 'parallelbackend.test.js', 'parallelclient.test.js', 'parallelrace.test.js']);
+const SERIAL = new Set(['parallelaudit.test.js', 'parallel.test.js', 'parallelbackend.test.js', 'parallelclient.test.js', 'parallelrace.test.js',
+  'carfailuresscreen.test.js', 'resumeasync.test.js']); // (these two measure real time: on a busy processor they miss their window)
 const TIMEOUT_MS = 10 * 60 * 1000;
 // How long each file took last time (in the ignored .tmp-test folder): the slowest start first, so the run takes about as long as its longest file.
 const fs = require('node:fs'), TIMES = path.join(root, '.tmp-test', 'test-times.json');
