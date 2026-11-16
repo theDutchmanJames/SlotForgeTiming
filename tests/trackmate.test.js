@@ -113,13 +113,13 @@ function rig(jitter) {
 
 
 { // how the race screen listens to it (race.js): the pit hold time of the setup is the hold time of the link, a stop is a stop of the engine counted from the crossing, a token session has no pit
-  const race = require('fs').readFileSync(require('path').join(__dirname, '..', 'renderer', 'race.js'), 'utf8');
+  const race = require('fs').readFileSync(require('path').join(__dirname, '..', 'renderer', 'race.js'), 'utf8'), flatRace = require('./source.cjs').flat(require('./source.cjs').code('renderer/race.js')); // (flatRace: without spaces, see source.cjs)
   ok('1.51.1: the race gives the link the pit hold time of its setup when the Trackmate is the timing hardware', /if \(hwUse === 'trackmate'\) Trackmate\.link\.setHold\(pitMs\);/.test(race) && /pitMs = fuelCfg\.pitHold/.test(race));
-  ok('...a crossing of the Trackmate is counted at once, and the tyre penalty that may be due waits for the stop (held)', /if \(i >= 0\) crossCar\(i, e\.at, true\); \}/.test(race) && race.includes('eng.cross(i, tAt, measurement || (held ? { holdDue: true } : undefined))'));
+  ok('...a crossing of the Trackmate is counted at once, and the tyre penalty that may be due waits for the stop (held)', flatRace.includes('if(i>=0)crossCar(i,e.at,true);}') && flatRace.includes('eng.cross(i,tAt,measurement||(held?{holdDue:true}:undefined))'));
   ok('...a block starts the stop of the engine at the time of the crossing, without a second crossing (crossed), and never later than now', /eng\.block\(i, Math\.min\(at, now\(\)\), true\)/.test(race));
   ok('...a free ends it, at the time the sensor says (never later than now)', /eng\.unblock\(i, at !== undefined \? Math\.min\(at, now\(\)\) : now\(\)\)/.test(race));
-  ok('...a token session has no pit: a stand on the sensor does nothing there', /e\.type === 'block' \|\| e\.type === 'free'\) \{[^}]*i >= 0 && !tokens\) \{ if \(e\.type === 'block'\) holdCar\(i, e\.at\); else unblockCar\(i, e\.at\); \}/.test(race));
-  ok('...the other hardware does not change: the keys, the Pit button and the Arduino Sketch cross and block as before (no held, no crossed)', /const blockCar = i => \{ if \(live\.phase === 'running'\) \{[^\n]*eng\.block\(i, now\(\)\);/.test(race)); }
+  ok('...a token session has no pit: a stand on the sensor does nothing there', /e\.type==='block'\|\|e\.type==='free'\)\{[^}]*i>=0&&!tokens\)\{if\(e\.type==='block'\)holdCar\(i,e\.at\);elseunblockCar\(i,e\.at\);\}/.test(flatRace));
+  ok('...the other hardware does not change: the keys, the Pit button and the Arduino Sketch cross and block as before (no held, no crossed)', /constblockCar=i=>\{if\(live\.phase==='running'\)\{[^}]*eng\.block\(i,now\(\)\);/.test(flatRace)); }
 
 { const page = require('fs').readFileSync(require('path').join(__dirname, '..', 'renderer', 'hardwareui.js'), 'utf8'), sch = require('../schema.js');
   ok('the Trackmate page points to the real Race Settings sensor confirmation control and explains both behaviours', page.includes('Sensor must be blocked for this long to start a pit stop') && page.includes('Race Setup &gt; Race Settings') && page.includes('With Service Stop off') && sch.racesetups.fields.some(f => f.key === 'pitHold' && f.group === 'length' && f.label.startsWith('Sensor must be blocked for this long')) && sch.racesetups.groups.some(g => g.id === 'service' && g.title === 'Service Stop')); }

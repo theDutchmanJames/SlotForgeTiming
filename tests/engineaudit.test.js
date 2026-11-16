@@ -137,8 +137,8 @@ test('after a crash restore in a new app session the tyre temperature cools in t
 });
 
 test('a single race saves the time the race added (red-flag result time) also without a penalty system', () => {
-  const race = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'race.js'), 'utf8');
-  assert.ok(/\(penCfg\.on\|\|rulePlan\) \? \{ penaltyPoints[^}]*\} : eng\.penMs\(x\.car\) \? \{ penalty: eng\.penMs\(x\.car\) \} : \{\}/.test(race));
+  const race = require('./source.cjs').flat(require('./source.cjs').code('renderer/race.js')); // (without spaces, see source.cjs)
+  assert.ok(/penCfg\.on\|\|rulePlan\)?\?\{penaltyPoints[^}]*\}:eng\.penMs\(x\.car\)\?\{penalty:eng\.penMs\(x\.car\)\}:\{\}/.test(race));
   const r = E.createRace({ type: 'race', laps: 50, entries: entries(1), redFlagSeconds: 7 }); r.start(0); r.cross(0, 5000); r.setFlag('red', 6000);
   assert.equal(r.penMs(r.cars[0]), 7000); // (what is saved: penMs, which the review and the order use too)
 });

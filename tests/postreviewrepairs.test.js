@@ -28,7 +28,7 @@ async function main(){
   assert.equal(writes.length,2,'test cannot resume after a race opened and closed');
   const ui=fs.readFileSync(require.resolve('../renderer/arduinoui'),'utf8');
   assert(ui.includes('live?.actions?.hardwareStop?.()'),'emergency off never toggles the red flag');
-  assert(fs.readFileSync(require.resolve('../renderer/race'),'utf8').includes("if(typeof abCancelTests==='function')abCancelTests();"));
+  assert(require('./source.cjs').has(require('./source.cjs').code('renderer/race.js'),"if(typeof abCancelTests==='function')abCancelTests();"));
   for(const scope of ['textlane','textrace']){
     const chart={...Charts.clean({style:'track',name:'Track',drivers:'one',lane:0}),id:'track'};
     const composition=C.clean({root:{kind:'free',id:'root',children:[{kind:'component',id:'chart',component:'racechart',options:{chartDesign:'track'},frame:{x:0,y:0,w:100,h:100}}]}});

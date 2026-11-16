@@ -8,6 +8,9 @@
     "tests/renderer-scripts.cjs",
     "tests/format.test.js",
     "tests/lint.test.js",
-    "eslint.config.cjs"
+    "eslint.config.cjs",
+    "tools/format.cjs",
+    "renderer/race.js",
+    "tests/source.cjs"
   ]
 }

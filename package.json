@@ -69,7 +69,7 @@
     "dist:mac": "electron-builder --mac",
     "test": "node tools/run-tests.cjs",
     "lint": "eslint --quiet .",
-    "format": "node -e \"const f=require('./tools/formatted.json').files;require('child_process').spawnSync(process.execPath,['node_modules/prettier/bin/prettier.cjs','--write',...f],{stdio:'inherit'})\"",
+    "format": "node tools/format.cjs",
     "parallel:build": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-parallel.ps1",
     "test:parallel:electron": "electron tools/qa/parallel-electron.cjs",
     "test:results": "node tests/resultsview.test.js",

@@ -121,7 +121,8 @@ ok('the special penalties and the damage buttons of the Director page have the s
     && css.includes(`.dir-red .btn[data-dm="give"]{background:#e5484d;color:${t('#e5484d')}`) && css.includes(`.dir-red .btn[data-dm="take"]{background:${m('#e5484d')};color:${t(m('#e5484d'))}`); })());
 ok('the page loads the pads before the review, and the settings page', idx.indexOf('adjustpad.js') > 0 && idx.indexOf('adjustpad.js') < idx.indexOf('src="review.js"') && idx.indexOf('adjustpad.js') < idx.indexOf('liveview.js') && idx.includes('padui.js'));
 ok('App Settings has a Race Director page, after App Theme', /\['theme', 'App Theme'\], \['director', 'Race Director'\]/.test(app) && app.includes("renderPadSettings("));
-ok('the race window does the pad commands (and only during the race, not for a Time Token Session)', /pad\(group, lane, amount\)/.test(race) && /cmd\.type === 'pad'\) actions\.pad\(cmd\.group, Number\(cmd\.lane\), Number\(cmd\.amount\)\)/.test(race) && /pad\(group, lane, amount\)[^\n]*\n\s*if \(tokens \|\| !\['running', 'paused'\]/.test(race));
+{ const flatRace = require('./source.cjs').flat(require('./source.cjs').code('renderer/race.js')); // (without spaces, see source.cjs)
+  ok('the race window does the pad commands (and only during the race, not for a Time Token Session)', flatRace.includes('pad(group,lane,amount){') && flatRace.includes("cmd.type==='pad')actions.pad(cmd.group,Number(cmd.lane),Number(cmd.amount))") && /pad\(group,lane,amount\)\{[^{}]{0,400}?if\(tokens\|\|!\['running','paused'\]/.test(flatRace)); }
 ok('the review draws pads instead of fields (no typed fields with Add and Deduct any more)', rv.includes('AdjustPad.padsHtml') && !rv.includes('data-rva') && !rv.includes('>Deduct<'));
 ok('the Director page has the Adjust folder', live.includes("folder('adjust', 'Adjust'") && live.includes('AdjustPad.history()'));
 { const sch = require('../schema.js'), db = R('renderer/database.js'), padui = R('renderer/padui.js');

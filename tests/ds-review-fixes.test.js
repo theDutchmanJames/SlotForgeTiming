@@ -50,9 +50,9 @@ test('the Race Director page shows what the race screen says, and a resume clear
   const msg=s.pack({notice:'DS Electronics: DS box reported pause.',raceId:'x',eng:r,phase:'paused',calling:false,lights:0,heat:null,season:null,flash:new Map(),bestAll:Infinity,bestAllName:'',bestBy:new Map(),now:1000},1000);
   assert.equal(JSON.stringify(msg).includes('DS box reported pause.'),true,'the notice travels with the live data');
   assert(src('renderer/liveview.js').includes("$('dir-notice')"),'the Race Director shows it');
-  const race=src('renderer/race.js');
-  assert(/if \(resuming && live\.phase !== 'paused'\) \{ ui\('msg'\)\.textContent = '';/.test(race),'resuming clears the old message');
-  assert(race.includes('onIgnored:dsIgnored, onNotice:dsNotice'),'the race screen listens for both');
+  const {code,has}=require('./source.cjs'),race=code('renderer/race.js'); // (compared without spaces, see source.cjs)
+  assert(has(race,"if (resuming && live.phase !== 'paused') { ui('msg').textContent = '';"),'resuming clears the old message');
+  assert(has(race,'onIgnored: dsIgnored, onNotice: dsNotice'),'the race screen listens for both');
 });
 
 test('connected timing hardware that is not in use is named, on the page, at Start race and on the race screen',()=>{
@@ -63,7 +63,7 @@ test('connected timing hardware that is not in use is named, on the page, at Sta
   ctx.state.settings.timingHw='ds';assert.equal(ctx.u().length,0);assert.equal(ctx.t(),'');
   assert(app.includes('is not counting laps.</strong>')&&app.includes('for races</button>'),'the hardware page warns plainly and offers the switch');
   assert(src('renderer/landing.js').includes("unusedTimingText(state.settings)"),'Start race asks first');
-  assert(src('renderer/race.js').includes('id="hwunused"'),'the race screen shows it');
+  assert(require('./source.cjs').has(require('./source.cjs').code('renderer/race.js'),'id="hwunused"'),'the race screen shows it');
 });
 
 test('saved DS captures name the port that was picked, and DS control lines are polled slowly when nobody looks',()=>{

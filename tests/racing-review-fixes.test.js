@@ -24,11 +24,11 @@ const rows=structuredClone(L);rows.find(r=>r.carId===broken.paddockJournal.heats
 assert.throws(()=>M.measured(broken,rows,db),/overlap or are incomplete/);
 
 // 3. Finalize and "Delete all data" return to the race page instead of leaving both pages hidden.
-const race_js=fs.readFileSync(path.join(__dirname,'../renderer/race.js'),'utf8');
-const close=/function closeReview\(\) \{([^}]*)\}/.exec(race_js);
+const race_js=require('./source.cjs').flat(require('./source.cjs').code('renderer/race.js')); // (without spaces, see source.cjs)
+const close=/functioncloseReview\(\)\{([^}]*)\}/.exec(race_js);
 assert(close,'closeReview exists');
-for(const part of ["ui('finishreview').hidden = true","ui('raceactive').hidden = false","live.reviewShown = false"])assert(close[1].includes(part),part);
-assert(/function finalize\(\) \{\s*if \(live\.phase !== 'review'\) return;\s*closeReview\(\);/.test(race_js),'finalize shows the race page again');
-assert(/async function discardAll\(\) \{\s*if \(live\.phase !== 'review'\) return;\s*closeReview\(\);/.test(race_js),'delete all data shows the race page again');
-assert(!/live\.reviewShown = false;(?! live\.rvHtml)/.test(race_js.replace(close[0],'')),'no other place resets only the flag');
+for(const part of ["ui('finishreview').hidden=true","ui('raceactive').hidden=false","live.reviewShown=false"])assert(close[1].includes(part),part);
+assert(/functionfinalize\(\)\{if\(live\.phase!=='review'\)return;closeReview\(\);/.test(race_js),'finalize shows the race page again');
+assert(/asyncfunctiondiscardAll\(\)\{if\(live\.phase!=='review'\)return;closeReview\(\);/.test(race_js),'delete all data shows the race page again');
+assert(!/live\.reviewShown=false;(?!live\.rvHtml)/.test(race_js.replace(close[0],'')),'no other place resets only the flag');
 console.log('RACING REVIEW FIXES PASSED: rounding-tolerant library delivery, real overlaps refused, finalize/delete show the race page');
