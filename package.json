@@ -16,6 +16,9 @@
     "url": "https://github.com/theDutchmanJames/SlotForgeTiming/issues"
   },
   "main": "main.js",
+  "engines": {
+    "node": ">=22.13"
+  },
   "scripts": {
     "test:paddock:activation": "node --test tests/paddock-activation.test.js tests/installed-history-adapter.test.js tests/paddock-rich-delivery.test.js tests/paddock-historical-approval.test.js",
     "test:paddock:history": "node --test tests/paddock-historical-review.test.js tests/paddock-historical-approval.test.js tests/paddock-rich-history.test.js tests/paddock-rich-mapper.test.js tests/paddock-rich-delivery.test.js tests/paddock-history.test.js tests/paddock-history-sync.test.js tests/paddock-history-write.test.js tests/paddock-history-endpoints.test.js",

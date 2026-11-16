@@ -27,4 +27,4 @@ Long text wraps within its block. Crowding feedback appears below the Builder pr
 
 Verification: `npm run test:widget-composer` and `npm run test:widget-composer:electron`. The Electron test uses a temporary application profile and covers persistence, undo/redo, responsive themes, layout placement and the live canvas with shared appearance.
 
-See [the October 27 review](WIDGET-COMPOSER-REVIEW.md) for repaired findings and verification limits.
+See the October 27 review (`WIDGET-COMPOSER-REVIEW.md`, a working note that is not part of the published source) for repaired findings and verification limits.

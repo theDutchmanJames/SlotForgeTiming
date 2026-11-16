@@ -28,14 +28,16 @@ test('publisher verifies artifacts, preserves existing downloads and is repeatab
         listReleaseAssets:()=>{},
         uploadReleaseAsset:async({name,data})=>{uploads.push(name);const a={name,size:data.length,state:'uploaded',digest:'sha256:'+digest(data)};remote.push(a);return {data:a};}
       }},paginate:async()=>remote.slice()};
-      const invoke=()=>publish({github,context:{repo:{owner:'test',repo:'test'}},core:{info:()=>{}}});
+      const warnings=[],invoke=()=>publish({github,context:{repo:{owner:'test',repo:'test'}},core:{info:()=>{},warning:m=>warnings.push(m)}});
       remoteCommit='moved';await assert.rejects(invoke(),/tag moved/);assert.equal(uploads.length,0);remoteCommit=commit;
       const file=path.join('native-downloads','desktop-linux',names(version,'linux')[0]),bytes=fs.readFileSync(file);
       fs.writeFileSync(file,'bad');await assert.rejects(invoke());assert.equal(uploads.length,0);fs.writeFileSync(file,bytes);
       // A local Windows build may already have been published. Keep it and checksum that actual asset.
       remote.push({name:assetName(names(version,'win32')[0]),size:888,state:'uploaded',digest:'sha256:'+'f'.repeat(64)});
       await invoke();assert.equal(uploads.length,6);assert(!uploads.includes(remote[0].name));
+      assert(warnings.some(w=>w.includes('Not built by this run: '+remote[0].name)&&w.includes('f'.repeat(64))),'A kept download is marked as not built by this run');const marked=warnings.length;
       await invoke();assert.equal(uploads.length,6,'Rerun never reuploads an existing asset');
+      assert.equal(warnings.length,marked*2,'A rerun marks only the kept download that differs from this build, not the ones this build uploaded');
       remote[0].digest='sha256:'+'e'.repeat(64);await assert.rejects(invoke(),/checksums differ/);
     }finally{cp.execFileSync=original;}
   }finally{process.chdir(cwd);if(oldTag===undefined)delete process.env.RELEASE_TAG;else process.env.RELEASE_TAG=oldTag;fs.rmSync(temp,{recursive:true,force:true});}

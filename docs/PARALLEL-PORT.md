@@ -48,4 +48,4 @@ Automated tests use synthetic samples or the compiled helper's explicit in-memor
 
 ## Follow-up audit — 27 October 2026
 
-See [Parallel Port audit](PARALLEL-PORT-AUDIT.md) for repaired connection, ownership, power recovery, filtering and asynchronous lifecycle defects. All 160 commands in `npm test` passed, together with actual Electron checks for Parallel Port, Phidget and Service Stops using isolated databases and simulated hardware. Physical hardware remains unverified.
+See the Parallel Port audit (`PARALLEL-PORT-AUDIT.md`, a working note that is not part of the published source) for repaired connection, ownership, power recovery, filtering and asynchronous lifecycle defects. All 160 commands in `npm test` passed, together with actual Electron checks for Parallel Port, Phidget and Service Stops using isolated databases and simulated hardware. Physical hardware remains unverified.

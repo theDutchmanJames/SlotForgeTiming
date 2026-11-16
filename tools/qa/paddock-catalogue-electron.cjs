@@ -2,8 +2,8 @@
 const {app}=require('electron'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const Database=require('../../db'),originalList=Database.prototype.list;let slotcarReads=0;
 Database.prototype.list=function(entity){if(entity==='slotcars')slotcarReads++;return originalList.call(this,entity);};
-if(!process.env.PADDOCK_SOURCE)throw Error('Set PADDOCK_SOURCE.');
-const {Network}=require(path.join(process.env.PADDOCK_SOURCE,'src/network.cjs')),{Store,migrate}=require(path.join(process.env.PADDOCK_SOURCE,'src/store.cjs'));
+if(!(process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE))throw Error('Set PADDOCK_SOURCE.');
+const {Network}=require(path.join((process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE),'src/network.cjs')),{Store,migrate}=require(path.join((process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE),'src/store.cjs'));
 const store=new Store();store.data=migrate(JSON.parse(fs.readFileSync(path.join(__dirname,'../../tests/fixtures/paddock/fixtures/demo-database.json'))));
 const host=new Network(store),hosting=host.start().then(()=>host.controls({allowTimingResults:true}));
 const out=path.resolve(__dirname,'../../../outputs/paddock-catalogue');fs.mkdirSync(out,{recursive:true});

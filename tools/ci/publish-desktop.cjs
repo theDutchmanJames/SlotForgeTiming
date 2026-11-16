@@ -19,10 +19,10 @@ module.exports=async function({github,context,core}){
       packages.push({...a,file});
     }
   }
-  const published=[];
+  const published=[],kept=[];
   for(const a of packages){
     let remote=existing.find(x=>x.name===a.name);
-    if(remote)core.info('Keeping existing release download: '+a.name);
+    if(remote){core.info('Keeping existing release download: '+a.name);if(remote.digest!=='sha256:'+a.sha256)kept.push(a.name);} // (not the same bytes as this build)
     else{
       remote=(await github.rest.repos.uploadReleaseAsset({...context.repo,release_id:release.id,name:a.name,data:fs.readFileSync(a.file)})).data;
       assert.equal(remote.digest,'sha256:'+a.sha256);assert.equal(remote.size,a.size);
@@ -38,5 +38,8 @@ module.exports=async function({github,context,core}){
     const uploaded=(await github.rest.repos.uploadReleaseAsset({...context.repo,release_id:release.id,name,data:sums})).data;
     assert.equal(uploaded.digest,'sha256:'+digest(sums));
   }
+  // (audit 2.2.5) A download that was already on the release was not built by this run: say so where the run is read, with its own checksum.
+  for(const name of kept){const r=published.find(x=>x.name===name);(core.warning||core.info)(`Not built by this run: ${name} was already on the release, differs from this build and was kept (sha256 ${r.digest.slice(7)}). Its line in SHA256SUMS-desktop.txt is that file's own checksum.`);}
+  if(kept.length&&core.summary)await core.summary.addRaw('Kept downloads that this run did not build: '+kept.join(', ')+'\n').write();
   core.info('Desktop downloads verified: '+release.html_url);
 };

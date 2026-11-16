@@ -11,7 +11,7 @@ test('stint boundaries retain captured driver change time',()=>{const s=sessionD
 test('source identity persists; credentials never enter database',async t=>{const db=database(t),client=new Paddock(db);t.after(()=>client.stop());await client.storage.commit();const source=db.data.paddock.sourceId;client.code='temporary-secret';assert.equal(new Database(db.file).data.paddock.sourceId,source);assert.ok(!fs.readFileSync(db.file,'utf8').includes('temporary-secret'));});
 test('failed result save leaves neither session nor delivery in memory',async t=>{const db=database(t);db.commit=()=>{throw Error('disk full');};await assert.rejects(db.saveSessionAsync(sessionData(),[]),/disk full/);assert.equal(db.data.sessions.length,0);});
 
-const paddockSource=process.env.PADDOCK_SOURCE;
+const paddockSource=(process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE);
 test('actual Paddock HTTP: link, offline race, duplicate delivery, correction, withdrawal and restart',{skip:!paddockSource},async t=>{
   const {Network}=require(path.join(paddockSource,'src/network.cjs')),{Store,migrate}=require(path.join(paddockSource,'src/store.cjs'));
   const hostStore=new Store();hostStore.data=migrate(fixture('demo-database'));const host=new Network(hostStore);await host.start();host.controls({allowTimingResults:true});t.after(()=>host.stop());

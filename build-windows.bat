@@ -22,6 +22,12 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
+node -e "const [a,b]=process.versions.node.split('.').map(Number);process.exit(a>22||a===22&&b>=13?0:1)"
+if errorlevel 1 (
+  echo  This Node.js is too old: this version needs Node.js 22.13 or newer. Install the LTS version from https://nodejs.org, then run this file again.
+  pause
+  exit /b 1
+)
 if not exist "build\icon.png" echo  Note: there is no build\icon.png, so the standard Electron icon is used.
 echo.
 echo  Step 1 of 3: getting the building blocks...

@@ -143,11 +143,14 @@ main() {
 
   command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 \
     || fail "Node.js was not found. Install the LTS version from https://nodejs.org, then run this file again."
-  node_major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null)"
+  node_major="$(node -p 'process.versions.node' 2>/dev/null)"
   case "$node_major" in
-    ''|*[!0-9]*) fail "Could not tell which version of Node.js is installed." ;;
+    ''|*[!0-9.]*) fail "Could not tell which version of Node.js is installed." ;;
   esac
-  [ "$node_major" -ge 18 ] || fail "Node.js $node_major is too old. Install the LTS version from https://nodejs.org, then run this file again."
+  # (2.2.5: the build tools and the checks of the database need Node.js 22.13 or newer)
+  node_minor="${node_major#*.}"; [ "$node_minor" = "$node_major" ] && node_minor=0; node_minor="${node_minor%%.*}"; node_minor="${node_minor:-0}"
+  { [ "${node_major%%.*}" -gt 22 ] || { [ "${node_major%%.*}" -eq 22 ] && [ "$node_minor" -ge 13 ]; }; } \
+    || fail "Node.js $node_major is too old: this version needs Node.js 22.13 or newer. Install the LTS version from https://nodejs.org, then run this file again."
   version="$(node -p "require('./package.json').version" 2>/dev/null)" || fail "Could not read the version from package.json."
 
   [ -f build/icon.png ] || say " Note: there is no build/icon.png, so the standard Electron icon is used."

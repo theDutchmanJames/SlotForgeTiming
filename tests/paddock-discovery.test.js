@@ -32,8 +32,8 @@ test('a discovery socket failure produces an error instead of an empty successfu
 test('no suitable network adapter is reported explicitly',async()=>{const h=harness({interfaces:{}});await assert.rejects(h.scan(),/network|adapter/i);});
 test('same-computer discovery supports loopback without a broadcast',async()=>{const h=harness({interfaces:{lo:[nic('127.0.0.1','255.0.0.0',true)]}});assert.equal((await h.scan()).length,1);assert(h.sent.every(x=>x.destination==='239.255.47.77'));});
 
-for(const broadcastOnly of [false,true])test('real Paddock advertiser responds to '+(broadcastOnly?'subnet broadcast fallback':'Timing discovery'),{skip:!process.env.PADDOCK_SOURCE},async t=>{
- const {advertise}=require(path.join(process.env.PADDOCK_SOURCE,'src/discovery.cjs'));
+for(const broadcastOnly of [false,true])test('real Paddock advertiser responds to '+(broadcastOnly?'subnet broadcast fallback':'Timing discovery'),{skip:!(process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE)},async t=>{
+ const {advertise}=require(path.join((process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE),'src/discovery.cjs'));
  const host=await advertise(()=>({id:'timing-discovery-test',name:'Discovery test host',port:54321}));t.after(()=>new Promise(resolve=>host.close(resolve)));
  let discover=realRequire('./paddock').discover;
  if(broadcastOnly){const dgram=require('node:dgram'),mod={exports:{}};

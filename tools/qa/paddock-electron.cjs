@@ -1,7 +1,7 @@
 // Actual Timing renderer and isolated Paddock host. Requires PADDOCK_SOURCE.
 const {app}=require('electron'),fs=require('fs'),path=require('path'),assert=require('node:assert/strict');
-if(!process.env.PADDOCK_SOURCE)throw Error('Set PADDOCK_SOURCE to the updated Paddock source folder.');
-const {Network}=require(path.join(process.env.PADDOCK_SOURCE,'src/network.cjs')),{Store,migrate}=require(path.join(process.env.PADDOCK_SOURCE,'src/store.cjs'));
+if(!(process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE))throw Error('Set PADDOCK_SOURCE to the updated Paddock source folder.');
+const {Network}=require(path.join((process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE),'src/network.cjs')),{Store,migrate}=require(path.join((process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE),'src/store.cjs'));
 const store=new Store();store.data=migrate(JSON.parse(fs.readFileSync(path.join(__dirname,'../../tests/fixtures/paddock/fixtures/demo-database.json'))));const remote=new Network(store);const hosting=remote.start().then(()=>remote.controls({allowTimingResults:true,access:'timing',password:'Timing  Club #42'}));
 const out=process.env.PADDOCK_QA_OUTPUT||path.resolve(__dirname,'../../../outputs/paddock-integration');fs.mkdirSync(out,{recursive:true});const profile=path.resolve(__dirname,'../../.tmp-test/paddock-'+process.pid);fs.mkdirSync(profile,{recursive:true});app.setPath('appData',profile);app.disableHardwareAcceleration();
 const wait=ms=>new Promise(r=>setTimeout(r,ms));let done=false;setTimeout(()=>app.exit(2),180000).unref();

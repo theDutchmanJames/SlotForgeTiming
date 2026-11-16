@@ -3,7 +3,7 @@ const {app,dialog}=require('electron'),fs=require('node:fs'),path=require('node:
 const out=path.resolve(__dirname,'../../../outputs/historical-approval');fs.mkdirSync(out,{recursive:true});
 const isolated=fs.mkdtempSync(path.join(out,'profile-'));app.setPath('appData',isolated);app.disableHardwareAcceleration();process.env.LOCALAPPDATA=path.join(isolated,'local-app-data');process.env.SF_UI_QA_LOCAL_LIBRARY='1';
 require('./qa-completion.cjs').preventRelaunch(app);require('./file-diagnostics.cjs')(path.join(isolated,'diagnostics.log'),()=>app.exit(1));dialog.showErrorBox=(t,m)=>{console.error(t,m);app.exit(1);};
-const source=process.env.SLOTFORGE_PADDOCK_SOURCE||path.resolve(__dirname,'../../../../SlotForge Slotcar Database');
+const source=process.env.SLOTFORGE_PADDOCK_SOURCE||process.env.PADDOCK_SOURCE||path.resolve(__dirname,'../../../../SlotForge Slotcar Database');
 // Isolated test-only owner worker. Never edits Paddock's shipped gate.
 require(path.join(source,'tests/support/historical-approval-preload.cjs'));
 const threads=require('node:worker_threads'),Worker=threads.Worker;

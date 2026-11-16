@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),{randomUUID}=require('node:crypto');
 const H=require('../paddock-history-write'),{Paddock,hash}=require('../paddock'),Records=require('../paddockrecords'),Database=require('../db'),Client=require('../sqlite-client'),Repo=require('../sqlite-repository'),{SqlitePaddockStorage}=require('../paddock-storage');
-const source=process.env.SLOTFORGE_PADDOCK_SOURCE||path.resolve(__dirname,'../../../SlotForge Slotcar Database'),hostAvailable=fs.existsSync(path.join(source,'src/shared-history.cjs'));
+const source=process.env.SLOTFORGE_PADDOCK_SOURCE||process.env.PADDOCK_SOURCE||path.resolve(__dirname,'../../../SlotForge Slotcar Database'),hostAvailable=fs.existsSync(path.join(source,'src/shared-history.cjs'));
 async function fixture(t,kind){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'timing-guarded-')),profile=path.join(dir,'host');fs.mkdirSync(profile);
  const {Store}=require(path.join(source,'src/store.cjs')),{LocalLibrary}=require(path.join(source,'src/local-library.cjs')),f=require(path.join(source,'tests/support/timing-fixtures.cjs')).fixtures();

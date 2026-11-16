@@ -45,8 +45,8 @@ test('receipt refresh rolls back cached warnings on failed local persistence',as
   client.call=async()=>({...old,warnings:[{code:'SESSION_REQUIRES_CORRECTION',carId:'car-a'}]});db.commit=()=>{throw Error('disk full');};await assert.rejects(client.checkReceipt(d.payload.sessionId),/disk full/);assert.equal(d.receipt,old);assert.equal(d.receiptCheckedAt,undefined);
 });
 
-test('actual Paddock reports historical overlap warnings and clears them after a deliberate correction',{skip:!process.env.PADDOCK_SOURCE},async t=>{
-  const root=process.env.PADDOCK_SOURCE,{Network}=require(path.join(root,'src/network.cjs')),{Store,migrate}=require(path.join(root,'src/store.cjs')),timing=require(path.join(root,'src/timing-integration.cjs'));
+test('actual Paddock reports historical overlap warnings and clears them after a deliberate correction',{skip:!(process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE)},async t=>{
+  const root=(process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE),{Network}=require(path.join(root,'src/network.cjs')),{Store,migrate}=require(path.join(root,'src/store.cjs')),timing=require(path.join(root,'src/timing-integration.cjs'));
   const store=new Store();store.data=migrate(fixture('demo-database'));timing.receive(store,fixture('normal'));
   const old=store.snapshot(),record=old.timing.sessions[0],p=record.payload,entry=p.participants[0];
   p.heats.push({...p.heats[0],id:'heat-2'});entry.stints[0].endedAtMs=10000;entry.stints.push({...entry.stints[0],id:'stint-2',heatId:'heat-2',startedAtMs:10000,endedAtMs:60000});
@@ -90,8 +90,8 @@ test('deleting a classified car with no completed lap withdraws its session',t=>
 test('failed result conversion remains identifiable in delivery status',async t=>{const {db,client}=clientFor(t);queued(db);const s=db.data.sessions[0];delete s.paddockJournal.heats[0].entries[0].laps[0].at;Records.revise(db.data,s);const status=(await client.status()).deliveries[0];assert.equal(status.name,'Audit race');assert.equal(status.sessionId,s.id);});
 test('uploads stop when a race starts while the status request is in flight',async t=>{const {db,client}=clientFor(t);queued(db);let racing=false,posts=0;client.isRacing=()=>racing;client.call=async route=>{if(route==='/v1/status'){racing=true;return status;}posts++;};await client.flush();assert.equal(posts,0);});
 
-test('real host accepts reviewed fractional-clock laps and retries a lost acknowledgement without duplicate statistics',{skip:!process.env.PADDOCK_SOURCE},async t=>{
-  const http=require('node:http'),{Network}=require(path.join(process.env.PADDOCK_SOURCE,'src/network.cjs')),{Store,migrate}=require(path.join(process.env.PADDOCK_SOURCE,'src/store.cjs'));
+test('real host accepts reviewed fractional-clock laps and retries a lost acknowledgement without duplicate statistics',{skip:!(process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE)},async t=>{
+  const http=require('node:http'),{Network}=require(path.join((process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE),'src/network.cjs')),{Store,migrate}=require(path.join((process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE),'src/store.cjs'));
   const store=new Store();store.data=migrate(fixture('demo-database'));const host=new Network(store);await host.start();host.controls({allowTimingResults:true});t.after(()=>host.stop());
   const {db,client}=clientFor(t);client.storage.state().connection=null;await client.connect({address:'127.0.0.1:'+host.port,code:host.timingCode});const car=await client.link('car-a');
   const {e,j,at}=raceJournal();e.cars[0].carId=car.id;j.captures={[car.id]:{name:'Test car',configuration:car.paddock.configuration}};

@@ -62,7 +62,7 @@ test('central renderer escapes supplied text and keeps record eligibility separa
  const ui=require('../renderer/paddockhistory'),r=remote();r.heads.payload.track.name='<script>alert(1)</script>';r.heads.payload.participants[0].displayName='<img onerror=bad>';
  const html=ui.headHtml(r.heads);assert(!html.includes('<script>'));assert(!html.includes('<img'));assert(html.includes('Eligible best'));assert(html.includes('Classified time'));assert(html.includes('not cross-track records'));
 });
-const source=process.env.SLOTFORGE_PADDOCK_SOURCE||path.resolve(__dirname,'../../../SlotForge Slotcar Database');
+const source=process.env.SLOTFORGE_PADDOCK_SOURCE||process.env.PADDOCK_SOURCE||path.resolve(__dirname,'../../../SlotForge Slotcar Database');
 test('actual protected Paddock host: fresh Timing sees existing history; multi-page laps, corrections, withdrawal and reset',{skip:!fs.existsSync(path.join(source,'src/local-library.cjs')),timeout:30000},async t=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'timing-central-host-')),profile=path.join(dir,'paddock');fs.mkdirSync(profile);
  const {Store}=require(path.join(source,'src/store.cjs')),{LocalLibrary}=require(path.join(source,'src/local-library.cjs')),T=require(path.join(source,'src/timing-integration.cjs'));

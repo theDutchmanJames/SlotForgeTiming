@@ -3,7 +3,7 @@ const {app,dialog}=require('electron'),fs=require('node:fs'),path=require('node:
 const out=path.resolve(__dirname,'../../../outputs/rich-history');fs.mkdirSync(out,{recursive:true});
 const isolated=fs.mkdtempSync(path.join(out,'profile-'));app.setPath('appData',isolated);app.disableHardwareAcceleration();process.env.LOCALAPPDATA=path.join(isolated,'local-app-data');process.env.SF_UI_QA_LOCAL_LIBRARY='1';
 require('./qa-completion.cjs').preventRelaunch(app);require('./file-diagnostics.cjs')(path.join(isolated,'diagnostics.log'),()=>app.exit(1));dialog.showErrorBox=(t,m)=>{console.error(t,m);app.exit(1);};
-const source=process.env.SLOTFORGE_PADDOCK_SOURCE||path.resolve(__dirname,'../../../../SlotForge Slotcar Database'),{Store}=require(path.join(source,'src/store.cjs')),{LocalLibrary}=require(path.join(source,'src/local-library.cjs'));
+const source=process.env.SLOTFORGE_PADDOCK_SOURCE||process.env.PADDOCK_SOURCE||path.resolve(__dirname,'../../../../SlotForge Slotcar Database'),{Store}=require(path.join(source,'src/store.cjs')),{LocalLibrary}=require(path.join(source,'src/local-library.cjs'));
 const pprofile=path.join(isolated,'paddock');fs.mkdirSync(pprofile);const file=path.join(pprofile,'database.sqlite');
 new Store(file,{deferred:true}).replace(require(path.join(source,'tests/support/timing-fixtures.cjs')).fixtures().store.snapshot());const seed=new Store(file,{deferred:true});
 const Q=require(path.join(source,'src/rich-history.cjs')),shared=require(path.join(source,'src/shared-history.cjs'));

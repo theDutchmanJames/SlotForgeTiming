@@ -3,7 +3,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const S=require('../paddock-historical-store'),{hash,Paddock}=require('../paddock'),Database=require('../db'),Client=require('../sqlite-client'),Repo=require('../sqlite-repository');
 const {JsonPaddockStorage,SqlitePaddockStorage}=require('../paddock-storage');
 const read=n=>JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/paddock-historical-approval',n+'.json')));
-const source=process.env.SLOTFORGE_PADDOCK_SOURCE||path.resolve(__dirname,'../../../SlotForge Slotcar Database');
+const source=process.env.SLOTFORGE_PADDOCK_SOURCE||process.env.PADDOCK_SOURCE||path.resolve(__dirname,'../../../SlotForge Slotcar Database');
 const hasHost=fs.existsSync(path.join(source,'tests/support/historical-approval-preload.cjs'));
 const gateFiles=[require.resolve('../paddock-rich-gate'),...(hasHost?['src/historical-approval-gate.cjs','src/rich-history-gate.cjs'].map(f=>path.join(source,f)):[])];
 const initialGates=gateFiles.map(f=>fs.readFileSync(f));

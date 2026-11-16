@@ -4,7 +4,7 @@ const out=path.resolve(__dirname,'../../../outputs/paddock-local-library');fs.mk
 const isolated=fs.mkdtempSync(path.join(out,'profile-'));app.setPath('appData',isolated);app.disableHardwareAcceleration();process.env.LOCALAPPDATA=path.join(isolated,'local-app-data');
 require('./qa-completion.cjs').preventRelaunch(app);require('./file-diagnostics.cjs')(path.join(isolated,'diagnostics.log'),()=>app.exit(1));
 dialog.showErrorBox=(t,m)=>{console.error(t,m);app.exit(1);};
-const source=process.env.SLOTFORGE_PADDOCK_SOURCE||path.resolve(__dirname,'../../../../SlotForge Slotcar Database');
+const source=process.env.SLOTFORGE_PADDOCK_SOURCE||process.env.PADDOCK_SOURCE||path.resolve(__dirname,'../../../../SlotForge Slotcar Database');
 const {Store}=require(path.join(source,'src/store.cjs')),{LocalLibrary}=require(path.join(source,'src/local-library.cjs'));
 const pprofile=path.join(isolated,'paddock');fs.mkdirSync(pprofile);const store=new Store(path.join(pprofile,'database.json'));store.data.settings.name='Club Library · Test';store.persist(store.data);
 const host=new LocalLibrary({store,profile:pprofile,folder:require('../../paddock-local-discovery').directory()});

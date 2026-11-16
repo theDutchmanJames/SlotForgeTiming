@@ -4,7 +4,7 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{execFileSync}=require('node:child_process');
 const out=path.resolve(__dirname,'../../../outputs/shared-car-library-startup');fs.mkdirSync(out,{recursive:true});
 const isolated=fs.mkdtempSync(path.join(out,'profile-')),profile=path.join(isolated,'paddock');fs.mkdirSync(profile);
-const source=process.env.SLOTFORGE_PADDOCK_SOURCE||path.resolve(__dirname,'../../../../SlotForge Slotcar Database');
+const source=process.env.SLOTFORGE_PADDOCK_SOURCE||process.env.PADDOCK_SOURCE||path.resolve(__dirname,'../../../../SlotForge Slotcar Database');
 const {Store}=require(path.join(source,'src/store.cjs')),{Launcher}=require(path.join(source,'src/local-library-launcher.cjs'));
 const Discovery=require('../../paddock-local-discovery'),Launch=require('../../paddock-local-launch');
 const previous=process.env.LOCALAPPDATA;process.env.LOCALAPPDATA=path.join(isolated,'local-app-data');

@@ -1,6 +1,6 @@
 'use strict';
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{spawn}=require('node:child_process'),{randomUUID}=require('node:crypto');
-const out=path.resolve(__dirname,'../../../outputs/joint-history'),source=process.env.SLOTFORGE_PADDOCK_SOURCE||path.resolve(__dirname,'../../../../SlotForge Slotcar Database');
+const out=path.resolve(__dirname,'../../../outputs/joint-history'),source=process.env.SLOTFORGE_PADDOCK_SOURCE||process.env.PADDOCK_SOURCE||path.resolve(__dirname,'../../../../SlotForge Slotcar Database');
 fs.mkdirSync(out,{recursive:true});
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const gates=[path.resolve(__dirname,'../../paddock-rich-gate.js'),path.join(source,'src/rich-history-gate.cjs'),path.join(source,'src/historical-approval-gate.cjs')];

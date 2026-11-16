@@ -174,6 +174,7 @@ exit 0
     const t6 = mk('oldnode'); w(path.join(t6.bin, 'node'), `#!/bin/sh\ncase "$*" in *process.versions*) echo 16 ;; *) exec "${process.execPath}" "$@" ;; esac\n`, 0o755);
     const r6 = run(t6, ['--install']);
     ok('a Node.js that is too old is explained, and nothing is started', r6.status === 1 && /too old/.test(r6.stdout) && t6.log().length === 0);
+    { const t = mk('node2212'); w(path.join(t.bin, 'node'), `#!/bin/sh\ncase "$*" in *process.versions*) echo 22.12.0 ;; *) exec "${process.execPath}" "$@" ;; esac\n`, 0o755); const rr = run(t, ['--install']); ok('...also Node.js 22.12, one minor version too old for the database checks (2.2.5: 22.13 or newer)', rr.status === 1 && /22\.13 or newer/.test(rr.stdout) && t.log().length === 0); }
     const t7 = mk('notamac'), r7 = run(t7, ['--install'], { FAKE_UNAME: 'Linux' });
     ok('on a computer that is not a Mac it says so and points to the other builders, and nothing is started', r7.status === 1 && /has to be run on a Mac/.test(r7.stdout) && /build-linux\.sh/.test(r7.stdout) && /build-windows\.bat/.test(r7.stdout) && t7.log().length === 0);
     if (process.getuid && process.getuid() === 0) {

@@ -8,7 +8,7 @@ This guide is for building or running the source yourself. **Quick Build is the 
 
 For new or inexperienced users, **Quick Build is the recommended way to make a program you can try**. It skips the automated test/check phase and goes straight to building after obtaining any missing dependencies. It creates the same Portable and Setup program formats as the normal build.
 
-1. **Install Node.js.** Visit [nodejs.org](https://nodejs.org/), download the Windows installer and run it. Keep the npm and PATH options enabled. This source release was developed and checked with Node.js **24.x**. Close and reopen any terminals after installing it.
+1. **Install Node.js.** Visit [nodejs.org](https://nodejs.org/), download the Windows installer and run it. Keep the npm and PATH options enabled. This source release was developed and checked with Node.js **24.x**; it needs at least Node.js **22.13**. Close and reopen any terminals after installing it.
 2. **Download the source.** On [the repository page](https://github.com/theDutchmanJames/SlotForgeTiming), click the green **Code** button and choose **Download ZIP**. You can also use a separately provided SlotForge source ZIP.
 3. **Extract the ZIP.** Right-click the downloaded file, choose **Extract All**, and extract it to a normal writable folder, such as Documents. Do not run the build from inside the ZIP.
 4. **Find the app folder.** Open the extracted folders until you can see **package.json**, **build-windows.bat** and **build-windows-quick.bat** together. GitHub downloads usually name this folder **SlotForgeTiming-main**; a separate source ZIP may contain **SlotForgeTiming**.
@@ -26,7 +26,7 @@ The instructions below start from scratch. You do not need to have opened a term
 
 ### 1. Install Node.js and extract the source
 
-1. Install [Node.js](https://nodejs.org/) with npm and the PATH option enabled; this release was checked with Node.js **24.x**. Close and reopen terminals after installation.
+1. Install [Node.js](https://nodejs.org/) with npm and the PATH option enabled; this release was checked with Node.js **24.x** and needs at least **22.13** (the build files stop with an explanation on an older one). Close and reopen terminals after installation.
 2. Download the **source ZIP** and use **Extract All**. A ZIP open in File Explorer is not an extracted folder.
 3. Open the extracted folders until **package.json**, **package-lock.json** and **build-windows-quick.bat** are visible together. GitHub downloads usually call this folder **SlotForgeTiming-main**; the separate release ZIP contains **SlotForgeTiming**. There may be an outer folder with another folder inside it: choose the inner app folder containing those files.
 4. In that folder, click File Explorer's **address bar** to reveal the full path, then copy it. Copy the folder path, not the path of `package.json` itself. For example, a real path might look like `D:\Slotcar Projects\SlotForgeTiming-main`. Yours will usually be different.

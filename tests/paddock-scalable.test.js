@@ -110,8 +110,8 @@ test('SQLite catalogue failure rolls back profile, class, photo hash and cursor 
   assert.deepEqual(store.get('slotcars',linked.id,true).value,before);assert.deepEqual(store.paddockRead('cache'),cache);assert.equal(store.statement("SELECT count(*) n FROM fields WHERE entity='raceclasses' AND json=?").get(JSON.stringify('Unsaved class')).n,0);
  }finally{store.close();}
 });
-test('native persisted Paddock host negotiates, refreshes deltas and verifies captures', {skip:!process.env.PADDOCK_SOURCE},async t=>{
- const root=process.env.PADDOCK_SOURCE,{Store}=require(path.join(root,'src/store.cjs')),A=require(path.join(root,'src/scalable-api.cjs')),T=require(path.join(root,'src/timing-integration.cjs'));
+test('native persisted Paddock host negotiates, refreshes deltas and verifies captures', {skip:!(process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE)},async t=>{
+ const root=(process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE),{Store}=require(path.join(root,'src/store.cjs')),A=require(path.join(root,'src/scalable-api.cjs')),T=require(path.join(root,'src/timing-integration.cjs'));
  const f=await setup(t,'sqlite'),dir=fs.mkdtempSync(path.join(os.tmpdir(),'paddock-public-host-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));const s=new Store(path.join(dir,'database.json'));s.replace(require(path.join(root,'tests/support/timing-fixtures.cjs')).fixtures().store.snapshot());
  // Exercise the real public projection against its SQLite database, never a user's host.
  f.client.hostRequest=async(_b,route)=>{if(route==='/v1/status')return {id:s.data.id,name:'Real Paddock',revision:s.data.revision,permissions:{timingResults:true},capabilities:{timing:{versions:[1]},scalable:A.capability}};try{return A.handle(s,'GET',new URL('http://localhost'+route),{browse:true,timingResults:true},s.data.id);}catch(e){e.code=e.apiCode;throw e;}};

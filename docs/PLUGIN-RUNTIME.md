@@ -1,6 +1,6 @@
 # Code plugins — runtime API 1
 
-Stage 1 provides separately installed, **trusted Node.js background code**. It includes a manager, generated settings, command buttons, session logs, local storage, compatibility checks, manual updates and rollback. Timing API 1 now adds hardware registration and generated setup pages. Display and bounded rule APIs are now available: see [the plan](PLUGIN-PLAN.md).
+Stage 1 provides separately installed, **trusted Node.js background code**. It includes a manager, generated settings, command buttons, session logs, local storage, compatibility checks, manual updates and rollback. Timing API 1 now adds hardware registration and generated setup pages. Display and bounded rule APIs are now available: see the plan (`PLUGIN-PLAN.md`, a working note that is not part of the published source).
 
 No third-party plugins ship with SlotForge. Installing one does not change the app source or require rebuilding. `.slotforge-pack` files remain data-only collections under Import and Export; they are never executed by this loader.
 
