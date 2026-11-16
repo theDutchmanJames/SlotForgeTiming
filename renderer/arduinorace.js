@@ -47,7 +47,7 @@
     const off = L.on(e => {
       if (e.type === 'hit') {
         const phase = o.phase(); if (phase === 'countdown') { if (o.onJump) o.onJump(e.lane, e.at); return; }
-        if (phase === 'ready') return; const i = carOf(e.lane); if (i >= 0) o.crossCar(i, e.at);
+        if (phase === 'ready' || !Number.isFinite(e.at)) return; const i = carOf(e.lane); if (i >= 0) o.crossCar(i, e.at); // (a crossing without a real time never reaches the race)
       } else if (e.type === 'pit') { if (!pitBySensor) return; const i = carOf(e.pit); if (i >= 0) (e.in ? o.blockCar : o.unblockCar)(i); } // pit sensor n belongs to lane n
       else if (e.type === 'call') { if (o.trackcall) o.trackcall(); }
       else if (e.type === 'button') { if (o.actions && o.actions.call) o.actions.call(e.lane); }

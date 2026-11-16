@@ -18,14 +18,15 @@
   const defaults = () => ({ ...DEFAULTS, list: DEFAULT_FAILURES.map(f => ({ ...f })) });
 
   // The failures of a Damage System record, as the engine wants them. raw: { on, list: [{ name, level, chance, seconds }], from, to, max }; levels: the cleaned levels of the same system
-  // (damage.js clean). Gives null when the failures are switched off or there are none. A failure whose level cannot be found asks the least: pit whenever you can, no deadline, a repair.
+  // (damage.js clean). Gives null when the failures are switched off or there are none. A failure whose level cannot be found (renamed or removed) keeps the rules it borrowed when the system was last
+  // saved (f.rules: { urgent, within, action }), so "Engine Failure, Box to Retire" still retires the car; only a failure that never had a level asks the least: pit whenever you can, no deadline, a repair.
   function clean(raw, levels) {
     if (!raw || typeof raw !== 'object' || !(raw.on === true || raw.on === 'on')) return null;
     const find = name => { const n = String(name || '').trim().toLowerCase(); return n ? (levels || []).find(l => String(l.name || '').trim().toLowerCase() === n) : null; };
     const list = (Array.isArray(raw.list) ? raw.list : []).filter(f => f && typeof f === 'object').map((f, i) => {
-      const lv = find(f.level), seconds = round2(num(f.seconds, 0));
-      return { name: String(f.name || '').trim() || 'Failure ' + (i + 1), level: String(f.level || '').trim(), levelFound: !!lv, chance: Math.min(100, round2(num(f.chance, 0))), seconds, ms: Math.round(seconds * 1000),
-        urgent: !!(lv && lv.urgent), within: lv ? Math.max(0, Math.floor(Number(lv.within) || 0)) : 0, action: lv && lv.action ? lv.action : 'repair' };
+      const lv = find(f.level), seconds = round2(num(f.seconds, 0)), was = String(f.level || '').trim() && f.rules && typeof f.rules === 'object' ? f.rules : null, r = lv || was || {};
+      return { name: String(f.name || '').trim() || 'Failure ' + (i + 1), level: String(f.level || '').trim(), levelFound: !!lv, ...(!lv && was ? { rulesKept: true } : {}), chance: Math.min(100, round2(num(f.chance, 0))), seconds, ms: Math.round(seconds * 1000),
+        urgent: !!r.urgent, within: Math.max(0, Math.floor(Number(r.within) || 0)), action: ['repair', 'retire', 'dq'].includes(r.action) ? r.action : 'repair' };
     });
     if (!list.length) return null;
     const from = Math.min(100, Math.floor(num(raw.from, DEFAULTS.from))), to = Math.max(from, Math.min(100, Math.floor(num(raw.to, DEFAULTS.to)))), max = Math.floor(num(raw.max, DEFAULTS.max)) >= 1 ? Math.floor(num(raw.max, DEFAULTS.max)) : DEFAULTS.max;
@@ -128,7 +129,14 @@
     return { on: true, info: rulesText(cfg), failures: cfg.list.map((f, k) => ({ k, name: f.name, chance: f.chance })), rows };
   }
 
-  const api = { DEFAULT_FAILURES, DEFAULTS, defaults, clean, factorOf, roll, failureText, rulesText, toneOf, whenText, secText, noteOf, repairsOf, totalNote, view };
+  // the rules a failure borrows from its level, kept with the failure when the system is saved (raw levels of the form, or cleaned ones; null: no such level)
+  function rulesOf(level, levels) {
+    const n = String(level || '').trim().toLowerCase(), l = n ? (levels || []).find(x => x && String(x.name || '').trim().toLowerCase() === n) : null;
+    return l ? { urgent: l.urgent !== undefined ? !!l.urgent : l.urgency === 'asap', within: Math.max(0, Math.floor(Number(l.within) || 0)), action: ['repair', 'retire', 'dq'].includes(l.action) ? l.action : 'repair' } : null;
+  }
+  // the warning of the form for failures whose level no longer exists ('' when every level is found)
+  const lostText = (list, levels) => { const lost = (list || []).filter(f => f && String(f.name || '').trim() && String(f.level || '').trim() && !rulesOf(f.level, levels)); return lost.length ? `No such level for ${lost.map(f => `${String(f.name).trim()} (${String(f.level).trim()})`).join(', ')}: ${lost.length === 1 ? 'it keeps' : 'they keep'} the rules of when the system was last saved, or ask the least (a repair) without them. Choose a level again.` : ''; };
+  const api = { DEFAULT_FAILURES, DEFAULTS, defaults, clean, factorOf, roll, failureText, rulesText, toneOf, whenText, secText, noteOf, repairsOf, totalNote, view, rulesOf, lostText };
   root.Failures = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

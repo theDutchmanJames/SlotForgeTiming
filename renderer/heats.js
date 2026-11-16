@@ -312,7 +312,7 @@
       const few = st.per.filter(x => x.heats === st.minHeats).length;
       const fix = custom ? '' : o.plan === 'manual' ? ' To avoid it, choose the plan "Same for every driver".' : o.plan === 'roundrobin' ? ' To avoid it, turn on "Give everyone the same number of heats".' : '';
       const fair = ' Or count the average per heat.';
-      lines.push(`The drivers do not race the same number of heats: ${st.minHeats} to ${st.maxHeats} (${few} race${few === 1 ? 's' : ''} ${st.minHeats}, ${most.length} race${most.length === 1 ? 's' : ''} ${st.maxHeats}). The overall result adds the heats up, so a driver with an extra heat has an advantage.${fix}${fair}`);
+      lines.push(`The drivers do not race the same number of heats: ${st.minHeats} to ${st.maxHeats} (${few} race${few === 1 ? 's' : ''} ${st.minHeats}, ${most.length} race${most.length === 1 ? 's' : ''} ${st.maxHeats}). ${sc.byTime ? 'The overall result adds the heat times up, and a driver with more heats that count ranks above those with fewer (a total of fewer heats is not a faster time), so a driver with an extra heat has an advantage.' : 'The overall result adds the heats up, so a driver with an extra heat has an advantage.'}${fix}${fair}`);
     }
     if (st.everyLaneOnce) lines.push('Every driver races once in every lane.');
     else if (st.laneSpread >= 2) lines.push('The lanes are not shared evenly: some drivers race more often in one lane than in another (see the table below).');

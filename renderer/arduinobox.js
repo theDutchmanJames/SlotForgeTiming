@@ -116,6 +116,8 @@
     const clock = o.now || (() => (typeof performance !== 'undefined' ? performance.now() : Date.now()));
     const L = { connected: false, slotforge: false, version: null, safe: false, ticks: 0, hits: 0, power: null, lastAck: 0, readings: {}, pins: {}, options: {}, covered: Array(8).fill(false), lit: Array(8).fill(null), pitCovered: Array(8).fill(false), map: TM.laneMap(null) };
     const subs = new Set(), statusSubs = new Set(); let P = parser(), hwMs = 0, recent = [], offset = null, sender = null; const lastHit = Array(8).fill(0);
+    // (a frame with a sensor number out of 1..8 or a time that is not one whole number of ms is dropped, as noise on the line: it never reaches the race as a lane undefined or a NaN time)
+    const okN = n => Number.isInteger(n) && n >= 1 && n <= 8, okMs = a => a.length === 1 && /^\d+$/.test(a[0]) && Number(a[0]) <= 4294967295;
     const emit = e => subs.forEach(f => { try { f(e); } catch (x) { /* a listener problem never stops the stream */ } });
     const toPc = h => (offset === null ? clock() : h + offset);
     const relativeB = () => { const v = L.version && String(L.version.version).split('.').map(Number); return !v || v.length < 3 || v[0] > 1 || v[1] > 0 || v[2] >= 5; }; // (firmware 1.0.5 and later send a buffered lap as "ms ago"; an unknown version is taken as current)
@@ -143,9 +145,9 @@
         else if (m.type === 'ext') {
           const e = parseExt(m.text); if (!e) return;
           if (e.tag === 'V') { L.slotforge = true; L.version = { version: e.args[0], board: e.args[1], pins: Number(e.args[2]) || 8 }; emit({ type: 'version', ...L.version }); }
-          else if (e.tag === 'P' && e.n) { const pit = e.n - 1, on = e.sign === '+'; if (L.pitCovered[pit] !== on) { L.pitCovered[pit] = on; emit({ type: 'pit', pit, in: on, at: toPc(hwMs) }); } }
-          else if (e.tag === 'K' && e.n) emit({ type: 'button', lane: L.map[e.n - 1], at: toPc(hwMs) });
-          else if (e.tag === 'T' && e.n >= 1 && e.n <= 8 && e.args.length===1 && /^\d+$/.test(e.args[0]) && Number(e.args[0])<=4294967295) {
+          else if (e.tag === 'P' && okN(e.n) && (e.sign === '+' || e.sign === '-')) { const pit = e.n - 1, on = e.sign === '+'; if (L.pitCovered[pit] !== on) { L.pitCovered[pit] = on; emit({ type: 'pit', pit, in: on, at: toPc(hwMs) }); } }
+          else if (e.tag === 'K' && okN(e.n) && L.map[e.n - 1] !== undefined) emit({ type: 'button', lane: L.map[e.n - 1], at: toPc(hwMs) });
+          else if (e.tag === 'T' && okN(e.n) && okMs(e.args)) {
             // The sketch confirms release explicitly. QUIET remains the fallback for older streams.
             L.covered[e.n - 1] = false;
             emit({ type: 'trap', lane: L.map[e.n - 1], ms: Number(e.args[0]) || 0, at: toPc(hwMs) });
@@ -153,7 +155,7 @@
           else if (e.tag === 'Z' && e.n !== null) { L.readings[e.n] = Number(e.args[0]); emit({ type: 'reading', pin: e.n, raw: Number(e.args[0]) }); }
           else if (e.tag === 'C' && e.n !== null) { const r = { pin: e.n, base: Number(e.args[0]), arm: Number(e.args[1]), trig: Number(e.args[2]) }; L.pins[e.n] = { ...(L.pins[e.n] || {}), arm: r.arm, trig: r.trig }; emit({ type: 'calibrated', ...r }); }
           else if (e.tag === 'S') { L.safe = e.sign === '+'; emit({ type: 'safe', on: L.safe }); }
-          else if (e.tag === 'B' && e.n) { const v = Number(e.args[0]); L.hits++; emit({ type: 'hit', lane: L.map[e.n - 1], at: toPc(relativeB() ? hwMs - v : v), buffered: true }); } // (1.0.5: ms before the tick that came with it; 1.0.4 and before: the absolute box time, right only when the box clock started at the connection)
+          else if (e.tag === 'B' && okN(e.n) && okMs(e.args) && L.map[e.n - 1] !== undefined) { const v = Number(e.args[0]); L.hits++; emit({ type: 'hit', lane: L.map[e.n - 1], at: toPc(relativeB() ? hwMs - v : v), buffered: true }); } // (1.0.5: ms before the tick that came with it; 1.0.4 and before: the absolute box time, right only when the box clock started at the connection)
           else if (e.tag === 'O') {
             if (e.args[0] === 'pin') { const [, pin, role, index, kind, arm, trig] = e.args.map(Number); L.pins[pin] = { role: ['N', 'L', 'P', 'K'][role] || 'N', index, kind, arm, trig }; }
             else L.options[e.args[0]] = e.args.slice(1).map(Number);

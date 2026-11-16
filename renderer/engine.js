@@ -24,7 +24,7 @@
     ms = Number(ms); const neg = ms < 0; if (neg) ms = -ms;
     let m = Math.floor(ms / 60000), t = ((ms % 60000) / 1000).toFixed(3);
     if (Number(t) >= 60) { m += 1; t = '0.000'; } // (59.9996 seconds is 1:00.000, not 60.000)
-    return (neg ? '-' : '') + (m ? m + ':' + t.padStart(6, '0') : t);
+    return (neg && (m || Number(t)) ? '-' : '') + (m ? m + ':' + t.padStart(6, '0') : t); // (-0.4 ms rounds to 0.000, without a minus)
   }
 
   // Fuel and pit settings from a race setup (missing or empty values get their defaults).
@@ -167,11 +167,13 @@
     const limitOf = c => { const d = dsLane(c); return d && Number(d.laps) > 0 ? Number(d.laps) : lapLimit; }; // the laps this car has to drive (0: no limit)
     const timeLimit = (type === 'timed' || type === 'qualifying') ? (Number(cfg.duration) || 0) * 60000 : DS && Number(DS.max) > 0 ? Number(DS.max) * 60000 : 0;
     let startingRules = JSON.parse(JSON.stringify({ ...cfg, entries: undefined, rnd: undefined }, (_, v) => typeof v === 'function' ? undefined : v));
+    // what a car holds at the start of a race (a new token stint starts from this too, see R.restartCar)
+    const carState = e => ({ laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, specialLaps: 0, penaltyPitTiers: [], adjMs: 0, adjLaps: 0, adjPoints: 0, invalid: [], removed: [], yellowFast: [], ps: [], psNow: null, fuelSamples: [], pitLaps: [], servedNow: false, last: 0, total: 0, best: null, done: false, place: 0, retired: false, sector: null, secOrder: null, secAt: '', fuel: F.on ? F.tank : 0, outOfFuel: false, bop: 0, bopHold: false, bopTo: null, tyreOwn: W.cleanTyre(e.tyre), tyre: W.cleanTyre(e.tyre), wx: 0, wxDue: null, twLife: 100, tw: 0, twStops: 0, twDoneAt: null, twPace: [], twPaceNow: null,
+        blockAt: null, pit: null, pits: [], lastPit: null, outlap: false, rndPitExit: false, started: !skipFirst, swapLost: 0, swapLaps: [], psPace: [], dmg: 0, dmgTotal: 0, dmgLvl: -1, dmgDue: null, dmgOut: '', repairs: [], repairMs: 0, repairedAt: null, ...(FL ? { fail: null, failN: 0, failures: [], failMs: 0, failOut: '', flPlan: null } : {}), en: EN && Array.isArray(e.roster) && e.roster.length >= 2 ? En.newCar(EN, e.roster, e.driverId) : null });
     const R = {
       cfg, rulesSnapshot: () => ({ version: 1, config: JSON.parse(JSON.stringify(startingRules)) }), fuel: F, penalty: P, type, status: 'ready', t0: 0, pausedAt: 0, endAt: 0, timeUp: false, finished: 0, endedBy: '',
       yellow: Y, yellowAt: null, // yellowAt: when the yellow flag that is up now went up (a lap that started before that is not a lap under yellow)
-      cars: cfg.entries.map(e => ({ ...e, laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, specialLaps: 0, penaltyPitTiers: [], adjMs: 0, adjLaps: 0, adjPoints: 0, invalid: [], removed: [], yellowFast: [], ps: [], psNow: null, fuelSamples: [], pitLaps: [], servedNow: false, last: 0, total: 0, best: null, done: false, place: 0, retired: false, sector: null, secOrder: null, secAt: '', fuel: F.on ? F.tank : 0, outOfFuel: false, bop: 0, bopHold: false, bopTo: null, tyreOwn: W.cleanTyre(e.tyre), tyre: W.cleanTyre(e.tyre), wx: 0, wxDue: null, twLife: 100, tw: 0, twStops: 0, twDoneAt: null, twPace: [], twPaceNow: null,
-        blockAt: null, pit: null, pits: [], lastPit: null, outlap: false, rndPitExit: false, started: !skipFirst, swapLost: 0, swapLaps: [], psPace: [], dmg: 0, dmgTotal: 0, dmgLvl: -1, dmgDue: null, dmgOut: '', repairs: [], repairMs: 0, repairedAt: null, ...(FL ? { fail: null, failN: 0, failures: [], failMs: 0, failOut: '', flPlan: null } : {}), en: EN && Array.isArray(e.roster) && e.roster.length >= 2 ? En.newCar(EN, e.roster, e.driverId) : null })),
+      cars: cfg.entries.map(e => ({ ...e, ...carState(e) })),
       events: [], // what happened, in order: { type, car, t } (outoffuel, retired, pitstart, fuelfull, pitend, call, callend...)
       calls: [] // calls from a lane to the Race Director: { id, car, t, open, how }; how a call ended: 'penalty' or 'dismiss'
     };
@@ -414,8 +416,10 @@
     R.restartCar = (i, t, who) => {
       const c = R.cars[i]; if (!c) return false;
       if (c.redInterrupted !== undefined) c.redInterrupted = false; if (c.redLaps) c.redLaps = []; if (c.resumed !== undefined) c.resumed = false;
-      Object.assign(c, who || {}, { ...(rulePlugin?{pluginLaps:[]}:{}), laps: [], bad: [], points: 0, undoPoints: 0, dq: false, pending: [], served: [], extraMs: 0, specialLaps: 0, penaltyPitTiers: [], adjMs: 0, adjLaps: 0, adjPoints: 0, invalid: [], removed: [], yellowFast: [], ps: [], psNow: null, fuelSamples: [], pitLaps: [], servedNow: false, last: t, total: 0, best: null, done: false, place: 0, retired: false,
-        fuel: F.on ? F.tank : 0, pitFuelLevel: 0, outOfFuel: false, blockAt: null, pit: null, pits: [], lastPit: null, outlap: false, rndPitExit: false, twPace: [], twPaceNow: null, psPace: [], paceEligibility: [], started: false });
+      // (a new stint is a fresh car, as at the start of a race: tyre wear and temperature, the mandatory stops, swaps, damage and failures start again too. What belongs to the track or the lane stays: the Balance of Power, the weather, the sector and the count of tyre sets)
+      ['msDone', 'msDq', 'msUsed', 'twTemp', 'twTempAt', 'twTempWear', 'twNext', 'twCalled', 'twS', 'twMs', 'dqWasDone', 'dqWasRetired', 'dmgWas', 'failWas', 'enSwapAt', 'enSwapDoneAt', 'pitHold', 'pitSensor', 'pitSensorAt', 'pitRearm', 'scf'].forEach(k => { delete c[k]; });
+      const keep = { bop: c.bop, bopHold: c.bopHold, bopTo: c.bopTo, wx: c.wx, wxDue: c.wxDue, sector: c.sector, secOrder: c.secOrder, secAt: c.secAt };
+      Object.assign(c, who || {}); Object.assign(c, carState({ ...c, tyre: who && 'tyre' in who ? who.tyre : c.tyreOwn }), keep, { ...(rulePlugin?{pluginLaps:[]}:{}), last: t, pitFuelLevel: 0, paceEligibility: [], started: false });
       return true;
     };
 
@@ -782,7 +786,7 @@
       if (!chk.ok && MAND.penalty === 'points' && MAND.points > 0) { if (P.on) e.points = MAND.points; else e.noSystem = true; }
       log('mandatory', i, t, e);
       if (e.points) R.addPoints(i, e.points, t, 'mandatory');
-      if (!chk.ok && MAND.penalty === 'dq') { c.dq = true; c.dqWasDone = c.done; c.dqWasRetired = c.retired; c.done = true; c.retired = true; log('disqualified', i, t); }
+      if (!chk.ok && MAND.penalty === 'dq') { c.dq = true; c.msDq = true; c.dqWasDone = c.done; c.dqWasRetired = c.retired; c.done = true; c.retired = true; log('disqualified', i, t); }
     }
     // what a screen needs to know of the mandatory stops of car i (null: this race has no such rule)
     R.mandOf = i => {
@@ -838,7 +842,7 @@
       }
       if (P.dq && c.points >= P.dq && !c.dq) {
         c.dq = true; c.dqWasDone = c.done; c.dqWasRetired = c.retired; c.done = true; c.retired = true; log('disqualified', i, t); checkEnd(t);
-      } else if (c.dq && !c.dmgOut && !c.failOut && (!P.dq || c.points < P.dq) && R.status !== 'finished') { // a mistaken point can still be taken back (not for a car that damage put out: that is for the damage points)
+      } else if (c.dq && !c.msDq && !c.dmgOut && !c.failOut && (!P.dq || c.points < P.dq) && R.status !== 'finished') { // a mistaken point can still be taken back (not for a car that damage put out: that is for the damage points; nor for one the mandatory stops disqualified, c.msDq)
         c.dq = false; c.done = !!c.dqWasDone; c.retired = !!c.dqWasRetired; log('reinstated', i, t);
       }
       return true;
@@ -1323,7 +1327,7 @@
     R.setDq = (i, on) => {
       const c = R.cars[i]; if (!c || c.dq === !!on) return false;
       if (on) { c.dq = true; c.dqWasDone = c.done; c.dqWasRetired = c.retired; c.done = true; c.retired = true; log('disqualified', i, R.endAt); }
-      else { c.dq = false; c.done = !!c.dqWasDone; c.retired = !!c.dqWasRetired; log('reinstated', i, R.endAt); }
+      else { c.dq = false; c.msDq = false; c.done = !!c.dqWasDone; c.retired = !!c.dqWasRetired; log('reinstated', i, R.endAt); }
       return true;
     };
     // Keep sample identity, not just lap times: review edits must change future
@@ -1806,8 +1810,10 @@
       const desc = k => (a, b) => b[k] - a[k], bestAsc = (a, b) => (a.best ?? 1e12) - (b.best ?? 1e12), timeAsc = (a, b) => (a.time === b.time ? 0 : a.time - b.time);
       const main = byPoints ? 'scorePoints' : lf ? 'scoreM' : 'scoreLaps', other = desc(byPoints ? 'scoreLaps' : 'scorePoints');
       // by total race time: those who finished all the heats that count rank by their time, the lowest first; those with a heat that was not finished come after them (by laps, then fewer heats not finished, then time)
-      const done = a => a.incomplete === 0 && a.timeScore !== null;
-      const byTimeScore = (a, b) => (done(a) && done(b) ? a.timeScore - b.timeScore : done(a) !== done(b) ? (done(a) ? -1 : 1) : (b.scoreLaps - a.scoreLaps) || (a.incomplete - b.incomplete) || (a.time - b.time)) || 0;
+      // (a sum of heat times is only comparable between drivers who count the same number of heats: with countBy 'total' or 'best' and an uneven plan, the one with more heats that count ranks first, as more laps rank
+      //  first when the laps are added up, so an extra heat is an advantage and not a handicap; 'average' compares the time per heat and is fair. With the same number of heats for everyone nothing changes.)
+      const done = a => a.incomplete === 0 && a.timeScore !== null, moreHeats = (a, b) => (sc.countBy === 'average' ? 0 : b.counted - a.counted);
+      const byTimeScore = (a, b) => (done(a) && done(b) ? moreHeats(a, b) || a.timeScore - b.timeScore : done(a) !== done(b) ? (done(a) ? -1 : 1) : (b.scoreLaps - a.scoreLaps) || (a.incomplete - b.incomplete) || (a.time - b.time)) || 0;
       const chain = [byTime ? byTimeScore : desc(main), ...(lf ? [timeAsc] : []), ...({ default: [other, bestAsc], bestlap: [bestAsc, other], wins: [desc('wins'), other, bestAsc], time: [timeAsc, other, bestAsc] })[sc.tieBreak]];
       // the A final drivers are placed above the B final drivers, and these above everybody else. In a final that is driven, 'places' puts its drivers in the order of that final.
       const tier = a => (a.finalName === 'A' ? 0 : a.finalName === 'B' ? 1 : 2);
