@@ -1,0 +1,7 @@
+# Formatted file by file (Phase 0 clean-up); everything not listed in the "format" script is left as it is.
+vendor/
+node_modules/
+tests/fixtures/
+tools/fixtures/
+tools/qa/fixtures/
+docs/

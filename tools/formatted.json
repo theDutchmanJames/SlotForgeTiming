@@ -1,0 +1,13 @@
+{
+  "about": "Files kept formatted with Prettier (.prettierrc.json). The clean-up formats the app file by file; a file is added here once it is formatted. npm run format formats them; tests/format.test.js checks them.",
+  "files": [
+    "renderer/engine.js",
+    "renderer/engine/basics.js",
+    "renderer/engine/heats.js",
+    "tools/run-tests.cjs",
+    "tests/renderer-scripts.cjs",
+    "tests/format.test.js",
+    "tests/lint.test.js",
+    "eslint.config.cjs"
+  ]
+}

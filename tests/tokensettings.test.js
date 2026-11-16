@@ -29,7 +29,7 @@ async function check() {
   const state={tab:'setup',setupSub:'tokens',settings:{theme:'ocean',unrelated:'kept'}};
   const api={async setSettings(patch){writes.push(structuredClone(patch));if(fail)throw Error('disk full');return {...state.settings,...patch};}};
   const ctx=vm.createContext({document,state,api,console,Promise,Set,Icons:{svg:()=>''},esc:s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;')});ctx.window=ctx;
-  for(const f of ['listnum.js','tokens.js','railform.js','tokenui.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../renderer',f),'utf8'),ctx,{filename:f});
+  for (const f of require('./renderer-scripts.cjs').expand(['listnum.js','tokens.js','railform.js','tokenui.js']))vm.runInContext(fs.readFileSync(path.join(__dirname,'../renderer',f),'utf8'),ctx,{filename:f});
   const E=id=>document.getElementById(id),box=E('setupmgr');
   await vm.runInContext('renderTokenSettings(document.getElementById("setupmgr"))',ctx);
   assert.ok(box.innerHTML.includes('setupform ss-tok')&&box.innerHTML.includes('tk-section-warning'));

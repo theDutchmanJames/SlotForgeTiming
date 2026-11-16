@@ -283,4 +283,5 @@ module.exports = [
   ['paddock-local-host.test.js', 'node-test'],
   ['tokensettings.test.js', 'plain'],
   ['lint.test.js', 'plain'],
+  ['format.test.js', 'plain'],
 ];
