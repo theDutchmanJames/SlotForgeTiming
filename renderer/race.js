@@ -224,6 +224,7 @@ async function renderRace() {
     const el = typeof HTMLElement !== 'undefined' && host instanceof HTMLElement ? host.querySelector(`[id="${id}"]`) : null;
     return el || document.getElementById(id);
   };
+  const hwWarnEl = ui('hwunused'), msgEl = ui('msg'); // (read on every refresh and share: found once)
 
   // ---- build the page from the layout (once); widgets for lanes the track does not have are left out ----
   live.nodes = LiveCanvas.build(ui('canvas'), layout, lanes, { onButton: type => actions[type](), imageSets });
@@ -268,7 +269,7 @@ async function renderRace() {
     if (api.liveStatic) api.liveStatic(LiveShare.packStatic({ rowDesigns, chartDesigns, imageSets, teams: LiveShare.teamsUsed(teams, find(layouts, setup.layout2) || layout, rowDesigns), clubLogo: state.settings.clubLogo, distUnit: dUnit, tokenUi: tokenUi(), roster: overallBits() && overallBits().roster, prior: overallBits() && overallBits().prior, past: overallBits() && overallBits().past, raceId: live.raceId, title: shareTitle, eng, setup: setupNow(), layout: find(layouts, setup.layout2) || layout, track: r.track, lanes, base }));
   };
   // what the race screen says right now (why a restart was refused, what the hardware reported, what was saved): the Race Director page in the other window shows it too
-  const raceNotice = () => [ui('hwunused') && ui('hwunused').textContent, ui('msg') && ui('msg').textContent].filter(Boolean).join(' · ').slice(0, 400);
+  const raceNotice = () => [hwWarnEl && hwWarnEl.textContent, msgEl && msgEl.textContent].filter(Boolean).join(' · ').slice(0, 400);
   const share = () => { // the light part: only when something changed (at most about ten times a second), and a small message every second so the clocks stay right
     if (!api.livePush) return;
     const t = now();
@@ -469,7 +470,7 @@ async function renderRace() {
     { const h = trackHint(); if (ui('trkhint') && ui('trkhint').textContent !== h) { ui('trkhint').textContent = h; ui('trkhint').hidden = !h; } } // (why the buttons are dimmed: they only work while the race runs)
     live.callBtns.forEach(x => { const found = S.carByLane(x.lane), c = found?.virtualRival ? null : found, calling = !!c && eng.calls.some(k => k.open && eng.cars[k.car] && eng.cars[k.car].lane === x.lane); x.b.disabled = !(['running', 'paused'].includes(live.phase) && c && !c.done); x.b.hidden = !c; x.b.setAttribute('data-active', String(calling)); }); // (a lane with a call that waits for the Race Director stays lit)
     live.trkCards.forEach(x => { const found = S.carByLane(x.lane), c = found?.virtualRival ? null : found, name = c ? (c.driverName || '') : ''; x.card.hidden = !c; if (x.who.textContent !== name) x.who.textContent = name; });
-    { const w = ui('hwunused'), t = ['finished', 'review'].includes(live.phase) || typeof unusedTimingText !== 'function' ? '' : unusedTimingText(state.settings); if (w && w.textContent !== t) { w.textContent = t; w.hidden = !t; } } // (connected timing hardware that is not the one in use counts nothing)
+    { const w = hwWarnEl, t = ['finished', 'review'].includes(live.phase) || typeof unusedTimingText !== 'function' ? '' : unusedTimingText(state.settings); if (w && w.textContent !== t) { w.textContent = t; w.hidden = !t; } } // (connected timing hardware that is not the one in use counts nothing)
     ph('lane buttons');
     drawCalls(); ph('calls');
     drawAdjust(); ph('adjust pad');

@@ -15,7 +15,7 @@ ok('1.21.0: ...and it is 1024 x 1024 pixels with a see-through background (colou
 ok('the 1024px Mac icon has an editable vector master with a rounded tile, no embedded bitmap, and documented export sizes', (() => { const svg = fs.readFileSync(path.join(root, 'build', 'icon.svg'), 'utf8'), txt = fs.readFileSync(path.join(root, 'build', 'README.txt'), 'utf8'); return /<svg[^>]*viewBox="0 0 256 256"/.test(svg) && /<rect[^>]*rx="55"/.test(svg) && !/<image|base64|data:image/.test(svg) && svg.length < 150000 && /icon\.svg/.test(txt) && /1024 x 1024/.test(txt); })());
 ok('the Mac build uses the same list of files as the Windows build (the one test/package.test.js checks)', Array.isArray(pkg.build.files) && !mac.files);
 ok('the description names the Mac', /macOS/.test(pkg.description || ''));
-ok('npm test runs this test', /node tests\/mac\.test\.js/.test(pkg.scripts.test));
+ok('npm test runs this test', /tools\/run-tests\.cjs/.test(pkg.scripts.test) && require('./suite.cjs').some(([f]) => f === 'mac.test.js'));
 const file = path.join(root, 'build-mac.command'), sh = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
 ok('build-mac.command exists, starts with a bash line, has Unix line endings and runs the same steps as build-linux.sh', sh.startsWith('#!/usr/bin/env bash\n') && !/\r/.test(sh) && /npm install --save-dev electron electron-builder/.test(sh) && /npm install flag-icons/.test(sh) && /\bnpm test\b/.test(sh) && /npm run dist:mac/.test(sh));
 ok('build-mac.command can be run (it has the execute permission), and it ends in .command so a double-click in Finder opens it in Terminal', process.platform === 'win32' || (fs.statSync(file).mode & 0o100) !== 0);

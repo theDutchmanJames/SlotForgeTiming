@@ -1,7 +1,7 @@
 // Run every declared pretest/test command and retain individual logs.
 const fs=require('fs'),path=require('path'),cp=require('child_process');
 const out=path.resolve(process.argv[2]||path.join(__dirname,'../../../outputs/widget-engine-repairs/tests'));fs.mkdirSync(out,{recursive:true});
-const pkg=require('../../package.json');const commands=(pkg.scripts.pretest+' && '+pkg.scripts.test).split(/\s*&&\s*/);
+const commands=require('../../tests/suite.cjs').map(([file,mode])=>(mode==='node-test'?'node --test ':'node ')+'tests/'+file); // (the suite that `npm test` runs)
 const results=[];
 for(const [i,command]of commands.entries()){
  const args=command.split(/\s+/).slice(1),name=path.basename(args[0]);
