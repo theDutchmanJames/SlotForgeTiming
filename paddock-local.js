@@ -17,9 +17,10 @@ module.exports={
  async discoverLocal(){const entries=await this.localChoices();return entries.map(d=>({key:d.key,databaseId:d.databaseId,name:d.name}));},
  async ensureLocal(connection){
   if(connection?.mode!=='local'||connection.automatic===false)throw Error('Reconnect the local Paddock library first.');
-  // (audit 2.2.5) The library found last time is asked first: the discovery folder is read again (on Windows with a PowerShell check of its
-  // permissions) only when that library no longer answers, not at every poll.
+  // (audit 2.2.5) The library found last time is asked first, while its descriptor file is still there unchanged: the whole discovery folder is
+  // read again (on Windows with a PowerShell check of its permissions) only when that library is gone or no longer answers, not at every poll.
   let d=this.localDescriptor?.key===connection.localKey&&this.localDescriptor.databaseId===connection.databaseId?this.localDescriptor:null,status;
+  if(d&&!await (this.localStill||Discovery.still)(d))d=null; // (Paddock still offers it: its descriptor is unchanged; never send the token to an address it gave up)
   if(d)try{status=await this.hostRequest(d.address,'/v1/status',d.token,d.databaseId,undefined,65536,d.instanceId);}catch{d=null;}
   if(!d){
    const entries=await (this.localScan||Discovery.scan)();d=entries.find(x=>x.key===connection.localKey);

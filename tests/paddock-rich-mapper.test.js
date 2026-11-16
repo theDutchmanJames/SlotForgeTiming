@@ -3,7 +3,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const M=require('../paddock-rich-mapper'),Records=require('../paddockrecords'),E=require('../paddock-historical-evidence');
 const Engine=require('../renderer/engine'),Journal=require('../renderer/paddockrace');
 const fixture=()=>JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/paddock-rich-history/create.json')));
-const source=process.env.SLOTFORGE_PADDOCK_SOURCE||process.env.PADDOCK_SOURCE||path.resolve(__dirname,'../../../SlotForge Slotcar Database');
+const source=process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE||path.resolve(__dirname,'../../../SlotForge Slotcar Database');
 const {evidence,heatEvidence,cases}=require('../tools/qa/rich-mapper-fixtures.cjs');
 const map=e=>M.measured(e.session,e.laps,'paddock-demo');
 test('actual engine journal maps independently eligible records without mutating saved evidence',()=>{

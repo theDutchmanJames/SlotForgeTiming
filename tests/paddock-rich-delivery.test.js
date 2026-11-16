@@ -9,7 +9,7 @@ function compiledGate(enabled){
  m._compile(code.replace(/const VERIFIED = (?:false|true);/,`const VERIFIED = ${enabled};`),gatePath);m.loaded=true;return m;
 }
 const gate=compiledGate(false).exports;
-const source=process.env.SLOTFORGE_PADDOCK_SOURCE||process.env.PADDOCK_SOURCE||path.resolve(__dirname,'../../../SlotForge Slotcar Database');
+const source=process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE||path.resolve(__dirname,'../../../SlotForge Slotcar Database');
 const hostAvailable=fs.existsSync(path.join(source,'src/rich-history.cjs'));
 // Qualification ONLY: compile an in-memory copy of the closed gate in this
 // node:test process. No application source, settings, environment switch, IPC,

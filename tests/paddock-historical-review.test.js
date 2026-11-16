@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),os=require('node:os');
 const E=require('../paddock-historical-evidence'),S=require('../paddock-historical-store'),{Paddock,hash}=require('../paddock'),Database=require('../db'),Client=require('../sqlite-client'),Repo=require('../sqlite-repository'),{JsonPaddockStorage,SqlitePaddockStorage}=require('../paddock-storage');
-const source=process.env.SLOTFORGE_PADDOCK_SOURCE||process.env.PADDOCK_SOURCE||path.resolve(__dirname,'../../../SlotForge Slotcar Database'),hasHost=fs.existsSync(path.join(source,'src/history-imports.cjs'));
+const source=process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE||path.resolve(__dirname,'../../../SlotForge Slotcar Database'),hasHost=fs.existsSync(path.join(source,'src/history-imports.cjs'));
 function evidence(){return E.capture({id:'old-race',setupName:'Historical sprint',sessionType:'race',date:'2020-01-01',trackId:'old-track',trackName:'Original circuit',standings:[{carId:'old-car',driverName:'James',laps:1,pos:1}]},[{id:'lap-1',sessionId:'old-race',carId:'old-car',driverId:'driver-1',lane:1,heat:1,lapNumber:1,time:8500,valid:true,pit:false}]);}
 test('historical mapper preserves unknowns and never fabricates current links, clocks or awards',()=>{
  const e=evidence(),before=structuredClone(e),b=E.bundle(e,'collection');assert.deepEqual(e,before);

@@ -15,7 +15,7 @@ test('package verification rejects candidate exceptions in both published format
  }
  assert.throws(()=>strictVerification('different implementation'),/review/);
 });
-const source=process.env.SLOTFORGE_PADDOCK_SOURCE||process.env.PADDOCK_SOURCE||path.resolve(__dirname,'../../../SlotForge Slotcar Database');
+const source=process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE||path.resolve(__dirname,'../../../SlotForge Slotcar Database');
 test('current published Paddock harness remains compatible',{skip:!fs.existsSync(path.join(source,'tests/support/installed-history-bootstrap.cjs'))},()=>{
  const boot=isolateBootstrap(fs.readFileSync(path.join(source,'tests/support/installed-history-bootstrap.cjs'),'utf8'));
  assert.equal(isolateBootstrap(boot),boot);

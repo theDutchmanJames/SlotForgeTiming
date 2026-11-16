@@ -53,7 +53,9 @@ const lastWithdrawal = d => d.paddock.withdrawals.at(-1);
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pa-')), db = new Database(path.join(dir, 'timing.json')), p = new Paddock(db), key = 'a'.repeat(64) + '.json';
     let descriptor = { format: 'slotforge-local-library', version: 1, instanceId: 'instance-1', pid: 1, address: 'http://127.0.0.1:51000', token: 't'.repeat(43), databaseId: 'library-1', name: 'Test library', key }, scans = 0;
     p.localScan = async () => { scans++; return descriptor ? [{ ...descriptor }] : []; };
-    p.hostRequest = async (base, route, code, dbId, body, limit, instance) => {
+    let offered = true; p.localStill = async d => offered && !!descriptor && ['instanceId', 'token', 'address', 'databaseId', 'pid'].every(k => descriptor[k] === d[k]);
+    const sentTo = []; 
+    p.hostRequest = async (base, route, code, dbId, body, limit, instance) => { sentTo.push(base);
       if (!descriptor || base !== descriptor.address || code !== descriptor.token || instance !== descriptor.instanceId) throw Object.assign(Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' });
       if (route === '/v1/status') return { id: descriptor.databaseId, name: 'Test library', localInstanceId: descriptor.instanceId, permissions: { browse: true }, capabilities: { localLibrary: { version: 1, imports: '/v1/local-library/imports' } } };
       throw Object.assign(Error('Unexpected ' + route), { code: 'NOT_FOUND' });
@@ -65,11 +67,28 @@ const lastWithdrawal = d => d.paddock.withdrawals.at(-1);
     descriptor = { ...descriptor, token: 'u'.repeat(43), instanceId: 'restarted', address: 'http://127.0.0.1:51001' };
     await p.ensureLocal(c); assert.equal(scans, 2); assert.equal(p.code, 'u'.repeat(43)); assert.equal(p.localDescriptor.instanceId, 'restarted');
     done('...and looked up again when it no longer answers (Paddock restarted, new credentials)');
+    { const keep = descriptor; descriptor = null; const before = sentTo.length; await assert.rejects(p.ensureLocal(c), e => e.code === 'LOCAL_UNAVAILABLE'); assert.equal(sentTo.length, before); descriptor = keep;
+      done('...and when Paddock no longer offers it (its descriptor is gone), nothing is sent to the old address: the token stays home'); }
+    await p.ensureLocal(c);
     descriptor = { ...descriptor, databaseId: 'replacement', token: 'v'.repeat(43) };
     await assert.rejects(p.ensureLocal(c), /different database/);
     descriptor = null; p.localDescriptor = null; await assert.rejects(p.ensureLocal(c), e => e.code === 'LOCAL_UNAVAILABLE');
     done('...a different database or a missing library is still found out');
     p.stop?.(); await p.idle?.(); await db.writesIdle(); fs.rmSync(dir, { recursive: true, force: true });
+  }
+  { // #27 the plain check of a remembered descriptor
+    const fs = require('fs'), os = require('os'), path = require('path'), D = require('../paddock-local-discovery');
+    const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'pa-disc-')); fs.chmodSync(folder, 0o700); const key = 'b'.repeat(64) + '.json';
+    const d = { format: 'slotforge-local-library', version: 1, instanceId: 'i1', pid: 7, address: 'http://127.0.0.1:51000', token: 't'.repeat(43), databaseId: 'lib', name: 'L' };
+    const file = path.join(folder, key); fs.writeFileSync(file, JSON.stringify(d), { mode: 0o600 });
+    assert.equal(await D.still({ ...d, key }, { folder }), true);
+    assert.equal(await D.still({ ...d, key, token: 'u'.repeat(43) }, { folder }), false);
+    fs.writeFileSync(file, JSON.stringify({ ...d, instanceId: 'i2' }), { mode: 0o600 }); assert.equal(await D.still({ ...d, key }, { folder }), false);
+    fs.writeFileSync(file, JSON.stringify(d), { mode: 0o600 }); if (process.platform !== 'win32') { fs.chmodSync(file, 0o644); assert.equal(await D.still({ ...d, key }, { folder }), false); fs.chmodSync(file, 0o600); }
+    fs.rmSync(file); assert.equal(await D.still({ ...d, key }, { folder }), false);
+    assert.equal(await D.still({ ...d, key: '../x.json' }, { folder }), false);
+    fs.rmSync(folder, { recursive: true, force: true });
+    done('a remembered library counts as offered only while its own descriptor file is there, private and unchanged');
   }
   { // #28 a delivery that keeps failing waits longer each time
     const D = require('../shared-library-delivery');

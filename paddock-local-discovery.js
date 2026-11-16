@@ -62,4 +62,17 @@ async function scan({folder=directory(),platform=process.platform,uid=process.ge
  }
  return found;
 }
-module.exports={directory,descriptor,scan,KEY};
+// (audit 2.2.5) Whether the descriptor of a library found before is still there, unchanged: a plain read of that one file (no PowerShell). The
+// library that was found by a full scan is only asked again while Paddock still offers it in the private folder; otherwise a full scan follows.
+async function still(d,{folder=directory(),platform=process.platform,uid=process.getuid?.()}={}){
+ const mine=x=>platform==='win32'||x.uid===uid&&(x.mode&0o077)===0;
+ if(!d||!KEY.test(d.key||''))return false;
+ let handle;try{
+  const file=path.join(folder,d.key),before=await fs.lstat(file);if(!before.isFile()||before.isSymbolicLink()||before.size>8192||!mine(before))return false;
+  handle=await fs.open(file,'r');const opened=await handle.stat();if(opened.ino!==before.ino||opened.dev!==before.dev)return false;
+  const buffer=Buffer.alloc(8193),{bytesRead}=await handle.read(buffer,0,buffer.length,0);if(bytesRead>8192)return false;
+  const v=JSON.parse(buffer.subarray(0,bytesRead).toString('utf8'));
+  return ['instanceId','token','address','databaseId','pid'].every(k=>v?.[k]===d[k]);
+ }catch{return false;}finally{await handle?.close();}
+}
+module.exports={directory,descriptor,scan,still,KEY};

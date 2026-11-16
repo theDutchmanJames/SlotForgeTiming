@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),os=require('node:os');
 const Database=require('../db'),{Paddock}=require('../paddock'),{JsonPaddockStorage,SqlitePaddockStorage}=require('../paddock-storage'),Client=require('../sqlite-client'),Repo=require('../sqlite-repository');
-const source=process.env.SLOTFORGE_PADDOCK_SOURCE||process.env.PADDOCK_SOURCE||path.resolve(__dirname,'../../../SlotForge Slotcar Database');
+const source=process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE||path.resolve(__dirname,'../../../SlotForge Slotcar Database');
 const hostAvailable=fs.existsSync(path.join(source,'src/local-library.cjs'));
 const photo='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jF1sAAAAASUVORK5CYII=';
 async function approveCollection(store,kind){const q=require(path.join(source,'src/sqlite-query.cjs')),view=q.read(store,null,r=>require(path.join(source,'src/timing-collection-review.cjs')).inbox(r,true)).value;const items=view.rows.filter(r=>r.kind===kind);assert(items.length);const result=await require(path.join(source,'src/domain-tasks.cjs')).run(store,{kind:'timing-collection-review',input:{databaseId:view.databaseId,recoveryId:view.recoveryId,action:'approve',note:'Owner reviewed initial collection',items}});assert(result.results.every(r=>r.status==='approved'),JSON.stringify(result));}

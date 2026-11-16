@@ -177,7 +177,7 @@ main() {
 
   command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 \
     || fail "Node.js was not found. Install the LTS version from https://nodejs.org (or with your package manager), then run this file again."
-  node_major="$(node -p 'process.versions.node' 2>/dev/null)"
+  node_major="$(node -p 'process.versions.node' 2>/dev/null)"; node_major="${node_major%%[-+]*}" # (a pre-release such as 24.0.0-rc.1 counts as 24.0.0)
   case "$node_major" in
     ''|*[!0-9.]*) fail "Could not tell which version of Node.js is installed." ;;
   esac

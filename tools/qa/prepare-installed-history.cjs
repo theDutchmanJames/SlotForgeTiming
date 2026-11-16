@@ -2,7 +2,7 @@
 // Reuse Paddock's published packaged acceptance drivers in a new Timing-owned
 // evidence directory. Never overwrite its prior qualification or either profile.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
-const timing=path.resolve(__dirname,'../..'),paddock=process.env.SLOTFORGE_PADDOCK_SOURCE||process.env.PADDOCK_SOURCE||path.resolve(timing,'../../SlotForge Slotcar Database');
+const timing=path.resolve(__dirname,'../..'),paddock=process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE||path.resolve(timing,'../../SlotForge Slotcar Database');
 const out=path.resolve(timing,'../outputs');
 const parent=fs.mkdtempSync(path.join(out,'installed-activation-')),root=path.join(parent,'.qa/installed-history'),scripts=path.join(parent,'scripts');
 fs.mkdirSync(root,{recursive:true});fs.mkdirSync(scripts);
