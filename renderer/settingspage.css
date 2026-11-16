@@ -23,3 +23,18 @@
 .settings-page .tm-content>.settings-network-fields{display:grid;grid-template-columns:minmax(0,480px);gap:14px}
 .settings-page .settings-network-fields .field{margin:0}
 @media(max-width:780px){.settings-page .tm-headerstate{max-width:none}.settings-page .tm-main{padding:12px}.settings-page .tm-content{padding:12px}.settings-page .tm-section>summary{flex-wrap:wrap}.settings-page .tm-section>summary>span{flex-basis:100%;order:3;margin-left:28px;text-align:left}.settings-page .tm-section>summary>b{margin-left:auto}}
+/* Timing Hardware: the interface in use is the first thing on the page, and a page whose interface is not in use says so plainly (connecting there does not count laps) */
+.hwuse-card{display:grid;grid-template-columns:auto minmax(220px,340px) 1fr;gap:6px 18px;align-items:center;margin:0 0 14px;padding:14px 16px;border:2px solid var(--accent);border-radius:12px;background:color-mix(in srgb,var(--accent) 9%,var(--panel))}
+.hwuse-card label{display:flex;flex-direction:column;gap:2px;cursor:pointer}
+.hwuse-card .hwuse-k{font-weight:800;font-size:1.08rem}
+.hwuse-card .hwuse-q{color:var(--muted);font-size:.86rem}
+.hwuse-card select{font-size:1.05rem;font-weight:700;padding:9px 12px;min-height:44px;width:100%}
+.hw-notinuse{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:12px 0;padding:12px 14px;border:2px solid #e5a50a;border-left-width:8px;border-radius:10px;background:color-mix(in srgb,#e5a50a 14%,var(--panel));color:var(--ink)}
+.hw-notinuse[hidden]{display:none}
+.hw-notinuse strong{font-size:1.02rem}
+.hw-notinuse span{flex:1 1 320px}
+.hw-unused-race{margin:6px 0 10px;padding:10px 12px;border:2px solid #e5a50a;border-left-width:8px;border-radius:10px;background:color-mix(in srgb,#e5a50a 14%,var(--panel));color:var(--ink);font-weight:600}
+.hw-unused-race[hidden]{display:none}
+.lv-notice{margin:8px 0 0;padding:8px 12px;border-left:4px solid var(--accent);border-radius:6px;background:color-mix(in srgb,var(--accent) 8%,var(--panel))}
+.lv-notice[hidden]{display:none}
+@media (max-width:860px){.hwuse-card{grid-template-columns:1fr}}

@@ -140,15 +140,34 @@ async function setTimingHw(id) { // saves the choice and lets go of the hardware
     if (old === 'ds' && typeof dscClose === 'function') await dscClose();
   }
 }
+// Timing hardware that is connected but is not the one in use: it can be tested, but its laps never count in a race.
+// (Connecting an interface on its own page does not make it the one in use; that was easy to miss and cost whole races.)
+const TIMING_NAMES = { ds: 'DS Electronics', trackmate: 'Trackmate Interface', arduino: 'Arduino Sketch', parallel: 'Parallel Port', plugin: 'Plugin interface', none: 'None (keys or simulated cars)' };
+function unusedTimingConnected(settings = state.settings) {
+  const chosen = Hardware.timingChosen(settings), on = {
+    trackmate: typeof Trackmate !== 'undefined' && !!Trackmate.link?.connected,
+    arduino: typeof ArduinoBox !== 'undefined' && !!ArduinoBox.link?.connected,
+    parallel: typeof ParallelPort !== 'undefined' && !!ParallelPort.link?.connected,
+    plugin: typeof pt !== 'undefined' && !!pt.link?.connected,
+    ds: typeof DsTiming !== 'undefined' && !!DsTiming.link?.connected };
+  return Object.keys(on).filter(id => on[id] && id !== chosen);
+}
+function unusedTimingText(settings = state.settings) {
+  const ids = unusedTimingConnected(settings); if (!ids.length) return '';
+  const chosen = Hardware.timingChosen(settings);
+  return `${ids.map(id => TIMING_NAMES[id]).join(' and ')} ${ids.length > 1 ? 'are' : 'is'} connected but not the timing hardware in use (${TIMING_NAMES[chosen] || chosen}), so ${ids.length > 1 ? 'their' : 'its'} laps are not counted. Change "Timing hardware in use" in App Settings, Timing Hardware.`;
+}
 function renderHardwareArea(box) {
   if (typeof ptPageDispose === 'function') ptPageDispose();
   if (typeof ppPageDispose === 'function') ppPageDispose();
   const chosen = Hardware.timingChosen(state.settings), names = { ds: 'DS Electronics', trackmate: 'the Trackmate Interface', arduino: 'the Arduino Sketch', parallel: 'the Parallel Port', plugin: 'the plugin interface', none: 'no timing hardware' };
   const onPage = ['trackmate', 'arduino', 'parallel', 'plugin', 'ds'].includes(state.hwSub);
-  box.innerHTML = `<div class="row" id="hwuse"><label><strong>Timing hardware in use</strong> <select id="hw-use">${Hardware.TIMING.map(([id, name]) => `<option value="${id}"${id === chosen ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select></label>
-      <span class="muted">One at a time. Only this interface counts race laps and shows on Home and the race screen. Its settings control how it connects.</span></div>
+  const notInUse = onPage && state.hwSub !== chosen, pageName = TIMING_NAMES[state.hwSub] || '';
+  box.innerHTML = `<div class="hwuse-card" id="hwuse"><label for="hw-use"><span class="hwuse-k">Timing hardware in use</span><span class="hwuse-q">Which interface counts the laps in a race?</span></label>
+      <select id="hw-use">${Hardware.TIMING.map(([id, name]) => `<option value="${id}"${id === chosen ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select>
+      <span class="muted">One at a time. Only this interface counts race laps and shows on Home and the race screen. The pages below set up and test each interface; connecting one there does not put it in use.</span></div>
     <div class="sub" id="hwtabs" role="tablist"></div>
-    <p class="muted" id="hwnote"${onPage && state.hwSub !== chosen ? '' : ' hidden'}>${onPage && state.hwSub !== chosen ? `This page is not in use for races: the app uses ${esc(names[chosen])}. <button class="btn" id="hw-usethis">Use this one</button>` : ''}</p>
+    <div class="hw-notinuse" id="hwnote" role="alert"${notInUse ? '' : ' hidden'}>${notInUse ? `<strong>${esc(pageName)} is not counting laps.</strong> <span>Races use ${esc(names[chosen])}. You can connect and test here, but laps from ${esc(pageName)} only count once it is the timing hardware in use.</span> <button class="btn primary" id="hw-usethis">Use ${esc(pageName)} for races</button>` : ''}</div>
     <div id="hwbox"></div>`;
   renderTabs(document.getElementById('hwtabs'), [['trackmate', 'Trackmate Interface'], ['arduino', 'Arduino'], ['parallel', 'Parallel Port'], ['plugin', 'Plugin Interface'], ['ds', 'DS Electronics'], ['oxigen', 'oXigen Digital'], ['other', 'Other']], state.hwSub, id => { state.hwSub = id; renderHardwareArea(box); });
   const use = async id => { // the choice changed: the hardware that was in use is let go, the new one connects by itself when it can

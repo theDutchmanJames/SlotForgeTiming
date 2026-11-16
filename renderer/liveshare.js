@@ -46,7 +46,7 @@ const LiveShare = (() => {
   const wireNumber = c => c.layout?.widgets?.some(w => w.designRules?.length) ? v => v : cap;
   // everything of the dynamic data that is not a list that grows: c = { raceId, eng, phase, calling, lights, heat, flash, bestAll, bestAllName, bestBy, now }
   function core(c) {
-    const e = c.eng, number = wireNumber(c), d = { raceId: c.raceId, pluginViews:c.pluginViews||{}, sentNow: number(c.now), phase: c.phase, calling: !!c.calling, lights: c.lights, heat: c.heat, season: c.season || null, bestAll: number(fin(c.bestAll)), bestAllName: c.bestAllName, bestBy: [...c.bestBy].map(([k, v]) => [k, number(v)]), champ: c.champ || null, tokens: c.tokens ? { ...c.tokens, ends: c.tokens.ends.map(number) } : null,
+    const e = c.eng, number = wireNumber(c), d = { raceId: c.raceId, notice: String(c.notice || '').slice(0, 400), pluginViews:c.pluginViews||{}, sentNow: number(c.now), phase: c.phase, calling: !!c.calling, lights: c.lights, heat: c.heat, season: c.season || null, bestAll: number(fin(c.bestAll)), bestAllName: c.bestAllName, bestBy: [...c.bestBy].map(([k, v]) => [k, number(v)]), champ: c.champ || null, tokens: c.tokens ? { ...c.tokens, ends: c.tokens.ends.map(number) } : null,
       flash: [...c.flash].map(([car, f]) => [e.cars.indexOf(car), number(f.at), number(f.time), f.kind, f.index]).filter(x => x[0] >= 0) };
     ENG.forEach(k => { d[k] = number(e[k]); });
     if(e.resources)d.resources={accounts:number(e.resources.accounts),revision:e.resources.revision};
@@ -59,7 +59,7 @@ const LiveShare = (() => {
   const SWAP_KEYS = ['en', 'swapLost', 'swapLaps', 'enSwapAt', 'driverId', 'driverName', 'nickname', 'callsign', 'flag', 'avatar', 'enSwapDoneAt'];
   // the Damage System: the damage of a car, once it has had any (a race without damage sends none of this)
   const DMG_KEYS = ['dmg', 'dmgTotal', 'dmgLvl', 'dmgDue', 'dmgOut', 'repairs', 'repairMs', 'repairedAt', 'damageFactor', 'fail', 'failN', 'failures', 'failMs', 'failOut']; // (Car Failures, 1.43.0: the failure a car has now, how many it had, which were cleared)
-  const carCore = (car, eng, number=cap) => { const o = {}; if(eng?.cfg?.rulePlugin)o.pluginTimeMs=number(eng.pluginTimeOf(car)); if (eng?.pushSave?.mode === 'median') o.paceReference = eng.psRef(car); CAR.forEach(k => { if (!GROWING.includes(k)) o[k] = number(car[k]); }); ['pitHold', 'pitSensor', 'pitRearm', 'redInterrupted', 'redLaps', 'pitLaps', 'resumed', 'started', 'fuelSamples'].forEach(k => { if (k in car) o[k] = number(car[k]); }); if (car.en) SWAP_KEYS.forEach(k => { o[k] = number(car[k]); }); if (car.dmgTotal > 0 || car.dmgOut || car.failN > 0 || car.failOut) DMG_KEYS.forEach(k => { o[k] = number(car[k]); }); return o; };
+  const carCore = (car, eng, number=cap) => { const o = {}; if(eng?.cfg?.rulePlugin)o.pluginTimeMs=number(eng.pluginTimeOf(car)); if (eng?.pushSave?.mode === 'median') o.paceReference = eng.psRef(car); CAR.forEach(k => { if (!GROWING.includes(k)) o[k] = number(car[k]); }); ['pitHold', 'pitSensor', 'pitRearm', 'redInterrupted', 'redLaps', 'resumedLaps', 'pitLaps', 'resumed', 'started', 'fuelSamples'].forEach(k => { if (k in car) o[k] = number(car[k]); }); if (car.en) SWAP_KEYS.forEach(k => { o[k] = number(car[k]); }); if (car.dmgTotal > 0 || car.dmgOut || car.failN > 0 || car.failOut) DMG_KEYS.forEach(k => { o[k] = number(car[k]); }); return o; };
 
   // the whole state in one go (what a window that opens late is given; also what the tests compare with)
   function packDynamic(c) {

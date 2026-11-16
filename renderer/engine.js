@@ -271,6 +271,7 @@
       R.cars.forEach(c => { // (what is tied to the moment the car stopped moves with it: the swap and the repair of this stop)
         const rep = c.blockAt !== null && c.repairedAt === c.blockAt, sw = c.blockAt !== null && c.enSwapAt === c.blockAt, tyd = c.blockAt !== null && c.twDoneAt === c.blockAt;
         for(const job of Object.keys(c.resourceBlocks||{}))if(c.resourceBlocks[job]===c.blockAt)c.resourceBlocks[job]+=d;
+        if (c.started && !c.done) c.pausedLap = true; // (the lap in progress spans this pause: the lap list says so; its time leaves the pause out)
         c.last += d; if (c.blockAt !== null) c.blockAt += d; if (rep) c.repairedAt = c.blockAt; if (tyd) c.twDoneAt = c.blockAt; if (sw) { c.enSwapAt = c.blockAt; if (c.enSwapDoneAt !== undefined) c.enSwapDoneAt += d; } if (c.pit) c.pit.start += d;
       });
       R.status = 'running';
@@ -377,6 +378,8 @@
       const deslot = DM && DM.deslotMs > 0 && dt > DM.deslotMs && !pitLap && !wasResumed && !c.dmgOut; // (a lap with a stop in the pits, or the first lap after a resume, is slow for other reasons)
       const wasRedInterrupted = !!c.redInterrupted;
       if (c.redInterrupted) { c.invalid.push(c.laps.length); (c.redLaps || (c.redLaps = [])).push(c.laps.length); c.redInterrupted = false; }
+      else if (wasResumed || c.pausedLap) (c.resumedLaps || (c.resumedLaps = [])).push(c.laps.length); // (the first lap after a pause: the lap list says so)
+      c.pausedLap = false;
       // Keep bounded, actual consumption samples for the range display. Never reconstruct
       // historical use from today's fuel/weather/pace settings.
       if (fuelOn && !fuelShort && !pitLap && !slow && !wasRedInterrupted && need > 0) {
@@ -415,7 +418,7 @@
     // The car object stays the same one, so everything that points to it keeps working.
     R.restartCar = (i, t, who) => {
       const c = R.cars[i]; if (!c) return false;
-      if (c.redInterrupted !== undefined) c.redInterrupted = false; if (c.redLaps) c.redLaps = []; if (c.resumed !== undefined) c.resumed = false;
+      if (c.redInterrupted !== undefined) c.redInterrupted = false; if (c.redLaps) c.redLaps = []; if (c.resumedLaps) c.resumedLaps = []; c.pausedLap = false; if (c.resumed !== undefined) c.resumed = false;
       // (a new stint is a fresh car, as at the start of a race: tyre wear and temperature, the mandatory stops, swaps, damage and failures start again too. What belongs to the track or the lane stays: the Balance of Power, the weather, the sector and the count of tyre sets)
       ['msDone', 'msDq', 'msUsed', 'twTemp', 'twTempAt', 'twTempWear', 'twNext', 'twCalled', 'twS', 'twMs', 'dqWasDone', 'dqWasRetired', 'dmgWas', 'failWas', 'enSwapAt', 'enSwapDoneAt', 'pitHold', 'pitSensor', 'pitSensorAt', 'pitRearm', 'scf'].forEach(k => { delete c[k]; });
       const keep = { bop: c.bop, bopHold: c.bopHold, bopTo: c.bopTo, wx: c.wx, wxDue: c.wxDue, sector: c.sector, secOrder: c.secOrder, secAt: c.secAt };
@@ -1373,6 +1376,7 @@
       const shift = list => list.filter(x => x !== n).map(x => (x > n ? x - 1 : x));
       c.invalid = shift(c.invalid); c.removed = shift(c.removed); c.yellowFast = shift(c.yellowFast || []); c.pitLaps = shift(c.pitLaps || []);
       if (c.redLaps) c.redLaps = shift(c.redLaps);
+      if (c.resumedLaps) c.resumedLaps = shift(c.resumedLaps);
       if (c.fuelSamples) c.fuelSamples = c.fuelSamples.filter(x => x.lap !== n).map(x => ({ ...x, lap: x.lap > n ? x.lap - 1 : x.lap }));
       c.total = Math.max(0, c.total - gone); rebest(c); rebuildPace(c); return true; // (every crossing after it comes that much sooner; the time before the first crossing, when the first lap is skipped, stays in the total)
     };

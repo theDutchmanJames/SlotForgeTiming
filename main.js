@@ -21,7 +21,9 @@ const {WorkGate,Shutdown}=require('./work-gate'),appWork=new WorkGate();
 // Includes registrations made by feature modules; their existing ownership
 // checks and channel contracts remain inside the accepted operation.
 const registerIpc=ipcMain.handle.bind(ipcMain);
-ipcMain.handle=(channel,handler)=>registerIpc(channel,(...args)=>appWork.run(()=>handler(...args)));
+// Once closing has begun, a request from a page that is still polling is answered with a marker instead of an error: the preload turns it back into the
+// same "Timing is closing" error for the caller, and the log is not filled with "Error occurred in handler" lines while the app shuts down.
+ipcMain.handle=(channel,handler)=>registerIpc(channel,(...args)=>appWork.closing?{__sfAppClosing:true}:appWork.run(()=>handler(...args)));
 let pendingRestore = null; // a backup file chosen for restoring, waiting for the user to confirm
 let pendingRestoreSource = null;
 let pendingImport = null; // a file chosen for import, waiting for the user to confirm

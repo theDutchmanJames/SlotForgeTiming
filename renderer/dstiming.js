@@ -47,7 +47,8 @@
     sync();
     const offBeforeFeed=link.beforeFeed(sync);
     const active=()=>['running','countdown'].includes(o.phase());
-    const fault=message=>{for(const v of seen.values())v.last=null;if(active())o.onFault(message);};
+    // A fault stops a running race; while Timing is already paused (or not racing) it is reported instead of being dropped without a trace.
+    const fault=message=>{for(const v of seen.values())v.last=null;if(active())o.onFault(message);else if(o.onNotice)o.onNotice(message);};
     const offStatus=link.onStatus(()=>{if(!link.connected||link.model!==model)fault('Connection lost or model changed. Check the DS box and reconnect the same model before resuming manually.');});
     const offEvent=link.on(e=>{
       if(stopped||!link.connected||link.model!==model)return;sync();
@@ -68,7 +69,7 @@
         return;
       }
       const sample={counter:e.counter,ticks:e.timeTicks,marker,last:null,car:c,laps:c.laps};seen.set(e.lane,sample);
-      if(o.phase()!=='running')return;
+      if(o.phase()!=='running'){if(!marker&&o.phase()==='paused'&&o.onIgnored)o.onIgnored(e.lane);return;} // DS has no power control: cars that keep driving while Timing is paused are counted by the box, not by the race
       if(old&&(marker||(e.counter-old.counter+10000)%10000!==1)) {
         fault('DS counter reset or missed crossing on lane '+e.lane+'. No missing laps were added; review before resuming.');return;
       }

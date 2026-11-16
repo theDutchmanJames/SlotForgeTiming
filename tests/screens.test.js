@@ -3579,16 +3579,16 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     ctx.ReadableStream = ReadableStream; ctx.WritableStream = WritableStream; const keepSet = api.setSettings; api.setSettings = async p => ({ ...run('state.settings'), ...p }); // (the real setSettings answers with all the settings; the stand-in of the window only with what was saved)
     setS({ timingHw: null, abVirtual: null, abDevice: null, tmDevice: null }); run("state.tab = 'settings'; state.settingsSub = 'hardware'; state.hwSub = 'trackmate'"); await run('render()');
     say('1.39.0: the top of Timing Hardware has "Timing hardware in use" with None, Trackmate Interface and Arduino Sketch', page().includes('Timing hardware in use') && page().includes('id="hw-use"') && ['none:None (keys or simulated cars)', 'trackmate:Trackmate Interface', 'arduino:Arduino Sketch'].every(o => page().includes(`<option value="${o.split(':')[0]}"`) && page().includes(o.split(':')[1])));
-    say('...nothing chosen yet: the Trackmate is the one in use, and its page has no "not in use" note', page().includes('<option value="trackmate" selected>') && !page().includes('Use this one'));
+    say('...nothing chosen yet: the Trackmate is the one in use, and its page has no "not in use" note', page().includes('<option value="trackmate" selected>') && !page().includes('id="hw-usethis"'));
     // choosing the Arduino Sketch
     await E('hw-use').onchange({ target: { value: 'arduino' } }); await wait(50);
     say('...choosing the Arduino Sketch saves the choice and shows its page', run('state.settings.timingHw') === 'arduino' && run('state.hwSub') === 'arduino' && page().includes('<option value="arduino" selected>'));
     await E('hwtabs').onclick({ target: { closest: () => ({ dataset: { id: 'trackmate' } }) } }); await wait(20);
-    say('...the Trackmate page now says it is not in use for races, names the one that is, and offers Use this one', page().includes('This page is not in use for races: the app uses the Arduino Sketch.') && page().includes('id="hw-usethis"'));
+    say('...the Trackmate page now says it is not in use for races, names the one that is, and offers Use this one', page().includes('Trackmate Interface is not counting laps.') && page().includes('Races use the Arduino Sketch.') && page().includes('id="hw-usethis"'));
     await E('hw-usethis').onclick(); await wait(50);
-    say('...Use this one makes it the one in use', run('state.settings.timingHw') === 'trackmate' && !page().includes('Use this one'));
+    say('...Use this one makes it the one in use', run('state.settings.timingHw') === 'trackmate' && !page().includes('id="hw-usethis"'));
     await E('hw-use').onchange({ target: { value: 'none' } }); await wait(50);
-    say('...None: saved, and no page is "the one"; the pages still open', run('state.settings.timingHw') === 'none' && page().includes('<option value="none" selected>') && run('state.hwSub') === 'trackmate' && page().includes('This page is not in use for races: the app uses no timing hardware.'));
+    say('...None: saved, and no page is "the one"; the pages still open', run('state.settings.timingHw') === 'none' && page().includes('<option value="none" selected>') && run('state.hwSub') === 'trackmate' && page().includes('Races use no timing hardware.'));
     // letting go of the one that was in use
     setS({ timingHw: 'trackmate' }); run("hw.kind0 = hw.kind; hw.open = true; hw.kind = 'hid'; hw.dev = { close: async () => {} }; Trackmate.link.setConnected(true)"); await run('render()');
     await E('hw-use').onchange({ target: { value: 'arduino' } }); await wait(80);
@@ -3600,7 +3600,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     await E('ab-conn').onclick(); await wait(50); await E('ab-virtual').onchange({ target: { checked: false } }); await wait(50);
     // 1.39.1: the same with nothing chosen yet (no timingHw saved: the tick alone already made the Arduino Sketch the one in use): the choice is saved all the same and the list above follows
     setS({ timingHw: null, abVirtual: false }); run('ab.dev = null'); run("state.hwSub = 'arduino'"); await run('render()');
-    say('...nothing chosen yet: the Trackmate is the one in use, and the Arduino page says so', run('Hardware.timingChosen(state.settings)') === 'trackmate' && page().includes('This page is not in use for races: the app uses the Trackmate Interface.'));
+    say('...nothing chosen yet: the Trackmate is the one in use, and the Arduino page says so', run('Hardware.timingChosen(state.settings)') === 'trackmate' && page().includes('Arduino Sketch is not counting laps.') && page().includes('Races use the Trackmate Interface.'));
     await E('ab-virtual').onchange({ target: { checked: true } }); await wait(150);
     say('...ticking the virtual box saves the Arduino Sketch as the choice (not only as a side effect of the tick), and the list above shows it', run('state.settings.timingHw') === 'arduino' && E('hw-use').value === 'arduino' && run('abConnected()') === true);
     say('...and the note "not in use" is taken off the Arduino page', E('hwnote').hidden === true && E('hwnote').innerHTML === '');

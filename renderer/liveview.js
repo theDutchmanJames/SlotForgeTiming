@@ -215,7 +215,7 @@ const LiveView = (() => {
       body.innerHTML = `<div id="lv-dir"><div class="lv-ctl">
           <button class="btn primary" data-cmd="start">Start</button><button class="btn" data-cmd="pause" id="dir-pause">Pause</button>
           <button class="btn" data-cmd="yellow" id="dir-yellow">Yellow flag</button><button class="btn" data-cmd="red" id="dir-red">Red flag</button>
-          <button class="btn danger" data-cmd="stop">Stop race</button></div>
+          <button class="btn danger" data-cmd="stop">Stop race</button></div><p class="lv-notice" id="dir-notice" role="status" hidden></p>
         ${!st.tokenUi && typeof RaceSystems !== 'undefined' ? folder('systems', 'Racing systems', 'On / Off for this race', 'plain', '<div id="dir-systems"></div>') : ''}
         <div class="card"><h3>Calls</h3>
           <div class="lv-ctl">${st.cfg.entries.map(e => `<button class="btn" data-cmd="call" data-lane="${e.lane}" title="A call from this lane: raises the yellow flag, like a call button">Call lane ${e.lane + 1}</button>`).join('')}</div>
@@ -263,6 +263,7 @@ const LiveView = (() => {
     }
     const d = V.dyn(), eng = V.engine(), on = d.phase === 'running' || d.phase === 'paused', set = (sel, fn) => body.querySelectorAll(sel).forEach(fn);
     set('[data-cmd="start"]', b => { b.disabled = !(d.phase === 'ready' || d.phase === 'between') || !!d.calling; });
+    { const n = $('dir-notice'), t = String(d.notice || ''); if (n && n.textContent !== t) { n.textContent = t; n.hidden = !t; } } // (what the race screen says: why a restart was refused, what the timing hardware reported)
     set('[data-cmd="pause"]', b => { b.disabled = !on; b.textContent = d.phase === 'paused' ? 'Resume' : 'Pause'; });
     set('[data-cmd="yellow"]', b => { b.disabled = !on; b.setAttribute('aria-pressed', String(eng.flag === 'yellow')); b.textContent = eng.safetyCar ? 'Safety Car' : 'Yellow flag'; }); // (1.53.0: with a safety car system the yellow flag is the Safety Car)
     set('[data-cmd="red"]', b => { b.disabled = !on; b.setAttribute('aria-pressed', String(eng.flag === 'red')); });

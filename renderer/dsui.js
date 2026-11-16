@@ -33,7 +33,9 @@ async function dscPoll() {
   const tick = async () => {
     if (!dsc.open || dsc.gen !== gen) return;
     try { const sg = await dev.getSignals(); if (!dsc.open || dsc.gen !== gen) return; const cur = Object.keys(names).map(k => `${names[k]}=${sg[k] ? 1 : 0}`).join(' '); if (cur !== last) { dscPush(`${dscSecs()}  LINES  ${cur}`); last = cur; } } catch (x) { /* port gone */ }
-    if (dsc.open && dsc.gen === gen) setTimeout(tick, 100);
+    // Every 100 ms only while the log is on screen; otherwise once a second. Each read is a request to the serial driver, and some drivers
+    // (virtual pairs, some USB adapters) answer slowly: a race does not need these lines, and the app should not keep asking for them ten times a second.
+    if (dsc.open && dsc.gen === gen) setTimeout(tick, document.getElementById('ds-log') ? 100 : 1000);
   };
   tick();
 }
@@ -139,7 +141,7 @@ function renderDsSettings(box) {
   const choose = list => new Promise(res => {
     const el = $('ds-pick'); if (!el) return res('');
     el.innerHTML = `<div class="card"><strong>Choose a port</strong>${list.length ? list.map((d, i) => `<div class="row"><button class="btn" data-pick="${i}">${esc(d.displayName || d.name || d.portName || 'Port')} <span class="muted">${esc(d.portName || '')} ${d.vendorId !== undefined ? '(' + H.hex4(d.vendorId) + ':' + H.hex4(d.productId) + ')' : ''}</span></button></div>`).join('') : '<p class="muted">No ports found. Check the cable, or the adapter.</p>'}<button class="btn" data-pick="-1">Cancel</button></div>`;
-    el.onclick = ev => { const b = ev.target.closest('[data-pick]'); if (!b) return; const i = Number(b.dataset.pick); el.innerHTML = ''; res(i >= 0 && list[i] ? list[i].portId || list[i].deviceId : ''); };
+    el.onclick = ev => { const b = ev.target.closest('[data-pick]'); if (!b) return; const i = Number(b.dataset.pick); el.innerHTML = ''; dsc.picked = i >= 0 && list[i] ? [list[i].portName, list[i].displayName].filter(Boolean).join(' · ') : ''; res(i >= 0 && list[i] ? list[i].portId || list[i].deviceId : ''); };
   });
   if (api.onHwChoose) api.onHwChoose(async (_kind, list) => { api.hwChosen(await choose(list)); });
 
@@ -148,7 +150,7 @@ function renderDsSettings(box) {
     dscFinding = true; dscRedraw();
     try {
       const port = await navigator.serial.requestPort(); if (!port) return dscMsg('No port chosen.');
-      dsc.dev = port; dsc.info = port.getInfo ? port.getInfo() : {}; dscMsg('');
+      dsc.dev = port; dsc.info = { ...(port.getInfo ? port.getInfo() : {}), ...(dsc.picked ? { portName: dsc.picked } : {}) }; dsc.picked = ''; dscMsg(''); // (the name the person picked, such as COM10, goes into saved captures)
     } catch (x) { dscMsg(x.name === 'NotFoundError' ? 'No port chosen.' : 'Could not find a port: ' + x.message); }
     finally { dscFinding = false; dscRedraw(); }
   };

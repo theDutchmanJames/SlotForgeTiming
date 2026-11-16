@@ -20,12 +20,15 @@ function resetHome() { homeLaps = null; }
 // Starting a race while the timing hardware that was chosen is not connected: the person is told and asked (OK: start anyway with the keys or simulated cars, Cancel: go and connect it). true = go on.
 function timingReady(lanes) {
   const hw = Hardware.timingChosen(state.settings);
+  // A connected interface that is not the one in use counts nothing: say so before the race, not after it
+  const unused = typeof unusedTimingText === 'function' ? unusedTimingText(state.settings) : '';
+  if (unused && typeof confirm === 'function' && !confirm(`${unused}\n\nOK: start anyway with ${hw === 'none' ? 'the keys or simulated cars' : 'the timing hardware in use'}.\nCancel: do not start, so you can change it.`)) return false;
   if (hw === 'none') return true;
   if (hw === 'ds') { const ok = typeof DsTiming !== 'undefined' && DsTiming.link.connected && lanes <= DsTiming.lanes(DsTiming.link.model); if (!ok && typeof alert === 'function') alert('Connect a DS-200 (up to 2 lanes) or DS-300 (up to 8 lanes) in App Settings first. Other DS models remain capture-only.'); return ok; }
   if (hw === 'plugin') { const ok = typeof pt !== 'undefined' && pt.link.connected && lanes <= pt.link.config.lanes; if (!ok && typeof alert === 'function') alert('Connect a timing plugin covering all race lanes in App Settings first, or choose None.'); return ok; }
   if (hw === 'parallel' && typeof ParallelPort !== 'undefined' && ParallelPort.link.connected && Number(lanes) > ParallelPort.link.config.lanes) return typeof confirm !== 'function' || confirm(`Parallel Port is configured for ${ParallelPort.link.config.lanes} lanes, but this race uses ${lanes}.\n\nOK: start using keys or simulated cars.\nCancel: adjust the lane sensors in App Settings, Timing Hardware.`);
   const on = hw === 'parallel' ? typeof ParallelPort !== 'undefined' && !!ParallelPort.link.connected : hw === 'trackmate' ? typeof Trackmate !== 'undefined' && !!Trackmate.link.connected : typeof ArduinoBox !== 'undefined' && !!ArduinoBox.link.connected;
-  if (on) return true;
+  if (on || unused) return true; // (with unused hardware connected the person was just asked, and chose to start anyway)
   const name = hw === 'parallel' ? 'The Parallel Port' : hw === 'trackmate' ? 'The Trackmate Interface' : state.settings.abVirtual === true ? 'The virtual Arduino Sketch' : 'The Arduino Sketch';
   return typeof confirm !== 'function' || confirm(`${name} is the timing hardware you chose, and it is not connected.\n\nOK: start anyway (laps can still be counted with the keys or simulated cars).\nCancel: do not start, so you can connect it (App Settings, Timing Hardware).`);
 }

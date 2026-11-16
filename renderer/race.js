@@ -186,7 +186,7 @@ async function renderRace() {
   const host = raceHost();
   const cardsOn = !tokenSession && typeof LaneCards !== 'undefined' && LaneCards.on(state.settings); // (1.72.0: the Race Director as a card for each lane; App Settings > Race Director brings the folders back)
   const folderHtml = (id, title, note, tone, inner) => DirFolder.html(id, title, note, tone, inner, { id: 'fd-' + id }); // (1.15.0: the folders of the Race Director page, with the same colours and order)
-  host.innerHTML = `<section id="finishreview" class="race-finish" hidden><div id="review" class="rv"></div></section><div id="raceactive"><p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.ofType || setup.sessionType])} on ${esc(r.track.name)} · ${esc(limitFull)}${r.champ ? ` · <span class="chtag" id="chtag" title="This race is saved as part of the championship">${esc(Champ.tagText(r.champ))}</span>` : ''}</p>
+  host.innerHTML = `<section id="finishreview" class="race-finish" hidden><div id="review" class="rv"></div></section><div id="raceactive"><p id="hwunused" class="hw-unused-race" role="alert" hidden></p><p class="muted rt-title"><strong>${esc(setup.name)}</strong> · ${esc(SESSION_LABEL[setup.ofType || setup.sessionType])} on ${esc(r.track.name)} · ${esc(limitFull)}${r.champ ? ` · <span class="chtag" id="chtag" title="This race is saved as part of the championship">${esc(Champ.tagText(r.champ))}</span>` : ''}</p>
     ${rulePlan?`<p class="muted" id="race-rule-summary">Plugin rules: <strong>${esc(rulePlan.name)}</strong> · v${esc(rulePlan.version)} · frozen for this race. Raw lap timing is unchanged.</p>`:''}
     <div class="rt-stage"><div class="canvas live" id="canvas"></div></div>
     <div class="bar rt-tools"><label><input type="checkbox" id="sim"> Simulated cars</label><span id="tmstatus" class="muted" role="status"></span>
@@ -267,6 +267,8 @@ async function renderRace() {
     if (live.sender) live.sender.reset(); // a new heat: the first message after the static part holds everything
     if (api.liveStatic) api.liveStatic(LiveShare.packStatic({ rowDesigns, chartDesigns, imageSets, teams: LiveShare.teamsUsed(teams, find(layouts, setup.layout2) || layout, rowDesigns), clubLogo: state.settings.clubLogo, distUnit: dUnit, tokenUi: tokenUi(), roster: overallBits() && overallBits().roster, prior: overallBits() && overallBits().prior, past: overallBits() && overallBits().past, raceId: live.raceId, title: shareTitle, eng, setup: setupNow(), layout: find(layouts, setup.layout2) || layout, track: r.track, lanes, base }));
   };
+  // what the race screen says right now (why a restart was refused, what the hardware reported, what was saved): the Race Director page in the other window shows it too
+  const raceNotice = () => [ui('hwunused') && ui('hwunused').textContent, ui('msg') && ui('msg').textContent].filter(Boolean).join(' · ').slice(0, 400);
   const share = () => { // the light part: only when something changed (at most about ten times a second), and a small message every second so the clocks stay right
     if (!api.livePush) return;
     const t = now();
@@ -274,7 +276,7 @@ async function renderRace() {
     live.lastShare = t;
     if (!live.sender) live.sender = LiveShare.sender();
     if(typeof PluginDisplayClient!=='undefined'&&(find(layouts, setup.layout2)||layout)?.widgets?.some(w=>PluginDisplay.TYPES.has(w.type)))PluginDisplayClient.demandLayout(find(layouts, setup.layout2)||layout,shared());
-    const msg = live.sender.pack({ pluginViews:typeof PluginDisplayClient!=='undefined'?PluginDisplayClient.raceViews(live.raceId):{}, layout: find(layouts, setup.layout2) || layout, champ: champOf(), raceId: live.raceId, eng, phase: live.phase, calling: live.calling, lights: live.lights, heat: heatInfo(), season: seasonInfo(), flash: live.flash, bestAll: live.bestAll, bestAllName: live.bestAllName, bestBy: live.bestBy, tokens: tokens ? tokens.snapshot() : null, now: t }, t);
+    const msg = live.sender.pack({ notice: raceNotice(), pluginViews:typeof PluginDisplayClient!=='undefined'?PluginDisplayClient.raceViews(live.raceId):{}, layout: find(layouts, setup.layout2) || layout, champ: champOf(), raceId: live.raceId, eng, phase: live.phase, calling: live.calling, lights: live.lights, heat: heatInfo(), season: seasonInfo(), flash: live.flash, bestAll: live.bestAll, bestAllName: live.bestAllName, bestBy: live.bestBy, tokens: tokens ? tokens.snapshot() : null, now: t }, t);
     if (msg) api.livePush(msg);
   };
   // announcements: only on this computer, and only when the race setup has an audio set
@@ -467,6 +469,7 @@ async function renderRace() {
     { const h = trackHint(); if (ui('trkhint') && ui('trkhint').textContent !== h) { ui('trkhint').textContent = h; ui('trkhint').hidden = !h; } } // (why the buttons are dimmed: they only work while the race runs)
     live.callBtns.forEach(x => { const found = S.carByLane(x.lane), c = found?.virtualRival ? null : found, calling = !!c && eng.calls.some(k => k.open && eng.cars[k.car] && eng.cars[k.car].lane === x.lane); x.b.disabled = !(['running', 'paused'].includes(live.phase) && c && !c.done); x.b.hidden = !c; x.b.setAttribute('data-active', String(calling)); }); // (a lane with a call that waits for the Race Director stays lit)
     live.trkCards.forEach(x => { const found = S.carByLane(x.lane), c = found?.virtualRival ? null : found, name = c ? (c.driverName || '') : ''; x.card.hidden = !c; if (x.who.textContent !== name) x.who.textContent = name; });
+    { const w = ui('hwunused'), t = ['finished', 'review'].includes(live.phase) || typeof unusedTimingText !== 'function' ? '' : unusedTimingText(state.settings); if (w && w.textContent !== t) { w.textContent = t; w.hidden = !t; } } // (connected timing hardware that is not the one in use counts nothing)
     ph('lane buttons');
     drawCalls(); ph('calls');
     drawAdjust(); ph('adjust pad');
@@ -923,6 +926,17 @@ async function renderRace() {
     if (live[hardware] && live[hardware].ready() && link.connected) return true;
     ui('msg').textContent = (hardware === 'plugin' ? 'Plugin interface' : 'Parallel Port') + ' is not ready. Reconnect in App Settings, then restart manually.'; return false;
   }
+  // DS Electronics cannot switch the track off, so cars may keep driving while Timing is paused. The box counts those crossings; the race does not.
+  // Say how many, per lane, instead of letting the two counts drift apart without a word. (Cleared when the race resumes.)
+  const dsPausedText = () => { const by = live.dsIgnored || {}, lanesHit = Object.keys(by).sort((a, b) => a - b), n = lanesHit.reduce((s, l) => s + by[l], 0);
+    return 'Paused. DS Electronics cannot switch off the track: crossings while Timing is paused are not counted.' + (n ? ` Not counted so far: ${n} (${lanesHit.map(l => 'lane ' + l + ': ' + by[l]).join(', ')}).` : ''); };
+  function dsIgnored(lane) { (live.dsIgnored || (live.dsIgnored = {}))[lane] = (live.dsIgnored[lane] || 0) + 1; if (!live.dsNoticeText) ui('msg').textContent = (live.dsFaultText ? live.dsFaultText + ' ' : '') + dsPausedText(); update(); }
+  // A pause, end or abort from the box while Timing is already paused changes nothing, but it is written in the race log and shown (once per message)
+  function dsNotice(message) {
+    if (live.dsNoticeText === message) return; live.dsNoticeText = message;
+    try { if (eng.logEvent) eng.logEvent('hardware', -1, now(), { source: 'ds', message }); } catch { /* the log is a record only */ }
+    ui('msg').textContent = 'DS Electronics (while paused): ' + message; update();
+  }
   function timingFault(name, message) {
     live.hardwareRecoverPower = true;
     live.callRun = -1; live.calling = false; clearTimeout(live.callTimer); Sound.stop();
@@ -947,8 +961,11 @@ async function renderRace() {
     },
     pause() {
       if (live.phase === 'paused' && !timingReady()) return;
-      if (live.phase === 'running') eng.pause(now()); else if (live.phase === 'paused') eng.resume(now());
+      const resuming = live.phase === 'paused';
+      if (live.phase === 'running') eng.pause(now()); else if (resuming) eng.resume(now());
       syncPhase();
+      if (resuming && live.phase !== 'paused') { ui('msg').textContent = ''; live.dsIgnored = null; live.dsNoticeText = ''; live.dsFaultText = ''; } // (the reason for the pause is over: an old message would make the race look paused)
+      else if (!resuming && live.phase === 'paused' && live.ds) ui('msg').textContent = dsPausedText();
     },
     stop(force) { // force: the Race Director page has already asked
       cancelRestart();
@@ -1104,7 +1121,7 @@ async function renderRace() {
     else if (e.type === 'call') { if (Number.isInteger(e.lane)) actions.call(e.lane); else trackcall(); } // a call button of one lane, or the one Trackcall button
   });
   // ---- the SlotForge box (Arduino): laps, pit sensors, buttons and the speed trap come in; the start lights, the power and the buzzer follow the race ----
-  if (hwUse === 'ds') live.ds = DsTiming.bind({link:DsTiming.link, model:state.settings.dsType, engine:()=>eng, phase:()=>live.phase, lanes, laneAllowed:lane=>!tokens||tokens.stateOf(lane,eng.elapsed(now()))!=='idle', crossCar, onFault:message=>timingFault('DS Electronics',message)});
+  if (hwUse === 'ds') live.ds = DsTiming.bind({link:DsTiming.link, model:state.settings.dsType, engine:()=>eng, phase:()=>live.phase, lanes, laneAllowed:lane=>!tokens||tokens.stateOf(lane,eng.elapsed(now()))!=='idle', crossCar, onFault:message=>{live.dsFaultText='DS Electronics: '+message;timingFault('DS Electronics',message);}, onIgnored:dsIgnored, onNotice:dsNotice});
   if (hwUse === 'arduino' && typeof ArduinoRace !== 'undefined' && ArduinoBox.link.connected) {
     live.box = ArduinoRace.bind({ link: ArduinoBox.link, cars: () => eng.cars, crossCar, blockCar, unblockCar, actions, trackcall, phase: () => live.phase, lights: () => live.lights, flag: () => eng.flag,
       setup: { ...setup, boxBeeps: setup.boxBeeps !== 'no', boxLaneLights: setup.boxLaneLights === 'yes' }, // (the race setup form has Yes/No choices, no tick boxes: the box wants true/false)

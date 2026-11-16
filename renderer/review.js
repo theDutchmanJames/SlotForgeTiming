@@ -19,7 +19,8 @@ const Review = (() => {
     return `<div class="rv-laps">${order.map(n => {
         const t = c.laps[n], after = !!late && late(n), inv = after || c.invalid.includes(n), rem = c.removed.includes(n), slow = c.bad[n];
         const red = (c.redLaps || []).includes(n);
-        const tags = [red ? 'red flag — interrupted lap' : slow ? 'too slow' : '', after ? 'after the time ran out' : inv ? 'invalid' : '', rem ? 'not in the records' : '', (c.yellowFast || []).includes(n) ? (sc ? 'faster than the Safety Car limit' : 'faster than the yellow flag target') : '', paceTag(c, n)].filter(Boolean);
+        const resumed = (c.resumedLaps || []).includes(n);
+        const tags = [red ? 'red flag — interrupted lap' : resumed ? 'first lap after a pause' : slow ? 'too slow' : '', after ? 'after the time ran out' : inv ? 'invalid' : '', rem ? 'not in the records' : '', (c.yellowFast || []).includes(n) ? (sc ? 'faster than the Safety Car limit' : 'faster than the yellow flag target') : '', paceTag(c, n)].filter(Boolean);
         const del = ui.del === `${i}:${n}` ? `<span class="rv-del">Remove lap ${n + 1}:
             <button class="btn" data-rv="removelap" data-car="${i}" data-lap="${n}" data-recalc="0">From the records only</button>
             ${mid && c.done ? '' : `<button class="btn danger" data-rv="removelap" data-car="${i}" data-lap="${n}" data-recalc="1">From the race too (recalculate)</button>`}

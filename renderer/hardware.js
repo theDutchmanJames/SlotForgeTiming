@@ -14,7 +14,7 @@
     return Uint8Array.from(parts.map(p => parseInt(p, 16)));
   }
   const describe = (kind, info) => kind === 'serial'
-    ? `COM port${info && info.usbVendorId !== undefined ? ` (USB ${hex4(info.usbVendorId)}:${hex4(info.usbProductId)})` : ''}`
+    ? `${info && info.portName ? String(info.portName).slice(0, 80) : 'COM port'}${info && info.usbVendorId !== undefined ? ` (USB ${hex4(info.usbVendorId)}:${hex4(info.usbProductId)})` : ''}`
     : `USB HID ${info && info.productName ? info.productName + ' ' : ''}(${hex4(info && info.vendorId)}:${hex4(info && info.productId)})`;
   // ---- what is known of the Trackmate serial protocol (9600 baud, 8N1; every command ends with a line feed) ----
   // From the device: A..H = a car is over the sensor of lane 1..8 (repeated while it is there), W = the Trackcall button, digits + CR = a time, LF = a tick.

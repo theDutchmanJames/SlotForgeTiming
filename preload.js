@@ -8,7 +8,8 @@ ipcRenderer.on('live:command', (_e, c) => listeners.command.forEach(f => f(c)));
 ipcRenderer.on('live:static', (_e, s) => listeners.static.forEach(f => f(s)));
 ipcRenderer.on('live:push', (_e, d) => listeners.push.forEach(f => f(d)));
 ipcRenderer.on('live:resync', () => listeners.resync.forEach(f => f()));
-const call = (channel, ...args) => ipcRenderer.invoke(channel, ...args);
+// (while the app closes, the main process answers with a marker rather than an error, so its log stays readable; the caller still gets the error)
+const call = async (channel, ...args) => { const value = await ipcRenderer.invoke(channel, ...args); if (value && value.__sfAppClosing === true) throw Object.assign(Error('Timing is closing. Reopen it before trying again.'), { code: 'APP_CLOSING' }); return value; };
 const catalogueCall=async(channel,...args)=>{const value=await call(channel,...args);if(value?.catalogueStale)throw Object.assign(Error('The catalogue changed. Refresh the list before continuing.'),{code:'CATALOGUE_CHANGED'});return value;};
 
 // Sandboxed preload: Web Crypto and browser storage only. Persist identifiers,
