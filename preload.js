@@ -13,7 +13,7 @@ const catalogueCall=async(channel,...args)=>{const value=await call(channel,...a
 
 // Sandboxed preload: Web Crypto and browser storage only. Persist identifiers,
 // never save payloads or media. An entry is removed only after an acknowledgement.
-const editorFlights=new Map(), editorPrefix='slotforge-editor-save-v1:';
+const editorFlights=new Map(), editorPrefix='slotforge-editor-save-v1:', editorSending=new Set(); // (editorSending: keys whose save has been sent and not answered yet)
 const editorCanonical=value=>Array.isArray(value)?'['+value.map(editorCanonical).join(',')+']':value&&typeof value==='object'?'{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+editorCanonical(value[k])).join(',')+'}':JSON.stringify(value);
 async function editorSave(operation,channel,...values){
   const args=JSON.parse(JSON.stringify(values)); // Freeze the intent before any awaits.
@@ -40,14 +40,15 @@ async function editorSave(operation,channel,...values){
         id=crypto.randomUUID();localStorage.setItem(key,JSON.stringify({id,target}));
       }
     }catch(error){throw Error('Cannot safely remember this save. '+error.message+' No save was sent.');}
-    let reply;
+    let reply;editorSending.add(key);
     try{reply=await call('db:editor-save',{id,scope,operation,args});}
     catch(error){throw Error('The save could not be confirmed. Retry the same save to check it safely. '+error.message);}
+    finally{editorSending.delete(key);}
     if(!reply||typeof reply.ok!=='boolean')throw Error('Save acknowledgement was lost. Retry the same save to check it safely.');
     if(!reply.ok&&reply.retain)throw Object.assign(Error(reply.error),{code:reply.code});
     // Never silently treat a later identical action as a retry after cleanup
     // fails. Explain the known outcome and retain the safe identity.
-    try{localStorage.removeItem(key);if(reply.ok&&target)for(let n=localStorage.length-1;n>=0;n--){const k=localStorage.key(n);if(!k?.startsWith(editorPrefix)||k===key)continue;let t=null;try{t=JSON.parse(localStorage.getItem(k)).target;}catch{}if(t===target)localStorage.removeItem(k);}}catch{throw Error(reply.ok?'The save succeeded, but its retry tracking could not be cleared. Retry the same save to clear it safely.':'The save was rejected and its retry tracking could not be cleared. '+reply.error);}
+    try{localStorage.removeItem(key);if(reply.ok&&target){const keys=[];for(let n=0;n<localStorage.length;n++){const k=localStorage.key(n);if(k?.startsWith(editorPrefix)&&k!==key&&!editorSending.has(k))keys.push(k);}for(const k of keys){let t=null;try{t=JSON.parse(localStorage.getItem(k)).target;}catch{}if(t===target)localStorage.removeItem(k);}}}catch{throw Error(reply.ok?'The save succeeded, but its retry tracking could not be cleared. Retry the same save to clear it safely.':'The save was rejected and its retry tracking could not be cleared. '+reply.error);}
     if(!reply.ok)throw Error(reply.error||'The save was rejected.');
     return reply.value;
   }).finally(()=>editorFlights.delete(flight));

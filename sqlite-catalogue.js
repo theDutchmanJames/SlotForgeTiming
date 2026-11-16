@@ -32,10 +32,28 @@ function upgrade(s) {
 }
 function sync(s) {for(const {entity,id} of s.changed.values())if(C.ENTITIES.includes(entity))index(s,entity,id);}
 function revision(s) {return s.statement("SELECT value FROM info WHERE key='catalogueIdentity'").get().value+':'+String(s.statement('SELECT COALESCE(MAX(sequence),0) AS n FROM changes').get().n);}
+// t is a collection, or [collection, id] for one record (for '@meta', of which other records change during every race)
+function touches(c, t) {
+  if (typeof t === 'string') return Object.hasOwn(c.counts, t);
+  if (!Object.hasOwn(c.counts, t[0])) return false;
+  return c.requiresRefresh !== false || !Array.isArray(c.records) || c.records.some(r => !r || (r.entity === t[0] && r.id === t[1]));
+}
+// Whether none of these collections changed since that revision (2.2.5: a page cursor or a picture is not stale because laps were saved meanwhile).
+function unchangedSince(store, tables, since) {
+  const now = revision(store); if (now === since) return true; if (typeof since !== 'string') return false;
+  const cut = since.lastIndexOf(':'), seq = Number(since.slice(cut + 1));
+  if (cut < 0 || since.slice(0, cut) !== now.slice(0, now.lastIndexOf(':')) || !Number.isSafeInteger(seq)) return false; // (another database, or a restore)
+  const first = store.statement('SELECT MIN(sequence) n FROM changes').get().n;
+  if (first !== null && first > seq + 1) return false; // (the journal no longer reaches back to the cursor)
+  const rows = store.statement('SELECT changed FROM changes WHERE sequence>? ORDER BY sequence LIMIT 1001').all(seq);
+  if (rows.length > 1000) return false;
+  for (const { changed } of rows) { let c; try { c = JSON.parse(changed); } catch { return false; } if (!c || typeof c.counts !== 'object' || c.counts === null || tables.some(t => touches(c, t))) return false; }
+  return true;
+}
 function page(s,entity,options) {
   const o=C.options(entity,options);
   return s.transaction(()=>{
-    const rev=revision(s);if(o.cursor&&o.cursor.revision!==rev)throw C.stale();
+    const rev=revision(s);if(o.cursor&&!unchangedSince(s,[entity,['@meta','customFields']],o.cursor.revision))throw C.stale();
     const where=['entity=?','local=1'],args=[entity];
     if(o.cursor){where.push('(sortKey,id)>(?,?)');args.push(o.cursor.key,o.cursor.id);}
     if(o.query){where.push('instr(search,?)>0');args.push(o.query);}
@@ -50,9 +68,9 @@ function page(s,entity,options) {
 }
 function picture(s,entity,id,expected) {
   C.check(entity);return s.transaction(()=>{
-    if(revision(s)!==expected)throw C.stale();
+    if(!unchangedSince(s,[entity],expected))throw C.stale();
     const parts=[schema[entity].image],asset=s.asset(entity,id,parts);
     return asset?`data:${asset.mime};base64,${asset.bytes.toString('base64')}`:read(s,entity,id,parts)||null;
   });
 }
-module.exports={upgrade,sync,page,picture,read,revision};
+module.exports={upgrade,sync,page,picture,read,revision,unchangedSince};

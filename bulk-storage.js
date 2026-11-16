@@ -20,7 +20,7 @@ class JsonBulkStorage {
     const fd=fs.openSync(file,'wx');try{fs.writeFileSync(fd,JSON.stringify(Backup.make(this.db.data)));fs.fsyncSync(fd);}finally{fs.closeSync(fd);}
     return file;
   }
-  restore(bundle){const c=Backup.check(bundle);if(!c.ok)throw Error(c.error);this.db.replaceAll(bundle.data);}
+  async restore(bundle){const c=Backup.check(bundle);if(!c.ok)throw Error(c.error);await this.db.sw.whenIdle();this.db.replaceAll(bundle.data);} // (2.2.5: no settings write on its way, so the restore writes the settings at once or fails as a whole)
 }
 class SqliteBulkStorage {
   constructor(client){this.client=client;}

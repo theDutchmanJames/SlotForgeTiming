@@ -41,6 +41,7 @@ const quiet = f => { const e = console.error; console.error = () => {}; try { re
   { // ---- JSON: written in the background (through DataRepository) ----
     const dir = tmp('bg'), file = path.join(dir, 'slotforge-timing.json'), db = new Database(file);
     const repo = new Repo(db); const row = await repo.add('drivers', { name: 'Alice' }); db.bg = true;
+    await db.fileIdle();
     fs.mkdirSync(file + '.bg.tmp');
     await assert.rejects(quiet(() => repo.update('drivers', row.id, { name: 'Renamed', nickname: 'R' })));
     fs.rmdirSync(file + '.bg.tmp');
@@ -49,6 +50,7 @@ const quiet = f => { const e = console.error; console.error = () => {}; try { re
     assert.equal(onDisk(file).drivers[0].name, 'Alice');
     done('JSON (background): a rejected update is taken back and never written later');
 
+    await db.fileIdle();
     fs.mkdirSync(file + '.bg.tmp');
     const first = quiet(() => repo.update('drivers', row.id, { name: 'One' }));
     db.data.drivers[0].name = 'Two'; db.touch(db.data.drivers[0]); // (someone changed it again before the failure came back)
@@ -57,16 +59,38 @@ const quiet = f => { const e = console.error; console.error = () => {}; try { re
     assert.equal(db.data.drivers[0].name, 'Two');
     done('...but a value that was changed again since is left as it is');
 
+    await db.fileIdle();
     fs.mkdirSync(file + '.bg.tmp');
     await assert.rejects(quiet(() => repo.remove('drivers', row.id)));
     fs.rmdirSync(file + '.bg.tmp');
     assert.equal(db.data.drivers.length, 1);
+    await db.fileIdle();
     fs.mkdirSync(file + '.bg.tmp');
-    const gone = quiet(() => repo.remove('drivers', row.id)); db.data.tracks[0].name = 'X'; db.touch(db.data.tracks[0]);
+    const gone = quiet(() => repo.remove('drivers', row.id)); db.data.tracks[0].name = 'X'; db.touch(db.data.tracks[0]); quiet(() => db.commit()); // (another change is saved after the removal)
     await assert.rejects(gone);
     fs.rmdirSync(file + '.bg.tmp');
     assert.equal(db.data.drivers.length, 0);
     done('JSON (background): a rejected removal comes back, unless anything was changed after it (then nothing is overwritten)');
+  }
+  { // ---- JSON (background): failures of one write together, and a write that was already on its way ----
+    const dir = tmp('bg2'), file = path.join(dir, 'db.json'), db = new Database(file), repo = new Repo(db);
+    const row = await repo.add('drivers', { name: 'Orig' }); db.bg = true;
+    const realOpen = fs.promises.open; let release, mode = 'gate';
+    fs.promises.open = async (...a) => { if (mode === 'gate') { mode = 'fail'; await new Promise(r => { release = r; }); return realOpen(...a); } if (mode === 'fail') throw Object.assign(Error('disk full'), { code: 'ENOSPC' }); return realOpen(...a); };
+    const w0 = repo.add('tracks', { name: 'T' }), a = quiet(() => repo.update('drivers', row.id, { name: 'A' })), b = quiet(() => repo.update('drivers', row.id, { name: 'B' }));
+    release(); await w0; await assert.rejects(a); await assert.rejects(b);
+    assert.equal(db.data.drivers[0].name, 'Orig');
+    done('JSON (background): two changes of the same field that fail in one write are both taken back (the latest first)');
+    mode = 'ok'; await db.fileIdle();
+    let n = 0, open2; fs.promises.open = async (...x) => { if (n++ === 0) { await new Promise(r => { open2 = r; }); throw Object.assign(Error('locked'), { code: 'EBUSY' }); } return realOpen(...x); };
+    const fa = quiet(() => repo.update('drivers', row.id, { name: 'Failed' })), fb = repo.add('tracks', { name: 'Queued' });
+    await new Promise(r => setTimeout(r, 20)); open2(); await assert.rejects(fa); await fb;
+    await db.fileIdle();
+    assert.equal(db.data.drivers[0].name, 'Orig'); assert.equal(onDisk(file).drivers[0].name, 'Orig');
+    fs.promises.open = realOpen;
+    done('...and a change reported as failed is not left in the file by a write that was already on its way (the file is written again)');
+    assert.ok(!db.removalTables('penaltysystems').includes('slotcars') && !db.removalTables('layouts').includes('sessions') && db.removalTables('drivers').includes('sessions'));
+    done('JSON: removing a record that races never use does not copy the cars and sessions first');
   }
   { // ---- JSON restore that can not write the settings ----
     const dir = tmp('restore'), file = path.join(dir, 'slotforge-timing.json'), db = new Database(file);
@@ -111,6 +135,22 @@ const quiet = f => { const e = console.error; console.error = () => {}; try { re
     store.command({ id: 'edit-direct', type: 'updateRecord', entity: 'tracks', recordId: 't6', patch: { name: 'Again' }, expectedRevision: store.revision('tracks', 't6') });
     assert.throws(() => store.compatibilityRead('page', 'tracks', { mode: 'full', cursor: p1.next }), e => e.code === 'CATALOGUE_CHANGED');
     done('...a page cursor is only stale when its own collection changed (checked page by page, without a retry)');
+    const Cat = require('../sqlite-catalogue');
+    const c1 = store.catalogue('tracks', { limit: 10 }), rev1 = c1.revision;
+    store.command({ id: 'resume-cat', type: 'setRaceResume', snapshot: { v: 1, race: { name: 'z' }, eng: { v: 1 } }, expectedRevision: store.revision('@meta', 'raceResume') });
+    assert.ok(store.catalogue('tracks', { limit: 10, cursor: c1.next }).items.length === 10);
+    assert.doesNotThrow(() => store.cataloguePicture('tracks', 't1', rev1));
+    done('...the Database catalogue pages and pictures stay usable while a race saves (another record changes)');
+    const seq = Number(Cat.revision(store).split(':').pop());
+    store.statement('INSERT INTO command_receipts VALUES(?,?,?)').run('fake-cf', 'x', '{}');
+    store.statement('INSERT INTO changes(commandId,kind,changed) VALUES(?,?,?)').run('fake-cf', 'test', JSON.stringify({ records: [{ entity: '@meta', id: 'customFields' }], counts: { '@meta': 1 }, requiresRefresh: false }));
+    assert.throws(() => store.catalogue('tracks', { limit: 10, cursor: c1.next }), e => e.code === 'CATALOGUE_CHANGED');
+    assert.ok(Cat.unchangedSince(store, ['tracks'], Cat.revision(store).replace(/:\d+$/, ':' + seq)));
+    assert.ok(!Cat.unchangedSince(store, [['@meta', 'customFields']], Cat.revision(store).replace(/:\d+$/, ':' + seq)));
+    assert.ok(Cat.unchangedSince(store, [['@meta', 'paddock']], Cat.revision(store).replace(/:\d+$/, ':' + seq)));
+    store.command({ id: 'edit-cat', type: 'updateRecord', entity: 'tracks', recordId: 't7', patch: { name: 'Third' }, expectedRevision: store.revision('tracks', 't7') });
+    assert.throws(() => store.cataloguePicture('tracks', 't1', rev1), e => e.code === 'CATALOGUE_CHANGED');
+    done('...but they are stale when the custom fields or the collection itself changed');
     store.close();
   }
   { // ---- conversion to SQLite and race recovery ----
@@ -130,8 +170,8 @@ const quiet = f => { const e = console.error; console.error = () => {}; try { re
   { // ---- editor saves: retry identities ----
     const store = new Map(), sent = [], api = {};
     const localStorage = { get length() { return store.size; }, key: n => [...store.keys()][n] ?? null, getItem: k => store.has(k) ? store.get(k) : null, setItem: (k, v) => store.set(k, String(v)), removeItem: k => store.delete(k) };
-    let lose = false;
-    const ipcRenderer = { invoke: async (ch, ...a) => { if (ch === 'db:editor-scope') return 'scope'; if (ch === 'db:editor-save') { sent.push(a[0]); if (lose) throw Error('lost'); return { ok: true, value: a[0].args }; } return null; }, send() {}, on() {}, removeListener() {} };
+    let lose = false, hold = null;
+    const ipcRenderer = { invoke: async (ch, ...a) => { if (ch === 'db:editor-scope') return 'scope'; if (ch === 'db:editor-save') { sent.push(a[0]); if (hold && JSON.stringify(a[0].args).includes('slow')) { const h = hold; hold = null; await h.wait; throw Error('lost'); } if (lose) throw Error('lost'); return { ok: true, value: a[0].args }; } return null; }, send() {}, on() {}, removeListener() {} };
     const ctx = { require: m => m === 'electron' ? { contextBridge: { exposeInMainWorld: (_n, v) => Object.assign(api, v) }, ipcRenderer, webUtils: {} } : require(m), localStorage, crypto: require('crypto').webcrypto, TextEncoder, console, setTimeout, clearTimeout, Promise, structuredClone, process: { platform: process.platform } };
     ctx.crypto.randomUUID = () => require('crypto').randomUUID();
     vm.createContext(ctx); vm.runInContext(fs.readFileSync(R + 'preload.js', 'utf8'), ctx);
@@ -150,6 +190,12 @@ const quiet = f => { const e = console.error; console.error = () => {}; try { re
     await api.update('drivers', 'd2', { name: 'B' }); await api.add('drivers', { name: 'A' });
     assert.equal(sent.at(-1).id, addId);
     done('...an unconfirmed "Add" keeps its identity (it is about no known record yet)');
+    let open; hold = { wait: new Promise(r => { open = r; }) };
+    const before = sent.length, slow = api.update('drivers', 'd3', { slow: 1 }); while (sent.length === before) await new Promise(r => setTimeout(r, 1)); const slowId = sent.at(-1).id;
+    await api.update('drivers', 'd3', { fast: 1 }); open(); await assert.rejects(slow);
+    await api.update('drivers', 'd3', { slow: 1 });
+    assert.equal(sent.at(-1).id, slowId);
+    done('...a confirmed save does not drop the identity of another save of the same record that is still on its way');
   }
   console.log(`STORAGE AUDIT TESTS PASSED (${groups} checks)`);
   process.exit(0);

@@ -271,6 +271,7 @@ class Database {
   // the newest of these. In the program's own time: it is written before this returns, and a disk that will not take it is an error here.
   commit() {
     this.catalogueEpoch=(this.catalogueEpoch||0)+1;
+    if (!this.undoing) this.opSeq = (this.opSeq || 0) + 1; // (2.2.5: counts the changes; writing again after an undo is no change)
     if (!this.bg) { this.lastSave = null; this.saveSync(); return null; }
     const p = this.saveBg(); p.catch(() => { /* whoever waits for saved() gets the reason; the others look at the failed count in the report */ }); this.lastSave = p; return p;
   }
@@ -307,15 +308,16 @@ class Database {
           const renamed = await writeChunksAsync(this.file, chunks, () => this.syncGen === gen, on => { f.renaming = on; }), t2 = process.hrtime.bigint();
           if (renamed) this.noteSave({ text: t1 - t0, file: t2 - t1, chars, background: true });
         } catch (x) { err = x || new Error('The database file could not be written.'); st.failed++; console.error('[database]', err && err.message || err); }
-        batch.forEach(w => (err ? w.reject(err) : w.resolve(true)));
+        if (err) batch.slice().reverse().forEach(w => w.reject(err)); else batch.forEach(w => w.resolve(true)); // (2.2.5: the latest change is taken back first)
+        if (err && f.again) await new Promise(r => setImmediate(r)); // (and the undos run before the next write makes its text)
       }
     } finally {
       f.running = false; f.idle.splice(0).forEach(r => r());
     }
   }
-  filePending() { return this.fsave.running; } // (a change that asks for another round while a write is running is picked up by that same run)
+  filePending() { return this.fsave.running || !!this.rewriting; } // (a change that asks for another round while a write is running is picked up by that same run)
   // resolves when no change is on its way to the database file
-  fileIdle() { return this.filePending() ? new Promise(r => this.fsave.idle.push(r)) : Promise.resolve(); }
+  fileIdle() { if (this.rewriting) return new Promise(r => setImmediate(r)).then(() => this.fileIdle()); return this.fsave.running ? new Promise(r => this.fsave.idle.push(r)) : Promise.resolve(); } // (a write after an undo that is about to start counts too)
   check(entity) {
     if (!Object.hasOwn(schema, entity)) throw new Error('Unknown item type: ' + entity);
   }
@@ -340,13 +342,41 @@ class Database {
   guard(undo) {
     let p;
     try { p = this.commit(); } catch (x) { undo(true); this.touchAll(); throw x; }
-    const epoch = this.catalogueEpoch; // (undo(unchanged): whether nothing at all was changed since this change was written)
-    this.lastUndo = p ? () => { undo(this.catalogueEpoch === epoch); this.touchAll(); } : null;
+    const seq = this.opSeq; // (undo(unchanged): whether no other change was made since this one was written)
+    this.lastUndo = p ? () => { undo(this.opSeq === seq); this.touchAll(); this.rewrite(); } : null;
     return p;
   }
   takeUndo() { const u = this.lastUndo; this.lastUndo = null; return u; }
-  tablesNow(names) { const out = {}; for (const n of new Set(names)) if (this.data[n] !== undefined) out[n] = n === 'laps' ? this.data.laps.slice() : structuredClone(this.data[n]); return out; }
-  untilChanged(saved) { return unchanged => { if (unchanged) Object.assign(this.data, saved); }; }
+  // after an undo the file is written again, so that it never keeps a change that was reported as failed (a write that was already on its way may have
+  // taken it along); the undos of one failed write all run first (they are in the same turn), then one write follows
+  rewrite() {
+    if (!this.bg || this.rewriting) return;
+    this.rewriting = true;
+    setImmediate(() => { this.rewriting = false; this.undoing = true; try { this.commit(); } finally { this.undoing = false; } });
+  }
+  // What a removal may change, kept to put it back. The rows themselves stay the same objects (a copy of their own fields is kept), so whatever still holds
+  // a row keeps holding the real one; small tables of settings are copied whole. Laps are only ever taken out, never changed: the list is enough.
+  tablesNow(names) {
+    const out = {};
+    for (const n of new Set(names)) {
+      const t = this.data[n];
+      if (t === undefined) out[n] = { missing: true };
+      else if (n === 'laps') out[n] = { list: t.slice() };
+      else if (n === 'slotcars' || n === 'sessions') out[n] = { list: t.slice(), rows: t.map(r => [r, { ...r, ...(r.paddockDelivery ? { paddockDelivery: { ...r.paddockDelivery } } : {}) }]) };
+      else out[n] = { copy: structuredClone(t) };
+    }
+    return out;
+  }
+  putBack(saved) {
+    for (const [n, s] of Object.entries(saved)) {
+      if (s.missing) { delete this.data[n]; continue; }
+      if (s.copy !== undefined) { this.data[n] = s.copy; continue; }
+      this.data[n] = s.list;
+      for (const [row, own] of s.rows || []) { for (const k of Object.keys(row)) if (!Object.hasOwn(own, k)) delete row[k]; Object.assign(row, own); }
+    }
+  }
+  untilChanged(saved) { return unchanged => { if (unchanged) this.putBack(saved); }; }
+  removalTables(entity) { const lapsToo = ['tracks', 'drivers', 'slotcars', 'laps'].includes(entity); return [...require('./record-cascades').dependencies(entity), ...(lapsToo ? ['laps', 'slotcars', 'sessions', 'paddock'] : []), ...(entity === 'raceclasses' ? ['slotcars', 'drivers', 'teams'] : [])]; }
   add(entity, item) {
     this.check(entity);
     if(entity === 'tracks' && Object.hasOwn(item,'trackDesign')) item = {...item,trackDesign:TrackDesign.validateSaved(item.trackDesign)};
@@ -393,8 +423,8 @@ class Database {
   }
   remove(entity, id) {
     this.check(entity);
-    const saved = this.tablesNow([...require('./record-cascades').dependencies(entity), 'laps', 'slotcars', 'sessions', 'paddock']);
-    require('./record-cascades').remove(this.data, entity, id, pred => this.removeLapsWhere(pred));
+    const saved = this.tablesNow(this.removalTables(entity));
+    try { require('./record-cascades').remove(this.data, entity, id, pred => this.removeLapsWhere(pred)); } catch (x) { this.putBack(saved); this.touchAll(); throw x; } // (a removal that stops half-way leaves nothing half-done)
     this.touchAll(); // (a removal changes items of other tables too: every text is made again, as before 1.61.2)
     this.guard(this.untilChanged(saved));
   }
@@ -437,7 +467,7 @@ class Database {
   }
   removeSession(id) {
     const saved = this.tablesNow(['laps', 'slotcars', 'sessions', 'paddock']);
-    const session=this.data.sessions.find(s=>s.id===id);if(session)PaddockRecords.withdraw(this.data,session,'Session deleted in Timing.');
+    const session=this.data.sessions.find(s=>s.id===id);if(session){try{PaddockRecords.withdraw(this.data,session,'Session deleted in Timing.');}catch(x){this.putBack(saved);this.touchAll();throw x;}}
     this.removeLapsWhere(l => l.sessionId === id);
     this.data.sessions = this.data.sessions.filter(s => s.id !== id);
     this.touchAll();
