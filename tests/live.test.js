@@ -1550,13 +1550,15 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     say('a call from a lane is announced with the driver and the lane', marks().join() === 'MARK call Sam lane 2', marks().join());
     spoken.length = 0; run('Trackmate.link.setConnected(true)'); await wait(250);
     say('the Trackmate connecting during a race says it is back', marks().join() === 'MARK tm back', marks().join());
-    spoken.length = 0; run('Trackmate.link.setConnected(false)'); await wait(250);
-    say('...and losing it says so', marks().join() === 'MARK tm lost', marks().join());
     spoken.length = 0; await wait(150);
-    say('...nothing more is said while it stays like that, and no lap is not asked about yet (5 seconds are not over)', marks().length === 0, marks().join());
+    say('...nothing more is said, and no lap is not asked about yet (5 seconds are not over)', marks().length === 0, marks().join());
     await wait(5600);
     say('no lap for a while: said after the seconds of the audio set (5, not the default 30), for the driver of each lane that has not crossed the line', marks().filter(t => t.startsWith('MARK nolap')).sort().join() === 'MARK nolap Alex 5,MARK nolap Sam 5', marks().join(' | '));
     spoken.length = 0; await wait(200); say('...once', marks().length === 0);
+    spoken.length = 0; run('Trackmate.link.setConnected(false)'); await wait(250);
+    say('...and losing it says so', marks().join() === 'MARK tm lost', marks().join());
+    say('2.2.5: ...and it is a timing fault: the race stops with a red flag until it is restarted by hand (laps can not be counted)', run('live.engine().flag') === 'red' && /Trackmate: Disconnected/.test(String(E('msg').textContent)), String(E('msg').textContent));
+    spoken.length = 0;
     key('s'); await wait(60); ctx.Sound.stop(); spoken.length = 0;
     // a distance smaller than the lap, and a set without these calls
     store.audiosets = [mkSet({ nearrecord: 'MARK near {driver}', nolap: 'MARK nolap' }, { nearRecord: 0.01, noLapSeconds: 600 })];

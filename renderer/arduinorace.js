@@ -52,6 +52,7 @@
       else if (e.type === 'call') { if (o.trackcall) o.trackcall(); }
       else if (e.type === 'button') { if (o.actions && o.actions.call) o.actions.call(e.lane); }
       else if (e.type === 'trap') { if (o.onTrap) o.onTrap(e.lane, e.ms); }
+      else if (e.type === 'safe' && e.on) { if (o.onSafe) o.onSafe(); } // (audit 2.2.5: the box lost us and cut the power: the race is told, as a timing fault)
       else if (e.type === 'safe' && !e.on) { L.send(C.mainPower(wantPower)); L.setPower(wantPower); lastLights = null; sync(); } // the box is back from its safe state (it cut the track power when it lost us): tell it the lights and the track power again
     });
     // the keep-alive: every second while bound (the page sends one too while its tab is open; two are harmless)

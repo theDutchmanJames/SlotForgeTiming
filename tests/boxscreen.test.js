@@ -149,6 +149,37 @@ const nowMs = () => run('performance.now()');
   say('...and when the box goes away the status line says so, in red', String(E('tmstatus').textContent).includes('Arduino Sketch not connected') && marks[marks.length - 1] === 'hwwarn:true', String(E('tmstatus').textContent) + ' ' + marks.join());
   run('live.leave && live.leave()'); await wait(20);
 
+  // ---- 2.2.5: losing the timing hardware mid-race is a timing fault, as it is for DS, Parallel Port and plugins ----
+  E('tmstatus').classList = { add() {}, remove() {}, toggle() {} };
+  run("ArduinoBox.link.setConnected(true)"); await openRace(setup, store.tracks[0], rows(1, 2)); sentNow();
+  key(' '); await until(() => phase() === 'countdown', 3000); await until(() => phase() === 'running', 12000); await wait(40); sentNow();
+  run("ArduinoBox.link.emit({ type: 'safe', on: true, at: performance.now() })"); await wait(30);
+  const safeOn = sentNow();
+  say('2.2.5: the box entering its safe state mid-race red-flags the race, keeps the track power off and says why', eng().flag === 'red' && /\bM0\b/.test(safeOn) && /lost contact/.test(String(E('msg').textContent)), safeOn + ' | ' + String(E('msg').textContent));
+  run("ArduinoBox.link.emit({ type: 'safe', on: false, at: performance.now() })"); await wait(30);
+  const back = sentNow();
+  say('...when the box comes back the track power stays off (no M1 on its own)', /\bM0\b/.test(back) && !/\bM1\b/.test(back), back);
+  run('live.actions.red()'); await until(() => phase() === 'running' && eng().flag !== 'red', 12000); await wait(80);
+  const restarted = sentNow();
+  say('...and the Race Director restarting the race switches it on again', /\bM1\b/.test(restarted), restarted);
+  run('live.leave && live.leave()'); await wait(20);
+  await openRace(setup, store.tracks[0], rows(1, 2)); sentNow();
+  key(' '); await until(() => phase() === 'countdown', 3000); await until(() => phase() === 'running', 12000); await wait(40);
+  run("ArduinoBox.link.setConnected(false)"); await wait(20);
+  say('2.2.5: a box that disconnects mid-race red-flags the race and asks for a manual restart', eng().flag === 'red' && /Arduino: Disconnected/.test(String(E('msg').textContent)), String(E('msg').textContent));
+  run('live.leave && live.leave()'); await wait(20);
+  run("ArduinoBox.link.setConnected(true)");
+  await openRace(setup, store.tracks[0], rows(1, 2)); run("ArduinoBox.link.setConnected(false)"); await wait(20);
+  say('...a box that goes away before the start is only shown on the status line (no flag, the race has not begun)', phase() === 'ready' && eng().flag !== 'red');
+  run('live.leave && live.leave()'); await wait(20);
+  run("state.settings.timingHw = 'trackmate'"); run("Trackmate.link.setConnected(true)");
+  await openRace(setup, store.tracks[0], rows(1, 2));
+  key(' '); await until(() => phase() === 'countdown', 3000); await until(() => phase() === 'running', 12000); await wait(40);
+  run("Trackmate.link.setConnected(false)"); await wait(20);
+  say('2.2.5: a Trackmate that disconnects mid-race red-flags the race too', eng().flag === 'red' && /Trackmate: Disconnected/.test(String(E('msg').textContent)), String(E('msg').textContent));
+  run('live.leave && live.leave()'); await wait(20);
+  run("state.settings.timingHw = 'arduino'");
+
   timers.forEach(t => clearInterval(t));
   reachedEnd = true;
   console.log(fails ? 'FAILED' : 'ALL BOX SCREEN TESTS PASSED'); process.exit(fails ? 1 : 0);

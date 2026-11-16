@@ -43,22 +43,35 @@
 
   // Reads the byte stream (any pieces) and gives whole messages: { type: 'lane', lane 1..8 } for a letter, { type: 'call' } for W,
   // { type: 'tick', ms } for "digits LF CR", { type: 'ext', text } for "[...]", { type: 'other' }. Each has raw: the bytes of that message.
+  // (audit 2.2.5) What came before a CR, as clock ticks. A tick is "digits LF". When a CR got lost on the way, two ticks arrive as one ("200 LF 200 LF CR"):
+  // each counts, so the clock stays right. Anything that cannot be a clock step (no digits, more than 4 digits, over 5 s) is not a tick: counting it would
+  // jump the clock and make every sensor that is covered let go at once (a car on the pit sensor would leave and count a lap).
+  function ticksOf(cur) {
+    const parts = String.fromCharCode(...cur).split('\n').filter(p => p !== '');
+    if (!parts.length || !parts.every(p => /^\d{1,4}$/.test(p) && Number(p) <= 5000)) return [{ type: 'other', raw: cur.concat(13) }];
+    return parts.map((p, k) => ({ type: 'tick', ms: Number(p), raw: [...p].map(ch => ch.charCodeAt(0)).concat(10, ...(k === parts.length - 1 ? [13] : [])) }));
+  }
   function parser() {
     let cur = [], ext = null, discardExt = false;
     return {
       feed(bytes) {
         const out = [];
         Array.from(bytes).forEach(b => {
-          if(discardExt){if(b===93)discardExt=false;return;}
-          if (ext !== null) { if (b === 93) { out.push({ type: 'ext', text: String.fromCharCode(...ext), raw: [91].concat(ext, 93) }); ext = null; } else if (ext.length < 120) ext.push(b); else {ext=null;discardExt=true;} return; }
+          // (audit 2.2.5) An event is one line. A CR, LF, a new "[" or a byte that is not printable ends an event that was cut off (the box restarted half-way),
+          // and that byte is then read as usual: the lap letters after it are not swallowed while waiting for a "]" that never comes.
+          const breaks = b === 13 || b === 10 || b === 91 || b < 32 || b > 126;
+          if (discardExt) { if (b === 93) { discardExt = false; return; } if (!breaks) return; discardExt = false; }
+          else if (ext !== null) {
+            if (b === 93) { out.push({ type: 'ext', text: String.fromCharCode(...ext), raw: [91].concat(ext, 93) }); ext = null; return; }
+            if (!breaks) { if (ext.length < 120) ext.push(b); else { ext = null; discardExt = true; } return; }
+            out.push({ type: 'other', raw: [91].concat(ext) }); ext = null;
+          }
           if (b === 91) { ext = []; return; }
           if (b >= 65 && b <= 72) out.push({ type: 'lane', lane: b - 64, raw: [b] });
           else if (b === 87) out.push({ type: 'call', raw: [b] });
           else if ((b >= 48 && b <= 57) || b === 10) { cur.push(b); if (cur.length > 12) { out.push({ type: 'other', raw: cur }); cur = []; } }
           else if (b === 13) {
-            const digits = cur.filter(x => x !== 10);
-            if (digits.length && digits.length === cur.filter(x => x >= 48 && x <= 57).length) out.push({ type: 'tick', ms: Number(String.fromCharCode(...digits)), raw: cur.concat(13) });
-            else out.push({ type: 'other', raw: cur.concat(13) });
+            out.push(...ticksOf(cur));
             cur = [];
           } else out.push({ type: 'other', raw: [b] });
         });

@@ -917,7 +917,7 @@ async function renderRace() {
     if (live.phase === 'countdown') { live.runId++; live.lights = 0; live.phase = live.restarting ? 'paused' : 'ready'; live.restarting = false; }
     if (live.phase === 'running') { if (eng.flag !== 'red') eng.setFlag('red', now()); syncPhase(); }
     if (live.parallel) live.parallel.power(false);
-
+    live.pwWant = false; // (the power is off now: when the race is restarted, the flag rules switch it on again)
     if (live.plugin) live.plugin.power(false);
     if (live.box) live.box.power(false);
     update(); ui('msg').textContent = name + ': ' + message;
@@ -1036,7 +1036,16 @@ async function renderRace() {
   const tmWord = () => HomeStats.timing({ hardware: hwUse, ds: typeof DsTiming !== 'undefined' && DsTiming.link.connected, trackmate: Trackmate.link.connected, arduino: !!(abLinkNow() && abLinkNow().connected), plugin: typeof pt !== 'undefined' && pt.link.connected, pluginName: typeof pt !== 'undefined' && pt.identity?.name, parallel: typeof ParallelPort !== 'undefined' && ParallelPort.link.connected, virtual: state.settings.abVirtual === true });
   const drawTm = () => { const e = ui('tmstatus'); if (e) { const st = tmWord(); e.textContent = ' · ' + st.text + (hwUse === 'trackmate' && Trackmate.link.connected && Trackmate.link.power !== null ? (Trackmate.link.power ? ', track power on' : ', track power off') : ''); if (e.classList) e.classList.toggle('hwwarn', st.state === 'warn'); } };
   drawTm();
-  { const offDs = typeof DsTiming !== 'undefined' ? DsTiming.link.onStatus(drawTm) : null, offT = Trackmate.link.onStatus(drawTm), offA = abLinkNow() ? abLinkNow().onStatus(drawTm) : null, offP = typeof ParallelPort !== 'undefined' ? ParallelPort.link.onStatus(drawTm) : null; const offPt = typeof pt !== 'undefined' ? pt.link.onStatus(drawTm) : null; live.offTmStatus = () => { if (offDs) offDs(); if (offPt) offPt(); offT(); if (offA) offA(); if (offP) offP(); }; }
+  // (audit 2.2.5) The Trackmate or the SlotForge box that times this race goes away mid-race: as with the other interfaces, a red flag, the power off and a manual restart
+  let tmWas = Trackmate.link.connected, abWas = !!(abLinkNow() && abLinkNow().connected);
+  const linkLost = () => {
+    const tm = Trackmate.link.connected, ab = !!(abLinkNow() && abLinkNow().connected), busy = ['countdown', 'running', 'paused'].includes(live.phase);
+    const tmLost = hwUse === 'trackmate' && tmWas && !tm && busy, abLost = hwUse === 'arduino' && abWas && !ab && busy;
+    tmWas = tm; abWas = ab; // (first: switching the power off tells the status listeners again)
+    if (tmLost) timingFault('Trackmate', 'Disconnected. Reconnect, then restart manually.');
+    if (abLost) timingFault('Arduino', 'Disconnected. Reconnect, then restart manually.');
+  };
+  { const offDs = typeof DsTiming !== 'undefined' ? DsTiming.link.onStatus(drawTm) : null, offT = Trackmate.link.onStatus(() => { drawTm(); linkLost(); }), offA = abLinkNow() ? abLinkNow().onStatus(() => { drawTm(); linkLost(); }) : null, offP = typeof ParallelPort !== 'undefined' ? ParallelPort.link.onStatus(drawTm) : null; const offPt = typeof pt !== 'undefined' ? pt.link.onStatus(drawTm) : null; live.offTmStatus = () => { if (offDs) offDs(); if (offPt) offPt(); offT(); if (offA) offA(); if (offP) offP(); }; }
   // the track power (the Trackmate relay): only when it is connected
   const power = on => { if (hwUse === 'trackmate' && Trackmate.link.connected && typeof tmPower === 'function') tmPower(on); if (live.box) live.box.power(on); if (live.parallel) live.parallel.power(on && (!live.hardwareRecoverPower || live.phase === 'running')); if (live.plugin) live.plugin.power(on && (!live.hardwareRecoverPower || live.phase === 'running')); };
   // Race Settings keeps the Track Call action and flag power separately. Older
@@ -1088,7 +1097,8 @@ async function renderRace() {
     live.box = ArduinoRace.bind({ link: ArduinoBox.link, cars: () => eng.cars, crossCar, blockCar, unblockCar, actions, trackcall, phase: () => live.phase, lights: () => live.lights, flag: () => eng.flag,
       setup: { ...setup, boxBeeps: setup.boxBeeps !== 'no', boxLaneLights: setup.boxLaneLights === 'yes' }, // (the race setup form has Yes/No choices, no tick boxes: the box wants true/false)
       onJump: (lane, at) => { /* a crossing during the countdown: the jump-start handling is not built yet */ },
-      onTrap: (lane, ms) => { const i = eng.cars.findIndex(c => c.lane === lane); if (i >= 0) eng.cars[i].trapMs = ms; } });
+      onTrap: (lane, ms) => { const i = eng.cars.findIndex(c => c.lane === lane); if (i >= 0) eng.cars[i].trapMs = ms; },
+      onSafe: () => { if (['countdown', 'running', 'paused'].includes(live.phase)) timingFault('Arduino', 'The box lost contact with Timing and switched the track power off. Restart manually.'); } });
   }
   if (hwUse === 'parallel' && typeof ParallelRace !== 'undefined' && api.parallelRace) {
     live.hardwareRecoverPower = !!r.resume || !!(tokens && state.settings.tokenSessions?.[setup.id]?.data);

@@ -37,6 +37,14 @@
   }
   // Reads the byte stream of the Trackmate (which can arrive in any pieces) and gives whole messages:
   // { type: 'lane', lane } for A..H, { type: 'call' } for W, { type: 'tick', ms } for "digits LF CR" (the device sends one every 200 ms), { type: 'other' }. Each has raw: the bytes of that message.
+  // (audit 2.2.5) What came before a CR, as clock ticks. A tick is "digits LF". When a CR got lost on the way, two ticks arrive as one ("200 LF 200 LF CR"):
+  // each counts, so the clock stays right. Anything that cannot be a clock step (no digits, more than 4 digits, over 5 s) is not a tick: counting it would
+  // jump the clock and make every sensor that is covered let go at once (a car on the pit sensor would leave and count a lap).
+  function ticksOf(cur) {
+    const parts = String.fromCharCode(...cur).split('\n').filter(p => p !== '');
+    if (!parts.length || !parts.every(p => /^\d{1,4}$/.test(p) && Number(p) <= 5000)) return [{ type: 'other', raw: cur.concat(13) }];
+    return parts.map((p, k) => ({ type: 'tick', ms: Number(p), raw: [...p].map(ch => ch.charCodeAt(0)).concat(10, ...(k === parts.length - 1 ? [13] : [])) }));
+  }
   function trackmateParser() {
     let cur = [];
     return {
@@ -47,9 +55,7 @@
           else if (b === 87) out.push({ type: 'call', raw: [b] });
           else if ((b >= 48 && b <= 57) || b === 10) { cur.push(b); if (cur.length > 8) { out.push({ type: 'other', raw: cur }); cur = []; } }
           else if (b === 13) {
-            const digits = cur.filter(x => x !== 10);
-            if (digits.length && digits.length === cur.filter(x => x >= 48 && x <= 57).length) out.push({ type: 'tick', ms: Number(String.fromCharCode(...digits)), raw: cur.concat(13) });
-            else out.push({ type: 'other', raw: cur.concat(13) });
+            out.push(...ticksOf(cur));
             cur = [];
           } else out.push({ type: 'other', raw: [b] });
         });
