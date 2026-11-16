@@ -195,6 +195,8 @@ const startupTask=app.whenReady().then(async () => {
     if(imports.read(app.getPath('userData'))?.phase==='prepared')await imports.resume(sharedLibrary,records,app.getPath('userData'));
     records=require('./shared-library-records').wrap(records,sharedLibrary);
     bulkStorage=require('./shared-library-bulk').wrap(bulkStorage,records,sharedLibrary,app.getPath('userData'));
+    // (audit 2.2.5, #14) remember the library's current restore generation: corrections of races from before a restore are written for it
+    try{const now=await sharedLibrary.status();await paddock.storage.setSharedLibraryGuard({databaseId:now.databaseId,recoveryId:now.recoveryId});}catch(error){console.error('[shared library] generation',error&&error.message||error);}
     sharedLibrary.startDelivery(paddock.deliveryStore,()=>paddock.isRacing());
   }
   const selectedConnection=(await paddock.connection()).connection;
@@ -209,6 +211,9 @@ const startupTask=app.whenReady().then(async () => {
   ipcMain.handle('library:saves',e=>{paddockOwner(e);return library().operations();});
   ipcMain.handle('library:original-history',(e,options)=>{paddockOwner(e);return library().originalHistory(options);});
   ipcMain.handle('library:retry',(e,id)=>{paddockIdle(e);return library().retry(id);});
+  // (audit 2.2.5, #14) App Settings > Connections > Shared Library: the race results that need attention, and their Retry
+  ipcMain.handle('library:results',async e=>{paddockOwner(e);const c=library(),all=(await paddock.storage.summary()).deliveries;return {deliveryError:c.deliveryError||'',results:all.filter(d=>d.transport==='engine'&&(d.status==='attention'||d.status==='pending'&&d.error)).map(d=>({name:d.name,sessionId:d.sessionId,status:d.status,error:d.error}))};});
+  ipcMain.handle('library:results-retry',e=>{paddockIdle(e);return library().retryResults();});
   ipcMain.handle('library:resolve',async(e,id)=>{paddockIdle(e);const c=library();if(!(await c.operations()).some(r=>r.id===id))throw Error('Not a shared database save.');return c.storage.sharedChange({action:'resolve',operationId:id});});
   ipcMain.handle('paddock:collection-migration',(e,options)=>{if(options?.action==='status')paddockOwner(e);else paddockIdle(e);return paddock.collectionMigration(options);});
   ipcMain.handle('paddock:historical-review',(e,options)=>{if(options?.action==='list')paddockOwner(e);else paddockIdle(e);return paddock.historicalReview(options);});

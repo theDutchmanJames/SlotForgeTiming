@@ -6,7 +6,7 @@ const copy=x=>structuredClone(x);
 const fields=['id','brand','manufacturer','model','raceClass','paddock'];
 function project(row){return Object.fromEntries(fields.filter(k=>Object.hasOwn(row,k)).map(k=>[k,copy(row[k])]));}
 function version(row){return hash(project(row));}
-function deliverySummary(d){return {format:d.payload?.format||'timing-v1',key:require('./delivery-key').keyOf(d.payload),sessionId:d.payload?.sessionId||d.sessionId||'',name:d.name||d.payload?.name||'Saved session',revision:d.payload?.revision,status:d.status,error:d.error||'',databaseId:d.payload?.databaseId||d.databaseId,receivedAt:d.receipt?.receivedAt,warnings:receiptWarnings(d),receiptCheckedAt:d.receiptCheckedAt,receiptCheckError:d.receiptCheckError||''};}
+function deliverySummary(d){return {format:d.payload?.format||'timing-v1',key:require('./delivery-key').keyOf(d.payload),sessionId:d.payload?.sessionId||d.sessionId||'',name:d.name||d.payload?.name||'Saved session',revision:d.payload?.revision,status:d.status,error:d.error||'',databaseId:d.payload?.databaseId||d.databaseId,receivedAt:d.receipt?.receivedAt,warnings:receiptWarnings(d),receiptCheckedAt:d.receiptCheckedAt,receiptCheckError:d.receiptCheckError||'',transport:d.transport||'network'};}
 class JsonPaddockStorage {
  collectionAdapter(){const M=require('./paddock-collection-store'),d=this.db.data;return {
   connection:()=>this.state().connection,source:()=>this.state().sourceId,catalog:()=>this.state().catalogue,
@@ -81,9 +81,11 @@ class JsonPaddockStorage {
  pictureToken(c){if(!/^data:image\/(png|jpeg|webp);base64,[a-zA-Z0-9+/=\r\n]+$/.test(c?.picture||''))return '';let p=this.pictures.get(c);if(!p||p.source!==c.picture){p={source:c.picture,key:String(++this.pictureSequence)};this.pictures.set(c,p);}return p.key;}
  cars({databaseId,ids,carId,details=false}={}){return this.db.data.slotcars.filter(c=>ids?ids.includes(c.id):c.paddock&&(!databaseId||c.paddock.databaseId===databaseId)&&(!carId||c.paddock.carId===carId)).map(c=>({value:details?project(c):{...Object.fromEntries(fields.filter(k=>k!=='paddock'&&Object.hasOwn(c,k)).map(k=>[k,c[k]])),...(c.paddock?{paddock:{databaseId:c.paddock.databaseId,carId:c.paddock.carId,name:c.paddock.name,archived:c.paddock.archived,mediaHash:c.paddock.mediaHash,configuration:{capturedAt:c.paddock.configuration?.capturedAt}}}:{})},revision:version(c),raceClassName:this.db.data.raceclasses.find(k=>k.id===c.raceClass)?.name||'',pictureKey:this.pictureToken(c)}));}
  picture(id,revision){const c=this.db.data.slotcars.find(c=>c.id===id);return c?.picture&&this.pictureToken(c)===revision?c.picture:'';}
- summary(){return {connection:this.connection().connection,linked:this.db.data.slotcars.filter(c=>c.paddock).map(c=>({id:c.id,name:[c.brand,c.manufacturer,c.model].filter(Boolean).join(' '),databaseId:c.paddock.databaseId,carId:c.paddock.carId,archived:!!c.paddock.archived,capturedAt:c.paddock.configuration?.capturedAt})),deliveries:[...this.db.data.sessions.map(s=>s.paddockDelivery).filter(d=>d&&d.status!=='withdrawn'),...this.state().withdrawals].map(deliverySummary)};}
+ summary(){return {connection:this.connection().connection,linked:this.db.data.slotcars.filter(c=>c.paddock).map(c=>({id:c.id,name:[c.brand,c.manufacturer,c.model].filter(Boolean).join(' '),databaseId:c.paddock.databaseId,carId:c.paddock.carId,archived:!!c.paddock.archived,capturedAt:c.paddock.configuration?.capturedAt})),deliveries:[...this.db.data.sessions.map(s=>s.paddockDelivery).filter(d=>d&&d.status!=='withdrawn'),...(this.state().withdrawals||[])].map(deliverySummary)};}
  check(id,expected){const row=this.db.data.slotcars.find(c=>c.id===id);if(!row||version(row)!==expected)throw Error('Linked car changed. Refresh and try again.');return row;}
  connected(id){if(this.state().connection?.databaseId!==id)throw Error('Paddock database identity changed.');}
+ // (audit 2.2.5, #14) the shared library's identity and restore generation, as the library reports it at startup
+ async setSharedLibraryGuard(guard){const st=this.state(),before=st.sharedLibraryGuard,id=sharedGuard(guard).databaseId,g=nextGuard(before,guard,this.db.data.sessions.map(s=>s.paddockJournal?.sharedLibrary).filter(c=>c?.databaseId===id).map(c=>c.recoveryId));if(JSON.stringify(before)===JSON.stringify(g))return {changed:false};st.sharedLibraryGuard=g;try{await this.commit();}catch(e){if(before===undefined)delete st.sharedLibraryGuard;else st.sharedLibraryGuard=before;throw e;}return {changed:true};}
  async setConnection(connection,revision){if(this.connection().revision!==revision)throw Error('Paddock connection changed.');const before=this.state().connection;this.state().connection=copy(connection);try{await this.commit();}catch(e){this.state().connection=before;throw e;}}
  async mutate(work){const changes=[],created=[],classes=new Set(this.db.data.raceclasses.map(c=>c.id));let createdClasses=[];const remember=row=>{if(!changes.some(x=>x.row===row))changes.push({row,before:{...row}});};
   try{let value;try{value=work(remember,created);}finally{createdClasses=this.db.data.raceclasses.filter(c=>!classes.has(c.id)).map(c=>c.id);for(const x of changes)x.after={...x.row};}await this.commit([...changes.map(x=>x.row),...created]);return value;}
@@ -118,10 +120,21 @@ class SqlitePaddockStorage {
  async cars(options={}){let after='',rows=[],revision;for(;;){const page=await this.client.paddockRead('cars',{...options,after,revision});revision=page.revision;rows.push(...page.rows);if(page.rows.length<200)return rows;after=page.rows.at(-1).value.id;}}
  picture(id,key){return this.client.paddockRead('picture',{id,key});}
  summary(){return this.client.paddockRead('summary');}
+ setSharedLibraryGuard(guard){const g=sharedGuard(guard);return this.repo.execute(randomUUID(),'setSharedLibraryGuard',{guard:{databaseId:g.databaseId,recoveryId:g.recoveryId}});}
  setConnection(connection,expectedRevision){return this.repo.paddockConnection(connection,{commandId:randomUUID(),expectedRevision});}
  async link(profile,localId,expectedRevision){const r=await this.repo.linkPaddock(profile,{commandId:randomUUID(),localId,expectedRevision});return (await this.repo.get('slotcars',r.recordId,true)).record.value;}
  catalogue(databaseId,cache,updates,expectedRevision){return this.repo.applyPaddockCatalogue(databaseId,cache,updates,{commandId:randomUUID(),expectedRevision});}
  archive(recordId,expectedRevision){return this.repo.execute(randomUUID(),'archivePaddockCar',{recordId,expectedRevision});}
  capture(updates){return this.repo.cacheConfigurations(updates,{commandId:randomUUID()});}
 }
-module.exports={JsonPaddockStorage,SqlitePaddockStorage,deliverySummary,fields};
+function sharedGuard(g){const ok=v=>typeof v==='string'&&/^[\w-]{1,100}$/.test(v);if(!ok(g?.databaseId)||!ok(g?.recoveryId))throw Error('Invalid shared library identity.');return {version:1,databaseId:g.databaseId,recoveryId:g.recoveryId};}
+// (audit 2.2.5, #14) The stored generation, with the generations known to be OLDER than it ("older"). Written once, when the library opens: at
+// that moment every race of this library raced under another generation was raced before it (a restore makes a new generation and Timing
+// starts again), and so were the generations stored before. Only a race of an older generation is moved to the current one; a race of a
+// generation that is not known to be older (a restore while Timing runs, a stored value that could not be updated) keeps its own.
+function nextGuard(previous,current,raced){
+ const g=sharedGuard(current),ok=v=>typeof v==='string'&&/^[\w-]{1,100}$/.test(v),same=previous?.version===1&&previous.databaseId===g.databaseId;
+ const older=[...new Set([...(same&&Array.isArray(previous.older)?previous.older:[]),...(same?[previous.recoveryId]:[]),...raced])].filter(v=>ok(v)&&v!==g.recoveryId).slice(-64);
+ return {...g,older};
+}
+module.exports={JsonPaddockStorage,SqlitePaddockStorage,deliverySummary,fields,sharedGuard,nextGuard};

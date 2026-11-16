@@ -317,7 +317,7 @@ class WorkingStore extends SqliteStore {
   paddockState() {
     const source = this.field('@meta', 'paddock', ['sourceId']);
     // Catalogue caches, connection settings and photos are not part of result writes.
-    return { paddock: source.present ? { sourceId: source.value, connection: {mode:require('./sqlite-catalogue').read(this,'@meta','paddock',['connection','mode']),historyGuard:require('./sqlite-catalogue').read(this,'@meta','paddock',['connection','historyGuard'])}, withdrawals: this.field('@meta', 'paddock', ['withdrawals']).value || [] } : undefined };
+    return { paddock: source.present ? { sourceId: source.value, connection: {mode:require('./sqlite-catalogue').read(this,'@meta','paddock',['connection','mode']),historyGuard:require('./sqlite-catalogue').read(this,'@meta','paddock',['connection','historyGuard'])}, withdrawals: this.field('@meta', 'paddock', ['withdrawals']).value || [], ...((g => g ? { sharedLibraryGuard: g } : {})(require('./sqlite-catalogue').read(this, '@meta', 'paddock', ['sharedLibraryGuard']))) } : undefined };
   }
   savePaddock(state, before) {
     if (JSON.stringify(state.paddock) === before) return;

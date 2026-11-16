@@ -101,6 +101,8 @@ class SharedLibraryClient {
   return this.send(request.operationId);
  });}
  retry(id){return this.exclusive(()=>this.send(id));}
+ // (audit 2.2.5, #14) Retry for race results; its error is the one App Settings shows
+ async retryResults(){if(!this.delivery)throw Error('Shared-library delivery has not started.');try{const r=await this.delivery.retry();this.deliveryError='';return r;}catch(e){this.deliveryError=String(e.message);throw e;}}
  stateSave(method,input){return this.exclusive(async()=>{
   if(this.paused)throw Error('The shared library is preparing to restart.');if(!['serviceWrite','customDefinitionWrite','timingSettingsWrite'].includes(method))throw Error('Unknown shared state operation.');
   if(method==='timingSettingsWrite'&&!this.merges)throw Error('Effective settings compatibility is not activated for this client.');

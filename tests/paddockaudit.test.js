@@ -47,6 +47,48 @@ const lastWithdrawal = d => d.paddock.withdrawals.at(-1);
   assert.throws(() => H.withdraw({ laps: [] }, s, 'x'), /Resolve this shared history save/);
   done('...a block saved by an older version (without its prior delivery) is still refused, as before');
 }
+{ // #14 option A: after a restore of the shared library, new changes of older races are written for its current generation
+  const restored = (d, older = ['epoch']) => ({ ...d, paddock: { withdrawals: [], sharedLibraryGuard: { version: 1, databaseId: 'library', recoveryId: 'epoch2', older } } });
+  { const e = fixture(); e.session.paddockJournal = lib(); const old = adopted(); e.session.paddockDelivery = old;
+    H.revise(restored(db(e)), e.session); const d = e.session.paddockDelivery;
+    assert.equal(d.status, 'pending', d.error); assert.equal(d.guard.operations.length, 1); assert.equal(d.guard.operations[0].recoveryId, 'epoch2'); assert.deepEqual(d.guard.operations[0].expected, old.baseline.expected);
+    assert.equal(e.session.paddockJournal.sharedLibrary.recoveryId, 'epoch');
+    done('#14: a correction of a race from before a restore is written for the restored library (the race keeps its own record of where it was raced)');
+    H.revise(restored(db(e)), e.session); const d2 = e.session.paddockDelivery;
+    assert.equal(d2.guard.operations.length, 2); assert.ok(d2.guard.operations.every(o => o.recoveryId === 'epoch2'));
+    done('...and a second correction travels with the first one, both for the restored library'); }
+  { const e = fixture(); e.session.paddockJournal = lib(); H.prepare(e.session, e.laps, adopted()); const waiting = e.session.paddockDelivery; assert.equal(waiting.guard.operations[0].recoveryId, 'epoch');
+    e.laps[0].noTrackRecord = true; H.revise(restored(db(e)), e.session); const b = e.session.paddockDelivery;
+    assert.ok(b.guardBlocked); assert.equal(b.error, H.HELD); assert.deepEqual(b.guard.operations, waiting.guard.operations);
+    done('#14: changes from before the restore that were never confirmed stay held, with their own message');
+    const r = restored(db(e)); H.withdraw(r, e.session, 'Session deleted in Timing.'); assert.equal(e.session.paddockDelivery.status, 'withdrawn');
+    const wo = r.paddock.withdrawals.at(-1).guard.operations; assert.equal(wo.length, 2); assert.ok(wo.every(o => o.recoveryId === 'epoch'));
+    done('...such a race can still be deleted: its withdrawal stays with the held changes (held too), as before'); }
+  { const e = fixture(); e.session.paddockJournal = lib(); e.session.paddockDelivery = adopted();
+    const other = { laps: e.laps, paddock: { withdrawals: [], sharedLibraryGuard: { version: 1, databaseId: 'another-library', recoveryId: 'x' } } };
+    H.revise(other, e.session); assert.equal(e.session.paddockDelivery.guard.operations[0].recoveryId, 'epoch');
+    const e2 = fixture(); e2.session.paddockJournal = lib(); e2.session.paddockDelivery = adopted(); H.revise({ laps: e2.laps, paddock: { withdrawals: [] } }, e2.session); assert.equal(e2.session.paddockDelivery.guard.operations[0].recoveryId, 'epoch');
+    done('#14: the stored generation of another library, or none, changes nothing');
+    const e3 = fixture(); e3.session.paddockJournal = lib(); e3.session.paddockJournal.sharedLibrary.recoveryId = 'epoch3'; e3.session.paddockDelivery = adopted();
+    H.revise(restored(db(e3)), e3.session); assert.equal(e3.session.paddockDelivery.guard.operations[0].recoveryId, 'epoch3');
+    done('#14: a race of a generation that is not known to be older (a restore while Timing runs, a stored value that could not be updated) keeps its own generation'); }
+  { // a second restore: the race was corrected for epoch2 (still waiting), then the library was restored again to epoch4
+    const e = fixture(); e.session.paddockJournal = lib(); e.session.paddockDelivery = adopted(); H.revise(restored(db(e)), e.session);
+    assert.equal(e.session.paddockDelivery.guard.operations[0].recoveryId, 'epoch2');
+    const again = { laps: e.laps, paddock: { withdrawals: [], sharedLibraryGuard: { version: 1, databaseId: 'library', recoveryId: 'epoch4', older: ['epoch', 'epoch2'] } } };
+    e.laps[0].noTrackRecord = true; H.revise(again, e.session); assert.equal(e.session.paddockDelivery.error, H.HELD);
+    H.withdraw(again, e.session, 'Session deleted in Timing.'); assert.equal(e.session.paddockDelivery.status, 'withdrawn');
+    const wo = again.paddock.withdrawals.at(-1).guard.operations; assert.equal(wo.length, 2); assert.ok(wo.every(o => o.recoveryId === 'epoch2'));
+    done('#14: after a second restore a race with a waiting correction is held, and can still be deleted (its withdrawal goes with the held correction, in its generation)'); }
+  { const P = require('../paddock-storage');
+    assert.deepEqual(P.nextGuard(undefined, { databaseId: 'library', recoveryId: 'e1' }, ['e0', 'e1', 'e0', 'bad id!']), { version: 1, databaseId: 'library', recoveryId: 'e1', older: ['e0'] });
+    assert.deepEqual(P.nextGuard({ version: 1, databaseId: 'library', recoveryId: 'e1', older: ['e0'] }, { databaseId: 'library', recoveryId: 'e2' }, []), { version: 1, databaseId: 'library', recoveryId: 'e2', older: ['e0', 'e1'] });
+    assert.deepEqual(P.nextGuard({ version: 1, databaseId: 'other', recoveryId: 'x', older: ['y'] }, { databaseId: 'library', recoveryId: 'e2' }, []), { version: 1, databaseId: 'library', recoveryId: 'e2', older: [] });
+    done('#14: the older generations are the earlier stored ones and those of the races found when the library opens (another library starts afresh)'); }
+  { const e = fixture(); e.session.paddockJournal = lib(); e.session.sessionType = 'tokens'; H.prepare(e.session, e.laps, undefined, restored(db(e)));
+    const d = e.session.paddockDelivery; assert.equal(d.status, 'pending', d.error); assert.equal(d.guard.operations[0].recoveryId, 'epoch2');
+    done('#14: the original-history path (Time Token sessions) uses the current generation too'); }
+}
 (async () => {
   { // #27 the local library is not looked for again at every poll
     const fs = require('fs'), os = require('os'), path = require('path'), Database = require('../db'), { Paddock } = require('../paddock');
@@ -102,6 +144,39 @@ const lastWithdrawal = d => d.paddock.withdrawals.at(-1);
     await assert.rejects(new D({ status: async () => ({ databaseId: 'library' }) }, store).run(), /Blocked for the test/);
     assert.equal(commands.find(c => c.type === 'failDelivery').retryAfterMs, 480000);
     done('a shared-library delivery that keeps failing waits 1, 2, 4, 8 and then 15 minutes, not 1 minute every time');
+  }
+  { // #14 storage: the generation is kept in JSON and SQLite, and reaches the preparation
+    const fs = require('fs'), os = require('os'), path = require('path'), Database = require('../db'), { JsonPaddockStorage } = require('../paddock-storage');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pa-gen-')), file = path.join(dir, 'slotforge-timing.json'), db = new Database(file), st = new JsonPaddockStorage(db);
+    assert.deepEqual(await st.setSharedLibraryGuard({ databaseId: 'library', recoveryId: 'epoch2' }), { changed: true });
+    assert.deepEqual(await st.setSharedLibraryGuard({ databaseId: 'library', recoveryId: 'epoch2' }), { changed: false });
+    await assert.rejects(st.setSharedLibraryGuard({ databaseId: 'library', recoveryId: 'bad id!' }), /Invalid shared library identity/);
+    assert.deepEqual(new Database(file).data.paddock.sharedLibraryGuard, { version: 1, databaseId: 'library', recoveryId: 'epoch2', older: [] });
+    done('#14: JSON storage keeps the generation (checked, and only written when it changes)');
+    const { migrateCopy } = require('../sqlite-migration'), { forkCopy, WorkingStore } = require('../sqlite-working');
+    migrateCopy({ source: file, destination: path.join(dir, 'copy') }); forkCopy(path.join(dir, 'copy'), path.join(dir, 'work'));
+    const w = new WorkingStore(path.join(dir, 'work'));
+    assert.deepEqual(w.paddockState().paddock.sharedLibraryGuard, { version: 1, databaseId: 'library', recoveryId: 'epoch2', older: [] });
+    assert.deepEqual(w.command({ id: 'g1', type: 'setSharedLibraryGuard', guard: { databaseId: 'library', recoveryId: 'epoch3' } }), { changed: true });
+    assert.deepEqual(w.paddockState().paddock.sharedLibraryGuard, { version: 1, databaseId: 'library', recoveryId: 'epoch3', older: ['epoch2'] });
+    assert.throws(() => w.command({ id: 'g2', type: 'setSharedLibraryGuard', guard: { databaseId: '', recoveryId: 'x' } }), /Invalid shared library identity/);
+    w.close(); await db.writesIdle(); fs.rmSync(dir, { recursive: true, force: true });
+    done('#14: the conversion to SQLite keeps it, SQLite storage sets it, and its preparation state includes it');
+  }
+  { // #14 Retry for shared race results, and delivery to the restored library
+    const D = require('../shared-library-delivery'), commands = [];
+    const rows = [{ key: 'a', sequence: 1, status: 'attention', payloadHash: 'ha' }, { key: 'b', sequence: 2, status: 'attention', payloadHash: 'hb' }, { key: 'c', sequence: 3, status: 'attention', payloadHash: 'hc' }, { key: 'd', sequence: 4, status: 'sent', payloadHash: 'hd' }];
+    rows.push({ key: 'e', sequence: 5, status: 'attention', payloadHash: 'he' });
+    const snaps = { a: { transport: 'engine', guard: { operations: [{ databaseId: 'library', recoveryId: 'now' }] } }, b: { transport: 'engine', guardBlocked: H.HELD }, c: { transport: 'network' }, e: { transport: 'engine', guard: { operations: [{ databaseId: 'library', recoveryId: 'before-restore' }] } } };
+    const store = { outbox: async (_db, { status, after }) => status === 'pending' ? [] : rows.filter(r => r.sequence > after), deliverySnapshot: async k => snaps[k], command: async c => { commands.push(c); return {}; } };
+    const r = await new D({ status: async () => ({ databaseId: 'library', recoveryId: 'now' }) }, store).retry();
+    assert.deepEqual(commands.map(c => [c.type, c.deliveryKey, c.expectedHash]), [['retryDelivery', 'a', 'ha']]); assert.equal(r.offered, 1);
+    done('#14: Retry offers the shared-library race results that need attention again; held (also those written before a restore), blocked and network results are left alone');
+    const cmds = [], two = [{ key: 'x', sequence: 1, status: 'pending', payloadHash: 'h', attempts: 0 }, { key: 'y', sequence: 2, status: 'pending', payloadHash: 'h', attempts: 0 }];
+    const st2 = { outbox: async (_db, { after }) => two.filter(r => r.sequence > after), deliverySnapshot: async k => ({ transport: 'engine', payloadHash: 'h', ...(k === 'x' ? { guardBlocked: 'first fails' } : {}), payload: null, guard: { operations: [] } }), command: async c => { cmds.push(c); return c.type === 'claimDelivery' ? { attemptToken: 't', payloadHash: 'h' } : {}; } };
+    await assert.rejects(new D({ status: async () => ({ databaseId: 'library', recoveryId: 'now' }) }, st2).run(), /first fails/);
+    assert.deepEqual(cmds.filter(c => c.type === 'claimDelivery').map(c => c.deliveryKey), ['x', 'y']);
+    done('...and one result that fails no longer stops the others in the same run (the first failure is still reported)');
   }
   console.log(`PADDOCK AUDIT TESTS PASSED (${groups} checks)`);
 })().catch(e => { console.error(e); process.exit(1); });

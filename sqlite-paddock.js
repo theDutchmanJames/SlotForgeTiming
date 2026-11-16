@@ -6,6 +6,15 @@ const { setPath, patchRecord, expectMeta } = require('./sqlite-records');
 function ensure(s) {
   if (!s.get('@meta','paddock')) s.replace('@meta','paddock',{sourceId:crypto.randomUUID(),connection:null,withdrawals:[]});
 }
+// (audit 2.2.5, #14) the shared library's identity and restore generation, as the library reports it at startup
+function setSharedLibraryGuard(s,{guard}) {
+  const {sharedGuard,nextGuard}=require('./paddock-storage'),id=sharedGuard(guard).databaseId;ensure(s);
+  const before=require('./sqlite-catalogue').read(s,'@meta','paddock',['sharedLibraryGuard']);
+  const raced=s.statement(`SELECT DISTINCT a.json FROM fields a JOIN fields b ON b.entity=a.entity AND b.id=a.id WHERE a.entity='sessions' AND a.path='["paddockJournal","sharedLibrary","recoveryId"]' AND b.path='["paddockJournal","sharedLibrary","databaseId"]' AND b.json=?`).all(JSON.stringify(id)).map(r=>{try{return JSON.parse(r.json);}catch{return null;}});
+  const g=nextGuard(before,guard,raced);
+  if (JSON.stringify(before)===JSON.stringify(g)) return {changed:false};
+  setPath(s,'@meta','paddock',['sharedLibraryGuard'],g);return {changed:true};
+}
 function connected(s,databaseId) {
   if (!databaseId || s.field('@meta','paddock',['connection','databaseId']).value !== databaseId) throw Error('Paddock database identity changed.');
 }
@@ -98,4 +107,4 @@ function archivePaddockCar(s,{recordId,expectedRevision}){s.expect('slotcars',re
 module.exports={commands:{collectionMigration:(s,o)=>{const M=require('./paddock-collection-store');return M.change(M.sqlAdapter(s),o.input)??null;},historicalReview:(s,o)=>{const H=require('./paddock-historical-store');return H.change(H.sqlAdapter(s),o.input);},syncPaddockHistory:(s,input)=>{const S=require('./paddock-history-sync-store');return S.apply(S.sqlAdapter(s),input);},cachePaddockHistory:(s,{row})=>{
  const H=require('./paddock-history');if(!row||row.id!==H.key(row.databaseId,row.route)||Buffer.byteLength(JSON.stringify(row))>9*1024*1024)throw Error('Invalid history cache entry.');
  connected(s,row.databaseId);if(s.get(H.CACHE,row.id))s.replace(H.CACHE,row.id,row);else s.insert(H.CACHE,row);return {cached:true};
-},sharedCarOperation:(s,input)=>require('./paddock-shared-store').sqlCommand(s,input),setPaddockConnection,linkPaddockCar,applyPaddockCatalogue,cachePaddockConfigurations,archivePaddockCar,localLibraryTransfer:(s,input)=>require('./paddock-local-transfers').sqlCommand(s,input)}};
+},sharedCarOperation:(s,input)=>require('./paddock-shared-store').sqlCommand(s,input),setSharedLibraryGuard,setPaddockConnection,linkPaddockCar,applyPaddockCatalogue,cachePaddockConfigurations,archivePaddockCar,localLibraryTransfer:(s,input)=>require('./paddock-local-transfers').sqlCommand(s,input)}};

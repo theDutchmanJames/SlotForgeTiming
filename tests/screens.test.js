@@ -4665,6 +4665,26 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
       else say('a driver moves into a free place of another heat (no heat was found for this)', true); }
     Object.assign(store, { racesetups: keep.racesetups, tracks: keep.tracks, drivers: keep.drivers, slotcars: keep.slotcars, sessions: keep.sessions }); run(`state.settings.lastSetupId = ${JSON.stringify(keep.last || '')}; state.settings.assignments = ${JSON.stringify(keep.asg || {})}; state.settings.heatSeeds = ${JSON.stringify(keep.seeds || {})}; state.settings.heatEdits = ${JSON.stringify(keep.edits || {})}`); run("state.race = null; state.tab = 'home'; state.heatSel = null; state.heatMsg = ''"); api.setSettings = keepSet;
   }
+  // ---------- 2.2.5 (audit #14): App Settings > Connections > Shared Library ----------
+  { const keepStatus = api.libraryStatus; let results = { deliveryError: '', results: [] }, retried = 0;
+    api.libraryResults = async () => JSON.parse(JSON.stringify(results)); api.libraryResultsRetry = async () => { retried++; results = { deliveryError: '', results: [] }; return { offered: 1, sent: 1 }; };
+    run("var __keepTabs = renderTabs; var __tabsSeen = null; renderTabs = (el, tabs, cur, cb) => { if (tabs.some(t => t[0] === 'dealership')) { __tabsSeen = tabs.map(t => t[1]); return; } return __keepTabs(el, tabs, cur, cb); }");
+    ctx.__conn = { nodeType: 1, innerHTML: '', querySelector: () => document.createElement('div') };
+    const tabsFor = async available => { api.libraryStatus = async () => ({ available }); run("__tabsSeen = null; connectionsTab = 'race'"); await run('renderConnectionsSettings(__conn)'); return run('__tabsSeen'); };
+    say('without the shared slotcar library, Connections has no Shared Library tab', JSON.stringify(await tabsFor(false)) === JSON.stringify(['Race Sharing', 'Dealership Mode']));
+    say('...with it, Connections has a Shared Library tab', JSON.stringify(await tabsFor(true)) === JSON.stringify(['Race Sharing', 'Dealership Mode', 'Shared Library']));
+    run('renderTabs = __keepTabs');
+    const button = { disabled: false, onclick: null }; ctx.__box = { innerHTML: '', isConnected: true, querySelector: sel => sel === '[data-library-retry]' ? button : null };
+    results = { deliveryError: 'The library was restored. Retain this result for deliberate recovery.', results: [{ name: 'Club <b>Race</b>', sessionId: 's1', status: 'attention', error: 'The library was restored and holds another version of this race.' }, { name: 'Sprint', sessionId: 's2', status: 'pending', error: 'Shared library busy.' }] };
+    await run('renderSharedLibraryResults(__box)'); const h = () => ctx.__box.innerHTML;
+    say('the Shared Library tab lists the race results needing attention, with their reason', (h().match(/data-library-result/g) || []).length === 2 && h().includes('holds another version of this race') && h().includes('Waiting to send again') && h().includes('Needs attention') && !h().includes('data-library-none'));
+    say('...names are escaped, and the last delivery error is shown', h().includes('Club &lt;b&gt;Race&lt;/b&gt;') && h().includes('data-library-error') && h().includes('Retain this result'));
+    await button.onclick(); await new Promise(r => setTimeout(r, 10));
+    say('...Retry offers them again and the page then says what was sent; with nothing left, Retry is off', retried === 1 && h().includes('Sent 1 of 1 result offered again.') && h().includes('data-library-none') && /data-library-retry disabled/.test(h()));
+    api.libraryResultsRetry = async () => { throw Error('Finish the race first.'); }; results = { deliveryError: '', results: [{ name: 'X', status: 'attention', error: 'held' }] };
+    await run('renderSharedLibraryResults(__box)'); await button.onclick(); await new Promise(r => setTimeout(r, 10));
+    say('...a Retry that fails says why', h().includes('Retry failed: Finish the race first.'));
+    api.libraryStatus = keepStatus; delete api.libraryResults; delete api.libraryResultsRetry; delete ctx.__box; delete ctx.__conn; run("connectionsTab='race'"); }
 reachedEnd=true; console.log(fails?fails+' SCREEN TESTS FAILED':'ALL SCREEN TESTS PASSED'); process.exit(fails?1:0);
 })();
 

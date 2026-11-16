@@ -69,6 +69,8 @@ contextBridge.exposeInMainWorld('api', {
   libraryOriginalHistory:options=>call('library:original-history',options),
   libraryRestore:()=>call('library:restore'),
   libraryRetry:id=>call('library:retry',id),
+  libraryResults:()=>call('library:results'),
+  libraryResultsRetry:()=>call('library:results-retry'),
   libraryResolve:id=>call('library:resolve',id),
   paddockCollectionMigration: options => call('paddock:collection-migration',options),
   paddockHistoricalReview: options => call('paddock:historical-review',options),

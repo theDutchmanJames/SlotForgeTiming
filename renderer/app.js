@@ -329,9 +329,26 @@ async function renderConnectionsSettings(box) {
   if(box.nodeType!==1)return renderNetworkSettings(box);
   box.innerHTML='<div class="sub connections-tabs" role="tablist" aria-label="Connections"></div><div data-connections-body></div>';
   const body=box.querySelector('[data-connections-body]');
-  renderTabs(box.querySelector('.connections-tabs'),[['race','Race Sharing'],['dealership','Dealership Mode']],connectionsTab,id=>{connectionsTab=id;renderConnectionsSettings(box);});
+  const library=api.libraryResults&&api.libraryStatus?!!(await api.libraryStatus().catch(()=>null))?.available:false; // (the Shared Library tab: only with the shared slotcar library)
+  if(!library&&connectionsTab==='library')connectionsTab='race';
+  renderTabs(box.querySelector('.connections-tabs'),[['race','Race Sharing'],['dealership','Dealership Mode'],...(library?[['library','Shared Library']]:[])],connectionsTab,id=>{connectionsTab=id;renderConnectionsSettings(box);});
   if(connectionsTab==='dealership')return PaddockUI.mount(api,body);
+  if(connectionsTab==='library')return renderSharedLibraryResults(body);
   return renderNetworkSettings(body);
+}
+
+// (audit 2.2.5, #14) The race results the shared library could not take: a result refused after a restore of the library (it holds another version
+// of the race), changes from before a restore that are held, or another error. Retry offers the ones that can be sent again.
+async function renderSharedLibraryResults(box, note = '') {
+  let view;try{view=await api.libraryResults();}catch(error){box.innerHTML=`<p class="err">Could not read the shared race results: ${esc(error.message)}</p>`;return;}
+  if(!box.isConnected&&box.isConnected!==undefined)return;
+  const rows=view.results.map(r=>`<div class="paddock-delivery" data-library-result><b>${esc(r.name)}</b><span>${r.status==='attention'?'Needs attention':'Waiting to send again'}</span>${r.error?`<p>${esc(r.error)}</p>`:''}</div>`).join('');
+  box.innerHTML=`<section data-settings-group="library-results"><h3>Race results in the shared library</h3><p class="muted">Finished races are sent to the shared slotcar library by themselves. A result that could not be sent is listed here with the reason.</p>
+    ${view.deliveryError?`<p class="paddock-warning" data-library-error>Last delivery attempt: ${esc(view.deliveryError)}</p>`:''}
+    ${rows||'<p class="muted" data-library-none>All race results have been sent.</p>'}
+    <div class="row"><button class="btn" data-library-retry ${rows?'':'disabled'}>Retry</button></div><p data-library-msg role="status">${esc(note)}</p></section>`;
+  const b=box.querySelector('[data-library-retry]');
+  b.onclick=async()=>{b.disabled=true;let msg;try{const r=await api.libraryResultsRetry();msg=r?.deferred?'Results are sent after the race.':`Sent ${r?.sent||0} of ${r?.offered||0} result${r?.offered===1?'':'s'} offered again.`;}catch(error){msg='Retry failed: '+error.message;}await renderSharedLibraryResults(box,msg);};
 }
 
 async function renderNetworkSettings(box) {

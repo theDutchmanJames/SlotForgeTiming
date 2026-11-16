@@ -6,8 +6,8 @@ const isOriginal=p=>p?.format==='original-history-v1';
 const fail=message=>{throw Object.assign(Error(message),{code:'HISTORY_REVIEW_REQUIRED'});};
 function request(op,rawOriginal){const {requestHash,contentHash,...input}=op;return {...input,...(rawOriginal?{rawOriginal}:{})};}
 function payload(op){return {format:'original-history-v1',databaseId:op.databaseId,source:{id:op.sourceId},originalId:op.originalId,sessionId:op.sessionId,revision:op.expectedRevision+1,state:op.action==='withdraw'?'withdrawn':'active',contentHash:op.contentHash};}
-function append(s,rows,old,action,reason){
- const c=require('./shared-library-history').context(s),prior=old?.payload||old?.previousPayload||(old?.baseline?.originalOnly?{format:'original-history-v1',databaseId:c.databaseId,source:{id:c.sourceId},sessionId:s.id,originalId:s.id,...old.baseline.expected}:null);
+function append(s,rows,old,action,reason,current){
+ const c=current||require('./shared-library-history').context(s),prior=old?.payload||old?.previousPayload||(old?.baseline?.originalOnly?{format:'original-history-v1',databaseId:c.databaseId,source:{id:c.sourceId},sessionId:s.id,originalId:s.id,...old.baseline.expected}:null);
  if(old&&(old.transport!=='engine'||!isOriginal(prior)||old.guardBlocked))fail('Recover the earlier original history operation first.');
  if(prior&&(prior.databaseId!==c.databaseId||prior.source.id!==c.sourceId||prior.sessionId!==s.id||prior.originalId!==s.id))fail('Original history identity changed.');
  if(old?.status==='sent'){require('./paddock').checkedReceipt(old.receipt,prior);receipt(old.guardReceipt,old.guard.operations.at(-1),prior);}
