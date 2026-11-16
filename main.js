@@ -33,6 +33,42 @@ function guardWindow(w) {
   // (the page it was opened on is compared as Electron wrote its address, so the drive letter and characters such as % in the install folder need no decoding)
   w.webContents.on('will-navigate', (event, url) => { if (page(url) !== page(w.webContents.getURL())) event.preventDefault(); });
 }
+// The PDF window may read only the report file it was given (and inline data): no other file, no network
+const pdfFiles = new Set();
+function pdfRequest(d, done) {
+  let ok = /^(data|blob):/i.test(d.url);
+  if (!ok && /^file:/i.test(d.url)) { try { ok = pdfFiles.has(path.resolve(require('url').fileURLToPath(d.url.split('#')[0].split('?')[0])).toLowerCase()); } catch { ok = false; } }
+  done({ cancel: !ok });
+}
+// Before the main window closes: the page says which editors hold changes that are not saved. A page that does not answer within 2 s (hung, still loading) does not keep the app open.
+let unsavedSeq = 0;
+function unsavedDrafts(win) {
+  return new Promise(resolve => {
+    if (win.isDestroyed() || win.webContents.isCrashed() || win.webContents.isLoading()) return resolve([]);
+    const token = ++unsavedSeq; let timer = null;
+    const done = list => { clearTimeout(timer); ipcMain.removeListener('app:unsaved-reply', reply); resolve(Array.isArray(list) ? list.slice(0, 20).map(x => String(x).slice(0, 80)) : []); };
+    const reply = (e, t, list) => { if (!win.isDestroyed() && e.sender === win.webContents && t === token) done(list); };
+    ipcMain.on('app:unsaved-reply', reply); timer = setTimeout(() => done([]), 2000);
+    try { win.webContents.send('app:unsaved-query', token); } catch { done([]); }
+  });
+}
+function closeGuard(win) {
+  let asking = false, confirmed = false;
+  win.on('close', event => {
+    if (shutdown.ready) return;
+    event.preventDefault();
+    // (a quit that is already on its way, from a relaunch, a restore or a second close, is not asked about again)
+    if (confirmed || quitWaiting || startupClosing) { app.quit(); return; }
+    if (asking) return; asking = true;
+    unsavedDrafts(win).then(async list => {
+      if (list.length && !win.isDestroyed()) {
+        const r = await dialog.showMessageBox(win, { type: 'warning', buttons: ['Quit without saving', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true, title: 'Unsaved changes', message: 'Some changes are not saved.', detail: 'Not saved: ' + list.join(', ') + '.\nQuit anyway and lose these changes?' });
+        if (r.response !== 0) return;
+      }
+      confirmed = true; app.quit();
+    }).catch(() => { confirmed = true; app.quit(); }).finally(() => { asking = false; });
+  });
+}
 async function createWindow() {
   const win = new BrowserWindow({
     icon: path.join(__dirname, 'build', 'icon.png'),
@@ -48,7 +84,7 @@ async function createWindow() {
   });
   mainWin = win;
   guardWindow(win);
-  win.on('close',event=>{if(!shutdown.ready){event.preventDefault();app.quit();}});
+  closeGuard(win); // (closing asks about unsaved editor changes, then quits through the shutdown below)
   win.webContents.on('render-process-gone', () => { parallel.shutdown(); pluginHost?.timing?.reset().catch(()=>{}); });
   win.webContents.on('did-start-navigation', (_event, _url, inPlace, isMainFrame) => { if (isMainFrame && !inPlace) { parallel.shutdown(); pluginHost?.timing?.reset().catch(()=>{}); } });
   // USB timing hardware: Electron lets the page use COM ports and HID devices once the app allows it and the user has chosen one
@@ -293,17 +329,20 @@ const startupTask=app.whenReady().then(async () => {
   ipcMain.handle('pdf:export', async (event, html, name) => {
     const tmp = path.join(app.getPath('temp'), `slotforge-timing-${Date.now()}.html`);
     fs.writeFileSync(tmp, html);
-    const win = new BrowserWindow({ show: false, webPreferences: { sandbox: true } });
+    // The report is static HTML: no script, no node, its own memory-only session that may load nothing but this file and inline data, and no navigation or new windows
+    const printWin = new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: false, contextIsolation: true, nodeIntegration: false, webviewTag: false, partition: 'slotforge-pdf-export' } });
+    guardWindow(printWin); pdfFiles.add(path.resolve(tmp).toLowerCase());
+    printWin.webContents.session.webRequest.onBeforeRequest(pdfRequest);
     try {
-      await win.loadFile(tmp);
-      const pdf = await win.webContents.printToPDF({ pageSize: 'A4', printBackground: true, preferCSSPageSize: true });
+      await printWin.loadFile(tmp);
+      const pdf = await printWin.webContents.printToPDF({ pageSize: 'A4', printBackground: true, preferCSSPageSize: true });
       const parent = BrowserWindow.fromWebContents(event.sender);
       const { canceled, filePath } = await dialog.showSaveDialog(parent, { defaultPath: name, filters: [{ name: 'PDF', extensions: ['pdf'] }] });
       if (canceled || !filePath) return { saved: false };
       Database.writeAtomic(filePath, pdf);
       return { saved: true, path: filePath };
     } finally {
-      win.destroy();
+      printWin.destroy(); pdfFiles.delete(path.resolve(tmp).toLowerCase());
       try { fs.unlinkSync(tmp); } catch { /* already gone */ }
     }
   });

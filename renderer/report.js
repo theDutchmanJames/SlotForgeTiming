@@ -7,7 +7,7 @@
   const ST = typeof module !== 'undefined' ? require('./stats.js') : root.Stats;
   const IC = typeof module !== 'undefined' ? require('./icons.js') : root.Icons;
   const VR = typeof module !== 'undefined' ? require('./virtualrival.js') : root.VirtualRival;
-  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const LABEL = { practice: 'Free practice', qualifying: 'Qualifying', race: 'Race', timed: 'Timed race', heats: 'Heat-based race', endurance: 'Endurance Race', tokens: 'Time Token Session' };
   const dateText = iso => (iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'long', timeStyle: 'short' }) : '');
 

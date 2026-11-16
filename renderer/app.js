@@ -491,6 +491,7 @@ function bootFailed(e) {
     document.body.classList.add('lv-window'); document.querySelector('header').hidden = true;
     document.title = (state.settings.appName || DEFAULT_NAME) + ' – Live Race'; if (api.setZoom) api.setZoom(1); return LiveView.mount(view, { second: true }); // (the second screen keeps its own size)
   }
+  if (api.onUnsavedQuery) api.onUnsavedQuery(() => typeof unsavedDrafts === 'function' ? unsavedDrafts() : []); // (closing the window asks first when an editor has unsaved changes)
   if (typeof ppInit === 'function') ppInit();
   if (typeof ptInit === 'function') ptInit();
   if(typeof PluginDisplayClient!=='undefined')PluginDisplayClient.init();

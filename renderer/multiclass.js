@@ -106,7 +106,7 @@
     const rows=H.overall(),classes=H.classOverall(),kind=H.kind(rows),lead=rows[0]?.score;
     return rows.map(r=>{
       const p=people[r.participant]||{},mine=laps.filter(l=>p.asTeam?l.teamId===p.teamId:l.driverId===p.driverId&&(!p.carId||l.carId===p.carId));
-      const valid=mine.filter(l=>!l.invalid&&!l.tooSlow&&!l.late&&l.time>0),times=valid.map(l=>l.time),extra=extras.get(r.participant);
+      const valid=mine.filter(l=>!l.invalid&&!l.tooSlow&&!l.late&&l.time>0),times=valid.filter(l=>!l.pit).map(l=>l.time),extra=extras.get(r.participant);
       const cls=classes.find(c=>c.participant===r.participant),gap=r.pos===1?{kind:'leader',value:0}:Number.isFinite(r.score)&&Number.isFinite(lead)?{kind,value:Math.max(0,kind==='time'?r.score-lead:lead-r.score)}:null;
       return {...p,dq:!!r.dq,retired:!!r.retired,participant:r.participant,pos:r.pos,aggregate:true,lane:r.participant,driverName:p.asTeam?p.teamName:p.driverName,
         raceClass:r.raceClass,className:cls?.className,classColor:cls?.classColor,classIcon:cls?.classIcon,classPos:cls?.classPos,classPoints:cls?.classPoints,classBest:cls?.classBest,classGap:cls?.classGap,gap:r.pos===1?'':gapText(gap),

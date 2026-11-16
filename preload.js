@@ -215,6 +215,8 @@ contextBridge.exposeInMainWorld('api', {
   // choosing a USB device (the main process lists them, this window shows the list)
   onHwChoose: f => { ipcRenderer.removeAllListeners('hw:choose'); ipcRenderer.on('hw:choose', (_e, kind, list) => f(kind, list)); },
   hwChosen: id => ipcRenderer.send('hw:chosen', id),
+  // the window is about to close: f() names the editors with changes that are not saved (the main process asks before it quits)
+  onUnsavedQuery: f => { ipcRenderer.removeAllListeners('app:unsaved-query'); ipcRenderer.on('app:unsaved-query', (_e, token) => { let list = []; try { list = (f() || []).map(String); } catch { list = []; } ipcRenderer.send('app:unsaved-reply', token, list); }); },
   onLiveStatic: f => { listeners.static.add(f); return () => listeners.static.delete(f); },
   onLive: f => { listeners.push.add(f); return () => listeners.push.delete(f); },
   onLiveResync: f => { listeners.resync.add(f); return () => listeners.resync.delete(f); } // the app asks the race window to send the whole state again

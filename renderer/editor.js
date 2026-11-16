@@ -35,6 +35,18 @@ function fitPanels() {
 const clone = x => JSON.parse(JSON.stringify(x));
 const knownWidgets = list => (Array.isArray(list) ? list : []).filter(w => w && Widgets.def(w.type)); // a widget type this version does not know (from a file of another version) is left out instead of breaking the editor
 const editorDirty = () => !!(state.editing && state.editing.dirty);
+// Every editor that holds a draft in memory, with changes that are not saved (asked before the window closes, see main.js closeGuard)
+function unsavedDrafts() {
+  const out = [];
+  const add = (ed, name) => { if (ed && ed.dirty) out.push(name); };
+  add(typeof state !== 'undefined' && state.editing, 'Layout editor');
+  add(typeof audEd !== 'undefined' ? audEd : null, 'Audio set'); add(typeof imgEd !== 'undefined' ? imgEd : null, 'Picture set');
+  add(typeof wbEd !== 'undefined' ? wbEd : null, 'Widget'); add(typeof chartEd !== 'undefined' ? chartEd : null, 'Chart');
+  add(typeof rotEd !== 'undefined' ? rotEd : null, 'Rotation setup'); add(typeof chEd !== 'undefined' ? chEd : null, 'Championship');
+  add(typeof resourceEditor !== 'undefined' ? resourceEditor : null, 'Resource System'); add(typeof multiEditor !== 'undefined' ? multiEditor : null, 'Multi-Class System');
+  add(typeof rivalEditor !== 'undefined' ? rivalEditor : null, 'Virtual Rival System');
+  return out;
+}
 
 function editorLeave() {
   state.editing?.cancelGesture?.();
@@ -155,7 +167,8 @@ async function renderCustom() {
   if (state.editing) { const ed=state.editing; await EditorData.load(api,ed,state.race?.track?.id); if(state.editing!==ed||state.tab!=='custom')return; return renderEditor(); }
   view.innerHTML = '<h2>Customization</h2><div class="sub" id="customtabs" role="tablist"></div><div id="setupbox"></div>';
   renderTabs(document.getElementById('customtabs'), [['layouts', 'Layout Editor'], ['rows', 'Leaderboard Editor'], ['charts', 'Chart Editor'], ['results', 'Race Results'], ['audio', 'Audio Settings'], ['images', 'Image Settings'], ['widgets', 'Widget Builder'], ['pluginpages','Plugin Pages & Tools']], state.customSub, id => {
-    // the picture set and widget editors are closed by another tab: ask first when there are changes that are not saved
+    // the picture set, widget and chart editors are closed by another tab: ask first when there are changes that are not saved
+    // (the audio set editor, audEd, is kept open with its draft when you change tab and comes back with the Audio Settings tab, so nothing is lost here; closing the window asks about it, see unsavedDrafts)
     if (imgEd && imgEd.dirty && !confirm('Discard your unsaved changes to this picture set?')) return;
     if (wbEd && wbEd.dirty && !confirm('Discard your unsaved changes to this widget?')) return;
     if (typeof chartEd !== 'undefined' && chartEd && chartEd.dirty && !confirm('Discard unsaved changes to this chart?')) return;

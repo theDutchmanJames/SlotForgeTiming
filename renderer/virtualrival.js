@@ -106,7 +106,7 @@
     // calculations, including distance interpolation and review adjustments.
     return sorted.map((x,i)=>({...x,pos:i+1,physicalPos:x.car.virtualRival?null:x.pos,gapMs:!x.car.virtualRival&&lead===physical[0]?.car?null:gapMs(x.car),gap:!x.car.virtualRival&&lead===physical[0]?.car?x.gap:gap(x.car)})).concat(all.filter(x=>x.car.comparisonOnly).map(x=>({...x,pos:'—',gapMs:gapMs(x.car),gap:gap(x.car)})));
   }
-  const fmt=n=>{const m=Math.floor(n/60000),s=((n%60000)/1000).toFixed(3);return m?m+':'+s.padStart(6,'0'):s;};
+  const fmt=n=>{let m=Math.floor(n/60000),s=((n%60000)/1000).toFixed(3);if(Number(s)>=60){m+=1;s='0.000';}return m?m+':'+s.padStart(6,'0'):s;}; // (59.9996 s is 1:00.000, as RaceEngine.fmtTime)
   function summary(R,details=true) {return R.displayStandings().filter(x=>x.car.virtualRival).map(x=>({pos:x.pos,lane:x.car.lane,driverId:x.car.driverId,driverName:x.car.driverName,carName:x.car.carName,virtualRival:true,comparisonOnly:x.car.comparisonOnly,laps:x.car.laps.length,best:x.car.best,total:x.car.total,gap:x.gap,...(details?{profile:copy(x.car.profile),lapTimes:x.car.laps.slice(),pitLaps:x.car.pitLaps.slice()}:{})}));}
   function savedStandings(session) {
     if(!session.rivalClassification?.length)return session.standings||[];

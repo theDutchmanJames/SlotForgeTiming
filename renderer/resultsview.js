@@ -30,8 +30,7 @@ const ResultsView = (() => {
     };
   };
   const label = k => (METRICS.find(x => x[0] === k) || ['', k])[1];
-  const counted = c => c.laps.filter((_, n) => !(c.bad || [])[n] && !(c.invalid || []).includes(n) && !(c.removed || []).includes(n));
-  const average = c => { const a = counted(c); return a.length ? a.reduce((n, t) => n + t, 0) / a.length : null; };
+  const average = c => { const a = RaceEngine.averageLaps(c); return a.length ? a.reduce((n, t) => n + t, 0) / a.length : null; }; // (pit laps are left out, as Help and Statistics say)
   const spread = c => Statistics.consistency(RaceEngine.averageLaps(c));
   const number = v => v === null || v === undefined || v === '' ? null : Number.isFinite(Number(v)) ? Number(v) : null;
   const shortNumber = v => { const n = number(v); return n === null ? '–' : String(Math.round(n * 100) / 100); };
