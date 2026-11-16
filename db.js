@@ -334,12 +334,25 @@ class Database {
       paddock: row.paddock ? { databaseId: row.paddock.databaseId, carId: row.paddock.carId } : null
     }));
   }
+  // (audit 2.2.5) A change whose write fails is taken back, as saveSession does: at once when the file is written in the program's own time, or by
+  // takeUndo() when a background write fails (DataRepository does that). Undoing never overwrites what was changed again since: per field,
+  // or for a removal only when nothing at all was changed after it.
+  guard(undo) {
+    let p;
+    try { p = this.commit(); } catch (x) { undo(true); this.touchAll(); throw x; }
+    const epoch = this.catalogueEpoch; // (undo(unchanged): whether nothing at all was changed since this change was written)
+    this.lastUndo = p ? () => { undo(this.catalogueEpoch === epoch); this.touchAll(); } : null;
+    return p;
+  }
+  takeUndo() { const u = this.lastUndo; this.lastUndo = null; return u; }
+  tablesNow(names) { const out = {}; for (const n of new Set(names)) if (this.data[n] !== undefined) out[n] = n === 'laps' ? this.data.laps.slice() : structuredClone(this.data[n]); return out; }
+  untilChanged(saved) { return unchanged => { if (unchanged) Object.assign(this.data, saved); }; }
   add(entity, item) {
     this.check(entity);
     if(entity === 'tracks' && Object.hasOwn(item,'trackDesign')) item = {...item,trackDesign:TrackDesign.validateSaved(item.trackDesign)};
     const row = Object.assign({ custom: {} }, item, { id: crypto.randomUUID() });
     this.data[entity].push(row);
-    this.commit();
+    this.guard(() => { const list = this.data[entity], i = list.indexOf(row); if (i >= 0) list.splice(i, 1); });
     return row;
   }
   update(entity, id, patch) {
@@ -347,11 +360,18 @@ class Database {
     if(entity === 'tracks' && Object.hasOwn(patch,'trackDesign')) patch = {...patch,trackDesign:TrackDesign.validateSaved(patch.trackDesign)};
     const row = this.data[entity].find(r => r.id === id);
     if (!row) throw new Error('Not found');
+    const keys = Object.keys(patch).filter(k => k !== 'id'), before = Object.fromEntries(keys.map(k => [k, Object.hasOwn(row, k) ? { v: row[k] } : null]));
     Object.assign(row, patch, { id });
+    const after = Object.fromEntries(keys.map(k => [k, row[k]]));
     this.touch(row);
-    if (entity === 'laps') { const session=this.data.sessions.find(s=>s.id===row.sessionId); if(session){PaddockRecords.revise(this.data,session);this.touch(session);} }
+    const session = entity === 'laps' ? this.data.sessions.find(s => s.id === row.sessionId) : entity === 'sessions' ? row : null, delivery = session ? session.paddockDelivery : undefined;
+    if (entity === 'laps') { if(session){PaddockRecords.revise(this.data,session);this.touch(session);} }
     if(entity==='sessions'&&row.paddockDelivery?.transport==='engine'&&Object.hasOwn(patch,'champ'))PaddockRecords.revise(this.data,row);
-    this.commit();
+    const revised = session ? session.paddockDelivery : undefined;
+    this.guard(() => {
+      for (const k of keys) { if (!Object.is(row[k], after[k])) continue; if (before[k]) row[k] = before[k].v; else delete row[k]; }
+      if (session && session.paddockDelivery === revised && revised !== delivery) session.paddockDelivery = delivery;
+    });
     return row;
   }
   // Laps are removed together with whatever they belong to; cars' laps-driven counters follow.
@@ -373,9 +393,10 @@ class Database {
   }
   remove(entity, id) {
     this.check(entity);
+    const saved = this.tablesNow([...require('./record-cascades').dependencies(entity), 'laps', 'slotcars', 'sessions', 'paddock']);
     require('./record-cascades').remove(this.data, entity, id, pred => this.removeLapsWhere(pred));
     this.touchAll(); // (a removal changes items of other tables too: every text is made again, as before 1.61.2)
-    this.commit();
+    this.guard(this.untilChanged(saved));
   }
   // One finished session with all of its laps, saved in a single write.
   saveSession(session, laps) {
@@ -415,11 +436,12 @@ class Database {
     return id;
   }
   removeSession(id) {
+    const saved = this.tablesNow(['laps', 'slotcars', 'sessions', 'paddock']);
     const session=this.data.sessions.find(s=>s.id===id);if(session)PaddockRecords.withdraw(this.data,session,'Session deleted in Timing.');
     this.removeLapsWhere(l => l.sessionId === id);
     this.data.sessions = this.data.sessions.filter(s => s.id !== id);
     this.touchAll();
-    this.commit();
+    this.guard(this.untilChanged(saved));
   }
   listCustomFields(entity) { this.check(entity); return this.data.customFields[entity]; }
   // The group of the form a field is shown in: one of the groups of that form, or '' for More (also when the group is not known).
@@ -430,28 +452,31 @@ class Database {
     this.check(entity);
     const field = { id: crypto.randomUUID().slice(0, 8), label, type, options: options || [], group: this.groupOf(entity, group) };
     this.data.customFields[entity].push(field);
-    this.commit();
+    this.guard(() => { const list = this.data.customFields[entity], i = list.indexOf(field); if (i >= 0) list.splice(i, 1); });
     return field;
   }
   setCustomFieldGroup(entity, id, group) {
     this.check(entity);
     const field = this.data.customFields[entity].find(f => f.id === id);
     if (!field) throw new Error('Unknown extra field');
-    field.group = this.groupOf(entity, group);
-    this.commit();
+    const was = field.group; field.group = this.groupOf(entity, group); const now = field.group;
+    this.guard(() => { if (field.group === now) field.group = was; });
     return field;
   }
   removeCustomField(entity, id) {
     this.check(entity);
+    const fields = this.data.customFields[entity], values = this.data[entity].filter(row => row.custom && Object.hasOwn(row.custom, id)).map(row => [row, row.custom[id]]);
     this.data.customFields[entity] = this.data.customFields[entity].filter(f => f.id !== id);
     for (const row of this.data[entity]) if (row.custom) delete row.custom[id];
     this.touchAll();
-    this.commit();
+    this.guard(unchanged => { if (!unchanged) return; this.data.customFields[entity] = fields; for (const [row, v] of values) { row.custom = row.custom || {}; row.custom[id] = v; } });
   }
   // Restoring a backup: everything is replaced by the data from the file (missing parts get their defaults).
   replaceAll(data) {
     const old = this.data;
-    try { this.data = JSON.parse(JSON.stringify(data)); this.ensure(); this.saveNow(); this.putSettings(); } catch (x) { this.data = old; throw x; } // a file that cannot be used leaves what is there untouched
+    let wrote = false;
+    try { this.data = JSON.parse(JSON.stringify(data)); this.ensure(); this.saveNow(); wrote = true; this.putSettings(); }
+    catch (x) { this.data = old; if (wrote) { this.touchAll(); try { this.saveNow(); } catch (y) { console.error('[restore] could not put the earlier database back:', y && y.message || y); } } throw x; } // a file that cannot be used leaves what is there untouched (audit 2.2.5: also when only the settings could not be written)
   }
   getSettings() { return this.data.settings; }
   // The settings file gets the settings as they are now: at once when nothing is being written to it, else after what is on its way (the newest text is the last one written).

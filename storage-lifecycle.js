@@ -43,6 +43,7 @@ class SqliteLifecycleBackend {
   pending(){return this.client.pending.size>0;}
   idle(){return this.client.lifecycleBarrier();}
   close(){return this.client.close();}
+  failed(){return !!this.client.failure;}
   diagnostics(){return this.client.lifecycleDiagnostics();}
 }
 class StorageLifecycle {
@@ -68,7 +69,8 @@ class StorageLifecycle {
   clearResume(){const id=randomUUID();return this.queue('resumeTail',async()=>{if(this.resources)await this.resources.clear();return this.backend.clearResume(id);});}
   pending(){return this.pendingCount>0||this.backend.pending()||!!this.resources?.pending;}
   async idle(){await Promise.all([this.settingsTail.catch(()=>{}),this.resumeTail.catch(()=>{}),this.resources?.idle()]);await this.backend.idle();}
-  shutdown(){this.stopping=true;return this.closing ||= (async()=>{try{await this.idle();await this.backend.close?.();}catch(error){this.closing=null;throw error;}})();}
+  // (audit 2.2.5) When the database worker already failed, waiting for it can never succeed: shut down without that wait, or the app could never quit.
+  shutdown(){this.stopping=true;return this.closing ||= (async()=>{try{try{await this.idle();}catch(error){if(!this.backend.failed?.())throw error;}await this.backend.close?.();}catch(error){this.closing=null;throw error;}})();}
   diagnostics(){return this.backend.diagnostics();}
 }
 module.exports={StorageLifecycle,JsonLifecycleBackend,SqliteLifecycleBackend,validResume};

@@ -59,15 +59,17 @@ function forkCopy(source, destination) {
   if(resumeSource){
     const bytes=fs.readFileSync(path.join(source,'race-resume.json'));
     if(hash(bytes)!==resumeSource.sha256)throw Error('Race recovery copy checksum mismatch.');
-    const snapshot=JSON.parse(bytes.toString('utf8').replace(/^\uFEFF/,'')),writer=new SqliteStore(staging,{writable:true});
+    // (audit 2.2.5) As in JSON storage: a recovery file that can not be read is no race to resume, and the file wins over a copy inside the database.
+    let snapshot=null;try{snapshot=JSON.parse(bytes.toString('utf8').replace(/^\uFEFF/,''));}catch{snapshot=null;}
+    if(require('./storage-lifecycle').validResume(snapshot)){const writer=new SqliteStore(staging,{writable:true});
     try{writer.transaction(()=>{
       const existing=writer.get('@meta','raceResume',true);
-      if(existing){if(JSON.stringify(existing.value)!==JSON.stringify(snapshot))throw Error('Conflicting embedded and sidecar race recovery.');return;}
+      if(existing){if(JSON.stringify(existing.value)===JSON.stringify(snapshot))return;const ord=writer.statement("SELECT ordinal FROM records WHERE entity='@meta' AND id='raceResume'").get().ordinal;for(const t of ['fields','assets','records'])writer.statement(`DELETE FROM ${t} WHERE entity='@meta' AND id='raceResume'`).run();writer.putRecord('@meta','raceResume',ord,snapshot);return;}
       const ordinal=writer.statement("SELECT coalesce(max(ordinal),-1)+1 n FROM records WHERE entity='@meta'").get().n;
       writer.statement("INSERT INTO roots VALUES('raceResume',(SELECT coalesce(max(ordinal),-1)+1 FROM roots),'meta')").run();
       writer.putRecord('@meta','raceResume',ordinal,snapshot);
       writer.statement("INSERT INTO ordinals VALUES('@meta',?) ON CONFLICT(entity) DO UPDATE SET next=excluded.next").run(ordinal+1);
-    });}finally{writer.close();}
+    });}finally{writer.close();}}
   }
   fs.renameSync(staging, target);
   return { file: target, sourceSha256: manifest.sqliteSha256 };

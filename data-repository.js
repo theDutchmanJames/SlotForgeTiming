@@ -40,10 +40,10 @@ class DataRepository {
     try{require('./shared-library-import').applyPrivate(this.db.data,items);await this.db.commit();await this.db.saved();}
     catch(e){for(const [key,length] of Object.entries(before))this.db.data[key].length=length;this.db.data.customFields=fields;throw e;}
   }
+  // (audit 2.2.5) a background write that fails takes the change back (db.guard / takeUndo)
+  async undone(change) { const result = change(), undo = this.db.takeUndo?.(); try { await this.db.saved(); } catch (x) { if (undo) undo(); throw x; } return result; }
   async add(entity, item) {
-    const row = this.db.add(entity, item);
-    await this.db.saved();
-    return row;
+    return this.undone(() => this.db.add(entity, item));
   }
   async update(entity, id, patch) {
     if (entity === 'slotcars') {
@@ -54,11 +54,9 @@ class DataRepository {
       if (this.db.isPaddockLinkedCar(id))
         for (const key of require('./paddock').COPY_FIELDS) delete patch[key];
     }
-    const row = this.db.update(entity, id, patch);
-    await this.db.saved();
-    return row;
+    return this.undone(() => this.db.update(entity, id, patch));
   }
-  async remove(entity, id) { this.db.remove(entity, id); await this.db.saved(); }
+  async remove(entity, id) { await this.undone(() => this.db.remove(entity, id)); }
   async saveSession(session, laps) {
     if (session.resourceRunId) {
       const resources = this.getResourceStore();
@@ -67,17 +65,13 @@ class DataRepository {
     }
     return this.db.saveSessionAsync(session, laps);
   }
-  async removeSession(id) { this.db.removeSession(id); await this.db.saved(); }
+  async removeSession(id) { await this.undone(() => this.db.removeSession(id)); }
   async addCustomField(entity, field) {
-    const result = this.db.addCustomField(entity, field);
-    await this.db.saved();
-    return result;
+    return this.undone(() => this.db.addCustomField(entity, field));
   }
-  async removeCustomField(entity, id) { this.db.removeCustomField(entity, id); await this.db.saved(); }
+  async removeCustomField(entity, id) { await this.undone(() => this.db.removeCustomField(entity, id)); }
   async setCustomFieldGroup(entity, id, group) {
-    const result = this.db.setCustomFieldGroup(entity, id, group);
-    await this.db.saved();
-    return result;
+    return this.undone(() => this.db.setCustomFieldGroup(entity, id, group));
   }
 }
 

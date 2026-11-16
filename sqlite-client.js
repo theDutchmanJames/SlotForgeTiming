@@ -85,6 +85,9 @@ class SqliteClient {
   sessionLaps(id, after, limit) { return this.request('sessionLaps', id, after, limit); }
   asset(entity, id, parts) { return this.request('asset', entity, id, parts); }
   close() {
+    // (audit 2.2.5) After a failure (a time-out, a crash) the worker can not answer any more: closing just stops it. SQLite rolls back whatever it had not
+    // committed when the database is opened again, so this is safe, and the app can always quit.
+    if (!this.closing && this.failure) this.closing = this.worker.terminate().then(() => undefined, () => undefined);
     if (!this.closing) this.closing = this.request('close').then(async value=>{await this.worker.terminate();return value;},error=>{this.closing=null;throw error;});
     return this.closing;
   }

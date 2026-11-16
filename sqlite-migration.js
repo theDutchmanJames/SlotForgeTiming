@@ -33,7 +33,7 @@ function parse(bytes, name) {
   };
   finite(value); return value;
 }
-function migrateCopy({ source, destination }, progress = () => {}, hooks = {}) {
+function migrateCopy({ source, destination, keepEmbeddedResume = false }, progress = () => {}, hooks = {}) {
   if (typeof source !== 'string' || typeof destination !== 'string' || !source.toLowerCase().endsWith('.json')) throw Error('Choose a source JSON copy and a new destination directory.');
   source = path.resolve(source); destination = path.resolve(destination);
   // Exclusive reservation: an existing directory, file or symlink is never reused.
@@ -48,8 +48,13 @@ function migrateCopy({ source, destination }, progress = () => {}, hooks = {}) {
     require('./storage-space').check(destination,inputs.reduce((n,[,v])=>n+(v?.bytes.length||0),0)*6,'JSON conversion');
     for (const [name, input] of inputs) if (input) writeNew(path.join(destination, name), input.bytes);
     const data = parse(main.bytes, 'Database');
+    // (audit 2.2.5) JSON storage reads its race recovery only from race-resume.json; a "raceResume" key in the file (left by a restored backup) is never used
+    // there, so it is not converted either: it could only block the conversion or offer to resume a race from an old backup.
+    // (a SQLite "legacy" backup that is restored keeps the recovery point it carries: keepEmbeddedResume)
+    if (!keepEmbeddedResume && data && typeof data === 'object') delete data.raceResume;
     if (settings) data.settings = parse(settings.bytes, 'Settings');
-    if (resume) parse(resume.bytes, 'Race recovery');
+    let resumeUsable = false; // (a damaged or old recovery file is ignored, as JSON storage ignores it; its copy stays with the other source files)
+    if (resume) { try { resumeUsable = require('./storage-lifecycle').validResume(JSON.parse(resume.bytes.toString('utf8').replace(/^\uFEFF/, ''))); } catch { resumeUsable = false; } }
     progress({ phase: 'import', records: 0 });
     const stage = path.join(destination, 'staging.sqlite');
     store = new SqliteStore(stage, { create: true });
@@ -75,7 +80,7 @@ function migrateCopy({ source, destination }, progress = () => {}, hooks = {}) {
     hooks.beforePublish?.();
     const report = { format: FORMAT, state: 'verified-copy', createdAt: new Date().toISOString(), sqliteSha256: hashFile(stage),
       verification, sources: inputs.filter(([, input]) => input).map(([name, input]) => ({ name, sha256: input.digest, bytes: input.bytes.length })),
-      settingsSidecarApplied: !!settings, resumePreserved: !!resume,
+      settingsSidecarApplied: !!settings, resumePreserved: !!resume, resumeUsable,
       warnings: verification.danglingSessions ? ['Historical laps with missing sessions were preserved; review before activation.'] : [] };
     // The manifest is the publication marker. A terminated/failed conversion has none.
     fs.renameSync(stage, path.join(destination, 'timing.sqlite'));

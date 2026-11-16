@@ -26,14 +26,18 @@ async function editorSave(operation,channel,...values){
     const bytes=new TextEncoder().encode(editorCanonical({scope,operation,args}));
     const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');
     const key=editorPrefix+digest;
+    // (audit 2.2.5) What the save is about (the operation and the record), so that a later save of the same record that was confirmed can let go of an
+    // unconfirmed one: repeating that older edit afterwards is then a new edit, not a retry that the database answers with the old receipt.
+    const target=typeof args[0]==='string'&&typeof args[1]==='string'?editorCanonical({ref:args.slice(0,2)}):null; // (only a save of one known record: an add or a whole-collection change keeps its retry)
     let id;
     try{
-      id=localStorage.getItem(key);
+      const kept=localStorage.getItem(key);
+      if(kept){let v=kept;if(kept.startsWith('{')){try{v=JSON.parse(kept).id;}catch{v='';}}id=v;}
       if(id&&!/^[0-9a-f-]{36}$/.test(id))throw Error('Invalid pending save identity.');
       if(!id){
         let count=0;for(let n=0;n<localStorage.length;n++)if(localStorage.key(n)?.startsWith(editorPrefix))count++;
         if(count>=128)throw Error('Too many unconfirmed saves.');
-        id=crypto.randomUUID();localStorage.setItem(key,id);
+        id=crypto.randomUUID();localStorage.setItem(key,JSON.stringify({id,target}));
       }
     }catch(error){throw Error('Cannot safely remember this save. '+error.message+' No save was sent.');}
     let reply;
@@ -43,7 +47,7 @@ async function editorSave(operation,channel,...values){
     if(!reply.ok&&reply.retain)throw Object.assign(Error(reply.error),{code:reply.code});
     // Never silently treat a later identical action as a retry after cleanup
     // fails. Explain the known outcome and retain the safe identity.
-    try{localStorage.removeItem(key);}catch{throw Error(reply.ok?'The save succeeded, but its retry tracking could not be cleared. Retry the same save to clear it safely.':'The save was rejected and its retry tracking could not be cleared. '+reply.error);}
+    try{localStorage.removeItem(key);if(reply.ok&&target)for(let n=localStorage.length-1;n>=0;n--){const k=localStorage.key(n);if(!k?.startsWith(editorPrefix)||k===key)continue;let t=null;try{t=JSON.parse(localStorage.getItem(k)).target;}catch{}if(t===target)localStorage.removeItem(k);}}catch{throw Error(reply.ok?'The save succeeded, but its retry tracking could not be cleared. Retry the same save to clear it safely.':'The save was rejected and its retry tracking could not be cleared. '+reply.error);}
     if(!reply.ok)throw Error(reply.error||'The save was rejected.');
     return reply.value;
   }).finally(()=>editorFlights.delete(flight));

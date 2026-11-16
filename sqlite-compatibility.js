@@ -9,6 +9,19 @@ function entity(value) {
   if (typeof value !== 'string' || !Object.hasOwn(schema,value)) throw Error('Unknown item type.');
 }
 function identity(value) { if (typeof value !== 'string') throw Error('Invalid record identity.'); }
+// (audit 2.2.5) Is a cursor of this collection still good? Only changes to this collection make it stale: a race saves its recovery point every
+// few seconds, and a list that needs more than one page must still be read during a race. The journal says which collections a change touched.
+function unchangedSince(store, table, revision) {
+  const now = Catalogue.revision(store); if (now === revision) return true;
+  const cut = revision.lastIndexOf(':'), seq = Number(revision.slice(cut + 1));
+  if (cut < 0 || revision.slice(0, cut) !== now.slice(0, now.lastIndexOf(':')) || !Number.isSafeInteger(seq)) return false; // (another database, or a restore)
+  const first = store.statement('SELECT MIN(sequence) n FROM changes').get().n;
+  if (first !== null && first > seq + 1) return false; // (the journal no longer reaches back to the cursor)
+  const rows = store.statement('SELECT changed FROM changes WHERE sequence>? ORDER BY sequence LIMIT 1001').all(seq);
+  if (rows.length > 1000) return false;
+  for (const { changed } of rows) { let c; try { c = JSON.parse(changed); } catch { return false; } if (!c || typeof c.counts !== 'object' || c.counts === null || Object.hasOwn(c.counts, table)) return false; }
+  return true;
+}
 function page(store, table, options = {}) {
   entity(table);
   const {cursor = null, mode = 'full'} = options;
@@ -17,7 +30,7 @@ function page(store, table, options = {}) {
   if (cursor && (cursor.entity !== table || cursor.mode !== mode || typeof cursor.revision !== 'string' || !Number.isSafeInteger(cursor.ordinal) || cursor.ordinal < 0)) throw Error('Invalid compatibility cursor.');
   return store.transaction(() => {
     const revision = Catalogue.revision(store);
-    if (cursor && cursor.revision !== revision) throw stale();
+    if (cursor && !unchangedSince(store, table, cursor.revision)) throw stale();
     const rows = store.statement('SELECT id,ordinal FROM records WHERE entity=? AND ordinal>? ORDER BY ordinal LIMIT ?').all(table,cursor?.ordinal ?? -1,PAGE_ROWS + 1);
     const items = []; let bytes = 2, last = null;
     for (const row of rows.slice(0,PAGE_ROWS)) {

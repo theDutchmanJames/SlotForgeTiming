@@ -143,7 +143,7 @@ function restoreLegacy(file,destination) {
   require('./storage-space').check(destination,original.length*8,'Legacy backup restore');
   fs.mkdirSync(destination);writeNew(path.join(destination,'original-backup.json'),original);
   const raw=path.join(destination,'normalized.json');writeNew(raw,JSON.stringify(facade.data));
-  require('./sqlite-migration').migrateCopy({source:raw,destination:path.join(destination,'recovery')});
+  require('./sqlite-migration').migrateCopy({source:raw,destination:path.join(destination,'recovery'),keepEmbeddedResume:true});
   const work=path.join(destination,'restored');require('./sqlite-working').forkCopy(path.join(destination,'recovery'),work);
   return {destination:work};
 }

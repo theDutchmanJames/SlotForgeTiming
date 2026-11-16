@@ -4,7 +4,14 @@
 const MAX_ROWS = 100000, MAX_BYTES = 256 * 1024 * 1024;
 class SqliteCompatibilityReads {
   constructor(client) { this.client = client; }
+  // (audit 2.2.5) a collection that changed between two pages is read again from the start, a few times
   async collect(entity, mode) {
+    for (let attempt = 1; ; attempt++) {
+      try { return await this.collectOnce(entity, mode); }
+      catch (error) { if (error?.code !== 'CATALOGUE_CHANGED' || attempt >= 4) throw error; }
+    }
+  }
+  async collectOnce(entity, mode) {
     const items = []; let cursor = null, bytes = 0;
     do {
       const page = await this.client.compatibilityRead('page',entity,{mode,cursor});
