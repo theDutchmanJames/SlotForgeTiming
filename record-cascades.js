@@ -3,7 +3,7 @@
 const PaddockRecords = require('./paddockrecords');
 const schema = require('./schema');
 function dependencies(entity) {
-  const special = { tracks:['sessions','fuelrules','championships'], drivers:['sessions','teams','championships','multiclasssystems'], slotcars:['sessions'], laps:['sessions'], teams:['championships'], raceclasses:['multiclasssystems'] };
+  const special = { tracks:['sessions','fuelrules','championships','virtualrivalsystems'], drivers:['sessions','teams','championships','multiclasssystems'], slotcars:['sessions'], laps:['sessions'], teams:['championships'], raceclasses:['multiclasssystems'] };
   return [...new Set([entity,...(special[entity]||[]),...Object.entries(schema).filter(([,s])=>(s.fields||[]).some(f=>f.type==='ref'&&f.ref===entity)).map(([name])=>name)])];
 }
 function remove(d, entity, id, removeLapsWhere) {
@@ -28,6 +28,7 @@ function remove(d, entity, id, removeLapsWhere) {
       d.sessions = d.sessions.filter(s => s.trackId !== id);
       d.racesetups.forEach(r => { if (r.track === id) r.track = ''; });
       d.fuelrules.forEach(f => { if (f.paceTrack === id) { f.paceTrack = ''; f.paceSource = 'constant'; } });
+      d.virtualrivalsystems.forEach(v => { if (v.trackId === id) v.trackId = ''; }); // (the replay keeps its laps; the editor asks for a recording with a track again)
     }
     if (entity === 'tracks') d.championships.forEach(c => (c.rounds || []).forEach(r => { if (r.track === id) r.track = ''; })); // (a round with no track uses the track of its race setup)
     if (entity === 'teams') d.championships.forEach(c => (c.roster || []).forEach(x => { if (x.team === id) x.team = ''; }));

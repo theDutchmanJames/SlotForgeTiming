@@ -20,9 +20,10 @@ function refsOf(entity, row) {
   const widgets = (list, withDesign) => (list || []).forEach(w => {
     const o = w && w.opt; if (!o) return;
     if(o.composition)composition(o.composition);
-    if (o.imageSet) out.push({ entity: 'imagesets', get: () => o.imageSet, set: v => { o.imageSet = v; } });
-    if (w.type === 'racechart' && o.chartDesign) out.push({ entity: 'chartdesigns', get: () => o.chartDesign, set: v => { o.chartDesign = v; } });
-    if (withDesign && o.design) out.push({ entity: 'rowdesigns', get: () => o.design, set: v => { o.design = v; } });
+    if (o.imageSet !== 'none') field2(o, 'imageSet', 'imagesets'); // ('none' means "no avatars": not a link, kept as it is)
+    field2(o, 'team', 'teams'); // (a widget fixed to one team, like those embedded in a composition)
+    if (w.type === 'racechart') field2(o, 'chartDesign', 'chartdesigns');
+    if (withDesign && o.design !== 'none') field2(o, 'design', 'rowdesigns');
   });
   if(['slotcars','drivers','teams'].includes(entity))field('raceClass','raceclasses');
   const classRefs=p=>{(p?.classes||[]).forEach(c=>field2(c,'id','raceclasses'));(p?.driverClasses||[]).forEach(c=>{field2(c,'driverId','drivers');field2(c,'classId','raceclasses');});};

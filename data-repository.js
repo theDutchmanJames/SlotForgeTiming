@@ -56,7 +56,7 @@ class DataRepository {
     }
     return this.undone(() => this.db.update(entity, id, patch));
   }
-  async remove(entity, id) { await this.undone(() => this.db.remove(entity, id)); }
+  async remove(entity, id) { if (entity === 'sessions') return this.removeSession(id); await this.undone(() => this.db.remove(entity, id)); } // (a session takes its laps and the cars' lap counters with it, as on SQLite)
   async saveSession(session, laps) {
     if (session.resourceRunId) {
       const resources = this.getResourceStore();

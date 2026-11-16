@@ -1,7 +1,7 @@
 'use strict';
 // A cross-database import is a durable, resumable operation, never an implied
 // transaction across two files. IDs and recovery generation are frozen first.
-const fs=require('node:fs'),path=require('node:path'),{randomUUID}=require('node:crypto'),T=require('./transfer'),hash=require('./paddock-value-hash'),A=require('./storage-activation');
+const fs=require('node:fs'),path=require('node:path'),{randomUUID}=require('node:crypto'),T=require('./transfer'),hash=require('./paddock-value-hash'),A=require('./storage-activation'),schema=require('./schema');
 const file=profile=>path.join(profile,'shared-library-import.json');
 function read(profile){try{const s=fs.lstatSync(file(profile));if(!s.isFile()||s.isSymbolicLink()||s.size>64*1024*1024)throw Error('Invalid retained import journal.');const j=JSON.parse(fs.readFileSync(file(profile),'utf8'));if(j.format!=='slotforge-shared-import'||j.version!==1||hash(j.items)!==j.itemsHash||!['prepared','complete'].includes(j.phase))throw Error('Retained import changed.');return j;}catch(e){if(e.code==='ENOENT')return null;throw e;}}
 async function prepare(client,profile,bundle){
@@ -27,10 +27,17 @@ async function resume(client,base,profile){
  await base.importSharedPrepared({id:j.id,items:j.items});await client.loadAliases();
  A.publish(file(profile),{...j,phase:'complete',completedAt:new Date().toISOString()});return j.counts;
 }
+// The journal was built against an empty database, so its fields and names are
+// matched to this one here, as Transfer.apply does: an extra field with the same
+// label and type is reused, a clash of titles gets "(imported)". Deterministic,
+// so a resumed import recognises the rows it already added.
 function applyPrivate(data,items){
- for(const e of T.ORDER){if(e==='slotcars')continue;for(const row of items[e]||[]){const old=data[e].find(x=>x.id===row.id);if(old&&hash(old)!==hash(row))throw Error('An imported item changed before recovery. Keep the import journal.');}}
- const next=structuredClone(data.customFields||{});
- for(const e of T.ORDER){if(e==='slotcars')continue;next[e]||=[];for(const field of items.customFields?.[e]||[]){const old=next[e].find(f=>f.id===field.id);if(old&&hash(old)!==hash(field))throw Error('An imported field identity conflicts.');if(!old)next[e].push(field);}}
- for(const e of T.ORDER)if(e!=='slotcars')for(const row of items[e]||[])if(!data[e].some(x=>x.id===row.id))data[e].push(structuredClone(row));data.customFields=next;
+ const next=structuredClone(data.customFields||{}),fieldMap={},rows={};
+ for(const e of T.ORDER){if(e==='slotcars')continue;next[e]||=[];fieldMap[e]={};for(const field of items.customFields?.[e]||[]){const old=next[e].find(f=>f.id===field.id);if(old&&hash(old)!==hash(field))throw Error('An imported field identity conflicts.');const same=old||next[e].find(f=>f.label===field.label&&f.type===field.type);if(!same)next[e].push(field);fieldMap[e][field.id]=(same||field).id;}}
+ for(const e of T.ORDER){if(e==='slotcars')continue;const mine=new Set((items[e]||[]).map(r=>r.id)),placed=data[e].filter(x=>!mine.has(x.id));rows[e]=[];
+  for(const src of items[e]||[]){const row=structuredClone(src);if(row.custom)row.custom=Object.fromEntries(Object.entries(row.custom).map(([k,v])=>[fieldMap[e][k]||k,v]));
+   const parts=e==='sessions'||e==='laps'?[]:(schema[e].title||[]).filter(k=>typeof row[k]==='string'&&row[k]!==''),title=parts.length?T.titleOf(e,row):'';if(title&&placed.some(x=>T.titleOf(e,x)===title))row[parts.at(-1)]+=' (imported)';
+   const old=data[e].find(x=>x.id===row.id);if(old&&hash(old)!==hash(row)&&hash(old)!==hash(src))throw Error('An imported item changed before recovery. Keep the import journal.');placed.push(row);rows[e].push(row);}}
+ for(const e of T.ORDER)if(e!=='slotcars')for(const row of rows[e])if(!data[e].some(x=>x.id===row.id))data[e].push(row);data.customFields=next;
 }
 module.exports={read,prepare,resume,applyPrivate};

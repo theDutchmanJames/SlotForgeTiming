@@ -13,8 +13,9 @@ function migrate(appData, {strict=false}={}) {
     // Publish the main database last; a failed sidecar copy must not look like a completed migration.
     const files=fs.readdirSync(from).sort((a,b)=>Number(a===OLD+'.json')-Number(b===OLD+'.json'));
     for (const f of files) {
-      if (!f.startsWith(OLD) || !f.endsWith('.json')) continue;
-      const target=path.join(to, NEW + f.slice(OLD.length));
+      const resume = f === 'race-resume.json'; // (an interrupted race: its file name does not carry the app name)
+      if (!resume && (!f.startsWith(OLD) || !f.endsWith('.json'))) continue;
+      const target=path.join(to, resume ? f : NEW + f.slice(OLD.length));
       if(fs.existsSync(target))continue;
       const temporary=target+'.migration-pending';
       fs.copyFileSync(path.join(from, f), temporary);
