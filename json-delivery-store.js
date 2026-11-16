@@ -12,7 +12,7 @@ class JsonDeliveryStore {
   await this.db.saved();const rows=[];
   for(const {d} of this.entries()){const key=keyOf(d.payload);if(!key||d.payload.databaseId!==databaseId)continue;if(!this.keys.has(key))this.keys.set(key,++this.sequence);const sequence=this.keys.get(key);if(sequence>after&&(status==='all'||d.status===status))rows.push({key,sequence,d});}
   // Enumerate the legacy collection, but only encode payloads for this batch.
-  return rows.sort((a,b)=>a.sequence-b.sequence).slice(0,limit).map(({key,sequence,d})=>({key,sequence,databaseId,status:d.status,payloadHash:hash(d.payload),leaseUntil:d.leaseUntil||0}));
+  return rows.sort((a,b)=>a.sequence-b.sequence).slice(0,limit).map(({key,sequence,d})=>({key,sequence,databaseId,status:d.status,payloadHash:hash(d.payload),leaseUntil:d.leaseUntil||0,attempts:d.attempts||0}));
  }
  deliverySnapshot(key,options={}){const x=this.find(key);if(!x)throw Error('Delivery not found.');return {key,current:true,status:x.d.status,transport:x.d.transport||'network',...(options.engineOriginals?{engineOriginals:structuredClone(x.d.engineOriginals||null)}:{}),payloadHash:hash(x.d.payload),payload:structuredClone(x.d.payload),guard:structuredClone(x.d.guard||null),guardBlocked:x.d.guardBlocked||null};}
  deliveryPayload(key,token){const d=this.find(key)?.d;if(!d||d.status!=='pending'||d.attemptToken!==token||d.leaseUntil<=Date.now())throw Error('Delivery attempt expired or was superseded.');return structuredClone(d.payload);}

@@ -17,10 +17,16 @@ module.exports={
  async discoverLocal(){const entries=await this.localChoices();return entries.map(d=>({key:d.key,databaseId:d.databaseId,name:d.name}));},
  async ensureLocal(connection){
   if(connection?.mode!=='local'||connection.automatic===false)throw Error('Reconnect the local Paddock library first.');
-  const entries=await (this.localScan||Discovery.scan)(),d=entries.find(x=>x.key===connection.localKey);
-  if(!d)throw Object.assign(Error('Local library unavailable. Keep Paddock running and enable Local library access in its Connections page.'),{code:'LOCAL_UNAVAILABLE'});
-  if(d.databaseId!==connection.databaseId)throw Object.assign(Error('This Paddock profile now contains a different database. Reconnect deliberately; old results and transfers still belong to their original library.'),{code:'DATABASE_MISMATCH'});
-  const status=await this.hostRequest(d.address,'/v1/status',d.token,d.databaseId,undefined,65536,d.instanceId);
+  // (audit 2.2.5) The library found last time is asked first: the discovery folder is read again (on Windows with a PowerShell check of its
+  // permissions) only when that library no longer answers, not at every poll.
+  let d=this.localDescriptor?.key===connection.localKey&&this.localDescriptor.databaseId===connection.databaseId?this.localDescriptor:null,status;
+  if(d)try{status=await this.hostRequest(d.address,'/v1/status',d.token,d.databaseId,undefined,65536,d.instanceId);}catch{d=null;}
+  if(!d){
+   const entries=await (this.localScan||Discovery.scan)();d=entries.find(x=>x.key===connection.localKey);
+   if(!d)throw Object.assign(Error('Local library unavailable. Keep Paddock running and enable Local library access in its Connections page.'),{code:'LOCAL_UNAVAILABLE'});
+   if(d.databaseId!==connection.databaseId)throw Object.assign(Error('This Paddock profile now contains a different database. Reconnect deliberately; old results and transfers still belong to their original library.'),{code:'DATABASE_MISMATCH'});
+   status=await this.hostRequest(d.address,'/v1/status',d.token,d.databaseId,undefined,65536,d.instanceId);
+  }
   const capability=status.capabilities?.localLibrary;
   if(status.id!==d.databaseId||status.localInstanceId!==d.instanceId||typeof status.name!=='string'||status.name.length>200||capability?.version!==1||capability.imports!=='/v1/local-library/imports'||!status.permissions?.browse)throw Object.assign(Error('Local Paddock identity or permissions could not be verified.'),{code:'DATABASE_MISMATCH'});
   this.active();if(this.quiescing)throw Error('Timing is closing.');

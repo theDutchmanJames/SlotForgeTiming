@@ -2,6 +2,8 @@
 const {randomUUID}=require('node:crypto'),H=require('./paddock-history-write'),R=require('./paddock-rich-delivery');
 const fault=(code,message)=>Object.assign(Error(message),{code});
 const O=require('./shared-library-original-history');
+// (audit 2.2.5) A delivery that keeps failing waits longer each time: 1, 2, 4, 8 minutes, then every 15 minutes (attempts: the tries before this one).
+const retryAfter=attempts=>Math.min(15*60000,60000*2**Math.min(4,Math.max(0,Number.isSafeInteger(attempts)?attempts:0)));
 // Uses the existing JSON/SQLite durable outbox but never the HTTP sender.
 class SharedLibraryDelivery {
  constructor(client,store,{isRacing=()=>false}={}){this.client=client;this.store=store;this.isRacing=isRacing;this.running=null;this.closed=false;}
@@ -23,10 +25,10 @@ class SharedLibraryDelivery {
       receipt=original?O.receipt(r,op):H.receipt(r,op,R.fromOperation(op));
      }
      const applied=await this.store.command({id:randomUUID(),type:'acknowledgeDelivery',deliveryKey:row.key,attemptToken:attempt.attemptToken,receipt:(original?O:H).legacy(receipt,snap.payload),guardReceipt:receipt,checkError:original?'':H.notice(receipt)});if(applied.applied)sent++;
-    }catch(e){await this.store.command({id:randomUUID(),type:'failDelivery',deliveryKey:row.key,attemptToken:attempt.attemptToken,code:String(e.code||'').slice(0,100),message:String(e.message).slice(0,2000),retryAfterMs:60000});throw e;}
+    }catch(e){await this.store.command({id:randomUUID(),type:'failDelivery',deliveryKey:row.key,attemptToken:attempt.attemptToken,code:String(e.code||'').slice(0,100),message:String(e.message).slice(0,2000),retryAfterMs:retryAfter(row.attempts)});throw e;}
    }after=rows.at(-1).sequence;
   }return {sent};
  }
  async close(){this.closed=true;await this.running;}
 }
-module.exports=SharedLibraryDelivery;
+module.exports=SharedLibraryDelivery;module.exports.retryAfter=retryAfter;
