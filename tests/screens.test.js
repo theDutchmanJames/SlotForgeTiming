@@ -2748,7 +2748,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
         {id:'t2',sessionId:'k1',driverId:'d1',carId:'c1',trackId:'t1',lapNumber:2,time:2000,date:'2026-02-01T10:00:00Z',token:true,stint:1,lane:2,late:true,invalid:true,noTrackRecord:true,noPersonalBest:true},
         {id:'t3',sessionId:'k2',driverId:'',carId:'c1',trackId:'t1',lapNumber:1,time:3000,date:'2026-02-01T11:00:00Z',token:true,stint:2,lane:1}] });
     run('folderClosed.clear()');
-    const rr = mk(); await run('renderResultsPool')(rr, 'racing'), tr = mk(); await run('renderResultsPool')(tr, 'tokens');
+    const rr = mk(); await run('renderResultsPool')(rr, 'racing'); const tr = mk(); await run('renderResultsPool')(tr, 'tokens');
     const rh = rr.innerHTML, th = tr.innerHTML, pt = (h, a, b) => h.split(a)[1].split(b)[0];
     say('Racing Records holds the raced sessions and laps only: the token laps are not in the records or the sessions', rh.includes('5.000') && !rh.includes('4.000') && !rh.includes('3.000') && !rh.includes('2.000') && rh.includes('<strong>Sessions</strong> <span class="muted">1 session</span>') && !rh.includes('Club night'));
     say('Token Records has the same three folders, but the sessions are called Stints', (th.match(/<details class="dbfolder"[^>]*>/g) || []).length === 3 && th.includes('<strong>Track records</strong>') && th.includes('<strong>Personal bests</strong>') && th.includes('<strong>Stints</strong> <span class="muted">2 stints</span>') && !th.includes('<strong>Sessions</strong>'));

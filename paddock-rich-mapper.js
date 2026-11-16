@@ -119,7 +119,7 @@ function measured(session,rows,databaseId){
  if(!j?.heats?.length||!Array.isArray(j.lanes))fail('Original captured timing is required.');
  const heats=j.heats.slice().sort((a,b)=>a.startedAt-b.startedAt);
  if(heats.some(h=>num(h.startedAt)===null||num(h.endedAt)===null||h.endedAt<h.startedAt))fail('Original heat boundaries are missing.');
- const began=Math.min(...heats.map(h=>h.startedAt)),ended=Math.max(...heats.map(h=>h.endedAt)),offset=v=>v-began;
+ const began=Math.min(...heats.map(h=>h.startedAt)),offset=v=>v-began;
  const heatIds=new Map(heats.map(h=>[String(h.id),stable('heat',String(h.id))])),participants=new Map(),warnings=new Set();
  const saved=new Map(),matched=new Set();for(const r of rows){if(r.sessionId&&r.sessionId!==s.id)fail('Saved lap belongs to another session.');const key=JSON.stringify([r.carId,r.lane,r.lapNumber,String(r.heat??'')]);if(saved.has(key))fail('Ambiguous saved lap evidence.');saved.set(key,r);}
  const track={id:nullableId(s.trackId),name:text(s.trackName)||'Unknown track',lanes:j.lanes.map((v,i)=>({lane:i+1,lengthM:num(v)!==null&&v>0?v:null}))};

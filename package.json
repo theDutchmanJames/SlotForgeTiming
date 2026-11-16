@@ -68,6 +68,7 @@
     "dist:linux": "electron-builder --linux",
     "dist:mac": "electron-builder --mac",
     "test": "node tools/run-tests.cjs",
+    "lint": "eslint --quiet .",
     "parallel:build": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-parallel.ps1",
     "test:parallel:electron": "electron tools/qa/parallel-electron.cjs",
     "test:results": "node tests/resultsview.test.js",
@@ -197,7 +198,9 @@
   },
   "devDependencies": {
     "electron": "^45.0.0",
-    "electron-builder": "^26.18.0"
+    "electron-builder": "^26.18.0",
+    "eslint": "10.14.0",
+    "globals": "17.14.0"
   },
   "dependencies": {
     "flag-icons": "^7.6.0"
