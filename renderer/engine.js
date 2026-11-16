@@ -183,10 +183,10 @@
     };
     R.logEvent = log; // Attached systems use the same frozen driver identity and race clock.
 
-    const end = (t, why) => { R.cars.forEach(c=>tempUpdate(c,t)); R.cars.forEach((c, i) => { wxFlush(i, t, true); if (c.blockAt !== null) { pitCheck(i, t); holdPenalty(c); const pitEnd = heldPits && c.pitHold && PH.mode === 'auto' && !(c.rndPitExit && randomPitExit()) ? Math.min(t, R.t0 + Math.max(Ph.due(c.pitHold, PH), c.pitHold.releaseNotBefore || 0)) : t; serveCheck(i, pitEnd); repairCheck(i, pitEnd); twCheck(i, pitEnd); closePit(i, pitEnd); } if (MAND && why !== 'Stopped') msJudge(c, i, t); }); if (P.dqUnserved && why !== 'Stopped') R.cars.forEach((c, i) => { if (!c.dq && c.pending.some(p => p.mandatory)) { c.dq = true; c.dqWasDone = c.done; c.dqWasRetired = c.retired; c.done = true; c.retired = true; log('disqualified', i, t, { why: 'unserved' }); } }); R.status = 'finished'; R.endAt = t; R.endedBy = why; R.flag = ''; R.yellowAt = null; if (scWas) scEdge(t); R.calls.forEach(c => { c.open = false; }); enEnd(t, why); };
+    const end = (t, why) => { R.cars.forEach(c=>tempUpdate(c,t)); R.cars.forEach((c, i) => { wxFlush(i, t, true); if (c.blockAt !== null) { pitCheck(i, t); holdPenalty(c); const pitEnd = heldPits && c.pitHold && PH.mode === 'auto' && !(c.rndPitExit && randomPitExit()) ? Math.min(t, R.t0 + Math.max(Ph.due(c.pitHold, PH), c.pitHold.releaseNotBefore || 0)) : t; serveCheck(i, pitEnd); repairCheck(i, pitEnd); twCheck(i, pitEnd); closePit(i, pitEnd); } if (MAND && why !== 'Stopped') msJudge(c, i, t); }); if (P.dqUnserved && why !== 'Stopped') R.cars.forEach((c, i) => { if (!c.dq && c.pending.some(p => p.mandatory && !p.afterFinish)) { c.dq = true; c.dqWasDone = c.done; c.dqWasRetired = c.retired; c.done = true; c.retired = true; log('disqualified', i, t, { why: 'unserved' }); } }); R.status = 'finished'; R.endAt = t; R.endedBy = why; R.flag = ''; R.yellowAt = null; if (scWas) scEdge(t); R.calls.forEach(c => { c.open = false; }); enEnd(t, why); };
     const checkEnd = t => {
       if (R.status !== 'running') return;
-      if (type === 'race' && cfg.endRule === 'leader' && R.finished > 0) return end(t, 'The lead car finished');
+      if (type === 'race' && cfg.endRule === 'leader' && R.finished > 0 && R.standings()[0]?.car.done) return end(t, 'The lead car finished'); // (audit 2.2.5: the car that leads on scoring laps; a car that took the flag first but lost laps to penalties is not it)
       const limited = lapLimit || timeLimit;
       if (limited && R.cars.every(c => c.done) && (type === 'race' || R.timeUp)) end(t, 'Every car finished');
     };
@@ -256,11 +256,13 @@
     function tempUpdate(c,t) { if (!TWC?.temperature) return; t=Math.max(t,c.twTempAt??t);c.twTemp=tempValue(c,t); c.twTempAt=t; }
     function tempReset(c,t) { if (!TWC?.temperature) return; c.twTemp=Tw.Temperature.settings(TWC.temperature,c.tyre).start;c.twTempAt=t;c.twTempWear=1; }
     R.start = t => { if(R.resourceStart&&!R.resourceStart())return false; R.status = 'running'; R.t0 = t; R.cars.forEach(c => { c.last = t; tempReset(c,t); twRefresh(c); if (F.on && hasFx(c)) c.fuel = tankOf(c); }); wxEval(t); flRoll(); rnRoll(); }; // (a car that has Balance of Power, or tyres that help or hinder it, before the start begins with a full tank of its own size)
+    const redInterrupt = t => R.cars.forEach((c, i) => { if (!c.done && c.started) { c.redInterrupted = true; c.resumed = true; const ms = Math.min(3600, num(cfg.redFlagSeconds, 0)) * 1000; if (ms) c.extraMs += ms; log('redlap', i, t, { lap: c.laps.length + 1, ms }); } });
     R.pause = t => { if (R.status === 'running') { if (heldPits) R.tick(t); if (R.status !== 'running') return;
-      if (R.flag === 'red') R.cars.forEach((c, i) => { if (!c.done && c.started) { c.redInterrupted = true; c.resumed = true; const ms = Math.min(3600, num(cfg.redFlagSeconds, 0)) * 1000; if (ms) c.extraMs += ms; log('redlap', i, t, { lap: c.laps.length + 1, ms }); } });
+      if (R.flag === 'red') redInterrupt(t);
       R.cars.forEach(c=>tempUpdate(c,t)); R.status = 'paused'; R.pausedAt = t; } };
     R.resume = t => {
       if (R.status !== 'paused') return;
+      if (R.temperatureRecovered) R.cars.forEach(c => { if (c.twTempAt !== undefined && c.twTempAt !== null) c.twTempAt = t; }); // (audit 2.2.5: after a restore the clock of this app session starts again near zero; the saved temperature carries on from now, as the restore promises)
       R.cars.forEach(c=>tempUpdate(c,t)); R.temperatureRecovered=false;
       const d = t - R.pausedAt; // the paused time does not count
       R.t0 += d; if (R.yellowAt !== null) R.yellowAt += d;
@@ -300,7 +302,7 @@
       if (R.status === 'finished' || R.status === 'ready') return;
       const was = R.flag;
       if (kind === 'red') {
-        if (R.flag === 'red') { R.flag = ''; R.resume(t); } else { R.flag = 'red'; R.yellowAt = null; R.pause(t); }
+        if (R.flag === 'red') { R.flag = ''; R.resume(t); } else { R.flag = 'red'; R.yellowAt = null; if (R.status === 'paused') redInterrupt(t); else R.pause(t); } // (audit 2.2.5: a red flag over a pause still makes the interrupted laps invalid and adds its result time)
       } else if (kind === 'yellow' && R.flag !== 'red') { if (R.flag === 'yellow') { R.flag = ''; R.yellowAt = null; } else { R.flag = 'yellow'; R.yellowAt = t; } }
       if (R.flag !== was) log('raceflag', -1, t, { flag: R.flag, by: 'director' });
       scEdge(t);
@@ -395,7 +397,7 @@
         c.yellowFast.push(c.laps.length - 1);
         if (Y.points > 0 && R.addPoints(i, Y.points, t)) e.points = Y.points;
       }
-      if (!c.dq && ((limitOf(c) && c.laps.length - c.swapLost >= limitOf(c)) || (timeLimit && R.timeUp))) { c.done = true; c.place = ++R.finished; } // a car disqualified on this lap (fuel points) has not finished
+      if (!c.dq && ((limitOf(c) && c.laps.length - c.swapLost >= limitOf(c)) || (timeLimit && t - R.t0 >= timeLimit))) { c.done = true; /* (audit 2.2.5: the time of the crossing decides, not whether the timer has already noticed time-up) */ c.place = ++R.finished; c.pending.forEach(p => { if (p.at === t) p.afterFinish = true; }); } // (a penalty stop given on the finishing lap can no longer be served) // a car disqualified on this lap (fuel points) has not finished
       if (DM) { damageLap(c, R.cars.indexOf(c), t, deslot); flCheck(c, i, t); }
       if (TWC && systemOn('tyrewear')) twLap(c, i, t, twGone, dt, paceClean);
       if (TWC && !systemOn('tyrewear')) { const st = twStint(c); st.laps++; st.m += TWC.laneLen[c.lane] || 0; st.life = c.twLife; }
@@ -828,7 +830,7 @@
         const replaceAt = c.pending.findIndex(p => previousTier(p) > 0 && previousTier(p) < effect.from);
         c.pending = c.pending.filter(p => !(previousTier(p) > 0 && previousTier(p) < effect.from));
         c.penaltyPitTiers = c.penaltyPitTiers || []; c.penaltyPitTiers.push(effect.from);
-        c.pending.splice(replaceAt < 0 ? c.pending.length : replaceAt, 0, { name: `Penalty points · ${effect.from} points`, kind: 'stopgo', seconds: effect.pit, extra: 0, unserved: 0, mandatory: true, ladderTier: effect.from, at: t });
+        c.pending.splice(replaceAt < 0 ? c.pending.length : replaceAt, 0, { name: `Penalty points · ${effect.from} points`, kind: 'stopgo', seconds: effect.pit, extra: 0, unserved: 0, mandatory: true, ladderTier: effect.from, at: t, ...(c.done ? { afterFinish: true } : {}) }); // (afterFinish: given after the car took the flag, so it cannot be served; it does not disqualify, and the review still shows it)
         if (heldPits) holdPenalty(c);
         log('assigned', i, t, { name: `Penalty points · ${effect.from} points`, automatic: true });
       }
@@ -1034,7 +1036,7 @@
         if (ty.points) R.addPoints(i, ty.points, t, 'special');
         if (ty.effect === 'time' && ty.amount) c.extraMs = (c.extraMs || 0) + ty.amount * 1000;
         if (ty.effect === 'laps' && ty.amount) c.specialLaps = (c.specialLaps || 0) + Math.round(ty.amount);
-        if (ty.effect === 'pit' && ty.amount) c.pending.push({ name: ty.name, kind: 'stopgo', seconds: ty.amount, extra: 0, unserved: 0, mandatory: true, at: t });
+        if (ty.effect === 'pit' && ty.amount) c.pending.push({ name: ty.name, kind: 'stopgo', seconds: ty.amount, extra: 0, unserved: 0, mandatory: true, at: t, ...(c.done ? { afterFinish: true } : {}) });
       }
       if (heldPits) holdPenalty(c);
       log('assigned', i, t, { name: ty.name, points: legacy ? 0 : ty.points, effect: ty.effect, amount: ty.amount });
@@ -1495,7 +1497,7 @@
         if (a.retired !== b.retired) return a.retired ? 1 : -1; // retired cars rank behind the rest
         if (LS) { const ra = reached(a), rb = reached(b); if (ra !== rb) return ra ? -1 : 1; if (ra) return eff(a) - eff(b) || a.place - b.place || x - y; return prog(b) - prog(a) || eff(a) - eff(b) || x - y; }
         if (type === 'race' && (a.adjLaps || b.adjLaps) && lapsOf(a) !== lapsOf(b)) return lapsOf(b) - lapsOf(a); // (laps added or taken off in the review count before who finished first)
-        if (type === 'race' && a.done !== b.done) return a.done ? -1 : 1;
+        if (type === 'race' && a.done !== b.done) return lapsOf(b) - lapsOf(a) || (a.done ? -1 : 1); // (audit 2.2.5: a car that took the flag first but lost laps to penalties ranks behind a car with more scoring laps, whatever the end rule)
         if (type === 'race' && a.done && b.done) return lapsOf(b) - lapsOf(a) || eff(a) - eff(b) || a.place - b.place; // (a car that lost a lap in the review, or that retired early, ranks behind the cars that drove more laps: the time only decides between equal laps)
         return ((type === 'practice' || type === 'qualifying') ? byBest(a, b) : byLaps(a, b)) || x - y;
       });
@@ -1510,13 +1512,15 @@
           if (type === 'practice' || type === 'qualifying') gap = c.best === null ? '' : '+' + fmtTime(c.best - lead.best);
           // always a time: how long after the leader this car reached the lap it has completed (a lapped car is compared at its own lap count)
           else if (LS) { const g = c.laps.length ? distGap(c, lead) : null; if (g !== null) gap = '+' + fmtTime(g); }
-          else if (c.laps.length) gap = '+' + fmtTime(Math.max(0, cum(c, c.laps.length) + startOf(c) + addOf(c) - cum(lead, c.laps.length) - startOf(lead) - addOf(lead)));
+          else if (c.laps.length) gap = '+' + fmtTime(Math.max(0, cum(c, c.laps.length) + startOf(c) + addOf(c) - cum(lead, sameLap(c, lead)) - startOf(lead) - addOf(lead)));
         }
         return { pos: p + 1, index: i, car: c, gap };
       });
     };
     // Numbers for the spoken calls (see announcer.js): for every car, by its index, the gap to the leader and to the car in front in milliseconds
     // (null when there is none, or the car is out), and how many full laps the car is behind the leader. Practice and qualifying compare best laps.
+    // the raw lap of car L at which it had as many scoring laps as car c has now (audit 2.2.5: penalty or review laps shift the two counts; without them this is c's own lap count)
+    const sameLap = (c, L) => Math.max(0, Math.min(L.laps.length, lapsOf(c) + L.laps.length - lapsOf(L)));
     R.gapInfo = () => {
       const st = R.standings(), byBest = type === 'practice' || type === 'qualifying', out = new Array(R.cars.length).fill(null);
       const val = (c, k) => cum(c, k) + startOf(c) + addOf(c);
@@ -1528,9 +1532,9 @@
           if (byBest) { if (c.best !== null && L.best !== null) lead = Math.max(0, c.best - L.best); if (c.best !== null && A.best !== null) ahead = Math.max(0, c.best - A.best); }
           else if (LS) { if (c.laps.length) { lead = distGap(c, L); ahead = distGap(c, A); down = lenOf(L) > 0 ? Math.max(0, Math.floor((prog(L) - prog(c)) / lenOf(L) + 1e-9)) : 0; } }
           else if (c.laps.length) {
-            const n = c.laps.length, mine = val(c, n);
-            lead = Math.max(0, mine - val(L, n)); ahead = Math.max(0, mine - val(A, n));
-            while (L.laps.length >= n + down + 1 && val(L, n + down + 1) <= mine) down++;
+            const n = c.laps.length, mine = val(c, n), k = sameLap(c, L);
+            lead = Math.max(0, mine - val(L, k)); ahead = Math.max(0, mine - val(A, sameLap(c, A)));
+            while (L.laps.length >= k + down + 1 && val(L, k + down + 1) <= mine) down++;
           }
         }
         out[row.index] = { pos: p + 1, lead, ahead, down };

@@ -104,7 +104,7 @@ test('...a stop given by a point on the finishing lap itself cannot be served ei
 test('after a crash restore in a new app session the tyre temperature cools in the pits again', () => {
   const base = { tempOn: 'on', paceWear: 'off', effect: 'off', setsMode: 'none', changeSeconds: 600, tyres: { M: { wear: 2 } }, temperature: { tyres: { M: { ...Temp.DEFAULT } } } };
   const cfg = () => ({ type: 'race', laps: 1000, entries: [{ lane: 0, tyre: 'M', driverId: 'd', carId: 'c', driverName: 'A' }], fuel: { on: true, tank: 10000, perLap: 0.1, rate: 10, pitHold: 1000 }, tyrewear: T.clean(base) });
-  const a = E.createRace(cfg()); a.start(0); a.cars[0].twTemp = 90; a.tick(500000); a.pause(500000); a.resume(502000); a.block(0, 503000, true); a.tick(533000);
+  const a = E.createRace(cfg()); a.start(0); a.cars[0].twTemp = 90; a.tick(500000); a.block(0, 501000, true); a.tick(531000); // (the same race without the crash: 1 s on track, then 30 s in the pits)
   const b = E.createRace(cfg()); b.start(0); b.cars[0].twTemp = 90; b.tick(500000);
   const n = E.createRace(cfg()); assert.equal(n.restore(b.snapshot(500000)), true); n.resume(2000);
   assert.equal(n.cars[0].twTemp, 90); // (the offline time is not simulated)
