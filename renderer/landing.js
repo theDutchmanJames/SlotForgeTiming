@@ -797,6 +797,7 @@ async function renderHome() {
       <div class="hm-chips" id="hm-chips">${chipsNow().map(chipHtml).join('')}</div></div>
     ${customHtml()}
     ${resumeHtml}
+    <div id="hm-update" hidden></div>
     <div class="hm-grid" id="homegrid" style="grid-template-columns:repeat(${grid.cols},minmax(0,1fr))"><section class="card hm-start" id="hmc-start" style="${place(startBoard)}">` +
     (setups.length
       ? `
@@ -825,6 +826,7 @@ async function renderHome() {
       <div class="hm-go">${lightsHtml}<span class="hm-grow"></span><button class="btn primary big" id="start" ${issues.length || raceOn ? 'disabled' : ''}${raceOn ? ' title="A race is still running. Open the Race tab to finish or stop it first."' : ''}>${Icons.svg('racesetups', { size: 20 })}<span>${tokens ? 'Open the session' : 'Start race'}</span></button></div>`
       : '<h3>Start a race</h3><p class="muted">Create a race setup in the Race Setup tab to get started.</p>') +
     `</section>${otherCells}</div>`;
+  if (typeof UpdateNotice !== 'undefined') UpdateNotice.mountHome(document.getElementById('hm-update')); // (a newer release on GitHub, if any)
 
   if (keep) {
     // the field that had the cursor has it again, with the same part of the text selected (a number has no part: all of it, as when you come into it with Tab)

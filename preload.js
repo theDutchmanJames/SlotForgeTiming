@@ -284,6 +284,15 @@ contextBridge.exposeInMainWorld('api', {
   getResume: () => call('resume:get'),
   saveResume: snap => call('resume:save', snap),
   clearResume: () => call('resume:clear'),
+  // a newer release on GitHub (notify only): its status, Check now, open its release page, and news when a check finishes
+  updateStatus: () => call('update:status'),
+  updateCheck: () => call('update:check'),
+  updateOpen: () => call('update:open'),
+  diagnosticsSave: () => call('diagnostics:save'), // one text file for a bug report (App Settings > General)
+  onUpdateStatus: f => {
+    ipcRenderer.removeAllListeners('update:status');
+    ipcRenderer.on('update:status', (_e, s) => f(s));
+  },
   // the running race, shared with the Live Race window
   liveStatic: s => ipcRenderer.send('live:static', s),
   livePush: d => ipcRenderer.send('live:push', d),

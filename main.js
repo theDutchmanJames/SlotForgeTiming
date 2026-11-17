@@ -3,6 +3,22 @@ const fs = require('fs');
 const path = require('path');
 let Database, schema, createServer, QR, transfer, backup, LiveShare, parallel;
 const os = require('os');
+// Recent errors and warnings of the main process and the main window, in memory only, for "Save diagnostics" (diagnostics.js)
+const errorLog = require('./diagnostics').createErrorLog();
+for (const level of ['error', 'warn']) {
+  const original = console[level].bind(console);
+  console[level] = (...args) => {
+    try {
+      errorLog.add(
+        level.toUpperCase(),
+        args.map(a => (a instanceof Error ? a.stack || a.message : typeof a === 'string' ? a : JSON.stringify(a))).join(' ')
+      );
+    } catch {
+      /* the log is a help only */
+    }
+    original(...args);
+  };
+}
 
 // One place for the data, whether the app is started from the folder, installed or run as the portable .exe
 const normalProfile = path.join(app.getPath('appData'), 'slotforge-timing');
@@ -157,6 +173,18 @@ async function createWindow() {
   mainWin = win;
   guardWindow(win);
   closeGuard(win); // (closing asks about unsaved editor changes, then quits through the shutdown below)
+  // warnings and errors of the page go into the diagnostics log too (newer Electron passes one event object, older ones the level as a number)
+  win.webContents.on('console-message', (event, level, message, line, source) => {
+    const lv = typeof event?.level === 'string' ? event.level : ['verbose', 'info', 'warning', 'error'][level] || 'info';
+    if (lv === 'warning' || lv === 'error')
+      errorLog.add(
+        'PAGE ' + lv.toUpperCase(),
+        `${event?.message ?? message} (${String(event?.sourceId ?? source ?? '')
+          .split('/')
+          .pop()}:${event?.lineNumber ?? line ?? ''})`
+      );
+  });
+  win.webContents.on('render-process-gone', (_e, details) => errorLog.add('PAGE GONE', JSON.stringify(details || {})));
   win.webContents.on('render-process-gone', () => {
     parallel.shutdown();
     pluginHost?.timing?.reset().catch(() => {});
@@ -1309,6 +1337,92 @@ const startupTask = app.whenReady().then(async () => {
       return s;
     });
     ipcMain.handle('net:status', () => netStatus());
+    // Is there a newer release on GitHub? Notify only (update-check.js): the page shows it and links to the release page.
+    {
+      const file = path.join(app.getPath('userData'), 'update-check.json');
+      const updates = require('./update-check').createUpdateChecker({
+        currentVersion: require('./package.json').version,
+        fetch: (...a) => fetch(...a),
+        store: { read: () => JSON.parse(fs.readFileSync(file, 'utf8')), write: v => Database.writeAtomic(file, JSON.stringify(v)) }
+      });
+      const tell = s => {
+        if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('update:status', s);
+        return s;
+      };
+      const allowed = () => lifecycle.settings().updateCheck !== false && !process.env.SF_UI_QA_RUN_ID && !process.env.SF_NO_UPDATE_CHECK;
+      ipcMain.handle('update:status', () => ({ ...updates.status(), enabled: allowed() }));
+      ipcMain.handle('update:check', async () => ({ ...tell(await updates.check(true)), enabled: allowed() }));
+      ipcMain.handle('update:open', async () => {
+        const s = updates.status(),
+          url = s.latest?.url || require('./update-check').PAGE;
+        if (!url.startsWith(require('./update-check').PAGE)) throw Error('Not a release page of SlotForge Timing.');
+        await require('electron').shell.openExternal(url);
+        return true;
+      });
+      // the first check waits until the app has settled; never more than once in 12 hours (also over restarts)
+      setTimeout(() => {
+        if (!startupClosing && allowed()) updates.check(false).then(tell, () => {});
+      }, 15000).unref?.();
+      // Save diagnostics: one text file for a bug report (diagnostics.js leaves out passwords, names, pictures and the user's folder name)
+      ipcMain.handle('diagnostics:save', async e => {
+        const when = new Date(),
+          p2 = n => String(n).padStart(2, '0');
+        const name = `SlotForge-Timing-diagnostics-${when.getFullYear()}${p2(when.getMonth() + 1)}${p2(when.getDate())}-${p2(when.getHours())}${p2(when.getMinutes())}.txt`;
+        const choice = await dialog.showSaveDialog(BrowserWindow.fromWebContents(e.sender) || mainWin, {
+          defaultPath: path.join(app.getPath('documents'), name),
+          filters: [{ name: 'Text', extensions: ['txt'] }]
+        });
+        if (choice.canceled || !choice.filePath) return { saved: false };
+        const safe = async f => {
+          try {
+            return await f();
+          } catch (error) {
+            return { error: String(error?.message || error) };
+          }
+        };
+        const net = safe(() => {
+          const s = netStatus();
+          return { on: s.on, port: s.port, error: s.error, passwordSet: s.passwordSet, addresses: s.urls.length };
+        });
+        const info = {
+          when,
+          app: {
+            version: require('./package.json').version,
+            packaged: app.isPackaged,
+            profile: app.getPath('userData'),
+            locale: app.getLocale()
+          },
+          versions: { electron: process.versions.electron, chrome: process.versions.chrome, node: process.versions.node },
+          system: {
+            platform: process.platform,
+            release: os.release(),
+            arch: process.arch,
+            cpus: os.cpus().length,
+            memoryGB: Math.round(os.totalmem() / 1073741824)
+          },
+          storage: await safe(async () => ({
+            backend: sqliteRuntime ? 'sqlite' : 'json',
+            file: sqliteRuntime?.file || db.file,
+            usage: sqliteRuntime ? await lifecycle.diagnostics().then(v => v.database) : null
+          })),
+          timing: await safe(() => {
+            const s = lifecycle.settings();
+            return { inUse: s.timingHw || 'trackmate (default)', dsModel: s.dsType || '', arduinoVirtual: !!s.abVirtual };
+          }),
+          network: await net,
+          library: await safe(async () =>
+            sharedLibrary ? { ...(await sharedLibrary.status()), deliveryError: sharedLibrary.deliveryError || '' } : { available: false }
+          ),
+          plugins: await safe(async () => (pluginHost?.list ? await pluginHost.list() : 'not available')),
+          update: await safe(() => updates.status()),
+          settings: lifecycle.settings(),
+          errors: errorLog.lines()
+        };
+        const text = require('./diagnostics').report(info, os.homedir());
+        Database.writeAtomic(choice.filePath, text);
+        return { saved: true, path: choice.filePath };
+      });
+    }
     await applyNet();
     if (startupClosing) return;
     // QA profiles never discover or launch a user's real library. Joint tests opt in with an isolated LOCALAPPDATA.

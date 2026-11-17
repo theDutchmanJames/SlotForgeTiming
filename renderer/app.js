@@ -360,7 +360,7 @@ function renderOxigenSettings(box) {
   box.innerHTML = `<p class="muted"><strong>Coming.</strong> This page is the place for <strong>oXigen Digital</strong> timing. There is nothing to set up here yet: the app does not connect to anything on this page, and a race does not use it.</p>`;
 }
 
-const GENERAL_FOLDERS = ['display', 'names', 'header', 'logo', 'pictures', 'performance', 'data'];
+const GENERAL_FOLDERS = ['display', 'names', 'header', 'logo', 'pictures', 'performance', 'data', 'updates'];
 // the size of the interface: the window is zoomed (the Live Race window and the pages on phones are not; see UiScale)
 const applyUiScale = () => {
   if (typeof api !== 'undefined' && api.setZoom) api.setZoom(UiScale.factorOf(state.settings && state.settings.uiScale));
@@ -489,6 +489,18 @@ async function renderGeneralSettings(box) {
       'Database storage',
       'where everything is saved',
       `<div class="row"><strong>${storage.backend === 'sqlite' ? 'SQLite database' : 'JSON database'}</strong></div><p>Saved in: <code>${esc(path)}</code></p>${storage.backend === 'sqlite' ? '<p>Changes are saved by the SQLite worker. Any pre-conversion JSON files are retained, but no longer receive updates. Use Import and Export to make a current backup before moving to an older build.</p>' : '<p>SQLite saves individual records without rewriting the whole collection. Timing will restart, convert and verify a separate copy, then switch storage. Your original files are kept. Allow enough disk space for the original files, recovery copy and SQLite database.</p><button class="btn" id="sqliteactivate">Convert to SQLite and restart…</button>'}${storageUsage}<p id="storagemsg" role="status"></p>`
+    ) +
+    sf(
+      'updates',
+      'Updates and diagnostics',
+      S.updateCheck === false ? 'update checks are off' : 'checks GitHub for a newer version',
+      `<div class="field" style="max-width:640px"><label class="inline"><input id="updcheck" type="checkbox"${S.updateCheck === false ? '' : ' checked'}> Check for a newer version when the app starts</label>
+      <span class="muted hint">At most twice a day the app asks GitHub which version is the newest, and Home says so when there is a newer one, with a link to its download page. Nothing about you or your club is sent, and nothing is downloaded or installed by itself.</span>
+      <div class="row"><button type="button" class="btn" id="updnow">Check now</button><button type="button" class="btn" id="updopen" hidden>Open the download page</button></div>
+      <p class="muted" id="updstatus" role="status"></p></div>
+      <div class="field" style="max-width:640px"><label>Diagnostics</label>
+      <span class="muted hint">Saves one text file that helps with a bug report: the app and system versions, the timing hardware and connections, the storage, the settings (without passwords, names or pictures) and recent errors. Look it over before you send it to anyone.</span>
+      <div class="row"><button type="button" class="btn" id="diagsave">Save diagnostics…</button></div><p class="muted" id="diagmsg" role="status"></p></div>`
     );
   if (typeof AppSettingsPage !== 'undefined') AppSettingsPage.enhance(box, 'general');
   folderWire(box);
@@ -518,6 +530,43 @@ async function renderGeneralSettings(box) {
     $('bgsave').closest('.field').querySelector('.hint').textContent =
       'SQLite always writes through a background worker. This legacy JSON setting does not apply.';
   }
+  // Updates and diagnostics
+  if ($('updcheck') && api.updateStatus) {
+    const show = s => {
+      $('updstatus').textContent = typeof UpdateNotice !== 'undefined' ? UpdateNotice.statusText(s) : '';
+      $('updopen').hidden = !(s && s.available);
+    };
+    api.updateStatus().then(show, () => {});
+    $('updcheck').onchange = async ev => {
+      state.settings = await api.setSettings({ updateCheck: ev.target.checked });
+      show(await api.updateStatus());
+    };
+    $('updnow').onclick = async () => {
+      $('updnow').disabled = true;
+      $('updstatus').textContent = 'Checking…';
+      try {
+        show(await api.updateCheck());
+      } catch (error) {
+        $('updstatus').textContent = 'Could not check: ' + error.message;
+      } finally {
+        $('updnow').disabled = false;
+      }
+    };
+    $('updopen').onclick = () => api.updateOpen().catch(() => {});
+  }
+  if ($('diagsave'))
+    $('diagsave').onclick = async () => {
+      $('diagsave').disabled = true;
+      $('diagmsg').textContent = '';
+      try {
+        const r = await api.diagnosticsSave();
+        $('diagmsg').textContent = r && r.saved ? 'Saved: ' + r.path : '';
+      } catch (error) {
+        $('diagmsg').textContent = 'Could not save the diagnostics: ' + error.message;
+      } finally {
+        $('diagsave').disabled = false;
+      }
+    };
   $('uiscale').onchange = async ev => {
     state.settings = await api.setSettings({ uiScale: UiScale.levelOf(ev.target.value) });
     applyUiScale();
@@ -1053,6 +1102,7 @@ function bootFailed(e) {
     if (api.setZoom) api.setZoom(1);
     return LiveView.mount(view, { second: true }); // (the second screen keeps its own size)
   }
+  if (typeof UpdateNotice !== 'undefined') UpdateNotice.listen(); // (a check for a newer release that finishes later shows on Home)
   if (api.onUnsavedQuery) api.onUnsavedQuery(() => (typeof unsavedDrafts === 'function' ? unsavedDrafts() : [])); // (closing the window asks first when an editor has unsaved changes)
   if (typeof ppInit === 'function') ppInit();
   if (typeof ptInit === 'function') ptInit();

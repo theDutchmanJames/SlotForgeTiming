@@ -13,6 +13,7 @@
     "db.js",
     "delivery-key.js",
     "delivery-service.js",
+    "diagnostics.js",
     "display-read.js",
     "editor-read.js",
     "eslint.config.cjs",
@@ -238,6 +239,7 @@
     "renderer/tyrewidgets.js",
     "renderer/uiscale.js",
     "renderer/undo.js",
+    "renderer/updatenotice.js",
     "renderer/viewset.js",
     "renderer/virtualrival.js",
     "renderer/virtualrivalui.js",
@@ -325,6 +327,7 @@
     "tools/format.cjs",
     "tools/run-tests.cjs",
     "transfer.js",
+    "update-check.js",
     "voicereport.js",
     "work-gate.js"
   ]

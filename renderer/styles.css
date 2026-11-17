@@ -2382,3 +2382,8 @@ header{box-shadow:0 calc(1px + 3px*var(--d)) calc(4px + 8px*var(--d)) -3px rgba(
 .catalogue-tools .catalogue-search{justify-content:flex-end}
 .catalogue-navigation{justify-content:flex-end}
 @media(max-width:700px){.catalogue-controls{width:100%}.catalogue-tools{width:100%}.catalogue-search input{width:160px}}
+
+/* a newer release on GitHub (updatenotice.js): a quiet card under the Home header, with Download and Not now */
+.hm-update{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;margin:0 0 14px;border-left:6px solid var(--accent)}
+.hm-update>div:first-child{display:flex;flex-direction:column;gap:2px;flex:1 1 320px}
+.hm-update .row{margin:0}

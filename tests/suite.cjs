@@ -284,4 +284,5 @@ module.exports = [
   ['tokensettings.test.js', 'plain'],
   ['lint.test.js', 'plain'],
   ['format.test.js', 'plain'],
+  ['updates-diagnostics.test.js', 'node-test'],
 ];
