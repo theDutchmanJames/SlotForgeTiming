@@ -235,9 +235,9 @@ function deps(over = {}) {
     ok('...given to the collector it comes back in the notes with the clock time of the moment', c.marks.length === 1 && c.marks[0].at === 5000000 && c.marks[0].text === 'Saved the whole database: 349 ms (making the text 183, writing the file 166), 154.7 MB'); }
   { // main.js: the watcher is made before the handlers, the database tells it about its saves, the list handler tells it about the lists
     const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
-    ok('1.61.1: main.js makes the watcher (its notes go to the collector, the size of a list is found with Database.approxSize) and the database tells it about every full save', has(main, "const watch = require('./perfstats').createWatcher({ mark: t => { if (perfCollector) perfCollector.mark(t); }, sizeOf: Database.approxSize });") && /db\.onSave = info => watch\.saved\(info\);/.test(main));
+    ok('1.61.1: main.js makes the watcher (its notes go to the collector, the size of a list is found with Database.approxSize) and the database tells it about every full save', has(main, "watch = require('./perfstats').createWatcher({ mark: t => { if (perfCollector) perfCollector.mark(t); }, sizeOf: Database.approxSize });") && /db\.onSave = info => watch\.saved\(info\);/.test(main));
     ok('...the list handler gives the list back unchanged and tells the watcher what was sent', has(main, "ipcMain.handle('db:list', async (_e, entity) => { const rows = await records.list(entity); watch.sent(entity, rows); return rows; });"));
-    ok('...the watcher is made before any handler (the first list can be asked at once)', main.indexOf('const watch = ') > 0 && main.indexOf('const watch = ') < main.indexOf("ipcMain.handle('db:list'") && main.indexOf('db.onSave = ') < main.indexOf("ipcMain.handle('schema'")); }
+    ok('...the watcher is made before any handler (the first list can be asked at once)', main.indexOf('watch = require') > 0 && main.indexOf('watch = require') < main.indexOf("ipcMain.handle('db:list'") && main.indexOf('db.onSave = ') < main.indexOf("ipcMain.handle('schema'")); }
 
   console.log(fails ? fails + ' PERFSTATS TESTS FAILED' : 'ALL PERFSTATS TESTS PASSED'); process.exit(fails ? 1 : 0);
 })();
