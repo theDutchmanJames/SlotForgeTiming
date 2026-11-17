@@ -239,7 +239,8 @@ const USUAL = 4.5; // what the Tyre Wear System takes in a lap on the Soft (the 
   ok('a phone that runs a race can read the push and save systems from the web server', /const READABLE = \[[^\]]*'pushsavesystems'/.test(server));
   ok('the page loads the rules before the engine and the screens that use them, the widget before the register of the widgets, and the folder before the app starts', sc2 > 0 && ps > sc2 && ps < eng && pw > 0 && pw < wd && pu > 0 && pu < html.indexOf('src="app.js"') && html.indexOf('src="pacewidgets.js"') < html.indexOf('src="timing.js"')); }
 { const t = fs.readFileSync(path.join(__dirname, '..', 'transfer.js'), 'utf8'), ui = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'transferui.js'), 'utf8');
-  ok('export and import know the table, in the order that a setup finds it first', /ORDER = \[[^\]]*'safetycarsystems', 'pushsavesystems', 'weathersystems'/.test(t) && /TR_GROUPS = [^;]*'pushsavesystems'/.test(ui) && /ORDER_DEPS = \[[^\]]*'pushsavesystems'/.test(ui)); }
+  const { flat } = require('./source.cjs'), ft = flat(t), fui = flat(ui); // (without spaces, see source.cjs)
+  ok('export and import know the table, in the order that a setup finds it first', /ORDER=\[[^\]]*'safetycarsystems','pushsavesystems','weathersystems'/.test(ft) && /TR_GROUPS=[^;]*'pushsavesystems'/.test(fui) && /ORDER_DEPS=\[[^\]]*'pushsavesystems'/.test(fui)); }
 
 // ---- presetOf (1.76.0): which ready-made system the four wear numbers are ----
 {

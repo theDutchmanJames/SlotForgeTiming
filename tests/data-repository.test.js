@@ -23,7 +23,15 @@ function fixture(t) {
 }
 function handlers(records, paddock = null) {
   const source = fs.readFileSync(path.join(__dirname, '../main.js'), 'utf8');
-  const lines = source.split('\n').filter(line => /^\s*ipcMain.handle\('(db:(list|get|add|update|remove|linked)|session:(save|remove)|custom:(list|add|remove|group))'/.test(line));
+  const all = source.split('\n'), lines = [];
+  // each matching handler, with the lines that follow until its statement is complete (a handler may span several lines)
+  all.forEach((line, i) => {
+    if (!/^\s*ipcMain.handle\('(db:(list|get|add|update|remove|linked)|session:(save|remove)|custom:(list|add|remove|group))'/.test(line)) return;
+    for (let end = i; end < all.length; end++) {
+      const chunk = all.slice(i, end + 1).join('\n');
+      try { new vm.Script(chunk); lines.push(chunk); return; } catch {}
+    }
+  });
   const registered = new Map();
   vm.runInNewContext(lines.join('\n'), { records, paddock, watch: { sent() {} }, ipcMain: { handle: (name, fn) => registered.set(name, fn) } });
   assert.equal(registered.size, 12);

@@ -18,28 +18,53 @@
   // raw: the record from the database; tag: the tag of the race (the champ of the race). { c, tag } or null.
   function of(raw, tag) {
     if (!raw || typeof raw !== 'object' || !tag || typeof tag !== 'object' || tag.kind !== 'race' || tag.id !== raw.id) return null;
-    const c = C.clean(raw, true), at = C.find(c, tag);
+    const c = C.clean(raw, true),
+      at = C.find(c, tag);
     return at && c.rounds[at.ri].sessions[at.si].share > 0 ? { c, tag } : null;
   }
   // the saved sessions without the earlier runs of this session of the championship
-  const others = (c, sessions, tag) => (Array.isArray(sessions) ? sessions : []).filter(s => !(s && s.champ && s.champ.id === c.id && s.champ.roundId === tag.roundId && s.champ.sessionId === tag.sessionId));
+  const others = (c, sessions, tag) =>
+    (Array.isArray(sessions) ? sessions : []).filter(
+      s => !(s && s.champ && s.champ.id === c.id && s.champ.roundId === tag.roundId && s.champ.sessionId === tag.sessionId)
+    );
   // the races that count in the standings, the earliest first
   function counted(c, sessions, tag) {
-    return [...P.awardedOf(c, others(c, sessions, tag)).values()].filter(s => {
-      const at = C.find(c, s.champ); return s.champ.kind === 'race' && !!at && c.rounds[at.ri].sessions[at.si].share > 0;
-    }).sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+    return [...P.awardedOf(c, others(c, sessions, tag)).values()]
+      .filter(s => {
+        const at = C.find(c, s.champ);
+        return s.champ.kind === 'race' && !!at && c.rounds[at.ri].sessions[at.si].share > 0;
+      })
+      .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
   }
   // the row of a participant in a saved result: a driver is a row of a driver, a team that raced as a team is the row of that team
-  const rowOf = (rows, p) => (Array.isArray(rows) ? rows : []).find(r => r && (p.asTeam ? r.asTeam === true && !!p.teamId && r.teamId === p.teamId : !r.asTeam && !!p.driverId && r.driverId === p.driverId)) || null;
+  const rowOf = (rows, p) =>
+    (Array.isArray(rows) ? rows : []).find(
+      r =>
+        r && (p.asTeam ? r.asTeam === true && !!p.teamId && r.teamId === p.teamId : !r.asTeam && !!p.driverId && r.driverId === p.driverId)
+    ) || null;
 
   // What the earlier rounds left behind, for the participants of this race: [{ p, laps, best, valid, t0, t1, dist? }] (a participant who took part in none of them has no entry).
   // laps: the laps that count (as the result says); best: the best lap of the results; valid: the lap times that count for the average and the median (not the laps of a pit stop, the laps that do not count or that were too slow);
   // t1: the time of the saved laps; t0: that time plus the penalty time and what the Race Director added or took off; dist: the metres, when the length of the lane is known for every lap.
   // people: the participants (driverId, teamId, asTeam); laps: the saved laps; tracks: the tracks (for the length of the lanes).
   function past(c, sessions, laps, tag, people, tracks) {
-    const byS = new Map(), trackOf = new Map((Array.isArray(tracks) ? tracks : []).map(t => [t.id, t]));
-    (Array.isArray(laps) ? laps : []).forEach(l => { if (l && l.sessionId) { const a = byS.get(l.sessionId); if (a) a.push(l); else byS.set(l.sessionId, [l]); } });
-    return pastFrom(c, sessions, tag, people, (id, p) => (byS.get(id) || []).filter(l => p.asTeam ? l.teamId === p.teamId : l.driverId === p.driverId), id => trackOf.get(id));
+    const byS = new Map(),
+      trackOf = new Map((Array.isArray(tracks) ? tracks : []).map(t => [t.id, t]));
+    (Array.isArray(laps) ? laps : []).forEach(l => {
+      if (l && l.sessionId) {
+        const a = byS.get(l.sessionId);
+        if (a) a.push(l);
+        else byS.set(l.sessionId, [l]);
+      }
+    });
+    return pastFrom(
+      c,
+      sessions,
+      tag,
+      people,
+      (id, p) => (byS.get(id) || []).filter(l => (p.asTeam ? l.teamId === p.teamId : l.driverId === p.driverId)),
+      id => trackOf.get(id)
+    );
   }
 
   // Repository readers stream only a counted session's matching laps. Preserve
@@ -48,23 +73,44 @@
     const list = counted(c, sessions, tag);
     const out = [];
     (Array.isArray(people) ? people : []).forEach((p, i) => {
-      if(p.virtualRival)return;
-      let n = 0, best = null, valid = [], t0 = 0, t1 = 0, dist = 0, known = true, any = false;
+      if (p.virtualRival) return;
+      let n = 0,
+        best = null,
+        valid = [],
+        t0 = 0,
+        t1 = 0,
+        dist = 0,
+        known = true,
+        any = false;
       list.forEach(s => {
-        const row = rowOf(s.standings, p); if (!row) return;
+        const row = rowOf(s.standings, p);
+        if (!row) return;
         any = true;
         const mine = lapsOf(s.id, p);
         n += Number(row.laps) || 0;
-        const b = Number(row.best); if (b > 0 && (best === null || b < best)) best = b;
-        let sum = 0, last = null;
-        const len = l => { const tr = trackOf(l.trackId || s.trackId); return tr ? Number(speed().laneLength(tr, (l.lane | 0) - 1)) || 0 : 0; };
+        const b = Number(row.best);
+        if (b > 0 && (best === null || b < best)) best = b;
+        let sum = 0,
+          last = null;
+        const len = l => {
+          const tr = trackOf(l.trackId || s.trackId);
+          return tr ? Number(speed().laneLength(tr, (l.lane | 0) - 1)) || 0 : 0;
+        };
         for (const l of mine) {
-          last = l; sum += Number(l.time) || 0;
+          last = l;
+          sum += Number(l.time) || 0;
           if (!l.pit && !l.invalid && !l.tooSlow && l.time > 0) valid.push(r3(l.time));
-          const m = len(l); if (m > 0) dist += m; else known = false;
+          const m = len(l);
+          if (m > 0) dist += m;
+          else known = false;
         }
-        t1 += sum; t0 += sum + (Number(row.adjMs) || 0) + (Number(row.penalty) || 0);
-        if (row.adjLaps) { const m = last ? len(last) : 0; if (m > 0) dist += row.adjLaps * m; else known = false; } // (the laps that the Race Director added or took off, in the lane of the last lap)
+        t1 += sum;
+        t0 += sum + (Number(row.adjMs) || 0) + (Number(row.penalty) || 0);
+        if (row.adjLaps) {
+          const m = last ? len(last) : 0;
+          if (m > 0) dist += row.adjLaps * m;
+          else known = false;
+        } // (the laps that the Race Director added or took off, in the lane of the last lap)
       });
       if (any) out.push({ p: i, laps: n, best: r3(best), valid, t0: r3(t0), t1: r3(t1), ...(known ? { dist: r3(dist) } : {}) });
     });
@@ -74,15 +120,54 @@
   // Where everybody stands in the championship, with this race counted as if it ended now (`rows`: the rows of the race as they stand, in the shape of a saved result, or null when nothing was driven yet),
   // and before it. Gives { order: [[participant, points or null]], pts: [[participant, points now, points before]] }.
   // The order is that of the standings (drivers; for a team that raced as a team: the teams), a participant who is not in the standings (a guest) comes after them in the order of the race.
-  function now(c, sessions, tag, people, rows, context={}) {
-    const rest = others(c, sessions, tag), before = P.standings(c, rest,{classId:context.classId}), live = rows && rows.length ? P.standings(c, rest.concat([{ id: '(racing now)', date: '9999', champ: { ...tag, awarded: 'now' }, standings: rows, multiclass:context.multiclass,classStandings:context.classStandings }]),{classId:context.classId}) : before;
-    const entry = (st, p) => (st ? (p.asTeam ? (st.teams || []).find(x => x.id === p.teamId && !!p.teamId) : (st.drivers || []).find(x => x.id === p.driverId && !!p.driverId)) || null : null);
-    const list = (Array.isArray(people) ? people : []).map((p, i) => {
-      const a = entry(live, p), b = entry(before, p), r = rowOf(rows, p);
-      return { i, pos: a ? a.pos : Infinity, rank: r && Number(r.pos) > 0 ? Number(r.pos) : Infinity, now: a ? rounded(a.total) : null, was: b ? rounded(b.total) : null };
-    }).filter(x=>!people[x.i].virtualRival);
-    list.sort((x, y) => (x.pos - y.pos) || (x.rank - y.rank) || (x.i - y.i));
-    return { order: list.map(x => [x.i, x.now]), pts: list.slice().sort((x, y) => x.i - y.i).map(x => [x.i, x.now, x.was]) };
+  function now(c, sessions, tag, people, rows, context = {}) {
+    const rest = others(c, sessions, tag),
+      before = P.standings(c, rest, { classId: context.classId }),
+      live =
+        rows && rows.length
+          ? P.standings(
+              c,
+              rest.concat([
+                {
+                  id: '(racing now)',
+                  date: '9999',
+                  champ: { ...tag, awarded: 'now' },
+                  standings: rows,
+                  multiclass: context.multiclass,
+                  classStandings: context.classStandings
+                }
+              ]),
+              { classId: context.classId }
+            )
+          : before;
+    const entry = (st, p) =>
+      st
+        ? (p.asTeam
+            ? (st.teams || []).find(x => x.id === p.teamId && !!p.teamId)
+            : (st.drivers || []).find(x => x.id === p.driverId && !!p.driverId)) || null
+        : null;
+    const list = (Array.isArray(people) ? people : [])
+      .map((p, i) => {
+        const a = entry(live, p),
+          b = entry(before, p),
+          r = rowOf(rows, p);
+        return {
+          i,
+          pos: a ? a.pos : Infinity,
+          rank: r && Number(r.pos) > 0 ? Number(r.pos) : Infinity,
+          now: a ? rounded(a.total) : null,
+          was: b ? rounded(b.total) : null
+        };
+      })
+      .filter(x => !people[x.i].virtualRival);
+    list.sort((x, y) => x.pos - y.pos || x.rank - y.rank || x.i - y.i);
+    return {
+      order: list.map(x => [x.i, x.now]),
+      pts: list
+        .slice()
+        .sort((x, y) => x.i - y.i)
+        .map(x => [x.i, x.now, x.was])
+    };
   }
 
   const api = { of, others, counted, rowOf, past, pastFrom, now };

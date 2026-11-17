@@ -224,8 +224,8 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
     const d = P().monitor().snapshot().delta;
     say('the timer passes "kept" on: counted as left alone and as kept', d.length === 1 && d[0].calls === 3 && d[0].skipped === 2 && d[0].kept === 2 && d[0].measured === 1);
     u(); }
-  { const canvas = fs.readFileSync(R + 'renderer/canvas.js', 'utf8');
-    say('canvas.js reports deferred delta resizing', canvas.includes("PerfUI.deltaNote?.(n.w.type,{why:'resize'})") && canvas.includes('requestAnimationFrame') && canvas.includes("view().kind(n.w)==='delta'")); }
+  { const canvas = fs.readFileSync(R + 'renderer/canvas.js', 'utf8'), { has } = require('./source.cjs');
+    say('canvas.js reports deferred delta resizing', has(canvas, "PerfUI.deltaNote?.(n.w.type,{why:'resize'})") && canvas.includes('requestAnimationFrame') && has(canvas, "view().kind(n.w)==='delta'")); } // (compared without spaces, see source.cjs)
 
   { const u = P().watch(); P().noteUpdate(1);
     const spin = ms => { const t0 = performance.now(); while (performance.now() - t0 < ms); };
@@ -298,7 +298,7 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
 
   // the tab and the Live Race tab are noted, and the line of the report that says so
   { const app = fs.readFileSync(R + 'renderer/app.js', 'utf8'), race = fs.readFileSync(R + 'renderer/race.js', 'utf8').replace(/\r\n/g,'\n');
-    say('app.js notes the Live Race tab before it opens the window, and every other tab that is chosen', /if \(id === 'live'\) \{ if \(typeof PerfUI !== 'undefined'\) PerfUI\.mark\('Live Race tab pressed'\); api\.liveOpen\(\); return; \}/.test(app) && app.includes("PerfUI.mark(`Tab: ${id}`)"));
+    say('app.js notes the Live Race tab before it opens the window, and every other tab that is chosen', require('./source.cjs').has(app, "if (id === 'live') { if (typeof PerfUI !== 'undefined') PerfUI.mark('Live Race tab pressed'); api.liveOpen(); return; }") && app.includes("PerfUI.mark(`Tab: ${id}`)"));
     say('race.js lets the performance figures start with the race (startCountdown) and times the parts of an update', /function startCountdown\(\) \{\n    if \(!timingReady\(\)\) return;\n    if \(typeof PerfUI !== 'undefined'\) PerfUI\.raceStarted\(\);/.test(race) && race.includes("PerfUI.phases()") && race.includes('PerfUI.widgetTimer()'));
     say('...and the parts are named in the order of the update (save point, heat list, announcer, state, widgets, pit buttons, review, lap review, lane buttons, calls, adjust pad, panels, folders, buttons, share)', ['save point', 'heat list', 'announcer', 'state', 'widgets', 'pit buttons', 'review', 'lap review', 'lane buttons', 'calls', 'adjust pad', 'panels', 'folders', 'buttons', 'share'].map(n => race.indexOf(`ph('${n}')`)).every((v, i, a) => v > 0 && (i === 0 || v > a[i - 1])));
     say('...the full screen view is timed apart, and the widgets of the page are given the timer (the full screen ones are not)', race.includes("ph('full screen widgets')") && race.includes('LiveCanvas.paint(live.nodes, S, typeof PerfUI') && race.includes('LiveCanvas.paint(live.fsView.nodes, S);')); }

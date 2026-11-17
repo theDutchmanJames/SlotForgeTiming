@@ -159,7 +159,7 @@ const view = () => run('Failures.view(live.engine(), [0, 1], performance.now(), 
   { const lv = fs.readFileSync(R + 'renderer/liveview.js', 'utf8'), rc = fs.readFileSync(R + 'renderer/race.js', 'utf8'), sv = fs.readFileSync(R + 'server.js', 'utf8'), idx = fs.readFileSync(R + 'renderer/index.html', 'utf8');
     say('the Race Director page has the folder Car Failures after Damage, and its buttons send the commands "failure" (with the number from the list, -1 for random) and "failureclear"',
       lv.includes("folder('failures', 'Car Failures'") && lv.indexOf("folder('damage'") < lv.indexOf("folder('failures'") && lv.includes("FailurePanel.build($('dir-fl')") && lv.includes("send({ type: 'failure', lane: l, k })") && lv.includes("send({ type: 'failureclear', lane: l })") && lv.includes('flPanel.update()'));
-    say('...the panel only comes when the race has failures; both the race screen and that page build the same panel (damageui.js is on the page)', lv.includes('st.cfg.damage && st.cfg.damage.failures') && rc.includes('FailurePanel.build(ui(\'flpanel\')') && idx.includes('<script src="damageui.js"></script>') && sv.includes("'failure', 'failureclear'")); }
+    say('...the panel only comes when the race has failures; both the race screen and that page build the same panel (damageui.js is on the page)', lv.includes('st.cfg.damage && st.cfg.damage.failures') && rc.includes('FailurePanel.build(ui(\'flpanel\')') && idx.includes('<script src="damageui.js"></script>') && require('./source.cjs').has(sv, "'failure', 'failureclear'")); }
 
   reachedEnd = true;
   console.log(fails ? fails + ' CAR FAILURE SCREEN TESTS FAILED' : 'ALL CAR FAILURE SCREEN TESTS PASSED'); process.exit(fails ? 1 : 0);

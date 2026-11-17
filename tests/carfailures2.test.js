@@ -208,6 +208,6 @@ const outRace = (how = 'retire', o = {}) => {
   ok('...a lane that is not a whole number from 0 to 15, a number that is not in range, or no number: refused', ![{ type: 'failure', lane: 16, k: 0 }, { type: 'failure', lane: -1, k: 0 }, { type: 'failure', lane: 1.5, k: 0 }, { type: 'failure', lane: '1', k: 0 }, { type: 'failure', lane: 1, k: -2 }, { type: 'failure', lane: 1, k: 100 }, { type: 'failure', lane: 1, k: 1.5 }, { type: 'failure', lane: 1 }, { type: 'failure', k: 1 },
     { type: 'failureclear' }, { type: 'failureclear', lane: 16 }, { type: 'failureclear', lane: 'x' }].some(c => S.failureCommand(c)));
   ok('...other commands pass this check (the other checks are theirs)', S.failureCommand({ type: 'damage', lane: 99 }) === true && S.failureCommand({ type: 'start' }) === true);
-  ok('both are commands the Race Director page may send', /const COMMANDS = \[[^\]]*'failure', 'failureclear'/.test(require('fs').readFileSync(__dirname + '/../server.js', 'utf8'))); }
+  ok('both are commands the Race Director page may send', /constCOMMANDS=\[[^\]]*'failure','failureclear'/.test(require('./source.cjs').flat(require('fs').readFileSync(__dirname + '/../server.js', 'utf8')))); }
 
 console.log(fails ? fails + ' CAR FAILURE (RELEASE 2) TESTS FAILED' : 'ALL CAR FAILURE (RELEASE 2) TESTS PASSED'); process.exit(fails ? 1 : 0);

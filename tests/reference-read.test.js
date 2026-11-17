@@ -38,7 +38,7 @@ test('SQLite reference queries read only projected leaves and never get full rec
 test('worker preserves selected artwork and reference metadata',async t=>{
  const {work}=fixture(t),client=new Client();try{await client.openWorking(work);const p=await client.referencePage('tracks');assert.equal(p.items[0].trackDesign,undefined);const [t]=await client.referenceDetails('tracks',['t'],p.revision);assert.equal(t.trackDesign.artwork,media);assert.equal(t.trackDesign.tuning.speed,1);}finally{await client.close();}
 });
-function helpers(api){const source=fs.readFileSync(path.join(__dirname,'../renderer/app.js'),'utf8'),context=vm.createContext({api});vm.runInContext(source.slice(source.indexOf('const REFERENCE_ENTITIES='),source.indexOf("const DEFAULT_NAME =")),context);return context;}
+function helpers(api){const source=fs.readFileSync(path.join(__dirname,'../renderer/app.js'),'utf8'),context=vm.createContext({api});vm.runInContext(source.slice(source.search(/const REFERENCE_ENTITIES\s*=/),source.search(/const DEFAULT_NAME\s*=/)),context);return context;}
 test('renderer loads every page and retries stale reads without duplicating records',async()=>{
  let calls=0;const c=helpers({referencePage:async(_e,{cursor})=>{calls++;if(calls===2)throw Error('The catalogue changed. Refresh the list before continuing.');return cursor?{items:[{id:'2'}],revision:'new',next:null}:{items:[{id:'1'}],revision:'new',next:{ordinal:0}};}});
  assert.equal(JSON.stringify(await vm.runInContext("readReferenceSet('drivers')",c)),JSON.stringify({items:[{id:'1'},{id:'2'}],revision:'new'}));assert.equal(calls,4);

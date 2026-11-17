@@ -2,8 +2,12 @@
 // One list of values per group, for the whole app. The layout (horizontal or vertical) is kept on the device where it is chosen: on a phone or tablet it is that device's own choice.
 
 function renderPadSettings(box) {
-  const S = state.settings || {}, lay = AdjustPad.layoutOf(S), $ = id => document.getElementById(id), cards = typeof LaneCards === 'undefined' || LaneCards.on(S);
-  const field = g => `<div class="field" style="max-width:520px"><label for="pad-${g.id}">${esc(g.title)} <span class="muted">(${esc(g.note)})</span></label>
+  const S = state.settings || {},
+    lay = AdjustPad.layoutOf(S),
+    $ = id => document.getElementById(id),
+    cards = typeof LaneCards === 'undefined' || LaneCards.on(S);
+  const field =
+    g => `<div class="field" style="max-width:520px"><label for="pad-${g.id}">${esc(g.title)} <span class="muted">(${esc(g.note)})</span></label>
       <input id="pad-${g.id}" type="text" inputmode="decimal" autocomplete="off" data-padlist="${g.id}" value="${esc(AdjustPad.listText(AdjustPad.valuesOf(S, g.id)))}" aria-describedby="pad-${g.id}-hint">
       <span class="muted hint" id="pad-${g.id}-hint">Up to ${AdjustPad.MAXV} values, separated by commas. ${g.whole ? 'Whole numbers.' : 'Use a dot for decimals (a comma also works: 0,5).'} The standard is ${esc(AdjustPad.listText(g.defaults))}.</span></div>`;
   box.innerHTML = `<section data-settings-group="view"><h3>Race Director view</h3><p class="muted" style="max-width:70ch">The Race Director adds or takes off penalty points, race time, laps and championship points with pads: a <strong>+</strong> button, a value and a <strong>−</strong> button.
@@ -24,25 +28,43 @@ function renderPadSettings(box) {
     </section><section data-settings-group="preview"><h3>Preview</h3>
     <div id="pad-preview" inert aria-hidden="true">${AdjustPad.padsHtml(S, {})}</div></section>`;
   if (typeof AppSettingsPage !== 'undefined') AppSettingsPage.enhance(box, 'director');
-  const preview = () => { $('pad-preview').innerHTML = AdjustPad.padsHtml(state.settings || {}, {}); };
-  const save = async patch => { state.settings = await api.setSettings(patch); preview(); };
+  const preview = () => {
+    $('pad-preview').innerHTML = AdjustPad.padsHtml(state.settings || {}, {});
+  };
+  const save = async patch => {
+    state.settings = await api.setSettings(patch);
+    preview();
+  };
   box.onchange = async ev => {
-    const inp = ev.target && ev.target.closest ? ev.target.closest('[data-padlist]') : null; if (!inp) return;
-    const g = AdjustPad.byId(inp.dataset.padlist); if (!g) return;
+    const inp = ev.target && ev.target.closest ? ev.target.closest('[data-padlist]') : null;
+    if (!inp) return;
+    const g = AdjustPad.byId(inp.dataset.padlist);
+    if (!g) return;
     const list = AdjustPad.clean(g.id, inp.value);
     inp.value = AdjustPad.listText(list); // (what is kept: sorted, without doubles and mistakes)
     await save({ [g.key]: list });
   };
   box.onclick = async ev => {
     const v = ev.target && ev.target.closest ? ev.target.closest('[data-dview]') : null;
-    if (v && v.dataset && v.dataset.dview) { // the Race Director view: lane cards or the folders
+    if (v && v.dataset && v.dataset.dview) {
+      // the Race Director view: lane cards or the folders
       state.settings = await api.setSettings({ directorView: v.dataset.dview === 'folders' ? 'folders' : 'cards' });
-      box.querySelectorAll('[data-dview]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.dview === (state.settings.directorView === 'folders' ? 'folders' : 'cards'))));
+      box
+        .querySelectorAll('[data-dview]')
+        .forEach(x =>
+          x.setAttribute('aria-pressed', String(x.dataset.dview === (state.settings.directorView === 'folders' ? 'folders' : 'cards')))
+        );
       return;
     }
-    const b = ev.target && ev.target.closest ? ev.target.closest('[data-padlayout],#pad-reset') : null; if (!b) return;
-    if (b.id === 'pad-reset') { await save(Object.fromEntries(AdjustPad.GROUPS.map(g => [g.key, g.defaults.slice()]))); return renderPadSettings(box); }
+    const b = ev.target && ev.target.closest ? ev.target.closest('[data-padlayout],#pad-reset') : null;
+    if (!b) return;
+    if (b.id === 'pad-reset') {
+      await save(Object.fromEntries(AdjustPad.GROUPS.map(g => [g.key, g.defaults.slice()])));
+      return renderPadSettings(box);
+    }
     await save({ padLayout: b.dataset.padlayout === 'v' ? 'v' : 'h' });
-    box.querySelectorAll('[data-padlayout]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.padlayout === AdjustPad.layoutOf(state.settings))));
+    box
+      .querySelectorAll('[data-padlayout]')
+      .forEach(x => x.setAttribute('aria-pressed', String(x.dataset.padlayout === AdjustPad.layoutOf(state.settings))));
   };
 }

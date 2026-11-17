@@ -11,7 +11,8 @@
     // textContent: an element with one text node that already has this text, or an empty element that gets ''
     textContent(el, v) {
       if (!el || el.nodeType !== 1) return false;
-      const s = v === null || v === undefined ? '' : String(v), first = el.firstChild;
+      const s = v === null || v === undefined ? '' : String(v),
+        first = el.firstChild;
       if (s === '') return !first;
       return first !== null && first === el.lastChild && first.nodeType === 3 && first.data === s;
     },
@@ -23,7 +24,17 @@
   const wrapSetter = (proto, prop) => {
     const d = proto && Object.getOwnPropertyDescriptor(proto, prop);
     if (!d || typeof d.set !== 'function' || typeof d.get !== 'function' || d.set.__quiet) return false;
-    const set = function (v) { try { if (SAME[prop](this, v)) { counts.skipped++; return; } } catch (x) { /* when in doubt: write */ } d.set.call(this, v); };
+    const set = function (v) {
+      try {
+        if (SAME[prop](this, v)) {
+          counts.skipped++;
+          return;
+        }
+      } catch (x) {
+        /* when in doubt: write */
+      }
+      d.set.call(this, v);
+    };
     set.__quiet = true;
     Object.defineProperty(proto, prop, { configurable: true, enumerable: d.enumerable, get: d.get, set });
     return true;
@@ -35,25 +46,56 @@
     try {
       if (wrapSetter(win.Node && win.Node.prototype, 'textContent')) n++;
       if (wrapSetter(win.Element && win.Element.prototype, 'className')) n++;
-      ['hidden', 'title'].forEach(p => { if (wrapSetter(win.HTMLElement && win.HTMLElement.prototype, p)) n++; });
-      ['HTMLButtonElement', 'HTMLInputElement', 'HTMLSelectElement', 'HTMLTextAreaElement'].forEach(c => { if (wrapSetter(win[c] && win[c].prototype, 'disabled')) n++; });
+      ['hidden', 'title'].forEach(p => {
+        if (wrapSetter(win.HTMLElement && win.HTMLElement.prototype, p)) n++;
+      });
+      ['HTMLButtonElement', 'HTMLInputElement', 'HTMLSelectElement', 'HTMLTextAreaElement'].forEach(c => {
+        if (wrapSetter(win[c] && win[c].prototype, 'disabled')) n++;
+      });
       const E = win.Element && win.Element.prototype;
       if (E && typeof E.setAttribute === 'function' && !E.setAttribute.__quiet) {
-        const orig = E.setAttribute, f = function (name, value) {
-          try { if (this.getAttribute(name) === String(value)) { counts.skipped++; return undefined; } } catch (x) { /* when in doubt: write */ }
-          return orig.call(this, name, value);
-        };
-        f.__quiet = true; E.setAttribute = f; n++;
+        const orig = E.setAttribute,
+          f = function (name, value) {
+            try {
+              if (this.getAttribute(name) === String(value)) {
+                counts.skipped++;
+                return undefined;
+              }
+            } catch (x) {
+              /* when in doubt: write */
+            }
+            return orig.call(this, name, value);
+          };
+        f.__quiet = true;
+        E.setAttribute = f;
+        n++;
       }
       const S = win.CSSStyleDeclaration && win.CSSStyleDeclaration.prototype;
       if (S && typeof S.setProperty === 'function' && !S.setProperty.__quiet) {
-        const orig = S.setProperty, f = function (name, value, priority) {
-          try { if (value !== null && value !== undefined && this.getPropertyValue(name) === String(value) && this.getPropertyPriority(name) === (priority || '')) { counts.skipped++; return undefined; } } catch (x) { /* when in doubt: write */ }
-          return orig.call(this, name, value, priority);
-        };
-        f.__quiet = true; S.setProperty = f; n++;
+        const orig = S.setProperty,
+          f = function (name, value, priority) {
+            try {
+              if (
+                value !== null &&
+                value !== undefined &&
+                this.getPropertyValue(name) === String(value) &&
+                this.getPropertyPriority(name) === (priority || '')
+              ) {
+                counts.skipped++;
+                return undefined;
+              }
+            } catch (x) {
+              /* when in doubt: write */
+            }
+            return orig.call(this, name, value, priority);
+          };
+        f.__quiet = true;
+        S.setProperty = f;
+        n++;
       }
-    } catch (x) { /* a window that can not be changed: the page is written as always */ }
+    } catch (x) {
+      /* a window that can not be changed: the page is written as always */
+    }
     return n;
   }
   const api = { install, skipped: () => counts.skipped, SAME };

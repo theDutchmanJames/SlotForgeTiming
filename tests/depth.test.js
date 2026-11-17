@@ -1,6 +1,6 @@
 // Soft lift (1.46.0): the Depth setting (renderer/depth.js) and the depth layer of the style sheet (the part "Soft lift" at the end of renderer/styles.css).
 const fs = require('fs'), path = require('path');
-const D = require('../renderer/depth.js'), T = require('../renderer/theme.js');
+const D = require('../renderer/depth.js'), T = require('../renderer/theme.js'), { has } = require('./source.cjs');
 let fails = 0; const ok = (name, cond) => { console.log((cond ? 'ok   ' : 'FAIL ') + name); if (!cond) fails++; };
 const R = path.join(__dirname, '..', 'renderer'), read = f => fs.readFileSync(path.join(R, f), 'utf8');
 
@@ -76,17 +76,17 @@ ok('with --depth 0 (Flat) no layer of any shadow shows, on a dark and on a light
 const app = read('app.js'), ui = read('themeui.js'), html = read('index.html');
 ok('depth.js is loaded by the page after uiscale.js and before the code that uses it', html.indexOf('<script src="uiscale.js">') > 0 && html.indexOf('<script src="depth.js">') > html.indexOf('<script src="uiscale.js">') && html.indexOf('<script src="depth.js">') < html.indexOf('<script src="themeui.js">') && html.indexOf('<script src="depth.js">') < html.indexOf('<script src="app.js">'));
 { const boot = app.slice(app.lastIndexOf('(async () => {')), live = boot.indexOf("location.hash === '#live'");
-  ok('the depth is put on the page when the app starts, before the Live Race window or the main window goes its own way (and so also on a phone)', /applyTheme\(\); applyDepth\(\); applyLayers\(\); applyName\(\);/.test(boot) && boot.indexOf('applyDepth()') < live && boot.indexOf('applyLayers()') < live); }
+  ok('the depth is put on the page when the app starts, before the Live Race window or the main window goes its own way (and so also on a phone)', has(boot, 'applyTheme(); applyDepth(); applyLayers(); applyName();') && boot.indexOf('applyDepth()') < live && boot.indexOf('applyLayers()') < live); }
 ok('applyDepth gives the page one number: --depth, the saved level divided by 100 (the standard when nothing is saved)', /function applyDepth\(\) \{\s*document\.documentElement\.style\.setProperty\('--depth', String\(Depth\.factorOf\(state\.settings && state\.settings\.depth\)\)\);\s*\}/.test(ui));
-ok('the Custom theme tells the page when its panels are light (data-tone), and any other theme takes it away again', /if \(custom && Theme\.isLight\(c\.panel\)\) root\.dataset\.tone = 'light'; else delete root\.dataset\.tone;/.test(ui));
-ok('the Depth is a choice in App Settings > General > Display, saved as depth, applied at once', /id="depthlevel"/.test(app) && /api\.setSettings\(\{ depth: Depth\.levelOf\(ev\.target\.value\) \}\); applyDepth\(\);/.test(app));
+ok('the Custom theme tells the page when its panels are light (data-tone), and any other theme takes it away again', has(ui, "if (custom && Theme.isLight(c.panel)) root.dataset.tone = 'light'; else delete root.dataset.tone;"));
+ok('the Depth is a choice in App Settings > General > Display, saved as depth, applied at once', /id="depthlevel"/.test(app) && has(app, 'api.setSettings({ depth: Depth.levelOf(ev.target.value) }); applyDepth();'));
 ok('...and it says what it does and that Flat is the plain look of before', /Flat is the plain look of before/.test(app) && /whole app/.test(app) && /widgets of your layouts/.test(app));
 
 // ---- the widgets of a layout (canvas.js paints the live ones, editor.js draws them in the editor)
 const canvasJs = read('canvas.js'), editor = read('editor.js');
 ok('live appearance keeps solidity and border thickness', canvasJs.replace(/\s/g,'').includes("Frame.style(out.bg||n.base.bg,n.w,'var(--line)',n.layout,Widgets.U)") && canvasJs.includes("'--wf'"));
 const sharedView=read('widgetview.js');
-ok('editor shares the frame style and retains flat row cells', sharedView.includes('F.css(c.bg, w, "var(--line)", l, U)') && sharedView.includes('--wf:${F.solidity(w, l)}') && editor.includes("(row?' flat':'')") && editor.includes('WidgetView.html'));
+ok('editor shares the frame style and retains flat row cells', has(sharedView, 'F.css(c.bg, w, "var(--line)", l, U)') && has(sharedView, '--wf:${F.solidity(w, l)}') && has(editor, "(row?' flat':'')") && editor.includes('WidgetView.html'));
 
 
 // ---- 1.60.3: the widgets' changing text on layers of their own (Depth.layersOn, applyLayers, the tickbox, the rule of the style sheet)
@@ -99,7 +99,7 @@ ok('...only an explicit false switches it off (0, "false", null or a text do not
 { const boot = app.slice(app.lastIndexOf('(async () => {')); const live = boot.indexOf("location.hash === '#live'");
   ok('the layers are put on the page at the start, before the Live Race window or the main window goes its own way (and so also on a phone)', boot.indexOf('applyLayers()') > 0 && boot.indexOf('applyLayers()') < live); }
 ok('the tickbox is in App Settings > General > Performance, ticked unless it was switched off, before the switch of the Performance line', /<input id="layerswitch" type="checkbox"\$\{Depth\.layersOn\(S\) \? ' checked' : ''\}>/.test(app) && app.indexOf('id="layerswitch"') > app.indexOf("sf('performance'") && app.indexOf('id="layerswitch"') < app.indexOf('id="perfswitch"'));
-ok('...it is saved as widgetLayers (true or false), the page gets the new state at once, and the page is not drawn again', /\$\('layerswitch'\)\.onchange = async ev => \{ state\.settings = await api\.setSettings\(\{ widgetLayers: !!ev\.target\.checked \}\); applyLayers\(\); \};/.test(app));
+ok('...it is saved as widgetLayers (true or false), the page gets the new state at once, and the page is not drawn again', has(app, "$('layerswitch').onchange = async ev => { state.settings = await api.setSettings({ widgetLayers: !!ev.target.checked }); applyLayers(); };"));
 ok('...it says what it does, and that text can be softer on some Windows computers', /Draw the changing text of each widget on its own layer/.test(app) && /softer on some Windows/.test(app) && /switch this off/.test(app));
 { const sheet = css.replace(/\/\*[\s\S]*?\*\//g, ''), mine = sheet.match(/[^{}]*will-change[^{}]*\{[^{}]*\}|[^{}]*\{[^{}]*will-change[^{}]*\}/g) || [];
   ok('the style sheet has one rule for the layers: the changing text of a live widget, only when the page says "on", and nothing else but will-change: transform', /html\[data-layers="on"\] \.lw\.live \.lw-val\{will-change:transform\}/.test(sheet) && (sheet.match(/will-change/g) || []).length === 1 && mine.length === 1);
@@ -110,7 +110,7 @@ ok('the Live Race page and the phone page load the same style sheet and the same
 
 // 1.61.2: the tickbox that switches the background save of the database off
 ok('1.61.2: the tickbox "Save changes to the database in the background" is in App Settings > General > Performance, ticked unless backgroundSave is false, before the switch of the Performance line', /<input id="bgsave" type="checkbox"\$\{S\.backgroundSave === false \? '' : ' checked'\}> Save changes to the database in the background/.test(app) && app.indexOf('id="bgsave"') > app.indexOf('id="layerswitch"') && app.indexOf('id="bgsave"') < app.indexOf('id="perfswitch"'));
-ok('...it is saved as backgroundSave (true or false) and the program reads it from the settings at once', /\$\('bgsave'\)\.onchange = async ev => \{ state\.settings = await api\.setSettings\(\{ backgroundSave: !!ev\.target\.checked \}\); \}/.test(app));
+ok('...it is saved as backgroundSave (true or false) and the program reads it from the settings at once', has(app, "$('bgsave').onchange = async ev => { state.settings = await api.setSettings({ backgroundSave: !!ev.target.checked }); }"));
 ok('...it says what it does and how to go back to the old way', /the whole database file is written again/.test(app) && /the program goes on while the file is written/.test(app) && /Switch this off to go back to the old way/.test(app));
 
 if (fails) { console.log('\n' + fails + ' FAILED'); process.exit(1); }

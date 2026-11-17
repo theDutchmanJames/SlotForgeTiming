@@ -3560,7 +3560,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     delete ctx.ReadableStream; delete ctx.WritableStream; run("state.hwSub='trackmate'"); await run('render()'); }
   // ---- 1.38.1: a window that cannot start shows why (the Live Race window used to stay white) ----
   { const appSrc = require('fs').readFileSync(require('path').join(__dirname, '../renderer/app.js'), 'utf8');
-    say('1.38.1: the start of the window is guarded: a failure goes to bootFailed before releasing startup feedback', /\n\}\)\(\)\.catch\(bootFailed\)\.finally\(\(\)=>\{if\(api\.startupReady&&location\.hash!=='#live'\)api\.startupReady\(\);\}\);\s*$/.test(appSrc) && /function bootFailed\(e\)/.test(appSrc));
+    say('1.38.1: the start of the window is guarded: a failure goes to bootFailed before releasing startup feedback', /\}\)\(\)\.catch\(bootFailed\)\.finally\(\(\)=>\{if\(api\.startupReady&&location\.hash!=='#live'\)api\.startupReady\(\);\}\);$/.test(require('./source.cjs').flat(appSrc)) && /function bootFailed\(e\)/.test(appSrc));
     appConsole.expected = true; const seen0 = appConsole.seen; // (the failure is reported to the console, which is the point)
     run("bootFailed(new Error('The schema could not be read'))");
     say('...which shows the message and a Try again button in place of an empty page', E('view').innerHTML.includes('This window could not be opened') && E('view').innerHTML.includes('The schema could not be read') && E('view').innerHTML.includes('id="bootagain"') && run('view.hidden') === false);

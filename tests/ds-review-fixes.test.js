@@ -41,7 +41,7 @@ test('the first lap after an ordinary pause is recorded, labelled, and kept in s
   assert.deepEqual(c.redLaps||[],[],'not a red-flag lap');
   assert.equal(r.removeLap(0,0,true),true);assert.deepEqual(c.resumedLaps,[0],'shifted with the lap list');
   const review=src('renderer/review.js');assert(/resumed \? 'first lap after a pause'/.test(review));
-  assert(src('renderer/liveshare.js').includes("'redLaps', 'resumedLaps'"),'other screens receive it');
+  assert(require('./source.cjs').has(src('renderer/liveshare.js'),"'redLaps', 'resumedLaps'"),'other screens receive it');
 });
 
 test('the Race Director page shows what the race screen says, and a resume clears an old pause message',()=>{
@@ -74,8 +74,8 @@ test('saved DS captures name the port that was picked, and DS control lines are 
 });
 
 test('requests after closing has begun are refused quietly, with the same error for the caller',async()=>{
-  assert(src('main.js').includes('appWork.closing?{__sfAppClosing:true}:appWork.run('));
-  const pre=src('preload.js'),line=pre.split(/\r?\n/).find(l=>l.startsWith('const call = '));
+  assert(require('./source.cjs').has(src('main.js'),'appWork.closing?{__sfAppClosing:true}:appWork.run('));
+  const pre=src('preload.js'),from=pre.indexOf('const call = '),line=pre.slice(from,pre.indexOf('\n};',from)+3); // the whole declaration, however many lines
   const invoke={value:null};const call=new Function('ipcRenderer',line.replace(/^const call = /,'return ')+';')({invoke:async()=>invoke.value});
   invoke.value={__sfAppClosing:true};await assert.rejects(call('db:list'),e=>e.code==='APP_CLOSING'&&/Timing is closing/.test(e.message));
   invoke.value=[1,2];assert.deepEqual(await call('db:list'),[1,2]);

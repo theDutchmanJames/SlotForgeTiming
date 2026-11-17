@@ -5,159 +5,441 @@ const crypto = require('crypto');
 const schema = require('./schema');
 const RaceLimit = require('./renderer/racelimit.js'); // what limits a race (1.62.0)
 
-const FORMAT = 'slotforge-timing-export', OLD_FORMATS = ['slot-lap-timer-export'], FILE_VERSION = 1; // exports made before the rename are still accepted
+const FORMAT = 'slotforge-timing-export',
+  OLD_FORMATS = ['slot-lap-timer-export'],
+  FILE_VERSION = 1; // exports made before the rename are still accepted
 // the order rows are added in on import (what is used comes before what uses it)
-const ORDER = ['resourcesystems', 'raceclasses', 'tracks', 'slotcars', 'virtualrivalsystems', 'drivers', 'teams', 'multiclasssystems', 'fuelrules', 'penaltysystems', 'damagesystems', 'tyrewearsystems', 'safetycarsystems', 'pushsavesystems', 'weathersystems', 'rotationsetups', 'imagesets', 'audiosets', 'chartdesigns', 'rowdesigns', 'customwidgets', 'layouts', 'racesetups', 'championships', 'sessions', 'laps'];
+const ORDER = [
+  'resourcesystems',
+  'raceclasses',
+  'tracks',
+  'slotcars',
+  'virtualrivalsystems',
+  'drivers',
+  'teams',
+  'multiclasssystems',
+  'fuelrules',
+  'penaltysystems',
+  'damagesystems',
+  'tyrewearsystems',
+  'safetycarsystems',
+  'pushsavesystems',
+  'weathersystems',
+  'rotationsetups',
+  'imagesets',
+  'audiosets',
+  'chartdesigns',
+  'rowdesigns',
+  'customwidgets',
+  'layouts',
+  'racesetups',
+  'championships',
+  'sessions',
+  'laps'
+];
 const clone = x => JSON.parse(JSON.stringify(x));
 // the group of a form that an extra field is shown in: a group of that form in this version, otherwise '' (More)
-const groupOf = (e, g) => typeof g === 'string' && (schema[e].groups || []).some(x => x.id === g) ? g : '';
+const groupOf = (e, g) => (typeof g === 'string' && (schema[e].groups || []).some(x => x.id === g) ? g : '');
 
 // Every link from one row to another: { entity: what it points to, get(), set(id) }
 function refsOf(entity, row) {
-  const out = [], field = (key, target) => { if (row[key] !== undefined && row[key] !== '' && row[key] !== null) out.push({ entity: target, get: () => row[key], set: v => { row[key] = v; } }); };
-  const field2 = (o, key, target) => { if (o && o[key]) out.push({ entity: target, get: () => o[key], set: v => { o[key] = v; } }); };
-  const composition = (doc) => { let count=0;const walk=(node,depth=0)=>{if(!node||depth>6||++count>80)return;if(node.kind==='component'){const o=node.options||{};if(o.imageSet!=='none')field2(o,'imageSet','imagesets');field2(o,'team','teams');if(node.component==='racechart')field2(o,'chartDesign','chartdesigns');}if(Array.isArray(node.children))node.children.forEach(n=>walk(n,depth+1));};walk(doc?.root); };
-  const widgets = (list, withDesign) => (list || []).forEach(w => {
-    const o = w && w.opt; if (!o) return;
-    if(o.composition)composition(o.composition);
-    if (o.imageSet !== 'none') field2(o, 'imageSet', 'imagesets'); // ('none' means "no avatars": not a link, kept as it is)
-    field2(o, 'team', 'teams'); // (a widget fixed to one team, like those embedded in a composition)
-    if (w.type === 'racechart') field2(o, 'chartDesign', 'chartdesigns');
-    if (withDesign && o.design !== 'none') field2(o, 'design', 'rowdesigns');
-  });
-  if(['slotcars','drivers','teams'].includes(entity))field('raceClass','raceclasses');
-  const classRefs=p=>{(p?.classes||[]).forEach(c=>field2(c,'id','raceclasses'));(p?.driverClasses||[]).forEach(c=>{field2(c,'driverId','drivers');field2(c,'classId','raceclasses');});};
-  if(entity==='multiclasssystems')classRefs(row);
-  if(entity==='racesetups'){field('multiClass','multiclasssystems');field('resourceSystem','resourcesystems');}
-  if(entity==='sessions'){
+  const out = [],
+    field = (key, target) => {
+      if (row[key] !== undefined && row[key] !== '' && row[key] !== null)
+        out.push({
+          entity: target,
+          get: () => row[key],
+          set: v => {
+            row[key] = v;
+          }
+        });
+    };
+  const field2 = (o, key, target) => {
+    if (o && o[key])
+      out.push({
+        entity: target,
+        get: () => o[key],
+        set: v => {
+          o[key] = v;
+        }
+      });
+  };
+  const composition = doc => {
+    let count = 0;
+    const walk = (node, depth = 0) => {
+      if (!node || depth > 6 || ++count > 80) return;
+      if (node.kind === 'component') {
+        const o = node.options || {};
+        if (o.imageSet !== 'none') field2(o, 'imageSet', 'imagesets');
+        field2(o, 'team', 'teams');
+        if (node.component === 'racechart') field2(o, 'chartDesign', 'chartdesigns');
+      }
+      if (Array.isArray(node.children)) node.children.forEach(n => walk(n, depth + 1));
+    };
+    walk(doc?.root);
+  };
+  const widgets = (list, withDesign) =>
+    (list || []).forEach(w => {
+      const o = w && w.opt;
+      if (!o) return;
+      if (o.composition) composition(o.composition);
+      if (o.imageSet !== 'none') field2(o, 'imageSet', 'imagesets'); // ('none' means "no avatars": not a link, kept as it is)
+      field2(o, 'team', 'teams'); // (a widget fixed to one team, like those embedded in a composition)
+      if (w.type === 'racechart') field2(o, 'chartDesign', 'chartdesigns');
+      if (withDesign && o.design !== 'none') field2(o, 'design', 'rowdesigns');
+    });
+  if (['slotcars', 'drivers', 'teams'].includes(entity)) field('raceClass', 'raceclasses');
+  const classRefs = p => {
+    (p?.classes || []).forEach(c => field2(c, 'id', 'raceclasses'));
+    (p?.driverClasses || []).forEach(c => {
+      field2(c, 'driverId', 'drivers');
+      field2(c, 'classId', 'raceclasses');
+    });
+  };
+  if (entity === 'multiclasssystems') classRefs(row);
+  if (entity === 'racesetups') {
+    field('multiClass', 'multiclasssystems');
+    field('resourceSystem', 'resourcesystems');
+  }
+  if (entity === 'sessions') {
     classRefs(row.multiclass);
     // Overall identity links are registered below. Register every field once:
     // importing twice would try to remap an already imported id and clear it.
-    (row.standings||[]).forEach(r=>{field2(r,'raceClass','raceclasses');field2(r,'bestBy','drivers');(r.drivers||[]).forEach(d=>field2(d,'driverId','drivers'));(r.stints||[]).forEach(d=>field2(d,'driverId','drivers'));});
-    for(const r of [...(row.classStandings||[]),...(row.heatResults||[]).flatMap(h=>h.rows||[])]){
-      field2(r,'raceClass','raceclasses');field2(r,'driverId','drivers');field2(r,'carId','slotcars');field2(r,'teamId','teams');field2(r,'bestBy','drivers');
-      (r.drivers||[]).forEach(d=>field2(d,'driverId','drivers'));
-      (r.stints||[]).forEach(d=>field2(d,'driverId','drivers'));
+    (row.standings || []).forEach(r => {
+      field2(r, 'raceClass', 'raceclasses');
+      field2(r, 'bestBy', 'drivers');
+      (r.drivers || []).forEach(d => field2(d, 'driverId', 'drivers'));
+      (r.stints || []).forEach(d => field2(d, 'driverId', 'drivers'));
+    });
+    for (const r of [...(row.classStandings || []), ...(row.heatResults || []).flatMap(h => h.rows || [])]) {
+      field2(r, 'raceClass', 'raceclasses');
+      field2(r, 'driverId', 'drivers');
+      field2(r, 'carId', 'slotcars');
+      field2(r, 'teamId', 'teams');
+      field2(r, 'bestBy', 'drivers');
+      (r.drivers || []).forEach(d => field2(d, 'driverId', 'drivers'));
+      (r.stints || []).forEach(d => field2(d, 'driverId', 'drivers'));
     }
   }
-  if (entity === 'virtualrivalsystems') field('trackId','tracks');
-  if (entity === 'drivers') field('virtualRivalSystem','virtualrivalsystems');
-  if (entity === 'racesetups') { field('track', 'tracks'); field('layout', 'layouts'); field('layout2', 'layouts'); field('penaltySystem', 'penaltysystems'); field('damageSystem', 'damagesystems'); field('fuelRules', 'fuelrules'); field('tyreWear', 'tyrewearsystems'); field('safetyCar', 'safetycarsystems'); field('pushSave', 'pushsavesystems'); field('weather', 'weathersystems'); field('rotation', 'rotationsetups'); field('audioSet', 'audiosets'); }
-  if (entity === 'audiosets') Object.values(row.calls || {}).forEach(c => ((c && c.lines) || []).forEach(l => { if (l && l.only && l.only.driver) out.push({ entity: 'drivers', get: () => l.only.driver, set: v => { l.only.driver = v || 'gone'; } }); })); // ("only for this driver" in a sentence; a driver that did not come along stays a name nobody has, so the sentence is not said for everybody)
-  if (entity === 'championships') { // (rounds: the track, sessions: the race setup, roster: the driver and the team. What did not come along is empty: see apply)
-    (row.rounds || []).forEach(r => { field2(r, 'track', 'tracks'); (r.sessions || []).forEach(x => field2(x, 'setup', 'racesetups')); });
-    (row.roster || []).forEach(x => { field2(x, 'driver', 'drivers'); field2(x, 'team', 'teams'); });
+  if (entity === 'virtualrivalsystems') field('trackId', 'tracks');
+  if (entity === 'drivers') field('virtualRivalSystem', 'virtualrivalsystems');
+  if (entity === 'racesetups') {
+    field('track', 'tracks');
+    field('layout', 'layouts');
+    field('layout2', 'layouts');
+    field('penaltySystem', 'penaltysystems');
+    field('damageSystem', 'damagesystems');
+    field('fuelRules', 'fuelrules');
+    field('tyreWear', 'tyrewearsystems');
+    field('safetyCar', 'safetycarsystems');
+    field('pushSave', 'pushsavesystems');
+    field('weather', 'weathersystems');
+    field('rotation', 'rotationsetups');
+    field('audioSet', 'audiosets');
   }
-  if (entity === 'teams') (Array.isArray(row.drivers) ? row.drivers : []).forEach((id, i) => { if (id) out.push({ entity: 'drivers', get: () => row.drivers[i], set: v => { row.drivers[i] = v; } }); }); // (a driver that did not come along leaves the team)
+  if (entity === 'audiosets')
+    Object.values(row.calls || {}).forEach(c =>
+      ((c && c.lines) || []).forEach(l => {
+        if (l && l.only && l.only.driver)
+          out.push({
+            entity: 'drivers',
+            get: () => l.only.driver,
+            set: v => {
+              l.only.driver = v || 'gone';
+            }
+          });
+      })
+    ); // ("only for this driver" in a sentence; a driver that did not come along stays a name nobody has, so the sentence is not said for everybody)
+  if (entity === 'championships') {
+    // (rounds: the track, sessions: the race setup, roster: the driver and the team. What did not come along is empty: see apply)
+    (row.rounds || []).forEach(r => {
+      field2(r, 'track', 'tracks');
+      (r.sessions || []).forEach(x => field2(x, 'setup', 'racesetups'));
+    });
+    (row.roster || []).forEach(x => {
+      field2(x, 'driver', 'drivers');
+      field2(x, 'team', 'teams');
+    });
+  }
+  if (entity === 'teams')
+    (Array.isArray(row.drivers) ? row.drivers : []).forEach((id, i) => {
+      if (id)
+        out.push({
+          entity: 'drivers',
+          get: () => row.drivers[i],
+          set: v => {
+            row.drivers[i] = v;
+          }
+        });
+    }); // (a driver that did not come along leaves the team)
   if (entity === 'layouts') widgets(row.widgets, true);
-  if (entity === 'rowdesigns') {widgets(row.widgets, false);field('classId','raceclasses');}
-  if (entity === 'customwidgets' && row.composition) composition(row.composition);
-  if (entity === 'sessions') { field('trackId', 'tracks'); (row.standings || []).forEach(s => { if (s.driverId) out.push({ entity: 'drivers', get: () => s.driverId, set: v => { s.driverId = v; } }); if (s.carId) out.push({ entity: 'slotcars', get: () => s.carId, set: v => { s.carId = v; } }); if (s.teamId) out.push({ entity: 'teams', get: () => s.teamId, set: v => { s.teamId = v; } }); }); }
-  if (entity === 'sessions') {
-    (row.virtualRivals||[]).flatMap(x=>x.rivals||[x]).forEach(r=>{field2(r,'driverId','drivers');field2(r.profile,'trackId','tracks');});
-    (row.rivalClassification||[]).forEach(r=>field2(r,'driverId','drivers'));
+  if (entity === 'rowdesigns') {
+    widgets(row.widgets, false);
+    field('classId', 'raceclasses');
   }
-  if (entity === 'laps') { field('sessionId', 'sessions'); field('trackId', 'tracks'); field('driverId', 'drivers'); field('carId', 'slotcars'); field('teamId', 'teams'); } // (the laps of a team race carry the team: the results of that team are made of them)
+  if (entity === 'customwidgets' && row.composition) composition(row.composition);
+  if (entity === 'sessions') {
+    field('trackId', 'tracks');
+    (row.standings || []).forEach(s => {
+      if (s.driverId)
+        out.push({
+          entity: 'drivers',
+          get: () => s.driverId,
+          set: v => {
+            s.driverId = v;
+          }
+        });
+      if (s.carId)
+        out.push({
+          entity: 'slotcars',
+          get: () => s.carId,
+          set: v => {
+            s.carId = v;
+          }
+        });
+      if (s.teamId)
+        out.push({
+          entity: 'teams',
+          get: () => s.teamId,
+          set: v => {
+            s.teamId = v;
+          }
+        });
+    });
+  }
+  if (entity === 'sessions') {
+    (row.virtualRivals || [])
+      .flatMap(x => x.rivals || [x])
+      .forEach(r => {
+        field2(r, 'driverId', 'drivers');
+        field2(r.profile, 'trackId', 'tracks');
+      });
+    (row.rivalClassification || []).forEach(r => field2(r, 'driverId', 'drivers'));
+  }
+  if (entity === 'laps') {
+    field('sessionId', 'sessions');
+    field('trackId', 'tracks');
+    field('driverId', 'drivers');
+    field('carId', 'slotcars');
+    field('teamId', 'teams');
+  } // (the laps of a team race carry the team: the results of that team are made of them)
   return out;
 }
 
 // picks: { entity: [ids] }. withDeps: also take what the picked items use. Sessions always take theirs and their laps.
 function collect(data, picks, withDeps = true, info = {}) {
   // Storage readers can resolve only the selected records, without loading the catalogue.
-  const find = (e,id) => typeof data.findRecord === 'function' ? data.findRecord(e,id) : (data[e] || []).find(r => r.id === id);
-  const laps = id => typeof data.lapsFor === 'function' ? data.lapsFor(id) : (data.laps || []).filter(l => l.sessionId === id);
-  const tyres = compound => typeof data.tyresFor === 'function' ? data.tyresFor(compound) : (data.tyrewearsystems || []).filter(s => s.tyres && s.tyres[compound]);
-  const have = {}, queue = [];
-  const take = (entity, row, deps) => { const s = have[entity] || (have[entity] = new Map()); if (s.has(row.id)) return; s.set(row.id, row); queue.push([entity, row, deps]); };
-  Object.entries(picks || {}).forEach(([entity, ids]) => { if (!Object.hasOwn(schema,entity)) return; (ids || []).forEach(id => { const row = find(entity,id); if (row) take(entity, row, withDeps || entity === 'sessions'); }); });
-  for (let cursor=0; cursor<queue.length; cursor++) {
+  const find = (e, id) => (typeof data.findRecord === 'function' ? data.findRecord(e, id) : (data[e] || []).find(r => r.id === id));
+  const laps = id => (typeof data.lapsFor === 'function' ? data.lapsFor(id) : (data.laps || []).filter(l => l.sessionId === id));
+  const tyres = compound =>
+    typeof data.tyresFor === 'function' ? data.tyresFor(compound) : (data.tyrewearsystems || []).filter(s => s.tyres && s.tyres[compound]);
+  const have = {},
+    queue = [];
+  const take = (entity, row, deps) => {
+    const s = have[entity] || (have[entity] = new Map());
+    if (s.has(row.id)) return;
+    s.set(row.id, row);
+    queue.push([entity, row, deps]);
+  };
+  Object.entries(picks || {}).forEach(([entity, ids]) => {
+    if (!Object.hasOwn(schema, entity)) return;
+    (ids || []).forEach(id => {
+      const row = find(entity, id);
+      if (row) take(entity, row, withDeps || entity === 'sessions');
+    });
+  });
+  for (let cursor = 0; cursor < queue.length; cursor++) {
     const [entity, row, deps] = queue[cursor];
     if (entity === 'sessions') for (const l of laps(row.id)) take('laps', l, true);
     if (!deps) continue;
     // Deleted catalogue labels still belong to historical results. Carry their
     // frozen definitions so importing a session can remap its class identities.
-    if (entity === 'sessions') (row.multiclass?.classes || []).forEach(c => {
-      if (c.id && !find('raceclasses',c.id))
-        take('raceclasses', { id:c.id, name:c.name, color:c.color, icon:c.icon }, true);
-    });
+    if (entity === 'sessions')
+      (row.multiclass?.classes || []).forEach(c => {
+        if (c.id && !find('raceclasses', c.id)) take('raceclasses', { id: c.id, name: c.name, color: c.color, icon: c.icon }, true);
+      });
     // A custom compound is embedded in its Tyre Wear System rather than being
     // a database row. Bring matching systems with a car when dependencies are
     // requested, so importing the car does not silently lose its starting tyre.
     if (entity === 'slotcars' && /^C_[A-F0-9]{16,32}$/.test(row.tyreCompound || '')) {
       for (const s of tyres(row.tyreCompound)) take('tyrewearsystems', s, true);
     }
-    refsOf(entity, row).forEach(r => { const t = find(r.entity,r.get()); if (t) take(r.entity, t, true); });
+    refsOf(entity, row).forEach(r => {
+      const t = find(r.entity, r.get());
+      if (t) take(r.entity, t, true);
+    });
   }
-  const items = {}, customFields = {};
+  const items = {},
+    customFields = {};
   ORDER.forEach(e => {
     if (!have[e]) return;
-    items[e] = [...have[e].values()].map(row=>{const out=clone(row);delete out.paddock;delete out.paddockJournal;delete out.paddockDelivery;if(e==='sessions'){delete out.resourceRunId;delete out.saveKey;}return out;});
-    const used = new Set(); items[e].forEach(r => Object.keys(r.custom || {}).forEach(k => used.add(k)));
+    items[e] = [...have[e].values()].map(row => {
+      const out = clone(row);
+      delete out.paddock;
+      delete out.paddockJournal;
+      delete out.paddockDelivery;
+      if (e === 'sessions') {
+        delete out.resourceRunId;
+        delete out.saveKey;
+      }
+      return out;
+    });
+    const used = new Set();
+    items[e].forEach(r => Object.keys(r.custom || {}).forEach(k => used.add(k)));
     const defs = ((data.customFields || {})[e] || []).filter(f => used.has(f.id));
     if (defs.length) customFields[e] = clone(defs);
   });
-  return { format: FORMAT, fileVersion: FILE_VERSION, app: info.app || 'SlotForge Timing', appVersion: info.version || '', exported: info.date || new Date().toISOString(), items, customFields };
+  return {
+    format: FORMAT,
+    fileVersion: FILE_VERSION,
+    app: info.app || 'SlotForge Timing',
+    appVersion: info.version || '',
+    exported: info.date || new Date().toISOString(),
+    items,
+    customFields
+  };
 }
 
 // What the picked items use (transitively), apart from the picked items themselves: { entity: [{ id, required }] }. Laps are not listed (they belong to their session).
 // required: a picked session cannot do without it.
 function dependencies(data, picks) {
-  const all = collect(data, picks, true).items, forced = collect(data, { sessions: (picks && picks.sessions) || [] }, false).items, out = {};
+  const all = collect(data, picks, true).items,
+    forced = collect(data, { sessions: (picks && picks.sessions) || [] }, false).items,
+    out = {};
   ORDER.forEach(e => {
     if (e === 'laps' || !all[e]) return;
-    const mine = new Set((picks && picks[e]) || []), need = new Set((forced[e] || []).map(r => r.id)), list = all[e].filter(r => !mine.has(r.id)).map(r => ({ id: r.id, required: need.has(r.id) }));
+    const mine = new Set((picks && picks[e]) || []),
+      need = new Set((forced[e] || []).map(r => r.id)),
+      list = all[e].filter(r => !mine.has(r.id)).map(r => ({ id: r.id, required: need.has(r.id) }));
     if (list.length) out[e] = list;
   });
   return out;
 }
 
-const titleOf = (entity, row) => { const k = schema[entity] && schema[entity].title; return k ? k.map(x => row[x]).filter(x => x !== undefined && x !== '').join(' ') : ''; };
+const titleOf = (entity, row) => {
+  const k = schema[entity] && schema[entity].title;
+  return k
+    ? k
+        .map(x => row[x])
+        .filter(x => x !== undefined && x !== '')
+        .join(' ')
+    : '';
+};
 
 // is this a file of ours? -> { ok, error, summary: { entity: { count, names } } }
 function check(bundle) {
-  if (!bundle || typeof bundle !== 'object' || bundle.format !== FORMAT && !OLD_FORMATS.includes(bundle.format)) return { ok: false, error: 'This is not an export file from this app.' };
-  if (!(bundle.fileVersion <= FILE_VERSION)) return { ok: false, error: 'This file comes from a newer version of the app. Update the app first.' };
+  if (!bundle || typeof bundle !== 'object' || (bundle.format !== FORMAT && !OLD_FORMATS.includes(bundle.format)))
+    return { ok: false, error: 'This is not an export file from this app.' };
+  if (!(bundle.fileVersion <= FILE_VERSION))
+    return { ok: false, error: 'This file comes from a newer version of the app. Update the app first.' };
   if (!bundle.items || typeof bundle.items !== 'object') return { ok: false, error: 'The file is empty.' };
   const summary = {};
-  for (const e of ORDER) { const list = bundle.items[e]; if (list === undefined) continue; if (!Array.isArray(list) || list.some(r => !r || typeof r !== 'object' || Array.isArray(r) || typeof r.id !== 'string' || !r.id.trim())) return { ok: false, error: `The file is damaged (${e}).` }; if (new Set(list.map(r=>r.id)).size !== list.length) return {ok:false,error:`The file contains duplicate identities (${e}).`}; if (e === 'sessions' && list.some(r => !Array.isArray(r.standings))) return { ok: false, error: 'The file is damaged (sessions without results).' }; if (list.length) summary[e] = { count: list.length, names: list.slice(0, 12).map(r => titleOf(e, r)) }; }
+  for (const e of ORDER) {
+    const list = bundle.items[e];
+    if (list === undefined) continue;
+    if (!Array.isArray(list) || list.some(r => !r || typeof r !== 'object' || Array.isArray(r) || typeof r.id !== 'string' || !r.id.trim()))
+      return { ok: false, error: `The file is damaged (${e}).` };
+    if (new Set(list.map(r => r.id)).size !== list.length) return { ok: false, error: `The file contains duplicate identities (${e}).` };
+    if (e === 'sessions' && list.some(r => !Array.isArray(r.standings)))
+      return { ok: false, error: 'The file is damaged (sessions without results).' };
+    if (list.length) summary[e] = { count: list.length, names: list.slice(0, 12).map(r => titleOf(e, r)) };
+  }
   return Object.keys(summary).length ? { ok: true, summary } : { ok: false, error: 'The file has nothing to import.' };
 }
 
 // Adds everything in the bundle to the database as new copies (new ids; links between the copies are kept; a clash of names gets "(imported)").
 // All or nothing: a damaged file that fails halfway leaves the database as it was.
 function apply(db, bundle) {
-  const c = check(bundle); if (!c.ok) throw new Error(c.error);
-  const d = db.data, map = Object.create(null), counts = {}, had = {};
-  ORDER.forEach(e => { map[e] = Object.create(null); had[e] = d[e].length; });
+  const c = check(bundle);
+  if (!c.ok) throw new Error(c.error);
+  const d = db.data,
+    map = Object.create(null),
+    counts = {},
+    had = {};
+  ORDER.forEach(e => {
+    map[e] = Object.create(null);
+    had[e] = d[e].length;
+  });
   const hadFields = Object.entries(d.customFields).map(([e, list]) => [e, list.length]);
-  const rollback = () => { ORDER.forEach(e => { d[e].length = had[e]; }); hadFields.forEach(([e, n]) => { d.customFields[e].length = n; }); };
+  const rollback = () => {
+    ORDER.forEach(e => {
+      d[e].length = had[e];
+    });
+    hadFields.forEach(([e, n]) => {
+      d.customFields[e].length = n;
+    });
+  };
   try {
     const fieldMap = Object.create(null); // custom field ids of the file -> ours
     Object.entries(bundle.customFields || {}).forEach(([e, defs]) => {
       if (!schema[e] || !Array.isArray(defs)) return;
       defs.forEach(f => {
         if (!f || typeof f !== 'object') return;
-        const mine = d.customFields[e].find(x => x.label === f.label && x.type === f.type) || (d.customFields[e].push({ id: crypto.randomUUID().slice(0, 8), label: f.label, type: f.type, options: clone(f.options || []), group: groupOf(e, f.group) }), d.customFields[e][d.customFields[e].length - 1]);
+        const mine =
+          d.customFields[e].find(x => x.label === f.label && x.type === f.type) ||
+          (d.customFields[e].push({
+            id: crypto.randomUUID().slice(0, 8),
+            label: f.label,
+            type: f.type,
+            options: clone(f.options || []),
+            group: groupOf(e, f.group)
+          }),
+          d.customFields[e][d.customFields[e].length - 1]);
         (fieldMap[e] = fieldMap[e] || Object.create(null))[f.id] = mine.id;
       });
     });
     for (const e of ORDER) {
       for (const src of bundle.items[e] || []) {
-        const row = clone(src); delete row.paddock;delete row.paddockJournal;delete row.paddockDelivery; if(e==='sessions'){delete row.resourceRunId;delete row.saveKey;} if(e==='tracks'&&Object.hasOwn(row,'trackDesign'))row.trackDesign=TrackDesign.validateSaved(row.trackDesign); const oldId = row.id; row.id = crypto.randomUUID(); map[e][oldId] = row.id;
+        const row = clone(src);
+        delete row.paddock;
+        delete row.paddockJournal;
+        delete row.paddockDelivery;
+        if (e === 'sessions') {
+          delete row.resourceRunId;
+          delete row.saveKey;
+        }
+        if (e === 'tracks' && Object.hasOwn(row, 'trackDesign')) row.trackDesign = TrackDesign.validateSaved(row.trackDesign);
+        const oldId = row.id;
+        row.id = crypto.randomUUID();
+        map[e][oldId] = row.id;
         refsOf(e, row).forEach(r => r.set(map[r.entity] && map[r.entity][r.get()] !== undefined ? map[r.entity][r.get()] : ''));
-        if (e === 'racesetups') { RaceLimit.upgrade(row); RaceLimit.upgradeScoring(row); } // (a file made before 1.62.0 may hold a Timed race: that is a Race limited by a time now; one from before 1.65.0 has heats of a time that count laps or points)
+        if (e === 'racesetups') {
+          RaceLimit.upgrade(row);
+          RaceLimit.upgradeScoring(row);
+        } // (a file made before 1.62.0 may hold a Timed race: that is a Race limited by a time now; one from before 1.65.0 has heats of a time that count laps or points)
         if (e === 'teams') row.drivers = (Array.isArray(row.drivers) ? row.drivers : []).filter(Boolean);
         if (e === 'championships') row.roster = (Array.isArray(row.roster) ? row.roster : []).filter(x => x && x.driver); // (a driver that did not come along is not in the roster)
-        if (e === 'sessions' && row.champ) { const m = map.championships[row.champ.id]; if (m) row.champ.id = m; else delete row.champ; } // (a race that counted for a championship that did not come along is a normal race)
-        if (row.custom) { const m = {}; Object.entries(row.custom).forEach(([k, v]) => { if (fieldMap[e] && fieldMap[e][k]) m[fieldMap[e][k]] = v; }); row.custom = m; } else row.custom = {};
+        if (e === 'sessions' && row.champ) {
+          const m = map.championships[row.champ.id];
+          if (m) row.champ.id = m;
+          else delete row.champ;
+        } // (a race that counted for a championship that did not come along is a normal race)
+        if (row.custom) {
+          const m = {};
+          Object.entries(row.custom).forEach(([k, v]) => {
+            if (fieldMap[e] && fieldMap[e][k]) m[fieldMap[e][k]] = v;
+          });
+          row.custom = m;
+        } else row.custom = {};
         // a clash of titles (the whole title: a car is brand + make + model) is marked on the last part that has text
-        const parts = e === 'sessions' || e === 'laps' ? [] : (schema[e].title || []).filter(k => typeof row[k] === 'string' && row[k] !== ''), title = parts.length ? titleOf(e, row) : '';
+        const parts =
+            e === 'sessions' || e === 'laps' ? [] : (schema[e].title || []).filter(k => typeof row[k] === 'string' && row[k] !== ''),
+          title = parts.length ? titleOf(e, row) : '';
         if (title && d[e].some(x => titleOf(e, x) === title)) row[parts[parts.length - 1]] += ' (imported)';
-        d[e].push(row); counts[e] = (counts[e] || 0) + 1;
+        d[e].push(row);
+        counts[e] = (counts[e] || 0) + 1;
       }
     }
-  } catch { rollback(); throw new Error('Nothing was imported: the file is damaged.'); }
-  try { (db.saveNow || db.save).call(db); } catch (x) { rollback(); throw x; } // (1.61.2: written at once even when the database writes its changes in the background: all or nothing)
+  } catch {
+    rollback();
+    throw new Error('Nothing was imported: the file is damaged.');
+  }
+  try {
+    (db.saveNow || db.save).call(db);
+  } catch (x) {
+    rollback();
+    throw x;
+  } // (1.61.2: written at once even when the database writes its changes in the background: all or nothing)
   if (counts.laps === undefined) delete counts.laps;
   return counts;
 }

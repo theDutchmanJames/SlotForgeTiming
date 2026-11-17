@@ -3,6 +3,7 @@
 // - the app windows have a Content-Security-Policy and only ever show index.html (no navigation, no new windows)
 // - the network server only answers local addresses, drops a browser that stops reading the live updates, and keeps a driver's date of birth on this computer
 const fs = require('fs'), path = require('path'), net = require('net');
+const { has } = require('./source.cjs');
 const Wx = require('../renderer/weather.js'), WW = require('../renderer/weatherwidgets.js'), Wd = require('../renderer/widgets.js');
 const { createServer, localHost, publicList } = require('../server.js');
 let fails = 0;
@@ -35,7 +36,7 @@ ok('...pictures and sounds may still be data and blob links (picture and audio s
 ok('index.html has no inline script the policy would block', !/<script(?![^>]*\ssrc=)[^>]*>/i.test(index));
 const main = fs.readFileSync(path.join(R, 'main.js'), 'utf8');
 ok('main.js guards the main window and the Live Race window', (main.match(/guardWindow\((win|liveWin)\)/g) || []).length === 2);
-ok('...they deny new windows and navigation to any other page than the one they show', /setWindowOpenHandler\(\(\) => \(\{ action: 'deny' \}\)\)/.test(main) && /'will-navigate', \(event, url\) => \{ if \(page\(url\) !== page\(w\.webContents\.getURL\(\)\)\) event\.preventDefault\(\); \}/.test(main));
+ok('...they deny new windows and navigation to any other page than the one they show', /setWindowOpenHandler\(\(\) => \(\{ action: 'deny' \}\)\)/.test(main) && has(main, "'will-navigate', (event, url) => { if (page(url) !== page(w.webContents.getURL())) event.preventDefault(); }"));
 { // the guard itself, with a stand-in window: the same page (another #view) passes, any other page is stopped; Windows paths with a lower-case drive or % pass as Electron wrote them
   const src = main.slice(main.indexOf('function guardWindow'), main.indexOf('async function createWindow'));
   const guard = new Function('path', src + '; return guardWindow;')(path);

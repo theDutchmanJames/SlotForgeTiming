@@ -29,37 +29,86 @@
   }
 
   function bind(o) {
-    const L = o.link, setup = { ...DEFAULTS, ...(o.setup || {}) }, pitBySensor = setup.boxPit !== 'button';
-    const carOf = lane => { const cars = o.cars() || []; return cars.findIndex(c => c && c.lane === lane); };
-    let lastLights = null, lastCount = -1, lanePowerOff = new Set(), keep = null;
+    const L = o.link,
+      setup = { ...DEFAULTS, ...(o.setup || {}) },
+      pitBySensor = setup.boxPit !== 'button';
+    const carOf = lane => {
+      const cars = o.cars() || [];
+      return cars.findIndex(c => c && c.lane === lane);
+    };
+    let lastLights = null,
+      lastCount = -1,
+      lanePowerOff = new Set(),
+      keep = null;
     const sync = () => {
-      const phase = o.phase(), lights = o.lights ? o.lights() : 0, flag = o.flag();
-      const want = lightsFor(phase, lights, flag); let sent = false;
+      const phase = o.phase(),
+        lights = o.lights ? o.lights() : 0,
+        flag = o.flag();
+      const want = lightsFor(phase, lights, flag);
+      let sent = false;
       if (want !== lastLights) {
-        L.send(C.lights(want)); sent = true;
-        if (setup.boxBeeps !== false) { if (phase === 'countdown' && (lights | 0) > lastCount && (lights | 0) > 0) L.send(C.beep(1)); else if (want === 'G' && /^[1-5]$/.test(lastLights || '')) L.send(C.beep(3)); } // (GO sounds after a countdown, not when a flag is cleared)
+        L.send(C.lights(want));
+        sent = true;
+        if (setup.boxBeeps !== false) {
+          if (phase === 'countdown' && (lights | 0) > lastCount && (lights | 0) > 0) L.send(C.beep(1));
+          else if (want === 'G' && /^[1-5]$/.test(lastLights || '')) L.send(C.beep(3));
+        } // (GO sounds after a countdown, not when a flag is cleared)
         lastLights = want;
       }
-      lastCount = phase === 'countdown' ? (lights | 0) : -1;
-      if (setup.boxLanePower === 'retired') (o.cars() || []).forEach(c => { if (c && (c.retired || c.dq) && !lanePowerOff.has(c.lane)) { lanePowerOff.add(c.lane); L.send(C.lanePower(c.lane, false)); sent = true; } });
+      lastCount = phase === 'countdown' ? lights | 0 : -1;
+      if (setup.boxLanePower === 'retired')
+        (o.cars() || []).forEach(c => {
+          if (c && (c.retired || c.dq) && !lanePowerOff.has(c.lane)) {
+            lanePowerOff.add(c.lane);
+            L.send(C.lanePower(c.lane, false));
+            sent = true;
+          }
+        });
       return sent;
     };
     const off = L.on(e => {
       if (e.type === 'hit') {
-        const phase = o.phase(); if (phase === 'countdown') { if (o.onJump) o.onJump(e.lane, e.at); return; }
-        if (phase === 'ready' || !Number.isFinite(e.at)) return; const i = carOf(e.lane); if (i >= 0) o.crossCar(i, e.at); // (a crossing without a real time never reaches the race)
-      } else if (e.type === 'pit') { if (!pitBySensor) return; const i = carOf(e.pit); if (i >= 0) (e.in ? o.blockCar : o.unblockCar)(i); } // pit sensor n belongs to lane n
-      else if (e.type === 'call') { if (o.trackcall) o.trackcall(); }
-      else if (e.type === 'button') { if (o.actions && o.actions.call) o.actions.call(e.lane); }
-      else if (e.type === 'trap') { if (o.onTrap) o.onTrap(e.lane, e.ms); }
-      else if (e.type === 'safe' && e.on) { if (o.onSafe) o.onSafe({ stalled: stalled() }); } // (audit 2.2.5: the box lost us and cut the power: the race is told, as a timing fault)
-      else if (e.type === 'safe' && !e.on) { L.send(C.mainPower(wantPower)); L.setPower(wantPower); lastLights = null; sync(); } // the box is back from its safe state (it cut the track power when it lost us): tell it the lights and the track power again
+        const phase = o.phase();
+        if (phase === 'countdown') {
+          if (o.onJump) o.onJump(e.lane, e.at);
+          return;
+        }
+        if (phase === 'ready' || !Number.isFinite(e.at)) return;
+        const i = carOf(e.lane);
+        if (i >= 0) o.crossCar(i, e.at); // (a crossing without a real time never reaches the race)
+      } else if (e.type === 'pit') {
+        if (!pitBySensor) return;
+        const i = carOf(e.pit);
+        if (i >= 0) (e.in ? o.blockCar : o.unblockCar)(i);
+      } // pit sensor n belongs to lane n
+      else if (e.type === 'call') {
+        if (o.trackcall) o.trackcall();
+      } else if (e.type === 'button') {
+        if (o.actions && o.actions.call) o.actions.call(e.lane);
+      } else if (e.type === 'trap') {
+        if (o.onTrap) o.onTrap(e.lane, e.ms);
+      } else if (e.type === 'safe' && e.on) {
+        if (o.onSafe) o.onSafe({ stalled: stalled() });
+      } // (audit 2.2.5: the box lost us and cut the power: the race is told, as a timing fault)
+      else if (e.type === 'safe' && !e.on) {
+        L.send(C.mainPower(wantPower));
+        L.setPower(wantPower);
+        lastLights = null;
+        sync();
+      } // the box is back from its safe state (it cut the track power when it lost us): tell it the lights and the track power again
     });
     // the keep-alive: every second while bound (the page sends one too while its tab is open; two are harmless)
     // (2.2.5) When this window stood still (a dialog, a busy moment) the keep-alives were not sent: a safe state that follows is ours, not the connection's
-    let lastKeep = Date.now(), stallUntil = 0;
+    let lastKeep = Date.now(),
+      stallUntil = 0;
     const stalled = () => Date.now() < stallUntil || (keep && Date.now() - lastKeep > 2 * B.KEEPALIVE_MS);
-    if (typeof setInterval === 'function' && o.keepalive !== false) keep = setInterval(() => { const now = Date.now(); if (now - lastKeep > 2.5 * B.KEEPALIVE_MS) stallUntil = now + 3 * B.KEEPALIVE_MS + 1000; lastKeep = now; L.send(C.keepalive()); }, B.KEEPALIVE_MS);
+    if (typeof setInterval === 'function' && o.keepalive !== false)
+      keep = setInterval(() => {
+        const now = Date.now();
+        if (now - lastKeep > 2.5 * B.KEEPALIVE_MS) stallUntil = now + 3 * B.KEEPALIVE_MS + 1000;
+        lastKeep = now;
+        L.send(C.keepalive());
+      }, B.KEEPALIVE_MS);
     L.send(C.readings(false)); // the live readings of the Arduino page cost serial time on the box: never during a race
     // the track power at the start, as the Trackmate setting says (on or off; race.js calls power(true) at lights out when it is its choice)
     let wantPower = setup.startPower !== 'off'; // the track power the race wants now (a box that comes back from its safe state is told)
@@ -67,11 +116,27 @@
     sync();
     return {
       sync,
-      power: on => { wantPower = !!on; L.send(C.mainPower(wantPower)); L.setPower(wantPower); },
-      lanePower: (lane, on) => { L.send(C.lanePower(lane, !!on)); if (on) lanePowerOff.delete(lane); else lanePowerOff.add(lane); },
-      laneLight: (lane, hex) => { if (setup.boxLaneLights) L.send(C.lanePixel(lane, hex)); },
+      power: on => {
+        wantPower = !!on;
+        L.send(C.mainPower(wantPower));
+        L.setPower(wantPower);
+      },
+      lanePower: (lane, on) => {
+        L.send(C.lanePower(lane, !!on));
+        if (on) lanePowerOff.delete(lane);
+        else lanePowerOff.add(lane);
+      },
+      laneLight: (lane, hex) => {
+        if (setup.boxLaneLights) L.send(C.lanePixel(lane, hex));
+      },
       beep: n => L.send(C.beep(n)),
-      off: () => { off(); if (keep) clearInterval(keep); L.send(C.lights('S')); lanePowerOff.forEach(lane => L.send(C.lanePower(lane, true))); lanePowerOff.clear(); },
+      off: () => {
+        off();
+        if (keep) clearInterval(keep);
+        L.send(C.lights('S'));
+        lanePowerOff.forEach(lane => L.send(C.lanePower(lane, true)));
+        lanePowerOff.clear();
+      },
       lightsFor: () => lightsFor(o.phase(), o.lights ? o.lights() : 0, o.flag())
     };
   }

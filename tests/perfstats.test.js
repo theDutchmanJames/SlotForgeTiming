@@ -1,6 +1,6 @@
 // 1.60.0: what the core of the app tells about the computer and the app (perfstats.js), with the things it asks given to it: the processes, the graphics, the screen, the computer,
 // the processor's heat and speed, how long the core was stuck, the race save. And the whole way to the line: what it tells, made safe by renderer/perf.js, as a report.
-const fs = require('fs'), path = require('path');
+const fs = require('fs'), path = require('path'), { has } = require('./source.cjs');
 const { createCollector, STEP, KEEP, IDLE_STOP, STALLS_KEEP } = require('../perfstats.js');
 const Perf = require('../renderer/perf.js');
 let fails = 0;
@@ -114,7 +114,7 @@ function deps(over = {}) {
     ok('...and it makes a report that names the Pi and says the window is drawn in software', rep.includes('Raspberry Pi 5 Model B Rev 1.0') && rep.includes('SOFTWARE')); }
 
   { const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8'), pre = fs.readFileSync(path.join(__dirname, '..', 'preload.js'), 'utf8'), web = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'webapi.js'), 'utf8');
-    ok('main.js answers "perf:stats" from the collector (made when the database is there), the preload script and the browser version have perfStats', /createCollector\(\{ app, screen, os, process, db,/.test(main) && main.includes("ipcMain.handle('perf:stats', () => perf.collect())") && pre.includes("perfStats: () => call('perf:stats')") && /perfStats: async \(\) => null/.test(web)); }
+    ok('main.js answers "perf:stats" from the collector (made when the database is there), the preload script and the browser version have perfStats', has(main, 'createCollector({ app, screen, os, process, db,') && main.includes("ipcMain.handle('perf:stats', () => perf.collect())") && pre.includes("perfStats: () => call('perf:stats')") && /perfStats: async \(\) => null/.test(web)); }
 
   // ---- 1.60.1: the stalls with their clock time, the marks, the windows ----
   { const { d, clock } = deps(), C = createCollector(d);
@@ -176,9 +176,9 @@ function deps(over = {}) {
     const m = Perf.cleanMain(await C.collect()), rep = Perf.report(null, m, {});
     ok('a stall, a mark and two windows come through the core, made safe, into the report', m.windows[1].cpu === 25 && m.windows[1].memMB === 600 && m.windows[0].memMB === 300 && /was stuck for 1468 ms at \d\d:\d\d:\d\d/.test(rep) && rep.includes('Live Race window opened (1460 ms in the core)') && rep.includes('Windows (2 open):') && rep.includes('The Live Race window is open')); }
   { const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
-    ok('main.js gives the collector the list of windows (title, process, shown, minimized, in front, and which one is the Live Race window)', /windows: \(\) => BrowserWindow\.getAllWindows\(\)\.filter\(w => !w\.isDestroyed\(\)\)\.map\(w => \{ try \{ return \{ title: w\.getTitle\(\), pid: w\.webContents\.getOSProcessId\(\), visible: w\.isVisible\(\), minimized: w\.isMinimized\(\), focused: w\.isFocused\(\), live: w === liveWin \}/.test(main));
+    ok('main.js gives the collector the list of windows (title, process, shown, minimized, in front, and which one is the Live Race window)', has(main, 'windows: () => BrowserWindow.getAllWindows().filter(w => !w.isDestroyed()).map(w => { try { return { title: w.getTitle(), pid: w.webContents.getOSProcessId(), visible: w.isVisible(), minimized: w.isMinimized(), focused: w.isFocused(), live: w === liveWin }'));
     ok('...tells it when the Live Race window opened and how long that took in the core, and when it closed', /const opened = Date\.now\(\);/.test(main) && /perfCollector\.mark\(`Live Race window opened \(\$\{Date\.now\(\) - opened\} ms in the core\)`\)/.test(main) && /perfCollector\.mark\('Live Race window closed'\)/.test(main));
-    ok('...the collector is the one that answers "perf:stats" and is the one the window opening tells', /const perf = perfCollector = require\('\.\/perfstats'\)\.createCollector\(/.test(main) && /let perfCollector = null;/.test(main));
+    ok('...the collector is the one that answers "perf:stats" and is the one the window opening tells', has(main, "const perf = (perfCollector = require('./perfstats').createCollector(") && /let perfCollector = null;/.test(main));
     ok('...the time is taken before the window is made and the mark is written after it is there', main.indexOf('const opened = Date.now();') < main.indexOf('liveWin = new BrowserWindow(') && main.indexOf('liveWin = new BrowserWindow(') < main.indexOf('perfCollector.mark(`Live Race window opened')); }
 
   // ---- 1.61.1: the full saves and the lists sent to the window, as notes ----
@@ -235,8 +235,8 @@ function deps(over = {}) {
     ok('...given to the collector it comes back in the notes with the clock time of the moment', c.marks.length === 1 && c.marks[0].at === 5000000 && c.marks[0].text === 'Saved the whole database: 349 ms (making the text 183, writing the file 166), 154.7 MB'); }
   { // main.js: the watcher is made before the handlers, the database tells it about its saves, the list handler tells it about the lists
     const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
-    ok('1.61.1: main.js makes the watcher (its notes go to the collector, the size of a list is found with Database.approxSize) and the database tells it about every full save', /const watch = require\('\.\/perfstats'\)\.createWatcher\(\{ mark: t => \{ if \(perfCollector\) perfCollector\.mark\(t\); \}, sizeOf: Database\.approxSize \}\);/.test(main) && /db\.onSave = info => watch\.saved\(info\);/.test(main));
-    ok('...the list handler gives the list back unchanged and tells the watcher what was sent', /ipcMain\.handle\('db:list', async \(_e, entity\) => \{ const rows = await records\.list\(entity\); watch\.sent\(entity, rows\); return rows; \}\);/.test(main));
+    ok('1.61.1: main.js makes the watcher (its notes go to the collector, the size of a list is found with Database.approxSize) and the database tells it about every full save', has(main, "const watch = require('./perfstats').createWatcher({ mark: t => { if (perfCollector) perfCollector.mark(t); }, sizeOf: Database.approxSize });") && /db\.onSave = info => watch\.saved\(info\);/.test(main));
+    ok('...the list handler gives the list back unchanged and tells the watcher what was sent', has(main, "ipcMain.handle('db:list', async (_e, entity) => { const rows = await records.list(entity); watch.sent(entity, rows); return rows; });"));
     ok('...the watcher is made before any handler (the first list can be asked at once)', main.indexOf('const watch = ') > 0 && main.indexOf('const watch = ') < main.indexOf("ipcMain.handle('db:list'") && main.indexOf('db.onSave = ') < main.indexOf("ipcMain.handle('schema'")); }
 
   console.log(fails ? fails + ' PERFSTATS TESTS FAILED' : 'ALL PERFSTATS TESTS PASSED'); process.exit(fails ? 1 : 0);

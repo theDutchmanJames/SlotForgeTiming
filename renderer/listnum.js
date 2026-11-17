@@ -7,18 +7,28 @@
   'use strict';
   // the numbers of the text as text, with a dot for the decimals: "0,5, 1, 2,5" -> ['0.5', '1', '2.5']
   function items(text) {
-    const parts = String(text === undefined || text === null ? '' : text).split(/[\s;]+/).filter(Boolean), spaced = parts.length > 1, out = [];
+    const parts = String(text === undefined || text === null ? '' : text)
+        .split(/[\s;]+/)
+        .filter(Boolean),
+      spaced = parts.length > 1,
+      out = [];
     parts.forEach(part => {
       const p = part.replace(/^,+|,+$/g, '');
       if (/^\d+,\d+$/.test(p) && (spaced || /^0,/.test(p))) out.push(p.replace(',', '.'));
-      else p.split(',').filter(Boolean).forEach(x => out.push(x));
+      else
+        p.split(',')
+          .filter(Boolean)
+          .forEach(x => out.push(x));
     });
     return out;
   }
   const numbers = text => items(text).map(Number);
   // the text with the decimal commas made dots and one ", " between the numbers. A list that has no decimal comma, and text that is not a list of plain numbers, is given back as it is.
   function tidy(text) {
-    const list = items(text), plain = String(text === undefined || text === null ? '' : text).split(/[\s;,]+/).filter(Boolean);
+    const list = items(text),
+      plain = String(text === undefined || text === null ? '' : text)
+        .split(/[\s;,]+/)
+        .filter(Boolean);
     if (list.length === plain.length && list.every((x, i) => x === plain[i])) return text;
     return list.length && list.every(x => /^\d+(\.\d+)?$/.test(x)) ? list.join(', ') : text;
   }

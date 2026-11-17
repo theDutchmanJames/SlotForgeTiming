@@ -1,6 +1,7 @@
 // The database file: older race setups with inline fuel settings become fuel rules.
 const fs = require('fs'), os = require('os'), path = require('path');
 const Database = require('../db.js');
+const { flat, has } = require('./source.cjs');
 let fails = 0;
 const ok = (name, cond) => { console.log((cond ? 'ok   ' : 'FAIL ') + name); if (!cond) fails++; };
 const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'slt-')), 'db.json');
@@ -341,8 +342,8 @@ const asyncTests = async () => {
   }
   { // main.js: the handler waits for the settings file, closing waits for what is on its way, and the core tells the figures
     const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8'), ps = fs.readFileSync(path.join(__dirname, '..', 'perfstats.js'), 'utf8');
-    ok('settings and shutdown use the lifecycle storage boundary', main.includes('await lifecycle.updateSettings(patch)') && !/db\.setSettings\(/.test(main) && main.includes('const storage=lifecycle||sqliteRuntime?.lifecycle') && main.includes('await storage.shutdown()'));
-    ok('diagnostics use the lifecycle service when available', ps.includes('await d.storage.diagnostics()') && ps.includes('out.database=storage.database'));
+    ok('settings and shutdown use the lifecycle storage boundary', main.includes('await lifecycle.updateSettings(patch)') && !/db\.setSettings\(/.test(main) && has(main, 'const storage=lifecycle||sqliteRuntime?.lifecycle') && main.includes('await storage.shutdown()'));
+    ok('diagnostics use the lifecycle service when available', ps.includes('await d.storage.diagnostics()') && has(ps, 'out.database=storage.database'));
   }
   // ===== 1.61.2: the whole database is written in the background, and only the items that changed are made into text again =====
   const BIG = 'data:image/png;base64,' + 'A'.repeat(1200000), JS = d => JSON.stringify(d.data, null, 2);
@@ -596,8 +597,8 @@ const asyncTests = async () => {
   }
   { // main.js: the background save is switched on from the settings, every change waits for the file, the restore waits for what is on its way, the setting switches it
     const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8'), tr = fs.readFileSync(path.join(__dirname, '..', 'transfer.js'), 'utf8');
-    ok('main.js initializes JSON background-save mode from persisted settings and skips it for SQLite', main.includes('db.bg = backgroundOn(lifecycle.settings())') && main.includes('const s = await lifecycle.updateSettings(patch); if(db)db.bg = backgroundOn(s)'));
-    ok('database mutations use the reviewed repository boundary (durability is exercised in data-repository.test.js)', ['db:add', 'db:update', 'db:remove', 'session:save', 'session:remove', 'custom:add', 'custom:remove', 'custom:group'].every(channel => main.split('\n').some(line => line.includes("ipcMain.handle('" + channel + "'") && /records\.(?:add|update|remove|saveSession|removeSession|addCustomField|removeCustomField|setCustomFieldGroup)\(/.test(line))) && !/db\.saveSession\(/.test(main));
+    ok('main.js initializes JSON background-save mode from persisted settings and skips it for SQLite', main.includes('db.bg = backgroundOn(lifecycle.settings())') && has(main, 'const s = await lifecycle.updateSettings(patch); if(db)db.bg = backgroundOn(s)'));
+    ok('database mutations use the reviewed repository boundary (durability is exercised in data-repository.test.js)', ['db:add', 'db:update', 'db:remove', 'session:save', 'session:remove', 'custom:add', 'custom:remove', 'custom:group'].every(channel => flat(main).split('ipcMain.handle(').some(line => line.startsWith("'" + channel + "',") && /records\.(?:add|update|remove|saveSession|removeSession|addCustomField|removeCustomField|setCustomFieldGroup)\(/.test(line))) && !/db\.saveSession\(/.test(main));
     ok('imports and restores use the bulk storage boundary (durability and recovery are exercised in bulk-storage.test.js)', main.includes('await bulkStorage.safetyCopy()') && main.includes('bulkStorage.restore(pendingRestore)') && main.includes('await bulkStorage.importItems(pendingImport)') && !main.includes('transfer.apply(db, pendingImport)'));
   }
   console.log(fails ? fails + ' DB TESTS FAILED' : 'ALL DB TESTS PASSED'); process.exit(fails ? 1 : 0);

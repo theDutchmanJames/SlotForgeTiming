@@ -5,7 +5,8 @@
   // A race setup from before 1.62.0 with the session type "Timed race" is now a Race limited by a time (the minutes stay in the setting Duration). True when it was changed.
   function upgrade(s) {
     if (!s || typeof s !== 'object' || s.sessionType !== 'timed') return false;
-    s.sessionType = 'race'; s.raceBy = 'time';
+    s.sessionType = 'race';
+    s.raceBy = 'time';
     return true;
   }
   // Is this setup a race that ends when the time is up (a Race limited by a time, or a Timed race as the race screen works with it)?
@@ -15,7 +16,8 @@
   // Heats limited by a time have a scoring choice of their own (1.65.0, the setting "The overall winner is", resultByTime): 'lapstime' (the most laps, or the furthest distance when the cars are compared by distance, then the
   // lowest total time), 'laps' (total laps, as it was before) or 'points'. The rest of the program knows the result of a heat race as resultBy ('laps' or 'points'), so the setup the race screen works with carries both.
   const SCORING = ['lapstime', 'laps', 'points'];
-  const isTimeHeats = s => !!s && (s.sessionType === 'heats' || (s.sessionType === 'endurance' && s.enduranceBy === 'heats')) && s.heatBy === 'time';
+  const isTimeHeats = s =>
+    !!s && (s.sessionType === 'heats' || (s.sessionType === 'endurance' && s.enduranceBy === 'heats')) && s.heatBy === 'time';
   const legacyScoring = s => (s.resultBy === 'points' ? 'points' : 'laps'); // (before 1.65.0 a heat of a time counted laps or points; "total race time" there counted laps)
   // A setup from before 1.65.0 has no such choice: it keeps what it counted by. True when it was changed.
   function upgradeScoring(s) {
@@ -30,5 +32,6 @@
     return { ...s, resultByTime: by, resultBy: by === 'points' ? 'points' : 'laps' };
   }
   const api = { upgrade, isTime, effective, upgradeScoring, scoring, isTimeHeats, SCORING };
-  if (typeof module !== 'undefined') module.exports = api; else root.RaceLimit = api;
+  if (typeof module !== 'undefined') module.exports = api;
+  else root.RaceLimit = api;
 })(typeof window !== 'undefined' ? window : globalThis);

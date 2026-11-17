@@ -1,5 +1,6 @@
 // The installer (npm run dist) only contains the files listed in package.json: every file the app loads must be on that list.
 const fs = require('fs'), path = require('path');
+const { has } = require('./source.cjs');
 const root = path.join(__dirname, '..'), pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 let fails = 0; const ok = (n, c) => { if (c) console.log('ok  ', n); else { console.log('FAIL', n); fails++; } };
 const patterns = (pkg.build && pkg.build.files) || [];
@@ -28,13 +29,13 @@ const targets = ((pkg.build.win || {}).target || []).map(t => (typeof t === 'str
 ok('the Windows build makes an installer and a portable program', targets.includes('nsis') && targets.includes('portable') && /Setup/.test((pkg.build.nsis || {}).artifactName || '') && /Portable/.test((pkg.build.portable || {}).artifactName || ''));
 const mainText = fs.readFileSync(path.join(root, 'main.js'), 'utf8');
 { // the screens ask the main program through the preload script: every channel it calls has a handler in main.js, and every handler is called by something
-  const pre = fs.readFileSync(path.join(root, 'preload.js'), 'utf8'), asks = [...pre.matchAll(/(?:call|catalogueCall)\('([^']+)'/g)].map(m => m[1]), handles = [...mainText.matchAll(/(?:ipcMain|bulkAccess)\.handle\('([^']+)'/g)].map(m => m[1]);
+  const pre = fs.readFileSync(path.join(root, 'preload.js'), 'utf8'), asks = [...pre.matchAll(/(?:call|catalogueCall)\(\s*'([^']+)'/g)].map(m => m[1]), handles = [...mainText.matchAll(/(?:ipcMain|bulkAccess)\.handle\(\s*'([^']+)'/g)].map(m => m[1]);
   // Retry-aware editor calls still declare their legacy JSON channel explicitly.
-  asks.push(...[...pre.matchAll(/editorSave\('[^']+','([^']+)'/g)].map(m=>m[1]));
-  handles.push(...[...fs.readFileSync(path.join(root,'packipc.js'),'utf8').matchAll(/(?:^|\n)\s*handle\('([^']+)'/g)].map(m=>'packs:'+m[1]));
-  handles.push(...[...fs.readFileSync(path.join(root,'pluginipc.js'),'utf8').matchAll(/(?:^|\n)\s*handle\('([^']+)'/g)].map(m=>'plugins:'+m[1]));
+  asks.push(...[...pre.matchAll(/editorSave\(\s*'[^']+',\s*'([^']+)'/g)].map(m=>m[1]));
+  handles.push(...[...fs.readFileSync(path.join(root,'packipc.js'),'utf8').matchAll(/(?:^|\n)\s*handle\(\s*'([^']+)'/g)].map(m=>'packs:'+m[1]));
+  handles.push(...[...fs.readFileSync(path.join(root,'pluginipc.js'),'utf8').matchAll(/(?:^|\n)\s*handle\(\s*'([^']+)'/g)].map(m=>'plugins:'+m[1]));
   ok('every call of the preload script has a registered main-process handler (' + asks.length + ' channels), and none is left without a caller', asks.length > 20 && asks.every(c => handles.includes(c)) && handles.every(c => asks.includes(c)) && new Set(asks).size === asks.length);
-  ok('the extra fields can be listed, added, deleted and moved to another group from a screen', ['custom:list', 'custom:add', 'custom:remove', 'custom:group'].every(c => asks.includes(c) && handles.includes(c)) && /setCustomFieldGroup: \(entity, id, group\) => editorSave\('setCustomFieldGroup','custom:group', entity, id, group\)/.test(pre) && mainText.includes("ipcMain.handle('custom:group', (_e, entity, id, group) => records.setCustomFieldGroup(entity, id, group))")); }
+  ok('the extra fields can be listed, added, deleted and moved to another group from a screen', ['custom:list', 'custom:add', 'custom:remove', 'custom:group'].every(c => asks.includes(c) && handles.includes(c)) && /setCustomFieldGroup: \(entity, id, group\) => editorSave\('setCustomFieldGroup',\s*'custom:group', entity, id, group\)/.test(pre) && mainText.includes("ipcMain.handle('custom:group', (_e, entity, id, group) => records.setCustomFieldGroup(entity, id, group))")); }
 ok('the data folder is fixed (the same for npm start, the installed app and the portable program) and only one copy can run', /setPath\('userData'/.test(mainText) && /requestSingleInstanceLock/.test(mainText));
 const bat = fs.existsSync(path.join(root, 'build-windows.bat')) ? fs.readFileSync(path.join(root, 'build-windows.bat'), 'utf8') : '';
 ok('build-windows.bat exists, uses Windows line endings and runs the build', /npm run dist/.test(bat) && /\r\n/.test(bat) && /npm install --save-dev electron electron-builder/.test(bat));
@@ -114,14 +115,14 @@ fs.mkdirSync(oldD); fs.writeFileSync(path.join(oldD, 'slot-lap-timer.json'), '{"
 ok('old data is copied to the new folder and the old folder stays', M.migrate(tmp) === true && fs.readFileSync(path.join(tmp, 'slotforge-timing', 'slotforge-timing.json'), 'utf8') === '{"tracks":[1]}' && fs.existsSync(path.join(tmp, 'slotforge-timing', 'slotforge-timing.before-restore.json')) && !fs.existsSync(path.join(tmp, 'slotforge-timing', 'other.txt')) && fs.existsSync(path.join(oldD, 'slot-lap-timer.json')));
 fs.writeFileSync(path.join(tmp, 'slotforge-timing', 'slotforge-timing.json'), '{"tracks":[2]}');
 ok('data in the new folder is never overwritten', M.migrate(tmp) === false && fs.readFileSync(path.join(tmp, 'slotforge-timing', 'slotforge-timing.json'), 'utf8') === '{"tracks":[2]}');
-ok('the new name is used everywhere and the old exports still import', pkg.build.productName === 'SlotForge Timing' && mainText.includes("const normalProfile=path.join(app.getPath('appData'),'slotforge-timing')") && mainText.includes("app.setPath('userData',sqliteTestProfile||normalProfile)") && /require\('\.\/migrate'\)/.test(mainText) && T.FORMAT === 'slotforge-timing-export');
+ok('the new name is used everywhere and the old exports still import', pkg.build.productName === 'SlotForge Timing' && has(mainText, "const normalProfile=path.join(app.getPath('appData'),'slotforge-timing')") && has(mainText, "app.setPath('userData',sqliteTestProfile||normalProfile)") && /require\('\.\/migrate'\)/.test(mainText) && T.FORMAT === 'slotforge-timing-export');
 { // the live data: main.js puts the messages of the race window together, so that a window or phone that opens late is given the whole state
   const pre = fs.readFileSync(path.join(root, 'preload.js'), 'utf8'), raceText = fs.readFileSync(path.join(root, 'renderer', 'race.js'), 'utf8'), viewText = fs.readFileSync(path.join(root, 'renderer', 'liveview.js'), 'utf8');
   ok('main.js keeps the whole state by putting each message of the race window on the one before, and passes the message on as it came (to every window including its sender, and to phones)', /require\('\.\/renderer\/liveshare\.js'\)/.test(mainText) && /LiveShare\.applyDynamic\(live\.dyn, d\)/.test(mainText) && /relay\('live:push', d, null\)/.test(mainText) && /net\.server\.broadcast\('push', d\)/.test(mainText));
   ok('...when a message does not fit, the race window is asked to send everything again (live:resync reaches it through the preload script)', /e\.sender\.send\('live:resync'\)/.test(mainText) && /ipcRenderer\.on\('live:resync'/.test(pre) && /onLiveResync/.test(pre) && /api\.onLiveResync\(/.test(raceText) && /live\.sender\.reset\(\)/.test(raceText));
   ok('...and the resync request makes the race window start again from everything (reset, then send)', /onLiveResync\(\(\) => \{[^}]*live\.sender\.reset\(\)/.test(raceText));
   { // the handler of main.js itself, run against stand-ins: the whole state is put together, passed on as it came, and a message that does not fit is answered with a request
-    const m = mainText.match(/ipcMain\.on\('live:push', safe\('live:push', \(e, d\) => \{[\s\S]*?\n  \}\)\);/), LS = require(path.join(root, 'renderer', 'liveshare.js')), RE = require(path.join(root, 'renderer', 'engine.js'));
+    const m = mainText.match(/ipcMain\.on\(\s*'live:push',\s*safe\('live:push', \(e, d\) => \{[\s\S]*?\n\s*\}\)\s*\);/), LS = require(path.join(root, 'renderer', 'liveshare.js')), RE = require(path.join(root, 'renderer', 'engine.js'));
     const live = { stat: null, dyn: null }, relayed = [], broadcast = [], handlers = {}, asked = [], net = { server: { broadcast: (a, b) => broadcast.push([a, b]) } };
     if (m) new Function('ipcMain', 'live', 'LiveShare', 'relay', 'net', 'safe', m[0])({ on: (n, f) => { handlers[n] = f; } }, live, LS, (...a) => relayed.push(a), net, (name, f) => f); // (safe: main.js wraps the handlers so that an exception is logged and not shown as a dialog)
     const entries = [0, 1].map(i => ({ lane: i, driverId: 'd' + i, carId: 'c' + i, driverName: 'D' + i, carName: 'C' + i })), r = RE.createRace({ type: 'practice', entries, minLap: 800 }); r.start(0);

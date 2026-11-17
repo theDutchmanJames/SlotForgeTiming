@@ -3,8 +3,17 @@
 const DirFolder = (() => {
   const shut = new Set(); // the ids of the folders that were closed
   // id: the folder; title and note: the text of the summary (made by the page: not escaped here); tone: the colour; inner: the html of the body; o.id: an id for the <details>, to find it
-  const html = (id, title, note, tone, inner, o) => `<details class="dbfolder dirfolder${tone ? ' dir-' + tone : ''}" data-dirf="${id}"${o && o.id ? ` id="${o.id}"` : ''}${shut.has(id) ? '' : ' open'}><summary><strong>${title}</strong> <span class="muted">${note}</span></summary><div class="df-body">${inner}</div></details>`;
+  const html = (id, title, note, tone, inner, o) =>
+    `<details class="dbfolder dirfolder${tone ? ' dir-' + tone : ''}" data-dirf="${id}"${o && o.id ? ` id="${o.id}"` : ''}${shut.has(id) ? '' : ' open'}><summary><strong>${title}</strong> <span class="muted">${note}</span></summary><div class="df-body">${inner}</div></details>`;
   // watch the folders in a page (root): opening and closing is remembered
-  const bind = root => { if (root && root.querySelectorAll) root.querySelectorAll('details.dirfolder').forEach(el => { el.ontoggle = () => { if (el.open) shut.delete(el.dataset.dirf); else shut.add(el.dataset.dirf); }; }); };
+  const bind = root => {
+    if (root && root.querySelectorAll)
+      root.querySelectorAll('details.dirfolder').forEach(el => {
+        el.ontoggle = () => {
+          if (el.open) shut.delete(el.dataset.dirf);
+          else shut.add(el.dataset.dirf);
+        };
+      });
+  };
   return { html, bind, shut };
 })();

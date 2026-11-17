@@ -2,7 +2,12 @@
 // The look itself is written once, in styles.css (the part "Soft lift"); this only says which levels there are and turns a saved value into the number the style sheet works with (--depth, 0 to 1).
 // Design: docs/ui-reference/depth. Pure, so it can be tested without a screen.
 (function (root) {
-  const LEVELS = [[0, 'Flat (no depth)'], [35, 'Soft lift (standard)'], [55, 'Medium'], [75, 'Thick card']];
+  const LEVELS = [
+    [0, 'Flat (no depth)'],
+    [35, 'Soft lift (standard)'],
+    [55, 'Medium'],
+    [75, 'Thick card']
+  ];
   const DEFAULT = 35;
   // the level of a saved value: one of the levels above, anything else (also nothing saved yet) is the standard. 0 is a real choice: flat.
   const levelOf = v => {

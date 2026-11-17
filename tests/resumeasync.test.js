@@ -88,7 +88,7 @@ const onDisk = db => { try { return JSON.parse(fs.readFileSync(db.resumeFile(), 
   }
 
   { // closing the program (the real lines of main.js, with a stand-in for the app and the database)
-    const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8'), code = main.slice(main.indexOf('const shutdown=new Shutdown('));
+    const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8'), code = main.slice(main.search(/const shutdown\s*=\s*new Shutdown\(/));
     const setup = (pending, idle, pluginHost = null, paddock = null) => {
       const handlers = {}, calls = { quit: 0, prevented: 0, closed: 0, errors:0 }, timers = [];
       const {Shutdown,WorkGate}=require('../work-gate');

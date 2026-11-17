@@ -28,16 +28,24 @@ const WORKING_SCHEMA = `
   INSERT INTO info VALUES('workingFormat','1');`;
 
 function forkCopy(source, destination) {
-  const verified = openCopy(source); verified.close();
+  const verified = openCopy(source);
+  verified.close();
   // Only a fresh directory may receive a fork. Incomplete forks cannot be opened.
-  require('./storage-space').check(destination,fs.statSync(path.join(source,'timing.sqlite')).size*3,'SQLite working copy');
+  require('./storage-space').check(destination, fs.statSync(path.join(source, 'timing.sqlite')).size * 3, 'SQLite working copy');
   fs.mkdirSync(destination);
-  const staging = path.join(destination, 'staging.sqlite'), target = path.join(destination, 'working.sqlite');
+  const staging = path.join(destination, 'staging.sqlite'),
+    target = path.join(destination, 'working.sqlite');
   fs.copyFileSync(path.join(source, 'timing.sqlite'), staging, fs.constants.COPYFILE_EXCL);
   const manifest = JSON.parse(fs.readFileSync(path.join(source, 'manifest.json'), 'utf8'));
-  const digest = crypto.createHash('sha256'), fd = fs.openSync(staging, 'r'), buffer = Buffer.alloc(65536);
-  try { let n; while ((n = fs.readSync(fd, buffer, 0, buffer.length, null))) digest.update(buffer.subarray(0, n)); }
-  finally { fs.closeSync(fd); }
+  const digest = crypto.createHash('sha256'),
+    fd = fs.openSync(staging, 'r'),
+    buffer = Buffer.alloc(65536);
+  try {
+    let n;
+    while ((n = fs.readSync(fd, buffer, 0, buffer.length, null))) digest.update(buffer.subarray(0, n));
+  } finally {
+    fs.closeSync(fd);
+  }
   if (digest.digest('hex') !== manifest.sqliteSha256) throw Error('Recovery copy changed while creating working fork.');
   const db = new DatabaseSync(staging);
   try {
@@ -50,26 +58,52 @@ function forkCopy(source, destination) {
         const run = store.field('sessions', row.id, ['resourceRunId']);
         if (run.present && run.value) db.prepare('INSERT INTO resource_sessions VALUES(?,?,NULL)').run(run.value, row.id);
       }
-    } finally { store.close(); }
+    } finally {
+      store.close();
+    }
     db.exec('COMMIT');
-  } catch (error) { try { db.exec('ROLLBACK'); } catch {} throw error; }
-  finally { db.close(); }
+  } catch (error) {
+    try {
+      db.exec('ROLLBACK');
+    } catch {}
+    throw error;
+  } finally {
+    db.close();
+  }
   // Keep the verified recovery source untouched; bring its sidecar into the working fork.
-  const resumeSource=manifest.sources?.find(row=>row.name==='race-resume.json');
-  if(resumeSource){
-    const bytes=fs.readFileSync(path.join(source,'race-resume.json'));
-    if(hash(bytes)!==resumeSource.sha256)throw Error('Race recovery copy checksum mismatch.');
+  const resumeSource = manifest.sources?.find(row => row.name === 'race-resume.json');
+  if (resumeSource) {
+    const bytes = fs.readFileSync(path.join(source, 'race-resume.json'));
+    if (hash(bytes) !== resumeSource.sha256) throw Error('Race recovery copy checksum mismatch.');
     // (audit 2.2.5) As in JSON storage: a recovery file that can not be read is no race to resume, and the file wins over a copy inside the database.
-    let snapshot=null;try{snapshot=JSON.parse(bytes.toString('utf8').replace(/^\uFEFF/,''));}catch{snapshot=null;}
-    if(require('./storage-lifecycle').validResume(snapshot)){const writer=new SqliteStore(staging,{writable:true});
-    try{writer.transaction(()=>{
-      const existing=writer.get('@meta','raceResume',true);
-      if(existing){if(JSON.stringify(existing.value)===JSON.stringify(snapshot))return;const ord=writer.statement("SELECT ordinal FROM records WHERE entity='@meta' AND id='raceResume'").get().ordinal;for(const t of ['fields','assets','records'])writer.statement(`DELETE FROM ${t} WHERE entity='@meta' AND id='raceResume'`).run();writer.putRecord('@meta','raceResume',ord,snapshot);return;}
-      const ordinal=writer.statement("SELECT coalesce(max(ordinal),-1)+1 n FROM records WHERE entity='@meta'").get().n;
-      writer.statement("INSERT INTO roots VALUES('raceResume',(SELECT coalesce(max(ordinal),-1)+1 FROM roots),'meta')").run();
-      writer.putRecord('@meta','raceResume',ordinal,snapshot);
-      writer.statement("INSERT INTO ordinals VALUES('@meta',?) ON CONFLICT(entity) DO UPDATE SET next=excluded.next").run(ordinal+1);
-    });}finally{writer.close();}}
+    let snapshot = null;
+    try {
+      snapshot = JSON.parse(bytes.toString('utf8').replace(/^\uFEFF/, ''));
+    } catch {
+      snapshot = null;
+    }
+    if (require('./storage-lifecycle').validResume(snapshot)) {
+      const writer = new SqliteStore(staging, { writable: true });
+      try {
+        writer.transaction(() => {
+          const existing = writer.get('@meta', 'raceResume', true);
+          if (existing) {
+            if (JSON.stringify(existing.value) === JSON.stringify(snapshot)) return;
+            const ord = writer.statement("SELECT ordinal FROM records WHERE entity='@meta' AND id='raceResume'").get().ordinal;
+            for (const t of ['fields', 'assets', 'records'])
+              writer.statement(`DELETE FROM ${t} WHERE entity='@meta' AND id='raceResume'`).run();
+            writer.putRecord('@meta', 'raceResume', ord, snapshot);
+            return;
+          }
+          const ordinal = writer.statement("SELECT coalesce(max(ordinal),-1)+1 n FROM records WHERE entity='@meta'").get().n;
+          writer.statement("INSERT INTO roots VALUES('raceResume',(SELECT coalesce(max(ordinal),-1)+1 FROM roots),'meta')").run();
+          writer.putRecord('@meta', 'raceResume', ordinal, snapshot);
+          writer.statement("INSERT INTO ordinals VALUES('@meta',?) ON CONFLICT(entity) DO UPDATE SET next=excluded.next").run(ordinal + 1);
+        });
+      } finally {
+        writer.close();
+      }
+    }
   }
   fs.renameSync(staging, target);
   return { file: target, sourceSha256: manifest.sqliteSha256 };
@@ -79,7 +113,9 @@ function identity(value) {
   if (typeof value !== 'string' || !value.trim() || value.length > 200) throw Error('Invalid command or record identity.');
   return value;
 }
-function version(value) { if (!Number.isSafeInteger(value) || value < 0) throw Error('Invalid expected version.'); }
+function version(value) {
+  if (!Number.isSafeInteger(value) || value < 0) throw Error('Invalid expected version.');
+}
 function canonical(value, depth = 0) {
   if (depth > 80) throw Error('Command nesting is too deep.');
   if (value === null || typeof value === 'boolean' || typeof value === 'string') return JSON.stringify(value);
@@ -89,61 +125,166 @@ function canonical(value, depth = 0) {
     return '[' + value.map(v => canonical(v, depth + 1)).join(',') + ']';
   }
   if (object(value) && [Object.prototype, null].includes(Object.getPrototypeOf(value)))
-    return '{' + Object.keys(value).sort().map(k => JSON.stringify(k) + ':' + canonical(value[k], depth + 1)).join(',') + '}';
+    return (
+      '{' +
+      Object.keys(value)
+        .sort()
+        .map(k => JSON.stringify(k) + ':' + canonical(value[k], depth + 1))
+        .join(',') +
+      '}'
+    );
   throw Error('Commands must contain only finite JSON values.');
 }
 
 class WorkingStore extends SqliteStore {
   constructor(directory, { checkpoint = () => {}, clock = Date.now } = {}) {
     super(path.join(directory, 'working.sqlite'), { writable: true });
-    this.checkpoint = checkpoint; this.clock = clock;
-    try { Outbox.upgrade(this); Catalogue.upgrade(this); require('./sqlite-editor-generation').initialize(this); History.upgrade(this); require('./sqlite-finalization').upgrade(this); require('./sqlite-home').upgrade(this); require('./sqlite-media').upgrade(this); require('./sqlite-history-detail').upgrade(this); require('./sqlite-car-statistics').upgrade(this); require('./sqlite-lookup-indexes').ensure(this); this.transaction(()=>require('./sqlite-media').prune(this)); } catch (error) { this.close(); throw error; }
+    this.checkpoint = checkpoint;
+    this.clock = clock;
+    try {
+      Outbox.upgrade(this);
+      Catalogue.upgrade(this);
+      require('./sqlite-editor-generation').initialize(this);
+      History.upgrade(this);
+      require('./sqlite-finalization').upgrade(this);
+      require('./sqlite-home').upgrade(this);
+      require('./sqlite-media').upgrade(this);
+      require('./sqlite-history-detail').upgrade(this);
+      require('./sqlite-car-statistics').upgrade(this);
+      require('./sqlite-lookup-indexes').ensure(this);
+      this.transaction(() => require('./sqlite-media').prune(this));
+    } catch (error) {
+      this.close();
+      throw error;
+    }
   }
-  homeStatistics(options) { return require('./sqlite-dashboard').home(this,options); }
-  homeSessions(options) { return require('./sqlite-dashboard').navigation(this,options); }
-  raceSeason(options) { return require('./sqlite-dashboard').season(this,options); }
-  raceCharts(ids) { return require('./sqlite-dashboard').charts(this,ids); }
-  raceInputs(options) { return require('./sqlite-dashboard').race(this,options); }
-  editorRead(kind,entity,value) { return require('./sqlite-editor-read').read(this,kind,entity,value); }
-  referencePage(entity,options) { return require('./sqlite-references').page(this,entity,options); }
-  referenceDetails(entity,ids,revision) { return require('./sqlite-references').details(this,entity,ids,revision); }
-  historyReferences(rows) { return this.transaction(()=>require('./history-read').noMedia(require('./history-read').referenceRequest(rows).map(r=>History.selected(this,r.entity,r.id,r.entity==='tracks'?require('./history-read').TRACK:require('./history-read').CAR)))); }
-  historyPage(pool,options) { return History.page(this,pool,options); }
-  historySession(pool,id,options) { return History.session(this,pool,id,options); }
-  carStatistics(id) { return History.car(this,id); }
-  catalogue(entity, options) { return Catalogue.page(this,entity,options); }
-  cataloguePicture(entity,id,revision) { return Catalogue.picture(this,entity,id,revision); }
-  outbox(databaseId, options) { return Outbox.page(this, databaseId, options); }
-  deliveryPayload(key, token) { return Outbox.payload(this, key, token); }
-  deliverySnapshot(key,options) { return Outbox.snapshot(this,key,options); }
+  homeStatistics(options) {
+    return require('./sqlite-dashboard').home(this, options);
+  }
+  homeSessions(options) {
+    return require('./sqlite-dashboard').navigation(this, options);
+  }
+  raceSeason(options) {
+    return require('./sqlite-dashboard').season(this, options);
+  }
+  raceCharts(ids) {
+    return require('./sqlite-dashboard').charts(this, ids);
+  }
+  raceInputs(options) {
+    return require('./sqlite-dashboard').race(this, options);
+  }
+  editorRead(kind, entity, value) {
+    return require('./sqlite-editor-read').read(this, kind, entity, value);
+  }
+  referencePage(entity, options) {
+    return require('./sqlite-references').page(this, entity, options);
+  }
+  referenceDetails(entity, ids, revision) {
+    return require('./sqlite-references').details(this, entity, ids, revision);
+  }
+  historyReferences(rows) {
+    return this.transaction(() =>
+      require('./history-read').noMedia(
+        require('./history-read')
+          .referenceRequest(rows)
+          .map(r =>
+            History.selected(this, r.entity, r.id, r.entity === 'tracks' ? require('./history-read').TRACK : require('./history-read').CAR)
+          )
+      )
+    );
+  }
+  historyPage(pool, options) {
+    return History.page(this, pool, options);
+  }
+  historySession(pool, id, options) {
+    return History.session(this, pool, id, options);
+  }
+  carStatistics(id) {
+    return History.car(this, id);
+  }
+  catalogue(entity, options) {
+    return Catalogue.page(this, entity, options);
+  }
+  cataloguePicture(entity, id, revision) {
+    return Catalogue.picture(this, entity, id, revision);
+  }
+  outbox(databaseId, options) {
+    return Outbox.page(this, databaseId, options);
+  }
+  deliveryPayload(key, token) {
+    return Outbox.payload(this, key, token);
+  }
+  deliverySnapshot(key, options) {
+    return Outbox.snapshot(this, key, options);
+  }
   snapshot(entity, id, includeMedia = false) {
     return this.transaction(() => ({ record: this.get(entity, id, includeMedia), revision: this.revision(entity, id) }));
   }
-  paddockRead(kind, options) { return require('./sqlite-paddock-read').read(this,kind,options); }
-  bulkCollect(picks,deps,info) { return require('./sqlite-bulk').collect(this,picks,deps,info); }
-  bulkDependencies(picks) { return require('./sqlite-bulk').dependencies(this,picks); }
-  bulkImport(file,commandId,digest) { return require('./sqlite-bulk').importFile(this,file,commandId,digest); }
-  backupSnapshot(destination,info) { return require('./sqlite-bulk').snapshot(this,destination,info); }
-  exportLegacy(file,info) { return require('./sqlite-bulk').exportLegacy(this,file,info); }
-  compatibilityRead(kind,entity,value) { return require('./sqlite-compatibility').read(this,kind,entity,value); }
-  lifecycleBarrier() { return true; } // Worker message ordering drains every earlier request.
-  lifecycleDiagnostics() { return require('./sqlite-lifecycle').diagnostics(this); }
-  resourceState() { return this.transaction(() => ({ ledger: this.ledger(), revision: this.revision('@meta', 'resourceLedger') })); }
+  paddockRead(kind, options) {
+    return require('./sqlite-paddock-read').read(this, kind, options);
+  }
+  bulkCollect(picks, deps, info) {
+    return require('./sqlite-bulk').collect(this, picks, deps, info);
+  }
+  bulkDependencies(picks) {
+    return require('./sqlite-bulk').dependencies(this, picks);
+  }
+  bulkImport(file, commandId, digest) {
+    return require('./sqlite-bulk').importFile(this, file, commandId, digest);
+  }
+  backupSnapshot(destination, info) {
+    return require('./sqlite-bulk').snapshot(this, destination, info);
+  }
+  exportLegacy(file, info) {
+    return require('./sqlite-bulk').exportLegacy(this, file, info);
+  }
+  compatibilityRead(kind, entity, value) {
+    return require('./sqlite-compatibility').read(this, kind, entity, value);
+  }
+  lifecycleBarrier() {
+    return true;
+  } // Worker message ordering drains every earlier request.
+  lifecycleDiagnostics() {
+    return require('./sqlite-lifecycle').diagnostics(this);
+  }
+  resourceState() {
+    return this.transaction(() => ({ ledger: this.ledger(), revision: this.revision('@meta', 'resourceLedger') }));
+  }
   resourceBegin(profileId, context) {
     return this.transaction(() => {
-      const ledger = this.ledger(); if (ledger.checkpoint) throw Error('Resume or discard the unfinished resource race first.');
+      const ledger = this.ledger();
+      if (ledger.checkpoint) throw Error('Resume or discard the unfinished resource race first.');
       const profile = this.get('resourcesystems', profileId)?.value;
-      return { state: require('./renderer/resources').prepare(profile, context, ledger), revision: this.revision('@meta', 'resourceLedger') };
+      return {
+        state: require('./renderer/resources').prepare(profile, context, ledger),
+        revision: this.revision('@meta', 'resourceLedger')
+      };
     });
   }
-  revision(entity, id) { return this.statement('SELECT revision FROM revisions WHERE entity=? AND id=?').get(entity, id)?.revision ?? 0; }
-  fieldVersion(entity, id, parts) { return this.statement('SELECT version FROM field_versions WHERE entity=? AND id=? AND path=?').get(entity, id, JSON.stringify(parts))?.version ?? 0; }
-  receipt(id) { const row = this.statement('SELECT result FROM command_receipts WHERE id=?').get(identity(id)); return row ? JSON.parse(row.result) : null; }
-  editorScope() { return require('./sqlite-editor-generation').read(this); }
+  revision(entity, id) {
+    return this.statement('SELECT revision FROM revisions WHERE entity=? AND id=?').get(entity, id)?.revision ?? 0;
+  }
+  fieldVersion(entity, id, parts) {
+    return (
+      this.statement('SELECT version FROM field_versions WHERE entity=? AND id=? AND path=?').get(entity, id, JSON.stringify(parts))
+        ?.version ?? 0
+    );
+  }
+  receipt(id) {
+    const row = this.statement('SELECT result FROM command_receipts WHERE id=?').get(identity(id));
+    return row ? JSON.parse(row.result) : null;
+  }
+  editorScope() {
+    return require('./sqlite-editor-generation').read(this);
+  }
   changes(after = 0, limit = 50) {
-    if (!Number.isSafeInteger(after) || after < 0 || !Number.isInteger(limit) || limit < 1 || limit > 200) throw Error('Invalid change query.');
-    if(after<Number(this.statement("SELECT value FROM info WHERE key='changesFloor'").get()?.value||0))throw Error('Change cursor expired. Refresh the current data before continuing.');
-    return this.statement('SELECT * FROM changes WHERE sequence>? ORDER BY sequence LIMIT ?').all(after, limit).map(r => ({ ...r, changed: JSON.parse(r.changed) }));
+    if (!Number.isSafeInteger(after) || after < 0 || !Number.isInteger(limit) || limit < 1 || limit > 200)
+      throw Error('Invalid change query.');
+    if (after < Number(this.statement("SELECT value FROM info WHERE key='changesFloor'").get()?.value || 0))
+      throw Error('Change cursor expired. Refresh the current data before continuing.');
+    return this.statement('SELECT * FROM changes WHERE sequence>? ORDER BY sequence LIMIT ?')
+      .all(after, limit)
+      .map(r => ({ ...r, changed: JSON.parse(r.changed) }));
   }
   touch(entity, id) {
     const key = JSON.stringify([entity, id]);
@@ -166,17 +307,28 @@ class WorkingStore extends SqliteStore {
     this.statement('INSERT OR IGNORE INTO roots VALUES(?,(SELECT COALESCE(MAX(ordinal),-1)+1 FROM roots),?)').run(entity, kind);
   }
   insert(entity, row) {
-    if(entity==='laps')require('./sqlite-lap-effects').remember(this,row.id,true);
-    this.root(entity); this.putRecord(entity, row.id, this.nextOrdinal(entity), row);
+    if (entity === 'laps') require('./sqlite-lap-effects').remember(this, row.id, true);
+    this.root(entity);
+    this.putRecord(entity, row.id, this.nextOrdinal(entity), row);
     if (entity === 'laps') this.indexLap(row);
     this.touch(entity, row.id);
   }
   indexLap(row) {
-    const text = v => typeof v === 'string' ? v : null;
-    this.statement('INSERT INTO lap_index VALUES(?,?,?,?,?,?,?,?,?)').run(row.id, 'laps', text(row.sessionId), text(row.carId), text(row.driverId), text(row.trackId), Number.isFinite(row.time) ? row.time : null, row.valid ? 1 : 0, row.pit ? 1 : 0);
+    const text = v => (typeof v === 'string' ? v : null);
+    this.statement('INSERT INTO lap_index VALUES(?,?,?,?,?,?,?,?,?)').run(
+      row.id,
+      'laps',
+      text(row.sessionId),
+      text(row.carId),
+      text(row.driverId),
+      text(row.trackId),
+      Number.isFinite(row.time) ? row.time : null,
+      row.valid ? 1 : 0,
+      row.pit ? 1 : 0
+    );
   }
   erase(entity, id) {
-    if(entity==='laps')require('./sqlite-lap-effects').remember(this,id);
+    if (entity === 'laps') require('./sqlite-lap-effects').remember(this, id);
     if (entity === 'laps') this.statement('DELETE FROM lap_index WHERE id=?').run(id);
     for (const table of ['fields', 'assets', 'records']) this.statement(`DELETE FROM ${table} WHERE entity=? AND id=?`).run(entity, id);
     this.touch(entity, id); // Keep revision tombstones after deletion.
@@ -184,7 +336,10 @@ class WorkingStore extends SqliteStore {
   replace(entity, id, value) {
     const old = this.statement('SELECT ordinal FROM records WHERE entity=? AND id=?').get(entity, id);
     if (old) this.erase(entity, id);
-    else { this.root(id, 'meta'); this.touch(entity, id); }
+    else {
+      this.root(id, 'meta');
+      this.touch(entity, id);
+    }
     this.putRecord(entity, id, old?.ordinal ?? this.nextOrdinal(entity), value);
     if (entity === 'laps') this.indexLap(value);
   }
@@ -192,19 +347,34 @@ class WorkingStore extends SqliteStore {
     // Change a single scalar leaf without reading/replacing unchanged media BLOBs.
     const row = this.statement('SELECT shape FROM records WHERE entity=? AND id=?').get(entity, id);
     if (!row) throw Error('Record not found.');
-    const shape = JSON.parse(row.shape); let current = shape;
+    const shape = JSON.parse(row.shape);
+    let current = shape;
     for (let i = 0; i < parts.length; i++) {
       if (current[0] !== 'object') throw Error('Cannot edit through a non-object field.');
       let member = current[1].find(([key]) => key === parts[i]);
-      if (!member) { member = [parts[i], i === parts.length - 1 ? ['field', JSON.stringify(parts)] : ['object', []]]; current[1].push(member); }
-      if (i === parts.length - 1 && (member[1][0] !== 'field' || member[1][1] !== JSON.stringify(parts))) throw Error('Expected a scalar field.');
+      if (!member) {
+        member = [parts[i], i === parts.length - 1 ? ['field', JSON.stringify(parts)] : ['object', []]];
+        current[1].push(member);
+      }
+      if (i === parts.length - 1 && (member[1][0] !== 'field' || member[1][1] !== JSON.stringify(parts)))
+        throw Error('Expected a scalar field.');
       current = member[1];
     }
     const key = JSON.stringify(parts);
-    if (this.statement('SELECT 1 FROM assets WHERE entity=? AND id=? AND path=?').get(entity, id, key)) throw Error('Media requires a separate asset command.');
-    this.statement('INSERT INTO fields VALUES(?,?,?,?) ON CONFLICT(entity,id,path) DO UPDATE SET json=excluded.json').run(entity, id, key, JSON.stringify(value));
+    if (this.statement('SELECT 1 FROM assets WHERE entity=? AND id=? AND path=?').get(entity, id, key))
+      throw Error('Media requires a separate asset command.');
+    this.statement('INSERT INTO fields VALUES(?,?,?,?) ON CONFLICT(entity,id,path) DO UPDATE SET json=excluded.json').run(
+      entity,
+      id,
+      key,
+      JSON.stringify(value)
+    );
     this.statement('UPDATE records SET shape=? WHERE entity=? AND id=?').run(JSON.stringify(shape), entity, id);
-    this.statement('INSERT INTO field_versions VALUES(?,?,?,1) ON CONFLICT(entity,id,path) DO UPDATE SET version=version+1').run(entity, id, key);
+    this.statement('INSERT INTO field_versions VALUES(?,?,?,1) ON CONFLICT(entity,id,path) DO UPDATE SET version=version+1').run(
+      entity,
+      id,
+      key
+    );
     this.touch(entity, id);
   }
   command(input) {
@@ -216,7 +386,7 @@ class WorkingStore extends SqliteStore {
     return this.transaction(() => {
       // Validate before receipt lookup too: a restored receipt is not authority
       // to acknowledge a command submitted against a replaced generation.
-      if(input.type==='editorSave')require('./sqlite-editor-generation').check(this,input.scope);
+      if (input.type === 'editorSave') require('./sqlite-editor-generation').check(this, input.scope);
       const old = this.statement('SELECT fingerprint,result FROM command_receipts WHERE id=?').get(input.id);
       if (old) {
         if (old.fingerprint !== fingerprint) throw Error('Command identity was already used with different content.');
@@ -226,27 +396,52 @@ class WorkingStore extends SqliteStore {
       let result;
       switch (input.type) {
         case 'importSharedPrepared': {
-          const T=require('./transfer'),data={customFields:this.get('@meta','customFields',true)?.value||{}};
-          for(const e of T.ORDER)data[e]=(input.items[e]||[]).map(r=>this.get(e,r.id,true)?.value).filter(Boolean);
-          require('./shared-library-import').applyPrivate(data,input.items);
-          for(const e of T.ORDER)if(e!=='slotcars')for(const row of data[e])if(!this.get(e,row.id))this.insert(e,row);
-          this.replace('@meta','customFields',data.customFields);result={imported:true};break;
+          const T = require('./transfer'),
+            data = { customFields: this.get('@meta', 'customFields', true)?.value || {} };
+          for (const e of T.ORDER) data[e] = (input.items[e] || []).map(r => this.get(e, r.id, true)?.value).filter(Boolean);
+          require('./shared-library-import').applyPrivate(data, input.items);
+          for (const e of T.ORDER) if (e !== 'slotcars') for (const row of data[e]) if (!this.get(e, row.id)) this.insert(e, row);
+          this.replace('@meta', 'customFields', data.customFields);
+          result = { imported: true };
+          break;
         }
         case 'attachSharedHistory': {
-          const session=this.get('sessions',input.sessionId,true)?.value;
-          const next=require('./shared-library-adopted-history').attach(session,this.lapsFor(input.sessionId),input);
-          this.replace('sessions',input.sessionId,next);result={attached:true};break;
+          const session = this.get('sessions', input.sessionId, true)?.value;
+          const next = require('./shared-library-adopted-history').attach(session, this.lapsFor(input.sessionId), input);
+          this.replace('sessions', input.sessionId, next);
+          result = { attached: true };
+          break;
         }
-        case 'editorSave': result = require('./sqlite-editor-save').apply(this,input); break;
-        case 'setLapEligibility': result = this.lapEligibility(input); break;
-        case 'setRaceResume': result = require('./sqlite-lifecycle').setResume(this,input); break;
-        case 'importItems': result = require('./sqlite-bulk').importItems(this,input); break;
-        case 'finalizeSession': result = this.finalize(input); break;
-        case 'setCustomValue': result = this.custom(input); break;
-        case 'setRecordEligibility': result = this.eligibility(input); break;
-        case 'deleteSession': result = this.deleteSession(input); break;
-        case 'resourceCheckpoint': result = this.resourceCheckpoint(input); break;
-        case 'resourceClear': result = this.resourceClear(input); break;
+        case 'editorSave':
+          result = require('./sqlite-editor-save').apply(this, input);
+          break;
+        case 'setLapEligibility':
+          result = this.lapEligibility(input);
+          break;
+        case 'setRaceResume':
+          result = require('./sqlite-lifecycle').setResume(this, input);
+          break;
+        case 'importItems':
+          result = require('./sqlite-bulk').importItems(this, input);
+          break;
+        case 'finalizeSession':
+          result = this.finalize(input);
+          break;
+        case 'setCustomValue':
+          result = this.custom(input);
+          break;
+        case 'setRecordEligibility':
+          result = this.eligibility(input);
+          break;
+        case 'deleteSession':
+          result = this.deleteSession(input);
+          break;
+        case 'resourceCheckpoint':
+          result = this.resourceCheckpoint(input);
+          break;
+        case 'resourceClear':
+          result = this.resourceClear(input);
+          break;
         default:
           if (Object.hasOwn(Records.commands, input.type)) result = Records.commands[input.type](this, input);
           else if (Object.hasOwn(Outbox.commands, input.type)) result = Outbox.commands[input.type](this, input);
@@ -254,19 +449,24 @@ class WorkingStore extends SqliteStore {
           else throw Error('Unsupported storage command.');
       }
       Outbox.syncChanges(this);
-      Catalogue.sync(this); History.sync(this); require('./sqlite-history-detail').sync(this); require('./sqlite-home').sync(this); require('./sqlite-car-statistics').sync(this);
+      Catalogue.sync(this);
+      History.sync(this);
+      require('./sqlite-history-detail').sync(this);
+      require('./sqlite-home').sync(this);
+      require('./sqlite-car-statistics').sync(this);
       this.checkpoint('domain-written');
       this.statement('INSERT INTO command_receipts VALUES(?,?,?)').run(input.id, fingerprint, JSON.stringify(result));
       // A large result must not turn a 200-entry journal page into millions of IDs.
       // Consumers must refresh affected entities when the identity list is truncated.
-      const records = [], counts = {};
+      const records = [],
+        counts = {};
       for (const change of this.changed.values()) {
         counts[change.entity] = (counts[change.entity] || 0) + 1;
         if (records.length < 128) records.push(change);
       }
       const changed = { records, counts, requiresRefresh: this.changed.size > records.length };
       this.statement('INSERT INTO changes(commandId,kind,changed) VALUES(?,?,?)').run(input.id, input.type, JSON.stringify(changed));
-      if(Number(this.statement('SELECT last_insert_rowid() n').get().n)%128===0)require('./sqlite-media').prune(this);
+      if (Number(this.statement('SELECT last_insert_rowid() n').get().n) % 128 === 0) require('./sqlite-media').prune(this);
       require('./sqlite-home').stamp(this);
       require('./sqlite-history-detail').stamp(this);
       require('./sqlite-car-statistics').stamp(this);
@@ -274,25 +474,35 @@ class WorkingStore extends SqliteStore {
       return result;
     });
   }
-  affectedSharedSessions(entity,id){return require('./shared-library-cascade').sql(this,entity,id);}
+  affectedSharedSessions(entity, id) {
+    return require('./shared-library-cascade').sql(this, entity, id);
+  }
   custom({ entity, recordId, fieldId, expectedVersion, value }) {
-    if (!Object.hasOwn(schema,entity) || ['sessions','laps'].includes(entity)) throw Error('Unsupported custom-value entity.');
-    identity(recordId); identity(fieldId); version(expectedVersion);
-    if (!(value === null || ['string', 'number', 'boolean'].includes(typeof value)) || (typeof value === 'string' && value.length > 10000)) throw Error('Expected a bounded scalar custom value.');
+    if (!Object.hasOwn(schema, entity) || ['sessions', 'laps'].includes(entity)) throw Error('Unsupported custom-value entity.');
+    identity(recordId);
+    identity(fieldId);
+    version(expectedVersion);
+    if (!(value === null || ['string', 'number', 'boolean'].includes(typeof value)) || (typeof value === 'string' && value.length > 10000))
+      throw Error('Expected a bounded scalar custom value.');
     const definitions = this.get('@meta', 'customFields')?.value?.[entity];
     const definition = Array.isArray(definitions) && definitions.find(f => f.id === fieldId);
     if (!definition) throw Error('Unknown custom-field definition.');
     if (!['text', 'number', 'date', 'list'].includes(definition.type)) throw Error('Unsupported custom-field type.');
     if (value !== null && value !== '') {
-      if (definition.type === 'number' ? typeof value !== 'number' : typeof value !== 'string') throw Error('Custom value does not match its field type.');
+      if (definition.type === 'number' ? typeof value !== 'number' : typeof value !== 'string')
+        throw Error('Custom value does not match its field type.');
       if (definition.type === 'list' && !definition.options?.includes(value)) throw Error('Custom value is not an available choice.');
-      if (definition.type === 'date' && (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(Date.parse(value)) || new Date(value).toISOString().slice(0, 10) !== value)) throw Error('Invalid custom date.');
+      if (
+        definition.type === 'date' &&
+        (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(Date.parse(value)) || new Date(value).toISOString().slice(0, 10) !== value)
+      )
+        throw Error('Invalid custom date.');
     }
     const row = this.get(entity, recordId)?.value;
     if (!row) throw Error('Record not found.');
     const parts = ['custom', fieldId];
     if (this.fieldVersion(entity, recordId, parts) !== expectedVersion) throw Error('Field version conflict. Reload before editing.');
-    if (row.custom === null) Records.setPath(this,entity,recordId,['custom'],{});
+    if (row.custom === null) Records.setPath(this, entity, recordId, ['custom'], {});
     this.scalar(entity, recordId, parts, value);
     return { version: this.fieldVersion(entity, recordId, parts), revision: this.revision(entity, recordId) };
   }
@@ -300,43 +510,73 @@ class WorkingStore extends SqliteStore {
     const cars = new Map();
     for (const lap of laps) {
       if (!cars.has(lap.carId)) {
-        const exists = typeof lap.carId === 'string' && this.statement("SELECT 1 FROM records WHERE entity='slotcars' AND id=?").get(lap.carId);
-        cars.set(lap.carId, exists ? Object.fromEntries(['lapsDriven', 'lapsSinceService', 'serviceDate'].map(k => [k, this.field('slotcars', lap.carId, [k]).value])) : null);
+        const exists =
+          typeof lap.carId === 'string' && this.statement("SELECT 1 FROM records WHERE entity='slotcars' AND id=?").get(lap.carId);
+        cars.set(
+          lap.carId,
+          exists
+            ? Object.fromEntries(
+                ['lapsDriven', 'lapsSinceService', 'serviceDate'].map(k => [k, this.field('slotcars', lap.carId, [k]).value])
+              )
+            : null
+        );
       }
-      const car = cars.get(lap.carId); if (!car) continue;
+      const car = cars.get(lap.carId);
+      if (!car) continue;
       const date = session instanceof Map ? session.get(lap.sessionId) : session.date;
       if (CarStats.afterService(car, lap, date)) car.lapsSinceService = Math.max(0, CarStats.sinceOf(car) + direction);
       car.lapsDriven = direction > 0 ? (car.lapsDriven || 0) + 1 : Math.max(0, (car.lapsDriven || 0) - 1);
     }
-    for (const [id, car] of cars) if (car) {
-      if (car.lapsSinceService !== undefined) this.scalar('slotcars', id, ['lapsSinceService'], car.lapsSinceService);
-      this.scalar('slotcars', id, ['lapsDriven'], car.lapsDriven);
-    }
+    for (const [id, car] of cars)
+      if (car) {
+        if (car.lapsSinceService !== undefined) this.scalar('slotcars', id, ['lapsSinceService'], car.lapsSinceService);
+        this.scalar('slotcars', id, ['lapsDriven'], car.lapsDriven);
+      }
     this.checkpoint('counters-written');
   }
   paddockState() {
     const source = this.field('@meta', 'paddock', ['sourceId']);
     // Catalogue caches, connection settings and photos are not part of result writes.
-    return { paddock: source.present ? { sourceId: source.value, connection: {mode:require('./sqlite-catalogue').read(this,'@meta','paddock',['connection','mode']),historyGuard:require('./sqlite-catalogue').read(this,'@meta','paddock',['connection','historyGuard'])}, withdrawals: this.field('@meta', 'paddock', ['withdrawals']).value || [], ...((g => g ? { sharedLibraryGuard: g } : {})(require('./sqlite-catalogue').read(this, '@meta', 'paddock', ['sharedLibraryGuard']))) } : undefined };
+    return {
+      paddock: source.present
+        ? {
+            sourceId: source.value,
+            connection: {
+              mode: require('./sqlite-catalogue').read(this, '@meta', 'paddock', ['connection', 'mode']),
+              historyGuard: require('./sqlite-catalogue').read(this, '@meta', 'paddock', ['connection', 'historyGuard'])
+            },
+            withdrawals: this.field('@meta', 'paddock', ['withdrawals']).value || [],
+            ...(g => (g ? { sharedLibraryGuard: g } : {}))(
+              require('./sqlite-catalogue').read(this, '@meta', 'paddock', ['sharedLibraryGuard'])
+            )
+          }
+        : undefined
+    };
   }
   savePaddock(state, before) {
     if (JSON.stringify(state.paddock) === before) return;
-    if (!this.statement("SELECT 1 FROM records WHERE entity='@meta' AND id='paddock'").get()) this.replace('@meta', 'paddock', state.paddock);
+    if (!this.statement("SELECT 1 FROM records WHERE entity='@meta' AND id='paddock'").get())
+      this.replace('@meta', 'paddock', state.paddock);
     else {
       const old = before ? JSON.parse(before) : {};
       if (old.sourceId !== state.paddock.sourceId) this.scalar('@meta', 'paddock', ['sourceId'], state.paddock.sourceId);
-      if (JSON.stringify(old.withdrawals) !== JSON.stringify(state.paddock.withdrawals)) this.scalar('@meta', 'paddock', ['withdrawals'], state.paddock.withdrawals);
+      if (JSON.stringify(old.withdrawals) !== JSON.stringify(state.paddock.withdrawals))
+        this.scalar('@meta', 'paddock', ['withdrawals'], state.paddock.withdrawals);
     }
   }
-  ledger() { return this.get('@meta', 'resourceLedger', true)?.value || { v: 1, accounts: {}, runs: {}, history: [], checkpoint: null }; }
+  ledger() {
+    return this.get('@meta', 'resourceLedger', true)?.value || { v: 1, accounts: {}, runs: {}, history: [], checkpoint: null };
+  }
   expectLedger(expected) {
     version(expected);
     if (this.revision('@meta', 'resourceLedger') !== expected) throw Error('Resource ledger version conflict. Reload before saving.');
   }
   closeResourceRun(ledger, runId) {
     const run = object(ledger.runs) && Object.hasOwn(ledger.runs, runId) && ledger.runs[runId];
-    if (ledger.v !== 1 || !object(run) || !Number.isSafeInteger(run.count) || run.count < 0) throw Error('Invalid or unsupported resource run state.');
-    run.closed = true; ledger.checkpoint = null;
+    if (ledger.v !== 1 || !object(run) || !Number.isSafeInteger(run.count) || run.count < 0)
+      throw Error('Invalid or unsupported resource run state.');
+    run.closed = true;
+    ledger.checkpoint = null;
   }
   resourceCheckpoint({ snapshot, expectedRevision }) {
     this.expectLedger(expectedRevision);
@@ -347,7 +587,8 @@ class WorkingStore extends SqliteStore {
     return { revision: this.revision('@meta', 'resourceLedger') };
   }
   resourceClear({ runId, expectedRevision }) {
-    identity(runId); this.expectLedger(expectedRevision);
+    identity(runId);
+    this.expectLedger(expectedRevision);
     const next = this.ledger();
     if (next.checkpoint?.race?.resources?.runId !== runId) throw Error('Resource checkpoint belongs to another run or is already closed.');
     this.closeResourceRun(next, runId);
@@ -355,12 +596,17 @@ class WorkingStore extends SqliteStore {
     return { revision: this.revision('@meta', 'resourceLedger') };
   }
   finalize({ session, laps, resourceCheckpoint, expectedResourceRevision }) {
-    if (!object(session) || !Array.isArray(laps) || laps.length > 100000 || laps.some(l => !object(l))) throw Error('Invalid session/laps or experimental 100,000 lap command bound exceeded.');
+    if (!object(session) || !Array.isArray(laps) || laps.length > 100000 || laps.some(l => !object(l)))
+      throw Error('Invalid session/laps or experimental 100,000 lap command bound exceeded.');
     if (session.paddockDelivery !== undefined) throw Error('Delivery state is generated by Timing.');
-    if(session.saveKey!==undefined){
-      if(typeof session.saveKey!=='string'||!session.saveKey||session.saveKey.length>200)throw Error('Invalid finalization identity.');
-      const prior=require('./sqlite-finalization').saved(this,session.saveKey);
-      if(prior){if(!this.get('sessions',prior.sessionId))throw Error('This race was already finalized and its result deleted.');return {sessionId:prior.sessionId};}
+    if (session.saveKey !== undefined) {
+      if (typeof session.saveKey !== 'string' || !session.saveKey || session.saveKey.length > 200)
+        throw Error('Invalid finalization identity.');
+      const prior = require('./sqlite-finalization').saved(this, session.saveKey);
+      if (prior) {
+        if (!this.get('sessions', prior.sessionId)) throw Error('This race was already finalized and its result deleted.');
+        return { sessionId: prior.sessionId };
+      }
     }
     if (resourceCheckpoint && !session.resourceRunId) throw Error('A resource checkpoint needs a resource run identity.');
     const fingerprint = hash(canonical({ session, laps, resourceCheckpoint: resourceCheckpoint ?? null }));
@@ -376,11 +622,13 @@ class WorkingStore extends SqliteStore {
       if (resourceCheckpoint || ledger.checkpoint?.race?.resources?.runId === session.resourceRunId) {
         this.expectLedger(expectedResourceRevision);
         if (resourceCheckpoint) {
-          if (resourceCheckpoint.race?.resources?.runId !== session.resourceRunId) throw Error('Resource checkpoint does not match this session.');
+          if (resourceCheckpoint.race?.resources?.runId !== session.resourceRunId)
+            throw Error('Resource checkpoint does not match this session.');
           ledger = applyCheckpoint(ledger, resourceCheckpoint);
         }
         this.closeResourceRun(ledger, session.resourceRunId);
-        this.replace('@meta', 'resourceLedger', ledger); this.checkpoint('resources-written');
+        this.replace('@meta', 'resourceLedger', ledger);
+        this.checkpoint('resources-written');
       }
     }
     // Caller objects are never mutated. IDs are generated once and preserved by the receipt.
@@ -389,34 +637,61 @@ class WorkingStore extends SqliteStore {
     const state = this.paddockState();
     const before = JSON.stringify(state.paddock);
     PaddockRecords.prepare(state, s, rows);
-    this.insert('sessions', s); this.checkpoint('session-written');
+    this.insert('sessions', s);
+    this.checkpoint('session-written');
     for (const row of rows) this.insert('laps', row);
     this.checkpoint('laps-written');
     this.counters(rows, s, 1);
     this.savePaddock(state, before);
     if (session.resourceRunId) this.statement('INSERT INTO resource_sessions VALUES(?,?,?)').run(session.resourceRunId, s.id, fingerprint);
-    if(session.saveKey)require('./sqlite-finalization').complete(this,session.saveKey,s.id);
+    if (session.saveKey) require('./sqlite-finalization').complete(this, session.saveKey, s.id);
     return { sessionId: s.id };
   }
   lapsFor(id) {
-    return this.statement("SELECT l.id FROM lap_index l JOIN records r ON r.entity='laps' AND r.id=l.id WHERE l.sessionId=? ORDER BY r.ordinal").all(id).map(r => this.get('laps', r.id, true).value);
+    return this.statement(
+      "SELECT l.id FROM lap_index l JOIN records r ON r.entity='laps' AND r.id=l.id WHERE l.sessionId=? ORDER BY r.ordinal"
+    )
+      .all(id)
+      .map(r => this.get('laps', r.id, true).value);
   }
-  lapEligibility({lapId,expectedRevision,flags}) {
-    this.expect('laps',lapId,expectedRevision);
-    if(!object(flags)||!Object.keys(flags).length||Object.keys(flags).some(k=>!['noTrackRecord','noPersonalBest'].includes(k)||typeof flags[k]!=='boolean'))throw Error('Only record eligibility flags can be corrected here.');
-    const lap=this.get('laps',lapId,true).value;
-    if(lap.sessionId&&this.get('sessions',lap.sessionId))return this.eligibility({sessionId:lap.sessionId,expectedRevision:this.revision('sessions',lap.sessionId),edits:[{lapId,flags}]});
-    this.replace('laps',lapId,{...lap,...flags});return {lapId,revision:this.revision('laps',lapId)};
+  lapEligibility({ lapId, expectedRevision, flags }) {
+    this.expect('laps', lapId, expectedRevision);
+    if (
+      !object(flags) ||
+      !Object.keys(flags).length ||
+      Object.keys(flags).some(k => !['noTrackRecord', 'noPersonalBest'].includes(k) || typeof flags[k] !== 'boolean')
+    )
+      throw Error('Only record eligibility flags can be corrected here.');
+    const lap = this.get('laps', lapId, true).value;
+    if (lap.sessionId && this.get('sessions', lap.sessionId))
+      return this.eligibility({
+        sessionId: lap.sessionId,
+        expectedRevision: this.revision('sessions', lap.sessionId),
+        edits: [{ lapId, flags }]
+      });
+    this.replace('laps', lapId, { ...lap, ...flags });
+    return { lapId, revision: this.revision('laps', lapId) };
   }
   eligibility({ sessionId, expectedRevision, edits }) {
-    identity(sessionId); this.expect('sessions', sessionId, expectedRevision);
+    identity(sessionId);
+    this.expect('sessions', sessionId, expectedRevision);
     if (!Array.isArray(edits) || !edits.length || edits.length > 100000) throw Error('Invalid eligibility edits.');
-    const rows = this.lapsFor(sessionId), byId = new Map(rows.map(r => [r.id, r])), seen = new Set();
+    const rows = this.lapsFor(sessionId),
+      byId = new Map(rows.map(r => [r.id, r])),
+      seen = new Set();
     for (const edit of edits) {
-      if (!object(edit) || !object(edit.flags) || !Object.keys(edit.flags).length || Object.keys(edit.flags).some(k => !['noTrackRecord', 'noPersonalBest'].includes(k) || typeof edit.flags[k] !== 'boolean')) throw Error('Only record eligibility flags can be corrected here.');
+      if (
+        !object(edit) ||
+        !object(edit.flags) ||
+        !Object.keys(edit.flags).length ||
+        Object.keys(edit.flags).some(k => !['noTrackRecord', 'noPersonalBest'].includes(k) || typeof edit.flags[k] !== 'boolean')
+      )
+        throw Error('Only record eligibility flags can be corrected here.');
       const row = byId.get(edit.lapId);
       if (!row || seen.has(row.id)) throw Error('Unknown or duplicate lap in session correction.');
-      seen.add(row.id); Object.assign(row, edit.flags); this.replace('laps', row.id, row);
+      seen.add(row.id);
+      Object.assign(row, edit.flags);
+      this.replace('laps', row.id, row);
     }
     const s = this.get('sessions', sessionId, true).value;
     const state = { ...this.paddockState(), laps: rows };
@@ -427,8 +702,10 @@ class WorkingStore extends SqliteStore {
     return { sessionId, revision: this.revision('sessions', sessionId) };
   }
   deleteSession({ sessionId, expectedRevision }) {
-    identity(sessionId); this.expect('sessions', sessionId, expectedRevision);
-    const session = this.get('sessions', sessionId, true).value, rows = this.lapsFor(sessionId);
+    identity(sessionId);
+    this.expect('sessions', sessionId, expectedRevision);
+    const session = this.get('sessions', sessionId, true).value,
+      rows = this.lapsFor(sessionId);
     const state = this.paddockState();
     const before = JSON.stringify(state.paddock);
     PaddockRecords.withdraw(state, session, 'Session deleted in Timing.');

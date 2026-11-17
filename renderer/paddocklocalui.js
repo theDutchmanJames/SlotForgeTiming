@@ -1,53 +1,202 @@
-(function(root){
- 'use strict';
- const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- function mount(api,dialog,run,state,loadCatalogue){
-  const section=dialog.querySelector('#paddock-connection'),q=s=>dialog.querySelector(s);let hosts=[],transfers=[];
-  const advanced=document.createElement('details');advanced.id='paddock-advanced';advanced.className='paddock-advanced';advanced.innerHTML=`<summary>Advanced connections</summary><p>Compatibility and recovery for older Paddock connections. These controls do not enable, disable or disconnect your same-computer shared database.</p><p>Older network hosts still accept their dedicated Timing credential in the address/password fields above. Browse-only or car-submission credentials cannot deliver race results.</p><div data-local-connection class="pl-panel"><h4>Older local integration service</h4><p>This separate local HTTP service uses protected discovery and credentials. Enable it in Paddock’s advanced integration settings only if you need this compatibility connection. It is not required for the shared database.</p><div class="row"><button class="btn" data-local-start>Retry service connection</button><button class="btn" data-local-find>Find local services</button><select data-local-host aria-label="Local integration services"><option value="">Find a service first</option></select><button class="btn primary" data-local-connect>Connect to service</button></div><div class="row"><button class="btn" data-local-disconnect>Disconnect service</button><button class="btn" data-local-forget>Forget service connection</button></div><p class="muted">Disconnect stops automatic service reconnection. Existing transfers, cached cars and queued results are retained.</p></div>`;
-  q('.paddock-shell main').append(advanced);
-  const localNote=document.createElement('p');localNote.dataset.localServiceNotice='';localNote.textContent='An older local service connection is saved. To choose a Dealership instead, open Advanced connections and explicitly forget that service connection. Pending results stay tied to their original database.';section.append(localNote);
-  const advancedNav=document.createElement('button');advancedNav.className='btn';advancedNav.dataset.jump='advanced';advancedNav.textContent='Advanced connections';q('.paddock-shell nav').append(advancedNav);
-  const panel=document.createElement('section');panel.id='paddock-transfers';panel.innerHTML=`<h3>Share existing Timing cars</h3><p>Keep your Timing car IDs, race history and simulation settings. Paddock reviews each proposed new car or link before Timing applies it. Linking never overwrites the existing Paddock car.</p><div class="pl-panel"><label>Local Timing cars <small>(choose up to 25; Ctrl or Cmd selects more)</small><select multiple size="5" data-transfer-cars></select></label><label>What should Paddock do?<select data-transfer-target><option value="">Create new cars for review</option></select></label><p class="muted">For a single car, you can choose an existing physical car to link. Matching model names do not identify the same physical car. Load the catalogue to see available targets.</p><button class="btn primary" data-transfer-create>Send to Paddock for review</button><p class="muted">Transfers include basic specifications, the race class and main picture (up to 8 MiB per car). History, custom fields, other pictures and simulation settings stay in Timing.</p></div><div class="row"><button class="btn" data-transfer-refresh>Refresh transfers</button><span class="muted">Approve or reject cars in Paddock’s Review screen.</span></div><div data-transfer-list></div>`;
-  advanced.append(panel);
-  const guided=document.createElement('button');guided.className='btn primary';guided.textContent='Use existing Timing collection';guided.onclick=()=>root.PaddockCollection.open(api);panel.prepend(guided);
-  const transferForm=panel.querySelector('.pl-panel'),empty=document.createElement('p');empty.className='muted';empty.textContent='No unlinked local cars are available. Existing transfers are shown below.';transferForm.after(empty);
-  advanced.open=state().status.connection?.mode==='local';
-  function paint(){
-   const {status,locals,catalog}=state();
-   const connectedLocal=status.connection?.mode==='local';panel.hidden=!connectedLocal&&!transfers.length;localNote.hidden=!connectedLocal;
-   q('[data-local-disconnect]').disabled=q('[data-local-forget]').disabled=!connectedLocal;
-   guided.hidden=!connectedLocal;
-   const select=q('[data-transfer-cars]'),selected=new Set([...select.selectedOptions].map(o=>o.value));
-   select.innerHTML=locals.filter(c=>!c.paddock&&!transfers.some(t=>t.localId===c.id&&!['rejected','cancelled'].includes(t.state))).map(c=>`<option value="${esc(c.id)}" ${selected.has(c.id)?'selected':''}>${esc([c.brand,c.manufacturer,c.model].filter(Boolean).join(' ')||'Unnamed car')}</option>`).join('')||'<option disabled>No unlinked local cars</option>';
-   select.size=5;transferForm.hidden=!connectedLocal||!!select.options[0]?.disabled;empty.hidden=!connectedLocal||!transferForm.hidden;
-   const target=q('[data-transfer-target]'),before=target.value;
-   target.innerHTML='<option value="">Create new cars for review</option>'+catalog.filter(c=>!c.archived&&Number.isSafeInteger(c.revision)&&!locals.some(l=>l.paddock?.databaseId===status.connection?.databaseId&&l.paddock.carId===c.id)).map(c=>`<option value="${esc(c.id)}">Link to ${esc(c.name)} · ${esc(c.maker||'')} · ${esc(c.raceClass||'No class')}</option>`).join('');target.value=before;choices();
-   const labels={queued:'Waiting to send',pending:'Awaiting Paddock approval',approved:'Approved · linking',linked:'Approved and linked',rejected:'Rejected',cancelled:'Cancelled',conflict:'Timing car changed · review needed',unavailable:'Approved car unavailable',attention:'Needs attention'};
-   q('[data-transfer-list]').innerHTML=transfers.slice(0,200).map(t=>`<article class="paddock-delivery"><b>${esc(t.name)}</b><span>${esc(labels[t.state]||t.state)}</span><small>${t.action==='link'?'Link existing physical car':'Create a new Paddock car'}</small>${t.error?`<p role="status">${esc(t.error)}</p>`:''}<div class="row">${t.databaseId===status.connection?.databaseId?`<button class="btn" data-transfer-check="${esc(t.id)}">Check / retry</button>${!['linked','rejected','cancelled'].includes(t.state)?`<button class="btn" data-transfer-cancel="${esc(t.id)}">Cancel pending review</button>`:''}${t.state==='attention'?`<button class="btn" data-transfer-origin="${esc(t.id)}">Find original review</button>`:''}${t.state==='conflict'?`<button class="btn" data-transfer-review="${esc(t.id)}">Review changed car</button>`:''}`:'<span>Reconnect the original Paddock library to manage this transfer.</span>'}</div></article>`).join('')||'<p class="muted">No transfers yet. Nothing is moved or deleted automatically.</p>';
-   if(transfers.length>200)q('[data-transfer-list]').insertAdjacentHTML('beforeend','<p class="muted">Showing the 200 most recently updated transfers.</p>');
+(function (root) {
+  'use strict';
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  function mount(api, dialog, run, state, loadCatalogue) {
+    const section = dialog.querySelector('#paddock-connection'),
+      q = s => dialog.querySelector(s);
+    let hosts = [],
+      transfers = [];
+    const advanced = document.createElement('details');
+    advanced.id = 'paddock-advanced';
+    advanced.className = 'paddock-advanced';
+    advanced.innerHTML = `<summary>Advanced connections</summary><p>Compatibility and recovery for older Paddock connections. These controls do not enable, disable or disconnect your same-computer shared database.</p><p>Older network hosts still accept their dedicated Timing credential in the address/password fields above. Browse-only or car-submission credentials cannot deliver race results.</p><div data-local-connection class="pl-panel"><h4>Older local integration service</h4><p>This separate local HTTP service uses protected discovery and credentials. Enable it in Paddock’s advanced integration settings only if you need this compatibility connection. It is not required for the shared database.</p><div class="row"><button class="btn" data-local-start>Retry service connection</button><button class="btn" data-local-find>Find local services</button><select data-local-host aria-label="Local integration services"><option value="">Find a service first</option></select><button class="btn primary" data-local-connect>Connect to service</button></div><div class="row"><button class="btn" data-local-disconnect>Disconnect service</button><button class="btn" data-local-forget>Forget service connection</button></div><p class="muted">Disconnect stops automatic service reconnection. Existing transfers, cached cars and queued results are retained.</p></div>`;
+    q('.paddock-shell main').append(advanced);
+    const localNote = document.createElement('p');
+    localNote.dataset.localServiceNotice = '';
+    localNote.textContent =
+      'An older local service connection is saved. To choose a Dealership instead, open Advanced connections and explicitly forget that service connection. Pending results stay tied to their original database.';
+    section.append(localNote);
+    const advancedNav = document.createElement('button');
+    advancedNav.className = 'btn';
+    advancedNav.dataset.jump = 'advanced';
+    advancedNav.textContent = 'Advanced connections';
+    q('.paddock-shell nav').append(advancedNav);
+    const panel = document.createElement('section');
+    panel.id = 'paddock-transfers';
+    panel.innerHTML = `<h3>Share existing Timing cars</h3><p>Keep your Timing car IDs, race history and simulation settings. Paddock reviews each proposed new car or link before Timing applies it. Linking never overwrites the existing Paddock car.</p><div class="pl-panel"><label>Local Timing cars <small>(choose up to 25; Ctrl or Cmd selects more)</small><select multiple size="5" data-transfer-cars></select></label><label>What should Paddock do?<select data-transfer-target><option value="">Create new cars for review</option></select></label><p class="muted">For a single car, you can choose an existing physical car to link. Matching model names do not identify the same physical car. Load the catalogue to see available targets.</p><button class="btn primary" data-transfer-create>Send to Paddock for review</button><p class="muted">Transfers include basic specifications, the race class and main picture (up to 8 MiB per car). History, custom fields, other pictures and simulation settings stay in Timing.</p></div><div class="row"><button class="btn" data-transfer-refresh>Refresh transfers</button><span class="muted">Approve or reject cars in Paddock’s Review screen.</span></div><div data-transfer-list></div>`;
+    advanced.append(panel);
+    const guided = document.createElement('button');
+    guided.className = 'btn primary';
+    guided.textContent = 'Use existing Timing collection';
+    guided.onclick = () => root.PaddockCollection.open(api);
+    panel.prepend(guided);
+    const transferForm = panel.querySelector('.pl-panel'),
+      empty = document.createElement('p');
+    empty.className = 'muted';
+    empty.textContent = 'No unlinked local cars are available. Existing transfers are shown below.';
+    transferForm.after(empty);
+    advanced.open = state().status.connection?.mode === 'local';
+    function paint() {
+      const { status, locals, catalog } = state();
+      const connectedLocal = status.connection?.mode === 'local';
+      panel.hidden = !connectedLocal && !transfers.length;
+      localNote.hidden = !connectedLocal;
+      q('[data-local-disconnect]').disabled = q('[data-local-forget]').disabled = !connectedLocal;
+      guided.hidden = !connectedLocal;
+      const select = q('[data-transfer-cars]'),
+        selected = new Set([...select.selectedOptions].map(o => o.value));
+      select.innerHTML =
+        locals
+          .filter(c => !c.paddock && !transfers.some(t => t.localId === c.id && !['rejected', 'cancelled'].includes(t.state)))
+          .map(
+            c =>
+              `<option value="${esc(c.id)}" ${selected.has(c.id) ? 'selected' : ''}>${esc([c.brand, c.manufacturer, c.model].filter(Boolean).join(' ') || 'Unnamed car')}</option>`
+          )
+          .join('') || '<option disabled>No unlinked local cars</option>';
+      select.size = 5;
+      transferForm.hidden = !connectedLocal || !!select.options[0]?.disabled;
+      empty.hidden = !connectedLocal || !transferForm.hidden;
+      const target = q('[data-transfer-target]'),
+        before = target.value;
+      target.innerHTML =
+        '<option value="">Create new cars for review</option>' +
+        catalog
+          .filter(
+            c =>
+              !c.archived &&
+              Number.isSafeInteger(c.revision) &&
+              !locals.some(l => l.paddock?.databaseId === status.connection?.databaseId && l.paddock.carId === c.id)
+          )
+          .map(
+            c => `<option value="${esc(c.id)}">Link to ${esc(c.name)} · ${esc(c.maker || '')} · ${esc(c.raceClass || 'No class')}</option>`
+          )
+          .join('');
+      target.value = before;
+      choices();
+      const labels = {
+        queued: 'Waiting to send',
+        pending: 'Awaiting Paddock approval',
+        approved: 'Approved · linking',
+        linked: 'Approved and linked',
+        rejected: 'Rejected',
+        cancelled: 'Cancelled',
+        conflict: 'Timing car changed · review needed',
+        unavailable: 'Approved car unavailable',
+        attention: 'Needs attention'
+      };
+      q('[data-transfer-list]').innerHTML =
+        transfers
+          .slice(0, 200)
+          .map(
+            t =>
+              `<article class="paddock-delivery"><b>${esc(t.name)}</b><span>${esc(labels[t.state] || t.state)}</span><small>${t.action === 'link' ? 'Link existing physical car' : 'Create a new Paddock car'}</small>${t.error ? `<p role="status">${esc(t.error)}</p>` : ''}<div class="row">${t.databaseId === status.connection?.databaseId ? `<button class="btn" data-transfer-check="${esc(t.id)}">Check / retry</button>${!['linked', 'rejected', 'cancelled'].includes(t.state) ? `<button class="btn" data-transfer-cancel="${esc(t.id)}">Cancel pending review</button>` : ''}${t.state === 'attention' ? `<button class="btn" data-transfer-origin="${esc(t.id)}">Find original review</button>` : ''}${t.state === 'conflict' ? `<button class="btn" data-transfer-review="${esc(t.id)}">Review changed car</button>` : ''}` : '<span>Reconnect the original Paddock library to manage this transfer.</span>'}</div></article>`
+          )
+          .join('') || '<p class="muted">No transfers yet. Nothing is moved or deleted automatically.</p>';
+      if (transfers.length > 200)
+        q('[data-transfer-list]').insertAdjacentHTML('beforeend', '<p class="muted">Showing the 200 most recently updated transfers.</p>');
+    }
+    function choices() {
+      const count = [...q('[data-transfer-cars]').selectedOptions].filter(o => !o.disabled).length,
+        many = count !== 1;
+      q('[data-transfer-target]').disabled = many;
+      if (many) q('[data-transfer-target]').value = '';
+      q('[data-transfer-create]').disabled = count === 0 || count > 25;
+    }
+    q('[data-transfer-cars]').onchange = choices;
+    q('[data-local-find]').onclick = () =>
+      run(async () => {
+        hosts = await api.paddockLocalDiscover();
+        q('[data-local-host]').innerHTML =
+          '<option value="">' +
+          (hosts.length ? 'Choose a collection' : 'No collection found') +
+          '</option>' +
+          hosts.map((h, i) => `<option value="${i}">${esc(h.name)} · ${esc(h.databaseId)}</option>`).join('');
+        if (hosts.length === 1) q('[data-local-host]').value = '0';
+      });
+    q('[data-local-connect]').onclick = () =>
+      run(async () => {
+        const selected = q('[data-local-host]').value,
+          h = selected === '' ? null : hosts[Number(selected)];
+        if (!h) throw Error('Find and select a collection first.');
+        await api.paddockConnect({ mode: 'local', key: h.key, databaseId: h.databaseId });
+        await loadCatalogue(true);
+      });
+    q('[data-local-disconnect]').onclick = () => run(() => api.paddockDisconnect(false));
+    q('[data-local-forget]').onclick = () => {
+      if (
+        confirm(
+          'Forget this service connection? Linked cars, race history and pending transfers stay in Timing and remain tied to the original Paddock database.'
+        )
+      )
+        run(() => api.paddockDisconnect(true));
+    };
+    q('[data-transfer-create]').onclick = () => {
+      const ids = [...q('[data-transfer-cars]').selectedOptions].map(o => o.value),
+        target = state().catalog.find(c => c.id === q('[data-transfer-target]').value);
+      if (!ids.length) {
+        alert('Choose at least one local Timing car.');
+        return;
+      }
+      if (
+        !confirm(
+          target
+            ? `Ask Paddock to link this Timing car to “${target.name}”? Confirm this is the same physical car. Paddock’s details will be used after approval; Timing history stays with its existing ID.`
+            : `Send ${ids.length} car(s) to Paddock for review? Each approved car will be available in both apps. Existing Timing IDs and history are retained.`
+        )
+      )
+        return;
+      run(() =>
+        api.paddockTransferCreate(
+          ids.map(localId => ({ localId, ...(target ? { target: { carId: target.id, revision: target.revision } } : {}) }))
+        )
+      );
+    };
+    q('[data-local-start]').onclick = () => run(() => api.paddockLocalStart());
+    q('[data-transfer-refresh]').onclick = () => run(() => api.paddockTransferRefresh());
+    q('[data-transfer-list]').onclick = e => {
+      const origin = e.target.closest('[data-transfer-origin]');
+      if (origin)
+        run(async () => {
+          const r = await api.paddockTransferOrigin(origin.dataset.transferOrigin);
+          alert(
+            'Original Paddock review: ' +
+              r.transferId +
+              '\nCar: ' +
+              r.carId +
+              '\nStatus: ' +
+              r.status +
+              '\n\nFor a pending review, reject or cancel it in Paddock before retrying a replacement request. For an approved origin, restore the Timing backup containing the original transfer journal. Timing will not recreate or silently relink an approved physical car.'
+          );
+        });
+      const check = e.target.closest('[data-transfer-check]'),
+        cancel = e.target.closest('[data-transfer-cancel]'),
+        review = e.target.closest('[data-transfer-review]');
+      if (check) run(() => api.paddockTransferRefresh(check.dataset.transferCheck));
+      if (cancel && confirm('Cancel items still awaiting approval? Approved cars stay in Paddock and their links can still be completed.'))
+        run(() => api.paddockTransferCancel(cancel.dataset.transferCancel));
+      if (review)
+        run(async () => {
+          const p = await api.paddockTransferPreview(review.dataset.transferReview);
+          const differences = Object.keys(p.current)
+            .filter(k => p.current[k] !== p.original[k])
+            .map(k => `${k}: ${p.original[k] || '—'} → ${p.current[k] || '—'}`)
+            .join('\n');
+          if (
+            confirm(
+              'Timing changed after transfer:\n' +
+                (differences || 'Other local fields changed.') +
+                '\n\nUse the approved Paddock specifications now? Timing IDs, history and simulation settings stay local.'
+            )
+          )
+            await api.paddockTransferAccept(review.dataset.transferReview, p.expected);
+        });
+    };
+    return {
+      paint,
+      refresh: async () => {
+        transfers = await api.paddockTransfers();
+      }
+    };
   }
-  function choices(){const count=[...q('[data-transfer-cars]').selectedOptions].filter(o=>!o.disabled).length,many=count!==1;q('[data-transfer-target]').disabled=many;if(many)q('[data-transfer-target]').value='';q('[data-transfer-create]').disabled=count===0||count>25;}
-  q('[data-transfer-cars]').onchange=choices;
-  q('[data-local-find]').onclick=()=>run(async()=>{hosts=await api.paddockLocalDiscover();q('[data-local-host]').innerHTML='<option value="">'+(hosts.length?'Choose a collection':'No collection found')+'</option>'+hosts.map((h,i)=>`<option value="${i}">${esc(h.name)} · ${esc(h.databaseId)}</option>`).join('');if(hosts.length===1)q('[data-local-host]').value='0';});
-  q('[data-local-connect]').onclick=()=>run(async()=>{const selected=q('[data-local-host]').value,h=selected===''?null:hosts[Number(selected)];if(!h)throw Error('Find and select a collection first.');await api.paddockConnect({mode:'local',key:h.key,databaseId:h.databaseId});await loadCatalogue(true);});
-  q('[data-local-disconnect]').onclick=()=>run(()=>api.paddockDisconnect(false));
-  q('[data-local-forget]').onclick=()=>{if(confirm('Forget this service connection? Linked cars, race history and pending transfers stay in Timing and remain tied to the original Paddock database.'))run(()=>api.paddockDisconnect(true));};
-  q('[data-transfer-create]').onclick=()=>{
-   const ids=[...q('[data-transfer-cars]').selectedOptions].map(o=>o.value),target=state().catalog.find(c=>c.id===q('[data-transfer-target]').value);
-   if(!ids.length){alert('Choose at least one local Timing car.');return;}
-   if(!confirm(target?`Ask Paddock to link this Timing car to “${target.name}”? Confirm this is the same physical car. Paddock’s details will be used after approval; Timing history stays with its existing ID.`:`Send ${ids.length} car(s) to Paddock for review? Each approved car will be available in both apps. Existing Timing IDs and history are retained.`))return;
-   run(()=>api.paddockTransferCreate(ids.map(localId=>({localId,...(target?{target:{carId:target.id,revision:target.revision}}:{})}))));
-  };
-  q('[data-local-start]').onclick=()=>run(()=>api.paddockLocalStart());
-  q('[data-transfer-refresh]').onclick=()=>run(()=>api.paddockTransferRefresh());
-  q('[data-transfer-list]').onclick=e=>{
-   const origin=e.target.closest('[data-transfer-origin]');if(origin)run(async()=>{const r=await api.paddockTransferOrigin(origin.dataset.transferOrigin);alert('Original Paddock review: '+r.transferId+'\nCar: '+r.carId+'\nStatus: '+r.status+'\n\nFor a pending review, reject or cancel it in Paddock before retrying a replacement request. For an approved origin, restore the Timing backup containing the original transfer journal. Timing will not recreate or silently relink an approved physical car.');});
-   const check=e.target.closest('[data-transfer-check]'),cancel=e.target.closest('[data-transfer-cancel]'),review=e.target.closest('[data-transfer-review]');
-   if(check)run(()=>api.paddockTransferRefresh(check.dataset.transferCheck));
-   if(cancel&&confirm('Cancel items still awaiting approval? Approved cars stay in Paddock and their links can still be completed.'))run(()=>api.paddockTransferCancel(cancel.dataset.transferCancel));
-   if(review)run(async()=>{const p=await api.paddockTransferPreview(review.dataset.transferReview);const differences=Object.keys(p.current).filter(k=>p.current[k]!==p.original[k]).map(k=>`${k}: ${p.original[k]||'—'} → ${p.current[k]||'—'}`).join('\n');if(confirm('Timing changed after transfer:\n'+(differences||'Other local fields changed.')+'\n\nUse the approved Paddock specifications now? Timing IDs, history and simulation settings stay local.'))await api.paddockTransferAccept(review.dataset.transferReview,p.expected);});
-  };
-  return {paint,refresh:async()=>{transfers=await api.paddockTransfers();}};
- }
- root.PaddockLocalUI={mount};
+  root.PaddockLocalUI = { mount };
 })(globalThis);

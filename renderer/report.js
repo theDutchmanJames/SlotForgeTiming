@@ -7,19 +7,30 @@
   const ST = typeof module !== 'undefined' ? require('./stats.js') : root.Stats;
   const IC = typeof module !== 'undefined' ? require('./icons.js') : root.Icons;
   const VR = typeof module !== 'undefined' ? require('./virtualrival.js') : root.VirtualRival;
-  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const LABEL = { practice: 'Free practice', qualifying: 'Qualifying', race: 'Race', timed: 'Timed race', heats: 'Heat-based race', endurance: 'Endurance Race', tokens: 'Time Token Session' };
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const LABEL = {
+    practice: 'Free practice',
+    qualifying: 'Qualifying',
+    race: 'Race',
+    timed: 'Timed race',
+    heats: 'Heat-based race',
+    endurance: 'Endurance Race',
+    tokens: 'Time Token Session'
+  };
   const dateText = iso => (iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'long', timeStyle: 'short' }) : '');
 
   // laps of one session, grouped (one group, or one per heat), each as columns of lap times per driver
   function lapGroups(session, laps) {
     const heatNumbers = [...new Set(laps.map(l => l.heat || 0))].sort((a, b) => a - b);
-    return heatNumbers.map(h => {
-      const mine = laps.filter(l => (l.heat || 0) === h);
-      const cols = session.standings.filter(s => ST.ownLaps(s, mine).length)
-        .map(s => ({ s, laps: ST.ownLaps(s, mine).sort((a, b) => a.lapNumber - b.lapNumber) }));
-      return { heat: h, final: (mine.find(l => l.final) || {}).final || '', cols };
-    }).filter(g => g.cols.length);
+    return heatNumbers
+      .map(h => {
+        const mine = laps.filter(l => (l.heat || 0) === h);
+        const cols = session.standings
+          .filter(s => ST.ownLaps(s, mine).length)
+          .map(s => ({ s, laps: ST.ownLaps(s, mine).sort((a, b) => a.lapNumber - b.lapNumber) }));
+        return { heat: h, final: (mine.find(l => l.final) || {}).final || '', cols };
+      })
+      .filter(g => g.cols.length);
   }
 
   // What goes in the PDF. options (all optional, everything is in when it is left out): results (the table), heats (the summary of the heats and finals), tyres (the tyre stints of a race with Tyre Wear; tyreWorn: the laps on worn out tyres end the bar in red), laps (the page with every lap time),
@@ -28,47 +39,119 @@
   const DEFAULT_OPTIONS = { results: true, heats: true, tyres: true, laps: true };
   function sessionHtml({ session, laps, tracks, cars, options, unit, distUnit }) {
     const opt = { ...DEFAULT_OPTIONS, ...(options || {}) };
-    const pts = session.resultBy === 'points', isHeats = ST.heated(session);
-    const fin = isHeats && !!session.finals, finArg = { finalMode: fin ? session.finals.finalMode : 'places', byPoints: pts, unit: distUnit };
-    const figs = ST.forSession(session, laps, tracks, cars), want = new Set(opt.columns || ST.SESSION_COLUMNS.filter(c => c.on).map(c => c.key));
+    const pts = session.resultBy === 'points',
+      isHeats = ST.heated(session);
+    const fin = isHeats && !!session.finals,
+      finArg = { finalMode: fin ? session.finals.finalMode : 'places', byPoints: pts, unit: distUnit };
+    const figs = ST.forSession(session, laps, tracks, cars),
+      want = new Set(opt.columns || ST.SESSION_COLUMNS.filter(c => c.on).map(c => c.key));
     const cols = ST.sessionColumns(session, figs).filter(c => want.has(c.key));
-    const cup = IC.trophy({ size: 14 }), hasDriver = cols.some(c => c.key === 'driver'); // (the winner's cup goes next to the name; without the Driver column next to the position)
+    const cup = IC.trophy({ size: 14 }),
+      hasDriver = cols.some(c => c.key === 'driver'); // (the winner's cup goes next to the name; without the Driver column next to the position)
     const cellOf = (key, x, i) => {
       switch (key) {
-        case 'pos': return esc(x.pos) + (!hasDriver && ST.isWinner(session, x) ? ' ' + cup : '');
-        case 'driver': return (ST.isWinner(session, x) ? cup + ' ' : '') + esc(x.driverName) + (ST.outText(x) ? ` (${ST.outText(x)})` : '') + (ST.adjustedText(x) ? ` (adjusted: ${esc(ST.adjustedText(x))})` : '') + (ST.notesText(x) ? ` (${esc(ST.notesText(x))})` : '') + (ST.driversText(x, distUnit) ? ` (drivers: ${esc(ST.driversText(x, distUnit))})` : '') + (ST.enduranceText(x, distUnit) ? ` (${esc(ST.enduranceText(x, distUnit))})` : '');
-        case 'team': return esc(x.teamName || '');
-        case 'car': return esc(x.carName);
-        case 'laps': return esc(x.laps) + (ST.sectorText(x) ? ` + ${esc(ST.sectorText(x))}` : '');
-        case 'points': return esc(x.points);
-        case 'result': return esc(HT.scoreText(x, session.scoring, finArg));
-        case 'final': return esc(HT.finalCell(x));
-        case 'best': return esc(E.fmtTime(x.best));
-        case 'total': return esc(E.fmtTime(typeof x.total==='number'?x.total + (x.penalty || 0) + (x.adjMs || 0):null)) + (x.penalty ? (x.penaltyPoints != null ? ` (includes +${esc(E.fmtTime(x.penalty))} penalty, ${esc(x.penaltyPoints)} points)` : ` (includes +${esc(E.fmtTime(x.penalty))} added time)`) : ''); // (2.2.5: time added without a penalty system, such as the red-flag time, has no points)
-        default: return esc(ST.text(key, figs[i], unit, distUnit));
+        case 'pos':
+          return esc(x.pos) + (!hasDriver && ST.isWinner(session, x) ? ' ' + cup : '');
+        case 'driver':
+          return (
+            (ST.isWinner(session, x) ? cup + ' ' : '') +
+            esc(x.driverName) +
+            (ST.outText(x) ? ` (${ST.outText(x)})` : '') +
+            (ST.adjustedText(x) ? ` (adjusted: ${esc(ST.adjustedText(x))})` : '') +
+            (ST.notesText(x) ? ` (${esc(ST.notesText(x))})` : '') +
+            (ST.driversText(x, distUnit) ? ` (drivers: ${esc(ST.driversText(x, distUnit))})` : '') +
+            (ST.enduranceText(x, distUnit) ? ` (${esc(ST.enduranceText(x, distUnit))})` : '')
+          );
+        case 'team':
+          return esc(x.teamName || '');
+        case 'car':
+          return esc(x.carName);
+        case 'laps':
+          return esc(x.laps) + (ST.sectorText(x) ? ` + ${esc(ST.sectorText(x))}` : '');
+        case 'points':
+          return esc(x.points);
+        case 'result':
+          return esc(HT.scoreText(x, session.scoring, finArg));
+        case 'final':
+          return esc(HT.finalCell(x));
+        case 'best':
+          return esc(E.fmtTime(x.best));
+        case 'total':
+          return (
+            esc(E.fmtTime(typeof x.total === 'number' ? x.total + (x.penalty || 0) + (x.adjMs || 0) : null)) +
+            (x.penalty
+              ? x.penaltyPoints != null
+                ? ` (includes +${esc(E.fmtTime(x.penalty))} penalty, ${esc(x.penaltyPoints)} points)`
+                : ` (includes +${esc(E.fmtTime(x.penalty))} added time)`
+              : '')
+          ); // (2.2.5: time added without a penalty system, such as the red-flag time, has no points)
+        default:
+          return esc(ST.text(key, figs[i], unit, distUnit));
       }
     };
-    const standings = !opt.results || !cols.length ? '' : `<table${cols.length > 8 ? ' class="wide"' : ''}><thead><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr></thead><tbody>` +
-      session.standings.map((x, i) => `<tr>${cols.map(c => `<td>${cellOf(c.key, x, i)}</td>`).join('')}</tr>`).join('') + '</tbody></table>' +
-      (ST.notes(cols.map(c => c.key)).length ? `<p class="sub">${ST.notes(cols.map(c => c.key)).map(esc).join(' ')}</p>` : '') +
-      (isHeats && session.scoring && HT.scoringText(session.scoring, pts) ? `<p class="sub">${esc(HT.scoringText(session.scoring, pts))}</p>` : '') + (fin ? `<p class="sub">${esc(HT.finalsSaid(session.finals))}</p>` : '') + (ST.weatherText(session) ? `<p class="sub">${esc(ST.weatherText(session))}</p>` : '') + (ST.resumeText(session) ? `<p class="sub">${esc(ST.resumeText(session))}</p>` : '') + (ST.compareText(session) ? `<p class="sub">${esc(ST.compareText(session))}</p>` : '');
-    const heatSummary = !opt.heats || !session.heatResults ? '' : `<h2>${session.finals ? 'Heats and finals' : 'Heats'}</h2>` + session.heatResults.map(h =>
-      `<p><b>${esc(HT.raceName(h))}</b>${ST.weatherText(h) ? ` (${esc(ST.weatherText(h))})` : ''}: ${h.rows.map(r => `${esc(r.pos)}. ${ST.isHeatWinner(session, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${ST.sectorText(r) ? ' + ' + esc(ST.sectorText(r)) : ''}${esc(ST.heatTimeText(session, r))}${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${ST.adjustedText(r) ? ', adjusted: ' + esc(ST.adjustedText(r)) : ''}${ST.notesText(r) ? ', ' + esc(ST.notesText(r)) : ''})`).join(' &middot; ')}</p>`).join('');
-    const stintSheet = !opt.results || !ST.stintLines(session, distUnit).length ? '' : '<h2>Driver swaps</h2>' + ST.stintLines(session, distUnit).map(g => `<p><b>${esc(g.team)}</b>: ${g.stints.map(q => `${esc(q.n)}. ${esc(q.text)}`).join('; ')}</p>`).join('');
-    const tyreSheet = !opt.tyres || !ST.tyreStints(session, distUnit).length ? '' : '<h2>Tyre stints</h2>' + ST.tyreStintsHtml(session, { distUnit, worn: !!opt.tyreWorn }) + `<p class="sub">${esc(ST.tyreStintsNote(session))}</p>`;
+    const standings =
+      !opt.results || !cols.length
+        ? ''
+        : `<table${cols.length > 8 ? ' class="wide"' : ''}><thead><tr>${cols.map(c => `<th>${esc(c.label)}</th>`).join('')}</tr></thead><tbody>` +
+          session.standings.map((x, i) => `<tr>${cols.map(c => `<td>${cellOf(c.key, x, i)}</td>`).join('')}</tr>`).join('') +
+          '</tbody></table>' +
+          (ST.notes(cols.map(c => c.key)).length
+            ? `<p class="sub">${ST.notes(cols.map(c => c.key))
+                .map(esc)
+                .join(' ')}</p>`
+            : '') +
+          (isHeats && session.scoring && HT.scoringText(session.scoring, pts)
+            ? `<p class="sub">${esc(HT.scoringText(session.scoring, pts))}</p>`
+            : '') +
+          (fin ? `<p class="sub">${esc(HT.finalsSaid(session.finals))}</p>` : '') +
+          (ST.weatherText(session) ? `<p class="sub">${esc(ST.weatherText(session))}</p>` : '') +
+          (ST.resumeText(session) ? `<p class="sub">${esc(ST.resumeText(session))}</p>` : '') +
+          (ST.compareText(session) ? `<p class="sub">${esc(ST.compareText(session))}</p>` : '');
+    const heatSummary =
+      !opt.heats || !session.heatResults
+        ? ''
+        : `<h2>${session.finals ? 'Heats and finals' : 'Heats'}</h2>` +
+          session.heatResults
+            .map(
+              h =>
+                `<p><b>${esc(HT.raceName(h))}</b>${ST.weatherText(h) ? ` (${esc(ST.weatherText(h))})` : ''}: ${h.rows.map(r => `${esc(r.pos)}. ${ST.isHeatWinner(session, r) ? cup + ' ' : ''}${esc(r.driverName)} (${esc(r.laps)} laps${ST.sectorText(r) ? ' + ' + esc(ST.sectorText(r)) : ''}${esc(ST.heatTimeText(session, r))}${pts ? ', ' + esc(r.points) + ' pts' + (r.bonus ? ' incl. ' + esc(r.bonus) + ' for the fastest lap' : '') : ''}${ST.adjustedText(r) ? ', adjusted: ' + esc(ST.adjustedText(r)) : ''}${ST.notesText(r) ? ', ' + esc(ST.notesText(r)) : ''})`).join(' &middot; ')}</p>`
+            )
+            .join('');
+    const stintSheet =
+      !opt.results || !ST.stintLines(session, distUnit).length
+        ? ''
+        : '<h2>Driver swaps</h2>' +
+          ST.stintLines(session, distUnit)
+            .map(g => `<p><b>${esc(g.team)}</b>: ${g.stints.map(q => `${esc(q.n)}. ${esc(q.text)}`).join('; ')}</p>`)
+            .join('');
+    const tyreSheet =
+      !opt.tyres || !ST.tyreStints(session, distUnit).length
+        ? ''
+        : '<h2>Tyre stints</h2>' +
+          ST.tyreStintsHtml(session, { distUnit, worn: !!opt.tyreWorn }) +
+          `<p class="sub">${esc(ST.tyreStintsNote(session))}</p>`;
     const groups = lapGroups(session, laps);
-    const lapPages = groups.map(g => {
-      const most = Math.max(...g.cols.map(c => c.laps.length));
-      const bad = x => x.invalid || x.tooSlow;
-      const bestByColumn = g.cols.map(c => c.laps.reduce((best,l) => bad(l) ? best : Math.min(best,l.time),Infinity));
-      const rows = Array.from({ length: most }, (_, i) => `<tr><td>${i + 1}</td>${g.cols.map(c => {
-        const l = c.laps[i]; if (!l) return '<td></td>';
-        const best = bestByColumn[g.cols.indexOf(c)];
-        const tm = esc(E.fmtTime(l.time));
-        return `<td>${bad(l) ? `<s title="${l.invalid ? 'invalid lap' : 'too slow'}">${tm}</s>` : l.time === best ? `<b>${tm}</b>` : l.pit ? `<i title="pit stop">${tm}</i>` : tm}</td>`;
-      }).join('')}</tr>`).join('');
-      return `${isHeats ? `<h2>${esc(HT.raceName(g))}</h2>` : ''}<table class="laps"><thead><tr><th>Lap</th>${g.cols.map(c => `<th>${esc(c.s.driverName)}<br><span class="sub">${esc(c.s.carName)}</span></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
-    }).join('');
+    const lapPages = groups
+      .map(g => {
+        const most = Math.max(...g.cols.map(c => c.laps.length));
+        const bad = x => x.invalid || x.tooSlow;
+        const bestByColumn = g.cols.map(c => c.laps.reduce((best, l) => (bad(l) ? best : Math.min(best, l.time)), Infinity));
+        const rows = Array.from(
+          { length: most },
+          (_, i) =>
+            `<tr><td>${i + 1}</td>${g.cols
+              .map(c => {
+                const l = c.laps[i];
+                if (!l) return '<td></td>';
+                const best = bestByColumn[g.cols.indexOf(c)];
+                const tm = esc(E.fmtTime(l.time));
+                return `<td>${bad(l) ? `<s title="${l.invalid ? 'invalid lap' : 'too slow'}">${tm}</s>` : l.time === best ? `<b>${tm}</b>` : l.pit ? `<i title="pit stop">${tm}</i>` : tm}</td>`;
+              })
+              .join('')}</tr>`
+        ).join('');
+        return `${isHeats ? `<h2>${esc(HT.raceName(g))}</h2>` : ''}<table class="laps"><thead><tr><th>Lap</th>${g.cols.map(c => `<th>${esc(c.s.driverName)}<br><span class="sub">${esc(c.s.carName)}</span></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
+      })
+      .join('');
     return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(session.setupName)}</title><style>
       @page { size: A4; margin: 15mm; }
       body { font: 11pt/1.4 Arial, Helvetica, sans-serif; color: #111; margin: 0; }
@@ -89,9 +172,13 @@
     </style></head><body>
       <h1>${esc(session.setupName)}</h1>
       <p class="meta">${esc(LABEL[session.sessionType] || '')} &middot; ${esc(session.trackName || '')} &middot; ${esc(dateText(session.date))}${session.endedBy ? ' &middot; ' + esc(session.endedBy) : ''}</p>
-      ${standings ? '<h2>'+ (session.virtualRivals?.length?'Physical-field standings':'Results') +'</h2>' + standings : ''}${opt.results&&VR?VR.historyHtml(session):''}${opt.results?(typeof module!=='undefined'?require('./multiclass.js'):MultiClass).resultsHtml(session.classStandings||[],session.multiclass):''}${heatSummary}${stintSheet}${tyreSheet}
-      ${opt.laps ? `<div class="page2"><h1>All lap times</h1><p class="meta">${esc(session.setupName)} &middot; ${esc(session.trackName || '')} &middot; ${esc(dateText(session.date))}. The fastest lap of each driver is in bold.${laps.some(l => l.pit) ? ' A lap with a pit stop is in italics.' : ''}</p>${lapPages || '<p>No laps were recorded.</p>'}
-      <p class="foot">Made with SlotForge Timing</p></div>` : '<p class="foot">Made with SlotForge Timing</p>'}</body></html>`;
+      ${standings ? '<h2>' + (session.virtualRivals?.length ? 'Physical-field standings' : 'Results') + '</h2>' + standings : ''}${opt.results && VR ? VR.historyHtml(session) : ''}${opt.results ? (typeof module !== 'undefined' ? require('./multiclass.js') : MultiClass).resultsHtml(session.classStandings || [], session.multiclass) : ''}${heatSummary}${stintSheet}${tyreSheet}
+      ${
+        opt.laps
+          ? `<div class="page2"><h1>All lap times</h1><p class="meta">${esc(session.setupName)} &middot; ${esc(session.trackName || '')} &middot; ${esc(dateText(session.date))}. The fastest lap of each driver is in bold.${laps.some(l => l.pit) ? ' A lap with a pit stop is in italics.' : ''}</p>${lapPages || '<p>No laps were recorded.</p>'}
+      <p class="foot">Made with SlotForge Timing</p></div>`
+          : '<p class="foot">Made with SlotForge Timing</p>'
+      }</body></html>`;
   }
 
   // A page to print: the QR code of a network address, big enough to scan from a print on the wall
@@ -125,10 +212,26 @@
   // The heat list as a sheet to hand out or pin up: a row per heat with the driver of every lane, and a place to write the winner. list: Heats.listOf(...) entries;
   // lanes: the lanes of the track; points: show what a finished heat gave (points, or the time of the result); a heat that is finished shows its winner.
   function heatSheetHtml({ title, subtitle, list, lanes, points, time }) {
-    const n = Math.max(1, Math.floor(Number(lanes)) || Math.max(1, ...list.map(x => x.drivers.reduce((m, d) => Math.max(m, Number.isInteger(d.lane) ? d.lane + 1 : 0), 0))));
-    const drivers = x => Array.from({ length: n }, (_, l) => { const d = x.drivers.find(y => y.lane === l); return `<td>${d ? esc(d.name) : '&ndash;'}</td>`; }).join('');
+    const n = Math.max(
+      1,
+      Math.floor(Number(lanes)) ||
+        Math.max(1, ...list.map(x => x.drivers.reduce((m, d) => Math.max(m, Number.isInteger(d.lane) ? d.lane + 1 : 0), 0)))
+    );
+    const drivers = x =>
+      Array.from({ length: n }, (_, l) => {
+        const d = x.drivers.find(y => y.lane === l);
+        return `<td>${d ? esc(d.name) : '&ndash;'}</td>`;
+      }).join('');
     const unplaced = x => x.drivers.filter(d => !(Number.isInteger(d.lane) && d.lane >= 0)); // (a final, before its lanes are chosen)
-    const result = x => x.rows.length ? x.rows.map(r => `${esc(r.pos)}. ${esc(r.name)}${HT.rowFigure(r, { points, time }) ? ' (' + esc(HT.rowFigure(r, { points, time })) + ')' : ''}`).join(', ') : '';
+    const result = x =>
+      x.rows.length
+        ? x.rows
+            .map(
+              r =>
+                `${esc(r.pos)}. ${esc(r.name)}${HT.rowFigure(r, { points, time }) ? ' (' + esc(HT.rowFigure(r, { points, time })) + ')' : ''}`
+            )
+            .join(', ')
+        : '';
     const anyResult = list.some(x => x.rows.length);
     return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
       @page { size: A4 landscape; margin: 14mm; }
@@ -137,17 +240,29 @@
       table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid #888; padding: 2.4mm 3mm; text-align: left; vertical-align: top; } th { background: #eee; }
       td.win { width: 28%; } tr { page-break-inside: avoid; } td.h { white-space: nowrap; font-weight: bold; }
     </style></head><body><h1>${esc(title)}</h1><p class="sub">${esc(subtitle || '')}</p>
-      <table><thead><tr><th>Heat</th>${Array.from({ length: n }, (_, l) => `<th>Lane ${l + 1}</th>`).join('')}<th>${anyResult ? 'Result' : 'Winner'}</th></tr></thead><tbody>${list.map(x =>
-        `<tr><td class="h">${esc(x.name)}${x.label ? `<br><span style="font-weight:normal">${esc(x.label)}</span>` : ''}</td>${unplaced(x).length === x.drivers.length && x.drivers.length ? `<td colspan="${n}">${esc(HT.andList(x.drivers.map(d => d.name)))} (lanes are chosen before the final)</td>` : drivers(x)}<td class="win">${result(x)}</td></tr>`).join('')}</tbody></table>
+      <table><thead><tr><th>Heat</th>${Array.from({ length: n }, (_, l) => `<th>Lane ${l + 1}</th>`).join('')}<th>${anyResult ? 'Result' : 'Winner'}</th></tr></thead><tbody>${list
+        .map(
+          x =>
+            `<tr><td class="h">${esc(x.name)}${x.label ? `<br><span style="font-weight:normal">${esc(x.label)}</span>` : ''}</td>${unplaced(x).length === x.drivers.length && x.drivers.length ? `<td colspan="${n}">${esc(HT.andList(x.drivers.map(d => d.name)))} (lanes are chosen before the final)</td>` : drivers(x)}<td class="win">${result(x)}</td></tr>`
+        )
+        .join('')}</tbody></table>
     </body></html>`;
   }
 
   // The standings of a championship as a page to print (1.56.0): the table that ChampPts.tableOf makes ({ title, note, columns, rows, legend }) under the name of the championship.
   // A dropped result is crossed out, a fastest lap bonus is bold, the leader's row is shaded. The page is landscape: a championship has many rounds.
   function standingsHtml({ championship, table, lead }) {
-    const t = table || { title: '', columns: [], rows: [], legend: [] }, cls = c => (c ? ` class="${esc(c)}"` : '');
-    const head = t.columns.map(c => `<th${c.r ? ' class="r"' : ''}${c.title ? ` title="${esc(c.title)}"` : ''}>${esc(c.label)}</th>`).join('');
-    const body = t.rows.map(r => `<tr${r.lead ? ' class="lead"' : ''}>${r.cells.map((c, i) => `<td${(t.columns[i] || {}).r ? ` class="r${c.cls ? ' ' + esc(c.cls) : ''}"` : cls(c.cls)}>${c.b ? `<b${c.big ? ' class="big"' : ''}>${esc(c.t)}</b>` : esc(c.t)}</td>`).join('')}</tr>`).join('');
+    const t = table || { title: '', columns: [], rows: [], legend: [] },
+      cls = c => (c ? ` class="${esc(c)}"` : '');
+    const head = t.columns
+      .map(c => `<th${c.r ? ' class="r"' : ''}${c.title ? ` title="${esc(c.title)}"` : ''}>${esc(c.label)}</th>`)
+      .join('');
+    const body = t.rows
+      .map(
+        r =>
+          `<tr${r.lead ? ' class="lead"' : ''}>${r.cells.map((c, i) => `<td${(t.columns[i] || {}).r ? ` class="r${c.cls ? ' ' + esc(c.cls) : ''}"` : cls(c.cls)}>${c.b ? `<b${c.big ? ' class="big"' : ''}>${esc(c.t)}</b>` : esc(c.t)}</td>`).join('')}</tr>`
+      )
+      .join('');
     const legend = (t.legend || []).map(l => `<span${cls(l.cls)}>${esc(l.text)}</span>`).join(' &nbsp;&middot;&nbsp; ');
     return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(championship)}</title><style>
       @page { size: A4 landscape; margin: 14mm; }
@@ -159,10 +274,19 @@
     </style></head><body><h1>${esc(championship)}</h1><p class="sub">${esc(t.title)}${t.note ? ' &middot; ' + esc(t.note) : ''}${lead ? ' &middot; ' + esc(lead) : ''}</p>
       <table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>${legend ? `<p class="sub">${legend}</p>` : ''}<p class="foot">Made with SlotForge Timing</p></body></html>`;
   }
-  const standingsFileName = (name, which) => `${name || 'Championship'} ${which === 'teams' ? 'teams' : which === 'rounds' ? 'rounds' : 'drivers'} standings.pdf`.replace(/[\\/:*?"<>|]/g, '-');
+  const standingsFileName = (name, which) =>
+    `${name || 'Championship'} ${which === 'teams' ? 'teams' : which === 'rounds' ? 'rounds' : 'drivers'} standings.pdf`.replace(
+      /[\\/:*?"<>|]/g,
+      '-'
+    );
 
   // the day of a race as the page shows it (local time): a race at 00:30 in Amsterdam is on the new day, not on the day of the UTC date
-  const dayOf = iso => { const t = Date.parse(iso), d = new Date(t), two = n => String(n).padStart(2, '0'); return Number.isFinite(t) ? `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}` : String(iso || '').slice(0, 10); };
+  const dayOf = iso => {
+    const t = Date.parse(iso),
+      d = new Date(t),
+      two = n => String(n).padStart(2, '0');
+    return Number.isFinite(t) ? `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}` : String(iso || '').slice(0, 10);
+  };
   const fileName = session => `${session.setupName || 'Session'} ${dayOf(session.date)}.pdf`.replace(/[\\/:*?"<>|]/g, '-');
   const api = { sessionHtml, heatSheetHtml, standingsHtml, standingsFileName, fileName, lapGroups, qrHtml, rulesHtml, CREDIT };
   root.Report = api;

@@ -12,8 +12,20 @@
     { key: 'median', label: 'Median lap', best: 'low', top: 'the fastest median lap' },
     { key: 'record', label: 'Personal best on this track', best: 'low', top: 'the fastest personal best' },
     { key: 'laps', label: 'Laps', best: 'high', top: 'the most laps' },
-    { key: 'totaltime', label: 'Total time (this race or heat)', best: 'low', top: 'the shortest total time', note: 'Only a car that has finished has a total time: the cars that are still racing, or are out, stay below it. The time counts the penalties.' },
-    { key: 'totaltimeall', label: 'Total time (all heats so far)', best: 'low', top: 'the shortest total time over all heats so far', note: 'Only a car that has finished its heat has a total time: the cars that are still racing, or are out, stay below it. The time counts the penalties.' },
+    {
+      key: 'totaltime',
+      label: 'Total time (this race or heat)',
+      best: 'low',
+      top: 'the shortest total time',
+      note: 'Only a car that has finished has a total time: the cars that are still racing, or are out, stay below it. The time counts the penalties.'
+    },
+    {
+      key: 'totaltimeall',
+      label: 'Total time (all heats so far)',
+      best: 'low',
+      top: 'the shortest total time over all heats so far',
+      note: 'Only a car that has finished its heat has a total time: the cars that are still racing, or are out, stay below it. The time counts the penalties.'
+    },
     { key: 'speed', label: 'Speed (last lap)', best: 'high', top: 'the highest speed' },
     { key: 'champ', label: 'Championship points', best: 'high', top: 'the most points' },
     { key: 'penpoints', label: 'Penalty points', best: 'low', top: 'the fewest penalty points (a disqualified car last)' },
@@ -25,15 +37,26 @@
     { key: 'name', label: 'Driver name (A to Z)', best: 'low', text: true, top: 'the name that comes first in the alphabet' }
   ];
   const CHOICES = KEYS.map(k => [k.key, k.label]);
-  const DIRECTIONS = [['best', 'Best first'], ['worst', 'Worst first']];
+  const DIRECTIONS = [
+    ['best', 'Best first'],
+    ['worst', 'Worst first']
+  ];
 
   const info = key => KEYS.find(k => k.key === key) || KEYS[0];
   // the value a setting asks for; anything that is not one of the values (a damaged or imported file) is the race position
-  const keyOf = opt => { const k = opt && opt.orderBy; return typeof k === 'string' && KEYS.some(x => x.key === k) ? k : 'position'; };
+  const keyOf = opt => {
+    const k = opt && opt.orderBy;
+    return typeof k === 'string' && KEYS.some(x => x.key === k) ? k : 'position';
+  };
   const dirOf = opt => (opt && opt.orderDir === 'worst' ? 'worst' : 'best');
   const isOrdered = opt => keyOf(opt) !== 'position';
   // the words for the settings: what stands on top for the value that is chosen
-  const hintOf = key => { const k = info(key); return k.key === 'position' ? 'The rows follow the race: the leader on top.' : `Best first puts ${k.top} on top, Worst first turns it round. A car without a value yet (no lap, or the race has no such rule) stays at the bottom, and cars with the same value keep their race order. The Position column then counts the rows of this board (1, 2, 3...) and the first row gets the leader look.${k.note ? ' ' + k.note : ''}`; };
+  const hintOf = key => {
+    const k = info(key);
+    return k.key === 'position'
+      ? 'The rows follow the race: the leader on top.'
+      : `Best first puts ${k.top} on top, Worst first turns it round. A car without a value yet (no lap, or the race has no such rule) stays at the bottom, and cars with the same value keep their race order. The Position column then counts the rows of this board (1, 2, 3...) and the first row gets the leader look.${k.note ? ' ' + k.note : ''}`;
+  };
 
   const missing = v => v === null || v === undefined || (typeof v === 'number' && Number.isNaN(v)) || v === '';
   // list: the standings, [{ pos, car, gap }] in race order. valueOf(x) gives the number (or the text) of a row, or null when there is none.
@@ -42,12 +65,22 @@
   function order(list, opt, valueOf) {
     const key = keyOf(opt);
     if (key === 'position' || !Array.isArray(list)) return list;
-    const k = info(key), sign = (k.best === 'high' ? -1 : 1) * (dirOf(opt) === 'worst' ? -1 : 1);
-    const rows = list.map((x, i) => { const v = valueOf ? valueOf(x) : null; return { x, i, v, none: missing(v), pos: Number.isFinite(Number(x && x.pos)) ? Number(x.pos) : i + 1 }; });
+    const k = info(key),
+      sign = (k.best === 'high' ? -1 : 1) * (dirOf(opt) === 'worst' ? -1 : 1);
+    const rows = list.map((x, i) => {
+      const v = valueOf ? valueOf(x) : null;
+      return { x, i, v, none: missing(v), pos: Number.isFinite(Number(x && x.pos)) ? Number(x.pos) : i + 1 };
+    });
     rows.sort((a, b) => {
       if (a.none !== b.none) return a.none ? 1 : -1; // (no value: at the bottom, whichever end is on top)
       if (!a.none) {
-        const c = k.text ? String(a.v).localeCompare(String(b.v), undefined, { sensitivity: 'base', numeric: true }) : a.v === b.v ? 0 : a.v < b.v ? -1 : 1;
+        const c = k.text
+          ? String(a.v).localeCompare(String(b.v), undefined, { sensitivity: 'base', numeric: true })
+          : a.v === b.v
+            ? 0
+            : a.v < b.v
+              ? -1
+              : 1;
         if (c) return c * sign;
       }
       return a.pos - b.pos || a.i - b.i; // (the same value: the race order)

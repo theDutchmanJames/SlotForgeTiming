@@ -64,7 +64,7 @@ test('network routes await worker reads and keep private endpoints and commands 
  await sql.client.close();assert.equal((await fetch(url+'/api/list/drivers')).status,400);
 });
 test('production list IPC awaits an asynchronous repository before measuring and returning rows',async()=>{
- const vm=require('node:vm'),source=fs.readFileSync(path.resolve(__dirname,'../main.js'),'utf8'),line=source.split('\n').find(s=>s.includes("ipcMain.handle('db:list'"));let handler,measured;
+ const vm=require('node:vm'),source=fs.readFileSync(path.resolve(__dirname,'../main.js'),'utf8'),line=source.slice(source.indexOf("ipcMain.handle('db:list'")).match(/^[^\n]*\{\n[\s\S]*?\n\s*\}\);/)[0];let handler,measured;
  vm.runInNewContext(line,{records:{list:async()=>[{id:'d'}]},watch:{sent:(_e,r)=>measured=r},ipcMain:{handle:(_n,f)=>handler=f}});
  const rows=await handler({},'drivers');assert.deepEqual(rows,[{id:'d'}]);assert.equal(measured,rows);
 });

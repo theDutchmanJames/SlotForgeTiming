@@ -59,7 +59,7 @@ await test('the recovered paused thermal clock is identical in the second-screen
  e.resume(1000000);e.setFlag('yellow',1000000);e.tick(1030000);ctx.now=1030000;ctx.phase='running';v.feedDynamic(JSON.parse(JSON.stringify(sender.pack(ctx,ctx.now))),30500);assert.equal(v.shared(30500).eng.twOf(0,v.clock(30500)).temperature.value,e.twOf(0,1030000).temperature.value);
 });
 await test('resource profiles can be picked and exported without balances',()=>{
- const ui=fs.readFileSync(path.join(__dirname,'../renderer/transferui.js'),'utf8');for(const name of ['TR_GROUPS','ORDER_DEPS']){const x=vm.runInNewContext(ui.match(new RegExp('const '+name+' = ([^\\r\\n]+);'))[1]);assert(name==='TR_GROUPS'?x.some(([,a])=>a.includes('resourcesystems')):x.includes('resourcesystems'));}
+ const ui=fs.readFileSync(path.join(__dirname,'../renderer/transferui.js'),'utf8');for(const name of ['TR_GROUPS','ORDER_DEPS']){const x=vm.runInNewContext(ui.match(new RegExp('const '+name+'\\s*=\\s*(\\[[\\s\\S]*?\\]);\\r?\\n'))[1]);assert(name==='TR_GROUPS'?x.some(([,a])=>a.includes('resourcesystems')):x.includes('resourcesystems'));}
  const data=Object.fromEntries(Object.keys(schema).map(k=>[k,[]]));data.customFields={};data.resourcesystems=[profile()];data.resourceLedger={accounts:{secret:{}}};const bundle=Transfer.collect(data,{resourcesystems:['supplies']});assert.equal(bundle.items.resourcesystems.length,1);assert(!JSON.stringify(bundle).includes('secret'));
 });
 await test('car labels drive the class catalogue and enforce driver-car combinations',()=>{

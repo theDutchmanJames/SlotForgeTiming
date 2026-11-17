@@ -206,7 +206,7 @@ ok('the arrow turns round whatever the number: -200 degrees is 340, 90.4 is 270 
   LC.paint([n], {}); ok('...not again while the content is the same', fitted.length === 1);
   html = '<span class="wxw"><svg></svg><span class="wxt">Dry<small>Rain in 3 laps</small></span></span>'; LC.paint([n], {}); ok('...but again when the word changes (Cloudy, then Dry)', fitted.length === 2);
   html = '12'; const n2 = node(); n2.w.type='bestlap'; LC.paint([n2], {}); ok('...and not for a widget that is no weather widget', fitted.length === 2);
-  ok('editor and live canvas share the weather adapter and managed resize path', src('editor.js').includes('WidgetView.fit(') && src('widgetview.js').includes('get("WxW")?.fit') && src('canvas.js').includes('n.observer.observe(n.el)')); }
+  ok('editor and live canvas share the weather adapter and managed resize path', (({ has }) => has(src('editor.js'), 'WidgetView.fit(') && has(src('widgetview.js'), 'get("WxW")?.fit') && has(src('canvas.js'), 'n.observer.observe(n.el)'))(require('./source.cjs'))); }
 
 if (fails) { console.log(fails + ' FAILED'); process.exit(1); }
 console.log('ALL WEATHER WIDGET TESTS PASSED');

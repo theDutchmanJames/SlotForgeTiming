@@ -19,26 +19,54 @@
 (function (root) {
   const H = typeof module !== 'undefined' ? require('./hardware.js') : root.Hardware;
   const TM = typeof module !== 'undefined' ? require('./trackmate.js') : root.Trackmate;
-  const QUIET = 250;        // ms without a letter before a lane sensor counts as free. The Trackmate link uses 500; the box ends a pass itself and repeats letters every 50 ms, and its blackout is 300 ms, so two real cars are never closer than that: 250 lets two cars 0.3-0.5 s apart count as two laps
+  const QUIET = 250; // ms without a letter before a lane sensor counts as free. The Trackmate link uses 500; the box ends a pass itself and repeats letters every 50 ms, and its blackout is 300 ms, so two real cars are never closer than that: 250 lets two cars 0.3-0.5 s apart count as two laps
   const KEEPALIVE_MS = 1000; // how often the page sends "!"
-  const ROLES = [['N', 'Not used'], ['L', 'Lane sensor'], ['P', 'Pit sensor'], ['K', 'Call buttons (ladder)']];
-  const KINDS = [[0, 'Light sensor'], [1, 'Contact (reed, dead strip)']];
-  const LIGHTS = [[0, 'No lights'], [1, 'LED strip (WS2812) on D6'], [2, 'Plain LEDs on D7..D13']];
+  const ROLES = [
+    ['N', 'Not used'],
+    ['L', 'Lane sensor'],
+    ['P', 'Pit sensor'],
+    ['K', 'Call buttons (ladder)']
+  ];
+  const KINDS = [
+    [0, 'Light sensor'],
+    [1, 'Contact (reed, dead strip)']
+  ];
+  const LIGHTS = [
+    [0, 'No lights'],
+    [1, 'LED strip (WS2812) on D6'],
+    [2, 'Plain LEDs on D7..D13']
+  ];
   const lightChoices = board => LIGHTS.map(([v, label]) => [v, v === 2 && board === 'mega' ? 'Plain LEDs on D30..D36' : label]);
   function outputConflict(options, key, value, board) {
     if (board === 'mega') return '';
-    const n = Number(value), lights = (options.lights || [1])[0], relays = (options.relay || [0, 0])[1];
+    const n = Number(value),
+      lights = (options.lights || [1])[0],
+      relays = (options.relay || [0, 0])[1];
     if (key === 'lanerelays' && (n < 0 || n > 7)) return 'A Nano supports up to 7 lane relays. Use a Mega for 8.';
-    if ((key === 'lights' && n === 2 && relays > 0) || (key === 'lanerelays' && n > 0 && lights === 2)) return 'On a Nano, plain LEDs and lane relays share D7–D13. Disable one before enabling the other, or use an LED strip.';
+    if ((key === 'lights' && n === 2 && relays > 0) || (key === 'lanerelays' && n > 0 && lights === 2))
+      return 'On a Nano, plain LEDs and lane relays share D7–D13. Disable one before enabling the other, or use an LED strip.';
     return '';
   }
   const cmd = text => H.cmd(text); // text + LF, as the Trackmate commands are sent
-  function optionError(options,key,value,board) {
-    const range={blackout:[0,5000],lights:[0,2],pixels:[7,60],bright:[0,255],lanerelays:[0,board==='mega'?8:7],lanepix:[0,1],relaync:[0,1],lanerelaysnc:[0,1],buzzer:[0,1],safeoff:[0,1],ladder:[0,1]}[key];
-    const n=Number(value);
-    if(!range)return 'Unknown Arduino option.';
-    if(!/^[+-]?\d+$/.test(String(value))||!Number.isInteger(n)||n<range[0]||n>range[1])return `Use a whole number from ${range[0]} to ${range[1]}.`;
-    return outputConflict(options,key,n,board);
+  function optionError(options, key, value, board) {
+    const range = {
+      blackout: [0, 5000],
+      lights: [0, 2],
+      pixels: [7, 60],
+      bright: [0, 255],
+      lanerelays: [0, board === 'mega' ? 8 : 7],
+      lanepix: [0, 1],
+      relaync: [0, 1],
+      lanerelaysnc: [0, 1],
+      buzzer: [0, 1],
+      safeoff: [0, 1],
+      ladder: [0, 1]
+    }[key];
+    const n = Number(value);
+    if (!range) return 'Unknown Arduino option.';
+    if (!/^[+-]?\d+$/.test(String(value)) || !Number.isInteger(n) || n < range[0] || n > range[1])
+      return `Use a whole number from ${range[0]} to ${range[1]}.`;
+    return outputConflict(options, key, n, board);
   }
 
   // Reads the byte stream (any pieces) and gives whole messages: { type: 'lane', lane 1..8 } for a letter, { type: 'call' } for W,
@@ -47,16 +75,31 @@
   // each counts, so the clock stays right. Anything that cannot be a clock step (no digits, more than 4 digits, over 5 s) is not a tick: counting it would
   // jump the clock and make every sensor that is covered let go at once (a car on the pit sensor would leave and count a lap).
   function ticksOf(cur) {
-    const parts = []; let digits = [], raw = []; // (raw: the bytes as they came, for the monitor)
-    for (const b of cur) { raw.push(b); if (b === 10) { if (digits.length) { parts.push({ digits, raw }); digits = []; raw = []; } } else digits.push(b); }
-    if (digits.length) parts.push({ digits, raw }); else if (parts.length) parts[parts.length - 1].raw.push(...raw);
+    const parts = [];
+    let digits = [],
+      raw = []; // (raw: the bytes as they came, for the monitor)
+    for (const b of cur) {
+      raw.push(b);
+      if (b === 10) {
+        if (digits.length) {
+          parts.push({ digits, raw });
+          digits = [];
+          raw = [];
+        }
+      } else digits.push(b);
+    }
+    if (digits.length) parts.push({ digits, raw });
+    else if (parts.length) parts[parts.length - 1].raw.push(...raw);
     const text = p => String.fromCharCode(...p.digits);
-    if (!parts.length || !parts.every(p => /^\d{1,4}$/.test(text(p)) && Number(text(p)) <= 5000)) return [{ type: 'other', raw: cur.concat(13) }];
+    if (!parts.length || !parts.every(p => /^\d{1,4}$/.test(text(p)) && Number(text(p)) <= 5000))
+      return [{ type: 'other', raw: cur.concat(13) }];
     parts[parts.length - 1].raw.push(13);
     return parts.map(p => ({ type: 'tick', ms: Number(text(p)), raw: p.raw }));
   }
   function parser() {
-    let cur = [], ext = null, discardExt = false;
+    let cur = [],
+      ext = null,
+      discardExt = false;
     return {
       feed(bytes) {
         const out = [];
@@ -64,17 +107,43 @@
           // (audit 2.2.5) An event is one line. A CR, LF, a new "[" or a byte that is not printable ends an event that was cut off (the box restarted half-way),
           // and that byte is then read as usual: the lap letters after it are not swallowed while waiting for a "]" that never comes.
           const breaks = b === 13 || b === 10 || b === 91 || b < 32 || b > 126;
-          if (discardExt) { if (b === 93) { discardExt = false; return; } if (!breaks) return; discardExt = false; }
-          else if (ext !== null) {
-            if (b === 93) { out.push({ type: 'ext', text: String.fromCharCode(...ext), raw: [91].concat(ext, 93) }); ext = null; return; }
-            if (!breaks) { if (ext.length < 120) ext.push(b); else { ext = null; discardExt = true; } return; }
-            out.push({ type: 'other', raw: [91].concat(ext) }); ext = null;
+          if (discardExt) {
+            if (b === 93) {
+              discardExt = false;
+              return;
+            }
+            if (!breaks) return;
+            discardExt = false;
+          } else if (ext !== null) {
+            if (b === 93) {
+              out.push({ type: 'ext', text: String.fromCharCode(...ext), raw: [91].concat(ext, 93) });
+              ext = null;
+              return;
+            }
+            if (!breaks) {
+              if (ext.length < 120) ext.push(b);
+              else {
+                ext = null;
+                discardExt = true;
+              }
+              return;
+            }
+            out.push({ type: 'other', raw: [91].concat(ext) });
+            ext = null;
           }
-          if (b === 91) { ext = []; return; }
+          if (b === 91) {
+            ext = [];
+            return;
+          }
           if (b >= 65 && b <= 72) out.push({ type: 'lane', lane: b - 64, raw: [b] });
           else if (b === 87) out.push({ type: 'call', raw: [b] });
-          else if ((b >= 48 && b <= 57) || b === 10) { cur.push(b); if (cur.length > 12) { out.push({ type: 'other', raw: cur }); cur = []; } }
-          else if (b === 13) {
+          else if ((b >= 48 && b <= 57) || b === 10) {
+            cur.push(b);
+            if (cur.length > 12) {
+              out.push({ type: 'other', raw: cur });
+              cur = [];
+            }
+          } else if (b === 13) {
             out.push(...ticksOf(cur));
             cur = [];
           } else out.push({ type: 'other', raw: [b] });
@@ -85,20 +154,45 @@
   }
   // "[P2+]" -> { tag: 'P', n: 2, sign: '+' }; "[T1 123]" -> { tag: 'T', n: 1, args: [123] }; "[V 1.0.0 nano 8]" -> { tag: 'V', args: ['1.0.0','nano','8'] }
   function parseExt(text) {
-    const m = /^([A-Z!])(\d*)([+-]?)\s*(.*)$/.exec(text); if (!m) return null;
+    const m = /^([A-Z!])(\d*)([+-]?)\s*(.*)$/.exec(text);
+    if (!m) return null;
     return { tag: m[1], n: m[2] === '' ? null : Number(m[2]), sign: m[3] || '', args: m[4] ? m[4].split(/\s+/) : [] };
   }
-  const note = m => m.type === 'lane' ? `lane ${m.lane} sensor` : m.type === 'call' ? 'Track call button' : m.type === 'tick' ? `tick ${m.ms} ms` : m.type === 'ext' ? describeExt(m.text) : '';
+  const note = m =>
+    m.type === 'lane'
+      ? `lane ${m.lane} sensor`
+      : m.type === 'call'
+        ? 'Track call button'
+        : m.type === 'tick'
+          ? `tick ${m.ms} ms`
+          : m.type === 'ext'
+            ? describeExt(m.text)
+            : '';
   function describeExt(text) {
-    const e = parseExt(text); if (!e) return text;
-    return { V: `box firmware ${e.args.join(' ')}`, P: `pit sensor ${e.n} ${e.sign === '+' ? 'covered' : 'free'}`, K: `call button lane ${e.n}`, T: `lane ${e.n} covered for ${e.args[0]} ms`, Z: `pin ${e.n} reads ${e.args[0]}`,
-      C: `pin ${e.n} calibrated: base ${e.args[0]}, arm ${e.args[1]}, trigger ${e.args[2]}`, S: e.sign === '+' ? 'SAFE STATE: no keep-alive' : 'back from the safe state', B: `buffered lap, lane ${e.n} at ${e.args[0]} ms`, O: `setting ${e.args.join(' ')}`, E: e.args.join(' ') }[e.tag] || text;
+    const e = parseExt(text);
+    if (!e) return text;
+    return (
+      {
+        V: `box firmware ${e.args.join(' ')}`,
+        P: `pit sensor ${e.n} ${e.sign === '+' ? 'covered' : 'free'}`,
+        K: `call button lane ${e.n}`,
+        T: `lane ${e.n} covered for ${e.args[0]} ms`,
+        Z: `pin ${e.n} reads ${e.args[0]}`,
+        C: `pin ${e.n} calibrated: base ${e.args[0]}, arm ${e.args[1]}, trigger ${e.args[2]}`,
+        S: e.sign === '+' ? 'SAFE STATE: no keep-alive' : 'back from the safe state',
+        B: `buffered lap, lane ${e.n} at ${e.args[0]} ms`,
+        O: `setting ${e.args.join(' ')}`,
+        E: e.args.join(' ')
+      }[e.tag] || text
+    );
   }
 
   // ---- commands to the box (each a line) ----
   const C = {
-    version: () => cmd('V'), keepalive: () => cmd('!'), trackmateMode: () => cmd('G'),
-    lights: c => cmd('L' + c),                                  // '0'..'5', 'G', 'S', 'Y'
+    version: () => cmd('V'),
+    keepalive: () => cmd('!'),
+    trackmateMode: () => cmd('G'),
+    lights: c => cmd('L' + c), // '0'..'5', 'G', 'S', 'Y'
     beep: n => cmd('B' + Math.max(1, Math.min(3, n | 0))),
     mainPower: on => cmd('M' + (on ? 1 : 0)),
     lanePower: (lane0, on) => cmd('Q' + (lane0 + 1) + (on ? 1 : 0)),
@@ -107,61 +201,179 @@
     thresholds: (pin, arm, trig) => cmd(`H${pin} ${arm | 0} ${trig | 0}`),
     pinRole: (pin, role, index, kind) => cmd(`P${pin} ${role === 'L' || role === 'P' ? role + index : role} ${kind | 0}`), // role: 'L' | 'P' | 'K' | 'N'
     option: (key, value) => cmd(`O ${key} ${value}`),
-    save: () => cmd('W'), list: () => cmd('?'), readings: on => cmd('Z' + (on ? 1 : 0)),
-    trackmateInit: o => H.trackmateInit(o)                       // the Trackmate setup the box also understands
+    save: () => cmd('W'),
+    list: () => cmd('?'),
+    readings: on => cmd('Z' + (on ? 1 : 0)),
+    trackmateInit: o => H.trackmateInit(o) // the Trackmate setup the box also understands
   };
 
   // ---- the link ----
   function createLink(o = {}) {
     const clock = o.now || (() => (typeof performance !== 'undefined' ? performance.now() : Date.now()));
-    const L = { connected: false, slotforge: false, version: null, safe: false, ticks: 0, hits: 0, power: null, lastAck: 0, readings: {}, pins: {}, options: {}, covered: Array(8).fill(false), lit: Array(8).fill(null), pitCovered: Array(8).fill(false), map: TM.laneMap(null) };
-    const subs = new Set(), statusSubs = new Set(); let P = parser(), hwMs = 0, recent = [], offset = null, sender = null; const lastHit = Array(8).fill(0);
+    const L = {
+      connected: false,
+      slotforge: false,
+      version: null,
+      safe: false,
+      ticks: 0,
+      hits: 0,
+      power: null,
+      lastAck: 0,
+      readings: {},
+      pins: {},
+      options: {},
+      covered: Array(8).fill(false),
+      lit: Array(8).fill(null),
+      pitCovered: Array(8).fill(false),
+      map: TM.laneMap(null)
+    };
+    const subs = new Set(),
+      statusSubs = new Set();
+    let P = parser(),
+      hwMs = 0,
+      recent = [],
+      offset = null,
+      sender = null;
+    const lastHit = Array(8).fill(0);
     // (a frame with a sensor number out of 1..8 or a time that is not one whole number of ms is dropped, as noise on the line: it never reaches the race as a lane undefined or a NaN time)
-    const okN = n => Number.isInteger(n) && n >= 1 && n <= 8, okMs = a => a.length === 1 && /^\d+$/.test(a[0]) && Number(a[0]) <= 4294967295;
-    const emit = e => subs.forEach(f => { try { f(e); } catch (x) { /* a listener problem never stops the stream */ } });
+    const okN = n => Number.isInteger(n) && n >= 1 && n <= 8,
+      okMs = a => a.length === 1 && /^\d+$/.test(a[0]) && Number(a[0]) <= 4294967295;
+    const emit = e =>
+      subs.forEach(f => {
+        try {
+          f(e);
+        } catch (x) {
+          /* a listener problem never stops the stream */
+        }
+      });
     const toPc = h => (offset === null ? clock() : h + offset);
-    const relativeB = () => { const v = L.version && String(L.version.version).split('.').map(Number); return !v || v.length < 3 || v[0] > 1 || v[1] > 0 || v[2] >= 5; }; // (firmware 1.0.5 and later send a buffered lap as "ms ago"; an unknown version is taken as current)
-    L.on = f => { subs.add(f); return () => subs.delete(f); };
+    const relativeB = () => {
+      const v = L.version && String(L.version.version).split('.').map(Number);
+      return !v || v.length < 3 || v[0] > 1 || v[1] > 0 || v[2] >= 5;
+    }; // (firmware 1.0.5 and later send a buffered lap as "ms ago"; an unknown version is taken as current)
+    L.on = f => {
+      subs.add(f);
+      return () => subs.delete(f);
+    };
     L.emit = emit;
-    L.onStatus = f => { statusSubs.add(f); return () => statusSubs.delete(f); };
-    L.setConnected = on => { on = !!on; if (on === L.connected) return; L.connected = on; if (!on) L.reset(); statusSubs.forEach(f => f(on)); };
-    L.setPower = on => { L.power = on; statusSubs.forEach(f => f(L.connected)); };
-    L.setMap = saved => { L.map = TM.laneMap(saved); };
-    L.reset = () => { P = parser(); hwMs = 0; L.lastAck = 0; recent = []; offset = null; L.covered.fill(false); L.lit.fill(null); L.pitCovered.fill(false); lastHit.fill(0); L.ticks = 0; L.slotforge = false; L.version = null; L.safe = false; L.readings = {}; L.pins = {}; L.options = {}; L.power = null; };
+    L.onStatus = f => {
+      statusSubs.add(f);
+      return () => statusSubs.delete(f);
+    };
+    L.setConnected = on => {
+      on = !!on;
+      if (on === L.connected) return;
+      L.connected = on;
+      if (!on) L.reset();
+      statusSubs.forEach(f => f(on));
+    };
+    L.setPower = on => {
+      L.power = on;
+      statusSubs.forEach(f => f(L.connected));
+    };
+    L.setMap = saved => {
+      L.map = TM.laneMap(saved);
+    };
+    L.reset = () => {
+      P = parser();
+      hwMs = 0;
+      L.lastAck = 0;
+      recent = [];
+      offset = null;
+      L.covered.fill(false);
+      L.lit.fill(null);
+      L.pitCovered.fill(false);
+      lastHit.fill(0);
+      L.ticks = 0;
+      L.slotforge = false;
+      L.version = null;
+      L.safe = false;
+      L.readings = {};
+      L.pins = {};
+      L.options = {};
+      L.power = null;
+    };
     // the page installs how bytes reach the box; the race glue and the page send through here
-    L.setSender = f => { sender = f; };
-    L.send = bytes => { if (sender && L.connected) { try { sender(bytes); } catch (x) { /* the page reports it */ } } };
+    L.setSender = f => {
+      sender = f;
+    };
+    L.send = bytes => {
+      if (sender && L.connected) {
+        try {
+          sender(bytes);
+        } catch (x) {
+          /* the page reports it */
+        }
+      }
+    };
     L.feed = bytes => {
-      const arrival = clock(), msgs = P.feed(bytes);
+      const arrival = clock(),
+        msgs = P.feed(bytes);
       msgs.forEach(m => {
         if (m.type === 'tick') {
-          hwMs += m.ms; L.ticks++; recent.push(arrival - hwMs); if (recent.length > 25) recent.shift(); offset = Math.min(...recent);
+          hwMs += m.ms;
+          L.ticks++;
+          recent.push(arrival - hwMs);
+          if (recent.length > 25) recent.shift();
+          offset = Math.min(...recent);
           for (let i = 0; i < 8; i++) if (L.covered[i] && hwMs - lastHit[i] > QUIET) L.covered[i] = false;
         } else if (m.type === 'lane') {
-          const s = m.lane - 1, lane = L.map[s]; L.lit[s] = arrival;
-          if (!L.covered[s]) { L.covered[s] = true; L.hits++; emit({ type: 'hit', lane, at: toPc(hwMs) }); }
+          const s = m.lane - 1,
+            lane = L.map[s];
+          L.lit[s] = arrival;
+          if (!L.covered[s]) {
+            L.covered[s] = true;
+            L.hits++;
+            emit({ type: 'hit', lane, at: toPc(hwMs) });
+          }
           lastHit[s] = hwMs;
         } else if (m.type === 'call') emit({ type: 'call', at: toPc(hwMs) });
         else if (m.type === 'ext') {
-          const e = parseExt(m.text); if (!e) return;
-          if (e.tag === 'V') { L.slotforge = true; L.version = { version: e.args[0], board: e.args[1], pins: Number(e.args[2]) || 8 }; emit({ type: 'version', ...L.version }); }
-          else if (e.tag === 'P' && okN(e.n) && (e.sign === '+' || e.sign === '-')) { const pit = e.n - 1, on = e.sign === '+'; if (L.pitCovered[pit] !== on) { L.pitCovered[pit] = on; emit({ type: 'pit', pit, in: on, at: toPc(hwMs) }); } }
-          else if (e.tag === 'K' && okN(e.n) && L.map[e.n - 1] !== undefined) emit({ type: 'button', lane: L.map[e.n - 1], at: toPc(hwMs) });
+          const e = parseExt(m.text);
+          if (!e) return;
+          if (e.tag === 'V') {
+            L.slotforge = true;
+            L.version = { version: e.args[0], board: e.args[1], pins: Number(e.args[2]) || 8 };
+            emit({ type: 'version', ...L.version });
+          } else if (e.tag === 'P' && okN(e.n) && (e.sign === '+' || e.sign === '-')) {
+            const pit = e.n - 1,
+              on = e.sign === '+';
+            if (L.pitCovered[pit] !== on) {
+              L.pitCovered[pit] = on;
+              emit({ type: 'pit', pit, in: on, at: toPc(hwMs) });
+            }
+          } else if (e.tag === 'K' && okN(e.n) && L.map[e.n - 1] !== undefined)
+            emit({ type: 'button', lane: L.map[e.n - 1], at: toPc(hwMs) });
           else if (e.tag === 'T' && okN(e.n) && okMs(e.args)) {
             // The sketch confirms release explicitly. QUIET remains the fallback for older streams.
             L.covered[e.n - 1] = false;
             emit({ type: 'trap', lane: L.map[e.n - 1], ms: Number(e.args[0]) || 0, at: toPc(hwMs) });
-          }
-          else if (e.tag === 'Z' && e.n !== null) { L.readings[e.n] = Number(e.args[0]); emit({ type: 'reading', pin: e.n, raw: Number(e.args[0]) }); }
-          else if (e.tag === 'C' && e.n !== null) { const r = { pin: e.n, base: Number(e.args[0]), arm: Number(e.args[1]), trig: Number(e.args[2]) }; L.pins[e.n] = { ...(L.pins[e.n] || {}), arm: r.arm, trig: r.trig }; emit({ type: 'calibrated', ...r }); }
-          else if (e.tag === 'S') { L.safe = e.sign === '+'; emit({ type: 'safe', on: L.safe }); }
-          else if (e.tag === 'B' && okN(e.n) && okMs(e.args) && L.map[e.n - 1] !== undefined) { const v = Number(e.args[0]); L.hits++; emit({ type: 'hit', lane: L.map[e.n - 1], at: toPc(relativeB() ? hwMs - v : v), buffered: true }); } // (1.0.5: ms before the tick that came with it; 1.0.4 and before: the absolute box time, right only when the box clock started at the connection)
+          } else if (e.tag === 'Z' && e.n !== null) {
+            L.readings[e.n] = Number(e.args[0]);
+            emit({ type: 'reading', pin: e.n, raw: Number(e.args[0]) });
+          } else if (e.tag === 'C' && e.n !== null) {
+            const r = { pin: e.n, base: Number(e.args[0]), arm: Number(e.args[1]), trig: Number(e.args[2]) };
+            L.pins[e.n] = { ...(L.pins[e.n] || {}), arm: r.arm, trig: r.trig };
+            emit({ type: 'calibrated', ...r });
+          } else if (e.tag === 'S') {
+            L.safe = e.sign === '+';
+            emit({ type: 'safe', on: L.safe });
+          } else if (e.tag === 'B' && okN(e.n) && okMs(e.args) && L.map[e.n - 1] !== undefined) {
+            const v = Number(e.args[0]);
+            L.hits++;
+            emit({ type: 'hit', lane: L.map[e.n - 1], at: toPc(relativeB() ? hwMs - v : v), buffered: true });
+          } // (1.0.5: ms before the tick that came with it; 1.0.4 and before: the absolute box time, right only when the box clock started at the connection)
           else if (e.tag === 'O') {
-            if (e.args[0] === 'pin') { const [, pin, role, index, kind, arm, trig] = e.args.map(Number); L.pins[pin] = { role: ['N', 'L', 'P', 'K'][role] || 'N', index, kind, arm, trig }; }
-            else L.options[e.args[0]] = e.args.slice(1).map(Number);
+            if (e.args[0] === 'pin') {
+              const [, pin, role, index, kind, arm, trig] = e.args.map(Number);
+              L.pins[pin] = { role: ['N', 'L', 'P', 'K'][role] || 'N', index, kind, arm, trig };
+            } else L.options[e.args[0]] = e.args.slice(1).map(Number);
             emit({ type: 'option', key: e.args[0], values: e.args.slice(1) });
           } else if (e.tag === 'E') emit({ type: 'message', text: e.args.join(' ') });
-          else if (e.tag === '!') { L.lastAck = arrival; emit({ type: 'ack' }); }
+          else if (e.tag === '!') {
+            L.lastAck = arrival;
+            emit({ type: 'ack' });
+          }
         }
       });
       return msgs;
@@ -171,7 +383,27 @@
   // the check lights beside the sensors, as on the Trackmate page
   const ledsOn = (litAt, now, hold = 1000, count = 8) => TM.ledsOn(litAt, now, hold, count);
 
-  const api = { parser, parseExt, note, describeExt, C, cmd, createLink, ledsOn, ROLES, KINDS, LIGHTS, lightChoices, outputConflict, optionError, KEEPALIVE_MS, QUIET, laneMap: TM.laneMap, swapLane: TM.swapLane, link: createLink() };
+  const api = {
+    parser,
+    parseExt,
+    note,
+    describeExt,
+    C,
+    cmd,
+    createLink,
+    ledsOn,
+    ROLES,
+    KINDS,
+    LIGHTS,
+    lightChoices,
+    outputConflict,
+    optionError,
+    KEEPALIVE_MS,
+    QUIET,
+    laneMap: TM.laneMap,
+    swapLane: TM.swapLane,
+    link: createLink()
+  };
   root.ArduinoBox = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

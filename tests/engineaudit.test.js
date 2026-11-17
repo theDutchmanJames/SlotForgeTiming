@@ -122,7 +122,7 @@ test('a stop given at the moment of a finishing crossing that is read a little l
 test('results show time added without a penalty system as added time, not as a penalty with empty points', () => {
   for (const f of require('./renderer-scripts.cjs').expand(['report.js', 'database.js'])) {
     const src = fs.readFileSync(path.join(__dirname, '..', 'renderer', f), 'utf8');
-    assert.ok(src.includes("x.penaltyPoints != null ?") && src.includes('added time)'), f);
+    assert.ok(require('./source.cjs').has(src, "x.penaltyPoints != null ?") && src.includes('added time)'), f); // (compared without spaces, see source.cjs)
   }
 });
 test('after a crash restore in a new app session the tyre temperature cools in the pits again', () => {

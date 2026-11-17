@@ -5,6 +5,7 @@ const fs = require('fs'), vm = require('vm'), path = require('path');
 const R = path.join(__dirname, '..', 'renderer') + '/';
 const Icons = require(R + 'icons.js');
 let fails = 0;
+const { has } = require('./source.cjs'); // (app code compared without spaces, see source.cjs)
 const ok = (name, cond) => { console.log((cond ? 'ok   ' : 'FAIL ') + name); if (!cond) fails++; };
 // Check the common light palette independently of its additional custom-light selector.
 const editor = fs.readFileSync(R + 'editor.js', 'utf8'), css = fs.readFileSync(R + 'styles.css', 'utf8'), race = fs.readFileSync(R + 'race.js', 'utf8');
@@ -59,7 +60,7 @@ const onOf = (block, k) => ((block.match(new RegExp('--on-' + k + ':(#[0-9a-f]{3
 ok('1.47.1: every sub-tab colour has a text colour in the dark themes and one in the light themes (white or the dark ink)', ['rot', 'fuel', 'pen', 'dmg', 'tyre', 'wx', 'bop', 'tok', 'sc', 'ch'].every(k => ['#ffffff', '#10151b'].includes(onOf(strip, k)) && ['#ffffff', '#10151b'].includes(onOf(light, k))));
 ok('1.47.1: ...and that text can be read on its colour (at least 3.5 to 1, dark and light themes)', ['rot', 'fuel', 'pen', 'dmg', 'tyre', 'wx', 'bop', 'tok', 'sc', 'ch'].every(k => contrast(varOf(strip, k), onOf(strip, k)) >= 3.5 && contrast(varOf(light, k), onOf(light, k)) >= 3.5));
 ok('1.47.1: the card picture on a Race Setup page is the icon in the colour of the sub-tab on a tint of it (.ph.phicon), and the icon is drawn smaller than the tile', /\.ph\.phicon\{background:color-mix\(in srgb,var\(--c\) \d+%,var\(--panel\)\);color:var\(--c\)\}/.test(css) && /\.ph\.phicon svg\{width:\d+%/.test(css));
-ok('compact navigation uses a 40px minimum control height and Escape restores focus to the menu summary', css.includes('min-height:40px') && editor.includes("e.key==='Escape'") && editor.includes("details.querySelector('summary').focus()"));
+ok('compact navigation uses a 40px minimum control height and Escape restores focus to the menu summary', css.includes('min-height:40px') && has(editor, "e.key==='Escape'") && has(editor, "details.querySelector('summary').focus()"));
 ok('the buttons can be reached with the keyboard and show where they are (a focus ring)', /\.ssbig:focus-visible,\.sstab:focus-visible\{outline:3px solid/.test(css));
 
 // 1.51.0: the sub-tabs of the other main tabs have the same buttons, without the colours
@@ -91,7 +92,7 @@ ok('the buttons can be reached with the keyboard and show where they are (a focu
   ok('...the chip says Fuel Systems and keeps its id, its picture and its green', fb && fb.text === 'Fuel Systems' && fb.cls === 'sstab ss-fuel' && fb.inner.includes('<svg') && ctx.out.color('fuel') === 'fuel');
   const sch = require(path.join(R, '..', 'schema.js'));
   ok('...and the records are called Fuel systems everywhere: the table, the form, and the field of the race setup', sch.fuelrules.label === 'Fuel system' && sch.fuelrules.plural === 'Fuel systems' && sch.racesetups.fields.find(x => x.key === 'fuelRules').label === 'Fuel System');
-  ok('...the page note of the tab says fuel system, and no text of the app calls it a fuel setup any more', /sub === 'fuel' \? 'A Fuel System sets the tank/.test(editor) && ['renderer/editor.js', 'renderer/help.js', 'renderer/bopui.js', 'schema.js'].every(f => !/fuel setup/i.test(fs.readFileSync(path.join(R, '..', f), 'utf8')))); }
+  ok('...the page note of the tab says fuel system, and no text of the app calls it a fuel setup any more', has(editor, "sub === 'fuel' ? 'A Fuel System sets the tank") && ['renderer/editor.js', 'renderer/help.js', 'renderer/bopui.js', 'schema.js'].every(f => !/fuel setup/i.test(fs.readFileSync(path.join(R, '..', f), 'utf8')))); }
 
 if (fails) { console.log(fails + ' SETUP STRIP TESTS FAILED'); process.exit(1); }
 console.log('ALL SETUP STRIP TESTS PASSED');

@@ -25,7 +25,7 @@ group('Multi-Class event rows: Average lap leaves pit laps out', () => {
 });
 
 group('Virtual Rival gaps carry 59.9996 s to the next minute, as RaceEngine.fmtTime', () => {
-  const line = read('renderer/virtualrival.js').match(/const fmt=n=>\{.*?\};/)[0];
+  const vr = read('renderer/virtualrival.js'), from = vr.indexOf('const fmt = n => {'), line = vr.slice(from, vr.indexOf('\n  };', from) + 5); // the whole declaration, however many lines
   const fmt = vm.runInNewContext(line + ';fmt');
   for (const ms of [59999.6, 119999.6, 8500, 61234, 0.4]) assert.equal(fmt(ms), RaceEngine.fmtTime(ms), 'fmt(' + ms + ')');
   assert.equal(fmt(59999.6), '1:00.000'); assert.equal(fmt(119999.6), '2:00.000');
@@ -57,7 +57,7 @@ group('PDF export window: no JavaScript, guarded, may load only its own file', (
 
 group('Window close asks about unsaved editor drafts (static wiring and the guard itself)', () => {
   const main = read('main.js'), pre = read('preload.js'), app = read('renderer/app.js'), ed = read('renderer/editor.js');
-  assert.match(main, /closeGuard\(win\);/); assert.ok(!/win\.on\('close',event=>\{if\(!shutdown\.ready\)\{event\.preventDefault\(\);app\.quit\(\);\}\}\);/.test(main), 'the old close handler is replaced');
+  assert.match(main, /closeGuard\(win\);/); assert.ok(!require('./source.cjs').has(main, "win.on('close',event=>{if(!shutdown.ready){event.preventDefault();app.quit();}});"), 'the old close handler is replaced');
   assert.match(main, /'Quit without saving', 'Cancel'/); assert.match(main, /setTimeout\(\(\) => done\(\[\]\), 2000\)/);
   assert.match(pre, /onUnsavedQuery:/); assert.match(pre, /ipcRenderer\.send\('app:unsaved-reply', token, list\)/);
   assert.match(app, /api\.onUnsavedQuery\(/);

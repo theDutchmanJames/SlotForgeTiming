@@ -257,11 +257,12 @@ const big1 = 'data:image/png;base64,' + b64(3000), big2 = 'data:image/jpeg;base6
   global.setTimeout = keepST; PM.setLinks(false); queued.length = 0;
 }
 { // the widget code asks for the links where the picture goes into the text, and the race windows hand over the picture sets
+  const { flat, has } = require('./source.cjs');
   const wid = fs.readFileSync(R + 'renderer/widgets.js', 'utf8'), wxw = fs.readFileSync(R + 'renderer/weatherwidgets.js', 'utf8'), cv = fs.readFileSync(R + 'renderer/canvas.js', 'utf8'), race = fs.readFileSync(R + 'renderer/race.js', 'utf8'), lv = fs.readFileSync(R + 'renderer/liveview.js', 'utf8');
   say('every picture of the widgets goes into the text as link(...): the avatar and slotcar picture, the image, the race flag picture, the fuel picture', ['avimg', 'flagimg', 'fuelimg'].every(c => new RegExp('<img class="' + c + '" src="\\$\\{esc\\(link\\(').test(wid)) && (wid.match(/src="\$\{esc\(link\(/g) || []).length === 4);
   say('...and the weather and tyre pictures (weatherwidgets.js)', /<img class="\$\{cls\}" src="\$\{esc\(link\(src\)\)\}"/.test(wxw) && /const link = src => \(PM && typeof PM\.link === 'function' \? PM\.link\(src\) : src\)/.test(wxw));
-  say('the page builder makes the lights ready after the widgets are built, with the picture sets it is given', cv.includes('Widgets.prepareLights(layout,o.imageSets)') && cv.indexOf('nodes.push(n)') < cv.indexOf('Widgets.prepareLights(layout,o.imageSets)'));
-  say('the race screen and the second screen hand over the picture sets', /LiveCanvas\.build\(ui\('canvas'\), layout, lanes, \{ onButton: type => actions\[type\]\(\), imageSets \}\)/.test(race) && /\{ maxH: 0, imageSets: V\.stat\(\)\.imageSets \}/.test(lv));
+  say('the page builder makes the lights ready after the widgets are built, with the picture sets it is given', has(cv, 'Widgets.prepareLights(layout,o.imageSets)') && flat(cv).indexOf('nodes.push(n)') < flat(cv).indexOf('Widgets.prepareLights(layout,o.imageSets)')); // (compared without spaces, see source.cjs)
+  say('the race screen and the second screen hand over the picture sets', has(race, "LiveCanvas.build(ui('canvas'), layout, lanes, { onButton: type => actions[type](), imageSets })") && has(lv, '{ maxH: 0, imageSets: V.stat().imageSets }'));
 }
 // the queue, one picture at a time
 async function ready160() {

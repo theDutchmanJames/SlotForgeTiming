@@ -88,7 +88,7 @@ test('lazy pictures stay globally bounded across page changes and discard stale 
   const pending=[],observers=[];let current=true;
   class Observer{constructor(callback){this.callback=callback;this.images=[];observers.push(this);}observe(img){this.images.push(img);}unobserve(){}disconnect(){this.disconnected=true;}}
   const context=vm.createContext({IntersectionObserver:Observer,api:{cataloguePicture:(_e,id)=>new Promise(resolve=>pending.push({id,resolve}))}});
-  vm.runInContext(source.slice(source.indexOf('let cataloguePictureActive='),source.indexOf('async function mountManager')),context);
+  vm.runInContext(source.slice(source.search(/let cataloguePictureActive\s*=/),source.indexOf('async function mountManager')),context);
   const mount=vm.runInContext('loadCataloguePictures',context);
   const images=prefix=>Array.from({length:12},(_,i)=>({dataset:{cataloguePicture:prefix+i},isConnected:true}));
   const a=images('a'),b=images('b'),stop=mount({querySelectorAll:()=>a},'drivers','1',()=>current);

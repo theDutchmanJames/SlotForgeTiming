@@ -4,17 +4,24 @@
   const KMH_TO_MPH = 0.621371;
   // pieces: [{ count, mm }] -> total length in metres (pieces without a count or length are ignored)
   function lengthFromPieces(pieces) {
-    const mm = (pieces || []).reduce((sum, p) => { const c = Number(p && p.count), l = Number(p && p.mm); return sum + (c > 0 && l > 0 ? c * l : 0); }, 0);
+    const mm = (pieces || []).reduce((sum, p) => {
+      const c = Number(p && p.count),
+        l = Number(p && p.mm);
+      return sum + (c > 0 && l > 0 ? c * l : 0);
+    }, 0);
     return Math.round(mm) / 1000;
   }
   // average speed over a lap in km/h, or null when it cannot be worked out
   function kmh(lengthM, lapMs) {
-    const len = Number(lengthM), ms = Number(lapMs);
-    return len > 0 && ms > 0 ? len / (ms / 1000) * 3.6 : null;
+    const len = Number(lengthM),
+      ms = Number(lapMs);
+    return len > 0 && ms > 0 ? (len / (ms / 1000)) * 3.6 : null;
   }
   // "1:32" -> 32, "1/24" -> 24, "HO" -> 87, "N" -> 160; null when unknown
   function scaleFactor(text) {
-    const t = String(text ?? '').trim().toUpperCase();
+    const t = String(text ?? '')
+      .trim()
+      .toUpperCase();
     if (t === 'HO') return 87;
     if (t === 'N') return 160;
     const m = t.match(/^1\s*[:/]\s*(\d+(?:[.,]\d+)?)$/);
@@ -23,19 +30,37 @@
   }
   const toUnit = (kmhValue, unit) => (unit === 'mph' ? kmhValue * KMH_TO_MPH : kmhValue);
   // the speed unit of the tables (1.22.0): the setting speedUnit of App Settings, General, Display; anything but 'mph' is km/h
-  const UNITS = [['kmh', 'Kilometres per hour (km/h)'], ['mph', 'Miles per hour (mph)']];
+  const UNITS = [
+    ['kmh', 'Kilometres per hour (km/h)'],
+    ['mph', 'Miles per hour (mph)']
+  ];
   const unitOf = s => (s && s.speedUnit === 'mph' ? 'mph' : 'kmh');
   const unitName = unit => (unit === 'mph' ? 'mph' : 'km/h');
   // ---- 1.27.0: the distance unit ----
   // Every length stays in metres in the database (a track, a lane, a distance driven; a lane spacing and a piece of track in millimetres). The setting distanceUnit of
   // App Settings, General, Display only changes how a length is shown and typed: 'm' (metres, kilometres, millimetres) or 'ft' (feet, miles, inches). Anything but 'ft' is metres.
-  const M_PER_FT = 0.3048, M_PER_MILE = 1609.344, MM_PER_IN = 25.4;
-  const DIST_UNITS = [['m', 'Metres and kilometres (m, km)'], ['ft', 'Feet and miles (ft, mi)']];
+  const M_PER_FT = 0.3048,
+    M_PER_MILE = 1609.344,
+    MM_PER_IN = 25.4;
+  const DIST_UNITS = [
+    ['m', 'Metres and kilometres (m, km)'],
+    ['ft', 'Feet and miles (ft, mi)']
+  ];
   const distUnitOf = s => (s && s.distanceUnit === 'ft' ? 'ft' : 'm');
   const distUnitName = u => (u === 'ft' ? 'feet and miles' : 'metres and kilometres');
-  const round = (n, d) => { const k = 10 ** d; return Math.round(n * k) / k; };
+  const round = (n, d) => {
+    const k = 10 ** d;
+    return Math.round(n * k) / k;
+  };
   // a distance driven (metres) as written in a table: 845 m, 1.23 km; or 2774 ft, 1.24 mi (feet up to a mile)
-  const distText = (m, u) => (u === 'ft' ? (m < M_PER_MILE ? Math.round(m / M_PER_FT) + ' ft' : (m / M_PER_MILE).toFixed(2) + ' mi') : (m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(2) + ' km'));
+  const distText = (m, u) =>
+    u === 'ft'
+      ? m < M_PER_MILE
+        ? Math.round(m / M_PER_FT) + ' ft'
+        : (m / M_PER_MILE).toFixed(2) + ' mi'
+      : m < 1000
+        ? Math.round(m) + ' m'
+        : (m / 1000).toFixed(2) + ' km';
   // a length of a track (metres) as written in a list or a card: 12 m, 39.4 ft
   const lengthText = (m, u) => (u === 'ft' ? round(Number(m) / M_PER_FT, 1) + ' ft' : m + ' m');
   // a length of a track as typed in a form (metres, or feet to two decimals), and back to the metres that are kept (to the millimetre)
@@ -47,7 +72,9 @@
   // an old free-text length such as "12 m" or "12,5" becomes a number of metres (empty when there is no number)
   function parseLength(v) {
     if (typeof v === 'number') return v > 0 ? v : '';
-    const m = String(v ?? '').replace(',', '.').match(/\d+(?:\.\d+)?/);
+    const m = String(v ?? '')
+      .replace(',', '.')
+      .match(/\d+(?:\.\d+)?/);
     return m ? Number(m[0]) : '';
   }
   // The Lane length modifier of a track: 'none' (every lane has the track length), 'bends' (the lanes differ because of the bends: calculated) or 'measured'
@@ -68,7 +95,12 @@
   // The measured lengths: "15.4, 15.8, 16.2" (or a list of numbers) gives [15.4, 15.8, 16.2]; a place that is not a number above 0 is null.
   function parseLaneLengths(v) {
     const parts = Array.isArray(v) ? v : String(v ?? '').split(',');
-    return parts.map(x => { const n = typeof x === 'number' ? x : (String(x).trim() === '' ? NaN : Number(String(x).trim())); return Number.isFinite(n) && n > 0 ? n : null; }).filter((x, i, a) => !(x === null && i === a.length - 1 && String(parts[i]).trim() === '')); // a comma at the end is not a place
+    return parts
+      .map(x => {
+        const n = typeof x === 'number' ? x : String(x).trim() === '' ? NaN : Number(String(x).trim());
+        return Number.isFinite(n) && n > 0 ? n : null;
+      })
+      .filter((x, i, a) => !(x === null && i === a.length - 1 && String(parts[i]).trim() === '')); // a comma at the end is not a place
   }
   // The length of one lane (lane: 0 = lane 1).
   //  - none: every lane has the track length.
@@ -77,16 +109,47 @@
   //    the track turns (2 x pi per full turn), whatever the shape of the bends (the lanes run side by side, only the bends differ): on a loop 2 x pi x the
   //    spacing, on a figure-eight nothing (every lane is the inside lane in one loop and the outside lane in the other).
   function laneLength(track, lane) {
-    const len = Number(track && track.length), mod = modifier(track), lanes = Math.max(1, Math.round(Number(track && track.lanes)) || 1);
+    const len = Number(track && track.length),
+      mod = modifier(track),
+      lanes = Math.max(1, Math.round(Number(track && track.lanes)) || 1);
     const l = Math.max(0, Math.min(lanes - 1, Math.round(Number(lane)) || 0));
-    if (mod === 'measured') { const own = parseLaneLengths(track.laneLengths)[l]; if (own > 0) return own; }
+    if (mod === 'measured') {
+      const own = parseLaneLengths(track.laneLengths)[l];
+      if (own > 0) return own;
+    }
     if (!(len > 0)) return null;
     if (mod !== 'bends') return len;
-    const sp = Number(track.laneSpacing) > 0 ? Number(track.laneSpacing) : 100, steps = track.outsideLane === 'first' ? l : lanes - 1 - l;
-    return Math.max(0.001, len - steps * 2 * Math.PI * turns(track) * sp / 1000);
+    const sp = Number(track.laneSpacing) > 0 ? Number(track.laneSpacing) : 100,
+      steps = track.outsideLane === 'first' ? l : lanes - 1 - l;
+    return Math.max(0.001, len - (steps * 2 * Math.PI * turns(track) * sp) / 1000);
   }
-  const api = { laneLength, modifier, turns, parseLaneLengths, MODIFIERS, lengthFromPieces, kmh, scaleFactor, toUnit, UNITS, unitOf, unitName, parseLength,
-    M_PER_FT, M_PER_MILE, MM_PER_IN, DIST_UNITS, distUnitOf, distUnitName, distText, lengthText, lengthTyped, lengthKept, smallTyped, smallKept };
+  const api = {
+    laneLength,
+    modifier,
+    turns,
+    parseLaneLengths,
+    MODIFIERS,
+    lengthFromPieces,
+    kmh,
+    scaleFactor,
+    toUnit,
+    UNITS,
+    unitOf,
+    unitName,
+    parseLength,
+    M_PER_FT,
+    M_PER_MILE,
+    MM_PER_IN,
+    DIST_UNITS,
+    distUnitOf,
+    distUnitName,
+    distText,
+    lengthText,
+    lengthTyped,
+    lengthKept,
+    smallTyped,
+    smallKept
+  };
   root.Speed = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

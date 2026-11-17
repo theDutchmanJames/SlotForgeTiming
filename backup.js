@@ -12,20 +12,40 @@ function make(data, info = {}) {
 
 // Is this a backup file from this app? On success: a summary with the number of items per kind.
 function check(bundle) {
-  if (!bundle || typeof bundle !== 'object' || bundle.app !== MARK && !OLD_MARKS.includes(bundle.app)) return { ok: false, error: 'This is not a backup file from this app. (Items exported with Export are added with Import instead.)' };
+  if (!bundle || typeof bundle !== 'object' || (bundle.app !== MARK && !OLD_MARKS.includes(bundle.app)))
+    return { ok: false, error: 'This is not a backup file from this app. (Items exported with Export are added with Import instead.)' };
   const d = bundle.data;
   if (!plain(d)) return { ok: false, error: 'The backup file is damaged: it has no data.' };
   for (const name of Object.keys(schema)) {
     if (d[name] === undefined) continue;
     if (!Array.isArray(d[name])) return { ok: false, error: `The backup file is damaged: "${name}" is not a list.` };
     if (!d[name].every(plain)) return { ok: false, error: `The backup file is damaged: "${name}" has an item that cannot be read.` };
-    if (!d[name].every(r => typeof r.id === 'string' && r.id)) return { ok: false, error: `The backup file is damaged: "${name}" has an item without an identity.` };
-    if (new Set(d[name].map(r => r.id)).size !== d[name].length) return { ok: false, error: `The backup file is damaged: "${name}" has two items with the same identity.` };
+    if (!d[name].every(r => typeof r.id === 'string' && r.id))
+      return { ok: false, error: `The backup file is damaged: "${name}" has an item without an identity.` };
+    if (new Set(d[name].map(r => r.id)).size !== d[name].length)
+      return { ok: false, error: `The backup file is damaged: "${name}" has two items with the same identity.` };
   }
-  if (d.settings !== undefined && !plain(d.settings)) return { ok: false, error: 'The backup file is damaged: the settings are not readable.' };
-  if (d.customFields !== undefined && !(plain(d.customFields) && Object.values(d.customFields).every(list => Array.isArray(list) && list.every(f => plain(f) && typeof f.id === 'string' && SAFE_ID.test(f.id))))) return { ok: false, error: 'The backup file is damaged: the custom fields are not readable.' };
-  const counts = {}; for (const name of Object.keys(schema)) if (Array.isArray(d[name]) && d[name].length) counts[name] = d[name].length;
-  return { ok: true, date: bundle.date || '', appVersion: bundle.appVersion || '', counts, laps: Array.isArray(d.laps) ? d.laps.length : 0 };
+  if (d.settings !== undefined && !plain(d.settings))
+    return { ok: false, error: 'The backup file is damaged: the settings are not readable.' };
+  if (
+    d.customFields !== undefined &&
+    !(
+      plain(d.customFields) &&
+      Object.values(d.customFields).every(
+        list => Array.isArray(list) && list.every(f => plain(f) && typeof f.id === 'string' && SAFE_ID.test(f.id))
+      )
+    )
+  )
+    return { ok: false, error: 'The backup file is damaged: the custom fields are not readable.' };
+  const counts = {};
+  for (const name of Object.keys(schema)) if (Array.isArray(d[name]) && d[name].length) counts[name] = d[name].length;
+  return {
+    ok: true,
+    date: bundle.date || '',
+    appVersion: bundle.appVersion || '',
+    counts,
+    laps: Array.isArray(d.laps) ? d.laps.length : 0
+  };
 }
 
 module.exports = { make, check, MARK };

@@ -12,10 +12,12 @@
   }
   // The overrides after turning one column on or off. The last column that is shown cannot be turned off. An override that says what the default says is dropped.
   function set(saved, cols, key, on) {
-    const col = cols.find(c => c.key === key); if (!col) return { ...(saved || {}) };
+    const col = cols.find(c => c.key === key);
+    if (!col) return { ...(saved || {}) };
     const next = { ...(saved || {}) };
     if (!on && isOn(col, next) && keys(cols, next).length <= 1) return next;
-    if (!!on === !!col.on) delete next[key]; else next[key] = !!on;
+    if (!!on === !!col.on) delete next[key];
+    else next[key] = !!on;
     return next;
   }
   // settings.viewSettings[a][b]...: read without failing when a step is missing
@@ -24,7 +26,10 @@
   function put(all, path, value) {
     const root = { ...(all || {}) };
     let o = root;
-    path.slice(0, -1).forEach(k => { o[k] = { ...(o[k] && typeof o[k] === 'object' ? o[k] : {}) }; o = o[k]; });
+    path.slice(0, -1).forEach(k => {
+      o[k] = { ...(o[k] && typeof o[k] === 'object' ? o[k] : {}) };
+      o = o[k];
+    });
     o[path[path.length - 1]] = value;
     return root;
   }

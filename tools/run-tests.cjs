@@ -18,7 +18,8 @@ const SERIAL = new Set([
   'parallelclient.test.js',
   'parallelrace.test.js',
   'carfailuresscreen.test.js',
-  'resumeasync.test.js'
+  'resumeasync.test.js',
+  'picmemo.test.js'
 ]); // (these two measure real time: on a busy processor they miss their window)
 const TIMEOUT_MS = 10 * 60 * 1000;
 // How long each file took last time (in the ignored .tmp-test folder): the slowest start first, so the run takes about as long as its longest file.
