@@ -45,7 +45,8 @@
         const h = ensure(),
           key = String(c.lane),
           list = h.crossings[key] || (h.crossings[key] = []);
-        list[c.laps.length - 1] = { at: toWall(args[1]), ...driverAt(c, c.laps.length - 1) };
+        const measured = args[2] && Number.isFinite(args[2].measuredMs) && args[2].measuredMs > 0; // (2.3.1: the lap time came from the hardware's own clock, DS)
+        list[c.laps.length - 1] = { at: toWall(args[1]), ...driverAt(c, c.laps.length - 1), ...(measured ? { measured: true } : {}) };
       }
       if (before !== 'finished' && engine.status === 'finished' && ensure().endedAt == null) heat.endedAt = clock();
       return answer;
@@ -98,7 +99,8 @@
             'Guest',
           removed: c.removed.includes(n),
           valid: !c.bad[n] && !c.invalid.includes(n) && !(c.redLaps || []).includes(n),
-          pit: (c.pitLaps || []).includes(n)
+          pit: (c.pitLaps || []).includes(n),
+          ...(h.crossings[String(c.lane)]?.[n]?.measured ? { measured: true } : {})
         }))
       }));
       return clone(h);

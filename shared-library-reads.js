@@ -67,6 +67,32 @@ async function undeliveredRecords(base, client, pool, token, only = {}) {
   }
   // (and nothing is waiting, as after almost every race: the local records are not even read)
   if (waiting && !waiting.size) return { tracks: [], personal: [], refs: { tracks: [], drivers: [], slotcars: [], sessions: [] } };
+  // (a few races wait: only their own laps are read, and their best laps are the candidates, instead of every local record of every race)
+  if (waiting && waiting.size <= 50) {
+    const out = { tracks: [], personal: [], refs: { tracks: [], drivers: [], slotcars: [], sessions: [] } },
+      best = { tracks: new Map(), personal: new Map() },
+      tokens = pool === 'tokens';
+    for (const sessionId of waiting) {
+      const full = await Promise.resolve()
+        .then(() => base.historySession(pool, sessionId, { exportAll: true }))
+        .catch(() => null);
+      if (!full || !Array.isArray(full.laps)) continue;
+      for (const k of Object.keys(out.refs)) out.refs[k].push(...((full.refs && full.refs[k]) || []));
+      for (const l of full.laps) {
+        if (!!l.token !== tokens || !(Number(l.time) > 0)) continue;
+        if (only.trackId && l.trackId !== only.trackId) continue;
+        if (only.driverIds && !only.driverIds.includes(l.driverId)) continue;
+        for (const kind of ['tracks', 'personal']) {
+          if (l[kind === 'tracks' ? 'noTrackRecord' : 'noPersonalBest'] || (tokens && kind === 'personal' && !l.driverId)) continue;
+          const key = kind === 'tracks' ? l.trackId || '' : (l.trackId || '') + '\n' + (l.driverId || ''),
+            old = best[kind].get(key);
+          if (!old || Number(l.time) < Number(old.time)) best[kind].set(key, l);
+        }
+      }
+    }
+    for (const kind of ['tracks', 'personal']) out[kind] = [...best[kind].values()].map(l => ({ ...l, pendingLibrary: true }));
+    return out;
+  }
   const first = await base.historyPage(pool),
     out = { tracks: [], personal: [], refs: first.refs };
   for (const section of ['tracks', 'personal']) {

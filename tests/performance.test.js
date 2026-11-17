@@ -93,6 +93,7 @@ test('the details are kept in a file for the next start, and only used for the s
 test('records of races not yet in the library come from the delivery list; with nothing waiting, local records are not even read', async () => {
   let pages = 0,
     asked = 0;
+  const read = [];
   const lap = (id, sessionId, trackId) => ({ id, sessionId, trackId, driverId: 'd', time: 4000 });
   const base = {
     historyPage: async () => (
@@ -104,7 +105,13 @@ test('records of races not yet in the library come from the delivery list; with 
         refs: { tracks: [], drivers: [], slotcars: [], sessions: [] }
       }
     ),
-    historySession: async () => ({ deliveryStatus: null })
+    historySession: async (pool, id) => (
+      read.push(id),
+      {
+        laps: id === 'held' ? [lap('1', 'held', 't1'), { ...lap('4', 'held', 't1'), time: 4500 }] : [lap('2', 'sent', 't2')],
+        refs: { tracks: [{ id: id === 'held' ? 't1' : 't2' }], drivers: [], slotcars: [], sessions: [{ id }] }
+      }
+    )
   };
   const deliveries = [
     { sessionId: 'held', status: 'attention', transport: 'engine' },
@@ -123,8 +130,10 @@ test('records of races not yet in the library come from the delivery list; with 
   );
   assert.deepEqual(
     r.personal.map(x => x.id),
-    ['3']
+    ['1']
   );
+  assert.deepEqual(read, ['held'], 'only the race that waits is read');
+  assert.equal(pages, 0, 'not every local record');
   assert.equal(asked, 0, 'no question to the library per race');
   deliveries[0].status = 'delivered';
   pages = 0;

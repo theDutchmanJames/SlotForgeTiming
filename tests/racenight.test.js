@@ -244,3 +244,67 @@ test('the guide puts the drivers on their lanes in order, with their cars, and n
   assert.deepEqual(WZ.assignmentRows(2, ['a', 'b', 'c'], []).length, 2, 'more drivers than lanes: the first ones race');
   assert.deepEqual(WZ.namesOf([' Anna ', '', 'anna', 'Bjorn']), ['Anna', 'Bjorn']);
 });
+
+// ---- DS lap times that do not fit Timing's arrival moments (2.3.1) ----
+const Mapper = require('../paddock-rich-mapper.js'),
+  { s: dsBase, L: dsRows } = require('./fixtures/rich-mapper-rounding/keyboard-race.json');
+const dsDb = Object.values(dsBase.paddockJournal.captures)[0].configuration.databaseId;
+function dsRace(edit) {
+  const s = structuredClone(dsBase),
+    rows = structuredClone(dsRows),
+    e = s.paddockJournal.heats[0].entries[0];
+  e.laps.forEach(l => (l.measured = true));
+  edit(e, n => rows.find(r => r.carId === e.carId && r.lapNumber === n));
+  return { s, rows };
+}
+test('DS: a measured lap a little longer than the gap between two arrivals is accepted, with its time untouched and a note', () => {
+  const { s, rows } = dsRace((e, row) => {
+    e.laps[3].time += 25; // (the serial line delivered the crossing 25 ms early, relative to the one before)
+    row(4).time = e.laps[3].time;
+  });
+  const { bundle } = Mapper.measured(s, rows, dsDb),
+    p = bundle.race.participants.find(x => x.laps.some(l => l.number === 4));
+  assert.equal(p.laps.find(l => l.number === 4).durationMs, s.paddockJournal.heats[0].entries[0].laps[3].time, 'the measured time is kept');
+  let prior = null;
+  for (const l of p.laps) {
+    if (prior !== null) assert(l.endedAtMs - l.durationMs >= prior);
+    prior = l.endedAtMs;
+  }
+  assert(/moved forward to fit the lap times measured/.test(bundle.context.notes), 'the race says so');
+});
+test('DS: laps kept during a pause, all added at the resume, are accepted in order', () => {
+  const { s, rows } = dsRace(e => {
+    const at = e.laps[5].at;
+    e.laps[3].at = at;
+    e.laps[4].at = at; // (laps 4, 5 and 6 arrive together when the race resumes)
+  });
+  const { bundle } = Mapper.measured(s, rows, dsDb),
+    laps = bundle.race.participants.flatMap(p => p.laps).filter(l => l.lane === s.paddockJournal.heats[0].entries[0].lane);
+  assert.deepEqual(
+    laps.map(l => l.number),
+    [...laps.map(l => l.number)].sort((a, b) => a - b)
+  );
+  const duration = Date.parse(bundle.race.endedAt) - Date.parse(bundle.race.startedAt);
+  assert(laps.every(l => l.endedAtMs <= duration), 'the session still covers its last crossing');
+});
+test('DS: a mismatch of more than 15 minutes is no clock difference and stays refused; Timing-timed laps keep the 1 ms rule', () => {
+  const { s, rows } = dsRace((e, row) => {
+    e.laps[3].time += 16 * 60e3;
+    row(4).time = e.laps[3].time;
+  });
+  assert.throws(() => Mapper.measured(s, rows, dsDb), /overlap or are incomplete/);
+});
+test('the race journal marks the laps whose time the hardware measured', () => {
+  const PR = require('../renderer/paddockrace.js'),
+    E = require('../renderer/engine.js');
+  const r = E.createRace({ type: 'race', laps: 10, entries: [{ lane: 0, carId: 'c', driverId: 'd' }] }),
+    journal = { heats: [] };
+  PR.attach(r, journal, 1, () => 0, t => t);
+  r.start(0);
+  r.cross(0, 100);
+  r.cross(0, 5100);
+  r.cross(0, 10150, { measuredMs: 5020 });
+  const laps = r.paddockReview().entries[0].laps;
+  assert.equal(laps[0].measured, undefined, 'a lap of Timing’s own clock');
+  assert.equal(laps[1].measured, true);
+});

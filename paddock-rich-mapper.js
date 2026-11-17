@@ -274,7 +274,8 @@ function measured(session, rows, databaseId) {
     offset = v => v - began;
   const heatIds = new Map(heats.map(h => [String(h.id), stable('heat', String(h.id))])),
     participants = new Map(),
-    warnings = new Set();
+    warnings = new Set(),
+    hardwareTimed = new WeakSet(); // (the laps whose time the timing hardware measured itself)
   const saved = new Map(),
     matched = new Set();
   for (const r of rows) {
@@ -362,6 +363,7 @@ function measured(session, rows, databaseId) {
           flags,
           reason: l.pit ? 'Pit lap' : !valid ? 'Excluded by race rules' : ''
         });
+        if (l.measured === true) hardwareTimed.add(p.laps[p.laps.length - 1]);
       }
     }
   if (rows.some(r => !matched.has(r))) fail('Some saved laps have no captured measured crossing. Keep them as historical evidence.');
@@ -373,13 +375,22 @@ function measured(session, rows, databaseId) {
   // that is a real contradiction and stays refused), and the driver and heat boundaries follow it.
   const bounds = new Map(heats.map(h => [heatIds.get(String(h.id)), { start: offset(h.startedAt), end: offset(h.endedAt) }])),
     up = x => x + Math.max(Math.abs(x) * Number.EPSILON, Number.MIN_VALUE);
+  // (2.3.1) A lap time measured by the timing hardware itself (DS) and the moment Timing received that crossing come from two clocks: the serial
+  // line delivers a crossing a few to some tens of milliseconds late, unevenly, so a measured lap is often a little longer than the gap between two
+  // arrivals. And laps driven while Timing was paused (DS "keep those laps") all arrive at the moment of resuming. The measured lap times are what
+  // counts (records, averages): the end moment moves forward as far as needed to fit them, the driver and heat boundaries follow, and the race says so.
+  // Only for those laps (measured: true in the journal); a lap timed by Timing's own clock keeps the strict rule. A mismatch of more than 15 minutes is no
+  // clock difference: it stays refused.
+  const SHIFT_MAX = 15 * 60e3;
+  let shifted = false;
   for (const p of ps) {
     let prior = null;
     for (const l of p.laps) {
       const h = bounds.get(l.heatId),
         floor = Math.max(prior ?? -Infinity, h.start),
         gap = floor - (l.endedAtMs - l.durationMs);
-      if (gap > 0 && gap < 1) {
+      if (gap > 0 && (gap < 1 || (hardwareTimed.has(l) && gap <= SHIFT_MAX))) {
+        if (gap >= 1) shifted = true;
         let e = Math.max(l.endedAtMs, floor + l.durationMs);
         while (e - l.durationMs < floor) e = up(e);
         l.endedAtMs = e;
@@ -392,6 +403,12 @@ function measured(session, rows, databaseId) {
     for (let i = 1; i < p.stints.length; i++)
       if (p.stints[i].heatId === p.stints[i - 1].heatId && p.stints[i].startedAtMs < p.stints[i - 1].endedAtMs)
         p.stints[i].startedAtMs = p.stints[i - 1].endedAtMs;
+  }
+  if (shifted) {
+    const note =
+      'Some crossing moments were moved forward to fit the lap times measured by the timing hardware (its clock and the serial line differ slightly).';
+    warnings.add(note);
+    c.notes = text(c.notes + ' ' + note, 4000); // (the notes that travel with the race: they were written before this)
   }
   // The session times are whole milliseconds: the start rounds down, so the end rounds up and the session always covers its last crossing.
   const last = Math.max(...[...bounds.values()].map(b => b.end)),
