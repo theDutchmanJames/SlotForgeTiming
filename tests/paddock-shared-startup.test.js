@@ -16,8 +16,8 @@ test('registered background startup is bounded, launched once, and verifies the 
  p.launchAttempts.clear();p.localScan=async()=>[one];p.ensureLocal=async c=>assert.equal(c.databaseId,'db');await p.launchSelected({localKey:one.key,databaseId:'db'});
 });
 test('launcher validation binds the profile hash and exact argv; unprotected records are rejected',async t=>{
- const dir=fs.mkdtempSync(path.join(os.tmpdir(),'timing-launcher-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
- const key=createHash('sha256').update(path.resolve(dir)).digest('hex'),v={format:'slotforge-local-library-launcher',version:1,libraryKey:key,databaseId:'db',name:'Test',profile:dir,executable:process.execPath,args:['--slotforge-library-start='+key]};
+ const dir=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'timing-launcher-'))); /* (real paths: on macOS the temporary folder is under /var, a symbolic link to /private/var, and the launcher refuses redirected paths) */t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+ const key=createHash('sha256').update(path.resolve(dir)).digest('hex'),v={format:'slotforge-local-library-launcher',version:1,libraryKey:key,databaseId:'db',name:'Test',profile:dir,executable:fs.realpathSync(process.execPath),args:['--slotforge-library-start='+key]};
  assert.equal(await Launcher.validate(v,key+'.json'),v);
  for(const patch of [{args:['--eval=evil']},{libraryKey:'b'.repeat(64)},{executable:'relative.exe'},{profile:'relative'}])await assert.rejects(Launcher.validate({...v,...patch},key+'.json'));
  fs.writeFileSync(path.join(dir,key+'.json'),JSON.stringify(v));assert.equal((await Launcher.scan({folder:dir,platform:'win32',checkWindows:async()=>[key+'.json']})).length,1);
