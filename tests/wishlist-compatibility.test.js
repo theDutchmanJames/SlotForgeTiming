@@ -14,10 +14,10 @@ async function fixture(t,backend){
  t.after(async()=>{await client.close();await worker?.close();await db.writesIdle();if(worker)assert.deepEqual(fs.readFileSync(db.file),original);fs.rmSync(root,{recursive:true,force:true});});
  return {client,options,storage,base,records,db,worker,store:await Store.open((await client.status()).file)};
 }
-test('bundled wishlist support is qualified by capability; activation stays off and all manifest hashes match',()=>{
+test('bundled wishlist support is qualified by capability; the activation is as Paddock ships it and all manifest hashes match',()=>{
  const dir=path.join(__dirname,'../vendor/slotforge-library'),m=require('../vendor/slotforge-library/MANIFEST.json');
- assert.equal(require('../vendor/slotforge-library/engine/src/wishlist-activation.json').enabled,false);
- assert.equal(m.upstreamManifestSha256,'349d3a22d9cb85863b45fd80350680edd8fb8e817ea45c8af48413d077de8974');
+ assert.equal(require('../vendor/slotforge-library/engine/src/wishlist-activation.json').enabled,true); // (17 Nov 2026 engine: Paddock's own window shows its Wishlist; Timing goes by the capability)
+ assert.equal(m.upstreamManifestSha256,'7a7c92ec6767ab042494c5ce2c5dba391ec0605bc9d0e62cc92cf9d41a2d8e03'); // (the engine of Paddock 4d84f11, taken in on 17 Nov 2026)
  for(const f of m.files)assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(dir,f.path))).digest('hex'),f.sha256,f.path);
 });
 for(const backend of ['json','sqlite']){
