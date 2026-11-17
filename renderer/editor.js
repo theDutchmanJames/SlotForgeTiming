@@ -1346,131 +1346,8 @@ function sideHtml() {
     <div class="row"><button class="btn" id="s-dup">Duplicate${allLane ? ' (next lane)' : ''}</button><button class="btn danger" id="s-del">Remove</button></div>`;
 }
 
-function renderEditor() {
-  state.editing?.cancelGesture?.();
-  const ed = state.editing,
-    d = ed.draft,
-    paintVersion = (ed.paintVersion = (ed.paintVersion || 0) + 1);
-  if (!widgetEditorResizeWired && window.addEventListener) {
-    widgetEditorResizeWired = true;
-    window.addEventListener('resize', () => scheduleEditorFit());
-    window.addEventListener('widget-fonts-ready', e => scheduleEditorFit(e.detail?.elements));
-  }
-  const preset = PRESETS.find(p => p[1] === d.ratioW && p[2] === d.ratioH);
-  const row = d.kind === 'row',
-    REG = (row ? Widgets.REGISTRY.filter(x => x.perLane && !x.layoutOnly) : Widgets.REGISTRY).filter(x => !x.hidden); // the custom text kinds are made in the Widget Builder, not added from here
-  const GROUP_ORDER = [
-    'All-in-One',
-    'Race',
-    'Driver',
-    'Slotcar',
-    'Team and Swaps',
-    'Position and Progress',
-    'Multi-Class',
-    'Lap Times and Records',
-    'Pit Stops',
-    'Delta Timers',
-    'Tyres',
-    'Push & Save',
-    'Weather',
-    'Charts',
-    'Plugins',
-    'Custom',
-    'Controls'
-  ]; // (every folder is in the list: the Layout Editor shows the folders in this order)
-  const groups = [...new Set(REG.map(x => x.group))].sort(
-    (a, b) => ((GROUP_ORDER.indexOf(a) + 100) % 100) - ((GROUP_ORDER.indexOf(b) + 100) % 100)
-  );
-  const savedWidgets = (ed.customWidgets || []).filter(r => !row || /lane$/.test(r.type));
-  // the widget list: each group is a folder that can be opened and closed (it stays as you left it)
-  state.palOpen = state.palOpen || new Set();
-  const folder = (name, buttons) =>
-    `<details class="palgroup" data-pal="${esc(name)}"${state.palOpen.has(name) ? ' open' : ''}><summary>${esc(name)}</summary>${buttons}</details>`;
-  const palette = () =>
-    groups
-      .map(g =>
-        folder(
-          g,
-          REG.filter(x => x.group === g)
-            .map(x => `<button class="btn" data-add="${x.type}">${esc(x.label)}</button>`)
-            .join('')
-        )
-      )
-      .join('') +
-    (savedWidgets.length
-      ? folder('Custom', savedWidgets.map(r => `<button class="btn" data-addcw="${esc(r.id)}">${esc(r.name)}</button>`).join(''))
-      : '');
-  const hasGuides = () => d.guides.v.length + d.guides.h.length > 0;
-  const S = row ? Rows.settings(d) : null,
-    yn = (id, v, t) => `<label><input type="checkbox" id="${id}" ${v ? 'checked' : ''}> ${t}</label>`;
-  const rowBar = row
-    ? `<label>Row height <input type="number" id="e-rowh" min="20" max="400" value="${esc(S.rowH)}" style="width:5em"></label>
-      <label>Space between rows <input type="number" id="e-gap" min="0" max="100" value="${esc(S.gap)}" style="width:5em"></label>
-      <label>Rounded corners (0 = square) <input type="number" id="e-radius" min="0" max="50" value="${esc(S.radius)}" style="width:5em"></label>
-      <label>Classification <select id="e-classview">${[
-        ['', 'Use race system'],
-        ['overall', 'Overall'],
-        ['class', 'One class'],
-        ['grouped', 'Grouped by class']
-      ]
-        .map(([k, n]) => `<option value="${k}"${(d.classView || '') === k ? ' selected' : ''}>${n}</option>`)
-        .join(
-          ''
-        )}</select></label><label>Class <select id="e-classid"${d.classView === 'class' ? '' : ' disabled'}><option value="">Choose class…</option>${(ed.classDefs || []).map(c => `<option value="${esc(c.id)}"${d.classId === c.id ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>${yn('e-header', S.header, 'Header row')}<button class="btn" id="e-rowcolors">Colours...</button>`
-    : '';
-  view.innerHTML = `<h2>${row ? (ed.id ? 'Edit row design' : 'New row design') : ed.id ? 'Edit layout' : 'New layout'}</h2>
-    <div class="ed-bar">
-      <label>Name <input type="text" id="e-name" value="${esc(d.name)}" maxlength="40"></label>
-      <label>Note <input type="text" id="e-note" value="${esc(d.note || '')}" maxlength="120" placeholder="Optional, shown in the layout list"></label>
-      ${
-        row
-          ? rowBar
-          : `<label>Proportions <select id="e-ratio">${PRESETS.map(p => `<option value="${p[0]}"${preset && preset[0] === p[0] ? ' selected' : ''}>${p[0]}</option>`).join('')}<option value="custom"${preset ? '' : ' selected'}>Custom</option></select></label>
-      <span id="e-custom" ${preset ? 'hidden' : ''}><input type="number" id="e-rw" min="1" max="50" value="${esc(d.ratioW)}" aria-label="Width"> : <input type="number" id="e-rh" min="1" max="50" value="${esc(d.ratioH)}" aria-label="Height"></span>`
-      }
-      ${row ? '' : `<label title="The corners of every widget: 0 is square, 50 is fully round. Empty keeps the classic small corners. A widget can have its own setting.">Rounded corners <input type="number" id="e-lradius" min="0" max="50" step="0.5" placeholder="classic" value="${esc(Frame.cornerPct(d.radius) ?? '')}" style="width:5.5em"></label>`}
-      ${row ? '' : `<label>Lane colour style <select id="e-lanestyle">${Frame.LANE_STYLES.map(([key, label]) => `<option value="${key}"${key === Frame.layoutLaneStyle(d) ? ' selected' : ''}>${label}</option>`).join('')}</select></label>`}
-      <label title="Hold Ctrl (Cmd on a Mac) while you drag to snap to the grid only"><input type="checkbox" id="e-snap" ${ed.snap ? 'checked' : ''}> Snap to grid, widgets and guidelines</label>
-      ${row ? '' : `<button class="btn" id="e-guides" aria-pressed="${hasGuides()}">Guidelines</button><button class="btn" id="e-lanecolors">Lane colours</button>${typeof WidgetSettings !== 'undefined' ? '<button class="btn" id="e-appearance">Widget appearance</button>' : ''}<button class="btn" id="e-background" aria-pressed="${Backdrop.has(d)}" title="A picture behind all the widgets, with blur and other filters">Background</button>`}
-      <button class="btn" id="e-undo" title="Undo the last change (Ctrl+Z)" disabled>Undo</button><button class="btn" id="e-redo" title="Redo (Ctrl+Y)" disabled>Redo</button>
-      <button class="btn primary" id="e-save">${row ? 'Save row design' : 'Save layout'}</button><button class="btn" id="e-back">Back</button><span id="e-msg" class="muted" role="status"></span></div>
-    <div class="ed-main"><aside class="ed-pal" aria-label="Widgets">${palette()}</aside>
-      <div class="ed-stage"><div class="canvas" id="canvas"></div>${row ? '<h4>Preview: leader, normal, in the pits, penalty, out</h4><div class="rowprev" id="e-preview"></div>' : ''}</div>
-      <aside class="ed-side" id="side"></aside></div>`;
-  const $ = id => document.getElementById(id);
-  // the steps for Undo and Redo: mark() says something changed (a drag or a typed word becomes one step after a quiet moment); step() ends the step now, for a single action
-  const hist =
-    ed.history ||
-    (ed.history = Undo.create({
-      clean: !ed.dirty,
-      get: () => ({ draft: ed.draft }),
-      apply: s => restoreDraft(ed, s),
-      onchange: () => {
-        if (ed.syncUndo) ed.syncUndo();
-      }
-    }));
-  ed.syncUndo = () => {
-    const u = document.getElementById('e-undo'),
-      r = document.getElementById('e-redo');
-    if (u) u.disabled = !hist.canUndo();
-    if (r) r.disabled = !hist.canRedo();
-  };
-  const U = Widgets.U,
-    mark = () => {
-      ed.dirty = true;
-      hist.touch();
-    },
-    step = () => {
-      mark();
-      hist.commit();
-    };
-  const Hh = () => Widgets.heightOf(d);
-  // Static HTML hosts (including screen tests) do not install EditorCanvas.
-  // The desktop editor keeps mounted nodes and only refits changed widgets.
-  const mounted =
-    typeof EditorCanvas !== 'undefined'
-      ? EditorCanvas.create({ canvas: $('canvas'), layout: d, html: w => widgetHtml(w, false, false, d), fit: fitEditorWidgets })
-      : null;
+// drawing the editor: decorations, rows, geometry, the canvas and the side panel
+function edDrawing({ $, Hh, U, d, ed, hasGuides, mark, mounted, paintVersion, row }) {
   const drawDecorations = () => {
     const H = Hh();
     const lines =
@@ -1598,8 +1475,11 @@ function renderEditor() {
     panelFitWired = true;
     window.addEventListener('resize', fitPanels);
     window.addEventListener('scroll', fitPanels, { passive: true });
-  } // (fitPanels does nothing when no editor is on the page)
-
+  }
+  return { drawCanvas, drawGeometry, drawRows, drawSide, redraw, refreshAssets };
+}
+// adding widgets; saving, going back, removing and duplicating
+function edAddAndSave({ $, Hh, U, d, ed, hist, mark, redraw, row, step }) {
   window.editorAddCustom = id => {
     // a saved widget from the Widget Builder: add its kind, then give the copy its text, size and look
     const r = (ed.customWidgets || []).find(x => x.id === id);
@@ -1739,7 +1619,10 @@ function renderEditor() {
     redraw();
     $('e-msg').textContent = src.some(w => w.lane === Widgets.LANES - 1) ? `Lane ${Widgets.LANES} is the last lane.` : '';
   };
-
+  return { duplicateSel, removeSel };
+}
+// arranging and tidying the selection
+function edArranging({ $, Hh, U, d, ed, mark, redraw, step }) {
   // Arrange (1.47.0): line up, spread out, mirror. Each is one step for Undo.
   const arrange = kind => {
     const list = ed.sel;
@@ -1822,6 +1705,10 @@ function renderEditor() {
     d.note = e.target.value;
     mark();
   };
+  return { arrange, tidySel };
+}
+// the size and the ratio of the canvas
+function edCanvasSize({ $, Hh, U, d, drawCanvas, ed, hist, mark, redraw, row, step }) {
   if (row) {
     $('e-rowh').oninput = e => {
       const v = Math.max(20, Math.min(400, Number(e.target.value) || 70));
@@ -1935,6 +1822,9 @@ function renderEditor() {
   $('e-redo').onclick = () => window.editorRedo();
   ed.syncUndo();
   $('e-save').onclick = () => window.editorSave();
+}
+// the palette and the back button
+function edPalette({ $, Hh, U, d, drawCanvas, ed, hasGuides, redraw, row, step }) {
   $('e-back').onclick = async () => {
     if (ed.dirty) {
       if (!(await Dialog.confirm('Discard your unsaved layout changes?', { ok: 'Discard changes', cancel: 'Keep editing', danger: true })))
@@ -2021,7 +1911,9 @@ function renderEditor() {
       dlg.onchange = null;
       dlg.showModal();
     };
-
+}
+// the appearance folder
+function edAppearance({ $, d, redraw, row, step }) {
   // the page background: a picture behind all the widgets, and filters that only change the picture
   if (!row && $('e-appearance'))
     $('e-appearance').onclick = () => {
@@ -2098,6 +1990,9 @@ function renderEditor() {
       show();
       dlg.showModal();
     };
+}
+// the grid
+function edGrid({ $, U, d, drawCanvas, hist, mark, row }) {
   if (!row)
     $('e-background').onclick = () => {
       const slider = (id, label, v, min, max, hint, always) =>
@@ -2188,6 +2083,10 @@ function renderEditor() {
 
   // selecting, dragging and resizing: the geometry rules live in widgets.js
   const toUnits = (ev, rect) => ({ x: ((ev.clientX - rect.left) * U) / rect.width, y: ((ev.clientY - rect.top) * U) / rect.width });
+  return { toUnits };
+}
+// dragging, the marquee and group resize
+function edGestures({ $, Hh, U, d, drawGeometry, drawRows, drawSide, ed, hist, mark, redraw, toUnits }) {
   const gesture = (start, apply, finish) => {
     let ended = false;
     const queue =
@@ -2288,6 +2187,10 @@ function renderEditor() {
     };
     gesture(e, move, up);
   };
+  return { gesture, groupResize, marquee };
+}
+// the pointer on the canvas
+function edCanvasPointer({ $, Hh, U, d, drawGeometry, drawRows, drawSide, ed, gesture, groupResize, hist, mark, marquee, redraw }) {
   $('canvas').onpointerdown = e => {
     if (e.button !== undefined && e.button !== 0) return;
     ed.cancelGesture?.();
@@ -2364,6 +2267,10 @@ function renderEditor() {
 
   // the side panel changes every selected widget at once
   const side = $('side');
+  return { side };
+}
+// typing in the side panel
+function edSideInput({ $, Hh, U, d, drawCanvas, ed, hist, mark, side }) {
   if (side.addEventListener)
     side.addEventListener(
       'toggle',
@@ -2485,6 +2392,9 @@ function renderEditor() {
     drawCanvas(sel);
     if (t.type === 'checkbox' || t.type === 'select-one') hist.commit(); // (a tick box or a choice from a list is one action; typing and sliders end their step after a quiet moment)
   };
+}
+// changes in the side panel
+function edSideChange({ $, d, drawCanvas, ed, redraw, refreshAssets, side, step }) {
   side.onchange = async e => {
     const sel = ed.sel,
       t = e.target;
@@ -2664,6 +2574,9 @@ function renderEditor() {
       drawCanvas(sel);
     }
   };
+}
+// clicks in the side panel
+function edSideClick({ $, arrange, d, duplicateSel, ed, redraw, removeSel, side, step, tidySel }) {
   side.onclick = async e => {
     const b = e.target.closest('button');
     if (!b) return;
@@ -2827,6 +2740,9 @@ function renderEditor() {
   };
 
   if (editorKeyHandler) document.removeEventListener('keydown', editorKeyHandler);
+}
+// the keyboard
+function edKeys({ d, ed, redraw, removeSel }) {
   editorKeyHandler = e => {
     const mod = e.ctrlKey || e.metaKey,
       key = String(e.key).toLowerCase();
@@ -2851,4 +2767,173 @@ function renderEditor() {
     }
   };
   document.addEventListener('keydown', editorKeyHandler);
+}
+
+function renderEditor() {
+  state.editing?.cancelGesture?.();
+  const ed = state.editing,
+    d = ed.draft,
+    paintVersion = (ed.paintVersion = (ed.paintVersion || 0) + 1);
+  if (!widgetEditorResizeWired && window.addEventListener) {
+    widgetEditorResizeWired = true;
+    window.addEventListener('resize', () => scheduleEditorFit());
+    window.addEventListener('widget-fonts-ready', e => scheduleEditorFit(e.detail?.elements));
+  }
+  const preset = PRESETS.find(p => p[1] === d.ratioW && p[2] === d.ratioH);
+  const row = d.kind === 'row',
+    REG = (row ? Widgets.REGISTRY.filter(x => x.perLane && !x.layoutOnly) : Widgets.REGISTRY).filter(x => !x.hidden); // the custom text kinds are made in the Widget Builder, not added from here
+  const GROUP_ORDER = [
+    'All-in-One',
+    'Race',
+    'Driver',
+    'Slotcar',
+    'Team and Swaps',
+    'Position and Progress',
+    'Multi-Class',
+    'Lap Times and Records',
+    'Pit Stops',
+    'Delta Timers',
+    'Tyres',
+    'Push & Save',
+    'Weather',
+    'Charts',
+    'Plugins',
+    'Custom',
+    'Controls'
+  ]; // (every folder is in the list: the Layout Editor shows the folders in this order)
+  const groups = [...new Set(REG.map(x => x.group))].sort(
+    (a, b) => ((GROUP_ORDER.indexOf(a) + 100) % 100) - ((GROUP_ORDER.indexOf(b) + 100) % 100)
+  );
+  const savedWidgets = (ed.customWidgets || []).filter(r => !row || /lane$/.test(r.type));
+  // the widget list: each group is a folder that can be opened and closed (it stays as you left it)
+  state.palOpen = state.palOpen || new Set();
+  const folder = (name, buttons) =>
+    `<details class="palgroup" data-pal="${esc(name)}"${state.palOpen.has(name) ? ' open' : ''}><summary>${esc(name)}</summary>${buttons}</details>`;
+  const palette = () =>
+    groups
+      .map(g =>
+        folder(
+          g,
+          REG.filter(x => x.group === g)
+            .map(x => `<button class="btn" data-add="${x.type}">${esc(x.label)}</button>`)
+            .join('')
+        )
+      )
+      .join('') +
+    (savedWidgets.length
+      ? folder('Custom', savedWidgets.map(r => `<button class="btn" data-addcw="${esc(r.id)}">${esc(r.name)}</button>`).join(''))
+      : '');
+  const hasGuides = () => d.guides.v.length + d.guides.h.length > 0;
+  const S = row ? Rows.settings(d) : null,
+    yn = (id, v, t) => `<label><input type="checkbox" id="${id}" ${v ? 'checked' : ''}> ${t}</label>`;
+  const rowBar = row
+    ? `<label>Row height <input type="number" id="e-rowh" min="20" max="400" value="${esc(S.rowH)}" style="width:5em"></label>
+      <label>Space between rows <input type="number" id="e-gap" min="0" max="100" value="${esc(S.gap)}" style="width:5em"></label>
+      <label>Rounded corners (0 = square) <input type="number" id="e-radius" min="0" max="50" value="${esc(S.radius)}" style="width:5em"></label>
+      <label>Classification <select id="e-classview">${[
+        ['', 'Use race system'],
+        ['overall', 'Overall'],
+        ['class', 'One class'],
+        ['grouped', 'Grouped by class']
+      ]
+        .map(([k, n]) => `<option value="${k}"${(d.classView || '') === k ? ' selected' : ''}>${n}</option>`)
+        .join(
+          ''
+        )}</select></label><label>Class <select id="e-classid"${d.classView === 'class' ? '' : ' disabled'}><option value="">Choose class…</option>${(ed.classDefs || []).map(c => `<option value="${esc(c.id)}"${d.classId === c.id ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>${yn('e-header', S.header, 'Header row')}<button class="btn" id="e-rowcolors">Colours...</button>`
+    : '';
+  view.innerHTML = `<h2>${row ? (ed.id ? 'Edit row design' : 'New row design') : ed.id ? 'Edit layout' : 'New layout'}</h2>
+    <div class="ed-bar">
+      <label>Name <input type="text" id="e-name" value="${esc(d.name)}" maxlength="40"></label>
+      <label>Note <input type="text" id="e-note" value="${esc(d.note || '')}" maxlength="120" placeholder="Optional, shown in the layout list"></label>
+      ${
+        row
+          ? rowBar
+          : `<label>Proportions <select id="e-ratio">${PRESETS.map(p => `<option value="${p[0]}"${preset && preset[0] === p[0] ? ' selected' : ''}>${p[0]}</option>`).join('')}<option value="custom"${preset ? '' : ' selected'}>Custom</option></select></label>
+      <span id="e-custom" ${preset ? 'hidden' : ''}><input type="number" id="e-rw" min="1" max="50" value="${esc(d.ratioW)}" aria-label="Width"> : <input type="number" id="e-rh" min="1" max="50" value="${esc(d.ratioH)}" aria-label="Height"></span>`
+      }
+      ${row ? '' : `<label title="The corners of every widget: 0 is square, 50 is fully round. Empty keeps the classic small corners. A widget can have its own setting.">Rounded corners <input type="number" id="e-lradius" min="0" max="50" step="0.5" placeholder="classic" value="${esc(Frame.cornerPct(d.radius) ?? '')}" style="width:5.5em"></label>`}
+      ${row ? '' : `<label>Lane colour style <select id="e-lanestyle">${Frame.LANE_STYLES.map(([key, label]) => `<option value="${key}"${key === Frame.layoutLaneStyle(d) ? ' selected' : ''}>${label}</option>`).join('')}</select></label>`}
+      <label title="Hold Ctrl (Cmd on a Mac) while you drag to snap to the grid only"><input type="checkbox" id="e-snap" ${ed.snap ? 'checked' : ''}> Snap to grid, widgets and guidelines</label>
+      ${row ? '' : `<button class="btn" id="e-guides" aria-pressed="${hasGuides()}">Guidelines</button><button class="btn" id="e-lanecolors">Lane colours</button>${typeof WidgetSettings !== 'undefined' ? '<button class="btn" id="e-appearance">Widget appearance</button>' : ''}<button class="btn" id="e-background" aria-pressed="${Backdrop.has(d)}" title="A picture behind all the widgets, with blur and other filters">Background</button>`}
+      <button class="btn" id="e-undo" title="Undo the last change (Ctrl+Z)" disabled>Undo</button><button class="btn" id="e-redo" title="Redo (Ctrl+Y)" disabled>Redo</button>
+      <button class="btn primary" id="e-save">${row ? 'Save row design' : 'Save layout'}</button><button class="btn" id="e-back">Back</button><span id="e-msg" class="muted" role="status"></span></div>
+    <div class="ed-main"><aside class="ed-pal" aria-label="Widgets">${palette()}</aside>
+      <div class="ed-stage"><div class="canvas" id="canvas"></div>${row ? '<h4>Preview: leader, normal, in the pits, penalty, out</h4><div class="rowprev" id="e-preview"></div>' : ''}</div>
+      <aside class="ed-side" id="side"></aside></div>`;
+  const $ = id => document.getElementById(id);
+  // the steps for Undo and Redo: mark() says something changed (a drag or a typed word becomes one step after a quiet moment); step() ends the step now, for a single action
+  const hist =
+    ed.history ||
+    (ed.history = Undo.create({
+      clean: !ed.dirty,
+      get: () => ({ draft: ed.draft }),
+      apply: s => restoreDraft(ed, s),
+      onchange: () => {
+        if (ed.syncUndo) ed.syncUndo();
+      }
+    }));
+  ed.syncUndo = () => {
+    const u = document.getElementById('e-undo'),
+      r = document.getElementById('e-redo');
+    if (u) u.disabled = !hist.canUndo();
+    if (r) r.disabled = !hist.canRedo();
+  };
+  const U = Widgets.U,
+    mark = () => {
+      ed.dirty = true;
+      hist.touch();
+    },
+    step = () => {
+      mark();
+      hist.commit();
+    };
+  const Hh = () => Widgets.heightOf(d);
+  // Static HTML hosts (including screen tests) do not install EditorCanvas.
+  // The desktop editor keeps mounted nodes and only refits changed widgets.
+  const mounted =
+    typeof EditorCanvas !== 'undefined'
+      ? EditorCanvas.create({ canvas: $('canvas'), layout: d, html: w => widgetHtml(w, false, false, d), fit: fitEditorWidgets })
+      : null;
+  const { drawCanvas, drawGeometry, drawRows, drawSide, redraw, refreshAssets } = edDrawing({
+    $,
+    Hh,
+    U,
+    d,
+    ed,
+    hasGuides,
+    mark,
+    mounted,
+    paintVersion,
+    row
+  }); // (fitPanels does nothing when no editor is on the page)
+
+  const { duplicateSel, removeSel } = edAddAndSave({ $, Hh, U, d, ed, hist, mark, redraw, row, step });
+
+  const { arrange, tidySel } = edArranging({ $, Hh, U, d, ed, mark, redraw, step });
+  edCanvasSize({ $, Hh, U, d, drawCanvas, ed, hist, mark, redraw, row, step });
+  edPalette({ $, Hh, U, d, drawCanvas, ed, hasGuides, redraw, row, step });
+
+  edAppearance({ $, d, redraw, row, step });
+  const { toUnits } = edGrid({ $, U, d, drawCanvas, hist, mark, row });
+  const { gesture, groupResize, marquee } = edGestures({ $, Hh, U, d, drawGeometry, drawRows, drawSide, ed, hist, mark, redraw, toUnits });
+  const { side } = edCanvasPointer({
+    $,
+    Hh,
+    U,
+    d,
+    drawGeometry,
+    drawRows,
+    drawSide,
+    ed,
+    gesture,
+    groupResize,
+    hist,
+    mark,
+    marquee,
+    redraw
+  });
+  edSideInput({ $, Hh, U, d, drawCanvas, ed, hist, mark, side });
+  edSideChange({ $, d, drawCanvas, ed, redraw, refreshAssets, side, step });
+  edSideClick({ $, arrange, d, duplicateSel, ed, redraw, removeSel, side, step, tidySel });
+  edKeys({ d, ed, redraw, removeSel });
 }
