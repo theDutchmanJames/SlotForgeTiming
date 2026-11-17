@@ -36,5 +36,5 @@ module.exports = function createBulkAccess({ ipcMain, getMain, isRacing }) {
       }
     });
   }
-  return { handle, idle };
+  return { handle, idle, busy: () => busy }; // (busy: an import or restore runs now; automatic backups wait for it)
 };

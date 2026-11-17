@@ -62,6 +62,7 @@ parentPort.on('message', ({ id, operation, args }) => {
           'historyPage',
           'historySession',
           'carStatistics',
+          'driverProgress',
           'editorRead',
           'referencePage',
           'referenceDetails',

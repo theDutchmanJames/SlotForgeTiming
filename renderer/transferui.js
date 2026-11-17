@@ -56,7 +56,64 @@ const ORDER_DEPS = [
 ];
 const trLabel = (e, r) => (e === 'sessions' ? [r.setupName, r.date].filter(Boolean).join(' · ') || '(session)' : titleOf(e, r));
 
-const TR_FOLDERS = ['backup', 'export', 'import'];
+const TR_FOLDERS = ['auto', 'backup', 'export', 'import'];
+// ---- automatic backups (2.3.0, auto-backup.js in the main process) ----
+const abSize = n =>
+  n >= 1e9 ? (n / 1e9).toFixed(1) + ' GB' : n >= 1e6 ? (n / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1e3)) + ' kB';
+function autoBackupText(st) {
+  if (!st) return '';
+  if (st.running) return 'Making a backup now…';
+  const last = st.lastAt ? new Date(st.lastAt).toLocaleString() : '';
+  if (st.ok === false)
+    return `The last automatic backup failed${st.failedAt ? ' (' + new Date(st.failedAt).toLocaleString() + ')' : ''}: ${st.error}${last ? ' The last good one is from ' + last + '.' : ''}`;
+  if (!last)
+    return st.on ? 'No automatic backup yet: the first one is made a minute or two after the app starts.' : 'Automatic backups are off.';
+  return `Last backup: ${last}${st.bytes ? ', ' + abSize(st.bytes) : ''}. ${st.count} kept in the folder.`;
+}
+function autoBackupHtml(st) {
+  if (!st) return '<p class="muted">Automatic backups work in the desktop app.</p>';
+  return `<p class="muted">A complete backup by itself, the same as <em>Complete backup</em> below, on the days you use the app. The oldest ones are removed, so the folder does not keep growing. Never during a race.</p>
+    <div class="row"><label class="inline"><input type="checkbox" id="ab-on"${st.on ? ' checked' : ''}> Make backups by itself</label>
+      <label>How often <select id="ab-every"><option value="day"${st.every === 'day' ? ' selected' : ''}>Every day the app is used</option><option value="week"${st.every === 'week' ? ' selected' : ''}>Every week</option></select></label>
+      <label>Keep the newest <input id="ab-keep" type="number" min="1" max="60" value="${esc(st.keep)}" style="width:4.5em"></label></div>
+    <div class="row"><span class="muted">Folder: <b>${esc(st.folder)}</b></span></div>
+    <div class="row"><button type="button" class="btn" id="ab-folder">Change folder…</button>${st.folder !== st.defaultFolder ? '<button type="button" class="btn" id="ab-default">Use the standard folder</button>' : ''}<button type="button" class="btn" id="ab-open">Open the folder</button><button type="button" class="btn primary" id="ab-now"${st.running ? ' disabled' : ''}>Back up now</button></div>
+    <p class="${st.ok === false ? 'ab-bad' : 'muted'}" id="ab-msg" role="status">${esc(autoBackupText(st))}</p>
+    <p class="muted">A backup on another drive or a USB stick also survives a broken disk: choose a folder there. To restore one, use <em>Restore from a backup</em> below (with the shared library: App Settings, Connections, Shared Library).</p>`;
+}
+function bindAutoBackup(box) {
+  const $ = id => box.querySelector('#' + id),
+    redraw = () => renderTransferSettings(box);
+  if (!$('ab-on')) return;
+  const set = async patch => {
+    state.settings = await api.setSettings({ autoBackup: { ...(state.settings.autoBackup || {}), ...patch } });
+    redraw();
+  };
+  $('ab-on').onchange = e => set({ on: e.target.checked });
+  $('ab-every').onchange = e => set({ every: e.target.value });
+  $('ab-keep').onchange = e => {
+    const n = Math.floor(Number(e.target.value));
+    if (n >= 1 && n <= 60) set({ keep: n });
+  };
+  $('ab-folder').onclick = async () => {
+    const folder = await api.autoBackupFolder();
+    if (folder) set({ folder });
+  };
+  if ($('ab-default')) $('ab-default').onclick = () => set({ folder: '' });
+  $('ab-open').onclick = () => api.autoBackupOpen().catch(e => ($('ab-msg').textContent = 'Could not open the folder: ' + e.message));
+  $('ab-now').onclick = async () => {
+    $('ab-now').disabled = true;
+    $('ab-msg').textContent = 'Making a backup now…';
+    try {
+      const r = await api.autoBackupNow();
+      if (r && r.skipped) $('ab-msg').textContent = 'Not now: ' + r.skipped + '.';
+      else redraw();
+    } catch (e) {
+      $('ab-msg').textContent = 'Could not make the backup: ' + e.message;
+      $('ab-now').disabled = false;
+    }
+  };
+}
 async function renderTransferSettings(box) {
   box.onclick = box.oninput = box.onchange = null;
   if (!api.exportData) {
@@ -92,8 +149,21 @@ async function renderTransferSettings(box) {
     bk = trState.bk;
   // three folders, as on the Results and Records page: each opens and closes, the choice is remembered while the app runs
   const tf = (id, title, note, body) => folderHtml('transfer', id, title, note, `<div class="fbody">${body}</div>`);
+  const abSt = api.autoBackupStatus ? await api.autoBackupStatus().catch(() => null) : null;
   box.innerHTML =
     folderTools +
+    tf(
+      'auto',
+      'Automatic backups',
+      !abSt
+        ? ''
+        : !abSt.on
+          ? 'off'
+          : abSt.ok === false
+            ? 'the last one failed'
+            : (abSt.every === 'week' ? 'every week' : 'every day') + ', keeping ' + abSt.keep,
+      autoBackupHtml(abSt)
+    ) +
     tf(
       'backup',
       'Complete backup',
@@ -218,6 +288,7 @@ async function renderTransferSettings(box) {
           b.disabled = false;
         }
       };
+  bindAutoBackup(box);
   $('bk-save').onclick = async () => {
     try {
       const res = await api.backupSave();

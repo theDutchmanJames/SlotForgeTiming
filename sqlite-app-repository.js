@@ -154,6 +154,7 @@ for (const name of [
   'historyPage',
   'historySession',
   'carStatistics',
+  'driverProgress',
   'catalogue',
   'cataloguePicture'
 ])

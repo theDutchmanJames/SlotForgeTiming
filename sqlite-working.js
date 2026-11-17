@@ -202,6 +202,9 @@ class WorkingStore extends SqliteStore {
   carStatistics(id) {
     return History.car(this, id);
   }
+  driverProgress(id) {
+    return require('./driver-progress').sqliteDriver(this, id);
+  }
   catalogue(entity, options) {
     return Catalogue.page(this, entity, options);
   }

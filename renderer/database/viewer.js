@@ -27,6 +27,9 @@ function openView(e, item) {
           { label: CAR_TRACKS.label, html: '<div id="vc_byTrack">Calculating…</div>', wide: true }
         ]
       : []), // (1.30.0 the mileage, 1.33.0 the rest: worked out from the laps when the card is open)
+    ...(e === 'drivers' && item.driverType !== 'virtual' && typeof api.driverProgress === 'function'
+      ? [{ label: 'Progress', html: '<div id="vc_progress">Calculating…</div>', wide: true }]
+      : []), // (2.3.0: faster and steadier over time, per track and month)
     ...(state.custom[e] || []).filter(f => filled((item.custom || {})[f.id])).map(f => ({ label: f.label, html: esc(item.custom[f.id]) }))
   ];
   const t = titleOf(e, item),
@@ -90,6 +93,17 @@ function openView(e, item) {
           byId('vc' + f.key).textContent = '–';
         });
         target.textContent = '–';
+      });
+  }
+  if (e === 'drivers' && typeof api.driverProgress === 'function' && byId('vc_progress')) {
+    const target = byId('vc_progress');
+    api
+      .driverProgress(item.id)
+      .then(d => {
+        if (byId('vc_progress') === target) target.innerHTML = DriverProgress.html(d);
+      })
+      .catch(x => {
+        if (byId('vc_progress') === target) target.textContent = 'Could not work it out: ' + x.message;
       });
   }
   byId('vcclose').focus({ preventScroll: true }); // (so the card opens at its top)

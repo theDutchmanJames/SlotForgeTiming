@@ -806,6 +806,7 @@ const startupTask = app.whenReady().then(async () => {
     ipcMain.handle('db:history-page', (_e, pool, options) => catalogueRead(() => records.historyPage(pool, options)));
     ipcMain.handle('db:history-session', (_e, pool, id, options) => catalogueRead(() => records.historySession(pool, id, options)));
     ipcMain.handle('db:car-statistics', (_e, id) => records.carStatistics(id));
+    ipcMain.handle('db:driver-progress', (_e, id) => (records.driverProgress ? records.driverProgress(id) : null)); // (2.3.0)
     ipcMain.handle('db:catalogue', (_e, entity, options) => catalogueRead(() => records.catalogue(entity, options)));
     ipcMain.handle('db:catalogue-picture', (_e, entity, id, revision) =>
       catalogueRead(() => records.cataloguePicture(entity, id, revision))
@@ -841,6 +842,18 @@ const startupTask = app.whenReady().then(async () => {
       return id;
     });
     ipcMain.handle('session:remove', (_e, id) => records.removeSession(id));
+    // (2.3.0) the results as a web page, a CSV file or a text: asks where, then writes the text as it is. Only these three kinds, and only text.
+    ipcMain.handle('share:save', async (event, text, name, kind) => {
+      const kinds = { html: ['Web page', 'html'], csv: ['CSV (spreadsheet)', 'csv'], txt: ['Text', 'txt'] };
+      if (!kinds[kind] || typeof text !== 'string' || text.length > 64 * 1024 * 1024) throw Error('Nothing to save.');
+      const { canceled, filePath } = await dialog.showSaveDialog(BrowserWindow.fromWebContents(event.sender), {
+        defaultPath: path.basename(String(name || 'results.' + kinds[kind][1])),
+        filters: [{ name: kinds[kind][0], extensions: [kinds[kind][1]] }]
+      });
+      if (canceled || !filePath) return { saved: false };
+      Database.writeAtomic(filePath, text);
+      return { saved: true, path: filePath };
+    });
     // Turns a report (HTML) into a PDF: print it in a hidden window, then ask where to save it.
     ipcMain.handle('pdf:export', async (event, html, name) => {
       const tmp = path.join(app.getPath('temp'), `slotforge-timing-${Date.now()}.html`);
@@ -1108,6 +1121,59 @@ const startupTask = app.whenReady().then(async () => {
       );
       return { safety };
     });
+    // ---- automatic backups (2.3.0, auto-backup.js): the same backup as Back up, by itself, every day or week the app is used ----
+    const autoBackup = require('./auto-backup').createAutoBackup({
+      settings: () => lifecycle.settings(),
+      defaultFolder: path.join(app.getPath('documents'), 'SlotForge Timing backups'),
+      stateFile: path.join(app.getPath('userData'), 'auto-backup.json'),
+      busy: () =>
+        live.dyn && ['countdown', 'running', 'paused', 'between', 'review'].includes(live.dyn.phase)
+          ? 'a race is open'
+          : bulkAccess.busy()
+            ? 'an import or restore is running'
+            : paddock?.busy
+              ? 'Paddock is busy'
+              : '',
+      folderKind: () => !!sharedLibrary,
+      make: async (target, folderKind) => {
+        await resourceStore.idle();
+        await lifecycle.idle();
+        if (folderKind)
+          return require('./shared-library-backup').create({
+            client: sharedLibrary,
+            profile: app.getPath('userData'),
+            destination: target,
+            backend: sqliteRuntime ? 'sqlite' : 'json',
+            version: require('./package.json').version,
+            privateBackup: t =>
+              sqliteRuntime
+                ? sqliteRuntime.client.backupSnapshot(t, { version: require('./package.json').version })
+                : bulkStorage.backup(t, { version: require('./package.json').version })
+          });
+        return bulkStorage.backup(target, { version: require('./package.json').version });
+      },
+      onChange: st => {
+        if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('autobackup:status', st);
+      }
+    });
+    bulkAccess.handle('autobackup:status', () => autoBackup.status());
+    bulkAccess.handle('autobackup:now', () => autoBackup.run('by hand'));
+    bulkAccess.handle('autobackup:folder', async e => {
+      const choice = await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender), {
+        title: 'Choose the folder for the automatic backups',
+        defaultPath: autoBackup.status().folder,
+        properties: ['openDirectory', 'createDirectory']
+      });
+      return choice.canceled || !choice.filePaths?.length ? null : choice.filePaths[0];
+    });
+    bulkAccess.handle('autobackup:open', async () => {
+      const folder = autoBackup.status().folder;
+      fs.mkdirSync(folder, { recursive: true });
+      const error = await require('electron').shell.openPath(folder);
+      if (error) throw Error(error);
+      return true;
+    });
+    if (!process.env.SF_UI_QA_RUN_ID && !process.env.SF_NO_AUTO_BACKUP) autoBackup.start();
     bulkAccess.handle('backup:cancel', () => {
       pendingRestore = null;
       pendingRestoreSource = null;

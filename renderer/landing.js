@@ -31,6 +31,7 @@ function homeSoftDraw() {
   const c = state.homeCustom;
   if (state.tab === 'home' && !(c && c.typing)) renderHome();
 }
+let homeBackupFailed = false; // (2.3.0: the last automatic backup failed: the chip on Home)
 let homeLibraryWaiting = 0; // (results waiting for the shared library, last known: the chip on Home)
 function resetHome() {
   homeLaps = null;
@@ -687,7 +688,8 @@ async function renderHome() {
       cars: cars.length,
       tracks: tracks.length,
       unused: typeof unusedTimingConnected === 'function' ? unusedTimingConnected(state.settings).map(id => TIMING_NAMES[id] || id) : [],
-      libraryWaiting: homeLibraryWaiting
+      libraryWaiting: homeLibraryWaiting,
+      backupFailed: homeBackupFailed
     });
   // a chip that points at a problem is a button that opens the page where it is put right
   const chipHtml = c =>
@@ -860,6 +862,10 @@ async function renderHome() {
           const first = typeof unusedTimingConnected === 'function' ? unusedTimingConnected(state.settings)[0] : null;
           if (first) state.hwSub = first; // (the page of the hardware the chip is about)
         }
+        if (b.dataset.go === 'backup') {
+          state.settingsSub = 'transfer';
+          if (typeof folderClosed !== 'undefined') folderClosed.delete('transfer:auto'); // (its folder is open)
+        }
         if (b.dataset.go === 'connections') {
           state.settingsSub = 'network';
           if (typeof connectionsTab !== 'undefined') connectionsTab = 'library';
@@ -867,6 +873,19 @@ async function renderHome() {
         render();
       };
   }
+  // the automatic backup (asked after the page is drawn, as below)
+  if (api.autoBackupStatus)
+    api
+      .autoBackupStatus()
+      .then(st => {
+        const failed = !!(st && st.on && st.ok === false);
+        if (failed !== homeBackupFailed && draw === homeDraw) {
+          homeBackupFailed = failed;
+          const el = document.getElementById('hm-chips');
+          if (el) el.innerHTML = chipsNow().map(chipHtml).join('');
+        }
+      })
+      .catch(() => {});
   // finished races that could not reach the shared library (asked after the page is drawn: the chip follows when the answer comes)
   if (api.libraryResults && api.libraryStatus)
     api

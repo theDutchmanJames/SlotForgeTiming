@@ -59,6 +59,9 @@ class DataRepository {
   carStatistics(id) {
     return require('./history-read').jsonCar(this.db, id);
   }
+  driverProgress(id) {
+    return require('./driver-progress').jsonDriver(this.db, id);
+  }
   catalogue(entity, options) {
     return require('./catalogue-read').jsonPage(this.db, entity, options);
   }

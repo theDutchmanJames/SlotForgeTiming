@@ -166,6 +166,9 @@ class SqliteClient {
   carStatistics(id) {
     return this.request('carStatistics', id);
   }
+  driverProgress(id) {
+    return this.request('driverProgress', id);
+  }
   catalogue(entity, options) {
     return this.request('catalogue', entity, options);
   }

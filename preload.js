@@ -230,6 +230,7 @@ contextBridge.exposeInMainWorld('api', {
   historyPage: (pool, options) => catalogueCall('db:history-page', pool, options),
   historySession: (pool, id, options) => catalogueCall('db:history-session', pool, id, options),
   carStatistics: id => call('db:car-statistics', id),
+  driverProgress: id => call('db:driver-progress', id),
   catalogue: (entity, options) => catalogueCall('db:catalogue', entity, options),
   cataloguePicture: (entity, id, revision) => catalogueCall('db:catalogue-picture', entity, id, revision),
   add: (entity, item) => editorSave('add', 'db:add', entity, item),
@@ -252,7 +253,16 @@ contextBridge.exposeInMainWorld('api', {
   backupOpen: () => call('backup:open'),
   backupRestore: () => call('backup:restore'),
   backupCancel: () => call('backup:cancel'),
+  autoBackupStatus: () => call('autobackup:status'),
+  autoBackupNow: () => call('autobackup:now'),
+  autoBackupFolder: () => call('autobackup:folder'),
+  autoBackupOpen: () => call('autobackup:open'),
+  onAutoBackup: f => {
+    ipcRenderer.removeAllListeners('autobackup:status');
+    ipcRenderer.on('autobackup:status', (_e, st) => f(st));
+  },
   exportPdf: (html, name) => call('pdf:export', html, name),
+  shareSave: (text, name, kind) => call('share:save', text, name, kind),
   customFields: entity => call('custom:list', entity),
   addCustomField: (entity, field) => editorSave('addCustomField', 'custom:add', entity, field),
   removeCustomField: (entity, id) => editorSave('removeCustomField', 'custom:remove', entity, id),

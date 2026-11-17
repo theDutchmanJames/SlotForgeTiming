@@ -307,7 +307,7 @@ async function renderResultsPool(box, pool, supplied = null) {
   };
   const recKeys = Stats.RECORD_COLUMNS.filter(c => ViewSet.keys(Stats.RECORD_COLUMNS, viewSaved(['results', 'records'])).includes(c.key));
   const recRow = kind => l => `<tr>${recKeys.map(c => `<td>${RECCELL[c.key](l)}</td>`).join('')}
-    <td class="actions">${l.readOnly ? '<small>Recorded by another source</small>' : `<button class="btn danger" data-delrec="${kind}" data-lap="${esc(l.id)}">Remove</button>`}</td></tr>`;
+    <td class="actions">${l.pendingLibrary ? '<small class="rec-pending" title="This race has not reached the shared library yet (App Settings, Connections, Shared Library). Its record counts here until it does.">Not yet in the shared library</small> ' : ''}${l.readOnly ? '<small>Recorded by another source</small>' : `<button class="btn danger" data-delrec="${kind}" data-lap="${esc(l.id)}">Remove</button>`}</td></tr>`;
   const head = `<tr>${recKeys.map(c => `<th>${esc(c.label)}</th>`).join('')}<th></th></tr>`;
   const byTrack = (a, b) => name(tracks, a.trackId, 'tracks').localeCompare(name(tracks, b.trackId, 'tracks')) || a.time - b.time;
   const trackRecords = supplied ? supplied.page.tracks.items : best(l => l.trackId, 'noTrackRecord').sort(byTrack);
@@ -362,7 +362,7 @@ async function renderResultsPool(box, pool, supplied = null) {
             })
             .join(' · ') || 'no laps'
         }</span></p>
-        <div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}${s.readOnly ? '' : `<button class="btn danger" data-delsession="${esc(s.id)}">Delete this stint</button>`}<span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
+        <div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}${shareButtons(s.id)}${s.readOnly ? '' : `<button class="btn danger" data-delsession="${esc(s.id)}">Delete this stint</button>`}<span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
         return `<details class="card sess" data-sid="${esc(s.id)}"><summary>${esc(dateText(s.date))} · Lane ${esc(t.lane)} · ${esc(x.driverName)} · ${esc(boughtText(t.bought))} · ${esc(x.laps)} ${Number(x.laps) === 1 ? 'lap' : 'laps'} · ${esc(s.trackName || '')}</summary><div class="sessbody">${body}</div></details>`;
       }
       const pts = s.resultBy === 'points';
@@ -482,7 +482,7 @@ async function renderResultsPool(box, pool, supplied = null) {
             }</span></p>`;
           })
           .join('') +
-        `<div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}${!s.readOnly && api.paddockHistoricalReview ? `<button class="btn" data-historical-session="${esc(s.id)}">Historical Review…</button>` : ''}${s.readOnly ? '' : `<button class="btn danger" data-delsession="${esc(s.id)}">Delete this session</button>`}<span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
+        `<div class="row">${pdfButton(`data-pdf="${esc(s.id)}"`)}${shareButtons(s.id)}${!s.readOnly && api.paddockHistoricalReview ? `<button class="btn" data-historical-session="${esc(s.id)}">Historical Review…</button>` : ''}${s.readOnly ? '' : `<button class="btn danger" data-delsession="${esc(s.id)}">Delete this session</button>`}<span class="muted" id="pdfmsg-${esc(s.id)}" role="status"></span></div>`;
       return `<details class="card sess" data-sid="${esc(s.id)}"><summary>${esc(dateText(s.date))} · ${esc(s.setupName)} · ${esc(SESSION_LABEL[s.sessionType] || '')} · ${esc(s.trackName || '')}${s.champ && typeof s.champ === 'object' ? ` <span class="chtag" title="This race is part of a championship">${esc(Champ.tagText(s.champ))}</span>${Champ.awardText(s.champ) ? ` <span class="chaward${s.champ.awarded && !s.champ.off ? ' done' : ''}">${esc(Champ.awardText(s.champ))}</span>` : ''}` : ''}${headline(s, win, cup)}</summary><div class="sessbody">${body}</div></details>`;
     })
     .join('');
@@ -564,26 +564,59 @@ async function renderResultsPool(box, pool, supplied = null) {
       await PaddockHistorical.open(api, historical.dataset.historicalSession);
       return;
     }
-    const p = ev.target.closest('[data-pdf]');
-    if (p) {
-      let s = sessions.find(x => x.id === p.dataset.pdf),
-        mine = laps.filter(l => l.sessionId === s.id),
-        pdfTracks = tracks,
-        pdfCars = cars;
-      const msg = byId('pdfmsg-' + s.id);
-      if (supplied) {
+    // the whole session (with the shared library or a big database it is read in full first) -> { s, mine, pdfTracks, pdfCars } or null (said in msg)
+    // (without a page to load from, the answer is there at once: the PDF choices open in the same click)
+    const fullSession = (id, msg) => {
+      const s = sessions.find(x => x.id === id);
+      if (!supplied) return { s, mine: laps.filter(l => l.sessionId === s.id), pdfTracks: tracks, pdfCars: cars };
+      return (async () => {
         try {
           const full = await api.historySession(pool, s.id, { revision: supplied.page.revision, exportAll: true });
           if (!full) throw Error('Session no longer available.');
-          s = full.session;
-          mine = full.laps;
-          pdfTracks = full.refs.tracks;
-          pdfCars = full.refs.slotcars;
+          return { s: full.session, mine: full.laps, pdfTracks: full.refs.tracks, pdfCars: full.refs.slotcars };
         } catch (error) {
           msg.textContent = 'Could not load the complete session: ' + error.message;
+          return null;
+        }
+      })();
+    };
+    const sh = ev.target.closest('[data-share]');
+    if (sh) {
+      const msg = byId('pdfmsg-' + sh.dataset.sid),
+        got = await fullSession(sh.dataset.sid, msg);
+      if (!got) return;
+      const o = {
+        session: got.s,
+        laps: got.mine,
+        tracks: got.pdfTracks,
+        cars: got.pdfCars,
+        unit: Speed.unitOf(state.settings),
+        distUnit: Speed.distUnitOf(state.settings)
+      };
+      try {
+        if (sh.dataset.share === 'text') {
+          await navigator.clipboard.writeText(Report.sessionText(o));
+          msg.textContent = 'Copied: paste it in a chat or a message.';
           return;
         }
+        const csv = sh.dataset.share === 'csv',
+          res = await api.shareSave(
+            csv ? Report.sessionCsv(o) : Report.sessionHtml({ ...o, options: { tyreWorn: state.settings.tyreWornRed === true } }),
+            Report.shareName(got.s, csv ? 'csv' : 'html'),
+            csv ? 'csv' : 'html'
+          );
+        msg.textContent = res.saved ? 'Saved to ' + res.path : 'Not saved.';
+      } catch (x) {
+        msg.textContent = 'Could not share the results: ' + x.message;
       }
+      return;
+    }
+    const p = ev.target.closest('[data-pdf]');
+    if (p) {
+      const msg = byId('pdfmsg-' + p.dataset.pdf),
+        got = supplied ? await fullSession(p.dataset.pdf, msg) : fullSession(p.dataset.pdf, msg);
+      if (!got) return;
+      const { s, mine, pdfTracks, pdfCars } = got;
       const options = await pdfChoice(s, Stats.forSession(s, mine, pdfTracks, pdfCars));
       if (!options) return;
       msg.textContent = 'Making the PDF...';

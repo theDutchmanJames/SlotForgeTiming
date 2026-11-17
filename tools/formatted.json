@@ -1,6 +1,7 @@
 {
   "about": "Files kept formatted with Prettier (.prettierrc.json). The clean-up formats the app file by file; a file is added here once it is formatted. npm run format formats them; tests/format.test.js checks them.",
   "files": [
+    "auto-backup.js",
     "backup.js",
     "bulk-access.js",
     "bulk-storage.js",
@@ -15,6 +16,7 @@
     "delivery-service.js",
     "diagnostics.js",
     "display-read.js",
+    "driver-progress.js",
     "editor-read.js",
     "eslint.config.cjs",
     "history-read.js",
@@ -118,6 +120,7 @@
     "renderer/dirfolder.js",
     "renderer/distance.js",
     "renderer/drivergrid.js",
+    "renderer/driverprogress.js",
     "renderer/dsprotocol.js",
     "renderer/dssim.js",
     "renderer/dstiming.js",

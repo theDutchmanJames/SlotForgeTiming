@@ -37,6 +37,53 @@
   // columns (the keys of the columns of the table, as Stats.SESSION_COLUMNS names them; the default is the ones that are on until turned off).
   // tracks and cars (the lists from the database) give the length and scale for the speeds; unit ('kmh' or 'mph', the setting speedUnit) is the unit they are written in; distUnit ('m' or 'ft', the setting distanceUnit, 1.27.0) is the one of the distance.
   const DEFAULT_OPTIONS = { results: true, heats: true, tyres: true, laps: true };
+  // One cell of the results table. plain: as text (CSV, a message), else as HTML (the PDF, the web page). (2.3.0: shared by both)
+  function cellMaker({ session, figs, cols, unit, distUnit, finArg }, plain) {
+    const e = plain ? v => String(v ?? '') : esc,
+      cup = plain ? '' : IC.trophy({ size: 14 }),
+      hasDriver = cols.some(c => c.key === 'driver'); // (the winner's cup goes next to the name; without the Driver column next to the position)
+    return (key, x, i) => {
+      switch (key) {
+        case 'pos':
+          return e(x.pos) + (!hasDriver && cup && ST.isWinner(session, x) ? ' ' + cup : '');
+        case 'driver':
+          return (
+            (cup && ST.isWinner(session, x) ? cup + ' ' : '') +
+            e(x.driverName) +
+            (ST.outText(x) ? ` (${ST.outText(x)})` : '') +
+            (ST.adjustedText(x) ? ` (adjusted: ${e(ST.adjustedText(x))})` : '') +
+            (ST.notesText(x) ? ` (${e(ST.notesText(x))})` : '') +
+            (ST.driversText(x, distUnit) ? ` (drivers: ${e(ST.driversText(x, distUnit))})` : '') +
+            (ST.enduranceText(x, distUnit) ? ` (${e(ST.enduranceText(x, distUnit))})` : '')
+          );
+        case 'team':
+          return e(x.teamName || '');
+        case 'car':
+          return e(x.carName);
+        case 'laps':
+          return e(x.laps) + (ST.sectorText(x) ? ` + ${e(ST.sectorText(x))}` : '');
+        case 'points':
+          return e(x.points);
+        case 'result':
+          return e(HT.scoreText(x, session.scoring, finArg));
+        case 'final':
+          return e(HT.finalCell(x));
+        case 'best':
+          return e(E.fmtTime(x.best));
+        case 'total':
+          return (
+            e(E.fmtTime(typeof x.total === 'number' ? x.total + (x.penalty || 0) + (x.adjMs || 0) : null)) +
+            (x.penalty
+              ? x.penaltyPoints != null
+                ? ` (includes +${e(E.fmtTime(x.penalty))} penalty, ${e(x.penaltyPoints)} points)`
+                : ` (includes +${e(E.fmtTime(x.penalty))} added time)`
+              : '')
+          ); // (2.2.5: time added without a penalty system, such as the red-flag time, has no points)
+        default:
+          return e(ST.text(key, figs[i], unit, distUnit));
+      }
+    };
+  }
   function sessionHtml({ session, laps, tracks, cars, options, unit, distUnit }) {
     const opt = { ...DEFAULT_OPTIONS, ...(options || {}) };
     const pts = session.resultBy === 'points',
@@ -46,49 +93,8 @@
     const figs = ST.forSession(session, laps, tracks, cars),
       want = new Set(opt.columns || ST.SESSION_COLUMNS.filter(c => c.on).map(c => c.key));
     const cols = ST.sessionColumns(session, figs).filter(c => want.has(c.key));
-    const cup = IC.trophy({ size: 14 }),
-      hasDriver = cols.some(c => c.key === 'driver'); // (the winner's cup goes next to the name; without the Driver column next to the position)
-    const cellOf = (key, x, i) => {
-      switch (key) {
-        case 'pos':
-          return esc(x.pos) + (!hasDriver && ST.isWinner(session, x) ? ' ' + cup : '');
-        case 'driver':
-          return (
-            (ST.isWinner(session, x) ? cup + ' ' : '') +
-            esc(x.driverName) +
-            (ST.outText(x) ? ` (${ST.outText(x)})` : '') +
-            (ST.adjustedText(x) ? ` (adjusted: ${esc(ST.adjustedText(x))})` : '') +
-            (ST.notesText(x) ? ` (${esc(ST.notesText(x))})` : '') +
-            (ST.driversText(x, distUnit) ? ` (drivers: ${esc(ST.driversText(x, distUnit))})` : '') +
-            (ST.enduranceText(x, distUnit) ? ` (${esc(ST.enduranceText(x, distUnit))})` : '')
-          );
-        case 'team':
-          return esc(x.teamName || '');
-        case 'car':
-          return esc(x.carName);
-        case 'laps':
-          return esc(x.laps) + (ST.sectorText(x) ? ` + ${esc(ST.sectorText(x))}` : '');
-        case 'points':
-          return esc(x.points);
-        case 'result':
-          return esc(HT.scoreText(x, session.scoring, finArg));
-        case 'final':
-          return esc(HT.finalCell(x));
-        case 'best':
-          return esc(E.fmtTime(x.best));
-        case 'total':
-          return (
-            esc(E.fmtTime(typeof x.total === 'number' ? x.total + (x.penalty || 0) + (x.adjMs || 0) : null)) +
-            (x.penalty
-              ? x.penaltyPoints != null
-                ? ` (includes +${esc(E.fmtTime(x.penalty))} penalty, ${esc(x.penaltyPoints)} points)`
-                : ` (includes +${esc(E.fmtTime(x.penalty))} added time)`
-              : '')
-          ); // (2.2.5: time added without a penalty system, such as the red-flag time, has no points)
-        default:
-          return esc(ST.text(key, figs[i], unit, distUnit));
-      }
-    };
+    const cup = IC.trophy({ size: 14 });
+    const cellOf = cellMaker({ session, figs, cols, unit, distUnit, finArg }, false);
     const standings =
       !opt.results || !cols.length
         ? ''
@@ -152,7 +158,7 @@
         return `${isHeats ? `<h2>${esc(HT.raceName(g))}</h2>` : ''}<table class="laps"><thead><tr><th>Lap</th>${g.cols.map(c => `<th>${esc(c.s.driverName)}<br><span class="sub">${esc(c.s.carName)}</span></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
       })
       .join('');
-    return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(session.setupName)}</title><style>
+    return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(session.setupName)}</title><style>
       @page { size: A4; margin: 15mm; }
       body { font: 11pt/1.4 Arial, Helvetica, sans-serif; color: #111; margin: 0; }
       h1 { font-size: 22pt; margin: 0 0 4px; } h2 { font-size: 14pt; margin: 18px 0 6px; }
@@ -288,7 +294,80 @@
     return Number.isFinite(t) ? `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}` : String(iso || '').slice(0, 10);
   };
   const fileName = session => `${session.setupName || 'Session'} ${dayOf(session.date)}.pdf`.replace(/[\\/:*?"<>|]/g, '-');
-  const api = { sessionHtml, heatSheetHtml, standingsHtml, standingsFileName, fileName, lapGroups, qrHtml, rulesHtml, CREDIT };
+  // ---- sharing (2.3.0): the results as a CSV file (for a spreadsheet) and as a short text (a club chat, such as WhatsApp) ----
+  // columns: as for the PDF (the keys of Stats.SESSION_COLUMNS); default: the ones that are on until turned off
+  function sessionTable({ session, laps, tracks, cars, columns, unit, distUnit }) {
+    const pts = session.resultBy === 'points',
+      fin = ST.heated(session) && !!session.finals,
+      finArg = { finalMode: fin ? session.finals.finalMode : 'places', byPoints: pts, unit: distUnit },
+      figs = ST.forSession(session, laps || [], tracks || [], cars || []),
+      want = new Set(columns || ST.SESSION_COLUMNS.filter(c => c.on).map(c => c.key)),
+      cols = ST.sessionColumns(session, figs).filter(c => want.has(c.key)),
+      cell = cellMaker({ session, figs, cols, unit, distUnit, finArg }, true);
+    return { header: cols.map(c => c.label), rows: (session.standings || []).map((x, i) => cols.map(c => cell(c.key, x, i))) };
+  }
+  const csvCell = v => {
+    const t = String(v ?? '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return /[",;\n]/.test(t) || /^[=+\-@]/.test(t) ? '"' + (/^[=+\-@]/.test(t) ? "'" : '') + t.replace(/"/g, '""') + '"' : t; // (a cell that starts with = is not run as a formula by a spreadsheet)
+  };
+  function sessionCsv(o) {
+    const t = sessionTable(o),
+      s = o.session;
+    const lines = [
+      [s.setupName || 'Session', LABEL[s.sessionType] || '', s.trackName || '', dateText(s.date)].map(csvCell).join(','),
+      '',
+      t.header.map(csvCell).join(','),
+      ...t.rows.map(r => r.map(csvCell).join(','))
+    ];
+    return '\ufeff' + lines.join('\r\n') + '\r\n'; // (the mark at the start makes Excel read the names with accents right)
+  }
+  function sessionText({ session, laps }) {
+    const s = session,
+      medal = ['🥇', '🥈', '🥉'],
+      rows = (s.standings || []).filter(x => x && x.driverName),
+      byLaps = ST.WINNER_TYPES.includes(s.sessionType);
+    const fastest = (laps || [])
+      .filter(l => !l.invalid && !l.tooSlow && Number(l.time) > 0)
+      .reduce((b, l) => (!b || l.time < b.time ? l : b), null);
+    const fastName = fastest
+      ? (rows.find(x => (x.driverId && x.driverId === fastest.driverId) || x.lane === fastest.lane) || {}).driverName
+      : '';
+    return [
+      `🏁 ${s.setupName || 'Session'}${s.trackName ? ' · ' + s.trackName : ''}`,
+      dateText(s.date),
+      '',
+      ...rows.map((x, i) => {
+        const pos = Number(x.pos) || i + 1;
+        const what = byLaps
+          ? [x.laps !== undefined && x.laps !== '' ? x.laps + ' laps' : '', x.best ? 'best ' + E.fmtTime(x.best) : '']
+              .filter(Boolean)
+              .join(', ')
+          : x.best
+            ? E.fmtTime(x.best)
+            : '';
+        return `${medal[pos - 1] || pos + '.'} ${x.driverName}${x.carName ? ' (' + x.carName + ')' : ''}${what ? ' · ' + what : ''}`;
+      }),
+      ...(fastest ? ['', `⏱ Fastest lap: ${fastName ? fastName + ', ' : ''}${E.fmtTime(fastest.time)}`] : [])
+    ].join('\n');
+  }
+  const shareName = (session, ext) => `${session.setupName || 'Session'} ${dayOf(session.date)}.${ext}`.replace(/[\\/:*?"<>|]/g, '-');
+  const api = {
+    sessionHtml,
+    sessionTable,
+    sessionCsv,
+    sessionText,
+    shareName,
+    heatSheetHtml,
+    standingsHtml,
+    standingsFileName,
+    fileName,
+    lapGroups,
+    qrHtml,
+    rulesHtml,
+    CREDIT
+  };
   root.Report = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

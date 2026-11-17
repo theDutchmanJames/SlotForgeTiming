@@ -288,4 +288,5 @@ module.exports = [
   ['statuschips.test.js', 'node-test'],
   ['dialogs.test.js', 'node-test'],
   ['racenight.test.js', 'node-test'],
+  ['data.test.js', 'node-test'],
 ];

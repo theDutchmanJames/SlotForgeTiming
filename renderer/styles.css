@@ -2428,3 +2428,15 @@ dialog.st-dialog{width:min(640px,94vw)}
 .wz-hwopt span{display:flex;flex-direction:column;gap:2px}
 .wz-nav{margin-top:16px;gap:8px;flex-wrap:wrap}
 .st-okword{color:var(--st-ok)}
+.ab-bad{color:var(--accent);font-weight:600}
+.sharebtns{display:inline-flex;flex-wrap:wrap;gap:6px}
+/* driver progress on the card of a driver (driverprogress.js) */
+.dp-track{margin:4px 0 14px}
+.dp-track h5{margin:0 0 4px;font-size:1em}
+.dp-change{margin:0 0 6px}
+.dp-chart{width:100%;max-width:420px;height:auto;display:block;margin:4px 0 8px}
+.dp-chart polyline{fill:none;stroke-width:2;stroke-linejoin:round}
+.dp-chart .dp-best{stroke:var(--accent)}
+.dp-chart .dp-avg{stroke:var(--muted);stroke-dasharray:4 3}
+.dp-chart .dp-dot{fill:var(--accent)}
+.rec-pending{color:var(--accent);margin-right:6px}

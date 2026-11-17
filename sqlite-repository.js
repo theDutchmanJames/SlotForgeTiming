@@ -41,6 +41,9 @@ class SqliteRepository {
   carStatistics(id) {
     return this.client.carStatistics(id);
   }
+  driverProgress(id) {
+    return this.client.driverProgress(id);
+  }
   catalogue(entity, options) {
     return this.client.catalogue(entity, options);
   }

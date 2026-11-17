@@ -128,4 +128,7 @@ const folderAll = (page, ids, open) =>
 // The Export to PDF button: it fills with the accent colour and has a picture of a page, so it is the first thing the eye finds (Results and Records, Racing Rules)
 const pdfButton = attrs =>
   `<button class="btn primary pdfbtn" type="button" ${attrs}>${Icons.svg('pdf', { size: 18 })}<span>Export to PDF</span></button>`;
+// (2.3.0) sharing the results of a session: a web page (a club website), a CSV file (a spreadsheet), a text to paste in a chat (WhatsApp)
+const shareButtons = id =>
+  `<span class="sharebtns" role="group" aria-label="Share the results"><button class="btn" type="button" data-share="html" data-sid="${esc(id)}" title="A page for a club website, readable on a phone">Save as web page</button><button class="btn" type="button" data-share="csv" data-sid="${esc(id)}" title="The results table for a spreadsheet (Excel, Google Sheets)">Save as CSV</button><button class="btn" type="button" data-share="text" data-sid="${esc(id)}" title="The podium, the laps and the fastest lap as a short text, to paste in a chat such as WhatsApp">Copy as text</button></span>`;
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;

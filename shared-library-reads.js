@@ -46,6 +46,64 @@ function mappedRecord(r, client) {
     noTrackRecord: false
   };
 }
+// ---- records of races that did not reach the shared library (2.3.0) ----
+// The records the library shows only hold the races it accepted. A race of this computer that is still on its way, held for attention or refused keeps
+// its laps here; its track record and personal bests count too, marked pendingLibrary, until the library has the race. Only this computer's own sessions
+// that the library does not have (or has an older copy of: a correction still waiting) count, so a lap is never counted twice.
+async function undeliveredRecords(base, client, pool, token, only = {}) {
+  const first = await base.historyPage(pool),
+    out = { tracks: [], personal: [], refs: first.refs };
+  for (const section of ['tracks', 'personal']) {
+    const items = [...first[section].items];
+    let next = first[section].next,
+      pages = 0;
+    while (next && pages++ < 25) {
+      const p = await base.historyPage(pool, { [section]: next });
+      items.push(...p[section].items);
+      for (const k of Object.keys(out.refs)) out.refs[k].push(...(p.refs[k] || []));
+      next = p[section].next;
+    }
+    out[section] = items.filter(
+      r => (!only.trackId || r.trackId === only.trackId) && (!only.driverIds || only.driverIds.includes(r.driverId))
+    );
+  }
+  const known = new Map();
+  const undelivered = async sessionId => {
+    if (!sessionId) return false;
+    if (!known.has(sessionId))
+      known.set(
+        sessionId,
+        (async () => {
+          const st = await read(client, { kind: 'sessionState', sourceId: client.installationId, sessionId, token });
+          if (!st.row) return true; // (never reached the library)
+          if (st.row.state !== 'active') return false; // (withdrawn: it does not count anywhere)
+          const saved = await Promise.resolve()
+            .then(() => base.historySession(pool, sessionId, { revision: first.revision, summaryOnly: true }))
+            .catch(() => null);
+          return ['pending', 'attention'].includes(saved?.deliveryStatus);
+        })()
+      );
+    return known.get(sessionId);
+  };
+  for (const section of ['tracks', 'personal']) {
+    const kept = [];
+    for (const r of out[section]) if (await undelivered(r.sessionId)) kept.push({ ...r, pendingLibrary: true });
+    out[section] = kept;
+  }
+  return out;
+}
+const recordKey = (section, r) => (section === 'tracks' ? r.trackId : r.trackId + '\n' + r.driverId);
+// a page of library records with the faster local ones in place (a key that is not on this page is added on the last page only)
+function mergeRecords(section, items, local, lastPage) {
+  const out = items.slice();
+  for (const l of local) {
+    const i = out.findIndex(r => recordKey(section, r) === recordKey(section, l));
+    if (i >= 0) {
+      if (Number(l.time) < Number(out[i].time)) out[i] = l;
+    } else if (lastPage) out.push(l);
+  }
+  return out;
+}
 async function historyPage(base, client, pool, options = {}) {
   const o = H.options(pool, options),
     active = Object.values(o).filter(Boolean),
@@ -69,6 +127,12 @@ async function historyPage(base, client, pool, options = {}) {
     });
     token = page.token;
     sections[section] = { items: page.rows.map(r => mappedRecord(r, client)), nextOffset: page.nextOffset };
+    if (!(o[section]?.offset > 0)) {
+      // (the first page: the records of races that did not reach the library yet)
+      const pending = await undeliveredRecords(base, client, pool, token);
+      sections[section].items = mergeRecords(section, sections[section].items, pending[section], page.nextOffset === null);
+      for (const k of Object.keys(refs)) refs[k].push(...(pending.refs[k] || []));
+    }
     for (const r of page.rows) {
       const m = mappedRecord(r, client),
         [track, car] = await base.historyReferences([
@@ -155,7 +219,30 @@ async function homeStatistics(base, client, options) {
   const recordRows = o.trackId
     ? (await read(client, { kind: 'records', scope: 'track', sort: 'time', sourceId: own, trackId: o.trackId, limit: 100, token })).rows
     : [];
-  const best = recordRows.sort((a, b) => a.durationMs - b.durationMs)[0];
+  let best = recordRows.sort((a, b) => a.durationMs - b.durationMs)[0];
+  // (2.3.0: a race that did not reach the library still holds its records here)
+  const pending = o.trackId
+    ? await undeliveredRecords(base, client, 'racing', token, { trackId: o.trackId }).catch(() => ({
+        tracks: [],
+        personal: [],
+        refs: { slotcars: [], sessions: [] }
+      }))
+    : { tracks: [], personal: [], refs: { slotcars: [], sessions: [] } };
+  const localTrack = pending.tracks[0];
+  if (localTrack && (!best || Number(localTrack.time) < best.durationMs)) {
+    const car = (pending.refs.slotcars || []).find(c => c.id === localTrack.carId),
+      session = (pending.refs.sessions || []).find(x => x.id === localTrack.sessionId);
+    best = {
+      durationMs: Number(localTrack.time),
+      driverId: localTrack.driverId,
+      driverName: '',
+      carName: car ? car.name || [car.brand, car.manufacturer, car.model].filter(Boolean).join(' ') : '',
+      startedAt: localTrack.date || '',
+      savedAt: '',
+      sessionName: session?.setupName || '',
+      pendingLibrary: true
+    };
+  }
   const grid = [];
   for (const g of o.grid) {
     if (grid.some(r => r.driverId === g.driverId) || !g.driverId) continue;
@@ -171,7 +258,9 @@ async function homeStatistics(base, client, options) {
           token
         })
       : { rows: [] };
-    const r = p.rows.sort((a, b) => a.durationMs - b.durationMs)[0];
+    let r = p.rows.sort((a, b) => a.durationMs - b.durationMs)[0];
+    const mine = pending.personal.find(x => x.driverId === g.driverId);
+    if (mine && (!r || Number(mine.time) < r.durationMs)) r = { durationMs: Number(mine.time) };
     grid.push({
       driverId: g.driverId,
       name: driverName(g.driverId),
@@ -208,7 +297,8 @@ async function homeStatistics(base, client, options) {
                     car: best.carName,
                     date: best.startedAt || best.savedAt || '',
                     dateBasis: best.startedAt ? 'started' : best.savedAt ? 'saved' : null,
-                    setupName: best.sessionName || ''
+                    setupName: best.sessionName || '',
+                    ...(best.pendingLibrary ? { pendingLibrary: true } : {})
                   }
                 : null,
               line:
@@ -326,4 +416,14 @@ async function homeStatistics(base, client, options) {
   }
   return { last, cards };
 }
-module.exports = { read, scoped, mappedRecord, historyPage, historySession, carStatistics, homeStatistics };
+module.exports = {
+  read,
+  scoped,
+  mappedRecord,
+  mergeRecords,
+  undeliveredRecords,
+  historyPage,
+  historySession,
+  carStatistics,
+  homeStatistics
+};

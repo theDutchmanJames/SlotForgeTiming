@@ -488,6 +488,14 @@
         go: 'hardware',
         title: 'Only the timing hardware in use counts race laps. Open Timing Hardware to choose it.'
       });
+    if (ctx.backupFailed)
+      out.push({
+        key: 'backup',
+        text: 'The automatic backup failed',
+        state: 'warn',
+        go: 'backup',
+        title: 'Open Import and Export to see why, and to make a backup now.'
+      });
     if (ctx.libraryWaiting > 0)
       out.push({
         key: 'library',
