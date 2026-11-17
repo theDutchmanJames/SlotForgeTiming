@@ -84,6 +84,7 @@ module.exports = [
       'tools/qa/*-checks.js',
       'tools/qa/*-visual.js',
       'tools/qa/tyre-repairs-fixtures.js',
+      'tools/settings-index/harvest.js', // (the body of a function that runs in the app window: it ends with a return)
       'vendor/**',
       'node_modules/**',
       'dist/**',

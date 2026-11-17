@@ -184,10 +184,90 @@ function showRace(on) {
 }
 
 // App Settings: General and Network
+// ---- searching App Settings (2.3.0, settingsindex.js): type a few words, pick a result, and the page opens with that setting in view ----
+async function settingsGo(e) {
+  state.settingsSub = e.s;
+  if (e.hw) state.hwSub = e.hw;
+  if (e.ct && typeof connectionsTab !== 'undefined') connectionsTab = e.ct;
+  await renderSettings();
+  if (e.k === 'page') return;
+  await new Promise(r => setTimeout(r, 300)); // (some pages draw their parts a moment later)
+  const box = document.getElementById('settingsbox');
+  if (!box) return;
+  const want = SettingsIndex.norm(e.t),
+    els = [...box.querySelectorAll('label,summary,h2,h3,h4,legend,button,b,strong')],
+    hit =
+      els.find(x => SettingsIndex.norm(x.textContent) === want) ||
+      els.find(x => SettingsIndex.norm(x.textContent).startsWith(want)) ||
+      els.find(x => SettingsIndex.norm(x.textContent).includes(want));
+  if (!hit) return;
+  for (let d = hit.closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) d.open = true;
+  const mark = hit.closest('.field,label,summary,.row') || hit;
+  mark.scrollIntoView({ block: 'center' });
+  mark.classList.add('search-hit');
+  setTimeout(() => mark.classList.remove('search-hit'), 2600);
+  const input =
+    (hit.matches('label') && (hit.control || hit.querySelector('input,select,textarea'))) || (hit.matches('button') ? hit : null);
+  if (input && typeof input.focus === 'function') input.focus({ preventScroll: true });
+}
+function settingsSearchBind() {
+  const input = document.getElementById('settings-q'),
+    list = document.getElementById('settings-hits');
+  if (!input || typeof SettingsIndex === 'undefined') return;
+  let hits = [],
+    at = -1;
+  const show = () => {
+    hits = SettingsIndex.search(input.value);
+    at = hits.length ? 0 : -1;
+    list.hidden = !input.value.trim();
+    list.innerHTML = hits.length
+      ? hits
+          .map(
+            (h, i) =>
+              `<li role="option" id="settings-hit-${i}" data-hit="${i}" aria-selected="${i === at}"><b>${esc(h.t)}</b><small>${esc(h.where)}</small></li>`
+          )
+          .join('')
+      : '<li class="muted" role="presentation">Nothing found. Try another word.</li>';
+    input.setAttribute('aria-expanded', String(!list.hidden));
+    input.setAttribute('aria-activedescendant', at >= 0 ? 'settings-hit-' + at : '');
+  };
+  const pick = i => {
+    const h = hits[i];
+    if (!h) return;
+    input.value = '';
+    list.hidden = true;
+    settingsGo(h);
+  };
+  input.oninput = show;
+  input.onkeydown = ev => {
+    if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+      if (!hits.length) return;
+      ev.preventDefault();
+      at = (at + (ev.key === 'ArrowDown' ? 1 : hits.length - 1)) % hits.length;
+      list.querySelectorAll('[data-hit]').forEach(li => li.setAttribute('aria-selected', String(Number(li.dataset.hit) === at)));
+      input.setAttribute('aria-activedescendant', 'settings-hit-' + at);
+    } else if (ev.key === 'Enter') {
+      ev.preventDefault();
+      pick(at);
+    } else if (ev.key === 'Escape') {
+      input.value = '';
+      list.hidden = true;
+    }
+  };
+  list.onmousedown = ev => {
+    const li = ev.target.closest('[data-hit]');
+    if (!li) return;
+    ev.preventDefault(); // (the field keeps the focus until the page opens)
+    pick(Number(li.dataset.hit));
+  };
+  input.onblur = () => setTimeout(() => (list.hidden = true), 150);
+}
 async function renderSettings() {
   if (typeof ptPageDispose === 'function') ptPageDispose();
   if (typeof ppPageDispose === 'function') ppPageDispose();
-  view.innerHTML = '<h2>App Settings</h2><div class="sub" id="settingstabs" role="tablist"></div><div id="settingsbox"></div>';
+  view.innerHTML =
+    '<div class="settings-head"><h2>App Settings</h2><div class="settings-search" role="search"><input type="search" id="settings-q" placeholder="Search settings…" aria-label="Search the settings" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="settings-hits" aria-autocomplete="list"><ul id="settings-hits" role="listbox" aria-label="Settings found" hidden></ul></div></div><div class="sub" id="settingstabs" role="tablist"></div><div id="settingsbox"></div>';
+  settingsSearchBind();
   renderTabs(
     document.getElementById('settingstabs'),
     [
@@ -903,7 +983,9 @@ async function renderNetworkSettings(box) {
   box.innerHTML = `<section data-settings-group="sharing"><h3>Share the race</h3><p class="muted">Let tablets and phones on your wifi follow the race in a browser: race timing, leaderboard, driver stats and the other Live Race pages. They can only watch. The Race Director page needs the password below.</p>
     <div class="field"><label class="inline"><input id="net-on" type="checkbox" ${state.settings.netOn ? 'checked' : ''}> Share on my network</label></div>
     <div class="settings-network-fields"><div class="field"><label for="net-port">Port</label><input id="net-port" type="number" min="1" max="65535" value="${esc(state.settings.netPort || 8787)}" style="width:7em"></div></div></section>
-    <section data-settings-group="access"><h3>Director access</h3><div class="settings-network-fields"><div class="field"><label for="net-pass">Password for the Race Director</label><input id="net-pass" type="text" maxlength="40" value="${esc(state.settings.netPassword || '')}" placeholder="none: the Race Director stays on this computer"></div></div><p class="muted">Leave this empty to keep Race Director controls on this computer. Other devices can still watch when sharing is enabled.</p></section>
+    <section data-settings-group="access"><h3>Director access</h3><div class="settings-network-fields"><div class="field"><label for="net-pass">Password for the Race Director</label><input id="net-pass" type="text" maxlength="40" value="${esc(state.settings.netPassword || '')}" placeholder="none: the Race Director stays on this computer"></div></div><p class="muted">Leave this empty to keep Race Director controls on this computer. Other devices can still watch when sharing is enabled.</p>
+    <div class="row"><button type="button" class="btn" id="net-pairbtn">Pair a phone…</button><span class="muted">A QR code that logs one phone or tablet in to the Race Director, without typing the password.</span></div><div id="net-pair"></div>
+    <p class="muted net-warn">The connection is not encrypted (http), as with most club timing programs: use it on your own club or home wifi, not on a public network. Anyone on the same wifi can watch the race, and could see the password while it is typed; pairing by QR code keeps the password off the phone.</p></section>
     <section data-settings-group="devices"><h3>Connect devices</h3><p class="muted">While sharing is enabled, this folder shows this computer’s addresses and QR codes.</p><div id="net-info"></div></section>`;
   if (typeof AppSettingsPage !== 'undefined') AppSettingsPage.enhance(box, 'network');
   const netInfo = async () => {
@@ -944,6 +1026,40 @@ async function renderNetworkSettings(box) {
   const setNet = async patch => {
     state.settings = await api.setSettings(patch);
     await netInfo();
+  };
+  // (2.3.0) pairing by QR code: one code for every address of this computer, once, for 10 minutes
+  let pairTimer = null;
+  document.getElementById('net-pairbtn').onclick = async () => {
+    const el = document.getElementById('net-pair');
+    clearInterval(pairTimer);
+    try {
+      const p = await api.netPair();
+      if (p.error) {
+        el.innerHTML = `<p class="error" role="alert">${esc(p.error)}</p>`;
+        return;
+      }
+      el.innerHTML = `<div class="card net-paircard"><strong>Scan this with the phone's camera</strong><p class="muted">It opens the Race Director, logged in. One phone, once; it stays logged in for 12 hours. <span id="net-pairleft"></span></p>
+        <div class="netlist">${p.urls.length ? p.urls.map(u => `<div class="netaddr"><div class="netqr">${u.svg}</div><code>${esc(u.url.replace(/#pair=.*/, ''))}</code></div>`).join('') : '<p class="muted">No wifi or network connection was found on this computer.</p>'}</div>
+        <div class="row"><button type="button" class="btn" id="net-pairdone">Done</button><button type="button" class="btn" id="net-pairnew">Another phone</button></div></div>`;
+      const left = () => {
+        const n = Math.round((Date.parse(p.expiresAt) - Date.now()) / 1000),
+          t = document.getElementById('net-pairleft');
+        if (!t) return clearInterval(pairTimer);
+        if (n <= 0) {
+          clearInterval(pairTimer);
+          el.innerHTML = '<p class="muted">The QR code has expired. Press Pair a phone for a new one.</p>';
+        } else t.textContent = `Valid for ${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}.`;
+      };
+      left();
+      pairTimer = setInterval(left, 1000);
+      document.getElementById('net-pairdone').onclick = () => {
+        clearInterval(pairTimer);
+        el.innerHTML = '';
+      };
+      document.getElementById('net-pairnew').onclick = () => document.getElementById('net-pairbtn').click();
+    } catch (e) {
+      el.innerHTML = `<p class="error" role="alert">Could not make a QR code: ${esc(e.message)}</p>`;
+    }
   };
   document.getElementById('net-on').onchange = ev => setNet({ netOn: ev.target.checked });
   document.getElementById('net-port').onchange = ev => {

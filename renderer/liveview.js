@@ -194,7 +194,8 @@ const LiveView = (() => {
       return;
     }
     body.innerHTML = `<form id="lv-login" class="card" style="max-width:360px"><div class="field"><label for="lv-pass">${page === 'tokens' ? 'Password for the Tokens page (the same as for the Race Director)' : 'Password for the Race Director'}</label><input id="lv-pass" type="password" autocomplete="current-password"></div>
-      <div class="row"><button class="btn primary" type="submit">Log in</button><span id="lv-loginmsg" class="error" role="alert"></span></div></form>`;
+      <div class="row"><button class="btn primary" type="submit">Log in</button><span id="lv-loginmsg" class="error" role="alert">${esc((api.pairError && api.pairError()) || '')}</span></div>
+      <p class="muted">Quicker: in App Settings > Connections on the timing computer, press <em>Pair a phone</em> and scan the QR code.</p></form>`;
     $('lv-login').onsubmit = async ev => {
       ev.preventDefault();
       try {
@@ -986,6 +987,10 @@ const LiveView = (() => {
       state.settings = await api.getSettings();
     } catch {
       /* keep what we have */
+    }
+    if (api.web && api.startPage && api.startPage()) {
+      await api.pairing(); // (a scanned pairing QR code: logged in first, then straight to the page)
+      page = api.startPage();
     }
     let got = null;
     try {

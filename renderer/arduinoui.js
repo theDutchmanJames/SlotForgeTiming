@@ -442,7 +442,7 @@ function renderArduinoSettings(box) {
     <p class="muted">A lane sensor counts laps, a pit sensor starts pit stops (pit sensor 1 belongs to lane 1), the call-button ladder is the pin with the drivers' buttons. The bar is the live reading; a car must bring it below the trigger line (the lower threshold) and the pass ends when it rises above the arm line again. <em>Calibrate</em> sets both from the empty track.</p>`;
   const lanesBody = `<div class="row"><strong>Lanes</strong></div><div class="sensgrid">${sensors}</div>
     <p class="muted">Which lane each sensor letter counts for (swap two here instead of rewiring). The light turns green while a car is over the sensor.</p>`;
-  const lightsBody = `<div class="row"><strong>Lights</strong>${sel('ab-lights', ArduinoBox.lightChoices(v?.board), lights[0], ab.open ? '' : 'disabled')}<label>Pixels <input type="number" id="ab-pixels" value="${esc(lights[1])}" min="7" max="60" style="width:6em" ${ab.open ? '' : 'disabled'}></label><label>Brightness <input type="number" id="ab-bright" value="${esc(lights[2])}" min="1" max="255" style="width:6em" ${ab.open ? '' : 'disabled'}></label>
+  const lightsBody = `<div class="row"><strong>Lights</strong>${sel('ab-lights', ArduinoBox.lightChoices(v?.board), lights[0], (ab.open ? '' : 'disabled') + ' aria-label="Kind of start lights"')}<label>Pixels <input type="number" id="ab-pixels" value="${esc(lights[1])}" min="7" max="60" style="width:6em" ${ab.open ? '' : 'disabled'}></label><label>Brightness <input type="number" id="ab-bright" value="${esc(lights[2])}" min="1" max="255" style="width:6em" ${ab.open ? '' : 'disabled'}></label>
       <label class="inline"><input type="checkbox" id="ab-lanepix" ${lights[3] ? 'checked' : ''} ${ab.open ? '' : 'disabled'}> A status pixel per lane</label><button class="btn" id="ab-lighttest" ${ab.open ? '' : 'disabled'}>Test the lights</button></div>`;
   const powerBody = `<div class="row"><strong>Power</strong><label>Main relay ${sel(
     'ab-relaync',
@@ -459,7 +459,7 @@ function renderArduinoSettings(box) {
       [1, 'normally closed']
     ],
     relay[2],
-    ab.open ? '' : 'disabled'
+    (ab.open ? '' : 'disabled') + ' aria-label="How the lane relays are wired"'
   )}
       <label>When the PC goes away ${sel(
         'ab-safeoff',

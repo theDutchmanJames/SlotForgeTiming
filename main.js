@@ -341,6 +341,20 @@ function netStatus() {
       : []
   };
 }
+// (2.3.0) a QR code per address of this computer that logs one phone in to the Race Director, once, within 10 minutes
+function netPairing() {
+  if (!net.server || !net.server.pairing) return { error: 'Turn on "Share on my network" first.' };
+  const p = net.server.pairing();
+  if (!p) return { error: 'Set a password for the Race Director first.' };
+  const st = netStatus();
+  return {
+    expiresAt: p.expiresAt,
+    urls: st.urls.map(u => {
+      const url = u.url + '#pair=' + p.code;
+      return { url, svg: QR.svg(url) };
+    })
+  };
+}
 function openLiveWindow() {
   if (liveWin && !liveWin.isDestroyed()) {
     liveWin.focus();
@@ -1403,6 +1417,10 @@ const startupTask = app.whenReady().then(async () => {
       return s;
     });
     ipcMain.handle('net:status', () => netStatus());
+    ipcMain.handle('net:pair', e => {
+      if (!mainWin || e.sender !== mainWin.webContents) throw Error('Pair a phone from the main app window.');
+      return netPairing();
+    });
     // Is there a newer release on GitHub? Notify only (update-check.js): the page shows it and links to the release page.
     {
       const file = path.join(app.getPath('userData'), 'update-check.json');

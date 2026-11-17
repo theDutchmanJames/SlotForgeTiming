@@ -237,6 +237,62 @@ const SETUP_GROUPS = [
     ]
   ]
 ];
+// (2.3.0) a club hides the systems it never uses (App setting setupHidden): their tab is gone from this strip, and their choice from the race setup form
+// when a setup does not use it. "Show N hidden" shows them for a moment; the Basic set keeps what most clubs use.
+const SETUP_FIELD = {
+  fuel: 'fuelRules',
+  penalties: 'penaltySystem',
+  damage: 'damageSystem',
+  safetycar: 'safetyCar',
+  tyrewear: 'tyreWear',
+  weather: 'weather',
+  pushsave: 'pushSave',
+  bop: 'bop',
+  multiclass: 'multiClass',
+  resources: 'resourceSystem'
+};
+const SETUP_BASIC = ['fuel', 'penalties', 'damage', 'rotation', 'championships'];
+const setupHidden = (settings = typeof state !== 'undefined' ? state.settings : {}) => {
+  const all = SETUP_GROUPS.flatMap(g => g[1].map(t => t[0]));
+  return Array.isArray(settings && settings.setupHidden) ? settings.setupHidden.filter(id => all.includes(id)) : [];
+};
+// the race setup fields of the hidden systems (the form leaves them out unless the setup uses one)
+const setupHiddenFields = (settings = typeof state !== 'undefined' ? state.settings : {}) =>
+  setupHidden(settings)
+    .map(id => SETUP_FIELD[id])
+    .filter(Boolean);
+let setupShowHidden = false; // ("Show N hidden": for as long as the app runs)
+function chooseSetupTabs() {
+  const all = SETUP_GROUPS.flatMap(g => g[1]),
+    hidden = new Set(setupHidden());
+  const d = document.createElement('dialog');
+  d.className = 'appdlg ss-choose';
+  d.setAttribute('aria-labelledby', 'ss-choose-title');
+  d.innerHTML = `<h3 id="ss-choose-title">Which systems does your club use?</h3><p class="muted">Ticked systems have a tab here and a choice in the race setup form. Untick what you never use: nothing is deleted, and a race setup that already uses a system keeps it.</p>
+    ${SETUP_GROUPS.map(([name, items]) => `<fieldset class="vsgroup"><legend>${esc(name === 'Setups' ? 'Rotations & Championships' : name === 'Extras' ? 'More Systems' : name)}</legend>${items.map(([id, label]) => `<label class="vschip"><input type="checkbox" data-sstab="${id}"${hidden.has(id) ? '' : ' checked'}> ${esc(label)}</label>`).join('')}</fieldset>`).join('')}
+    <div class="row"><button type="button" class="btn" data-sspreset="basic">Basic set (${SETUP_BASIC.length} that most clubs use)</button><button type="button" class="btn" data-sspreset="all">Everything</button></div>
+    <div class="row appdlg-buttons"><button type="button" class="btn" data-ssdone="0">Cancel</button><button type="button" class="btn primary" data-ssdone="1">Save</button></div>`;
+  document.body.appendChild(d);
+  const boxes = () => [...d.querySelectorAll('[data-sstab]')];
+  d.onclick = async ev => {
+    const p = ev.target.closest('[data-sspreset]');
+    if (p) boxes().forEach(b => (b.checked = p.dataset.sspreset === 'all' || SETUP_BASIC.includes(b.dataset.sstab)));
+    const done = ev.target.closest('[data-ssdone]');
+    if (!done) return;
+    if (done.dataset.ssdone === '1')
+      state.settings = await api.setSettings({
+        setupHidden: boxes()
+          .filter(b => !b.checked)
+          .map(b => b.dataset.sstab)
+      });
+    d.close();
+    d.remove();
+    if (state.tab === 'setup') renderSetup();
+  };
+  d.addEventListener('cancel', () => d.remove());
+  d.showModal();
+  all.length && d.querySelector('[data-sstab]').focus();
+}
 const setupColorOf = id => {
   const all = [SETUP_HERO, ...SETUP_GROUPS.flatMap(g => g[1])].find(t => t[0] === id);
   return all ? all[3] : 'race';
@@ -245,15 +301,21 @@ const setupTabsHtml = current => {
   const [hid, hlabel, hicon] = SETUP_HERO;
   const chip = ([id, label, icon, c]) =>
     `<button type="button" class="sstab ss-${c}" role="tab" aria-selected="${id === current}" data-id="${id}">${Icons.svg(icon, { size: 16, stroke: 1.8, cls: 'ssico' })}${esc(label)}</button>`;
-  return `<button type="button" class="ssbig" role="tab" aria-selected="${hid === current}" data-id="${hid}"><span class="ssbigico">${Icons.svg(hicon, { size: 24, stroke: 1.8 })}</span><span><strong>${esc(hlabel)}</strong><small>Where it all comes together</small></span></button><div class="ssnav"><div class="sssystems">${SETUP_GROUPS[0][1].map(chip).join('')}</div><div class="ssgroups">${SETUP_GROUPS.slice(
+  const hidden = setupShowHidden ? [] : setupHidden(),
+    shown = items => items.filter(t => !hidden.includes(t[0]) || t[0] === current),
+    n = setupHidden().length;
+  const tools = `<div class="sstools"><button type="button" class="btn ssmini" data-sschoose title="Hide the systems your club never uses">Choose systems…</button>${n ? `<button type="button" class="btn ssmini" data-ssall aria-pressed="${setupShowHidden}">${setupShowHidden ? 'Hide the ' + n + ' unused' : 'Show ' + n + ' hidden'}</button>` : ''}</div>`;
+  return `<button type="button" class="ssbig" role="tab" aria-selected="${hid === current}" data-id="${hid}"><span class="ssbigico">${Icons.svg(hicon, { size: 24, stroke: 1.8 })}</span><span><strong>${esc(hlabel)}</strong><small>Where it all comes together</small></span></button><div class="ssnav"><div class="sssystems">${shown(SETUP_GROUPS[0][1]).map(chip).join('')}</div><div class="ssgroups">${SETUP_GROUPS.slice(
     1
   )
-    .map(([name, items]) => {
+    .map(([name, allItems]) => {
+      const items = shown(allItems);
+      if (!items.length) return '';
       const active = items.find(x => x[0] === current),
         label = name === 'Setups' ? 'Rotations & Championships' : 'More Systems';
       return `<details class="ssgroup ssdropdown${active ? ' ss-' + active[3] : ''}"><summary${active ? ' class="sscurrent"' : ''}>${esc(active ? active[1] : label)}</summary><div class="sschips" aria-label="${esc(label)}">${items.map(chip).join('')}</div></details>`;
     })
-    .join('')}</div></div>`;
+    .join('')}</div>${tools}</div>`;
 };
 
 // Race Setup tab: the race setups you can pick on the Home tab, and the penalty systems they can use
@@ -280,7 +342,14 @@ async function renderSetup() {
   };
   strip.onclick = async e => {
     const b = e.target.closest('[data-id]');
-    if (!b) return;
+    if (!b) {
+      if (e.target.closest('[data-sschoose]')) return chooseSetupTabs();
+      if (e.target.closest('[data-ssall]')) {
+        setupShowHidden = !setupShowHidden;
+        return renderSetup();
+      }
+      return;
+    }
     const id = b.dataset.id;
     const sub = state.setupSub;
     // (the window goes on while a question is open: still on this page, with this same editor open?)

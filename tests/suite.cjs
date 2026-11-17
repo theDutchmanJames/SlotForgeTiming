@@ -289,4 +289,5 @@ module.exports = [
   ['dialogs.test.js', 'node-test'],
   ['racenight.test.js', 'node-test'],
   ['data.test.js', 'node-test'],
+  ['interface.test.js', 'node-test'],
 ];

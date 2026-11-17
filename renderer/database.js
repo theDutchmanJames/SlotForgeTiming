@@ -17,6 +17,14 @@ function openForm(e, item, preset) {
       const id = item?.rulePlugin || preset?.rulePlugin;
       if (id && !f.options.some(x => x[0] === id)) f.options.push([id, id + ' — unavailable']);
     }
+    // (2.3.0) the systems the club hid (Race Setup, Choose systems): their choice is left out, unless this setup uses one
+    const hide = typeof setupHiddenFields === 'function' ? setupHiddenFields() : [],
+      has = k => {
+        const v = (item || preset || {})[k];
+        return v !== undefined && v !== null && v !== '' && v !== 'none';
+      };
+    for (let i = fields.length - 1; i >= 0; i--)
+      if (!fields[i].custom && hide.includes(fields[i].key) && !has(fields[i].key)) fields.splice(i, 1);
   }
   if (e === 'slotcars') {
     const f = fields.find(f => f.key === 'tyreCompound');

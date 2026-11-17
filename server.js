@@ -297,6 +297,17 @@ function createServer(o) {
     tokens = new Map(); // token -> { pw: the password it was given for (a changed password logs everyone out), at: when }
   const TOKEN_MS = o.tokenMs ?? 12 * 3600e3,
     MAX_TOKENS = 32;
+  // Pairing a phone by QR code (2.3.0): a one-time code, valid for a few minutes, that logs one device in as the password would. It is made on this
+  // computer only (App Settings), is tied to the password of that moment, and a wrong code counts as a wrong password.
+  const pairs = new Map(), // code -> { pw, at }
+    PAIR_MS = o.pairMs ?? 10 * 60e3,
+    MAX_PAIRS = 8;
+  const issueToken = pw => {
+    const token = crypto.randomBytes(24).toString('hex');
+    tokens.set(token, { pw, at: Date.now() });
+    for (const [t, e] of tokens) if (tokens.size > MAX_TOKENS || Date.now() - e.at > TOKEN_MS) tokens.delete(t); // (the oldest go first)
+    return token;
+  };
   const tokenOk = (t, pw) => {
     const e = typeof t === 'string' && tokens.get(t);
     if (!e) return false;
@@ -436,9 +447,33 @@ function createServer(o) {
         if (what === 'director') return send(res, 200, { passwordSet: !!password() });
         return send(res, 404, { error: 'not found' });
       }
-      if (req.method === 'POST' && (p === '/api/auth' || p === '/api/command')) {
+      if (req.method === 'POST' && (p === '/api/auth' || p === '/api/command' || p === '/api/pair')) {
         if (!jsonPost(req)) return send(res, 415, { error: 'Send JSON' });
         if (!sameOrigin(req)) return send(res, 403, { error: 'Open this page by the address of the timing computer' });
+      }
+      if (req.method === 'POST' && p === '/api/pair') {
+        // log in with the one-time code of a QR code (the same guards as a password)
+        const b = await body(req),
+          pw = password(),
+          addr = String(req.socket.remoteAddress || ''),
+          mine = recOf(addr);
+        if (!pw) return send(res, 403, { error: 'nopassword' });
+        const wait = Math.max(mine.until, AUTH.all.until) - Date.now();
+        if (wait > 0) {
+          res.setHeader('Retry-After', String(Math.ceil(wait / 1000)));
+          return send(res, 429, { error: `Too many wrong tries. Try again in ${Math.ceil(wait / 1000)} s.` });
+        }
+        const code = typeof b.code === 'string' ? b.code : '',
+          e = pairs.get(code);
+        if (!e || Date.now() - e.at > PAIR_MS || e.pw !== pw) {
+          if (e) pairs.delete(code);
+          lockOf(mine, 5);
+          lockOf(AUTH.all, 20);
+          await new Promise(r => setTimeout(r, o.failDelay ?? 600));
+          return send(res, 401, { error: 'pair' });
+        }
+        pairs.delete(code); // (once)
+        return send(res, 200, { token: issueToken(pw) });
       }
       if (req.method === 'POST' && p === '/api/auth') {
         // log in to the Race Director page
@@ -474,10 +509,7 @@ function createServer(o) {
           mine.until = 0;
           AUTH.all.n = 0;
           AUTH.all.until = 0;
-          const token = crypto.randomBytes(24).toString('hex');
-          tokens.set(token, { pw, at: Date.now() });
-          for (const [t, e] of tokens) if (tokens.size > MAX_TOKENS || Date.now() - e.at > TOKEN_MS) tokens.delete(t); // (the oldest go first)
-          return send(res, 200, { token });
+          return send(res, 200, { token: issueToken(pw) });
         });
         AUTH.chain = turn.catch(() => {}).finally(() => AUTH.waiting--);
         return await turn;
@@ -568,7 +600,18 @@ function createServer(o) {
       const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
       clients.forEach(c => deliver(c, msg));
     },
-    clientCount: () => clients.size
+    clientCount: () => clients.size,
+    // a new one-time pairing code (null without a password) -> { code, expiresAt }
+    pairing: () => {
+      const pw = password();
+      if (!pw) return null;
+      for (const [c, e] of pairs) if (Date.now() - e.at > PAIR_MS) pairs.delete(c);
+      while (pairs.size >= MAX_PAIRS) pairs.delete(pairs.keys().next().value);
+      const code = crypto.randomBytes(16).toString('hex'),
+        at = Date.now();
+      pairs.set(code, { pw, at });
+      return { code, expiresAt: new Date(at + PAIR_MS).toISOString() };
+    }
   };
 }
 module.exports = {

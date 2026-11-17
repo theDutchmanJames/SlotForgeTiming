@@ -37,6 +37,10 @@
     }
     return v || {};
   };
+  // (2.3.0) a QR code of App Settings opens this page with a one-time code: it logs this device in to the Race Director, then the code is gone from the address
+  const pairCode = (/^#pair=([0-9a-f]{16,64})$/i.exec(location.hash) || [])[1] || '';
+  if (pairCode) history.replaceState(null, '', location.pathname + location.search + '#live');
+  let pairError = '';
   let token = store('slt-token'),
     base = {};
   const lists = { static: new Set(), push: new Set() },
@@ -122,6 +126,10 @@
     // the Race Director
     directorInfo: () => getJson('/api/director'),
     directorAuthed: () => !!token,
+    // the page to open first ('director' after scanning a pairing QR code, else '') and the pairing itself (resolves when done; pairError says why it failed)
+    startPage: () => (pairCode ? 'director' : ''),
+    pairing: () => paired,
+    pairError: () => pairError,
     directorLogin: async password => {
       const r = await postJson('/api/auth', { password });
       token = r.token;
@@ -148,5 +156,21 @@
     setCustomFieldGroup: no,
     exportPdf: async () => ({ saved: false })
   };
+  const paired = !pairCode
+    ? Promise.resolve(false)
+    : postJson('/api/pair', { code: pairCode }).then(
+        r => {
+          token = r.token;
+          store('slt-token', token);
+          return true;
+        },
+        e => {
+          pairError =
+            e.code === 'pair'
+              ? 'This QR code was already used or is too old. Make a new one in App Settings on the timing computer, or log in with the password.'
+              : 'Could not pair: ' + e.message;
+          return false;
+        }
+      );
   if (!location.hash) location.hash = '#live'; // a browser opens straight onto the Live Race pages
 })();
