@@ -543,7 +543,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   say('session record shows the driver who set it', node('sessionrecord').val.innerHTML.includes('Alex') && !node('sessionrecord').val.innerHTML.includes('Sam'));
   say('a lap faster than the old track record takes over the track record widget', node('trackrecord').val.innerHTML.includes('Alex') && !node('trackrecord').val.innerHTML.includes('4.500'));
   say('last lap list shows the newest laps of lane 1 (up to 3 per column)', (n => n >= 1 && n <= 3)((nodeOf('lastlap', 0).val.innerHTML.match(/class="lli"/g) || []).length || 1));
-  key('s');
+  key('s'); await until(() => phase() !== 'running' && phase() !== 'paused'); // (Stop asks first, in the app's own dialog: the race ends a moment later)
 
   // ---------- batch C: 5 start lights, random lights-out wait ----------
   store.layouts = [{ id: 'C1', name: 'C', ratioW: 16, ratioH: 9, widgets: [WB('lights', null), WB('flag', null)] }];
@@ -560,7 +560,7 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
     await until(() => phase() === 'running');
     say(`random wait between the two limits (${expect}s)`, Math.abs(run('live.lastWait') - expect) < 1e-9);
     say('lights follow the green flag when the race starts', lightsOn() === 5 && phase() === 'running');
-    key('s');
+    key('s'); await until(() => phase() !== 'running' && phase() !== 'paused'); // (Stop asks first, in the app's own dialog: the race ends a moment later)
   }
   run('state.rand = null');
 
@@ -589,19 +589,19 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   say('the pitstop widget shows the time of the stop', /^\d+\.\d{3}$/.test(nodeL('pitstop').val.innerHTML));
   await wait(60); key('1'); await wait(60); key('1'); await wait(60); key('1'); await wait(60); key('1');
   say('running dry retires the car (when set to retire)', eng0().cars[0].retired && eng0().cars[0].done && eng0().cars[0].laps.length === 6);
-  key('s');
+  key('s'); await until(() => phase() !== 'running' && phase() !== 'paused'); // (Stop asks first, in the app's own dialog: the race ends a moment later)
   // simulated cars pit by themselves when low
   await openRace(fuelSetup(), store.tracks[0], rows(1, 2)); els.sim.checked = true;
   key(' '); await until(() => phase() === 'running');
   await until(() => eng0().cars[0].pits.length >= 1 && eng0().cars[1].pits.length >= 1, 8000);
   say('simulated cars make their own pit stops and do not run dry', eng0().cars.every(c => c.pits.length >= 1 && !c.retired));
-  key('s'); els.sim.checked = false;
+  key('s'); await until(() => phase() !== 'running' && phase() !== 'paused'); els.sim.checked = false; // (Stop asks first, in the app's own dialog: the race ends a moment later)
   // stop mode: laps stop counting
   await openRace(fuelSetup({ fuelEmpty: 'stop' }), store.tracks[0], rows(1, 2));
   key(' '); await until(() => phase() === 'running');
   for (let k = 0; k < 6; k++) { await wait(60); key('1'); }
   say('"stop counting laps" keeps the car in the race but stops its laps', eng0().cars[0].laps.length === 3 && !eng0().cars[0].retired && phase() === 'running');
-  key('s');
+  key('s'); await until(() => phase() !== 'running' && phase() !== 'paused'); // (Stop asks first, in the app's own dialog: the race ends a moment later)
 
   // ---------- 1.0.0: what a finished race saves for the figures of Results: the lane of every lap, the lap with a pit stop, the pit stops and their time ----------
   { saved.length = 0; els.sim.checked = false;
@@ -681,12 +681,12 @@ const openRace = async (setup, track, r) => { setup = { restartAfterRed: 'resume
   key(' '); await until(() => phase() === 'running');
   await wait(60); key('1'); key('2');
   say('speed from the track length and the lap time, scaled km/h and real mph', /^\d+ km\/h$/.test(nodeL('speed').val.innerHTML) && /^[\d.]+ mph$/.test(run("live.nodes.find(n => n.w.type === 'speed' && n.w.lane === 1)").val.innerHTML));
-  key('s');
+  key('s'); await until(() => phase() !== 'running' && phase() !== 'paused'); // (Stop asks first, in the app's own dialog: the race ends a moment later)
   store.tracks[0].length = '';
   await openRace({ name: 'S', sessionType: 'practice', layout: 'S1' }, store.tracks[0], rows(1, 2));
   key(' '); await until(() => phase() === 'running'); await wait(60); key('1');
   say('a track without a length shows a dash', nodeL('speed').val.innerHTML === '–');
-  key('s');
+  key('s'); await until(() => phase() !== 'running' && phase() !== 'paused'); // (Stop asks first, in the app's own dialog: the race ends a moment later)
 
   // ---------- batch H: the race shared with the Live Race pages ----------
   const sharedRaceLogStart = sent.log.length;

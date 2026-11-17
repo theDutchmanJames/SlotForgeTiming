@@ -585,11 +585,21 @@ const LiveView = (() => {
         c => send({ type: 'review', ...c }),
         () => drawDirector($('lv-body'), false)
       );
-      body.onclick = e => {
+      body.onclick = async e => {
         const b = e.target.closest('[data-cmd]');
         if (!b) return cardsPanel ? cardsPanel.click(e.target) : adjPanel && adjPanel.click(e.target); // (not a button of the race: maybe one of the lane cards or of the Adjust folder)
         if (b.disabled) return;
-        if (b.dataset.cmd === 'stop' && !confirm('Stop the race now? The laps so far are saved.')) return;
+        if (b.dataset.cmd === 'stop') {
+          if (
+            !(await Dialog.confirm('Stop the race now? The laps so far are saved.', {
+              ok: 'Stop the race',
+              cancel: 'Keep racing',
+              danger: true
+            }))
+          )
+            return;
+          if (!['running', 'paused', 'between'].includes(V.dyn()?.phase)) return; // (the race goes on while the question is open: it may have ended by itself)
+        }
         send({
           type: b.dataset.cmd,
           lane: b.dataset.lane === undefined ? undefined : Number(b.dataset.lane),

@@ -392,7 +392,7 @@ async function mountManagerPage(box, e) {
         row.disabledSystems = disabledSystems;
         if (run === subRun && manager?.box === box && manager.e === e && box.isConnected !== false) await mountManager(box, e);
       } catch (err) {
-        alert('Could not change race system: ' + err.message);
+        Dialog.alert('Could not change race system: ' + err.message);
       } finally {
         systemSaveBusy = false;
         switches.forEach(button => {
@@ -441,7 +441,7 @@ async function mountManagerPage(box, e) {
         await api.add(e, setupCopyData(source, latest));
         if (manager?.box === box && manager.e === e && box.isConnected !== false) await mountManager(box, e);
       } catch (err) {
-        alert('Could not copy setup: ' + err.message);
+        Dialog.alert('Could not copy setup: ' + err.message);
       } finally {
         b.disabled = false;
       }
@@ -459,9 +459,9 @@ async function mountManagerPage(box, e) {
         s.linked === false
           ? ''
           : `\n\nThis also deletes ${n} saved ${n === 1 ? 'lap' : 'laps'} and the records they hold${e === 'drivers' || e === 'slotcars' ? ', and takes them out of the results of past races' : ''}.`;
-      if (!confirm(`Delete "${titleOf(e, it)}"?${extra}\n\nThis can't be undone.`)) return;
+      if (!(await Dialog.confirm(`Delete "${titleOf(e, it)}"?${extra}\n\nThis can't be undone.`, { ok: 'Delete', danger: true }))) return;
       await api.remove(e, it.id);
-      mountManager(box, e);
+      if (manager?.box === box && manager.e === e && box.isConnected !== false) mountManager(box, e); // (the list may have been left while the question was open)
     }
   };
   if (e === 'slotcars' && state.focusCar) {

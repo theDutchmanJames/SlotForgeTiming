@@ -84,9 +84,10 @@ async function renderRotations(box) {
     }
     if (
       b.dataset.del &&
-      confirm(
-        `Delete the rotation setup "${r.name}"?\n\nRace setups that use it plan their heats from their own settings again.\n\nThis can't be undone.`
-      )
+      (await Dialog.confirm(
+        `Delete the rotation setup "${r.name}"?\n\nRace setups that use it plan their heats from their own settings again.\n\nThis can't be undone.`,
+        { ok: 'Delete', danger: true }
+      ))
     ) {
       await api.remove('rotationsetups', r.id);
       renderRotations(box);
@@ -361,16 +362,20 @@ function renderRotationEditor(box) {
     d.note = e.target.value;
     mark();
   };
-  const resize = () => {
+  const resize = async () => {
     const res = Rot.resize(d, Number($('ro-n').value), Number($('ro-lanes').value));
-    if (
-      res.dropped > 0 &&
-      !confirm(
-        `This takes away ${res.dropped} ${res.dropped === 1 ? 'place' : 'places'} that no longer fit. Undo brings ${res.dropped === 1 ? 'it' : 'them'} back.\n\nContinue?`
-      )
-    ) {
-      renderRotationEditor(box);
-      return;
+    if (res.dropped > 0) {
+      const before = JSON.stringify(d);
+      const ok = await Dialog.confirm(
+        `This takes away ${res.dropped} ${res.dropped === 1 ? 'place' : 'places'} that no longer fit. Undo brings ${res.dropped === 1 ? 'it' : 'them'} back.\n\nContinue?`,
+        { ok: 'Take them away', danger: true }
+      );
+      if (!rotEd || rotEd.draft !== d) return; // (the editor was left while the question was open)
+      if (!ok || JSON.stringify(d) !== before) {
+        // (no, or the draft changed meanwhile: the plan worked out above no longer fits it)
+        renderRotationEditor(box);
+        return;
+      }
     }
     apply(res, true);
   };
@@ -400,8 +405,13 @@ function renderRotationEditor(box) {
       saving = false;
     }
   };
-  $('ro-back').onclick = () => {
-    if (rotEd.dirty && !confirm('Discard your unsaved changes to this rotation setup?')) return;
+  $('ro-back').onclick = async () => {
+    if (
+      rotEd.dirty &&
+      !(await Dialog.confirm('Discard your unsaved changes to this rotation setup?', { ok: 'Discard changes', danger: true }))
+    )
+      return;
+    if (!rotEd || rotEd.draft !== d) return; // (the editor was left another way while the question was open)
     draftUndoEnd(rotEd);
     rotEd = null;
     renderRotations(box);
@@ -498,7 +508,7 @@ function renderRotationEditor(box) {
       if (!changed) refresh();
     }
   });
-  box.onclick = ev => {
+  box.onclick = async ev => {
     if (drag.suppressed()) return; // (the click that comes after a drag is not a click)
     if (box.querySelectorAll)
       box.querySelectorAll('details.romenu[open]').forEach(m => {
@@ -539,14 +549,17 @@ function renderRotationEditor(box) {
       const p = n('delp'),
         res = Rot.removeParticipant(d, p),
         who = Rot.nameOf(d, p);
-      if (
-        !res.error &&
-        res.dropped > 0 &&
-        !confirm(
-          `${who} is in ${res.dropped} ${res.dropped === 1 ? 'heat' : 'heats'}. Taking them out removes them from ${res.dropped === 1 ? 'that heat' : 'those heats'}, and everybody after them moves up one number. Undo brings them back.\n\nContinue?`
+      if (!res.error && res.dropped > 0) {
+        const before = JSON.stringify(d);
+        if (
+          !(await Dialog.confirm(
+            `${who} is in ${res.dropped} ${res.dropped === 1 ? 'heat' : 'heats'}. Taking them out removes them from ${res.dropped === 1 ? 'that heat' : 'those heats'}, and everybody after them moves up one number. Undo brings them back.\n\nContinue?`,
+            { ok: 'Take them out', danger: true }
+          ))
         )
-      )
-        return;
+          return;
+        if (!rotEd || rotEd.draft !== d || JSON.stringify(d) !== before) return; // (the draft changed while the question was open)
+      }
       apply(res, true);
       return;
     }
@@ -566,9 +579,13 @@ function renderRotationEditor(box) {
     if (b.id === 'ro-gen') {
       if (
         d.heats.some(h => h.places.length) &&
-        !confirm('Replace all the heats with a new plan?\n\nLocked heats are replaced too. Undo brings the old heats back.')
+        !(await Dialog.confirm('Replace all the heats with a new plan?\n\nLocked heats are replaced too. Undo brings the old heats back.', {
+          ok: 'Replace heats',
+          danger: true
+        }))
       )
         return;
+      if (!rotEd || rotEd.draft !== d) return;
       apply(Rot.generate(d, gen), true);
       return;
     }

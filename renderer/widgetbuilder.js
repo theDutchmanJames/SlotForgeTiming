@@ -106,10 +106,13 @@ async function renderWidgetBuilder(box) {
     }
     if (
       b.dataset.del &&
-      confirm(`Delete the widget "${r.name}"?\n\nLayouts that already use it keep their copy.\n\nThis can't be undone.`)
+      (await Dialog.confirm(`Delete the widget "${r.name}"?\n\nLayouts that already use it keep their copy.\n\nThis can't be undone.`, {
+        ok: 'Delete',
+        danger: true
+      }))
     ) {
       await api.remove('customwidgets', r.id);
-      renderWidgetBuilder(box);
+      if (box.isConnected !== false) renderWidgetBuilder(box); // (the page may have been left while the question was open)
     }
   };
 }
@@ -275,8 +278,17 @@ function renderWidgetBuilderEditor(box) {
       }
     };
   }
-  $('wb-back').onclick = () => {
-    if (wbEd.dirty && !confirm('Discard your unsaved changes to this widget?')) return;
+  $('wb-back').onclick = async () => {
+    if (
+      wbEd.dirty &&
+      !(await Dialog.confirm('Discard your unsaved changes to this widget?', {
+        ok: 'Discard changes',
+        cancel: 'Keep editing',
+        danger: true
+      }))
+    )
+      return;
+    if (!wbEd || wbEd.draft !== d) return; // (the widget was left while the question was open)
     draftUndoEnd(wbEd);
     wbEd = null;
     renderWidgetBuilder(box);

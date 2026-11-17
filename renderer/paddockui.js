@@ -254,17 +254,21 @@
         await loadCatalogue();
       });
     q('[data-disconnect]').onclick = () => run(() => api.paddockDisconnect(false));
-    q('[data-forget]').onclick = () => {
+    q('[data-forget]').onclick = async () => {
+      const host = status.connection?.databaseId;
       if (
-        confirm(
-          'Forget this host? Linked cars and saved results stay local. Pending results can only be delivered to their original Paddock database.'
-        )
+        !(await Dialog.confirm(
+          'Forget this host? Linked cars and saved results stay local. Pending results can only be delivered to their original Paddock database.',
+          { ok: 'Forget host', danger: true }
+        ))
       )
-        run(async () => {
-          await api.paddockDisconnect(true);
-          catalog = [];
-          q('[data-address]').value = '';
-        });
+        return;
+      if (!status.connection || status.connection.mode === 'local' || status.connection.databaseId !== host) return; // (the connection changed while asking)
+      run(async () => {
+        await api.paddockDisconnect(true);
+        catalog = [];
+        q('[data-address]').value = '';
+      });
     };
     q('[data-browse]').onclick = () =>
       run(async () => {

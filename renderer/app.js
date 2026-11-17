@@ -144,7 +144,7 @@ function renderTabs(el, items, current, onPick, icons = {}) {
     .join('');
   el.onclick = e => {
     const b = e.target.closest('[data-id]');
-    if (b) onPick(b.dataset.id);
+    if (b) return onPick(b.dataset.id); // (a pick may ask first: the caller can wait for it)
   };
 }
 
@@ -238,7 +238,7 @@ async function setTimingHw(id) {
   // saves the choice and lets go of the hardware that was in use; connecting the new one and drawing the page is up to the caller
   const old = Hardware.timingChosen(state.settings);
   if (old !== id && raceKept()) {
-    if (typeof alert === 'function') alert('Finish or leave the race before changing its timing hardware.');
+    Dialog.alert('Finish or leave the race before changing its timing hardware.');
     return false;
   }
   state.settings = await api.setSettings({ timingHw: id });
@@ -613,7 +613,7 @@ async function renderGeneralSettings(box) {
     try {
       state.settings = await api.setSettings({ homeHeader: await resizeImage(f, 1600), homeHeaderPos: { x: 50, y: 50 } });
     } catch (x) {
-      alert(x.message);
+      Dialog.alert(x.message);
     }
     renderSettings();
   };
@@ -629,7 +629,7 @@ async function renderGeneralSettings(box) {
     try {
       state.settings = await api.setSettings({ clubLogo: await resizeImage(f, 600, true), homeLogoPos: { x: 50, y: 50 } });
     } catch (x) {
-      alert(x.message);
+      Dialog.alert(x.message);
     }
     renderSettings();
   };
@@ -1021,13 +1021,19 @@ async function render() {
     if (h) h.innerHTML = '';
   }
   showRace(state.tab === 'race');
-  const pick = id => {
+  const pick = async id => {
     if (id === 'live') {
       if (typeof PerfUI !== 'undefined') PerfUI.mark('Live Race tab pressed');
       api.liveOpen();
       return;
     } // Live Race is the second screen: it opens its own window, also during a race
-    if (typeof editorDirty === 'function' && editorDirty() && !confirm('Discard your unsaved layout changes?')) return;
+    if (typeof editorDirty === 'function' && editorDirty()) {
+      const ed = state.editing,
+        tab = state.tab;
+      if (!(await Dialog.confirm('Discard your unsaved layout changes?', { ok: 'Discard changes', cancel: 'Keep editing', danger: true })))
+        return;
+      if (state.editing !== ed || state.tab !== tab) return; // (the editor was closed, or another tab opened, meanwhile)
+    }
     if (typeof editorLeave === 'function') editorLeave();
     if (typeof PerfUI !== 'undefined') PerfUI.mark(`Tab: ${id}`); // (for the Performance report, 1.60.1: what was on the screen when the figures changed)
     state.tab = id;

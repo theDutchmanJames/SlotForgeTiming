@@ -278,31 +278,41 @@ async function renderSetup() {
       }
     }
   };
-  strip.onclick = e => {
+  strip.onclick = async e => {
     const b = e.target.closest('[data-id]');
     if (!b) return;
     const id = b.dataset.id;
+    const sub = state.setupSub;
+    // (the window goes on while a question is open: still on this page, with this same editor open?)
+    const here = () => state.tab === 'setup' && state.setupSub === sub && strip.isConnected !== false;
+    const discard = async (ed, message) =>
+      !ed.dirty || ((await Dialog.confirm(message, { ok: 'Discard changes', cancel: 'Keep editing', danger: true })) && here());
     // the rotation setup editor is closed by another tab: ask first when there are changes that are not saved
     if (rotEd && id !== 'rotation') {
-      if (rotEd.dirty && !confirm('Discard your unsaved changes to this rotation setup?')) return;
+      const ed = rotEd;
+      if (!(await discard(ed, 'Discard your unsaved changes to this rotation setup?')) || rotEd !== ed) return;
       draftUndoEnd(rotEd);
       rotEd = null;
     }
     if (chEd && id !== 'championships') {
-      if (chEd.dirty && !confirm('Discard your unsaved changes to this championship?')) return;
+      const ed = chEd;
+      if (!(await discard(ed, 'Discard your unsaved changes to this championship?')) || chEd !== ed) return;
       draftUndoEnd(chEd);
       chEd = null;
     }
     if (typeof resourceEditor !== 'undefined' && resourceEditor && id !== 'resources') {
-      if (resourceEditor.dirty && !confirm('Discard unsaved Resource System changes?')) return;
+      const ed = resourceEditor;
+      if (!(await discard(ed, 'Discard unsaved Resource System changes?')) || resourceEditor !== ed) return;
       resourceEditor = null;
     }
     if (typeof multiEditor !== 'undefined' && multiEditor && id !== 'multiclass') {
-      if (multiEditor.dirty && !confirm('Discard unsaved Multi-Class changes?')) return;
+      const ed = multiEditor;
+      if (!(await discard(ed, 'Discard unsaved Multi-Class changes?')) || multiEditor !== ed) return;
       multiEditor = null;
     }
     if (typeof rivalEditor !== 'undefined' && rivalEditor && id !== 'virtualrivals') {
-      if (rivalEditor.dirty && !confirm('Discard unsaved Virtual Rival changes?')) return;
+      const ed = rivalEditor;
+      if (!(await discard(ed, 'Discard unsaved Virtual Rival changes?')) || rivalEditor !== ed) return;
       rivalEditor.observer?.disconnect();
       rivalEditor = null;
     }
@@ -404,12 +414,24 @@ async function renderCustom() {
       ['pluginpages', 'Plugin Pages & Tools']
     ],
     state.customSub,
-    id => {
+    async id => {
       // the picture set, widget and chart editors are closed by another tab: ask first when there are changes that are not saved
       // (the audio set editor, audEd, is kept open with its draft when you change tab and comes back with the Audio Settings tab, so nothing is lost here; closing the window asks about it, see unsavedDrafts)
-      if (imgEd && imgEd.dirty && !confirm('Discard your unsaved changes to this picture set?')) return;
-      if (wbEd && wbEd.dirty && !confirm('Discard your unsaved changes to this widget?')) return;
-      if (typeof chartEd !== 'undefined' && chartEd && chartEd.dirty && !confirm('Discard unsaved changes to this chart?')) return;
+      const sub = state.customSub,
+        was = [imgEd, wbEd, typeof chartEd !== 'undefined' ? chartEd : null];
+      // (the window goes on while a question is open: still on this page, with the same editors open?)
+      const here = () =>
+        state.tab === 'custom' &&
+        !state.editing &&
+        state.customSub === sub &&
+        imgEd === was[0] &&
+        wbEd === was[1] &&
+        (typeof chartEd !== 'undefined' ? chartEd : null) === was[2];
+      const discard = async (ed, message) =>
+        !(ed && ed.dirty) || ((await Dialog.confirm(message, { ok: 'Discard changes', cancel: 'Keep editing', danger: true })) && here());
+      if (!(await discard(imgEd, 'Discard your unsaved changes to this picture set?'))) return;
+      if (!(await discard(wbEd, 'Discard your unsaved changes to this widget?'))) return;
+      if (typeof chartEd !== 'undefined' && !(await discard(chartEd, 'Discard unsaved changes to this chart?'))) return;
       if (typeof chartEd !== 'undefined') {
         if (chartEd && chartEd.observer) chartEd.observer.disconnect();
         chartEd = null;
@@ -570,15 +592,16 @@ async function renderImageSets(box) {
       }
       if (
         b.dataset.del &&
-        confirm(
-          `Delete the picture set "${r.name}"?\n\nWidgets that use it show text or a number instead, until you choose another set.\n\nThis can't be undone.`
-        )
+        (await Dialog.confirm(
+          `Delete the picture set "${r.name}"?\n\nWidgets that use it show text or a number instead, until you choose another set.\n\nThis can't be undone.`,
+          { ok: 'Delete', danger: true }
+        ))
       ) {
         await api.remove('imagesets', r.id);
         if (box.isConnected !== false && box.onclick === onSetClick) await renderImageSets(box);
       }
     } catch (error) {
-      alert(error.message);
+      Dialog.alert(error.message);
     } finally {
       b.disabled = false;
     }
@@ -685,8 +708,19 @@ function renderImageSetEditor(box) {
       imgSaving = false;
     }
   };
-  $('is-back').onclick = () => {
-    if (imgEd.dirty && !confirm('Discard your unsaved changes to this picture set?')) return;
+  $('is-back').onclick = async () => {
+    const ed = imgEd;
+    if (ed.dirty) {
+      if (
+        !(await Dialog.confirm('Discard your unsaved changes to this picture set?', {
+          ok: 'Discard changes',
+          cancel: 'Keep editing',
+          danger: true
+        }))
+      )
+        return;
+      if (imgEd !== ed || state.tab !== 'custom') return; // (the editor was closed meanwhile)
+    }
     draftUndoEnd(imgEd);
     imgEd = null;
     renderImageSets(box);
@@ -794,10 +828,16 @@ async function renderRowList(box) {
     }
     if (
       b.dataset.del &&
-      confirm(`Delete the row design "${l.name}"?\n\nLeaderboards that use it show the classic table instead.\n\nThis can't be undone.`)
+      (await Dialog.confirm(
+        `Delete the row design "${l.name}"?\n\nLeaderboards that use it show the classic table instead.\n\nThis can't be undone.`,
+        {
+          ok: 'Delete',
+          danger: true
+        }
+      ))
     ) {
       await api.remove('rowdesigns', l.id);
-      renderRowList(box);
+      if (box.isConnected !== false && !state.editing) renderRowList(box); // (the list is still on screen)
     }
   };
 }
@@ -858,7 +898,7 @@ async function renderLayoutList(box) {
         l = api.getRecord ? await api.getRecord('layouts', l.id) : l;
         if (!l) throw Error('This layout is no longer available. Refresh the list.');
       } catch (error) {
-        alert(error.message);
+        Dialog.alert(error.message);
         return;
       }
     }
@@ -896,12 +936,13 @@ async function renderLayoutList(box) {
     }
     if (
       b.dataset.del &&
-      confirm(
-        `Delete the layout "${l.name}"?\n\nRace setups that use it go back to the default layout (the default token layout for a Time Token Session).\n\nThis can't be undone.`
-      )
+      (await Dialog.confirm(
+        `Delete the layout "${l.name}"?\n\nRace setups that use it go back to the default layout (the default token layout for a Time Token Session).\n\nThis can't be undone.`,
+        { ok: 'Delete', danger: true }
+      ))
     ) {
       await api.remove('layouts', l.id);
-      renderLayoutList(box);
+      if (box.isConnected !== false && !state.editing) renderLayoutList(box); // (the list is still on screen)
     }
   };
 }
@@ -1825,8 +1866,12 @@ function renderEditor() {
   $('e-redo').onclick = () => window.editorRedo();
   ed.syncUndo();
   $('e-save').onclick = () => window.editorSave();
-  $('e-back').onclick = () => {
-    if (ed.dirty && !confirm('Discard your unsaved layout changes?')) return;
+  $('e-back').onclick = async () => {
+    if (ed.dirty) {
+      if (!(await Dialog.confirm('Discard your unsaved layout changes?', { ok: 'Discard changes', cancel: 'Keep editing', danger: true })))
+        return;
+      if (state.editing !== ed) return; // (the editor was closed meanwhile)
+    }
     editorLeave();
     render();
   };

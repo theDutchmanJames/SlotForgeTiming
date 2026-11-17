@@ -1332,7 +1332,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   say('1.48.0: saving stores the ambient folder: the settings of the folder, the file of a sound and its options (volume, wait, which cars, how close, stop at the pit exit, not again within), and a sound that is switched off',
     addA && addA[2].ambVolume === 0.5 && addA[2].ambDuck === false && addA[2].ambDuckLevel === 20 && addA[2].ambMax === 3 && addA[2].calls.ambpass.lines[0].file === 'data:audio/mp3;base64,AAAA' && addA[2].calls.ambpass.vol === 60 && addA[2].calls.ambpass.delay === 2.5 && addA[2].calls.ambpass.who === 'close' && addA[2].calls.ambpass.near === 2 && addA[2].calls.ambpass.cooldown === 12 && addA[2].calls.ambpass.coolFor === 'driver' && addA[2].calls.ambpitwork.cut === false && addA[2].calls.ambyellow.on === false && addA[2].calls.ambcrowd.fadeIn === 1.5 && addA[2].calls.ambcrowd.fadeOut === 4);
   say('...and the conditions of the sentences and the wait of the calls', addA && JSON.stringify(addA[2].calls.newleader.lines[1].only) === '{"driver":"d2","top":3}' && addA[2].calls.newleader.lines[0].only.top === 4 && addA[2].calls.overtake.cooldown === 45 && addA[2].calls.overtake.coolFor === 'driver' && !('only' in addA[2].calls.pitin.lines[0]) && addA[2].calls.fastestlap.lines[0].only === undefined && addA[2].calls.winner.cooldown === undefined);
-  E('au-back').onclick(); await new Promise(r=>setTimeout(r,50));
+  await E('au-back').onclick(); await new Promise(r=>setTimeout(r,50));
   say('the saved set is in the list', E('setupbox').innerHTML.includes('Commentator'));
   say('1.48.0: the list counts the calls that are on out of the 92 calls only (the ambient sounds in the set are not calls)', (() => { const m = /Commentator<\/td><td>[^<]*<\/td><td>(\d+) of (\d+)</.exec(E('setupbox').innerHTML), on = run('Announcer.CALLS').filter(c => addA[2].calls[c.id] && addA[2].calls[c.id].on !== false).length; return !!m && Number(m[2]) === 134 && Number(m[1]) === on && on <= 92 && Object.keys(addA[2].calls).length > 92; })());
   store.drivers = [{ id: 'd1', name: 'Alex' }, { id: 'd2', name: 'Sam' }]; run('audDrivers = []');
@@ -1342,7 +1342,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   say('...the conditions and the wait show again when it is edited (with the drivers of the database, which are fetched when the editor opens)', run('audDrivers').map(x => x.name).join() === 'Alex,Sam' && E('setupbox').innerHTML.includes('<option value="">anyone</option><option value="d1">Alex</option><option value="d2" selected>Sam</option>') && JSON.stringify(run('audEd.draft.calls.newleader.lines[1].only')) === '{"driver":"d2","top":3}' && run('audEd.draft.calls.overtake.cooldown') === 45 && E('setupbox').innerHTML.includes('data-cond="top" data-line="newleader:1" min="1" max="99" step="1" value="3"') && E('setupbox').innerHTML.includes('data-cool="overtake" min="1" max="3600" step="1" value="45"'));
   say('...and they show again when it is edited', E('setupbox').innerHTML.includes('id="au-nearrecord" min="0.01" max="5" step="0.01" value="0.25"') && E('setupbox').innerHTML.includes('id="au-nolap" min="5" max="600" step="1" value="45"'));
   say('1.48.0: editing a saved set shows its ambient settings and sounds again (volume 50, lowering off, 3 at once, the file, the volume of the sound), and the header counts the file', E('setupbox').innerHTML.includes('id="au-ambvol" min="0" max="100" step="5" value="50"') && !E('setupbox').innerHTML.includes('id="au-ambduck" checked') && E('setupbox').innerHTML.includes('id="au-ambdlvl" min="0" max="100" step="5" value="20" style="width:5.5em" disabled') && E('setupbox').innerHTML.includes('id="au-ambmax" min="1" max="16" step="1" value="3"') && E('setupbox').innerHTML.includes('data-nofile="ambpass:0">Remove file') && E('setupbox').innerHTML.includes('data-ambopt="vol:ambpass" min="0" max="100" step="5" value="60"') && E('setupbox').innerHTML.includes('1 of 39 sounds have a file'));
-  E('au-back').onclick(); await new Promise(r=>setTimeout(r,50));
+  await E('au-back').onclick(); await new Promise(r=>setTimeout(r,50));
   const nD=calls.length; await E('setupbox').onclick({target:{closest:()=>({dataset:{dup:'L1'}})}});
   const dupA=calls.slice(nD).find(c=>c[0]==='add'&&c[1]==='audiosets');
   say('duplicating an audio set keeps its race distances', dupA && dupA[2].name==='Commentator (copy)' && dupA[2].distances==='25, 50, 75' && dupA[2].lapsToGo==='5, 2' && dupA[2].minutesToGo==='2, 1' && dupA[2].closeGap===1.5 && dupA[2].battleLaps===4);
@@ -1358,7 +1358,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   E('setupbox').oninput({target:{dataset:{text:'redflag:0'},value:'  '}});
   await E('setupbox').onclick({target:{closest:()=>({dataset:{test:'redflag:0'}})}});
   say('the Test button says so when the sentence is empty', E('au-msg').textContent==='This sentence is empty.');
-  run("Sound.state.backend=null"); E('au-back').onclick(); await new Promise(r=>setTimeout(r,50));
+  run("Sound.state.backend=null"); await E('au-back').onclick(); await new Promise(r=>setTimeout(r,50));
   run("state.tab='custom'; state.customSub='widgets'"); await run('render()');
   say('Customization has a Widget Builder tab, and its list starts empty with a New button', E('customtabs').innerHTML.includes('Widget Builder') && E('setupbox').innerHTML.includes('id="newwb"') && E('setupbox').innerHTML.includes('No widgets yet'));
   await E('setupbox').onclick({target:{closest:()=>({id:'newwb',dataset:{}})}});
@@ -1380,7 +1380,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   const nWI=calls.length; E('wb-name').oninput({target:{value:'Trophy'}}); await E('wb-save').onclick();
   const addWI=calls.slice(nWI).find(c=>c[0]==='update'&&c[1]==='customwidgets'); if(addWI) addWI[2]=addWI[3];
   say('saving an image widget stores its rules', addWI && addWI[2].type==='imagelane' && addWI[2].rules.length===1 && addWI[2].rules[0].var==='position' && addWI[2].rules[0].value==='1');
-  E('wb-back').onclick(); await new Promise(r=>setTimeout(r,50));
+  await E('wb-back').onclick(); await new Promise(r=>setTimeout(r,50));
   say('the saved widget is in the list', E('setupbox').innerHTML.includes('Trophy') && E('setupbox').innerHTML.includes('1 rule(s)'));
   store.tracks=[{id:'t1',name:'Living room',lanes:2}]; run("state.tab='settings'; state.settingsSub='transfer'"); await run('render()');
   say('App Settings has an Import and Export tab with the groups, an export button and an import button', ['Import and Export','Database','Look and sound','History','id="tr-export"','id="tr-open"'].every(t=>(E('settingstabs').innerHTML+E('settingsbox').innerHTML).includes(t)) && E('settingsbox').innerHTML.includes('Living room') && E('settingsbox').innerHTML.includes('disabled'));
@@ -4228,12 +4228,12 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     { const ge=document.getElementById; document.getElementById=id=>id==='au-undo'?null:ge(id); const r0=run('audEd.draft.pitch'), pd=undoKey(); document.getElementById=ge; say('the keys do nothing while the editor is not on the screen', pd===0 && run('audEd.draft.pitch')===r0); }
     { ctx.__dlgWas=run('dlg.open'); run('dlg.open=true'); const pd=undoKey(); run('dlg.open=__dlgWas'); say('...nor while a window (a dialog) is open', pd===0); }
     // leaving
-    const hist1=run('audEd.history'); E('au-back').onclick();
+    const hist1=run('audEd.history'); await E('au-back').onclick();
     say('leaving the editor forgets its steps and takes its key off', run('audEd')===null && hist1.stats().undo===0 && !hist1.canUndo() && run('draftKeyHandler')===null);
     await run('render()'); { const id=store.audiosets[store.audiosets.length-1].id; await E('setupbox').onclick({target:{closest:()=>({dataset:{edit:id}})}});
       say('a set opened from the list starts with no steps and nothing unsaved', hs('audEd').undo===0 && run('audEd.dirty')===false && E('au-undo').disabled===true && E('au-redo').disabled===true);
       E('au-pitch').onchange({target:{value:'1.9'}}); say('...a change there is unsaved, and undoing it is clean', run('audEd.dirty')===true && (undoKey(), run('audEd.dirty')===false));
-      E('au-back').onclick(); }
+      await E('au-back').onclick(); }
 
     // ---------- Image Settings ----------
     run('imgEd=null; resizeImage = async () => "data:pic"'); await open('images','newset');
@@ -4263,14 +4263,14 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     E('is-steps').onchange({target:{value:'6'}}); say('a change after saving is unsaved', run('imgEd.dirty')===true); undoKey(); say('...and undoing it is clean', run('imgEd.dirty')===false);
     undoKey(); say('undoing past what was saved is unsaved again', run('imgEd.dirty')===true); redoKey(); say('...and clean after Redo', run('imgEd.dirty')===false);
     { const ge=document.getElementById; document.getElementById=id=>id==='is-undo'?null:ge(id); const before=run('imgEd.draft.name'), pd=undoKey(); document.getElementById=ge; say('the keys do nothing while the picture set editor is not on the screen', pd===0 && run('imgEd.draft.name')===before); }
-    const hist2=run('imgEd.history'); E('is-back').onclick(); say('leaving the picture set editor forgets its steps', run('imgEd')===null && hist2.stats().undo===0 && run('draftKeyHandler')===null);
+    const hist2=run('imgEd.history'); await E('is-back').onclick(); say('leaving the picture set editor forgets its steps', run('imgEd')===null && hist2.stats().undo===0 && run('draftKeyHandler')===null);
     await open('images','newset'); E('is-kind').onchange({target:{value:'avatars'}});
     say('Image Settings: a set of Avatars has eight slots, one for each lane, each showing the standard avatar of the lane until you add your own', (html().match(/data-slot=/g)||[]).length===8 && ['Lane 1','Lane 8'].every(t=>html().includes('<td>'+t+'</td>')) && (html().match(/class="optimg dim"/g)||[]).length===8 && html().includes('The Avatar widget shows the picture of the driver') && html().includes('keep their transparency') && html().includes('General > Pictures'));
     await E('setupbox').onchange({target:{dataset:{slot:'3'},files:[{}]}});
     say('...a picture added for lane 3 is kept under "3", and only that lane stops showing the standard avatar', run('imgEd.draft.images["3"]')==='data:pic' && (html().match(/class="optimg dim"/g)||[]).length===7 && (html().match(/data-clear=/g)||[]).length===1);
     E('is-name').oninput({target:{value:'Club drivers'}}); const nAv=calls.length; await E('is-save').onclick();
     say('...and it is saved as a set of the kind avatars with that picture', calls.slice(nAv).some(c=>c[0]==='add'&&c[1]==='imagesets'&&c[2].kind==='avatars'&&c[2].name==='Club drivers'&&c[2].images['3']==='data:pic'));
-    E('is-back').onclick();
+    await E('is-back').onclick();
     // 1.5.0: picture sets for the Tyres, Weather Forecast and Track Conditions widgets
     await open('images','newset');
     say('Image Settings (1.5.0): the choices of what a set is for are fuel, flag, lights, avatars, tyres, weather, conditions', run('SET_KINDS.map(k=>k[0]).join()')==='fuel,flag,lights,avatars,tyres,weather,conditions' && ['Tyres (a picture per tyre)','Weather (a picture per state of the weather)','Track conditions (an icon per item)'].every(t=>html().includes(t)));
@@ -4281,19 +4281,19 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     say('...a picture added for the Supersoft is kept under "SS", and only that tyre stops showing the standard picture', run('imgEd.draft.images["SS"]')==='data:pic' && (html().match(/class="setslot"/g)||[]).length===8 && (html().match(/data-clear=/g)||[]).length===1);
     E('is-name').oninput({target:{value:'Rubber'}}); const nTy=calls.length; await E('is-save').onclick();
     say('...it is saved as a set of the kind tyres with that picture', calls.slice(nTy).some(c=>c[0]==='add'&&c[1]==='imagesets'&&c[2].kind==='tyres'&&c[2].name==='Rubber'&&c[2].images.SS==='data:pic'));
-    E('is-back').onclick();
+    await E('is-back').onclick();
     await open('images','newset'); E('is-kind').onchange({target:{value:'weather'}});
     say('...a set of Weather has four slots: Dry, Cloudy, Wet and Clearing, with the drawn pictures dimmed', (html().match(/data-slot=/g)||[]).length===4 && ['Dry','Cloudy','Wet','Clearing'].every(t=>html().includes('<td>'+t+'</td>')) && (html().match(/class="setslot"/g)||[]).length===4 && (html().match(/<svg class="wxic"/g)||[]).length===4 && html().includes('One picture for each state of the weather'));
     say('...its table is headed State, the states in the order Dry, Cloudy, Wet, Clearing', html().includes('<th>State</th>') && !html().includes('<th>Tyre</th>') && !html().includes('<th>Item</th>') && html().indexOf('<td>Dry</td>')<html().indexOf('<td>Cloudy</td>') && html().indexOf('<td>Cloudy</td>')<html().indexOf('<td>Wet</td>') && html().indexOf('<td>Wet</td>')<html().indexOf('<td>Clearing</td>'));
     await E('setupbox').onchange({target:{dataset:{slot:'clearing'},files:[{}]}}); E('is-name').oninput({target:{value:'Skies'}}); const nWe=calls.length; await E('is-save').onclick();
     say('...and is saved as a set of the kind weather', calls.slice(nWe).some(c=>c[0]==='add'&&c[1]==='imagesets'&&c[2].kind==='weather'&&c[2].images.clearing==='data:pic'));
-    E('is-back').onclick();
+    await E('is-back').onclick();
     await open('images','newset'); E('is-kind').onchange({target:{value:'conditions'}});
     say('...a set of Track conditions has four slots: track temperature, air temperature, wind speed and wind direction (to be drawn pointing up)', (html().match(/data-slot=/g)||[]).length===4 && ['Track temperature','Air temperature','Wind speed'].every(t=>html().includes('<td>'+t+'</td>')) && html().includes('Wind direction (draw it pointing up') && (html().match(/class="setslot"/g)||[]).length===4 && html().includes('Draw the wind direction pointing up'));
     say('...its table is headed Item, and the items come in the order track temperature, air temperature, wind speed, wind direction', html().includes('<th>Item</th>') && !html().includes('<th>Tyre</th>') && !html().includes('<th>State</th>') && html().indexOf('<td>Track temperature</td>')<html().indexOf('<td>Air temperature</td>') && html().indexOf('<td>Air temperature</td>')<html().indexOf('<td>Wind speed</td>') && html().indexOf('<td>Wind speed</td>')<html().indexOf('<td>Wind direction'));
     await E('setupbox').onchange({target:{dataset:{slot:'winddir'},files:[{}]}}); E('is-name').oninput({target:{value:'Gauges'}}); const nCo=calls.length; await E('is-save').onclick();
     say('...and is saved as a set of the kind conditions', calls.slice(nCo).some(c=>c[0]==='add'&&c[1]==='imagesets'&&c[2].kind==='conditions'&&c[2].images.winddir==='data:pic'));
-    E('is-back').onclick();
+    await E('is-back').onclick();
     say('the list of the sets says how many pictures of nine tyres, four weather states and four conditions it has', await (async()=>{ await open('images'); const h=html(); return h.includes('Tyres (a picture per tyre)') && h.includes('Weather (a picture per state of the weather)') && h.includes('Track conditions (an icon per item)') && h.includes('>1 of 9<') && (h.match(/>1 of 4</g)||[]).length>=2; })());
     // switching to another tab of Customization closes the editor and forgets its steps
     await open('images','newset'); E('is-steps').onchange({target:{value:'5'}}); const hist3=run('imgEd.history'); ctx.__t={dataset:{id:'audio'}};
@@ -4334,9 +4334,9 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
       undoKey(); say('...Undo still works', run('wbEd.draft.textSize')===40); redoKey();
       answer=true; await tab('rows'); say('...yes closes it and opens the other tab', asked.length===2 && run('wbEd')===null && h2.stats().undo===0 && run('state.customSub')==='rows' && run('draftKeyHandler')===null);
       // the Back button of the widget builder asks the same question
-      answer=false; asked.length=0; await openEdit('widgets','wq1'); E('wb-size').onchange({target:{value:'45'}}); E('wb-back').onclick();
+      answer=false; asked.length=0; await openEdit('widgets','wq1'); E('wb-size').onchange({target:{value:'45'}}); await E('wb-back').onclick();
       say('the Back button of the widget builder asks the same question', asked.length===1 && asked[0]==='Discard your unsaved changes to this widget?' && run('wbEd')!==null);
-      answer=true; E('wb-back').onclick(); say('...and yes leaves', run('wbEd')===null);
+      answer=true; await E('wb-back').onclick(); say('...and yes leaves', run('wbEd')===null);
       // the audio editor is kept when you change tab (you come back to it), so there is nothing to ask
       answer=false; asked.length=0; run('audEd=null'); await open('audio','newaud'); E('au-rate').onchange({target:{value:'1.3'}}); await tab('layouts');
       say('the audio set editor, which stays open when you change tab, is not asked about', asked.length===0 && run('audEd')!==null && run('audEd.dirty')===true && run('state.customSub')==='layouts');
@@ -4367,7 +4367,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     E('wb-w').onchange({target:{value:'500'}}); say('a change after saving is unsaved', run('wbEd.dirty')===true); undoKey(); say('...and undoing it is clean', run('wbEd.dirty')===false);
     undoKey(); say('undoing past what was saved is unsaved again', run('wbEd.dirty')===true); redoKey(); say('...and clean after Redo', run('wbEd.dirty')===false);
     { const ge=document.getElementById; document.getElementById=id=>id==='wb-undo'?null:ge(id); const before=run('wbEd.draft.name'), pd=undoKey(); document.getElementById=ge; say('the keys do nothing while the widget builder is not on the screen', pd===0 && run('wbEd.draft.name')===before); }
-    const hist4=run('wbEd.history'); E('wb-back').onclick(); await wait(); say('leaving the widget builder forgets its steps', run('wbEd')===null && hist4.stats().undo===0 && run('draftKeyHandler')===null);
+    const hist4=run('wbEd.history'); await E('wb-back').onclick(); await wait(); say('leaving the widget builder forgets its steps', run('wbEd')===null && hist4.stats().undo===0 && run('draftKeyHandler')===null);
     // ---------- more: single actions are steps of their own, typing is noted, the key is registered once ----------
     const live=new Set(), ae=document.addEventListener, re=document.removeEventListener;
     document.addEventListener=(t,f)=>{ if(t==='keydown') live.add(f); }; document.removeEventListener=(t,f)=>{ if(t==='keydown') live.delete(f); };
@@ -4402,7 +4402,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
       say('saving takes the spaces off the name', saved && saved[2].name==='Padded' && run('audEd.draft.name')==='Padded');
       say('a change made while the set is being written is not saved yet: the set is unsaved', saved && saved[2].volume!==0.2 && run('audEd.dirty')===true); }
     undoKey(); say('Undo after saving keeps the name without spaces', run('audEd.draft.name')==='Padded'); redoKey(); say('...and so does Redo', run('audEd.draft.name')==='Padded');
-    E('au-back').onclick(); say('leaving the editor takes its key away', live.size===0);
+    await E('au-back').onclick(); say('leaving the editor takes its key away', live.size===0);
 
     // the picture set editor
     run('imgEd=null; resizeImage = async () => "data:pic"'); await open('images','newset');
@@ -4422,7 +4422,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
       say('saving takes the spaces off the name', saved && saved[2].name==='Padded set' && run('imgEd.draft.name')==='Padded set');
       say('a change made while the set is being written is not saved yet: the set is unsaved', saved && saved[2].steps===8 && run('imgEd.dirty')===true); }
     undoKey(); say('Undo after saving keeps the name without spaces', run('imgEd.draft.name')==='Padded set'); redoKey(); say('...and so does Redo', run('imgEd.draft.name')==='Padded set');
-    E('is-back').onclick();
+    await E('is-back').onclick();
 
     // the widget builder
     run('wbEd=null'); await open('widgets','newwb');
@@ -4444,7 +4444,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
       const nP=calls.length; await E('wb-save').onclick(); api.add=pa; const saved=calls.slice(nP).find(c=>c[0]==='add'&&c[1]==='customwidgets');
       say('a change made while the widget is being written is not saved yet: the widget is unsaved', saved && saved[2].name==='Slow save' && saved[2].textSize!==61 && run('wbEd.dirty')===true);
       undoKey(); say('...and undoing it is clean again, as what was written', run('wbEd.dirty')===false); }
-    E('wb-back').onclick(); await wait(); say('leaving the widget builder takes its key away', live.size===0);
+    await E('wb-back').onclick(); await wait(); say('leaving the widget builder takes its key away', live.size===0);
     document.addEventListener=ae; document.removeEventListener=re; delete ctx.FileReader; delete ctx.resizeImage;
     run("state.customSub='layouts'");
   }

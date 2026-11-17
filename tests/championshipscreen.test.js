@@ -109,7 +109,7 @@ const setup = async () => { run("state.tab = 'setup'; state.setupSub = 'champion
     say('"Add a round" gives round 2 with the sessions of round 1 (the same race setups), and the new round is open', h.includes('Round 2') && (h.match(/class="chses"/g) || []).length === 6 && run('chEd.draft.rounds[1].sessions.map(s => s.setup).join()') === 's-prac,s-qual,s-race' && /<details class="chround( next)?" data-round="1" open>/.test(h));
     say('...the sessions have ids of their own, and the round starts without a name and a track', run('chEd.draft.rounds[1].sessions.every(s => !chEd.draft.rounds[0].sessions.some(o => o.id === s.id))') && run('chEd.draft.rounds[1].track') === ''); }
   await click({ sdel: '1:0' }); await click({ sdel: '1:0' });
-  E('ch-copyfirst').onclick();
+  await E('ch-copyfirst').onclick();
   say('"Copy the sessions of round 1 to all rounds" gives round 2 the three sessions of round 1 again (after asking, because it replaces what it had)', run('chEd.draft.rounds[1].sessions.length') === 3 && run('chEd.draft.rounds[1].sessions.map(s => s.setup).join()') === 's-prac,s-qual,s-race');
   await click({ rdown: '0' });
   say('a round moves down with "Move this round down" (round 1 is now the second)', run('chEd.draft.rounds[1].name') === 'Opener'); await click({ rup: '1' });
@@ -199,10 +199,10 @@ const setup = async () => { run("state.tab = 'setup'; state.setupSub = 'champion
     await click({ sdel: '0:0' });
     say('...the one that was driven does, and "Cancel" keeps it', asked.length === 1 && run('chEd.draft.rounds[0].sessions.length') === 2);
     await click({ sdel: '1:0' });
-    E('ch-copyfirst').onclick();
+    await E('ch-copyfirst').onclick();
     say('"Copy the sessions of round 1 to all rounds" asks first while the other rounds have sessions; "Cancel" keeps what they have', asked.length === 2 && asked[1].includes('Give every other round the sessions of round 1?') && run('chEd.draft.rounds[1].sessions.map(s => s.setup).join()') === 's-qual,s-race');
     await click({ sdel: '1:0' }); await click({ sdel: '1:0' });
-    E('ch-copyfirst').onclick();
+    await E('ch-copyfirst').onclick();
     say('...when the other rounds have no sessions it just copies, without asking', asked.length === 2 && run('chEd.draft.rounds[1].sessions.map(s => s.setup).join()') === 's-prac,s-race');
     await click({ xdel: 'd2' }); const hh = mgr().innerHTML;
     say('a driver who is taken out of the roster is gone from the page at once, and is offered again in "Add a driver"', run('chEd.draft.roster.map(x => x.driver).join()') === 'd1,d3' && !hh.includes('data-xrow="d2"') && /id="ch-adddriver"[\s\S]*?<option value="d2">/.test(hh));

@@ -513,27 +513,35 @@ const WidgetStudio = (() => {
       ui.overrides = {};
       changed(true);
     };
-    $('wc-template').onchange = e => {
-      if (!e.target.value) return;
-      if (!confirm('Replace the current contents with this template? You can Undo this change.')) return;
-      e.target.value === 'race' && (d.type = 'textrace');
-      e.target.value !== 'race' && (d.type = 'textlane');
-      d.composition = e.target.value.startsWith('standard:')
+    $('wc-template').onchange = async e => {
+      const template = e.target.value;
+      if (!template) return;
+      if (
+        !(await Dialog.confirm('Replace the current contents with this template? You can Undo this change.', {
+          ok: 'Replace contents',
+          danger: true
+        }))
+      )
+        return;
+      if (wbEd !== ed || ed.draft !== d) return; // (the widget was left or changed while the question was open)
+      template === 'race' && (d.type = 'textrace');
+      template !== 'race' && (d.type = 'textlane');
+      d.composition = template.startsWith('standard:')
         ? C.clean({
             root: {
               kind: 'free',
               children: [
                 {
                   kind: 'component',
-                  component: e.target.value.slice(9),
+                  component: template.slice(9),
                   frame: { x: 0, y: 0, w: 100, h: 100 },
                   height: 160
                 }
               ]
             }
           })
-        : C.freeTemplate(e.target.value);
-      if (e.target.value.startsWith('standard:')) d.type = Widgets.def(e.target.value.slice(9)).perLane ? 'textlane' : 'textrace';
+        : C.freeTemplate(template);
+      if (template.startsWith('standard:')) d.type = Widgets.def(template.slice(9)).perLane ? 'textlane' : 'textrace';
       ui.selected = d.composition.root.id;
       ui.multi = [ui.selected];
       changed(true);
@@ -870,8 +878,17 @@ const WidgetStudio = (() => {
         changed(true);
       }
     };
-    $('wc-back').onclick = () => {
-      if (ed.dirty && !confirm('Discard your unsaved changes to this widget?')) return;
+    $('wc-back').onclick = async () => {
+      if (
+        ed.dirty &&
+        !(await Dialog.confirm('Discard your unsaved changes to this widget?', {
+          ok: 'Discard changes',
+          cancel: 'Keep editing',
+          danger: true
+        }))
+      )
+        return;
+      if (wbEd !== ed) return; // (the widget was left while the question was open)
       ui.play = false;
       ui.freeDispose?.();
       ui.freeDispose = null;

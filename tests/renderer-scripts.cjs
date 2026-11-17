@@ -7,9 +7,13 @@ const fs = require('node:fs'),
 const order = [...fs.readFileSync(path.join(__dirname, '..', 'renderer', 'index.html'), 'utf8').matchAll(/<script src="([^"]+)"/g)].map(
   m => m[1]
 );
-const expand = list =>
-  list.flatMap(f => {
+// dialogs.js (the app's own confirm and alert) is loaded early by every page, so it comes first unless the list names it
+const ALWAYS = ['dialogs.js'];
+const expand = list => [
+  ...ALWAYS.filter(f => order.includes(f) && !list.includes(f)),
+  ...list.flatMap(f => {
     const dir = f.replace(/\.js$/, '') + '/';
     return [...order.filter(s => s.startsWith(dir)), f];
-  });
+  })
+];
 module.exports = { order, expand };

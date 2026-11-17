@@ -37,28 +37,37 @@ function resetHome() {
 }
 
 // Starting a race while the timing hardware that was chosen is not connected: the person is told and asked (OK: start anyway with the keys or simulated cars, Cancel: go and connect it). true = go on.
-function timingReady(lanes) {
+async function timingReady(lanes) {
   const hw = Hardware.timingChosen(state.settings);
   // A connected interface that is not the one in use counts nothing: say so before the race, not after it
   const unused = typeof unusedTimingText === 'function' ? unusedTimingText(state.settings) : '';
   if (
     unused &&
-    typeof confirm === 'function' &&
-    !confirm(
-      `${unused}\n\nOK: start anyway with ${hw === 'none' ? 'the keys or simulated cars' : 'the timing hardware in use'}.\nCancel: do not start, so you can change it.`
-    )
+    !(await Dialog.confirm(unused, {
+      title: 'Timing hardware not in use',
+      ok: hw === 'none' ? 'Start with the keys' : 'Start anyway',
+      cancel: 'Do not start'
+    }))
   )
     return false;
   if (hw === 'none') return true;
   if (hw === 'ds') {
     const ok = typeof DsTiming !== 'undefined' && DsTiming.link.connected && lanes <= DsTiming.lanes(DsTiming.link.model);
-    if (!ok && typeof alert === 'function')
-      alert('Connect a DS-200 (up to 2 lanes) or DS-300 (up to 8 lanes) in App Settings first. Other DS models remain capture-only.');
+    if (!ok)
+      await Dialog.alert(
+        'Connect a DS-200 (up to 2 lanes) or DS-300 (up to 8 lanes) in App Settings first. Other DS models remain capture-only.',
+        {
+          title: 'DS Electronics not connected'
+        }
+      );
     return ok;
   }
   if (hw === 'plugin') {
     const ok = typeof pt !== 'undefined' && pt.link.connected && lanes <= pt.link.config.lanes;
-    if (!ok && typeof alert === 'function') alert('Connect a timing plugin covering all race lanes in App Settings first, or choose None.');
+    if (!ok)
+      await Dialog.alert('Connect a timing plugin covering all race lanes in App Settings first, or choose None.', {
+        title: 'Plugin interface not connected'
+      });
     return ok;
   }
   if (
@@ -67,11 +76,9 @@ function timingReady(lanes) {
     ParallelPort.link.connected &&
     Number(lanes) > ParallelPort.link.config.lanes
   )
-    return (
-      typeof confirm !== 'function' ||
-      confirm(
-        `Parallel Port is configured for ${ParallelPort.link.config.lanes} lanes, but this race uses ${lanes}.\n\nOK: start using keys or simulated cars.\nCancel: adjust the lane sensors in App Settings, Timing Hardware.`
-      )
+    return Dialog.confirm(
+      `Parallel Port is configured for ${ParallelPort.link.config.lanes} lanes, but this race uses ${lanes}.\n\nStart anyway: the other lanes count with the keys or simulated cars.\nDo not start: adjust the lane sensors in App Settings, Timing Hardware.`,
+      { title: 'Not enough lane sensors', ok: 'Start anyway', cancel: 'Do not start' }
     );
   const on =
     hw === 'parallel'
@@ -88,11 +95,9 @@ function timingReady(lanes) {
         : state.settings.abVirtual === true
           ? 'The virtual Arduino Sketch'
           : 'The Arduino Sketch';
-  return (
-    typeof confirm !== 'function' ||
-    confirm(
-      `${name} is the timing hardware you chose, and it is not connected.\n\nOK: start anyway (laps can still be counted with the keys or simulated cars).\nCancel: do not start, so you can connect it (App Settings, Timing Hardware).`
-    )
+  return Dialog.confirm(
+    `${name} is the timing hardware you chose, and it is not connected.\n\nStart anyway: laps can still be counted with the keys or simulated cars.\nDo not start: connect it first (App Settings, Timing Hardware).`,
+    { title: 'Timing hardware not connected', ok: 'Start anyway', cancel: 'Do not start' }
   );
 }
 async function renderHome() {
@@ -1055,7 +1060,7 @@ async function renderHome() {
           rows[i].carId = car.id;
           await persist();
         } catch (error) {
-          alert(error.message);
+          Dialog.alert(error.message);
           ev.target.value = r.carId || '';
         } finally {
           sharedSelecting = false;
@@ -1087,7 +1092,7 @@ async function renderHome() {
       persist();
     }
   };
-  view.onclick = ev => {
+  view.onclick = async ev => {
     if (sharedSelecting) return;
     const b = ev.target.closest('button');
     if (!b) return;
@@ -1311,7 +1316,8 @@ async function renderHome() {
     if ((b.id === 'resumego' || b.id === 'resumesave') && resume && resume.race) {
       // the race that was interrupted comes back (paused), or is closed and checked for saving
       if (typeof raceActive === 'function' && raceActive()) return;
-      if (b.id === 'resumego' && !timingReady()) return;
+      if (b.id === 'resumego' && !(await timingReady())) return;
+      if (typeof raceActive === 'function' && raceActive()) return; // (the answer may come after another race was started)
       state.race = {
         resources: resume.race.resources || null,
         multiclass: resume.race.multiclass || null,
@@ -1330,8 +1336,10 @@ async function renderHome() {
     }
     if (b.id === 'resumedrop') {
       if (
-        typeof confirm === 'function' &&
-        !confirm('Delete the race that was interrupted? Its lap results are lost. Resources already consumed remain spent.')
+        !(await Dialog.confirm('Delete the race that was interrupted? Its lap results are lost. Resources already consumed remain spent.', {
+          ok: 'Delete the race',
+          danger: true
+        }))
       )
         return;
       Promise.resolve(api.clearResume()).then(() => renderHome());
@@ -1339,12 +1347,13 @@ async function renderHome() {
     }
     if (b.id === 'start') {
       if (resume?.race?.resources) {
-        alert('Resume or discard the unfinished resource event before starting another race.');
+        await Dialog.alert('Resume or discard the unfinished resource event before starting another race.');
         return;
       }
       if (issues.length) return;
       if (typeof raceActive === 'function' && raceActive()) return; // (one race at a time: the one that is running is on the Race tab)
-      if (!tokens && !timingReady(lanes)) return; // (the timing hardware that was chosen is not connected: asked, and the person may go and connect it)
+      if (!tokens && !(await timingReady(lanes))) return; // (the timing hardware that was chosen is not connected: asked, and the person may go and connect it)
+      if (typeof raceActive === 'function' && raceActive()) return; // (the answer may come after another race was started)
       let go = rot ? here : rows;
       if (enduSingle) {
         // the driver who starts for every team: the one that was chosen, else the next of the team who is not starting for another team (or one picked by lot)
@@ -1386,7 +1395,7 @@ async function renderHome() {
           })
           .catch(error => {
             if (draw === homeDraw && state.tab === 'home' && typeof alert === 'function')
-              alert('Could not prepare the track: ' + error.message + ' Reopen Home and try again.');
+              Dialog.alert('Could not prepare the track: ' + error.message + ' Reopen Home and try again.');
           })
           .finally(() => {
             if (b.isConnected) b.disabled = false;

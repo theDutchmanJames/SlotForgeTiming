@@ -35,9 +35,16 @@ async function renderChartEditor(box) {
       }
       if (b.dataset.chartCopy) await api.add('chartdesigns', { ...ChartWidgets.clean(r), name: r.name + ' (copy)' });
       if (b.dataset.chartDelete) {
-        if (!confirm(`Delete chart "${r.name}"? Widgets using it will ask for another design. This cannot be undone.`)) return;
+        if (
+          !(await Dialog.confirm(`Delete chart "${r.name}"? Widgets using it will ask for another design. This cannot be undone.`, {
+            ok: 'Delete',
+            danger: true
+          }))
+        )
+          return;
         await api.remove('chartdesigns', r.id);
         await refreshRaceCharts();
+        if (chartEd || box.isConnected === false) return; // (the list was left while the question was open)
       }
       return renderChartEditor(box);
     } catch (e) {
@@ -252,8 +259,13 @@ function renderChartForm(box) {
     ed.dirty = true;
     renderChartForm(box);
   };
-  box.querySelector('#chart-back').onclick = () => {
-    if (ed.dirty && !confirm('Discard unsaved changes to this chart?')) return;
+  box.querySelector('#chart-back').onclick = async () => {
+    if (
+      ed.dirty &&
+      !(await Dialog.confirm('Discard unsaved changes to this chart?', { ok: 'Discard changes', cancel: 'Keep editing', danger: true }))
+    )
+      return;
+    if (chartEd !== ed) return; // (the chart was left while the question was open)
     if (ed.observer) ed.observer.disconnect();
     chartEd = null;
     box.oninput = null;

@@ -1512,8 +1512,12 @@ async function openExtra(e) {
     const b = ev.target.closest('button');
     if (!b) return;
     if (b.id === 'xclose') return dlg.close();
-    if (b.dataset.rm && confirm('Delete this extra field? Its values are removed from every item.')) {
+    if (
+      b.dataset.rm &&
+      (await Dialog.confirm('Delete this extra field? Its values are removed from every item.', { ok: 'Delete the field', danger: true }))
+    ) {
       await api.removeCustomField(e, b.dataset.rm);
+      if (b.isConnected === false) return; // (the window was closed or changed while the question was open)
       return openExtra(e);
     }
     if (b.id === 'xadd') {

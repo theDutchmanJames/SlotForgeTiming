@@ -63,12 +63,18 @@ async function renderVirtualRivals(box) {
           await api.add('virtualrivalsystems', { ...V.clean(p), name: p.name + ' (copy)' });
           return renderVirtualRivals(box);
         }
-        if (b.dataset.rivalDelete && confirm('Delete ' + p.name + '? Linked drivers will need another system before they can race.')) {
+        if (
+          b.dataset.rivalDelete &&
+          (await Dialog.confirm('Delete ' + p.name + '? Linked drivers will need another system before they can race.', {
+            ok: 'Delete',
+            danger: true
+          }))
+        ) {
           await api.remove('virtualrivalsystems', p.id);
           return renderVirtualRivals(box);
         }
       } catch (x) {
-        alert('Could not save the Virtual Rival System: ' + x.message);
+        Dialog.alert('Could not save the Virtual Rival System: ' + x.message);
       }
     };
     return;
@@ -358,7 +364,7 @@ async function renderVirtualRivals(box) {
     }
     if (e.target.id === 'vr-heat') loadSource();
   };
-  box.onclick = e => {
+  box.onclick = async e => {
     const b = e.target.closest('button');
     if (!b) return;
     if (b.dataset.rail) {
@@ -374,7 +380,8 @@ async function renderVirtualRivals(box) {
       refresh();
     }
     if (b.id === 'vr-back') {
-      if (ed.dirty && !confirm('Discard unsaved Virtual Rival changes?')) return;
+      if (ed.dirty && !(await Dialog.confirm('Discard unsaved Virtual Rival changes?', { ok: 'Discard changes', danger: true }))) return;
+      if (rivalEditor !== ed) return; // (the editor was left another way while the question was open)
       ed.observer.disconnect();
       rivalEditor = null;
       renderVirtualRivals(box);

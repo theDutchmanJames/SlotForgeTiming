@@ -253,12 +253,15 @@ async function renderTransferSettings(box) {
       renderTransferSettings(box);
     };
     $('bk-apply').onclick = async () => {
+      const pending = trState.bk;
       if (
-        !confirm(
-          'Replace everything you have now with this backup? This cannot be undone from the app (a safety file is kept next to the database).'
-        )
+        !(await Dialog.confirm(
+          'Replace everything you have now with this backup? This cannot be undone from the app (a safety file is kept next to the database).',
+          { ok: 'Replace with backup', danger: true }
+        ))
       )
         return;
+      if (trState.bk !== pending) return; // (the backup was cancelled or another one chosen meanwhile)
       try {
         const result = await api.backupRestore();
         trState.bk = null;

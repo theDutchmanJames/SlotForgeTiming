@@ -610,8 +610,9 @@ async function renderResultsPool(box, pool, supplied = null) {
     if (rec) {
       const isTrack = rec.dataset.delrec === 'track';
       if (
-        confirm(
-          `Remove this ${isTrack ? 'track record' : 'personal best'}?\n\nOnly the record is removed. The lap stays in its session, and the next fastest lap takes over.`
+        await Dialog.confirm(
+          `Remove this ${isTrack ? 'track record' : 'personal best'}?\n\nOnly the record is removed. The lap stays in its session, and the next fastest lap takes over.`,
+          { ok: isTrack ? 'Remove the track record' : 'Remove the personal best', danger: true }
         )
       ) {
         await api.update('laps', rec.dataset.lap, isTrack ? { noTrackRecord: true } : { noPersonalBest: true });
@@ -622,10 +623,11 @@ async function renderResultsPool(box, pool, supplied = null) {
     const b = ev.target.closest('[data-delsession]');
     if (!b) return;
     if (
-      confirm(
+      await Dialog.confirm(
         tokenPool
           ? "Delete this stint and all of its laps?\n\nThis can't be undone."
-          : "Delete this session and all of its laps?\n\nThis can't be undone."
+          : "Delete this session and all of its laps?\n\nThis can't be undone.",
+        { ok: tokenPool ? 'Delete the stint' : 'Delete the session', danger: true }
       )
     ) {
       await api.removeSession(b.dataset.delsession);

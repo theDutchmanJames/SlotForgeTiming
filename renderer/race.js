@@ -33,7 +33,7 @@ async function renderRace() {
       });
   } catch (error) {
     if (current()) {
-      alert('Could not prepare the race: ' + error.message + ' Reopen Home and try again.');
+      await Dialog.alert('Could not prepare the race: ' + error.message + ' Reopen Home and try again.');
       state.race = null;
       state.tab = 'home';
       return render();
@@ -106,7 +106,7 @@ async function renderRace() {
       rulePlan = await api.pluginRulePrepare(savedRule?.id || setup.rulePlugin, savedRule || null);
       r.rulePlan = rulePlan;
     } catch (x) {
-      alert('Cannot prepare plugin race rules: ' + x.message);
+      await Dialog.alert('Cannot prepare plugin race rules: ' + x.message);
       state.race = null;
       state.tab = 'home';
       return render();
@@ -144,7 +144,7 @@ async function renderRace() {
         !rivalEntries.some(e => e.grid && e.driverId === row.driverId && e.profile && !VirtualRival.issues(e.profile, r.track.id).length)
     );
     if (tokenSession || byTeam || enduOn || invalid || r.rows.every(isRival)) {
-      alert(
+      await Dialog.alert(
         'Choose at least one human driver and a valid Rival Setup for each virtual driver. Virtual grid entries require an individual race without team swaps.'
       );
       state.race = null;
@@ -273,7 +273,7 @@ async function renderRace() {
         if (issues.length) throw Error(issues.join(' '));
       }
     } catch (e) {
-      alert('Cannot prepare Paddock cars: ' + e.message);
+      await Dialog.alert('Cannot prepare Paddock cars: ' + e.message);
       state.race = null;
       state.tab = 'home';
       return render();
@@ -329,7 +329,7 @@ async function renderRace() {
       });
       r.resources = resourceState;
     } catch (x) {
-      alert('Cannot prepare resources: ' + x.message);
+      await Dialog.alert('Cannot prepare resources: ' + x.message);
       state.race = null;
       state.tab = 'home';
       return render();
@@ -352,7 +352,7 @@ async function renderRace() {
         : [])
     ];
     if (errors.length) {
-      alert(errors.join(' '));
+      await Dialog.alert(errors.join(' '));
       state.race = null;
       state.tab = 'home';
       return render();
@@ -436,7 +436,7 @@ async function renderRace() {
       }
     } catch (error) {
       if (current()) {
-        alert('Could not load championship standings: ' + error.message + ' Reopen Home and try again.');
+        await Dialog.alert('Could not load championship standings: ' + error.message + ' Reopen Home and try again.');
         state.race = null;
         state.tab = 'home';
         return render();
@@ -503,7 +503,7 @@ async function renderRace() {
       ? r.schedule
       : Heats.plan({ count: people.length, lanes, setup, seed: Heats.newSeed() }); // (the plan from the Home tab, when there is one that fits)
     if (virtualRows.length && schedule.some(h => !h.some(e => !people[e.p]?.virtualRival))) {
-      alert('Each heat needs at least one human driver. Adjust the heat plan on Home.');
+      await Dialog.alert('Each heat needs at least one human driver. Adjust the heat plan on Home.');
       state.race = null;
       state.tab = 'home';
       return render();
@@ -2884,19 +2884,21 @@ async function renderRace() {
       } // (the reason for the pause is over: an old message would make the race look paused)
       else if (!resuming && live.phase === 'paused' && live.ds) ui('msg').textContent = dsPausedText();
     },
-    stop(force) {
+    async stop(force) {
       // force: the Race Director page has already asked
       cancelRestart();
+      if (!['running', 'paused', 'between'].includes(live.phase)) return;
       if (
-        !['running', 'paused', 'between'].includes(live.phase) ||
-        (force !== true &&
-          !confirm(
-            tokens
-              ? 'End the session now? Every lane is switched off. You check the results before they are saved.'
-              : 'Stop the race now? The laps so far are saved.'
-          ))
+        force !== true &&
+        !(await Dialog.confirm(
+          tokens
+            ? 'End the session now? Every lane is switched off. You check the results before they are saved.'
+            : 'Stop the race now? The laps so far are saved.',
+          { ok: tokens ? 'End the session' : 'Stop the race', cancel: 'Keep racing', danger: true }
+        ))
       )
         return;
+      if (!['running', 'paused', 'between'].includes(live.phase)) return; // (the race goes on while the question is open: it may have ended by itself)
       live.stopping = true;
       if (live.phase === 'between') return finishAll();
       eng.stop(now());
@@ -3876,11 +3878,10 @@ async function renderRace() {
           persistTokens(true);
         });
     } else if (kept && kept.data && tokens.restore(kept.data, 0)) {
-      const carryOn =
-        typeof confirm !== 'function' ||
-        confirm(
-          'A Time Token Session of this race setup was not ended (the app was closed). OK: carry on with the time that was left on each lane. Cancel: save what it recorded and start a new session.'
-        );
+      const carryOn = await Dialog.confirm(
+        'A Time Token Session of this race setup was not ended (the app was closed).\n\nCarry on: the time that was left on each lane carries on.\nNew session: what it recorded is saved, and a new session starts.',
+        { title: 'Session not ended', ok: 'Carry on', cancel: 'New session' }
+      );
       if (carryOn) {
         eng.cars.forEach((c, i) => {
           const who = tokens.whoOf(c.lane),
@@ -4254,7 +4255,9 @@ async function renderRace() {
   if (r.resume && rulePlan && live.cpOff && live.phase === 'ready') {
     live.leave();
     live.alive = false;
-    alert('Cannot restore this plugin race: its saved laps or heat state do not match the frozen rules. The recovery data has been kept.');
+    await Dialog.alert(
+      'Cannot restore this plugin race: its saved laps or heat state do not match the frozen rules. The recovery data has been kept.'
+    );
     state.race = null;
     state.tab = 'home';
     return render();

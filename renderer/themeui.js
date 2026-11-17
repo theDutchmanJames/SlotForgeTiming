@@ -69,7 +69,7 @@ function renderThemeSettings(box) {
     applyTheme();
     renderThemeSettings(box);
   };
-  box.onclick = async ev => {
+  const onBoxClick = (box.onclick = async ev => {
     const b = ev.target.closest('[data-pick]');
     if (b) {
       // the first time Custom is chosen it starts from the theme you were looking at
@@ -80,9 +80,16 @@ function renderThemeSettings(box) {
           : { theme: k }
       );
     }
-    if (ev.target.id === 'th-copy' && (!state.settings.customColors || confirm('Replace your own colours with the colours of this theme?')))
-      save({ theme: 'custom', customColors: themePalette($('th-from').value) });
-  };
+    if (ev.target.id === 'th-copy') {
+      const from = $('th-from').value;
+      if (state.settings.customColors) {
+        if (!(await Dialog.confirm('Replace your own colours with the colours of this theme?', { ok: 'Replace colours', danger: true })))
+          return;
+        if (box.isConnected === false || box.onclick !== onBoxClick) return; // (the page was left meanwhile)
+      }
+      return save({ theme: 'custom', customColors: themePalette(from) });
+    }
+  });
   box.oninput = ev => {
     // while a colour is being chosen: show it straight away, save when the choice is made
     const k = ev.target.dataset && ev.target.dataset.color;

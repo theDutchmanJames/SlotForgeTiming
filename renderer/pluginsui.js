@@ -82,7 +82,9 @@ const PluginsPage = (() => {
         if (box.isConnected && state.settingsSub === 'plugins') await render(box);
       }
     };
-    box.onclick = e => {
+    // (after a question the page may have been left or redrawn, which replaces the button: then nothing is done)
+    const still = b => b.isConnected && !b.disabled && !busy && state.settingsSub === 'plugins';
+    box.onclick = async e => {
       const b = e.target.closest('button');
       if (!b || b.disabled || busy) return;
       if (Object.hasOwn(destinations, b.dataset.pluginGo)) {
@@ -116,7 +118,11 @@ const PluginsPage = (() => {
           return 'All plugins stopped and disabled.';
         });
       if (b.id === 'plugin-safe') {
-        if (confirm('Restart SlotForge with all plugins off for this session?')) return perform(() => api.pluginsRestartSafe());
+        if (
+          (await Dialog.confirm('Restart SlotForge with all plugins off for this session?', { ok: 'Restart with plugins off' })) &&
+          still(b)
+        )
+          return perform(() => api.pluginsRestartSafe());
         return;
       }
       const a = b.dataset.pluginAction,
@@ -124,19 +130,22 @@ const PluginsPage = (() => {
         p = model.plugins.find(x => x.manifest.id === card?.dataset.pluginId);
       if (!p || !a) return;
       const id = p.manifest.id;
-      if (
-        a === 'start' &&
-        !confirm(
-          `Start ${p.manifest.name} v${p.manifest.version}?\n\nThis code has your operating-system access, including files and network. It will also start on future normal launches until disabled. Only continue if you trust it.`
-        )
-      )
-        return;
-      if (
-        a === 'rollback' &&
-        !confirm('Stop this plugin and restore its previous version and settings? Plugin-written data is not rolled back.')
-      )
-        return;
-      if (a === 'remove' && !confirm('Stop and remove this plugin? Its saved data will be kept for reinstallation.')) return;
+      const ask =
+        a === 'start'
+          ? [
+              `Start ${p.manifest.name} v${p.manifest.version}?\n\nThis code has your operating-system access, including files and network. It will also start on future normal launches until disabled. Only continue if you trust it.`,
+              { title: 'Start trusted plugin', ok: 'Start plugin' }
+            ]
+          : a === 'rollback'
+            ? [
+                'Stop this plugin and restore its previous version and settings? Plugin-written data is not rolled back.',
+                { ok: 'Roll back', danger: true }
+              ]
+            : a === 'remove'
+              ? ['Stop and remove this plugin? Its saved data will be kept for reinstallation.', { ok: 'Remove plugin', danger: true }]
+              : null;
+      if (ask && !(await Dialog.confirm(...ask))) return;
+      if (ask && (!still(b) || !model.plugins.includes(p))) return; // (the plugin list may have changed while asking)
       let values;
       if (a === 'settings')
         values = Object.fromEntries(

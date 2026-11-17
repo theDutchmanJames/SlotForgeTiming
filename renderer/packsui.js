@@ -89,7 +89,9 @@ const ContentPacksPage = (() => {
         chosen[key] = [...set];
       }
     };
-    box.onclick = e => {
+    // (after a question the page may have been left or redrawn, which replaces the button: then nothing is done)
+    const still = b => b.isConnected && !b.disabled && !working;
+    box.onclick = async e => {
       const b = e.target.closest('button');
       if (!b || b.disabled) return;
       const id = b.closest('[data-pack]')?.dataset.pack,
@@ -115,9 +117,11 @@ const ContentPacksPage = (() => {
         });
       if (b.id === 'pack-recover') {
         if (
-          !confirm(
-            'Restore the previous pack library? Your current library file will be preserved, and copied app content will not change.'
-          )
+          !(await Dialog.confirm(
+            'Restore the previous pack library? Your current library file will be preserved, and copied app content will not change.',
+            { ok: 'Restore library' }
+          )) ||
+          !still(b)
         )
           return;
         return perform(async () => {
@@ -141,11 +145,18 @@ const ContentPacksPage = (() => {
           );
           return result.saved ? 'Saved ' + result.file : 'Export cancelled.';
         });
-      if (a === 'remove' && !confirm('Remove this pack from the library? Content you already copied and themes you applied will remain.'))
-        return;
-      if (a === 'copy' && !confirm('Add new editable copies of this pack’s content? Existing copies and layouts will not be updated.'))
-        return;
-      if (a === 'theme' && !confirm('Apply these colours as your Custom app theme? You can change them under App Theme.')) return;
+      const ask =
+        a === 'remove'
+          ? [
+              'Remove this pack from the library? Content you already copied and themes you applied will remain.',
+              { ok: 'Remove pack', danger: true }
+            ]
+          : a === 'copy'
+            ? ['Add new editable copies of this pack’s content? Existing copies and layouts will not be updated.', { ok: 'Add copies' }]
+            : a === 'theme'
+              ? ['Apply these colours as your Custom app theme? You can change them under App Theme.', { ok: 'Apply theme', danger: true }]
+              : null;
+      if (ask && (!(await Dialog.confirm(...ask)) || !still(b))) return;
       if (a)
         return perform(async () => {
           if (a === 'enable') await api.packsEnable(id, b.dataset.enabled === 'true');

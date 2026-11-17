@@ -122,29 +122,35 @@
         await loadCatalogue(true);
       });
     q('[data-local-disconnect]').onclick = () => run(() => api.paddockDisconnect(false));
-    q('[data-local-forget]').onclick = () => {
+    q('[data-local-forget]').onclick = async () => {
       if (
-        confirm(
-          'Forget this service connection? Linked cars, race history and pending transfers stay in Timing and remain tied to the original Paddock database.'
-        )
+        !(await Dialog.confirm(
+          'Forget this service connection? Linked cars, race history and pending transfers stay in Timing and remain tied to the original Paddock database.',
+          { ok: 'Forget connection', danger: true }
+        ))
       )
-        run(() => api.paddockDisconnect(true));
+        return;
+      if (state().status.connection?.mode === 'local') run(() => api.paddockDisconnect(true)); // (still connected to the service)
     };
-    q('[data-transfer-create]').onclick = () => {
+    q('[data-transfer-create]').onclick = async () => {
       const ids = [...q('[data-transfer-cars]').selectedOptions].map(o => o.value),
         target = state().catalog.find(c => c.id === q('[data-transfer-target]').value);
       if (!ids.length) {
-        alert('Choose at least one local Timing car.');
+        await Dialog.alert('Choose at least one local Timing car.');
         return;
       }
+      const databaseId = state().status.connection?.databaseId;
       if (
-        !confirm(
+        !(await Dialog.confirm(
           target
             ? `Ask Paddock to link this Timing car to “${target.name}”? Confirm this is the same physical car. Paddock’s details will be used after approval; Timing history stays with its existing ID.`
-            : `Send ${ids.length} car(s) to Paddock for review? Each approved car will be available in both apps. Existing Timing IDs and history are retained.`
-        )
+            : `Send ${ids.length} car(s) to Paddock for review? Each approved car will be available in both apps. Existing Timing IDs and history are retained.`,
+          { title: target ? 'Link to a Paddock car' : 'Send to Paddock', ok: target ? 'Ask to link' : 'Send for review' }
+        ))
       )
         return;
+      // (the connection may have changed while asking: the cars and the target belong to the one that was shown)
+      if (state().status.connection?.mode !== 'local' || state().status.connection.databaseId !== databaseId) return;
       run(() =>
         api.paddockTransferCreate(
           ids.map(localId => ({ localId, ...(target ? { target: { carId: target.id, revision: target.revision } } : {}) }))
@@ -153,26 +159,44 @@
     };
     q('[data-local-start]').onclick = () => run(() => api.paddockLocalStart());
     q('[data-transfer-refresh]').onclick = () => run(() => api.paddockTransferRefresh());
-    q('[data-transfer-list]').onclick = e => {
+    q('[data-transfer-list]').onclick = async e => {
       const origin = e.target.closest('[data-transfer-origin]');
       if (origin)
         run(async () => {
           const r = await api.paddockTransferOrigin(origin.dataset.transferOrigin);
-          alert(
+          Dialog.alert(
             'Original Paddock review: ' +
               r.transferId +
               '\nCar: ' +
               r.carId +
               '\nStatus: ' +
               r.status +
-              '\n\nFor a pending review, reject or cancel it in Paddock before retrying a replacement request. For an approved origin, restore the Timing backup containing the original transfer journal. Timing will not recreate or silently relink an approved physical car.'
+              '\n\nFor a pending review, reject or cancel it in Paddock before retrying a replacement request. For an approved origin, restore the Timing backup containing the original transfer journal. Timing will not recreate or silently relink an approved physical car.',
+            { title: 'Original Paddock review' }
           );
         });
       const check = e.target.closest('[data-transfer-check]'),
         cancel = e.target.closest('[data-transfer-cancel]'),
         review = e.target.closest('[data-transfer-review]');
       if (check) run(() => api.paddockTransferRefresh(check.dataset.transferCheck));
-      if (cancel && confirm('Cancel items still awaiting approval? Approved cars stay in Paddock and their links can still be completed.'))
+      if (
+        cancel &&
+        (await Dialog.confirm(
+          'Cancel items still awaiting approval? Approved cars stay in Paddock and their links can still be completed.',
+          {
+            ok: 'Cancel pending items',
+            cancel: 'Keep them',
+            danger: true
+          }
+        )) &&
+        // (still pending, and its library still the connected one: it may have been approved or disconnected while asking)
+        transfers.some(
+          t =>
+            t.id === cancel.dataset.transferCancel &&
+            !['linked', 'rejected', 'cancelled'].includes(t.state) &&
+            t.databaseId === state().status.connection?.databaseId
+        )
+      )
         run(() => api.paddockTransferCancel(cancel.dataset.transferCancel));
       if (review)
         run(async () => {
@@ -182,10 +206,11 @@
             .map(k => `${k}: ${p.original[k] || '—'} → ${p.current[k] || '—'}`)
             .join('\n');
           if (
-            confirm(
+            await Dialog.confirm(
               'Timing changed after transfer:\n' +
                 (differences || 'Other local fields changed.') +
-                '\n\nUse the approved Paddock specifications now? Timing IDs, history and simulation settings stay local.'
+                '\n\nUse the approved Paddock specifications now? Timing IDs, history and simulation settings stay local.',
+              { title: 'Review changed car', ok: 'Use Paddock specifications', cancel: 'Keep Timing details', danger: true }
             )
           )
             await api.paddockTransferAccept(review.dataset.transferReview, p.expected);

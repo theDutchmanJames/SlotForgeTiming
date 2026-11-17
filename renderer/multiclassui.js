@@ -10,14 +10,15 @@ async function renderMultiClass(box) {
   async function removeClass(id) {
     const c = (multiEditor?.defs || defs).find(c => c.id === id);
     if (!c) return false;
-    if (c.fresh) return confirm(`Remove the unsaved class "${c.name}"?`);
+    if (c.fresh) return Dialog.confirm(`Remove the unsaved class "${c.name}"?`, { ok: 'Remove', danger: true });
     const [cars, drivers, teams, systems] = await Promise.all(['slotcars', 'drivers', 'teams', 'multiclasssystems'].map(e => api.list(e)));
     const count = rows => rows.filter(r => r.raceClass === id).length;
     const linked = systems.filter(p => (p.classes || []).some(c => c.id === id) || (p.driverClasses || []).some(a => a.classId === id));
     if (
-      !confirm(
-        `Delete Race Class "${c.name}" from the database?\n\nThis clears the label from ${count(cars)} slotcars, ${count(drivers)} driver defaults and ${count(teams)} team defaults. It removes the class and its driver assignments from ${linked.length} Multi-Class systems.\n\nAffected systems may need new classes and driver assignments before another race can start. Recorded results and events already started keep their saved classes.\n\nDeletion is immediate and cannot be undone by leaving this editor.`
-      )
+      !(await Dialog.confirm(
+        `Delete Race Class "${c.name}" from the database?\n\nThis clears the label from ${count(cars)} slotcars, ${count(drivers)} driver defaults and ${count(teams)} team defaults. It removes the class and its driver assignments from ${linked.length} Multi-Class systems.\n\nAffected systems may need new classes and driver assignments before another race can start. Recorded results and events already started keep their saved classes.\n\nDeletion is immediate and cannot be undone by leaving this editor.`,
+        { ok: 'Delete class', danger: true }
+      ))
     )
       return false;
     await api.remove('raceclasses', id);
@@ -56,12 +57,18 @@ async function renderMultiClass(box) {
           await api.add('multiclasssystems', { ...M.clean(p), name: p.name + ' (copy)' });
           return renderMultiClass(box);
         }
-        if (b.dataset.mcDelete && confirm('Delete this system? Race setups using it will need a replacement before starting.')) {
+        if (
+          b.dataset.mcDelete &&
+          (await Dialog.confirm('Delete this system? Race setups using it will need a replacement before starting.', {
+            ok: 'Delete',
+            danger: true
+          }))
+        ) {
           await api.remove('multiclasssystems', p.id);
           return renderMultiClass(box);
         }
       } catch (x) {
-        alert('Could not save: ' + x.message);
+        Dialog.alert('Could not save: ' + x.message);
       }
     };
     return;
@@ -288,6 +295,7 @@ async function renderMultiClass(box) {
       try {
         const id = b.dataset.mcClassDelete;
         if (await removeClass(id)) {
+          if (multiEditor !== ed) return; // (the editor was left while the question was open: the class is gone from the database, the list shows it)
           ed.defs = ed.defs.filter(c => c.id !== id);
           d.classes = d.classes.filter(c => c.id !== id);
           d.driverClasses = d.driverClasses.filter(a => a.classId !== id);
@@ -295,7 +303,7 @@ async function renderMultiClass(box) {
           await renderMultiClass(box);
         }
       } catch (x) {
-        alert('Could not delete class: ' + x.message);
+        Dialog.alert('Could not delete class: ' + x.message);
       } finally {
         b.disabled = false;
       }
@@ -332,7 +340,8 @@ async function renderMultiClass(box) {
       refresh();
     }
     if (b.id === 'mc-back') {
-      if (ed.dirty && !confirm('Discard unsaved Multi-Class changes?')) return;
+      if (ed.dirty && !(await Dialog.confirm('Discard unsaved Multi-Class changes?', { ok: 'Discard changes', danger: true }))) return;
+      if (multiEditor !== ed) return; // (the editor was left another way while the question was open)
       multiEditor = null;
       renderMultiClass(box);
     }

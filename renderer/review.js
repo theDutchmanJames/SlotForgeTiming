@@ -273,22 +273,27 @@ const Review = (() => {
       if (!sel) return;
       send({ op: 'sector', car: Number(sel.dataset.rvs), sector: sel.value === '' ? null : Number(sel.value) });
     };
-    root.onclick = ev => {
+    root.onclick = async ev => {
       const b = ev.target && ev.target.closest ? ev.target.closest('[data-rv]') : null;
       if (!b || b.disabled) return;
       const d = b.dataset,
         op = d.rv,
         car = d.car === undefined ? undefined : Number(d.car),
         sid = d.sid === undefined ? undefined : Number(d.sid);
-      if (
-        op === 'discard' &&
-        !confirm(
-          d.what === 'session'
-            ? "Delete all data of this session?\n\nNo stint is recorded in the database: no laps, no results, no Token Records.\n\nThis can't be undone."
-            : "Delete all data of this race?\n\nNothing is recorded in the database: no laps, no results, no records. In a heat race this includes the earlier heats.\n\nThis can't be undone."
+      if (op === 'discard') {
+        const session = d.what === 'session';
+        if (
+          !(await Dialog.confirm(
+            session
+              ? "Delete all data of this session?\n\nNo stint is recorded in the database: no laps, no results, no Token Records.\n\nThis can't be undone."
+              : "Delete all data of this race?\n\nNothing is recorded in the database: no laps, no results, no records. In a heat race this includes the earlier heats.\n\nThis can't be undone.",
+            { ok: 'Delete all data', cancel: 'Keep reviewing', danger: true }
+          ))
         )
-      )
-        return;
+          return;
+        // (the review may have ended while the question was open: only delete while it still offers this; the race checks its phase as well)
+        if (root.isConnected === false || (root.querySelector && !root.querySelector('[data-rv="discard"]'))) return;
+      }
       if (op === 'adjopen') {
         if (ui.adjust.has(car)) ui.adjust.delete(car);
         else ui.adjust.add(car);

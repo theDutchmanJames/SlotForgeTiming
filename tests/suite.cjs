@@ -286,4 +286,5 @@ module.exports = [
   ['format.test.js', 'plain'],
   ['updates-diagnostics.test.js', 'node-test'],
   ['statuschips.test.js', 'node-test'],
+  ['dialogs.test.js', 'node-test'],
 ];

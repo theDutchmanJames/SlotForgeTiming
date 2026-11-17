@@ -36,12 +36,15 @@ async function renderResources(box) {
         if (
           b.dataset.resourceDelete &&
           p &&
-          confirm('Delete this Resource System? Its spending history remains; setups using it will need another system.')
+          (await Dialog.confirm('Delete this Resource System? Its spending history remains; setups using it will need another system.', {
+            ok: 'Delete',
+            danger: true
+          }))
         )
           await api.remove('resourcesystems', p.id);
         renderResources(box);
       } catch (x) {
-        alert('Could not save: ' + x.message);
+        Dialog.alert('Could not save: ' + x.message);
       }
     };
     return;
@@ -184,7 +187,7 @@ async function renderResources(box) {
     }
   };
   box.onchange = null;
-  box.onclick = e => {
+  box.onclick = async e => {
     const b = e.target.closest('button');
     if (!b) return;
     if (b.dataset.rail) {
@@ -194,7 +197,8 @@ async function renderResources(box) {
       refresh();
     }
     if (b.id === 'resource-back') {
-      if (ed.dirty && !confirm('Discard unsaved resource changes?')) return;
+      if (ed.dirty && !(await Dialog.confirm('Discard unsaved resource changes?', { ok: 'Discard changes', danger: true }))) return;
+      if (resourceEditor !== ed) return; // (the editor was left another way while the question was open)
       resourceEditor = null;
       renderResources(box);
     }

@@ -118,8 +118,10 @@
     let loaded,
       busy = false,
       dirty = false;
-    const close = () => {
-      if (!busy && (!dirty || confirm('Close without saving these edits?'))) d.close();
+    const close = async () => {
+      if (busy) return;
+      if (dirty && !(await Dialog.confirm('Close without saving these edits?', { ok: 'Discard edits', danger: true }))) return;
+      if (!busy && d.open) d.close(); // (a save may have started or closed it while asking)
     };
     q('[data-close]').onclick = close;
     d.oncancel = e => {
@@ -130,7 +132,8 @@
     async function load() {
       loaded = await api.paddockSharedCar(id);
       if (!d.isConnected) return;
-      const { schema, car } = loaded;
+      const { schema, car } = loaded,
+        here = loaded; // (this drawing of the form: a reload while a question is open replaces it)
       dirty = false;
       q('h2').textContent = car ? 'Edit car' : 'Add car';
       q('[data-status]').textContent =
@@ -210,26 +213,34 @@
           await updated();
         };
         q('[data-service-save]').onclick = () => run(() => service('set'));
-        q('[data-service-reset]').onclick = () => {
-          if (confirm('Record a service now and reset laps since service?')) run(() => service('reset'));
+        q('[data-service-reset]').onclick = async () => {
+          if (!(await Dialog.confirm('Record a service now and reset laps since service?', { ok: 'Mark serviced' }))) return;
+          if (d.isConnected && loaded === here) run(() => service('reset')); // (still the same record)
         };
       }
       q('form').oninput = () => {
         dirty = true;
       };
-      q('[data-reload]').onclick = () => {
-        if (!dirty || confirm('Reload the current record and discard this draft?')) run(load);
+      q('[data-reload]').onclick = async () => {
+        if (
+          dirty &&
+          !(await Dialog.confirm('Reload the current record and discard this draft?', { ok: 'Discard and reload', danger: true }))
+        )
+          return;
+        if (d.isConnected) run(load);
       };
       q('[data-saves]').onclick = () => saves(api, updated);
-      q('form').onsubmit = e => {
+      q('form').onsubmit = async e => {
         e.preventDefault();
         if (
           serviceChanges(loaded, d) &&
-          !confirm(
-            'Service counters have unsaved edits. Save the car changes and discard those counter edits? To keep them, cancel and save service counters first.'
-          )
+          !(await Dialog.confirm(
+            'Service counters have unsaved edits. Save the car changes and discard those counter edits? To keep them, cancel and save service counters first.',
+            { ok: 'Save car, discard counters', danger: true }
+          ))
         )
           return;
+        if (!d.isConnected || loaded !== here) return; // (closed or reloaded while asking)
         run(async () => {
           const delta = changes(
               schema.fields,
@@ -256,13 +267,17 @@
         });
       };
       if (car)
-        q('[data-archive]').onclick = () => {
+        q('[data-archive]').onclick = async () => {
           if (
-            confirm(
-              car.archived ? 'Restore this car to the shared library?' : 'Archive this car in both apps? Saved race history remains intact.'
-            )
+            !(await Dialog.confirm(
+              car.archived
+                ? 'Restore this car to the shared library?'
+                : 'Archive this car in both apps? Saved race history remains intact.',
+              car.archived ? { ok: 'Restore car' } : { ok: 'Archive car', danger: true }
+            ))
           )
-            run(() => save(car.archived ? 'restore' : 'archive', {}));
+            return;
+          if (d.isConnected && loaded === here) run(() => save(car.archived ? 'restore' : 'archive', {})); // (still the same record)
         };
     }
     async function save(action, delta) {
@@ -338,9 +353,11 @@
       try {
         if (b.dataset.resolve) {
           if (
-            confirm(
-              'Confirm you have compared the current Paddock library with this saved operation. This acknowledges the conflict only: no car is created, edited or linked. Future edits will be new deliberate operations.'
-            )
+            (await Dialog.confirm(
+              'Confirm you have compared the current Paddock library with this saved operation. This acknowledges the conflict only: no car is created, edited or linked. Future edits will be new deliberate operations.',
+              { title: 'Mark save as reconciled', ok: 'I have reconciled it' }
+            )) &&
+            d.isConnected
           ) {
             await api.paddockSharedResolve(b.dataset.resolve);
             await draw();

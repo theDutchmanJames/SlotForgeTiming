@@ -5,7 +5,7 @@ const start=source.indexOf("    if (e === 'racesetups' && b.dataset.systemSetup"
 function harness(update){
  const buttons=['fuel','weather'].map(key=>({disabled:false,dataset:{systemSetup:'race',systemKey:key,systemOn:'0'}}));
  const box={isConnected:true,querySelectorAll:()=>buttons},row={id:'race',disabledSystems:''},alerts=[];
- const c=vm.createContext({e:'racesetups',items:[row],box,manager:{box,e:'racesetups'},run:1,subRun:1,systemSaveBusy:false,RaceSystems:require('../renderer/racesystems'),api:{update},alert:x=>alerts.push(x),mountManager:async()=>{c.mounts++;},mounts:0});
+ const c=vm.createContext({e:'racesetups',items:[row],box,manager:{box,e:'racesetups'},run:1,subRun:1,systemSaveBusy:false,RaceSystems:require('../renderer/racesystems'),api:{update},alert:x=>alerts.push(x),Dialog:{alert:async x=>{alerts.push(x);}},mountManager:async()=>{c.mounts++;},mounts:0});
  vm.runInContext('this.click=async b=>{'+source.slice(start,end)+'}',c);return {c,buttons,row,alerts};
 }
 test('pending icon save blocks overlapping writes and the next save keeps the first change',async()=>{

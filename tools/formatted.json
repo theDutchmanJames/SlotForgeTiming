@@ -113,6 +113,7 @@
     "renderer/database/views.js",
     "renderer/delta.js",
     "renderer/depth.js",
+    "renderer/dialogs.js",
     "renderer/digitalinputs.js",
     "renderer/dirfolder.js",
     "renderer/distance.js",

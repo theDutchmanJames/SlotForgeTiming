@@ -98,15 +98,16 @@ async function renderAudioSets(box) {
       }
       if (
         b.dataset.del &&
-        confirm(
-          `Delete the audio set "${r.name}"?\n\nRace setups that use it will be silent until you choose another set.\n\nThis can't be undone.`
-        )
+        (await Dialog.confirm(
+          `Delete the audio set "${r.name}"?\n\nRace setups that use it will be silent until you choose another set.\n\nThis can't be undone.`,
+          { ok: 'Delete', danger: true }
+        ))
       ) {
         await api.remove('audiosets', r.id);
         if (box.isConnected !== false && box.onclick === onSetClick) await renderAudioSets(box);
       }
     } catch (error) {
-      alert(error.message);
+      Dialog.alert(error.message);
     } finally {
       b.disabled = false;
     }
@@ -452,8 +453,17 @@ function renderAudioSetEditor(box) {
       saving = false;
     }
   };
-  $('au-back').onclick = () => {
-    if (audEd.dirty && !confirm('Discard your unsaved changes to this audio set?')) return;
+  $('au-back').onclick = async () => {
+    if (
+      audEd.dirty &&
+      !(await Dialog.confirm('Discard your unsaved changes to this audio set?', {
+        ok: 'Discard changes',
+        cancel: 'Keep editing',
+        danger: true
+      }))
+    )
+      return;
+    if (!audEd || audEd.draft !== d) return; // (the editor was left while the question was open)
     Sound.stop();
     draftUndoEnd(audEd);
     audEd = null;

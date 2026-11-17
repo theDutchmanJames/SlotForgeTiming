@@ -68,9 +68,10 @@ async function renderChampionships(box) {
     }
     if (
       b.dataset.del &&
-      confirm(
-        `Delete the championship "${r.c.name}"?\n\nThe races that were driven for it stay in Results and Records, as normal races.\n\nThis can't be undone.`
-      )
+      (await Dialog.confirm(
+        `Delete the championship "${r.c.name}"?\n\nThe races that were driven for it stay in Results and Records, as normal races.\n\nThis can't be undone.`,
+        { ok: 'Delete', danger: true }
+      ))
     ) {
       await api.remove('championships', r.raw.id);
       renderChampionships(box);
@@ -434,8 +435,13 @@ function renderChampionshipEditor(box) {
       saving = false;
     }
   };
-  $('ch-back').onclick = () => {
-    if (chEd.dirty && !confirm('Discard your unsaved changes to this championship?')) return;
+  $('ch-back').onclick = async () => {
+    if (
+      chEd.dirty &&
+      !(await Dialog.confirm('Discard your unsaved changes to this championship?', { ok: 'Discard changes', danger: true }))
+    )
+      return;
+    if (!chEd || chEd.draft !== d) return; // (the editor was left another way while the question was open)
     draftUndoEnd(chEd);
     chEd = null;
     renderChampionships(box);
@@ -445,12 +451,16 @@ function renderChampionshipEditor(box) {
     if (!res.error) chEd.open.add(res.rec.rounds[res.rec.rounds.length - 1].id);
     apply(res);
   };
-  $('ch-copyfirst').onclick = () => {
+  $('ch-copyfirst').onclick = async () => {
     if (
       d.rounds.slice(1).some(r => r.sessions.length) &&
-      !confirm('Give every other round the sessions of round 1?\n\nThe sessions they have now are replaced. Undo brings them back.')
+      !(await Dialog.confirm(
+        'Give every other round the sessions of round 1?\n\nThe sessions they have now are replaced. Undo brings them back.',
+        { ok: 'Replace sessions', danger: true }
+      ))
     )
       return;
+    if (!chEd || chEd.draft !== d) return;
     apply(Champ.copyFirstToAll(d));
   };
 
@@ -471,7 +481,7 @@ function renderChampionshipEditor(box) {
   });
 
   // ---- the clicks: the rail, the rounds, the sessions, the roster and the choices ----
-  box.onclick = ev => {
+  box.onclick = async ev => {
     const t = ev.target,
       sum = t.closest && t.closest('summary');
     if (sum) {
@@ -523,11 +533,13 @@ function renderChampionshipEditor(box) {
       if (!s) return;
       if (
         drivenIn(r, s) &&
-        !confirm(
-          `Session ${k + 1} of round ${i + 1} was driven, and its race is saved. The race stays in the results, but is no longer part of the championship.\n\nRemove the session?`
-        )
+        !(await Dialog.confirm(
+          `Session ${k + 1} of round ${i + 1} was driven, and its race is saved. The race stays in the results, but is no longer part of the championship.\n\nRemove the session?`,
+          { ok: 'Remove session', danger: true }
+        ))
       )
         return;
+      if (!chEd || chEd.draft !== d || d.rounds[i] !== r || r.sessions[k] !== s) return; // (an undo while the question was open moved it)
       apply(Champ.removeSession(d, i, k));
       return;
     }
@@ -556,11 +568,13 @@ function renderChampionshipEditor(box) {
       const n = drivenIn(r);
       if (
         n &&
-        !confirm(
-          `Round ${i + 1} has ${n} ${n === 1 ? 'session' : 'sessions'} that ${n === 1 ? 'was' : 'were'} driven, and the races are saved. They stay in the results, but are no longer part of the championship.\n\nDelete the round?`
-        )
+        !(await Dialog.confirm(
+          `Round ${i + 1} has ${n} ${n === 1 ? 'session' : 'sessions'} that ${n === 1 ? 'was' : 'were'} driven, and the races are saved. They stay in the results, but are no longer part of the championship.\n\nDelete the round?`,
+          { ok: 'Delete round', danger: true }
+        ))
       )
         return;
+      if (!chEd || chEd.draft !== d || d.rounds[i] !== r) return;
       apply(Champ.removeRound(d, i));
       return;
     }
@@ -862,9 +876,10 @@ async function champPanelsFor(boxes, onDone) {
         }
         if (
           act === 'off' &&
-          !confirm(
-            'Do not count this race for the championship?\n\nIt stays in the results as a normal race and gives no points, and the Home tab offers the session again. You can count it again later.'
-          )
+          !(await Dialog.confirm(
+            'Do not count this race for the championship?\n\nIt stays in the results as a normal race and gives no points, and the Home tab offers the session again. You can count it again later.',
+            { ok: 'Do not count it' }
+          ))
         )
           return;
         try {
