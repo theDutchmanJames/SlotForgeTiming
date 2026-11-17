@@ -8,6 +8,514 @@ const raceActive = () => !!live && ['countdown', 'running', 'paused', 'between',
 // Coming back to the Race tab shows the same race again: nothing is built a second time.
 const raceHost = () => document.getElementById('racehost') || view;
 
+// the people of the race, and the settings of its systems
+function raceEntrants({
+  allDrivers,
+  byTeam,
+  cars,
+  damageSystems,
+  drivers,
+  enduOn,
+  find,
+  fuelRules,
+  heats,
+  isRival,
+  nameOf,
+  penSystems,
+  r,
+  setup,
+  teams,
+  tokenSession,
+  weatherSystems
+}) {
+  const people = r.rows.map(x0 => {
+    const x = byTeam ? { ...x0, driverId: '' } : x0,
+      d = find(allDrivers, x.driverId) || {},
+      tm = find(teams, x.teamId);
+    const mates = (Array.isArray(tm && tm.drivers) ? tm.drivers : []).filter(id => find(drivers, id)),
+      asRace = enduOn && !!tm && mates.length >= 2; // (a team of two drivers or more swaps)
+    return {
+      ...(isRival(x) ? { virtualRival: true } : {}),
+      raceClass: x.raceClass || '',
+      driverId: x.driverId || '',
+      carId: x.carId || '',
+      driverName: nameOf('drivers', allDrivers, x.driverId) || (tokenSession ? 'Guest' : ''),
+      carName: nameOf('slotcars', cars, x.carId),
+      carPicture: (find(cars, x.carId) || {}).picture || '',
+      carScale: (find(cars, x.carId) || {}).scale || '',
+      tyre: (find(cars, x.carId) || {}).tyreCompound || '', // (the tyre the car races on when it is dry: the weather changes it in the pits)
+      ...(find(cars, x.carId) &&
+      Number.isFinite(Number(find(cars, x.carId).damageFactor)) &&
+      String(find(cars, x.carId).damageFactor).trim() !== ''
+        ? { damageFactor: Math.max(0, Number(find(cars, x.carId).damageFactor)) }
+        : {}), // (a fragile car gets more damage from a hit, see damage.js)
+      ...(find(cars, x.carId) &&
+      Number.isFinite(Number(find(cars, x.carId).failureFactor)) &&
+      String(find(cars, x.carId).failureFactor).trim() !== ''
+        ? { failureFactor: Math.max(0, Number(find(cars, x.carId).failureFactor)) }
+        : {}), // (a tired old car has more failures, see failures.js)
+      nickname: d.nickname || '',
+      callsign: d.callsign || '',
+      flag: d.flag || '',
+      avatar: d.avatar || '',
+      ...(tm ? { teamId: tm.id, teamName: titleOf('teams', tm), teamPicture: tm.picture || '' } : {}),
+      ...(byTeam || asRace ? { asTeam: true, teamDrivers: mates } : {}),
+      ...(asRace
+        ? {
+            roster: mates.map(id => {
+              const m = find(drivers, id);
+              return {
+                id,
+                name: titleOf('drivers', m),
+                nickname: m.nickname || '',
+                callsign: m.callsign || '',
+                flag: m.flag || '',
+                avatar: m.avatar || ''
+              };
+            })
+          }
+        : {})
+    };
+  });
+  const lanes = Math.max(1, Math.floor(Number(r.track.lanes)) || people.length);
+  const engineType = tokenSession ? 'practice' : heats ? (setup.heatBy === 'time' ? 'timed' : 'race') : setup.sessionType;
+  const fuelCfg = RaceEngine.fuelConfig(setup, find(fuelRules, setup.fuelRules), r.track),
+    pitMs = fuelCfg.pitHold; // fuel on/off, tank, use per lap, refuel speed and the resolved pace reference; pit stop hold time
+  // Balance of Power: only for a race or a timed race with a Fuel System, when the race setup has it on (the settings are those of Race Setup > Balance of Power; the lane lengths are for the lane correction)
+  const bopCfg =
+    setup.bop === 'on' && fuelCfg.on && (engineType === 'race' || engineType === 'timed')
+      ? Bop.engineConfig(
+          state.settings,
+          Array.from({ length: lanes }, (_, l) => Speed.laneLength(r.track, l))
+        )
+      : null;
+  const penCfg = RaceEngine.penaltyConfig(find(penSystems, setup.penaltySystem)); // penalty points and how they turn into time
+  const damCfg = tokenSession ? null : Damage.clean(find(damageSystems, setup.damageSystem), r.track.deslotTime); // damage points, the levels and the repair in the pits (a race or a timed race; the deslot time is that of the track)
+  // Weather: only for a race or a timed race, with the weather system the setup has. Every engine (every heat) gets the settings with a seed for the random choices: the same one in every heat, unless the system says every heat has new weather
+  const wxRec = !tokenSession && (engineType === 'race' || engineType === 'timed') ? find(weatherSystems, setup.weather) : null,
+    wxSeed = (r.resume && r.resume.wxSeed) || Heats.newSeed();
+  return { bopCfg, damCfg, engineType, fuelCfg, lanes, penCfg, people, pitMs, wxRec, wxSeed };
+}
+// the race before this one is let go; the records to beat are read
+function raceLetGoAndBase() {
+  if (live) {
+    LiveCanvas.dispose(live.nodes);
+    if (live.perfStop) live.perfStop();
+    if (live.fsView) live.fsView.close();
+    if (live.cardsOff) live.cardsOff();
+    document.removeEventListener('keydown', live.fsKey);
+    live.callRun = -1;
+    live.calling = false;
+    clearTimeout(live.callTimer);
+    Sound.stop();
+    if (live.offTm) live.offTm();
+    if (live.pitSensors) live.pitSensors.off();
+    if (live.box) {
+      live.box.off();
+      live.box = null;
+    }
+    if (live.ds) {
+      live.ds.off();
+      live.ds = null;
+    }
+    if (live.parallel) {
+      live.parallel.off();
+      live.parallel = null;
+    }
+    if (live.plugin) {
+      live.plugin.off();
+      live.plugin = null;
+    }
+    if (live.offTmStatus) live.offTmStatus();
+    if (live.offCmd) live.offCmd();
+    if (live.offResync) live.offResync();
+    clearTimeout(live.shareTimer);
+    clearInterval(live.timers);
+    clearInterval(live.breakTimer);
+    (live.sim || []).forEach(clearTimeout);
+    if (live.flushTokens) live.flushTokens();
+    document.removeEventListener('keydown', live.key);
+  }
+  // earlier laps on this track, for personal best / track record highlights and the record lap widget
+  const base = { personal: new Map(), track: Infinity, trackName: '' };
+  return { base };
+}
+// the live state of the race screen, and the Time Token session
+function raceLiveState({ base, lanes, r, tokenSession }) {
+  if (typeof abCancelTests === 'function') abCancelTests();
+  live = {
+    trkCards: [],
+    phase: 'ready',
+    calling: false,
+    callRun: 0,
+    callTimer: null,
+    timers: null,
+    sim: [],
+    key: null,
+    laps: [],
+    stopping: false,
+    flash: new Map(),
+    lights: 0,
+    nodes: [],
+    lapBtns: [],
+    pitBtns: [],
+    callBtns: [],
+    callsKey: null, // (null: the strip is drawn the first time)
+    alive: true,
+    raceRef: r,
+    stintBy: new Map(),
+    extraBy: new Map(),
+    tyreBy: new Map(),
+    bestBy: new Map(),
+    bestAll: Infinity,
+    bestAllName: '',
+    priorBy: new Map(),
+    priorAll: Infinity,
+    priorAllName: '',
+    memoBy: new Map(),
+    lapsOpen: false,
+    lapSig: null,
+    rvHtml: ''
+  }; // (prior: the bests of the heats that are finished; memoBy: the lap times that count and the metres of every participant in the heats that are done, for a leaderboard that counts over all heats)
+  Review.reset();
+  // a Time Token Session: the token clocks of the lanes (tokens.js). They run on the race clock, so a pause stops them.
+  const tokenSet = Tokens.settingsOf(state.settings);
+  const tokens = tokenSession
+    ? Tokens.create({ lanes, warnSeconds: tokenSet.warnSeconds, warnColor: tokenSet.warnColor, outColor: tokenSet.outColor })
+    : null;
+  live.tokens = tokens;
+  live.base = base;
+  return { tokenSet, tokens };
+}
+// the rows saved for the database: laps, stints, drivers
+function raceSavedRows({ drivers, enduCfg, nameOf, r }) {
+  // the lap rows saved for the database: laps removed in the review are left out, invalid and too slow laps are kept but never count for records
+  const lapRows = (c, date, extra) =>
+    c.laps
+      .map((time, n) => ({ time, n }))
+      .filter(x => !c.removed.includes(x.n))
+      .map(x => ({
+        driverId: c.en ? Endurance.driverAtLap(c.en, x.n) : c.driverId,
+        carId: c.carId,
+        ...(c.teamId ? { teamId: c.teamId } : {}),
+        trackId: r.track.id,
+        ...extra,
+        lane: c.lane + 1,
+        lapNumber: x.n + 1,
+        time: x.time,
+        date,
+        ...((c.pitLaps || []).includes(x.n) ? { pit: true } : {}),
+        ...((c.redLaps || []).includes(x.n)
+          ? { redFlag: true }
+          : c.bad[x.n]
+            ? { noTrackRecord: true, noPersonalBest: true, tooSlow: true }
+            : {}),
+        ...(c.invalid.includes(x.n) ? { noTrackRecord: true, noPersonalBest: true, invalid: true } : {})
+      }));
+
+  // Endurance Race: who drove what. The stints of a car, as they are saved: [{ driverId, driverName, laps, ms, from, to, by }] (from and to: the race clock in ms), and the drivers with their laps and time.
+  const enDist = !!(enduCfg && enduCfg.unit === 'distance');
+  const stintsOf = c =>
+    c.en
+      ? Endurance.stints(c.en, 0, c.laps.length).map(s => ({
+          driverId: s.d,
+          driverName: nameOf('drivers', drivers, s.d) || (c.roster || []).map(m => (m.id === s.d ? m.name : '')).join(''),
+          laps: s.laps,
+          ms: s.ms,
+          from: s.ms0,
+          to: s.ms1,
+          by: s.by,
+          ...(enDist ? { meters: Math.round(s.m * 100) / 100 } : {})
+        }))
+      : []; // (meters: swaps counted in distance say how far the driver drove in the stint)
+  const driversOf = (c, mine) => {
+    // (the laps counted from the lap rows, so a lap that was taken out is not in them)
+    const out = [];
+    stintsOf(c).forEach(s => {
+      let d = out.find(x => x.driverId === s.driverId);
+      if (!d) {
+        d = { driverId: s.driverId, driverName: s.driverName, laps: 0, ms: 0, ...(enDist ? { meters: 0 } : {}) };
+        out.push(d);
+      }
+      d.ms += s.ms;
+      if (enDist) d.meters = Math.round((d.meters + s.meters) * 100) / 100;
+    });
+    out.forEach(d => {
+      d.laps = mine.filter(l => l.driverId === d.driverId).length;
+    });
+    return out;
+  };
+  // 1.57.0: the driver of a team who set the best lap of the team (for the fastest lap bonus of a championship, which goes to the team and to him)
+  const bestByOf = (laps, best) => {
+    if (!(Number(best) > 0)) return '';
+    const ok = laps.filter(l => l.driverId && !l.invalid),
+      hit = ok.find(l => l.time === best) || ok.reduce((a, l) => (!a || l.time < a.time ? l : a), null);
+    return hit ? hit.driverId : '';
+  };
+  return { bestByOf, driversOf, enDist, lapRows, stintsOf };
+}
+// the actions for the tests, the timing hardware in use, the track power and Track Call
+function raceHardwareSetup({ actions, annBase, finalize, finalizeTokens, lanes, reviewCommand, setup, timingFault, tokens, ui }) {
+  live.annBase = annBase; // (for the automated tests)
+  live.actions = actions;
+  actions.finalize = () => (tokens ? finalizeTokens() : finalize());
+  live.reviewCommand = reviewCommand; // (for the automated tests)
+  // ---- the Trackmate: sensor hits count laps, the Trackcall button flags the race ----
+  // One timing hardware at a time: the one chosen in App Settings, Timing Hardware. Only it counts laps and is told about the lights and the power; the status line names it, red when it is not connected.
+  const hwUse = Hardware.timingChosen(state.settings),
+    abLinkNow = () => (typeof ArduinoBox !== 'undefined' ? ArduinoBox.link : null);
+  const tmWord = () =>
+    HomeStats.timing({
+      hardware: hwUse,
+      ds: typeof DsTiming !== 'undefined' && DsTiming.link.connected,
+      trackmate: Trackmate.link.connected,
+      arduino: !!(abLinkNow() && abLinkNow().connected),
+      plugin: typeof pt !== 'undefined' && pt.link.connected,
+      pluginName: typeof pt !== 'undefined' && pt.identity?.name,
+      parallel: typeof ParallelPort !== 'undefined' && ParallelPort.link.connected,
+      virtual: state.settings.abVirtual === true
+    });
+  const drawTm = () => {
+    const e = ui('tmstatus');
+    if (e) {
+      const st = tmWord();
+      e.textContent =
+        ' · ' +
+        st.text +
+        (hwUse === 'trackmate' && Trackmate.link.connected && Trackmate.link.power !== null
+          ? Trackmate.link.power
+            ? ', track power on'
+            : ', track power off'
+          : '');
+      if (e.classList) e.classList.toggle('hwwarn', st.state === 'warn');
+    }
+  };
+  drawTm();
+  // (audit 2.2.5) The Trackmate or the SlotForge box that times this race goes away mid-race: as with the other interfaces, a red flag, the power off and a manual restart
+  let tmWas = Trackmate.link.connected,
+    abWas = !!(abLinkNow() && abLinkNow().connected);
+  const linkLost = () => {
+    const tm = Trackmate.link.connected,
+      ab = !!(abLinkNow() && abLinkNow().connected),
+      busy = ['countdown', 'running', 'paused'].includes(live.phase);
+    const tmLost = hwUse === 'trackmate' && tmWas && !tm && busy,
+      abLost = hwUse === 'arduino' && abWas && !ab && busy;
+    tmWas = tm;
+    abWas = ab; // (first: switching the power off tells the status listeners again)
+    if (tmLost) {
+      live.linkFault = 'trackmate';
+      timingFault('Trackmate', 'Disconnected. Reconnect, then restart manually.');
+    }
+    if (abLost) {
+      live.linkFault = 'arduino';
+      timingFault('Arduino', 'Disconnected. Reconnect, then restart manually.');
+    }
+  };
+  {
+    const offDs = typeof DsTiming !== 'undefined' ? DsTiming.link.onStatus(drawTm) : null,
+      offT = Trackmate.link.onStatus(() => {
+        drawTm();
+        linkLost();
+      }),
+      offA = abLinkNow()
+        ? abLinkNow().onStatus(() => {
+            drawTm();
+            linkLost();
+          })
+        : null,
+      offP = typeof ParallelPort !== 'undefined' ? ParallelPort.link.onStatus(drawTm) : null;
+    const offPt = typeof pt !== 'undefined' ? pt.link.onStatus(drawTm) : null;
+    live.offTmStatus = () => {
+      if (offDs) offDs();
+      if (offPt) offPt();
+      offT();
+      if (offA) offA();
+      if (offP) offP();
+    };
+  }
+  // the track power (the Trackmate relay): only when it is connected
+  const power = on => {
+    if (hwUse === 'trackmate' && Trackmate.link.connected && typeof tmPower === 'function') tmPower(on);
+    if (live.box) live.box.power(on);
+    if (live.parallel) live.parallel.power(on && (!live.hardwareRecoverPower || live.phase === 'running'));
+    if (live.plugin) live.plugin.power(on && (!live.hardwareRecoverPower || live.phase === 'running'));
+  };
+  // Race Settings keeps the Track Call action and flag power separately. Older
+  // imports can still carry the combined Trackmate value, so translate it here
+  // as well as during database upgrade.
+  const trackCallSettings = s => {
+    if (s.trackCallAction !== undefined)
+      return {
+        action: s.trackCallAction || 'yellowred',
+        yellow: s.trackCallYellowPower === 'off' ? 'off' : 'on',
+        red: s.trackCallRedPower === 'off' ? 'off' : 'on'
+      };
+    const old = String(s.trackcall || 'yellowred'),
+      legacy = {
+        yellowred: ['yellowred', 'on', 'on'],
+        yellowredcut: ['yellowred', 'on', 'off'],
+        yellow: ['yellow', 'on', 'on'],
+        yellowcut: ['yellow', 'off', 'on'],
+        red: ['red', 'on', 'on'],
+        redcut: ['red', 'on', 'off'],
+        power: ['power', 'on', 'on'],
+        none: ['none', 'on', 'on']
+      }[old] || ['yellowred', 'on', 'on'];
+    return { action: legacy[0], yellow: legacy[1], red: legacy[2] };
+  };
+  const trackCall = trackCallSettings(setup);
+  if (typeof tmUseLanes === 'function') tmUseLanes(hwUse === 'trackmate' ? lanes : 0);
+  if (hwUse === 'trackmate' && Trackmate.link.connected && typeof tmSetup === 'function')
+    tmSetup(lanes).then(() => power(setup.startPower !== 'off'));
+  return { abLinkNow, hwUse, power, trackCall };
+}
+// the buttons and the keys of the race screen
+function raceButtonsAndKeys({ actions, crossLane, lanes, layout, togglePit, ui, update }) {
+  ui('stopbtn').onclick = ev => {
+    if (ev && ev.currentTarget && ev.currentTarget.blur) ev.currentTarget.blur();
+    actions.stop();
+  };
+  ui('sim').onchange = ev => {
+    if (ev.target && ev.target.blur) ev.target.blur();
+  };
+  ui('back').onclick = () => {
+    if (!raceActive()) {
+      state.tab = 'home';
+      render();
+    }
+  };
+  live.key = ev => {
+    if (state.tab !== 'race') return; // (the race goes on while another tab is shown, but the keys are for that tab then: Space and the letters would be typed into its fields)
+    if (ev.target && ev.target.matches && ev.target.matches('input,select,textarea')) return;
+    if (ev.key === ' ') {
+      ev.preventDefault();
+      if (ev.repeat || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      if (live.phase === 'ready' || live.phase === 'between') actions.start();
+      else actions.pause();
+      return;
+    }
+    if (ev.repeat || ev.metaKey || ev.altKey) return; // a key that is held down is one press; Alt and Cmd belong to the menu and the system
+    const code = String(ev.code || ''),
+      digit = /^(?:Digit|Numpad)([1-8])$/.exec(code),
+      main = /^Digit([1-8])$/.exec(code);
+    if (ev.ctrlKey) {
+      // Ctrl + number is a call; the other Ctrl keys (Ctrl+R reload, Ctrl+S ...) are not ours
+      if (main) {
+        ev.preventDefault();
+        const l = Number(main[1]) - 1;
+        if (l < lanes) actions.call(l);
+      }
+      return;
+    }
+    const k = String(ev.key).toLowerCase();
+    if (k === 'y') return actions.yellow();
+    if (k === 'r') return actions.red();
+    if (k === 's') return actions.stop(); // still asks "Stop the race now?"
+    if (ev.shiftKey && main) {
+      const l = Number(main[1]) - 1;
+      if (l < lanes) togglePit(l);
+      return;
+    }
+    // the lane from the key itself when the browser says which one it is (a keyboard whose number row types other characters, as on AZERTY, still works), else from the character
+    const lane = digit ? Number(digit[1]) - 1 : Number(ev.key) - 1;
+    if (lane >= 0 && lane < lanes) crossLane(lane);
+  };
+  document.addEventListener('keydown', live.key);
+  // The fullscreen widget view: only the widgets of the layout, as large as the window allows (the window itself goes full screen too). F opens and closes it, Esc closes it.
+  // It has its own key listener, so it also works when the race is over and the race keys are off. The race keeps going and is run with the keys as before.
+  const toggleFull = () => {
+    if (live.fsView) {
+      live.fsView.close();
+      return;
+    }
+    let was = null;
+    live.fsView = LiveCanvas.fullView(layout, lanes, {
+      onClose: () => {
+        live.fsView = null;
+        if (api.windowFullscreen && was !== null) api.windowFullscreen(was);
+      }
+    });
+    if (api.windowFullscreen)
+      Promise.resolve(api.windowFullscreen(true))
+        .then(r => {
+          was = r && typeof r.was === 'boolean' ? r.was : false;
+          if (!live.fsView) api.windowFullscreen(was);
+        })
+        .catch(() => {
+          was = false;
+        });
+    update();
+  };
+  live.fsKey = ev => {
+    if (state.tab !== 'race') return;
+    if (ev.target && ev.target.matches && ev.target.matches('input,select,textarea')) return;
+    if (String(ev.key).toLowerCase() === 'f' && !ev.ctrlKey && !ev.altKey && !ev.metaKey) toggleFull();
+  };
+  document.addEventListener('keydown', live.fsKey);
+  ui('fsbtn').onclick = ev => {
+    if (ev && ev.currentTarget && ev.currentTarget.blur) ev.currentTarget.blur();
+    toggleFull();
+  };
+}
+// showing the race screen again, and leaving it
+function raceShowAndLeave({ syncPerfLine, update }) {
+  live.shown = () => {
+    live.nodes.forEach(n => {
+      n.last = null;
+    });
+    syncPerfLine();
+    update();
+  }; // the Race tab is shown again: everything is drawn once more (a leaderboard fits its text to the size it has now)
+  // leaving the race screen (before the start, or after the end): the keys, the Trackmate and the Race Director buttons stop working on the other pages
+  live.offPitSensors = () => {
+    if (live.pitSensors) {
+      live.pitSensors.off();
+      live.pitSensors = null;
+    }
+  };
+  live.leave = () => {
+    LiveCanvas.dispose(live.nodes);
+    if (live.fsView) live.fsView.close();
+    document.removeEventListener('keydown', live.fsKey);
+    if (live.calling) {
+      live.callRun = -1;
+      live.calling = false;
+      clearTimeout(live.callTimer);
+      Sound.stop();
+    }
+    document.removeEventListener('keydown', live.key);
+    if (typeof tmUseLanes === 'function') tmUseLanes(0);
+    ['offTm', 'offTmStatus', 'offCmd', 'offResync'].forEach(k => {
+      if (live[k]) {
+        live[k]();
+        live[k] = null;
+      }
+    });
+    if (live.box) {
+      live.box.off();
+      live.box = null;
+    }
+    if (live.ds) {
+      live.ds.off();
+      live.ds = null;
+    }
+    if (live.parallel) {
+      live.parallel.off();
+      live.parallel = null;
+    }
+    if (live.plugin) {
+      live.plugin.off();
+      live.plugin = null;
+    }
+    live.offPitSensors();
+    clearTimeout(live.shareTimer);
+    live.shareTimer = null;
+    if (live.flushTokens) live.flushTokens();
+    clearTimeout(live.tkTimer);
+    live.tkTimer = null;
+  };
+}
+
 async function renderRace() {
   const r = state.race;
   if (!r) {
@@ -152,72 +660,25 @@ async function renderRace() {
       return render();
     }
   }
-  const people = r.rows.map(x0 => {
-    const x = byTeam ? { ...x0, driverId: '' } : x0,
-      d = find(allDrivers, x.driverId) || {},
-      tm = find(teams, x.teamId);
-    const mates = (Array.isArray(tm && tm.drivers) ? tm.drivers : []).filter(id => find(drivers, id)),
-      asRace = enduOn && !!tm && mates.length >= 2; // (a team of two drivers or more swaps)
-    return {
-      ...(isRival(x) ? { virtualRival: true } : {}),
-      raceClass: x.raceClass || '',
-      driverId: x.driverId || '',
-      carId: x.carId || '',
-      driverName: nameOf('drivers', allDrivers, x.driverId) || (tokenSession ? 'Guest' : ''),
-      carName: nameOf('slotcars', cars, x.carId),
-      carPicture: (find(cars, x.carId) || {}).picture || '',
-      carScale: (find(cars, x.carId) || {}).scale || '',
-      tyre: (find(cars, x.carId) || {}).tyreCompound || '', // (the tyre the car races on when it is dry: the weather changes it in the pits)
-      ...(find(cars, x.carId) &&
-      Number.isFinite(Number(find(cars, x.carId).damageFactor)) &&
-      String(find(cars, x.carId).damageFactor).trim() !== ''
-        ? { damageFactor: Math.max(0, Number(find(cars, x.carId).damageFactor)) }
-        : {}), // (a fragile car gets more damage from a hit, see damage.js)
-      ...(find(cars, x.carId) &&
-      Number.isFinite(Number(find(cars, x.carId).failureFactor)) &&
-      String(find(cars, x.carId).failureFactor).trim() !== ''
-        ? { failureFactor: Math.max(0, Number(find(cars, x.carId).failureFactor)) }
-        : {}), // (a tired old car has more failures, see failures.js)
-      nickname: d.nickname || '',
-      callsign: d.callsign || '',
-      flag: d.flag || '',
-      avatar: d.avatar || '',
-      ...(tm ? { teamId: tm.id, teamName: titleOf('teams', tm), teamPicture: tm.picture || '' } : {}),
-      ...(byTeam || asRace ? { asTeam: true, teamDrivers: mates } : {}),
-      ...(asRace
-        ? {
-            roster: mates.map(id => {
-              const m = find(drivers, id);
-              return {
-                id,
-                name: titleOf('drivers', m),
-                nickname: m.nickname || '',
-                callsign: m.callsign || '',
-                flag: m.flag || '',
-                avatar: m.avatar || ''
-              };
-            })
-          }
-        : {})
-    };
-  });
-  const lanes = Math.max(1, Math.floor(Number(r.track.lanes)) || people.length);
-  const engineType = tokenSession ? 'practice' : heats ? (setup.heatBy === 'time' ? 'timed' : 'race') : setup.sessionType;
-  const fuelCfg = RaceEngine.fuelConfig(setup, find(fuelRules, setup.fuelRules), r.track),
-    pitMs = fuelCfg.pitHold; // fuel on/off, tank, use per lap, refuel speed and the resolved pace reference; pit stop hold time
-  // Balance of Power: only for a race or a timed race with a Fuel System, when the race setup has it on (the settings are those of Race Setup > Balance of Power; the lane lengths are for the lane correction)
-  const bopCfg =
-    setup.bop === 'on' && fuelCfg.on && (engineType === 'race' || engineType === 'timed')
-      ? Bop.engineConfig(
-          state.settings,
-          Array.from({ length: lanes }, (_, l) => Speed.laneLength(r.track, l))
-        )
-      : null;
-  const penCfg = RaceEngine.penaltyConfig(find(penSystems, setup.penaltySystem)); // penalty points and how they turn into time
-  const damCfg = tokenSession ? null : Damage.clean(find(damageSystems, setup.damageSystem), r.track.deslotTime); // damage points, the levels and the repair in the pits (a race or a timed race; the deslot time is that of the track)
-  // Weather: only for a race or a timed race, with the weather system the setup has. Every engine (every heat) gets the settings with a seed for the random choices: the same one in every heat, unless the system says every heat has new weather
-  const wxRec = !tokenSession && (engineType === 'race' || engineType === 'timed') ? find(weatherSystems, setup.weather) : null,
-    wxSeed = (r.resume && r.resume.wxSeed) || Heats.newSeed(); // (a race that is carried on after an interruption has the weather it had)
+  const { bopCfg, damCfg, engineType, fuelCfg, lanes, penCfg, people, pitMs, wxRec, wxSeed } = raceEntrants({
+    allDrivers,
+    byTeam,
+    cars,
+    damageSystems,
+    drivers,
+    enduOn,
+    find,
+    fuelRules,
+    heats,
+    isRival,
+    nameOf,
+    penSystems,
+    r,
+    setup,
+    teams,
+    tokenSession,
+    weatherSystems
+  }); // (a race that is carried on after an interruption has the weather it had)
   // wxLast: the seed of the race that was made last (kept in the snapshot of an interrupted race); wxForce: the seed of the race that was interrupted, so the weather goes on as it was planned (1.24.0)
   let wxLast = 0,
     wxForce =
@@ -540,46 +1001,7 @@ async function renderRace() {
     ); // every lane of the track can be sold, with or without a driver
   else eng = mk(people.map((p, i) => ({ lane: i, ...(season ? { participant: i } : {}), ...p }))); // (a race of a championship: the car knows who it is, as in a heat race, for a leaderboard that counts over the rounds)
 
-  if (live) {
-    LiveCanvas.dispose(live.nodes);
-    if (live.perfStop) live.perfStop();
-    if (live.fsView) live.fsView.close();
-    if (live.cardsOff) live.cardsOff();
-    document.removeEventListener('keydown', live.fsKey);
-    live.callRun = -1;
-    live.calling = false;
-    clearTimeout(live.callTimer);
-    Sound.stop();
-    if (live.offTm) live.offTm();
-    if (live.pitSensors) live.pitSensors.off();
-    if (live.box) {
-      live.box.off();
-      live.box = null;
-    }
-    if (live.ds) {
-      live.ds.off();
-      live.ds = null;
-    }
-    if (live.parallel) {
-      live.parallel.off();
-      live.parallel = null;
-    }
-    if (live.plugin) {
-      live.plugin.off();
-      live.plugin = null;
-    }
-    if (live.offTmStatus) live.offTmStatus();
-    if (live.offCmd) live.offCmd();
-    if (live.offResync) live.offResync();
-    clearTimeout(live.shareTimer);
-    clearInterval(live.timers);
-    clearInterval(live.breakTimer);
-    (live.sim || []).forEach(clearTimeout);
-    if (live.flushTokens) live.flushTokens();
-    document.removeEventListener('keydown', live.key);
-  }
-  // earlier laps on this track, for personal best / track record highlights and the record lap widget
-  const base = { personal: new Map(), track: Infinity, trackName: '' };
+  const { base } = raceLetGoAndBase();
   // laps removed from the records (but kept in their session) do not count here
   if (inputs) {
     base.personal = new Map(inputs.records.personal);
@@ -597,49 +1019,7 @@ async function renderRace() {
         } // (a Guest, who has no driver in the database, can hold the track record of the Token Records)
         if (!l.noPersonalBest && l.driverId) base.personal.set(l.driverId, Math.min(base.personal.get(l.driverId) ?? Infinity, l.time)); // (a Guest has no personal best)
       });
-  if (typeof abCancelTests === 'function') abCancelTests();
-  live = {
-    trkCards: [],
-    phase: 'ready',
-    calling: false,
-    callRun: 0,
-    callTimer: null,
-    timers: null,
-    sim: [],
-    key: null,
-    laps: [],
-    stopping: false,
-    flash: new Map(),
-    lights: 0,
-    nodes: [],
-    lapBtns: [],
-    pitBtns: [],
-    callBtns: [],
-    callsKey: null, // (null: the strip is drawn the first time)
-    alive: true,
-    raceRef: r,
-    stintBy: new Map(),
-    extraBy: new Map(),
-    tyreBy: new Map(),
-    bestBy: new Map(),
-    bestAll: Infinity,
-    bestAllName: '',
-    priorBy: new Map(),
-    priorAll: Infinity,
-    priorAllName: '',
-    memoBy: new Map(),
-    lapsOpen: false,
-    lapSig: null,
-    rvHtml: ''
-  }; // (prior: the bests of the heats that are finished; memoBy: the lap times that count and the metres of every participant in the heats that are done, for a leaderboard that counts over all heats)
-  Review.reset();
-  // a Time Token Session: the token clocks of the lanes (tokens.js). They run on the race clock, so a pause stops them.
-  const tokenSet = Tokens.settingsOf(state.settings);
-  const tokens = tokenSession
-    ? Tokens.create({ lanes, warnSeconds: tokenSet.warnSeconds, warnColor: tokenSet.warnColor, outColor: tokenSet.outColor })
-    : null;
-  live.tokens = tokens;
-  live.base = base; // (for the automated tests, and the lane controls)
+  const { tokenSet, tokens } = raceLiveState({ base, lanes, r, tokenSession }); // (for the automated tests, and the lane controls)
   if (tokens)
     eng.cars.forEach(c =>
       tokens.assign(c.lane, {
@@ -1875,69 +2255,7 @@ async function renderRace() {
   // The engine's full event log still powers live screens and resume; results need just these deliberate controls.
   const systemChanges = () =>
     (eng.events || []).filter(e => e.type === 'systemtoggle').map(e => ({ system: e.system, enabled: !!e.enabled, at: e.at }));
-  // the lap rows saved for the database: laps removed in the review are left out, invalid and too slow laps are kept but never count for records
-  const lapRows = (c, date, extra) =>
-    c.laps
-      .map((time, n) => ({ time, n }))
-      .filter(x => !c.removed.includes(x.n))
-      .map(x => ({
-        driverId: c.en ? Endurance.driverAtLap(c.en, x.n) : c.driverId,
-        carId: c.carId,
-        ...(c.teamId ? { teamId: c.teamId } : {}),
-        trackId: r.track.id,
-        ...extra,
-        lane: c.lane + 1,
-        lapNumber: x.n + 1,
-        time: x.time,
-        date,
-        ...((c.pitLaps || []).includes(x.n) ? { pit: true } : {}),
-        ...((c.redLaps || []).includes(x.n)
-          ? { redFlag: true }
-          : c.bad[x.n]
-            ? { noTrackRecord: true, noPersonalBest: true, tooSlow: true }
-            : {}),
-        ...(c.invalid.includes(x.n) ? { noTrackRecord: true, noPersonalBest: true, invalid: true } : {})
-      }));
-
-  // Endurance Race: who drove what. The stints of a car, as they are saved: [{ driverId, driverName, laps, ms, from, to, by }] (from and to: the race clock in ms), and the drivers with their laps and time.
-  const enDist = !!(enduCfg && enduCfg.unit === 'distance');
-  const stintsOf = c =>
-    c.en
-      ? Endurance.stints(c.en, 0, c.laps.length).map(s => ({
-          driverId: s.d,
-          driverName: nameOf('drivers', drivers, s.d) || (c.roster || []).map(m => (m.id === s.d ? m.name : '')).join(''),
-          laps: s.laps,
-          ms: s.ms,
-          from: s.ms0,
-          to: s.ms1,
-          by: s.by,
-          ...(enDist ? { meters: Math.round(s.m * 100) / 100 } : {})
-        }))
-      : []; // (meters: swaps counted in distance say how far the driver drove in the stint)
-  const driversOf = (c, mine) => {
-    // (the laps counted from the lap rows, so a lap that was taken out is not in them)
-    const out = [];
-    stintsOf(c).forEach(s => {
-      let d = out.find(x => x.driverId === s.driverId);
-      if (!d) {
-        d = { driverId: s.driverId, driverName: s.driverName, laps: 0, ms: 0, ...(enDist ? { meters: 0 } : {}) };
-        out.push(d);
-      }
-      d.ms += s.ms;
-      if (enDist) d.meters = Math.round((d.meters + s.meters) * 100) / 100;
-    });
-    out.forEach(d => {
-      d.laps = mine.filter(l => l.driverId === d.driverId).length;
-    });
-    return out;
-  };
-  // 1.57.0: the driver of a team who set the best lap of the team (for the fastest lap bonus of a championship, which goes to the team and to him)
-  const bestByOf = (laps, best) => {
-    if (!(Number(best) > 0)) return '';
-    const ok = laps.filter(l => l.driverId && !l.invalid),
-      hit = ok.find(l => l.time === best) || ok.reduce((a, l) => (!a || l.time < a.time ? l : a), null);
-    return hit ? hit.driverId : '';
-  };
+  const { bestByOf, driversOf, enDist, lapRows, stintsOf } = raceSavedRows({ drivers, enduCfg, nameOf, r });
 
   // a heat (or the single race) has ended: the Race Director reviews the result before it is saved
   function engineFinished() {
@@ -3049,117 +3367,18 @@ async function renderRace() {
       syncPhase();
     }
   };
-  live.annBase = annBase; // (for the automated tests)
-  live.actions = actions;
-  actions.finalize = () => (tokens ? finalizeTokens() : finalize());
-  live.reviewCommand = reviewCommand; // (for the automated tests)
-  // ---- the Trackmate: sensor hits count laps, the Trackcall button flags the race ----
-  // One timing hardware at a time: the one chosen in App Settings, Timing Hardware. Only it counts laps and is told about the lights and the power; the status line names it, red when it is not connected.
-  const hwUse = Hardware.timingChosen(state.settings),
-    abLinkNow = () => (typeof ArduinoBox !== 'undefined' ? ArduinoBox.link : null);
-  const tmWord = () =>
-    HomeStats.timing({
-      hardware: hwUse,
-      ds: typeof DsTiming !== 'undefined' && DsTiming.link.connected,
-      trackmate: Trackmate.link.connected,
-      arduino: !!(abLinkNow() && abLinkNow().connected),
-      plugin: typeof pt !== 'undefined' && pt.link.connected,
-      pluginName: typeof pt !== 'undefined' && pt.identity?.name,
-      parallel: typeof ParallelPort !== 'undefined' && ParallelPort.link.connected,
-      virtual: state.settings.abVirtual === true
-    });
-  const drawTm = () => {
-    const e = ui('tmstatus');
-    if (e) {
-      const st = tmWord();
-      e.textContent =
-        ' · ' +
-        st.text +
-        (hwUse === 'trackmate' && Trackmate.link.connected && Trackmate.link.power !== null
-          ? Trackmate.link.power
-            ? ', track power on'
-            : ', track power off'
-          : '');
-      if (e.classList) e.classList.toggle('hwwarn', st.state === 'warn');
-    }
-  };
-  drawTm();
-  // (audit 2.2.5) The Trackmate or the SlotForge box that times this race goes away mid-race: as with the other interfaces, a red flag, the power off and a manual restart
-  let tmWas = Trackmate.link.connected,
-    abWas = !!(abLinkNow() && abLinkNow().connected);
-  const linkLost = () => {
-    const tm = Trackmate.link.connected,
-      ab = !!(abLinkNow() && abLinkNow().connected),
-      busy = ['countdown', 'running', 'paused'].includes(live.phase);
-    const tmLost = hwUse === 'trackmate' && tmWas && !tm && busy,
-      abLost = hwUse === 'arduino' && abWas && !ab && busy;
-    tmWas = tm;
-    abWas = ab; // (first: switching the power off tells the status listeners again)
-    if (tmLost) {
-      live.linkFault = 'trackmate';
-      timingFault('Trackmate', 'Disconnected. Reconnect, then restart manually.');
-    }
-    if (abLost) {
-      live.linkFault = 'arduino';
-      timingFault('Arduino', 'Disconnected. Reconnect, then restart manually.');
-    }
-  };
-  {
-    const offDs = typeof DsTiming !== 'undefined' ? DsTiming.link.onStatus(drawTm) : null,
-      offT = Trackmate.link.onStatus(() => {
-        drawTm();
-        linkLost();
-      }),
-      offA = abLinkNow()
-        ? abLinkNow().onStatus(() => {
-            drawTm();
-            linkLost();
-          })
-        : null,
-      offP = typeof ParallelPort !== 'undefined' ? ParallelPort.link.onStatus(drawTm) : null;
-    const offPt = typeof pt !== 'undefined' ? pt.link.onStatus(drawTm) : null;
-    live.offTmStatus = () => {
-      if (offDs) offDs();
-      if (offPt) offPt();
-      offT();
-      if (offA) offA();
-      if (offP) offP();
-    };
-  }
-  // the track power (the Trackmate relay): only when it is connected
-  const power = on => {
-    if (hwUse === 'trackmate' && Trackmate.link.connected && typeof tmPower === 'function') tmPower(on);
-    if (live.box) live.box.power(on);
-    if (live.parallel) live.parallel.power(on && (!live.hardwareRecoverPower || live.phase === 'running'));
-    if (live.plugin) live.plugin.power(on && (!live.hardwareRecoverPower || live.phase === 'running'));
-  };
-  // Race Settings keeps the Track Call action and flag power separately. Older
-  // imports can still carry the combined Trackmate value, so translate it here
-  // as well as during database upgrade.
-  const trackCallSettings = s => {
-    if (s.trackCallAction !== undefined)
-      return {
-        action: s.trackCallAction || 'yellowred',
-        yellow: s.trackCallYellowPower === 'off' ? 'off' : 'on',
-        red: s.trackCallRedPower === 'off' ? 'off' : 'on'
-      };
-    const old = String(s.trackcall || 'yellowred'),
-      legacy = {
-        yellowred: ['yellowred', 'on', 'on'],
-        yellowredcut: ['yellowred', 'on', 'off'],
-        yellow: ['yellow', 'on', 'on'],
-        yellowcut: ['yellow', 'off', 'on'],
-        red: ['red', 'on', 'on'],
-        redcut: ['red', 'on', 'off'],
-        power: ['power', 'on', 'on'],
-        none: ['none', 'on', 'on']
-      }[old] || ['yellowred', 'on', 'on'];
-    return { action: legacy[0], yellow: legacy[1], red: legacy[2] };
-  };
-  const trackCall = trackCallSettings(setup);
-  if (typeof tmUseLanes === 'function') tmUseLanes(hwUse === 'trackmate' ? lanes : 0);
-  if (hwUse === 'trackmate' && Trackmate.link.connected && typeof tmSetup === 'function')
-    tmSetup(lanes).then(() => power(setup.startPower !== 'off')); // the interface is told the lanes; the track starts with or without power
+  const { abLinkNow, hwUse, power, trackCall } = raceHardwareSetup({
+    actions,
+    annBase,
+    finalize,
+    finalizeTokens,
+    lanes,
+    reviewCommand,
+    setup,
+    timingFault,
+    tokens,
+    ui
+  }); // the interface is told the lanes; the track starts with or without power
   let callAt = 0; // when the last Trackcall press was
   const trackcall = () => {
     const mode = trackCall.action,
@@ -3414,91 +3633,7 @@ async function renderRace() {
       else if (tokens && TOKEN_CMD[cmd.type]) TOKEN_CMD[cmd.type](cmd);
     });
   live.engine = () => eng; // for automated tests
-  ui('stopbtn').onclick = ev => {
-    if (ev && ev.currentTarget && ev.currentTarget.blur) ev.currentTarget.blur();
-    actions.stop();
-  };
-  ui('sim').onchange = ev => {
-    if (ev.target && ev.target.blur) ev.target.blur();
-  };
-  ui('back').onclick = () => {
-    if (!raceActive()) {
-      state.tab = 'home';
-      render();
-    }
-  };
-  live.key = ev => {
-    if (state.tab !== 'race') return; // (the race goes on while another tab is shown, but the keys are for that tab then: Space and the letters would be typed into its fields)
-    if (ev.target && ev.target.matches && ev.target.matches('input,select,textarea')) return;
-    if (ev.key === ' ') {
-      ev.preventDefault();
-      if (ev.repeat || ev.ctrlKey || ev.metaKey || ev.altKey) return;
-      if (live.phase === 'ready' || live.phase === 'between') actions.start();
-      else actions.pause();
-      return;
-    }
-    if (ev.repeat || ev.metaKey || ev.altKey) return; // a key that is held down is one press; Alt and Cmd belong to the menu and the system
-    const code = String(ev.code || ''),
-      digit = /^(?:Digit|Numpad)([1-8])$/.exec(code),
-      main = /^Digit([1-8])$/.exec(code);
-    if (ev.ctrlKey) {
-      // Ctrl + number is a call; the other Ctrl keys (Ctrl+R reload, Ctrl+S ...) are not ours
-      if (main) {
-        ev.preventDefault();
-        const l = Number(main[1]) - 1;
-        if (l < lanes) actions.call(l);
-      }
-      return;
-    }
-    const k = String(ev.key).toLowerCase();
-    if (k === 'y') return actions.yellow();
-    if (k === 'r') return actions.red();
-    if (k === 's') return actions.stop(); // still asks "Stop the race now?"
-    if (ev.shiftKey && main) {
-      const l = Number(main[1]) - 1;
-      if (l < lanes) togglePit(l);
-      return;
-    }
-    // the lane from the key itself when the browser says which one it is (a keyboard whose number row types other characters, as on AZERTY, still works), else from the character
-    const lane = digit ? Number(digit[1]) - 1 : Number(ev.key) - 1;
-    if (lane >= 0 && lane < lanes) crossLane(lane);
-  };
-  document.addEventListener('keydown', live.key);
-  // The fullscreen widget view: only the widgets of the layout, as large as the window allows (the window itself goes full screen too). F opens and closes it, Esc closes it.
-  // It has its own key listener, so it also works when the race is over and the race keys are off. The race keeps going and is run with the keys as before.
-  const toggleFull = () => {
-    if (live.fsView) {
-      live.fsView.close();
-      return;
-    }
-    let was = null;
-    live.fsView = LiveCanvas.fullView(layout, lanes, {
-      onClose: () => {
-        live.fsView = null;
-        if (api.windowFullscreen && was !== null) api.windowFullscreen(was);
-      }
-    });
-    if (api.windowFullscreen)
-      Promise.resolve(api.windowFullscreen(true))
-        .then(r => {
-          was = r && typeof r.was === 'boolean' ? r.was : false;
-          if (!live.fsView) api.windowFullscreen(was);
-        })
-        .catch(() => {
-          was = false;
-        });
-    update();
-  };
-  live.fsKey = ev => {
-    if (state.tab !== 'race') return;
-    if (ev.target && ev.target.matches && ev.target.matches('input,select,textarea')) return;
-    if (String(ev.key).toLowerCase() === 'f' && !ev.ctrlKey && !ev.altKey && !ev.metaKey) toggleFull();
-  };
-  document.addEventListener('keydown', live.fsKey);
-  ui('fsbtn').onclick = ev => {
-    if (ev && ev.currentTarget && ev.currentTarget.blur) ev.currentTarget.blur();
-    toggleFull();
-  };
+  raceButtonsAndKeys({ actions, crossLane, lanes, layout, togglePit, ui, update });
   let chartReload = 0;
   const chartOwner = live;
   live.reloadCharts = async () => {
@@ -3512,61 +3647,7 @@ async function renderRace() {
     });
     update();
   };
-  live.shown = () => {
-    live.nodes.forEach(n => {
-      n.last = null;
-    });
-    syncPerfLine();
-    update();
-  }; // the Race tab is shown again: everything is drawn once more (a leaderboard fits its text to the size it has now)
-  // leaving the race screen (before the start, or after the end): the keys, the Trackmate and the Race Director buttons stop working on the other pages
-  live.offPitSensors = () => {
-    if (live.pitSensors) {
-      live.pitSensors.off();
-      live.pitSensors = null;
-    }
-  };
-  live.leave = () => {
-    LiveCanvas.dispose(live.nodes);
-    if (live.fsView) live.fsView.close();
-    document.removeEventListener('keydown', live.fsKey);
-    if (live.calling) {
-      live.callRun = -1;
-      live.calling = false;
-      clearTimeout(live.callTimer);
-      Sound.stop();
-    }
-    document.removeEventListener('keydown', live.key);
-    if (typeof tmUseLanes === 'function') tmUseLanes(0);
-    ['offTm', 'offTmStatus', 'offCmd', 'offResync'].forEach(k => {
-      if (live[k]) {
-        live[k]();
-        live[k] = null;
-      }
-    });
-    if (live.box) {
-      live.box.off();
-      live.box = null;
-    }
-    if (live.ds) {
-      live.ds.off();
-      live.ds = null;
-    }
-    if (live.parallel) {
-      live.parallel.off();
-      live.parallel = null;
-    }
-    if (live.plugin) {
-      live.plugin.off();
-      live.plugin = null;
-    }
-    live.offPitSensors();
-    clearTimeout(live.shareTimer);
-    live.shareTimer = null;
-    if (live.flushTokens) live.flushTokens();
-    clearTimeout(live.tkTimer);
-    live.tkTimer = null;
-  };
+  raceShowAndLeave({ syncPerfLine, update });
 
   // ---- Time Token Session: the lane controls, saving every stint, keeping the session across a restart ----
   const raceT = () => eng.elapsed(now()); // the race clock: the token clocks run on it, so a pause stops them

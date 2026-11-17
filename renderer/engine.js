@@ -37,6 +37,137 @@
     MIN_LAP
   } = Basics;
 
+  // the tyre state of a car, and penalty points
+  function engineTyresAndPoints({
+    P,
+    R,
+    SETS,
+    TWC,
+    TWH,
+    Tw,
+    W,
+    checkEnd,
+    heldPits,
+    holdPenalty,
+    log,
+    penOf,
+    serveCheck,
+    systemOn,
+    twAt,
+    twNextOf,
+    twPool,
+    twWill
+  }) {
+    R.twOf = (i, t) => {
+      const c = R.cars[i];
+      if (!TWC || !c) return null;
+      const resourceSets = R.resources?.profile.tyresOn;
+      const initial = resourceSets
+        ? R.resources.accounts[Res.key(R.resources, c, R.resourceHeat)]?.initial || Res.limits(R.resources.profile)
+        : null;
+      const at = twAt(c),
+        te = R.status === 'paused' ? R.pausedAt : R.status === 'finished' ? R.endAt : t,
+        busy = at !== null && R.status !== 'finished';
+      return {
+        temperature: R.temperatureOf(i, t),
+        tyre: c.tyre,
+        life: c.twLife,
+        level: Tw.levelOf(TWC, c.twLife),
+        effect: TWH ? c.tw || 0 : null,
+        left: Tw.left(TWC, c.tyre, systemOn('weather') ? R.wxState : 'dry', c.twLife, TWC.laneLen[c.lane] || 0),
+        pace: c.twPaceNow ? { ...c.twPaceNow, samples: (c.twPace || []).length } : null,
+        stops: c.twStops,
+        ...(resourceSets
+          ? {
+              setsMode: R.resources.profile.owner,
+              setsStart: Object.fromEntries(
+                Object.entries(initial)
+                  .filter(([k]) => k.startsWith('tyre:'))
+                  .map(([k, n]) => [k.slice(5), n])
+              )
+            }
+          : {}),
+        fitting: busy ? twWill(c) : null,
+        fitLeft: busy && Number.isFinite(te) ? Math.max(0, at - te) : null,
+        own: W.cleanTyre(c.tyreOwn),
+        next: twNextOf(c),
+        queued: c.twNext || '',
+        sets: SETS || R.resources?.profile.tyresOn ? { ...twPool(c) } : null
+      };
+    };
+    // ---- penalty points ----
+    R.penMs = penOf;
+    R.penaltyEffects = c => penaltyEffects(P, c && c.points);
+    // Adds (or with a negative n takes back) penalty points. Reaching the disqualify limit puts the car out of the race.
+    R.addPoints = (i, n, t, why) => {
+      const c = R.cars[i];
+      if (!P.on || (!systemOn('penalty') && why !== 'existing-penalty') || !c || R.status === 'ready' || !Number.isFinite(n) || n === 0)
+        return false;
+      const before = c.points;
+      c.points = Math.max(0, c.points + n);
+      if (c.points === before) return false;
+      const effect = penaltyEffects(P, c.points),
+        beforeEffect = penaltyEffects(P, before);
+      log('penalty', i, t, {
+        delta: c.points - before,
+        points: c.points,
+        ms: penaltyMs(P, c.points),
+        laps: effect.laps,
+        ...(why ? { why } : {})
+      });
+      // A ladder's pit row is mandatory once when its threshold is crossed. Higher rows
+      // replace the former duration; they do not queue both durations.
+      if (effect.pit > 0 && effect.from > beforeEffect.from && !(c.penaltyPitTiers || []).some(tier => tier >= effect.from)) {
+        if (R.status === 'running') serveCheck(i, t);
+        const previousTier = p =>
+          p.ladderTier ||
+          (p.mandatory &&
+          /^Penalty points · (\d+) points$/.test(p.name) &&
+          R.events.some(e => e.type === 'assigned' && e.automatic && e.car === i && e.t === p.at && e.name === p.name)
+            ? Number(/^Penalty points · (\d+) points$/.exec(p.name)[1])
+            : 0);
+        const replaceAt = c.pending.findIndex(p => previousTier(p) > 0 && previousTier(p) < effect.from);
+        // (2.2.5: a higher tier takes the place of a lower one; it can be served from the moment the first of them was given, so it is only beyond reach when all of them came after the flag)
+        const replaced = c.pending.filter(p => previousTier(p) > 0 && previousTier(p) < effect.from),
+          since = Math.min(t, ...replaced.map(p => p.since ?? p.at));
+        c.pending = c.pending.filter(p => !(previousTier(p) > 0 && previousTier(p) < effect.from));
+        c.penaltyPitTiers = c.penaltyPitTiers || [];
+        c.penaltyPitTiers.push(effect.from);
+        c.pending.splice(replaceAt < 0 ? c.pending.length : replaceAt, 0, {
+          name: `Penalty points · ${effect.from} points`,
+          kind: 'stopgo',
+          seconds: effect.pit,
+          extra: 0,
+          unserved: 0,
+          mandatory: true,
+          ladderTier: effect.from,
+          at: t,
+          ...(since < t ? { since } : {}),
+          ...(c.done && replaced.every(p => p.afterFinish) ? { afterFinish: true } : {})
+        }); // (afterFinish: given after the car took the flag, so it cannot be served; it does not disqualify, and the review still shows it)
+        if (heldPits) holdPenalty(c);
+        log('assigned', i, t, { name: `Penalty points · ${effect.from} points`, automatic: true });
+      }
+      if (P.dq && c.points >= P.dq && !c.dq) {
+        c.dq = true;
+        c.dqWasDone = c.done;
+        c.dqWasRetired = c.retired;
+        c.done = true;
+        c.retired = true;
+        log('disqualified', i, t);
+        checkEnd(t);
+      } else if (c.dq && !c.msDq && !c.dmgOut && !c.failOut && (!P.dq || c.points < P.dq) && R.status !== 'finished') {
+        // a mistaken point can still be taken back (not for a car that damage put out: that is for the damage points; nor for one the mandatory stops disqualified, c.msDq)
+        c.dq = false;
+        c.done = !!c.dqWasDone;
+        c.retired = !!c.dqWasRetired;
+        log('reinstated', i, t);
+      }
+      return true;
+    };
+    R.goodLaps = goodLaps;
+  }
+
   function createRace(cfg) {
     const rulePlugin = cfg.rulePlugin ? Rules.snapshot(cfg.rulePlugin) : null;
     if (rulePlugin) cfg = { ...cfg, rulePlugin };
@@ -1541,114 +1672,26 @@
     // what a screen needs to know of the tyres of car i: the tyre, its life, the level (ok, warn, crit, out), what it does to the car (null: not through the fuel rules), what is left, the stops, and while the tyres are being changed the tyre that goes on and the time that is left
     R.temperatureOf = (i, t) =>
       TWC?.temperature && R.cars[i] ? Tw.Temperature.view(TWC.temperature, R.cars[i].tyre, tempValue(R.cars[i], t)) : null;
-    R.twOf = (i, t) => {
-      const c = R.cars[i];
-      if (!TWC || !c) return null;
-      const resourceSets = R.resources?.profile.tyresOn;
-      const initial = resourceSets
-        ? R.resources.accounts[Res.key(R.resources, c, R.resourceHeat)]?.initial || Res.limits(R.resources.profile)
-        : null;
-      const at = twAt(c),
-        te = R.status === 'paused' ? R.pausedAt : R.status === 'finished' ? R.endAt : t,
-        busy = at !== null && R.status !== 'finished';
-      return {
-        temperature: R.temperatureOf(i, t),
-        tyre: c.tyre,
-        life: c.twLife,
-        level: Tw.levelOf(TWC, c.twLife),
-        effect: TWH ? c.tw || 0 : null,
-        left: Tw.left(TWC, c.tyre, systemOn('weather') ? R.wxState : 'dry', c.twLife, TWC.laneLen[c.lane] || 0),
-        pace: c.twPaceNow ? { ...c.twPaceNow, samples: (c.twPace || []).length } : null,
-        stops: c.twStops,
-        ...(resourceSets
-          ? {
-              setsMode: R.resources.profile.owner,
-              setsStart: Object.fromEntries(
-                Object.entries(initial)
-                  .filter(([k]) => k.startsWith('tyre:'))
-                  .map(([k, n]) => [k.slice(5), n])
-              )
-            }
-          : {}),
-        fitting: busy ? twWill(c) : null,
-        fitLeft: busy && Number.isFinite(te) ? Math.max(0, at - te) : null,
-        own: W.cleanTyre(c.tyreOwn),
-        next: twNextOf(c),
-        queued: c.twNext || '',
-        sets: SETS || R.resources?.profile.tyresOn ? { ...twPool(c) } : null
-      };
-    };
-    // ---- penalty points ----
-    R.penMs = penOf;
-    R.penaltyEffects = c => penaltyEffects(P, c && c.points);
-    // Adds (or with a negative n takes back) penalty points. Reaching the disqualify limit puts the car out of the race.
-    R.addPoints = (i, n, t, why) => {
-      const c = R.cars[i];
-      if (!P.on || (!systemOn('penalty') && why !== 'existing-penalty') || !c || R.status === 'ready' || !Number.isFinite(n) || n === 0)
-        return false;
-      const before = c.points;
-      c.points = Math.max(0, c.points + n);
-      if (c.points === before) return false;
-      const effect = penaltyEffects(P, c.points),
-        beforeEffect = penaltyEffects(P, before);
-      log('penalty', i, t, {
-        delta: c.points - before,
-        points: c.points,
-        ms: penaltyMs(P, c.points),
-        laps: effect.laps,
-        ...(why ? { why } : {})
-      });
-      // A ladder's pit row is mandatory once when its threshold is crossed. Higher rows
-      // replace the former duration; they do not queue both durations.
-      if (effect.pit > 0 && effect.from > beforeEffect.from && !(c.penaltyPitTiers || []).some(tier => tier >= effect.from)) {
-        if (R.status === 'running') serveCheck(i, t);
-        const previousTier = p =>
-          p.ladderTier ||
-          (p.mandatory &&
-          /^Penalty points · (\d+) points$/.test(p.name) &&
-          R.events.some(e => e.type === 'assigned' && e.automatic && e.car === i && e.t === p.at && e.name === p.name)
-            ? Number(/^Penalty points · (\d+) points$/.exec(p.name)[1])
-            : 0);
-        const replaceAt = c.pending.findIndex(p => previousTier(p) > 0 && previousTier(p) < effect.from);
-        // (2.2.5: a higher tier takes the place of a lower one; it can be served from the moment the first of them was given, so it is only beyond reach when all of them came after the flag)
-        const replaced = c.pending.filter(p => previousTier(p) > 0 && previousTier(p) < effect.from),
-          since = Math.min(t, ...replaced.map(p => p.since ?? p.at));
-        c.pending = c.pending.filter(p => !(previousTier(p) > 0 && previousTier(p) < effect.from));
-        c.penaltyPitTiers = c.penaltyPitTiers || [];
-        c.penaltyPitTiers.push(effect.from);
-        c.pending.splice(replaceAt < 0 ? c.pending.length : replaceAt, 0, {
-          name: `Penalty points · ${effect.from} points`,
-          kind: 'stopgo',
-          seconds: effect.pit,
-          extra: 0,
-          unserved: 0,
-          mandatory: true,
-          ladderTier: effect.from,
-          at: t,
-          ...(since < t ? { since } : {}),
-          ...(c.done && replaced.every(p => p.afterFinish) ? { afterFinish: true } : {})
-        }); // (afterFinish: given after the car took the flag, so it cannot be served; it does not disqualify, and the review still shows it)
-        if (heldPits) holdPenalty(c);
-        log('assigned', i, t, { name: `Penalty points · ${effect.from} points`, automatic: true });
-      }
-      if (P.dq && c.points >= P.dq && !c.dq) {
-        c.dq = true;
-        c.dqWasDone = c.done;
-        c.dqWasRetired = c.retired;
-        c.done = true;
-        c.retired = true;
-        log('disqualified', i, t);
-        checkEnd(t);
-      } else if (c.dq && !c.msDq && !c.dmgOut && !c.failOut && (!P.dq || c.points < P.dq) && R.status !== 'finished') {
-        // a mistaken point can still be taken back (not for a car that damage put out: that is for the damage points; nor for one the mandatory stops disqualified, c.msDq)
-        c.dq = false;
-        c.done = !!c.dqWasDone;
-        c.retired = !!c.dqWasRetired;
-        log('reinstated', i, t);
-      }
-      return true;
-    };
-    R.goodLaps = goodLaps;
+    engineTyresAndPoints({
+      P,
+      R,
+      SETS,
+      TWC,
+      TWH,
+      Tw,
+      W,
+      checkEnd,
+      heldPits,
+      holdPenalty,
+      log,
+      penOf,
+      serveCheck,
+      systemOn,
+      twAt,
+      twNextOf,
+      twPool,
+      twWill
+    });
     // the car stops over the sensor. crossed: the crossing was counted when the car arrived (a Trackmate sensor: it is only known later that the car stays), t is that moment, and only the stop is started
     R.block = (i, t, crossed) => {
       if (R.status !== 'running') return false;
