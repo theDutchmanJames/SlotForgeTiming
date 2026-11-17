@@ -262,6 +262,37 @@ async function dscClose() {
   dscRedraw();
 }
 
+// (2.3.0) a port that was found by itself (hwdetect.js) or remembered: connected for timing with the model that was chosen. -> connected?
+async function dscUsePort(port) {
+  if (!port || dsc.open || dsc.needsClose || dscOpening || dscClosing || !DsTiming.supported(dscType())) return false;
+  dsc.dev = port;
+  dsc.info = port.getInfo ? port.getInfo() : {};
+  return dscOpen();
+}
+// (2.3.0) a virtual box with imaginary cars, for this app session only: never remembered, so a race night never runs on it by mistake. -> connected?
+async function dscUseVirtual() {
+  if (dsc.open || dsc.needsClose || dscOpening || dscClosing || !DsTiming.supported(dscType())) return false;
+  const lanes = dscType() === 'ds200' ? 2 : 4;
+  dsc.dev = DsSim.createSim({ model: dscType(), lanes }).asPort();
+  dsc.info = { portName: 'Virtual DS box (' + lanes + ' imaginary cars)', virtual: true };
+  return dscOpen();
+}
+// at start: the remembered DS interface, when DS Electronics is the timing hardware in use and it is plugged in. Never asks anything.
+async function dscAutoConnect() {
+  try {
+    const d = state.settings.dsDevice;
+    if (!d || dsc.open || Hardware.timingChosen(state.settings) !== 'ds' || typeof navigator === 'undefined' || !navigator.serial)
+      return false;
+    const port = (await navigator.serial.getPorts()).find(p => {
+      const i = p.getInfo ? p.getInfo() : {};
+      return i.usbVendorId === d.vid && i.usbProductId === d.pid;
+    });
+    return port ? await dscUsePort(port) : false;
+  } catch (x) {
+    return false;
+  }
+}
+
 function renderDsSettings(box) {
   const H = Hardware,
     can = typeof navigator !== 'undefined' && !!navigator.serial,
@@ -279,6 +310,7 @@ function renderDsSettings(box) {
     `<label>${label} <select id="${id}"${off}>${list.map(v => `<option${v === cur ? ' selected' : ''}>${v}</option>`).join('')}</select></label>`;
   const connectionBody = `<div class="row interface-models" role="radiogroup" aria-label="Model of the DS unit"><strong>Unit</strong>${H.DS_TYPES.map(([id, name]) => `<label class="inline" style="white-space:nowrap"><input type="radio" name="dstype" value="${id}"${type === id ? ' checked' : ''}${off}> ${name}</label>`).join('')}</div>
     <div class="row"><button class="btn primary" id="ds-find" ${can && !dsc.open && !dsc.needsClose && !busy ? '' : 'disabled'}>Find the DS interface (COM port)</button>
+      <button class="btn" id="ds-virtual" title="Imaginary cars that lap on a virtual ${type ? esc(H.dsTypeName(type)) : 'DS box'}: for trying DS timing without the hardware" ${!dsc.open && !dsc.needsClose && !busy && DsTiming.supported(type) ? '' : 'disabled'}>Use the virtual DS box</button>
       <button class="btn primary" id="ds-conn" ${dsc.dev && (type || dsc.needsClose) && !busy ? '' : 'disabled'}>${busy ? 'Please wait…' : dsc.needsClose ? 'Retry disconnect' : dsc.open ? 'Disconnect' : 'Connect'}</button>
       <span class="led${dsc.open ? ' on' : ''}" id="ds-led" role="img" aria-label="Connection: ${dsc.open ? 'connected' : 'not connected'}"></span>
       <span id="ds-dev" class="muted">${dsc.dev ? (dsc.open && type ? esc(H.dsTypeName(type)) + ' on ' : '') + esc(H.describe('serial', dsc.info)) + (dsc.open ? ' is connected' : '') : can ? 'No port chosen.' : 'COM ports can only be used in the desktop app.'}${dsc.dev && !type ? ' Choose the model above to connect.' : ''}</span><span id="ds-msg" class="muted" role="status"></span></div>
@@ -347,7 +379,9 @@ function renderDsSettings(box) {
         icon: '⚑',
         note: 'DS-200: 2 lanes · DS-300: up to 8 lanes',
         open: true,
-        body: '<ol class="muted"><li>Choose DS-200 or DS-300, set the serial speed to match the box and connect. Select DS Electronics in <em>Timing hardware in use</em>.</li><li>Before racing, check every lane using the live capture. Lane 1 on the DS is lane 1 in Timing, and so on. A connected port alone does not confirm valid packets.</li><li>Prepare the DS box to report crossings, then start the race in Timing. DS start/resume buttons never start Timing automatically.</li><li>First-crossing markers start lap measurement and never set a lap record. Consecutive laps use the DS measured duration. The first lap after a pause uses Timing’s pause-adjusted clock; race elapsed time stays on Timing’s clock.</li><li>A lost connection, counter reset or missing packet pauses Timing for review. No missing laps are invented. Check the results before resuming manually. Stop physical cars separately: Timing sends no DS power commands.</li></ol>'
+        body:
+          `<div class="field" style="max-width:560px"><label for="ds-pause">When the race is paused</label><select id="ds-pause"><option value="stop"${state.settings.dsPause === 'count' ? '' : ' selected'}>Do not count laps driven during the pause</option><option value="count"${state.settings.dsPause === 'count' ? ' selected' : ''}>Keep those laps and add them when the race resumes</option></select><span class="muted hint">A DS cannot switch the track off, so cars may keep driving while Timing is paused. Keep: the laps count, with the lap times the box measured; the race clock, the time limit and the race systems still stand still during the pause.</span></div>` +
+          '<ol class="muted"><li>Choose DS-200 or DS-300, set the serial speed to match the box and connect. Select DS Electronics in <em>Timing hardware in use</em>.</li><li>Before racing, check every lane using the live capture. Lane 1 on the DS is lane 1 in Timing, and so on. A connected port alone does not confirm valid packets.</li><li>Prepare the DS box to report crossings, then start the race in Timing. DS start/resume buttons never start Timing automatically.</li><li>First-crossing markers start lap measurement and never set a lap record. Consecutive laps use the DS measured duration. The first lap after a pause uses Timing’s pause-adjusted clock; race elapsed time stays on Timing’s clock.</li><li>A lost connection, counter reset or missing packet pauses Timing for review. No missing laps are invented. Check the results before resuming manually. Stop physical cars separately: Timing sends no DS power commands.</li></ol>'
       },
       { id: 'guide', title: 'How to make a capture', icon: '☷', note: 'A guided check · about 5 minutes', body: guideBody },
       {
@@ -399,6 +433,7 @@ function renderDsSettings(box) {
       dsc.info = { ...(port.getInfo ? port.getInfo() : {}), ...(dsc.picked ? { portName: dsc.picked } : {}) };
       dsc.picked = '';
       dscMsg(''); // (the name the person picked, such as COM10, goes into saved captures)
+      if (dsc.info.usbVendorId !== undefined) await save({ dsDevice: { vid: dsc.info.usbVendorId, pid: dsc.info.usbProductId } }); // (2.3.0: remembered, so it connects by itself next time)
     } catch (x) {
       dscMsg(x.name === 'NotFoundError' ? 'No port chosen.' : 'Could not find a port: ' + x.message);
     } finally {
@@ -406,6 +441,12 @@ function renderDsSettings(box) {
       dscRedraw();
     }
   };
+  $('ds-virtual').onclick = async () => {
+    if (dscFinding || dscSaving) return;
+    await dscUseVirtual();
+    dscRedraw();
+  };
+  $('ds-pause').onchange = e => save({ dsPause: e.target.value === 'count' ? 'count' : 'stop' });
   $('ds-conn').onclick = async () => {
     if (dsc.open || dsc.needsClose) await dscClose();
     else if (dscType()) await dscOpen();

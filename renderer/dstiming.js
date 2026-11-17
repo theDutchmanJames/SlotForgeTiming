@@ -65,7 +65,8 @@
   function bind(o) {
     const { link } = o,
       model = o.model || link.model,
-      seen = new Map();
+      seen = new Map(),
+      held = []; // (laps driven while Timing was paused, when the person chose to keep counting them: added on resume, with the box's own lap times)
     let engine = null,
       phase = null,
       previousStart = null,
@@ -130,7 +131,12 @@
       const sample = { counter: e.counter, ticks: e.timeTicks, marker, last: null, car: c, laps: c.laps };
       seen.set(e.lane, sample);
       if (o.phase() !== 'running') {
-        if (!marker && o.phase() === 'paused' && o.onIgnored) o.onIgnored(e.lane);
+        if (!marker && o.phase() === 'paused') {
+          if (o.pauseCounts && o.pauseCounts() && e.timeTicks > 0) {
+            held.push({ lane: e.lane, measuredMs: e.timeTicks / 10 });
+            if (o.onHeld) o.onHeld(e.lane);
+          } else if (o.onIgnored) o.onIgnored(e.lane);
+        }
         return;
       } // DS has no power control: cars that keep driving while Timing is paused are counted by the box, not by the race
       if (old && (marker || (e.counter - old.counter + 10000) % 10000 !== 1)) {
@@ -158,6 +164,28 @@
     });
     return {
       sync,
+      held: () => held.length,
+      // on resume: the laps driven during the pause count, each with the time the box measured; the next lap carries on from them. -> how many were added
+      flushHeld() {
+        if (!held.length || stopped || o.phase() !== 'running') return 0;
+        sync();
+        let added = 0;
+        for (const h of held.splice(0)) {
+          const i = engine.cars.findIndex(c => c.lane === h.lane - 1 && !c.virtualRival),
+            c = engine.cars[i];
+          if (!c || c.done || (o.laneAllowed && !o.laneAllowed(c.lane))) continue;
+          const before = c.laps.length;
+          c.pausedLap = false; // (the box timed this lap itself, pause or not: it is not "the first lap after a pause")
+          o.crossCar(i, undefined, false, { measuredMs: h.measuredMs });
+          if (c.laps.length > before) added++;
+          const sample = seen.get(h.lane);
+          if (sample && sample.car === c) {
+            sample.last = c.last;
+            sample.laps = c.laps;
+          }
+        }
+        return added;
+      },
       ready: () => link.connected && link.model === model && o.lanes <= lanes(model),
       off() {
         stopped = true;
@@ -165,6 +193,7 @@
         offEvent();
         offStatus();
         seen.clear();
+        held.length = 0;
       }
     };
   }

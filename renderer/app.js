@@ -277,16 +277,67 @@ const TIMING_NAMES = {
   plugin: 'Plugin interface',
   none: 'None (keys or simulated cars)'
 };
+const timingConnectedNow = () => ({
+  trackmate: typeof Trackmate !== 'undefined' && !!Trackmate.link?.connected,
+  arduino: typeof ArduinoBox !== 'undefined' && !!ArduinoBox.link?.connected,
+  parallel: typeof ParallelPort !== 'undefined' && !!ParallelPort.link?.connected,
+  plugin: typeof pt !== 'undefined' && !!pt.link?.connected,
+  ds: typeof DsTiming !== 'undefined' && !!DsTiming.link?.connected
+});
 function unusedTimingConnected(settings = state.settings) {
   const chosen = Hardware.timingChosen(settings),
-    on = {
-      trackmate: typeof Trackmate !== 'undefined' && !!Trackmate.link?.connected,
-      arduino: typeof ArduinoBox !== 'undefined' && !!ArduinoBox.link?.connected,
-      parallel: typeof ParallelPort !== 'undefined' && !!ParallelPort.link?.connected,
-      plugin: typeof pt !== 'undefined' && !!pt.link?.connected,
-      ds: typeof DsTiming !== 'undefined' && !!DsTiming.link?.connected
-    };
+    on = timingConnectedNow();
   return Object.keys(on).filter(id => on[id] && id !== chosen);
+}
+// ---- timing hardware that is plugged in (2.3.0, hwdetect.js): the remembered one connects by itself, another one is offered on Home ----
+const hwPortUse = { trackmate: p => tmUsePort(p), arduino: p => abUsePort(p), ds: p => dscUsePort(p) };
+function mountHwDetect() {
+  if (typeof HwDetect === 'undefined' || state.tab !== 'home') return;
+  HwDetect.mountHome(document.getElementById('hm-detect'), {
+    async use(id, offer) {
+      if (raceKept()) return Dialog.alert('Finish or leave the race before changing its timing hardware.');
+      const patch = { [HwDetect.KEYS[id]]: { vid: offer.info.usbVendorId, pid: offer.info.usbProductId } };
+      if (id === 'arduino') patch.abVirtual = false;
+      try {
+        state.settings = await api.setSettings(patch);
+        if ((await setTimingHw(id)) === false) return;
+      } catch (e) {
+        return Dialog.alert(String(e && e.message ? e.message : e).replace(/^.*Error: /, ''));
+      }
+      if (id === 'ds' && !DsTiming.supported(state.settings.dsType)) {
+        // (the model decides how the box is read: it is chosen on the DS page, then Connect)
+        dsc.dev = offer.port;
+        dsc.info = offer.port.getInfo ? offer.port.getInfo() : {};
+        state.tab = 'settings';
+        state.settingsSub = 'hardware';
+        state.hwSub = 'ds';
+        await render();
+        return dscMsg('Choose the model of the DS unit (DS-200 or DS-300), then press Connect.');
+      }
+      const ok = await hwPortUse[id](offer.port);
+      await render();
+      if (!ok)
+        await Dialog.alert(
+          TIMING_NAMES[id] + ' could not be connected. Open App Settings, Timing Hardware, ' + TIMING_NAMES[id] + ', to see why.'
+        );
+    },
+    async ignore(offer) {
+      state.settings = await api.setSettings({ hwIgnored: [...(state.settings.hwIgnored || []), offer.key] });
+    }
+  });
+}
+function startHwDetect() {
+  if (typeof HwDetect === 'undefined') return;
+  HwDetect.start({
+    context: () => {
+      const chosen = Hardware.timingChosen(state.settings);
+      return { settings: state.settings, chosen, open: !!timingConnectedNow()[chosen], racing: raceKept() };
+    },
+    connect: async (id, port) => {
+      if (hwPortUse[id] && (await hwPortUse[id](port)) && ['home', 'settings'].includes(state.tab) && !state.editing) render();
+    },
+    changed: () => mountHwDetect()
+  });
 }
 function unusedTimingText(settings = state.settings) {
   const ids = unusedTimingConnected(settings);
@@ -500,7 +551,8 @@ async function renderGeneralSettings(box) {
       <p class="muted" id="updstatus" role="status"></p></div>
       <div class="field" style="max-width:640px"><label>Diagnostics</label>
       <span class="muted hint">Saves one text file that helps with a bug report: the app and system versions, the timing hardware and connections, the storage, the settings (without passwords, names or pictures) and recent errors. Look it over before you send it to anyone.</span>
-      <div class="row"><button type="button" class="btn" id="diagsave">Save diagnostics…</button></div><p class="muted" id="diagmsg" role="status"></p></div>`
+      <div class="row"><button type="button" class="btn" id="diagsave">Save diagnostics…</button></div><p class="muted" id="diagmsg" role="status"></p>
+      <div class="field" style="max-width:560px"><label>Setup guide</label><div class="row"><button type="button" class="btn" id="guiderun">Start the setup guide again</button></div><span class="muted hint">Walks through a track, drivers, cars, the timing hardware, a sensor test and a 3-lap test race, on Home. What you already have stays.</span></div></div>`
     );
   if (typeof AppSettingsPage !== 'undefined') AppSettingsPage.enhance(box, 'general');
   folderWire(box);
@@ -554,6 +606,12 @@ async function renderGeneralSettings(box) {
     };
     $('updopen').onclick = () => api.updateOpen().catch(() => {});
   }
+  if ($('guiderun'))
+    $('guiderun').onclick = async () => {
+      state.settings = await api.setSettings({ setupGuide: { step: 0 } });
+      state.tab = 'home';
+      await render();
+    };
   if ($('diagsave'))
     $('diagsave').onclick = async () => {
       $('diagsave').disabled = true;
@@ -1012,6 +1070,7 @@ async function render() {
   if (typeof ppPageDispose === 'function') ppPageDispose();
   view.onclick = null;
   view.onchange = null; // each screen sets up its own handlers
+  if (typeof SetupWizard !== 'undefined') SetupWizard.stop(); // (the sensor test of the setup guide stops listening)
   LiveView.unmount();
   if (state.tab !== 'race' && typeof live !== 'undefined' && live && live.alive && !raceActive()) {
     // a race that is not on (not started, or over): the race screen is gone, no more keys, Trackmate or Race Director buttons
@@ -1136,6 +1195,8 @@ function bootFailed(e) {
   if (api.onHwChoose && typeof tmAutoConnect === 'function') tmAutoConnect(); // the remembered Trackmate, if it is plugged in
   if (typeof abAutoConnect === 'function') abAutoConnect(); // the remembered SlotForge box, or the virtual one when that is chosen
   if (typeof ppAutoConnect === 'function') ppAutoConnect();
+  if (typeof dscAutoConnect === 'function') await dscAutoConnect(); // (2.3.0: the remembered DS interface)
+  setTimeout(startHwDetect, 2500); // (after the remembered devices had their chance: what is left is offered on Home)
 })()
   .catch(bootFailed)
   .finally(() => {

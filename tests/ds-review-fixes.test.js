@@ -51,8 +51,8 @@ test('the Race Director page shows what the race screen says, and a resume clear
   assert.equal(JSON.stringify(msg).includes('DS box reported pause.'),true,'the notice travels with the live data');
   assert(src('renderer/liveview.js').includes("$('dir-notice')"),'the Race Director shows it');
   const {code,has}=require('./source.cjs'),race=code('renderer/race.js'); // (compared without spaces, see source.cjs)
-  assert(has(race,"if (resuming && live.phase !== 'paused') { ui('msg').textContent = '';"),'resuming clears the old message');
-  assert(has(race,'onIgnored: dsIgnored, onNotice: dsNotice'),'the race screen listens for both');
+  assert(has(race,"if (resuming && live.phase !== 'paused') { const added = live.ds && live.ds.flushHeld ? live.ds.flushHeld() : 0;")&&has(race,"ui('msg').textContent = added ?")&&has(race,": '';"),'resuming clears the old message (2.3.0: or says how many kept laps were added)');
+  assert(has(race,'onIgnored: dsIgnored,')&&has(race,'onNotice: dsNotice'),'the race screen listens for both');
 });
 
 test('connected timing hardware that is not in use is named, on the page, at Start race and on the race screen',()=>{

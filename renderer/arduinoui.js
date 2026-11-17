@@ -300,6 +300,20 @@ async function abClose() {
   }
   abNote('-- disconnected --');
 }
+// (2.3.0) a port that was found by itself (hwdetect.js): connected as the SlotForge box. -> connected?
+async function abUsePort(port) {
+  if (!port || ab.open) return false;
+  ab.dev = port;
+  ab.info = port.getInfo ? port.getInfo() : {};
+  return abOpen();
+}
+// (2.3.0, the setup guide) the virtual box for this app session, without changing the saved choice
+async function abUseVirtual() {
+  if (ab.open) return false;
+  ab.dev = ArduinoSim.createSim().asPort();
+  ab.info = ab.dev.getInfo();
+  return abOpen();
+}
 async function abAutoConnect() {
   try {
     const t = abSettings();

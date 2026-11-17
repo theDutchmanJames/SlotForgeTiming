@@ -294,6 +294,31 @@ async function tmAutoConnect() {
   }
 }
 
+// (2.3.0) a port that was found by itself (hwdetect.js): connected as the Trackmate. -> connected?
+async function tmUsePort(port) {
+  if (!port || hw.open) return false;
+  hw.kind = 'serial';
+  hw.dev = port;
+  hw.info = port.getInfo ? port.getInfo() : {};
+  hw.baud = 9600;
+  hw.data = 8;
+  hw.parity = 'none';
+  hw.stop = 1;
+  return tmOpen(true);
+}
+// (2.3.0) a virtual Trackmate: the virtual SlotForge box speaks the Trackmate's language until it is told otherwise. For this app session only, never remembered.
+async function tmUseVirtual() {
+  if (hw.open) return false;
+  hw.kind = 'serial';
+  hw.dev = ArduinoSim.createSim().asPort();
+  hw.info = { portName: 'Virtual Trackmate (4 imaginary cars)', virtual: true };
+  hw.baud = 9600;
+  hw.data = 8;
+  hw.parity = 'none';
+  hw.stop = 1;
+  return tmOpen(true);
+}
+
 function renderHardwareSettings(box) {
   const laneMap = Trackmate.laneMap(state.settings.tmLaneMap),
     H = Hardware,
@@ -317,6 +342,7 @@ function renderHardwareSettings(box) {
   const bauds = [300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600, 1000000];
   box.innerHTML = `<section class="tm-setup" aria-label="Trackmate Interface setup"><div class="tm-frame"><header class="tm-header"><div class="tm-tile" aria-hidden="true">⌁</div><div class="tm-heading"><div class="tm-eyebrow">Timing interface</div><h2>Trackmate Interface</h2><div class="tm-pills"><span>USB serial</span><span>${esc(t.lanes)} ${t.lanes === 1 ? 'lane' : 'lanes'}</span><span>${t.nc ? 'Normally closed sensors' : 'Normally open sensors'}</span></div></div><div class="tm-headerstate"><i class="tm-dot${hw.open ? ' on' : ''}" aria-hidden="true"></i>${hw.open ? 'Connected' : 'Not connected'}</div></header><div class="tm-body"><nav class="tm-rail" aria-label="Trackmate sections"><div class="tm-railcap">Set up the interface</div><button type="button" class="tm-nav active" data-tm-go="connection"><i aria-hidden="true">⌁</i><span><b>Connection</b><small>${hw.dev ? esc(H.describe(hw.kind, hw.info)) : 'Choose and remember a COM port'}</small></span><em class="tm-dot${hw.open ? ' on' : ''}" aria-hidden="true"></em></button><button type="button" class="tm-nav" data-tm-go="sensors"><i aria-hidden="true">◉</i><span><b>Lane sensors</b><small>${esc(t.lanes)} lanes · ${t.nc ? 'normally closed' : 'normally open'}</small></span><em class="tm-dot on" aria-hidden="true"></em></button><button type="button" class="tm-nav" data-tm-go="monitor"><i aria-hidden="true">⌁</i><span><b>Live monitor</b><small>${hw.open ? 'Check the sensor lights' : 'Waiting for a connection'}</small></span><em class="tm-dot${hw.open ? ' on' : ''}" aria-hidden="true"></em></button><div class="tm-railcap tm-optional">Only if you need it</div><button type="button" class="tm-nav" data-tm-go="power"><i aria-hidden="true">ϟ</i><span><b>Track power</b><small>Relay control</small></span><em class="tm-dot" aria-hidden="true"></em></button><button type="button" class="tm-nav" data-tm-go="advanced"><i aria-hidden="true">⚙</i><span><b>Advanced connection</b><small>Serial settings and log</small></span><em class="tm-dot" aria-hidden="true"></em></button><aside class="tm-railhelp"><b>Before connecting</b><p>Connect the Trackmate before a race. Sensor lights let you test cables without recording a lap.</p></aside></nav><main class="tm-main"><div class="tm-say"><i aria-hidden="true">▸</i><div><div class="tm-eyebrow">In plain words</div><p>Plug the Trackmate in, choose its COM port, then tell it how many lane sensors you use. Its Trackcall button follows the behaviour chosen in Race Setup. Pit entry uses <em>Sensor must be blocked for this long to start a pit stop</em> under Race Setup &gt; Race Settings. With Service Stop off, the car leaves the pits when it drives off the sensor; with it on, the stop stays active while you remove the car for service.</p></div></div><details class="tm-section" data-tm-section="connection" open><summary><i aria-hidden="true">⌁</i><strong>Connection</strong><span>Find the interface, then connect</span><b aria-hidden="true">⌃</b></summary><div class="tm-content">
     <div class="row"><button class="btn primary" id="hw-serial" ${can.serial ? '' : 'disabled'}>Find the Trackmate (COM port)</button>
+      <button class="btn" id="hw-virtual" title="Four imaginary cars on a virtual Trackmate: for trying the app without the hardware" ${hw.open ? 'disabled' : ''}>Use the virtual Trackmate</button>
       <button class="btn primary" id="hw-conn" ${hw.dev ? '' : 'disabled'}>${hw.open ? 'Disconnect' : 'Connect'}</button>
       <span id="hw-dev" class="muted">${hw.dev ? esc(H.describe(hw.kind, hw.info)) + (hw.open ? ' is connected' : '') : 'No device chosen.'}</span><span id="hw-msg" class="muted" role="status"></span></div>
     <div id="hw-pick"></div>
@@ -412,6 +438,10 @@ function renderHardwareSettings(box) {
     }
   };
   $('hw-serial').onclick = () => find('serial');
+  $('hw-virtual').onclick = async () => {
+    await tmUseVirtual();
+    renderHardwareSettings(box);
+  };
   $('hw-hid').onclick = () => find('hid');
   $('hw-conn').onclick = async () => {
     if (hw.open) await tmClose();

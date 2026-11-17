@@ -141,7 +141,7 @@ const count = (h, s) => h.split(s).length - 1;
   say('a Time Token Session: lanes need nothing, the line under the title says so, and the button opens the session instead of starting a race', h.includes('A lane can have no driver (a Guest) and no car.') && h.includes('<span>Open the session</span>') && !h.includes('<span>Start race</span>') && count(h, 'hs-tick ok') === 2 && !h.includes('hs-why'));
   h = await home(null);
   const fb = E('view').innerHTML.slice(E('view').innerHTML.indexOf('id="hmc-start"'));
-  say('with no race setup at all the card keeps its plain title and the words that say where to make one (there is nothing to choose)', fb.includes('<h3>Start a race</h3><p class="muted">Create a race setup in the Race Setup tab to get started.</p>') && !fb.includes('hs-head') && !fb.includes('id="setup"'));
+  say('with no race setup at all the card keeps its plain title, the words that say where to make one, and (2.3.0) a button that starts the setup guide', fb.includes('<h3>Start a race</h3><p class="muted">Create a race setup in the Race Setup tab to get started, or let the setup guide walk you through it.</p>') && fb.includes('id="guideagain"') && !fb.includes('hs-head') && !fb.includes('id="setup"'));
 
   // ---------- the style ----------
   const css = fs.readFileSync(R + 'renderer/styles.css', 'utf8'), rule = sel => { const i = css.indexOf('\n' + sel + '{'); return i < 0 ? '' : css.slice(i + 1, css.indexOf('}', i) + 1); };

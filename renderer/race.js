@@ -2787,15 +2787,24 @@ async function renderRace() {
   }
   // DS Electronics cannot switch the track off, so cars may keep driving while Timing is paused. The box counts those crossings; the race does not.
   // Say how many, per lane, instead of letting the two counts drift apart without a word. (Cleared when the race resumes.)
+  // (2.3.0: App Settings, DS Electronics, "When the race is paused": not counted (as before), or kept and added when the race resumes)
   const dsPausedText = () => {
-    const by = live.dsIgnored || {},
+    const counts = state.settings.dsPause === 'count',
+      by = (counts ? live.dsHeld : live.dsIgnored) || {},
       lanesHit = Object.keys(by).sort((a, b) => a - b),
-      n = lanesHit.reduce((s, l) => s + by[l], 0);
-    return (
-      'Paused. DS Electronics cannot switch off the track: crossings while Timing is paused are not counted.' +
-      (n ? ` Not counted so far: ${n} (${lanesHit.map(l => 'lane ' + l + ': ' + by[l]).join(', ')}).` : '')
-    );
+      n = lanesHit.reduce((s, l) => s + by[l], 0),
+      per = lanesHit.map(l => 'lane ' + l + ': ' + by[l]).join(', ');
+    return counts
+      ? 'Paused. DS Electronics cannot switch off the track: laps driven now are kept and added when you resume (not when the race is stopped while paused).' +
+          (n ? ` Kept so far: ${n} (${per}).` : '')
+      : 'Paused. DS Electronics cannot switch off the track: crossings while Timing is paused are not counted.' +
+          (n ? ` Not counted so far: ${n} (${per}).` : '');
   };
+  function dsHeld(lane) {
+    (live.dsHeld || (live.dsHeld = {}))[lane] = (live.dsHeld[lane] || 0) + 1;
+    if (!live.dsNoticeText) ui('msg').textContent = (live.dsFaultText ? live.dsFaultText + ' ' : '') + dsPausedText();
+    update();
+  }
   function dsIgnored(lane) {
     (live.dsIgnored || (live.dsIgnored = {}))[lane] = (live.dsIgnored[lane] || 0) + 1;
     if (!live.dsNoticeText) ui('msg').textContent = (live.dsFaultText ? live.dsFaultText + ' ' : '') + dsPausedText();
@@ -2877,7 +2886,16 @@ async function renderRace() {
       else if (resuming) eng.resume(now());
       syncPhase();
       if (resuming && live.phase !== 'paused') {
-        ui('msg').textContent = '';
+        const added = live.ds && live.ds.flushHeld ? live.ds.flushHeld() : 0; // (the laps driven during the pause, when they are kept)
+        ui('msg').textContent = added ? `Added ${added} lap${added > 1 ? 's' : ''} driven during the pause.` : '';
+        if (added) {
+          const shown = ui('msg').textContent;
+          setTimeout(() => {
+            const m = ui('msg');
+            if (m && m.textContent === shown) m.textContent = '';
+          }, 8000);
+        }
+        live.dsHeld = null;
         live.dsIgnored = null;
         live.dsNoticeText = '';
         live.dsFaultText = '';
@@ -3244,6 +3262,8 @@ async function renderRace() {
         timingFault('DS Electronics', message);
       },
       onIgnored: dsIgnored,
+      pauseCounts: () => state.settings.dsPause === 'count',
+      onHeld: dsHeld,
       onNotice: dsNotice
     });
   if (hwUse === 'arduino' && typeof ArduinoRace !== 'undefined' && ArduinoBox.link.connected) {

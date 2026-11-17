@@ -2396,3 +2396,35 @@ dialog.appdlg h3{margin:0 0 8px}
 dialog.appdlg .appdlg-body p{margin:0 0 10px;white-space:pre-wrap}
 dialog.appdlg .appdlg-buttons{justify-content:flex-end;margin-top:14px;gap:8px}
 dialog.appdlg-danger{border-top:4px solid var(--accent)}
+/* the sensor test (sensortest.js): a tile per lane that lights up when its sensor sees a car */
+.st-dialog,.wz-card{--st-ok:#3ecf8e;--st-warn:#ffb84d}
+[data-theme="light"] :is(.st-dialog,.wz-card),[data-theme="ocean"] :is(.st-dialog,.wz-card),[data-tone="light"] :is(.st-dialog,.wz-card){--st-ok:#1e8a4c;--st-warn:#9a6a00}
+dialog.st-dialog{width:min(640px,94vw)}
+.st-lanes{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin:10px 0}
+.st-lane{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px solid var(--line);border-left:6px solid var(--line);border-radius:8px;background:var(--panel);transition:background .15s}
+.st-lane .st-num{font-weight:700}
+.st-lane .st-count,.st-lane .st-lap{color:var(--muted);font-size:.9em;min-height:1.2em}
+.st-lane.st-seen{border-left-color:var(--st-ok)}
+.st-lane.st-flash{background:color-mix(in srgb,var(--st-ok) 35%,var(--panel))}
+.st-sum{font-weight:600;margin:6px 0}
+.st-sum.st-ok{color:var(--st-ok)}
+.st-sum.st-warn,.st-off{color:var(--st-warn)}
+/* timing hardware that was plugged in (hwdetect.js): a card under the Home header, like the update notice */
+.hm-detect{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;margin:0 0 14px;border-left:6px solid var(--accent)}
+.hm-detect>div:first-child{display:flex;flex-direction:column;gap:2px;flex:1 1 320px}
+.hm-detect .row{margin:0;flex-wrap:wrap;gap:6px}
+/* the setup guide (setupwizard.js): one card on Home, a step at a time */
+.wz-card{max-width:880px;margin:0 auto 18px;padding:20px 24px;border-top:3px solid var(--accent)}
+.wz-card h2{margin:6px 0 8px}
+.wz-steps{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.wz-step{font-size:.82em;padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.wz-step.wz-done{color:var(--ink)}
+.wz-step.wz-now{border-color:var(--accent);color:var(--ink);font-weight:700}
+.wz-names{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin:10px 0}
+.wz-carrow{display:flex;flex-direction:column;gap:4px}
+.wz-hw{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;margin:10px 0}
+.wz-hwopt{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.wz-hwopt.wz-on{border-color:var(--accent)}
+.wz-hwopt span{display:flex;flex-direction:column;gap:2px}
+.wz-nav{margin-top:16px;gap:8px;flex-wrap:wrap}
+.st-okword{color:var(--st-ok)}

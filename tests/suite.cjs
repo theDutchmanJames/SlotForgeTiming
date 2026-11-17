@@ -287,4 +287,5 @@ module.exports = [
   ['updates-diagnostics.test.js', 'node-test'],
   ['statuschips.test.js', 'node-test'],
   ['dialogs.test.js', 'node-test'],
+  ['racenight.test.js', 'node-test'],
 ];

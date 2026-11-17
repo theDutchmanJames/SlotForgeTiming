@@ -163,6 +163,13 @@ async function renderHome() {
   if (draw !== homeDraw || state.tab !== 'home') return; // (another tab, or another drawing of Home, was asked for while the lists came in)
   const resume = api.getResume && !(typeof raceActive === 'function' && raceActive()) ? await api.getResume().catch(() => null) : null; // (1.9.0: a race that was interrupted by a crash or a power cut, kept in a file)
   if (draw !== homeDraw || state.tab !== 'home') return;
+  // 2.3.0: a fresh install (no race setup yet) gets the setup guide instead, until it is finished or skipped
+  if (
+    typeof SetupWizard !== 'undefined' &&
+    SetupWizard.shouldShow(saved, { setups: setups.length }) &&
+    !(typeof raceActive === 'function' && raceActive())
+  )
+    return SetupWizard.render(view, { tracks, drivers, cars: cars.filter(c => !c._sharedCar) });
   const setupId = setups.some(x => x.id === saved.lastSetupId) ? saved.lastSetupId : setups[0]?.id || '';
   const rawSetup = setups.find(x => x.id === setupId);
   const setup = Endurance.effective(rawSetup); // (1.9.0: an Endurance Race is a race, a timed race or heats, with the rules of the swaps in setup.endurance)
@@ -809,6 +816,7 @@ async function renderHome() {
     ${customHtml()}
     ${resumeHtml}
     <div id="hm-update" hidden></div>
+    <div id="hm-detect" hidden></div>
     <div class="hm-grid" id="homegrid" style="grid-template-columns:repeat(${grid.cols},minmax(0,1fr))"><section class="card hm-start" id="hmc-start" style="${place(startBoard)}">` +
     (setups.length
       ? `
@@ -834,10 +842,11 @@ async function renderHome() {
       ${tokens ? '<p class="hint2">A Time Token Session starts with every lane switched off. You add paid time to a lane on the race screen, and can change the driver there too. Here you can already put a driver and a car on a lane.</p>' : ''}
       ${raceOn ? '<p class="hint2" id="raceon">A race is running. <button class="btn" id="gorace">Go to the race</button></p>' : ''}
       ${otherIssues.length ? `<ul class="issues">${otherIssues.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
-      <div class="hm-go">${lightsHtml}<span class="hm-grow"></span><button class="btn primary big" id="start" ${issues.length || raceOn ? 'disabled' : ''}${raceOn ? ' title="A race is still running. Open the Race tab to finish or stop it first."' : ''}>${Icons.svg('racesetups', { size: 20 })}<span>${tokens ? 'Open the session' : 'Start race'}</span></button></div>`
-      : '<h3>Start a race</h3><p class="muted">Create a race setup in the Race Setup tab to get started.</p>') +
+      <div class="hm-go">${lightsHtml}<span class="hm-grow"></span>${!tokens && track && lanes && !raceOn ? '<button type="button" class="btn" id="sensortest" title="Drive a car over every lane before the race: each lane lights up when its sensor sees a car">Test sensors</button>' : ''}<button class="btn primary big" id="start" ${issues.length || raceOn ? 'disabled' : ''}${raceOn ? ' title="A race is still running. Open the Race tab to finish or stop it first."' : ''}>${Icons.svg('racesetups', { size: 20 })}<span>${tokens ? 'Open the session' : 'Start race'}</span></button></div>`
+      : '<h3>Start a race</h3><p class="muted">Create a race setup in the Race Setup tab to get started, or let the setup guide walk you through it.</p><div class="row"><button type="button" class="btn primary" id="guideagain">Start the setup guide</button></div>') +
     `</section>${otherCells}</div>`;
   if (typeof UpdateNotice !== 'undefined') UpdateNotice.mountHome(document.getElementById('hm-update')); // (a newer release on GitHub, if any)
+  if (typeof mountHwDetect === 'function') mountHwDetect(); // (2.3.0: timing hardware that was plugged in)
   {
     // the problem chips: a click opens the page where it is put right
     const chipBox = document.getElementById('hm-chips');
@@ -1343,6 +1352,16 @@ async function renderHome() {
       )
         return;
       Promise.resolve(api.clearResume()).then(() => renderHome());
+      return;
+    }
+    if (b.id === 'guideagain') {
+      state.settings = await api.setSettings({ setupGuide: { step: 0 } });
+      return renderHome();
+    }
+    if (b.id === 'sensortest') {
+      // (2.3.0: every lane lights up when its sensor sees a car; a lane that saw none is named)
+      const id = Hardware.timingChosen(state.settings);
+      await SensorTest.openDialog({ lanes, hw: id, name: TIMING_NAMES[id] || id, settings: state.settings });
       return;
     }
     if (b.id === 'start') {
