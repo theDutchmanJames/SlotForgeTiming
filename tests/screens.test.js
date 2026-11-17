@@ -2898,7 +2898,8 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
     run('ArduinoBox.link.setConnected(true)');
     say('...it turns green when the virtual box connects while Home is open', E('hm-chips').innerHTML.includes('data-state="on"><i aria-hidden="true"></i>Virtual Arduino Sketch connected'));
     run('Trackmate.link.setConnected(true)');
-    say('...one at a time: the Trackmate being connected as well changes nothing while the box is the one in use', !E('hm-chips').innerHTML.includes('Trackmate') );
+    { const chips = E('hm-chips').innerHTML, timingChip = chips.split('data-key="tm"')[1]?.split('</')[0];
+      say('...one at a time: the Trackmate being connected as well does not change the timing chip while the box is the one in use; a separate warning says the Trackmate does not count laps (2.2.5)', timingChip !== undefined && !timingChip.includes('Trackmate') && chips.includes('data-key="unused"') && chips.includes('Trackmate Interface is connected but not counting laps')); }
     run('Trackmate.link.setConnected(false); ArduinoBox.link.setConnected(false)');
     say('...and it turns red again when the box goes away', E('hm-chips').innerHTML.includes('data-state="warn"><i aria-hidden="true"></i>Virtual Arduino Sketch not connected'));
     say('...a remembered real box is "Arduino Sketch"', (await chipAfter({ abVirtual: false, abDevice: { vid: 9025, pid: 67 } })) === 'data-state="warn">|Arduino Sketch not connected');

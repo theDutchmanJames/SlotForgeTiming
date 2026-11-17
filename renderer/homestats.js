@@ -478,6 +478,25 @@
   }
   function chips(ctx) {
     const out = [timing(ctx)];
+    // what would otherwise go wrong without a word: timing hardware that is connected but does not count laps, and finished races that
+    // could not reach the shared library (go: where a click on the chip takes you to put it right)
+    if (ctx.unused && ctx.unused.length)
+      out.push({
+        key: 'unused',
+        text: ctx.unused.join(' and ') + (ctx.unused.length > 1 ? ' are' : ' is') + ' connected but not counting laps',
+        state: 'warn',
+        go: 'hardware',
+        title: 'Only the timing hardware in use counts race laps. Open Timing Hardware to choose it.'
+      });
+    if (ctx.libraryWaiting > 0)
+      out.push({
+        key: 'library',
+        text: plural(ctx.libraryWaiting, 'result', 'results') + ' waiting for the shared library',
+        state: 'warn',
+        go: 'connections',
+        title:
+          'These finished races have not reached the shared library yet, so their records are missing there. Open Connections to see why and retry.'
+      });
     out.push(
       ctx.netError
         ? { key: 'net', text: 'Network sharing could not start', state: 'warn' }

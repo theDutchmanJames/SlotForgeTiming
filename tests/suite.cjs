@@ -285,4 +285,5 @@ module.exports = [
   ['lint.test.js', 'plain'],
   ['format.test.js', 'plain'],
   ['updates-diagnostics.test.js', 'node-test'],
+  ['statuschips.test.js', 'node-test'],
 ];

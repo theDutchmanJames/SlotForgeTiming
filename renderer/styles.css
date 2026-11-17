@@ -2387,3 +2387,6 @@ header{box-shadow:0 calc(1px + 3px*var(--d)) calc(4px + 8px*var(--d)) -3px rgba(
 .hm-update{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;margin:0 0 14px;border-left:6px solid var(--accent)}
 .hm-update>div:first-child{display:flex;flex-direction:column;gap:2px;flex:1 1 320px}
 .hm-update .row{margin:0}
+/* a problem chip on Home is a button: it opens the page where the problem is put right */
+button.hm-chip-go{font-family:inherit;color:inherit;cursor:pointer;text-align:left}
+button.hm-chip-go:hover,button.hm-chip-go:focus-visible{filter:brightness(1.15);text-decoration:underline;text-underline-offset:2px}

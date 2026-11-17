@@ -31,6 +31,7 @@ function homeSoftDraw() {
   const c = state.homeCustom;
   if (state.tab === 'home' && !(c && c.typing)) renderHome();
 }
+let homeLibraryWaiting = 0; // (results waiting for the shared library, last known: the chip on Home)
 function resetHome() {
   homeLaps = null;
 }
@@ -672,10 +673,15 @@ async function renderHome() {
       audioName,
       drivers: drivers.length,
       cars: cars.length,
-      tracks: tracks.length
+      tracks: tracks.length,
+      unused: typeof unusedTimingConnected === 'function' ? unusedTimingConnected(state.settings).map(id => TIMING_NAMES[id] || id) : [],
+      libraryWaiting: homeLibraryWaiting
     });
+  // a chip that points at a problem is a button that opens the page where it is put right
   const chipHtml = c =>
-    `<span class="hm-chip" data-key="${c.key}"${c.state ? ` data-state="${c.state}"` : ''}>${c.state ? '<i aria-hidden="true"></i>' : ''}${esc(c.text)}</span>`;
+    c.go
+      ? `<button type="button" class="hm-chip hm-chip-go" data-key="${c.key}" data-go="${esc(c.go)}"${c.state ? ` data-state="${c.state}"` : ''}${c.title ? ` title="${esc(c.title)}"` : ''}>${c.state ? '<i aria-hidden="true"></i>' : ''}${esc(c.text)}</button>`
+      : `<span class="hm-chip" data-key="${c.key}"${c.state ? ` data-state="${c.state}"` : ''}>${c.state ? '<i aria-hidden="true"></i>' : ''}${esc(c.text)}</span>`;
   const today = new Date().toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
   const lt = HomeStats.lights(
       rows,
@@ -827,6 +833,40 @@ async function renderHome() {
       : '<h3>Start a race</h3><p class="muted">Create a race setup in the Race Setup tab to get started.</p>') +
     `</section>${otherCells}</div>`;
   if (typeof UpdateNotice !== 'undefined') UpdateNotice.mountHome(document.getElementById('hm-update')); // (a newer release on GitHub, if any)
+  {
+    // the problem chips: a click opens the page where it is put right
+    const chipBox = document.getElementById('hm-chips');
+    if (chipBox)
+      chipBox.onclick = ev => {
+        const b = ev.target.closest ? ev.target.closest('[data-go]') : null;
+        if (!b) return;
+        state.tab = 'settings';
+        if (b.dataset.go === 'hardware') {
+          state.settingsSub = 'hardware';
+          const first = typeof unusedTimingConnected === 'function' ? unusedTimingConnected(state.settings)[0] : null;
+          if (first) state.hwSub = first; // (the page of the hardware the chip is about)
+        }
+        if (b.dataset.go === 'connections') {
+          state.settingsSub = 'network';
+          if (typeof connectionsTab !== 'undefined') connectionsTab = 'library';
+        }
+        render();
+      };
+  }
+  // finished races that could not reach the shared library (asked after the page is drawn: the chip follows when the answer comes)
+  if (api.libraryResults && api.libraryStatus)
+    api
+      .libraryStatus()
+      .then(st => (st && st.available ? api.libraryResults() : null))
+      .then(r => {
+        const n = r && Array.isArray(r.results) ? r.results.length : 0;
+        if (n !== homeLibraryWaiting && draw === homeDraw) {
+          homeLibraryWaiting = n;
+          const el = document.getElementById('hm-chips');
+          if (el) el.innerHTML = chipsNow().map(chipHtml).join('');
+        }
+      })
+      .catch(() => {});
 
   if (keep) {
     // the field that had the cursor has it again, with the same part of the text selected (a number has no part: all of it, as when you come into it with Tab)
