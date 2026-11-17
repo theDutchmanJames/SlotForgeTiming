@@ -290,4 +290,5 @@ module.exports = [
   ['racenight.test.js', 'node-test'],
   ['data.test.js', 'node-test'],
   ['interface.test.js', 'node-test'],
+  ['performance.test.js', 'node-test'],
 ];

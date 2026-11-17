@@ -51,6 +51,22 @@ function mappedRecord(r, client) {
 // its laps here; its track record and personal bests count too, marked pendingLibrary, until the library has the race. Only this computer's own sessions
 // that the library does not have (or has an older copy of: a correction still waiting) count, so a lap is never counted twice.
 async function undeliveredRecords(base, client, pool, token, only = {}) {
+  // (performance: the races still on their way, held or refused are the ones in the delivery list of this computer with that state; one read of that list
+  // instead of a question to the library for every race that holds a record, which took seconds with a few hundred races)
+  let waiting = null;
+  try {
+    const sum = client.storage && typeof client.storage.summary === 'function' ? await client.storage.summary() : null;
+    if (sum && Array.isArray(sum.deliveries))
+      waiting = new Set(
+        sum.deliveries
+          .filter(d => d && (!d.transport || d.transport === 'engine') && ['pending', 'attention'].includes(d.status))
+          .map(d => d.sessionId)
+      );
+  } catch {
+    waiting = null; // (then each race is asked about, as before)
+  }
+  // (and nothing is waiting, as after almost every race: the local records are not even read)
+  if (waiting && !waiting.size) return { tracks: [], personal: [], refs: { tracks: [], drivers: [], slotcars: [], sessions: [] } };
   const first = await base.historyPage(pool),
     out = { tracks: [], personal: [], refs: first.refs };
   for (const section of ['tracks', 'personal']) {
@@ -70,6 +86,7 @@ async function undeliveredRecords(base, client, pool, token, only = {}) {
   const known = new Map();
   const undelivered = async sessionId => {
     if (!sessionId) return false;
+    if (waiting) return waiting.has(sessionId);
     if (!known.has(sessionId))
       known.set(
         sessionId,
@@ -115,6 +132,7 @@ async function historyPage(base, client, pool, options = {}) {
   const sections = {},
     refs = local.refs;
   if (!token) token = (await read(client, { kind: 'resultSessions', limit: 1 })).token;
+  let pendingOnce = null;
   for (const section of ['tracks', 'personal']) {
     if (pool === 'tokens') continue;
     const page = await read(client, {
@@ -129,9 +147,10 @@ async function historyPage(base, client, pool, options = {}) {
     sections[section] = { items: page.rows.map(r => mappedRecord(r, client)), nextOffset: page.nextOffset };
     if (!(o[section]?.offset > 0)) {
       // (the first page: the records of races that did not reach the library yet)
-      const pending = await undeliveredRecords(base, client, pool, token);
+      const first = !pendingOnce;
+      const pending = (pendingOnce ||= await undeliveredRecords(base, client, pool, token)); // (once for both sections)
       sections[section].items = mergeRecords(section, sections[section].items, pending[section], page.nextOffset === null);
-      for (const k of Object.keys(refs)) refs[k].push(...(pending.refs[k] || []));
+      if (first) for (const k of Object.keys(refs)) refs[k].push(...(pending.refs[k] || []));
     }
     for (const r of page.rows) {
       const m = mappedRecord(r, client),

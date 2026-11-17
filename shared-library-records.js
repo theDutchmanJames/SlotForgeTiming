@@ -66,7 +66,7 @@ function projection(car, { localId = car.id, original = {}, classes = [] } = {})
   if (Array.isArray(car.photos)) row.extraPictures = car.photos.map(p => p.data);
   return row;
 }
-function wrap(base, client) {
+function wrap(base, client, options = {}) {
   const Fields = require('./shared-library-fields'),
     classes = () => Fields.classes(base, client);
   const Reads = require('./shared-library-reads');
@@ -81,11 +81,71 @@ function wrap(base, client) {
       ).filter(Boolean)
     );
   const catalogueFlights = new Map();
-  const mapped = async (car, original, cl) => {
+  // what the library says about a car beyond its own fields: its Timing settings (the binding) and its custom fields and service figures.
+  // These are two to three requests to the library per car, about 20 ms each one after another; a list of a hundred cars took seconds.
+  const libraryParts = async car => {
     const binding = await client.currentSettings(car.id);
+    return { binding, extra: await Fields.hydrate(client, car) };
+  };
+  // (performance) the parts of every car, kept for as long as the library is at the same revision: a race result, a car or a setting
+  // that changes makes a new revision, and everything is asked for again. Only the reference lists use it.
+  // They are also kept in a small file of the profile (options.cacheFile), with the revision they belong to: when the app starts and the library has
+  // not changed since, the list is there at once instead of after a request per car. A file of another revision, or one that cannot be read, is ignored.
+  const partsCache = { key: '', rows: new Map() };
+  let saveTimer = null;
+  const saveParts = () => {
+    if (!options.cacheFile || saveTimer) return;
+    saveTimer = setTimeout(async () => {
+      saveTimer = null;
+      try {
+        const key = partsCache.key,
+          rows = {};
+        for (const [k, p] of partsCache.rows) rows[k] = await p;
+        if (key !== partsCache.key) return; // (the library changed meanwhile: the next list saves)
+        const fs = require('node:fs'),
+          tmp = options.cacheFile + '.tmp';
+        await fs.promises.writeFile(tmp, JSON.stringify({ version: 1, key, rows }));
+        await fs.promises.rename(tmp, options.cacheFile);
+      } catch {
+        /* a cache: not having it is only slower */
+      }
+    }, 1000);
+    if (saveTimer.unref) saveTimer.unref();
+  };
+  const loadParts = key => {
+    try {
+      const saved = options.cacheFile ? JSON.parse(require('node:fs').readFileSync(options.cacheFile, 'utf8')) : null;
+      if (saved && saved.version === 1 && saved.key === key && saved.rows && typeof saved.rows === 'object')
+        return new Map(Object.entries(saved.rows).map(([k, v]) => [k, Promise.resolve(v)]));
+    } catch {
+      /* no file, or another one: start empty */
+    }
+    return new Map();
+  };
+  const cachedParts = (token, car) => {
+    const key = JSON.stringify(token);
+    if (partsCache.key !== key) {
+      partsCache.key = key;
+      partsCache.rows = loadParts(key);
+    }
+    const k = car.id + '#' + car.revision;
+    if (!partsCache.rows.has(k)) {
+      partsCache.rows.set(
+        k,
+        libraryParts(car).catch(e => {
+          partsCache.rows.delete(k); // (a failed read is not kept)
+          throw e;
+        })
+      );
+      saveParts();
+    }
+    return partsCache.rows.get(k);
+  };
+  const mapped = async (car, original, cl, parts) => {
+    const { binding, extra } = parts || (await libraryParts(car));
     const row = projection(car, {
       localId: binding?.localCarId || client.localId(car.id),
-      original: { ...original, ...binding?.effective, ...(await Fields.hydrate(client, car)) },
+      original: { ...original, ...binding?.effective, ...extra },
       classes: cl || (await classes())
     });
     if (binding)
@@ -259,7 +319,7 @@ function wrap(base, client) {
         ),
         cl = await classes();
       const items = client.merges
-        ? await boundedMap(page.cars, c => mapped(c, {}, cl))
+        ? await boundedMap(page.cars, async c => mapped(c, {}, cl, await cachedParts(page.token, c)))
         : page.cars.map(c => projection(c, { localId: client.localId(c.id), classes: cl }));
       if (client.merges) await consistent(() => client.catalogue({ limit: 1, token: page.token }));
       return {

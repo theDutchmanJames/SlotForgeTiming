@@ -74,7 +74,7 @@ test('saved DS captures name the port that was picked, and DS control lines are 
 });
 
 test('requests after closing has begun are refused quietly, with the same error for the caller',async()=>{
-  assert(require('./source.cjs').has(src('main.js'),'appWork.closing?{__sfAppClosing:true}:appWork.run('));
+  assert(require('./source.cjs').has(src('main.js'),'if(appWork.closing)return{__sfAppClosing:true};')&&require('./source.cjs').has(src('main.js'),'return appWork.run(()=>handler(...args));')); // (2.3.1: the same check, with an optional trace of how long a request takes)
   const pre=src('preload.js'),from=pre.indexOf('const call = '),line=pre.slice(from,pre.indexOf('\n};',from)+3); // the whole declaration, however many lines
   const invoke={value:null};const call=new Function('ipcRenderer',line.replace(/^const call = /,'return ')+';')({invoke:async()=>invoke.value});
   invoke.value={__sfAppClosing:true};await assert.rejects(call('db:list'),e=>e.code==='APP_CLOSING'&&/Timing is closing/.test(e.message));

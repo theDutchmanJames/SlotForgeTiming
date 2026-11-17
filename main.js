@@ -59,8 +59,22 @@ const { WorkGate, Shutdown } = require('./work-gate'),
 const registerIpc = ipcMain.handle.bind(ipcMain);
 // Once closing has begun, a request from a page that is still polling is answered with a marker instead of an error: the preload turns it back into the
 // same "Timing is closing" error for the caller, and the log is not filled with "Error occurred in handler" lines while the app shuts down.
+// (for developers: SF_IPC_TRACE=<file> writes every request of the window with how long the core took for it, one JSON line each)
+const ipcTrace = process.env.SF_IPC_TRACE
+  ? (channel, ms) =>
+      fs.appendFile(
+        process.env.SF_IPC_TRACE,
+        JSON.stringify({ at: Math.round(performance.now()), channel, ms: Math.round(ms * 10) / 10 }) + '\n',
+        () => {}
+      )
+  : null;
 ipcMain.handle = (channel, handler) =>
-  registerIpc(channel, (...args) => (appWork.closing ? { __sfAppClosing: true } : appWork.run(() => handler(...args))));
+  registerIpc(channel, (...args) => {
+    if (appWork.closing) return { __sfAppClosing: true };
+    if (!ipcTrace) return appWork.run(() => handler(...args));
+    const t = performance.now();
+    return Promise.resolve(appWork.run(() => handler(...args))).finally(() => ipcTrace(channel, performance.now() - t));
+  });
 let pendingRestore = null; // a backup file chosen for restoring, waiting for the user to confirm
 let pendingRestoreSource = null;
 let pendingImport = null; // a file chosen for import, waiting for the user to confirm
@@ -472,7 +486,9 @@ async function openStorageAndPaddock() {
     }
     const imports = require('./shared-library-import');
     if (imports.read(app.getPath('userData'))?.phase === 'prepared') await imports.resume(sharedLibrary, records, app.getPath('userData'));
-    records = require('./shared-library-records').wrap(records, sharedLibrary);
+    records = require('./shared-library-records').wrap(records, sharedLibrary, {
+      cacheFile: path.join(app.getPath('userData'), 'library-car-cache.json')
+    });
     bulkStorage = require('./shared-library-bulk').wrap(bulkStorage, records, sharedLibrary, app.getPath('userData'));
     // (audit 2.2.5, #14) remember the library's current restore generation: corrections of races from before a restore are written for it
     try {
