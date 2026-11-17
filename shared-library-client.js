@@ -52,6 +52,16 @@ class SharedLibraryClient {
         await handle.close();
         handle = await engine.open({ ...options, application: 'SlotForge Timing', installationId });
       }
+      // (2.3.1) a library that Paddock moves to another folder while Timing runs is followed: see shared-library-relocation.js
+      const reopenAs = installationId;
+      handle = require('./shared-library-relocation').relocatable(
+        handle,
+        () => engine.open({ ...options, application: 'SlotForge Timing', installationId: reopenAs }),
+        {
+          onMoved: ({ movedTo }) =>
+            console.warn('The shared library was moved by Paddock; Timing follows it to ' + (movedTo || 'its new folder') + '.')
+        }
+      );
       const client = new SharedLibraryClient(handle, installationId, storage);
       client.bootstrap = bootstrap;
       client.initial = await handle.status();

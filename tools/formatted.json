@@ -288,6 +288,7 @@
     "shared-library-original-history.js",
     "shared-library-reads.js",
     "shared-library-records.js",
+    "shared-library-relocation.js",
     "shared-library-restore.js",
     "shared-library-results.js",
     "shared-thumbnail-encoder.js",

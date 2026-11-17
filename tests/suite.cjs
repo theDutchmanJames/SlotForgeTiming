@@ -291,4 +291,5 @@ module.exports = [
   ['data.test.js', 'node-test'],
   ['interface.test.js', 'node-test'],
   ['performance.test.js', 'node-test'],
+  ['library-move.test.js', 'node-test'],
 ];
