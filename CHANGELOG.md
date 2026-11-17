@@ -1,5 +1,39 @@
 # Changelog
 
+## 2.3.0 — 2026-11-17
+
+- **Problems are visible:**
+  - Home shows chips that open the page where you fix them: timing hardware connected but not in use, results waiting for the shared library, a failed automatic backup.
+  - The app's own dialogs replace the Windows pop-ups. They name their buttons, Escape cancels, and laps keep counting while a question is open.
+- **Updates and diagnostics:**
+  - On start, the app checks GitHub for a newer release and shows it on Home. It only notifies and never installs anything; the check can be turned off.
+  - **Save diagnostics** writes a bug-report file without passwords, names or user folders.
+- **Setup guide for a fresh install:** track, drivers, cars, timing hardware, a sensor test and a 3-lap test race. Every step can be skipped, and App Settings, General starts it again.
+- **Test sensors** on Home: each lane lights up when its sensor sees a car, and lanes that saw nothing are named.
+- **DS Electronics pause choice:** laps driven during a pause are either not counted (as before), or kept and added on resume with the box's own lap times.
+- **Virtual DS box and virtual Trackmate** for trying the app without hardware.
+- **USB timing hardware is detected when plugged in:**
+  - A remembered device reconnects by itself.
+  - Another one is offered on Home.
+  - DS now remembers its port.
+- **Automatic backups** every day or week the app is used, keeping the newest few (Import and Export).
+- **Records with the shared library:** a race the library has not accepted yet still counts in records and on Home, marked "not yet in the shared library".
+- **Sharing results:** Save as web page, Save as CSV and Copy as text (for a club chat), next to Export to PDF.
+- **Driver progress** on the driver card: best and average lap and consistency per track and month, with a small chart.
+- **Race Setup:** "Choose systems…" hides the systems a club never uses, from the tabs and from the race setup form.
+- **App Settings search** finds any setting by a few words and opens it.
+- **Pair a phone:** a one-time QR code logs a phone in to the Race Director. On a phone, the race controls stay at the top.
+- **Accessibility:**
+  - Every built-in theme meets WCAG AA contrast for text.
+  - A focus ring shows on everything you can reach with the keyboard.
+  - Animations are reduced when Windows asks for less motion.
+- **Fixes:**
+  - Results that never reached the shared library because of lap-time rounding.
+  - DS pause and resume messages.
+  - Lag from DS signal polling.
+  - Many issues from a full review.
+  - The code was cleaned up: formatter, linter, and split modules.
+
 ## 2.2.3 — 2026-11-14
 
 - Support Paddock's Wishlist: unpurchased cars stay out of Timing's catalogue, editors and race selection. Purchasing a car makes the same record available without duplicating it or changing existing history.
