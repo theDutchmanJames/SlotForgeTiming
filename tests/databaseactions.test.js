@@ -1,6 +1,6 @@
 const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict'),path=require('path');
 const schema=require('../schema');
-const src=fs.readFileSync(path.join(__dirname,'../renderer/database.js'),'utf8');
+const src=require('./source.cjs').code('renderer/database.js'); // (with its parts in renderer/database/)
 const context=vm.createContext({titleOf:(e,x)=>schema[e].title.map(k=>x[k]).filter(Boolean).join(' ')||'(unnamed)'});
 vm.runInContext(src.slice(src.indexOf('const COPY_SETUP_ENTITIES'),src.indexOf('// All countries'))+'\nthis.copy=setupCopyData;this.order=databaseOrdered;this.entities=[...COPY_SETUP_ENTITIES];',context);
 const plain=x=>JSON.parse(JSON.stringify(x));

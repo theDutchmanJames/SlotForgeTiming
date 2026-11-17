@@ -84,7 +84,7 @@ test('version 2 forks gain the catalogue index without changing the recovery cop
 });
 
 test('lazy pictures stay globally bounded across page changes and discard stale responses',async()=>{
-  const vm=require('node:vm'),source=fs.readFileSync(path.join(__dirname,'../renderer/database.js'),'utf8');
+  const vm=require('node:vm'),source=require('./source.cjs').code('renderer/database.js'); // (with its parts in renderer/database/)
   const pending=[],observers=[];let current=true;
   class Observer{constructor(callback){this.callback=callback;this.images=[];observers.push(this);}observe(img){this.images.push(img);}unobserve(){}disconnect(){this.disconnected=true;}}
   const context=vm.createContext({IntersectionObserver:Observer,api:{cataloguePicture:(_e,id)=>new Promise(resolve=>pending.push({id,resolve}))}});

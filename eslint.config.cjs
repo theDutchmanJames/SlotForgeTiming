@@ -11,21 +11,34 @@ const R = path.join(__dirname, 'renderer');
 
 function rendererGlobals() {
   const names = new Set();
-  for (const f of fs.readdirSync(R).filter(f => f.endsWith('.js'))) {
+  // (renderer/ and its folders of split-off parts such as renderer/engine/; not the fonts and pictures)
+  const files = fs
+    .readdirSync(R, { recursive: true })
+    .map(String)
+    .filter(f => f.endsWith('.js') && !/^(fonts|assets|avatars)[\\/]/.test(f));
+  const espree = require('espree'); // (ESLint's own parser)
+  const bindings = pattern => {
+    // every name a declaration binds, also in destructuring
+    if (!pattern) return [];
+    if (pattern.type === 'Identifier') return [pattern.name];
+    if (pattern.type === 'ObjectPattern') return pattern.properties.flatMap(p => bindings(p.type === 'RestElement' ? p.argument : p.value));
+    if (pattern.type === 'ArrayPattern') return pattern.elements.flatMap(e => bindings(e && e.type === 'RestElement' ? e.argument : e));
+    if (pattern.type === 'AssignmentPattern') return bindings(pattern.left);
+    return [];
+  };
+  for (const f of files) {
     const src = fs.readFileSync(path.join(R, f), 'utf8');
-    // top-level declarations (no indentation)
-    for (const m of src.matchAll(/^(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)/gm)) names.add(m[1]);
-    for (const m of src.matchAll(/^class\s+([A-Za-z_$][\w$]*)/gm)) names.add(m[1]);
-    for (const m of src.matchAll(/^(?:const|let|var)\s+([^;=]+?)\s*=/gm))
-      for (const n of m[1].split(',')) {
-        const k = n.trim().match(/^[A-Za-z_$][\w$]*$/);
-        if (k) names.add(k[0]);
-      }
-    for (const m of src.matchAll(/^(?:const|let|var)\s+(.+)$/gm))
-      for (const part of m[1].split(/,(?![^([{]*[)\]}])/)) {
-        const k = part.trim().match(/^([A-Za-z_$][\w$]*)\s*(?:=|;|$)/);
-        if (k) names.add(k[1]);
-      }
+    let ast;
+    try {
+      ast = espree.parse(src, { ecmaVersion: 'latest', sourceType: 'script' });
+    } catch {
+      continue; // (ESLint itself reports a file that does not parse)
+    }
+    // top-level declarations
+    for (const n of ast.body) {
+      if ((n.type === 'FunctionDeclaration' || n.type === 'ClassDeclaration') && n.id) names.add(n.id.name);
+      if (n.type === 'VariableDeclaration') n.declarations.forEach(d => bindings(d.id).forEach(x => names.add(x)));
+    }
     // modules that hang themselves on the window: root.X = / window.X = / globalThis.X =
     for (const m of src.matchAll(/\b(?:root|window|globalThis|self)\.([A-Za-z_$][\w$]*)\s*=(?!=)/g)) names.add(m[1]);
   }

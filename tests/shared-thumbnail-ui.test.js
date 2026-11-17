@@ -13,7 +13,7 @@ test('thumbnail bridge accepts only the main window and rejects interrupted jobs
  const afterReload=encode('photo');wc.emit('render-process-gone');await assert.rejects(afterReload,/interrupted/);assert.equal(wc.listenerCount('render-process-gone'),1);
 });
 function manager(){
- const text=fs.readFileSync(require.resolve('../renderer/database.js'),'utf8');
+ const text=require('./source.cjs').code('renderer/database.js'); // (with its parts in renderer/database/)
  const source=text.slice(text.search(/const managerLoads\s*=/),text.indexOf('async function mountManagerPage'));
  const jobs=[],context=vm.createContext({subRun:0,esc:x=>String(x),mountManagerPage:()=>{context.subRun++;return new Promise((resolve,reject)=>jobs.push({resolve,reject}));}});
  vm.runInContext(source,context);return {context,jobs,mount:context.mountManager};

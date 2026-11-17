@@ -1,6 +1,6 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync(require.resolve('../renderer/database.js'),'utf8');
+const source=require('./source.cjs').code('renderer/database.js'); // (with its parts in renderer/database/)
 const start=source.indexOf("    if (e === 'racesetups' && b.dataset.systemSetup"),end=source.indexOf('    if (b.dataset.rsf)',start);
 function harness(update){
  const buttons=['fuel','weather'].map(key=>({disabled:false,dataset:{systemSetup:'race',systemKey:key,systemOn:'0'}}));

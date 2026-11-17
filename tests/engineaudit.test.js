@@ -120,8 +120,8 @@ test('a stop given at the moment of a finishing crossing that is read a little l
   assert.equal(r.status, 'finished'); assert.equal(!!r.cars[0].dq, false); assert.equal(r.cars[0].pending[0].afterFinish, true);
 });
 test('results show time added without a penalty system as added time, not as a penalty with empty points', () => {
-  for (const f of require('./renderer-scripts.cjs').expand(['report.js', 'database.js'])) {
-    const src = fs.readFileSync(path.join(__dirname, '..', 'renderer', f), 'utf8');
+  for (const f of ['report.js', 'database.js']) {
+    const src = require('./source.cjs').code('renderer/' + f); // (a file with its parts in renderer/<name>/)
     assert.ok(require('./source.cjs').has(src, "x.penaltyPoints != null ?") && src.includes('added time)'), f); // (compared without spaces, see source.cjs)
   }
 });
