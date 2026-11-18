@@ -4032,3 +4032,7 @@ html #hmc-start .hs-lanes[data-cols]>.lane.lane.lane{box-shadow:0 0 0 .5px var(-
 html #hmc-start .hs-lanes.gs-fill[data-cols]{grid-template-columns:repeat(12,minmax(0,1fr))}
 /* (Grid Slot) the hairlines are only between lanes: what spills over the outer edge of the lanes is cut off */
 html #hmc-start .hs-lanes[data-cols]{overflow:hidden}
+/* (2.4.0) Record to beat: the title is the headline of the card, large Barlow; it grows with the width of its red label */
+html .hm-grid .hm-rec>h3{container:hm-rec/inline-size;font:italic 700 34px/.95 'SF Barlow Condensed','Bahnschrift',sans-serif;letter-spacing:.01em;gap:10px}
+@container hm-rec (min-width:0){html .hm-grid .hm-rec>h3{font-size:clamp(26px,18cqi,44px)}}
+html .hm-grid .hm-rec>h3 .hm-tag{font-style:normal;font-size:11.5px;line-height:1.3}
