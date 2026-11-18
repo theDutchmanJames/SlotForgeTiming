@@ -4521,3 +4521,73 @@ html body.app-shell>header.mb-t5>#tabs .mb-right{gap:8px}
 html body.app-shell>header.mb-t5>#tabs .mb-find kbd{display:none}
 html body.app-shell>header.mb-t5>#tabs .mb-right>.tab.onair{padding:0 10px;letter-spacing:.04em;font-size:14px}
 html body.app-shell>header.mb-t5>#tabs .mb-lights{padding:0 9px}
+/* 2.4.0 Parc Fermé (paddockbrowser.js): choosing a car. A Workshop Window with a sticky head, one Control Strip (the source as a Gear Selector, search,
+   connection, refresh) and the cars as small Garage Cards: the picture across the top, the name in Barlow, a chip for its state, Select at the foot */
+html dialog.paddock-dialog{width:min(1120px,94vw);max-height:90vh;padding:0;overflow:auto;background:var(--panel);border-radius:14px}
+html dialog.paddock-dialog>header{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0;padding:16px 22px 14px 24px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--bg) 30%,var(--panel))}
+.pf-eye{display:block;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+html dialog.paddock-dialog>header h2{margin:2px 0 0;font:italic 700 26px/1.05 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html dialog.paddock-dialog .pf-close{display:grid;place-items:center;width:36px;height:36px;min-height:0;padding:0;border-radius:9px;background:transparent;color:var(--muted)}
+html dialog.paddock-dialog .pf-close:hover{background:color-mix(in srgb,var(--ink) 9%,transparent);color:var(--ink)}
+html dialog.paddock-dialog>[data-browser]{padding:16px 24px 22px}
+html .paddock-browser .pb-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 14px;padding:7px;border:1px solid var(--line);border-radius:11px;background:color-mix(in srgb,var(--bg) 40%,var(--panel))}
+html .paddock-browser .pb-toolbar .seg{display:inline-flex;flex-wrap:nowrap;gap:2px;margin:0!important;padding:3px;border-radius:9px;background:rgba(0,0,0,.25)}
+html .paddock-browser .pb-toolbar .seg .btn{min-height:30px;padding:0 13px;border:0;border-radius:7px;background:transparent;box-shadow:none;color:var(--muted);font-weight:600}
+html .paddock-browser .pb-toolbar .seg .btn:hover{color:var(--ink)}
+html .paddock-browser .pb-toolbar .seg .btn.on{background:color-mix(in srgb,var(--ink) 13%,var(--panel));color:var(--ink)}
+.pf-search{position:relative;display:flex;flex:1 1 220px;min-width:180px}
+.pf-search::before{content:'';position:absolute;left:12px;top:50%;width:15px;height:15px;margin-top:-7.5px;background:currentColor;color:var(--muted);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") center/contain no-repeat}
+html .paddock-browser .pf-search input[type=search]{width:100%;min-height:36px;margin:0;padding:0 12px 0 36px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+html .paddock-browser .pb-toolbar>.btn{min-height:36px}
+html .paddock-browser .pb-toolbar>.row{display:flex;gap:6px;margin:0}
+html .paddock-browser>p{margin:0 0 10px;font-size:13px;line-height:1.5}
+html .paddock-browser>p:empty{display:none}
+html .paddock-browser>p[data-summary]{font-weight:600}
+html .paddock-browser .pb-cars{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:12px 0 16px}
+html .paddock-browser .pb-car{position:relative;display:flex;flex-direction:column;gap:0;padding:0;border:1px solid var(--line);border-left:1px solid var(--line);border-radius:12px;overflow:hidden;background:color-mix(in srgb,var(--bg) 35%,var(--panel));transition:border-color .12s,transform .12s}
+html .paddock-browser .pb-car:hover{border-color:color-mix(in srgb,var(--ink) 28%,var(--line))}
+html .paddock-browser .pb-car>img,html .paddock-browser .pb-car>.pb-car-placeholder{display:grid;place-items:center;width:100%;height:118px;align-self:stretch;margin:0;padding:10px;box-sizing:border-box;object-fit:contain;border-radius:0;border-bottom:1px solid var(--line);background:radial-gradient(ellipse at 50% 70%,color-mix(in srgb,var(--ink) 9%,transparent),transparent 70%),color-mix(in srgb,var(--bg) 60%,var(--panel))}
+html .paddock-browser .pb-car>.pb-car-placeholder{color:color-mix(in srgb,var(--muted) 55%,transparent);font-size:0}
+html .paddock-browser .pb-car>div{display:flex;flex-direction:column;gap:4px;flex:1;padding:11px 14px 4px;min-width:0}
+html .paddock-browser .pb-car h3{margin:0;font:italic 700 18px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html .paddock-browser .pb-car p{margin:0;font-size:12.5px;color:var(--muted)}
+html .paddock-browser .pb-car p:empty{display:none}
+html .paddock-browser .pb-car small{align-self:flex-start;margin-top:4px;padding:2px 8px;border-radius:999px;background:color-mix(in srgb,var(--ink) 8%,transparent);font-size:11px;color:var(--muted)}
+html .paddock-browser .pb-car>.btn{margin:10px 14px 14px;min-height:32px}
+html .paddock-browser .pb-car>.btn+.btn{margin-top:-6px}
+html .paddock-browser .pb-car>.btn[data-use]:hover:not(:disabled){background:var(--accent-fill,var(--accent));color:#fff}
+html .paddock-browser .pb-car.shared-local{border-style:dashed}
+html .paddock-browser .pb-pages{justify-content:center;gap:12px;margin:0}
+html .paddock-browser .pb-pages [data-count]{margin:0;font-size:12.5px;color:var(--muted)}
+/* the Dealership connection inside: a Folder */
+html .paddock-browser .dealership-inline{margin:0 0 14px;max-width:none;border:1px solid var(--line);border-radius:11px;background:color-mix(in srgb,var(--bg) 30%,var(--panel))}
+html .paddock-browser .dealership-inline>summary{display:flex;align-items:center;gap:10px;padding:12px 16px;font:italic 700 17px 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;list-style:none}
+html .paddock-browser .dealership-inline>summary::-webkit-details-marker{display:none}
+html .paddock-browser .dealership-inline>summary::after{content:'';width:7px;height:7px;margin-left:auto;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg) translateY(-2px);transition:transform .12s}
+html .paddock-browser .dealership-inline[open]>summary::after{transform:rotate(-135deg) translateY(-2px)}
+html .paddock-browser .dealership-inline[open]>summary{border-bottom:1px solid var(--line)}
+html .paddock-browser .dealership-inline [data-connection-form]{padding:14px 16px 16px}
+html .paddock-browser .pb-car>.pb-car-placeholder svg{width:56px;height:56px}
+/* inside the Folder: the Dealership form as Settings Sheet rows */
+html .paddock-browser .dealership-inline .paddock-shell{display:block}
+html .paddock-browser .dealership-inline .paddock-shell main{padding:0}
+html .paddock-browser .dealership-inline [data-status]{display:inline-flex;align-items:center;gap:8px;margin:0 0 12px;padding:5px 12px;border-radius:999px;background:color-mix(in srgb,var(--ink) 8%,transparent);font-size:12.5px;font-weight:600}
+html .paddock-browser .dealership-inline [data-status]::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--muted)}
+html .paddock-browser .dealership-inline [data-error]:empty{display:none}
+html .paddock-browser .dealership-inline .paddock-shell section{margin:0 0 12px;padding:0;border:0;border-radius:0;background:none}
+html .paddock-browser .dealership-inline .paddock-shell section>h3{margin:0 0 4px;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html .paddock-browser .dealership-inline .paddock-shell section>p{margin:0 0 12px;font-size:13px;line-height:1.5;color:color-mix(in srgb,var(--ink) 85%,var(--muted))}
+html .paddock-browser .dealership-inline #paddock-connection{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel)}
+html .paddock-browser .dealership-inline #paddock-connection>h3,html .paddock-browser .dealership-inline #paddock-connection>p{padding:0 16px}
+html .paddock-browser .dealership-inline #paddock-connection>h3{padding-top:14px}
+html .paddock-browser .dealership-inline #paddock-connection>.row,html .paddock-browser .dealership-inline #paddock-connection>label{display:flex;align-items:center;gap:10px;margin:0;padding:10px 16px;border-top:1px solid var(--line);font-size:13.5px;font-weight:600}
+html .paddock-browser .dealership-inline #paddock-connection>label>input{flex:0 1 380px;margin-left:auto;min-height:34px;font-size:13.5px}
+html .paddock-browser .dealership-inline #paddock-connection>.row>select{flex:1;min-height:34px}
+html .paddock-browser .dealership-inline #paddock-connection>.row:has([data-connect]){justify-content:flex-end;background:color-mix(in srgb,var(--bg) 30%,var(--panel))}
+html .paddock-browser .dealership-inline #paddock-connection>details{padding:10px 16px 12px;border-top:1px solid var(--line);font-size:12.5px}
+html .paddock-browser .dealership-inline #paddock-connection>details>summary{cursor:pointer;color:var(--muted)}
+html .paddock-browser .dealership-inline .paddock-advanced{padding:0;border-radius:10px;background:var(--panel)}
+html .paddock-browser .dealership-inline .paddock-advanced>summary{padding:12px 16px;font-size:13.5px}
+html .paddock-browser .dealership-inline .paddock-advanced[open]>:not(summary){margin-left:16px;margin-right:16px}
+html .paddock-browser .dealership-inline #paddock-connection>.row>select{font-weight:400}
+html .paddock-browser .pb-cars>p{grid-column:1 / -1;margin:0;padding:28px 20px;border:1px dashed var(--line);border-radius:12px;text-align:center}
