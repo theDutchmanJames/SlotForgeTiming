@@ -259,18 +259,81 @@ const SystemSheet = (() => {
   // (it stays where the page draws it, so its code is unchanged; Back closes it, and so does Escape)
   const backOf = form => form.querySelector('.rsfoot [id$="-back"]');
   function pop(form) {
-    if (!form.matches('.rspage') || !backOf(form) || form.classList.contains('sy-pop')) return;
+    if (!form.matches('.rspage') || form.dataset.syLaunch || !backOf(form) || form.classList.contains('sy-pop')) return;
     form.classList.add('sy-pop');
     const prev = form.previousElementSibling;
     if (!prev || !prev.classList.contains('sy-backdrop')) form.before(el('div', 'sy-backdrop'));
   }
+  // ---- an editor that is the whole page (Balance of Power, Time Tokens): a card on the page with what is set now, and the editor as a window ----
+  // (their settings are saved as you change them, so Done only closes the window; the window stays open when the editor draws itself again)
+  let openKind = '';
+  function launcher(form) {
+    if (!form.matches('.rspage') || form.dataset.syLaunch || backOf(form)) return;
+    const kind = kindOf(form) || 'page';
+    form.dataset.syLaunch = kind;
+    const head = form.querySelector('.rshd'),
+      title = head && head.querySelector('.rstitle');
+    const nameEl = title && [...title.children].find(c => !c.matches('.rseye,.rspills,#rshead'));
+    const eye = txt(head && head.querySelector('.rseye')),
+      name = txt(nameEl),
+      tile = (head && head.querySelector('#rstile') && head.querySelector('#rstile').innerHTML) || '';
+    const foot = form.querySelector('.rsfoot');
+    const done = el('button', 'btn primary', 'Done');
+    done.type = 'button';
+    done.id = 'sy-close-back';
+    if (foot) foot.append(done);
+    const card = el('section', 'sy-launch');
+    card.setAttribute('aria-label', name || eye);
+    const draw = () => {
+      const state = txt(head && head.querySelector('.rsready'));
+      const items = [...form.querySelectorAll('.rsri')].filter(r => !r.hidden);
+      card.innerHTML =
+        `<div class="sy-lhead"><span class="sy-ltile">${tile}</span><div class="sy-ltitle"><span class="sy-leye">${esc(eye)}</span><b class="sy-lname">${esc(name)}</b></div>` +
+        (state ? `<span class="sy-lstate">${esc(state)}</span>` : '') +
+        '<button type="button" class="btn primary sy-lopen">Open settings</button></div>' +
+        `<div class="sy-lrows">${items
+          .map(
+            r =>
+              `<button type="button" class="sy-lrow" data-go="${esc(r.dataset.rail)}"><b>${esc(txt(r.querySelector('b')))}</b><span>${esc(txt(r.querySelector('small')))}</span></button>`
+          )
+          .join('')}</div>`;
+      card.querySelector('.sy-lopen').onclick = () => open();
+      card.querySelectorAll('.sy-lrow').forEach(b => (b.onclick = () => open(b.dataset.go)));
+    };
+    const open = go => {
+      openKind = kind;
+      form.hidden = false;
+      form.classList.add('sy-pop');
+      if (!form.previousElementSibling || !form.previousElementSibling.classList.contains('sy-backdrop'))
+        form.before(el('div', 'sy-backdrop'));
+      follow(form);
+      const r = go && form.querySelector('#rs-rail-' + go);
+      if (r) r.click();
+    };
+    const close = () => {
+      openKind = '';
+      form.classList.remove('sy-pop');
+      form.hidden = true;
+      const b = form.previousElementSibling;
+      if (b && b.classList.contains('sy-backdrop')) b.remove();
+      draw();
+      const o = card.querySelector('.sy-lopen');
+      if (o) o.focus();
+    };
+    done.onclick = close;
+    form.before(card);
+    form.hidden = true;
+    draw();
+    if (openKind === kind) open();
+  }
   function enhance(form) {
     if (!form || !form.isConnected) return;
     form.classList.add('sy');
+    launcher(form);
     pop(form);
     note(form);
     sections(form);
-    follow(form);
+    if (!form.hidden) follow(form);
     // a section that draws its settings again later gets its rows again
     if (!form.dataset.syWatch) {
       form.dataset.syWatch = '1';
@@ -296,6 +359,13 @@ const SystemSheet = (() => {
     const scan = () => {
       pending = false;
       document.querySelectorAll('.rsform:not(.sy)').forEach(enhance);
+      // (a page editor that is gone, the page left: its window is not open the next time)
+      if (openKind && !document.querySelector('.rsform[data-sy-launch="' + openKind + '"]')) openKind = '';
+      // (a card whose editor was drawn again is drawn again with it)
+      document.querySelectorAll('.sy-launch').forEach(c => {
+        const n = c.nextElementSibling;
+        if (!n || !n.matches('.rsform, .sy-backdrop')) c.remove();
+      });
       // (a window that was closed leaves no shade behind)
       document.querySelectorAll('.sy-backdrop').forEach(b => {
         const n = b.nextElementSibling;

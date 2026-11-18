@@ -3913,3 +3913,27 @@ html body .rsform.sy [class$="-choices"]>button>small{font-size:12.5px;line-heig
 html body .rsform.sy [class$="-choices"]>button:hover{border-color:color-mix(in srgb,var(--ink) 25%,var(--line))}
 html body .rsform.sy [class$="-choices"]>button[aria-pressed=true]{border-color:var(--c,var(--accent));background:color-mix(in srgb,var(--c,var(--accent)) 12%,var(--panel))}
 html body .rsform.sy .rsfoot>:is(.error,[role=alert]):not(:empty)~.rsdef{margin-right:0}
+/* (System Sheet) words straight inside a sheet (a hint of the form, as on Rotation): the padding and the line of a row */
+html body .rsform.sy.sy .fgrid.sy-sheet>:is(p,span.hint,small,.hint):not(.field){display:block;margin:0!important;padding:10px 16px!important;border-top:1px solid var(--ss-line,var(--line));font-size:12.5px;line-height:1.5;color:var(--muted);max-width:none}
+html body .rsform.sy.sy .fgrid.sy-sheet>:is(p,span.hint,small,.hint):not(.field):first-child{border-top:0}
+html body .rsform.sy.sy .fgrid.sy-sheet>.field.sy-row>.hint:not(.ss-hint){margin:8px 0 0;font-size:12.5px;line-height:1.5;color:var(--muted)}
+/* (System Sheet) a page editor that is the whole page (Balance of Power, Time Tokens): a card with what is set now; the editor opens as a window */
+html .rsform.sy[hidden]{display:none!important}
+.sy-launch{max-width:860px;margin:0 0 24px;border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}
+.sy-lhead{display:flex;align-items:center;gap:14px;padding:16px 18px}
+.sy-ltile{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:10px;background:color-mix(in srgb,var(--c,var(--accent)) 16%,var(--panel));color:var(--c,var(--accent))}
+.sy-ltile svg{width:20px;height:20px}
+.sy-ltitle{min-width:0}
+.sy-leye{display:block;font:600 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.sy-lname{display:block;margin-top:2px;font:italic 700 22px/1.05 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;color:var(--ink)}
+.sy-lstate{margin-left:auto;font-size:12px;color:var(--muted)}
+.sy-lhead>.sy-lopen{margin-left:auto}
+.sy-lstate+.sy-lopen{margin-left:12px}
+.sy-lrows{border-top:1px solid var(--ss-line,var(--line));background:color-mix(in srgb,var(--bg) 55%,var(--panel))}
+html .sy-launch .sy-lrow{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr);align-items:center;gap:16px;width:100%;min-height:44px;margin:0;padding:8px 18px;border:0;border-top:1px solid var(--ss-line,var(--line));border-radius:0;background:none;box-shadow:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+html .sy-launch .sy-lrow:first-child{border-top:0}
+html .sy-launch .sy-lrow:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+html .sy-launch .sy-lrow b{font-size:13.5px;font-weight:600}
+html .sy-launch .sy-lrow span{font-size:12.5px;color:var(--muted)}
+html .sy-launch .sy-lrow:focus-visible{outline:3px solid #4c9aff;outline-offset:-3px}
+html body .rsform.sy .rshd .rstitle input:is([type=text],:not([type])){font-size:24px!important;font-style:italic!important;font-weight:700!important;text-transform:uppercase!important}
