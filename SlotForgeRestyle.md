@@ -1277,6 +1277,8 @@ light turns green. Under it a big Barlow title, the words, and the step itself:
 - **Timing hardware**: choice tiles with a picture each; the chosen one is outlined in the accent with a tick, its picture filled.
 - **Test race**: a ticket (track, laps, lanes, drivers) with dashed lines between the parts.
 - A **foot bar**: Back left, Skip the guide quiet, the next step as the primary button.
+- **Narrow** (below 860px): the lights stay, only the open step says its name under its light; the welcome plan moves under the words; the
+  ticket folds to two by two.
 
 ```css
 html #view .wz-steps{position:relative;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
@@ -1331,6 +1333,8 @@ panel**: off air (a quiet outlined tag, "No race is running") or on air (a red t
 the right the clock, the lap of the leader and the leader in their lane colour). Then the pages in **two groups**: *Follow the race* (they only
 show it) and *Run the race* (Race Director and Tokens, they change it). Every page is a **row tile**: its picture in a 52px tile (accent tint;
 filled red for the pages that run the race; gold for Results), the name in Barlow, its line, an arrow. On a phone the tiles are a compact list.
+On the landing the header's status line is hidden (the ON AIR panel says it); the pages behind it keep it. The lap is the leader's current lap of the
+total when the setup races by laps, else the laps driven.
 
 ```css
 .lv-air.on{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:linear-gradient(100deg,color-mix(in srgb,var(--accent) 24%,var(--panel)),var(--panel) 65%)}
