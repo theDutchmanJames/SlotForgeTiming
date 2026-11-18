@@ -144,7 +144,7 @@ const setup = async () => { run("state.tab = 'setup'; state.setupSub = 'champion
     say('...nothing about the screen is saved with it (no id inside, no draft state), the name without the spaces around it, also when it is an update', !('id' in rec) && !('id' in updated[0][2]) && updated[0][2].name === 'Club Cup 2026' && Object.keys(rec).sort().join() === 'bonusFast,bonusFastTop,bonusPole,bonusStart,drops,guestRule,name,points,pointsMode,pointsRest,roster,rounds,sprintRound,teamBest,teamMin,teamMode,teamRace,tie'); }
   await E('ch-back').onclick(); await wait(30);
   { const h = mgr().innerHTML;
-    say('Back is the list: the championship with its size and how much is driven, and Edit, Duplicate and Delete', h.includes('Club Cup 2026') && h.includes('2 rounds · 6 sessions · 3 drivers') && h.includes('0 of 6 sessions driven') && h.includes('data-edit=') && h.includes('data-dup=') && h.includes('data-del=')); }
+    say('Back is the list: the championship with its size and how much is driven, and Edit, Duplicate and Delete', h.includes('Club Cup 2026') && h.includes('<span class="rspill">2 rounds</span><span class="rspill">6 sessions</span><span class="rspill">3 drivers</span>') && h.includes('0 of 6 sessions driven') && h.includes('data-edit=') && h.includes('data-dup=') && h.includes('data-del=')); }
   const CH = store.championships[0];
 
   // ---------- editing, copying, deleting ----------
@@ -180,7 +180,7 @@ const setup = async () => { run("state.tab = 'setup'; state.setupSub = 'champion
     say('another tab of Race Setup asks first while the championship has changes that are not saved; "Cancel" stays on the page', asked.length === 1 && asked[0].includes('Discard your unsaved changes to this championship?') && run('state.setupSub') === 'championships' && run('chEd') !== null);
     ctx.confirm = () => true; strip('fuel'); await wait(80);
     say('...OK leaves the editor (the changes are dropped) and opens the other tab', run('chEd') === null && run('state.setupSub') === 'fuel');
-    await setup(); say('...and the Championships tab shows the list again, with the saved championship as it was', mgr().innerHTML.includes('id="newch"') && mgr().innerHTML.includes('2 rounds · 6 sessions · 3 drivers')); }
+    await setup(); say('...and the Championships tab shows the list again, with the saved championship as it was', mgr().innerHTML.includes('id="newch"') && mgr().innerHTML.includes('<span class="rspill">2 rounds</span><span class="rspill">6 sessions</span><span class="rspill">3 drivers</span>')); }
   // the list and the editor follow what was driven
   { const cl = C.clean(CH, true), dr = (r, s, k) => ({ id: 'p' + r + s, date: '2026-10-0' + (1 + k) + 'T10:00:00Z', standings: [], champ: C.tagOf(cl, r, s, { setups: store.racesetups }) });
     store.sessions = [dr(0, 0, 0), dr(0, 1, 1)]; await setup();

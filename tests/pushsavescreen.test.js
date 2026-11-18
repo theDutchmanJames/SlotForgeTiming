@@ -67,7 +67,7 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
   say('...the sets are listed and kept like the other rule sets', E('setupmgr').innerHTML.includes('Club pace') && run('state.schema.pushsavesystems.plural') === 'Push and save systems');
 
   { run("state.settings.dbView = 'grid'; state.settings.setupView = 'grid'"); await run('render()');
-    say('...a card without a picture has the icon of the system (the pace meter) on a tile in the colour of the sub-tab, the same as the button of the strip', E('setupmgr').innerHTML.includes('<span class="ph phicon ss-ps">') && E('setupmgr').innerHTML.includes(run("Icons.PATHS['pushsave']")) && run("SETUP_LOOK['pushsavesystems']").join() === 'pushsave,ps' && run("[SETUP_HERO, ...SETUP_GROUPS.flatMap(g => g[1])].find(t => t[0] === 'pushsave')").slice(2, 4).join() === 'pushsave,ps');
+    say('...a card (2.4.0: as the race setup cards) has the icon of the system (the pace meter) on a tile in the colour of the sub-tab, the same as the button of the strip', E('setupmgr').innerHTML.includes('<article class="rscard syscard ss-ps"') && E('setupmgr').innerHTML.includes('<span class="rstile">') && E('setupmgr').innerHTML.includes(run("Icons.PATHS['pushsave']")) && run("SETUP_LOOK['pushsavesystems']").join() === 'pushsave,ps' && run("[SETUP_HERO, ...SETUP_GROUPS.flatMap(g => g[1])].find(t => t[0] === 'pushsave')").slice(2, 4).join() === 'pushsave,ps');
     run("delete state.settings.setupView; delete state.settings.dbView"); }
 
   // ---------- the field of the race setup ----------

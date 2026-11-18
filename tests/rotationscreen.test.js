@@ -87,7 +87,7 @@ const Rot = require(R + 'renderer/rotation.js');
   say('Race Setup has Rotation Setups after the open Race Systems row', tabs.includes('Rotation Setups') && tabs.indexOf('data-id="setups"') < tabs.indexOf('data-id="rotation"') && tabs.indexOf('data-id="pushsave"') < tabs.indexOf('data-id="rotation"'));
   say('the strip of the Race Setup tab (1.45.0) has the Rotation Setups button selected, fifteen tabs in all, and the page under it carries the brown of that sub-tab (its buttons use it)', /class="sstab ss-rot" role="tab" aria-selected="true" data-id="rotation"/.test(tabs) && (tabs.match(/role="tab"/g) || []).length === 15 && (tabs.match(/aria-selected="true"/g) || []).length === 1 && run('view.innerHTML').includes('class="setuppage ss-rot"'));
   say('...with a note that says what a rotation setup is, and that a race setup chooses one', E('setupnote').textContent.includes('A rotation setup is a heat plan that you make yourself') && E('setupnote').textContent.includes('Choose one in a race setup'));
-  say('the list is empty to begin with, with a button for a new one and a line that says the participants are numbers', html().includes('id="newrot"') && html().includes('No rotation setups yet.') && html().includes('participants are numbers'));
+  say('the list is empty to begin with, with a button for a new one (2.4.0: the line about the participants is in the note of the page)', html().includes('id="newrot"') && html().includes('No rotation setups yet.'));
 
   // ---------- a new rotation: filling and swapping places ----------
   await btn('newrot');
@@ -192,7 +192,7 @@ const Rot = require(R + 'renderer/rotation.js');
   press({ dataset: { pk: 'teams' } }); await wait(20); E('ro-save').onclick(); await wait(30);
   say('Save keeps the choice in the rotation setup', writes.filter(w => w[1] === 'rotationsetups').pop()[2].participantsAre === 'teams');
   E('ro-back').onclick(); await wait(30);
-  say('...and the list tells it in words (8 teams)', html().includes('8 teams, 4 lanes, 2 heats'));
+  say('...and the list tells it in words (8 teams)', html().includes('<span class="rspill">8 teams</span><span class="rspill">4 lanes</span><span class="rspill">2 heats</span>'));
   await edit(store.rotationsetups[store.rotationsetups.length - 1].id);
   while (hist().undo > 0) E('ro-undo').onclick(); await wait(20);
 
@@ -219,7 +219,7 @@ const Rot = require(R + 'renderer/rotation.js');
   // ---------- an existing rotation: groups, locking, order, lanes ----------
   store.rotationsetups = [rotRec()]; store.racesetups = [{ id: 'hs1', name: 'Club heats', sessionType: 'heats', track: 't4', laps: 6, rotation: 'r1' }];
   ctx.confirm = () => true; await E('ro-back').onclick(); await wait(30);
-  say('Back goes to the list, which shows the rotation with its size and the race setups that use it', html().includes('Club night') && html().includes('8 participants, 4 lanes, 3 heats') && html().includes('Club heats') && run('rotEd') === null);
+  say('Back goes to the list, which shows the rotation with its size and the race setups that use it', html().includes('Club night') && html().includes('<span class="rspill">8 participants</span><span class="rspill">4 lanes</span><span class="rspill">3 heats</span>') && html().includes('Club heats') && run('rotEd') === null);
   await press({ dataset: { edit: 'r1' } });
   say('Edit opens the saved rotation: the heats and labels as saved, the names on the chips, the group in the heat rows, saved (nothing to save yet)', labels() === 'ABC' && html().includes('value="A"') && html().includes('value="C"') && E('ro-pool').innerHTML.includes('>Alex <small>2</small>') && E('ro-pool').innerHTML.includes('>Sam <small>1</small>') && E('ro-pool').innerHTML.includes('>P3 <small>2</small>') && html().includes('Pros (2)') && run('rotEd.dirty') === false && run('rotEd.id') === 'r1');
   say('...the names are in the list of names (open, because there are names) and the group is shown with its participants ticked', secIs('ro-namesbox', true) && html().includes('value="Alex"') && html().includes('placeholder="Participant 3"') && secIs('ro-groupsbox', true) && /data-gm="0:0" aria-pressed="true"/.test(html()) && /data-gm="0:2" aria-pressed="false"/.test(html()));

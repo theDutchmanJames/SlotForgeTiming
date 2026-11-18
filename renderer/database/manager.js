@@ -275,6 +275,32 @@ async function mountManagerPage(box, e) {
       <div class="rsfacts"><div class="rslv"><span class="k">Ends</span><span>${esc(d.ends)}</span></div><div class="rslv"><span class="k">Wins</span><span>${esc(d.wins)}</span></div></div></div>
       <section class="rslinked" aria-label="Systems for ${esc(t)}"><div class="rslinked-head"><strong>Race Systems</strong><span>${linked.length ? `${enabled} on${linked.length > enabled ? ` · ${linked.length - enabled} off` : ''}` : 'None linked'}</span></div>${linked.length ? RaceSystems.setupHtml(i, { compact: true, overview: true, id: i.id }) : `<p class="rslinked-empty">${i.sessionType === 'tokens' ? 'This session uses Time Tokens instead of Race Systems.' : 'A simple session without extra systems.'}</p>`}</section><div class="row rsactions"><button class="btn" data-edit="${esc(i.id)}">Edit setup</button>${copyButton(i)}${designButton(i)}<button class="btn danger" data-del="${esc(i.id)}">Delete</button></div></article>`;
   };
+  // (2.4.0) a race system as a card in the grid of the race setups: what it is, its key settings, and which race setups use it
+  const sysLook = e !== 'racesetups' && typeof SETUP_LOOK !== 'undefined' ? SETUP_LOOK[e] : null;
+  const sysCard = i => {
+    const t = titleOf(e, i),
+      used = s.used ? (state.refs[s.used.entity] || []).filter(r => r && r[s.used.key] === i.id) : [];
+    const facts = (s.card || [])
+      .map(k => {
+        const f = columnOf(s, k);
+        if (!f) return '';
+        const v = f.virtual ? f.virtual.get(i) : i[k];
+        return v === undefined || v === null || v === ''
+          ? ''
+          : `<div class="gd"><span class="muted">${esc(fl(f))}</span> ${columnCell(f, i)}</div>`;
+      })
+      .join('');
+    return `<article class="rscard syscard ss-${sysLook[1]}"${canView ? ` data-view="${esc(i.id)}" tabindex="0" aria-label="View ${esc(t)}"` : ''}><div class="rsidentity" data-kind="system"><div class="rshead"><span class="rstile">${Icons.svg(sysLook[0], { size: 22 })}</span><div class="rstitle"><div class="rseye">${esc(s.label)}</div><div class="rsname">${esc(t)}</div></div>${rowMark(e, i)}</div>
+      <div class="rsfacts sysfacts">${facts || '<p class="muted">The standard settings.</p>'}</div></div>
+      <section class="rslinked" aria-label="Race setups that use ${esc(t)}"><div class="rslinked-head"><strong>Used by</strong><span>${used.length ? used.length + (used.length === 1 ? ' race setup' : ' race setups') : 'Not used yet'}</span></div>${
+        used.length
+          ? `<div class="rspills">${used
+              .slice(0, 3)
+              .map(r => `<span class="rspill">${esc(String(r.name || '').trim() || '(unnamed)')}</span>`)
+              .join('')}${used.length > 3 ? `<span class="rspill">+${used.length - 3}</span>` : ''}</div>`
+          : '<p class="rslinked-empty">Choose it under Rules and systems in a race setup.</p>'
+      }</section><div class="row rsactions"><button class="btn" data-edit="${esc(i.id)}">Edit</button>${copyButton(i)}<button class="btn danger" data-del="${esc(i.id)}">Delete</button></div></article>`;
+  };
   const rsFilter =
     e !== 'racesetups'
       ? ''
@@ -306,7 +332,9 @@ async function mountManagerPage(box, e) {
     (e === 'racesetups'
       ? rsBody
       : items.length && mode === 'grid'
-        ? gridHtml(items)
+        ? sysLook
+          ? `<div class="rscards syscards">${items.map(sysCard).join('')}</div>`
+          : gridHtml(items)
         : items.length
           ? tableHtml(items, viewCols || cols)
           : `<p class="muted">${paged && paging.search ? 'No matching ' + esc(s.plural.toLowerCase()) + '.' : `No ${esc(s.plural.toLowerCase())} yet. Use the button above to add one.`}</p>`);

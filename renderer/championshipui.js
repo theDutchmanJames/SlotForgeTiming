@@ -27,17 +27,24 @@ async function renderChampionships(box) {
   const row = ({ raw, c }) => {
     const p = Champ.progress(c, L.sessions),
       bad = Champ.problems(c, L);
-    return `<tr><td><strong>${esc(c.name || '(unnamed)')}</strong></td><td>${esc(Champ.describe(c))}</td>
-      <td>${p.total ? `${p.driven} of ${p.total} sessions driven${p.complete ? ' · finished' : ''}` : '<span class="muted">nothing to drive yet</span>'}</td>
-      <td class="actions"><button class="btn" data-edit="${esc(raw.id)}">Edit</button> <button class="btn" data-dup="${esc(raw.id)}">Duplicate</button> <button class="btn danger" data-del="${esc(raw.id)}">Delete</button></td></tr>
-      ${bad.length ? `<tr><td colspan="4"><ul class="issues">${bad.map(t => `<li>${esc(t)}</li>`).join('')}</ul></td></tr>` : ''}`;
+    // (2.4.0) a card, as the race setups: its size, how far it is driven (a bar), and what is not right yet
+    const pct = p.total ? Math.round((100 * p.driven) / p.total) : 0;
+    return `<article class="rscard syscard ss-ch" data-champ="${esc(raw.id)}"><div class="rsidentity" data-kind="system"><div class="rshead"><span class="rstile">${Icons.svg('championship', { size: 22 })}</span><div class="rstitle"><div class="rseye">Championship</div><div class="rsname">${esc(c.name || '(unnamed)')}</div></div></div><div class="rspills">${String(
+      Champ.describe(c)
+    )
+      .split(' · ')
+      .map(x => `<span class="rspill">${esc(x)}</span>`)
+      .join('')}</div></div>
+      <section class="rslinked"><div class="rslinked-head"><strong>Driven</strong><span>${p.total ? `${p.driven} of ${p.total} sessions driven${p.complete ? ' · finished' : ''}` : 'nothing to drive yet'}</span></div><div class="chprog${p.complete ? ' full' : ''}"><i style="width:${pct}%"></i></div>${bad.length ? `<ul class="issues">${bad.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}</section>
+      <div class="row rsactions"><button class="btn" data-edit="${esc(raw.id)}">Edit</button><button class="btn" data-dup="${esc(raw.id)}">Duplicate</button><button class="btn danger" data-del="${esc(raw.id)}">Delete</button></div></article>`;
   };
   box.innerHTML =
-    `<p class="muted">A championship is a series of rounds. Make the rounds and their sessions here, add the drivers of the roster, and the Home tab shows which session is next. The race that you drive is saved with the name of the championship, the round and the kind of session.</p>
+    `
     <div class="row"><button class="btn primary" id="newch">New championship</button></div>
-    <div class="wrap"><table class="fields" id="chlist"><tr><th>Name</th><th>Size</th><th>Driven</th><th></th></tr>` +
-    (list.length ? list.map(row).join('') : '<tr><td colspan="4" class="muted">No championships yet.</td></tr>') +
-    '</table></div>';
+    ` +
+    (list.length
+      ? `<div class="rscards champcards" id="chlist">${list.map(row).join('')}</div>`
+      : '<p class="muted" id="chlist">No championships yet.</p>');
   box.onclick = async ev => {
     const b = ev.target.closest('button');
     if (!b) return;

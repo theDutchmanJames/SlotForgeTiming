@@ -52,18 +52,21 @@ async function renderRotations(box) {
   const [list, setups] = await Promise.all([api.list('rotationsetups'), api.list('racesetups')]);
   const usedBy = r => setups.filter(s => s.rotation === r.id).map(s => s.name || '(unnamed)');
   box.innerHTML =
-    `<p class="muted">A rotation setup is a heat plan that you make yourself: how many heats there are, which participant races in which heat and in which lane, and in which order the heats are raced. The participants are numbers (participant 1, 2, 3...), so the same rotation works every club night with other drivers: on the Home tab you choose who is participant 1, 2, 3... Choose a rotation in a race setup (a Heat-based race, under Session).</p>
+    `
     <div class="row"><button class="btn primary" id="newrot">New rotation setup</button></div>
-    <div class="wrap"><table class="fields"><tr><th>Name</th><th>Size</th><th>Used by</th><th></th></tr>` +
+    ` +
+    // (2.4.0) every rotation a card, as the race setups: its size, and the race setups that use it
     (list.length
-      ? list
-          .map(
-            r => `<tr><td>${esc(r.name)}</td><td>${esc(Rot.describe(Rot.clean(r)))}</td><td>${usedBy(r).map(esc).join(', ') || '<span class="muted">no race setup</span>'}</td><td class="actions">
-      <button class="btn" data-edit="${esc(r.id)}">Edit</button> <button class="btn" data-dup="${esc(r.id)}">Duplicate</button> <button class="btn danger" data-del="${esc(r.id)}">Delete</button></td></tr>`
-          )
-          .join('')
-      : '<tr><td colspan="4" class="muted">No rotation setups yet.</td></tr>') +
-    '</table></div>';
+      ? `<div class="rscards rotcards">${list
+          .map(r => {
+            const u = usedBy(r),
+              pill = parts => `<div class="rspills">${parts.map(p => `<span class="rspill">${esc(p)}</span>`).join('')}</div>`;
+            return `<article class="rscard syscard ss-rot"><div class="rsidentity" data-kind="system"><div class="rshead"><span class="rstile">${Icons.svg('rotation', { size: 22 })}</span><div class="rstitle"><div class="rseye">Rotation setup</div><div class="rsname">${esc(r.name || '(unnamed)')}</div></div></div>${pill(String(Rot.describe(Rot.clean(r))).split(/ · |, /))}</div>
+      <section class="rslinked" aria-label="Race setups that use ${esc(r.name || '')}"><div class="rslinked-head"><strong>Used by</strong><span>${u.length ? u.length + (u.length === 1 ? ' race setup' : ' race setups') : 'Not used yet'}</span></div>${u.length ? pill(u.slice(0, 3).concat(u.length > 3 ? ['+' + (u.length - 3)] : [])) : '<p class="rslinked-empty">Choose it for a Heat-based race, under Session.</p>'}</section>
+      <div class="row rsactions"><button class="btn" data-edit="${esc(r.id)}">Edit</button><button class="btn" data-dup="${esc(r.id)}">Duplicate</button><button class="btn danger" data-del="${esc(r.id)}">Delete</button></div></article>`;
+          })
+          .join('')}</div>`
+      : '<p class="muted">No rotation setups yet.</p>');
   box.onpointerdown = box.onpointermove = box.onpointerup = box.onpointercancel = null; // (dragging belongs to the editor: the list has none)
   box.onclick = async ev => {
     const b = ev.target.closest('button');

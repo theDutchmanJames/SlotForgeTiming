@@ -2927,3 +2927,17 @@ html dialog.track-design-dialog{width:min(980px,96vw);padding:22px 24px;overflow
 /* a detail keeps its value on one line; a long name wraps */
 #view .gcard .gd{white-space:nowrap}
 #view .gcard .gd>.muted{white-space:normal}
+/* 2.4.0: the tile of a race setup has the soft colour of its kind (practice blue, qualifying yellow, race red); a system card has the soft colour of its system */
+.rsidentity[data-kind=practice] .rstile{background:color-mix(in srgb,var(--c-wx) 16%,var(--panel));color:var(--c-wx)}
+.rsidentity[data-kind=qualifying] .rstile{background:color-mix(in srgb,var(--c-pen) 16%,var(--panel));color:var(--c-pen)}
+.syscard .rsidentity .rstile{background:color-mix(in srgb,var(--c) 16%,var(--panel));color:var(--c)}
+/* 2.4.0: the cards of systems, rotations and championships sit in the grid of the race setups and share their sizes */
+.setuppage .rscards{margin-top:16px}
+.syscard .sysfacts{padding-top:10px;border-top:1px solid var(--line)}
+.syscard .sysfacts .gd{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font:500 12.5px/1.5 'SF Roboto Mono',Consolas,monospace;white-space:nowrap}
+.syscard .sysfacts .gd>.muted{font:400 12.5px/1.5 "Segoe UI",system-ui,sans-serif;white-space:normal}
+.syscard .rsidentity>.rspills{margin-top:2px}
+.chprog{height:6px;margin:4px 0 2px;border-radius:4px;background:var(--bg);overflow:hidden}
+.chprog i{display:block;height:100%;border-radius:4px;background:var(--c)}
+.chprog.full i{background:#3ecf8e}
+.syscard .rslinked .issues{margin:10px 0 0;font-size:12.5px}
