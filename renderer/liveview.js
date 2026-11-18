@@ -72,7 +72,41 @@ const LiveView = (() => {
       };
     status();
   }
+  // the ON AIR panel of the landing page: off air, or the race with its phase, clock, lap and leader
+  const mmss = ms => {
+    const t = Math.max(0, Math.floor((Number(ms) || 0) / 1000));
+    return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
+  };
+  function air() {
+    const el = $('lv-air');
+    if (!el) return;
+    if (!live()) {
+      el.className = 'lv-air';
+      el.innerHTML =
+        '<span class="lv-airtag">Off air</span><div class="lv-airtext"><strong>No race is running</strong><span class="muted">The pages below fill in as soon as a race starts on the race computer.</span></div>';
+      return;
+    }
+    const d = V.dyn(),
+      st = V.stat();
+    let facts = '';
+    try {
+      const eng = V.engine(),
+        now = V.clock(performance.now()),
+        top = eng.standings()[0],
+        len = (st.setup && (st.setup.raceBy || 'laps') === 'laps' && Number(st.setup.laps) > 0 && Number(st.setup.laps)) || 0;
+      facts =
+        `<span class="lv-airfact"><small>Clock</small><b class="mono">${mmss(eng.elapsed(now))}</b></span>` +
+        (top && top.car
+          ? `<span class="lv-airfact"><small>${len ? 'Lap' : 'Laps'}</small><b class="mono">${len ? Math.min(len, eng.lapsOf(top.car) + 1) + ' / ' + len : eng.lapsOf(top.car)}</b></span><span class="lv-airfact lv-airlead" style="--c:${esc(HomeStats.laneColor(st.layout, top.car.lane))}"><small>Leader</small><b><i>${top.car.lane + 1}</i>${esc(top.car.teamName || top.car.driverName || '')}</b></span>`
+          : '');
+    } catch {
+      facts = '';
+    }
+    el.className = 'lv-air on';
+    el.innerHTML = `<span class="lv-airtag"><i aria-hidden="true"></i>On air</span><div class="lv-airtext"><strong>${esc(st.title || 'Race')}</strong><span class="lv-airphase">${esc(PHASE[d.phase] || '')}</span></div><div class="lv-airfacts">${facts}</div>`;
+  }
   function status() {
+    air();
     const el = $('lv-status');
     if (!el) return;
     const d = live() ? V.dyn() : null,
@@ -114,7 +148,21 @@ const LiveView = (() => {
     const timingResults = page === 'timing' && live() && ['review', 'finished'].includes(V.dyn().phase);
     setClean(page === 'timing' && live() && !timingResults);
     if (page === 'tiles') {
-      body.innerHTML = `<div class="lv-tiles">${TILES.map(([id, name, d]) => `<button class="lv-tile${isControl(id) ? ' special' : ''}" data-go="${id}">${isControl(id) ? BADGE : ''}${icon(id)}<strong>${esc(name)}</strong><span class="muted">${esc(d)}</span></button>`).join('')}</div>`;
+      // Live Desk (2.4.0): the ON AIR panel on top, then the pages that follow the race and the ones that run it, each as its own group
+      const tile = ([id, name, d]) =>
+        `<button class="lv-tile${isControl(id) ? ' special' : ''}" data-go="${id}">${isControl(id) ? BADGE : ''}${icon(id)}<strong>${esc(name)}</strong><span class="muted">${esc(d)}</span><i class="lv-go" aria-hidden="true"></i></button>`;
+      body.innerHTML = `<div class="lv-desk"><section class="lv-air" id="lv-air" aria-live="polite"></section>
+        <section class="lv-group"><h3 class="lv-gh">Follow the race<small>These pages only show the race</small></h3><div class="lv-tiles">${TILES.filter(
+          t => !isControl(t[0])
+        )
+          .map(tile)
+          .join('')}</div></section>
+        <section class="lv-group lv-run"><h3 class="lv-gh">Run the race<small>These pages change the race</small></h3><div class="lv-tiles">${TILES.filter(
+          t => isControl(t[0])
+        )
+          .map(tile)
+          .join('')}</div></section></div>`;
+      air();
       body.onclick = e => {
         const b = e.target.closest('[data-go]');
         if (b && !b.disabled) go(b.dataset.go);

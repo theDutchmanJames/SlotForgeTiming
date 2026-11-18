@@ -1294,7 +1294,7 @@ async function renderRace() {
         name: setup.name || '',
         phase: live.phase,
         elapsed: eng.elapsed(t),
-        laps: Number(len.laps) > 0 && !(Number(len.duration) > 0) ? Number(len.laps) : 0,
+        laps: (setup.raceBy || 'laps') === 'laps' && Number(len.laps) > 0 ? Number(len.laps) : 0, // (a setup keeps both a lap count and a time: raceBy says which one counts)
         heat: heat ? lc(heat.raceName(heat.idx)) : '',
         leader:
           top && top.car

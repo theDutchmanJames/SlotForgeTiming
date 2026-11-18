@@ -4458,3 +4458,66 @@ html .hm-update::before{content:'';position:absolute;left:20px;top:50%;width:40p
 html .hm-update strong{font:italic 700 19px 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em}
 html dialog.appdlg>h3:first-child::before{text-transform:none}
 html dialog.appdlg>.row.appdlg-buttons{flex-direction:row;justify-content:flex-end}
+/* 2.4.0 Live Desk (liveview.js): the landing of Live Race, also what phones and the second screen open on. An ON AIR panel with the race, then the
+   pages in two groups (follow the race / run the race), each a row tile with its picture in a tile, its line and an arrow; on a phone a compact list */
+.lv-desk{display:flex;flex-direction:column;gap:24px;max-width:1200px}
+.lv-air{display:flex;align-items:center;gap:18px;min-height:84px;padding:16px 22px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+.lv-air.on{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:linear-gradient(100deg,color-mix(in srgb,var(--accent) 24%,var(--panel)),var(--panel) 65%)}
+.lv-airtag{display:inline-flex;align-items:center;gap:9px;flex:none;height:36px;padding:0 14px;border:1.5px solid var(--line);border-radius:8px;font:italic 700 16px 'SF Barlow Condensed','Bahnschrift',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.lv-air.on .lv-airtag{border-color:var(--accent-fill,var(--accent));background:var(--accent-fill,var(--accent));color:#fff}
+.lv-airtag i{width:9px;height:9px;border-radius:50%;background:#fff;animation:mb-pulse 1.2s infinite}
+@media (prefers-reduced-motion:reduce){.lv-airtag i{animation:none}}
+.lv-airtext{display:flex;flex-direction:column;gap:3px;min-width:0}
+.lv-airtext strong{font:italic 700 26px/1.05 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lv-air:not(.on) .lv-airtext strong{font-size:22px;color:color-mix(in srgb,var(--ink) 80%,var(--muted))}
+.lv-airphase{align-self:flex-start;padding:2px 9px;border-radius:999px;background:rgba(0,0,0,.28);font-size:12px;color:var(--ink)}
+.lv-airfacts{display:flex;align-items:stretch;gap:0;margin-left:auto;flex:none}
+.lv-airfact{display:flex;flex-direction:column;justify-content:center;gap:3px;padding:0 18px;border-left:1px solid color-mix(in srgb,var(--ink) 12%,transparent)}
+.lv-airfact small{font:600 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.lv-airfact b{font-size:15px;white-space:nowrap}
+.lv-airfact b.mono{font:600 20px 'SF Roboto Mono',Consolas,monospace}
+.lv-airlead b{display:flex;align-items:center;gap:8px}
+.lv-airlead b i{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:5px;background:var(--c);color:#111418;font:italic 700 15px 'SF Barlow Condensed','Bahnschrift',sans-serif}
+.lv-group{display:flex;flex-direction:column;gap:12px}
+.lv-gh{display:flex;align-items:baseline;gap:12px;margin:0;font:italic 700 19px 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em}
+.lv-gh small{font:400 12.5px "Segoe UI",system-ui,sans-serif;text-transform:none;letter-spacing:0;color:var(--muted)}
+html .lv-desk .lv-tiles{grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+html .lv-desk .lv-tile{position:relative;display:grid;grid-template-columns:52px minmax(0,1fr) 16px;grid-template-rows:auto auto;column-gap:14px;row-gap:3px;align-items:center;min-height:86px;padding:14px 16px;border:1px solid var(--line);border-left:1px solid var(--line);border-radius:12px;background:var(--panel);transition:border-color .12s,background .12s,transform .12s}
+html .lv-desk .lv-tile:hover:not(:disabled){border-color:color-mix(in srgb,var(--ink) 28%,var(--line));background:color-mix(in srgb,var(--ink) 4%,var(--panel))}
+html .lv-desk .lv-tile>svg{grid-row:1 / 3;grid-column:1;box-sizing:border-box;width:52px;height:52px;margin:0;padding:12px;border-radius:12px;background:color-mix(in srgb,var(--accent) 13%,var(--panel));color:var(--accent-text,var(--accent))}
+html .lv-desk .lv-tile>svg.trophy{background:color-mix(in srgb,#f2b705 16%,var(--panel))}
+html .lv-desk .lv-tile>strong{grid-column:2;align-self:end;font:italic 700 21px/1.05 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.01em}
+html .lv-desk .lv-tile>span.muted{grid-column:2;align-self:start;font-size:12.5px;line-height:1.35}
+html .lv-desk .lv-tile>.lv-go{grid-column:3;grid-row:1 / 3;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg)}
+html .lv-desk .lv-tile:hover>.lv-go{border-color:var(--ink)}
+html .lv-desk .lv-tile>.lv-badge{display:none}
+html .lv-desk .lv-tile.special{border-left:1px solid color-mix(in srgb,var(--accent) 35%,var(--line));background:color-mix(in srgb,var(--accent) 7%,var(--panel))}
+html .lv-desk .lv-tile.special>svg{background:var(--accent-fill,var(--accent));color:#fff}
+html .lv-desk .lv-tile.special:hover:not(:disabled){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 13%,var(--panel))}
+@media (max-width:760px){
+  .lv-air{flex-wrap:wrap;gap:12px;padding:14px 16px}
+  .lv-airfacts{margin-left:0;width:100%}
+  .lv-airfact:first-child{padding-left:0;border-left:0}
+  html .lv-desk .lv-tiles{grid-template-columns:1fr;gap:8px}
+  html .lv-desk .lv-tile{min-height:64px;padding:10px 14px;grid-template-columns:42px minmax(0,1fr) 14px;column-gap:12px}
+  html .lv-desk .lv-tile>svg{width:42px;height:42px;padding:10px;border-radius:10px}
+  html .lv-desk .lv-tile>strong{font-size:18px}
+  html .lv-desk .lv-tile>span.muted{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lv-gh{flex-direction:column;gap:2px}
+}
+html .lv-desk{max-width:none}
+.lv-head:has(+.lv-body>.lv-desk) #lv-status{display:none}
+/* Pit Wall fitting (mainbar.js fit): the same steps as the widths above, taken when the bar does not fit (for instance with the Race tab of a kept race) */
+html body.app-shell>header.mb-t1>#tabs .mb-light>span{display:none}
+html body.app-shell>header.mb-t1>#tabs .mb-lights{gap:7px}
+html body.app-shell>header.mb-t2>#tabs .mb-find>span{display:none}
+html body.app-shell>header.mb-t3 .app-identity-copy{display:none}
+html body.app-shell>header.mb-t4{min-height:64px}
+html body.app-shell>header.mb-t4>#tabs{height:64px}
+html body.app-shell>header.mb-t4>#tabs .mb-grp{height:48px}
+html body.app-shell>header.mb-t4>#tabs .mb-grp>.tab.hasico{flex-direction:column;justify-content:center;gap:2px;padding:0 8px;font-size:10.5px;font-weight:600;line-height:1}
+html body.app-shell>header.mb-t4>#tabs .mb-grp>.tab.hasico .tabico{width:17px;height:17px;margin:0}
+html body.app-shell>header.mb-t5>#tabs .mb-right{gap:8px}
+html body.app-shell>header.mb-t5>#tabs .mb-find kbd{display:none}
+html body.app-shell>header.mb-t5>#tabs .mb-right>.tab.onair{padding:0 10px;letter-spacing:.04em;font-size:14px}
+html body.app-shell>header.mb-t5>#tabs .mb-lights{padding:0 9px}

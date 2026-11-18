@@ -53,6 +53,7 @@ const MainBar = (() => {
     };
     nav.dataset.mb = String(nav.childElementCount) + nav.textContent.length;
     lights();
+    fit(true);
   }
 
   // ---- the status lights: the timing hardware, the shared library, the network ----
@@ -88,6 +89,23 @@ const MainBar = (() => {
       .join('');
     if (el.innerHTML !== html) el.innerHTML = html;
   }
+
+  // ---- fitting: when the bar does not fit (a narrow window, or the Race tab of a kept race), it steps down until it does ----
+  // mb-t1 the names of the lights go, mb-t2 the word Find, mb-t3 the app name beside the logo, mb-t4 the tab names small under their pictures,
+  // mb-t5 ON AIR and the lights tighter. (The widths in styles.css do the same for a window of a known size; this catches the rest.)
+  let fitKey = '';
+  function fit(force) {
+    const header = document.querySelector('.app-shell > header'),
+      nav = header && header.querySelector('#tabs');
+    if (!header || !nav || header.hidden) return;
+    const key = innerWidth + '|' + nav.textContent.length + '|' + nav.childElementCount;
+    if (!force && key === fitKey) return;
+    fitKey = key;
+    const over = () => header.scrollWidth > header.clientWidth + 1 || nav.scrollWidth > nav.clientWidth + 1;
+    for (let i = 1; i <= 5; i++) header.classList.remove('mb-t' + i);
+    for (let i = 1; i <= 5 && over(); i++) header.classList.add('mb-t' + i);
+  }
+  if (typeof addEventListener === 'function') addEventListener('resize', () => fit(true));
 
   // ---- the race strip ----
   function strip() {
@@ -342,6 +360,7 @@ const MainBar = (() => {
   setInterval(() => {
     lights();
     strip();
+    fit();
   }, 500);
-  return { decorate, lights, strip, Find };
+  return { decorate, lights, strip, fit, Find };
 })();
