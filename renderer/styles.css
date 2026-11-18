@@ -4341,3 +4341,120 @@ html .mb-fin input{flex:1;min-width:0;height:100%;padding:0;border:0;background:
 @media (max-width:1280px){html body.app-shell>header>#tabs .mb-grp>.tab{padding:0 9px;gap:6px;font-size:12.5px}html body.app-shell>header{gap:12px}}
 @media (max-width:1080px){html body.app-shell>header>#tabs .mb-grp{height:48px}html body.app-shell>header>#tabs .mb-grp>.tab.hasico{flex-direction:column;justify-content:center;gap:2px;padding:0 8px;font-size:10.5px;font-weight:600;line-height:1}html body.app-shell>header>#tabs .mb-grp>.tab.hasico .tabico{width:17px;height:17px}html body.app-shell>header{min-height:64px}html body.app-shell>header>#tabs{height:64px}}
 @media (max-width:900px){html body.app-shell>header>#tabs .mb-right{gap:8px}html body.app-shell>header>#tabs .mb-find kbd{display:none}html body.app-shell>header>#tabs .mb-right>.tab.onair{padding:0 10px;letter-spacing:.04em;font-size:14px}html body.app-shell>header>#tabs .mb-lights{padding:0 9px}}
+
+/* 2.4.0 Start Lights (setupwizard.js): the setup guide as one card with a gantry of step lights on top, lane-coloured name rows, icon choice tiles and a foot bar */
+html #view .wz-card{max-width:980px;margin:6px auto 22px;padding:0 28px 0;border:1px solid var(--line);border-top:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel)}
+html #view .wz-card>h2{margin:0 0 10px;font:italic 700 30px/1.05 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.01em}
+html #view .wz-card>p{max-width:72ch;line-height:1.55}
+.wz-top{margin:0 -28px 24px;padding:18px 28px 16px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,color-mix(in srgb,var(--bg) 55%,var(--panel)),color-mix(in srgb,var(--bg) 25%,var(--panel)))}
+.wz-eyebrow{display:block;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+html #view .wz-steps{position:relative;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:14px 0 0}
+html #view .wz-steps::before{content:'';position:absolute;left:7%;right:7%;top:10px;height:2px;border-radius:2px;background:color-mix(in srgb,var(--ink) 10%,transparent)}
+html #view .wz-step{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;padding:0;border:0;border-radius:0;background:none;font:500 11.5px/1.25 "Segoe UI",system-ui,sans-serif;color:var(--muted);text-align:center}
+html #view .wz-step>i{display:block;width:22px;height:22px;border-radius:50%;background:#1b1f25;box-shadow:inset 0 2px 4px rgba(0,0,0,.6),0 0 0 3px color-mix(in srgb,var(--panel) 70%,#000)}
+html #view .wz-step.wz-done{color:color-mix(in srgb,var(--ink) 80%,var(--muted))}
+html #view .wz-step.wz-done>i{background:radial-gradient(circle at 40% 35%,#ff8a8e,#e5484d 55%,#a3242a);box-shadow:0 0 10px rgba(229,72,77,.55),0 0 0 3px color-mix(in srgb,var(--panel) 70%,#000)}
+html #view .wz-step.wz-now{color:var(--ink);font-weight:700}
+html #view .wz-step.wz-now>i{background:radial-gradient(circle at 40% 35%,#ff8a8e,#e5484d 55%,#a3242a);box-shadow:0 0 0 3px var(--panel),0 0 0 5px #e5484d,0 0 16px rgba(229,72,77,.6);animation:wz-glow 1.6s ease-in-out infinite}
+html #view .wz-steps.wz-go .wz-step>i{background:radial-gradient(circle at 40% 35%,#9ff2c8,#3ecf8e 55%,#1f8a58);box-shadow:0 0 12px rgba(62,207,142,.6),0 0 0 3px color-mix(in srgb,var(--panel) 70%,#000);animation:none}
+html #view .wz-steps.wz-go .wz-step.wz-now>i{box-shadow:0 0 0 3px var(--panel),0 0 0 5px #3ecf8e,0 0 16px rgba(62,207,142,.6)}
+@keyframes wz-glow{50%{filter:brightness(1.25)}}
+@media (prefers-reduced-motion:reduce){html #view .wz-step.wz-now>i{animation:none}}
+/* welcome: the words left, the plan right */
+.wz-welcome{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:28px;align-items:start}
+.wz-welcome h2{margin:0 0 10px;font:italic 700 34px/1.02 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+.wz-lead{font-size:15.5px;line-height:1.55;margin:0 0 12px}
+.wz-plan{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.wz-plan li{display:flex;align-items:center;gap:12px;padding:8px 12px 8px 8px;border-radius:9px;background:color-mix(in srgb,var(--bg) 45%,var(--panel));font-size:13.5px}
+.wz-planico{display:grid;place-items:center;width:30px;height:30px;flex:none;border-radius:7px;background:color-mix(in srgb,var(--accent) 16%,var(--panel));color:var(--accent-text,var(--accent))}
+/* fields */
+html #view .wz-card .field>label{font-size:12.5px;color:var(--muted)}
+html #view .wz-card #wz-newtrack,html #view .wz-card>.field{padding:16px 18px;border-radius:10px;background:color-mix(in srgb,var(--bg) 40%,var(--panel));max-width:none!important}
+html #view .wz-card #wz-newtrack>.field{max-width:420px!important}
+html #view .wz-card #wz-newtrack .row{gap:16px;margin-top:6px}
+/* a lane tile in front of every name */
+html #view .wz-names{grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin:14px 0}
+.wz-lanerow,.wz-carrow{display:flex!important;flex-direction:row!important;align-items:center;gap:0!important;min-height:42px;border:1px solid var(--line);border-radius:9px;background:color-mix(in srgb,var(--bg) 50%,var(--panel));overflow:hidden}
+.wz-lanerow:focus-within,.wz-carrow:focus-within{border-color:color-mix(in srgb,var(--ink) 35%,var(--line))}
+.wz-lane{display:grid;place-items:center;align-self:stretch;width:40px;flex:none;background:var(--c);color:#111418;font:italic 700 19px 'SF Barlow Condensed','Bahnschrift',sans-serif;font-style:italic}
+html #view .wz-lanerow input,html #view .wz-carrow input{flex:1;min-width:0;height:40px;min-height:0;padding:0 12px;border:0;border-radius:0;background:transparent;box-shadow:none}
+html #view .wz-lanerow input:focus-visible,html #view .wz-carrow input:focus-visible{outline:none}
+.wz-carrow>span{flex:none;max-width:40%;padding:0 12px;border-right:1px solid var(--line);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* the hardware as choice tiles */
+html #view .wz-hw{grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;margin:14px 0}
+html #view .wz-hwopt{position:relative;display:grid;grid-template-columns:40px minmax(0,1fr);gap:12px;align-items:start;padding:14px;border:1px solid var(--line);border-radius:11px;background:color-mix(in srgb,var(--bg) 40%,var(--panel));transition:border-color .12s,background .12s}
+html #view .wz-hwopt:hover{border-color:color-mix(in srgb,var(--ink) 25%,var(--line))}
+html #view .wz-hwopt>input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+html #view .wz-hwopt:has(input:focus-visible){outline:3px solid #4c9aff;outline-offset:2px}
+html #view .wz-hwopt.wz-on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--panel));box-shadow:inset 0 0 0 1px var(--accent)}
+.wz-hwico{display:grid;place-items:center;width:40px;height:40px;border-radius:9px;background:color-mix(in srgb,var(--ink) 7%,var(--panel));color:var(--muted)}
+.wz-hwopt.wz-on .wz-hwico{background:var(--accent-fill,var(--accent));color:#fff}
+html #view .wz-hwopt b{font-size:14px}
+html #view .wz-hwopt small{font-size:12.5px;line-height:1.45}
+html #view .wz-hwopt.wz-on::after{content:'';position:absolute;top:12px;right:13px;width:10px;height:5px;border-left:2px solid var(--accent-text,var(--accent));border-bottom:2px solid var(--accent-text,var(--accent));transform:rotate(-45deg)}
+.wz-hwstate b{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;background:color-mix(in srgb,currentColor 12%,var(--panel));font-size:13px}
+.wz-hwstate b::before{content:'';width:8px;height:8px;border-radius:50%;background:currentColor}
+/* the test race as a ticket */
+.wz-ticket{display:grid;grid-template-columns:2fr repeat(3,1fr);margin:6px 0 16px;border:1px solid var(--line);border-radius:11px;overflow:hidden;background:color-mix(in srgb,var(--bg) 40%,var(--panel))}
+.wz-ticket>div{display:flex;flex-direction:column;gap:3px;min-width:0;padding:12px 16px}
+.wz-ticket>div+div{border-left:1px dashed var(--line)}
+.wz-ticket small{font:600 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.wz-ticket b{font:italic 700 24px/1.05 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* the foot bar: Back left, Skip quiet, the next step on the right */
+html #view .wz-card .wz-nav{margin:24px -28px 0;padding:14px 28px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--bg) 35%,var(--panel))}
+html #view .wz-card .btn.wz-skip{background:transparent;color:var(--muted)}
+html #view .wz-card .btn.wz-skip:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 7%,transparent)}
+html #view .wz-card .wz-msg:empty{display:none}
+@media (max-width:860px){.wz-welcome{grid-template-columns:1fr}html #view .wz-steps{grid-template-columns:repeat(7,minmax(0,1fr))}html #view .wz-step>span{display:none}html #view .wz-step.wz-now>span{display:block;position:absolute;top:30px;white-space:nowrap}html #view .wz-steps{margin-bottom:22px}.wz-ticket{grid-template-columns:1fr 1fr}.wz-ticket>div:nth-child(3){border-left:0}}
+html #view .wz-card>.field select{max-width:420px}
+html #view .wz-hwopt{padding-right:30px}
+.wz-added{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px}
+.wz-added>span{display:inline-flex;align-items:center;gap:9px;height:32px;padding-right:12px;border-radius:7px;overflow:hidden;background:color-mix(in srgb,var(--bg) 50%,var(--panel));border:1px solid var(--line);font-weight:600;font-size:13.5px}
+.wz-added .wz-lane{width:30px;font-size:16px}
+/* 2.4.0 Lane Check (sensortest.js): the sensor test as a row of lane columns in their colour, a sensor light each that turns green on a crossing */
+dialog.st-dialog{width:min(760px,94vw)}
+.st-head{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin:0 0 14px}
+.st-link{display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border-radius:999px;font-weight:600;font-size:13px;background:color-mix(in srgb,currentColor 12%,var(--panel))}
+.st-link::before{content:'';width:8px;height:8px;border-radius:50%;background:currentColor}
+.st-link.st-on{color:var(--st-ok)}
+html .st-lanes{grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:0 0 14px}
+html .st-lane{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 10px 14px;border:1px solid var(--line);border-left:1px solid var(--line);border-radius:11px;overflow:hidden;background:color-mix(in srgb,var(--bg) 45%,var(--panel));text-align:center}
+html .st-lane .st-num{display:flex;align-items:center;justify-content:center;gap:8px;align-self:stretch;margin:0 -10px 8px;padding:7px 10px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--c) 14%,var(--panel));font:600 12px "Segoe UI",system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+html .st-lane .st-num i{display:grid;place-items:center;width:22px;height:22px;border-radius:5px;background:var(--c);color:#111418;font:italic 700 15px 'SF Barlow Condensed','Bahnschrift',sans-serif;letter-spacing:0}
+.st-light{width:38px;height:38px;border-radius:50%;background:#1b1f25;box-shadow:inset 0 3px 6px rgba(0,0,0,.65),0 0 0 4px color-mix(in srgb,var(--panel) 70%,#000);transition:background .15s,box-shadow .15s}
+.st-lane.st-seen .st-light{background:radial-gradient(circle at 40% 35%,#9ff2c8,#3ecf8e 55%,#1f8a58);box-shadow:0 0 16px rgba(62,207,142,.55),0 0 0 4px color-mix(in srgb,var(--panel) 70%,#000)}
+html .st-lane.st-flash{background:color-mix(in srgb,var(--st-ok) 22%,var(--panel))}
+html .st-lane.st-flash .st-light{background:#d9ffe9;box-shadow:0 0 26px rgba(62,207,142,.95),0 0 0 4px color-mix(in srgb,var(--panel) 70%,#000)}
+html .st-lane .st-count{margin-top:4px;font-size:12.5px;color:var(--muted)}
+html .st-lane .st-count b{display:block;font:600 26px/1 'SF Roboto Mono',Consolas,monospace;color:var(--ink)}
+html .st-lane .st-lap{font:500 11.5px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+html .st-lane .st-lap:empty{display:none}
+.st-foot{display:flex;align-items:center;gap:12px;justify-content:space-between}
+html .st-foot .st-sum{display:flex;align-items:center;gap:8px;margin:0;font-size:13.5px}
+html .st-foot .st-sum::before{content:'';flex:none;width:8px;height:8px;border-radius:50%;background:currentColor}
+html .st-foot .btn{flex:none}
+@media (prefers-reduced-motion:reduce){.st-light{transition:none}}
+html .st-lane.st-seen{border-color:color-mix(in srgb,var(--st-ok) 45%,var(--line))}
+html dialog .st-body>.row.st-foot{flex-direction:row;justify-content:space-between;margin:0;padding:0;border:0}
+html .st-lanes{grid-template-columns:repeat(auto-fit,minmax(120px,200px));justify-content:center}
+html .st-lanes{grid-template-columns:repeat(var(--n,4),minmax(0,1fr));max-width:calc(var(--n,4) * 210px);margin-left:auto;margin-right:auto}
+/* 2.4.0 Flag Dialog (dialogs.js): the app's own Yes / No and message windows. A badge in front of the title says the kind (? a question, i a message,
+   ! an action that cannot be undone), the text lines up with the title, and a dangerous action is a filled red button */
+html dialog.appdlg{width:min(470px,94vw);padding:22px 24px 18px;border-top:1px solid var(--line)}
+html dialog.appdlg>h3:first-child{display:flex;align-items:center;gap:14px;margin:0 0 10px;padding:0;border-bottom:0;font-size:24px}
+html dialog.appdlg>h3:first-child::before{content:'?';display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:10px;background:color-mix(in srgb,var(--ink) 9%,var(--panel));color:color-mix(in srgb,var(--ink) 75%,var(--muted));font:700 18px/1 "Segoe UI",system-ui,sans-serif;font-style:normal}
+html dialog.appdlg-alert>h3:first-child::before{content:'i';font-family:Georgia,serif;font-style:italic;font-size:20px}
+html dialog.appdlg-danger>h3:first-child::before{content:'!';background:color-mix(in srgb,var(--accent) 18%,var(--panel));color:var(--accent-text,var(--accent));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 40%,transparent)}
+html dialog.appdlg>.appdlg-body{padding-left:50px;color:color-mix(in srgb,var(--ink) 88%,var(--muted));line-height:1.55}
+html dialog.appdlg>.appdlg-body p:last-child{margin-bottom:0}
+html dialog.appdlg>.appdlg-buttons{margin-top:18px}
+html dialog.appdlg-danger>.appdlg-buttons>.btn.danger{background:var(--accent-fill,var(--accent));color:#fff;font-weight:600}
+html dialog.appdlg-danger>.appdlg-buttons>.btn.danger:hover{background:color-mix(in srgb,var(--accent-fill,var(--accent)) 88%,#fff)}
+html dialog.appdlg.st-dialog>h3:first-child::before{content:none}
+html dialog.appdlg.st-dialog>h3:first-child{padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:14px}
+/* the update notice on Home: a download badge, the same card as the others */
+html .hm-update{position:relative;padding-left:76px;border-left:1px solid var(--line);background:linear-gradient(100deg,color-mix(in srgb,var(--accent) 14%,var(--panel)),var(--panel) 55%)}
+html .hm-update::before{content:'';position:absolute;left:20px;top:50%;width:40px;height:40px;margin-top:-20px;border-radius:10px;background:var(--accent-fill,var(--accent)) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4v11M7 10l5 5 5-5M5 20h14'/%3E%3C/svg%3E") center/22px no-repeat}
+html .hm-update strong{font:italic 700 19px 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em}
+html dialog.appdlg>h3:first-child::before{text-transform:none}
+html dialog.appdlg>.row.appdlg-buttons{flex-direction:row;justify-content:flex-end}

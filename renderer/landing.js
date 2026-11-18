@@ -1428,7 +1428,13 @@ async function renderHome() {
     if (b.id === 'sensortest') {
       // (2.3.0: every lane lights up when its sensor sees a car; a lane that saw none is named)
       const id = Hardware.timingChosen(state.settings);
-      await SensorTest.openDialog({ lanes, hw: id, name: TIMING_NAMES[id] || id, settings: state.settings });
+      await SensorTest.openDialog({
+        lanes,
+        hw: id,
+        name: TIMING_NAMES[id] || id,
+        settings: state.settings,
+        color: typeof laneHue === 'function' ? laneHue : undefined
+      });
       return;
     }
     if (b.id === 'start') {

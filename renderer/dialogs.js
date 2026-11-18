@@ -36,7 +36,7 @@
     const run = () =>
       new Promise(resolve => {
         const d = document.createElement('dialog');
-        d.className = 'appdlg' + (o.danger ? ' appdlg-danger' : '');
+        d.className = 'appdlg appdlg-' + kind + (o.danger ? ' appdlg-danger' : ''); // (Flag Dialog, 2.4.0: the kind picks the badge in front of the title)
         d.setAttribute('aria-labelledby', 'appdlg-title');
         const title = document.createElement('h3');
         title.id = 'appdlg-title';

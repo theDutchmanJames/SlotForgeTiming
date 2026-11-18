@@ -90,21 +90,26 @@
       timers = [];
     let off = null,
       closed = false;
+    // Lane Check (2.4.0): every lane in its colour (the race screen's, else one of eight), with a light that turns green when its sensor sees a car
+    const hue = i =>
+      (o.color && o.color(i)) ||
+      (root.HomeStats && root.HomeStats.laneColor ? root.HomeStats.laneColor(o.layout || null, i) : '') ||
+      '#98a0ab';
+    const cols = n => (n <= 4 ? Math.max(1, n) : n <= 6 ? 3 : 4); // (the rows of Home's lanes: 5 and 6 lanes in rows of three, 7 and 8 in rows of four)
     const draw = () => {
       if (closed || !el) return;
       const s = summary(T),
         on = src && src.connected();
       el.innerHTML = !src
         ? `<p class="muted">No timing hardware is in use: laps are counted with the keys or simulated cars, so there are no sensors to test.</p>`
-        : `<p class="muted st-head">${esc(o.name || 'The timing hardware')} ${on ? 'is connected.' : '<b class="st-off">is not connected.</b> Connect it first (App Settings, Timing Hardware).'} Drive a car over the line in every lane.${o.note ? ' ' + esc(o.note) : ''}</p>
-        <div class="st-lanes">${T.hits
+        : `<div class="st-head"><span class="st-link ${on ? 'st-on' : 'st-off'}">${esc(o.name || 'The timing hardware')} ${on ? 'is connected' : 'is not connected'}</span><span class="muted">${on ? '' : 'Connect it first (App Settings, Timing Hardware). '}Drive a car over the line in every lane.${o.note ? ' ' + esc(o.note) : ''}</span></div>
+        <div class="st-lanes" style="--n:${cols(T.hits.length)}">${T.hits
           .map(
             (h, i) =>
-              `<div class="st-lane${h ? ' st-seen' : ''}" data-stlane="${i}"><span class="st-num">Lane ${i + 1}</span><span class="st-count">${h ? h + ' crossing' + (h > 1 ? 's' : '') : 'waiting'}</span><span class="st-lap">${T.lap[i] !== null ? 'last lap ' + secs(T.lap[i]) : ''}</span></div>`
+              `<div class="st-lane${h ? ' st-seen' : ''}" data-stlane="${i}" style="--c:${esc(hue(i))}"><span class="st-num"><i aria-hidden="true">${i + 1}</i>Lane ${i + 1}</span><span class="st-light" aria-hidden="true"></span><span class="st-count">${h ? '<b>' + h + '</b> crossing' + (h > 1 ? 's' : '') : 'waiting'}</span><span class="st-lap">${T.lap[i] !== null ? 'last lap ' + secs(T.lap[i]) : ''}</span></div>`
           )
           .join('')}</div>
-        <p class="st-sum ${s.ok ? 'st-ok' : 'st-warn'}" role="status">${esc(s.text)}</p>
-        <div class="row"><button type="button" class="btn" data-streset>Start again</button></div>`;
+        <div class="row st-foot"><p class="st-sum ${s.ok ? 'st-ok' : 'st-warn'}" role="status">${esc(s.text)}</p><button type="button" class="btn" data-streset>Start again</button></div>`;
     };
     const flash = lane => {
       const tile = el && el.querySelector && el.querySelector(`[data-stlane="${lane}"]`);

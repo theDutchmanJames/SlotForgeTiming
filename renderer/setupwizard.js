@@ -96,17 +96,26 @@
       step = STEPS[p.step][0],
       track = (o.tracks || []).find(t => t.id === p.trackId) || null,
       lanes = Math.max(1, Math.min(8, Math.floor(Number(track && track.lanes)) || 0)) || 0;
-    const head = `<div class="wz-steps" aria-label="Steps">${STEPS.map(
+    // Start Lights (2.4.0): the steps as a gantry of lights that come on one by one, green at the test race
+    const head = `<div class="wz-top"><span class="wz-eyebrow">Setup guide${p.step ? ` · step ${p.step} of ${STEPS.length - 1}` : ''}</span><div class="wz-steps${p.step === STEPS.length - 1 ? ' wz-go' : ''}" aria-label="Steps">${STEPS.map(
       ([, t], i) =>
-        `<span class="wz-step${i === p.step ? ' wz-now' : i < p.step ? ' wz-done' : ''}"${i === p.step ? ' aria-current="step"' : ''}>${i ? i + '. ' : ''}${esc(t)}</span>`
-    ).join('')}</div>`;
+        `<span class="wz-step${i === p.step ? ' wz-now' : i < p.step ? ' wz-done' : ''}"${i === p.step ? ' aria-current="step"' : ''}><i aria-hidden="true"></i><span>${i ? i + '. ' : ''}${esc(t)}</span></span>`
+    ).join('')}</div></div>`;
     const nav = (next = 'Next', back = true, extra = '') =>
-      `<div class="row wz-nav">${back && p.step > 0 ? '<button type="button" class="btn" data-wz="back">Back</button>' : ''}<span class="hm-grow"></span>${extra}<button type="button" class="btn" data-wz="skip">Skip the guide</button><button type="button" class="btn primary" data-wz="next">${esc(next)}</button></div>`;
+      `<div class="row wz-nav">${back && p.step > 0 ? '<button type="button" class="btn" data-wz="back">Back</button>' : ''}<span class="hm-grow"></span>${extra}<button type="button" class="btn wz-skip" data-wz="skip">Skip the guide</button><button type="button" class="btn primary" data-wz="next">${esc(next)}</button></div>`;
+    const hue = i => (typeof HomeStats !== 'undefined' && HomeStats.laneColor ? HomeStats.laneColor(null, i) : '') || '#98a0ab';
+    const laneTile = i => `<i class="wz-lane" style="--c:${esc(hue(i))}" aria-hidden="true">${i + 1}</i>`;
+    const ico = (id, size = 18) => (typeof Icons !== 'undefined' && Icons.has && Icons.has(id) ? Icons.svg(id, { size }) : '');
+    const HW_ICON = { none: 'car', trackmate: 'timing', arduino: 'bolt', parallel: 'parallel', ds: 'gauge', plugin: 'layers' };
+    const STEP_ICON = ['', 'pin', 'users', 'car', 'bolt', 'check', 'flag'];
     let body = '';
     if (step === 'welcome')
-      body = `<h2>Let’s set up your first race</h2><p>A few short steps: your track, the drivers and cars, the timing hardware, a check of every lane sensor, and a ${TEST_LAPS}-lap test race. It takes about five minutes.</p>
-        <p class="muted">Every step can be skipped, and so can the whole guide: you can also set everything up yourself in the Database and Race Setup tabs. App Settings, General starts this guide again.</p>
-        <div class="row wz-nav"><span class="hm-grow"></span><button type="button" class="btn" data-wz="skip">Skip the guide, I’ll set it up myself</button><button type="button" class="btn primary" data-wz="next">Start</button></div>`;
+      body = `<div class="wz-welcome"><div><h2>Let’s set up your first race</h2><p class="wz-lead">A few short steps: your track, the drivers and cars, the timing hardware, a check of every lane sensor, and a ${TEST_LAPS}-lap test race. It takes about five minutes.</p>
+        <p class="muted">Every step can be skipped, and so can the whole guide: you can also set everything up yourself in the Database and Race Setup tabs. App Settings, General starts this guide again.</p></div>
+        <ol class="wz-plan">${STEPS.slice(1)
+          .map(([, t], i) => `<li><span class="wz-planico">${ico(STEP_ICON[i + 1])}</span><span>${esc(t)}</span></li>`)
+          .join('')}</ol></div>
+        <div class="row wz-nav"><span class="hm-grow"></span><button type="button" class="btn wz-skip" data-wz="skip">Skip the guide, I’ll set it up myself</button><button type="button" class="btn primary" data-wz="next">Start</button></div>`;
     else if (step === 'track') {
       const others = (o.tracks || []).filter(t => t.id !== p.trackId);
       body = `<h2>Your track</h2><p class="muted">The number of lanes decides how many cars race at once. The length is optional: with it the app shows speeds and distances.</p>
@@ -123,8 +132,8 @@
       const chosen = (o.drivers || []).filter(d => p.driverIds.includes(d.id)),
         n = Math.max(lanes || 2, 1);
       body = `<h2>Drivers</h2><p class="muted">One name per box: the first one drives in lane 1, and so on. You can add avatars, callsigns and more later in Database, Drivers.</p>
-        ${chosen.length ? `<p>Already added: <b>${chosen.map(d => esc(d.name)).join(', ')}</b>. Add more below, or go on.</p>` : ''}
-        <div class="wz-names">${Array.from({ length: chosen.length ? Math.max(0, n - chosen.length) || 1 : n }, (_, i) => `<input type="text" maxlength="40" data-wzname aria-label="Driver ${chosen.length + i + 1}" placeholder="Driver ${chosen.length + i + 1}">`).join('')}</div>
+        ${chosen.length ? `<p>Already added: <b>${chosen.map(d => esc(d.name)).join(', ')}</b>. Add more below, or go on.</p><div class="wz-added" aria-hidden="true">${chosen.map((d, i) => `<span>${laneTile(i)}${esc(d.name)}</span>`).join('')}</div>` : ''}
+        <div class="wz-names">${Array.from({ length: chosen.length ? Math.max(0, n - chosen.length) || 1 : n }, (_, i) => `<label class="wz-lanerow">${laneTile(chosen.length + i)}<input type="text" maxlength="40" data-wzname aria-label="Driver ${chosen.length + i + 1}" placeholder="Driver ${chosen.length + i + 1}"></label>`).join('')}</div>
         <p class="wz-msg muted" id="wz-msg" role="status"></p>${nav(chosen.length ? 'Next' : 'Add the drivers')}`;
     } else if (step === 'cars') {
       const drivers = p.driverIds.map(id => (o.drivers || []).find(d => d.id === id)).filter(Boolean);
@@ -133,13 +142,13 @@
         library && library.available
           ? `<h2>Cars</h2><p class="muted">Your cars are kept in the shared library (SlotForge Paddock), which has its own car editor: add them in Database, Slotcars. On Home you choose a car for every lane before the race.</p>${nav('Next')}`
           : `<h2>Cars</h2><p class="muted">Optional: give each driver a car, so the results and the statistics know which car drove. A name is enough, such as “Scalextric Porsche 911”. Pictures, motors and tyres can follow in Database, Slotcars.</p>
-        ${drivers.length ? `<div class="wz-names">${drivers.map((d, i) => `<label class="wz-carrow"><span>${esc(d.name)}</span><input type="text" maxlength="60" data-wzcar="${i}" placeholder="No car" value="${esc(((o.cars || []).find(c => c.id === p.carIds[i]) || {}).model || '')}"${p.carIds[i] ? ' disabled' : ''}></label>`).join('')}</div>` : '<p class="muted">No drivers were added, so there is nothing to give a car to.</p>'}
+        ${drivers.length ? `<div class="wz-names">${drivers.map((d, i) => `<label class="wz-carrow">${laneTile(i)}<span>${esc(d.name)}</span><input type="text" maxlength="60" data-wzcar="${i}" placeholder="No car" value="${esc(((o.cars || []).find(c => c.id === p.carIds[i]) || {}).model || '')}"${p.carIds[i] ? ' disabled' : ''}></label>`).join('')}</div>` : '<p class="muted">No drivers were added, so there is nothing to give a car to.</p>'}
         <p class="wz-msg muted" id="wz-msg" role="status"></p>${nav('Next')}`;
     } else if (step === 'hardware') {
       const chosen = Hardware.timingChosen(S.settings),
         on = typeof timingConnectedNow === 'function' ? timingConnectedNow()[chosen] : false;
       body = `<h2>Timing hardware</h2><p class="muted">What counts the laps? Choose one; you can change it at any time in App Settings, Timing Hardware.</p>
-        <div class="wz-hw" role="radiogroup" aria-label="Timing hardware">${Hardware.TIMING.map(([id, name]) => `<label class="wz-hwopt${id === chosen ? ' wz-on' : ''}"><input type="radio" name="wzhw" value="${id}"${id === chosen ? ' checked' : ''}><span><b>${esc(name)}</b><small class="muted">${esc(HW_WORDS[id] || '')}</small></span></label>`).join('')}</div>
+        <div class="wz-hw" role="radiogroup" aria-label="Timing hardware">${Hardware.TIMING.map(([id, name]) => `<label class="wz-hwopt${id === chosen ? ' wz-on' : ''}"><input type="radio" name="wzhw" value="${id}"${id === chosen ? ' checked' : ''}><span class="wz-hwico">${ico(HW_ICON[id] || 'cog', 20)}</span><span><b>${esc(name)}</b><small class="muted">${esc(HW_WORDS[id] || '')}</small></span></label>`).join('')}</div>
         ${
           chosen === 'none'
             ? ''
@@ -162,7 +171,11 @@
       bind(view, o, p, lanes);
       return;
     } else if (step === 'finish')
-      body = `<h2>Your test race</h2><p>The guide makes a race setup <b>Test race (${TEST_LAPS} laps)</b>${track ? ` on <b>${esc(track.name)}</b>` : ''} and puts ${p.driverIds.length ? 'the drivers on their lanes' : 'it on Home'}. Then press <b>Start race</b> on Home.</p>
+      body = `<h2>Your test race</h2>${
+        track
+          ? `<div class="wz-ticket"><div><small>Track</small><b>${esc(track.name || 'My track')}</b></div><div><small>Laps</small><b>${TEST_LAPS}</b></div><div><small>Lanes</small><b>${lanes}</b></div><div><small>Drivers</small><b>${p.driverIds.length || '–'}</b></div></div>`
+          : ''
+      }<p>The guide makes a race setup <b>Test race (${TEST_LAPS} laps)</b>${track ? ` on <b>${esc(track.name)}</b>` : ''} and puts ${p.driverIds.length ? 'the drivers on their lanes' : 'it on Home'}. Then press <b>Start race</b> on Home.</p>
         <p class="muted">Race setups (Race Setup tab) hold everything else: heats, fuel, pit stops, penalties, weather and more. Copy the test race there to make your own.</p>
         ${p.driverIds.length && p.driverIds.some((_, i) => !p.carIds[i]) ? '<p class="muted">Every lane needs a driver and a car: on Home, choose a car for the lanes that have none yet.</p>' : ''}
         ${track ? '' : '<p class="st-off">There is no track yet (step 1), so no race can be made. Go back, or finish and set it up yourself.</p>'}
