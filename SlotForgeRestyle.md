@@ -22,6 +22,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Paddock Rail](#paddock-rail) | A page with a side list of its sections on the left | Race Setup, Customization, Database, App Settings |
 | [Double Rail](#double-rail) | A second Paddock Rail beside the first, for the tabs and sections of one page, and a plain canvas with one section at a time | Every page of App Settings |
 | [Settings Sheet](#settings-sheet) | Groups of slim two-half rows (name and one line left, control right) with one 30px control kit; no sliders | The canvas of every App Settings page |
+| [System Sheet](#system-sheet) | A system or setup editor as one page of sheets, the rail as its table of contents, a Page Note at the top | Every editor with a rail (Race Systems, Race Setups, Extras, Championships, Rotation) |
 | [Help Reader](#help-reader) | A help article as a calm one-column document with a plain-words lead and pill chips for related guides | App Settings › Help |
 | [Page Note](#page-note) | The box under a page title that explains the page | Every Race Setup page |
 | [Control Strip](#control-strip) | One tight toolbar: Add, tools, search, List / Grid, pager | Database lists, system lists |
@@ -377,7 +378,7 @@ a few more words in grey, and **where you use it** after an arrow. The user call
 ```
 
 Writing the words: the lead says what the thing *is* ("A … is …"), the second line says how it behaves,
-the arrow line says *where* it is used. Keep all three short. In Timing the texts live in one table,
+the arrow line says *where* it is used. Keep all three short. Since 2.4.0 the note is used wherever a page or section opens with a few words: the System Sheet editors (with the live sentence as the second line) and the sections of App Settings (`.sn.ss-intro`: the first sentence leads, the rest is the grey line). In Timing the texts live in one table,
 `SETUP_NOTES` in `renderer/editor.js`, drawn by `setupNote(box, sub)`.
 
 ---
@@ -1107,6 +1108,37 @@ input.ss-switch{appearance:none;width:34px;height:20px;border-radius:10px;backgr
 .ss-step>input{width:64px;text-align:center;font:500 13px 'SF Roboto Mono',Consolas,monospace}
 ```
 
+## System Sheet
+
+The editor of a race system, a race setup, a championship, a rotation or an Extras page (the frame of `railform.js`) set like a
+[Settings Sheet](#settings-sheet). Everything is on **one page**: every section is open and stays open, one under the other, each with its
+Barlow title and its question as one quiet line. The **rail is the table of contents**: a click scrolls to the section, and while the page
+scrolls the rail shows where you are (`.rsri.sy-on`). A row of the rail has its short note and a small dot only where something is changed
+(red) or missing (amber). The page opens with a **[Page Note](#page-note)**: the tile, what the thing is (`SETUP_NOTES`), what it does with
+the settings as they are now (the live sentence, `#rssay`), and where you use it. On a Race Setup page that already has its own Page Note
+above the editor, the note in the editor only says what the settings do now.
+
+Every field is a slim two-half row in a sheet (`.fgrid.sy-sheet > .field.sy-row`): the name and one line left, the control right. The app's
+own controls are restyled into the kit: its segmented buttons (`.fu-seg`) as the segmented choice, its switches (`.fu-sw`) as the 34×20 switch,
+a number with its unit as the stepper. A label written as `Name · short line` shows the short line under the name. Tables, cards and pictures
+(the tyre table, the weather curve, choice cards) keep their own look inside the sheet at full width (`.sy-stack`).
+
+Regrouped: **Tyre Wear** has six sections instead of nine: Wear (Counting, Tyres), Worn tyres, Pit stops and sets (Tyre change, Sets,
+Mandatory stops), Warnings, and under "Only if you need it" Temperature and Weather.
+
+Code: `renderer/systemsheet.js` (`SystemSheet`). It changes the real page only, after the frame is drawn (a watcher on the page finds every
+new `.rsform`): ids, `data-key` and handlers stay, so the forms' code and the tests that read their markup are unchanged.
+
+```css
+html .rsform.sy details.rssec{margin:0 0 30px;padding:0;border:0;background:none}
+html .rsform.sy details.rssec+details.rssec{padding-top:26px;border-top:1px solid var(--ss-line,var(--line))}
+html .rsform.sy details.rssec>summary strong{display:block;font:italic 700 22px/1.05 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .rsform.sy .fgrid.sy-sheet{display:block;border:1px solid var(--ss-line,var(--line));border-radius:10px;background:var(--panel);overflow:hidden}
+html .rsform.sy .fgrid.sy-sheet>.field{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 20px;min-height:52px;padding:10px 16px;border-top:1px solid var(--ss-line,var(--line))}
+html .rsform.sy .rsri.sy-on{background:color-mix(in srgb,var(--ink) 10%,var(--panel))}
+html .rsform.sy .rsdot.ok{background:var(--accent-text,var(--accent))}  html .rsform.sy .rsdot.off{visibility:hidden}
+```
+
 ## Help Reader
 
 The Help page set as a calm document: one column of about 70 characters (max 700px), the search beside a small page title, a trail in spaced
@@ -1198,3 +1230,5 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Settings Sheet | New: every page of App Settings as groups of slim two-half rows with one 30px control kit (switch, segmented choice, stepper, list, text, file, path, pill); no sliders, pictures framed by dragging, arrow keys and Position steppers |
 | 2026-11 | Settings Sheet | The switch keeps its 34×20 pill shape when off; theme tiles stay tiles |
 | 2026-11 | Help Reader | New: Help articles retypeset (one column, plain-words lead, calmer body, chips) |
+| 2026-11 | System Sheet | New: every editor with a rail as one page of sheets; the rail jumps and follows the scroll; Tyre Wear regrouped into six sections |
+| 2026-11 | Page Note | Also in the System Sheet editors and on the sections of App Settings |

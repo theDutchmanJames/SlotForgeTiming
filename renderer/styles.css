@@ -3756,3 +3756,112 @@ html #view .help-hub .help-related .btn:hover{background:color-mix(in srgb,var(-
 html #view .help-hub .help-actions{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 0}
 @media(max-width:1100px){html #view .help-hub>header.help-header{flex-direction:column;align-items:stretch}html #view .help-hub .help-search{flex:none}}
 html #view .help-hub .help-heading h2:not(.x){font-size:20px}
+/* 2.4.0 Page Note anywhere (not only on the Race Setup pages): the tile in the page's colour, what it is, a few words, where you use it */
+.sn:is(.sy-note,.ss-intro){display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:14px;row-gap:3px;align-items:start;max-width:860px;margin:0 0 24px;padding:14px 18px 14px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.sn:is(.sy-note,.ss-intro)>.sn-tile{grid-row:1 / span 3;display:grid;place-items:center;width:40px;height:40px;border-radius:10px;background:color-mix(in srgb,var(--c,var(--accent)) 16%,var(--panel));color:var(--c,var(--accent))}
+.sn:is(.sy-note,.ss-intro)>.sn-tile svg{width:20px;height:20px}
+.sn:is(.sy-note,.ss-intro)>.sn-lead{grid-column:2;margin:0;color:var(--ink);font-size:14.5px;font-weight:500;line-height:1.45}
+.sn:is(.sy-note,.ss-intro)>.sn-more{grid-column:2;margin:0;color:var(--muted);font-size:13.5px;line-height:1.55}
+.sn:is(.sy-note,.ss-intro)>.sn-use{grid-column:2;display:flex;align-items:center;gap:7px;margin:7px 0 0;color:color-mix(in srgb,var(--ink) 82%,var(--muted));font-size:12.5px;line-height:1.4}
+.sn:is(.sy-note,.ss-intro)>.sn-use::before{content:'\2192';color:var(--accent-text,var(--accent))}
+.sn:is(.sy-note,.ss-intro)>.sn-tile:empty{display:none}
+.sn:is(.sy-note,.ss-intro):has(>.sn-tile:empty){grid-template-columns:minmax(0,1fr)}
+.sn:is(.sy-note,.ss-intro):has(>.sn-tile:empty)>*{grid-column:1}
+
+/* 2.4.0 System Sheet (systemsheet.js): the editor of a race system, race setup, championship or rotation as one calm page with a table of contents */
+/* the header: slim, the name is the title; the pills of the key settings are in the Page Note now */
+html .rsform.sy .rshd{min-height:0;padding:14px 22px;gap:14px;background:color-mix(in srgb,var(--bg) 40%,var(--panel));border-bottom:1px solid var(--line);box-shadow:none}
+html .rsform.sy .rshd .rstile{width:40px;height:40px;border-radius:10px}
+html .rsform.sy .rshd .rstile svg{width:20px;height:20px}
+html .rsform.sy .rshd .rseye{margin:0;font:600 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html .rsform.sy .rshd .rspills{display:none}
+html .rsform.sy .rshd .rstitle .field{margin:0}
+html .rsform.sy .rshd .rstitle input{min-height:0;padding:2px 0;font-size:24px}
+/* the rail: a table of contents; a small dot only where something is changed (red) or missing (amber) */
+html .rsform.sy .rsrail{padding:18px 10px;gap:2px}
+html .rsform.sy .rsri{align-items:flex-start;padding:7px 10px;border:0;border-radius:7px;background:transparent}
+html .rsform.sy .rsri.on{background:transparent}
+html .rsform.sy .rsri.on .rsic{color:var(--muted)}
+html .rsform.sy .rsri.sy-on{background:color-mix(in srgb,var(--ink) 10%,var(--panel))}
+html .rsform.sy .rsri.sy-on .rsic{color:var(--c,var(--accent))}
+html .rsform.sy .rsri:hover:not(.sy-on){background:color-mix(in srgb,var(--ink) 5%,transparent)}
+html .rsform.sy .rsri b{font-size:13px;font-weight:500}
+html .rsform.sy .rsri.sy-on b{font-weight:600}
+html .rsform.sy .rsri small{font-size:11.5px}
+html .rsform.sy .rsdot{width:6px;height:6px;margin-top:6px;border:0}
+html .rsform.sy .rsdot.ok{background:var(--accent-text,var(--accent))}
+html .rsform.sy .rsdot.todo{background:var(--warn,#f2b705)}
+html .rsform.sy .rsdot.off{visibility:hidden}
+/* the page */
+html .rsform.sy .rsmain{padding:24px 34px 34px;scroll-padding-top:16px}
+html .rsform.sy .rsmain>*{max-width:880px}
+html .rsform.sy #rssay.sn-more{margin:0;padding:0;border:0;background:none;box-shadow:none}
+html .rsform.sy #rssay .rssayic,html .rsform.sy #rssay .rssaytext>b{display:none}
+html .rsform.sy #rssay .rssaytext{display:block}
+html .rsform.sy #rssay p{margin:0;font-size:13.5px;line-height:1.55;color:var(--muted)}
+html .rsform.sy #rssay p b{color:color-mix(in srgb,var(--ink) 90%,var(--muted));font-weight:600}
+/* a section: a title and its question, then its sheet; never folded */
+html .rsform.sy details.rssec{margin:0 0 30px;padding:0;border:0;border-radius:0;background:none;box-shadow:none;scroll-margin-top:16px}
+html .rsform.sy details.rssec+details.rssec{padding-top:26px;border-top:1px solid var(--ss-line,var(--line))}
+html .rsform.sy details.rssec>summary{display:block;padding:0 0 12px;border:0;background:none;cursor:default;list-style:none}
+html .rsform.sy details.rssec>summary::-webkit-details-marker{display:none}
+html .rsform.sy details.rssec>summary::after{display:none}
+html .rsform.sy details.rssec>summary>.rsic{display:none}
+html .rsform.sy details.rssec>summary strong{display:block;font:italic 700 22px/1.05 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.01em;color:var(--ink)}
+html .rsform.sy details.rssec>summary .rsq{display:block;margin-top:4px;font-size:13px;color:var(--muted)}
+html .rsform.sy details.rssec>summary .rsrow{display:none}
+html .rsform.sy details.rssec>summary *{border:0;background:none}
+html .rsform.sy .rssub{margin:18px 0 0;padding:0;border:0;background:none}
+html .rsform.sy .rssub:first-of-type{margin-top:0}
+html .rsform.sy .rssubt{margin:0 2px 8px;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;font-style:normal;color:var(--muted)}
+html .rsform.sy .rssubn{margin:-4px 2px 8px;font-size:12.5px;color:var(--muted)}
+/* the sheet and its rows */
+html .rsform.sy .fgrid.sy-sheet{display:block;margin:0;padding:0;border:1px solid var(--ss-line,var(--line));border-radius:10px;background:var(--panel);overflow:hidden}
+html .rsform.sy .fgrid.sy-sheet>.field{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 20px;min-height:52px;margin:0;padding:10px 16px;border:0;border-top:1px solid var(--ss-line,var(--line));border-radius:0;background:none;box-shadow:none;max-width:none}
+html .rsform.sy .fgrid.sy-sheet>.field:first-child{border-top:0}
+html .rsform.sy .fgrid.sy-sheet>.field[hidden]{display:none}
+html .rsform.sy .fgrid.sy-sheet>.field.sy-stack{display:block}
+html .rsform.sy .fgrid.sy-sheet>.field.sy-stack>label{display:block;margin:0 0 8px;font-size:13.5px;font-weight:600;color:var(--ink)}
+html .rsform.sy .fgrid.sy-sheet>.field.sy-wide{grid-template-columns:1fr}
+html .rsform.sy .sy-row>.ss-t{min-width:0}
+html .rsform.sy .sy-row>.ss-t>b{display:block;font-size:13.5px;font-weight:600;color:var(--ink)}
+html .rsform.sy .sy-row>.ss-t>.hint{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin:2px 0 0;font-size:12.5px;line-height:1.45;color:var(--muted);max-width:72ch}
+html .rsform.sy .sy-row>.ss-t>.hint.open{display:block;-webkit-line-clamp:unset}
+html .rsform.sy .sy-row>.ss-ctl{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;min-width:0}
+html .rsform.sy .sy-row>.ss-ctl>select{min-height:30px;min-width:190px;max-width:320px;padding:0 28px 0 10px;border-radius:7px;font-size:13px;width:auto}
+html .rsform.sy .sy-row>.ss-ctl>input:is([type=text],:not([type])){min-height:30px;width:260px;max-width:100%;padding:0 10px;border-radius:7px;font-size:13px}
+html .rsform.sy .sy-row>.ss-ctl>.inunit{display:inline-flex;align-items:center;gap:6px}
+html .rsform.sy .sy-row>.ss-ctl>.inunit>input{min-height:30px;width:110px;padding:0 10px;border-radius:7px}
+/* the app's segmented buttons as the kit's segmented choice */
+html .rsform.sy .sy-row .fu-seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--bg);overflow:visible}
+html .rsform.sy .sy-row .fu-seg>.fu-b{min-height:26px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:var(--muted);font:500 12.5px "Segoe UI",system-ui,sans-serif;white-space:nowrap;box-shadow:none}
+html .rsform.sy .sy-row .fu-seg>.fu-b:hover:not(.on){background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
+html .rsform.sy .sy-row .fu-seg>.fu-b.on{background:color-mix(in srgb,var(--ink) 13%,var(--panel));color:var(--ink);font-weight:600}
+/* the app's switch as the kit's switch */
+html .rsform.sy .sy-row .fu-sw{padding:0;margin:0;width:auto}
+html .rsform.sy .sy-row .fu-sw .fu-tg{width:34px;height:20px;margin:0}
+html .rsform.sy .sy-row .fu-sw .fu-tg::after{top:2px;left:2px;width:16px;height:16px;background:#fff}
+html .rsform.sy .sy-row .fu-sw.on .fu-tg{background:var(--accent-fill,var(--accent))}
+html .rsform.sy .sy-row .fu-sw.on .fu-tg::after{left:16px}
+html .rsform.sy .sy-row .fu-sw:focus-visible{outline:3px solid #4c9aff;outline-offset:3px;border-radius:12px}
+/* the live note of a section: a quiet line under its sheet */
+html .rsform.sy .rsnote{display:flex;gap:8px;align-items:flex-start;margin:10px 2px 0;padding:0;border:0;background:none;font-size:12.5px;line-height:1.5;color:var(--muted)}
+html .rsform.sy .rsnote[hidden]{display:none}
+html .rsform.sy .rsnote .rsnic svg{width:14px;height:14px}
+/* the bar at the bottom */
+html .rsform.sy .rsfoot{padding:12px 22px;background:color-mix(in srgb,var(--bg) 40%,var(--panel))}
+@media(max-width:900px){html .rsform.sy .fgrid.sy-sheet>.field{grid-template-columns:1fr}html .rsform.sy .sy-row>.ss-ctl{justify-content:flex-start}}
+html .rsform.sy details.rssec>summary::before,html .rsform.sy details.rssec>summary>.rssx::after,html .rsform.sy details.rssec>summary>.rssx::before{display:none!important;content:none!important}
+html .rsform.sy details.rssec>summary>.rssx{display:block;padding:0}
+html .rsform.sy #rssay .rseye{display:none}
+html .rsform.sy details.rssec,html .rsform.sy details.rssec>summary{box-shadow:none!important;border-left:0!important;outline:0}
+html .rsform.sy details.rssec>summary{padding-left:0!important}
+html .rsform.sy .sy-row>.ss-t>.ss-desc{display:block;font-size:12.5px;line-height:1.4;color:var(--muted)}
+/* (System Sheet) a system's own field styles (Fuel: cards, big numbers) give way to the sheet */
+html body .rsform.sy.sy .fgrid.sy-sheet>.field.sy-row{margin:0;border:0;border-top:1px solid var(--ss-line,var(--line));border-radius:0;background:none;box-shadow:none;padding:10px 16px}
+html body .rsform.sy.sy .fgrid.sy-sheet>.field.sy-row:first-child{border-top:0}
+html body .rsform.sy.sy .fgrid.sy-sheet{gap:0}
+html body .rsform.sy.sy .sy-row .ss-step>input{width:64px;height:100%;min-height:0;padding:0 4px;border:0;border-radius:0;background:transparent;box-shadow:none;text-align:center;font:500 13px 'SF Roboto Mono',Consolas,monospace}
+html body .rsform.sy.sy .sy-row .ss-step>input{font-size:13px!important;font-weight:500!important;height:100%!important;min-height:0!important}
+html #settingsbox .sn.ss-intro>p{max-width:none!important;margin:0}
+html #settingsbox .sn.ss-intro{max-width:880px}

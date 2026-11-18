@@ -221,6 +221,7 @@
     "renderer/speed.js",
     "renderer/stats.js",
     "renderer/strategywidgets.js",
+    "renderer/systemsheet.js",
     "renderer/systemwords.js",
     "renderer/temperatureeditor.js",
     "renderer/theme.js",

@@ -507,6 +507,32 @@ const SettingsRail = (() => {
         parts.forEach(p => {
           if (SettingsSheet.fresh(p)) SettingsSheet.convert(p);
           SettingsSheet.folds(p);
+          // the short words that open a section become its Page Note: the section's picture and those words
+          const lead = p && p.querySelector(':scope > p.ss-note:first-child');
+          if (lead && txt(lead).length > 30) {
+            const sec = p.closest('.sr-sec'),
+              pic = sec && sec.querySelector(':scope > summary > i');
+            const note = document.createElement('div'),
+              tile = document.createElement('span');
+            note.className = 'sn ss-intro';
+            tile.className = 'sn-tile';
+            tile.innerHTML = pic ? pic.innerHTML : '';
+            note.append(tile);
+            lead.before(note);
+            lead.classList.remove('ss-note');
+            lead.classList.add('sn-lead');
+            note.append(lead);
+            // a long one: the first sentence leads, the rest is the quiet line under it
+            const all = txt(lead),
+              cut = all.search(/[.!?]\s+[A-Z]/);
+            if (all.length > 130 && cut > 20) {
+              const more = document.createElement('p');
+              more.className = 'sn-more';
+              more.textContent = all.slice(cut + 1).trim();
+              lead.textContent = all.slice(0, cut + 1);
+              note.append(more);
+            }
+          }
         });
       }
       const title = (typeof SETTINGS_TABS !== 'undefined' && (SETTINGS_TABS.find(t => t[0] === key) || [])[1]) || '';

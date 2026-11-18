@@ -2089,11 +2089,11 @@ module.exports = {
     groups: [
       {
         id: 'basics',
-        title: 'Basics',
-        note: 'Name, whether the wear is counted per lap or per distance, and where it applies',
+        title: 'Counting',
+        note: 'Per lap or per distance, and where wear counts',
         open: true
       },
-      { id: 'tyres', title: 'The tyres', note: 'Choose the compounds and set how long a fresh set lasts at its normal pace', open: true },
+      { id: 'tyres', title: 'Tyres', note: 'How long a fresh set lasts at normal pace', open: true },
       {
         id: 'temperature',
         title: 'Temperature & Warm-Up',
@@ -2106,7 +2106,7 @@ module.exports = {
         note: 'Helping and hindering the car through the fuel rules, and what happens at 0%',
         open: true
       },
-      { id: 'pit', title: 'Pit stops', note: 'How long changing tyres takes' },
+      { id: 'pit', title: 'Tyre change', note: 'How long changing tyres takes' },
       {
         id: 'weather',
         title: 'Wear in the weather',
@@ -2119,7 +2119,7 @@ module.exports = {
       },
       {
         id: 'sets',
-        title: 'Sets of tyres',
+        title: 'Sets',
         note: 'How many sets of every tyre a car or a team has, and what the Race Director can queue for the next stop'
       },
       {
@@ -2130,76 +2130,58 @@ module.exports = {
     ],
     // The form of a tyre wear system has a rail (1.75.0), as the forms of the other systems do; see penaltysystems.rail. The old group Where it applies (practice and qualifying) is part of Basics now.
     // cols: 3 puts three settings on a row (the three switches of What worn tyres do, the two places of Basics).
+    // 2.4.0 (System Sheet): six sections on one page, regrouped: Wear holds Basics and The tyres; Pit stops and sets holds the pit stop, the sets and the mandatory stops.
     rail: [
       {
         id: 'basics',
-        title: 'Basics',
-        ask: 'Per lap or per distance, and where does it count?',
-        icon: 'clock',
+        title: 'Wear',
+        ask: 'How wear is counted, where, and how long each tyre lasts',
+        icon: 'tyre',
         open: true,
         live: true,
         cols: 3,
-        groups: ['basics']
-      },
-      {
-        id: 'tyres',
-        title: 'The tyres',
-        ask: 'How long should each fresh tyre set last at normal pace?',
-        icon: 'tyre',
-        open: true,
-        groups: ['tyres']
-      },
-      {
-        id: 'temperature',
-        title: 'Temperature & Warm-Up',
-        ask: 'How do tyres warm up and cool down?',
-        icon: 'tyre',
-        optional: true,
-        live: true,
-        groups: ['temperature']
+        groups: ['basics', 'tyres']
       },
       {
         id: 'effect',
-        title: 'What worn tyres do',
+        title: 'Worn tyres',
         ask: 'Do they change the car, and what happens at 0%?',
         icon: 'gauge',
         open: true,
         cols: 3,
         groups: ['effect']
       },
-      { id: 'pit', title: 'Pit stops', ask: 'How long does changing tyres take?', icon: 'garage', groups: ['pit'] },
       {
-        id: 'weather',
-        title: 'Wear in the weather',
-        ask: 'How much faster or slower does a tyre wear in each kind of weather?',
-        icon: 'weather',
-        optional: true,
-        groups: ['weather']
-      },
-      {
-        id: 'mand',
-        title: 'Mandatory stops',
-        ask: 'Must every car make stops for tyres, or use two kinds?',
-        icon: 'racesetups',
-        optional: true,
-        groups: ['mand']
-      },
-      {
-        id: 'sets',
-        title: 'Sets of tyres',
-        ask: 'How many sets of every tyre does a car or a team have?',
-        icon: 'layers',
-        optional: true,
-        groups: ['sets']
+        id: 'pit',
+        title: 'Pit stops and sets',
+        ask: 'The tyre change, the sets each car has, and the stops it must make',
+        icon: 'garage',
+        groups: ['pit', 'sets', 'mand']
       },
       {
         id: 'warn',
         title: 'Warnings',
-        ask: 'When do the widgets turn amber and red, and when does the audio set speak?',
+        ask: 'When the widgets change colour, and when the audio set speaks',
         icon: 'bell',
-        optional: true,
         live: true,
         groups: ['warn']
+      },
+      {
+        id: 'temperature',
+        title: 'Temperature',
+        ask: 'How tyres warm up and cool down',
+        icon: 'tyre',
+        optional: true,
+        live: true,
+        groups: ['temperature']
+      },
+      {
+        id: 'weather',
+        title: 'Weather',
+        ask: 'How much faster or slower a tyre wears in each kind of weather',
+        icon: 'weather',
+        optional: true,
+        groups: ['weather']
       }
     ],
     used: { entity: 'racesetups', key: 'tyreWear' },
@@ -2474,7 +2456,7 @@ module.exports = {
       {
         key: 'warn',
         group: 'warn',
-        label: 'Warning (amber) at this life or less',
+        label: 'Amber · life left when the widgets turn amber',
         type: 'number',
         suffix: '%',
         min: 0,
@@ -2484,7 +2466,7 @@ module.exports = {
       {
         key: 'crit',
         group: 'warn',
-        label: 'Critical (red) at this life or less',
+        label: 'Red · life left when the widgets turn red',
         type: 'number',
         suffix: '%',
         min: 0,
@@ -2494,7 +2476,7 @@ module.exports = {
       {
         key: 'call1',
         group: 'warn',
-        label: 'Audio call at this life: first level',
+        label: 'First audio call · at this much life left',
         type: 'number',
         suffix: '%',
         min: 1,
@@ -2505,7 +2487,7 @@ module.exports = {
       {
         key: 'call2',
         group: 'warn',
-        label: 'Audio call at this life: second level',
+        label: 'Second audio call',
         type: 'number',
         suffix: '%',
         min: 1,
@@ -2515,7 +2497,7 @@ module.exports = {
       {
         key: 'call3',
         group: 'warn',
-        label: 'Audio call at this life: third level',
+        label: 'Third audio call',
         type: 'number',
         suffix: '%',
         min: 1,
