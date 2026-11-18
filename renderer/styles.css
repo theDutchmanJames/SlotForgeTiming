@@ -2816,3 +2816,20 @@ dialog.ss-choose{width:min(620px,94vw)}
 #view .gcard .row .btn.danger{margin-left:auto}
 #view .catalogue-navigation{gap:6px;align-items:center}
 .ssrailtitle{font:italic 700 22px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em}
+/* 2.4.0 Database lists: one tight toolbar. Add and its tools on the left (a thin line before the tools you use now and then), search, List / Grid and the
+   pager on the right; icon buttons are square. */
+#view .catalogue-toolbar{align-items:center;gap:8px}
+#view .catalogue-toolbar>#extra{position:relative;margin-left:9px}
+#view .catalogue-toolbar>#extra::before{content:'';position:absolute;left:-9px;top:6px;bottom:6px;width:1px;background:var(--line)}
+#view .catalogue-controls{flex-direction:row;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+#view .catalogue-tools{gap:8px;flex-wrap:nowrap}
+#view .catalogue-search{gap:6px;flex-wrap:nowrap;align-items:center}
+#view .catalogue-field{position:relative;display:flex;align-items:center}
+#view .catalogue-field>svg{position:absolute;left:10px;color:var(--muted);pointer-events:none}
+#view .catalogue-search input{width:220px;min-height:32px;padding:0 10px 0 32px}
+#view .catalogue-navigation{gap:4px;flex-wrap:nowrap;align-items:center}
+#view .catalogue-navigation [role=status]{margin-right:6px;font-size:12px}
+:where(#view,dialog) .btn.icon:not(.big){width:32px;padding:0}
+:where(#view) :is(.gcard .row,.catalogue-navigation) .btn.icon:not(.big){width:28px;min-height:28px;padding:0}
+#view .gcard .row .btn.danger.icon{margin-left:auto}
+@media(max-width:900px){#view .catalogue-controls{width:100%;justify-content:flex-start}#view .catalogue-search input{width:160px}}
