@@ -291,12 +291,12 @@ const Help = (() => {
           note: 'Race setups, fuel, penalties, balance of power and time tokens',
           body: `
         <ul>
-          <li><b>Race Setups</b> bring together a session's track, format, end rule, systems, screens and audio. The coloured system tabs hold reusable rules; choosing one does not change the others.</li>
+          <li><b>Race Setups</b> bring together a session's track, format, end rule, systems, screens and audio. The race systems in the side list hold reusable rules; choosing one does not change the others.</li>
           <li><b>Session</b> chooses Practice, Qualifying, Race or Time Tokens and, for a race, One race, Heats or team swaps. <b>Race Settings</b> makes the track prominent and sets the end, winner, pit-sensor block time, Track Call and red-flag restart.</li>
           <li><b>Race Settings</b> also controls the start sequence: set the shortest and longest <b>Start Lights Off Timer</b>; the lights then follow the racing flags. <b>First Lap Behaviour</b> either starts timing on the first crossing or counts it as a lap.</li>
           <li>In <b>Rules and Systems</b>, every selected system has its own switch. Turn it off for this race without losing its saved setup. Balance of Power is last. <b>Service Stop</b> is independent and can be on or off.</li>
           <li><b>Race UI and Audio</b> chooses the main Timing Page/Race Screen, the Second Display and the Audio Set. <b>Advanced</b> holds timing-hardware options and mirrors the Track Call choice.</li>
-          <li>The open system tabs are: <b>Fuel Systems</b>, <b>Penalty Systems</b>, <b>Damage Systems</b>, <b>Safety Car Systems</b>, <b>Tyre Wear Systems</b>, <b>Weather Systems</b> and <b>Push &amp; Save Systems</b>. Below them, <b>Rotations &amp; Championships</b> and <b>More Systems</b> open the remaining editors, including Rotation Setups and Time Tokens.</li>
+          <li>The side list: <b>Fuel Systems</b>, <b>Penalty Systems</b>, <b>Damage Systems</b>, <b>Safety Car Systems</b>, <b>Tyre Wear Systems</b>, <b>Weather Systems</b>, <b>Push &amp; Save Systems</b>; the Events: Rotation Setups and Championships; then More. A dot marks a system in use.</li>
         </ul>`
         },
         {

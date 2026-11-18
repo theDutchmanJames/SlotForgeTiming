@@ -272,7 +272,7 @@ const helpHas = (...terms) => terms.every(t => allHelp.toLowerCase().includes(t.
 
 // ---- 1.45.0: the Race Setup sub-tabs as coloured buttons, and adding and taking out participants ----
 { const g = id => plain(folders.find(x => x.id === id).body), editor = read('renderer/editor.js'), ui = read('renderer/rotationui.js');
-  say('Race Setup help explains reusable coloured system tabs', g('setups').includes('coloured system tabs hold reusable rules') && g('setups').includes('Race Setups bring together') && editor.includes('Where it all comes together'));
+  say('Race Setup help explains the side list of reusable systems (2.4.0)', g('setups').includes('race systems in the side list hold reusable rules') && g('setups').includes('Race Setups bring together') && g('setups').includes('the Events: Rotation Setups and Championships') && editor.includes('aria-orientation="vertical"'));
   say('1.45.0: the Rotation setups help says the Size goes up to 64, that Add a participant adds one and that the × takes one out; the buttons are real', ['up to 64 participants', 'Add a participant adds one', 'the × in the list of names takes one out'].every(w => g('rotation').includes(w)) && ui.includes('data-addp') && ui.includes('data-delp') && ui.includes('Add a ${w}</button>') && g('rotation').includes('Each participant has a colour'));
   say('...and both folders are still short', ['setups', 'rotation'].every(id => g(id).length < 1400)); }
 { const g = id => plain(folders.find(x => x.id === id).body), editor = read('renderer/editor.js');

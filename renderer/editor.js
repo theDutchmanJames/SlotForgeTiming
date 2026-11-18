@@ -297,49 +297,47 @@ const setupColorOf = id => {
   const all = [SETUP_HERO, ...SETUP_GROUPS.flatMap(g => g[1])].find(t => t[0] === id);
   return all ? all[3] : 'race';
 };
-const setupTabsHtml = current => {
+// (2.4.0) the sections as a side list: Race Setups first, then the race systems, the events (rotations, championships) and the rest, each under a small heading.
+// The icons are plain; the one of the section that is open takes its colour (the colour of its folder on the race screen). A dot marks a system that a race setup
+// uses (used: the ids, filled in by renderSetup once the race setups are read). The buttons keep role "tab" and data-id, as every tab in the app does.
+const SETUP_HEADINGS = { Systems: 'Race systems', Setups: 'Events', Extras: 'More' };
+const setupTabsHtml = (current, used = new Set()) => {
   const [hid, hlabel, hicon] = SETUP_HERO;
   const chip = ([id, label, icon, c]) =>
-    `<button type="button" class="sstab ss-${c}" role="tab" aria-selected="${id === current}" data-id="${id}">${Icons.svg(icon, { size: 16, stroke: 1.8, cls: 'ssico' })}${esc(label)}</button>`;
+    `<button type="button" class="sstab ss-${c}" role="tab" aria-selected="${id === current}" data-id="${id}">${Icons.svg(icon, { size: 16, stroke: 1.8, cls: 'ssico' })}<span class="sstext">${esc(label)}</span>${used.has(id) ? '<i class="ssuse" title="Used by a race setup"></i>' : ''}</button>`;
   const hidden = setupShowHidden ? [] : setupHidden(),
     shown = items => items.filter(t => !hidden.includes(t[0]) || t[0] === current),
     n = setupHidden().length;
   const tools = `<div class="sstools"><button type="button" class="btn ssmini" data-sschoose title="Hide the systems your club never uses">Choose systems…</button>${n ? `<button type="button" class="btn ssmini" data-ssall aria-pressed="${setupShowHidden}">${setupShowHidden ? 'Hide the ' + n + ' unused' : 'Show ' + n + ' hidden'}</button>` : ''}</div>`;
-  return `<button type="button" class="ssbig" role="tab" aria-selected="${hid === current}" data-id="${hid}"><span class="ssbigico">${Icons.svg(hicon, { size: 24, stroke: 1.8 })}</span><span><strong>${esc(hlabel)}</strong><small>Where it all comes together</small></span></button><div class="ssnav"><div class="sssystems">${shown(SETUP_GROUPS[0][1]).map(chip).join('')}</div><div class="ssgroups">${SETUP_GROUPS.slice(
-    1
-  )
-    .map(([name, allItems]) => {
-      const items = shown(allItems);
-      if (!items.length) return '';
-      const active = items.find(x => x[0] === current),
-        label = name === 'Setups' ? 'Rotations & Championships' : 'More Systems';
-      return `<details class="ssgroup ssdropdown${active ? ' ss-' + active[3] : ''}"><summary${active ? ' class="sscurrent"' : ''}>${esc(active ? active[1] : label)}</summary><div class="sschips" aria-label="${esc(label)}">${items.map(chip).join('')}</div></details>`;
-    })
-    .join('')}</div>${tools}</div>`;
+  const groups = SETUP_GROUPS.map(([name, all]) => {
+    const items = shown(all);
+    return items.length
+      ? `<div class="ssgroup"><span class="sslabel">${esc(SETUP_HEADINGS[name] || name)}</span>${items.map(chip).join('')}</div>`
+      : '';
+  }).join('');
+  return `<div class="ssrailtitle">Race Setup</div><button type="button" class="ssbig" role="tab" aria-selected="${hid === current}" data-id="${hid}"><span class="ssbigico">${Icons.svg(hicon, { size: 18, stroke: 1.8 })}</span><span class="sstext">${esc(hlabel)}</span></button>${groups}${tools}`;
 };
+// the title of the page of a section
+const setupTitleOf = id => ([SETUP_HERO, ...SETUP_GROUPS.flatMap(g => g[1])].find(t => t[0] === id) || SETUP_HERO)[1];
 
 // Race Setup tab: the race setups you can pick on the Home tab, and the penalty systems they can use
 async function renderSetup() {
-  view.innerHTML = `<h2>Race Setup</h2><div class="setupstrip" id="setuptabs" role="tablist" aria-label="Race Setup sections"></div><div class="setuppage ss-${setupColorOf(state.setupSub)}" id="setuppage"><p class="muted" id="setupnote"></p><div id="setupmgr"></div></div>`;
+  view.innerHTML = `<div class="setupshell"><nav class="setupstrip" id="setuptabs" role="tablist" aria-label="Race Setup sections" aria-orientation="vertical"></nav><div class="setuppage ss-${setupColorOf(state.setupSub)}" id="setuppage"><h2 id="setuptitle">${esc(setupTitleOf(state.setupSub))}</h2><p class="muted" id="setupnote"></p><div id="setupmgr"></div></div></div>`;
   const strip = document.getElementById('setuptabs');
   strip.innerHTML = setupTabsHtml(state.setupSub);
-  strip.querySelectorAll?.('details').forEach(details => {
-    details.ontoggle = () => {
-      if (details.open)
-        strip.querySelectorAll('details').forEach(other => {
-          if (other !== details) other.open = false;
-        });
-    };
-  });
-  strip.onkeydown = e => {
-    if (e.key === 'Escape') {
-      const details = e.target.closest('details');
-      if (details) {
-        details.open = false;
-        details.querySelector('summary').focus();
-      }
-    }
-  };
+  // (the dots of the systems that a race setup uses: drawn when the race setups are read, without holding up the page)
+  if (api.list)
+    Promise.resolve(api.list('racesetups'))
+      .then(list => {
+        const used = new Set(
+          Object.entries(SETUP_FIELD)
+            .filter(([, field]) => (list || []).some(x => x && x[field]))
+            .map(([id]) => id)
+        );
+        if ((list || []).some(x => x && x.rotation)) used.add('rotation');
+        if (used.size && strip.isConnected !== false && state.tab === 'setup') strip.innerHTML = setupTabsHtml(state.setupSub, used);
+      })
+      .catch(() => {});
   strip.onclick = async e => {
     const b = e.target.closest('[data-id]');
     if (!b) {
