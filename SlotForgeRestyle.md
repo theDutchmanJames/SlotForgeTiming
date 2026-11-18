@@ -1183,6 +1183,11 @@ it, **Browse cars** under that; the driver's picture as a portrait on the right 
 tint of the lane colour behind the portrait. **Start a race** goes to its stacked layout (choices on top, the lanes in a full-width row, Start
 race under them) when a lane would get less than about 340px: below 1400px with 2 lanes, 1650px with 3, 1950px with 4; 5 or more always.
 
+**Up to 8 lanes in rows:** `laneCols` (landing.js) gives the most lanes on a row: up to 4 lanes all on one row, 5 or 6 in rows of 3, 7 or 8 in rows of
+4. The card narrows that by its own width (container `hm-start`): rows of 4 become 3 below 1440px (8 lanes: 3 + 3 + 2) or 2 (4 lanes: 2 + 2), rows of 3 or 4
+become 2 below 1080px, and 1 below 720px. A last row that is not full shares its whole width (`renderer/gridslot.js`: the lanes sit on 12 small columns,
+a lane spans 12 / lanes in its row), so there is never an empty place.
+
 ```css
 html #hmc-start .hs-lanes[data-cols] .lane.lane.lane{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"n f" ". m" "w w";min-height:116px;padding:16px 18px 14px;overflow:hidden}
 html #hmc-start .hs-lanes[data-cols] .lane.lane.lane>.hs-avatar{display:block;position:absolute;top:0;right:0;bottom:0;width:var(--gs-pic,132px);mask-image:linear-gradient(90deg,transparent 0,#000 38%)}
@@ -1272,3 +1277,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | System Sheet | Safety Car in four sections; More for long explanations; form labels; Resource tyre sets as rows; tables with the 30px kit |
 | 2026-11 | Grid Slot | New: the lanes of Start a race on Home fill their card at every width, with the driver as a full-height portrait |
 | 2026-11 | Grid Slot | Start a race stacks sooner (2 lanes below 1400px, 3 below 1650px, 4 below 1950px) |
+| 2026-11 | Grid Slot | Up to 8 lanes in balanced rows (4, 3 or 2 a row by the width); a last row that is not full fills the width |

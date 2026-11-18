@@ -202,7 +202,7 @@ test('Home lays out 1 to 8 lanes in one row or two', () => {
     line = src.match(/^const laneCols = .*$/m);
   assert(line, 'landing.js has laneCols');
   const laneCols = new Function(line[0] + '; return laneCols;')();
-  assert.deepEqual([1, 2, 3, 4, 5, 6, 7, 8, 12].map(laneCols), [1, 2, 3, 2, 3, 3, 4, 4, 4]);
+  assert.deepEqual([1, 2, 3, 4, 5, 6, 7, 8, 12].map(laneCols), [1, 2, 3, 4, 3, 3, 4, 4, 4]);
   assert.match(src, /class="hs-lanes" data-cols="\$\{laneCols\(rows\.length\)\}"/);
   assert.match(src, /<div class="hm-hero\$\{heroCls\}">/);
   const css = fs.readFileSync(path.join(R, 'styles.css'), 'utf8');

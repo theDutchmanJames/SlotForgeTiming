@@ -28,7 +28,8 @@ const homeFocusId = t =>
 const homeFieldId = t => (t && typeof t.id === 'string' && t.id.startsWith('hg-') ? t.id : ''); // (any control of the settings in Customize: the one that keeps the cursor when Home is drawn again)
 // 2.4.0: how many lane cards stand side by side on Home: up to 3 lanes in one row, 4 and more in two rows (2×2, 3×2, 4×2), never more than 4 in a row.
 // (A narrow Start a race card drops to 2 and then 1 column in styles.css.)
-const laneCols = n => (n <= 3 ? Math.max(1, n) : Math.min(4, Math.ceil(n / 2)));
+// (2.4.0) the most lanes on a row: up to 4 lanes all on one row, 5 or 6 in rows of 3, 7 or 8 in rows of 4 (less when the card is narrow: styles.css, Grid Slot)
+const laneCols = n => (n <= 4 ? Math.max(1, n) : n <= 6 ? 3 : 4);
 
 let homeChampAuto = '';
 const homeAvatarCache = new Map(); // (2.4.0: the pictures of drivers in the lanes, by driver id: '' while it is read or when the driver has none) // (2.4.0: the session of a championship that Home loaded by itself last)

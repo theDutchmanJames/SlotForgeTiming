@@ -4001,3 +4001,32 @@ html #hmc-start .hs-lanes:has(>.lane:nth-child(4)) .lane.lane.lane{min-height:10
 @media (max-width:1400px){html #hmc-start:has(>.hs-lanes>.lane:nth-child(2))>.hs-head{clip-path:none;padding-right:26px}html #hmc-start:has(>.hs-lanes>.lane:nth-child(2))>.hm-go{flex-direction:row;flex-wrap:wrap;align-items:center;border-left:0;border-top:1px solid var(--line)}html #hmc-start:has(>.hs-lanes>.lane:nth-child(2))>.hm-go #start{order:2;margin-left:auto}}
 @media (max-width:1650px){html #hmc-start:has(>.hs-lanes>.lane:nth-child(3))>.hs-head{clip-path:none;padding-right:26px}html #hmc-start:has(>.hs-lanes>.lane:nth-child(3))>.hm-go{flex-direction:row;flex-wrap:wrap;align-items:center;border-left:0;border-top:1px solid var(--line)}html #hmc-start:has(>.hs-lanes>.lane:nth-child(3))>.hm-go #start{order:2;margin-left:auto}}
 @media (max-width:1950px){html #hmc-start:has(>.hs-lanes>.lane:nth-child(4))>.hs-head{clip-path:none;padding-right:26px}html #hmc-start:has(>.hs-lanes>.lane:nth-child(4))>.hm-go{flex-direction:row;flex-wrap:wrap;align-items:center;border-left:0;border-top:1px solid var(--line)}html #hmc-start:has(>.hs-lanes>.lane:nth-child(4))>.hm-go #start{order:2;margin-left:auto}}
+/* (Grid Slot) up to 8 lanes in balanced rows. landing.js, laneCols, says the most on a row (up to 4 lanes: all, 5 or 6: 3, 7 or 8: 4);
+   the card itself decides when there is less room, so a lane never gets narrower than about 340px:
+   8 lanes: 4+4, then 3+3+2, then 2+2+2+2; 7: 4+3, then 3+3+1, then 2s; 5 or 6: 3s, then 2s; 4: 4, then 2+2; 3: 3, then 2+1; and 1 a row on a phone. */
+html #hmc-start{container:hm-start/inline-size}
+@container hm-start (max-width:1440px){
+  html #hmc-start .hs-lanes[data-cols="4"]:has(>.lane:nth-child(5)){--hs-cols:3}
+  html #hmc-start .hs-lanes[data-cols="4"]:not(:has(>.lane:nth-child(5))){--hs-cols:2}
+}
+@container hm-start (max-width:1080px){
+  html #hmc-start .hs-lanes:is([data-cols="3"],[data-cols="4"]){--hs-cols:2}
+}
+@container hm-start (max-width:720px){
+  html #hmc-start .hs-lanes[data-cols]{--hs-cols:1}
+}
+/* in a row of 3 or 4 the lanes are a little more compact, so the rows stay low */
+html #hmc-start .hs-lanes:has(>.lane:nth-child(3)) .lane.lane.lane{min-height:104px;padding-top:13px;padding-bottom:12px}
+/* (Grid Slot) the narrower steps win over the wider ones (they are as specific), and an empty place at the end of the last row is the card, not a line */
+@container hm-start (max-width:1080px){
+  html #hmc-start .hs-lanes:is([data-cols="3"],[data-cols="4"]):has(>.lane){--hs-cols:2}
+}
+@container hm-start (max-width:720px){
+  html #hmc-start .hs-lanes[data-cols]:has(>.lane){--hs-cols:1}
+}
+html #hmc-start .hs-lanes[data-cols]{gap:0;background:var(--panel)}
+html #hmc-start .hs-lanes[data-cols]>.lane.lane.lane{box-shadow:0 0 0 .5px var(--line)}
+@container hm-start (max-width:1080px){html #hmc-start .hs-lanes:is([data-cols="3"],[data-cols="4"]):has(>.lane){--hs-cols:2!important}}
+@container hm-start (max-width:720px){html #hmc-start .hs-lanes[data-cols]:has(>.lane){--hs-cols:1!important}}
+/* (Grid Slot) gridslot.js: the lanes on 12 small columns, so a last row that is not full shares its whole width */
+html #hmc-start .hs-lanes.gs-fill[data-cols]{grid-template-columns:repeat(12,minmax(0,1fr))}
