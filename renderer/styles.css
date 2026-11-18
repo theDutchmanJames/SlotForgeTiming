@@ -3937,3 +3937,37 @@ html .sy-launch .sy-lrow b{font-size:13.5px;font-weight:600}
 html .sy-launch .sy-lrow span{font-size:12.5px;color:var(--muted)}
 html .sy-launch .sy-lrow:focus-visible{outline:3px solid #4c9aff;outline-offset:-3px}
 html body .rsform.sy .rshd .rstitle input:is([type=text],:not([type])){font-size:24px!important;font-style:italic!important;font-weight:700!important;text-transform:uppercase!important}
+/* (System Sheet) a long explanation: two lines and More (Less when it is open) */
+html body .rsform.sy .sy-clamp:not(.open){display:-webkit-box!important;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+html body .rsform.sy .sy-clamp.open{display:block!important;-webkit-line-clamp:unset}
+html body .rsform.sy .sy-more{display:inline-block;width:auto;min-height:0;margin:2px 0 0;padding:0;border:0;background:none;box-shadow:none;color:var(--muted);font:400 12px "Segoe UI",system-ui,sans-serif;text-decoration:underline dotted;text-underline-offset:3px;cursor:pointer}
+html body .rsform.sy .sy-more:hover{color:var(--ink)}
+html body .rsform.sy .sy-more:focus-visible{outline:3px solid #4c9aff;outline-offset:2px}
+html body .rsform.sy .sy-words.sy-clamp{margin-bottom:2px!important}
+html body .rsform.sy .sy-words+.sy-more{margin:0 2px 14px}
+html body .rsform.sy .fgrid.sy-sheet>.sy-more{display:block;margin:-6px 16px 10px}
+html body .rsform.sy .fgrid.sy-sheet>.sy-clamp{padding-bottom:6px!important}
+html body .rsform.sy .sy-row>.ss-t>.sy-more{display:block}
+html body .rsform.sy.sy details.rssec>p.sy-words.sy-clamp{margin-bottom:2px!important}
+html body .rsform.sy.sy details.rssec>p.sy-words+.sy-more{margin:0 2px 14px}
+/* (System Sheet) a grid of number tiles (Resource tyre sets): two columns of rows, a hairline between them, the colour as a dot, the stepper on the right */
+html body .rsform.sy .sy-tilelist{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1px!important;margin:10px 0 0;padding:0!important;border:1px solid var(--ss-line,var(--line));border-radius:10px;background:var(--ss-line,var(--line));overflow:hidden}
+html body .rsform.sy .sy-tilelist>.sy-tile{display:flex!important;align-items:center;justify-content:space-between;gap:12px;min-height:52px;margin:0!important;padding:8px 14px 8px 16px!important;border:0!important;border-radius:0!important;background:var(--sy-box,var(--panel))!important;box-shadow:none!important}
+html body .rsform.sy .sy-tile>.sy-tilet{display:grid;grid-template-columns:12px auto;column-gap:10px;align-items:center;min-width:0}
+html body .rsform.sy .sy-tile>.sy-tilet::before{content:'';grid-row:1 / span 2;width:12px;height:12px;border-radius:50%;background:var(--resource-tint,var(--tint,var(--muted)));box-shadow:inset 0 0 0 2px rgba(0,0,0,.25)}
+html body .rsform.sy .sy-tile>.sy-tilet>span{font-size:13.5px;font-weight:600;color:var(--ink)}
+html body .rsform.sy .sy-tile>.sy-tilet>small{grid-column:2;font-size:12px;color:var(--muted)}
+/* tables of settings (Damage levels, the tyre table, the weather table, the sets): the kit's 30px controls and quiet column heads */
+html body .rsform.sy .listfield :is(input:not([type=checkbox]):not([type=radio]):not([type=color]),select){min-height:30px!important;height:30px;padding:0 8px;border-radius:7px;font-size:13px}
+html body .rsform.sy .listfield input[type=number]{font-family:'SF Roboto Mono',Consolas,monospace}
+html body .rsform.sy .listfield :is(.pthead,thead th,th){font:600 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+html body .rsform.sy .listfield .ptrow{gap:8px;padding:4px 0}
+html body .rsform.sy .listfield .ptrow+.ptrow:not(.pthead){border-top:1px solid color-mix(in srgb,var(--ss-line,var(--line)) 60%,transparent)}
+html body .rsform.sy .sy-tilelist>.sy-tile{flex-direction:row!important;text-align:left!important;height:auto!important}
+html body .rsform.sy .sy-tile>.sy-tilet{justify-items:start;text-align:left}
+html body .rsform.sy .sy-tile>.ss-step{flex:none}
+html body .rsform.sy .sy-tilelist{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+html body .rsform.sy.sy .sy-tile .ss-step>input{width:48px!important}
+html body .rsform.sy .sy-tile>.sy-tilet>:is(span,small){white-space:nowrap}
+html body .rsform.sy .sy-tilelist{gap:0!important;background:var(--sy-box,var(--panel))}
+html body .rsform.sy .sy-tilelist>.sy-tile{box-shadow:0 0 0 .5px var(--ss-line,var(--line))!important}

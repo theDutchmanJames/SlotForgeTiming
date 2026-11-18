@@ -195,6 +195,45 @@ const SystemSheet = (() => {
       box.querySelectorAll(':scope > p').forEach(p => p.classList.add('sy-boxwords'));
     });
   }
+  // a grid of tiles that each hold one number (Resource: the sets of every tyre): rows of a sheet, the tyre's colour as a dot, the number as the stepper
+  function tiles(d) {
+    d.querySelectorAll('[class*="grid"]:not(.fgrid):not(.sy-sheet)').forEach(g => {
+      const kids = [...g.children];
+      if (
+        g.dataset.syTiles ||
+        kids.length < 2 ||
+        !kids.every(c => c.matches('label') && c.querySelectorAll('input[type=number]').length === 1)
+      )
+        return;
+      g.dataset.syTiles = '1';
+      g.classList.add('sy-tilelist');
+      kids.forEach(c => {
+        const inp = c.querySelector('input[type=number]');
+        const t = el('span', 'sy-tilet');
+        [...c.childNodes].filter(n => n !== inp && !(n.nodeType === 1 && n.contains(inp))).forEach(n => t.append(n));
+        c.classList.add('sy-tile');
+        c.append(t, typeof SettingsSheet !== 'undefined' ? SettingsSheet.kit(inp) : inp);
+      });
+    });
+  }
+  // a long explanation shows two lines and a More; the whole text stays (for a search and a screen reader), More opens it
+  const LONG = 150;
+  function more(d) {
+    d.querySelectorAll('.sy-words, .sy-boxwords, .fgrid.sy-sheet > p, .fgrid.sy-sheet > .hint, .sy-row > .ss-t > .hint').forEach(p => {
+      if (p.dataset.syMore || p.closest('.rsnote') || txt(p).length < LONG) return;
+      p.dataset.syMore = '1';
+      p.classList.add('sy-clamp');
+      const b = el('button', 'sy-more', 'More');
+      b.type = 'button';
+      b.setAttribute('aria-expanded', 'false');
+      b.onclick = () => {
+        const open = p.classList.toggle('open');
+        b.textContent = open ? 'Less' : 'More';
+        b.setAttribute('aria-expanded', String(open));
+      };
+      p.after(b);
+    });
+  }
   // ---- the sections: open, one under the other ----
   function sections(form) {
     form.querySelectorAll('details.rssec').forEach(d => {
@@ -211,6 +250,8 @@ const SystemSheet = (() => {
       });
       d.querySelectorAll('.fgrid').forEach(sheet);
       loose(d);
+      tiles(d);
+      more(d);
     });
   }
 

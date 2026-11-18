@@ -3,7 +3,7 @@
 function fieldHtml(f, v, extra) {
   if (f.ui && FormUI.has(f.ui))
     return FormUI.field(f, v, {
-      label: f.ask || fl(f),
+      label: f.ask || ffl(f),
       hint: fh(f),
       icon: n => Icons.svg(n, { size: 18, stroke: 1.8 }),
       picker: SetupWords.PICKER,
@@ -22,9 +22,9 @@ function fieldHtml(f, v, extra) {
           : f.type === 'wxhinder'
             ? `<div id="wx-hinder-map">${wxHinderMap((extra && extra.value) || (() => ''), extra && extra.wxhFocus)}</div>`
             : wxCondTable((extra && extra.value) || (() => ''), (extra && extra.words) || { temp: '°C', speed: 'km/h' });
-    return `<div class="field full fu wxfield" data-key="${f.id}"><span class="fu-q">${esc(fl(f))}${BAR_TYPES.includes(f.type) && fh(f) ? `<small class="muted">${esc(fh(f))}</small>` : ''}</span>${body}</div>`;
+    return `<div class="field full fu wxfield" data-key="${f.id}"><span class="fu-q">${esc(ffl(f))}${BAR_TYPES.includes(f.type) && fh(f) ? `<small class="muted">${esc(fh(f))}</small>` : ''}</span>${body}</div>`;
   }
-  const lab = `<label for="${id}">${f.icon ? `<span class="field-label-icon" aria-hidden="true">${Icons.svg(f.icon, { size: 16, stroke: 1.8 })}</span>` : ''}${esc(fl(f))}${f.optional ? ' <span class="muted">(optional)</span>' : ''}</label>`;
+  const lab = `<label for="${id}">${f.icon ? `<span class="field-label-icon" aria-hidden="true">${Icons.svg(f.icon, { size: 16, stroke: 1.8 })}</span>` : ''}${esc(ffl(f))}${f.optional ? ' <span class="muted">(optional)</span>' : ''}</label>`;
   let inp;
   switch (f.type) {
     case 'longtext':

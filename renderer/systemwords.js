@@ -1166,6 +1166,17 @@
       `${C.target > 0 ? `laps slower than ${SC.secText(C.target)}${C.points > 0 ? ` (${ppts(C.points)} for a faster lap)` : ''}` : 'no limit on the lap time'}, ${C.pit > 0 ? `pit work ${C.pit}% shorter` : 'pit work as usual'}${track && text(track.name).trim() ? `; reference ${text(track.name).trim()}` : ''}`,
       !named ? 'todo' : changed(['target', 'points', 'pitPercent']) ? 'ok' : 'plain'
     );
+    // (2.4.0) the penalty points and the pit work are sections of their own
+    out.scpoints = entry(
+      C.target > 0 && C.points > 0 ? `${pts(C.points)} a faster lap` : 'None',
+      C.target > 0 && C.points > 0 ? `${ppts(C.points)} for every lap faster than the target` : 'no penalty points for a fast lap',
+      changed(['points']) ? 'ok' : 'plain'
+    );
+    out.scpit = entry(
+      C.pit > 0 ? `${C.pit}% shorter` : 'As usual',
+      C.pit > 0 ? `the work in the pits is ${C.pit}% shorter behind the Safety Car` : 'the work in the pits takes as long as usual',
+      changed(['pitPercent']) ? 'ok' : 'plain'
+    );
     if (!rn) out.flags = entry('Off', 'random yellow flags are off', 'plain');
     else if (rn.chance <= 0 || flagsNone(rn))
       out.flags = entry(

@@ -1140,6 +1140,12 @@ opens as a window over the page (`.sy-pop` and a `.sy-backdrop`), like the Datab
 Tokens are the page itself: the page shows a card with what is set now (one row per section, `.sy-launch`), and **Open settings** (or
 a row) opens the editor as the same window; **Done** or Escape closes it. Words that sit straight inside a sheet get the padding and line of a row.
 
+**More (2.4.0):** a long explanation in an editor (150 characters or more) shows two lines and a **More** (`.sy-clamp`, `.sy-more`).
+**Safety Car** has four sections: Target pace, Penalty points, Pit work and Random flags. **Form labels:** a field can have a shorter label for the form
+only (`formLabel` in schema.js, `Name · one short line`, read by `ffl()` in database/basics.js); lists, cards and columns keep `label`.
+**Number tiles** (Resource tyre sets) are rows in two columns with the colour as a dot and the stepper (`.sy-tilelist`); **tables** of settings
+(Damage levels, tyre and weather tables, sets) have the 30px controls and quiet column heads.
+
 Code: `renderer/systemsheet.js` (`SystemSheet`). It changes the real page only, after the frame is drawn (a watcher on the page finds every
 new `.rsform`): ids, `data-key` and handlers stay, so the forms' code and the tests that read their markup are unchanged.
 
@@ -1248,3 +1254,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Page Note | Also in the System Sheet editors and on the sections of App Settings |
 | 2026-11 | System Sheet | Darker sheets and boxes; the page editors open as a window; Fuel, Penalty, Damage, Weather and Push & Save regrouped and reworded |
 | 2026-11 | System Sheet | Balance of Power and Time Tokens: a card on the page, the editor as a window; padding for words inside a sheet |
+| 2026-11 | System Sheet | Safety Car in four sections; More for long explanations; form labels; Resource tyre sets as rows; tables with the 30px kit |

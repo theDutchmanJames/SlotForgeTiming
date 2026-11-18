@@ -111,6 +111,8 @@ async function drawSub() {
 const dUnit = () => Speed.distUnitOf(state.settings);
 const fl = f => (f.labelFt && dUnit() === 'ft' ? f.labelFt : f.label),
   fh = f => (f.hintFt && dUnit() === 'ft' ? f.hintFt : f.hint);
+// (2.4.0) the label in the form itself: a field can have a shorter one for the form (formLabel, 'Name · one short line'); lists, cards and columns keep the label
+const ffl = f => (f.labelFt && dUnit() === 'ft' ? f.labelFt : f.formLabel || f.label);
 // the text of the value of a field with a unit as it is shown and typed in feet or inches; null when the field is shown as it is kept
 function typedText(f, v) {
   if (!f.unit || dUnit() !== 'ft') return null;
