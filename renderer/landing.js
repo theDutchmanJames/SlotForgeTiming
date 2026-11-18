@@ -26,6 +26,10 @@ let HOME_SOFT_MS = 400;
 const homeFocusId = t =>
   t && t.dataset && t.dataset.hopt && (t.type === 'text' || t.type === 'number' || t.type === 'textarea') ? t.id : ''; // (such a field of Customize: its id, else '')
 const homeFieldId = t => (t && typeof t.id === 'string' && t.id.startsWith('hg-') ? t.id : ''); // (any control of the settings in Customize: the one that keeps the cursor when Home is drawn again)
+// 2.4.0: how many lane cards stand side by side on Home: up to 3 lanes in one row, 4 and more in two rows (2×2, 3×2, 4×2), never more than 4 in a row.
+// (A narrow Start a race card drops to 2 and then 1 column in styles.css.)
+const laneCols = n => (n <= 3 ? Math.max(1, n) : Math.min(4, Math.ceil(n / 2)));
+
 function homeSoftDraw() {
   // (the moment after a change in such a field)
   const c = state.homeCustom;
@@ -810,11 +814,17 @@ async function renderHome() {
       .join('');
   const ae = hc.open && typeof document !== 'undefined' ? document.activeElement : null,
     keep = homeFieldId(ae) ? { id: ae.id, type: ae.type, start: ae.selectionStart, end: ae.selectionEnd } : null; // (the field of Customize that has the cursor now, and what is selected in it)
+  // 2.4.0: the header picture and the welcome band are one title card, as on a race broadcast: the words sit on the picture (hm-hero.has-pic), or on a drawn
+  // backdrop when there is no picture. The cards below rise into it when nothing stands between them (styles.css).
+  const headerHtml = homeHeaderHtml(state.settings),
+    heroCls = headerHtml
+      ? ` has-pic${typeof Banner !== 'undefined' && Banner.logoOn(state.settings) && Banner.logoSide(state.settings) === 'left' ? ' logo-left' : ''}`
+      : '';
   view.innerHTML =
-    `${homeHeaderHtml(state.settings)}
+    `<div class="hm-hero${heroCls}">${headerHtml}
     <div class="hm-band"><div class="hm-flag" aria-hidden="true"></div><button type="button" class="btn hm-customize-btn" id="hmcustom" aria-expanded="${hc.open}" aria-controls="hm-customize" title="Choose the cards of Home and where they sit">Customize</button><h2>${esc(welcomeOf())}</h2>
       <p class="hm-sub">${esc(today)}${track ? ' · ' + esc(track.name) : ''}</p>
-      <div class="hm-chips" id="hm-chips">${chipsNow().map(chipHtml).join('')}</div></div>
+      <div class="hm-chips" id="hm-chips">${chipsNow().map(chipHtml).join('')}</div></div></div>
     ${customHtml()}
     ${resumeHtml}
     <div id="hm-update" hidden></div>
@@ -838,7 +848,7 @@ async function renderHome() {
           : ''
       }
       ${rotHtml}
-      ${track && lanes ? `<div class="hs-sub"><span class="hs-label hs-muted">${heats ? (byTeam ? 'Teams' : 'Participants') : 'Lanes'}</span><span class="muted">${esc(laneSub)}</span></div><div class="hs-lanes">${rows.map(rowHtml).join('')}</div>` : ''}
+      ${track && lanes ? `<div class="hs-sub"><span class="hs-label hs-muted">${heats ? (byTeam ? 'Teams' : 'Participants') : 'Lanes'}</span><span class="muted">${esc(laneSub)}</span></div><div class="hs-lanes" data-cols="${laneCols(rows.length)}">${rows.map(rowHtml).join('')}</div>` : ''}
       ${heats && track && !rot ? `<button class="btn" id="addrow">${byTeam ? 'Add team' : 'Add participant'}</button>` : ''}
       ${mcHtml}${heatPlanHtml}
       ${tokens ? '<p class="hint2">A Time Token Session starts with every lane switched off. You add paid time to a lane on the race screen, and can change the driver there too. Here you can already put a driver and a car on a lane.</p>' : ''}

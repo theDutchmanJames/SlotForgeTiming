@@ -2463,3 +2463,79 @@ dialog.ss-choose{width:min(620px,94vw)}
    for less motion gets it (the race itself does not depend on any animation) */
 :where(button,summary,a[href],[tabindex]:not([tabindex="-1"]),[role="button"],[role="tab"],[role="option"]):focus-visible{outline:3px solid #4c9aff;outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+/* 2.4.0 Broadcast Home: the header picture and the welcome band are one title card, the cards rise into it, Start a race reads like a race broadcast graphic,
+   and the lanes are driver cards that stand side by side (1 to 3 lanes) or in two rows (4 to 8 lanes). Colours stay the theme's: one accent, the lane colours. */
+.hm-hero{--hm-cond:'SF Barlow Condensed','Bahnschrift',sans-serif;position:relative;display:grid;grid-template:minmax(0,1fr)/minmax(0,1fr);margin:0 0 16px;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:radial-gradient(70% 120% at 0% 100%,color-mix(in srgb,var(--accent) 26%,transparent),transparent 70%),linear-gradient(115deg,color-mix(in srgb,var(--accent) 12%,var(--panel)) 0%,var(--panel) 55%,color-mix(in srgb,var(--bg) 60%,var(--panel)) 100%)}
+.hm-hero>*{grid-area:1/1}
+.hm-hero>.homehead{margin:0;height:100%;min-height:0}
+.hm-hero>.homehead>.homebanner{height:100%;max-height:none;min-height:100%;margin:0;border-radius:0}
+.hm-hero>.homehead:not(.withlogo){display:flex}
+.hm-hero>.hm-band{align-self:end;margin:0;border:0;border-radius:0;background:none;padding:34px 30px 26px;min-height:190px;display:flex;flex-direction:column;justify-content:flex-end}
+.hm-hero>.hm-band h2{font:italic 700 clamp(34px,3.6vw,54px)/.95 var(--hm-cond);text-transform:uppercase;letter-spacing:.005em;margin:0 0 10px;padding-right:130px;max-width:34ch;text-wrap:balance}
+.hm-hero .hm-sub{display:flex;align-items:center;gap:10px;order:-1;margin:0 0 10px;font-size:14px}
+.hm-hero .hm-sub::before{content:'';width:24px;height:2px;background:var(--accent);flex:none}
+.hm-hero .hm-chips{margin-top:6px}
+.hm-hero .hm-chip{backdrop-filter:blur(6px)}
+.hm-hero:not(.has-pic)::after{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(115deg,transparent 0 54px,color-mix(in srgb,var(--ink) 3%,transparent) 54px 55px)}
+/* on a picture the words are light on a dark shade, whatever the theme */
+.hm-hero.has-pic{background:#0b0d10}
+.hm-hero.has-pic>.hm-band{--ink:#f4f2ee;--muted:rgba(244,242,238,.8);--line:rgba(255,255,255,.18);color:var(--ink);position:relative;z-index:1;align-self:stretch;background:linear-gradient(90deg,rgba(8,10,13,.9) 0%,rgba(8,10,13,.55) 42%,rgba(8,10,13,0) 72%),linear-gradient(0deg,rgba(8,10,13,.7) 0%,rgba(8,10,13,0) 60%)}
+.hm-hero.has-pic .hm-chip{background:rgba(8,10,13,.45);color:var(--ink)}
+.hm-hero.has-pic .hm-flag{display:none}
+.hm-hero.logo-left>.hm-band{align-items:flex-end;text-align:right;background:linear-gradient(270deg,rgba(8,10,13,.9) 0%,rgba(8,10,13,.55) 42%,rgba(8,10,13,0) 72%),linear-gradient(0deg,rgba(8,10,13,.7) 0%,rgba(8,10,13,0) 60%)}
+.hm-hero.logo-left>.hm-band h2{padding-right:0}
+.hm-hero.logo-left .hm-customize-btn{right:auto;left:16px}
+.hm-hero .hm-customize-btn{z-index:2}
+.hm-hero.has-pic .hm-customize-btn{background:rgba(8,10,13,.5);border-color:rgba(255,255,255,.22);color:#f4f2ee;backdrop-filter:blur(6px)}
+/* the cards rise into the title card when nothing stands between them */
+.hm-hero:has(+#hm-update[hidden]+#hm-detect[hidden]+.hm-grid)>.hm-band{padding-bottom:62px}
+.hm-hero+#hm-update[hidden]+#hm-detect[hidden]+.hm-grid{margin-top:-52px;position:relative;z-index:1}
+.hm-grid>.card,.hm-grid>.hm-cell>.card{box-shadow:0 14px 40px rgba(0,0,0,.28)}
+/* Start a race */
+#hmc-start{--hm-cond:'SF Barlow Condensed','Bahnschrift',sans-serif;border:1px solid var(--line);border-radius:14px;padding:0 0 18px;gap:16px;overflow:clip}
+#hmc-start>:not(.hs-head){margin-inline:20px}
+#hmc-start>.hs-head{position:relative;padding:18px 22px 16px;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 16%,var(--panel)),var(--panel) 70%);border-bottom:1px solid var(--line)}
+#hmc-start>.hs-head::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent)}
+#hmc-start .hs-tile{display:none}
+#hmc-start .hs-label{color:var(--muted);font-size:11px;letter-spacing:.14em}
+#hmc-start .hs-title select{font:italic 700 clamp(26px,2.4vw,36px)/1.05 var(--hm-cond);text-transform:uppercase;letter-spacing:.01em;border-bottom-color:transparent;padding-right:34px}
+#hmc-start .hs-title:hover select{border-bottom-color:var(--muted)}
+#hmc-start .hs-sub{margin-bottom:-6px}
+#hmc-start .hs-sub .hs-label{font-size:11px}
+/* the lanes: driver cards */
+#hmc-start .hs-lanes{display:grid;grid-template-columns:repeat(var(--hs-cols,1),minmax(0,1fr));gap:10px}
+#hmc-start .hs-lanes[data-cols="2"]{--hs-cols:2}
+#hmc-start .hs-lanes[data-cols="3"]{--hs-cols:3}
+#hmc-start .hs-lanes[data-cols="4"]{--hs-cols:4}
+@container (max-width:820px){#hmc-start .hs-lanes:is([data-cols="3"],[data-cols="4"]){--hs-cols:2}}
+@container (max-width:480px){#hmc-start .hs-lanes{--hs-cols:1}}
+#hmc-start .hs-lanes .lane{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"n f t" "m m m" "w w w";column-gap:14px;row-gap:0;align-items:center;align-content:start;min-width:0;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+#hmc-start .hs-lanes .lane.need{border-color:color-mix(in srgb,var(--hs-warn) 60%,var(--line));background:color-mix(in srgb,var(--hs-warn) 6%,var(--bg))}
+#hmc-start .hs-lanes .lane.away{opacity:.55}
+#hmc-start .hs-num{width:52px;height:52px;border-radius:10px;font:italic 700 32px/1 var(--hm-cond);box-shadow:none;align-self:center}
+#hmc-start .hs-fields{display:flex;flex-direction:column;gap:2px;min-width:0}
+#hmc-start .hs-fields .hs-sico{display:none}
+#hmc-start .hs-fields .hs-sel select{background:transparent;border:0;border-bottom:1px dashed transparent;border-radius:0;padding:1px 24px 1px 0;color:var(--muted);font-size:13.5px}
+#hmc-start .hs-fields .hs-sel:first-child select{color:var(--ink);font:700 22px/1.15 var(--hm-cond);text-transform:uppercase;letter-spacing:.02em}
+#hmc-start .hs-fields .hs-sel:hover select{border-bottom-color:var(--muted)}
+#hmc-start .hs-fields .hs-chev{right:2px}
+#hmc-start .hs-fields>.hs-sel{align-self:flex-start;max-width:100%}
+#hmc-start .hs-fields>.hs-sel>select{width:auto;max-width:100%}
+#hmc-start .hs-fields .hs-class{margin-top:4px}
+#hmc-start .hs-more{grid-area:m;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);gap:8px}
+#hmc-start .hs-more .btn{padding:4px 10px;font-size:12.5px}
+#hmc-start .hs-tick{align-self:start}
+#hmc-start .hs-note{grid-area:w;margin-top:8px}
+#hmc-start .hs-lanes:has(>.lane:nth-child(4)) .lane{column-gap:11px;padding:11px 12px}
+#hmc-start .hs-lanes:has(>.lane:nth-child(4)) .hs-num{width:40px;height:40px;font-size:25px;border-radius:8px}
+#hmc-start .hs-lanes:has(>.lane:nth-child(4)) .hs-fields .hs-sel:first-child select{font-size:19px}
+#hmc-start .hs-lanes:has(>.lane:nth-child(4)) .hs-fields .hs-sel select{font-size:12.5px}
+/* the start line */
+#hmc-start>.hm-go{padding-top:16px}
+#hmc-start #start{font:italic 700 24px/1 var(--hm-cond);text-transform:uppercase;letter-spacing:.04em;padding:14px 30px 14px 24px;border-radius:12px}
+/* the other cards: broadcast headings, and the record with an accent edge */
+.hm-grid .card>h3{font:italic 700 19px/1.15 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.03em}
+.hm-grid .card>h3 .hm-tag{font:500 12px/1.4 "Segoe UI",system-ui,sans-serif;text-transform:none;letter-spacing:0}
+.hm-grid .hm-rec{border-left:4px solid var(--accent)}
+.hm-grid .hm-rec .hm-time{font-family:'SF Roboto Mono',Consolas,monospace;font-weight:600;color:var(--ink);letter-spacing:-.03em}
+[data-theme="light"] .hm-grid>.card,[data-theme="light"] .hm-grid>.hm-cell>.card,[data-theme="ocean"] .hm-grid>.card,[data-theme="ocean"] .hm-grid>.hm-cell>.card,[data-tone="light"] .hm-grid>.card,[data-tone="light"] .hm-grid>.hm-cell>.card{box-shadow:0 10px 28px rgba(20,24,30,.1)}

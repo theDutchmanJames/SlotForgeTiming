@@ -195,3 +195,16 @@ test('hidden Race Setup systems leave the strip and the race setup form, unless 
     if (/System|Rules|safetyCar|tyreWear|weather|pushSave|bop|multiClass/.test(m[1])) assert(schemaKeys.includes(m[1]), m[1]);
   assert(db.includes('hide.includes(fields[i].key) && !has(fields[i].key)'));
 });
+
+// 2.4.0 Broadcast Home: the lane cards of Start a race stand side by side for 1 to 3 lanes and in two rows from 4 lanes on, at most 4 in a row.
+test('Home lays out 1 to 8 lanes in one row or two', () => {
+  const src = fs.readFileSync(path.join(R, 'landing.js'), 'utf8'),
+    line = src.match(/^const laneCols = .*$/m);
+  assert(line, 'landing.js has laneCols');
+  const laneCols = new Function(line[0] + '; return laneCols;')();
+  assert.deepEqual([1, 2, 3, 4, 5, 6, 7, 8, 12].map(laneCols), [1, 2, 3, 2, 3, 3, 4, 4, 4]);
+  assert.match(src, /class="hs-lanes" data-cols="\$\{laneCols\(rows\.length\)\}"/);
+  assert.match(src, /<div class="hm-hero\$\{heroCls\}">/);
+  const css = fs.readFileSync(path.join(R, 'styles.css'), 'utf8');
+  for (const n of [2, 3, 4]) assert(css.includes(`#hmc-start .hs-lanes[data-cols="${n}"]{--hs-cols:${n}}`), `${n} columns`);
+});
