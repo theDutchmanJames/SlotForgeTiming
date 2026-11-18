@@ -93,7 +93,7 @@ const LiveView = (() => {
       const eng = V.engine(),
         now = V.clock(performance.now()),
         top = eng.standings()[0],
-        len = (st.setup && (st.setup.raceBy || 'laps') === 'laps' && Number(st.setup.laps) > 0 && Number(st.setup.laps)) || 0;
+        len = Number(eng.lapLimit) > 0 ? Number(eng.lapLimit) : 0; // (the engine's own, as on the race screen)
       facts =
         `<span class="lv-airfact"><small>Clock</small><b class="mono">${mmss(eng.elapsed(now))}</b></span>` +
         (top && top.car

@@ -708,6 +708,10 @@
           if (c.enSwapDoneAt !== undefined) c.enSwapDoneAt += d;
         }
         if (c.pit) c.pit.start += d;
+        // (2.4.0) a penalty waiting now was given before this crossing can come: after a restore its time is on the clock of the old app session
+        (c.pending || []).forEach(p => {
+          if (p) p.beforeResume = true;
+        });
       });
       R.status = 'running';
       if (R.flag === 'red') {
@@ -789,7 +793,7 @@
           R.yellowAt = null;
         } else {
           R.flag = 'yellow';
-          R.yellowAt = t;
+          R.yellowAt = R.status === 'paused' ? R.pausedAt : t; // (2.4.0: raised in a pause it starts when the race does; the resume moves it with the clock)
         }
       }
       if (R.flag !== was) log('raceflag', -1, t, { flag: R.flag, by: 'director' });
@@ -802,7 +806,7 @@
       if (R.flag === '') {
         R.cars.forEach(c => tempUpdate(c, t));
         R.flag = 'yellow';
-        R.yellowAt = t;
+        R.yellowAt = R.status === 'paused' ? R.pausedAt : t;
         log('raceflag', -1, t, { flag: 'yellow', by: 'call' });
         scEdge(t);
       }
@@ -981,7 +985,7 @@
         c.done = true;
         /* (audit 2.2.5: the time of the crossing decides, not whether the timer has already noticed time-up) */ c.place = ++R.finished;
         c.pending.forEach(p => {
-          if ((p.since ?? p.at) >= t) p.afterFinish = true;
+          if (!p.beforeResume && (p.since ?? p.at) >= t) p.afterFinish = true; // (one that was there before a resume was given before this crossing, whatever clock it was timed on)
         });
       } // (a penalty stop given on the finishing lap can no longer be served) // a car disqualified on this lap (fuel points) has not finished
       if (DM) {
@@ -1136,7 +1140,9 @@
           if (c.fuel >= F.perLap * (1 - (F.saving || 0)) * fx(c).use - 1e-9) c.outOfFuel = false;
         }
         if (fuelWork) fuelNotice(i, t); // A sensor exit can refill between two timer ticks.
-        c.lastPit = { at: c.blockAt, duration: t - c.blockAt, refuelled: Math.round(got * 1000) / 1000 };
+        // (2.4.0) a car lifted off the sensor during a pause: its stop ended when the race stopped, the pause is not pit time
+        const end = R.status === 'paused' && Number.isFinite(R.pausedAt) ? Math.max(c.blockAt, Math.min(t, R.pausedAt)) : t;
+        c.lastPit = { at: c.blockAt, duration: end - c.blockAt, refuelled: Math.round(got * 1000) / 1000 };
         c.pits.push(c.lastPit);
         c.outlap = true;
         log('pitend', i, t, { duration: c.lastPit.duration, refuelled: c.lastPit.refuelled });
@@ -2503,7 +2509,7 @@
     };
     // The adjustment of one car: how much race time (ms), how many laps and how many championship points are added (a positive number) or taken off (a negative one). It stacks with what was adjusted before.
     // The time cannot go below zero and the laps cannot go below none (a lap that was never driven has no lap time, so only the count changes). Returns true when something changed.
-    R.adjust = (i, a) => {
+    R.adjust = (i, a, t) => {
       const c = R.cars[i];
       if (!c || !a) return false;
       const num = v => {
@@ -2519,7 +2525,7 @@
       c.adjPoints = Math.round((was[2] + pts) * 100) / 100;
       const now = [c.adjMs, c.adjLaps, c.adjPoints];
       if (now.every((v, k) => v === was[k])) return false;
-      log('adjusted', i, R.endAt, { ms: now[0] - was[0], laps: now[1] - was[1], points: now[2] - was[2] });
+      log('adjusted', i, Number.isFinite(t) ? t : R.endAt, { ms: now[0] - was[0], laps: now[1] - was[1], points: now[2] - was[2] }); // (2.4.0: during the race at the moment it was given; in the review at the end)
       return true;
     };
     R.adjustReset = i => {
@@ -2927,6 +2933,7 @@
           const a = R.cars[x],
             b = R.cars[y];
           if (a.retired !== b.retired) return a.retired ? 1 : -1; // retired cars rank behind the rest
+          if (!!a.dq !== !!b.dq) return a.dq ? 1 : -1; // (2.4.0: a disqualified car ranks behind a car that only retired, so it takes no heat points from it)
           if (LS) {
             const ra = reached(a),
               rb = reached(b);

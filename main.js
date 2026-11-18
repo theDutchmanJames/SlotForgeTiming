@@ -216,7 +216,10 @@ async function createWindow() {
     pick = callback;
     win.webContents.send('hw:choose', kind, list);
   };
-  win.webContents.session.setPermissionCheckHandler(() => true);
+  // (2.4.0) only what the app uses: COM ports and HID devices, the clipboard and full screen; no camera, microphone, location or notifications
+  const ALLOWED = new Set(['serial', 'hid', 'clipboard-sanitized-write', 'clipboard-read', 'fullscreen']);
+  win.webContents.session.setPermissionCheckHandler((_wc, permission) => ALLOWED.has(permission));
+  win.webContents.session.setPermissionRequestHandler((_wc, permission, callback) => callback(ALLOWED.has(permission)));
   win.webContents.session.setDevicePermissionHandler(d => d.deviceType === 'serial' || d.deviceType === 'hid');
   win.webContents.session.on('select-serial-port', (event, list, _wc, callback) => {
     event.preventDefault();

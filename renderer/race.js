@@ -1288,13 +1288,12 @@ async function renderRace() {
     if (!live.sender) live.sender = LiveShare.sender();
     // (2.4.0) the race strip of the main menu: the name, the lap, the clock and the leader, while another page is shown
     try {
-      const top = eng.standings()[0],
-        len = lenNow();
+      const top = eng.standings()[0];
       live.strip = {
         name: setup.name || '',
         phase: live.phase,
         elapsed: eng.elapsed(t),
-        laps: (setup.raceBy || 'laps') === 'laps' && Number(len.laps) > 0 ? Number(len.laps) : 0, // (a setup keeps both a lap count and a time: raceBy says which one counts)
+        laps: Number(eng.lapLimit) > 0 ? Number(eng.lapLimit) : 0, // (the engine's own: a race by time, a timed Endurance race or heats by time have none)
         heat: heat ? lc(heat.raceName(heat.idx)) : '',
         leader:
           top && top.car
@@ -3362,7 +3361,8 @@ async function renderRace() {
         if (
           !eng.adjust(
             i,
-            group === 'time' ? { ms: Math.round(amount * 1000) } : group === 'laps' ? { laps: Math.round(amount) } : { points: amount }
+            group === 'time' ? { ms: Math.round(amount * 1000) } : group === 'laps' ? { laps: Math.round(amount) } : { points: amount },
+            now()
           )
         )
           return false;
@@ -3508,7 +3508,8 @@ async function renderRace() {
       onHeld: dsHeld,
       onNotice: dsNotice
     });
-  if (hwUse === 'arduino' && typeof ArduinoRace !== 'undefined' && ArduinoBox.link.connected) {
+  // (2.4.0) bound also when the box connects later (auto-connect still busy, or plugged in after Start anyway): its first answer sets it up
+  if (hwUse === 'arduino' && typeof ArduinoRace !== 'undefined') {
     live.box = ArduinoRace.bind({
       link: ArduinoBox.link,
       cars: () => eng.cars,

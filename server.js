@@ -339,6 +339,15 @@ function createServer(o) {
     }
     return r;
   };
+  // (2.4.0) the lock for all devices does not shut out this computer or a device that already logged in: twenty wrong guesses from
+  // somewhere on the wifi must not keep the Race Director out for the whole race (each device still has its own lock)
+  const trusted = new Set(),
+    trust = addr => {
+      trusted.delete(addr);
+      if (trusted.size >= 64) trusted.delete(trusted.values().next().value);
+      trusted.add(addr);
+    },
+    allUntil = addr => (loopback(addr) || trusted.has(addr) ? 0 : AUTH.all.until);
   const MAX_PER_ADDR = o.maxPerAddress ?? 8;
   const send = (res, code, body, type = 'application/json') => {
     res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-store' });
@@ -458,7 +467,7 @@ function createServer(o) {
           addr = String(req.socket.remoteAddress || ''),
           mine = recOf(addr);
         if (!pw) return send(res, 403, { error: 'nopassword' });
-        const wait = Math.max(mine.until, AUTH.all.until) - Date.now();
+        const wait = Math.max(mine.until, allUntil(addr)) - Date.now();
         if (wait > 0) {
           res.setHeader('Retry-After', String(Math.ceil(wait / 1000)));
           return send(res, 429, { error: `Too many wrong tries. Try again in ${Math.ceil(wait / 1000)} s.` });
@@ -473,6 +482,7 @@ function createServer(o) {
           return send(res, 401, { error: 'pair' });
         }
         pairs.delete(code); // (once)
+        trust(addr);
         return send(res, 200, { token: issueToken(pw) });
       }
       if (req.method === 'POST' && p === '/api/auth') {
@@ -483,7 +493,7 @@ function createServer(o) {
           mine = recOf(addr);
         if (!pw) return send(res, 403, { error: 'nopassword' });
         const locked = () => {
-          const wait = Math.max(mine.until, AUTH.all.until) - Date.now();
+          const wait = Math.max(mine.until, allUntil(addr)) - Date.now();
           if (wait <= 0) return false;
           res.setHeader('Retry-After', String(Math.ceil(wait / 1000)));
           send(res, 429, { error: `Too many wrong passwords. Try again in ${Math.ceil(wait / 1000)} s.` });
@@ -509,6 +519,7 @@ function createServer(o) {
           mine.until = 0;
           AUTH.all.n = 0;
           AUTH.all.until = 0;
+          trust(addr);
           return send(res, 200, { token: issueToken(pw) });
         });
         AUTH.chain = turn.catch(() => {}).finally(() => AUTH.waiting--);
@@ -550,7 +561,10 @@ function createServer(o) {
       }
       send(res, 405, { error: 'no' });
     } catch (e) {
-      send(res, 400, { error: String(e.message || e) });
+      // (2.4.0) a phone gets the known request errors only; anything else (a storage or file error, with paths of this computer) stays here
+      const known = e instanceof SyntaxError ? 'bad JSON' : ['too big', 'Request interrupted.'].includes(e && e.message) ? e.message : '';
+      if (!known) console.error('[server]', e);
+      send(res, 400, { error: known || 'bad request' });
     }
   }
 

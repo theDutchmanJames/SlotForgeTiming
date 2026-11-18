@@ -264,6 +264,8 @@
       S.lights = 'S';
       S.away = false;
       S.buffered = [];
+      S.mainPower = false; // (like the firmware: it starts with the track power off and every lane powered)
+      S.lanePower = Array(8).fill(true);
     }; // (a brown-out: back in Trackmate mode, settings from EEPROM)
     S.crossNow = lane => {
       const c = cars.find(x => x.lane === lane);

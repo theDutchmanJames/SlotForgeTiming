@@ -39,6 +39,7 @@
     let lastLights = null,
       lastCount = -1,
       lanePowerOff = new Set(),
+      autoOff = new Set(), // (the lanes cut because their car retired or was disqualified: a car that is reinstated gets its power back)
       keep = null;
     const sync = () => {
       const phase = o.phase(),
@@ -58,11 +59,18 @@
       lastCount = phase === 'countdown' ? lights | 0 : -1;
       if (setup.boxLanePower === 'retired')
         (o.cars() || []).forEach(c => {
-          if (c && (c.retired || c.dq) && !lanePowerOff.has(c.lane)) {
+          if (!c) return;
+          if ((c.retired || c.dq) && !lanePowerOff.has(c.lane)) {
             lanePowerOff.add(c.lane);
+            autoOff.add(c.lane);
             L.send(C.lanePower(c.lane, false));
             sent = true;
-          }
+          } else if (!c.retired && !c.dq && autoOff.has(c.lane)) {
+            autoOff.delete(c.lane);
+            lanePowerOff.delete(c.lane);
+            L.send(C.lanePower(c.lane, true));
+            sent = true;
+          } // (2.4.0: reinstated by the Race Director)
         });
       return sent;
     };
@@ -96,6 +104,14 @@
         lastLights = null;
         sync();
       } // the box is back from its safe state (it cut the track power when it lost us): tell it the lights and the track power again
+      else if (e.type === 'version') {
+        // (2.4.0) the box started again (a brown-out): it woke with the track power off and every lane powered, so it is told everything again
+        L.send(C.mainPower(wantPower));
+        L.setPower(wantPower);
+        lanePowerOff.forEach(lane => L.send(C.lanePower(lane, false)));
+        lastLights = null;
+        sync();
+      }
     });
     // the keep-alive: every second while bound (the page sends one too while its tab is open; two are harmless)
     // (2.2.5) When this window stood still (a dialog, a busy moment) the keep-alives were not sent: a safe state that follows is ours, not the connection's
@@ -123,6 +139,7 @@
       },
       lanePower: (lane, on) => {
         L.send(C.lanePower(lane, !!on));
+        autoOff.delete(lane); // (the Race Director decides this lane now)
         if (on) lanePowerOff.delete(lane);
         else lanePowerOff.add(lane);
       },
@@ -136,6 +153,7 @@
         L.send(C.lights('S'));
         lanePowerOff.forEach(lane => L.send(C.lanePower(lane, true)));
         lanePowerOff.clear();
+        autoOff.clear();
       },
       lightsFor: () => lightsFor(o.phase(), o.lights ? o.lights() : 0, o.flag())
     };

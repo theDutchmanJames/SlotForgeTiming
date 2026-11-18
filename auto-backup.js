@@ -9,7 +9,7 @@ const fs = require('node:fs'),
   path = require('node:path');
 
 const PREFIX = 'SlotForge-Timing-auto-',
-  OWN = /^SlotForge-Timing-auto-\d{4}-\d{2}-\d{2}-\d{6}(\.json|\.slotforge-backup)$/,
+  OWN = /^SlotForge-Timing-auto-\d{4}-\d{2}-\d{2}-\d{6}(-\d{1,3})?(\.json|\.slotforge-backup)$/, // (-2, -3…: a second backup in the same second)
   DAY = 24 * 3600 * 1000,
   SLACK = 3600 * 1000; // (a backup made at 20:05 yesterday is due again at 19:05 today: club nights do not start at the same minute)
 
@@ -38,6 +38,18 @@ function nameOf(date, folderKind) {
     (folderKind ? '.slotforge-backup' : '.json')
   );
 }
+// a name that is not taken yet, so a failed run can remove what it made without touching an earlier backup of the same second
+function freeName(folder, name) {
+  const ext = name.endsWith('.slotforge-backup') ? '.slotforge-backup' : '.json',
+    base = name.slice(0, -ext.length);
+  let n = 1,
+    p = path.join(folder, name);
+  while (fs.existsSync(p) && n < 999) p = path.join(folder, base + '-' + ++n + ext);
+  return p;
+}
+// (newest first also within one second: -2 after the plain name, -10 after -9)
+const order = n =>
+  n.replace(/-(\d{6})(?:-(\d{1,3}))?(\.json|\.slotforge-backup)$/, (m, t, k, e) => `-${t}-${String(k || 1).padStart(3, '0')}${e}`);
 // the automatic backups in a folder, newest first
 function own(folder) {
   let names = [];
@@ -46,10 +58,7 @@ function own(folder) {
   } catch {
     return [];
   }
-  return names
-    .filter(n => OWN.test(n))
-    .sort()
-    .reverse();
+  return names.filter(n => OWN.test(n)).sort((a, b) => (order(a) < order(b) ? 1 : order(a) > order(b) ? -1 : 0));
 }
 function sizeOf(p) {
   try {
@@ -99,7 +108,7 @@ function createAutoBackup(o) {
       if (busy) return { skipped: busy };
       const before = readState(),
         folderKind = !!(o.folderKind && o.folderKind()),
-        target = path.join(cfg.folder, nameOf(now(), folderKind));
+        target = freeName(cfg.folder, nameOf(now(), folderKind));
       try {
         fs.mkdirSync(cfg.folder, { recursive: true });
         await o.make(target, folderKind);
