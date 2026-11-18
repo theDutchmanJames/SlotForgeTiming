@@ -9,16 +9,42 @@ async function renderChartEditor(box) {
   chartPreviewTracks = (await api.list('tracks')).filter(t => t.trackDesign);
   if (chartEd) return renderChartForm(box);
   const designs = await api.list('chartdesigns');
-  box.innerHTML = `<h3>Chart Editor</h3><p class="muted">Create reusable charts here. In Layout Editor, add Charts → Race Chart and choose a saved design. Changing a design updates every widget using it.</p><button class="btn primary" id="chart-new">New chart design</button><div class="wrap"><table class="fields"><tr><th>Name</th><th>Style</th><th>Value</th><th></th></tr>${
+  // (2.4.0) every design is a card with a small version of the chart, drawn from the sample race (at 640 × 360 and scaled to the card)
+  const valueOf = d =>
+    ['track', 'position'].includes(d.style)
+      ? 'Recorded / estimated positions'
+      : ['box', 'hist', 'heat'].includes(d.style)
+        ? 'Eligible lap times'
+        : ChartWidgets.METRICS.find(x => x[0] === d.metric)[1];
+  box.innerHTML = `<div class="row"><button class="btn primary" id="chart-new">New chart design</button></div>${
     designs.length
-      ? designs
+      ? `<div class="lgrid">${designs
           .map(r => {
             const d = ChartWidgets.clean(r);
-            return `<tr><td>${esc(d.name)}</td><td>${esc(ChartWidgets.STYLES.find(x => x[0] === d.style)[1])}</td><td>${esc(['track', 'position'].includes(d.style) ? 'Recorded / estimated positions' : ['box', 'hist', 'heat'].includes(d.style) ? 'Eligible lap times' : ChartWidgets.METRICS.find(x => x[0] === d.metric)[1])}</td><td class="actions"><button class="btn" data-chart-edit="${esc(r.id)}">Edit</button> <button class="btn" data-chart-copy="${esc(r.id)}">Duplicate</button> <button class="btn danger" data-chart-delete="${esc(r.id)}">Delete</button></td></tr>`;
+            return `<div class="card lcard"><div class="lsketch lchart" data-chart-preview="${esc(r.id)}"></div><div class="lbody"><h3>${esc(d.name)}</h3><p class="muted">${esc(valueOf(d))}</p><div class="lmeta"><span>${esc(ChartWidgets.STYLES.find(x => x[0] === d.style)[1])}</span></div></div><div class="lactions"><button class="btn" data-chart-edit="${esc(r.id)}">Edit</button><button class="btn" data-chart-copy="${esc(r.id)}">Duplicate</button><button class="btn danger" data-chart-delete="${esc(r.id)}">Delete</button></div></div>`;
           })
-          .join('')
-      : '<tr><td colspan="4" class="muted">No chart designs yet. Create your first chart above.</td></tr>'
-  }</table></div><p id="chart-list-message" role="status"></p>`;
+          .join('')}</div>`
+      : '<div class="lempty"><p class="muted">No chart designs yet. Create your first chart above.</p></div>'
+  }<p id="chart-list-message" role="status"></p>`;
+  if (typeof document !== 'undefined' && box.querySelector)
+    designs.forEach(r => {
+      const el = box.querySelector(`[data-chart-preview="${typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(r.id) : r.id}"]`);
+      if (!el) return;
+      const d = ChartWidgets.clean(r);
+      if (d.style === 'track') {
+        el.innerHTML = `<span class="lchart-icon">${Icons.svg('timing', { size: 34, stroke: 1.4 })}<small>Track map</small></span>`;
+        return;
+      }
+      try {
+        el.innerHTML = `<div class="lchart-stage">${ChartWidgets.sample(d, 640, 360)}</div>`;
+        const stage = el.firstChild,
+          fit = () => stage.isConnected && (stage.style.transform = `scale(${(el.clientWidth || 640) / 640})`);
+        fit();
+        if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fit).observe(el);
+      } catch {
+        el.innerHTML = '<span class="muted">No preview</span>';
+      }
+    });
   box.onclick = async ev => {
     const b = ev.target.closest('button');
     if (!b) return;

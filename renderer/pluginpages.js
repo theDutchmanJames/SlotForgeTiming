@@ -33,7 +33,18 @@ async function renderPluginPages(box) {
   const S = () =>
     typeof live !== 'undefined' && live?.alive && live?.pluginDisplayState ? live.pluginDisplayState() : WidgetPreview.state({});
   const show = () => {
-    box.innerHTML = `<div class="plugin-pages"><header class="card"><h2>Plugin Pages & Tools</h2><p class="muted">Pages display information. Tools run only when you choose them, outside an active race or results review. Manage installation and activation in App Settings → Plugins.</p></header><div class="pd-workspace"><nav aria-label="Plugin pages">${entries.map((x, i) => `<button class="btn${x === selected ? ' primary' : ''}" data-page="${i}">${D.esc(x.d.label)}<small>${D.esc(x.p.name)} · ${x.kind === 'tools' ? 'Tool' : 'Page'}</small></button>`).join('')}</nav><section class="card">${selected ? `<h3>${D.esc(selected.d.label)}</h3><p>${D.esc(selected.d.description)}</p><p class="muted" data-page-runtime>${D.esc(selected.p.name)} · ${D.esc(selected.p.state)}${S().preview ? ' · Sample race data' : ''}</p><div class="formgrid">${selected.d.settings.map(f => PluginsPage.field(f, values[f.id] ?? f.default, false)).join('')}</div><div class="row">${selected.kind === 'pages' && selected.d.settings.length ? '<button class="btn" data-refresh>Apply inputs</button>' : ''}${selected.kind === 'tools' ? '<button class="btn primary" data-run>Run tool</button>' : ''}</div><p data-page-message role="status"></p><div class="pd-page-output" aria-live="polite"></div>` : '<h3>No plugin pages installed</h3><p>Install a code plugin that contributes pages or tools under App Settings → Plugins.</p>'}</section></div></div>`;
+    // (2.4.0) the pages and tools of the plugins in a side list (as the side lists of the app) with the open one beside it;
+    // without any, one calm box that says what they are and opens App Settings › Plugins (the words about them are in the note above)
+    box.innerHTML = entries.length
+      ? `<div class="plugin-pages pd-workspace"><nav class="pd-list" aria-label="Plugin pages">${entries
+          .map(
+            (x, i) =>
+              `<button type="button" class="pd-item${x === selected ? ' on' : ''}" aria-pressed="${x === selected}" data-page="${i}"><span class="pd-ico">${typeof Icons !== 'undefined' ? Icons.svg(x.kind === 'tools' ? 'bolt' : 'screen', { size: 16, stroke: 1.8 }) : ''}</span><span class="pd-label">${D.esc(x.d.label)}<small>${D.esc(x.p.name)} · ${x.kind === 'tools' ? 'Tool' : 'Page'}</small></span></button>`
+          )
+          .join(
+            ''
+          )}</nav><section class="card pd-panel">${`<h3>${D.esc(selected.d.label)}</h3><p>${D.esc(selected.d.description)}</p><p class="muted" data-page-runtime>${D.esc(selected.p.name)} · ${D.esc(selected.p.state)}${S().preview ? ' · Sample race data' : ''}</p><div class="formgrid">${selected.d.settings.map(f => PluginsPage.field(f, values[f.id] ?? f.default, false)).join('')}</div><div class="row">${selected.kind === 'pages' && selected.d.settings.length ? '<button class="btn" data-refresh>Apply inputs</button>' : ''}${selected.kind === 'tools' ? '<button class="btn primary" data-run>Run tool</button>' : ''}</div><p data-page-message role="status"></p><div class="pd-page-output" aria-live="polite"></div>`}</section></div>`
+      : `<div class="plugin-pages lempty pd-empty"><span class="pd-emptyico">${typeof Icons !== 'undefined' ? Icons.svg('layers', { size: 26, stroke: 1.6 }) : ''}</span><h3>No plugin pages installed</h3><p class="muted">Install a code plugin that contributes pages or tools under App Settings → Plugins. They show up here.</p><button type="button" class="btn primary" data-open-plugins>Open App Settings › Plugins</button></div>`;
     result = null;
     revision++;
   };
@@ -79,6 +90,11 @@ async function renderPluginPages(box) {
   box.onclick = async ev => {
     const b = ev.target.closest('button');
     if (!b || b.disabled) return;
+    if (b.hasAttribute('data-open-plugins')) {
+      state.tab = 'settings';
+      state.settingsSub = 'plugins';
+      return render();
+    }
     if (b.dataset.page !== undefined) {
       selected = entries[Number(b.dataset.page)];
       values = {};

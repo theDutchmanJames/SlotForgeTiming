@@ -544,6 +544,55 @@ const CUSTOM_TABS = [
   ['images', 'Image Settings', 'paint'],
   ['pluginpages', 'Plugin Pages & Tools', 'cog', 'Add-ons']
 ];
+// (2.4.0) the note under the title of a Customization page, as on the Race Setup pages (Page Note): what it is, a few more words, and where you use it
+const CUSTOM_NOTES = {
+  layouts: [
+    'A layout is a timing page you design once and use in any race setup.',
+    'Place the widgets you want on it: the leaderboard, lap times, lights, charts, pictures and more.',
+    'Choose a layout in a race setup.'
+  ],
+  rows: [
+    'A row design is one line of the leaderboard: place the driver widgets in it once and every driver gets that row.',
+    'The leader, a car in the pits, a penalty or a car that is out can each have their own colours.',
+    'Choose a design in the Leaderboard widget (Layout Editor) or on the Live Race page.'
+  ],
+  charts: [
+    'A chart design is a reusable race chart: what it shows and how it looks.',
+    'Changing a design updates every widget that uses it.',
+    'In the Layout Editor, add Charts › Race Chart and choose a saved design.'
+  ],
+  widgets: [
+    'Build your own widgets: values, icons, meters and pictures, arranged the way you like.',
+    'A canvas widget is drawn freely, with groups, layers and snapping. A simple widget is one line of text with variables such as {name} and {best}, or a picture that changes with a rule (a trophy when the position is 1). A layout keeps its own copy, so changing a widget here later does not change layouts that already use it.',
+    'Saved widgets appear under My widgets in the Layout Editor (and the Leaderboard Editor, for per-lane widgets).'
+  ],
+  results: [
+    'The Results Wall shows by itself when a race or heat ends: the Victory Spotlight in gold, silver and bronze, then the other drivers.',
+    'Choose the facts on the cards and the comparison chart. The preview shows a sample race with your choices.',
+    'Used for every finished race and heat.'
+  ],
+  audio: [
+    'An audio set holds everything the race says: the voice and, for each call (start, new leader, fastest lap, flags…), one or more sentences.',
+    'A race setup with "No audio" stays silent. Sound is played on the computer that runs the race.',
+    'Choose one in a race setup.'
+  ],
+  images: [
+    'Pictures for the Fuel, Race flag, Start lights, Tyres, Weather Forecast and Track Conditions widgets.',
+    '',
+    'Make a set once here, then choose it in the widget of any layout.'
+  ],
+  pluginpages: [
+    'Plugins can add pages that show information, and tools that you run yourself.',
+    'Tools run only when you choose them, outside an active race or results review.',
+    'Install plugins and switch them on in App Settings › Plugins.'
+  ]
+};
+function customNote(box, sub) {
+  if (!box) return;
+  const [lead, more, use] = CUSTOM_NOTES[sub] || CUSTOM_NOTES.layouts;
+  const tab = CUSTOM_TABS.find(t => t[0] === sub) || CUSTOM_TABS[0];
+  box.innerHTML = `<span class="sn-tile">${Icons.svg(tab[2], { size: 20, stroke: 1.8 })}</span><p class="sn-lead">${esc(lead)}</p>${more ? `<p class="sn-more">${esc(more)}</p>` : ''}<p class="sn-use">${Icons.svg('arrow', { size: 14, stroke: 2 })}<span>${esc(use)}</span></p>`;
+}
 async function renderCustom() {
   if (typeof PluginDisplayClient !== 'undefined') await PluginDisplayClient.refresh();
   if (state.editing) {
@@ -554,7 +603,8 @@ async function renderCustom() {
   }
   // (2.4.0) the sections are a side list, grouped by when you use them (the design in docs/ui-reference/redesign-2026-11), and the page has the name of its section
   const sub = CUSTOM_TABS.some(t => t[0] === state.customSub) ? state.customSub : 'layouts';
-  view.innerHTML = `<div class="setupshell custshell"><nav class="custrail" aria-label="Customization sections"><div class="ssrailtitle">Customization</div><div class="sub" id="customtabs" role="tablist"></div></nav><div class="custpage"><h2 id="customtitle">${esc(CUSTOM_TABS.find(t => t[0] === sub)[1])}</h2><div id="setupbox"></div></div></div>`;
+  view.innerHTML = `<div class="setupshell custshell"><nav class="custrail" aria-label="Customization sections"><div class="ssrailtitle">Customization</div><div class="sub" id="customtabs" role="tablist"></div></nav><div class="custpage"><h2 id="customtitle">${esc(CUSTOM_TABS.find(t => t[0] === sub)[1])}</h2><div class="sn" id="setupnote"></div><div id="setupbox"></div></div></div>`;
+  customNote(document.getElementById('setupnote'), sub);
   const tabsEl = document.getElementById('customtabs');
   renderTabs(
     tabsEl,
@@ -618,6 +668,45 @@ async function renderCustom() {
 
 // The second-screen Results Wall is intentionally a focused editor. It changes
 // the shared default, not the result itself, so a director can set it up once.
+// (2.4.0) the preview of the Results Wall on the Race Results page: the real page, drawn with the sample race of the widget previews, cut to the number of
+// drivers chosen, at the size of a race screen (1600 wide) and scaled down to the width of the preview
+let rvPreviewCount = 4;
+const RV_STAGE_W = 1600;
+function rvPreview(box, o, designs) {
+  const stage = box.querySelector?.('#rv-stage');
+  if (!stage || typeof WidgetPreview === 'undefined' || typeof ResultsView === 'undefined') return;
+  try {
+    const S = WidgetPreview.state({ type: 'leaderboard' }, { layout: {}, imageSets: [], chartDesigns: [] }),
+      eng = S.eng,
+      cut = list => (list || []).slice(0, rvPreviewCount),
+      sample = Object.create(eng);
+    sample.standings = (...x) => cut(eng.standings(...x));
+    if (eng.displayStandings) sample.displayStandings = (...x) => cut(eng.displayStandings(...x));
+    stage.innerHTML = ResultsView.html(sample, o, {
+      phase: 'finished',
+      layout: S.layout || {},
+      title: 'Sample race',
+      rowDesigns: designs,
+      shared: { ...S, rowDesigns: designs }
+    });
+  } catch {
+    stage.innerHTML = '<p class="muted">The preview could not be drawn.</p>';
+    return;
+  }
+  const screen = stage.parentElement;
+  const fit = () => {
+    if (!stage.isConnected) return;
+    const k = Math.min(1, (screen.clientWidth || RV_STAGE_W) / RV_STAGE_W);
+    stage.style.width = RV_STAGE_W + 'px';
+    stage.style.transform = `scale(${k})`;
+    screen.style.height = Math.ceil(stage.scrollHeight * k) + 'px';
+  };
+  fit();
+  if (typeof ResizeObserver !== 'undefined') {
+    const ro = new ResizeObserver(() => (stage.isConnected ? fit() : ro.disconnect()));
+    ro.observe(screen);
+  }
+}
 async function renderResultsSettings(box) {
   const R = ResultsView,
     o = R.clean(state.settings.resultsView),
@@ -627,15 +716,59 @@ async function renderResultsSettings(box) {
     compare = selected =>
       `<option value="none"${selected === 'none' ? ' selected' : ''}>Do not show a comparison chart</option>${R.COMPARE_METRICS.map(([key, name]) => `<option value="${key}"${key === selected ? ' selected' : ''}>${esc(name)}</option>`).join('')}`,
     listMode = o.largeField === 'leaderboard';
-  box.innerHTML = `<div class="card results-settings"><h3>Race Results</h3><p class="muted">The Victory Spotlight is shown automatically when a race or heat ends: gold for the winner, silver for second and bronze for third. The featured fact is the largest value on every card. Supporting facts and the TV-size comparison chart are optional.</p><div class="formgrid"><div class="field"><label for="rv-summary-0">Featured fact (largest)</label><select id="rv-summary-0" data-results-summary="0">${facts(o.summary[0])}</select></div>${o.summary
-    .slice(1)
-    .map(
-      (key, i) =>
-        `<div class="field"><label for="rv-summary-${i + 1}">Supporting fact ${i + 2}</label><select id="rv-summary-${i + 1}" data-results-summary="${i + 1}">${facts(key, true)}</select></div>`
-    )
-    .join(
-      ''
-    )}<div class="field"><label for="rv-comparison">Comparison chart</label><select id="rv-comparison" data-results-comparison="1">${compare(o.comparison)}</select></div><div class="field"><label for="rv-large">When there are 5 or more results</label><select id="rv-large" data-results-large="1"><option value="cards"${!listMode ? ' selected' : ''}>Victory Spotlight cards</option><option value="leaderboard"${listMode ? ' selected' : ''}>Victory Spotlight + leaderboard rows</option></select><span class="muted hint">The winner stays featured; the leaderboard then shows the complete classification.</span></div>${listMode ? `<div class="field"><label for="rv-leaderboard">Leaderboard design</label><select id="rv-leaderboard" data-results-leaderboard="1"><option value=""${!o.leaderboardDesign ? ' selected' : ''}>Choose a design</option>${designs.map(d => `<option value="${esc(d.id)}"${d.id === o.leaderboardDesign ? ' selected' : ''}>${esc(d.name || 'Untitled row design')}</option>`).join('')}</select>${designs.length ? '<button class="btn" type="button" data-results-open-rows="1">Edit in Leaderboard Editor</button>' : '<span class="muted hint">Make a row design in the Leaderboard Editor first. Cards stay on until a design is chosen.</span>'}</div>` : ''}</div><p class="muted">Heat points are available for point-scored Heat Setups. Championship points show the live total after this race is counted.</p><p id="rv-results-msg" class="muted" role="status"></p></div>`;
+  // (2.4.0) the settings in folders on the left, and on the right a live preview: the real Results Wall with a sample race, scaled to fit,
+  // with a choice of how many drivers (5 or more shows what happens to a big field)
+  const fold = (title, sub, body) =>
+    `<details class="fgroup rvfold" open><summary><strong>${esc(title)}</strong><span class="muted">${esc(sub)}</span></summary><div class="rvfields">${body}</div></details>`;
+  const field = (id, label, sel, hint = '') =>
+    `<div class="field"><label for="${id}">${esc(label)}</label>${sel}${hint ? `<span class="muted hint">${esc(hint)}</span>` : ''}</div>`;
+  box.innerHTML = `<div class="rvpage"><div class="rvsettings">${fold(
+    'On the cards',
+    'What every driver card shows',
+    field(
+      'rv-summary-0',
+      'Featured fact (largest)',
+      `<select id="rv-summary-0" data-results-summary="0">${facts(o.summary[0])}</select>`,
+      'The big number on every card.'
+    ) +
+      o.summary
+        .slice(1)
+        .map((key, i) =>
+          field(
+            `rv-summary-${i + 1}`,
+            `Supporting fact ${i + 2}`,
+            `<select id="rv-summary-${i + 1}" data-results-summary="${i + 1}">${facts(key, true)}</select>`
+          )
+        )
+        .join('')
+  )}${fold(
+    'Comparison chart',
+    'One bar for every driver',
+    field('rv-comparison', 'Compare', `<select id="rv-comparison" data-results-comparison="1">${compare(o.comparison)}</select>`)
+  )}${fold(
+    'Big fields',
+    '5 or more results',
+    field(
+      'rv-large',
+      'When there are 5 or more results',
+      `<select id="rv-large" data-results-large="1"><option value="cards"${!listMode ? ' selected' : ''}>Victory Spotlight cards</option><option value="leaderboard"${listMode ? ' selected' : ''}>Victory Spotlight + leaderboard rows</option></select>`,
+      'The winner stays featured; the leaderboard then shows the complete classification.'
+    ) +
+      (listMode
+        ? `<div class="field"><label for="rv-leaderboard">Leaderboard design</label><select id="rv-leaderboard" data-results-leaderboard="1"><option value=""${!o.leaderboardDesign ? ' selected' : ''}>Choose a design</option>${designs.map(d => `<option value="${esc(d.id)}"${d.id === o.leaderboardDesign ? ' selected' : ''}>${esc(d.name || 'Untitled row design')}</option>`).join('')}</select>${designs.length ? '<button class="btn ghost sm" type="button" data-results-open-rows="1">Edit in Leaderboard Editor</button>' : '<span class="muted hint">Make a row design in the Leaderboard Editor first. Cards stay on until a design is chosen.</span>'}</div>`
+        : '')
+  )}<p class="muted rvfoot">Heat points are available for point-scored Heat Setups. Championship points show the live total after this race is counted.</p><p id="rv-results-msg" class="muted" role="status"></p></div>
+    <section class="rvpreview" aria-label="Preview of the Results Wall"><header class="rvprevhead"><div><strong>Preview</strong><span class="muted">A sample race with your choices</span></div><span class="seg" role="group" aria-label="Drivers in the sample race">${[
+      2, 3, 4, 6, 8
+    ]
+      .map(
+        n =>
+          `<button type="button" class="btn${n === rvPreviewCount ? ' on' : ''}" aria-pressed="${n === rvPreviewCount}" data-rv-count="${n}">${n}</button>`
+      )
+      .join(
+        ''
+      )}</span></header><div class="rvscreen"><div class="rvstage" id="rv-stage"></div></div><p class="muted rvprevnote">${rvPreviewCount} drivers · sample data, not a saved race</p></section></div>`;
+  rvPreview(box, o, designs);
   box.onchange = async ev => {
     const t = ev.target,
       d = t.dataset || {};
@@ -657,6 +790,11 @@ async function renderResultsSettings(box) {
     renderResultsSettings(box);
   };
   box.onclick = ev => {
+    const n = ev.target.closest('[data-rv-count]');
+    if (n) {
+      rvPreviewCount = Number(n.dataset.rvCount) || 4;
+      return renderResultsSettings(box);
+    }
     if (ev.target.closest('[data-results-open-rows]')) {
       state.customSub = 'rows';
       renderCustom();
@@ -714,8 +852,7 @@ async function renderImageSets(box) {
   const pics = r =>
     (Array.isArray(r.images) ? r.images : Object.values(r.images || {})).filter(x => typeof x === 'string' && x).slice(0, 6);
   box.innerHTML =
-    `<p class="muted">Pictures for the Fuel, Race flag, Start lights, Tyres, Weather Forecast and Track Conditions widgets. Make a set once here, then choose it in the widget of any layout.</p>
-    <div class="row"><button class="btn primary" id="newset">New picture set</button></div>` +
+    `<div class="row"><button class="btn primary" id="newset">New picture set</button></div>` +
     (sets.length
       ? `<div class="lgrid">${sets
           .map(r => {
@@ -923,19 +1060,28 @@ function renderImageSetEditor(box) {
 async function renderRowList(box) {
   manager = null;
   const designs = await api.list('rowdesigns');
+  // (2.4.0) every design is a card: a preview of three sample drivers in it (the real rows, as in the editor), its note, its height and widgets
   box.innerHTML =
-    `<p class="muted">A row design is one line of the leaderboard: place the driver widgets in it once and every driver gets that row. Choose a design in the Leaderboard widget (Layout Editor) or on the Live Race page.</p>
-    <div class="row"><button class="btn primary" id="newr">New row design</button></div>
-    <div class="wrap"><table class="fields"><tr><th>Name</th><th>Note</th><th>Row height</th><th>Widgets</th><th></th></tr>` +
+    `<div class="row"><button class="btn primary" id="newr">New row design</button></div>` +
     (designs.length
-      ? designs
+      ? `<div class="lgrid">${designs
           .map(
-            l => `<tr><td>${esc(l.name)}</td><td class="muted">${esc(l.note || '')}</td><td>${esc(l.ratioH)}</td><td>${(l.widgets || []).length}</td><td class="actions">
-      <button class="btn" data-edit="${esc(l.id)}">Edit</button> <button class="btn" data-dup="${esc(l.id)}">Duplicate</button> <button class="btn danger" data-del="${esc(l.id)}">Delete</button></td></tr>`
+            l =>
+              `<div class="card lcard"><div class="lsketch lrows" data-rows="${esc(l.id)}"></div><div class="lbody"><h3>${esc(l.name)}</h3>${l.note ? `<p class="muted">${esc(l.note)}</p>` : ''}<div class="lmeta"><span>Row height ${esc(l.ratioH)}</span><span>${(l.widgets || []).length} widgets</span></div></div><div class="lactions"><button class="btn" data-edit="${esc(l.id)}">Edit</button> <button class="btn" data-dup="${esc(l.id)}">Duplicate</button> <button class="btn danger" data-del="${esc(l.id)}">Delete</button></div></div>`
           )
-          .join('')
-      : '<tr><td colspan="5" class="muted">No row designs yet.</td></tr>') +
-    '</table></div>';
+          .join('')}</div>`
+      : '<div class="lempty"><p class="muted">No row designs yet. Make one, and every leaderboard that uses it shows your rows.</p></div>');
+  if (typeof document !== 'undefined' && box.querySelectorAll)
+    designs.forEach(l => {
+      const el = box.querySelector(`[data-rows="${typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(l.id) : l.id}"]`);
+      if (!el) return;
+      try {
+        el.innerHTML = Rows.sampleHtml({ ...l, widgets: knownWidgets(l.widgets || []) }, 3, []);
+      } catch {
+        el.innerHTML = '<span class="muted">No preview</span>';
+      }
+    });
+
   const keep = l =>
     clone({
       kind: 'row',
@@ -1015,8 +1161,7 @@ async function renderLayoutList(box) {
   const card = (key, name, note, ratio, count, actions, builtIn = false) =>
     `<div class="card lcard"><div class="lsketch" style="aspect-ratio:${ratio.replace(':', ' / ')}" data-sketch="${esc(key)}"></div><div class="lbody"><h3>${esc(name)}${builtIn ? ' <span class="ltag">Built in</span>' : ''}</h3>${note ? `<p class="muted">${esc(note)}</p>` : ''}<div class="lmeta"><span>${esc(ratio)}</span><span>${count} widgets</span></div></div><div class="lactions">${actions}</div></div>`;
   box.innerHTML =
-    `<p class="muted">A layout is a timing page you design once and use in any race setup.</p>
-    <div class="row"><button class="btn primary" id="newl">New layout</button></div>
+    `<div class="row"><button class="btn primary" id="newl">New layout</button></div>
     <div class="lgrid">` +
     layouts
       .map(l =>
@@ -1069,7 +1214,11 @@ async function renderLayoutList(box) {
     if (api.getRecord)
       layouts.forEach(l =>
         Promise.resolve(api.getRecord('layouts', l.id))
-          .then(r => box.isConnected !== false && sketch(box.querySelector(`[data-sketch="${CSS.escape ? CSS.escape(l.id) : l.id}"]`), r))
+          .then(
+            r =>
+              box.isConnected !== false &&
+              sketch(box.querySelector(`[data-sketch="${typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(l.id) : l.id}"]`), r)
+          )
           .catch(() => {})
       );
   }

@@ -44,20 +44,30 @@ async function renderAudioSets(box) {
   if (audEd) return renderAudioSetEditor(box);
   box.classList?.remove('audio-editor');
   manager = null;
-  const sets = await EditorData.choices(api, 'audiosets', 'media');
+  const [sets, setups] = await Promise.all([EditorData.choices(api, 'audiosets', 'media'), api.list('racesetups')]);
   box.innerHTML =
-    `<p class="muted">An audio set holds everything the race says: the voice and, for each call (start, new leader, fastest lap, flags...), one or more sentences. Make a set here, then choose it in a Race Setup. A race setup with "No audio" stays silent. Sound is played on the computer that runs the race.</p>
-    <div class="row"><button class="btn primary" id="newaud">New audio set</button></div>
-    <div class="wrap"><table class="fields"><tr><th>Name</th><th>Voice</th><th>Calls on</th><th></th></tr>` +
+    // (2.4.0) every set is a card, as the race systems are; the words about audio sets are in the note above the list
+    `<div class="row"><button class="btn primary" id="newaud">New audio set</button></div>` +
     (sets.length
-      ? sets
-          .map(
-            r => `<tr><td>${esc(r.name)}</td><td>${esc(r.voice || 'Default voice')}</td><td>${Announcer.CALLS.filter(c => (r.calls || {})[c.id] && r.calls[c.id].on !== false).length} of ${Announcer.CALLS.length}</td><td class="actions">
-      <button class="btn" data-edit="${esc(r.id)}">Edit</button> <button class="btn" data-dup="${esc(r.id)}">Duplicate</button> <button class="btn danger" data-del="${esc(r.id)}">Delete</button></td></tr>`
-          )
-          .join('')
-      : '<tr><td colspan="4" class="muted">No audio sets yet.</td></tr>') +
-    '</table></div>';
+      ? `<div class="rscards syscards">${sets
+          .map(r => {
+            const on = Announcer.CALLS.filter(c => (r.calls || {})[c.id] && r.calls[c.id].on !== false).length;
+            return sysCardHtml({
+              look: 'aud',
+              icon: 'say',
+              eyebrow: 'Audio set',
+              name: r.name,
+              facts: [
+                ['Voice', r.voice || 'Default voice'],
+                ['Calls on', `${on} of ${Announcer.CALLS.length}`]
+              ],
+              used: (setups || []).filter(x => x && x.audioSet === r.id).map(x => x.name),
+              empty: 'Choose it in a race setup.',
+              actions: `<button class="btn" data-edit="${esc(r.id)}">Edit</button><button class="btn" data-dup="${esc(r.id)}">Duplicate</button><button class="btn danger" data-del="${esc(r.id)}">Delete</button>`
+            });
+          })
+          .join('')}</div>`
+      : '<div class="lempty"><p class="muted">No audio sets yet. Make one, then choose it in a race setup to hear the race.</p></div>');
   const onSetClick = (box.onclick = async ev => {
     const b = ev.target.closest('button');
     if (!b) return;

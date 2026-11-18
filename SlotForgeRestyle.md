@@ -24,7 +24,9 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Control Strip](#control-strip) | One tight toolbar: Add, tools, search, List / Grid, pager | Database lists, system lists |
 | [Gear Selector](#gear-selector) | A quiet segmented control | List / Grid, filters, choices in forms, inner tabs |
 | [Garage Card](#garage-card) | A picture card: picture edge to edge, title, detail rows, button foot | Database grid (tracks, cars, drivers…) |
+| [Showroom Card](#showroom-card) | A card whose top is a real, scaled preview of the design it stands for | Layouts, row designs, charts, widgets, picture sets |
 | [Entry Card](#entry-card) | An icon card: tile, eyebrow, name, facts, "Used by", button foot | Race setups, race systems, rotations, championships |
+| [Replay Monitor](#replay-monitor) | Settings in folders on the left, a live preview of the real screen on the right | Race Results |
 | [Workshop Window](#workshop-window) | The baseline window (dialog) | Add Track and every Database form, Circuit design |
 | [Folder](#folder) | A collapsible section with a Barlow title and a chevron | Groups in forms, settings, results |
 | [Tech Sheet](#tech-sheet) | A big editor: header with name, side list of sections, plain-words summary, folders, sticky foot | Add / Edit Race System, Race Setup editor |
@@ -42,7 +44,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | **Add Track** (and every "Add …" form of the Database) | Workshop Window + Folder + Pit Buttons |
 | **Add Race System** (Add Fuel, Safety Car, Weather…) | Tech Sheet (with Folder, Gear Selector, Pit Buttons inside) |
 | **Race Setup page** (list of systems) | Paddock Rail + Page Note + Control Strip + Entry Card |
-| **Customization** | Paddock Rail + cards in the Garage Card pattern (sketch instead of picture) |
+| **Customization** | Paddock Rail + Page Note + Showroom Cards (Layout, Leaderboard, Chart, Widget Builder, Image Settings), Entry Cards (Audio), Replay Monitor (Race Results) |
 | **App Settings** | Paddock Rail (with a search under the title) + Folder |
 | **Racing Rules** | Rulebook |
 | **Home** | Broadcast Hero + cards (Timing Tower inside one) |
@@ -397,6 +399,124 @@ and detail rows (name left, value in Roboto Mono right), a darker foot with the 
 
 Without a picture, show the thing's icon large on a soft tile, or its first letter. Customization's layout cards
 use the same pattern with an SVG sketch in place of the picture (`.lcard`, `.lsketch`, `.lbody`, `.lactions`).
+
+---
+
+## Showroom Card
+
+A [Garage Card](#garage-card) for a *design*: instead of a photo, the top shows the design itself, drawn by the app's own
+renderer with sample data and scaled to the card. You see what you'll get before you open it.
+
+| In Timing | The top of the card shows |
+|---|---|
+| Layout Editor | A sketch of the page: every widget as a box |
+| Leaderboard Editor | Three sample drivers in the row design (the real rows) |
+| Chart Editor | The chart with the sample race, drawn at 640 × 360 and scaled down (a track map shows an icon) |
+| Widget Builder | The widget with sample values |
+| Image Settings | A few of the pictures, plus a progress bar of how many are filled |
+
+```html
+<div class="lgrid">
+  <div class="card lcard">
+    <div class="lsketch lchart"><div class="lchart-stage">…the real chart, 640 × 360…</div></div>
+    <div class="lbody"><h3>Lap trend</h3><p class="muted">Lap time</p><div class="lmeta"><span>Lap Trend</span></div></div>
+    <div class="lactions"><button class="btn">Edit</button><button class="btn">Duplicate</button><button class="btn danger">Delete</button></div>
+  </div>
+</div>
+```
+
+```css
+.lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px;margin-top:16px}
+.lcard{display:flex;flex-direction:column;padding:0;overflow:hidden;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.lcard:hover{border-color:color-mix(in srgb,var(--ink) 22%,var(--line))}
+.lsketch{position:relative;width:100%;max-height:200px;padding:10px;box-sizing:border-box;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--bg) 80%,#000)}
+.lsketch svg{display:block;width:100%;height:100%}
+.lsketch rect{fill:color-mix(in srgb,var(--ink) 13%,transparent);stroke:color-mix(in srgb,var(--ink) 22%,transparent);stroke-width:1;vector-effect:non-scaling-stroke}
+.lbody{display:flex;flex-direction:column;gap:4px;flex:1;padding:14px 16px}
+.lbody h3{margin:0;font-size:15px;overflow-wrap:anywhere}          /* Barlow via the title rule */
+.lbody p{margin:0;font-size:12.5px}
+.lmeta{display:flex;gap:14px;margin-top:6px;font:500 12px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+.lprog{height:4px;margin-top:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.lprog i{display:block;height:100%;background:color-mix(in srgb,var(--ink) 60%,var(--panel))}
+.lprog.full i{background:#3ecf8e}
+.lactions{display:flex;gap:6px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--bg) 50%,var(--panel))}
+.lactions .danger{margin-left:auto}
+/* a preview drawn at a fixed size and scaled to the card (JS sets transform: scale(card width / 640)) */
+.lsketch.lchart{aspect-ratio:16 / 9;padding:0;overflow:hidden}
+.lchart-stage{position:absolute;left:0;top:0;width:640px;height:360px;transform-origin:0 0}
+/* a preview that sizes itself to its container */
+.lsketch.lrows{container-type:inline-size;display:flex;flex-direction:column;justify-content:center;min-height:130px;padding:14px 12px}
+/* the empty list: one calm dashed box with a sentence that says what to do */
+.lempty{margin-top:16px;padding:28px 24px;border:1px dashed color-mix(in srgb,var(--ink) 18%,var(--line));border-radius:12px;text-align:center}
+```
+
+Scaling a fixed-size preview:
+
+```js
+const fit = () => (stage.style.transform = `scale(${(card.clientWidth || 640) / 640})`);
+fit();
+new ResizeObserver(fit).observe(card);
+```
+
+Use real sample data from the app's own preview helpers (Timing: `Rows.sampleHtml`, `ChartWidgets.sample`, `Widgets.sampleOf`),
+never a drawing made only for the card: the preview must look like the real thing.
+
+---
+
+## Replay Monitor
+
+A settings page that shows the result of its settings: the settings in [Folders](#folder) on the left (380 px), and on the
+right a live preview of the real screen, drawn with a sample race at its true size and scaled to fit. A
+[Gear Selector](#gear-selector) in the preview's head changes the sample (Timing: 2, 3, 4, 6 or 8 drivers, so you see what a
+big field does). Every change of a setting redraws the preview. Timing uses it for **Race Results** (the Results Wall).
+
+```html
+<div class="rvpage">
+  <div class="rvsettings">
+    <details class="fgroup rvfold" open><summary><strong>On the cards</strong><span class="muted">What every driver card shows</span></summary>
+      <div class="rvfields"><div class="field"><label>Featured fact</label><select>…</select><span class="muted hint">…</span></div></div></details>
+  </div>
+  <section class="rvpreview">
+    <header class="rvprevhead"><div><strong>Preview</strong><span class="muted">A sample race with your choices</span></div>
+      <span class="seg"><button class="btn">2</button><button class="btn on">4</button><button class="btn">8</button></span></header>
+    <div class="rvscreen"><div class="rvstage">…the real screen at 1600 px wide…</div></div>
+    <p class="muted rvprevnote">4 drivers · sample data, not a saved race</p>
+  </section>
+</div>
+```
+
+```css
+.rvpage{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);gap:20px;align-items:start}
+.rvsettings{display:flex;flex-direction:column;gap:12px;min-width:0}
+.rvfold>summary{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.rvfold>summary>.muted{font-size:12px}
+.rvfields{display:flex;flex-direction:column;gap:14px;padding:14px 16px 16px}
+.rvfields .field{display:flex;flex-direction:column;gap:6px;margin:0}
+.rvfields .field>label{font-size:13px;font-weight:600;color:var(--ink)}
+.rvfields select{width:100%;font-size:14px}
+.rvfields .hint{font-size:12px;line-height:1.45}
+.rvpreview{position:sticky;top:12px;min-width:0;border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}
+.rvprevhead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line)}
+.rvprevhead strong{display:block;font:italic 700 18px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em}
+.rvscreen{position:relative;overflow:hidden;background:var(--bg)}       /* JS sets its height to the scaled stage */
+.rvstage{position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none}
+.rvprevnote{margin:0;padding:8px 16px;border-top:1px solid var(--line);font-size:12px}
+@media(max-width:1100px){.rvpage{grid-template-columns:minmax(0,1fr)}.rvpreview{position:static}}
+```
+
+```js
+const W = 1600; // the size the real screen is designed for
+const fit = () => {
+  const k = Math.min(1, screen.clientWidth / W);
+  stage.style.width = W + 'px';
+  stage.style.transform = `scale(${k})`;
+  screen.style.height = Math.ceil(stage.scrollHeight * k) + 'px';
+};
+fit();
+new ResizeObserver(fit).observe(screen);
+```
+
+Always say on the preview that it is sample data, so nobody mistakes it for a saved race.
 
 ---
 
@@ -791,4 +911,9 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Paddock Rail | "Choose systems…" became the dashed "Hide unused systems…" item at the end of the list |
 | 2026-11 | Entry Card, Tech Sheet | Virtual Rival, Multi-Class and Resource Systems moved to cards and the Tech Sheet sizes |
 | 2026-11 | Paddock Rail | The shell fills the window exactly (no small scroll); the side list runs to the bottom; the logo sits in the page corner |
+| 2026-11 | Page Note | Every Customization page gets one; the old intro paragraphs moved into it |
+| 2026-11 | Showroom Card | Leaderboard Editor (three sample drivers), Chart Editor (mini chart) and Widget Builder as cards with a real preview |
+| 2026-11 | Entry Card | Audio sets as Entry Cards (voice, calls on, used by) |
+| 2026-11 | Replay Monitor | New: Race Results settings in folders with a live, scaled preview of the Results Wall (2–8 sample drivers) |
+| 2026-11 | Paddock Rail | Plugin Pages & Tools: the pages and tools in a side list; without any, one calm box with a button to App Settings › Plugins |
 | 2026-11 | Timing Tower, Rulebook | Personal Bests as a timing tower; Racing Rules as a document page with a grouped toolbar |

@@ -43,11 +43,10 @@ async function renderWidgetBuilder(box) {
   box.onchange = box.oninput = null;
   const list = await api.list('customwidgets');
   box.innerHTML =
-    `<p class="muted">Build your own widgets with the visual composer: drag and resize values, icons, meters and standard widgets on a Free Canvas. Use groups, layers, snapping and precise positioning to arrange the contents. Or choose Simple text or image for a line where <code>{name}</code>, <code>{best}</code>, <code>{timeleft}</code> and many more variables are filled in during the race, or a picture that changes with a rule (for example a trophy when the position is 1). Saved widgets appear under <em>My widgets</em> in the Layout Editor (and the Leaderboard Editor, for per-lane widgets). Adding one puts a copy in the layout, so changing it here later does not change layouts that already use it.</p>
-    <div class="row"><button class="btn primary" id="new-composer">New canvas widget</button><button class="btn" id="newwb">Simple text or image</button></div>
-    <div class="wc-gallery">` +
+    `<div class="row"><button class="btn primary" id="new-composer">New canvas widget</button><button class="btn" id="newwb">Simple text or image</button></div>` +
     (list.length
-      ? list
+      ? '<div class="lgrid">' +
+        list
           .map(r => {
             const w = wbToWidget(r, 0),
               label = r.composition
@@ -56,11 +55,11 @@ async function renderWidgetBuilder(box) {
                   : 'Composed · per lane'
                 : (wbKinds.find(k => k[0] === r.type) || [0, ''])[1] +
                   (wbIsImage(r.type) ? ' · ' + (r.rules || []).length + ' rule(s)' : '');
-            return `<article class="wc-saved"><div class="wc-saved-head"><strong>${esc(r.name)}</strong><small>${esc(label)}</small></div><div class="wc-saved-preview">${Widgets.sampleOf(Widgets.def(r.type), 0, w)}</div><div class="row"><button class="btn primary" data-edit="${esc(r.id)}">Edit</button><button class="btn" data-dup="${esc(r.id)}">Duplicate</button><button class="btn danger" data-del="${esc(r.id)}">Delete</button></div></article>`;
+            return `<div class="card lcard"><div class="lsketch lwidget wc-saved-preview">${Widgets.sampleOf(Widgets.def(r.type), 0, w)}</div><div class="lbody"><h3>${esc(r.name)}</h3><p class="muted">${esc(label)}</p></div><div class="lactions"><button class="btn" data-edit="${esc(r.id)}">Edit</button><button class="btn" data-dup="${esc(r.id)}">Duplicate</button><button class="btn danger" data-del="${esc(r.id)}">Delete</button></div></div>`;
           })
-          .join('')
-      : '<div class="wc-empty"><h3>No widgets yet</h3><p>Combine a driver identity, timing values and system indicators. Start with a template, then make it your own.</p></div>') +
-    '</div>';
+          .join('') +
+        '</div>'
+      : '<div class="lempty"><p class="muted">No widgets yet. Combine a driver identity, timing values and system indicators: start with a canvas widget, then make it your own.</p></div>');
 
   box.onclick = async ev => {
     const b = ev.target.closest('button');

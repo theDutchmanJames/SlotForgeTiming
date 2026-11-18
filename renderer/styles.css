@@ -3048,3 +3048,63 @@ html #setupmgr .rsform .resource-note{border-color:var(--line);background:color-
 body:has(>#view>.setupshell)>#app-footer{height:0;padding:0;position:relative;z-index:1;pointer-events:none}
 body:has(>#view>.setupshell)>#app-footer .app-brand-logo{position:absolute;right:20px;bottom:16px;pointer-events:auto}
 #view>.setupshell>:is(.setuppage,.custpage){padding-bottom:64px}
+/* 2.4.0 Customization pages as Race Setup and Database: the Page Note under the title, designs as cards with a real preview, a calm empty box */
+.custshell>.custpage>#setupnote.sn{display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:14px;row-gap:3px;align-items:start;max-width:860px;margin:4px 0 22px;padding:14px 18px 14px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.lempty{margin-top:16px;padding:28px 24px;border:1px dashed color-mix(in srgb,var(--ink) 18%,var(--line));border-radius:12px;text-align:center}
+.lempty>p{margin:0}
+.custpage .lgrid,.custpage .rscards{margin-top:16px}
+/* Leaderboard Editor: three sample drivers in the design */
+.lsketch.lrows{container-type:inline-size;display:flex;flex-direction:column;justify-content:center;min-height:130px;padding:14px 12px}
+.lsketch.lrows .rrows{width:100%}
+/* Chart Editor: the chart drawn at 640 × 360 and scaled to the card */
+.lsketch.lchart{position:relative;aspect-ratio:16 / 9;padding:0;overflow:hidden}
+.lchart-stage{position:absolute;left:0;top:0;width:640px;height:360px;transform-origin:0 0}
+.lchart-icon{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;height:100%;color:var(--muted);font-size:12px}
+/* Widget Builder: the preview of the widget on top of its card */
+.lcard>.lsketch.lwidget{display:flex;align-items:center;justify-content:center;height:180px;margin:0;padding:12px;border:0;border-bottom:1px solid var(--line);border-radius:0}
+/* Audio Settings: the cards of the race systems, with a quiet tile */
+.ss-aud{--c:color-mix(in srgb,var(--ink) 72%,var(--muted))}
+/* Race Results: the settings in folders on the left, the live preview of the Results Wall on the right */
+.rvpage{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);gap:20px;align-items:start}
+.rvsettings{display:flex;flex-direction:column;gap:12px;min-width:0}
+.rvfold>summary{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.rvfold>summary>.muted{font-size:12px}
+.rvfields{display:flex;flex-direction:column;gap:14px;padding:14px 16px 16px}
+.rvfields .field{display:flex;flex-direction:column;align-items:stretch;gap:6px;margin:0}
+.rvfields .field>label{font-size:13px;font-weight:600;color:var(--ink)}
+.rvfields select{width:100%;font-size:14px}
+.rvfields .hint{font-size:12px;line-height:1.45}
+.rvfields .btn{align-self:flex-start}
+.rvsettings>.rvfoot{margin:2px 2px 0;font-size:12.5px;line-height:1.5}
+.rvsettings>#rv-results-msg{margin:0 2px;font-size:12.5px}
+.rvsettings>#rv-results-msg:empty{display:none}
+.rvpreview{position:sticky;top:12px;min-width:0;border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}
+.rvprevhead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line)}
+.rvprevhead strong{display:block;font:italic 700 18px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em}
+.rvprevhead .muted{font-size:12px}
+.rvscreen{position:relative;overflow:hidden;background:var(--bg)}
+.rvstage{position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none}
+.rvstage .results-wall{min-height:0}
+.rvprevnote{margin:0;padding:8px 16px;border-top:1px solid var(--line);font-size:12px}
+@media(max-width:1100px){.rvpage{grid-template-columns:minmax(0,1fr)}.rvpreview{position:static}}
+/* Plugin Pages & Tools: the pages and tools in a side list, the open one beside it; without any, one calm box */
+.pd-workspace{grid-template-columns:240px minmax(0,1fr);gap:20px;margin-top:0}
+.pd-list{display:flex;flex-direction:column;gap:2px;align-self:start;padding:10px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--bg) 55%,var(--panel))}
+.pd-item{display:flex;align-items:flex-start;gap:11px;width:100%;padding:8px 10px;border:0;border-radius:8px;background:transparent;color:color-mix(in srgb,var(--ink) 82%,var(--muted));font:inherit;font-size:13.5px;text-align:left;cursor:pointer}
+.pd-item:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.pd-item.on{background:color-mix(in srgb,var(--ink) 10%,var(--panel));color:var(--ink);font-weight:600}
+.pd-item .pd-ico{flex:none;margin-top:1px;color:var(--muted)}
+.pd-item.on .pd-ico{color:var(--accent-text,var(--accent))}
+.pd-item small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+.pd-item:focus-visible{outline:3px solid #4c9aff;outline-offset:2px}
+.pd-panel{min-width:0;padding:18px 20px;border-radius:12px}
+.pd-panel>h3{margin:0 0 6px;font-size:20px}
+.pd-empty{display:flex;flex-direction:column;align-items:center;gap:8px;max-width:860px;padding:40px 24px}
+.pd-empty>h3{margin:6px 0 0;font-size:20px}
+.pd-empty>p{max-width:56ch;margin:0 0 8px;font-size:14px;line-height:1.5}
+.pd-emptyico{display:grid;place-items:center;width:52px;height:52px;border-radius:14px;background:color-mix(in srgb,var(--ink) 8%,var(--panel));color:var(--muted)}
+.pd-item .pd-label{font-size:13.5px;line-height:1.3}
+.pd-item .pd-label small{font-size:12px}
+.pd-panel{font-size:14px}
+.pd-panel>p{margin:0 0 6px;line-height:1.5}
+.pd-panel>[data-page-runtime]{font-size:12.5px}
