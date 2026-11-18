@@ -4426,7 +4426,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
 
     // the widget builder
     run('wbEd=null'); await open('widgets','newwb');
-    say('the greyed-out Undo and Redo of the widget builder look switched off, as in the other editors (its bar has its own class for it)', html().includes('class="row wb-bar"') && /\.wb-bar \.btn:disabled\s*\{[^}]*opacity/.test(fs.readFileSync(R+'renderer/styles.css','utf8')));
+    say('the greyed-out Undo and Redo of the widget builder look switched off, as in the other editors (2.4.0: the Pit Board of the editor, where every disabled button of the app is dimmed)', html().includes('class="pitboard wb-pitboard"') && /:where\(#view,dialog\) \.btn:not\(\.big\):disabled\{opacity:\.45/.test(fs.readFileSync(R+'renderer/styles.css','utf8')));
     E('wb-size').onchange({target:{value:'50'}}); E('wb-name').oninput({target:{value:'Typed widget name'}}); undoKey();
     say('a typed name is noted as a change (Undo takes it back, and only it)', run('wbEd.draft.name')!=='Typed widget name' && run('wbEd.draft.textSize')===50);
     E('wb-type').onchange({target:{value:'imagelane'}});

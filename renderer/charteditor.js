@@ -93,7 +93,23 @@ function renderChartForm(box) {
     `<label class="chart-switch">${label}<input type="checkbox" data-chart-field="${key}"${d[key] ? ' checked' : ''}></label>`;
   const folder = (name, content, open = false) =>
     `<details${open ? ' open' : ''}><summary>${name}</summary><div class="chart-fields">${content}</div></details>`;
-  box.innerHTML = `<div class="chart-editor"><div class="chart-editor-head"><div><span class="muted">CUSTOMIZATION / CHART EDITOR</span><h3>Compare the race as it unfolds</h3></div><div class="row"><button class="btn" id="chart-back">Back to charts</button><button class="btn primary" id="chart-save">Save chart</button></div></div><div class="formgrid"><label class="field">Design name<input data-chart-field="name" maxlength="100" value="${esc(d.name)}"></label><label class="field">Note<input data-chart-field="note" maxlength="500" value="${esc(d.note)}"></label></div><div class="chart-style-choices">${ChartWidgets.STYLES.map(([v, label]) => `<button type="button" class="btn${v === d.style ? ' primary' : ''}" data-chart-style="${v}" aria-pressed="${v === d.style}">${label}</button>`).join('')}</div><div class="chart-editor-grid"><div><div class="chart-preview-head"><span id="chart-preview-description">Sample race · ${sampleCars.length} available lanes · ${Math.max(0, ...sampleCars.map(c => c.laps.length))} completed laps per lane</span><label><input type="checkbox" id="chart-narrow"${ed.narrow ? ' checked' : ''}> Narrow widget</label></div><div class="chart-preview-frame"><div id="chart-preview" class="chart-preview${ed.narrow ? ' narrow' : ''}"></div></div><div class="chart-words"><b>IN PLAIN WORDS</b><p id="chart-words"></p></div><p id="chart-save-message" role="status">${ed.dirty ? 'Unsaved changes' : 'Saved design'}</p></div><aside class="chart-settings">${folder(
+  // (2.4.0) the Pit Board on top: back to the charts, the name and the note, the saved state and Save; the kinds of chart as one quiet choice below
+  box.innerHTML = `<div class="chart-editor">${pitBoard({
+    back: 'Chart designs',
+    backId: 'chart-back',
+    eyebrow: ed.id ? 'Chart design' : 'New chart design',
+    name: `<input type="text" class="pb-name" data-chart-field="name" maxlength="100" value="${esc(d.name)}" aria-label="Design name">`,
+    note: `<input type="text" class="pb-note" data-chart-field="note" maxlength="500" value="${esc(d.note)}" placeholder="Click to add a note" aria-label="Note">`,
+    msgId: 'chart-save-message',
+    saveId: 'chart-save',
+    save: 'Save chart',
+    tools:
+      pbGroup(
+        'Kind',
+        `<span class="seg chart-style-choices" role="group" aria-label="Kind of chart">${ChartWidgets.STYLES.map(([v, label]) => `<button type="button" class="btn${v === d.style ? ' on' : ''}" data-chart-style="${v}" aria-pressed="${v === d.style}">${label}</button>`).join('')}</span>`
+      ) +
+      `<div class="pb-grp end"><label class="pb-tool pb-toggle" title="See how the chart looks in a narrow widget"><input type="checkbox" id="chart-narrow"${ed.narrow ? ' checked' : ''}>${pbIcon('screen')}<span>Narrow widget</span></label></div>`
+  })}<div class="chart-editor-grid"><div><div class="chart-preview-head"><span id="chart-preview-description">Sample race · ${sampleCars.length} available lanes · ${Math.max(0, ...sampleCars.map(c => c.laps.length))} completed laps per lane</span></div><div class="chart-preview-frame"><div id="chart-preview" class="chart-preview${ed.narrow ? ' narrow' : ''}"></div></div><div class="chart-words"><b>IN PLAIN WORDS</b><p id="chart-words"></p></div></div><aside class="chart-settings">${folder(
     'Compare',
     `<div id="chart-metric">${select('metric', 'Value', ChartWidgets.METRICS)}</div>` +
       toggle('virtual', 'Include virtual rivals') +
@@ -285,6 +301,7 @@ function renderChartForm(box) {
     ed.dirty = true;
     renderChartForm(box);
   };
+  pbWatch(box, () => ed.dirty);
   box.querySelector('#chart-back').onclick = async () => {
     if (
       ed.dirty &&

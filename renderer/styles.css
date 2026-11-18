@@ -3108,3 +3108,138 @@ body:has(>#view>.setupshell)>#app-footer .app-brand-logo{position:absolute;right
 .pd-panel{font-size:14px}
 .pd-panel>p{margin:0 0 6px;line-height:1.5}
 .pd-panel>[data-page-runtime]{font-size:12.5px}
+/* 2.4.0 Pit Board: the bar on top of every full-screen editor (Layout, Leaderboard, Chart, Widget Builder, picture and audio sets).
+   On top: back, the name in big type with its note, the saved state, Undo / Redo and Save. Below: the tools as icon buttons in named groups. */
+.pitboard{position:relative;z-index:5;margin:0 0 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.pb-top{display:flex;align-items:center;gap:14px;padding:10px 14px;min-width:0}
+.pb-back{display:inline-flex;align-items:center;gap:6px;flex:none;padding:6px 10px 6px 6px;border:0;border-radius:7px;background:transparent;color:color-mix(in srgb,var(--ink) 82%,var(--muted));font:inherit;font-size:13px;cursor:pointer}
+.pb-back:hover{background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ink)}
+.pb-back:focus-visible{outline:3px solid #4c9aff;outline-offset:2px}
+.pb-vline{width:1px;align-self:stretch;margin:4px 0;background:var(--line);flex:none}
+.pb-who{display:flex;flex-direction:column;min-width:0;flex:1 1 auto}
+.pb-eye{font:700 10.5px/1.4 "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html .pitboard input.pb-name{width:100%;max-width:520px;min-height:0;padding:0 0 1px;border:0;border-bottom:1px dashed var(--line);border-radius:0;background:none;box-shadow:none;color:var(--ink);font:italic 700 24px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.01em}
+html .pitboard input.pb-name:hover{border-bottom-color:var(--muted)}
+html .pitboard input.pb-name:focus-visible{outline:none;border-bottom:1px solid var(--accent)}
+html .pitboard input.pb-note{width:100%;max-width:520px;min-height:0;margin-top:2px;padding:0;border:0;border-radius:0;background:none;box-shadow:none;color:var(--muted);font-size:12px}
+html .pitboard input.pb-note::placeholder{color:color-mix(in srgb,var(--muted) 70%,transparent)}
+html .pitboard input.pb-note:focus-visible{outline:none;color:var(--ink)}
+.pb-end{display:flex;align-items:center;gap:8px;margin-left:auto;flex:none}
+.pb-msg{max-width:320px;font-size:12.5px;color:var(--muted);text-align:right}
+.pb-msg:empty{display:none}
+.pb-state{display:inline-flex;align-items:center;gap:7px;margin-right:4px;font-size:12.5px;color:var(--muted);white-space:nowrap}
+.pb-state.dirty::before{content:'';width:8px;height:8px;border-radius:50%;background:#f2b705}
+.pb-state.clean{color:#3ecf8e}
+.pb-state.clean::before{content:'';width:9px;height:5px;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg) translateY(-2px)}
+.pb-tools{display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;padding:7px 12px;border-top:1px solid var(--line);border-radius:0 0 12px 12px;background:color-mix(in srgb,var(--bg) 50%,var(--panel))}
+.pb-grp{display:flex;align-items:center;gap:2px;padding-right:8px;margin-right:2px;border-right:1px solid var(--line)}
+.pb-grp:last-of-type{border-right:0}
+.pb-grp.end{margin-left:auto;border-right:0;padding-right:0}
+.pb-gl{margin:0 6px 0 2px;font:600 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:color-mix(in srgb,var(--muted) 75%,var(--bg))}
+.pb-tool{position:relative;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 9px;border:0;border-radius:7px;background:transparent;color:color-mix(in srgb,var(--ink) 82%,var(--muted));font:inherit;font-size:12.5px;cursor:pointer;list-style:none;white-space:nowrap}
+.pb-tool::-webkit-details-marker{display:none}
+.pb-tool:hover{background:color-mix(in srgb,var(--ink) 8%,transparent);color:var(--ink)}
+.pb-tool svg{flex:none;color:var(--muted)}
+.pb-tool:is([aria-pressed="true"],:has(input:checked)){background:color-mix(in srgb,var(--accent) 14%,var(--panel));color:var(--ink)}
+.pb-tool:is([aria-pressed="true"],:has(input:checked)) svg{color:var(--accent-text,var(--accent))}
+.pb-toggle input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.pb-tool:has(input:focus-visible),.pb-tool:focus-visible{outline:3px solid #4c9aff;outline-offset:2px}
+.pb-pop{position:relative}
+.pb-pop[open]>summary{background:color-mix(in srgb,var(--ink) 10%,var(--panel));color:var(--ink)}
+.pb-pop>summary::after{content:'';width:5px;height:5px;margin:0 0 3px 2px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(45deg)}
+.pb-popbody{position:absolute;left:0;top:calc(100% + 6px);z-index:20;display:flex;flex-direction:column;gap:10px;width:300px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);box-shadow:0 20px 50px rgba(0,0,0,.45)}
+.pb-field{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:600;color:var(--ink)}
+.pb-field :is(input,select){width:100%;font-size:13.5px;font-weight:400}
+.pb-field #e-custom:not([hidden]){display:flex;align-items:center;gap:6px;margin-top:6px}
+.pb-field #e-custom input{width:5em}
+/* the widget list of the Layout and Leaderboard editors: a search on top */
+.ed-pal>.pal-search{margin:0 0 8px}
+.ed-pal>.pal-search input{width:100%;box-sizing:border-box;min-height:32px;padding:0 10px;border-radius:7px;font-size:13px}
+@media(max-width:1000px){.pb-top{flex-wrap:wrap}.pb-end{margin-left:0;width:100%;justify-content:flex-end}}
+html header.pitboard{display:block;padding:0;height:auto;min-height:0;box-shadow:none;position:relative;top:auto}
+html .ed-pal>.pal-search input{border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+html .pitboard .seg>.btn:not(.big){min-height:26px;padding:0 11px;font-size:12.5px}
+html .pitboard .chart-style-choices{margin:0;flex-wrap:wrap}
+/* the canvas Widget Builder: the Pit Board replaces its old head; the blocks are small tiles with an icon, two to a row, whose names wrap */
+.wc-editor>.wc-pitboard{margin-bottom:12px}
+.pb-select select{min-height:30px;padding:0 28px 0 10px;font-size:12.5px;border-radius:7px}
+html .wc-library .wc-add.wc-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;overflow:visible}
+html .wc-library .wc-tile{display:flex;align-items:center;justify-content:flex-start;gap:8px;min-width:0;min-height:36px;height:auto;padding:6px 8px;white-space:normal;text-align:left;line-height:1.2;font-size:12px;background:var(--bg);border:1px solid var(--line)}
+html .wc-library .wc-tile:hover{border-color:color-mix(in srgb,var(--ink) 25%,var(--line));background:color-mix(in srgb,var(--ink) 6%,var(--bg))}
+html .wc-library .wc-tile svg{flex:none;color:var(--muted)}
+html .wc-library .wc-tile span{min-width:0;overflow-wrap:anywhere}
+/* the folders of the canvas Widget Builder: the calm Folders of the app (no coloured tints), the text at the size of the rest */
+html .wc-editor{font-size:13.5px}
+html .wc-folder{border:1px solid var(--line);background:var(--panel);border-radius:11px}
+html .wc-folder>summary{padding:11px 14px;background:transparent;font:italic 700 16px/1.15 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em}
+html .wc-folder[open]>summary{border-bottom:1px solid var(--line);box-shadow:inset 3px 0 0 var(--accent);background:color-mix(in srgb,var(--ink) 4%,var(--panel))}
+html .wc-folder>div{padding:12px 14px;font-size:13px}
+html .wc-folder>div>p.muted{font-size:12.5px;line-height:1.5}
+html .wc-tree{border-radius:7px;border-bottom:0;padding:7px 9px;margin:1px 0}
+html .wc-tree:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+html .wc-tree.active{background:color-mix(in srgb,var(--ink) 10%,var(--panel))}
+html .wc-stage .wc-preview-tools,html .wc-stage .wc-free-tools{border-radius:10px}
+/* 2.4.0 Widget Bench (Widget Builder › Simple text or image): the settings on the left in folders, the widget itself on a sample race screen on the right */
+.wb-bench{font-size:13.5px}
+.wb-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,440px);gap:18px;align-items:start}
+.wb-set{display:flex;flex-direction:column;gap:12px;min-width:0}
+.wb-kinds{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0;padding:0;border:0;min-width:0}
+.wb-kinds>legend{float:left;width:100%;margin:0 0 8px;padding:0;font:700 11px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.wb-kind{position:relative;display:flex;flex-direction:column;gap:4px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);cursor:pointer;min-width:0}
+.wb-kind:hover{border-color:color-mix(in srgb,var(--ink) 25%,var(--line))}
+.wb-kind input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.wb-kind:has(input:focus-visible){outline:3px solid #4c9aff;outline-offset:2px}
+.wb-kind b{font-size:13.5px;color:var(--ink)}
+.wb-kind small{font-size:12px;color:var(--muted)}
+.wb-kico{display:grid;place-items:center;width:30px;height:30px;margin-bottom:4px;border-radius:8px;background:color-mix(in srgb,var(--ink) 8%,var(--panel));color:var(--ink)}
+.wb-kind.on,.wb-kind:has(input:checked){border-color:color-mix(in srgb,var(--accent) 65%,var(--line));background:color-mix(in srgb,var(--ink) 7%,var(--panel))}
+.wb-kind.on .wb-kico,.wb-kind:has(input:checked) .wb-kico{color:var(--accent-text,var(--accent))}
+.wb-fold{border:1px solid var(--line);border-radius:11px;background:var(--panel);overflow:hidden}
+.wb-fold>header{display:flex;align-items:baseline;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);box-shadow:inset 3px 0 0 var(--accent);background:color-mix(in srgb,var(--ink) 4%,var(--panel))}
+.wb-fold>header strong{font:italic 700 17px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em}
+.wb-fold>header span{font-size:12px;color:var(--muted)}
+.wb-foldbody{padding:14px}
+.wb-hint{margin:6px 0 0;font-size:12.5px;line-height:1.5;color:var(--muted)}
+html .wb-bench input.wb-textline{width:100%;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:500 16px 'SF Roboto Mono',Consolas,monospace}
+html .wb-bench input.wb-textline:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+.wbvars{display:grid;grid-template-columns:170px minmax(0,1fr);margin-top:12px;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.wbv-cats{display:flex;flex-direction:column;gap:1px;padding:6px;background:color-mix(in srgb,var(--bg) 55%,var(--panel));border-right:1px solid var(--line)}
+html .wbv-cats .wbv-find{width:100%;min-height:30px;margin:0 0 6px;padding:0 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font-size:12.5px}
+.wbv-cat{padding:6px 9px;border:0;border-radius:6px;background:transparent;color:color-mix(in srgb,var(--ink) 82%,var(--muted));font:inherit;font-size:12.5px;text-align:left;cursor:pointer}
+.wbv-cat:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.wbv-cat.on{background:color-mix(in srgb,var(--ink) 10%,var(--panel));color:var(--ink);font-weight:600}
+.wbv-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:2px;align-content:start;max-height:300px;overflow:auto;padding:6px}
+.wbv{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-width:0;padding:6px 9px;border:0;border-radius:6px;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.wbv[hidden]{display:none}
+.wbv:hover{background:color-mix(in srgb,var(--ink) 7%,transparent)}
+.wbv code{flex:none;font:500 12px 'SF Roboto Mono',Consolas,monospace;color:#9cc8ff}
+.wbv span{min-width:0;font-size:12px;color:var(--muted);text-align:right}
+[data-theme="light"] .wbv code,[data-theme="ocean"] .wbv code{color:#1763bd}
+.wb-sizes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.wb-field{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:600;color:var(--ink)}
+.wb-field :is(input,select){width:100%;font-weight:400;font-size:13.5px}
+.wb-styles{display:flex;align-items:center;gap:14px;min-height:34px;font-weight:400}
+.wb-picrow{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px}
+.wb-picrow .wb-field{min-width:220px}
+.wb-rule{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 8px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg)}
+.wb-rule input[type=text]{width:8em}
+.wb-if{font-size:12.5px;font-weight:600;color:var(--muted)}
+.wb-rule .btn.danger{margin-left:auto}
+.wb-preview{position:sticky;top:12px;display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--bg) 70%,#000)}
+.wb-preview>header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.wb-preview>header strong{font:italic 700 17px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em}
+.wb-screen{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:#0b0e12}
+.wb-stage{position:absolute;left:0;top:0;width:1000px;height:562.5px;transform-origin:0 0}
+.wb-ghost{position:absolute;border:1px dashed rgba(255,255,255,.1);border-radius:8px;background:rgba(255,255,255,.035)}
+.wb-widget{position:absolute;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:10px;background:var(--lane);color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.85),0 0 0 9px color-mix(in srgb,var(--accent) 30%,transparent)}
+.wb-widget.pic{background:transparent}
+.wb-widget .wbprev{display:flex;align-items:center;justify-content:center;width:100%;height:100%;margin:0;padding:0 12px;border:0;background:none;color:inherit;white-space:nowrap}
+.wb-size{position:absolute;left:40px;top:96px;font:500 14px 'SF Roboto Mono',Consolas,monospace;color:rgba(255,255,255,.55)}
+.wb-preview>.wb-hint{margin:0}
+@media(max-width:1200px){.wb-cols{grid-template-columns:minmax(0,1fr)}.wb-preview{position:static}.wb-kinds{grid-template-columns:repeat(2,minmax(0,1fr))}.wb-sizes{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.wb-kinds{display:block}
+.wb-kgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+html .wb-preview>header,html .wb-fold>header{position:static;height:auto;min-height:0}
+html .wb-preview>header{padding:0;border:0;background:none;box-shadow:none}
+@media(max-width:1200px){.wb-kgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.wb-kgrid{clear:both}

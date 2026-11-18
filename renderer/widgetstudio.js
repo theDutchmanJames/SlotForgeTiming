@@ -4,6 +4,23 @@ const WidgetStudio = (() => {
     E = C.esc,
     copy = v => JSON.parse(JSON.stringify(v));
   const containers = ['row', 'column', 'grid', 'free'];
+  // (2.4.0) an icon for every kind of block in the list on the left
+  const BLOCK_ICONS = {
+    free: 'layers',
+    value: 'timing',
+    text: 'alignleft',
+    icon: 'flag',
+    image: 'square',
+    bar: 'stripe',
+    ring: 'gauge',
+    gauge: 'gauge',
+    component: 'screen',
+    row: 'move',
+    column: 'lines',
+    grid: 'board',
+    divider: 'lines',
+    spacer: 'more'
+  };
   const choice = (attr, list, value) =>
     `<select ${attr}>${list.map(([v, t]) => `<option value="${E(v)}"${String(v) === String(value) ? ' selected' : ''}>${E(t)}</option>`).join('')}</select>`;
   const control = (label, body, hint = '') =>
@@ -332,18 +349,36 @@ const WidgetStudio = (() => {
       : n.kind === 'free'
         ? '<p class="muted">Drag blocks on this canvas. Shift-click blocks to select several, then Group them to move and resize them together.</p>'
         : field('grow', 'Share of available space', 'number') + field('height', 'Preferred height (px)', 'number');
-    box.innerHTML = `<div class="wc-editor"><div class="wc-header"><div><small>MAKE IT YOUR OWN</small><h2>Widget Builder</h2><p class="muted">Build the contents here. Style each placed widget with the normal Layout Editor options.</p></div><div class="row">${undoButtons('wc')}<button class="btn primary" id="wc-save">Save widget</button><button class="btn" id="wc-back">Back</button></div></div><div class="wc-basics">${control('Name', `<input id="wc-name" maxlength="60" value="${E(d.name)}">`)}${control(
-      'Shows',
-      choice(
-        'id="wc-scope"',
-        [
-          ['textlane', 'One driver / lane'],
-          ['textrace', 'The whole race']
-        ],
-        d.type
-      )
-    )}${control('Starting point', choice('id="wc-template"', [['', 'Choose a template…'], ['lane', 'Driver Card'], ['timing', 'Timing Bar'], ['strategy', 'Pit & Strategy'], ['race', 'Race Overview'], ['blank', 'Blank'], ...components.map(x => ['standard:' + x.type, 'Standard · ' + x.label])], ''))}</div><p class="wc-status" id="wc-status" role="status"></p>
-    <div class="wc-workspace"><aside class="wc-library">${folder('Add a block', `<div class="wc-add">${C.KINDS.map(([k, t]) => `<button class="btn" data-add-block="${k}">${t}</button>`).join('')}</div>`, '#82aaf6')}${folder('Widget structure', structure.join(''), '#b896ec')}${folder('Available values', `<input id="wc-search" placeholder="Find a value…" aria-label="Find a value" value="${E(ui.search)}"><div id="wc-values"></div>`, '#50be7b', false)}</aside>
+    // (2.4.0) the Pit Board on top: back to the widgets, the name in big type, what it shows and where it started; Undo / Redo / Save
+    box.innerHTML = `<div class="wc-editor">${pitBoard({
+      cls: 'wc-pitboard',
+      back: 'Widgets',
+      backId: 'wc-back',
+      eyebrow: 'Canvas widget · ' + (d.type === 'textrace' ? 'the whole race' : 'one driver'),
+      name: `<input type="text" class="pb-name" id="wc-name" maxlength="60" value="${E(d.name)}" aria-label="Name">`,
+      msgId: 'wc-status',
+      undoId: 'wc-undo',
+      redoId: 'wc-redo',
+      saveId: 'wc-save',
+      save: 'Save widget',
+      tools:
+        pbGroup(
+          'Shows',
+          `<span class="pb-select">${choice(
+            'id="wc-scope"',
+            [
+              ['textlane', 'One driver / lane'],
+              ['textrace', 'The whole race']
+            ],
+            d.type
+          )}</span>`
+        ) +
+        pbGroup(
+          'Start from',
+          `<span class="pb-select">${choice('id="wc-template"', [['', 'Choose a template…'], ['lane', 'Driver Card'], ['timing', 'Timing Bar'], ['strategy', 'Pit & Strategy'], ['race', 'Race Overview'], ['blank', 'Blank'], ...components.map(x => ['standard:' + x.type, 'Standard · ' + x.label])], '')}</span>`
+        )
+    })}
+    <div class="wc-workspace"><aside class="wc-library">${folder('Add a block', `<div class="wc-add wc-tiles">${C.KINDS.map(([k, t]) => `<button class="btn wc-tile" data-add-block="${k}" title="${E(t)}">${typeof Icons !== 'undefined' ? Icons.svg(BLOCK_ICONS[k] || 'square', { size: 16, stroke: 1.8 }) : ''}<span>${t}</span></button>`).join('')}</div>`, '#82aaf6')}${folder('Widget structure', structure.join(''), '#b896ec')}${folder('Available values', `<input id="wc-search" placeholder="Find a value…" aria-label="Find a value" value="${E(ui.search)}"><div id="wc-values"></div>`, '#50be7b', false)}</aside>
     <section class="wc-stage"><div class="wc-preview-tools"><strong>Live preview</strong>${choice(
       'id="wc-scenario"',
       [
@@ -897,6 +932,7 @@ const WidgetStudio = (() => {
         changed(true);
       }
     };
+    pbWatch(box, () => ed.dirty);
     $('wc-back').onclick = async () => {
       if (
         ed.dirty &&

@@ -2115,6 +2115,34 @@ function edCanvasSize({ $, Hh, U, d, drawCanvas, ed, hist, mark, redraw, row, st
   $('e-redo').onclick = () => window.editorRedo();
   ed.syncUndo();
   $('e-save').onclick = () => window.editorSave();
+  pbWatch(view, () => ed.dirty || !hist.isClean());
+  const pbPop = $('e-pagesettings');
+  if (pbPop) pbPop.ontoggle = () => (ed.pbOpen = pbPop.open);
+  const palSearch = $('e-palsearch');
+  if (palSearch)
+    palSearch.oninput = () => {
+      const q = String(palSearch.value || '')
+        .trim()
+        .toLowerCase();
+      document.querySelectorAll('.ed-pal .palgroup').forEach(g => {
+        let any = false;
+        g.querySelectorAll('button').forEach(b => {
+          const hit =
+            !q ||
+            String(b.textContent || '')
+              .toLowerCase()
+              .includes(q) ||
+            String(g.dataset.pal || '')
+              .toLowerCase()
+              .includes(q);
+          b.hidden = !hit;
+          any = any || hit;
+        });
+        g.hidden = !any;
+        if (q) g.open = any;
+        else g.open = state.palOpen.has(g.dataset.pal);
+      });
+    };
 }
 // the palette and the back button
 function edPalette({ $, Hh, U, d, drawCanvas, ed, hasGuides, redraw, row, step }) {
@@ -3062,6 +3090,34 @@ function edKeys({ d, ed, redraw, removeSel }) {
   document.addEventListener('keydown', editorKeyHandler);
 }
 
+// (2.4.0) Pit Board: the bar on top of every full-screen editor. On top: back (to the list it came from), the name in big type with the note
+// under it, whether it is saved, Undo / Redo and Save. Under it: the tools in named groups. Ids stay those of each editor (o.backId…).
+const PB_BACK =
+  '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
+const pbIcon = name => (typeof Icons !== 'undefined' ? Icons.svg(name, { size: 16, stroke: 1.8 }) : '');
+const pbGroup = (label, html) => `<div class="pb-grp">${label ? `<span class="pb-gl">${esc(label)}</span>` : ''}${html}</div>`;
+function pitBoard(o) {
+  const undo = o.undoId
+    ? `<button class="btn ghost icon" type="button" id="${o.undoId}" title="Undo the last change (Ctrl+Z)" aria-label="Undo" disabled>${pbIcon('undo')}</button><button class="btn ghost icon" type="button" id="${o.redoId}" title="Redo (Ctrl+Y)" aria-label="Redo" disabled>${pbIcon('redo')}</button>`
+    : '';
+  return `<header class="pitboard${o.cls ? ' ' + o.cls : ''}"><div class="pb-top"><button type="button" class="pb-back" id="${o.backId}" title="Back to ${esc(o.back)}">${PB_BACK}<span>${esc(o.back)}</span></button><span class="pb-vline" aria-hidden="true"></span><div class="pb-who"><span class="pb-eye">${esc(o.eyebrow)}</span>${o.name}${o.note || ''}</div><div class="pb-end">${o.msgId ? `<span id="${o.msgId}" class="pb-msg" role="status"></span>` : ''}${o.end || ''}<span class="pb-state" data-pb-state aria-live="polite"></span>${undo}<button class="btn primary" type="${o.saveType || 'button'}" id="${o.saveId}">${esc(o.save)}</button></div></div>${o.tools ? `<div class="pb-tools">${o.tools}</div>` : ''}</header>`;
+}
+// the state beside Save: "Unsaved changes" with a yellow dot, or "Saved"; it follows the editor while it is on screen
+function pbWatch(root, dirty) {
+  const el = root && root.querySelector ? root.querySelector('[data-pb-state]') : null;
+  if (!el) return;
+  const show = () => {
+    const d = !!dirty();
+    if (el.dataset.dirty === String(d)) return;
+    el.dataset.dirty = String(d);
+    el.className = 'pb-state' + (d ? ' dirty' : ' clean');
+    el.textContent = d ? 'Unsaved changes' : 'Saved';
+  };
+  show();
+  if (el.isConnected === true && typeof setInterval === 'function') {
+    const t = setInterval(() => (el.isConnected ? show() : clearInterval(t)), 400);
+  }
+}
 function renderEditor() {
   state.editing?.cancelGesture?.();
   const ed = state.editing,
@@ -3117,40 +3173,82 @@ function renderEditor() {
       ? folder('Custom', savedWidgets.map(r => `<button class="btn" data-addcw="${esc(r.id)}">${esc(r.name)}</button>`).join(''))
       : '');
   const hasGuides = () => d.guides.v.length + d.guides.h.length > 0;
-  const S = row ? Rows.settings(d) : null,
-    yn = (id, v, t) => `<label><input type="checkbox" id="${id}" ${v ? 'checked' : ''}> ${t}</label>`;
-  const rowBar = row
-    ? `<label>Row height <input type="number" id="e-rowh" min="20" max="400" value="${esc(S.rowH)}" style="width:5em"></label>
-      <label>Space between rows <input type="number" id="e-gap" min="0" max="100" value="${esc(S.gap)}" style="width:5em"></label>
-      <label>Rounded corners (0 = square) <input type="number" id="e-radius" min="0" max="50" value="${esc(S.radius)}" style="width:5em"></label>
-      <label>Classification <select id="e-classview">${[
-        ['', 'Use race system'],
-        ['overall', 'Overall'],
-        ['class', 'One class'],
-        ['grouped', 'Grouped by class']
-      ]
-        .map(([k, n]) => `<option value="${k}"${(d.classView || '') === k ? ' selected' : ''}>${n}</option>`)
-        .join(
-          ''
-        )}</select></label><label>Class <select id="e-classid"${d.classView === 'class' ? '' : ' disabled'}><option value="">Choose class…</option>${(ed.classDefs || []).map(c => `<option value="${esc(c.id)}"${d.classId === c.id ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>${yn('e-header', S.header, 'Header row')}<button class="btn" id="e-rowcolors">Colours...</button>`
-    : '';
-  view.innerHTML = `<h2>${row ? (ed.id ? 'Edit row design' : 'New row design') : ed.id ? 'Edit layout' : 'New layout'}</h2>
-    <div class="ed-bar">
-      <label>Name <input type="text" id="e-name" value="${esc(d.name)}" maxlength="40"></label>
-      <label>Note <input type="text" id="e-note" value="${esc(d.note || '')}" maxlength="120" placeholder="Optional, shown in the layout list"></label>
-      ${
-        row
-          ? rowBar
-          : `<label>Proportions <select id="e-ratio">${PRESETS.map(p => `<option value="${p[0]}"${preset && preset[0] === p[0] ? ' selected' : ''}>${p[0]}</option>`).join('')}<option value="custom"${preset ? '' : ' selected'}>Custom</option></select></label>
-      <span id="e-custom" ${preset ? 'hidden' : ''}><input type="number" id="e-rw" min="1" max="50" value="${esc(d.ratioW)}" aria-label="Width"> : <input type="number" id="e-rh" min="1" max="50" value="${esc(d.ratioH)}" aria-label="Height"></span>`
-      }
-      ${row ? '' : `<label title="The corners of every widget: 0 is square, 50 is fully round. Empty keeps the classic small corners. A widget can have its own setting.">Rounded corners <input type="number" id="e-lradius" min="0" max="50" step="0.5" placeholder="classic" value="${esc(Frame.cornerPct(d.radius) ?? '')}" style="width:5.5em"></label>`}
-      ${row ? '' : `<label>Lane colour style <select id="e-lanestyle">${Frame.LANE_STYLES.map(([key, label]) => `<option value="${key}"${key === Frame.layoutLaneStyle(d) ? ' selected' : ''}>${label}</option>`).join('')}</select></label>`}
-      <label title="Hold Ctrl (Cmd on a Mac) while you drag to snap to the grid only"><input type="checkbox" id="e-snap" ${ed.snap ? 'checked' : ''}> Snap to grid, widgets and guidelines</label>
-      ${row ? '' : `<button class="btn" id="e-guides" aria-pressed="${hasGuides()}">Guidelines</button><button class="btn" id="e-lanecolors">Lane colours</button>${typeof WidgetSettings !== 'undefined' ? '<button class="btn" id="e-appearance">Widget appearance</button>' : ''}<button class="btn" id="e-background" aria-pressed="${Backdrop.has(d)}" title="A picture behind all the widgets, with blur and other filters">Background</button>`}
-      <button class="btn" id="e-undo" title="Undo the last change (Ctrl+Z)" disabled>Undo</button><button class="btn" id="e-redo" title="Redo (Ctrl+Y)" disabled>Redo</button>
-      <button class="btn primary" id="e-save">${row ? 'Save row design' : 'Save layout'}</button><button class="btn" id="e-back">Back</button><span id="e-msg" class="muted" role="status"></span></div>
-    <div class="ed-main"><aside class="ed-pal" aria-label="Widgets">${palette()}</aside>
+  const S = row ? Rows.settings(d) : null;
+  // (2.4.0) the Pit Board: back, the name and the note, Undo / Redo / Save on top; the tools in groups below; the settings of the page in one panel
+  const field = (label, html, title = '') =>
+    `<label class="pb-field"${title ? ` title="${esc(title)}"` : ''}><span>${label}</span>${html}</label>`;
+  const pageSettings = row
+    ? field('Row height', `<input type="number" id="e-rowh" min="20" max="400" value="${esc(S.rowH)}">`) +
+      field('Space between rows', `<input type="number" id="e-gap" min="0" max="100" value="${esc(S.gap)}">`) +
+      field('Rounded corners (0 = square)', `<input type="number" id="e-radius" min="0" max="50" value="${esc(S.radius)}">`) +
+      field(
+        'Classification',
+        `<select id="e-classview">${[
+          ['', 'Use race system'],
+          ['overall', 'Overall'],
+          ['class', 'One class'],
+          ['grouped', 'Grouped by class']
+        ]
+          .map(([k, n]) => `<option value="${k}"${(d.classView || '') === k ? ' selected' : ''}>${n}</option>`)
+          .join('')}</select>`
+      ) +
+      field(
+        'Class',
+        `<select id="e-classid"${d.classView === 'class' ? '' : ' disabled'}><option value="">Choose class…</option>${(ed.classDefs || []).map(c => `<option value="${esc(c.id)}"${d.classId === c.id ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}</select>`
+      )
+    : field(
+        'Proportions',
+        `<select id="e-ratio">${PRESETS.map(p => `<option value="${p[0]}"${preset && preset[0] === p[0] ? ' selected' : ''}>${p[0]}</option>`).join('')}<option value="custom"${preset ? '' : ' selected'}>Custom</option></select><span id="e-custom" ${preset ? 'hidden' : ''}><input type="number" id="e-rw" min="1" max="50" value="${esc(d.ratioW)}" aria-label="Width"> : <input type="number" id="e-rh" min="1" max="50" value="${esc(d.ratioH)}" aria-label="Height"></span>`
+      ) +
+      field(
+        'Rounded corners',
+        `<input type="number" id="e-lradius" min="0" max="50" step="0.5" placeholder="classic" value="${esc(Frame.cornerPct(d.radius) ?? '')}">`,
+        'The corners of every widget: 0 is square, 50 is fully round. Empty keeps the classic small corners. A widget can have its own setting.'
+      ) +
+      field(
+        'Lane colour style',
+        `<select id="e-lanestyle">${Frame.LANE_STYLES.map(([key, label]) => `<option value="${key}"${key === Frame.layoutLaneStyle(d) ? ' selected' : ''}>${label}</option>`).join('')}</select>`
+      );
+  const toggle = (id, on, icon, label, title) =>
+    `<label class="pb-tool pb-toggle" title="${esc(title)}"><input type="checkbox" id="${id}" ${on ? 'checked' : ''}>${pbIcon(icon)}<span>${label}</span></label>`;
+  const tools =
+    pbGroup(
+      'Arrange',
+      toggle(
+        'e-snap',
+        ed.snap,
+        'pin',
+        'Snap',
+        'Snap to grid, widgets and guidelines. Hold Ctrl (Cmd on a Mac) while you drag to snap to the grid only.'
+      ) +
+        (row
+          ? ''
+          : `<button class="pb-tool" type="button" id="e-guides" aria-pressed="${hasGuides()}">${pbIcon('lines')}<span>Guidelines</span></button>`)
+    ) +
+    pbGroup(
+      'Look',
+      row
+        ? `<button class="pb-tool" type="button" id="e-rowcolors">${pbIcon('paint')}<span>Colours</span></button>${toggle('e-header', S.header, 'alignleft', 'Header row', 'A header row above the drivers')}`
+        : `${typeof WidgetSettings !== 'undefined' ? `<button class="pb-tool" type="button" id="e-appearance">${pbIcon('paint')}<span>Widget appearance</span></button>` : ''}<button class="pb-tool" type="button" id="e-background" aria-pressed="${Backdrop.has(d)}" title="A picture behind all the widgets, with blur and other filters">${pbIcon('square')}<span>Background</span></button><button class="pb-tool" type="button" id="e-lanecolors">${pbIcon('lines')}<span>Lane colours</span></button>`
+    ) +
+    `<details class="pb-pop" id="e-pagesettings"${ed.pbOpen ? ' open' : ''}><summary class="pb-tool">${pbIcon('sliders')}<span>${row ? 'Row settings' : 'Page settings'}</span></summary><div class="pb-popbody"><span class="pb-eye">${row ? 'Row settings' : 'Page settings'}</span>${pageSettings}</div></details>`;
+  view.innerHTML = `${pitBoard({
+    cls: 'ed-pitboard',
+    back: row ? 'Row designs' : 'Layouts',
+    backId: 'e-back',
+    eyebrow: row
+      ? `${ed.id ? 'Edit row design' : 'New row design'} · height ${S.rowH}`
+      : `${ed.id ? 'Edit layout' : 'New layout'} · ${preset ? preset[0] : d.ratioW + ':' + d.ratioH}`,
+    name: `<input type="text" class="pb-name" id="e-name" value="${esc(d.name)}" maxlength="40" aria-label="Name">`,
+    note: `<input type="text" class="pb-note" id="e-note" value="${esc(d.note || '')}" maxlength="120" placeholder="Click to add a note (shown in the list)" aria-label="Note">`,
+    msgId: 'e-msg',
+    undoId: 'e-undo',
+    redoId: 'e-redo',
+    saveId: 'e-save',
+    save: row ? 'Save row design' : 'Save layout',
+    tools
+  })}
+    <div class="ed-main"><aside class="ed-pal" aria-label="Widgets"><div class="pal-search"><input type="search" id="e-palsearch" placeholder="Find a widget" aria-label="Find a widget"></div>${palette()}</aside>
       <div class="ed-stage"><div class="canvas" id="canvas"></div>${row ? '<h4>Preview: leader, normal, in the pits, penalty, out</h4><div class="rowprev" id="e-preview"></div>' : ''}</div>
       <aside class="ed-side" id="side"></aside></div>`;
   const $ = id => document.getElementById(id);
