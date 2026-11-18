@@ -38,7 +38,26 @@ const WidgetStudio = (() => {
   }
   const depthOf = (node, id, level = 0) => (node.id === id ? level : Math.max(-1, ...node.children.map(x => depthOf(x, id, level + 1))));
   const heightOf = node => 1 + Math.max(0, ...node.children.map(heightOf));
+  // the pictures of the sets that the widget uses: fetched one set at a time when needed, then the composer is drawn again
+  function fullImages(ed) {
+    if (!ed || !api.getRecord || typeof EditorData === 'undefined' || !Array.isArray(ed.images)) return;
+    ed.imgFull ||= new Set();
+    const ids = EditorData.needed({ draft: ed.draft, rowDesigns: ed.rows || [], chartDesigns: ed.charts || [] }).images;
+    for (const id of ids) {
+      if (ed.imgFull.has(id) || !ed.images.some(x => x.id === id)) continue;
+      ed.imgFull.add(id);
+      Promise.resolve(api.getRecord('imagesets', id))
+        .then(row => {
+          if (!row) return;
+          ed.images = ed.images.map(x => (x.id === id ? row : x));
+          if (wbEd === ed && ed.box && ed.box.isConnected !== false) edit(ed.box);
+        })
+        .catch(() => ed.imgFull.delete(id));
+    }
+  }
   function edit(box) {
+    if (wbEd) wbEd.box = box;
+    fullImages(wbEd);
     wbEd?.composerUI?.freeDispose?.();
     if (wbEd?.composerUI) wbEd.composerUI.freeDispose = null;
     const openFolders = new Map(
@@ -923,11 +942,18 @@ const WidgetStudio = (() => {
     };
     if (!ed.loaded) {
       ed.loaded = true;
-      Promise.all([api.list('chartdesigns'), api.list('rowdesigns'), api.list('imagesets'), api.list('teams')])
-        .then(([charts, rows, images, teams]) => {
+      // (2.4.0) the picture sets and teams as light lists (id, name, kind), as the Layout Editor reads them: a full list of every set failed
+      // when one set was very large. The pictures of a set are fetched when the widget uses it (fullImages).
+      const light = entity => (typeof EditorData !== 'undefined' ? EditorData.choices(api, entity) : api.list(entity));
+      Promise.all([api.list('chartdesigns'), api.list('rowdesigns'), light('imagesets'), light('teams')])
+        .then(async ([charts, rows, images, teams]) => {
           ed.charts = charts;
           ed.rows = rows;
           ed.images = images;
+          if (api.editorRead) {
+            const sample = await api.editorRead('sample', 'teams').catch(() => []);
+            teams = teams.map(t => ({ ...t, ...(sample || []).find(x => x.id === t.id) }));
+          }
           ed.teams = teams;
           if (wbEd === ed) edit(box);
         })
