@@ -1688,6 +1688,16 @@ async function renderHome() {
           );
         });
         d.bests = HomeStats.gridBests({ laps, trackId: track && track.id, grid: grid2, driverName: dn });
+        // (2.4.0: the track record sits above the drivers of the grid)
+        if (!d.rec && track)
+          d.rec = HomeStats.recordCard({
+            laps,
+            sessions,
+            trackId: track.id,
+            driverIds: byTeam ? [] : rows.filter(r => !r.absent).map(r => r.driverId),
+            driverName: dn,
+            carName: cn
+          });
       } else if (key === 'rules') {
         d.rules = HomeStats.rules(rawSetup, {
           typeLabel,

@@ -72,7 +72,7 @@ const folderTools = folderToolsWith('');
 // ---- View settings: which columns of a table (or which rows of a grid) are shown. The choice is kept in the settings (viewSettings), for every table and view on its own. ----
 const viewBars = new Set(); // the bars that are open (kept while the app runs, also when the page is drawn again)
 const viewButton = id =>
-  `<button class="btn vsbtn${viewBars.has(id) ? ' on' : ''}" type="button" data-viewbar="${esc(id)}" aria-expanded="${viewBars.has(id)}" title="Choose which information is shown">View settings</button>`;
+  `<button class="btn ghost vsbtn${viewBars.has(id) ? ' on' : ''}" type="button" data-viewbar="${esc(id)}" aria-expanded="${viewBars.has(id)}" title="Choose which information is shown">View settings</button>`;
 const viewSaved = path => ViewSet.get(state.settings.viewSettings, path);
 // one group of check boxes: where the choice is kept (path) and the columns [{ key, label, on, note }]
 const viewGroup = (title, path, cols) => {

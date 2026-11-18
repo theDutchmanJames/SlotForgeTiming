@@ -301,7 +301,7 @@ async function mountManagerPage(box, e) {
         '</button><button class="btn" id="paddock-view" aria-pressed="false">Dealership Cars</button></div></div>'
       : '') +
     `<div class="row${e === 'racesetups' ? ' rstoolbar' : paged ? ' catalogue-toolbar' : ''}"><button class="btn primary" id="add">Add ${esc(s.label.toLowerCase())}</button>
-      ${e === 'tracks' ? '<button class="btn" id="track-import">Import from Circuit</button>' : ''}${s.extra === false ? '' : '<button class="btn" id="extra">Extra fields…</button>'}${rsFilter}${viewBtn}${paged ? '<div class="catalogue-controls"><div class="catalogue-tools">' : ''}${toggle}${paged ? '</div></div>' : ''}</div>${bar}` +
+      ${e === 'tracks' ? '<button class="btn" id="track-import">Import from Circuit</button>' : ''}${s.extra === false ? '' : '<button class="btn ghost" id="extra">Extra fields…</button>'}${rsFilter}${viewBtn}${paged ? '<div class="catalogue-controls"><div class="catalogue-tools">' : ''}${toggle}${paged ? '</div></div>' : ''}</div>${bar}` +
     (e === 'racesetups'
       ? rsBody
       : items.length && mode === 'grid'

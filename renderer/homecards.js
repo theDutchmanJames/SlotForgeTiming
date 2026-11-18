@@ -129,18 +129,32 @@
         : !d.bests.length
           ? '<p class="muted">Choose the drivers for the lanes to see their personal bests here.</p>'
           : (() => {
-              // the fastest of the grid sets the bar (100%); a slower lap has a shorter bar and its gap to that one under the time
-              const timed = d.bests.filter(b => b.time !== null && Number.isFinite(b.time) && b.time > 0),
-                best = timed.length ? Math.min(...timed.map(b => b.time)) : null;
-              return d.bests
-                .map(b => {
-                  const has = b.time !== null && best !== null && b.time > 0,
-                    pct = has ? Math.max(8, Math.round((best / b.time) * 100)) : 0,
-                    gap = has ? (b.time === best ? 'fastest' : '+' + ((b.time - best) / 1000).toFixed(3)) : 'no lap yet',
-                    c = SAFE.test(String(b.color).trim()) ? '--c:' + esc(String(b.color).trim()) : '';
-                  return `<div class="hm-kv"><span class="who"><i class="hm-dot" style="${c}"></i>${esc(b.name)}</span><span class="hm-pace" style="${c}"><i style="width:${pct}%"></i></span><span class="hm-pbt"><strong${b.time === null ? ' class="muted"' : ''}>${esc(b.text)}</strong><small${has && b.time === best ? ' class="lead"' : ''}>${gap}</small></span></div>`;
-                })
-                .join('');
+              // (2.4.0) a timing tower: the drivers in order of pace (a driver with no lap yet last), the fastest of the grid in purple, the others with their gap
+              const ok = b => b.time !== null && Number.isFinite(b.time) && b.time > 0,
+                order = d.bests
+                  .map((b, i) => ({ b, i }))
+                  .sort((x, y) => (ok(x.b) ? (ok(y.b) ? x.b.time - y.b.time : -1) : ok(y.b) ? 1 : x.i - y.i)),
+                best = order.length && ok(order[0].b) ? order[0].b.time : null,
+                rec = d.rec && d.rec.record;
+              let pos = 0;
+              return (
+                (rec
+                  ? `<div class="hm-pbrec"><i aria-hidden="true"></i>Track record <b>${esc(rec.text)}</b>${rec.driver ? ' · ' + esc(rec.driver) : ''}</div>`
+                  : '') +
+                `<div class="hm-pblist">${order
+                  .map(({ b }) => {
+                    const has = ok(b) && best !== null,
+                      c = SAFE.test(String(b.color).trim()) ? '--c:' + esc(String(b.color).trim()) : '';
+                    if (has) pos++;
+                    const chip = !has
+                      ? '<span class="hm-pbchip none">no lap</span>'
+                      : b.time === best
+                        ? '<span class="hm-pbchip best">fastest</span>'
+                        : `<span class="hm-pbchip down">+${((b.time - best) / 1000).toFixed(3)}</span>`;
+                    return `<div class="hm-kv"><span class="hm-pbpos">${has ? pos : '–'}</span><span class="who"><i class="hm-dot" style="${c}"></i>${esc(b.name)}</span><strong${b.time === null ? ' class="muted"' : ''}>${esc(b.text)}</strong>${chip}</div>`;
+                  })
+                  .join('')}</div>`
+              );
             })()
     );
 

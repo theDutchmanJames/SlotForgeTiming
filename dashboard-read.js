@@ -97,7 +97,7 @@ function home(source, value) {
   for (const b of o.boards) {
     let data = {};
     const c = { ...ctx, count: b.count, scope: b.scope };
-    if (b.key === 'record') data.rec = o.trackId ? Home.recordCard({ ...c, laps: compact }) : null;
+    if (b.key === 'record' || b.key === 'bests') data.rec = o.trackId ? Home.recordCard({ ...c, laps: compact }) : null; // (2.4.0: Personal Bests shows the track record too)
     if (b.key === 'recent') data.recent = Home.recent(c);
     if (b.key === 'records')
       data.records = Home.allRecords({
