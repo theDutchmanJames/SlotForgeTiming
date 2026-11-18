@@ -2639,3 +2639,39 @@ dialog.ss-choose{width:min(620px,94vw)}
 #setuppage .seg>.btn:hover:where(:not(:disabled)){background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink);border:0}
 #setuppage .seg>.btn:is(.on,[aria-pressed="true"]){background:color-mix(in srgb,var(--ink) 12%,var(--panel));color:var(--ink);box-shadow:none;border:0;font-weight:600}
 .rscard .rsactions{width:auto}
+/* 2.4.0 Customization: the sections are a side list (as Race Setup), grouped by when you use them; layouts and picture sets are cards */
+.custshell>.custrail{display:flex;flex-direction:column;padding:22px 12px 24px;border-right:1px solid var(--line);background:color-mix(in srgb,var(--bg) 55%,var(--panel))}
+#customtabs{display:flex;flex-direction:column;flex-wrap:nowrap;gap:2px}
+#customtabs .sslabel{margin:14px 10px 6px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:color-mix(in srgb,var(--muted) 80%,var(--bg))}
+#customtabs .tab{display:flex;align-items:center;gap:11px;width:100%;min-height:36px;padding:7px 10px;border:0;border-radius:8px;background:transparent;box-shadow:none;color:color-mix(in srgb,var(--ink) 82%,var(--muted));font:inherit;font-size:13.5px;font-weight:400;text-align:left}
+#customtabs .tab:hover:where(:not(:disabled)){background:color-mix(in srgb,var(--ink) 6%,transparent);border:0}
+#customtabs .tab[aria-selected="true"]{background:color-mix(in srgb,var(--ink) 10%,var(--panel));color:var(--ink);font-weight:600;box-shadow:none;border:0}
+#customtabs .tab .tabico{width:18px;height:18px;color:var(--muted)}
+#customtabs .tab[aria-selected="true"] .tabico{color:var(--tab-colour,var(--accent))}
+.custshell>.custpage{min-width:0;padding:24px 30px 34px}
+.custshell>.custpage>h2{margin:0 0 6px;font-size:26px;font-weight:650;letter-spacing:-.02em}
+.custpage .seg{gap:2px;padding:3px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--bg) 60%,var(--panel))}
+.custpage .seg>.btn{border:0;border-radius:7px;background:transparent;box-shadow:none;color:var(--muted);font-weight:500}
+.custpage .seg>.btn:is(.on,[aria-pressed="true"]){background:color-mix(in srgb,var(--ink) 12%,var(--panel));color:var(--ink);box-shadow:none;border:0;font-weight:600}
+@media (max-width:900px){.custshell>.custrail{border-right:0;border-bottom:1px solid var(--line);padding:12px}#customtabs{flex-direction:row;flex-wrap:wrap}#customtabs .sslabel,.custrail .ssrailtitle{display:none}#customtabs .tab{width:auto}.custshell>.custpage{padding:20px}}
+/* the cards of layouts and picture sets */
+.lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px;margin-top:16px}
+.lcard{display:flex;flex-direction:column;padding:0;overflow:hidden;border-radius:12px}
+.lcard:hover{border-color:color-mix(in srgb,var(--ink) 22%,var(--line))}
+.lsketch{position:relative;width:100%;max-height:200px;background:color-mix(in srgb,var(--bg) 80%,#000);border-bottom:1px solid var(--line);padding:10px;box-sizing:border-box}
+.lsketch svg{display:block;width:100%;height:100%}
+.lsketch rect{fill:color-mix(in srgb,var(--ink) 13%,transparent);stroke:color-mix(in srgb,var(--ink) 22%,transparent);stroke-width:1;vector-effect:non-scaling-stroke}
+.lsketch.lpics{aspect-ratio:16 / 7;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;overflow:hidden}
+.lsketch.lpics{flex-wrap:nowrap}
+.lsketch.lpics img{height:42px;max-width:15%;min-width:0;object-fit:contain}
+.lbody{display:flex;flex-direction:column;gap:4px;padding:14px 16px;flex:1}
+.lbody h3{margin:0;font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;overflow-wrap:anywhere}
+.lbody p{margin:0;font-size:12.5px}
+.ltag{font-size:11px;font-weight:500;padding:2px 8px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}
+.lmeta{display:flex;gap:14px;margin-top:6px;font:500 12px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+.lprog{height:4px;margin-top:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.lprog i{display:block;height:100%;background:color-mix(in srgb,var(--ink) 60%,var(--panel))}
+.lprog.full i{background:#3ecf8e}
+.lactions{display:flex;gap:6px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--bg) 50%,var(--panel))}
+.lactions .danger{margin-left:auto}
+.custdup{display:none}

@@ -459,6 +459,17 @@ async function renderSetup() {
 }
 
 // Customization tab: Layout Editor, Leaderboard Editor, Race Results, Audio Settings, Image Settings and Widget Builder
+// the sections of Customization: id, name, icon, and the heading of the group it starts (2.4.0: Race screen, After the race, Sound and pictures, Add-ons)
+const CUSTOM_TABS = [
+  ['layouts', 'Layout Editor', 'screen', 'Race screen'],
+  ['rows', 'Leaderboard Editor', 'lines'],
+  ['charts', 'Chart Editor', 'gauge'],
+  ['widgets', 'Widget Builder', 'layers'],
+  ['results', 'Race Results', 'star', 'After the race'],
+  ['audio', 'Audio Settings', 'say', 'Sound and pictures'],
+  ['images', 'Image Settings', 'paint'],
+  ['pluginpages', 'Plugin Pages & Tools', 'cog', 'Add-ons']
+];
 async function renderCustom() {
   if (typeof PluginDisplayClient !== 'undefined') await PluginDisplayClient.refresh();
   if (state.editing) {
@@ -467,19 +478,13 @@ async function renderCustom() {
     if (state.editing !== ed || state.tab !== 'custom') return;
     return renderEditor();
   }
-  view.innerHTML = '<h2>Customization</h2><div class="sub" id="customtabs" role="tablist"></div><div id="setupbox"></div>';
+  // (2.4.0) the sections are a side list, grouped by when you use them (the design in docs/ui-reference/redesign-2026-11), and the page has the name of its section
+  const sub = CUSTOM_TABS.some(t => t[0] === state.customSub) ? state.customSub : 'layouts';
+  view.innerHTML = `<div class="setupshell custshell"><nav class="custrail" aria-label="Customization sections"><div class="ssrailtitle">Customization</div><div class="sub" id="customtabs" role="tablist"></div></nav><div class="custpage"><h2 id="customtitle">${esc(CUSTOM_TABS.find(t => t[0] === sub)[1])}</h2><div id="setupbox"></div></div></div>`;
+  const tabsEl = document.getElementById('customtabs');
   renderTabs(
-    document.getElementById('customtabs'),
-    [
-      ['layouts', 'Layout Editor'],
-      ['rows', 'Leaderboard Editor'],
-      ['charts', 'Chart Editor'],
-      ['results', 'Race Results'],
-      ['audio', 'Audio Settings'],
-      ['images', 'Image Settings'],
-      ['widgets', 'Widget Builder'],
-      ['pluginpages', 'Plugin Pages & Tools']
-    ],
+    tabsEl,
+    CUSTOM_TABS.map(([id, label]) => [id, label]),
     state.customSub,
     async id => {
       // the picture set, widget and chart editors are closed by another tab: ask first when there are changes that are not saved
@@ -509,17 +514,32 @@ async function renderCustom() {
       imgEd = null;
       wbEd = null;
       renderCustom();
-    }
+    },
+    Object.fromEntries(CUSTOM_TABS.map(t => [t[0], t[2]]))
   );
+  tabsEl.setAttribute('aria-orientation', 'vertical');
+  // (a small heading before the first section of each group; the headings are for the eye, the tabs keep their names)
+  CUSTOM_TABS.forEach(([id, , , group]) => {
+    const b = tabsEl.querySelector?.(`[data-id="${id}"]`);
+    if (b && group && b.insertAdjacentHTML)
+      b.insertAdjacentHTML('beforebegin', `<span class="sslabel" aria-hidden="true">${esc(group)}</span>`);
+  });
   const box = document.getElementById('setupbox');
-  if (state.customSub === 'pluginpages') return renderPluginPages(box);
-  if (state.customSub === 'audio') return renderAudioSets(box);
-  if (state.customSub === 'charts') return renderChartEditor(box);
-  if (state.customSub === 'rows') return renderRowList(box);
-  if (state.customSub === 'results') return renderResultsSettings(box);
-  if (state.customSub === 'images') return renderImageSets(box);
-  if (state.customSub === 'widgets') return renderWidgetBuilder(box);
-  return renderLayoutList(box);
+  // (a heading of the section that only repeats the title of the page is left out of sight)
+  const titled = p =>
+    Promise.resolve(p).then(() => {
+      const t = document.getElementById('customtitle'),
+        h = box.querySelector?.('h2,h3');
+      if (t && h && h.classList && String(h.textContent || '').trim() === String(t.textContent || '').trim()) h.classList.add('custdup');
+    });
+  if (state.customSub === 'pluginpages') return titled(renderPluginPages(box));
+  if (state.customSub === 'audio') return titled(renderAudioSets(box));
+  if (state.customSub === 'charts') return titled(renderChartEditor(box));
+  if (state.customSub === 'rows') return titled(renderRowList(box));
+  if (state.customSub === 'results') return titled(renderResultsSettings(box));
+  if (state.customSub === 'images') return titled(renderImageSets(box));
+  if (state.customSub === 'widgets') return titled(renderWidgetBuilder(box));
+  return titled(renderLayoutList(box));
 }
 
 // The second-screen Results Wall is intentionally a focused editor. It changes
@@ -616,19 +636,23 @@ async function renderImageSets(box) {
   if (imgEd) return renderImageSetEditor(box);
   manager = null;
   const sets = await EditorData.choices(api, 'imagesets', 'media');
+  // (2.4.0) every set is a card: a few of its pictures, what it is for, and how many of its pictures it has
+  const pics = r =>
+    (Array.isArray(r.images) ? r.images : Object.values(r.images || {})).filter(x => typeof x === 'string' && x).slice(0, 6);
   box.innerHTML =
-    `<p class="muted">A picture set is a group of pictures for a widget: the Fuel widget (full to empty), the Race flag widget (one per state), the Start lights widget (a lit and an unlit light), the Tyres widget (one per tyre), the Weather Forecast widget (one per state of the weather) or the Track Conditions widget (an icon per item). Make a set once here, then choose it in the widget of any layout instead of uploading the pictures again.</p>
-    <div class="row"><button class="btn primary" id="newset">New picture set</button></div>
-    <div class="wrap"><table class="fields"><tr><th>Name</th><th>For</th><th>Pictures</th><th></th></tr>` +
+    `<p class="muted">Pictures for the Fuel, Race flag, Start lights, Tyres, Weather Forecast and Track Conditions widgets. Make a set once here, then choose it in the widget of any layout.</p>
+    <div class="row"><button class="btn primary" id="newset">New picture set</button></div>` +
     (sets.length
-      ? sets
-          .map(
-            r => `<tr><td>${esc(r.name)}</td><td>${esc((SET_KINDS.find(k => k[0] === r.kind) || [0, r.kind])[1])}</td><td>${setCount(r)} of ${setSlots(r).length}</td><td class="actions">
-      <button class="btn" data-edit="${esc(r.id)}">Edit</button> <button class="btn" data-dup="${esc(r.id)}">Duplicate</button> <button class="btn danger" data-del="${esc(r.id)}">Delete</button></td></tr>`
-          )
-          .join('')
-      : '<tr><td colspan="4" class="muted">No picture sets yet.</td></tr>') +
-    '</table></div>';
+      ? `<div class="lgrid">${sets
+          .map(r => {
+            const have = setCount(r),
+              all = setSlots(r).length,
+              p = pics(r);
+            return `<div class="card lcard"><div class="lsketch lpics">${p.length ? p.map(src => `<img src="${esc(src)}" alt="" loading="lazy">`).join('') : '<span class="muted">No pictures yet</span>'}</div><div class="lbody"><h3>${esc(r.name)}</h3><p class="muted">${esc((SET_KINDS.find(k => k[0] === r.kind) || [0, r.kind])[1])}</p><div class="lprog${all && have >= all ? ' full' : ''}"><i style="width:${all ? Math.round((100 * have) / all) : 0}%"></i></div><div class="lmeta"><span>${have} of ${all}</span>${all && have >= all ? '<span>complete</span>' : ''}</div></div><div class="lactions"><button class="btn" data-edit="${esc(r.id)}">Edit</button> <button class="btn" data-dup="${esc(r.id)}">Duplicate</button> <button class="btn danger" data-del="${esc(r.id)}">Delete</button></div></div>`;
+          })
+          .join('')}</div>`
+      : '<p class="muted">No picture sets yet.</p>');
+
   const onSetClick = (box.onclick = async ev => {
     const b = ev.target.closest('button');
     if (!b) return;
@@ -913,21 +937,69 @@ async function renderLayoutList(box) {
   manager = null;
   const layouts = await EditorData.choices(api, 'layouts');
   const prop = l => `${l.ratioW}:${l.ratioH}`;
+  // (2.4.0) every layout is a card with a sketch of its page: the boxes of its widgets, drawn once the layout is read (the list itself does not carry them)
+  const card = (key, name, note, ratio, count, actions, builtIn = false) =>
+    `<div class="card lcard"><div class="lsketch" style="aspect-ratio:${ratio.replace(':', ' / ')}" data-sketch="${esc(key)}"></div><div class="lbody"><h3>${esc(name)}${builtIn ? ' <span class="ltag">Built in</span>' : ''}</h3>${note ? `<p class="muted">${esc(note)}</p>` : ''}<div class="lmeta"><span>${esc(ratio)}</span><span>${count} widgets</span></div></div><div class="lactions">${actions}</div></div>`;
   box.innerHTML =
     `<p class="muted">A layout is a timing page you design once and use in any race setup.</p>
     <div class="row"><button class="btn primary" id="newl">New layout</button></div>
-    <div class="wrap"><table class="fields"><tr><th>Name</th><th>Note</th><th>Proportions</th><th>Widgets</th><th></th></tr>
-    <tr><td>Default layout</td><td class="muted">Built in, used when a race setup has none</td><td>16:9</td><td>${Widgets.defaultLayout().widgets.length}</td>
-      <td class="actions"><button class="btn" id="copydef">Copy to edit</button></td></tr>
-    <tr><td>Default token layout</td><td class="muted">Built in, used by a Time Token Session when its race setup has none</td><td>16:9</td><td>${Widgets.tokenLayout().widgets.length}</td>
-      <td class="actions"><button class="btn" id="copytok">Copy to edit</button></td></tr>` +
+    <div class="lgrid">` +
     layouts
-      .map(
-        l => `<tr><td>${esc(l.name)}</td><td class="muted">${esc(l.note || '')}</td><td>${esc(prop(l))}</td><td>${l.widgetCount ?? (l.widgets || []).length}</td><td class="actions">
-      <button class="btn" data-edit="${esc(l.id)}">Edit</button> <button class="btn" data-dup="${esc(l.id)}">Duplicate</button> <button class="btn danger" data-del="${esc(l.id)}">Delete</button></td></tr>`
+      .map(l =>
+        card(
+          l.id,
+          l.name,
+          l.note || '',
+          prop(l),
+          l.widgetCount ?? (l.widgets || []).length,
+          `<button class="btn" data-edit="${esc(l.id)}">Edit</button> <button class="btn" data-dup="${esc(l.id)}">Duplicate</button> <button class="btn danger" data-del="${esc(l.id)}">Delete</button>`
+        )
       )
       .join('') +
-    '</table></div>';
+    card(
+      'builtin:default',
+      'Default layout',
+      'Used when a race setup has none',
+      '16:9',
+      Widgets.defaultLayout().widgets.length,
+      '<button class="btn" id="copydef">Copy to edit</button>',
+      true
+    ) +
+    card(
+      'builtin:token',
+      'Default token layout',
+      'Used by a Time Token Session when its race setup has none',
+      '16:9',
+      Widgets.tokenLayout().widgets.length,
+      '<button class="btn" id="copytok">Copy to edit</button>',
+      true
+    ) +
+    '</div>';
+  // the sketches: the widgets of each layout as boxes on its page
+  const sketch = (el, l) => {
+    const ws = (l && l.widgets) || [];
+    if (!el || !ws.length) return;
+    const W = Math.max(1, ...ws.map(w => (Number(w.x) || 0) + (Number(w.w) || 0))),
+      H = Math.max(1, ...ws.map(w => (Number(w.y) || 0) + (Number(w.h) || 0)), (W * (Number(l.ratioH) || 9)) / (Number(l.ratioW) || 16));
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${ws
+      .slice(0, 120)
+      .map(
+        w =>
+          `<rect x="${Number(w.x) || 0}" y="${Number(w.y) || 0}" width="${Math.max(1, Number(w.w) || 0)}" height="${Math.max(1, Number(w.h) || 0)}" rx="${W / 160}"></rect>`
+      )
+      .join('')}</svg>`;
+  };
+  if (typeof document !== 'undefined' && box.querySelector) {
+    sketch(box.querySelector('[data-sketch="builtin:default"]'), Widgets.defaultLayout());
+    sketch(box.querySelector('[data-sketch="builtin:token"]'), Widgets.tokenLayout());
+    if (api.getRecord)
+      layouts.forEach(l =>
+        Promise.resolve(api.getRecord('layouts', l.id))
+          .then(r => box.isConnected !== false && sketch(box.querySelector(`[data-sketch="${CSS.escape ? CSS.escape(l.id) : l.id}"]`), r))
+          .catch(() => {})
+      );
+  }
+
   const open = (draft, id) => {
     state.editing = {
       id,
