@@ -1,4 +1,4 @@
-// The text of the Racing Rules: a little formatting (bold, italic, underline, size, colour, lists, headings) kept as safe HTML.
+// The text of the Racing Rules: a little formatting (bold, italic, underline, strikethrough, size, colour, highlight, alignment, lists, headings, quotes and lines) kept as safe HTML.
 // clean() is used when the rules are saved and again when they are shown, so only these tags and settings ever get through.
 (function (root) {
   const TAGS = {
@@ -18,10 +18,12 @@
     h1: 'h1',
     h2: 'h2',
     h3: 'h3',
+    blockquote: 'blockquote',
+    hr: 'hr',
     font: 'font',
     span: 'span'
   };
-  const VOID = { br: 1 };
+  const VOID = { br: 1, hr: 1 };
   const esc = s =>
     s
       .replace(/&(?!(amp|lt|gt|nbsp|quot|#\d{1,6});)/g, '&amp;')
@@ -35,7 +37,7 @@
     const m = new RegExp(`\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i').exec(s);
     return m ? (m[1] ?? m[2] ?? m[3] ?? '') : '';
   };
-  // a style="" attribute: only colour, size, bold, italic, underline and alignment survive
+  // a style="" attribute: only colour, highlight, size, bold, italic, underline, alignment and indent survive
   function styleOf(style) {
     const out = [];
     style.split(';').forEach(d => {
@@ -44,6 +46,8 @@
       const k = d.slice(0, i).trim().toLowerCase(),
         v = d.slice(i + 1).trim();
       if (k === 'color' && colorOk(v)) out.push(`color:${v}`);
+      else if (k === 'background-color' && colorOk(v)) out.push(`background-color:${v}`);
+      else if (k === 'margin-left' && /^\d{1,3}(px|em)$/i.test(v)) out.push(`margin-left:${v}`);
       else if (
         k === 'font-size' &&
         /^(\d{1,3}(\.\d+)?(px|pt|em|rem|%)|xx-small|x-small|small|medium|large|x-large|xx-large|xxx-large)$/i.test(v)
@@ -52,7 +56,7 @@
       else if (k === 'font-weight' && /^(bold|normal|[1-9]00)$/i.test(v)) out.push(`font-weight:${v}`);
       else if (k === 'font-style' && /^(italic|normal)$/i.test(v)) out.push(`font-style:${v}`);
       else if (k === 'text-decoration' && /^(underline|none|line-through)$/i.test(v)) out.push(`text-decoration:${v}`);
-      else if (k === 'text-align' && /^(left|center|right)$/i.test(v)) out.push(`text-align:${v}`);
+      else if (k === 'text-align' && /^(left|center|right|justify)$/i.test(v)) out.push(`text-align:${v}`);
     });
     return out.join(';');
   }
@@ -89,7 +93,9 @@
           z = attr(m[3], 'size');
         if (c && colorOk(c)) a += ` color="${c}"`;
         if (/^[1-7]$/.test(z)) a += ` size="${z}"`;
-      } else if (tag === 'span' || tag === 'div' || tag === 'p' || /^h[1-3]$/.test(tag)) {
+        const st = styleOf(attr(m[3], 'style'));
+        if (st) a += ` style="${st}"`;
+      } else if (['span', 'div', 'p', 'blockquote', 'li', 'ul', 'ol'].includes(tag) || /^h[1-3]$/.test(tag)) {
         const st = styleOf(attr(m[3], 'style'));
         if (st) a += ` style="${st}"`;
       }

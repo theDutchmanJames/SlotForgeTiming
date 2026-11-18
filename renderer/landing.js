@@ -30,7 +30,8 @@ const homeFieldId = t => (t && typeof t.id === 'string' && t.id.startsWith('hg-'
 // (A narrow Start a race card drops to 2 and then 1 column in styles.css.)
 const laneCols = n => (n <= 3 ? Math.max(1, n) : Math.min(4, Math.ceil(n / 2)));
 
-let homeChampAuto = ''; // (2.4.0: the session of a championship that Home loaded by itself last)
+let homeChampAuto = '';
+const homeAvatarCache = new Map(); // (2.4.0: the pictures of drivers in the lanes, by driver id: '' while it is read or when the driver has none) // (2.4.0: the session of a championship that Home loaded by itself last)
 
 function homeSoftDraw() {
   // (the moment after a change in such a field)
@@ -577,6 +578,7 @@ async function renderHome() {
       <strong class="hs-num" style="--on:${onLane(laneHue(i))}" title="${esc(who)}"><span class="hs-vh">${esc(who)}</span><span aria-hidden="true">${i + 1}</span></strong>
       <div class="hs-fields">${byTeam ? sel2('', teamSelect(r, i)) : `${withTeam ? sel2('', teamSelect(r, i)) : ''}${sel2('driver', `<select data-k="driverId" aria-label="${enduSingle ? 'Starting driver' : 'Driver'} for row ${i + 1}"${away(r) ? ' disabled' : ''}>${driverOpts(enduSingle && !r.teamId ? [] : driverList(r), r.driverId, tokens ? 'Guest (no driver)' : enduSingle ? (setup.endurance.next === 'random' ? '(starting driver: by lot)' : '(starting driver: the first of the team)') : undefined)}</select>`)}`}${isRival(r) && allowRival ? rivalSelect(r, i) : sel2('car', `<select data-k="carId" aria-label="Car for row ${i + 1}"${away(r) ? ' disabled' : ''}>${optionsOf('slotcars', MultiClass.carsFor(r, mc, { cars, drivers, teams }), r.carId, mc?.assignment === 'roster' ? (MultiClass.assignedClass(r, mc, { cars, drivers, teams }) ? 'Choose a matching car' : 'Choose an assigned driver first') : tokens ? '(no car)' : undefined)}</select>`)}</div>
       ${more || (!isRival(r) && typeof PaddockBrowser !== 'undefined') ? `<div class="hs-more">${more}${!isRival(r) && typeof PaddockBrowser !== 'undefined' ? `<button type="button" class="btn hs-paddock-pick" data-paddock-pick="${i}"${away(r) || raceOn ? ' disabled' : ''} title="Browse available slotcars">Browse cars</button>` : ''}</div>` : ''}
+      ${r.driverId && !gone && !byTeam ? `<span class="hs-avatar" aria-hidden="true" data-avatar-driver="${esc(r.driverId)}"><img src="${esc(homeAvatarCache.get(r.driverId) || (typeof Avatars !== 'undefined' ? Avatars.forLane(null, i) : ''))}" alt=""${homeAvatarCache.get(r.driverId) ? ' class="own"' : ''}></span>` : ''}
       ${gone ? '<span class="hs-tick off" aria-hidden="true"></span>' : `<span class="hs-tick ${ready ? 'ok' : 'warn'}" role="img" aria-label="${ready ? 'Ready' : 'Not ready yet'}">${Icons.svg(ready ? 'check' : 'alert', { size: 13, stroke: 2.6 })}</span>`}
       ${note ? `<div class="hs-note">${note}</div>` : ''}</div>`;
   };
@@ -867,6 +869,25 @@ async function renderHome() {
     <div class="hm-chips" id="hm-chips" role="status">${chipsNow().map(chipHtml).join('')}</div>
     <div class="hm-grid" id="homegrid" style="grid-template-columns:repeat(${grid.cols},minmax(0,1fr))">${otherCells}</div>`;
   if (typeof UpdateNotice !== 'undefined') UpdateNotice.mountHome(document.getElementById('hm-update')); // (a newer release on GitHub, if any)
+  // (2.4.0) the avatars of the drivers in the lanes: Home's list of drivers has only their names, so each driver's own picture is read once and kept while the
+  // app runs; until then, and for a driver without one, the standard avatar of the lane shows
+  if (api.getRecord && typeof document !== 'undefined' && document.querySelectorAll)
+    document.querySelectorAll('[data-avatar-driver]').forEach(el => {
+      const id = el.dataset.avatarDriver;
+      if (homeAvatarCache.has(id)) return;
+      homeAvatarCache.set(id, '');
+      Promise.resolve(api.getRecord('drivers', id))
+        .then(d => {
+          const pic = d && typeof d.avatar === 'string' ? d.avatar : ''; // (the same picture the race screen shows)
+          homeAvatarCache.set(id, pic);
+          if (pic && draw === homeDraw)
+            document.querySelectorAll(`[data-avatar-driver="${CSS.escape ? CSS.escape(id) : id}"] img`).forEach(img => {
+              img.src = pic;
+              img.classList.add('own');
+            });
+        })
+        .catch(() => {});
+    });
   if (typeof mountHwDetect === 'function') mountHwDetect(); // (2.3.0: timing hardware that was plugged in)
   {
     // the problem chips: a click opens the page where it is put right

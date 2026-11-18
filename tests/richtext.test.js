@@ -18,4 +18,6 @@ ok('entities from the editor survive, a loose & is escaped', R.clean('<b>a&nbsp;
 ok('a loose < cannot open a tag', R.clean('<b>1 < 2</b>') === '<b>1 &lt; 2</b>');
 ok('cleaning twice changes nothing', ['<b>a</b><font color="#00f" size="4">b</font>', '<span style="color:red">x</span><br>', 'plain\ntext', '<div style="text-align:right"><u>q</u></div>'].every(h => R.clean(R.clean(h)) === R.clean(h)));
 ok('text of formatted rules', R.text('<b>Be</b>&nbsp;kind<br>') === 'Be kind');
+ok('2.4.0: quotes, lines, subheadings, highlight, justify and indent stay; a highlight in a font tag too', R.clean('<blockquote style="margin-left:40px">q</blockquote><hr><h3>s</h3><span style="background-color: rgb(242, 184, 75)">h</span><div style="text-align:justify">j</div><font style="background-color:#ff0">f</font>') === '<blockquote style="margin-left:40px">q</blockquote><hr><h3>s</h3><span style="background-color:rgb(242, 184, 75)">h</span><div style="text-align:justify">j</div><font style="background-color:#ff0">f</font>');
+ok('...but a background picture or a script in a style does not', !R.clean('<span style="background-color:url(x);background:url(javascript:1)">x</span>').includes('url'));
 console.log(fails ? fails + ' RICHTEXT TESTS FAILED' : 'ALL RICHTEXT TESTS PASSED'); process.exit(fails ? 1 : 0);

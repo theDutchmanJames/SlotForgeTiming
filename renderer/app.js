@@ -466,9 +466,16 @@ function renderHardwareArea(box) {
   const onPage = ['trackmate', 'arduino', 'parallel', 'plugin', 'ds'].includes(state.hwSub);
   const notInUse = onPage && state.hwSub !== chosen,
     pageName = TIMING_NAMES[state.hwSub] || '';
-  box.innerHTML = `<div class="hwuse-card" id="hwuse"><label for="hw-use"><span class="hwuse-k">Timing hardware in use</span><span class="hwuse-q">Which interface counts the laps in a race?</span></label>
-      <select id="hw-use">${Hardware.TIMING.map(([id, name]) => `<option value="${id}"${id === chosen ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select>
-      <span class="muted">One at a time. Only this interface counts race laps and shows on Home and the race screen. The pages below set up and test each interface; connecting one there does not put it in use.</span></div>
+  // (2.4.0) the header card: what counts the laps now, whether it is connected, and the choice to change it
+  const on = timingConnectedNow(),
+    chosenName = (Hardware.TIMING.find(t => t[0] === chosen) || [0, 'No timing hardware'])[1],
+    chosenState =
+      chosen === 'none' ? ['off', 'Laps are only counted by hand'] : on[chosen] ? ['on', 'Connected'] : ['warn', 'Not connected'];
+  box.innerHTML = `<div class="hwuse-card" id="hwuse"><span class="hwuse-ico" aria-hidden="true">${Icons.svg('timing', { size: 26 })}</span>
+      <div class="hwuse-now"><span class="hwuse-k">Timing hardware in use</span><strong class="hwuse-name">${esc(chosenName)}</strong><span class="hwuse-state" data-state="${chosenState[0]}"><i aria-hidden="true"></i>${esc(chosenState[1])}</span></div>
+      <label class="hwuse-pick" for="hw-use"><span class="hwuse-q">Which interface counts the laps in a race?</span>
+      <select id="hw-use">${Hardware.TIMING.map(([id, name]) => `<option value="${id}"${id === chosen ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select></label>
+      <p class="hwuse-note">One at a time. Only this interface counts race laps and shows on Home and the race screen. The pages below set up and test each interface; connecting one there does not put it in use.</p></div>
     <div class="sub" id="hwtabs" role="tablist"></div>
     <div class="hw-notinuse" id="hwnote" role="alert"${notInUse ? '' : ' hidden'}>${notInUse ? `<strong>${esc(pageName)} is not counting laps.</strong> <span>Races use ${esc(names[chosen])}. You can connect and test here, but laps from ${esc(pageName)} only count once it is the timing hardware in use.</span> <button class="btn primary" id="hw-usethis">Use ${esc(pageName)} for races</button>` : ''}</div>
     <div id="hwbox"></div>`;
@@ -489,6 +496,24 @@ function renderHardwareArea(box) {
       renderHardwareArea(box);
     }
   );
+  // (2.4.0) every page is a tile with a line that says how it stands: in use, connected, or nothing yet
+  document.querySelectorAll?.('#hwtabs .tab').forEach(b => {
+    const id = b.dataset.id,
+      st =
+        id === chosen
+          ? on[id]
+            ? ['on', 'In use · connected']
+            : ['warn', 'In use · not connected']
+          : on[id]
+            ? ['on', 'Connected']
+            : id === 'oxigen'
+              ? ['off', 'Coming']
+              : id === 'other'
+                ? ['off', 'More hardware']
+                : ['off', 'Not in use'];
+    b.classList.toggle('inuse', id === chosen);
+    b.insertAdjacentHTML?.('beforeend', `<span class="hwt-state" data-state="${st[0]}"><i aria-hidden="true"></i>${esc(st[1])}</span>`);
+  });
   const use = async id => {
     // the choice changed: the hardware that was in use is let go, the new one connects by itself when it can
     if ((await setTimingHw(id)) === false) return;
@@ -1114,10 +1139,14 @@ async function renderRules() {
       <div class="rules-actions"><span id="rulesmsg" class="rules-saved" role="status"></span>${pdfButton('id="rules-pdf"')}</div></div>
     <div class="rules-sheet">
       <div class="rte-bar" id="rte-bar" role="toolbar" aria-label="Text formatting">
-        <span class="rte-group">${tool('bold', 'Bold', '<b>B</b>')}${tool('italic', 'Italic', '<i>I</i>')}${tool('underline', 'Underline', '<u>U</u>')}</span>
+        <span class="rte-group">${tool('undo', 'Undo', '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg>', 'Undo (Ctrl+Z)')}${tool('redo', 'Redo', '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m15 14 5-5-5-5M20 9H10a6 6 0 0 0 0 12h3"/></svg>', 'Redo (Ctrl+Y)')}</span>
+        <span class="rte-group"><select id="rte-block" aria-label="Paragraph style"><option value="">Paragraph style</option><option value="div">Normal text</option><option value="h2">Heading</option><option value="h3">Subheading</option><option value="blockquote">Quote</option></select></span>
+        <span class="rte-group">${tool('bold', 'Bold', '<b>B</b>')}${tool('italic', 'Italic', '<i>I</i>')}${tool('underline', 'Underline', '<u>U</u>')}${tool('strikeThrough', 'Strikethrough', '<s>S</s>')}</span>
         <span class="rte-group"><select id="rte-size" aria-label="Text size"><option value="">Text size</option>${RULE_SIZES.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select>
-          <label class="rte-colour" title="Text colour"><input type="color" id="rte-color" value="#d62828" aria-label="Text colour"><span>Colour</span></label></span>
-        <span class="rte-group">${tool('heading', 'Heading', 'Heading')}${tool('insertUnorderedList', 'Bulleted list', '&bull; List')}${tool('insertOrderedList', 'Numbered list', '1. List')}</span>
+          <label class="rte-colour" title="Text colour"><input type="color" id="rte-color" value="#d62828" aria-label="Text colour"><span>Colour</span></label>
+          <label class="rte-colour" title="Highlight the text"><input type="color" id="rte-mark" value="#f2b84b" aria-label="Highlight colour"><span>Highlight</span></label></span>
+        <span class="rte-group">${tool('justifyLeft', 'Align left', '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h14"/></svg>')}${tool('justifyCenter', 'Centre', '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M5 18h14"/></svg>')}${tool('justifyRight', 'Align right', '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M10 12h10M6 18h14"/></svg>')}</span>
+        <span class="rte-group">${tool('insertUnorderedList', 'Bulleted list', '&bull; List')}${tool('insertOrderedList', 'Numbered list', '1. List')}${tool('outdent', 'Less indent', '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M20 6H9M20 12h-8M20 18H9M7 9l-3 3 3 3"/></svg>')}${tool('indent', 'More indent', '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M20 6H9M20 12h-8M20 18H9M4 9l3 3-3 3"/></svg>')}${tool('insertHorizontalRule', 'Line', '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 12h18"/></svg>', 'A line across the page')}</span>
         <span class="rte-group rte-end">${tool('removeFormat', 'Clear formatting', 'Clear formatting')}</span></div>
       <div id="rules" class="rules rte" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Racing rules" data-placeholder="Write your racing rules here. For example: Always leave room for the other car. A deslot is put back by the marshal nearest to it.">${RichText.clean(state.settings.rules || '')}</div>
       <div class="rules-foot"><span id="rulescount"></span></div>
@@ -1207,6 +1236,12 @@ async function renderRules() {
     ev.target.value = '';
   };
   document.getElementById('rte-color').onchange = ev => exec('foreColor', ev.target.value);
+  // (2.4.0) a highlight behind the text, and the style of a paragraph (normal text, heading, subheading, quote)
+  document.getElementById('rte-mark').onchange = ev => exec('hiliteColor', ev.target.value);
+  document.getElementById('rte-block').onchange = ev => {
+    if (ev.target.value) exec('formatBlock', ev.target.value);
+    ev.target.value = '';
+  };
   // a neat A4 page of the rules to print and hand out (what is typed so far, saved or not)
   document.getElementById('rules-pdf').onclick = async () => {
     if (!RichText.text(box.innerHTML)) {

@@ -1417,7 +1417,7 @@ const say=(m,c)=>{console.log((c?'ok   ':'FAIL ')+m); if(!c)fails++;};
   say('a wrong backup file shows the reason', E('bk-msg').textContent.includes('not a backup file') || E('settingsbox').innerHTML.includes('not a backup file'));
   run("state.customSub='layouts'");
   run("state.settings.rules='';state.tab='rules'"); await run('render()');
-  say('Racing Rules tab shows a text editor with a formatting bar', E('view').innerHTML.includes('id="rules"') && E('view').innerHTML.includes('contenteditable="true"') && ['bold','italic','underline','insertUnorderedList','removeFormat','heading'].every(c => E('view').innerHTML.includes('data-cmd="'+c+'"')) && E('view').innerHTML.includes('id="rte-size"') && E('view').innerHTML.includes('id="rte-color"'));
+  say('Racing Rules tab shows a text editor with a formatting bar', E('view').innerHTML.includes('id="rules"') && E('view').innerHTML.includes('contenteditable="true"') && ['bold','italic','underline','strikeThrough','insertUnorderedList','insertOrderedList','indent','outdent','justifyCenter','insertHorizontalRule','undo','redo','removeFormat'].every(c => E('view').innerHTML.includes('data-cmd="'+c+'"')) && E('view').innerHTML.includes('id="rte-size"') && E('view').innerHTML.includes('id="rte-color"') && E('view').innerHTML.includes('id="rte-mark"') && ['div','h2','h3','blockquote'].every(v => E('view').innerHTML.includes('<option value="'+v+'">')));
   const before=calls.filter(c=>c[0]==='settings').length;
   E('rules').innerHTML='1. No pushing.<br>2. <b>Respect</b> the marshals.<script>x()</script>'; E('rules').oninput();
   await new Promise(r=>setTimeout(r,800));

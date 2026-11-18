@@ -128,12 +128,20 @@
         ? '<p class="muted">This race setup has no track yet.</p>'
         : !d.bests.length
           ? '<p class="muted">Choose the drivers for the lanes to see their personal bests here.</p>'
-          : d.bests
-              .map(
-                b =>
-                  `<div class="hm-kv"><span class="who"><i class="hm-dot" style="${SAFE.test(String(b.color).trim()) ? '--c:' + esc(String(b.color).trim()) : ''}"></i>${esc(b.name)}</span><strong${b.time === null ? ' class="muted"' : ''}>${esc(b.text)}</strong></div>`
-              )
-              .join('')
+          : (() => {
+              // the fastest of the grid sets the bar (100%); a slower lap has a shorter bar and its gap to that one under the time
+              const timed = d.bests.filter(b => b.time !== null && Number.isFinite(b.time) && b.time > 0),
+                best = timed.length ? Math.min(...timed.map(b => b.time)) : null;
+              return d.bests
+                .map(b => {
+                  const has = b.time !== null && best !== null && b.time > 0,
+                    pct = has ? Math.max(8, Math.round((best / b.time) * 100)) : 0,
+                    gap = has ? (b.time === best ? 'fastest' : '+' + ((b.time - best) / 1000).toFixed(3)) : 'no lap yet',
+                    c = SAFE.test(String(b.color).trim()) ? '--c:' + esc(String(b.color).trim()) : '';
+                  return `<div class="hm-kv"><span class="who"><i class="hm-dot" style="${c}"></i>${esc(b.name)}</span><span class="hm-pace" style="${c}"><i style="width:${pct}%"></i></span><span class="hm-pbt"><strong${b.time === null ? ' class="muted"' : ''}>${esc(b.text)}</strong><small${has && b.time === best ? ' class="lead"' : ''}>${gap}</small></span></div>`;
+                })
+                .join('');
+            })()
     );
 
   const rules = d =>

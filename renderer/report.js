@@ -212,6 +212,7 @@
       body { font: 12pt/1.5 Arial, Helvetica, sans-serif; color: #111; margin: 0; }
       h1.title { font-size: 26pt; margin: 0 0 2mm; padding-bottom: 3mm; border-bottom: 2px solid #111; }
       .body h1, .body h2, .body h3 { margin: 1em 0 .3em; page-break-after: avoid; } .body ul, .body ol { padding-left: 1.4em; } .body li, .body p { page-break-inside: avoid; }
+      .body blockquote { margin: .6em 0; padding: .2em 0 .2em 1em; border-left: 3px solid #999; color: #333; } .body hr { border: 0; border-top: 1px solid #999; margin: 1.2em 0; }
     </style></head><body><h1 class="title">${esc(title)}</h1><div class="body">${RT.clean(html)}</div></body></html>`;
   }
 
