@@ -18,7 +18,7 @@ for(const enabled of [false,true])test(`activation ${enabled}: JSON and SQLite w
    t.diagnostic('Enabled-gate delivery and historical-approval regression suites also passed.');
    t.diagnostic(output.split(/\r?\n/).filter(line=>/^(?:#|ℹ) (?:tests|pass|fail|skipped) /.test(line)).join('; '));
    assert(!/not ok /m.test(output));
-   const host=process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE||path.resolve(__dirname,'../../..','SlotForge Slotcar Database');
+   const host=process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE||([path.resolve(__dirname,'../../..','SlotForge Slotcar Database'),path.resolve(__dirname,'../../Paddock')].find(p=>require('fs').existsSync(p))||path.resolve(__dirname,'../../..','SlotForge Slotcar Database'));
    if(fs.existsSync(path.join(host,'src/rich-history-gate.cjs'))){
     const hostGates=['rich-history-gate.cjs','historical-approval-gate.cjs'].map(name=>path.join(host,'src',name));
     const original=hostGates.map(file=>fs.readFileSync(file)),hostPreload=path.join(root,'host-gates.cjs');

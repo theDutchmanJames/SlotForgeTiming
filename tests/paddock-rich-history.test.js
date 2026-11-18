@@ -34,7 +34,7 @@ test('rich presentation escapes names, separates awards and labels aggregate sta
  const html=UI.headHtml(R.validate(h,options(h),h.databaseId));assert(!html.includes('<script>'));assert(html.includes('&lt;script&gt;'));assert(html.includes('&lt;img'));assert(html.includes('1.000 s'));
  const stats=UI.statisticsHtml(read('statistics'),'Example');assert(stats.includes('Class wins:'));assert(stats.includes('Track-record eligible best:'));assert(stats.includes('Accepted evidence is counted once'));
 });
-const source=process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE||path.resolve(__dirname,'../../../SlotForge Slotcar Database'),hasHost=fs.existsSync(path.join(source,'src/rich-history.cjs'));
+const source=process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE||([path.resolve(__dirname,'../../../SlotForge Slotcar Database'),path.resolve(__dirname,'../../Paddock')].find(p=>require('fs').existsSync(p))||path.resolve(__dirname,'../../../SlotForge Slotcar Database')),hasHost=fs.existsSync(path.join(source,'src/rich-history.cjs'));
 test('representative scoring fixtures are reproducible, preserve captured evidence, and respect host release gates',{skip:!hasHost},t=>{
  const {Store}=require(path.join(source,'src/store.cjs')),remote=require(path.join(source,'src/rich-history.cjs')),shared=require(path.join(source,'src/shared-history.cjs')),reader=require(path.join(source,'src/shared-history-read.cjs'));
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'timing-scoring-'));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));

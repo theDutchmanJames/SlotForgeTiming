@@ -893,6 +893,8 @@ async function champPanelsFor(boxes, onDone) {
           for (const p of ChampPts.awardPatches(D.sessions, s, act, new Date().toISOString()))
             await api.update('sessions', p.id, { champ: p.champ });
         } catch (x) {
+          const old = msgOf(b); // (2.4.0: one message, not a new one under the last for every try)
+          if (old) old.remove();
           b.insertAdjacentHTML
             ? b.insertAdjacentHTML('beforeend', `<p class="chpmsg" role="alert">Could not save: ${esc(x.message)}</p>`)
             : null;

@@ -2,6 +2,8 @@
 const assert = require('assert/strict'), path = require('path'), fs = require('fs'), { spawn } = require('child_process');
 const { createController } = require('../parallelport'), P = require('../renderer/parallel');
 const wait = ms => new Promise(r => setTimeout(r, ms));
+// (2.4.0) wait for a state, not a fixed time: a busy Windows machine needs longer than a few milliseconds for the helper
+const waitFor = async (f, ms = 3000) => { const end = Date.now() + ms; while (!f() && Date.now() < end) await wait(15); };
 const binary = path.join(__dirname, '../native/parallel/SlotForgeParallel.exe');
 assert(fs.existsSync(binary), 'The native helper must be included in the release.');
 // Run the actual IPC registration block with stand-ins: native access stays in the main top-level window.
@@ -23,19 +25,19 @@ assert(fs.existsSync(binary), 'The native helper must be included in the release
     const check = await c.check(P.defaults()); assert(check.accessible); assert(!c.state().connected);
     const config = P.config({ outputsOn: true, outputs: { 2: 'master', 3: 'go' }, outputSignal: { 3: 'low' } });
     const result = await c.open(config); assert(result.connected); assert(Number.isFinite(result.clockUncertainty));
-    await wait(30); assert(events.some(e => e.type === 'sample')); const first = events.find(e => e.type === 'sample'); assert(Math.abs(first.at - Date.now()) < 1000);
-    proc.stdin.write('S 192 11\n'); await wait(35); assert(events.some(e => e.type === 'sample' && e.status === 192));
+    await waitFor(() => events.some(e => e.type === 'sample')); assert(events.some(e => e.type === 'sample')); const first = events.find(e => e.type === 'sample'); assert(Math.abs(first.at - Date.now()) < 1000);
+    proc.stdin.write('S 192 11\n'); await waitFor(() => events.some(e => e.type === 'sample' && e.status === 192)); assert(events.some(e => e.type === 'sample' && e.status === 192));
     assert.throws(() => c.test(2, true), /Enable output tests/); c.armTests(true); c.test(2, true); assert.equal(c.state().testPin, 2); await wait(1550); assert.equal(c.state().testPin, null);
     const race = c.setRace(true, 4); assert.equal(c.state().armed, false); assert.throws(() => c.test(2, true), /Enable output tests/); await assert.rejects(c.close(), /race owns/); await assert.rejects(c.check(config), /race owns/); await assert.rejects(c.open(config), /race owns/);
     assert.throws(() => c.outputs({ master: true }, race.lease - 1), /no longer owns/); c.outputs({ master: true, go: true }, race.lease);
     c.setRace(false, 4, race.lease - 1); assert(c.state().race); c.setRace(false, 4, race.lease); assert(!c.state().race);
     await c.close(); assert(!c.state().connected);
-    const opening = c.open(config), cancelled = assert.rejects(opening, /cancelled|closed/); await c.close(); await cancelled; await wait(30); assert(!c.state().connected);
+    const opening = c.open(config), cancelled = assert.rejects(opening, /cancelled|closed/); await c.close(); await cancelled; await waitFor(() => !c.state().connected); assert(!c.state().connected);
     console.log('ok  native helper, clock alignment, stream, test timeout, race leases, gating, cancellation and clean close');
     await assert.rejects(c.open(P.config({ map: Array(8).fill(10) })), /assigned/);
     const wrong = createController({ spawn: launch }); await assert.rejects(wrong.open(P.defaults()), /Unsupported/); await wrong.shutdown();
     console.log('ok  invalid configuration and accidental simulation are refused');
-    await c.open(P.defaults()); proc.stdin.write('NOT-A-COMMAND\n'); await wait(80); assert(!c.state().connected); assert.match(c.state().error, /Unknown helper command/);
+    await c.open(P.defaults()); proc.stdin.write('NOT-A-COMMAND\n'); await waitFor(() => !c.state().connected); assert(!c.state().connected); assert.match(c.state().error, /Unknown helper command/);
     console.log('ok  native protocol failure disconnects rather than continuing with missing timing data');
   } finally { await c.shutdown(); }
   // Explicit shutdown, masked writes and watchdog are exercised on the compiled helper directly.

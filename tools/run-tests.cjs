@@ -142,5 +142,8 @@ async function pool(items, jobs, onDone) {
   );
   if (unstable.length) console.log('Unstable: ' + unstable.map(r => r.file).join(', '));
   if (broken.length) console.log('Failed: ' + broken.map(r => r.file).join(', '));
-  process.exit(broken.length ? 1 : 0);
+  // (2.4.0) in CI (or with --strict) a test that only passes when run alone fails the run too: a race between tests is a bug worth seeing
+  const strict = !!process.env.CI || process.argv.includes('--strict');
+  if (strict && unstable.length) console.log('Strict run: unstable tests fail the run.');
+  process.exit(broken.length || (strict && unstable.length) ? 1 : 0);
 })();

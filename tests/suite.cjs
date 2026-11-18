@@ -250,6 +250,7 @@ module.exports = [
   ['enduranceengine.test.js', 'plain'],
   ['endurancewidgets.test.js', 'plain'],
   ['damagewidgets.test.js', 'plain'],
+  ['audit240.test.js', 'node-test'],
   ['endurancescreen.test.js', 'plain'],
   ['distancescreen.test.js', 'plain'],
   ['damagescreen.test.js', 'plain'],

@@ -28,22 +28,24 @@ async function closedBinding(){
   const b=PR.bind({link:l,setup:{},cars:()=>[],phase:()=> 'ready',flag:()=>'',lights:()=>0,acquire:()=>new Promise((_,no)=>reject=no),release:async()=>{},outputs:async()=>{},onError:e=>errors.push(e)});
   b.off();reject(Error('Old connection failed'));await turn();assert.deepEqual(errors,[],'disposed races cannot report late failures into a new race');
 }
+// (2.4.0) wait for a state instead of a fixed time: under load Windows takes longer to see a helper exit
+const until=async(f,ms)=>{const end=Date.now()+ms;while(!f()&&Date.now()<end)await wait(20);return f();};
 async function backend(){
   if(process.platform!=='win32')return;
   let helper;const packets=[];const c=createController({allowSimulation:true,onEvent:e=>packets.push(e),spawn:()=>helper=spawn(path.join(__dirname,'../native/parallel/SlotForgeParallel.exe'),['--simulate'],{windowsHide:true})});
   const config=P.config({port:'lpt3',outputsOn:true,outputs:{2:'master'}});
   try{
-    await c.open(config);await wait(35);assert(packets.some(e=>e.type==='sample'&&e.status===128&&e.control===11),'LPT3 simulation must use offsets from 3BC, not address modulo eight');
+    await c.open(config);await until(()=>packets.some(e=>e.type==='sample'),2000);assert(packets.some(e=>e.type==='sample'&&e.status===128&&e.control===11),'LPT3 simulation must use offsets from 3BC, not address modulo eight');
     await assert.rejects(c.check({...config,port:'lpt1'}),/different port/);assert(c.state().connected);
     const first=c.setRace(true,4);assert.throws(()=>c.setRace(true,4),/already held/);assert.throws(()=>c.setRace('yes',4),/Invalid/);
-    c.outputs({master:true},first.lease);helper.kill();await wait(150);assert(c.state().race);assert(!c.state().connected);
+    c.outputs({master:true},first.lease);helper.kill();await until(()=>!c.state().connected,5000);assert(c.state().race);assert(!c.state().connected);
     await assert.rejects(c.close(),/owns/);await assert.rejects(c.check(config),/owns/);await assert.rejects(c.open({...config,name:'Changed'}),/saved parallel/);
     await c.open(config);assert.throws(()=>c.outputs({master:true},first.lease),/owns/);assert.throws(()=>c.setRace(true,4),/already held/);
     const second=c.setRace(true,4,first.lease);c.setRace(false,4,first.lease);assert(c.state().race);c.setRace(false,4,second.lease);assert(!c.state().race);
     c.armTests(true);c.setRace(false,4,second.lease);assert(c.state().armed,'duplicate release cannot disturb idle output tests');
     const third=c.setRace(true,4);c.outputs({master:true},third.lease);
     // Main process remains responsive and sends native pings, but renderer heartbeats stop.
-    await wait(3400);assert(!c.state().connected);assert(c.state().race);assert.match(c.state().error,/Main window stopped/);
+    await wait(3000);await until(()=>!c.state().connected,4000);assert(!c.state().connected);assert(c.state().race);assert.match(c.state().error,/Main window stopped/);
     c.setRace(false,4,third.lease);assert(!c.state().race);
     await c.open(config);const keep=setInterval(()=>c.alive(),300);await wait(3300);clearInterval(keep);assert(c.state().connected,'responsive renderer retains the connection');
   }finally{await c.shutdown();}

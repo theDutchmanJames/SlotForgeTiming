@@ -2,7 +2,7 @@
 // Optional joint qualification against the adjacent Paddock checkout, always using
 // synthetic profiles. Portable contract/regression tests live in paddock-local.test.js.
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
-const source=process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE||path.resolve(__dirname,'../../../SlotForge Slotcar Database');
+const source=process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE||([path.resolve(__dirname,'../../../SlotForge Slotcar Database'),path.resolve(__dirname,'../../Paddock')].find(p=>require('fs').existsSync(p))||path.resolve(__dirname,'../../../SlotForge Slotcar Database'));
 test('joint local-library host: protected discovery, approval, offline capture, restart and resumed transfer',{skip:!fs.existsSync(path.join(source,'src/local-library.cjs'))},async t=>{
  const {Store}=require(path.join(source,'src/store.cjs')),{LocalLibrary}=require(path.join(source,'src/local-library.cjs'));
  const Database=require('../db'),{Paddock}=require('../paddock'),Discovery=require('../paddock-local-discovery');

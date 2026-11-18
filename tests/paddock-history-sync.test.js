@@ -112,7 +112,7 @@ test('SQLite actual disk-full and post-write failure roll back staged data and c
   assert.equal(store.get('slotcars','untouched',true).value.lapsDriven,123);
  }finally{store.close();}
 });
-const source=process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE||path.resolve(__dirname,'../../../SlotForge Slotcar Database');
+const source=process.env.PADDOCK_SOURCE||process.env.SLOTFORGE_PADDOCK_SOURCE||([path.resolve(__dirname,'../../../SlotForge Slotcar Database'),path.resolve(__dirname,'../../Paddock')].find(p=>require('fs').existsSync(p))||path.resolve(__dirname,'../../../SlotForge Slotcar Database'));
 test('real protected Paddock change feed: automatic refresh, correction, withdrawal and restored epoch', {skip:!fs.existsSync(path.join(source,'src/local-library.cjs'))},async t=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'timing-sync-host-')),profile=path.join(dir,'host');fs.mkdirSync(profile);
  const {Store}=require(path.join(source,'src/store.cjs')),{LocalLibrary}=require(path.join(source,'src/local-library.cjs')),T=require(path.join(source,'src/timing-integration.cjs'));
