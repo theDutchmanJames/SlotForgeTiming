@@ -170,4 +170,29 @@ ok('...1.53.0: the Safety car row names the system a race has, last; a setup tha
     ok('...a lap with no car is no car, even when the naming function gives every id a name', H.mileage({ laps: [lap(5000, { carId: '' }), lap(5000, { carId: undefined }), lap(5000, { carId: 'c1' })], tracks: [track], carName: () => 'Some car' }).map(x => x.carId + x.laps).join() === 'c11'); }
   ok('nothing driven, no laps, no function to name the cars: an empty list, not a crash', H.mileage({ laps: [], tracks: [] }).length === 0 && H.mileage({}).length === 0 && H.mileage({ laps: ml, tracks: [track] }).length === 0); }
 
+
+// ---- 2.4.0: the figures of the new cards ----
+{ const st = (p, id, o = {}) => ({ pos: p, driverId: id, driverName: id.toUpperCase(), carName: 'Car ' + id, laps: 10, best: 8000 + p * 10, ...o });
+  const ss = [
+    { id: 'a', date: '2026-11-10T20:00:00Z', sessionType: 'race', standings: [st(1, 'x'), st(2, 'y'), st(3, 'z')] },
+    { id: 'b', date: '2026-11-17T20:00:00Z', sessionType: 'heats', resultBy: 'points', setupName: 'Club', standings: [st(1, 'y', { points: 40 }), st(2, 'x', { points: 35 }), st(3, 'z', { dq: true })] },
+    { id: 'q', date: '2026-11-18T20:00:00Z', sessionType: 'qualifying', standings: [st(1, 'z')] },
+    { id: 't', date: '2026-11-18T21:00:00Z', sessionType: 'race', standings: [st(1, 'x', { asTeam: true, teamName: 'Team' })] }
+  ];
+  const dn = id => id.toUpperCase();
+  const gf = H.gridForm({ sessions: ss, driverIds: ['x', 'y', 'x', ''], driverName: dn });
+  ok('2.4.0 grid form: each driver of the grid once, his places of the races (newest first, not qualifying, not as a team), races and wins', JSON.stringify(gf) === JSON.stringify([{ driverId: 'x', name: 'X', places: [2, 1], races: 2, wins: 1 }, { driverId: 'y', name: 'Y', places: [1, 2], races: 2, wins: 1 }]));
+  ok('...a disqualification is a place of its own', JSON.stringify(H.gridForm({ sessions: ss, driverIds: ['z'], driverName: dn })[0].places) === '["dq",3]');
+  const h = H.headToHead({ sessions: ss, driverIds: ['x', 'y', 'z'], driverName: dn });
+  ok('2.4.0 head to head: who finished ahead of whom in the races they both drove (a disqualified driver behind everybody), how often they met, the newest meeting and the best laps', JSON.stringify(h.wins) === '[[0,1,2],[1,0,2],[0,0,0]]' && JSON.stringify(h.met) === '[[0,2,2],[2,0,2],[2,2,0]]' && h.last[0][1] === '2026-11-17T20:00:00Z' && JSON.stringify(h.best) === '[8010,8010,8030]' && h.names.join() === 'X,Y,Z');
+  ok('...at most eight drivers', H.headToHead({ sessions: [], driverIds: 'abcdefghij'.split('') }).ids.length === 8);
+  ok('2.4.0 lane balance: the best lap and the laps of every lane on the track; another track, a Time Token lap, an invalid lap or no lane do not count', JSON.stringify(H.laneBalance({ trackId: 't', laps: [{ trackId: 't', lane: 2, time: 8100 }, { trackId: 't', lane: 1, time: 8050 }, { trackId: 't', lane: 1, time: 8000 }, { trackId: 'u', lane: 1, time: 1 }, { trackId: 't', lane: 1, time: 2, token: true }, { trackId: 't', lane: 1, time: 3, invalid: true }, { trackId: 't', time: 4 }] })) === JSON.stringify([{ lane: 1, time: 8000, text: '8.000', laps: 2 }, { lane: 2, time: 8100, text: '8.100', laps: 1 }]));
+  ok('...the same rows from a database that worked them out itself', JSON.stringify(H.laneRows([{ lane: 2, time: 8100, laps: 1 }, { lane: 1, time: 8000, laps: 2 }, { lane: 0, time: 1, laps: 1 }])) === JSON.stringify([{ lane: 1, time: 8000, text: '8.000', laps: 2 }, { lane: 2, time: 8100, text: '8.100', laps: 1 }]));
+  ok('2.4.0 races a week: the races of every week, the oldest first and this week (from Monday) the last; qualifying does not count', JSON.stringify(H.racesPerWeek(ss, new Date('2026-11-19T12:00:00'), 3)) === '[0,1,2]' && JSON.stringify(H.racesPerWeek([], new Date(), 4)) === '[0,0,0,0]');
+  const hs = H.heatStandings({ sessions: ss, driverName: dn });
+  ok('2.4.0 heat standings: the last heat race, in order (a disqualified driver last), with the points and the best lap', hs.id === 'b' && hs.byPoints && hs.rows.map(r => r.name + ':' + r.points + ':' + r.dq).join() === 'Y:40:false,X:35:false,Z:null:true' && hs.rows[0].bestText === '8.010' && H.heatStandings({ sessions: [ss[0]] }) === null);
+  const ms = H.milestones({ sessions: Array.from({ length: 49 }, (_, i) => ({ id: 'r' + i, date: '2026-01-01', sessionType: 'race', standings: [st(2, 'x')] })), driverIds: ['x'], driverName: dn, cars: [{ id: 'c', name: 'NSR', laps: 1980 }, { id: 'd', name: '', laps: 5 }] });
+  ok('2.4.0 milestones: the next race that is a round number first (tonight), then the nearest; a car without a name is not in it', ms[0].kind === 'races' && ms[0].at === 50 && ms[0].tonight === true && ms.some(m => m.kind === 'laps' && m.name === 'NSR' && m.at === 2000 && m.left === 20) && !ms.some(m => m.name === ''));
+  ok('...the first win counts as a milestone only when it is near', H.milestones({ sessions: [], driverIds: ['x'], driverName: dn }).some(m => m.kind === 'wins' && m.at === 1) && H.sortMilestones([{ at: 100, left: 50, tonight: false }, { at: 100, left: 5, tonight: false }])[0].left === 5);
+}
 console.log(fails ? fails + ' HOME TESTS FAILED' : 'ALL HOME TESTS PASSED'); process.exit(fails ? 1 : 0);

@@ -322,6 +322,54 @@
         yesNo('bars', 'Show a bar for each car', true),
         yesNo('pics', 'Show the picture of the car (from Database > Slot Cars)', true)
       ]
+    },
+    // 2.4.0: seven new cards
+    {
+      key: 'lanes',
+      label: 'Lane balance',
+      note: 'The best lap of every lane on the track of the race setup: is every lane as fast?',
+      options: []
+    },
+    {
+      key: 'form',
+      label: 'Grid form',
+      note: 'The drivers in the lanes, with the places of their last races',
+      options: []
+    },
+    {
+      key: 'h2h',
+      label: 'Head to head',
+      note: 'Two drivers in the lanes: who finished ahead more often. More drivers: a table of all of them',
+      options: []
+    },
+    {
+      key: 'champ',
+      label: 'Championship',
+      note: 'The standings of the championship chosen in Start a race (else the newest), the rounds and the next one',
+      options: [{ key: 'count', label: 'Drivers shown', type: 'select', choices: COUNTS, default: '5' }]
+    },
+    {
+      key: 'heats',
+      label: 'Heat standings',
+      note: 'The overall standings of the last heat-based race',
+      options: [{ key: 'count', label: 'Drivers shown', type: 'select', choices: COUNTS, default: '8' }]
+    },
+    {
+      key: 'countdown',
+      label: 'Countdown',
+      note: 'The days, hours and minutes to your next club night or event. The card is for show: it says what you type here',
+      options: [
+        { key: 'title', label: 'What is coming', type: 'text', max: 40, default: 'Club night', placeholder: 'Club night' },
+        { key: 'when', label: 'When', type: 'text', input: 'datetime-local', max: 16, default: '', placeholder: '2026-11-22T19:30' },
+        { key: 'where', label: 'Where (or empty)', type: 'text', max: 60, default: '', placeholder: 'Slotrace Circuit' },
+        { key: 'done', label: 'At zero it says', type: 'text', max: 40, default: 'Race night!', placeholder: 'Race night!' }
+      ]
+    },
+    {
+      key: 'milestones',
+      label: 'Milestones',
+      note: 'The next round numbers of the drivers and cars on the grid: races, wins and laps',
+      options: [{ key: 'count', label: 'Milestones shown', type: 'select', choices: COUNTS, default: '3' }]
     }
   );
   const KEYS = CARDS.map(c => c.key);

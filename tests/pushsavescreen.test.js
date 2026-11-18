@@ -118,7 +118,7 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
   { store.racesetups = [{ ...setupPs, track: 't1' }];
     const g = JSON.parse(run('JSON.stringify(HomeGrid.gridOf({}))')); g.rows = 5; g.boards.push({ c: 1, r: 4, w: 2, h: 2, opt: { card: 'rules' } });
     run('state.settings.homeGrid = ' + JSON.stringify(g)); run("state.tab = 'home'"); await run('render()'); await wait(150);
-    say('the Rules of this race card names the push and save system of the setup, as the last line', E('hmc-rules').innerHTML.includes('<div class="hm-kv"><span class="muted">Push and save</span><strong>Club pace</strong></div></section>'));
+    say('the Rules of this race card names the push and save system of the setup, as the last line', E('hmc-rules').innerHTML.replace(/<span class="hm-bic">.*?<\/svg><\/span>/g, '').replace(/ style="[^"]*"/g, '').includes('<div class="hm-kv hm-bi"><span class="muted">Push and save</span><strong>Club pace</strong></div></div></section>'));
     store.racesetups = [{ ...setupPs, track: 't1', pushSave: '' }]; await run('render()'); await wait(150);
     say('...a setup with none has no line about it', E('hmc-rules').innerHTML.includes('Tyre wear') && !E('hmc-rules').innerHTML.includes('Push and save'));
     run('delete state.settings.homeGrid'); }

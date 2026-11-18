@@ -90,7 +90,7 @@ const openRace = async (setup, track, r, extra = {}) => { setup = { restartAfter
     const g = JSON.parse(run('JSON.stringify(HomeGrid.gridOf({}))')); g.rows = 5; g.boards.push({ c: 1, r: 4, w: 2, h: 2, opt: { card: 'rules' } });
     run('state.settings.homeGrid = ' + JSON.stringify(g)); run("state.tab = 'home'"); await run('render()'); await wait(150);
     const card = E('hmc-rules').innerHTML;
-    say('the Rules of this race card names the safety car system of the setup, as the last line', card.includes('<span class="muted">Tyre wear</span><strong>Off</strong></div><div class="hm-kv"><span class="muted">Safety car</span><strong>GP</strong></div></section>'));
+    say('the Rules of this race card names the safety car system of the setup, as the last tile (2.4.0: a race brief)', card.replace(/<span class="hm-bic">.*?<\/svg><\/span>/g, '').replace(/ style="[^"]*"/g, '').includes('<span class="muted">Tyre wear</span><strong>Off</strong></div><div class="hm-kv hm-bi"><span class="muted">Safety car</span><strong>GP</strong></div></div></section>'));
     store.racesetups = [{ ...setupSc, track: 't1', safetyCar: '' }]; await run('render()'); await wait(150);
     say('...a setup with none has no line about it', E('hmc-rules').innerHTML.includes('Tyre wear') && !E('hmc-rules').innerHTML.includes('Safety car'));
     run('delete state.settings.homeGrid'); }

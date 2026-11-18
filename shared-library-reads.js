@@ -459,6 +459,23 @@ async function homeStatistics(base, client, options) {
     last.emptyReason = 'No verified classification was supplied for this session.';
     await read(client, { kind: 'home', limit: 1, token });
   }
+  // (2.4.0) the new cards (Lane balance, Grid form, Head to head, Milestones, Heat standings) and the races a week of At a glance: from the sessions and laps
+  // that are kept on this computer, as without a shared library
+  const LOCAL = ['lanes', 'form', 'h2h', 'milestones', 'heats'],
+    local = o.boards.filter(b => LOCAL.includes(b.key) || b.key === 'glance');
+  if (local.length && typeof base.homeStatistics === 'function') {
+    try {
+      const mine = await base.homeStatistics({ ...o, boards: local });
+      for (const b of local) {
+        const c = (mine && mine.cards && mine.cards[b.key]) || {};
+        if (b.key === 'glance') {
+          if (cards.glance && c.glanceWeeks) cards.glance.glanceWeeks = c.glanceWeeks;
+        } else cards[b.key] = c;
+      }
+    } catch {
+      /* The library's own cards still show; the new ones say they have nothing yet. */
+    }
+  }
   return { last, cards };
 }
 module.exports = {

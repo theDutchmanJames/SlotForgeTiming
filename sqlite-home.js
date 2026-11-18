@@ -216,7 +216,14 @@ function summary(s, o, { last, cars, tracks, now }) {
         'year'
       );
   }
+  // (2.4.0) Lane balance: the best lap and the laps of every lane of the track
+  const lanes =
+    needed.has('lanes') && o.trackId
+      ? s
+          .statement('SELECT lane,MIN(time) time,COUNT(*) laps FROM home_laps WHERE trackId=? AND lane>=1 GROUP BY lane ORDER BY lane')
+          .all(o.trackId)
+      : [];
   const compact = [...new Set([...rec.values(), ...personal.values()])].sort((a, b) => order.get(a) - order.get(b));
-  return { rec, personal, weekly, mile, distances, trackOrder, lastLap, valid, compact };
+  return { rec, personal, weekly, mile, distances, trackOrder, lastLap, valid, compact, lanes };
 }
 module.exports = { upgrade, sync, stamp, summary };

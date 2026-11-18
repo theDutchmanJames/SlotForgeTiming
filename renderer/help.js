@@ -109,12 +109,12 @@ const Help = (() => {
           note: 'Pick a race and start it',
           body: `
         <ul>
-          <li>Pick a <b>race setup</b>, then choose a <b>driver</b> and a <b>car</b> for every lane. In a heat-based race you add participants instead. A lane has the colour of its layout.</li>
+          <li>Pick a <b>race setup</b>, then choose a <b>driver</b> and a <b>car</b> for every lane. A lane has the colour of its layout.</li>
           <li>The start lights under the lanes light up as lanes get ready. A row says what it needs; the rest is above the button, so you know why <b>Start race</b> is greyed out.</li>
           <li>If a <b>qualifying</b> was driven on the same track, its winner picks their lane first.</li>
-          <li>The band at the top shows the date and the track, and lights for the <b>Trackmate</b> or box, the network and the <b>audio set</b>.</li>
-          <li>The cards: the <b>record to beat</b> on this track, the <b>last race</b>, <b>At a glance</b>, <b>Recent races</b> (click one to open its results), <b>Fastest laps this week</b>, <b>Records on all tracks</b>, <b>Top drivers</b>, <b>Personal bests</b> of the drivers in the lanes, <b>Rules of this race</b> and <b>Shortcuts</b>, <b>Car Mileage</b> (laps and distance per slot car) and <b>Service Due</b> (click a car to open it). Most come from saved races, not Time Token Sessions. <b>Weather</b>, <b>Tyres Available</b> and <b>Notes</b> are for show: you type them in <b>Customize</b>.</li>
-          <li><b>Customize</b>, in the band, sets up the cards like the Leaderboard page: pick the grid with the little squares and a card for every cell (a card can cover more cells). <b>Back to the usual Home</b> undoes it.</li>
+          <li>The band at the top: the date, the track, and lights for the <b>Trackmate</b> or box, the network and the <b>audio set</b>.</li>
+          <li>The cards: the <b>record to beat</b> on this track, the <b>last race</b>, <b>At a glance</b>, <b>Recent races</b> (click one to open its results), <b>Fastest laps this week</b>, <b>Records on all tracks</b>, <b>Top drivers</b>, <b>Personal bests</b>, <b>Rules of this race</b> and <b>Shortcuts</b>, <b>Car Mileage</b> (laps and distance per slot car) and <b>Service Due</b> (click a car to open it), <b>Lane balance</b>, <b>Grid form</b>, <b>Head to head</b>, <b>Championship</b>, <b>Heat standings</b>, <b>Milestones</b>. Most come from saved races. <b>Weather</b>, <b>Tyres Available</b> and <b>Notes</b> are for show: you type them in <b>Customize</b>, as <b>Countdown</b>.</li>
+          <li><b>Customize</b>, in the band, sets up the cards like the Leaderboard page: pick the grid with the little squares and a card for every cell. <b>Back to the usual Home</b> undoes it.</li>
           <li>When a race was stopped by a crash or a power cut, a note at the top offers <b>Resume the race</b> (it comes back paused, press Space to go on; a heat race keeps its finished heats), <b>Save what was recorded</b> or <b>Delete it</b>.</li>
         </ul>`
         },

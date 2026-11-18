@@ -2,7 +2,21 @@
 const Home = require('./renderer/homestats'),
   Stats = require('./renderer/stats'),
   H = require('./history-read');
-const CARDS = ['record', 'glance', 'recent', 'fastest', 'records', 'top', 'mileage', 'bests'];
+const CARDS = [
+  'record',
+  'glance',
+  'recent',
+  'fastest',
+  'records',
+  'top',
+  'mileage',
+  'bests',
+  'lanes',
+  'form',
+  'h2h',
+  'milestones',
+  'heats'
+]; // (2.4.0: Lane balance, Grid form, Head to head, Milestones, Heat standings)
 const SESSION = ['id', 'date', 'setupName', 'trackName', 'trackId', 'sessionType', 'resultBy', 'champ', 'standings'];
 const STANDING = [
   'pos',
@@ -90,7 +104,7 @@ function home(source, value) {
     carName: id => cars.get(id) || '',
     trackName: id => (tracks.has(id) ? tracks.get(id).name || '(unnamed)' : '(deleted)')
   };
-  const { rec, personal, weekly, mile, distances, trackOrder, lastLap, valid, compact } = source.homeSummary
+  const { rec, personal, weekly, mile, distances, trackOrder, lastLap, valid, compact, lanes } = source.homeSummary
     ? source.homeSummary(o, { last, dates, tracks, cars, now })
     : summarize(source, o, { last, dates, tracks, cars, now });
   const result = { last: Home.lastRace({ ...ctx, laps: lastLap ? [lastLap] : [] }), cards: {} };
@@ -121,7 +135,14 @@ function home(source, value) {
         distance: distances.size ? [...trackOrder.keys()].reduce((sum, id) => sum + (distances.get(id) || 0), 0) : null,
         wins: top ? { name: top.name, count: top.count } : null
       };
+      data.glanceWeeks = Home.racesPerWeek(sessions, now, 12); // (2.4.0: the bars of races a week)
     }
+    // (2.4.0) the new cards: from the laps of the lanes, or from the standings of the sessions
+    if (b.key === 'lanes') data.lanes = o.trackId ? Home.laneRows(lanes || []) : [];
+    if (b.key === 'form') data.form = Home.gridForm({ ...c, driverIds: o.driverIds });
+    if (b.key === 'h2h') data.h2h = Home.headToHead({ ...c, driverIds: o.driverIds });
+    if (b.key === 'milestones') data.milestones = Home.milestones({ ...c, driverIds: o.driverIds, cars: [] });
+    if (b.key === 'heats') data.heats = Home.heatStandings(c);
     if (b.key === 'mileage')
       data.mileage = [...mile[b.period].values()]
         .map(({ dist, ...m }) => ({ ...m, distance: dist.size ? [...dist.values()].reduce((a, b) => a + b, 0) : null }))
@@ -141,6 +162,7 @@ function summarize(source, o, { last, dates, tracks, cars, now }) {
     trackOrder = new Map();
   let lastLap = null,
     valid = 0;
+  const laneBest = new Map();
   const week = Home.weekStart(now).getTime(),
     year = Home.yearStart(now).getTime();
   const order = new WeakMap();
@@ -158,6 +180,13 @@ function summarize(source, o, { last, dates, tracks, cars, now }) {
     if (!l.noTrackRecord && (needed.has('records') || (needed.has('record') && l.trackId === o.trackId))) best(rec, l.trackId, l);
     if (!l.noPersonalBest && l.trackId === o.trackId && (needed.has('record') || needed.has('bests'))) best(personal, l.driverId, l);
     if (l.invalid || l.tooSlow || l.late) continue;
+    if (needed.has('lanes') && l.trackId === o.trackId && Math.round(Number(l.lane)) >= 1) {
+      const k = Math.round(Number(l.lane)),
+        b = laneBest.get(k) || { lane: k, time: Infinity, laps: 0 };
+      b.laps++;
+      if (Number(l.time) < b.time) b.time = Number(l.time);
+      laneBest.set(k, b);
+    }
     if (last && l.sessionId === last.id && (!lastLap || Number(l.time) < Number(lastLap.time))) lastLap = l;
     if (needed.has('fastest') && l.trackId && l.driverId && Date.parse(l.date || dates.get(l.sessionId)) >= week)
       best(weekly, JSON.stringify([l.trackId, l.driverId]), l);
@@ -179,7 +208,7 @@ function summarize(source, o, { last, dates, tracks, cars, now }) {
     }
   }
   const compact = [...new Set([...rec.values(), ...personal.values()])].sort((a, b) => order.get(a) - order.get(b));
-  return { rec, personal, weekly, mile, distances, trackOrder, lastLap, valid, compact };
+  return { rec, personal, weekly, mile, distances, trackOrder, lastLap, valid, compact, lanes: [...laneBest.values()] };
 }
 function navigation(source, o) {
   if (!o || typeof o.trackId !== 'string' || typeof o.champId !== 'string') throw Error('Invalid Home sessions request.');

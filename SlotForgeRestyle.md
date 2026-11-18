@@ -40,6 +40,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Toggle Chips](#toggle-chips) | Checkboxes as pill switches | View settings, Hide unused systems |
 | [Broadcast Hero](#broadcast-hero) | A header picture across the page with big titles on it | Home |
 | [Grid Slot](#grid-slot) | A lane of Start a race: name, car and Browse cars on the left, the driver as a full-height portrait on the right | Home › Start a race |
+| [Home Cards](#home-cards) | Every card under Start a race with an idea of its own, and seven new cards | Home |
 | [Timing Tower](#timing-tower) | A ranked list: position, colour stripe, time, gap chip | Personal Bests card |
 | [Rulebook](#rulebook) | A document page: header, sheet with a grouped toolbar | Racing Rules |
 | [Finishing Touches](#finishing-touches) | Scroll bars and file pickers in the theme | Everything |
@@ -1194,6 +1195,44 @@ html #hmc-start .hs-lanes[data-cols] .lane.lane.lane>.hs-avatar{display:block;po
 html #hmc-start .hs-lanes[data-cols] .lane.lane.lane>.hs-tick{position:absolute;top:12px;right:12px}
 ```
 
+## Home Cards
+
+The cards under Start a race on Home (`renderer/homecards.js`). One frame for all (the Barlow title in the header, a quiet tag on the right, an
+optional foot line `.hm-foot`), but **every card has an idea of its own**, like a small broadcast graphic. Drivers on the grid carry the colour of
+their lane (`d.laneOf`, `.hm-lane`, `.hm-stripe`); purple is the fastest, gold, silver and bronze are the podium. A box inside a card is `--hc-box`.
+
+| Card | Idea |
+| --- | --- |
+| Last race | **Result board**: the winner as a gold lower third, the others as rows with their place, the fastest lap as a purple pill |
+| At a glance | **Odometer**: rolling digits for races and laps, and a bar of races per week for twelve weeks (`glanceWeeks`) |
+| Recent races | **Race log**: a timeline, a stop per race in the colour of its kind, the kind as a chip |
+| Fastest laps this week | **Timing tower**: position, the lane colour, the time and the gap, the fastest in purple |
+| Records on all tracks | **Wall of tiles**, the track of the race setup with a red edge |
+| Top drivers | **Hall of fame**: the leader as a gold banner with the wins, the others as bars |
+| Rules of this race | **Race brief**: a tile per rule in its own colour; a system that is off fades |
+| Shortcuts | **Launch pad**: tiles with a picture, the first one twice as wide |
+| Weather | **The sky**: the card takes the colour of the weather, the air temperature big |
+| Tyres available | **Sidewalls** with the sets as small blocks |
+| Notes | **Race control board**: more lines become numbered points, a strip of tape on top |
+| Car mileage | **Odometers**: the value in mono, a thin bar |
+| Service due | **Pit wall**: a gauge per car, red past its interval |
+
+**New cards (2.4.0):** **Lane balance** (the best lap of every lane as a bar in its colour), **Grid form** (the places of the last races as squares in
+podium colours; up to four drivers the last ten with a line about their form, more drivers the last five, tighter), **Head to head** (two drivers: a
+face-off with the score; more: **Rivalry**, a table of wins), **Championship** (the standings with the gap, the rounds as a strip, the next round),
+**Heat standings** (the last heat-based race), **Countdown** (to an event you type in Customize), **Milestones** (the next round numbers of the
+drivers and cars on the grid, gold when it is the next race). The figures are in `homestats.js` (`laneBalance`, `gridForm`, `headToHead`,
+`heatStandings`, `milestones`, `racesPerWeek`), worked out in the main process too (`dashboard-read.js`, `sqlite-home.js`, and from this computer's
+own sessions when a shared library is used).
+
+```css
+html .hm-grid .hm-last .hm-resw{display:grid;grid-template-columns:auto minmax(0,1fr) auto;background:linear-gradient(100deg,color-mix(in srgb,var(--hc-gold) 22%,var(--panel)) 0,var(--panel) 75%)}
+html .hm-grid .hm-tower li{grid-template-columns:22px 4px minmax(0,1fr) auto 62px;min-height:34px}
+html .hm-grid .hm-odo i{width:20px;height:30px;border-radius:4px;background:#0f1216;font:600 18px 'SF Roboto Mono',Consolas,monospace}
+html .hm-grid .hm-brief{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+html .hm-grid .hm-lbbar i{background:color-mix(in srgb,var(--c) 75%,var(--panel))}
+```
+
 ## Finishing Touches
 
 ```css
@@ -1280,3 +1319,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Grid Slot | Up to 8 lanes in balanced rows (4, 3 or 2 a row by the width); a last row that is not full fills the width |
 | 2026-11 | Grid Slot | The hairlines are only between lanes (no line beside Start a race) |
 | 2026-11 | Home cards | Record to beat: the title on the red label is large Barlow (26 to 44px, growing with the label) |
+| 2026-11 | Home Cards | New: all cards redesigned; Lane balance, Grid form, Head to head, Championship, Heat standings, Countdown and Milestones added |

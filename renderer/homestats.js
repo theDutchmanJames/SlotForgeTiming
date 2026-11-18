@@ -107,6 +107,7 @@
     return rows.slice(0, 3).map((x, i) => ({
       pos: i + 1 + gap,
       name: (x.asTeam ? x.teamName || x.driverName : x.driverName) || 'Guest',
+      ...(x.carName ? { car: x.carName } : {}),
       detail: winner
         ? byPts && Number.isFinite(Number(x.points))
           ? `${x.points} pts`
@@ -257,6 +258,7 @@
           date: s.date || '',
           name: s.setupName || KINDS[s.sessionType] || 'Race',
           kind: KINDS[s.sessionType] || '',
+          type: s.sessionType || '',
           result: !p ? '' : winner && p.pos === 1 ? p.name + ' won' : winner ? p.name + ', ' + p.detail : p.name + ', ' + p.detail
         };
       });
@@ -551,7 +553,180 @@
     return { ok, ready: n, total: list.length, text };
   }
 
+  // ---- 2.4.0: the figures of the new Home cards ----
+  // races a week: the number of races (the types that have a winner) in each of the last `weeks` weeks, the oldest first; the last one is this week (from Monday)
+  function racesPerWeek(sessions, now, weeks) {
+    const n = whole(weeks, 1, 52, 12),
+      start = weekStart(now || new Date()).getTime(),
+      WEEK = 7 * 864e5,
+      out = new Array(n).fill(0);
+    (sessions || []).forEach(s => {
+      if (!s || !S.WINNER_TYPES.includes(s.sessionType)) return;
+      const t = Date.parse(s.date);
+      if (!Number.isFinite(t)) return;
+      const back = t >= start ? 0 : Math.floor((start - t) / WEEK) + 1;
+      if (back < n) out[n - 1 - back]++;
+    });
+    return out;
+  }
+  // Lane balance: the best lap and the number of laps of every lane on a track. laps: the laps (a lap of a Time Token Session, an invalid, too slow or late lap does not count)
+  // -> [{ lane (1 is the first), time, text, laps }] by lane
+  function laneBalance(ctx) {
+    const by = new Map();
+    for (const l of ctx.laps || []) {
+      if (!racing(l) || !okTime(l) || l.invalid || l.tooSlow || l.late || l.trackId !== ctx.trackId) continue;
+      const lane = Math.round(Number(l.lane));
+      if (!(lane >= 1 && lane <= 64)) continue;
+      const b = by.get(lane) || { lane, time: Infinity, laps: 0 };
+      b.laps++;
+      if (Number(l.time) < b.time) b.time = Number(l.time);
+      by.set(lane, b);
+    }
+    return laneRows([...by.values()]);
+  }
+  // (the same rows from rows of { lane, time (best), laps } that a database worked out itself)
+  const laneRows = rows =>
+    (rows || [])
+      .filter(r => r && Number(r.lane) >= 1 && Number.isFinite(Number(r.time)) && Number(r.time) > 0)
+      .map(r => ({
+        lane: Math.round(Number(r.lane)),
+        time: Number(r.time),
+        text: E.fmtTime(Number(r.time)),
+        laps: Math.max(0, Math.round(Number(r.laps)) || 0)
+      }))
+      .sort((a, b) => a.lane - b.lane);
+  // the races of the drivers, the newest first: [{ date, standings }] of the session types that have a winner, a driver as himself (not in a team)
+  const races = sessions =>
+    (sessions || [])
+      .filter(s => s && S.WINNER_TYPES.includes(s.sessionType) && Array.isArray(s.standings) && s.standings.length)
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  const placeOf = (s, id) => {
+    const x = s.standings.find(r => r && !r.asTeam && r.driverId === id);
+    if (!x) return null;
+    if (x.dq) return 'dq';
+    const p = Math.floor(Number(x.pos));
+    return p >= 1 ? p : null;
+  };
+  // Grid form: for every driver of the grid, the places of his last `count` races (the newest first; 'dq' for a disqualification), how many races and wins he has.
+  // ctx: { sessions, driverIds, count, driverName(id) } -> [{ driverId, name, places, races, wins }] in the order of the grid
+  function gridForm(ctx) {
+    const n = whole(ctx.count, 1, 20, 10),
+      list = races(ctx.sessions);
+    return [...new Set((ctx.driverIds || []).filter(Boolean))].map(id => {
+      const all = list.map(s => placeOf(s, id)).filter(p => p !== null);
+      return {
+        driverId: id,
+        name: (ctx.driverName && ctx.driverName(id)) || '',
+        places: all.slice(0, n),
+        races: all.length,
+        wins: all.filter(p => p === 1).length
+      };
+    });
+  }
+  // Head to head: of every two drivers of the grid, how often the one finished ahead of the other in a race they both drove, when they last met, and the best lap of each in those races.
+  // ctx: { sessions, driverIds, driverName(id) } -> { ids, names, wins: [[n]] (wins[a][b]: a ahead of b), met: [[n]], last: [[date]], best: [time | null] }
+  function headToHead(ctx) {
+    const ids = [...new Set((ctx.driverIds || []).filter(Boolean))].slice(0, 8),
+      k = ids.length,
+      grid = () => ids.map(() => new Array(k).fill(0));
+    const wins = grid(),
+      met = grid(),
+      last = ids.map(() => new Array(k).fill('')),
+      best = new Array(k).fill(null);
+    races(ctx.sessions).forEach(s => {
+      const place = ids.map(id => placeOf(s, id)),
+        rowOf = ids.map(id => s.standings.find(r => r && !r.asTeam && r.driverId === id));
+      for (let a = 0; a < k; a++) {
+        if (place[a] === null) continue;
+        const b0 = Number(rowOf[a] && rowOf[a].best);
+        for (let b = 0; b < k; b++) {
+          if (a === b || place[b] === null) continue;
+          met[a][b]++;
+          if (!last[a][b]) last[a][b] = s.date || '';
+          const pa = place[a] === 'dq' ? Infinity : place[a],
+            pb = place[b] === 'dq' ? Infinity : place[b];
+          if (pa < pb) wins[a][b]++;
+          if (Number.isFinite(b0) && b0 > 0 && (best[a] === null || b0 < best[a])) best[a] = b0;
+        }
+      }
+    });
+    return { ids, names: ids.map(id => (ctx.driverName && ctx.driverName(id)) || ''), wins, met, last, best };
+  }
+  // Milestones: the next round number of races and wins of every driver of the grid, and of laps of the cars of the grid; the nearest first.
+  // ctx: { sessions, driverIds, driverName(id), cars: [{ id, name, laps }] } -> [{ kind ('races' | 'wins' | 'laps'), name, at (the round number), now (where it is), left, tonight }]
+  const STEPS = {
+    races: [10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 500, 750, 1000],
+    wins: [1, 5, 10, 25, 50, 75, 100, 150, 200, 300, 500],
+    laps: [500, 1000, 2000, 2500, 5000, 7500, 10000, 15000, 20000, 25000, 50000, 100000]
+  };
+  const nextStep = (kind, v) => STEPS[kind].find(x => x > v) || null;
+  function milestones(ctx) {
+    const list = races(ctx.sessions),
+      out = [];
+    [...new Set((ctx.driverIds || []).filter(Boolean))].forEach(id => {
+      const name = (ctx.driverName && ctx.driverName(id)) || '';
+      if (!name) return;
+      const places = list.map(s => placeOf(s, id)).filter(p => p !== null),
+        n = places.length,
+        w = places.filter(p => p === 1).length;
+      const r = nextStep('races', n);
+      if (r) out.push({ kind: 'races', name, at: r, now: n, left: r - n, tonight: r - n === 1 });
+      const v = nextStep('wins', w);
+      if (v && v - w <= Math.max(2, Math.ceil(v * 0.2))) out.push({ kind: 'wins', name, at: v, now: w, left: v - w, tonight: false });
+    });
+    (ctx.cars || []).forEach(c => {
+      const laps = Math.max(0, Math.round(Number(c && c.laps)) || 0),
+        at = nextStep('laps', laps);
+      if (c && c.name && at) out.push({ kind: 'laps', name: c.name, at, now: laps, left: at - laps, tonight: false });
+    });
+    return sortMilestones(out);
+  }
+  // the nearest first: tonight, then by the share of the way still to go
+  const sortMilestones = list => {
+    const share = m => m.left / Math.max(1, m.at);
+    return (list || []).slice().sort((a, b) => b.tonight - a.tonight || share(a) - share(b) || a.left - b.left);
+  };
+
+  // Heat standings: the overall standings of the last heat-based race (sessions of type heats). ctx: { sessions, count, driverName(id) }
+  // -> null (no heat race yet) or { id, date, setupName, trackName, byPoints, rows: [{ pos, name, driverId, car, laps, points, best, bestText, dq }] }
+  function heatStandings(ctx) {
+    const s = (ctx.sessions || [])
+      .filter(x => x && x.sessionType === 'heats' && Array.isArray(x.standings) && x.standings.length)
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))[0];
+    if (!s) return null;
+    const n = whole(ctx.count, 1, 20, 8),
+      byPoints = s.resultBy === 'points';
+    const rows = s.standings
+      .filter(Boolean)
+      .slice()
+      .sort((a, b) => (a.dq ? 1 : 0) - (b.dq ? 1 : 0) || (Number(a.pos) || 999) - (Number(b.pos) || 999))
+      .slice(0, n)
+      .map(x => {
+        const best = Number(x.best);
+        return {
+          pos: Math.floor(Number(x.pos)) || null,
+          name: (x.asTeam ? x.teamName || x.driverName : (ctx.driverName && ctx.driverName(x.driverId)) || x.driverName) || 'Guest',
+          driverId: x.asTeam ? '' : x.driverId || '',
+          car: x.carName || '',
+          laps: Math.max(0, Math.round(Number(x.laps)) || 0),
+          points: Number.isFinite(Number(x.points)) ? Number(x.points) : null,
+          best: Number.isFinite(best) && best > 0 ? best : null,
+          bestText: Number.isFinite(best) && best > 0 ? E.fmtTime(best) : '',
+          dq: !!x.dq
+        };
+      });
+    return { id: s.id || '', date: s.date || '', setupName: s.setupName || '', trackName: s.trackName || '', byPoints, rows };
+  }
+
   const api = {
+    heatStandings,
+    racesPerWeek,
+    laneBalance,
+    laneRows,
+    gridForm,
+    headToHead,
+    milestones,
+    sortMilestones,
     PALETTE,
     laneColor,
     trackRecord,

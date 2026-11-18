@@ -780,7 +780,7 @@ async function renderHome() {
             : o.type === 'longtext'
               ? `<textarea ${attrs(o)} rows="${o.rows || 5}" maxlength="${o.max}" placeholder="${esc(o.placeholder || '')}" aria-label="${esc(o.label)}">${esc(v)}</textarea>`
               : o.type === 'text'
-                ? `<input ${attrs(o)} type="text" maxlength="${o.max}" value="${esc(v)}" placeholder="${esc(o.placeholder || '')}" aria-label="${esc(o.label)}">`
+                ? `<input ${attrs(o)} type="${o.input === 'datetime-local' ? 'datetime-local' : 'text'}" maxlength="${o.max}" value="${esc(v)}" placeholder="${esc(o.placeholder || '')}" aria-label="${esc(o.label)}">`
                 : o.type === 'imageset'
                   ? `<select ${attrs(o)}><option value="">None (drawn)</option>${imageSets
                       .filter(r => r.kind === o.kind)
@@ -1715,6 +1715,49 @@ async function renderHome() {
             ((lists.tyrewearsystems || []).find(x => setup && x.id === setup.tyreWear) || {})[setup && setup.sessionType] === 'on'
         });
       }
+      // (2.4.0) the new cards: worked out here when there is no summary of the main process
+      const gridIds = byTeam
+        ? []
+        : rows
+            .filter(r => !r.absent)
+            .map(r => r.driverId)
+            .filter(Boolean);
+      if (!summary || !Object.hasOwn(summary.cards, key)) {
+        if (key === 'glance') d.glanceWeeks = HomeStats.racesPerWeek(sessions, now, 12);
+        else if (key === 'lanes') d.lanes = track ? HomeStats.laneBalance({ laps, trackId: track.id }) : [];
+        else if (key === 'form') d.form = HomeStats.gridForm({ sessions, driverIds: gridIds, count: 10, driverName: dn });
+        else if (key === 'h2h') d.h2h = HomeStats.headToHead({ sessions, driverIds: gridIds, driverName: dn });
+        else if (key === 'milestones') d.milestones = HomeStats.milestones({ sessions, driverIds: gridIds, driverName: dn, cars: [] });
+        else if (key === 'heats') d.heats = HomeStats.heatStandings({ sessions, count: n('count'), driverName: dn });
+      }
+      if (key === 'milestones') {
+        // (the cars on the grid: their laps are kept with the car)
+        const carIds = [
+          ...new Set(
+            rows
+              .filter(r => !r.absent)
+              .map(r => r.carId)
+              .filter(Boolean)
+          )
+        ];
+        const carMs = HomeStats.milestones({
+          sessions: [],
+          driverIds: [],
+          cars: carIds
+            .map(id => cars.find(c => c.id === id))
+            .filter(Boolean)
+            .map(c => ({ id: c.id, name: titleOf('slotcars', c), laps: CarStats.lapsDriven(c) }))
+        });
+        d.milestones = HomeStats.sortMilestones([...(d.milestones || []), ...carMs]);
+      }
+      if (key === 'champ') d.champ = lists.champ || null;
+      // the lanes of the grid: the colour of every driver, in lane order (the cards of the grid draw them)
+      d.laneOf = {};
+      rows.forEach((r, i) => {
+        if (!r.absent && r.driverId && !(r.driverId in d.laneOf)) d.laneOf[r.driverId] = { lane: i + 1, color: laneHue(i) };
+      });
+      d.laneColor = i => laneHue(i);
+      d.now = now;
       if (referenceRevision('slotcars') && ['mileage', 'service'].includes(key) && HG.optionOf(b, 'pics'))
         pictureCards.push({ key, data: { ...d }, board: b });
       out.set(key, HomeCards.html(key, d, b));
@@ -1743,7 +1786,23 @@ async function renderHome() {
         grid: grid2,
         now: new Date().toISOString(),
         boards: others
-          .filter(b => ['record', 'glance', 'recent', 'fastest', 'records', 'top', 'mileage', 'bests'].includes(HG.cardOf(b)))
+          .filter(b =>
+            [
+              'record',
+              'glance',
+              'recent',
+              'fastest',
+              'records',
+              'top',
+              'mileage',
+              'bests',
+              'lanes',
+              'form',
+              'h2h',
+              'milestones',
+              'heats'
+            ].includes(HG.cardOf(b))
+          )
           .map(b => ({
             key: HG.cardOf(b),
             count: Math.min(20, Math.max(1, Number(HG.optionOf(b, 'count')) || 5)),
@@ -1805,6 +1864,36 @@ async function renderHome() {
         }
       )
     );
+  if (wants('champ') && champs.length) {
+    const c = champShown || champs[champs.length - 1];
+    let cs = sessions;
+    if (api.homeSessions)
+      try {
+        cs = await api.homeSessions({ trackId: '', champId: c.id });
+      } catch {
+        cs = [];
+      }
+    try {
+      lists.champ = {
+        c,
+        p: Champ.progress(c, cs),
+        st: ChampPts.standings(c, cs, {
+          drivers: drivers.map(x => ({ id: x.id, name: titleOf('drivers', x) })),
+          teams: teams.map(x => ({ id: x.id, name: titleOf('teams', x) })),
+          setups
+        }),
+        next: (() => {
+          const p = Champ.progress(c, cs);
+          if (!p.next) return null;
+          const r = c.rounds[p.next.round];
+          const tr = r && tracks.find(t => t.id === r.track);
+          return { label: Champ.roundLabel(c, p.next.round), track: tr ? tr.name || '' : '', date: r && r.date ? r.date : '' };
+        })()
+      };
+    } catch {
+      lists.champ = null;
+    }
+  }
   if (run !== homeRun || draw !== homeDraw || state.tab !== 'home') return;
   cardsHtml(Array.isArray(allLaps) ? allLaps : [], lists, summary).forEach((html, key) => {
     const el = document.getElementById('hmc-' + key);

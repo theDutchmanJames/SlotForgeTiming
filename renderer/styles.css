@@ -4036,3 +4036,238 @@ html #hmc-start .hs-lanes[data-cols]{overflow:hidden}
 html .hm-grid .hm-rec>h3{container:hm-rec/inline-size;font:italic 700 34px/.95 'SF Barlow Condensed','Bahnschrift',sans-serif;letter-spacing:.01em;gap:10px}
 @container hm-rec (min-width:0){html .hm-grid .hm-rec>h3{font-size:clamp(26px,18cqi,44px)}}
 html .hm-grid .hm-rec>h3 .hm-tag{font-style:normal;font-size:11.5px;line-height:1.3}
+/* 2.4.0 Home Cards (homecards.js): every card has its own idea. Shared: --hc-box (a box inside a card), the lane chip, the colour stripe, the foot line. */
+html .hm-grid{--hc-box:color-mix(in srgb,var(--bg) 55%,var(--panel));--hc-gold:#f5c542;--hc-silver:#c9ced6;--hc-bronze:#d08a52;--hc-purple:#a855f7}
+html .hm-grid .card .hm-foot{margin:auto 0 0;padding-top:10px;font-size:12px;color:var(--muted)}
+html .hm-grid .hm-lane{display:inline-grid;place-items:center;flex:none;min-width:22px;height:22px;padding:0 5px;border-radius:5px;background:var(--c,var(--line));color:#111418;font:italic 700 13px/1 'SF Barlow Condensed','Bahnschrift',sans-serif}
+html .hm-grid .hm-stripe{display:block;width:4px;height:20px;border-radius:2px;background:var(--c,var(--line))}
+html .hm-grid .pb{color:#c99bff}
+
+/* Last race: a result board */
+html .hm-grid .hm-last .hm-resw{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;margin:0 -16px 6px;padding:12px 16px;background:linear-gradient(100deg,color-mix(in srgb,var(--hc-gold) 22%,var(--panel)) 0,var(--panel) 75%)}
+html .hm-grid .hm-last .hm-resw .hm-respos{font:italic 700 44px/.8 'SF Barlow Condensed','Bahnschrift',sans-serif;color:var(--hc-gold)}
+html .hm-grid .hm-last .hm-resw .hm-resname strong{display:block;font:italic 700 26px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html .hm-grid .hm-last .hm-resname{min-width:0}
+html .hm-grid .hm-last .hm-resname small{display:block;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html .hm-grid .hm-last .hm-resv{font:500 14px 'SF Roboto Mono',Consolas,monospace;white-space:nowrap}
+html .hm-grid .hm-last .hm-resr{display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line)}
+html .hm-grid .hm-last .hm-resr .hm-respos{font:italic 700 19px 'SF Barlow Condensed','Bahnschrift',sans-serif;color:var(--hc-silver)}
+html .hm-grid .hm-last .hm-resr.p3 .hm-respos{color:var(--hc-bronze)}
+html .hm-grid .hm-last .hm-resr .hm-resname strong{font-weight:600}
+html .hm-grid .hm-last .hm-resr .hm-resname{display:flex;align-items:baseline;gap:8px}
+html .hm-grid .hm-last .hm-resr .hm-resv{font-size:12.5px;color:var(--muted)}
+html .hm-grid .hm-fl{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;margin:10px 0 0;padding:5px 11px;border-radius:999px;background:color-mix(in srgb,var(--hc-purple) 16%,var(--panel));color:#d9bfff;font-size:12px}
+html .hm-grid .hm-fl i{width:7px;height:7px;border-radius:50%;background:var(--hc-purple)}
+html .hm-grid .hm-fl b{font:500 12.5px 'SF Roboto Mono',Consolas,monospace}
+
+/* At a glance: an odometer */
+html .hm-grid .hm-glance .hm-tiles{gap:1px;margin:0 -16px;background:var(--line);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+html .hm-grid .hm-glance .hm-tile{padding:12px 16px;border:0;border-radius:0;background:var(--panel);box-shadow:none}
+html .hm-grid .hm-odo{display:flex;gap:2px}
+html .hm-grid .hm-odo i{display:inline-grid;place-items:center;width:20px;height:30px;border-radius:4px;background:#0f1216;color:var(--ink);font:600 18px 'SF Roboto Mono',Consolas,monospace;font-style:normal;box-shadow:inset 0 -13px 0 rgba(255,255,255,.04)}
+html .hm-grid .hm-odobig{font:600 22px 'SF Roboto Mono',Consolas,monospace}
+html .hm-grid .hm-glance .hm-tile .v{font:600 22px/1.3 'SF Roboto Mono',Consolas,monospace}
+html .hm-grid .hm-glance .hm-tile .l{margin-top:6px;font-size:11.5px}
+html .hm-grid .hm-spark{display:flex;align-items:flex-end;gap:3px;height:36px;margin-top:14px}
+html .hm-grid .hm-spark i{flex:1;border-radius:2px 2px 0 0;background:color-mix(in srgb,var(--accent) 55%,var(--panel))}
+html .hm-grid .hm-spark i.z{background:var(--line)}
+html .hm-grid .hm-spark i:last-child{background:var(--accent)}
+html .hm-grid .hm-sparkcap{display:flex;justify-content:space-between;margin-top:4px;font-size:10.5px;color:var(--muted)}
+
+/* Recent races: a race log */
+html .hm-grid .hm-log{position:relative;padding-left:18px!important}
+html .hm-grid .hm-log::before{content:'';position:absolute;left:5px;top:10px;bottom:10px;width:2px;background:var(--line)}
+html .hm-grid .hm-log>li{position:relative;border-top:0!important;--k:var(--accent)}
+html .hm-grid .hm-log>li::before{content:'';position:absolute;left:-17px;top:50%;width:10px;height:10px;margin-top:-5px;border-radius:50%;background:var(--panel);box-shadow:0 0 0 2px var(--k)}
+html .hm-grid .hm-log>li.k-heats{--k:#a46bff}html .hm-grid .hm-log>li.k-qualifying{--k:#3b82f6}html .hm-grid .hm-log>li.k-practice{--k:#3ecf8e}
+html .hm-grid .hm-log>li.k-timed{--k:#ff7a3d}html .hm-grid .hm-log>li.k-endurance{--k:#22c5d6}
+html .hm-grid .hm-log .hm-row{display:grid!important;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"n d" "r r";gap:1px 10px;text-align:left}
+html .hm-grid .hm-log .hm-row .n{grid-area:n;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html .hm-grid .hm-log .hm-row .n em{margin-left:6px;padding:0 6px;border-radius:4px;background:var(--line);font-style:normal;font-size:10.5px;font-weight:500;color:var(--muted)}
+html .hm-grid .hm-log .hm-row .d{grid-area:d;font-size:11.5px;color:var(--muted)}
+html .hm-grid .hm-log .hm-row .r{grid-area:r;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Fastest laps this week, Championship, Heat standings: a timing tower */
+html .hm-grid .hm-tower li,html .hm-grid .hm-chrow,html .hm-grid .hm-hsrow{display:grid;align-items:center;gap:10px;min-height:34px;padding:0 16px;margin:0 -16px;border-top:0}
+html .hm-grid .hm-tower li{grid-template-columns:22px 4px minmax(0,1fr) auto 62px}
+html .hm-grid .hm-tower li:nth-child(odd),html .hm-grid .hm-chrow:nth-of-type(odd),html .hm-grid .hm-hsrow:nth-child(odd){background:color-mix(in srgb,var(--bg) 35%,var(--panel))}
+html .hm-grid .hm-tower .n,html .hm-grid .hm-chrow .p,html .hm-grid .hm-hsrow .p{font:italic 700 16px 'SF Barlow Condensed','Bahnschrift',sans-serif;color:var(--ink);text-align:center}
+html .hm-grid .hm-tower .w,html .hm-grid .hm-chrow strong,html .hm-grid .hm-hsrow .nm strong{font:700 14.5px 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html .hm-grid .hm-tower strong{font:500 13px 'SF Roboto Mono',Consolas,monospace}
+html .hm-grid .hm-tower .g,html .hm-grid .hm-chrow .g{text-align:right;font:500 12px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+html .hm-grid .hm-fastest .hm-h4{margin:12px 0 4px;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+/* Records on all tracks: a wall of tiles */
+html .hm-grid .hm-wall{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+html .hm-grid .hm-wall .hm-recrow2{display:block;margin:0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--hc-box)}
+html .hm-grid .hm-wall .hm-recrow2.here{border-color:color-mix(in srgb,var(--accent) 60%,var(--line));box-shadow:inset 3px 0 0 var(--accent)}
+html .hm-grid .hm-wall .who strong{font:italic 700 15px 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .hm-grid .hm-wall .hm-time.sm{display:block;margin:8px 0 2px;font:600 21px 'SF Roboto Mono',Consolas,monospace}
+html .hm-grid .hm-wall .who small{font-size:11.5px;color:var(--muted)}
+html .hm-grid .hm-wall .who small.dt{color:color-mix(in srgb,var(--muted) 70%,var(--bg))}
+
+/* Top drivers: a hall of fame */
+html .hm-grid .hm-fame{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;margin-bottom:10px;padding:12px;border-radius:10px;background:linear-gradient(120deg,color-mix(in srgb,var(--hc-gold) 18%,var(--hc-box)),var(--hc-box) 70%)}
+html .hm-grid .hm-fame .hm-rec-avatar{width:42px;height:42px;font-size:14px}
+html .hm-grid .hm-fame strong{font:italic 700 24px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html .hm-grid .hm-famen{text-align:right}
+html .hm-grid .hm-famen b{display:block;font:italic 700 34px/.9 'SF Barlow Condensed','Bahnschrift',sans-serif;color:var(--hc-gold)}
+html .hm-grid .hm-famen small{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+html .hm-grid .hm-top .hm-bar{grid-template-columns:18px minmax(60px,28%) minmax(0,1fr) auto}
+html .hm-grid .hm-top .hm-bar .p{font:italic 700 15px 'SF Barlow Condensed','Bahnschrift',sans-serif;color:var(--muted)}
+html .hm-grid .hm-top .hm-bar .b{height:8px;background:var(--line)}
+html .hm-grid .hm-top .hm-bar .b i{background:color-mix(in srgb,var(--accent) 70%,var(--panel))}
+
+/* Rules of this race: a race brief */
+html .hm-grid .hm-brief{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+html .hm-grid .hm-brief .hm-bi{display:grid;grid-template-rows:auto auto auto;justify-content:stretch;gap:2px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--hc-box);max-height:none}
+html .hm-grid .hm-bic{display:grid;place-items:center;width:28px;height:28px;margin-bottom:6px;border-radius:8px;background:color-mix(in srgb,var(--c) 18%,var(--panel));color:var(--c)}
+html .hm-grid .hm-bic svg,html .hm-grid .hm-go2 svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+html .hm-grid .hm-bi .muted{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase}
+html .hm-grid .hm-bi strong{font:italic 700 16px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;overflow-wrap:anywhere}
+html .hm-grid .hm-bi.off{opacity:.45}
+
+/* Shortcuts: a launch pad */
+html .hm-grid .hm-go2{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+html .hm-grid .hm-go2 .btn{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:14px;min-height:76px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--hc-box);box-shadow:none;font-weight:600;font-size:12.5px;text-align:left}
+html .hm-grid .hm-go2 .btn svg{width:20px;height:20px;color:var(--accent-text,var(--accent))}
+html .hm-grid .hm-go2 .btn.main{grid-column:span 2;background:linear-gradient(130deg,color-mix(in srgb,var(--accent) 30%,var(--hc-box)),var(--hc-box));border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
+
+/* Weather: the sky itself */
+html .hm-grid .hm-weather{background:linear-gradient(170deg,#3a6ea5 0%,#1f3a5c 55%,var(--panel) 100%)}
+html .hm-grid .hm-weather:is(.hm-wx-wet,.hm-wx-rain,.hm-wx-cloudy,.hm-wx-clearing){background:linear-gradient(170deg,#3c4655 0%,#252c37 55%,var(--panel) 100%)}
+html .hm-grid .hm-weather .hm-sky .wxic{width:64px;height:64px}
+html .hm-grid .hm-weather .hm-skyt{display:block;font:italic 700 46px/.9 'SF Barlow Condensed','Bahnschrift',sans-serif}
+html .hm-grid .hm-weather .hm-sky strong{font:italic 700 20px 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .hm-grid .hm-weather .hm-sky small{color:color-mix(in srgb,var(--ink) 80%,transparent)}
+html .hm-grid .hm-weather .hm-ctile{border:0;background:rgba(0,0,0,.24);box-shadow:none}
+html .hm-grid .hm-weather .hm-ctile small{color:color-mix(in srgb,var(--ink) 75%,transparent)}
+
+/* Tyres available: sidewalls */
+html .hm-grid .hm-tyres:not(.hm-ty-column){display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px}
+html .hm-grid .hm-tyres:not(.hm-ty-column) li{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;border:0;border-radius:10px;background:var(--hc-box);text-align:center}
+html .hm-grid .hm-wall2{display:grid;place-items:center;width:58px;height:58px;border-radius:50%;background:#0d0f12;box-shadow:inset 0 0 0 5px #15181d}
+html .hm-grid .hm-wall2 .wxic{width:44px;height:44px}
+html .hm-grid .hm-tyres .n{font-weight:600;font-size:12.5px}
+html .hm-grid .hm-pips{display:flex;flex-wrap:wrap;justify-content:center;gap:3px}
+html .hm-grid .hm-pips i{width:7px;height:7px;border-radius:2px;background:var(--accent)}
+html .hm-grid .hm-tyres.hm-ty-column li{display:flex;align-items:center;gap:12px}
+html .hm-grid .hm-tyres.hm-ty-column .hm-wall2{width:42px;height:42px}
+html .hm-grid .hm-tyres.hm-ty-column .hm-wall2 .wxic{width:32px;height:32px}
+html .hm-grid .hm-tyres.hm-ty-column .hm-pips{margin-left:auto}
+
+/* Notes: a race control board */
+html .hm-grid .hm-notes{position:relative}
+html .hm-grid .hm-tape{position:absolute;top:0;left:50%;width:84px;height:14px;transform:translateX(-50%);border-radius:0 0 4px 4px;background:color-mix(in srgb,#f2b705 55%,transparent)}
+html .hm-grid .hm-points{margin:0;padding:0;list-style:none;counter-reset:hn;white-space:normal}
+html .hm-grid .hm-points li{counter-increment:hn;display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;align-items:start;padding:7px 0;border-top:1px dashed var(--line)}
+html .hm-grid .hm-points li:first-child{border-top:0}
+html .hm-grid .hm-points li::before{content:counter(hn);display:grid;place-items:center;width:22px;height:22px;border-radius:6px;background:color-mix(in srgb,#f2b705 18%,var(--panel));color:#f2b705;font:italic 700 13px 'SF Barlow Condensed','Bahnschrift',sans-serif}
+
+/* Car mileage: odometers */
+html .hm-grid .hm-mileage .hm-mrow .mv strong{font:600 15px 'SF Roboto Mono',Consolas,monospace}
+html .hm-grid .hm-mileage .hm-mbar{height:4px;margin-top:6px;background:var(--line)}
+html .hm-grid .hm-mileage .hm-mbar i{background:var(--accent)}
+html .hm-grid .hm-mileage .hm-carpic{width:56px;height:32px;border-radius:6px;object-fit:cover}
+
+/* Service due: a pit wall of gauges */
+html .hm-grid .hm-svc:has(.hm-svg){display:flex}
+html .hm-grid .hm-svc .hm-mrow.hm-carbtn:has(.hm-svg){display:inline-flex;flex-direction:column;align-items:center;gap:4px;width:calc(50% - 5px);margin:0 0 10px;padding:12px 8px;border:0;border-radius:10px;background:var(--hc-box);text-align:center;vertical-align:top;max-height:none}
+html .hm-grid .hm-svc .hm-mrow.hm-carbtn:has(.hm-svg):nth-of-type(odd){margin-right:10px}
+html .hm-grid .hm-svc .hm-carbtn:has(.hm-svg) .mm,html .hm-grid .hm-svc .hm-carbtn:has(.hm-svg) .mt{display:flex;flex-direction:column;align-items:center;gap:2px;width:100%}
+html .hm-grid .hm-svc .hm-carbtn:has(.hm-svg) .sv-bar{display:none}
+html .hm-grid .hm-svc .hm-carbtn:has(.hm-svg) .hm-carpic{display:none}
+html .hm-grid .hm-svg{order:-1;width:64px;height:64px}
+html .hm-grid .hm-svg .arc{stroke:#3ecf8e}html .hm-grid .hm-svg.soon .arc{stroke:#f2b705}html .hm-grid .hm-svg.due .arc{stroke:var(--accent)}
+html .hm-grid .hm-svg text{fill:var(--ink);font:600 13px 'SF Roboto Mono',Consolas,monospace}
+html .hm-grid .hm-svc .hm-carbtn:has(.hm-svg).hm-mrow:has(.due){box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 55%,transparent)}
+
+/* Lane balance */
+html .hm-grid .hm-lbrow{display:grid;grid-template-columns:24px minmax(0,1fr) 62px;align-items:center;gap:10px;padding:4px 0}
+html .hm-grid .hm-lb.tight .hm-lbrow{padding:2px 0}
+html .hm-grid .hm-lbbar{position:relative;height:16px;border-radius:4px;background:var(--line);overflow:hidden}
+html .hm-grid .hm-lb.tight .hm-lbbar{height:12px}
+html .hm-grid .hm-lbbar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:color-mix(in srgb,var(--c) 75%,var(--panel))}
+html .hm-grid .hm-lbrow strong{text-align:right;font:500 12.5px 'SF Roboto Mono',Consolas,monospace}
+html .hm-grid .hm-lbsum{display:flex;flex-wrap:wrap;gap:6px 16px;margin:auto 0 0;padding-top:10px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+html .hm-grid .hm-lbsum b{color:var(--ink);font:600 13px 'SF Roboto Mono',Consolas,monospace}
+
+/* Grid form */
+html .hm-grid .hm-gfrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line)}
+html .hm-grid .hm-gfrow:first-child{border-top:0}
+html .hm-grid .hm-gf.big .hm-gfrow{grid-template-columns:auto minmax(0,1fr);padding:8px 0}
+html .hm-grid .hm-gf.big .hm-gfrow .fm{grid-column:2}
+html .hm-grid .hm-gf.tight .hm-gfrow{padding:3px 0}
+html .hm-grid .hm-gfrow .nm{min-width:0}
+html .hm-grid .hm-gfrow .nm strong{display:block;font:700 14.5px 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html .hm-grid .hm-gfrow .nm small{display:block;font-size:11.5px;color:var(--muted)}
+html .hm-grid .hm-gfrow .fm{display:flex;flex-wrap:wrap;gap:3px}
+html .hm-grid .hm-gfrow .fm i{display:grid;place-items:center;min-width:22px;height:22px;padding:0 3px;border-radius:5px;background:var(--line);color:var(--muted);font:italic 700 12px 'SF Barlow Condensed','Bahnschrift',sans-serif}
+html .hm-grid .hm-gf.tight .hm-gfrow .fm i{min-width:18px;height:18px;font-size:11px}
+html .hm-grid .hm-gfrow .fm i.p1{background:color-mix(in srgb,var(--hc-gold) 30%,var(--panel));color:var(--hc-gold)}
+html .hm-grid .hm-gfrow .fm i.p2{background:color-mix(in srgb,var(--hc-silver) 20%,var(--panel));color:var(--hc-silver)}
+html .hm-grid .hm-gfrow .fm i.p3{background:color-mix(in srgb,var(--hc-bronze) 22%,var(--panel));color:var(--hc-bronze)}
+html .hm-grid .hm-gfrow .fm i.dq{color:var(--accent-text,var(--accent))}
+
+/* Head to head and Rivalry */
+html .hm-grid .hm-h2hv{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:10px;text-align:center}
+html .hm-grid .hm-h2hs .hm-rec-avatar{width:52px;height:52px;margin:0 auto 6px;font-size:15px;background:color-mix(in srgb,var(--c) 26%,var(--panel));box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--c) 70%,transparent)}
+html .hm-grid .hm-h2hs strong{display:block;font:italic 700 20px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html .hm-grid .hm-h2hsc{font:italic 700 46px/.9 'SF Barlow Condensed','Bahnschrift',sans-serif}
+html .hm-grid .hm-h2hsc span{margin:0 4px;color:var(--muted)}
+html .hm-grid .hm-h2hbar{display:flex;height:8px;margin:14px 0 8px;border-radius:4px;overflow:hidden}
+html .hm-grid .hm-h2hbar i{display:block;height:100%}
+html .hm-grid .hm-h2hf{display:flex;justify-content:space-between;gap:10px;margin:0;font-size:12px;color:var(--muted)}
+html .hm-grid .hm-h2hf b{color:var(--ink);font:500 12.5px 'SF Roboto Mono',Consolas,monospace}
+html .hm-grid .hm-mx{width:100%;border-collapse:collapse;font:500 11.5px 'SF Roboto Mono',Consolas,monospace}
+html .hm-grid .hm-mx th{padding:0 0 6px;font:700 11px "Segoe UI",system-ui,sans-serif;color:var(--muted)}
+html .hm-grid .hm-mx th.r{padding:0 8px 0 0;text-align:left;white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;color:var(--ink);font-weight:600}
+html .hm-grid .hm-mx th.r i{display:inline-block;width:8px;height:8px;margin-right:6px;border-radius:2px}
+html .hm-grid .hm-mx td{height:26px;text-align:center;border:2px solid var(--panel);border-radius:4px;background:var(--hc-box)}
+html .hm-grid .hm-mx td.w{background:color-mix(in srgb,#3ecf8e 30%,var(--hc-box))}
+html .hm-grid .hm-mx td.l{background:color-mix(in srgb,var(--accent) 18%,var(--hc-box))}
+html .hm-grid .hm-mx td.x{background:repeating-linear-gradient(45deg,var(--line) 0 3px,transparent 3px 6px)}
+html .hm-grid .hm-mx td.n{color:var(--muted)}
+
+/* Championship and Heat standings */
+html .hm-grid .hm-chhead{display:flex;align-items:center;gap:10px;margin:0 0 8px;font-size:12px;color:var(--muted)}
+html .hm-grid .hm-chstrip{display:flex;gap:3px;margin-left:auto}
+html .hm-grid .hm-chstrip i{width:14px;height:6px;border-radius:2px;background:var(--line)}
+html .hm-grid .hm-chstrip i.done{background:var(--accent)}html .hm-grid .hm-chstrip i.next{background:color-mix(in srgb,var(--accent) 45%,var(--panel))}
+html .hm-grid .hm-chrow{grid-template-columns:22px 4px minmax(0,1fr) 44px 46px}
+html .hm-grid .hm-chrow b{text-align:right;font:600 14px 'SF Roboto Mono',Consolas,monospace}
+html .hm-grid .hm-chnext{margin:10px 0 0;padding:8px 10px;border-radius:8px;background:var(--hc-box);font-size:12px;color:var(--muted)}
+html .hm-grid .hm-chnext b{color:var(--ink)}
+html .hm-grid .hm-hsrow{grid-template-columns:26px 4px minmax(0,1fr) auto 58px}
+html .hm-grid .hm-hsrow .nm{display:flex;align-items:baseline;gap:8px;min-width:0}
+html .hm-grid .hm-hsrow .nm small{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html .hm-grid .hm-hsrow b{font:600 14px 'SF Roboto Mono',Consolas,monospace;white-space:nowrap}
+html .hm-grid .hm-hsrow b small{font:400 10.5px "Segoe UI",system-ui,sans-serif;color:var(--muted)}
+html .hm-grid .hm-hsrow .t{text-align:right;font:500 12px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+html .hm-grid .hm-hsrow .t.pb{color:#c99bff}
+html .hm-grid .hm-hsrow.p1 .p{color:var(--hc-gold)}html .hm-grid .hm-hsrow.p2 .p{color:var(--hc-silver)}html .hm-grid .hm-hsrow.p3 .p{color:var(--hc-bronze)}
+html .hm-grid .hm-hsrow.dq{opacity:.55}
+
+/* Countdown */
+html .hm-grid .hm-count{background:radial-gradient(120% 90% at 100% 0,color-mix(in srgb,var(--accent) 26%,var(--panel)),var(--panel) 60%)}
+html .hm-grid .hm-cdwhat{margin:0;font:italic 700 22px/1.05 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+html .hm-grid .hm-cdwhen{margin:2px 0 0;font-size:12px;color:var(--muted)}
+html .hm-grid .hm-cd{display:flex;gap:8px;margin-top:14px}
+html .hm-grid .hm-cd>div{flex:1;padding:10px 0 8px;border-radius:10px;background:rgba(0,0,0,.28);text-align:center}
+html .hm-grid .hm-cd b{display:block;font:italic 700 42px/.9 'SF Barlow Condensed','Bahnschrift',sans-serif}
+html .hm-grid .hm-cd span{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html .hm-grid .hm-cdnow{margin:14px 0 0;font:italic 700 40px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;color:var(--accent-text,var(--accent))}
+
+/* Milestones */
+html .hm-grid .hm-msrow{display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--line)}
+html .hm-grid .hm-msrow:first-of-type{border-top:0}
+html .hm-grid .hm-msr{width:40px;height:40px}
+html .hm-grid .hm-msrow strong{display:block;font-weight:600}
+html .hm-grid .hm-msrow small{font-size:12px;color:var(--muted)}
+html .hm-grid .hm-msrow.hit strong{color:var(--hc-gold)}
+/* (Home Cards) lists that are drawn as towers, walls and briefs keep their own height (the grid does not stretch their rows) */
+html .hm-grid .hm-cell>.card>:is(.hm-tower,.hm-wall,.hm-brief,.hm-go2,.hm-gf,.hm-lb,.hm-hs,.hm-mx,.hm-log){flex:none!important}
+html .hm-grid .hm-cell>.card>.hm-tower>li,html .hm-grid .hm-cell>.card>.hm-log>li{flex:none!important;max-height:none}
+html .hm-grid .hm-wall .hm-time.sm{color:var(--ink)}
+html .hm-grid .hm-brief .hm-bi{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;text-align:left}
+html .hm-grid .hm-wall .hm-recrow2:not(.here){border-color:var(--line)}

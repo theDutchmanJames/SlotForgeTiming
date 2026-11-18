@@ -11,8 +11,8 @@ const cards = g => g.boards.map(G.cardOf).join();
 const spots = g => g.boards.map(b => `${G.cardOf(b)}@${b.c}.${b.r}:${b.w}x${b.h}`).join(' ');
 
 // ---- the cards ----
-ok('there are sixteen cards: Start a race, the three of before, the seven of 1.25.0, Weather and Tyres Available since 1.26.0, since 1.28.0 Notes and Car Mileage and, since 1.34.0, Service Due', G.CARDS.length === 16 && G.KEYS.join() === 'start,record,last,glance,recent,fastest,records,top,bests,rules,shortcuts,weather,tyres,notes,mileage,service');
-ok('...every card has a name and a line of words, and the keys are all different', G.CARDS.every(c => c.label && c.note) && new Set(G.KEYS).size === 16);
+ok('there are twenty-three cards: Start a race, the three of before, the seven of 1.25.0, Weather and Tyres Available since 1.26.0, since 1.28.0 Notes and Car Mileage, since 1.34.0 Service Due and, since 2.4.0, Lane balance, Grid form, Head to head, Championship, Heat standings, Countdown and Milestones', G.CARDS.length === 23 && G.KEYS.join() === 'start,record,last,glance,recent,fastest,records,top,bests,rules,shortcuts,weather,tyres,notes,mileage,service,lanes,form,h2h,champ,heats,countdown,milestones');
+ok('...every card has a name and a line of words, and the keys are all different', G.CARDS.every(c => c.label && c.note) && new Set(G.KEYS).size === 23);
 ok('...only Start a race is fixed (it cannot be taken away)', G.CARDS.filter(c => c.fixed).map(c => c.key).join() === 'start');
 ok('...a choice has a default that is one of its choices; a tick has a default of yes or no; a number a whole default inside its limits; a line of text a default that fits; a picture set has none',
   G.CARDS.every(c => c.options.every(o => (o.type === 'check' ? typeof o.default === 'boolean' : o.type === 'number' ? Number.isInteger(o.default) && o.default >= o.min && o.default <= o.max
@@ -69,7 +69,7 @@ ok('a taller card: the cells below must be free; a card that would cover a cell 
 ok('...and a wide card can be made narrower or taller', spots(G.setSpan(a1, 0, 1, 2)) === 'records@1.1:1x2 record@3.1:1x1 recent@4.1:1x1' && G.maxSpan(a1, a1.boards[0]).w === 2 && G.maxSpan(a1, a1.boards[0]).h === 2);
 
 // ---- the cards a cell can have ----
-ok('a cell can have the cards that are not in the grid, and the card it has now; never Start a race', G.available(a1, 1).map(c => c.key).join() === 'record,last,glance,fastest,top,bests,rules,shortcuts,weather,tyres,notes,mileage,service' && G.available(a1, -1).map(c => c.key).join() === 'last,glance,fastest,top,bests,rules,shortcuts,weather,tyres,notes,mileage,service');
+ok('a cell can have the cards that are not in the grid, and the card it has now; never Start a race', G.available(a1, 1).map(c => c.key).join() === 'record,last,glance,fastest,top,bests,rules,shortcuts,weather,tyres,notes,mileage,service,lanes,form,h2h,champ,heats,countdown,milestones' && G.available(a1, -1).map(c => c.key).join() === 'last,glance,fastest,top,bests,rules,shortcuts,weather,tyres,notes,mileage,service,lanes,form,h2h,champ,heats,countdown,milestones');
 ok('...the cards that are in the grid', G.used(a1).has('records') && G.used(a1).has('recent') && !G.used(a1).has('start') && !G.used(a1).has('top') && G.used(null).size === 0);
 
 // ---- the default ----
