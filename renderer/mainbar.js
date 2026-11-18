@@ -380,7 +380,11 @@ const MainBar = (() => {
       records = null; // (read again next time: a new driver or car is found too)
       gen++;
       loading = null;
-      if (was && before && before.isConnected && typeof before.focus === 'function') before.focus(); // (the focus goes back where it was)
+      if (was) {
+        if (before && before !== document.body && before.isConnected && typeof before.focus === 'function')
+          before.focus(); // (the focus goes back where it was)
+        else if (document.activeElement && box.contains(document.activeElement)) document.activeElement.blur(); // (nothing had it: no hidden search keeps it)
+      }
       before = null;
     }
     return { open, close, search };
