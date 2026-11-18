@@ -3713,3 +3713,46 @@ html #settingsbox .sr-canvas .dealership-settings>header p{margin:4px 0 0;font-s
 html #settingsbox .sr-canvas .paddock-shell,html #settingsbox .sr-canvas .paddock-shell>main{display:block;max-width:880px;margin:0;padding:0;border:0;background:none;box-shadow:none}
 html #settingsbox .sr-canvas .paddock-shell>main>section.sr-sec:not(.x){margin:0 0 8px;padding:0;border:0;border-radius:0;background:none;box-shadow:none}
 html #settingsbox .sr-canvas .paddock-shell>main>p{margin:0 0 14px;font-size:13px;color:var(--muted)}
+/* (Settings Sheet) the switch keeps its pill shape whatever else styles checkboxes or the 30px kit */
+html body input[type=checkbox].ss-switch.ss-switch{width:34px;height:20px;min-height:0;max-height:20px;min-width:34px;padding:0;border:0;border-radius:10px;background:var(--line);box-shadow:none;accent-color:auto;align-self:center}
+html body input[type=checkbox].ss-switch.ss-switch:checked{background:var(--accent-fill,var(--accent))}
+html body input[type=checkbox].ss-switch.ss-switch::after{top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.35)}
+html body input[type=checkbox].ss-switch.ss-switch:checked::after{left:16px}
+html body input[type=checkbox].ss-switch.ss-switch::before{display:none}
+/* 2.4.0 Help Reader: the Help page set like a calm document. One column of about 70 characters, the search beside the title, a small trail, one
+   title, the plain-words summary as the lead, comfortable body text, related guides as quiet chips under a thin line. */
+html #view .help-hub>header.help-header{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;max-width:780px;padding:28px 40px 0}
+html #view .help-hub .help-heading h2{margin:0;font-size:30px;line-height:1}
+html #view .help-hub .help-heading p{margin:6px 0 0;font-size:13.5px;color:var(--muted)}
+html #view .help-hub .help-search{display:flex;flex-direction:column;gap:6px;flex:0 1 280px;margin:0;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html #view .help-hub .help-search input{width:100%;min-height:34px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font:400 13px "Segoe UI",system-ui,sans-serif;letter-spacing:0;text-transform:none;color:var(--ink)}
+html #view .help-hub .help-reader{padding:26px 40px 80px;max-width:780px}
+html #view .help-hub .help-article{max-width:700px;margin:0;padding:0;border:0;background:none;box-shadow:none}
+html #view .help-hub .help-crumb{margin:0 0 12px;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html #view .help-hub .help-article>h3{margin:0 0 16px;padding:0;border:0;font-size:32px;line-height:1.05;letter-spacing:.01em}
+html #view .help-hub .help-article>h3:focus{outline:none;box-shadow:none}
+html #view .help-hub .help-article>h3:focus-visible{outline:2px solid #4c9aff;outline-offset:4px}
+/* the plain words are the lead; the short note above them says the same and is left out */
+html #view .help-hub .help-lead:has(+.help-plain){display:none}
+html #view .help-hub .help-lead{margin:0 0 26px;font-size:16px;line-height:1.55;color:var(--muted)}
+html #view .help-hub .help-reader .help-plain{margin:0 0 30px;padding:2px 0 2px 16px;border:0;border-left:2px solid var(--accent);border-radius:0;background:none;box-shadow:none}
+html #view .help-hub .help-reader .help-plain>b{display:block;margin:0 0 6px;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html #view .help-hub .help-reader .help-plain>p{margin:0;font-size:16px;line-height:1.55;color:var(--ink)}
+/* the body */
+html #view .help-hub .help-article-body{font-size:14.5px;line-height:1.7;color:color-mix(in srgb,var(--ink) 86%,var(--muted))}
+html #view .help-hub .help-article-body>*{max-width:68ch}
+html #view .help-hub .help-article-body p{margin:0 0 16px}
+html #view .help-hub .help-article-body :is(ul,ol){margin:0 0 20px;padding-left:20px}
+html #view .help-hub .help-article-body li{margin:0 0 10px;padding-left:6px}
+html #view .help-hub .help-article-body li::marker{color:color-mix(in srgb,var(--muted) 80%,var(--bg))}
+html #view .help-hub .help-article-body :is(b,strong){font-weight:600;color:var(--ink)}
+html #view .help-hub .help-article-body :is(h4,h5){margin:30px 0 10px;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html #view .help-hub .help-article-body code,html #view .help-hub .help-article-body kbd{padding:1px 6px;border:1px solid var(--line);border-radius:5px;background:var(--bg);font:500 12.5px 'SF Roboto Mono',Consolas,monospace}
+/* related guides */
+html #view .help-hub .help-article>h4{margin:40px 0 12px;padding:20px 0 0;border-top:1px solid var(--ss-line,var(--line));font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html #view .help-hub .help-related{display:flex;flex-wrap:wrap;gap:8px}
+html #view .help-hub .help-related .btn{min-height:30px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:transparent;box-shadow:none;font:400 12.5px "Segoe UI",system-ui,sans-serif;color:var(--ink)}
+html #view .help-hub .help-related .btn:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+html #view .help-hub .help-actions{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 0}
+@media(max-width:1100px){html #view .help-hub>header.help-header{flex-direction:column;align-items:stretch}html #view .help-hub .help-search{flex:none}}
+html #view .help-hub .help-heading h2:not(.x){font-size:20px}

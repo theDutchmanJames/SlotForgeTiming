@@ -12,7 +12,7 @@ const SettingsSheet = (() => {
   const CONTROL = 'input:not([type=hidden]),select,textarea';
   // (what is not a list of settings but a picture of something: a preview, the sensors of a track, a palette: it stays as it is drawn)
   const RAW =
-    '.lanes,.tm-setup,.calc-rail,.ss-block-raw,[data-ss-raw],.tm-sensors,.tm-sensor,#pad-preview,.settings-pad-preview,.pad,.pad-grid,[class*="preview"],[class*="palette"],.theme-grid,.qr,canvas,svg';
+    '.lanes,.tm-setup,.calc-rail,.ss-block-raw,[data-ss-raw],.tm-sensors,.tm-sensor,#pad-preview,.settings-pad-preview,.pad,.pad-grid,[class*="preview"],[class*="palette"],.theme-grid,.themegrid,.qr,canvas,svg';
   // (inside one of these nothing is turned into rows; the frame of a whole page is not one of them)
   const RAW_IN = RAW.replace('.lanes,.tm-setup,', '.lanes,');
   // (what is already part of a sheet, or never becomes one)
@@ -257,7 +257,7 @@ const SettingsSheet = (() => {
     if (!isEl(n) || n.closest('.ss-row') || n.matches(RAW) || (n.parentElement && n.parentElement.closest(RAW_IN))) return null;
     if (n.matches('.ss-row')) return [n];
     // a button on its own: a row of one action
-    if (n.matches('button,a.btn') && n.parentElement && !n.parentElement.matches('.ss-ctl')) {
+    if (n.matches('button.btn,a.btn') && n.parentElement && !n.parentElement.matches('.ss-ctl')) {
       const r = row({ cls: 'ss-actions' });
       n.before(r);
       r.querySelector('.ss-ctl').append(n);

@@ -22,6 +22,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Paddock Rail](#paddock-rail) | A page with a side list of its sections on the left | Race Setup, Customization, Database, App Settings |
 | [Double Rail](#double-rail) | A second Paddock Rail beside the first, for the tabs and sections of one page, and a plain canvas with one section at a time | Every page of App Settings |
 | [Settings Sheet](#settings-sheet) | Groups of slim two-half rows (name and one line left, control right) with one 30px control kit; no sliders | The canvas of every App Settings page |
+| [Help Reader](#help-reader) | A help article as a calm one-column document with a plain-words lead and pill chips for related guides | App Settings › Help |
 | [Page Note](#page-note) | The box under a page title that explains the page | Every Race Setup page |
 | [Control Strip](#control-strip) | One tight toolbar: Add, tools, search, List / Grid, pager | Database lists, system lists |
 | [Gear Selector](#gear-selector) | A quiet segmented control | List / Grid, filters, choices in forms, inner tabs |
@@ -1106,6 +1107,21 @@ input.ss-switch{appearance:none;width:34px;height:20px;border-radius:10px;backgr
 .ss-step>input{width:64px;text-align:center;font:500 13px 'SF Roboto Mono',Consolas,monospace}
 ```
 
+## Help Reader
+
+The Help page set as a calm document: one column of about 70 characters (max 700px), the search beside a small page title, a trail in spaced
+capitals, one Barlow title (32px), the plain-words summary as the lead (16px, a thin accent line on its left, no box; the short note that repeats it is
+left out), body text 14.5px with 1.7 line height and air between list items, group headings in spaced capitals, and related guides as quiet pill chips
+under a thin line. A title focused by the app shows no outline; keyboard focus still does.
+
+```css
+html #view .help-hub .help-reader{padding:26px 40px 80px;max-width:780px}
+html #view .help-hub .help-article>h3{margin:0 0 16px;font-size:32px;line-height:1.05}
+html #view .help-hub .help-reader .help-plain{padding:2px 0 2px 16px;border:0;border-left:2px solid var(--accent);background:none}
+html #view .help-hub .help-article-body{font-size:14.5px;line-height:1.7}
+html #view .help-hub .help-related .btn{min-height:30px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:transparent}
+```
+
 ## Finishing Touches
 
 ```css
@@ -1180,3 +1196,5 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Double Rail | Every page of App Settings: the page's tabs and sections in the second rail, one section at a time; Help's topic list as the second rail |
 | 2026-11 | Timing Tower, Rulebook | Personal Bests as a timing tower; Racing Rules as a document page with a grouped toolbar |
 | 2026-11 | Settings Sheet | New: every page of App Settings as groups of slim two-half rows with one 30px control kit (switch, segmented choice, stepper, list, text, file, path, pill); no sliders, pictures framed by dragging, arrow keys and Position steppers |
+| 2026-11 | Settings Sheet | The switch keeps its 34×20 pill shape when off; theme tiles stay tiles |
+| 2026-11 | Help Reader | New: Help articles retypeset (one column, plain-words lead, calmer body, chips) |
