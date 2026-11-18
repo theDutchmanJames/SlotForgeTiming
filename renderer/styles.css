@@ -4624,3 +4624,23 @@ html .parallel-setup .pp-seg>button[aria-pressed="true"]{background:color-mix(in
 html .parallel-setup .pp-seg>button{background:transparent!important;color:var(--muted)!important}
 html .parallel-setup .pp-seg>button[aria-pressed="true"]{background:color-mix(in srgb,var(--ink) 13%,var(--panel))!important;color:var(--ink)!important}
 html dialog.appdlg.st-dialog{width:min(760px,94vw)}
+/* 2.4.0 light themes (Light, Ocean, a light Custom theme): the dark tracks behind groups and switches, and the unlit lights, follow the page */
+:root{--sf-track:rgba(0,0,0,.22);--sf-lightoff:#1b1f25;--sf-lightoff-ring:color-mix(in srgb,var(--panel) 70%,#000);--sf-lightoff-in:inset 0 2px 4px rgba(0,0,0,.6)}
+:root:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]){--sf-track:color-mix(in srgb,var(--ink) 7%,transparent);--sf-lightoff:#d5d9df;--sf-lightoff-ring:color-mix(in srgb,var(--ink) 8%,var(--panel));--sf-lightoff-in:inset 0 2px 4px rgba(0,0,0,.18)}
+html body.app-shell>header>#tabs .mb-grp,html body.app-shell>header>#tabs .mb-lights,html .paddock-browser .pb-toolbar .seg,html .parallel-setup .pp-seg,.lv-airphase,.mb-strip .mb-sphase{background:var(--sf-track)}
+html #view .wz-step>i{background:var(--sf-lightoff);box-shadow:var(--sf-lightoff-in),0 0 0 3px var(--sf-lightoff-ring)}
+html #view .wz-steps::before{background:color-mix(in srgb,var(--ink) 12%,transparent)}
+.st-light{background:var(--sf-lightoff);box-shadow:var(--sf-lightoff-in),0 0 0 4px var(--sf-lightoff-ring)}
+:root:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) .lv-air.on .lv-airphase{background:rgba(255,255,255,.6)}
+html body.app-shell>header.mb-t6{gap:10px;padding:0 10px}
+html body.app-shell>header.mb-t6>#tabs{gap:3px}
+html body.app-shell>header.mb-t6>#tabs .mb-grp+.mb-grp{margin-left:2px}
+html body.app-shell>header.mb-t6>#tabs .mb-grp>.tab.hasico{padding:0 5px;font-size:9.5px}
+html body.app-shell>header.mb-t6>#tabs .mb-find{padding:0 8px}
+html body.app-shell>header.mb-t7>#tabs .mb-grp>.tab.hasico{font-size:0;gap:0;padding:0 9px}
+html body.app-shell>header.mb-t7>#tabs .mb-grp>.tab.hasico .tabico{width:18px;height:18px}
+html body.app-shell>header.mb-t7>#tabs .mb-right>.tab.onair{font-size:0;gap:0;padding:0 10px}
+/* Parc Fermé: a car without a picture takes a colour from its model (--h); the Dealership's offline line is a quiet note */
+html .paddock-browser .pb-car>.pb-car-placeholder{background:radial-gradient(ellipse at 50% 75%,hsl(var(--h,210) 60% 50% / .28),transparent 70%),linear-gradient(160deg,hsl(var(--h,210) 35% 30% / .35),transparent 70%),color-mix(in srgb,var(--bg) 60%,var(--panel));color:hsl(var(--h,210) 65% 68%)}
+:root:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]) .paddock-browser .pb-car>.pb-car-placeholder{color:hsl(var(--h,210) 55% 40%)}
+html .paddock-browser>p[data-error].pf-quiet{color:var(--muted)}

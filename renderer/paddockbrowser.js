@@ -17,6 +17,12 @@
       connectionUI = null,
       connectionMount = null,
       connectionState;
+    // a car without a picture: a colour from its model (the same model of another maker gets the same colour), so a page of them is not all grey
+    const hueOf = text => {
+      let h = 2166136261;
+      for (const ch of String(text || '').toLowerCase()) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+      return [0, 28, 48, 145, 178, 205, 230, 262, 292, 328][h % 10]; // (ten colours that look clearly different, not the whole wheel: most of it looks green)
+    };
     const imageCache = new Map(),
       names = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
     const thumbnails = typeof CatalogueThumbnails !== 'undefined' ? CatalogueThumbnails.create() : null;
@@ -108,6 +114,10 @@
       if (options.shared) {
         q('[data-shared-add]').disabled = busy || !data.connected || !data.sharedCars;
       }
+      // (2.4.0) the Dealership's own message (not connected…) belongs to the Dealership: not on the library, and quiet while it only says it is offline
+      const err = q('[data-error]');
+      err.hidden = source === 'local' && !options.shared;
+      err.classList.toggle('pf-quiet', !data.connected);
       q('[data-refresh]').hidden = source === 'local';
       q('[data-refresh]').disabled = busy;
       if (options.guidance) q('[data-guidance]').textContent += ' ' + options.guidance;
@@ -125,7 +135,7 @@
           .slice(page * 40, page * 40 + 40)
           .map(
             c =>
-              `<article class="pb-car">${(source === 'local' ? c.picture : c.pictureKey) ? `<img data-picture="${esc(source + ':' + c.id + ':' + (c.pictureKey || ''))}" data-id="${esc(c.id)}" data-key="${esc(c.pictureKey || '')}" data-origin="${source}" decoding="async" alt="">` : `<span class="pb-car-placeholder" aria-hidden="true">${typeof Icons !== 'undefined' && Icons.has('car') ? Icons.svg('car', { size: 40 }) : '▱'}</span>`}<div><h3>${esc(c.name)}</h3><p>${esc([c.maker, c.raceClassName || c.raceClass].filter(Boolean).join(' · '))}</p><small>${c._timingOnly || source === 'local' ? 'Not yet linked' : c.capturedAt ? 'Available offline · captured ' + esc(new Date(c.capturedAt).toLocaleString()) : 'Available when connected'}</small></div><button class="btn" data-use="${esc(c.id)}" data-local-car="${c._timingOnly ? '1' : ''}" ${source === 'paddock' && !c._timingOnly && !data.connected && !c.capturedAt ? 'data-unavailable' : ''}>${options.choose ? 'Select car' : 'View car'}</button>${options.shared && !c._timingOnly ? `<button class="btn" data-shared-edit="${esc(c.id)}" ${!data.connected || !data.sharedCars ? 'disabled' : ''}>Edit car</button>` : ''}</article>`
+              `<article class="pb-car">${(source === 'local' ? c.picture : c.pictureKey) ? `<img data-picture="${esc(source + ':' + c.id + ':' + (c.pictureKey || ''))}" data-id="${esc(c.id)}" data-key="${esc(c.pictureKey || '')}" data-origin="${source}" decoding="async" alt="">` : `<span class="pb-car-placeholder" aria-hidden="true" style="--h:${hueOf(c.model || c.name)}">${typeof Icons !== 'undefined' && Icons.has('car') ? Icons.svg('car', { size: 40 }) : '▱'}</span>`}<div><h3>${esc(c.name)}</h3><p>${esc([c.maker, c.raceClassName || c.raceClass].filter(Boolean).join(' · '))}</p><small>${c._timingOnly || source === 'local' ? 'Not yet linked' : c.capturedAt ? 'Available offline · captured ' + esc(new Date(c.capturedAt).toLocaleString()) : 'Available when connected'}</small></div><button class="btn" data-use="${esc(c.id)}" data-local-car="${c._timingOnly ? '1' : ''}" ${source === 'paddock' && !c._timingOnly && !data.connected && !c.capturedAt ? 'data-unavailable' : ''}>${options.choose ? 'Select car' : 'View car'}</button>${options.shared && !c._timingOnly ? `<button class="btn" data-shared-edit="${esc(c.id)}" ${!data.connected || !data.sharedCars ? 'disabled' : ''}>Edit car</button>` : ''}</article>`
           )
           .join('') ||
         '<p class="muted">' +

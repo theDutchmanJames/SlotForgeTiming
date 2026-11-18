@@ -50,6 +50,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Choice Rows](#choice-rows) | Radio rows as whole-row buttons, short options as tiles; signs as line pictures in the rail | App Settings › Timing Hardware |
 | [Timing Tower](#timing-tower) | A ranked list: position, colour stripe, time, gap chip | Personal Bests card |
 | [Rulebook](#rulebook) | A document page: header, sheet with a grouped toolbar | Racing Rules |
+| [Light themes](#light-themes) | Theme tokens for the dark tracks and the unlit lights | Every light theme |
 | [Finishing Touches](#finishing-touches) | Scroll bars and file pickers in the theme | Everything |
 
 ### Recipes: which styles make a page
@@ -1250,7 +1251,8 @@ groups on a dark track (Home · Database, Race Setup · Customization, App Setti
 On the right: **status lights** (the timing hardware, the shared library, the network; hover for the words), **Find** (Ctrl K) and **Live Race** as
 an ON AIR button (red and pulsing while a race runs). Narrower windows lose first the words of the lights, then the word Find and the app name;
 below 1080px each tab shows its **name small under its picture**, so the names never go. The bar also **measures itself**: when it does not fit
-(for instance with the Race tab of a kept race) it takes the same steps one by one until it does (`MainBar.fit`, classes `mb-t1` … `mb-t5`).
+(for instance with the Race tab of a kept race, or a big Interface size) it takes the same steps one by one until it does (`MainBar.fit`, classes
+`mb-t1` … `mb-t7`: the last two make everything tighter, and only as a last resort show the pictures alone with the names as tooltips).
 
 While a race runs and another page is shown, a **race strip** under the bar says the race, the lap, the clock and the leader, with **Back to the race**
 (`live.strip`, filled in race.js). **Find** searches the pages, the settings (`SettingsIndex`), the drivers, cars, tracks and race setups, and a few
@@ -1345,7 +1347,9 @@ Parc fermé, the title, a round close button), then **one [Control Strip](#contr
 (Slotcar library / Dealership cars), the search with a magnifier, Connection settings and Refresh. The cars are small
 [Garage Cards](#garage-card): the picture across the top on a soft spotlight (a car outline when there is none), the name in Barlow, the maker and
 class, a chip for its state (Not yet linked, Available offline…), and **Select car** at the foot (red on hover). The Dealership connection inside
-is a [Folder](#folder) whose fields are Settings Sheet rows: a status pill, then a row per field, the buttons in a foot row.
+is a [Folder](#folder) whose fields are Settings Sheet rows: a status pill, then a row per field, the buttons in a foot row. A car **without a picture**
+takes one of ten clearly different colours from its model (`--h`; the same model of another maker gets the same colour), so a page of them is not
+all grey. The Dealership's own message (offline…) shows only on the Dealership tab, and as a quiet grey note while it is only offline.
 
 ```css
 html dialog.paddock-dialog>header{position:sticky;top:0;z-index:5;padding:16px 22px 14px 24px;border-bottom:1px solid var(--line)}
@@ -1368,6 +1372,17 @@ html .ss-sheet>.ss-row:has(>.ss-ctl>input[type=radio]:only-child){position:relat
 html .ss-sheet>.ss-row:has(>.ss-ctl>input[type=radio]:only-child)>.ss-ctl>input{position:absolute;inset:0;opacity:0}
 html .ss-sheet>.ss-row:has(>.ss-ctl>input[type=radio]:checked){background:color-mix(in srgb,var(--accent) 9%,transparent)}
 html .ss-sheet:has(input[name=dstype]){display:grid;grid-template-columns:repeat(6,minmax(0,1fr))}
+```
+
+## Light themes
+
+The dark **tracks** behind groups and switches (Pit Wall groups and lights, the Gear Selectors of Parc Fermé and the Parallel Port, the phase pills)
+and the **unlit lights** of Start Lights and Lane Check are tokens that follow the theme. In Light, Ocean and a light Custom theme the track is a
+thin ink tint and an unlit light is a soft grey, not a black dot.
+
+```css
+:root{--sf-track:rgba(0,0,0,.22);--sf-lightoff:#1b1f25;--sf-lightoff-ring:color-mix(in srgb,var(--panel) 70%,#000)}
+:root:is([data-theme="light"],[data-theme="ocean"],[data-tone="light"]){--sf-track:color-mix(in srgb,var(--ink) 7%,transparent);--sf-lightoff:#d5d9df;--sf-lightoff-ring:color-mix(in srgb,var(--ink) 8%,var(--panel))}
 ```
 
 ## Finishing Touches
@@ -1465,3 +1480,6 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Parc Fermé | New: the car picker with a sticky head, one toolbar with search, picture cards and the Dealership form as rows |
 | 2026-11 | Choice Rows | New: radio rows as whole-row buttons, the DS unit as tiles, line pictures in place of signs, the Parallel Port page in the Double Rail |
 | 2026-11 | Pit Wall | The bar measures itself and steps down when it does not fit (the Race tab); the lap in the strip follows the setup's race by laps or by time |
+| 2026-11 | Light themes | Tracks and unlit lights are theme tokens (`--sf-track`, `--sf-lightoff`): soft in Light, Ocean and light Custom themes |
+| 2026-11 | Pit Wall | Two more fitting steps for a big Interface size on a small window (tighter, then pictures only) |
+| 2026-11 | Parc Fermé | Cars without a picture in one of ten colours by model; the Dealership message only on its own tab, quiet while offline |

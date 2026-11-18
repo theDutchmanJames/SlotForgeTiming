@@ -92,7 +92,7 @@ const MainBar = (() => {
 
   // ---- fitting: when the bar does not fit (a narrow window, or the Race tab of a kept race), it steps down until it does ----
   // mb-t1 the names of the lights go, mb-t2 the word Find, mb-t3 the app name beside the logo, mb-t4 the tab names small under their pictures,
-  // mb-t5 ON AIR and the lights tighter. (The widths in styles.css do the same for a window of a known size; this catches the rest.)
+  // mb-t5 ON AIR and the lights tighter, mb-t6 everything tighter, mb-t7 (a big Interface size on a small window) only the pictures, the names as tooltips. (The widths in styles.css do the same for a window of a known size; this catches the rest.)
   let fitKey = '';
   function fit(force) {
     const header = document.querySelector('.app-shell > header'),
@@ -102,8 +102,8 @@ const MainBar = (() => {
     if (!force && key === fitKey) return;
     fitKey = key;
     const over = () => header.scrollWidth > header.clientWidth + 1 || nav.scrollWidth > nav.clientWidth + 1;
-    for (let i = 1; i <= 5; i++) header.classList.remove('mb-t' + i);
-    for (let i = 1; i <= 5 && over(); i++) header.classList.add('mb-t' + i);
+    for (let i = 1; i <= 7; i++) header.classList.remove('mb-t' + i);
+    for (let i = 1; i <= 7 && over(); i++) header.classList.add('mb-t' + i);
   }
   if (typeof addEventListener === 'function') addEventListener('resize', () => fit(true));
 
