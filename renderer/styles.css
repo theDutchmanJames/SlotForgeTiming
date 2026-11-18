@@ -3451,3 +3451,67 @@ html header.gs-head{position:static;height:auto;padding:0;border:0;background:no
 .gs-stat b{font:500 22px/1.2 'SF Roboto Mono',Consolas,monospace;color:var(--ink)}
 .gs-stat small{font-size:12px;color:var(--muted)}
 .gs-card code{overflow-wrap:anywhere}
+/* 2.4.0 Double Rail on every page of App Settings (generalpage.js, SettingsRail): the second side list holds the tabs of the page and its sections;
+   the canvas shows one section, its title bar as the heading of the page and its content as a card. The sheet of the page loses its own head and list. */
+.gs.sr{flex:1 1 auto}
+.sr-lead{margin:-8px 10px 12px;font-size:12px;line-height:1.45;color:var(--muted)}
+.sr-cap{display:block;margin:14px 10px 6px;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:color-mix(in srgb,var(--muted) 80%,var(--bg))}
+.sr-rail .gs-ri{position:relative}
+.sr-rail .sr-ico{display:flex;flex:none;margin-top:2px;color:var(--muted)}
+.sr-rail .sr-ico svg{width:16px;height:16px}
+.sr-rail .gs-ri[aria-pressed="true"] .sr-ico{color:var(--accent-text,var(--accent))}
+.sr-rail .sr-tab{padding-left:12px}
+.sr-dot{position:absolute;right:10px;top:13px;width:6px;height:6px;border-radius:50%;background:#3ecf8e}
+.sr-tabsource{display:none!important}
+.sr-canvas{display:flex;flex-direction:column;gap:14px}
+.sr-canvas>*{max-width:1100px}
+/* the sheet of the page: no frame, no head, no list of its own */
+html .sr-canvas .tm-setup{margin:0}
+html .sr-canvas .tm-frame{border:0;border-radius:0;background:none;box-shadow:none;overflow:visible}
+html .sr-canvas .tm-header,html .sr-canvas .tm-rail{display:none}
+html .sr-canvas .tm-body{display:block;padding:0;background:none}
+html .sr-canvas .tm-main{display:flex;flex-direction:column;gap:14px;padding:0;overflow:visible}
+/* a section: its title bar is the heading of the canvas, its content a card */
+.sr-sec[hidden]{display:none!important}
+html #settingsbox .sr-canvas .sr-sec{margin:0;border:0;border-radius:0;background:none;box-shadow:none;overflow:visible}
+html #settingsbox .sr-canvas .sr-sec>summary{display:flex;align-items:center;gap:14px;padding:0 0 14px;border:0;background:none;box-shadow:none;pointer-events:none;list-style:none;cursor:default}
+html #settingsbox .sr-canvas .sr-sec>summary::before,html #settingsbox .sr-canvas .sr-sec>summary::after,html #settingsbox .sr-canvas .sr-sec>summary>b{display:none}
+html #settingsbox .sr-canvas .sr-sec>summary>i{display:grid;place-items:center;width:44px;height:44px;flex:none;border-radius:11px;background:color-mix(in srgb,var(--accent) 14%,var(--panel));color:var(--accent-text,var(--accent))}
+html #settingsbox .sr-canvas .sr-sec>summary>i svg{width:20px;height:20px}
+html #settingsbox .sr-canvas .sr-sec>summary>strong{font:italic 700 28px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.01em;color:var(--ink)}
+html #settingsbox .sr-canvas .sr-sec>summary>span{margin-left:14px;padding-left:14px;border-left:1px solid var(--line);font-size:13.5px;color:var(--muted)}
+html #settingsbox .sr-canvas .sr-sec>.tm-content{display:flex;flex-direction:column;gap:12px;padding:18px 20px;border:1px solid var(--line);border-radius:12px;background:var(--panel);font-size:13.5px}
+html .sr-canvas .tm-say{border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--bg) 45%,var(--panel))}
+/* Calculations: its own topic list and head are in the side list now */
+html .sr-canvas .calc-head,html .sr-canvas .calc-rail{display:none}
+html .sr-canvas .calc-shell{display:block}
+html .sr-canvas .calc-page{border:0;background:none;box-shadow:none;padding:0;margin:0}
+html .sr-canvas .calc-content{padding:0}
+/* Timing Hardware: the card of the interface in use stays on top */
+html .sr-canvas #hwuse{margin:0}
+@media(max-width:1100px){html #settingsbox .sr-canvas .sr-sec>summary>span{display:none}}
+html #settingsbox .sr-canvas.sr-hassecs .fgtools{display:none}
+html #settingsbox .sr-canvas.sr-hassecs .paddock-shell>nav{display:none}
+html #settingsbox .sr-canvas .paddock-shell{display:block}
+html #settingsbox .sr-canvas .paddock-shell>main>section.sr-sec{padding:18px 20px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+html #settingsbox .sr-canvas .tm-say small,html #settingsbox .sr-canvas .tm-say b:first-child{color:var(--muted)}
+/* App Settings › Help as a Double Rail: its list of topics is the second side list, the header (title and search) and the reader the canvas */
+#view>.custshell:has(.help-hub)>.custpage{display:flex;flex-direction:column;padding:0}
+.custshell:has(.help-hub)>.custpage>#settingsbox{flex:1 1 auto;display:flex;flex-direction:column}
+html .help-hub{--help-tone:var(--accent);flex:1 1 auto;display:grid;grid-template-columns:232px minmax(0,1fr);grid-template-rows:auto 1fr;border:0;border-radius:0;background:none;overflow:visible}
+html .help-hub>.help-shell{display:contents}
+html .help-hub .help-rail{grid-column:1;grid-row:1 / span 2;padding:22px 10px 24px;border-right:1px solid var(--line);background:color-mix(in srgb,var(--bg) 30%,var(--panel))}
+html .help-hub>header.help-header{grid-column:2;grid-row:1;position:static;height:auto;padding:26px 32px 4px;border:0;background:none;box-shadow:none}
+html .help-hub .help-reader{grid-column:2;grid-row:2;padding:14px 32px 64px;max-width:1100px}
+@media(max-width:1100px){html .help-hub{grid-template-columns:minmax(0,1fr)}html .help-hub .help-rail{grid-row:auto;grid-column:1;border-right:0;border-bottom:1px solid var(--line)}html .help-hub>header.help-header,html .help-hub .help-reader{grid-column:1;padding-left:20px;padding-right:20px}}
+html .help-hub .help-rail::before{content:'Help';display:block;margin:0 10px 14px;font:italic 700 20px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em;color:var(--ink)}
+html .help-hub .help-rail .help-topic{display:block;width:100%;padding:7px 10px;border:0;border-radius:8px;background:transparent;box-shadow:none;color:color-mix(in srgb,var(--ink) 82%,var(--muted));font:inherit;font-size:13px;font-weight:400;text-align:left;cursor:pointer}
+html .help-hub .help-rail .help-topic:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+html .help-hub .help-rail .help-topic[aria-current]{background:color-mix(in srgb,var(--ink) 10%,var(--panel));color:var(--ink);font-weight:600;border:0}
+html .help-hub .help-rail .help-browse{display:none}
+html .help-hub .help-rail .help-groups{display:block}
+html .help-hub .help-rail details>summary{padding:8px 10px;border:0;border-radius:8px;background:none;font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer}
+html .help-hub .help-rail details>summary:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+html .help-hub .help-rail details>.help-topic{padding-left:22px}
+html .help-hub .help-rail .help-offline{margin:16px 10px 0;font-size:12px;color:var(--muted)}
+html .help-hub .help-reader .help-plain,html .help-hub .help-reader [class*="plain"]{border-left-color:var(--accent)}

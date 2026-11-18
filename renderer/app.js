@@ -219,6 +219,7 @@ async function settingsGo(e) {
   for (let d = hit.closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) d.open = true;
   const topic = hit.closest('[data-gtopic]'); // (2.4.0: a setting in another topic of General opens that topic first)
   if (topic && typeof GeneralPage !== 'undefined') GeneralPage.show(topic.dataset.gtopic);
+  if (typeof SettingsRail !== 'undefined') SettingsRail.reveal(hit); // (and a section of another page that is not shown)
   const mark = hit.closest('.gs-card,.field,label,summary,.row') || hit;
   mark.scrollIntoView({ block: 'center' });
   mark.classList.add('search-hit');
@@ -315,6 +316,8 @@ async function renderSettings() {
     Object.fromEntries(SETTINGS_TABS.map(t => [t[0], t[2]]))
   );
   sideGroups(document.getElementById('settingstabs'), { general: 'This app', network: 'Race night', transfer: 'Your data', help: 'Help' });
+  // (2.4.0) the pages get a second side list with their tabs and sections (generalpage.js; General draws its own, Help has its own list)
+  if (typeof SettingsRail !== 'undefined') SettingsRail.attach(document.getElementById('settingsbox'), state.settingsSub);
   if (state.settingsSub === 'plugins') return PluginsPage.render(document.getElementById('settingsbox'));
   if (state.settingsSub === 'help')
     return Help.render(document.getElementById('settingsbox'), {

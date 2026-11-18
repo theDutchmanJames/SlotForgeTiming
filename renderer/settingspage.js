@@ -93,6 +93,7 @@ const AppSettingsPage = (() => {
       help: 'Imports add copies. A complete restore replaces your data and asks for confirmation; the existing safety backup remains part of that process.',
       first: 'export',
       sections: [
+        ['auto', 'Automatic backups', 'Made by itself, kept for you', 'clock'],
         ['backup', 'Complete backup', 'Everything in one file', 'database'],
         ['export', 'Export', 'Choose items to share', 'custom'],
         ['import', 'Import', 'Add items from a file', 'database']

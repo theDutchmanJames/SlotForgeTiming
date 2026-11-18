@@ -20,7 +20,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Paint](#paint) | The colour of a system (`--c`), used only as a highlight | Race systems, their icons, tiles and bars |
 | [Pit Buttons](#pit-buttons) | One button family: primary, secondary, outline, danger, icon, small | Every button outside the race screen |
 | [Paddock Rail](#paddock-rail) | A page with a side list of its sections on the left | Race Setup, Customization, Database, App Settings |
-| [Double Rail](#double-rail) | A second Paddock Rail beside the first, for the topics of one section, and a plain canvas with one topic at a time | App Settings › General |
+| [Double Rail](#double-rail) | A second Paddock Rail beside the first, for the tabs and sections of one page, and a plain canvas with one section at a time | Every page of App Settings |
 | [Page Note](#page-note) | The box under a page title that explains the page | Every Race Setup page |
 | [Control Strip](#control-strip) | One tight toolbar: Add, tools, search, List / Grid, pager | Database lists, system lists |
 | [Gear Selector](#gear-selector) | A quiet segmented control | List / Grid, filters, choices in forms, inner tabs |
@@ -49,7 +49,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | **Add Race System** (Add Fuel, Safety Car, Weather…) | Tech Sheet (with Folder, Gear Selector, Pit Buttons inside) |
 | **Race Setup page** (list of systems) | Paddock Rail + Page Note + Control Strip + Entry Card |
 | **Customization** | Paddock Rail + Page Note + Showroom Cards (Layout, Leaderboard, Chart, Widget Builder, Image Settings), Entry Cards (Audio), Replay Monitor (Race Results) |
-| **App Settings** | Paddock Rail (with a search under the title) + Folder; **General** is a Double Rail with Choice Tiles and switch rows |
+| **App Settings** | Double Rail on every page; **General** also has Choice Tiles, switch rows and stat tiles |
 | **Racing Rules** | Rulebook |
 | **Layout / Leaderboard / Chart editor** | Pit Board + the editor's own canvas and side panels |
 | **Simple widget** | Pit Board + Widget Bench |
@@ -319,6 +319,34 @@ Inside the cards:
 In Timing the page is first drawn as folders (the tests, the settings search and the code use those controls) and `GeneralPage.build(box)` in
 `renderer/generalpage.js` moves the same controls into the topics in a real window. The settings search opens the topic of a setting it finds
 (`GeneralPage.show(topic)`) and marks its card. A label that only repeats its card's title stays in the page for the search and screen readers, out of sight.
+
+### The Double Rail on any page
+
+Every other page of App Settings gets the same two rails without being rewritten. The page draws itself as before; then:
+
+- The second rail shows the page's name in Barlow and one line of what it is for, then the page's **own tabs** under a caption
+  ("Interfaces", "Connections", "Views", "Topics") with their status lines ("Not in use", "In use · not connected"), then the page's **sections**
+  ("On this page", with captions such as "Only if you need it" carried over and a green dot for a section that is set up).
+- The canvas shows **one section at a time**: its own title bar becomes the heading (accent icon tile, Barlow title, caption after a thin line),
+  its content is one card. The page's old header, its inner side list and its Open all / Close all go out of sight.
+- The page's original tab buttons stay in the page, hidden, and the rail clicks them for you, so every handler keeps working.
+- A page redraws parts of itself (another interface, another view): a `MutationObserver` on the box redraws the rail when the tabs or sections changed
+  (a signature of their names, states and the open one), and does nothing otherwise.
+
+```css
+.sr-canvas .tm-header,.sr-canvas .tm-rail{display:none}                 /* the sheet loses its own head and list */
+.sr-canvas .tm-frame{border:0;background:none;box-shadow:none}
+.sr-sec[hidden]{display:none!important}                                 /* one section at a time */
+#settingsbox .sr-canvas .sr-sec>summary{display:flex;align-items:center;gap:14px;padding:0 0 14px;border:0;background:none;pointer-events:none}
+#settingsbox .sr-canvas .sr-sec>summary>strong{font:italic 700 28px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+#settingsbox .sr-canvas .sr-sec>.tm-content{padding:18px 20px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.sr-cap{display:block;margin:14px 10px 6px;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.sr-tabsource{display:none!important}                                   /* the page's own tab buttons, still clicked by the rail */
+```
+
+Timing: `SettingsRail.attach(box, page)` in `renderer/generalpage.js`, with one line per page saying where its tabs are
+(`hardware: { tabs: '#hwtabs > .tab', tabsLabel: 'Interfaces' }`). A page with its own topic list (Help) gets the same look with CSS only:
+its list becomes the second rail (`display:contents` on its inner shell, a grid with the list spanning both rows).
 
 ---
 
@@ -1104,4 +1132,5 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Tech Sheet | Audio sets: subjects in the side list, every call as a row with a switch, a call opens under its row, one search with filter chips |
 | 2026-11 | Folder | The canvas Widget Builder's tinted folders became the calm Folders; its blocks are icon tiles that wrap |
 | 2026-11 | Double Rail | New: App Settings › General as two side lists and a canvas, with Choice Tiles, switch rows, stat tiles and a name preview |
+| 2026-11 | Double Rail | Every page of App Settings: the page's tabs and sections in the second rail, one section at a time; Help's topic list as the second rail |
 | 2026-11 | Timing Tower, Rulebook | Personal Bests as a timing tower; Racing Rules as a document page with a grouped toolbar |

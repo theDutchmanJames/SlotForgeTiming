@@ -272,3 +272,198 @@ const GeneralPage = (() => {
   }
   return { build, show, TOPICS };
 })();
+
+// (2.4.0) the Double Rail for the other pages of App Settings. Every page keeps drawing itself as it always did (its own tabs, the sheet with its
+// sections); this puts a second side list beside it with the tabs of the page (interfaces, connections, views, topics) and its sections, and shows one
+// section at a time on a plain canvas. The page's own tab buttons stay in the page, out of sight, and are clicked for you, so every handler still works.
+// A page draws parts of itself again (another interface, another view): a watcher on the box redraws the side list when its tabs or sections change.
+const SettingsRail = (() => {
+  const PAGES = {
+    theme: { lead: 'The colours of the app and of the Live Race pages.' },
+    director: { lead: 'How the Race Director looks, and what its buttons add or take away.' },
+    calculations: { lead: 'How pace is measured and what every racing system adds.', tabs: '.calc-rail button', tabsLabel: 'Topics' },
+    network: { lead: 'Phones, tablets and other computers on your network.', tabs: '.connections-tabs > .tab', tabsLabel: 'Connections' },
+    hardware: { lead: 'What counts the laps, and how it is set up.', tabs: '#hwtabs > .tab', tabsLabel: 'Interfaces' },
+    transfer: { lead: 'Backups, sharing items, and content packs.', tabs: '.transfer-views > button', tabsLabel: 'Views' },
+    plugins: { lead: 'Extra features you install yourself.' }
+  };
+  const active = new Map(); // page (and tab) -> the section that is shown
+  let obs = null,
+    raf = 0,
+    sig = '';
+  const ico = n => (typeof Icons !== 'undefined' ? Icons.svg(Icons.has && !Icons.has(n) ? 'settings' : n, { size: 16, stroke: 1.8 }) : '');
+  const txt = e => String((e && e.textContent) || '').trim();
+  function detach() {
+    if (obs) obs.disconnect();
+    obs = null;
+    if (raf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf);
+    raf = 0;
+    sig = '';
+  }
+  function attach(box, key) {
+    detach();
+    if (!box || box.nodeType !== 1 || !PAGES[key] || typeof MutationObserver === 'undefined') return;
+    const run = () => {
+      raf = 0;
+      if (!box.isConnected) return detach();
+      refresh(box, key);
+    };
+    obs = new MutationObserver(() => {
+      if (!raf) raf = requestAnimationFrame(run);
+    });
+    obs.observe(box, { childList: true, subtree: true });
+    raf = requestAnimationFrame(run);
+  }
+  // the tabs of the page: what they are called, what they say under it, and which one is open
+  const tabsOf = (canvas, cfg) =>
+    cfg.tabs
+      ? [...canvas.querySelectorAll(cfg.tabs)].map(el => {
+          const small = el.querySelector('small,.hwt-state'),
+            strong = el.querySelector('strong');
+          const label = strong ? txt(strong) : txt(el).replace(txt(small), '').trim();
+          return {
+            el,
+            label,
+            sub: small ? txt(small) : '',
+            on:
+              el.getAttribute('aria-selected') === 'true' ||
+              el.getAttribute('aria-pressed') === 'true' ||
+              el.getAttribute('aria-current') === 'true' ||
+              el.classList.contains('on') ||
+              el.classList.contains('active')
+          };
+        })
+      : [];
+  // the sections of the sheet on the page: the buttons of its own side list say what they are, and which part of the page they open
+  const sectionsOf = canvas => {
+    const sheet = sheetSections(canvas);
+    if (sheet.length) return sheet;
+    // (Dealership Mode has a small list of its own: buttons that jump to #paddock-<name>)
+    return [...canvas.querySelectorAll('.paddock-shell > nav [data-jump]')].map(b => ({
+      id: b.dataset.jump,
+      title: txt(b),
+      sub: '',
+      ready: false,
+      cap: '',
+      el: canvas.querySelector('#paddock-' + CSS.escape(b.dataset.jump || '')),
+      icon: ''
+    }));
+  };
+  const sheetSections = canvas =>
+    [...canvas.querySelectorAll('.tm-nav[data-interface-go],.tm-nav[data-tm-go]')].map(b => {
+      const go = b.dataset.interfaceGo || b.dataset.tmGo || ''; // (the Timing Hardware pages name them data-tm-go)
+      const cap =
+        b.previousElementSibling && b.previousElementSibling.classList.contains('tm-railcap') ? txt(b.previousElementSibling) : '';
+      return {
+        id: go,
+        title: txt(b.querySelector('b')),
+        sub: txt(b.querySelector('small')),
+        ready: !!b.querySelector('.tm-dot.on'),
+        cap,
+        el: (() => {
+          // (the part of the page it opens: named by aria-controls, or found by its section name in the same sheet)
+          const ctl = b.getAttribute('aria-controls'),
+            frame = b.closest('.tm-frame') || canvas,
+            id = CSS.escape(go);
+          return (
+            (ctl && canvas.querySelector('#' + CSS.escape(ctl))) ||
+            frame.querySelector(`[data-interface-section="${id}"],[data-settings-section="${id}"],[data-tm-section="${id}"]`) ||
+            null
+          );
+        })(),
+        icon: (b.querySelector('i') || {}).innerHTML || ''
+      };
+    });
+  function refresh(box, key) {
+    const cfg = PAGES[key];
+    if (obs) obs.disconnect();
+    try {
+      let gs = box.querySelector(':scope > .gs.sr');
+      if (!gs) {
+        gs = document.createElement('div');
+        gs.className = 'gs sr';
+        gs.innerHTML = '<nav class="gs-rail sr-rail" aria-label="Sections of this page"></nav><div class="gs-canvas sr-canvas"></div>';
+        box.prepend(gs);
+        sig = '';
+      }
+      const shell = box.closest('.custshell');
+      if (shell) shell.classList.add('gs-dual');
+      const rail = gs.querySelector('.sr-rail'),
+        canvas = gs.querySelector('.sr-canvas');
+      // what the page drew again outside the canvas goes into it
+      [...box.childNodes].filter(n => n !== gs).forEach(n => canvas.append(n));
+      const tabs = tabsOf(canvas, cfg),
+        secs = sectionsOf(canvas).filter(s => s.el),
+        tabKey = key + ':' + (tabs.find(t => t.on) || { label: '' }).label;
+      if (cfg.tabs) canvas.querySelectorAll(cfg.tabs).forEach(t => t.parentElement && t.parentElement.classList.add('sr-tabsource'));
+      let cur = active.get(tabKey);
+      if (!secs.some(s => s.id === cur)) cur = secs[0] && secs[0].id;
+      if (cur) active.set(tabKey, cur);
+      // one section at a time, open, its title bar as the heading of the canvas
+      secs.forEach(s => {
+        s.el.classList.add('sr-sec');
+        s.el.hidden = s.id !== cur;
+        if (s.id === cur && !s.el.open) s.el.open = true;
+      });
+      canvas.classList.toggle('sr-hassecs', secs.length > 0);
+      const title = (typeof SETTINGS_TABS !== 'undefined' && (SETTINGS_TABS.find(t => t[0] === key) || [])[1]) || '';
+      const nextSig = JSON.stringify([
+        key,
+        title,
+        tabs.map(t => [t.label, t.sub, t.on]),
+        secs.map(s => [s.id, s.title, s.sub, s.ready, s.cap]),
+        cur
+      ]);
+      if (nextSig !== sig) {
+        sig = nextSig;
+        let lastCap = null;
+        rail.innerHTML =
+          `<div class="gs-railtitle">${esc(title)}</div>${cfg.lead ? `<p class="sr-lead">${esc(cfg.lead)}</p>` : ''}` +
+          (tabs.length
+            ? `<span class="sr-cap">${esc(cfg.tabsLabel || 'Pages')}</span>${tabs
+                .map(
+                  (t, i) =>
+                    `<button type="button" class="gs-ri sr-tab" data-sr-tab="${i}" aria-pressed="${t.on}"><span><b>${esc(t.label)}</b>${t.sub ? `<small>${esc(t.sub)}</small>` : ''}</span></button>`
+                )
+                .join('')}`
+            : '') +
+          (secs.length > 1 || (secs.length && !tabs.length)
+            ? `${secs[0].cap ? '' : `<span class="sr-cap">${tabs.length ? 'On this page' : 'Sections'}</span>`}${secs
+                .map(s => {
+                  const cap = s.cap && s.cap !== lastCap ? `<span class="sr-cap">${esc(s.cap)}</span>` : '';
+                  if (s.cap) lastCap = s.cap;
+                  return `${cap}<button type="button" class="gs-ri sr-secbtn" data-sr-sec="${esc(s.id)}" aria-pressed="${s.id === cur}">${s.icon ? `<i class="sr-ico" aria-hidden="true">${s.icon}</i>` : ico('settings')}<span><b>${esc(s.title)}</b>${s.sub ? `<small>${esc(s.sub)}</small>` : ''}</span>${s.ready ? '<em class="sr-dot" aria-hidden="true"></em>' : ''}</button>`;
+                })
+                .join('')}`
+            : '');
+        rail.onclick = ev => {
+          const t = ev.target.closest('[data-sr-tab]');
+          if (t) {
+            const tab = tabsOf(canvas, cfg)[Number(t.dataset.srTab)];
+            if (tab) tab.el.click();
+            return;
+          }
+          const s = ev.target.closest('[data-sr-sec]');
+          if (s) {
+            const k = key + ':' + (tabsOf(canvas, cfg).find(x => x.on) || { label: '' }).label;
+            active.set(k, s.dataset.srSec);
+            refresh(box, key);
+            if (canvas.getBoundingClientRect && canvas.getBoundingClientRect().top < 0) canvas.scrollIntoView({ block: 'start' });
+          }
+        };
+      }
+    } finally {
+      if (obs) obs.observe(box, { childList: true, subtree: true });
+    }
+  }
+  // the settings search found something in a section that is not shown: show that section
+  function reveal(el) {
+    const sec = el && el.closest && el.closest('.sr-sec');
+    const box = el && el.closest && el.closest('#settingsbox');
+    if (!sec || !box || !sec.hidden) return;
+    const id = sec.dataset.interfaceSection || sec.dataset.settingsSection || sec.dataset.tmSection;
+    const btn = box.querySelector(`[data-sr-sec="${CSS.escape(id || '')}"]`);
+    if (btn) btn.click();
+  }
+  return { attach, detach, reveal, PAGES };
+})();
