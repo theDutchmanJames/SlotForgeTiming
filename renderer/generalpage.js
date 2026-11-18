@@ -385,6 +385,27 @@ const SettingsRail = (() => {
     raf = 0,
     sig = '';
   const ico = n => (typeof Icons !== 'undefined' ? Icons.svg(Icons.has && !Icons.has(n) ? 'settings' : n, { size: 16, stroke: 1.8 }) : '');
+  // (2.4.0) a section whose icon is a sign (the hardware pages: ⌁ ◉ ⇄ …) gets the line picture that means the same, like every other rail
+  const GLYPH = {
+    '⌁': 'parallel',
+    '◉': 'gauge',
+    '⇄': 'move',
+    '≋': 'lines',
+    '☼': 'lights',
+    ϟ: 'bolt',
+    '♬': 'bell',
+    '↓': 'down',
+    '⚙': 'cog',
+    '⚑': 'flag',
+    '☷': 'rules',
+    '✓': 'check'
+  };
+  const railIcon = icon =>
+    !icon
+      ? ico('settings')
+      : typeof Icons !== 'undefined' && (GLYPH[icon] || (Icons.has && Icons.has(icon)))
+        ? ico(GLYPH[icon] || icon)
+        : `<i class="sr-ico" aria-hidden="true">${/^\s*</.test(icon) ? icon : esc(icon)}</i>`; // (a picture the page drew itself stays as it is)
   const txt = e => String((e && e.textContent) || '').trim();
   function detach() {
     if (obs) obs.disconnect();
@@ -431,6 +452,22 @@ const SettingsRail = (() => {
   const sectionsOf = canvas => {
     const sheet = sheetSections(canvas);
     if (sheet.length) return sheet;
+    // (2.4.0: the Parallel Port page has a side list of its own inside the page, .pp-nav buttons that open [data-section]: it joins the Double Rail too)
+    const pp = [...canvas.querySelectorAll('.pp-rail .pp-nav[data-go]')];
+    if (pp.length)
+      return pp.map(b => {
+        let c = b.previousElementSibling;
+        while (c && !c.classList.contains('pp-railcap') && c.classList.contains('pp-nav')) c = c.previousElementSibling;
+        return {
+          id: b.dataset.go,
+          title: txt(b.querySelector('b')),
+          sub: txt(b.querySelector('small')),
+          ready: !!b.querySelector('.pp-dot.pp-ok'),
+          cap: c && c.classList.contains('pp-railcap') ? txt(c) : '',
+          el: canvas.querySelector('.pp-section[data-section="' + CSS.escape(b.dataset.go || '') + '"]'),
+          icon: (b.querySelector('svg') || {}).outerHTML || ''
+        };
+      });
     // (Dealership Mode has a small list of its own: buttons that jump to #paddock-<name>)
     return [...canvas.querySelectorAll('.paddock-shell > nav [data-jump]')].map(b => ({
       id: b.dataset.jump,
@@ -505,6 +542,7 @@ const SettingsRail = (() => {
           ? secs.filter(s => !s.el.hidden).map(s => s.el.querySelector(':scope > .tm-content') || s.el)
           : [...canvas.querySelectorAll(cfg.body || ':scope > *')].filter(n => !n.matches('.sr-tabsource,#hwuse,#hwnote'));
         parts.forEach(p => {
+          if (p.closest && p.closest('.pp-frame')) return; // (the Parallel Port page keeps its own controls)
           if (SettingsSheet.fresh(p)) SettingsSheet.convert(p);
           SettingsSheet.folds(p);
           // the short words that open a section become its Page Note: the section's picture and those words
@@ -561,7 +599,7 @@ const SettingsRail = (() => {
                 .map(s => {
                   const cap = s.cap && s.cap !== lastCap ? `<span class="sr-cap">${esc(s.cap)}</span>` : '';
                   if (s.cap) lastCap = s.cap;
-                  return `${cap}<button type="button" class="gs-ri sr-secbtn" data-sr-sec="${esc(s.id)}" aria-pressed="${s.id === cur}">${s.icon ? `<i class="sr-ico" aria-hidden="true">${s.icon}</i>` : ico('settings')}<span><b>${esc(s.title)}</b>${s.sub ? `<small>${esc(s.sub)}</small>` : ''}</span>${s.ready ? '<em class="sr-dot" aria-hidden="true"></em>' : ''}</button>`;
+                  return `${cap}<button type="button" class="gs-ri sr-secbtn" data-sr-sec="${esc(s.id)}" aria-pressed="${s.id === cur}">${railIcon(s.icon)}<span><b>${esc(s.title)}</b>${s.sub ? `<small>${esc(s.sub)}</small>` : ''}</span>${s.ready ? '<em class="sr-dot" aria-hidden="true"></em>' : ''}</button>`;
                 })
                 .join('')}`
             : '');

@@ -4591,3 +4591,36 @@ html .paddock-browser .dealership-inline .paddock-advanced>summary{padding:12px 
 html .paddock-browser .dealership-inline .paddock-advanced[open]>:not(summary){margin-left:16px;margin-right:16px}
 html .paddock-browser .dealership-inline #paddock-connection>.row>select{font-weight:400}
 html .paddock-browser .pb-cars>p{grid-column:1 / -1;margin:0;padding:28px 20px;border:1px dashed var(--line);border-radius:12px;text-align:center}
+/* 2.4.0 Choice Rows (Settings Sheet): a row that holds only a radio button is one big button, the chosen one marked; the DS unit picks as a row of tiles */
+html .ss-sheet>.ss-row:has(>.ss-ctl>input[type=radio]:only-child){position:relative;cursor:pointer}
+html .ss-sheet>.ss-row:has(>.ss-ctl>input[type=radio]:only-child)>.ss-ctl>input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+html .ss-sheet>.ss-row:has(>.ss-ctl>input[type=radio]:only-child):hover{background:color-mix(in srgb,var(--ink) 4%,transparent)}
+html .ss-sheet>.ss-row:has(>.ss-ctl>input[type=radio]:only-child)>.ss-ctl::after{content:'';width:16px;height:16px;border-radius:50%;box-sizing:border-box;border:2px solid color-mix(in srgb,var(--ink) 30%,transparent)}
+html .ss-sheet>.ss-row:has(>.ss-ctl>input[type=radio]:checked){background:color-mix(in srgb,var(--accent) 9%,transparent)}
+html .ss-sheet>.ss-row:has(>.ss-ctl>input[type=radio]:checked)>.ss-ctl::after{border:5px solid var(--accent-fill,var(--accent))}
+html .ss-sheet>.ss-row:has(>.ss-ctl>input[type=radio]:only-child:focus-visible){outline:3px solid #4c9aff;outline-offset:-3px}
+html .ss-sheet:has(input[name=dstype]){display:grid;grid-template-columns:repeat(6,minmax(0,1fr))}
+html .ss-sheet:has(input[name=dstype])>.ss-row:not(:has(input[name=dstype])){grid-column:1 / -1}
+html .ss-sheet:has(input[name=dstype])>.ss-row:has(input[name=dstype]){flex-direction:column;justify-content:center;align-items:center;gap:8px;min-height:74px;padding:12px 6px;border-top:1px solid var(--line);text-align:center}
+html .ss-sheet:has(input[name=dstype])>.ss-row:has(input[name=dstype])+.ss-row:has(input[name=dstype]){border-left:1px solid var(--line)}
+html .ss-sheet:has(input[name=dstype])>.ss-row:has(input[name=dstype])>.ss-t{flex:none;min-width:0}
+html .ss-sheet:has(input[name=dstype])>.ss-row:has(input[name=dstype])>.ss-ctl{flex:none;margin:0}
+@media (max-width:1100px){html .ss-sheet:has(input[name=dstype]){grid-template-columns:repeat(3,minmax(0,1fr))}html .ss-sheet:has(input[name=dstype])>.ss-row:has(input[name=dstype]):nth-child(3n+2){border-left:0}}
+/* the Parallel Port page in the Double Rail: its sections are in the side list, so its own list and its title card step aside */
+html .sr-canvas .parallel-setup .pp-rail,html .sr-canvas .parallel-setup .pp-header{display:none}
+html .sr-canvas .parallel-setup .pp-body{display:block}
+html .sr-canvas .parallel-setup .pp-frame{border:0;background:none;box-shadow:none;padding:0}
+html #settingsbox .sr-canvas .parallel-setup details.pp-section{border:0;border-radius:0;background:none;overflow:visible}
+html #settingsbox .sr-canvas .parallel-setup details.pp-section>summary{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:0 0 18px;border:0!important;background:none}
+html #settingsbox .sr-canvas .parallel-setup details.pp-section>summary>:is(svg,i,.pp-chevron){display:none}
+html #settingsbox .sr-canvas .parallel-setup .pp-summary-title{font:italic 700 26px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.01em;color:var(--ink)}
+html #settingsbox .sr-canvas .parallel-setup .pp-summary-note{margin:0;font-size:13px;color:var(--muted)}
+html #settingsbox .sr-canvas .parallel-setup .pp-main{padding:0}
+html #settingsbox .sr-canvas .parallel-setup .pp-content{padding:16px 18px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+html .parallel-setup .pp-seg{display:inline-flex;gap:2px;padding:3px;border:0;border-radius:9px;background:rgba(0,0,0,.25)}
+html .parallel-setup .pp-seg>button{min-height:30px;padding:0 13px;border:0!important;border-radius:7px;background:transparent;box-shadow:none!important;color:var(--muted);font-weight:600}
+html .parallel-setup .pp-seg>button:hover{color:var(--ink)}
+html .parallel-setup .pp-seg>button[aria-pressed="true"]{background:color-mix(in srgb,var(--ink) 13%,var(--panel));color:var(--ink)}
+html .parallel-setup .pp-seg>button{background:transparent!important;color:var(--muted)!important}
+html .parallel-setup .pp-seg>button[aria-pressed="true"]{background:color-mix(in srgb,var(--ink) 13%,var(--panel))!important;color:var(--ink)!important}
+html dialog.appdlg.st-dialog{width:min(760px,94vw)}

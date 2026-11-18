@@ -42,6 +42,12 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Grid Slot](#grid-slot) | A lane of Start a race: name, car and Browse cars on the left, the driver as a full-height portrait on the right | Home › Start a race |
 | [Home Cards](#home-cards) | Every card under Start a race with an idea of its own, and seven new cards | Home |
 | [Pit Wall](#pit-wall) | The main menu as one slim bar: grouped tabs, status lights, Find, ON AIR, and a race strip while a race runs | The top of every page |
+| [Start Lights](#start-lights) | A step-by-step card with a gantry of step lights, lane-coloured name rows, choice tiles and a ticket | The setup guide on Home |
+| [Lane Check](#lane-check) | A column per lane in its colour with a sensor light that turns green | Test sensors (Home, setup guide) |
+| [Flag Dialog](#flag-dialog) | Yes / No and message windows with a badge for the kind and a filled red answer for what cannot be undone | Every confirm and message window |
+| [Live Desk](#live-desk) | An ON AIR panel and the pages as row tiles in two groups, a compact list on a phone | Live Race landing, second screen, phones |
+| [Parc Fermé](#parc-fermé) | A picker window: sticky head, one Control Strip with search, small picture cards | Choose a car (Browse cars) |
+| [Choice Rows](#choice-rows) | Radio rows as whole-row buttons, short options as tiles; signs as line pictures in the rail | App Settings › Timing Hardware |
 | [Timing Tower](#timing-tower) | A ranked list: position, colour stripe, time, gap chip | Personal Bests card |
 | [Rulebook](#rulebook) | A document page: header, sheet with a grouped toolbar | Racing Rules |
 | [Finishing Touches](#finishing-touches) | Scroll bars and file pickers in the theme | Everything |
@@ -62,6 +68,9 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | **Picture set** | Pit Board + Picture Bench |
 | **Audio set** | Pit Board + Tech Sheet with a call list |
 | **Home** | Broadcast Hero + cards (Timing Tower inside one) |
+| **Setup guide** | Start Lights (+ Lane Check at step 5) |
+| **Live Race** (also on phones) | Live Desk |
+| **Choose a car** | Parc Fermé (Workshop Window + Control Strip + Gear Selector + Garage Cards) |
 
 So you can say: *"give the Results page a Paddock Rail and make its rows Entry Cards"* or
 *"the import window should be a Workshop Window, not a Tech Sheet"*.
@@ -1240,7 +1249,8 @@ The main menu (`renderer/mainbar.js`) as one slim bar that **never wraps**. The 
 groups on a dark track (Home · Database, Race Setup · Customization, App Settings, Racing Rules); the open one is lifted with its picture in the accent.
 On the right: **status lights** (the timing hardware, the shared library, the network; hover for the words), **Find** (Ctrl K) and **Live Race** as
 an ON AIR button (red and pulsing while a race runs). Narrower windows lose first the words of the lights, then the word Find and the app name;
-below 1080px each tab shows its **name small under its picture**, so the names never go.
+below 1080px each tab shows its **name small under its picture**, so the names never go. The bar also **measures itself**: when it does not fit
+(for instance with the Race tab of a kept race) it takes the same steps one by one until it does (`MainBar.fit`, classes `mb-t1` … `mb-t5`).
 
 While a race runs and another page is shown, a **race strip** under the bar says the race, the lap, the clock and the leader, with **Back to the race**
 (`live.strip`, filled in race.js). **Find** searches the pages, the settings (`SettingsIndex`), the drivers, cars, tracks and race setups, and a few
@@ -1251,6 +1261,113 @@ html body.app-shell>header{flex-wrap:nowrap;min-height:60px;padding:0 18px}
 html body.app-shell>header>#tabs .mb-grp{display:flex;gap:2px;height:38px;padding:3px;border-radius:10px;background:rgba(0,0,0,.22)}
 html body.app-shell>header>#tabs .mb-grp>.tab[aria-selected="true"]{background:color-mix(in srgb,var(--ink) 12%,var(--panel));color:var(--ink)}
 .mb-strip{display:flex;align-items:center;gap:18px;height:40px;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 26%,var(--bg)),var(--bg) 60%)}
+```
+
+## Start Lights
+
+The setup guide on Home (`renderer/setupwizard.js`) as **one card**. On top a band with an eyebrow (Setup guide · step 2 of 6) and a **gantry of
+step lights**: a dark light per step on one line; a finished step is lit red, the open one is lit with a ring that glows, and at the test race every
+light turns green. Under it a big Barlow title, the words, and the step itself:
+
+- **Welcome**: the words left, the plan right (every step as a row with its picture in an accent tile).
+- **Names per lane**: every box has the lane's number in its colour in front (`.wz-lane`, the colours of the race screen, else one of eight);
+  drivers that were already added are chips with their lane.
+- **Timing hardware**: choice tiles with a picture each; the chosen one is outlined in the accent with a tick, its picture filled.
+- **Test race**: a ticket (track, laps, lanes, drivers) with dashed lines between the parts.
+- A **foot bar**: Back left, Skip the guide quiet, the next step as the primary button.
+
+```css
+html #view .wz-steps{position:relative;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+html #view .wz-step>i{width:22px;height:22px;border-radius:50%;background:#1b1f25;box-shadow:inset 0 2px 4px rgba(0,0,0,.6)}
+html #view .wz-step.wz-done>i{background:radial-gradient(circle at 40% 35%,#ff8a8e,#e5484d 55%,#a3242a)}
+html #view .wz-steps.wz-go .wz-step>i{background:radial-gradient(circle at 40% 35%,#9ff2c8,#3ecf8e 55%,#1f8a58)}
+.wz-lane{display:grid;place-items:center;width:40px;background:var(--c);color:#111418;font:italic 700 19px 'SF Barlow Condensed',sans-serif}
+html #view .wz-hwopt.wz-on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--panel))}
+.wz-ticket{display:grid;grid-template-columns:2fr repeat(3,1fr);border:1px solid var(--line);border-radius:11px}
+```
+
+The start-up window (`startup.html`) already has the logo, the wordmark and a thin red bar; it stays as it is.
+
+## Lane Check
+
+The sensor test (`renderer/sensortest.js`): Home's **Test sensors** window and step 5 of the setup guide. A connection pill on top (green when the
+hardware is connected, amber when not), then **a column per lane**: a head in the lane's colour with its number tile, a big round **sensor light**
+that turns green when its sensor sees a car (and flashes bright on every crossing), the number of crossings in big mono and the last lap. The lanes
+sit in the same balanced rows as Home's Grid Slot (up to 4 in a row; 5 and 6 lanes in rows of three). The summary is a line with a dot, Start again
+beside it.
+
+```css
+html .st-lanes{display:grid;grid-template-columns:repeat(var(--n,4),minmax(0,1fr));max-width:calc(var(--n,4) * 210px);margin:0 auto 14px;gap:10px}
+html .st-lane .st-num{background:color-mix(in srgb,var(--c) 14%,var(--panel));text-transform:uppercase}
+.st-light{width:38px;height:38px;border-radius:50%;background:#1b1f25;box-shadow:inset 0 3px 6px rgba(0,0,0,.65)}
+.st-lane.st-seen .st-light{background:radial-gradient(circle at 40% 35%,#9ff2c8,#3ecf8e 55%,#1f8a58);box-shadow:0 0 16px rgba(62,207,142,.55)}
+```
+
+## Flag Dialog
+
+The app's own Yes / No and message windows (`renderer/dialogs.js`, a [Workshop Window](#workshop-window)). A **badge** in front of the title says
+what kind it is: **?** a question (grey), **i** a message (grey), **!** an action that cannot be undone (accent). The text lines up with the title,
+not with the badge. The buttons sit on the right with Cancel first and the answer last; a dangerous answer is a **filled red button** (in a card
+elsewhere a danger button stays quiet text). The kind is a class: `appdlg-confirm`, `appdlg-alert`, plus `appdlg-danger`.
+
+```css
+html dialog.appdlg>h3:first-child{display:flex;align-items:center;gap:14px;padding:0;border-bottom:0}
+html dialog.appdlg>h3:first-child::before{content:'?';display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:color-mix(in srgb,var(--ink) 9%,var(--panel));text-transform:none}
+html dialog.appdlg-alert>h3:first-child::before{content:'i';font-family:Georgia,serif;font-style:italic}
+html dialog.appdlg-danger>h3:first-child::before{content:'!';background:color-mix(in srgb,var(--accent) 18%,var(--panel));color:var(--accent-text,var(--accent))}
+html dialog.appdlg>.appdlg-body{padding-left:50px}
+html dialog.appdlg>.row.appdlg-buttons{flex-direction:row;justify-content:flex-end}
+html dialog.appdlg-danger>.appdlg-buttons>.btn.danger{background:var(--accent-fill,var(--accent));color:#fff}
+```
+
+The **update notice** on Home has the same idea: a red download badge in front, the title in Barlow, a soft accent wash from the left.
+
+## Live Desk
+
+The landing page of Live Race (`renderer/liveview.js`): the second screen, and what phones and tablets open on the network. On top an **ON AIR
+panel**: off air (a quiet outlined tag, "No race is running") or on air (a red tag with a pulsing dot, the race in Barlow, its phase as a pill, and on
+the right the clock, the lap of the leader and the leader in their lane colour). Then the pages in **two groups**: *Follow the race* (they only
+show it) and *Run the race* (Race Director and Tokens, they change it). Every page is a **row tile**: its picture in a 52px tile (accent tint;
+filled red for the pages that run the race; gold for Results), the name in Barlow, its line, an arrow. On a phone the tiles are a compact list.
+
+```css
+.lv-air.on{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:linear-gradient(100deg,color-mix(in srgb,var(--accent) 24%,var(--panel)),var(--panel) 65%)}
+.lv-airtag{height:36px;padding:0 14px;border:1.5px solid var(--line);border-radius:8px;font:italic 700 16px 'SF Barlow Condensed',sans-serif;letter-spacing:.12em;text-transform:uppercase}
+html .lv-desk .lv-tile{display:grid;grid-template-columns:52px minmax(0,1fr) 16px;column-gap:14px;min-height:86px;padding:14px 16px;border-radius:12px}
+html .lv-desk .lv-tile>svg{grid-row:1 / 3;width:52px;height:52px;padding:12px;border-radius:12px;background:color-mix(in srgb,var(--accent) 13%,var(--panel))}
+html .lv-desk .lv-tile.special>svg{background:var(--accent-fill,var(--accent));color:#fff}
+```
+
+## Parc Fermé
+
+Choosing a car (`renderer/paddockbrowser.js`, **Browse cars** on Home). A [Workshop Window](#workshop-window) with a **sticky head** (eyebrow
+Parc fermé, the title, a round close button), then **one [Control Strip](#control-strip)**: the car source as a [Gear Selector](#gear-selector)
+(Slotcar library / Dealership cars), the search with a magnifier, Connection settings and Refresh. The cars are small
+[Garage Cards](#garage-card): the picture across the top on a soft spotlight (a car outline when there is none), the name in Barlow, the maker and
+class, a chip for its state (Not yet linked, Available offline…), and **Select car** at the foot (red on hover). The Dealership connection inside
+is a [Folder](#folder) whose fields are Settings Sheet rows: a status pill, then a row per field, the buttons in a foot row.
+
+```css
+html dialog.paddock-dialog>header{position:sticky;top:0;z-index:5;padding:16px 22px 14px 24px;border-bottom:1px solid var(--line)}
+html .paddock-browser .pb-toolbar{display:flex;gap:8px;padding:7px;border:1px solid var(--line);border-radius:11px;background:color-mix(in srgb,var(--bg) 40%,var(--panel))}
+html .paddock-browser .pb-cars{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+html .paddock-browser .pb-car{display:flex;flex-direction:column;padding:0;border-radius:12px;overflow:hidden}
+html .paddock-browser .pb-car>img,html .paddock-browser .pb-car>.pb-car-placeholder{width:100%;height:118px;object-fit:contain;border-bottom:1px solid var(--line)}
+```
+
+## Choice Rows
+
+In a [Settings Sheet](#settings-sheet), a row that holds **only a radio button** is one big button: the whole row picks it, the chosen row is tinted
+with a filled accent ring. When a choice has few short options (the DS unit: DS-030 … DS-0045) the rows stand **side by side as tiles** (six in a
+row, three on a narrower window). In the Double Rail, **signs as icons** (⌁ ◉ ⇄ ≋ …, used by the hardware pages) are drawn as the line picture that
+means the same, and the **Parallel Port** page joins the Double Rail like the other interfaces: its sections are in the side list, its own list and
+title card step aside, its section titles are the same Barlow headings, and its *By lane / Pin map* switch is a Gear Selector.
+
+```css
+html .ss-sheet>.ss-row:has(>.ss-ctl>input[type=radio]:only-child){position:relative;cursor:pointer}
+html .ss-sheet>.ss-row:has(>.ss-ctl>input[type=radio]:only-child)>.ss-ctl>input{position:absolute;inset:0;opacity:0}
+html .ss-sheet>.ss-row:has(>.ss-ctl>input[type=radio]:checked){background:color-mix(in srgb,var(--accent) 9%,transparent)}
+html .ss-sheet:has(input[name=dstype]){display:grid;grid-template-columns:repeat(6,minmax(0,1fr))}
 ```
 
 ## Finishing Touches
@@ -1341,3 +1458,10 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Home cards | Record to beat: the title on the red label is large Barlow (26 to 44px, growing with the label) |
 | 2026-11 | Home Cards | New: all cards redesigned; Lane balance, Grid form, Head to head, Championship, Heat standings, Countdown and Milestones added |
 | 2026-11 | Pit Wall | New: the main menu as one bar that never wraps, with status lights, Find (Ctrl K), ON AIR and a race strip |
+| 2026-11 | Start Lights | New: the setup guide with step lights, lane-coloured names, hardware choice tiles and a test-race ticket |
+| 2026-11 | Lane Check | New: the sensor test as lane columns in their colours with sensor lights, in Home's balanced rows |
+| 2026-11 | Flag Dialog | New: a badge for the kind of window, text aligned with the title, Cancel then the answer, a filled red dangerous answer; the update notice with a download badge |
+| 2026-11 | Live Desk | New: the Live Race landing with an ON AIR panel and the pages in two groups as row tiles; a compact list on phones |
+| 2026-11 | Parc Fermé | New: the car picker with a sticky head, one toolbar with search, picture cards and the Dealership form as rows |
+| 2026-11 | Choice Rows | New: radio rows as whole-row buttons, the DS unit as tiles, line pictures in place of signs, the Parallel Port page in the Double Rail |
+| 2026-11 | Pit Wall | The bar measures itself and steps down when it does not fit (the Race tab); the lap in the strip follows the setup's race by laps or by time |
