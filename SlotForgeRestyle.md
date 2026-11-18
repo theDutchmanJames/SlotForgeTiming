@@ -1278,3 +1278,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Grid Slot | New: the lanes of Start a race on Home fill their card at every width, with the driver as a full-height portrait |
 | 2026-11 | Grid Slot | Start a race stacks sooner (2 lanes below 1400px, 3 below 1650px, 4 below 1950px) |
 | 2026-11 | Grid Slot | Up to 8 lanes in balanced rows (4, 3 or 2 a row by the width); a last row that is not full fills the width |
+| 2026-11 | Grid Slot | The hairlines are only between lanes (no line beside Start a race) |

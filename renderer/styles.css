@@ -4030,3 +4030,5 @@ html #hmc-start .hs-lanes[data-cols]>.lane.lane.lane{box-shadow:0 0 0 .5px var(-
 @container hm-start (max-width:720px){html #hmc-start .hs-lanes[data-cols]:has(>.lane){--hs-cols:1!important}}
 /* (Grid Slot) gridslot.js: the lanes on 12 small columns, so a last row that is not full shares its whole width */
 html #hmc-start .hs-lanes.gs-fill[data-cols]{grid-template-columns:repeat(12,minmax(0,1fr))}
+/* (Grid Slot) the hairlines are only between lanes: what spills over the outer edge of the lanes is cut off */
+html #hmc-start .hs-lanes[data-cols]{overflow:hidden}
