@@ -21,6 +21,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Pit Buttons](#pit-buttons) | One button family: primary, secondary, outline, danger, icon, small | Every button outside the race screen |
 | [Paddock Rail](#paddock-rail) | A page with a side list of its sections on the left | Race Setup, Customization, Database, App Settings |
 | [Double Rail](#double-rail) | A second Paddock Rail beside the first, for the tabs and sections of one page, and a plain canvas with one section at a time | Every page of App Settings |
+| [Settings Sheet](#settings-sheet) | Groups of slim two-half rows (name and one line left, control right) with one 30px control kit; no sliders | The canvas of every App Settings page |
 | [Page Note](#page-note) | The box under a page title that explains the page | Every Race Setup page |
 | [Control Strip](#control-strip) | One tight toolbar: Add, tools, search, List / Grid, pager | Database lists, system lists |
 | [Gear Selector](#gear-selector) | A quiet segmented control | List / Grid, filters, choices in forms, inner tabs |
@@ -1061,6 +1062,50 @@ The text people write keeps its own fonts: exclude it from the Barlow title rule
 
 ---
 
+## Settings Sheet
+
+What goes on the canvas of a **Double Rail** in App Settings (it replaced the cards and Choice Tiles there). Sleek and quiet: a page head, then
+**groups**, each a small heading in spaced capitals and one **sheet** (a panel with thin lines between its rows). Every setting is one **slim
+two-half row**: on the left the name in bold and one short line under it, on the right the control. Longer explanations are cut to one line with a
+small **More** behind the short line. Dependent settings sit indented and lighter under the setting they depend on (`ss-sub`) and fade when it is off
+(`ss-off`). Words that are not a setting are a quiet line between groups (`ss-note`). Whatever is a picture of something (a pad preview, the sensors
+of a track, the theme palette, a QR code) stays as it is drawn.
+
+**The control kit**, every control 30px high, nothing else:
+
+| Kit part | Is | Made from |
+| --- | --- | --- |
+| Switch | 34×20 pill, the accent when on | a checkbox |
+| Segmented choice | up to five words in a sunken strip, the chosen one lifted | a list with ≤ 5 short options (the list stays, hidden) |
+| List | a 190–320px drop-down | a longer list |
+| Stepper | − number + with the unit beside it, Roboto Mono | a number field or a slider (**no sliders**) |
+| Text field | 280px | a text field |
+| File row | the file button, then the file name or a thumbnail | a file field |
+| Path | the path in Roboto Mono with Copy | a path |
+| Status pill | a small pill, green when fine, amber when it needs you | a status |
+
+Pictures are framed without sliders: **drag** the picture, or click it and use the **arrow keys** (1%, Shift 10%), **double-click** centres it,
+and a "Position" sub-row has two steppers and **Centre** for exact numbers.
+
+Code: `renderer/settingssheet.js` (`SettingsSheet`). `SettingsSheet.convert(box)` turns a page's own folder markup into sheets in the real page only
+(the controls are moved, never rebuilt, so their ids and handlers stay); `SettingsRail` calls it for each section it shows, and again when a page
+draws itself again (`SettingsSheet.fresh`). General is built by hand in `generalpage.js` with `SettingsSheet.row`, `kit`, `segmented` and `stepper`.
+
+```css
+.ss-gh{margin:22px 2px 8px;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.ss-sheet{margin:0 0 18px;border:1px solid var(--ss-line);border-radius:10px;background:var(--panel);overflow:hidden}
+.ss-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 20px;min-height:52px;padding:10px 16px;border-top:1px solid var(--ss-line)}
+.ss-t>b{font-size:13.5px;font-weight:600}  .ss-t>.ss-desc{font-size:12.5px;color:var(--muted)}
+.ss-t>.ss-hint{-webkit-line-clamp:1}  .ss-t>.ss-hint.open{-webkit-line-clamp:unset}
+.ss-row.ss-sub{padding-left:38px;background:color-mix(in srgb,var(--bg) 22%,var(--panel))}
+.ss-row.ss-off>*{opacity:.45}
+input.ss-switch{appearance:none;width:34px;height:20px;border-radius:10px;background:var(--line)}  input.ss-switch:checked{background:var(--accent-fill,var(--accent))}
+.ss-seg{display:inline-flex;gap:2px;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.ss-seg>button.on{background:color-mix(in srgb,var(--ink) 13%,var(--panel));color:var(--ink);font-weight:600}
+.ss-step{display:inline-flex;height:30px;border:1px solid var(--line);border-radius:7px;background:var(--bg)}
+.ss-step>input{width:64px;text-align:center;font:500 13px 'SF Roboto Mono',Consolas,monospace}
+```
+
 ## Finishing Touches
 
 ```css
@@ -1134,3 +1179,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Double Rail | New: App Settings › General as two side lists and a canvas, with Choice Tiles, switch rows, stat tiles and a name preview |
 | 2026-11 | Double Rail | Every page of App Settings: the page's tabs and sections in the second rail, one section at a time; Help's topic list as the second rail |
 | 2026-11 | Timing Tower, Rulebook | Personal Bests as a timing tower; Racing Rules as a document page with a grouped toolbar |
+| 2026-11 | Settings Sheet | New: every page of App Settings as groups of slim two-half rows with one 30px control kit (switch, segmented choice, stepper, list, text, file, path, pill); no sliders, pictures framed by dragging, arrow keys and Position steppers |

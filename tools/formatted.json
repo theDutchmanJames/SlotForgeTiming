@@ -211,6 +211,7 @@
     "renderer/sensortest.js",
     "renderer/settingsindex.js",
     "renderer/settingspage.js",
+    "renderer/settingssheet.js",
     "renderer/setupwizard.js",
     "renderer/setupwords.js",
     "renderer/shared-thumbnail-worker.js",

@@ -20,34 +20,6 @@ const GeneralPage = (() => {
     if (html !== undefined) e.innerHTML = html;
     return e;
   };
-  // a card: a title in Barlow, one line that says what it is for, then the controls
-  const card = (title, lead, cls = '') => {
-    const c = el(
-      'section',
-      'gs-card' + (cls ? ' ' + cls : ''),
-      `<h3>${esc(title)}</h3>${lead ? `<p class="gs-lead">${esc(lead)}</p>` : ''}`
-    );
-    return c;
-  };
-  // picture tiles for a drop-down list: a click sets the list and tells it so, as if it was chosen there
-  const tiles = (select, draw, cls = '') => {
-    const wrap = el('div', 'gs-tiles' + (cls ? ' ' + cls : ''));
-    wrap.setAttribute('role', 'group');
-    [...select.options].forEach(o => {
-      const b = el('button', 'gs-tile', draw(o));
-      b.type = 'button';
-      b.setAttribute('aria-pressed', String(o.selected));
-      b.onclick = () => {
-        wrap.querySelectorAll('.gs-tile').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-        if (select.value === o.value) return;
-        select.value = o.value;
-        select.dispatchEvent(new Event('change', { bubbles: true }));
-      };
-      wrap.append(b);
-    });
-    select.classList.add('gs-hidden');
-    return wrap;
-  };
   const optText = select => (select && select.selectedOptions && select.selectedOptions[0] ? select.selectedOptions[0].textContent : '');
   const short = t =>
     String(t || '')
@@ -100,158 +72,272 @@ const GeneralPage = (() => {
       sections[id] = s;
       canvas.append(s);
     });
-    const keepHint = (fid, into, titled = false) => {
-      const f = fieldOf(fid);
-      if (!f) return;
-      f.classList.add('gs-field');
-      if (titled) f.classList.add('gs-titled'); // (its label only says what the card title says: kept for the search, out of sight)
-      if (f.querySelector('.gs-hidden')) f.classList.add('gs-tiled'); // (a list shown as tiles: its label stays for screen readers and the search, out of sight)
-      into.append(f);
-      return f; // (once moved it is in a card that is not on the page yet: look it up from here, not from the box)
+    // ---- (2.4.0) the topics as a Settings Sheet: groups of slim rows, the controls of the folders moved into them ----
+    const K = SettingsSheet;
+    const hintOf = id => {
+      const f = fieldOf(id);
+      return f ? [...f.querySelectorAll(':scope > .hint, :scope > span.muted.hint')].slice(0, 1) : [];
     };
-
-    // ---- Look and size: the sizes as letters that grow, the depth as small cards that stand up more ----
-    {
-      const size = card('Interface size', 'The text, buttons and boxes of this window. The race screen layouts always fit the window.');
-      const sel = get('uiscale');
-      size.append(
-        tiles(
-          sel,
-          o =>
-            `<span class="gs-aa" style="font-size:${Math.round((15 * Number(o.value)) / 100)}px">Aa</span><b>${esc(o.value)}%</b><small>${esc((o.textContent.match(/\((.*)\)/) || [0, ''])[1])}</small>`,
-          'gs-sizes'
-        )
-      );
-      keepHint('uiscale', size);
-      const depth = card('Depth', 'How much cards, buttons and widgets stand up from the page, here and on the race screens.');
-      const dsel = get('depthlevel');
-      depth.append(
-        tiles(
-          dsel,
-          o =>
-            `<span class="gs-depth" style="--gd:${Number(o.value) / 100}"><i></i></span><b>${esc(short(o.textContent))}</b>${/standard/.test(o.textContent) ? '<small>standard</small>' : ''}`,
-          'gs-depths'
-        )
-      );
-      keepHint('depthlevel', depth);
-      sections.look.append(size, depth);
-    }
-    // ---- Units: each unit as a tile with real examples, written the way the app writes them ----
-    {
-      const speed = card('Speed', 'The average and scale speed in the tables and the PDF of a session.');
-      const ssel = get('speedunit');
-      speed.append(
-        tiles(
-          ssel,
-          o =>
-            `<b>${esc(Speed.unitName(o.value))}</b><small>${esc(short(o.textContent))}</small><em>${o.value === 'mph' ? '7.7 mph' : '12.4 km/h'}</em>`,
-          'gs-units'
-        )
-      );
-      keepHint('speedunit', speed);
-      const dist = card('Distance', 'The distance driven in the tables and on Home, and the lengths of a track.');
-      const dsel = get('distunit');
-      dist.append(
-        tiles(
-          dsel,
-          o =>
-            `<b>${o.value === 'ft' ? 'ft · mi' : 'm · km'}</b><small>${esc(short(o.textContent))}</small><em>A lane: ${esc(Speed.lengthText(28.45, o.value))}<br>A race: ${esc(Speed.distText(1250, o.value))}</em>`,
-          'gs-units'
-        )
-      );
-      keepHint('distunit', dist);
-      sections.units.append(speed, dist);
-    }
-    // ---- Home and club: the name and welcome with a small preview, the header picture with its own preview, the club logo ----
-    {
-      const grid = el('div', 'gs-grid2');
-      const names = card('Name and welcome', 'The name at the top of the window and the words at the top of Home.');
-      const prev = el('div', 'gs-namepv');
-      const drawName = () => {
-        const an = names.querySelector('#appname'),
-          wl = names.querySelector('#welcome'); // (the fields are in this card, which is put on the page at the end)
-        prev.innerHTML = `<span class="gs-eye">Preview</span><b>${esc((an && an.value) || (an && an.placeholder) || '')}</b><span>${esc((wl && wl.value) || (wl && wl.placeholder) || '')}</span>`;
-      };
-      names.append(prev);
-      keepHint('appname', names);
-      keepHint('welcome', names);
-      drawName();
-      names.addEventListener('input', drawName);
-      const header = card(
-        'Header picture',
-        'The picture across the top of Home. Drag it, or use the sliders, to choose what shows.',
-        'gs-wide'
-      );
-      keepHint('hdrfile', header, true);
-      const logo = card('Club logo', 'On Home if you choose a side, and in every Logo widget without a picture of its own.');
-      keepHint('logofile', logo, true);
-      grid.append(header, names, logo);
-      sections.home.append(grid);
-    }
-    // ---- Picture quality: the three levels as cards ----
-    {
-      const q = card(
-        'Quality of uploads',
-        'Drivers, slotcars, widgets, picture sets, the logo and the header picture you add from now on.'
-      );
-      const qsel = get('picq');
-      const notes = {
-        original: 'Exactly as uploaded, with transparency. Largest database.',
-        high: 'Sharp on any screen, a lot smaller.',
-        standard: 'Smallest and quickest. Best for a Raspberry Pi.'
-      };
-      q.append(
-        tiles(
-          qsel,
-          o =>
-            `${ico(o.value === 'original' ? 'star' : o.value === 'high' ? 'square' : 'bolt', 18)}<b>${esc(short(o.textContent))}</b><small>${esc((o.textContent.match(/\((.*)\)/) || [0, ''])[1])}</small><em>${esc(notes[o.value] || '')}</em>`,
-          'gs-quality'
-        )
-      );
-      keepHint('picq', q);
-      sections.pictures.append(q);
-    }
-    // ---- Performance: three switches, then the report ----
-    {
-      const sw = card('How the app works', 'Each one is on or off; the words under it say what it changes.');
-      ['layerswitch', 'bgsave', 'perfswitch'].forEach(id => {
-        const f = fieldOf(id);
-        if (!f) return;
-        f.classList.add('gs-switchrow');
-        sw.append(f);
+    const ctl = (id, unit) => (get(id) ? K.kit(get(id), unit) : null);
+    // a segmented choice with our own short words on its buttons
+    const seg = (id, words) => {
+      const s = get(id);
+      if (!s) return null;
+      const g = K.segmented(s) || segAny(s);
+      if (g && words) g.querySelectorAll('button').forEach(b => (b.textContent = words[b.dataset.v] || b.textContent));
+      return [g, s]; // (the list goes with it, out of sight: the page finds it by its id)
+    };
+    // (a list with more than five options: the same segmented choice, built here)
+    const segAny = s => {
+      const g = el('span', 'ss-seg');
+      const draw = () =>
+        g.querySelectorAll('button').forEach(b => {
+          b.classList.toggle('on', b.dataset.v === s.value);
+          b.setAttribute('aria-pressed', String(b.dataset.v === s.value));
+        });
+      [...s.options].forEach(o => {
+        const b = el('button', '');
+        b.type = 'button';
+        b.dataset.v = o.value;
+        b.textContent = o.textContent;
+        b.onclick = () => {
+          if (s.value === o.value) return;
+          s.value = o.value;
+          draw();
+          s.dispatchEvent(new Event('change', { bubbles: true }));
+        };
+        g.append(b);
       });
-      const rep = card('Report', 'Updated every second while you look at it. Copy it and send it if the computer gets slow.');
-      keepHint('perfout', rep, true);
-      sections.performance.append(sw, rep);
-    }
-    // ---- Database storage ----
+      s.classList.add('ss-hidden');
+      draw();
+      return g;
+    };
+    const R = (title, desc, controls, o = {}) => K.row({ title, desc, hint: o.hint || [], ctl: [].concat(controls), cls: o.cls || '' });
+    const group = (into, title, note, rows) => {
+      if (title) into.append(el('h4', 'ss-gh', `${esc(title)}${note ? `<span>${esc(note)}</span>` : ''}`));
+      const sh = el('div', 'ss-sheet');
+      rows.filter(Boolean).forEach(r => sh.append(r));
+      into.append(sh);
+      return sh;
+    };
+    const hidden = ids =>
+      ids
+        .map(get)
+        .filter(Boolean)
+        .map(x => (x.classList.add('ss-hidden'), x));
+    // Look and size
+    group(sections.look, 'Size', '', [
+      R(
+        'Interface size',
+        'The text, buttons and boxes of this window. Race screens always fit the window.',
+        seg('uiscale', { 100: '100%', 110: '110%', 125: '125%', 150: '150%', 175: '175%', 200: '200%' }),
+        { hint: hintOf('uiscale') }
+      ),
+      R(
+        'Depth',
+        'How much cards, buttons and widgets stand up from the page.',
+        seg('depthlevel', { 0: 'Flat', 35: 'Soft lift', 55: 'Medium', 75: 'Thick card' }),
+        {
+          hint: hintOf('depthlevel')
+        }
+      )
+    ]);
+    // Units
+    group(sections.units, 'Units', '', [
+      R('Speed', 'In the tables and the PDF of a session: e.g. 12.4 km/h or 7.7 mph', seg('speedunit', { kmh: 'km/h', mph: 'mph' }), {
+        hint: hintOf('speedunit')
+      }),
+      R(
+        'Distance',
+        `A lane of ${Speed.lengthText(28.45, 'm')} is ${Speed.lengthText(28.45, 'ft')}; everything stays saved in metres`,
+        seg('distunit', { m: 'm · km', ft: 'ft · mi' }),
+        { hint: hintOf('distunit') }
+      )
+    ]);
+    // Home and club
     {
-      const st = card('Where it is saved', '');
+      group(sections.home, 'Name and welcome', '', [
+        R('App name', 'At the top of the window', ctl('appname')),
+        R('Welcome message', 'At the top of Home; empty shows the standard', ctl('welcome'))
+      ]);
+      const hasPic = !!S.homeHeader;
+      const prev = get('hdrprev') || get('hdrbox'),
+        frame = prev ? prev.closest('.homehead') || prev : null;
+      if (get('hdrprev')) {
+        // the picture moves with the arrow keys too: 1% a step, 10% with Shift
+        const p = get('hdrprev');
+        p.tabIndex = 0;
+        p.setAttribute('aria-label', 'The header picture: drag it, or move it with the arrow keys');
+        p.addEventListener('keydown', ev => {
+          const k = { ArrowLeft: ['hdrx', -1], ArrowRight: ['hdrx', 1], ArrowUp: ['hdry', -1], ArrowDown: ['hdry', 1] }[ev.key];
+          const inp = k && get(k[0]);
+          if (!inp || inp.disabled) return;
+          ev.preventDefault();
+          inp.value = String(Math.max(0, Math.min(100, (Number(inp.value) || 0) + k[1] * (ev.shiftKey ? 10 : 1))));
+          inp.dispatchEvent(new Event('input', { bubbles: true }));
+          inp.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        p.addEventListener('dblclick', () => get('hdrcenter') && get('hdrcenter').click());
+      }
+      const pos = (x, y, centre) => {
+        const wrap = el('span', 'ss-pos');
+        [
+          [x, 'Left / right'],
+          [y, 'Up / down']
+        ].forEach(([id, name]) => {
+          if (!get(id)) return;
+          const l = el('span', 'ss-posl', esc(name));
+          wrap.append(l, K.kit(get(id), '%'));
+        });
+        if (get(centre)) {
+          get(centre).classList.add('ghost', 'sm');
+          get(centre).textContent = 'Centre';
+          wrap.append(get(centre));
+        }
+        return wrap;
+      };
+      const hdrAuto = get('hdrauto');
+      if (hdrAuto) {
+        hdrAuto.classList.add('ss-switch');
+        hdrAuto.title = 'Automatic: follows the shape of the picture';
+      }
+      group(sections.home, 'Header picture', '', [
+        R('Picture', 'Across the top of Home', [ctl('hdrfile'), get('hdrclear')].filter(Boolean)),
+        hasPic && frame
+          ? R('Framing', 'Drag the picture, or click it and use the arrow keys; double-click to centre', frame, { cls: 'ss-framing' })
+          : null,
+        hasPic || get('hdrh')
+          ? R(
+              'Height',
+              hasPic
+                ? 'Automatic follows the shape of the picture; a set height is a share of the window width'
+                : 'A share of the window width',
+              [hdrAuto ? el('span', 'ss-swl', 'Automatic') : null, hdrAuto, get('hdrh') ? K.kit(get('hdrh'), '%') : null].filter(Boolean)
+            )
+          : null,
+        hasPic && get('hdrx')
+          ? R('Position', 'Exact numbers, if you like them better than dragging', pos('hdrx', 'hdry', 'hdrcenter'), { cls: 'ss-sub' })
+          : null
+      ]);
+      const logoSide = get('logoside');
+      group(sections.home, 'Club logo', 'also used by every Logo widget without a picture of its own', [
+        R('Logo', S.clubLogo ? '' : 'No logo yet', [get('logothumb'), ctl('logofile'), get('logoclear')].filter(Boolean)),
+        logoSide
+          ? R('On Home', 'Where the logo stands', [
+              (() => {
+                const g = segAny(logoSide),
+                  words = {
+                    '': 'Hidden',
+                    left: 'Left',
+                    right: 'Right',
+                    'over-left': 'On picture, left',
+                    'over-right': 'On picture, right'
+                  };
+                g.querySelectorAll('button').forEach(x => (x.textContent = words[x.dataset.v] || x.textContent));
+                return g;
+              })(),
+              logoSide
+            ])
+          : null,
+        get('logow') ? R('Width', 'A share of the header', K.kit(get('logow'), '%'), { cls: 'ss-sub' }) : null,
+        get('logox') ? R('Position', 'Inside the space of the logo', pos('logox', 'logoy', 'logocenter'), { cls: 'ss-sub' }) : null
+      ]);
+      hidden(['hdrhv', 'hdrxv', 'hdryv', 'logowv', 'logoxv', 'logoyv']).forEach(o => sections.home.append(o));
+    }
+    // Picture quality
+    group(sections.pictures, 'Uploads', '', [
+      R('Quality', 'Of the pictures you add from now on', seg('picq', { original: 'Original', high: 'High', standard: 'Standard' }), {
+        hint: hintOf('picq')
+      })
+    ]);
+    // Performance
+    {
+      const sw = (id, title) => {
+        const f = fieldOf(id);
+        const h = f ? [...f.querySelectorAll('.hint')].slice(0, 1) : [];
+        return R(title, '', ctl(id), { hint: h, cls: 'ss-switchrow' });
+      };
+      group(sections.performance, 'Drawing and saving', '', [
+        sw('layerswitch', 'Draw changing text on its own layer'),
+        sw('bgsave', 'Save changes in the background'),
+        sw('perfswitch', 'Show the Performance line on the race screen')
+      ]);
+      const rep = group(sections.performance, 'Report', 'updated every second while you look at it', []);
+      if (get('perfout')) {
+        const b = el('div', 'ss-block');
+        b.append(get('perfout'));
+        rep.append(b);
+      }
+      rep.append(R('', '', [get('perfmsg'), get('perfcopy')].filter(Boolean), { cls: 'ss-actions' }));
+    }
+    // Database storage: the format with its state, the file with a copy button, then the three numbers in one row
+    {
       const body = box.querySelector('[data-folder="general:data"] .fbody');
-      if (body) st.append(...body.childNodes);
-      sections.storage.append(st);
+      const wrap = el('div', 'ss-storage'),
+        txt = e => String((e && e.textContent) || '').trim();
+      if (body) {
+        const fmt = txt(body.querySelector('.row strong')),
+          code = body.querySelector('code'),
+          paras = [...body.querySelectorAll(':scope > p')].filter(
+            p => !p.querySelector('code') && p.id !== 'storagemsg' && !p.closest('.gs-stats')
+          ),
+          about = paras.find(p => !p.classList.contains('muted')),
+          stats = body.querySelector('.gs-stats'),
+          note = paras.find(p => p.classList.contains('muted'));
+        const pill = el('span', 'ss-pill ok', esc(fmt || 'Database'));
+        const copy = el('button', 'btn ghost', 'Copy');
+        copy.type = 'button';
+        copy.onclick = async () => {
+          try {
+            await navigator.clipboard.writeText(txt(code));
+            copy.textContent = 'Copied';
+            setTimeout(() => (copy.textContent = 'Copy'), 1500);
+          } catch {
+            /* the clipboard is not available */
+          }
+        };
+        if (code) code.classList.add('ss-path');
+        group(wrap, 'Where it is saved', '', [
+          R('Format', '', [pill, get('sqliteactivate')].filter(Boolean), { hint: about ? [about] : [] }),
+          code ? R('File', '', [code, copy]) : null
+        ]);
+        if (stats) {
+          wrap.append(el('h4', 'ss-gh', 'Room it takes'));
+          wrap.append(stats);
+        }
+        if (note) {
+          note.classList.add('ss-foot');
+          wrap.append(note);
+        }
+        if (get('storagemsg')) wrap.append(get('storagemsg'));
+      }
+      sections.storage.append(wrap);
     }
-    // ---- Updates and help: three cards side by side ----
+    // Updates and help
     {
-      const grid = el('div', 'gs-grid3');
-      const up = card('Updates', 'Home tells you when a newer version is out. Nothing is downloaded by itself.');
-      const uf = keepHint('updcheck', up);
-      if (uf) uf.classList.add('gs-switchrow');
-      const guide = card('Setup guide', 'A track, drivers, cars, the timing hardware, a sensor test and a 3-lap test race.');
-      const gf = fieldOf('guiderun');
-      if (gf) {
-        gf.classList.add('gs-field', 'gs-titled');
-        guide.append(gf);
-      }
-      const diag = card('Diagnostics', 'One text file for a bug report. Look it over before you send it.');
-      const df = fieldOf('diagsave');
-      if (df) {
-        df.classList.add('gs-field', 'gs-titled');
-        diag.append(df);
-      }
-      grid.append(up, diag, guide);
-      sections.updates.append(grid);
+      const uf = fieldOf('updcheck');
+      group(sections.updates, 'Updates', '', [
+        R(
+          'Check for a newer version',
+          'When the app starts, at most twice a day. Nothing is sent, nothing installs itself.',
+          ctl('updcheck'),
+          {
+            hint: uf ? [...uf.querySelectorAll(':scope > .hint')].slice(0, 1) : [],
+            cls: 'ss-switchrow'
+          }
+        ),
+        R('Now', '', [get('updstatus'), get('updopen'), get('updnow')].filter(Boolean))
+      ]);
+      group(sections.updates, 'Help', '', [
+        R(
+          'Diagnostics',
+          'One text file for a bug report; look it over before you send it',
+          [get('diagmsg'), get('diagsave')].filter(Boolean)
+        ),
+        R('Setup guide', 'A track, drivers, cars, the hardware, a sensor test and a 3-lap test race', get('guiderun'))
+      ]);
     }
+    requestAnimationFrame(() => K.folds(page));
 
     // the folders are empty now: they and their Open all / Close all go
     box.querySelectorAll(':scope > details, :scope > .fgtools, :scope > .row').forEach(n => n.remove());
@@ -267,6 +353,8 @@ const GeneralPage = (() => {
     topic = id;
     document.querySelectorAll('.gs-topic').forEach(s => (s.hidden = s.dataset.gtopic !== id));
     document.querySelectorAll('[data-gtopic-btn]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.gtopicBtn === id)));
+    const shown = document.querySelector(`.gs-topic[data-gtopic="${id}"]`);
+    if (shown && typeof SettingsSheet !== 'undefined') SettingsSheet.folds(shown);
     const c = document.querySelector('.gs-canvas');
     if (c && c.scrollIntoView && c.getBoundingClientRect && c.getBoundingClientRect().top < 0) c.scrollIntoView({ block: 'start' });
   }
@@ -281,7 +369,12 @@ const SettingsRail = (() => {
   const PAGES = {
     theme: { lead: 'The colours of the app and of the Live Race pages.' },
     director: { lead: 'How the Race Director looks, and what its buttons add or take away.' },
-    calculations: { lead: 'How pace is measured and what every racing system adds.', tabs: '.calc-rail button', tabsLabel: 'Topics' },
+    calculations: {
+      lead: 'How pace is measured and what every racing system adds.',
+      tabs: '.calc-rail button',
+      tabsLabel: 'Topics',
+      body: '.calc-content'
+    },
     network: { lead: 'Phones, tablets and other computers on your network.', tabs: '.connections-tabs > .tab', tabsLabel: 'Connections' },
     hardware: { lead: 'What counts the laps, and how it is set up.', tabs: '#hwtabs > .tab', tabsLabel: 'Interfaces' },
     transfer: { lead: 'Backups, sharing items, and content packs.', tabs: '.transfer-views > button', tabsLabel: 'Views' },
@@ -406,6 +499,16 @@ const SettingsRail = (() => {
         if (s.id === cur && !s.el.open) s.el.open = true;
       });
       canvas.classList.toggle('sr-hassecs', secs.length > 0);
+      // (2.4.0) the Settings Sheet: the settings of what is shown become slim rows (settingssheet.js); only once per part of the page
+      if (typeof SettingsSheet !== 'undefined') {
+        const parts = secs.length
+          ? secs.filter(s => !s.el.hidden).map(s => s.el.querySelector(':scope > .tm-content') || s.el)
+          : [...canvas.querySelectorAll(cfg.body || ':scope > *')].filter(n => !n.matches('.sr-tabsource,#hwuse,#hwnote'));
+        parts.forEach(p => {
+          if (SettingsSheet.fresh(p)) SettingsSheet.convert(p);
+          SettingsSheet.folds(p);
+        });
+      }
       const title = (typeof SETTINGS_TABS !== 'undefined' && (SETTINGS_TABS.find(t => t[0] === key) || [])[1]) || '';
       const nextSig = JSON.stringify([
         key,

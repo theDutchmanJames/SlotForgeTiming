@@ -3515,3 +3515,201 @@ html .help-hub .help-rail details>summary:hover{background:color-mix(in srgb,var
 html .help-hub .help-rail details>.help-topic{padding-left:22px}
 html .help-hub .help-rail .help-offline{margin:16px 10px 0;font-size:12px;color:var(--muted)}
 html .help-hub .help-reader .help-plain,html .help-hub .help-reader [class*="plain"]{border-left-color:var(--accent)}
+/* 2.4.0 Settings Sheet (settingssheet.js): every page of App Settings. A page head, then groups: a small heading and one sheet with thin lines between
+   slim two-half rows (the name and one line on the left, the control on the right). One small control family, 30px high. */
+:root{--ss-line:color-mix(in srgb,var(--line) 70%,var(--panel))}
+/* the page head: the title of the topic or section, one line under it */
+html .gs-head{margin:0 0 20px;gap:0}
+html .gs-head .gs-headico{display:none}
+html .gs-head h2{font-size:26px}
+html .gs-head p{margin-top:4px;font-size:13px}
+html #settingsbox .sr-canvas .sr-sec>summary{flex-direction:column;align-items:flex-start;gap:4px;padding:0 0 18px}
+html #settingsbox .sr-canvas .sr-sec>summary>i{display:none}
+html #settingsbox .sr-canvas .sr-sec>summary>strong{font-size:26px}
+html #settingsbox .sr-canvas .sr-sec>summary>span{margin:0;padding:0;border:0;font-size:13px}
+html #settingsbox .sr-canvas .sr-sec>.tm-content{padding:0;border:0;background:none;gap:0}
+html #settingsbox .sr-canvas .tm-say{display:none}
+.gs-topic,.sr-canvas{max-width:none}
+.gs-topic>*,.sr-canvas>*{max-width:880px}
+/* groups */
+.ss-gh{display:flex;align-items:baseline;gap:10px;margin:22px 2px 8px;font:600 10.5px "Segoe UI",system-ui,sans-serif;font-style:normal;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html #view .ss-gh{font:600 10.5px "Segoe UI",system-ui,sans-serif;font-style:normal;letter-spacing:.14em;text-transform:uppercase}
+.ss-gh:first-child{margin-top:0}
+.ss-gh span{font-size:12px;font-weight:400;letter-spacing:0;text-transform:none;color:color-mix(in srgb,var(--muted) 75%,var(--bg))}
+.ss-sheet{margin:0 0 18px;border:1px solid var(--ss-line);border-radius:10px;background:var(--panel);overflow:hidden}
+.ss-sheet:empty{display:none}
+/* rows */
+html .ss-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 20px;min-height:52px;margin:0;padding:10px 16px;border-top:1px solid var(--ss-line);max-width:none!important}
+.ss-sheet>:first-child{border-top:0}
+.ss-t{min-width:0}
+.ss-t>b{display:block;font-size:13.5px;font-weight:600;color:var(--ink)}
+.ss-t>.ss-desc{display:block;font-size:12.5px;line-height:1.4;color:var(--muted)}
+.ss-t>.ss-hint{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden;margin:2px 0 0;font-size:12.5px;line-height:1.45;color:var(--muted);max-width:72ch}
+.ss-t>.ss-hint.open{display:block;-webkit-line-clamp:unset}
+.ss-t>.ss-desc+.ss-hint{color:color-mix(in srgb,var(--muted) 80%,var(--bg))}
+.ss-more{margin:2px 0 0;padding:0;border:0;background:none;color:var(--muted);font:inherit;font-size:12px;text-decoration:underline dotted;text-underline-offset:3px;cursor:pointer}
+.ss-more:hover{color:var(--ink)}
+.ss-ctl{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;min-width:0}
+.ss-row.ss-noctl{grid-template-columns:1fr}
+.ss-row.ss-noctl>.ss-ctl{display:none}
+.ss-row.ss-actions{grid-template-columns:1fr;min-height:0}
+.ss-row.ss-actions>.ss-t{display:none}
+.ss-row.ss-actions>.ss-ctl{justify-content:flex-start}
+.ss-row.ss-headrow{min-height:0;padding-bottom:6px;background:color-mix(in srgb,var(--bg) 18%,var(--panel))}
+.ss-row.ss-sub{padding-left:38px;background:color-mix(in srgb,var(--bg) 22%,var(--panel))}
+.ss-row.ss-sub .ss-t>b{font-weight:500;color:color-mix(in srgb,var(--ink) 85%,var(--muted))}
+.ss-row.ss-off>*{opacity:.45}
+.ss-note{margin:0;padding:10px 16px;border-top:1px solid var(--ss-line);font-size:12.5px;line-height:1.5;color:var(--muted)}
+.ss-sheet>.ss-block{padding:12px 16px;border-top:1px solid var(--ss-line)}
+.ss-block:not(.ss-sheet>*){margin:0 0 18px}
+.ss-nest{margin:0}
+.ss-fold{margin:0 0 18px;border:1px solid var(--ss-line);border-radius:10px;background:var(--panel);overflow:hidden}
+.ss-fold>summary{padding:12px 16px;font-size:13.5px;font-weight:600;cursor:pointer}
+.ss-fold>.ss-foldbody>.ss-sheet{margin:0;border:0;border-top:1px solid var(--ss-line);border-radius:0}
+.ss-hidden{display:none!important}
+/* the kit: every control 30px high */
+.ss-ctl :is(input,select,button,.btn){min-height:30px}
+html .ss-ctl .btn:not(.big){min-height:30px;padding:0 12px;font-size:12.5px}
+html .ss-ctl select,html .ss-ctl select.ss-select{min-height:30px;min-width:190px;max-width:320px;padding:0 28px 0 10px;border-radius:7px;font-size:13px;width:auto}
+html .ss-ctl input.ss-text,html .ss-ctl input[type=text],html .ss-ctl input[type=password],html .ss-ctl input:not([type]){min-height:30px;width:280px;max-width:100%;padding:0 10px;border-radius:7px;font-size:13px}
+html .ss-ctl textarea{width:100%;font-size:13px}
+.ss-row:has(textarea){grid-template-columns:1fr}
+/* switch */
+html input.ss-switch{appearance:none;-webkit-appearance:none;position:relative;flex:none;width:34px;height:20px;min-height:0;margin:0;border:0;border-radius:10px;background:var(--line);cursor:pointer;transition:background .12s}
+html input.ss-switch::after{content:'';position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .12s}
+html input.ss-switch:checked{background:var(--accent-fill,var(--accent))}
+html input.ss-switch:checked::after{left:16px}
+html input.ss-switch:disabled{opacity:.45;cursor:not-allowed}
+html input.ss-switch:focus-visible{outline:3px solid #4c9aff;outline-offset:2px}
+.ss-swl{font-size:12.5px;color:var(--muted)}
+/* segmented choice */
+.ss-seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+html .ss-seg>button{min-height:26px;padding:0 10px;border:0;border-radius:6px;background:transparent;box-shadow:none;color:var(--muted);font:500 12.5px "Segoe UI",system-ui,sans-serif;white-space:nowrap;cursor:pointer}
+html .ss-seg>button:hover:not(:disabled){background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
+html .ss-seg>button.on{background:color-mix(in srgb,var(--ink) 13%,var(--panel));color:var(--ink);font-weight:600}
+html .ss-seg>button:disabled{opacity:.45;cursor:not-allowed}
+html .ss-seg>button:focus-visible{outline:3px solid #4c9aff;outline-offset:1px}
+/* stepper */
+.ss-step{display:inline-flex;align-items:center;height:30px;border:1px solid var(--line);border-radius:7px;background:var(--bg);overflow:hidden}
+html .ss-step>.ss-stepb{display:grid;place-items:center;width:28px;min-width:0;height:100%;min-height:0;padding:0;border:0;border-radius:0;background:transparent;color:var(--muted);font-size:15px;line-height:1;cursor:pointer}
+html .ss-step>.ss-stepb:hover{background:color-mix(in srgb,var(--ink) 8%,transparent);color:var(--ink)}
+.ss-step>.ss-stepb:first-child{border-right:1px solid var(--line)}
+html .ss-step>input{width:64px;height:100%;min-height:0;padding:0 4px;border:0;border-radius:0;background:transparent;box-shadow:none;text-align:center;font:500 13px 'SF Roboto Mono',Consolas,monospace;-moz-appearance:textfield}
+.ss-step>input::-webkit-inner-spin-button,.ss-step>input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.ss-step>input+.ss-stepb{border-left:1px solid var(--line)}
+.ss-unit{padding:0 8px 0 2px;font-size:11.5px;color:var(--muted)}
+.ss-step.off{opacity:.45}
+.ss-step.off>.ss-stepb{pointer-events:none}
+/* files */
+html .ss-ctl input[type=file]{width:auto;max-width:240px;min-height:0;font-size:12px;color:var(--muted)}
+html .ss-ctl input[type=file]::file-selector-button{min-height:30px;margin-right:8px;padding:0 12px;border:1px solid var(--line);border-radius:7px;background:transparent;color:var(--ink);font:400 12.5px "Segoe UI",system-ui,sans-serif;cursor:pointer}
+html .ss-ctl .optimg,html .ss-ctl #logothumb{width:auto;height:40px;max-width:80px;border-radius:6px;border:1px solid var(--line);object-fit:contain;background:var(--bg)}
+/* status words and messages in the right half */
+html .ss-ctl>:is(span,p,output):not(.ss-seg):not(.ss-step):not(.ss-swl):not(.ss-pos){margin:0;font-size:12.5px;color:var(--muted)}
+html .ss-ctl>p:empty,html .ss-ctl>span:empty{display:none}
+/* position: two steppers and Centre */
+.ss-pos{display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px 8px}
+.ss-posl{font-size:12px;color:var(--muted)}
+/* the framing preview: dragged, or moved with the arrow keys */
+.ss-row.ss-framing{grid-template-columns:minmax(0,1fr) minmax(260px,420px)}
+.ss-framing .ss-ctl{display:block}
+.ss-framing .ss-ctl .homehead,.ss-framing .ss-ctl>img{max-width:100%;margin:0;border-radius:7px;overflow:hidden;border:1px solid var(--line)}
+.ss-framing #hdrprev{max-width:100%;border-radius:7px}
+.ss-framing #hdrprev:focus-visible{outline:3px solid #4c9aff;outline-offset:2px}
+.ss-framing #hdrprev.movable{cursor:grab}
+.ss-framing #hdrprev.dragging{cursor:grabbing}
+/* the report and other blocks inside a sheet */
+.ss-sheet>.ss-block>.perfout{margin:0;max-height:240px;overflow:auto;padding:10px 12px;border:1px solid var(--ss-line);border-radius:8px;background:var(--bg);font:500 12px/1.5 'SF Roboto Mono',Consolas,monospace}
+/* the storage numbers: one row of three */
+.ss-storage .gs-stats{margin:0 0 18px;gap:0;border:1px solid var(--ss-line);border-radius:10px;background:var(--panel);overflow:hidden}
+.ss-storage .gs-stat{border:0;border-left:1px solid var(--ss-line);border-radius:0;background:none}
+.ss-storage .gs-stat:first-child{border-left:0}
+.ss-storage .gs-stat b{font-size:18px}
+.ss-storage code{font-size:12px;overflow-wrap:anywhere}
+@media(max-width:900px){html .ss-row{grid-template-columns:1fr}.ss-ctl{justify-content:flex-start}.ss-row.ss-framing{grid-template-columns:1fr}}
+.gs-topic{gap:0}
+html .gs-head+.ss-gh,html #settingsbox .sr-tabsource+.ss-gh{margin-top:0}
+.ss-t>.ss-desc+.ss-hint:not(.open){display:none}
+.ss-t>.ss-desc+.ss-hint.open{margin-top:6px}
+html .ss-step>.ss-stepb{font:400 16px/1 "Segoe UI",system-ui,sans-serif}
+/* a state as a pill with a dot, a path, a line under a group */
+.ss-pill{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;background:color-mix(in srgb,var(--ink) 8%,var(--panel));font-size:12px;color:color-mix(in srgb,var(--ink) 85%,var(--muted))}
+.ss-pill::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.ss-pill.ok{background:color-mix(in srgb,#3ecf8e 14%,var(--panel))}
+.ss-pill.ok::before{background:#3ecf8e}
+.ss-pill.warn{background:color-mix(in srgb,#f2b705 14%,var(--panel))}
+.ss-pill.warn::before{background:#f2b705}
+html .ss-ctl code.ss-path{display:inline-block;max-width:460px;padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg);font:12px 'SF Roboto Mono',Consolas,monospace;color:color-mix(in srgb,var(--ink) 85%,var(--muted));overflow-wrap:anywhere;text-align:left}
+.ss-foot{margin:-8px 2px 18px;font-size:12px;color:var(--muted)}
+/* Settings Sheet on the other pages: groups always take the whole width (also inside a page's own grid); words before the first group are a quiet lead */
+.ss-sheet,.ss-gh,.ss-note,.ss-lead,.ss-nest,.ss-fold{grid-column:1 / -1}
+html .ss-nest{display:block;width:100%;max-width:none;padding:0;border:0;background:none;box-shadow:none}
+html #settingsbox .sr-canvas .sr-sec>summary{border-bottom:0!important;box-shadow:none!important}
+html #settingsbox .sr-canvas .sr-sec>.tm-content>p:first-child,html #settingsbox .sr-canvas .sr-sec>.tm-content>.ss-note:first-child,html #settingsbox .sr-canvas .ss-lead{margin:-6px 0 16px;padding:0;border:0;max-width:78ch;font-size:13px;line-height:1.55;color:var(--muted)}
+.ss-sheet>.ss-note{display:block}
+/* choice buttons as a segmented choice: the chosen one is primary or pressed */
+html .ss-btnseg>.btn:not(.big){min-height:26px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:var(--muted);font-weight:500;box-shadow:none}
+html .ss-btnseg>.btn:not(.big):hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
+html .ss-btnseg>.btn.primary:not(.big),html .ss-btnseg>.btn[aria-pressed="true"]:not(.big){background:color-mix(in srgb,var(--ink) 13%,var(--panel));color:var(--ink);font-weight:600}
+.ss-row.ss-actions>.ss-ctl{justify-content:flex-end}
+.ss-row.ss-actions>.ss-ctl>:is(span,p,output):first-child{margin-right:auto!important}
+/* Calculations inside the Settings Sheet: no cards of its own, its head a quiet subheading, its previews quiet boxes */
+html .sr-canvas .calc-content>header{margin:0 0 14px;padding:0;border:0;background:none;box-shadow:none}
+html .sr-canvas .calc-content>header .eyebrow{color:var(--muted)}
+html .sr-canvas .calc-content>header h3{margin:2px 0 0;font-size:20px}
+html .sr-canvas .calc-content :is(.calc-example,.calc-policy,.calc-lab){margin:0 0 18px;padding:0;border:0;border-radius:0;background:none;box-shadow:none}
+html .sr-canvas .calc-content .calc-lab>summary{padding:10px 16px}
+html .sr-canvas .calc-content .ss-fold{border:1px solid var(--ss-line);border-radius:10px;background:var(--panel)}
+html .sr-canvas .calc-content .ss-foldbody{padding:0 16px 14px}
+html .sr-canvas .calc-content .ss-foldbody>.ss-sheet,html .sr-canvas .calc-content .ss-foldbody .ss-sheet{border:1px solid var(--ss-line);border-radius:10px}
+html .sr-canvas .calc-content .calc-preview{display:block;margin:0 0 18px;padding:12px 16px;border:1px solid var(--ss-line);border-radius:10px;background:color-mix(in srgb,var(--bg) 40%,var(--panel))}
+html .sr-canvas .calc-content .calc-intro{margin:0 0 16px;max-width:78ch;font-size:13px;color:var(--muted)}
+/* Timing Hardware: the interface in use and the "not counting laps" note as calm rows of the Settings Sheet */
+html .sr-canvas #hwuse{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 20px;margin:0 0 12px;padding:12px 16px;border:1px solid var(--ss-line);border-radius:10px;background:var(--panel);box-shadow:none}
+html .sr-canvas #hwuse::before,html .sr-canvas #hwuse::after{display:none}
+html .sr-canvas #hwuse .hwuse-ico{display:none}
+html .sr-canvas #hwuse .hwuse-now{grid-column:1;display:flex;flex-direction:column;gap:1px;min-width:0}
+html .sr-canvas #hwuse .hwuse-k{font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+html .sr-canvas #hwuse .hwuse-name{font:600 15px/1.3 "Segoe UI",system-ui,sans-serif;font-style:normal;text-transform:none;letter-spacing:0;color:var(--ink)}
+html .sr-canvas #hwuse .hwuse-state{font-size:12.5px;color:var(--muted)}
+html .sr-canvas #hwuse .hwuse-pick{grid-column:2;grid-row:1;display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin:0}
+html .sr-canvas #hwuse .hwuse-q{font-size:12px;color:var(--muted)}
+html .sr-canvas #hwuse select{min-height:30px;min-width:220px;padding:0 28px 0 10px;border-radius:7px;font-size:13px}
+html .sr-canvas #hwuse .hwuse-note{grid-column:1 / -1;margin:6px 0 0;padding:8px 0 0;border-top:1px solid var(--ss-line);font-size:12.5px;line-height:1.5;color:var(--muted);max-width:none}
+html .sr-canvas #hwnote{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:2px 20px;margin:0 0 22px;padding:10px 16px;border:1px solid var(--ss-line);border-radius:10px;background:var(--panel);box-shadow:none}
+html .sr-canvas #hwnote>strong{display:flex;align-items:center;gap:8px;font-size:13.5px}
+html .sr-canvas #hwnote>strong::before{content:'';width:8px;height:8px;border-radius:50%;background:#f2b705;flex:none}
+html .sr-canvas #hwnote>span{grid-column:1;font-size:12.5px;line-height:1.45;color:var(--muted)}
+html .sr-canvas #hwnote>.btn{grid-column:2;grid-row:1 / span 2;min-height:30px;font-size:12.5px}
+.ss-note:empty{display:none}
+/* (Settings Sheet) a nest is only a box around rows: no grid or flex of its own; sheets use the full width */
+html #settingsbox .ss-nest{display:block;width:auto;max-width:none;margin:0;padding:0;border:0;background:none;box-shadow:none}
+html #settingsbox .sr-canvas .sr-sec>.tm-content{display:block}
+html #settingsbox .ss-sheet{width:auto;max-width:880px}
+/* a line of words between groups: no line above it, a little air */
+.ss-note:not(.ss-sheet>*){margin:-8px 0 18px;padding:0 2px;border:0}
+/* the short description and More on one line */
+.ss-t>.ss-desc:has(~.ss-more){display:inline}
+.ss-t>.ss-desc~.ss-more{margin-left:8px;font-size:11.5px}
+/* (Settings Sheet) a result waiting for the shared library: one quiet row */
+html #settingsbox .sr-canvas .paddock-delivery{display:grid;grid-template-columns:1fr auto;gap:2px 16px;margin:0 0 10px;padding:12px 16px;border:1px solid var(--ss-line);border-radius:10px;background:var(--panel)}
+html #settingsbox .sr-canvas .paddock-delivery>span{font-size:12.5px;color:var(--muted)}
+html #settingsbox .sr-canvas .paddock-delivery>p{grid-column:1/-1;margin:0;font-size:12.5px;color:var(--muted)}
+html #settingsbox .sr-canvas .sr-sec>summary>span::first-letter{text-transform:uppercase}
+/* (Settings Sheet) group headings keep their quiet small capitals on every page */
+html #settingsbox .ss-gh{font:600 10.5px "Segoe UI",system-ui,sans-serif;font-style:normal;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.ss-gh+.ss-note:not(.ss-sheet>*){margin-top:-4px}
+/* a sheet that is only a row of buttons: no frame, the buttons on the left */
+html #settingsbox .ss-sheet:has(>.ss-actions:only-child){border:0;background:none;border-radius:0}
+html #settingsbox .ss-sheet>.ss-actions:only-child{padding:0;min-height:0}
+/* the page's own notice (Plugins): a quiet line, not a warning */
+html #settingsbox .sr-canvas .plugin-notice{margin:0 0 18px;padding:0 2px;border:0;background:none;color:var(--muted);font-size:13px}
+html #view #settingsbox :is(h3,h4,h5).ss-gh:not(.x):not(.y){font:600 10.5px "Segoe UI",system-ui,sans-serif;font-style:normal;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+/* (Settings Sheet) Dealership: the page head and its sections without the old frames */
+html #settingsbox .sr-canvas .dealership-settings>header{display:block;max-width:880px;margin:0 0 18px;padding:0;border:0;background:none;box-shadow:none}
+html #settingsbox .sr-canvas .dealership-settings>header .muted:first-child{display:none}
+html #settingsbox .sr-canvas .dealership-settings>header h2{margin:0;font-size:26px}
+html #settingsbox .sr-canvas .dealership-settings>header p{margin:4px 0 0;font-size:13px;color:var(--muted)}
+html #settingsbox .sr-canvas .paddock-shell,html #settingsbox .sr-canvas .paddock-shell>main{display:block;max-width:880px;margin:0;padding:0;border:0;background:none;box-shadow:none}
+html #settingsbox .sr-canvas .paddock-shell>main>section.sr-sec:not(.x){margin:0 0 8px;padding:0;border:0;border-radius:0;background:none;box-shadow:none}
+html #settingsbox .sr-canvas .paddock-shell>main>p{margin:0 0 14px;font-size:13px;color:var(--muted)}
