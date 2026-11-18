@@ -3865,3 +3865,51 @@ html body .rsform.sy.sy .sy-row .ss-step>input{width:64px;height:100%;min-height
 html body .rsform.sy.sy .sy-row .ss-step>input{font-size:13px!important;font-weight:500!important;height:100%!important;min-height:0!important}
 html #settingsbox .sn.ss-intro>p{max-width:none!important;margin:0}
 html #settingsbox .sn.ss-intro{max-width:880px}
+/* (System Sheet) clearer groups: a sheet, the Page Note and every box of information sit a little darker than the window around them */
+.rsform.sy{--sy-box:color-mix(in srgb,var(--bg) 55%,var(--panel));--sy-box2:color-mix(in srgb,var(--bg) 75%,var(--panel))}
+html body .rsform.sy.sy .fgrid.sy-sheet{background:var(--sy-box)}
+html .rsform.sy .sn.sy-note{background:var(--sy-box)}
+html .rsform.sy details.rssec :is(.vr-info,.mc-info,.rs-info,.rsinfo,.fu-math,.twtable,.listfield table,.rsstrip,[class$="-info"],[class*="-empty"]){background:var(--sy-box2);border:1px solid var(--ss-line,var(--line));border-radius:8px}
+/* the words that explain a section, between its sheets: quiet, not a box */
+html .rsform.sy details.rssec .sy-words{margin:10px 2px 14px;max-width:78ch;font-size:12.5px;line-height:1.5;color:var(--muted)}
+/* a sheet inside a sub group has air above its heading */
+html .rsform.sy details.rssec>.sy-sheet+.sy-sheet,html .rsform.sy details.rssec>*+.sy-sheet{margin-top:10px}
+/* the rows of the editors that draw their own fields: the name left, the control right, on one line */
+html body .rsform.sy.sy .sy-row>.ss-ctl>select{min-width:220px}
+html body .rsform.sy.sy label.field.sy-row{cursor:default}
+/* (System Sheet) a sheet has no padding of its own (an editor's grid or info box may have had some); hidden parts stay hidden */
+html body .rsform.sy.sy .fgrid.sy-sheet{display:block;padding:0;gap:0}
+html body .rsform.sy.sy .fgrid.sy-sheet [hidden]{display:none!important}
+/* a row inside a box of its own in the sheet looks like every other row */
+html body .rsform.sy.sy .fgrid.sy-sheet>div:not(.field)>.field.sy-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 20px;min-height:52px;margin:0;padding:10px 16px;border:0;border-top:1px solid var(--ss-line,var(--line));background:none}
+html body .rsform.sy.sy .fgrid.sy-sheet>div:not(.field):first-child>.field.sy-row:first-child{border-top:0}
+/* words inside a sheet: a quiet last line */
+html body .rsform.sy.sy .fgrid.sy-sheet>p.sy-boxwords{margin:0;padding:10px 16px;border-top:1px solid var(--ss-line,var(--line));font-size:12.5px;line-height:1.5;color:var(--muted)}
+html body .rsform.sy.sy .fgrid.sy-sheet>p.sy-boxwords:first-child{border-top:0}
+/* (System Sheet) an editor's own id-rules (#vr-form .fgrid, .vr-info, .rssec>p) give way: a sheet sits flush, words keep the sheet's margins */
+html body .rsform.sy.sy .fgrid.sy-sheet{padding:0!important;margin-left:0!important;margin-right:0!important}
+html body .rsform.sy.sy details.rssec>p.sy-words{margin:10px 2px 14px!important}
+/* (System Sheet) an editor that opens from a list on a page is a window over the page, as the editors of the Database systems are */
+.sy-backdrop{position:fixed;inset:0;z-index:900;background:rgba(6,8,11,.62);backdrop-filter:blur(2px)}
+html .rsform.rspage.sy-pop{position:fixed;z-index:901;top:30px;bottom:30px;left:50%;transform:translateX(-50%);width:min(1240px,calc(100vw - 60px));display:flex;flex-direction:column;margin:0;border:1px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:0 30px 80px rgba(0,0,0,.55);overflow:hidden}
+html .rsform.rspage.sy-pop .rshd{border-radius:0;flex:none}
+html .rsform.rspage.sy-pop .rsbody{flex:1 1 auto;min-height:0;overflow:hidden;align-items:stretch}
+html .rsform.rspage.sy-pop .rsrail{position:static;max-height:none;overflow:auto;align-self:stretch;background:color-mix(in srgb,var(--bg) 30%,var(--panel));border-right:1px solid var(--line)}
+html .rsform.rspage.sy-pop .rsmain{overflow:auto;min-height:0}
+html .rsform.rspage.sy-pop .rsfoot{position:static;flex:none;border-radius:0}
+html:has(.rsform.sy-pop) :is(body,#view){overflow:hidden}
+@media(max-width:700px){html .rsform.rspage.sy-pop{top:10px;bottom:10px;width:calc(100vw - 20px)}}
+/* (System Sheet) every editor: the name in the header as a Barlow title; Back and Save on the right of the bar; a checkbox on a card as the switch */
+html body .rsform.sy .rshd .rstitle input:is([type=text],:not([type])){font:italic 700 24px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.01em}
+html body .rsform.sy .rsfoot{display:flex;align-items:center;justify-content:flex-end;gap:10px}
+html body .rsform.sy .rsfoot>:is(.error,[role=alert],.rsdef,.rsmsg,.ro-msg):first-child{margin-right:auto}
+html body .rsform.sy .rsfoot>.error:empty+.rsdef,html body .rsform.sy .rsfoot>[role=alert]:empty+.rsdef{margin-right:auto}
+html .rsform.sy label.sy-swlabel{display:inline-flex;align-items:center;gap:10px;font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer}
+/* (System Sheet) a choice of a few buttons with a name and a line each (Virtual Rival: Comparison only / Race competitor): the choice cards of the other systems */
+html body .rsform.sy [class$="-choices"]{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:0;padding:0}
+html body .rsform.sy [class$="-choices"]>button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-height:0;height:auto;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--sy-box,var(--bg));box-shadow:none;text-align:left;white-space:normal;cursor:pointer}
+html body .rsform.sy [class$="-choices"]>button>strong{font-size:13.5px;font-weight:600;color:var(--ink)}
+html body .rsform.sy [class$="-choices"]>button>small{font-size:12.5px;line-height:1.4;color:var(--muted)}
+html body .rsform.sy [class$="-choices"]>button:hover{border-color:color-mix(in srgb,var(--ink) 25%,var(--line))}
+html body .rsform.sy [class$="-choices"]>button[aria-pressed=true]{border-color:var(--c,var(--accent));background:color-mix(in srgb,var(--c,var(--accent)) 12%,var(--panel))}
+html body .rsform.sy .rsfoot>:is(.error,[role=alert]):not(:empty)~.rsdef{margin-right:0}

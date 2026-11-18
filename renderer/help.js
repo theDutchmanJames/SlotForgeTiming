@@ -443,10 +443,10 @@ const Help = (() => {
           note: 'The form with a rail, in the colour of the system',
           body: `
         <ul>
-          <li>The form of a <b>Penalty</b>, <b>Damage</b>, <b>Weather</b> or <b>Tyre Wear System</b> looks like the form of a race setup, in the colour of its tab: yellow for penalties, red for damage, blue for weather, purple for tyre wear. They stay separate systems.</li>
-          <li>At the top: the name, pills with the main facts, and <b>Ready to use</b> (green) or <b>Give it a name</b> (amber). The note at the top says what the system is, then reads it back to you <b>in plain words</b> while you type, and where you use it.</li>
-          <li>All sections are on one page, one under the other. The <b>rail</b> is its table of contents: a click scrolls to a section, and while you scroll it shows where you are. A row has a short note, and a small dot where something is changed (red) or missing (amber). Penalty: Basics, Special penalties, Disqualification and fuel. Damage: Basics, Levels, Incidents, and under <b>Only if you need it</b> Car failures and Penalty points. Weather: Basics, The rain, Tyres and penalties, and under <b>Only if you need it</b> Hindering the cars and Track conditions. Tyre wear: Wear, Worn tyres, Pit stops and sets, Warnings, and under <b>Only if you need it</b> Temperature and Weather.</li>
-          <li><b>Used by</b> lists the race setups that use the system. Penalty says what 12 points come to in seconds, Damage draws the levels as a bar, Weather draws the rain over the race, Tyre wear says how long a new tyre lasts. What is stored does not change, so every system opens as it was.</li>
+          <li>The form of a <b>Penalty</b>, <b>Damage</b>, <b>Weather</b> or <b>Tyre Wear System</b> has the colour of its tab: yellow, red, blue, purple. They stay separate systems.</li>
+          <li>At the top: the name and <b>Ready to use</b> (green) or <b>Give it a name</b> (amber). The note says what the system is, then reads it back to you <b>in plain words</b> while you type.</li>
+          <li>All sections are on one page. The <b>rail</b> is its table of contents: a click scrolls there, and it shows where you are. A dot marks a change (red) or something missing (amber). Penalty: Points and what they cost, Named penalties, and under <b>Only if you need it</b> Disqualification. Damage: The repair stop, Damage levels, Incidents, and under <b>Only if you need it</b> Car failures. Weather: The rain, Tyres, and under <b>Only if you need it</b> Hindering the cars and Track conditions. Tyre wear: Wear, Worn tyres, Pit stops and sets, Warnings, and under <b>Only if you need it</b> Temperature and Weather.</li>
+          <li><b>Used by</b> lists the race setups that use the system. What is stored does not change, so every system opens as it was.</li>
         </ul>`
         },
         {
@@ -457,8 +457,8 @@ const Help = (() => {
         <ul>
           <li>The form of a <b>Safety Car</b>, <b>Push and Save</b> or <b>Fuel System</b> has the same frame as the other systems (see the folder before this one), in the colour of its tab: orange, lime and green. They stay separate systems, and what is stored does not change, so every system opens as it was.</li>
           <li>Safety car: <b>Behind the Safety Car</b> (a reference Track, target pace, the penalty points and quicker pit work) and, under <b>Only if you need it</b>, <b>Random Flags</b>. The rules apply whenever yellow is raised, including Track Call. A bar shows where in the race a flag can come, and the words say how many flags and how long each lasts.</li>
-          <li>Push and save: <b>Basics</b> (three ready-made systems as cards), <b>Pace</b> (a bar from flat out to the most saving pace), <b>Wear</b>, and under <b>Only if you need it</b> <b>Which laps count</b>. A most saving pace that is not above the normal pace is told at once and cannot be saved.</li>
-          <li>Fuel: <b>Basics</b> has tank capacity, fuel per lap and refuel speed, with live estimates for a full tank and an empty-to-full stop. <b>Pace reference</b> optionally takes a Track target time or a Manual time for Push &amp; Save. <b>Empty tank</b> says what happens when there is no fuel left.</li>
+          <li>Push and save: <b>What it changes</b> (three ready-made systems as cards), <b>Push and save</b> (a bar from flat out to the most saving pace), <b>How much</b>, and under <b>Only if you need it</b> <b>Which laps count</b>. A most saving pace that is not above the normal pace is told at once and cannot be saved.</li>
+          <li>Fuel: <b>Tank and pit</b> has tank capacity, fuel per lap and refuel speed, with live estimates for a full tank and an empty-to-full stop. <b>Empty tank</b> says what happens when there is no fuel left. Under <b>Only if you need it</b>, <b>Pace reference</b> takes a Track target time or a Manual time for a legacy Push &amp; Save system.</li>
         </ul>`
         },
         {

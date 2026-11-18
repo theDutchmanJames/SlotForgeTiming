@@ -1126,6 +1126,19 @@ a number with its unit as the stepper. A label written as `Name · short line` s
 Regrouped: **Tyre Wear** has six sections instead of nine: Wear (Counting, Tyres), Worn tyres, Pit stops and sets (Tyre change, Sets,
 Mandatory stops), Warnings, and under "Only if you need it" Temperature and Weather.
 
+Also regrouped and reworded: **Fuel** (Tank and pit, Empty tank, and Pace reference under "Only if you need it"), **Penalty** (Points and what
+they cost, Named penalties, Disqualification), **Damage** (The repair stop, Damage levels with the penalty points for a late or early stop, Incidents,
+Car failures), **Weather** (The rain with how it is counted, Tyres, Hindering the cars, Track conditions), **Push & Save** (What it changes, Push and
+save, How much, Which laps count).
+
+**Clear groups:** a sheet, the Page Note and every box of information sit a little darker than the window (`--sy-box`), so each group stands
+out. Loose pieces are tidied too: fields straight in a section become a sheet, a checkbox anywhere becomes the switch, a slider beside a number
+box gives way to the number stepper, a choice of buttons with a name and a line each becomes choice cards (`[class$="-choices"]`).
+
+**A window over the page:** an editor that opens from a list on a Race Setup page (Virtual Rival, Multi-Class, Resource, Championship, Rotation)
+opens as a window over the page (`.sy-pop` and a `.sy-backdrop`), like the Database systems; Back or Escape closes it. Balance of Power and Time
+Tokens are the page itself and stay on the page.
+
 Code: `renderer/systemsheet.js` (`SystemSheet`). It changes the real page only, after the frame is drawn (a watcher on the page finds every
 new `.rsform`): ids, `data-key` and handlers stay, so the forms' code and the tests that read their markup are unchanged.
 
@@ -1232,3 +1245,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Help Reader | New: Help articles retypeset (one column, plain-words lead, calmer body, chips) |
 | 2026-11 | System Sheet | New: every editor with a rail as one page of sheets; the rail jumps and follows the scroll; Tyre Wear regrouped into six sections |
 | 2026-11 | Page Note | Also in the System Sheet editors and on the sections of App Settings |
+| 2026-11 | System Sheet | Darker sheets and boxes; the page editors open as a window; Fuel, Penalty, Damage, Weather and Push & Save regrouped and reworded |

@@ -44,7 +44,7 @@ const SystemSheet = (() => {
     const say = form.querySelector('#rssay');
     if (!say || say.closest('.sn')) return;
     // (on a Race Setup page that has its own Page Note above the editor, the note in the editor only says what the settings do now)
-    const twice = !!(form.closest('.setuppage') && document.getElementById('setupnote'));
+    const twice = !!(form.closest('.setuppage') && document.getElementById('setupnote')) && !form.classList.contains('sy-pop');
     const words = !twice && typeof SETUP_NOTES !== 'undefined' ? SETUP_NOTES[NOTE[kindOf(form)]] : null;
     const tile = form.querySelector('#rstile');
     const box = el('div', 'sn sy-note');
@@ -112,9 +112,30 @@ const SystemSheet = (() => {
       }
       [...f.children].forEach(x => {
         if (x === t || x === c || x.classList.contains('sy-gone') || hint.includes(x)) return;
-        if (x.matches('input:not([type=hidden]):not([hidden]),select:not([hidden]),textarea,button,.btn,.fu-seg,.inunit,output'))
+        if (x.matches('input[type=checkbox]:not([hidden]),input[type=number]:not([hidden])') && typeof SettingsSheet !== 'undefined')
+          c.append(SettingsSheet.kit(x));
+        else if (x.matches('input:not([type=hidden]):not([hidden]),select:not([hidden]),textarea,button,.btn,.fu-seg,.inunit,output'))
           c.append(x);
       });
+      // (a label that holds its control: its own words, the text beside the control, are the name)
+      if (!t.querySelector('b')) {
+        const own = [...f.childNodes].filter(
+          n =>
+            (n.nodeType === 3 && n.textContent.trim()) ||
+            (n.nodeType === 1 && n.matches('span:not(.hint):not(.muted):not(.inunit),strong,b') && !n.querySelector('input,select'))
+        );
+        const name = own
+          .map(n => n.textContent)
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (name) {
+          const [nm, line] = name.split(' · ');
+          t.prepend(el('b', '', esc(nm)));
+          if (line) t.querySelector('b').after(el('span', 'ss-desc', esc(line)));
+          own.forEach(n => n.remove());
+        }
+      }
     }
     hint.forEach(h => {
       h.classList.add('ss-hint');
@@ -133,8 +154,47 @@ const SystemSheet = (() => {
     if (!grid) return;
     grid.classList.add('ss-sheet', 'sy-sheet');
     [...grid.children].forEach(f => f.matches('.field') && rowOf(f));
+    // (a field inside a box of its own in the sheet, which the form shows and hides)
+    grid.querySelectorAll(':scope > div:not(.field) > .field').forEach(rowOf);
   }
 
+  // a label with a checkbox, loose in a section: a row of a sheet (the one just before it, or one of its own)
+  function loose(d) {
+    [
+      ...d.querySelectorAll(
+        ':scope > .field, :scope > label.inline, :scope > label:has(> input[type=checkbox]), :scope > .rssub > .field, :scope > .rssub > label.inline'
+      )
+    ].forEach(l => {
+      if (l.dataset.sy) return;
+      let sh = l.previousElementSibling;
+      if (!sh || !sh.classList.contains('sy-sheet')) {
+        sh = el('div', 'fgrid ss-sheet sy-sheet');
+        l.before(sh);
+      }
+      l.classList.add('field');
+      sh.append(l);
+      rowOf(l);
+    });
+    d.querySelectorAll(':scope > p.muted, :scope > .rssub > p.muted').forEach(p => p.classList.add('sy-words'));
+    // any other checkbox in the section (on a card, in a box of its own): the kit's switch, where it is
+    d.querySelectorAll('label > input[type=checkbox]').forEach(cb => {
+      if (cb.closest('.sy-row') || cb.classList.contains('ss-switch')) return;
+      cb.classList.add('ss-switch');
+      cb.parentElement.classList.add('sy-swlabel');
+    });
+    // a box of the form's own with settings in it: a sheet too; a slider beside a number box gives way to the number
+    d.querySelectorAll(':scope > div, :scope > .rssub > div').forEach(box => {
+      if (box.matches('.fgrid,.sy-sheet,.rsnote,.rsstrip,[class*="choice"],[class*="card"],[class*="grid"],[class*="list"]')) return;
+      const fields = [...box.querySelectorAll(':scope > label.field, :scope > .field')];
+      if (!fields.length) return;
+      box.classList.add('fgrid', 'ss-sheet', 'sy-sheet', 'sy-box');
+      box.querySelectorAll(':scope > label:not(.field)').forEach(l => {
+        if (l.querySelector('input[type=range]') && box.querySelector('input[type=number]')) l.hidden = true;
+      });
+      fields.forEach(rowOf);
+      box.querySelectorAll(':scope > p').forEach(p => p.classList.add('sy-boxwords'));
+    });
+  }
   // ---- the sections: open, one under the other ----
   function sections(form) {
     form.querySelectorAll('details.rssec').forEach(d => {
@@ -150,6 +210,7 @@ const SystemSheet = (() => {
         if (!d.open) d.open = true;
       });
       d.querySelectorAll('.fgrid').forEach(sheet);
+      loose(d);
     });
   }
 
@@ -194,9 +255,19 @@ const SystemSheet = (() => {
     requestAnimationFrame(mark);
   }
 
+  // ---- an editor that opens from a list on a page (Virtual Rival, Multi-Class, Resource, Championship, Rotation): a window over the page ----
+  // (it stays where the page draws it, so its code is unchanged; Back closes it, and so does Escape)
+  const backOf = form => form.querySelector('.rsfoot [id$="-back"]');
+  function pop(form) {
+    if (!form.matches('.rspage') || !backOf(form) || form.classList.contains('sy-pop')) return;
+    form.classList.add('sy-pop');
+    const prev = form.previousElementSibling;
+    if (!prev || !prev.classList.contains('sy-backdrop')) form.before(el('div', 'sy-backdrop'));
+  }
   function enhance(form) {
     if (!form || !form.isConnected) return;
     form.classList.add('sy');
+    pop(form);
     note(form);
     sections(form);
     follow(form);
@@ -225,7 +296,21 @@ const SystemSheet = (() => {
     const scan = () => {
       pending = false;
       document.querySelectorAll('.rsform:not(.sy)').forEach(enhance);
+      // (a window that was closed leaves no shade behind)
+      document.querySelectorAll('.sy-backdrop').forEach(b => {
+        const n = b.nextElementSibling;
+        if (!n || !n.classList.contains('sy-pop')) b.remove();
+      });
     };
+    document.addEventListener('keydown', ev => {
+      if (ev.key !== 'Escape' || ev.defaultPrevented || document.querySelector('dialog[open]')) return;
+      const f = [...document.querySelectorAll('.rsform.sy-pop')].pop();
+      const b = f && backOf(f);
+      if (b && !b.disabled) {
+        ev.preventDefault();
+        b.click();
+      }
+    });
     // (in the same turn, before the page is painted, so the old look never shows; one check for a batch of changes)
     new MutationObserver(() => {
       if (pending) return;

@@ -1708,27 +1708,29 @@ module.exports = {
       { id: 'empty', title: 'Empty tank', note: 'What happens when the fuel runs out', open: true }
     ],
     // The form of a fuel system has a rail, as the forms of the other systems do. The three metric inputs sit together on one row.
+    // 2.4.0 (System Sheet): Tank and pit first; the old pace reference is only for legacy Push & Save, so it is under Only if you need it.
     rail: [
       {
         id: 'basics',
-        title: 'Basics',
-        ask: 'How much fuel is used, and how quickly can it be put back?',
+        title: 'Tank and pit',
+        ask: 'How much fuel is used, and how quickly it goes back in',
         icon: 'fuel',
         open: true,
         live: true,
         cols: 3,
         groups: ['basics']
       },
+      { id: 'empty', title: 'Empty tank', ask: 'What happens when the fuel runs out', icon: 'alert', open: true, groups: ['empty'] },
       {
         id: 'pace',
         title: 'Pace reference',
-        ask: 'Should Push & Save use a track or manual reference?',
+        ask: 'A track or a lap time for a legacy Push & Save system',
         icon: 'gauge',
         open: true,
         live: true,
+        optional: true,
         groups: ['pace']
-      },
-      { id: 'empty', title: 'Empty tank', ask: 'What happens when there is no fuel left?', icon: 'alert', open: true, groups: ['empty'] }
+      }
     ],
     used: { entity: 'racesetups', key: 'fuelRules' },
     fields: [
@@ -1816,11 +1818,12 @@ module.exports = {
     ],
     // The form of a penalty system has a rail, as the form of a race setup has (1.73.0, renderer/railform.js, words in renderer/systemwords.js): a section for every group, in the colour of the system.
     // See racesetups.rail for what the parts mean; live: the section has a note under its settings that follows what is typed. used: where this system is chosen (the race setups that use it).
+    // 2.4.0 (System Sheet): reworded; three sections.
     rail: [
       {
         id: 'basics',
-        title: 'Basics',
-        ask: 'What does a driver’s total number of points cause?',
+        title: 'Points and what they cost',
+        ask: 'What a driver’s growing point total does',
         icon: 'clock',
         open: true,
         live: true,
@@ -1828,16 +1831,16 @@ module.exports = {
       },
       {
         id: 'special',
-        title: 'Special penalties',
-        ask: 'Which named penalties can the Race Director give?',
+        title: 'Named penalties',
+        ask: 'Buttons the Race Director can give straight away',
         icon: 'racesetups',
         open: true,
         groups: ['special']
       },
       {
         id: 'limits',
-        title: 'Disqualification and automatic points',
-        ask: 'When is a driver out, and what does an empty tank cost?',
+        title: 'Disqualification',
+        ask: 'When a driver is out, and what an empty tank costs',
         icon: 'ban',
         optional: true,
         groups: ['limits']
@@ -1935,46 +1938,32 @@ module.exports = {
       { id: 'fines', title: 'Penalty points', note: 'For a stop that is late, and for leaving too early' }
     ],
     // The form of a damage system has a rail (1.73.0), as the form of a penalty system does; see there.
+    // 2.4.0 (System Sheet): the penalty points for a late or early stop sit with the levels whose deadlines they follow.
     rail: [
       {
         id: 'basics',
-        title: 'Basics',
-        ask: 'How does the stop work, and what does a deslot cost?',
+        title: 'The repair stop',
+        ask: 'How the repair works, and what a deslot costs',
         icon: 'garage',
         open: true,
         groups: ['basics']
       },
       {
         id: 'levels',
-        title: 'Levels',
-        ask: 'How much damage asks for which stop in the pits?',
+        title: 'Damage levels',
+        ask: 'Which damage asks for which stop, and what a late or early stop costs',
         icon: 'stairs',
         open: true,
-        groups: ['levels']
+        groups: ['levels', 'fines']
       },
-      {
-        id: 'incidents',
-        title: 'Incidents',
-        ask: 'What buttons does the Race Director get?',
-        icon: 'bolt',
-        open: true,
-        groups: ['incidents']
-      },
+      { id: 'incidents', title: 'Incidents', ask: 'The buttons the Race Director gets', icon: 'bolt', open: true, groups: ['incidents'] },
       {
         id: 'failures',
         title: 'Car failures',
-        ask: 'Should cars have failures at random moments?',
+        ask: 'Failures that strike a car at random',
         icon: 'cog',
         optional: true,
         groups: ['failures']
-      },
-      {
-        id: 'fines',
-        title: 'Penalty points',
-        ask: 'What do a late stop and leaving early cost?',
-        icon: 'penalty',
-        optional: true,
-        groups: ['fines']
       }
     ],
     used: { entity: 'racesetups', key: 'damageSystem' },
@@ -2890,12 +2879,20 @@ module.exports = {
       { id: 'laps', title: 'Which laps count', note: 'The start of the race, very slow laps and the yellow flag' }
     ],
     // The form of a push and save system has a rail (1.76.0), as the forms of the other systems do; see penaltysystems.rail. cols: 3 puts three settings on a row (a switch and its two numbers in Wear).
+    // 2.4.0 (System Sheet): reworded.
     rail: [
-      { id: 'basics', title: 'Basics', ask: 'Does pace change tyres, fuel, or both?', icon: 'sliders', open: true, groups: ['basics'] },
+      {
+        id: 'basics',
+        title: 'What it changes',
+        ask: 'Tyres, fuel or both, and a ready-made start',
+        icon: 'sliders',
+        open: true,
+        groups: ['basics']
+      },
       {
         id: 'pace',
-        title: 'Pace',
-        ask: 'Where do full push and full saving begin around the selected benchmark?',
+        title: 'Push and save',
+        ask: 'Where full push and full save begin around the benchmark',
         icon: 'pushsave',
         open: true,
         live: true,
@@ -2903,8 +2900,8 @@ module.exports = {
       },
       {
         id: 'wear',
-        title: 'Wear',
-        ask: 'How much more or less are the tyres and the fuel used up?',
+        title: 'How much',
+        ask: 'How much more or less tyres and fuel are used',
         icon: 'tyre',
         open: true,
         cols: 3,
@@ -3115,10 +3112,10 @@ module.exports = {
     card: ['unit', 'startMode', 'rainMode'],
     // The form shows the fields in these collapsible groups, in this order (a field says which group it is in); a group whose fields are all hidden is hidden too.
     groups: [
-      { id: 'basics', title: 'Basics', note: 'Name, and whether the weather is counted in laps or in minutes', open: true },
+      { id: 'basics', title: 'Counting', note: 'In laps of the leader or in minutes of racing', open: true },
       {
         id: 'forecast',
-        title: 'The rain',
+        title: 'When and how long',
         note: 'When it starts and how long it lasts, with the clouds before and the drying after',
         open: true
       },
@@ -3136,34 +3133,21 @@ module.exports = {
       }
     ],
     // The form of a weather system has a rail (1.74.0), as the forms of the Penalty and Damage systems do; see penaltysystems.rail. cols: 3 puts three settings on a row (the three switches of Hindering the cars).
+    // 2.4.0 (System Sheet): how the weather is counted is part of The rain.
     rail: [
-      {
-        id: 'basics',
-        title: 'Basics',
-        ask: 'Is the weather counted in laps or in minutes?',
-        icon: 'clock',
-        open: true,
-        groups: ['basics']
-      },
       {
         id: 'forecast',
         title: 'The rain',
-        ask: 'When does it start, and how long does it last?',
+        ask: 'How the weather is counted, when the rain starts and how long it lasts',
         icon: 'weather',
         open: true,
-        groups: ['forecast']
+        groups: ['basics', 'forecast']
       },
-      {
-        id: 'tyres',
-        title: 'Tyres and penalties',
-        ask: 'Which tyres does a pit stop give, and what does staying on the wrong ones cost?',
-        icon: 'tyre',
-        groups: ['tyres']
-      },
+      { id: 'tyres', title: 'Tyres', ask: 'What a pit stop gives, and what the wrong tyres cost', icon: 'tyre', groups: ['tyres'] },
       {
         id: 'hinder',
         title: 'Hindering the cars',
-        ask: 'What fuel-strategy cost do the wrong tyres create?',
+        ask: 'What the wrong tyres cost in fuel',
         icon: 'wind',
         optional: true,
         open: true,
@@ -3173,7 +3157,7 @@ module.exports = {
       {
         id: 'conditions',
         title: 'Track conditions',
-        ask: 'How warm and how windy is it in each kind of weather?',
+        ask: 'How warm and how windy it is in each kind of weather',
         icon: 'thermo',
         optional: true,
         groups: ['conditions']
