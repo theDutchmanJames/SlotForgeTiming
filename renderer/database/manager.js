@@ -192,7 +192,8 @@ async function mountManagerPage(box, e) {
   const toggle = !s.card
     ? ''
     : `<span class="seg" role="group" aria-label="View"><button class="btn${mode === 'list' ? ' on' : ''}" id="vlist" aria-pressed="${mode === 'list'}">${e === 'racesetups' ? 'Table' : 'List'}</button><button class="btn${mode === 'grid' ? ' on' : ''}" id="vgrid" aria-pressed="${mode === 'grid'}">${e === 'racesetups' ? 'Comparison rows' : 'Grid'}</button></span>`;
-  const designButton = i => (e === 'tracks' ? `<button class="btn" data-track-design="${esc(i.id)}">Track design</button>` : '');
+  const designButton = i =>
+    e === 'tracks' ? `<button class="btn" data-track-design="${esc(i.id)}" title="Track design">Track design</button>` : '';
   const copyButton = i =>
     COPY_SETUP_ENTITIES.has(e)
       ? `<button class="btn" type="button" data-copy="${esc(i.id)}" title="Create an independent copy of ${esc(titleOf(e, i))}">Copy</button>`
@@ -235,7 +236,7 @@ async function mountManagerPage(box, e) {
             ? `<div class="gd muted">+${i[s.gallery]._catalogueGallery || i[s.gallery].length} more pictures</div>`
             : '');
         return `<article class="gcard${canView ? ' clickable' : ''}"${canView ? ` data-view="${esc(i.id)}" tabindex="0" aria-label="View ${esc(t)}"` : ''}><div class="gimg">${img?._cataloguePicture ? catalogueImage(img, '', frame) : img ? `<img src="${esc(img)}" alt="" style="transform:${Widgets.frameTransform(frame)}">` : noPicture(e, t)}</div>
-      <h3>${esc(t)}</h3>${rowMark(e, i)}${details}${typeof RaceSystems !== 'undefined' && i.sessionType !== 'tokens' ? RaceSystems.setupHtml(i, { compact: true, id: i.id }) : ''}<div class="row"><button class="btn" data-edit="${esc(i.id)}">Edit</button>${copyButton(i)}${designButton(i)}${direct ? `<button class="btn danger" data-del="${esc(i.id)}">Archive…</button>` : `<button class="btn danger icon" data-del="${esc(i.id)}" aria-label="Delete ${esc(t)}" title="Delete"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>`}</div></article>`;
+      <div class="gbody"><h3>${esc(t)}</h3>${rowMark(e, i)}${details}${typeof RaceSystems !== 'undefined' && i.sessionType !== 'tokens' ? RaceSystems.setupHtml(i, { compact: true, id: i.id }) : ''}</div><div class="row gfoot"><button class="btn" data-edit="${esc(i.id)}"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>Edit</button>${copyButton(i)}${designButton(i).replace('>Track design<', '><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12a7 5 0 1 0 14 0a7 5 0 1 0-14 0"/></svg>Track design<')}${direct ? `<button class="btn danger" data-del="${esc(i.id)}">Archive…</button>` : `<button class="btn danger icon" data-del="${esc(i.id)}" aria-label="Delete ${esc(t)}" title="Delete"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>`}</div></article>`;
       })
       .join('')}</div>`;
   const tableHtml = (items, cols) =>

@@ -2905,3 +2905,25 @@ html dialog.track-design-dialog{width:min(980px,96vw);padding:22px 24px;overflow
 .track-design-dialog .td-fields .formgrid{overflow:visible;padding:0;margin:0}
 .track-design-dialog .td-message:empty{display:none}
 @media(max-width:720px){.track-design-dialog .td-lanes{grid-template-columns:1fr}}
+/* 2.4.0 Database cards as in the design: the picture from edge to edge, the body with the title (Barlow) and the details as tidy rows (the name on the
+   left, the value in the timing type on the right), and a darker foot with the buttons (Delete as a bin at the end) */
+#view .gcard{padding:0;gap:0;border-radius:12px;overflow:hidden}
+#view .gcard>.gimg{aspect-ratio:16 / 9;border-radius:0;border-bottom:1px solid var(--line)}
+#view .gcard>.gbody{display:flex;flex-direction:column;gap:4px;flex:1 1 auto;min-width:0;padding:12px 14px}
+#view .gcard>.gbody>h3{margin:0 0 4px;font-size:18px;line-height:1.1;overflow-wrap:anywhere}
+#view .gcard .gd{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font:500 12.5px/1.45 'SF Roboto Mono',Consolas,monospace;color:var(--ink)}
+#view .gcard .gd>.muted{min-width:0;font:400 12.5px/1.45 "Segoe UI",system-ui,sans-serif;color:var(--muted)}
+#view .gcard>.gfoot{margin:0;padding:8px 10px;gap:6px;flex-wrap:nowrap;border-top:1px solid var(--line);background:color-mix(in srgb,var(--bg) 50%,var(--panel))}
+#view .gcard>.gfoot .btn svg{opacity:.85}
+#view .gcard>.gfoot .btn.danger{margin-left:auto}
+#view .catalogue-toolbar+.cards,#view .catalogue-toolbar~.cards{margin-top:16px}
+#view .gcard.clickable:is(:hover,:focus-visible){border-color:color-mix(in srgb,var(--ink) 30%,var(--line))}
+/* the foot of a narrow card: the buttons shrink, Track design (then Edit) shows only its icon, and the bin always stays inside the card */
+#view .gcard{container:gcard/inline-size}
+#view .gcard>.gfoot>.btn{min-width:0;flex:0 1 auto}
+#view .gcard>.gfoot>.btn.danger{flex:none}
+@container gcard (max-width:250px){#view .gcard>.gfoot>.btn[data-track-design]{width:28px;padding:0!important;gap:0;font-size:0!important;flex:none}}
+@container gcard (max-width:180px){#view .gcard>.gfoot>.btn[data-edit]{width:28px;padding:0!important;gap:0;font-size:0!important;flex:none}}
+/* a detail keeps its value on one line; a long name wraps */
+#view .gcard .gd{white-space:nowrap}
+#view .gcard .gd>.muted{white-space:normal}
