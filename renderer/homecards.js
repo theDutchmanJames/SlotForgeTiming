@@ -35,9 +35,7 @@
   const record = d => {
     const rec = d.rec;
     if (!rec) return card('hm-rec', 'Record to beat', '', '<p class="muted">This race setup has no track yet.</p>');
-    // (2.4.0) a call to action: beat it, defend it (the holder is on the grid), or set the first one
-    const call = !rec.record ? 'Set the first record' : rec.held ? 'Defend the record' : 'Beat this time';
-    return `<section class="card hm-rec"><h3>${call}<span class="hm-tag">${esc(d.trackName)}</span></h3>${
+    return `<section class="card hm-rec"><h3>Record to beat<span class="hm-tag">${esc(d.trackName)}</span></h3>${
       rec.record
         ? `<div class="hm-rec-main"><div class="hm-time">${esc(rec.record.text)}</div><span class="hm-rec-label">track record</span></div><div class="hm-rec-holder"><span class="hm-rec-avatar" aria-hidden="true">${esc(initials(rec.record.driver))}</span><div><strong>${esc(rec.record.driver)}${rec.record.car ? ' · ' + esc(rec.record.car) : ''}</strong><small>${esc([d.fmtDate(rec.record.date), rec.record.setupName, rec.record.pendingLibrary ? 'not yet in the shared library' : ''].filter(Boolean).join(' · '))}</small></div></div>${rec.line ? `<p class="hm-rec-status"><i aria-hidden="true"></i>${esc(rec.line)}</p>` : ''}`
         : '<p class="muted">No lap has been saved on this track yet. The first lap sets the record.</p>'
