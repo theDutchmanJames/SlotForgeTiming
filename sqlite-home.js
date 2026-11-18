@@ -85,7 +85,7 @@ function upgrade(s) {
         s.checkpoint('home-totals-repaired');
       }
       s.db.exec(
-        'CREATE INDEX IF NOT EXISTS home_last ON home_laps(sessionId,time,ordinal); CREATE INDEX IF NOT EXISTS home_group ON home_laps(trackId,carId,lane,ordinal); CREATE INDEX IF NOT EXISTS home_week ON home_laps(trackId,driverId,time,ordinal);'
+        'CREATE INDEX IF NOT EXISTS home_last ON home_laps(sessionId,time,ordinal); CREATE INDEX IF NOT EXISTS home_group ON home_laps(trackId,carId,lane,ordinal); CREATE INDEX IF NOT EXISTS home_week ON home_laps(trackId,driverId,time,ordinal); CREATE INDEX IF NOT EXISTS home_date ON home_laps(ownDate);'
       );
       return;
     }
@@ -104,7 +104,8 @@ function upgrade(s) {
  CREATE INDEX home_group ON home_laps(trackId,carId,lane,ordinal);
  CREATE TABLE home_totals(trackId TEXT NOT NULL,carId TEXT NOT NULL,lane REAL NOT NULL,n INTEGER NOT NULL,first INTEGER NOT NULL,PRIMARY KEY(trackId,carId,lane));
  INSERT INTO home_totals SELECT trackId,carId,lane,COUNT(*),MIN(ordinal) FROM home_laps GROUP BY trackId,carId,lane;
- CREATE INDEX home_week ON home_laps(trackId,driverId,time,ordinal);`);
+ CREATE INDEX home_week ON home_laps(trackId,driverId,time,ordinal);
+ CREATE INDEX IF NOT EXISTS home_date ON home_laps(ownDate);`);
     s.statement("INSERT INTO info VALUES('homeIndexZone',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(zone);
     s.statement("INSERT INTO info VALUES('homeIndexVersion','3') ON CONFLICT(key) DO UPDATE SET value=excluded.value").run();
     stamp(s);
@@ -163,14 +164,18 @@ function summary(s, o, { last, cars, tracks, now }) {
   if (needed.has('fastest')) {
     const all = o.boards.some(b => b.key === 'fastest' && b.scope === 'all'),
       week = Home.weekStart(now).getTime();
-    const filter = "h.trackId<>'' AND h.driverId<>'' AND (?=1 OR h.trackId=?) AND (CASE WHEN h.fallback=1 THEN d.ms ELSE h.ownDate END)>=?";
+    // (2.4.0) the laps of this week in two parts that each use an index: the laps with a date of their own, and the laps dated by their session
+    // (one CASE over both scanned every lap ever driven)
+    const which = "trackId<>'' AND driverId<>'' AND (?=1 OR trackId=?)";
     const rows = s
       .statement(
-        'SELECT h.trackId,h.driverId,MIN(time) best,MIN(ordinal) first FROM home_laps h LEFT JOIN home_dates d ON d.id=h.sessionId WHERE ' +
-          filter +
-          ' GROUP BY h.trackId,h.driverId ORDER BY first'
+        'SELECT trackId,driverId,MIN(time) best,MIN(ordinal) first FROM (' +
+          `SELECT trackId,driverId,time,ordinal FROM home_laps WHERE fallback<>1 AND ownDate>=? AND ${which}` +
+          ' UNION ALL ' +
+          `SELECT trackId,driverId,time,ordinal FROM home_laps WHERE fallback=1 AND sessionId IN (SELECT id FROM home_dates WHERE ms>=?) AND ${which}` +
+          ') GROUP BY trackId,driverId ORDER BY first'
       )
-      .all(all ? 1 : 0, o.trackId, week);
+      .all(week, all ? 1 : 0, o.trackId, week, all ? 1 : 0, o.trackId);
     for (const row of rows) {
       const winner = s
         .statement(

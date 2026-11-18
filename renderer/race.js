@@ -110,6 +110,10 @@ function raceLetGoAndBase() {
     Sound.stop();
     if (live.offTm) live.offTm();
     if (live.pitSensors) live.pitSensors.off();
+    if (live.boxWait) {
+      live.boxWait();
+      live.boxWait = null;
+    }
     if (live.box) {
       live.box.off();
       live.box = null;
@@ -491,6 +495,10 @@ function raceShowAndLeave({ syncPerfLine, update }) {
         live[k] = null;
       }
     });
+    if (live.boxWait) {
+      live.boxWait();
+      live.boxWait = null;
+    }
     if (live.box) {
       live.box.off();
       live.box = null;
@@ -3508,9 +3516,9 @@ async function renderRace() {
       onHeld: dsHeld,
       onNotice: dsNotice
     });
-  // (2.4.0) bound also when the box connects later (auto-connect still busy, or plugged in after Start anyway): its first answer sets it up
-  if (hwUse === 'arduino' && typeof ArduinoRace !== 'undefined') {
-    live.box = ArduinoRace.bind({
+  // (2.4.0) a box that connects later (auto-connect still busy, or plugged in after Start anyway) is bound when it connects
+  const bindBox = () =>
+    (live.box = ArduinoRace.bind({
       link: ArduinoBox.link,
       cars: () => eng.cars,
       crossCar,
@@ -3536,7 +3544,18 @@ async function renderRace() {
         live.linkFault = 'arduino';
         timingFault('Arduino', 'The box lost contact with Timing (its safety switch-off). Reconnect if needed, then restart manually.');
       }
-    });
+    }));
+  if (hwUse === 'arduino' && typeof ArduinoRace !== 'undefined') {
+    if (ArduinoBox.link.connected) bindBox();
+    else if (ArduinoBox.link.onStatus) {
+      const raceNow = live.raceRef;
+      live.boxWait = ArduinoBox.link.onStatus(on => {
+        if (!on || live.box || !live.alive || live.raceRef !== raceNow) return;
+        if (live.boxWait) live.boxWait();
+        live.boxWait = null;
+        bindBox();
+      });
+    }
   }
   if (hwUse === 'parallel' && typeof ParallelRace !== 'undefined' && api.parallelRace) {
     live.hardwareRecoverPower = !!r.resume || !!(tokens && state.settings.tokenSessions?.[setup.id]?.data);

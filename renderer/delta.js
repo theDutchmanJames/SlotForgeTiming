@@ -11,6 +11,22 @@
       m = s.length >> 1;
     return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
   };
+  // (2.4.0) what the laps of a car are now, cheaply: their number and sum and the marks on them. The median of a long race is sorted again only when it changes.
+  const lapKey = c => {
+    let sum = 0;
+    for (const t of c.laps) sum += t;
+    const marks = a => (Array.isArray(a) ? a.join(',') : a ? JSON.stringify(a) : '');
+    return c.laps.length + '|' + sum + '|' + marks(c.bad) + '|' + marks(c.invalid) + '|' + marks(c.pitLaps) + '|' + marks(c.removed);
+  };
+  const medianCache = new WeakMap();
+  const medianOf = (c, kind, laps) => {
+    const key = kind + '#' + lapKey(c);
+    const hit = medianCache.get(c);
+    if (hit && hit.key === key) return hit.value;
+    const value = median(laps);
+    medianCache.set(c, { key, value });
+    return value;
+  };
   // black or white text, whichever reads better on a colour (#rrggbb)
   const onColor = hex => {
     const n = parseInt(String(hex).slice(1), 16) || 0;
@@ -32,7 +48,7 @@
     },
     medlap: c => {
       const g = E.averageLaps(c);
-      return g.length ? median(g) : null;
+      return g.length ? medianOf(c, 'average', g) : null;
     },
     bestlap: c => fin(c.best),
     recordlap: (c, S) => fin(S.personalBest(c.driverId)),

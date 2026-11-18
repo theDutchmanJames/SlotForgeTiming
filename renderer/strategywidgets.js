@@ -122,9 +122,10 @@
       return model(`≈ ${laps.toFixed(1)} laps`, `Estimated · last ${samples.length} laps`, laps < 2 ? 'warn' : '');
     }
     if (type === 'gapnext') {
-      const rows = e.standings(),
+      const T = typeof Timing !== 'undefined' ? Timing : typeof module !== 'undefined' ? null : globalThis.Timing,
+        rows = e.standings(),
         row = rows.find(r => r.car === c),
-        gap = e.gapInfo()[i];
+        gap = (T && T.gapsOf ? T.gapsOf(S) : e.gapInfo())[i]; // (2.4.0: once a paint, not once a widget)
       if (!row || !gap) return unavailable('No classified position');
       if (row.pos === 1) return model('LEADER', 'No driver ahead');
       if (!Number.isFinite(gap.ahead)) return unavailable('Waiting for comparable laps');

@@ -37,8 +37,8 @@ test('failed restore before publication leaves source, snapshot and active gener
  assert(!fs.existsSync(path.join(dest,'working.sqlite')));assert.equal(s.editorScope(),scope);assert.deepEqual(fs.readFileSync(path.join(backup,'snapshot.sqlite')),original);
 });
 
-test('all 20 lookup indexes are individually repaired without changing any table contents',t=>{
- const f=fixture(t);let s=f.open();s.command(intent(s));const indexes=s.statement("SELECT name FROM sqlite_master WHERE type='index' AND sql IS NOT NULL ORDER BY name").all();assert.equal(indexes.length,20);const before=dump(s);
+test('all 21 lookup indexes (2.4.0: with home_date) are individually repaired without changing any table contents',t=>{
+ const f=fixture(t);let s=f.open();s.command(intent(s));const indexes=s.statement("SELECT name FROM sqlite_master WHERE type='index' AND sql IS NOT NULL ORDER BY name").all();assert.equal(indexes.length,21);const before=dump(s);
  for(const {name} of indexes){s.db.exec('DROP INDEX '+name);s.close();s=f.open();assert.ok(s.statement("SELECT 1 FROM sqlite_master WHERE type='index' AND name=?").get(name),name);assert.deepEqual(dump(s),before,name);}
  const plan=s.statement('EXPLAIN QUERY PLAN SELECT id FROM lap_index WHERE sessionId=? ORDER BY id LIMIT 10').all('s');assert(plan.some(r=>r.detail.includes('lap_session')));assert(!plan.some(r=>r.detail.includes('TEMP B-TREE')));
 });

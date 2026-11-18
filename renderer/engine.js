@@ -2977,7 +2977,25 @@
       const st = R.standings(),
         byBest = type === 'practice' || type === 'qualifying',
         out = new Array(R.cars.length).fill(null);
-      const val = (c, k) => cum(c, k) + startOf(c) + addOf(c);
+      // (2.4.0) the running sums of every car's laps, made once for this call: the gaps of a lapped field no longer add up all laps again for every lap down
+      const sums = new Map(),
+        sumsOf = c => {
+          let p = sums.get(c);
+          if (!p) {
+            p = new Array(c.laps.length + 1);
+            p[0] = 0;
+            for (let k = 0; k < c.laps.length; k++) p[k + 1] = p[k] + c.laps[k];
+            sums.set(c, p);
+          }
+          return p;
+        },
+        sumTo = (c, k) => {
+          const n = c.laps.length,
+            m = k < 0 ? Math.max(0, n + k) : Math.min(n, k); // (as laps.slice(0, k))
+          return sumsOf(c)[m];
+        },
+        start = c => (Number.isFinite(c.total) && c.laps.length ? Math.max(0, c.total - sumTo(c, c.laps.length)) : 0);
+      const val = (c, k) => sumTo(c, k) + start(c) + addOf(c);
       st.forEach((row, p) => {
         const c = row.car;
         if (c.dq || c.retired) return;

@@ -424,7 +424,7 @@ const SystemSheet = (() => {
     });
     // (in the same turn, before the page is painted, so the old look never shows; one check for a batch of changes)
     new MutationObserver(() => {
-      if (pending) return;
+      if (pending || (typeof state !== 'undefined' && state.tab === 'race')) return; // (2.4.0: no editor on the race screen, which redraws all the time)
       pending = true;
       queueMicrotask(scan);
     }).observe(document.body, { childList: true, subtree: true });

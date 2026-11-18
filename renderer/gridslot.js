@@ -26,7 +26,7 @@
   let pending = false;
   const start = () => {
     new MutationObserver(() => {
-      if (pending) return;
+      if (pending || (typeof state !== 'undefined' && state.tab === 'race')) return; // (2.4.0: the race screen redraws all the time and has no Start a race)
       pending = true;
       queueMicrotask(() => {
         pending = false;

@@ -564,7 +564,7 @@
       if (!s || !S.WINNER_TYPES.includes(s.sessionType)) return;
       const t = Date.parse(s.date);
       if (!Number.isFinite(t)) return;
-      const back = t >= start ? 0 : Math.floor((start - t) / WEEK) + 1;
+      const back = t >= start ? 0 : Math.round((start - weekStart(new Date(t)).getTime()) / WEEK); // (2.4.0: by the Monday of its own week, so a week of 23 or 25 hours a day still counts once)
       if (back < n) out[n - 1 - back]++;
     });
     return out;

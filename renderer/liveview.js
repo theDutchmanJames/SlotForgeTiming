@@ -46,6 +46,8 @@ const LiveView = (() => {
     offs = [],
     second = false,
     lapsHtml = '',
+    lapsSig = '',
+    dirLogHtml = '',
     resultsFollowed = '';
 
   const $ = id => document.getElementById(id);
@@ -81,9 +83,11 @@ const LiveView = (() => {
     const el = $('lv-air');
     if (!el) return;
     if (!live()) {
+      if (el.dataset.k === 'off') return;
+      el.dataset.k = 'off';
       el.className = 'lv-air';
       el.innerHTML =
-        '<span class="lv-airtag">Off air</span><div class="lv-airtext"><strong>No race is running</strong><span class="muted">The pages below fill in as soon as a race starts on the race computer.</span></div>';
+        '<span class="lv-airtag">Off air</span><div class="lv-airtext" aria-live="polite"><strong>No race is running</strong><span class="muted">The pages below fill in as soon as a race starts on the race computer.</span></div>';
       return;
     }
     const d = V.dyn(),
@@ -102,8 +106,15 @@ const LiveView = (() => {
     } catch {
       facts = '';
     }
-    el.className = 'lv-air on';
-    el.innerHTML = `<span class="lv-airtag"><i aria-hidden="true"></i>On air</span><div class="lv-airtext"><strong>${esc(st.title || 'Race')}</strong><span class="lv-airphase">${esc(PHASE[d.phase] || '')}</span></div><div class="lv-airfacts">${facts}</div>`;
+    // (2.4.0: the race and its phase are told to a screen reader when they change; the clock and the lap only change on the screen)
+    const k = 'on|' + (st.title || '') + '|' + d.phase;
+    if (el.dataset.k !== k) {
+      el.dataset.k = k;
+      el.className = 'lv-air on';
+      el.innerHTML = `<span class="lv-airtag"><i aria-hidden="true"></i>On air</span><div class="lv-airtext" aria-live="polite"><strong>${esc(st.title || 'Race')}</strong><span class="lv-airphase">${esc(PHASE[d.phase] || '')}</span></div><div class="lv-airfacts"></div>`;
+    }
+    const box = el.querySelector('.lv-airfacts');
+    if (box && box.innerHTML !== facts) box.innerHTML = facts;
   }
   function status() {
     air();
@@ -151,7 +162,7 @@ const LiveView = (() => {
       // Live Desk (2.4.0): the ON AIR panel on top, then the pages that follow the race and the ones that run it, each as its own group
       const tile = ([id, name, d]) =>
         `<button class="lv-tile${isControl(id) ? ' special' : ''}" data-go="${id}">${isControl(id) ? BADGE : ''}${icon(id)}<strong>${esc(name)}</strong><span class="muted">${esc(d)}</span><i class="lv-go" aria-hidden="true"></i></button>`;
-      body.innerHTML = `<div class="lv-desk"><section class="lv-air" id="lv-air" aria-live="polite"></section>
+      body.innerHTML = `<div class="lv-desk"><section class="lv-air" id="lv-air"></section>
         <section class="lv-group"><h3 class="lv-gh">Follow the race<small>These pages only show the race</small></h3><div class="lv-tiles">${TILES.filter(
           t => !isControl(t[0])
         )
@@ -503,6 +514,8 @@ const LiveView = (() => {
               bind: false
             }); // the Adjust folder: the same pads as on the Race tab
       lapsHtml = '';
+      lapsSig = '';
+      dirLogHtml = '';
       rvShown = '';
       bopPanel =
         st.cfg.bop && !useCards
@@ -738,12 +751,26 @@ const LiveView = (() => {
       tv = d.tokens ? Tokens.view(d.tokens) : null;
     lb.hidden = !on;
     if (on) {
-      const h = Review.lapsHtml(eng, { late: tv ? (i, n) => tv.lateAt(eng.cars[i].lane, n) : null });
-      if (h !== lapsHtml) {
-        lapsHtml = h;
-        $('dir-laps').innerHTML = h;
+      // (2.4.0) the laps are made again only when something in them changed, as in the race window: not ten times a second
+      const R = Review.ui,
+        sig = JSON.stringify([
+          eng.cars.map(c => [c.laps.length, c.best, c.invalid, c.removed, c.dq, c.done, c.driverName]),
+          [...R.open],
+          R.del,
+          d.tokens ? d.tokens.lates || 0 : 0
+        ]);
+      if (sig !== lapsSig) {
+        lapsSig = sig;
+        const h = Review.lapsHtml(eng, { late: tv ? (i, n) => tv.lateAt(eng.cars[i].lane, n) : null });
+        if (h !== lapsHtml) {
+          lapsHtml = h;
+          $('dir-laps').innerHTML = h;
+        }
       }
-    } else lapsHtml = '';
+    } else {
+      lapsHtml = '';
+      lapsSig = '';
+    }
     const rv = $('dir-review'); // after the race: the review, with the same corrections as in the race window (a Time Token Session is checked on the main computer)
     if (d.phase === 'review') {
       // (drawn again only when it changed, so what you type in the field of a pad stays)
@@ -762,7 +789,8 @@ const LiveView = (() => {
     }
     if (!pen || cardsPanel) return; // (the lane cards have the log themselves)
     PenaltyPanel.refresh(body, eng, st.cfg.entries, st.cfg.penalty.types, on);
-    $('dir-log').innerHTML = PenaltyPanel.logHtml(eng); // (the log is made in penaltyui.js, as on the Race tab)
+    const logH = PenaltyPanel.logHtml(eng); // (the log is made in penaltyui.js, as on the Race tab)
+    if (logH !== dirLogHtml) $('dir-log').innerHTML = dirLogHtml = logH; // (2.4.0: only when it changed)
   }
 
   // Tokens (Time Token Session): the same lane controls as on the main computer. The clocks, the time buttons and the drivers come with the race;

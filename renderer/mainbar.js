@@ -107,6 +107,20 @@ const MainBar = (() => {
   }
   if (typeof addEventListener === 'function') addEventListener('resize', () => fit(true));
 
+  // (2.4.0) leaving the page the way a tab does: unsaved layout changes are asked about first, and the layout editor lets go of its keys
+  async function leave() {
+    if (typeof editorDirty === 'function' && editorDirty()) {
+      const ok = await Dialog.confirm('Discard your unsaved layout changes?', {
+        ok: 'Discard changes',
+        cancel: 'Keep editing',
+        danger: true
+      });
+      if (!ok) return false;
+    }
+    if (typeof editorLeave === 'function') editorLeave();
+    return true;
+  }
+
   // ---- the race strip ----
   function strip() {
     let el = document.getElementById('mb-strip');
@@ -121,10 +135,10 @@ const MainBar = (() => {
       el = document.createElement('div');
       el.id = 'mb-strip';
       el.className = 'mb-strip';
-      el.setAttribute('role', 'status');
+      el.setAttribute('aria-label', 'The race that is running'); // (2.4.0: no live region: its clock changes all the time)
       header.after(el);
-      el.onclick = ev => {
-        if (ev.target.closest('[data-back]')) {
+      el.onclick = async ev => {
+        if (ev.target.closest('[data-back]') && (await leave())) {
           state.tab = 'race';
           render();
         }
@@ -194,6 +208,7 @@ const MainBar = (() => {
       { g: 'Do', t: 'Start the race', w: 'Home', icon: 'flag', act: () => homeThen('#start') }
     ];
     const homeThen = async sel2 => {
+      if (!(await leave())) return;
       state.tab = 'home';
       await render();
       for (let i = 0; i < 20; i++) {
@@ -202,9 +217,24 @@ const MainBar = (() => {
         await new Promise(r => setTimeout(r, 100));
       }
     };
-    const loadRecords = async () => {
-      if (records) return records;
-      records = [];
+    // (2.4.0) read once per opening, into a list of its own: a Find closed and opened again while one was still reading does not get them twice
+    let loading = null,
+      gen = 0;
+    const loadRecords = () => {
+      if (records) return Promise.resolve(records);
+      if (loading) return loading;
+      const my = ++gen,
+        out = [];
+      loading = readRecords(out).then(() => {
+        if (my === gen) {
+          records = out;
+          loading = null;
+        }
+        return out;
+      });
+      return loading;
+    };
+    const readRecords = async records => {
       const kinds = [
         ['drivers', 'Drivers', 'driver'],
         ['slotcars', 'Slotcars', 'car'],
@@ -224,7 +254,6 @@ const MainBar = (() => {
           }
         })
       );
-      return records;
     };
     const search = q => {
       const n = norm(q).trim();
@@ -262,6 +291,7 @@ const MainBar = (() => {
       close();
       if (!x) return;
       if (x.act) return x.act();
+      if (!(await leave())) return;
       if (x.go) {
         Object.assign(state, x.go);
         return render();
@@ -325,7 +355,7 @@ const MainBar = (() => {
           } else if (ev.key === 'Escape') {
             ev.preventDefault();
             close();
-          }
+          } else if (ev.key === 'Tab') ev.preventDefault(); // (a modal window: the focus stays in the search)
         };
         box.onclick = ev => {
           if (ev.target.closest('[data-close]')) return close();
@@ -333,6 +363,7 @@ const MainBar = (() => {
           if (li) go(items[Number(li.dataset.i)]);
         };
       }
+      if (box.hidden !== false) before = document.activeElement;
       box.hidden = false;
       const inp = box.querySelector('input');
       inp.value = '';
@@ -342,22 +373,31 @@ const MainBar = (() => {
         if (!box.hidden && inp.value) update();
       });
     }
+    let before = null;
     function close() {
+      const was = box && !box.hidden;
       if (box) box.hidden = true;
       records = null; // (read again next time: a new driver or car is found too)
+      gen++;
+      loading = null;
+      if (was && before && before.isConnected && typeof before.focus === 'function') before.focus(); // (the focus goes back where it was)
+      before = null;
     }
     return { open, close, search };
   })();
 
+  // (the second screen and the phones load the same page with only the Live Race pages: no menu, no Find there)
+  const liveOnly = () => typeof document !== 'undefined' && !!document.body && document.body.classList.contains('lv-window');
   document.addEventListener('keydown', ev => {
     if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && ev.key.toLowerCase() === 'k') {
-      if (document.querySelector('dialog[open]') || (typeof state !== 'undefined' && state.tab === 'race')) return;
+      if (liveOnly() || document.querySelector('dialog[open]') || (typeof state !== 'undefined' && state.tab === 'race')) return;
       ev.preventDefault();
       Find.open();
     }
   });
   // the lights follow the hardware and the network; the strip follows the race
   setInterval(() => {
+    if (liveOnly()) return;
     lights();
     strip();
     fit();

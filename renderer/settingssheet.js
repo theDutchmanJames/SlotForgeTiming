@@ -117,6 +117,7 @@ const SettingsSheet = (() => {
     return c;
   }
   // ---- a row ----
+  let rowIds = 0;
   function row({ title, desc, hint, ctl = [], cls = '' }) {
     const r = el('div', 'field ss-row' + (cls ? ' ' + cls : ''));
     const t = el('div', 'ss-t');
@@ -130,6 +131,15 @@ const SettingsSheet = (() => {
     ctl.filter(Boolean).forEach(n => c.append(n));
     r.append(t, c);
     if (!c.childNodes.length) r.classList.add('ss-noctl');
+    // (2.4.0) the label of the page is gone: the name of the row names its controls for a screen reader
+    const name = title && t.querySelector(':scope > b');
+    if (name && typeof c.querySelectorAll === 'function') {
+      name.id = name.id || 'ss-n' + ++rowIds;
+      c.querySelectorAll('input,select,textarea,.ss-seg').forEach(x => {
+        if (typeof x.hasAttribute === 'function' && !x.hasAttribute('aria-label') && !x.hasAttribute('aria-labelledby'))
+          x.setAttribute('aria-labelledby', name.id);
+      });
+    }
     return r;
   }
   const unitOf = out => {

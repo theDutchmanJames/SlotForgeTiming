@@ -34,6 +34,33 @@
   const FRAME = Symbol('widget-frame');
   const gapBenchmarks = new WeakMap();
   const beginFrame = S => ({ ...S, [FRAME]: new WeakMap() });
+  // (2.4.0) the gaps of every car, worked out once for a paint: every gap widget of the frame shares them
+  const gapsOf = S => {
+    const m = S && S[FRAME];
+    if (!m) return S.eng.gapInfo() || [];
+    let g = m.get(S.eng);
+    if (!g) {
+      g = { gaps: S.eng.gapInfo() || [] };
+      m.set(S.eng, g);
+    }
+    return g.gaps;
+  };
+  // (2.4.0) what the laps of a car are now, cheaply: their number and sum and the marks on them. The median of a long race is sorted again only when it changes.
+  const lapKey = c => {
+    let sum = 0;
+    for (const t of c.laps) sum += t;
+    const marks = a => (Array.isArray(a) ? a.join(',') : a ? JSON.stringify(a) : '');
+    return c.laps.length + '|' + sum + '|' + marks(c.bad) + '|' + marks(c.invalid) + '|' + marks(c.pitLaps) + '|' + marks(c.removed);
+  };
+  const medianCache = new WeakMap();
+  const medianOf = (c, kind, laps) => {
+    const key = kind + '#' + lapKey(c);
+    const hit = medianCache.get(c);
+    if (hit && hit.key === key) return hit.value;
+    const value = median(laps);
+    medianCache.set(c, { key, value });
+    return value;
+  };
   function lapStats(S, c, kind = 'average') {
     let byKind = S?.[FRAME]?.get(c);
     if (!byKind) {
@@ -49,7 +76,7 @@
           return avg ?? (avg = mean(laps));
         },
         get median() {
-          return med ?? (med = median(laps));
+          return med ?? (med = medianOf(c, kind, laps));
         }
       });
     }
@@ -190,7 +217,7 @@
       leader = rows[0] && rows[0].car,
       index = S.eng.cars.indexOf(c);
     if (!row || row.pos <= 1 || !leader) return '';
-    const info = Number.isFinite(row.gapMs) ? { lead: row.gapMs } : index >= 0 && !leader.virtualRival ? S.eng.gapInfo()[index] : null,
+    const info = Number.isFinite(row.gapMs) ? { lead: row.gapMs } : index >= 0 && !leader.virtualRival ? gapsOf(S)[index] : null,
       stats = lapStats(S, leader),
       laps = stats.laps;
     const Ps = typeof module !== 'undefined' ? require('./pushsave.js') : globalThis.PushSave;
@@ -1543,6 +1570,7 @@
   const PsKind = k => ({ push: 'Push', normal: 'Normal', save: 'Save' })[k] || 'Normal';
   const api = {
     beginFrame,
+    gapsOf,
     lapStats,
     contentKey,
     content,

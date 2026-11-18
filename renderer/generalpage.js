@@ -45,7 +45,9 @@ const GeneralPage = (() => {
         'standard look',
       pictures: short(optText(get('picq'))),
       performance: get('perfswitch') && get('perfswitch').checked ? 'line on the race screen' : 'quiet',
-      storage: /SQLite/.test(box.textContent) ? 'SQLite' : 'JSON',
+      storage: [...box.querySelectorAll('.row strong')].some(x => /^SQLite database/.test(String(x.textContent || '').trim()))
+        ? 'SQLite'
+        : 'JSON', // (2.4.0: the name of the database, not any mention of SQLite)
       updates: get('updcheck') && get('updcheck').checked ? 'checks for updates' : 'update checks off'
     };
     const page = el('div', 'gs');

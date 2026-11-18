@@ -139,7 +139,7 @@ function home(source, value) {
     }
     // (2.4.0) the new cards: from the laps of the lanes, or from the standings of the sessions
     if (b.key === 'lanes') data.lanes = o.trackId ? Home.laneRows(lanes || []) : [];
-    if (b.key === 'form') data.form = Home.gridForm({ ...c, driverIds: o.driverIds });
+    if (b.key === 'form') data.form = Home.gridForm({ ...c, driverIds: o.driverIds, count: 10 }); // (the card has no count of its own: ten races, as on this computer; it shows five when the grid is big)
     if (b.key === 'h2h') data.h2h = Home.headToHead({ ...c, driverIds: o.driverIds });
     if (b.key === 'milestones') data.milestones = Home.milestones({ ...c, driverIds: o.driverIds, cars: [] });
     if (b.key === 'heats') data.heats = Home.heatStandings(c);
