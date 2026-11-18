@@ -111,17 +111,8 @@
         a.map(([id, label]) => `<option value="${E(id)}"${String(id) === String(value) ? ' selected' : ''}>${E(label)}</option>`).join('');
       const check = (key, label) =>
         `<label class="td-check"><input type="checkbox" data-copy="${key}"${choices[key] ? ' checked' : ''}${!target && ['name', 'lanes'].includes(key) ? ' disabled' : ''}>${label}</label>`;
-      dialog.innerHTML = `<header class="td-head"><div><span class="muted">DATABASE / TRACKS</span><h2>Circuit design</h2><p>Import a SlotForge Circuit or older Track Builder drawing, confirm your timing lanes, then use it in Live Track charts.</p></div><button class="btn" data-close>Close</button></header><div class="td-layout"><nav aria-label="Track design sections">${[
-        ['import', 'Import & destination'],
-        ['mapping', 'Lanes & timing line'],
-        ['profile', 'Animation profile'],
-        ['apply', 'Save to database']
-      ]
-        .map(([id, label]) => `<button class="btn" data-section="${id}">${label}</button>`)
-        .join(
-          ''
-        )}<p class="muted">Positions are estimates between sensor crossings. The profile changes the animation, never measured laps or race rules.</p></nav><main>
-      <section id="td-import"><h3>Import & destination</h3><label class="field">Circuit file<input type="file" accept=".json,.slotforge.json" data-file></label><span class="muted">A .slotforge.json export, up to 5 MiB. No separate picture is needed.</span><p class="muted" data-file-status role="status"></p><label class="field">Save design to<select data-target>${options([['', 'Create a new track'], ...tracks.map(t => [t.id, t.name || 'Unnamed track'])], target?.id || '')}</select></label>${target ? `<p>Updating <strong>${E(target.name)}</strong>. Its identity and race records stay linked.</p>` : ''}${
+      dialog.innerHTML = `<form class="td-form"><h3>Circuit design</h3><p class="muted td-lead">Import a SlotForge Circuit or older Track Builder drawing, confirm your timing lanes, then use it in Live Track charts. Positions are estimates between sensor crossings: the profile changes the animation, never measured laps or race rules.</p><div class="formgrid grouped td-body">
+      <details class="fgroup" id="td-import" open><summary><strong>Import & destination</strong> <span class="muted">The Circuit file, and the track it is saved to</span></summary><div class="td-fields"><label class="field">Circuit file<input type="file" accept=".json,.slotforge.json" data-file></label><span class="muted">A .slotforge.json export, up to 5 MiB. No separate picture is needed.</span><p class="muted" data-file-status role="status"></p><label class="field">Save design to<select data-target>${options([['', 'Create a new track'], ...tracks.map(t => [t.id, t.name || 'Unnamed track'])], target?.id || '')}</select></label>${target ? `<p>Updating <strong>${E(target.name)}</strong>. Its identity and race records stay linked.</p>` : ''}${
         doc
           ? `<h3>${E(doc.title)}</h3><p>${lanes.length} closed routes · ${doc.pieces.length} ${doc.pieces.length === 1 ? 'section' : 'sections'} · ${(doc.definitions || []).filter(d => d.parameters.type === 'reference').length} reference definitions</p><div class="td-preview" data-preview></div><ul class="td-warnings">${D.importIssues(
               doc
@@ -129,8 +120,8 @@
               .map(w => `<li>${E(w.message)}</li>`)
               .join('')}</ul>`
           : '<p class="muted">Choose an export to see the track and its nominal lane lengths.</p>'
-      }</section>
-      <details id="td-mapping" open><summary>Lanes & timing line</summary><div class="td-fields">${
+      }</div></details>
+      <details class="fgroup" id="td-mapping" open><summary><strong>Lanes & timing line</strong> <span class="muted">Which route is which lane, and where the lap sensor is</span></summary><div class="td-fields">${
         doc
           ? `${check('lanes', 'Use the design’s lane count')}<div class="td-lanes">${mapping.map((id, i) => `<label class="field">Timing lane ${i + 1}<select data-lane="${i}">${options([['', 'Not mapped'], ...lanes.map(l => [l.id, `${l.label} · ${(l.lengthMm / 1000).toFixed(3)} m nominal`])], id)}</select></label>`).join('')}</div><div class="formgrid"><label class="field">Track section containing the lap sensor<select data-line>${options([['', 'Choose a track section'], ...roads.map(p => [p.id, `${defs.get(p.definitionId).name} · ${p.id}`])], doc.timing.startFinish?.pieceId || '')}</select></label><label class="field"><span data-position-label>Sensor position along the section (%)</span><input type="number" data-fraction min="0" max="100" step="any" value="${(doc.timing.startFinish?.fraction ?? 0.5) * 100}"></label><label class="field">Travel direction<select data-direction>${options(
               [
@@ -141,7 +132,7 @@
             )}</select></label></div><p class="muted"><span data-sensor-help></span> A changed circuit requires confirmation again.</p><label class="td-check"><input type="checkbox" data-confirm${confirmed ? ' checked' : ''}>I have checked every lane, direction and the sensor position</label>`
           : 'Import a design first.'
       }</div></details>
-      <details id="td-profile"><summary>Animation profile</summary><div class="td-fields"><p class="muted">Inherited from SlotForge Circuit. Straight speed, braking and cornering shape the movement within each estimated lap. In Chart Editor, choose “Imported tuning profile” under “Estimate lap progress using” to use its calculated lap duration too. Other benchmarks scale this movement to the selected lap time. These estimates never count laps; only sensor crossings do.</p>${
+      <details class="fgroup" id="td-profile"><summary><strong>Animation profile</strong> <span class="muted">How the cars move on a Live Track chart</span></summary><div class="td-fields"><p class="muted">Inherited from SlotForge Circuit. Straight speed, braking and cornering shape the movement within each estimated lap. In Chart Editor, choose “Imported tuning profile” under “Estimate lap progress using” to use its calculated lap duration too. Other benchmarks scale this movement to the selected lap time. These estimates never count laps; only sensor crossings do.</p>${
         doc
           ? `<div class="td-lanes">${[
               ['speed', 'Straight speed (mm/s)', 200, 3000, 10],
@@ -157,9 +148,12 @@
               .join('')}</div>`
           : ''
       }</div></details>
-      <section id="td-apply"><h3>Save to database</h3>${check('name', 'Use the design’s track name')}${check('lengths', 'Use nominal design lengths for the mapped lanes')}${check('picture', 'Use the generated transparent PNG as the track picture')}<p class="muted">Existing lengths and picture stay unchanged unless selected. Nominal lengths are calculated from the 2D lane paths, not verified physical measurements. Your track’s lap limits, target time and race records remain unchanged.</p><p class="td-message" data-design-error role="alert"></p><div class="row"><button class="btn primary" data-save${!doc ? ' disabled' : ''}>${target ? 'Save track design' : 'Create track'}</button>${target?.trackDesign ? '<button class="btn danger" data-remove>Remove linked design</button>' : ''}</div><p class="muted">Next: Customization → Chart Editor → Live Track → Appearance. Choose Coloured Lanes or Circuit Artwork; both follow this imported layout. Select this track in your Race Setup. Changes apply to the next race.</p></section></main></div>`;
+      <details class="fgroup" id="td-apply" open><summary><strong>Save to database</strong> <span class="muted">What the design changes on the track</span></summary><div class="td-fields">${check('name', 'Use the design’s track name')}${check('lengths', 'Use nominal design lengths for the mapped lanes')}${check('picture', 'Use the generated transparent PNG as the track picture')}<p class="muted">Existing lengths and picture stay unchanged unless selected. Nominal lengths are calculated from the 2D lane paths, not verified physical measurements. Your track’s lap limits, target time and race records remain unchanged.</p><p class="muted">Next: Customization → Chart Editor → Live Track → Appearance. Choose Coloured Lanes or Circuit Artwork; both follow this imported layout. Select this track in your Race Setup. Changes apply to the next race.</p></div></details></div>
+      <p class="td-message error" data-design-error role="alert"></p>
+      <div class="row td-foot"><button type="button" class="btn primary" data-save${!doc ? ' disabled' : ''}>${target ? 'Save track design' : 'Create track'}</button><button type="button" class="btn" data-close>Close</button>${target?.trackDesign ? '<button type="button" class="btn danger" data-remove>Remove linked design</button>' : ''}</div></form>`;
       dialog.querySelector('[data-close]').onclick = () => dialog.close();
       dialog.querySelectorAll('[data-section]').forEach(
+        // (2.4.0: no side menu any more; kept for a page that still has these buttons)
         b =>
           (b.onclick = () => {
             const el = dialog.querySelector('#td-' + b.dataset.section);
