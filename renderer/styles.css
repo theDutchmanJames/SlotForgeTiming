@@ -4271,3 +4271,8 @@ html .hm-grid .hm-cell>.card>.hm-tower>li,html .hm-grid .hm-cell>.card>.hm-log>l
 html .hm-grid .hm-wall .hm-time.sm{color:var(--ink)}
 html .hm-grid .hm-brief .hm-bi{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;text-align:left}
 html .hm-grid .hm-wall .hm-recrow2:not(.here){border-color:var(--line)}
+/* (Home Cards) Record to beat: the title grows with the card (the red label is about a third of it), and never runs out of the label */
+html .hm-grid .hm-rec{container:hm-reccard/inline-size}
+@container hm-reccard (min-width:0){html .hm-grid .hm-rec>h3{font-size:clamp(20px,7.5cqi,44px);overflow-wrap:anywhere}}
+@container hm-reccard (min-width:0){html .hm-grid .hm-rec>h3{font-size:clamp(18px,7cqi,44px);overflow-wrap:normal;word-break:keep-all}}
+@container hm-reccard (max-width:420px){html .hm-grid .hm-rec>h3{padding:16px 28px 16px 16px}}
