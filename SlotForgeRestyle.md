@@ -20,6 +20,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Paint](#paint) | The colour of a system (`--c`), used only as a highlight | Race systems, their icons, tiles and bars |
 | [Pit Buttons](#pit-buttons) | One button family: primary, secondary, outline, danger, icon, small | Every button outside the race screen |
 | [Paddock Rail](#paddock-rail) | A page with a side list of its sections on the left | Race Setup, Customization, Database, App Settings |
+| [Double Rail](#double-rail) | A second Paddock Rail beside the first, for the topics of one section, and a plain canvas with one topic at a time | App Settings › General |
 | [Page Note](#page-note) | The box under a page title that explains the page | Every Race Setup page |
 | [Control Strip](#control-strip) | One tight toolbar: Add, tools, search, List / Grid, pager | Database lists, system lists |
 | [Gear Selector](#gear-selector) | A quiet segmented control | List / Grid, filters, choices in forms, inner tabs |
@@ -48,7 +49,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | **Add Race System** (Add Fuel, Safety Car, Weather…) | Tech Sheet (with Folder, Gear Selector, Pit Buttons inside) |
 | **Race Setup page** (list of systems) | Paddock Rail + Page Note + Control Strip + Entry Card |
 | **Customization** | Paddock Rail + Page Note + Showroom Cards (Layout, Leaderboard, Chart, Widget Builder, Image Settings), Entry Cards (Audio), Replay Monitor (Race Results) |
-| **App Settings** | Paddock Rail (with a search under the title) + Folder |
+| **App Settings** | Paddock Rail (with a search under the title) + Folder; **General** is a Double Rail with Choice Tiles and switch rows |
 | **Racing Rules** | Rulebook |
 | **Layout / Leaderboard / Chart editor** | Pit Board + the editor's own canvas and side panels |
 | **Simple widget** | Pit Board + Widget Bench |
@@ -267,6 +268,57 @@ body:has(>#view>.setupshell)>#app-footer .app-brand-logo{position:absolute;right
 Timing has a generic builder for it in `renderer/app.js`: `sideShellHtml(title, tabsId, current, names, boxId, extra)`
 plus `sideGroups(el, groups)` to put the group headings in. Database, Customization and App Settings use it.
 In App Settings a search field sits under the title (`.custrail>.settings-search`, full width, 13 px, `--bg` fill).
+
+---
+
+## Double Rail
+
+For a section with several topics, instead of a window inside the page: a **second Paddock Rail stuck to the first**, one topic at a time on a plain
+canvas. The second rail has the section's name in Barlow and every topic with its icon and a one-line status under its name ("100% · Soft lift",
+"km/h · metres"), so you see the state of everything without opening it. The canvas shows the topic's header (accent tile, Barlow title, one line of
+what it is) and then cards.
+
+Inside the cards:
+
+- **Choice Tiles** for a choice of a few options (a drop-down list becomes tiles that each *show* the option): sizes as letters that grow, depth as small
+  cards that stand up more, units with real example values, quality levels with what they mean. The list stays in the page, hidden, and a tile sets it
+  and sends its change, so the app's code is unchanged.
+- **Switch rows** for on/off settings: the name in bold with a switch on the right, the words under it.
+- **Stat tiles** for numbers (database size, media, free disk): the value large in Roboto Mono, a small caption above and a note under.
+- A **preview** where a setting changes something you can see (the name and welcome as they look on Home).
+
+```css
+.gs{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100%}
+.gs-rail{display:flex;flex-direction:column;gap:2px;padding:22px 10px 24px;border-right:1px solid var(--line);background:color-mix(in srgb,var(--bg) 30%,var(--panel))}
+.gs-ri{display:flex;align-items:flex-start;gap:11px;width:100%;padding:8px 10px;border:0;border-radius:8px;background:transparent;text-align:left}
+.gs-ri small{font-size:11.5px;color:var(--muted)}                          /* the status line */
+.gs-ri[aria-pressed="true"]{background:color-mix(in srgb,var(--ink) 10%,var(--panel));color:var(--ink)}
+.gs-canvas{padding:26px 32px 64px}
+.gs-head{display:flex;align-items:center;gap:14px}
+.gs-headico{display:grid;place-items:center;width:44px;height:44px;border-radius:11px;background:color-mix(in srgb,var(--accent) 14%,var(--panel));color:var(--accent-text,var(--accent))}
+.gs-card{display:flex;flex-direction:column;gap:12px;padding:18px 20px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.gs-lead{margin:-6px 0 0;color:var(--muted);font-size:13px}
+/* Choice Tiles */
+.gs-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.gs-tile{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;min-height:92px;padding:12px 8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);cursor:pointer}
+.gs-tile[aria-pressed="true"]{border-color:color-mix(in srgb,var(--accent) 65%,var(--line));background:color-mix(in srgb,var(--ink) 7%,var(--panel));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 40%,transparent)}
+.gs-tile em{font:500 12px 'SF Roboto Mono',Consolas,monospace;font-style:normal}   /* an example value */
+/* switch rows */
+.gs-switchrow{padding:12px 0;border-top:1px solid var(--line)}
+.gs-switchrow>label{display:flex;flex-direction:row-reverse;justify-content:space-between;align-items:center;gap:16px;font-weight:600}
+.gs-switchrow input{appearance:none;position:relative;width:36px;height:20px;border-radius:10px;background:var(--line)}
+.gs-switchrow input::after{content:'';position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+.gs-switchrow input:checked{background:var(--accent-fill,var(--accent))}
+.gs-switchrow input:checked::after{left:18px}
+/* stat tiles */
+.gs-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.gs-stat{display:flex;flex-direction:column;gap:3px;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.gs-stat b{font:500 22px/1.2 'SF Roboto Mono',Consolas,monospace}
+```
+
+In Timing the page is first drawn as folders (the tests, the settings search and the code use those controls) and `GeneralPage.build(box)` in
+`renderer/generalpage.js` moves the same controls into the topics in a real window. The settings search opens the topic of a setting it finds
+(`GeneralPage.show(topic)`) and marks its card. A label that only repeats its card's title stays in the page for the search and screen readers, out of sight.
 
 ---
 
@@ -1051,4 +1103,5 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Picture Bench | New: picture sets as drop-on tiles with a live preview and a fuel slider |
 | 2026-11 | Tech Sheet | Audio sets: subjects in the side list, every call as a row with a switch, a call opens under its row, one search with filter chips |
 | 2026-11 | Folder | The canvas Widget Builder's tinted folders became the calm Folders; its blocks are icon tiles that wrap |
+| 2026-11 | Double Rail | New: App Settings › General as two side lists and a canvas, with Choice Tiles, switch rows, stat tiles and a name preview |
 | 2026-11 | Timing Tower, Rulebook | Personal Bests as a timing tower; Racing Rules as a document page with a grouped toolbar |

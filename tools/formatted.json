@@ -136,6 +136,7 @@
     "renderer/failures.js",
     "renderer/formui.js",
     "renderer/frame.js",
+    "renderer/generalpage.js",
     "renderer/hardware.js",
     "renderer/hardwareui.js",
     "renderer/heats.js",

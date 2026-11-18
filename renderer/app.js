@@ -217,7 +217,9 @@ async function settingsGo(e) {
       els.find(x => SettingsIndex.norm(x.textContent).includes(want));
   if (!hit) return;
   for (let d = hit.closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) d.open = true;
-  const mark = hit.closest('.field,label,summary,.row') || hit;
+  const topic = hit.closest('[data-gtopic]'); // (2.4.0: a setting in another topic of General opens that topic first)
+  if (topic && typeof GeneralPage !== 'undefined') GeneralPage.show(topic.dataset.gtopic);
+  const mark = hit.closest('.gs-card,.field,label,summary,.row') || hit;
   mark.scrollIntoView({ block: 'center' });
   mark.classList.add('search-hit');
   setTimeout(() => mark.classList.remove('search-hit'), 2600);
@@ -561,7 +563,8 @@ async function renderGeneralSettings(box) {
     },
     usage = storage.usage;
   const storageUsage = usage
-    ? `<div class="note" data-storage-usage><p><b>Media storage:</b> ${mb(usage.media?.bytes)} in ${Number(usage.media?.uniqueCount) || 0} unique media bodies, used by ${Number(usage.media?.count) || 0} references. Sharing avoids ${mb(usage.media?.savedBytes)} of duplicate media.</p><p><b>Database pages:</b> ${mb(usage.physicalBytes)}, including ${mb(usage.reusableBytes)} available for reuse. Deleting media may not shrink the file.</p><p><b>Free space on this volume:</b> ${mb(usage.freeBytes)}. Recovery copies and backups use additional space. Totals refresh once a minute.</p></div>`
+    ? // (2.4.0) the three numbers as tiles, with what they mean under them
+      `<div class="gs-stats" data-storage-usage><div class="gs-stat"><span>Database file</span><b>${mb(usage.physicalBytes)}</b><small>${mb(usage.reusableBytes)} of it free for reuse</small></div><div class="gs-stat"><span>Pictures and sounds</span><b>${mb(usage.media?.bytes)}</b><small>${Number(usage.media?.uniqueCount) || 0} files, used ${Number(usage.media?.count) || 0} times · sharing saves ${mb(usage.media?.savedBytes)}</small></div><div class="gs-stat"><span>Free on this disk</span><b>${mb(usage.freeBytes)}</b><small>Backups and recovery copies need room too</small></div></div><p class="muted">Deleting pictures may not make the file smaller. The totals are refreshed once a minute.</p>`
     : '';
   const us = UiScale.levelOf(S.uiScale),
     dp = Depth.levelOf(S.depth),
@@ -685,7 +688,9 @@ async function renderGeneralSettings(box) {
       <div class="row"><button type="button" class="btn" id="diagsave">Save diagnostics…</button></div><p class="muted" id="diagmsg" role="status"></p>
       <div class="field" style="max-width:560px"><label>Setup guide</label><div class="row"><button type="button" class="btn" id="guiderun">Start the setup guide again</button></div><span class="muted hint">Walks through a track, drivers, cars, the timing hardware, a sensor test and a 3-lap test race, on Home. What you already have stays.</span></div></div>`
     );
-  if (typeof AppSettingsPage !== 'undefined') AppSettingsPage.enhance(box, 'general');
+  // (2.4.0) General has a second side list with its topics and a canvas of its own (generalpage.js), not the sheet of the other pages
+  if (typeof GeneralPage !== 'undefined') GeneralPage.build(box);
+  else if (typeof AppSettingsPage !== 'undefined') AppSettingsPage.enhance(box, 'general');
   folderWire(box);
   box.onclick = ev => {
     const fa = ev.target && ev.target.closest ? ev.target.closest('[data-folderall]') : null;

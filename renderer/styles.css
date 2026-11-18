@@ -3368,3 +3368,86 @@ html .audio-plain p{margin:4px 0 0;font-size:14px}
 html .audio-calllist>.audcall .audio-enable{display:none}
 html .audio-calllist>.audcall .audio-folder-content{font-size:13.5px}
 html .audio-calllist>.audcall .audio-folder-content>p{font-size:13px;color:var(--ink)}
+/* 2.4.0 App Settings › General: two Paddock Rails side by side (App Settings, then the topics of General) and a plain canvas with one topic at a time.
+   No sheet in a sheet: the topic has a header, then cards; a choice is a row of picture tiles, a switch is a row with its words. */
+.custshell.gs-dual>.custpage{display:flex;flex-direction:column;padding:0}
+.custshell.gs-dual>.custpage>#settingsbox{flex:1 1 auto;display:flex;flex-direction:column}
+.gs{flex:1 1 auto;display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100%}
+.gs-rail{display:flex;flex-direction:column;gap:2px;padding:22px 10px 24px;border-right:1px solid var(--line);background:color-mix(in srgb,var(--bg) 30%,var(--panel))}
+.gs-railtitle{margin:0 10px 14px;font:italic 700 20px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em}
+.gs-ri{display:flex;align-items:flex-start;gap:11px;width:100%;padding:8px 10px;border:0;border-radius:8px;background:transparent;color:color-mix(in srgb,var(--ink) 82%,var(--muted));font:inherit;text-align:left;cursor:pointer}
+.gs-ri svg{flex:none;margin-top:2px;color:var(--muted)}
+.gs-ri span{display:flex;flex-direction:column;min-width:0}
+.gs-ri b{font-size:13.5px;font-weight:400}
+.gs-ri small{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gs-ri:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.gs-ri[aria-pressed="true"]{background:color-mix(in srgb,var(--ink) 10%,var(--panel));color:var(--ink)}
+.gs-ri[aria-pressed="true"] b{font-weight:600}
+.gs-ri[aria-pressed="true"] svg{color:var(--accent-text,var(--accent))}
+.gs-ri:focus-visible{outline:3px solid #4c9aff;outline-offset:2px}
+.gs-canvas{min-width:0;padding:26px 32px 64px;font-size:13.5px}
+.gs-topic{display:flex;flex-direction:column;gap:16px;max-width:1100px}
+.gs-topic[hidden]{display:none}
+.gs-head{display:flex;align-items:center;gap:14px;margin-bottom:4px}
+.gs-headico{display:grid;place-items:center;width:44px;height:44px;flex:none;border-radius:11px;background:color-mix(in srgb,var(--accent) 14%,var(--panel));color:var(--accent-text,var(--accent))}
+.gs-head h2{margin:0;font-size:28px;line-height:1}
+.gs-head p{margin:4px 0 0;color:var(--muted);font-size:13.5px}
+.gs-card{display:flex;flex-direction:column;gap:12px;min-width:0;padding:18px 20px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.gs-card>h3{margin:0;font-size:19px;line-height:1.1}
+.gs-lead{margin:-6px 0 0;color:var(--muted);font-size:13px}
+.gs-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.gs-grid2>.gs-wide{grid-column:1/-1}
+.gs-grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start}
+.gs-card .gs-field{max-width:none!important;margin:0;display:flex;flex-direction:column;gap:6px}
+.gs-card .gs-field>label{font-size:12.5px;font-weight:600;color:var(--ink)}
+.gs-card .gs-field .hint,.gs-card .gs-field>p.muted{font-size:12.5px;line-height:1.55;color:var(--muted);max-width:90ch}
+.gs-card .gs-tiled>label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.gs-hidden{display:none!important}
+.gs-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.gs-tile{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;min-height:92px;padding:12px 8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;text-align:center;cursor:pointer;transition:border-color .12s,background .12s}
+.gs-tile:hover{border-color:color-mix(in srgb,var(--ink) 25%,var(--line))}
+.gs-tile[aria-pressed="true"]{border-color:color-mix(in srgb,var(--accent) 65%,var(--line));background:color-mix(in srgb,var(--ink) 7%,var(--panel));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 40%,transparent)}
+.gs-tile b{font-size:13px;font-weight:600}
+.gs-tile small{font-size:11.5px;color:var(--muted);min-height:1.3em}
+.gs-tile em{font:500 12px 'SF Roboto Mono',Consolas,monospace;font-style:normal;color:color-mix(in srgb,var(--ink) 85%,var(--muted))}
+.gs-tile:focus-visible{outline:3px solid #4c9aff;outline-offset:2px}
+.gs-aa{font-weight:600;line-height:1;margin-bottom:auto;padding-top:6px}
+.gs-depths .gs-tile{min-height:110px}
+.gs-depth{display:grid;place-items:center;width:64px;height:44px;margin-bottom:auto}
+.gs-depth i{display:block;width:54px;height:30px;border-radius:7px;background:color-mix(in srgb,var(--ink) 10%,var(--panel));border:1px solid var(--line);box-shadow:0 calc(1px + 5px*var(--gd)) calc(2px + 14px*var(--gd)) rgba(0,0,0,calc(.8*var(--gd))),inset 0 calc(1px*var(--gd)) 0 rgba(255,255,255,calc(.18*var(--gd)));transform:translateY(calc(-4px*var(--gd)))}
+.gs-units{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.gs-units .gs-tile{align-items:flex-start;text-align:left;min-height:0;padding:14px}
+.gs-units .gs-tile b{font-size:18px}
+.gs-quality{grid-template-columns:repeat(3,minmax(0,1fr))}
+.gs-quality .gs-tile{align-items:flex-start;text-align:left;min-height:0;padding:14px;gap:6px}
+.gs-quality .gs-tile svg{color:var(--muted)}
+.gs-quality .gs-tile[aria-pressed="true"] svg{color:var(--accent-text,var(--accent))}
+.gs-quality .gs-tile em{font:400 12.5px "Segoe UI",system-ui,sans-serif;color:var(--muted)}
+.gs-namepv{display:flex;flex-direction:column;gap:2px;padding:14px 16px;border-radius:10px;background:radial-gradient(70% 140% at 0% 100%,color-mix(in srgb,var(--accent) 22%,transparent),transparent 70%),color-mix(in srgb,var(--bg) 70%,#000)}
+.gs-namepv .gs-eye{font:700 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.gs-namepv b{font:italic 700 26px/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+.gs-namepv span:last-child{font-size:13px;color:color-mix(in srgb,var(--ink) 80%,var(--muted))}
+.gs-card .gs-field .row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.gs-card .gs-switchrow{display:block;margin:0;padding:12px 0;border-top:1px solid var(--line)}
+.gs-card .gs-switchrow:first-of-type{border-top:0;padding-top:0}
+.gs-card .gs-switchrow>label.inline{display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:13.5px;font-weight:600;flex-direction:row-reverse}
+.gs-card .gs-switchrow>label.inline input{appearance:none;-webkit-appearance:none;position:relative;flex:none;width:36px;height:20px;margin:0;border-radius:10px;background:var(--line);cursor:pointer;transition:background .12s}
+.gs-card .gs-switchrow>label.inline input::after{content:'';position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .12s}
+.gs-card .gs-switchrow>label.inline input:checked{background:var(--accent-fill,var(--accent))}
+.gs-card .gs-switchrow>label.inline input:checked::after{left:18px}
+.gs-card .gs-switchrow>label.inline input:disabled{opacity:.45;cursor:not-allowed}
+.gs-card .gs-switchrow>.hint{display:block;margin-top:4px;max-width:85ch}
+.gs-card .perfout{margin:0;max-height:260px;overflow:auto;padding:12px 14px;border:1px solid var(--line);border-radius:9px;background:var(--bg);font:500 12px/1.5 'SF Roboto Mono',Consolas,monospace}
+@media(max-width:1300px){.gs-grid3{grid-template-columns:1fr 1fr}}
+@media(max-width:1100px){.gs{grid-template-columns:minmax(0,1fr)}.gs-rail{flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line);padding:10px}.gs-railtitle{display:none}.gs-ri{width:auto}.gs-ri small{display:none}.gs-grid2,.gs-grid3,.gs-quality{grid-template-columns:minmax(0,1fr)}.gs-canvas{padding:20px}}
+#view>.custshell.gs-dual>.custpage{padding:0}
+html header.gs-head{position:static;height:auto;padding:0;border:0;background:none;box-shadow:none}
+.gs-card .gs-titled>label:first-child{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.gs-card .gs-field .gs-field{margin-top:10px}
+/* the numbers of the database storage as tiles */
+.gs-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:6px 0 4px}
+.gs-stat{display:flex;flex-direction:column;gap:3px;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.gs-stat span{font:700 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.gs-stat b{font:500 22px/1.2 'SF Roboto Mono',Consolas,monospace;color:var(--ink)}
+.gs-stat small{font-size:12px;color:var(--muted)}
+.gs-card code{overflow-wrap:anywhere}
