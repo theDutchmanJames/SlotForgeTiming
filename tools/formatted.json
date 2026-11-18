@@ -155,6 +155,7 @@
     "renderer/livegrid.js",
     "renderer/liveshare.js",
     "renderer/liveview.js",
+    "renderer/mainbar.js",
     "renderer/multiclass.js",
     "renderer/multiclassui.js",
     "renderer/originalhistory.js",

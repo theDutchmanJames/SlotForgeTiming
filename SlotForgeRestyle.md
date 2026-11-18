@@ -41,6 +41,7 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Broadcast Hero](#broadcast-hero) | A header picture across the page with big titles on it | Home |
 | [Grid Slot](#grid-slot) | A lane of Start a race: name, car and Browse cars on the left, the driver as a full-height portrait on the right | Home › Start a race |
 | [Home Cards](#home-cards) | Every card under Start a race with an idea of its own, and seven new cards | Home |
+| [Pit Wall](#pit-wall) | The main menu as one slim bar: grouped tabs, status lights, Find, ON AIR, and a race strip while a race runs | The top of every page |
 | [Timing Tower](#timing-tower) | A ranked list: position, colour stripe, time, gap chip | Personal Bests card |
 | [Rulebook](#rulebook) | A document page: header, sheet with a grouped toolbar | Racing Rules |
 | [Finishing Touches](#finishing-touches) | Scroll bars and file pickers in the theme | Everything |
@@ -1233,6 +1234,25 @@ html .hm-grid .hm-brief{display:grid;grid-template-columns:repeat(auto-fill,minm
 html .hm-grid .hm-lbbar i{background:color-mix(in srgb,var(--c) 75%,var(--panel))}
 ```
 
+## Pit Wall
+
+The main menu (`renderer/mainbar.js`) as one slim bar that **never wraps**. The tabs that app.js draws keep their names and order and sit in three
+groups on a dark track (Home · Database, Race Setup · Customization, App Settings, Racing Rules); the open one is lifted with its picture in the accent.
+On the right: **status lights** (the timing hardware, the shared library, the network; hover for the words), **Find** (Ctrl K) and **Live Race** as
+an ON AIR button (red and pulsing while a race runs). Narrower windows lose first the words of the lights, then the word Find and the app name;
+below 1080px each tab shows its **name small under its picture**, so the names never go.
+
+While a race runs and another page is shown, a **race strip** under the bar says the race, the lap, the clock and the leader, with **Back to the race**
+(`live.strip`, filled in race.js). **Find** searches the pages, the settings (`SettingsIndex`), the drivers, cars, tracks and race setups, and a few
+things to do (open the Live Race, test the sensors, start the race); Enter opens it, a driver or car opens its form.
+
+```css
+html body.app-shell>header{flex-wrap:nowrap;min-height:60px;padding:0 18px}
+html body.app-shell>header>#tabs .mb-grp{display:flex;gap:2px;height:38px;padding:3px;border-radius:10px;background:rgba(0,0,0,.22)}
+html body.app-shell>header>#tabs .mb-grp>.tab[aria-selected="true"]{background:color-mix(in srgb,var(--ink) 12%,var(--panel));color:var(--ink)}
+.mb-strip{display:flex;align-items:center;gap:18px;height:40px;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 26%,var(--bg)),var(--bg) 60%)}
+```
+
 ## Finishing Touches
 
 ```css
@@ -1320,3 +1340,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Grid Slot | The hairlines are only between lanes (no line beside Start a race) |
 | 2026-11 | Home cards | Record to beat: the title on the red label is large Barlow (26 to 44px, growing with the label) |
 | 2026-11 | Home Cards | New: all cards redesigned; Lane balance, Grid form, Head to head, Championship, Heat standings, Countdown and Milestones added |
+| 2026-11 | Pit Wall | New: the main menu as one bar that never wraps, with status lights, Find (Ctrl K), ON AIR and a race strip |

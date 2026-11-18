@@ -1286,6 +1286,29 @@ async function renderRace() {
     }
     live.lastShare = t;
     if (!live.sender) live.sender = LiveShare.sender();
+    // (2.4.0) the race strip of the main menu: the name, the lap, the clock and the leader, while another page is shown
+    try {
+      const top = eng.standings()[0],
+        len = lenNow();
+      live.strip = {
+        name: setup.name || '',
+        phase: live.phase,
+        elapsed: eng.elapsed(t),
+        laps: Number(len.laps) > 0 && !(Number(len.duration) > 0) ? Number(len.laps) : 0,
+        heat: heat ? lc(heat.raceName(heat.idx)) : '',
+        leader:
+          top && top.car
+            ? {
+                name: top.car.teamName || top.car.driverName || '',
+                lane: top.car.lane + 1,
+                laps: eng.lapsOf(top.car),
+                color: HomeStats.laneColor(layout, top.car.lane)
+              }
+            : null
+      };
+    } catch {
+      live.strip = null;
+    }
     if (
       typeof PluginDisplayClient !== 'undefined' &&
       (find(layouts, setup.layout2) || layout)?.widgets?.some(w => PluginDisplay.TYPES.has(w.type))

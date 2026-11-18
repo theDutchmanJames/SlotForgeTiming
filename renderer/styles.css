@@ -4276,3 +4276,68 @@ html .hm-grid .hm-rec{container:hm-reccard/inline-size}
 @container hm-reccard (min-width:0){html .hm-grid .hm-rec>h3{font-size:clamp(20px,7.5cqi,44px);overflow-wrap:anywhere}}
 @container hm-reccard (min-width:0){html .hm-grid .hm-rec>h3{font-size:clamp(18px,7cqi,44px);overflow-wrap:normal;word-break:keep-all}}
 @container hm-reccard (max-width:420px){html .hm-grid .hm-rec>h3{padding:16px 28px 16px 16px}}
+/* 2.4.0 Pit Wall (mainbar.js): the main menu as one slim bar that never wraps. The tabs in three groups on a dark track, status lights, Find and ON AIR on the right. */
+html body.app-shell>header{flex-wrap:nowrap;gap:18px;min-height:60px;padding:0 18px;background:color-mix(in srgb,var(--bg) 40%,var(--panel));border-bottom:1px solid var(--line)}
+html body.app-shell>header .app-identity{flex:none}
+html body.app-shell>header>#tabs{display:flex;flex:1 1 auto;flex-wrap:nowrap;align-items:center;gap:6px;min-width:0;flex-basis:auto;height:60px;border:0;padding:0;margin:0}
+html body.app-shell>header>#tabs .mb-grp{display:flex;align-items:center;gap:2px;height:38px;padding:3px;border-radius:10px;background:rgba(0,0,0,.22)}
+html body.app-shell>header>#tabs .mb-grp+.mb-grp{margin-left:6px}
+html body.app-shell>header>#tabs .mb-grp>.tab{display:flex;align-items:center;gap:8px;height:100%;margin:0;padding:0 12px;border:0;border-radius:8px;background:transparent;box-shadow:none;color:var(--muted);font:600 13px "Segoe UI",system-ui,sans-serif;white-space:nowrap}
+html body.app-shell>header>#tabs .mb-grp>.tab::after,html body.app-shell>header>#tabs .mb-grp>.tab::before{display:none}
+html body.app-shell>header>#tabs .mb-grp>.tab:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
+html body.app-shell>header>#tabs .mb-grp>.tab[aria-selected="true"]{background:color-mix(in srgb,var(--ink) 12%,var(--panel));color:var(--ink)}
+html body.app-shell>header>#tabs .mb-grp>.tab[aria-selected="true"] .tabico{color:var(--accent-text,var(--accent))}
+html body.app-shell>header>#tabs .mb-grp>.tab .tabico{flex:none}
+html body.app-shell>header>#tabs .mb-grp>.tab.racetab{color:#fff;background:var(--accent-fill,var(--accent))}
+/* the right: lights, Find, ON AIR */
+html body.app-shell>header>#tabs .mb-right{display:flex;align-items:center;gap:12px;margin-left:auto;flex:none}
+html body.app-shell>header>#tabs .mb-lights{display:flex;align-items:center;gap:10px;height:34px;padding:0 12px;border-radius:999px;background:rgba(0,0,0,.22);font-size:12px;color:var(--muted)}
+html body.app-shell>header>#tabs .mb-lights:empty{display:none}
+html body.app-shell>header>#tabs .mb-light{display:flex;align-items:center;gap:6px;white-space:nowrap}
+html body.app-shell>header>#tabs .mb-light i{width:7px;height:7px;border-radius:50%;background:#4b5260}
+html body.app-shell>header>#tabs .mb-light.on i{background:var(--ok,#3ecf8e)}
+html body.app-shell>header>#tabs .mb-light.warn i{background:var(--accent)}
+html body.app-shell>header>#tabs .mb-find{display:flex;align-items:center;gap:8px;height:34px;margin:0;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:transparent;box-shadow:none;color:var(--muted);font:500 12.5px "Segoe UI",system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+html body.app-shell>header>#tabs .mb-find:hover{color:var(--ink);border-color:color-mix(in srgb,var(--ink) 25%,var(--line))}
+html body.app-shell kbd{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;background:transparent;font:600 10.5px "Segoe UI",system-ui,sans-serif;color:var(--muted)}
+html body.app-shell>header>#tabs .mb-right>.tab.onair{display:flex;align-items:center;gap:8px;height:36px;margin:0;padding:0 14px;border:1.5px solid color-mix(in srgb,var(--accent) 55%,var(--line));border-radius:8px;background:transparent;box-shadow:none;color:var(--accent-text,var(--accent));font:italic 700 16px 'SF Barlow Condensed','Bahnschrift',sans-serif;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}
+html body.app-shell>header>#tabs .mb-right>.tab.onair .led{width:9px;height:9px;border-radius:50%;background:#5a2a2c;box-shadow:0 0 0 3px rgba(229,72,77,.12)}
+html body.app-shell>header>#tabs .mb-right>.tab.onair:not(.off){background:var(--accent-fill,var(--accent));border-color:var(--accent-fill,var(--accent));color:#fff}
+html body.app-shell>header>#tabs .mb-right>.tab.onair:not(.off) .led{background:#fff;animation:mb-pulse 1.2s infinite}
+html body.app-shell>header>#tabs .mb-right>.tab.onair.off{opacity:.85}
+@keyframes mb-pulse{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){html body.app-shell>header>#tabs .mb-right>.tab.onair .led{animation:none!important}}
+/* narrower: the light names go, then Find's word, then the tab names (each tab keeps its picture and says its name as a tooltip) */
+@media (max-width:1480px){html body.app-shell>header>#tabs .mb-light>span{display:none}html body.app-shell>header>#tabs .mb-lights{gap:7px}}
+@media (max-width:1320px){html body.app-shell>header>#tabs .mb-find>span{display:none}}
+@media (max-width:1180px){html body.app-shell>header .app-identity-copy{display:none}}
+@media (max-width:1080px){html body.app-shell>header>#tabs .mb-grp>.tab.hasico{font-size:0;gap:0;padding:0 11px}html body.app-shell>header>#tabs .mb-grp>.tab.hasico .tabico{margin:0}}
+@media (max-width:700px){html body.app-shell>header>#tabs .mb-lights,html body.app-shell>header>#tabs .mb-find kbd{display:none}html body.app-shell>header>#tabs .mb-right>.tab.onair{font-size:0;gap:0;padding:0 10px}}
+/* the race strip, under the bar while a race runs and another page is shown */
+.mb-strip{display:flex;align-items:center;gap:18px;flex-shrink:0;height:40px;padding:0 18px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 26%,var(--bg)),var(--bg) 60%);font-size:12.5px;color:var(--ink)}
+.mb-strip[hidden]{display:none}
+.mb-strip .mb-sname{font:italic 700 15px 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:30ch}
+.mb-strip .mb-sphase{padding:2px 8px;border-radius:999px;background:rgba(0,0,0,.3);font-size:11.5px;color:var(--muted)}
+.mb-strip .mono,.mb-strip b.mono{font:600 14px 'SF Roboto Mono',Consolas,monospace}
+.mb-strip .mb-slead{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.mb-strip .mb-slead i{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:4px;background:var(--c);color:#111418;font:italic 700 12px 'SF Barlow Condensed','Bahnschrift',sans-serif}
+.mb-strip .mb-sback{margin-left:auto;min-height:28px;padding:0 12px;font-size:12.5px}
+/* Find */
+.mb-find-box[hidden]{display:none}
+.mb-fshade{position:fixed;inset:0;z-index:2000;background:rgba(6,8,11,.55)}
+.mb-fpanel{position:fixed;left:50%;top:84px;z-index:2001;width:min(600px,calc(100vw - 32px));transform:translateX(-50%);border:1px solid var(--line);border-radius:12px;background:var(--panel);box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden}
+.mb-fin{display:flex;align-items:center;gap:10px;height:50px;padding:0 14px;border-bottom:1px solid var(--line);color:var(--muted)}
+html .mb-fin input{flex:1;min-width:0;height:100%;padding:0;border:0;background:transparent;box-shadow:none;color:var(--ink);font:400 15px "Segoe UI",system-ui,sans-serif;outline:none}
+.mb-flist{max-height:min(60vh,460px);overflow:auto;margin:0;padding:6px 0;list-style:none}
+.mb-fgh{padding:8px 14px 4px;font:600 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.mb-fit{display:flex;align-items:center;gap:12px;padding:8px 14px;font-size:13.5px;color:color-mix(in srgb,var(--ink) 85%,var(--muted));cursor:pointer}
+.mb-fit svg{flex:none;color:var(--muted)}
+.mb-fit .t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mb-fit small{margin-left:auto;flex:none;font-size:11.5px;color:var(--muted)}
+.mb-fit.sel,.mb-fit:hover{background:color-mix(in srgb,var(--ink) 9%,var(--panel));color:var(--ink)}
+.mb-fit.sel svg{color:var(--accent-text,var(--accent))}
+.mb-fnone{padding:16px 14px;color:var(--muted)}
+/* (Pit Wall) the names always show: tighter first, then the name small under its picture (never pictures alone) */
+@media (max-width:1280px){html body.app-shell>header>#tabs .mb-grp>.tab{padding:0 9px;gap:6px;font-size:12.5px}html body.app-shell>header{gap:12px}}
+@media (max-width:1080px){html body.app-shell>header>#tabs .mb-grp{height:48px}html body.app-shell>header>#tabs .mb-grp>.tab.hasico{flex-direction:column;justify-content:center;gap:2px;padding:0 8px;font-size:10.5px;font-weight:600;line-height:1}html body.app-shell>header>#tabs .mb-grp>.tab.hasico .tabico{width:17px;height:17px}html body.app-shell>header{min-height:64px}html body.app-shell>header>#tabs{height:64px}}
+@media (max-width:900px){html body.app-shell>header>#tabs .mb-right{gap:8px}html body.app-shell>header>#tabs .mb-find kbd{display:none}html body.app-shell>header>#tabs .mb-right>.tab.onair{padding:0 10px;letter-spacing:.04em;font-size:14px}html body.app-shell>header>#tabs .mb-lights{padding:0 9px}}

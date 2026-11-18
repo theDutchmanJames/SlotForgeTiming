@@ -22,6 +22,8 @@
     tokens: '<path d="M7 3.5h10M7 20.5h10M8 3.5c0 4.5 4 6 4 8.5s-4 4-4 8.5M16 3.5c0 4.5-4 6-4 8.5s4 4 4 8.5"/>',
     // the tabs that have no tile: a house, a race track with its start line, a paint palette, a cog
     home: '<path d="M3.5 11 12 3.8l8.5 7.2M5.5 9.6V20h13V9.6M10 20v-5.5h4V20"/>',
+    // (2.4.0: Find in the main menu) a magnifying glass
+    search: '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>',
     setup:
       '<path d="M9.5 4.5h5a7.5 7.5 0 0 1 0 15h-5a7.5 7.5 0 0 1 0-15z"/><path d="M10 9.5h4a2.5 2.5 0 0 1 0 5h-4a2.5 2.5 0 0 1 0-5z"/><path d="M12 4.5v5"/>',
     custom:

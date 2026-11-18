@@ -1301,6 +1301,7 @@ async function render() {
     render();
   };
   renderTabs(tabsEl, tabsNow(), state.tab, pick, TAB_ICONS);
+  if (typeof MainBar !== 'undefined') MainBar.decorate(tabsEl); // (2.4.0: Pit Wall, the groups, the lights, Find and ON AIR)
   try {
     if (state.tab === 'home') {
       if (typeof resetHome === 'function') resetHome();
@@ -1313,6 +1314,7 @@ async function render() {
     else if (state.tab === 'setup') await renderSetup();
     else if (state.tab === 'custom') await renderCustom();
     if (state.tab === 'race') renderTabs(tabsEl, tabsNow(), state.tab, pick, TAB_ICONS); // (the race exists now: its tab is shown, and it is the one that is open)
+    if (state.tab === 'race' && typeof MainBar !== 'undefined') MainBar.decorate(tabsEl);
   } catch (e) {
     screenFailed(e);
   }
