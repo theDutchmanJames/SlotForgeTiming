@@ -130,6 +130,19 @@ function homeHeaderHtml(s, preview = false) {
 }
 
 // `icons` (only the main tabs pass it) says which line picture goes to the left of the text of a tab: { tab id: picture name from icons.js }
+// (2.4.0) a page with a side list of sections (Database, Customization, App Settings): the title of the tab and what goes under it in the list (a search),
+// the tab list, and the page with the name of its section as its title. sideGroups puts a small heading before the first section of each group.
+const sideShellHtml = (title, tabsId, current, names, boxId, extra = '') =>
+  `<div class="setupshell custshell"><nav class="custrail" aria-label="${esc(title)} sections"><div class="ssrailtitle">${esc(title)}</div>${extra}<div class="sub" id="${tabsId}" role="tablist"></div></nav><div class="custpage"><h2 class="sidetitle">${esc((names.find(t => t[0] === current) || names[0] || [0, ''])[1])}</h2><div id="${boxId}"></div></div></div>`;
+function sideGroups(el, groups) {
+  if (!el) return;
+  el.setAttribute?.('aria-orientation', 'vertical');
+  Object.entries(groups).forEach(([id, group]) => {
+    const b = el.querySelector?.(`[data-id="${id}"]`);
+    if (b && b.insertAdjacentHTML) b.insertAdjacentHTML('beforebegin', `<span class="sslabel" aria-hidden="true">${esc(group)}</span>`);
+  });
+}
+
 function renderTabs(el, items, current, onPick, icons = {}) {
   el.innerHTML = items
     .map(([id, label, look]) =>
@@ -264,31 +277,42 @@ function settingsSearchBind() {
   };
   input.onblur = () => setTimeout(() => (list.hidden = true), 150);
 }
+// the sections of App Settings: id, name and icon (2.4.0: a side list)
+const SETTINGS_TABS = [
+  ['general', 'General', 'settings'],
+  ['theme', 'App Theme', 'paint'],
+  ['director', 'Race Director', 'director'],
+  ['calculations', 'Calculations', 'sliders'],
+  ['network', 'Connections', 'parallel'],
+  ['hardware', 'Timing Hardware', 'timing'],
+  ['transfer', 'Import and Export', 'database'],
+  ['plugins', 'Plugins', 'layers'],
+  ['help', 'Help', 'info']
+];
 async function renderSettings() {
   if (typeof ptPageDispose === 'function') ptPageDispose();
   if (typeof ppPageDispose === 'function') ppPageDispose();
-  view.innerHTML =
-    '<div class="settings-head"><h2>App Settings</h2><div class="settings-search" role="search"><input type="search" id="settings-q" placeholder="Search settings…" aria-label="Search the settings" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="settings-hits" aria-autocomplete="list"><ul id="settings-hits" role="listbox" aria-label="Settings found" hidden></ul></div></div><div class="sub" id="settingstabs" role="tablist"></div><div id="settingsbox"></div>';
+  view.innerHTML = sideShellHtml(
+    'App Settings',
+    'settingstabs',
+    state.settingsSub,
+    SETTINGS_TABS,
+    'settingsbox',
+    '<div class="settings-search" role="search"><input type="search" id="settings-q" placeholder="Search settings…" aria-label="Search the settings" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="settings-hits" aria-autocomplete="list"><ul id="settings-hits" role="listbox" aria-label="Settings found" hidden></ul></div>'
+  );
+  view.firstElementChild?.classList?.add('nosidetitle'); // (every page of App Settings has its own big heading)
   settingsSearchBind();
   renderTabs(
     document.getElementById('settingstabs'),
-    [
-      ['general', 'General'],
-      ['theme', 'App Theme'],
-      ['director', 'Race Director'],
-      ['calculations', 'Calculations'],
-      ['network', 'Connections'],
-      ['hardware', 'Timing Hardware'],
-      ['transfer', 'Import and Export'],
-      ['plugins', 'Plugins'],
-      ['help', 'Help']
-    ],
+    SETTINGS_TABS.map(([id, label]) => [id, label]),
     state.settingsSub,
     id => {
       state.settingsSub = id;
       renderSettings();
-    }
+    },
+    Object.fromEntries(SETTINGS_TABS.map(t => [t[0], t[2]]))
   );
+  sideGroups(document.getElementById('settingstabs'), { general: 'This app', network: 'Race night', transfer: 'Your data', help: 'Help' });
   if (state.settingsSub === 'plugins') return PluginsPage.render(document.getElementById('settingsbox'));
   if (state.settingsSub === 'help')
     return Help.render(document.getElementById('settingsbox'), {
@@ -1081,16 +1105,23 @@ const RULE_SIZES = [
   ['6', 'Extra large']
 ];
 async function renderRules() {
-  view.innerHTML = `<h2>Racing Rules</h2><p class="muted">General rules for racing, for example a club's code of conduct. Select text to make it bold, italic, underlined, bigger or coloured. They are saved as you type.</p>
-    <div class="rte-bar" id="rte-bar" role="toolbar" aria-label="Text formatting">
-      <button class="btn" type="button" data-cmd="bold" title="Bold" aria-label="Bold"><b>B</b></button><button class="btn" type="button" data-cmd="italic" title="Italic" aria-label="Italic"><i>I</i></button>
-      <button class="btn" type="button" data-cmd="underline" title="Underline" aria-label="Underline"><u>U</u></button>
-      <select id="rte-size" aria-label="Text size"><option value="">Size</option>${RULE_SIZES.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select>
-      <label class="inline">Colour <input type="color" id="rte-color" value="#d62828" aria-label="Text colour"></label>
-      <button class="btn" type="button" data-cmd="heading" title="Heading">Heading</button><button class="btn" type="button" data-cmd="insertUnorderedList" title="Bulleted list">&bull; List</button>
-      <button class="btn" type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button><button class="btn" type="button" data-cmd="removeFormat" title="Clear formatting">Clear formatting</button></div>
-    <div id="rules" class="rules rte" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Racing rules" data-placeholder="Write your racing rules here...">${RichText.clean(state.settings.rules || '')}</div>
-    <div class="row">${pdfButton('id="rules-pdf"')}<span id="rulesmsg" class="muted" role="status"></span></div>`;
+  // (2.4.0) the rules are a document: a header (title, saved, Export to PDF), then a sheet with the toolbar on top and the text under it
+  const tool = (cmd, label, inner, title = label) =>
+    `<button class="rte-b" type="button" data-cmd="${cmd}" title="${esc(title)}" aria-label="${esc(label)}">${inner}</button>`;
+  view.innerHTML = `<div class="rulespage">
+    <div class="rules-head"><div class="rules-title"><span class="rules-eyebrow">${Icons.svg('rules', { size: 14 })}Club handbook</span><h2>Racing Rules</h2>
+      <p class="muted">General rules for racing, for example your club's code of conduct. They are saved as you type, and Export to PDF makes a page to print or share.</p></div>
+      <div class="rules-actions"><span id="rulesmsg" class="rules-saved" role="status"></span>${pdfButton('id="rules-pdf"')}</div></div>
+    <div class="rules-sheet">
+      <div class="rte-bar" id="rte-bar" role="toolbar" aria-label="Text formatting">
+        <span class="rte-group">${tool('bold', 'Bold', '<b>B</b>')}${tool('italic', 'Italic', '<i>I</i>')}${tool('underline', 'Underline', '<u>U</u>')}</span>
+        <span class="rte-group"><select id="rte-size" aria-label="Text size"><option value="">Text size</option>${RULE_SIZES.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select>
+          <label class="rte-colour" title="Text colour"><input type="color" id="rte-color" value="#d62828" aria-label="Text colour"><span>Colour</span></label></span>
+        <span class="rte-group">${tool('heading', 'Heading', 'Heading')}${tool('insertUnorderedList', 'Bulleted list', '&bull; List')}${tool('insertOrderedList', 'Numbered list', '1. List')}</span>
+        <span class="rte-group rte-end">${tool('removeFormat', 'Clear formatting', 'Clear formatting')}</span></div>
+      <div id="rules" class="rules rte" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Racing rules" data-placeholder="Write your racing rules here. For example: Always leave room for the other car. A deslot is put back by the marshal nearest to it.">${RichText.clean(state.settings.rules || '')}</div>
+      <div class="rules-foot"><span id="rulescount"></span></div>
+    </div></div>`;
   const box = document.getElementById('rules'),
     msg = document.getElementById('rulesmsg'),
     bar = document.getElementById('rte-bar');
@@ -1102,8 +1133,18 @@ async function renderRules() {
     state.settings = await api.setSettings({ rules: RichText.clean(box.innerHTML) });
     msg.textContent = 'Saved.';
   };
+  const count = () => {
+    const el = document.getElementById('rulescount'),
+      n = String(box.textContent || '')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean).length;
+    if (el) el.textContent = n ? `${n} ${n === 1 ? 'word' : 'words'}` : '';
+  };
+  count();
   const changed = () => {
     state.settings.rules = RichText.clean(box.innerHTML);
+    count();
     msg.textContent = 'Saving...';
     clearTimeout(timer);
     timer = setTimeout(save, 600);

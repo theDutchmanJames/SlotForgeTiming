@@ -9,6 +9,9 @@ const SUBS = [
   ['teams', 'Teams'],
   ['results', 'Results and Records']
 ];
+// (2.4.0) the side list: an icon for every section, and a small heading before each group
+const SUB_ICONS = { slotcars: 'car', drivers: 'driver', tracks: 'pin', teams: 'users', results: 'star' };
+const SUB_GROUPS = { slotcars: 'Your club', results: 'Racing' };
 const XTYPES = { text: 'Text', number: 'Number', date: 'Date', list: 'Pick-list' };
 const dlg = document.getElementById('dlg');
 const byId = id => document.getElementById(id);
@@ -74,16 +77,25 @@ dlg.onclose = () => {
 };
 
 async function renderDatabase(target = view) {
-  target.innerHTML = '<h2>Database</h2><div class="sub" id="subtabs" role="tablist"></div><div id="subview"></div>';
+  target.innerHTML = sideShellHtml('Database', 'subtabs', state.sub, SUBS, 'subview');
   await drawSub();
 }
 
 async function drawSub() {
-  renderTabs(byId('subtabs'), SUBS, state.sub, id => {
-    if (state.sub === id) return;
-    state.sub = id;
-    drawSub();
-  });
+  renderTabs(
+    byId('subtabs'),
+    SUBS,
+    state.sub,
+    id => {
+      if (state.sub === id) return;
+      state.sub = id;
+      drawSub();
+    },
+    SUB_ICONS
+  );
+  sideGroups(byId('subtabs'), SUB_GROUPS);
+  const title = byId('subtabs')?.closest?.('.custshell')?.querySelector?.('.sidetitle');
+  if (title) title.textContent = (SUBS.find(t => t[0] === state.sub) || SUBS[0])[1];
   const box = byId('subview');
   box.onclick = null;
   box.onchange = null; // (the page that was here before left its click handlers on this element; Results and Records draws in a box inside it and would get them too)

@@ -2641,19 +2641,19 @@ dialog.ss-choose{width:min(620px,94vw)}
 .rscard .rsactions{width:auto}
 /* 2.4.0 Customization: the sections are a side list (as Race Setup), grouped by when you use them; layouts and picture sets are cards */
 .custshell>.custrail{display:flex;flex-direction:column;padding:22px 12px 24px;border-right:1px solid var(--line);background:color-mix(in srgb,var(--bg) 55%,var(--panel))}
-#customtabs{display:flex;flex-direction:column;flex-wrap:nowrap;gap:2px}
-#customtabs .sslabel{margin:14px 10px 6px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:color-mix(in srgb,var(--muted) 80%,var(--bg))}
-#customtabs .tab{display:flex;align-items:center;gap:11px;width:100%;min-height:36px;padding:7px 10px;border:0;border-radius:8px;background:transparent;box-shadow:none;color:color-mix(in srgb,var(--ink) 82%,var(--muted));font:inherit;font-size:13.5px;font-weight:400;text-align:left}
-#customtabs .tab:hover:where(:not(:disabled)){background:color-mix(in srgb,var(--ink) 6%,transparent);border:0}
-#customtabs .tab[aria-selected="true"]{background:color-mix(in srgb,var(--ink) 10%,var(--panel));color:var(--ink);font-weight:600;box-shadow:none;border:0}
-#customtabs .tab .tabico{width:18px;height:18px;color:var(--muted)}
-#customtabs .tab[aria-selected="true"] .tabico{color:var(--tab-colour,var(--accent))}
+:is(#customtabs,#subtabs,#settingstabs){display:flex;flex-direction:column;flex-wrap:nowrap;gap:2px}
+:is(#customtabs,#subtabs,#settingstabs) .sslabel{margin:14px 10px 6px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:color-mix(in srgb,var(--muted) 80%,var(--bg))}
+:is(#customtabs,#subtabs,#settingstabs) .tab{display:flex;align-items:center;gap:11px;width:100%;min-height:36px;padding:7px 10px;border:0;border-radius:8px;background:transparent;box-shadow:none;color:color-mix(in srgb,var(--ink) 82%,var(--muted));font:inherit;font-size:13.5px;font-weight:400;text-align:left}
+:is(#customtabs,#subtabs,#settingstabs) .tab:hover:where(:not(:disabled)){background:color-mix(in srgb,var(--ink) 6%,transparent);border:0}
+:is(#customtabs,#subtabs,#settingstabs) .tab[aria-selected="true"]{background:color-mix(in srgb,var(--ink) 10%,var(--panel));color:var(--ink);font-weight:600;box-shadow:none;border:0}
+:is(#customtabs,#subtabs,#settingstabs) .tab .tabico{width:18px;height:18px;color:var(--muted)}
+:is(#customtabs,#subtabs,#settingstabs) .tab[aria-selected="true"] .tabico{color:var(--tab-colour,var(--accent))}
 .custshell>.custpage{min-width:0;padding:24px 30px 34px}
 .custshell>.custpage>h2{margin:0 0 6px;font-size:26px;font-weight:650;letter-spacing:-.02em}
-.custpage .seg{gap:2px;padding:3px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--bg) 60%,var(--panel))}
-.custpage .seg>.btn{border:0;border-radius:7px;background:transparent;box-shadow:none;color:var(--muted);font-weight:500}
-.custpage .seg>.btn:is(.on,[aria-pressed="true"]){background:color-mix(in srgb,var(--ink) 12%,var(--panel));color:var(--ink);box-shadow:none;border:0;font-weight:600}
-@media (max-width:900px){.custshell>.custrail{border-right:0;border-bottom:1px solid var(--line);padding:12px}#customtabs{flex-direction:row;flex-wrap:wrap}#customtabs .sslabel,.custrail .ssrailtitle{display:none}#customtabs .tab{width:auto}.custshell>.custpage{padding:20px}}
+.custshell .custpage .seg{gap:2px;padding:3px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--bg) 60%,var(--panel))}
+.custshell .custpage .seg>.btn{border:0;border-radius:7px;background:transparent;box-shadow:none;color:var(--muted);font-weight:500}
+.custshell .custpage .seg>.btn:is(.on,[aria-pressed="true"]){background:color-mix(in srgb,var(--ink) 12%,var(--panel));color:var(--ink);box-shadow:none;border:0;font-weight:600}
+@media (max-width:900px){.custshell>.custrail{border-right:0;border-bottom:1px solid var(--line);padding:12px}:is(#customtabs,#subtabs,#settingstabs){flex-direction:row;flex-wrap:wrap}:is(#customtabs,#subtabs,#settingstabs) .sslabel,.custrail .ssrailtitle{display:none}:is(#customtabs,#subtabs,#settingstabs) .tab{width:auto}.custshell>.custpage{padding:20px}}
 /* the cards of layouts and picture sets */
 .lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px;margin-top:16px}
 .lcard{display:flex;flex-direction:column;padding:0;overflow:hidden;border-radius:12px}
@@ -2675,3 +2675,43 @@ dialog.ss-choose{width:min(620px,94vw)}
 .lactions{display:flex;gap:6px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--bg) 50%,var(--panel))}
 .lactions .danger{margin-left:auto}
 .custdup{display:none}
+/* 2.4.0: the search of App Settings sits in its side list, under the title */
+.custrail>.settings-search{position:relative;flex:none;min-width:0;margin:0 4px 10px}
+.custrail>.settings-search input{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:13px}
+.custrail>.settings-search ul{left:0;right:auto;width:min(420px,80vw)}
+/* tab lists inside a page with a side list (Results and Records, Timing Hardware, the standings): one quiet segmented control */
+.custpage .sub[role="tablist"]{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--bg) 60%,var(--panel));margin-bottom:16px}
+.custpage .sub[role="tablist"] .tab{border:0;border-radius:7px;background:transparent;box-shadow:none;color:var(--muted);font-weight:500;padding:6px 13px}
+.custpage .sub[role="tablist"] .tab:hover:where(:not(:disabled)){background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink);border:0}
+.custpage .sub[role="tablist"] .tab[aria-selected="true"]{background:color-mix(in srgb,var(--ink) 12%,var(--panel));color:var(--ink);box-shadow:none;border:0;font-weight:600}
+.custpage .sub[role="tablist"] .tab .tabico{color:var(--tab-colour,var(--muted))}
+/* 2.4.0 Racing Rules: a document page. A header with the title, when it was saved and Export to PDF; a sheet with the toolbar on top and the text under it */
+.rulespage{max-width:980px;margin:0 auto;padding:8px 0 24px}
+.rules-head{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:18px}
+.rules-title{flex:1 1 420px;min-width:0}
+.rules-eyebrow{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-text,var(--accent))}
+.rules-head h2{margin:6px 0 6px;font:italic 700 clamp(32px,3vw,44px)/1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.01em}
+.rules-head p{margin:0;max-width:70ch}
+.rules-actions{display:flex;align-items:center;gap:12px}
+.rules-saved{font-size:12.5px;color:var(--muted)}
+.rules-saved:not(:empty)::before{content:'';display:inline-block;width:7px;height:7px;margin-right:7px;border-radius:50%;background:#3ecf8e;vertical-align:1px}
+.rules-sheet{border:1px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:0 18px 50px rgba(0,0,0,.25);overflow:clip}
+.rules-sheet>.rte-bar{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;align-items:center;gap:6px 4px;margin:0;padding:8px 12px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--bg) 45%,var(--panel))}
+.rte-group{display:inline-flex;align-items:center;gap:2px;padding-right:8px;margin-right:4px;border-right:1px solid var(--line)}
+.rte-group.rte-end{border-right:0;margin-left:auto;padding-right:0}
+.rte-b{min-width:34px;height:32px;padding:0 10px;border:0;border-radius:7px;background:transparent;color:var(--ink);font:inherit;font-size:13.5px;cursor:pointer}
+.rte-b:hover{background:color-mix(in srgb,var(--ink) 9%,transparent)}
+.rte-b:active{background:color-mix(in srgb,var(--ink) 15%,transparent)}
+.rte-group select{height:32px;padding:0 8px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--ink);font:inherit;font-size:13.5px}
+.rte-group select:hover{background:color-mix(in srgb,var(--ink) 9%,transparent)}
+.rte-colour{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 8px;border-radius:7px;font-size:13.5px;cursor:pointer}
+.rte-colour:hover{background:color-mix(in srgb,var(--ink) 9%,transparent)}
+.rte-colour input{width:20px;height:20px;padding:0;border:1px solid var(--line);border-radius:5px;background:none;cursor:pointer}
+.rules-sheet>.rules.rte{min-height:58vh;margin:0;padding:40px clamp(20px,6vw,64px) 48px;border:0;border-radius:0;background:transparent;font-size:16px;line-height:1.7;outline:none;resize:none}
+.rules-sheet>.rules.rte:focus-visible{box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--accent) 45%,transparent)}
+.rules-sheet>.rules.rte h2{font-size:24px;font-weight:700;margin:1.2em 0 .4em;letter-spacing:-.01em}
+.rules-sheet>.rules.rte>:first-child{margin-top:0}
+.rules-foot{display:flex;justify-content:flex-end;padding:8px 16px;border-top:1px solid var(--line);font:500 12px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+.rules-foot:has(>span:empty){display:none}
+.custshell .custpage .seg>.btn:hover:where(:not(:disabled)){background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink);border:0}
+.custshell.nosidetitle .sidetitle{display:none}
