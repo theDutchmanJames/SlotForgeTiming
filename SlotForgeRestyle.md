@@ -1279,3 +1279,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Grid Slot | Start a race stacks sooner (2 lanes below 1400px, 3 below 1650px, 4 below 1950px) |
 | 2026-11 | Grid Slot | Up to 8 lanes in balanced rows (4, 3 or 2 a row by the width); a last row that is not full fills the width |
 | 2026-11 | Grid Slot | The hairlines are only between lanes (no line beside Start a race) |
+| 2026-11 | Home cards | The record card title is a call to action: Beat this time, Defend the record (holder on the grid), Set the first record |

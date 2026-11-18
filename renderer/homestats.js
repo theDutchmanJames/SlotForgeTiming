@@ -67,6 +67,7 @@
       who = nameOf(mine.driverId);
     return {
       record,
+      held: gap <= 0, // (2.4.0: the holder is on the grid, the card says Defend the record)
       line:
         gap <= 0
           ? `${who} is on the grid and holds the record.`
