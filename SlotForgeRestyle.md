@@ -29,6 +29,9 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | [Replay Monitor](#replay-monitor) | Settings in folders on the left, a live preview of the real screen on the right | Race Results |
 | [Workshop Window](#workshop-window) | The baseline window (dialog) | Add Track and every Database form, Circuit design |
 | [Folder](#folder) | A collapsible section with a Barlow title and a chevron | Groups in forms, settings, results |
+| [Pit Board](#pit-board) | The two-layer bar on top of a full-screen editor: back, big name, saved state, Undo / Redo / Save; tools below | Layout, Leaderboard, Chart, Widget, picture and audio set editors |
+| [Widget Bench](#widget-bench) | Settings on the left, the real widget on a sample race screen on the right | Widget Builder › Simple text or image |
+| [Picture Bench](#picture-bench) | Kind cards, drop-on picture tiles, a big live preview with a slider | Image Settings › a picture set |
 | [Tech Sheet](#tech-sheet) | A big editor: header with name, side list of sections, plain-words summary, folders, sticky foot | Add / Edit Race System, Race Setup editor |
 | [Toggle Chips](#toggle-chips) | Checkboxes as pill switches | View settings, Hide unused systems |
 | [Broadcast Hero](#broadcast-hero) | A header picture across the page with big titles on it | Home |
@@ -47,6 +50,10 @@ or add these class names to its markup. Keep the [Rules of the look](#rules-of-t
 | **Customization** | Paddock Rail + Page Note + Showroom Cards (Layout, Leaderboard, Chart, Widget Builder, Image Settings), Entry Cards (Audio), Replay Monitor (Race Results) |
 | **App Settings** | Paddock Rail (with a search under the title) + Folder |
 | **Racing Rules** | Rulebook |
+| **Layout / Leaderboard / Chart editor** | Pit Board + the editor's own canvas and side panels |
+| **Simple widget** | Pit Board + Widget Bench |
+| **Picture set** | Pit Board + Picture Bench |
+| **Audio set** | Pit Board + Tech Sheet with a call list |
 | **Home** | Broadcast Hero + cards (Timing Tower inside one) |
 
 So you can say: *"give the Results page a Paddock Rail and make its rows Entry Cards"* or
@@ -640,6 +647,114 @@ a chevron on the right, and when open a thin accent mark on the left and a line 
 
 ---
 
+## Pit Board
+
+The bar on top of every full-screen editor, in two layers.
+
+- **Top:** a back button that names where it goes ("‹ Layouts"), a thin divider, then a muted eyebrow ("New layout · 16:9"), the **name as a big Barlow field**
+  and a note field under it in grey. On the right: a message slot, the saved state ("● Unsaved changes" in yellow, or "✓ Saved" in green), Undo and
+  Redo as icon buttons, and the primary Save.
+- **Below:** the tools as small icon buttons in named groups ("Arrange", "Look", "Kind"), split by thin lines. A toggle (Snap) lights up in the accent when on.
+  Rarely used settings (proportions, corners, lane colour style; row height, spacing, classification) go into **one panel** (`<details>` that opens as a popover),
+  not a line of fields.
+
+```html
+<header class="pitboard">
+  <div class="pb-top">
+    <button class="pb-back"><svg>‹</svg><span>Layouts</span></button><span class="pb-vline"></span>
+    <div class="pb-who"><span class="pb-eye">New layout · 16:9</span><input class="pb-name" value="Club night"><input class="pb-note" placeholder="Click to add a note"></div>
+    <div class="pb-end"><span class="pb-msg" role="status"></span><span class="pb-state dirty">Unsaved changes</span>
+      <button class="btn ghost icon" aria-label="Undo">…</button><button class="btn ghost icon" aria-label="Redo">…</button><button class="btn primary">Save layout</button></div>
+  </div>
+  <div class="pb-tools">
+    <div class="pb-grp"><span class="pb-gl">Arrange</span><label class="pb-tool pb-toggle"><input type="checkbox" checked><svg>…</svg><span>Snap</span></label><button class="pb-tool">Guidelines</button></div>
+    <details class="pb-pop"><summary class="pb-tool"><svg>…</svg><span>Page settings</span></summary><div class="pb-popbody"><label class="pb-field"><span>Proportions</span><select>…</select></label></div></details>
+  </div>
+</header>
+```
+
+```css
+.pitboard{position:relative;z-index:5;margin:0 0 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.pb-top{display:flex;align-items:center;gap:14px;padding:10px 14px}
+.pb-back{display:inline-flex;align-items:center;gap:6px;padding:6px 10px 6px 6px;border:0;border-radius:7px;background:transparent;color:color-mix(in srgb,var(--ink) 82%,var(--muted));font-size:13px;cursor:pointer}
+.pb-back:hover{background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ink)}
+.pb-vline{width:1px;align-self:stretch;margin:4px 0;background:var(--line)}
+.pb-who{display:flex;flex-direction:column;min-width:0;flex:1}
+.pb-eye{font:700 10.5px/1.4 "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.pb-name{width:100%;max-width:520px;padding:0 0 1px;border:0;border-bottom:1px dashed var(--line);border-radius:0;background:none;color:var(--ink);font:italic 700 24px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase}
+.pb-note{width:100%;max-width:520px;margin-top:2px;padding:0;border:0;background:none;color:var(--muted);font-size:12px}
+.pb-end{display:flex;align-items:center;gap:8px;margin-left:auto}
+.pb-state{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted)}
+.pb-state.dirty::before{content:'';width:8px;height:8px;border-radius:50%;background:#f2b705}
+.pb-state.clean{color:#3ecf8e}
+.pb-tools{display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;padding:7px 12px;border-top:1px solid var(--line);border-radius:0 0 12px 12px;background:color-mix(in srgb,var(--bg) 50%,var(--panel))}
+.pb-grp{display:flex;align-items:center;gap:2px;padding-right:8px;border-right:1px solid var(--line)}
+.pb-gl{margin:0 6px 0 2px;font:600 10px "Segoe UI",system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.pb-tool{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 9px;border:0;border-radius:7px;background:transparent;color:color-mix(in srgb,var(--ink) 82%,var(--muted));font-size:12.5px;cursor:pointer}
+.pb-tool:hover{background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.pb-tool:is([aria-pressed="true"],:has(input:checked)){background:color-mix(in srgb,var(--accent) 14%,var(--panel));color:var(--ink)}
+.pb-toggle input{position:absolute;opacity:0;width:1px;height:1px}
+.pb-popbody{position:absolute;top:calc(100% + 6px);z-index:20;display:flex;flex-direction:column;gap:10px;width:300px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);box-shadow:0 20px 50px rgba(0,0,0,.45)}
+```
+
+The state beside Save follows the editor (Timing: `pbWatch(root, () => ed.dirty)` checks it every 400 ms while it is on screen).
+Timing builds the bar with `pitBoard({ back, backId, eyebrow, name, note, msgId, undoId, redoId, saveId, save, tools })` in `renderer/editor.js`,
+keeping each editor's own element ids so its code and tests are unchanged. If the app has a generic `header{…}` rule, reset it for `header.pitboard`.
+
+---
+
+## Widget Bench
+
+For a small widget made from settings: two columns. Left: **what it is** as cards (radio buttons styled as cards), then [Folders](#folder) for the
+content (a big text field; the variables sorted by subject in a side list with a search, each as `{code}` + what it says) and for size and type.
+Right (sticky): **the widget itself on a sample race screen**. The screen is 1000 × 562.5 units (a 16:9 layout), scaled to the column; dashed grey boxes
+stand for the rest of a layout so the size reads right; the widget is drawn by the real renderer with sample values, in the lane colour, with a
+Gear Selector for the sample lane.
+
+```css
+.wb-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,440px);gap:18px;align-items:start}
+.wb-kgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.wb-kind{display:flex;flex-direction:column;gap:4px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);cursor:pointer}
+.wb-kind:has(input:checked){border-color:color-mix(in srgb,var(--accent) 65%,var(--line));background:color-mix(in srgb,var(--ink) 7%,var(--panel))}
+.wbvars{display:grid;grid-template-columns:170px minmax(0,1fr);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.wbv code{font:500 12px 'SF Roboto Mono',Consolas,monospace;color:#9cc8ff}
+.wb-preview{position:sticky;top:12px;padding:14px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--bg) 70%,#000)}
+.wb-screen{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:#0b0e12}  /* JS sets its height */
+.wb-stage{position:absolute;left:0;top:0;width:1000px;height:562.5px;transform-origin:0 0}               /* JS: scale(screen width / 1000) */
+.wb-ghost{position:absolute;border:1px dashed rgba(255,255,255,.1);border-radius:8px;background:rgba(255,255,255,.035)}
+.wb-widget{position:absolute;border-radius:10px;background:var(--lane);color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.85),0 0 0 9px color-mix(in srgb,var(--accent) 30%,transparent)}
+```
+
+A legend floated above a grid needs `clear:both` on the grid, or the grid lands beside it.
+
+---
+
+## Picture Bench
+
+For a set of pictures. Left: what the set is for as seven icon cards; the pictures as **tiles** (a checkered area that shows the picture, or a dashed
+"Drop a picture or click" over the standard picture dimmed) with their name and a bin in the foot; drag a file onto a tile to fill it; a progress bar of
+how many are filled. Right (sticky): a **big live preview**. For a range (fuel) a slider walks from full to empty and shows the picture that the widget
+would show at that level, or says what the widget shows when that picture is missing; for states a select picks the state.
+
+```css
+.ps-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,360px);gap:18px;align-items:start}
+.ps-kgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+.ps-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.ps-tile{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow:hidden}
+.ps-tile.over{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}   /* while a file is dragged over */
+.ps-pic{position:relative;display:grid;place-items:center;aspect-ratio:1;cursor:pointer;background:var(--bg)}
+.ps-tile.has .ps-pic,.ps-big{background:repeating-conic-gradient(color-mix(in srgb,var(--ink) 6%,var(--bg)) 0 25%,var(--bg) 0 50%) 0 0/16px 16px}
+.ps-drop{position:absolute;inset:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1.5px dashed color-mix(in srgb,var(--ink) 18%,var(--line));border-radius:8px;font-size:11.5px;color:var(--muted)}
+.ps-lab{display:flex;align-items:center;gap:6px;min-height:34px;padding:4px 6px 4px 9px;border-top:1px solid var(--line);font-size:12px}
+.ps-preview{position:sticky;top:12px;padding:14px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--bg) 70%,#000)}
+.ps-big{display:grid;place-items:center;aspect-ratio:1;border:1px solid var(--line);border-radius:12px}
+```
+
+The file input sits inside the tile's `<label>` (visually hidden), so a click opens the file chooser; a drop on the tile hands the file to the same code.
+While a slider is dragged, update only the picture and its words, not the slider itself, or the drag stops.
+
+---
+
 ## Tech Sheet
 
 The big editor for things with many settings: **Add / Edit Race System** (Fuel, Safety Car, Weather, Penalties,
@@ -744,6 +859,21 @@ Parts, top to bottom:
 .rspage .rsrail{position:sticky;top:8px;align-self:start;max-height:calc(100vh - 80px)}
 .rspage .rsmain{overflow:visible}
 .rspage .rsfoot{position:sticky;bottom:0;z-index:6;border-radius:0 0 14px 14px}
+```
+
+**With a call list** (Timing: audio sets): when a sheet holds many similar items (134 race calls), the side list holds the *subjects* with
+"on / total" counts, and the page shows **every item of the subject as a row**: a switch, the name, its first sentence in grey, a short meta
+("2 sentences"), and a listen button. A row opens its item right under it (accent edge, a second click closes it). One big search goes over names and
+sentences, with quick filter chips (All, On, Off, Changed, New). Back is always the Pit Board's "‹ Audio sets".
+
+```css
+.audio-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:8px 10px 8px 14px;border-top:1px solid var(--line)}
+.audio-row.open{background:color-mix(in srgb,var(--ink) 5%,var(--panel));box-shadow:inset 3px 0 0 var(--accent)}
+.audio-row.off .audio-rowmain{opacity:.55}
+.audio-rowmain span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;color:var(--muted)}
+.audio-sw i{position:relative;width:32px;height:18px;border-radius:9px;background:var(--line)}
+.audio-sw input:checked+i{background:var(--accent-fill,var(--accent))}
+.audio-chip[aria-pressed="true"]{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:color-mix(in srgb,var(--accent) 12%,var(--panel))}
 ```
 
 In Timing, `RailForm.shell(o)` in `renderer/railform.js` builds the whole thing from a list of sections
@@ -916,4 +1046,9 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Entry Card | Audio sets as Entry Cards (voice, calls on, used by) |
 | 2026-11 | Replay Monitor | New: Race Results settings in folders with a live, scaled preview of the Results Wall (2–8 sample drivers) |
 | 2026-11 | Paddock Rail | Plugin Pages & Tools: the pages and tools in a side list; without any, one calm box with a button to App Settings › Plugins |
+| 2026-11 | Pit Board | New: Layout, Leaderboard, Chart, canvas Widget, picture and audio set editors share one two-layer bar; page settings in one panel; widget search |
+| 2026-11 | Widget Bench | New: simple text or picture widgets with kind cards, variables by subject, and the widget on a sample race screen |
+| 2026-11 | Picture Bench | New: picture sets as drop-on tiles with a live preview and a fuel slider |
+| 2026-11 | Tech Sheet | Audio sets: subjects in the side list, every call as a row with a switch, a call opens under its row, one search with filter chips |
+| 2026-11 | Folder | The canvas Widget Builder's tinted folders became the calm Folders; its blocks are icon tiles that wrap |
 | 2026-11 | Timing Tower, Rulebook | Personal Bests as a timing tower; Racing Rules as a document page with a grouped toolbar |

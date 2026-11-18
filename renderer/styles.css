@@ -3305,3 +3305,66 @@ html .ps-preview>header{position:static;display:block;height:auto;padding:0;bord
 .ps-pic span.ps-std .setslot,.ps-pic span.ps-std .setslot svg{display:block;width:100%;height:100%}
 .ps-big>.ps-bigstd{display:grid;place-items:center;width:60%;height:60%;max-width:60%;max-height:60%;object-fit:contain;opacity:.55}
 .ps-big>.ps-bigstd svg{width:100%;height:100%}
+/* 2.4.0 Audio sets: a Tech Sheet with a call list. The Pit Board on top; in the side list the subjects of the race with how many calls are on;
+   one search, quick filters and every call of the subject as a row (a switch, its first sentence, a listen button); a call opens under its row */
+html .audio-studio{--aud-tone:var(--accent);border:0;border-radius:0;background:none;overflow:visible}
+html .audio-studio>.pitboard{margin:0 0 14px}
+html .audio-studio>.audio-layout{grid-template-columns:240px minmax(0,1fr);border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:clip}
+html .audio-rail{display:flex;flex-direction:column;gap:2px;padding:14px 10px;border-right:1px solid var(--line);background:color-mix(in srgb,var(--bg) 55%,var(--panel))}
+.audio-rl{margin:12px 8px 6px;font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:color-mix(in srgb,var(--muted) 80%,var(--bg))}
+.audio-rl:first-child{margin-top:2px}
+html .audio-rail .audio-ri{display:flex;align-items:center;gap:10px;width:100%;margin:0;padding:8px 9px;border:0;border-radius:8px;background:transparent;color:color-mix(in srgb,var(--ink) 82%,var(--muted));font:inherit;font-size:13px;text-align:left;cursor:pointer}
+html .audio-rail .audio-ri svg{width:16px;height:16px;margin:0;flex:none;color:var(--muted)}
+html .audio-rail .audio-ri span{flex:1;min-width:0;line-height:1.25}
+html .audio-rail .audio-ri b{font:500 11.5px 'SF Roboto Mono',Consolas,monospace;color:var(--muted)}
+html .audio-rail .audio-ri:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+html .audio-rail .audio-ri[aria-pressed="true"]{background:color-mix(in srgb,var(--ink) 10%,var(--panel));color:var(--ink);font-weight:600}
+html .audio-rail .audio-ri[aria-pressed="true"] svg{color:var(--accent-text,var(--accent))}
+html .audio-rail aside{margin-top:14px;padding:12px 10px 0;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+html .audio-rail aside strong{display:block;color:var(--ink);font-size:12.5px;margin-bottom:4px}
+html .audio-rail aside p{margin:0}
+html .audio-plain{margin-bottom:14px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--bg) 45%,var(--panel))}
+html .audio-columns{display:flex;flex-direction:column;gap:12px}
+.audio-search{display:flex;align-items:center;gap:10px;height:42px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--muted)}
+.audio-search:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
+html .audio-search input{flex:1;min-width:0;height:100%;min-height:0;padding:0;border:0;background:none;box-shadow:none;color:var(--ink);font-size:14px;outline:none}
+.audio-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.audio-chip{padding:4px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:color-mix(in srgb,var(--ink) 82%,var(--muted));font:inherit;font-size:12.5px;cursor:pointer}
+.audio-chip:hover{border-color:color-mix(in srgb,var(--ink) 25%,var(--line))}
+.audio-chip[aria-pressed="true"]{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:color-mix(in srgb,var(--accent) 12%,var(--panel));color:var(--ink)}
+.audio-count{margin:10px 2px 8px;font-size:12.5px;color:var(--muted)}
+.audio-calllist{border:1px solid var(--line);border-radius:11px;background:var(--panel);overflow:hidden}
+.audio-listhead{padding:8px 14px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--bg) 50%,var(--panel));font:600 10.5px "Segoe UI",system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.audio-listhead:first-child{border-top:0}
+.audio-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:8px 10px 8px 14px;border-top:1px solid var(--line)}
+.audio-calllist>.audio-row:first-child{border-top:0}
+.audio-row:hover{background:color-mix(in srgb,var(--ink) 3%,var(--panel))}
+.audio-row.open{background:color-mix(in srgb,var(--ink) 5%,var(--panel));box-shadow:inset 3px 0 0 var(--accent)}
+.audio-row.off .audio-rowmain{opacity:.55}
+.audio-rowmain{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:0;padding:4px 0;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.audio-rowmain b{font-size:13.5px;font-weight:600}
+.audio-rowmain span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;color:var(--muted)}
+.audio-rowmeta{font:500 11.5px 'SF Roboto Mono',Consolas,monospace;color:var(--muted);white-space:nowrap}
+.audio-sw{position:relative;display:inline-flex;cursor:pointer}
+.audio-sw input{position:absolute;opacity:0;width:1px;height:1px}
+.audio-sw i{position:relative;width:32px;height:18px;border-radius:9px;background:var(--line);transition:background .12s}
+.audio-sw i::after{content:'';position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .12s}
+.audio-sw input:checked+i{background:var(--accent-fill,var(--accent))}
+.audio-sw input:checked+i::after{left:16px}
+.audio-sw input:focus-visible+i{outline:3px solid #4c9aff;outline-offset:2px}
+.audio-empty{margin:0;padding:18px;text-align:center;font-size:13px;color:var(--muted)}
+/* the open call, under its row */
+html .audio-calllist>.audcall{margin:0;padding:6px 14px 14px 58px;border:0;border-top:1px dashed var(--line);border-radius:0;background:color-mix(in srgb,var(--ink) 5%,var(--panel));box-shadow:inset 3px 0 0 var(--accent)}
+html .audio-calllist>.audcall>legend{display:none}
+html .audio-calllist>.audcall .audio-folder{margin:10px 0 0}
+html .audio-editor .audio-folder>summary{background:transparent}
+html .audio-editor .audio-folder>summary strong{font:italic 700 16px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em}
+html .audio-editor .audio-folder[open]>summary{box-shadow:inset 3px 0 0 var(--accent);background:color-mix(in srgb,var(--ink) 4%,var(--panel))}
+html .audio-footer:empty{display:none}
+@media(max-width:900px){html .audio-studio>.audio-layout{grid-template-columns:1fr}html .audio-rail{border-right:0;border-bottom:1px solid var(--line)}}
+html .audio-workspace{font-size:13.5px}
+html .audio-plain small{color:var(--muted);letter-spacing:.12em}
+html .audio-plain p{margin:4px 0 0;font-size:14px}
+html .audio-calllist>.audcall .audio-enable{display:none}
+html .audio-calllist>.audcall .audio-folder-content{font-size:13.5px}
+html .audio-calllist>.audcall .audio-folder-content>p{font-size:13px;color:var(--ink)}

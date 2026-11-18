@@ -264,6 +264,7 @@ function renderAudioSetEditor(box) {
       })
       .join('')}${ambHtml()}`;
   audioStudio(box, d);
+  pbWatch(box, () => audEd && audEd.dirty);
   box.querySelectorAll('.audcond').forEach(el => {
     el.ontoggle = () => {
       const k = el.dataset.condKey;
@@ -526,13 +527,24 @@ function renderAudioSetEditor(box) {
       return renderAudioSetEditor(box);
     }
     if (q.audioCategory) {
+      if (q.audioCattab) audioView.tab = q.audioCattab; // (2.4.0: a subject in the side list also opens the race calls)
       audioView.category = q.audioCategory;
       audioView.search = '';
       return renderAudioSetEditor(box);
     }
     if (q.audioCall) {
-      audioView.call = q.audioCall;
-      return renderAudioSetEditor(box);
+      audioView.call = audioView.call === q.audioCall ? '' : q.audioCall; // (2.4.0: a row opens its call under it; a second click closes it)
+      return audioSelect(box, d);
+    }
+    if (q.audioFilterbtn) {
+      audioView.filter = q.audioFilterbtn;
+      return audioSelect(box, d);
+    }
+    if (q.audioRowtest) {
+      const t = box.querySelector(`[data-test="${q.audioRowtest}:0"],[data-ambtest="${q.audioRowtest}:0"]`);
+      if (t && !t.disabled) t.click();
+      else msg('Add a sentence or a sound file first.');
+      return;
     }
     if (q.audioEnable !== undefined) {
       const list =
@@ -648,6 +660,15 @@ function renderAudioSetEditor(box) {
   };
   box.onchange = async ev => {
     const t = ev.target;
+    if (t.dataset.audioRowon) {
+      // (2.4.0) the switch of a row: it switches the call itself, which redraws the editor
+      const real = box.querySelector(`.audcall [data-on="${t.dataset.audioRowon}"]`);
+      if (real && real.checked !== t.checked) {
+        real.checked = t.checked;
+        real.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      return;
+    }
     if (t.dataset.audioCategorySelect !== undefined) {
       audioView.category = t.value;
       audioView.search = '';

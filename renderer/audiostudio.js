@@ -67,6 +67,26 @@ function audioValueExample(box, select) {
       ? 'Example: ' + (Announcer.SAMPLE[select.value] ?? 'Depends on race data')
       : 'No values are available for this call.';
 }
+// (2.4.0) an icon for every subject of the race calls (the names of AudioCalls.category)
+const AUDIO_CAT_ICONS = {
+  'Start & session': 'flag',
+  'Positions & battles': 'board',
+  'Progress & milestones': 'timing',
+  'Laps & records': 'star',
+  'Fuel Systems': 'fuel',
+  'Pits & Service Stop': 'garage',
+  'Tyre Wear Systems': 'tyre',
+  'Penalty Systems': 'penalty',
+  'Flags & Safety Car': 'safetycar',
+  'Timing hardware': 'bolt',
+  'Results & championship': 'championship',
+  'Weather Systems': 'weather',
+  'Time Tokens': 'tokens',
+  'Damage & failures': 'damage',
+  'Endurance & driver swaps': 'users',
+  'Race control': 'director',
+  'Resource Systems': 'resources'
+};
 function audioStudio(box, d) {
   if (box.nodeType !== 1) return;
   const C = Announcer.CALLS,
@@ -80,31 +100,55 @@ function audioStudio(box, d) {
     groups = [...old.querySelectorAll('.audgroup')];
   const shell = document.createElement('section');
   shell.className = 'audio-studio setuppage';
-  shell.innerHTML = `<header class="audio-studio-header"><div class="audio-title"><i data-lucide="audio-lines" aria-hidden="true"></i><div><small>AUDIO SET</small><h2 data-audio-heading>${esc(d.name || 'New audio set')}</h2><p>${C.length} race calls · ${A.length} ambient events</p></div></div></header><div class="audio-layout"><nav class="audio-tabs" aria-label="Audio set sections">${[
-    ['calls', 'Race Calls', 'Words & recordings for race events', 'megaphone'],
-    ['ambient', 'Ambient Sounds', 'Backgrounds, engines & race effects', 'waves'],
-    ['mix', 'Voice & Playback', 'Commentator, volume & announcement timing', 'sliders-horizontal']
-  ]
-    .map(
-      ([id, title, note, icon]) =>
-        `<button type="button" data-audio-tab="${id}"><i data-lucide="${icon}" aria-hidden="true"></i><span><strong>${title}</strong><small>${note}</small></span></button>`
-    )
+  // (2.4.0) the Pit Board on top; in the side list the subjects of the race with how many of their calls are on, then the ambient sounds and the voice
+  const onCount = C.filter(c => (d.calls[c.id] || {}).on !== false).length,
+    cats = [...new Set(C.map(c => AudioCalls.category(c)))],
+    railItem = (attrs, icon, title, n) =>
+      `<button type="button" class="audio-ri" ${attrs}>${Icons.svg(icon, { size: 16, stroke: 1.8 })}<span>${esc(title)}</span>${n ? `<b>${n}</b>` : ''}</button>`;
+  shell.innerHTML = `${pitBoard({
+    cls: 'audio-pitboard',
+    back: 'Audio sets',
+    backId: 'au-back',
+    eyebrow: `Audio set · ${onCount} of ${C.length} calls on`,
+    name: `<input type="text" class="pb-name" id="au-name" value="${esc(d.name)}" maxlength="40" aria-label="Name">`,
+    msgId: 'au-msg',
+    undoId: 'au-undo',
+    redoId: 'au-redo',
+    saveId: 'au-save',
+    save: 'Save audio set'
+  })}<div class="audio-layout"><nav class="audio-tabs audio-rail" aria-label="Audio set sections"><p class="audio-rl">Race calls</p>${cats
+    .map(g => {
+      const list = C.filter(c => AudioCalls.category(c) === g);
+      return railItem(
+        `data-audio-category="${esc(g)}" data-audio-cattab="calls"`,
+        AUDIO_CAT_ICONS[g] || 'say',
+        g,
+        `${list.filter(c => (d.calls[c.id] || {}).on !== false).length}/${list.length}`
+      );
+    })
     .join(
       ''
-    )}<aside><strong>Use this audio set</strong><p>Choose it in Race Setup → Race UI and Audio. Sound plays on the computer running the race.</p></aside></nav><main class="audio-workspace"><div class="audio-plain"><small>IN PLAIN WORDS</small><p data-audio-explanation></p></div><div class="audio-columns"><div class="audio-finder"></div><div class="audio-main"><div class="audio-call-body"></div></div><div class="audio-tools"></div></div><section class="audio-mixer" hidden></section></main></div><footer class="audio-footer"></footer></section>`;
+    )}<p class="audio-rl">Sound</p>${railItem('data-audio-tab="ambient"', 'wind', 'Ambient sounds', String(A.filter(c => ((d.calls[c.id] || {}).lines || []).some(l => l && l.file)).length))}${railItem('data-audio-tab="mix"', 'sliders', 'Voice & playback', '')}<aside><strong>Use this audio set</strong><p>Choose it in Race Setup → Race UI and Audio. Sound plays on the computer running the race.</p></aside></nav><main class="audio-workspace"><div class="audio-plain"><small>IN PLAIN WORDS</small><p data-audio-explanation></p></div><div class="audio-columns"><div class="audio-finder"></div><div class="audio-main"><div class="audio-call-body"></div></div><div class="audio-tools"></div></div><section class="audio-mixer" hidden></section></main></div><footer class="audio-footer"></footer></section>`;
   box.appendChild(shell);
   const $ = s => shell.querySelector(s),
     mixer = $('.audio-mixer'),
     body = $('.audio-call-body');
-  $('.audio-studio-header').appendChild(head);
-  head.classList.add('audio-header-controls');
-  $('.audio-footer').append(head.querySelector('#au-msg'), head.querySelector('#au-save'));
-  head.querySelector('#au-back').textContent = 'All audio sets';
+  head.remove();
   groups.forEach(el => body.appendChild(el));
-  const finder = audioFolder('finder', 'Find a call', 'Search, then choose a category and event');
-  audioFolderBody(finder).innerHTML =
-    `<div class="audio-fields"><label>Search<input type="search" data-audio-search placeholder="Name, event or value" value="${esc(audioView.search)}"></label><label>Show<select data-audio-filter><option value="all">All calls</option><option value="on">Enabled</option><option value="off">Disabled</option><option value="modified">Modified</option><option value="new">New calls</option></select></label><label>Category<select data-audio-category-select></select></label><label>Call<select data-audio-call-select></select></label></div><p class="muted" data-audio-count></p>`;
-  $('.audio-finder').appendChild(finder);
+  // (2.4.0) one search over every call, quick filters, and all the calls of the subject as a list; a call opens under its row
+  $('.audio-finder').innerHTML =
+    `<label class="audio-search"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg><input type="search" data-audio-search placeholder="Search the calls and their sentences (type {leader} for a variable)" aria-label="Search the calls" value="${esc(audioView.search)}"></label><div class="audio-chips" role="group" aria-label="Show">${[
+      ['all', 'All'],
+      ['on', 'On'],
+      ['off', 'Off'],
+      ['modified', 'Changed'],
+      ['new', 'New']
+    ]
+      .map(
+        ([v, t]) =>
+          `<button type="button" class="audio-chip" data-audio-filterbtn="${v}" aria-pressed="${audioView.filter === v}">${t}</button>`
+      )
+      .join('')}</div><p class="audio-count" data-audio-count></p><div class="audio-calllist" role="list"></div>`;
   const tools = audioFolder('tools', 'Call presets & group actions', 'Only if you need them', false);
   audioFolderBody(tools).innerHTML =
     `<div data-call-presets><label>Starting preset<select id="au-profile"><option>Essential</option><option selected>Club</option><option>Broadcast</option></select></label><p>Changes which calls are enabled. Your messages and recordings are kept. Review before applying.</p><button class="btn" data-audio-profile="preview">Review preset changes</button><div id="au-profile-preview" role="status"></div><div class="audio-profile-actions" hidden><button class="btn" data-audio-profile="apply">Apply preset</button><button class="btn" data-audio-profile="cancel">Cancel</button></div></div><details><summary>Enable or disable the current category</summary><div class="row"><button class="btn" data-audio-enable="1">Enable category</button><button class="btn" data-audio-enable="0">Disable category</button></div></details>`;
@@ -296,15 +340,15 @@ function audioSelect(box, d) {
     title = c => (ambient ? audioAmbientTitle(c) : AudioCalls.title(c)),
     groups = [...new Set(defs.map(group))],
     defaults = audioDefaults();
-  if (!groups.includes(v.category)) v.category = groups[0];
+  if (!ambient && !groups.includes(v.category)) v.category = groups[0];
   const matches = c => {
     const cc = d.calls[c.id] || {},
-      base = defaults.calls[c.id] || {};
+      base = defaults.calls[c.id] || {},
+      words = (cc.lines || []).map(l => (l && l.text) || '').join(' '),
+      // (2.4.0) the variables a call may use are searched only when you type a brace ({leader}): nearly every call may use {leader}
+      vars = v.search.includes('{') ? (ambient ? c.vars : AudioCalls.variablesFor(c)).map(k => '{' + k + '}').join(' ') : '';
     return (
-      (!v.search ||
-        (title(c) + ' ' + c.label + ' ' + (ambient ? c.vars : AudioCalls.variablesFor(c)).join(' '))
-          .toLowerCase()
-          .includes(v.search.toLowerCase())) &&
+      (!v.search || (title(c) + ' ' + c.label + ' ' + words + ' ' + vars).toLowerCase().includes(v.search.toLowerCase())) &&
       (v.filter === 'all' ||
         (v.filter === 'on' && cc.on !== false) ||
         (v.filter === 'off' && cc.on === false) ||
@@ -312,34 +356,51 @@ function audioSelect(box, d) {
         (v.filter === 'modified' && JSON.stringify(cc) !== JSON.stringify(base)))
     );
   };
-  const list = defs.filter(c => matches(c) && (v.search || group(c) === v.category));
-  if (!list.some(c => c.id === v.call)) v.call = list[0]?.id || '';
-  box.querySelector('.audio-finder summary strong').textContent = ambient ? 'Find a sound event' : 'Find a call';
-  box.querySelector('[data-audio-call-select]').parentElement.firstChild.textContent = ambient ? 'Sound event' : 'Call';
-  box.querySelector('[data-audio-filter] option[value="all"]').textContent = ambient ? 'All sound events' : 'All calls';
-  box.querySelector('[data-audio-filter] option[value="new"]').textContent = ambient ? 'New sound events' : 'New calls';
-  box.querySelector('[data-audio-folder="tools"]>summary strong').textContent = ambient
-    ? 'Category actions & help'
-    : 'Call presets & group actions';
-  box.querySelector('[data-audio-category-select]').innerHTML = groups
-    .map(g => `<option${g === v.category ? ' selected' : ''}>${esc(g)}</option>`)
-    .join('');
-  box.querySelector('[data-audio-call-select]').innerHTML = list.length
-    ? list
-        .map(
-          c =>
-            `<option value="${c.id}"${v.call === c.id ? ' selected' : ''}>${esc(title(c))}${d.calls[c.id]?.on === false ? ' · Off' : ''}</option>`
-        )
-        .join('')
-    : '<option value="">No matching calls</option>';
-  box.querySelector('[data-audio-count]').textContent =
-    `${list.length} ${ambient ? 'sound events' : 'calls'}${v.search ? ' across all categories' : ' in this category'}.`;
+  // (the ambient sounds are one list with their sections as headings; a search goes over every call, with the subjects as headings)
+  const list = defs.filter(c => matches(c) && (v.search || ambient || group(c) === v.category));
+  if (v.call && !list.some(c => c.id === v.call)) v.call = '';
+  const body = box.querySelector('.audio-call-body'),
+    listEl = box.querySelector('.audio-calllist');
+  // the open call goes back to its place before the list is drawn again
+  box.querySelectorAll('.audio-calllist .audcall').forEach(card => body && body.appendChild(card));
+  const row = c => {
+    const cc = d.calls[c.id] || {},
+      lines = (cc.lines || []).filter(Boolean),
+      first = lines.find(l => l.text && (l.mode || (l.file ? 'file' : 'text')) !== 'file'),
+      files = lines.filter(l => l.file).length,
+      on = cc.on !== false,
+      open = v.call === c.id;
+    const say = first ? `“${esc(first.text)}”` : files ? 'A recording' : esc(ambient ? 'No sound file yet' : c.label);
+    const meta = ambient
+      ? `${files} file${files === 1 ? '' : 's'}`
+      : `${lines.length} sentence${lines.length === 1 ? '' : 's'}${files ? ' · ' + files + ' recording' + (files === 1 ? '' : 's') : ''}`;
+    return `<div class="audio-row${open ? ' open' : ''}${on ? '' : ' off'}" role="listitem" data-row="${c.id}"><label class="audio-sw" title="${on ? 'On: click to switch it off' : 'Off: click to switch it on'}"><input type="checkbox" data-audio-rowon="${c.id}"${on ? ' checked' : ''} aria-label="${esc(title(c))} on"><i></i></label><button type="button" class="audio-rowmain" data-audio-call="${c.id}" aria-expanded="${open}"><b>${esc(title(c))}</b><span>${say}</span></button><span class="audio-rowmeta">${meta}</span><button type="button" class="btn ghost icon sm" data-audio-rowtest="${c.id}" title="Hear it" aria-label="Hear ${esc(title(c))}">${Icons.svg('say', { size: 15, stroke: 1.8 })}</button></div>`;
+  };
+  let html = '',
+    lastGroup = null;
+  list.forEach(c => {
+    if ((v.search || ambient) && group(c) !== lastGroup) {
+      lastGroup = group(c);
+      html += `<div class="audio-listhead">${esc(lastGroup)}</div>`;
+    }
+    html += row(c);
+  });
+  if (listEl)
+    listEl.innerHTML = html || `<p class="audio-empty">No ${ambient ? 'sound events' : 'calls'} match. Try another word or filter.</p>`;
+  // the open call, right under its row
+  const card = v.call && box.querySelector(`.audcall[data-audio-call="${v.call}"]`),
+    at = v.call && listEl && listEl.querySelector(`[data-row="${v.call}"]`);
+  if (card && at) at.after(card);
+  box.querySelectorAll('.audcall').forEach(el => (el.hidden = el.dataset.audioCall !== v.call));
+  const count = box.querySelector('[data-audio-count]');
+  if (count)
+    count.textContent = `${list.length} ${ambient ? 'sound event' : 'call'}${list.length === 1 ? '' : 's'}${v.search ? ' in every subject' : ambient ? '' : ' in ' + v.category}${v.call ? '' : ' · click one to open it'}.`;
   box.querySelector('[data-audio-explanation]').textContent =
     v.tab === 'mix'
       ? "Choose the commentator's voice, balance calls against background sounds, and decide how long commentary can wait before it becomes outdated."
       : ambient
         ? 'Add your own crowd, engine and pit sounds. They play alongside calls on a separate audio channel. Events without an attached file stay silent.'
-        : 'Choose a race event, decide when its call is allowed, then write a message or attach a recording.';
+        : 'Switch the calls of this subject on or off, and click a call to change what it says and when.';
   box.querySelectorAll('.audgroup').forEach(el => {
     el.open = true;
     el.hidden = ambient ? el.dataset.group !== Announcer.AMBIENT_GROUP : el.dataset.group === Announcer.AMBIENT_GROUP;
@@ -349,12 +410,17 @@ function audioSelect(box, d) {
     el.open = true;
     el.querySelector('summary').hidden = true;
   });
-  box.querySelectorAll('.audcall').forEach(el => (el.hidden = el.dataset.audioCall !== v.call));
   box.querySelectorAll('[data-audio-tab]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.audioTab === v.tab)));
+  box
+    .querySelectorAll('[data-audio-category]')
+    .forEach(b => b.setAttribute('aria-pressed', String(v.tab === 'calls' && b.dataset.audioCategory === v.category)));
+  box
+    .querySelectorAll('[data-audio-filterbtn]')
+    .forEach(b => b.setAttribute('aria-pressed', String(b.dataset.audioFilterbtn === v.filter)));
   box.querySelector('.audio-columns').hidden = v.tab === 'mix';
   box.querySelector('.audio-mixer').hidden = v.tab !== 'mix';
-  box.querySelector('[data-audio-filter]').value = v.filter;
-  box.querySelector('[data-call-presets]').hidden = ambient;
+  const presets = box.querySelector('[data-call-presets]');
+  if (presets) presets.hidden = ambient;
 }
 
 function audioTrigger(c, d) {
