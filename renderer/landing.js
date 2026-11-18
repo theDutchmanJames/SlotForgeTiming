@@ -746,7 +746,7 @@ async function renderHome() {
         x.board
           ? `<div class="lv-gcell${x.index === sel ? ' sel' : ''}" style="${place(x.board)}">${
               HG.cardOf(x.board) === 'start'
-                ? '<span class="hm-fixed">Start a race <small>(always on Home)</small></span>'
+                ? '<span class="hm-fixed">Start a race <small>(always across the top of Home)</small></span>'
                 : `<select aria-label="Card in ${HG.where(x.board)}" data-hcell="${x.index}">${choice(HG.cardOf(x.board), x.index)}</select>`
             }<button type="button" class="btn" data-hsel="${x.index}" aria-pressed="${x.index === sel}">Card ${x.index + 1} settings</button></div>`
           : `<div class="lv-gcell empty" style="grid-column:${x.c};grid-row:${x.r}"><select aria-label="Card in column ${x.c}, row ${x.r}" data-hadd="${x.c},${x.r}">${choice('', -1)}</select></div>`
@@ -807,11 +807,15 @@ async function renderHome() {
       <div class="field"><span class="lbl">Card in every cell</span><div class="lv-gridmap" style="grid-template-columns:repeat(${g.cols},minmax(0,1fr))">${map}</div></div></div>${one}
       <div class="row"><button type="button" class="btn" id="hmdefault"${HG.isDefault(g) ? ' disabled' : ''} title="Put the cards back the way Home was before you customized it">Back to the usual Home</button></div></section>`;
   };
-  const startBoard = grid.boards.find(b => HG.cardOf(b) === 'start'),
-    otherCells = grid.boards
-      .filter(b => HG.cardOf(b) !== 'start')
-      .map(b => `<div class="hm-cell" id="hmc-${esc(HG.cardOf(b))}" data-card="${esc(HG.cardOf(b))}" style="${place(b)}"></div>`)
-      .join('');
+  // 2.4.0: Start a race is a bar across the whole page under the title card, so the other cards flow below it in reading order, each as wide and tall
+  // as it was set in Customize (the cells that Start a race takes in the grid of Customize are left out).
+  const otherCells = grid.boards
+    .filter(b => HG.cardOf(b) !== 'start') // (the grid keeps its boards in reading order, livegrid.js)
+    .map(
+      b =>
+        `<div class="hm-cell" id="hmc-${esc(HG.cardOf(b))}" data-card="${esc(HG.cardOf(b))}" style="grid-column:span ${Math.min(b.w, grid.cols)};grid-row:span ${b.h}"></div>`
+    )
+    .join('');
   const ae = hc.open && typeof document !== 'undefined' ? document.activeElement : null,
     keep = homeFieldId(ae) ? { id: ae.id, type: ae.type, start: ae.selectionStart, end: ae.selectionEnd } : null; // (the field of Customize that has the cursor now, and what is selected in it)
   // 2.4.0: the header picture and the welcome band are one title card, as on a race broadcast: the words sit on the picture (hm-hero.has-pic), or on a drawn
@@ -823,13 +827,12 @@ async function renderHome() {
   view.innerHTML =
     `<div class="hm-hero${heroCls}">${headerHtml}
     <div class="hm-band"><div class="hm-flag" aria-hidden="true"></div><button type="button" class="btn hm-customize-btn" id="hmcustom" aria-expanded="${hc.open}" aria-controls="hm-customize" title="Choose the cards of Home and where they sit">Customize</button><h2>${esc(welcomeOf())}</h2>
-      <p class="hm-sub">${esc(today)}${track ? ' · ' + esc(track.name) : ''}</p>
-      <div class="hm-chips" id="hm-chips">${chipsNow().map(chipHtml).join('')}</div></div></div>
+      <p class="hm-sub">${esc(today)}${track ? ' · ' + esc(track.name) : ''}</p></div></div>
     ${customHtml()}
     ${resumeHtml}
     <div id="hm-update" hidden></div>
     <div id="hm-detect" hidden></div>
-    <div class="hm-grid" id="homegrid" style="grid-template-columns:repeat(${grid.cols},minmax(0,1fr))"><section class="card hm-start" id="hmc-start" style="${place(startBoard)}">` +
+    <section class="card hm-start" id="hmc-start">` +
     (setups.length
       ? `
       <div class="hs-head"><span class="hs-tile" aria-hidden="true">${Icons.svg('racesetups', { size: 24 })}</span>
@@ -856,7 +859,9 @@ async function renderHome() {
       ${otherIssues.length ? `<ul class="issues">${otherIssues.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
       <div class="hm-go">${lightsHtml}<span class="hm-grow"></span>${!tokens && track && lanes && !raceOn ? '<button type="button" class="btn" id="sensortest" title="Drive a car over every lane before the race: each lane lights up when its sensor sees a car">Test sensors</button>' : ''}<button class="btn primary big" id="start" ${issues.length || raceOn ? 'disabled' : ''}${raceOn ? ' title="A race is still running. Open the Race tab to finish or stop it first."' : ''}>${Icons.svg('racesetups', { size: 20 })}<span>${tokens ? 'Open the session' : 'Start race'}</span></button></div>`
       : '<h3>Start a race</h3><p class="muted">Create a race setup in the Race Setup tab to get started, or let the setup guide walk you through it.</p><div class="row"><button type="button" class="btn primary" id="guideagain">Start the setup guide</button></div>') +
-    `</section>${otherCells}</div>`;
+    `</section>
+    <div class="hm-chips" id="hm-chips" role="status">${chipsNow().map(chipHtml).join('')}</div>
+    <div class="hm-grid" id="homegrid" style="grid-template-columns:repeat(${grid.cols},minmax(0,1fr))">${otherCells}</div>`;
   if (typeof UpdateNotice !== 'undefined') UpdateNotice.mountHome(document.getElementById('hm-update')); // (a newer release on GitHub, if any)
   if (typeof mountHwDetect === 'function') mountHwDetect(); // (2.3.0: timing hardware that was plugged in)
   {
