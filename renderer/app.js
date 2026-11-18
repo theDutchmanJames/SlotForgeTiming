@@ -113,13 +113,15 @@ function homeHeaderHtml(s, preview = false) {
       ? `<img class="homebanner" id="hdrprev" src="${esc(pic)}" alt="" draggable="false"${bannerStyle(s, 'max-height:110px')}>`
       : `<div class="homehead"><img class="homebanner" src="${esc(pic)}" alt=""${bannerStyle(s)}></div>`;
   const left = Banner.logoSide(s) === 'left',
-    col = n => `grid-column:${n};`,
+    over = Banner.logoOver(s), // (2.4.0: the picture fills the header and the logo stands on it, at its left or right, as wide as its share)
+    col = n => `grid-column:${over ? 1 : n};`,
     pc = Banner.posCss(Banner.pos(s)),
     lc = Banner.posCss(Banner.logoPos(s));
   const bannerCell = pic
     ? `<div class="hcell" style="${col(left ? 2 : 1)}"><img class="homebanner"${preview ? ' id="hdrprev" draggable="false"' : ''} src="${esc(pic)}" alt=""${pc ? ` style="${pc}"` : ''}></div>`
     : '';
-  const logoCell = `<div class="hcell hlogo" style="${col(left ? 1 : 2)}"><img${preview ? ' id="logoprev"' : ''} src="${esc(s.clubLogo)}" alt=""${lc ? ` style="${lc}"` : ''}></div>`;
+  const overCss = over ? `width:${Banner.logoShare(s)}%;justify-self:${Banner.logoLeft(s) ? 'start' : 'end'};` : '';
+  const logoCell = `<div class="hcell hlogo${over ? ' over' : ''}" style="${col(left ? 1 : 2)}${overCss}"><img${preview ? ' id="logoprev"' : ''} src="${esc(s.clubLogo)}" alt=""${lc ? ` style="${lc}"` : ''}></div>`;
   const sizer =
     pic && !Banner.height(s)
       ? `<img class="hsizer" src="${esc(pic)}" alt="" aria-hidden="true"${preview ? ' style="max-height:110px"' : ''}>`
@@ -581,14 +583,14 @@ async function renderGeneralSettings(box) {
       ${hasLogo && !logoOn ? `<img class="optimg" id="logothumb" src="${esc(S.clubLogo)}" alt="Your club logo">` : ''}
       <div class="row"><input id="logofile" type="file" accept="image/*">${hasLogo ? '<button class="btn" id="logoclear">Remove logo</button>' : ''}</div>
       <span class="muted hint">Shown on the Home tab if you choose a side below, and by every Logo widget in a layout that has no logo picture of its own.</span>
-      ${hasLogo ? `<div class="row"><label for="logoside" style="min-width:5.5em">On the Home tab</label><select id="logoside"><option value=""${side ? '' : ' selected'}>Not shown</option><option value="left"${side === 'left' ? ' selected' : ''}>Left of the header picture</option><option value="right"${side === 'right' ? ' selected' : ''}>Right of the header picture</option></select></div>` : ''}
+      ${hasLogo ? `<div class="row"><label for="logoside" style="min-width:5.5em">On the Home tab</label><select id="logoside"><option value=""${side ? '' : ' selected'}>Not shown</option><option value="left"${side === 'left' ? ' selected' : ''}>Left of the header picture</option><option value="right"${side === 'right' ? ' selected' : ''}>Right of the header picture</option><option value="over-left"${side === 'over-left' ? ' selected' : ''}>On the header picture, at the left</option><option value="over-right"${side === 'over-right' ? ' selected' : ''}>On the header picture, at the right</option></select></div>` : ''}
       ${
         logoOn
           ? `<div class="row"><label for="logow" style="min-width:5.5em">Width</label><input id="logow" type="range" min="10" max="50" step="1" value="${share}" aria-describedby="logowv" style="flex:1"><output id="logowv" for="logow" style="min-width:5em">${share}% of the header</output></div>
       <div class="row"><label for="logox" style="min-width:5.5em">Left / right</label><input id="logox" type="range" min="0" max="100" step="1" value="${Math.round(lpos.x)}" aria-describedby="logoxv" style="flex:1"><output id="logoxv" for="logox" style="min-width:5em">${Math.round(lpos.x)}%</output></div>
       <div class="row"><label for="logoy" style="min-width:5.5em">Up / down</label><input id="logoy" type="range" min="0" max="100" step="1" value="${Math.round(lpos.y)}" aria-describedby="logoyv" style="flex:1"><output id="logoyv" for="logoy" style="min-width:5em">${Math.round(lpos.y)}%</output></div>
       <div class="row"><button class="btn" id="logocenter">Center the logo</button></div>
-      <span class="muted hint">The logo is always shown whole, as large as its space allows, and takes its height from the header. Its width is a share of the header; the picture gets the rest. The sliders move the logo inside its space: a slider is greyed out when the logo already fills it that way.</span>`
+      <span class="muted hint">The logo is always shown whole, as large as its space allows, and takes its height from the header. Its width is a share of the header: beside the picture, the picture gets the rest; on the picture, the picture fills the whole header and the logo stands on it. The sliders move the logo inside its space: a slider is greyed out when the logo already fills it that way.</span>`
           : ''
       }</div>`
     ) +

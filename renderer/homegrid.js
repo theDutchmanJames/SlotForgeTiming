@@ -36,7 +36,7 @@
     {
       key: 'start',
       label: 'Start a race',
-      note: 'The race setup, the lanes and the Start button. It is always on Home.',
+      note: 'The race setup, the lanes and the Start button. It is always on Home, across the top (2.4.0): the grid is for the cards under it.',
       fixed: true,
       options: []
     },
@@ -328,19 +328,36 @@
   const info = key => CARDS.find(c => c.key === key) || null;
   const cardOf = b => (b && b.opt && typeof b.opt.card === 'string' ? b.opt.card : '');
 
-  // The Home of before 1.25.0 as a grid: Start a race over two columns and three rows, the three cards in the third column.
+  // The usual Home (2.4.0): under Start a race, which runs across the top and is not in the grid, the record, the last race and the totals in one row.
   const DEFAULT = {
     cols: 3,
-    rows: 3,
+    rows: 1,
     boards: [
-      { c: 1, r: 1, w: 2, h: 3, opt: { card: 'start' } },
-      { c: 3, r: 1, w: 1, h: 1, opt: { card: 'record' } },
-      { c: 3, r: 2, w: 1, h: 1, opt: { card: 'last' } },
-      { c: 3, r: 3, w: 1, h: 1, opt: { card: 'glance' } }
+      { c: 1, r: 1, w: 1, h: 1, opt: { card: 'record' } },
+      { c: 2, r: 1, w: 1, h: 1, opt: { card: 'last' } },
+      { c: 3, r: 1, w: 1, h: 1, opt: { card: 'glance' } }
     ]
   };
 
-  // Any grid (from the settings, a file, a mistake) made into one that holds together: only known cards, each once, the grid rules of livegrid.js, and Start a race in it.
+  // A grid saved before 2.4.0 has Start a race in it. It is taken out, and the other cards move up and left into the room it leaves, in reading order and
+  // each as wide and tall as it was (the first place where it fits, row by row), so nothing is lost and no empty cells are left where it was.
+  function packed(g) {
+    const cols = g.cols,
+      boards = [],
+      free = (c, r, w, h) => !boards.some(o => c < o.c + o.w && o.c < c + w && r < o.r + o.h && o.r < r + h);
+    for (const b of g.boards.filter(x => cardOf(x) !== 'start')) {
+      const w = Math.min(b.w, cols);
+      let at = null;
+      for (let r = 1; r + b.h - 1 <= LG.MAXR && !at; r++)
+        for (let c = 1; c + w - 1 <= cols && !at; c++) if (free(c, r, w, b.h)) at = { c, r };
+      if (at) boards.push({ ...b, c: at.c, r: at.r, w });
+    }
+    const rows = Math.max(1, ...boards.map(b => b.r + b.h - 1));
+    return { cols, rows, boards };
+  }
+
+  // Any grid (from the settings, a file, a mistake) made into one that holds together: only known cards, each once, and the grid rules of livegrid.js.
+  // Start a race is never in it (2.4.0): a grid of before that has it is packed (above).
   function tidy(g) {
     const seen = new Set();
     const boards = (g && Array.isArray(g.boards) ? g.boards : []).filter(b => {
@@ -349,26 +366,15 @@
       seen.add(k);
       return true;
     });
-    let out = LG.clean({ cols: g && g.cols, rows: g && g.rows, boards });
-    if (!out.boards.some(b => cardOf(b) === 'start')) {
-      // Start a race went missing (a smaller grid, a damaged file): it takes the first free cell, else the place of the first card
-      let at = null;
-      for (let r = 1; r <= out.rows && !at; r++) for (let c = 1; c <= out.cols && !at; c++) if (!LG.boardAt(out, c, r)) at = { c, r };
-      if (!at) {
-        const first = out.boards[0];
-        at = first ? { c: first.c, r: first.r } : { c: 1, r: 1 };
-        out = LG.remove(out, 0);
-      }
-      out = LG.add(out, at.c, at.r, { card: 'start' });
-    }
-    return out;
+    const out = LG.clean({ cols: g && g.cols, rows: g && g.rows, boards });
+    return out.boards.some(b => cardOf(b) === 'start') ? LG.clean(packed(out)) : out;
   }
   const gridOf = s => tidy(s && s.homeGrid && typeof s.homeGrid === 'object' && !Array.isArray(s.homeGrid) ? s.homeGrid : DEFAULT);
   const same = (a, b) => JSON.stringify(tidy(a)) === JSON.stringify(tidy(b));
   const isDefault = g => same(g, DEFAULT);
 
   const used = g => new Set((g && g.boards ? g.boards : []).map(cardOf));
-  // The cards a cell can have: the ones that are not in the grid yet (Start a race is never offered, it has its cell already), and the card the cell has now.
+  // The cards a cell can have: the ones that are not in the grid yet (Start a race is never offered, it is across the top of Home), and the card the cell has now.
   const available = (g, i) => {
     const u = used(g),
       now = g.boards[i] ? cardOf(g.boards[i]) : '';

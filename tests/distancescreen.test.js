@@ -181,7 +181,7 @@ const view = () => run('Damage.view(live.engine(), [0, 1], performance.now(), li
     const asg = [{ teamId: 'T1', carId: 'c1', driverId: 'd1' }, { teamId: 'T2', carId: 'c2', driverId: 'd3' }];
     const home2 = async (setup, track) => {
       store.racesetups = [{ track: track.id, ...setup }]; store.tracks[0] = meas;
-      run('state.settings.homeGrid = ' + JSON.stringify({ cols: 4, rows: 3, boards: [{ c: 1, r: 1, w: 2, h: 1, opt: { card: 'start' } }, { c: 3, r: 1, w: 2, h: 2, opt: { card: 'rules' } }] }) + ';'); run("state.settings.lastSetupId = '" + setup.id + "'; state.settings.assignments = " + JSON.stringify({ [setup.id]: asg }) + "; state.tab = 'home'; state.race = null; live = null");
+      run('state.settings.homeGrid = ' + JSON.stringify({ cols: 4, rows: 3, boards: [{ c: 1, r: 1, w: 2, h: 1, opt: { card: 'shortcuts' } }, { c: 3, r: 1, w: 2, h: 2, opt: { card: 'rules' } }] }) + ';'); run("state.settings.lastSetupId = '" + setup.id + "'; state.settings.assignments = " + JSON.stringify({ [setup.id]: asg }) + "; state.tab = 'home'; state.race = null; live = null");
       await run('render()'); await wait(30); return E('view').innerHTML.replace(/&quot;/g, '"');
     };
     const rules = () => E('hmc-rules').innerHTML.replace(/&quot;/g, '"');

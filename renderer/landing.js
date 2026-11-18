@@ -744,11 +744,7 @@ async function renderHome() {
     const map = HG.cells(g)
       .map(x =>
         x.board
-          ? `<div class="lv-gcell${x.index === sel ? ' sel' : ''}" style="${place(x.board)}">${
-              HG.cardOf(x.board) === 'start'
-                ? '<span class="hm-fixed">Start a race <small>(always across the top of Home)</small></span>'
-                : `<select aria-label="Card in ${HG.where(x.board)}" data-hcell="${x.index}">${choice(HG.cardOf(x.board), x.index)}</select>`
-            }<button type="button" class="btn" data-hsel="${x.index}" aria-pressed="${x.index === sel}">Card ${x.index + 1} settings</button></div>`
+          ? `<div class="lv-gcell${x.index === sel ? ' sel' : ''}" style="${place(x.board)}"><select aria-label="Card in ${HG.where(x.board)}" data-hcell="${x.index}">${choice(HG.cardOf(x.board), x.index)}</select><button type="button" class="btn" data-hsel="${x.index}" aria-pressed="${x.index === sel}">Card ${x.index + 1} settings</button></div>`
           : `<div class="lv-gcell empty" style="grid-column:${x.c};grid-row:${x.r}"><select aria-label="Card in column ${x.c}, row ${x.r}" data-hadd="${x.c},${x.r}">${choice('', -1)}</select></div>`
       )
       .join('');
@@ -802,19 +798,15 @@ async function renderHome() {
       );
       one = `<fieldset class="lv-optset"><legend>Card ${sel + 1}: ${esc(cd.label)} (${HG.where(b)})</legend><p class="hint2">${esc(cd.note)}</p><div class="lv-optgrid">${span('w', b.w, ms.w, 'Columns it covers')}${span('h', b.h, ms.h, 'Rows it covers')}${optsHtml}</div></fieldset>`;
     }
-    return `<section class="card hm-customize" id="hm-customize"><h3>Customize Home</h3><p class="hint2">Pick the grid with the little squares, then choose a card for every cell. A card can cover more cells (wider or taller). The grid is kept on this computer, and every change shows at once.</p>
+    return `<section class="card hm-customize" id="hm-customize"><h3>Customize Home</h3><p class="hint2">Start a race always runs across the top of Home. Pick the grid for the cards under it with the little squares, then choose a card for every cell. A card can cover more cells (wider or taller). The grid is kept on this computer, and every change shows at once.</p>
       <div class="lv-gridtool"><div class="field"><span class="lbl" id="hg-gridlabel">Grid</span><div class="lv-gridpick" role="group" aria-labelledby="hg-gridlabel">${squares}</div><output id="hg-gridsize">${HG.sizeText(g)}</output></div>
-      <div class="field"><span class="lbl">Card in every cell</span><div class="lv-gridmap" style="grid-template-columns:repeat(${g.cols},minmax(0,1fr))">${map}</div></div></div>${one}
+      <div class="field"><span class="lbl">Card in every cell</span><div class="hm-fixedbar" aria-hidden="true">Start a race <small>always across the top of Home</small></div><div class="lv-gridmap" style="grid-template-columns:repeat(${g.cols},minmax(0,1fr))">${map}</div></div></div>${one}
       <div class="row"><button type="button" class="btn" id="hmdefault"${HG.isDefault(g) ? ' disabled' : ''} title="Put the cards back the way Home was before you customized it">Back to the usual Home</button></div></section>`;
   };
-  // 2.4.0: Start a race is a bar across the whole page under the title card, so the other cards flow below it in reading order, each as wide and tall
-  // as it was set in Customize (the cells that Start a race takes in the grid of Customize are left out).
+  // 2.4.0: Start a race is a bar across the whole page under the title card and not in the grid (homegrid.js): the grid holds the cards under it, each in
+  // the cell Customize gave it.
   const otherCells = grid.boards
-    .filter(b => HG.cardOf(b) !== 'start') // (the grid keeps its boards in reading order, livegrid.js)
-    .map(
-      b =>
-        `<div class="hm-cell" id="hmc-${esc(HG.cardOf(b))}" data-card="${esc(HG.cardOf(b))}" style="grid-column:span ${Math.min(b.w, grid.cols)};grid-row:span ${b.h}"></div>`
-    )
+    .map(b => `<div class="hm-cell" id="hmc-${esc(HG.cardOf(b))}" data-card="${esc(HG.cardOf(b))}" style="${place(b)}"></div>`)
     .join('');
   const ae = hc.open && typeof document !== 'undefined' ? document.activeElement : null,
     keep = homeFieldId(ae) ? { id: ae.id, type: ae.type, start: ae.selectionStart, end: ae.selectionEnd } : null; // (the field of Customize that has the cursor now, and what is selected in it)
@@ -822,7 +814,7 @@ async function renderHome() {
   // backdrop when there is no picture. The cards below rise into it when nothing stands between them (styles.css).
   const headerHtml = homeHeaderHtml(state.settings),
     heroCls = headerHtml
-      ? ` has-pic${typeof Banner !== 'undefined' && Banner.logoOn(state.settings) && Banner.logoSide(state.settings) === 'left' ? ' logo-left' : ''}`
+      ? ` has-pic${typeof Banner !== 'undefined' && Banner.logoOn(state.settings) && Banner.logoLeft(state.settings) ? ' logo-left' : ''}`
       : '';
   view.innerHTML =
     `<div class="hm-hero${heroCls}">${headerHtml}

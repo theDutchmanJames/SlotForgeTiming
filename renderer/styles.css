@@ -2552,8 +2552,9 @@ dialog.ss-choose{width:min(620px,94vw)}
 #hm-chips .hm-chip{padding:0;border:0;background:none;font-size:13px;color:var(--muted)}
 #hm-chips .hm-chip[data-state="warn"]{color:var(--ink)}
 #hm-chips .hm-chip-go:hover{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
-/* the other cards follow in reading order, each as wide and tall as Customize says */
-.hm-grid{grid-auto-flow:row dense}
+/* the other cards: in the grid of Customize, under Start a race */
+.hm-grid:not(:has(>*)){display:none}
+.hm-fixedbar{display:flex;align-items:baseline;gap:10px;margin:0 0 8px;padding:10px 14px;border:1px solid var(--accent);border-left-width:4px;border-radius:8px;background:color-mix(in srgb,var(--accent) 10%,var(--panel));font-weight:600}.hm-fixedbar small{font-weight:400;color:var(--muted)}
 .hm-grid .card>h3{font:italic 700 19px/1.15 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.03em}
 .hm-grid .card>h3 .hm-tag{font:500 12px/1.4 "Segoe UI",system-ui,sans-serif;text-transform:none;letter-spacing:0}
 /* the record to beat as a lower third: a slanted accent label, the time beside it */
@@ -2568,3 +2569,9 @@ dialog.ss-choose{width:min(620px,94vw)}
 .hm-grid .hm-rec .hm-time{font-family:'SF Roboto Mono',Consolas,monospace;font-weight:600;color:var(--ink);letter-spacing:-.03em}
 .hm-grid .hm-rec .hm-rec-holder{padding:8px 10px}
 [data-theme="light"] #hmc-start,[data-theme="ocean"] #hmc-start,[data-tone="light"] #hmc-start{box-shadow:0 14px 36px rgba(20,24,30,.14)}
+/* 2.4.0: a club logo on the header picture: the picture fills the header, the logo stands on it at the left or the right (as wide as its share) */
+.homehead.withlogo>.hlogo.over{z-index:1;grid-row:1}
+.homehead.withlogo>.hlogo.over>img{inset:auto;left:4%;top:8%;width:92%;height:84%}
+.hm-hero:has(+#hm-update[hidden]+#hm-detect[hidden]+#hmc-start)>.homehead.withlogo>.hlogo.over>img{height:calc(84% - 62px)}
+.hm-hero.has-pic>.homehead.withlogo:has(>.hlogo.over)>.hcell:not(.hlogo)::after{background:linear-gradient(90deg,rgba(8,10,13,.88) 0%,rgba(8,10,13,.5) 40%,rgba(8,10,13,0) 75%),linear-gradient(0deg,rgba(8,10,13,.7) 0%,rgba(8,10,13,0) 55%)}
+.hm-hero.has-pic.logo-left>.homehead.withlogo:has(>.hlogo.over)>.hcell:not(.hlogo)::after{background:linear-gradient(270deg,rgba(8,10,13,.88) 0%,rgba(8,10,13,.5) 40%,rgba(8,10,13,0) 75%),linear-gradient(0deg,rgba(8,10,13,.7) 0%,rgba(8,10,13,0) 55%)}

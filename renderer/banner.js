@@ -30,10 +30,15 @@
 
   // ---- the club logo beside the header picture ----
   const DEFAULT_HEIGHT = 18; // the height (share of the width) of a header that has a logo but no picture, when none is set
-  const LOGO_SIDES = ['left', 'right'];
-  // 'left' or 'right' of the header picture; '' = not shown
+  const LOGO_SIDES = ['left', 'right', 'over-left', 'over-right'];
+  // 'left' or 'right' of the header picture, or on the picture at its left or right ('over-left', 'over-right', 2.4.0: the picture then fills the whole
+  // header and the logo stands on it); '' = not shown
   const logoSide = s => (s && LOGO_SIDES.includes(s.homeLogoSide) ? s.homeLogoSide : '');
   // the logo is shown when there is a logo and a side
+  // the logo stands on the picture (the picture fills the header from left to right), at its left or its right
+  const logoOver = s => logoSide(s).startsWith('over-');
+  // the logo is on the left, beside or on the picture
+  const logoLeft = s => logoSide(s) === 'left' || logoSide(s) === 'over-left';
   const logoOn = s => !!(s && typeof s.clubLogo === 'string' && s.clubLogo && logoSide(s));
   // the share of the header width that the logo gets: 10 to 50 percent (25 when nothing usable is set)
   const logoShare = s => {
@@ -54,7 +59,7 @@
       b = `minmax(0,${100 - share}fr)`,
       n = height(s);
     return [
-      `grid-template-columns:${logoSide(s) === 'left' ? a + ' ' + b : b + ' ' + a}`,
+      logoOver(s) ? 'grid-template-columns:minmax(0,1fr)' : `grid-template-columns:${logoSide(s) === 'left' ? a + ' ' + b : b + ' ' + a}`,
       n ? `aspect-ratio:100 / ${n}` : s.homeHeader ? '' : `aspect-ratio:100 / ${DEFAULT_HEIGHT}`
     ]
       .filter(Boolean)
@@ -82,7 +87,23 @@
     return { x: move(from.x, dx, o.x), y: move(from.y, dy, o.y) };
   };
 
-  const api = { height, pos, css, overflow, drag, posCss, DEFAULT_HEIGHT, logoSide, logoOn, logoShare, logoPos, boxCss, logoRoom };
+  const api = {
+    height,
+    pos,
+    css,
+    overflow,
+    drag,
+    posCss,
+    DEFAULT_HEIGHT,
+    logoSide,
+    logoOver,
+    logoLeft,
+    logoOn,
+    logoShare,
+    logoPos,
+    boxCss,
+    logoRoom
+  };
   root.Banner = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
