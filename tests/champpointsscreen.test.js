@@ -297,23 +297,21 @@ const setup = async () => { run("state.tab = 'setup'; state.setupSub = 'champion
   // ---------- Home ----------
   put(); store.sessions = [R1(true)]; run("state.settings = { theme: 'dark', lastSetupId: 's-race' }");
   { const h = await home();
-    say('Home: nothing of the standings is shown until the championship is chosen in Start a race', !h.includes('id="chstand"') && !h.includes('chlead') && h.includes('id="champsel"')); }
-  await homeChange('champsel', 'ch1'); await wait(150);
+    say('Home: nothing of the standings is shown until the championship is picked in the race setup list of Start a race', !h.includes('hs-clead') && h.includes('<option value="champ:ch1">')); }
+  await homeChange('setup', 'champ:ch1'); await wait(250);
   { const h = view().innerHTML;
-    say('Home: the card of the championship says who leads ("Alex leads by 7") next to how much is driven', h.includes('class="chtag chlead">Alex leads by 7<') && h.includes('chtags'));
-    say('...and shows the top of the standings: Standings after round 1, the first five with their points, Drivers and Teams, what is left, and All standings', h.includes('id="chstand"') && h.includes('Standings after round 1') && h.includes('data-chst="drivers"') && h.includes('data-chst="teams"') && /<b>Alex<\/b><\/td><td class="r"><b>25<\/b>/.test(h) && h.includes('One round is left: it gives up to 25 points a driver, so Sam, Kim and Lee can still pass Alex.') && h.includes('data-chall="ch1"')); }
-  await homeClick({ chst: 'teams' }); await wait(150);
-  say('the Teams button shows the teams (Foxes 43, Arrows 27)', view().innerHTML.includes('<b>Foxes</b>') && view().innerHTML.includes('<b>43</b>') && view().innerHTML.includes('<b>Arrows</b>') && run('state.champHomeWhich') === 'teams');
+    say('Home (2.4.0): the lines of the championship say who leads ("Alex leads by 7"), with a Standings button', h.includes('class="hs-clead">') && h.includes('Alex leads by 7') && h.includes('data-chall="ch1"'));
+    say('...the standings themselves are on the Championships page, not on Home', !h.includes('id="chstand"') && !h.includes('data-chst=')); }
   await homeClick({ chall: 'ch1' }); await wait(100);
-  say('All standings opens Results and Records at the Championships tab, at this championship and at Teams', run('state.resultsSub') === 'champs' && run('state.tab') === 'database' && run('state.sub') === 'results' && run('champView.id') === 'ch1' && run('champView.which') === 'teams');
+  say('Standings opens Results and Records at the Championships tab, at this championship', run('state.resultsSub') === 'champs' && run('state.tab') === 'database' && run('state.sub') === 'results' && run('champView.id') === 'ch1');
   { store.sessions = []; run("state.tab = 'home'; state.champHomeWhich = 'drivers'"); const h = await home();
-    say('while no race is awarded there is no standings block and no leader on the card', !h.includes('id="chstand"') && !h.includes('chlead')); }
+    say('while no race is awarded there is no leader in the lines of the championship', !h.includes('hs-clead')); }
   { run("state.champHomeWhich = 'teams'"); put({ teamMode: 'none' }); store.sessions = [R1(true)]; const h = await home();
-    say('a championship without team standings has no Drivers/Teams buttons on Home, and a choice of Teams that was left over shows the drivers', h.includes('id="chstand"') && !h.includes('data-chst=') && /<tr><td class="muted">1<\/td><td><b>Alex<\/b>/.test(h)); run("state.champHomeWhich = 'drivers'"); put(); }
+    say('a championship without team standings: Home (2.4.0) shows the leader in the lines of the championship and no standings table, also with a choice of Teams left over', h.includes('class="hs-clead">') && h.includes('Alex leads') && !h.includes('id="chstand"') && !h.includes('data-chst=')); run("state.champHomeWhich = 'drivers'"); put(); }
   { const more = [5, 6, 7]; store.drivers.push(...more.map(n => ({ id: 'd' + n, name: 'Pat' + n }))); const ids = [1, 2, 3, 4, 5, 6, 7], nm = n => (n < 5 ? NAMES['d' + n] : 'Pat' + n);
     put({ roster: ids.map(n => ({ driver: 'd' + n, team: n < 5 ? 'tm1' : 'tm2' })) }); store.sessions = [sess('H1', '2026-10-03T12:00:00.000Z', 0, 2, ids.map(n => rw(n, 'd' + n, nm(n), 5000 + 100 * n)), { awarded: true })];
     const all = await home(), h = all.slice(all.indexOf('id="chstand"'), all.indexOf('class="hs-sub"'));
-    say('the top of the standings on Home has five drivers (of seven), the first five in order', (h.match(/<tr><td class="muted">\d+<\/td>/g) || []).length === 5 && h.includes('Pat5') && !h.includes('Pat6') && h.indexOf('Alex') < h.indexOf('Sam') && h.indexOf('Lee') < h.indexOf('Pat5'));
+    say('with seven drivers Home still shows only who leads (2.4.0: the standings are on the Championships page)', all.includes('class="hs-clead">') && !all.includes('id="chstand"') && !h.includes('Pat6'));
     store.drivers.length = 4; put(); }
 
   // ---------- a race that counts, on the race screen ----------

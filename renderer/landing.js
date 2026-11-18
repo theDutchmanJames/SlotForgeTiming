@@ -30,6 +30,8 @@ const homeFieldId = t => (t && typeof t.id === 'string' && t.id.startsWith('hg-'
 // (A narrow Start a race card drops to 2 and then 1 column in styles.css.)
 const laneCols = n => (n <= 3 ? Math.max(1, n) : Math.min(4, Math.ceil(n / 2)));
 
+let homeChampAuto = ''; // (2.4.0: the session of a championship that Home loaded by itself last)
+
 function homeSoftDraw() {
   // (the moment after a change in such a field)
   const c = state.homeCustom;
@@ -590,85 +592,96 @@ async function renderHome() {
       <p><strong>${esc(resume.name || '')}</strong>${resume.kind ? ' · ' + esc(resume.kind) : ''}${resume.trackName ? ' on ' + esc(resume.trackName) : ''}. It was ${resume.where ? esc(resume.where) : esc(Endurance.clock(Number(resume.elapsed) || 0)) + ' into the race'} when it was saved (${esc(resume.savedAt ? new Date(resume.savedAt).toLocaleString() : '')}).</p>
       <div class="row"><button class="btn primary" id="resumego">Resume the race</button><button class="btn" id="resumesave">Save what was recorded</button><button class="btn danger" id="resumedrop">Delete it</button></div>
       <p class="hint2">The race comes back paused, with its clock where it was. The laps driven since then are not in it (the review can add them), and the lap that was being driven is left out of the records. Press Space to carry on.${resume.heat ? ' The heats that were done are kept.' : ''}</p></section>`;
-  // 1.55.0: the card of the championship: the round that is next, its sessions (done, next, to do), and one click to load the session that is next. Nothing starts until Start race is pressed.
-  const champShown = !champs.length ? null : ch ? ch.c : champs.find(x => x.id === saved.champId) || null; // 1.56.1: only a championship that was chosen in Start a race (or whose session is loaded) shows; there is no first-one fallback any more
-  const champHtml = !champShown
+  // 1.55.0 (2.4.0): a championship is picked in the race setup list of Start a race (its own group under the race setups). While one is picked its session
+  // is loaded by itself (the race setup, the track of the round, and the race counts for it), and two lines say which session is on now and which is
+  // up next. A session that was driven makes way for the next one by itself the next time Home is drawn.
+  const champShown = !champs.length ? null : champs.find(x => x.id === saved.champId) || (ch ? ch.c : null);
+  const champNow = (() => {
+    if (!champShown) return null;
+    const c = champShown,
+      p = Champ.progress(c, sessions),
+      order = c.rounds.flatMap((r, ri) => r.sessions.map((x, si) => ({ ri, si, r, s: x }))),
+      open = x => !x.s.skipped && !p.done.has(Champ.keyOf(x.r.id, x.s.id)),
+      next = p.next ? order.find(x => x.ri === p.next.round && x.si === p.next.session) : null,
+      again = !!(ch && ch.c.id === c.id && saved.champTag && saved.champTag.again), // (a session that was picked by hand, to drive it again)
+      now = ch && ch.c.id === c.id ? order.find(x => x.ri === ch.ri && x.si === ch.si) || next : next,
+      after = now ? (again && next && next !== now ? next : order.slice(order.indexOf(now) + 1).find(open) || null) : null,
+      bad = next ? Champ.sessionProblems(c, next.ri, next.si, { setups, tracks }) : [],
+      lastSkipped = [...order]
+        .reverse()
+        .find(x => x.s.skipped && !p.done.has(Champ.keyOf(x.r.id, x.s.id)) && (!next || order.indexOf(x) < order.indexOf(next)));
+    return { c, p, order, next, now, after, again, bad, lastSkipped };
+  })();
+  // the session that is next is loaded by itself: when the championship was just picked, or when the session that was loaded has been driven
+  const champAuto =
+    champNow &&
+    champNow.next &&
+    !champNow.bad.length &&
+    !(ch && ch.c.id === champNow.c.id && (ch.ri === champNow.next.ri && ch.si === champNow.next.si ? true : champNow.again))
+      ? champNow.next
+      : null;
+  const sessionText = x => {
+    const setup = x && setups.find(q => q.id === x.s.setup),
+      kind = Champ.kindOf(setup),
+      trackName = x ? (tracks.find(t => t.id === Champ.trackFor(x.r, setup, tracks)) || {}).name || '' : '';
+    return {
+      what: `${Champ.roundLabel(champShown, x.ri)} · ${kind ? Champ.KIND_LABEL[kind] : 'Session'}${kind === 'race' && x.s.share != null && x.s.share !== 100 ? (x.s.share ? ` at ${x.s.share}%` : ' (no points)') : ''}`,
+      more: [setup ? setup.name || '(unnamed)' : x.s.setup ? '(deleted race setup)' : '(no race setup)', trackName]
+        .filter(Boolean)
+        .join(' · '),
+      kind
+    };
+  };
+  const champHtml = !champNow
     ? ''
     : (() => {
-        const c = champShown,
-          p = Champ.progress(c, sessions),
-          ctx = { setups, tracks },
-          at = p.next || null,
-          ri = at ? at.round : Math.max(0, c.rounds.length - 1),
-          r = c.rounds[ri];
-        const bad = at ? Champ.sessionProblems(c, at.round, at.session, ctx) : [];
-        const nextSetup = at ? setups.find(q => q.id === r.sessions[at.session].setup) : null,
-          nextKind = nextSetup ? Champ.kindOf(nextSetup) : '';
-        const refSetup = r && r.sessions[at ? at.session : 0] ? setups.find(q => q.id === r.sessions[at ? at.session : 0].setup) : null,
-          trackName = r ? (tracks.find(t => t.id === Champ.trackFor(r, refSetup, tracks)) || {}).name || '' : '';
-        const step = (s, k) => {
-          const done = p.done.has(Champ.keyOf(r.id, s.id)),
-            skipped = s.skipped && !done,
-            next = at && at.round === ri && at.session === k,
-            setup = setups.find(q => q.id === s.setup),
-            kind = Champ.kindOf(setup);
-          return `<li class="chstep${done ? ' done' : ''}${next ? ' next' : ''}"><span class="si" aria-hidden="true">${done ? '&#10003;' : k + 1}</span><span class="grow">${next ? '<strong>' : ''}${esc(kind ? Champ.KIND_LABEL[kind] : '?')}: ${esc(setup ? setup.name || '(unnamed)' : s.setup ? '(deleted race setup)' : '(no race setup)')}${next ? '</strong>' : ''}</span>
-        <span class="muted">${done ? 'done' : skipped ? 'skipped' : next ? 'next' : kind === 'race' ? 'points: ' + (s.share ? s.share + '%' : 'none') : ''}</span>${skipped ? `<button type="button" class="btn" data-chrestore="${ri}:${k}">Undo skip</button>` : ''}</li>`;
-        };
-        const picks = c.rounds
-          .map((q, i) =>
-            q.sessions.length
-              ? `<optgroup label="${esc(Champ.roundLabel(c, i))}">${q.sessions
-                  .map((s, k) => {
-                    const x = setups.find(y => y.id === s.setup),
-                      kind = Champ.kindOf(x);
-                    return `<option value="${i}:${k}">${p.done.has(Champ.keyOf(q.id, s.id)) ? '✓ ' : s.skipped ? 'Skipped · ' : ''}${esc(kind ? Champ.KIND_LABEL[kind] : '?')}: ${esc(x ? x.name || '(unnamed)' : '(no race setup)')}</option>`;
-                  })
-                  .join('')}</optgroup>`
-              : ''
-          )
-          .join('');
-        const loaded = !!(ch && at && ch.c.id === c.id && ch.ri === at.round && ch.si === at.session);
-        // 1.56.0: who leads, and the top of the standings (the points of the races that are awarded)
+        const { c, p, now, after, next, again, bad, lastSkipped } = champNow;
         const stand = ChampPts.standings(c, sessions, {
             drivers: drivers.map(x => ({ id: x.id, name: titleOf('drivers', x) })),
             teams: teams.map(x => ({ id: x.id, name: titleOf('teams', x) })),
             setups
           }),
           lead = ChampPts.leadText(stand);
-        const standWhich = state.champHomeWhich === 'teams' && stand.teams ? 'teams' : 'drivers',
-          topRows = (standWhich === 'teams' ? stand.teams : stand.drivers).slice(0, 5),
-          more = ChampPts.remainingNote(c, stand, setups);
-        const standHtml = !stand.decided
-          ? ''
-          : `<div class="chstand" id="chstand"><div class="chsthead"><b>Standings after round ${stand.last}</b>${stand.teams ? `<span class="chswitch"><button type="button" class="btn${standWhich === 'drivers' ? ' on' : ''}" data-chst="drivers">Drivers</button><button type="button" class="btn${standWhich === 'teams' ? ' on' : ''}" data-chst="teams">Teams</button></span>` : ''}</div>
-      <table class="num chmini"><tbody>${topRows.map(x => `<tr><td class="muted">${x.pos}</td><td><b>${esc(x.name)}</b></td><td class="r"><b>${esc(ChampPts.fmt(x.total))}</b></td></tr>`).join('')}</tbody></table>
-      ${more ? `<p class="hint2">${esc(more)}</p>` : ''}<div class="row"><button type="button" class="btn" data-chall="${esc(c.id)}">All standings</button></div></div>`;
-        return `<section class="champband" id="champband" aria-label="Championship ${esc(c.name || '')}">
-      <div class="chhead"><div class="chline">${
-        !c.rounds.length
-          ? 'It has no rounds yet. Make them in Race Setup > Championships.'
-          : p.complete
-            ? p.skipped
-              ? `Finished: ${p.driven} driven, ${p.skipped} skipped.`
-              : `Finished: all ${p.total} sessions are driven.`
-            : !p.total
-              ? 'It has no sessions yet. Add them in Race Setup > Championships.'
-              : `Round ${ri + 1} of ${c.rounds.length}${r.name ? ' · ' + esc(r.name) : ''}${trackName ? ' · ' + esc(trackName) : ''}${r.date ? ' · ' + esc(r.date) : ''}`
-      }</div>
-        <div class="chtags">${lead ? `<span class="chtag chlead">${esc(lead)}</span>` : ''}${p.total ? `<span class="chtag">${p.driven} of ${p.total} sessions driven${p.skipped ? ' · ' + p.skipped + ' skipped' : ''}</span>` : ''}</div></div>
-      ${r && r.sessions.length && !p.complete ? `<ul class="chsteps">${r.sessions.map(step).join('')}</ul>` : ''}
-      ${bad.length ? `<ul class="issues">${bad.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}${state.champMsg ? `<p class="hint2 hpwarn" role="alert">${esc(state.champMsg)}</p>` : ''}
-      <div class="row">${at ? `<button type="button" class="btn chload" id="champload" data-load="${at.round}:${at.session}"${bad.length ? ' disabled' : ''}>${loaded ? 'Loaded: ' : 'Load '}${esc(nextKind ? Champ.KIND_LABEL[nextKind] : 'the next session')}</button>` : ''}
-        ${at && ['practice', 'qualifying'].includes(nextKind) ? `<button type="button" class="btn" data-chskip="${at.round}:${at.session}">Skip ${nextKind === 'practice' ? 'Practice' : 'Qualifying'}</button>` : ''}
-        ${picks ? `<select id="champpick" aria-label="Load another session"><option value="">${at ? 'Another session...' : 'Drive a session again...'}</option>${picks}</select>` : ''}
-        <span class="muted">Fills the race setup and the lanes below; nothing starts until you press Start race.</span></div>${standHtml}</section>`;
+        const line = (cls, tag, x, extra = '') => {
+          const t = sessionText(x);
+          return `<div class="hs-cline ${cls}"><span class="hs-ctag">${tag}</span><b>${esc(t.what)}</b><span class="muted">${esc(t.more)}</span>${extra}</div>`;
+        };
+        const empty = !c.rounds.length || !p.total;
+        const nowKind = now ? sessionText(now).kind : '';
+        const picks = c.rounds
+          .map((q, i) =>
+            q.sessions.length
+              ? `<optgroup label="${esc(Champ.roundLabel(c, i))}">${q.sessions
+                  .map((x, k) => {
+                    const st = setups.find(y => y.id === x.setup),
+                      kind = Champ.kindOf(st);
+                    return `<option value="${i}:${k}">${p.done.has(Champ.keyOf(q.id, x.id)) ? '✓ ' : x.skipped ? 'Skipped · ' : ''}${esc(kind ? Champ.KIND_LABEL[kind] : '?')}: ${esc(st ? st.name || '(unnamed)' : '(no race setup)')}</option>`;
+                  })
+                  .join('')}</optgroup>`
+              : ''
+          )
+          .join('');
+        const lines = empty
+          ? `<div class="hs-cline now"><span class="hs-ctag">Now</span><b>No sessions yet</b><span class="muted">Add rounds and sessions in Race Setup › Championships.</span></div>`
+          : p.complete && !again
+            ? `<div class="hs-cline now done"><span class="hs-ctag">Finished</span><b>${p.skipped ? `${p.driven} driven, ${p.skipped} skipped` : `All ${p.total} sessions driven`}</b><span class="muted">Pick a session to drive it again.</span></div>`
+            : line('now', 'Now', now) +
+              (after
+                ? line(
+                    'next',
+                    'Up next',
+                    after,
+                    again && after === next ? '<button type="button" class="btn hs-clink" data-chnext="1">Go to it</button>' : ''
+                  )
+                : `<div class="hs-cline next"><span class="hs-ctag">Up next</span><b>The end of the championship</b><span class="muted">${esc(p.driven + ' of ' + p.total + ' sessions driven')}</span></div>`);
+        return `<section class="hs-championship" id="champband" aria-label="Championship ${esc(c.name || '')}"><div class="hs-clines">${lines}</div>
+      <div class="hs-cside">${lead ? `<span class="hs-clead">${Icons.svg('championship', { size: 14 })}${esc(lead)}</span>` : ''}
+        ${next && now === next && ['practice', 'qualifying'].includes(nowKind) ? `<button type="button" class="btn hs-clink" data-chskip="${next.ri}:${next.si}">Skip ${nowKind === 'practice' ? 'practice' : 'qualifying'}</button>` : ''}
+        ${lastSkipped ? `<button type="button" class="btn hs-clink" data-chrestore="${lastSkipped.ri}:${lastSkipped.si}">Undo skip</button>` : ''}
+        ${picks ? `<select id="champpick" class="hs-cpick" aria-label="Pick another session of the championship"><option value="">Other session…</option>${picks}</select>` : ''}
+        <button type="button" class="btn hs-clink" data-chall="${esc(c.id)}">Standings</button></div>
+      ${bad.length ? `<ul class="issues">${bad.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}${state.champMsg ? `<p class="hint2 hpwarn" role="alert">${esc(state.champMsg)}</p>` : ''}</section>`;
       })();
-  // 1.56.1: the choice of the championship, at the top of Start a race: None (a normal race) or one of the championships. Only the one that is chosen shows its card.
-  const champPickHtml = !champs.length
-    ? ''
-    : `<div class="hs-champ"><span class="hs-ctile" aria-hidden="true">${Icons.svg('championship', { size: 18 })}</span><label class="hs-clabel" for="champsel">Championship</label>
-        <div class="hs-sel hs-noico hs-grow2"><select id="champsel"><option value="">None: a normal race</option>${champs.map(x => `<option value="${esc(x.id)}"${champShown && x.id === champShown.id ? ' selected' : ''}>${esc(x.name || '(unnamed)')}</option>`).join('')}</select><span class="hs-chev" aria-hidden="true">${Icons.svg('chevron', { size: 16, stroke: 2 })}</span></div></div>`;
   // 1.17.0: the welcome band (date, track and status chips), the start card with its coloured lanes and start lights, and the cards on the right
   const audio = setup && (audiosets || []).find(x => x.id === setup.audioSet),
     audioName = audio ? audio.name || '(unnamed)' : '';
@@ -829,10 +842,9 @@ async function renderHome() {
       ? `
       <div class="hs-head"><span class="hs-tile" aria-hidden="true">${Icons.svg('racesetups', { size: 24 })}</span>
         <div class="hs-ht"><label class="hs-label" for="setup">Start a race</label>
-          <div class="hs-title"><select id="setup" aria-label="Race setup">${setups.map(s => `<option value="${esc(s.id)}"${s.id === setupId ? ' selected' : ''}>${esc(s.name || '(unnamed)')}</option>`).join('')}</select><span class="hs-chev" aria-hidden="true">${Icons.svg('chevron', { size: 16, stroke: 2 })}</span></div>
+          <div class="hs-title"><select id="setup" aria-label="Race setup or championship"><optgroup label="Race setups">${setups.map(s => `<option value="${esc(s.id)}"${!champShown && s.id === setupId ? ' selected' : ''}>${esc(s.name || '(unnamed)')}</option>`).join('')}</optgroup>${champs.length ? `<optgroup label="Championships">${champs.map(c => `<option value="champ:${esc(c.id)}"${champShown && c.id === champShown.id ? ' selected' : ''}>${esc(c.name || '(unnamed championship)')}</option>`).join('')}</optgroup>` : ''}</select><span class="hs-chev" aria-hidden="true">${Icons.svg('chevron', { size: 16, stroke: 2 })}</span></div>
           <div class="hs-chips">${chipsHtml}</div></div></div>
-      ${champPickHtml}${champHtml}
-      ${ch ? `<p class="chcounts" id="chcounts"><b>Counts for ${esc(ch.c.name || 'the championship')}</b> · ${esc(Champ.roundKindText(ch.tag))} <span class="muted">(change the race setup and it is a normal race again)</span></p>` : ''}
+      ${champHtml}
       ${
         qual && lanes > 1
           ? `<p class="hint2">🏁 ${esc(qual.name)} won the latest qualifying on this track and picks a lane first. ${
@@ -843,7 +855,7 @@ async function renderHome() {
           : ''
       }
       ${rotHtml}
-      ${track && lanes ? `<div class="hs-sub"><span class="hs-label hs-muted">${heats ? (byTeam ? 'Teams' : 'Participants') : 'Lanes'}</span><span class="muted">${esc(laneSub)}</span></div><div class="hs-lanes" data-cols="${laneCols(rows.length)}">${rows.map(rowHtml).join('')}</div>` : ''}
+      ${track && lanes ? `${heats || tokens || enduSingle ? `<div class="hs-sub"><span class="hs-label hs-muted">${heats ? (byTeam ? 'Teams' : 'Participants') : 'Lanes'}</span><span class="muted">${esc(laneSub)}</span></div>` : ''}<div class="hs-lanes" data-cols="${laneCols(rows.length)}" role="group" aria-label="${esc(laneSub)}">${rows.map(rowHtml).join('')}</div>` : ''}
       ${heats && track && !rot ? `<button class="btn" id="addrow">${byTeam ? 'Add team' : 'Add participant'}</button>` : ''}
       ${mcHtml}${heatPlanHtml}
       ${tokens ? '<p class="hint2">A Time Token Session starts with every lane switched off. You add paid time to a lane on the race screen, and can change the driver there too. Here you can already put a driver and a car on a lane.</p>' : ''}
@@ -919,7 +931,7 @@ async function renderHome() {
     }
   }
   // 1.55.0: a session of the championship is loaded: its race setup is the one on Home, its track is the track of the round, and the race that is started counts for the championship
-  const loadSession = (ri, si) => {
+  const loadSession = (ri, si, again = false) => {
     const c = champShown,
       r = c && c.rounds[ri],
       s = r && r.sessions[si];
@@ -932,12 +944,24 @@ async function renderHome() {
     }
     state.champMsg = '';
     api
-      .setSettings({ lastSetupId: s.setup, champId: c.id, champTag: { champId: c.id, roundId: r.id, sessionId: s.id, setupId: s.setup } })
+      .setSettings({
+        lastSetupId: s.setup,
+        champId: c.id,
+        champTag: { champId: c.id, roundId: r.id, sessionId: s.id, setupId: s.setup, ...(again ? { again: true } : {}) }
+      })
       .then(x => {
         state.settings = x;
         renderHome();
       });
   };
+  // (the next session of the championship that is picked, loaded by itself: once for each session, so a session that cannot be loaded is not asked for again and again)
+  if (champAuto) {
+    const key = champNow.c.id + ':' + champAuto.ri + ':' + champAuto.si;
+    if (homeChampAuto !== key) {
+      homeChampAuto = key;
+      loadSession(champAuto.ri, champAuto.si);
+    }
+  }
   const changeSessionSkip = async (ri, si, skip) => {
     if (typeof raceActive === 'function' && raceActive()) {
       state.champMsg = 'Finish or discard the active session before changing the championship order.';
@@ -1046,28 +1070,24 @@ async function renderHome() {
       persist();
       return;
     }
-    if (ev.target.id === 'champsel') {
-      // 1.56.1: a championship chosen in Start a race shows its card there; None is a normal race again. A session that was loaded is let go either way (the race setup and the lanes stay as they are)
-      state.champMsg = '';
-      const id = ev.target.value;
-      api.setSettings({ champId: id || null, champTag: null }).then(s => {
-        state.settings = s;
-        renderHome();
-      });
-      return;
-    }
     if (ev.target.id === 'champpick') {
       const [i, k] = String(ev.target.value).split(':').map(Number);
-      if (Number.isInteger(i) && Number.isInteger(k)) loadSession(i, k);
+      if (Number.isInteger(i) && Number.isInteger(k))
+        loadSession(i, k, !(champNow && champNow.next && champNow.next.ri === i && champNow.next.si === k));
       return;
     }
     if (ev.target.id === 'setup') {
-      api.setSettings({ lastSetupId: ev.target.value, champTag: null }).then(s => {
-        state.settings = s;
-        renderHome();
-      });
+      state.champMsg = '';
+      homeChampAuto = ''; // (a championship that is picked again loads its next session again)
+      const v = String(ev.target.value);
+      api
+        .setSettings(v.startsWith('champ:') ? { champId: v.slice(6), champTag: null } : { lastSetupId: v, champId: null, champTag: null })
+        .then(s => {
+          state.settings = s;
+          renderHome(); // (a championship: its next session is loaded when Home is drawn)
+        });
       return;
-    } // (another race setup: it is a normal race again)
+    } // (2.4.0: a race setup is a normal race; a championship from the same list loads its next session)
     if (ev.target.dataset && ev.target.dataset.absent !== undefined) {
       const r = rows[Number(ev.target.dataset.absent)];
       if (r) {
@@ -1181,11 +1201,10 @@ async function renderHome() {
         .map(Number);
       return changeSessionSkip(i, k, !!b.dataset.chskip);
     }
-    if (b.id === 'champload') {
-      const [i, k] = String(b.dataset.load).split(':').map(Number);
-      loadSession(i, k);
+    if (b.dataset.chnext && champNow && champNow.next) {
+      loadSession(champNow.next.ri, champNow.next.si);
       return;
-    }
+    } // (back to the session that is next, after one that was driven again)
     if (b.dataset.hgrid) {
       const [c, r] = String(b.dataset.hgrid).split(',').map(Number);
       saveGrid(HG.resize(cur(), c, r));

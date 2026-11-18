@@ -209,92 +209,78 @@ const setup = async () => { run("state.tab = 'setup'; state.setupSub = 'champion
     ctx.confirm = () => true; await E('ch-back').onclick(); await wait(50); store.sessions = []; }
   run('chEd = null'); ctx.confirm = () => true;
 
-  // ---------- Home: the card with the next session ----------
+  // ---------- Home (2.4.0): the championship is picked in the race setup list; two lines say what is on now and what is up next ----------
   store.championships = [JSON.parse(JSON.stringify(C.clean({ id: 'ch1', name: 'Club Cup 2026', rounds: [
     { id: 'r1', name: 'Opener', track: 't4', date: 'Sat 3 Oct', sessions: [{ id: 'a1', setup: 's-prac' }, { id: 'a2', setup: 's-qual' }, { id: 'a3', setup: 's-race' }] },
     { id: 'r2', name: 'Final', track: '', date: '', sessions: [{ id: 'b1', setup: 's-prac' }, { id: 'b2', setup: 's-race', share: 50 }] }],
     roster: [{ driver: 'd2', team: 'tm1', from: 1 }, { driver: 'd1', team: 'tm1', from: 1 }, { driver: 'd3', team: 'tm2', from: 2 }] }, true)))];
-  run("state.settings = { theme: 'dark', lastSetupId: 's-race' }");
+  run("state.settings = { theme: 'dark', lastSetupId: 's-race' }; homeChampAuto = ''");
+  const nowLine = (h, what) => h.includes('<span class="hs-ctag">Now</span><b>' + what + '</b>'),
+    nextLine = (h, what) => h.includes('<span class="hs-ctag">Up next</span><b>' + what + '</b>');
   { const h = await home();
-    say('Home shows no card of a championship until one is chosen: Start a race has a choice Championship (None, a normal race, and the championship), and nothing of the championship is on Home', h.includes('id="champsel"') && h.includes('<option value="">None: a normal race</option>') && /<option value="ch1">Club Cup 2026<\/option>/.test(h) && !h.includes('id="champband"') && !h.includes('id="champload"') && !h.includes('Round 1 of 2'));
-    say('...the choice is in the Start a race card, under the title (the Race setup box, 1.58.0)', h.indexOf('id="hmc-start"') < h.indexOf('id="setup"') && h.indexOf('id="setup"') < h.indexOf('id="champsel"')); }
-  await homeChange('champsel', 'ch1'); await wait(150);
-  { const h = view().innerHTML;
-    say('choosing the championship makes its card appear inside Start a race, under the choice (the Race setup box is the title above them, 1.58.0): the round, its name and track, and how many sessions are driven; the choice is remembered', h.includes('id="champband"') && h.indexOf('id="hmc-start"') < h.indexOf('id="champsel"') && h.indexOf('id="setup"') < h.indexOf('id="champsel"') && h.indexOf('id="champsel"') < h.indexOf('id="champband"') && /<option value="ch1" selected>Club Cup 2026/.test(h) && h.includes('Round 1 of 2 · Opener · Big track · Sat 3 Oct') && h.includes('0 of 5 sessions driven') && run('state.settings.champId') === 'ch1');
-    say('...the sessions of the round as steps (the next one is marked), and a button to load the next one: "Load Practice"', (h.match(/class="chstep[ "]/g) || []).length === 3 && /class="chstep next"/.test(h) && h.includes('Practice: Practice 5 min') && h.includes('Qualifying: Qualifying 5 min') && h.includes('points: 100%') && />Load Practice</.test(h) && h.includes('data-load="0:0"'));
-    say('...and a choice of another session (every session of every round), with the words that say that nothing starts', h.includes('id="champpick"') && h.includes('Round 2 · Final') && h.includes('Another session...') && h.includes('Fills the race setup and the lanes below; nothing starts until you press Start race.'));
-    say('...the name of the championship is in the choice only, not in the card again', !h.includes('class="chname"') && !h.includes('class="chlabel"'));
-    say('...the card of the race is a normal race until a session is loaded: no "Counts for" line', !h.includes('id="chcounts"') && !h.includes('Counts for')); }
-  await homeClick({ id: 'champload', load: '0:0' }); await wait(150);
+    say('2.4.0: the championship is in the race setup list of Start a race, in a group of its own, and nothing of it is on Home until it is picked', h.includes('<optgroup label="Championships"><option value="champ:ch1">Club Cup 2026</option></optgroup>') && h.indexOf('<optgroup label="Race setups">') < h.indexOf('<optgroup label="Championships">') && !h.includes('id="champsel"') && !h.includes('id="champband"') && !h.includes('Round 1')); }
+  await homeChange('setup', 'champ:ch1'); await wait(300);
   { const h = view().innerHTML, s = run('state.settings');
-    say('"Load Practice" puts its race setup on Home, remembers the session, and the card says "Counts for Club Cup 2026 · Round 1 · Practice"', s.lastSetupId === 's-prac' && s.champTag && s.champTag.champId === 'ch1' && s.champTag.roundId === 'r1' && s.champTag.sessionId === 'a1' && s.champTag.setupId === 's-prac' && h.includes('id="chcounts"') && h.includes('Counts for Club Cup 2026') && h.includes('Round 1 · Practice') && h.includes('(change the race setup and it is a normal race again)'));
+    say('picking it loads its first session by itself: the practice of round 1 is the race setup, the session is remembered, and the championship is the one picked in the list', s.champId === 'ch1' && s.lastSetupId === 's-prac' && s.champTag && s.champTag.champId === 'ch1' && s.champTag.roundId === 'r1' && s.champTag.sessionId === 'a1' && s.champTag.setupId === 's-prac' && /<option value="champ:ch1" selected>Club Cup 2026/.test(h));
+    say('...two lines: Now, the practice of round 1 (its race setup and the track of the round), and Up next, the qualifying', h.includes('id="champband"') && nowLine(h, 'Round 1 · Opener · Practice') && h.includes('<span class="muted">Practice 5 min · Big track</span>') && nextLine(h, 'Round 1 · Opener · Qualifying') && h.includes('Qualifying 5 min · Big track'));
+    say('...beside them: Skip practice, a choice of another session (every session of every round) and Standings', h.includes('data-chskip="0:0"') && h.includes('>Skip practice<') && h.includes('id="champpick"') && h.includes('Round 2 · Final') && h.includes('Other session…') && h.includes('data-chall="ch1"'));
+    say('...the old card, its Load button, the steps and the "Counts for" line are gone', !h.includes('id="champload"') && !h.includes('id="chcounts"') && !h.includes('class="chstep') && !h.includes('Counts for'));
     say('...the track is the track of the round (Big track, 4 lanes), not that of the race setup (Living room)', /Big track<\/span><span class="hs-chip">4 lanes<\/span>/.test(h) && !h.includes('Living room</span><span class="hs-chip">') && (h.match(/class="lane/g) || []).length === 4);
     say('...the drivers of the roster come first in the driver boxes (in the order of the roster, Sam before Alex; Kim joins in round 2 and is a guest in round 1), the others after them as guests', (hh => hh.includes('<optgroup label="Club Cup 2026: the roster">') && hh.includes('<optgroup label="Other drivers (they drive as guests)">'))(h)
-      && (() => { const o = h.slice(h.indexOf('<optgroup label="Club Cup 2026: the roster">'), h.indexOf('</optgroup>', h.indexOf('<optgroup label="Club Cup 2026: the roster">'))); return o.indexOf('>Sam<') > 0 && o.indexOf('>Sam<') < o.indexOf('>Alex') && !o.includes('Kim'); })());
-    say('...the button says it is loaded', h.includes('Loaded: Practice')); }
-  { await homeChange('champsel', ''); await wait(120);
-    const h = view().innerHTML, s = run('state.settings');
-    say('None makes it a normal race again: the card is gone, the choice and the loaded session are let go, and the race setup stays as it was', !h.includes('id="champband"') && !h.includes('id="chcounts"') && !h.includes('Counts for') && !h.includes('<optgroup label="Club Cup 2026: the roster">') && s.champTag === null && !s.champId && s.lastSetupId === 's-prac' && !/<option value="ch1" selected>/.test(h) && h.includes('<option value="">None: a normal race</option>'));
-    await homeChange('champsel', 'ch1'); await wait(120);
-    say('...choosing it again shows the card again with the next session, and nothing is loaded', view().innerHTML.includes('id="champband"') && !view().innerHTML.includes('Counts for') && !run('state.settings.champTag') && run('state.settings.champId') === 'ch1');
-    await homeClick({ id: 'champload', load: '0:0' }); await wait(150); }
-  { run("state.settings.champId = 'ch1'"); await homeChange('setup', 's-qual'); await wait(100);
-    const h = view().innerHTML;
-    say('another race setup in the Race setup box makes it a normal race again: the tag is cleared and the line is gone', run('state.settings.champTag') === null && !h.includes('id="chcounts"') && !h.includes('<optgroup label="Club Cup 2026: the roster">') && h.includes('Living room</span><span class="hs-chip">')); }
-  await homeChange('champpick', '0:2'); await wait(150);
+      && (() => { const o = h.slice(h.indexOf('<optgroup label="Club Cup 2026: the roster">'), h.indexOf('</optgroup>', h.indexOf('<optgroup label="Club Cup 2026: the roster">'))); return o.indexOf('>Sam<') > 0 && o.indexOf('>Sam<') < o.indexOf('>Alex') && !o.includes('Kim'); })()); }
+  await homeChange('setup', 's-race'); await wait(200);
+  { const h = view().innerHTML, s = run('state.settings');
+    say('a race setup from the list makes it a normal race again: the championship and its session are let go, and the lines are gone', s.champTag === null && !s.champId && s.lastSetupId === 's-race' && !h.includes('id="champband"') && !h.includes('<optgroup label="Club Cup 2026: the roster">') && !/<option value="champ:ch1" selected>/.test(h) && /<option value="s-race" selected>/.test(h));
+    await homeChange('setup', 'champ:ch1'); await wait(300);
+    say('...picking the championship again loads its next session again', run('state.settings.champTag.sessionId') === 'a1' && view().innerHTML.includes('id="champband"')); }
+  await homeChange('champpick', '0:2'); await wait(200);
   { const h = view().innerHTML;
-    say('"Another session" loads the session that was chosen (here the race of round 1) the same way', run('state.settings.lastSetupId') === 's-race' && run('state.settings.champTag.sessionId') === 'a3' && h.includes('Round 1 · Race') && h.includes('Counts for Club Cup 2026'));
-    say('...the button of the next session (the practice) still says "Load Practice": it says "Loaded" only for the session that is loaded', />Load Practice</.test(h) && !h.includes('Loaded:')); }
-  await homeChange('champpick', '1:1'); await wait(150);
-  say('...a sprint says so: "Race at 50%", and a round with no track of its own uses the track of the race setup', view().innerHTML.includes('Round 2 · Race at 50%') && view().innerHTML.includes('Living room</span><span class="hs-chip">') && run('state.settings.champTag.roundId') === 'r2');
+    say('"Other session" loads the session that was picked (the race of round 1) the same way, and marks it so it is not replaced by the next one', run('state.settings.lastSetupId') === 's-race' && run('state.settings.champTag.sessionId') === 'a3' && run('state.settings.champTag.again') === true && nowLine(h, 'Round 1 · Opener · Race'));
+    say('...Up next is then the session that is next in the championship (the practice), with a button to go to it', nextLine(h, 'Round 1 · Opener · Practice') && h.includes('data-chnext="1"')); }
+  await homeClick({ chnext: '1' }); await wait(200);
+  say('...that button loads the practice again', run('state.settings.champTag.sessionId') === 'a1' && !run('state.settings.champTag.again') && nowLine(view().innerHTML, 'Round 1 · Opener · Practice'));
+  await homeChange('champpick', '1:1'); await wait(200);
+  say('...a sprint says so: "Round 2 · Final · Race at 50%", and a round with no track of its own uses the track of the race setup', nowLine(view().innerHTML, 'Round 2 · Final · Race at 50%') && view().innerHTML.includes('Living room</span><span class="hs-chip">') && run('state.settings.champTag.roundId') === 'r2');
   say('...Kim joins in round 2: here she is in the roster part of the driver boxes', (hh => { const a = hh.indexOf('<optgroup label="Club Cup 2026: the roster">'); return a > 0 && hh.slice(a, hh.indexOf('</optgroup>', a)).includes('>Kim<'); })(view().innerHTML));
-  { // a session whose race setup is gone cannot be loaded; the card says why
-    const keep = store.racesetups; store.racesetups = keep.filter(s => s.id !== 's-prac'); run("state.settings.champTag = null; state.settings.lastSetupId = 's-race'");
-    const h = await home();
-    say('a session whose race setup was deleted: the card says so and the button is off (nothing can be loaded)', h.includes('Round 1, session 1: its race setup was deleted') && /id="champload"[^>]*disabled/.test(h) && h.includes('(deleted race setup)'));
+  { // a session whose race setup is gone cannot be loaded; the lines say why
+    const keep = store.racesetups; store.racesetups = keep.filter(s => s.id !== 's-prac'); run("state.settings.champTag = null; state.settings.lastSetupId = 's-race'; state.settings.champId = 'ch1'; homeChampAuto = ''");
+    const h = await home(); await wait(150);
+    say('a session whose race setup was deleted: the lines say so and why, and nothing is loaded', h.includes('Round 1, session 1: its race setup was deleted') && h.includes('(deleted race setup)') && !run('state.settings.champTag'));
     store.racesetups = keep; }
-  // the round that is next follows what was driven
+  // the session that is on follows what was driven
   { store.sessions = [{ id: 'z1', date: '2026-10-03T10:00:00Z', setupName: 'Practice 5 min', sessionType: 'practice', trackId: 't4', standings: [], champ: { id: 'ch1', name: 'Club Cup 2026', round: 1, roundId: 'r1', session: 1, sessionId: 'a1', kind: 'practice', share: 100 } },
       { id: 'z2', date: '2026-10-03T10:20:00Z', setupName: 'Qualifying 5 min', sessionType: 'qualifying', trackId: 't4', standings: [], champ: { id: 'ch1', name: 'Club Cup 2026', round: 1, roundId: 'r1', session: 2, sessionId: 'a2', kind: 'qualifying', share: 100 } }];
-    run("state.settings.champTag = null; state.settings.lastSetupId = 's-race'");
-    const h = await home();
-    say('after the practice and the qualifying were driven, the race of round 1 is next: two steps are done (a tick), the race is next, and the button says "Load Race"', (h.match(/class="chstep done"/g) || []).length === 2 && /class="chstep next"/.test(h) && />Load Race</.test(h) && h.includes('2 of 5 sessions driven') && h.includes('data-load="0:2"') && h.includes('&#10003;'));
-    store.sessions = [];
+    run("state.settings.champTag = { champId: 'ch1', roundId: 'r1', sessionId: 'a2', setupId: 's-qual' }; state.settings.lastSetupId = 's-qual'; homeChampAuto = ''");
+    await home(); await wait(300); const h = view().innerHTML;
+    say('after the practice and the qualifying were driven, the race of round 1 is on now by itself (the qualifying that was loaded makes way), and up next is the practice of round 2', run('state.settings.champTag.sessionId') === 'a3' && nowLine(h, 'Round 1 · Opener · Race') && nextLine(h, 'Round 2 · Final · Practice') && !h.includes('data-chskip='));
     const all = ['a1', 'a2', 'a3'].map((id, k) => ({ id: 'y' + k, date: '2026-10-03T1' + k, standings: [], champ: { id: 'ch1', roundId: 'r1', sessionId: id } })).concat(['b1', 'b2'].map((id, k) => ({ id: 'w' + k, date: '2026-10-10T1' + k, standings: [], champ: { id: 'ch1', roundId: 'r2', sessionId: id } })));
-    store.sessions = all; const f = await home();
-    say('when every session is driven the card says the championship is finished, has no Load button, and still lets you drive a session again', f.includes('Finished: all 5 sessions are driven.') && !f.includes('id="champload"') && f.includes('Drive a session again...') && f.includes('5 of 5 sessions driven') && !f.includes('class="chsteps"'));
+    store.sessions = all; run("homeChampAuto = ''"); const f = await home(); await wait(150);
+    say('when every session is driven the lines say the championship is finished, and a session can still be picked to drive it again', f.includes('<span class="hs-ctag">Finished</span><b>All 5 sessions driven</b>') && f.includes('id="champpick"') && !f.includes('Up next'));
     store.sessions = []; }
-  { const two = store.championships[0]; store.championships = [two, { ...JSON.parse(JSON.stringify(two)), id: 'ch2', name: 'Winter Series' }]; run("state.settings.champId = 'ch2'");
-    const h = await home();
-    say('with two championships the choice lists both and None, at the one that was chosen last', h.includes('id="champsel"') && (h.slice(h.indexOf('id="champsel"'), h.indexOf('</select>', h.indexOf('id="champsel"'))).match(/<option /g) || []).length === 3 && /<option value="ch2" selected>Winter Series/.test(h) && h.includes('<option value="">None: a normal race</option>'));
-    await homeChange('champsel', 'ch1'); await wait(100);
-    say('...choosing the other one shows that one (and remembers it)', run('state.settings.champId') === 'ch1' && /<option value="ch1" selected>Club Cup 2026/.test(view().innerHTML));
-    run("state.settings.champId = 'ch1'; state.settings.lastSetupId = 's-prac'; state.settings.champTag = { champId: 'ch1', roundId: 'r1', sessionId: 'a1', setupId: 's-prac' }"); await home();
-    await homeChange('champsel', 'ch2'); await wait(100);
-    say('choosing another championship lets go of a session that was loaded for the first one: the race is a normal race again', run('state.settings.champId') === 'ch2' && run('state.settings.champTag') === null && !view().innerHTML.includes('Counts for'));
-    await homeChange('champsel', 'ch1'); await wait(100); run("state.settings.champId = 'ch2'; state.settings.champTag = { champId: 'ch1', roundId: 'r1', sessionId: 'a1', setupId: 's-prac' }");
-    const t = await home();
-    say('a session that is loaded belongs to its championship: the card shows that one, even when another one was chosen last', /<option value="ch1" selected>/.test(t) && !/<option value="ch2" selected>/.test(t) && t.includes('Counts for Club Cup 2026'));
+  { const two = store.championships[0]; store.championships = [two, { ...JSON.parse(JSON.stringify(two)), id: 'ch2', name: 'Winter Series' }]; run("state.settings.champId = 'ch2'; state.settings.champTag = null; homeChampAuto = ''");
+    await home(); await wait(300);
+    say('with two championships the list has both, at the one that was picked last (its session loaded)', view().innerHTML.includes('<option value="champ:ch1">Club Cup 2026</option>') && /<option value="champ:ch2" selected>Winter Series/.test(view().innerHTML) && run('state.settings.champTag.champId') === 'ch2');
+    await homeChange('setup', 'champ:ch1'); await wait(300);
+    say('...picking the other one loads its session and remembers it', run('state.settings.champId') === 'ch1' && run('state.settings.champTag.champId') === 'ch1' && /<option value="champ:ch1" selected>Club Cup 2026/.test(view().innerHTML));
     run("state.settings.champTag = null; state.settings.lastSetupId = 's-race'; state.settings.champId = 'ch1'");
     store.championships = [two]; }
   { // a Time Token Session in a round: nothing can be loaded from it
-    const odd = JSON.parse(JSON.stringify(store.championships[0])); odd.rounds[0].sessions[0].setup = 's-tok'; store.championships = [odd]; run("state.settings.champTag = null; state.settings.champId = 'ch1'");
-    const h = await home();
-    say('a session with a Time Token Session says that it can not be part of a championship, and the Load button is off', h.includes('is a Time Token Session, which can not be part of a championship') && /id="champload"[^>]*disabled/.test(h));
+    const odd = JSON.parse(JSON.stringify(store.championships[0])); odd.rounds[0].sessions[0].setup = 's-tok'; store.championships = [odd]; run("state.settings.champTag = null; state.settings.champId = 'ch1'; homeChampAuto = ''");
+    const h = await home(); await wait(150);
+    say('a session with a Time Token Session says that it can not be part of a championship, and nothing is loaded', h.includes('is a Time Token Session, which can not be part of a championship') && !run('state.settings.champTag'));
     await homeChange('champpick', '0:0'); await wait(100);
-    say('...picking it from the choice does not load it: the card says why, and the race stays a normal race', view().innerHTML.includes('role="alert"') && run('state.settings.champTag') === null);
+    say('...picking it from the choice does not load it: the reason is shown, and the race stays a normal race', view().innerHTML.includes('role="alert"') && run('state.settings.champTag') === null);
     store.championships = [JSON.parse(JSON.stringify(C.clean({ ...odd, rounds: odd.rounds.map((r, i) => (i ? r : { ...r, sessions: [{ id: 'a1', setup: 's-prac' }, ...r.sessions.slice(1)] })) }, true)))]; }
   { const keep = store.championships, z = JSON.parse(JSON.stringify(keep[0])); z.rounds[0].sessions = [{ id: 'a1', setup: 's-prac' }, { id: 'a3', setup: 's-race', share: 0 }, { id: 'a4', setup: 's-race', share: 50 }];
-    store.championships = [JSON.parse(JSON.stringify(C.clean(z, true)))]; run("state.settings.champTag = null; state.settings.lastSetupId = 's-race'");
-    const h = await home();
-    say('a race that gives no points says "points: none" on the card, a sprint says 50%', h.includes('points: none') && h.includes('points: 50%'));
+    store.championships = [JSON.parse(JSON.stringify(C.clean(z, true)))]; run("state.settings.champTag = null; state.settings.lastSetupId = 's-race'; homeChampAuto = ''");
+    await home(); await wait(300); const h = view().innerHTML;
+    say('a race that gives no points says so in the lines: "Race (no points)"', nextLine(h, 'Round 1 · Opener · Race (no points)'));
     store.championships = keep; }
 
   // ---------- a race that counts ----------
-  run("state.settings = { theme: 'dark', lastSetupId: 's-race', champId: 'ch1', assignments: { 's-race': [1, 2, 3, 4].map(i => ({ driverId: 'd' + i, carId: 'c' + i })) } }"); store.sessions = []; await home();
-  await homeClick({ id: 'champload', load: '0:0' }); await wait(120);
+  run("state.settings = { theme: 'dark', lastSetupId: 's-race', champId: 'ch1', assignments: { 's-race': [1, 2, 3, 4].map(i => ({ driverId: 'd' + i, carId: 'c' + i })) } }; homeChampAuto = ''"); store.sessions = []; await home(); await wait(250);
   await homeChange('champpick', '0:2'); await wait(150);
-  say('before the start: the race of round 1 is loaded for the four lanes', run('state.settings.champTag.sessionId') === 'a3' && view().innerHTML.includes('Counts for Club Cup 2026') && /id="start"(?![^>]*disabled)/.test(view().innerHTML));
+  say('before the start: the race of round 1 is loaded for the four lanes', run('state.settings.champTag.sessionId') === 'a3' && nowLine(view().innerHTML, 'Round 1 · Opener · Race') && /id="start"(?![^>]*disabled)/.test(view().innerHTML));
   run('state.speed = 40'); await homeClick({ id: 'start' }); await wait(150);
   { const r = run('state.race');
     say('Start race takes the tag along: the race that is started counts for the championship (round 1, session 3, a race at 100%)', r && r.champ && r.champ.id === 'ch1' && r.champ.round === 1 && r.champ.roundId === 'r1' && r.champ.sessionId === 'a3' && r.champ.session === 3 && r.champ.kind === 'race' && r.champ.share === 100 && r.champ.name === 'Club Cup 2026');
@@ -409,7 +395,7 @@ const setup = async () => { run("state.tab = 'setup'; state.setupSub = 'champion
     const h = E('resbody').innerHTML;
     say('in Results and Records a race of a championship has its tag in the line of the race: "Club Cup 2026 · Round 1 · Race at 50%"; a normal race has none', h.includes('class="chtag"') && h.includes('Club Cup 2026 · Round 1 · Race at 50%') && (h.match(/class="chtag"/g) || []).length === 1); }
   { const css = fs.readFileSync(R + 'renderer/styles.css', 'utf8'), land = fs.readFileSync(R + 'renderer/landing.js', 'utf8');
-    say('1.56.1: the card of the championship has its own look inside the Start a race card (a tinted box with the pink edge), and it is no longer drawn above the grid', /\.hm-start \.champband\{background:color-mix\(in srgb,var\(--c-ch\) 7%,var\(--bg\)\);[^}]*border-top:3px solid var\(--c-ch\)/.test(css) && !/\$\{resumeHtml\}\s*\$\{champHtml\}/.test(land) && /\$\{champPickHtml\}\$\{champHtml\}/.test(land)); }
+    say('2.4.0: the championship is two lines inside Start a race with their own look (a pink edge), and the old choice of a championship is gone', /\.hs-championship\{--c-ch:#ec5f9a;[^}]*border-left:4px solid var\(--c-ch\)/.test(css) && land.includes('$' + '{champHtml}') && !land.includes('champPickHtml') && !land.includes("'champsel'")); }
   console.log(fails ? fails + ' CHAMPIONSHIP SCREEN TESTS FAILED' : 'ALL CHAMPIONSHIP SCREEN TESTS PASSED');
   process.exit(fails ? 1 : 0);
 })();
