@@ -159,7 +159,7 @@
         ? `<div class="hm-wall">${d.records
             .map(
               r =>
-                `<div class="hm-recrow2${r.trackName === d.trackName && d.trackName ? ' here' : ''}"><span class="who"><strong>${esc(r.trackName)}</strong><b class="hm-time sm">${esc(r.text)}</b><small>${esc([r.driver, r.car].filter(Boolean).join(' · '))}</small><small class="dt">${esc(d.fmtDate(r.date))}</small></span></div>`
+                `<div class="hm-recrow2${(d.trackId && r.trackId ? r.trackId === d.trackId : r.trackName === d.trackName && d.trackName) ? ' here' : ''}"><span class="who"><strong>${esc(r.trackName)}</strong><b class="hm-time sm">${esc(r.text)}</b><small>${esc([r.driver, r.car].filter(Boolean).join(' · '))}</small><small class="dt">${esc(d.fmtDate(r.date))}</small></span></div>`
             )
             .join('')}</div>`
         : '<p class="muted">No lap has been saved yet.</p>'

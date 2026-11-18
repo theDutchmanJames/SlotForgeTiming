@@ -1598,6 +1598,7 @@ async function renderHome() {
       fmtShort: shortDate,
       fmtDist: m => Stats.fmtDist(m, Speed.distUnitOf(state.settings)),
       trackName: track ? track.name || '' : '',
+      trackId: track ? track.id : '',
       hasTrack: !!track,
       hasSetup: !!setup,
       setupName: setup ? setup.name || '' : '',
