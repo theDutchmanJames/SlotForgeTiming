@@ -62,7 +62,7 @@
         ? Math.round(m) + ' m'
         : (m / 1000).toFixed(2) + ' km';
   // a length of a track (metres) as written in a list or a card: 12 m, 39.4 ft
-  const lengthText = (m, u) => (u === 'ft' ? round(Number(m) / M_PER_FT, 1) + ' ft' : m + ' m');
+  const lengthText = (m, u) => (u === 'ft' ? round(Number(m) / M_PER_FT, 1) + ' ft' : round(Number(m), 2) + ' m'); // (2.4.0: metres to two decimals at most: 5.88 m, 12.5 m)
   // a length of a track as typed in a form (metres, or feet to two decimals), and back to the metres that are kept (to the millimetre)
   const lengthTyped = (m, u) => (u === 'ft' && m !== '' && Number.isFinite(Number(m)) ? round(Number(m) / M_PER_FT, 2) : m);
   const lengthKept = (n, u) => (u === 'ft' ? round(Number(n) * M_PER_FT, 3) : Number(n));

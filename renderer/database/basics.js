@@ -168,7 +168,11 @@ function cell(f, v) {
   if (v === undefined || v === null || v === '') return '';
   if (f.type === 'image') return v?._cataloguePicture ? catalogueImage(v, 'thumb') : `<img class="thumb" src="${esc(v)}" alt="">`;
   if (f.type === 'tracklength')
-    return typeof v === 'number' ? esc(Speed.lengthText(v, dUnit())) : Speed.parseLength(v) === '' ? `${esc(v)} m` : esc(v);
+    return typeof v === 'number' || (typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v))) // (2.4.0: a length kept as text is rounded too)
+      ? esc(Speed.lengthText(Number(v), dUnit()))
+      : Speed.parseLength(v) === ''
+        ? `${esc(v)} m`
+        : esc(v);
   {
     const t = typedText(f, v);
     if (t !== null) return esc(t);
