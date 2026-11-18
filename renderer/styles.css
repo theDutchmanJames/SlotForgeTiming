@@ -3041,3 +3041,10 @@ html #setupmgr .rsform h3.rseye{margin:0 0 2px;font:700 11px/1.4 "Segoe UI",syst
 html #setupmgr .rsform .mc-info{padding:12px 14px;border:1px solid var(--line);background:color-mix(in srgb,var(--ink) 4%,var(--panel));font-size:13px}
 #setupmgr .rsform .rssec .field :is(input,select,textarea){font-weight:400}
 html #setupmgr .rsform .resource-note{border-color:var(--line);background:color-mix(in srgb,var(--ink) 4%,var(--panel));font-size:13px}
+/* 2.4.0 a page with a side list fills the window exactly: the shell takes the room the header leaves (no guessed height, so no scroll of a few pixels),
+   the side list runs to the bottom, and the SlotForge logo sits in the bottom-right corner of the page instead of on a strip of its own */
+#view:has(>.setupshell){display:flex;flex-direction:column}
+#view>.setupshell{flex:1 0 auto;min-height:0}
+body:has(>#view>.setupshell)>#app-footer{height:0;padding:0;position:relative;z-index:1;pointer-events:none}
+body:has(>#view>.setupshell)>#app-footer .app-brand-logo{position:absolute;right:20px;bottom:16px;pointer-events:auto}
+#view>.setupshell>:is(.setuppage,.custpage){padding-bottom:64px}

@@ -222,7 +222,14 @@ A page with its sections in a side list on the left (240 px) and the page on the
 ```
 
 ```css
-.setupshell{display:grid;grid-template-columns:240px minmax(0,1fr);min-height:calc(100vh - 70px)}
+.setupshell{display:grid;grid-template-columns:240px minmax(0,1fr)}
+/* fill the window exactly: the page area is a column that grows (body: flex column, min-height 100vh), the shell takes what the header leaves.
+   Never a guessed height like calc(100vh - 70px): a header of another height then makes the page scroll a few pixels. */
+#view:has(>.setupshell){display:flex;flex-direction:column}
+#view>.setupshell{flex:1 0 auto;min-height:0}
+/* the app logo in the footer: in the bottom-right corner of the page, not on a strip of its own under the side list */
+body:has(>#view>.setupshell)>#app-footer{height:0;padding:0;position:relative;z-index:1;pointer-events:none}
+body:has(>#view>.setupshell)>#app-footer .app-brand-logo{position:absolute;right:20px;bottom:16px;pointer-events:auto}
 .setupstrip{display:flex;flex-direction:column;gap:2px;padding:22px 12px 24px;border-right:1px solid var(--line);background:color-mix(in srgb,var(--bg) 55%,var(--panel))}
 .ssrailtitle{margin:0 10px 14px;font:italic 700 22px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em}
 .ssgroup{display:flex;flex-direction:column;gap:2px;margin-top:14px}
@@ -242,7 +249,7 @@ A page with its sections in a side list on the left (240 px) and the page on the
 .sstool svg{flex:none;color:var(--muted)}
 .sstool:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
 /* the page */
-.setuppage{min-width:0;padding:24px 30px 34px}
+.setuppage{min-width:0;padding:24px 30px 64px}   /* 64px: room for the logo in the corner */
 .setuppage>h2{margin:0 0 6px;font-size:26px}
 /* narrow: the list becomes a wrapping row on top */
 @media (max-width:900px){.setupshell{grid-template-columns:minmax(0,1fr)}.setupstrip{flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line);padding:12px}.ssgroup{flex-direction:row;flex-wrap:wrap;margin:0}.sslabel,.ssrailtitle{display:none}.sstab{width:auto}.sstools{flex-direction:row;margin:0;border:0;padding:0}.setuppage{padding:20px}}
@@ -783,4 +790,5 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | Page Note | The explaining text under every Race Setup title as a box with lead, more and where-to-use |
 | 2026-11 | Paddock Rail | "Choose systems…" became the dashed "Hide unused systems…" item at the end of the list |
 | 2026-11 | Entry Card, Tech Sheet | Virtual Rival, Multi-Class and Resource Systems moved to cards and the Tech Sheet sizes |
+| 2026-11 | Paddock Rail | The shell fills the window exactly (no small scroll); the side list runs to the bottom; the logo sits in the page corner |
 | 2026-11 | Timing Tower, Rulebook | Personal Bests as a timing tower; Racing Rules as a document page with a grouped toolbar |
