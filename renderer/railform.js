@@ -127,7 +127,7 @@
     const bg = p =>
       p.kind === 'none'
         ? 'var(--line)'
-        : `color-mix(in srgb,var(--accent) ${Math.round(14 + (46 * (p.step - 1)) / Math.max(1, p.of - 2))}%,var(--panel))`;
+        : `color-mix(in srgb,var(--c,var(--accent)) ${Math.round(14 + (46 * (p.step - 1)) / Math.max(1, p.of - 2))}%,var(--panel))`;
     const tick = t =>
       `<span style="${t.end ? 'right:0' : d.center ? (t.at > 0 ? `left:${t.at}%;transform:translateX(-50%)` : 'left:0') : t.at > 60 && String(t.label).length > 4 ? 'right:0' : `left:${t.at}%`}">${esc(t.label)}</span>`;
     return (

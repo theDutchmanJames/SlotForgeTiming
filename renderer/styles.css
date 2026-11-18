@@ -83,7 +83,7 @@ nav{display:flex;gap:4px;flex-wrap:wrap}
 .setuppage .btn.primary{background:var(--accent-fill,var(--accent));border-color:var(--accent-fill,var(--accent));color:var(--on-accent)}
 .setuppage .seg .btn.on{background:color-mix(in srgb,var(--ink) 12%,var(--panel));border-color:color-mix(in srgb,var(--ink) 30%,var(--line));color:var(--ink)}
 /* the windows that open from a Race Setup page: the sub-tab colour takes the place of the accent colour inside them (folders, Save button, options). Race Setups keeps the accent of the theme. */
-.setupform:not(.ss-race){--accent:var(--c);--on-accent:var(--on)}
+/* (2.4.0) a system form keeps the one accent of the app; the colour of the system is --c, for its tile, the icon of the open section and its bars */
 .ph.phicon{background:color-mix(in srgb,var(--c) 20%,var(--panel));color:var(--c)}
 .ph.phicon svg{width:30%;height:auto;max-height:60%}
 @media (max-width:500px){.ssgroups{flex-basis:100%}.ssdropdown[open]>.sschips{grid-template-columns:1fr}}
@@ -269,8 +269,8 @@ details .fields{margin:10px 0}
 .rsidentity[data-kind=practice] .rstile{border-color:var(--c-wx);background:color-mix(in srgb,var(--c-wx) 14%,transparent)}
 .rsidentity[data-kind=qualifying] .rstile{border-color:var(--c-pen);background:color-mix(in srgb,var(--c-pen) 14%,transparent)}
 /* The session picker updates the tone without rebuilding or losing form input. */
-.rsform.ss-race[data-session-kind=practice]{--accent:var(--c-wx);--on-accent:var(--on-wx);--c:var(--c-wx)}
-.rsform.ss-race[data-session-kind=qualifying]{--accent:var(--c-pen);--on-accent:var(--on-pen);--c:var(--c-pen)}
+.rsform.ss-race[data-session-kind=practice]{--c:var(--c-wx)}
+.rsform.ss-race[data-session-kind=qualifying]{--c:var(--c-pen)}
 .rsfacts{display:grid;gap:8px;padding-top:10px;border-top:1px solid var(--line)}
 .rslinked{min-width:0}
 .rslinked-head{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;margin-bottom:10px}
@@ -646,9 +646,9 @@ dialog:has(.rsform){width:min(1240px,96vw);padding:0;overflow:hidden;max-height:
 .fgrid.c3 .field.fu-switchfield:not(.full){align-self:start}
 .wxfield{gap:8px}
 .wxstrip .rsseg.wx-dry{background:var(--line)}
-.wxstrip .rsseg.wx-cloudy{background:color-mix(in srgb,var(--accent) 16%,var(--panel))}
-.wxstrip .rsseg.wx-wet{background:color-mix(in srgb,var(--accent) 48%,var(--panel))}
-.wxstrip .rsseg.wx-clearing{background:color-mix(in srgb,var(--accent) 30%,var(--panel))}
+.wxstrip .rsseg.wx-cloudy{background:color-mix(in srgb,var(--c,var(--accent)) 16%,var(--panel))}
+.wxstrip .rsseg.wx-wet{background:color-mix(in srgb,var(--c,var(--accent)) 48%,var(--panel))}
+.wxstrip .rsseg.wx-clearing{background:color-mix(in srgb,var(--c,var(--accent)) 30%,var(--panel))}
 .wxstrip .rsseg{color:var(--ink)}
 .rsticks .rsunit{right:0}
 .rsstripmsg{margin:6px 0 0;font-size:12.5px}
@@ -2016,16 +2016,16 @@ html[data-layers="on"] .lw.live .lw-val{will-change:transform}
 /* ---- Fuel System rewrite (1.87.0): the amount, burn and pump are three small
    instruments rather than an anonymous row of boxes. The calculations below are
    deliberately estimates: live systems may still adjust a particular car or stop. ---- */
-.field-label-icon{display:inline-flex;vertical-align:-3px;margin-right:6px;color:var(--accent-text,var(--accent))}
-.rsform.ss-fuel .rssec[data-fg="basics"] .field[data-key="tank"],.rsform.ss-fuel .rssec[data-fg="basics"] .field[data-key="perLap"],.rsform.ss-fuel .rssec[data-fg="basics"] .field[data-key="rate"]{margin:2px 0 10px;padding:12px;border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));border-radius:11px;background:linear-gradient(145deg,color-mix(in srgb,var(--accent) 12%,var(--panel)),var(--panel))}
+.field-label-icon{display:inline-flex;vertical-align:-3px;margin-right:6px;color:var(--c,var(--c,var(--accent)))}
+.rsform.ss-fuel .rssec[data-fg="basics"] .field[data-key="tank"],.rsform.ss-fuel .rssec[data-fg="basics"] .field[data-key="perLap"],.rsform.ss-fuel .rssec[data-fg="basics"] .field[data-key="rate"]{margin:2px 0 10px;padding:12px;border:1px solid color-mix(in srgb,var(--c,var(--accent)) 30%,var(--line));border-radius:11px;background:linear-gradient(145deg,color-mix(in srgb,var(--c,var(--accent)) 12%,var(--panel)),var(--panel))}
 .rsform.ss-fuel .rssec[data-fg="basics"] .field[data-key="tank"] label,.rsform.ss-fuel .rssec[data-fg="basics"] .field[data-key="perLap"] label,.rsform.ss-fuel .rssec[data-fg="basics"] .field[data-key="rate"] label{font-weight:700}
 .rsform.ss-fuel .rssec[data-fg="basics"] .field[data-key="tank"] input,.rsform.ss-fuel .rssec[data-fg="basics"] .field[data-key="perLap"] input,.rsform.ss-fuel .rssec[data-fg="basics"] .field[data-key="rate"] input{margin-top:6px;font-size:18px;font-weight:700}
 .fuel-math{display:grid;grid-template-columns:minmax(100px,1.2fr) repeat(2,minmax(0,1fr));align-items:center;gap:12px;margin:2px 0 10px;padding:14px 16px;border:1px solid var(--line);border-radius:11px;background:var(--bg)}
-.fuel-math-meter{height:10px;border-radius:999px;background:color-mix(in srgb,var(--accent) 14%,var(--line));overflow:hidden}
-.fuel-math-meter i{display:block;width:100%;height:100%;border-radius:inherit;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 55%,#29bb78),var(--accent))}
+.fuel-math-meter{height:10px;border-radius:999px;background:color-mix(in srgb,var(--c,var(--accent)) 14%,var(--line));overflow:hidden}
+.fuel-math-meter i{display:block;width:100%;height:100%;border-radius:inherit;background:linear-gradient(90deg,color-mix(in srgb,var(--c,var(--accent)) 55%,#29bb78),var(--c,var(--accent)))}
 .fuel-math-stat{display:flex;flex-direction:column;gap:2px;min-width:0}.fuel-math-stat b{font-size:17px;font-variant-numeric:tabular-nums}.fuel-math-stat small{font-size:12px;color:var(--muted)}
 .fuel-math p{grid-column:1 / -1;margin:0}.fuel-track-pick{display:grid;gap:8px}.fuel-track-preview{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg)}
-.fuel-track-preview>span{display:inline-flex;color:var(--accent-text,var(--accent))}.fuel-track-preview p{display:flex;flex-direction:column;gap:2px;margin:0}.fuel-track-preview small.warn{color:#c78525;font-weight:600}
+.fuel-track-preview>span{display:inline-flex;color:var(--c,var(--c,var(--accent)))}.fuel-track-preview p{display:flex;flex-direction:column;gap:2px;margin:0}.fuel-track-preview small.warn{color:#c78525;font-weight:600}
 @media(max-width:760px){.rsform.ss-fuel .fgrid.c3{grid-template-columns:1fr}.fuel-math{grid-template-columns:1fr 1fr}.fuel-math-meter,.fuel-math p{grid-column:1 / -1}}
 
 /* ---- The rotation setup editor with a rail (1.77.0, board 9 in docs/ui-reference/race-systems) ----
@@ -2941,3 +2941,63 @@ html dialog.track-design-dialog{width:min(980px,96vw);padding:22px 24px;overflow
 .chprog i{display:block;height:100%;border-radius:4px;background:var(--c)}
 .chprog.full i{background:#3ecf8e}
 .syscard .rslinked .issues{margin:10px 0 0;font-size:12.5px}
+/* 2.4.0 the window of a race setup or a race system, in the style of the app: one accent; the colour of the system (--c) only on its tile, the icon of the open
+   section and its bars. A big name in Barlow, a calm side list, sections as the folders of the app, and settings that read top to bottom:
+   a switch with the setting it turns on indented under it, help text at full width. */
+.rsform .rshd{border-top:0;padding:20px 24px 16px;background:linear-gradient(110deg,color-mix(in srgb,var(--c,var(--accent)) 10%,var(--panel)),var(--panel) 55%)}
+.rsform .rshd .rstile{border:0;background:color-mix(in srgb,var(--c,var(--accent)) 16%,var(--panel));color:var(--c,var(--accent))}
+.rsform .rseye,.rsform h3.rseye{margin:0;font:700 11px/1.4 "Segoe UI",system-ui,sans-serif;font-style:normal;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.rsform .rshd .field input{font:italic 700 30px/1.1 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.01em;padding:2px 0 4px;max-width:640px;border:0;border-bottom:1px dashed var(--line);border-radius:0;background:none;color:var(--ink)}
+.rsform .rshd .field input::placeholder{color:color-mix(in srgb,var(--muted) 70%,transparent)}
+.rsform .rshd .field input:hover{border-bottom-color:var(--muted)}
+.rsform .rshd .field input:focus-visible{outline:none;border-bottom:1px solid var(--accent)}
+.rsform .rshd .rspill{font-size:12px}
+.rsform .rshd .rspill.hi{border-color:color-mix(in srgb,var(--ink) 30%,var(--line));background:color-mix(in srgb,var(--ink) 9%,var(--panel))}
+/* the side list */
+.rsform .rsrail{gap:2px;padding:16px 12px;background:color-mix(in srgb,var(--bg) 55%,var(--panel))}
+.rsform .rsrail .rsrl{margin:4px 8px 6px;font-size:10.5px;letter-spacing:.14em;color:color-mix(in srgb,var(--muted) 80%,var(--bg))}
+.rsform .rsrail .rsrl2{margin-top:16px}
+.rsform .rsri{border:0;border-radius:9px;padding:9px 10px}
+.rsform .rsri.on{border:0;background:color-mix(in srgb,var(--ink) 10%,var(--panel))}
+.rsform .rsri .rsic{border:0;background:none;color:var(--muted)}
+.rsform .rsri.on .rsic{color:var(--c,var(--accent))}
+.rsform .rsri b{font-weight:600}
+.rsform .rsri small{color:var(--muted)}
+.rsform .rsused{border-radius:10px}
+/* In plain words */
+.rsform .rssay{background:color-mix(in srgb,var(--bg) 45%,var(--panel));border-radius:12px}
+.rsform .rssayic{border:0;background:color-mix(in srgb,var(--ink) 8%,var(--panel));color:var(--muted)}
+/* the sections */
+.rsform .fgroup.rssec{border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:clip}
+.rsform .fgroup.rssec>summary{padding:12px 44px 12px 14px}
+.rsform .fgroup.rssec>summary .rsic{border:0;background:color-mix(in srgb,var(--ink) 7%,var(--panel));color:var(--muted)}
+.rsform .fgroup.rssec[open]>summary{box-shadow:inset 3px 0 0 var(--accent)}
+.rsform .fgroup.rssec[open]>summary .rsic{border:0;background:color-mix(in srgb,var(--c,var(--accent)) 14%,var(--panel));color:var(--c,var(--accent))}
+.rsform .fgroup.rssec>summary strong{font:italic 700 18px/1.15 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em}
+.rsform .fgroup.rssec>summary .rsq,.rsform .fgroup.rssec>summary .rsrow{font-size:12.5px}
+/* the settings: read top to bottom, help text at full width */
+.rsform .rssec .fgrid{gap:16px 24px;padding:16px 18px 18px}
+.rsform:not(.ss-race) .rssec .fgrid.c3{grid-template-columns:repeat(2,minmax(0,1fr))}
+.rsform .rssec .field>label:not(.inline){font-size:13px;font-weight:600;color:var(--ink)}
+.rsform .rssec .field .hint{font-size:12.5px;line-height:1.5;max-width:75ch}
+.rsform .rs-system-field{border-left:0;padding-left:0;border-radius:0;background:none}
+/* a switch, and the setting it turns on indented under it with a thin line */
+.rsform .fgrid>.fu-switchfield+.field:not(.fu-switchfield){grid-column:1 / -1;margin:-6px 0 0 21px;padding:2px 0 4px 31px;border-left:2px solid var(--line)}
+.rsform .fgrid>.fu-switchfield+.field:not(.fu-switchfield) .hint{max-width:70ch}
+.rsform .rssub{border-top:1px solid var(--line)}
+.rsform .rssub:first-child{border-top:0}
+.rsform .rssubt{font:italic 700 16px/1.2 'SF Barlow Condensed','Bahnschrift',sans-serif;text-transform:uppercase;letter-spacing:.02em}
+/* the bar at the bottom */
+.rsform .rsfoot{background:color-mix(in srgb,var(--bg) 40%,var(--panel))}
+/* the choices inside a system window: one quiet segmented control, as on the pages */
+.rsform :is(.fu-seg,.twseg){display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--bg) 60%,var(--panel))}
+html .rsform :is(.fu-seg>.fu-b,.twseg>.btn){min-height:30px;padding:0 14px;border:0;border-radius:7px;background:transparent;box-shadow:none;color:var(--muted);font:500 13px/1.2 "Segoe UI",system-ui,sans-serif}
+html .rsform :is(.fu-seg>.fu-b,.twseg>.btn):hover:where(:not(:disabled)){background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink);border:0}
+html .rsform :is(.fu-seg>.fu-b,.twseg>.btn):is(.on,[aria-pressed="true"],[aria-selected="true"]){background:color-mix(in srgb,var(--ink) 13%,var(--panel));color:var(--ink);border:0;box-shadow:none;font-weight:600}
+/* a section that is only for when you need it says so */
+.rsform .rsopt>summary strong::after{content:'Optional';margin-left:10px;padding:2px 8px;border:1px solid var(--line);border-radius:999px;font:500 11px/1.4 "Segoe UI",system-ui,sans-serif;font-style:normal;text-transform:none;letter-spacing:0;color:var(--muted);vertical-align:2px}
+/* the three numbers of a fuel system: quiet boxes (the colour of fuel only on their icons) */
+html .rsform.ss-fuel .rssec[data-fg="basics"] .field:is([data-key="tank"],[data-key="perLap"],[data-key="rate"]){border:1px solid var(--line);background:color-mix(in srgb,var(--bg) 45%,var(--panel))}
+/* a chosen option card: a calm fill with the accent edge and its tick (not a red block) */
+html .rsform .fu-card.on{background:color-mix(in srgb,var(--ink) 7%,var(--panel));border-color:color-mix(in srgb,var(--accent) 65%,var(--line))}
+html .rsform .fu-card.on .fu-ci{color:var(--accent-text,var(--accent))}
