@@ -1180,7 +1180,8 @@ html #view .help-hub .help-related .btn{min-height:30px;padding:0 14px;border:1p
 A lane of **Start a race** on Home, the same at every width. The lane number and the driver's name (Barlow) on the first line, the car under
 it, **Browse cars** under that; the driver's picture as a portrait on the right that fills the card from top to bottom and fades into it
 (`--gs-pic`: 132px, 180px when the lanes are wide, 104px when narrow or with four lanes or more); the ready tick in the top corner; a faint
-tint of the lane colour behind the portrait.
+tint of the lane colour behind the portrait. **Start a race** goes to its stacked layout (choices on top, the lanes in a full-width row, Start
+race under them) when a lane would get less than about 340px: below 1400px with 2 lanes, 1650px with 3, 1950px with 4; 5 or more always.
 
 ```css
 html #hmc-start .hs-lanes[data-cols] .lane.lane.lane{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"n f" ". m" "w w";min-height:116px;padding:16px 18px 14px;overflow:hidden}
@@ -1270,3 +1271,4 @@ Add a line here for every style change, so the other apps can follow.
 | 2026-11 | System Sheet | Balance of Power and Time Tokens: a card on the page, the editor as a window; padding for words inside a sheet |
 | 2026-11 | System Sheet | Safety Car in four sections; More for long explanations; form labels; Resource tyre sets as rows; tables with the 30px kit |
 | 2026-11 | Grid Slot | New: the lanes of Start a race on Home fill their card at every width, with the driver as a full-height portrait |
+| 2026-11 | Grid Slot | Start a race stacks sooner (2 lanes below 1400px, 3 below 1650px, 4 below 1950px) |
